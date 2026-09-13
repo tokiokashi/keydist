@@ -123,6 +123,7 @@ test('親指の連打でも距離は増えない', () => {
 const chord = (map: Record<string, string[][]>): Layout => ({
   id: 'test', name: 'test',
   map: new Map(Object.entries(map)),
+  legends: new Map(),
 });
 
 test('同時押しは 1 ステップ、押下は押したキーの数だけ数える', () => {
@@ -206,6 +207,7 @@ test('「きゃ」を見出しに持つ配列は 1 単位として当てる', ()
   const l: Layout = {
     id: 't', name: 't',
     map: new Map([['き', [['d']]], ['ゃ', [['k']]], ['きゃ', [['f']]]]),
+    legends: new Map(),
     maxCharLength: 2,
   };
   const t = evaluate('きゃ', l, geometry, opts());
@@ -217,6 +219,7 @@ test('「きゃ」を見出しに持たない配列は「き」「ゃ」に分�
   const l: Layout = {
     id: 't', name: 't',
     map: new Map([['き', [['d']]], ['ゃ', [['k']]]]),
+    legends: new Map(),
   };
   const t = evaluate('きゃ', l, geometry, opts());
   assert.equal(t.strokes.length, 2);
@@ -227,6 +230,7 @@ test('最長一致は後続の文字を食い過ぎない', () => {
   const l: Layout = {
     id: 't', name: 't',
     map: new Map([['き', [['d']]], ['ゃ', [['k']]], ['きゃ', [['f']]], ['く', [['j']]]]),
+    legends: new Map(),
     maxCharLength: 2,
   };
   const t = evaluate('きゃく', l, geometry, opts());

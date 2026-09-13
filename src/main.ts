@@ -2,12 +2,15 @@ import { ALL_FINGERS, buildGeometry, THUMB_ROW, type Finger, type GeometryKind }
 import { evaluate, type Options } from './evaluate.ts';
 import { computeMetrics, type Metrics } from './metrics.ts';
 import { nSensitivity } from './sensitivity.ts';
-import { LAYOUTS, LAYOUT_BY_ID, type Layout } from './layouts/index.ts';
+import { LAYOUTS, composeRomaji, type Layout } from './layouts/index.ts';
+import { kunrei } from './romaji/kunrei.ts';
 import { SAMPLE_TEXT } from './sample-text.ts';
+import { SAMPLE_TEXT_JA } from './sample-text-ja.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const el = {
+  mode: $<HTMLSelectElement>('mode'),
   geometry: $<HTMLSelectElement>('geometry'),
   window: $<HTMLInputElement>('window'),
   windowOut: $<HTMLOutputElement>('window-out'),
@@ -28,10 +31,37 @@ const FINGER_LABEL: Record<Finger, string> = {
   RT: '右親指', RI: '右人差指', RM: '右中指', RR: '右薬指', RP: '右小指',
 };
 
-el.text.value = SAMPLE_TEXT.replace(/\s+/g, ' ').trim();
+const ROMAJI_TABLE = kunrei();
+
+/** 入力方式ごとの配列と既定テキスト */
+const MODES = {
+  en: {
+    layouts: LAYOUTS,
+    sample: SAMPLE_TEXT.replace(/\s+/g, ' ').trim(),
+  },
+  ja: {
+    layouts: LAYOUTS.map((l) => composeRomaji(`${l.id}-ja`, l.name, ROMAJI_TABLE, l)),
+    sample: SAMPLE_TEXT_JA.replace(/\s+/g, ''),
+  },
+} as const;
+
+type ModeId = keyof typeof MODES;
+
+const currentMode = () => MODES[el.mode.value as ModeId];
+
+el.text.value = MODES.en.sample;
 for (const layout of LAYOUTS) {
   el.detailLayout.append(new Option(layout.name, layout.id));
 }
+
+// 入力方式を変えたら既定テキストも入れ替える。ただし利用者が書き換えたものは残す。
+// select は input と change の両方を発火するので、描画より先に走る input 側で入れ替える
+function syncSampleText() {
+  const untouched = Object.values(MODES).some((m) => m.sample === el.text.value);
+  if (untouched) el.text.value = currentMode().sample;
+}
+el.mode.addEventListener('input', syncSampleText);
+el.mode.addEventListener('change', syncSampleText);
 
 function currentOptions(): Options {
   return {
@@ -46,7 +76,7 @@ function render() {
   const text = el.text.value;
   el.windowOut.value = el.window.value;
 
-  const results = LAYOUTS.map((layout) => {
+  const results = currentMode().layouts.map((layout) => {
     const trace = evaluate(text, layout, geometry, options);
     return { layout, trace, metrics: computeMetrics(trace, geometry) };
   });
@@ -66,7 +96,7 @@ function render() {
 }
 
 function renderCompare(
-  results: { layout: { id: string; name: string }; metrics: Metrics }[],
+  results: { layout: Layout; metrics: Metrics }[],
   pitchMm: number,
 ) {
   const best = Math.min(...results.map((r) => r.metrics.totalUnits));
@@ -98,15 +128,17 @@ function renderCompare(
 }
 
 function renderDetail(
-  results: { layout: { id: string }; metrics: Metrics }[],
+  results: { layout: Layout; metrics: Metrics }[],
   geometry: ReturnType<typeof buildGeometry>,
 ) {
-  const found = results.find((r) => r.layout.id === el.detailLayout.value) ?? results[0];
+  const wanted = el.detailLayout.value;
+  const found =
+    results.find((r) => r.layout.id === wanted || r.layout.id === `${wanted}-ja`) ?? results[0];
   const { metrics } = found;
-  const layout = LAYOUT_BY_ID.get(el.detailLayout.value) ?? LAYOUTS[0];
+  const layout = found.layout;
 
   // ヒートマップ
-  const labels = keyLabels(layout);
+  const labels = layout.legends;
   const max = Math.max(1, ...metrics.keyCounts.values());
   const KEY = 46;
   const PAD = 8;
@@ -122,7 +154,7 @@ function renderDetail(
     const y = key.y * KEY;
     maxX = Math.max(maxX, x + w);
     maxY = Math.max(maxY, y + KEY);
-    const label = labels.get(key.id) ?? (thumb ? (key.finger === 'RT' ? '空白' : '親指') : '');
+    const label = labels.get(key.id) ?? '';
     const share = ((count / Math.max(1, metrics.strokes)) * 100).toFixed(1);
     // oklab で補間する。srgb だと暗い地色と暖色の中間が濁る
     return `<g>
@@ -167,7 +199,7 @@ function renderSensitivity(
   options: Options,
 ) {
   const range = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  const series = LAYOUTS.map((layout) => ({
+  const series = currentMode().layouts.map((layout) => ({
     name: layout.name,
     points: nSensitivity(text, layout, geometry, options, range),
   }));
@@ -176,7 +208,8 @@ function renderSensitivity(
   const H = 260;
   const M = { top: 12, right: 96, bottom: 30, left: 52 };
   const all = series.flatMap((s) => s.points.map((p) => p.totalUnits));
-  const yMax = Math.max(...all) * 1.05;
+  // テキストが空、または配列で 1 文字も打てない場合に 0 除算へ落ちないようにする
+  const yMax = Math.max(1, Math.max(0, ...all) * 1.05);
   const x = (n: number) =>
     M.left + (n / (range.length - 1)) * (W - M.left - M.right);
   const y = (v: number) => H - M.bottom - (v / yMax) * (H - M.top - M.bottom);
@@ -236,19 +269,8 @@ function renderSensitivity(
 const escapeHtml = (s: string) =>
   s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
-for (const node of [el.geometry, el.window, el.sfbHome, el.text, el.detailLayout]) {
+for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.text, el.detailLayout]) {
   node.addEventListener('input', render);
   node.addEventListener('change', render);
 }
 render();
-
-/** キー id → 表示ラベル。単打で打てる文字だけを載せる */
-function keyLabels(layout: Layout): Map<string, string> {
-  const out = new Map<string, string>();
-  for (const [char, sequence] of layout.map) {
-    if (sequence.length !== 1 || sequence[0].length !== 1) continue;
-    const id = sequence[0][0];
-    if (!out.has(id)) out.set(id, char === ' ' ? '空白' : char);
-  }
-  return out;
-}

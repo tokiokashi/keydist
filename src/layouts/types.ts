@@ -15,6 +15,8 @@ export interface Layout {
    * （「きゃ」を「き」「ゃ」に分けない）
    */
   maxCharLength?: number;
+  /** キー id → そのキーの刻印。表示用。ローマ字テーブルを合成しても引き継ぐ */
+  legends: Map<string, string>;
 }
 
 /**
@@ -28,14 +30,24 @@ export function fromRows(
   thumbs: { LT?: string; RT?: string } = { RT: ' ' },
 ): Layout {
   const map = new Map<string, Sequence>();
+  const legends = new Map<string, string>();
   rows.forEach((row, r) => {
     [...row].forEach((ch, c) => {
-      if (ch !== ' ') map.set(ch, [[keyId(r, c)]]);
+      if (ch === ' ') return;
+      const id = keyId(r, c);
+      map.set(ch, [[id]]);
+      legends.set(id, ch);
     });
   });
-  if (thumbs.LT) map.set(thumbs.LT, [[THUMB_KEY.LT]]);
-  if (thumbs.RT) map.set(thumbs.RT, [[THUMB_KEY.RT]]);
-  return { id, name, map };
+  if (thumbs.LT) {
+    map.set(thumbs.LT, [[THUMB_KEY.LT]]);
+    legends.set(THUMB_KEY.LT, '親指');
+  }
+  if (thumbs.RT) {
+    map.set(thumbs.RT, [[THUMB_KEY.RT]]);
+    legends.set(THUMB_KEY.RT, '空白');
+  }
+  return { id, name, map, legends };
 }
 
 /**
@@ -66,7 +78,8 @@ export function composeRomaji(
     }
     if (ok) map.set(kana, sequence);
   }
-  return { id, name, map, maxCharLength: maxKeyLength(table) };
+  // 刻印は英字配列のものをそのまま使う。合成で変わるのは打ち方であって配置ではない
+  return { id, name, map, legends: base.legends, maxCharLength: maxKeyLength(table) };
 }
 
 const maxKeyLength = (table: Map<string, string>) =>

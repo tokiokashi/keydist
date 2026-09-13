@@ -22,6 +22,14 @@
         <h2>入力</h2>
         <div class="controls">
           <label class="ctl">
+            <span>入力方式</span>
+            <select id="mode">
+              <option value="en">英文（英字配列そのまま）</option>
+              <option value="ja">日本語（かな → 訓令式ローマ字）</option>
+            </select>
+          </label>
+
+          <label class="ctl">
             <span>キーボード形状</span>
             <select id="geometry">
               <option value="row-staggered">段ずれ（ANSI/JIS 準拠）</option>
