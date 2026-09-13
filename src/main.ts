@@ -51,12 +51,12 @@ const MODES = {
     layouts: LAYOUTS,
     sample: SAMPLE_TEXT.replace(/\s+/g, ' ').trim(),
     /** 既定で表示する配列。色のスロット数を超えないよう絞る */
-    initial: ['qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi-custom'],
+    initial: ['qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi'],
   },
   ja: {
     layouts: LAYOUTS_JA,
     sample: SAMPLE_TEXT_JA.replace(/\s+/g, ''),
-    initial: ['qwerty', 'colemak-dh', 'oonishi', 'oonishi-custom', 'oonishi-custom-combo', 'naginata-v18'],
+    initial: ['qwerty', 'colemak-dh', 'oonishi', 'oonishi-custom-combo', 'naginata-v18'],
   },
 } as const;
 

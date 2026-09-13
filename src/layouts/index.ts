@@ -1,4 +1,5 @@
 import { kunrei } from '../romaji/kunrei.ts';
+import { oonishiRomaji } from '../romaji/oonishi.ts';
 import { NAGINATA_V18 } from './naginata.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
 import { fromKana, fromRows, withCombos, withRomaji, type Layout } from './types.ts';
@@ -7,6 +8,7 @@ export type { Layout, Sequence, Step } from './types.ts';
 export { fromRows, fromKana, withRomaji, withCombos } from './types.ts';
 
 const ROMAJI = kunrei();
+const ROMAJI_OONISHI = oonishiRomaji();
 
 /**
  * 英字配列。行ごとの列数は ANSI の英数部に合わせる（12 / 12 / 11 / 10）。
@@ -59,8 +61,11 @@ const ALPHA: Layout[] = [
 
 const ALPHA_BY_ID = new Map(ALPHA.map((l) => [l.id, l]));
 
-/** 英文をそのまま打つ配列 */
-export const LAYOUTS: Layout[] = ALPHA;
+/**
+ * 英文をそのまま打つ配列。
+ * 大西の私家版は日本語のコンボ運用と対で意味を持つので、英文の一覧には出さない。
+ */
+export const LAYOUTS: Layout[] = ALPHA.filter((l) => l.id !== 'oonishi-custom');
 
 /**
  * 日本語のかなテキストを打つ配列。
@@ -69,8 +74,13 @@ export const LAYOUTS: Layout[] = ALPHA;
  */
 export const LAYOUTS_JA: Layout[] = [
   // Dvorak は英語専用設計で日本語ローマ字の比較に入れる意義が薄いので外す。
-  // 色のスロットは 8 つなので、一覧もその数に収める。
-  ...ALPHA.filter((l) => l.id !== 'dvorak').map((l) => withRomaji(l, ROMAJI)),
+  // 私家版はコンボ込みでのみ意味を持つので、素の形では出さない。
+  ...ALPHA.filter((l) => l.id !== 'dvorak' && l.id.startsWith('oonishi') === false).map((l) =>
+    withRomaji(l, ROMAJI),
+  ),
+  // 大西は公式が前提とする綴り（シャ行 sh / じ ji / じゃ行 j）で打つ
+  withRomaji(ALPHA_BY_ID.get('oonishi')!, ROMAJI_OONISHI),
+  // 私家版のコンボは訓令式（sya / zya）の綴りを前提に組まれている
   withRomaji(
     withCombos(
       'oonishi-custom-combo',

@@ -22,14 +22,14 @@ const BASE: Record<string, string> = {
   ぱ: 'pa', ぴ: 'pi', ぷ: 'pu', ぺ: 'pe', ぽ: 'po',
 
   きゃ: 'kya', きゅ: 'kyu', きょ: 'kyo',
-  しゃ: 'sya', しゅ: 'syu', しょ: 'syo',
+  しゃ: 'sya', しゅ: 'syu', しょ: 'syo', しぇ: 'sye',
   ちゃ: 'tya', ちゅ: 'tyu', ちょ: 'tyo',
   にゃ: 'nya', にゅ: 'nyu', にょ: 'nyo',
   ひゃ: 'hya', ひゅ: 'hyu', ひょ: 'hyo',
   みゃ: 'mya', みゅ: 'myu', みょ: 'myo',
   りゃ: 'rya', りゅ: 'ryu', りょ: 'ryo',
   ぎゃ: 'gya', ぎゅ: 'gyu', ぎょ: 'gyo',
-  じゃ: 'zya', じゅ: 'zyu', じょ: 'zyo',
+  じゃ: 'zya', じゅ: 'zyu', じょ: 'zyo', じぇ: 'zye',
   びゃ: 'bya', びゅ: 'byu', びょ: 'byo',
   ぴゃ: 'pya', ぴゅ: 'pyu', ぴょ: 'pyo',
 
@@ -43,14 +43,16 @@ const BASE: Record<string, string> = {
 const VOWELS = 'aiueo';
 
 /**
- * 訓令式テーブルを組み立てる。
+ * 訓令式テーブルを組み立てる。`overrides` で一部のかなの綴りを差し替えられる。
  *
- * 促音は「っ」の後ろに来るかなの頭子音を重ねる形で展開する（`っか` → `kka`）。
+ * 促音は差し替え後の綴りから展開するので、`し` を `shi` にすれば
+ * `っし` も `sshi` になる（`っか` → `kka` と同じ規則）。
  * 見出しを 2〜3 文字にすることで、最長一致でそのまま当たる。
  */
-export function kunrei(): Map<string, string> {
-  const table = new Map(Object.entries(BASE));
-  for (const [kana, roman] of Object.entries(BASE)) {
+export function kunrei(overrides: Record<string, string> = {}): Map<string, string> {
+  const base = { ...BASE, ...overrides };
+  const table = new Map(Object.entries(base));
+  for (const [kana, roman] of Object.entries(base)) {
     const head = roman[0];
     if (VOWELS.includes(head) || head === '-' || head === ',' || head === '.') continue;
     // 「ん」は nn なので重ねない
