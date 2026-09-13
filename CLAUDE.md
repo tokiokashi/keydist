@@ -70,6 +70,7 @@ npm run build      # 型検査 + ビルド
 | `metrics` | 出力指標 |
 | `infra` | ビルド・CI・リポジトリ基盤 |
 | `docs` | README・仕様以外のドキュメント |
+| `meta` | ロードマップなど issue 運用そのもの |
 
 コミットと issue の紐づけ:
 
