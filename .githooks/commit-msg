@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
 # Angular 規約に沿っているかを検査する。規約は CONTRIBUTING.md を参照。
+# CI（.github/workflows/ci.yml）も PR の各コミットにこのスクリプトを掛ける。
 set -u
 
 msg_file="$1"
-# コメント行と空行を除いた最初の行を件名として扱う
-subject=$(grep -v '^#' "$msg_file" | sed '/^[[:space:]]*$/d' | head -n 1)
 
-# マージ・リバート・fixup/squash は素通しする
+# コメント行を落とす。件名は 1 行目、2 行目は空行でなければならない。
+# 空行を飛ばして探すと、件名を書き忘れた時に本文の 1 行目を件名と誤認する
+body=$(grep -v '^#' "$msg_file")
+subject=$(printf '%s\n' "$body" | head -n 1)
+second=$(printf '%s\n' "$body" | sed -n '2p')
+
+# 空のメッセージは git 自身が中断する。ここで重ねて言わない
+[ -z "$(printf '%s' "$body" | tr -d '[:space:]')" ] && exit 0
+
+# マージ・リバート・fixup/squash は git が形を決めるので素通しする
 case "$subject" in
   Merge\ * | Revert\ * | fixup!\ * | squash!\ * ) exit 0 ;;
 esac
@@ -25,7 +33,7 @@ if ! printf '%s' "$subject" | grep -qE "^($types)(\([a-z0-9._-]+\))?: .+"; then
 fi
 
 # UTF-8 の継続バイト（0x80-0xBF）を落とすと文字数が出る。
-# ${#subject} や wc -m はロケール依存でバイト数を返すことがあり、日本語の件名が常に溢れる
+# ${#subject} も wc -m もロケール依存でバイト数を返すことがあり、日本語の件名が常に溢れる
 len=$(printf '%s' "$subject" | tr -d '\200-\277' | wc -c | tr -d ' ')
 if [ "$len" -gt 72 ]; then
   err "1行目が ${len} 文字。72 文字以内に収める"
@@ -34,6 +42,10 @@ fi
 case "$subject" in
   *。) err "件名の末尾に句点を付けない" ;;
 esac
+
+if [ -n "$(printf '%s' "$second" | tr -d '[:space:]')" ]; then
+  err "件名と本文の間に空行を入れる"
+fi
 
 if [ "$fail" -ne 0 ]; then
   echo "" >&2
