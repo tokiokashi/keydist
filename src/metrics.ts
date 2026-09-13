@@ -1,4 +1,4 @@
-import { ADJACENT_PAIRS, dist, FINGERS, type Finger, type Geometry } from './geometry.ts';
+import { ADJACENT_PAIRS, ALL_FINGERS, dist, type Finger, type Geometry } from './geometry.ts';
 import type { Trace } from './evaluate.ts';
 
 export interface PairStat {
@@ -32,7 +32,7 @@ export interface Metrics {
 
 export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
   const perFinger = {} as Record<Finger, number>;
-  for (const finger of FINGERS) perFinger[finger] = 0;
+  for (const finger of ALL_FINGERS) perFinger[finger] = 0;
 
   let totalUnits = 0;
   let sameFinger = 0;

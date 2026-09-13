@@ -97,3 +97,23 @@ test('隣接指間距離はホーム段で 1u 前後になる', () => {
     assert.ok(stat.mean > 0.5 && stat.mean < 2, `${stat.pair.join('-')}: ${stat.mean}`);
   }
 });
+
+test('空白は右親指の打鍵として数え、移動距離は 0 になる', () => {
+  const t = evaluate(' ', qwerty, geometry, opts());
+  assert.equal(t.strokes.length, 1);
+  assert.equal(t.skipped, 0);
+  assert.equal(t.strokes[0].finger, 'RT');
+  near(t.strokes[0].distance, 0, 'space');
+});
+
+test('空白が g のカウントに入る', () => {
+  // 'y' → 空白 → 'u'。空白を落とすと g=0（同指連続）になってしまう
+  const t = evaluate('y u', qwerty, geometry, opts());
+  assert.equal(t.strokes.length, 3);
+  assert.equal(t.strokes[2].char, 'u');
+  assert.equal(t.strokes[2].gap, 1);
+});
+
+test('親指の連打でも距離は増えない', () => {
+  near(totalOf('   '), 0, 'spaces');
+});

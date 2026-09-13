@@ -7,6 +7,13 @@
   --accent: #9a5b3d;
   --heat-0: #f2efe9;
   --heat-1: #c8562f;
+  /* 濃い地色の上に載せる文字色 */
+  --on-heat: #fdf8f4;
+  --series-1: #c8562f;
+  --series-2: #2f6f60;
+  --series-3: #5a4b96;
+  --series-4: #87682a;
+  --series-5: #35618f;
   color-scheme: light;
 }
 
@@ -18,8 +25,14 @@
     --muted: #9b978e;
     --line: #35332e;
     --accent: #d98a63;
-    --heat-0: #27251f;
-    --heat-1: #e07a4a;
+    --heat-0: #2a2723;
+    --heat-1: #e8794a;
+    --on-heat: #1c1713;
+    --series-1: #e8794a;
+    --series-2: #4fb9a1;
+    --series-3: #a292e6;
+    --series-4: #d8b95e;
+    --series-5: #6fabe6;
     color-scheme: dark;
   }
 }

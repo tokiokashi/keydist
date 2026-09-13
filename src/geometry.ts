@@ -1,12 +1,19 @@
 /** 指の識別子。L/R + P(小指) R(薬指) M(中指) I(人差し指) T(親指) */
 export type Finger =
-  | 'LP' | 'LR' | 'LM' | 'LI'
-  | 'RI' | 'RM' | 'RR' | 'RP';
+  | 'LP' | 'LR' | 'LM' | 'LI' | 'LT'
+  | 'RT' | 'RI' | 'RM' | 'RR' | 'RP';
 
-export const FINGERS: Finger[] = ['LP', 'LR', 'LM', 'LI', 'RI', 'RM', 'RR', 'RP'];
+/** 親指を除く 8 本。隣接指間距離（§10.3）はこの範囲で見る */
+export type NonThumb = Exclude<Finger, 'LT' | 'RT'>;
+export const FINGERS: NonThumb[] = ['LP', 'LR', 'LM', 'LI', 'RI', 'RM', 'RR', 'RP'];
+
+/** 親指を含む全 10 本 */
+export const ALL_FINGERS: Finger[] = ['LP', 'LR', 'LM', 'LI', 'LT', 'RT', 'RI', 'RM', 'RR', 'RP'];
+
+export const isThumb = (finger: Finger) => finger === 'LT' || finger === 'RT';
 
 /** 同じ手の隣接ペア（§10.3） */
-export const ADJACENT_PAIRS: [Finger, Finger][] = [
+export const ADJACENT_PAIRS: [NonThumb, NonThumb][] = [
   ['LP', 'LR'], ['LR', 'LM'], ['LM', 'LI'],
   ['RI', 'RM'], ['RM', 'RR'], ['RR', 'RP'],
 ];
@@ -32,6 +39,8 @@ export interface Geometry {
   keys: Map<string, Key>;
   /** row/col → Key */
   grid: Key[][];
+  /** 親指キー */
+  thumbs: Record<'LT' | 'RT', Key>;
   homes: Record<Finger, Point>;
 }
 
@@ -40,11 +49,21 @@ export const keyId = (row: number, col: number) => `r${row}c${col}`;
 /** 列 0..9 に対する既定の指割り当て */
 const COLUMN_FINGER: Finger[] = ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP'];
 
-/** 各指のホーム列（ASDF JKL;） */
-const HOME_COLUMN: Record<Finger, number> = {
+/** 各指のホーム列（ASDF JKL;）。親指は別途キー上に置く */
+const HOME_COLUMN: Record<Exclude<Finger, 'LT' | 'RT'>, number> = {
   LP: 0, LR: 1, LM: 2, LI: 3,
   RI: 6, RM: 7, RR: 8, RP: 9,
 };
+
+/** 親指キーの行 */
+export const THUMB_ROW = 4;
+
+/**
+ * 親指キーの中心列。
+ * ANSI のスペースバーは 6.25u 幅で左端が 3.75u（Ctrl+Win+Alt = 1.25u × 3）に来るが、
+ * 親指が実際に叩くのはホームポジション直下なので、そこを押下点として置く。
+ */
+const THUMB_COLUMN: Record<'LT' | 'RT', number> = { LT: 3.5, RT: 5.5 };
 
 /** ホーム段の行インデックス。0=数字段 1=上段 2=ホーム段 3=下段 */
 export const HOME_ROW = 2;
@@ -94,13 +113,32 @@ export function buildGeometry(kind: GeometryKind): Geometry {
     grid.push(line);
   }
 
+  // 親指キー。ホームがキー自身の上にあるため移動距離は常に 0 になり、
+  // 打鍵数だけが g のカウントに入る。
+  const thumbs = {} as Record<'LT' | 'RT', Key>;
+  for (const finger of ['LT', 'RT'] as const) {
+    const col = THUMB_COLUMN[finger];
+    const key: Key = {
+      id: finger === 'LT' ? 'thumb-l' : 'thumb-r',
+      row: THUMB_ROW,
+      col,
+      x: xOf(HOME_ROW, col),
+      y: kind === 'column-staggered' ? THUMB_ROW + 0.35 : THUMB_ROW,
+      finger,
+    };
+    thumbs[finger] = key;
+    keys.set(key.id, key);
+  }
+
   const homes = {} as Record<Finger, Point>;
   for (const finger of FINGERS) {
     const col = HOME_COLUMN[finger];
     homes[finger] = { x: xOf(HOME_ROW, col), y: yOf(HOME_ROW, col) };
   }
+  homes.LT = { x: thumbs.LT.x, y: thumbs.LT.y };
+  homes.RT = { x: thumbs.RT.x, y: thumbs.RT.y };
 
-  return { id: kind, name: GEOMETRY_NAMES[kind], pitchMm, keys, grid, homes };
+  return { id: kind, name: GEOMETRY_NAMES[kind], pitchMm, keys, grid, thumbs, homes };
 }
 
 const GEOMETRY_NAMES: Record<GeometryKind, string> = {

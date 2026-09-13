@@ -1,4 +1,4 @@
-import { dist, FINGERS, type Finger, type Geometry, type Key, type Point } from './geometry.ts';
+import { ALL_FINGERS, dist, type Finger, type Geometry, type Key, type Point } from './geometry.ts';
 import { buildCharMap, type Layout } from './layouts/index.ts';
 
 export interface Options {
@@ -56,7 +56,7 @@ export function evaluate(
 
   const prev = {} as Record<Finger, Point>;
   const last = {} as Record<Finger, number>;
-  for (const finger of FINGERS) {
+  for (const finger of ALL_FINGERS) {
     prev[finger] = geometry.homes[finger];
     last[finger] = Number.NEGATIVE_INFINITY;
   }
@@ -67,13 +67,14 @@ export function evaluate(
 
   for (const raw of text) {
     const char = raw.toLowerCase();
-    const pos = charMap.get(char);
-    if (!pos) {
+    const target = charMap.get(char);
+    if (!target) {
       skipped++;
       continue;
     }
 
-    const key = geometry.grid[pos[0]][pos[1]];
+    const key =
+      target.kind === 'thumb' ? geometry.thumbs[target.side] : geometry.grid[target.row][target.col];
     const finger = key.finger;
     const home = geometry.homes[finger];
 
@@ -120,7 +121,7 @@ function snapshot(
   windowSize: number,
 ): Record<Finger, Point> {
   const out = {} as Record<Finger, Point>;
-  for (const finger of FINGERS) {
+  for (const finger of ALL_FINGERS) {
     const elapsed = index - last[finger] - 1;
     out[finger] = elapsed <= windowSize ? prev[finger] : geometry.homes[finger];
   }

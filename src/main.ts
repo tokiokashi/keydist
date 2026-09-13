@@ -1,4 +1,4 @@
-import { buildGeometry, FINGERS, type Finger, type GeometryKind } from './geometry.ts';
+import { ALL_FINGERS, buildGeometry, THUMB_ROW, type Finger, type GeometryKind } from './geometry.ts';
 import { evaluate, type Options } from './evaluate.ts';
 import { computeMetrics, type Metrics } from './metrics.ts';
 import { nSensitivity } from './sensitivity.ts';
@@ -23,8 +23,8 @@ const el = {
 };
 
 const FINGER_LABEL: Record<Finger, string> = {
-  LP: '左小指', LR: '左薬指', LM: '左中指', LI: '左人差指',
-  RI: '右人差指', RM: '右中指', RR: '右薬指', RP: '右小指',
+  LP: '左小指', LR: '左薬指', LM: '左中指', LI: '左人差指', LT: '左親指',
+  RT: '右親指', RI: '右人差指', RM: '右中指', RR: '右薬指', RP: '右小指',
 };
 
 el.text.value = SAMPLE_TEXT.replace(/\s+/g, ' ').trim();
@@ -105,21 +105,26 @@ function renderDetail(
   const PAD = 8;
   let maxX = 0;
   let maxY = 0;
+  const THUMB_W = 1.9;
   const keys = [...geometry.keys.values()].map((key) => {
     const count = metrics.keyCounts.get(key.id) ?? 0;
     const t = count / max;
-    const x = key.x * KEY;
+    const thumb = key.row === THUMB_ROW;
+    const w = (thumb ? THUMB_W : 1) * KEY;
+    const x = (key.x - (thumb ? (THUMB_W - 1) / 2 : 0)) * KEY;
     const y = key.y * KEY;
-    maxX = Math.max(maxX, x + KEY);
+    maxX = Math.max(maxX, x + w);
     maxY = Math.max(maxY, y + KEY);
-    const label = layout.rows[key.row][key.col] ?? '';
+    const label = thumb ? (key.finger === 'RT' ? '空白' : '親指') : (layout.rows[key.row][key.col] ?? '');
     const share = ((count / Math.max(1, metrics.strokes)) * 100).toFixed(1);
+    // oklab で補間する。srgb だと暗い地色と暖色の中間が濁る
     return `<g>
-      <rect x="${x + 1}" y="${y + 1}" width="${KEY - 2}" height="${KEY - 2}" rx="5"
-        fill="color-mix(in srgb, var(--heat-1) ${(t * 100).toFixed(1)}%, var(--heat-0))"
+      <rect x="${x + 1}" y="${y + 1}" width="${w - 2}" height="${KEY - 2}" rx="5"
+        fill="color-mix(in oklab, var(--heat-1) ${(t * 100).toFixed(1)}%, var(--heat-0))"
         stroke="var(--line)"><title>${label} — ${count} 打 (${share}%)</title></rect>
-      <text x="${x + KEY / 2}" y="${y + KEY / 2 + 5}" text-anchor="middle"
-        font-size="15" fill="var(--fg)">${escapeHtml(label)}</text>
+      <text x="${x + w / 2}" y="${y + KEY / 2 + 5}" text-anchor="middle"
+        font-size="${thumb ? 12 : 15}" fill="${t > 0.55 ? 'var(--on-heat)' : 'var(--fg)'}"
+        >${escapeHtml(label)}</text>
     </g>`;
   });
 
@@ -130,7 +135,7 @@ function renderDetail(
   const total = metrics.totalUnits || 1;
   el.perFinger.innerHTML = `
     <thead><tr><th>指</th><th>距離 [u]</th><th>割合</th></tr></thead>
-    <tbody>${FINGERS.map((f) => {
+    <tbody>${ALL_FINGERS.map((f) => {
       const d = metrics.perFinger[f];
       return `<tr><td>${FINGER_LABEL[f]}</td>
         <td class="num">${d.toFixed(1)}</td>
@@ -169,7 +174,7 @@ function renderSensitivity(
     M.left + (n / (range.length - 1)) * (W - M.left - M.right);
   const y = (v: number) => H - M.bottom - (v / yMax) * (H - M.top - M.bottom);
 
-  const palette = ['#c8562f', '#3f7f6f', '#6b5ca5', '#a58b3f', '#4a7ab5'];
+  const palette = [1, 2, 3, 4, 5].map((i) => `var(--series-${i})`);
   // ラベルが重ならないよう、終端の y を昇順に並べて最小間隔を確保する
   const labels = series
     .map((s, i) => ({
