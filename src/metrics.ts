@@ -15,7 +15,7 @@ export interface Metrics {
   /** 配列に無く打鍵できなかった文字数 */
   skipped: number;
   /** 入力文字数（展開前。仕様 §11.3 の分母） */
-  charsInput: number;
+  inputChars: number;
   /** 指ごとの総移動距離 [u] */
   perFinger: Record<Finger, number>;
   /** 指ごとの押下数 */
@@ -83,18 +83,18 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
   }));
 
   const n = trace.strokes.length;
-  const charsInput = trace.inputChars;
+  const { inputChars } = trace;
   return {
     strokes: n,
     presses,
     skipped: trace.skipped,
-    charsInput,
+    inputChars,
     perFinger,
     perFingerPresses,
     totalUnits,
     totalMm: totalUnits * geometry.pitchMm,
     meanPerStroke: n ? totalUnits / n : 0,
-    perCharUnits: charsInput ? totalUnits / charsInput : 0,
+    perCharUnits: inputChars ? totalUnits / inputChars : 0,
     adjacent,
     sameFinger,
     keyCounts,

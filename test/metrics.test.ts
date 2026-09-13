@@ -38,7 +38,7 @@ test('1 文字あたりの距離は打鍵数ではなく入力文字数を分母
   // 「し」→ si（2 打鍵、入力文字数は 1）
   const m = computeMetrics(evaluate('し', qwerty, geometry, opts()), geometry);
   assert.equal(m.strokes, 2);
-  assert.equal(m.charsInput, 1);
+  assert.equal(m.inputChars, 1);
   near(m.perCharUnits, m.totalUnits, '1文字あたり = 総距離 / 1');
   near(m.meanPerStroke, m.totalUnits / 2, '1打鍵あたり = 総距離 / 2');
   // 打鍵数を分母にすると、展開で打鍵が増えた分だけ小さく出てしまう
@@ -55,14 +55,14 @@ test('コンボ相当（複数文字を 1 見出しで打つ）でも入力文�
   };
   const combo = computeMetrics(evaluate('きゃ', l, geometry, opts()), geometry);
   assert.equal(combo.strokes, 1);
-  assert.equal(combo.charsInput, 2);
+  assert.equal(combo.inputChars, 2);
 
   const split = computeMetrics(
     evaluate('きゃ', { ...l, map: new Map([['き', [['d']]], ['ゃ', [['k']]]]) }, geometry, opts()),
     geometry,
   );
   assert.equal(split.strokes, 2);
-  assert.equal(split.charsInput, 2);
+  assert.equal(split.inputChars, 2);
 
   // 打鍵数は減っても入力文字数は同じなので、削減の効果が 1 文字あたりの距離に出る
   assert.ok(combo.perCharUnits <= split.perCharUnits + 1e-9);
