@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Angular 規約に沿っているかを検査する。規約は CONTRIBUTING.md を参照。
+set -u
+
+msg_file="$1"
+# コメント行と空行を除いた最初の行を件名として扱う
+subject=$(grep -v '^#' "$msg_file" | sed '/^[[:space:]]*$/d' | head -n 1)
+
+# マージ・リバート・fixup/squash は素通しする
+case "$subject" in
+  Merge\ * | Revert\ * | fixup!\ * | squash!\ * ) exit 0 ;;
+esac
+
+types='feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert'
+fail=0
+
+err() {
+  [ "$fail" -eq 0 ] && echo "commit-msg: コミットメッセージが規約に沿っていない" >&2
+  fail=1
+  echo "  - $1" >&2
+}
+
+if ! printf '%s' "$subject" | grep -qE "^($types)(\([a-z0-9._-]+\))?: .+"; then
+  err "1行目は '<type>(<scope>): <件名>' の形にする（type: $types）"
+fi
+
+# 長さは警告に留める（マルチバイトの文字数はロケール依存で正確に測れないため）
+len=$(printf '%s' "$subject" | LC_ALL=C.UTF-8 awk '{ print length($0) }')
+if [ -n "$len" ] && [ "$len" -gt 72 ]; then
+  echo "commit-msg: 警告 — 1行目が ${len} 文字。72 文字以内が望ましい" >&2
+fi
+
+case "$subject" in
+  *。) err "件名の末尾に句点を付けない" ;;
+esac
+
+if [ "$fail" -ne 0 ]; then
+  echo "" >&2
+  echo "  実際の1行目: $subject" >&2
+  echo "  規約: CONTRIBUTING.md" >&2
+  exit 1
+fi
+
+exit 0
