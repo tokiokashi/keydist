@@ -108,7 +108,7 @@ function activeLayouts(): Layout[] {
   return currentMode().layouts.filter((l) => set.has(l.id));
 }
 
-el.text.value = MODES.en.sample;
+el.text.value = currentMode().sample;
 
 /** 配列を追加する欄。段ごとに 1 行、数字段は任意 */
 function setupAddForm() {
