@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>keydist — キーボード配列 指移動距離</title>
+    <meta name="description" content="キーボード論理配列を指の総移動距離で評価する" />
+    <link rel="icon" type="image/svg+xml" href="/keydist/favicon.svg" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>keydist</h1>
+      <p class="lede">
+        論理配列を打った時の<strong>指の総移動距離</strong>で評価する。
+        <a href="https://github.com/tokiokashi/keydist/blob/main/spec/distance-model.md">モデル仕様</a>
+      </p>
+    </header>
+
+    <main>
+      <section class="panel">
+        <h2>入力</h2>
+        <div class="controls">
+          <label class="ctl">
+            <span>キーボード形状</span>
+            <select id="geometry">
+              <option value="row-staggered">段ずれ（ANSI/JIS 準拠）</option>
+              <option value="ortholinear">格子</option>
+              <option value="column-staggered">列ずれ（分割想定）</option>
+            </select>
+          </label>
+
+          <label class="ctl">
+            <span>窓幅 N <small>指を残す打鍵数</small></span>
+            <span class="range-row">
+              <input type="range" id="window" min="0" max="12" step="1" value="3" />
+              <output id="window-out">3</output>
+            </span>
+          </label>
+
+          <label class="ctl checkbox">
+            <input type="checkbox" id="sfb-home" checked />
+            <span>同指連続でホームキーを打つ時も移動を加算する</span>
+          </label>
+        </div>
+
+        <label class="ctl block">
+          <span>評価テキスト</span>
+          <textarea id="text" rows="5" spellcheck="false"></textarea>
+        </label>
+        <p class="meta" id="text-meta"></p>
+      </section>
+
+      <section class="panel">
+        <h2>配列比較</h2>
+        <div class="scroll-x">
+          <table id="compare"></table>
+        </div>
+        <p class="note">
+          総移動距離は<strong>下界</strong>。窓の内側では残る／戻るの小さい方を採るため、実際の運指はこれ以上になる。
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>詳細</h2>
+        <label class="ctl">
+          <span>配列</span>
+          <select id="detail-layout"></select>
+        </label>
+        <div id="heatmap"></div>
+        <div class="split">
+          <div>
+            <h3>指ごとの移動距離</h3>
+            <div class="scroll-x"><table id="per-finger"></table></div>
+          </div>
+          <div>
+            <h3>隣接指間距離</h3>
+            <div class="scroll-x"><table id="adjacent"></table></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>N 感度</h2>
+        <p class="note">傾きが小さい配列ほど、指を残したまま打てる配列。</p>
+        <div id="sensitivity"></div>
+      </section>
+    </main>
+
+    <footer>
+      <a href="https://github.com/tokiokashi/keydist">GitHub</a>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
