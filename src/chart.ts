@@ -182,3 +182,89 @@ export const escapeText = (s: string) =>
   s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!);
 
 export const escapeAttr = (s: string) => s.replace(/"/g, '&quot;');
+
+export interface ColumnDatum {
+  label: string;
+  value: number;
+  /** 同じ値が続く並びを 1 つの塊として扱い、塊の間に余白を置く（左手 / 右手など） */
+  group?: string;
+  color?: string;
+  tip?: string;
+}
+
+export interface ColumnOptions {
+  format?: (v: number) => string;
+  height?: number;
+  width?: number;
+}
+
+/**
+ * 縦棒。x に並ぶ順序そのものが意味を持つ場合に使う
+ * （指を左小指から右小指へ並べると、図の左右が手の左右と一致する）。
+ */
+export function columnChart(data: ColumnDatum[], options: ColumnOptions = {}): string {
+  const format = options.format ?? ((v: number) => v.toFixed(1));
+  const W = options.width ?? 420;
+  const H = options.height ?? 190;
+  const top = 18;
+  const bottom = data.some((d) => d.group) ? 34 : 20;
+  const plotH = H - top - bottom;
+  const max = Math.max(1e-9, ...data.map((d) => d.value));
+
+  // 塊の切れ目に 1 本分の半分の余白を入れる
+  const gaps = data.reduce((n, d, i) => (i > 0 && d.group !== data[i - 1].group ? n + 1 : n), 0);
+  const slot = W / (data.length + gaps * 0.5);
+  const barW = Math.min(slot - 4, 46);
+
+  let cursor = 0;
+  const bars = data
+    .map((d, i) => {
+      if (i > 0 && d.group !== data[i - 1].group) cursor += slot * 0.5;
+      const x = cursor + (slot - barW) / 2;
+      cursor += slot;
+      const h = (d.value / max) * plotH;
+      const y = top + plotH - h;
+      const fill = d.color ?? 'var(--heat-1)';
+      const tipText = d.tip ?? `${d.label}<br><b>${format(d.value)}</b>`;
+      // データ端（上）だけ 4px 丸める
+      const r = Math.min(4, h);
+      const path =
+        h <= 0.5
+          ? ''
+          : `<path d="M${x},${top + plotH} v${-(h - r)} a${r},${r} 0 0 1 ${r},${-r} ` +
+            `h${barW - r * 2} a${r},${r} 0 0 1 ${r},${r} v${h - r} z" fill="${fill}"/>`;
+      return `<g data-tip="${escapeAttr(tipText)}">
+        <rect x="${cursor - slot}" y="0" width="${slot}" height="${H}" fill="transparent"/>
+        ${path}
+        <text x="${x + barW / 2}" y="${y - 5}" text-anchor="middle" font-size="11"
+          fill="var(--muted)" font-variant-numeric="tabular-nums">${format(d.value)}</text>
+        <text x="${x + barW / 2}" y="${top + plotH + 14}" text-anchor="middle" font-size="11"
+          fill="var(--fg)">${escapeText(d.label)}</text>
+      </g>`;
+    })
+    .join('');
+
+  // 塊のラベルは軸の下にまとめて 1 つ置く
+  let groupLabels = '';
+  if (data.some((d) => d.group)) {
+    let pos = 0;
+    const spans = new Map<string, { from: number; to: number }>();
+    data.forEach((d, i) => {
+      if (i > 0 && d.group !== data[i - 1].group) pos += slot * 0.5;
+      const key = d.group ?? '';
+      const span = spans.get(key);
+      if (span) span.to = pos + slot;
+      else spans.set(key, { from: pos, to: pos + slot });
+      pos += slot;
+    });
+    groupLabels = [...spans]
+      .map(
+        ([name, span]) => `<text x="${(span.from + span.to) / 2}" y="${H - 6}" text-anchor="middle"
+          font-size="11" fill="var(--muted)">${escapeText(name)}</text>`,
+      )
+      .join('');
+  }
+
+  const baseline = `<line x1="0" y1="${top + plotH}" x2="${W}" y2="${top + plotH}" stroke="var(--line)"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img">${baseline}${bars}${groupLabels}</svg>`;
+}

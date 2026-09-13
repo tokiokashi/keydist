@@ -1,4 +1,4 @@
-import { ALL_FINGERS, buildGeometry, THUMB_ROW, type Finger, type GeometryKind } from './geometry.ts';
+import { buildGeometry, FINGERS, THUMB_ROW, type Finger, type GeometryKind } from './geometry.ts';
 import { evaluate, type Options, type Trace } from './evaluate.ts';
 import { computeMetrics, type Metrics } from './metrics.ts';
 import { nSensitivity } from './sensitivity.ts';
@@ -6,7 +6,7 @@ import { LAYOUTS, composeRomaji, type Layout } from './layouts/index.ts';
 import { kunrei } from './romaji/kunrei.ts';
 import { SAMPLE_TEXT } from './sample-text.ts';
 import { SAMPLE_TEXT_JA } from './sample-text-ja.ts';
-import { barChart, bindTips, escapeText, lineChart } from './chart.ts';
+import { bindTips, columnChart, escapeText, lineChart, barChart } from './chart.ts';
 import { setupTheme } from './theme.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -32,6 +32,12 @@ const el = {
 const FINGER_LABEL: Record<Finger, string> = {
   LP: '左小指', LR: '左薬指', LM: '左中指', LI: '左人差指', LT: '左親指',
   RT: '右親指', RI: '右人差指', RM: '右中指', RR: '右薬指', RP: '右小指',
+};
+
+/** 図の軸に載せる短い指名。左右は塊のラベルで示す */
+const SHORT_FINGER: Record<Finger, string> = {
+  LP: '小', LR: '薬', LM: '中', LI: '人', LT: '親',
+  RT: '親', RI: '人', RM: '中', RR: '薬', RP: '小',
 };
 
 /** 配列の識別色。順序は検証済みパレットの並びに固定する（循環させない） */
@@ -164,26 +170,29 @@ function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeomet
   renderHeatmap(metrics, layout, geometry);
 
   const total = metrics.totalUnits || 1;
-  el.fingerChart.innerHTML = barChart(
-    ALL_FINGERS.map((f) => ({
-      label: FINGER_LABEL[f],
+  // 並び順が手の左右と一致するよう、左小指から右小指へ横に並べる
+  el.fingerChart.innerHTML = columnChart(
+    FINGERS.map((f) => ({
+      label: SHORT_FINGER[f],
+      group: f[0] === 'L' ? '左手' : '右手',
       value: metrics.perFinger[f],
       tip: `${FINGER_LABEL[f]}<br>移動 <b>${metrics.perFinger[f].toFixed(1)} u</b>` +
         ` (全体の ${((metrics.perFinger[f] / total) * 100).toFixed(1)}%)<br>` +
         `押下 <b>${metrics.perFingerPresses[f]}</b> 回` +
         ` (${((metrics.perFingerPresses[f] / Math.max(1, metrics.presses)) * 100).toFixed(1)}%)`,
     })),
-    { format: (v) => v.toFixed(1), labelWidth: 76, rowHeight: 26, width: 380 },
+    { format: (v) => v.toFixed(0) },
   );
 
-  el.adjacentChart.innerHTML = barChart(
+  el.adjacentChart.innerHTML = columnChart(
     metrics.adjacent.map((s) => ({
-      label: `${FINGER_LABEL[s.pair[0]]}–${FINGER_LABEL[s.pair[1]].replace(/^[左右]/, '')}`,
+      label: `${SHORT_FINGER[s.pair[0]]}–${SHORT_FINGER[s.pair[1]]}`,
+      group: s.pair[0][0] === 'L' ? '左手' : '右手',
       value: s.variance,
       tip: `${FINGER_LABEL[s.pair[0]]}–${FINGER_LABEL[s.pair[1]]}<br>` +
         `分散 <b>${s.variance.toFixed(4)}</b><br>平均 <b>${s.mean.toFixed(3)} u</b>`,
     })),
-    { format: (v) => v.toFixed(4), labelWidth: 132, rowHeight: 26, width: 380 },
+    { format: (v) => v.toFixed(3) },
   );
 }
 
