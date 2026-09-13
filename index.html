@@ -9,18 +9,25 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <header>
+    <header class="topbar">
       <h1>keydist</h1>
       <p class="lede">
-        論理配列を打った時の<strong>指の総移動距離</strong>で評価する。
-        <a href="https://github.com/tokiokashi/keydist/blob/main/spec/distance-model.md">モデル仕様</a>
+        論理配列を打った時の指の総移動距離で評価する
+        <a href="https://github.com/tokiokashi/keydist/blob/main/spec/distance-model.md">仕様</a>
       </p>
+      <div class="spacer"></div>
+      <div class="theme-toggle" role="group" aria-label="表示テーマ">
+        <button type="button" data-theme-set="light">ライト</button>
+        <button type="button" data-theme-set="system">自動</button>
+        <button type="button" data-theme-set="dark">ダーク</button>
+      </div>
     </header>
 
-    <main>
-      <section class="panel">
-        <h2>入力</h2>
-        <div class="controls">
+    <div class="app">
+      <aside class="sidebar">
+        <div class="panel">
+          <h2>入力</h2>
+
           <label class="ctl">
             <span>入力方式</span>
             <select id="mode">
@@ -30,11 +37,11 @@
           </label>
 
           <label class="ctl">
-            <span>キーボード形状</span>
+            <span>物理配列</span>
             <select id="geometry">
-              <option value="row-staggered">段ずれ（ANSI/JIS 準拠）</option>
-              <option value="ortholinear">格子</option>
-              <option value="column-staggered">列ずれ（分割想定）</option>
+              <option value="row-staggered">ロウスタッガード</option>
+              <option value="ortholinear">オーソリニア</option>
+              <option value="column-staggered">カラムスタッガード</option>
             </select>
           </label>
 
@@ -50,55 +57,58 @@
             <input type="checkbox" id="sfb-home" checked />
             <span>同指連続でホームキーを打つ時も移動を加算する</span>
           </label>
+
+          <label class="ctl">
+            <span>評価テキスト</span>
+            <textarea id="text" rows="12" spellcheck="false"></textarea>
+          </label>
+          <p class="meta" id="text-meta"></p>
+          <p class="error" id="errors" hidden></p>
         </div>
+      </aside>
 
-        <label class="ctl block">
-          <span>評価テキスト</span>
-          <textarea id="text" rows="5" spellcheck="false"></textarea>
-        </label>
-        <p class="meta" id="text-meta"></p>
-        <p class="error" id="errors" hidden></p>
-      </section>
+      <div class="stack">
+        <section class="panel">
+          <h2>総移動距離</h2>
+          <div id="compare-chart"></div>
+          <div class="scroll-x"><table id="compare"></table></div>
+          <p class="note">
+            窓の内側では残る／戻るの小さい方を採るため、この値は<strong>下界</strong>。実際の運指はこれ以上になる。
+          </p>
+        </section>
 
-      <section class="panel">
-        <h2>配列比較</h2>
-        <div class="scroll-x">
-          <table id="compare"></table>
-        </div>
-        <p class="note">
-          総移動距離は<strong>下界</strong>。窓の内側では残る／戻るの小さい方を採るため、実際の運指はこれ以上になる。
-        </p>
-      </section>
+        <section class="panel">
+          <h2>N 感度</h2>
+          <div id="sensitivity"></div>
+          <p class="note">
+            傾きが大きいほど、ホームから離れた位置での連続打鍵が多い。傾きが小さい配列は、打鍵がホーム付近で完結している。
+          </p>
+        </section>
 
-      <section class="panel">
-        <h2>詳細</h2>
-        <label class="ctl">
-          <span>配列</span>
-          <select id="detail-layout"></select>
-        </label>
-        <div id="heatmap"></div>
-        <div class="split">
-          <div>
-            <h3>指ごとの移動距離</h3>
-            <div class="scroll-x"><table id="per-finger"></table></div>
+        <section class="panel">
+          <h2>配列の詳細</h2>
+          <label class="ctl">
+            <span>配列</span>
+            <select id="detail-layout"></select>
+          </label>
+          <div id="heatmap"></div>
+          <div class="split">
+            <div>
+              <h3>指ごとの移動距離 [u]</h3>
+              <div id="finger-chart"></div>
+              <p class="note">親指のホームは親指キー自身なので、移動距離は常に 0 になる。押下数は図にかざすと出る。</p>
+            </div>
+            <div>
+              <h3>隣接指間距離の分散</h3>
+              <div id="adjacent-chart"></div>
+            </div>
           </div>
-          <div>
-            <h3>隣接指間距離</h3>
-            <div class="scroll-x"><table id="adjacent"></table></div>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
+    </div>
 
-      <section class="panel">
-        <h2>N 感度</h2>
-        <p class="note">傾きが大きいほど、ホームから離れた位置での連続打鍵が多い。傾きが小さい配列は、打鍵がホーム付近で完結している。</p>
-        <div id="sensitivity"></div>
-      </section>
-    </main>
-
-    <footer>
-      <a href="https://github.com/tokiokashi/keydist">GitHub</a>
-    </footer>
+    <div class="tooltip" id="tooltip" hidden></div>
+    <footer><a href="https://github.com/tokiokashi/keydist">GitHub</a></footer>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

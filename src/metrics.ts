@@ -16,6 +16,8 @@ export interface Metrics {
   skipped: number;
   /** 指ごとの総移動距離 [u] */
   perFinger: Record<Finger, number>;
+  /** 指ごとの押下数 */
+  perFingerPresses: Record<Finger, number>;
   /** 総移動距離 [u] */
   totalUnits: number;
   /** 総移動距離 [mm] */
@@ -34,7 +36,11 @@ export interface Metrics {
 
 export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
   const perFinger = {} as Record<Finger, number>;
-  for (const finger of ALL_FINGERS) perFinger[finger] = 0;
+  const perFingerPresses = {} as Record<Finger, number>;
+  for (const finger of ALL_FINGERS) {
+    perFinger[finger] = 0;
+    perFingerPresses[finger] = 0;
+  }
 
   let totalUnits = 0;
   let sameFinger = 0;
@@ -48,6 +54,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
     for (const press of stroke.presses) {
       presses += press.keys.length;
       perFinger[press.finger] += press.distance;
+      perFingerPresses[press.finger] += press.keys.length;
       if (press.gap === 0) sameFinger++;
       // 1 本の指で複数キーを押した場合、距離はキーへ均等に按分する
       const share = press.distance / press.keys.length;
@@ -73,6 +80,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
     presses,
     skipped: trace.skipped,
     perFinger,
+    perFingerPresses,
     totalUnits,
     totalMm: totalUnits * geometry.pitchMm,
     meanPerStroke: n ? totalUnits / n : 0,
