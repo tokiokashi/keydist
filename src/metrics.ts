@@ -4,7 +4,7 @@ import type { Trace } from './evaluate.ts';
 export interface PairStat {
   pair: [Finger, Finger];
   mean: number;
-  variance: number;
+  stdDev: number;
 }
 
 export interface Metrics {
@@ -14,6 +14,8 @@ export interface Metrics {
   presses: number;
   /** 配列に無く打鍵できなかった文字数 */
   skipped: number;
+  /** 入力文字数（展開前。仕様 §11.3 の分母） */
+  inputChars: number;
   /** 指ごとの総移動距離 [u] */
   perFinger: Record<Finger, number>;
   /** 指ごとの押下数 */
@@ -24,6 +26,12 @@ export interface Metrics {
   totalMm: number;
   /** 1 打鍵あたりの平均移動距離 [u] */
   meanPerStroke: number;
+  /**
+   * 入力 1 文字あたりの平均移動距離 [u]。
+   * 打鍵数はコンボ・かな直接入力で配列ごとに変わるため、`meanPerStroke` では
+   * 打鍵数削減の効果が相殺されて消える。分母を展開前の文字数に固定するとここに出る。
+   */
+  perCharUnits: number;
   /** 隣接指間距離の統計 */
   adjacent: PairStat[];
   /** 同指連続回数。同じ指で異なる位置を続けて打った数 */
@@ -71,19 +79,22 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
 
   const adjacent = ADJACENT_PAIRS.map((pair, i) => ({
     pair,
-    ...meanVariance(pairSamples[i]),
+    ...meanStdDev(pairSamples[i]),
   }));
 
   const n = trace.strokes.length;
+  const { inputChars } = trace;
   return {
     strokes: n,
     presses,
     skipped: trace.skipped,
+    inputChars,
     perFinger,
     perFingerPresses,
     totalUnits,
     totalMm: totalUnits * geometry.pitchMm,
     meanPerStroke: n ? totalUnits / n : 0,
+    perCharUnits: inputChars ? totalUnits / inputChars : 0,
     adjacent,
     sameFinger,
     keyCounts,
@@ -91,9 +102,9 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
   };
 }
 
-function meanVariance(values: number[]): { mean: number; variance: number } {
-  if (values.length === 0) return { mean: 0, variance: 0 };
+function meanStdDev(values: number[]): { mean: number; stdDev: number } {
+  if (values.length === 0) return { mean: 0, stdDev: 0 };
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
   const variance = values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
-  return { mean, variance };
+  return { mean, stdDev: Math.sqrt(variance) };
 }

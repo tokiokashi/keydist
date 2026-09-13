@@ -55,6 +55,12 @@ export interface Trace {
   strokes: Stroke[];
   /** 配列に無く打鍵できなかった文字数 */
   skipped: number;
+  /**
+   * 入力文字数（ローマ字展開・コンボ結合の前、原文の文字数）。
+   * 打鍵数（ステップ数）は配列で変わるが、これは変わらないので
+   * 「1 文字あたり」の分母に使える（仕様 §11.3）。
+   */
+  inputChars: number;
   /** 配列定義の不備。同一ステップ内で同じ指が複数のキーを要求された場合など */
   errors: string[];
 }
@@ -165,7 +171,7 @@ export function evaluate(
     }
   }
 
-  return { strokes, skipped, errors };
+  return { strokes, skipped, inputChars: [...text].length, errors };
 }
 
 function pressCost(
