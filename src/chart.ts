@@ -106,7 +106,8 @@ export function lineChart(
 ): string {
   const W = 700;
   const H = 260;
-  const M = { top: 14, right: 104, bottom: 28, left: 54 };
+  // 右余白は終端ラベルの幅。日本語の配列名は長いので広めに取る
+  const M = { top: 14, right: 176, bottom: 28, left: 54 };
   const all = series.flatMap((s) => s.points.map((p) => p.y));
   // 比率を見る図なので 0 起点にはしない。データ範囲に余白を足して傾きを読めるようにする
   const lo = Math.min(...all);
@@ -143,10 +144,14 @@ export function lineChart(
   for (let i = 1; i < labels.length; i++) {
     labels[i].y = Math.max(labels[i].y, labels[i - 1].y + 15);
   }
+  // 文字は地の色で置き、識別は横のマークが担う。系列色で文字を塗ると
+  // 暗い色相がテーマによって読めなくなる
   const labelText = labels
     .map(
-      (l) => `<text x="${W - M.right + 10}" y="${l.y + 4}" font-size="12"
-        fill="${l.color}">${escapeText(l.name)}</text>`,
+      (l) => `<rect x="${W - M.right + 10}" y="${l.y - 4}" width="9" height="9" rx="2"
+        fill="${l.color}"/>
+        <text x="${W - M.right + 24}" y="${l.y + 4}" font-size="12"
+        fill="var(--fg)">${escapeText(l.name)}</text>`,
     )
     .join('');
 

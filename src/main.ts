@@ -2,8 +2,7 @@ import { buildGeometry, FINGERS, THUMB_ROW, type Finger, type GeometryKind } fro
 import { evaluate, type Options, type Trace } from './evaluate.ts';
 import { computeMetrics, type Metrics } from './metrics.ts';
 import { nSensitivity } from './sensitivity.ts';
-import { LAYOUTS, composeRomaji, type Layout } from './layouts/index.ts';
-import { kunrei } from './romaji/kunrei.ts';
+import { LAYOUTS, LAYOUTS_JA, type Layout } from './layouts/index.ts';
 import { SAMPLE_TEXT } from './sample-text.ts';
 import { SAMPLE_TEXT_JA } from './sample-text-ja.ts';
 import { bindTips, columnChart, escapeText, lineChart, barChart } from './chart.ts';
@@ -23,6 +22,7 @@ const el = {
   compareChart: $<HTMLDivElement>('compare-chart'),
   compare: $<HTMLTableElement>('compare'),
   sensitivity: $<HTMLDivElement>('sensitivity'),
+  picker: $<HTMLDivElement>('layout-picker'),
   detailLayout: $<HTMLSelectElement>('detail-layout'),
   heatmap: $<HTMLDivElement>('heatmap'),
   fingerChart: $<HTMLDivElement>('finger-chart'),
@@ -40,24 +40,84 @@ const SHORT_FINGER: Record<Finger, string> = {
   RT: '親', RI: '人', RM: '中', RR: '薬', RP: '小',
 };
 
-/** 配列の識別色。順序は検証済みパレットの並びに固定する（循環させない） */
-const SERIES = (i: number) => `var(--series-${(i % 5) + 1})`;
-
-const ROMAJI_TABLE = kunrei();
+/**
+ * 配列の識別色。検証済みパレットは 8 スロットで、循環させない。
+ * 色は一覧での位置に固定するので、選択を外しても残りの色は動かない。
+ */
+const SERIES = (i: number) => `var(--series-${i + 1})`;
 
 const MODES = {
-  en: { layouts: LAYOUTS, sample: SAMPLE_TEXT.replace(/\s+/g, ' ').trim() },
+  en: {
+    layouts: LAYOUTS,
+    sample: SAMPLE_TEXT.replace(/\s+/g, ' ').trim(),
+    /** 既定で表示する配列。色のスロット数を超えないよう絞る */
+    initial: ['qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi-custom'],
+  },
   ja: {
-    layouts: LAYOUTS.map((l) => composeRomaji(`${l.id}-ja`, l.name, ROMAJI_TABLE, l)),
+    layouts: LAYOUTS_JA,
     sample: SAMPLE_TEXT_JA.replace(/\s+/g, ''),
+    initial: ['qwerty', 'colemak-dh', 'oonishi', 'oonishi-custom', 'oonishi-custom-combo', 'naginata-v18'],
   },
 } as const;
 
+/** 表示する配列の id。モードごとに覚える */
+const selected: Record<ModeId, Set<string>> = {
+  en: new Set(),
+  ja: new Set(),
+};
+
 type ModeId = keyof typeof MODES;
-const currentMode = () => MODES[el.mode.value as ModeId];
+const currentModeId = () => el.mode.value as ModeId;
+const currentMode = () => MODES[currentModeId()];
+
+/** 選択されている配列。色のスロットは選択順ではなく一覧順に固定する */
+function activeLayouts(): Layout[] {
+  const set = selected[currentModeId()];
+  return currentMode().layouts.filter((l) => set.has(l.id));
+}
 
 el.text.value = MODES.en.sample;
-for (const layout of LAYOUTS) el.detailLayout.append(new Option(layout.name, layout.id));
+
+/** 配列の選択欄。色は一覧での位置に固定するので、外しても他の色は動かない */
+function fillPicker() {
+  const set = selected[currentModeId()];
+  el.picker.replaceChildren();
+  currentMode().layouts.forEach((layout, i) => {
+    const on = set.has(layout.id);
+    const label = document.createElement('label');
+    label.className = on ? '' : 'off';
+
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = on;
+    box.addEventListener('change', () => {
+      if (box.checked) set.add(layout.id);
+      else set.delete(layout.id);
+      label.className = box.checked ? '' : 'off';
+      fillDetailOptions();
+      render();
+    });
+
+    const swatch = document.createElement('span');
+    swatch.className = 'swatch';
+    swatch.style.background = SERIES(i);
+
+    label.append(box, swatch, document.createTextNode(layout.name));
+    el.picker.append(label);
+  });
+}
+
+/** 詳細セレクタはモードで配列の顔ぶれが変わるので作り直す */
+function fillDetailOptions() {
+  const keep = el.detailLayout.value;
+  const layouts = activeLayouts();
+  el.detailLayout.replaceChildren();
+  for (const layout of layouts) {
+    el.detailLayout.append(new Option(layout.name, layout.id));
+  }
+  if (layouts.length === 0) return;
+  el.detailLayout.value = layouts.some((l) => l.id === keep) ? keep : layouts[0].id;
+}
 
 function syncSampleText() {
   const untouched = Object.values(MODES).some((m) => m.sample === el.text.value);
@@ -68,6 +128,8 @@ interface Result {
   layout: Layout;
   trace: Trace;
   metrics: Metrics;
+  /** 一覧での位置。色はこれで決まるので、選択を外しても他の色は動かない */
+  slot: number;
 }
 
 function render() {
@@ -79,14 +141,34 @@ function render() {
   const text = el.text.value;
   el.windowOut.value = el.window.value;
 
-  const results: Result[] = currentMode().layouts.map((layout) => {
-    const trace = evaluate(text, layout, geometry, options);
-    return { layout, trace, metrics: computeMetrics(trace, geometry) };
-  });
+  const set = selected[currentModeId()];
+  const results: Result[] = currentMode().layouts
+    .map((layout, slot) => ({ layout, slot }))
+    .filter((r) => set.has(r.layout.id))
+    .map(({ layout, slot }) => {
+      const trace = evaluate(text, layout, geometry, options);
+      return { layout, trace, metrics: computeMetrics(trace, geometry), slot };
+    });
 
-  const first = results[0].metrics;
-  const parts = [`${[...text].length} 文字`, `${first.strokes} ステップ`, `${first.presses} 押下`];
-  if (first.skipped) parts.push(`${first.skipped} 文字は配列上に無いため除外`);
+  if (results.length === 0) {
+    el.textMeta.textContent = '配列を 1 つ以上選ぶ';
+    el.compareChart.innerHTML = '';
+    el.compare.innerHTML = '';
+    el.sensitivity.innerHTML = '';
+    el.heatmap.innerHTML = '';
+    el.fingerChart.innerHTML = '';
+    el.adjacentChart.innerHTML = '';
+    el.errors.hidden = true;
+    return;
+  }
+
+  // ステップ数と押下数は配列ごとに異なるので表に出す。ここは入力そのものの大きさだけ
+  const parts = [`${[...text].length} 文字`];
+  const skipped = results.filter((r) => r.trace.skipped > 0);
+  if (skipped.length) {
+    const worst = Math.max(...skipped.map((r) => r.trace.skipped));
+    parts.push(`${skipped.length} 配列で最大 ${worst} 文字が打てない`);
+  }
   el.textMeta.textContent = parts.join(' / ');
 
   const errors = results.flatMap((r) => r.trace.errors);
@@ -102,10 +184,10 @@ function renderCompare(results: Result[]) {
   const best = Math.min(...results.map((r) => r.metrics.totalUnits));
 
   el.compareChart.innerHTML = barChart(
-    results.map((r, i) => ({
+    results.map((r) => ({
       label: r.layout.name,
       value: r.metrics.totalUnits,
-      color: SERIES(i),
+      color: SERIES(r.slot),
       emphasise: r.metrics.totalUnits === best,
       tip:
         `${escapeText(r.layout.name)}<br>総移動距離 <b>${r.metrics.totalUnits.toFixed(0)} u</b>` +
@@ -116,11 +198,11 @@ function renderCompare(results: Result[]) {
   );
 
   const rows = results
-    .map((r, i) => {
+    .map((r) => {
       const m = r.metrics;
       const variance = m.adjacent.reduce((a, b) => a + b.variance, 0) / m.adjacent.length;
       return `<tr${m.totalUnits === best ? ' class="best"' : ''}>
-        <td><span class="swatch" style="background:${SERIES(i)}"></span>${escapeText(r.layout.name)}</td>
+        <td><span class="swatch" style="background:${SERIES(r.slot)}"></span>${escapeText(r.layout.name)}</td>
         <td class="num">${m.strokes}</td>
         <td class="num">${m.totalUnits.toFixed(0)}</td>
         <td class="num">${(m.totalMm / 1000).toFixed(2)}</td>
@@ -145,12 +227,16 @@ function renderSensitivity(
   options: Options,
 ) {
   const range = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  const series = currentMode().layouts.map((layout, i) => {
+  const set = selected[currentModeId()];
+  const series = currentMode().layouts
+    .map((layout, slot) => ({ layout, slot }))
+    .filter((s) => set.has(s.layout.id))
+    .map(({ layout, slot }) => {
     const points = nSensitivity(text, layout, geometry, options, range);
     const base = points[0].totalUnits || 1;
     return {
       name: layout.name,
-      color: SERIES(i),
+      color: SERIES(slot),
       points: points.map((p) => ({
         x: p.windowSize,
         y: (p.totalUnits / base) * 100,
@@ -162,9 +248,7 @@ function renderSensitivity(
 }
 
 function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeometry>) {
-  const wanted = el.detailLayout.value;
-  const found =
-    results.find((r) => r.layout.id === wanted || r.layout.id === `${wanted}-ja`) ?? results[0];
+  const found = results.find((r) => r.layout.id === el.detailLayout.value) ?? results[0];
   const { metrics, layout } = found;
 
   renderHeatmap(metrics, layout, geometry);
@@ -239,11 +323,22 @@ function renderHeatmap(
     `<svg viewBox="0 0 ${maxX + PAD} ${maxY + PAD}" role="img" aria-label="打鍵頻度">${keys.join('')}</svg>`;
 }
 
-el.mode.addEventListener('input', syncSampleText);
-el.mode.addEventListener('change', syncSampleText);
+function onModeChange() {
+  syncSampleText();
+  fillPicker();
+  fillDetailOptions();
+}
+el.mode.addEventListener('input', onModeChange);
+el.mode.addEventListener('change', onModeChange);
 for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.text, el.detailLayout]) {
   node.addEventListener('input', render);
   node.addEventListener('change', render);
 }
+// 既定の選択を用意してから初回描画する
+for (const id of Object.keys(MODES) as ModeId[]) {
+  for (const key of MODES[id].initial) selected[id].add(key);
+}
+fillPicker();
+fillDetailOptions();
 bindTips(document.body);
 setupTheme(render);

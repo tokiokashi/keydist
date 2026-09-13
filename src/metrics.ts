@@ -26,7 +26,7 @@ export interface Metrics {
   meanPerStroke: number;
   /** 隣接指間距離の統計 */
   adjacent: PairStat[];
-  /** 同指連続回数（g = 0） */
+  /** 同指連続回数。同じ指で異なる位置を続けて打った数 */
   sameFinger: number;
   /** キー id → 打鍵回数 */
   keyCounts: Map<string, number>;
@@ -55,7 +55,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
       presses += press.keys.length;
       perFinger[press.finger] += press.distance;
       perFingerPresses[press.finger] += press.keys.length;
-      if (press.gap === 0) sameFinger++;
+      if (press.sfb) sameFinger++;
       // 1 本の指で複数キーを押した場合、距離はキーへ均等に按分する
       const share = press.distance / press.keys.length;
       for (const key of press.keys) {

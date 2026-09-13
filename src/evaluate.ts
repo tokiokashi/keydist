@@ -1,5 +1,6 @@
 import { ALL_FINGERS, dist, type Finger, type Geometry, type Key, type Point } from './geometry.ts';
 import type { Layout, Sequence } from './layouts/index.ts';
+import { kanaToRomaji } from './romaji/kunrei.ts';
 
 export interface Options {
   /** 窓幅 N（打鍵単位）。この打鍵数までは指を残したとみなす */
@@ -27,6 +28,12 @@ export interface Press {
   gap: number;
   /** この押下で計上された移動距離 [u] */
   distance: number;
+  /**
+   * 同指連続（same finger bigram）。
+   * 同じ指で**異なる位置**を続けて打った場合のみ真。
+   * 同じキーの連打や、押しっぱなしの修飾キー（センターシフト等）は含まない。
+   */
+  sfb: boolean;
 }
 
 /**
@@ -81,8 +88,10 @@ export function evaluate(
   let skipped = 0;
   let index = 0;
 
-  // 見出しが複数文字ありうる配列（ローマ字テーブル合成後など）は最長一致で切り出す
-  const chars = [...text.toLowerCase()];
+  // ローマ字配列はかなテキストを展開してから打つ。かな配列はそのまま打つ
+  const source = layout.romajiTable ? kanaToRomaji(text, layout.romajiTable) : text;
+  // 見出しが複数文字ありうる配列（コンボや拗音）は最長一致で切り出す
+  const chars = [...source.toLowerCase()];
   const maxLen = Math.max(1, layout.maxCharLength ?? 1);
 
   for (let cursor = 0; cursor < chars.length; ) {
@@ -124,13 +133,19 @@ export function evaluate(
         else byFinger.set(key.finger, [key]);
       }
 
-      const presses: Press[] = [...byFinger].map(([finger, keys]) => ({
-        finger,
-        keys,
-        target: centroid(keys),
-        gap: index - last[finger] - 1,
-        distance: 0,
-      }));
+      const presses: Press[] = [...byFinger].map(([finger, keys]) => {
+        const target = centroid(keys);
+        const gap = index - last[finger] - 1;
+        const at = prev[finger];
+        return {
+          finger,
+          keys,
+          target,
+          gap,
+          distance: 0,
+          sfb: gap === 0 && (at.x !== target.x || at.y !== target.y),
+        };
+      });
 
       if (presses.length === 0) continue;
 

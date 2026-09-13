@@ -3,15 +3,15 @@ import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
-import { LAYOUTS, composeRomaji } from '../src/layouts/index.ts';
-import { kunrei } from '../src/romaji/kunrei.ts';
+import { LAYOUTS, LAYOUTS_JA, withRomaji } from '../src/layouts/index.ts';
+import { kanaToRomaji, kunrei } from '../src/romaji/kunrei.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 
 const geometry = buildGeometry('row-staggered');
 const qwerty = LAYOUTS[0];
 const table = kunrei();
 const opts = { windowSize: 3, sfbHomeCost: true };
-const ja = composeRomaji('qwerty-ja', 'QWERTY', table, qwerty);
+const ja = withRomaji(qwerty, table);
 
 test('訓令式テーブルの基本形', () => {
   assert.equal(table.get('し'), 'si');
@@ -40,10 +40,16 @@ test('合成した配列は 1 かなを複数ステップへ展開する', () =>
   assert.deepEqual(t.strokes.map((s) => s.presses[0].keys[0].id), ['s', 'i']);
 });
 
-test('合成しても刻印は英字配列のものを引き継ぐ', () => {
+test('ローマ字テーブルを付けても刻印は英字配列のまま', () => {
   assert.equal(ja.legends.get('a'), 'a');
   assert.equal(ja.legends.get('-'), '-');
   assert.equal(ja.legends, qwerty.legends);
+});
+
+test('かな → ローマ字は最長一致で展開する', () => {
+  assert.equal(kanaToRomaji('しゃっきん', table), 'syakkinn');
+  assert.equal(kanaToRomaji('こーひー', table), 'ko-hi-');
+  assert.equal(kanaToRomaji('abc', table), 'abc');
 });
 
 test('長音「ー」は数字段の - キーになる', () => {
@@ -59,11 +65,19 @@ test('日本語サンプルは全文字が打鍵列に入る', () => {
   assert.ok(t.strokes.length > [...text].length, 'ローマ字展開で打鍵数が増える');
 });
 
-test('全英字配列が同じテーブルで同じステップ数になる', () => {
+test('同じテーブルを使う英字配列はステップ数が揃う', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
-  const counts = LAYOUTS.map((base) => {
-    const l = composeRomaji(`${base.id}-ja`, base.name, table, base);
-    return computeMetrics(evaluate(text, l, geometry, opts), geometry).strokes;
-  });
+  const counts = LAYOUTS.map(
+    (base) => computeMetrics(evaluate(text, withRomaji(base, table), geometry, opts), geometry).strokes,
+  );
   assert.equal(new Set(counts).size, 1, `ステップ数が配列で異なる: ${counts}`);
+});
+
+test('日本語の全配列が評価でき、未対応の文字を残さない', () => {
+  const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
+  for (const layout of LAYOUTS_JA) {
+    const t = evaluate(text, layout, geometry, opts);
+    assert.equal(t.errors.length, 0, `${layout.name}: ${t.errors.join(' / ')}`);
+    assert.equal(t.skipped, 0, `${layout.name} で ${t.skipped} 文字が打てない`);
+  }
 });

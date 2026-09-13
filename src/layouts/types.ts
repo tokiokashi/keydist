@@ -1,4 +1,5 @@
 import { keyId, THUMB_KEY } from '../geometry.ts';
+
 /** 1 ステップで同時に押すキーの集合。キーは QWERTY 刻印で指す（`space` `thumb-l` は親指キー） */
 export type Step = string[];
 
@@ -15,13 +16,20 @@ export interface Layout {
    * （「きゃ」を「き」「ゃ」に分けない）
    */
   maxCharLength?: number;
-  /** キー id → そのキーの刻印。表示用。ローマ字テーブルを合成しても引き継ぐ */
+  /** キー id → そのキーの刻印。表示用 */
   legends: Map<string, string>;
+  /**
+   * かなテキストをローマ字へ展開してから打つ配列はテーブルを持つ。
+   * かな配列は持たない。同じかなテキストを両者に食わせて比較できる。
+   */
+  romajiTable?: Map<string, string>;
 }
 
+const maxKeyLength = (keys: Iterable<string>) => Math.max(1, ...[...keys].map((k) => k.length));
+
 /**
- * 4 行 × N 列のグリッドに文字を並べた配列を Sequence 形式へ変換する。
- * 単打のみの配列（QWERTY 等）はこの形で書ける。
+ * 4 行 × N 列のグリッドに文字を並べた配列。
+ * 単打のみの配列（QWERTY・大西など）はこの形で書ける。
  */
 export function fromRows(
   id: string,
@@ -50,37 +58,41 @@ export function fromRows(
   return { id, name, map, legends };
 }
 
-/**
- * ローマ字テーブルと英字配列を合成して、かな → 打鍵ステップ列の配列を作る。
- *
- * テーブルは全配列で共有する。テーブルを書き換えれば（`si` → `shi` など）
- * すべての英字配列に一斉に効くため、配列同士の差だけを見ることができる。
- *
- * 変換は最長一致で行う。「きゃ」のような複数文字の見出しを先に当てる。
- */
-export function composeRomaji(
-  id: string,
-  name: string,
-  table: Map<string, string>,
-  base: Layout,
-): Layout {
-  const map = new Map<string, Sequence>();
-  for (const [kana, roman] of table) {
-    const sequence: Sequence = [];
-    let ok = true;
-    for (const ch of roman) {
-      const s = base.map.get(ch);
-      if (!s) {
-        ok = false;
-        break;
-      }
-      sequence.push(...s);
-    }
-    if (ok) map.set(kana, sequence);
+/** かな → 打鍵ステップ列を直接書いた配列（薙刀式など） */
+export function fromKana(id: string, name: string, def: Record<string, string[][]>): Layout {
+  const map = new Map<string, Sequence>(Object.entries(def));
+  // 単打で出るかなをそのキーの刻印にする
+  const legends = new Map<string, string>();
+  for (const [kana, sequence] of map) {
+    if (sequence.length !== 1 || sequence[0].length !== 1) continue;
+    const key = sequence[0][0];
+    if (!legends.has(key)) legends.set(key, kana);
   }
-  // 刻印は英字配列のものをそのまま使う。合成で変わるのは打ち方であって配置ではない
-  return { id, name, map, legends: base.legends, maxCharLength: maxKeyLength(table) };
+  legends.set(THUMB_KEY.RT, '空白');
+  legends.set(THUMB_KEY.LT, '親指');
+  return { id, name, map, legends, maxCharLength: maxKeyLength(map.keys()) };
 }
 
-const maxKeyLength = (table: Map<string, string>) =>
-  Math.max(1, ...[...table.keys()].map((k) => k.length));
+/** ローマ字テーブルを付ける。評価時にかなテキストがローマ字へ展開される */
+export function withRomaji(layout: Layout, table: Map<string, string>): Layout {
+  return { ...layout, romajiTable: table };
+}
+
+/**
+ * コンボを足す。入力は「その文字を出すキー」で指定する。
+ * 物理位置ではなく文字で指すので、同じ定義を別の英字配列にも適用できる。
+ */
+export function withCombos(
+  id: string,
+  name: string,
+  layout: Layout,
+  combos: [output: string, inputs: string[]][],
+): Layout {
+  const map = new Map(layout.map);
+  for (const [output, inputs] of combos) {
+    const keys = inputs.map((ch) => layout.map.get(ch)?.[0]?.[0]);
+    if (keys.some((k) => k === undefined)) continue;
+    map.set(output, [keys as string[]]);
+  }
+  return { ...layout, id, name, map, maxCharLength: maxKeyLength(map.keys()) };
+}

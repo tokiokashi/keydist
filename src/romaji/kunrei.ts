@@ -59,3 +59,29 @@ export function kunrei(): Map<string, string> {
   }
   return table;
 }
+
+/**
+ * かなテキストをローマ字へ展開する。見出しは最長一致で切り出すので、
+ * 「きゃ」「っか」のような複数文字の項目が先に当たる。
+ * テーブルに無い文字はそのまま通す（英数字や記号）。
+ */
+export function kanaToRomaji(text: string, table: Map<string, string>): string {
+  const maxLen = Math.max(1, ...[...table.keys()].map((k) => k.length));
+  const chars = [...text];
+  let out = '';
+  for (let i = 0; i < chars.length; ) {
+    let hit: string | undefined;
+    let len = 1;
+    for (let l = Math.min(maxLen, chars.length - i); l >= 1; l--) {
+      const found = table.get(chars.slice(i, i + l).join(''));
+      if (found !== undefined) {
+        hit = found;
+        len = l;
+        break;
+      }
+    }
+    out += hit ?? chars[i];
+    i += len;
+  }
+  return out;
+}
