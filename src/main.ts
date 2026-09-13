@@ -7,6 +7,19 @@ import { SAMPLE_TEXT } from './sample-text.ts';
 import { SAMPLE_TEXT_JA } from './sample-text-ja.ts';
 import { bindTips, columnChart, escapeText, lineChart, barChart } from './chart.ts';
 import { setupTheme } from './theme.ts';
+import {
+  ROMAJI_RULES,
+  ROW_LABELS,
+  load as loadUserLayouts,
+  newId,
+  save as saveUserLayouts,
+  toJapaneseLayout,
+  toLayout,
+  validate,
+  type RomajiRuleId,
+  type UserLayout,
+} from './user-layouts.ts';
+import { QWERTY_LEGEND } from './geometry.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -23,6 +36,11 @@ const el = {
   compare: $<HTMLTableElement>('compare'),
   sensitivity: $<HTMLDivElement>('sensitivity'),
   picker: $<HTMLDivElement>('layout-picker'),
+  newName: $<HTMLInputElement>('new-name'),
+  newRows: $<HTMLDivElement>('new-rows'),
+  newRomaji: $<HTMLSelectElement>('new-romaji'),
+  newError: $<HTMLParagraphElement>('new-error'),
+  addLayout: $<HTMLButtonElement>('add-layout'),
   detailLayout: $<HTMLSelectElement>('detail-layout'),
   heatmap: $<HTMLDivElement>('heatmap'),
   fingerChart: $<HTMLDivElement>('finger-chart'),
@@ -41,24 +59,37 @@ const SHORT_FINGER: Record<Finger, string> = {
 };
 
 /**
- * 配列の識別色。検証済みパレットは 8 スロットで、循環させない。
- * 色は一覧での位置に固定するので、選択を外しても残りの色は動かない。
+ * 配列の識別色。色は一覧での位置に固定するので、選択を外しても残りの色は動かない。
+ * スロットは 8 つで、自作配列を足して超えた分は巡回する（被って読みにくければ
+ * 選択を外せばよい）。
  */
-const SERIES = (i: number) => `var(--series-${i + 1})`;
+const PALETTE_SIZE = 8;
+const SERIES = (i: number) => `var(--series-${(i % PALETTE_SIZE) + 1})`;
+
+const SAMPLES = {
+  en: SAMPLE_TEXT.replace(/\s+/g, ' ').trim(),
+  ja: SAMPLE_TEXT_JA.replace(/\s+/g, ''),
+} as const;
+
+/** 既定で表示する配列 */
+const INITIAL = {
+  en: ['qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi'],
+  ja: ['qwerty', 'colemak-dh', 'oonishi', 'oonishi-custom-combo', 'naginata-v18'],
+} as const;
+
+let userLayouts: UserLayout[] = loadUserLayouts();
+
+/** 組み込みの配列に自作のものを足した一覧。自作は末尾に並ぶ */
+function layoutsOf(mode: ModeId): Layout[] {
+  const built = mode === 'en' ? LAYOUTS : LAYOUTS_JA;
+  const mine = userLayouts.map((d) => (mode === 'en' ? toLayout(d) : toJapaneseLayout(d)));
+  return [...built, ...mine];
+}
 
 const MODES = {
-  en: {
-    layouts: LAYOUTS,
-    sample: SAMPLE_TEXT.replace(/\s+/g, ' ').trim(),
-    /** 既定で表示する配列。色のスロット数を超えないよう絞る */
-    initial: ['qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi'],
-  },
-  ja: {
-    layouts: LAYOUTS_JA,
-    sample: SAMPLE_TEXT_JA.replace(/\s+/g, ''),
-    initial: ['qwerty', 'colemak-dh', 'oonishi', 'oonishi-custom-combo', 'naginata-v18'],
-  },
-} as const;
+  en: { get layouts() { return layoutsOf('en'); }, sample: SAMPLES.en, initial: INITIAL.en },
+  ja: { get layouts() { return layoutsOf('ja'); }, sample: SAMPLES.ja, initial: INITIAL.ja },
+};
 
 /** 表示する配列の id。モードごとに覚える */
 const selected: Record<ModeId, Set<string>> = {
@@ -66,7 +97,7 @@ const selected: Record<ModeId, Set<string>> = {
   ja: new Set(),
 };
 
-type ModeId = keyof typeof MODES;
+type ModeId = 'en' | 'ja';
 const currentModeId = () => el.mode.value as ModeId;
 const currentMode = () => MODES[currentModeId()];
 
@@ -77,6 +108,64 @@ function activeLayouts(): Layout[] {
 }
 
 el.text.value = MODES.en.sample;
+
+/** 配列を追加する欄。段ごとに 1 行、数字段は任意 */
+function setupAddForm() {
+  const inputs: HTMLInputElement[] = ROW_LABELS.map((label, i) => {
+    const row = document.createElement('label');
+    const span = document.createElement('span');
+    span.textContent = label;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.spellcheck = false;
+    input.placeholder = QWERTY_LEGEND[i];
+    if (i === 0) input.dataset.optional = 'true';
+    row.append(span, input);
+    el.newRows.append(row);
+    return input;
+  });
+
+  for (const [id, rule] of Object.entries(ROMAJI_RULES)) {
+    el.newRomaji.append(new Option(rule.name, id));
+  }
+
+  el.addLayout.addEventListener('click', () => {
+    const rows = inputs.map((i) => i.value.trim());
+    const errors = validate(rows);
+    el.newError.textContent = errors.join(' / ');
+    el.newError.hidden = errors.length === 0;
+    if (errors.length) return;
+
+    const def: UserLayout = {
+      id: newId(),
+      name: el.newName.value.trim() || '自作配列',
+      rows: [rows[0], rows[1], rows[2], rows[3]],
+      romaji: el.newRomaji.value as RomajiRuleId,
+    };
+    userLayouts = [...userLayouts, def];
+    saveUserLayouts(userLayouts);
+
+    // 追加したものは自動で表示に入れる
+    selected.en.add(def.id);
+    selected.ja.add(def.id);
+
+    for (const input of inputs) input.value = '';
+    el.newName.value = '';
+    fillPicker();
+    fillDetailOptions();
+    render();
+  });
+}
+
+function removeUserLayout(id: string) {
+  userLayouts = userLayouts.filter((l) => l.id !== id);
+  saveUserLayouts(userLayouts);
+  selected.en.delete(id);
+  selected.ja.delete(id);
+  fillPicker();
+  fillDetailOptions();
+  render();
+}
 
 /** 配列の選択欄。色は一覧での位置に固定するので、外しても他の色は動かない */
 function fillPicker() {
@@ -103,6 +192,20 @@ function fillPicker() {
     swatch.style.background = SERIES(i);
 
     label.append(box, swatch, document.createTextNode(layout.name));
+
+    if (userLayouts.some((u) => u.id === layout.id)) {
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'ghost remove';
+      remove.textContent = '削除';
+      remove.title = `${layout.name} を削除する`;
+      remove.addEventListener('click', (e) => {
+        e.preventDefault();
+        removeUserLayout(layout.id);
+      });
+      label.append(remove);
+    }
+
     el.picker.append(label);
   });
 }
@@ -194,7 +297,8 @@ function renderCompare(results: Result[]) {
         ` (${(r.metrics.totalMm / 1000).toFixed(2)} m)<br>` +
         `1 打鍵あたり <b>${r.metrics.meanPerStroke.toFixed(3)} u</b>`,
     })),
-    { format: (v) => v.toFixed(0), labelWidth: 96 },
+    // 日本語の配列名は長い。ラベル欄は widest に合わせて広めに取る
+    { format: (v) => v.toFixed(0), labelWidth: 150 },
   );
 
   const rows = results
@@ -335,9 +439,11 @@ for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.text, el.det
   node.addEventListener('change', render);
 }
 // 既定の選択を用意してから初回描画する
-for (const id of Object.keys(MODES) as ModeId[]) {
+for (const id of ['en', 'ja'] as ModeId[]) {
   for (const key of MODES[id].initial) selected[id].add(key);
+  for (const def of userLayouts) selected[id].add(def.id);
 }
+setupAddForm();
 fillPicker();
 fillDetailOptions();
 bindTips(document.body);

@@ -43,7 +43,9 @@ export function fromRows(
     [...row].forEach((ch, c) => {
       if (ch === ' ') return;
       const id = keyId(r, c);
-      map.set(ch, [[id]]);
+      // 同じ文字が複数のキーに載る配列もある。打鍵には先に書いた方を使い、
+      // 後の方は刻印だけ残す（どちらを使うか決めないと、静かに片方が死ぬ）
+      if (!map.has(ch)) map.set(ch, [[id]]);
       legends.set(id, ch);
     });
   });

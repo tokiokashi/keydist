@@ -70,6 +70,30 @@
           <p class="meta" id="text-meta"></p>
           <p class="error" id="errors" hidden></p>
         </div>
+
+        <details class="panel" id="add-panel">
+          <summary>配列を追加</summary>
+
+          <label class="ctl">
+            <span>名前</span>
+            <input type="text" id="new-name" placeholder="自作配列" />
+          </label>
+
+          <div class="rows" id="new-rows"></div>
+
+          <label class="ctl">
+            <span>ローマ字の綴り</span>
+            <select id="new-romaji"></select>
+          </label>
+
+          <p class="error" id="new-error" hidden></p>
+          <button type="button" id="add-layout">追加する</button>
+          <p class="note">
+            数字段は空でよい。空なら QWERTY のものを使う。
+            同じ文字を複数のキーに置いた場合、打鍵には先に書いた方を使う。
+            追加した配列はこのブラウザにだけ保存される。
+          </p>
+        </details>
       </aside>
 
       <div class="stack">
