@@ -35,6 +35,7 @@ const el = {
   compareChart: $<HTMLDivElement>('compare-chart'),
   compare: $<HTMLTableElement>('compare'),
   sensitivity: $<HTMLDivElement>('sensitivity'),
+  sensitivityScale: $<HTMLDivElement>('sensitivity-scale'),
   picker: $<HTMLDivElement>('layout-picker'),
   newName: $<HTMLInputElement>('new-name'),
   newRows: $<HTMLDivElement>('new-rows'),
@@ -325,12 +326,20 @@ function renderCompare(results: Result[]) {
     </tr></thead><tbody>${rows}</tbody>`;
 }
 
+/**
+ * 相対は N=0 を 100% とした減り方、絶対はそのままの総移動距離。
+ * 相対は傾きの比較に、絶対は配列間の差の比較に効く。
+ */
+type SensitivityScale = 'relative' | 'absolute';
+let sensitivityScale: SensitivityScale = 'relative';
+
 function renderSensitivity(
   text: string,
   geometry: ReturnType<typeof buildGeometry>,
   options: Options,
 ) {
   const range = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const relative = sensitivityScale === 'relative';
   const set = selected[currentModeId()];
   const series = currentMode().layouts
     .map((layout, slot) => ({ layout, slot }))
@@ -343,12 +352,17 @@ function renderSensitivity(
       color: SERIES(slot),
       points: points.map((p) => ({
         x: p.windowSize,
-        y: (p.totalUnits / base) * 100,
-        raw: p.totalUnits,
+        y: relative ? (p.totalUnits / base) * 100 : p.totalUnits,
+        // 絶対表示では y 自身が生値なので併記しない
+        raw: relative ? p.totalUnits : undefined,
       })),
     };
   });
-  el.sensitivity.innerHTML = lineChart(series, range, (v) => `${v.toFixed(0)}%`);
+  // N を増やしても候補集合が広がるだけで距離は減る一方なので、相対値は 100% を超えない。
+  // 上端を 100% に固定して、自動調整で 105% のような目盛りが出るのを防ぐ
+  el.sensitivity.innerHTML = relative
+    ? lineChart(series, range, (v) => `${v.toFixed(0)}%`, { yMax: 100 })
+    : lineChart(series, range, (v) => `${v.toFixed(0)} u`);
 }
 
 function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeometry>) {
@@ -426,6 +440,18 @@ function renderHeatmap(
   el.heatmap.innerHTML =
     `<svg viewBox="0 0 ${maxX + PAD} ${maxY + PAD}" role="img" aria-label="打鍵頻度">${keys.join('')}</svg>`;
 }
+
+function setSensitivityScale(scale: SensitivityScale) {
+  sensitivityScale = scale;
+  for (const button of el.sensitivityScale.querySelectorAll('button')) {
+    button.setAttribute('aria-pressed', String(button.dataset.scale === scale));
+  }
+  render();
+}
+el.sensitivityScale.addEventListener('click', (e) => {
+  const button = (e.target as Element).closest<HTMLButtonElement>('button[data-scale]');
+  if (button) setSensitivityScale(button.dataset.scale as SensitivityScale);
+});
 
 function onModeChange() {
   syncSampleText();

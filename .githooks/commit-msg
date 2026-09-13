@@ -24,10 +24,11 @@ if ! printf '%s' "$subject" | grep -qE "^($types)(\([a-z0-9._-]+\))?: .+"; then
   err "1行目は '<type>(<scope>): <件名>' の形にする（type: $types）"
 fi
 
-# 長さは警告に留める（マルチバイトの文字数はロケール依存で正確に測れないため）
-len=$(printf '%s' "$subject" | LC_ALL=C.UTF-8 awk '{ print length($0) }')
-if [ -n "$len" ] && [ "$len" -gt 72 ]; then
-  echo "commit-msg: 警告 — 1行目が ${len} 文字。72 文字以内が望ましい" >&2
+# UTF-8 の継続バイト（0x80-0xBF）を落とすと文字数が出る。
+# ${#subject} や wc -m はロケール依存でバイト数を返すことがあり、日本語の件名が常に溢れる
+len=$(printf '%s' "$subject" | tr -d '\200-\277' | wc -c | tr -d ' ')
+if [ "$len" -gt 72 ]; then
+  err "1行目が ${len} 文字。72 文字以内に収める"
 fi
 
 case "$subject" in

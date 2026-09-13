@@ -111,7 +111,10 @@ body {
 a { color: var(--accent); }
 
 .theme-toggle { display: flex; gap: 2px; align-self: center; }
-.theme-toggle button {
+/* 図の見せ方を切り替える小さなセグメント。トップバーのテーマ切り替えと同じ形 */
+.seg { display: flex; gap: 2px; }
+.theme-toggle button,
+.seg button {
   font: inherit;
   font-size: 0.76rem;
   padding: 4px 10px;
@@ -120,10 +123,14 @@ a { color: var(--accent); }
   color: var(--muted);
   cursor: pointer;
 }
-.theme-toggle button:first-child { border-radius: 6px 0 0 6px; }
-.theme-toggle button:last-child { border-radius: 0 6px 6px 0; }
-.theme-toggle button + button { border-left: none; }
-.theme-toggle button[aria-pressed='true'] {
+.theme-toggle button:first-child,
+.seg button:first-child { border-radius: 6px 0 0 6px; }
+.theme-toggle button:last-child,
+.seg button:last-child { border-radius: 0 6px 6px 0; }
+.theme-toggle button + button,
+.seg button + button { border-left: none; }
+.theme-toggle button[aria-pressed='true'],
+.seg button[aria-pressed='true'] {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
@@ -153,6 +160,15 @@ a { color: var(--accent); }
   border-radius: 10px;
   padding: 16px;
 }
+/* 見出しと、その図だけに効く切り替えを 1 行に並べる */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.panel-head > h2 { margin: 0; }
 .panel > h2 {
   margin: 0 0 14px;
   font-size: 0.82rem;
