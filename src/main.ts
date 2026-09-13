@@ -295,7 +295,8 @@ function renderCompare(results: Result[]) {
       tip:
         `${escapeText(r.layout.name)}<br>総移動距離 <b>${r.metrics.totalUnits.toFixed(0)} u</b>` +
         ` (${(r.metrics.totalMm / 1000).toFixed(2)} m)<br>` +
-        `1 打鍵あたり <b>${r.metrics.meanPerStroke.toFixed(3)} u</b>`,
+        `1 打鍵あたり <b>${r.metrics.meanPerStroke.toFixed(3)} u</b>` +
+        `<br>1 文字あたり <b>${r.metrics.perCharUnits.toFixed(3)} u</b>`,
     })),
     // 日本語の配列名は長い。ラベル欄は widest に合わせて広めに取る
     { format: (v) => v.toFixed(0), labelWidth: 150 },
@@ -304,16 +305,17 @@ function renderCompare(results: Result[]) {
   const rows = results
     .map((r) => {
       const m = r.metrics;
-      const variance = m.adjacent.reduce((a, b) => a + b.variance, 0) / m.adjacent.length;
+      const stdDev = m.adjacent.reduce((a, b) => a + b.stdDev, 0) / m.adjacent.length;
       return `<tr${m.totalUnits === best ? ' class="best"' : ''}>
         <td><span class="swatch" style="background:${SERIES(r.slot)}"></span>${escapeText(r.layout.name)}</td>
         <td class="num">${m.strokes}</td>
         <td class="num">${m.totalUnits.toFixed(0)}</td>
         <td class="num">${(m.totalMm / 1000).toFixed(2)}</td>
         <td class="num">${m.meanPerStroke.toFixed(3)}</td>
+        <td class="num">${m.perCharUnits.toFixed(3)}</td>
         <td class="num">${m.sameFinger}</td>
         <td class="num">${((m.sameFinger / Math.max(1, m.strokes)) * 100).toFixed(1)}%</td>
-        <td class="num">${variance.toFixed(4)}</td>
+        <td class="num">${stdDev.toFixed(3)}</td>
       </tr>`;
     })
     .join('');
@@ -321,7 +323,7 @@ function renderCompare(results: Result[]) {
   el.compare.innerHTML = `
     <thead><tr>
       <th>配列</th><th>ステップ</th><th>距離 [u]</th><th>距離 [m]</th>
-      <th>1打鍵 [u]</th><th>同指連続</th><th>同指連続率</th><th>隣接指分散</th>
+      <th>1打鍵 [u]</th><th>1文字 [u]</th><th>同指連続</th><th>同指連続率</th><th>隣接指標準偏差</th>
     </tr></thead><tbody>${rows}</tbody>`;
 }
 
@@ -376,9 +378,9 @@ function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeomet
     metrics.adjacent.map((s) => ({
       label: `${SHORT_FINGER[s.pair[0]]}–${SHORT_FINGER[s.pair[1]]}`,
       group: s.pair[0][0] === 'L' ? '左手' : '右手',
-      value: s.variance,
+      value: s.stdDev,
       tip: `${FINGER_LABEL[s.pair[0]]}–${FINGER_LABEL[s.pair[1]]}<br>` +
-        `分散 <b>${s.variance.toFixed(4)}</b><br>平均 <b>${s.mean.toFixed(3)} u</b>`,
+        `標準偏差 <b>${s.stdDev.toFixed(3)}</b><br>平均 <b>${s.mean.toFixed(3)} u</b>`,
     })),
     { format: (v) => v.toFixed(3) },
   );
