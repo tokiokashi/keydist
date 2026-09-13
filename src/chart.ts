@@ -98,11 +98,20 @@ export interface LineSeries {
   points: { x: number; y: number; raw?: number }[];
 }
 
+export interface LineOptions {
+  /**
+   * y 軸の上端を固定する。
+   * 相対表示のように上限が理論で決まっている図は、目盛りをそこに合わせる。
+   */
+  yMax?: number;
+}
+
 /** 折れ線。x は等間隔の目盛り位置として扱う */
 export function lineChart(
   series: LineSeries[],
   xTicks: number[],
   format: (v: number) => string,
+  options: LineOptions = {},
 ): string {
   const W = 700;
   const H = 260;
@@ -111,10 +120,11 @@ export function lineChart(
   const all = series.flatMap((s) => s.points.map((p) => p.y));
   // 比率を見る図なので 0 起点にはしない。データ範囲に余白を足して傾きを読めるようにする
   const lo = Math.min(...all);
-  const hi = Math.max(...all);
-  const pad = Math.max((hi - lo) * 0.12, hi * 0.01, 1e-6);
+  const hi = options.yMax ?? Math.max(...all);
+  const pad = Math.max((hi - lo) * 0.12, Math.abs(hi) * 0.01, 1e-6);
   const yMin = lo - pad;
-  const yMax = hi + pad;
+  // 上端が指定されていれば余白を足さない。目盛りをちょうどその値で止める
+  const yMax = options.yMax ?? hi + pad;
   const span = yMax - yMin || 1;
   const x = (i: number) => M.left + (i / Math.max(1, xTicks.length - 1)) * (W - M.left - M.right);
   const y = (v: number) => H - M.bottom - ((v - yMin) / span) * (H - M.top - M.bottom);
