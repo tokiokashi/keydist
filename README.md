@@ -96,6 +96,9 @@ npm test           # モデルの分岐を検証
 npm run build      # 型検査 + ビルド
 ```
 
+コミット規約・ブランチ運用は [CONTRIBUTING.md](CONTRIBUTING.md)。
+clone 直後に `git config core.hooksPath .githooks` を1度実行する。
+
 ## ライセンス
 
 MIT
