@@ -3,7 +3,7 @@ export type Finger =
   | 'LP' | 'LR' | 'LM' | 'LI' | 'LT'
   | 'RT' | 'RI' | 'RM' | 'RR' | 'RP';
 
-/** 親指を除く 8 本。隣接指間距離（§10.3）はこの範囲で見る */
+/** 親指を除く 8 本。隣接指間距離（§11.3）はこの範囲で見る */
 export type NonThumb = Exclude<Finger, 'LT' | 'RT'>;
 export const FINGERS: NonThumb[] = ['LP', 'LR', 'LM', 'LI', 'RI', 'RM', 'RR', 'RP'];
 
@@ -12,7 +12,7 @@ export const ALL_FINGERS: Finger[] = ['LP', 'LR', 'LM', 'LI', 'LT', 'RT', 'RI', 
 
 export const isThumb = (finger: Finger) => finger === 'LT' || finger === 'RT';
 
-/** 同じ手の隣接ペア（§10.3） */
+/** 同じ手の隣接ペア（§11.3） */
 export const ADJACENT_PAIRS: [NonThumb, NonThumb][] = [
   ['LP', 'LR'], ['LR', 'LM'], ['LM', 'LI'],
   ['RI', 'RM'], ['RM', 'RR'], ['RR', 'RP'],
@@ -44,10 +44,32 @@ export interface Geometry {
   homes: Record<Finger, Point>;
 }
 
-export const keyId = (row: number, col: number) => `r${row}c${col}`;
+/**
+ * 物理キーの正式名は QWERTY 刻印とする。行列インデックスより読めるうえ、
+ * 公開されているかな配列の定義がそのまま写せる。
+ */
+export const QWERTY_LEGEND = [
+  '1234567890-=',
+  'qwertyuiop[]',
+  "asdfghjkl;'",
+  'zxcvbnm,./',
+] as const;
 
-/** 列 0..9 に対する既定の指割り当て */
-const COLUMN_FINGER: Finger[] = ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP'];
+export const keyId = (row: number, col: number) => QWERTY_LEGEND[row][col];
+
+/** 親指キーの id */
+export const THUMB_KEY = { LT: 'thumb-l', RT: 'space' } as const;
+
+/**
+ * 列に対する既定の指割り当て。
+ * 10 列目より右（`-` `=` `[` `]` `'` など）はすべて小指が担当する。
+ */
+const COLUMN_FINGER: Finger[] = [
+  'LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP',
+];
+
+/** 各行の列数は刻印の長さで決まる（12 / 12 / 11 / 10） */
+const ROW_WIDTH = QWERTY_LEGEND.map((row) => row.length);
 
 /** 各指のホーム列（ASDF JKL;）。親指は別途キー上に置く */
 const HOME_COLUMN: Record<Exclude<Finger, 'LT' | 'RT'>, number> = {
@@ -92,13 +114,15 @@ export function buildGeometry(kind: GeometryKind): Geometry {
     return col;
   };
   const yOf = (row: number, col: number) =>
-    kind === 'column-staggered' ? row + COLUMN_STAGGER[col] : row;
+    kind === 'column-staggered'
+      ? row + COLUMN_STAGGER[Math.min(col, COLUMN_STAGGER.length - 1)]
+      : row;
 
   const grid: Key[][] = [];
   const keys = new Map<string, Key>();
   for (let row = 0; row < 4; row++) {
     const line: Key[] = [];
-    for (let col = 0; col < 10; col++) {
+    for (let col = 0; col < ROW_WIDTH[row]; col++) {
       const key: Key = {
         id: keyId(row, col),
         row,
@@ -119,7 +143,7 @@ export function buildGeometry(kind: GeometryKind): Geometry {
   for (const finger of ['LT', 'RT'] as const) {
     const col = THUMB_COLUMN[finger];
     const key: Key = {
-      id: finger === 'LT' ? 'thumb-l' : 'thumb-r',
+      id: THUMB_KEY[finger],
       row: THUMB_ROW,
       col,
       x: xOf(HOME_ROW, col),

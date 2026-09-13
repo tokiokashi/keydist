@@ -104,3 +104,9 @@ svg { display: block; width: 100%; height: auto; }
 #heatmap { margin-top: 12px; }
 
 footer { padding-top: 28px; font-size: 0.82rem; color: var(--muted); }
+
+.error {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  color: var(--series-1);
+}

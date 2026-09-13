@@ -8,8 +8,10 @@ export interface PairStat {
 }
 
 export interface Metrics {
-  /** 打鍵数 */
+  /** 打鍵ステップ数。同時押しは 1 と数える */
   strokes: number;
+  /** キー押下数。同時押しは押したキーの数だけ数える */
+  presses: number;
   /** 配列に無く打鍵できなかった文字数 */
   skipped: number;
   /** 指ごとの総移動距離 [u] */
@@ -40,12 +42,20 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
   const keyDistance = new Map<string, number>();
   const pairSamples: number[][] = ADJACENT_PAIRS.map(() => []);
 
+  let presses = 0;
   for (const stroke of trace.strokes) {
-    perFinger[stroke.finger] += stroke.distance;
     totalUnits += stroke.distance;
-    if (stroke.gap === 0) sameFinger++;
-    keyCounts.set(stroke.key.id, (keyCounts.get(stroke.key.id) ?? 0) + 1);
-    keyDistance.set(stroke.key.id, (keyDistance.get(stroke.key.id) ?? 0) + stroke.distance);
+    for (const press of stroke.presses) {
+      presses += press.keys.length;
+      perFinger[press.finger] += press.distance;
+      if (press.gap === 0) sameFinger++;
+      // 1 本の指で複数キーを押した場合、距離はキーへ均等に按分する
+      const share = press.distance / press.keys.length;
+      for (const key of press.keys) {
+        keyCounts.set(key.id, (keyCounts.get(key.id) ?? 0) + 1);
+        keyDistance.set(key.id, (keyDistance.get(key.id) ?? 0) + share);
+      }
+    }
 
     ADJACENT_PAIRS.forEach((pair, i) => {
       pairSamples[i].push(dist(stroke.positions[pair[0]], stroke.positions[pair[1]]));
@@ -60,6 +70,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
   const n = trace.strokes.length;
   return {
     strokes: n,
+    presses,
     skipped: trace.skipped,
     perFinger,
     totalUnits,

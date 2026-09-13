@@ -2,7 +2,7 @@ import { ALL_FINGERS, buildGeometry, THUMB_ROW, type Finger, type GeometryKind }
 import { evaluate, type Options } from './evaluate.ts';
 import { computeMetrics, type Metrics } from './metrics.ts';
 import { nSensitivity } from './sensitivity.ts';
-import { LAYOUTS, LAYOUT_BY_ID } from './layouts/index.ts';
+import { LAYOUTS, LAYOUT_BY_ID, type Layout } from './layouts/index.ts';
 import { SAMPLE_TEXT } from './sample-text.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -14,6 +14,7 @@ const el = {
   sfbHome: $<HTMLInputElement>('sfb-home'),
   text: $<HTMLTextAreaElement>('text'),
   textMeta: $<HTMLParagraphElement>('text-meta'),
+  errors: $<HTMLParagraphElement>('errors'),
   compare: $<HTMLTableElement>('compare'),
   detailLayout: $<HTMLSelectElement>('detail-layout'),
   heatmap: $<HTMLDivElement>('heatmap'),
@@ -47,13 +48,17 @@ function render() {
 
   const results = LAYOUTS.map((layout) => {
     const trace = evaluate(text, layout, geometry, options);
-    return { layout, metrics: computeMetrics(trace, geometry) };
+    return { layout, trace, metrics: computeMetrics(trace, geometry) };
   });
 
   const first = results[0].metrics;
-  el.textMeta.textContent =
-    `${text.length} 文字 / ${first.strokes} 打鍵` +
-    (first.skipped ? ` / ${first.skipped} 文字は配列上に無いため除外` : '');
+  const parts = [`${text.length} 文字`, `${first.strokes} ステップ`, `${first.presses} 押下`];
+  if (first.skipped) parts.push(`${first.skipped} 文字は配列上に無いため除外`);
+  el.textMeta.textContent = parts.join(' / ');
+
+  const errors = results.flatMap((r) => r.trace.errors);
+  el.errors.textContent = errors.length ? `配列定義の不備: ${errors.join(' / ')}` : '';
+  el.errors.hidden = errors.length === 0;
 
   renderCompare(results, geometry.pitchMm);
   renderDetail(results, geometry);
@@ -72,6 +77,7 @@ function renderCompare(
       const cls = metrics.totalUnits === best ? ' class="best"' : '';
       return `<tr${cls}>
         <td>${layout.name}</td>
+        <td class="num">${metrics.strokes}</td>
         <td class="num">${metrics.totalUnits.toFixed(0)}</td>
         <td class="num">${(metrics.totalMm / 1000).toFixed(2)}</td>
         <td class="num">${metrics.meanPerStroke.toFixed(3)}</td>
@@ -84,7 +90,7 @@ function renderCompare(
 
   el.compare.innerHTML = `
     <thead><tr>
-      <th>配列</th><th>総距離 [u]</th><th>総距離 [m]</th>
+      <th>配列</th><th>ステップ</th><th>総距離 [u]</th><th>総距離 [m]</th>
       <th>1打鍵 [u]</th><th>同指連続</th><th>同指連続率</th><th>隣接指分散</th>
     </tr></thead>
     <tbody>${rows}</tbody>`;
@@ -100,6 +106,7 @@ function renderDetail(
   const layout = LAYOUT_BY_ID.get(el.detailLayout.value) ?? LAYOUTS[0];
 
   // ヒートマップ
+  const labels = keyLabels(layout);
   const max = Math.max(1, ...metrics.keyCounts.values());
   const KEY = 46;
   const PAD = 8;
@@ -115,7 +122,7 @@ function renderDetail(
     const y = key.y * KEY;
     maxX = Math.max(maxX, x + w);
     maxY = Math.max(maxY, y + KEY);
-    const label = thumb ? (key.finger === 'RT' ? '空白' : '親指') : (layout.rows[key.row][key.col] ?? '');
+    const label = labels.get(key.id) ?? (thumb ? (key.finger === 'RT' ? '空白' : '親指') : '');
     const share = ((count / Math.max(1, metrics.strokes)) * 100).toFixed(1);
     // oklab で補間する。srgb だと暗い地色と暖色の中間が濁る
     return `<g>
@@ -234,3 +241,14 @@ for (const node of [el.geometry, el.window, el.sfbHome, el.text, el.detailLayout
   node.addEventListener('change', render);
 }
 render();
+
+/** キー id → 表示ラベル。単打で打てる文字だけを載せる */
+function keyLabels(layout: Layout): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const [char, sequence] of layout.map) {
+    if (sequence.length !== 1 || sequence[0].length !== 1) continue;
+    const id = sequence[0][0];
+    if (!out.has(id)) out.set(id, char === ' ' ? '空白' : char);
+  }
+  return out;
+}
