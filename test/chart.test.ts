@@ -84,3 +84,10 @@ test('columnSplit を指定すると列の間に隙間が空き、全体の幅�
   const width = (svg: string) => Number(svg.match(/viewBox="0 0 ([\d.]+) /)![1]);
   assert.ok(width(withSplit) > width(withoutSplit));
 });
+
+test('マトリックスの列見出しはソート操作の対象になる', () => {
+  const svg = matrixChart(MATRIX_ROWS, ['列1', '列2'], { sort: { column: 1, direction: 'asc' } });
+  assert.match(svg, /data-matrix-sort="1"/);
+  assert.match(svg, /aria-sort="ascending"/);
+  assert.ok(svg.includes('列2 ↑'));
+});
