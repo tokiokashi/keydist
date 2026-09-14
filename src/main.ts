@@ -47,6 +47,7 @@ const el = {
   fingerChart: $<HTMLDivElement>('finger-chart'),
   adjacentChart: $<HTMLDivElement>('adjacent-chart'),
   fingerMatrix: $<HTMLDivElement>('finger-matrix'),
+  pressMatrix: $<HTMLDivElement>('press-matrix'),
   adjacentMatrix: $<HTMLDivElement>('adjacent-matrix'),
 };
 
@@ -265,6 +266,7 @@ function render() {
     el.fingerChart.innerHTML = '';
     el.adjacentChart.innerHTML = '';
     el.fingerMatrix.innerHTML = '';
+    el.pressMatrix.innerHTML = '';
     el.adjacentMatrix.innerHTML = '';
     el.errors.hidden = true;
     return;
@@ -365,6 +367,32 @@ function renderMatrices(results: Result[]) {
 
   el.fingerMatrix.innerHTML = matrixChart(
     fingerRows,
+    FINGERS.map((f) => SHORT_FINGER[f]),
+    {
+      format: (v) => v.toFixed(3),
+      labelWidth: 190,
+      columnSplit: 4,
+      columnGroupLabels: ['左手', '右手'],
+    },
+  );
+
+  const pressRows = results.map((r) => ({
+    label: r.layout.name,
+    color: SERIES(r.slot),
+    cells: FINGERS.map((f) => {
+      const perChar = r.metrics.perFingerPresses[f] / Math.max(1, r.metrics.inputChars);
+      return {
+        value: perChar,
+        tip:
+          `${escapeText(r.layout.name)} / ${FINGER_LABEL[f]}<br>` +
+          `<b>${perChar.toFixed(3)} 押下/文字</b><br>` +
+          `押下 <b>${r.metrics.perFingerPresses[f]}</b> 回`,
+      };
+    }),
+  }));
+
+  el.pressMatrix.innerHTML = matrixChart(
+    pressRows,
     FINGERS.map((f) => SHORT_FINGER[f]),
     {
       format: (v) => v.toFixed(3),
