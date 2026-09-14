@@ -522,7 +522,9 @@ function renderHeatmap(
 ) {
   const labels = layout.legends;
   const max = Math.max(1, ...metrics.keyCounts.values());
-  const KEY = 46;
+  // 隣に並ぶマトリックス（セル 54×24）と同じくらいの密度に合わせる。
+  // 図は実寸で置くので、この値がそのまま画面上のキーの大きさになる
+  const KEY = 30;
   const PAD = 6;
   const THUMB_W = 1.9;
   let maxX = 0;
@@ -548,14 +550,18 @@ function renderHeatmap(
       <rect x="${x + 1}" y="${y + 1}" width="${w - 2}" height="${KEY - 2}" rx="5"
         fill="color-mix(in oklab, var(--heat-1) ${(t * 100).toFixed(1)}%, var(--heat-0))"
         stroke="var(--line)"/>
-      <text x="${x + w / 2}" y="${y + KEY / 2 + 5}" text-anchor="middle"
-        font-size="${thumb ? 12 : 15}" fill="${t > 0.5 ? 'var(--on-heat)' : 'var(--fg)'}"
+      <text x="${x + w / 2}" y="${y + KEY / 2 + 4}" text-anchor="middle"
+        font-size="${thumb ? 10 : 12}" fill="${t > 0.5 ? 'var(--on-heat)' : 'var(--fg)'}"
         pointer-events="none">${escapeText(label)}</text>
     </g>`;
   });
 
+  // 実寸を属性で持たせ、CSS 側（.fig-fixed）で引き伸ばさずに置く
+  const W = maxX + PAD;
+  const H = maxY + PAD;
   el.heatmap.innerHTML =
-    `<svg viewBox="0 0 ${maxX + PAD} ${maxY + PAD}" role="img" aria-label="打鍵頻度">${keys.join('')}</svg>`;
+    `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"` +
+    ` aria-label="打鍵頻度">${keys.join('')}</svg>`;
 }
 
 function setSensitivityScale(scale: SensitivityScale) {
