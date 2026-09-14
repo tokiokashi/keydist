@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "check:sample": "node --experimental-strip-types scripts/check-sample-text.ts",
     "preview": "vite preview",
     "test": "node --test --experimental-strip-types test/*.test.ts",
     "typecheck": "tsc --noEmit"

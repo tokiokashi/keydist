@@ -12,7 +12,7 @@ import { computeMetrics, type Metrics } from './metrics.ts';
 import { nSensitivity } from './sensitivity.ts';
 import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from './layouts/index.ts';
 import { SAMPLE_TEXT } from './sample-text.ts';
-import { SAMPLE_TEXT_JA } from './sample-text-ja.ts';
+import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from './sample-text-ja.ts';
 import {
   bindTips,
   columnChart,
@@ -55,6 +55,7 @@ const el = {
   window: $<HTMLInputElement>('window'),
   windowOut: $<HTMLOutputElement>('window-out'),
   sfbHome: $<HTMLInputElement>('sfb-home'),
+  sample: $<HTMLSelectElement>('sample'),
   text: $<HTMLTextAreaElement>('text'),
   textMeta: $<HTMLParagraphElement>('text-meta'),
   errors: $<HTMLParagraphElement>('errors'),
@@ -107,10 +108,23 @@ const SHORT_FINGER: Record<Finger, string> = {
 const PALETTE_SIZE = 8;
 const SERIES = (i: number) => `var(--series-${(i % PALETTE_SIZE) + 1})`;
 
-const SAMPLES = {
-  en: SAMPLE_TEXT.replace(/\s+/g, ' ').trim(),
-  ja: SAMPLE_TEXT_JA.replace(/\s+/g, ''),
-} as const;
+type ModeId = 'en' | 'ja';
+type SampleId = string;
+
+const SAMPLES: Record<ModeId, Record<SampleId, string>> = {
+  en: { default: SAMPLE_TEXT.replace(/\s+/g, ' ').trim() },
+  ja: {
+    modern: SAMPLE_TEXT_JA.replace(/\s+/g, ''),
+    legacy: SAMPLE_TEXT_JA_LEGACY.replace(/\s+/g, ''),
+  },
+};
+
+const SAMPLE_NAMES: Record<ModeId, Record<SampleId, string>> = {
+  en: { default: '英文（既定）' },
+  ja: { modern: '現代文（既定）', legacy: '旧文「吾輩は猫である」' },
+};
+
+const selectedSample: Record<ModeId, SampleId> = { en: 'default', ja: 'modern' };
 
 /** 既定で表示する配列 */
 const INITIAL = {
@@ -145,8 +159,8 @@ function layoutsOf(mode: ModeId): Layout[] {
 }
 
 const MODES = {
-  en: { get layouts() { return layoutsOf('en'); }, sample: SAMPLES.en, initial: INITIAL.en },
-  ja: { get layouts() { return layoutsOf('ja'); }, sample: SAMPLES.ja, initial: INITIAL.ja },
+  en: { get layouts() { return layoutsOf('en'); }, sample: SAMPLES.en.default, initial: INITIAL.en },
+  ja: { get layouts() { return layoutsOf('ja'); }, sample: SAMPLES.ja.modern, initial: INITIAL.ja },
 };
 
 /** 表示する配列の id。モードごとに覚える */
@@ -155,9 +169,9 @@ const selected: Record<ModeId, Set<string>> = {
   ja: new Set(),
 };
 
-type ModeId = 'en' | 'ja';
 const currentModeId = () => el.mode.value as ModeId;
 const currentMode = () => MODES[currentModeId()];
+const currentSample = () => SAMPLES[currentModeId()][selectedSample[currentModeId()]] ?? currentMode().sample;
 
 /** 選択されている配列。色のスロットは選択順ではなく一覧順に固定する */
 function activeLayouts(): Layout[] {
@@ -165,7 +179,17 @@ function activeLayouts(): Layout[] {
   return currentMode().layouts.filter((l) => set.has(l.id));
 }
 
-el.text.value = currentMode().sample;
+function fillSampleOptions() {
+  const mode = currentModeId();
+  el.sample.replaceChildren();
+  for (const [id, name] of Object.entries(SAMPLE_NAMES[mode])) {
+    el.sample.append(new Option(name, id));
+  }
+  el.sample.value = selectedSample[mode];
+}
+
+fillSampleOptions();
+el.text.value = currentSample();
 
 /** 配列を追加する欄。段ごとに 1 行、数字段は任意 */
 function setupAddForm() {
@@ -802,13 +826,19 @@ el.sensitivityScale.addEventListener('click', (e) => {
 });
 
 function onModeChange() {
+  fillSampleOptions();
   syncSampleText();
   fillPicker();
   fillDetailOptions();
 }
 el.mode.addEventListener('input', onModeChange);
 el.mode.addEventListener('change', onModeChange);
-for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.text, el.detailLayout]) {
+el.sample.addEventListener('change', () => {
+  selectedSample[currentModeId()] = el.sample.value;
+  el.text.value = currentSample();
+  render();
+});
+for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.sample, el.text, el.detailLayout]) {
   node.addEventListener('input', render);
   node.addEventListener('change', render);
 }
