@@ -5,6 +5,11 @@
 **まず `CLAUDE.md` と `CONTRIBUTING.md` を読むこと。** 規約の正はそちらにある。
 このファイルは、それを読む前に破ると手戻りになる項目だけを先出しする。
 
+## リモートと作業開始
+
+- このリポジトリの `origin` は GitHub（`tokiokashi/keydist`）。Issue と PR は GitHub で扱い、Gitea 用の取得・編集手順は使わない。
+- 作業前に `git status --short` で未コミット変更を確認し、変更が無ければ `main` で `git pull --ff-only origin main` を実行してから作業ブランチを切る。
+
 ## 破ると手戻りになる 5 項目
 
 1. **依存を増やさない。** devDependencies は vite / typescript / @types/node の 3 つだけで、

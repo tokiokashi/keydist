@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
 import { DEFAULT_OPTIONS, evaluate } from '../src/evaluate.ts';
-import { fromFaces, LAYOUT_BY_ID } from '../src/layouts/index.ts';
+import { fromFaces, LAYOUT_BY_ID, LAYOUTS_JA } from '../src/layouts/index.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 
@@ -20,6 +20,14 @@ test('面は prefix / suffix / simultaneous を Sequence に展開する', () =>
   assert.deepEqual(layout.map.get('か'), [['d'], ['f']]);
   assert.deepEqual(layout.map.get('さ'), [['f'], ['d']]);
   assert.deepEqual(layout.map.get('た'), [['j', 'f']]);
+});
+
+test('日本語の配列一覧に Dvorak を含める（#48）', () => {
+  const dvorak = LAYOUTS_JA.find((layout) => layout.id === 'dvorak');
+
+  assert.ok(dvorak);
+  assert.equal(dvorak.name, 'Dvorak');
+  assert.ok(dvorak.romajiTable);
 });
 
 test('面のセル配列は複数文字の見出しを 1 キーへ置ける', () => {

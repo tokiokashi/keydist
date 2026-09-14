@@ -20,6 +20,7 @@ test('訓令式テーブルの基本形', () => {
   assert.equal(table.get('ふ'), 'hu');
   assert.equal(table.get('じ'), 'zi');
   assert.equal(table.get('ん'), 'nn');
+  assert.equal(table.get('ぁ'), 'xa');
   assert.equal(table.get('ー'), '-');
 });
 

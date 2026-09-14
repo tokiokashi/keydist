@@ -82,9 +82,8 @@ export const LAYOUTS: Layout[] = ALPHA.filter((l) => l.id !== 'oonishi-custom');
  * 最終形はどちらも打鍵ステップ列なので、同じテキストで比較できる。
  */
 export const LAYOUTS_JA: Layout[] = [
-  // Dvorak は英語専用設計で日本語ローマ字の比較に入れる意義が薄いので外す。
   // 私家版はコンボ込みでのみ意味を持つので、素の形では出さない。
-  ...ALPHA.filter((l) => l.id !== 'dvorak' && l.id.startsWith('oonishi') === false).map((l) =>
+  ...ALPHA.filter((l) => l.id.startsWith('oonishi') === false).map((l) =>
     withRomaji(l, ROMAJI),
   ),
   // 大西は公式が前提とする綴り（シャ行 sh / じ ji / じゃ行 j）で打つ
