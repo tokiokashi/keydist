@@ -436,26 +436,49 @@ function setVariantOverride(kana: string, value: string) {
 function fillRomajiAssignments() {
   el.romajiAssignments.replaceChildren();
   const rules = allRomajiRules(romajiSettings.rules);
-  for (const layout of LAYOUTS_JA.filter((l) => l.romajiTable)) {
+  const builtinLayouts = LAYOUTS_JA.filter((l) => l.romajiTable);
+  const addHeader = (text: string) => {
+    const heading = document.createElement('h4');
+    heading.textContent = text;
+    el.romajiAssignments.append(heading);
+  };
+  const addAssignment = (nameText: string, layoutId: string, assigned: RomajiRuleId, save: (id: RomajiRuleId) => void) => {
     const label = document.createElement('label');
     label.className = 'romaji-assignment';
     const name = document.createElement('span');
-    name.textContent = layout.name;
+    name.textContent = nameText;
     const select = document.createElement('select');
     for (const rule of rules) select.append(new Option(rule.name, rule.id));
-    const assigned = romajiSettings.assignments[layout.id];
     select.value = rules.some((rule) => rule.id === assigned)
       ? assigned
-      : defaultRomajiRuleId(layout.id);
+      : defaultRomajiRuleId(layoutId);
     select.addEventListener('change', () => {
-      romajiSettings.assignments[layout.id] = select.value;
-      saveRomajiSettings(romajiSettings);
+      save(select.value);
       fillPicker();
       fillDetailOptions();
       render();
     });
     label.append(name, select);
     el.romajiAssignments.append(label);
+  };
+
+  addHeader('組み込み配列');
+  for (const layout of builtinLayouts) {
+    const assigned = romajiSettings.assignments[layout.id] ?? defaultRomajiRuleId(layout.id);
+    addAssignment(layout.name, layout.id, assigned, (id) => {
+      romajiSettings.assignments[layout.id] = id;
+      saveRomajiSettings(romajiSettings);
+    });
+  }
+  if (userLayouts.length > 0) addHeader('自作配列');
+  for (const definition of userLayouts) {
+    addAssignment(definition.name, definition.id, definition.romaji, (id) => {
+      userLayouts = userLayouts.map((current) => current.id === definition.id
+        ? { ...current, romaji: id }
+        : current);
+      saveUserLayouts(userLayouts);
+      ROMAJI_TABLE_CACHE.clear();
+    });
   }
 }
 

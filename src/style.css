@@ -366,6 +366,7 @@ button.secondary {
 }
 .romaji-assignment span { min-width: 0; }
 .romaji-assignment select { width: min(270px, 48%); }
+#romaji-assignments h4 { margin: 14px 0 4px; color: var(--muted); font-size: 0.76rem; }
 .romaji-variants {
   margin: 20px 0 14px;
   padding: 10px 12px;
