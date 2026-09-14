@@ -17,6 +17,7 @@ import {
   bindTips,
   columnChart,
   escapeText,
+  escapeAttr,
   lineChart,
   barChart,
   matrixChart,
@@ -62,6 +63,7 @@ const el = {
   textMeta: $<HTMLParagraphElement>('text-meta'),
   errors: $<HTMLParagraphElement>('errors'),
   compareChart: $<HTMLDivElement>('compare-chart'),
+  compareBaseline: $<HTMLSelectElement>('compare-baseline'),
   compare: $<HTMLTableElement>('compare'),
   sensitivity: $<HTMLDivElement>('sensitivity'),
   sensitivityScale: $<HTMLDivElement>('sensitivity-scale'),
@@ -644,6 +646,7 @@ const matrixSorts: Record<MatrixKind, MatrixSort | null> = {
   finger: null,
   adjacent: null,
 };
+let compareSort: MatrixSort | null = null;
 
 function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sort: MatrixSort | null): T[] {
   if (!sort) return rows;
@@ -677,6 +680,7 @@ function render() {
   if (results.length === 0) {
     el.textMeta.textContent = '配列を 1 つ以上選ぶ';
     el.compareChart.innerHTML = '';
+    syncCompareBaselineOptions([]);
     el.compare.innerHTML = '';
     el.sensitivity.innerHTML = '';
     el.heatmap.innerHTML = '';
@@ -709,7 +713,9 @@ function render() {
 }
 
 function renderCompare(results: Result[]) {
+  syncCompareBaselineOptions(results);
   const best = Math.min(...results.map((r) => r.metrics.totalUnits));
+  const baseline = results.find((r) => r.layout.id === el.compareBaseline.value);
 
   el.compareChart.innerHTML = barChart(
     results.map((r) => ({
@@ -724,38 +730,95 @@ function renderCompare(results: Result[]) {
         `<br>1 文字あたり <b>${r.metrics.perCharUnits.toFixed(3)} u</b>` +
         `<br>アクション/文字 <b>${r.metrics.perCharSteps.toFixed(3)}</b>` +
         `<br>押下/文字 <b>${r.metrics.perCharPresses.toFixed(3)}</b>` +
+        (baseline && baseline.metrics.totalUnits !== 0
+          ? `<br>比較元比 <b>${((r.metrics.totalUnits / baseline.metrics.totalUnits) * 100).toFixed(1)}%</b>`
+          : '') +
         `<br>${comboSummary(r.metrics)}`,
     })),
     // 日本語の配列名は長い。ラベル欄は widest に合わせて広めに取る
     { format: (v) => v.toFixed(0), labelWidth: 150 },
   );
 
-  const rows = results
-    .map((r) => {
+  const compareRows = results.map((r) => {
+    const m = r.metrics;
+    const adjacentMean = m.adjacent.reduce((a, b) => a + b.meanExcess, 0) / m.adjacent.length;
+    const ratio = baseline && baseline.metrics.totalUnits !== 0
+      ? (m.totalUnits / baseline.metrics.totalUnits) * 100
+      : null;
+    return {
+      result: r,
+      ratio,
+      cells: [
+        { value: m.strokes },
+        { value: m.totalUnits },
+        { value: m.totalMm / 1000 },
+        { value: m.meanPerStroke },
+        { value: m.perCharUnits },
+        { value: m.perCharSteps },
+        { value: m.perCharPresses },
+        { value: m.sameFinger },
+        { value: (m.sameFinger / Math.max(1, m.strokes)) * 100 },
+        { value: adjacentMean },
+        { value: ratio ?? 0 },
+      ],
+    };
+  });
+
+  const rows = sortMatrixRows(compareRows, compareSort)
+    .map(({ result: r, ratio, cells }) => {
       const m = r.metrics;
-      const adjacentMean = m.adjacent.reduce((a, b) => a + b.meanExcess, 0) / m.adjacent.length;
       return `<tr${m.totalUnits === best ? ' class="best"' : ''}>
         <td><span class="swatch" style="background:${SERIES(r.slot)}"></span>${escapeText(r.layout.name)}</td>
-        <td class="num">${m.strokes}</td>
-        <td class="num">${m.totalUnits.toFixed(0)}</td>
-        <td class="num">${(m.totalMm / 1000).toFixed(2)}</td>
-        <td class="num">${m.meanPerStroke.toFixed(3)}</td>
-        <td class="num">${m.perCharUnits.toFixed(3)}</td>
-        <td class="num">${m.perCharSteps.toFixed(3)}</td>
-        <td class="num">${m.perCharPresses.toFixed(3)}</td>
-        <td class="num">${m.sameFinger}</td>
-        <td class="num">${((m.sameFinger / Math.max(1, m.strokes)) * 100).toFixed(1)}%</td>
-        <td class="num">${adjacentMean.toFixed(3)}</td>
+        <td class="num">${cells[0].value}</td>
+        <td class="num">${cells[1].value.toFixed(0)}</td>
+        <td class="num">${cells[2].value.toFixed(2)}</td>
+        <td class="num">${cells[3].value.toFixed(3)}</td>
+        <td class="num">${cells[4].value.toFixed(3)}</td>
+        <td class="num">${cells[5].value.toFixed(3)}</td>
+        <td class="num">${cells[6].value.toFixed(3)}</td>
+        <td class="num">${cells[7].value}</td>
+        <td class="num">${cells[8].value.toFixed(1)}%</td>
+        <td class="num">${cells[9].value.toFixed(3)}</td>
+        <td class="num">${ratio === null ? '—' : `${ratio.toFixed(1)}%`}</td>
       </tr>`;
     })
     .join('');
 
   el.compare.innerHTML = `
     <thead><tr>
-      <th>配列</th><th>ステップ</th><th>距離 [u]</th><th>距離 [m]</th>
-      <th>1打鍵 [u]</th><th>1文字 [u]</th><th>アクション/文字</th><th>押下/文字</th>
-      <th>同指連続</th><th>同指連続率</th><th>隣接指超過 [u]</th>
+      <th>配列</th>${COMPARE_HEADERS.map((label, column) => compareHeader(label, column)).join('')}
     </tr></thead><tbody>${rows}</tbody>`;
+}
+
+const COMPARE_HEADERS = [
+  'ステップ',
+  '距離 [u]',
+  '距離 [m]',
+  '1打鍵 [u]',
+  '1文字 [u]',
+  'アクション/文字',
+  '押下/文字',
+  '同指連続',
+  '同指連続率',
+  '隣接指超過 [u]',
+  '総距離比 [%]',
+];
+
+function syncCompareBaselineOptions(results: Result[]) {
+  const current = el.compareBaseline.value;
+  el.compareBaseline.replaceChildren(new Option('比較なし', ''));
+  for (const result of results) {
+    el.compareBaseline.add(new Option(result.layout.name, result.layout.id));
+  }
+  el.compareBaseline.value = results.some((r) => r.layout.id === current) ? current : '';
+}
+
+function compareHeader(label: string, column: number): string {
+  const active = compareSort?.column === column ? compareSort.direction : undefined;
+  const marker = active === 'asc' ? ' ↑' : active === 'desc' ? ' ↓' : '';
+  const ariaSort = active === 'asc' ? 'ascending' : active === 'desc' ? 'descending' : 'none';
+  return `<th><span class="table-sort" data-compare-sort="${column}" role="button" tabindex="0"
+    aria-label="${escapeAttr(`${label}で配列を並べ替え`)}" aria-sort="${ariaSort}">${escapeText(label)}${marker}</span></th>`;
 }
 
 function comboSummary(metrics: Metrics): string {
@@ -881,6 +944,30 @@ function bindMatrixSort(root: HTMLElement, kind: MatrixKind) {
     if (!target) return;
     e.preventDefault();
     cycleMatrixSort(kind, Number(target.getAttribute('data-matrix-sort')));
+  });
+}
+
+function cycleCompareSort(column: number) {
+  compareSort =
+    !compareSort || compareSort.column !== column
+      ? { column, direction: 'asc' }
+      : compareSort.direction === 'asc'
+        ? { column, direction: 'desc' }
+        : null;
+  render();
+}
+
+function bindCompareSort(root: HTMLElement) {
+  root.addEventListener('click', (e) => {
+    const target = (e.target as Element).closest('[data-compare-sort]');
+    if (target) cycleCompareSort(Number(target.getAttribute('data-compare-sort')));
+  });
+  root.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const target = (e.target as Element).closest('[data-compare-sort]');
+    if (!target) return;
+    e.preventDefault();
+    cycleCompareSort(Number(target.getAttribute('data-compare-sort')));
   });
 }
 
@@ -1032,7 +1119,7 @@ el.sample.addEventListener('change', () => {
   el.text.value = currentSample();
   render();
 });
-for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.sample, el.text, el.detailLayout]) {
+for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.sample, el.text, el.detailLayout, el.compareBaseline]) {
   node.addEventListener('input', render);
   node.addEventListener('change', render);
 }
@@ -1049,5 +1136,6 @@ fillDetailOptions();
 bindMatrixSort(el.pressMatrix, 'press');
 bindMatrixSort(el.fingerMatrix, 'finger');
 bindMatrixSort(el.adjacentMatrix, 'adjacent');
+bindCompareSort(el.compare);
 bindTips(document.body);
 setupTheme(render);

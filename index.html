@@ -128,11 +128,18 @@
 
         <section class="panel">
           <h2>総移動距離</h2>
+          <label class="ctl">
+            <span>比較元</span>
+            <select id="compare-baseline">
+              <option value="">比較なし</option>
+            </select>
+          </label>
           <div id="compare-chart"></div>
           <div class="scroll-x"><table id="compare"></table></div>
           <p class="note">
             窓の内側では残る／戻るの小さい方を採るため、この値は<strong>下界</strong>。実際の運指はこれ以上になる。
-            コンボ命中は「一度でも当たった定義数 / 定義数（延べ命中回数）」で、配列ごとの発火状況を示す。
+            コンボ命中は「一度でも当たった定義数 / 定義数（延べ命中回数）」で、配列ごとの発火状況を示す。数値列の見出しをクリックすると、
+            指のマトリクスと同じく昇順・降順・選択順の順に並び替わる。比較元を選ぶと、総距離比に各配列の総移動距離を比較元=100%として表示する。
           </p>
         </section>
 
