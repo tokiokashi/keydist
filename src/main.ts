@@ -297,7 +297,9 @@ function renderCompare(results: Result[]) {
         `${escapeText(r.layout.name)}<br>総移動距離 <b>${r.metrics.totalUnits.toFixed(0)} u</b>` +
         ` (${(r.metrics.totalMm / 1000).toFixed(2)} m)<br>` +
         `1 打鍵あたり <b>${r.metrics.meanPerStroke.toFixed(3)} u</b>` +
-        `<br>1 文字あたり <b>${r.metrics.perCharUnits.toFixed(3)} u</b>`,
+        `<br>1 文字あたり <b>${r.metrics.perCharUnits.toFixed(3)} u</b>` +
+        `<br>アクション/文字 <b>${r.metrics.perCharSteps.toFixed(3)}</b>` +
+        `<br>押下/文字 <b>${r.metrics.perCharPresses.toFixed(3)}</b>`,
     })),
     // 日本語の配列名は長い。ラベル欄は widest に合わせて広めに取る
     { format: (v) => v.toFixed(0), labelWidth: 150 },
@@ -314,6 +316,8 @@ function renderCompare(results: Result[]) {
         <td class="num">${(m.totalMm / 1000).toFixed(2)}</td>
         <td class="num">${m.meanPerStroke.toFixed(3)}</td>
         <td class="num">${m.perCharUnits.toFixed(3)}</td>
+        <td class="num">${m.perCharSteps.toFixed(3)}</td>
+        <td class="num">${m.perCharPresses.toFixed(3)}</td>
         <td class="num">${m.sameFinger}</td>
         <td class="num">${((m.sameFinger / Math.max(1, m.strokes)) * 100).toFixed(1)}%</td>
         <td class="num">${stdDev.toFixed(3)}</td>
@@ -324,7 +328,8 @@ function renderCompare(results: Result[]) {
   el.compare.innerHTML = `
     <thead><tr>
       <th>配列</th><th>ステップ</th><th>距離 [u]</th><th>距離 [m]</th>
-      <th>1打鍵 [u]</th><th>1文字 [u]</th><th>同指連続</th><th>同指連続率</th><th>隣接指標準偏差</th>
+      <th>1打鍵 [u]</th><th>1文字 [u]</th><th>アクション/文字</th><th>押下/文字</th>
+      <th>同指連続</th><th>同指連続率</th><th>隣接指標準偏差</th>
     </tr></thead><tbody>${rows}</tbody>`;
 }
 

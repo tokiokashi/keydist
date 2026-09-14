@@ -8,6 +8,12 @@ export interface PairStat {
 }
 
 export interface Metrics {
+  /**
+   * 使用した指割り当ての id と名前。割り当てが変わると同指連続の数も距離も変わるため、
+   * 配列間の比較はここが揃っている場合のみ成立する（仕様 §4.2）。
+   */
+  fingerAssignmentId: string;
+  fingerAssignmentName: string;
   /** 打鍵ステップ数。同時押しは 1 と数える */
   strokes: number;
   /** キー押下数。同時押しは押したキーの数だけ数える */
@@ -32,6 +38,17 @@ export interface Metrics {
    * 打鍵数削減の効果が相殺されて消える。分母を展開前の文字数に固定するとここに出る。
    */
   perCharUnits: number;
+  /**
+   * 入力 1 文字あたりのアクション（ステップ）数（仕様 §11.4）。
+   * コンボ・かな直接入力による打鍵数削減の効果はここに直接出る。
+   */
+  perCharSteps: number;
+  /**
+   * 入力 1 文字あたりの押下キー数（仕様 §11.4）。
+   * コンボは複数キーを 1 ステップにまとめても押すキー自体は減らさないため、
+   * `perCharSteps` が下がっても `perCharPresses` は下がらない場合がある。
+   */
+  perCharPresses: number;
   /** 隣接指間距離の統計 */
   adjacent: PairStat[];
   /** 同指連続回数。同じ指で異なる位置を続けて打った数 */
@@ -85,6 +102,8 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
   const n = trace.strokes.length;
   const { inputChars } = trace;
   return {
+    fingerAssignmentId: geometry.assignment.id,
+    fingerAssignmentName: geometry.assignment.name,
     strokes: n,
     presses,
     skipped: trace.skipped,
@@ -95,6 +114,8 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
     totalMm: totalUnits * geometry.pitchMm,
     meanPerStroke: n ? totalUnits / n : 0,
     perCharUnits: inputChars ? totalUnits / inputChars : 0,
+    perCharSteps: inputChars ? n / inputChars : 0,
+    perCharPresses: inputChars ? presses / inputChars : 0,
     adjacent,
     sameFinger,
     keyCounts,
