@@ -37,11 +37,6 @@
           </label>
 
           <label class="ctl">
-            <span>サンプル</span>
-            <select id="sample"></select>
-          </label>
-
-          <label class="ctl">
             <span>物理配列</span>
             <select id="geometry">
               <option value="row-staggered">ロウスタッガード</option>
@@ -68,13 +63,6 @@
             <div class="picker" id="layout-picker"></div>
             <button type="button" class="secondary" id="romaji-settings">ローマ字の綴りを設定</button>
           </div>
-
-          <label class="ctl">
-            <span>評価テキスト</span>
-            <textarea id="text" rows="12" spellcheck="false"></textarea>
-          </label>
-          <p class="meta" id="text-meta"></p>
-          <p class="error" id="errors" hidden></p>
         </div>
 
         <details class="panel" id="add-panel">
@@ -103,6 +91,21 @@
       </aside>
 
       <div class="stack">
+        <details class="panel text-panel" id="text-panel" open>
+          <summary>
+            <span class="text-title">評価テキスト</span>
+            <span class="text-status">
+              <span class="meta" id="text-meta"></span>
+              <span class="error" id="errors" hidden></span>
+            </span>
+          </summary>
+          <label class="ctl">
+            <span>サンプル</span>
+            <select id="sample"></select>
+          </label>
+          <textarea id="text" rows="12" spellcheck="false"></textarea>
+        </details>
+
         <section class="panel">
           <h2>配列の詳細</h2>
           <label class="ctl">

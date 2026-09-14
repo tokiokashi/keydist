@@ -148,10 +148,33 @@ a { color: var(--accent); }
 }
 .sidebar { position: sticky; top: 68px; }
 .stack { display: flex; flex-direction: column; gap: 20px; }
+.text-panel > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  list-style: none;
+  cursor: pointer;
+}
+.text-panel > summary::-webkit-details-marker { display: none; }
+.text-panel > summary::before { content: '− '; color: var(--muted); }
+.text-panel:not([open]) > summary::before { content: '＋ '; }
+.text-panel > summary::after { content: '折りたたむ'; margin-left: auto; color: var(--muted); font-size: 0.76rem; }
+.text-panel:not([open]) > summary::after { content: '展開する'; }
+.text-panel .text-title { font-size: 0.82rem; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.text-status { display: flex; flex-wrap: wrap; gap: 4px 12px; min-width: 0; }
+.text-status .meta, .text-status .error { margin: 0; }
+.stack > .text-panel > summary {
+  position: sticky;
+  top: 68px;
+  z-index: 4;
+  padding: 2px 0 10px;
+  background: var(--panel);
+}
 
 @media (max-width: 900px) {
   .app { grid-template-columns: minmax(0, 1fr); }
   .sidebar { position: static; }
+  .stack > .text-panel > summary { position: static; }
 }
 
 .panel {

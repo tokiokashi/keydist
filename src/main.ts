@@ -58,6 +58,7 @@ const el = {
   sfbHome: $<HTMLInputElement>('sfb-home'),
   sample: $<HTMLSelectElement>('sample'),
   text: $<HTMLTextAreaElement>('text'),
+  textPanel: $<HTMLDetailsElement>('text-panel'),
   textMeta: $<HTMLParagraphElement>('text-meta'),
   errors: $<HTMLParagraphElement>('errors'),
   compareChart: $<HTMLDivElement>('compare-chart'),
@@ -605,8 +606,28 @@ function fillDetailOptions() {
 }
 
 function syncSampleText() {
-  const untouched = Object.values(MODES).some((m) => m.sample === el.text.value);
-  if (untouched) el.text.value = currentMode().sample;
+  const untouched = Object.values(SAMPLES).some((samples) => Object.values(samples).includes(el.text.value));
+  if (untouched) el.text.value = currentSample();
+}
+
+const TEXT_COLLAPSED_KEY = 'keydist:text-collapsed';
+
+function setupTextPanel() {
+  try {
+    const saved = localStorage.getItem(TEXT_COLLAPSED_KEY);
+    el.textPanel.open = saved === null
+      ? !window.matchMedia('(max-width: 900px)').matches
+      : saved !== 'true';
+  } catch {
+    el.textPanel.open = true;
+  }
+  el.textPanel.addEventListener('toggle', () => {
+    try {
+      localStorage.setItem(TEXT_COLLAPSED_KEY, String(!el.textPanel.open));
+    } catch {
+      // 保存できなくても、折りたたみ操作そのものは成立する
+    }
+  });
 }
 
 interface Result {
@@ -1016,6 +1037,7 @@ for (const id of ['en', 'ja'] as ModeId[]) {
 }
 setupAddForm();
 setupRomajiEditor();
+setupTextPanel();
 fillPicker();
 fillDetailOptions();
 bindMatrixSort(el.pressMatrix, 'press');
