@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry } from '../src/geometry.ts';
+import { buildGeometry, ALL_FINGERS } from '../src/geometry.ts';
 import { evaluate, type Options } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { LAYOUTS_JA, LAYOUT_BY_ID, type Layout } from '../src/layouts/index.ts';
@@ -124,6 +124,17 @@ test('指ごとの押下数はサンプル文の実測値と一致する', () =>
   assert.equal(qwertyMetrics.perFingerPresses.LP, 90);
   assert.equal(oonishiMetrics.perFingerPresses.LR, 43);
   assert.equal(naginataMetrics.perFingerPresses.RT, 63);
+});
+
+test('指ごとの押下数の合計は総押下数と一致する', () => {
+  // マトリックスは指ごとの押下数を並べる図なので、そこに出ない押下があってはいけない。
+  // 親指のように移動距離が 0 の指を列から落とすと、この和が崩れる
+  const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
+  for (const layout of LAYOUTS_JA) {
+    const m = computeMetrics(evaluate(text, layout, geometry, opts()), geometry);
+    const sum = ALL_FINGERS.reduce((a, f) => a + m.perFingerPresses[f], 0);
+    assert.equal(sum, m.presses, `${layout.id} の指ごとの押下数の合計`);
+  }
 });
 
 test('全打鍵で指の相対位置が変わらなければ隣接指の標準偏差は 0 になる', () => {
