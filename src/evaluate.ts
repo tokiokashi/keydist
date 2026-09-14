@@ -47,7 +47,7 @@ export interface Stroke {
   presses: Press[];
   /** ステップ内の押下距離の合計 [u] */
   distance: number;
-  /** ステップ直前の全指位置 */
+  /** 押下直後の全指位置 */
   positions: Record<Finger, Point>;
 }
 
@@ -124,7 +124,6 @@ export function evaluate(
     cursor += consumed;
 
     for (const step of sequence) {
-      const positions = snapshot(prev, last, index, geometry, options.windowSize);
       const byFinger = new Map<Finger, Key[]>();
 
       for (const id of step) {
@@ -166,6 +165,8 @@ export function evaluate(
         last[press.finger] = index;
       }
 
+      // 指同士の姿勢は、対象キーを押した直後の状態として記録する
+      const positions = snapshot(prev, last, index, geometry, options.windowSize);
       strokes.push({ index, char, presses, distance: total, positions });
       index++;
     }
