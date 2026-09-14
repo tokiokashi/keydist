@@ -712,10 +712,75 @@ function render() {
   renderDetail(results, geometry);
 }
 
+const COMPARE_HEADERS = [
+  'ステップ',
+  '距離 [u]',
+  '距離 [m]',
+  '1打鍵 [u]',
+  '1文字 [u]',
+  'アクション/文字',
+  '押下/文字',
+  '同指連続',
+  '同指連続率',
+  '隣接指超過 [u]',
+];
+
+const COMPARE_FORMATS: Array<(value: number) => string> = [
+  (value) => `${value}`,
+  (value) => value.toFixed(0),
+  (value) => value.toFixed(2),
+  (value) => value.toFixed(3),
+  (value) => value.toFixed(3),
+  (value) => value.toFixed(3),
+  (value) => value.toFixed(3),
+  (value) => `${value}`,
+  (value) => `${value.toFixed(1)}%`,
+  (value) => value.toFixed(3),
+];
+
+interface CompareCell {
+  value: number;
+  display: string;
+}
+
+function compareMetricValues(metrics: Metrics): number[] {
+  const adjacentMean = metrics.adjacent.reduce((a, b) => a + b.meanExcess, 0) / metrics.adjacent.length;
+  return [
+    metrics.strokes,
+    metrics.totalUnits,
+    metrics.totalMm / 1000,
+    metrics.meanPerStroke,
+    metrics.perCharUnits,
+    metrics.perCharSteps,
+    metrics.perCharPresses,
+    metrics.sameFinger,
+    (metrics.sameFinger / Math.max(1, metrics.strokes)) * 100,
+    adjacentMean,
+  ];
+}
+
+function relativePercent(value: number, baseline: number): number | null {
+  if (baseline === 0) return value === 0 ? 100 : null;
+  return (value / baseline) * 100;
+}
+
+function compareCell(
+  value: number,
+  baseline: number | null,
+  format: (value: number) => string,
+): CompareCell {
+  if (baseline === null) return { value, display: format(value) };
+  const ratio = relativePercent(value, baseline);
+  return ratio === null
+    ? { value: 0, display: '—' }
+    : { value: ratio, display: `${ratio.toFixed(1)}%` };
+}
+
 function renderCompare(results: Result[]) {
   syncCompareBaselineOptions(results);
   const best = Math.min(...results.map((r) => r.metrics.totalUnits));
   const baseline = results.find((r) => r.layout.id === el.compareBaseline.value);
+  const baselineValues = baseline ? compareMetricValues(baseline.metrics) : null;
 
   el.compareChart.innerHTML = barChart(
     results.map((r) => ({
@@ -740,69 +805,27 @@ function renderCompare(results: Result[]) {
   );
 
   const compareRows = results.map((r) => {
-    const m = r.metrics;
-    const adjacentMean = m.adjacent.reduce((a, b) => a + b.meanExcess, 0) / m.adjacent.length;
-    const ratio = baseline && baseline.metrics.totalUnits !== 0
-      ? (m.totalUnits / baseline.metrics.totalUnits) * 100
-      : null;
-    return {
-      result: r,
-      ratio,
-      cells: [
-        { value: m.strokes },
-        { value: m.totalUnits },
-        { value: m.totalMm / 1000 },
-        { value: m.meanPerStroke },
-        { value: m.perCharUnits },
-        { value: m.perCharSteps },
-        { value: m.perCharPresses },
-        { value: m.sameFinger },
-        { value: (m.sameFinger / Math.max(1, m.strokes)) * 100 },
-        { value: adjacentMean },
-        { value: ratio ?? 0 },
-      ],
-    };
+    const values = compareMetricValues(r.metrics);
+    const cells = values.map((value, column) => compareCell(
+      value,
+      baselineValues ? baselineValues[column] : null,
+      COMPARE_FORMATS[column],
+    ));
+    return { result: r, cells };
   });
 
   const rows = sortMatrixRows(compareRows, compareSort)
-    .map(({ result: r, ratio, cells }) => {
-      const m = r.metrics;
-      return `<tr${m.totalUnits === best ? ' class="best"' : ''}>
-        <td><span class="swatch" style="background:${SERIES(r.slot)}"></span>${escapeText(r.layout.name)}</td>
-        <td class="num">${cells[0].value}</td>
-        <td class="num">${cells[1].value.toFixed(0)}</td>
-        <td class="num">${cells[2].value.toFixed(2)}</td>
-        <td class="num">${cells[3].value.toFixed(3)}</td>
-        <td class="num">${cells[4].value.toFixed(3)}</td>
-        <td class="num">${cells[5].value.toFixed(3)}</td>
-        <td class="num">${cells[6].value.toFixed(3)}</td>
-        <td class="num">${cells[7].value}</td>
-        <td class="num">${cells[8].value.toFixed(1)}%</td>
-        <td class="num">${cells[9].value.toFixed(3)}</td>
-        <td class="num">${ratio === null ? '—' : `${ratio.toFixed(1)}%`}</td>
-      </tr>`;
-    })
+    .map(({ result: r, cells }) => `<tr${r.metrics.totalUnits === best ? ' class="best"' : ''}>
+      <td><span class="swatch" style="background:${SERIES(r.slot)}"></span>${escapeText(r.layout.name)}</td>
+      ${cells.map((cell) => `<td class="num">${cell.display}</td>`).join('')}
+    </tr>`)
     .join('');
 
   el.compare.innerHTML = `
     <thead><tr>
-      <th>配列</th>${COMPARE_HEADERS.map((label, column) => compareHeader(label, column)).join('')}
+      <th>配列</th>${COMPARE_HEADERS.map((label, column) => compareHeader(label, column, baseline !== undefined)).join('')}
     </tr></thead><tbody>${rows}</tbody>`;
 }
-
-const COMPARE_HEADERS = [
-  'ステップ',
-  '距離 [u]',
-  '距離 [m]',
-  '1打鍵 [u]',
-  '1文字 [u]',
-  'アクション/文字',
-  '押下/文字',
-  '同指連続',
-  '同指連続率',
-  '隣接指超過 [u]',
-  '総距離比 [%]',
-];
 
 function syncCompareBaselineOptions(results: Result[]) {
   const current = el.compareBaseline.value;
@@ -813,12 +836,13 @@ function syncCompareBaselineOptions(results: Result[]) {
   el.compareBaseline.value = results.some((r) => r.layout.id === current) ? current : '';
 }
 
-function compareHeader(label: string, column: number): string {
+function compareHeader(label: string, column: number, relative: boolean): string {
   const active = compareSort?.column === column ? compareSort.direction : undefined;
   const marker = active === 'asc' ? ' ↑' : active === 'desc' ? ' ↓' : '';
   const ariaSort = active === 'asc' ? 'ascending' : active === 'desc' ? 'descending' : 'none';
+  const shownLabel = relative ? `${label.replace(/\s*\[[^\]]+\]$/, '')} [%]` : label;
   return `<th><span class="table-sort" data-compare-sort="${column}" role="button" tabindex="0"
-    aria-label="${escapeAttr(`${label}で配列を並べ替え`)}" aria-sort="${ariaSort}">${escapeText(label)}${marker}</span></th>`;
+    aria-label="${escapeAttr(`${shownLabel}で配列を並べ替え`)}" aria-sort="${ariaSort}">${escapeText(shownLabel)}${marker}</span></th>`;
 }
 
 function comboSummary(metrics: Metrics): string {
