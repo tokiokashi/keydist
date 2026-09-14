@@ -134,12 +134,19 @@
               <option value="">比較なし</option>
             </select>
           </label>
+          <label class="ctl">
+            <span>棒グラフの項目</span>
+            <select id="compare-chart-metric">
+              <option value="1">距離 [u]</option>
+            </select>
+          </label>
           <div id="compare-chart"></div>
           <div class="scroll-x"><table id="compare"></table></div>
           <p class="note">
             窓の内側では残る／戻るの小さい方を採るため、この値は<strong>下界</strong>。実際の運指はこれ以上になる。
             コンボ命中は「一度でも当たった定義数 / 定義数（延べ命中回数）」で、配列ごとの発火状況を示す。数値列の見出しをクリックすると、
             指のマトリクスと同じく昇順・降順・選択順の順に並び替わる。比較元を選ぶと、表の数値列は各項目について比較元=100%とした比率に置き換わる（比較元の値が0で比較できない項目は「—」）。
+            棒グラフの項目はドロップダウンで選べ、表の列を並び替えるとその列へ追従する。追従後もドロップダウンから別の項目へ切り替えられる。
           </p>
         </section>
 

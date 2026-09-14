@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { columnChart, lineChart, matrixChart } from '../src/chart.ts';
+import { barChart, columnChart, lineChart, matrixChart } from '../src/chart.ts';
 
 const SERIES = [
   { name: 'A', color: '#f00', points: [{ x: 0, y: 100 }, { x: 1, y: 96 }, { x: 2, y: 91.4 }] },
@@ -42,6 +42,11 @@ test('縦棒は負の値を 0 基準の下向きに描く', () => {
 
   const zero = columnChart([{ label: 'ゼロ', value: 0 }]);
   assert.match(zero, /<line x1="0" y1="170" x2="420" y2="170"/);
+});
+
+test('横棒はデータ個別の表示値を使える', () => {
+  const svg = barChart([{ label: '配列A', value: 1, valueLabel: '100.0%' }]);
+  assert.match(svg, />100\.0%<\/text>/);
 });
 
 /** セルの塗り強度（heat-1 の混合率）を読み取る */
