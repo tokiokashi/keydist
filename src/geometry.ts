@@ -24,7 +24,7 @@ export interface Point {
 }
 
 export interface Key extends Point {
-  /** 物理キーの識別子。row と col から `r{row}c{col}` で生成する */
+  /** 物理キーの識別子。QWERTY 刻印の範囲内なら刻印文字、それ以外は `r{row}c{col}` */
   id: string;
   row: number;
   col: number;
@@ -37,9 +37,9 @@ export interface Geometry {
   pitchMm: number;
   /** id → Key */
   keys: Map<string, Key>;
-  /** row/col → Key */
+  /** row/col → Key（親指キーは含まない） */
   grid: Key[][];
-  /** 親指キー */
+  /** 各手のホームとなる親指キー（仕様 §3.1） */
   thumbs: Record<'LT' | 'RT', Key>;
   homes: Record<Finger, Point>;
   /** この形状の構築に使った指割り当て（仕様 §4.2 準拠。出力に併記するため保持する） */
@@ -57,23 +57,24 @@ export const QWERTY_LEGEND = [
   'zxcvbnm,./',
 ] as const;
 
-export const keyId = (row: number, col: number) => QWERTY_LEGEND[row][col];
+/**
+ * 物理キーの id。QWERTY 刻印の範囲内（既定形状の行・列数以内）ならその文字を使い、
+ * 範囲外（形状定義でキー数を増やした場合）は `r{row}c{col}` で生成する。
+ */
+export const keyId = (row: number, col: number): string => {
+  const legend: string | undefined = QWERTY_LEGEND[row];
+  if (legend && col < legend.length) return legend[col];
+  return `r${row}c${col}`;
+};
 
-/** 親指キーの id */
+/** 親指キーの id（既定形状のもの） */
 export const THUMB_KEY = { LT: 'thumb-l', RT: 'space' } as const;
 
-/** 各行の列数は刻印の長さで決まる（12 / 12 / 11 / 10） */
+/** 各行の列数は刻印の長さで決まる（12 / 12 / 11 / 10）。既定形状の rowWidths に使う */
 const ROW_WIDTH = QWERTY_LEGEND.map((row) => row.length);
 
 /** 親指キーの行 */
 export const THUMB_ROW = 4;
-
-/**
- * 親指キーの中心列。
- * ANSI のスペースバーは 6.25u 幅で左端が 3.75u（Ctrl+Win+Alt = 1.25u × 3）に来るが、
- * 親指が実際に叩くのはホームポジション直下なので、そこを押下点として置く。
- */
-const THUMB_COLUMN: Record<'LT' | 'RT', number> = { LT: 3.5, RT: 5.5 };
 
 /** ホーム段の行インデックス。0=数字段 1=上段 2=ホーム段 3=下段 */
 export const HOME_ROW = 2;
@@ -96,15 +97,17 @@ export interface FingerAssignment {
 
 /**
  * 列を単位に指を割り当てる（既定の割り当てが取る形）。同じ列は全行で同じ指になる。
+ * `rowWidths` を渡すと既定（ANSI 12/12/11/10）以外の形状にも割り当てを作れる。
  */
 export function columnFingerAssignment(
   id: string,
   name: string,
   columnFinger: Finger[],
   homeColumn: Record<NonThumb, number>,
+  rowWidths: number[] = ROW_WIDTH,
 ): FingerAssignment {
   const keyFinger: Record<string, Finger> = {};
-  ROW_WIDTH.forEach((width, row) => {
+  rowWidths.forEach((width, row) => {
     for (let col = 0; col < width; col++) {
       keyFinger[keyId(row, col)] = columnFinger[col];
     }
@@ -129,6 +132,49 @@ export const DEFAULT_FINGER_ASSIGNMENT: FingerAssignment = columnFingerAssignmen
 
 export type GeometryKind = 'row-staggered' | 'ortholinear' | 'column-staggered';
 
+/** 親指キー 1 個の定義。物理形状（`PhysicalShape`）が個数・位置を持つ（仕様 §3.1） */
+export interface ThumbKeySpec {
+  /** 物理キー id */
+  id: string;
+  finger: 'LT' | 'RT';
+  /** ホーム段 (row = HOME_ROW) を基準にした列位置。x 座標はここから形状の xOf で求める */
+  col: number;
+  /** y 座標 [u] */
+  y: number;
+}
+
+/**
+ * 物理形状の定義（仕様 §3）。ピッチ・各段のキー数・段ずれ量・列オフセット・
+ * 親指キーの数と位置をまとめて持つ。既定の3形状（`PHYSICAL_SHAPES`）を変えると
+ * 既存の測定値が動くため変更しない。
+ */
+export interface PhysicalShape {
+  id: string;
+  name: string;
+  /** 1u あたりの実距離 [mm] */
+  pitchMm: number;
+  /** 各段のキー数。段の数はこの配列の長さで決まる */
+  rowWidths: number[];
+  /** 段ごとの x オフセット [u]（row-staggered の段ずれ量）。省略時は全段 0 */
+  rowStagger?: number[];
+  /**
+   * 列ごとの y オフセット [u]（column-staggered 用）。省略時は全列 0（段番号がそのまま y）。
+   * col がこの配列の長さを超える場合は最後の値を使う
+   */
+  columnStagger?: number[];
+  /** この列（col）以降に `splitGap` を x に加える（分割キーボード用）。省略時は分割なし */
+  splitAt?: number;
+  /** 左右の手の間に空ける量 [u]（`splitAt` とセットで使う） */
+  splitGap?: number;
+  /** 親指キーの定義。各手に 1 個以上必要 */
+  thumbs: ThumbKeySpec[];
+  /**
+   * 親指キーが手ごとに複数ある場合、ホームとなるキー id を明示する（仕様 §3.1）。
+   * 1 個しかない手は省略してよい（その 1 個が自動でホームになる）
+   */
+  thumbHome?: Partial<Record<'LT' | 'RT', string>>;
+}
+
 /**
  * 段ずれ量 [数字段, 上段, ホーム段, 下段]。
  * ANSI/JIS の修飾キー幅から一意に決まる:
@@ -142,27 +188,69 @@ const COLUMN_STAGGER = [0.34, 0.12, 0, 0.1, 0.3, 0.3, 0.1, 0, 0.12, 0.34];
 /** column-staggered で左右の手の間に空ける量 */
 const SPLIT_GAP = 2;
 
+/** column-staggered が分割を始める列 */
+const SPLIT_AT = 5;
+
+const DEFAULT_THUMBS: ThumbKeySpec[] = [
+  { id: THUMB_KEY.LT, finger: 'LT', col: 3.5, y: THUMB_ROW },
+  { id: THUMB_KEY.RT, finger: 'RT', col: 5.5, y: THUMB_ROW },
+];
+
+/**
+ * 既定の3形状。数値（ピッチ・段ずれ・列オフセット）はこれまでの固定実装と同じにしてあり、
+ * ここを変えると既存の測定値が動くため変更しない。
+ */
+export const PHYSICAL_SHAPES: Record<GeometryKind, PhysicalShape> = {
+  'row-staggered': {
+    id: 'row-staggered',
+    name: '段ずれ（ANSI/JIS 準拠）',
+    pitchMm: 19.05,
+    rowWidths: ROW_WIDTH,
+    rowStagger: ROW_STAGGER,
+    thumbs: DEFAULT_THUMBS,
+  },
+  ortholinear: {
+    id: 'ortholinear',
+    name: '格子',
+    pitchMm: 19.05,
+    rowWidths: ROW_WIDTH,
+    thumbs: DEFAULT_THUMBS,
+  },
+  'column-staggered': {
+    id: 'column-staggered',
+    name: '列ずれ（分割想定）',
+    pitchMm: 18,
+    rowWidths: ROW_WIDTH,
+    columnStagger: COLUMN_STAGGER,
+    splitAt: SPLIT_AT,
+    splitGap: SPLIT_GAP,
+    thumbs: [
+      { id: THUMB_KEY.LT, finger: 'LT', col: 3.5, y: THUMB_ROW + 0.35 },
+      { id: THUMB_KEY.RT, finger: 'RT', col: 5.5, y: THUMB_ROW + 0.35 },
+    ],
+  },
+};
+
 export function buildGeometry(
-  kind: GeometryKind,
+  shape: PhysicalShape | GeometryKind,
   assignment: FingerAssignment = DEFAULT_FINGER_ASSIGNMENT,
 ): Geometry {
-  const pitchMm = kind === 'column-staggered' ? 18 : 19.05;
+  const s = typeof shape === 'string' ? PHYSICAL_SHAPES[shape] : shape;
+  const rowStagger = s.rowStagger ?? [];
+  const columnStagger = s.columnStagger;
+  const splitAt = s.splitAt ?? Infinity;
+  const splitGap = s.splitGap ?? 0;
 
-  const xOf = (row: number, col: number) => {
-    if (kind === 'row-staggered') return col + ROW_STAGGER[row];
-    if (kind === 'column-staggered') return col + (col >= 5 ? SPLIT_GAP : 0);
-    return col;
-  };
+  const xOf = (row: number, col: number) =>
+    col + (rowStagger[row] ?? 0) + (col >= splitAt ? splitGap : 0);
   const yOf = (row: number, col: number) =>
-    kind === 'column-staggered'
-      ? row + COLUMN_STAGGER[Math.min(col, COLUMN_STAGGER.length - 1)]
-      : row;
+    row + (columnStagger ? columnStagger[Math.min(col, columnStagger.length - 1)] : 0);
 
   const grid: Key[][] = [];
   const keys = new Map<string, Key>();
-  for (let row = 0; row < 4; row++) {
+  s.rowWidths.forEach((width, row) => {
     const line: Key[] = [];
-    for (let col = 0; col < ROW_WIDTH[row]; col++) {
+    for (let col = 0; col < width; col++) {
       const id = keyId(row, col);
       const finger = assignment.keyFinger[id];
       if (!finger) throw new Error(`指割り当て「${assignment.id}」にキー ${id} が無い`);
@@ -171,23 +259,40 @@ export function buildGeometry(
       keys.set(key.id, key);
     }
     grid.push(line);
+  });
+
+  // 親指キー。1 個しか無い手はホーム＝そのキー自身になるため移動距離は常に 0（仕様 §3.1）。
+  // 複数ある手は他の指と同じホーム復帰規則（§7〜§9）に従う
+  const thumbsByFinger: Record<'LT' | 'RT', Key[]> = { LT: [], RT: [] };
+  for (const spec of s.thumbs) {
+    const key: Key = {
+      id: spec.id,
+      row: THUMB_ROW,
+      col: spec.col,
+      x: xOf(HOME_ROW, spec.col),
+      y: spec.y,
+      finger: spec.finger,
+    };
+    keys.set(key.id, key);
+    thumbsByFinger[spec.finger].push(key);
   }
 
-  // 親指キー。ホームがキー自身の上にあるため移動距離は常に 0 になり、
-  // 打鍵数だけが g のカウントに入る（仕様 §3.1。指割り当てでは変わらない）。
   const thumbs = {} as Record<'LT' | 'RT', Key>;
   for (const finger of ['LT', 'RT'] as const) {
-    const col = THUMB_COLUMN[finger];
-    const key: Key = {
-      id: THUMB_KEY[finger],
-      row: THUMB_ROW,
-      col,
-      x: xOf(HOME_ROW, col),
-      y: kind === 'column-staggered' ? THUMB_ROW + 0.35 : THUMB_ROW,
-      finger,
-    };
-    thumbs[finger] = key;
-    keys.set(key.id, key);
+    const candidates = thumbsByFinger[finger];
+    if (candidates.length === 0) {
+      throw new Error(`形状「${s.id}」に ${finger} の親指キーが無い`);
+    }
+    const homeId = s.thumbHome?.[finger];
+    const home = homeId
+      ? candidates.find((k) => k.id === homeId)
+      : candidates.length === 1
+        ? candidates[0]
+        : undefined;
+    if (!home) {
+      throw new Error(`形状「${s.id}」の ${finger} は親指キーが複数あるため thumbHome で明示する`);
+    }
+    thumbs[finger] = home;
   }
 
   // ホーム位置は指割り当てが指すキーの実座標から引く（仕様 §3。形状ごとに解決される）
@@ -203,13 +308,7 @@ export function buildGeometry(
   homes.LT = { x: thumbs.LT.x, y: thumbs.LT.y };
   homes.RT = { x: thumbs.RT.x, y: thumbs.RT.y };
 
-  return { id: kind, name: GEOMETRY_NAMES[kind], pitchMm, keys, grid, thumbs, homes, assignment };
+  return { id: s.id, name: s.name, pitchMm: s.pitchMm, keys, grid, thumbs, homes, assignment };
 }
-
-const GEOMETRY_NAMES: Record<GeometryKind, string> = {
-  'row-staggered': '段ずれ（ANSI/JIS 準拠）',
-  ortholinear: '格子',
-  'column-staggered': '列ずれ（分割想定）',
-};
 
 export const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
