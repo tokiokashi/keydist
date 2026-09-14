@@ -4,7 +4,7 @@ import { NAGINATA_V18 } from './naginata.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
 import { fromKana, fromRows, withCombos, withRomaji, type Layout } from './types.ts';
 
-export type { Layout, Sequence, Step } from './types.ts';
+export type { ComboCondition, ComboDefinition, Layout, Sequence, Step } from './types.ts';
 export { fromRows, fromKana, withRomaji, withCombos } from './types.ts';
 
 const ROMAJI = kunrei();

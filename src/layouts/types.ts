@@ -6,6 +6,19 @@ export type Step = string[];
 /** 1 文字を打つための打鍵ステップ列。順次打鍵はステップを並べる */
 export type Sequence = Step[];
 
+/** コンボを発火できる入力の条件。条件を省略したコンボは常に最長一致する。 */
+export interface ComboCondition {
+  /** 拗音のローマ字塊の内部だけで発火する */
+  youonOnly?: boolean;
+}
+
+/** コンボの出力、入力キー、発火条件。 */
+export type ComboDefinition = [
+  output: string,
+  inputs: string[],
+  condition?: ComboCondition,
+];
+
 export interface Layout {
   id: string;
   name: string;
@@ -23,6 +36,11 @@ export interface Layout {
    * かな配列は持たない。同じかなテキストを両者に食わせて比較できる。
    */
   romajiTable?: Map<string, string>;
+  /**
+   * map のうちコンボとして追加した見出しと、その発火条件。ローマ字化で
+   * 失われるかなの境界を使った命中判定と、コンボの命中件数の集計に使う。
+   */
+  comboConditions?: ReadonlyMap<string, ComboCondition>;
 }
 
 const maxKeyLength = (keys: Iterable<string>) => Math.max(1, ...[...keys].map((k) => k.length));
@@ -88,13 +106,22 @@ export function withCombos(
   id: string,
   name: string,
   layout: Layout,
-  combos: [output: string, inputs: string[]][],
+  combos: ComboDefinition[],
 ): Layout {
   const map = new Map(layout.map);
-  for (const [output, inputs] of combos) {
+  const comboConditions = new Map(layout.comboConditions);
+  for (const [output, inputs, condition] of combos) {
     const keys = inputs.map((ch) => layout.map.get(ch)?.[0]?.[0]);
     if (keys.some((k) => k === undefined)) continue;
     map.set(output, [keys as string[]]);
+    comboConditions.set(output, condition ?? {});
   }
-  return { ...layout, id, name, map, maxCharLength: maxKeyLength(map.keys()) };
+  return {
+    ...layout,
+    id,
+    name,
+    map,
+    maxCharLength: maxKeyLength(map.keys()),
+    comboConditions,
+  };
 }

@@ -10,7 +10,7 @@ export interface SensitivityPoint {
 }
 
 /**
- * 仕様 §11.8。N を振って総移動距離の変化を見る。
+ * 仕様 §11.9。N を振って総移動距離の変化を見る。
  * 傾きが小さい配列ほど、指を残したまま打てる配列。
  */
 export function nSensitivity(

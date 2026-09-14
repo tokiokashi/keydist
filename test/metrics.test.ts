@@ -115,6 +115,15 @@ test('コンボはアクション/文字を下げるが、押下/文字は下げ
   near(comboMetrics.perCharPresses, splitMetrics.perCharPresses, '押下/文字はコンボで変わらない');
 });
 
+test('コンボの定義数・命中定義数・延べ命中回数を分けて数える（#36）', () => {
+  const combo = LAYOUT_BY_ID.get('oonishi-custom-combo')!;
+  const trace = evaluate('やく やま にゅうりょく きゃ', combo, geometry, opts());
+  const m = computeMetrics(trace, geometry);
+
+  assert.deepEqual(trace.comboHits, ['aku', 'yuu', 'yoku', 'ya']);
+  assert.deepEqual(m.combos, { definitions: 73, matched: 4, hits: 4 });
+});
+
 test('指ごとの押下数はサンプル文の実測値と一致する', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   const qwerty = LAYOUTS_JA.find((l) => l.id === 'qwerty')!;
