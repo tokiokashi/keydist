@@ -1,4 +1,12 @@
-import { buildGeometry, ADJACENT_PAIRS, FINGERS, THUMB_ROW, type Finger, type GeometryKind } from './geometry.ts';
+import {
+  buildGeometry,
+  ADJACENT_PAIRS,
+  ALL_FINGERS,
+  FINGERS,
+  THUMB_ROW,
+  type Finger,
+  type GeometryKind,
+} from './geometry.ts';
 import { evaluate, type Options, type Trace } from './evaluate.ts';
 import { computeMetrics, type Metrics } from './metrics.ts';
 import { nSensitivity } from './sensitivity.ts';
@@ -376,10 +384,13 @@ function renderMatrices(results: Result[]) {
     },
   );
 
+  // 押下数は親指も含めた 10 本で出す。親指の移動距離は定義上 0 なので距離の面からは
+  // 省いてあるが、押下は現に起きている（薙刀式の右親指など）。距離の面だけを見て
+  // 「この指を使っていない」と読まれるのを防ぐため、ここは 0 の列も含めて全部並べる。
   const pressRows = results.map((r) => ({
     label: r.layout.name,
     color: SERIES(r.slot),
-    cells: FINGERS.map((f) => {
+    cells: ALL_FINGERS.map((f) => {
       const perChar = r.metrics.perFingerPresses[f] / Math.max(1, r.metrics.inputChars);
       return {
         value: perChar,
@@ -393,11 +404,11 @@ function renderMatrices(results: Result[]) {
 
   el.pressMatrix.innerHTML = matrixChart(
     pressRows,
-    FINGERS.map((f) => SHORT_FINGER[f]),
+    ALL_FINGERS.map((f) => SHORT_FINGER[f]),
     {
       format: (v) => v.toFixed(3),
       labelWidth: 190,
-      columnSplit: 4,
+      columnSplit: 5,
       columnGroupLabels: ['左手', '右手'],
     },
   );
