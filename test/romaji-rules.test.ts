@@ -69,10 +69,10 @@ test('AZIK を基底にしたルールでは促音自動生成を強制的に無
 
 test('既定の割り当ては既存の測定値を維持する', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
-  assert.equal([...text].length, 290);
+  assert.equal([...text].length, 1676);
   const expected: Record<string, number> = {
-    oonishi: 148.6340,
-    naginata: 173.4427,
+    oonishi: 1075.6320,
+    naginata: 1131.0836,
   };
   for (const [id, total] of Object.entries(expected)) {
     const layout = LAYOUTS_JA.find((candidate) => candidate.id === (id === 'naginata' ? 'naginata-v18' : id))!;

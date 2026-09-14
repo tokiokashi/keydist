@@ -5,7 +5,7 @@ import { evaluate, type Options } from '../src/evaluate.ts';
 import { computeMetrics, homeSpacing } from '../src/metrics.ts';
 import { LAYOUTS_JA, LAYOUT_BY_ID, type Layout } from '../src/layouts/index.ts';
 import { dist } from '../src/geometry.ts';
-import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
+import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '../src/sample-text-ja.ts';
 
 const geometry = buildGeometry('row-staggered');
 // LAYOUT_BY_ID の 'qwerty' はローマ字テーブル付きの JA 版で上書きされる。
@@ -25,6 +25,10 @@ test('入力文字数はローマ字展開前の文字数になる', () => {
   const t = evaluate('し', qwerty, geometry, opts());
   assert.equal(t.strokes.length, 2);
   assert.equal(t.inputChars, 1);
+});
+
+test('旧日本語サンプルは過去の測定用に290文字で残る', () => {
+  assert.equal(SAMPLE_TEXT_JA_LEGACY.replace(/\s+/g, '').length, 290);
 });
 
 test('スキップされた文字も入力文字数に数える', () => {
@@ -120,10 +124,10 @@ test('指ごとの押下数はサンプル文の実測値と一致する', () =>
   const oonishiMetrics = computeMetrics(evaluate(text, oonishi, geometry, opts()), geometry);
   const naginataMetrics = computeMetrics(evaluate(text, naginata, geometry, opts()), geometry);
 
-  assert.equal(text.length, 290);
-  assert.equal(qwertyMetrics.perFingerPresses.LP, 90);
-  assert.equal(oonishiMetrics.perFingerPresses.LR, 43);
-  assert.equal(naginataMetrics.perFingerPresses.RT, 63);
+  assert.equal(text.length, 1676);
+  assert.equal(qwertyMetrics.perFingerPresses.LP, 443);
+  assert.equal(oonishiMetrics.perFingerPresses.LR, 304);
+  assert.equal(naginataMetrics.perFingerPresses.RT, 590);
 });
 
 test('指ごとの押下数の合計は総押下数と一致する', () => {

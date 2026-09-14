@@ -12,7 +12,7 @@ import { computeMetrics, type Metrics } from './metrics.ts';
 import { nSensitivity } from './sensitivity.ts';
 import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from './layouts/index.ts';
 import { SAMPLE_TEXT } from './sample-text.ts';
-import { SAMPLE_TEXT_JA } from './sample-text-ja.ts';
+import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from './sample-text-ja.ts';
 import {
   bindTips,
   columnChart,
@@ -34,6 +34,7 @@ import {
   type UserLayout,
 } from './user-layouts.ts';
 import { QWERTY_LEGEND } from './geometry.ts';
+import { kanaToRomaji } from './romaji/kunrei.ts';
 import {
   allRomajiRules,
   defaultRomajiRuleId,
@@ -55,7 +56,9 @@ const el = {
   window: $<HTMLInputElement>('window'),
   windowOut: $<HTMLOutputElement>('window-out'),
   sfbHome: $<HTMLInputElement>('sfb-home'),
+  sample: $<HTMLSelectElement>('sample'),
   text: $<HTMLTextAreaElement>('text'),
+  textPanel: $<HTMLDetailsElement>('text-panel'),
   textMeta: $<HTMLParagraphElement>('text-meta'),
   errors: $<HTMLParagraphElement>('errors'),
   compareChart: $<HTMLDivElement>('compare-chart'),
@@ -85,6 +88,7 @@ const el = {
   romajiOverrides: $<HTMLTextAreaElement>('romaji-overrides'),
   romajiError: $<HTMLParagraphElement>('romaji-error'),
   romajiAssignments: $<HTMLDivElement>('romaji-assignments'),
+  romajiVariants: $<HTMLDivElement>('romaji-variants'),
   romajiNew: $<HTMLButtonElement>('romaji-new'),
 };
 
@@ -107,10 +111,23 @@ const SHORT_FINGER: Record<Finger, string> = {
 const PALETTE_SIZE = 8;
 const SERIES = (i: number) => `var(--series-${(i % PALETTE_SIZE) + 1})`;
 
-const SAMPLES = {
-  en: SAMPLE_TEXT.replace(/\s+/g, ' ').trim(),
-  ja: SAMPLE_TEXT_JA.replace(/\s+/g, ''),
-} as const;
+type ModeId = 'en' | 'ja';
+type SampleId = string;
+
+const SAMPLES: Record<ModeId, Record<SampleId, string>> = {
+  en: { default: SAMPLE_TEXT.replace(/\s+/g, ' ').trim() },
+  ja: {
+    modern: SAMPLE_TEXT_JA.replace(/\s+/g, ''),
+    legacy: SAMPLE_TEXT_JA_LEGACY.replace(/\s+/g, ''),
+  },
+};
+
+const SAMPLE_NAMES: Record<ModeId, Record<SampleId, string>> = {
+  en: { default: '英文（既定）' },
+  ja: { modern: '現代文（既定）', legacy: '旧文「吾輩は猫である」' },
+};
+
+const selectedSample: Record<ModeId, SampleId> = { en: 'default', ja: 'modern' };
 
 /** 既定で表示する配列 */
 const INITIAL = {
@@ -145,8 +162,8 @@ function layoutsOf(mode: ModeId): Layout[] {
 }
 
 const MODES = {
-  en: { get layouts() { return layoutsOf('en'); }, sample: SAMPLES.en, initial: INITIAL.en },
-  ja: { get layouts() { return layoutsOf('ja'); }, sample: SAMPLES.ja, initial: INITIAL.ja },
+  en: { get layouts() { return layoutsOf('en'); }, sample: SAMPLES.en.default, initial: INITIAL.en },
+  ja: { get layouts() { return layoutsOf('ja'); }, sample: SAMPLES.ja.modern, initial: INITIAL.ja },
 };
 
 /** 表示する配列の id。モードごとに覚える */
@@ -155,9 +172,9 @@ const selected: Record<ModeId, Set<string>> = {
   ja: new Set(),
 };
 
-type ModeId = 'en' | 'ja';
 const currentModeId = () => el.mode.value as ModeId;
 const currentMode = () => MODES[currentModeId()];
+const currentSample = () => SAMPLES[currentModeId()][selectedSample[currentModeId()]] ?? currentMode().sample;
 
 /** 選択されている配列。色のスロットは選択順ではなく一覧順に固定する */
 function activeLayouts(): Layout[] {
@@ -165,7 +182,17 @@ function activeLayouts(): Layout[] {
   return currentMode().layouts.filter((l) => set.has(l.id));
 }
 
-el.text.value = currentMode().sample;
+function fillSampleOptions() {
+  const mode = currentModeId();
+  el.sample.replaceChildren();
+  for (const [id, name] of Object.entries(SAMPLE_NAMES[mode])) {
+    el.sample.append(new Option(name, id));
+  }
+  el.sample.value = selectedSample[mode];
+}
+
+fillSampleOptions();
+el.text.value = currentSample();
 
 /** 配列を追加する欄。段ごとに 1 行、数字段は任意 */
 function setupAddForm() {
@@ -235,6 +262,7 @@ function loadRomajiEditor(id: string) {
     el.romajiSokuon.checked = true;
     el.romajiOverrides.value = '';
     el.romajiError.hidden = true;
+    fillRomajiVariants();
     return;
   }
   const custom = romajiEditorRule(id);
@@ -251,6 +279,7 @@ function loadRomajiEditor(id: string) {
     : custom?.generateSokuon ?? builtin?.generateSokuon ?? true;
   el.romajiOverrides.value = formatOverrides(custom?.overrides ?? builtin?.overrides ?? {});
   el.romajiError.hidden = true;
+  fillRomajiVariants();
 }
 
 function fillRomajiEditorRules(selectedId = el.romajiEdit.value || 'kunrei') {
@@ -265,29 +294,192 @@ function fillRomajiEditorRules(selectedId = el.romajiEdit.value || 'kunrei') {
   loadRomajiEditor(id);
 }
 
+interface RomajiVariant {
+  kana: string;
+  alternatives: string[];
+}
+
+/** タイピングアプリで設定されるかな。並びは標準的な設定画面に合わせ、順位は新サンプルで測る。 */
+const ROMAJI_VARIANTS: RomajiVariant[] = [
+  { kana: 'い', alternatives: ['i'] },
+  { kana: 'う', alternatives: ['u'] },
+  { kana: 'か', alternatives: ['ka'] },
+  { kana: 'く', alternatives: ['ku'] },
+  { kana: 'こ', alternatives: ['ko'] },
+  { kana: 'し', alternatives: ['si', 'shi'] },
+  { kana: 'せ', alternatives: ['se'] },
+  { kana: 'ち', alternatives: ['ti', 'chi'] },
+  { kana: 'つ', alternatives: ['tu', 'tsu'] },
+  { kana: 'ふ', alternatives: ['hu', 'fu'] },
+  { kana: 'ん', alternatives: ['n', 'nn'] },
+  { kana: 'じ', alternatives: ['zi', 'ji'] },
+  { kana: 'っ', alternatives: ['ltu', 'xtu'] },
+  { kana: 'あ', alternatives: ['a'] },
+  { kana: 'ぃ', alternatives: ['li', 'xi'] },
+  { kana: 'ぅ', alternatives: ['lu', 'xu'] },
+  { kana: 'ぇ', alternatives: ['le', 'xe'] },
+  { kana: 'ぉ', alternatives: ['lo', 'xo'] },
+  { kana: 'ゃ', alternatives: ['lya', 'xya'] },
+  { kana: 'ゅ', alternatives: ['lyu', 'xyu'] },
+  { kana: 'ょ', alternatives: ['lyo', 'xyo'] },
+  { kana: 'しゃ', alternatives: ['sha', 'sya'] },
+  { kana: 'しゅ', alternatives: ['shu', 'syu'] },
+  { kana: 'しぇ', alternatives: ['she', 'sye'] },
+  { kana: 'しょ', alternatives: ['sho', 'syo'] },
+  { kana: 'じゃ', alternatives: ['ja', 'zya'] },
+  { kana: 'じゅ', alternatives: ['ju', 'zyu'] },
+  { kana: 'じぇ', alternatives: ['je', 'zye'] },
+  { kana: 'じょ', alternatives: ['jo', 'zyo'] },
+  { kana: 'ちゃ', alternatives: ['tya', 'cha'] },
+  { kana: 'ちゅ', alternatives: ['tyu', 'chu'] },
+  { kana: 'ちょ', alternatives: ['tyo', 'cho'] },
+  { kana: 'ちぃ', alternatives: ['tyi'] },
+  { kana: 'うぃ', alternatives: ['wi'] },
+  { kana: 'うぇ', alternatives: ['we'] },
+];
+
+function editorBaseTable(): Map<string, string> {
+  const id = el.romajiEdit.value;
+  const custom = romajiEditorRule(id);
+  const builtin = !custom && id in ROMAJI_RULES
+    ? ROMAJI_RULES[id as BuiltinRomajiRuleId]
+    : undefined;
+  const base = custom?.base ?? builtin?.base ?? el.romajiBase.value as BuiltinRomajiRuleId;
+  return tableForRule(base, romajiSettings.rules);
+}
+
+function editorTable(): Map<string, string> {
+  const table = editorBaseTable();
+  const parsed = parseOverrides(el.romajiOverrides.value);
+  for (const [kana, roman] of Object.entries(parsed.overrides)) table.set(kana, roman);
+  return table;
+}
+
+function countOccurrences(text: string, needle: string): number {
+  let count = 0;
+  for (let at = text.indexOf(needle); at >= 0; at = text.indexOf(needle, at + needle.length)) count++;
+  return count;
+}
+
+function signed(value: number): string {
+  return value === 0 ? '±0' : value > 0 ? `+${value}` : String(value);
+}
+
+function fillRomajiVariants() {
+  const table = editorTable();
+  const text = SAMPLES.ja.modern;
+  const rows = ROMAJI_VARIANTS.map((variant, index) => {
+    const current = table.get(variant.kana) ?? kanaToRomaji(variant.kana, table);
+    const count = countOccurrences(text, variant.kana);
+    const effect = (variant.alternatives[0].length - current.length) * count;
+    return { variant, current, count, effect, index };
+  }).sort((a, b) => Math.abs(b.effect) - Math.abs(a.effect) || a.index - b.index);
+
+  el.romajiVariants.replaceChildren();
+  const listId = 'romaji-variant-options';
+  const datalist = document.createElement('datalist');
+  datalist.id = listId;
+  for (const option of [...new Set(ROMAJI_VARIANTS.flatMap((variant) => variant.alternatives))]) {
+    datalist.append(new Option(option));
+  }
+  el.romajiVariants.append(datalist);
+
+  for (const { variant, current, count, effect } of rows) {
+    const row = document.createElement('div');
+    row.className = 'romaji-variant';
+    const label = document.createElement('span');
+    label.textContent = variant.kana;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = current;
+    input.spellcheck = false;
+    input.setAttribute('list', listId);
+    input.dataset.kana = variant.kana;
+    const meta = document.createElement('span');
+    meta.className = 'romaji-variant-meta';
+    meta.textContent = `候補 ${variant.alternatives.join(' / ')} / 出現 ${count} / 変更 ${signed(effect)} 打`;
+    row.append(label, input, meta);
+
+    if (variant.kana === 'ん') {
+      const note = document.createElement('span');
+      note.className = 'romaji-variant-note';
+      note.hidden = input.value !== 'n';
+      note.textContent = 'ん = n は、次が母音・な行・や行の時や語末では実際には nn が必要です。この設定では区別できません。';
+      row.append(note);
+      input.addEventListener('input', () => { note.hidden = input.value.trim().toLowerCase() !== 'n'; });
+    }
+
+    input.addEventListener('input', () => {
+      setVariantOverride(variant.kana, input.value);
+    });
+    el.romajiVariants.append(row);
+  }
+}
+
+function setVariantOverride(kana: string, value: string) {
+  const roman = value.trim().toLowerCase();
+  const lines = el.romajiOverrides.value.split(/\r?\n/);
+  const index = lines.findIndex((line) => {
+    const equal = line.indexOf('=');
+    return equal > 0 && line.slice(0, equal).trim() === kana;
+  });
+  if (!roman) {
+    if (index >= 0) lines.splice(index, 1);
+  } else if (index >= 0) {
+    lines[index] = `${kana} = ${roman}`;
+  } else {
+    if (lines.length === 1 && lines[0].trim() === '') lines[0] = `${kana} = ${roman}`;
+    else lines.push(`${kana} = ${roman}`);
+  }
+  el.romajiOverrides.value = lines.join('\n');
+}
+
 function fillRomajiAssignments() {
   el.romajiAssignments.replaceChildren();
   const rules = allRomajiRules(romajiSettings.rules);
-  for (const layout of LAYOUTS_JA.filter((l) => l.romajiTable)) {
+  const builtinLayouts = LAYOUTS_JA.filter((l) => l.romajiTable);
+  const addHeader = (text: string) => {
+    const heading = document.createElement('h4');
+    heading.textContent = text;
+    el.romajiAssignments.append(heading);
+  };
+  const addAssignment = (nameText: string, layoutId: string, assigned: RomajiRuleId, save: (id: RomajiRuleId) => void) => {
     const label = document.createElement('label');
     label.className = 'romaji-assignment';
     const name = document.createElement('span');
-    name.textContent = layout.name;
+    name.textContent = nameText;
     const select = document.createElement('select');
     for (const rule of rules) select.append(new Option(rule.name, rule.id));
-    const assigned = romajiSettings.assignments[layout.id];
     select.value = rules.some((rule) => rule.id === assigned)
       ? assigned
-      : defaultRomajiRuleId(layout.id);
+      : defaultRomajiRuleId(layoutId);
     select.addEventListener('change', () => {
-      romajiSettings.assignments[layout.id] = select.value;
-      saveRomajiSettings(romajiSettings);
+      save(select.value);
       fillPicker();
       fillDetailOptions();
       render();
     });
     label.append(name, select);
     el.romajiAssignments.append(label);
+  };
+
+  addHeader('組み込み配列');
+  for (const layout of builtinLayouts) {
+    const assigned = romajiSettings.assignments[layout.id] ?? defaultRomajiRuleId(layout.id);
+    addAssignment(layout.name, layout.id, assigned, (id) => {
+      romajiSettings.assignments[layout.id] = id;
+      saveRomajiSettings(romajiSettings);
+    });
+  }
+  if (userLayouts.length > 0) addHeader('自作配列');
+  for (const definition of userLayouts) {
+    addAssignment(definition.name, definition.id, definition.romaji, (id) => {
+      userLayouts = userLayouts.map((current) => current.id === definition.id
+        ? { ...current, romaji: id }
+        : current);
+      saveUserLayouts(userLayouts);
+      ROMAJI_TABLE_CACHE.clear();
+    });
   }
 }
 
@@ -414,8 +606,28 @@ function fillDetailOptions() {
 }
 
 function syncSampleText() {
-  const untouched = Object.values(MODES).some((m) => m.sample === el.text.value);
-  if (untouched) el.text.value = currentMode().sample;
+  const untouched = Object.values(SAMPLES).some((samples) => Object.values(samples).includes(el.text.value));
+  if (untouched) el.text.value = currentSample();
+}
+
+const TEXT_COLLAPSED_KEY = 'keydist:text-collapsed';
+
+function setupTextPanel() {
+  try {
+    const saved = localStorage.getItem(TEXT_COLLAPSED_KEY);
+    el.textPanel.open = saved === null
+      ? !window.matchMedia('(max-width: 900px)').matches
+      : saved !== 'true';
+  } catch {
+    el.textPanel.open = true;
+  }
+  el.textPanel.addEventListener('toggle', () => {
+    try {
+      localStorage.setItem(TEXT_COLLAPSED_KEY, String(!el.textPanel.open));
+    } catch {
+      // 保存できなくても、折りたたみ操作そのものは成立する
+    }
+  });
 }
 
 interface Result {
@@ -802,13 +1014,19 @@ el.sensitivityScale.addEventListener('click', (e) => {
 });
 
 function onModeChange() {
+  fillSampleOptions();
   syncSampleText();
   fillPicker();
   fillDetailOptions();
 }
 el.mode.addEventListener('input', onModeChange);
 el.mode.addEventListener('change', onModeChange);
-for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.text, el.detailLayout]) {
+el.sample.addEventListener('change', () => {
+  selectedSample[currentModeId()] = el.sample.value;
+  el.text.value = currentSample();
+  render();
+});
+for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.sample, el.text, el.detailLayout]) {
   node.addEventListener('input', render);
   node.addEventListener('change', render);
 }
@@ -819,6 +1037,7 @@ for (const id of ['en', 'ja'] as ModeId[]) {
 }
 setupAddForm();
 setupRomajiEditor();
+setupTextPanel();
 fillPicker();
 fillDetailOptions();
 bindMatrixSort(el.pressMatrix, 'press');

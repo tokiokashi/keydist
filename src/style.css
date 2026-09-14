@@ -148,10 +148,33 @@ a { color: var(--accent); }
 }
 .sidebar { position: sticky; top: 68px; }
 .stack { display: flex; flex-direction: column; gap: 20px; }
+.text-panel > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  list-style: none;
+  cursor: pointer;
+}
+.text-panel > summary::-webkit-details-marker { display: none; }
+.text-panel > summary::before { content: '− '; color: var(--muted); }
+.text-panel:not([open]) > summary::before { content: '＋ '; }
+.text-panel > summary::after { content: '折りたたむ'; margin-left: auto; color: var(--muted); font-size: 0.76rem; }
+.text-panel:not([open]) > summary::after { content: '展開する'; }
+.text-panel .text-title { font-size: 0.82rem; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.text-status { display: flex; flex-wrap: wrap; gap: 4px 12px; min-width: 0; }
+.text-status .meta, .text-status .error { margin: 0; }
+.stack > .text-panel > summary {
+  position: sticky;
+  top: 68px;
+  z-index: 4;
+  padding: 2px 0 10px;
+  background: var(--panel);
+}
 
 @media (max-width: 900px) {
   .app { grid-template-columns: minmax(0, 1fr); }
   .sidebar { position: static; }
+  .stack > .text-panel > summary { position: static; }
 }
 
 .panel {
@@ -366,4 +389,36 @@ button.secondary {
 }
 .romaji-assignment span { min-width: 0; }
 .romaji-assignment select { width: min(270px, 48%); }
+#romaji-assignments h4 { margin: 14px 0 4px; color: var(--muted); font-size: 0.76rem; }
+.romaji-variants {
+  margin: 20px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.romaji-variants::before {
+  content: 'よくある揺れ';
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.romaji-variant {
+  display: grid;
+  grid-template-columns: minmax(5em, 0.6fr) minmax(9em, 1.2fr) minmax(11em, 1.4fr);
+  align-items: center;
+  gap: 8px 12px;
+  padding: 5px 0;
+  font-size: 0.8rem;
+}
+.romaji-variant + .romaji-variant { border-top: 1px solid var(--line); }
+.romaji-variant input { min-width: 0; }
+.romaji-variant-meta { color: var(--muted); font-size: 0.72rem; }
+.romaji-variant-note {
+  grid-column: 1 / -1;
+  margin: -2px 0 3px;
+  color: var(--series-2);
+  font-size: 0.72rem;
+}
 dialog hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0 14px; }
