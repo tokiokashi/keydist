@@ -25,7 +25,7 @@ UI・配列定義の追加など、モデルに触らない変更は仕様の更
 | `src/metrics.ts` | 出力指標（仕様 §11） |
 | `src/geometry.ts` | 座標系・キー位置・指の割り当て（仕様 §3） |
 | `src/sensitivity.ts` | N 感度曲線 |
-| `src/layouts/` | 配列定義。`types.ts` が記法の型 |
+| `src/layouts/` | 配列定義。`types.ts` が記法の型。かな配列は `fromFaces` で面（trigger + mode）から書く |
 | `src/romaji/` | かな → ローマ字テーブル |
 | `src/user-layouts.ts` | 自作配列の localStorage 永続化 |
 | `src/main.ts` `src/chart.ts` `src/theme.ts` | 画面 |
@@ -46,8 +46,10 @@ npm run build      # 型検査 + ビルド
 
 ## 実装の方針
 
-- **依存を増やさない。** 現在の devDependencies は vite / typescript / @types/node の3つだけ。
-  ランタイム依存はゼロ。追加する時は理由を PR に書く
+- **依存はむやみに増やさない。** 現在の devDependencies は vite / typescript / @types/node の3つだけで、
+  ランタイム依存も無い。追加する時は理由を PR に書く。
+  ただし**ランタイム依存ゼロ自体は目的ではない**。GitHub Pages で動く限り、
+  必要なら足してよい（2026-09-14 の判断）。漢字の読み解決（#5 層3）で辞書を積むのが想定される例
 - テストランナーは Node 組み込みの `node --test`。別のフレームワークを入れない
 - `tsconfig.json` は `strict` + `noUnusedLocals` + `noUnusedParameters`。緩めない
 - 計算部（`evaluate` / `metrics` / `geometry` / `sensitivity`）は DOM に依存させない。
