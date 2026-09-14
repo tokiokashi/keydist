@@ -216,7 +216,7 @@ a { color: var(--accent); }
   font-weight: 600;
 }
 
-select, textarea, input[type='range'] {
+select, textarea, input[type='range'], input[type='file'] {
   font: inherit;
   width: 100%;
   background: var(--panel-2);
@@ -226,6 +226,7 @@ select, textarea, input[type='range'] {
   padding: 6px 8px;
 }
 input[type='range'] { padding: 0; accent-color: var(--accent); }
+.import-file { margin-top: 14px; }
 textarea {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.78rem;

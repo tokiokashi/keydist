@@ -48,6 +48,13 @@ import {
   type BuiltinRomajiRuleId,
   type UserRomajiRule,
 } from './romaji/rules.ts';
+import {
+  decodeLayoutFile,
+  formatForFileName,
+  importBenizara,
+  importDvorakJ,
+  importVial,
+} from './layout-import.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -75,6 +82,8 @@ const el = {
   newRomaji: $<HTMLSelectElement>('new-romaji'),
   newError: $<HTMLParagraphElement>('new-error'),
   addLayout: $<HTMLButtonElement>('add-layout'),
+  importLayout: $<HTMLInputElement>('import-layout'),
+  importError: $<HTMLParagraphElement>('import-error'),
   detailLayout: $<HTMLSelectElement>('detail-layout'),
   heatmap: $<HTMLDivElement>('heatmap'),
   fingerChart: $<HTMLDivElement>('finger-chart'),
@@ -160,7 +169,9 @@ function layoutsOf(mode: ModeId): Layout[] {
     const ruleId = romajiSettings.assignments[layout.id] ?? defaultRomajiRuleId(layout.id);
     return { ...layout, romajiTable: cachedRomajiTable(ruleId) };
   });
-  const mine = userLayouts.map((d) => withRomaji(toLayout(d), cachedRomajiTable(d.romaji)));
+  const mine = userLayouts.map((d) => d.direct
+    ? toLayout(d)
+    : withRomaji(toLayout(d), cachedRomajiTable(d.romaji)));
   return [...assigned, ...mine];
 }
 
@@ -240,6 +251,45 @@ function setupAddForm() {
     fillPicker();
     fillDetailOptions();
     render();
+  });
+
+  el.importLayout.addEventListener('change', async () => {
+    const file = el.importLayout.files?.[0];
+    if (!file) return;
+    try {
+      const format = formatForFileName(file.name);
+      if (!format) throw new Error('DvorakJ の .txt、Vial の .vil、紅皿の .bnz / .ini を選ぶ');
+      const bytes = await file.arrayBuffer();
+      const source = decodeLayoutFile(bytes, format);
+      const name = file.name.replace(/\.[^.]+$/, '');
+      const imported = format === 'vial'
+        ? importVial(source, name)
+        : format === 'benizara'
+          ? importBenizara(source, name)
+          : importDvorakJ(source, name);
+      const def: UserLayout = {
+        id: newId(),
+        name: imported.name,
+        rows: imported.rows,
+        romaji: 'kunrei',
+        legends: imported.legends,
+        sequences: imported.sequences,
+        direct: imported.direct,
+      };
+      userLayouts = [...userLayouts, def];
+      saveUserLayouts(userLayouts);
+      selected.en.add(def.id);
+      selected.ja.add(def.id);
+      el.importError.hidden = true;
+      fillPicker();
+      fillDetailOptions();
+      render();
+    } catch (error) {
+      el.importError.textContent = error instanceof Error ? error.message : '定義ファイルを取り込めない';
+      el.importError.hidden = false;
+    } finally {
+      el.importLayout.value = '';
+    }
   });
 }
 

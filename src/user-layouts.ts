@@ -1,6 +1,7 @@
 import { QWERTY_LEGEND } from './geometry.ts';
 import { fromRows, withRomaji, type Layout } from './layouts/index.ts';
 import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from './romaji/rules.ts';
+import type { Sequence } from './layouts/types.ts';
 
 const STORAGE_KEY = 'keydist:layouts';
 
@@ -14,6 +15,12 @@ export interface UserLayout {
   /** 数字段・上段・ホーム段・下段。数字段は空文字でもよい */
   rows: [string, string, string, string];
   romaji: RomajiRuleId;
+  /** 取り込み形式が持つ、単打の段定義では表せないかな・コンボ */
+  sequences?: [string, Sequence][];
+  /** keyId → 取り込み元の表示ラベル */
+  legends?: [string, string][];
+  /** かなをローマ字へ変換せず、sequences を直接使う */
+  direct?: boolean;
 }
 
 /** 各段に置けるキーの数 */
@@ -39,12 +46,31 @@ export function save(layouts: UserLayout[]) {
   }
 }
 
-const isValid = (l: unknown): l is UserLayout =>
-  !!l &&
-  typeof (l as UserLayout).id === 'string' &&
-  typeof (l as UserLayout).name === 'string' &&
-  Array.isArray((l as UserLayout).rows) &&
-  (l as UserLayout).rows.length === 4;
+const isSequenceEntry = (entry: unknown): entry is [string, Sequence] =>
+  Array.isArray(entry) &&
+  entry.length === 2 &&
+  typeof entry[0] === 'string' &&
+  Array.isArray(entry[1]) &&
+  entry[1].every((step) => Array.isArray(step) && step.every((key) => typeof key === 'string'));
+
+const isLegendEntry = (entry: unknown): entry is [string, string] =>
+  Array.isArray(entry) &&
+  entry.length === 2 &&
+  typeof entry[0] === 'string' &&
+  typeof entry[1] === 'string';
+
+const isValid = (l: unknown): l is UserLayout => {
+  if (!l || typeof l !== 'object') return false;
+  const value = l as Partial<UserLayout>;
+  return typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    Array.isArray(value.rows) &&
+    value.rows.length === 4 &&
+    value.rows.every((row) => typeof row === 'string') &&
+    (value.sequences === undefined || value.sequences.every(isSequenceEntry)) &&
+    (value.legends === undefined || value.legends.every(isLegendEntry)) &&
+    (value.direct === undefined || typeof value.direct === 'boolean');
+};
 
 /**
  * 入力を検査する。列数オーバーだけを弾く。
@@ -64,12 +90,21 @@ export function validate(rows: string[]): string[] {
 
 /** 数字段が空なら QWERTY のものを使う */
 export function toLayout(def: UserLayout): Layout {
-  const rows = def.rows.map((r, i) => (r.trim() === '' ? QWERTY_LEGEND[i] : r.trim()));
-  return fromRows(def.id, def.name, rows);
+  const imported = def.sequences !== undefined || def.legends !== undefined;
+  const rows = def.rows.map((r, i) => (r.trim() === '' && !imported ? QWERTY_LEGEND[i] : r));
+  const layout = fromRows(def.id, def.name, rows);
+  if (!def.sequences && !def.legends) return layout;
+  const map = new Map(layout.map);
+  for (const [output, sequence] of def.sequences ?? []) map.set(output, sequence);
+  const legends = new Map(layout.legends);
+  for (const [key, label] of def.legends ?? []) legends.set(key, label);
+  const maxCharLength = Math.max(1, ...[...map.keys()].map((key) => key.length));
+  return { ...layout, map, legends, maxCharLength };
 }
 
 export function toJapaneseLayout(def: UserLayout, customRules: UserRomajiRule[] = []): Layout {
-  return withRomaji(toLayout(def), tableForRule(def.romaji, customRules));
+  const layout = toLayout(def);
+  return def.direct ? layout : withRomaji(layout, tableForRule(def.romaji, customRules));
 }
 
 export const newId = () => `user-${Date.now().toString(36)}`;
