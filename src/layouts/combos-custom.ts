@@ -1,10 +1,14 @@
+import type { ComboCondition, ComboDefinition } from './types.ts';
+
 /**
  * 利用者の Vial キーマップ（Corne V4）から起こしたコンボ。
  *
  * 出力は打鍵する文字列、入力はその文字を出すキーの集合で書く。
  * キーを物理位置ではなく文字で指すことで、配列が変わっても同じ定義が使える。
  */
-export const CUSTOM_COMBOS: [output: string, inputs: string[]][] = [
+const YOUON_ONLY: ComboCondition = { youonOnly: true };
+
+export const CUSTOM_COMBOS: ComboDefinition[] = [
   ['desita', ['d', 's', 't']],
   ['masita', ['m', 's', 't']],
   ['siteha', ['s', 't', 'h']],
@@ -22,18 +26,18 @@ export const CUSTOM_COMBOS: [output: string, inputs: string[]][] = [
   ['suru', ['s', 'r']],
   ['tame', ['t', 'm']],
   ['toha', ['t', 'h']],
-  ['yaku', ['i', 'a', 'x']],
-  ['yann', ['i', 'a', 'v']],
-  ['yatu', ['i', 'a', ',']],
-  ['yeku', ['i', 'a', 'o', 'x']],
-  ['yenn', ['i', 'e', 'v']],
-  ['yetu', ['i', 'e', ',']],
-  ['yoku', ['i', 'o', 'x']],
-  ['yonn', ['i', 'o', 'v']],
-  ['yotu', ['i', 'o', ',']],
-  ['yuku', ['i', 'u', 'x']],
-  ['yunn', ['i', 'u', 'v']],
-  ['yutu', ['i', 'u', ',']],
+  ['yaku', ['i', 'a', 'x'], YOUON_ONLY],
+  ['yann', ['i', 'a', 'v'], YOUON_ONLY],
+  ['yatu', ['i', 'a', ','], YOUON_ONLY],
+  ['yeku', ['i', 'a', 'o', 'x'], YOUON_ONLY],
+  ['yenn', ['i', 'e', 'v'], YOUON_ONLY],
+  ['yetu', ['i', 'e', ','], YOUON_ONLY],
+  ['yoku', ['i', 'o', 'x'], YOUON_ONLY],
+  ['yonn', ['i', 'o', 'v'], YOUON_ONLY],
+  ['yotu', ['i', 'o', ','], YOUON_ONLY],
+  ['yuku', ['i', 'u', 'x'], YOUON_ONLY],
+  ['yunn', ['i', 'u', 'v'], YOUON_ONLY],
+  ['yutu', ['i', 'u', ','], YOUON_ONLY],
   ['-nn', ['-', 'j']],
   ['aki', ['a', 'j']],
   ['aku', ['a', 'x']],
@@ -60,9 +64,9 @@ export const CUSTOM_COMBOS: [output: string, inputs: string[]][] = [
   ['unn', ['u', 'v']],
   ['uti', ['u', 'l']],
   ['utu', ['u', ',']],
-  ['yau', ['i', 'a', '-']],
-  ['you', ['i', 'a', 'o']],
-  ['yuu', ['i', 'u', 'o']],
+  ['yau', ['i', 'a', '-'], YOUON_ONLY],
+  ['you', ['i', 'a', 'o'], YOUON_ONLY],
+  ['yuu', ['i', 'u', 'o'], YOUON_ONLY],
   ['ae', ['a', 'e', 'i']],
   ['ai', ['e', 'a']],
   ['au', ['a', '-']],
@@ -74,8 +78,8 @@ export const CUSTOM_COMBOS: [output: string, inputs: string[]][] = [
   ['ou', ['o', 'a']],
   ['ui', ['e', 'u']],
   ['uu', ['u', 'o']],
-  ['ya', ['i', 'a']],
-  ['ye', ['i', 'e']],
-  ['yo', ['i', 'o']],
-  ['yu', ['i', 'u']],
+  ['ya', ['i', 'a'], YOUON_ONLY],
+  ['ye', ['i', 'e'], YOUON_ONLY],
+  ['yo', ['i', 'o'], YOUON_ONLY],
+  ['yu', ['i', 'u'], YOUON_ONLY],
 ];

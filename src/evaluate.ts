@@ -1,5 +1,5 @@
 import { ALL_FINGERS, dist, type Finger, type Geometry, type Key, type Point } from './geometry.ts';
-import type { Layout, Sequence } from './layouts/index.ts';
+import type { ComboCondition, Layout, Sequence } from './layouts/index.ts';
 import { kanaToRomajiChunks } from './romaji/kunrei.ts';
 
 export interface Options {
@@ -96,7 +96,7 @@ export function evaluate(
   const errors: string[] = [];
   const seen = new Set<string>();
   const comboHits: string[] = [];
-  const comboHeadings = layout.comboHeadings ?? new Set<string>();
+  const comboConditions = layout.comboConditions ?? new Map<string, ComboCondition>();
   let skipped = 0;
   let index = 0;
 
@@ -126,10 +126,8 @@ export function evaluate(
     for (let len = Math.min(maxLen, chars.length - cursor); len >= 1; len--) {
       const candidate = chars.slice(cursor, cursor + len).join('');
       const found = layout.map.get(candidate);
-      // ヤ行コンボは、別のかなの末尾子音を拗音の子音と誤認しないようにする。
-      const isYRowCombo =
-        layout.romajiTable !== undefined && comboHeadings.has(candidate) && candidate.startsWith('y');
-      if (found && (!isYRowCombo || canFireYRowCombo(cursor, chars, chunkRanges))) {
+      const condition = comboConditions.get(candidate);
+      if (found && (!condition?.youonOnly || canFireYouonOnlyCombo(cursor, chars, chunkRanges))) {
         sequence = found;
         char = candidate;
         consumed = len;
@@ -143,7 +141,7 @@ export function evaluate(
       continue;
     }
     cursor += consumed;
-    if (comboHeadings.has(char)) comboHits.push(char);
+    if (comboConditions.has(char)) comboHits.push(char);
 
     for (const step of sequence) {
       const byFinger = new Map<Finger, Key[]>();
@@ -199,7 +197,7 @@ export function evaluate(
     skipped,
     inputChars: [...text].length,
     comboHits,
-    comboDefinitions: comboHeadings.size,
+    comboDefinitions: comboConditions.size,
     errors,
   };
 }
@@ -210,7 +208,7 @@ interface RomajiChunkRange {
   kanaLength: number;
 }
 
-function canFireYRowCombo(cursor: number, chars: string[], chunks: RomajiChunkRange[]): boolean {
+function canFireYouonOnlyCombo(cursor: number, chars: string[], chunks: RomajiChunkRange[]): boolean {
   if (cursor === 0 || !/[bcdfghjklmnpqrstvwxyz]/.test(chars[cursor - 1])) return false;
   return chunks.some((chunk) => chunk.kanaLength > 1 && chunk.start < cursor && cursor < chunk.end);
 }

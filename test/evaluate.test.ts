@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
 import { evaluate, type Options } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
-import { LAYOUT_BY_ID, type Layout } from '../src/layouts/index.ts';
+import { LAYOUT_BY_ID, type Layout, withCombos, withRomaji } from '../src/layouts/index.ts';
+import { kunrei } from '../src/romaji/kunrei.ts';
 
 const geometry = buildGeometry('row-staggered');
 const qwerty = LAYOUT_BY_ID.get('qwerty')!;
@@ -262,4 +263,23 @@ test('ヤ行コンボは拗音の内部だけで発火し、単独ヤ行を奪�
     assert.deepEqual(trace.strokes.map((stroke) => stroke.char), expected, text);
     assert.equal(trace.skipped, 0, text);
   }
+
+  const base = LAYOUT_BY_ID.get('oonishi')!;
+  const generic = withRomaji(
+    withCombos('generic', 'generic', base, [
+      ['yaku', ['i', 'a', 'x']],
+      ['aku', ['a', 'x']],
+    ]),
+    kunrei(),
+  );
+  const restricted = withRomaji(
+    withCombos('restricted', 'restricted', base, [
+      ['yaku', ['i', 'a', 'x'], { youonOnly: true }],
+      ['aku', ['a', 'x']],
+    ]),
+    kunrei(),
+  );
+
+  assert.deepEqual(evaluate('やく', generic, geometry, opts()).strokes.map((s) => s.char), ['yaku']);
+  assert.deepEqual(evaluate('やく', restricted, geometry, opts()).strokes.map((s) => s.char), ['y', 'aku']);
 });
