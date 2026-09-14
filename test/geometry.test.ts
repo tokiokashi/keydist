@@ -4,12 +4,15 @@ import {
   buildGeometry,
   columnFingerAssignment,
   DEFAULT_FINGER_ASSIGNMENT,
+  keyId,
+  PHYSICAL_SHAPES,
   type Finger,
   type NonThumb,
+  type PhysicalShape,
 } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
-import { LAYOUT_BY_ID } from '../src/layouts/index.ts';
+import { LAYOUT_BY_ID, type Layout } from '../src/layouts/index.ts';
 
 const near = (a: number, b: number, msg?: string) =>
   assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ''} expected ${b}, got ${a}`);
@@ -125,4 +128,128 @@ test('ホームキーが存在しない割り当ては例外になる', () => {
     LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 99, // 存在しない列
   });
   assert.throws(() => buildGeometry('row-staggered', assignment), /ホームキー/);
+});
+
+// ---- 物理形状（issue #15。仕様 §3・§3.1） ----
+
+test('metrics の出力に使用した物理形状が併記される（仕様 §3）', () => {
+  const geometry = buildGeometry('column-staggered');
+  const m = computeMetrics(evaluate('asdf', qwerty, geometry, opts), geometry);
+  assert.equal(m.geometryId, 'column-staggered');
+  assert.equal(m.geometryName, geometry.name);
+});
+
+test('GeometryKind 文字列は PHYSICAL_SHAPES から解決される。直接渡しても同じ形状になる', () => {
+  const byKind = buildGeometry('row-staggered');
+  const byShape = buildGeometry(PHYSICAL_SHAPES['row-staggered']);
+  assert.equal(byKind.id, byShape.id);
+  near(byKind.keys.get('a')!.x, byShape.keys.get('a')!.x);
+  near(byKind.homes.RT.x, byShape.homes.RT.x);
+});
+
+test('QWERTY 刻印の範囲を超える列は r{row}c{col} の id になる', () => {
+  assert.equal(keyId(0, 0), '1');
+  assert.equal(keyId(0, 12), 'r0c12');
+});
+
+test('ピッチ（pitch_mm）は形状ごとにカスタムできる', () => {
+  const shape: PhysicalShape = { ...PHYSICAL_SHAPES.ortholinear, id: 'custom-pitch', pitchMm: 17 };
+  const geometry = buildGeometry(shape);
+  assert.equal(geometry.pitchMm, 17);
+  const m = computeMetrics(evaluate('h', qwerty, geometry, opts), geometry);
+  near(m.totalMm, m.totalUnits * 17, 'totalMm');
+});
+
+test('段ずれ量（段ごとの x オフセット）は形状ごとにカスタムできる', () => {
+  const shape: PhysicalShape = {
+    ...PHYSICAL_SHAPES.ortholinear,
+    id: 'custom-row-stagger',
+    rowStagger: [0, 1, 2, 3],
+  };
+  const geometry = buildGeometry(shape);
+  near(geometry.grid[0][0].x, 0, 'row0');
+  near(geometry.grid[1][0].x, 1, 'row1');
+  near(geometry.grid[2][0].x, 2, 'row2');
+  near(geometry.grid[3][0].x, 3, 'row3');
+});
+
+test('列ごとの y オフセット（column-staggered）は形状ごとにカスタムできる', () => {
+  const shape: PhysicalShape = {
+    ...PHYSICAL_SHAPES.ortholinear,
+    id: 'custom-column-stagger',
+    columnStagger: [0, 0.5],
+  };
+  const geometry = buildGeometry(shape);
+  near(geometry.grid[0][0].y, 0, 'col0');
+  near(geometry.grid[0][1].y, 0.5, 'col1');
+  // 配列の長さを超える列は最後の値を使う
+  near(geometry.grid[0][5].y, 0.5, 'col5（はみ出し）');
+});
+
+/** 10 列 × 4 段のコンパクトな形状用の割り当て。ホーム位置の考え方は既定と同じ */
+function compactAssignment() {
+  const columnFinger: Finger[] = ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP'];
+  const homeColumn: Record<NonThumb, number> = {
+    LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9,
+  };
+  return columnFingerAssignment('compact', 'コンパクト', columnFinger, homeColumn, [10, 10, 10, 10]);
+}
+
+test('段に置けるキー数は形状定義（rowWidths）から導かれる', () => {
+  const shape: PhysicalShape = {
+    ...PHYSICAL_SHAPES.ortholinear,
+    id: 'compact-shape',
+    name: 'コンパクト形状',
+    rowWidths: [10, 10, 10, 10],
+  };
+  const geometry = buildGeometry(shape, compactAssignment());
+  assert.equal(geometry.grid[1].length, 10);
+  assert.equal(geometry.keys.has('p'), true);
+  // 既定の ANSI 形状（12 列）にはある右外側の列が、この10列の形状には無い
+  assert.equal(geometry.keys.has('['), false);
+  assert.equal(geometry.keys.has(']'), false);
+});
+
+test('親指キーが1つの手はそのキーが自動でホームになり、移動距離は常に0になる（仕様 §3.1）', () => {
+  const geometry = buildGeometry('row-staggered');
+  assert.equal(geometry.thumbs.LT.id, 'thumb-l');
+  assert.equal(geometry.thumbs.RT.id, 'space');
+  near(geometry.homes.RT.x, geometry.thumbs.RT.x);
+  near(geometry.homes.RT.y, geometry.thumbs.RT.y);
+});
+
+/** 右手に親指キーを2つ持つ形状（薙刀式のセンターシフトのような構成を想定） */
+function dualThumbShape(thumbHome?: Partial<Record<'LT' | 'RT', string>>): PhysicalShape {
+  return {
+    ...PHYSICAL_SHAPES['row-staggered'],
+    id: 'dual-thumb',
+    thumbs: [
+      { id: 'thumb-l', finger: 'LT', col: 3.5, y: 4 },
+      { id: 'space', finger: 'RT', col: 5.5, y: 4 },
+      { id: 'thumb-r2', finger: 'RT', col: 6.5, y: 4 }, // ホームの 1u 右
+    ],
+    thumbHome,
+  };
+}
+
+test('親指キーが手ごとに複数ある形状は thumbHome を明示しないと例外になる', () => {
+  assert.throws(() => buildGeometry(dualThumbShape()), /thumbHome/);
+});
+
+test('thumbHome を指定すると複数の親指キーを持つ形状を構築できる', () => {
+  const geometry = buildGeometry(dualThumbShape({ RT: 'space' }));
+  assert.equal(geometry.thumbs.RT.id, 'space');
+  near(geometry.homes.RT.x, geometry.keys.get('space')!.x);
+});
+
+test('複数ある親指キーの間の移動は他の指と同じ規則で距離が計上される（仕様 §3.1）', () => {
+  const geometry = buildGeometry(dualThumbShape({ RT: 'space' }));
+  const l: Layout = {
+    id: 't', name: 't',
+    map: new Map([['x', [['thumb-r2']]]]),
+    legends: new Map(),
+  };
+  const t = evaluate('x', l, geometry, opts);
+  // ホーム（space）から thumb-r2（1u 右）までの初回移動
+  near(t.strokes[0].distance, 1, 'thumb-r2 まで 1u');
 });

@@ -9,6 +9,12 @@ export interface PairStat {
 
 export interface Metrics {
   /**
+   * 使用した物理形状の id と名前。形状が変わると距離の絶対値が変わるため、
+   * 配列間の比較はここが揃っている場合のみ成立する（仕様 §3）。
+   */
+  geometryId: string;
+  geometryName: string;
+  /**
    * 使用した指割り当ての id と名前。割り当てが変わると同指連続の数も距離も変わるため、
    * 配列間の比較はここが揃っている場合のみ成立する（仕様 §4.2）。
    */
@@ -102,6 +108,8 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
   const n = trace.strokes.length;
   const { inputChars } = trace;
   return {
+    geometryId: geometry.id,
+    geometryName: geometry.name,
     fingerAssignmentId: geometry.assignment.id,
     fingerAssignmentName: geometry.assignment.name,
     strokes: n,
