@@ -68,6 +68,48 @@ test('コンボ相当（複数文字を 1 見出しで打つ）でも入力文�
   assert.ok(combo.perCharUnits <= split.perCharUnits + 1e-9);
 });
 
+test('1 文字あたりのアクション数はステップ数を入力文字数で割った値になる', () => {
+  // 「し」→ si（2 打鍵、入力文字数は 1）
+  const m = computeMetrics(evaluate('し', qwerty, geometry, opts()), geometry);
+  assert.equal(m.strokes, 2);
+  assert.equal(m.inputChars, 1);
+  near(m.perCharSteps, 2, 'アクション/文字 = ステップ数 / 入力文字数');
+});
+
+test('1 文字あたりの押下キー数は押下数を入力文字数で割った値になる', () => {
+  // 「し」→ si（同時押しを含まないので押下数もステップ数と同じ 2）
+  const m = computeMetrics(evaluate('し', qwerty, geometry, opts()), geometry);
+  assert.equal(m.presses, 2);
+  near(m.perCharPresses, 2, '押下/文字 = 押下数 / 入力文字数');
+});
+
+test('コンボはアクション/文字を下げるが、押下/文字は下げない', () => {
+  // 「きゃ」を 3 キー同時押しの 1 ステップで打てる配列と、2 ステップに分けて打つ配列を比較する。
+  // コンボは押すキー自体は減らさないため、押下数は両者で変わらない
+  const combo: Layout = {
+    id: 'combo', name: 'combo',
+    map: new Map([['きゃ', [['d', 'k', 'l']]]]),
+    legends: new Map(),
+    maxCharLength: 2,
+  };
+  const split: Layout = {
+    id: 'split', name: 'split',
+    map: new Map([['き', [['d']]], ['ゃ', [['k', 'l']]]]),
+    legends: new Map(),
+    maxCharLength: 2,
+  };
+
+  const comboMetrics = computeMetrics(evaluate('きゃ', combo, geometry, opts()), geometry);
+  const splitMetrics = computeMetrics(evaluate('きゃ', split, geometry, opts()), geometry);
+
+  assert.equal(comboMetrics.strokes, 1);
+  assert.equal(splitMetrics.strokes, 2);
+  assert.equal(comboMetrics.presses, splitMetrics.presses, 'コンボでも押下キー数の合計は変わらない');
+
+  assert.ok(comboMetrics.perCharSteps < splitMetrics.perCharSteps, 'コンボはアクション/文字を下げる');
+  near(comboMetrics.perCharPresses, splitMetrics.perCharPresses, '押下/文字はコンボで変わらない');
+});
+
 test('全打鍵で指の相対位置が変わらなければ隣接指の標準偏差は 0 になる', () => {
   // 'j' は右人差し指のホームキー。連打では他の指は一切動かない
   const m = computeMetrics(evaluate('jjjj', qwerty, geometry, opts()), geometry);
