@@ -6,6 +6,22 @@ export type Step = string[];
 /** 1 文字を打つための打鍵ステップ列。順次打鍵はステップを並べる */
 export type Sequence = Step[];
 
+/** 面の発火方式。trigger と入力キーを同時に押すか、前後に分けるかを表す。 */
+export type FaceMode = 'prefix' | 'suffix' | 'simultaneous';
+
+/**
+ * 面の 1 行。文字列なら 1 文字ずつ、配列ならセルごとの文字列として読む。
+ * 配列形式は「きゃ」のような複数文字の見出しを 1 セルに置くために使う。
+ */
+export type FaceRow = string | readonly string[];
+
+/** trigger で発火するキー面。rows は QWERTY 刻印の 4 行に対応する。 */
+export interface Face {
+  trigger: readonly string[];
+  mode: FaceMode;
+  rows: readonly FaceRow[];
+}
+
 /** コンボを発火できる入力の条件。条件を省略したコンボは常に最長一致する。 */
 export interface ComboCondition {
   /** 拗音のローマ字塊の内部だけで発火する */
@@ -76,6 +92,52 @@ export function fromRows(
     legends.set(THUMB_KEY.RT, '空白');
   }
   return { id, name, map, legends };
+}
+
+/** 面の集合を、評価器が使うかな → 打鍵ステップ列へ展開する。 */
+export function fromFaces(
+  id: string,
+  name: string,
+  faces: readonly Face[],
+  thumbs: { LT?: string; RT?: string } = {},
+): Layout {
+  const map = new Map<string, Sequence>();
+  const legends = new Map<string, string>();
+
+  for (const face of faces) {
+    const trigger = [...new Set(face.trigger)];
+    face.rows.forEach((row, r) => {
+      const cells = typeof row === 'string' ? [...row] : [...row];
+      cells.forEach((output, c) => {
+        if (output === '' || output === ' ') return;
+        if (map.has(output)) {
+          throw new Error(`面の出力「${output}」が重複している`);
+        }
+
+        const key = keyId(r, c);
+        map.set(output, expandFace(trigger, face.mode, key));
+        // 刻印は単打面の 1 文字だけを表示する。シフト面の出力で上書きしない。
+        if (trigger.length === 0 && [...output].length === 1) legends.set(key, output);
+      });
+    });
+  }
+
+  if (thumbs.LT) {
+    map.set(thumbs.LT, [[THUMB_KEY.LT]]);
+    legends.set(THUMB_KEY.LT, '親指');
+  }
+  if (thumbs.RT) {
+    map.set(thumbs.RT, [[THUMB_KEY.RT]]);
+    legends.set(THUMB_KEY.RT, '空白');
+  }
+  return { id, name, map, legends, maxCharLength: maxKeyLength(map.keys()) };
+}
+
+function expandFace(trigger: string[], mode: FaceMode, key: string): Sequence {
+  if (trigger.length === 0) return [[key]];
+  if (mode === 'simultaneous') return [[...trigger, key]];
+  if (mode === 'prefix') return [[...trigger], [key]];
+  return [[key], [...trigger]];
 }
 
 /** かな → 打鍵ステップ列を直接書いた配列（薙刀式など） */

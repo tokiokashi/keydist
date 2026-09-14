@@ -1,11 +1,20 @@
 import { kunrei } from '../romaji/kunrei.ts';
 import { oonishiRomaji } from '../romaji/oonishi.ts';
-import { NAGINATA_V18 } from './naginata.ts';
+import { NAGINATA_V18_FACES } from './naginata.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
-import { fromKana, fromRows, withCombos, withRomaji, type Layout } from './types.ts';
+import { fromFaces, fromRows, withCombos, withRomaji, type Layout } from './types.ts';
 
-export type { ComboCondition, ComboDefinition, Layout, Sequence, Step } from './types.ts';
-export { fromRows, fromKana, withRomaji, withCombos } from './types.ts';
+export type {
+  ComboCondition,
+  ComboDefinition,
+  Face,
+  FaceMode,
+  FaceRow,
+  Layout,
+  Sequence,
+  Step,
+} from './types.ts';
+export { fromRows, fromFaces, fromKana, withRomaji, withCombos } from './types.ts';
 
 const ROMAJI = kunrei();
 const ROMAJI_OONISHI = oonishiRomaji();
@@ -90,7 +99,7 @@ export const LAYOUTS_JA: Layout[] = [
     ),
     ROMAJI,
   ),
-  fromKana('naginata-v18', '薙刀式 v18', NAGINATA_V18),
+  fromFaces('naginata-v18', '薙刀式 v18', NAGINATA_V18_FACES),
 ];
 
 export const LAYOUT_BY_ID = new Map([...LAYOUTS, ...LAYOUTS_JA].map((l) => [l.id, l]));
