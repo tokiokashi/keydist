@@ -8,6 +8,12 @@ export interface PairStat {
 }
 
 export interface Metrics {
+  /**
+   * 使用した指割り当ての id と名前。割り当てが変わると同指連続の数も距離も変わるため、
+   * 配列間の比較はここが揃っている場合のみ成立する（仕様 §4.2）。
+   */
+  fingerAssignmentId: string;
+  fingerAssignmentName: string;
   /** 打鍵ステップ数。同時押しは 1 と数える */
   strokes: number;
   /** キー押下数。同時押しは押したキーの数だけ数える */
@@ -85,6 +91,8 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
   const n = trace.strokes.length;
   const { inputChars } = trace;
   return {
+    fingerAssignmentId: geometry.assignment.id,
+    fingerAssignmentName: geometry.assignment.name,
     strokes: n,
     presses,
     skipped: trace.skipped,
