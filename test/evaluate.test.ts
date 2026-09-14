@@ -246,3 +246,20 @@ test('最長一致は後続の文字を食い過ぎない', () => {
   const t = evaluate('きゃく', l, geometry, opts());
   assert.deepEqual(t.strokes.map((s) => s.char), ['きゃ', 'く']);
 });
+
+test('ヤ行コンボは拗音の内部だけで発火し、単独ヤ行を奪わない（#42）', () => {
+  const combo = LAYOUT_BY_ID.get('oonishi-custom-combo')!;
+  const cases: [string, string[]][] = [
+    ['やく', ['y', 'aku']],
+    ['やま', ['y', 'a', 'm', 'a']],
+    ['にゅうりょく', ['n', 'yuu', 'r', 'yoku']],
+    ['きゃ', ['k', 'ya']],
+    ['んや', ['nn', 'y', 'a']],
+  ];
+
+  for (const [text, expected] of cases) {
+    const trace = evaluate(text, combo, geometry, opts());
+    assert.deepEqual(trace.strokes.map((stroke) => stroke.char), expected, text);
+    assert.equal(trace.skipped, 0, text);
+  }
+});

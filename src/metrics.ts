@@ -20,6 +20,15 @@ export interface PairStat {
   maxExcess: number;
 }
 
+export interface ComboStats {
+  /** 配列に定義されたコンボ見出しの数 */
+  definitions: number;
+  /** 評価中に一度でも命中したコンボ見出しの数 */
+  matched: number;
+  /** コンボ見出しが命中した延べ回数 */
+  hits: number;
+}
+
 export interface Metrics {
   /**
    * 使用した物理形状の id と名前。形状が変わると距離の絶対値が変わるため、
@@ -72,6 +81,8 @@ export interface Metrics {
   adjacent: PairStat[];
   /** 同指連続回数。同じ指で異なる位置を続けて打った数 */
   sameFinger: number;
+  /** コンボの定義数・命中した定義数・延べ命中回数（仕様 §11.8） */
+  combos: ComboStats;
   /** キー id → 打鍵回数 */
   keyCounts: Map<string, number>;
   /** キー id → そのキーへの移動距離の合計 [u] */
@@ -122,6 +133,12 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
     return { pair, meanExcess: mean, stdDev, maxExcess: max };
   });
 
+  const combos = {
+    definitions: trace.comboDefinitions,
+    matched: new Set(trace.comboHits).size,
+    hits: trace.comboHits.length,
+  };
+
   const n = trace.strokes.length;
   const { inputChars } = trace;
   return {
@@ -143,6 +160,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
     perCharPresses: inputChars ? presses / inputChars : 0,
     adjacent,
     sameFinger,
+    combos,
     keyCounts,
     keyDistance,
   };

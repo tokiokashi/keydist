@@ -71,28 +71,50 @@ export function addSokuonForms(table: Map<string, string>) {
   }
 }
 
+export interface RomajiChunk {
+  /** ローマ字へ展開する前のかな見出し */
+  kana: string;
+  /** そのかな見出しに対応するローマ字 */
+  roman: string;
+}
+
+/**
+ * かなテキストを、展開前の見出しを保ったローマ字の塊へ分ける。
+ *
+ * 評価器がローマ字上でコンボを探す時も、単独かなの展開をコンボが
+ * 丸ごと奪っていないか判定できるよう、文字列だけでなく境界を残す。
+ */
+export function kanaToRomajiChunks(text: string, table: Map<string, string>): RomajiChunk[] {
+  const maxLen = Math.max(1, ...[...table.keys()].map((k) => k.length));
+  const chars = [...text];
+  const chunks: RomajiChunk[] = [];
+  for (let i = 0; i < chars.length; ) {
+    let hit: string | undefined;
+    let kana = chars[i];
+    let len = 1;
+    for (let l = Math.min(maxLen, chars.length - i); l >= 1; l--) {
+      const candidate = chars.slice(i, i + l).join('');
+      const found = table.get(candidate);
+      if (found !== undefined) {
+        hit = found;
+        kana = candidate;
+        len = l;
+        break;
+      }
+    }
+    chunks.push({ kana, roman: hit ?? chars[i] });
+    i += len;
+  }
+  return chunks;
+}
+
 /**
  * かなテキストをローマ字へ展開する。見出しは最長一致で切り出すので、
  * 「きゃ」「っか」のような複数文字の項目が先に当たる。
  * テーブルに無い文字はそのまま通す（英数字や記号）。
  */
 export function kanaToRomaji(text: string, table: Map<string, string>): string {
-  const maxLen = Math.max(1, ...[...table.keys()].map((k) => k.length));
-  const chars = [...text];
-  let out = '';
-  for (let i = 0; i < chars.length; ) {
-    let hit: string | undefined;
-    let len = 1;
-    for (let l = Math.min(maxLen, chars.length - i); l >= 1; l--) {
-      const found = table.get(chars.slice(i, i + l).join(''));
-      if (found !== undefined) {
-        hit = found;
-        len = l;
-        break;
-      }
-    }
-    out += hit ?? chars[i];
-    i += len;
-  }
-  return out;
+  return kanaToRomajiChunks(text, table)
+    .map((chunk) => chunk.roman)
+    .join('');
 }

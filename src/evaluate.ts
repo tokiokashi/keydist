@@ -1,6 +1,6 @@
 import { ALL_FINGERS, dist, type Finger, type Geometry, type Key, type Point } from './geometry.ts';
 import type { Layout, Sequence } from './layouts/index.ts';
-import { kanaToRomaji } from './romaji/kunrei.ts';
+import { kanaToRomajiChunks } from './romaji/kunrei.ts';
 
 export interface Options {
   /** 窓幅 N（打鍵単位）。この打鍵数までは指を残したとみなす */
@@ -61,6 +61,10 @@ export interface Trace {
    * 「1 文字あたり」の分母に使える（仕様 §11.4）。
    */
   inputChars: number;
+  /** 配列が持つコンボ見出しのうち、評価中に命中した見出し（命中ごとに1件） */
+  comboHits: string[];
+  /** 配列が持つコンボ見出しの定義数 */
+  comboDefinitions: number;
   /** 配列定義の不備。同一ステップ内で同じ指が複数のキーを要求された場合など */
   errors: string[];
 }
@@ -91,13 +95,27 @@ export function evaluate(
   const strokes: Stroke[] = [];
   const errors: string[] = [];
   const seen = new Set<string>();
+  const comboHits: string[] = [];
+  const comboHeadings = layout.comboHeadings ?? new Set<string>();
   let skipped = 0;
   let index = 0;
 
-  // ローマ字配列はかなテキストを展開してから打つ。かな配列はそのまま打つ
-  const source = layout.romajiTable ? kanaToRomaji(text, layout.romajiTable) : text;
+  // ローマ字配列はかなテキストを展開してから打つ。コンボの誤命中を防ぐため、
+  // 展開前の単位も残しておく。かな配列はそのまま打つ。
+  const chunks = layout.romajiTable ? kanaToRomajiChunks(text, layout.romajiTable) : undefined;
+  const chars = chunks
+    ? chunks.flatMap((chunk) => [...chunk.roman.toLowerCase()])
+    : [...text.toLowerCase()];
+  const chunkRanges: RomajiChunkRange[] = [];
+  if (chunks) {
+    let start = 0;
+    for (const chunk of chunks) {
+      const length = [...chunk.roman.toLowerCase()].length;
+      chunkRanges.push({ start, end: start + length, kanaLength: [...chunk.kana].length });
+      start += length;
+    }
+  }
   // 見出しが複数文字ありうる配列（コンボや拗音）は最長一致で切り出す
-  const chars = [...source.toLowerCase()];
   const maxLen = Math.max(1, layout.maxCharLength ?? 1);
 
   for (let cursor = 0; cursor < chars.length; ) {
@@ -108,7 +126,10 @@ export function evaluate(
     for (let len = Math.min(maxLen, chars.length - cursor); len >= 1; len--) {
       const candidate = chars.slice(cursor, cursor + len).join('');
       const found = layout.map.get(candidate);
-      if (found) {
+      // ヤ行コンボは、別のかなの末尾子音を拗音の子音と誤認しないようにする。
+      const isYRowCombo =
+        layout.romajiTable !== undefined && comboHeadings.has(candidate) && candidate.startsWith('y');
+      if (found && (!isYRowCombo || canFireYRowCombo(cursor, chars, chunkRanges))) {
         sequence = found;
         char = candidate;
         consumed = len;
@@ -122,6 +143,7 @@ export function evaluate(
       continue;
     }
     cursor += consumed;
+    if (comboHeadings.has(char)) comboHits.push(char);
 
     for (const step of sequence) {
       const byFinger = new Map<Finger, Key[]>();
@@ -172,7 +194,25 @@ export function evaluate(
     }
   }
 
-  return { strokes, skipped, inputChars: [...text].length, errors };
+  return {
+    strokes,
+    skipped,
+    inputChars: [...text].length,
+    comboHits,
+    comboDefinitions: comboHeadings.size,
+    errors,
+  };
+}
+
+interface RomajiChunkRange {
+  start: number;
+  end: number;
+  kanaLength: number;
+}
+
+function canFireYRowCombo(cursor: number, chars: string[], chunks: RomajiChunkRange[]): boolean {
+  if (cursor === 0 || !/[bcdfghjklmnpqrstvwxyz]/.test(chars[cursor - 1])) return false;
+  return chunks.some((chunk) => chunk.kanaLength > 1 && chunk.start < cursor && cursor < chunk.end);
 }
 
 function pressCost(

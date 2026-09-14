@@ -4,7 +4,7 @@ import { buildGeometry, QWERTY_LEGEND } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { LAYOUTS, LAYOUTS_JA, withRomaji } from '../src/layouts/index.ts';
-import { kanaToRomaji, kunrei } from '../src/romaji/kunrei.ts';
+import { kanaToRomaji, kanaToRomajiChunks, kunrei } from '../src/romaji/kunrei.ts';
 import { azik } from '../src/romaji/azik.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 
@@ -51,6 +51,13 @@ test('かな → ローマ字は最長一致で展開する', () => {
   assert.equal(kanaToRomaji('しゃっきん', table), 'syakkinn');
   assert.equal(kanaToRomaji('こーひー', table), 'ko-hi-');
   assert.equal(kanaToRomaji('abc', table), 'abc');
+});
+
+test('かな → ローマ字の展開単位を保持する', () => {
+  assert.deepEqual(kanaToRomajiChunks('きゃや', table), [
+    { kana: 'きゃ', roman: 'kya' },
+    { kana: 'や', roman: 'ya' },
+  ]);
 });
 
 test('長音「ー」は数字段の - キーになる', () => {

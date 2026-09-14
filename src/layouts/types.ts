@@ -23,6 +23,11 @@ export interface Layout {
    * かな配列は持たない。同じかなテキストを両者に食わせて比較できる。
    */
   romajiTable?: Map<string, string>;
+  /**
+   * map のうちコンボとして追加した見出し。ローマ字化で失われるかなの
+   * 境界を使った命中判定と、コンボの命中件数の集計に使う。
+   */
+  comboHeadings?: ReadonlySet<string>;
 }
 
 const maxKeyLength = (keys: Iterable<string>) => Math.max(1, ...[...keys].map((k) => k.length));
@@ -91,10 +96,12 @@ export function withCombos(
   combos: [output: string, inputs: string[]][],
 ): Layout {
   const map = new Map(layout.map);
+  const comboHeadings = new Set(layout.comboHeadings);
   for (const [output, inputs] of combos) {
     const keys = inputs.map((ch) => layout.map.get(ch)?.[0]?.[0]);
     if (keys.some((k) => k === undefined)) continue;
     map.set(output, [keys as string[]]);
+    comboHeadings.add(output);
   }
-  return { ...layout, id, name, map, maxCharLength: maxKeyLength(map.keys()) };
+  return { ...layout, id, name, map, maxCharLength: maxKeyLength(map.keys()), comboHeadings };
 }
