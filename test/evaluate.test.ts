@@ -26,6 +26,12 @@ test('初回打鍵はホームからの距離になる', () => {
   near(totalOf('h'), 1, 'h');
 });
 
+test('位置スナップショットは打鍵直後の指位置を記録する', () => {
+  const t = evaluate('h', qwerty, geometry, opts());
+  const h = geometry.keys.get('h')!;
+  assert.deepEqual(t.strokes[0].positions.RI, { x: h.x, y: h.y });
+});
+
 test('g=0（同指連続）はキー間距離。ホームキーでも加算する', () => {
   // h(1u) → j: 同指連続なので min を取らず d(h,j)=1u
   near(totalOf('hj'), 2, 'hj');

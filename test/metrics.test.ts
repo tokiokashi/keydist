@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry } from '../src/geometry.ts';
+import { buildGeometry, ALL_FINGERS } from '../src/geometry.ts';
 import { evaluate, type Options } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
-import { LAYOUT_BY_ID, type Layout } from '../src/layouts/index.ts';
+import { LAYOUTS_JA, LAYOUT_BY_ID, type Layout } from '../src/layouts/index.ts';
 import { dist } from '../src/geometry.ts';
+import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 
 const geometry = buildGeometry('row-staggered');
 // LAYOUT_BY_ID の 'qwerty' はローマ字テーブル付きの JA 版で上書きされる。
@@ -110,11 +111,38 @@ test('コンボはアクション/文字を下げるが、押下/文字は下げ
   near(comboMetrics.perCharPresses, splitMetrics.perCharPresses, '押下/文字はコンボで変わらない');
 });
 
+test('指ごとの押下数はサンプル文の実測値と一致する', () => {
+  const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
+  const qwerty = LAYOUTS_JA.find((l) => l.id === 'qwerty')!;
+  const oonishi = LAYOUTS_JA.find((l) => l.id === 'oonishi')!;
+  const naginata = LAYOUTS_JA.find((l) => l.id === 'naginata-v18')!;
+  const qwertyMetrics = computeMetrics(evaluate(text, qwerty, geometry, opts()), geometry);
+  const oonishiMetrics = computeMetrics(evaluate(text, oonishi, geometry, opts()), geometry);
+  const naginataMetrics = computeMetrics(evaluate(text, naginata, geometry, opts()), geometry);
+
+  assert.equal(text.length, 290);
+  assert.equal(qwertyMetrics.perFingerPresses.LP, 90);
+  assert.equal(oonishiMetrics.perFingerPresses.LR, 43);
+  assert.equal(naginataMetrics.perFingerPresses.RT, 63);
+});
+
+test('指ごとの押下数の合計は総押下数と一致する', () => {
+  // マトリックスは指ごとの押下数を並べる図なので、そこに出ない押下があってはいけない。
+  // 親指のように移動距離が 0 の指を列から落とすと、この和が崩れる
+  const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
+  for (const layout of LAYOUTS_JA) {
+    const m = computeMetrics(evaluate(text, layout, geometry, opts()), geometry);
+    const sum = ALL_FINGERS.reduce((a, f) => a + m.perFingerPresses[f], 0);
+    assert.equal(sum, m.presses, `${layout.id} の指ごとの押下数の合計`);
+  }
+});
+
 test('全打鍵で指の相対位置が変わらなければ隣接指の標準偏差は 0 になる', () => {
   // 'j' は右人差し指のホームキー。連打では他の指は一切動かない
   const m = computeMetrics(evaluate('jjjj', qwerty, geometry, opts()), geometry);
   for (const stat of m.adjacent) {
     near(stat.stdDev, 0, stat.pair.join('-'));
+    near(stat.max, stat.mean, `${stat.pair.join('-')} max`);
   }
 });
 
@@ -132,5 +160,6 @@ test('隣接指の標準偏差は打鍵ごとのスナップショットから�
     const variance = samples.reduce((a, b) => a + (b - mean) ** 2, 0) / samples.length;
     near(stat.mean, mean, `${stat.pair.join('-')} mean`);
     near(stat.stdDev, Math.sqrt(variance), `${stat.pair.join('-')} stdDev`);
+    near(stat.max, Math.max(...samples), `${stat.pair.join('-')} max`);
   }
 });

@@ -235,6 +235,18 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 @media (max-width: 720px) { .split { grid-template-columns: 1fr; } }
 
+/* 図が 3 枚以上並ぶ節。入る幅だけ列を作り、列に満たない最後の 1 枚は行いっぱいに
+   広げる（2 枚 + 右半分が空白、というラグ配置にしない）。最小幅は、指 10 列の
+   マトリックスが読める下限を見て 400px に取ってある。 */
+.split-wrap {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr));
+  gap: 20px;
+}
+.split-wrap > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+/* 引き伸ばされた側だけ図が巨大にならないよう、自然な大きさで止めて中央に置く */
+.split-wrap svg { max-width: 760px; margin-inline: auto; }
+
 .tooltip {
   position: fixed;
   pointer-events: none;

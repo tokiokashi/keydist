@@ -47,7 +47,7 @@ export interface Stroke {
   presses: Press[];
   /** ステップ内の押下距離の合計 [u] */
   distance: number;
-  /** ステップ直前の全指位置 */
+  /** 押下直後の全指位置 */
   positions: Record<Finger, Point>;
 }
 
@@ -58,7 +58,7 @@ export interface Trace {
   /**
    * 入力文字数（ローマ字展開・コンボ結合の前、原文の文字数）。
    * 打鍵数（ステップ数）は配列で変わるが、これは変わらないので
-   * 「1 文字あたり」の分母に使える（仕様 §11.3）。
+   * 「1 文字あたり」の分母に使える（仕様 §11.4）。
    */
   inputChars: number;
   /** 配列定義の不備。同一ステップ内で同じ指が複数のキーを要求された場合など */
@@ -124,7 +124,6 @@ export function evaluate(
     cursor += consumed;
 
     for (const step of sequence) {
-      const positions = snapshot(prev, last, index, geometry, options.windowSize);
       const byFinger = new Map<Finger, Key[]>();
 
       for (const id of step) {
@@ -166,6 +165,8 @@ export function evaluate(
         last[press.finger] = index;
       }
 
+      // 指同士の姿勢は、対象キーを押した直後の状態として記録する
+      const positions = snapshot(prev, last, index, geometry, options.windowSize);
       strokes.push({ index, char, presses, distance: total, positions });
       index++;
     }
