@@ -64,6 +64,7 @@ const el = {
   errors: $<HTMLParagraphElement>('errors'),
   compareChart: $<HTMLDivElement>('compare-chart'),
   compareBaseline: $<HTMLSelectElement>('compare-baseline'),
+  compareChartMetric: $<HTMLSelectElement>('compare-chart-metric'),
   compare: $<HTMLTableElement>('compare'),
   sensitivity: $<HTMLDivElement>('sensitivity'),
   sensitivityScale: $<HTMLDivElement>('sensitivity-scale'),
@@ -647,6 +648,7 @@ const matrixSorts: Record<MatrixKind, MatrixSort | null> = {
   adjacent: null,
 };
 let compareSort: MatrixSort | null = null;
+let compareChartColumn = 1;
 
 function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sort: MatrixSort | null): T[] {
   if (!sort) return rows;
@@ -681,6 +683,7 @@ function render() {
     el.textMeta.textContent = '配列を 1 つ以上選ぶ';
     el.compareChart.innerHTML = '';
     syncCompareBaselineOptions([]);
+    syncCompareChartOptions(false);
     el.compare.innerHTML = '';
     el.sensitivity.innerHTML = '';
     el.heatmap.innerHTML = '';
@@ -712,84 +715,6 @@ function render() {
   renderDetail(results, geometry);
 }
 
-function renderCompare(results: Result[]) {
-  syncCompareBaselineOptions(results);
-  const best = Math.min(...results.map((r) => r.metrics.totalUnits));
-  const baseline = results.find((r) => r.layout.id === el.compareBaseline.value);
-
-  el.compareChart.innerHTML = barChart(
-    results.map((r) => ({
-      label: r.layout.name,
-      value: r.metrics.totalUnits,
-      color: SERIES(r.slot),
-      emphasise: r.metrics.totalUnits === best,
-      tip:
-        `${escapeText(r.layout.name)}<br>総移動距離 <b>${r.metrics.totalUnits.toFixed(0)} u</b>` +
-        ` (${(r.metrics.totalMm / 1000).toFixed(2)} m)<br>` +
-        `1 打鍵あたり <b>${r.metrics.meanPerStroke.toFixed(3)} u</b>` +
-        `<br>1 文字あたり <b>${r.metrics.perCharUnits.toFixed(3)} u</b>` +
-        `<br>アクション/文字 <b>${r.metrics.perCharSteps.toFixed(3)}</b>` +
-        `<br>押下/文字 <b>${r.metrics.perCharPresses.toFixed(3)}</b>` +
-        (baseline && baseline.metrics.totalUnits !== 0
-          ? `<br>比較元比 <b>${((r.metrics.totalUnits / baseline.metrics.totalUnits) * 100).toFixed(1)}%</b>`
-          : '') +
-        `<br>${comboSummary(r.metrics)}`,
-    })),
-    // 日本語の配列名は長い。ラベル欄は widest に合わせて広めに取る
-    { format: (v) => v.toFixed(0), labelWidth: 150 },
-  );
-
-  const compareRows = results.map((r) => {
-    const m = r.metrics;
-    const adjacentMean = m.adjacent.reduce((a, b) => a + b.meanExcess, 0) / m.adjacent.length;
-    const ratio = baseline && baseline.metrics.totalUnits !== 0
-      ? (m.totalUnits / baseline.metrics.totalUnits) * 100
-      : null;
-    return {
-      result: r,
-      ratio,
-      cells: [
-        { value: m.strokes },
-        { value: m.totalUnits },
-        { value: m.totalMm / 1000 },
-        { value: m.meanPerStroke },
-        { value: m.perCharUnits },
-        { value: m.perCharSteps },
-        { value: m.perCharPresses },
-        { value: m.sameFinger },
-        { value: (m.sameFinger / Math.max(1, m.strokes)) * 100 },
-        { value: adjacentMean },
-        { value: ratio ?? 0 },
-      ],
-    };
-  });
-
-  const rows = sortMatrixRows(compareRows, compareSort)
-    .map(({ result: r, ratio, cells }) => {
-      const m = r.metrics;
-      return `<tr${m.totalUnits === best ? ' class="best"' : ''}>
-        <td><span class="swatch" style="background:${SERIES(r.slot)}"></span>${escapeText(r.layout.name)}</td>
-        <td class="num">${cells[0].value}</td>
-        <td class="num">${cells[1].value.toFixed(0)}</td>
-        <td class="num">${cells[2].value.toFixed(2)}</td>
-        <td class="num">${cells[3].value.toFixed(3)}</td>
-        <td class="num">${cells[4].value.toFixed(3)}</td>
-        <td class="num">${cells[5].value.toFixed(3)}</td>
-        <td class="num">${cells[6].value.toFixed(3)}</td>
-        <td class="num">${cells[7].value}</td>
-        <td class="num">${cells[8].value.toFixed(1)}%</td>
-        <td class="num">${cells[9].value.toFixed(3)}</td>
-        <td class="num">${ratio === null ? '—' : `${ratio.toFixed(1)}%`}</td>
-      </tr>`;
-    })
-    .join('');
-
-  el.compare.innerHTML = `
-    <thead><tr>
-      <th>配列</th>${COMPARE_HEADERS.map((label, column) => compareHeader(label, column)).join('')}
-    </tr></thead><tbody>${rows}</tbody>`;
-}
-
 const COMPARE_HEADERS = [
   'ステップ',
   '距離 [u]',
@@ -801,8 +726,109 @@ const COMPARE_HEADERS = [
   '同指連続',
   '同指連続率',
   '隣接指超過 [u]',
-  '総距離比 [%]',
 ];
+
+const COMPARE_FORMATS: Array<(value: number) => string> = [
+  (value) => `${value}`,
+  (value) => value.toFixed(0),
+  (value) => value.toFixed(2),
+  (value) => value.toFixed(3),
+  (value) => value.toFixed(3),
+  (value) => value.toFixed(3),
+  (value) => value.toFixed(3),
+  (value) => `${value}`,
+  (value) => `${value.toFixed(1)}%`,
+  (value) => value.toFixed(3),
+];
+
+interface CompareCell {
+  value: number;
+  display: string;
+}
+
+function compareMetricValues(metrics: Metrics): number[] {
+  const adjacentMean = metrics.adjacent.reduce((a, b) => a + b.meanExcess, 0) / metrics.adjacent.length;
+  return [
+    metrics.strokes,
+    metrics.totalUnits,
+    metrics.totalMm / 1000,
+    metrics.meanPerStroke,
+    metrics.perCharUnits,
+    metrics.perCharSteps,
+    metrics.perCharPresses,
+    metrics.sameFinger,
+    (metrics.sameFinger / Math.max(1, metrics.strokes)) * 100,
+    adjacentMean,
+  ];
+}
+
+function relativePercent(value: number, baseline: number): number | null {
+  if (baseline === 0) return value === 0 ? 100 : null;
+  return (value / baseline) * 100;
+}
+
+function compareCell(
+  value: number,
+  baseline: number | null,
+  format: (value: number) => string,
+): CompareCell {
+  if (baseline === null) return { value, display: format(value) };
+  const ratio = relativePercent(value, baseline);
+  return ratio === null
+    ? { value: 0, display: '—' }
+    : { value: ratio, display: `${ratio.toFixed(1)}%` };
+}
+
+function renderCompare(results: Result[]) {
+  syncCompareBaselineOptions(results);
+  const best = Math.min(...results.map((r) => r.metrics.totalUnits));
+  const baseline = results.find((r) => r.layout.id === el.compareBaseline.value);
+  const baselineValues = baseline ? compareMetricValues(baseline.metrics) : null;
+
+  const compareRows = results.map((r) => {
+    const values = compareMetricValues(r.metrics);
+    const cells = values.map((value, column) => compareCell(
+      value,
+      baselineValues ? baselineValues[column] : null,
+      COMPARE_FORMATS[column],
+    ));
+    return { result: r, cells };
+  });
+
+  const sortedRows = sortMatrixRows(compareRows, compareSort);
+  syncCompareChartOptions(baseline !== undefined);
+  const chartBest = Math.min(...sortedRows.map((row) => row.cells[compareChartColumn].value));
+  const chartRelative = baseline !== undefined;
+  const chartLabel = compareLabel(COMPARE_HEADERS[compareChartColumn], chartRelative);
+  el.compareChart.innerHTML = barChart(
+    sortedRows.map(({ result: r, cells }) => ({
+      label: r.layout.name,
+      value: cells[compareChartColumn].value,
+      valueLabel: cells[compareChartColumn].display,
+      color: SERIES(r.slot),
+      emphasise: cells[compareChartColumn].value === chartBest,
+      tip:
+        `${escapeText(r.layout.name)}<br>${escapeText(chartLabel)} <b>${cells[compareChartColumn].display}</b>` +
+        `<br>${comboSummary(r.metrics)}`,
+    })),
+    {
+      format: chartRelative ? (value) => `${value.toFixed(1)}%` : COMPARE_FORMATS[compareChartColumn],
+      labelWidth: 150,
+    },
+  );
+
+  const rows = sortedRows
+    .map(({ result: r, cells }) => `<tr${r.metrics.totalUnits === best ? ' class="best"' : ''}>
+      <td><span class="swatch" style="background:${SERIES(r.slot)}"></span>${escapeText(r.layout.name)}</td>
+      ${cells.map((cell) => `<td class="num">${cell.display}</td>`).join('')}
+    </tr>`)
+    .join('');
+
+  el.compare.innerHTML = `
+    <thead><tr>
+      <th>配列</th>${COMPARE_HEADERS.map((label, column) => compareHeader(label, column, baseline !== undefined)).join('')}
+    </tr></thead><tbody>${rows}</tbody>`;
+}
 
 function syncCompareBaselineOptions(results: Result[]) {
   const current = el.compareBaseline.value;
@@ -813,12 +839,29 @@ function syncCompareBaselineOptions(results: Result[]) {
   el.compareBaseline.value = results.some((r) => r.layout.id === current) ? current : '';
 }
 
-function compareHeader(label: string, column: number): string {
+function compareLabel(label: string, relative: boolean): string {
+  return relative ? `${label.replace(/\s*\[[^\]]+\]$/, '')} [%]` : label;
+}
+
+function syncCompareChartOptions(relative: boolean) {
+  if (compareChartColumn < 0 || compareChartColumn >= COMPARE_HEADERS.length) compareChartColumn = 1;
+  el.compareChartMetric.replaceChildren();
+  for (let column = 0; column < COMPARE_HEADERS.length; column++) {
+    el.compareChartMetric.add(new Option(
+      compareLabel(COMPARE_HEADERS[column], relative),
+      String(column),
+    ));
+  }
+  el.compareChartMetric.value = String(compareChartColumn);
+}
+
+function compareHeader(label: string, column: number, relative: boolean): string {
   const active = compareSort?.column === column ? compareSort.direction : undefined;
   const marker = active === 'asc' ? ' ↑' : active === 'desc' ? ' ↓' : '';
   const ariaSort = active === 'asc' ? 'ascending' : active === 'desc' ? 'descending' : 'none';
+  const shownLabel = compareLabel(label, relative);
   return `<th><span class="table-sort" data-compare-sort="${column}" role="button" tabindex="0"
-    aria-label="${escapeAttr(`${label}で配列を並べ替え`)}" aria-sort="${ariaSort}">${escapeText(label)}${marker}</span></th>`;
+    aria-label="${escapeAttr(`${shownLabel}で配列を並べ替え`)}" aria-sort="${ariaSort}">${escapeText(shownLabel)}${marker}</span></th>`;
 }
 
 function comboSummary(metrics: Metrics): string {
@@ -948,6 +991,7 @@ function bindMatrixSort(root: HTMLElement, kind: MatrixKind) {
 }
 
 function cycleCompareSort(column: number) {
+  compareChartColumn = column;
   compareSort =
     !compareSort || compareSort.column !== column
       ? { column, direction: 'asc' }
@@ -1117,6 +1161,10 @@ el.mode.addEventListener('change', onModeChange);
 el.sample.addEventListener('change', () => {
   selectedSample[currentModeId()] = el.sample.value;
   el.text.value = currentSample();
+  render();
+});
+el.compareChartMetric.addEventListener('change', () => {
+  compareChartColumn = Number(el.compareChartMetric.value);
   render();
 });
 for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.sample, el.text, el.detailLayout, el.compareBaseline]) {

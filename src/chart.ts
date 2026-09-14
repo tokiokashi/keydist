@@ -42,6 +42,8 @@ function barPath(x: number, y: number, w: number, h: number, r = 4): string {
 export interface BarDatum {
   label: string;
   value: number;
+  /** 省略時は format(value)。値が個別に表示形式を持つ図で使う */
+  valueLabel?: string;
   /** 省略時は単一色（magnitude の図） */
   color?: string;
   /** ツールチップに出す補足 */
@@ -76,14 +78,15 @@ export function barChart(data: BarDatum[], options: BarOptions = {}): string {
       const y = i * rowH;
       const w = Math.max(0, (d.value / max) * plotW);
       const fill = d.color ?? 'var(--heat-1)';
-      const tipText = d.tip ?? `${d.label}<br><b>${format(d.value)}</b>`;
+      const valueLabel = d.valueLabel ?? format(d.value);
+      const tipText = d.tip ?? `${d.label}<br><b>${valueLabel}</b>`;
       return `<g data-tip="${escapeAttr(tipText)}">
         <rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"/>
         <text x="${labelW - 10}" y="${y + rowH / 2 + 4}" text-anchor="end" font-size="12"
           fill="var(--fg)" ${d.emphasise ? 'font-weight="700"' : ''}>${escapeText(d.label)}</text>
         <path d="${barPath(labelW, y + (rowH - barH) / 2, w, barH)}" fill="${fill}"/>
         <text x="${labelW + w + 8}" y="${y + rowH / 2 + 4}" font-size="12"
-          fill="var(--muted)" font-variant-numeric="tabular-nums">${format(d.value)}</text>
+          fill="var(--muted)" font-variant-numeric="tabular-nums">${valueLabel}</text>
       </g>`;
     })
     .join('');
