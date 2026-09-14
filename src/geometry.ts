@@ -3,7 +3,7 @@ export type Finger =
   | 'LP' | 'LR' | 'LM' | 'LI' | 'LT'
   | 'RT' | 'RI' | 'RM' | 'RR' | 'RP';
 
-/** 親指を除く 8 本。隣接指間距離（§11.5）はこの範囲で見る */
+/** 親指を除く 8 本。隣接指間距離（§11.6）はこの範囲で見る */
 export type NonThumb = Exclude<Finger, 'LT' | 'RT'>;
 export const FINGERS: NonThumb[] = ['LP', 'LR', 'LM', 'LI', 'RI', 'RM', 'RR', 'RP'];
 
@@ -12,7 +12,7 @@ export const ALL_FINGERS: Finger[] = ['LP', 'LR', 'LM', 'LI', 'LT', 'RT', 'RI', 
 
 export const isThumb = (finger: Finger) => finger === 'LT' || finger === 'RT';
 
-/** 同じ手の隣接ペア（§11.5） */
+/** 同じ手の隣接ペア（§11.6） */
 export const ADJACENT_PAIRS: [NonThumb, NonThumb][] = [
   ['LP', 'LR'], ['LR', 'LM'], ['LM', 'LI'],
   ['RI', 'RM'], ['RM', 'RR'], ['RR', 'RP'],

@@ -313,7 +313,7 @@ function renderCompare(results: Result[]) {
   const rows = results
     .map((r) => {
       const m = r.metrics;
-      const stdDev = m.adjacent.reduce((a, b) => a + b.stdDev, 0) / m.adjacent.length;
+      const adjacentMean = m.adjacent.reduce((a, b) => a + b.mean, 0) / m.adjacent.length;
       return `<tr${m.totalUnits === best ? ' class="best"' : ''}>
         <td><span class="swatch" style="background:${SERIES(r.slot)}"></span>${escapeText(r.layout.name)}</td>
         <td class="num">${m.strokes}</td>
@@ -325,7 +325,7 @@ function renderCompare(results: Result[]) {
         <td class="num">${m.perCharPresses.toFixed(3)}</td>
         <td class="num">${m.sameFinger}</td>
         <td class="num">${((m.sameFinger / Math.max(1, m.strokes)) * 100).toFixed(1)}%</td>
-        <td class="num">${stdDev.toFixed(3)}</td>
+        <td class="num">${adjacentMean.toFixed(3)}</td>
       </tr>`;
     })
     .join('');
@@ -334,7 +334,7 @@ function renderCompare(results: Result[]) {
     <thead><tr>
       <th>配列</th><th>ステップ</th><th>距離 [u]</th><th>距離 [m]</th>
       <th>1打鍵 [u]</th><th>1文字 [u]</th><th>アクション/文字</th><th>押下/文字</th>
-      <th>同指連続</th><th>同指連続率</th><th>隣接指標準偏差</th>
+      <th>同指連続</th><th>同指連続率</th><th>隣接指平均 [u]</th>
     </tr></thead><tbody>${rows}</tbody>`;
 }
 
@@ -344,8 +344,8 @@ function renderCompare(results: Result[]) {
  *
  * 指ごとの移動距離は入力文字数で正規化する（u/文字）。生の u は評価テキストの
  * 長さに引きずられるため、テキストを変えても配列間の比較が揺れないようにする。
- * 隣接指の平均・標準偏差はもともと打鍵ごとの統計であり文字数に依存しないので、
- * こちらは生値のまま出す（比較表の「隣接指標準偏差」列と同じ単位）。
+ * 隣接指の平均・最大値はもともと打鍵ごとの統計であり文字数に依存しないので、
+ * こちらは生値のまま出す（比較表の「隣接指平均」列と同じ単位）。
  */
 function renderMatrices(results: Result[]) {
   const fingerRows = results.map((r) => ({
@@ -378,10 +378,11 @@ function renderMatrices(results: Result[]) {
     label: r.layout.name,
     color: SERIES(r.slot),
     cells: r.metrics.adjacent.map((s) => ({
-      value: s.stdDev,
+      value: s.mean,
       tip:
         `${escapeText(r.layout.name)} / ${FINGER_LABEL[s.pair[0]]}–${FINGER_LABEL[s.pair[1]]}<br>` +
-        `標準偏差 <b>${s.stdDev.toFixed(3)} u</b><br>平均 <b>${s.mean.toFixed(3)} u</b>`,
+        `平均 <b>${s.mean.toFixed(3)} u</b><br>` +
+        `実測最大 <b>${s.max.toFixed(3)} u</b><br>標準偏差 <b>${s.stdDev.toFixed(3)} u</b>`,
     })),
   }));
 
@@ -461,9 +462,11 @@ function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeomet
     metrics.adjacent.map((s) => ({
       label: `${SHORT_FINGER[s.pair[0]]}–${SHORT_FINGER[s.pair[1]]}`,
       group: s.pair[0][0] === 'L' ? '左手' : '右手',
-      value: s.stdDev,
+      value: s.mean,
       tip: `${FINGER_LABEL[s.pair[0]]}–${FINGER_LABEL[s.pair[1]]}<br>` +
-        `標準偏差 <b>${s.stdDev.toFixed(3)}</b><br>平均 <b>${s.mean.toFixed(3)} u</b>`,
+        `平均 <b>${s.mean.toFixed(3)} u</b><br>` +
+        `実測最大 <b>${s.max.toFixed(3)} u</b><br>` +
+        `標準偏差 <b>${s.stdDev.toFixed(3)} u</b>`,
     })),
     { format: (v) => v.toFixed(3) },
   );

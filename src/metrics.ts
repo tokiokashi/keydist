@@ -5,6 +5,7 @@ export interface PairStat {
   pair: [Finger, Finger];
   mean: number;
   stdDev: number;
+  max: number;
 }
 
 export interface Metrics {
@@ -26,7 +27,7 @@ export interface Metrics {
   presses: number;
   /** 配列に無く打鍵できなかった文字数 */
   skipped: number;
-  /** 入力文字数（展開前。仕様 §11.3 の分母） */
+  /** 入力文字数（展開前。仕様 §11.4 の分母） */
   inputChars: number;
   /** 指ごとの総移動距離 [u] */
   perFinger: Record<Finger, number>;
@@ -45,12 +46,12 @@ export interface Metrics {
    */
   perCharUnits: number;
   /**
-   * 入力 1 文字あたりのアクション（ステップ）数（仕様 §11.4）。
+   * 入力 1 文字あたりのアクション（ステップ）数（仕様 §11.5）。
    * コンボ・かな直接入力による打鍵数削減の効果はここに直接出る。
    */
   perCharSteps: number;
   /**
-   * 入力 1 文字あたりの押下キー数（仕様 §11.4）。
+   * 入力 1 文字あたりの押下キー数（仕様 §11.5）。
    * コンボは複数キーを 1 ステップにまとめても押すキー自体は減らさないため、
    * `perCharSteps` が下がっても `perCharPresses` は下がらない場合がある。
    */
@@ -102,7 +103,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
 
   const adjacent = ADJACENT_PAIRS.map((pair, i) => ({
     pair,
-    ...meanStdDev(pairSamples[i]),
+    ...meanStdDevMax(pairSamples[i]),
   }));
 
   const n = trace.strokes.length;
@@ -131,9 +132,9 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
   };
 }
 
-function meanStdDev(values: number[]): { mean: number; stdDev: number } {
-  if (values.length === 0) return { mean: 0, stdDev: 0 };
+function meanStdDevMax(values: number[]): { mean: number; stdDev: number; max: number } {
+  if (values.length === 0) return { mean: 0, stdDev: 0, max: 0 };
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
   const variance = values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
-  return { mean, stdDev: Math.sqrt(variance) };
+  return { mean, stdDev: Math.sqrt(variance), max: Math.max(...values) };
 }

@@ -115,6 +115,7 @@ test('全打鍵で指の相対位置が変わらなければ隣接指の標準�
   const m = computeMetrics(evaluate('jjjj', qwerty, geometry, opts()), geometry);
   for (const stat of m.adjacent) {
     near(stat.stdDev, 0, stat.pair.join('-'));
+    near(stat.max, stat.mean, `${stat.pair.join('-')} max`);
   }
 });
 
@@ -132,5 +133,6 @@ test('隣接指の標準偏差は打鍵ごとのスナップショットから�
     const variance = samples.reduce((a, b) => a + (b - mean) ** 2, 0) / samples.length;
     near(stat.mean, mean, `${stat.pair.join('-')} mean`);
     near(stat.stdDev, Math.sqrt(variance), `${stat.pair.join('-')} stdDev`);
+    near(stat.max, Math.max(...samples), `${stat.pair.join('-')} max`);
   }
 });
