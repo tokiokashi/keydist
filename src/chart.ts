@@ -224,7 +224,13 @@ export function columnChart(data: ColumnDatum[], options: ColumnOptions = {}): s
   const top = 18;
   const bottom = data.some((d) => d.group) ? 34 : 20;
   const plotH = H - top - bottom;
-  const max = Math.max(1e-9, ...data.map((d) => d.value));
+  const hi = Math.max(...data.map((d) => d.value), 0);
+  const lo = Math.min(...data.map((d) => d.value), 0);
+  // 全値が 0 の場合も、ゼロ基準線は従来どおり図の下端に置く
+  const scaleHi = hi === 0 && lo === 0 ? 1 : hi;
+  const span = Math.max(1e-9, scaleHi - lo);
+  const yOf = (value: number) => top + ((scaleHi - value) / span) * plotH;
+  const baselineY = yOf(0);
 
   // 塊の切れ目に 1 本分の半分の余白を入れる
   const gaps = data.reduce((n, d, i) => (i > 0 && d.group !== data[i - 1].group ? n + 1 : n), 0);
@@ -237,22 +243,20 @@ export function columnChart(data: ColumnDatum[], options: ColumnOptions = {}): s
       if (i > 0 && d.group !== data[i - 1].group) cursor += slot * 0.5;
       const x = cursor + (slot - barW) / 2;
       cursor += slot;
-      // 超過のように負を取りうる量が来る。棒は 0 で止め、値そのものはラベルで読ませる
-      const h = Math.max(0, (d.value / max) * plotH);
-      const y = top + plotH - h;
+      // 0 を基準に、正値は上向き、負値は下向きに描く
+      const valueY = yOf(d.value);
+      const h = Math.abs(valueY - baselineY);
+      const y = Math.min(valueY, baselineY);
       const fill = d.color ?? 'var(--heat-1)';
       const tipText = d.tip ?? `${d.label}<br><b>${format(d.value)}</b>`;
-      // データ端（上）だけ 4px 丸める
-      const r = Math.min(4, h);
-      const path =
-        h <= 0.5
-          ? ''
-          : `<path d="M${x},${top + plotH} v${-(h - r)} a${r},${r} 0 0 1 ${r},${-r} ` +
-            `h${barW - r * 2} a${r},${r} 0 0 1 ${r},${r} v${h - r} z" fill="${fill}"/>`;
+      const bar = h <= 0.5
+        ? ''
+        : `<rect data-bar="true" x="${x}" y="${y}" width="${barW}" height="${h}" rx="4" fill="${fill}"/>`;
+      const valueLabelY = d.value < 0 ? y + h + 14 : y - 5;
       return `<g data-tip="${escapeAttr(tipText)}">
         <rect x="${cursor - slot}" y="0" width="${slot}" height="${H}" fill="transparent"/>
-        ${path}
-        <text x="${x + barW / 2}" y="${y - 5}" text-anchor="middle" font-size="11"
+        ${bar}
+        <text x="${x + barW / 2}" y="${valueLabelY}" text-anchor="middle" font-size="11"
           fill="var(--muted)" font-variant-numeric="tabular-nums">${format(d.value)}</text>
         <text x="${x + barW / 2}" y="${top + plotH + 14}" text-anchor="middle" font-size="11"
           fill="var(--fg)">${escapeText(d.label)}</text>
@@ -281,7 +285,7 @@ export function columnChart(data: ColumnDatum[], options: ColumnOptions = {}): s
       .join('');
   }
 
-  const baseline = `<line x1="0" y1="${top + plotH}" x2="${W}" y2="${top + plotH}" stroke="var(--line)"/>`;
+  const baseline = `<line x1="0" y1="${baselineY}" x2="${W}" y2="${baselineY}" stroke="var(--line)"/>`;
   return `<svg viewBox="0 0 ${W} ${H}" role="img">${baseline}${bars}${groupLabels}</svg>`;
 }
 

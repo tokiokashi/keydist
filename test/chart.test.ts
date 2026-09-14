@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lineChart, matrixChart } from '../src/chart.ts';
+import { columnChart, lineChart, matrixChart } from '../src/chart.ts';
 
 const SERIES = [
   { name: 'A', color: '#f00', points: [{ x: 0, y: 100 }, { x: 1, y: 96 }, { x: 2, y: 91.4 }] },
@@ -27,6 +27,21 @@ test('全系列が同じ値でも上端の指定が潰れない', () => {
   const ticks = yTicks(lineChart(flat, [0, 1], (v) => `${v.toFixed(1)}%`, { yMax: 100 }));
   assert.equal(Math.max(...ticks), 100);
   assert.ok(Math.min(...ticks) < 100, '幅が 0 だと線が描けないので下側に余白を取る');
+});
+
+test('縦棒は負の値を 0 基準の下向きに描く', () => {
+  const svg = columnChart([
+    { label: '正', value: 2 },
+    { label: '負', value: -1 },
+  ]);
+  const bars = [...svg.matchAll(/<rect data-bar="true"[^>]* y="([\d.]+)"[^>]* height="([\d.]+)"/g)];
+  assert.equal(bars.length, 2);
+  assert.notEqual(bars[0][1], bars[1][1], '正負の棒が同じ位置に重ならない');
+  assert.ok(Number(bars[0][2]) > 0);
+  assert.ok(Number(bars[1][2]) > 0);
+
+  const zero = columnChart([{ label: 'ゼロ', value: 0 }]);
+  assert.match(zero, /<line x1="0" y1="170" x2="420" y2="170"/);
 });
 
 /** セルの塗り強度（heat-1 の混合率）を読み取る */
