@@ -97,10 +97,14 @@ test('段ずれ量が ANSI の修飾キー幅と一致する', () => {
   near(geometry.grid[3][0].x, 1.25, 'z');
 });
 
-test('隣接指間距離はホーム段で 1u 前後になる', () => {
+test('ホーム段だけを打つと隣接指の超過はほぼ 0 になる', () => {
+  // 生の距離ではなくホーム間隔 1u を引いた超過を見る（仕様 §11.6）
   const m = computeMetrics(evaluate('asdf jkl;', qwerty, geometry, opts()), geometry);
   for (const stat of m.adjacent) {
-    assert.ok(stat.mean > 0.5 && stat.mean < 2, `${stat.pair.join('-')}: ${stat.mean}`);
+    assert.ok(
+      Math.abs(stat.meanExcess) < 0.5,
+      `${stat.pair.join('-')}: ${stat.meanExcess}`,
+    );
   }
 });
 

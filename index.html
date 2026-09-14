@@ -111,7 +111,7 @@
               <p class="note">親指はホームが親指キー自身のため距離が常に 0 になるので省いている。押下数は図にかざすと出る。</p>
             </div>
             <div>
-              <h3>隣接指間距離の平均</h3>
+              <h3>隣接指のホーム間隔からの超過（平均）[u]</h3>
               <div id="adjacent-chart"></div>
             </div>
           </div>
@@ -131,20 +131,22 @@
           <div class="split-wrap">
             <div>
               <h3>指ごとの移動距離 [u/文字]</h3>
-              <div id="finger-matrix"></div>
+              <div class="fig-fixed" id="finger-matrix"></div>
             </div>
             <div>
               <h3>指ごとの押下数 [押下/文字]</h3>
-              <div id="press-matrix"></div>
+              <div class="fig-fixed" id="press-matrix"></div>
             </div>
             <div>
-              <h3>隣接指間距離の平均 [u]</h3>
-              <div id="adjacent-matrix"></div>
+              <h3>隣接指のホーム間隔からの超過（平均）[u]</h3>
+              <div class="fig-fixed" id="adjacent-matrix"></div>
             </div>
           </div>
           <p class="note">
             指ごとの移動距離は入力文字数で正規化している（評価テキストの長さに比較が引きずられないため）。
-            色は各図の中での最大値を基準にした強弱で、配列間・指間どちらの比較にも同じ尺度を使う。
+            隣接指は生の距離ではなく、各ペアのホーム間隔を引いた超過で出す（ホームに並んだ状態が 0。仕様 §11.6）。
+            色は各図の中での値の幅を基準にした強弱で、配列間・指間どちらの比較にも同じ尺度を使う
+            （距離と押下数は 0 が下端、超過は値の帯が狭いため実測の最小値を下端に取る）。
             押下数の面だけ親指を含む 10 本を並べる（親指の移動距離は定義上 0 だが、押下は現に起きているため）。
           </p>
         </section>

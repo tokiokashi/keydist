@@ -1,11 +1,23 @@
 import { ADJACENT_PAIRS, ALL_FINGERS, dist, type Finger, type Geometry } from './geometry.ts';
 import type { Trace } from './evaluate.ts';
 
+/**
+ * 隣接ペアのホーム間隔 [u]（仕様 §11.6 で引く基準）。
+ * 定数 1u ではなく形状・指割り当てから実際に測る。列ずれのある形状では
+ * 隣接ホームの 2 次元距離が 1u をわずかに超えるが、それは指の長さを補正した
+ * 姿勢であって「開き」ではないため、超過の 0 点はそちらに置く。
+ */
+export const homeSpacing = (geometry: Geometry, pair: [Finger, Finger]) =>
+  dist(geometry.homes[pair[0]], geometry.homes[pair[1]]);
+
 export interface PairStat {
   pair: [Finger, Finger];
-  mean: number;
+  /** ホーム間隔からの超過の平均 [u]。ホームに並んだ状態が 0。負になりうる */
+  meanExcess: number;
+  /** 超過の標準偏差 [u]。定数を引いても分布の広がりは変わらないので生の距離と同じ値 */
   stdDev: number;
-  max: number;
+  /** 超過の実測最大値 [u] */
+  maxExcess: number;
 }
 
 export interface Metrics {
@@ -56,7 +68,7 @@ export interface Metrics {
    * `perCharSteps` が下がっても `perCharPresses` は下がらない場合がある。
    */
   perCharPresses: number;
-  /** 隣接指間距離の統計 */
+  /** 隣接指間距離の統計。ホーム間隔からの超過で持つ（仕様 §11.6） */
   adjacent: PairStat[];
   /** 同指連続回数。同じ指で異なる位置を続けて打った数 */
   sameFinger: number;
@@ -79,6 +91,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
   const keyCounts = new Map<string, number>();
   const keyDistance = new Map<string, number>();
   const pairSamples: number[][] = ADJACENT_PAIRS.map(() => []);
+  const homeSpacings = ADJACENT_PAIRS.map((pair) => homeSpacing(geometry, pair));
 
   let presses = 0;
   for (const stroke of trace.strokes) {
@@ -97,14 +110,17 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
     }
 
     ADJACENT_PAIRS.forEach((pair, i) => {
-      pairSamples[i].push(dist(stroke.positions[pair[0]], stroke.positions[pair[1]]));
+      // そのペアのホーム間隔を引いた超過で溜める（仕様 §11.6）。0 でクランプはしない
+      pairSamples[i].push(
+        dist(stroke.positions[pair[0]], stroke.positions[pair[1]]) - homeSpacings[i],
+      );
     });
   }
 
-  const adjacent = ADJACENT_PAIRS.map((pair, i) => ({
-    pair,
-    ...meanStdDevMax(pairSamples[i]),
-  }));
+  const adjacent = ADJACENT_PAIRS.map((pair, i) => {
+    const { mean, stdDev, max } = meanStdDevMax(pairSamples[i]);
+    return { pair, meanExcess: mean, stdDev, maxExcess: max };
+  });
 
   const n = trace.strokes.length;
   const { inputChars } = trace;

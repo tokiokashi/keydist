@@ -323,7 +323,7 @@ function renderCompare(results: Result[]) {
   const rows = results
     .map((r) => {
       const m = r.metrics;
-      const adjacentMean = m.adjacent.reduce((a, b) => a + b.mean, 0) / m.adjacent.length;
+      const adjacentMean = m.adjacent.reduce((a, b) => a + b.meanExcess, 0) / m.adjacent.length;
       return `<tr${m.totalUnits === best ? ' class="best"' : ''}>
         <td><span class="swatch" style="background:${SERIES(r.slot)}"></span>${escapeText(r.layout.name)}</td>
         <td class="num">${m.strokes}</td>
@@ -344,7 +344,7 @@ function renderCompare(results: Result[]) {
     <thead><tr>
       <th>配列</th><th>ステップ</th><th>距離 [u]</th><th>距離 [m]</th>
       <th>1打鍵 [u]</th><th>1文字 [u]</th><th>アクション/文字</th><th>押下/文字</th>
-      <th>同指連続</th><th>同指連続率</th><th>隣接指平均 [u]</th>
+      <th>同指連続</th><th>同指連続率</th><th>隣接指超過 [u]</th>
     </tr></thead><tbody>${rows}</tbody>`;
 }
 
@@ -355,7 +355,8 @@ function renderCompare(results: Result[]) {
  * 指ごとの移動距離は入力文字数で正規化する（u/文字）。生の u は評価テキストの
  * 長さに引きずられるため、テキストを変えても配列間の比較が揺れないようにする。
  * 隣接指の平均・最大値はもともと打鍵ごとの統計であり文字数に依存しないので、
- * こちらは生値のまま出す（比較表の「隣接指平均」列と同じ単位）。
+ * こちらは正規化せずホーム間隔からの超過をそのまま出す（仕様 §11.6。
+ * 比較表の「隣接指超過」列と同じ単位）。
  */
 function renderMatrices(results: Result[]) {
   const fingerRows = results.map((r) => ({
@@ -417,11 +418,12 @@ function renderMatrices(results: Result[]) {
     label: r.layout.name,
     color: SERIES(r.slot),
     cells: r.metrics.adjacent.map((s) => ({
-      value: s.mean,
+      value: s.meanExcess,
       tip:
         `${escapeText(r.layout.name)} / ${FINGER_LABEL[s.pair[0]]}–${FINGER_LABEL[s.pair[1]]}<br>` +
-        `平均 <b>${s.mean.toFixed(3)} u</b><br>` +
-        `実測最大 <b>${s.max.toFixed(3)} u</b><br>標準偏差 <b>${s.stdDev.toFixed(3)} u</b>`,
+        `超過の平均 <b>${s.meanExcess.toFixed(3)} u</b><br>` +
+        `超過の実測最大 <b>${s.maxExcess.toFixed(3)} u</b><br>` +
+        `標準偏差 <b>${s.stdDev.toFixed(3)} u</b>`,
     })),
   }));
 
@@ -433,6 +435,8 @@ function renderMatrices(results: Result[]) {
       labelWidth: 190,
       columnSplit: 3,
       columnGroupLabels: ['左手', '右手'],
+      // 超過は 0.02〜0.6 の狭い帯に固まる。0 起点だと全セルが薄くなって差が読めない
+      colorBase: 'min',
     },
   );
 }
@@ -501,10 +505,10 @@ function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeomet
     metrics.adjacent.map((s) => ({
       label: `${SHORT_FINGER[s.pair[0]]}–${SHORT_FINGER[s.pair[1]]}`,
       group: s.pair[0][0] === 'L' ? '左手' : '右手',
-      value: s.mean,
+      value: s.meanExcess,
       tip: `${FINGER_LABEL[s.pair[0]]}–${FINGER_LABEL[s.pair[1]]}<br>` +
-        `平均 <b>${s.mean.toFixed(3)} u</b><br>` +
-        `実測最大 <b>${s.max.toFixed(3)} u</b><br>` +
+        `超過の平均 <b>${s.meanExcess.toFixed(3)} u</b><br>` +
+        `超過の実測最大 <b>${s.maxExcess.toFixed(3)} u</b><br>` +
         `標準偏差 <b>${s.stdDev.toFixed(3)} u</b>`,
     })),
     { format: (v) => v.toFixed(3) },

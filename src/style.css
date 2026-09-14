@@ -235,17 +235,20 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 @media (max-width: 720px) { .split { grid-template-columns: 1fr; } }
 
-/* 図が 3 枚以上並ぶ節。入る幅だけ列を作り、列に満たない最後の 1 枚は行いっぱいに
-   広げる（2 枚 + 右半分が空白、というラグ配置にしない）。最小幅は、指 10 列の
-   マトリックスが読める下限を見て 400px に取ってある。 */
+/* 図が 3 枚以上並ぶ節。各図は自然な大きさのまま左から詰めて折り返す。
+   列を等幅にして引き伸ばすと、列数の少ない図だけセルが大きくなり、
+   セルの実寸が枚ごとに変わって読み違いを生む。横幅が余るのは許容する。 */
 .split-wrap {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr));
-  gap: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 24px;
+  align-items: flex-start;
 }
-.split-wrap > :last-child:nth-child(odd) { grid-column: 1 / -1; }
-/* 引き伸ばされた側だけ図が巨大にならないよう、自然な大きさで止めて中央に置く */
-.split-wrap svg { max-width: 760px; margin-inline: auto; }
+.split-wrap > * { flex: 0 1 auto; max-width: 100%; min-width: 0; }
+/* 図は px の実寸で置く。枠に入らない狭い画面では、縮めずに横スクロールさせる
+   （縮めると枚ごとに縮み率が変わってセルの大きさが揃わない） */
+.fig-fixed { overflow-x: auto; }
+.fig-fixed svg { width: auto; max-width: none; }
 
 .tooltip {
   position: fixed;

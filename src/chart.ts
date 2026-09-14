@@ -237,7 +237,8 @@ export function columnChart(data: ColumnDatum[], options: ColumnOptions = {}): s
       if (i > 0 && d.group !== data[i - 1].group) cursor += slot * 0.5;
       const x = cursor + (slot - barW) / 2;
       cursor += slot;
-      const h = (d.value / max) * plotH;
+      // 超過のように負を取りうる量が来る。棒は 0 で止め、値そのものはラベルで読ませる
+      const h = Math.max(0, (d.value / max) * plotH);
       const y = top + plotH - h;
       const fill = d.color ?? 'var(--heat-1)';
       const tipText = d.tip ?? `${d.label}<br><b>${format(d.value)}</b>`;
@@ -306,6 +307,14 @@ export interface MatrixOptions {
   columnSplit?: number;
   /** 隙間の両側に出す見出し。columnSplit とセットで使う */
   columnGroupLabels?: [string, string];
+  /**
+   * 色の下端をどこに置くか。
+   * `zero`（既定）は 0 を最も薄い色に固定する。0 が「無い」を意味する量（距離・押下数）向け。
+   * `min` は実測の最小値を下端に取る。ホーム間隔からの超過のように値が狭い帯に固まる量は、
+   * 0 起点だと全セルが同じ濃さに見えるため、こちらで帯いっぱいに色を割り当てる。
+   * 負の値もそのまま下端側に載る（クランプしない）。
+   */
+  colorBase?: 'zero' | 'min';
 }
 
 /**
@@ -324,7 +333,10 @@ export function matrixChart(rows: MatrixRow[], columns: string[], options: Matri
   const W = labelW + columns.length * cellW + gap;
   const H = headerH + rows.length * rowH;
 
-  const max = Math.max(1e-9, ...rows.flatMap((r) => r.cells.map((c) => c.value)));
+  const values = rows.flatMap((r) => r.cells.map((c) => c.value));
+  const hi = Math.max(...values, 0);
+  const lo = options.colorBase === 'min' ? Math.min(...values, hi) : 0;
+  const span = Math.max(1e-9, hi - lo);
   const colX = (i: number) => labelW + i * cellW + (split !== undefined && i >= split ? gap : 0);
 
   const groupLabels = options.columnGroupLabels
@@ -355,7 +367,7 @@ export function matrixChart(rows: MatrixRow[], columns: string[], options: Matri
       const cells = row.cells
         .map((cell, ci) => {
           const x = colX(ci);
-          const t = cell.value / max;
+          const t = Math.min(1, Math.max(0, (cell.value - lo) / span));
           const tipText =
             cell.tip ?? `${escapeText(row.label)} / ${escapeText(columns[ci])}<br><b>${format(cell.value)}</b>`;
           return `<g data-tip="${escapeAttr(tipText)}">
@@ -371,5 +383,7 @@ export function matrixChart(rows: MatrixRow[], columns: string[], options: Matri
     })
     .join('');
 
-  return `<svg viewBox="0 0 ${W} ${H}" role="img">${groupLabels}${colHeads}${body}</svg>`;
+  // 実寸を属性で持たせる。枚ごとに列数が違っても、CSS 側で幅を自動にすれば
+  // セルの大きさが揃う（引き伸ばされた図だけセルが大きくなるのを防ぐ）
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img">${groupLabels}${colHeads}${body}</svg>`;
 }

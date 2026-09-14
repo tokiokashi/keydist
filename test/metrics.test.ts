@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, ALL_FINGERS } from '../src/geometry.ts';
 import { evaluate, type Options } from '../src/evaluate.ts';
-import { computeMetrics } from '../src/metrics.ts';
+import { computeMetrics, homeSpacing } from '../src/metrics.ts';
 import { LAYOUTS_JA, LAYOUT_BY_ID, type Layout } from '../src/layouts/index.ts';
 import { dist } from '../src/geometry.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
@@ -142,7 +142,22 @@ test('全打鍵で指の相対位置が変わらなければ隣接指の標準�
   const m = computeMetrics(evaluate('jjjj', qwerty, geometry, opts()), geometry);
   for (const stat of m.adjacent) {
     near(stat.stdDev, 0, stat.pair.join('-'));
-    near(stat.max, stat.mean, `${stat.pair.join('-')} max`);
+    near(stat.maxExcess, stat.meanExcess, `${stat.pair.join('-')} max`);
+    // ホームから動いていないので超過は 0（仕様 §11.6）
+    near(stat.meanExcess, 0, `${stat.pair.join('-')} excess`);
+  }
+});
+
+test('どの物理形状でもホーム段だけを打てば隣接指の超過は 0 になる', () => {
+  // 引くのは定数 1u ではなくペアごとの実ホーム間隔なので、列ずれのある形状でも
+  // ホームに居る状態がちょうど 0 になる（仕様 §11.6）
+  for (const shape of ['row-staggered', 'ortholinear', 'column-staggered'] as const) {
+    const g = buildGeometry(shape);
+    const m = computeMetrics(evaluate('asdf jkl;', qwerty, g, opts()), g);
+    for (const stat of m.adjacent) {
+      near(stat.meanExcess, 0, `${shape} ${stat.pair.join('-')} mean`);
+      near(stat.maxExcess, 0, `${shape} ${stat.pair.join('-')} max`);
+    }
   }
 });
 
@@ -153,13 +168,15 @@ test('隣接指の標準偏差は打鍵ごとのスナップショットから�
 
   for (const stat of m.adjacent) {
     // metrics.ts とは独立に、Trace.strokes の位置スナップショットから直接計算する
-    const samples = trace.strokes.map((s) =>
-      dist(s.positions[stat.pair[0]], s.positions[stat.pair[1]]),
+    const samples = trace.strokes.map(
+      (s) =>
+        dist(s.positions[stat.pair[0]], s.positions[stat.pair[1]]) -
+        homeSpacing(geometry, stat.pair),
     );
     const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
     const variance = samples.reduce((a, b) => a + (b - mean) ** 2, 0) / samples.length;
-    near(stat.mean, mean, `${stat.pair.join('-')} mean`);
+    near(stat.meanExcess, mean, `${stat.pair.join('-')} mean`);
     near(stat.stdDev, Math.sqrt(variance), `${stat.pair.join('-')} stdDev`);
-    near(stat.max, Math.max(...samples), `${stat.pair.join('-')} max`);
+    near(stat.maxExcess, Math.max(...samples), `${stat.pair.join('-')} max`);
   }
 });
