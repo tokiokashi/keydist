@@ -10,7 +10,7 @@ import { kunrei } from './kunrei.ts';
  *
  * ち・つ・ふ については公式に記述が無いため訓令式のまま（`ti` / `tu` / `hu`）。
  */
-const OVERRIDES: Record<string, string> = {
+export const OONISHI_OVERRIDES: Record<string, string> = {
   // 「し」単体は訓令式のまま `si`。SH を使うのは拗音のシャ行だけ
   しゃ: 'sha',
   しゅ: 'shu',
@@ -23,4 +23,7 @@ const OVERRIDES: Record<string, string> = {
   じぇ: 'je',
 };
 
-export const oonishiRomaji = () => kunrei(OVERRIDES);
+export const oonishiRomaji = (
+  overrides: Record<string, string> = {},
+  generateSokuon = true,
+) => kunrei({ ...OONISHI_OVERRIDES, ...overrides }, generateSokuon);

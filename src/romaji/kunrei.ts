@@ -49,17 +49,26 @@ const VOWELS = 'aiueo';
  * `っし` も `sshi` になる（`っか` → `kka` と同じ規則）。
  * 見出しを 2〜3 文字にすることで、最長一致でそのまま当たる。
  */
-export function kunrei(overrides: Record<string, string> = {}): Map<string, string> {
+export function kunrei(
+  overrides: Record<string, string> = {},
+  generateSokuon = true,
+): Map<string, string> {
   const base = { ...BASE, ...overrides };
   const table = new Map(Object.entries(base));
-  for (const [kana, roman] of Object.entries(base)) {
+  if (!generateSokuon) return table;
+  addSokuonForms(table);
+  return table;
+}
+
+/** 子音を重ねる促音見出しをテーブルへ追加する。 */
+export function addSokuonForms(table: Map<string, string>) {
+  for (const [kana, roman] of [...table]) {
     const head = roman[0];
     if (VOWELS.includes(head) || head === '-' || head === ',' || head === '.') continue;
     // 「ん」は nn なので重ねない
-    if (kana === 'ん') continue;
-    table.set(`っ${kana}`, head + roman);
+    if (kana === 'ん' || kana.startsWith('っ')) continue;
+    if (!table.has(`っ${kana}`)) table.set(`っ${kana}`, head + roman);
   }
-  return table;
 }
 
 /**

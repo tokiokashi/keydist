@@ -1,3 +1,5 @@
+import { addSokuonForms } from './kunrei.ts';
+
 /**
  * AZIK 拡張ローマ字入力のテーブル。
  *
@@ -434,6 +436,11 @@ const BASE: Record<string, string> = {
 };
 
 /** AZIK テーブルを組み立てる。かな配列と同じ `Map<string, string>` の形で返す */
-export function azik(): Map<string, string> {
-  return new Map(Object.entries(BASE));
+export function azik(
+  overrides: Record<string, string> = {},
+  generateSokuon = false,
+): Map<string, string> {
+  const table = new Map(Object.entries({ ...BASE, ...overrides }));
+  if (generateSokuon) addSokuonForms(table);
+  return table;
 }
