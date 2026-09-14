@@ -224,7 +224,13 @@ export function columnChart(data: ColumnDatum[], options: ColumnOptions = {}): s
   const top = 18;
   const bottom = data.some((d) => d.group) ? 34 : 20;
   const plotH = H - top - bottom;
-  const max = Math.max(1e-9, ...data.map((d) => d.value));
+  const hi = Math.max(...data.map((d) => d.value), 0);
+  const lo = Math.min(...data.map((d) => d.value), 0);
+  // 全値が 0 の場合も、ゼロ基準線は従来どおり図の下端に置く
+  const scaleHi = hi === 0 && lo === 0 ? 1 : hi;
+  const span = Math.max(1e-9, scaleHi - lo);
+  const yOf = (value: number) => top + ((scaleHi - value) / span) * plotH;
+  const baselineY = yOf(0);
 
   // 塊の切れ目に 1 本分の半分の余白を入れる
   const gaps = data.reduce((n, d, i) => (i > 0 && d.group !== data[i - 1].group ? n + 1 : n), 0);
@@ -237,21 +243,20 @@ export function columnChart(data: ColumnDatum[], options: ColumnOptions = {}): s
       if (i > 0 && d.group !== data[i - 1].group) cursor += slot * 0.5;
       const x = cursor + (slot - barW) / 2;
       cursor += slot;
-      const h = (d.value / max) * plotH;
-      const y = top + plotH - h;
+      // 0 を基準に、正値は上向き、負値は下向きに描く
+      const valueY = yOf(d.value);
+      const h = Math.abs(valueY - baselineY);
+      const y = Math.min(valueY, baselineY);
       const fill = d.color ?? 'var(--heat-1)';
       const tipText = d.tip ?? `${d.label}<br><b>${format(d.value)}</b>`;
-      // データ端（上）だけ 4px 丸める
-      const r = Math.min(4, h);
-      const path =
-        h <= 0.5
-          ? ''
-          : `<path d="M${x},${top + plotH} v${-(h - r)} a${r},${r} 0 0 1 ${r},${-r} ` +
-            `h${barW - r * 2} a${r},${r} 0 0 1 ${r},${r} v${h - r} z" fill="${fill}"/>`;
+      const bar = h <= 0.5
+        ? ''
+        : `<rect data-bar="true" x="${x}" y="${y}" width="${barW}" height="${h}" rx="4" fill="${fill}"/>`;
+      const valueLabelY = d.value < 0 ? y + h + 14 : y - 5;
       return `<g data-tip="${escapeAttr(tipText)}">
         <rect x="${cursor - slot}" y="0" width="${slot}" height="${H}" fill="transparent"/>
-        ${path}
-        <text x="${x + barW / 2}" y="${y - 5}" text-anchor="middle" font-size="11"
+        ${bar}
+        <text x="${x + barW / 2}" y="${valueLabelY}" text-anchor="middle" font-size="11"
           fill="var(--muted)" font-variant-numeric="tabular-nums">${format(d.value)}</text>
         <text x="${x + barW / 2}" y="${top + plotH + 14}" text-anchor="middle" font-size="11"
           fill="var(--fg)">${escapeText(d.label)}</text>
@@ -280,7 +285,7 @@ export function columnChart(data: ColumnDatum[], options: ColumnOptions = {}): s
       .join('');
   }
 
-  const baseline = `<line x1="0" y1="${top + plotH}" x2="${W}" y2="${top + plotH}" stroke="var(--line)"/>`;
+  const baseline = `<line x1="0" y1="${baselineY}" x2="${W}" y2="${baselineY}" stroke="var(--line)"/>`;
   return `<svg viewBox="0 0 ${W} ${H}" role="img">${baseline}${bars}${groupLabels}</svg>`;
 }
 
@@ -306,6 +311,14 @@ export interface MatrixOptions {
   columnSplit?: number;
   /** 隙間の両側に出す見出し。columnSplit とセットで使う */
   columnGroupLabels?: [string, string];
+  /**
+   * 色の下端をどこに置くか。
+   * `zero`（既定）は 0 を最も薄い色に固定する。0 が「無い」を意味する量（距離・押下数）向け。
+   * `min` は実測の最小値を下端に取る。ホーム間隔からの超過のように値が狭い帯に固まる量は、
+   * 0 起点だと全セルが同じ濃さに見えるため、こちらで帯いっぱいに色を割り当てる。
+   * 負の値もそのまま下端側に載る（クランプしない）。
+   */
+  colorBase?: 'zero' | 'min';
 }
 
 /**
@@ -324,7 +337,10 @@ export function matrixChart(rows: MatrixRow[], columns: string[], options: Matri
   const W = labelW + columns.length * cellW + gap;
   const H = headerH + rows.length * rowH;
 
-  const max = Math.max(1e-9, ...rows.flatMap((r) => r.cells.map((c) => c.value)));
+  const values = rows.flatMap((r) => r.cells.map((c) => c.value));
+  const hi = Math.max(...values, 0);
+  const lo = options.colorBase === 'min' ? Math.min(...values, hi) : 0;
+  const span = Math.max(1e-9, hi - lo);
   const colX = (i: number) => labelW + i * cellW + (split !== undefined && i >= split ? gap : 0);
 
   const groupLabels = options.columnGroupLabels
@@ -355,7 +371,7 @@ export function matrixChart(rows: MatrixRow[], columns: string[], options: Matri
       const cells = row.cells
         .map((cell, ci) => {
           const x = colX(ci);
-          const t = cell.value / max;
+          const t = Math.min(1, Math.max(0, (cell.value - lo) / span));
           const tipText =
             cell.tip ?? `${escapeText(row.label)} / ${escapeText(columns[ci])}<br><b>${format(cell.value)}</b>`;
           return `<g data-tip="${escapeAttr(tipText)}">
@@ -371,5 +387,7 @@ export function matrixChart(rows: MatrixRow[], columns: string[], options: Matri
     })
     .join('');
 
-  return `<svg viewBox="0 0 ${W} ${H}" role="img">${groupLabels}${colHeads}${body}</svg>`;
+  // 実寸を属性で持たせる。枚ごとに列数が違っても、CSS 側で幅を自動にすれば
+  // セルの大きさが揃う（引き伸ばされた図だけセルが大きくなるのを防ぐ）
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img">${groupLabels}${colHeads}${body}</svg>`;
 }
