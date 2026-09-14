@@ -314,7 +314,7 @@ const ROMAJI_VARIANTS: RomajiVariant[] = [
   { kana: 'ん', alternatives: ['n', 'nn'] },
   { kana: 'じ', alternatives: ['zi', 'ji'] },
   { kana: 'っ', alternatives: ['ltu', 'xtu'] },
-  { kana: 'あ', alternatives: ['a'] },
+  { kana: 'ぁ', alternatives: ['la', 'xa'] },
   { kana: 'ぃ', alternatives: ['li', 'xi'] },
   { kana: 'ぅ', alternatives: ['lu', 'xu'] },
   { kana: 'ぇ', alternatives: ['le', 'xe'] },
@@ -743,7 +743,6 @@ function renderCompare(results: Result[]) {
         <td class="num">${m.perCharUnits.toFixed(3)}</td>
         <td class="num">${m.perCharSteps.toFixed(3)}</td>
         <td class="num">${m.perCharPresses.toFixed(3)}</td>
-        <td class="num">${comboSummary(m)}</td>
         <td class="num">${m.sameFinger}</td>
         <td class="num">${((m.sameFinger / Math.max(1, m.strokes)) * 100).toFixed(1)}%</td>
         <td class="num">${adjacentMean.toFixed(3)}</td>
@@ -755,7 +754,7 @@ function renderCompare(results: Result[]) {
     <thead><tr>
       <th>配列</th><th>ステップ</th><th>距離 [u]</th><th>距離 [m]</th>
       <th>1打鍵 [u]</th><th>1文字 [u]</th><th>アクション/文字</th><th>押下/文字</th>
-      <th>コンボ命中</th><th>同指連続</th><th>同指連続率</th><th>隣接指超過 [u]</th>
+      <th>同指連続</th><th>同指連続率</th><th>隣接指超過 [u]</th>
     </tr></thead><tbody>${rows}</tbody>`;
 }
 
