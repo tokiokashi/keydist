@@ -283,3 +283,93 @@ export function columnChart(data: ColumnDatum[], options: ColumnOptions = {}): s
   const baseline = `<line x1="0" y1="${top + plotH}" x2="${W}" y2="${top + plotH}" stroke="var(--line)"/>`;
   return `<svg viewBox="0 0 ${W} ${H}" role="img">${baseline}${bars}${groupLabels}</svg>`;
 }
+
+export interface MatrixCell {
+  value: number;
+  /** 省略時は行ラベル・列ラベル・値から組み立てる */
+  tip?: string;
+}
+
+export interface MatrixRow {
+  label: string;
+  /** ラベル横のスウォッチ色。他の図と同じ配列識別色を渡す */
+  color: string;
+  cells: MatrixCell[];
+}
+
+export interface MatrixOptions {
+  format?: (v: number) => string;
+  labelWidth?: number;
+  cellWidth?: number;
+  rowHeight?: number;
+  /** この列番号の前に隙間を空ける（左手 / 右手の区切りなど） */
+  columnSplit?: number;
+  /** 隙間の両側に出す見出し。columnSplit とセットで使う */
+  columnGroupLabels?: [string, string];
+}
+
+/**
+ * 配列 × 指のように、行・列どちらも識別を持つ比較に使う。
+ * セルの色は打鍵頻度ヒートマップと同じ heat 系（単一指標の強弱）、
+ * 行の識別は左のスウォッチが担う。色は行列全体の最大値を 100% として塗る。
+ */
+export function matrixChart(rows: MatrixRow[], columns: string[], options: MatrixOptions = {}): string {
+  const format = options.format ?? ((v: number) => v.toFixed(2));
+  const labelW = options.labelWidth ?? 116;
+  const cellW = options.cellWidth ?? 54;
+  const rowH = options.rowHeight ?? 24;
+  const split = options.columnSplit;
+  const gap = split !== undefined ? cellW * 0.4 : 0;
+  const headerH = options.columnGroupLabels ? 36 : 20;
+  const W = labelW + columns.length * cellW + gap;
+  const H = headerH + rows.length * rowH;
+
+  const max = Math.max(1e-9, ...rows.flatMap((r) => r.cells.map((c) => c.value)));
+  const colX = (i: number) => labelW + i * cellW + (split !== undefined && i >= split ? gap : 0);
+
+  const groupLabels = options.columnGroupLabels
+    ? (() => {
+        const [left, right] = options.columnGroupLabels!;
+        const leftMid = labelW + ((split ?? 0) * cellW) / 2;
+        const rightMid = colX(split ?? 0) + ((columns.length - (split ?? 0)) * cellW) / 2;
+        return `<text x="${leftMid}" y="12" text-anchor="middle" font-size="11"
+            fill="var(--muted)">${escapeText(left)}</text>
+          <text x="${rightMid}" y="12" text-anchor="middle" font-size="11"
+            fill="var(--muted)">${escapeText(right)}</text>`;
+      })()
+    : '';
+
+  const colHeads = columns
+    .map(
+      (c, i) => `<text x="${colX(i) + cellW / 2}" y="${headerH - 6}" text-anchor="middle" font-size="11"
+        fill="var(--muted)">${escapeText(c)}</text>`,
+    )
+    .join('');
+
+  const body = rows
+    .map((row, ri) => {
+      const y = headerH + ri * rowH;
+      const label = `<rect x="0" y="${y + (rowH - 9) / 2}" width="9" height="9" rx="2" fill="${row.color}"/>
+        <text x="${labelW - 14}" y="${y + rowH / 2 + 4}" text-anchor="end" font-size="12"
+          fill="var(--fg)">${escapeText(row.label)}</text>`;
+      const cells = row.cells
+        .map((cell, ci) => {
+          const x = colX(ci);
+          const t = cell.value / max;
+          const tipText =
+            cell.tip ?? `${escapeText(row.label)} / ${escapeText(columns[ci])}<br><b>${format(cell.value)}</b>`;
+          return `<g data-tip="${escapeAttr(tipText)}">
+            <rect x="${x + 2}" y="${y + 2}" width="${cellW - 4}" height="${rowH - 4}" rx="4"
+              fill="color-mix(in oklab, var(--heat-1) ${(t * 100).toFixed(1)}%, var(--heat-0))"/>
+            <text x="${x + cellW / 2}" y="${y + rowH / 2 + 4}" text-anchor="middle" font-size="11"
+              font-variant-numeric="tabular-nums"
+              fill="${t > 0.5 ? 'var(--on-heat)' : 'var(--fg)'}">${format(cell.value)}</text>
+          </g>`;
+        })
+        .join('');
+      return label + cells;
+    })
+    .join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" role="img">${groupLabels}${colHeads}${body}</svg>`;
+}
