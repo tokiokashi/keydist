@@ -36,6 +36,8 @@ test('薙刀式 v18 は面から生成され、全定義を 1 ステップで保
 
   assert.equal(layout.map.size, 150);
   assert.equal(layout.map.has(' '), false);
+  assert.equal(layout.legends.get('thumb-l'), '親指');
+  assert.equal(layout.legends.get('space'), '空白');
   for (const sequence of layout.map.values()) assert.equal(sequence.length, 1);
   assert.deepEqual(layout.map.get('きゃ'), [['h', 'w']]);
   assert.deepEqual(layout.map.get('ぐゎ'), [['.', 'f', 'h']]);

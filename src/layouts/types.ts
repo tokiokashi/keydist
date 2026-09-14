@@ -83,13 +83,14 @@ export function fromRows(
       legends.set(id, ch);
     });
   });
+  // 親指の刻印は、親指キーを文字入力へ追加しないかな配列でも表示する。
+  legends.set(THUMB_KEY.LT, '親指');
+  legends.set(THUMB_KEY.RT, '空白');
   if (thumbs.LT) {
     map.set(thumbs.LT, [[THUMB_KEY.LT]]);
-    legends.set(THUMB_KEY.LT, '親指');
   }
   if (thumbs.RT) {
     map.set(thumbs.RT, [[THUMB_KEY.RT]]);
-    legends.set(THUMB_KEY.RT, '空白');
   }
   return { id, name, map, legends };
 }
@@ -122,14 +123,11 @@ export function fromFaces(
     });
   }
 
-  if (thumbs.LT) {
-    map.set(thumbs.LT, [[THUMB_KEY.LT]]);
-    legends.set(THUMB_KEY.LT, '親指');
-  }
-  if (thumbs.RT) {
-    map.set(thumbs.RT, [[THUMB_KEY.RT]]);
-    legends.set(THUMB_KEY.RT, '空白');
-  }
+  // 親指の刻印は、親指キーを文字入力へ追加しないかな配列でも表示する。
+  legends.set(THUMB_KEY.LT, '親指');
+  legends.set(THUMB_KEY.RT, '空白');
+  if (thumbs.LT) map.set(thumbs.LT, [[THUMB_KEY.LT]]);
+  if (thumbs.RT) map.set(thumbs.RT, [[THUMB_KEY.RT]]);
   return { id, name, map, legends, maxCharLength: maxKeyLength(map.keys()) };
 }
 
