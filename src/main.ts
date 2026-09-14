@@ -34,6 +34,7 @@ import {
   type UserLayout,
 } from './user-layouts.ts';
 import { QWERTY_LEGEND } from './geometry.ts';
+import { kanaToRomaji } from './romaji/kunrei.ts';
 import {
   allRomajiRules,
   defaultRomajiRuleId,
@@ -86,6 +87,7 @@ const el = {
   romajiOverrides: $<HTMLTextAreaElement>('romaji-overrides'),
   romajiError: $<HTMLParagraphElement>('romaji-error'),
   romajiAssignments: $<HTMLDivElement>('romaji-assignments'),
+  romajiVariants: $<HTMLDivElement>('romaji-variants'),
   romajiNew: $<HTMLButtonElement>('romaji-new'),
 };
 
@@ -259,6 +261,7 @@ function loadRomajiEditor(id: string) {
     el.romajiSokuon.checked = true;
     el.romajiOverrides.value = '';
     el.romajiError.hidden = true;
+    fillRomajiVariants();
     return;
   }
   const custom = romajiEditorRule(id);
@@ -275,6 +278,7 @@ function loadRomajiEditor(id: string) {
     : custom?.generateSokuon ?? builtin?.generateSokuon ?? true;
   el.romajiOverrides.value = formatOverrides(custom?.overrides ?? builtin?.overrides ?? {});
   el.romajiError.hidden = true;
+  fillRomajiVariants();
 }
 
 function fillRomajiEditorRules(selectedId = el.romajiEdit.value || 'kunrei') {
@@ -287,6 +291,146 @@ function fillRomajiEditorRules(selectedId = el.romajiEdit.value || 'kunrei') {
     ? selectedId
     : 'kunrei';
   loadRomajiEditor(id);
+}
+
+interface RomajiVariant {
+  kana: string;
+  alternatives: string[];
+}
+
+/** タイピングアプリで設定されるかな。並びは標準的な設定画面に合わせ、順位は新サンプルで測る。 */
+const ROMAJI_VARIANTS: RomajiVariant[] = [
+  { kana: 'い', alternatives: ['i'] },
+  { kana: 'う', alternatives: ['u'] },
+  { kana: 'か', alternatives: ['ka'] },
+  { kana: 'く', alternatives: ['ku'] },
+  { kana: 'こ', alternatives: ['ko'] },
+  { kana: 'し', alternatives: ['si', 'shi'] },
+  { kana: 'せ', alternatives: ['se'] },
+  { kana: 'ち', alternatives: ['ti', 'chi'] },
+  { kana: 'つ', alternatives: ['tu', 'tsu'] },
+  { kana: 'ふ', alternatives: ['hu', 'fu'] },
+  { kana: 'ん', alternatives: ['n', 'nn'] },
+  { kana: 'じ', alternatives: ['zi', 'ji'] },
+  { kana: 'っ', alternatives: ['ltu', 'xtu'] },
+  { kana: 'あ', alternatives: ['a'] },
+  { kana: 'ぃ', alternatives: ['li', 'xi'] },
+  { kana: 'ぅ', alternatives: ['lu', 'xu'] },
+  { kana: 'ぇ', alternatives: ['le', 'xe'] },
+  { kana: 'ぉ', alternatives: ['lo', 'xo'] },
+  { kana: 'ゃ', alternatives: ['lya', 'xya'] },
+  { kana: 'ゅ', alternatives: ['lyu', 'xyu'] },
+  { kana: 'ょ', alternatives: ['lyo', 'xyo'] },
+  { kana: 'しゃ', alternatives: ['sha', 'sya'] },
+  { kana: 'しゅ', alternatives: ['shu', 'syu'] },
+  { kana: 'しぇ', alternatives: ['she', 'sye'] },
+  { kana: 'しょ', alternatives: ['sho', 'syo'] },
+  { kana: 'じゃ', alternatives: ['ja', 'zya'] },
+  { kana: 'じゅ', alternatives: ['ju', 'zyu'] },
+  { kana: 'じぇ', alternatives: ['je', 'zye'] },
+  { kana: 'じょ', alternatives: ['jo', 'zyo'] },
+  { kana: 'ちゃ', alternatives: ['tya', 'cha'] },
+  { kana: 'ちゅ', alternatives: ['tyu', 'chu'] },
+  { kana: 'ちょ', alternatives: ['tyo', 'cho'] },
+  { kana: 'ちぃ', alternatives: ['tyi'] },
+  { kana: 'うぃ', alternatives: ['wi'] },
+  { kana: 'うぇ', alternatives: ['we'] },
+];
+
+function editorBaseTable(): Map<string, string> {
+  const id = el.romajiEdit.value;
+  const custom = romajiEditorRule(id);
+  const builtin = !custom && id in ROMAJI_RULES
+    ? ROMAJI_RULES[id as BuiltinRomajiRuleId]
+    : undefined;
+  const base = custom?.base ?? builtin?.base ?? el.romajiBase.value as BuiltinRomajiRuleId;
+  return tableForRule(base, romajiSettings.rules);
+}
+
+function editorTable(): Map<string, string> {
+  const table = editorBaseTable();
+  const parsed = parseOverrides(el.romajiOverrides.value);
+  for (const [kana, roman] of Object.entries(parsed.overrides)) table.set(kana, roman);
+  return table;
+}
+
+function countOccurrences(text: string, needle: string): number {
+  let count = 0;
+  for (let at = text.indexOf(needle); at >= 0; at = text.indexOf(needle, at + needle.length)) count++;
+  return count;
+}
+
+function signed(value: number): string {
+  return value === 0 ? '±0' : value > 0 ? `+${value}` : String(value);
+}
+
+function fillRomajiVariants() {
+  const table = editorTable();
+  const text = SAMPLES.ja.modern;
+  const rows = ROMAJI_VARIANTS.map((variant, index) => {
+    const current = table.get(variant.kana) ?? kanaToRomaji(variant.kana, table);
+    const count = countOccurrences(text, variant.kana);
+    const effect = (variant.alternatives[0].length - current.length) * count;
+    return { variant, current, count, effect, index };
+  }).sort((a, b) => Math.abs(b.effect) - Math.abs(a.effect) || a.index - b.index);
+
+  el.romajiVariants.replaceChildren();
+  const listId = 'romaji-variant-options';
+  const datalist = document.createElement('datalist');
+  datalist.id = listId;
+  for (const option of [...new Set(ROMAJI_VARIANTS.flatMap((variant) => variant.alternatives))]) {
+    datalist.append(new Option(option));
+  }
+  el.romajiVariants.append(datalist);
+
+  for (const { variant, current, count, effect } of rows) {
+    const row = document.createElement('div');
+    row.className = 'romaji-variant';
+    const label = document.createElement('span');
+    label.textContent = variant.kana;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = current;
+    input.spellcheck = false;
+    input.setAttribute('list', listId);
+    input.dataset.kana = variant.kana;
+    const meta = document.createElement('span');
+    meta.className = 'romaji-variant-meta';
+    meta.textContent = `候補 ${variant.alternatives.join(' / ')} / 出現 ${count} / 変更 ${signed(effect)} 打`;
+    row.append(label, input, meta);
+
+    if (variant.kana === 'ん') {
+      const note = document.createElement('span');
+      note.className = 'romaji-variant-note';
+      note.hidden = input.value !== 'n';
+      note.textContent = 'ん = n は、次が母音・な行・や行の時や語末では実際には nn が必要です。この設定では区別できません。';
+      row.append(note);
+      input.addEventListener('input', () => { note.hidden = input.value.trim().toLowerCase() !== 'n'; });
+    }
+
+    input.addEventListener('input', () => {
+      setVariantOverride(variant.kana, input.value);
+    });
+    el.romajiVariants.append(row);
+  }
+}
+
+function setVariantOverride(kana: string, value: string) {
+  const roman = value.trim().toLowerCase();
+  const lines = el.romajiOverrides.value.split(/\r?\n/);
+  const index = lines.findIndex((line) => {
+    const equal = line.indexOf('=');
+    return equal > 0 && line.slice(0, equal).trim() === kana;
+  });
+  if (!roman) {
+    if (index >= 0) lines.splice(index, 1);
+  } else if (index >= 0) {
+    lines[index] = `${kana} = ${roman}`;
+  } else {
+    if (lines.length === 1 && lines[0].trim() === '') lines[0] = `${kana} = ${roman}`;
+    else lines.push(`${kana} = ${roman}`);
+  }
+  el.romajiOverrides.value = lines.join('\n');
 }
 
 function fillRomajiAssignments() {

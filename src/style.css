@@ -366,4 +366,35 @@ button.secondary {
 }
 .romaji-assignment span { min-width: 0; }
 .romaji-assignment select { width: min(270px, 48%); }
+.romaji-variants {
+  margin: 20px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.romaji-variants::before {
+  content: 'よくある揺れ';
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.romaji-variant {
+  display: grid;
+  grid-template-columns: minmax(5em, 0.6fr) minmax(9em, 1.2fr) minmax(11em, 1.4fr);
+  align-items: center;
+  gap: 8px 12px;
+  padding: 5px 0;
+  font-size: 0.8rem;
+}
+.romaji-variant + .romaji-variant { border-top: 1px solid var(--line); }
+.romaji-variant input { min-width: 0; }
+.romaji-variant-meta { color: var(--muted); font-size: 0.72rem; }
+.romaji-variant-note {
+  grid-column: 1 / -1;
+  margin: -2px 0 3px;
+  color: var(--series-2);
+  font-size: 0.72rem;
+}
 dialog hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0 14px; }
