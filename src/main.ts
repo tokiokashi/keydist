@@ -1,11 +1,11 @@
-import { buildGeometry, FINGERS, THUMB_ROW, type Finger, type GeometryKind } from './geometry.ts';
+import { buildGeometry, ADJACENT_PAIRS, FINGERS, THUMB_ROW, type Finger, type GeometryKind } from './geometry.ts';
 import { evaluate, type Options, type Trace } from './evaluate.ts';
 import { computeMetrics, type Metrics } from './metrics.ts';
 import { nSensitivity } from './sensitivity.ts';
 import { LAYOUTS, LAYOUTS_JA, type Layout } from './layouts/index.ts';
 import { SAMPLE_TEXT } from './sample-text.ts';
 import { SAMPLE_TEXT_JA } from './sample-text-ja.ts';
-import { bindTips, columnChart, escapeText, lineChart, barChart } from './chart.ts';
+import { bindTips, columnChart, escapeText, lineChart, barChart, matrixChart } from './chart.ts';
 import { setupTheme } from './theme.ts';
 import {
   ROMAJI_RULES,
@@ -46,6 +46,8 @@ const el = {
   heatmap: $<HTMLDivElement>('heatmap'),
   fingerChart: $<HTMLDivElement>('finger-chart'),
   adjacentChart: $<HTMLDivElement>('adjacent-chart'),
+  fingerMatrix: $<HTMLDivElement>('finger-matrix'),
+  adjacentMatrix: $<HTMLDivElement>('adjacent-matrix'),
 };
 
 const FINGER_LABEL: Record<Finger, string> = {
@@ -262,6 +264,8 @@ function render() {
     el.heatmap.innerHTML = '';
     el.fingerChart.innerHTML = '';
     el.adjacentChart.innerHTML = '';
+    el.fingerMatrix.innerHTML = '';
+    el.adjacentMatrix.innerHTML = '';
     el.errors.hidden = true;
     return;
   }
@@ -280,6 +284,7 @@ function render() {
   el.errors.hidden = errors.length === 0;
 
   renderCompare(results);
+  renderMatrices(results);
   renderSensitivity(text, geometry, options);
   renderDetail(results, geometry);
 }
@@ -331,6 +336,65 @@ function renderCompare(results: Result[]) {
       <th>1打鍵 [u]</th><th>1文字 [u]</th><th>アクション/文字</th><th>押下/文字</th>
       <th>同指連続</th><th>同指連続率</th><th>隣接指標準偏差</th>
     </tr></thead><tbody>${rows}</tbody>`;
+}
+
+/**
+ * 配列 × 指の粒度でマトリックスに並べる。行は総移動距離の表と同じ選択順
+ * （色のスロットが他の図と揃うことを優先し、総距離順の並べ替えはしない）。
+ *
+ * 指ごとの移動距離は入力文字数で正規化する（u/文字）。生の u は評価テキストの
+ * 長さに引きずられるため、テキストを変えても配列間の比較が揺れないようにする。
+ * 隣接指の平均・標準偏差はもともと打鍵ごとの統計であり文字数に依存しないので、
+ * こちらは生値のまま出す（比較表の「隣接指標準偏差」列と同じ単位）。
+ */
+function renderMatrices(results: Result[]) {
+  const fingerRows = results.map((r) => ({
+    label: r.layout.name,
+    color: SERIES(r.slot),
+    cells: FINGERS.map((f) => {
+      const perChar = r.metrics.perFinger[f] / Math.max(1, r.metrics.inputChars);
+      const share = (r.metrics.perFinger[f] / Math.max(1e-9, r.metrics.totalUnits)) * 100;
+      return {
+        value: perChar,
+        tip:
+          `${escapeText(r.layout.name)} / ${FINGER_LABEL[f]}<br>` +
+          `<b>${perChar.toFixed(3)} u/文字</b> (全体の ${share.toFixed(1)}%)`,
+      };
+    }),
+  }));
+
+  el.fingerMatrix.innerHTML = matrixChart(
+    fingerRows,
+    FINGERS.map((f) => SHORT_FINGER[f]),
+    {
+      format: (v) => v.toFixed(3),
+      labelWidth: 190,
+      columnSplit: 4,
+      columnGroupLabels: ['左手', '右手'],
+    },
+  );
+
+  const adjacentRows = results.map((r) => ({
+    label: r.layout.name,
+    color: SERIES(r.slot),
+    cells: r.metrics.adjacent.map((s) => ({
+      value: s.stdDev,
+      tip:
+        `${escapeText(r.layout.name)} / ${FINGER_LABEL[s.pair[0]]}–${FINGER_LABEL[s.pair[1]]}<br>` +
+        `標準偏差 <b>${s.stdDev.toFixed(3)} u</b><br>平均 <b>${s.mean.toFixed(3)} u</b>`,
+    })),
+  }));
+
+  el.adjacentMatrix.innerHTML = matrixChart(
+    adjacentRows,
+    ADJACENT_PAIRS.map((p) => `${SHORT_FINGER[p[0]]}–${SHORT_FINGER[p[1]]}`),
+    {
+      format: (v) => v.toFixed(3),
+      labelWidth: 190,
+      columnSplit: 3,
+      columnGroupLabels: ['左手', '右手'],
+    },
+  );
 }
 
 /**

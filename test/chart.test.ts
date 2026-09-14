@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lineChart } from '../src/chart.ts';
+import { lineChart, matrixChart } from '../src/chart.ts';
 
 const SERIES = [
   { name: 'A', color: '#f00', points: [{ x: 0, y: 100 }, { x: 1, y: 96 }, { x: 2, y: 91.4 }] },
@@ -27,4 +27,45 @@ test('全系列が同じ値でも上端の指定が潰れない', () => {
   const ticks = yTicks(lineChart(flat, [0, 1], (v) => `${v.toFixed(1)}%`, { yMax: 100 }));
   assert.equal(Math.max(...ticks), 100);
   assert.ok(Math.min(...ticks) < 100, '幅が 0 だと線が描けないので下側に余白を取る');
+});
+
+/** セルの塗り強度（heat-1 の混合率）を読み取る */
+function cellMixes(svg: string): number[] {
+  return [...svg.matchAll(/var\(--heat-1\) ([\d.]+)%, var\(--heat-0\)/g)].map((m) => Number(m[1]));
+}
+
+/** セルに書かれた数値を読み取る */
+function cellValues(svg: string): string[] {
+  return [...svg.matchAll(/tabular-nums"[^>]*>([\d.]+)<\/text>/g)].map((m) => m[1]);
+}
+
+const MATRIX_ROWS = [
+  { label: '配列A', color: '#f00', cells: [{ value: 10 }, { value: 0 }] },
+  { label: '配列B', color: '#00f', cells: [{ value: 5 }, { value: 20 }] },
+];
+
+test('セルの数は行数 × 列数になる', () => {
+  const svg = matrixChart(MATRIX_ROWS, ['列1', '列2']);
+  assert.equal(cellValues(svg).length, 4);
+});
+
+test('色の強度は行列全体の最大値を基準にする', () => {
+  const svg = matrixChart(MATRIX_ROWS, ['列1', '列2']);
+  const mixes = cellMixes(svg);
+  // 最大値 20 のセルは 100%、値 0 のセルは 0% になる
+  assert.equal(Math.max(...mixes), 100);
+  assert.equal(Math.min(...mixes), 0);
+});
+
+test('tip を省略すると行ラベル・列ラベル・値から自動生成する', () => {
+  const svg = matrixChart(MATRIX_ROWS, ['列1', '列2'], { format: (v) => v.toFixed(1) });
+  assert.ok(svg.includes('配列A / 列1'));
+  assert.ok(svg.includes('10.0'));
+});
+
+test('columnSplit を指定すると列の間に隙間が空き、全体の幅が広がる', () => {
+  const withoutSplit = matrixChart(MATRIX_ROWS, ['列1', '列2']);
+  const withSplit = matrixChart(MATRIX_ROWS, ['列1', '列2'], { columnSplit: 1 });
+  const width = (svg: string) => Number(svg.match(/viewBox="0 0 ([\d.]+) /)![1]);
+  assert.ok(width(withSplit) > width(withoutSplit));
 });
