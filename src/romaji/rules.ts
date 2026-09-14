@@ -1,6 +1,7 @@
 import { azik } from './azik.ts';
 import { kunrei, addSokuonForms } from './kunrei.ts';
 import { OONISHI_OVERRIDES, oonishiRomaji } from './oonishi.ts';
+import { QWERTY_LEGEND } from '../geometry.ts';
 
 export type BuiltinRomajiRuleId = 'kunrei' | 'oonishi' | 'azik' | 'qwerty';
 export type RomajiRuleId = string;
@@ -37,12 +38,7 @@ export const ROMAJI_RULES: Record<BuiltinRomajiRuleId, RomajiRuleSpec & {
       ちゃ: 'cha', ちゅ: 'chu', ちょ: 'cho', ちぇ: 'che',
     },
     generateSokuon: true,
-    table: () => kunrei({
-      じ: 'ji',
-      じゃ: 'ja', じゅ: 'ju', じょ: 'jo', じぇ: 'je',
-      しゃ: 'sha', しゅ: 'shu', しょ: 'sho', しぇ: 'she',
-      ちゃ: 'cha', ちゅ: 'chu', ちょ: 'cho', ちぇ: 'che',
-    }),
+    table: () => kunrei(ROMAJI_RULES.qwerty.overrides),
   },
   kunrei: {
     name: '訓令式（si / sya / zi / zya）',
@@ -68,6 +64,7 @@ export const ROMAJI_RULES: Record<BuiltinRomajiRuleId, RomajiRuleSpec & {
 };
 
 const STORAGE_KEY = 'keydist:romaji-rules';
+const QWERTY_KEYS = new Set([...QWERTY_LEGEND.join('')]);
 
 /** 既定配列に最初から割り当てるルール。保存設定が無ければこれを使う。 */
 export function defaultRomajiRuleId(layoutId: string): BuiltinRomajiRuleId {
@@ -79,7 +76,8 @@ export function defaultRomajiRuleId(layoutId: string): BuiltinRomajiRuleId {
 export function buildRomajiTable(rule: UserRomajiRule): Map<string, string> {
   const base = baseTable(rule.base, false);
   for (const [kana, roman] of Object.entries(rule.overrides)) base.set(kana, roman);
-  if (rule.generateSokuon) addSokuonForms(base);
+  // AZIK は「っ」を ; の 1 打で持つため、子音重ねを足すと本来の短縮を隠してしまう。
+  if (rule.generateSokuon && rule.base !== 'azik') addSokuonForms(base);
   return base;
 }
 
@@ -153,6 +151,14 @@ export function parseOverrides(text: string): { overrides: Record<string, string
     const roman = line.slice(equal + 1).trim().toLowerCase();
     if (!kana || !roman || /\s/.test(kana) || /\s/.test(roman)) {
       errors.push(`${i + 1} 行目: かなと綴りを空白なしで指定する`);
+      return;
+    }
+    if (!/[ぁ-ゖァ-ヺー]/u.test(kana)) {
+      errors.push(`${i + 1} 行目: 左辺はかなで指定する`);
+      return;
+    }
+    if ([...roman].some((key) => !QWERTY_KEYS.has(key))) {
+      errors.push(`${i + 1} 行目: 綴りにキーボードに無いキーが含まれている`);
       return;
     }
     if (overrides[kana] !== undefined) {
