@@ -10,7 +10,7 @@ import {
 import { evaluate, type Options, type Trace } from './evaluate.ts';
 import { computeMetrics, type Metrics } from './metrics.ts';
 import { nSensitivity } from './sensitivity.ts';
-import { LAYOUTS, LAYOUTS_JA, type Layout } from './layouts/index.ts';
+import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from './layouts/index.ts';
 import { SAMPLE_TEXT } from './sample-text.ts';
 import { SAMPLE_TEXT_JA } from './sample-text-ja.ts';
 import {
@@ -24,18 +24,28 @@ import {
 } from './chart.ts';
 import { setupTheme } from './theme.ts';
 import {
-  ROMAJI_RULES,
   ROW_LABELS,
   load as loadUserLayouts,
   newId,
   save as saveUserLayouts,
-  toJapaneseLayout,
   toLayout,
   validate,
   type RomajiRuleId,
   type UserLayout,
 } from './user-layouts.ts';
 import { QWERTY_LEGEND } from './geometry.ts';
+import {
+  allRomajiRules,
+  defaultRomajiRuleId,
+  formatOverrides,
+  loadRomajiSettings,
+  parseOverrides,
+  ROMAJI_RULES,
+  saveRomajiSettings,
+  tableForRule,
+  type BuiltinRomajiRuleId,
+  type UserRomajiRule,
+} from './romaji/rules.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -53,6 +63,7 @@ const el = {
   sensitivity: $<HTMLDivElement>('sensitivity'),
   sensitivityScale: $<HTMLDivElement>('sensitivity-scale'),
   picker: $<HTMLDivElement>('layout-picker'),
+  romajiSettings: $<HTMLButtonElement>('romaji-settings'),
   newName: $<HTMLInputElement>('new-name'),
   newRows: $<HTMLDivElement>('new-rows'),
   newRomaji: $<HTMLSelectElement>('new-romaji'),
@@ -65,6 +76,16 @@ const el = {
   fingerMatrix: $<HTMLDivElement>('finger-matrix'),
   pressMatrix: $<HTMLDivElement>('press-matrix'),
   adjacentMatrix: $<HTMLDivElement>('adjacent-matrix'),
+  romajiDialog: $<HTMLDialogElement>('romaji-dialog'),
+  romajiForm: $<HTMLFormElement>('romaji-form'),
+  romajiEdit: $<HTMLSelectElement>('romaji-edit'),
+  romajiName: $<HTMLInputElement>('romaji-name'),
+  romajiBase: $<HTMLSelectElement>('romaji-base'),
+  romajiSokuon: $<HTMLInputElement>('romaji-sokuon'),
+  romajiOverrides: $<HTMLTextAreaElement>('romaji-overrides'),
+  romajiError: $<HTMLParagraphElement>('romaji-error'),
+  romajiAssignments: $<HTMLDivElement>('romaji-assignments'),
+  romajiNew: $<HTMLButtonElement>('romaji-new'),
 };
 
 const FINGER_LABEL: Record<Finger, string> = {
@@ -98,12 +119,29 @@ const INITIAL = {
 } as const;
 
 let userLayouts: UserLayout[] = loadUserLayouts();
+let romajiSettings = loadRomajiSettings();
+const ROMAJI_TABLE_CACHE = new Map<string, Map<string, string>>();
+
+/** 同じルールのテーブルは描画間で共有し、設定を保存した時だけ捨てる。 */
+function cachedRomajiTable(ruleId: RomajiRuleId): Map<string, string> {
+  const cached = ROMAJI_TABLE_CACHE.get(ruleId);
+  if (cached) return cached;
+  const table = tableForRule(ruleId, romajiSettings.rules);
+  ROMAJI_TABLE_CACHE.set(ruleId, table);
+  return table;
+}
 
 /** 組み込みの配列に自作のものを足した一覧。自作は末尾に並ぶ */
 function layoutsOf(mode: ModeId): Layout[] {
   const built = mode === 'en' ? LAYOUTS : LAYOUTS_JA;
-  const mine = userLayouts.map((d) => (mode === 'en' ? toLayout(d) : toJapaneseLayout(d)));
-  return [...built, ...mine];
+  if (mode === 'en') return [...built, ...userLayouts.map(toLayout)];
+  const assigned = built.map((layout) => {
+    if (!layout.romajiTable) return layout;
+    const ruleId = romajiSettings.assignments[layout.id] ?? defaultRomajiRuleId(layout.id);
+    return { ...layout, romajiTable: cachedRomajiTable(ruleId) };
+  });
+  const mine = userLayouts.map((d) => withRomaji(toLayout(d), cachedRomajiTable(d.romaji)));
+  return [...assigned, ...mine];
 }
 
 const MODES = {
@@ -145,9 +183,7 @@ function setupAddForm() {
     return input;
   });
 
-  for (const [id, rule] of Object.entries(ROMAJI_RULES)) {
-    el.newRomaji.append(new Option(rule.name, id));
-  }
+  fillRomajiSelect(el.newRomaji);
 
   el.addLayout.addEventListener('click', () => {
     const rows = inputs.map((i) => i.value.trim());
@@ -171,6 +207,141 @@ function setupAddForm() {
 
     for (const input of inputs) input.value = '';
     el.newName.value = '';
+    fillPicker();
+    fillDetailOptions();
+    render();
+  });
+}
+
+function fillRomajiSelect(select: HTMLSelectElement, selectedId = select.value) {
+  select.replaceChildren();
+  for (const rule of allRomajiRules(romajiSettings.rules)) {
+    select.append(new Option(rule.name, rule.id));
+  }
+  if (selectedId && allRomajiRules(romajiSettings.rules).some((r) => r.id === selectedId)) {
+    select.value = selectedId;
+  }
+}
+
+function romajiEditorRule(id: string): UserRomajiRule | undefined {
+  return romajiSettings.rules.find((rule) => rule.id === id);
+}
+
+function loadRomajiEditor(id: string) {
+  if (!id) {
+    el.romajiEdit.value = '';
+    el.romajiName.value = '';
+    el.romajiBase.value = 'kunrei';
+    el.romajiSokuon.checked = true;
+    el.romajiOverrides.value = '';
+    el.romajiError.hidden = true;
+    return;
+  }
+  const custom = romajiEditorRule(id);
+  const builtin = !custom && id in ROMAJI_RULES
+    ? ROMAJI_RULES[id as BuiltinRomajiRuleId]
+    : undefined;
+  if (!custom && !builtin) return;
+  el.romajiEdit.value = id;
+  el.romajiName.value = custom?.name ?? builtin?.name ?? '';
+  const base = custom?.base ?? builtin?.base ?? 'kunrei';
+  el.romajiBase.value = base;
+  el.romajiSokuon.checked = base === 'azik'
+    ? false
+    : custom?.generateSokuon ?? builtin?.generateSokuon ?? true;
+  el.romajiOverrides.value = formatOverrides(custom?.overrides ?? builtin?.overrides ?? {});
+  el.romajiError.hidden = true;
+}
+
+function fillRomajiEditorRules(selectedId = el.romajiEdit.value || 'kunrei') {
+  el.romajiEdit.replaceChildren();
+  el.romajiEdit.append(new Option('新しい綴り', ''));
+  for (const rule of allRomajiRules(romajiSettings.rules)) {
+    el.romajiEdit.append(new Option(rule.name, rule.id));
+  }
+  const id = allRomajiRules(romajiSettings.rules).some((rule) => rule.id === selectedId)
+    ? selectedId
+    : 'kunrei';
+  loadRomajiEditor(id);
+}
+
+function fillRomajiAssignments() {
+  el.romajiAssignments.replaceChildren();
+  const rules = allRomajiRules(romajiSettings.rules);
+  for (const layout of LAYOUTS_JA.filter((l) => l.romajiTable)) {
+    const label = document.createElement('label');
+    label.className = 'romaji-assignment';
+    const name = document.createElement('span');
+    name.textContent = layout.name;
+    const select = document.createElement('select');
+    for (const rule of rules) select.append(new Option(rule.name, rule.id));
+    const assigned = romajiSettings.assignments[layout.id];
+    select.value = rules.some((rule) => rule.id === assigned)
+      ? assigned
+      : defaultRomajiRuleId(layout.id);
+    select.addEventListener('change', () => {
+      romajiSettings.assignments[layout.id] = select.value;
+      saveRomajiSettings(romajiSettings);
+      fillPicker();
+      fillDetailOptions();
+      render();
+    });
+    label.append(name, select);
+    el.romajiAssignments.append(label);
+  }
+}
+
+function setupRomajiEditor() {
+  el.romajiBase.replaceChildren(
+    new Option('標準（j / sh / ch）', 'qwerty'),
+    new Option('訓令式', 'kunrei'),
+    new Option('大西式', 'oonishi'),
+    new Option('AZIK', 'azik'),
+  );
+  fillRomajiEditorRules();
+  fillRomajiAssignments();
+
+  el.romajiSettings.addEventListener('click', () => {
+    fillRomajiEditorRules();
+    fillRomajiAssignments();
+    el.romajiDialog.showModal();
+  });
+  el.romajiEdit.addEventListener('change', () => loadRomajiEditor(el.romajiEdit.value));
+  el.romajiBase.addEventListener('change', () => {
+    if (el.romajiBase.value === 'azik') el.romajiSokuon.checked = false;
+  });
+  el.romajiNew.addEventListener('click', () => {
+    loadRomajiEditor('');
+    el.romajiName.focus();
+  });
+  el.romajiForm.addEventListener('submit', (event) => {
+    if ((event.submitter as HTMLButtonElement | null)?.value === 'cancel') return;
+    event.preventDefault();
+    const name = el.romajiName.value.trim();
+    const parsed = parseOverrides(el.romajiOverrides.value);
+    const errors = name ? parsed.errors : ['名前を入力する'];
+    el.romajiError.textContent = errors.join(' / ');
+    el.romajiError.hidden = errors.length === 0;
+    if (errors.length) return;
+
+    const id = el.romajiEdit.value && !((el.romajiEdit.value) in ROMAJI_RULES)
+      ? el.romajiEdit.value
+      : `custom-${Date.now().toString(36)}`;
+    const rule: UserRomajiRule = {
+      id,
+      name,
+      base: el.romajiBase.value as BuiltinRomajiRuleId,
+      overrides: parsed.overrides,
+      generateSokuon: el.romajiBase.value === 'azik' ? false : el.romajiSokuon.checked,
+    };
+    const index = romajiSettings.rules.findIndex((current) => current.id === id);
+    if (index < 0) romajiSettings.rules = [...romajiSettings.rules, rule];
+    else romajiSettings.rules = romajiSettings.rules.map((current, i) => i === index ? rule : current);
+    ROMAJI_TABLE_CACHE.clear();
+    saveRomajiSettings(romajiSettings);
+    fillRomajiEditorRules(id);
+    fillRomajiAssignments();
+    fillRomajiSelect(el.newRomaji, el.newRomaji.value);
     fillPicker();
     fillDetailOptions();
     render();
@@ -647,6 +818,7 @@ for (const id of ['en', 'ja'] as ModeId[]) {
   for (const def of userLayouts) selected[id].add(def.id);
 }
 setupAddForm();
+setupRomajiEditor();
 fillPicker();
 fillDetailOptions();
 bindMatrixSort(el.pressMatrix, 'press');

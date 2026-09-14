@@ -61,6 +61,7 @@
           <div class="ctl">
             <span>比べる配列</span>
             <div class="picker" id="layout-picker"></div>
+            <button type="button" class="secondary" id="romaji-settings">ローマ字の綴りを設定</button>
           </div>
 
           <label class="ctl">
@@ -167,6 +168,48 @@
         </section>
       </div>
     </div>
+
+    <dialog id="romaji-dialog">
+      <form method="dialog" id="romaji-form">
+        <div class="dialog-head">
+          <h2>ローマ字の綴り</h2>
+          <button type="submit" value="cancel" class="ghost close">閉じる</button>
+        </div>
+        <p class="note">
+          基底ルールに差分を重ねて、かなからローマ字への変換を作る。綴りは評価時に小文字として扱う。
+          既定配列への割り当てもここで保存する。
+        </p>
+
+        <label class="ctl">
+          <span>編集する綴り</span>
+          <select id="romaji-edit"></select>
+        </label>
+        <button type="button" class="secondary" id="romaji-new">新しい綴りを作る</button>
+
+        <label class="ctl">
+          <span>名前</span>
+          <input type="text" id="romaji-name" placeholder="私のローマ字" />
+        </label>
+        <label class="ctl">
+          <span>基底ルール</span>
+          <select id="romaji-base"></select>
+        </label>
+        <label class="ctl checkbox">
+          <input type="checkbox" id="romaji-sokuon" checked />
+          <span>促音の後ろに子音を重ねた見出しを自動生成する（っか → kka）</span>
+        </label>
+        <label class="ctl">
+          <span>差分 <small>1 行に「かな = 綴り」。複数かなも可</small></span>
+          <textarea id="romaji-overrides" rows="8" spellcheck="false" placeholder="しゃ = sha&#10;じゃ = ja&#10;ちゃ = cha"></textarea>
+        </label>
+        <p class="error" id="romaji-error" hidden></p>
+        <button type="submit" id="romaji-save">この内容を保存する</button>
+
+        <hr />
+        <h3>既定配列への割り当て</h3>
+        <div id="romaji-assignments"></div>
+      </form>
+    </dialog>
 
     <div class="tooltip" id="tooltip" hidden></div>
     <footer><a href="https://github.com/tokiokashi/keydist">GitHub</a></footer>

@@ -1,19 +1,12 @@
 import { QWERTY_LEGEND } from './geometry.ts';
 import { fromRows, withRomaji, type Layout } from './layouts/index.ts';
-import { kunrei } from './romaji/kunrei.ts';
-import { oonishiRomaji } from './romaji/oonishi.ts';
-import { azik } from './romaji/azik.ts';
+import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from './romaji/rules.ts';
 
 const STORAGE_KEY = 'keydist:layouts';
 
 /** 選べるローマ字の綴り */
-export const ROMAJI_RULES = {
-  kunrei: { name: '訓令式（si / sya / zi / zya）', table: kunrei },
-  oonishi: { name: '大西式（si / sha / ji / ja）', table: oonishiRomaji },
-  azik: { name: 'AZIK（拡張ローマ字。二重母音・撥音・促音を1綴りに短縮）', table: azik },
-} as const;
-
-export type RomajiRuleId = keyof typeof ROMAJI_RULES;
+export { ROMAJI_RULES };
+export type { RomajiRuleId } from './romaji/rules.ts';
 
 export interface UserLayout {
   id: string;
@@ -75,8 +68,8 @@ export function toLayout(def: UserLayout): Layout {
   return fromRows(def.id, def.name, rows);
 }
 
-export function toJapaneseLayout(def: UserLayout): Layout {
-  return withRomaji(toLayout(def), ROMAJI_RULES[def.romaji].table());
+export function toJapaneseLayout(def: UserLayout, customRules: UserRomajiRule[] = []): Layout {
+  return withRomaji(toLayout(def), tableForRule(def.romaji, customRules));
 }
 
 export const newId = () => `user-${Date.now().toString(36)}`;

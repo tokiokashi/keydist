@@ -333,3 +333,37 @@ button.ghost {
 }
 .picker label { justify-content: flex-start; }
 .picker .remove { margin-left: auto; }
+
+/* ローマ字設定ダイアログ */
+dialog {
+  width: min(620px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.28);
+}
+dialog::backdrop { background: rgb(0 0 0 / 0.38); }
+.dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dialog-head h2 { margin: 0; }
+dialog .close { flex: none; }
+button.secondary {
+  background: transparent;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.ctl + button.secondary { margin-top: 2px; }
+.romaji-assignment {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 0.82rem;
+}
+.romaji-assignment span { min-width: 0; }
+.romaji-assignment select { width: min(270px, 48%); }
+dialog hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0 14px; }
