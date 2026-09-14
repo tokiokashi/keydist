@@ -13,7 +13,15 @@ import { nSensitivity } from './sensitivity.ts';
 import { LAYOUTS, LAYOUTS_JA, type Layout } from './layouts/index.ts';
 import { SAMPLE_TEXT } from './sample-text.ts';
 import { SAMPLE_TEXT_JA } from './sample-text-ja.ts';
-import { bindTips, columnChart, escapeText, lineChart, barChart, matrixChart } from './chart.ts';
+import {
+  bindTips,
+  columnChart,
+  escapeText,
+  lineChart,
+  barChart,
+  matrixChart,
+  type MatrixSort,
+} from './chart.ts';
 import { setupTheme } from './theme.ts';
 import {
   ROMAJI_RULES,
@@ -247,6 +255,24 @@ interface Result {
   slot: number;
 }
 
+type MatrixKind = 'press' | 'finger' | 'adjacent';
+const matrixSorts: Record<MatrixKind, MatrixSort | null> = {
+  press: null,
+  finger: null,
+  adjacent: null,
+};
+
+function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sort: MatrixSort | null): T[] {
+  if (!sort) return rows;
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const delta = a.row.cells[sort.column].value - b.row.cells[sort.column].value;
+      return (sort.direction === 'asc' ? delta : -delta) || a.index - b.index;
+    })
+    .map(({ row }) => row);
+}
+
 function render() {
   const geometry = buildGeometry(el.geometry.value as GeometryKind);
   const options: Options = {
@@ -359,7 +385,7 @@ function renderCompare(results: Result[]) {
  * 比較表の「隣接指超過」列と同じ単位）。
  */
 function renderMatrices(results: Result[]) {
-  const fingerRows = results.map((r) => ({
+  const fingerRows = sortMatrixRows(results.map((r) => ({
     label: r.layout.name,
     color: SERIES(r.slot),
     cells: FINGERS.map((f) => {
@@ -372,7 +398,7 @@ function renderMatrices(results: Result[]) {
           `<b>${perChar.toFixed(3)} u/文字</b> (全体の ${share.toFixed(1)}%)`,
       };
     }),
-  }));
+  })), matrixSorts.finger);
 
   el.fingerMatrix.innerHTML = matrixChart(
     fingerRows,
@@ -382,13 +408,14 @@ function renderMatrices(results: Result[]) {
       labelWidth: 190,
       columnSplit: 4,
       columnGroupLabels: ['左手', '右手'],
+      sort: matrixSorts.finger ?? undefined,
     },
   );
 
   // 押下数は親指も含めた 10 本で出す。親指の移動距離は定義上 0 なので距離の面からは
   // 省いてあるが、押下は現に起きている（薙刀式の右親指など）。距離の面だけを見て
   // 「この指を使っていない」と読まれるのを防ぐため、ここは 0 の列も含めて全部並べる。
-  const pressRows = results.map((r) => ({
+  const pressRows = sortMatrixRows(results.map((r) => ({
     label: r.layout.name,
     color: SERIES(r.slot),
     cells: ALL_FINGERS.map((f) => {
@@ -401,7 +428,7 @@ function renderMatrices(results: Result[]) {
           `押下 <b>${r.metrics.perFingerPresses[f]}</b> 回`,
       };
     }),
-  }));
+  })), matrixSorts.press);
 
   el.pressMatrix.innerHTML = matrixChart(
     pressRows,
@@ -411,10 +438,11 @@ function renderMatrices(results: Result[]) {
       labelWidth: 190,
       columnSplit: 5,
       columnGroupLabels: ['左手', '右手'],
+      sort: matrixSorts.press ?? undefined,
     },
   );
 
-  const adjacentRows = results.map((r) => ({
+  const adjacentRows = sortMatrixRows(results.map((r) => ({
     label: r.layout.name,
     color: SERIES(r.slot),
     cells: r.metrics.adjacent.map((s) => ({
@@ -425,7 +453,7 @@ function renderMatrices(results: Result[]) {
         `超過の実測最大 <b>${s.maxExcess.toFixed(3)} u</b><br>` +
         `標準偏差 <b>${s.stdDev.toFixed(3)} u</b>`,
     })),
-  }));
+  })), matrixSorts.adjacent);
 
   el.adjacentMatrix.innerHTML = matrixChart(
     adjacentRows,
@@ -435,10 +463,36 @@ function renderMatrices(results: Result[]) {
       labelWidth: 190,
       columnSplit: 3,
       columnGroupLabels: ['左手', '右手'],
+      sort: matrixSorts.adjacent ?? undefined,
       // 超過は 0.02〜0.6 の狭い帯に固まる。0 起点だと全セルが薄くなって差が読めない
       colorBase: 'min',
     },
   );
+}
+
+function cycleMatrixSort(kind: MatrixKind, column: number) {
+  const current = matrixSorts[kind];
+  matrixSorts[kind] =
+    !current || current.column !== column
+      ? { column, direction: 'asc' }
+      : current.direction === 'asc'
+        ? { column, direction: 'desc' }
+        : null;
+  render();
+}
+
+function bindMatrixSort(root: HTMLElement, kind: MatrixKind) {
+  root.addEventListener('click', (e) => {
+    const target = (e.target as Element).closest('[data-matrix-sort]');
+    if (target) cycleMatrixSort(kind, Number(target.getAttribute('data-matrix-sort')));
+  });
+  root.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const target = (e.target as Element).closest('[data-matrix-sort]');
+    if (!target) return;
+    e.preventDefault();
+    cycleMatrixSort(kind, Number(target.getAttribute('data-matrix-sort')));
+  });
 }
 
 /**
@@ -595,5 +649,8 @@ for (const id of ['en', 'ja'] as ModeId[]) {
 setupAddForm();
 fillPicker();
 fillDetailOptions();
+bindMatrixSort(el.pressMatrix, 'press');
+bindMatrixSort(el.fingerMatrix, 'finger');
+bindMatrixSort(el.adjacentMatrix, 'adjacent');
 bindTips(document.body);
 setupTheme(render);
