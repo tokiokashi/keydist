@@ -2,6 +2,7 @@ import { QWERTY_LEGEND } from './geometry.ts';
 import { fromRows, withRomaji, type Layout } from './layouts/index.ts';
 import { kunrei } from './romaji/kunrei.ts';
 import { oonishiRomaji } from './romaji/oonishi.ts';
+import { azik } from './romaji/azik.ts';
 
 const STORAGE_KEY = 'keydist:layouts';
 
@@ -9,6 +10,7 @@ const STORAGE_KEY = 'keydist:layouts';
 export const ROMAJI_RULES = {
   kunrei: { name: '訓令式（si / sya / zi / zya）', table: kunrei },
   oonishi: { name: '大西式（si / sha / ji / ja）', table: oonishiRomaji },
+  azik: { name: 'AZIK（拡張ローマ字。二重母音・撥音・促音を1綴りに短縮）', table: azik },
 } as const;
 
 export type RomajiRuleId = keyof typeof ROMAJI_RULES;
