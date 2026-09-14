@@ -25,7 +25,9 @@
  *
  * 生成物は手で直接編集せず、出典の更新時はこのスクリプトを再実行すること。
  */
+import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 const KANA_CHARS = /^[぀-ゟヴー]+$/; // ひらがな + ヴ(カタカナ) + ー
 const KEEP_PUNCT = new Set(['、', '。']); // kunrei.ts の綴りと揃える。他の記号は JIS 配列前提なので落とす
@@ -76,7 +78,22 @@ function buildTable(rows: Row[]): { table: Record<string, string>; droppedSymbol
   return { table, droppedSymbols };
 }
 
-function render(table: Record<string, string>): string {
+/**
+ * 出典ファイルが置かれた clone のコミットを拾う。
+ * 生成物と出典の対応を後から辿れるようにするため。git 管理下でなければ空を返す
+ */
+function sourceCommit(srcPath: string): string {
+  try {
+    return execFileSync('git', ['-C', dirname(srcPath), 'rev-parse', 'HEAD'], {
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return '';
+  }
+}
+
+function render(table: Record<string, string>, commit: string): string {
   // Unicode コードポイント順に並べる。生成の再現性を優先し、訓令式テーブルのような
   // 手書きのグルーピングはしない
   const entries = Object.entries(table).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
@@ -87,7 +104,7 @@ function render(table: Record<string, string>): string {
  * 出典: https://github.com/toriwasa/azik-roman-table の \`azik_romantable.txt\`
  * （Google 日本語入力向け。AZIK 本体は
  * https://web.archive.org/web/20241217165614/http://hp.vector.co.jp/authors/VA002116/azik/azikinfo.htm ）
- *
+ *${commit ? `\n * 出典のコミット: ${commit}\n *` : ''}
  * このファイルは \`scripts/gen-azik-romaji.ts\` による生成物。直接編集しない。
  * 出典が「ローマ字 → かな」なのに対しこちらは「かな → ローマ字」なので逆写像である。
  * 出典の134件の重複（互換キー）は「打鍵数最小、同数なら出典で先に現れた方」で1つに決めた。
@@ -116,7 +133,7 @@ function main() {
   }
   const rows = parseSource(readFileSync(srcPath, 'utf-8'));
   const { table, droppedSymbols } = buildTable(rows);
-  writeFileSync(outPath, render(table));
+  writeFileSync(outPath, render(table, sourceCommit(srcPath)));
   console.log(`${outPath} に ${Object.keys(table).length} 件のかなを書き出した`);
   console.log(`落とした記号出力（${droppedSymbols.length}件）: ${droppedSymbols.join(' ')}`);
 }

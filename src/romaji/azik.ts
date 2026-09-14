@@ -5,6 +5,8 @@
  * （Google 日本語入力向け。AZIK 本体は
  * https://web.archive.org/web/20241217165614/http://hp.vector.co.jp/authors/VA002116/azik/azikinfo.htm ）
  *
+ * 出典のコミット: d58cf925773d962fd88d7fac6a5d78aa9f979851
+ *
  * このファイルは `scripts/gen-azik-romaji.ts` による生成物。直接編集しない。
  * 出典が「ローマ字 → かな」なのに対しこちらは「かな → ローマ字」なので逆写像である。
  * 出典の134件の重複（互換キー）は「打鍵数最小、同数なら出典で先に現れた方」で1つに決めた。
