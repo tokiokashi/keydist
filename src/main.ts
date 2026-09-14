@@ -728,6 +728,19 @@ const COMPARE_HEADERS = [
   '隣接指超過 [u]',
 ];
 
+const COMPARE_RELATIVE_HEADERS = [
+  'ステップ比',
+  '距離[u]比',
+  '距離[m]比',
+  '1打鍵[u]比',
+  '1文字[u]比',
+  'アクション/文字比',
+  '押下/文字比',
+  '同指連続比',
+  '同指率比',
+  '隣接超過[u]比',
+];
+
 const COMPARE_FORMATS: Array<(value: number) => string> = [
   (value) => `${value}`,
   (value) => value.toFixed(0),
@@ -799,7 +812,7 @@ function renderCompare(results: Result[]) {
   syncCompareChartOptions(baseline !== undefined);
   const chartBest = Math.min(...sortedRows.map((row) => row.cells[compareChartColumn].value));
   const chartRelative = baseline !== undefined;
-  const chartLabel = compareLabel(COMPARE_HEADERS[compareChartColumn], chartRelative);
+  const chartLabel = compareLabel(COMPARE_HEADERS[compareChartColumn], chartRelative, compareChartColumn);
   el.compareChart.innerHTML = barChart(
     sortedRows.map(({ result: r, cells }) => ({
       label: r.layout.name,
@@ -839,8 +852,8 @@ function syncCompareBaselineOptions(results: Result[]) {
   el.compareBaseline.value = results.some((r) => r.layout.id === current) ? current : '';
 }
 
-function compareLabel(label: string, relative: boolean): string {
-  return relative ? `${label.replace(/\s*\[[^\]]+\]$/, '')} [%]` : label;
+function compareLabel(label: string, relative: boolean, column: number): string {
+  return relative ? COMPARE_RELATIVE_HEADERS[column] : label;
 }
 
 function syncCompareChartOptions(relative: boolean) {
@@ -848,7 +861,7 @@ function syncCompareChartOptions(relative: boolean) {
   el.compareChartMetric.replaceChildren();
   for (let column = 0; column < COMPARE_HEADERS.length; column++) {
     el.compareChartMetric.add(new Option(
-      compareLabel(COMPARE_HEADERS[column], relative),
+      compareLabel(COMPARE_HEADERS[column], relative, column),
       String(column),
     ));
   }
@@ -859,7 +872,7 @@ function compareHeader(label: string, column: number, relative: boolean): string
   const active = compareSort?.column === column ? compareSort.direction : undefined;
   const marker = active === 'asc' ? ' ↑' : active === 'desc' ? ' ↓' : '';
   const ariaSort = active === 'asc' ? 'ascending' : active === 'desc' ? 'descending' : 'none';
-  const shownLabel = compareLabel(label, relative);
+  const shownLabel = compareLabel(label, relative, column);
   return `<th><span class="table-sort" data-compare-sort="${column}" role="button" tabindex="0"
     aria-label="${escapeAttr(`${shownLabel}で配列を並べ替え`)}" aria-sort="${ariaSort}">${escapeText(shownLabel)}${marker}</span></th>`;
 }
