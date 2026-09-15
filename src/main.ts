@@ -55,6 +55,7 @@ import {
   importDvorakJ,
   importVial,
 } from './layout-import.ts';
+import { loadSelection, resolveSelection, saveSelection } from './layout-selection.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -181,10 +182,11 @@ const MODES = {
   ja: { get layouts() { return layoutsOf('ja'); }, sample: SAMPLES.ja.modern, initial: INITIAL.ja },
 };
 
-/** 表示する配列の id。モードごとに覚える */
+/** 表示する配列の id。モードごとに覚える。保存値があればそれを使い、無ければ既定値 */
+const storedSelection = loadSelection();
 const selected: Record<ModeId, Set<string>> = {
-  en: new Set(),
-  ja: new Set(),
+  en: resolveSelection(storedSelection.en, INITIAL.en),
+  ja: resolveSelection(storedSelection.ja, INITIAL.ja),
 };
 
 const currentModeId = () => el.mode.value as ModeId;
@@ -246,6 +248,7 @@ function setupAddForm() {
     // 追加したものは自動で表示に入れる
     selected.en.add(def.id);
     selected.ja.add(def.id);
+    saveSelection(selected);
 
     for (const input of inputs) input.value = '';
     el.newName.value = '';
@@ -281,6 +284,7 @@ function setupAddForm() {
       saveUserLayouts(userLayouts);
       selected.en.add(def.id);
       selected.ja.add(def.id);
+      saveSelection(selected);
       el.importError.hidden = true;
       el.importWarning.textContent = imported.warnings.length > 0
         ? `注意: ${imported.warnings.join(' / ')}`
@@ -604,6 +608,7 @@ function removeUserLayout(id: string) {
   saveUserLayouts(userLayouts);
   selected.en.delete(id);
   selected.ja.delete(id);
+  saveSelection(selected);
   fillPicker();
   fillDetailOptions();
   render();
@@ -624,6 +629,7 @@ function fillPicker() {
     box.addEventListener('change', () => {
       if (box.checked) set.add(layout.id);
       else set.delete(layout.id);
+      saveSelection(selected);
       label.className = box.checked ? '' : 'off';
       fillDetailOptions();
       render();
@@ -1239,11 +1245,6 @@ el.compareChartMetric.addEventListener('change', () => {
 for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.sample, el.text, el.detailLayout, el.compareBaseline]) {
   node.addEventListener('input', render);
   node.addEventListener('change', render);
-}
-// 既定の選択を用意してから初回描画する
-for (const id of ['en', 'ja'] as ModeId[]) {
-  for (const key of MODES[id].initial) selected[id].add(key);
-  for (const def of userLayouts) selected[id].add(def.id);
 }
 setupAddForm();
 setupRomajiEditor();
