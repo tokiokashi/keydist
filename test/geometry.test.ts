@@ -213,7 +213,7 @@ test('段に置けるキー数は形状定義（rowWidths）から導かれる',
 test('親指キーが1つの手はそのキーが自動でホームになり、移動距離は常に0になる（仕様 §3.1）', () => {
   const geometry = buildGeometry('row-staggered');
   assert.equal(geometry.thumbs.LT.id, 'thumb-l');
-  assert.equal(geometry.thumbs.RT.id, 'space');
+  assert.equal(geometry.thumbs.RT.id, 'thumb-r');
   near(geometry.homes.RT.x, geometry.thumbs.RT.x);
   near(geometry.homes.RT.y, geometry.thumbs.RT.y);
 });

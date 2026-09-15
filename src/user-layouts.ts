@@ -1,4 +1,4 @@
-import { QWERTY_LEGEND } from './geometry.ts';
+import { QWERTY_LEGEND, resolveKeyId } from './geometry.ts';
 import { fromRows, withRomaji, type Layout } from './layouts/index.ts';
 import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from './romaji/rules.ts';
 import type { Sequence } from './layouts/types.ts';
@@ -99,7 +99,7 @@ export function toLayout(def: UserLayout): Layout {
   const map = new Map(layout.map);
   for (const [output, sequence] of def.sequences ?? []) map.set(output, sequence);
   const legends = new Map(layout.legends);
-  for (const [key, label] of def.legends ?? []) legends.set(key, label);
+  for (const [key, label] of def.legends ?? []) legends.set(resolveKeyId(key), label);
   const maxCharLength = Math.max(1, ...[...map.keys()].map((key) => key.length));
   return { ...layout, map, legends, maxCharLength };
 }

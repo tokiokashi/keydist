@@ -1182,7 +1182,7 @@ function renderHeatmap(
     const y = key.y * KEY;
     maxX = Math.max(maxX, x + w);
     maxY = Math.max(maxY, y + KEY);
-    const label = labels.get(key.id) ?? (thumb ? (key.finger === 'RT' ? '空白' : '親指') : '');
+    const label = labels.get(key.id) ?? '';
     const share = ((count / Math.max(1, metrics.presses)) * 100).toFixed(1);
     const distance = metrics.keyDistance.get(key.id) ?? 0;
     const tip =

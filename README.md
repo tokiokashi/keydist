@@ -10,7 +10,7 @@ https://tokiokashi.github.io/keydist/
 キーは QWERTY 刻印で指す。
 
 ```json
-"が": [["space", "f"]]   同時押し（1 ステップ）
+"が": [["thumb-r", "f"]]   同時押し（1 ステップ）
 "が": [["shift"], ["f"]]  前置シフト（2 ステップ）
 "が": [["f"], ["shift"]]  後置シフト（2 ステップ）
 ```
@@ -22,7 +22,7 @@ https://tokiokashi.github.io/keydist/
 
 ```ts
 {
-  trigger: ['space'],
+  trigger: ['thumb-r'],
   mode: 'simultaneous',
   rows: [/* QWERTY の 4 行 */],
 }
@@ -30,6 +30,8 @@ https://tokiokashi.github.io/keydist/
 
 `mode` は `prefix` / `suffix` / `simultaneous` のいずれかで、面の展開後は直接書いた
 `Sequence` と同じように評価される。
+
+旧定義や保存済み配列にある `space` は、右親指キー `thumb-r` のエイリアスとして受け付ける。
 
 ## 何を測るか
 

@@ -68,7 +68,10 @@ export const keyId = (row: number, col: number): string => {
 };
 
 /** 親指キーの id（既定形状のもの） */
-export const THUMB_KEY = { LT: 'thumb-l', RT: 'space' } as const;
+export const THUMB_KEY = { LT: 'thumb-l', RT: 'thumb-r' } as const;
+
+/** 旧定義や localStorage に残る親指キー id を正式名へ解決する。 */
+export const resolveKeyId = (id: string): string => id === 'space' ? THUMB_KEY.RT : id;
 
 /** 各行の列数は刻印の長さで決まる（12 / 12 / 11 / 10）。既定形状の rowWidths に使う */
 const ROW_WIDTH = QWERTY_LEGEND.map((row) => row.length);
