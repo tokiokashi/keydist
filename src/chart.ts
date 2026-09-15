@@ -370,10 +370,11 @@ export function matrixChart(rows: MatrixRow[], columns: string[], options: Matri
       const active = options.sort?.column === i ? options.sort.direction : undefined;
       const marker = active === 'asc' ? ' ↑' : active === 'desc' ? ' ↓' : '';
       const ariaSort = active === 'asc' ? 'ascending' : active === 'desc' ? 'descending' : 'none';
-      return `<text x="${colX(i) + cellW / 2}" y="${headerH - 6}" text-anchor="middle" font-size="11"
+      return `<g data-tip="クリックごとに昇順・降順・選択順へ切り替える">
+        <text x="${colX(i) + cellW / 2}" y="${headerH - 6}" text-anchor="middle" font-size="11"
         fill="var(--muted)" data-matrix-sort="${i}" role="button" tabindex="0"
         aria-label="${escapeAttr(`${c}で配列を並べ替え`)}" aria-sort="${ariaSort}"
-        style="cursor:pointer">${escapeText(c)}${marker}</text>`;
+        style="cursor:pointer">${escapeText(c)}${marker}</text></g>`;
     })
     .join('');
 

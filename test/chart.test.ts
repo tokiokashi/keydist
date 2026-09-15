@@ -94,5 +94,6 @@ test('マトリックスの列見出しはソート操作の対象になる', ()
   const svg = matrixChart(MATRIX_ROWS, ['列1', '列2'], { sort: { column: 1, direction: 'asc' } });
   assert.match(svg, /data-matrix-sort="1"/);
   assert.match(svg, /aria-sort="ascending"/);
+  assert.match(svg, /<g data-tip="クリックごとに昇順・降順・選択順へ切り替える">\s*<text[^>]*data-matrix-sort="1"/);
   assert.ok(svg.includes('列2 ↑'));
 });

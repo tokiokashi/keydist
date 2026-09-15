@@ -891,9 +891,7 @@ function renderCompare(results: Result[]) {
       valueLabel: cells[compareChartColumn].display,
       color: SERIES(r.slot),
       emphasise: cells[compareChartColumn].value === chartBest,
-      tip:
-        `${escapeText(r.layout.name)}<br>${escapeText(chartLabel)} <b>${cells[compareChartColumn].display}</b>` +
-        `<br>${comboSummary(r.metrics)}`,
+      tip: `${escapeText(r.layout.name)}<br>${escapeText(chartLabel)} <b>${cells[compareChartColumn].display}</b>`,
     })),
     {
       format: chartRelative ? (value) => `${value.toFixed(1)}%` : COMPARE_FORMATS[compareChartColumn],
@@ -945,12 +943,8 @@ function compareHeader(label: string, column: number, relative: boolean): string
   const ariaSort = active === 'asc' ? 'ascending' : active === 'desc' ? 'descending' : 'none';
   const shownLabel = compareLabel(label, relative, column);
   return `<th><span class="table-sort" data-compare-sort="${column}" role="button" tabindex="0"
-    aria-label="${escapeAttr(`${shownLabel}で配列を並べ替え`)}" aria-sort="${ariaSort}">${escapeText(shownLabel)}${marker}</span></th>`;
-}
-
-function comboSummary(metrics: Metrics): string {
-  const { definitions, matched, hits } = metrics.combos;
-  return definitions === 0 ? 'なし' : `${matched}/${definitions} 件（延べ ${hits} 回）`;
+    aria-label="${escapeAttr(`${shownLabel}で配列を並べ替え`)}" aria-sort="${ariaSort}"
+    title="クリックごとに昇順・降順・選択順へ切り替える">${escapeText(shownLabel)}${marker}</span></th>`;
 }
 
 /**
