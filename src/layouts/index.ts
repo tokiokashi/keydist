@@ -20,7 +20,7 @@ export type {
   Sequence,
   Step,
 } from './types.ts';
-export { fromRows, fromFaces, fromKana, withRomaji, withCombos } from './types.ts';
+export { faceFromEntries, fromRows, fromFaces, fromKana, withRomaji, withCombos } from './types.ts';
 
 const ROMAJI = kunrei();
 const ROMAJI_OONISHI = oonishiRomaji();
@@ -91,8 +91,6 @@ export const KANA_PENDING: Layout[] = [
   SHIN_KOUME,
   SHIN_JIS_PREFIX,
   SHIN_JIS_SIMULTANEOUS,
-  SHINGETA,
-  TSUKI_2_263,
 ];
 
 /**
@@ -119,6 +117,8 @@ export const LAYOUTS_JA: Layout[] = [
   ),
   NAGINATA_V18,
   NICOLA,
+  SHINGETA,
+  TSUKI_2_263,
 ];
 
 export const LAYOUT_BY_ID = new Map([...LAYOUTS, ...LAYOUTS_JA].map((l) => [l.id, l]));

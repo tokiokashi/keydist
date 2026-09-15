@@ -1,24 +1,8 @@
 import { THUMB_KEY } from '../geometry.ts';
-import { fromFaces, type Face, type Layout } from './types.ts';
+import { faceFromEntries, fromFaces, type Face, type Layout } from './types.ts';
 
-/** QWERTY 刻印のキー id で NICOLA の3面を記述する。 */
-const QWERTY_ROWS = [
-  '1234567890-=',
-  'qwertyuiop[]',
-  "asdfghjkl;'",
-  'zxcvbnm,./',
-] as const;
-const QWERTY_KEYS = new Set([...QWERTY_ROWS.join('')]);
-
-const face = (trigger: string[], entries: Record<string, string>): Face => {
-  const invalidKeys = Object.keys(entries).filter((key) => !QWERTY_KEYS.has(key));
-  if (invalidKeys.length > 0) throw new Error(`NICOLA 面に未知のキーがある: ${invalidKeys.join(', ')}`);
-  return {
-    trigger,
-    mode: 'simultaneous',
-    rows: QWERTY_ROWS.map((row) => [...row].map((key) => entries[key] ?? '')),
-  };
-};
+const face = (trigger: string[], entries: Record<string, string>): Face =>
+  faceFromEntries(trigger, 'simultaneous', entries);
 
 /**
  * 親指シフト（NICOLA）J型。

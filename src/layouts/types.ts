@@ -1,4 +1,4 @@
-import { keyId, THUMB_KEY } from '../geometry.ts';
+import { keyId, QWERTY_LEGEND, THUMB_KEY } from '../geometry.ts';
 
 /** 1 ステップで同時に押すキーの集合。キーは QWERTY 刻印で指す（`thumb-r` `thumb-l` は親指キー）。`space` も入力互換で受け付ける */
 export type Step = string[];
@@ -60,6 +60,23 @@ export interface Layout {
 }
 
 const maxKeyLength = (keys: Iterable<string>) => Math.max(1, ...[...keys].map((k) => k.length));
+
+const QWERTY_KEYS = new Set([...QWERTY_LEGEND.join('')]);
+
+/** QWERTY 刻印のキー id で面を作る。未知のキーは空欄にせず定義ミスとして弾く。 */
+export function faceFromEntries(
+  trigger: readonly string[],
+  mode: FaceMode,
+  entries: Record<string, string>,
+): Face {
+  const invalidKeys = Object.keys(entries).filter((key) => !QWERTY_KEYS.has(key));
+  if (invalidKeys.length > 0) throw new Error(`面に未知のキーがある: ${invalidKeys.join(', ')}`);
+  return {
+    trigger,
+    mode,
+    rows: QWERTY_LEGEND.map((row) => [...row].map((key) => entries[key] ?? '')),
+  };
+}
 
 /**
  * 4 行 × N 列のグリッドに文字を並べた配列。
