@@ -11,8 +11,10 @@ import { faceFromEntries, fromFaces, type Face, type Layout } from './types.ts';
  * D 面の重複する括弧や機能キーは採らず、単打面の `「` を残す。
  */
 
-const face = (trigger: string[], entries: Record<string, string>): Face =>
-  faceFromEntries(trigger, 'simultaneous', entries);
+const face = (trigger: string[], entries: Record<string, string>, layer?: string): Face => ({
+  ...faceFromEntries(trigger, 'simultaneous', entries),
+  layer,
+});
 
 export const SHINGETA_FACES: Face[] = [
   face([], {
@@ -25,23 +27,23 @@ export const SHINGETA_FACES: Face[] = [
     q: 'ふぁ', w: 'ご', e: 'ふ', r: 'ふぃ', t: 'ふぇ',
     a: 'ほ', s: 'じ', d: 'れ', f: 'も', g: 'ゆ',
     z: 'づ', x: 'ぞ', c: 'ぼ', v: 'む', b: 'ふぉ',
-  }),
+  }, '中指シフト'),
   face(['d'], {
     y: 'うぃ', u: 'ぱ', i: 'よ', o: 'み', p: 'うぇ', '[': 'うぉ',
     h: 'へ', j: 'あ', ';': 'え',
     n: 'せ', m: 'ね', ',': 'べ', '.': 'ぷ', '/': 'ヴ',
-  }),
+  }, '中指シフト'),
   face(['l'], {
     1: 'ゃ', 2: 'みゃ', 3: 'みゅ', 4: 'みょ', 5: 'ゎ',
     q: 'ぢ', w: 'め', e: 'け', r: 'てぃ', t: 'でぃ',
     a: 'を', s: 'さ', d: 'お', f: 'り', g: 'ず',
     z: 'ぜ', x: 'ざ', c: 'ぎ', v: 'ろ', b: 'ぬ',
-  }),
+  }, '薬指シフト'),
   face(['s'], {
     y: 'しぇ', u: 'ぺ', i: 'ど', o: 'や', p: 'じぇ',
     h: 'び', j: 'ら', ';': 'そ',
     n: 'わ', m: 'だ', ',': 'ぴ', '.': 'ぽ', '/': 'ちぇ',
-  }),
+  }, '薬指シフト'),
   face(['i'], {
     1: 'ゅ', 2: 'びゃ', 3: 'びゅ', 4: 'びょ',
     q: 'ひゅ', w: 'しゅ', e: 'しょ', r: 'きゅ', t: 'ちゅ',

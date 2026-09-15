@@ -19,10 +19,11 @@ const QWERTY_ROWS = [
 ] as const;
 
 /** QWERTY のキー id で面のセルを指定するための補助関数。 */
-const face = (trigger: string[], entries: Record<string, string>): Face => ({
+const face = (trigger: string[], entries: Record<string, string>, layer?: string): Face => ({
   trigger,
   mode: 'simultaneous',
   rows: QWERTY_ROWS.map((row) => [...row].map((key) => entries[key] ?? '')),
+  layer,
 });
 
 /** 既存の直接定義を、発火条件を持つ同時押し面へ移したもの。 */
@@ -49,14 +50,14 @@ export const NAGINATA_V18_FACES: Face[] = [
   face(['j'], {
     f: 'が', w: 'ぎ', s: 'げ', v: 'ご', r: 'じ', a: 'ぜ', b: 'ぞ', g: 'ぢ', e: 'で',
     d: 'ど', c: 'ば', x: 'び', z: 'ぼ',
-  }),
+  }, '濁音'),
 
   // 濁音（左手側のトリガー）
-  face(['f'], { u: 'ざ', o: 'ず', n: 'だ', l: 'づ', h: 'ぐ', p: 'べ', ';': 'ぶ' }),
+  face(['f'], { u: 'ざ', o: 'ず', n: 'だ', l: 'づ', h: 'ぐ', p: 'べ', ';': 'ぶ' }, '濁音'),
 
   // 半濁音
-  face(['m'], { c: 'ぱ', x: 'ぴ', z: 'ぽ' }),
-  face(['v'], { p: 'ぺ', ';': 'ぷ' }),
+  face(['m'], { c: 'ぱ', x: 'ぴ', z: 'ぽ' }, '半濁音'),
+  face(['v'], { p: 'ぺ', ';': 'ぷ' }, '半濁音'),
 
   // 拗音の母音面
   face(['h'], { w: 'きゃ', r: 'しゃ', g: 'ちゃ', d: 'にゃ', x: 'ひゃ', s: 'みゃ', e: 'りゃ' }),

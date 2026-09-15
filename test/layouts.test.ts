@@ -49,7 +49,7 @@ test('面のセル配列は複数文字の見出しを 1 キーへ置ける', ()
   assert.equal(layout.maxCharLength, 2);
 });
 
-test('面を逆手の条件で層へ集約する', () => {
+test('宣言された面だけを逆手の条件で層へ集約する', () => {
   const shingeta = LAYOUT_BY_ID.get('shingeta')!;
   const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
   const nicola = LAYOUT_BY_ID.get('nicola')!;
@@ -60,9 +60,19 @@ test('面を逆手の条件で層へ集約する', () => {
     groupFacesIntoLayers(shingeta.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
     [[[]], [['k'], ['d']], [['l'], ['s']], [['i']], [['o']]],
   );
-  assert.equal(groupFacesIntoLayers(tsuki.faces!).length, 2);
-  assert.equal(groupFacesIntoLayers(nicola.faces!).length, 3);
-  assert.equal(groupFacesIntoLayers(naginata.faces!).length, 30);
+  assert.deepEqual(
+    groupFacesIntoLayers(tsuki.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    [[[]], [['d'], ['k']]],
+  );
+  assert.deepEqual(
+    groupFacesIntoLayers(nicola.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    [[[]], [['thumb-l']], [['thumb-r']]],
+  );
+  assert.deepEqual(
+    groupFacesIntoLayers(naginata.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    [[[]], [['space']], [['q']], [['j'], ['f']], [['m'], ['v']], [['h']], [['p']], [['i']]],
+  );
+  assert.equal(naginata.faces!.filter((face) => face.trigger.length > 1).length, 23);
 
   assert.equal(handOfKey('space'), 'right');
   assert.equal(canFoldFaces(shingeta.faces![1], shingeta.faces![2]), true);
@@ -72,6 +82,12 @@ test('面を逆手の条件で層へ集約する', () => {
     { trigger: ['k'], mode: 'simultaneous', rows: faceAtF('x') },
     { trigger: ['d'], mode: 'prefix', rows: ['', '', ['', '', '', '', '', '', 'y'], ''] },
   ), false);
+  const invalidFaces = [
+    { trigger: ['a'], mode: 'simultaneous' as const, rows: faceAtF('x'), layer: '不正' },
+    { trigger: ['s'], mode: 'simultaneous' as const, rows: faceAtF('y'), layer: '不正' },
+  ];
+  assert.throws(() => canFoldFaces(invalidFaces[0], invalidFaces[1]), /畳み条件を満たさない/);
+  assert.throws(() => groupFacesIntoLayers(invalidFaces), /畳み条件を満たさない/);
 });
 
 test('薙刀式 v18 は面から生成され、全定義を 1 ステップで保持する', () => {

@@ -50,42 +50,56 @@ const singleHand = (keys: Iterable<string>): Hand | undefined => {
 const opposite = (first: Hand | undefined, second: Hand | undefined) =>
   first !== undefined && second !== undefined && first !== second;
 
-/** 2 面を 1 層へ畳めるか、issue #84 の判定ルールで決める。 */
+/** 宣言された 2 面が issue #84 の構造条件を満たすか検証する。 */
 export function canFoldFaces(first: Face, second: Face): boolean {
-  if (first.mode !== second.mode) return false;
+  if (first.layer === undefined || first.layer !== second.layer) return false;
+  const invalid = (reason: string): never => {
+    throw new Error(`層「${first.layer}」の面が畳み条件を満たさない: ${reason}`);
+  };
+  if (first.trigger.length !== 1 || second.trigger.length !== 1) invalid('trigger は単一キーである必要がある');
+  if (first.mode !== second.mode) invalid('mode が異なる');
 
   const firstTriggerHand = singleHand(first.trigger);
   const secondTriggerHand = singleHand(second.trigger);
-  if (!opposite(firstTriggerHand, secondTriggerHand)) return false;
+  if (!opposite(firstTriggerHand, secondTriggerHand)) invalid('trigger が逆手でない');
 
   const firstCells = faceCells(first);
   const secondCells = faceCells(second);
   const firstTargetHand = singleHand(firstCells.keys());
   const secondTargetHand = singleHand(secondCells.keys());
-  if (!opposite(firstTargetHand, secondTargetHand)) return false;
+  if (!opposite(firstTargetHand, secondTargetHand)) invalid('対象セルが逆手でない');
 
   for (const key of firstCells.keys()) {
-    if (secondCells.has(key)) return false;
+    if (secondCells.has(key)) invalid('対象セルが重複している');
   }
   return true;
 }
 
-/** 面の順序を保ちながら、畳める逆手ペアだけを隣接層へ集約する。 */
+/** 面の順序を保ちながら、宣言された単一キー面だけを層へ集約する。 */
 export function groupFacesIntoLayers(faces: readonly Face[]): Layer[] {
-  const used = new Set<number>();
-  const layers: Layer[] = [];
-
-  for (let i = 0; i < faces.length; i++) {
-    if (used.has(i)) continue;
-    const pair = faces.findIndex((face, j) => j > i && !used.has(j) && canFoldFaces(faces[i], face));
-    if (pair >= 0) {
-      used.add(i);
-      used.add(pair);
-      layers.push({ faces: [faces[i], faces[pair]] });
-    } else {
-      used.add(i);
-      layers.push({ faces: [faces[i]] });
+  const groups = new Map<string, Face[]>();
+  faces.forEach((face, index) => {
+    // 2キー以上の trigger は修飾・コンボであり、盤面の層には含めない。
+    if (face.trigger.length > 1) {
+      if (face.layer !== undefined) throw new Error('コンボ面には層を宣言できない');
+      return;
     }
+    const groupKey = face.layer === undefined ? `single:${index}` : `layer:${face.layer}`;
+    const group = groups.get(groupKey);
+    if (group) group.push(face);
+    else groups.set(groupKey, [face]);
+  });
+
+  const layers: Layer[] = [];
+  for (const group of groups.values()) {
+    for (let i = 0; i < group.length; i++) {
+      for (let j = i + 1; j < group.length; j++) {
+        if (!canFoldFaces(group[i], group[j])) {
+          throw new Error(`層「${group[i].layer ?? ''}」の面が畳み条件を満たさない`);
+        }
+      }
+    }
+    layers.push({ faces: group });
   }
   return layers;
 }

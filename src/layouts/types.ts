@@ -1,4 +1,5 @@
 import { keyId, QWERTY_LEGEND, THUMB_KEY } from '../geometry.ts';
+import { groupFacesIntoLayers } from '../layers.ts';
 
 /** 1 ステップで同時に押すキーの集合。キーは QWERTY 刻印で指す（`thumb-r` `thumb-l` は親指キー）。`space` も入力互換で受け付ける */
 export type Step = string[];
@@ -20,6 +21,8 @@ export interface Face {
   trigger: readonly string[];
   mode: FaceMode;
   rows: readonly FaceRow[];
+  /** 同じ値を持つ単一キー面は 1 層へ畳む。省略時はその面が単独で 1 層 */
+  layer?: string;
 }
 
 /** コンボを発火できる入力の条件。条件を省略したコンボは常に最長一致する。 */
@@ -121,6 +124,8 @@ export function fromFaces(
   faces: readonly Face[],
   thumbs: { LT?: string; RT?: string } = {},
 ): Layout {
+  // 定義時に層の宣言を検証し、表示時まで不正な組み合わせを遅延させない。
+  groupFacesIntoLayers(faces);
   const map = new Map<string, Sequence>();
   const legends = new Map<string, string>();
 

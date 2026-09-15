@@ -11,7 +11,7 @@ import {
 import { evaluate, type Options, type Trace } from './evaluate.ts';
 import { computeMetrics, type Metrics } from './metrics.ts';
 import { nSensitivity } from './sensitivity.ts';
-import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from './layouts/index.ts';
+import { LAYOUTS, LAYOUTS_JA, withRomaji, type Face, type Layout } from './layouts/index.ts';
 import { SAMPLE_TEXT } from './sample-text.ts';
 import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from './sample-text-ja.ts';
 import {
@@ -713,7 +713,7 @@ const matrixSorts: Record<MatrixKind, MatrixSort | null> = {
 let compareSort: MatrixSort | null = null;
 let compareChartColumn = 1;
 type LayerView = 'side-by-side' | 'tabs';
-let layerView: LayerView = 'side-by-side';
+let layerView: LayerView | undefined;
 let activeLayerTab = 0;
 
 function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sort: MatrixSort | null): T[] {
@@ -1170,9 +1170,7 @@ function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeomet
 
 function triggerKeyText(key: string, legends: Map<string, string>): string {
   const resolved = resolveKeyId(key);
-  return resolved === 'thumb-l' || resolved === 'thumb-r'
-    ? legends.get(resolved) ?? resolved
-    : resolved;
+  return legends.get(resolved) ?? resolved;
 }
 
 function triggerText(face: Layer['faces'][number], legends: Map<string, string>): string {
@@ -1185,15 +1183,36 @@ function triggerHandText(face: Layer['faces'][number]): string {
   return hands.has('left') ? '左手' : '右手';
 }
 
+function targetHandText(face: Face): string | undefined {
+  const hands = new Set([...faceCells(face).keys()]
+    .map(handOfKey)
+    .filter((hand): hand is NonNullable<typeof hand> => hand !== undefined));
+  if (hands.size !== 1) return undefined;
+  return hands.has('left') ? '左手側' : '右手側';
+}
+
+const FACE_MODE_TEXT: Record<Face['mode'], string> = {
+  simultaneous: '同時押し',
+  prefix: '前置シフト',
+  suffix: '後置シフト',
+};
+
+function triggerCaption(face: Face, legends: Map<string, string>): string {
+  const trigger = triggerText(face, legends);
+  const target = targetHandText(face);
+  return `${triggerHandText(face)} ${trigger}シフト${target ? `（${target}のキー）` : ''}`;
+}
+
 function layerTitle(layer: Layer, index: number, legends: Map<string, string>): string {
-  if (layer.faces.length === 0) return `層 ${index + 1}: 単打（刻印）`;
+  if (layer.faces.length === 0) return `層 ${index + 1}: 単打`;
   const triggers = layer.faces
     .filter((face) => face.trigger.length > 0)
-    .map((face) => triggerText(face, legends));
-  const modes = [...new Set(layer.faces.map((face) => face.mode))].join(' / ');
-  return triggers.length === 0
-    ? `層 ${index + 1}: 単打（${modes}）`
-    : `層 ${index + 1}: ${triggers.join(' / ')}（${modes}）`;
+    .map((face) => triggerCaption(face, legends));
+  if (triggers.length === 0) return `層 ${index + 1}: 単打`;
+  const names = [...new Set(layer.faces.map((face) => face.layer).filter((name): name is string => name !== undefined))];
+  const name = names.length === 1 ? `${names[0]}: ` : '';
+  const modes = [...new Set(layer.faces.map((face) => FACE_MODE_TEXT[face.mode]))].join(' / ');
+  return `層 ${index + 1}: ${name}${triggers.join(' / ')}（${modes}）`;
 }
 
 interface LayerCell {
@@ -1260,15 +1279,9 @@ function renderLayerSvg(
       : `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span>` +
         (annotation ? `<br>${escapeText(annotation)}` : '');
     const fontSize = thumb ? 10 : label.length > 3 ? 9 : 12;
-    const text = annotation
-      ? `<text x="${x + w / 2}" y="${y + KEY / 2 - 2}" text-anchor="middle"
-          font-size="${fontSize}" fill="var(--fg)" pointer-events="none">
-          <tspan x="${x + w / 2}" dy="0">${escapeText(label)}</tspan>
-          <tspan x="${x + w / 2}" dy="11" font-size="8" fill="var(--muted)">${escapeText(annotation)}</tspan>
-        </text>`
-      : `<text x="${x + w / 2}" y="${y + KEY / 2 + 4}" text-anchor="middle"
-          font-size="${fontSize}" fill="${showHeat && t > 0.5 ? 'var(--on-heat)' : 'var(--fg)'}"
-          pointer-events="none">${escapeText(label)}</text>`;
+    const text = `<text x="${x + w / 2}" y="${y + KEY / 2 + 4}" text-anchor="middle"
+        font-size="${fontSize}" fill="${showHeat && t > 0.5 ? 'var(--on-heat)' : 'var(--fg)'}"
+        pointer-events="none">${escapeText(label)}</text>`;
     // 隣り合う面が地色で 2px 離れるよう、キー矩形は内側に 1px 詰める
     const fill = showHeat
       ? `color-mix(in oklab, var(--heat-1) ${(t * 100).toFixed(1)}%, var(--heat-0))`
@@ -1283,11 +1296,27 @@ function renderLayerSvg(
   // 実寸を属性で持たせ、CSS 側（.fig-fixed）で引き伸ばさずに置く
   const W = maxX + PAD;
   const H = maxY + PAD;
+  const caption = showHeat ? `${title} — 打鍵頻度（全層合算・物理位置）` : title;
   return `<figure class="layer-diagram">
-    <figcaption>${escapeText(title)}</figcaption>
+    <figcaption>${escapeText(caption)}</figcaption>
     <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
-      aria-label="${escapeAttr(title)}">${keys.join('')}</svg>
+      aria-label="${escapeAttr(caption)}">${keys.join('')}</svg>
   </figure>`;
+}
+
+function renderComboTable(combos: readonly Face[], legends: Map<string, string>): string {
+  if (combos.length === 0) return '';
+  const rows = combos.map((face) => {
+    const outputs = [...faceCells(face).values()].join(' / ');
+    return `<tr><td>${escapeText(triggerText(face, legends))}</td><td>${escapeText(outputs)}</td></tr>`;
+  }).join('');
+  return `<section class="combo-table">
+    <h3>コンボ（${combos.length} 面）</h3>
+    <div class="scroll-x"><table>
+      <thead><tr><th>トリガー</th><th>出力</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </section>`;
 }
 
 function renderHeatmap(
@@ -1295,20 +1324,23 @@ function renderHeatmap(
   layout: Layout,
   geometry: ReturnType<typeof buildGeometry>,
 ) {
-  const layers: Layer[] = layout.faces && layout.faces.length > 0
-    ? groupFacesIntoLayers(layout.faces)
+  const faces = layout.faces ?? [];
+  const combos = faces.filter((face) => face.trigger.length > 1);
+  const layers: Layer[] = faces.length > 0
+    ? groupFacesIntoLayers(faces)
     : [{ faces: [] }];
   if (activeLayerTab >= layers.length) activeLayerTab = 0;
   const titles = layers.map((layer, index) => layerTitle(layer, index, layout.legends));
+  const selectedLayerView = layerView ?? (layers.length <= 5 ? 'side-by-side' : 'tabs');
   const controls = layers.length > 1
     ? `<div class="layer-view-controls" role="group" aria-label="層の表示方法">
         <span>層の表示</span>
-        <button type="button" class="ghost" data-layer-view="side-by-side" aria-pressed="${layerView === 'side-by-side'}">並置</button>
-        <button type="button" class="ghost" data-layer-view="tabs" aria-pressed="${layerView === 'tabs'}">タブ</button>
+        <button type="button" class="ghost" data-layer-view="side-by-side" aria-pressed="${selectedLayerView === 'side-by-side'}">並置</button>
+        <button type="button" class="ghost" data-layer-view="tabs" aria-pressed="${selectedLayerView === 'tabs'}">タブ</button>
       </div>`
     : '';
   const diagrams = layers.map((layer, index) => renderLayerSvg(metrics, layout, geometry, layer, titles[index]));
-  const content = layerView === 'tabs' && layers.length > 1
+  const content = selectedLayerView === 'tabs' && layers.length > 1
     ? `<div class="layer-tabs" role="tablist" aria-label="層">
         ${titles.map((_, index) => `<button type="button" class="ghost" role="tab"
           aria-selected="${activeLayerTab === index}" data-layer-tab="${index}">${escapeText(`層 ${index + 1}`)}</button>`).join('')}
@@ -1317,7 +1349,7 @@ function renderHeatmap(
         diagram.replace('<figure class="layer-diagram">', `<figure class="layer-diagram"${activeLayerTab === index ? '' : ' hidden'}>`),
       ).join('')}</div>`
     : `<div class="layer-diagrams">${diagrams.join('')}</div>`;
-  el.heatmap.innerHTML = controls + content;
+  el.heatmap.innerHTML = controls + content + renderComboTable(combos, layout.legends);
 }
 
 function setSensitivityScale(scale: SensitivityScale) {
