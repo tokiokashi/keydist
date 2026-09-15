@@ -8,20 +8,27 @@ const QWERTY_ROWS = [
   "asdfghjkl;'",
   'zxcvbnm,./',
 ] as const;
+const QWERTY_KEYS = new Set([...QWERTY_ROWS.join('')]);
 
-const face = (trigger: string[], entries: Record<string, string>): Face => ({
-  trigger,
-  mode: 'simultaneous',
-  rows: QWERTY_ROWS.map((row) => [...row].map((key) => entries[key] ?? '')),
-});
+const face = (trigger: string[], entries: Record<string, string>): Face => {
+  const invalidKeys = Object.keys(entries).filter((key) => !QWERTY_KEYS.has(key));
+  if (invalidKeys.length > 0) throw new Error(`NICOLA 面に未知のキーがある: ${invalidKeys.join(', ')}`);
+  return {
+    trigger,
+    mode: 'simultaneous',
+    rows: QWERTY_ROWS.map((row) => [...row].map((key) => entries[key] ?? '')),
+  };
+};
 
 /**
  * 親指シフト（NICOLA）J型。
  *
- * 配置の出典は NICOLA 日本語入力コンソーシアムの規格書
- * (http://nicola.sunicom.co.jp/spec/kikaku.htm) と、同規格書版の
- * DvorakJ 定義 (https://github.com/k-ayaki/dvorakj_2023) である。
- * 紅皿の定義 (https://github.com/k-ayaki/benizara) とも照合した。
+ * 配置は NICOLA 日本語入力コンソーシアムの規格書
+ * (http://nicola.sunicom.co.jp/spec/kikaku.htm) に対応する DvorakJ の
+ * 「NICOLA配列規格書」版 (https://github.com/k-ayaki/dvorakj_2023) から移植した。
+ * 紅皿の定義 (https://github.com/k-ayaki/benizara) は D01/D11/D12/B10 で異なるため採らなかった。
+ * 規格書 §3 の 2018.11 注記にある D12 の記載は DvorakJ の読みを採用し、
+ * `゛` は B10 + 無変換、`゜` は D01 + 変換に置き、D12 の機能キー出力は追加していない。
  *
  * NICOLA 専用キーボードを前提にした配置を ANSI のキー id へ写しているため、
  * 既定の物理形状で出す距離の絶対値は参考値である。
