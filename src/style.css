@@ -448,3 +448,31 @@ button.secondary {
   font-size: 0.72rem;
 }
 dialog hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0 14px; }
+
+/* ---- g の図解 ---------------------------------------------------------- */
+.gap-figure-title { margin: 20px 0 8px; }
+.gap-figure > p { margin: 0 0 8px; }
+.gap-romaji { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 10px; }
+.gap-romaji-key {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.gap-romaji-key b { color: var(--fg); font-weight: 600; }
+.gap-intro { margin: 0 0 12px; max-width: 340px; }
+.gap-intro figcaption { margin: 0 0 6px; color: var(--muted); font-size: 0.76rem; }
+.gap-intro svg { width: 100%; height: auto; }
+.gap-boards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px 20px;
+  align-items: start;
+}
+.gap-board { margin: 0; min-width: 0; }
+.gap-board figcaption { margin: 0 0 6px; color: var(--muted); font-size: 0.76rem; }
+.gap-board svg { width: 100%; height: auto; }
