@@ -99,6 +99,9 @@ const el = {
   pressMatrix: $<HTMLDivElement>('press-matrix'),
   adjacentMeanMatrix: $<HTMLDivElement>('adjacent-mean-matrix'),
   adjacentStdDevMatrix: $<HTMLDivElement>('adjacent-stddev-matrix'),
+  howDialog: $<HTMLDialogElement>('how-dialog'),
+  howOpen: $<HTMLButtonElement>('how-open'),
+  howClose: $<HTMLButtonElement>('how-close'),
   romajiDialog: $<HTMLDialogElement>('romaji-dialog'),
   romajiForm: $<HTMLFormElement>('romaji-form'),
   romajiEdit: $<HTMLSelectElement>('romaji-edit'),
@@ -681,6 +684,20 @@ function syncSampleText() {
 }
 
 const TEXT_COLLAPSED_KEY = 'keydist:text-collapsed';
+
+/**
+ * 計算方法の図解をモーダルで開く。ヘッダーの仕様リンクを置き換えたボタンから呼ぶ。
+ * 閉じる口は 3 つ: 閉じるボタン・背景クリック・Esc（dialog 既定）。
+ * 背景クリックを拾うため dialog 自身の padding は 0 にし、余白は .dialog-body が持つ。
+ */
+function setupHowDialog() {
+  el.howOpen.addEventListener('click', () => el.howDialog.showModal());
+  el.howClose.addEventListener('click', () => el.howDialog.close());
+  el.howDialog.addEventListener('click', (event) => {
+    // 背景そのものを押した時だけ閉じる。中身の上なら target は子要素になる
+    if (event.target === el.howDialog) el.howDialog.close();
+  });
+}
 
 function setupTextPanel() {
   try {
@@ -1442,5 +1459,6 @@ bindMatrixSort(el.adjacentStdDevMatrix, 'adjacentStdDev');
 bindCompareSort(el.compare);
 // 図解は固定例（§7〜§9）。画面の選択に連動させず、起動時に 1 度だけ描く
 el.gapFigure.innerHTML = gapFigure(buildGeometry('row-staggered'));
+setupHowDialog();
 bindTips(document.body);
 setupTheme(render);

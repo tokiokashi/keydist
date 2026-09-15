@@ -108,6 +108,19 @@ body {
 .topbar h1 { margin: 0; font-size: 1.15rem; letter-spacing: 0.03em; }
 .topbar .lede { margin: 0; color: var(--muted); font-size: 0.82rem; }
 .topbar .spacer { margin-left: auto; }
+/* 仕様への外部リンクを置き換えたボタン。図をその場で開く */
+.how-open {
+  margin-left: 6px;
+  padding: 2px 10px;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 10%, var(--panel));
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--line));
+  border-radius: 999px;
+  cursor: pointer;
+}
+.how-open:hover { background: color-mix(in oklab, var(--accent) 18%, var(--panel)); }
 a { color: var(--accent); }
 
 .theme-toggle { display: flex; gap: 2px; align-self: center; }
@@ -396,6 +409,8 @@ dialog {
   box-shadow: 0 12px 40px rgb(0 0 0 / 0.28);
 }
 dialog::backdrop { background: rgb(0 0 0 / 0.38); }
+#how-dialog { width: min(980px, calc(100vw - 32px)); padding: 0; }
+#how-dialog .dialog-body { padding: 20px; }
 .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .dialog-head h2 { margin: 0; }
 dialog .close { flex: none; }
@@ -450,7 +465,6 @@ button.secondary {
 dialog hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0 14px; }
 
 /* ---- g の図解 ---------------------------------------------------------- */
-.gap-figure-title { margin: 20px 0 8px; }
 .gap-figure > p { margin: 0 0 8px; }
 .gap-romaji { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 10px; }
 .gap-romaji-key {
