@@ -84,15 +84,14 @@
           <button type="button" id="add-layout">追加する</button>
           <label class="ctl import-file">
             <span>定義ファイルから取り込む</span>
-            <input type="file" id="import-layout" accept=".vil,.txt,.bnz,.ini,application/json,text/plain" />
+            <input type="file" id="import-layout" accept=".vil,.txt,.bnz,.ini,application/json,text/plain"
+              title="DvorakJ .txt、Vial .vil、紅皿 .bnz / .ini に対応する" />
           </label>
           <p class="error" id="import-error" hidden></p>
           <p class="note" id="import-warning" hidden></p>
           <p class="note">
-            数字段は空でよい。空なら QWERTY のものを使う。
-            同じ文字を複数のキーに置いた場合、打鍵には先に書いた方を使う。
-            追加した配列はこのブラウザにだけ保存される。
-            DvorakJ の .txt、Vial の .vil、紅皿の .bnz / .ini に対応する。
+            数字段が空なら QWERTY を使う。重複した文字は先に書いたキーで打つ。<br />
+            追加した配列はこのブラウザに保存する。
           </p>
         </details>
       </aside>
@@ -113,6 +112,28 @@
           <textarea id="text" rows="12" spellcheck="false"></textarea>
         </details>
 
+        <section class="panel result-guide" aria-labelledby="result-guide-title">
+          <h2 id="result-guide-title">この数値の読み方</h2>
+          <p>数値の大小は良し悪しではない。なぜそうなるかを考える出発点になる。</p>
+          <p>隣接指のばらつきが大きい配列は、単打で打鍵効率が良いとも、アルペジオで指が動いているとも読める。</p>
+          <p>誰が見ても変わらない数字を出す。係数を使う「指の疲れ」は出さない。</p>
+          <details class="result-limits">
+            <summary>落とした次元を見る</summary>
+            <ul>
+              <li>2 次元の動きを 1 次元の距離に圧縮する。JI と JK の指の長さの差は出ない。</li>
+              <li>他の指や手全体が引かれる動きは扱わない。</li>
+              <li>ホームに構える前提。撫で打ちなど別の構えは想定しない。</li>
+              <li>「指の疲れ」は出さない。</li>
+              <li>実際のタイピングは再現しない。</li>
+              <li>キーと指の対応は固定。運指の個人差は入らない。</li>
+              <li>ホームへ戻る移動は数えない。</li>
+              <li>総移動距離は下界。</li>
+              <li>同時押し・コンボは距離に出ない。アクション/文字で読む。</li>
+              <li>形状をまたいだ比較はできない。</li>
+            </ul>
+          </details>
+        </section>
+
         <section class="panel">
           <h2>配列の詳細</h2>
           <label class="ctl">
@@ -124,7 +145,7 @@
             <div>
               <h3>指ごとの移動距離 [u]</h3>
               <div id="finger-chart"></div>
-              <p class="note">親指はホームが親指キー自身のため距離が常に 0 になるので省いている。押下数は図にかざすと出る。</p>
+              <p class="note">親指の距離は常に 0 なので省く。押下数は図にかざすと出る。</p>
             </div>
             <div>
               <h3>指間距離の標準偏差 [u]</h3>
@@ -137,23 +158,21 @@
           <h2>総移動距離</h2>
           <label class="ctl">
             <span>比較元</span>
-            <select id="compare-baseline">
+            <select id="compare-baseline" title="選ぶと比較元を 100% とした比率を表示する。比較できない項目は — と表示する。">
               <option value="">比較なし</option>
             </select>
           </label>
           <label class="ctl">
             <span>棒グラフの項目</span>
-            <select id="compare-chart-metric">
+            <select id="compare-chart-metric" title="棒グラフの項目を選ぶ。表を並び替えるとその列に追従する。">
               <option value="1">距離 [u]</option>
             </select>
           </label>
           <div id="compare-chart"></div>
           <div class="scroll-x"><table id="compare"></table></div>
           <p class="note">
-            窓の内側では残る／戻るの小さい方を採るため、この値は<strong>下界</strong>。実際の運指はこれ以上になる。
-            コンボ命中は「一度でも当たった定義数 / 定義数（延べ命中回数）」で、配列ごとの発火状況を示す。数値列の見出しをクリックすると、
-            指のマトリクスと同じく昇順・降順・選択順の順に並び替わる。比較元を選ぶと、表の数値列は各項目について比較元=100%とした比率に置き換わる（比較元の値が0で比較できない項目は「—」）。
-            棒グラフの項目はドロップダウンで選べ、表の列を並び替えるとその列へ追従する。追従後もドロップダウンから別の項目へ切り替えられる。
+            総移動距離は小さい候補を採った下界。実際の運指はこれ以上になる。<br />
+            コンボ命中は当たった定義数と延べ回数を示す。
           </p>
         </section>
 
@@ -178,12 +197,8 @@
             </div>
           </div>
           <p class="note">
-            指ごとの移動距離は入力文字数で正規化している（評価テキストの長さに比較が引きずられないため）。
-            指間距離は、同じ手の隣り合う指の間隔をホーム時の間隔を基準に測った値で、平均と標準偏差を並べて表示する。
-            色は各図の中での値の幅を基準にした強弱で、配列間・指間どちらの比較にも同じ尺度を使う
-            （距離と押下数は 0 が下端、隣接指の指標は値の帯が狭いため実測の最小値を下端に取る）。
-            押下数の面だけ親指を含む 10 本を並べる（親指の移動距離は定義上 0 だが、押下は現に起きているため）。
-            配列の行は選択順で、列見出しをクリックするとその指または指間ペアの値で昇順・降順に切り替え、3 回目で選択順に戻る。
+            距離と押下数は文字数で割った値。色は図ごとの強弱を示す。<br />
+            隣接指のばらつきは、打鍵中の指の間隔の変動。
           </p>
         </section>
 
@@ -197,8 +212,8 @@
           </div>
           <div id="sensitivity"></div>
           <p class="note">
-            N を増やすと距離は必ず減るか変わらない。見るべきは曲線の傾きの差。
-            傾きが大きいほど、ホームから離れた位置での連続打鍵が多い。傾きが小さい配列は、打鍵がホーム付近で完結している。
+            N を増やすと距離は減るか変わらない。見るべきは傾きの差。<br />
+            傾きが大きいほど、ホームから離れた連続打鍵が多い。
           </p>
         </section>
       </div>
@@ -211,7 +226,7 @@
           <button type="submit" value="cancel" class="ghost close">閉じる</button>
         </div>
         <p class="note">
-          基底ルールに差分を重ねて、かなからローマ字への変換を作る。綴りは評価時に小文字として扱う。
+          基底ルールと差分で綴りを作る。評価時は小文字として扱う。<br />
           既定配列への割り当てもここで保存する。
         </p>
 

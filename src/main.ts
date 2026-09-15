@@ -945,7 +945,8 @@ function compareHeader(label: string, column: number, relative: boolean): string
   const ariaSort = active === 'asc' ? 'ascending' : active === 'desc' ? 'descending' : 'none';
   const shownLabel = compareLabel(label, relative, column);
   return `<th><span class="table-sort" data-compare-sort="${column}" role="button" tabindex="0"
-    aria-label="${escapeAttr(`${shownLabel}で配列を並べ替え`)}" aria-sort="${ariaSort}">${escapeText(shownLabel)}${marker}</span></th>`;
+    aria-label="${escapeAttr(`${shownLabel}で配列を並べ替え`)}" aria-sort="${ariaSort}"
+    title="クリックごとに昇順・降順・選択順へ切り替える">${escapeText(shownLabel)}${marker}</span></th>`;
 }
 
 function comboSummary(metrics: Metrics): string {

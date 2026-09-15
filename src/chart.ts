@@ -373,6 +373,7 @@ export function matrixChart(rows: MatrixRow[], columns: string[], options: Matri
       return `<text x="${colX(i) + cellW / 2}" y="${headerH - 6}" text-anchor="middle" font-size="11"
         fill="var(--muted)" data-matrix-sort="${i}" role="button" tabindex="0"
         aria-label="${escapeAttr(`${c}で配列を並べ替え`)}" aria-sort="${ariaSort}"
+        title="クリックごとに昇順・降順・選択順へ切り替える"
         style="cursor:pointer">${escapeText(c)}${marker}</text>`;
     })
     .join('');
