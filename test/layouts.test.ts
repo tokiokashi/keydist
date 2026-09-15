@@ -147,7 +147,7 @@ test('薙刀式 v18 は面から生成され、全定義を 1 ステップで保
   assert.deepEqual(layout.map.get('ぐゎ'), [['.', 'f', 'h']]);
 });
 
-test('薙刀式のセンターシフト表示だけ左右の Space を強調する', () => {
+test('薙刀式のSandS表示だけ左右の Space を強調する', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
   const centerShift = groupFacesIntoLayers(layout.faces!)[1].faces[0];
 
