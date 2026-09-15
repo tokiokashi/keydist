@@ -6,6 +6,7 @@ import { fromFaces, KANA_PENDING, LAYOUT_BY_ID, LAYOUTS_JA } from '../src/layout
 import { computeMetrics } from '../src/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 import { toLayout } from '../src/user-layouts.ts';
+import { assertKanaLayout } from './kana-layout-helpers.ts';
 
 const faceAtF = (output: string) => ['', '', ['', '', '', output], ''];
 
@@ -53,9 +54,25 @@ test('薙刀式 v18 は面から生成され、全定義を 1 ステップで保
   assert.deepEqual(layout.map.get('ぐゎ'), [['.', 'f', 'h']]);
 });
 
+test('NICOLA は3面の直接かな入力を同時押しとして保持する', () => {
+  const layout = LAYOUT_BY_ID.get('nicola')!;
+
+  assert.equal(layout.map.size, 89);
+  assert.equal(layout.maxCharLength, 1);
+  assert.deepEqual(layout.map.get('。'), [['q']]);
+  assert.deepEqual(layout.map.get('え'), [['thumb-l', 'w']]);
+  assert.deepEqual(layout.map.get('が'), [['thumb-r', 'w']]);
+  assert.deepEqual(layout.map.get('ー'), [['thumb-l', 'x']]);
+  assert.deepEqual(layout.map.get('っ'), [['thumb-r', ';']]);
+  assert.equal(layout.legends.get('thumb-l'), '無変換');
+  assert.equal(layout.legends.get('thumb-r'), '変換');
+  for (const sequence of layout.map.values()) assert.equal(sequence.length, 1);
+  assertKanaLayout(layout, ['ゎ']);
+});
+
 test('かな配列七傑の未実装枠は一覧へ登録しない', () => {
   const pendingIds = [
-    'nicola', 'asuka', 'shin-koume', 'shin-jis-prefix',
+    'asuka', 'shin-koume', 'shin-jis-prefix',
     'shin-jis-simultaneous', 'shingeta', 'tsuki-2-263',
   ];
   const noThumbIds = new Set(['shingeta', 'tsuki-2-263']);
