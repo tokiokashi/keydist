@@ -1377,13 +1377,13 @@ function renderComboTable(combos: readonly Face[], legends: Map<string, string>)
     const outputs = [...faceCells(face).values()].join(' / ');
     return `<tr><td>${escapeText(triggerText(face, legends))}</td><td>${escapeText(outputs)}</td></tr>`;
   }).join('');
-  return `<section class="combo-table">
-    <h3>コンボ（${combos.length}）</h3>
+  return `<details class="combo-table collapsible-list">
+    <summary>コンボ（${combos.length}）</summary>
     <div class="scroll-x"><table>
       <thead><tr><th>トリガー</th><th>出力</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
-  </section>`;
+  </details>`;
 }
 
 function renderModifierList(modifiers: readonly Layer[], legends: Map<string, string>): string {
@@ -1395,7 +1395,7 @@ function renderModifierList(modifiers: readonly Layer[], legends: Map<string, st
     const outputs = layer.faces.flatMap((face) => [...faceCells(face).values()]).join(' / ');
     return `<tr><td>${escapeText(title)}</td><td>${escapeText(outputs)}</td></tr>`;
   }).join('');
-  return `<details class="modifier-list">
+  return `<details class="modifier-list collapsible-list">
     <summary>修飾（${modifiers.length}）</summary>
     <div class="scroll-x"><table>
       <thead><tr><th>トリガー</th><th>出力</th></tr></thead>
