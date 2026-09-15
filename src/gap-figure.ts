@@ -260,7 +260,7 @@ export function gapFigure(geometry: Geometry): string {
       fromKey: homeId, toKey: 'u', adopted: true,
       label: `d(${homeId}, u) ＝ ${u(at(3).distance)}`,
     }],
-    notes: [`Δx ＝ ${n3(dx)} ／ Δy ＝ ${n3(dy)}`],
+    notes: [`Δx ＝ ${u(dx)} ／ Δy ＝ ${u(dy)}`],
   });
 
   const boardUToH = board(geometry, {
