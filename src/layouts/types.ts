@@ -40,6 +40,8 @@ export interface Layout {
   name: string;
   /** 文字 → 打鍵ステップ列 */
   map: Map<string, Sequence>;
+  /** 面から作った配列だけが持つ、表示用の元面。自作配列などは省略する */
+  faces?: readonly Face[];
   /**
    * map の見出しの最大文字数。1 より大きい場合、入力は最長一致で切り出す
    * （「きゃ」を「き」「ゃ」に分けない）
@@ -145,7 +147,7 @@ export function fromFaces(
   legends.set(THUMB_KEY.RT, '空白');
   if (thumbs.LT) map.set(thumbs.LT, [[THUMB_KEY.LT]]);
   if (thumbs.RT) map.set(thumbs.RT, [[THUMB_KEY.RT]]);
-  return { id, name, map, legends, maxCharLength: maxKeyLength(map.keys()) };
+  return { id, name, map, legends, faces: [...faces], maxCharLength: maxKeyLength(map.keys()) };
 }
 
 function expandFace(trigger: string[], mode: FaceMode, key: string): Sequence {

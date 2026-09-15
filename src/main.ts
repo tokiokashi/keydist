@@ -3,6 +3,7 @@ import {
   ADJACENT_PAIRS,
   ALL_FINGERS,
   FINGERS,
+  resolveKeyId,
   THUMB_ROW,
   type Finger,
   type GeometryKind,
@@ -56,6 +57,7 @@ import {
   importVial,
 } from './layout-import.ts';
 import { loadSelection, resolveSelection, saveSelection, type ModeId } from './layout-selection.ts';
+import { faceCells, groupFacesIntoLayers, handOfKey, type Layer } from './layers.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -710,6 +712,9 @@ const matrixSorts: Record<MatrixKind, MatrixSort | null> = {
 };
 let compareSort: MatrixSort | null = null;
 let compareChartColumn = 1;
+type LayerView = 'side-by-side' | 'tabs';
+let layerView: LayerView = 'side-by-side';
+let activeLayerTab = 0;
 
 function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sort: MatrixSort | null): T[] {
   if (!sort) return rows;
@@ -1163,12 +1168,69 @@ function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeomet
   );
 }
 
-function renderHeatmap(
+function triggerKeyText(key: string, legends: Map<string, string>): string {
+  const resolved = resolveKeyId(key);
+  return resolved === 'thumb-l' || resolved === 'thumb-r'
+    ? legends.get(resolved) ?? resolved
+    : resolved;
+}
+
+function triggerText(face: Layer['faces'][number], legends: Map<string, string>): string {
+  return face.trigger.map((key) => triggerKeyText(key, legends)).join(' + ');
+}
+
+function triggerHandText(face: Layer['faces'][number]): string {
+  const hands = new Set(face.trigger.map(handOfKey).filter((hand): hand is NonNullable<typeof hand> => hand !== undefined));
+  if (hands.size !== 1) return '両手';
+  return hands.has('left') ? '左手' : '右手';
+}
+
+function layerTitle(layer: Layer, index: number, legends: Map<string, string>): string {
+  if (layer.faces.length === 0) return `層 ${index + 1}: 単打（刻印）`;
+  const triggers = layer.faces
+    .filter((face) => face.trigger.length > 0)
+    .map((face) => triggerText(face, legends));
+  const modes = [...new Set(layer.faces.map((face) => face.mode))].join(' / ');
+  return triggers.length === 0
+    ? `層 ${index + 1}: 単打（${modes}）`
+    : `層 ${index + 1}: ${triggers.join(' / ')}（${modes}）`;
+}
+
+interface LayerCell {
+  label: string;
+  annotation?: string;
+}
+
+function layerCells(layer: Layer, layout: Layout): Map<string, LayerCell> {
+  if (layer.faces.length === 0) {
+    return new Map([...layout.legends].map(([key, label]) => [key, { label }]));
+  }
+
+  const cells = new Map<string, LayerCell>();
+  for (const face of layer.faces) {
+    const trigger = face.trigger.length > 0 ? triggerText(face, layout.legends) : '';
+    const annotation = face.trigger.length > 0
+      ? `${triggerHandText(face)} ${trigger}を押す`
+      : undefined;
+    for (const [key, label] of faceCells(face)) {
+      const previous = cells.get(key);
+      cells.set(key, previous
+        ? { label: `${previous.label} / ${label}`, annotation: previous.annotation ?? annotation }
+        : { label, annotation });
+    }
+  }
+  return cells;
+}
+
+function renderLayerSvg(
   metrics: Metrics,
   layout: Layout,
   geometry: ReturnType<typeof buildGeometry>,
-) {
-  const labels = layout.legends;
+  layer: Layer,
+  title: string,
+): string {
+  const labels = layerCells(layer, layout);
+  const showHeat = layer.faces.length === 0 || layer.faces.some((face) => face.trigger.length === 0);
   const max = Math.max(1, ...metrics.keyCounts.values());
   // 隣に並ぶマトリックス（セル 54×24）と同じくらいの密度に合わせる。
   // 図は実寸で置くので、この値がそのまま画面上のキーの大きさになる
@@ -1187,29 +1249,75 @@ function renderHeatmap(
     const y = key.y * KEY;
     maxX = Math.max(maxX, x + w);
     maxY = Math.max(maxY, y + KEY);
-    const label = labels.get(key.id) ?? '';
+    const cell = labels.get(key.id);
+    const label = cell?.label ?? '';
+    const annotation = cell?.annotation;
     const share = ((count / Math.max(1, metrics.presses)) * 100).toFixed(1);
     const distance = metrics.keyDistance.get(key.id) ?? 0;
-    const tip =
-      `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>` +
-      `<b>${count}</b> 打 (${share}%)<br>移動 <b>${distance.toFixed(1)} u</b>`;
+    const tip = showHeat
+      ? `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>` +
+        `<b>${count}</b> 打 (${share}%)<br>移動 <b>${distance.toFixed(1)} u</b>`
+      : `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span>` +
+        (annotation ? `<br>${escapeText(annotation)}` : '');
+    const fontSize = thumb ? 10 : label.length > 3 ? 9 : 12;
+    const text = annotation
+      ? `<text x="${x + w / 2}" y="${y + KEY / 2 - 2}" text-anchor="middle"
+          font-size="${fontSize}" fill="var(--fg)" pointer-events="none">
+          <tspan x="${x + w / 2}" dy="0">${escapeText(label)}</tspan>
+          <tspan x="${x + w / 2}" dy="11" font-size="8" fill="var(--muted)">${escapeText(annotation)}</tspan>
+        </text>`
+      : `<text x="${x + w / 2}" y="${y + KEY / 2 + 4}" text-anchor="middle"
+          font-size="${fontSize}" fill="${showHeat && t > 0.5 ? 'var(--on-heat)' : 'var(--fg)'}"
+          pointer-events="none">${escapeText(label)}</text>`;
     // 隣り合う面が地色で 2px 離れるよう、キー矩形は内側に 1px 詰める
-    return `<g data-tip="${tip.replace(/"/g, '&quot;')}">
+    const fill = showHeat
+      ? `color-mix(in oklab, var(--heat-1) ${(t * 100).toFixed(1)}%, var(--heat-0))`
+      : 'var(--panel)';
+    return `<g data-tip="${escapeAttr(tip)}">
       <rect x="${x + 1}" y="${y + 1}" width="${w - 2}" height="${KEY - 2}" rx="5"
-        fill="color-mix(in oklab, var(--heat-1) ${(t * 100).toFixed(1)}%, var(--heat-0))"
-        stroke="var(--line)"/>
-      <text x="${x + w / 2}" y="${y + KEY / 2 + 4}" text-anchor="middle"
-        font-size="${thumb ? 10 : 12}" fill="${t > 0.5 ? 'var(--on-heat)' : 'var(--fg)'}"
-        pointer-events="none">${escapeText(label)}</text>
+        fill="${fill}" stroke="var(--line)"/>
+      ${text}
     </g>`;
   });
 
   // 実寸を属性で持たせ、CSS 側（.fig-fixed）で引き伸ばさずに置く
   const W = maxX + PAD;
   const H = maxY + PAD;
-  el.heatmap.innerHTML =
-    `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"` +
-    ` aria-label="打鍵頻度">${keys.join('')}</svg>`;
+  return `<figure class="layer-diagram">
+    <figcaption>${escapeText(title)}</figcaption>
+    <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
+      aria-label="${escapeAttr(title)}">${keys.join('')}</svg>
+  </figure>`;
+}
+
+function renderHeatmap(
+  metrics: Metrics,
+  layout: Layout,
+  geometry: ReturnType<typeof buildGeometry>,
+) {
+  const layers: Layer[] = layout.faces && layout.faces.length > 0
+    ? groupFacesIntoLayers(layout.faces)
+    : [{ faces: [] }];
+  if (activeLayerTab >= layers.length) activeLayerTab = 0;
+  const titles = layers.map((layer, index) => layerTitle(layer, index, layout.legends));
+  const controls = layers.length > 1
+    ? `<div class="layer-view-controls" role="group" aria-label="層の表示方法">
+        <span>層の表示</span>
+        <button type="button" class="ghost" data-layer-view="side-by-side" aria-pressed="${layerView === 'side-by-side'}">並置</button>
+        <button type="button" class="ghost" data-layer-view="tabs" aria-pressed="${layerView === 'tabs'}">タブ</button>
+      </div>`
+    : '';
+  const diagrams = layers.map((layer, index) => renderLayerSvg(metrics, layout, geometry, layer, titles[index]));
+  const content = layerView === 'tabs' && layers.length > 1
+    ? `<div class="layer-tabs" role="tablist" aria-label="層">
+        ${titles.map((_, index) => `<button type="button" class="ghost" role="tab"
+          aria-selected="${activeLayerTab === index}" data-layer-tab="${index}">${escapeText(`層 ${index + 1}`)}</button>`).join('')}
+      </div>
+      <div class="layer-tab-panel">${diagrams.map((diagram, index) =>
+        diagram.replace('<figure class="layer-diagram">', `<figure class="layer-diagram"${activeLayerTab === index ? '' : ' hidden'}>`),
+      ).join('')}</div>`
+    : `<div class="layer-diagrams">${diagrams.join('')}</div>`;
+  el.heatmap.innerHTML = controls + content;
 }
 
 function setSensitivityScale(scale: SensitivityScale) {
@@ -1222,6 +1330,20 @@ function setSensitivityScale(scale: SensitivityScale) {
 el.sensitivityScale.addEventListener('click', (e) => {
   const button = (e.target as Element).closest<HTMLButtonElement>('button[data-scale]');
   if (button) setSensitivityScale(button.dataset.scale as SensitivityScale);
+});
+
+el.heatmap.addEventListener('click', (e) => {
+  const target = (e.target as Element).closest<HTMLButtonElement>('button');
+  if (!target) return;
+  if (target.dataset.layerView === 'side-by-side' || target.dataset.layerView === 'tabs') {
+    layerView = target.dataset.layerView;
+    render();
+    return;
+  }
+  if (target.dataset.layerTab !== undefined) {
+    activeLayerTab = Number(target.dataset.layerTab);
+    render();
+  }
 });
 
 function onModeChange() {

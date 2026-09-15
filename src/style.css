@@ -281,6 +281,16 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
    （縮めると枚ごとに縮み率が変わってセルの大きさが揃わない） */
 .fig-fixed { overflow-x: auto; }
 .fig-fixed svg { width: auto; max-width: none; }
+.layer-view-controls, .layer-tabs { display: flex; align-items: center; gap: 6px; margin: 0 0 10px; }
+.layer-view-controls > span { margin-right: 4px; color: var(--muted); font-size: 0.76rem; }
+.layer-view-controls .ghost[aria-pressed="true"], .layer-tabs .ghost[aria-selected="true"] {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+.layer-diagrams { display: flex; flex-wrap: wrap; gap: 20px 24px; align-items: flex-start; }
+.layer-diagram { flex: 0 1 auto; min-width: 0; margin: 0; }
+.layer-diagram figcaption { margin: 0 0 6px; color: var(--muted); font-size: 0.76rem; }
+.layer-tab-panel .layer-diagram[hidden] { display: none; }
 
 .tooltip {
   position: fixed;

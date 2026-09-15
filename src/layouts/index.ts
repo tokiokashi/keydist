@@ -21,6 +21,8 @@ export type {
   Step,
 } from './types.ts';
 export { faceFromEntries, fromRows, fromFaces, fromKana, withRomaji, withCombos } from './types.ts';
+export { canFoldFaces, faceCells, groupFacesIntoLayers, handOfKey } from '../layers.ts';
+export type { Hand, Layer } from '../layers.ts';
 
 const ROMAJI = kunrei();
 const ROMAJI_OONISHI = oonishiRomaji();

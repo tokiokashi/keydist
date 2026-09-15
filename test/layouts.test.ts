@@ -7,6 +7,7 @@ import { computeMetrics } from '../src/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 import { toLayout } from '../src/user-layouts.ts';
 import { assertKanaLayout } from './kana-layout-helpers.ts';
+import { canFoldFaces, groupFacesIntoLayers, handOfKey } from '../src/layers.ts';
 
 const faceAtF = (output: string) => ['', '', ['', '', '', output], ''];
 
@@ -46,6 +47,31 @@ test('面のセル配列は複数文字の見出しを 1 キーへ置ける', ()
 
   assert.deepEqual(layout.map.get('きゃ'), [['f']]);
   assert.equal(layout.maxCharLength, 2);
+});
+
+test('面を逆手の条件で層へ集約する', () => {
+  const shingeta = LAYOUT_BY_ID.get('shingeta')!;
+  const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
+  const nicola = LAYOUT_BY_ID.get('nicola')!;
+  const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
+
+  assert.equal(shingeta.faces?.length, 7);
+  assert.deepEqual(
+    groupFacesIntoLayers(shingeta.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    [[[]], [['k'], ['d']], [['l'], ['s']], [['i']], [['o']]],
+  );
+  assert.equal(groupFacesIntoLayers(tsuki.faces!).length, 2);
+  assert.equal(groupFacesIntoLayers(nicola.faces!).length, 3);
+  assert.equal(groupFacesIntoLayers(naginata.faces!).length, 30);
+
+  assert.equal(handOfKey('space'), 'right');
+  assert.equal(canFoldFaces(shingeta.faces![1], shingeta.faces![2]), true);
+  assert.equal(canFoldFaces(shingeta.faces![1], shingeta.faces![5]), false);
+  assert.equal(canFoldFaces(nicola.faces![1], nicola.faces![2]), false);
+  assert.equal(canFoldFaces(
+    { trigger: ['k'], mode: 'simultaneous', rows: faceAtF('x') },
+    { trigger: ['d'], mode: 'prefix', rows: ['', '', ['', '', '', '', '', '', 'y'], ''] },
+  ), false);
 });
 
 test('薙刀式 v18 は面から生成され、全定義を 1 ステップで保持する', () => {
