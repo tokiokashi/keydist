@@ -90,13 +90,13 @@ const el = {
   importError: $<HTMLParagraphElement>('import-error'),
   importWarning: $<HTMLParagraphElement>('import-warning'),
   detailLayout: $<HTMLSelectElement>('detail-layout'),
-  adjacentMetric: $<HTMLSelectElement>('adjacent-metric'),
   heatmap: $<HTMLDivElement>('heatmap'),
   fingerChart: $<HTMLDivElement>('finger-chart'),
   adjacentChart: $<HTMLDivElement>('adjacent-chart'),
   fingerMatrix: $<HTMLDivElement>('finger-matrix'),
   pressMatrix: $<HTMLDivElement>('press-matrix'),
-  adjacentMatrix: $<HTMLDivElement>('adjacent-matrix'),
+  adjacentMeanMatrix: $<HTMLDivElement>('adjacent-mean-matrix'),
+  adjacentStdDevMatrix: $<HTMLDivElement>('adjacent-stddev-matrix'),
   romajiDialog: $<HTMLDialogElement>('romaji-dialog'),
   romajiForm: $<HTMLFormElement>('romaji-form'),
   romajiEdit: $<HTMLSelectElement>('romaji-edit'),
@@ -706,12 +706,13 @@ interface Result {
   slot: number;
 }
 
-type AdjacentMetric = 'stdDev' | 'meanExcess';
-type MatrixKind = 'press' | 'finger' | 'adjacent';
+type AdjacentMatrixKind = 'adjacentMean' | 'adjacentStdDev';
+type MatrixKind = 'press' | 'finger' | AdjacentMatrixKind;
 const matrixSorts: Record<MatrixKind, MatrixSort | null> = {
   press: null,
   finger: null,
-  adjacent: null,
+  adjacentMean: null,
+  adjacentStdDev: null,
 };
 let compareSort: MatrixSort | null = null;
 let compareChartColumn = 1;
@@ -728,10 +729,6 @@ function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sor
       return (sort.direction === 'asc' ? delta : -delta) || a.index - b.index;
     })
     .map(({ row }) => row);
-}
-
-function adjacentMetricValue(stat: Metrics['adjacent'][number]): number {
-  return (el.adjacentMetric.value as AdjacentMetric) === 'stdDev' ? stat.stdDev : stat.meanExcess;
 }
 
 function render() {
@@ -764,7 +761,8 @@ function render() {
     el.adjacentChart.innerHTML = '';
     el.fingerMatrix.innerHTML = '';
     el.pressMatrix.innerHTML = '';
-    el.adjacentMatrix.innerHTML = '';
+    el.adjacentMeanMatrix.innerHTML = '';
+    el.adjacentStdDevMatrix.innerHTML = '';
     el.errors.hidden = true;
     return;
   }
@@ -1022,32 +1020,40 @@ function renderMatrices(results: Result[]) {
     },
   );
 
-  const adjacentRows = sortMatrixRows(results.map((r) => ({
+  const adjacentColumns = ADJACENT_PAIRS.map((p) => `${SHORT_FINGER[p[0]]}–${SHORT_FINGER[p[1]]}`);
+  const adjacentChartOptions = {
+    format: (v: number) => v.toFixed(3),
+    labelWidth: 190,
+    columnSplit: 3,
+    columnGroupLabels: ['左手', '右手'] as [string, string],
+    // 隣接指の指標は 0.02〜0.6 の狭い帯に固まる。0 起点だと全セルが薄くなって差が読めない
+    colorBase: 'min' as const,
+  };
+  el.adjacentMeanMatrix.innerHTML = matrixChart(
+    adjacentRows(results, 'adjacentMean'),
+    adjacentColumns,
+    { ...adjacentChartOptions, sort: matrixSorts.adjacentMean ?? undefined },
+  );
+  el.adjacentStdDevMatrix.innerHTML = matrixChart(
+    adjacentRows(results, 'adjacentStdDev'),
+    adjacentColumns,
+    { ...adjacentChartOptions, sort: matrixSorts.adjacentStdDev ?? undefined },
+  );
+}
+
+function adjacentRows(results: Result[], kind: AdjacentMatrixKind) {
+  return sortMatrixRows(results.map((r) => ({
     label: r.layout.name,
     color: SERIES(r.slot),
     cells: r.metrics.adjacent.map((s) => ({
-      value: adjacentMetricValue(s),
+      value: kind === 'adjacentStdDev' ? s.stdDev : s.meanExcess,
       tip:
         `${escapeText(r.layout.name)} / ${FINGER_LABEL[s.pair[0]]}–${FINGER_LABEL[s.pair[1]]}<br>` +
         `超過の平均 <b>${s.meanExcess.toFixed(3)} u</b><br>` +
         `超過の実測最大 <b>${s.maxExcess.toFixed(3)} u</b><br>` +
         `標準偏差 <b>${s.stdDev.toFixed(3)} u</b>`,
     })),
-  })), matrixSorts.adjacent);
-
-  el.adjacentMatrix.innerHTML = matrixChart(
-    adjacentRows,
-    ADJACENT_PAIRS.map((p) => `${SHORT_FINGER[p[0]]}–${SHORT_FINGER[p[1]]}`),
-    {
-      format: (v) => v.toFixed(3),
-      labelWidth: 190,
-      columnSplit: 3,
-      columnGroupLabels: ['左手', '右手'],
-      sort: matrixSorts.adjacent ?? undefined,
-      // 隣接指の指標は 0.02〜0.6 の狭い帯に固まる。0 起点だと全セルが薄くなって差が読めない
-      colorBase: 'min',
-    },
-  );
+  })), matrixSorts[kind]);
 }
 
 function cycleMatrixSort(kind: MatrixKind, column: number) {
@@ -1164,7 +1170,7 @@ function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeomet
     metrics.adjacent.map((s) => ({
       label: `${SHORT_FINGER[s.pair[0]]}–${SHORT_FINGER[s.pair[1]]}`,
       group: s.pair[0][0] === 'L' ? '左手' : '右手',
-      value: adjacentMetricValue(s),
+      value: s.stdDev,
       tip: `${FINGER_LABEL[s.pair[0]]}–${FINGER_LABEL[s.pair[1]]}<br>` +
         `超過の平均 <b>${s.meanExcess.toFixed(3)} u</b><br>` +
         `超過の実測最大 <b>${s.maxExcess.toFixed(3)} u</b><br>` +
@@ -1424,7 +1430,7 @@ el.compareChartMetric.addEventListener('change', () => {
   compareChartColumn = Number(el.compareChartMetric.value);
   render();
 });
-for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.sample, el.text, el.detailLayout, el.adjacentMetric, el.compareBaseline]) {
+for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.sample, el.text, el.detailLayout, el.compareBaseline]) {
   node.addEventListener('input', render);
   node.addEventListener('change', render);
 }
@@ -1435,7 +1441,8 @@ fillPicker();
 fillDetailOptions();
 bindMatrixSort(el.pressMatrix, 'press');
 bindMatrixSort(el.fingerMatrix, 'finger');
-bindMatrixSort(el.adjacentMatrix, 'adjacent');
+bindMatrixSort(el.adjacentMeanMatrix, 'adjacentMean');
+bindMatrixSort(el.adjacentStdDevMatrix, 'adjacentStdDev');
 bindCompareSort(el.compare);
 bindTips(document.body);
 setupTheme(render);
