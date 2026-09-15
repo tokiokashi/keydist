@@ -246,11 +246,10 @@ textarea {
 .meta { margin: 8px 0 0; font-size: 0.76rem; color: var(--muted); }
 .error { margin: 6px 0 0; font-size: 0.76rem; color: var(--series-2); }
 .note { margin: 10px 0 0; font-size: 0.76rem; color: var(--muted); }
-.result-guide > p { margin: 0 0 8px; }
-.result-limits { margin-top: 12px; }
-.result-limits > summary { cursor: pointer; color: var(--muted); }
-.result-limits ul { margin: 10px 0 0; padding-left: 1.4em; }
-.result-limits li + li { margin-top: 4px; }
+.calculation-limits { margin-top: 20px; }
+.calculation-limits > summary { cursor: pointer; color: var(--muted); }
+.calculation-limits ul { margin: 10px 0 0; padding-left: 1.4em; }
+.calculation-limits li + li { margin-top: 4px; }
 
 /* ---- 表 ---------------------------------------------------------------- */
 .scroll-x { overflow-x: auto; }
@@ -316,7 +315,19 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .shift-key-swatch { padding: 1px 6px; border: 3px solid var(--shift-color); border-radius: 4px; }
 .layer-tab-panel .layer-diagram[hidden] { display: none; }
 .layer-section, .modifier-list, .combo-table { margin-top: 20px; }
-.layer-section h3, .modifier-list h3, .combo-table h3 { margin-bottom: 8px; }
+.layer-section h3 { margin-bottom: 8px; }
+.collapsible-list > summary {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  list-style: none;
+}
+.collapsible-list > summary::-webkit-details-marker { display: none; }
+.collapsible-list > summary::before { content: '＋ '; }
+.collapsible-list[open] > summary::before { content: '− '; }
+.collapsible-list[open] > summary { margin-bottom: 8px; }
 
 .tooltip {
   position: fixed;
