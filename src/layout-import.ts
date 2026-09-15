@@ -180,7 +180,7 @@ function dvorakJAliases(lines: string[], warnings: string[]): Map<string, string
     if (!match) continue;
     const key = match[1];
     const code = match[2].toLowerCase();
-    // DvorakJ の S はこの形式のセンターシフトを表す。物理キーは配列の出典どおり space に固定する。
+    // DvorakJ の S はこの形式のセンターシフトを表す。旧 id の space を返し、評価入口で thumb-r に解決する。
     const physical = code === 'shift' && key.toUpperCase() === 'S'
       ? 'space'
       : dvorakJScanCode(code);

@@ -1,11 +1,12 @@
-import type { Face } from './types.ts';
+import { THUMB_KEY } from '../geometry.ts';
+import { fromFaces, type Face, type Layout } from './types.ts';
 
 /**
  * 薙刀式 v18（作: 大岡俊彦）。
  * 公式配布の DvorakJ 定義ファイルから機械的に起こした。
  * https://oookaworks.seesaa.net/article/456099128.html
  *
- * センターシフトは space との同時押し。濁音は逆手の人差指中段（f / j）、
+ * センターシフトは旧 id の space（thumb-r）との同時押し。濁音は逆手の人差指中段（f / j）、
  * 半濁音は逆手の人差指下段（v / m）、小書きは q との同時押し。
  * 拗音・外来音は 3 キー同時押しを含む。
  */
@@ -87,3 +88,6 @@ export const NAGINATA_V18_FACES: Face[] = [
   face(['.', 'v'], { h: 'くゎ' }),
   face(['p', 'v'], { ';': 'ふゅ' }),
 ];
+
+export const NAGINATA_V18: Layout = fromFaces('naginata-v18', '薙刀式 v18', NAGINATA_V18_FACES);
+NAGINATA_V18.legends.set(THUMB_KEY.RT, 'Space');

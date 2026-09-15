@@ -1,6 +1,6 @@
 import { keyId, THUMB_KEY } from '../geometry.ts';
 
-/** 1 ステップで同時に押すキーの集合。キーは QWERTY 刻印で指す（`space` `thumb-l` は親指キー） */
+/** 1 ステップで同時に押すキーの集合。キーは QWERTY 刻印で指す（`thumb-r` `thumb-l` は親指キー）。`space` も入力互換で受け付ける */
 export type Step = string[];
 
 /** 1 文字を打つための打鍵ステップ列。順次打鍵はステップを並べる */

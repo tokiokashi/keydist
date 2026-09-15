@@ -1,8 +1,14 @@
 import { kunrei } from '../romaji/kunrei.ts';
 import { oonishiRomaji } from '../romaji/oonishi.ts';
-import { NAGINATA_V18_FACES } from './naginata.ts';
+import { NAGINATA_V18 } from './naginata.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
-import { fromFaces, fromRows, withCombos, withRomaji, type Layout } from './types.ts';
+import { fromRows, withCombos, withRomaji, type Layout } from './types.ts';
+import { NICOLA } from './nicola.ts';
+import { ASUKA } from './asuka.ts';
+import { SHIN_KOUME } from './shin-koume.ts';
+import { SHIN_JIS_PREFIX, SHIN_JIS_SIMULTANEOUS } from './shin-jis.ts';
+import { SHINGETA } from './shingeta.ts';
+import { TSUKI_2_263 } from './tsuki-2-263.ts';
 
 export type {
   ComboCondition,
@@ -77,6 +83,20 @@ const ALPHA_BY_ID = new Map(ALPHA.map((l) => [l.id, l]));
 export const LAYOUTS: Layout[] = ALPHA.filter((l) => l.id !== 'oonishi-custom');
 
 /**
+ * 七傑のうち実装待ちの定義。実装が済んだものだけ LAYOUTS_JA に移す。
+ * 各配列の issue の PR が、自分の定義とこの配列から一覧への移動を担当する。
+ */
+export const KANA_PENDING: Layout[] = [
+  NICOLA,
+  ASUKA,
+  SHIN_KOUME,
+  SHIN_JIS_PREFIX,
+  SHIN_JIS_SIMULTANEOUS,
+  SHINGETA,
+  TSUKI_2_263,
+];
+
+/**
  * 日本語のかなテキストを打つ配列。
  * ローマ字配列はテーブルを通して展開し、かな配列はそのまま打つ。
  * 最終形はどちらも打鍵ステップ列なので、同じテキストで比較できる。
@@ -98,7 +118,7 @@ export const LAYOUTS_JA: Layout[] = [
     ),
     ROMAJI,
   ),
-  fromFaces('naginata-v18', '薙刀式 v18', NAGINATA_V18_FACES),
+  NAGINATA_V18,
 ];
 
 export const LAYOUT_BY_ID = new Map([...LAYOUTS, ...LAYOUTS_JA].map((l) => [l.id, l]));

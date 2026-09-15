@@ -144,6 +144,17 @@ test('同時押しは 1 ステップ、押下は押したキーの数だけ数�
   assert.equal(m.presses, 2);
 });
 
+test('旧親指キー id の space は thumb-r として解決する', () => {
+  const alias = chord({ x: [['space']] });
+  const canonical = chord({ x: [['thumb-r']] });
+  const aliasTrace = evaluate('x', alias, geometry, opts());
+  const canonicalTrace = evaluate('x', canonical, geometry, opts());
+
+  assert.equal(aliasTrace.errors.length, 0);
+  assert.equal(aliasTrace.strokes[0].presses[0].keys[0].id, 'thumb-r');
+  assert.deepEqual(aliasTrace.strokes, canonicalTrace.strokes);
+});
+
 test('前置シフトは 2 ステップになる', () => {
   const l = chord({ x: [['space'], ['q']] });
   const m = computeMetrics(evaluate('x', l, geometry, opts()), geometry);

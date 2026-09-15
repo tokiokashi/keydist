@@ -1,4 +1,4 @@
-import { ALL_FINGERS, dist, type Finger, type Geometry, type Key, type Point } from './geometry.ts';
+import { ALL_FINGERS, dist, resolveKeyId, type Finger, type Geometry, type Key, type Point } from './geometry.ts';
 import type { ComboCondition, Layout, Sequence } from './layouts/index.ts';
 import { kanaToRomajiChunks } from './romaji/kunrei.ts';
 
@@ -147,7 +147,7 @@ export function evaluate(
       const byFinger = new Map<Finger, Key[]>();
 
       for (const id of step) {
-        const key = geometry.keys.get(id);
+        const key = geometry.keys.get(resolveKeyId(id));
         if (!key) {
           record(errors, seen, `キー ${id} が形状に存在しない（文字「${char}」）`);
           continue;
