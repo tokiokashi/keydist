@@ -260,7 +260,7 @@ export function gapFigure(geometry: Geometry): string {
       fromKey: homeId, toKey: 'u', adopted: true,
       label: `d(${homeId}, u) ＝ ${u(at(3).distance)}`,
     }],
-    notes: [`Δx ＝ ${u(dx)} ／ Δy ＝ ${u(dy)}`],
+    notes: [`Δx ＝ ${u(dx)} / Δy ＝ ${u(dy)}`],
   });
 
   const boardUToH = board(geometry, {
@@ -315,7 +315,7 @@ export function gapFigure(geometry: Geometry): string {
 
   return `<div class="gap-figure">
     ${callout('important', '前提条件', [
-      `${escapeText(FIGURE_LAYOUT_ID.toUpperCase())} ／ ${escapeText(FIGURE_SHAPE)} ／ N = ${FIGURE_WINDOW} ／ ${escapeText(FIGURE_ROMAJI)}`,
+      `${escapeText(FIGURE_LAYOUT_ID.toUpperCase())} / ${escapeText(FIGURE_SHAPE)} / N = ${FIGURE_WINDOW} / ${escapeText(FIGURE_ROMAJI)}`,
     ])}
     ${para('「情報を集める」という文章をタイピングする場合を例として、距離の計算とNの取り扱いを説明します。ここでは人差し指の距離だけに注目します。')}
     ${para('このアプリはそれぞれの指で動きを追跡し、移動距離を求めます。実際は全ての指でこの計算を行っていると思ってください。')}
