@@ -82,10 +82,17 @@
 
           <p class="error" id="new-error" hidden></p>
           <button type="button" id="add-layout">追加する</button>
+          <label class="ctl import-file">
+            <span>定義ファイルから取り込む</span>
+            <input type="file" id="import-layout" accept=".vil,.txt,.bnz,.ini,application/json,text/plain" />
+          </label>
+          <p class="error" id="import-error" hidden></p>
+          <p class="note" id="import-warning" hidden></p>
           <p class="note">
             数字段は空でよい。空なら QWERTY のものを使う。
             同じ文字を複数のキーに置いた場合、打鍵には先に書いた方を使う。
             追加した配列はこのブラウザにだけ保存される。
+            DvorakJ の .txt、Vial の .vil、紅皿の .bnz / .ini に対応する。
           </p>
         </details>
       </aside>
