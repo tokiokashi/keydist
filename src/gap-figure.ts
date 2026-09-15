@@ -211,9 +211,9 @@ function board(geometry: Geometry, spec: BoardSpec): string {
 
 /** GitHub の alert に倣った囲み。種別は note / important / warning */
 const CALLOUT_LABEL: Record<string, string> = {
-  note: '注記',
-  important: '重要',
-  warning: '警告',
+  note: 'Note',
+  important: 'Important',
+  warning: 'Warning',
 };
 
 function callout(kind: keyof typeof CALLOUT_LABEL & string, title: string, lines: string[]): string {
@@ -258,7 +258,7 @@ export function gapFigure(geometry: Geometry): string {
     focus: [1, 3],
     arrows: [{
       fromKey: homeId, toKey: 'u', adopted: true,
-      label: `d(${homeId}, u) = ${u(at(3).distance)}`,
+      label: `d(${homeId},u) = ${u(at(3).distance)}`,
     }],
     notes: [`Δx = ${u(dx)} / Δy = ${u(dy)}`],
   });
@@ -268,8 +268,8 @@ export function gapFigure(geometry: Geometry): string {
     seq: [at(3), at(4)],
     focus: [3, 4],
     arrows: [
-      { fromKey: 'u', toKey: 'h', adopted: true, label: `d(u, h) = ${u(at(4).distance)}（加算）` },
-      { fromKey: homeId, toKey: 'h', adopted: false, label: `d(${homeId}, h) = ${u(toHome('h'))}（戻る時間が無く、候補にならない）` },
+      { fromKey: 'u', toKey: 'h', adopted: true, label: `d(u,h) = ${u(at(4).distance)}（加算）` },
+      { fromKey: homeId, toKey: 'h', adopted: false, label: `d(${homeId},h) = ${u(toHome('h'))}（戻る時間が無く、候補にならない）` },
     ],
   });
 
@@ -278,8 +278,8 @@ export function gapFigure(geometry: Geometry): string {
     seq: [at(11), at(12)],
     focus: [11, 12],
     arrows: [
-      { fromKey: 'u', toKey: 'm', adopted: true, label: `d(u, m) = ${u(at(12).distance)}（加算）` },
-      { fromKey: homeId, toKey: 'm', adopted: false, label: `d(${homeId}, m) = ${u(toHome('m'))}（戻る時間が無く、候補にならない）` },
+      { fromKey: 'u', toKey: 'm', adopted: true, label: `d(u,m) = ${u(at(12).distance)}（加算）` },
+      { fromKey: homeId, toKey: 'm', adopted: false, label: `d(${homeId},m) = ${u(toHome('m'))}（戻る時間が無く、候補にならない）` },
     ],
   });
 
@@ -288,8 +288,8 @@ export function gapFigure(geometry: Geometry): string {
     seq: [at(12), at(13), at(14), at(15)],
     focus: [12, 15],
     arrows: [
-      { fromKey: homeId, toKey: 'u', adopted: true, label: `d(${homeId}, u) = ${u(toHome('u'))}（採用）` },
-      { fromKey: 'm', toKey: 'u', adopted: false, label: `d(m, u) = ${u(between('m', 'u'))}` },
+      { fromKey: homeId, toKey: 'u', adopted: true, label: `d(${homeId},u) = ${u(toHome('u'))}（採用）` },
+      { fromKey: 'm', toKey: 'u', adopted: false, label: `d(m,u) = ${u(between('m', 'u'))}` },
     ],
   });
 
@@ -298,7 +298,7 @@ export function gapFigure(geometry: Geometry): string {
     seq: [at(6), at(7), at(8), at(9), at(10), at(11)],
     focus: [6, 11],
     arrows: [
-      { fromKey: homeId, toKey: 'u', adopted: true, label: `d(${homeId}, u) = ${u(at(11).distance)}` },
+      { fromKey: homeId, toKey: 'u', adopted: true, label: `d(${homeId},u) = ${u(at(11).distance)}` },
     ],
     notes: [`残っていれば${u(between('u', 'u'))}だが、g=${at(11).gap}>Nなので候補にならない`],
   });
@@ -309,7 +309,7 @@ export function gapFigure(geometry: Geometry): string {
     focus: [sfbFrom.number, sfbTo.number],
     arrows: [{
       fromKey: sfbFrom.keyId, toKey: sfbTo.keyId, adopted: true,
-      label: `d(${sfbFrom.keyId}, ${sfbTo.keyId}) = ${u(sfbTo.distance)}（既定では加算）`,
+      label: `d(${sfbFrom.keyId},${sfbTo.keyId}) = ${u(sfbTo.distance)}（既定では加算）`,
     }],
   });
 
@@ -344,8 +344,8 @@ export function gapFigure(geometry: Geometry): string {
         ${boardInside}
       </li>
       <li>
-        ${para(`ここで「jouho<b>u</b>woat<b>u</b>meru」の部分にも人差し指の繋がりが見つかります。2つの<b>u</b>のあいだの打鍵数は${at(11).gap}となりますが、設定している${at(11).gap}&gt;Nとなり、指を残していないと判定されてその移動距離は${homeId}→uの距離dとなります。`)}
-        ${para(`仮にこの<b>u</b>同士のあいだに人差し指を動かさなくて良い先読みができる（${at(11).gap}≤N）のであれば、2つ目の<b>u</b>にかかる移動距離はd=${u(between('u', 'u'))}となります。`)}
+        ${para(`ここで「jouho<b><i>u</i></b>woat<b><i>u</i></b>meru」の部分にも人差し指の繋がりが見つかります。2つの<b><i>u</i></b>のあいだの打鍵数は${at(11).gap}となりますが、設定している${at(11).gap}&gt;Nとなり、指を残していないと判定されてその移動距離は${homeId}→uの距離dとなります。`)}
+        ${para(`仮にこの<b><i>u</i></b>同士のあいだに人差し指を動かさなくてよいと先読みができる（${at(11).gap}≤N）のであれば、2つ目の<b><i>u</i></b>にかかる移動距離はd=${u(between('u', 'u'))}となります。`)}
         ${boardOutside}
       </li>
     </ol>
@@ -356,7 +356,7 @@ export function gapFigure(geometry: Geometry): string {
 
     <h3>連続打鍵でホームポジションのキーを押す場合</h3>
     ${para('もう一つ、運指コストの評価のために設定しているルールがあります。')}
-    ${para('「行く」のように（最適化をせず）「ik」を中指で順番にタイピングする場合、1キーでホームに戻るのは自然にホームポジションに指が戻っていると解釈するには時間の猶予がないため、i→kへの移動が移動距離に加算されるという計算になっています。')}
+    ${para('「行く」の「ik」のようなホームに戻るタイピングを考えた際、自然にホームポジションに指が戻っていると解釈するには時間の猶予がないため、i→kへの移動が移動距離に加算されるという計算になっています。')}
     ${boardSfb}
     ${para('この解釈を無効にして、ホームに戻るのは必ずコストゼロと扱いたい場合は、Nの設定バーの下にあるチェックを外すことでコスト加算を無効化できます。')}
   </div>`;

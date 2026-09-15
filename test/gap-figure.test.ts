@@ -92,8 +92,8 @@ test('本文の数式にスペースを入れない', () => {
     assert.ok(!prose.includes(bad), `本文にスペース入りの表記が残っている: ${bad}`);
   }
   // 独立した式の行だけ等号の両側を空ける
-  assert.ok(svg.includes('d(j, u) = '), '盤面のラベルは等号の両側を空ける');
-  assert.ok(svg.includes('d(j, u)') && svg.includes('d(u, h)'), '盤面のラベルは d(ab) の形');
+  assert.ok(svg.includes('d(j,u) = '), '盤面のラベルは等号の両側を空ける');
+  assert.ok(svg.includes('d(j,u)') && svg.includes('d(u,h)'), '盤面のラベルは d(ab) の形');
   assert.ok(svg.includes('N = 3'), '前提条件の行');
 });
 
@@ -101,5 +101,6 @@ test('囲みは note / important / warning の 3 種を使う', () => {
   for (const kind of ['note', 'important', 'warning']) {
     assert.ok(svg.includes(`callout-${kind}`), `${kind} の囲みが出る`);
   }
-  assert.ok(svg.includes('前提条件'));
+  assert.ok(svg.includes('前提条件'), '前提条件の囲みは見出しを差し替える');
+  assert.ok(svg.includes('Note') && svg.includes('Warning'), '種別名は英語で出す');
 });
