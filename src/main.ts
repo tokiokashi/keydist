@@ -87,6 +87,7 @@ const el = {
   importError: $<HTMLParagraphElement>('import-error'),
   importWarning: $<HTMLParagraphElement>('import-warning'),
   detailLayout: $<HTMLSelectElement>('detail-layout'),
+  adjacentMetric: $<HTMLSelectElement>('adjacent-metric'),
   heatmap: $<HTMLDivElement>('heatmap'),
   fingerChart: $<HTMLDivElement>('finger-chart'),
   adjacentChart: $<HTMLDivElement>('adjacent-chart'),
@@ -702,6 +703,7 @@ interface Result {
   slot: number;
 }
 
+type AdjacentMetric = 'stdDev' | 'meanExcess';
 type MatrixKind = 'press' | 'finger' | 'adjacent';
 const matrixSorts: Record<MatrixKind, MatrixSort | null> = {
   press: null,
@@ -720,6 +722,10 @@ function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sor
       return (sort.direction === 'asc' ? delta : -delta) || a.index - b.index;
     })
     .map(({ row }) => row);
+}
+
+function adjacentMetricValue(stat: Metrics['adjacent'][number]): number {
+  return (el.adjacentMetric.value as AdjacentMetric) === 'stdDev' ? stat.stdDev : stat.meanExcess;
 }
 
 function render() {
@@ -786,7 +792,7 @@ const COMPARE_HEADERS = [
   '押下/文字',
   '同指連続',
   '同指連続率',
-  '隣接指超過 [u]',
+  '隣接指の平均 [u]',
 ];
 
 const COMPARE_RELATIVE_HEADERS = [
@@ -799,7 +805,7 @@ const COMPARE_RELATIVE_HEADERS = [
   '押下/文字比',
   '同指連続比',
   '同指率比',
-  '隣接超過[u]比',
+  '隣接指の平均比',
 ];
 
 const COMPARE_FORMATS: Array<(value: number) => string> = [
@@ -949,9 +955,8 @@ function comboSummary(metrics: Metrics): string {
  *
  * 指ごとの移動距離は入力文字数で正規化する（u/文字）。生の u は評価テキストの
  * 長さに引きずられるため、テキストを変えても配列間の比較が揺れないようにする。
- * 隣接指の平均・最大値はもともと打鍵ごとの統計であり文字数に依存しないので、
- * こちらは正規化せずホーム間隔からの超過をそのまま出す（仕様 §11.6。
- * 比較表の「隣接指超過」列と同じ単位）。
+ * 隣接指の統計はもともと打鍵ごとの値なので文字数に依存しない。選択中の指標を
+ * そのまま表示し、詳細チャートと同じ指標を使う。
  */
 function renderMatrices(results: Result[]) {
   const fingerRows = sortMatrixRows(results.map((r) => ({
@@ -1015,7 +1020,7 @@ function renderMatrices(results: Result[]) {
     label: r.layout.name,
     color: SERIES(r.slot),
     cells: r.metrics.adjacent.map((s) => ({
-      value: s.meanExcess,
+      value: adjacentMetricValue(s),
       tip:
         `${escapeText(r.layout.name)} / ${FINGER_LABEL[s.pair[0]]}–${FINGER_LABEL[s.pair[1]]}<br>` +
         `超過の平均 <b>${s.meanExcess.toFixed(3)} u</b><br>` +
@@ -1033,7 +1038,7 @@ function renderMatrices(results: Result[]) {
       columnSplit: 3,
       columnGroupLabels: ['左手', '右手'],
       sort: matrixSorts.adjacent ?? undefined,
-      // 超過は 0.02〜0.6 の狭い帯に固まる。0 起点だと全セルが薄くなって差が読めない
+      // 隣接指の指標は 0.02〜0.6 の狭い帯に固まる。0 起点だと全セルが薄くなって差が読めない
       colorBase: 'min',
     },
   );
@@ -1153,7 +1158,7 @@ function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeomet
     metrics.adjacent.map((s) => ({
       label: `${SHORT_FINGER[s.pair[0]]}–${SHORT_FINGER[s.pair[1]]}`,
       group: s.pair[0][0] === 'L' ? '左手' : '右手',
-      value: s.meanExcess,
+      value: adjacentMetricValue(s),
       tip: `${FINGER_LABEL[s.pair[0]]}–${FINGER_LABEL[s.pair[1]]}<br>` +
         `超過の平均 <b>${s.meanExcess.toFixed(3)} u</b><br>` +
         `超過の実測最大 <b>${s.maxExcess.toFixed(3)} u</b><br>` +
@@ -1241,7 +1246,7 @@ el.compareChartMetric.addEventListener('change', () => {
   compareChartColumn = Number(el.compareChartMetric.value);
   render();
 });
-for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.sample, el.text, el.detailLayout, el.compareBaseline]) {
+for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.sample, el.text, el.detailLayout, el.adjacentMetric, el.compareBaseline]) {
   node.addEventListener('input', render);
   node.addEventListener('change', render);
 }
