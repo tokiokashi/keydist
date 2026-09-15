@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
 import { DEFAULT_OPTIONS, evaluate } from '../src/evaluate.ts';
-import { fromFaces, KANA_PENDING, LAYOUT_BY_ID, LAYOUTS_JA } from '../src/layouts/index.ts';
+import { faceFromEntries, fromFaces, KANA_PENDING, LAYOUT_BY_ID, LAYOUTS_JA } from '../src/layouts/index.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 import { toLayout } from '../src/user-layouts.ts';
@@ -22,6 +22,13 @@ test('面は prefix / suffix / simultaneous を Sequence に展開する', () =>
   assert.deepEqual(layout.map.get('か'), [['d'], ['f']]);
   assert.deepEqual(layout.map.get('さ'), [['f'], ['d']]);
   assert.deepEqual(layout.map.get('た'), [['j', 'f']]);
+});
+
+test('面定義の未知のキーは空欄にせずエラーにする', () => {
+  assert.throws(
+    () => faceFromEntries([], 'simultaneous', { typo: 'あ' }),
+    /面に未知のキーがある: typo/,
+  );
 });
 
 test('日本語の配列一覧に Dvorak を含める（#48）', () => {
@@ -70,12 +77,40 @@ test('NICOLA は3面の直接かな入力を同時押しとして保持する', 
   assertKanaLayout(layout, ['ゎ']);
 });
 
+test('新下駄配列は7面の直接かな入力を同時押しとして保持する', () => {
+  const layout = LAYOUT_BY_ID.get('shingeta')!;
+
+  assert.deepEqual(layout.map.get('ー'), [['q']]);
+  assert.deepEqual(layout.map.get('あ'), [['d', 'j']]);
+  assert.deepEqual(layout.map.get('しゃ'), [['i', 'c']]);
+  assert.deepEqual(layout.map.get('ぁ'), [['k', '1']]);
+  assert.deepEqual(layout.map.get('ヴ'), [['d', '/']]);
+  assert.equal(layout.legends.has('thumb-l'), false);
+  assert.equal(layout.legends.has('thumb-r'), false);
+  for (const sequence of layout.map.values()) assert.equal(sequence.length, 1);
+  assertKanaLayout(layout);
+});
+
+test('月配列 2-263 式はクロスシフトと濁音の逐次合成を保持する', () => {
+  const layout = LAYOUT_BY_ID.get('tsuki-2-263')!;
+
+  assert.deepEqual(layout.map.get('そ'), [['q']]);
+  assert.deepEqual(layout.map.get('ら'), [['k'], ['d']]);
+  assert.deepEqual(layout.map.get('お'), [['d'], ['j']]);
+  assert.deepEqual(layout.map.get('が'), [['s'], ['l']]);
+  assert.deepEqual(layout.map.get('ぱ'), [['a'], ['/']]);
+  assert.deepEqual(layout.map.get('ゔ'), [['j'], ['l']]);
+  assert.equal(layout.map.has('ヴ'), false);
+  assert.equal(layout.legends.has('thumb-l'), false);
+  assert.equal(layout.legends.has('thumb-r'), false);
+  assertKanaLayout(layout, ['ゎ', 'ヴ']);
+});
+
 test('かな配列七傑の未実装枠は一覧へ登録しない', () => {
   const pendingIds = [
-    'asuka', 'shin-koume', 'shin-jis-prefix',
-    'shin-jis-simultaneous', 'shingeta', 'tsuki-2-263',
+    'asuka', 'shin-koume', 'shin-jis-prefix', 'shin-jis-simultaneous',
   ];
-  const noThumbIds = new Set(['shingeta', 'tsuki-2-263']);
+  const noThumbIds = new Set<string>();
   assert.deepEqual(KANA_PENDING.map((layout) => layout.id), pendingIds);
   for (const layout of KANA_PENDING) {
     assert.equal(layout.map.size, 0, `${layout.id} は配置を持たない`);

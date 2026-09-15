@@ -118,6 +118,8 @@ g > N        →  d(ホーム, 今のキー)                 復帰済み
 | 大西（私家版 + コンボ） | 下段を差し替えた版に、Vial キーマップのコンボ 73 件を適用。綴りは訓令式 |
 | 薙刀式 v18 | [公式配布の DvorakJ 定義](https://oookaworks.seesaa.net/article/456099128.html)から機械的に生成 |
 | 親指シフト（NICOLA） | [NICOLA 配列規格書](http://nicola.sunicom.co.jp/spec/kikaku.htm)準拠の DvorakJ 定義から移植。専用キーボードの配置を ANSI に写しているため、距離の絶対値は参考値 |
+| 新下駄 | [DvorakJ の定義](https://github.com/k-ayaki/dvorakj_2023/blob/master/data/lang/jpn/%E5%90%8C%E6%99%82%E3%81%AB%E6%89%93%E9%8D%B5%E3%81%99%E3%82%8B%E9%85%8D%E5%88%97/%E4%B8%8B%E9%A7%84%E9%85%8D%E5%88%97%E7%B3%BB/%E6%96%B0%E4%B8%8B%E9%A7%84%E9%85%8D%E5%88%97.txt)から移植した7面の同時打鍵配列 |
+| 月 2-263 式 | [DvorakJ の定義](https://github.com/k-ayaki/dvorakj_2023/blob/master/data/lang/jpn/%E9%A0%86%E3%81%AB%E6%89%93%E9%8D%B5%E3%81%99%E3%82%8B%E9%85%8D%E5%88%97/%E6%9C%88%E9%85%8D%E5%88%97%E7%B3%BB/%E6%9C%882-263.txt)から移植した中指前置シフト配列 |
 
 コンボは「出力する文字列 → その文字を出すキーの集合」で書く。
 キーを物理位置ではなく文字で指すので、同じ定義を別の英字配列にも適用できる。
