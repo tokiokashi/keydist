@@ -5,7 +5,7 @@ import {
   THUMB_KEY,
   type Finger,
 } from './geometry.ts';
-import type { Face } from './layouts/types.ts';
+import type { Face, Layout } from './layouts/types.ts';
 
 export type Hand = 'left' | 'right';
 
@@ -21,6 +21,25 @@ export interface FaceGroups {
   modifiers: Layer[];
   /** 2 キー以上の trigger を持つ面 */
   combos: readonly Face[];
+}
+
+/**
+ * Return the keys that should be emphasized when a layer trigger is shown.
+ * This is presentation-only: the face trigger and Layout.map remain unchanged.
+ */
+export function displayTriggerKeys(
+  layout: Pick<Layout, 'id'>,
+  face: Face,
+): readonly string[] {
+  const triggerKeys = face.trigger.map(resolveKeyId);
+  if (
+    layout.id === 'naginata-v18' &&
+    triggerKeys.length === 1 &&
+    triggerKeys[0] === THUMB_KEY.RT
+  ) {
+    return [THUMB_KEY.LT, THUMB_KEY.RT];
+  }
+  return triggerKeys;
 }
 
 /** 面の出力を、表示対象のキー id と出力文字の対応へ変換する。 */

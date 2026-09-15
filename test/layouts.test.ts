@@ -7,7 +7,14 @@ import { computeMetrics } from '../src/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 import { toLayout } from '../src/user-layouts.ts';
 import { assertKanaLayout } from './kana-layout-helpers.ts';
-import { canFoldFaces, classifyFaces, foldedLayerCells, groupFacesIntoLayers, handOfKey } from '../src/layers.ts';
+import {
+  canFoldFaces,
+  classifyFaces,
+  displayTriggerKeys,
+  foldedLayerCells,
+  groupFacesIntoLayers,
+  handOfKey,
+} from '../src/layers.ts';
 
 const faceAtF = (output: string) => ['', '', ['', '', '', output], ''];
 
@@ -137,6 +144,15 @@ test('薙刀式 v18 は面から生成され、全定義を 1 ステップで保
   for (const sequence of layout.map.values()) assert.equal(sequence.length, 1);
   assert.deepEqual(layout.map.get('きゃ'), [['h', 'w']]);
   assert.deepEqual(layout.map.get('ぐゎ'), [['.', 'f', 'h']]);
+});
+
+test('薙刀式のセンターシフト表示だけ左右の Space を強調する', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18')!;
+  const centerShift = groupFacesIntoLayers(layout.faces!)[1].faces[0];
+
+  assert.deepEqual(centerShift.trigger, ['space']);
+  assert.deepEqual(displayTriggerKeys(layout, centerShift), ['thumb-l', 'thumb-r']);
+  assert.deepEqual(layout.map.get('の'), [['space', 'j']]);
 });
 
 test('NICOLA は3面の直接かな入力を同時押しとして保持する', () => {
