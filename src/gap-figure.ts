@@ -211,9 +211,9 @@ function board(geometry: Geometry, spec: BoardSpec): string {
 
 /** GitHub の alert に倣った囲み。種別は note / important / warning */
 const CALLOUT_LABEL: Record<string, string> = {
-  note: '注記',
-  important: '重要',
-  warning: '警告',
+  note: 'Note',
+  important: 'Important',
+  warning: 'Warning',
 };
 
 function callout(kind: keyof typeof CALLOUT_LABEL & string, title: string, lines: string[]): string {
@@ -344,8 +344,8 @@ export function gapFigure(geometry: Geometry): string {
         ${boardInside}
       </li>
       <li>
-        ${para(`ここで「jouho<b>u</b>woat<b>u</b>meru」の部分にも人差し指の繋がりが見つかります。2つの<b>u</b>のあいだの打鍵数は${at(11).gap}となりますが、設定している${at(11).gap}&gt;Nとなり、指を残していないと判定されてその移動距離は${homeId}→uの距離dとなります。`)}
-        ${para(`仮にこの<b>u</b>同士のあいだに人差し指を動かさなくて良い先読みができる（${at(11).gap}≤N）のであれば、2つ目の<b>u</b>にかかる移動距離はd=${u(between('u', 'u'))}となります。`)}
+        ${para(`ここで「jouho<b><i>u</i></b>woat<b><i>u</i></b>meru」の部分にも人差し指の繋がりが見つかります。2つの<b><i>u</i></b>のあいだの打鍵数は${at(11).gap}となりますが、設定している${at(11).gap}&gt;Nとなり、指を残していないと判定されてその移動距離は${homeId}→uの距離dとなります。`)}
+        ${para(`仮にこの<b><i>u</i></b>同士のあいだに人差し指を動かさなくてよいと先読みができる（${at(11).gap}≤N）のであれば、2つ目の<b><i>u</i></b>にかかる移動距離はd=${u(between('u', 'u'))}となります。`)}
         ${boardOutside}
       </li>
     </ol>

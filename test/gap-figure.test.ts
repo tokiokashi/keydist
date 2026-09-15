@@ -101,5 +101,6 @@ test('囲みは note / important / warning の 3 種を使う', () => {
   for (const kind of ['note', 'important', 'warning']) {
     assert.ok(svg.includes(`callout-${kind}`), `${kind} の囲みが出る`);
   }
-  assert.ok(svg.includes('前提条件'));
+  assert.ok(svg.includes('前提条件'), '前提条件の囲みは見出しを差し替える');
+  assert.ok(svg.includes('Note') && svg.includes('Warning'), '種別名は英語で出す');
 });
