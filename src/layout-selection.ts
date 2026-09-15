@@ -1,5 +1,6 @@
 /** 配列の選択状態（どれを比較表示に含めるか）の localStorage 永続化 */
 
+/** 画面のモード。保存形式がモードごとに割れるので、その定義をここに置く */
 export type ModeId = 'en' | 'ja';
 
 const STORAGE_KEY = 'keydist:selected-layouts';

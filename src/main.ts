@@ -55,7 +55,7 @@ import {
   importDvorakJ,
   importVial,
 } from './layout-import.ts';
-import { loadSelection, resolveSelection, saveSelection } from './layout-selection.ts';
+import { loadSelection, resolveSelection, saveSelection, type ModeId } from './layout-selection.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -125,7 +125,6 @@ const SHORT_FINGER: Record<Finger, string> = {
 const PALETTE_SIZE = 8;
 const SERIES = (i: number) => `var(--series-${(i % PALETTE_SIZE) + 1})`;
 
-type ModeId = 'en' | 'ja';
 type SampleId = string;
 
 const SAMPLES: Record<ModeId, Record<SampleId, string>> = {
@@ -178,8 +177,8 @@ function layoutsOf(mode: ModeId): Layout[] {
 }
 
 const MODES = {
-  en: { get layouts() { return layoutsOf('en'); }, sample: SAMPLES.en.default, initial: INITIAL.en },
-  ja: { get layouts() { return layoutsOf('ja'); }, sample: SAMPLES.ja.modern, initial: INITIAL.ja },
+  en: { get layouts() { return layoutsOf('en'); }, sample: SAMPLES.en.default },
+  ja: { get layouts() { return layoutsOf('ja'); }, sample: SAMPLES.ja.modern },
 };
 
 /** 表示する配列の id。モードごとに覚える。保存値があればそれを使い、無ければ既定値 */
