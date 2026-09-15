@@ -23,6 +23,23 @@ export interface FaceGroups {
   combos: readonly Face[];
 }
 
+export interface LayerShiftStyle {
+  layerIndex: number;
+  colorSlot: number;
+}
+
+/** シフト面ごとに、所属レイヤー単位の表示色を割り当てる。 */
+export function layerShiftStyles(layers: readonly Layer[]): Map<Face, LayerShiftStyle> {
+  const styles = new Map<Face, LayerShiftStyle>();
+  for (const [index, layer] of layers.entries()) {
+    const style = { layerIndex: index + 1, colorSlot: (index % 8) + 1 };
+    for (const face of layer.faces) {
+      if (face.trigger.length > 0) styles.set(face, style);
+    }
+  }
+  return styles;
+}
+
 /**
  * Return the keys that should be emphasized when a layer trigger is shown.
  * This is presentation-only: the face trigger and Layout.map remain unchanged.
