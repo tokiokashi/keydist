@@ -26,6 +26,7 @@ import {
   type MatrixSort,
 } from './chart.ts';
 import { setupTheme } from './theme.ts';
+import { gapFigure } from './gap-figure.ts';
 import {
   ROW_LABELS,
   load as loadUserLayouts,
@@ -91,6 +92,7 @@ const el = {
   importWarning: $<HTMLParagraphElement>('import-warning'),
   detailLayout: $<HTMLSelectElement>('detail-layout'),
   heatmap: $<HTMLDivElement>('heatmap'),
+  gapFigure: $<HTMLDivElement>('gap-figure'),
   fingerChart: $<HTMLDivElement>('finger-chart'),
   adjacentChart: $<HTMLDivElement>('adjacent-chart'),
   fingerMatrix: $<HTMLDivElement>('finger-matrix'),
@@ -1438,5 +1440,7 @@ bindMatrixSort(el.fingerMatrix, 'finger');
 bindMatrixSort(el.adjacentMeanMatrix, 'adjacentMean');
 bindMatrixSort(el.adjacentStdDevMatrix, 'adjacentStdDev');
 bindCompareSort(el.compare);
+// 図解は固定例（§7〜§9）。画面の選択に連動させず、起動時に 1 度だけ描く
+el.gapFigure.innerHTML = gapFigure(buildGeometry('row-staggered'));
 bindTips(document.body);
 setupTheme(render);
