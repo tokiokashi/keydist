@@ -500,3 +500,21 @@ dialog hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0 14px; }
 }
 .gap-board .gap-order { color: var(--muted); letter-spacing: 0.08em; }
 .gap-board svg { width: 100%; max-width: 420px; height: auto; }
+
+/* GitHub の alert に倣った囲み */
+.callout {
+  margin: 14px 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--line-strong);
+  border-radius: 0 6px 6px 0;
+  background: var(--panel-2);
+}
+.callout .callout-title { margin: 0 0 4px; font-size: 0.82rem; font-weight: 600; }
+.callout p { margin: 0 0 4px; }
+.callout p:last-child { margin-bottom: 0; }
+.callout-note { border-left-color: var(--accent); }
+.callout-note .callout-title { color: var(--accent); }
+.callout-important { border-left-color: var(--series-7); }
+.callout-important .callout-title { color: var(--series-7); }
+.callout-warning { border-left-color: var(--series-4); }
+.callout-warning .callout-title { color: var(--series-4); }
