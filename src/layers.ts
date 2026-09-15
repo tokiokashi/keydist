@@ -10,12 +10,12 @@ import type { Face } from './layouts/types.ts';
 export type Hand = 'left' | 'right';
 
 export interface Layer {
-  /** この層に含めた面。通常は単独面、逆手の面だけ 2 面を持つ */
+  /** このレイヤーに含めた面。通常は単独面、逆手の面だけ 2 面を持つ */
   faces: readonly Face[];
 }
 
 export interface FaceGroups {
-  /** 盤面の置き換えとして表示する層 */
+  /** 盤面の置き換えとして表示するレイヤー */
   layers: Layer[];
   /** かなへ作用する修飾面。宣言された layer はここでも畳む */
   modifiers: Layer[];
@@ -63,7 +63,7 @@ const opposite = (first: Hand | undefined, second: Hand | undefined) =>
 export function canFoldFaces(first: Face, second: Face): boolean {
   if (first.layer === undefined || first.layer !== second.layer) return false;
   const invalid = (reason: string): never => {
-    throw new Error(`層「${first.layer}」の面が畳み条件を満たさない: ${reason}`);
+    throw new Error(`レイヤー「${first.layer}」の面が畳み条件を満たさない: ${reason}`);
   };
   if (first.trigger.length !== 1 || second.trigger.length !== 1) invalid('trigger は単一キーである必要がある');
   if (first.mode !== second.mode) invalid('mode が異なる');
@@ -87,9 +87,9 @@ export function canFoldFaces(first: Face, second: Face): boolean {
 function singleTriggerGroups(faces: readonly Face[]): Map<string, Face[]> {
   const groups = new Map<string, Face[]>();
   faces.forEach((face, index) => {
-    // 2 キー以上の trigger は常にコンボであり、層の宣言だけ禁止する。
+    // 2 キー以上の trigger は常にコンボであり、レイヤーの宣言だけ禁止する。
     if (face.trigger.length > 1) {
-      if (face.layer !== undefined) throw new Error('コンボ面には層を宣言できない');
+      if (face.layer !== undefined) throw new Error('コンボ面にはレイヤーを宣言できない');
       return;
     }
     const groupKey = face.layer === undefined ? `single:${index}` : `layer:${face.layer}`;
@@ -104,20 +104,20 @@ function validateGroup(group: readonly Face[]): void {
   for (let i = 0; i < group.length; i++) {
     for (let j = i + 1; j < group.length; j++) {
       if (!canFoldFaces(group[i], group[j])) {
-        throw new Error(`層「${group[i].layer ?? ''}」の面が畳み条件を満たさない`);
+        throw new Error(`レイヤー「${group[i].layer ?? ''}」の面が畳み条件を満たさない`);
       }
     }
   }
 }
 
-/** 面を層・修飾・コンボへ分類し、宣言された面の畳み条件を検証する。 */
+/** 面をレイヤー・修飾・コンボへ分類し、宣言された面の畳み条件を検証する。 */
 export function classifyFaces(faces: readonly Face[]): FaceGroups {
   const layers: Layer[] = [];
   const modifiers: Layer[] = [];
   for (const group of singleTriggerGroups(faces).values()) {
     validateGroup(group);
     const roles = new Set(group.map((face) => face.role === 'modifier' ? 'modifier' : 'layer'));
-    if (roles.size > 1) throw new Error(`層「${group[0].layer ?? ''}」に異なる役割の面を混在させられない`);
+    if (roles.size > 1) throw new Error(`レイヤー「${group[0].layer ?? ''}」に異なる役割の面を混在させられない`);
     (roles.has('modifier') ? modifiers : layers).push({ faces: group });
   }
   return {
@@ -127,7 +127,7 @@ export function classifyFaces(faces: readonly Face[]): FaceGroups {
   };
 }
 
-/** 面の順序を保ちながら、盤面を置き換える単一キー面だけを層へ集約する。 */
+/** 面の順序を保ちながら、盤面を置き換える単一キー面だけをレイヤーへ集約する。 */
 export function groupFacesIntoLayers(faces: readonly Face[]): Layer[] {
   return classifyFaces(faces).layers;
 }

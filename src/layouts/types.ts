@@ -21,7 +21,7 @@ export interface Face {
   trigger: readonly string[];
   mode: FaceMode;
   rows: readonly FaceRow[];
-  /** 同じ値を持つ単一キー面は 1 層へ畳む。省略時はその面が単独で 1 層 */
+  /** 同じ値を持つ単一キー面は 1 レイヤーへ畳む。省略時はその面が単独で 1 レイヤー */
   layer?: string;
   /** 面の種別。省略時は layer。trigger が 2 キー以上の面は常に combo */
   role?: 'layer' | 'modifier';
@@ -126,7 +126,7 @@ export function fromFaces(
   faces: readonly Face[],
   thumbs: { LT?: string; RT?: string } = {},
 ): Layout {
-  // 定義時に層の宣言を検証し、表示時まで不正な組み合わせを遅延させない。
+  // 定義時にレイヤーの宣言を検証し、表示時まで不正な組み合わせを遅延させない。
   groupFacesIntoLayers(faces);
   const map = new Map<string, Sequence>();
   const legends = new Map<string, string>();

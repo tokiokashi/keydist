@@ -1207,15 +1207,15 @@ function triggerCaption(face: Face, legends: Map<string, string>): string {
 }
 
 function layerTitle(layer: Layer, index: number, legends: Map<string, string>): string {
-  if (layer.faces.length === 0) return `層 ${index + 1}: 単打`;
+  if (layer.faces.length === 0) return `レイヤー ${index + 1}: 単打`;
   const triggers = layer.faces
     .filter((face) => face.trigger.length > 0)
     .map((face) => triggerCaption(face, legends));
-  if (triggers.length === 0) return `層 ${index + 1}: 単打`;
+  if (triggers.length === 0) return `レイヤー ${index + 1}: 単打`;
   const names = [...new Set(layer.faces.map((face) => face.layer).filter((name): name is string => name !== undefined))];
   const name = names.length === 1 ? `${names[0]}: ` : '';
   const modes = [...new Set(layer.faces.map((face) => FACE_MODE_TEXT[face.mode]))].join(' / ');
-  return `層 ${index + 1}: ${name}${triggers.join(' / ')}（${modes}）`;
+  return `レイヤー ${index + 1}: ${name}${triggers.join(' / ')}（${modes}）`;
 }
 
 interface LayerCell {
@@ -1299,8 +1299,8 @@ function renderLayerSvg(
   // 実寸を属性で持たせ、CSS 側（.fig-fixed）で引き伸ばさずに置く
   const W = maxX + PAD;
   const H = maxY + PAD;
-  const caption = showHeat ? `${title} — 打鍵頻度（全層合算・物理位置）` : title;
-  return `<figure class="layer-diagram">
+  const caption = showHeat ? `${title} — 打鍵頻度（全レイヤー合算・物理位置）` : title;
+  return `<figure class="layer-diagram" style="width:${W}px">
     <figcaption>${escapeText(caption)}</figcaption>
     <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
       aria-label="${escapeAttr(caption)}">${keys.join('')}</svg>
@@ -1314,7 +1314,7 @@ function renderComboTable(combos: readonly Face[], legends: Map<string, string>)
     return `<tr><td>${escapeText(triggerText(face, legends))}</td><td>${escapeText(outputs)}</td></tr>`;
   }).join('');
   return `<section class="combo-table">
-    <h3>コンボ（${combos.length} 面）</h3>
+    <h3>コンボ（${combos.length}）</h3>
     <div class="scroll-x"><table>
       <thead><tr><th>トリガー</th><th>出力</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -1332,7 +1332,7 @@ function renderModifierList(modifiers: readonly Layer[], legends: Map<string, st
     return `<tr><td>${escapeText(title)}</td><td>${escapeText(outputs)}</td></tr>`;
   }).join('');
   return `<section class="modifier-list">
-    <h3>修飾（${modifiers.length} 面）</h3>
+    <h3>修飾（${modifiers.length}）</h3>
     <div class="scroll-x"><table>
       <thead><tr><th>トリガー</th><th>出力</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -1352,24 +1352,24 @@ function renderHeatmap(
   const titles = layers.map((layer, index) => layerTitle(layer, index, layout.legends));
   const selectedLayerView = layerView ?? (layers.length <= 5 ? 'side-by-side' : 'tabs');
   const controls = layers.length > 1
-    ? `<div class="layer-view-controls" role="group" aria-label="層の表示方法">
-        <span>層の表示</span>
+    ? `<div class="layer-view-controls" role="group" aria-label="レイヤーの表示方法">
+        <span>レイヤーの表示</span>
         <button type="button" class="ghost" data-layer-view="side-by-side" aria-pressed="${selectedLayerView === 'side-by-side'}">並置</button>
         <button type="button" class="ghost" data-layer-view="tabs" aria-pressed="${selectedLayerView === 'tabs'}">タブ</button>
       </div>`
     : '';
   const diagrams = layers.map((layer, index) => renderLayerSvg(metrics, layout, geometry, layer, titles[index]));
   const content = selectedLayerView === 'tabs' && layers.length > 1
-    ? `<div class="layer-tabs" role="tablist" aria-label="層">
+    ? `<div class="layer-tabs" role="tablist" aria-label="レイヤー">
         ${titles.map((_, index) => `<button type="button" class="ghost" role="tab"
-          aria-selected="${activeLayerTab === index}" data-layer-tab="${index}">${escapeText(`層 ${index + 1}`)}</button>`).join('')}
+          aria-selected="${activeLayerTab === index}" data-layer-tab="${index}">${escapeText(`レイヤー ${index + 1}`)}</button>`).join('')}
       </div>
       <div class="layer-tab-panel">${diagrams.map((diagram, index) =>
-        diagram.replace('<figure class="layer-diagram">', `<figure class="layer-diagram"${activeLayerTab === index ? '' : ' hidden'}>`),
+        diagram.replace('<figure class="layer-diagram"', `<figure class="layer-diagram"${activeLayerTab === index ? '' : ' hidden'}`),
       ).join('')}</div>`
     : `<div class="layer-diagrams">${diagrams.join('')}</div>`;
   const layerSection = `<section class="layer-section">
-    <h3>配列層（${layers.length} 面）</h3>
+    <h3>レイヤー（${layers.length}）</h3>
     ${controls}${content}
   </section>`;
   el.heatmap.innerHTML = layerSection + renderModifierList(groups.modifiers, layout.legends) +

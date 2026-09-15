@@ -49,7 +49,7 @@ test('面のセル配列は複数文字の見出しを 1 キーへ置ける', ()
   assert.equal(layout.maxCharLength, 2);
 });
 
-test('宣言された面だけを逆手の条件で層へ集約する', () => {
+test('宣言された面だけを逆手の条件でレイヤーへ集約する', () => {
   const shingeta = LAYOUT_BY_ID.get('shingeta')!;
   const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
   const nicola = LAYOUT_BY_ID.get('nicola')!;
@@ -101,8 +101,8 @@ test('宣言された面だけを逆手の条件で層へ集約する', () => {
     { trigger: ['a'], mode: 'simultaneous' as const, rows: faceAtF('x'), layer: '不正' },
     { trigger: ['s'], mode: 'simultaneous' as const, rows: faceAtF('y'), layer: '不正' },
   ];
-  assert.throws(() => canFoldFaces(invalidFaces[0], invalidFaces[1]), /畳み条件を満たさない/);
-  assert.throws(() => groupFacesIntoLayers(invalidFaces), /畳み条件を満たさない/);
+  assert.throws(() => canFoldFaces(invalidFaces[0], invalidFaces[1]), /レイヤー「不正」の面が畳み条件を満たさない/);
+  assert.throws(() => groupFacesIntoLayers(invalidFaces), /レイヤー「不正」の面が畳み条件を満たさない/);
 });
 
 test('薙刀式 v18 は面から生成され、全定義を 1 ステップで保持する', () => {
