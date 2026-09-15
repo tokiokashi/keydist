@@ -15,7 +15,6 @@ const layout: Layout = fromFaces('tsuki-2-263', '月 2-263 式', [
   emptyFace(['d'], 'prefix'),
   emptyFace(['k'], 'prefix'),
 ]);
-layout.legends.set(THUMB_KEY.LT, '使わない');
-layout.legends.set(THUMB_KEY.RT, '使わない');
-
+layout.legends.delete(THUMB_KEY.LT);
+layout.legends.delete(THUMB_KEY.RT);
 export const TSUKI_2_263 = layout;

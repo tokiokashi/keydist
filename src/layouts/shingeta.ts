@@ -20,7 +20,6 @@ const layout: Layout = fromFaces('shingeta', '新下駄', [
   emptyFace(['i'], 'simultaneous'),
   emptyFace(['o'], 'simultaneous'),
 ]);
-layout.legends.set(THUMB_KEY.LT, '使わない');
-layout.legends.set(THUMB_KEY.RT, '使わない');
-
+layout.legends.delete(THUMB_KEY.LT);
+layout.legends.delete(THUMB_KEY.RT);
 export const SHINGETA = layout;

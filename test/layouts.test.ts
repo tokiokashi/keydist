@@ -58,11 +58,17 @@ test('かな配列七傑の未実装枠は一覧へ登録しない', () => {
     'nicola', 'asuka', 'shin-koume', 'shin-jis-prefix',
     'shin-jis-simultaneous', 'shingeta', 'tsuki-2-263',
   ];
+  const noThumbIds = new Set(['shingeta', 'tsuki-2-263']);
   assert.deepEqual(KANA_PENDING.map((layout) => layout.id), pendingIds);
   for (const layout of KANA_PENDING) {
     assert.equal(layout.map.size, 0, `${layout.id} は配置を持たない`);
-    assert.ok(layout.legends.has('thumb-l'), `${layout.id} は thumb-l の凡例を持つ`);
-    assert.ok(layout.legends.has('thumb-r'), `${layout.id} は thumb-r の凡例を持つ`);
+    if (noThumbIds.has(layout.id)) {
+      assert.equal(layout.legends.has('thumb-l'), false, `${layout.id} は thumb-l を表示しない`);
+      assert.equal(layout.legends.has('thumb-r'), false, `${layout.id} は thumb-r を表示しない`);
+    } else {
+      assert.ok(layout.legends.has('thumb-l'), `${layout.id} は thumb-l の凡例を持つ`);
+      assert.ok(layout.legends.has('thumb-r'), `${layout.id} は thumb-r の凡例を持つ`);
+    }
     assert.equal(LAYOUT_BY_ID.has(layout.id), false);
   }
   assert.equal(LAYOUTS_JA.some((layout) => pendingIds.includes(layout.id)), false);
