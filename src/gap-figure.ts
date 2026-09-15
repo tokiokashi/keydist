@@ -79,12 +79,13 @@ function arrow(a: Arrow): string {
   const len = Math.hypot(dx, dy) || 1;
   const ux = dx / len;
   const uy = dy / len;
-  const inset = KEY * 0.42;
+  // 隣接キー間のように短い矢印では、詰めと矢頭を縮めないと線が残らず塊になる
+  const inset = Math.min(KEY * 0.42, len * 0.3);
   const x1 = a.from.x + ux * inset;
   const y1 = a.from.y + uy * inset;
   const x2 = a.to.x - ux * inset;
   const y2 = a.to.y - uy * inset;
-  const head = 7;
+  const head = Math.min(7, Math.max(4, (len - inset * 2) * 0.45));
   const bx = x2 - ux * head;
   const by = y2 - uy * head;
   const wing = head * 0.5;

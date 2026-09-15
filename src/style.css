@@ -409,7 +409,8 @@ dialog {
   box-shadow: 0 12px 40px rgb(0 0 0 / 0.28);
 }
 dialog::backdrop { background: rgb(0 0 0 / 0.38); }
-#how-dialog { width: min(760px, calc(100vw - 32px)); padding: 0; }
+/* 本文の行長（100ch）から幅を決める。.dialog-body の左右余白 20px ぶんを足す */
+#how-dialog { width: min(calc(100ch + 40px), calc(100vw - 32px)); padding: 0; }
 #how-dialog .dialog-body { padding: 20px; }
 .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .dialog-head h2 { margin: 0; }
