@@ -3,7 +3,7 @@ import type { ComboCondition, Layout, Sequence } from './layouts/index.ts';
 import { kanaToRomajiChunks } from './romaji/kunrei.ts';
 
 export interface Options {
-  /** 窓幅 N（打鍵単位）。この打鍵数までは指を残したとみなす */
+  /** 窓幅 N（打鍵単位）。この打鍵数までは残す候補を比較する */
   windowSize: number;
   /**
    * 同指連続（g=0）で打鍵先がその指のホームキー自身のとき、移動を加算するか。
@@ -176,7 +176,19 @@ export function evaluate(
 
       let total = 0;
       for (const press of presses) {
-        press.distance = pressCost(press, prev, geometry, options);
+        const decision = pressCost(press, prev, geometry, options);
+        press.distance = decision.distance;
+        if (decision.stay) {
+          // 「残す」が実際に選ばれた区間だけ、先行するスナップショットを
+          // 前回キーへ戻す。N は保持時間ではなく候補を比較する先読み範囲。
+          restoreStaySnapshots(
+            strokes,
+            last[press.finger],
+            index,
+            press.finger,
+            prev[press.finger],
+          );
+        }
         total += press.distance;
       }
       // 位置の更新はステップ内の距離を出し切ってから行う
@@ -186,7 +198,7 @@ export function evaluate(
       }
 
       // 指同士の姿勢は、対象キーを押した直後の状態として記録する
-      const positions = snapshot(prev, last, index, geometry, options.windowSize);
+      const positions = snapshot(prev, last, index, geometry);
       strokes.push({ index, char, presses, distance: total, positions });
       index++;
     }
@@ -213,12 +225,18 @@ function canFireYouonOnlyCombo(cursor: number, chars: string[], chunks: RomajiCh
   return chunks.some((chunk) => chunk.kanaLength > 1 && chunk.start < cursor && cursor < chunk.end);
 }
 
+interface CostDecision {
+  distance: number;
+  /** g の候補比較で d_stay が選ばれたか */
+  stay: boolean;
+}
+
 function pressCost(
   press: Press,
   prev: Record<Finger, Point>,
   geometry: Geometry,
   options: Options,
-): number {
+): CostDecision {
   const { finger, target, gap } = press;
   const home = geometry.homes[finger];
   const dStay = dist(prev[finger], target);
@@ -226,10 +244,17 @@ function pressCost(
 
   if (gap === 0) {
     const onHome = target.x === home.x && target.y === home.y;
-    return !options.sfbHomeCost && onHome ? 0 : dStay;
+    return {
+      distance: !options.sfbHomeCost && onHome ? 0 : dStay,
+      stay: true,
+    };
   }
-  if (gap <= options.windowSize) return Math.min(dStay, dHome);
-  return dHome;
+  if (gap <= options.windowSize) {
+    // 同値は既存の min の結果を維持し、「残す」側に寄せる。
+    const stay = dStay <= dHome;
+    return { distance: stay ? dStay : dHome, stay };
+  }
+  return { distance: dHome, stay: false };
 }
 
 /** 複数キーを 1 本の指で押す場合の目標位置。キーの重心を採る */
@@ -249,20 +274,36 @@ function record(errors: string[], seen: Set<string>, message: string) {
 }
 
 /**
- * 仕様 §10。ステップ i の時点での全指位置。
- * 経過が N 以下なら前回押したキー、超えていればホーム。
+ * 仕様 §10。ステップ i の押下直後の全指位置。
+ * そのステップで押した指は目標位置、それ以外はホームを既定とする。
+ * 後続の同指打鍵で「残す」が選ばれた区間だけ、先行スナップショットを
+ * restoreStaySnapshots が前回キーへ戻す。
  */
 function snapshot(
   prev: Record<Finger, Point>,
   last: Record<Finger, number>,
   index: number,
   geometry: Geometry,
-  windowSize: number,
 ): Record<Finger, Point> {
   const out = {} as Record<Finger, Point>;
   for (const finger of ALL_FINGERS) {
-    const elapsed = index - last[finger] - 1;
-    out[finger] = elapsed <= windowSize ? prev[finger] : geometry.homes[finger];
+    out[finger] = last[finger] === index ? prev[finger] : geometry.homes[finger];
   }
   return out;
+}
+
+/** 後続の同指打鍵で残留が確定した区間を、前回キー位置へ戻す。 */
+function restoreStaySnapshots(
+  strokes: Stroke[],
+  previousIndex: number,
+  currentIndex: number,
+  finger: Finger,
+  position: Point,
+): void {
+  if (!Number.isFinite(previousIndex)) return;
+  for (const stroke of strokes) {
+    if (stroke.index <= previousIndex) continue;
+    if (stroke.index >= currentIndex) break;
+    stroke.positions[finger] = position;
+  }
 }
