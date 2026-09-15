@@ -81,18 +81,18 @@ test('句点の直後で改行する', () => {
 
 test('本文の数式にスペースを入れない', () => {
   // 単位と矢印は常に詰める
-  for (const bad of [' → ', ' ≤ ', '1.031 u', '1.25 u', '1 u']) {
+  for (const bad of [' ≤ ', '1.031 u', '1.25 u', '1 u']) {
     assert.ok(!svg.includes(bad), `スペース入りの表記が残っている: ${bad}`);
   }
   // 本文（<p>）の中は等号も詰める
   // 前提条件の囲みは独立した式の行なので除く
   const body = svg.replace(/<div class="callout callout-important">[\s\S]*?<\/div>/, '');
   const prose = [...body.matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => m[1]).join('\n');
-  for (const bad of [' = ', 'N = ', 'd = ']) {
+  for (const bad of [' = ', ' → ', 'N = ', 'd = ']) {
     assert.ok(!prose.includes(bad), `本文にスペース入りの表記が残っている: ${bad}`);
   }
   // 独立した式の行だけ等号の両側を空ける
-  assert.ok(svg.includes(' ＝ '), '盤面のラベル');
+  assert.ok(svg.includes(' ＝ ') && svg.includes(' → '), '盤面のラベル');
   assert.ok(svg.includes('N = 3'), '前提条件の行');
 });
 
