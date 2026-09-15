@@ -409,7 +409,8 @@ dialog {
   box-shadow: 0 12px 40px rgb(0 0 0 / 0.28);
 }
 dialog::backdrop { background: rgb(0 0 0 / 0.38); }
-#how-dialog { width: min(980px, calc(100vw - 32px)); padding: 0; }
+/* 本文の行長（100ch）から幅を決める。.dialog-body の左右余白 20px ぶんを足す */
+#how-dialog { width: min(calc(100ch + 40px), calc(100vw - 32px)); padding: 0; }
 #how-dialog .dialog-body { padding: 20px; }
 .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .dialog-head h2 { margin: 0; }
@@ -485,7 +486,7 @@ dialog hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0 14px; }
 .gap-board figcaption { margin: 0 0 6px; color: var(--muted); font-size: 0.76rem; }
 
 /* 計算方法の図解。本文と盤面を縦に流す */
-.gap-figure { max-width: 70ch; }
+.gap-figure { max-width: 100%; }
 .gap-figure h3 { margin: 26px 0 8px; font-size: 1rem; }
 .gap-figure h3:first-child { margin-top: 0; }
 .gap-figure h4 { margin: 18px 0 6px; font-size: 0.9rem; }
@@ -498,4 +499,4 @@ dialog hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0 14px; }
   margin-bottom: 6px; font-size: 0.82rem; color: var(--fg);
 }
 .gap-board .gap-order { color: var(--muted); letter-spacing: 0.08em; }
-.gap-board svg { width: 100%; max-width: 380px; height: auto; }
+.gap-board svg { width: 100%; max-width: 420px; height: auto; }
