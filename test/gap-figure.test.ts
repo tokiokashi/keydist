@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, dist } from '../src/geometry.ts';
-import { figurePresses, gapFigure, FIGURE_TEXT, SFB_TEXT } from '../src/gap-figure.ts';
+import { figurePresses, gapFigure, SFB_TEXT } from '../src/gap-figure.ts';
 
 const geometry = buildGeometry('row-staggered');
 const svg = gapFigure(geometry);
@@ -10,7 +10,6 @@ test('固定例は標準ローマ字で 15 打鍵に展開される', () => {
   const presses = figurePresses(geometry);
   assert.equal(presses.map((p) => p.keyId).join(''), 'jouhouwoatumeru');
   assert.equal(presses.length, 15);
-  assert.ok(svg.includes(FIGURE_TEXT));
 });
 
 test('本文が拾う打鍵の g は仕様の 3 分岐に 1 つずつ対応する', () => {
@@ -35,13 +34,13 @@ test('図に出る距離は評価器と幾何から引いた値と一致する',
   assert.equal(at(15).distance.toFixed(3), '1.031');
   // 窓の外はホームから。残れば 0 でも払う
   assert.equal(at(11).distance.toFixed(3), '1.031');
-  assert.ok(svg.includes('1.031 u') && svg.includes('1.25 u') && svg.includes('2.136 u'));
+  assert.ok(svg.includes('1.031u') && svg.includes('1.25u') && svg.includes('2.136u'));
 });
 
 test('距離の表記は末尾の 0 を落とす', () => {
-  assert.ok(svg.includes('1.25 u'), '1.250 ではなく 1.25');
-  assert.ok(svg.includes('1 u'), '1.000 ではなく 1');
-  assert.ok(!svg.includes('1.250 u') && !svg.includes('1.000 u'));
+  assert.ok(svg.includes('1.25u'), '1.250 ではなく 1.25');
+  assert.ok(svg.includes('1u'), '1.000 ではなく 1');
+  assert.ok(!svg.includes('1.250u') && !svg.includes('1.000u'));
 });
 
 test('打鍵順は丸数字で出す', () => {
@@ -73,4 +72,35 @@ test('採らなかった候補は消さずに残す', () => {
 test('SVG のツールチップは title 属性ではなく data-tip を使う', () => {
   assert.ok(svg.includes('data-tip='));
   assert.ok(!/<(svg|g|text|rect|line|polygon)[^>]*\stitle=/.test(svg));
+});
+
+test('句点の直後で改行する', () => {
+  assert.ok(svg.includes('。<br />'), '文の切れ目に改行が入る');
+  assert.ok(!/。<br \/><\/p>/.test(svg), '段落末尾には改行を足さない');
+});
+
+test('本文の数式にスペースを入れない', () => {
+  // 単位と矢印は常に詰める
+  for (const bad of [' ≤ ', '1.031 u', '1.25 u', '1 u']) {
+    assert.ok(!svg.includes(bad), `スペース入りの表記が残っている: ${bad}`);
+  }
+  // 本文（<p>）の中は等号も詰める
+  // 前提条件の囲みは独立した式の行なので除く
+  const body = svg.replace(/<div class="callout callout-important">[\s\S]*?<\/div>/, '');
+  const prose = [...body.matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => m[1]).join('\n');
+  for (const bad of [' = ', ' → ', 'N = ', 'd = ']) {
+    assert.ok(!prose.includes(bad), `本文にスペース入りの表記が残っている: ${bad}`);
+  }
+  // 独立した式の行だけ等号の両側を空ける
+  assert.ok(svg.includes('d(j,u) = '), '盤面のラベルは等号の両側を空ける');
+  assert.ok(svg.includes('d(j,u)') && svg.includes('d(u,h)'), '盤面のラベルは d(ab) の形');
+  assert.ok(svg.includes('N = 3'), '前提条件の行');
+});
+
+test('囲みは note / important / warning の 3 種を使う', () => {
+  for (const kind of ['note', 'important', 'warning']) {
+    assert.ok(svg.includes(`callout-${kind}`), `${kind} の囲みが出る`);
+  }
+  assert.ok(svg.includes('前提条件'), '前提条件の囲みは見出しを差し替える');
+  assert.ok(svg.includes('Note') && svg.includes('Warning'), '種別名は英語で出す');
 });
