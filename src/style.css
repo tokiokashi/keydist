@@ -8,6 +8,8 @@
   --line: #e2dfd8;
   --line-strong: #cfcbc2;
   --accent: #2a78d6;
+  --shift-left: #b34b00;
+  --shift-right: #6b2fa8;
 
   /* sequential（打鍵頻度）: 単一色相・明度単調 */
   --heat-0: #eef2f6;
@@ -37,6 +39,8 @@
     --line: #32312c;
     --line-strong: #45443d;
     --accent: #3987e5;
+    --shift-left: #ff9d5c;
+    --shift-right: #b98cff;
 
     --heat-0: #1f2225;
     --heat-1: #3987e5;
@@ -64,6 +68,8 @@
   --line: #32312c;
   --line-strong: #45443d;
   --accent: #3987e5;
+  --shift-left: #ff9d5c;
+  --shift-right: #b98cff;
 
   --heat-0: #1f2225;
   --heat-1: #3987e5;
@@ -307,7 +313,18 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 }
 .layer-diagrams { display: flex; flex-wrap: wrap; gap: 20px 24px; align-items: flex-start; }
 .layer-diagram { flex: 0 1 auto; min-width: 0; margin: 0; }
-.layer-diagram figcaption { margin: 0 0 6px; color: var(--muted); font-size: 0.76rem; }
+.layer-diagram figcaption {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.shift-key-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 10px; color: var(--muted); font-size: 0.76rem; }
+.shift-key-swatch { padding: 1px 6px; border: 3px solid; border-radius: 4px; }
+.shift-left { border-color: var(--shift-left); }
+.shift-right { border-color: var(--shift-right); }
 .layer-tab-panel .layer-diagram[hidden] { display: none; }
 .layer-section, .modifier-list, .combo-table { margin-top: 20px; }
 .layer-section h3, .modifier-list h3, .combo-table h3 { margin-bottom: 8px; }
