@@ -3,6 +3,8 @@ import {
   ADJACENT_PAIRS,
   ALL_FINGERS,
   FINGERS,
+  resolveKeyId,
+  THUMB_KEY,
   THUMB_ROW,
   type Finger,
   type GeometryKind,
@@ -10,7 +12,7 @@ import {
 import { evaluate, type Options, type Trace } from './evaluate.ts';
 import { computeMetrics, type Metrics } from './metrics.ts';
 import { nSensitivity } from './sensitivity.ts';
-import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from './layouts/index.ts';
+import { LAYOUTS, LAYOUTS_JA, withRomaji, type Face, type Layout } from './layouts/index.ts';
 import { SAMPLE_TEXT } from './sample-text.ts';
 import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from './sample-text-ja.ts';
 import {
@@ -56,6 +58,7 @@ import {
   importVial,
 } from './layout-import.ts';
 import { loadSelection, resolveSelection, saveSelection, type ModeId } from './layout-selection.ts';
+import { classifyFaces, faceCells, handOfKey, type Layer } from './layers.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -712,6 +715,9 @@ const matrixSorts: Record<MatrixKind, MatrixSort | null> = {
 };
 let compareSort: MatrixSort | null = null;
 let compareChartColumn = 1;
+type LayerView = 'side-by-side' | 'tabs';
+let layerView: LayerView | undefined;
+let activeLayerTab = 0;
 
 function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sort: MatrixSort | null): T[] {
   if (!sort) return rows;
@@ -1168,12 +1174,90 @@ function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeomet
   );
 }
 
-function renderHeatmap(
+function triggerKeyText(key: string, legends: Map<string, string>): string {
+  const resolved = resolveKeyId(key);
+  return resolved === THUMB_KEY.LT || resolved === THUMB_KEY.RT
+    ? legends.get(resolved) ?? resolved
+    : resolved;
+}
+
+function triggerText(face: Layer['faces'][number], legends: Map<string, string>): string {
+  return face.trigger.map((key) => triggerKeyText(key, legends)).join(' + ');
+}
+
+function triggerHandText(face: Layer['faces'][number]): string {
+  const hands = new Set(face.trigger.map(handOfKey).filter((hand): hand is NonNullable<typeof hand> => hand !== undefined));
+  if (hands.size !== 1) return '両手';
+  return hands.has('left') ? '左手' : '右手';
+}
+
+function targetHandText(face: Face): string | undefined {
+  const hands = new Set([...faceCells(face).keys()]
+    .map(handOfKey)
+    .filter((hand): hand is NonNullable<typeof hand> => hand !== undefined));
+  if (hands.size !== 1) return undefined;
+  return hands.has('left') ? '左手側' : '右手側';
+}
+
+const FACE_MODE_TEXT: Record<Face['mode'], string> = {
+  simultaneous: '同時押し',
+  prefix: '前置シフト',
+  suffix: '後置シフト',
+};
+
+function triggerCaption(face: Face, legends: Map<string, string>): string {
+  const trigger = triggerText(face, legends);
+  const target = targetHandText(face);
+  return `${triggerHandText(face)} ${trigger}シフト${target ? `（${target}のキー）` : ''}`;
+}
+
+function layerTitle(layer: Layer, index: number, legends: Map<string, string>): string {
+  if (layer.faces.length === 0) return `レイヤー ${index + 1}: 単打`;
+  const triggers = layer.faces
+    .filter((face) => face.trigger.length > 0)
+    .map((face) => triggerCaption(face, legends));
+  if (triggers.length === 0) return `レイヤー ${index + 1}: 単打`;
+  const names = [...new Set(layer.faces.map((face) => face.layer).filter((name): name is string => name !== undefined))];
+  const name = names.length === 1 ? `${names[0]}: ` : '';
+  const modes = [...new Set(layer.faces.map((face) => FACE_MODE_TEXT[face.mode]))].join(' / ');
+  return `レイヤー ${index + 1}: ${name}${triggers.join(' / ')}（${modes}）`;
+}
+
+interface LayerCell {
+  label: string;
+  annotation?: string;
+}
+
+function layerCells(layer: Layer, layout: Layout): Map<string, LayerCell> {
+  if (layer.faces.length === 0) {
+    return new Map([...layout.legends].map(([key, label]) => [key, { label }]));
+  }
+
+  const cells = new Map<string, LayerCell>();
+  for (const face of layer.faces) {
+    const trigger = face.trigger.length > 0 ? triggerText(face, layout.legends) : '';
+    const annotation = face.trigger.length > 0
+      ? `${triggerHandText(face)} ${trigger}を押す`
+      : undefined;
+    for (const [key, label] of faceCells(face)) {
+      const previous = cells.get(key);
+      cells.set(key, previous
+        ? { label: `${previous.label} / ${label}`, annotation: previous.annotation ?? annotation }
+        : { label, annotation });
+    }
+  }
+  return cells;
+}
+
+function renderLayerSvg(
   metrics: Metrics,
   layout: Layout,
   geometry: ReturnType<typeof buildGeometry>,
-) {
-  const labels = layout.legends;
+  layer: Layer,
+  title: string,
+): string {
+  const labels = layerCells(layer, layout);
+  const showHeat = layer.faces.length === 0 || layer.faces.some((face) => face.trigger.length === 0);
   const max = Math.max(1, ...metrics.keyCounts.values());
   // 隣に並ぶマトリックス（セル 54×24）と同じくらいの密度に合わせる。
   // 図は実寸で置くので、この値がそのまま画面上のキーの大きさになる
@@ -1192,29 +1276,109 @@ function renderHeatmap(
     const y = key.y * KEY;
     maxX = Math.max(maxX, x + w);
     maxY = Math.max(maxY, y + KEY);
-    const label = labels.get(key.id) ?? '';
+    const cell = labels.get(key.id);
+    const label = cell?.label ?? '';
+    const annotation = cell?.annotation;
     const share = ((count / Math.max(1, metrics.presses)) * 100).toFixed(1);
     const distance = metrics.keyDistance.get(key.id) ?? 0;
-    const tip =
-      `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>` +
-      `<b>${count}</b> 打 (${share}%)<br>移動 <b>${distance.toFixed(1)} u</b>`;
+    const tip = showHeat
+      ? `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>` +
+        `<b>${count}</b> 打 (${share}%)<br>移動 <b>${distance.toFixed(1)} u</b>`
+      : `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span>` +
+        (annotation ? `<br>${escapeText(annotation)}` : '');
+    const fontSize = thumb ? 10 : label.length > 3 ? 9 : 12;
+    const text = `<text x="${x + w / 2}" y="${y + KEY / 2 + 4}" text-anchor="middle"
+        font-size="${fontSize}" fill="${showHeat && t > 0.5 ? 'var(--on-heat)' : 'var(--fg)'}"
+        pointer-events="none">${escapeText(label)}</text>`;
     // 隣り合う面が地色で 2px 離れるよう、キー矩形は内側に 1px 詰める
-    return `<g data-tip="${tip.replace(/"/g, '&quot;')}">
+    const fill = showHeat
+      ? `color-mix(in oklab, var(--heat-1) ${(t * 100).toFixed(1)}%, var(--heat-0))`
+      : 'var(--panel)';
+    return `<g data-tip="${escapeAttr(tip)}">
       <rect x="${x + 1}" y="${y + 1}" width="${w - 2}" height="${KEY - 2}" rx="5"
-        fill="color-mix(in oklab, var(--heat-1) ${(t * 100).toFixed(1)}%, var(--heat-0))"
-        stroke="var(--line)"/>
-      <text x="${x + w / 2}" y="${y + KEY / 2 + 4}" text-anchor="middle"
-        font-size="${thumb ? 10 : 12}" fill="${t > 0.5 ? 'var(--on-heat)' : 'var(--fg)'}"
-        pointer-events="none">${escapeText(label)}</text>
+        fill="${fill}" stroke="var(--line)"/>
+      ${text}
     </g>`;
   });
 
   // 実寸を属性で持たせ、CSS 側（.fig-fixed）で引き伸ばさずに置く
   const W = maxX + PAD;
   const H = maxY + PAD;
-  el.heatmap.innerHTML =
-    `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"` +
-    ` aria-label="打鍵頻度">${keys.join('')}</svg>`;
+  const caption = showHeat ? `${title} — 打鍵頻度（全レイヤー合算・物理位置）` : title;
+  return `<figure class="layer-diagram" style="width:${W}px">
+    <figcaption>${escapeText(caption)}</figcaption>
+    <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
+      aria-label="${escapeAttr(caption)}">${keys.join('')}</svg>
+  </figure>`;
+}
+
+function renderComboTable(combos: readonly Face[], legends: Map<string, string>): string {
+  if (combos.length === 0) return '';
+  const rows = combos.map((face) => {
+    const outputs = [...faceCells(face).values()].join(' / ');
+    return `<tr><td>${escapeText(triggerText(face, legends))}</td><td>${escapeText(outputs)}</td></tr>`;
+  }).join('');
+  return `<section class="combo-table">
+    <h3>コンボ（${combos.length}）</h3>
+    <div class="scroll-x"><table>
+      <thead><tr><th>トリガー</th><th>出力</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </section>`;
+}
+
+function renderModifierList(modifiers: readonly Layer[], legends: Map<string, string>): string {
+  if (modifiers.length === 0) return '';
+  const rows = modifiers.map((layer) => {
+    const names = [...new Set(layer.faces.map((face) => face.layer).filter((name): name is string => name !== undefined))];
+    const triggers = layer.faces.map((face) => triggerText(face, legends)).join(' / ');
+    const title = names.length === 1 ? `${names[0]}: ${triggers}` : triggers;
+    const outputs = layer.faces.flatMap((face) => [...faceCells(face).values()]).join(' / ');
+    return `<tr><td>${escapeText(title)}</td><td>${escapeText(outputs)}</td></tr>`;
+  }).join('');
+  return `<section class="modifier-list">
+    <h3>修飾（${modifiers.length}）</h3>
+    <div class="scroll-x"><table>
+      <thead><tr><th>トリガー</th><th>出力</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </section>`;
+}
+
+function renderHeatmap(
+  metrics: Metrics,
+  layout: Layout,
+  geometry: ReturnType<typeof buildGeometry>,
+) {
+  const faces = layout.faces ?? [];
+  const groups = classifyFaces(faces);
+  const layers: Layer[] = groups.layers.length > 0 ? groups.layers : [{ faces: [] }];
+  if (activeLayerTab >= layers.length) activeLayerTab = 0;
+  const titles = layers.map((layer, index) => layerTitle(layer, index, layout.legends));
+  const selectedLayerView = layerView ?? (layers.length <= 5 ? 'side-by-side' : 'tabs');
+  const controls = layers.length > 1
+    ? `<div class="layer-view-controls" role="group" aria-label="レイヤーの表示方法">
+        <span>レイヤーの表示</span>
+        <button type="button" class="ghost" data-layer-view="side-by-side" aria-pressed="${selectedLayerView === 'side-by-side'}">並置</button>
+        <button type="button" class="ghost" data-layer-view="tabs" aria-pressed="${selectedLayerView === 'tabs'}">タブ</button>
+      </div>`
+    : '';
+  const diagrams = layers.map((layer, index) => renderLayerSvg(metrics, layout, geometry, layer, titles[index]));
+  const content = selectedLayerView === 'tabs' && layers.length > 1
+    ? `<div class="layer-tabs" role="tablist" aria-label="レイヤー">
+        ${titles.map((_, index) => `<button type="button" class="ghost" role="tab"
+          aria-selected="${activeLayerTab === index}" data-layer-tab="${index}">${escapeText(`レイヤー ${index + 1}`)}</button>`).join('')}
+      </div>
+      <div class="layer-tab-panel">${diagrams.map((diagram, index) =>
+        diagram.replace('<figure class="layer-diagram"', `<figure class="layer-diagram"${activeLayerTab === index ? '' : ' hidden'}`),
+      ).join('')}</div>`
+    : `<div class="layer-diagrams">${diagrams.join('')}</div>`;
+  const layerSection = `<section class="layer-section">
+    <h3>レイヤー（${layers.length}）</h3>
+    ${controls}${content}
+  </section>`;
+  el.heatmap.innerHTML = layerSection + renderModifierList(groups.modifiers, layout.legends) +
+    renderComboTable(groups.combos, layout.legends);
 }
 
 function setSensitivityScale(scale: SensitivityScale) {
@@ -1227,6 +1391,20 @@ function setSensitivityScale(scale: SensitivityScale) {
 el.sensitivityScale.addEventListener('click', (e) => {
   const button = (e.target as Element).closest<HTMLButtonElement>('button[data-scale]');
   if (button) setSensitivityScale(button.dataset.scale as SensitivityScale);
+});
+
+el.heatmap.addEventListener('click', (e) => {
+  const target = (e.target as Element).closest<HTMLButtonElement>('button');
+  if (!target) return;
+  if (target.dataset.layerView === 'side-by-side' || target.dataset.layerView === 'tabs') {
+    layerView = target.dataset.layerView;
+    render();
+    return;
+  }
+  if (target.dataset.layerTab !== undefined) {
+    activeLayerTab = Number(target.dataset.layerTab);
+    render();
+  }
 });
 
 function onModeChange() {

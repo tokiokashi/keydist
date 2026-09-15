@@ -10,8 +10,10 @@ import { faceFromEntries, fromFaces, type Face, type Layout, type Sequence } fro
  * 右側の対象キーを `d` に割り当てる。JIS 専用キーの `・` は ANSI では表現しない。
  */
 
-const face = (trigger: string[], entries: Record<string, string>): Face =>
-  faceFromEntries(trigger, 'prefix', entries);
+const face = (trigger: string[], entries: Record<string, string>, layer?: string): Face => ({
+  ...faceFromEntries(trigger, 'prefix', entries),
+  layer,
+});
 
 export const TSUKI_2_263_FACES: Face[] = [
   face([], {
@@ -23,12 +25,12 @@ export const TSUKI_2_263_FACES: Face[] = [
     y: 'ぬ', u: 'え', i: 'み', o: 'や', p: 'ぇ', '[': '「',
     h: 'ま', j: 'お', k: 'も', l: 'わ', ';': 'ゆ', "'": '」',
     n: 'む', m: 'ろ', ',': 'ね', '.': 'ー', '/': 'ぉ',
-  }),
+  }, '中指シフト'),
   face(['k'], {
     q: 'ぁ', w: 'ひ', e: 'ほ', r: 'ふ', t: 'め',
     a: 'ぃ', s: 'を', d: 'ら', f: 'あ', g: 'よ',
     z: 'ぅ', x: 'へ', c: 'せ', v: 'ゅ', b: 'ゃ',
-  }),
+  }, '中指シフト'),
 ];
 
 const layout: Layout = fromFaces('tsuki-2-263', '月 2-263 式', TSUKI_2_263_FACES);

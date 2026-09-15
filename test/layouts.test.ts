@@ -7,6 +7,7 @@ import { computeMetrics } from '../src/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 import { toLayout } from '../src/user-layouts.ts';
 import { assertKanaLayout } from './kana-layout-helpers.ts';
+import { canFoldFaces, classifyFaces, groupFacesIntoLayers, handOfKey } from '../src/layers.ts';
 
 const faceAtF = (output: string) => ['', '', ['', '', '', output], ''];
 
@@ -46,6 +47,62 @@ test('面のセル配列は複数文字の見出しを 1 キーへ置ける', ()
 
   assert.deepEqual(layout.map.get('きゃ'), [['f']]);
   assert.equal(layout.maxCharLength, 2);
+});
+
+test('宣言された面だけを逆手の条件でレイヤーへ集約する', () => {
+  const shingeta = LAYOUT_BY_ID.get('shingeta')!;
+  const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
+  const nicola = LAYOUT_BY_ID.get('nicola')!;
+  const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
+
+  const counts = [shingeta, tsuki, nicola, naginata].map((layout) => {
+    const groups = classifyFaces(layout.faces!);
+    return [layout.faces!.length, groups.layers.length, groups.modifiers.length, groups.combos.length];
+  });
+  assert.deepEqual(counts, [
+    [7, 5, 0, 0],
+    [3, 2, 0, 0],
+    [3, 3, 0, 0],
+    [33, 2, 6, 23],
+  ]);
+
+  assert.deepEqual(
+    groupFacesIntoLayers(shingeta.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    [[[]], [['k'], ['d']], [['l'], ['s']], [['i']], [['o']]],
+  );
+  assert.deepEqual(
+    groupFacesIntoLayers(tsuki.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    [[[]], [['d'], ['k']]],
+  );
+  assert.deepEqual(
+    groupFacesIntoLayers(nicola.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    [[[]], [['thumb-l']], [['thumb-r']]],
+  );
+  assert.deepEqual(
+    groupFacesIntoLayers(naginata.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    [[[]], [['space']]],
+  );
+  assert.deepEqual(
+    classifyFaces(naginata.faces!).modifiers.map((layer) => layer.faces.map((face) => face.trigger)),
+    [[['q']], [['j'], ['f']], [['m'], ['v']], [['h']], [['p']], [['i']]],
+  );
+
+  assert.equal(handOfKey('space'), 'right');
+  assert.equal(canFoldFaces(shingeta.faces![1], shingeta.faces![2]), true);
+  assert.equal(canFoldFaces(shingeta.faces![1], shingeta.faces![5]), false);
+  assert.equal(canFoldFaces(naginata.faces![3], naginata.faces![4]), true);
+  assert.equal(canFoldFaces(naginata.faces![5], naginata.faces![6]), true);
+  assert.equal(canFoldFaces(nicola.faces![1], nicola.faces![2]), false);
+  assert.equal(canFoldFaces(
+    { trigger: ['k'], mode: 'simultaneous', rows: faceAtF('x') },
+    { trigger: ['d'], mode: 'prefix', rows: ['', '', ['', '', '', '', '', '', 'y'], ''] },
+  ), false);
+  const invalidFaces = [
+    { trigger: ['a'], mode: 'simultaneous' as const, rows: faceAtF('x'), layer: '不正' },
+    { trigger: ['s'], mode: 'simultaneous' as const, rows: faceAtF('y'), layer: '不正' },
+  ];
+  assert.throws(() => canFoldFaces(invalidFaces[0], invalidFaces[1]), /レイヤー「不正」の面が畳み条件を満たさない/);
+  assert.throws(() => groupFacesIntoLayers(invalidFaces), /レイヤー「不正」の面が畳み条件を満たさない/);
 });
 
 test('薙刀式 v18 は面から生成され、全定義を 1 ステップで保持する', () => {
