@@ -7,7 +7,7 @@ import { computeMetrics } from '../src/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 import { toLayout } from '../src/user-layouts.ts';
 import { assertKanaLayout } from './kana-layout-helpers.ts';
-import { canFoldFaces, classifyFaces, groupFacesIntoLayers, handOfKey } from '../src/layers.ts';
+import { canFoldFaces, classifyFaces, foldedLayerCells, groupFacesIntoLayers, handOfKey } from '../src/layers.ts';
 
 const faceAtF = (output: string) => ['', '', ['', '', '', output], ''];
 
@@ -103,6 +103,27 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
   ];
   assert.throws(() => canFoldFaces(invalidFaces[0], invalidFaces[1]), /レイヤー「不正」の面が畳み条件を満たさない/);
   assert.throws(() => groupFacesIntoLayers(invalidFaces), /レイヤー「不正」の面が畳み条件を満たさない/);
+});
+
+test('畳んだレイヤーの空きセルを相互シフトの対称位置から描画用に補完する（#95）', () => {
+  const layout = LAYOUT_BY_ID.get('shingeta')!;
+  const layers = groupFacesIntoLayers(layout.faces!);
+  const middle = foldedLayerCells(layers[1], layout.faces!);
+  const ring = foldedLayerCells(layers[2], layout.faces!);
+
+  // Layout.map の定義は片方向のままでも、図では同じ同時押しを相方の位置に出す。
+  assert.equal(middle.get('k'), 'れ');
+  assert.equal(middle.get('l'), 'お');
+  assert.equal(ring.get('k'), 'じ');
+  assert.equal(ring.get('l'), 'さ');
+  assert.deepEqual(layout.map.get('じ'), [['k', 's']]);
+  assert.deepEqual(layout.map.get('さ'), [['l', 's']]);
+
+  const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
+  const tsukiLayer = groupFacesIntoLayers(tsuki.faces!)[1];
+  const tsukiCells = foldedLayerCells(tsukiLayer, tsuki.faces!);
+  assert.equal(tsukiCells.get('d'), 'ら');
+  assert.equal(tsukiCells.get('k'), 'も');
 });
 
 test('薙刀式 v18 は面から生成され、全定義を 1 ステップで保持する', () => {

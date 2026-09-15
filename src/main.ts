@@ -59,7 +59,7 @@ import {
   importVial,
 } from './layout-import.ts';
 import { loadSelection, resolveSelection, saveSelection, type ModeId } from './layout-selection.ts';
-import { classifyFaces, faceCells, handOfKey, type Layer } from './layers.ts';
+import { classifyFaces, faceCells, foldedLayerCells, handOfKey, type Layer } from './layers.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -1210,36 +1210,18 @@ function triggerHandText(face: Layer['faces'][number]): string {
   return hands.has('left') ? '左手' : '右手';
 }
 
-function targetHandText(face: Face): string | undefined {
-  const hands = new Set([...faceCells(face).keys()]
-    .map(handOfKey)
-    .filter((hand): hand is NonNullable<typeof hand> => hand !== undefined));
-  if (hands.size !== 1) return undefined;
-  return hands.has('left') ? '左手側' : '右手側';
-}
-
-const FACE_MODE_TEXT: Record<Face['mode'], string> = {
-  simultaneous: '同時押し',
-  prefix: '前置シフト',
-  suffix: '後置シフト',
-};
-
-function triggerCaption(face: Face, legends: Map<string, string>): string {
-  const trigger = triggerText(face, legends);
-  const target = targetHandText(face);
-  return `${triggerHandText(face)} ${trigger}シフト${target ? `（${target}のキー）` : ''}`;
-}
-
 function layerTitle(layer: Layer, index: number, legends: Map<string, string>): string {
   if (layer.faces.length === 0) return `レイヤー ${index + 1}: 単打`;
   const triggers = layer.faces
     .filter((face) => face.trigger.length > 0)
-    .map((face) => triggerCaption(face, legends));
+    .map((face) => triggerText(face, legends));
   if (triggers.length === 0) return `レイヤー ${index + 1}: 単打`;
   const names = [...new Set(layer.faces.map((face) => face.layer).filter((name): name is string => name !== undefined))];
-  const name = names.length === 1 ? `${names[0]}: ` : '';
-  const modes = [...new Set(layer.faces.map((face) => FACE_MODE_TEXT[face.mode]))].join(' / ');
-  return `レイヤー ${index + 1}: ${name}${triggers.join(' / ')}（${modes}）`;
+  const name = names.length === 1 ? names[0] : 'シフト';
+  const modes = [...new Set(layer.faces.map((face) => face.mode))]
+    .map((mode) => mode === 'simultaneous' ? '同時' : mode === 'prefix' ? '前置' : '後置')
+    .join(' / ');
+  return `レイヤー ${index + 1}: ${name} [${triggers.join(' / ')}]・${modes}`;
 }
 
 interface LayerCell {
@@ -1253,6 +1235,7 @@ function layerCells(layer: Layer, layout: Layout): Map<string, LayerCell> {
   }
 
   const cells = new Map<string, LayerCell>();
+  const labels = foldedLayerCells(layer, layout.faces ?? []);
   for (const face of layer.faces) {
     const trigger = face.trigger.length > 0 ? triggerText(face, layout.legends) : '';
     const annotation = face.trigger.length > 0
@@ -1265,6 +1248,9 @@ function layerCells(layer: Layer, layout: Layout): Map<string, LayerCell> {
         : { label, annotation });
     }
   }
+  for (const [key, label] of labels) {
+    if (!cells.has(key)) cells.set(key, { label });
+  }
   return cells;
 }
 
@@ -1274,9 +1260,18 @@ function renderLayerSvg(
   geometry: ReturnType<typeof buildGeometry>,
   layer: Layer,
   title: string,
+  allLayerFaces: readonly Face[],
 ): string {
   const labels = layerCells(layer, layout);
   const showHeat = layer.faces.length === 0 || layer.faces.some((face) => face.trigger.length === 0);
+  const triggerFaces = layer.faces.length === 0 ? allLayerFaces : layer.faces;
+  const shiftSides = new Map<string, 'left' | 'right'>();
+  for (const face of triggerFaces) {
+    for (const trigger of face.trigger) {
+      const side = handOfKey(trigger);
+      if (side) shiftSides.set(resolveKeyId(trigger), side);
+    }
+  }
   const max = Math.max(1, ...metrics.keyCounts.values());
   // 隣に並ぶマトリックス（セル 54×24）と同じくらいの密度に合わせる。
   // 図は実寸で置くので、この値がそのまま画面上のキーの大きさになる
@@ -1298,13 +1293,17 @@ function renderLayerSvg(
     const cell = labels.get(key.id);
     const label = cell?.label ?? '';
     const annotation = cell?.annotation;
+    const shiftSide = shiftSides.get(key.id);
     const share = ((count / Math.max(1, metrics.presses)) * 100).toFixed(1);
     const distance = metrics.keyDistance.get(key.id) ?? 0;
+    const shiftTip = shiftSide
+      ? `<br><b>${shiftSide === 'left' ? '左手' : '右手'}シフトのトリガー</b>`
+      : '';
     const tip = showHeat
       ? `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>` +
         `<b>${count}</b> 打 (${share}%)<br>移動 <b>${distance.toFixed(1)} u</b>`
       : `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span>` +
-        (annotation ? `<br>${escapeText(annotation)}` : '');
+        (annotation ? `<br>${escapeText(annotation)}` : '') + shiftTip;
     const fontSize = thumb ? 10 : label.length > 3 ? 9 : 12;
     const text = `<text x="${x + w / 2}" y="${y + KEY / 2 + 4}" text-anchor="middle"
         font-size="${fontSize}" fill="${showHeat && t > 0.5 ? 'var(--on-heat)' : 'var(--fg)'}"
@@ -1315,7 +1314,8 @@ function renderLayerSvg(
       : 'var(--panel)';
     return `<g data-tip="${escapeAttr(tip)}">
       <rect x="${x + 1}" y="${y + 1}" width="${w - 2}" height="${KEY - 2}" rx="5"
-        fill="${fill}" stroke="var(--line)"/>
+        fill="${fill}" stroke="${shiftSide ? `var(--shift-${shiftSide})` : 'var(--line)'}"
+        stroke-width="${shiftSide ? 3 : 1}"${shiftSide ? ` data-shift-side="${shiftSide}"` : ''}/>
       ${text}
     </g>`;
   });
@@ -1323,11 +1323,12 @@ function renderLayerSvg(
   // 実寸を属性で持たせ、CSS 側（.fig-fixed）で引き伸ばさずに置く
   const W = maxX + PAD;
   const H = maxY + PAD;
-  const caption = showHeat ? `${title} — 打鍵頻度（全レイヤー合算・物理位置）` : title;
+  const caption = showHeat ? `${title}・打鍵頻度` : title;
+  const ariaLabel = showHeat ? `${caption}（全レイヤー合算・物理位置）` : caption;
   return `<figure class="layer-diagram" style="width:${W}px">
     <figcaption>${escapeText(caption)}</figcaption>
     <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
-      aria-label="${escapeAttr(caption)}">${keys.join('')}</svg>
+      aria-label="${escapeAttr(ariaLabel)}">${keys.join('')}</svg>
   </figure>`;
 }
 
@@ -1374,6 +1375,16 @@ function renderHeatmap(
   const layers: Layer[] = groups.layers.length > 0 ? groups.layers : [{ faces: [] }];
   if (activeLayerTab >= layers.length) activeLayerTab = 0;
   const titles = layers.map((layer, index) => layerTitle(layer, index, layout.legends));
+  const allLayerFaces = groups.layers.flatMap((layer) => layer.faces);
+  const shiftHands = new Set(allLayerFaces.flatMap((face) => face.trigger
+    .map(handOfKey)
+    .filter((hand): hand is NonNullable<ReturnType<typeof handOfKey>> => hand !== undefined)));
+  const shiftLegend = shiftHands.size > 0
+    ? `<div class="shift-key-legend" aria-label="シフトキーの枠色">
+        ${shiftHands.has('left') ? '<span class="shift-key-swatch shift-left">左手シフトのトリガー</span>' : ''}
+        ${shiftHands.has('right') ? '<span class="shift-key-swatch shift-right">右手シフトのトリガー</span>' : ''}
+      </div>`
+    : '';
   const selectedLayerView = layerView ?? (layers.length <= 5 ? 'side-by-side' : 'tabs');
   const controls = layers.length > 1
     ? `<div class="layer-view-controls" role="group" aria-label="レイヤーの表示方法">
@@ -1382,7 +1393,9 @@ function renderHeatmap(
         <button type="button" class="ghost" data-layer-view="tabs" aria-pressed="${selectedLayerView === 'tabs'}">タブ</button>
       </div>`
     : '';
-  const diagrams = layers.map((layer, index) => renderLayerSvg(metrics, layout, geometry, layer, titles[index]));
+  const diagrams = layers.map((layer, index) =>
+    renderLayerSvg(metrics, layout, geometry, layer, titles[index], allLayerFaces),
+  );
   const content = selectedLayerView === 'tabs' && layers.length > 1
     ? `<div class="layer-tabs" role="tablist" aria-label="レイヤー">
         ${titles.map((_, index) => `<button type="button" class="ghost" role="tab"
@@ -1394,7 +1407,7 @@ function renderHeatmap(
     : `<div class="layer-diagrams">${diagrams.join('')}</div>`;
   const layerSection = `<section class="layer-section">
     <h3>レイヤー（${layers.length}）</h3>
-    ${controls}${content}
+    ${shiftLegend}${controls}${content}
   </section>`;
   el.heatmap.innerHTML = layerSection + renderModifierList(groups.modifiers, layout.legends) +
     renderComboTable(groups.combos, layout.legends);
