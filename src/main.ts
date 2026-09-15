@@ -59,7 +59,14 @@ import {
   importVial,
 } from './layout-import.ts';
 import { loadSelection, resolveSelection, saveSelection, type ModeId } from './layout-selection.ts';
-import { classifyFaces, faceCells, foldedLayerCells, handOfKey, type Layer } from './layers.ts';
+import {
+  classifyFaces,
+  displayTriggerKeys,
+  faceCells,
+  foldedLayerCells,
+  handOfKey,
+  type Layer,
+} from './layers.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -1204,17 +1211,39 @@ function triggerText(face: Layer['faces'][number], legends: Map<string, string>)
   return face.trigger.map((key) => triggerKeyText(key, legends)).join(' + ');
 }
 
+function isNaginataCenterShift(layout: Layout, face: Layer['faces'][number]): boolean {
+  return layout.id === 'naginata-v18' && displayTriggerKeys(layout, face).length === 2;
+}
+
+function displayTriggerText(layout: Layout, face: Layer['faces'][number]): string {
+  if (isNaginataCenterShift(layout, face)) return '左右の Space';
+  return displayTriggerKeys(layout, face)
+    .map((key) => triggerKeyText(key, layout.legends))
+    .join(' + ');
+}
+
 function triggerHandText(face: Layer['faces'][number]): string {
   const hands = new Set(face.trigger.map(handOfKey).filter((hand): hand is NonNullable<typeof hand> => hand !== undefined));
   if (hands.size !== 1) return '両手';
   return hands.has('left') ? '左手' : '右手';
 }
 
-function layerTitle(layer: Layer, index: number, legends: Map<string, string>): string {
+function displayTriggerHandText(layout: Layout, face: Layer['faces'][number]): string {
+  return isNaginataCenterShift(layout, face) ? '左右' : triggerHandText(face);
+}
+
+function displayLayerLegend(layout: Layout, key: string, label: string): string {
+  const resolved = resolveKeyId(key);
+  return layout.id === 'naginata-v18' && (resolved === THUMB_KEY.LT || resolved === THUMB_KEY.RT)
+    ? 'Space'
+    : label;
+}
+
+function layerTitle(layer: Layer, index: number, layout: Layout): string {
   if (layer.faces.length === 0) return `レイヤー ${index + 1}: 単打`;
   const triggers = layer.faces
     .filter((face) => face.trigger.length > 0)
-    .map((face) => triggerText(face, legends));
+    .map((face) => displayTriggerText(layout, face));
   if (triggers.length === 0) return `レイヤー ${index + 1}: 単打`;
   const names = [...new Set(layer.faces.map((face) => face.layer).filter((name): name is string => name !== undefined))];
   const name = names.length === 1 ? names[0] : 'シフト';
@@ -1231,15 +1260,17 @@ interface LayerCell {
 
 function layerCells(layer: Layer, layout: Layout): Map<string, LayerCell> {
   if (layer.faces.length === 0) {
-    return new Map([...layout.legends].map(([key, label]) => [key, { label }]));
+    return new Map([...layout.legends].map(([key, label]) => [key, {
+      label: displayLayerLegend(layout, key, label),
+    }]));
   }
 
   const cells = new Map<string, LayerCell>();
   const labels = foldedLayerCells(layer, layout.faces ?? []);
   for (const face of layer.faces) {
-    const trigger = face.trigger.length > 0 ? triggerText(face, layout.legends) : '';
+    const trigger = face.trigger.length > 0 ? displayTriggerText(layout, face) : '';
     const annotation = face.trigger.length > 0
-      ? `${triggerHandText(face)} ${trigger}を押す`
+      ? `${displayTriggerHandText(layout, face)} ${trigger}を押す`
       : undefined;
     for (const [key, label] of faceCells(face)) {
       const previous = cells.get(key);
@@ -1267,7 +1298,7 @@ function renderLayerSvg(
   const triggerFaces = layer.faces.length === 0 ? allLayerFaces : layer.faces;
   const shiftSides = new Map<string, 'left' | 'right'>();
   for (const face of triggerFaces) {
-    for (const trigger of face.trigger) {
+    for (const trigger of displayTriggerKeys(layout, face)) {
       const side = handOfKey(trigger);
       if (side) shiftSides.set(resolveKeyId(trigger), side);
     }
@@ -1297,7 +1328,9 @@ function renderLayerSvg(
     const share = ((count / Math.max(1, metrics.presses)) * 100).toFixed(1);
     const distance = metrics.keyDistance.get(key.id) ?? 0;
     const shiftTip = shiftSide
-      ? `<br><b>${shiftSide === 'left' ? '左手' : '右手'}シフトのトリガー</b>`
+      ? `<br><b>${layout.id === 'naginata-v18' && (key.id === THUMB_KEY.LT || key.id === THUMB_KEY.RT)
+        ? '左右どちらでもシフト'
+        : `${shiftSide === 'left' ? '左手' : '右手'}シフトのトリガー`}</b>`
       : '';
     const tip = showHeat
       ? `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>` +
@@ -1374,12 +1407,17 @@ function renderHeatmap(
   const groups = classifyFaces(faces);
   const layers: Layer[] = groups.layers.length > 0 ? groups.layers : [{ faces: [] }];
   if (activeLayerTab >= layers.length) activeLayerTab = 0;
-  const titles = layers.map((layer, index) => layerTitle(layer, index, layout.legends));
+  const titles = layers.map((layer, index) => layerTitle(layer, index, layout));
   const allLayerFaces = groups.layers.flatMap((layer) => layer.faces);
-  const shiftHands = new Set(allLayerFaces.flatMap((face) => face.trigger
+  const hasNaginataCenterShift = allLayerFaces.some((face) => isNaginataCenterShift(layout, face));
+  const shiftHands = new Set(allLayerFaces.flatMap((face) => displayTriggerKeys(layout, face)
     .map(handOfKey)
     .filter((hand): hand is NonNullable<ReturnType<typeof handOfKey>> => hand !== undefined)));
-  const shiftLegend = shiftHands.size > 0
+  const shiftLegend = hasNaginataCenterShift
+    ? `<div class="shift-key-legend" aria-label="シフトキーの枠色">
+        <span class="shift-key-swatch shift-both">左右どちらの Space でもシフト</span>
+      </div>`
+    : shiftHands.size > 0
     ? `<div class="shift-key-legend" aria-label="シフトキーの枠色">
         ${shiftHands.has('left') ? '<span class="shift-key-swatch shift-left">左手シフトのトリガー</span>' : ''}
         ${shiftHands.has('right') ? '<span class="shift-key-swatch shift-right">右手シフトのトリガー</span>' : ''}

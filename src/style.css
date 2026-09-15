@@ -325,6 +325,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .shift-key-swatch { padding: 1px 6px; border: 3px solid; border-radius: 4px; }
 .shift-left { border-color: var(--shift-left); }
 .shift-right { border-color: var(--shift-right); }
+.shift-both { border-color: var(--shift-left); box-shadow: inset 0 0 0 2px var(--shift-right); }
 .layer-tab-panel .layer-diagram[hidden] { display: none; }
 .layer-section, .modifier-list, .combo-table { margin-top: 20px; }
 .layer-section h3, .modifier-list h3, .combo-table h3 { margin-bottom: 8px; }
