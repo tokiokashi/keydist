@@ -1,3 +1,7 @@
 node_modules/
 dist/
 *.log
+
+# サブエージェントを worktree 分離で走らせると、リポジトリの中に作業用の
+# チェックアウトが生える。成果物はブランチ側にあるので追跡しない
+.claude/worktrees/
