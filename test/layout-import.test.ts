@@ -29,6 +29,7 @@ test('Vial の第0層・通常キー出力・マクロ出力のコンボを読�
       ['KC_D', 'KC_S', 'KC_NO', 'KC_NO', 'M0'],
       ['KC_K', 'KC_A', 'KC_NO', 'KC_NO', 'KC_DOT'],
       ['KC_K', 'KC_A', 'KC_NO', 'KC_NO', 'M1'],
+      ['MO(1)', 'KC_A', 'KC_NO', 'KC_NO', 'KC_B'],
     ],
   }));
   assert.equal(layout.rows[1].slice(0, 2), 'qw');
@@ -37,6 +38,7 @@ test('Vial の第0層・通常キー出力・マクロ出力のコンボを読�
   assert.deepEqual(layout.sequences.find(([output]) => output === 'ka'), ['ka', [['k', 'a']]]);
   assert.ok(layout.legends.some(([key, label]) => key === '=' && label === 'KC_ENTER'));
   assert.ok(!layout.sequences.some(([output]) => output === 'KC_ENTER'));
+  assert.ok(layout.warnings.some((warning) => warning.includes('MO(1)')));
   assert.equal(layout.direct, false);
 });
 
@@ -69,6 +71,7 @@ test('DvorakJ の基底面と同時打鍵面を読む', () => {
     '  {F} | +21',
     '  {J} | +24',
     '  {S} | +shift',
+    '  {Z} | +99',
     ']',
     '[',
     '  1|2|3|',
@@ -88,6 +91,11 @@ test('DvorakJ の基底面と同時打鍵面を読む', () => {
     '  |||',
     '  |||',
     ']',
+    '(+23, ({S}+23[',
+    '  |||',
+    ']',
+    '({F}[',
+    ']',
   ].join('\n');
   const layout = importDvorakJ(source);
   assert.deepEqual(layout.sequences.find(([output]) => output === 'あ'), ['あ', [['a']]]);
@@ -96,6 +104,9 @@ test('DvorakJ の基底面と同時打鍵面を読む', () => {
   assert.ok(!layout.sequences.some(([output]) => output === '←' || output === '→'));
   assert.ok(layout.legends.some(([key, label]) => key === 'w' && label === '{←}'));
   assert.ok(layout.legends.some(([key, label]) => key === 'q' && label === '、{Enter}'));
+  assert.ok(layout.warnings.some((warning) => warning.includes('(+23, ({S}+23[')));
+  assert.ok(layout.warnings.some((warning) => warning.includes('エイリアス「Z」')));
+  assert.ok(layout.warnings.some((warning) => warning.includes('({F}[') && warning.includes('セルがない')));
   assert.equal(layout.direct, true);
 });
 
@@ -111,15 +122,34 @@ test('DvorakJ と紅皿の面内容からローマ字・かなを判定する', 
     'か,き,く,け,こ',
     'さ,し,す,せ,そ',
     'た,ち,つ,て,と',
-    '[かな右親指シフト]',
+    '[かな左右親指シフト]',
     'が,ぎ,ぐ,げ,ご',
     'だ,ぢ,づ,で,ど',
     '[かな小指シフト]',
     'x,x,x,x,x',
   ].join('\n'));
   assert.equal(kana.direct, true);
-  assert.deepEqual(kana.sequences.find(([output]) => output === 'が'), ['が', [['space', '1']]]);
+  assert.deepEqual(kana.sequences.find(([output]) => output === 'が'), ['が', [['thumb-l', 'space', '1']]]);
   assert.deepEqual(kana.warnings, ['面「かな小指シフト」は対応する親指キーを決められないため無視した']);
+
+  const mixed = importBenizara([
+    '[ローマ字シフト無し]',
+    'a,b,c,d',
+    'e,f,g,h',
+    'i,j,k,l',
+    'm,n,o,p',
+    '[かなシフト無し]',
+    'あ,い,う,え',
+    'か,き,く,け',
+    'さ,し,す,せ',
+    'た,ち,つ,て',
+    '[かな右親指シフト]',
+    'が,ぎ,ぐ,げ',
+  ].join('\n'));
+  assert.equal(mixed.direct, false);
+  assert.ok(!new Map(mixed.sequences).has('あ'));
+  assert.ok(mixed.warnings.some((warning) => warning.includes('かなシフト無し')));
+  assert.ok(mixed.warnings.some((warning) => warning.includes('かな右親指シフト')));
 });
 
 test('紅皿のローマ字面と UTF-16LE を読む', () => {

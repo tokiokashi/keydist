@@ -93,6 +93,10 @@ function finish(
   };
 }
 
+function addWarning(warnings: string[], message: string) {
+  if (!warnings.includes(message)) warnings.push(message);
+}
+
 function recordCell(
   rows: string[][],
   legends: Map<string, string>,
@@ -169,7 +173,7 @@ function dvorakJScanCode(code: string): string | undefined {
   return undefined;
 }
 
-function dvorakJAliases(lines: string[]): Map<string, string> {
+function dvorakJAliases(lines: string[], warnings: string[]): Map<string, string> {
   const aliases = new Map<string, string>();
   for (const line of lines) {
     const match = line.trim().match(/^\{([^}]+)\}\s*\|\s*[+-]([0-9a-f]{2}|shift)\s*$/i);
@@ -181,6 +185,7 @@ function dvorakJAliases(lines: string[]): Map<string, string> {
       ? 'space'
       : dvorakJScanCode(code);
     if (physical) aliases.set(key, physical);
+    else addWarning(warnings, `DvorakJ のエイリアス「${key}」の物理キーを解決できないため無視した`);
   }
   return aliases;
 }
@@ -223,7 +228,8 @@ function dvorakJHeader(
 export function importDvorakJ(source: string, name = 'DvorakJ 取り込み'): ImportedLayout {
   const text = source.replace(/^\uFEFF/, '').replace(/\/\*[\s\S]*?\*\//g, '');
   const lines = text.split(/\r?\n/);
-  const aliases = dvorakJAliases(lines);
+  const warnings: string[] = [];
+  const aliases = dvorakJAliases(lines, warnings);
   const rows = emptyRows();
   const legends = new Map<string, string>();
   const sequences = new Map<string, Sequence>();
@@ -238,14 +244,23 @@ export function importDvorakJ(source: string, name = 'DvorakJ 取り込み'): Im
       bodyStart = i + 1;
     }
     const openingBracketIsOnHeader = header.endsWith('[');
-    if (!triggers || (!openingBracketIsOnHeader && lines[bodyStart]?.trim() !== '[')) continue;
+    if (!triggers || (!openingBracketIsOnHeader && lines[bodyStart]?.trim() !== '[')) {
+      if (header !== '-option-input[' &&
+        (header.endsWith('[') || (/^-(?:[^-]+-?)+$/.test(header) && lines[i + 1]?.trim() === '['))) {
+        addWarning(warnings, `DvorakJ の面ヘッダ「${header}」を解釈できないため無視した`);
+      }
+      continue;
+    }
 
     const body: string[] = [];
     let end = bodyStart;
     while (++end < lines.length && lines[end].trim() !== ']') body.push(lines[end]);
     i = end;
     const grid = body.filter((line) => line.includes('|')).map(dvorakJCells).slice(0, 4);
-    if (grid.length === 0) continue;
+    if (grid.length === 0) {
+      addWarning(warnings, `DvorakJ の面「${header}」にセルがないため無視した`);
+      continue;
+    }
     const base = triggers.length === 0;
     grid.forEach((line, row) => line.slice(0, WIDTHS[row] ?? 0).forEach((raw, column) => {
       const cell = dvorakJCell(raw);
@@ -257,7 +272,7 @@ export function importDvorakJ(source: string, name = 'DvorakJ 取り込み'): Im
       }
     }));
   }
-  return finish(name, rows, legends, sequences, kinds);
+  return finish(name, rows, legends, sequences, kinds, warnings);
 }
 
 const QMK_PRINTABLE: Record<string, string> = {
@@ -346,6 +361,7 @@ export function importVial(source: string, name = 'Vial 取り込み'): Imported
   const sequences = new Map<string, Sequence>();
   const locations = new Map<string, string>();
   const kinds = { kana: false, latin: false };
+  const warnings: string[] = [];
 
   layer.slice(0, 4).forEach((rawRow, row) => {
     if (!Array.isArray(rawRow)) return;
@@ -365,7 +381,7 @@ export function importVial(source: string, name = 'Vial 取り込み'): Imported
 
   const macros = Array.isArray(vil.macro) ? vil.macro : [];
   if (Array.isArray(vil.combo)) {
-    for (const entry of vil.combo) {
+    for (const [comboIndex, entry] of vil.combo.entries()) {
       if (!Array.isArray(entry) || entry.length < 5) continue;
       const inputs: string[] = [];
       for (const code of entry.slice(0, 4)) {
@@ -373,21 +389,32 @@ export function importVial(source: string, name = 'Vial 取り込み'): Imported
         if (!char) continue;
         const physical = locations.get(char);
         if (!physical) {
+          addWarning(warnings, `Vial のコンボ ${comboIndex} は入力キー「${String(code)}」の物理位置を解決できないため無視した`);
           inputs.length = 0;
           break;
         }
         inputs.push(physical);
       }
-      if (inputs.length < 2) continue;
+      if (inputs.length < 2) {
+        const unresolvedCode = entry.slice(0, 4).find((code) =>
+          typeof code === 'string' && !QMK_NOOP.has(code.toUpperCase()) && !qmkChar(code));
+        if (unresolvedCode !== undefined) {
+          addWarning(warnings, `Vial のコンボ ${comboIndex} は入力キー「${String(unresolvedCode)}」を解決できないため無視した`);
+        }
+        continue;
+      }
       const outputCode = entry[4];
-      const index = macroIndex(outputCode);
-      const output = index === undefined ? qmkChar(outputCode) : macroText(macros[index]);
-      if (!output || output === ' ') continue;
+      const macro = macroIndex(outputCode);
+      const output = macro === undefined ? qmkChar(outputCode) : macroText(macros[macro]);
+      if (!output || output === ' ') {
+        addWarning(warnings, `Vial のコンボ ${comboIndex} は出力「${String(outputCode)}」を解決できないため無視した`);
+        continue;
+      }
       // コンボの出力が通常キーと同じでも、コンボの打鍵列を優先する。
       sequences.set(output, [inputs]);
     }
   }
-  return finish(name, rows, legends, sequences, kinds);
+  return finish(name, rows, legends, sequences, kinds, warnings);
 }
 
 const BENIZARA_FUNCTIONS = new Set([
@@ -416,6 +443,10 @@ function hasBenizaraFunctionLabel(label: string): boolean {
 
 function benizaraTrigger(section: string): string[] | undefined {
   if (section.includes('シフト無し')) return [];
+  if (section.includes('左右親指') || section.includes('両親指') ||
+    (section.includes('左親指') && section.includes('右親指'))) {
+    return ['thumb-l', 'space'];
+  }
   if (section.includes('右親指') || section.includes('スペース')) return ['space'];
   if (section.includes('左親指')) return ['thumb-l'];
   // 小指シフトは定義ファイルごとに物理キーが違うため、誤った指を仮定しない。
@@ -450,10 +481,15 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
   const sequences = new Map<string, Sequence>();
   const kinds = { kana: false, latin: false };
   const warnings: string[] = [];
+  for (const section of candidates) {
+    if (!family.includes(section)) {
+      addWarning(warnings, `面「${section}」は選択した出力形式「${prefix}」と異なるため無視した`);
+    }
+  }
   for (const section of [base, ...family.filter((candidate) => candidate !== base)]) {
     const trigger = benizaraTrigger(section);
     if (!trigger) {
-      warnings.push(`面「${section}」は対応する親指キーを決められないため無視した`);
+      addWarning(warnings, `面「${section}」は対応する親指キーを決められないため無視した`);
       continue;
     }
     const grid = sections.get(section)!
