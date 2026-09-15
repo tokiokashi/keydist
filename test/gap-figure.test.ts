@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry } from '../src/geometry.ts';
+import { buildGeometry, dist } from '../src/geometry.ts';
 import { figurePresses, gapFigure, FIGURE_TEXT } from '../src/gap-figure.ts';
 
 const geometry = buildGeometry('row-staggered');
@@ -48,6 +48,22 @@ test('薄く描いたキーの数がそのまま g になる', () => {
   const boards = svg.split('<figure class="gap-board">').slice(1);
   const dim = boards.map((b) => [...b.matchAll(/fill="var\(--panel-2\)"/g)].length);
   assert.deepEqual(dim, [0, 2, 4]);
+});
+
+test('導入は j → u の直線距離を形状ごとの実測で出す', () => {
+  const j = geometry.keys.get('j')!;
+  const u = geometry.keys.get('u')!;
+  assert.equal(dist(j, u).toFixed(3), '1.031', 'row-staggered は段ずれで 0.25 u 横に動く');
+  const ortho = buildGeometry('ortholinear');
+  assert.equal(dist(ortho.keys.get('j')!, ortho.keys.get('u')!).toFixed(3), '1.000');
+
+  const intro = svg.split('<figure class="gap-intro">')[1].split('</figure>')[0];
+  assert.ok(intro.includes('j → u は d = 1.031 u'));
+  assert.ok(intro.includes(`dx ${(u.x - j.x).toFixed(2)}`));
+  assert.ok(intro.includes(`dy ${(u.y - j.y).toFixed(2)}`));
+  assert.equal([...intro.matchAll(/<polygon /g)].length, 1, '導入の矢印は 1 本');
+  assert.ok(!intro.includes('g ='), '導入では g の話をしない');
+  assert.ok(svg.includes('ortholinear では横のずれが無く 1.000 u になる'));
 });
 
 test('条件と例文を図の脇に出す', () => {

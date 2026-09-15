@@ -6,7 +6,7 @@
  */
 import { escapeAttr, escapeText } from './chart.ts';
 import { evaluate } from './evaluate.ts';
-import { dist, HOME_ROW, THUMB_ROW, type Finger, type Geometry, type Point } from './geometry.ts';
+import { buildGeometry, dist, HOME_ROW, THUMB_ROW, type Finger, type Geometry, type Point } from './geometry.ts';
 import { LAYOUT_BY_ID, withRomaji } from './layouts/index.ts';
 import { ROMAJI_RULES } from './romaji/rules.ts';
 
@@ -106,7 +106,8 @@ interface BoardSpec {
   notes?: string[];
 }
 
-function board(geometry: Geometry, spec: BoardSpec): string {
+/** 盤面の枠。3 面と導入で同じ座標系を使う */
+function frame(geometry: Geometry) {
   const keys = [...geometry.keys.values()].filter((k) => ROWS.includes(k.row) && k.row !== THUMB_ROW);
   const minX = Math.min(...keys.map((k) => k.x));
   const minY = Math.min(...keys.map((k) => k.y));
@@ -116,6 +117,19 @@ function board(geometry: Geometry, spec: BoardSpec): string {
     const k = geometry.keys.get(id)!;
     return { x: px(k) + KEY / 2, y: py(k) + KEY / 2 };
   };
+  const width = Math.max(...keys.map((k) => px(k) + KEY)) + PAD;
+  const height = Math.max(...keys.map((k) => py(k) + KEY)) + 6;
+  return { keys, px, py, center, width, height };
+}
+
+/** 右手人差し指のホームキー */
+function homeKeyId(geometry: Geometry): string {
+  const home = geometry.homes[FOCUS_FINGER];
+  return [...geometry.keys.values()].find((k) => k.x === home.x && k.y === home.y)!.id;
+}
+
+function board(geometry: Geometry, spec: BoardSpec): string {
+  const { keys, px, py, center } = frame(geometry);
 
   const numbers = new Map<string, FigurePress[]>();
   for (const p of [...spec.focus, ...spec.between]) {
@@ -125,13 +139,12 @@ function board(geometry: Geometry, spec: BoardSpec): string {
   }
   const focusKeys = new Set(spec.focus.map((p) => p.keyId));
   const betweenKeys = new Set(spec.between.map((p) => p.keyId));
-  const homeKey = [...geometry.keys.values()]
-    .find((k) => k.x === geometry.homes[FOCUS_FINGER].x && k.y === geometry.homes[FOCUS_FINGER].y)!;
+  const homeId = homeKeyId(geometry);
 
   const cells = keys.map((key) => {
     const focus = focusKeys.has(key.id);
     const between = !focus && betweenKeys.has(key.id);
-    const isHome = key.id === homeKey.id && !focus;
+    const isHome = key.id === homeId && !focus;
     const x = px(key);
     const y = py(key);
     const fill = focus
@@ -168,8 +181,7 @@ function board(geometry: Geometry, spec: BoardSpec): string {
     arrow({ from: center(a.fromKey), to: center(a.toKey), adopted: a.adopted, tip: a.tip }),
   );
 
-  const boardW = Math.max(...keys.map((k) => px(k) + KEY)) + PAD;
-  const boardH = Math.max(...keys.map((k) => py(k) + KEY)) + 6;
+  const { width: boardW, height: boardH } = frame(geometry);
   const lines = [...spec.lines, spec.takeaway, ...(spec.notes ?? [])];
   const lineY = (i: number) => boardH + 16 + i * 14;
   const text = lines.map((line, i) => {
@@ -187,14 +199,69 @@ function board(geometry: Geometry, spec: BoardSpec): string {
   </figure>`;
 }
 
+/**
+ * 導入。距離が盤面上の直線距離であることだけを見せる（仕様 §3）。
+ * j は右手人差し指のホームなので、g の分岐が絡まない最小の例になる。
+ */
+function introBoard(geometry: Geometry): string {
+  const { keys, px, py, center, width, height } = frame(geometry);
+  const fromId = homeKeyId(geometry);
+  const toId = 'u';
+  const from = geometry.keys.get(fromId)!;
+  const to = geometry.keys.get(toId)!;
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const d = dist(from, to);
+  const a = center(fromId);
+  const b = center(toId);
+
+  const cells = keys.map((key) => {
+    const focus = key.id === fromId || key.id === toId;
+    const x = px(key);
+    const y = py(key);
+    return `<g>
+      <rect x="${x + 1}" y="${y + 1}" width="${KEY - 2}" height="${KEY - 2}" rx="4"
+        fill="${focus ? 'color-mix(in oklab, var(--accent) 16%, var(--panel))' : 'var(--panel)'}"
+        stroke="${focus ? 'var(--accent)' : 'var(--line)'}" stroke-width="${focus ? 2 : 1}"/>
+      <text x="${x + KEY / 2}" y="${y + KEY / 2 + 5.5}" text-anchor="middle" font-size="11"
+        fill="${focus ? 'var(--fg)' : 'var(--line-strong)'}">${escapeText(key.id)}</text>
+    </g>`;
+  });
+
+  // dx と dy を直角の 2 辺で見せる。斜辺が d
+  const legs = `<g stroke="var(--line-strong)" stroke-dasharray="3 2" stroke-width="1" fill="none">
+    <line x1="${a.x}" y1="${a.y}" x2="${a.x}" y2="${b.y}"/>
+    <line x1="${a.x}" y1="${b.y}" x2="${b.x}" y2="${b.y}"/>
+  </g>`;
+  const legLabels = `<text x="${a.x - 5}" y="${(a.y + b.y) / 2}" text-anchor="end" font-size="9"
+      fill="var(--muted)">dy ${dy.toFixed(2)}</text>
+    <text x="${(a.x + b.x) / 2}" y="${b.y - 5}" text-anchor="middle" font-size="9"
+      fill="var(--muted)">dx ${dx.toFixed(2)}</text>`;
+  const line = arrow({
+    from: a,
+    to: b,
+    adopted: true,
+    tip: `${escapeText(fromId)} → ${escapeText(toId)}<br>dx ${dx.toFixed(2)} dy ${dy.toFixed(2)}<br>d = <b>${u(d)}</b>`,
+  });
+  const caption = `<text x="${PAD}" y="${height + 16}" font-size="11" fill="var(--fg)"
+    >${escapeText(`${fromId} → ${toId} は d = ${u(d)}`)}</text>`;
+  const H = height + 24;
+
+  return `<figure class="gap-intro">
+    <figcaption>距離は盤面上の直線距離。単位は u（キー 1 個分）</figcaption>
+    <svg viewBox="0 0 ${width} ${H}" role="img"
+      aria-label="${escapeAttr(`${fromId} から ${toId} への移動。dx ${dx.toFixed(2)} dy ${dy.toFixed(2)} で d = ${u(d)}`)}"
+      >${cells.join('')}${legs}${line}${legLabels}${caption}</svg>
+  </figure>`;
+}
+
 /** 3 面ぶんの図と、条件・ローマ字列の添え書きを返す */
 export function gapFigure(geometry: Geometry): string {
   const presses = figurePresses(geometry);
   const at = (n: number) => presses.find((p) => p.number === n)!;
   const romaji = presses.map((p) => p.keyId).join('');
   const home = geometry.homes[FOCUS_FINGER];
-  const homeKeyId = [...geometry.keys.values()]
-    .find((k) => k.x === home.x && k.y === home.y)!.id;
+  const homeId = homeKeyId(geometry);
 
   /** 候補距離。仕様 §9 の d_stay / d_home */
   const stay = (fromKey: string, toKey: string) =>
@@ -239,7 +306,7 @@ export function gapFigure(geometry: Geometry): string {
           tip: `残った場合 <b>${u(stay(sfb.keyId, inside.keyId))}</b><br>採らなかった候補`,
         },
         {
-          fromKey: homeKeyId,
+          fromKey: homeId,
           toKey: inside.keyId,
           adopted: true,
           tip: `ホームから <b>${u(toHome(inside.keyId))}</b><br>採った候補`,
@@ -257,7 +324,7 @@ export function gapFigure(geometry: Geometry): string {
       focus: [at(6), outside],
       between: [at(7), at(8), at(9), at(10)],
       arrows: [{
-        fromKey: homeKeyId,
+        fromKey: homeId,
         toKey: outside.keyId,
         adopted: true,
         tip: `ホームから <b>${u(toHome(outside.keyId))}</b><br>候補はこれだけ`,
@@ -275,11 +342,18 @@ export function gapFigure(geometry: Geometry): string {
     .map((p) => `<span class="gap-romaji-key"><b>${escapeText(p.keyId)}</b>${p.number}</span>`)
     .join('');
 
+  const ortho = buildGeometry('ortholinear');
+  const orthoD = dist(ortho.homes[FOCUS_FINGER], ortho.keys.get('u')!);
+  const stagger = Math.abs(geometry.keys.get('u')!.x - geometry.keys.get(homeId)!.x);
+
   return `<div class="gap-figure">
     <p class="note">条件: ${escapeText(FIGURE_LAYOUT_ID.toUpperCase())} ／ ${escapeText(FIGURE_SHAPE)} ／ N = ${FIGURE_WINDOW} ／ ${escapeText(FIGURE_ROMAJI)}</p>
     <p>例文「${escapeText(FIGURE_TEXT)}」は ${escapeText(romaji)} の ${presses.length} 打鍵になる。</p>
     <div class="gap-romaji" aria-label="打鍵の番号">${numbered}</div>
-    <p>追うのは右手人差し指。ホームは ${escapeText(homeKeyId)}。</p>
+    <p>まず冒頭の ${escapeText(homeId)} → u を見る。距離は盤面上の直線距離になる。</p>
+    ${introBoard(geometry)}
+    <p class="note">段ずれで横に ${stagger.toFixed(2)} u ずれるので、真上への 1.00 u より長い。ortholinear では横のずれが無く ${u(orthoD)} になる。</p>
+    <p>ここからは右手人差し指を追う。ホームは ${escapeText(homeId)}。</p>
     <p>g は前に同じ指を使ってから挟まった他の打鍵数。薄いキーの数がそのまま g になる。</p>
     <div class="gap-boards">${boards.join('')}</div>
     <p class="note">面は g の順に並べる。打鍵順とは一致しない。</p>

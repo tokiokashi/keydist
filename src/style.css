@@ -464,6 +464,9 @@ dialog hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0 14px; }
   color: var(--muted);
 }
 .gap-romaji-key b { color: var(--fg); font-weight: 600; }
+.gap-intro { margin: 0 0 12px; max-width: 340px; }
+.gap-intro figcaption { margin: 0 0 6px; color: var(--muted); font-size: 0.76rem; }
+.gap-intro svg { width: 100%; height: auto; }
 .gap-boards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
