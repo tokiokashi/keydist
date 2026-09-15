@@ -14,6 +14,15 @@ export interface Layer {
   faces: readonly Face[];
 }
 
+export interface FaceGroups {
+  /** 盤面の置き換えとして表示する層 */
+  layers: Layer[];
+  /** かなへ作用する修飾面。宣言された layer はここでも畳む */
+  modifiers: Layer[];
+  /** 2 キー以上の trigger を持つ面 */
+  combos: readonly Face[];
+}
+
 /** 面の出力を、表示対象のキー id と出力文字の対応へ変換する。 */
 export function faceCells(face: Face): Map<string, string> {
   const cells = new Map<string, string>();
@@ -75,11 +84,10 @@ export function canFoldFaces(first: Face, second: Face): boolean {
   return true;
 }
 
-/** 面の順序を保ちながら、宣言された単一キー面だけを層へ集約する。 */
-export function groupFacesIntoLayers(faces: readonly Face[]): Layer[] {
+function singleTriggerGroups(faces: readonly Face[]): Map<string, Face[]> {
   const groups = new Map<string, Face[]>();
   faces.forEach((face, index) => {
-    // 2キー以上の trigger は修飾・コンボであり、盤面の層には含めない。
+    // 2 キー以上の trigger は常にコンボであり、層の宣言だけ禁止する。
     if (face.trigger.length > 1) {
       if (face.layer !== undefined) throw new Error('コンボ面には層を宣言できない');
       return;
@@ -89,17 +97,37 @@ export function groupFacesIntoLayers(faces: readonly Face[]): Layer[] {
     if (group) group.push(face);
     else groups.set(groupKey, [face]);
   });
+  return groups;
+}
 
-  const layers: Layer[] = [];
-  for (const group of groups.values()) {
-    for (let i = 0; i < group.length; i++) {
-      for (let j = i + 1; j < group.length; j++) {
-        if (!canFoldFaces(group[i], group[j])) {
-          throw new Error(`層「${group[i].layer ?? ''}」の面が畳み条件を満たさない`);
-        }
+function validateGroup(group: readonly Face[]): void {
+  for (let i = 0; i < group.length; i++) {
+    for (let j = i + 1; j < group.length; j++) {
+      if (!canFoldFaces(group[i], group[j])) {
+        throw new Error(`層「${group[i].layer ?? ''}」の面が畳み条件を満たさない`);
       }
     }
-    layers.push({ faces: group });
   }
-  return layers;
+}
+
+/** 面を層・修飾・コンボへ分類し、宣言された面の畳み条件を検証する。 */
+export function classifyFaces(faces: readonly Face[]): FaceGroups {
+  const layers: Layer[] = [];
+  const modifiers: Layer[] = [];
+  for (const group of singleTriggerGroups(faces).values()) {
+    validateGroup(group);
+    const roles = new Set(group.map((face) => face.role === 'modifier' ? 'modifier' : 'layer'));
+    if (roles.size > 1) throw new Error(`層「${group[0].layer ?? ''}」に異なる役割の面を混在させられない`);
+    (roles.has('modifier') ? modifiers : layers).push({ faces: group });
+  }
+  return {
+    layers,
+    modifiers,
+    combos: faces.filter((face) => face.trigger.length > 1),
+  };
+}
+
+/** 面の順序を保ちながら、盤面を置き換える単一キー面だけを層へ集約する。 */
+export function groupFacesIntoLayers(faces: readonly Face[]): Layer[] {
+  return classifyFaces(faces).layers;
 }

@@ -4,6 +4,7 @@ import {
   ALL_FINGERS,
   FINGERS,
   resolveKeyId,
+  THUMB_KEY,
   THUMB_ROW,
   type Finger,
   type GeometryKind,
@@ -57,7 +58,7 @@ import {
   importVial,
 } from './layout-import.ts';
 import { loadSelection, resolveSelection, saveSelection, type ModeId } from './layout-selection.ts';
-import { faceCells, groupFacesIntoLayers, handOfKey, type Layer } from './layers.ts';
+import { classifyFaces, faceCells, handOfKey, type Layer } from './layers.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -1170,7 +1171,9 @@ function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeomet
 
 function triggerKeyText(key: string, legends: Map<string, string>): string {
   const resolved = resolveKeyId(key);
-  return legends.get(resolved) ?? resolved;
+  return resolved === THUMB_KEY.LT || resolved === THUMB_KEY.RT
+    ? legends.get(resolved) ?? resolved
+    : resolved;
 }
 
 function triggerText(face: Layer['faces'][number], legends: Map<string, string>): string {
@@ -1319,16 +1322,32 @@ function renderComboTable(combos: readonly Face[], legends: Map<string, string>)
   </section>`;
 }
 
+function renderModifierList(modifiers: readonly Layer[], legends: Map<string, string>): string {
+  if (modifiers.length === 0) return '';
+  const rows = modifiers.map((layer) => {
+    const names = [...new Set(layer.faces.map((face) => face.layer).filter((name): name is string => name !== undefined))];
+    const triggers = layer.faces.map((face) => triggerText(face, legends)).join(' / ');
+    const title = names.length === 1 ? `${names[0]}: ${triggers}` : triggers;
+    const outputs = layer.faces.flatMap((face) => [...faceCells(face).values()]).join(' / ');
+    return `<tr><td>${escapeText(title)}</td><td>${escapeText(outputs)}</td></tr>`;
+  }).join('');
+  return `<section class="modifier-list">
+    <h3>修飾（${modifiers.length} 面）</h3>
+    <div class="scroll-x"><table>
+      <thead><tr><th>トリガー</th><th>出力</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </section>`;
+}
+
 function renderHeatmap(
   metrics: Metrics,
   layout: Layout,
   geometry: ReturnType<typeof buildGeometry>,
 ) {
   const faces = layout.faces ?? [];
-  const combos = faces.filter((face) => face.trigger.length > 1);
-  const layers: Layer[] = faces.length > 0
-    ? groupFacesIntoLayers(faces)
-    : [{ faces: [] }];
+  const groups = classifyFaces(faces);
+  const layers: Layer[] = groups.layers.length > 0 ? groups.layers : [{ faces: [] }];
   if (activeLayerTab >= layers.length) activeLayerTab = 0;
   const titles = layers.map((layer, index) => layerTitle(layer, index, layout.legends));
   const selectedLayerView = layerView ?? (layers.length <= 5 ? 'side-by-side' : 'tabs');
@@ -1349,7 +1368,12 @@ function renderHeatmap(
         diagram.replace('<figure class="layer-diagram">', `<figure class="layer-diagram"${activeLayerTab === index ? '' : ' hidden'}>`),
       ).join('')}</div>`
     : `<div class="layer-diagrams">${diagrams.join('')}</div>`;
-  el.heatmap.innerHTML = controls + content + renderComboTable(combos, layout.legends);
+  const layerSection = `<section class="layer-section">
+    <h3>配列層（${layers.length} 面）</h3>
+    ${controls}${content}
+  </section>`;
+  el.heatmap.innerHTML = layerSection + renderModifierList(groups.modifiers, layout.legends) +
+    renderComboTable(groups.combos, layout.legends);
 }
 
 function setSensitivityScale(scale: SensitivityScale) {

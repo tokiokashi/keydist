@@ -7,7 +7,7 @@ import { computeMetrics } from '../src/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 import { toLayout } from '../src/user-layouts.ts';
 import { assertKanaLayout } from './kana-layout-helpers.ts';
-import { canFoldFaces, groupFacesIntoLayers, handOfKey } from '../src/layers.ts';
+import { canFoldFaces, classifyFaces, groupFacesIntoLayers, handOfKey } from '../src/layers.ts';
 
 const faceAtF = (output: string) => ['', '', ['', '', '', output], ''];
 
@@ -55,7 +55,17 @@ test('宣言された面だけを逆手の条件で層へ集約する', () => {
   const nicola = LAYOUT_BY_ID.get('nicola')!;
   const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
 
-  assert.equal(shingeta.faces?.length, 7);
+  const counts = [shingeta, tsuki, nicola, naginata].map((layout) => {
+    const groups = classifyFaces(layout.faces!);
+    return [layout.faces!.length, groups.layers.length, groups.modifiers.length, groups.combos.length];
+  });
+  assert.deepEqual(counts, [
+    [7, 5, 0, 0],
+    [3, 2, 0, 0],
+    [3, 3, 0, 0],
+    [33, 2, 6, 23],
+  ]);
+
   assert.deepEqual(
     groupFacesIntoLayers(shingeta.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
     [[[]], [['k'], ['d']], [['l'], ['s']], [['i']], [['o']]],
@@ -70,13 +80,18 @@ test('宣言された面だけを逆手の条件で層へ集約する', () => {
   );
   assert.deepEqual(
     groupFacesIntoLayers(naginata.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
-    [[[]], [['space']], [['q']], [['j'], ['f']], [['m'], ['v']], [['h']], [['p']], [['i']]],
+    [[[]], [['space']]],
   );
-  assert.equal(naginata.faces!.filter((face) => face.trigger.length > 1).length, 23);
+  assert.deepEqual(
+    classifyFaces(naginata.faces!).modifiers.map((layer) => layer.faces.map((face) => face.trigger)),
+    [[['q']], [['j'], ['f']], [['m'], ['v']], [['h']], [['p']], [['i']]],
+  );
 
   assert.equal(handOfKey('space'), 'right');
   assert.equal(canFoldFaces(shingeta.faces![1], shingeta.faces![2]), true);
   assert.equal(canFoldFaces(shingeta.faces![1], shingeta.faces![5]), false);
+  assert.equal(canFoldFaces(naginata.faces![3], naginata.faces![4]), true);
+  assert.equal(canFoldFaces(naginata.faces![5], naginata.faces![6]), true);
   assert.equal(canFoldFaces(nicola.faces![1], nicola.faces![2]), false);
   assert.equal(canFoldFaces(
     { trigger: ['k'], mode: 'simultaneous', rows: faceAtF('x') },

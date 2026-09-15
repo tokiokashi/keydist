@@ -291,8 +291,8 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .layer-diagram { flex: 0 1 auto; min-width: 0; margin: 0; }
 .layer-diagram figcaption { margin: 0 0 6px; color: var(--muted); font-size: 0.76rem; }
 .layer-tab-panel .layer-diagram[hidden] { display: none; }
-.combo-table { margin-top: 20px; }
-.combo-table h3 { margin-bottom: 8px; }
+.layer-section, .modifier-list, .combo-table { margin-top: 20px; }
+.layer-section h3, .modifier-list h3, .combo-table h3 { margin-bottom: 8px; }
 
 .tooltip {
   position: fixed;

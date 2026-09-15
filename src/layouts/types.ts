@@ -23,6 +23,8 @@ export interface Face {
   rows: readonly FaceRow[];
   /** 同じ値を持つ単一キー面は 1 層へ畳む。省略時はその面が単独で 1 層 */
   layer?: string;
+  /** 面の種別。省略時は layer。trigger が 2 キー以上の面は常に combo */
+  role?: 'layer' | 'modifier';
 }
 
 /** コンボを発火できる入力の条件。条件を省略したコンボは常に最長一致する。 */

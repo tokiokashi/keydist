@@ -19,11 +19,15 @@ const QWERTY_ROWS = [
 ] as const;
 
 /** QWERTY のキー id で面のセルを指定するための補助関数。 */
-const face = (trigger: string[], entries: Record<string, string>, layer?: string): Face => ({
+const face = (
+  trigger: string[],
+  entries: Record<string, string>,
+  options: Pick<Face, 'layer' | 'role'> = {},
+): Face => ({
   trigger,
   mode: 'simultaneous',
   rows: QWERTY_ROWS.map((row) => [...row].map((key) => entries[key] ?? '')),
-  layer,
+  ...options,
 });
 
 /** 既存の直接定義を、発火条件を持つ同時押し面へ移したもの。 */
@@ -44,25 +48,25 @@ export const NAGINATA_V18_FACES: Face[] = [
   }),
 
   // 小書き
-  face(['q'], { j: 'ぁ', k: 'ぃ', l: 'ぅ', o: 'ぇ', n: 'ぉ', h: 'ゃ', p: 'ゅ', i: 'ょ', '.': 'ゎ' }),
+  face(['q'], { j: 'ぁ', k: 'ぃ', l: 'ぅ', o: 'ぇ', n: 'ぉ', h: 'ゃ', p: 'ゅ', i: 'ょ', '.': 'ゎ' }, { role: 'modifier' }),
 
   // 濁音（右手側のトリガー）
   face(['j'], {
     f: 'が', w: 'ぎ', s: 'げ', v: 'ご', r: 'じ', a: 'ぜ', b: 'ぞ', g: 'ぢ', e: 'で',
     d: 'ど', c: 'ば', x: 'び', z: 'ぼ',
-  }, '濁音'),
+  }, { layer: '濁音', role: 'modifier' }),
 
   // 濁音（左手側のトリガー）
-  face(['f'], { u: 'ざ', o: 'ず', n: 'だ', l: 'づ', h: 'ぐ', p: 'べ', ';': 'ぶ' }, '濁音'),
+  face(['f'], { u: 'ざ', o: 'ず', n: 'だ', l: 'づ', h: 'ぐ', p: 'べ', ';': 'ぶ' }, { layer: '濁音', role: 'modifier' }),
 
   // 半濁音
-  face(['m'], { c: 'ぱ', x: 'ぴ', z: 'ぽ' }, '半濁音'),
-  face(['v'], { p: 'ぺ', ';': 'ぷ' }, '半濁音'),
+  face(['m'], { c: 'ぱ', x: 'ぴ', z: 'ぽ' }, { layer: '半濁音', role: 'modifier' }),
+  face(['v'], { p: 'ぺ', ';': 'ぷ' }, { layer: '半濁音', role: 'modifier' }),
 
   // 拗音の母音面
-  face(['h'], { w: 'きゃ', r: 'しゃ', g: 'ちゃ', d: 'にゃ', x: 'ひゃ', s: 'みゃ', e: 'りゃ' }),
-  face(['p'], { w: 'きゅ', r: 'しゅ', g: 'ちゅ', d: 'にゅ', x: 'ひゅ', s: 'みゅ', e: 'りゅ' }),
-  face(['i'], { w: 'きょ', r: 'しょ', g: 'ちょ', d: 'にょ', x: 'ひょ', s: 'みょ', e: 'りょ' }),
+  face(['h'], { w: 'きゃ', r: 'しゃ', g: 'ちゃ', d: 'にゃ', x: 'ひゃ', s: 'みゃ', e: 'りゃ' }, { role: 'modifier' }),
+  face(['p'], { w: 'きゅ', r: 'しゅ', g: 'ちゅ', d: 'にゅ', x: 'ひゅ', s: 'みゅ', e: 'りゅ' }, { role: 'modifier' }),
+  face(['i'], { w: 'きょ', r: 'しょ', g: 'ちょ', d: 'にょ', x: 'ひょ', s: 'みょ', e: 'りょ' }, { role: 'modifier' }),
 
   // 外来音・濁音拗音。trigger は残りのキーをまとめて 1 面にする。
   face(['o', 'v'], { k: 'いぇ', l: 'うぇ', h: 'くぇ', ';': 'ふぇ' }),
