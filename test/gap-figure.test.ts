@@ -92,7 +92,7 @@ test('本文の数式にスペースを入れない', () => {
     assert.ok(!prose.includes(bad), `本文にスペース入りの表記が残っている: ${bad}`);
   }
   // 独立した式の行だけ等号の両側を空ける
-  assert.ok(svg.includes(' ＝ '), '盤面のラベルは等号の両側を空ける');
+  assert.ok(svg.includes('d(j, u) = '), '盤面のラベルは等号の両側を空ける');
   assert.ok(svg.includes('d(j, u)') && svg.includes('d(u, h)'), '盤面のラベルは d(ab) の形');
   assert.ok(svg.includes('N = 3'), '前提条件の行');
 });

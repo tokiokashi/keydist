@@ -258,9 +258,9 @@ export function gapFigure(geometry: Geometry): string {
     focus: [1, 3],
     arrows: [{
       fromKey: homeId, toKey: 'u', adopted: true,
-      label: `d(${homeId}, u) ＝ ${u(at(3).distance)}`,
+      label: `d(${homeId}, u) = ${u(at(3).distance)}`,
     }],
-    notes: [`Δx ＝ ${u(dx)} / Δy ＝ ${u(dy)}`],
+    notes: [`Δx = ${u(dx)} / Δy = ${u(dy)}`],
   });
 
   const boardUToH = board(geometry, {
@@ -268,8 +268,8 @@ export function gapFigure(geometry: Geometry): string {
     seq: [at(3), at(4)],
     focus: [3, 4],
     arrows: [
-      { fromKey: 'u', toKey: 'h', adopted: true, label: `d(u, h) ＝ ${u(at(4).distance)}（加算）` },
-      { fromKey: homeId, toKey: 'h', adopted: false, label: `d(${homeId}, h) ＝ ${u(toHome('h'))}（戻る時間が無く、候補にならない）` },
+      { fromKey: 'u', toKey: 'h', adopted: true, label: `d(u, h) = ${u(at(4).distance)}（加算）` },
+      { fromKey: homeId, toKey: 'h', adopted: false, label: `d(${homeId}, h) = ${u(toHome('h'))}（戻る時間が無く、候補にならない）` },
     ],
   });
 
@@ -278,8 +278,8 @@ export function gapFigure(geometry: Geometry): string {
     seq: [at(11), at(12)],
     focus: [11, 12],
     arrows: [
-      { fromKey: 'u', toKey: 'm', adopted: true, label: `d(u, m) ＝ ${u(at(12).distance)}（加算）` },
-      { fromKey: homeId, toKey: 'm', adopted: false, label: `d(${homeId}, m) ＝ ${u(toHome('m'))}（戻る時間が無く、候補にならない）` },
+      { fromKey: 'u', toKey: 'm', adopted: true, label: `d(u, m) = ${u(at(12).distance)}（加算）` },
+      { fromKey: homeId, toKey: 'm', adopted: false, label: `d(${homeId}, m) = ${u(toHome('m'))}（戻る時間が無く、候補にならない）` },
     ],
   });
 
@@ -288,8 +288,8 @@ export function gapFigure(geometry: Geometry): string {
     seq: [at(12), at(13), at(14), at(15)],
     focus: [12, 15],
     arrows: [
-      { fromKey: homeId, toKey: 'u', adopted: true, label: `d(${homeId}, u) ＝ ${u(toHome('u'))}（採用）` },
-      { fromKey: 'm', toKey: 'u', adopted: false, label: `d(m, u) ＝ ${u(between('m', 'u'))}` },
+      { fromKey: homeId, toKey: 'u', adopted: true, label: `d(${homeId}, u) = ${u(toHome('u'))}（採用）` },
+      { fromKey: 'm', toKey: 'u', adopted: false, label: `d(m, u) = ${u(between('m', 'u'))}` },
     ],
   });
 
@@ -298,7 +298,7 @@ export function gapFigure(geometry: Geometry): string {
     seq: [at(6), at(7), at(8), at(9), at(10), at(11)],
     focus: [6, 11],
     arrows: [
-      { fromKey: homeId, toKey: 'u', adopted: true, label: `d(${homeId}, u) ＝ ${u(at(11).distance)}` },
+      { fromKey: homeId, toKey: 'u', adopted: true, label: `d(${homeId}, u) = ${u(at(11).distance)}` },
     ],
     notes: [`残っていれば${u(between('u', 'u'))}だが、g=${at(11).gap}>Nなので候補にならない`],
   });
@@ -309,7 +309,7 @@ export function gapFigure(geometry: Geometry): string {
     focus: [sfbFrom.number, sfbTo.number],
     arrows: [{
       fromKey: sfbFrom.keyId, toKey: sfbTo.keyId, adopted: true,
-      label: `d(${sfbFrom.keyId}, ${sfbTo.keyId}) ＝ ${u(sfbTo.distance)}（既定では加算）`,
+      label: `d(${sfbFrom.keyId}, ${sfbTo.keyId}) = ${u(sfbTo.distance)}（既定では加算）`,
     }],
   });
 
