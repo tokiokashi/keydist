@@ -112,28 +112,6 @@
           <textarea id="text" rows="12" spellcheck="false"></textarea>
         </details>
 
-        <section class="panel result-guide" aria-labelledby="result-guide-title">
-          <h2 id="result-guide-title">この数値の読み方</h2>
-          <p>数値の大小は良し悪しではない。なぜそうなるかを考える出発点になる。</p>
-          <p>隣接指のばらつきが大きい配列は、単打で打鍵効率が良いとも、アルペジオで指が動いているとも読める。</p>
-          <p>誰が見ても変わらない数字だけを出す。</p>
-          <details class="result-limits">
-            <summary>落とした次元を見る</summary>
-            <ul>
-              <li>2 次元の動きを 1 次元の距離に圧縮する。</li>
-              <li>他の指や手全体が引かれる動きは扱わない。</li>
-              <li>ホームに構える前提。</li>
-              <li>「指の疲れ」は出さない。</li>
-              <li>実際のタイピングは再現しない。</li>
-              <li>キーと指の対応は固定。運指の個人差は入らない。</li>
-              <li>ホームへ戻る移動は数えない。</li>
-              <li>総移動距離は下界。</li>
-              <li>同時押し・コンボは距離に出ない。アクション/文字で読む。</li>
-              <li>配列を比べる時は形状を揃える。形状が変われば距離の絶対値が変わる。</li>
-            </ul>
-          </details>
-        </section>
-
         <section class="panel">
           <h2>配列の詳細</h2>
           <label class="ctl">
@@ -225,6 +203,21 @@
           <button type="button" class="ghost close" id="how-close">閉じる</button>
         </div>
         <div id="gap-figure"></div>
+        <details class="calculation-limits">
+          <summary>落とした次元を見る</summary>
+          <ul>
+            <li>2 次元の動きを 1 次元の距離に圧縮する。</li>
+            <li>他の指や手全体が引かれる動きは扱わない。</li>
+            <li>ホームに構える前提。</li>
+            <li>「指の疲れ」は出さない。</li>
+            <li>実際のタイピングは再現しない。</li>
+            <li>キーと指の対応は固定。運指の個人差は入らない。</li>
+            <li>ホームへ戻る移動は数えない。</li>
+            <li>総移動距離は下界。</li>
+            <li>同時押し・コンボは距離に出ない。アクション/文字で読む。</li>
+            <li>配列を比べる時は形状を揃える。形状が変われば距離の絶対値が変わる。</li>
+          </ul>
+        </details>
         <hr />
         <p class="note">
           以上が距離計算のルールです。細かい定義を参照したい方は下記リンクよりリポジトリ内のドキュメントを参照ください。
