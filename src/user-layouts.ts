@@ -67,8 +67,10 @@ const isValid = (l: unknown): l is UserLayout => {
     Array.isArray(value.rows) &&
     value.rows.length === 4 &&
     value.rows.every((row) => typeof row === 'string') &&
-    (value.sequences === undefined || value.sequences.every(isSequenceEntry)) &&
-    (value.legends === undefined || value.legends.every(isLegendEntry)) &&
+    (value.sequences === undefined ||
+      (Array.isArray(value.sequences) && value.sequences.every(isSequenceEntry))) &&
+    (value.legends === undefined ||
+      (Array.isArray(value.legends) && value.legends.every(isLegendEntry))) &&
     (value.direct === undefined || typeof value.direct === 'boolean');
 };
 

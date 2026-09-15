@@ -115,12 +115,16 @@ function recordCell(
 const DvorakJ_FUNCTIONS = new Set([
   'BS', 'BSPC', 'BACKSPACE', 'ENTER', 'ESC', 'ESCAPE', 'TAB', 'SPACE',
   'DEL', 'DELETE', 'HOME', 'END', 'PGUP', 'PGDN', 'PAGEUP', 'PAGEDOWN',
-  'INSERT', 'UP', 'DOWN', 'LEFT', 'RIGHT', '無',
+  'INSERT', 'UP', 'DOWN', 'LEFT', 'RIGHT', '↑', '↓', '←', '→', '無',
 ]);
 
 function isDvorakJFunction(token: string): boolean {
   const value = normalise(token).trim();
   return DvorakJ_FUNCTIONS.has(value.toUpperCase()) || /^[Ff]\d{1,2}$/.test(value);
+}
+
+function hasDvorakJFunctionLabel(label: string): boolean {
+  return [...label.matchAll(/\{([^}]*)\}/g)].some((match) => isDvorakJFunction(match[1] ?? ''));
 }
 
 /** DvorakJ の機能キー表記から、機能キーを除いた出力を取り出す。 */
@@ -193,6 +197,7 @@ function dvorakJHeader(
 
   const parenthesised = header.match(/^\((.*)\[\s*$/);
   if (parenthesised) {
+    if (parenthesised[1].replace(/\{[^}]+\}/g, '').trim()) return undefined;
     const tokens = [...parenthesised[1].matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
     const triggers = tokens.map((token) => resolveDvorakJTrigger(token, aliases));
     return tokens.length > 0 && triggers.every((trigger): trigger is string => trigger !== undefined)
@@ -228,7 +233,8 @@ export function importDvorakJ(source: string, name = 'DvorakJ 取り込み'): Im
     if (/^-(?:[^-]+-?)+$/.test(header) && lines[i + 1]?.trim() === '[') {
       bodyStart = i + 1;
     }
-    if (!triggers || lines[bodyStart]?.trim() !== '[') continue;
+    const openingBracketIsOnHeader = header.endsWith('[');
+    if (!triggers || (!openingBracketIsOnHeader && lines[bodyStart]?.trim() !== '[')) continue;
 
     const body: string[] = [];
     let end = bodyStart;
@@ -242,6 +248,9 @@ export function importDvorakJ(source: string, name = 'DvorakJ 取り込み'): Im
       if (!cell) return;
       const sequence: Sequence = [triggers!.concat(QWERTY_LEGEND[row][column])];
       recordCell(rows, legends, sequences, kinds, row, column, cell.output, cell.label, sequence, base);
+      if (!base && hasDvorakJFunctionLabel(cell.label)) {
+        legends.set(QWERTY_LEGEND[row][column], cell.label);
+      }
     }));
   }
   return finish(name, rows, legends, sequences, kinds);
@@ -264,7 +273,7 @@ function qmkChar(value: unknown): string | undefined {
   if (QMK_NOOP.has(code)) return undefined;
   if (/^KC_[A-Z]$/.test(code)) return code.at(-1)!.toLowerCase();
   if (/^KC_[0-9]$/.test(code)) return code.at(-1)!;
-  if (QMK_PRINTABLE[code]) return QMK_PRINTABLE[code];
+  if (Object.prototype.hasOwnProperty.call(QMK_PRINTABLE, code)) return QMK_PRINTABLE[code];
 
   // Home-row mod や layer-tap は、タップ側が単純な文字ならその文字を表示・逆引きする。
   const inner = code.match(/\((?:[^,()]+,\s*)?(KC_[A-Z0-9_]+)\)$/)?.[1];
@@ -274,7 +283,9 @@ function qmkChar(value: unknown): string | undefined {
 function qmkLabel(value: unknown): string | undefined {
   if (typeof value === 'number' || value === null || value === undefined) return undefined;
   if (typeof value !== 'string' || QMK_NOOP.has(value.toUpperCase())) return undefined;
-  return qmkChar(value) ?? value;
+  const code = value.toUpperCase();
+  const simple = /^KC_[A-Z0-9]$/.test(code) || Object.prototype.hasOwnProperty.call(QMK_PRINTABLE, code);
+  return simple ? qmkChar(value) ?? value : value;
 }
 
 function macroText(value: unknown): string | undefined {
@@ -368,7 +379,8 @@ export function importVial(source: string, name = 'Vial 取り込み'): Imported
       const index = macroIndex(outputCode);
       const output = index === undefined ? qmkChar(outputCode) : macroText(macros[index]);
       if (!output || output === ' ') continue;
-      if (!sequences.has(output)) sequences.set(output, [inputs]);
+      // コンボの出力が通常キーと同じでも、コンボの打鍵列を優先する。
+      sequences.set(output, [inputs]);
     }
   }
   return finish(name, rows, legends, sequences, kinds);
@@ -391,6 +403,13 @@ function benizaraCell(raw: string): { output?: string; label: string } | undefin
   return { output: output.trim(), label };
 }
 
+function hasBenizaraFunctionLabel(label: string): boolean {
+  const value = normalise(label).trim().replace(/^\+/, '');
+  return BENIZARA_FUNCTIONS.has(value.toUpperCase()) ||
+    [...value.matchAll(/\{([^}]*)\}/g)].some((match) =>
+      BENIZARA_FUNCTIONS.has(normalise(match[1] ?? '').trim().toUpperCase()));
+}
+
 function benizaraTrigger(section: string): string[] | undefined {
   if (section.includes('シフト無し')) return [];
   if (section.includes('右親指') || section.includes('スペース')) return ['space'];
@@ -406,7 +425,7 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
   for (const raw of source.replace(/^\uFEFF/, '').split(/\r?\n/)) {
     const line = raw.trim();
     if (!line || line.startsWith(';') || line.startsWith('#')) continue;
-    const header = line.match(/^\[([^]]+)\]$/);
+    const header = line.match(/^\[([^\]]+)\]$/);
     if (header) {
       current = normalise(header[1]);
       sections.set(current, []);
@@ -439,6 +458,7 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
       const physical = QWERTY_LEGEND[row][column];
       const sequence: Sequence = [trigger.concat(physical)];
       recordCell(rows, legends, sequences, kinds, row, column, cell.output, cell.label, sequence, isBase);
+      if (!isBase && hasBenizaraFunctionLabel(cell.label)) legends.set(physical, cell.label);
     }));
   }
   return finish(name, rows, legends, sequences, kinds);
