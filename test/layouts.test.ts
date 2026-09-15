@@ -14,6 +14,7 @@ import {
   foldedLayerCells,
   groupFacesIntoLayers,
   handOfKey,
+  layerShiftStyles,
 } from '../src/layers.ts';
 
 const faceAtF = (output: string) => ['', '', ['', '', '', output], ''];
@@ -153,6 +154,16 @@ test('薙刀式のセンターシフト表示だけ左右の Space を強調す�
   assert.deepEqual(centerShift.trigger, ['space']);
   assert.deepEqual(displayTriggerKeys(layout, centerShift), ['thumb-l', 'thumb-r']);
   assert.deepEqual(layout.map.get('の'), [['space', 'j']]);
+});
+
+test('シフトの表示色は手ではなく所属レイヤーで揃える', () => {
+  const layout = LAYOUT_BY_ID.get('shingeta')!;
+  const layers = groupFacesIntoLayers(layout.faces!);
+  const styles = layerShiftStyles(layers);
+
+  assert.equal(styles.get(layers[1].faces[0])?.layerIndex, 2);
+  assert.equal(styles.get(layers[1].faces[0])?.colorSlot, styles.get(layers[1].faces[1])?.colorSlot);
+  assert.notEqual(styles.get(layers[1].faces[0])?.colorSlot, styles.get(layers[2].faces[0])?.colorSlot);
 });
 
 test('NICOLA は3面の直接かな入力を同時押しとして保持する', () => {

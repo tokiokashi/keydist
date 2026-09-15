@@ -65,7 +65,9 @@ import {
   faceCells,
   foldedLayerCells,
   handOfKey,
+  layerShiftStyles,
   type Layer,
+  type LayerShiftStyle,
 } from './layers.ts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -1228,8 +1230,9 @@ function triggerHandText(face: Layer['faces'][number]): string {
   return hands.has('left') ? '左手' : '右手';
 }
 
-function displayTriggerHandText(layout: Layout, face: Layer['faces'][number]): string {
-  return isNaginataCenterShift(layout, face) ? '左右' : triggerHandText(face);
+function displayTriggerAnnotation(layout: Layout, face: Layer['faces'][number]): string {
+  if (isNaginataCenterShift(layout, face)) return 'センターシフト';
+  return `${triggerHandText(face)} ${displayTriggerText(layout, face)}を押す`;
 }
 
 function displayLayerLegend(layout: Layout, key: string, label: string): string {
@@ -1246,7 +1249,9 @@ function layerTitle(layer: Layer, index: number, layout: Layout): string {
     .map((face) => displayTriggerText(layout, face));
   if (triggers.length === 0) return `レイヤー ${index + 1}: 単打`;
   const names = [...new Set(layer.faces.map((face) => face.layer).filter((name): name is string => name !== undefined))];
-  const name = names.length === 1 ? names[0] : 'シフト';
+  const name = names.length === 1
+    ? names[0]
+    : layer.faces.some((face) => isNaginataCenterShift(layout, face)) ? 'センターシフト' : 'シフト';
   const modes = [...new Set(layer.faces.map((face) => face.mode))]
     .map((mode) => mode === 'simultaneous' ? '同時' : mode === 'prefix' ? '前置' : '後置')
     .join(' / ');
@@ -1268,9 +1273,8 @@ function layerCells(layer: Layer, layout: Layout): Map<string, LayerCell> {
   const cells = new Map<string, LayerCell>();
   const labels = foldedLayerCells(layer, layout.faces ?? []);
   for (const face of layer.faces) {
-    const trigger = face.trigger.length > 0 ? displayTriggerText(layout, face) : '';
     const annotation = face.trigger.length > 0
-      ? `${displayTriggerHandText(layout, face)} ${trigger}を押す`
+      ? displayTriggerAnnotation(layout, face)
       : undefined;
     for (const [key, label] of faceCells(face)) {
       const previous = cells.get(key);
@@ -1292,15 +1296,17 @@ function renderLayerSvg(
   layer: Layer,
   title: string,
   allLayerFaces: readonly Face[],
+  faceShiftStyles: ReadonlyMap<Face, LayerShiftStyle>,
 ): string {
   const labels = layerCells(layer, layout);
   const showHeat = layer.faces.length === 0 || layer.faces.some((face) => face.trigger.length === 0);
   const triggerFaces = layer.faces.length === 0 ? allLayerFaces : layer.faces;
-  const shiftSides = new Map<string, 'left' | 'right'>();
+  const shiftStyles = new Map<string, LayerShiftStyle>();
   for (const face of triggerFaces) {
+    const style = faceShiftStyles.get(face);
+    if (!style) continue;
     for (const trigger of displayTriggerKeys(layout, face)) {
-      const side = handOfKey(trigger);
-      if (side) shiftSides.set(resolveKeyId(trigger), side);
+      if (handOfKey(trigger)) shiftStyles.set(resolveKeyId(trigger), style);
     }
   }
   const max = Math.max(1, ...metrics.keyCounts.values());
@@ -1324,13 +1330,13 @@ function renderLayerSvg(
     const cell = labels.get(key.id);
     const label = cell?.label ?? '';
     const annotation = cell?.annotation;
-    const shiftSide = shiftSides.get(key.id);
+    const shiftStyle = shiftStyles.get(key.id);
     const share = ((count / Math.max(1, metrics.presses)) * 100).toFixed(1);
     const distance = metrics.keyDistance.get(key.id) ?? 0;
-    const shiftTip = shiftSide
+    const shiftTip = shiftStyle
       ? `<br><b>${layout.id === 'naginata-v18' && (key.id === THUMB_KEY.LT || key.id === THUMB_KEY.RT)
-        ? '左右どちらでもシフト'
-        : `${shiftSide === 'left' ? '左手' : '右手'}シフトのトリガー`}</b>`
+        ? `センターシフト（レイヤー ${shiftStyle.layerIndex}）`
+        : `レイヤー ${shiftStyle.layerIndex} のシフトトリガー`}</b>`
       : '';
     const tip = showHeat
       ? `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>` +
@@ -1347,8 +1353,8 @@ function renderLayerSvg(
       : 'var(--panel)';
     return `<g data-tip="${escapeAttr(tip)}">
       <rect x="${x + 1}" y="${y + 1}" width="${w - 2}" height="${KEY - 2}" rx="5"
-        fill="${fill}" stroke="${shiftSide ? `var(--shift-${shiftSide})` : 'var(--line)'}"
-        stroke-width="${shiftSide ? 3 : 1}"/>
+        fill="${fill}" stroke="${shiftStyle ? `var(--series-${shiftStyle.colorSlot})` : 'var(--line)'}"
+        stroke-width="${shiftStyle ? 3 : 1}"/>
       ${text}
     </g>`;
   });
@@ -1409,18 +1415,24 @@ function renderHeatmap(
   if (activeLayerTab >= layers.length) activeLayerTab = 0;
   const titles = layers.map((layer, index) => layerTitle(layer, index, layout));
   const allLayerFaces = groups.layers.flatMap((layer) => layer.faces);
-  const hasNaginataCenterShift = allLayerFaces.some((face) => isNaginataCenterShift(layout, face));
-  const shiftHands = new Set(allLayerFaces.flatMap((face) => displayTriggerKeys(layout, face)
-    .map(handOfKey)
-    .filter((hand): hand is NonNullable<ReturnType<typeof handOfKey>> => hand !== undefined)));
-  const shiftLegend = hasNaginataCenterShift
+  const faceShiftStyles = layerShiftStyles(layers);
+  const shiftLayers = layers
+    .map((layer, index) => ({
+      layer,
+      index,
+      style: layer.faces
+        .map((face) => faceShiftStyles.get(face))
+        .find((style): style is LayerShiftStyle => style !== undefined),
+    }))
+    .filter((entry): entry is { layer: Layer; index: number; style: LayerShiftStyle } => entry.style !== undefined);
+  const shiftLegend = shiftLayers.length > 0
     ? `<div class="shift-key-legend" aria-label="シフトキーの枠色">
-        <span class="shift-key-swatch shift-both">左右どちらの Space でもシフト</span>
-      </div>`
-    : shiftHands.size > 0
-    ? `<div class="shift-key-legend" aria-label="シフトキーの枠色">
-        ${shiftHands.has('left') ? '<span class="shift-key-swatch shift-left">左手シフトのトリガー</span>' : ''}
-        ${shiftHands.has('right') ? '<span class="shift-key-swatch shift-right">右手シフトのトリガー</span>' : ''}
+        ${shiftLayers.map(({ layer, index, style }) => {
+          const label = layer.faces.some((face) => isNaginataCenterShift(layout, face))
+            ? 'センターシフト'
+            : 'シフト';
+          return `<span class="shift-key-swatch" style="--shift-color:var(--series-${style.colorSlot})">レイヤー ${index + 1} の${label}</span>`;
+        }).join('')}
       </div>`
     : '';
   const selectedLayerView = layerView ?? (layers.length <= 5 ? 'side-by-side' : 'tabs');
@@ -1432,7 +1444,7 @@ function renderHeatmap(
       </div>`
     : '';
   const diagrams = layers.map((layer, index) =>
-    renderLayerSvg(metrics, layout, geometry, layer, titles[index], allLayerFaces),
+    renderLayerSvg(metrics, layout, geometry, layer, titles[index], allLayerFaces, faceShiftStyles),
   );
   const content = selectedLayerView === 'tabs' && layers.length > 1
     ? `<div class="layer-tabs" role="tablist" aria-label="レイヤー">

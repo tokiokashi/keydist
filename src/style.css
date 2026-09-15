@@ -8,9 +8,6 @@
   --line: #e2dfd8;
   --line-strong: #cfcbc2;
   --accent: #2a78d6;
-  --shift-left: #b34b00;
-  --shift-right: #6b2fa8;
-
   /* sequential（打鍵頻度）: 単一色相・明度単調 */
   --heat-0: #eef2f6;
   --heat-1: #1c5cab;
@@ -39,9 +36,6 @@
     --line: #32312c;
     --line-strong: #45443d;
     --accent: #3987e5;
-    --shift-left: #ff9d5c;
-    --shift-right: #b98cff;
-
     --heat-0: #1f2225;
     --heat-1: #3987e5;
     --on-heat: #0b1220;
@@ -68,9 +62,6 @@
   --line: #32312c;
   --line-strong: #45443d;
   --accent: #3987e5;
-  --shift-left: #ff9d5c;
-  --shift-right: #b98cff;
-
   --heat-0: #1f2225;
   --heat-1: #3987e5;
   --on-heat: #0b1220;
@@ -322,10 +313,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   text-overflow: ellipsis;
 }
 .shift-key-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 10px; color: var(--muted); font-size: 0.76rem; }
-.shift-key-swatch { padding: 1px 6px; border: 3px solid; border-radius: 4px; }
-.shift-left { border-color: var(--shift-left); }
-.shift-right { border-color: var(--shift-right); }
-.shift-both { border-color: var(--shift-left); box-shadow: inset 0 0 0 2px var(--shift-right); }
+.shift-key-swatch { padding: 1px 6px; border: 3px solid var(--shift-color); border-radius: 4px; }
 .layer-tab-panel .layer-diagram[hidden] { display: none; }
 .layer-section, .modifier-list, .combo-table { margin-top: 20px; }
 .layer-section h3, .modifier-list h3, .combo-table h3 { margin-bottom: 8px; }
