@@ -7,7 +7,14 @@ import {
   importDvorakJ,
   importVial,
 } from '../src/layout-import.ts';
+import { CUSTOM_COMBOS } from '../src/layouts/combos-custom.ts';
 import { toLayout, type UserLayout } from '../src/user-layouts.ts';
+
+const vialKeyCode = (key: string): string => {
+  if (key === '-') return 'KC_MINS';
+  if (key === ',') return 'KC_COMMA';
+  return `KC_${key.toUpperCase()}`;
+};
 
 test('Vial の第0層・通常キー出力・マクロ出力のコンボを読む', () => {
   const layout = importVial(JSON.stringify({
@@ -31,6 +38,29 @@ test('Vial の第0層・通常キー出力・マクロ出力のコンボを読�
   assert.ok(layout.legends.some(([key, label]) => key === '=' && label === 'KC_ENTER'));
   assert.ok(!layout.sequences.some(([output]) => output === 'KC_ENTER'));
   assert.equal(layout.direct, false);
+});
+
+test('既存の Vial 由来コンボ73件を全件取り込める', () => {
+  const data = {
+    layout: [[
+      ['KC_1', 'KC_2', 'KC_3', 'KC_4', 'KC_5', 'KC_6', 'KC_7', 'KC_8', 'KC_9', 'KC_0', 'KC_MINS', 'KC_EQL'],
+      ['KC_Q', 'KC_W', 'KC_E', 'KC_R', 'KC_T', 'KC_Y', 'KC_U', 'KC_I', 'KC_O', 'KC_P', 'KC_LBRC', 'KC_RBRC'],
+      ['KC_A', 'KC_S', 'KC_D', 'KC_F', 'KC_G', 'KC_H', 'KC_J', 'KC_K', 'KC_L', 'KC_SCLN', 'KC_QUOT'],
+      ['KC_Z', 'KC_X', 'KC_C', 'KC_V', 'KC_B', 'KC_N', 'KC_M', 'KC_COMMA', 'KC_DOT', 'KC_SLASH'],
+    ]],
+    macro: CUSTOM_COMBOS.map(([output]) => [['text', output]]),
+    combo: CUSTOM_COMBOS.map(([, inputs], index) => [
+      ...inputs.map(vialKeyCode),
+      ...Array.from({ length: 4 - inputs.length }, () => 'KC_NO'),
+      `M${index}`,
+    ]),
+  };
+  const imported = importVial(JSON.stringify(data));
+  const sequences = new Map(imported.sequences);
+  assert.equal(CUSTOM_COMBOS.length, 73);
+  for (const [output, inputs] of CUSTOM_COMBOS) {
+    assert.deepEqual(sequences.get(output), [inputs.map((key) => key)]);
+  }
 });
 
 test('DvorakJ の基底面と同時打鍵面を読む', () => {
@@ -76,17 +106,20 @@ test('DvorakJ と紅皿の面内容からローマ字・かなを判定する', 
   const kana = importBenizara([
     '[配列]',
     '名称=テスト',
-    '[ローマ字シフト無し]',
+    '[かなシフト無し]',
     'あ,い,う,え,お',
     'か,き,く,け,こ',
     'さ,し,す,せ,そ',
     'た,ち,つ,て,と',
-    '[ローマ字右親指シフト]',
+    '[かな右親指シフト]',
     'が,ぎ,ぐ,げ,ご',
     'だ,ぢ,づ,で,ど',
+    '[かな小指シフト]',
+    'x,x,x,x,x',
   ].join('\n'));
   assert.equal(kana.direct, true);
   assert.deepEqual(kana.sequences.find(([output]) => output === 'が'), ['が', [['space', '1']]]);
+  assert.deepEqual(kana.warnings, ['面「かな小指シフト」は対応する親指キーを決められないため無視した']);
 });
 
 test('紅皿のローマ字面と UTF-16LE を読む', () => {

@@ -13,6 +13,8 @@ export interface ImportedLayout {
   sequences: [string, Sequence][];
   /** true の時は評価テキストをかなのまま打つ */
   direct: boolean;
+  /** 読み飛ばしたセクションなど、取り込み結果に影響する注意事項 */
+  warnings: string[];
 }
 
 const WIDTHS = QWERTY_LEGEND.map((row) => [...row].length);
@@ -75,6 +77,7 @@ function finish(
   legends: Map<string, string>,
   sequences: Map<string, Sequence>,
   kinds: { kana: boolean; latin: boolean },
+  warnings: string[] = [],
 ): ImportedLayout {
   if (kinds.kana && kinds.latin) {
     throw new Error('かなを直接出力する面とローマ字を出力する面が混在している');
@@ -86,6 +89,7 @@ function finish(
     legends: [...legends],
     sequences: [...sequences],
     direct: kinds.kana,
+    warnings,
   };
 }
 
@@ -435,19 +439,23 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
   }
 
   const candidates = [...sections.keys()].filter((section) =>
-    section.startsWith('ローマ字') || section.startsWith('英数'));
+    section.startsWith('ローマ字') || section.startsWith('英数') || section.startsWith('かな'));
   const base = candidates.find((section) => section.includes('シフト無し'));
   if (!base) throw new Error('紅皿の基底面（シフト無し）を見つけられない');
-  const prefix = base.startsWith('ローマ字') ? 'ローマ字' : '英数';
+  const prefix = base.startsWith('ローマ字') ? 'ローマ字' : base.startsWith('英数') ? '英数' : 'かな';
   const family = candidates.filter((section) => section.startsWith(prefix));
 
   const rows = emptyRows();
   const legends = new Map<string, string>();
   const sequences = new Map<string, Sequence>();
   const kinds = { kana: false, latin: false };
+  const warnings: string[] = [];
   for (const section of [base, ...family.filter((candidate) => candidate !== base)]) {
     const trigger = benizaraTrigger(section);
-    if (!trigger) continue;
+    if (!trigger) {
+      warnings.push(`面「${section}」は対応する親指キーを決められないため無視した`);
+      continue;
+    }
     const grid = sections.get(section)!
       .map((line) => normalise(line).split(',').map((cell) => cell.trim()))
       .slice(0, 4);
@@ -461,5 +469,5 @@ export function importBenizara(source: string, name = '紅皿取り込み'): Imp
       if (!isBase && hasBenizaraFunctionLabel(cell.label)) legends.set(physical, cell.label);
     }));
   }
-  return finish(name, rows, legends, sequences, kinds);
+  return finish(name, rows, legends, sequences, kinds, warnings);
 }

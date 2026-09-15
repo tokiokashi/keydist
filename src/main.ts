@@ -84,6 +84,7 @@ const el = {
   addLayout: $<HTMLButtonElement>('add-layout'),
   importLayout: $<HTMLInputElement>('import-layout'),
   importError: $<HTMLParagraphElement>('import-error'),
+  importWarning: $<HTMLParagraphElement>('import-warning'),
   detailLayout: $<HTMLSelectElement>('detail-layout'),
   heatmap: $<HTMLDivElement>('heatmap'),
   fingerChart: $<HTMLDivElement>('finger-chart'),
@@ -281,12 +282,17 @@ function setupAddForm() {
       selected.en.add(def.id);
       selected.ja.add(def.id);
       el.importError.hidden = true;
+      el.importWarning.textContent = imported.warnings.length > 0
+        ? `注意: ${imported.warnings.join(' / ')}`
+        : '';
+      el.importWarning.hidden = imported.warnings.length === 0;
       fillPicker();
       fillDetailOptions();
       render();
     } catch (error) {
       el.importError.textContent = error instanceof Error ? error.message : '定義ファイルを取り込めない';
       el.importError.hidden = false;
+      el.importWarning.hidden = true;
     } finally {
       el.importLayout.value = '';
     }
