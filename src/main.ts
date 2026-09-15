@@ -1315,7 +1315,7 @@ function renderLayerSvg(
     return `<g data-tip="${escapeAttr(tip)}">
       <rect x="${x + 1}" y="${y + 1}" width="${w - 2}" height="${KEY - 2}" rx="5"
         fill="${fill}" stroke="${shiftSide ? `var(--shift-${shiftSide})` : 'var(--line)'}"
-        stroke-width="${shiftSide ? 3 : 1}"${shiftSide ? ` data-shift-side="${shiftSide}"` : ''}/>
+        stroke-width="${shiftSide ? 3 : 1}"/>
       ${text}
     </g>`;
   });
