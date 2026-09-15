@@ -21,7 +21,7 @@ const FIGURE_WINDOW = 3;
 /** 追う指。ホームは j */
 const FOCUS_FINGER: Finger = 'RI';
 
-const KEY = 24;
+const KEY = 26;
 const PAD = 8;
 /** 盤面に出す段。数字段と親指は例に出てこないので省く */
 const ROWS = [1, HOME_ROW, 3];
