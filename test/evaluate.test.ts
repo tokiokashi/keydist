@@ -59,6 +59,23 @@ test('窓の内側では残った場合と戻った場合の小さい方を採�
   near(last.distance, 1, 'u');
 });
 
+test('指間距離は残す候補を選んだ区間だけ前回キー位置を使う', () => {
+  const stay = evaluate('yau', qwerty, geometry, opts());
+  const y = geometry.keys.get('y')!;
+  assert.deepEqual(stay.strokes[1].positions.RI, { x: y.x, y: y.y });
+
+  // u → 他指 1 打 → h は、h へはホームからの方が近いので、途中はホーム扱い。
+  const home = evaluate('uah', qwerty, geometry, opts());
+  const h = geometry.keys.get('h')!;
+  assert.deepEqual(home.strokes[1].positions.RI, geometry.homes.RI);
+  assert.deepEqual(home.strokes[2].positions.RI, { x: h.x, y: h.y });
+});
+
+test('次の同指打鍵で残すと確定しない間は未使用指をホーム扱いにする', () => {
+  const t = evaluate('ha', qwerty, geometry, opts());
+  assert.deepEqual(t.strokes[1].positions.RI, geometry.homes.RI);
+});
+
 test('窓の外では必ずホームからの距離になる', () => {
   // y → 他指 4 打 → u。windowSize=3 なので g=4 > N
   const t = evaluate('yasdfu', qwerty, geometry, opts({ windowSize: 3 }));
