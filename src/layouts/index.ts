@@ -87,7 +87,6 @@ export const LAYOUTS: Layout[] = ALPHA.filter((l) => l.id !== 'oonishi-custom');
  * 各配列の issue の PR が、自分の定義とこの配列から一覧への移動を担当する。
  */
 export const KANA_PENDING: Layout[] = [
-  NICOLA,
   ASUKA,
   SHIN_KOUME,
   SHIN_JIS_PREFIX,
@@ -119,6 +118,7 @@ export const LAYOUTS_JA: Layout[] = [
     ROMAJI,
   ),
   NAGINATA_V18,
+  NICOLA,
 ];
 
 export const LAYOUT_BY_ID = new Map([...LAYOUTS, ...LAYOUTS_JA].map((l) => [l.id, l]));
