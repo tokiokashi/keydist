@@ -13,7 +13,7 @@
       <h1>keydist</h1>
       <p class="lede">
         論理配列を打った時の指の総移動距離で評価する
-        <a href="https://github.com/tokiokashi/keydist/blob/main/spec/distance-model.md">仕様</a>
+        <button type="button" class="how-open" id="how-open">計算方法</button>
       </p>
       <div class="spacer"></div>
       <div class="theme-toggle" role="group" aria-label="表示テーマ">
@@ -132,8 +132,6 @@
               <li>配列を比べる時は形状を揃える。形状が変われば距離の絶対値が変わる。</li>
             </ul>
           </details>
-          <h3 class="gap-figure-title">g で分かれる 3 通り</h3>
-          <div id="gap-figure"></div>
         </section>
 
         <section class="panel">
@@ -219,6 +217,19 @@
         </section>
       </div>
     </div>
+
+    <dialog id="how-dialog">
+      <div class="dialog-body">
+        <div class="dialog-head">
+          <h2>計算方法</h2>
+          <button type="button" class="ghost close" id="how-close">閉じる</button>
+        </div>
+        <div id="gap-figure"></div>
+        <p class="note">
+          <a href="https://github.com/tokiokashi/keydist/blob/main/spec/distance-model.md">仕様の全文を読む</a>
+        </p>
+      </div>
+    </dialog>
 
     <dialog id="romaji-dialog">
       <form method="dialog" id="romaji-form">
