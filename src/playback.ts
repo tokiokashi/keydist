@@ -1,5 +1,5 @@
 import { ALL_FINGERS, keyId, resolveKeyId, type Finger, type Geometry } from './geometry.ts';
-import { faceCells } from './layers.ts';
+import { classifyFaces, faceCells, foldedLayerCells, type Layer } from './layers.ts';
 import type { Stroke } from './evaluate.ts';
 import type { Layout } from './layouts/types.ts';
 
@@ -24,6 +24,15 @@ export interface PlaybackStrokeDisplay {
   character?: string;
   /** 現在のステップで表示するキーごとの刻印 */
   keyLabels: ReadonlyMap<string, string>;
+}
+
+/** 再生中の層に対応する面グループを返す。単一面も含めて表示用に扱う。 */
+function playbackLayer(layout: Layout, layerId: string): Layer | undefined {
+  if (!layout.faces || !layout.faceLayerIds) return undefined;
+  const groups = classifyFaces(layout.faces);
+  return [...groups.layers, ...groups.modifiers].find((layer) =>
+    layer.faces.some((face) => layout.faceLayerIds?.get(face) === layerId),
+  );
 }
 
 /** 再生中の各指の位置に対応するキーと指を返す。 */
@@ -92,19 +101,25 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
     ? layerFaces.filter((face) => outputKeys.some((key) => faceCells(face).get(key) === stroke.char))
     : [];
   const faces = outputFaces.length > 0 ? outputFaces : triggeredFaces;
+  const layer = playbackLayer(layout, stroke.layerId);
   const keyLabels = new Map<string, string>();
 
   // 面に空欄として定義されたキーは、基底面の刻印へ戻さず空欄にする。
-  for (const face of faces) {
+  for (const face of layer?.faces ?? faces) {
     face.rows.forEach((row, rowIndex) => {
       const cells = typeof row === 'string' ? [...row] : [...row];
       cells.forEach((_label, colIndex) => keyLabels.set(keyId(rowIndex, colIndex), ''));
     });
   }
-  for (const face of faces) {
-    for (const [key, label] of faceCells(face)) {
-      const previous = keyLabels.get(key);
-      keyLabels.set(key, previous && label !== previous ? `${previous} / ${label}` : label);
+  const labels = layer ? foldedLayerCells(layer, layout.faces ?? []) : undefined;
+  if (labels) {
+    for (const [key, label] of labels) keyLabels.set(key, label);
+  } else {
+    for (const face of faces) {
+      for (const [key, label] of faceCells(face)) {
+        const previous = keyLabels.get(key);
+        keyLabels.set(key, previous && label !== previous ? `${previous} / ${label}` : label);
+      }
     }
   }
   for (const key of triggerKeys) keyLabels.set(key, '⇧');

@@ -105,12 +105,23 @@ test('レイヤー再生はシフトと出力キーの刻印を現在の面か�
 
   assert.equal(shift.character, undefined);
   assert.equal(shift.keyLabels.get('d'), '⇧');
-  assert.equal(shift.keyLabels.get('q'), '');
-  assert.equal(shift.keyLabels.get('w'), '');
+  assert.equal(shift.keyLabels.get('q'), 'ぁ');
+  assert.equal(shift.keyLabels.get('w'), 'ひ');
   assert.equal(output.character, 'ぬ');
   assert.equal(output.keyLabels.get('y'), 'ぬ');
-  assert.equal(output.keyLabels.get('q'), '');
-  assert.equal(output.keyLabels.get('w'), '');
+  assert.equal(output.keyLabels.get('q'), 'ぁ');
+  assert.equal(output.keyLabels.get('w'), 'ひ');
+});
+
+test('左右の同一レイヤーを畳み、反対側シフト由来の刻印も表示する', () => {
+  const layout = LAYOUT_BY_ID.get('shingeta')!;
+  const stroke = evaluate('あ', layout, buildGeometry('row-staggered')).strokes[0];
+  const display = playbackStrokeDisplay(layout, stroke);
+
+  assert.equal(display.keyLabels.get('d'), '⇧');
+  assert.equal(display.keyLabels.get('j'), 'あ');
+  assert.equal(display.keyLabels.get('k'), 'れ');
+  assert.equal(display.keyLabels.get('l'), 'お');
 });
 
 test('薙刀式の濁音はシフトと出力かなを同じステップで表示する', () => {
