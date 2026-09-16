@@ -1,4 +1,4 @@
-import { keyId, resolveKeyId } from './geometry.ts';
+import { ALL_FINGERS, keyId, resolveKeyId, type Finger, type Geometry } from './geometry.ts';
 import { faceCells } from './layers.ts';
 import type { Stroke } from './evaluate.ts';
 import type { Layout } from './layouts/types.ts';
@@ -24,6 +24,29 @@ export interface PlaybackStrokeDisplay {
   character?: string;
   /** 現在のステップで表示するキーごとの刻印 */
   keyLabels: ReadonlyMap<string, string>;
+}
+
+/** 再生中の各指の位置に対応するキーと指を返す。 */
+export function playbackFingerPositionKeys(
+  stroke: Stroke | undefined,
+  geometry: Geometry,
+): ReadonlyMap<string, Finger> {
+  const positionedKeys = new Map<string, Finger>();
+
+  for (const finger of ALL_FINGERS) {
+    const position = stroke?.positions[finger] ?? geometry.homes[finger];
+    const key = [...geometry.keys.values()].find(
+      (candidate) => candidate.finger === finger && candidate.x === position.x && candidate.y === position.y,
+    );
+    if (key) positionedKeys.set(key.id, finger);
+  }
+
+  // 1本の指で複数キーを同時に押す場合、位置は重心になってキーと一致しない。
+  // その場合も押下されたキーを指の位置として囲み、表示から消えないようにする。
+  for (const press of stroke?.presses ?? []) {
+    for (const key of press.keys) positionedKeys.set(key.id, press.finger);
+  }
+  return positionedKeys;
 }
 
 /** 現在のステップより前に入力し終えた単位を、直近から指定数だけ返す。 */

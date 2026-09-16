@@ -414,12 +414,19 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-history-label { margin-right: 6px; letter-spacing: normal; }
 .playback-figure { border-top: 1px solid var(--line); padding-top: 10px; }
 .playback-figure svg { max-width: none; }
-.playback-finger circle { fill: var(--panel); stroke: var(--series-7); stroke-width: 1.5; }
-.playback-finger[data-playback-finger^='L'] circle { stroke: var(--series-1); }
-.playback-finger text { fill: var(--fg); font-size: 6px; font-weight: 700; }
 .playback-figure [data-playback-active='true'] rect { fill: var(--accent); stroke: var(--accent); }
 .playback-figure [data-playback-active='true'] text { fill: #fff; }
 .playback-figure [data-playback-trigger='true'] rect { stroke: var(--series-4); stroke-width: 3; }
+.playback-figure [data-playback-finger-position='LP'] rect,
+.playback-figure [data-playback-finger-position='RP'] rect { stroke: var(--series-1); stroke-width: 3.5; }
+.playback-figure [data-playback-finger-position='LR'] rect,
+.playback-figure [data-playback-finger-position='RR'] rect { stroke: var(--series-2); stroke-width: 3.5; }
+.playback-figure [data-playback-finger-position='LM'] rect,
+.playback-figure [data-playback-finger-position='RM'] rect { stroke: var(--series-3); stroke-width: 3.5; }
+.playback-figure [data-playback-finger-position='LI'] rect,
+.playback-figure [data-playback-finger-position='RI'] rect { stroke: var(--series-4); stroke-width: 3.5; }
+.playback-figure [data-playback-finger-position='LT'] rect,
+.playback-figure [data-playback-finger-position='RT'] rect { stroke: var(--series-5); stroke-width: 3.5; }
 button:disabled { cursor: not-allowed; opacity: 0.45; }
 .layer-view-controls, .layer-tabs { display: flex; align-items: center; gap: 6px; margin: 0 0 10px; }
 .layer-view-controls > span { margin-right: 4px; color: var(--muted); font-size: 0.76rem; }

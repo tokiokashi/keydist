@@ -43,6 +43,7 @@ import {
   clampPlaybackCursor,
   createPlaybackState,
   playbackCompletedInputs,
+  playbackFingerPositionKeys,
   playbackStrokeAt,
   setPlaybackSpeed,
   stepPlayback,
@@ -801,14 +802,6 @@ function playbackLayerLabel(trace: Trace, stroke: Stroke | undefined): string {
   return trace.layerDefinitions.find((definition) => definition.id === stroke.layerId)?.label ?? stroke.layerId;
 }
 
-function playbackPosition(
-  stroke: Stroke | undefined,
-  geometry: ReturnType<typeof buildGeometry>,
-  finger: Finger,
-) {
-  return stroke?.positions[finger] ?? geometry.homes[finger];
-}
-
 function updatePlaybackView() {
   if (!playbackTrace || !playbackGeometry) return;
   const total = playbackTrace.strokes.length;
@@ -817,19 +810,17 @@ function updatePlaybackView() {
   const display = playbackLayout && stroke ? playbackStrokeDisplay(playbackLayout, stroke) : undefined;
   const activeKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
   const triggerKeys = new Set(stroke?.triggerKeys ?? []);
+  const fingerPositionKeys = playbackShowFingers
+    ? playbackFingerPositionKeys(stroke, playbackGeometry)
+    : new Map<string, Finger>();
 
   for (const key of el.playback.querySelectorAll<SVGGElement>('[data-playback-key]')) {
     const id = key.dataset.playbackKey!;
     key.dataset.playbackActive = String(activeKeys.has(id));
     key.dataset.playbackTrigger = String(triggerKeys.has(id));
+    key.dataset.playbackFingerPosition = fingerPositionKeys.get(id) ?? '';
     const label = key.querySelector('text');
     if (label) label.textContent = display?.keyLabels.get(id) ?? key.dataset.playbackBaseLabel ?? '';
-  }
-  for (const finger of el.playback.querySelectorAll<SVGGElement>('[data-playback-finger]')) {
-    const id = finger.dataset.playbackFinger as Finger;
-    const position = playbackPosition(stroke, playbackGeometry, id);
-    finger.setAttribute('transform', `translate(${position.x * PLAYBACK_KEY} ${position.y * PLAYBACK_KEY})`);
-    finger.setAttribute('visibility', playbackShowFingers ? 'visible' : 'hidden');
   }
 
   const position = el.playback.querySelector<HTMLElement>('[data-playback-position]');
@@ -886,19 +877,15 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
     const label = layout.legends.get(key.id) ?? '';
     const fontSize = thumb ? 10 : label.length > 3 ? 9 : 12;
     const tip = `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>${escapeText(FINGER_LABEL[key.finger])}`;
-    return `<g data-tip="${escapeAttr(tip)}" data-playback-key="${escapeAttr(key.id)}" data-playback-base-label="${escapeAttr(label)}" data-playback-active="false" data-playback-trigger="false">
+    return `<g data-tip="${escapeAttr(tip)}" data-playback-key="${escapeAttr(key.id)}" data-playback-finger="${key.finger}" data-playback-base-label="${escapeAttr(label)}" data-playback-active="false" data-playback-trigger="false" data-playback-finger-position="">
       <rect x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" stroke="var(--line)"/>
       <text x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
     </g>`;
   });
   const W = maxX + PLAYBACK_PAD;
   const H = maxY + PLAYBACK_PAD;
-  const fingerMarkers = ALL_FINGERS.map((finger) => `<g data-playback-finger="${finger}" class="playback-finger" aria-label="${escapeAttr(FINGER_LABEL[finger])}" visibility="hidden">
-    <circle cx="0" cy="0" r="7"/>
-    <text x="0" y="3" text-anchor="middle" pointer-events="none">${finger}</text>
-  </g>`).join('');
   return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
-    aria-label="${escapeAttr(`${layout.name}の打鍵再生`)}">${keys.join('')}${fingerMarkers}</svg>`;
+    aria-label="${escapeAttr(`${layout.name}の打鍵再生`)}">${keys.join('')}</svg>`;
 }
 
 function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeof buildGeometry>) {
@@ -915,7 +902,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
     <summary><span class="playback-summary-icon" aria-hidden="true">▶</span><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
       <div class="playback-head">
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${playbackShowFingers ? ' checked' : ''} />指の位置を表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${playbackShowFingers ? ' checked' : ''} />指の位置を色で表示</label>
       </div>
       <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
         <button type="button" class="ghost" data-playback-action="back">1 ステップ戻る</button>

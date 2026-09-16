@@ -5,6 +5,7 @@ import {
   clampPlaybackCursor,
   createPlaybackState,
   playbackCompletedInputs,
+  playbackFingerPositionKeys,
   playbackStrokeDisplay,
   playbackStrokeAt,
   setPlaybackSpeed,
@@ -82,6 +83,18 @@ test('ローマ字の入力履歴はかなごとの複数打鍵を重複させ�
   const trace = evaluate('なまえは', layout, buildGeometry('row-staggered'));
 
   assert.deepEqual(playbackCompletedInputs(trace.strokes, trace.strokes.length), ['な', 'ま', 'え']);
+});
+
+test('指位置表示はホームと押下キーを指ごとのキー枠に割り当てる', () => {
+  const layout = LAYOUT_BY_ID.get('qwerty')!;
+  const geometry = buildGeometry('row-staggered');
+  const stroke = evaluate('a', layout, geometry).strokes[0];
+  const positions = playbackFingerPositionKeys(stroke, geometry);
+
+  assert.equal(positions.get('a'), 'LP');
+  assert.equal(positions.get('s'), 'LR');
+  assert.equal(positions.get('f'), 'LI');
+  assert.equal(positions.get('j'), 'RI');
 });
 
 test('レイヤー再生はシフトと出力キーの刻印を現在の面から引く', () => {
