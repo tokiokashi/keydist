@@ -195,6 +195,48 @@ export function playbackCompletedInputs(
   return completed.slice(-limit);
 }
 
+export type PlaybackInputPreviewKind = 'completed' | 'current' | 'planned';
+
+export interface PlaybackInputPreviewSegment {
+  text: string;
+  kind: PlaybackInputPreviewKind;
+}
+
+/** 入力済み・現在・先読みの入力単位を表示順に返す。先読み値は文字数として扱う。 */
+export function playbackInputPreview(
+  strokes: readonly Stroke[],
+  cursor: number,
+  lookaheadChars = 0,
+  completedLimit = 10,
+): PlaybackInputPreviewSegment[] {
+  const end = Math.min(Math.max(0, cursor), strokes.length);
+  const groups: { inputIndex: number; text: string }[] = [];
+
+  for (let start = 0; start < strokes.length; ) {
+    const inputIndex = strokes[start].inputIndex;
+    let finish = start + 1;
+    while (finish < strokes.length && strokes[finish].inputIndex === inputIndex) finish++;
+    groups.push({ inputIndex, text: strokes[start].inputChar });
+    start = finish;
+  }
+
+  const currentInputIndex = end > 0 ? strokes[end - 1].inputIndex : undefined;
+  const currentGroupIndex = groups.findIndex((group) => group.inputIndex === currentInputIndex);
+  const limit = Math.max(0, Math.floor(completedLimit));
+  const completed = currentGroupIndex < 0
+    ? []
+    : limit === 0 ? [] : groups.slice(0, currentGroupIndex).slice(-limit);
+  const plannedLimit = Math.max(0, Math.floor(lookaheadChars));
+  const plannedStart = currentGroupIndex < 0 ? 0 : currentGroupIndex + 1;
+  const planned = groups.slice(plannedStart, plannedStart + plannedLimit);
+
+  return [
+    ...completed.map(({ text }) => ({ text, kind: 'completed' as const })),
+    ...(currentGroupIndex < 0 ? [] : [{ text: groups[currentGroupIndex].text, kind: 'current' as const }]),
+    ...planned.map(({ text }) => ({ text, kind: 'planned' as const })),
+  ];
+}
+
 /** 面定義と実際の押下から、再生中に表示する文字と刻印を引く。 */
 export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackStrokeDisplay {
   if (layout.romajiTable || !layout.faces || !layout.faceLayerIds) {

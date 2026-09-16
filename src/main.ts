@@ -42,8 +42,8 @@ import {
   advancePlayback,
   clampPlaybackCursor,
   createPlaybackState,
-  playbackCompletedInputs,
   playbackFingerPositionKeys,
+  playbackInputPreview,
   playbackPlannedKeys,
   playbackPlannedOrders,
   playbackRomajiPlan,
@@ -905,9 +905,22 @@ function updatePlaybackView() {
     planned.hidden = plan === undefined;
     planned.textContent = plan ? `予定: ${plan.planned}` : '';
   }
-  const completedInputs = playbackCompletedInputs(playbackTrace.strokes, cursor);
-  if (history) history.hidden = completedInputs.length === 0;
-  if (historyText) historyText.textContent = completedInputs.join('');
+  const inputPreview = playbackInputPreview(
+    playbackTrace.strokes,
+    cursor,
+    playbackShowPlanKeys ? playbackLookaheadSteps : 0,
+  );
+  if (history) history.hidden = inputPreview.length === 0;
+  if (historyText) {
+    historyText.replaceChildren();
+    for (const segment of inputPreview) {
+      const span = document.createElement('span');
+      span.className = `playback-input-segment playback-input-${segment.kind}`;
+      span.textContent = segment.text;
+      if (segment.kind === 'current') span.setAttribute('aria-current', 'step');
+      historyText.append(span);
+    }
+  }
   if (layer) layer.textContent = playbackLayerLabel(playbackTrace, stroke);
   if (seek) seek.value = String(cursor);
   if (toggle) {
@@ -997,7 +1010,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
           <span class="playback-attribution">帰属: <b data-playback-layer>開始前</b></span>
         </div>
         <div class="playback-history" data-playback-history hidden>
-          <span class="playback-history-label">入力済み:</span>
+          <span class="playback-history-label">入力:</span>
           <span data-playback-history-text></span>
         </div>
       </div>

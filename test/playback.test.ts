@@ -6,6 +6,7 @@ import {
   createPlaybackState,
   playbackCompletedInputs,
   playbackFingerPositionKeys,
+  playbackInputPreview,
   playbackPlannedKeys,
   playbackPlannedOrders,
   playbackRomajiPlan,
@@ -88,6 +89,21 @@ test('ローマ字の入力履歴はかなごとの複数打鍵を重複させ�
   const trace = evaluate('なまえは', layout, buildGeometry('row-staggered'));
 
   assert.deepEqual(playbackCompletedInputs(trace.strokes, trace.strokes.length), ['な', 'ま', 'え']);
+});
+
+test('入力プレビューは現在の入力を下線対象にし、先読みを後ろへ追加する', () => {
+  const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
+  const trace = evaluate('きょうあ', layout, buildGeometry('row-staggered'));
+
+  assert.deepEqual(playbackInputPreview(trace.strokes, 2, 1), [
+    { text: 'きょ', kind: 'current' },
+    { text: 'う', kind: 'planned' },
+  ]);
+  assert.deepEqual(playbackInputPreview(trace.strokes, 2, 2), [
+    { text: 'きょ', kind: 'current' },
+    { text: 'う', kind: 'planned' },
+    { text: 'あ', kind: 'planned' },
+  ]);
 });
 
 test('ローマ字の現在入力単位に予定綴りと打鍵済み接頭辞を表示できる', () => {

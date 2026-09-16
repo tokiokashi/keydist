@@ -400,7 +400,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   align-items: baseline;
   column-gap: 14px;
 }
-.playback-current[hidden], .playback-romaji[hidden], .playback-history[hidden] { display: none !important; }
+.playback-current[hidden], .playback-romaji[hidden] { display: none !important; }
 .playback-typed {
   min-width: 0;
   color: var(--muted);
@@ -416,9 +416,23 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   margin-top: 4px;
   color: var(--muted);
   font-size: 0.82rem;
-  letter-spacing: 0.08em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  min-height: 1.2em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+.playback-history[hidden] { display: block !important; visibility: hidden; }
 .playback-history-label { margin-right: 6px; letter-spacing: normal; }
+.playback-input-current {
+  color: var(--fg);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+.playback-input-planned { color: color-mix(in oklab, var(--accent) 55%, var(--muted)); }
 .playback-figure { border-top: 1px solid var(--line); padding-top: 10px; }
 .playback-figure svg { max-width: none; }
 .playback-figure [data-playback-trail='true'] rect {
