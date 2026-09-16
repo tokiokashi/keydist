@@ -140,6 +140,20 @@ test('個人キャリブレーションは通常打鍵と指移動を別々の�
   assert.equal(playbackStrokeDurationMs(sameHandStroke, 1, true, calibration, crossHandPrevious), 250);
 });
 
+test('左右交互の打鍵は通常速度の測定値を使う', () => {
+  const calibration = {
+    actionsPerSecond: 5,
+    sameHandDifferentFingerActionsPerSecond: 2,
+    sameHandDifferentFingerActionsPerSecondByPair: { 'LM:LI': 3 },
+    fingerSpeedUnitsPerSecond: {},
+    fallbackFingerSpeedUnitsPerSecond: 10,
+    measuredAt: 1,
+  };
+  const previous = { presses: [{ finger: 'LI' }] } as never;
+  const current = { presses: [{ finger: 'RI' }] } as never;
+  assert.equal(playbackStrokeDurationMs(current, 1, false, calibration, previous), 200);
+});
+
 test('キャリブレーションの中央値は外れ値を抑えて速度を求める', () => {
   assert.equal(actionsPerSecondFromIntervals([250, 250, 1000, 250]), 4);
   const speeds = fingerSpeedFromSamples([
