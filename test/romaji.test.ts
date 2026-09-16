@@ -42,6 +42,13 @@ test('合成した配列は1かなを複数ステップへ展開する', () => {
   assert.deepEqual(t.strokes.map((s) => s.presses[0].keys[0].id), ['s', 'i']);
 });
 
+test('ローマ字の各打鍵は展開前のかな単位を保持する', () => {
+  const t = evaluate('かし', ja, geometry, opts);
+  assert.deepEqual(t.strokes.map((s) => [s.inputChar, s.char]), [
+    ['か', 'k'], ['か', 'a'], ['し', 's'], ['し', 'i'],
+  ]);
+});
+
 test('ローマ字テーブルを付けても刻印は英字配列のまま', () => {
   assert.equal(ja.legends.get('a'), 'a');
   assert.equal(ja.legends.get('-'), '-');

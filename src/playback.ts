@@ -1,4 +1,7 @@
+import { resolveKeyId } from './geometry.ts';
+import { faceCells } from './layers.ts';
 import type { Stroke } from './evaluate.ts';
+import type { Layout } from './layouts/types.ts';
 
 /** 表示上の1打鍵の基準間隔。実際の打鍵時間や距離モデルとは無関係。 */
 export const PLAYBACK_STEP_MS = 800;
@@ -14,6 +17,69 @@ export interface PlaybackState {
   speed: PlaybackSpeed;
   playing: boolean;
   elapsedMs: number;
+}
+
+export interface PlaybackStrokeDisplay {
+  /** 現在の出力キーが面に持つ文字。シフトだけのステップでは undefined */
+  character?: string;
+  /** 現在のステップで表示するキーごとの刻印 */
+  keyLabels: ReadonlyMap<string, string>;
+}
+
+/** 現在のステップより前に入力し終えた単位を、直近から指定数だけ返す。 */
+export function playbackCompletedInputs(
+  strokes: readonly Stroke[],
+  cursor: number,
+  limit = 10,
+): string[] {
+  const end = Math.min(Math.max(0, cursor), strokes.length);
+  if (end === 0 || limit <= 0) return [];
+  const currentInputIndex = strokes[end - 1].inputIndex;
+  const completed: string[] = [];
+
+  for (let at = 0; at < end; ) {
+    const inputIndex = strokes[at].inputIndex;
+    let next = at + 1;
+    while (next < strokes.length && strokes[next].inputIndex === inputIndex) next++;
+    if (next <= end && inputIndex !== currentInputIndex) completed.push(strokes[at].inputChar);
+    at = next;
+  }
+  return completed.slice(-limit);
+}
+
+/** 面定義と実際の押下から、再生中に表示する文字と刻印を引く。 */
+export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackStrokeDisplay {
+  if (layout.romajiTable || !layout.faces || !layout.faceLayerIds) {
+    return { keyLabels: new Map() };
+  }
+
+  const triggerKeys = new Set(stroke.triggerKeys.map(resolveKeyId));
+  const layerFaces = layout.faces.filter((face) => layout.faceLayerIds?.get(face) === stroke.layerId);
+  const faces = triggerKeys.size === 0
+    ? layerFaces
+    : layerFaces.filter((face) => {
+      const faceTriggers = face.trigger.map(resolveKeyId);
+      return faceTriggers.length === triggerKeys.size && faceTriggers.every((key) => triggerKeys.has(key));
+    });
+  const pressedKeys = [...new Set(stroke.presses.flatMap((press) => press.keys.map((key) => key.id)))];
+  const outputKeys = pressedKeys.filter((key) => !triggerKeys.has(key));
+  const keyLabels = new Map<string, string>();
+  for (const key of triggerKeys) keyLabels.set(key, '⇧');
+
+  for (const key of outputKeys) {
+    const labels = [...new Set(
+      faces
+        .map((face) => faceCells(face).get(key))
+        .filter((label): label is string => label !== undefined),
+    )];
+    if (labels.length > 0) keyLabels.set(key, labels.join(' / '));
+  }
+
+  const character = outputKeys
+    .map((key) => keyLabels.get(key))
+    .filter((label): label is string => label !== undefined)
+    .join(' / ');
+  return { character: character || undefined, keyLabels };
 }
 
 export function createPlaybackState(speed: PlaybackSpeed = 1): PlaybackState {

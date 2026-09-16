@@ -42,9 +42,11 @@ import {
   advancePlayback,
   clampPlaybackCursor,
   createPlaybackState,
+  playbackCompletedInputs,
   playbackStrokeAt,
   setPlaybackSpeed,
   stepPlayback,
+  playbackStrokeDisplay,
   type PlaybackSpeed,
   type PlaybackState,
   PLAYBACK_SPEEDS,
@@ -782,6 +784,7 @@ const PLAYBACK_THUMB_WIDTH = 1.9;
 let playbackState: PlaybackState = createPlaybackState();
 let playbackTrace: Trace | undefined;
 let playbackGeometry: ReturnType<typeof buildGeometry> | undefined;
+let playbackLayout: Layout | undefined;
 let playbackAnimationFrame: number | undefined;
 let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
@@ -811,6 +814,7 @@ function updatePlaybackView() {
   const total = playbackTrace.strokes.length;
   const cursor = clampPlaybackCursor(playbackState.cursor, total);
   const stroke = playbackStrokeAt(playbackTrace.strokes, cursor);
+  const display = playbackLayout && stroke ? playbackStrokeDisplay(playbackLayout, stroke) : undefined;
   const activeKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
   const triggerKeys = new Set(stroke?.triggerKeys ?? []);
 
@@ -818,6 +822,8 @@ function updatePlaybackView() {
     const id = key.dataset.playbackKey!;
     key.dataset.playbackActive = String(activeKeys.has(id));
     key.dataset.playbackTrigger = String(triggerKeys.has(id));
+    const label = key.querySelector('text');
+    if (label) label.textContent = display?.keyLabels.get(id) ?? key.dataset.playbackBaseLabel ?? '';
   }
   for (const finger of el.playback.querySelectorAll<SVGGElement>('[data-playback-finger]')) {
     const id = finger.dataset.playbackFinger as Finger;
@@ -827,7 +833,12 @@ function updatePlaybackView() {
   }
 
   const position = el.playback.querySelector<HTMLElement>('[data-playback-position]');
-  const char = el.playback.querySelector<HTMLElement>('[data-playback-char]');
+  const current = el.playback.querySelector<HTMLElement>('[data-playback-current]');
+  const romaji = el.playback.querySelector<HTMLElement>('[data-playback-romaji]');
+  const kana = el.playback.querySelector<HTMLElement>('[data-playback-kana]');
+  const typed = el.playback.querySelector<HTMLElement>('[data-playback-typed]');
+  const history = el.playback.querySelector<HTMLElement>('[data-playback-history]');
+  const historyText = el.playback.querySelector<HTMLElement>('[data-playback-history-text]');
   const layer = el.playback.querySelector<HTMLElement>('[data-playback-layer]');
   const seek = el.playback.querySelector<HTMLInputElement>('[data-playback-seek]');
   const toggle = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="toggle"]');
@@ -836,7 +847,19 @@ function updatePlaybackView() {
   const forward = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="forward"]');
   const fingers = el.playback.querySelector<HTMLInputElement>('[data-playback-fingers]');
   if (position) position.textContent = `${cursor} / ${total} ステップ`;
-  if (char) char.textContent = stroke?.char ?? '—';
+  const isRomaji = playbackLayout?.romajiTable !== undefined;
+  if (current) {
+    current.hidden = isRomaji;
+    current.textContent = stroke
+      ? display?.character ?? (stroke.triggerKeys.length > 0 ? '⇧' : stroke.char)
+      : '—';
+  }
+  if (romaji) romaji.hidden = !isRomaji;
+  if (kana) kana.textContent = stroke?.inputChar ?? '—';
+  if (typed) typed.textContent = stroke?.char ?? '—';
+  const completedInputs = playbackCompletedInputs(playbackTrace.strokes, cursor);
+  if (history) history.hidden = completedInputs.length === 0;
+  if (historyText) historyText.textContent = completedInputs.join('');
   if (layer) layer.textContent = playbackLayerLabel(playbackTrace, stroke);
   if (seek) seek.value = String(cursor);
   if (toggle) {
@@ -863,7 +886,7 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
     const label = layout.legends.get(key.id) ?? '';
     const fontSize = thumb ? 10 : label.length > 3 ? 9 : 12;
     const tip = `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>${escapeText(FINGER_LABEL[key.finger])}`;
-    return `<g data-tip="${escapeAttr(tip)}" data-playback-key="${escapeAttr(key.id)}" data-playback-active="false" data-playback-trigger="false">
+    return `<g data-tip="${escapeAttr(tip)}" data-playback-key="${escapeAttr(key.id)}" data-playback-base-label="${escapeAttr(label)}" data-playback-active="false" data-playback-trigger="false">
       <rect x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" stroke="var(--line)"/>
       <text x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
     </g>`;
@@ -882,29 +905,41 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
   cancelPlaybackAnimation();
   playbackTrace = trace;
   playbackGeometry = geometry;
+  playbackLayout = layout;
   playbackState = createPlaybackState(playbackState.speed);
   playbackSeekWasPlaying = undefined;
   const speeds = PLAYBACK_SPEEDS.map((speed) =>
     `<option value="${speed}"${speed === playbackState.speed ? ' selected' : ''}>${speed}x</option>`,
   ).join('');
-  el.playback.innerHTML = `<div class="playback-head">
-      <div>
-        <h3>打鍵再生</h3>
-        <p class="note">1ステップを同じ表示時間で再生する。配列ごとの速度差は付けない。</p>
+  el.playback.innerHTML = `<details class="playback-panel">
+    <summary>打鍵再生</summary>
+    <div class="playback-body">
+      <div class="playback-head">
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${playbackShowFingers ? ' checked' : ''} />指の位置を表示</label>
       </div>
-      <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${playbackShowFingers ? ' checked' : ''} />指の位置を表示</label>
+      <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
+        <button type="button" class="ghost" data-playback-action="back">1 ステップ戻る</button>
+        <button type="button" data-playback-action="toggle" aria-label="再生する">再生</button>
+        <button type="button" class="secondary" data-playback-action="stop" disabled>停止</button>
+        <button type="button" class="ghost" data-playback-action="forward">1 ステップ進む</button>
+        <span class="playback-position" aria-live="polite" data-playback-position>0 / ${trace.strokes.length} ステップ</span>
+        <label class="playback-speed"><span>速度</span><select data-playback-speed>${speeds}</select></label>
+      </div>
+      <label class="playback-seek"><span>再生位置</span><input type="range" data-playback-seek min="0" max="${trace.strokes.length}" step="1" value="0" /></label>
+      <div class="playback-status" aria-live="polite">
+        <div class="playback-status-line">
+          <span class="playback-current" data-playback-current>—</span>
+          <span class="playback-romaji" data-playback-romaji hidden><span class="playback-current" data-playback-kana>—</span><span class="playback-typed">打鍵: <code data-playback-typed>—</code></span></span>
+          <span class="playback-attribution">帰属: <b data-playback-layer>開始前</b></span>
+        </div>
+        <div class="playback-history" data-playback-history hidden>
+          <span class="playback-history-label">入力済み:</span>
+          <span data-playback-history-text></span>
+        </div>
+      </div>
+      <div class="fig-fixed playback-figure">${renderPlaybackSvg(layout, geometry)}</div>
     </div>
-    <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
-      <button type="button" class="ghost" data-playback-action="back">1ステップ戻る</button>
-      <button type="button" data-playback-action="toggle" aria-label="再生する">再生</button>
-      <button type="button" class="secondary" data-playback-action="stop" disabled>停止</button>
-      <button type="button" class="ghost" data-playback-action="forward">1ステップ進む</button>
-      <label class="playback-speed"><span>速度</span><select data-playback-speed>${speeds}</select></label>
-    </div>
-    <label class="playback-seek"><span>再生位置</span><input type="range" data-playback-seek min="0" max="${trace.strokes.length}" step="1" value="0" /></label>
-    <p class="playback-status" aria-live="polite"><span data-playback-position>0 / ${trace.strokes.length} ステップ</span>
-      <span>文字: <b data-playback-char>—</b></span><span>帰属: <b data-playback-layer>開始前</b></span></p>
-    <div class="fig-fixed playback-figure">${renderPlaybackSvg(layout, geometry)}</div>`;
+  </details>`;
   updatePlaybackView();
 }
 
@@ -1002,6 +1037,7 @@ function render() {
     cancelPlaybackAnimation();
     playbackTrace = undefined;
     playbackGeometry = undefined;
+    playbackLayout = undefined;
     el.playback.innerHTML = '';
     el.textMeta.textContent = '配列を1つ以上選ぶ';
     el.compareChart.innerHTML = '';
