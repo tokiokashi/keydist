@@ -121,19 +121,19 @@
           <div class="fig-fixed" id="heatmap"></div>
           <div class="split">
             <div>
-              <h3>指ごとの移動距離 [u]</h3>
+              <h3>指ごとの移動距離 [u]<button type="button" class="info" data-tip="文章を打ち切るまでに各指が動いた距離。短い経路を選んだ場合はその分短縮される。" aria-label="文章を打ち切るまでに各指が動いた距離。短い経路を選んだ場合はその分短縮される。">i</button></h3>
               <div id="finger-chart"></div>
               <p class="note">親指の距離は常に 0 なので省く。押下数は図にかざすと出る。</p>
             </div>
             <div>
-              <h3>指間距離の標準偏差 [u]</h3>
+              <h3>指間距離の標準偏差 [u]<button type="button" class="info" data-tip="上のばらつき。平均が同じでも、常に一定の開き方をするか打鍵ごとに変わるかで差が出る。" aria-label="上のばらつき。平均が同じでも、常に一定の開き方をするか打鍵ごとに変わるかで差が出る。">i</button></h3>
               <div id="adjacent-chart"></div>
             </div>
           </div>
         </section>
 
         <section class="panel compare-panel">
-          <h2>総移動距離</h2>
+          <h2>総移動距離<button type="button" class="info" data-tip="全指の移動距離の合計。ホームポジションからどれだけ移動したかの指標。" aria-label="全指の移動距離の合計。ホームポジションからどれだけ移動したかの指標。">i</button></h2>
           <label class="ctl">
             <span>比較元</span>
             <select id="compare-baseline" title="選ぶと比較元を 100% とした比率を表示する。比較できない項目は — と表示する。">
@@ -157,19 +157,19 @@
           <h2>配列 × 指のマトリックス</h2>
           <div class="split-wrap">
             <div>
-              <h3>指ごとの押下数 [押下/文字]</h3>
+              <h3>指ごとの押下数 [押下/文字]<button type="button" class="info" data-tip="1文字を出力するのに必要な打鍵数。同時押しは押した数だけ数える。" aria-label="1文字を出力するのに必要な打鍵数。同時押しは押した数だけ数える。">i</button></h3>
               <div class="fig-fixed" id="press-matrix"></div>
             </div>
             <div>
-              <h3>指ごとの移動距離 [u/文字]</h3>
+              <h3>指ごとの移動距離 [u/文字]<button type="button" class="info" data-tip="上を入力文字数で割った値。1文字を出力するのに必要な指の平均移動距離。" aria-label="上を入力文字数で割った値。1文字を出力するのに必要な指の平均移動距離。">i</button></h3>
               <div class="fig-fixed" id="finger-matrix"></div>
             </div>
             <div>
-              <h3>指間距離の平均 [u]</h3>
+              <h3>指間距離の平均 [u]<button type="button" class="info" data-tip="隣り合う2本の指の距離を全打鍵で平均し、両方がホームにある時の距離を引いた値。両指ともホームから一度も動かなければ0。平均的な指同士の間隔。" aria-label="隣り合う2本の指の距離を全打鍵で平均し、両方がホームにある時の距離を引いた値。両指ともホームから一度も動かなければ0。平均的な指同士の間隔。">i</button></h3>
               <div class="fig-fixed" id="adjacent-mean-matrix"></div>
             </div>
             <div>
-              <h3>指間距離の標準偏差 [u]</h3>
+              <h3>指間距離の標準偏差 [u]<button type="button" class="info" data-tip="上のばらつき。平均が同じでも、常に一定の開き方をするか打鍵ごとに変わるかで差が出る。" aria-label="上のばらつき。平均が同じでも、常に一定の開き方をするか打鍵ごとに変わるかで差が出る。">i</button></h3>
               <div class="fig-fixed" id="adjacent-stddev-matrix"></div>
             </div>
           </div>
@@ -181,8 +181,8 @@
 
         <details class="panel" id="sensitivity-panel">
           <summary class="panel-head">
-            <h2>N 感度</h2>
-            <div class="seg" id="sensitivity-scale" role="group" aria-label="N 感度の縦軸">
+            <h2>N感度<button type="button" class="info" data-tip="Nを0〜10で振った時の総移動距離。ホームポジションから離れたキーを多用する場合傾きが大きくなる傾向がある。" aria-label="Nを0〜10で振った時の総移動距離。ホームポジションから離れたキーを多用する場合傾きが大きくなる傾向がある。">i</button></h2>
+            <div class="seg" id="sensitivity-scale" role="group" aria-label="N感度の縦軸">
               <button type="button" data-scale="relative" aria-pressed="true">相対 [%]</button>
               <button type="button" data-scale="absolute" aria-pressed="false">絶対 [u]</button>
             </div>

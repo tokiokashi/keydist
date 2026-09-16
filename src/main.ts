@@ -26,6 +26,8 @@ import { SAMPLE_TEXT } from './sample-text.ts';
 import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from './sample-text-ja.ts';
 import {
   bindTips,
+  hideTip,
+  showTip,
   columnChart,
   escapeText,
   escapeAttr,
@@ -983,6 +985,18 @@ function syncCompareChartOptions(relative: boolean) {
   el.compareChartMetric.value = String(compareChartColumn);
 }
 
+/** data-tip を持つ補足ボタン。tip が無い列では何も出さない */
+function infoButton(tip: string | undefined): string {
+  if (!tip) return '';
+  const attr = escapeAttr(tip);
+  return `<button type="button" class="info" data-tip="${attr}" aria-label="${attr}">i</button>`;
+}
+
+/** 列ごとの補足。指標の定義だけを書き、良し悪しの解釈は書かない */
+const COMPARE_HEADER_TIPS: Record<number, string> = {
+  7: '同じ指で違うキーを続けて打った回数。',
+};
+
 function compareHeader(label: string, column: number, relative: boolean): string {
   const active = compareSort?.column === column ? compareSort.direction : undefined;
   const marker = active === 'asc' ? ' ↑' : active === 'desc' ? ' ↓' : '';
@@ -990,7 +1004,7 @@ function compareHeader(label: string, column: number, relative: boolean): string
   const shownLabel = compareLabel(label, relative, column);
   return `<th><span class="table-sort" data-compare-sort="${column}" role="button" tabindex="0"
     aria-label="${escapeAttr(`${shownLabel}で配列を並べ替え`)}" aria-sort="${ariaSort}"
-    title="クリックごとに昇順・降順・選択順へ切り替える">${escapeText(shownLabel)}${marker}</span></th>`;
+    title="クリックごとに昇順・降順・選択順へ切り替える">${escapeText(shownLabel)}${marker}</span>${infoButton(COMPARE_HEADER_TIPS[column])}</th>`;
 }
 
 /**
@@ -1153,7 +1167,7 @@ function bindCompareSort(root: HTMLElement) {
 type SensitivityScale = 'relative' | 'absolute';
 let sensitivityScale: SensitivityScale = 'relative';
 
-function showSensitivityPlaceholder(message = 'N 感度はパネルを開くと計算します') {
+function showSensitivityPlaceholder(message = 'N感度はパネルを開くと計算します') {
   el.sensitivity.innerHTML = `<p class="note">${message}</p>`;
   sensitivityDirty = true;
 }
@@ -1765,4 +1779,23 @@ bindCompareSort(el.compare);
 el.gapFigure.innerHTML = gapFigure(buildGeometry('row-staggered'));
 setupHowDialog();
 bindTips(document.body);
+// 補足ボタン: summary の中に置くと details が開閉してしまうので握りつぶす。
+// キーボードでも読めるよう focus でも出す
+document.body.addEventListener('click', (e) => {
+  const info = (e.target as Element).closest('.info');
+  if (info) e.preventDefault();
+});
+document.body.addEventListener('focusin', (e) => {
+  const info = (e.target as Element).closest('.info');
+  if (!info) return;
+  const box = info.getBoundingClientRect();
+  showTip(
+    info.getAttribute('data-tip')!,
+    { clientX: box.right, clientY: box.bottom + 24 } as MouseEvent,
+    true,
+  );
+});
+document.body.addEventListener('focusout', (e) => {
+  if ((e.target as Element).closest('.info')) hideTip();
+});
 setupTheme(render);

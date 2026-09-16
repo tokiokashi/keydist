@@ -1,9 +1,10 @@
 /** ツールチップ。SVG の外に置いた 1 つの要素を使い回す */
 const tip = () => document.getElementById('tooltip') as HTMLDivElement;
 
-export function showTip(html: string, event: MouseEvent) {
+export function showTip(html: string, event: MouseEvent, wrap = false) {
   const el = tip();
   el.innerHTML = html;
+  el.classList.toggle('wrap', wrap);
   el.hidden = false;
   const pad = 12;
   const rect = el.getBoundingClientRect();
@@ -21,7 +22,8 @@ export function hideTip() {
 export function bindTips(root: HTMLElement) {
   root.addEventListener('mousemove', (e) => {
     const target = (e.target as Element).closest('[data-tip]');
-    if (target) showTip(target.getAttribute('data-tip')!, e);
+    // 補足ボタンの文は長いので折り返す。図のツールチップは 1 行のまま
+    if (target) showTip(target.getAttribute('data-tip')!, e, target.classList.contains('info'));
     else hideTip();
   });
   root.addEventListener('mouseleave', hideTip);
