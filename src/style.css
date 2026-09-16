@@ -412,7 +412,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   text-overflow: ellipsis;
 }
 .playback-typed code { color: var(--fg); font-size: 0.9rem; }
-.playback-planned { margin-left: 8px; color: color-mix(in oklab, var(--accent) 55%, var(--muted)); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 400; }
+.playback-planned { margin-left: 8px; color: var(--series-3); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 400; }
 .playback-attribution { grid-column: 3; white-space: nowrap; }
 .playback-status b { color: var(--fg); font-weight: 600; }
 .playback-history {
