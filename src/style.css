@@ -427,6 +427,17 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-figure [data-playback-plan='true'] rect {
   fill: color-mix(in srgb, var(--series-3) calc(var(--playback-plan-opacity) * 100%), var(--panel));
 }
+.playback-order {
+  font-size: 8px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: var(--panel);
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.playback-order-plan { fill: var(--series-6); }
+.playback-order-trail { fill: var(--accent); }
 .playback-figure [data-playback-active='true'] rect { fill: var(--accent); stroke: var(--accent); }
 .playback-figure [data-playback-active='true'] text { fill: #fff; }
 .playback-figure [data-playback-trigger='true'] rect { stroke: var(--series-4); stroke-width: 3; }

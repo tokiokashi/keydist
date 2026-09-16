@@ -76,6 +76,27 @@ export function playbackPlannedKeys(
   return planned;
 }
 
+/** 先読み範囲の各キーに、次の打鍵から数えた順番を割り当てる。 */
+export function playbackPlannedOrders(
+  strokes: readonly Stroke[],
+  cursor: number,
+  lookahead = 5,
+): ReadonlyMap<string, number> {
+  const start = Math.min(Math.max(0, cursor), strokes.length);
+  const orders = new Map<string, number>();
+  const span = Math.floor(lookahead);
+  if (start >= strokes.length || span <= 0) return orders;
+
+  const finish = Math.min(strokes.length, start + span);
+  for (let index = start; index < finish; index++) {
+    const order = index - start + 1;
+    for (const press of strokes[index].presses) {
+      for (const key of press.keys) orders.set(key.id, Math.min(orders.get(key.id) ?? Infinity, order));
+    }
+  }
+  return orders;
+}
+
 /** 直近tauステップの押下キーと、残留表示に使う不透明度を返す。 */
 export function playbackTrailKeys(
   strokes: readonly Stroke[],
@@ -98,6 +119,27 @@ export function playbackTrailKeys(
     }
   }
   return trail;
+}
+
+/** 履歴範囲の各キーに、直近の打鍵から数えた順番を割り当てる。 */
+export function playbackTrailOrders(
+  strokes: readonly Stroke[],
+  cursor: number,
+  tau: number,
+): ReadonlyMap<string, number> {
+  const end = Math.min(Math.max(0, cursor), strokes.length);
+  const span = Math.floor(tau);
+  const orders = new Map<string, number>();
+  if (end === 0 || span <= 0) return orders;
+
+  const start = Math.max(0, end - span);
+  for (let index = end - 1; index >= start; index--) {
+    const order = end - index;
+    for (const press of strokes[index].presses) {
+      for (const key of press.keys) orders.set(key.id, Math.min(orders.get(key.id) ?? Infinity, order));
+    }
+  }
+  return orders;
 }
 
 /** 再生中の層に対応する面グループを返す。単一面も含めて表示用に扱う。 */
