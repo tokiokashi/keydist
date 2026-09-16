@@ -755,6 +755,8 @@ let compareChartColumn = 1;
 type LayerView = 'side-by-side' | 'tabs';
 let layerView: LayerView | undefined;
 let activeLayerTab = 0;
+type LayerColorScale = 'linear' | 'log';
+let layerColorScale: LayerColorScale = 'linear';
 let naginataLayerDetail = false;
 
 function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sort: MatrixSort | null): T[] {
@@ -1304,8 +1306,16 @@ interface HeatmapValues {
   colorCounts: ReadonlyMap<string, number>;
   keyDistance: ReadonlyMap<string, number>;
   maxCount: number;
+  colorScale: LayerColorScale;
   showHeat: boolean;
   ariaSuffix: string;
+}
+
+function heatIntensity(count: number, maxCount: number, scale: LayerColorScale): number {
+  if (scale === 'log') {
+    return Math.log1p(count) / Math.log1p(Math.max(1, maxCount));
+  }
+  return count / Math.max(1, maxCount);
 }
 
 function renderLayerSvg(
@@ -1341,7 +1351,7 @@ function renderLayerSvg(
   const keys = [...geometry.keys.values()].map((key) => {
     const count = values.keyCounts.get(key.id) ?? 0;
     const colorCount = values.colorCounts.get(key.id) ?? 0;
-    const t = colorCount / max;
+    const t = heatIntensity(colorCount, max, values.colorScale);
     const thumb = key.row === THUMB_ROW;
     const w = (thumb ? THUMB_W : 1) * KEY;
     const x = (key.x - (thumb ? (THUMB_W - 1) / 2 : 0)) * KEY;
@@ -1582,6 +1592,11 @@ function renderHeatmap(
       </div>`
     : '';
   const selectedLayerView = layerView ?? (entries.length <= 5 ? 'side-by-side' : 'tabs');
+  const colorScaleControls = `<div class="layer-view-controls" role="group" aria-label="層別ヒートマップの色の尺度">
+      <span>色の尺度</span>
+      <button type="button" class="ghost" data-layer-color-scale="linear" aria-pressed="${layerColorScale === 'linear'}">線形</button>
+      <button type="button" class="ghost" data-layer-color-scale="log" aria-pressed="${layerColorScale === 'log'}">対数</button>
+    </div>`;
   const naginataControls = layout.id === 'naginata-v18' && layers.length > 2
     ? `<div class="layer-view-controls" role="group" aria-label="薙刀式のレイヤー表示">
         <span>薙刀式の表示</span>
@@ -1611,6 +1626,7 @@ function renderHeatmap(
       colorCounts: metrics.keyCounts,
       keyDistance: metrics.keyDistance,
       maxCount: commonMax,
+      colorScale: 'linear',
       showHeat: true,
       ariaSuffix: '（全レイヤー合算・物理位置）',
     },
@@ -1631,8 +1647,9 @@ function renderHeatmap(
         colorCounts: colorCounts[index],
         keyDistance: entry.stat.keyDistance,
         maxCount: layerMax,
+        colorScale: layerColorScale,
         showHeat: true,
-        ariaSuffix: '（層別・共通スケール）',
+        ariaSuffix: `（層別・${layerColorScale === 'log' ? '対数' : '線形'}・共通スケール）`,
       },
     );
   });
@@ -1646,14 +1663,15 @@ function renderHeatmap(
       ).join('')}</div>`
     : `<div class="layer-diagrams">${diagrams.join('')}</div>`;
   const hasCombos = groups.combos.length > 0 || layout.layerDefinitions?.some((definition) => definition.kind === 'combo') === true;
+  const colorScaleLabel = layerColorScale === 'log' ? '対数' : '線形';
   const layerSection = `<section class="layer-section">
     <h3>統合ヒートマップ</h3>
     <div class="layer-diagrams">${integrated}</div>
   </section>
   <section class="layer-section">
     <h3>層別ヒートマップ（${entries.length}）</h3>
-    <p class="note">層別図の色は層操作キーを除いたキー押下数で正規化し、表示中の全層で共通の最大値にしている。実際の押下数はツールチップと帰属先表に残る。</p>
-    ${shiftLegend}${naginataControls}${controls}${content}
+    <p class="note">層別図の色は層操作キーを除いたキー押下数で正規化し、表示中の全層で共通の最大値にしている。色の尺度は${colorScaleLabel}。実際の押下数はツールチップと帰属先表に残る。</p>
+    ${colorScaleControls}${shiftLegend}${naginataControls}${controls}${content}
     ${renderLayerStats(metrics, entries, hasCombos)}
   </section>`;
   el.heatmap.innerHTML = layerSection + renderModifierList(groups.modifiers, layout.legends) +
@@ -1678,6 +1696,11 @@ el.heatmap.addEventListener('click', (e) => {
   if (target.dataset.naginataLayerDetail !== undefined) {
     naginataLayerDetail = target.dataset.naginataLayerDetail === 'true';
     activeLayerTab = 0;
+    render();
+    return;
+  }
+  if (target.dataset.layerColorScale === 'linear' || target.dataset.layerColorScale === 'log') {
+    layerColorScale = target.dataset.layerColorScale;
     render();
     return;
   }
