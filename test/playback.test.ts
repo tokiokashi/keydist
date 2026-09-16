@@ -27,6 +27,7 @@ import {
   playbackTrailOrders,
   setPlaybackCalibration,
   setPlaybackSameFingerDelay,
+  setPlaybackSpeedMultiplier,
   setPlaybackStepsPerSecond,
   stepPlayback,
 } from '../src/playback.ts';
@@ -94,6 +95,22 @@ test('再生速度は固定候補に限らず任意のステップ毎秒を設�
   assert.equal(custom.cursor, 0);
   custom = advancePlayback(custom, 13, strokes);
   assert.equal(custom.cursor, 1);
+});
+
+test('再生倍率は基準速度とキャリブレーション後の速度を同じ比率で変える', () => {
+  const stroke = { presses: [] } as never;
+  assert.equal(playbackStrokeDurationMs(stroke, 2, false, undefined, undefined, 2), 250);
+  const calibration = {
+    actionsPerSecond: 4,
+    sameHandDifferentFingerActionsPerSecond: 2,
+    sameHandDifferentFingerActionsPerSecondByPair: {},
+    fingerSpeedUnitsPerSecond: {},
+    fallbackFingerSpeedUnitsPerSecond: 10,
+    measuredAt: 1,
+  };
+  assert.equal(playbackStrokeDurationMs(stroke, 1, false, calibration, undefined, 2), 125);
+  const state = setPlaybackSpeedMultiplier(createPlaybackState(), 1.5);
+  assert.equal(state.speedMultiplier, 1.5);
 });
 
 test('同指ディレイは移動距離に応じてステップ間隔を延ばす', () => {
