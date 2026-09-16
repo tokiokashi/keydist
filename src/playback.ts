@@ -1,6 +1,6 @@
 import type { Stroke } from './evaluate.ts';
 
-/** 表示上の 1 打鍵の基準間隔。実際の打鍵時間や距離モデルとは無関係。 */
+/** 表示上の1打鍵の基準間隔。実際の打鍵時間や距離モデルとは無関係。 */
 export const PLAYBACK_STEP_MS = 800;
 export const PLAYBACK_SPEEDS = [0.25, 0.5, 1, 2, 4] as const;
 export type PlaybackSpeed = (typeof PLAYBACK_SPEEDS)[number];
@@ -9,7 +9,7 @@ export type PlaybackSpeed = (typeof PLAYBACK_SPEEDS)[number];
 const MAX_FRAME_MS = 100;
 
 export interface PlaybackState {
-  /** 0 は開始前、n は n 打鍵ぶん進んだ位置。 */
+  /** 0は開始前、nはn打鍵ぶん進んだ位置。 */
   cursor: number;
   speed: PlaybackSpeed;
   playing: boolean;
@@ -24,7 +24,7 @@ export function clampPlaybackCursor(cursor: number, strokeCount: number): number
   return Math.min(Math.max(0, cursor), Math.max(0, strokeCount));
 }
 
-/** カーソル位置に表示する打鍵。0 は開始前なので文字を表示しない。 */
+/** カーソル位置に表示する打鍵。0は開始前なので文字を表示しない。 */
 export function playbackStrokeAt(strokes: readonly Stroke[], cursor: number): Stroke | undefined {
   if (cursor <= 0 || strokes.length === 0) return undefined;
   return strokes[Math.min(cursor - 1, strokes.length - 1)];
@@ -34,7 +34,7 @@ export function setPlaybackSpeed(state: PlaybackState, speed: PlaybackSpeed): Pl
   return { ...state, speed, elapsedMs: 0 };
 }
 
-/** 停止・一時停止中の 1 打鍵送り。再生中はカーソルを動かさない。 */
+/** 停止・一時停止中の1打鍵送り。再生中はカーソルを動かさない。 */
 export function stepPlayback(
   state: PlaybackState,
   direction: -1 | 1,
@@ -48,7 +48,7 @@ export function stepPlayback(
   };
 }
 
-/** requestAnimationFrame の経過時間から再生位置を進める。 */
+/** requestAnimationFrameの経過時間から再生位置を進める。 */
 export function advancePlayback(
   state: PlaybackState,
   elapsedMs: number,

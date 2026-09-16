@@ -19,7 +19,7 @@ export interface UserLayout {
   sequences?: [string, Sequence][];
   /** keyId → 取り込み元の表示ラベル */
   legends?: [string, string][];
-  /** かなをローマ字へ変換せず、sequences を直接使う */
+  /** かなをローマ字へ変換せず、sequencesを直接使う */
   direct?: boolean;
 }
 
@@ -90,7 +90,7 @@ export function validate(rows: string[]): string[] {
   return errors;
 }
 
-/** 数字段が空なら QWERTY のものを使う */
+/** 数字段が空ならQWERTYのものを使う */
 export function toLayout(def: UserLayout): Layout {
   const imported = def.sequences !== undefined || def.legends !== undefined;
   const rows = def.rows.map((r, i) => (r.trim() === '' && !imported ? QWERTY_LEGEND[i] : r));

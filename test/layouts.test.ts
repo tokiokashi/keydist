@@ -20,7 +20,7 @@ import { normalizedLayerColors } from '../src/layer-heatmap.ts';
 
 const faceAtF = (output: string) => ['', '', ['', '', '', output], ''];
 
-test('面は prefix / suffix / simultaneous を Sequence に展開する', () => {
+test('面はprefix / suffix / simultaneousをSequenceに展開する', () => {
   const layout = fromFaces('faces', 'faces', [
     { trigger: [], mode: 'simultaneous', rows: faceAtF('あ') },
     { trigger: ['d'], mode: 'prefix', rows: faceAtF('か') },
@@ -60,7 +60,7 @@ test('面定義の未知のキーは空欄にせずエラーにする', () => {
   );
 });
 
-test('日本語の配列一覧に Dvorak を含める（#48）', () => {
+test('日本語の配列一覧にDvorakを含める（#48）', () => {
   const dvorak = LAYOUTS_JA.find((layout) => layout.id === 'dvorak');
 
   assert.ok(dvorak);
@@ -68,7 +68,7 @@ test('日本語の配列一覧に Dvorak を含める（#48）', () => {
   assert.ok(dvorak.romajiTable);
 });
 
-test('TK音直入力法は正式名称を表示し、内部 id は維持する（#109）', () => {
+test('TK音直入力法は正式名称を表示し、内部idは維持する（#109）', () => {
   const oonishi = LAYOUT_BY_ID.get('oonishi');
   const combo = LAYOUT_BY_ID.get('oonishi-custom-combo');
   const tsuki = LAYOUT_BY_ID.get('tsuki-2-263');
@@ -81,7 +81,7 @@ test('TK音直入力法は正式名称を表示し、内部 id は維持する�
   assert.ok(!tsuki?.name.includes(' '));
 });
 
-test('面のセル配列は複数文字の見出しを 1 キーへ置ける', () => {
+test('面のセル配列は複数文字の見出しを1キーへ置ける', () => {
   const layout = fromFaces('multi', 'multi', [
     { trigger: [], mode: 'simultaneous', rows: ['', '', ['', '', '', 'きゃ'], ''] },
   ]);
@@ -152,7 +152,7 @@ test('畳んだレイヤーの空きセルを相互シフトの対称位置か�
   const middle = foldedLayerCells(layers[1], layout.faces!);
   const ring = foldedLayerCells(layers[2], layout.faces!);
 
-  // Layout.map の定義は片方向のままでも、図では同じ同時押しを相方の位置に出す。
+  // Layout.mapの定義は片方向のままでも、図では同じ同時押しを相方の位置に出す。
   assert.equal(middle.get('k'), 'れ');
   assert.equal(middle.get('l'), 'お');
   assert.equal(ring.get('k'), 'じ');
@@ -167,7 +167,7 @@ test('畳んだレイヤーの空きセルを相互シフトの対称位置か�
   assert.equal(tsukiCells.get('k'), 'も');
 });
 
-test('薙刀式 v18 は面から生成され、全定義を 1 ステップで保持する', () => {
+test('薙刀式v18は面から生成され、全定義を1ステップで保持する', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
 
   assert.equal(layout.map.size, 150);
@@ -180,7 +180,7 @@ test('薙刀式 v18 は面から生成され、全定義を 1 ステップで保
   assert.deepEqual(layout.map.get('ぐゎ'), [['.', 'f', 'h']]);
 });
 
-test('薙刀式のSandS表示だけ左右の Space を強調する', () => {
+test('薙刀式のSandS表示だけ左右のSpaceを強調する', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
   const centerShift = groupFacesIntoLayers(layout.faces!)[1].faces[0];
 
@@ -201,7 +201,7 @@ test('シフトの表示色は手ではなく所属レイヤーで揃える', ()
   assert.notEqual(styles.get(layers[1].faces[0])?.colorSlot, styles.get(layers[2].faces[0])?.colorSlot);
 });
 
-test('相互同時シフトは両トリガーを 1 回分の色として残す', () => {
+test('相互同時シフトは両トリガーを1回分の色として残す', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
   const layers = groupFacesIntoLayers(layout.faces!);
   for (const [layerIndex, trigger, output] of [[1, 'k', 'd'], [2, 'l', 's']] as const) {
@@ -252,7 +252,7 @@ test('通常の層トリガーは残さず、薙刀式の濁音詳細も除外�
   assert.deepEqual([...detailColors], [['f', 1]]);
 });
 
-test('NICOLA は3面の直接かな入力を同時押しとして保持する', () => {
+test('NICOLAは3面の直接かな入力を同時押しとして保持する', () => {
   const layout = LAYOUT_BY_ID.get('nicola')!;
 
   assert.equal(layout.map.size, 89);
@@ -306,18 +306,18 @@ test('かな配列七傑の未実装枠は一覧へ登録しない', () => {
   for (const layout of KANA_PENDING) {
     assert.equal(layout.map.size, 0, `${layout.id} は配置を持たない`);
     if (noThumbIds.has(layout.id)) {
-      assert.equal(layout.legends.has('thumb-l'), false, `${layout.id} は thumb-l を表示しない`);
-      assert.equal(layout.legends.has('thumb-r'), false, `${layout.id} は thumb-r を表示しない`);
+      assert.equal(layout.legends.has('thumb-l'), false, `${layout.id} はthumb-lを表示しない`);
+      assert.equal(layout.legends.has('thumb-r'), false, `${layout.id} はthumb-rを表示しない`);
     } else {
-      assert.ok(layout.legends.has('thumb-l'), `${layout.id} は thumb-l の凡例を持つ`);
-      assert.ok(layout.legends.has('thumb-r'), `${layout.id} は thumb-r の凡例を持つ`);
+      assert.ok(layout.legends.has('thumb-l'), `${layout.id} はthumb-lの凡例を持つ`);
+      assert.ok(layout.legends.has('thumb-r'), `${layout.id} はthumb-rの凡例を持つ`);
     }
     assert.equal(LAYOUT_BY_ID.has(layout.id), false);
   }
   assert.equal(LAYOUTS_JA.some((layout) => pendingIds.includes(layout.id)), false);
 });
 
-test('保存済み凡例の space も thumb-r へ解決する', () => {
+test('保存済み凡例のspaceもthumb-rへ解決する', () => {
   const layout = toLayout({
     id: 'user-legacy',
     name: 'legacy',
@@ -332,7 +332,7 @@ test('保存済み凡例の space も thumb-r へ解決する', () => {
   assert.equal(layout.legends.has('space'), false);
 });
 
-test('薙刀式 v18 の面移行で総距離とステップ数を維持する', () => {
+test('薙刀式v18の面移行で総距離とステップ数を維持する', () => {
   const geometry = buildGeometry('row-staggered');
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');

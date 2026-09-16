@@ -48,13 +48,13 @@ test('カスタムルールは基底＋差分で構築でき、促音生成を�
   assert.equal(kanaToRomaji('っしゃ', noSokuon), 'xtusha');
 });
 
-test('無効なルール id は訓令式へフォールバックする', () => {
+test('無効なルールidは訓令式へフォールバックする', () => {
   assert.equal(tableForRule('missing').get('し'), 'si');
   assert.equal(defaultRomajiRuleId('oonishi'), 'oonishi');
   assert.equal(defaultRomajiRuleId('qwerty'), 'kunrei');
 });
 
-test('AZIK を基底にしたルールでは促音自動生成を強制的に無効にする', () => {
+test('AZIKを基底にしたルールでは促音自動生成を強制的に無効にする', () => {
   const table = buildRomajiTable({
     id: 'azik-custom',
     name: 'AZIK派生',
@@ -84,7 +84,7 @@ test('既定の割り当ては既存の測定値を維持する', () => {
   }
 });
 
-test('QWERTY に AZIK を割り当てると短縮綴りが打鍵数へ反映される', () => {
+test('QWERTYにAZIKを割り当てると短縮綴りが打鍵数へ反映される', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   const qwerty = LAYOUTS_JA.find((layout) => layout.id === 'qwerty')!;
   const normal = computeMetrics(evaluate(text, qwerty, geometry, options), geometry);

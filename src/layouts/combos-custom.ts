@@ -1,7 +1,7 @@
 import type { ComboCondition, ComboDefinition } from './types.ts';
 
 /**
- * 利用者の Vial キーマップ（Corne V4）から起こしたコンボ。
+ * 利用者のVialキーマップ（Corne V4）から起こしたコンボ。
  *
  * 出力は打鍵する文字列、入力はその文字を出すキーの集合で書く。
  * キーを物理位置ではなく文字で指すことで、配列が変わっても同じ定義が使える。

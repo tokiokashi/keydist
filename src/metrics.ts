@@ -3,17 +3,17 @@ import type { Trace } from './evaluate.ts';
 import { COMBO_LAYER_ID } from './layouts/types.ts';
 
 /**
- * 隣接ペアのホーム間隔 [u]（仕様 §11.6 で引く基準）。
- * 定数 1u ではなく形状・指割り当てから実際に測る。列ずれのある形状では
- * 隣接ホームの 2 次元距離が 1u をわずかに超えるが、それは指の長さを補正した
- * 姿勢であって「開き」ではないため、超過の 0 点はそちらに置く。
+ * 隣接ペアのホーム間隔 [u]（仕様 §11.6で引く基準）。
+ * 定数1uではなく形状・指割り当てから実際に測る。列ずれのある形状では
+ * 隣接ホームの2次元距離が1uをわずかに超えるが、それは指の長さを補正した
+ * 姿勢であって「開き」ではないため、超過の0点はそちらに置く。
  */
 export const homeSpacing = (geometry: Geometry, pair: [Finger, Finger]) =>
   dist(geometry.homes[pair[0]], geometry.homes[pair[1]]);
 
 export interface PairStat {
   pair: [Finger, Finger];
-  /** ホーム間隔からの超過の平均 [u]。ホームに並んだ状態が 0。負になりうる */
+  /** ホーム間隔からの超過の平均 [u]。ホームに並んだ状態が0。負になりうる */
   meanExcess: number;
   /** 超過の標準偏差 [u]。定数を引いても分布の広がりは変わらないので生の距離と同じ値 */
   stdDev: number;
@@ -31,42 +31,42 @@ export interface ComboStats {
 }
 
 export interface LayerStat {
-  /** 層の宣言から引いた ID */
+  /** 層の宣言から引いたID */
   id: string;
   /** 表示用の層名 */
   label: string;
   /** この層に帰属するキー押下数 */
   presses: number;
-  /** 層に帰属するキー id → 打鍵回数 */
+  /** 層に帰属するキーid → 打鍵回数 */
   keyCounts: Map<string, number>;
-  /** 層に帰属するキー id → そのキーへの移動距離の合計 [u] */
+  /** 層に帰属するキーid → そのキーへの移動距離の合計 [u] */
   keyDistance: Map<string, number>;
-  /** 層操作として押したキー id → 打鍵回数。出力としての押下とは分けて持つ */
+  /** 層操作として押したキーid → 打鍵回数。出力としての押下とは分けて持つ */
   triggerKeyCounts: Map<string, number>;
-  /** 同じ層の文字トリガーを複数同時押下したキー id → 打鍵回数 */
+  /** 同じ層の文字トリガーを複数同時押下したキーid → 打鍵回数 */
   pairedTriggerKeyCounts: Map<string, number>;
 }
 
 export interface Metrics {
   /**
-   * 使用した物理形状の id と名前。形状が変わると距離の絶対値が変わるため、
+   * 使用した物理形状のidと名前。形状が変わると距離の絶対値が変わるため、
    * 配列間の比較はここが揃っている場合のみ成立する（仕様 §3）。
    */
   geometryId: string;
   geometryName: string;
   /**
-   * 使用した指割り当ての id と名前。割り当てが変わると同指連続の数も距離も変わるため、
+   * 使用した指割り当てのidと名前。割り当てが変わると同指連続の数も距離も変わるため、
    * 配列間の比較はここが揃っている場合のみ成立する（仕様 §4.2）。
    */
   fingerAssignmentId: string;
   fingerAssignmentName: string;
-  /** 打鍵ステップ数。同時押しは 1 と数える */
+  /** 打鍵ステップ数。同時押しは1と数える */
   strokes: number;
   /** キー押下数。同時押しは押したキーの数だけ数える */
   presses: number;
   /** 配列に無く打鍵できなかった文字数 */
   skipped: number;
-  /** 入力文字数（展開前。仕様 §11.4 の分母） */
+  /** 入力文字数（展開前。仕様 §11.4の分母） */
   inputChars: number;
   /** 指ごとの総移動距離 [u] */
   perFinger: Record<Finger, number>;
@@ -76,22 +76,22 @@ export interface Metrics {
   totalUnits: number;
   /** 総移動距離 [mm] */
   totalMm: number;
-  /** 1 打鍵あたりの平均移動距離 [u] */
+  /** 1打鍵あたりの平均移動距離 [u] */
   meanPerStroke: number;
   /**
-   * 入力 1 文字あたりの平均移動距離 [u]。
+   * 入力1文字あたりの平均移動距離 [u]。
    * 打鍵数はコンボ・かな直接入力で配列ごとに変わるため、`meanPerStroke` では
    * 打鍵数削減の効果が相殺されて消える。分母を展開前の文字数に固定するとここに出る。
    */
   perCharUnits: number;
   /**
-   * 入力 1 文字あたりのアクション（ステップ）数（仕様 §11.5）。
+   * 入力1文字あたりのアクション（ステップ）数（仕様 §11.5）。
    * コンボ・かな直接入力による打鍵数削減の効果はここに直接出る。
    */
   perCharSteps: number;
   /**
-   * 入力 1 文字あたりの押下キー数（仕様 §11.5）。
-   * コンボは複数キーを 1 ステップにまとめても押すキー自体は減らさないため、
+   * 入力1文字あたりの押下キー数（仕様 §11.5）。
+   * コンボは複数キーを1ステップにまとめても押すキー自体は減らさないため、
    * `perCharSteps` が下がっても `perCharPresses` は下がらない場合がある。
    */
   perCharPresses: number;
@@ -105,13 +105,13 @@ export interface Metrics {
   layers: LayerStat[];
   /** コンボ枠に帰属するキー押下数。層の保存則の左辺に加える */
   comboPresses: number;
-  /** コンボ枠に帰属するキー id → 打鍵回数 */
+  /** コンボ枠に帰属するキーid → 打鍵回数 */
   comboKeyCounts: Map<string, number>;
-  /** コンボ枠に帰属するキー id → そのキーへの移動距離の合計 [u] */
+  /** コンボ枠に帰属するキーid → そのキーへの移動距離の合計 [u] */
   comboKeyDistance: Map<string, number>;
-  /** キー id → 打鍵回数 */
+  /** キーid → 打鍵回数 */
   keyCounts: Map<string, number>;
-  /** キー id → そのキーへの移動距離の合計 [u] */
+  /** キーid → そのキーへの移動距離の合計 [u] */
   keyDistance: Map<string, number>;
 }
 
@@ -171,7 +171,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
       perFinger[press.finger] += press.distance;
       perFingerPresses[press.finger] += press.keys.length;
       if (press.sfb) sameFinger++;
-      // 1 本の指で複数キーを押した場合、距離はキーへ均等に按分する
+      // 1本の指で複数キーを押した場合、距離はキーへ均等に按分する
       const share = press.distance / press.keys.length;
       for (const key of press.keys) {
         keyCounts.set(key.id, (keyCounts.get(key.id) ?? 0) + 1);
@@ -196,7 +196,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
     }
 
     ADJACENT_PAIRS.forEach((pair, i) => {
-      // そのペアのホーム間隔を引いた超過で溜める（仕様 §11.6）。0 でクランプはしない
+      // そのペアのホーム間隔を引いた超過で溜める（仕様 §11.6）。0でクランプはしない
       pairSamples[i].push(
         dist(stroke.positions[pair[0]], stroke.positions[pair[1]]) - homeSpacings[i],
       );

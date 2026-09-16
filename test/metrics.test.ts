@@ -8,8 +8,8 @@ import { dist } from '../src/geometry.ts';
 import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '../src/sample-text-ja.ts';
 
 const geometry = buildGeometry('row-staggered');
-// LAYOUT_BY_ID の 'qwerty' はローマ字テーブル付きの JA 版で上書きされる。
-// ローマ字表に無い ascii はそのまま通るので、英字のテストにもそのまま使える。
+// LAYOUT_BY_IDの 'qwerty' はローマ字テーブル付きのJA版で上書きされる。
+// ローマ字表に無いasciiはそのまま通るので、英字のテストにもそのまま使える。
 const qwerty = LAYOUT_BY_ID.get('qwerty')!;
 const opts = (o: Partial<Options> = {}): Options => ({
   windowSize: 3,
@@ -21,7 +21,7 @@ const near = (a: number, b: number, msg?: string) =>
   assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ''} expected ${b}, got ${a}`);
 
 test('入力文字数はローマ字展開前の文字数になる', () => {
-  // 「し」は si に展開されて 2 打鍵になるが、入力文字数は展開前の 1
+  // 「し」はsiに展開されて2打鍵になるが、入力文字数は展開前の1
   const t = evaluate('し', qwerty, geometry, opts());
   assert.equal(t.strokes.length, 2);
   assert.equal(t.inputChars, 1);
@@ -33,14 +33,14 @@ test('旧日本語サンプルは過去の測定用に290文字で残る', () =>
 
 test('スキップされた文字も入力文字数に数える', () => {
   // 分母を「打てた文字数」にすると配列ごとに分母が動いてしまうため、
-  // 展開前の原文の文字数で固定する（skip の有無に関わらない）
+  // 展開前の原文の文字数で固定する（skipの有無に関わらない）
   const t = evaluate('a漢b', qwerty, geometry, opts());
   assert.equal(t.skipped, 1);
   assert.equal(t.inputChars, 3);
 });
 
-test('1 文字あたりの距離は打鍵数ではなく入力文字数を分母にする', () => {
-  // 「し」→ si（2 打鍵、入力文字数は 1）
+test('1文字あたりの距離は打鍵数ではなく入力文字数を分母にする', () => {
+  // 「し」→ si（2打鍵、入力文字数は1）
   const m = computeMetrics(evaluate('し', qwerty, geometry, opts()), geometry);
   assert.equal(m.strokes, 2);
   assert.equal(m.inputChars, 1);
@@ -50,8 +50,8 @@ test('1 文字あたりの距離は打鍵数ではなく入力文字数を分母
   near(m.perCharUnits, m.meanPerStroke * 2, '打鍵数分母では展開の効果が消える');
 });
 
-test('コンボ相当（複数文字を 1 見出しで打つ）でも入力文字数は変わらない', () => {
-  // 「きゃ」を 1 ステップで打てる配列でも、入力文字数は原文通り 2
+test('コンボ相当（複数文字を1見出しで打つ）でも入力文字数は変わらない', () => {
+  // 「きゃ」を1ステップで打てる配列でも、入力文字数は原文通り2
   const l: Layout = {
     id: 't', name: 't',
     map: new Map([['き', [['d']]], ['ゃ', [['k']]], ['きゃ', [['f']]]]),
@@ -69,27 +69,27 @@ test('コンボ相当（複数文字を 1 見出しで打つ）でも入力文�
   assert.equal(split.strokes, 2);
   assert.equal(split.inputChars, 2);
 
-  // 打鍵数は減っても入力文字数は同じなので、削減の効果が 1 文字あたりの距離に出る
+  // 打鍵数は減っても入力文字数は同じなので、削減の効果が1文字あたりの距離に出る
   assert.ok(combo.perCharUnits <= split.perCharUnits + 1e-9);
 });
 
-test('1 文字あたりのアクション数はステップ数を入力文字数で割った値になる', () => {
-  // 「し」→ si（2 打鍵、入力文字数は 1）
+test('1文字あたりのアクション数はステップ数を入力文字数で割った値になる', () => {
+  // 「し」→ si（2打鍵、入力文字数は1）
   const m = computeMetrics(evaluate('し', qwerty, geometry, opts()), geometry);
   assert.equal(m.strokes, 2);
   assert.equal(m.inputChars, 1);
   near(m.perCharSteps, 2, 'アクション/文字 = ステップ数 / 入力文字数');
 });
 
-test('1 文字あたりの押下キー数は押下数を入力文字数で割った値になる', () => {
-  // 「し」→ si（同時押しを含まないので押下数もステップ数と同じ 2）
+test('1文字あたりの押下キー数は押下数を入力文字数で割った値になる', () => {
+  // 「し」→ si（同時押しを含まないので押下数もステップ数と同じ2）
   const m = computeMetrics(evaluate('し', qwerty, geometry, opts()), geometry);
   assert.equal(m.presses, 2);
   near(m.perCharPresses, 2, '押下/文字 = 押下数 / 入力文字数');
 });
 
 test('コンボはアクション/文字を下げるが、押下/文字は下げない', () => {
-  // 「きゃ」を 3 キー同時押しの 1 ステップで打てる配列と、2 ステップに分けて打つ配列を比較する。
+  // 「きゃ」を3キー同時押しの1ステップで打てる配列と、2ステップに分けて打つ配列を比較する。
   // コンボは押すキー自体は減らさないため、押下数は両者で変わらない
   const combo: Layout = {
     id: 'combo', name: 'combo',
@@ -117,7 +117,7 @@ test('コンボはアクション/文字を下げるが、押下/文字は下げ
 
 test('コンボの定義数・命中定義数・延べ命中回数を分けて数える（#36）', () => {
   const combo = LAYOUT_BY_ID.get('oonishi-custom-combo')!;
-  const trace = evaluate('やく やま にゅうりょく きゃ', combo, geometry, opts());
+  const trace = evaluate('やくやまにゅうりょくきゃ', combo, geometry, opts());
   const m = computeMetrics(trace, geometry);
 
   assert.deepEqual(trace.comboHits, ['aku', 'yuu', 'yoku', 'ya']);
@@ -200,7 +200,7 @@ test('指ごとの押下数はサンプル文の実測値と一致する', () =>
 
 test('指ごとの押下数の合計は総押下数と一致する', () => {
   // マトリックスは指ごとの押下数を並べる図なので、そこに出ない押下があってはいけない。
-  // 親指のように移動距離が 0 の指を列から落とすと、この和が崩れる
+  // 親指のように移動距離が0の指を列から落とすと、この和が崩れる
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   for (const layout of LAYOUTS_JA) {
     const m = computeMetrics(evaluate(text, layout, geometry, opts()), geometry);
@@ -209,20 +209,20 @@ test('指ごとの押下数の合計は総押下数と一致する', () => {
   }
 });
 
-test('全打鍵で指の相対位置が変わらなければ隣接指の標準偏差は 0 になる', () => {
+test('全打鍵で指の相対位置が変わらなければ隣接指の標準偏差は0になる', () => {
   // 'j' は右人差し指のホームキー。連打では他の指は一切動かない
   const m = computeMetrics(evaluate('jjjj', qwerty, geometry, opts()), geometry);
   for (const stat of m.adjacent) {
     near(stat.stdDev, 0, stat.pair.join('-'));
     near(stat.maxExcess, stat.meanExcess, `${stat.pair.join('-')} max`);
-    // ホームから動いていないので超過は 0（仕様 §11.6）
+    // ホームから動いていないので超過は0（仕様 §11.6）
     near(stat.meanExcess, 0, `${stat.pair.join('-')} excess`);
   }
 });
 
-test('どの物理形状でもホーム段だけを打てば隣接指の超過は 0 になる', () => {
-  // 引くのは定数 1u ではなくペアごとの実ホーム間隔なので、列ずれのある形状でも
-  // ホームに居る状態がちょうど 0 になる（仕様 §11.6）
+test('どの物理形状でもホーム段だけを打てば隣接指の超過は0になる', () => {
+  // 引くのは定数1uではなくペアごとの実ホーム間隔なので、列ずれのある形状でも
+  // ホームに居る状態がちょうど0になる（仕様 §11.6）
   for (const shape of ['row-staggered', 'ortholinear', 'column-staggered'] as const) {
     const g = buildGeometry(shape);
     const m = computeMetrics(evaluate('asdf jkl;', qwerty, g, opts()), g);
@@ -239,7 +239,7 @@ test('隣接指の標準偏差は打鍵ごとのスナップショットから�
   const m = computeMetrics(trace, geometry);
 
   for (const stat of m.adjacent) {
-    // metrics.ts とは独立に、Trace.strokes の位置スナップショットから直接計算する
+    // metrics.tsとは独立に、Trace.strokesの位置スナップショットから直接計算する
     const samples = trace.strokes.map(
       (s) =>
         dist(s.positions[stat.pair[0]], s.positions[stat.pair[1]]) -

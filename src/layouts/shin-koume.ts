@@ -2,11 +2,11 @@ import { THUMB_KEY } from '../geometry.ts';
 import { fromFaces, type Face, type FaceMode, type Layout } from './types.ts';
 
 /**
- * シン蜂蜜小梅の登録枠（#21）。かなの配置は #21 の出典から埋める。
+ * シン蜂蜜小梅の登録枠（#21）。かなの配置は #21の出典から埋める。
  * 発表記事: http://61degc.seesaa.net/article/483912281.html
  * 設定ファイル配布記事: http://61degc.seesaa.net/article/483919146.html
  * 紹介記事: https://oookaworks.seesaa.net/article/483920902.html
- * 公式サイト（現在 404）: http://8x3koume.na.coocan.jp/
+ * 公式サイト（現在404）: http://8x3koume.na.coocan.jp/
  */
 
 const EMPTY_ROWS = ['', '', '', ''] as const;

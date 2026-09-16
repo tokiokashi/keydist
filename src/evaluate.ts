@@ -10,11 +10,11 @@ import {
 import { kanaToRomajiChunks } from './romaji/kunrei.ts';
 
 export interface Options {
-  /** 窓幅 N（打鍵単位）。この打鍵数までは残す候補を比較する */
+  /** 窓幅N（打鍵単位）。この打鍵数までは残す候補を比較する */
   windowSize: number;
   /**
    * 同指連続（g=0）で打鍵先がその指のホームキー自身のとき、移動を加算するか。
-   * false にすると距離 0 として扱う。
+   * falseにすると距離0として扱う。
    */
   sfbHomeCost: boolean;
 }
@@ -24,10 +24,10 @@ export const DEFAULT_OPTIONS: Options = {
   sfbHomeCost: true,
 };
 
-/** 1 ステップの中の 1 指分の押下 */
+/** 1ステップの中の1指分の押下 */
 export interface Press {
   finger: Finger;
-  /** この指が同時に押すキー。1 本の指でキーの間を押す場合は複数になる */
+  /** この指が同時に押すキー。1本の指でキーの間を押す場合は複数になる */
   keys: Key[];
   /** 指の目標位置。キーが複数なら重心（§4.2） */
   target: Point;
@@ -44,7 +44,7 @@ export interface Press {
 }
 
 /**
- * 1 ステップ。同時押しは 1 ステップに複数の押下を持つ。
+ * 1ステップ。同時押しは1ステップに複数の押下を持つ。
  * 順次打鍵（前置・後置シフト等）はステップが分かれる。
  */
 export interface Stroke {
@@ -71,7 +71,7 @@ export interface Trace {
   /**
    * 入力文字数（ローマ字展開・コンボ結合の前、原文の文字数）。
    * 打鍵数（ステップ数）は配列で変わるが、これは変わらないので
-   * 「1 文字あたり」の分母に使える（仕様 §11.4）。
+   * 「1文字あたり」の分母に使える（仕様 §11.4）。
    */
   inputChars: number;
   /** 配列が持つコンボ見出しのうち、評価中に命中した見出し（命中ごとに1件） */
@@ -92,7 +92,7 @@ export interface Trace {
  * g > N        → d_home               （復帰済み）
  *
  * ホームへの復帰移動そのものは計上しない（§7 R2）。
- * 同時押しステップは 1 ステップとして数え、距離は各指の単純和を採る。
+ * 同時押しステップは1ステップとして数え、距離は各指の単純和を採る。
  */
 export function evaluate(
   text: string,
@@ -194,7 +194,7 @@ export function evaluate(
           record(errors, seen, `キー ${id} が形状に存在しない（文字「${char}」）`);
           continue;
         }
-        // 1 本の指が複数キーを担当する場合はまとめる。指はキーの間を押す
+        // 1本の指が複数キーを担当する場合はまとめる。指はキーの間を押す
         const group = byFinger.get(key.finger);
         if (group) group.push(key);
         else byFinger.set(key.finger, [key]);
@@ -222,7 +222,7 @@ export function evaluate(
         press.distance = decision.distance;
         if (decision.stay) {
           // 「残す」が実際に選ばれた区間だけ、先行するスナップショットを
-          // 前回キーへ戻す。N は保持時間ではなく候補を比較する先読み範囲。
+          // 前回キーへ戻す。Nは保持時間ではなく候補を比較する先読み範囲。
           restoreStaySnapshots(
             strokes,
             last[press.finger],
@@ -270,7 +270,7 @@ function canFireYouonOnlyCombo(cursor: number, chars: string[], chunks: RomajiCh
 
 interface CostDecision {
   distance: number;
-  /** g の候補比較で d_stay が選ばれたか */
+  /** gの候補比較でd_stayが選ばれたか */
   stay: boolean;
 }
 
@@ -293,14 +293,14 @@ function pressCost(
     };
   }
   if (gap <= options.windowSize) {
-    // 同値は既存の min の結果を維持し、「残す」側に寄せる。
+    // 同値は既存のminの結果を維持し、「残す」側に寄せる。
     const stay = dStay <= dHome;
     return { distance: stay ? dStay : dHome, stay };
   }
   return { distance: dHome, stay: false };
 }
 
-/** 複数キーを 1 本の指で押す場合の目標位置。キーの重心を採る */
+/** 複数キーを1本の指で押す場合の目標位置。キーの重心を採る */
 function centroid(keys: Key[]): Point {
   if (keys.length === 1) return { x: keys[0].x, y: keys[0].y };
   const n = keys.length;
@@ -317,10 +317,10 @@ function record(errors: string[], seen: Set<string>, message: string) {
 }
 
 /**
- * 仕様 §10。ステップ i の押下直後の全指位置。
+ * 仕様 §10。ステップiの押下直後の全指位置。
  * そのステップで押した指は目標位置、それ以外はホームを既定とする。
  * 後続の同指打鍵で「残す」が選ばれた区間だけ、先行スナップショットを
- * restoreStaySnapshots が前回キーへ戻す。
+ * restoreStaySnapshotsが前回キーへ戻す。
  */
 function snapshot(
   prev: Record<Finger, Point>,

@@ -18,7 +18,7 @@ const FIGURE_LAYOUT_ID = 'qwerty';
 const FIGURE_SHAPE = 'row-staggered';
 const FIGURE_ROMAJI = ROMAJI_RULES.qwerty.name;
 const FIGURE_WINDOW = 3;
-/** 追う指。ホームは j */
+/** 追う指。ホームはj */
 const FOCUS_FINGER: Finger = 'RI';
 
 const KEY = 26;
@@ -27,7 +27,7 @@ const PAD = 8;
 const ROWS = [1, HOME_ROW, 3];
 
 export interface FigurePress {
-  /** 1 始まりの打鍵番号 */
+  /** 1始まりの打鍵番号 */
   number: number;
   keyId: string;
   finger: Finger;
@@ -35,7 +35,7 @@ export interface FigurePress {
   distance: number;
 }
 
-/** 固定例を評価して、押下を 1 列に並べる */
+/** 固定例を評価して、押下を1列に並べる */
 export function figurePresses(geometry: Geometry, text: string = FIGURE_TEXT): FigurePress[] {
   const layout = withRomaji(LAYOUT_BY_ID.get(FIGURE_LAYOUT_ID)!, ROMAJI_RULES.qwerty.table());
   const trace = evaluate(text, layout, geometry, {
@@ -57,7 +57,7 @@ export function figurePresses(geometry: Geometry, text: string = FIGURE_TEXT): F
   return presses;
 }
 
-/** 末尾の 0 は落とす。1.000 は 1、1.250 は 1.25、1.0307… は 1.031 */
+/** 末尾の0は落とす。1.000は1、1.250は1.25、1.0307… は1.031 */
 const n3 = (v: number) => String(Number(v.toFixed(3)));
 const u = (v: number) => `${n3(v)}u`;
 
@@ -102,7 +102,7 @@ interface BoardArrow {
   fromKey: string;
   toKey: string;
   adopted: boolean;
-  /** 盤面の下に出す 1 行 */
+  /** 盤面の下に出す1行 */
   label: string;
 }
 
@@ -110,7 +110,7 @@ interface BoardSpec {
   caption: string;
   /** 表示する打鍵列。並び順のまま ①②③… を振る */
   seq: FigurePress[];
-  /** seq のうち濃く出す打鍵の番号 */
+  /** seqのうち濃く出す打鍵の番号 */
   focus: number[];
   arrows: BoardArrow[];
   /** 矢印に紐づかない補足行 */
@@ -144,7 +144,7 @@ function board(geometry: Geometry, spec: BoardSpec): string {
   const focus = new Set(spec.focus);
   const homeId=homeKeyId(geometry);
 
-  /** キー id ごとの丸数字（同じキーを 2 回打つ場合は複数付く） */
+  /** キーidごとの丸数字（同じキーを2回打つ場合は複数付く） */
   const marks = new Map<string, { mark: string; focused: boolean; press: FigurePress }[]>();
   spec.seq.forEach((press, i) => {
     const list = marks.get(press.keyId) ?? [];
@@ -209,7 +209,7 @@ function board(geometry: Geometry, spec: BoardSpec): string {
 }
 
 
-/** GitHub の alert に倣った囲み。種別は note / important / warning */
+/** GitHubのalertに倣った囲み。種別はnote / important / warning */
 const CALLOUT_LABEL: Record<string, string> = {
   note: 'Note',
   important: 'Important',
@@ -224,7 +224,7 @@ function callout(kind: keyof typeof CALLOUT_LABEL & string, title: string, lines
   </div>`;
 }
 
-/** 句点の直後で改行する。文が続く限り 1 文 1 行にする */
+/** 句点の直後で改行する。文が続く限り1文1行にする */
 function para(text: string): string {
   const html = text.split('。').filter(Boolean).map((t) => `${t}。`).join('<br />');
   return `<p>${html}</p>`;
