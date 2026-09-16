@@ -18,6 +18,7 @@ import {
   playbackStrokeDisplay,
   playbackStrokeAt,
   playbackStrokeDurationMs,
+  playbackHandKeyMotions,
   playbackSameFingerKeyMotions,
   playbackTrailKeys,
   playbackTrailOrders,
@@ -106,6 +107,41 @@ test('同指連続のキー移動は直前のキーから現在のキーを返�
     toKeys: ['s'],
     finger: 'LP',
   }]);
+});
+
+test('片手連続のキー移動は直前の同じ手のキーから現在のキーを返す', () => {
+  const sameHand = [
+    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }] },
+    { presses: [{ finger: 'LR', keys: [{ id: 's' }] }] },
+  ] as never[];
+  assert.deepEqual(playbackHandKeyMotions(sameHand, 2), [{
+    fromKey: 'a',
+    toKeys: ['s'],
+    finger: 'LR',
+  }]);
+
+  // 手が変われば移動ではない
+  const crossHand = [
+    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }] },
+    { presses: [{ finger: 'RI', keys: [{ id: 'j' }] }] },
+  ] as never[];
+  assert.deepEqual(playbackHandKeyMotions(crossHand, 2), []);
+
+  // 同指連打は既定で除外し、includeSameFinger で拾える
+  const sameFinger = [
+    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }] },
+    { presses: [{ finger: 'LP', sfb: true, keys: [{ id: 'q' }] }] },
+  ] as never[];
+  assert.deepEqual(playbackHandKeyMotions(sameFinger, 2), []);
+  assert.deepEqual(playbackHandKeyMotions(sameFinger, 2, true), [{
+    fromKey: 'a',
+    toKeys: ['q'],
+    finger: 'LP',
+  }]);
+
+  // 開始直後は起点が無い
+  assert.deepEqual(playbackHandKeyMotions(sameHand, 1), []);
+  assert.deepEqual(playbackHandKeyMotions(sameHand, 0), []);
 });
 
 test('片手連続の打鍵へ順番を付け、同指連打を除外できる', () => {
