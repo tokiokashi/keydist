@@ -677,6 +677,14 @@ interface PlaybackRateWindow {
   durationMs: number;
 }
 
+export interface PlaybackRateChartPoint {
+  cursor: number;
+  /** 直近の集計窓に触れた入力単位を表示順に連結した文字列。 */
+  inputText: string;
+  kanaPerSecond?: number;
+  actionsPerSecond?: number;
+}
+
 function playbackRecentRateWindow(
   strokes: readonly Stroke[],
   cursor: number,
@@ -703,6 +711,22 @@ function playbackRecentRateWindow(
       );
     }, 0);
   return { start, end, durationMs };
+}
+
+function playbackRateWindowInputText(
+  strokes: readonly Stroke[],
+  recent: PlaybackRateWindow,
+): string {
+  const inputs: string[] = [];
+  for (let at = recent.start; at < recent.end; ) {
+    const inputIndex = strokes[at].inputIndex;
+    let next = at + 1;
+    while (next < strokes.length && strokes[next].inputIndex === inputIndex) next++;
+    const startsInWindow = at === recent.start || strokes[at - 1].inputIndex !== inputIndex;
+    if (startsInWindow) inputs.push(strokes[next - 1].inputChar);
+    at = next;
+  }
+  return inputs.join('');
 }
 
 /** 直近の完了済み打鍵を実際の表示時間で割った実効アクション毎秒。 */
@@ -758,6 +782,43 @@ export function playbackRecentKanaPerSecond(
     at = next;
   }
   return kanaCount > 0 ? (kanaCount * 1000) / recent.durationMs : undefined;
+}
+
+/** 再生カーソルごとの実効速度と、その速度計算に触れた入力文字列。 */
+export function playbackRateChartData(
+  strokes: readonly Stroke[],
+  stepsPerSecond: PlaybackStepsPerSecond,
+  sameFingerDelay = false,
+  limit = 10,
+  calibration?: PlaybackCalibration,
+): PlaybackRateChartPoint[] {
+  const points: PlaybackRateChartPoint[] = [{ cursor: 0, inputText: '' }];
+  for (let cursor = 1; cursor <= strokes.length; cursor++) {
+    const recent = playbackRecentRateWindow(
+      strokes,
+      cursor,
+      stepsPerSecond,
+      sameFingerDelay,
+      limit,
+      calibration,
+    );
+    points.push({
+      cursor,
+      inputText: recent ? playbackRateWindowInputText(strokes, recent) : '',
+      kanaPerSecond: playbackRecentKanaPerSecond(
+        strokes,
+        cursor,
+        stepsPerSecond,
+        sameFingerDelay,
+        limit,
+        calibration,
+      ),
+      actionsPerSecond: recent && recent.durationMs > 0
+        ? ((recent.end - recent.start) * 1000) / recent.durationMs
+        : undefined,
+    });
+  }
+  return points;
 }
 
 /** 停止・一時停止中の1打鍵送り。再生中はカーソルを動かさない。 */

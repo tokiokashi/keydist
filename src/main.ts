@@ -51,6 +51,7 @@ import {
   playbackRomajiPlannedKeys,
   playbackRomajiPlannedOrders,
   playbackOrderLabel,
+  playbackRateChartData,
   playbackRecentActionsPerSecond,
   playbackRecentKanaPerSecond,
   playbackHandKeyMotions,
@@ -70,6 +71,10 @@ import {
   PLAYBACK_STEPS_PER_SECOND_MAX,
   PLAYBACK_STEPS_PER_SECOND_MIN,
 } from './playback.ts';
+import {
+  renderPlaybackRateChart,
+  updatePlaybackRateChartCursor,
+} from './playback-rate-chart.ts';
 import {
   actionsPerSecondFromIntervals,
   calibrationActionPair,
@@ -865,6 +870,7 @@ let playbackChainIncludeSameFinger = false;
 let playbackChainIncludeLayerKeys = true;
 let playbackMotionCursor = -1;
 let playbackPanelOpen = false;
+let playbackRateChartSignature: string | undefined;
 
 type CalibrationPhase = 'actions' | 'finger' | 'same-hand' | 'result';
 interface CalibrationSession {
@@ -1362,6 +1368,7 @@ function updatePlaybackView() {
   const typed = el.playback.querySelector<HTMLElement>('[data-playback-typed]');
   const history = el.playback.querySelector<HTMLElement>('[data-playback-history]');
   const historyText = el.playback.querySelector<HTMLElement>('[data-playback-history-text]');
+  const rateChart = el.playback.querySelector<HTMLElement>('[data-playback-rate-chart]');
   const planned = el.playback.querySelector<HTMLElement>('[data-playback-planned]');
   const layer = el.playback.querySelector<HTMLElement>('[data-playback-layer]');
   const seek = el.playback.querySelector<HTMLInputElement>('[data-playback-seek]');
@@ -1421,6 +1428,25 @@ function updatePlaybackView() {
       if (segment.kind === 'current') span.setAttribute('aria-current', 'step');
       historyText.append(span);
     }
+  }
+  if (rateChart) {
+    const chartSignature = JSON.stringify({
+      stepsPerSecond: playbackState.stepsPerSecond,
+      sameFingerDelay: playbackState.sameFingerDelay,
+      calibration: playbackState.calibration,
+      strokeCount: playbackTrace.strokes.length,
+    });
+    if (playbackRateChartSignature !== chartSignature) {
+      rateChart.innerHTML = renderPlaybackRateChart(playbackRateChartData(
+        playbackTrace.strokes,
+        playbackState.stepsPerSecond,
+        playbackState.sameFingerDelay,
+        10,
+        playbackState.calibration,
+      ));
+      playbackRateChartSignature = chartSignature;
+    }
+    updatePlaybackRateChartCursor(rateChart, cursor);
   }
   if (layer) layer.textContent = playbackLayerLabel(playbackTrace, stroke);
   if (seek) seek.value = String(cursor);
@@ -1662,6 +1688,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
   );
   playbackMotionCursor = -1;
   playbackSeekWasPlaying = undefined;
+  playbackRateChartSignature = undefined;
   el.playback.innerHTML = `<details class="playback-panel"${playbackPanelOpen ? ' open' : ''}>
     <summary><span class="playback-summary-icon" aria-hidden="true">▶</span><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
@@ -1703,6 +1730,10 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
           <span data-playback-history-text></span>
         </div>
       </div>
+      <details class="playback-rate-chart-panel">
+        <summary>かな/秒・アクション/秒の推移</summary>
+        <div class="playback-rate-chart" data-playback-rate-chart></div>
+      </details>
       <div class="fig-fixed playback-figure">${renderPlaybackSvg(layout, geometry)}</div>
     </div>
   </details>`;
@@ -2767,6 +2798,11 @@ el.heatmap.addEventListener('click', (e) => {
 });
 
 el.playback.addEventListener('click', (e) => {
+  const rateCursor = (e.target as Element).closest<SVGElement>('[data-playback-rate-cursor]');
+  if (rateCursor) {
+    seekPlayback(rateCursor.getAttribute('data-playback-rate-cursor') ?? '0');
+    return;
+  }
   const target = (e.target as Element).closest<HTMLButtonElement>('button[data-playback-action]');
   if (!target) return;
   if (target.dataset.playbackAction === 'calibration') {

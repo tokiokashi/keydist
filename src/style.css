@@ -448,6 +448,40 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   text-underline-offset: 3px;
 }
 .playback-input-planned { color: var(--series-3); }
+.playback-rate-chart-panel {
+  margin: 6px 0 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
+}
+.playback-rate-chart-panel > summary {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.playback-rate-chart-panel > summary::-webkit-details-marker { display: none; }
+.playback-rate-chart-panel > summary::before { content: '＋ '; }
+.playback-rate-chart-panel[open] > summary::before { content: '− '; }
+.playback-rate-chart {
+  margin-top: 8px;
+  overflow-x: auto;
+}
+.playback-rate-chart svg {
+  display: block;
+  width: 100%;
+  min-width: 560px;
+  height: auto;
+}
+.playback-rate-chart [data-playback-rate-cursor] { cursor: pointer; }
+.playback-rate-chart [data-playback-rate-current='true'] {
+  fill: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.playback-rate-chart-empty {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
 .playback-figure { border-top: 1px solid var(--line); padding-top: 10px; }
 .playback-figure svg { max-width: none; }
 .playback-figure [data-playback-trail='true'] rect {
