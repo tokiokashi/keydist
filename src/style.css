@@ -338,8 +338,8 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   cursor: pointer;
 }
 .playback-finger-toggle input { margin: 0; }
-.playback-trail-tau { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 0.76rem; }
-.playback-trail-tau input { width: 4.5em; padding: 2px 4px; font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
+.playback-lookahead-setting, .playback-range-setting { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 0.76rem; }
+.playback-lookahead-setting input, .playback-range-setting input { width: 4.5em; padding: 2px 4px; font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
 .playback-controls {
   display: flex;
   align-items: center;

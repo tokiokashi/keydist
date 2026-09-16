@@ -794,6 +794,8 @@ let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
 let playbackShowFingers = false;
 let playbackShowRomajiPlan = false;
+let playbackShowPlanKeys = false;
+let playbackLookaheadSteps = 5;
 let playbackShowTrail = false;
 let playbackTrailTau = 5;
 
@@ -822,8 +824,8 @@ function updatePlaybackView() {
   const trailKeys = playbackShowTrail
     ? playbackTrailKeys(playbackTrace.strokes, cursor, playbackTrailTau)
     : new Map<string, number>();
-  const plannedKeys = playbackShowRomajiPlan && playbackLayout?.romajiTable !== undefined
-    ? playbackPlannedKeys(playbackTrace.strokes, cursor)
+  const plannedKeys = playbackShowPlanKeys
+    ? playbackPlannedKeys(playbackTrace.strokes, cursor, playbackLookaheadSteps)
     : new Map<string, number>();
 
   for (const key of el.playback.querySelectorAll<SVGGElement>('[data-playback-key]')) {
@@ -859,6 +861,8 @@ function updatePlaybackView() {
   const forward = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="forward"]');
   const fingers = el.playback.querySelector<HTMLInputElement>('[data-playback-fingers]');
   const romajiPlan = el.playback.querySelector<HTMLInputElement>('[data-playback-romaji-plan]');
+  const planKeys = el.playback.querySelector<HTMLInputElement>('[data-playback-plan-keys]');
+  const lookahead = el.playback.querySelector<HTMLInputElement>('[data-playback-lookahead]');
   const trail = el.playback.querySelector<HTMLInputElement>('[data-playback-trail]');
   const trailTau = el.playback.querySelector<HTMLInputElement>('[data-playback-trail-tau]');
   if (position) position.textContent = `${cursor} / ${total} ステップ`;
@@ -896,6 +900,11 @@ function updatePlaybackView() {
   if (romajiPlan) {
     romajiPlan.checked = playbackShowRomajiPlan;
     romajiPlan.disabled = !isRomaji;
+  }
+  if (planKeys) planKeys.checked = playbackShowPlanKeys;
+  if (lookahead) {
+    lookahead.value = String(playbackLookaheadSteps);
+    lookahead.disabled = !playbackShowPlanKeys;
   }
   if (trail) trail.checked = playbackShowTrail;
   if (trailTau) trailTau.value = String(playbackTrailTau);
@@ -941,8 +950,10 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
       <div class="playback-head">
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${playbackShowFingers ? ' checked' : ''} />指の位置を色で表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${playbackShowRomajiPlan ? ' checked' : ''} />予定ローマ字を表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-plan-keys${playbackShowPlanKeys ? ' checked' : ''} />押下予定キーを表示</label>
+        <label class="playback-lookahead-setting" title="押下予定キーを表示する先読みステップ数">先読み <input type="number" data-playback-lookahead min="1" max="20" step="1" value="${playbackLookaheadSteps}" aria-label="先読みステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${playbackShowTrail ? ' checked' : ''} />押下履歴を残す</label>
-        <label class="playback-trail-tau">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${playbackTrailTau}" /> ステップ</label>
+        <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${playbackTrailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
       </div>
       <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
         <button type="button" class="ghost" data-playback-action="back">1 ステップ戻る</button>
@@ -2076,6 +2087,19 @@ el.playback.addEventListener('change', (e) => {
   const romajiPlan = target.closest<HTMLInputElement>('input[data-playback-romaji-plan]');
   if (romajiPlan) {
     playbackShowRomajiPlan = romajiPlan.checked;
+    updatePlaybackView();
+    return;
+  }
+  const planKeys = target.closest<HTMLInputElement>('input[data-playback-plan-keys]');
+  if (planKeys) {
+    playbackShowPlanKeys = planKeys.checked;
+    updatePlaybackView();
+    return;
+  }
+  const lookahead = target.closest<HTMLInputElement>('input[data-playback-lookahead]');
+  if (lookahead) {
+    const value = Number(lookahead.value);
+    if (Number.isInteger(value) && value >= 1 && value <= 20) playbackLookaheadSteps = value;
     updatePlaybackView();
     return;
   }

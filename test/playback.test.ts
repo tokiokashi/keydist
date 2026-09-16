@@ -95,13 +95,15 @@ test('ローマ字の現在入力単位に予定綴りと打鍵済み接頭辞�
   assert.deepEqual(playbackRomajiPlan(trace.strokes, 2), { planned: 'kyo', typed: 'ky' });
 });
 
-test('ローマ字の予定キーは次のキーほど緑を濃く表示する', () => {
+test('予定キーは先読み範囲の近いキーほど緑を濃く表示する', () => {
   const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
-  const trace = evaluate('きょ', layout, buildGeometry('row-staggered'));
-  const planned = playbackPlannedKeys(trace.strokes, 1);
+  const trace = evaluate('きょう', layout, buildGeometry('row-staggered'));
+  const planned = playbackPlannedKeys(trace.strokes, 0, 3);
 
-  assert.equal(planned.get('y'), 1);
-  assert.equal(planned.get('o'), 0.5);
+  assert.equal(planned.get('k'), 1);
+  assert.equal(planned.get('y'), 2 / 3);
+  assert.equal(planned.get('o'), 1 / 3);
+  assert.equal(planned.has('u'), false);
 });
 
 test('押下履歴はtauステップ内で新しいほど濃くなる', () => {
