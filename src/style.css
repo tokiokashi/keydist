@@ -374,6 +374,17 @@ details.panel > summary::before { content: '＋ '; }
 details.panel[open] > summary::before { content: '− '; }
 details.panel[open] > summary { margin-bottom: 14px; }
 
+/* N 感度は見出しの中にも尺度切り替えを置くため、閉じた時の余白を消す */
+#sensitivity-panel > summary { margin-bottom: 0; }
+#sensitivity-panel > summary::-webkit-details-marker { display: none; }
+#sensitivity-panel > summary > h2 {
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+}
+#sensitivity-panel[open] > summary { margin-bottom: 14px; }
+
 input[type='text'] {
   font: inherit;
   width: 100%;

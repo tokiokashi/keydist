@@ -71,7 +71,7 @@ const ALPHA: Layout[] = [
     'eiao-ktnsh',
     'zxcv;gdmjb',
   ]),
-  fromRows('oonishi-custom', '大西（私家版）', [
+  fromRows('oonishi-custom', 'TK音直入力法', [
     '1234567890',
     'qlu,.fwryp',
     'eiao-ktnsh',
@@ -83,7 +83,7 @@ const ALPHA_BY_ID = new Map(ALPHA.map((l) => [l.id, l]));
 
 /**
  * 英文をそのまま打つ配列。
- * 大西の私家版は日本語のコンボ運用と対で意味を持つので、英文の一覧には出さない。
+ * TK音直入力法は日本語のコンボ運用と対で意味を持つので、英文の一覧には出さない。
  */
 export const LAYOUTS: Layout[] = ALPHA.filter((l) => l.id !== 'oonishi-custom');
 
@@ -104,17 +104,17 @@ export const KANA_PENDING: Layout[] = [
  * 最終形はどちらも打鍵ステップ列なので、同じテキストで比較できる。
  */
 export const LAYOUTS_JA: Layout[] = [
-  // 私家版はコンボ込みでのみ意味を持つので、素の形では出さない。
+  // TK音直入力法はコンボ込みでのみ意味を持つので、素の形では出さない。
   ...ALPHA.filter((l) => l.id.startsWith('oonishi') === false).map((l) =>
     withRomaji(l, ROMAJI),
   ),
   // 大西は公式が前提とする綴り（シャ行 sh / じ ji / じゃ行 j）で打つ
   withRomaji(ALPHA_BY_ID.get('oonishi')!, ROMAJI_OONISHI),
-  // 私家版のコンボは訓令式（sya / zya）の綴りを前提に組まれている
+  // TK音直入力法のコンボは訓令式（sya / zya）の綴りを前提に組まれている
   withRomaji(
     withCombos(
       'oonishi-custom-combo',
-      '大西（私家版 + コンボ）',
+      'TK音直入力法',
       ALPHA_BY_ID.get('oonishi-custom')!,
       CUSTOM_COMBOS,
     ),

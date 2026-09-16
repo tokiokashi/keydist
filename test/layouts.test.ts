@@ -68,6 +68,13 @@ test('日本語の配列一覧に Dvorak を含める（#48）', () => {
   assert.ok(dvorak.romajiTable);
 });
 
+test('TK音直入力法は正式名称を表示し、内部 id は維持する（#109）', () => {
+  const combo = LAYOUT_BY_ID.get('oonishi-custom-combo');
+
+  assert.equal(combo?.id, 'oonishi-custom-combo');
+  assert.equal(combo?.name, 'TK音直入力法');
+});
+
 test('面のセル配列は複数文字の見出しを 1 キーへ置ける', () => {
   const layout = fromFaces('multi', 'multi', [
     { trigger: [], mode: 'simultaneous', rows: ['', '', ['', '', '', 'きゃ'], ''] },
