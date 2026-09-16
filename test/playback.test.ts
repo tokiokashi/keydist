@@ -9,14 +9,19 @@ import {
   playbackInputPreview,
   playbackPlannedKeys,
   playbackPlannedOrders,
+  playbackArpeggioOrders,
+  playbackRecentActionsPerSecond,
   playbackOrderLabel,
   playbackRomajiPlannedKeys,
   playbackRomajiPlannedOrders,
   playbackRomajiPlan,
   playbackStrokeDisplay,
   playbackStrokeAt,
+  playbackStrokeDurationMs,
+  playbackSameFingerKeyMotions,
   playbackTrailKeys,
   playbackTrailOrders,
+  setPlaybackSameFingerDelay,
   setPlaybackStepsPerSecond,
   stepPlayback,
 } from '../src/playback.ts';
@@ -30,6 +35,7 @@ const playing = (cursor = 0) => ({
   cursor,
   playing: true,
 });
+const emptyStrokes = (length: number) => Array.from({ length }, () => ({ presses: [] })) as never[];
 
 test('再生カーソルは0から総ステップ数までに収まる', () => {
   assert.equal(clampPlaybackCursor(-1, 3), 0);
@@ -45,24 +51,79 @@ test('停止・一時停止中のステップ送りは同じ整数カーソル�
 });
 
 test('経過時間でステップ毎秒に応じて進み、速度変更ではカーソルを動かさない', () => {
+  const strokes = emptyStrokes(3);
   let state = playing();
-  for (let i = 0; i < 7; i++) state = advancePlayback(state, 100, 3);
+  for (let i = 0; i < 7; i++) state = advancePlayback(state, 100, strokes);
   assert.equal(state.cursor, 0);
-  state = advancePlayback(state, 100, 3);
+  state = advancePlayback(state, 100, strokes);
   assert.equal(state.cursor, 1);
 
   let fast = setPlaybackStepsPerSecond(playing(), 5);
-  fast = advancePlayback(fast, 100, 3);
-  fast = advancePlayback(fast, 100, 3);
+  fast = advancePlayback(fast, 100, strokes);
+  fast = advancePlayback(fast, 100, strokes);
   assert.equal(fast.cursor, 1);
   assert.equal(setPlaybackStepsPerSecond({ ...state, cursor: 2 }, 5).cursor, 2);
 });
 
+test('再生速度は固定候補に限らず任意のステップ毎秒を設定できる', () => {
+  const strokes = emptyStrokes(3);
+  let custom = setPlaybackStepsPerSecond(playing(), 3.2);
+  assert.equal(custom.stepsPerSecond, 3.2);
+  custom = advancePlayback(custom, 100, strokes);
+  custom = advancePlayback(custom, 100, strokes);
+  custom = advancePlayback(custom, 100, strokes);
+  assert.equal(custom.cursor, 0);
+  custom = advancePlayback(custom, 13, strokes);
+  assert.equal(custom.cursor, 1);
+});
+
+test('同指ディレイは移動距離に応じてステップ間隔を延ばす', () => {
+  const strokes = [
+    { presses: [{ sfb: true, distance: 2 }] },
+    { presses: [] },
+  ] as never[];
+  assert.equal(playbackStrokeDurationMs(strokes[0], 2), 500);
+  assert.equal(playbackStrokeDurationMs(strokes[0], 2, true), 1000);
+
+  let state = setPlaybackStepsPerSecond(setPlaybackSameFingerDelay(playing(), true), 2);
+  for (let i = 0; i < 9; i++) state = advancePlayback(state, 100, strokes);
+  assert.equal(state.cursor, 0);
+  state = advancePlayback(state, 100, strokes);
+  assert.equal(state.cursor, 1);
+  for (let i = 0; i < 4; i++) state = advancePlayback(state, 100, strokes);
+  state = advancePlayback(state, 100, strokes);
+  assert.equal(state.cursor, 2);
+  assert.ok(Math.abs(playbackRecentActionsPerSecond(strokes, 2, 2, true)! - (4 / 3)) < 1e-9);
+});
+
+test('同指連続のキー移動は直前のキーから現在のキーを返す', () => {
+  const strokes = [
+    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }] },
+    { presses: [{ finger: 'LP', sfb: true, keys: [{ id: 's' }] }] },
+  ] as never[];
+  assert.deepEqual(playbackSameFingerKeyMotions(strokes, 2), [{
+    fromKey: 'a',
+    toKeys: ['s'],
+    finger: 'LP',
+  }]);
+});
+
+test('片手連続の打鍵へ順番を付け、同指連打を除外できる', () => {
+  const strokes = [
+    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }] },
+    { presses: [{ finger: 'LP', sfb: true, keys: [{ id: 's' }] }] },
+    { presses: [{ finger: 'LR', keys: [{ id: 'd' }] }] },
+  ] as never[];
+  assert.deepEqual([...playbackArpeggioOrders(strokes, 3)], [['d', 1]]);
+  assert.deepEqual([...playbackArpeggioOrders(strokes, 3, true)], [['a', 1], ['s', 2], ['d', 3]]);
+});
+
 test('末尾では停止し、先頭へループしない', () => {
-  const ended = advancePlayback(playing(2), 800, 2);
+  const strokes = emptyStrokes(2);
+  const ended = advancePlayback(playing(2), 800, strokes);
   assert.equal(ended.cursor, 2);
   assert.equal(ended.playing, false);
-  assert.equal(advancePlayback(ended, 800, 2).cursor, 2);
+  assert.equal(advancePlayback(ended, 800, strokes).cursor, 2);
 });
 
 test('表示する打鍵はカーソル1から直前のstrokeを返す', () => {
