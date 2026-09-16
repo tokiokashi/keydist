@@ -1539,11 +1539,12 @@ function renderLayerStats(
     ? `<tr><th scope="row">コンボ計</th><td class="num">${metrics.comboPresses}</td>` +
       `<td class="num">${total ? ((metrics.comboPresses / total) * 100).toFixed(1) : '0.0'}%</td></tr>`
     : '';
-  return `<div class="layer-stats scroll-x">
-    <table><thead><tr><th>帰属先</th><th>押下数</th><th>割合</th></tr></thead>
-    <tbody>${rows}${comboRow}</tbody></table>
+  return `<details class="layer-stats collapsible-list">
+    <summary>帰属先（${entries.length + (hasCombos ? 1 : 0)}）</summary>
+    <div class="scroll-x"><table><thead><tr><th>帰属先</th><th>押下数</th><th>割合</th></tr></thead>
+    <tbody>${rows}${comboRow}</tbody></table></div>
     <p class="note">層とコンボの押下数の合計: ${metrics.layers.reduce((sum, stat) => sum + stat.presses, 0) + metrics.comboPresses} / 総押下数: ${metrics.presses}</p>
-  </div>`;
+  </details>`;
 }
 
 function renderHeatmap(
