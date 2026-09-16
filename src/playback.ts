@@ -33,11 +33,15 @@ export interface PlaybackRomajiPlan {
   typed: string;
 }
 
-/** 現在の入力単位について、予定綴りと打鍵済みの接頭辞を返す。 */
-export function playbackRomajiPlan(
+/** 打鍵順を既存の図解と同じ丸数字で表示する。 */
+export function playbackOrderLabel(order: number): string {
+  return order >= 1 && order <= 20 ? String.fromCharCode(0x245f + order) : `(${order})`;
+}
+
+function playbackCurrentInputRange(
   strokes: readonly Stroke[],
   cursor: number,
-): PlaybackRomajiPlan | undefined {
+): { start: number; end: number } | undefined {
   const end = Math.min(Math.max(0, cursor), strokes.length);
   if (end === 0) return undefined;
   const inputIndex = strokes[end - 1].inputIndex;
@@ -45,10 +49,58 @@ export function playbackRomajiPlan(
   while (start > 0 && strokes[start - 1].inputIndex === inputIndex) start--;
   let finish = end;
   while (finish < strokes.length && strokes[finish].inputIndex === inputIndex) finish++;
+  return { start, end: finish };
+}
+
+/** 現在の入力単位について、予定綴りと打鍵済みの接頭辞を返す。 */
+export function playbackRomajiPlan(
+  strokes: readonly Stroke[],
+  cursor: number,
+): PlaybackRomajiPlan | undefined {
+  const end = Math.min(Math.max(0, cursor), strokes.length);
+  const range = playbackCurrentInputRange(strokes, end);
+  if (!range) return undefined;
   return {
-    planned: strokes.slice(start, finish).map((stroke) => stroke.char).join(''),
-    typed: strokes.slice(start, end).map((stroke) => stroke.char).join(''),
+    planned: strokes.slice(range.start, range.end).map((stroke) => stroke.char).join(''),
+    typed: strokes.slice(range.start, end).map((stroke) => stroke.char).join(''),
   };
+}
+
+/** 現在のローマ字入力単位で、まだ押していないキーを緑色表示するための不透明度を返す。 */
+export function playbackRomajiPlannedKeys(
+  strokes: readonly Stroke[],
+  cursor: number,
+): ReadonlyMap<string, number> {
+  const end = Math.min(Math.max(0, cursor), strokes.length);
+  const range = playbackCurrentInputRange(strokes, end);
+  const planned = new Map<string, number>();
+  if (!range) return planned;
+
+  for (let index = end; index < range.end; index++) {
+    for (const press of strokes[index].presses) {
+      for (const key of press.keys) planned.set(key.id, 1);
+    }
+  }
+  return planned;
+}
+
+/** 現在のローマ字入力単位で、まだ押していないキーに順番を割り当てる。 */
+export function playbackRomajiPlannedOrders(
+  strokes: readonly Stroke[],
+  cursor: number,
+): ReadonlyMap<string, number> {
+  const end = Math.min(Math.max(0, cursor), strokes.length);
+  const range = playbackCurrentInputRange(strokes, end);
+  const orders = new Map<string, number>();
+  if (!range) return orders;
+
+  for (let index = end; index < range.end; index++) {
+    const order = index - end + 1;
+    for (const press of strokes[index].presses) {
+      for (const key of press.keys) orders.set(key.id, Math.min(orders.get(key.id) ?? Infinity, order));
+    }
+  }
+  return orders;
 }
 
 /** カーソル以降の先読みステップについて、近さに応じた不透明度を返す。 */

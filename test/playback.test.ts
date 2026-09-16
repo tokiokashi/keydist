@@ -9,6 +9,9 @@ import {
   playbackInputPreview,
   playbackPlannedKeys,
   playbackPlannedOrders,
+  playbackOrderLabel,
+  playbackRomajiPlannedKeys,
+  playbackRomajiPlannedOrders,
   playbackRomajiPlan,
   playbackStrokeDisplay,
   playbackStrokeAt,
@@ -137,6 +140,16 @@ test('ローマ字の現在入力単位に予定綴りと打鍵済み接頭辞�
   const trace = evaluate('きょ', layout, buildGeometry('row-staggered'));
 
   assert.deepEqual(playbackRomajiPlan(trace.strokes, 2), { planned: 'kyo', typed: 'ky' });
+});
+
+test('予定ローマ字は未入力キーを順番付きの予定キーとして返す', () => {
+  const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
+  const trace = evaluate('け', layout, buildGeometry('row-staggered'));
+
+  assert.equal(playbackRomajiPlannedKeys(trace.strokes, 1).get('e'), 1);
+  assert.equal(playbackRomajiPlannedOrders(trace.strokes, 1).get('e'), 1);
+  assert.equal(playbackRomajiPlannedKeys(trace.strokes, 1).has('k'), false);
+  assert.equal(playbackOrderLabel(1), '①');
 });
 
 test('予定キーは先読み範囲の近いキーほど緑を濃く表示する', () => {

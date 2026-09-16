@@ -47,6 +47,9 @@ import {
   playbackPlannedKeys,
   playbackPlannedOrders,
   playbackRomajiPlan,
+  playbackRomajiPlannedKeys,
+  playbackRomajiPlannedOrders,
+  playbackOrderLabel,
   playbackStrokeAt,
   setPlaybackSpeed,
   stepPlayback,
@@ -788,6 +791,8 @@ let naginataLayerDetail = false;
 const PLAYBACK_KEY = 30;
 const PLAYBACK_PAD = 6;
 const PLAYBACK_THUMB_WIDTH = 1.9;
+const PLAYBACK_SCALE_MIN = 0.5;
+const PLAYBACK_SCALE_MAX = 4;
 let playbackState: PlaybackState = createPlaybackState();
 let playbackTrace: Trace | undefined;
 let playbackGeometry: ReturnType<typeof buildGeometry> | undefined;
@@ -796,12 +801,13 @@ let playbackAnimationFrame: number | undefined;
 let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
 let playbackShowFingers = false;
-let playbackShowRomajiPlan = false;
+let playbackShowRomajiPlan = true;
 let playbackShowPlanKeys = false;
-let playbackLookaheadSteps = 5;
 let playbackShowTrail = false;
 let playbackTrailTau = 5;
 let playbackShowOrderLabels = false;
+let playbackScale = 1.5;
+let playbackPanelOpen = false;
 
 function cancelPlaybackAnimation() {
   if (playbackAnimationFrame !== undefined) cancelAnimationFrame(playbackAnimationFrame);
@@ -820,6 +826,8 @@ function updatePlaybackView() {
   const cursor = clampPlaybackCursor(playbackState.cursor, total);
   const stroke = playbackStrokeAt(playbackTrace.strokes, cursor);
   const display = playbackLayout && stroke ? playbackStrokeDisplay(playbackLayout, stroke) : undefined;
+  const isRomaji = playbackLayout?.romajiTable !== undefined;
+  const windowSize = Number(el.window.value);
   const activeKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
   const triggerKeys = new Set(stroke?.triggerKeys ?? []);
   const fingerPositionKeys = playbackShowFingers
@@ -828,11 +836,18 @@ function updatePlaybackView() {
   const trailKeys = playbackShowTrail
     ? playbackTrailKeys(playbackTrace.strokes, cursor, playbackTrailTau)
     : new Map<string, number>();
-  const plannedKeys = playbackShowPlanKeys
-    ? playbackPlannedKeys(playbackTrace.strokes, cursor, playbackLookaheadSteps)
+  const romajiPlannedKeys = isRomaji && playbackShowRomajiPlan
+    ? playbackRomajiPlannedKeys(playbackTrace.strokes, cursor)
     : new Map<string, number>();
-  const plannedOrders = playbackShowOrderLabels && playbackShowPlanKeys
-    ? playbackPlannedOrders(playbackTrace.strokes, cursor, playbackLookaheadSteps)
+  const plannedKeys = playbackShowPlanKeys
+    ? playbackPlannedKeys(playbackTrace.strokes, cursor, windowSize)
+    : romajiPlannedKeys;
+  const plannedOrders = playbackShowOrderLabels
+    ? playbackShowPlanKeys
+      ? playbackPlannedOrders(playbackTrace.strokes, cursor, windowSize)
+      : playbackShowRomajiPlan
+        ? playbackRomajiPlannedOrders(playbackTrace.strokes, cursor)
+        : new Map<string, number>()
     : new Map<string, number>();
   const trailOrders = playbackShowOrderLabels && playbackShowTrail
     ? playbackTrailOrders(playbackTrace.strokes, cursor, playbackTrailTau)
@@ -854,16 +869,16 @@ function updatePlaybackView() {
     const plannedOrder = plannedOrders.get(id);
     const plannedOrderLabel = key.querySelector<SVGTextElement>('[data-playback-order="plan"]');
     if (plannedOrderLabel) {
-      plannedOrderLabel.textContent = plannedOrder === undefined ? '' : String(plannedOrder);
+      plannedOrderLabel.textContent = plannedOrder === undefined ? '' : playbackOrderLabel(plannedOrder);
       plannedOrderLabel.setAttribute('visibility', plannedOrder === undefined ? 'hidden' : 'visible');
     }
     const trailOrder = trailOrders.get(id);
     const trailOrderLabel = key.querySelector<SVGTextElement>('[data-playback-order="trail"]');
     if (trailOrderLabel) {
-      trailOrderLabel.textContent = trailOrder === undefined ? '' : String(trailOrder);
+      trailOrderLabel.textContent = trailOrder === undefined ? '' : playbackOrderLabel(trailOrder);
       trailOrderLabel.setAttribute('visibility', trailOrder === undefined ? 'hidden' : 'visible');
     }
-    const label = key.querySelector('text');
+    const label = key.querySelector<SVGTextElement>('[data-playback-label]');
     if (label) label.textContent = display?.keyLabels.get(id) ?? key.dataset.playbackBaseLabel ?? '';
   }
 
@@ -882,18 +897,17 @@ function updatePlaybackView() {
   const back = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="back"]');
   const forward = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="forward"]');
   const fingers = el.playback.querySelector<HTMLInputElement>('[data-playback-fingers]');
-  const romajiPlan = el.playback.querySelector<HTMLInputElement>('[data-playback-romaji-plan]');
   const planKeys = el.playback.querySelector<HTMLInputElement>('[data-playback-plan-keys]');
-  const lookahead = el.playback.querySelector<HTMLInputElement>('[data-playback-lookahead]');
   const trail = el.playback.querySelector<HTMLInputElement>('[data-playback-trail]');
   const trailTau = el.playback.querySelector<HTMLInputElement>('[data-playback-trail-tau]');
   const orderLabels = el.playback.querySelector<HTMLInputElement>('[data-playback-order-labels]');
+  const scale = el.playback.querySelector<HTMLInputElement>('input[data-playback-scale]');
+  const playbackWindow = el.playback.querySelector<HTMLOutputElement>('[data-playback-window]');
   if (position) position.textContent = `${cursor} / ${total} ステップ`;
-  const isRomaji = playbackLayout?.romajiTable !== undefined;
   const inputPreview = playbackInputPreview(
     playbackTrace.strokes,
     cursor,
-    playbackShowPlanKeys ? playbackLookaheadSteps : 0,
+    windowSize,
   );
   if (current) {
     current.hidden = isRomaji;
@@ -908,7 +922,7 @@ function updatePlaybackView() {
       : stroke?.inputChar ?? '—';
   }
   if (typed) typed.textContent = stroke?.char ?? '—';
-  const plan = isRomaji && playbackShowRomajiPlan
+  const plan = isRomaji
     ? playbackRomajiPlan(playbackTrace.strokes, cursor)
     : undefined;
   if (planned) {
@@ -937,18 +951,20 @@ function updatePlaybackView() {
   if (back) back.disabled = playbackState.playing || cursor === 0;
   if (forward) forward.disabled = playbackState.playing || cursor >= total;
   if (fingers) fingers.checked = playbackShowFingers;
+  const romajiPlan = el.playback.querySelector<HTMLInputElement>('[data-playback-romaji-plan]');
   if (romajiPlan) {
     romajiPlan.checked = playbackShowRomajiPlan;
     romajiPlan.disabled = !isRomaji;
   }
-  if (planKeys) planKeys.checked = playbackShowPlanKeys;
-  if (lookahead) {
-    lookahead.value = String(playbackLookaheadSteps);
-    lookahead.disabled = !playbackShowPlanKeys;
+  if (planKeys) {
+    planKeys.checked = playbackShowPlanKeys;
+    planKeys.disabled = false;
   }
   if (trail) trail.checked = playbackShowTrail;
   if (trailTau) trailTau.value = String(playbackTrailTau);
   if (orderLabels) orderLabels.checked = playbackShowOrderLabels;
+  if (scale) scale.value = String(playbackScale);
+  if (playbackWindow) playbackWindow.textContent = String(windowSize);
 }
 
 function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeometry>): string {
@@ -968,17 +984,25 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
       <rect x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" stroke="var(--line)"/>
       <text class="playback-order playback-order-plan" data-playback-order="plan" x="${x + 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
       <text class="playback-order playback-order-trail" data-playback-order="trail" x="${x + width - 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
-      <text x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
+      <text class="playback-key-label" data-playback-label x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
     </g>`;
   });
   const W = maxX + PLAYBACK_PAD;
   const H = maxY + PLAYBACK_PAD;
-  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W * playbackScale}" height="${H * playbackScale}" role="img"
     aria-label="${escapeAttr(`${layout.name}の打鍵再生`)}">${keys.join('')}</svg>`;
+}
+
+function rerenderPlaybackFigure() {
+  if (!playbackLayout || !playbackGeometry) return;
+  const figure = el.playback.querySelector<HTMLElement>('.playback-figure');
+  if (figure) figure.innerHTML = renderPlaybackSvg(playbackLayout, playbackGeometry);
 }
 
 function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeof buildGeometry>) {
   cancelPlaybackAnimation();
+  const currentPanel = el.playback.querySelector<HTMLDetailsElement>('.playback-panel');
+  if (currentPanel) playbackPanelOpen = currentPanel.open;
   playbackTrace = trace;
   playbackGeometry = geometry;
   playbackLayout = layout;
@@ -987,17 +1011,19 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
   const speeds = PLAYBACK_SPEEDS.map((speed) =>
     `<option value="${speed}"${speed === playbackState.speed ? ' selected' : ''}>${speed}x</option>`,
   ).join('');
-  el.playback.innerHTML = `<details class="playback-panel">
+  el.playback.innerHTML = `<details class="playback-panel"${playbackPanelOpen ? ' open' : ''}>
     <summary><span class="playback-summary-icon" aria-hidden="true">▶</span><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
       <div class="playback-head">
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${playbackShowFingers ? ' checked' : ''} />指の位置を色で表示</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${playbackShowRomajiPlan ? ' checked' : ''} />予定ローマ字を表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${playbackShowRomajiPlan ? ' checked' : ''} />予定ローマ字の盤面表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-plan-keys${playbackShowPlanKeys ? ' checked' : ''} />押下予定キーを表示</label>
-        <label class="playback-lookahead-setting" title="押下予定キーを表示する先読みステップ数">先読み <input type="number" data-playback-lookahead min="1" max="20" step="1" value="${playbackLookaheadSteps}" aria-label="先読みステップ数" /> ステップ</label>
+        <span class="playback-window-setting" title="サイドバーの窓幅Nと共通">N <output data-playback-window>${Number(el.window.value)}</output> ステップ</span>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${playbackShowTrail ? ' checked' : ''} />押下履歴を残す</label>
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${playbackTrailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${playbackShowOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
+        <label class="playback-scale-setting" title="0.5〜4倍の範囲で配列図の表示倍率を指定できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="any" list="playback-scale-options" value="${playbackScale}" aria-label="配列図の表示倍率" /> 倍</label>
+        <datalist id="playback-scale-options"><option value="1" label="標準"></option><option value="1.5" label="見やすい"></option><option value="2" label="大きめ"></option></datalist>
       </div>
       <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
         <button type="button" class="ghost" data-playback-action="back">1 ステップ戻る</button>
@@ -1022,6 +1048,10 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
       <div class="fig-fixed playback-figure">${renderPlaybackSvg(layout, geometry)}</div>
     </div>
   </details>`;
+  const panel = el.playback.querySelector<HTMLDetailsElement>('.playback-panel');
+  panel?.addEventListener('toggle', () => {
+    playbackPanelOpen = panel.open;
+  });
   updatePlaybackView();
 }
 
@@ -2141,13 +2171,6 @@ el.playback.addEventListener('change', (e) => {
     updatePlaybackView();
     return;
   }
-  const lookahead = target.closest<HTMLInputElement>('input[data-playback-lookahead]');
-  if (lookahead) {
-    const value = Number(lookahead.value);
-    if (Number.isInteger(value) && value >= 1 && value <= 20) playbackLookaheadSteps = value;
-    updatePlaybackView();
-    return;
-  }
   const trail = target.closest<HTMLInputElement>('input[data-playback-trail]');
   if (trail) {
     playbackShowTrail = trail.checked;
@@ -2165,6 +2188,16 @@ el.playback.addEventListener('change', (e) => {
   if (orderLabels) {
     playbackShowOrderLabels = orderLabels.checked;
     updatePlaybackView();
+    return;
+  }
+  const scale = target.closest<HTMLInputElement>('input[data-playback-scale]');
+  if (scale) {
+    const value = Number(scale.value);
+    if (Number.isFinite(value) && value >= PLAYBACK_SCALE_MIN && value <= PLAYBACK_SCALE_MAX) {
+      playbackScale = value;
+      rerenderPlaybackFigure();
+      updatePlaybackView();
+    }
     return;
   }
   const seek = target.closest<HTMLInputElement>('input[data-playback-seek]');
