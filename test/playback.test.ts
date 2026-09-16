@@ -193,6 +193,27 @@ test('左右同時押しが混ざっても片手の連続は途切れない', ()
   ]);
 });
 
+test('アルペジオの番号は区間の先の打鍵も先読みして出す', () => {
+  // 右手で . → k → l と続き、その後に左手へ渡る
+  const strokes = [
+    { presses: [{ finger: 'RR', keys: [{ id: '.' }] }] },
+    { presses: [{ finger: 'RM', keys: [{ id: 'k' }] }] },
+    { presses: [{ finger: 'RI', keys: [{ id: 'l' }] }] },
+    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }] },
+  ] as never[];
+
+  // 区間の最初の打鍵の時点で、区間全体の番号が出そろう
+  const whole = [['.', 1], ['k', 2], ['l', 3]];
+  assert.deepEqual([...playbackArpeggioOrders(strokes, 1)], whole);
+  assert.deepEqual([...playbackArpeggioOrders(strokes, 2)], whole);
+  assert.deepEqual([...playbackArpeggioOrders(strokes, 3)], whole);
+  // 手が変われば次の区間へ
+  assert.deepEqual([...playbackArpeggioOrders(strokes, 4)], [['a', 1]]);
+
+  // limit は区間の先頭から数える
+  assert.deepEqual([...playbackArpeggioOrders(strokes, 1, false, 2)], [['.', 1], ['k', 2]]);
+});
+
 test('レイヤーキーをアルペジオに含めるか選べる', () => {
   // j が濁音レイヤーのトリガーであり、出力キーとしても押されている
   const strokes = [

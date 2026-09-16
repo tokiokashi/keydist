@@ -166,21 +166,30 @@ export function playbackArpeggioOrders(
   const span = Math.max(0, Math.floor(limit));
   if (end === 0 || span === 0) return orders;
 
-  // 手ごとに遡る。左右同時押しのステップは両方の連続に参加するため、逆の手が
-  // 混ざっても片方の手のアルペジオは途切れない。
+  // 手ごとに、現在の打鍵を含む区間を前後へ広げる。
+  //
+  // 遡るだけだと区間の番号が打つたびに増えていき、区間の全体像は最後の打鍵まで
+  // 見えない。アルペジオは1つのまとまりとして読みたいので、先の打鍵も数える。
+  //
+  // 左右同時押しのステップは両方の手の区間に参加するため、逆の手が混ざっても
+  // 片方の手のアルペジオは途切れない。
   for (const hand of strokeHandKeys(strokes[end - 1], includeLayerKeys).keys()) {
+    // 同指連打は区間の区切り。区切り自身はどちらの区間にも属さない
     if (!includeSameFinger && handHasSameFinger(strokes[end - 1], hand)) continue;
 
-    let start = end - 1;
-    while (start > 0) {
-      const previous = strokes[start - 1];
-      if (!strokeHandKeys(previous, includeLayerKeys).has(hand)) break;
-      if (!includeSameFinger && handHasSameFinger(previous, hand)) break;
-      start--;
-    }
-    start = Math.max(start, end - span);
+    const belongs = (index: number): boolean => {
+      const stroke = strokes[index];
+      if (!strokeHandKeys(stroke, includeLayerKeys).has(hand)) return false;
+      return includeSameFinger || !handHasSameFinger(stroke, hand);
+    };
 
-    for (let index = start; index < end; index++) {
+    let start = end - 1;
+    while (start > 0 && belongs(start - 1)) start--;
+    let finish = end;
+    while (finish < strokes.length && belongs(finish)) finish++;
+    finish = Math.min(finish, start + span);
+
+    for (let index = start; index < finish; index++) {
       const keys = strokeHandKeys(strokes[index], includeLayerKeys).get(hand);
       if (!keys) continue;
       for (const key of keys) orders.set(key, index - start + 1);
