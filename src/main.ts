@@ -1096,8 +1096,11 @@ function renderPlaybackMotions(
       const animation = document.createElementNS(SVG_NS, 'animateTransform');
       animation.setAttribute('attributeName', 'transform');
       animation.setAttribute('type', 'translate');
-      animation.setAttribute('from', `translate(${dx} ${dy})`);
-      animation.setAttribute('to', 'translate(0 0)');
+      // animateTransform の from/to は type で指定した変換関数の「引数だけ」を書く。
+      // translate(...) と関数名を付けると不正値として無視され、静的な transform 属性
+      // （＝移動元）が残ったままアニメーションが一切適用されない。
+      animation.setAttribute('from', `${dx} ${dy}`);
+      animation.setAttribute('to', '0 0');
       animation.setAttribute('dur', `${durationMs}ms`);
       animation.setAttribute('fill', 'freeze');
       // begin既定値の0sはDOM挿入時ではなくSVGドキュメントのタイムライン基準の0秒を指す。
