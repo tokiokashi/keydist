@@ -91,7 +91,7 @@ test('ローマ字の入力履歴はかなごとの複数打鍵を重複させ�
   assert.deepEqual(playbackCompletedInputs(trace.strokes, trace.strokes.length), ['な', 'ま', 'え']);
 });
 
-test('TK音直入力法のコンボは入力履歴をコンボ後の文字で表示する', () => {
+test('TK音直入力法のコンボは入力単位全体を現在文字と履歴に表示する', () => {
   const layout = withRomaji(LAYOUT_BY_ID.get('oonishi-custom-combo')!, kunrei());
   const trace = evaluate('わがはいねこ', layout, buildGeometry('row-staggered'));
 
@@ -100,7 +100,7 @@ test('TK音直入力法のコンボは入力履歴をコンボ後の文字で表
   assert.deepEqual(playbackInputPreview(trace.strokes, 5, 5), [
     { text: 'わ', kind: 'completed' },
     { text: 'が', kind: 'completed' },
-    { text: 'は', kind: 'current' },
+    { text: 'はい', kind: 'current' },
     { text: 'ね', kind: 'planned' },
     { text: 'こ', kind: 'planned' },
   ]);

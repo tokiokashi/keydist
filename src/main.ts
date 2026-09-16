@@ -890,6 +890,11 @@ function updatePlaybackView() {
   const orderLabels = el.playback.querySelector<HTMLInputElement>('[data-playback-order-labels]');
   if (position) position.textContent = `${cursor} / ${total} ステップ`;
   const isRomaji = playbackLayout?.romajiTable !== undefined;
+  const inputPreview = playbackInputPreview(
+    playbackTrace.strokes,
+    cursor,
+    playbackShowPlanKeys ? playbackLookaheadSteps : 0,
+  );
   if (current) {
     current.hidden = isRomaji;
     current.textContent = stroke
@@ -897,7 +902,11 @@ function updatePlaybackView() {
       : '—';
   }
   if (romaji) romaji.hidden = !isRomaji;
-  if (kana) kana.textContent = stroke?.inputChar ?? '—';
+  if (kana) {
+    kana.textContent = isRomaji
+      ? inputPreview.find((segment) => segment.kind === 'current')?.text ?? '—'
+      : stroke?.inputChar ?? '—';
+  }
   if (typed) typed.textContent = stroke?.char ?? '—';
   const plan = isRomaji && playbackShowRomajiPlan
     ? playbackRomajiPlan(playbackTrace.strokes, cursor)
@@ -906,11 +915,6 @@ function updatePlaybackView() {
     planned.hidden = plan === undefined;
     planned.textContent = plan ? `予定: ${plan.planned}` : '';
   }
-  const inputPreview = playbackInputPreview(
-    playbackTrace.strokes,
-    cursor,
-    playbackShowPlanKeys ? playbackLookaheadSteps : 0,
-  );
   if (history) history.hidden = inputPreview.length === 0;
   if (historyText) {
     historyText.replaceChildren();

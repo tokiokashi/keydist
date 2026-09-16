@@ -230,15 +230,13 @@ export function playbackInputPreview(
   const planned = groups.filter((group) =>
     group.inputIndex !== currentInputIndex && group.end > end && group.start < futureEnd,
   );
-  const current = currentGroupIndex < 0 ? undefined : groups[currentGroupIndex];
-  const currentEnd = current ? Math.min(end, current.end) : 0;
 
   return [
     ...completed.map((group) => ({ text: strokes[group.end - 1].inputChar, kind: 'completed' as const })),
-    ...(current && currentEnd > current.start
-      ? [{ text: strokes[currentEnd - 1].inputChar, kind: 'current' as const }]
-      : []),
-    ...planned.map((group) => ({ text: strokes[group.start].inputChar, kind: 'planned' as const })),
+    ...(currentGroupIndex < 0
+      ? []
+      : [{ text: strokes[groups[currentGroupIndex].end - 1].inputChar, kind: 'current' as const }]),
+    ...planned.map((group) => ({ text: strokes[group.end - 1].inputChar, kind: 'planned' as const })),
   ];
 }
 
