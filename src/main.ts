@@ -1458,8 +1458,6 @@ interface LayerViewEntry {
   layer: Layer;
   title: string;
   stat: LayerStat;
-  /** 色の正規化から除く、この表示層の操作キー。 */
-  triggerKeys: ReadonlySet<string>;
 }
 
 function emptyLayerStat(id: string, label: string): LayerStat {
@@ -1469,16 +1467,14 @@ function emptyLayerStat(id: string, label: string): LayerStat {
     presses: 0,
     keyCounts: new Map(),
     keyDistance: new Map(),
+    triggerKeyCounts: new Map(),
   };
-}
-
-function triggerKeysForLayer(layer: Layer): Set<string> {
-  return new Set(layer.faces.flatMap((face) => face.trigger.map(resolveKeyId)));
 }
 
 function mergeLayerStats(id: string, label: string, stats: readonly LayerStat[]): LayerStat {
   const keyCounts = new Map<string, number>();
   const keyDistance = new Map<string, number>();
+  const triggerKeyCounts = new Map<string, number>();
   let presses = 0;
   for (const stat of stats) {
     presses += stat.presses;
@@ -1488,13 +1484,20 @@ function mergeLayerStats(id: string, label: string, stats: readonly LayerStat[])
     for (const [key, distance] of stat.keyDistance) {
       keyDistance.set(key, (keyDistance.get(key) ?? 0) + distance);
     }
+    for (const [key, count] of stat.triggerKeyCounts) {
+      triggerKeyCounts.set(key, (triggerKeyCounts.get(key) ?? 0) + count);
+    }
   }
-  return { id, label, presses, keyCounts, keyDistance };
+  return { id, label, presses, keyCounts, keyDistance, triggerKeyCounts };
 }
 
-function normalizedLayerColors(stat: LayerStat, triggerKeys: ReadonlySet<string>): Map<string, number> {
+function normalizedLayerColors(stat: LayerStat): Map<string, number> {
   const colorCounts = new Map(stat.keyCounts);
-  for (const key of triggerKeys) colorCounts.set(key, 0);
+  for (const [key, count] of stat.triggerKeyCounts) {
+    const remaining = (colorCounts.get(key) ?? 0) - count;
+    if (remaining > 0) colorCounts.set(key, remaining);
+    else colorCounts.delete(key);
+  }
   return colorCounts;
 }
 
@@ -1507,7 +1510,6 @@ function layerViewEntries(metrics: Metrics, layout: Layout, layers: readonly Lay
       layer,
       title,
       stat: stats.get(id) ?? emptyLayerStat(id, title),
-      triggerKeys: triggerKeysForLayer(layer),
     };
   });
   if (layout.id !== 'naginata-v18' || naginataLayerDetail || entries.length <= 2) return entries;
@@ -1515,10 +1517,6 @@ function layerViewEntries(metrics: Metrics, layout: Layout, layers: readonly Lay
   const base = entries[0];
   const center = entries[1];
   const rest = entries.slice(2);
-  const mergedTriggerKeys = new Set(base.triggerKeys);
-  for (const entry of rest) {
-    for (const key of entry.triggerKeys) mergedTriggerKeys.add(key);
-  }
   return [
     {
       ...base,
@@ -1527,7 +1525,6 @@ function layerViewEntries(metrics: Metrics, layout: Layout, layers: readonly Lay
         base.stat,
         ...rest.map((entry) => entry.stat),
       ]),
-      triggerKeys: mergedTriggerKeys,
     },
     center,
   ];
@@ -1631,7 +1628,7 @@ function renderHeatmap(
       ariaSuffix: '（全レイヤー合算・物理位置）',
     },
   );
-  const colorCounts = entries.map((entry) => normalizedLayerColors(entry.stat, entry.triggerKeys));
+  const colorCounts = entries.map((entry) => normalizedLayerColors(entry.stat));
   const layerMax = Math.max(1, ...colorCounts.flatMap((counts) => [...counts.values()]));
   const diagrams = entries.map((entry, index) => {
     return renderLayerSvg(

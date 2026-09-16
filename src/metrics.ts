@@ -41,6 +41,8 @@ export interface LayerStat {
   keyCounts: Map<string, number>;
   /** 層に帰属するキー id → そのキーへの移動距離の合計 [u] */
   keyDistance: Map<string, number>;
+  /** 層操作として押したキー id → 打鍵回数。出力としての押下とは分けて持つ */
+  triggerKeyCounts: Map<string, number>;
 }
 
 export interface Metrics {
@@ -131,6 +133,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
       presses: 0,
       keyCounts: new Map(),
       keyDistance: new Map(),
+      triggerKeyCounts: new Map(),
     }));
   const layerById = new Map(layerStats.map((stat) => [stat.id, stat]));
   const ensureLayer = (id: string): LayerStat => {
@@ -142,6 +145,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
       presses: 0,
       keyCounts: new Map(),
       keyDistance: new Map(),
+      triggerKeyCounts: new Map(),
     };
     layerStats.push(created);
     layerById.set(id, created);
@@ -155,6 +159,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
 
   let presses = 0;
   for (const stroke of trace.strokes) {
+    const triggerKeys = new Set(stroke.triggerKeys);
     totalUnits += stroke.distance;
     for (const press of stroke.presses) {
       presses += press.keys.length;
@@ -175,6 +180,9 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
           layer.presses++;
           layer.keyCounts.set(key.id, (layer.keyCounts.get(key.id) ?? 0) + 1);
           layer.keyDistance.set(key.id, (layer.keyDistance.get(key.id) ?? 0) + share);
+          if (triggerKeys.has(key.id)) {
+            layer.triggerKeyCounts.set(key.id, (layer.triggerKeyCounts.get(key.id) ?? 0) + 1);
+          }
         }
       }
     }

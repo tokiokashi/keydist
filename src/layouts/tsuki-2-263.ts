@@ -51,6 +51,7 @@ function appendComposed(layout: Layout, entries: Record<string, string>, mark: s
   const markSequence = layout.map.get(mark);
   if (!markSequence) throw new Error(`月配列の合成記号「${mark}」が未定義`);
   const stepLayers = new Map(layout.stepLayers ?? []);
+  const stepTriggerKeys = new Map(layout.stepTriggerKeys ?? []);
   for (const [source, output] of Object.entries(entries)) {
     const sourceSequence = layout.map.get(source);
     if (!sourceSequence) throw new Error(`月配列の清音「${source}」が未定義`);
@@ -63,8 +64,12 @@ function appendComposed(layout: Layout, entries: Record<string, string>, mark: s
     const sourceLayers = layout.stepLayers?.get(source) ?? sourceSequence.map(() => SINGLE_LAYER_ID);
     const markLayers = layout.stepLayers?.get(mark) ?? markSequence.map(() => SINGLE_LAYER_ID);
     stepLayers.set(output, [...sourceLayers, ...markLayers]);
+    const sourceTriggers = layout.stepTriggerKeys?.get(source) ?? sourceSequence.map(() => []);
+    const markTriggers = layout.stepTriggerKeys?.get(mark) ?? markSequence.map(() => []);
+    stepTriggerKeys.set(output, [...sourceTriggers, ...markTriggers]);
   }
   layout.stepLayers = stepLayers;
+  layout.stepTriggerKeys = stepTriggerKeys;
 }
 
 appendComposed(layout, VOICED, '゛');

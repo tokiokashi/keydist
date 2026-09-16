@@ -180,6 +180,8 @@ test('シフトの表示色は手ではなく所属レイヤーで揃える', ()
   const layers = groupFacesIntoLayers(layout.faces!);
   const styles = layerShiftStyles(layers);
 
+  assert.ok(styles.has(layers[1].faces[0]), '相互シフトの片側に枠色がある');
+  assert.ok(styles.has(layers[1].faces[1]), '相互シフトのもう片側にも枠色がある');
   assert.equal(styles.get(layers[1].faces[0])?.layerIndex, 2);
   assert.equal(styles.get(layers[1].faces[0])?.colorSlot, styles.get(layers[1].faces[1])?.colorSlot);
   assert.notEqual(styles.get(layers[1].faces[0])?.colorSlot, styles.get(layers[2].faces[0])?.colorSlot);

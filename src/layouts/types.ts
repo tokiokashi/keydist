@@ -78,6 +78,8 @@ export interface Layout {
   comboConditions?: ReadonlyMap<string, ComboCondition>;
   /** 各見出しの Sequence のステップごとの帰属先。合成出力では層が混在しうる */
   stepLayers?: ReadonlyMap<string, readonly string[]>;
+  /** 各見出しの Sequence のステップごとに、層操作として押すキー */
+  stepTriggerKeys?: ReadonlyMap<string, readonly (readonly string[])[]>;
   /** 層・コンボの表示順と種別。 */
   layerDefinitions?: readonly LayerDefinition[];
   /** 面から展開した配列で、各面がどの帰属先へ属するかを UI が引くための表 */
@@ -115,6 +117,7 @@ export function fromRows(
 ): Layout {
   const map = new Map<string, Sequence>();
   const stepLayers = new Map<string, readonly string[]>();
+  const stepTriggerKeys = new Map<string, readonly (readonly string[])[]>();
   const legends = new Map<string, string>();
   rows.forEach((row, r) => {
     [...row].forEach((ch, c) => {
@@ -125,6 +128,7 @@ export function fromRows(
       if (!map.has(ch)) {
         map.set(ch, [[id]]);
         stepLayers.set(ch, [SINGLE_LAYER_ID]);
+        stepTriggerKeys.set(ch, [[]]);
       }
       legends.set(id, ch);
     });
@@ -135,10 +139,12 @@ export function fromRows(
   if (thumbs.LT) {
     map.set(thumbs.LT, [[THUMB_KEY.LT]]);
     stepLayers.set(thumbs.LT, [SINGLE_LAYER_ID]);
+    stepTriggerKeys.set(thumbs.LT, [[]]);
   }
   if (thumbs.RT) {
     map.set(thumbs.RT, [[THUMB_KEY.RT]]);
     stepLayers.set(thumbs.RT, [SINGLE_LAYER_ID]);
+    stepTriggerKeys.set(thumbs.RT, [[]]);
   }
   return {
     id,
@@ -146,6 +152,7 @@ export function fromRows(
     map,
     legends,
     stepLayers,
+    stepTriggerKeys,
     layerDefinitions: [{ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' }],
   };
 }
@@ -161,6 +168,7 @@ export function fromFaces(
   groupFacesIntoLayers(faces);
   const map = new Map<string, Sequence>();
   const stepLayers = new Map<string, readonly string[]>();
+  const stepTriggerKeys = new Map<string, readonly (readonly string[])[]>();
   const legends = new Map<string, string>();
   const layerDefinitions: LayerDefinition[] = [];
   const faceLayerIds = new Map<Face, string>();
@@ -195,6 +203,7 @@ export function fromFaces(
         const sequence = expandFace(trigger, face.mode, key);
         map.set(output, sequence);
         stepLayers.set(output, sequence.map(() => layerId));
+        stepTriggerKeys.set(output, expandFaceTriggerKeys(trigger, face.mode));
         // 刻印は単打面の 1 文字だけを表示する。シフト面の出力で上書きしない。
         if (trigger.length === 0 && [...output].length === 1) legends.set(key, output);
       });
@@ -212,10 +221,12 @@ export function fromFaces(
   if (thumbs.LT) {
     map.set(thumbs.LT, [[THUMB_KEY.LT]]);
     stepLayers.set(thumbs.LT, [baseLayerId]);
+    stepTriggerKeys.set(thumbs.LT, [[]]);
   }
   if (thumbs.RT) {
     map.set(thumbs.RT, [[THUMB_KEY.RT]]);
     stepLayers.set(thumbs.RT, [baseLayerId]);
+    stepTriggerKeys.set(thumbs.RT, [[]]);
   }
   return {
     id,
@@ -225,6 +236,7 @@ export function fromFaces(
     faces: [...faces],
     maxCharLength: maxKeyLength(map.keys()),
     stepLayers,
+    stepTriggerKeys,
     layerDefinitions,
     faceLayerIds,
   };
@@ -237,12 +249,21 @@ function expandFace(trigger: string[], mode: FaceMode, key: string): Sequence {
   return [[key], [...trigger]];
 }
 
+function expandFaceTriggerKeys(trigger: string[], mode: FaceMode): readonly (readonly string[])[] {
+  if (trigger.length === 0) return [[]];
+  if (mode === 'simultaneous') return [trigger];
+  if (mode === 'prefix') return [trigger, []];
+  return [[], trigger];
+}
+
 /** かな → 打鍵ステップ列を直接書いた配列（薙刀式など） */
 export function fromKana(id: string, name: string, def: Record<string, string[][]>): Layout {
   const map = new Map<string, Sequence>(Object.entries(def));
   const stepLayers = new Map<string, readonly string[]>(
     [...map].map(([kana, sequence]) => [kana, sequence.map(() => SINGLE_LAYER_ID)]),
   );
+  const stepTriggerKeys = new Map<string, readonly (readonly string[])[]>();
+  for (const [kana, sequence] of map) stepTriggerKeys.set(kana, sequence.map(() => []));
   // 単打で出るかなをそのキーの刻印にする
   const legends = new Map<string, string>();
   for (const [kana, sequence] of map) {
@@ -259,6 +280,7 @@ export function fromKana(id: string, name: string, def: Record<string, string[][
     legends,
     maxCharLength: maxKeyLength(map.keys()),
     stepLayers,
+    stepTriggerKeys,
     layerDefinitions: [{ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' }],
   };
 }
@@ -280,6 +302,7 @@ export function withCombos(
 ): Layout {
   const map = new Map(layout.map);
   const stepLayers = new Map(layout.stepLayers ?? []);
+  const stepTriggerKeys = new Map(layout.stepTriggerKeys ?? []);
   const layerDefinitions = [...(layout.layerDefinitions ?? [])];
   const comboConditions = new Map(layout.comboConditions);
   let hasCombo = layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID);
@@ -288,6 +311,7 @@ export function withCombos(
     if (keys.some((k) => k === undefined)) continue;
     map.set(output, [keys as string[]]);
     stepLayers.set(output, [COMBO_LAYER_ID]);
+    stepTriggerKeys.set(output, [[]]);
     comboConditions.set(output, condition ?? {});
     if (!hasCombo) {
       layerDefinitions.push({ id: COMBO_LAYER_ID, kind: 'combo', label: 'コンボ' });
@@ -302,6 +326,7 @@ export function withCombos(
     maxCharLength: maxKeyLength(map.keys()),
     comboConditions,
     stepLayers,
+    stepTriggerKeys,
     layerDefinitions,
   };
 }
