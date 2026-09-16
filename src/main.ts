@@ -882,6 +882,7 @@ interface CalibrationSession {
   sameHandPairSampleCount: number;
 }
 let calibrationSession: CalibrationSession | undefined;
+let calibrationEditMode = false;
 
 function calibrationKeyLabel(keyId: string): string {
   const layoutLabel = playbackLayout?.legends.get(resolveKeyId(keyId));
@@ -950,17 +951,24 @@ function renderCalibrationSameHandInputs(
 
 function updateCalibrationDialog(): void {
   const session = calibrationSession;
-  el.calibrationResult.hidden = session?.phase !== 'result';
-  el.calibrationSave.hidden = session?.phase !== 'result';
+  const editingSavedCalibration = calibrationEditMode && playbackCalibration !== undefined;
+  const showingResult = session?.phase === 'result' || editingSavedCalibration;
+  el.calibrationResult.hidden = !showingResult;
+  el.calibrationSave.hidden = !showingResult;
   el.calibrationStart.textContent = session?.phase === 'result' ? '測り直す' : '測定を開始';
   if (!session) {
     const sameHandPairCount = playbackCalibration
       ? Object.keys(playbackCalibration.sameHandDifferentFingerActionsPerSecondByPair).length
       : 0;
-    el.calibrationInstruction.textContent = playbackCalibration
-      ? `保存済み: 通常 ${playbackCalibration.actionsPerSecond.toFixed(2)}、同手・別指 ${playbackCalibration.sameHandDifferentFingerActionsPerSecond.toFixed(2)} アクション/秒（組別 ${sameHandPairCount} 組）、未測定指の指移動 ${playbackCalibration.fallbackFingerSpeedUnitsPerSecond.toFixed(2)} u/秒。`
-      : '通常の打鍵速度、同じ手の別指の交互打鍵速度、各指の移動速度を測定して再生に反映します。';
-    el.calibrationProgress.textContent = '';
+    if (editingSavedCalibration && playbackCalibration) {
+      el.calibrationInstruction.textContent = '保存済みの値を確認・編集できます。変更後は「この値を保存」を押してください。';
+      el.calibrationProgress.textContent = `保存済み: 通常 ${playbackCalibration.actionsPerSecond.toFixed(2)}、同手・別指 ${playbackCalibration.sameHandDifferentFingerActionsPerSecond.toFixed(2)} アクション/秒（組別 ${sameHandPairCount} 組）`;
+    } else {
+      el.calibrationInstruction.textContent = playbackCalibration
+        ? `保存済み: 通常 ${playbackCalibration.actionsPerSecond.toFixed(2)}、同手・別指 ${playbackCalibration.sameHandDifferentFingerActionsPerSecond.toFixed(2)} アクション/秒（組別 ${sameHandPairCount} 組）、未測定指の指移動 ${playbackCalibration.fallbackFingerSpeedUnitsPerSecond.toFixed(2)} u/秒。`
+        : '通常の打鍵速度、同じ手の別指の交互打鍵速度、各指の移動速度を測定して再生に反映します。';
+      el.calibrationProgress.textContent = '';
+    }
     return;
   }
   if (session.phase === 'actions') {
@@ -985,6 +993,7 @@ function updateCalibrationDialog(): void {
 }
 
 function beginCalibrationSession(): void {
+  calibrationEditMode = false;
   const geometry = playbackGeometry ?? buildGeometry(el.geometry.value as GeometryKind);
   const actionKeys = calibrationActionPair(geometry);
   const pairs = calibrationKeyPairs(geometry);
@@ -1119,8 +1128,26 @@ function onCalibrationKeyDown(event: KeyboardEvent): void {
 }
 
 function openCalibrationDialog(): void {
+  calibrationEditMode = false;
   calibrationSession = undefined;
   setCalibrationError('');
+  updateCalibrationDialog();
+  if (!el.calibrationDialog.open) el.calibrationDialog.showModal();
+}
+
+function openCalibrationEditDialog(): void {
+  if (!playbackCalibration) return;
+  calibrationEditMode = true;
+  calibrationSession = undefined;
+  setCalibrationError('');
+  el.calibrationActions.value = playbackCalibration.actionsPerSecond.toFixed(2);
+  el.calibrationSameHand.value = playbackCalibration.sameHandDifferentFingerActionsPerSecond.toFixed(2);
+  el.calibrationFingerSpeed.value = playbackCalibration.fallbackFingerSpeedUnitsPerSecond.toFixed(2);
+  renderCalibrationSameHandInputs(
+    playbackCalibration.sameHandDifferentFingerActionsPerSecondByPair,
+    Object.keys(playbackCalibration.sameHandDifferentFingerActionsPerSecondByPair),
+  );
+  renderCalibrationFingerInputs(playbackCalibration.fingerSpeedUnitsPerSecond);
   updateCalibrationDialog();
   if (!el.calibrationDialog.open) el.calibrationDialog.showModal();
 }
@@ -1193,6 +1220,7 @@ function saveCalibrationFromDialog(): void {
   playbackCalibration = calibration;
   playbackUseCalibration = true;
   playbackState = setPlaybackCalibration(playbackState, calibration);
+  calibrationEditMode = false;
   calibrationSession = undefined;
   el.calibrationDialog.close('saved');
   updatePlaybackView();
@@ -1425,6 +1453,8 @@ function updatePlaybackView() {
     calibration.disabled = playbackCalibration === undefined;
   }
   if (calibrationButton) calibrationButton.textContent = playbackCalibration ? '速度を再測定' : '速度を測定';
+  const calibrationEditButton = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="calibration-edit"]');
+  if (calibrationEditButton) calibrationEditButton.disabled = playbackCalibration === undefined;
   if (rate) rate.value = String(playbackState.stepsPerSecond);
   if (effectiveRate) {
     const value = playbackRecentActionsPerSecond(
@@ -1601,6 +1631,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <span class="playback-effective-rate" data-playback-effective-rate>実効 — アクション/秒</span>
         <label class="playback-speed"><span>基準速度</span><input type="number" data-playback-rate min="${PLAYBACK_STEPS_PER_SECOND_MIN}" max="${PLAYBACK_STEPS_PER_SECOND_MAX}" step="any" value="${playbackState.stepsPerSecond}" aria-label="再生の基準速度（ステップ毎秒）" /> <span>ステップ/秒</span></label>
         <button type="button" class="secondary" data-playback-action="calibration">${playbackCalibration ? '速度を再測定' : '速度を測定'}</button>
+        <button type="button" class="ghost" data-playback-action="calibration-edit"${playbackCalibration ? '' : ' disabled'}>保存値を確認・編集</button>
       </div>
       <label class="playback-seek"><span>再生位置</span><input type="range" data-playback-seek min="0" max="${trace.strokes.length}" step="1" value="0" /></label>
       <div class="playback-status" aria-live="polite">
@@ -2684,6 +2715,10 @@ el.playback.addEventListener('click', (e) => {
     openCalibrationDialog();
     return;
   }
+  if (target.dataset.playbackAction === 'calibration-edit') {
+    openCalibrationEditDialog();
+    return;
+  }
   switch (target.dataset.playbackAction) {
     case 'toggle':
       if (playbackState.playing) pausePlayback();
@@ -2865,6 +2900,7 @@ document.addEventListener('keydown', onCalibrationKeyDown);
 el.calibrationStart.addEventListener('click', beginCalibrationSession);
 el.calibrationSave.addEventListener('click', saveCalibrationFromDialog);
 el.calibrationDialog.addEventListener('close', () => {
+  calibrationEditMode = false;
   calibrationSession = undefined;
   setCalibrationError('');
   updateCalibrationDialog();
