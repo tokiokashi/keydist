@@ -3,10 +3,10 @@ import { classifyFaces, faceCells, foldedLayerCells, type Layer } from './layers
 import type { Stroke } from './evaluate.ts';
 import type { Layout } from './layouts/types.ts';
 
-/** 表示上の1打鍵の基準間隔。実際の打鍵時間や距離モデルとは無関係。 */
-export const PLAYBACK_STEP_MS = 800;
-export const PLAYBACK_SPEEDS = [0.25, 0.5, 1, 2, 4] as const;
-export type PlaybackSpeed = (typeof PLAYBACK_SPEEDS)[number];
+/** 再生速度の選択肢。実際の打鍵時間や距離モデルとは無関係。 */
+export const PLAYBACK_STEPS_PER_SECOND = [0.3125, 0.625, 1.25, 2.5, 5] as const;
+export type PlaybackStepsPerSecond = (typeof PLAYBACK_STEPS_PER_SECOND)[number];
+export const DEFAULT_PLAYBACK_STEPS_PER_SECOND: PlaybackStepsPerSecond = 1.25;
 
 /** 非アクティブなタブから戻った時の一気送りを防ぐため、1フレームの経過時間を制限する。 */
 const MAX_FRAME_MS = 100;
@@ -14,7 +14,7 @@ const MAX_FRAME_MS = 100;
 export interface PlaybackState {
   /** 0は開始前、nはn打鍵ぶん進んだ位置。 */
   cursor: number;
-  speed: PlaybackSpeed;
+  stepsPerSecond: PlaybackStepsPerSecond;
   playing: boolean;
   elapsedMs: number;
 }
@@ -344,8 +344,10 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
   return { character: character || undefined, keyLabels };
 }
 
-export function createPlaybackState(speed: PlaybackSpeed = 1): PlaybackState {
-  return { cursor: 0, speed, playing: false, elapsedMs: 0 };
+export function createPlaybackState(
+  stepsPerSecond: PlaybackStepsPerSecond = DEFAULT_PLAYBACK_STEPS_PER_SECOND,
+): PlaybackState {
+  return { cursor: 0, stepsPerSecond, playing: false, elapsedMs: 0 };
 }
 
 export function clampPlaybackCursor(cursor: number, strokeCount: number): number {
@@ -358,8 +360,11 @@ export function playbackStrokeAt(strokes: readonly Stroke[], cursor: number): St
   return strokes[Math.min(cursor - 1, strokes.length - 1)];
 }
 
-export function setPlaybackSpeed(state: PlaybackState, speed: PlaybackSpeed): PlaybackState {
-  return { ...state, speed, elapsedMs: 0 };
+export function setPlaybackStepsPerSecond(
+  state: PlaybackState,
+  stepsPerSecond: PlaybackStepsPerSecond,
+): PlaybackState {
+  return { ...state, stepsPerSecond, elapsedMs: 0 };
 }
 
 /** 停止・一時停止中の1打鍵送り。再生中はカーソルを動かさない。 */
@@ -389,7 +394,7 @@ export function advancePlayback(
 
   let remaining = state.elapsedMs + Math.min(Math.max(0, elapsedMs), MAX_FRAME_MS);
   let nextCursor = cursor;
-  const stepMs = PLAYBACK_STEP_MS / state.speed;
+  const stepMs = 1000 / state.stepsPerSecond;
   while (remaining >= stepMs && nextCursor < strokeCount) {
     remaining -= stepMs;
     nextCursor++;

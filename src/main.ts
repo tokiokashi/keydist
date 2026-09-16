@@ -51,14 +51,14 @@ import {
   playbackRomajiPlannedOrders,
   playbackOrderLabel,
   playbackStrokeAt,
-  setPlaybackSpeed,
+  setPlaybackStepsPerSecond,
   stepPlayback,
   playbackTrailKeys,
   playbackTrailOrders,
   playbackStrokeDisplay,
-  type PlaybackSpeed,
+  type PlaybackStepsPerSecond,
   type PlaybackState,
-  PLAYBACK_SPEEDS,
+  PLAYBACK_STEPS_PER_SECOND,
 } from './playback.ts';
 import {
   ROW_LABELS,
@@ -1006,10 +1006,10 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
   playbackTrace = trace;
   playbackGeometry = geometry;
   playbackLayout = layout;
-  playbackState = createPlaybackState(playbackState.speed);
+  playbackState = createPlaybackState(playbackState.stepsPerSecond);
   playbackSeekWasPlaying = undefined;
-  const speeds = PLAYBACK_SPEEDS.map((speed) =>
-    `<option value="${speed}"${speed === playbackState.speed ? ' selected' : ''}>${speed}x</option>`,
+  const stepRates = PLAYBACK_STEPS_PER_SECOND.map((stepsPerSecond) =>
+    `<option value="${stepsPerSecond}"${stepsPerSecond === playbackState.stepsPerSecond ? ' selected' : ''}>${stepsPerSecond} ステップ/秒</option>`,
   ).join('');
   el.playback.innerHTML = `<details class="playback-panel"${playbackPanelOpen ? ' open' : ''}>
     <summary><span class="playback-summary-icon" aria-hidden="true">▶</span><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
@@ -1022,8 +1022,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${playbackShowTrail ? ' checked' : ''} />押下履歴を残す</label>
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${playbackTrailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${playbackShowOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
-        <label class="playback-scale-setting" title="0.5〜4倍の範囲で配列図の表示倍率を指定できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="any" list="playback-scale-options" value="${playbackScale}" aria-label="配列図の表示倍率" /> 倍</label>
-        <datalist id="playback-scale-options"><option value="1" label="標準"></option><option value="1.5" label="見やすい"></option><option value="2" label="大きめ"></option></datalist>
+        <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${playbackScale}" aria-label="配列図の表示倍率" /> 倍</label>
       </div>
       <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
         <button type="button" class="ghost" data-playback-action="back">1 ステップ戻る</button>
@@ -1031,7 +1030,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <button type="button" class="secondary" data-playback-action="stop" disabled>停止</button>
         <button type="button" class="ghost" data-playback-action="forward">1 ステップ進む</button>
         <span class="playback-position" aria-live="polite" data-playback-position>0 / ${trace.strokes.length} ステップ</span>
-        <label class="playback-speed"><span>速度</span><select data-playback-speed>${speeds}</select></label>
+        <label class="playback-speed"><span>速度</span><select data-playback-rate aria-label="再生速度（ステップ毎秒）">${stepRates}</select></label>
       </div>
       <label class="playback-seek"><span>再生位置</span><input type="range" data-playback-seek min="0" max="${trace.strokes.length}" step="1" value="0" /></label>
       <div class="playback-status" aria-live="polite">
@@ -1071,7 +1070,7 @@ function pausePlayback() {
 
 function stopPlayback() {
   cancelPlaybackAnimation();
-  playbackState = createPlaybackState(playbackState.speed);
+  playbackState = createPlaybackState(playbackState.stepsPerSecond);
   updatePlaybackView();
 }
 
@@ -2144,11 +2143,11 @@ el.playback.addEventListener('pointerup', (e) => {
 
 el.playback.addEventListener('change', (e) => {
   const target = e.target as Element;
-  const speed = target.closest<HTMLSelectElement>('select[data-playback-speed]');
-  if (speed) {
-    const value = Number(speed.value);
-    if (PLAYBACK_SPEEDS.includes(value as PlaybackSpeed)) {
-      playbackState = setPlaybackSpeed(playbackState, value as PlaybackSpeed);
+  const rate = target.closest<HTMLSelectElement>('select[data-playback-rate]');
+  if (rate) {
+    const value = Number(rate.value);
+    if (PLAYBACK_STEPS_PER_SECOND.includes(value as PlaybackStepsPerSecond)) {
+      playbackState = setPlaybackStepsPerSecond(playbackState, value as PlaybackStepsPerSecond);
       updatePlaybackView();
     }
     return;
