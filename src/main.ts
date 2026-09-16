@@ -1088,6 +1088,9 @@ function renderPlaybackMotions(
       clone.removeAttribute('data-playback-key');
       clone.removeAttribute('data-playback-base-label');
       clone.setAttribute('data-playback-motion-key', `${cursor}-${motionIndex++}`);
+      // 移動中のキーにアルペジオの脈動は要らない。クローンに属性が残ると
+      // 塗りのアニメーションが移動用の fill を上書きしてしまう。
+      clone.removeAttribute('data-playback-arpeggio');
       clone.setAttribute('transform', `translate(${dx} ${dy})`);
       clone.style.pointerEvents = 'none';
       const animation = document.createElementNS(SVG_NS, 'animateTransform');
@@ -1108,13 +1111,18 @@ function renderPlaybackMotions(
       // SMIL未対応環境ではbeginElementが存在しない、または呼び出しが例外を投げうる。
       // アニメーションが始まらないだけに留め、再生全体を壊さないようtry/catchで防御する。
       const animatable = animation as SVGAnimationElement & { beginElement?: () => void };
+      let started = false;
       if (typeof animatable.beginElement === 'function') {
         try {
           animatable.beginElement();
+          started = true;
         } catch {
-          // 無視する: begin=0sのままアニメーションが動かないだけで、再生自体は継続する
+          started = false;
         }
       }
+      // 開始できなければ begin='indefinite' のまま永久に走らないため、クローンは
+      // 移動元の位置に幽霊として残る。表示しない方が縮退として素直なので捨てる。
+      if (!started) clone.remove();
     }
   }
 }
