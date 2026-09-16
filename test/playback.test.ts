@@ -6,11 +6,14 @@ import {
   createPlaybackState,
   playbackCompletedInputs,
   playbackFingerPositionKeys,
+  playbackInputPreview,
   playbackPlannedKeys,
+  playbackPlannedOrders,
   playbackRomajiPlan,
   playbackStrokeDisplay,
   playbackStrokeAt,
   playbackTrailKeys,
+  playbackTrailOrders,
   setPlaybackSpeed,
   stepPlayback,
 } from '../src/playback.ts';
@@ -88,6 +91,24 @@ test('ローマ字の入力履歴はかなごとの複数打鍵を重複させ�
   assert.deepEqual(playbackCompletedInputs(trace.strokes, trace.strokes.length), ['な', 'ま', 'え']);
 });
 
+test('入力プレビューは現在の入力を下線対象にし、先読みを後ろへ追加する', () => {
+  const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
+  const trace = evaluate('きょうあ', layout, buildGeometry('row-staggered'));
+
+  assert.deepEqual(playbackInputPreview(trace.strokes, 2, 1), [
+    { text: 'きょ', kind: 'current' },
+  ]);
+  assert.deepEqual(playbackInputPreview(trace.strokes, 2, 2), [
+    { text: 'きょ', kind: 'current' },
+    { text: 'う', kind: 'planned' },
+  ]);
+  assert.deepEqual(playbackInputPreview(trace.strokes, 2, 3), [
+    { text: 'きょ', kind: 'current' },
+    { text: 'う', kind: 'planned' },
+    { text: 'あ', kind: 'planned' },
+  ]);
+});
+
 test('ローマ字の現在入力単位に予定綴りと打鍵済み接頭辞を表示できる', () => {
   const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
   const trace = evaluate('きょ', layout, buildGeometry('row-staggered'));
@@ -104,6 +125,11 @@ test('予定キーは先読み範囲の近いキーほど緑を濃く表示す�
   assert.equal(planned.get('y'), 2 / 3);
   assert.equal(planned.get('o'), 1 / 3);
   assert.equal(planned.has('u'), false);
+
+  const orders = playbackPlannedOrders(trace.strokes, 0, 3);
+  assert.equal(orders.get('k'), 1);
+  assert.equal(orders.get('y'), 2);
+  assert.equal(orders.get('o'), 3);
 });
 
 test('押下履歴はtauステップ内で新しいほど濃くなる', () => {
@@ -119,6 +145,12 @@ test('押下履歴はtauステップ内で新しいほど濃くなる', () => {
   assert.equal(trail.get('s'), 1 / 3);
   assert.equal(trail.get('d'), 2 / 3);
   assert.equal(trail.get('f'), 1);
+
+  const orders = playbackTrailOrders(strokes, 4, 3);
+  assert.equal(orders.has('a'), false);
+  assert.equal(orders.get('s'), 3);
+  assert.equal(orders.get('d'), 2);
+  assert.equal(orders.get('f'), 1);
 });
 
 test('指位置表示はホームと押下キーを指ごとのキー枠に割り当てる', () => {

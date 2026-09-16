@@ -76,6 +76,27 @@ export function playbackPlannedKeys(
   return planned;
 }
 
+/** 先読み範囲の各キーに、次の打鍵から数えた順番を割り当てる。 */
+export function playbackPlannedOrders(
+  strokes: readonly Stroke[],
+  cursor: number,
+  lookahead = 5,
+): ReadonlyMap<string, number> {
+  const start = Math.min(Math.max(0, cursor), strokes.length);
+  const orders = new Map<string, number>();
+  const span = Math.floor(lookahead);
+  if (start >= strokes.length || span <= 0) return orders;
+
+  const finish = Math.min(strokes.length, start + span);
+  for (let index = start; index < finish; index++) {
+    const order = index - start + 1;
+    for (const press of strokes[index].presses) {
+      for (const key of press.keys) orders.set(key.id, Math.min(orders.get(key.id) ?? Infinity, order));
+    }
+  }
+  return orders;
+}
+
 /** 直近tauステップの押下キーと、残留表示に使う不透明度を返す。 */
 export function playbackTrailKeys(
   strokes: readonly Stroke[],
@@ -98,6 +119,27 @@ export function playbackTrailKeys(
     }
   }
   return trail;
+}
+
+/** 履歴範囲の各キーに、直近の打鍵から数えた順番を割り当てる。 */
+export function playbackTrailOrders(
+  strokes: readonly Stroke[],
+  cursor: number,
+  tau: number,
+): ReadonlyMap<string, number> {
+  const end = Math.min(Math.max(0, cursor), strokes.length);
+  const span = Math.floor(tau);
+  const orders = new Map<string, number>();
+  if (end === 0 || span <= 0) return orders;
+
+  const start = Math.max(0, end - span);
+  for (let index = end - 1; index >= start; index--) {
+    const order = end - index;
+    for (const press of strokes[index].presses) {
+      for (const key of press.keys) orders.set(key.id, Math.min(orders.get(key.id) ?? Infinity, order));
+    }
+  }
+  return orders;
 }
 
 /** 再生中の層に対応する面グループを返す。単一面も含めて表示用に扱う。 */
@@ -151,6 +193,49 @@ export function playbackCompletedInputs(
     at = next;
   }
   return completed.slice(-limit);
+}
+
+export type PlaybackInputPreviewKind = 'completed' | 'current' | 'planned';
+
+export interface PlaybackInputPreviewSegment {
+  text: string;
+  kind: PlaybackInputPreviewKind;
+}
+
+/** 入力済み・現在・先読みの入力単位を表示順に返す。先読み値は打鍵ステップ数として扱う。 */
+export function playbackInputPreview(
+  strokes: readonly Stroke[],
+  cursor: number,
+  lookaheadSteps = 0,
+  completedLimit = 10,
+): PlaybackInputPreviewSegment[] {
+  const end = Math.min(Math.max(0, cursor), strokes.length);
+  const groups: { inputIndex: number; start: number; end: number; text: string }[] = [];
+
+  for (let start = 0; start < strokes.length; ) {
+    const inputIndex = strokes[start].inputIndex;
+    let finish = start + 1;
+    while (finish < strokes.length && strokes[finish].inputIndex === inputIndex) finish++;
+    groups.push({ inputIndex, start, end: finish, text: strokes[start].inputChar });
+    start = finish;
+  }
+
+  const currentInputIndex = end > 0 ? strokes[end - 1].inputIndex : undefined;
+  const currentGroupIndex = groups.findIndex((group) => group.inputIndex === currentInputIndex);
+  const limit = Math.max(0, Math.floor(completedLimit));
+  const completed = currentGroupIndex < 0
+    ? []
+    : limit === 0 ? [] : groups.slice(0, currentGroupIndex).slice(-limit);
+  const futureEnd = Math.min(strokes.length, end + Math.max(0, Math.floor(lookaheadSteps)));
+  const planned = groups.filter((group) =>
+    group.inputIndex !== currentInputIndex && group.end > end && group.start < futureEnd,
+  );
+
+  return [
+    ...completed.map(({ text }) => ({ text, kind: 'completed' as const })),
+    ...(currentGroupIndex < 0 ? [] : [{ text: groups[currentGroupIndex].text, kind: 'current' as const }]),
+    ...planned.map(({ text }) => ({ text, kind: 'planned' as const })),
+  ];
 }
 
 /** 面定義と実際の押下から、再生中に表示する文字と刻印を引く。 */

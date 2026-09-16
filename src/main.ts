@@ -42,14 +42,16 @@ import {
   advancePlayback,
   clampPlaybackCursor,
   createPlaybackState,
-  playbackCompletedInputs,
   playbackFingerPositionKeys,
+  playbackInputPreview,
   playbackPlannedKeys,
+  playbackPlannedOrders,
   playbackRomajiPlan,
   playbackStrokeAt,
   setPlaybackSpeed,
   stepPlayback,
   playbackTrailKeys,
+  playbackTrailOrders,
   playbackStrokeDisplay,
   type PlaybackSpeed,
   type PlaybackState,
@@ -798,6 +800,7 @@ let playbackShowPlanKeys = false;
 let playbackLookaheadSteps = 5;
 let playbackShowTrail = false;
 let playbackTrailTau = 5;
+let playbackShowOrderLabels = false;
 
 function cancelPlaybackAnimation() {
   if (playbackAnimationFrame !== undefined) cancelAnimationFrame(playbackAnimationFrame);
@@ -827,6 +830,12 @@ function updatePlaybackView() {
   const plannedKeys = playbackShowPlanKeys
     ? playbackPlannedKeys(playbackTrace.strokes, cursor, playbackLookaheadSteps)
     : new Map<string, number>();
+  const plannedOrders = playbackShowOrderLabels && playbackShowPlanKeys
+    ? playbackPlannedOrders(playbackTrace.strokes, cursor, playbackLookaheadSteps)
+    : new Map<string, number>();
+  const trailOrders = playbackShowOrderLabels && playbackShowTrail
+    ? playbackTrailOrders(playbackTrace.strokes, cursor, playbackTrailTau)
+    : new Map<string, number>();
 
   for (const key of el.playback.querySelectorAll<SVGGElement>('[data-playback-key]')) {
     const id = key.dataset.playbackKey!;
@@ -841,6 +850,18 @@ function updatePlaybackView() {
     key.dataset.playbackPlan = plannedOpacity === undefined ? 'false' : 'true';
     if (plannedOpacity === undefined) key.style.removeProperty('--playback-plan-opacity');
     else key.style.setProperty('--playback-plan-opacity', String(plannedOpacity));
+    const plannedOrder = plannedOrders.get(id);
+    const plannedOrderLabel = key.querySelector<SVGTextElement>('[data-playback-order="plan"]');
+    if (plannedOrderLabel) {
+      plannedOrderLabel.textContent = plannedOrder === undefined ? '' : String(plannedOrder);
+      plannedOrderLabel.setAttribute('visibility', plannedOrder === undefined ? 'hidden' : 'visible');
+    }
+    const trailOrder = trailOrders.get(id);
+    const trailOrderLabel = key.querySelector<SVGTextElement>('[data-playback-order="trail"]');
+    if (trailOrderLabel) {
+      trailOrderLabel.textContent = trailOrder === undefined ? '' : String(trailOrder);
+      trailOrderLabel.setAttribute('visibility', trailOrder === undefined ? 'hidden' : 'visible');
+    }
     const label = key.querySelector('text');
     if (label) label.textContent = display?.keyLabels.get(id) ?? key.dataset.playbackBaseLabel ?? '';
   }
@@ -865,6 +886,7 @@ function updatePlaybackView() {
   const lookahead = el.playback.querySelector<HTMLInputElement>('[data-playback-lookahead]');
   const trail = el.playback.querySelector<HTMLInputElement>('[data-playback-trail]');
   const trailTau = el.playback.querySelector<HTMLInputElement>('[data-playback-trail-tau]');
+  const orderLabels = el.playback.querySelector<HTMLInputElement>('[data-playback-order-labels]');
   if (position) position.textContent = `${cursor} / ${total} ステップ`;
   const isRomaji = playbackLayout?.romajiTable !== undefined;
   if (current) {
@@ -883,9 +905,22 @@ function updatePlaybackView() {
     planned.hidden = plan === undefined;
     planned.textContent = plan ? `予定: ${plan.planned}` : '';
   }
-  const completedInputs = playbackCompletedInputs(playbackTrace.strokes, cursor);
-  if (history) history.hidden = completedInputs.length === 0;
-  if (historyText) historyText.textContent = completedInputs.join('');
+  const inputPreview = playbackInputPreview(
+    playbackTrace.strokes,
+    cursor,
+    playbackShowPlanKeys ? playbackLookaheadSteps : 0,
+  );
+  if (history) history.hidden = inputPreview.length === 0;
+  if (historyText) {
+    historyText.replaceChildren();
+    for (const segment of inputPreview) {
+      const span = document.createElement('span');
+      span.className = `playback-input-segment playback-input-${segment.kind}`;
+      span.textContent = segment.text;
+      if (segment.kind === 'current') span.setAttribute('aria-current', 'step');
+      historyText.append(span);
+    }
+  }
   if (layer) layer.textContent = playbackLayerLabel(playbackTrace, stroke);
   if (seek) seek.value = String(cursor);
   if (toggle) {
@@ -908,6 +943,7 @@ function updatePlaybackView() {
   }
   if (trail) trail.checked = playbackShowTrail;
   if (trailTau) trailTau.value = String(playbackTrailTau);
+  if (orderLabels) orderLabels.checked = playbackShowOrderLabels;
 }
 
 function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeometry>): string {
@@ -925,6 +961,8 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
     const tip = `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>${escapeText(FINGER_LABEL[key.finger])}`;
     return `<g data-tip="${escapeAttr(tip)}" data-playback-key="${escapeAttr(key.id)}" data-playback-finger="${key.finger}" data-playback-base-label="${escapeAttr(label)}" data-playback-active="false" data-playback-trigger="false" data-playback-finger-position="" data-playback-plan="false">
       <rect x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" stroke="var(--line)"/>
+      <text class="playback-order playback-order-plan" data-playback-order="plan" x="${x + 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
+      <text class="playback-order playback-order-trail" data-playback-order="trail" x="${x + width - 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
       <text x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
     </g>`;
   });
@@ -954,6 +992,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <label class="playback-lookahead-setting" title="押下予定キーを表示する先読みステップ数">先読み <input type="number" data-playback-lookahead min="1" max="20" step="1" value="${playbackLookaheadSteps}" aria-label="先読みステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${playbackShowTrail ? ' checked' : ''} />押下履歴を残す</label>
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${playbackTrailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${playbackShowOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
       </div>
       <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
         <button type="button" class="ghost" data-playback-action="back">1 ステップ戻る</button>
@@ -971,7 +1010,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
           <span class="playback-attribution">帰属: <b data-playback-layer>開始前</b></span>
         </div>
         <div class="playback-history" data-playback-history hidden>
-          <span class="playback-history-label">入力済み:</span>
+          <span class="playback-history-label">入力:</span>
           <span data-playback-history-text></span>
         </div>
       </div>
@@ -2113,6 +2152,12 @@ el.playback.addEventListener('change', (e) => {
   if (trailTau) {
     const value = Number(trailTau.value);
     if (Number.isInteger(value) && value >= 1 && value <= 20) playbackTrailTau = value;
+    updatePlaybackView();
+    return;
+  }
+  const orderLabels = target.closest<HTMLInputElement>('input[data-playback-order-labels]');
+  if (orderLabels) {
+    playbackShowOrderLabels = orderLabels.checked;
     updatePlaybackView();
     return;
   }
