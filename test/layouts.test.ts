@@ -68,6 +68,19 @@ test('日本語の配列一覧に Dvorak を含める（#48）', () => {
   assert.ok(dvorak.romajiTable);
 });
 
+test('TK音直入力法は正式名称を表示し、内部 id は維持する（#109）', () => {
+  const oonishi = LAYOUT_BY_ID.get('oonishi');
+  const combo = LAYOUT_BY_ID.get('oonishi-custom-combo');
+  const tsuki = LAYOUT_BY_ID.get('tsuki-2-263');
+
+  assert.equal(oonishi?.name, '大西配列');
+  assert.equal(combo?.id, 'oonishi-custom-combo');
+  assert.equal(combo?.name, 'TK音直入力法');
+  assert.equal(tsuki?.name, '月配列2-263式');
+  assert.ok(!oonishi?.name.includes(' '));
+  assert.ok(!tsuki?.name.includes(' '));
+});
+
 test('面のセル配列は複数文字の見出しを 1 キーへ置ける', () => {
   const layout = fromFaces('multi', 'multi', [
     { trigger: [], mode: 'simultaneous', rows: ['', '', ['', '', '', 'きゃ'], ''] },
@@ -269,7 +282,7 @@ test('新下駄配列は7面の直接かな入力を同時押しとして保持�
   assertKanaLayout(layout);
 });
 
-test('月配列 2-263 式はクロスシフトと濁音の逐次合成を保持する', () => {
+test('月配列2-263式はクロスシフトと濁音の逐次合成を保持する', () => {
   const layout = LAYOUT_BY_ID.get('tsuki-2-263')!;
 
   assert.deepEqual(layout.map.get('そ'), [['q']]);

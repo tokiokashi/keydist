@@ -90,6 +90,7 @@ const el = {
   sample: $<HTMLSelectElement>('sample'),
   text: $<HTMLTextAreaElement>('text'),
   textPanel: $<HTMLDetailsElement>('text-panel'),
+  sensitivityPanel: $<HTMLDetailsElement>('sensitivity-panel'),
   textMeta: $<HTMLParagraphElement>('text-meta'),
   errors: $<HTMLParagraphElement>('errors'),
   compareChart: $<HTMLDivElement>('compare-chart'),
@@ -753,6 +754,7 @@ const matrixSorts: Record<MatrixKind, MatrixSort | null> = {
 };
 let compareSort: MatrixSort | null = null;
 let compareChartColumn = 1;
+let sensitivityDirty = true;
 type LayerView = 'side-by-side' | 'tabs';
 let layerView: LayerView | undefined;
 let activeLayerTab = 0;
@@ -795,7 +797,7 @@ function render() {
     syncCompareBaselineOptions([]);
     syncCompareChartOptions(false);
     el.compare.innerHTML = '';
-    el.sensitivity.innerHTML = '';
+    showSensitivityPlaceholder('配列を 1 つ以上選ぶ');
     el.heatmap.innerHTML = '';
     el.fingerChart.innerHTML = '';
     el.adjacentChart.innerHTML = '';
@@ -822,7 +824,11 @@ function render() {
 
   renderCompare(results);
   renderMatrices(results);
-  renderSensitivity(text, geometry, options);
+  if (el.sensitivityPanel.open) {
+    renderSensitivity(text, geometry, options);
+  } else {
+    showSensitivityPlaceholder();
+  }
   renderDetail(results, geometry);
 }
 
@@ -1147,6 +1153,11 @@ function bindCompareSort(root: HTMLElement) {
 type SensitivityScale = 'relative' | 'absolute';
 let sensitivityScale: SensitivityScale = 'relative';
 
+function showSensitivityPlaceholder(message = 'N 感度はパネルを開くと計算します') {
+  el.sensitivity.innerHTML = `<p class="note">${message}</p>`;
+  sensitivityDirty = true;
+}
+
 function renderSensitivity(
   text: string,
   geometry: ReturnType<typeof buildGeometry>,
@@ -1177,6 +1188,7 @@ function renderSensitivity(
   el.sensitivity.innerHTML = relative
     ? lineChart(series, range, (v) => `${v.toFixed(0)}%`, { yMax: 100 })
     : lineChart(series, range, (v) => `${v.toFixed(0)} u`);
+  sensitivityDirty = false;
 }
 
 function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeometry>) {
@@ -1678,9 +1690,19 @@ function setSensitivityScale(scale: SensitivityScale) {
   }
   render();
 }
+el.sensitivityPanel.addEventListener('toggle', () => {
+  if (!el.sensitivityPanel.open) {
+    showSensitivityPlaceholder();
+    return;
+  }
+  if (sensitivityDirty) render();
+});
 el.sensitivityScale.addEventListener('click', (e) => {
   const button = (e.target as Element).closest<HTMLButtonElement>('button[data-scale]');
-  if (button) setSensitivityScale(button.dataset.scale as SensitivityScale);
+  if (!button) return;
+  // 尺度ボタンは summary 内にあるので、押しても details の開閉を起こさない
+  e.preventDefault();
+  setSensitivityScale(button.dataset.scale as SensitivityScale);
 });
 
 el.heatmap.addEventListener('click', (e) => {

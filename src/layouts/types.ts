@@ -107,7 +107,7 @@ export function faceFromEntries(
 
 /**
  * 4 行 × N 列のグリッドに文字を並べた配列。
- * 単打のみの配列（QWERTY・大西など）はこの形で書ける。
+ * 単打のみの配列（QWERTY・大西配列など）はこの形で書ける。
  */
 export function fromRows(
   id: string,
