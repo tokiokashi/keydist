@@ -200,7 +200,7 @@ export function playbackChainOrders(
   strokes: readonly Stroke[],
   cursor: number,
   includeSameFinger = false,
-  limit = 8,
+  limit = Number.POSITIVE_INFINITY,
   includeLayerKeys = true,
 ): ReadonlyMap<string, number> {
   const end = Math.min(Math.max(0, cursor), strokes.length);

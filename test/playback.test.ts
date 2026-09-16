@@ -465,6 +465,19 @@ test('チェーンの中で同じキーを何度も踏む時は次に踏む番�
   }
 });
 
+test('既定のチェーン番号は8打を越えても区間全体で連続する', () => {
+  const fingers = ['RI', 'RM', 'RR', 'RP', 'RI', 'RM', 'RR', 'RP', 'RI', 'RM'];
+  const strokes = fingers.map((finger, index) => ({
+    presses: [{ finger, keys: [{ id: `chain-${index}` }] }],
+  })) as never[];
+
+  const orders = playbackChainOrders(strokes, strokes.length);
+  assert.equal(orders.get('chain-0'), 1);
+  assert.equal(orders.get('chain-7'), 8);
+  assert.equal(orders.get('chain-8'), 9);
+  assert.equal(orders.get('chain-9'), 10);
+});
+
 test('レイヤーキーをチェーンに含めるか選べる', () => {
   // j が濁音レイヤーのトリガーであり、出力キーとしても押されている
   const strokes = [
