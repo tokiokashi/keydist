@@ -2,7 +2,7 @@ import { THUMB_KEY } from '../geometry.ts';
 import { faceFromEntries, fromFaces, SINGLE_LAYER_ID, type Face, type Layout, type Sequence } from './types.ts';
 
 /**
- * 月配列 2-263 式。
+ * 月配列2-263式。
  * 準公式定義: https://github.com/k-ayaki/dvorakj_2023 の
  * `data/lang/jpn/順に打鍵する配列/月配列系/月2-263.txt`。
  * 解説ページ: https://jisx6004.client.jp/tsuki.html
@@ -33,7 +33,7 @@ export const TSUKI_2_263_FACES: Face[] = [
   }, '中指シフト'),
 ];
 
-const layout: Layout = fromFaces('tsuki-2-263', '月 2-263 式', TSUKI_2_263_FACES);
+const layout: Layout = fromFaces('tsuki-2-263', '月配列2-263式', TSUKI_2_263_FACES);
 
 const VOICED: Record<string, string> = {
   か: 'が', き: 'ぎ', く: 'ぐ', け: 'げ', こ: 'ご',

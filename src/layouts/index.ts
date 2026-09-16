@@ -65,7 +65,7 @@ const ALPHA: Layout[] = [
     "ashtgyneoi'",
     'zxmcvkl,./',
   ]),
-  fromRows('oonishi', '大西', [
+  fromRows('oonishi', '大西配列', [
     '1234567890',
     'qlu,.fwryp',
     'eiao-ktnsh',
@@ -108,7 +108,7 @@ export const LAYOUTS_JA: Layout[] = [
   ...ALPHA.filter((l) => l.id.startsWith('oonishi') === false).map((l) =>
     withRomaji(l, ROMAJI),
   ),
-  // 大西は公式が前提とする綴り（シャ行 sh / じ ji / じゃ行 j）で打つ
+  // 大西配列は公式が前提とする綴り（シャ行 sh / じ ji / じゃ行 j）で打つ
   withRomaji(ALPHA_BY_ID.get('oonishi')!, ROMAJI_OONISHI),
   // TK音直入力法のコンボは訓令式（sya / zya）の綴りを前提に組まれている
   withRomaji(
