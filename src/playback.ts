@@ -1,4 +1,4 @@
-import { resolveKeyId } from './geometry.ts';
+import { keyId, resolveKeyId } from './geometry.ts';
 import { faceCells } from './layers.ts';
 import type { Stroke } from './evaluate.ts';
 import type { Layout } from './layouts/types.ts';
@@ -55,7 +55,7 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
 
   const triggerKeys = new Set(stroke.triggerKeys.map(resolveKeyId));
   const layerFaces = layout.faces.filter((face) => layout.faceLayerIds?.get(face) === stroke.layerId);
-  const faces = triggerKeys.size === 0
+  const triggeredFaces = triggerKeys.size === 0
     ? layerFaces
     : layerFaces.filter((face) => {
       const faceTriggers = face.trigger.map(resolveKeyId);
@@ -63,21 +63,32 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
     });
   const pressedKeys = [...new Set(stroke.presses.flatMap((press) => press.keys.map((key) => key.id)))];
   const outputKeys = pressedKeys.filter((key) => !triggerKeys.has(key));
+  // prefix/suffixの出力ステップではtriggerが空になるため、出力文字から元の面を絞る。
+  // 同じlayerに複数のシフト面がある場合も、別面の刻印を混ぜない。
+  const outputFaces = triggerKeys.size === 0 && outputKeys.length > 0
+    ? layerFaces.filter((face) => outputKeys.some((key) => faceCells(face).get(key) === stroke.char))
+    : [];
+  const faces = outputFaces.length > 0 ? outputFaces : triggeredFaces;
   const keyLabels = new Map<string, string>();
-  for (const key of triggerKeys) keyLabels.set(key, '⇧');
 
-  for (const key of outputKeys) {
-    const labels = [...new Set(
-      faces
-        .map((face) => faceCells(face).get(key))
-        .filter((label): label is string => label !== undefined),
-    )];
-    if (labels.length > 0) keyLabels.set(key, labels.join(' / '));
+  // 面に空欄として定義されたキーは、基底面の刻印へ戻さず空欄にする。
+  for (const face of faces) {
+    face.rows.forEach((row, rowIndex) => {
+      const cells = typeof row === 'string' ? [...row] : [...row];
+      cells.forEach((_label, colIndex) => keyLabels.set(keyId(rowIndex, colIndex), ''));
+    });
   }
+  for (const face of faces) {
+    for (const [key, label] of faceCells(face)) {
+      const previous = keyLabels.get(key);
+      keyLabels.set(key, previous && label !== previous ? `${previous} / ${label}` : label);
+    }
+  }
+  for (const key of triggerKeys) keyLabels.set(key, '⇧');
 
   const character = outputKeys
     .map((key) => keyLabels.get(key))
-    .filter((label): label is string => label !== undefined)
+    .filter((label): label is string => label !== undefined && label !== '')
     .join(' / ');
   return { character: character || undefined, keyLabels };
 }

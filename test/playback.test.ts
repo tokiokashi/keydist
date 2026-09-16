@@ -12,7 +12,8 @@ import {
 } from '../src/playback.ts';
 import { buildGeometry } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
-import { LAYOUT_BY_ID } from '../src/layouts/index.ts';
+import { LAYOUT_BY_ID, withRomaji } from '../src/layouts/index.ts';
+import { kunrei } from '../src/romaji/kunrei.ts';
 
 const playing = (cursor = 0) => ({
   ...createPlaybackState(),
@@ -76,6 +77,13 @@ test('入力履歴は現在の入力単位を除き、複数ステップを一�
   assert.deepEqual(playbackCompletedInputs(strokes, 6), ['あ', 'が', 'ぬ', 'あ']);
 });
 
+test('ローマ字の入力履歴はかなごとの複数打鍵を重複させない', () => {
+  const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
+  const trace = evaluate('なまえは', layout, buildGeometry('row-staggered'));
+
+  assert.deepEqual(playbackCompletedInputs(trace.strokes, trace.strokes.length), ['な', 'ま', 'え']);
+});
+
 test('レイヤー再生はシフトと出力キーの刻印を現在の面から引く', () => {
   const layout = LAYOUT_BY_ID.get('tsuki-2-263')!;
   const trace = evaluate('ぬ', layout, buildGeometry('row-staggered'));
@@ -84,8 +92,12 @@ test('レイヤー再生はシフトと出力キーの刻印を現在の面か�
 
   assert.equal(shift.character, undefined);
   assert.equal(shift.keyLabels.get('d'), '⇧');
+  assert.equal(shift.keyLabels.get('q'), '');
+  assert.equal(shift.keyLabels.get('w'), '');
   assert.equal(output.character, 'ぬ');
   assert.equal(output.keyLabels.get('y'), 'ぬ');
+  assert.equal(output.keyLabels.get('q'), '');
+  assert.equal(output.keyLabels.get('w'), '');
 });
 
 test('薙刀式の濁音はシフトと出力かなを同じステップで表示する', () => {
