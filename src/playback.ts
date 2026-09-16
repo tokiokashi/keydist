@@ -89,14 +89,24 @@ function isThumb(finger: Finger): boolean {
  * 左右同時押しのステップは両方の手に現れる。手ごとに見ることで、逆の手が混ざっても
  * 片方の手の連続が途切れない。
  */
-function strokeHandKeys(stroke: Stroke): Map<'left' | 'right', string[]> {
+function strokeHandKeys(
+  stroke: Stroke,
+  includeLayerKeys = true,
+): Map<'left' | 'right', string[]> {
+  // 層操作として押したキー。親指シフトはどのみち親指として落ちるので、ここで
+  // 効くのは中指シフトのように親指以外がトリガーを兼ねる配列になる。
+  const triggers = includeLayerKeys
+    ? undefined
+    : new Set(stroke.triggerKeys.map(resolveKeyId));
   const hands = new Map<'left' | 'right', string[]>();
   for (const press of stroke.presses) {
     if (isThumb(press.finger)) continue;
+    const keys = press.keys
+      .map((key) => key.id)
+      .filter((id) => !triggers?.has(id));
+    if (keys.length === 0) continue;
     const hand = fingerHand(press.finger);
-    const keys = hands.get(hand) ?? [];
-    keys.push(...press.keys.map((key) => key.id));
-    hands.set(hand, keys);
+    hands.set(hand, [...(hands.get(hand) ?? []), ...keys]);
   }
   return hands;
 }
@@ -119,13 +129,14 @@ export function playbackHandKeyMotions(
   strokes: readonly Stroke[],
   cursor: number,
   includeSameFinger = false,
+  includeLayerKeys = true,
 ): PlaybackKeyMotion[] {
   const index = Math.min(Math.max(0, cursor), strokes.length) - 1;
   if (index <= 0) return [];
 
   const stroke = strokes[index];
-  const current = strokeHandKeys(stroke);
-  const previous = strokeHandKeys(strokes[index - 1]);
+  const current = strokeHandKeys(stroke, includeLayerKeys);
+  const previous = strokeHandKeys(strokes[index - 1], includeLayerKeys);
 
   const motions: PlaybackKeyMotion[] = [];
   for (const [hand, toKeys] of current) {
@@ -148,6 +159,7 @@ export function playbackArpeggioOrders(
   cursor: number,
   includeSameFinger = false,
   limit = 8,
+  includeLayerKeys = true,
 ): ReadonlyMap<string, number> {
   const end = Math.min(Math.max(0, cursor), strokes.length);
   const orders = new Map<string, number>();
@@ -156,20 +168,20 @@ export function playbackArpeggioOrders(
 
   // 手ごとに遡る。左右同時押しのステップは両方の連続に参加するため、逆の手が
   // 混ざっても片方の手のアルペジオは途切れない。
-  for (const hand of strokeHandKeys(strokes[end - 1]).keys()) {
+  for (const hand of strokeHandKeys(strokes[end - 1], includeLayerKeys).keys()) {
     if (!includeSameFinger && handHasSameFinger(strokes[end - 1], hand)) continue;
 
     let start = end - 1;
     while (start > 0) {
       const previous = strokes[start - 1];
-      if (!strokeHandKeys(previous).has(hand)) break;
+      if (!strokeHandKeys(previous, includeLayerKeys).has(hand)) break;
       if (!includeSameFinger && handHasSameFinger(previous, hand)) break;
       start--;
     }
     start = Math.max(start, end - span);
 
     for (let index = start; index < end; index++) {
-      const keys = strokeHandKeys(strokes[index]).get(hand);
+      const keys = strokeHandKeys(strokes[index], includeLayerKeys).get(hand);
       if (!keys) continue;
       for (const key of keys) orders.set(key, index - start + 1);
     }

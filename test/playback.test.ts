@@ -193,6 +193,50 @@ test('左右同時押しが混ざっても片手の連続は途切れない', ()
   ]);
 });
 
+test('レイヤーキーをアルペジオに含めるか選べる', () => {
+  // j が濁音レイヤーのトリガーであり、出力キーとしても押されている
+  const strokes = [
+    { presses: [{ finger: 'RP', keys: [{ id: ';' }] }], triggerKeys: [] },
+    {
+      presses: [{ finger: 'RI', keys: [{ id: 'j' }] }, { finger: 'LM', keys: [{ id: 'd' }] }],
+      triggerKeys: ['j'],
+    },
+  ] as never[];
+
+  // 既定は含める。右手は ; → j と続く
+  assert.deepEqual([...playbackArpeggioOrders(strokes, 2)], [[';', 1], ['j', 2], ['d', 1]]);
+  assert.deepEqual(playbackHandKeyMotions(strokes, 2), [{
+    fromKey: ';',
+    toKeys: ['j'],
+    finger: 'RI',
+  }]);
+
+  // 含めない時、トリガーの j は連なりから落ち、右手の連続はそこで終わる
+  assert.deepEqual([...playbackArpeggioOrders(strokes, 2, false, 8, false)], [['d', 1]]);
+  assert.deepEqual(playbackHandKeyMotions(strokes, 2, false, false), []);
+});
+
+test('親指キーはレイヤーキーのオプションに関係なく常に除外される', () => {
+  const strokes = [
+    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }], triggerKeys: [] },
+    {
+      presses: [{ finger: 'LR', keys: [{ id: 's' }] }, { finger: 'RT', keys: [{ id: 'thumb-r' }] }],
+      triggerKeys: ['thumb-r'],
+    },
+  ] as never[];
+  for (const includeLayerKeys of [true, false]) {
+    assert.deepEqual(
+      [...playbackArpeggioOrders(strokes, 2, false, 8, includeLayerKeys)],
+      [['a', 1], ['s', 2]],
+    );
+    assert.deepEqual(playbackHandKeyMotions(strokes, 2, false, includeLayerKeys), [{
+      fromKey: 'a',
+      toKeys: ['s'],
+      finger: 'LR',
+    }]);
+  }
+});
+
 test('片手連続の打鍵へ順番を付け、同指連打を除外できる', () => {
   const strokes = [
     { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }] },
