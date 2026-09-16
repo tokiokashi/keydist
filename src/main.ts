@@ -66,8 +66,11 @@ import {
   playbackTrailOrders,
   playbackStrokeDisplay,
   setPlaybackCalibration,
+  setPlaybackSpeedMultiplier,
   type PlaybackStepsPerSecond,
   type PlaybackState,
+  PLAYBACK_SPEED_MULTIPLIER_MAX,
+  PLAYBACK_SPEED_MULTIPLIER_MIN,
   PLAYBACK_STEPS_PER_SECOND_MAX,
   PLAYBACK_STEPS_PER_SECOND_MIN,
 } from './playback.ts';
@@ -1387,6 +1390,7 @@ function updatePlaybackView() {
   const calibration = el.playback.querySelector<HTMLInputElement>('[data-playback-calibration]');
   const calibrationButton = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="calibration"]');
   const rate = el.playback.querySelector<HTMLInputElement>('input[data-playback-rate]');
+  const multiplier = el.playback.querySelector<HTMLInputElement>('input[data-playback-multiplier]');
   const effectiveKanaRate = el.playback.querySelector<HTMLElement>('[data-playback-effective-kana-rate]');
   const effectiveRate = el.playback.querySelector<HTMLElement>('[data-playback-effective-rate]');
   const playbackWindow = el.playback.querySelector<HTMLOutputElement>('[data-playback-window]');
@@ -1430,6 +1434,7 @@ function updatePlaybackView() {
   if (rateChart) {
     const chartSignature = JSON.stringify({
       stepsPerSecond: playbackState.stepsPerSecond,
+      speedMultiplier: playbackState.speedMultiplier,
       sameFingerDelay: playbackState.sameFingerDelay,
       calibration: playbackState.calibration,
       strokeCount: playbackTrace.strokes.length,
@@ -1441,6 +1446,7 @@ function updatePlaybackView() {
         playbackState.sameFingerDelay,
         10,
         playbackState.calibration,
+        playbackState.speedMultiplier,
       ));
       playbackRateChartSignature = chartSignature;
     }
@@ -1488,6 +1494,7 @@ function updatePlaybackView() {
   const calibrationEditButton = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="calibration-edit"]');
   if (calibrationEditButton) calibrationEditButton.disabled = playbackCalibration === undefined;
   if (rate) rate.value = String(playbackState.stepsPerSecond);
+  if (multiplier) multiplier.value = String(playbackState.speedMultiplier);
   if (effectiveKanaRate) {
     const value = playbackRecentKanaPerSecond(
       playbackTrace.strokes,
@@ -1496,6 +1503,7 @@ function updatePlaybackView() {
       playbackState.sameFingerDelay,
       10,
       playbackState.calibration,
+      playbackState.speedMultiplier,
     );
     effectiveKanaRate.textContent = value === undefined
       ? '実効 — かな/秒'
@@ -1509,6 +1517,7 @@ function updatePlaybackView() {
       playbackState.sameFingerDelay,
       10,
       playbackState.calibration,
+      playbackState.speedMultiplier,
     );
     effectiveRate.textContent = value === undefined
       ? '実効 — アクション/秒'
@@ -1569,6 +1578,7 @@ function renderPlaybackMotions(
       playbackState.sameFingerDelay,
       playbackState.calibration,
       playbackTrace?.strokes[cursor - 2],
+      playbackState.speedMultiplier,
     )),
   );
   let motionIndex = 0;
@@ -1683,6 +1693,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
     playbackState.stepsPerSecond,
     playbackState.sameFingerDelay,
     playbackUseCalibration ? playbackCalibration : undefined,
+    playbackState.speedMultiplier,
   );
   playbackMotionCursor = -1;
   playbackSeekWasPlaying = undefined;
@@ -1713,6 +1724,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <span class="playback-position" aria-live="polite" data-playback-position>0 / ${trace.strokes.length} ステップ</span>
         <span class="playback-effective-rates"><span class="playback-effective-kana-rate" data-playback-effective-kana-rate>実効 — かな/秒</span><span class="playback-effective-rate" data-playback-effective-rate>実効 — アクション/秒</span></span>
         <label class="playback-speed"><span>基準速度</span><input type="number" data-playback-rate min="${PLAYBACK_STEPS_PER_SECOND_MIN}" max="${PLAYBACK_STEPS_PER_SECOND_MAX}" step="any" value="${playbackState.stepsPerSecond}" aria-label="再生の基準速度（ステップ毎秒）" /> <span>ステップ/秒</span></label>
+        <label class="playback-speed"><span>再生倍率</span><input type="number" data-playback-multiplier min="${PLAYBACK_SPEED_MULTIPLIER_MIN}" max="${PLAYBACK_SPEED_MULTIPLIER_MAX}" step="any" value="${playbackState.speedMultiplier}" aria-label="再生速度の倍率" /> <span>倍</span></label>
         <button type="button" class="secondary" data-playback-action="calibration">${playbackCalibration ? '速度を再測定' : '速度を測定'}</button>
         <button type="button" class="ghost" data-playback-action="calibration-edit"${playbackCalibration ? '' : ' disabled'}>保存値を確認・編集</button>
       </div>
@@ -1762,6 +1774,7 @@ function stopPlayback() {
     playbackState.stepsPerSecond,
     playbackState.sameFingerDelay,
     playbackUseCalibration ? playbackCalibration : undefined,
+    playbackState.speedMultiplier,
   );
   playbackMotionCursor = -1;
   updatePlaybackView();
@@ -2895,6 +2908,19 @@ el.playback.addEventListener('change', (e) => {
       && value <= PLAYBACK_STEPS_PER_SECOND_MAX
     ) {
       playbackState = setPlaybackStepsPerSecond(playbackState, value as PlaybackStepsPerSecond);
+    }
+    updatePlaybackView();
+    return;
+  }
+  const multiplier = target.closest<HTMLInputElement>('input[data-playback-multiplier]');
+  if (multiplier) {
+    const value = Number(multiplier.value);
+    if (
+      Number.isFinite(value)
+      && value >= PLAYBACK_SPEED_MULTIPLIER_MIN
+      && value <= PLAYBACK_SPEED_MULTIPLIER_MAX
+    ) {
+      playbackState = setPlaybackSpeedMultiplier(playbackState, value);
     }
     updatePlaybackView();
     return;

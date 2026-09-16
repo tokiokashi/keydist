@@ -9,6 +9,9 @@ export const PLAYBACK_STEPS_PER_SECOND_MIN = 0.1;
 export const PLAYBACK_STEPS_PER_SECOND_MAX = 20;
 export type PlaybackStepsPerSecond = number;
 export const DEFAULT_PLAYBACK_STEPS_PER_SECOND: PlaybackStepsPerSecond = 1.25;
+export const PLAYBACK_SPEED_MULTIPLIER_MIN = 0.1;
+export const PLAYBACK_SPEED_MULTIPLIER_MAX = 10;
+export const DEFAULT_PLAYBACK_SPEED_MULTIPLIER = 1;
 
 /** 非アクティブなタブから戻った時の一気送りを防ぐため、1フレームの経過時間を制限する。 */
 const MAX_FRAME_MS = 100;
@@ -17,6 +20,8 @@ export interface PlaybackState {
   /** 0は開始前、nはn打鍵ぶん進んだ位置。 */
   cursor: number;
   stepsPerSecond: PlaybackStepsPerSecond;
+  /** 測定値・基準速度に掛ける再生速度の倍率。 */
+  speedMultiplier: number;
   /** 同指連続の移動距離を再生時間へ反映するか。 */
   sameFingerDelay: boolean;
   /** 有効にしている個人の打鍵・指移動速度。 */
@@ -566,8 +571,17 @@ export function createPlaybackState(
   stepsPerSecond: PlaybackStepsPerSecond = DEFAULT_PLAYBACK_STEPS_PER_SECOND,
   sameFingerDelay = false,
   calibration?: PlaybackCalibration,
+  speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
 ): PlaybackState {
-  return { cursor: 0, stepsPerSecond, sameFingerDelay, calibration, playing: false, elapsedMs: 0 };
+  return {
+    cursor: 0,
+    stepsPerSecond,
+    speedMultiplier,
+    sameFingerDelay,
+    calibration,
+    playing: false,
+    elapsedMs: 0,
+  };
 }
 
 export function clampPlaybackCursor(cursor: number, strokeCount: number): number {
@@ -585,6 +599,13 @@ export function setPlaybackStepsPerSecond(
   stepsPerSecond: PlaybackStepsPerSecond,
 ): PlaybackState {
   return { ...state, stepsPerSecond, elapsedMs: 0 };
+}
+
+export function setPlaybackSpeedMultiplier(
+  state: PlaybackState,
+  speedMultiplier: number,
+): PlaybackState {
+  return { ...state, speedMultiplier, elapsedMs: 0 };
 }
 
 export function setPlaybackSameFingerDelay(
@@ -641,6 +662,7 @@ export function playbackStrokeDurationMs(
   sameFingerDelay = false,
   calibration?: PlaybackCalibration,
   previousStroke?: Stroke,
+  speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
 ): number {
   const sameHandDifferentFinger = playbackHasSameHandDifferentFinger(stroke, previousStroke);
   const sameHandPair = playbackSameHandDifferentFingerPair(stroke, previousStroke);
@@ -649,13 +671,16 @@ export function playbackStrokeDurationMs(
       ?? calibration?.sameHandDifferentFingerActionsPerSecond
     : calibration?.actionsPerSecond;
   const normalMs = normalPlaybackStepMs(calibratedRate ?? stepsPerSecond);
-  if (!stroke || !sameFingerDelay) return normalMs;
+  const multiplier = Number.isFinite(speedMultiplier) && speedMultiplier > 0
+    ? speedMultiplier
+    : DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
+  if (!stroke || !sameFingerDelay) return normalMs / multiplier;
 
   const sameFingerDistance = Math.max(
     1,
     ...stroke.presses.filter((press) => press.sfb).map((press) => press.distance),
   );
-  if (!stroke.presses.some((press) => press.sfb)) return normalMs;
+  if (!stroke.presses.some((press) => press.sfb)) return normalMs / multiplier;
   if (calibration) {
     const movementMs = Math.max(
       ...stroke.presses
@@ -666,9 +691,9 @@ export function playbackStrokeDurationMs(
           return (press.distance / speed) * 1000;
         }),
     );
-    return Math.max(normalMs, movementMs);
+    return Math.max(normalMs, movementMs) / multiplier;
   }
-  return normalMs * sameFingerDistance;
+  return (normalMs * sameFingerDistance) / multiplier;
 }
 
 interface PlaybackRateWindow {
@@ -692,6 +717,7 @@ function playbackRecentRateWindow(
   sameFingerDelay: boolean,
   limit: number,
   calibration?: PlaybackCalibration,
+  speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
 ): PlaybackRateWindow | undefined {
   const end = clampPlaybackCursor(cursor, strokes.length);
   const span = Math.max(0, Math.floor(limit));
@@ -708,6 +734,7 @@ function playbackRecentRateWindow(
         sameFingerDelay,
         calibration,
         strokes[index - 1],
+        speedMultiplier,
       );
     }, 0);
   return { start, end, durationMs };
@@ -737,6 +764,7 @@ export function playbackRecentActionsPerSecond(
   sameFingerDelay = false,
   limit = 10,
   calibration?: PlaybackCalibration,
+  speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
 ): number | undefined {
   const recent = playbackRecentRateWindow(
     strokes,
@@ -745,6 +773,7 @@ export function playbackRecentActionsPerSecond(
     sameFingerDelay,
     limit,
     calibration,
+    speedMultiplier,
   );
   return recent && recent.durationMs > 0
     ? ((recent.end - recent.start) * 1000) / recent.durationMs
@@ -759,6 +788,7 @@ export function playbackRecentKanaPerSecond(
   sameFingerDelay = false,
   limit = 10,
   calibration?: PlaybackCalibration,
+  speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
 ): number | undefined {
   const recent = playbackRecentRateWindow(
     strokes,
@@ -767,6 +797,7 @@ export function playbackRecentKanaPerSecond(
     sameFingerDelay,
     limit,
     calibration,
+    speedMultiplier,
   );
   if (!recent || recent.durationMs <= 0) return undefined;
 
@@ -791,6 +822,7 @@ export function playbackRateChartData(
   sameFingerDelay = false,
   limit = 10,
   calibration?: PlaybackCalibration,
+  speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
 ): PlaybackRateChartPoint[] {
   const points: PlaybackRateChartPoint[] = [{ cursor: 0, inputText: '' }];
   for (let cursor = 1; cursor <= strokes.length; cursor++) {
@@ -801,6 +833,7 @@ export function playbackRateChartData(
       sameFingerDelay,
       limit,
       calibration,
+      speedMultiplier,
     );
     points.push({
       cursor,
@@ -812,6 +845,7 @@ export function playbackRateChartData(
         sameFingerDelay,
         limit,
         calibration,
+        speedMultiplier,
       ),
       actionsPerSecond: recent && recent.durationMs > 0
         ? ((recent.end - recent.start) * 1000) / recent.durationMs
@@ -856,6 +890,7 @@ export function advancePlayback(
       state.sameFingerDelay,
       state.calibration,
       strokes[nextCursor - 1],
+      state.speedMultiplier,
     );
     if (remaining < stepMs) break;
     remaining -= stepMs;
