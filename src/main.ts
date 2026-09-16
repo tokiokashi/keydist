@@ -111,6 +111,7 @@ const el = {
   window: $<HTMLInputElement>('window'),
   windowOut: $<HTMLOutputElement>('window-out'),
   sfbHome: $<HTMLInputElement>('sfb-home'),
+  preferOppositeThumb: $<HTMLInputElement>('prefer-opposite-thumb'),
   sample: $<HTMLSelectElement>('sample'),
   text: $<HTMLTextAreaElement>('text'),
   textPanel: $<HTMLDetailsElement>('text-panel'),
@@ -903,6 +904,11 @@ function updatePlaybackView() {
   const scale = el.playback.querySelector<HTMLInputElement>('input[data-playback-scale]');
   const playbackWindow = el.playback.querySelector<HTMLOutputElement>('[data-playback-window]');
   if (position) position.textContent = `${cursor} / ${total} ステップ`;
+  const inputPreview = playbackInputPreview(
+    playbackTrace.strokes,
+    cursor,
+    windowSize,
+  );
   if (current) {
     current.hidden = isRomaji;
     current.textContent = stroke
@@ -910,7 +916,11 @@ function updatePlaybackView() {
       : '—';
   }
   if (romaji) romaji.hidden = !isRomaji;
-  if (kana) kana.textContent = stroke?.inputChar ?? '—';
+  if (kana) {
+    kana.textContent = isRomaji
+      ? inputPreview.find((segment) => segment.kind === 'current')?.text ?? '—'
+      : stroke?.inputChar ?? '—';
+  }
   if (typed) typed.textContent = stroke?.char ?? '—';
   const plan = isRomaji
     ? playbackRomajiPlan(playbackTrace.strokes, cursor)
@@ -919,11 +929,6 @@ function updatePlaybackView() {
     planned.hidden = plan === undefined;
     planned.textContent = plan ? `予定: ${plan.planned}` : '';
   }
-  const inputPreview = playbackInputPreview(
-    playbackTrace.strokes,
-    cursor,
-    windowSize,
-  );
   if (history) history.hidden = inputPreview.length === 0;
   if (historyText) {
     historyText.replaceChildren();
@@ -1127,6 +1132,7 @@ function render() {
   const options: Options = {
     windowSize: Number(el.window.value),
     sfbHomeCost: el.sfbHome.checked,
+    preferOppositeThumb: el.preferOppositeThumb.checked,
   };
   const text = el.text.value;
   el.windowOut.value = el.window.value;
@@ -2219,7 +2225,17 @@ el.compareChartMetric.addEventListener('change', () => {
   compareChartColumn = Number(el.compareChartMetric.value);
   render();
 });
-for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.sample, el.text, el.detailLayout, el.compareBaseline]) {
+for (const node of [
+  el.mode,
+  el.geometry,
+  el.window,
+  el.sfbHome,
+  el.preferOppositeThumb,
+  el.sample,
+  el.text,
+  el.detailLayout,
+  el.compareBaseline,
+]) {
   node.addEventListener('input', render);
   node.addEventListener('change', render);
 }

@@ -66,6 +66,8 @@ export interface Layout {
   maxCharLength?: number;
   /** キーid → そのキーの刻印。表示用 */
   legends: Map<string, string>;
+  /** 運指設定で左右の親指を振り替えられるシフトキー。 */
+  thumbShiftKey?: string;
   /**
    * かなテキストをローマ字へ展開してから打つ配列はテーブルを持つ。
    * かな配列は持たない。同じかなテキストを両者に食わせて比較できる。

@@ -241,7 +241,7 @@ export function playbackCompletedInputs(
     const inputIndex = strokes[at].inputIndex;
     let next = at + 1;
     while (next < strokes.length && strokes[next].inputIndex === inputIndex) next++;
-    if (next <= end && inputIndex !== currentInputIndex) completed.push(strokes[at].inputChar);
+    if (next <= end && inputIndex !== currentInputIndex) completed.push(strokes[next - 1].inputChar);
     at = next;
   }
   return completed.slice(-limit);
@@ -262,13 +262,13 @@ export function playbackInputPreview(
   completedLimit = 10,
 ): PlaybackInputPreviewSegment[] {
   const end = Math.min(Math.max(0, cursor), strokes.length);
-  const groups: { inputIndex: number; start: number; end: number; text: string }[] = [];
+  const groups: { inputIndex: number; start: number; end: number }[] = [];
 
   for (let start = 0; start < strokes.length; ) {
     const inputIndex = strokes[start].inputIndex;
     let finish = start + 1;
     while (finish < strokes.length && strokes[finish].inputIndex === inputIndex) finish++;
-    groups.push({ inputIndex, start, end: finish, text: strokes[start].inputChar });
+    groups.push({ inputIndex, start, end: finish });
     start = finish;
   }
 
@@ -284,9 +284,11 @@ export function playbackInputPreview(
   );
 
   return [
-    ...completed.map(({ text }) => ({ text, kind: 'completed' as const })),
-    ...(currentGroupIndex < 0 ? [] : [{ text: groups[currentGroupIndex].text, kind: 'current' as const }]),
-    ...planned.map(({ text }) => ({ text, kind: 'planned' as const })),
+    ...completed.map((group) => ({ text: strokes[group.end - 1].inputChar, kind: 'completed' as const })),
+    ...(currentGroupIndex < 0
+      ? []
+      : [{ text: strokes[groups[currentGroupIndex].end - 1].inputChar, kind: 'current' as const }]),
+    ...planned.map((group) => ({ text: strokes[group.end - 1].inputChar, kind: 'planned' as const })),
   ];
 }
 
