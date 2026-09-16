@@ -52,6 +52,7 @@ import {
   playbackRomajiPlannedOrders,
   playbackOrderLabel,
   playbackRecentActionsPerSecond,
+  playbackHandKeyMotions,
   playbackSameFingerKeyMotions,
   playbackStrokeAt,
   playbackStrokeDurationMs,
@@ -868,9 +869,20 @@ function updatePlaybackView() {
       playbackArpeggioIncludeSameFinger,
     )
     : new Map<string, number>();
-  const motions = playbackState.sameFingerDelay
+  const sameFingerMotions = playbackState.sameFingerDelay
     ? playbackSameFingerKeyMotions(playbackTrace.strokes, cursor)
     : [];
+  const sameFingerTargets = new Set(sameFingerMotions.flatMap((motion) => motion.toKeys));
+  // 同指連続は同じ手でもあるため、両方を有効にすると同じキーへ2枚が重なる。
+  // より具体的な同指側を優先し、片手連続はそれが拾わなかったキーだけを動かす。
+  const handMotions = (playbackShowArpeggio
+    ? playbackHandKeyMotions(playbackTrace.strokes, cursor, playbackArpeggioIncludeSameFinger)
+    : []
+  ).flatMap((motion) => {
+    const toKeys = motion.toKeys.filter((key) => !sameFingerTargets.has(key));
+    return toKeys.length === 0 ? [] : [{ ...motion, toKeys }];
+  });
+  const motions = [...sameFingerMotions, ...handMotions];
   const animatedKeys = new Set(motions.flatMap((motion) => motion.toKeys));
 
   if (cursor !== playbackMotionCursor) {
@@ -910,8 +922,6 @@ function updatePlaybackView() {
       arpeggioOrderLabel.setAttribute('visibility', arpeggioOrder === undefined ? 'hidden' : 'visible');
     }
     key.dataset.playbackArpeggio = arpeggioOrder === undefined ? 'false' : 'true';
-    if (arpeggioOrder === undefined) key.style.removeProperty('--playback-arpeggio-delay');
-    else key.style.setProperty('--playback-arpeggio-delay', `${(arpeggioOrder - 1) * 90}ms`);
     const label = key.querySelector<SVGTextElement>('[data-playback-label]');
     if (label) label.textContent = display?.keyLabels.get(id) ?? key.dataset.playbackBaseLabel ?? '';
   }
@@ -1069,7 +1079,7 @@ function renderPlaybackMotions(
   }
   const durationMs = Math.max(
     150,
-    Math.min(1500, playbackStrokeDurationMs(stroke, playbackState.stepsPerSecond, true)),
+    Math.min(1500, playbackStrokeDurationMs(stroke, playbackState.stepsPerSecond, playbackState.sameFingerDelay)),
   );
   let motionIndex = 0;
   for (const motion of motions) {
@@ -1088,9 +1098,6 @@ function renderPlaybackMotions(
       clone.removeAttribute('data-playback-key');
       clone.removeAttribute('data-playback-base-label');
       clone.setAttribute('data-playback-motion-key', `${cursor}-${motionIndex++}`);
-      // 移動中のキーにアルペジオの脈動は要らない。クローンに属性が残ると
-      // 塗りのアニメーションが移動用の fill を上書きしてしまう。
-      clone.removeAttribute('data-playback-arpeggio');
       clone.setAttribute('transform', `translate(${dx} ${dy})`);
       clone.style.pointerEvents = 'none';
       const animation = document.createElementNS(SVG_NS, 'animateTransform');

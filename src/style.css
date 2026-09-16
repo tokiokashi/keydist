@@ -458,17 +458,6 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-order-plan { fill: var(--series-6); }
 .playback-order-trail { fill: var(--accent); }
 .playback-order-arpeggio { fill: var(--series-2); font-size: 10px; font-weight: 700; }
-/* 打鍵中のキーは fill: var(--accent) で「今ここ」を示す担当なので、
-   アルペジオの塗りで上書きしない（アニメーションは通常宣言より強い）。 */
-.playback-figure [data-playback-arpeggio='true']:not([data-playback-active='true']) rect {
-  animation: playback-arpeggio-pulse 900ms ease-in-out infinite;
-  animation-delay: var(--playback-arpeggio-delay, 0ms);
-}
-/* 0%/100% を書かないのは意図的。暗黙キーフレームが要素自身の fill を使うため、
-   trail / plan の濃淡を潰さずにその値から series-2 へ脈打たせられる。 */
-@keyframes playback-arpeggio-pulse {
-  45% { fill: color-mix(in srgb, var(--series-2) 55%, var(--panel)); }
-}
 .playback-figure [data-playback-motion-key] rect { fill: var(--accent); stroke: var(--accent); }
 .playback-figure [data-playback-motion-key] text { fill: #fff; }
 .playback-figure [data-playback-active='true'] rect { fill: var(--accent); stroke: var(--accent); }

@@ -73,6 +73,39 @@ function fingerHand(finger: Finger): 'left' | 'right' {
   return finger.startsWith('L') ? 'left' : 'right';
 }
 
+/**
+ * 直前の打鍵が同じ手だった時、その位置から現在のキーへの移動を返す。
+ *
+ * 同指連続（playbackSameFingerKeyMotions）が「同じ指がキーをまたぐ」動きなのに対し、
+ * こちらは「手が鍵盤を横切る」動きを1枚のキーで見せる。区間全体を一度に動かさず
+ * 1ステップ1本に絞るのは、2キーの短い区間でも必ず動きが出るようにするため。
+ */
+export function playbackHandKeyMotions(
+  strokes: readonly Stroke[],
+  cursor: number,
+  includeSameFinger = false,
+): PlaybackKeyMotion[] {
+  const index = Math.min(Math.max(0, cursor), strokes.length) - 1;
+  if (index <= 0) return [];
+
+  const stroke = strokes[index];
+  const previous = strokes[index - 1];
+  const hand = (target: Stroke): 'left' | 'right' | undefined => {
+    const hands = new Set(target.presses.map((press) => fingerHand(press.finger)));
+    return hands.size === 1 ? [...hands][0] : undefined;
+  };
+  const currentHand = hand(stroke);
+  if (!currentHand || currentHand !== hand(previous)) return [];
+  if (!includeSameFinger && stroke.presses.some((press) => press.sfb)) return [];
+
+  // 同時押しの起点は先頭のキーに寄せる。どれを選んでも手の移動という意味は変わらない
+  const fromKey = previous.presses.flatMap((press) => press.keys)[0]?.id;
+  const toKeys = stroke.presses.flatMap((press) => press.keys.map((key) => key.id));
+  const finger = stroke.presses[0]?.finger;
+  if (!fromKey || toKeys.length === 0 || !finger) return [];
+  return [{ fromKey, toKeys, finger }];
+}
+
 /** 直近の同じ手の連続打鍵へ、表示順を割り当てる。 */
 export function playbackArpeggioOrders(
   strokes: readonly Stroke[],
