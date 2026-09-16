@@ -629,6 +629,9 @@ dialog::backdrop { background: rgb(0 0 0 / 0.38); }
 #how-dialog .dialog-body { padding: 20px; }
 #playback-calibration-dialog { width: min(560px, calc(100vw - 32px)); }
 .calibration-progress { display: block; margin: 8px 0 12px; color: var(--muted); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.calibration-finger-details { margin-top: 14px; }
+.calibration-finger-details > summary { cursor: pointer; color: var(--muted); }
+.calibration-finger-speed { margin: 10px 0 0; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .dialog-head h2 { margin: 0; }

@@ -78,6 +78,7 @@ import {
   CALIBRATION_FINGER_SAMPLES,
   CALIBRATION_FINGER_SPEED_MAX,
   CALIBRATION_FINGER_SPEED_MIN,
+  fallbackFingerSpeedFromSamples,
   fingerSpeedFromSamples,
   loadPlaybackCalibration,
   savePlaybackCalibration,
@@ -192,6 +193,7 @@ const el = {
   calibrationResult: $<HTMLDivElement>('playback-calibration-result'),
   calibrationActions: $<HTMLInputElement>('playback-calibration-actions'),
   calibrationFingerSpeed: $<HTMLInputElement>('playback-calibration-finger-speed'),
+  calibrationFingerInputs: $<HTMLDivElement>('playback-calibration-finger-inputs'),
 };
 
 const FINGER_LABEL: Record<Finger, string> = {
@@ -879,6 +881,27 @@ function setCalibrationError(message: string): void {
   el.calibrationError.hidden = message.length === 0;
 }
 
+function renderCalibrationFingerInputs(values: Partial<Record<Finger, number>>): void {
+  el.calibrationFingerInputs.replaceChildren();
+  for (const finger of ALL_FINGERS) {
+    const label = document.createElement('label');
+    label.className = 'ctl calibration-finger-speed';
+    const name = document.createElement('span');
+    name.textContent = FINGER_LABEL[finger];
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = String(CALIBRATION_FINGER_SPEED_MIN);
+    input.max = String(CALIBRATION_FINGER_SPEED_MAX);
+    input.step = '0.01';
+    input.dataset.calibrationFinger = finger;
+    input.setAttribute('aria-label', `${FINGER_LABEL[finger]}の指移動速度（u/秒）`);
+    const value = values[finger];
+    if (value !== undefined) input.value = value.toFixed(2);
+    label.append(name, input);
+    el.calibrationFingerInputs.append(label);
+  }
+}
+
 function updateCalibrationDialog(): void {
   const session = calibrationSession;
   el.calibrationResult.hidden = session?.phase !== 'result';
@@ -886,7 +909,7 @@ function updateCalibrationDialog(): void {
   el.calibrationStart.textContent = session?.phase === 'result' ? '測り直す' : '測定を開始';
   if (!session) {
     el.calibrationInstruction.textContent = playbackCalibration
-      ? `保存済み: 通常 ${playbackCalibration.actionsPerSecond.toFixed(2)} アクション/秒、指移動 ${playbackCalibration.fingerSpeedUnitsPerSecond.toFixed(2)} u/秒。`
+      ? `保存済み: 通常 ${playbackCalibration.actionsPerSecond.toFixed(2)} アクション/秒、未測定指の指移動 ${playbackCalibration.fallbackFingerSpeedUnitsPerSecond.toFixed(2)} u/秒。`
       : '通常の打鍵速度と、各指の移動速度を測定して再生に反映します。';
     el.calibrationProgress.textContent = '';
     return;
@@ -931,8 +954,9 @@ function beginCalibrationSession(): void {
 function finishCalibrationSession(): void {
   if (!calibrationSession) return;
   const actionsPerSecond = actionsPerSecondFromIntervals(calibrationSession.actionIntervals);
-  const fingerSpeedUnitsPerSecond = fingerSpeedFromSamples(calibrationSession.fingerSamples);
-  if (actionsPerSecond === undefined || fingerSpeedUnitsPerSecond === undefined) {
+  const fingerSpeeds = fingerSpeedFromSamples(calibrationSession.fingerSamples);
+  const fallbackFingerSpeedUnitsPerSecond = fallbackFingerSpeedFromSamples(calibrationSession.fingerSamples);
+  if (actionsPerSecond === undefined || fingerSpeeds.size === 0 || fallbackFingerSpeedUnitsPerSecond === undefined) {
     setCalibrationError('測定値が不足しています。最初からもう一度測ってください。');
     calibrationSession = undefined;
     updateCalibrationDialog();
@@ -940,7 +964,8 @@ function finishCalibrationSession(): void {
   }
   calibrationSession.phase = 'result';
   el.calibrationActions.value = actionsPerSecond.toFixed(2);
-  el.calibrationFingerSpeed.value = fingerSpeedUnitsPerSecond.toFixed(2);
+  el.calibrationFingerSpeed.value = fallbackFingerSpeedUnitsPerSecond.toFixed(2);
+  renderCalibrationFingerInputs(Object.fromEntries(fingerSpeeds) as Partial<Record<Finger, number>>);
   setCalibrationError('');
   updateCalibrationDialog();
 }
@@ -965,6 +990,7 @@ function onCalibrationKeyDown(event: KeyboardEvent): void {
       session.actionIntervals.push(durationMs);
     } else {
       session.fingerSamples.push({
+        finger: session.pairs[session.pairIndex].finger,
         distance: session.pairs[session.pairIndex].distance,
         durationMs,
       });
@@ -999,22 +1025,36 @@ function openCalibrationDialog(): void {
 
 function saveCalibrationFromDialog(): void {
   const actionsPerSecond = Number(el.calibrationActions.value);
-  const fingerSpeedUnitsPerSecond = Number(el.calibrationFingerSpeed.value);
+  const fallbackFingerSpeedUnitsPerSecond = Number(el.calibrationFingerSpeed.value);
   if (!Number.isFinite(actionsPerSecond)
     || actionsPerSecond < CALIBRATION_ACTIONS_PER_SECOND_MIN
     || actionsPerSecond > CALIBRATION_ACTIONS_PER_SECOND_MAX) {
     setCalibrationError(`通常速度は ${CALIBRATION_ACTIONS_PER_SECOND_MIN}〜${CALIBRATION_ACTIONS_PER_SECOND_MAX} の範囲で入力してください。`);
     return;
   }
-  if (!Number.isFinite(fingerSpeedUnitsPerSecond)
-    || fingerSpeedUnitsPerSecond < CALIBRATION_FINGER_SPEED_MIN
-    || fingerSpeedUnitsPerSecond > CALIBRATION_FINGER_SPEED_MAX) {
-    setCalibrationError(`指移動速度は ${CALIBRATION_FINGER_SPEED_MIN}〜${CALIBRATION_FINGER_SPEED_MAX} の範囲で入力してください。`);
+  if (!Number.isFinite(fallbackFingerSpeedUnitsPerSecond)
+    || fallbackFingerSpeedUnitsPerSecond < CALIBRATION_FINGER_SPEED_MIN
+    || fallbackFingerSpeedUnitsPerSecond > CALIBRATION_FINGER_SPEED_MAX) {
+    setCalibrationError(`未測定指の速度は ${CALIBRATION_FINGER_SPEED_MIN}〜${CALIBRATION_FINGER_SPEED_MAX} の範囲で入力してください。`);
     return;
+  }
+  const fingerSpeedUnitsPerSecond: Partial<Record<Finger, number>> = {};
+  for (const input of el.calibrationFingerInputs.querySelectorAll<HTMLInputElement>('[data-calibration-finger]')) {
+    const finger = input.dataset.calibrationFinger as Finger | undefined;
+    if (!finger || input.value.trim() === '') continue;
+    const value = Number(input.value);
+    if (!Number.isFinite(value)
+      || value < CALIBRATION_FINGER_SPEED_MIN
+      || value > CALIBRATION_FINGER_SPEED_MAX) {
+      setCalibrationError(`${FINGER_LABEL[finger]}の速度は ${CALIBRATION_FINGER_SPEED_MIN}〜${CALIBRATION_FINGER_SPEED_MAX} の範囲で入力してください。`);
+      return;
+    }
+    fingerSpeedUnitsPerSecond[finger] = value;
   }
   const calibration: PlaybackCalibration = {
     actionsPerSecond,
     fingerSpeedUnitsPerSecond,
+    fallbackFingerSpeedUnitsPerSecond,
     measuredAt: Date.now(),
   };
   try {

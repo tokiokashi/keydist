@@ -1,11 +1,13 @@
-import { FINGERS, dist, type Finger, type Geometry, type Key } from './geometry.ts';
+import { ALL_FINGERS, FINGERS, dist, type Finger, type Geometry, type Key } from './geometry.ts';
 
 /** 再生へ反映する個人の打鍵・指移動速度。 */
 export interface PlaybackCalibration {
   /** 通常の連続打鍵速度。 */
   actionsPerSecond: number;
-  /** 同指連続の移動速度。単位は物理キーのu/秒。 */
-  fingerSpeedUnitsPerSecond: number;
+  /** 同指連続の指ごとの移動速度。測れなかった指は持たない。 */
+  fingerSpeedUnitsPerSecond: Partial<Record<Finger, number>>;
+  /** 指ごとの速度が無い場合に使う移動速度。単位は物理キーのu/秒。 */
+  fallbackFingerSpeedUnitsPerSecond: number;
   measuredAt: number;
 }
 
@@ -21,7 +23,7 @@ export interface CalibrationKeyPair {
   distance: number;
 }
 
-export const PLAYBACK_CALIBRATION_STORAGE_KEY = 'keydist.playback-calibration.v1';
+export const PLAYBACK_CALIBRATION_STORAGE_KEY = 'keydist.playback-calibration.v2';
 export const CALIBRATION_ACTIONS_PER_SECOND_MIN = 0.1;
 export const CALIBRATION_ACTIONS_PER_SECOND_MAX = 20;
 export const CALIBRATION_FINGER_SPEED_MIN = 0.1;
@@ -49,26 +51,64 @@ export function actionsPerSecondFromIntervals(intervalsMs: readonly number[]): n
 }
 
 export interface FingerSpeedSample {
+  finger: Finger;
   distance: number;
   durationMs: number;
 }
 
-export function fingerSpeedFromSamples(samples: readonly FingerSpeedSample[]): number | undefined {
-  const speeds = samples
-    .filter((sample) => Number.isFinite(sample.distance) && sample.distance > 0)
-    .map((sample) => sample.distance / (sample.durationMs / 1000));
-  return median(speeds);
+function speedFromSample(sample: FingerSpeedSample): number | undefined {
+  if (!Number.isFinite(sample.distance) || sample.distance <= 0) return undefined;
+  if (!Number.isFinite(sample.durationMs) || sample.durationMs <= 0) return undefined;
+  return sample.distance / (sample.durationMs / 1000);
+}
+
+/** 指ごとに中央値を取り、指ごとの速度を残す。 */
+export function fingerSpeedFromSamples(
+  samples: readonly FingerSpeedSample[],
+): ReadonlyMap<Finger, number> {
+  const grouped = new Map<Finger, number[]>();
+  for (const sample of samples) {
+    const speed = speedFromSample(sample);
+    if (speed === undefined) continue;
+    const values = grouped.get(sample.finger) ?? [];
+    values.push(speed);
+    grouped.set(sample.finger, values);
+  }
+  const speeds = new Map<Finger, number>();
+  for (const [finger, values] of grouped) {
+    const value = median(values);
+    if (value !== undefined) speeds.set(finger, value);
+  }
+  return speeds;
+}
+
+/** 測定できなかった指へ適用する全サンプルの中央値。 */
+export function fallbackFingerSpeedFromSamples(
+  samples: readonly FingerSpeedSample[],
+): number | undefined {
+  return median(samples.map(speedFromSample).filter((value): value is number => value !== undefined));
 }
 
 function validCalibration(value: unknown): value is PlaybackCalibration {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as Partial<PlaybackCalibration>;
+  const fingerSpeeds = candidate.fingerSpeedUnitsPerSecond;
+  const validFingerSpeeds = fingerSpeeds !== null
+    && typeof fingerSpeeds === 'object'
+    && !Array.isArray(fingerSpeeds)
+    && Object.entries(fingerSpeeds).every(([finger, speed]) =>
+      ALL_FINGERS.includes(finger as Finger)
+      && Number.isFinite(speed)
+      && speed >= CALIBRATION_FINGER_SPEED_MIN
+      && speed <= CALIBRATION_FINGER_SPEED_MAX,
+    );
   return Number.isFinite(candidate.actionsPerSecond)
     && candidate.actionsPerSecond! >= CALIBRATION_ACTIONS_PER_SECOND_MIN
     && candidate.actionsPerSecond! <= CALIBRATION_ACTIONS_PER_SECOND_MAX
-    && Number.isFinite(candidate.fingerSpeedUnitsPerSecond)
-    && candidate.fingerSpeedUnitsPerSecond! >= CALIBRATION_FINGER_SPEED_MIN
-    && candidate.fingerSpeedUnitsPerSecond! <= CALIBRATION_FINGER_SPEED_MAX
+    && validFingerSpeeds
+    && Number.isFinite(candidate.fallbackFingerSpeedUnitsPerSecond)
+    && candidate.fallbackFingerSpeedUnitsPerSecond! >= CALIBRATION_FINGER_SPEED_MIN
+    && candidate.fallbackFingerSpeedUnitsPerSecond! <= CALIBRATION_FINGER_SPEED_MAX
     && Number.isFinite(candidate.measuredAt);
 }
 

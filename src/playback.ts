@@ -491,7 +491,15 @@ export function playbackStrokeDurationMs(
   );
   if (!stroke.presses.some((press) => press.sfb)) return normalMs;
   if (calibration) {
-    const movementMs = (sameFingerDistance / calibration.fingerSpeedUnitsPerSecond) * 1000;
+    const movementMs = Math.max(
+      ...stroke.presses
+        .filter((press) => press.sfb)
+        .map((press) => {
+          const speed = calibration.fingerSpeedUnitsPerSecond[press.finger]
+            ?? calibration.fallbackFingerSpeedUnitsPerSecond;
+          return (press.distance / speed) * 1000;
+        }),
+    );
     return Math.max(normalMs, movementMs);
   }
   return normalMs * sameFingerDistance;
