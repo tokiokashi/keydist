@@ -816,6 +816,9 @@ let playbackShowOrderLabels = false;
 let playbackScale = 1.5;
 let playbackShowArpeggio = false;
 let playbackArpeggioIncludeSameFinger = false;
+// レイヤーキーを指の連なりに数えるかは意見が割れるため切り替えられるようにする。
+// 親指は別ルールで常に除外されるので、ここが効くのは中指シフト等の配列
+let playbackArpeggioIncludeLayerKeys = true;
 let playbackMotionCursor = -1;
 let playbackPanelOpen = false;
 
@@ -867,6 +870,8 @@ function updatePlaybackView() {
       playbackTrace.strokes,
       cursor,
       playbackArpeggioIncludeSameFinger,
+      undefined,
+      playbackArpeggioIncludeLayerKeys,
     )
     : new Map<string, number>();
   const sameFingerMotions = playbackState.sameFingerDelay
@@ -876,7 +881,12 @@ function updatePlaybackView() {
   // 同指連続は同じ手でもあるため、両方を有効にすると同じキーへ2枚が重なる。
   // より具体的な同指側を優先し、片手連続はそれが拾わなかったキーだけを動かす。
   const handMotions = (playbackShowArpeggio
-    ? playbackHandKeyMotions(playbackTrace.strokes, cursor, playbackArpeggioIncludeSameFinger)
+    ? playbackHandKeyMotions(
+      playbackTrace.strokes,
+      cursor,
+      playbackArpeggioIncludeSameFinger,
+      playbackArpeggioIncludeLayerKeys,
+    )
     : []
   ).flatMap((motion) => {
     const toKeys = motion.toKeys.filter((key) => !sameFingerTargets.has(key));
@@ -949,6 +959,7 @@ function updatePlaybackView() {
   const sameFingerDelay = el.playback.querySelector<HTMLInputElement>('[data-playback-sfb-delay]');
   const arpeggio = el.playback.querySelector<HTMLInputElement>('[data-playback-arpeggio]');
   const arpeggioSameFinger = el.playback.querySelector<HTMLInputElement>('[data-playback-arpeggio-sfb]');
+  const arpeggioLayerKeys = el.playback.querySelector<HTMLInputElement>('[data-playback-arpeggio-layer]');
   const rate = el.playback.querySelector<HTMLInputElement>('input[data-playback-rate]');
   const effectiveRate = el.playback.querySelector<HTMLElement>('[data-playback-effective-rate]');
   const playbackWindow = el.playback.querySelector<HTMLOutputElement>('[data-playback-window]');
@@ -1018,6 +1029,10 @@ function updatePlaybackView() {
   if (arpeggioSameFinger) {
     arpeggioSameFinger.checked = playbackArpeggioIncludeSameFinger;
     arpeggioSameFinger.disabled = !playbackShowArpeggio;
+  }
+  if (arpeggioLayerKeys) {
+    arpeggioLayerKeys.checked = playbackArpeggioIncludeLayerKeys;
+    arpeggioLayerKeys.disabled = !playbackShowArpeggio;
   }
   if (rate) rate.value = String(playbackState.stepsPerSecond);
   if (effectiveRate) {
@@ -1170,6 +1185,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <label class="playback-finger-toggle" title="1uの移動を通常の1アクション相当として同指連続の距離を再生時間へ反映"><input type="checkbox" data-playback-sfb-delay${playbackState.sameFingerDelay ? ' checked' : ''} />同指ディレイ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${playbackShowArpeggio ? ' checked' : ''} />片手連続アニメーション</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio-sfb${playbackArpeggioIncludeSameFinger ? ' checked' : ''}${playbackShowArpeggio ? '' : ' disabled'} />同指連打も含める</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio-layer${playbackArpeggioIncludeLayerKeys ? ' checked' : ''}${playbackShowArpeggio ? '' : ' disabled'} />レイヤーキーも含める</label>
         <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${playbackScale}" aria-label="配列図の表示倍率" /> 倍</label>
       </div>
       <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
@@ -2308,6 +2324,14 @@ el.playback.addEventListener('change', (e) => {
   const arpeggioSameFinger = target.closest<HTMLInputElement>('[data-playback-arpeggio-sfb]');
   if (arpeggioSameFinger) {
     playbackArpeggioIncludeSameFinger = arpeggioSameFinger.checked;
+    updatePlaybackView();
+    return;
+  }
+  const arpeggioLayerKeys = target.closest<HTMLInputElement>('[data-playback-arpeggio-layer]');
+  if (arpeggioLayerKeys) {
+    playbackArpeggioIncludeLayerKeys = arpeggioLayerKeys.checked;
+    // 移動の起点・終点が変わるため、同じカーソルでも描き直す
+    playbackMotionCursor = -1;
     updatePlaybackView();
     return;
   }
