@@ -1459,8 +1459,6 @@ interface LayerViewEntry {
   layer: Layer;
   title: string;
   stat: LayerStat;
-  /** 薙刀式の合算表示で、色の正規化から除くトリガー押下。 */
-  colorTriggerKeyCounts?: ReadonlyMap<string, number>;
 }
 
 function emptyLayerStat(id: string, label: string): LayerStat {
@@ -1471,6 +1469,7 @@ function emptyLayerStat(id: string, label: string): LayerStat {
     keyCounts: new Map(),
     keyDistance: new Map(),
     triggerKeyCounts: new Map(),
+    pairedTriggerKeyCounts: new Map(),
   };
 }
 
@@ -1478,6 +1477,7 @@ function mergeLayerStats(id: string, label: string, stats: readonly LayerStat[])
   const keyCounts = new Map<string, number>();
   const keyDistance = new Map<string, number>();
   const triggerKeyCounts = new Map<string, number>();
+  const pairedTriggerKeyCounts = new Map<string, number>();
   let presses = 0;
   for (const stat of stats) {
     presses += stat.presses;
@@ -1490,8 +1490,11 @@ function mergeLayerStats(id: string, label: string, stats: readonly LayerStat[])
     for (const [key, count] of stat.triggerKeyCounts) {
       triggerKeyCounts.set(key, (triggerKeyCounts.get(key) ?? 0) + count);
     }
+    for (const [key, count] of stat.pairedTriggerKeyCounts) {
+      pairedTriggerKeyCounts.set(key, (pairedTriggerKeyCounts.get(key) ?? 0) + count);
+    }
   }
-  return { id, label, presses, keyCounts, keyDistance, triggerKeyCounts };
+  return { id, label, presses, keyCounts, keyDistance, triggerKeyCounts, pairedTriggerKeyCounts };
 }
 
 function layerViewEntries(metrics: Metrics, layout: Layout, layers: readonly Layer[]): LayerViewEntry[] {
@@ -1518,8 +1521,6 @@ function layerViewEntries(metrics: Metrics, layout: Layout, layers: readonly Lay
         base.stat,
         ...rest.map((entry) => entry.stat),
       ]),
-      // スペースを使わないレイヤー3以降は、この表示では単打側の出力として見せる。
-      colorTriggerKeyCounts: base.stat.triggerKeyCounts,
     },
     center,
   ];
@@ -1623,11 +1624,7 @@ function renderHeatmap(
       ariaSuffix: '（全レイヤー合算・物理位置）',
     },
   );
-  const colorCounts = entries.map((entry) => normalizedLayerColors(
-    entry.layer,
-    entry.stat,
-    entry.colorTriggerKeyCounts,
-  ));
+  const colorCounts = entries.map((entry) => normalizedLayerColors(entry.layer, entry.stat));
   const layerMax = Math.max(1, ...colorCounts.flatMap((counts) => [...counts.values()]));
   const diagrams = entries.map((entry, index) => {
     return renderLayerSvg(

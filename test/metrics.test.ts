@@ -156,10 +156,30 @@ test('層操作キーと出力キーを同時押しの中で分離する', () =>
     const layer = metrics.layers.find((stat) => stat.presses > 0)!;
 
     assert.deepEqual(trace.strokes[0].triggerKeys, [trigger], `${layoutId} のトリガー`);
+    assert.deepEqual(trace.strokes[0].pairedTriggerKeys, [trigger], `${layoutId} の対向トリガー`);
     assert.equal(layer.keyCounts.get(trigger), 1, `${layoutId} のトリガー実押下`);
     assert.equal(layer.keyCounts.get(output), 1, `${layoutId} の出力実押下`);
     assert.equal(layer.triggerKeyCounts.get(trigger), 1, `${layoutId} のトリガー集計`);
     assert.equal(layer.triggerKeyCounts.get(output) ?? 0, 0, `${layoutId} の出力をトリガー扱いしない`);
+    assert.equal(layer.pairedTriggerKeyCounts.get(trigger), 1, `${layoutId} の対向トリガー`);
+    assert.equal(layer.pairedTriggerKeyCounts.get(output) ?? 0, 0, `${layoutId} の出力を対向トリガー扱いしない`);
+  }
+});
+
+test('層トリガー1個の同時打鍵は対向トリガー扱いしない', () => {
+  const cases = [
+    { layoutId: 'naginata-v18', text: 'ぎ', trigger: 'j', output: 'w' },
+    { layoutId: 'shingeta', text: 'ご', trigger: 'k', output: 'w' },
+  ];
+  for (const { layoutId, text, trigger, output } of cases) {
+    const layout = LAYOUTS_JA.find((entry) => entry.id === layoutId)!;
+    const trace = evaluate(text, layout, geometry, opts());
+    const metrics = computeMetrics(trace, geometry);
+    const layer = metrics.layers.find((stat) => stat.presses > 0)!;
+
+    assert.deepEqual(trace.strokes[0].pairedTriggerKeys, [], `${layoutId} の対向トリガーなし`);
+    assert.equal(layer.pairedTriggerKeyCounts.get(trigger) ?? 0, 0, `${layoutId} のトリガー`);
+    assert.equal(layer.pairedTriggerKeyCounts.get(output) ?? 0, 0, `${layoutId} の出力`);
   }
 });
 

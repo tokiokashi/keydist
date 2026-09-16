@@ -55,6 +55,8 @@ export interface Stroke {
   layerId: string;
   /** このステップで層操作として押したキー。出力キーとの色分けに使う */
   triggerKeys: readonly string[];
+  /** 同じ層の文字トリガーを複数同時押下したキー。表示色の例外に使う */
+  pairedTriggerKeys: readonly string[];
   presses: Press[];
   /** ステップ内の押下距離の合計 [u] */
   distance: number;
@@ -110,6 +112,14 @@ export function evaluate(
   const seen = new Set<string>();
   const comboHits: string[] = [];
   const comboConditions = layout.comboConditions ?? new Map<string, ComboCondition>();
+  const layerTriggerKeys = new Map<string, Set<string>>();
+  for (const face of layout.faces ?? []) {
+    const layerId = layout.faceLayerIds?.get(face);
+    if (layerId === undefined || face.trigger.length !== 1) continue;
+    const keys = layerTriggerKeys.get(layerId) ?? new Set<string>();
+    keys.add(resolveKeyId(face.trigger[0]));
+    layerTriggerKeys.set(layerId, keys);
+  }
   const layerDefinitions = [...layout.layerDefinitions ?? [{
     id: SINGLE_LAYER_ID,
     kind: 'layer' as const,
@@ -170,6 +180,12 @@ export function evaluate(
       const layerId = stepLayerIds?.[stepIndex] ??
         (comboConditions.has(char) ? COMBO_LAYER_ID : SINGLE_LAYER_ID);
       const triggerKeys = [...new Set((stepTriggerKeys?.[stepIndex] ?? []).map(resolveKeyId))];
+      const layerTriggers = layerTriggerKeys.get(layerId) ?? new Set<string>();
+      const pressedLayerTriggers = [...new Set(step.map(resolveKeyId))]
+        .filter((key) => layerTriggers.has(key));
+      const pairedTriggerKeys = pressedLayerTriggers.length >= 2
+        ? triggerKeys.filter((key) => layerTriggers.has(key))
+        : [];
       const byFinger = new Map<Finger, Key[]>();
 
       for (const id of step) {
@@ -225,7 +241,7 @@ export function evaluate(
 
       // 指同士の姿勢は、対象キーを押した直後の状態として記録する
       const positions = snapshot(prev, last, index, geometry);
-      strokes.push({ index, char, layerId, triggerKeys, presses, distance: total, positions });
+      strokes.push({ index, char, layerId, triggerKeys, pairedTriggerKeys, presses, distance: total, positions });
       index++;
     }
   }

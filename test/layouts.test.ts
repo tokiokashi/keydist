@@ -195,9 +195,12 @@ test('相互同時シフトは両トリガーを 1 回分の色として残す',
     const colors = normalizedLayerColors(layers[layerIndex], {
       keyCounts: new Map([[trigger, 1], [output, 1]]),
       triggerKeyCounts: new Map([[trigger, 1]]),
+      pairedTriggerKeyCounts: new Map([[trigger, 1]]),
     });
 
-    assert.deepEqual([...colors], [[trigger, 1], [output, 1]]);
+    assert.equal(colors.size, 2);
+    assert.equal(colors.get(trigger), 1);
+    assert.equal(colors.get(output), 1);
   }
 });
 
@@ -205,11 +208,35 @@ test('薙刀式の合算表示はスペースなし層のトリガーを単打�
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
   const base = classifyFaces(layout.faces!).layers[0];
   const colors = normalizedLayerColors(base, {
+      keyCounts: new Map([['j', 1], ['f', 1]]),
+      triggerKeyCounts: new Map([['j', 1]]),
+      pairedTriggerKeyCounts: new Map([['j', 1]]),
+  });
+
+  assert.equal(colors.size, 2);
+  assert.equal(colors.get('j'), 1);
+  assert.equal(colors.get('f'), 1);
+});
+
+test('通常の層トリガーは残さず、薙刀式の濁音詳細も除外する', () => {
+  const shingeta = LAYOUT_BY_ID.get('shingeta')!;
+  const middle = groupFacesIntoLayers(shingeta.faces!)[1];
+  const normalColors = normalizedLayerColors(middle, {
+    keyCounts: new Map([['k', 1], ['w', 1]]),
+    triggerKeyCounts: new Map([['k', 1]]),
+    pairedTriggerKeyCounts: new Map(),
+  });
+  assert.deepEqual([...normalColors], [['w', 1]]);
+
+  const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
+  const modifiers = classifyFaces(naginata.faces!).modifiers;
+  const voiced = modifiers.find((layer) => layer.faces.some((face) => face.layer === '濁音'))!;
+  const detailColors = normalizedLayerColors(voiced, {
     keyCounts: new Map([['j', 1], ['f', 1]]),
     triggerKeyCounts: new Map([['j', 1]]),
-  }, new Map());
-
-  assert.deepEqual([...colors], [['j', 1], ['f', 1]]);
+    pairedTriggerKeyCounts: new Map([['j', 1], ['f', 1]]),
+  });
+  assert.deepEqual([...detailColors], [['f', 1]]);
 });
 
 test('NICOLA は3面の直接かな入力を同時押しとして保持する', () => {
