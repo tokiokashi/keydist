@@ -627,6 +627,9 @@ dialog::backdrop { background: rgb(0 0 0 / 0.38); }
 /* 本文の行長（100ch）から幅を決める。.dialog-body の左右余白 20px ぶんを足す */
 #how-dialog { width: min(calc(100ch + 40px), calc(100vw - 32px)); padding: 0; }
 #how-dialog .dialog-body { padding: 20px; }
+#playback-calibration-dialog { width: min(560px, calc(100vw - 32px)); }
+.calibration-progress { display: block; margin: 8px 0 12px; color: var(--muted); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .dialog-head h2 { margin: 0; }
 dialog .close { flex: none; }

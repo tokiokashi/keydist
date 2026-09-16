@@ -61,11 +61,30 @@ import {
   playbackTrailKeys,
   playbackTrailOrders,
   playbackStrokeDisplay,
+  setPlaybackCalibration,
   type PlaybackStepsPerSecond,
   type PlaybackState,
   PLAYBACK_STEPS_PER_SECOND_MAX,
   PLAYBACK_STEPS_PER_SECOND_MIN,
 } from './playback.ts';
+import {
+  actionsPerSecondFromIntervals,
+  calibrationActionPair,
+  calibrationKeyMatches,
+  calibrationKeyPairs,
+  CALIBRATION_ACTION_SAMPLES,
+  CALIBRATION_ACTIONS_PER_SECOND_MAX,
+  CALIBRATION_ACTIONS_PER_SECOND_MIN,
+  CALIBRATION_FINGER_SAMPLES,
+  CALIBRATION_FINGER_SPEED_MAX,
+  CALIBRATION_FINGER_SPEED_MIN,
+  fingerSpeedFromSamples,
+  loadPlaybackCalibration,
+  savePlaybackCalibration,
+  type CalibrationKeyPair,
+  type FingerSpeedSample,
+  type PlaybackCalibration,
+} from './playback-calibration.ts';
 import {
   ROW_LABELS,
   load as loadUserLayouts,
@@ -164,6 +183,15 @@ const el = {
   romajiAssignments: $<HTMLDivElement>('romaji-assignments'),
   romajiVariants: $<HTMLDivElement>('romaji-variants'),
   romajiNew: $<HTMLButtonElement>('romaji-new'),
+  calibrationDialog: $<HTMLDialogElement>('playback-calibration-dialog'),
+  calibrationStart: $<HTMLButtonElement>('playback-calibration-start'),
+  calibrationSave: $<HTMLButtonElement>('playback-calibration-save'),
+  calibrationInstruction: $<HTMLParagraphElement>('playback-calibration-instruction'),
+  calibrationProgress: $<HTMLOutputElement>('playback-calibration-progress'),
+  calibrationError: $<HTMLParagraphElement>('playback-calibration-error'),
+  calibrationResult: $<HTMLDivElement>('playback-calibration-result'),
+  calibrationActions: $<HTMLInputElement>('playback-calibration-actions'),
+  calibrationFingerSpeed: $<HTMLInputElement>('playback-calibration-finger-speed'),
 };
 
 const FINGER_LABEL: Record<Finger, string> = {
@@ -799,7 +827,13 @@ const PLAYBACK_PAD = 6;
 const PLAYBACK_THUMB_WIDTH = 1.9;
 const PLAYBACK_SCALE_MIN = 0.5;
 const PLAYBACK_SCALE_MAX = 4;
-let playbackState: PlaybackState = createPlaybackState();
+let playbackCalibration = loadPlaybackCalibration(localStorage);
+let playbackUseCalibration = playbackCalibration !== undefined;
+let playbackState: PlaybackState = createPlaybackState(
+  undefined,
+  false,
+  playbackUseCalibration ? playbackCalibration : undefined,
+);
 let playbackTrace: Trace | undefined;
 let playbackGeometry: ReturnType<typeof buildGeometry> | undefined;
 let playbackLayout: Layout | undefined;
@@ -817,6 +851,185 @@ let playbackShowArpeggio = false;
 let playbackArpeggioIncludeSameFinger = false;
 let playbackMotionCursor = -1;
 let playbackPanelOpen = false;
+
+type CalibrationPhase = 'actions' | 'finger' | 'result';
+interface CalibrationSession {
+  phase: CalibrationPhase;
+  actionKeys: [string, string];
+  actionIntervals: number[];
+  expectedKeyIndex: number;
+  lastTimestamp?: number;
+  pairs: CalibrationKeyPair[];
+  pairIndex: number;
+  fingerSamples: FingerSpeedSample[];
+  pairSampleCount: number;
+}
+let calibrationSession: CalibrationSession | undefined;
+
+function calibrationKeyLabel(keyId: string): string {
+  return /^[a-z]$/i.test(keyId) ? keyId.toUpperCase() : keyId;
+}
+
+function calibrationPairText(pair: [string, string]): string {
+  return `「${calibrationKeyLabel(pair[0])}」と「${calibrationKeyLabel(pair[1])}」`;
+}
+
+function setCalibrationError(message: string): void {
+  el.calibrationError.textContent = message;
+  el.calibrationError.hidden = message.length === 0;
+}
+
+function updateCalibrationDialog(): void {
+  const session = calibrationSession;
+  el.calibrationResult.hidden = session?.phase !== 'result';
+  el.calibrationSave.hidden = session?.phase !== 'result';
+  el.calibrationStart.textContent = session?.phase === 'result' ? '測り直す' : '測定を開始';
+  if (!session) {
+    el.calibrationInstruction.textContent = playbackCalibration
+      ? `保存済み: 通常 ${playbackCalibration.actionsPerSecond.toFixed(2)} アクション/秒、指移動 ${playbackCalibration.fingerSpeedUnitsPerSecond.toFixed(2)} u/秒。`
+      : '通常の打鍵速度と、各指の移動速度を測定して再生に反映します。';
+    el.calibrationProgress.textContent = '';
+    return;
+  }
+  if (session.phase === 'actions') {
+    el.calibrationInstruction.textContent = `${calibrationPairText(session.actionKeys)}を交互に、普段の速度で打ってください。`;
+    el.calibrationProgress.textContent = `${session.actionIntervals.length} / ${CALIBRATION_ACTION_SAMPLES} 間隔`;
+    return;
+  }
+  if (session.phase === 'finger') {
+    const pair = session.pairs[session.pairIndex];
+    el.calibrationInstruction.textContent = `${FINGER_LABEL[pair.finger]}: 「${calibrationKeyLabel(pair.fromKey)}」と「${calibrationKeyLabel(pair.toKey)}」を交互に打ってください。`;
+    el.calibrationProgress.textContent = `${session.pairIndex + 1} / ${session.pairs.length} 指、${session.pairSampleCount} / ${CALIBRATION_FINGER_SAMPLES} 回`;
+    return;
+  }
+  el.calibrationInstruction.textContent = '測定結果を確認し、必要なら数値を調整して保存してください。';
+  el.calibrationProgress.textContent = '測定完了';
+}
+
+function beginCalibrationSession(): void {
+  const geometry = playbackGeometry ?? buildGeometry(el.geometry.value as GeometryKind);
+  const actionKeys = calibrationActionPair(geometry);
+  const pairs = calibrationKeyPairs(geometry);
+  if (!actionKeys || pairs.length === 0) {
+    setCalibrationError('この物理配列では測定用のキーを作れません。');
+    return;
+  }
+  calibrationSession = {
+    phase: 'actions',
+    actionKeys,
+    actionIntervals: [],
+    expectedKeyIndex: 0,
+    pairs,
+    pairIndex: 0,
+    fingerSamples: [],
+    pairSampleCount: 0,
+  };
+  setCalibrationError('');
+  updateCalibrationDialog();
+}
+
+function finishCalibrationSession(): void {
+  if (!calibrationSession) return;
+  const actionsPerSecond = actionsPerSecondFromIntervals(calibrationSession.actionIntervals);
+  const fingerSpeedUnitsPerSecond = fingerSpeedFromSamples(calibrationSession.fingerSamples);
+  if (actionsPerSecond === undefined || fingerSpeedUnitsPerSecond === undefined) {
+    setCalibrationError('測定値が不足しています。最初からもう一度測ってください。');
+    calibrationSession = undefined;
+    updateCalibrationDialog();
+    return;
+  }
+  calibrationSession.phase = 'result';
+  el.calibrationActions.value = actionsPerSecond.toFixed(2);
+  el.calibrationFingerSpeed.value = fingerSpeedUnitsPerSecond.toFixed(2);
+  setCalibrationError('');
+  updateCalibrationDialog();
+}
+
+function onCalibrationKeyDown(event: KeyboardEvent): void {
+  const session = calibrationSession;
+  if (!session || !el.calibrationDialog.open || session.phase === 'result' || event.repeat) return;
+  const expected = session.phase === 'actions'
+    ? session.actionKeys[session.expectedKeyIndex]
+    : session.pairs[session.pairIndex][session.expectedKeyIndex === 0 ? 'fromKey' : 'toKey'];
+  if (!calibrationKeyMatches(event, expected)) {
+    setCalibrationError(`今は「${calibrationKeyLabel(expected)}」を押す番です。`);
+    return;
+  }
+  event.preventDefault();
+  setCalibrationError('');
+  const now = performance.now();
+  if (session.lastTimestamp !== undefined) {
+    const durationMs = now - session.lastTimestamp;
+    if (durationMs <= 0) return;
+    if (session.phase === 'actions') {
+      session.actionIntervals.push(durationMs);
+    } else {
+      session.fingerSamples.push({
+        distance: session.pairs[session.pairIndex].distance,
+        durationMs,
+      });
+      session.pairSampleCount++;
+    }
+  }
+  session.lastTimestamp = now;
+  session.expectedKeyIndex = session.expectedKeyIndex === 0 ? 1 : 0;
+
+  if (session.phase === 'actions' && session.actionIntervals.length >= CALIBRATION_ACTION_SAMPLES) {
+    session.phase = 'finger';
+    session.expectedKeyIndex = 0;
+    session.lastTimestamp = undefined;
+  } else if (session.phase === 'finger' && session.pairSampleCount >= CALIBRATION_FINGER_SAMPLES) {
+    if (session.pairIndex + 1 >= session.pairs.length) finishCalibrationSession();
+    else {
+      session.pairIndex++;
+      session.pairSampleCount = 0;
+      session.expectedKeyIndex = 0;
+      session.lastTimestamp = undefined;
+    }
+  }
+  updateCalibrationDialog();
+}
+
+function openCalibrationDialog(): void {
+  calibrationSession = undefined;
+  setCalibrationError('');
+  updateCalibrationDialog();
+  if (!el.calibrationDialog.open) el.calibrationDialog.showModal();
+}
+
+function saveCalibrationFromDialog(): void {
+  const actionsPerSecond = Number(el.calibrationActions.value);
+  const fingerSpeedUnitsPerSecond = Number(el.calibrationFingerSpeed.value);
+  if (!Number.isFinite(actionsPerSecond)
+    || actionsPerSecond < CALIBRATION_ACTIONS_PER_SECOND_MIN
+    || actionsPerSecond > CALIBRATION_ACTIONS_PER_SECOND_MAX) {
+    setCalibrationError(`通常速度は ${CALIBRATION_ACTIONS_PER_SECOND_MIN}〜${CALIBRATION_ACTIONS_PER_SECOND_MAX} の範囲で入力してください。`);
+    return;
+  }
+  if (!Number.isFinite(fingerSpeedUnitsPerSecond)
+    || fingerSpeedUnitsPerSecond < CALIBRATION_FINGER_SPEED_MIN
+    || fingerSpeedUnitsPerSecond > CALIBRATION_FINGER_SPEED_MAX) {
+    setCalibrationError(`指移動速度は ${CALIBRATION_FINGER_SPEED_MIN}〜${CALIBRATION_FINGER_SPEED_MAX} の範囲で入力してください。`);
+    return;
+  }
+  const calibration: PlaybackCalibration = {
+    actionsPerSecond,
+    fingerSpeedUnitsPerSecond,
+    measuredAt: Date.now(),
+  };
+  try {
+    savePlaybackCalibration(localStorage, calibration);
+  } catch {
+    setCalibrationError('このブラウザには設定を保存できませんでした。');
+    return;
+  }
+  playbackCalibration = calibration;
+  playbackUseCalibration = true;
+  playbackState = setPlaybackCalibration(playbackState, calibration);
+  calibrationSession = undefined;
+  el.calibrationDialog.close('saved');
+  updatePlaybackView();
+}
 
 function cancelPlaybackAnimation() {
   if (playbackAnimationFrame !== undefined) cancelAnimationFrame(playbackAnimationFrame);
@@ -939,6 +1152,8 @@ function updatePlaybackView() {
   const sameFingerDelay = el.playback.querySelector<HTMLInputElement>('[data-playback-sfb-delay]');
   const arpeggio = el.playback.querySelector<HTMLInputElement>('[data-playback-arpeggio]');
   const arpeggioSameFinger = el.playback.querySelector<HTMLInputElement>('[data-playback-arpeggio-sfb]');
+  const calibration = el.playback.querySelector<HTMLInputElement>('[data-playback-calibration]');
+  const calibrationButton = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="calibration"]');
   const rate = el.playback.querySelector<HTMLInputElement>('input[data-playback-rate]');
   const effectiveRate = el.playback.querySelector<HTMLElement>('[data-playback-effective-rate]');
   const playbackWindow = el.playback.querySelector<HTMLOutputElement>('[data-playback-window]');
@@ -1009,6 +1224,11 @@ function updatePlaybackView() {
     arpeggioSameFinger.checked = playbackArpeggioIncludeSameFinger;
     arpeggioSameFinger.disabled = !playbackShowArpeggio;
   }
+  if (calibration) {
+    calibration.checked = playbackUseCalibration;
+    calibration.disabled = playbackCalibration === undefined;
+  }
+  if (calibrationButton) calibrationButton.textContent = playbackCalibration ? '速度を再測定' : '速度を測定';
   if (rate) rate.value = String(playbackState.stepsPerSecond);
   if (effectiveRate) {
     const value = playbackRecentActionsPerSecond(
@@ -1016,6 +1236,8 @@ function updatePlaybackView() {
       cursor,
       playbackState.stepsPerSecond,
       playbackState.sameFingerDelay,
+      10,
+      playbackState.calibration,
     );
     effectiveRate.textContent = value === undefined
       ? '実効 — アクション/秒'
@@ -1069,7 +1291,7 @@ function renderPlaybackMotions(
   }
   const durationMs = Math.max(
     150,
-    Math.min(1500, playbackStrokeDurationMs(stroke, playbackState.stepsPerSecond, true)),
+    Math.min(1500, playbackStrokeDurationMs(stroke, playbackState.stepsPerSecond, true, playbackState.calibration)),
   );
   let motionIndex = 0;
   for (const motion of motions) {
@@ -1119,7 +1341,11 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
   playbackTrace = trace;
   playbackGeometry = geometry;
   playbackLayout = layout;
-  playbackState = createPlaybackState(playbackState.stepsPerSecond, playbackState.sameFingerDelay);
+  playbackState = createPlaybackState(
+    playbackState.stepsPerSecond,
+    playbackState.sameFingerDelay,
+    playbackUseCalibration ? playbackCalibration : undefined,
+  );
   playbackMotionCursor = -1;
   playbackSeekWasPlaying = undefined;
   el.playback.innerHTML = `<details class="playback-panel"${playbackPanelOpen ? ' open' : ''}>
@@ -1134,6 +1360,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${playbackTrailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${playbackShowOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
         <label class="playback-finger-toggle" title="1uの移動を通常の1アクション相当として同指連続の距離を再生時間へ反映"><input type="checkbox" data-playback-sfb-delay${playbackState.sameFingerDelay ? ' checked' : ''} />同指ディレイ</label>
+        <label class="playback-finger-toggle" title="キャリブレーションした通常打鍵速度と指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${playbackUseCalibration ? ' checked' : ''}${playbackCalibration ? '' : ' disabled'} />個人速度を使う</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${playbackShowArpeggio ? ' checked' : ''} />片手連続アニメーション</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio-sfb${playbackArpeggioIncludeSameFinger ? ' checked' : ''}${playbackShowArpeggio ? '' : ' disabled'} />同指連打も含める</label>
         <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${playbackScale}" aria-label="配列図の表示倍率" /> 倍</label>
@@ -1144,7 +1371,8 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <button type="button" class="secondary" data-playback-action="stop" disabled>停止</button>
         <button type="button" class="ghost" data-playback-action="forward">1 ステップ進む</button>
         <span class="playback-position" aria-live="polite" data-playback-position>0 / ${trace.strokes.length} ステップ</span>
-        <label class="playback-speed"><span>速度</span><input type="number" data-playback-rate min="${PLAYBACK_STEPS_PER_SECOND_MIN}" max="${PLAYBACK_STEPS_PER_SECOND_MAX}" step="any" value="${playbackState.stepsPerSecond}" aria-label="再生速度（ステップ毎秒）" /> <span>ステップ/秒</span></label>
+        <label class="playback-speed"><span>基準速度</span><input type="number" data-playback-rate min="${PLAYBACK_STEPS_PER_SECOND_MIN}" max="${PLAYBACK_STEPS_PER_SECOND_MAX}" step="any" value="${playbackState.stepsPerSecond}" aria-label="再生の基準速度（ステップ毎秒）" /> <span>ステップ/秒</span></label>
+        <button type="button" class="secondary" data-playback-action="calibration">${playbackCalibration ? '速度を再測定' : '速度を測定'}</button>
       </div>
       <label class="playback-seek"><span>再生位置</span><input type="range" data-playback-seek min="0" max="${trace.strokes.length}" step="1" value="0" /></label>
       <div class="playback-status" aria-live="polite">
@@ -1184,7 +1412,11 @@ function pausePlayback() {
 
 function stopPlayback() {
   cancelPlaybackAnimation();
-  playbackState = createPlaybackState(playbackState.stepsPerSecond, playbackState.sameFingerDelay);
+  playbackState = createPlaybackState(
+    playbackState.stepsPerSecond,
+    playbackState.sameFingerDelay,
+    playbackUseCalibration ? playbackCalibration : undefined,
+  );
   playbackMotionCursor = -1;
   updatePlaybackView();
 }
@@ -2220,6 +2452,10 @@ el.heatmap.addEventListener('click', (e) => {
 el.playback.addEventListener('click', (e) => {
   const target = (e.target as Element).closest<HTMLButtonElement>('button[data-playback-action]');
   if (!target) return;
+  if (target.dataset.playbackAction === 'calibration') {
+    openCalibrationDialog();
+    return;
+  }
   switch (target.dataset.playbackAction) {
     case 'toggle':
       if (playbackState.playing) pausePlayback();
@@ -2274,6 +2510,16 @@ el.playback.addEventListener('change', (e) => {
   const arpeggioSameFinger = target.closest<HTMLInputElement>('[data-playback-arpeggio-sfb]');
   if (arpeggioSameFinger) {
     playbackArpeggioIncludeSameFinger = arpeggioSameFinger.checked;
+    updatePlaybackView();
+    return;
+  }
+  const calibration = target.closest<HTMLInputElement>('[data-playback-calibration]');
+  if (calibration) {
+    playbackUseCalibration = calibration.checked;
+    playbackState = setPlaybackCalibration(
+      playbackState,
+      playbackUseCalibration ? playbackCalibration : undefined,
+    );
     updatePlaybackView();
     return;
   }
@@ -2379,6 +2625,14 @@ for (const node of [
 setupAddForm();
 setupRomajiEditor();
 setupTextPanel();
+document.addEventListener('keydown', onCalibrationKeyDown);
+el.calibrationStart.addEventListener('click', beginCalibrationSession);
+el.calibrationSave.addEventListener('click', saveCalibrationFromDialog);
+el.calibrationDialog.addEventListener('close', () => {
+  calibrationSession = undefined;
+  setCalibrationError('');
+  updateCalibrationDialog();
+});
 fillPicker();
 fillDetailOptions();
 bindMatrixSort(el.pressMatrix, 'press');
