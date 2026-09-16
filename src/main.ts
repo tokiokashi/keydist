@@ -787,6 +787,8 @@ let naginataLayerDetail = false;
 const PLAYBACK_KEY = 30;
 const PLAYBACK_PAD = 6;
 const PLAYBACK_THUMB_WIDTH = 1.9;
+const PLAYBACK_SCALES = [1, 1.5, 2] as const;
+type PlaybackScale = (typeof PLAYBACK_SCALES)[number];
 let playbackState: PlaybackState = createPlaybackState();
 let playbackTrace: Trace | undefined;
 let playbackGeometry: ReturnType<typeof buildGeometry> | undefined;
@@ -801,6 +803,7 @@ let playbackLookaheadSteps = 5;
 let playbackShowTrail = false;
 let playbackTrailTau = 5;
 let playbackShowOrderLabels = false;
+let playbackScale: PlaybackScale = 1.5;
 
 function cancelPlaybackAnimation() {
   if (playbackAnimationFrame !== undefined) cancelAnimationFrame(playbackAnimationFrame);
@@ -887,6 +890,7 @@ function updatePlaybackView() {
   const trail = el.playback.querySelector<HTMLInputElement>('[data-playback-trail]');
   const trailTau = el.playback.querySelector<HTMLInputElement>('[data-playback-trail-tau]');
   const orderLabels = el.playback.querySelector<HTMLInputElement>('[data-playback-order-labels]');
+  const scale = el.playback.querySelector<HTMLSelectElement>('select[data-playback-scale]');
   if (position) position.textContent = `${cursor} / ${total} ステップ`;
   const isRomaji = playbackLayout?.romajiTable !== undefined;
   if (current) {
@@ -944,6 +948,7 @@ function updatePlaybackView() {
   if (trail) trail.checked = playbackShowTrail;
   if (trailTau) trailTau.value = String(playbackTrailTau);
   if (orderLabels) orderLabels.checked = playbackShowOrderLabels;
+  if (scale) scale.value = String(playbackScale);
 }
 
 function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeometry>): string {
@@ -968,8 +973,14 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
   });
   const W = maxX + PLAYBACK_PAD;
   const H = maxY + PLAYBACK_PAD;
-  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W * playbackScale}" height="${H * playbackScale}" role="img"
     aria-label="${escapeAttr(`${layout.name}の打鍵再生`)}">${keys.join('')}</svg>`;
+}
+
+function rerenderPlaybackFigure() {
+  if (!playbackLayout || !playbackGeometry) return;
+  const figure = el.playback.querySelector<HTMLElement>('.playback-figure');
+  if (figure) figure.innerHTML = renderPlaybackSvg(playbackLayout, playbackGeometry);
 }
 
 function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeof buildGeometry>) {
@@ -982,6 +993,9 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
   const speeds = PLAYBACK_SPEEDS.map((speed) =>
     `<option value="${speed}"${speed === playbackState.speed ? ' selected' : ''}>${speed}x</option>`,
   ).join('');
+  const scales = PLAYBACK_SCALES.map((scale) =>
+    `<option value="${scale}"${scale === playbackScale ? ' selected' : ''}>${scale}倍</option>`,
+  ).join('');
   el.playback.innerHTML = `<details class="playback-panel">
     <summary><span class="playback-summary-icon" aria-hidden="true">▶</span><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
@@ -993,6 +1007,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${playbackShowTrail ? ' checked' : ''} />押下履歴を残す</label>
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${playbackTrailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${playbackShowOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
+        <label class="playback-scale-setting" title="配列図の表示倍率">配列図 <select data-playback-scale aria-label="配列図の表示倍率">${scales}</select></label>
       </div>
       <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
         <button type="button" class="ghost" data-playback-action="back">1 ステップ戻る</button>
@@ -2159,6 +2174,16 @@ el.playback.addEventListener('change', (e) => {
   if (orderLabels) {
     playbackShowOrderLabels = orderLabels.checked;
     updatePlaybackView();
+    return;
+  }
+  const scale = target.closest<HTMLSelectElement>('select[data-playback-scale]');
+  if (scale) {
+    const value = Number(scale.value);
+    if (PLAYBACK_SCALES.includes(value as PlaybackScale)) {
+      playbackScale = value as PlaybackScale;
+      rerenderPlaybackFigure();
+      updatePlaybackView();
+    }
     return;
   }
   const seek = target.closest<HTMLInputElement>('input[data-playback-seek]');
