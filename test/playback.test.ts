@@ -12,7 +12,8 @@ import {
 } from '../src/playback.ts';
 import { buildGeometry } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
-import { LAYOUT_BY_ID } from '../src/layouts/index.ts';
+import { LAYOUT_BY_ID, withRomaji } from '../src/layouts/index.ts';
+import { kunrei } from '../src/romaji/kunrei.ts';
 
 const playing = (cursor = 0) => ({
   ...createPlaybackState(),
@@ -74,6 +75,13 @@ test('入力履歴は現在の入力単位を除き、複数ステップを一�
   assert.deepEqual(playbackCompletedInputs(strokes, 3), ['あ']);
   assert.deepEqual(playbackCompletedInputs(strokes, 4), ['あ', 'が']);
   assert.deepEqual(playbackCompletedInputs(strokes, 6), ['あ', 'が', 'ぬ', 'あ']);
+});
+
+test('ローマ字の入力履歴はかなごとの複数打鍵を重複させない', () => {
+  const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
+  const trace = evaluate('なまえは', layout, buildGeometry('row-staggered'));
+
+  assert.deepEqual(playbackCompletedInputs(trace.strokes, trace.strokes.length), ['な', 'ま', 'え']);
 });
 
 test('レイヤー再生はシフトと出力キーの刻印を現在の面から引く', () => {

@@ -188,6 +188,9 @@ export function evaluate(
         .map((range) => range.kana)
         .join('')
       : char;
+    const inputIndex = chunks
+      ? chunkRanges.find((range) => range.start < inputEnd && inputStart < range.end)?.start ?? inputStart
+      : inputStart;
     cursor += consumed;
     if (comboConditions.has(char)) comboHits.push(char);
 
@@ -262,7 +265,7 @@ export function evaluate(
         index,
         char,
         inputChar,
-        inputIndex: inputStart,
+        inputIndex,
         layerId,
         triggerKeys,
         pairedTriggerKeys,
