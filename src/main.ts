@@ -10,7 +10,7 @@ import {
   type GeometryKind,
 } from './geometry.ts';
 import { evaluate, type Options, type Trace } from './evaluate.ts';
-import { computeMetrics, type Metrics } from './metrics.ts';
+import { computeMetrics, type LayerStat, type Metrics } from './metrics.ts';
 import { nSensitivity } from './sensitivity.ts';
 import {
   COMBO_LAYER_ID,
@@ -755,6 +755,7 @@ let compareChartColumn = 1;
 type LayerView = 'side-by-side' | 'tabs';
 let layerView: LayerView | undefined;
 let activeLayerTab = 0;
+let naginataLayerDetail = false;
 
 function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sort: MatrixSort | null): T[] {
   if (!sort) return rows;
@@ -1299,6 +1300,8 @@ function layerCells(layer: Layer, layout: Layout): Map<string, LayerCell> {
 
 interface HeatmapValues {
   keyCounts: ReadonlyMap<string, number>;
+  /** 色の濃淡専用。ツールチップには keyCounts の実測値を使う。 */
+  colorCounts: ReadonlyMap<string, number>;
   keyDistance: ReadonlyMap<string, number>;
   maxCount: number;
   showHeat: boolean;
@@ -1337,7 +1340,8 @@ function renderLayerSvg(
 
   const keys = [...geometry.keys.values()].map((key) => {
     const count = values.keyCounts.get(key.id) ?? 0;
-    const t = count / max;
+    const colorCount = values.colorCounts.get(key.id) ?? 0;
+    const t = colorCount / max;
     const thumb = key.row === THUMB_ROW;
     const w = (thumb ? THUMB_W : 1) * KEY;
     const x = (key.x - (thumb ? (THUMB_W - 1) / 2 : 0)) * KEY;
@@ -1440,21 +1444,95 @@ function orderedLayers(groups: ReturnType<typeof classifyFaces>, layout: Layout)
     });
 }
 
+interface LayerViewEntry {
+  layer: Layer;
+  title: string;
+  stat: LayerStat;
+  /** 色の正規化から除く、この表示層の操作キー。 */
+  triggerKeys: ReadonlySet<string>;
+}
+
+function emptyLayerStat(id: string, label: string): LayerStat {
+  return {
+    id,
+    label,
+    presses: 0,
+    keyCounts: new Map(),
+    keyDistance: new Map(),
+  };
+}
+
+function triggerKeysForLayer(layer: Layer): Set<string> {
+  return new Set(layer.faces.flatMap((face) => face.trigger.map(resolveKeyId)));
+}
+
+function mergeLayerStats(id: string, label: string, stats: readonly LayerStat[]): LayerStat {
+  const keyCounts = new Map<string, number>();
+  const keyDistance = new Map<string, number>();
+  let presses = 0;
+  for (const stat of stats) {
+    presses += stat.presses;
+    for (const [key, count] of stat.keyCounts) {
+      keyCounts.set(key, (keyCounts.get(key) ?? 0) + count);
+    }
+    for (const [key, distance] of stat.keyDistance) {
+      keyDistance.set(key, (keyDistance.get(key) ?? 0) + distance);
+    }
+  }
+  return { id, label, presses, keyCounts, keyDistance };
+}
+
+function normalizedLayerColors(stat: LayerStat, triggerKeys: ReadonlySet<string>): Map<string, number> {
+  const colorCounts = new Map(stat.keyCounts);
+  for (const key of triggerKeys) colorCounts.set(key, 0);
+  return colorCounts;
+}
+
+function layerViewEntries(metrics: Metrics, layout: Layout, layers: readonly Layer[]): LayerViewEntry[] {
+  const stats = new Map(metrics.layers.map((stat) => [stat.id, stat]));
+  const entries = layers.map((layer, index) => {
+    const id = layer.faces.length > 0 ? layerIdForFace(layout, layer.faces[0]) : SINGLE_LAYER_ID;
+    const title = layerTitle(layer, index, layout);
+    return {
+      layer,
+      title,
+      stat: stats.get(id) ?? emptyLayerStat(id, title),
+      triggerKeys: triggerKeysForLayer(layer),
+    };
+  });
+  if (layout.id !== 'naginata-v18' || naginataLayerDetail || entries.length <= 2) return entries;
+
+  const base = entries[0];
+  const center = entries[1];
+  const rest = entries.slice(2);
+  const mergedTriggerKeys = new Set(base.triggerKeys);
+  for (const entry of rest) {
+    for (const key of entry.triggerKeys) mergedTriggerKeys.add(key);
+  }
+  return [
+    {
+      ...base,
+      title: `${base.title}（レイヤー3以降を合算）`,
+      stat: mergeLayerStats('naginata-default', `${base.title}（レイヤー3以降を合算）`, [
+        base.stat,
+        ...rest.map((entry) => entry.stat),
+      ]),
+      triggerKeys: mergedTriggerKeys,
+    },
+    center,
+  ];
+}
+
 function renderLayerStats(
   metrics: Metrics,
-  layout: Layout,
-  layers: readonly Layer[],
-  titles: readonly string[],
+  entries: readonly LayerViewEntry[],
   hasCombos: boolean,
 ): string {
-  const stats = new Map(metrics.layers.map((stat) => [stat.id, stat]));
   const total = metrics.presses;
-  const rows = layers.map((layer, index) => {
-    const id = layer.faces.length > 0 ? layerIdForFace(layout, layer.faces[0]) : SINGLE_LAYER_ID;
-    const stat = stats.get(id);
-    const presses = stat?.presses ?? 0;
+  const rows = entries.map(({ title, stat }) => {
+    const presses = stat.presses;
     const share = total ? (presses / total) * 100 : 0;
-    return `<tr><th scope="row">${escapeText(titles[index])}</th>` +
+    return `<tr><th scope="row">${escapeText(title)}</th>` +
       `<td class="num">${presses}</td><td class="num">${share.toFixed(1)}%</td></tr>`;
   }).join('');
   const comboRow = hasCombos
@@ -1475,17 +1553,19 @@ function renderHeatmap(
 ) {
   const faces = layout.faces ?? [];
   const groups = classifyFaces(faces);
-  const layers: Layer[] = orderedLayers(groups, layout);
+  const layers = orderedLayers(groups, layout);
   if (layers.length === 0) layers.push({ faces: [] });
-  if (activeLayerTab >= layers.length) activeLayerTab = 0;
-  const titles = layers.map((layer, index) => layerTitle(layer, index, layout));
+  const entries = layerViewEntries(metrics, layout, layers);
+  if (activeLayerTab >= entries.length) activeLayerTab = 0;
+  const titles = entries.map((entry) => entry.title);
   const allLayerFaces = layers.flatMap((layer) => layer.faces);
-  const faceShiftStyles = layerShiftStyles(layers);
-  const shiftLayers = layers
-    .map((layer, index) => ({
-      layer,
+  const displayLayers = entries.map((entry) => entry.layer);
+  const faceShiftStyles = layerShiftStyles(displayLayers);
+  const shiftLayers = entries
+    .map((entry, index) => ({
+      layer: entry.layer,
       index,
-      style: layer.faces
+      style: entry.layer.faces
         .map((face) => faceShiftStyles.get(face))
         .find((style): style is LayerShiftStyle => style !== undefined),
     }))
@@ -1500,8 +1580,15 @@ function renderHeatmap(
         }).join('')}
       </div>`
     : '';
-  const selectedLayerView = layerView ?? (layers.length <= 5 ? 'side-by-side' : 'tabs');
-  const controls = layers.length > 1
+  const selectedLayerView = layerView ?? (entries.length <= 5 ? 'side-by-side' : 'tabs');
+  const naginataControls = layout.id === 'naginata-v18' && layers.length > 2
+    ? `<div class="layer-view-controls" role="group" aria-label="薙刀式のレイヤー表示">
+        <span>薙刀式の表示</span>
+        <button type="button" class="ghost" data-naginata-layer-detail="false" aria-pressed="${!naginataLayerDetail}">2面にまとめる</button>
+        <button type="button" class="ghost" data-naginata-layer-detail="true" aria-pressed="${naginataLayerDetail}">全レイヤー詳細</button>
+      </div>`
+    : '';
+  const controls = entries.length > 1
     ? `<div class="layer-view-controls" role="group" aria-label="レイヤーの表示方法">
         <span>レイヤーの表示</span>
         <button type="button" class="ghost" data-layer-view="side-by-side" aria-pressed="${selectedLayerView === 'side-by-side'}">並置</button>
@@ -1520,34 +1607,35 @@ function renderHeatmap(
     faceShiftStyles,
     {
       keyCounts: metrics.keyCounts,
+      colorCounts: metrics.keyCounts,
       keyDistance: metrics.keyDistance,
       maxCount: commonMax,
       showHeat: true,
       ariaSuffix: '（全レイヤー合算・物理位置）',
     },
   );
-  const layerStatsById = new Map(metrics.layers.map((stat) => [stat.id, stat]));
-  const diagrams = layers.map((layer, index) => {
-    const id = layer.faces.length > 0 ? layerIdForFace(layout, layer.faces[0]) : SINGLE_LAYER_ID;
-    const stat = layerStatsById.get(id);
+  const colorCounts = entries.map((entry) => normalizedLayerColors(entry.stat, entry.triggerKeys));
+  const layerMax = Math.max(1, ...colorCounts.flatMap((counts) => [...counts.values()]));
+  const diagrams = entries.map((entry, index) => {
     return renderLayerSvg(
       metrics,
       layout,
       geometry,
-      layer,
+      entry.layer,
       titles[index],
       allLayerFaces,
       faceShiftStyles,
       {
-        keyCounts: stat?.keyCounts ?? new Map(),
-        keyDistance: stat?.keyDistance ?? new Map(),
-        maxCount: commonMax,
+        keyCounts: entry.stat.keyCounts,
+        colorCounts: colorCounts[index],
+        keyDistance: entry.stat.keyDistance,
+        maxCount: layerMax,
         showHeat: true,
         ariaSuffix: '（層別・共通スケール）',
       },
     );
   });
-  const content = selectedLayerView === 'tabs' && layers.length > 1
+  const content = selectedLayerView === 'tabs' && entries.length > 1
     ? `<div class="layer-tabs" role="tablist" aria-label="レイヤー">
         ${titles.map((_, index) => `<button type="button" class="ghost" role="tab"
           aria-selected="${activeLayerTab === index}" data-layer-tab="${index}">${escapeText(`レイヤー ${index + 1}`)}</button>`).join('')}
@@ -1562,10 +1650,10 @@ function renderHeatmap(
     <div class="layer-diagrams">${integrated}</div>
   </section>
   <section class="layer-section">
-    <h3>層別ヒートマップ（${layers.length}）</h3>
-    ${renderLayerStats(metrics, layout, layers, titles, hasCombos)}
-    <p class="note">色は統合ヒートマップを含む全体のキー押下数を共通の最大値にしている。</p>
-    ${shiftLegend}${controls}${content}
+    <h3>層別ヒートマップ（${entries.length}）</h3>
+    <p class="note">層別図の色は層操作キーを除いたキー押下数で正規化し、表示中の全層で共通の最大値にしている。実際の押下数はツールチップと帰属先表に残る。</p>
+    ${shiftLegend}${naginataControls}${controls}${content}
+    ${renderLayerStats(metrics, entries, hasCombos)}
   </section>`;
   el.heatmap.innerHTML = layerSection + renderModifierList(groups.modifiers, layout.legends) +
     renderComboTable(groups.combos, layout.legends);
@@ -1586,6 +1674,12 @@ el.sensitivityScale.addEventListener('click', (e) => {
 el.heatmap.addEventListener('click', (e) => {
   const target = (e.target as Element).closest<HTMLButtonElement>('button');
   if (!target) return;
+  if (target.dataset.naginataLayerDetail !== undefined) {
+    naginataLayerDetail = target.dataset.naginataLayerDetail === 'true';
+    activeLayerTab = 0;
+    render();
+    return;
+  }
   if (target.dataset.layerView === 'side-by-side' || target.dataset.layerView === 'tabs') {
     layerView = target.dataset.layerView;
     render();
