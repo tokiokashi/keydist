@@ -2,6 +2,7 @@ import { ALL_FINGERS, keyId, resolveKeyId, type Finger, type Geometry } from './
 import { classifyFaces, faceCells, foldedLayerCells, type Layer } from './layers.ts';
 import type { Stroke } from './evaluate.ts';
 import type { Layout } from './layouts/types.ts';
+import type { PlaybackCalibration } from './playback-calibration.ts';
 
 /** 再生速度の入力範囲。実際の打鍵時間や距離モデルとは無関係。 */
 export const PLAYBACK_STEPS_PER_SECOND_MIN = 0.1;
@@ -18,6 +19,8 @@ export interface PlaybackState {
   stepsPerSecond: PlaybackStepsPerSecond;
   /** 同指連続の移動距離を再生時間へ反映するか。 */
   sameFingerDelay: boolean;
+  /** 有効にしている個人の打鍵・指移動速度。 */
+  calibration?: PlaybackCalibration;
   playing: boolean;
   elapsedMs: number;
 }
@@ -528,8 +531,9 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
 export function createPlaybackState(
   stepsPerSecond: PlaybackStepsPerSecond = DEFAULT_PLAYBACK_STEPS_PER_SECOND,
   sameFingerDelay = false,
+  calibration?: PlaybackCalibration,
 ): PlaybackState {
-  return { cursor: 0, stepsPerSecond, sameFingerDelay, playing: false, elapsedMs: 0 };
+  return { cursor: 0, stepsPerSecond, sameFingerDelay, calibration, playing: false, elapsedMs: 0 };
 }
 
 export function clampPlaybackCursor(cursor: number, strokeCount: number): number {
@@ -556,6 +560,13 @@ export function setPlaybackSameFingerDelay(
   return { ...state, sameFingerDelay, elapsedMs: 0 };
 }
 
+export function setPlaybackCalibration(
+  state: PlaybackState,
+  calibration: PlaybackCalibration | undefined,
+): PlaybackState {
+  return { ...state, calibration, elapsedMs: 0 };
+}
+
 function normalPlaybackStepMs(stepsPerSecond: PlaybackStepsPerSecond): number {
   return Number.isFinite(stepsPerSecond) && stepsPerSecond > 0
     ? 1000 / stepsPerSecond
@@ -567,17 +578,29 @@ export function playbackStrokeDurationMs(
   stroke: Stroke | undefined,
   stepsPerSecond: PlaybackStepsPerSecond,
   sameFingerDelay = false,
+  calibration?: PlaybackCalibration,
 ): number {
-  const normalMs = normalPlaybackStepMs(stepsPerSecond);
+  const normalMs = normalPlaybackStepMs(calibration?.actionsPerSecond ?? stepsPerSecond);
   if (!stroke || !sameFingerDelay) return normalMs;
 
   const sameFingerDistance = Math.max(
     1,
     ...stroke.presses.filter((press) => press.sfb).map((press) => press.distance),
   );
-  return stroke.presses.some((press) => press.sfb)
-    ? normalMs * sameFingerDistance
-    : normalMs;
+  if (!stroke.presses.some((press) => press.sfb)) return normalMs;
+  if (calibration) {
+    const movementMs = Math.max(
+      ...stroke.presses
+        .filter((press) => press.sfb)
+        .map((press) => {
+          const speed = calibration.fingerSpeedUnitsPerSecond[press.finger]
+            ?? calibration.fallbackFingerSpeedUnitsPerSecond;
+          return (press.distance / speed) * 1000;
+        }),
+    );
+    return Math.max(normalMs, movementMs);
+  }
+  return normalMs * sameFingerDistance;
 }
 
 /** 直近の完了済み打鍵を実際の表示時間で割った実効アクション毎秒。 */
@@ -587,6 +610,7 @@ export function playbackRecentActionsPerSecond(
   stepsPerSecond: PlaybackStepsPerSecond,
   sameFingerDelay = false,
   limit = 10,
+  calibration?: PlaybackCalibration,
 ): number | undefined {
   const end = clampPlaybackCursor(cursor, strokes.length);
   const span = Math.max(0, Math.floor(limit));
@@ -595,7 +619,7 @@ export function playbackRecentActionsPerSecond(
 
   const durationMs = strokes
     .slice(start, end)
-    .reduce((total, stroke) => total + playbackStrokeDurationMs(stroke, stepsPerSecond, sameFingerDelay), 0);
+    .reduce((total, stroke) => total + playbackStrokeDurationMs(stroke, stepsPerSecond, sameFingerDelay, calibration), 0);
   return durationMs > 0 ? ((end - start) * 1000) / durationMs : undefined;
 }
 
@@ -632,6 +656,7 @@ export function advancePlayback(
       strokes[nextCursor],
       state.stepsPerSecond,
       state.sameFingerDelay,
+      state.calibration,
     );
     if (remaining < stepMs) break;
     remaining -= stepMs;

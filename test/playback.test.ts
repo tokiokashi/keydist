@@ -22,6 +22,7 @@ import {
   playbackSameFingerKeyMotions,
   playbackTrailKeys,
   playbackTrailOrders,
+  setPlaybackCalibration,
   setPlaybackSameFingerDelay,
   setPlaybackStepsPerSecond,
   stepPlayback,
@@ -30,6 +31,17 @@ import { buildGeometry } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
 import { LAYOUT_BY_ID, withRomaji } from '../src/layouts/index.ts';
 import { kunrei } from '../src/romaji/kunrei.ts';
+import {
+  actionsPerSecondFromIntervals,
+  calibrationActionPair,
+  calibrationKeyMatches,
+  calibrationKeyPairs,
+  fallbackFingerSpeedFromSamples,
+  fingerSpeedFromSamples,
+  loadPlaybackCalibration,
+  PLAYBACK_CALIBRATION_STORAGE_KEY,
+  savePlaybackCalibration,
+} from '../src/playback-calibration.ts';
 
 const playing = (cursor = 0) => ({
   ...createPlaybackState(),
@@ -95,6 +107,75 @@ test('同指ディレイは移動距離に応じてステップ間隔を延ば�
   state = advancePlayback(state, 100, strokes);
   assert.equal(state.cursor, 2);
   assert.ok(Math.abs(playbackRecentActionsPerSecond(strokes, 2, 2, true)! - (4 / 3)) < 1e-9);
+});
+
+test('個人キャリブレーションは通常打鍵と指移動を別々の速度として再生へ反映する', () => {
+  const calibration = {
+    actionsPerSecond: 4,
+    fingerSpeedUnitsPerSecond: { LI: 8 },
+    fallbackFingerSpeedUnitsPerSecond: 12,
+    measuredAt: 1,
+  };
+  const stroke = { presses: [{ finger: 'LI', sfb: true, distance: 3 }] } as never;
+  assert.equal(playbackStrokeDurationMs(stroke, 1, false, calibration), 250);
+  assert.equal(playbackStrokeDurationMs(stroke, 1, true, calibration), 375);
+  const state = setPlaybackCalibration(createPlaybackState(), calibration);
+  assert.equal(state.calibration?.fingerSpeedUnitsPerSecond.LI, 8);
+  const fallbackStroke = { presses: [{ finger: 'RP', sfb: true, distance: 3 }] } as never;
+  assert.equal(playbackStrokeDurationMs(fallbackStroke, 1, true, calibration), 250);
+});
+
+test('キャリブレーションの中央値は外れ値を抑えて速度を求める', () => {
+  assert.equal(actionsPerSecondFromIntervals([250, 250, 1000, 250]), 4);
+  const speeds = fingerSpeedFromSamples([
+    { finger: 'LI', distance: 2, durationMs: 250 },
+    { finger: 'LI', distance: 2, durationMs: 250 },
+    { finger: 'LI', distance: 2, durationMs: 1000 },
+    { finger: 'RI', distance: 2, durationMs: 500 },
+  ]);
+  assert.equal(speeds.get('LI'), 8);
+  assert.equal(speeds.get('RI'), 4);
+  assert.equal(fallbackFingerSpeedFromSamples([
+    { finger: 'LI', distance: 2, durationMs: 250 },
+    { finger: 'LI', distance: 2, durationMs: 250 },
+    { finger: 'RI', distance: 2, durationMs: 500 },
+  ]), 8);
+});
+
+test('キャリブレーションの保存値は壊れたJSONを無視する', () => {
+  const data = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: string) => data.set(key, value),
+  };
+  const calibration = {
+    actionsPerSecond: 3.5,
+    fingerSpeedUnitsPerSecond: { LI: 12 },
+    fallbackFingerSpeedUnitsPerSecond: 12,
+    measuredAt: 4,
+  };
+  savePlaybackCalibration(storage, calibration);
+  assert.deepEqual(loadPlaybackCalibration(storage), calibration);
+  data.set(PLAYBACK_CALIBRATION_STORAGE_KEY, '{broken');
+  assert.equal(loadPlaybackCalibration(storage), undefined);
+  data.clear();
+  data.set('keydist.playback-calibration.v1', JSON.stringify(calibration));
+  assert.equal(loadPlaybackCalibration(storage), undefined);
+});
+
+test('キャリブレーションの指ペアはホームから最遠の同じ指キーを選ぶ', () => {
+  const geometry = buildGeometry('row-staggered');
+  const pairs = calibrationKeyPairs(geometry);
+  assert.equal(pairs.length, 8);
+  assert.deepEqual(calibrationActionPair(geometry), ['f', 'j']);
+  assert.equal(pairs.find((pair) => pair.finger === 'LI')?.fromKey, 'f');
+  assert.equal(pairs.find((pair) => pair.finger === 'LI')?.toKey, '4');
+});
+
+test('キャリブレーションはKeyboardEventの刻印と物理コードを受け付ける', () => {
+  assert.equal(calibrationKeyMatches({ key: 'A', code: 'KeyA' } as KeyboardEvent, 'a'), true);
+  assert.equal(calibrationKeyMatches({ key: ';', code: 'Semicolon' } as KeyboardEvent, ';'), true);
+  assert.equal(calibrationKeyMatches({ key: 'x', code: 'KeyX' } as KeyboardEvent, 'a'), false);
 });
 
 test('同指連続のキー移動は直前のキーから現在のキーを返す', () => {
