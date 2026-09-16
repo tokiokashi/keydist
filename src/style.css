@@ -338,8 +338,11 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   cursor: pointer;
 }
 .playback-finger-toggle input { margin: 0; }
-.playback-lookahead-setting, .playback-range-setting { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 0.76rem; }
-.playback-lookahead-setting input, .playback-range-setting input { width: 4.5em; padding: 2px 4px; font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
+.playback-window-setting, .playback-range-setting { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 0.76rem; }
+.playback-window-setting output { color: var(--fg); font: inherit; font-variant-numeric: tabular-nums; }
+.playback-range-setting input { width: 4.5em; padding: 2px 4px; font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
+.playback-scale-setting { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 0.76rem; }
+.playback-scale-setting input { width: 4.5em; padding: 2px 4px; font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
 .playback-controls {
   display: flex;
   align-items: center;
@@ -409,7 +412,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   text-overflow: ellipsis;
 }
 .playback-typed code { color: var(--fg); font-size: 0.9rem; }
-.playback-planned { margin-left: 8px; color: color-mix(in oklab, var(--accent) 55%, var(--muted)); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 400; }
+.playback-planned { margin-left: 8px; color: var(--series-3); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 400; }
 .playback-attribution { grid-column: 3; white-space: nowrap; }
 .playback-status b { color: var(--fg); font-weight: 600; }
 .playback-history {
@@ -432,7 +435,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
 }
-.playback-input-planned { color: color-mix(in oklab, var(--accent) 55%, var(--muted)); }
+.playback-input-planned { color: var(--series-3); }
 .playback-figure { border-top: 1px solid var(--line); padding-top: 10px; }
 .playback-figure svg { max-width: none; }
 .playback-figure [data-playback-trail='true'] rect {
