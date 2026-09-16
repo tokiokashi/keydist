@@ -3,9 +3,10 @@ import { classifyFaces, faceCells, foldedLayerCells, type Layer } from './layers
 import type { Stroke } from './evaluate.ts';
 import type { Layout } from './layouts/types.ts';
 
-/** 再生速度の選択肢。実際の打鍵時間や距離モデルとは無関係。 */
-export const PLAYBACK_STEPS_PER_SECOND = [0.3125, 0.625, 1.25, 2.5, 5] as const;
-export type PlaybackStepsPerSecond = (typeof PLAYBACK_STEPS_PER_SECOND)[number];
+/** 再生速度の入力範囲。実際の打鍵時間や距離モデルとは無関係。 */
+export const PLAYBACK_STEPS_PER_SECOND_MIN = 0.1;
+export const PLAYBACK_STEPS_PER_SECOND_MAX = 20;
+export type PlaybackStepsPerSecond = number;
 export const DEFAULT_PLAYBACK_STEPS_PER_SECOND: PlaybackStepsPerSecond = 1.25;
 
 /** 非アクティブなタブから戻った時の一気送りを防ぐため、1フレームの経過時間を制限する。 */
@@ -15,6 +16,8 @@ export interface PlaybackState {
   /** 0は開始前、nはn打鍵ぶん進んだ位置。 */
   cursor: number;
   stepsPerSecond: PlaybackStepsPerSecond;
+  /** 同指連続の移動距離を再生時間へ反映するか。 */
+  sameFingerDelay: boolean;
   playing: boolean;
   elapsedMs: number;
 }
@@ -31,6 +34,86 @@ export interface PlaybackRomajiPlan {
   planned: string;
   /** 現在のカーソルまでに打ち終えた予定綴りの接頭辞 */
   typed: string;
+}
+
+export interface PlaybackKeyMotion {
+  /** 移動開始位置のキーid */
+  fromKey: string;
+  /** 移動先のキーid。通常は1件だが同時押しにも対応する */
+  toKeys: readonly string[];
+  finger: Finger;
+}
+
+/** 直近の同指連続をキー移動として描画するための起点・終点を返す。 */
+export function playbackSameFingerKeyMotions(
+  strokes: readonly Stroke[],
+  cursor: number,
+): PlaybackKeyMotion[] {
+  const index = Math.min(Math.max(0, cursor), strokes.length) - 1;
+  if (index <= 0) return [];
+
+  const stroke = strokes[index];
+  const previous = strokes[index - 1];
+  const motions: PlaybackKeyMotion[] = [];
+  for (const press of stroke.presses) {
+    if (!press.sfb) continue;
+    const previousPress = previous.presses.find((candidate) => candidate.finger === press.finger);
+    const fromKey = previousPress?.keys[0]?.id;
+    if (!fromKey || press.keys.length === 0) continue;
+    motions.push({
+      fromKey,
+      toKeys: press.keys.map((key) => key.id),
+      finger: press.finger,
+    });
+  }
+  return motions;
+}
+
+function fingerHand(finger: Finger): 'left' | 'right' {
+  return finger.startsWith('L') ? 'left' : 'right';
+}
+
+/** 直近の同じ手の連続打鍵へ、表示順を割り当てる。 */
+export function playbackArpeggioOrders(
+  strokes: readonly Stroke[],
+  cursor: number,
+  includeSameFinger = false,
+  limit = 8,
+): ReadonlyMap<string, number> {
+  const end = Math.min(Math.max(0, cursor), strokes.length);
+  const orders = new Map<string, number>();
+  const span = Math.max(0, Math.floor(limit));
+  if (end === 0 || span === 0) return orders;
+
+  const handPresses = (stroke: Stroke): { hand: 'left' | 'right'; keys: readonly string[] } | undefined => {
+    const hands = new Set(stroke.presses.map((press) => fingerHand(press.finger)));
+    if (hands.size !== 1) return undefined;
+    return {
+      hand: [...hands][0],
+      keys: stroke.presses.flatMap((press) => press.keys.map((key) => key.id)),
+    };
+  };
+
+  const current = handPresses(strokes[end - 1]);
+  if (!current) return orders;
+  if (!includeSameFinger && strokes[end - 1].presses.some((press) => press.sfb)) return orders;
+
+  let start = end - 1;
+  while (start > 0) {
+    const previous = handPresses(strokes[start - 1]);
+    if (!previous || previous.hand !== current.hand) break;
+    if (!includeSameFinger && strokes[start - 1].presses.some((press) => press.sfb)) break;
+    start--;
+  }
+  start = Math.max(start, end - span);
+
+  for (let index = start; index < end; index++) {
+    const currentStroke = handPresses(strokes[index]);
+    if (!currentStroke) continue;
+    const order = index - start + 1;
+    for (const key of currentStroke.keys) orders.set(key, order);
+  }
+  return orders;
 }
 
 /** 打鍵順を既存の図解と同じ丸数字で表示する。 */
@@ -346,8 +429,9 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
 
 export function createPlaybackState(
   stepsPerSecond: PlaybackStepsPerSecond = DEFAULT_PLAYBACK_STEPS_PER_SECOND,
+  sameFingerDelay = false,
 ): PlaybackState {
-  return { cursor: 0, stepsPerSecond, playing: false, elapsedMs: 0 };
+  return { cursor: 0, stepsPerSecond, sameFingerDelay, playing: false, elapsedMs: 0 };
 }
 
 export function clampPlaybackCursor(cursor: number, strokeCount: number): number {
@@ -365,6 +449,56 @@ export function setPlaybackStepsPerSecond(
   stepsPerSecond: PlaybackStepsPerSecond,
 ): PlaybackState {
   return { ...state, stepsPerSecond, elapsedMs: 0 };
+}
+
+export function setPlaybackSameFingerDelay(
+  state: PlaybackState,
+  sameFingerDelay: boolean,
+): PlaybackState {
+  return { ...state, sameFingerDelay, elapsedMs: 0 };
+}
+
+function normalPlaybackStepMs(stepsPerSecond: PlaybackStepsPerSecond): number {
+  return Number.isFinite(stepsPerSecond) && stepsPerSecond > 0
+    ? 1000 / stepsPerSecond
+    : Number.POSITIVE_INFINITY;
+}
+
+/** 1ステップを表示する時間。正規化ディレイは1uを通常の1アクション相当とする。 */
+export function playbackStrokeDurationMs(
+  stroke: Stroke | undefined,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  sameFingerDelay = false,
+): number {
+  const normalMs = normalPlaybackStepMs(stepsPerSecond);
+  if (!stroke || !sameFingerDelay) return normalMs;
+
+  const sameFingerDistance = Math.max(
+    1,
+    ...stroke.presses.filter((press) => press.sfb).map((press) => press.distance),
+  );
+  return stroke.presses.some((press) => press.sfb)
+    ? normalMs * sameFingerDistance
+    : normalMs;
+}
+
+/** 直近の完了済み打鍵を実際の表示時間で割った実効アクション毎秒。 */
+export function playbackRecentActionsPerSecond(
+  strokes: readonly Stroke[],
+  cursor: number,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  sameFingerDelay = false,
+  limit = 10,
+): number | undefined {
+  const end = clampPlaybackCursor(cursor, strokes.length);
+  const span = Math.max(0, Math.floor(limit));
+  const start = Math.max(0, end - span);
+  if (start === end) return undefined;
+
+  const durationMs = strokes
+    .slice(start, end)
+    .reduce((total, stroke) => total + playbackStrokeDurationMs(stroke, stepsPerSecond, sameFingerDelay), 0);
+  return durationMs > 0 ? ((end - start) * 1000) / durationMs : undefined;
 }
 
 /** 停止・一時停止中の1打鍵送り。再生中はカーソルを動かさない。 */
@@ -385,8 +519,9 @@ export function stepPlayback(
 export function advancePlayback(
   state: PlaybackState,
   elapsedMs: number,
-  strokeCount: number,
+  strokes: readonly Stroke[],
 ): PlaybackState {
+  const strokeCount = strokes.length;
   const cursor = clampPlaybackCursor(state.cursor, strokeCount);
   if (!state.playing || strokeCount === 0 || cursor >= strokeCount) {
     return { ...state, cursor, playing: false, elapsedMs: 0 };
@@ -394,8 +529,13 @@ export function advancePlayback(
 
   let remaining = state.elapsedMs + Math.min(Math.max(0, elapsedMs), MAX_FRAME_MS);
   let nextCursor = cursor;
-  const stepMs = 1000 / state.stepsPerSecond;
-  while (remaining >= stepMs && nextCursor < strokeCount) {
+  while (nextCursor < strokeCount) {
+    const stepMs = playbackStrokeDurationMs(
+      strokes[nextCursor],
+      state.stepsPerSecond,
+      state.sameFingerDelay,
+    );
+    if (remaining < stepMs) break;
     remaining -= stepMs;
     nextCursor++;
   }

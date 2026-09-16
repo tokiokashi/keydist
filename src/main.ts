@@ -42,6 +42,7 @@ import {
   advancePlayback,
   clampPlaybackCursor,
   createPlaybackState,
+  playbackArpeggioOrders,
   playbackFingerPositionKeys,
   playbackInputPreview,
   playbackPlannedKeys,
@@ -50,7 +51,11 @@ import {
   playbackRomajiPlannedKeys,
   playbackRomajiPlannedOrders,
   playbackOrderLabel,
+  playbackRecentActionsPerSecond,
+  playbackSameFingerKeyMotions,
   playbackStrokeAt,
+  playbackStrokeDurationMs,
+  setPlaybackSameFingerDelay,
   setPlaybackStepsPerSecond,
   stepPlayback,
   playbackTrailKeys,
@@ -58,7 +63,8 @@ import {
   playbackStrokeDisplay,
   type PlaybackStepsPerSecond,
   type PlaybackState,
-  PLAYBACK_STEPS_PER_SECOND,
+  PLAYBACK_STEPS_PER_SECOND_MAX,
+  PLAYBACK_STEPS_PER_SECOND_MIN,
 } from './playback.ts';
 import {
   ROW_LABELS,
@@ -807,6 +813,9 @@ let playbackShowTrail = false;
 let playbackTrailTau = 5;
 let playbackShowOrderLabels = false;
 let playbackScale = 1.5;
+let playbackShowArpeggio = false;
+let playbackArpeggioIncludeSameFinger = false;
+let playbackMotionCursor = -1;
 let playbackPanelOpen = false;
 
 function cancelPlaybackAnimation() {
@@ -852,10 +861,26 @@ function updatePlaybackView() {
   const trailOrders = playbackShowOrderLabels && playbackShowTrail
     ? playbackTrailOrders(playbackTrace.strokes, cursor, playbackTrailTau)
     : new Map<string, number>();
+  const arpeggioOrders = playbackShowArpeggio
+    ? playbackArpeggioOrders(
+      playbackTrace.strokes,
+      cursor,
+      playbackArpeggioIncludeSameFinger,
+    )
+    : new Map<string, number>();
+  const motions = playbackState.sameFingerDelay
+    ? playbackSameFingerKeyMotions(playbackTrace.strokes, cursor)
+    : [];
+  const animatedKeys = new Set(motions.flatMap((motion) => motion.toKeys));
+
+  if (cursor !== playbackMotionCursor) {
+    renderPlaybackMotions(motions, cursor, stroke);
+    playbackMotionCursor = cursor;
+  }
 
   for (const key of el.playback.querySelectorAll<SVGGElement>('[data-playback-key]')) {
     const id = key.dataset.playbackKey!;
-    key.dataset.playbackActive = String(activeKeys.has(id));
+    key.dataset.playbackActive = String(activeKeys.has(id) && !animatedKeys.has(id));
     key.dataset.playbackTrigger = String(triggerKeys.has(id));
     key.dataset.playbackFingerPosition = fingerPositionKeys.get(id) ?? '';
     const trailOpacity = trailKeys.get(id);
@@ -878,6 +903,15 @@ function updatePlaybackView() {
       trailOrderLabel.textContent = trailOrder === undefined ? '' : playbackOrderLabel(trailOrder);
       trailOrderLabel.setAttribute('visibility', trailOrder === undefined ? 'hidden' : 'visible');
     }
+    const arpeggioOrder = arpeggioOrders.get(id);
+    const arpeggioOrderLabel = key.querySelector<SVGTextElement>('[data-playback-order="arpeggio"]');
+    if (arpeggioOrderLabel) {
+      arpeggioOrderLabel.textContent = arpeggioOrder === undefined ? '' : String(arpeggioOrder);
+      arpeggioOrderLabel.setAttribute('visibility', arpeggioOrder === undefined ? 'hidden' : 'visible');
+    }
+    key.dataset.playbackArpeggio = arpeggioOrder === undefined ? 'false' : 'true';
+    if (arpeggioOrder === undefined) key.style.removeProperty('--playback-arpeggio-delay');
+    else key.style.setProperty('--playback-arpeggio-delay', `${(arpeggioOrder - 1) * 90}ms`);
     const label = key.querySelector<SVGTextElement>('[data-playback-label]');
     if (label) label.textContent = display?.keyLabels.get(id) ?? key.dataset.playbackBaseLabel ?? '';
   }
@@ -902,6 +936,11 @@ function updatePlaybackView() {
   const trailTau = el.playback.querySelector<HTMLInputElement>('[data-playback-trail-tau]');
   const orderLabels = el.playback.querySelector<HTMLInputElement>('[data-playback-order-labels]');
   const scale = el.playback.querySelector<HTMLInputElement>('input[data-playback-scale]');
+  const sameFingerDelay = el.playback.querySelector<HTMLInputElement>('[data-playback-sfb-delay]');
+  const arpeggio = el.playback.querySelector<HTMLInputElement>('[data-playback-arpeggio]');
+  const arpeggioSameFinger = el.playback.querySelector<HTMLInputElement>('[data-playback-arpeggio-sfb]');
+  const rate = el.playback.querySelector<HTMLInputElement>('input[data-playback-rate]');
+  const effectiveRate = el.playback.querySelector<HTMLElement>('[data-playback-effective-rate]');
   const playbackWindow = el.playback.querySelector<HTMLOutputElement>('[data-playback-window]');
   if (position) position.textContent = `${cursor} / ${total} ステップ`;
   const inputPreview = playbackInputPreview(
@@ -964,6 +1003,24 @@ function updatePlaybackView() {
   if (trailTau) trailTau.value = String(playbackTrailTau);
   if (orderLabels) orderLabels.checked = playbackShowOrderLabels;
   if (scale) scale.value = String(playbackScale);
+  if (sameFingerDelay) sameFingerDelay.checked = playbackState.sameFingerDelay;
+  if (arpeggio) arpeggio.checked = playbackShowArpeggio;
+  if (arpeggioSameFinger) {
+    arpeggioSameFinger.checked = playbackArpeggioIncludeSameFinger;
+    arpeggioSameFinger.disabled = !playbackShowArpeggio;
+  }
+  if (rate) rate.value = String(playbackState.stepsPerSecond);
+  if (effectiveRate) {
+    const value = playbackRecentActionsPerSecond(
+      playbackTrace.strokes,
+      cursor,
+      playbackState.stepsPerSecond,
+      playbackState.sameFingerDelay,
+    );
+    effectiveRate.textContent = value === undefined
+      ? '実効 — アクション/秒'
+      : `実効 ${value.toFixed(2)} アクション/秒`;
+  }
   if (playbackWindow) playbackWindow.textContent = String(windowSize);
 }
 
@@ -984,19 +1041,75 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
       <rect x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" stroke="var(--line)"/>
       <text class="playback-order playback-order-plan" data-playback-order="plan" x="${x + 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
       <text class="playback-order playback-order-trail" data-playback-order="trail" x="${x + width - 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
+      <text class="playback-order playback-order-arpeggio" data-playback-order="arpeggio" x="${x + width / 2}" y="${y + PLAYBACK_KEY - 5}" text-anchor="middle" visibility="hidden"> </text>
       <text class="playback-key-label" data-playback-label x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
     </g>`;
   });
   const W = maxX + PLAYBACK_PAD;
   const H = maxY + PLAYBACK_PAD;
   return `<svg viewBox="0 0 ${W} ${H}" width="${W * playbackScale}" height="${H * playbackScale}" role="img"
-    aria-label="${escapeAttr(`${layout.name}の打鍵再生`)}">${keys.join('')}</svg>`;
+    aria-label="${escapeAttr(`${layout.name}の打鍵再生`)}">${keys.join('')}<g data-playback-motion-layer aria-hidden="true"></g></svg>`;
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function renderPlaybackMotions(
+  motions: readonly ReturnType<typeof playbackSameFingerKeyMotions>[number][],
+  cursor: number,
+  stroke: Stroke | undefined,
+) {
+  const layer = el.playback.querySelector<SVGGElement>('[data-playback-motion-layer]');
+  if (!layer) return;
+  layer.replaceChildren();
+  if (!stroke || motions.length === 0) return;
+
+  const sourceKeys = new Map<string, SVGGElement>();
+  for (const key of el.playback.querySelectorAll<SVGGElement>('[data-playback-key]')) {
+    sourceKeys.set(key.dataset.playbackKey!, key);
+  }
+  const durationMs = Math.max(
+    150,
+    Math.min(1500, playbackStrokeDurationMs(stroke, playbackState.stepsPerSecond, true)),
+  );
+  let motionIndex = 0;
+  for (const motion of motions) {
+    const from = sourceKeys.get(motion.fromKey);
+    if (!from) continue;
+    const fromRect = from.querySelector<SVGRectElement>('rect');
+    if (!fromRect) continue;
+    for (const toKeyId of motion.toKeys) {
+      const to = sourceKeys.get(toKeyId);
+      const toRect = to?.querySelector<SVGRectElement>('rect');
+      if (!to || !toRect) continue;
+      const dx = Number(fromRect.getAttribute('x')) - Number(toRect.getAttribute('x'));
+      const dy = Number(fromRect.getAttribute('y')) - Number(toRect.getAttribute('y'));
+      if (dx === 0 && dy === 0) continue;
+      const clone = to.cloneNode(true) as SVGGElement;
+      clone.removeAttribute('data-playback-key');
+      clone.removeAttribute('data-playback-base-label');
+      clone.setAttribute('data-playback-motion-key', `${cursor}-${motionIndex++}`);
+      clone.setAttribute('transform', `translate(${dx} ${dy})`);
+      clone.style.pointerEvents = 'none';
+      const animation = document.createElementNS(SVG_NS, 'animateTransform');
+      animation.setAttribute('attributeName', 'transform');
+      animation.setAttribute('type', 'translate');
+      animation.setAttribute('from', `translate(${dx} ${dy})`);
+      animation.setAttribute('to', 'translate(0 0)');
+      animation.setAttribute('dur', `${durationMs}ms`);
+      animation.setAttribute('fill', 'freeze');
+      clone.append(animation);
+      layer.append(clone);
+    }
+  }
 }
 
 function rerenderPlaybackFigure() {
   if (!playbackLayout || !playbackGeometry) return;
   const figure = el.playback.querySelector<HTMLElement>('.playback-figure');
-  if (figure) figure.innerHTML = renderPlaybackSvg(playbackLayout, playbackGeometry);
+  if (figure) {
+    figure.innerHTML = renderPlaybackSvg(playbackLayout, playbackGeometry);
+    playbackMotionCursor = -1;
+  }
 }
 
 function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeof buildGeometry>) {
@@ -1006,11 +1119,9 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
   playbackTrace = trace;
   playbackGeometry = geometry;
   playbackLayout = layout;
-  playbackState = createPlaybackState(playbackState.stepsPerSecond);
+  playbackState = createPlaybackState(playbackState.stepsPerSecond, playbackState.sameFingerDelay);
+  playbackMotionCursor = -1;
   playbackSeekWasPlaying = undefined;
-  const stepRates = PLAYBACK_STEPS_PER_SECOND.map((stepsPerSecond) =>
-    `<option value="${stepsPerSecond}"${stepsPerSecond === playbackState.stepsPerSecond ? ' selected' : ''}>${stepsPerSecond} ステップ/秒</option>`,
-  ).join('');
   el.playback.innerHTML = `<details class="playback-panel"${playbackPanelOpen ? ' open' : ''}>
     <summary><span class="playback-summary-icon" aria-hidden="true">▶</span><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
@@ -1022,6 +1133,9 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${playbackShowTrail ? ' checked' : ''} />押下履歴を残す</label>
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${playbackTrailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${playbackShowOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
+        <label class="playback-finger-toggle" title="1uの移動を通常の1アクション相当として同指連続の距離を再生時間へ反映"><input type="checkbox" data-playback-sfb-delay${playbackState.sameFingerDelay ? ' checked' : ''} />同指ディレイ</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${playbackShowArpeggio ? ' checked' : ''} />片手連続アニメーション</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio-sfb${playbackArpeggioIncludeSameFinger ? ' checked' : ''}${playbackShowArpeggio ? '' : ' disabled'} />同指連打も含める</label>
         <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${playbackScale}" aria-label="配列図の表示倍率" /> 倍</label>
       </div>
       <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
@@ -1030,14 +1144,14 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <button type="button" class="secondary" data-playback-action="stop" disabled>停止</button>
         <button type="button" class="ghost" data-playback-action="forward">1 ステップ進む</button>
         <span class="playback-position" aria-live="polite" data-playback-position>0 / ${trace.strokes.length} ステップ</span>
-        <label class="playback-speed"><span>速度</span><select data-playback-rate aria-label="再生速度（ステップ毎秒）">${stepRates}</select></label>
+        <label class="playback-speed"><span>速度</span><input type="number" data-playback-rate min="${PLAYBACK_STEPS_PER_SECOND_MIN}" max="${PLAYBACK_STEPS_PER_SECOND_MAX}" step="any" value="${playbackState.stepsPerSecond}" aria-label="再生速度（ステップ毎秒）" /> <span>ステップ/秒</span></label>
       </div>
       <label class="playback-seek"><span>再生位置</span><input type="range" data-playback-seek min="0" max="${trace.strokes.length}" step="1" value="0" /></label>
       <div class="playback-status" aria-live="polite">
         <div class="playback-status-line">
           <span class="playback-current" data-playback-current>—</span>
           <span class="playback-romaji" data-playback-romaji hidden><span class="playback-current" data-playback-kana>—</span><span class="playback-typed">打鍵: <code data-playback-typed>—</code><span class="playback-planned" data-playback-planned hidden></span></span></span>
-          <span class="playback-attribution">帰属: <b data-playback-layer>開始前</b></span>
+          <span class="playback-attribution">帰属: <b data-playback-layer>開始前</b><span class="playback-effective-rate" data-playback-effective-rate>実効 — アクション/秒</span></span>
         </div>
         <div class="playback-history" data-playback-history hidden>
           <span class="playback-history-label">入力:</span>
@@ -1070,7 +1184,8 @@ function pausePlayback() {
 
 function stopPlayback() {
   cancelPlaybackAnimation();
-  playbackState = createPlaybackState(playbackState.stepsPerSecond);
+  playbackState = createPlaybackState(playbackState.stepsPerSecond, playbackState.sameFingerDelay);
+  playbackMotionCursor = -1;
   updatePlaybackView();
 }
 
@@ -1082,7 +1197,7 @@ function playbackFrame(timestamp: number) {
     playbackState = advancePlayback(
       playbackState,
       timestamp - playbackLastTimestamp,
-      playbackTrace.strokes.length,
+      playbackTrace.strokes,
     );
     playbackLastTimestamp = timestamp;
     updatePlaybackView();
@@ -2143,13 +2258,36 @@ el.playback.addEventListener('pointerup', (e) => {
 
 el.playback.addEventListener('change', (e) => {
   const target = e.target as Element;
-  const rate = target.closest<HTMLSelectElement>('select[data-playback-rate]');
+  const sameFingerDelay = target.closest<HTMLInputElement>('[data-playback-sfb-delay]');
+  if (sameFingerDelay) {
+    playbackState = setPlaybackSameFingerDelay(playbackState, sameFingerDelay.checked);
+    playbackMotionCursor = -1;
+    updatePlaybackView();
+    return;
+  }
+  const arpeggio = target.closest<HTMLInputElement>('[data-playback-arpeggio]');
+  if (arpeggio) {
+    playbackShowArpeggio = arpeggio.checked;
+    updatePlaybackView();
+    return;
+  }
+  const arpeggioSameFinger = target.closest<HTMLInputElement>('[data-playback-arpeggio-sfb]');
+  if (arpeggioSameFinger) {
+    playbackArpeggioIncludeSameFinger = arpeggioSameFinger.checked;
+    updatePlaybackView();
+    return;
+  }
+  const rate = target.closest<HTMLInputElement>('input[data-playback-rate]');
   if (rate) {
     const value = Number(rate.value);
-    if (PLAYBACK_STEPS_PER_SECOND.includes(value as PlaybackStepsPerSecond)) {
+    if (
+      Number.isFinite(value)
+      && value >= PLAYBACK_STEPS_PER_SECOND_MIN
+      && value <= PLAYBACK_STEPS_PER_SECOND_MAX
+    ) {
       playbackState = setPlaybackStepsPerSecond(playbackState, value as PlaybackStepsPerSecond);
-      updatePlaybackView();
     }
+    updatePlaybackView();
     return;
   }
   const fingers = target.closest<HTMLInputElement>('input[data-playback-fingers]');
