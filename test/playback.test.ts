@@ -214,6 +214,27 @@ test('チェーンの番号は区間の先の打鍵も先読みして出す', ()
   assert.deepEqual([...playbackChainOrders(strokes, 1, false, 2)], [['.', 1], ['k', 2]]);
 });
 
+test('チェーンの中で同じキーを何度も踏む時は次に踏む番号を出す', () => {
+  // 右手で j → k → l → j と続き、j はチェーンの1打目と4打目に現れる
+  const strokes = [
+    { presses: [{ finger: 'RI', keys: [{ id: 'j' }] }] },
+    { presses: [{ finger: 'RM', keys: [{ id: 'k' }] }] },
+    { presses: [{ finger: 'RR', keys: [{ id: 'l' }] }] },
+    { presses: [{ finger: 'RI', keys: [{ id: 'j' }] }] },
+  ] as never[];
+
+  // 1打目にいる間は 1
+  assert.equal(playbackChainOrders(strokes, 1).get('j'), 1);
+  // 1打目を通り過ぎたら、次に踏む 4 を出す
+  assert.equal(playbackChainOrders(strokes, 2).get('j'), 4);
+  assert.equal(playbackChainOrders(strokes, 3).get('j'), 4);
+  assert.equal(playbackChainOrders(strokes, 4).get('j'), 4);
+  // 一度しか踏まないキーは位置によらず同じ
+  for (let cursor = 1; cursor <= 4; cursor++) {
+    assert.equal(playbackChainOrders(strokes, cursor).get('k'), 2);
+  }
+});
+
 test('レイヤーキーをチェーンに含めるか選べる', () => {
   // j が濁音レイヤーのトリガーであり、出力キーとしても押されている
   const strokes = [

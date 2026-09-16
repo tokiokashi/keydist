@@ -189,10 +189,26 @@ export function playbackChainOrders(
     while (finish < strokes.length && belongs(finish)) finish++;
     finish = Math.min(finish, start + span);
 
+    // 1つのキーをチェーンの中で何度も踏むことがある。単純に上書きすると後の
+    // 番号だけが残り、手前の番号が見えなくなる。カーソルが今いる位置から見て
+    // 次に踏む番号を出す（通り過ぎた番号は出さない）。
+    const visits = new Map<string, number[]>();
     for (let index = start; index < finish; index++) {
       const keys = strokeHandKeys(strokes[index], includeLayerKeys).get(hand);
       if (!keys) continue;
-      for (const key of keys) orders.set(key, index - start + 1);
+      const order = index - start + 1;
+      for (const key of keys) {
+        const seen = visits.get(key);
+        // 同じステップで同時押しされた同一キーは1回として数える
+        if (!seen) visits.set(key, [order]);
+        else if (seen[seen.length - 1] !== order) seen.push(order);
+      }
+    }
+
+    const position = end - start;
+    for (const [key, list] of visits) {
+      // 全部通り過ぎていれば最後の番号を残す。踏んだ実績まで消す必要はない
+      orders.set(key, list.find((order) => order >= position) ?? list[list.length - 1]);
     }
   }
   return orders;
