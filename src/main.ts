@@ -892,13 +892,14 @@ function updatePlaybackView() {
     const toKeys = motion.toKeys.filter((key) => !sameFingerTargets.has(key));
     return toKeys.length === 0 ? [] : [{ ...motion, toKeys }];
   });
-  const motions = [...sameFingerMotions, ...handMotions];
+  // 起点と終点が同じキーなら動きが無く、クローンは描かれない。それでも
+  // animatedKeys に入れてしまうと打鍵中の塗りだけが抑止されて空白になる。
+  // 面が違えば同じ物理キーに別のかなが乗るため、かな配列では普通に起きる。
+  const motions = [...sameFingerMotions, ...handMotions].flatMap((motion) => {
+    const toKeys = motion.toKeys.filter((key) => key !== motion.fromKey);
+    return toKeys.length === 0 ? [] : [{ ...motion, toKeys }];
+  });
   const animatedKeys = new Set(motions.flatMap((motion) => motion.toKeys));
-
-  if (cursor !== playbackMotionCursor) {
-    renderPlaybackMotions(motions, cursor, stroke);
-    playbackMotionCursor = cursor;
-  }
 
   for (const key of el.playback.querySelectorAll<SVGGElement>('[data-playback-key]')) {
     const id = key.dataset.playbackKey!;
@@ -934,6 +935,13 @@ function updatePlaybackView() {
     key.dataset.playbackArpeggio = arpeggioOrder === undefined ? 'false' : 'true';
     const label = key.querySelector<SVGTextElement>('[data-playback-label]');
     if (label) label.textContent = display?.keyLabels.get(id) ?? key.dataset.playbackBaseLabel ?? '';
+  }
+
+  // クローンは cloneNode で盤面のキーを丸ごと写すため、刻印を今のステップへ
+  // 更新し終えてから作る。先に作ると前のレイヤーの文字を持ったまま移動する。
+  if (cursor !== playbackMotionCursor) {
+    renderPlaybackMotions(motions, cursor, stroke);
+    playbackMotionCursor = cursor;
   }
 
   const position = el.playback.querySelector<HTMLElement>('[data-playback-position]');
