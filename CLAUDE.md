@@ -3,7 +3,7 @@
 ## このリポジトリについて
 
 キーボードの論理配列を、モデル文章を打った時の**指の総移動距離**で評価するツール。
-Vite + TypeScript のブラウザ単体アプリ。バックエンドは無い。GitHub Pages に配信する。
+Vite + TypeScriptのブラウザ単体アプリ。バックエンドは無い。GitHub Pagesに配信する。
 
 - 何を測るか・どう測るかは `spec/distance-model.md` が唯一の正。
 - 使い方・対応配列は `README.md`。
@@ -21,13 +21,13 @@ UI・配列定義の追加など、モデルに触らない変更は仕様の更
 
 | パス | 中身 |
 |---|---|
-| `src/evaluate.ts` | 評価器の本体。仕様 §7〜§10 の実装 |
+| `src/evaluate.ts` | 評価器の本体。仕様 §7〜§10の実装 |
 | `src/metrics.ts` | 出力指標（仕様 §11） |
 | `src/geometry.ts` | 座標系・キー位置・指の割り当て（仕様 §3） |
-| `src/sensitivity.ts` | N 感度曲線 |
+| `src/sensitivity.ts` | N感度曲線 |
 | `src/layouts/` | 配列定義。`types.ts` が記法の型。かな配列は `fromFaces` で面（trigger + mode）から書く |
 | `src/romaji/` | かな → ローマ字テーブル |
-| `src/user-layouts.ts` | 自作配列の localStorage 永続化 |
+| `src/user-layouts.ts` | 自作配列のlocalStorage永続化 |
 | `src/main.ts` `src/chart.ts` `src/theme.ts` | 画面 |
 | `test/` | `node --test` のテスト |
 | `spec/` | モデル仕様 |
@@ -42,27 +42,27 @@ npm run typecheck  # 型検査のみ
 npm run build      # 型検査 + ビルド
 ```
 
-**push する前に `npm test` と `npm run build` を通す。** CI も同じものを回す。
+**pushする前に `npm test` と `npm run build` を通す。** CIも同じものを回す。
 
 ## 実装の方針
 
-- **依存はむやみに増やさない。** 現在の devDependencies は vite / typescript / @types/node の3つだけで、
-  ランタイム依存も無い。追加する時は理由を PR に書く。
-  ただし**ランタイム依存ゼロ自体は目的ではない**。GitHub Pages で動く限り、
-  必要なら足してよい（2026-09-14 の判断）。漢字の読み解決（#5 層3）で辞書を積むのが想定される例
-- テストランナーは Node 組み込みの `node --test`。別のフレームワークを入れない
+- **依存はむやみに増やさない。** 現在のdevDependenciesはvite / typescript / @types/nodeの3つだけで、
+  ランタイム依存も無い。追加する時は理由をPRに書く。
+  ただし**ランタイム依存ゼロ自体は目的ではない**。GitHub Pagesで動く限り、
+  必要なら足してよい（2026-09-14の判断）。漢字の読み解決（#5層3）で辞書を積むのが想定される例
+- テストランナーはNode組み込みの `node --test`。別のフレームワークを入れない
 - `tsconfig.json` は `strict` + `noUnusedLocals` + `noUnusedParameters`。緩めない
-- 計算部（`evaluate` / `metrics` / `geometry` / `sensitivity`）は DOM に依存させない。
+- 計算部（`evaluate` / `metrics` / `geometry` / `sensitivity`）はDOMに依存させない。
   テストから直接呼べる状態を保つ
 - コードコメントは日本語。「なぜそうしたか」を書く。「何をしているか」はコードで読ませる
 
 ## モデルに触る変更をした時
 
 `spec/distance-model.md` の該当節・`README.md` の「何を測るか」・`test/` の3点が
-揃っているか確認する。数値が変わる変更なら、issue #1 に載っている測定表のように
-変更前後の値を PR に書く。
+揃っているか確認する。数値が変わる変更なら、issue #1に載っている測定表のように
+変更前後の値をPRに書く。
 
-## Issue とラベル
+## Issueとラベル
 
 | ラベル | 用途 |
 |---|---|
@@ -72,9 +72,9 @@ npm run build      # 型検査 + ビルド
 | `metrics` | 出力指標 |
 | `infra` | ビルド・CI・リポジトリ基盤 |
 | `docs` | README・仕様以外のドキュメント |
-| `meta` | ロードマップなど issue 運用そのもの |
+| `meta` | ロードマップなどissue運用そのもの |
 
-コミットと issue の紐づけ:
+コミットとissueの紐づけ:
 
 - 実装完了・検証済みなら `Closes #XX`
 - 実装したが未検証なら `Refs #XX`

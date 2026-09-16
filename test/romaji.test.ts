@@ -36,7 +36,7 @@ test('母音で始まるかなには促音形を作らない', () => {
   assert.equal(table.get('っん'), undefined);
 });
 
-test('合成した配列は 1 かなを複数ステップへ展開する', () => {
+test('合成した配列は1かなを複数ステップへ展開する', () => {
   const t = evaluate('し', ja, geometry, opts);
   assert.equal(t.strokes.length, 2);
   assert.deepEqual(t.strokes.map((s) => s.presses[0].keys[0].id), ['s', 'i']);
@@ -91,35 +91,35 @@ test('日本語の全配列が評価でき、未対応の文字を残さない',
   }
 });
 
-// AZIK（issue #33）。出典: https://github.com/toriwasa/azik-roman-table の azik_romantable.txt
+// AZIK（issue #33）。出典: https://github.com/toriwasa/azik-roman-tableのazik_romantable.txt
 const azikTable = azik();
 const azikJa = withRomaji(qwerty, azikTable);
 
-test('AZIK テーブルの基本形（出典の重複は打鍵数最小・同数なら先に現れた方を採る）', () => {
-  // き ← ki(2) / kf(2) は同数。出典で ki が先に現れるので ki を採る
+test('AZIKテーブルの基本形（出典の重複は打鍵数最小・同数なら先に現れた方を採る）', () => {
+  // き ← ki(2) / kf(2)は同数。出典でkiが先に現れるのでkiを採る
   assert.equal(azikTable.get('き'), 'ki');
-  // しゃ ← sya(3) / xa(2) は xa が短いので xa を採る
+  // しゃ ← sya(3) / xa(2)はxaが短いのでxaを採る
   assert.equal(azikTable.get('しゃ'), 'xa');
-  // ん ← q(1) / nn(2) は q が短いので q を採る
+  // ん ← q(1) / nn(2)はqが短いのでqを採る
   assert.equal(azikTable.get('ん'), 'q');
-  // ー ← -(1) / :(1) は同数。出典で - が先に現れるので - を採る（: は ANSI QWERTY に無い）
+  // ー ← -(1) / :(1)は同数。出典で - が先に現れるので - を採る（: はANSI QWERTYに無い）
   assert.equal(azikTable.get('ー'), '-');
 });
 
-test('AZIK は複数かなを1綴りに落とす（訓令式には無い形）', () => {
+test('AZIKは複数かなを1綴りに落とす（訓令式には無い形）', () => {
   assert.equal(azikTable.get('かん'), 'kz');
   assert.equal(azikTable.get('きゃん'), 'kyz');
 });
 
-test('AZIK の促音は ; の1打のみ。子音を重ねた自動生成をしない', () => {
+test('AZIKの促音は ; の1打のみ。子音を重ねた自動生成をしない', () => {
   assert.equal(azikTable.get('っ'), ';');
-  // kunrei() と違い「っか」のような合成見出しは持たない
+  // kunrei()と違い「っか」のような合成見出しは持たない
   assert.equal(azikTable.get('っか'), undefined);
-  // 最長一致で「っ」と「か」に分解され、;+k+a の3打で打てる
+  // 最長一致で「っ」と「か」に分解され、;+k+aの3打で打てる
   assert.equal(kanaToRomaji('っか', azikTable), ';ka');
 });
 
-test('JIS 配列前提の記号（「」『』・…‥〜）は落とす。句読点は kunrei と同じ綴りで残す', () => {
+test('JIS配列前提の記号（「」『』・…‥〜）は落とす。句読点はkunreiと同じ綴りで残す', () => {
   for (const symbol of ['「', '」', '『', '』', '・', '…', '‥', '〜']) {
     assert.equal(azikTable.has(symbol), false, `${symbol} は落とすはずが残っている`);
   }
@@ -127,33 +127,33 @@ test('JIS 配列前提の記号（「」『』・…‥〜）は落とす。句�
   assert.equal(azikTable.get('。'), '.');
 });
 
-test('AZIK は逆写像で取りこぼしなく全かなを打てる（kunrei が持つ見出し全件で検証）', () => {
+test('AZIKは逆写像で取りこぼしなく全かなを打てる（kunreiが持つ見出し全件で検証）', () => {
   const untypable: [string, string][] = [];
   for (const kana of table.keys()) {
     const romaji = kanaToRomaji(kana, azikTable);
-    // 展開結果にかな・カタカナが残っていれば、その見出しは AZIK で打てていない
+    // 展開結果にかな・カタカナが残っていれば、その見出しはAZIKで打てていない
     if (/[぀-ヿ]/.test(romaji)) untypable.push([kana, romaji]);
   }
-  assert.deepEqual(untypable, [], `AZIK で打てないかな: ${untypable.map(([k]) => k).join(' ')}`);
+  assert.deepEqual(untypable, [], `AZIKで打てないかな: ${untypable.map(([k]) => k).join(' ')}`);
 });
 
-test('AZIK は QWERTY 刻印に無い文字を使わない', () => {
+test('AZIKはQWERTY刻印に無い文字を使わない', () => {
   const qwertyChars = new Set([...QWERTY_LEGEND.join('')]);
   for (const [kana, romaji] of azikTable) {
     for (const ch of romaji) {
-      assert.ok(qwertyChars.has(ch), `${kana} の綴り "${romaji}" に QWERTY に無い "${ch}" が入っている`);
+      assert.ok(qwertyChars.has(ch), `${kana} の綴り "${romaji}" にQWERTYに無い "${ch}" が入っている`);
     }
   }
 });
 
-test('AZIK は日本語サンプルを全文字打てる', () => {
+test('AZIKは日本語サンプルを全文字打てる', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   const t = evaluate(text, azikJa, geometry, opts);
   assert.equal(t.skipped, 0);
   assert.equal(t.errors.length, 0);
 });
 
-test('AZIK は訓令式よりステップ数が少ない（2かな以上への短縮が効いているはず）', () => {
+test('AZIKは訓令式よりステップ数が少ない（2かな以上への短縮が効いているはず）', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   const kunreiSteps = evaluate(text, ja, geometry, opts).strokes.length;
   const azikSteps = evaluate(text, azikJa, geometry, opts).strokes.length;

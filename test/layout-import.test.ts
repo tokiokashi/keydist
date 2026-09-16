@@ -16,7 +16,7 @@ const vialKeyCode = (key: string): string => {
   return `KC_${key.toUpperCase()}`;
 };
 
-test('Vial の第0層・通常キー出力・マクロ出力のコンボを読む', () => {
+test('Vialの第0層・通常キー出力・マクロ出力のコンボを読む', () => {
   const layout = importVial(JSON.stringify({
     layout: [[
       ['KC_1', 'KC_2', 'KC_3', 'KC_4', 'KC_5', 'KC_6', 'KC_7', 'KC_8', 'KC_9', 'KC_0', 'KC_MINS', 'KC_ENTER'],
@@ -42,7 +42,7 @@ test('Vial の第0層・通常キー出力・マクロ出力のコンボを読�
   assert.equal(layout.direct, false);
 });
 
-test('既存の Vial 由来コンボ73件を全件取り込める', () => {
+test('既存のVial由来コンボ73件を全件取り込める', () => {
   const data = {
     layout: [[
       ['KC_1', 'KC_2', 'KC_3', 'KC_4', 'KC_5', 'KC_6', 'KC_7', 'KC_8', 'KC_9', 'KC_0', 'KC_MINS', 'KC_EQL'],
@@ -65,7 +65,7 @@ test('既存の Vial 由来コンボ73件を全件取り込める', () => {
   }
 });
 
-test('DvorakJ の基底面と同時打鍵面を読む', () => {
+test('DvorakJの基底面と同時打鍵面を読む', () => {
   const source = [
     '-option-input[',
     '  {F} | +21',
@@ -110,7 +110,7 @@ test('DvorakJ の基底面と同時打鍵面を読む', () => {
   assert.equal(layout.direct, true);
 });
 
-test('DvorakJ と紅皿の面内容からローマ字・かなを判定する', () => {
+test('DvorakJと紅皿の面内容からローマ字・かなを判定する', () => {
   const roman = importDvorakJ('[\n  ka|si|tu|ne|\n  q|w|e|r|\n]');
   assert.equal(roman.direct, false);
 
@@ -152,7 +152,7 @@ test('DvorakJ と紅皿の面内容からローマ字・かなを判定する', 
   assert.ok(mixed.warnings.some((warning) => warning.includes('かな右親指シフト')));
 });
 
-test('紅皿のローマ字面と UTF-16LE を読む', () => {
+test('紅皿のローマ字面とUTF-16LEを読む', () => {
   const source = '[ローマ字シフト無し]\nｋ,ａ,Enter\nｓ,ｉ,ｕ\nｔ,ｅ,ｏ\nｎ,ｍ,ｙ';
   const bytes = Buffer.from('\ufeff' + source, 'utf16le');
   const decoded = decodeLayoutFile(bytes, 'benizara');
