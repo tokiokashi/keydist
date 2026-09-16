@@ -5,8 +5,11 @@ import {
   clampPlaybackCursor,
   createPlaybackState,
   playbackCompletedInputs,
+  playbackFingerPositionKeys,
+  playbackRomajiPlan,
   playbackStrokeDisplay,
   playbackStrokeAt,
+  playbackTrailKeys,
   setPlaybackSpeed,
   stepPlayback,
 } from '../src/playback.ts';
@@ -84,6 +87,40 @@ test('ローマ字の入力履歴はかなごとの複数打鍵を重複させ�
   assert.deepEqual(playbackCompletedInputs(trace.strokes, trace.strokes.length), ['な', 'ま', 'え']);
 });
 
+test('ローマ字の現在入力単位に予定綴りと打鍵済み接頭辞を表示できる', () => {
+  const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
+  const trace = evaluate('きょ', layout, buildGeometry('row-staggered'));
+
+  assert.deepEqual(playbackRomajiPlan(trace.strokes, 2), { planned: 'kyo', typed: 'ky' });
+});
+
+test('押下履歴はtauステップ内で新しいほど濃くなる', () => {
+  const strokes = [
+    { presses: [{ keys: [{ id: 'a' }] }] },
+    { presses: [{ keys: [{ id: 's' }] }] },
+    { presses: [{ keys: [{ id: 'd' }] }] },
+    { presses: [{ keys: [{ id: 'f' }] }] },
+  ] as never[];
+  const trail = playbackTrailKeys(strokes, 4, 3);
+
+  assert.equal(trail.has('a'), false);
+  assert.equal(trail.get('s'), 1 / 3);
+  assert.equal(trail.get('d'), 2 / 3);
+  assert.equal(trail.get('f'), 1);
+});
+
+test('指位置表示はホームと押下キーを指ごとのキー枠に割り当てる', () => {
+  const layout = LAYOUT_BY_ID.get('qwerty')!;
+  const geometry = buildGeometry('row-staggered');
+  const stroke = evaluate('a', layout, geometry).strokes[0];
+  const positions = playbackFingerPositionKeys(stroke, geometry);
+
+  assert.equal(positions.get('a'), 'LP');
+  assert.equal(positions.get('s'), 'LR');
+  assert.equal(positions.get('f'), 'LI');
+  assert.equal(positions.get('j'), 'RI');
+});
+
 test('レイヤー再生はシフトと出力キーの刻印を現在の面から引く', () => {
   const layout = LAYOUT_BY_ID.get('tsuki-2-263')!;
   const trace = evaluate('ぬ', layout, buildGeometry('row-staggered'));
@@ -92,12 +129,23 @@ test('レイヤー再生はシフトと出力キーの刻印を現在の面か�
 
   assert.equal(shift.character, undefined);
   assert.equal(shift.keyLabels.get('d'), '⇧');
-  assert.equal(shift.keyLabels.get('q'), '');
-  assert.equal(shift.keyLabels.get('w'), '');
+  assert.equal(shift.keyLabels.get('q'), 'ぁ');
+  assert.equal(shift.keyLabels.get('w'), 'ひ');
   assert.equal(output.character, 'ぬ');
   assert.equal(output.keyLabels.get('y'), 'ぬ');
-  assert.equal(output.keyLabels.get('q'), '');
-  assert.equal(output.keyLabels.get('w'), '');
+  assert.equal(output.keyLabels.get('q'), 'ぁ');
+  assert.equal(output.keyLabels.get('w'), 'ひ');
+});
+
+test('左右の同一レイヤーを畳み、反対側シフト由来の刻印も表示する', () => {
+  const layout = LAYOUT_BY_ID.get('shingeta')!;
+  const stroke = evaluate('あ', layout, buildGeometry('row-staggered')).strokes[0];
+  const display = playbackStrokeDisplay(layout, stroke);
+
+  assert.equal(display.keyLabels.get('d'), '⇧');
+  assert.equal(display.keyLabels.get('j'), 'あ');
+  assert.equal(display.keyLabels.get('k'), 'れ');
+  assert.equal(display.keyLabels.get('l'), 'お');
 });
 
 test('薙刀式の濁音はシフトと出力かなを同じステップで表示する', () => {

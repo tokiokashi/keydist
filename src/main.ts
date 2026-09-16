@@ -43,9 +43,12 @@ import {
   clampPlaybackCursor,
   createPlaybackState,
   playbackCompletedInputs,
+  playbackFingerPositionKeys,
+  playbackRomajiPlan,
   playbackStrokeAt,
   setPlaybackSpeed,
   stepPlayback,
+  playbackTrailKeys,
   playbackStrokeDisplay,
   type PlaybackSpeed,
   type PlaybackState,
@@ -789,6 +792,9 @@ let playbackAnimationFrame: number | undefined;
 let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
 let playbackShowFingers = false;
+let playbackShowRomajiPlan = false;
+let playbackShowTrail = false;
+let playbackTrailTau = 5;
 
 function cancelPlaybackAnimation() {
   if (playbackAnimationFrame !== undefined) cancelAnimationFrame(playbackAnimationFrame);
@@ -801,14 +807,6 @@ function playbackLayerLabel(trace: Trace, stroke: Stroke | undefined): string {
   return trace.layerDefinitions.find((definition) => definition.id === stroke.layerId)?.label ?? stroke.layerId;
 }
 
-function playbackPosition(
-  stroke: Stroke | undefined,
-  geometry: ReturnType<typeof buildGeometry>,
-  finger: Finger,
-) {
-  return stroke?.positions[finger] ?? geometry.homes[finger];
-}
-
 function updatePlaybackView() {
   if (!playbackTrace || !playbackGeometry) return;
   const total = playbackTrace.strokes.length;
@@ -817,19 +815,24 @@ function updatePlaybackView() {
   const display = playbackLayout && stroke ? playbackStrokeDisplay(playbackLayout, stroke) : undefined;
   const activeKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
   const triggerKeys = new Set(stroke?.triggerKeys ?? []);
+  const fingerPositionKeys = playbackShowFingers
+    ? playbackFingerPositionKeys(stroke, playbackGeometry)
+    : new Map<string, Finger>();
+  const trailKeys = playbackShowTrail
+    ? playbackTrailKeys(playbackTrace.strokes, cursor, playbackTrailTau)
+    : new Map<string, number>();
 
   for (const key of el.playback.querySelectorAll<SVGGElement>('[data-playback-key]')) {
     const id = key.dataset.playbackKey!;
     key.dataset.playbackActive = String(activeKeys.has(id));
     key.dataset.playbackTrigger = String(triggerKeys.has(id));
+    key.dataset.playbackFingerPosition = fingerPositionKeys.get(id) ?? '';
+    const trailOpacity = trailKeys.get(id);
+    key.dataset.playbackTrail = trailOpacity === undefined ? 'false' : 'true';
+    if (trailOpacity === undefined) key.style.removeProperty('--playback-trail-opacity');
+    else key.style.setProperty('--playback-trail-opacity', String(trailOpacity));
     const label = key.querySelector('text');
     if (label) label.textContent = display?.keyLabels.get(id) ?? key.dataset.playbackBaseLabel ?? '';
-  }
-  for (const finger of el.playback.querySelectorAll<SVGGElement>('[data-playback-finger]')) {
-    const id = finger.dataset.playbackFinger as Finger;
-    const position = playbackPosition(stroke, playbackGeometry, id);
-    finger.setAttribute('transform', `translate(${position.x * PLAYBACK_KEY} ${position.y * PLAYBACK_KEY})`);
-    finger.setAttribute('visibility', playbackShowFingers ? 'visible' : 'hidden');
   }
 
   const position = el.playback.querySelector<HTMLElement>('[data-playback-position]');
@@ -839,6 +842,7 @@ function updatePlaybackView() {
   const typed = el.playback.querySelector<HTMLElement>('[data-playback-typed]');
   const history = el.playback.querySelector<HTMLElement>('[data-playback-history]');
   const historyText = el.playback.querySelector<HTMLElement>('[data-playback-history-text]');
+  const planned = el.playback.querySelector<HTMLElement>('[data-playback-planned]');
   const layer = el.playback.querySelector<HTMLElement>('[data-playback-layer]');
   const seek = el.playback.querySelector<HTMLInputElement>('[data-playback-seek]');
   const toggle = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="toggle"]');
@@ -846,6 +850,9 @@ function updatePlaybackView() {
   const back = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="back"]');
   const forward = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="forward"]');
   const fingers = el.playback.querySelector<HTMLInputElement>('[data-playback-fingers]');
+  const romajiPlan = el.playback.querySelector<HTMLInputElement>('[data-playback-romaji-plan]');
+  const trail = el.playback.querySelector<HTMLInputElement>('[data-playback-trail]');
+  const trailTau = el.playback.querySelector<HTMLInputElement>('[data-playback-trail-tau]');
   if (position) position.textContent = `${cursor} / ${total} ステップ`;
   const isRomaji = playbackLayout?.romajiTable !== undefined;
   if (current) {
@@ -857,6 +864,13 @@ function updatePlaybackView() {
   if (romaji) romaji.hidden = !isRomaji;
   if (kana) kana.textContent = stroke?.inputChar ?? '—';
   if (typed) typed.textContent = stroke?.char ?? '—';
+  const plan = isRomaji && playbackShowRomajiPlan
+    ? playbackRomajiPlan(playbackTrace.strokes, cursor)
+    : undefined;
+  if (planned) {
+    planned.hidden = plan === undefined;
+    planned.textContent = plan ? `予定: ${plan.planned}` : '';
+  }
   const completedInputs = playbackCompletedInputs(playbackTrace.strokes, cursor);
   if (history) history.hidden = completedInputs.length === 0;
   if (historyText) historyText.textContent = completedInputs.join('');
@@ -871,6 +885,12 @@ function updatePlaybackView() {
   if (back) back.disabled = playbackState.playing || cursor === 0;
   if (forward) forward.disabled = playbackState.playing || cursor >= total;
   if (fingers) fingers.checked = playbackShowFingers;
+  if (romajiPlan) {
+    romajiPlan.checked = playbackShowRomajiPlan;
+    romajiPlan.disabled = !isRomaji;
+  }
+  if (trail) trail.checked = playbackShowTrail;
+  if (trailTau) trailTau.value = String(playbackTrailTau);
 }
 
 function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeometry>): string {
@@ -886,19 +906,15 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
     const label = layout.legends.get(key.id) ?? '';
     const fontSize = thumb ? 10 : label.length > 3 ? 9 : 12;
     const tip = `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>${escapeText(FINGER_LABEL[key.finger])}`;
-    return `<g data-tip="${escapeAttr(tip)}" data-playback-key="${escapeAttr(key.id)}" data-playback-base-label="${escapeAttr(label)}" data-playback-active="false" data-playback-trigger="false">
+    return `<g data-tip="${escapeAttr(tip)}" data-playback-key="${escapeAttr(key.id)}" data-playback-finger="${key.finger}" data-playback-base-label="${escapeAttr(label)}" data-playback-active="false" data-playback-trigger="false" data-playback-finger-position="">
       <rect x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" stroke="var(--line)"/>
       <text x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
     </g>`;
   });
   const W = maxX + PLAYBACK_PAD;
   const H = maxY + PLAYBACK_PAD;
-  const fingerMarkers = ALL_FINGERS.map((finger) => `<g data-playback-finger="${finger}" class="playback-finger" aria-label="${escapeAttr(FINGER_LABEL[finger])}" visibility="hidden">
-    <circle cx="0" cy="0" r="7"/>
-    <text x="0" y="3" text-anchor="middle" pointer-events="none">${finger}</text>
-  </g>`).join('');
   return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
-    aria-label="${escapeAttr(`${layout.name}の打鍵再生`)}">${keys.join('')}${fingerMarkers}</svg>`;
+    aria-label="${escapeAttr(`${layout.name}の打鍵再生`)}">${keys.join('')}</svg>`;
 }
 
 function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeof buildGeometry>) {
@@ -915,7 +931,10 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
     <summary><span class="playback-summary-icon" aria-hidden="true">▶</span><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
       <div class="playback-head">
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${playbackShowFingers ? ' checked' : ''} />指の位置を表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${playbackShowFingers ? ' checked' : ''} />指の位置を色で表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${playbackShowRomajiPlan ? ' checked' : ''} />予定ローマ字を表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${playbackShowTrail ? ' checked' : ''} />押下履歴を残す</label>
+        <label class="playback-trail-tau">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${playbackTrailTau}" /> ステップ</label>
       </div>
       <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
         <button type="button" class="ghost" data-playback-action="back">1 ステップ戻る</button>
@@ -929,7 +948,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
       <div class="playback-status" aria-live="polite">
         <div class="playback-status-line">
           <span class="playback-current" data-playback-current>—</span>
-          <span class="playback-romaji" data-playback-romaji hidden><span class="playback-current" data-playback-kana>—</span><span class="playback-typed">打鍵: <code data-playback-typed>—</code></span></span>
+          <span class="playback-romaji" data-playback-romaji hidden><span class="playback-current" data-playback-kana>—</span><span class="playback-typed">打鍵: <code data-playback-typed>—</code><span class="playback-planned" data-playback-planned hidden></span></span></span>
           <span class="playback-attribution">帰属: <b data-playback-layer>開始前</b></span>
         </div>
         <div class="playback-history" data-playback-history hidden>
@@ -2043,6 +2062,25 @@ el.playback.addEventListener('change', (e) => {
   const fingers = target.closest<HTMLInputElement>('input[data-playback-fingers]');
   if (fingers) {
     playbackShowFingers = fingers.checked;
+    updatePlaybackView();
+    return;
+  }
+  const romajiPlan = target.closest<HTMLInputElement>('input[data-playback-romaji-plan]');
+  if (romajiPlan) {
+    playbackShowRomajiPlan = romajiPlan.checked;
+    updatePlaybackView();
+    return;
+  }
+  const trail = target.closest<HTMLInputElement>('input[data-playback-trail]');
+  if (trail) {
+    playbackShowTrail = trail.checked;
+    updatePlaybackView();
+    return;
+  }
+  const trailTau = target.closest<HTMLInputElement>('input[data-playback-trail-tau]');
+  if (trailTau) {
+    const value = Number(trailTau.value);
+    if (Number.isInteger(value) && value >= 1 && value <= 20) playbackTrailTau = value;
     updatePlaybackView();
     return;
   }

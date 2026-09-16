@@ -1,5 +1,5 @@
-import { keyId, resolveKeyId } from './geometry.ts';
-import { faceCells } from './layers.ts';
+import { ALL_FINGERS, keyId, resolveKeyId, type Finger, type Geometry } from './geometry.ts';
+import { classifyFaces, faceCells, foldedLayerCells, type Layer } from './layers.ts';
 import type { Stroke } from './evaluate.ts';
 import type { Layout } from './layouts/types.ts';
 
@@ -24,6 +24,87 @@ export interface PlaybackStrokeDisplay {
   character?: string;
   /** 現在のステップで表示するキーごとの刻印 */
   keyLabels: ReadonlyMap<string, string>;
+}
+
+export interface PlaybackRomajiPlan {
+  /** 現在の入力単位に対応する予定綴り */
+  planned: string;
+  /** 現在のカーソルまでに打ち終えた予定綴りの接頭辞 */
+  typed: string;
+}
+
+/** 現在の入力単位について、予定綴りと打鍵済みの接頭辞を返す。 */
+export function playbackRomajiPlan(
+  strokes: readonly Stroke[],
+  cursor: number,
+): PlaybackRomajiPlan | undefined {
+  const end = Math.min(Math.max(0, cursor), strokes.length);
+  if (end === 0) return undefined;
+  const inputIndex = strokes[end - 1].inputIndex;
+  let start = end - 1;
+  while (start > 0 && strokes[start - 1].inputIndex === inputIndex) start--;
+  let finish = end;
+  while (finish < strokes.length && strokes[finish].inputIndex === inputIndex) finish++;
+  return {
+    planned: strokes.slice(start, finish).map((stroke) => stroke.char).join(''),
+    typed: strokes.slice(start, end).map((stroke) => stroke.char).join(''),
+  };
+}
+
+/** 直近tauステップの押下キーと、残留表示に使う不透明度を返す。 */
+export function playbackTrailKeys(
+  strokes: readonly Stroke[],
+  cursor: number,
+  tau: number,
+): ReadonlyMap<string, number> {
+  const end = Math.min(Math.max(0, cursor), strokes.length);
+  const span = Math.floor(tau);
+  const trail = new Map<string, number>();
+  if (end === 0 || span <= 0) return trail;
+
+  const start = Math.max(0, end - span);
+  for (let index = start; index < end; index++) {
+    const age = end - index;
+    const opacity = (span - age + 1) / span;
+    for (const press of strokes[index].presses) {
+      for (const key of press.keys) {
+        trail.set(key.id, Math.max(trail.get(key.id) ?? 0, opacity));
+      }
+    }
+  }
+  return trail;
+}
+
+/** 再生中の層に対応する面グループを返す。単一面も含めて表示用に扱う。 */
+function playbackLayer(layout: Layout, layerId: string): Layer | undefined {
+  if (!layout.faces || !layout.faceLayerIds) return undefined;
+  const groups = classifyFaces(layout.faces);
+  return [...groups.layers, ...groups.modifiers].find((layer) =>
+    layer.faces.some((face) => layout.faceLayerIds?.get(face) === layerId),
+  );
+}
+
+/** 再生中の各指の位置に対応するキーと指を返す。 */
+export function playbackFingerPositionKeys(
+  stroke: Stroke | undefined,
+  geometry: Geometry,
+): ReadonlyMap<string, Finger> {
+  const positionedKeys = new Map<string, Finger>();
+
+  for (const finger of ALL_FINGERS) {
+    const position = stroke?.positions[finger] ?? geometry.homes[finger];
+    const key = [...geometry.keys.values()].find(
+      (candidate) => candidate.finger === finger && candidate.x === position.x && candidate.y === position.y,
+    );
+    if (key) positionedKeys.set(key.id, finger);
+  }
+
+  // 1本の指で複数キーを同時に押す場合、位置は重心になってキーと一致しない。
+  // その場合も押下されたキーを指の位置として囲み、表示から消えないようにする。
+  for (const press of stroke?.presses ?? []) {
+    for (const key of press.keys) positionedKeys.set(key.id, press.finger);
+  }
+  return positionedKeys;
 }
 
 /** 現在のステップより前に入力し終えた単位を、直近から指定数だけ返す。 */
@@ -69,19 +150,25 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
     ? layerFaces.filter((face) => outputKeys.some((key) => faceCells(face).get(key) === stroke.char))
     : [];
   const faces = outputFaces.length > 0 ? outputFaces : triggeredFaces;
+  const layer = playbackLayer(layout, stroke.layerId);
   const keyLabels = new Map<string, string>();
 
   // 面に空欄として定義されたキーは、基底面の刻印へ戻さず空欄にする。
-  for (const face of faces) {
+  for (const face of layer?.faces ?? faces) {
     face.rows.forEach((row, rowIndex) => {
       const cells = typeof row === 'string' ? [...row] : [...row];
       cells.forEach((_label, colIndex) => keyLabels.set(keyId(rowIndex, colIndex), ''));
     });
   }
-  for (const face of faces) {
-    for (const [key, label] of faceCells(face)) {
-      const previous = keyLabels.get(key);
-      keyLabels.set(key, previous && label !== previous ? `${previous} / ${label}` : label);
+  const labels = layer ? foldedLayerCells(layer, layout.faces ?? []) : undefined;
+  if (labels) {
+    for (const [key, label] of labels) keyLabels.set(key, label);
+  } else {
+    for (const face of faces) {
+      for (const [key, label] of faceCells(face)) {
+        const previous = keyLabels.get(key);
+        keyLabels.set(key, previous && label !== previous ? `${previous} / ${label}` : label);
+      }
     }
   }
   for (const key of triggerKeys) keyLabels.set(key, '⇧');
