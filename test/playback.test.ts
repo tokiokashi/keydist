@@ -11,6 +11,7 @@ import {
   playbackPlannedOrders,
   playbackChainOrders,
   playbackRecentActionsPerSecond,
+  playbackRecentKanaPerSecond,
   playbackOrderLabel,
   playbackRomajiPlannedKeys,
   playbackRomajiPlannedOrders,
@@ -110,6 +111,16 @@ test('同指ディレイは移動距離に応じてステップ間隔を延ば�
   state = advancePlayback(state, 100, strokes);
   assert.equal(state.cursor, 2);
   assert.ok(Math.abs(playbackRecentActionsPerSecond(strokes, 2, 2, true)! - (4 / 3)) < 1e-9);
+});
+
+test('直近のかな毎秒は入力単位のかな数を同じ実効時間で割る', () => {
+  const strokes = [
+    { inputIndex: 0, inputChar: 'あ', presses: [] },
+    { inputIndex: 1, inputChar: 'はい', presses: [] },
+    { inputIndex: 1, inputChar: 'はい', presses: [] },
+  ] as never[];
+  assert.equal(playbackRecentKanaPerSecond(strokes, 3, 2), 2);
+  assert.equal(playbackRecentKanaPerSecond(strokes, 2, 2), 1);
 });
 
 test('個人キャリブレーションは通常打鍵と指移動を別々の速度として再生へ反映する', () => {

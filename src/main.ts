@@ -52,6 +52,7 @@ import {
   playbackRomajiPlannedOrders,
   playbackOrderLabel,
   playbackRecentActionsPerSecond,
+  playbackRecentKanaPerSecond,
   playbackHandKeyMotions,
   playbackSameFingerKeyMotions,
   playbackRepeatedKeys,
@@ -1379,6 +1380,7 @@ function updatePlaybackView() {
   const calibration = el.playback.querySelector<HTMLInputElement>('[data-playback-calibration]');
   const calibrationButton = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="calibration"]');
   const rate = el.playback.querySelector<HTMLInputElement>('input[data-playback-rate]');
+  const effectiveKanaRate = el.playback.querySelector<HTMLElement>('[data-playback-effective-kana-rate]');
   const effectiveRate = el.playback.querySelector<HTMLElement>('[data-playback-effective-rate]');
   const playbackWindow = el.playback.querySelector<HTMLOutputElement>('[data-playback-window]');
   if (position) position.textContent = `${cursor} / ${total} ステップ`;
@@ -1460,6 +1462,19 @@ function updatePlaybackView() {
   const calibrationEditButton = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="calibration-edit"]');
   if (calibrationEditButton) calibrationEditButton.disabled = playbackCalibration === undefined;
   if (rate) rate.value = String(playbackState.stepsPerSecond);
+  if (effectiveKanaRate) {
+    const value = playbackRecentKanaPerSecond(
+      playbackTrace.strokes,
+      cursor,
+      playbackState.stepsPerSecond,
+      playbackState.sameFingerDelay,
+      10,
+      playbackState.calibration,
+    );
+    effectiveKanaRate.textContent = value === undefined
+      ? '実効 — かな/秒'
+      : `実効 ${value.toFixed(2)} かな/秒`;
+  }
   if (effectiveRate) {
     const value = playbackRecentActionsPerSecond(
       playbackTrace.strokes,
@@ -1669,7 +1684,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <button type="button" class="secondary" data-playback-action="stop" disabled>停止</button>
         <button type="button" class="ghost" data-playback-action="forward">1 ステップ進む</button>
         <span class="playback-position" aria-live="polite" data-playback-position>0 / ${trace.strokes.length} ステップ</span>
-        <span class="playback-effective-rate" data-playback-effective-rate>実効 — アクション/秒</span>
+        <span class="playback-effective-rates"><span class="playback-effective-kana-rate" data-playback-effective-kana-rate>実効 — かな/秒</span><span class="playback-effective-rate" data-playback-effective-rate>実効 — アクション/秒</span></span>
         <label class="playback-speed"><span>基準速度</span><input type="number" data-playback-rate min="${PLAYBACK_STEPS_PER_SECOND_MIN}" max="${PLAYBACK_STEPS_PER_SECOND_MAX}" step="any" value="${playbackState.stepsPerSecond}" aria-label="再生の基準速度（ステップ毎秒）" /> <span>ステップ/秒</span></label>
         <button type="button" class="secondary" data-playback-action="calibration">${playbackCalibration ? '速度を再測定' : '速度を測定'}</button>
         <button type="button" class="ghost" data-playback-action="calibration-edit"${playbackCalibration ? '' : ' disabled'}>保存値を確認・編集</button>
