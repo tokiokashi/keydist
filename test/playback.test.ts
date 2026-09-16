@@ -9,7 +9,7 @@ import {
   playbackInputPreview,
   playbackPlannedKeys,
   playbackPlannedOrders,
-  playbackArpeggioOrders,
+  playbackChainOrders,
   playbackRecentActionsPerSecond,
   playbackOrderLabel,
   playbackRomajiPlannedKeys,
@@ -144,7 +144,7 @@ test('片手連続のキー移動は直前の同じ手のキーから現在の�
   assert.deepEqual(playbackHandKeyMotions(sameHand, 0), []);
 });
 
-test('親指キーはアルペジオに含めない', () => {
+test('親指キーはチェーンに含めない', () => {
   // スペース（親指）だけのステップは手の連続に参加しない
   const withThumb = [
     { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }] },
@@ -153,7 +153,7 @@ test('親指キーはアルペジオに含めない', () => {
   ] as never[];
   assert.deepEqual(playbackHandKeyMotions(withThumb, 2), []);
   assert.deepEqual(playbackHandKeyMotions(withThumb, 3), []);
-  assert.deepEqual([...playbackArpeggioOrders(withThumb, 3)], [['s', 1]]);
+  assert.deepEqual([...playbackChainOrders(withThumb, 3)], [['s', 1]]);
 
   // 親指を伴う同時押しでも、起点・終点には親指キーが混ざらない
   const shifted = [
@@ -165,7 +165,7 @@ test('親指キーはアルペジオに含めない', () => {
     toKeys: ['s'],
     finger: 'LR',
   }]);
-  assert.deepEqual([...playbackArpeggioOrders(shifted, 2)], [['a', 1], ['s', 2]]);
+  assert.deepEqual([...playbackChainOrders(shifted, 2)], [['a', 1], ['s', 2]]);
 });
 
 test('左右同時押しが混ざっても片手の連続は途切れない', () => {
@@ -180,7 +180,7 @@ test('左右同時押しが混ざっても片手の連続は途切れない', ()
     toKeys: ['d'],
     finger: 'LM',
   }]);
-  assert.deepEqual([...playbackArpeggioOrders(strokes, 3)], [['a', 1], ['s', 2], ['d', 3]]);
+  assert.deepEqual([...playbackChainOrders(strokes, 3)], [['a', 1], ['s', 2], ['d', 3]]);
 
   // 同時押しのステップ自体では、続いている手それぞれに移動が出る
   const bothContinue = [
@@ -193,7 +193,7 @@ test('左右同時押しが混ざっても片手の連続は途切れない', ()
   ]);
 });
 
-test('アルペジオの番号は区間の先の打鍵も先読みして出す', () => {
+test('チェーンの番号は区間の先の打鍵も先読みして出す', () => {
   // 右手で . → k → l と続き、その後に左手へ渡る
   const strokes = [
     { presses: [{ finger: 'RR', keys: [{ id: '.' }] }] },
@@ -204,17 +204,17 @@ test('アルペジオの番号は区間の先の打鍵も先読みして出す',
 
   // 区間の最初の打鍵の時点で、区間全体の番号が出そろう
   const whole = [['.', 1], ['k', 2], ['l', 3]];
-  assert.deepEqual([...playbackArpeggioOrders(strokes, 1)], whole);
-  assert.deepEqual([...playbackArpeggioOrders(strokes, 2)], whole);
-  assert.deepEqual([...playbackArpeggioOrders(strokes, 3)], whole);
+  assert.deepEqual([...playbackChainOrders(strokes, 1)], whole);
+  assert.deepEqual([...playbackChainOrders(strokes, 2)], whole);
+  assert.deepEqual([...playbackChainOrders(strokes, 3)], whole);
   // 手が変われば次の区間へ
-  assert.deepEqual([...playbackArpeggioOrders(strokes, 4)], [['a', 1]]);
+  assert.deepEqual([...playbackChainOrders(strokes, 4)], [['a', 1]]);
 
   // limit は区間の先頭から数える
-  assert.deepEqual([...playbackArpeggioOrders(strokes, 1, false, 2)], [['.', 1], ['k', 2]]);
+  assert.deepEqual([...playbackChainOrders(strokes, 1, false, 2)], [['.', 1], ['k', 2]]);
 });
 
-test('レイヤーキーをアルペジオに含めるか選べる', () => {
+test('レイヤーキーをチェーンに含めるか選べる', () => {
   // j が濁音レイヤーのトリガーであり、出力キーとしても押されている
   const strokes = [
     { presses: [{ finger: 'RP', keys: [{ id: ';' }] }], triggerKeys: [] },
@@ -225,7 +225,7 @@ test('レイヤーキーをアルペジオに含めるか選べる', () => {
   ] as never[];
 
   // 既定は含める。右手は ; → j と続く
-  assert.deepEqual([...playbackArpeggioOrders(strokes, 2)], [[';', 1], ['j', 2], ['d', 1]]);
+  assert.deepEqual([...playbackChainOrders(strokes, 2)], [[';', 1], ['j', 2], ['d', 1]]);
   assert.deepEqual(playbackHandKeyMotions(strokes, 2), [{
     fromKey: ';',
     toKeys: ['j'],
@@ -233,7 +233,7 @@ test('レイヤーキーをアルペジオに含めるか選べる', () => {
   }]);
 
   // 含めない時、トリガーの j は連なりから落ち、右手の連続はそこで終わる
-  assert.deepEqual([...playbackArpeggioOrders(strokes, 2, false, 8, false)], [['d', 1]]);
+  assert.deepEqual([...playbackChainOrders(strokes, 2, false, 8, false)], [['d', 1]]);
   assert.deepEqual(playbackHandKeyMotions(strokes, 2, false, false), []);
 });
 
@@ -247,7 +247,7 @@ test('親指キーはレイヤーキーのオプションに関係なく常に�
   ] as never[];
   for (const includeLayerKeys of [true, false]) {
     assert.deepEqual(
-      [...playbackArpeggioOrders(strokes, 2, false, 8, includeLayerKeys)],
+      [...playbackChainOrders(strokes, 2, false, 8, includeLayerKeys)],
       [['a', 1], ['s', 2]],
     );
     assert.deepEqual(playbackHandKeyMotions(strokes, 2, false, includeLayerKeys), [{
@@ -264,8 +264,8 @@ test('片手連続の打鍵へ順番を付け、同指連打を除外できる',
     { presses: [{ finger: 'LP', sfb: true, keys: [{ id: 's' }] }] },
     { presses: [{ finger: 'LR', keys: [{ id: 'd' }] }] },
   ] as never[];
-  assert.deepEqual([...playbackArpeggioOrders(strokes, 3)], [['d', 1]]);
-  assert.deepEqual([...playbackArpeggioOrders(strokes, 3, true)], [['a', 1], ['s', 2], ['d', 3]]);
+  assert.deepEqual([...playbackChainOrders(strokes, 3)], [['d', 1]]);
+  assert.deepEqual([...playbackChainOrders(strokes, 3, true)], [['a', 1], ['s', 2], ['d', 3]]);
 });
 
 test('末尾では停止し、先頭へループしない', () => {

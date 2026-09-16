@@ -74,7 +74,7 @@ function fingerHand(finger: Finger): 'left' | 'right' {
 }
 
 /**
- * 親指キー（スペース等）はアルペジオの材料から外す。
+ * 親指キー（スペース等）はチェーンの材料から外す。
  *
  * 新下駄・薙刀式のような配列では親指が同時押しのシフトを担う。これは指が鍵盤を
  * 渡り歩く動きではないので、手の連続の判定にも移動の起点・終点にも使わない。
@@ -154,7 +154,7 @@ export function playbackHandKeyMotions(
 }
 
 /** 直近の同じ手の連続打鍵へ、表示順を割り当てる。 */
-export function playbackArpeggioOrders(
+export function playbackChainOrders(
   strokes: readonly Stroke[],
   cursor: number,
   includeSameFinger = false,
@@ -169,10 +169,10 @@ export function playbackArpeggioOrders(
   // 手ごとに、現在の打鍵を含む区間を前後へ広げる。
   //
   // 遡るだけだと区間の番号が打つたびに増えていき、区間の全体像は最後の打鍵まで
-  // 見えない。アルペジオは1つのまとまりとして読みたいので、先の打鍵も数える。
+  // 見えない。チェーンは1つのまとまりとして読みたいので、先の打鍵も数える。
   //
   // 左右同時押しのステップは両方の手の区間に参加するため、逆の手が混ざっても
-  // 片方の手のアルペジオは途切れない。
+  // 片方の手のチェーンは途切れない。
   for (const hand of strokeHandKeys(strokes[end - 1], includeLayerKeys).keys()) {
     // 同指連打は区間の区切り。区切り自身はどちらの区間にも属さない
     if (!includeSameFinger && handHasSameFinger(strokes[end - 1], hand)) continue;
