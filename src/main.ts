@@ -54,6 +54,7 @@ import {
   playbackRecentActionsPerSecond,
   playbackHandKeyMotions,
   playbackSameFingerKeyMotions,
+  playbackRepeatedKeys,
   playbackStrokeAt,
   playbackStrokeDurationMs,
   setPlaybackSameFingerDelay,
@@ -1153,11 +1154,13 @@ function updatePlaybackView() {
     return toKeys.length === 0 ? [] : [{ ...motion, toKeys }];
   });
   const animatedKeys = new Set(motions.flatMap((motion) => motion.toKeys));
+  const repeatedKeys = playbackRepeatedKeys(playbackTrace.strokes, cursor);
 
   for (const key of el.playback.querySelectorAll<SVGGElement>('[data-playback-key]')) {
     const id = key.dataset.playbackKey!;
     key.dataset.playbackActive = String(activeKeys.has(id) && !animatedKeys.has(id));
     key.dataset.playbackTrigger = String(triggerKeys.has(id));
+    key.dataset.playbackRepeat = String(repeatedKeys.has(id));
     key.dataset.playbackFingerPosition = fingerPositionKeys.get(id) ?? '';
     const trailOpacity = trailKeys.get(id);
     key.dataset.playbackTrail = trailOpacity === undefined ? 'false' : 'true';
@@ -1195,6 +1198,7 @@ function updatePlaybackView() {
   if (cursor !== playbackMotionCursor) {
     renderPlaybackMotions(motions, cursor, stroke);
     playbackMotionCursor = cursor;
+    triggerPlaybackRepeatFlash(repeatedKeys);
   }
 
   const position = el.playback.querySelector<HTMLElement>('[data-playback-position]');
@@ -1334,6 +1338,7 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
     const tip = `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>${escapeText(FINGER_LABEL[key.finger])}`;
     return `<g data-tip="${escapeAttr(tip)}" data-playback-key="${escapeAttr(key.id)}" data-playback-finger="${key.finger}" data-playback-base-label="${escapeAttr(label)}" data-playback-active="false" data-playback-trigger="false" data-playback-finger-position="" data-playback-plan="false">
       <rect x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" stroke="var(--line)"/>
+      <rect data-playback-repeat-flash x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" opacity="0" pointer-events="none"/>
       <text class="playback-order playback-order-plan" data-playback-order="plan" x="${x + 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
       <text class="playback-order playback-order-trail" data-playback-order="trail" x="${x + width - 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
       <text class="playback-order playback-order-chain" data-playback-order="chain" x="${x + width / 2}" y="${y + PLAYBACK_KEY - 5}" text-anchor="middle" visibility="hidden"> </text>
@@ -1424,6 +1429,42 @@ function renderPlaybackMotions(
       // 移動元の位置に幽霊として残る。表示しない方が縮退として素直なので捨てる。
       if (!started) clone.remove();
     }
+  }
+}
+
+/**
+ * 連打キーの上に重ねたオーバーレイ矩形をWeb Animations APIで光らせる。
+ *
+ * CSSアニメーションでdata属性を付け替える方式だと、連打2回目以降は属性値が
+ * 「true」のまま変わらないため再生し直されない（過去にこれで踏んだ）。
+ * element.animate()は呼ぶたびに新しいAnimationを作るので、毎ステップ確実に
+ * 発火し直せる。`fill`（塗り）はアクティブキーの表示に使っているため触らず、
+ * 別のoverlay要素のopacityだけを動かして「今どこを打っているか」を壊さない。
+ *
+ * overlayの色は地の色（--panel）。連打しているキーは必ず打鍵中でもあり
+ * --accent で塗られているので、accentを重ねても同色同士で見た目が変わらない。
+ * 地の色へ一瞬抜くことで、押されたままのキーでも打ち直しが読み取れる。
+ */
+function triggerPlaybackRepeatFlash(repeatedKeys: ReadonlySet<string>) {
+  if (repeatedKeys.size === 0) return;
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  for (const id of repeatedKeys) {
+    const overlay = el.playback.querySelector<SVGRectElement>(
+      `[data-playback-key="${CSS.escape(id)}"] [data-playback-repeat-flash]`,
+    );
+    if (!overlay) continue;
+    if (reducedMotion) {
+      // 動きを止める代わりに、瞬間的な不透明化で「打った」だけは伝える。
+      overlay.style.opacity = '0.5';
+      overlay.style.transition = 'opacity 120ms ease-out';
+      requestAnimationFrame(() => { overlay.style.opacity = '0'; });
+      continue;
+    }
+    overlay.getAnimations().forEach((animation) => animation.cancel());
+    overlay.animate(
+      [{ opacity: 0.6 }, { opacity: 0 }],
+      { duration: 220, easing: 'ease-out' },
+    );
   }
 }
 
