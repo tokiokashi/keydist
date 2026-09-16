@@ -144,6 +144,25 @@ test('層別集計と統合ヒートマップのキー押下数は保存則を�
   }
 });
 
+test('層操作キーと出力キーを同時押しの中で分離する', () => {
+  const cases = [
+    { layoutId: 'naginata-v18', text: 'が', trigger: 'j', output: 'f' },
+    { layoutId: 'shingeta', text: 'れ', trigger: 'k', output: 'd' },
+  ];
+  for (const { layoutId, text, trigger, output } of cases) {
+    const layout = LAYOUTS_JA.find((entry) => entry.id === layoutId)!;
+    const trace = evaluate(text, layout, geometry, opts());
+    const metrics = computeMetrics(trace, geometry);
+    const layer = metrics.layers.find((stat) => stat.presses > 0)!;
+
+    assert.deepEqual(trace.strokes[0].triggerKeys, [trigger], `${layoutId} のトリガー`);
+    assert.equal(layer.keyCounts.get(trigger), 1, `${layoutId} のトリガー実押下`);
+    assert.equal(layer.keyCounts.get(output), 1, `${layoutId} の出力実押下`);
+    assert.equal(layer.triggerKeyCounts.get(trigger), 1, `${layoutId} のトリガー集計`);
+    assert.equal(layer.triggerKeyCounts.get(output) ?? 0, 0, `${layoutId} の出力をトリガー扱いしない`);
+  }
+});
+
 test('指ごとの押下数はサンプル文の実測値と一致する', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   const qwerty = LAYOUTS_JA.find((l) => l.id === 'qwerty')!;

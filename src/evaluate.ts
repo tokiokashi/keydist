@@ -53,6 +53,8 @@ export interface Stroke {
   char: string;
   /** このステップに含まれるキー押下の帰属先。合成文字ではステップごとに異なりうる */
   layerId: string;
+  /** このステップで層操作として押したキー。出力キーとの色分けに使う */
+  triggerKeys: readonly string[];
   presses: Press[];
   /** ステップ内の押下距離の合計 [u] */
   distance: number;
@@ -163,9 +165,11 @@ export function evaluate(
     if (comboConditions.has(char)) comboHits.push(char);
 
     const stepLayerIds = layout.stepLayers?.get(char);
+    const stepTriggerKeys = layout.stepTriggerKeys?.get(char);
     for (const [stepIndex, step] of sequence.entries()) {
       const layerId = stepLayerIds?.[stepIndex] ??
         (comboConditions.has(char) ? COMBO_LAYER_ID : SINGLE_LAYER_ID);
+      const triggerKeys = [...new Set((stepTriggerKeys?.[stepIndex] ?? []).map(resolveKeyId))];
       const byFinger = new Map<Finger, Key[]>();
 
       for (const id of step) {
@@ -221,7 +225,7 @@ export function evaluate(
 
       // 指同士の姿勢は、対象キーを押した直後の状態として記録する
       const positions = snapshot(prev, last, index, geometry);
-      strokes.push({ index, char, layerId, presses, distance: total, positions });
+      strokes.push({ index, char, layerId, triggerKeys, presses, distance: total, positions });
       index++;
     }
   }
