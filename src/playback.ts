@@ -51,6 +51,31 @@ export function playbackRomajiPlan(
   };
 }
 
+/** カーソル以降の先読みステップについて、近さに応じた不透明度を返す。 */
+export function playbackPlannedKeys(
+  strokes: readonly Stroke[],
+  cursor: number,
+  lookahead = 5,
+): ReadonlyMap<string, number> {
+  const start = Math.min(Math.max(0, cursor), strokes.length);
+  const planned = new Map<string, number>();
+  const span = Math.floor(lookahead);
+  if (start >= strokes.length || span <= 0) return planned;
+
+  const finish = Math.min(strokes.length, start + span);
+  const actualSpan = finish - start;
+
+  for (let index = start; index < finish; index++) {
+    const opacity = (finish - index) / actualSpan;
+    for (const press of strokes[index].presses) {
+      for (const key of press.keys) {
+        planned.set(key.id, Math.max(planned.get(key.id) ?? 0, opacity));
+      }
+    }
+  }
+  return planned;
+}
+
 /** 直近tauステップの押下キーと、残留表示に使う不透明度を返す。 */
 export function playbackTrailKeys(
   strokes: readonly Stroke[],
