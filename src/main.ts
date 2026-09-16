@@ -42,7 +42,7 @@ import {
   advancePlayback,
   clampPlaybackCursor,
   createPlaybackState,
-  playbackArpeggioOrders,
+  playbackChainOrders,
   playbackFingerPositionKeys,
   playbackInputPreview,
   playbackPlannedKeys,
@@ -814,11 +814,11 @@ let playbackShowTrail = false;
 let playbackTrailTau = 5;
 let playbackShowOrderLabels = false;
 let playbackScale = 1.5;
-let playbackShowArpeggio = false;
-let playbackArpeggioIncludeSameFinger = false;
+let playbackShowChain = false;
+let playbackChainIncludeSameFinger = false;
 // レイヤーキーを指の連なりに数えるかは意見が割れるため切り替えられるようにする。
 // 親指は別ルールで常に除外されるので、ここが効くのは中指シフト等の配列
-let playbackArpeggioIncludeLayerKeys = true;
+let playbackChainIncludeLayerKeys = true;
 let playbackMotionCursor = -1;
 let playbackPanelOpen = false;
 
@@ -865,13 +865,13 @@ function updatePlaybackView() {
   const trailOrders = playbackShowOrderLabels && playbackShowTrail
     ? playbackTrailOrders(playbackTrace.strokes, cursor, playbackTrailTau)
     : new Map<string, number>();
-  const arpeggioOrders = playbackShowArpeggio
-    ? playbackArpeggioOrders(
+  const chainOrders = playbackShowChain
+    ? playbackChainOrders(
       playbackTrace.strokes,
       cursor,
-      playbackArpeggioIncludeSameFinger,
+      playbackChainIncludeSameFinger,
       undefined,
-      playbackArpeggioIncludeLayerKeys,
+      playbackChainIncludeLayerKeys,
     )
     : new Map<string, number>();
   const sameFingerMotions = playbackState.sameFingerDelay
@@ -880,12 +880,12 @@ function updatePlaybackView() {
   const sameFingerTargets = new Set(sameFingerMotions.flatMap((motion) => motion.toKeys));
   // 同指連続は同じ手でもあるため、両方を有効にすると同じキーへ2枚が重なる。
   // より具体的な同指側を優先し、片手連続はそれが拾わなかったキーだけを動かす。
-  const handMotions = (playbackShowArpeggio
+  const handMotions = (playbackShowChain
     ? playbackHandKeyMotions(
       playbackTrace.strokes,
       cursor,
-      playbackArpeggioIncludeSameFinger,
-      playbackArpeggioIncludeLayerKeys,
+      playbackChainIncludeSameFinger,
+      playbackChainIncludeLayerKeys,
     )
     : []
   ).flatMap((motion) => {
@@ -926,13 +926,13 @@ function updatePlaybackView() {
       trailOrderLabel.textContent = trailOrder === undefined ? '' : playbackOrderLabel(trailOrder);
       trailOrderLabel.setAttribute('visibility', trailOrder === undefined ? 'hidden' : 'visible');
     }
-    const arpeggioOrder = arpeggioOrders.get(id);
-    const arpeggioOrderLabel = key.querySelector<SVGTextElement>('[data-playback-order="arpeggio"]');
-    if (arpeggioOrderLabel) {
-      arpeggioOrderLabel.textContent = arpeggioOrder === undefined ? '' : String(arpeggioOrder);
-      arpeggioOrderLabel.setAttribute('visibility', arpeggioOrder === undefined ? 'hidden' : 'visible');
+    const chainOrder = chainOrders.get(id);
+    const chainOrderLabel = key.querySelector<SVGTextElement>('[data-playback-order="chain"]');
+    if (chainOrderLabel) {
+      chainOrderLabel.textContent = chainOrder === undefined ? '' : String(chainOrder);
+      chainOrderLabel.setAttribute('visibility', chainOrder === undefined ? 'hidden' : 'visible');
     }
-    key.dataset.playbackArpeggio = arpeggioOrder === undefined ? 'false' : 'true';
+    key.dataset.playbackChain = chainOrder === undefined ? 'false' : 'true';
     const label = key.querySelector<SVGTextElement>('[data-playback-label]');
     if (label) label.textContent = display?.keyLabels.get(id) ?? key.dataset.playbackBaseLabel ?? '';
   }
@@ -965,9 +965,9 @@ function updatePlaybackView() {
   const orderLabels = el.playback.querySelector<HTMLInputElement>('[data-playback-order-labels]');
   const scale = el.playback.querySelector<HTMLInputElement>('input[data-playback-scale]');
   const sameFingerDelay = el.playback.querySelector<HTMLInputElement>('[data-playback-sfb-delay]');
-  const arpeggio = el.playback.querySelector<HTMLInputElement>('[data-playback-arpeggio]');
-  const arpeggioSameFinger = el.playback.querySelector<HTMLInputElement>('[data-playback-arpeggio-sfb]');
-  const arpeggioLayerKeys = el.playback.querySelector<HTMLInputElement>('[data-playback-arpeggio-layer]');
+  const chain = el.playback.querySelector<HTMLInputElement>('[data-playback-chain]');
+  const chainSameFinger = el.playback.querySelector<HTMLInputElement>('[data-playback-chain-sfb]');
+  const chainLayerKeys = el.playback.querySelector<HTMLInputElement>('[data-playback-chain-layer]');
   const rate = el.playback.querySelector<HTMLInputElement>('input[data-playback-rate]');
   const effectiveRate = el.playback.querySelector<HTMLElement>('[data-playback-effective-rate]');
   const playbackWindow = el.playback.querySelector<HTMLOutputElement>('[data-playback-window]');
@@ -1033,14 +1033,14 @@ function updatePlaybackView() {
   if (orderLabels) orderLabels.checked = playbackShowOrderLabels;
   if (scale) scale.value = String(playbackScale);
   if (sameFingerDelay) sameFingerDelay.checked = playbackState.sameFingerDelay;
-  if (arpeggio) arpeggio.checked = playbackShowArpeggio;
-  if (arpeggioSameFinger) {
-    arpeggioSameFinger.checked = playbackArpeggioIncludeSameFinger;
-    arpeggioSameFinger.disabled = !playbackShowArpeggio;
+  if (chain) chain.checked = playbackShowChain;
+  if (chainSameFinger) {
+    chainSameFinger.checked = playbackChainIncludeSameFinger;
+    chainSameFinger.disabled = !playbackShowChain;
   }
-  if (arpeggioLayerKeys) {
-    arpeggioLayerKeys.checked = playbackArpeggioIncludeLayerKeys;
-    arpeggioLayerKeys.disabled = !playbackShowArpeggio;
+  if (chainLayerKeys) {
+    chainLayerKeys.checked = playbackChainIncludeLayerKeys;
+    chainLayerKeys.disabled = !playbackShowChain;
   }
   if (rate) rate.value = String(playbackState.stepsPerSecond);
   if (effectiveRate) {
@@ -1074,7 +1074,7 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
       <rect x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" stroke="var(--line)"/>
       <text class="playback-order playback-order-plan" data-playback-order="plan" x="${x + 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
       <text class="playback-order playback-order-trail" data-playback-order="trail" x="${x + width - 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
-      <text class="playback-order playback-order-arpeggio" data-playback-order="arpeggio" x="${x + width / 2}" y="${y + PLAYBACK_KEY - 5}" text-anchor="middle" visibility="hidden"> </text>
+      <text class="playback-order playback-order-chain" data-playback-order="chain" x="${x + width / 2}" y="${y + PLAYBACK_KEY - 5}" text-anchor="middle" visibility="hidden"> </text>
       <text class="playback-key-label" data-playback-label x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
     </g>`;
   });
@@ -1191,9 +1191,9 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${playbackTrailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${playbackShowOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
         <label class="playback-finger-toggle" title="1uの移動を通常の1アクション相当として同指連続の距離を再生時間へ反映"><input type="checkbox" data-playback-sfb-delay${playbackState.sameFingerDelay ? ' checked' : ''} />同指ディレイ</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${playbackShowArpeggio ? ' checked' : ''} />片手連続アニメーション</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio-sfb${playbackArpeggioIncludeSameFinger ? ' checked' : ''}${playbackShowArpeggio ? '' : ' disabled'} />同指連打も含める</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio-layer${playbackArpeggioIncludeLayerKeys ? ' checked' : ''}${playbackShowArpeggio ? '' : ' disabled'} />レイヤーキーも含める</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${playbackShowChain ? ' checked' : ''} />チェーン（片手の連続運指）</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-sfb${playbackChainIncludeSameFinger ? ' checked' : ''}${playbackShowChain ? '' : ' disabled'} />同指連打も含める</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-layer${playbackChainIncludeLayerKeys ? ' checked' : ''}${playbackShowChain ? '' : ' disabled'} />レイヤーキーも含める</label>
         <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${playbackScale}" aria-label="配列図の表示倍率" /> 倍</label>
       </div>
       <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
@@ -2323,21 +2323,21 @@ el.playback.addEventListener('change', (e) => {
     updatePlaybackView();
     return;
   }
-  const arpeggio = target.closest<HTMLInputElement>('[data-playback-arpeggio]');
-  if (arpeggio) {
-    playbackShowArpeggio = arpeggio.checked;
+  const chain = target.closest<HTMLInputElement>('[data-playback-chain]');
+  if (chain) {
+    playbackShowChain = chain.checked;
     updatePlaybackView();
     return;
   }
-  const arpeggioSameFinger = target.closest<HTMLInputElement>('[data-playback-arpeggio-sfb]');
-  if (arpeggioSameFinger) {
-    playbackArpeggioIncludeSameFinger = arpeggioSameFinger.checked;
+  const chainSameFinger = target.closest<HTMLInputElement>('[data-playback-chain-sfb]');
+  if (chainSameFinger) {
+    playbackChainIncludeSameFinger = chainSameFinger.checked;
     updatePlaybackView();
     return;
   }
-  const arpeggioLayerKeys = target.closest<HTMLInputElement>('[data-playback-arpeggio-layer]');
-  if (arpeggioLayerKeys) {
-    playbackArpeggioIncludeLayerKeys = arpeggioLayerKeys.checked;
+  const chainLayerKeys = target.closest<HTMLInputElement>('[data-playback-chain-layer]');
+  if (chainLayerKeys) {
+    playbackChainIncludeLayerKeys = chainLayerKeys.checked;
     // 移動の起点・終点が変わるため、同じカーソルでも描き直す
     playbackMotionCursor = -1;
     updatePlaybackView();
