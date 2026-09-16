@@ -195,6 +195,30 @@ test('同時押しと順次打鍵の差はステップ数に出る。押下数�
   near(b.totalUnits, a.totalUnits, 'total');
 });
 
+test('薙刀式のシフトは設定時に出力キーと反対側の親指へ振り替える', () => {
+  const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
+  const fixed = evaluate('おせ', naginata, geometry, opts());
+  const opposite = evaluate('おせ', naginata, geometry, opts({ preferOppositeThumb: true }));
+
+  assert.deepEqual(fixed.strokes[0].presses.find((press) => press.finger === 'RT')?.keys.map((key) => key.id), ['thumb-r']);
+  assert.deepEqual(fixed.strokes[1].presses.find((press) => press.finger === 'RT')?.keys.map((key) => key.id), ['thumb-r']);
+  assert.deepEqual(opposite.strokes[0].presses.find((press) => press.finger === 'LT')?.keys.map((key) => key.id), ['thumb-l']);
+  assert.deepEqual(opposite.strokes[1].presses.find((press) => press.finger === 'RT')?.keys.map((key) => key.id), ['thumb-r']);
+  assert.deepEqual(opposite.strokes[0].triggerKeys, ['thumb-l']);
+  assert.deepEqual(opposite.strokes[1].triggerKeys, ['thumb-r']);
+});
+
+test('薙刀式で同じ側のシフトが連続すると親指が残った扱いになる', () => {
+  const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
+  const trace = evaluate('おお', naginata, geometry, opts({ preferOppositeThumb: true }));
+  const thumbs = trace.strokes.map((stroke) => stroke.presses.find((press) => press.finger === 'LT'));
+
+  assert.equal(thumbs[0]?.keys[0].id, 'thumb-l');
+  assert.equal(thumbs[1]?.keys[0].id, 'thumb-l');
+  assert.equal(thumbs[1]?.gap, 0);
+  near(thumbs[1]?.distance ?? Infinity, 0, '連続する左親指シフト');
+});
+
 test('ステップ内の距離は各指の単純和になる', () => {
   // 左小指qと右小指pを同時に押す。どちらもホーム段から1行上
   const l = chord({ x: [['q', 'p']] });

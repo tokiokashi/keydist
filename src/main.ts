@@ -108,6 +108,7 @@ const el = {
   window: $<HTMLInputElement>('window'),
   windowOut: $<HTMLOutputElement>('window-out'),
   sfbHome: $<HTMLInputElement>('sfb-home'),
+  preferOppositeThumb: $<HTMLInputElement>('prefer-opposite-thumb'),
   sample: $<HTMLSelectElement>('sample'),
   text: $<HTMLTextAreaElement>('text'),
   textPanel: $<HTMLDetailsElement>('text-panel'),
@@ -1097,6 +1098,7 @@ function render() {
   const options: Options = {
     windowSize: Number(el.window.value),
     sfbHomeCost: el.sfbHome.checked,
+    preferOppositeThumb: el.preferOppositeThumb.checked,
   };
   const text = el.text.value;
   el.windowOut.value = el.window.value;
@@ -2186,7 +2188,17 @@ el.compareChartMetric.addEventListener('change', () => {
   compareChartColumn = Number(el.compareChartMetric.value);
   render();
 });
-for (const node of [el.mode, el.geometry, el.window, el.sfbHome, el.sample, el.text, el.detailLayout, el.compareBaseline]) {
+for (const node of [
+  el.mode,
+  el.geometry,
+  el.window,
+  el.sfbHome,
+  el.preferOppositeThumb,
+  el.sample,
+  el.text,
+  el.detailLayout,
+  el.compareBaseline,
+]) {
   node.addEventListener('input', render);
   node.addEventListener('change', render);
 }

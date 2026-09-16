@@ -15,13 +15,16 @@ export interface Options {
   /**
    * 同指連続（g=0）で打鍵先がその指のホームキー自身のとき、移動を加算するか。
    * falseにすると距離0として扱う。
-   */
+  */
   sfbHomeCost: boolean;
+  /** 親指シフトを出力キーと反対側の親指へ振り替えるか。 */
+  preferOppositeThumb?: boolean;
 }
 
 export const DEFAULT_OPTIONS: Options = {
   windowSize: 3,
   sfbHomeCost: true,
+  preferOppositeThumb: false,
 };
 
 /** 1ステップの中の1指分の押下 */
@@ -196,10 +199,16 @@ export function evaluate(
 
     const stepLayerIds = layout.stepLayers?.get(char);
     const stepTriggerKeys = layout.stepTriggerKeys?.get(char);
-    for (const [stepIndex, step] of sequence.entries()) {
+    for (const [stepIndex, originalStep] of sequence.entries()) {
+      const remapped = remapThumbShift(originalStep, layout, geometry, options);
+      const step = remapped.step;
       const layerId = stepLayerIds?.[stepIndex] ??
         (comboConditions.has(char) ? COMBO_LAYER_ID : SINGLE_LAYER_ID);
-      const triggerKeys = [...new Set((stepTriggerKeys?.[stepIndex] ?? []).map(resolveKeyId))];
+      const triggerKeys = remapThumbShiftKeys(
+        stepTriggerKeys?.[stepIndex] ?? [],
+        layout,
+        remapped.shiftKey,
+      );
       const layerTriggers = layerTriggerKeys.get(layerId) ?? new Set<string>();
       const pressedLayerTriggers = [...new Set(step.map(resolveKeyId))]
         .filter((key) => layerTriggers.has(key));
@@ -286,6 +295,55 @@ export function evaluate(
     layerDefinitions,
     errors,
   };
+}
+
+interface RemappedThumbShift {
+  step: string[];
+  shiftKey?: string;
+}
+
+/** 親指シフトの設定が有効なら、出力キーと反対側の親指へトリガーを振り替える。 */
+function remapThumbShift(
+  originalStep: readonly string[],
+  layout: Layout,
+  geometry: Geometry,
+  options: Options,
+): RemappedThumbShift {
+  const step = originalStep.map(resolveKeyId);
+  const configuredKey = layout.thumbShiftKey;
+  if (configuredKey === undefined) return { step };
+
+  const shiftKey = resolveKeyId(configuredKey);
+  if (!step.includes(shiftKey)) return { step };
+  if (!options.preferOppositeThumb) return { step, shiftKey };
+
+  const outputKeys = step.filter((key) => key !== shiftKey);
+  const outputHands = new Set(
+    outputKeys
+      .map((key) => geometry.keys.get(key)?.finger)
+      .filter((finger): finger is Finger => finger !== undefined && finger !== 'LT' && finger !== 'RT')
+      .map((finger) => finger.startsWith('L') ? 'left' : 'right'),
+  );
+  if (outputHands.size !== 1) return { step, shiftKey };
+
+  const outputHand = [...outputHands][0];
+  const oppositeThumb = outputHand === 'left' ? 'thumb-r' : 'thumb-l';
+  return {
+    step: step.map((key) => key === shiftKey ? oppositeThumb : key),
+    shiftKey: oppositeThumb,
+  };
+}
+
+function remapThumbShiftKeys(
+  triggerKeys: readonly string[],
+  layout: Layout,
+  shiftKey: string | undefined,
+): readonly string[] {
+  const configuredKey = layout.thumbShiftKey;
+  const resolvedConfiguredKey = configuredKey === undefined ? undefined : resolveKeyId(configuredKey);
+  return [...new Set(triggerKeys.map(resolveKeyId).map((key) =>
+    key === resolvedConfiguredKey ? shiftKey ?? key : key,
+  ))];
 }
 
 interface RomajiChunkRange {

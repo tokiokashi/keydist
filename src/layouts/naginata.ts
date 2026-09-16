@@ -95,4 +95,5 @@ export const NAGINATA_V18_FACES: Face[] = [
 ];
 
 export const NAGINATA_V18: Layout = fromFaces('naginata-v18', '薙刀式v18', NAGINATA_V18_FACES);
+NAGINATA_V18.thumbShiftKey = THUMB_KEY.RT;
 NAGINATA_V18.legends.set(THUMB_KEY.RT, 'Space');
