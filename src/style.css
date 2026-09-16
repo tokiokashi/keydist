@@ -406,14 +406,16 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 }
 .playback-current[hidden], .playback-romaji[hidden] { display: none !important; }
 .playback-typed {
+  position: relative;
   min-width: 0;
+  padding-right: 8ch;
   color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .playback-typed code { color: var(--fg); font-size: 0.9rem; }
-.playback-planned { margin-left: 8px; color: var(--series-3); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 400; }
+.playback-planned { position: absolute; inset-inline-start: 10ch; inset-inline-end: 0; color: var(--series-3); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .playback-attribution { grid-column: 3; white-space: nowrap; }
 .playback-effective-rate { margin-left: auto; color: var(--muted); white-space: nowrap; }
 .playback-status b { color: var(--fg); font-weight: 600; }
