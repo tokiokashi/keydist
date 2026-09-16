@@ -26,6 +26,27 @@ export interface PlaybackStrokeDisplay {
   keyLabels: ReadonlyMap<string, string>;
 }
 
+/** 現在のステップより前に入力し終えた単位を、直近から指定数だけ返す。 */
+export function playbackCompletedInputs(
+  strokes: readonly Stroke[],
+  cursor: number,
+  limit = 10,
+): string[] {
+  const end = Math.min(Math.max(0, cursor), strokes.length);
+  if (end === 0 || limit <= 0) return [];
+  const currentInputIndex = strokes[end - 1].inputIndex;
+  const completed: string[] = [];
+
+  for (let at = 0; at < end; ) {
+    const inputIndex = strokes[at].inputIndex;
+    let next = at + 1;
+    while (next < strokes.length && strokes[next].inputIndex === inputIndex) next++;
+    if (next <= end && inputIndex !== currentInputIndex) completed.push(strokes[at].inputChar);
+    at = next;
+  }
+  return completed.slice(-limit);
+}
+
 /** 面定義と実際の押下から、再生中に表示する文字と刻印を引く。 */
 export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackStrokeDisplay {
   if (layout.romajiTable || !layout.faces || !layout.faceLayerIds) {

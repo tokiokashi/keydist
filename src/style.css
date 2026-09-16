@@ -295,15 +295,26 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
    （縮めると枚ごとに縮み率が変わってセルの大きさが揃わない） */
 .fig-fixed { overflow-x: auto; }
 .fig-fixed svg { width: auto; max-width: none; }
+.playback-panel { margin-top: 10px; border-top: 1px solid var(--line); }
+.playback-panel > summary {
+  padding: 8px 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.playback-panel > summary::-webkit-details-marker { display: none; }
+.playback-panel > summary::before { content: '＋ '; }
+.playback-panel[open] > summary::before { content: '− '; }
+.playback-panel[open] > summary { margin-bottom: 10px; }
 .playback-head {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   margin-bottom: 10px;
 }
-.playback-head h3 { margin: 0; }
-.playback-head .note { margin: 2px 0 0; }
 .playback-finger-toggle {
   display: flex;
   align-items: center;
@@ -348,13 +359,15 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-seek span { flex: none; }
 .playback-seek input { min-width: 120px; }
 .playback-status {
+  margin: 5px 0 10px;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+.playback-status-line {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 4px 14px;
-  margin: 5px 0 10px;
-  color: var(--muted);
-  font-size: 0.76rem;
 }
 .playback-current {
   color: var(--fg);
@@ -367,6 +380,13 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-typed code { color: var(--fg); font-size: 0.9rem; }
 .playback-attribution { white-space: nowrap; }
 .playback-status b { color: var(--fg); font-weight: 600; }
+.playback-history {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+}
+.playback-history-label { margin-right: 6px; letter-spacing: normal; }
 .playback-figure { border-top: 1px solid var(--line); padding-top: 10px; }
 .playback-figure svg { max-width: none; }
 .playback-finger circle { fill: var(--panel); stroke: var(--series-7); stroke-width: 1.5; }

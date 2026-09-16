@@ -40,6 +40,7 @@ import {
   advancePlayback,
   clampPlaybackCursor,
   createPlaybackState,
+  playbackCompletedInputs,
   playbackStrokeAt,
   setPlaybackSpeed,
   stepPlayback,
@@ -834,6 +835,8 @@ function updatePlaybackView() {
   const romaji = el.playback.querySelector<HTMLElement>('[data-playback-romaji]');
   const kana = el.playback.querySelector<HTMLElement>('[data-playback-kana]');
   const typed = el.playback.querySelector<HTMLElement>('[data-playback-typed]');
+  const history = el.playback.querySelector<HTMLElement>('[data-playback-history]');
+  const historyText = el.playback.querySelector<HTMLElement>('[data-playback-history-text]');
   const layer = el.playback.querySelector<HTMLElement>('[data-playback-layer]');
   const seek = el.playback.querySelector<HTMLInputElement>('[data-playback-seek]');
   const toggle = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="toggle"]');
@@ -852,6 +855,9 @@ function updatePlaybackView() {
   if (romaji) romaji.hidden = !isRomaji;
   if (kana) kana.textContent = stroke?.inputChar ?? '—';
   if (typed) typed.textContent = stroke?.char ?? '—';
+  const completedInputs = playbackCompletedInputs(playbackTrace.strokes, cursor);
+  if (history) history.hidden = completedInputs.length === 0;
+  if (historyText) historyText.textContent = completedInputs.join('');
   if (layer) layer.textContent = playbackLayerLabel(playbackTrace, stroke);
   if (seek) seek.value = String(cursor);
   if (toggle) {
@@ -903,27 +909,35 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
   const speeds = PLAYBACK_SPEEDS.map((speed) =>
     `<option value="${speed}"${speed === playbackState.speed ? ' selected' : ''}>${speed}x</option>`,
   ).join('');
-  el.playback.innerHTML = `<div class="playback-head">
-      <div>
-        <h3>打鍵再生</h3>
-        <p class="note">1 ステップを同じ表示時間で再生する。配列ごとの速度差は付けない。</p>
+  el.playback.innerHTML = `<details class="playback-panel">
+    <summary>打鍵再生</summary>
+    <div class="playback-body">
+      <div class="playback-head">
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${playbackShowFingers ? ' checked' : ''} />指の位置を表示</label>
       </div>
-      <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${playbackShowFingers ? ' checked' : ''} />指の位置を表示</label>
+      <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
+        <button type="button" class="ghost" data-playback-action="back">1 ステップ戻る</button>
+        <button type="button" data-playback-action="toggle" aria-label="再生する">再生</button>
+        <button type="button" class="secondary" data-playback-action="stop" disabled>停止</button>
+        <button type="button" class="ghost" data-playback-action="forward">1 ステップ進む</button>
+        <span class="playback-position" aria-live="polite" data-playback-position>0 / ${trace.strokes.length} ステップ</span>
+        <label class="playback-speed"><span>速度</span><select data-playback-speed>${speeds}</select></label>
+      </div>
+      <label class="playback-seek"><span>再生位置</span><input type="range" data-playback-seek min="0" max="${trace.strokes.length}" step="1" value="0" /></label>
+      <div class="playback-status" aria-live="polite">
+        <div class="playback-status-line">
+          <span class="playback-current" data-playback-current>—</span>
+          <span class="playback-romaji" data-playback-romaji hidden><span class="playback-current" data-playback-kana>—</span><span class="playback-typed">打鍵: <code data-playback-typed>—</code></span></span>
+          <span class="playback-attribution">帰属: <b data-playback-layer>開始前</b></span>
+        </div>
+        <div class="playback-history" data-playback-history hidden>
+          <span class="playback-history-label">入力済み:</span>
+          <span data-playback-history-text></span>
+        </div>
+      </div>
+      <div class="fig-fixed playback-figure">${renderPlaybackSvg(layout, geometry)}</div>
     </div>
-    <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
-      <button type="button" class="ghost" data-playback-action="back">1 ステップ戻る</button>
-      <button type="button" data-playback-action="toggle" aria-label="再生する">再生</button>
-      <button type="button" class="secondary" data-playback-action="stop" disabled>停止</button>
-      <button type="button" class="ghost" data-playback-action="forward">1 ステップ進む</button>
-      <span class="playback-position" aria-live="polite" data-playback-position>0 / ${trace.strokes.length} ステップ</span>
-      <label class="playback-speed"><span>速度</span><select data-playback-speed>${speeds}</select></label>
-    </div>
-    <label class="playback-seek"><span>再生位置</span><input type="range" data-playback-seek min="0" max="${trace.strokes.length}" step="1" value="0" /></label>
-    <p class="playback-status" aria-live="polite">
-      <span class="playback-current" data-playback-current>—</span>
-      <span class="playback-romaji" data-playback-romaji hidden><span class="playback-current" data-playback-kana>—</span><span class="playback-typed">打鍵: <code data-playback-typed>—</code></span></span>
-      <span class="playback-attribution">帰属: <b data-playback-layer>開始前</b></span></p>
-    <div class="fig-fixed playback-figure">${renderPlaybackSvg(layout, geometry)}</div>`;
+  </details>`;
   updatePlaybackView();
 }
 

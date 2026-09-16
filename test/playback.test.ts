@@ -4,6 +4,7 @@ import {
   advancePlayback,
   clampPlaybackCursor,
   createPlaybackState,
+  playbackCompletedInputs,
   playbackStrokeDisplay,
   playbackStrokeAt,
   setPlaybackSpeed,
@@ -58,6 +59,21 @@ test('表示する打鍵はカーソル 1 から直前の stroke を返す', () 
   assert.equal(playbackStrokeAt(strokes, 0), undefined);
   assert.equal(playbackStrokeAt(strokes, 1)?.char, 'あ');
   assert.equal(playbackStrokeAt(strokes, 2)?.char, 'い');
+});
+
+test('入力履歴は現在の入力単位を除き、複数ステップを一文字にまとめる', () => {
+  const strokes = [
+    { inputIndex: 0, inputChar: 'あ' },
+    { inputIndex: 1, inputChar: 'が' },
+    { inputIndex: 1, inputChar: 'が' },
+    { inputIndex: 2, inputChar: 'ぬ' },
+    { inputIndex: 3, inputChar: 'あ' },
+    { inputIndex: 4, inputChar: 'あ' },
+  ] as never[];
+
+  assert.deepEqual(playbackCompletedInputs(strokes, 3), ['あ']);
+  assert.deepEqual(playbackCompletedInputs(strokes, 4), ['あ', 'が']);
+  assert.deepEqual(playbackCompletedInputs(strokes, 6), ['あ', 'が', 'ぬ', 'あ']);
 });
 
 test('レイヤー再生はシフトと出力キーの刻印を現在の面から引く', () => {
