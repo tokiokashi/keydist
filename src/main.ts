@@ -1097,8 +1097,24 @@ function renderPlaybackMotions(
       animation.setAttribute('to', 'translate(0 0)');
       animation.setAttribute('dur', `${durationMs}ms`);
       animation.setAttribute('fill', 'freeze');
+      // begin既定値の0sはDOM挿入時ではなくSVGドキュメントのタイムライン基準の0秒を指す。
+      // 再生パネルのSVGは描画時点からタイムラインが進み続けているため、
+      // 再生が進んだ後にクローンを挿入するとbegin=0sは既に過去になっており、
+      // fill="freeze"によって終了状態（translate(0 0)）へ張り付いた状態で出現してしまう。
+      // indefiniteにして挿入後にbeginElement()を呼び、挿入時点を起点に明示的に開始させる。
+      animation.setAttribute('begin', 'indefinite');
       clone.append(animation);
       layer.append(clone);
+      // SMIL未対応環境ではbeginElementが存在しない、または呼び出しが例外を投げうる。
+      // アニメーションが始まらないだけに留め、再生全体を壊さないようtry/catchで防御する。
+      const animatable = animation as SVGAnimationElement & { beginElement?: () => void };
+      if (typeof animatable.beginElement === 'function') {
+        try {
+          animatable.beginElement();
+        } catch {
+          // 無視する: begin=0sのままアニメーションが動かないだけで、再生自体は継続する
+        }
+      }
     }
   }
 }
