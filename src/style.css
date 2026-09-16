@@ -295,6 +295,70 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
    （縮めると枚ごとに縮み率が変わってセルの大きさが揃わない） */
 .fig-fixed { overflow-x: auto; }
 .fig-fixed svg { width: auto; max-width: none; }
+.playback-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.playback-head h3 { margin: 0; }
+.playback-head .note { margin: 2px 0 0; }
+.playback-finger-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  color: var(--muted);
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+.playback-finger-toggle input { margin: 0; }
+.playback-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.playback-controls button { padding: 4px 9px; font-size: 0.76rem; }
+.playback-speed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+.playback-speed select { width: auto; padding: 3px 6px; font-size: 0.76rem; }
+.playback-seek {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+.playback-seek span { flex: none; }
+.playback-seek input { min-width: 120px; }
+.playback-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 5px 0 10px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+.playback-status b { color: var(--fg); font-weight: 600; }
+.playback-figure { border-top: 1px solid var(--line); padding-top: 10px; }
+.playback-figure svg { max-width: none; }
+.playback-finger circle { fill: var(--panel); stroke: var(--series-7); stroke-width: 1.5; }
+.playback-finger[data-playback-finger^='L'] circle { stroke: var(--series-1); }
+.playback-finger text { fill: var(--fg); font-size: 6px; font-weight: 700; }
+.playback-figure [data-playback-active='true'] rect { fill: var(--accent); stroke: var(--accent); }
+.playback-figure [data-playback-active='true'] text { fill: #fff; }
+.playback-figure [data-playback-trigger='true'] rect { stroke: var(--series-4); stroke-width: 3; }
+button:disabled { cursor: not-allowed; opacity: 0.45; }
 .layer-view-controls, .layer-tabs { display: flex; align-items: center; gap: 6px; margin: 0 0 10px; }
 .layer-view-controls > span { margin-right: 4px; color: var(--muted); font-size: 0.76rem; }
 .layer-view-controls .ghost[aria-pressed="true"], .layer-tabs .ghost[aria-selected="true"] {
