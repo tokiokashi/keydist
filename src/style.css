@@ -457,15 +457,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 }
 .playback-order-plan { fill: var(--series-6); }
 .playback-order-trail { fill: var(--accent); }
-.playback-order-arpeggio { fill: var(--series-2); font-size: 10px; font-weight: 700; }
-.playback-figure [data-playback-arpeggio='true'] rect {
-  animation: playback-arpeggio-pulse 900ms ease-in-out infinite;
-  animation-delay: var(--playback-arpeggio-delay, 0ms);
-}
-@keyframes playback-arpeggio-pulse {
-  0%, 100% { stroke-width: 1; }
-  45% { stroke: var(--series-2); stroke-width: 3; }
-}
+.playback-order-chain { fill: var(--series-2); font-size: 10px; font-weight: 700; }
 .playback-figure [data-playback-motion-key] rect { fill: var(--accent); stroke: var(--accent); }
 .playback-figure [data-playback-motion-key] text { fill: #fff; }
 .playback-figure [data-playback-active='true'] rect { fill: var(--accent); stroke: var(--accent); }

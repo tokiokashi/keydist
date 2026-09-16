@@ -42,7 +42,7 @@ import {
   advancePlayback,
   clampPlaybackCursor,
   createPlaybackState,
-  playbackArpeggioOrders,
+  playbackChainOrders,
   playbackFingerPositionKeys,
   playbackInputPreview,
   playbackPlannedKeys,
@@ -52,6 +52,7 @@ import {
   playbackRomajiPlannedOrders,
   playbackOrderLabel,
   playbackRecentActionsPerSecond,
+  playbackHandKeyMotions,
   playbackSameFingerKeyMotions,
   playbackStrokeAt,
   playbackStrokeDurationMs,
@@ -847,8 +848,11 @@ let playbackShowTrail = false;
 let playbackTrailTau = 5;
 let playbackShowOrderLabels = false;
 let playbackScale = 1.5;
-let playbackShowArpeggio = false;
-let playbackArpeggioIncludeSameFinger = false;
+let playbackShowChain = false;
+let playbackChainIncludeSameFinger = false;
+// レイヤーキーを指の連なりに数えるかは意見が割れるため切り替えられるようにする。
+// 親指は別ルールで常に除外されるので、ここが効くのは中指シフト等の配列
+let playbackChainIncludeLayerKeys = true;
 let playbackMotionCursor = -1;
 let playbackPanelOpen = false;
 
@@ -1074,22 +1078,41 @@ function updatePlaybackView() {
   const trailOrders = playbackShowOrderLabels && playbackShowTrail
     ? playbackTrailOrders(playbackTrace.strokes, cursor, playbackTrailTau)
     : new Map<string, number>();
-  const arpeggioOrders = playbackShowArpeggio
-    ? playbackArpeggioOrders(
+  const chainOrders = playbackShowChain
+    ? playbackChainOrders(
       playbackTrace.strokes,
       cursor,
-      playbackArpeggioIncludeSameFinger,
+      playbackChainIncludeSameFinger,
+      undefined,
+      playbackChainIncludeLayerKeys,
     )
     : new Map<string, number>();
-  const motions = playbackState.sameFingerDelay
+  const sameFingerMotions = playbackState.sameFingerDelay
     ? playbackSameFingerKeyMotions(playbackTrace.strokes, cursor)
     : [];
+  const sameFingerTargets = new Set(sameFingerMotions.flatMap((motion) => motion.toKeys));
+  // 同指連続は同じ手でもあるため、両方を有効にすると同じキーへ2枚が重なる。
+  // より具体的な同指側を優先し、片手連続はそれが拾わなかったキーだけを動かす。
+  const handMotions = (playbackShowChain
+    ? playbackHandKeyMotions(
+      playbackTrace.strokes,
+      cursor,
+      playbackChainIncludeSameFinger,
+      playbackChainIncludeLayerKeys,
+    )
+    : []
+  ).flatMap((motion) => {
+    const toKeys = motion.toKeys.filter((key) => !sameFingerTargets.has(key));
+    return toKeys.length === 0 ? [] : [{ ...motion, toKeys }];
+  });
+  // 起点と終点が同じキーなら動きが無く、クローンは描かれない。それでも
+  // animatedKeys に入れてしまうと打鍵中の塗りだけが抑止されて空白になる。
+  // 面が違えば同じ物理キーに別のかなが乗るため、かな配列では普通に起きる。
+  const motions = [...sameFingerMotions, ...handMotions].flatMap((motion) => {
+    const toKeys = motion.toKeys.filter((key) => key !== motion.fromKey);
+    return toKeys.length === 0 ? [] : [{ ...motion, toKeys }];
+  });
   const animatedKeys = new Set(motions.flatMap((motion) => motion.toKeys));
-
-  if (cursor !== playbackMotionCursor) {
-    renderPlaybackMotions(motions, cursor, stroke);
-    playbackMotionCursor = cursor;
-  }
 
   for (const key of el.playback.querySelectorAll<SVGGElement>('[data-playback-key]')) {
     const id = key.dataset.playbackKey!;
@@ -1116,17 +1139,22 @@ function updatePlaybackView() {
       trailOrderLabel.textContent = trailOrder === undefined ? '' : playbackOrderLabel(trailOrder);
       trailOrderLabel.setAttribute('visibility', trailOrder === undefined ? 'hidden' : 'visible');
     }
-    const arpeggioOrder = arpeggioOrders.get(id);
-    const arpeggioOrderLabel = key.querySelector<SVGTextElement>('[data-playback-order="arpeggio"]');
-    if (arpeggioOrderLabel) {
-      arpeggioOrderLabel.textContent = arpeggioOrder === undefined ? '' : String(arpeggioOrder);
-      arpeggioOrderLabel.setAttribute('visibility', arpeggioOrder === undefined ? 'hidden' : 'visible');
+    const chainOrder = chainOrders.get(id);
+    const chainOrderLabel = key.querySelector<SVGTextElement>('[data-playback-order="chain"]');
+    if (chainOrderLabel) {
+      chainOrderLabel.textContent = chainOrder === undefined ? '' : String(chainOrder);
+      chainOrderLabel.setAttribute('visibility', chainOrder === undefined ? 'hidden' : 'visible');
     }
-    key.dataset.playbackArpeggio = arpeggioOrder === undefined ? 'false' : 'true';
-    if (arpeggioOrder === undefined) key.style.removeProperty('--playback-arpeggio-delay');
-    else key.style.setProperty('--playback-arpeggio-delay', `${(arpeggioOrder - 1) * 90}ms`);
+    key.dataset.playbackChain = chainOrder === undefined ? 'false' : 'true';
     const label = key.querySelector<SVGTextElement>('[data-playback-label]');
     if (label) label.textContent = display?.keyLabels.get(id) ?? key.dataset.playbackBaseLabel ?? '';
+  }
+
+  // クローンは cloneNode で盤面のキーを丸ごと写すため、刻印を今のステップへ
+  // 更新し終えてから作る。先に作ると前のレイヤーの文字を持ったまま移動する。
+  if (cursor !== playbackMotionCursor) {
+    renderPlaybackMotions(motions, cursor, stroke);
+    playbackMotionCursor = cursor;
   }
 
   const position = el.playback.querySelector<HTMLElement>('[data-playback-position]');
@@ -1150,8 +1178,9 @@ function updatePlaybackView() {
   const orderLabels = el.playback.querySelector<HTMLInputElement>('[data-playback-order-labels]');
   const scale = el.playback.querySelector<HTMLInputElement>('input[data-playback-scale]');
   const sameFingerDelay = el.playback.querySelector<HTMLInputElement>('[data-playback-sfb-delay]');
-  const arpeggio = el.playback.querySelector<HTMLInputElement>('[data-playback-arpeggio]');
-  const arpeggioSameFinger = el.playback.querySelector<HTMLInputElement>('[data-playback-arpeggio-sfb]');
+  const chain = el.playback.querySelector<HTMLInputElement>('[data-playback-chain]');
+  const chainSameFinger = el.playback.querySelector<HTMLInputElement>('[data-playback-chain-sfb]');
+  const chainLayerKeys = el.playback.querySelector<HTMLInputElement>('[data-playback-chain-layer]');
   const calibration = el.playback.querySelector<HTMLInputElement>('[data-playback-calibration]');
   const calibrationButton = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="calibration"]');
   const rate = el.playback.querySelector<HTMLInputElement>('input[data-playback-rate]');
@@ -1219,10 +1248,14 @@ function updatePlaybackView() {
   if (orderLabels) orderLabels.checked = playbackShowOrderLabels;
   if (scale) scale.value = String(playbackScale);
   if (sameFingerDelay) sameFingerDelay.checked = playbackState.sameFingerDelay;
-  if (arpeggio) arpeggio.checked = playbackShowArpeggio;
-  if (arpeggioSameFinger) {
-    arpeggioSameFinger.checked = playbackArpeggioIncludeSameFinger;
-    arpeggioSameFinger.disabled = !playbackShowArpeggio;
+  if (chain) chain.checked = playbackShowChain;
+  if (chainSameFinger) {
+    chainSameFinger.checked = playbackChainIncludeSameFinger;
+    chainSameFinger.disabled = !playbackShowChain;
+  }
+  if (chainLayerKeys) {
+    chainLayerKeys.checked = playbackChainIncludeLayerKeys;
+    chainLayerKeys.disabled = !playbackShowChain;
   }
   if (calibration) {
     calibration.checked = playbackUseCalibration;
@@ -1263,7 +1296,7 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
       <rect x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" stroke="var(--line)"/>
       <text class="playback-order playback-order-plan" data-playback-order="plan" x="${x + 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
       <text class="playback-order playback-order-trail" data-playback-order="trail" x="${x + width - 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
-      <text class="playback-order playback-order-arpeggio" data-playback-order="arpeggio" x="${x + width / 2}" y="${y + PLAYBACK_KEY - 5}" text-anchor="middle" visibility="hidden"> </text>
+      <text class="playback-order playback-order-chain" data-playback-order="chain" x="${x + width / 2}" y="${y + PLAYBACK_KEY - 5}" text-anchor="middle" visibility="hidden"> </text>
       <text class="playback-key-label" data-playback-label x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
     </g>`;
   });
@@ -1291,7 +1324,12 @@ function renderPlaybackMotions(
   }
   const durationMs = Math.max(
     150,
-    Math.min(1500, playbackStrokeDurationMs(stroke, playbackState.stepsPerSecond, true, playbackState.calibration)),
+    Math.min(1500, playbackStrokeDurationMs(
+      stroke,
+      playbackState.stepsPerSecond,
+      playbackState.sameFingerDelay,
+      playbackState.calibration,
+    )),
   );
   let motionIndex = 0;
   for (const motion of motions) {
@@ -1315,12 +1353,36 @@ function renderPlaybackMotions(
       const animation = document.createElementNS(SVG_NS, 'animateTransform');
       animation.setAttribute('attributeName', 'transform');
       animation.setAttribute('type', 'translate');
-      animation.setAttribute('from', `translate(${dx} ${dy})`);
-      animation.setAttribute('to', 'translate(0 0)');
+      // animateTransform の from/to は type で指定した変換関数の「引数だけ」を書く。
+      // translate(...) と関数名を付けると不正値として無視され、静的な transform 属性
+      // （＝移動元）が残ったままアニメーションが一切適用されない。
+      animation.setAttribute('from', `${dx} ${dy}`);
+      animation.setAttribute('to', '0 0');
       animation.setAttribute('dur', `${durationMs}ms`);
       animation.setAttribute('fill', 'freeze');
+      // begin既定値の0sはDOM挿入時ではなくSVGドキュメントのタイムライン基準の0秒を指す。
+      // 再生パネルのSVGは描画時点からタイムラインが進み続けているため、
+      // 再生が進んだ後にクローンを挿入するとbegin=0sは既に過去になっており、
+      // fill="freeze"によって終了状態（translate(0 0)）へ張り付いた状態で出現してしまう。
+      // indefiniteにして挿入後にbeginElement()を呼び、挿入時点を起点に明示的に開始させる。
+      animation.setAttribute('begin', 'indefinite');
       clone.append(animation);
       layer.append(clone);
+      // SMIL未対応環境ではbeginElementが存在しない、または呼び出しが例外を投げうる。
+      // アニメーションが始まらないだけに留め、再生全体を壊さないようtry/catchで防御する。
+      const animatable = animation as SVGAnimationElement & { beginElement?: () => void };
+      let started = false;
+      if (typeof animatable.beginElement === 'function') {
+        try {
+          animatable.beginElement();
+          started = true;
+        } catch {
+          started = false;
+        }
+      }
+      // 開始できなければ begin='indefinite' のまま永久に走らないため、クローンは
+      // 移動元の位置に幽霊として残る。表示しない方が縮退として素直なので捨てる。
+      if (!started) clone.remove();
     }
   }
 }
@@ -1361,8 +1423,9 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${playbackShowOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
         <label class="playback-finger-toggle" title="1uの移動を通常の1アクション相当として同指連続の距離を再生時間へ反映"><input type="checkbox" data-playback-sfb-delay${playbackState.sameFingerDelay ? ' checked' : ''} />同指ディレイ</label>
         <label class="playback-finger-toggle" title="キャリブレーションした通常打鍵速度と指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${playbackUseCalibration ? ' checked' : ''}${playbackCalibration ? '' : ' disabled'} />個人速度を使う</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${playbackShowArpeggio ? ' checked' : ''} />片手連続アニメーション</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio-sfb${playbackArpeggioIncludeSameFinger ? ' checked' : ''}${playbackShowArpeggio ? '' : ' disabled'} />同指連打も含める</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${playbackShowChain ? ' checked' : ''} />チェーン（片手の連続運指）</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-sfb${playbackChainIncludeSameFinger ? ' checked' : ''}${playbackShowChain ? '' : ' disabled'} />同指連打も含める</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-layer${playbackChainIncludeLayerKeys ? ' checked' : ''}${playbackShowChain ? '' : ' disabled'} />レイヤーキーも含める</label>
         <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${playbackScale}" aria-label="配列図の表示倍率" /> 倍</label>
       </div>
       <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
@@ -2501,15 +2564,23 @@ el.playback.addEventListener('change', (e) => {
     updatePlaybackView();
     return;
   }
-  const arpeggio = target.closest<HTMLInputElement>('[data-playback-arpeggio]');
-  if (arpeggio) {
-    playbackShowArpeggio = arpeggio.checked;
+  const chain = target.closest<HTMLInputElement>('[data-playback-chain]');
+  if (chain) {
+    playbackShowChain = chain.checked;
     updatePlaybackView();
     return;
   }
-  const arpeggioSameFinger = target.closest<HTMLInputElement>('[data-playback-arpeggio-sfb]');
-  if (arpeggioSameFinger) {
-    playbackArpeggioIncludeSameFinger = arpeggioSameFinger.checked;
+  const chainSameFinger = target.closest<HTMLInputElement>('[data-playback-chain-sfb]');
+  if (chainSameFinger) {
+    playbackChainIncludeSameFinger = chainSameFinger.checked;
+    updatePlaybackView();
+    return;
+  }
+  const chainLayerKeys = target.closest<HTMLInputElement>('[data-playback-chain-layer]');
+  if (chainLayerKeys) {
+    playbackChainIncludeLayerKeys = chainLayerKeys.checked;
+    // 移動の起点・終点が変わるため、同じカーソルでも描き直す
+    playbackMotionCursor = -1;
     updatePlaybackView();
     return;
   }
