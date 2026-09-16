@@ -50,13 +50,13 @@ export interface LayerStat {
 export interface Metrics {
   /**
    * 使用した物理形状のidと名前。形状が変わると距離の絶対値が変わるため、
-   * 配列間の比較はここが揃っている場合のみ成立する（仕様 §3）。
+   * どの形状で測ったかを数値と一緒に運ぶ（仕様 §3・§12.3）。
    */
   geometryId: string;
   geometryName: string;
   /**
    * 使用した指割り当てのidと名前。割り当てが変わると同指連続の数も距離も変わるため、
-   * 配列間の比較はここが揃っている場合のみ成立する（仕様 §4.2）。
+   * どの割り当てで測ったかを数値と一緒に運ぶ（仕様 §4.2・§12.3）。
    */
   fingerAssignmentId: string;
   fingerAssignmentName: string;
