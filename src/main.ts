@@ -1540,7 +1540,7 @@ function renderLayerStats(
       `<td class="num">${total ? ((metrics.comboPresses / total) * 100).toFixed(1) : '0.0'}%</td></tr>`
     : '';
   return `<details class="layer-stats collapsible-list">
-    <summary>帰属先（${entries.length + (hasCombos ? 1 : 0)}）</summary>
+    <summary>レイヤー比率</summary>
     <div class="scroll-x"><table><thead><tr><th>帰属先</th><th>押下数</th><th>割合</th></tr></thead>
     <tbody>${rows}${comboRow}</tbody></table></div>
     <p class="note">層とコンボの押下数の合計: ${metrics.layers.reduce((sum, stat) => sum + stat.presses, 0) + metrics.comboPresses} / 総押下数: ${metrics.presses}</p>
