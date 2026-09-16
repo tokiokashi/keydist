@@ -376,22 +376,34 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   font-size: 0.76rem;
 }
 .playback-status-line {
-  display: flex;
+  display: grid;
+  grid-template-columns: 5em 18ch max-content;
   align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 14px;
+  column-gap: 14px;
 }
 .playback-current {
+  display: inline-block;
   color: var(--fg);
   font-size: 1.45rem;
   font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   line-height: 1.1;
 }
-.playback-romaji { display: inline-flex; align-items: baseline; gap: 10px; }
+.playback-romaji {
+  display: grid;
+  grid-column: 1 / span 2;
+  grid-template-columns: 5em 18ch;
+  align-items: baseline;
+  column-gap: 14px;
+}
 .playback-current[hidden], .playback-romaji[hidden], .playback-history[hidden] { display: none !important; }
-.playback-typed { color: var(--muted); }
+.playback-typed {
+  min-width: 0;
+  color: var(--muted);
+  white-space: nowrap;
+}
 .playback-typed code { color: var(--fg); font-size: 0.9rem; }
-.playback-attribution { white-space: nowrap; }
+.playback-attribution { grid-column: 3; white-space: nowrap; }
 .playback-status b { color: var(--fg); font-weight: 600; }
 .playback-history {
   margin-top: 4px;
