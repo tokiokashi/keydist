@@ -35,6 +35,7 @@ import { kunrei } from '../src/romaji/kunrei.ts';
 import {
   actionsPerSecondFromIntervals,
   calibrationActionPair,
+  calibrationEligibleKeyIds,
   calibrationKeyMatches,
   calibrationKeyPairs,
   calibrationSameHandPairs,
@@ -200,14 +201,32 @@ test('キャリブレーションの保存値は壊れたJSONを無視する', (
   assert.equal(loadPlaybackCalibration(storage), undefined);
 });
 
-test('キャリブレーションの指ペアは数字段を避けてホームから最遠のキーを選ぶ', () => {
+test('キャリブレーションの指ペアはホーム段と下段で揃える', () => {
   const geometry = buildGeometry('row-staggered');
   const pairs = calibrationKeyPairs(geometry);
   assert.equal(pairs.length, 8);
   assert.deepEqual(calibrationActionPair(geometry), ['f', 'j']);
   assert.equal(pairs.find((pair) => pair.finger === 'LI')?.fromKey, 'f');
   assert.equal(pairs.find((pair) => pair.finger === 'LI')?.toKey, 'b');
-  assert.equal(pairs.every((pair) => geometry.keys.get(pair.toKey)?.row !== 0), true);
+  assert.equal(pairs.every((pair) => geometry.keys.get(pair.toKey)?.row === 3), true);
+});
+
+test('キャリブレーションは選択配列の文字と句読点だけを候補にする', () => {
+  const geometry = buildGeometry('row-staggered');
+  const legends = new Map([...geometry.keys.values()].map((key) => [key.id, key.id]));
+  const eligibleKeyIds = calibrationEligibleKeyIds(geometry, legends);
+  const pairs = calibrationKeyPairs(geometry, eligibleKeyIds);
+  const sameHandPairs = calibrationSameHandPairs(geometry, eligibleKeyIds);
+
+  assert.equal(pairs.length, 8);
+  assert.equal(eligibleKeyIds.has('1'), false);
+  assert.equal(eligibleKeyIds.has(';'), true);
+  assert.equal(eligibleKeyIds.has(','), true);
+  assert.equal(eligibleKeyIds.has('.'), true);
+  assert.equal(eligibleKeyIds.has('/'), true);
+  assert.equal(pairs.find((pair) => pair.finger === 'RP')?.toKey, '/');
+  assert.equal(pairs.every((pair) => eligibleKeyIds.has(pair.fromKey) && eligibleKeyIds.has(pair.toKey)), true);
+  assert.deepEqual(sameHandPairs.slice(6), [['j', 'k'], ['j', 'l'], ['j', ';'], ['k', 'l'], ['k', ';'], ['l', ';']]);
 });
 
 test('同手の別指測定は隣接以外も含む全組合せのホームキーを使う', () => {

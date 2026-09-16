@@ -1,6 +1,7 @@
 import {
   ALL_FINGERS,
   FINGERS,
+  HOME_ROW,
   dist,
   type Finger,
   type Geometry,
@@ -179,21 +180,49 @@ export function savePlaybackCalibration(
   storage.setItem(PLAYBACK_CALIBRATION_STORAGE_KEY, JSON.stringify(calibration));
 }
 
-/** 数字段(row 0)を避け、ホーム段から上段・下段側のキーを選ぶ。 */
-function farthestKeyFromHome(geometry: Geometry, finger: typeof FINGERS[number], home: Key): Key | undefined {
+const CALIBRATION_KEY_LABEL_PATTERN = /\p{L}|\p{P}/u;
+
+/** 選択中の配列で文字・ピリオド・コンマが刻印された物理キーだけを候補にする。 */
+export function calibrationEligibleKeyIds(
+  geometry: Geometry,
+  legends?: ReadonlyMap<string, string>,
+): ReadonlySet<string> {
+  if (!legends) return new Set(geometry.keys.keys());
+  return new Set(
+    [...geometry.keys.keys()].filter((keyId) => {
+      const label = legends.get(keyId);
+      return label !== undefined && CALIBRATION_KEY_LABEL_PATTERN.test(label);
+    }),
+  );
+}
+
+/** 数字段を避け、全指でホーム段から下段のキーを選ぶ。 */
+function farthestKeyFromHome(
+  geometry: Geometry,
+  finger: typeof FINGERS[number],
+  home: Key,
+  eligibleKeyIds: ReadonlySet<string>,
+): Key | undefined {
   return [...geometry.keys.values()]
-    .filter((key) => key.finger === finger && key.id !== home.id && key.row !== 0)
+    .filter((key) => key.finger === finger
+      && key.id !== home.id
+      && key.row === HOME_ROW + 1
+      && eligibleKeyIds.has(key.id))
     .sort((a, b) => dist(home, b) - dist(home, a))[0];
 }
 
-/** 各指のホームと、数字段を除く同じ指の最遠キーを測定用の組にする。 */
-export function calibrationKeyPairs(geometry: Geometry): CalibrationKeyPair[] {
+/** 各指のホームと、同じ指の下段キーを測定用の組にする。 */
+export function calibrationKeyPairs(
+  geometry: Geometry,
+  eligibleKeyIds = calibrationEligibleKeyIds(geometry),
+): CalibrationKeyPair[] {
   const pairs: CalibrationKeyPair[] = [];
   for (const finger of FINGERS) {
     const homeId = geometry.assignment.homeKey[finger];
     const home = geometry.keys.get(homeId);
     if (!home) continue;
-    const target = farthestKeyFromHome(geometry, finger, home);
+    if (!eligibleKeyIds.has(home.id)) continue;
+    const target = farthestKeyFromHome(geometry, finger, home, eligibleKeyIds);
     if (!target) continue;
     const distance = dist(home, target);
     if (distance <= 0) continue;
@@ -203,14 +232,22 @@ export function calibrationKeyPairs(geometry: Geometry): CalibrationKeyPair[] {
 }
 
 /** 通常の打鍵速度の測定に使う、左右人差し指のホームキー。 */
-export function calibrationActionPair(geometry: Geometry): [string, string] | undefined {
+export function calibrationActionPair(
+  geometry: Geometry,
+  eligibleKeyIds = calibrationEligibleKeyIds(geometry),
+): [string, string] | undefined {
   const left = geometry.assignment.homeKey.LI;
   const right = geometry.assignment.homeKey.RI;
-  return left && right && left !== right ? [left, right] : undefined;
+  return left && right && left !== right && eligibleKeyIds.has(left) && eligibleKeyIds.has(right)
+    ? [left, right]
+    : undefined;
 }
 
-/** 同じ手の別指を交互に打つ測定用のホームキー組。左右各指の全組合せを使う。 */
-export function calibrationSameHandPairs(geometry: Geometry): [string, string][] {
+/** 同じ手の別指を交互に打つ測定用のホームキー組。候補キーだけで全組合せを作る。 */
+export function calibrationSameHandPairs(
+  geometry: Geometry,
+  eligibleKeyIds = calibrationEligibleKeyIds(geometry),
+): [string, string][] {
   const pairs: [string, string][] = [];
   for (const hand of ['L', 'R'] as const) {
     const fingers = FINGERS.filter((finger) => finger.startsWith(hand));
@@ -218,7 +255,9 @@ export function calibrationSameHandPairs(geometry: Geometry): [string, string][]
       for (let rightIndex = leftIndex + 1; rightIndex < fingers.length; rightIndex++) {
         const left = geometry.assignment.homeKey[fingers[leftIndex]];
         const right = geometry.assignment.homeKey[fingers[rightIndex]];
-        if (left && right && left !== right) pairs.push([left, right]);
+        if (left && right && left !== right && eligibleKeyIds.has(left) && eligibleKeyIds.has(right)) {
+          pairs.push([left, right]);
+        }
       }
     }
   }

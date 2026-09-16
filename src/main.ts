@@ -72,6 +72,7 @@ import {
 import {
   actionsPerSecondFromIntervals,
   calibrationActionPair,
+  calibrationEligibleKeyIds,
   calibrationKeyMatches,
   calibrationKeyPairs,
   calibrationSameHandPairs,
@@ -996,9 +997,10 @@ function updateCalibrationDialog(): void {
 function beginCalibrationSession(): void {
   calibrationEditMode = false;
   const geometry = playbackGeometry ?? buildGeometry(el.geometry.value as GeometryKind);
-  const actionKeys = calibrationActionPair(geometry);
-  const pairs = calibrationKeyPairs(geometry);
-  const sameHandPairs = calibrationSameHandPairs(geometry);
+  const eligibleKeyIds = calibrationEligibleKeyIds(geometry, playbackLayout?.legends);
+  const actionKeys = calibrationActionPair(geometry, eligibleKeyIds);
+  const pairs = calibrationKeyPairs(geometry, eligibleKeyIds);
+  const sameHandPairs = calibrationSameHandPairs(geometry, eligibleKeyIds);
   const sameHandPairFingerKeys = sameHandPairs.map(([left, right]) => {
     const leftFinger = geometry.keys.get(left)?.finger;
     const rightFinger = geometry.keys.get(right)?.finger;
