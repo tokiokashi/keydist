@@ -33,6 +33,25 @@ test('面は prefix / suffix / simultaneous を Sequence に展開する', () =>
   assert.deepEqual(layout.map.get('た'), [['j', 'f']]);
 });
 
+test('面の展開後も各ステップの層帰属を保持する（#87）', () => {
+  const layout = fromFaces('attribution', 'attribution', [
+    { trigger: [], mode: 'simultaneous', rows: faceAtF('あ') },
+    { trigger: ['d'], mode: 'prefix', rows: faceAtF('か'), layer: '中指' },
+    { trigger: ['j'], mode: 'prefix', rows: faceAtF('さ'), layer: '人差指' },
+    { trigger: ['k', 'l'], mode: 'simultaneous', rows: faceAtF('た') },
+  ]);
+  const trace = evaluate('あかさた', layout, buildGeometry('row-staggered'), DEFAULT_OPTIONS);
+
+  assert.deepEqual(trace.strokes.map((stroke) => stroke.layerId), [
+    'face:0', 'layer:中指', 'layer:中指', 'layer:人差指', 'layer:人差指', 'combo',
+  ]);
+  const metrics = computeMetrics(trace, buildGeometry('row-staggered'));
+  assert.deepEqual(metrics.layers.map((layer) => [layer.id, layer.presses]), [
+    ['face:0', 1], ['layer:中指', 2], ['layer:人差指', 2],
+  ]);
+  assert.equal(metrics.comboPresses, 3);
+});
+
 test('面定義の未知のキーは空欄にせずエラーにする', () => {
   assert.throws(
     () => faceFromEntries([], 'simultaneous', { typo: 'あ' }),

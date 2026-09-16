@@ -1,5 +1,12 @@
 import { ALL_FINGERS, dist, resolveKeyId, type Finger, type Geometry, type Key, type Point } from './geometry.ts';
-import type { ComboCondition, Layout, Sequence } from './layouts/index.ts';
+import {
+  COMBO_LAYER_ID,
+  SINGLE_LAYER_ID,
+  type ComboCondition,
+  type LayerDefinition,
+  type Layout,
+  type Sequence,
+} from './layouts/types.ts';
 import { kanaToRomajiChunks } from './romaji/kunrei.ts';
 
 export interface Options {
@@ -44,6 +51,8 @@ export interface Stroke {
   /** ステップの通し番号 */
   index: number;
   char: string;
+  /** このステップに含まれるキー押下の帰属先。合成文字ではステップごとに異なりうる */
+  layerId: string;
   presses: Press[];
   /** ステップ内の押下距離の合計 [u] */
   distance: number;
@@ -65,6 +74,8 @@ export interface Trace {
   comboHits: string[];
   /** 配列が持つコンボ見出しの定義数 */
   comboDefinitions: number;
+  /** 層・コンボの定義。評価対象外の未使用層も含む */
+  layerDefinitions: LayerDefinition[];
   /** 配列定義の不備。同一ステップ内で同じ指が複数のキーを要求された場合など */
   errors: string[];
 }
@@ -97,6 +108,14 @@ export function evaluate(
   const seen = new Set<string>();
   const comboHits: string[] = [];
   const comboConditions = layout.comboConditions ?? new Map<string, ComboCondition>();
+  const layerDefinitions = [...layout.layerDefinitions ?? [{
+    id: SINGLE_LAYER_ID,
+    kind: 'layer' as const,
+    label: '単打',
+  }]];
+  if (comboConditions.size > 0 && !layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID)) {
+    layerDefinitions.push({ id: COMBO_LAYER_ID, kind: 'combo', label: 'コンボ' });
+  }
   let skipped = 0;
   let index = 0;
 
@@ -143,7 +162,10 @@ export function evaluate(
     cursor += consumed;
     if (comboConditions.has(char)) comboHits.push(char);
 
-    for (const step of sequence) {
+    const stepLayerIds = layout.stepLayers?.get(char);
+    for (const [stepIndex, step] of sequence.entries()) {
+      const layerId = stepLayerIds?.[stepIndex] ??
+        (comboConditions.has(char) ? COMBO_LAYER_ID : SINGLE_LAYER_ID);
       const byFinger = new Map<Finger, Key[]>();
 
       for (const id of step) {
@@ -199,7 +221,7 @@ export function evaluate(
 
       // 指同士の姿勢は、対象キーを押した直後の状態として記録する
       const positions = snapshot(prev, last, index, geometry);
-      strokes.push({ index, char, presses, distance: total, positions });
+      strokes.push({ index, char, layerId, presses, distance: total, positions });
       index++;
     }
   }
@@ -210,6 +232,7 @@ export function evaluate(
     inputChars: [...text].length,
     comboHits,
     comboDefinitions: comboConditions.size,
+    layerDefinitions,
     errors,
   };
 }

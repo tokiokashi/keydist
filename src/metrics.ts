@@ -1,5 +1,6 @@
 import { ADJACENT_PAIRS, ALL_FINGERS, dist, type Finger, type Geometry } from './geometry.ts';
 import type { Trace } from './evaluate.ts';
+import { COMBO_LAYER_ID } from './layouts/types.ts';
 
 /**
  * 隣接ペアのホーム間隔 [u]（仕様 §11.6 で引く基準）。
@@ -27,6 +28,19 @@ export interface ComboStats {
   matched: number;
   /** コンボ見出しが命中した延べ回数 */
   hits: number;
+}
+
+export interface LayerStat {
+  /** 層の宣言から引いた ID */
+  id: string;
+  /** 表示用の層名 */
+  label: string;
+  /** この層に帰属するキー押下数 */
+  presses: number;
+  /** 層に帰属するキー id → 打鍵回数 */
+  keyCounts: Map<string, number>;
+  /** 層に帰属するキー id → そのキーへの移動距離の合計 [u] */
+  keyDistance: Map<string, number>;
 }
 
 export interface Metrics {
@@ -83,6 +97,14 @@ export interface Metrics {
   sameFinger: number;
   /** コンボの定義数・命中した定義数・延べ命中回数（仕様 §11.8） */
   combos: ComboStats;
+  /** 宣言順の層別集計。コンボ枠は含めない */
+  layers: LayerStat[];
+  /** コンボ枠に帰属するキー押下数。層の保存則の左辺に加える */
+  comboPresses: number;
+  /** コンボ枠に帰属するキー id → 打鍵回数 */
+  comboKeyCounts: Map<string, number>;
+  /** コンボ枠に帰属するキー id → そのキーへの移動距離の合計 [u] */
+  comboKeyDistance: Map<string, number>;
   /** キー id → 打鍵回数 */
   keyCounts: Map<string, number>;
   /** キー id → そのキーへの移動距離の合計 [u] */
@@ -101,6 +123,33 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
   let sameFinger = 0;
   const keyCounts = new Map<string, number>();
   const keyDistance = new Map<string, number>();
+  const layerStats = trace.layerDefinitions
+    .filter((definition) => definition.kind === 'layer')
+    .map((definition): LayerStat => ({
+      id: definition.id,
+      label: definition.label,
+      presses: 0,
+      keyCounts: new Map(),
+      keyDistance: new Map(),
+    }));
+  const layerById = new Map(layerStats.map((stat) => [stat.id, stat]));
+  const ensureLayer = (id: string): LayerStat => {
+    const existing = layerById.get(id);
+    if (existing) return existing;
+    const created: LayerStat = {
+      id,
+      label: id,
+      presses: 0,
+      keyCounts: new Map(),
+      keyDistance: new Map(),
+    };
+    layerStats.push(created);
+    layerById.set(id, created);
+    return created;
+  };
+  const comboKeyCounts = new Map<string, number>();
+  const comboKeyDistance = new Map<string, number>();
+  let comboPresses = 0;
   const pairSamples: number[][] = ADJACENT_PAIRS.map(() => []);
   const homeSpacings = ADJACENT_PAIRS.map((pair) => homeSpacing(geometry, pair));
 
@@ -117,6 +166,16 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
       for (const key of press.keys) {
         keyCounts.set(key.id, (keyCounts.get(key.id) ?? 0) + 1);
         keyDistance.set(key.id, (keyDistance.get(key.id) ?? 0) + share);
+        if (stroke.layerId === COMBO_LAYER_ID) {
+          comboPresses++;
+          comboKeyCounts.set(key.id, (comboKeyCounts.get(key.id) ?? 0) + 1);
+          comboKeyDistance.set(key.id, (comboKeyDistance.get(key.id) ?? 0) + share);
+        } else {
+          const layer = ensureLayer(stroke.layerId);
+          layer.presses++;
+          layer.keyCounts.set(key.id, (layer.keyCounts.get(key.id) ?? 0) + 1);
+          layer.keyDistance.set(key.id, (layer.keyDistance.get(key.id) ?? 0) + share);
+        }
       }
     }
 
@@ -161,6 +220,10 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
     adjacent,
     sameFinger,
     combos,
+    layers: layerStats,
+    comboPresses,
+    comboKeyCounts,
+    comboKeyDistance,
     keyCounts,
     keyDistance,
   };
