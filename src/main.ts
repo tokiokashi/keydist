@@ -47,6 +47,9 @@ import {
   playbackPlannedKeys,
   playbackPlannedOrders,
   playbackRomajiPlan,
+  playbackRomajiPlannedKeys,
+  playbackRomajiPlannedOrders,
+  playbackOrderLabel,
   playbackStrokeAt,
   setPlaybackSpeed,
   stepPlayback,
@@ -799,7 +802,6 @@ let playbackSeekWasPlaying: boolean | undefined;
 let playbackShowFingers = false;
 let playbackShowRomajiPlan = false;
 let playbackShowPlanKeys = false;
-let playbackLookaheadSteps = 5;
 let playbackShowTrail = false;
 let playbackTrailTau = 5;
 let playbackShowOrderLabels = false;
@@ -822,6 +824,8 @@ function updatePlaybackView() {
   const cursor = clampPlaybackCursor(playbackState.cursor, total);
   const stroke = playbackStrokeAt(playbackTrace.strokes, cursor);
   const display = playbackLayout && stroke ? playbackStrokeDisplay(playbackLayout, stroke) : undefined;
+  const isRomaji = playbackLayout?.romajiTable !== undefined;
+  const windowSize = Number(el.window.value);
   const activeKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
   const triggerKeys = new Set(stroke?.triggerKeys ?? []);
   const fingerPositionKeys = playbackShowFingers
@@ -830,11 +834,16 @@ function updatePlaybackView() {
   const trailKeys = playbackShowTrail
     ? playbackTrailKeys(playbackTrace.strokes, cursor, playbackTrailTau)
     : new Map<string, number>();
-  const plannedKeys = playbackShowPlanKeys
-    ? playbackPlannedKeys(playbackTrace.strokes, cursor, playbackLookaheadSteps)
+  const romajiPlannedKeys = isRomaji && playbackShowRomajiPlan
+    ? playbackRomajiPlannedKeys(playbackTrace.strokes, cursor)
     : new Map<string, number>();
-  const plannedOrders = playbackShowOrderLabels && playbackShowPlanKeys
-    ? playbackPlannedOrders(playbackTrace.strokes, cursor, playbackLookaheadSteps)
+  const plannedKeys = playbackShowPlanKeys
+    ? playbackPlannedKeys(playbackTrace.strokes, cursor, windowSize)
+    : romajiPlannedKeys;
+  const plannedOrders = playbackShowOrderLabels
+    ? playbackShowPlanKeys
+      ? playbackPlannedOrders(playbackTrace.strokes, cursor, windowSize)
+      : playbackRomajiPlannedOrders(playbackTrace.strokes, cursor)
     : new Map<string, number>();
   const trailOrders = playbackShowOrderLabels && playbackShowTrail
     ? playbackTrailOrders(playbackTrace.strokes, cursor, playbackTrailTau)
@@ -856,16 +865,16 @@ function updatePlaybackView() {
     const plannedOrder = plannedOrders.get(id);
     const plannedOrderLabel = key.querySelector<SVGTextElement>('[data-playback-order="plan"]');
     if (plannedOrderLabel) {
-      plannedOrderLabel.textContent = plannedOrder === undefined ? '' : String(plannedOrder);
+      plannedOrderLabel.textContent = plannedOrder === undefined ? '' : playbackOrderLabel(plannedOrder);
       plannedOrderLabel.setAttribute('visibility', plannedOrder === undefined ? 'hidden' : 'visible');
     }
     const trailOrder = trailOrders.get(id);
     const trailOrderLabel = key.querySelector<SVGTextElement>('[data-playback-order="trail"]');
     if (trailOrderLabel) {
-      trailOrderLabel.textContent = trailOrder === undefined ? '' : String(trailOrder);
+      trailOrderLabel.textContent = trailOrder === undefined ? '' : playbackOrderLabel(trailOrder);
       trailOrderLabel.setAttribute('visibility', trailOrder === undefined ? 'hidden' : 'visible');
     }
-    const label = key.querySelector('text');
+    const label = key.querySelector<SVGTextElement>('[data-playback-label]');
     if (label) label.textContent = display?.keyLabels.get(id) ?? key.dataset.playbackBaseLabel ?? '';
   }
 
@@ -886,13 +895,12 @@ function updatePlaybackView() {
   const fingers = el.playback.querySelector<HTMLInputElement>('[data-playback-fingers]');
   const romajiPlan = el.playback.querySelector<HTMLInputElement>('[data-playback-romaji-plan]');
   const planKeys = el.playback.querySelector<HTMLInputElement>('[data-playback-plan-keys]');
-  const lookahead = el.playback.querySelector<HTMLInputElement>('[data-playback-lookahead]');
   const trail = el.playback.querySelector<HTMLInputElement>('[data-playback-trail]');
   const trailTau = el.playback.querySelector<HTMLInputElement>('[data-playback-trail-tau]');
   const orderLabels = el.playback.querySelector<HTMLInputElement>('[data-playback-order-labels]');
   const scale = el.playback.querySelector<HTMLSelectElement>('select[data-playback-scale]');
+  const playbackWindow = el.playback.querySelector<HTMLOutputElement>('[data-playback-window]');
   if (position) position.textContent = `${cursor} / ${total} ステップ`;
-  const isRomaji = playbackLayout?.romajiTable !== undefined;
   if (current) {
     current.hidden = isRomaji;
     current.textContent = stroke
@@ -912,7 +920,7 @@ function updatePlaybackView() {
   const inputPreview = playbackInputPreview(
     playbackTrace.strokes,
     cursor,
-    playbackShowPlanKeys ? playbackLookaheadSteps : 0,
+    playbackShowPlanKeys ? windowSize : 0,
   );
   if (history) history.hidden = inputPreview.length === 0;
   if (historyText) {
@@ -938,17 +946,17 @@ function updatePlaybackView() {
   if (fingers) fingers.checked = playbackShowFingers;
   if (romajiPlan) {
     romajiPlan.checked = playbackShowRomajiPlan;
-    romajiPlan.disabled = !isRomaji;
+    romajiPlan.disabled = !isRomaji || playbackShowPlanKeys;
   }
-  if (planKeys) planKeys.checked = playbackShowPlanKeys;
-  if (lookahead) {
-    lookahead.value = String(playbackLookaheadSteps);
-    lookahead.disabled = !playbackShowPlanKeys;
+  if (planKeys) {
+    planKeys.checked = playbackShowPlanKeys;
+    planKeys.disabled = isRomaji && playbackShowRomajiPlan;
   }
   if (trail) trail.checked = playbackShowTrail;
   if (trailTau) trailTau.value = String(playbackTrailTau);
   if (orderLabels) orderLabels.checked = playbackShowOrderLabels;
   if (scale) scale.value = String(playbackScale);
+  if (playbackWindow) playbackWindow.textContent = String(windowSize);
 }
 
 function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeometry>): string {
@@ -968,7 +976,7 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
       <rect x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" stroke="var(--line)"/>
       <text class="playback-order playback-order-plan" data-playback-order="plan" x="${x + 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
       <text class="playback-order playback-order-trail" data-playback-order="trail" x="${x + width - 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
-      <text x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
+      <text class="playback-key-label" data-playback-label x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
     </g>`;
   });
   const W = maxX + PLAYBACK_PAD;
@@ -1003,7 +1011,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${playbackShowFingers ? ' checked' : ''} />指の位置を色で表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${playbackShowRomajiPlan ? ' checked' : ''} />予定ローマ字を表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-plan-keys${playbackShowPlanKeys ? ' checked' : ''} />押下予定キーを表示</label>
-        <label class="playback-lookahead-setting" title="押下予定キーを表示する先読みステップ数">先読み <input type="number" data-playback-lookahead min="1" max="20" step="1" value="${playbackLookaheadSteps}" aria-label="先読みステップ数" /> ステップ</label>
+        <span class="playback-window-setting" title="サイドバーの窓幅Nと共通">N <output data-playback-window>${Number(el.window.value)}</output> ステップ</span>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${playbackShowTrail ? ' checked' : ''} />押下履歴を残す</label>
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${playbackTrailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${playbackShowOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
@@ -2141,19 +2149,14 @@ el.playback.addEventListener('change', (e) => {
   const romajiPlan = target.closest<HTMLInputElement>('input[data-playback-romaji-plan]');
   if (romajiPlan) {
     playbackShowRomajiPlan = romajiPlan.checked;
+    if (playbackShowRomajiPlan) playbackShowPlanKeys = false;
     updatePlaybackView();
     return;
   }
   const planKeys = target.closest<HTMLInputElement>('input[data-playback-plan-keys]');
   if (planKeys) {
     playbackShowPlanKeys = planKeys.checked;
-    updatePlaybackView();
-    return;
-  }
-  const lookahead = target.closest<HTMLInputElement>('input[data-playback-lookahead]');
-  if (lookahead) {
-    const value = Number(lookahead.value);
-    if (Number.isInteger(value) && value >= 1 && value <= 20) playbackLookaheadSteps = value;
+    if (playbackShowPlanKeys) playbackShowRomajiPlan = false;
     updatePlaybackView();
     return;
   }
