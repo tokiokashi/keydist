@@ -163,13 +163,14 @@ test('キャリブレーションの保存値は壊れたJSONを無視する', (
   assert.equal(loadPlaybackCalibration(storage), undefined);
 });
 
-test('キャリブレーションの指ペアはホームから最遠の同じ指キーを選ぶ', () => {
+test('キャリブレーションの指ペアは数字段を避けてホームから最遠のキーを選ぶ', () => {
   const geometry = buildGeometry('row-staggered');
   const pairs = calibrationKeyPairs(geometry);
   assert.equal(pairs.length, 8);
   assert.deepEqual(calibrationActionPair(geometry), ['f', 'j']);
   assert.equal(pairs.find((pair) => pair.finger === 'LI')?.fromKey, 'f');
-  assert.equal(pairs.find((pair) => pair.finger === 'LI')?.toKey, '4');
+  assert.equal(pairs.find((pair) => pair.finger === 'LI')?.toKey, 'b');
+  assert.equal(pairs.every((pair) => geometry.keys.get(pair.toKey)?.row !== 0), true);
 });
 
 test('キャリブレーションはKeyboardEventの刻印と物理コードを受け付ける', () => {

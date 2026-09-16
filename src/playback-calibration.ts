@@ -131,13 +131,14 @@ export function savePlaybackCalibration(
   storage.setItem(PLAYBACK_CALIBRATION_STORAGE_KEY, JSON.stringify(calibration));
 }
 
+/** 数字段(row 0)を避け、ホーム段から上段・下段側のキーを選ぶ。 */
 function farthestKeyFromHome(geometry: Geometry, finger: typeof FINGERS[number], home: Key): Key | undefined {
   return [...geometry.keys.values()]
-    .filter((key) => key.finger === finger && key.id !== home.id)
+    .filter((key) => key.finger === finger && key.id !== home.id && key.row !== 0)
     .sort((a, b) => dist(home, b) - dist(home, a))[0];
 }
 
-/** 各指のホームと、ホームから最も離れた同じ指のキーを測定用の組にする。 */
+/** 各指のホームと、数字段を除く同じ指の最遠キーを測定用の組にする。 */
 export function calibrationKeyPairs(geometry: Geometry): CalibrationKeyPair[] {
   const pairs: CalibrationKeyPair[] = [];
   for (const finger of FINGERS) {
