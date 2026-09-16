@@ -671,15 +671,20 @@ export function playbackStrokeDurationMs(
   return normalMs * sameFingerDistance;
 }
 
-/** 直近の完了済み打鍵を実際の表示時間で割った実効アクション毎秒。 */
-export function playbackRecentActionsPerSecond(
+interface PlaybackRateWindow {
+  start: number;
+  end: number;
+  durationMs: number;
+}
+
+function playbackRecentRateWindow(
   strokes: readonly Stroke[],
   cursor: number,
   stepsPerSecond: PlaybackStepsPerSecond,
-  sameFingerDelay = false,
-  limit = 10,
+  sameFingerDelay: boolean,
+  limit: number,
   calibration?: PlaybackCalibration,
-): number | undefined {
+): PlaybackRateWindow | undefined {
   const end = clampPlaybackCursor(cursor, strokes.length);
   const span = Math.max(0, Math.floor(limit));
   const start = Math.max(0, end - span);
@@ -697,7 +702,62 @@ export function playbackRecentActionsPerSecond(
         strokes[index - 1],
       );
     }, 0);
-  return durationMs > 0 ? ((end - start) * 1000) / durationMs : undefined;
+  return { start, end, durationMs };
+}
+
+/** 直近の完了済み打鍵を実際の表示時間で割った実効アクション毎秒。 */
+export function playbackRecentActionsPerSecond(
+  strokes: readonly Stroke[],
+  cursor: number,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  sameFingerDelay = false,
+  limit = 10,
+  calibration?: PlaybackCalibration,
+): number | undefined {
+  const recent = playbackRecentRateWindow(
+    strokes,
+    cursor,
+    stepsPerSecond,
+    sameFingerDelay,
+    limit,
+    calibration,
+  );
+  return recent && recent.durationMs > 0
+    ? ((recent.end - recent.start) * 1000) / recent.durationMs
+    : undefined;
+}
+
+/** 直近の入力単位に含まれるかな文字数を、同じ表示時間で割った実効かな毎秒。 */
+export function playbackRecentKanaPerSecond(
+  strokes: readonly Stroke[],
+  cursor: number,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  sameFingerDelay = false,
+  limit = 10,
+  calibration?: PlaybackCalibration,
+): number | undefined {
+  const recent = playbackRecentRateWindow(
+    strokes,
+    cursor,
+    stepsPerSecond,
+    sameFingerDelay,
+    limit,
+    calibration,
+  );
+  if (!recent || recent.durationMs <= 0) return undefined;
+
+  let kanaCount = 0;
+  for (let at = recent.start; at < recent.end; ) {
+    const inputIndex = strokes[at].inputIndex;
+    let next = at + 1;
+    while (next < strokes.length && strokes[next].inputIndex === inputIndex) next++;
+    const startsInWindow = at === 0 || strokes[at - 1].inputIndex !== inputIndex;
+    if (startsInWindow && next <= recent.end) {
+      kanaCount += Array.from(strokes[next - 1].inputChar).length;
+    }
+    at = next;
+  }
+  return kanaCount > 0 ? (kanaCount * 1000) / recent.durationMs : undefined;
 }
 
 /** 停止・一時停止中の1打鍵送り。再生中はカーソルを動かさない。 */
