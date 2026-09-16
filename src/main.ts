@@ -911,7 +911,7 @@ function updatePlaybackView() {
   if (romaji) romaji.hidden = !isRomaji;
   if (kana) kana.textContent = stroke?.inputChar ?? '—';
   if (typed) typed.textContent = stroke?.char ?? '—';
-  const plan = isRomaji && playbackShowRomajiPlan
+  const plan = isRomaji && playbackShowRomajiPlan && !playbackShowPlanKeys
     ? playbackRomajiPlan(playbackTrace.strokes, cursor)
     : undefined;
   if (planned) {
@@ -947,11 +947,11 @@ function updatePlaybackView() {
   if (fingers) fingers.checked = playbackShowFingers;
   if (romajiPlan) {
     romajiPlan.checked = playbackShowRomajiPlan;
-    romajiPlan.disabled = !isRomaji || playbackShowPlanKeys;
+    romajiPlan.disabled = !isRomaji;
   }
   if (planKeys) {
     planKeys.checked = playbackShowPlanKeys;
-    planKeys.disabled = isRomaji && playbackShowRomajiPlan;
+    planKeys.disabled = false;
   }
   if (trail) trail.checked = playbackShowTrail;
   if (trailTau) trailTau.value = String(playbackTrailTau);
@@ -2154,14 +2154,12 @@ el.playback.addEventListener('change', (e) => {
   const romajiPlan = target.closest<HTMLInputElement>('input[data-playback-romaji-plan]');
   if (romajiPlan) {
     playbackShowRomajiPlan = romajiPlan.checked;
-    if (playbackShowRomajiPlan) playbackShowPlanKeys = false;
     updatePlaybackView();
     return;
   }
   const planKeys = target.closest<HTMLInputElement>('input[data-playback-plan-keys]');
   if (planKeys) {
     playbackShowPlanKeys = planKeys.checked;
-    if (playbackShowPlanKeys) playbackShowRomajiPlan = false;
     updatePlaybackView();
     return;
   }
