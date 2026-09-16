@@ -12,6 +12,7 @@ import {
   playbackChainOrders,
   playbackRecentActionsPerSecond,
   playbackRecentKanaPerSecond,
+  playbackRateChartData,
   playbackOrderLabel,
   playbackRomajiPlannedKeys,
   playbackRomajiPlannedOrders,
@@ -121,6 +122,20 @@ test('直近のかな毎秒は入力単位のかな数を同じ実効時間で�
   ] as never[];
   assert.equal(playbackRecentKanaPerSecond(strokes, 3, 2), 2);
   assert.equal(playbackRecentKanaPerSecond(strokes, 2, 2), 1);
+});
+
+test('速度グラフ用データはカーソルごとの集計入力と速度を返す', () => {
+  const strokes = [
+    { inputIndex: 0, inputChar: 'あ', presses: [] },
+    { inputIndex: 1, inputChar: 'はい', presses: [] },
+    { inputIndex: 1, inputChar: 'はい', presses: [] },
+  ] as never[];
+  const points = playbackRateChartData(strokes, 2);
+  assert.equal(points.length, 4);
+  assert.equal(points[0].inputText, '');
+  assert.equal(points[3].inputText, 'あはい');
+  assert.equal(points[3].kanaPerSecond, 2);
+  assert.equal(points[3].actionsPerSecond, 2);
 });
 
 test('個人キャリブレーションは通常打鍵と指移動を別々の速度として再生へ反映する', () => {
