@@ -73,12 +73,14 @@ import {
   calibrationActionPair,
   calibrationKeyMatches,
   calibrationKeyPairs,
+  calibrationSameHandPairs,
   CALIBRATION_ACTION_SAMPLES,
   CALIBRATION_ACTIONS_PER_SECOND_MAX,
   CALIBRATION_ACTIONS_PER_SECOND_MIN,
   CALIBRATION_FINGER_SAMPLES,
   CALIBRATION_FINGER_SPEED_MAX,
   CALIBRATION_FINGER_SPEED_MIN,
+  CALIBRATION_SAME_HAND_SAMPLES,
   fallbackFingerSpeedFromSamples,
   fingerSpeedFromSamples,
   loadPlaybackCalibration,
@@ -193,6 +195,7 @@ const el = {
   calibrationError: $<HTMLParagraphElement>('playback-calibration-error'),
   calibrationResult: $<HTMLDivElement>('playback-calibration-result'),
   calibrationActions: $<HTMLInputElement>('playback-calibration-actions'),
+  calibrationSameHand: $<HTMLInputElement>('playback-calibration-same-hand'),
   calibrationFingerSpeed: $<HTMLInputElement>('playback-calibration-finger-speed'),
   calibrationFingerInputs: $<HTMLDivElement>('playback-calibration-finger-inputs'),
 };
@@ -858,7 +861,7 @@ let playbackChainIncludeLayerKeys = true;
 let playbackMotionCursor = -1;
 let playbackPanelOpen = false;
 
-type CalibrationPhase = 'actions' | 'finger' | 'result';
+type CalibrationPhase = 'actions' | 'finger' | 'same-hand' | 'result';
 interface CalibrationSession {
   phase: CalibrationPhase;
   actionKeys: [string, string];
@@ -869,11 +872,17 @@ interface CalibrationSession {
   pairIndex: number;
   fingerSamples: FingerSpeedSample[];
   pairSampleCount: number;
+  sameHandPairs: [string, string][];
+  sameHandPairIndex: number;
+  sameHandIntervals: number[];
+  sameHandPairSampleCount: number;
 }
 let calibrationSession: CalibrationSession | undefined;
 
 function calibrationKeyLabel(keyId: string): string {
-  return /^[a-z]$/i.test(keyId) ? keyId.toUpperCase() : keyId;
+  const layoutLabel = playbackLayout?.legends.get(resolveKeyId(keyId));
+  const label = layoutLabel && layoutLabel.trim().length > 0 ? layoutLabel : keyId;
+  return /^[a-z]$/i.test(label) ? label.toUpperCase() : label;
 }
 
 function calibrationPairText(pair: [string, string]): string {
@@ -913,8 +922,8 @@ function updateCalibrationDialog(): void {
   el.calibrationStart.textContent = session?.phase === 'result' ? '測り直す' : '測定を開始';
   if (!session) {
     el.calibrationInstruction.textContent = playbackCalibration
-      ? `保存済み: 通常 ${playbackCalibration.actionsPerSecond.toFixed(2)} アクション/秒、未測定指の指移動 ${playbackCalibration.fallbackFingerSpeedUnitsPerSecond.toFixed(2)} u/秒。`
-      : '通常の打鍵速度と、各指の移動速度を測定して再生に反映します。';
+      ? `保存済み: 通常 ${playbackCalibration.actionsPerSecond.toFixed(2)}、同手・別指 ${playbackCalibration.sameHandDifferentFingerActionsPerSecond.toFixed(2)} アクション/秒、未測定指の指移動 ${playbackCalibration.fallbackFingerSpeedUnitsPerSecond.toFixed(2)} u/秒。`
+      : '通常の打鍵速度、同じ手の別指の交互打鍵速度、各指の移動速度を測定して再生に反映します。';
     el.calibrationProgress.textContent = '';
     return;
   }
@@ -929,6 +938,12 @@ function updateCalibrationDialog(): void {
     el.calibrationProgress.textContent = `${session.pairIndex + 1} / ${session.pairs.length} 指、${session.pairSampleCount} / ${CALIBRATION_FINGER_SAMPLES} 回`;
     return;
   }
+  if (session.phase === 'same-hand') {
+    const pair = session.sameHandPairs[session.sameHandPairIndex];
+    el.calibrationInstruction.textContent = `同じ手の別指: ${calibrationPairText(pair)}を交互に打ってください。`;
+    el.calibrationProgress.textContent = `${session.sameHandPairIndex + 1} / ${session.sameHandPairs.length} 組、${session.sameHandPairSampleCount} / ${CALIBRATION_SAME_HAND_SAMPLES} 回`;
+    return;
+  }
   el.calibrationInstruction.textContent = '測定結果を確認し、必要なら数値を調整して保存してください。';
   el.calibrationProgress.textContent = '測定完了';
 }
@@ -937,7 +952,8 @@ function beginCalibrationSession(): void {
   const geometry = playbackGeometry ?? buildGeometry(el.geometry.value as GeometryKind);
   const actionKeys = calibrationActionPair(geometry);
   const pairs = calibrationKeyPairs(geometry);
-  if (!actionKeys || pairs.length === 0) {
+  const sameHandPairs = calibrationSameHandPairs(geometry);
+  if (!actionKeys || pairs.length === 0 || sameHandPairs.length === 0) {
     setCalibrationError('この物理配列では測定用のキーを作れません。');
     return;
   }
@@ -950,6 +966,10 @@ function beginCalibrationSession(): void {
     pairIndex: 0,
     fingerSamples: [],
     pairSampleCount: 0,
+    sameHandPairs,
+    sameHandPairIndex: 0,
+    sameHandIntervals: [],
+    sameHandPairSampleCount: 0,
   };
   setCalibrationError('');
   updateCalibrationDialog();
@@ -958,9 +978,13 @@ function beginCalibrationSession(): void {
 function finishCalibrationSession(): void {
   if (!calibrationSession) return;
   const actionsPerSecond = actionsPerSecondFromIntervals(calibrationSession.actionIntervals);
+  const sameHandDifferentFingerActionsPerSecond = actionsPerSecondFromIntervals(calibrationSession.sameHandIntervals);
   const fingerSpeeds = fingerSpeedFromSamples(calibrationSession.fingerSamples);
   const fallbackFingerSpeedUnitsPerSecond = fallbackFingerSpeedFromSamples(calibrationSession.fingerSamples);
-  if (actionsPerSecond === undefined || fingerSpeeds.size === 0 || fallbackFingerSpeedUnitsPerSecond === undefined) {
+  if (actionsPerSecond === undefined
+    || sameHandDifferentFingerActionsPerSecond === undefined
+    || fingerSpeeds.size === 0
+    || fallbackFingerSpeedUnitsPerSecond === undefined) {
     setCalibrationError('測定値が不足しています。最初からもう一度測ってください。');
     calibrationSession = undefined;
     updateCalibrationDialog();
@@ -968,6 +992,7 @@ function finishCalibrationSession(): void {
   }
   calibrationSession.phase = 'result';
   el.calibrationActions.value = actionsPerSecond.toFixed(2);
+  el.calibrationSameHand.value = sameHandDifferentFingerActionsPerSecond.toFixed(2);
   el.calibrationFingerSpeed.value = fallbackFingerSpeedUnitsPerSecond.toFixed(2);
   renderCalibrationFingerInputs(Object.fromEntries(fingerSpeeds) as Partial<Record<Finger, number>>);
   setCalibrationError('');
@@ -979,8 +1004,10 @@ function onCalibrationKeyDown(event: KeyboardEvent): void {
   if (!session || !el.calibrationDialog.open || session.phase === 'result' || event.repeat) return;
   const expected = session.phase === 'actions'
     ? session.actionKeys[session.expectedKeyIndex]
-    : session.pairs[session.pairIndex][session.expectedKeyIndex === 0 ? 'fromKey' : 'toKey'];
-  if (!calibrationKeyMatches(event, expected)) {
+    : session.phase === 'finger'
+      ? session.pairs[session.pairIndex][session.expectedKeyIndex === 0 ? 'fromKey' : 'toKey']
+      : session.sameHandPairs[session.sameHandPairIndex][session.expectedKeyIndex];
+  if (!calibrationKeyMatches(event, expected, calibrationKeyLabel(expected))) {
     setCalibrationError(`今は「${calibrationKeyLabel(expected)}」を押す番です。`);
     return;
   }
@@ -992,13 +1019,16 @@ function onCalibrationKeyDown(event: KeyboardEvent): void {
     if (durationMs <= 0) return;
     if (session.phase === 'actions') {
       session.actionIntervals.push(durationMs);
-    } else {
+    } else if (session.phase === 'finger') {
       session.fingerSamples.push({
         finger: session.pairs[session.pairIndex].finger,
         distance: session.pairs[session.pairIndex].distance,
         durationMs,
       });
       session.pairSampleCount++;
+    } else {
+      session.sameHandIntervals.push(durationMs);
+      session.sameHandPairSampleCount++;
     }
   }
   session.lastTimestamp = now;
@@ -1009,10 +1039,23 @@ function onCalibrationKeyDown(event: KeyboardEvent): void {
     session.expectedKeyIndex = 0;
     session.lastTimestamp = undefined;
   } else if (session.phase === 'finger' && session.pairSampleCount >= CALIBRATION_FINGER_SAMPLES) {
-    if (session.pairIndex + 1 >= session.pairs.length) finishCalibrationSession();
-    else {
+    if (session.pairIndex + 1 >= session.pairs.length) {
+      session.phase = 'same-hand';
+      session.sameHandPairIndex = 0;
+      session.sameHandPairSampleCount = 0;
+      session.expectedKeyIndex = 0;
+      session.lastTimestamp = undefined;
+    } else {
       session.pairIndex++;
       session.pairSampleCount = 0;
+      session.expectedKeyIndex = 0;
+      session.lastTimestamp = undefined;
+    }
+  } else if (session.phase === 'same-hand' && session.sameHandPairSampleCount >= CALIBRATION_SAME_HAND_SAMPLES) {
+    if (session.sameHandPairIndex + 1 >= session.sameHandPairs.length) finishCalibrationSession();
+    else {
+      session.sameHandPairIndex++;
+      session.sameHandPairSampleCount = 0;
       session.expectedKeyIndex = 0;
       session.lastTimestamp = undefined;
     }
@@ -1029,11 +1072,18 @@ function openCalibrationDialog(): void {
 
 function saveCalibrationFromDialog(): void {
   const actionsPerSecond = Number(el.calibrationActions.value);
+  const sameHandDifferentFingerActionsPerSecond = Number(el.calibrationSameHand.value);
   const fallbackFingerSpeedUnitsPerSecond = Number(el.calibrationFingerSpeed.value);
   if (!Number.isFinite(actionsPerSecond)
     || actionsPerSecond < CALIBRATION_ACTIONS_PER_SECOND_MIN
     || actionsPerSecond > CALIBRATION_ACTIONS_PER_SECOND_MAX) {
     setCalibrationError(`通常速度は ${CALIBRATION_ACTIONS_PER_SECOND_MIN}〜${CALIBRATION_ACTIONS_PER_SECOND_MAX} の範囲で入力してください。`);
+    return;
+  }
+  if (!Number.isFinite(sameHandDifferentFingerActionsPerSecond)
+    || sameHandDifferentFingerActionsPerSecond < CALIBRATION_ACTIONS_PER_SECOND_MIN
+    || sameHandDifferentFingerActionsPerSecond > CALIBRATION_ACTIONS_PER_SECOND_MAX) {
+    setCalibrationError(`同手・別指速度は ${CALIBRATION_ACTIONS_PER_SECOND_MIN}〜${CALIBRATION_ACTIONS_PER_SECOND_MAX} の範囲で入力してください。`);
     return;
   }
   if (!Number.isFinite(fallbackFingerSpeedUnitsPerSecond)
@@ -1057,6 +1107,7 @@ function saveCalibrationFromDialog(): void {
   }
   const calibration: PlaybackCalibration = {
     actionsPerSecond,
+    sameHandDifferentFingerActionsPerSecond,
     fingerSpeedUnitsPerSecond,
     fallbackFingerSpeedUnitsPerSecond,
     measuredAt: Date.now(),
@@ -1369,6 +1420,7 @@ function renderPlaybackMotions(
       playbackState.stepsPerSecond,
       playbackState.sameFingerDelay,
       playbackState.calibration,
+      playbackTrace?.strokes[cursor - 2],
     )),
   );
   let motionIndex = 0;
@@ -1462,7 +1514,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${playbackTrailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${playbackShowOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
         <label class="playback-finger-toggle" title="1uの移動を通常の1アクション相当として同指連続の距離を再生時間へ反映"><input type="checkbox" data-playback-sfb-delay${playbackState.sameFingerDelay ? ' checked' : ''} />同指ディレイ</label>
-        <label class="playback-finger-toggle" title="キャリブレーションした通常打鍵速度と指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${playbackUseCalibration ? ' checked' : ''}${playbackCalibration ? '' : ' disabled'} />個人速度を使う</label>
+        <label class="playback-finger-toggle" title="キャリブレーションした通常速度・同手別指速度・指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${playbackUseCalibration ? ' checked' : ''}${playbackCalibration ? '' : ' disabled'} />個人速度を使う</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${playbackShowChain ? ' checked' : ''} />チェーン（片手の連続運指）</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-sfb${playbackChainIncludeSameFinger ? ' checked' : ''}${playbackShowChain ? '' : ' disabled'} />同指連打も含める</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-layer${playbackChainIncludeLayerKeys ? ' checked' : ''}${playbackShowChain ? '' : ' disabled'} />レイヤーキーも含める</label>

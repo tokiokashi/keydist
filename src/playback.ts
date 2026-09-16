@@ -573,14 +573,29 @@ function normalPlaybackStepMs(stepsPerSecond: PlaybackStepsPerSecond): number {
     : Number.POSITIVE_INFINITY;
 }
 
+function playbackHasSameHandDifferentFinger(
+  stroke: Stroke | undefined,
+  previousStroke: Stroke | undefined,
+): boolean {
+  if (!stroke || !previousStroke) return false;
+  return stroke.presses.some((press) => previousStroke.presses.some((previousPress) =>
+    fingerHand(press.finger) === fingerHand(previousPress.finger)
+    && press.finger !== previousPress.finger,
+  ));
+}
+
 /** 1ステップを表示する時間。正規化ディレイは1uを通常の1アクション相当とする。 */
 export function playbackStrokeDurationMs(
   stroke: Stroke | undefined,
   stepsPerSecond: PlaybackStepsPerSecond,
   sameFingerDelay = false,
   calibration?: PlaybackCalibration,
+  previousStroke?: Stroke,
 ): number {
-  const normalMs = normalPlaybackStepMs(calibration?.actionsPerSecond ?? stepsPerSecond);
+  const calibratedRate = playbackHasSameHandDifferentFinger(stroke, previousStroke)
+    ? calibration?.sameHandDifferentFingerActionsPerSecond
+    : calibration?.actionsPerSecond;
+  const normalMs = normalPlaybackStepMs(calibratedRate ?? stepsPerSecond);
   if (!stroke || !sameFingerDelay) return normalMs;
 
   const sameFingerDistance = Math.max(
@@ -619,7 +634,16 @@ export function playbackRecentActionsPerSecond(
 
   const durationMs = strokes
     .slice(start, end)
-    .reduce((total, stroke) => total + playbackStrokeDurationMs(stroke, stepsPerSecond, sameFingerDelay, calibration), 0);
+    .reduce((total, stroke, offset) => {
+      const index = start + offset;
+      return total + playbackStrokeDurationMs(
+        stroke,
+        stepsPerSecond,
+        sameFingerDelay,
+        calibration,
+        strokes[index - 1],
+      );
+    }, 0);
   return durationMs > 0 ? ((end - start) * 1000) / durationMs : undefined;
 }
 
@@ -657,6 +681,7 @@ export function advancePlayback(
       state.stepsPerSecond,
       state.sameFingerDelay,
       state.calibration,
+      strokes[nextCursor - 1],
     );
     if (remaining < stepMs) break;
     remaining -= stepMs;

@@ -1,9 +1,18 @@
-import { ALL_FINGERS, FINGERS, dist, type Finger, type Geometry, type Key } from './geometry.ts';
+import {
+  ALL_FINGERS,
+  FINGERS,
+  dist,
+  type Finger,
+  type Geometry,
+  type Key,
+} from './geometry.ts';
 
 /** 再生へ反映する個人の打鍵・指移動速度。 */
 export interface PlaybackCalibration {
   /** 通常の連続打鍵速度。 */
   actionsPerSecond: number;
+  /** 同じ手の別の指へ移る連続打鍵速度。 */
+  sameHandDifferentFingerActionsPerSecond: number;
   /** 同指連続の指ごとの移動速度。測れなかった指は持たない。 */
   fingerSpeedUnitsPerSecond: Partial<Record<Finger, number>>;
   /** 指ごとの速度が無い場合に使う移動速度。単位は物理キーのu/秒。 */
@@ -30,6 +39,7 @@ export const CALIBRATION_FINGER_SPEED_MIN = 0.1;
 export const CALIBRATION_FINGER_SPEED_MAX = 100;
 export const CALIBRATION_ACTION_SAMPLES = 9;
 export const CALIBRATION_FINGER_SAMPLES = 6;
+export const CALIBRATION_SAME_HAND_SAMPLES = 6;
 
 function positiveFiniteValues(values: readonly number[]): number[] {
   return values.filter((value) => Number.isFinite(value) && value > 0);
@@ -93,6 +103,7 @@ function validCalibration(value: unknown): value is PlaybackCalibration {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as Partial<PlaybackCalibration>;
   const fingerSpeeds = candidate.fingerSpeedUnitsPerSecond;
+  const sameHandSpeed = candidate.sameHandDifferentFingerActionsPerSecond ?? candidate.actionsPerSecond;
   const validFingerSpeeds = fingerSpeeds !== null
     && typeof fingerSpeeds === 'object'
     && !Array.isArray(fingerSpeeds)
@@ -105,6 +116,9 @@ function validCalibration(value: unknown): value is PlaybackCalibration {
   return Number.isFinite(candidate.actionsPerSecond)
     && candidate.actionsPerSecond! >= CALIBRATION_ACTIONS_PER_SECOND_MIN
     && candidate.actionsPerSecond! <= CALIBRATION_ACTIONS_PER_SECOND_MAX
+    && Number.isFinite(sameHandSpeed)
+    && sameHandSpeed! >= CALIBRATION_ACTIONS_PER_SECOND_MIN
+    && sameHandSpeed! <= CALIBRATION_ACTIONS_PER_SECOND_MAX
     && validFingerSpeeds
     && Number.isFinite(candidate.fallbackFingerSpeedUnitsPerSecond)
     && candidate.fallbackFingerSpeedUnitsPerSecond! >= CALIBRATION_FINGER_SPEED_MIN
@@ -118,7 +132,13 @@ export function loadPlaybackCalibration(storage?: CalibrationStorage): PlaybackC
     const raw = storage.getItem(PLAYBACK_CALIBRATION_STORAGE_KEY);
     if (!raw) return undefined;
     const value: unknown = JSON.parse(raw);
-    return validCalibration(value) ? value : undefined;
+    if (!validCalibration(value)) return undefined;
+    return {
+      ...value,
+      // v2で保存された旧値は通常速度を同手・別指速度の初期値にする。
+      sameHandDifferentFingerActionsPerSecond:
+        value.sameHandDifferentFingerActionsPerSecond ?? value.actionsPerSecond,
+    };
   } catch {
     return undefined;
   }
@@ -161,9 +181,25 @@ export function calibrationActionPair(geometry: Geometry): [string, string] | un
   return left && right && left !== right ? [left, right] : undefined;
 }
 
-export function calibrationKeyMatches(event: KeyboardEvent, keyId: string): boolean {
+/** 同じ手の別指を交互に打つ測定用のホームキー組。左右各指の全組合せを使う。 */
+export function calibrationSameHandPairs(geometry: Geometry): [string, string][] {
+  const pairs: [string, string][] = [];
+  for (const hand of ['L', 'R'] as const) {
+    const fingers = FINGERS.filter((finger) => finger.startsWith(hand));
+    for (let leftIndex = 0; leftIndex < fingers.length; leftIndex++) {
+      for (let rightIndex = leftIndex + 1; rightIndex < fingers.length; rightIndex++) {
+        const left = geometry.assignment.homeKey[fingers[leftIndex]];
+        const right = geometry.assignment.homeKey[fingers[rightIndex]];
+        if (left && right && left !== right) pairs.push([left, right]);
+      }
+    }
+  }
+  return pairs;
+}
+
+export function calibrationKeyMatches(event: KeyboardEvent, keyId: string, keyLabel = keyId): boolean {
   const eventKey = event.key.toLowerCase();
-  if (eventKey === keyId.toLowerCase()) return true;
+  if (eventKey === keyId.toLowerCase() || eventKey === keyLabel.toLowerCase()) return true;
 
   const codeToKey: Record<string, string> = {
     Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/',
