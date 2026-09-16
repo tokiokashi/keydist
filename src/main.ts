@@ -800,7 +800,7 @@ let playbackAnimationFrame: number | undefined;
 let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
 let playbackShowFingers = false;
-let playbackShowRomajiPlan = false;
+let playbackShowRomajiPlan = true;
 let playbackShowPlanKeys = false;
 let playbackShowTrail = false;
 let playbackTrailTau = 5;
@@ -844,7 +844,9 @@ function updatePlaybackView() {
   const plannedOrders = playbackShowOrderLabels
     ? playbackShowPlanKeys
       ? playbackPlannedOrders(playbackTrace.strokes, cursor, windowSize)
-      : playbackRomajiPlannedOrders(playbackTrace.strokes, cursor)
+      : playbackShowRomajiPlan
+        ? playbackRomajiPlannedOrders(playbackTrace.strokes, cursor)
+        : new Map<string, number>()
     : new Map<string, number>();
   const trailOrders = playbackShowOrderLabels && playbackShowTrail
     ? playbackTrailOrders(playbackTrace.strokes, cursor, playbackTrailTau)
@@ -894,7 +896,6 @@ function updatePlaybackView() {
   const back = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="back"]');
   const forward = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="forward"]');
   const fingers = el.playback.querySelector<HTMLInputElement>('[data-playback-fingers]');
-  const romajiPlan = el.playback.querySelector<HTMLInputElement>('[data-playback-romaji-plan]');
   const planKeys = el.playback.querySelector<HTMLInputElement>('[data-playback-plan-keys]');
   const trail = el.playback.querySelector<HTMLInputElement>('[data-playback-trail]');
   const trailTau = el.playback.querySelector<HTMLInputElement>('[data-playback-trail-tau]');
@@ -911,7 +912,7 @@ function updatePlaybackView() {
   if (romaji) romaji.hidden = !isRomaji;
   if (kana) kana.textContent = stroke?.inputChar ?? '—';
   if (typed) typed.textContent = stroke?.char ?? '—';
-  const plan = isRomaji && playbackShowRomajiPlan
+  const plan = isRomaji
     ? playbackRomajiPlan(playbackTrace.strokes, cursor)
     : undefined;
   if (planned) {
@@ -921,7 +922,7 @@ function updatePlaybackView() {
   const inputPreview = playbackInputPreview(
     playbackTrace.strokes,
     cursor,
-    playbackShowPlanKeys ? windowSize : 0,
+    windowSize,
   );
   if (history) history.hidden = inputPreview.length === 0;
   if (historyText) {
@@ -945,13 +946,14 @@ function updatePlaybackView() {
   if (back) back.disabled = playbackState.playing || cursor === 0;
   if (forward) forward.disabled = playbackState.playing || cursor >= total;
   if (fingers) fingers.checked = playbackShowFingers;
+  const romajiPlan = el.playback.querySelector<HTMLInputElement>('[data-playback-romaji-plan]');
   if (romajiPlan) {
     romajiPlan.checked = playbackShowRomajiPlan;
-    romajiPlan.disabled = !isRomaji || playbackShowPlanKeys;
+    romajiPlan.disabled = !isRomaji;
   }
   if (planKeys) {
     planKeys.checked = playbackShowPlanKeys;
-    planKeys.disabled = isRomaji && playbackShowRomajiPlan;
+    planKeys.disabled = false;
   }
   if (trail) trail.checked = playbackShowTrail;
   if (trailTau) trailTau.value = String(playbackTrailTau);
@@ -1009,7 +1011,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
     <div class="playback-body">
       <div class="playback-head">
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${playbackShowFingers ? ' checked' : ''} />指の位置を色で表示</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${playbackShowRomajiPlan ? ' checked' : ''} />予定ローマ字を表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${playbackShowRomajiPlan ? ' checked' : ''} />予定ローマ字の盤面表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-plan-keys${playbackShowPlanKeys ? ' checked' : ''} />押下予定キーを表示</label>
         <span class="playback-window-setting" title="サイドバーの窓幅Nと共通">N <output data-playback-window>${Number(el.window.value)}</output> ステップ</span>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${playbackShowTrail ? ' checked' : ''} />押下履歴を残す</label>
@@ -2154,14 +2156,12 @@ el.playback.addEventListener('change', (e) => {
   const romajiPlan = target.closest<HTMLInputElement>('input[data-playback-romaji-plan]');
   if (romajiPlan) {
     playbackShowRomajiPlan = romajiPlan.checked;
-    if (playbackShowRomajiPlan) playbackShowPlanKeys = false;
     updatePlaybackView();
     return;
   }
   const planKeys = target.closest<HTMLInputElement>('input[data-playback-plan-keys]');
   if (planKeys) {
     playbackShowPlanKeys = planKeys.checked;
-    if (playbackShowPlanKeys) playbackShowRomajiPlan = false;
     updatePlaybackView();
     return;
   }
