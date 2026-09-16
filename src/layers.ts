@@ -10,16 +10,16 @@ import type { Face, Layout } from './layouts/types.ts';
 export type Hand = 'left' | 'right';
 
 export interface Layer {
-  /** このレイヤーに含めた面。通常は単独面、逆手の面だけ 2 面を持つ */
+  /** このレイヤーに含めた面。通常は単独面、逆手の面だけ2面を持つ */
   faces: readonly Face[];
 }
 
 export interface FaceGroups {
   /** 盤面の置き換えとして表示するレイヤー */
   layers: Layer[];
-  /** かなへ作用する修飾面。宣言された layer はここでも畳む */
+  /** かなへ作用する修飾面。宣言されたlayerはここでも畳む */
   modifiers: Layer[];
-  /** 2 キー以上の trigger を持つ面 */
+  /** 2キー以上のtriggerを持つ面 */
   combos: readonly Face[];
 }
 
@@ -59,7 +59,7 @@ export function displayTriggerKeys(
   return triggerKeys;
 }
 
-/** 面の出力を、表示対象のキー id と出力文字の対応へ変換する。 */
+/** 面の出力を、表示対象のキーidと出力文字の対応へ変換する。 */
 export function faceCells(face: Face): Map<string, string> {
   const cells = new Map<string, string>();
   face.rows.forEach((row, rowIndex) => {
@@ -75,8 +75,8 @@ export function faceCells(face: Face): Map<string, string> {
 /**
  * 畳んだレイヤーの表示用セルを作る。
  *
- * 面の定義は同じ同時押しを 2 回持たないよう片方向だけを書くため、
- * たとえば k 面の d セルは d シフトの k セルにも表示できる。評価用の
+ * 面の定義は同じ同時押しを2回持たないよう片方向だけを書くため、
+ * たとえばk面のdセルはdシフトのkセルにも表示できる。評価用の
  * `Layout.map` には触れず、描画時だけ全単一キー面からこの対称位置を補う。
  */
 export function foldedLayerCells(layer: Layer, faces: readonly Face[]): Map<string, string> {
@@ -108,7 +108,7 @@ export function foldedLayerCells(layer: Layer, faces: readonly Face[]): Map<stri
   return cells;
 }
 
-/** 物理キー id から、既定の指割り当てに基づく手を引く。 */
+/** 物理キーidから、既定の指割り当てに基づく手を引く。 */
 export function handOfKey(key: string): Hand | undefined {
   const resolved = resolveKeyId(key);
   if (resolved === THUMB_KEY.LT) return 'left';
@@ -131,18 +131,18 @@ const singleHand = (keys: Iterable<string>): Hand | undefined => {
 const opposite = (first: Hand | undefined, second: Hand | undefined) =>
   first !== undefined && second !== undefined && first !== second;
 
-/** 宣言された 2 面が issue #84 の構造条件を満たすか検証する。 */
+/** 宣言された2面がissue #84の構造条件を満たすか検証する。 */
 export function canFoldFaces(first: Face, second: Face): boolean {
   if (first.layer === undefined || first.layer !== second.layer) return false;
   const invalid = (reason: string): never => {
     throw new Error(`レイヤー「${first.layer}」の面が畳み条件を満たさない: ${reason}`);
   };
-  if (first.trigger.length !== 1 || second.trigger.length !== 1) invalid('trigger は単一キーである必要がある');
-  if (first.mode !== second.mode) invalid('mode が異なる');
+  if (first.trigger.length !== 1 || second.trigger.length !== 1) invalid('triggerは単一キーである必要がある');
+  if (first.mode !== second.mode) invalid('modeが異なる');
 
   const firstTriggerHand = singleHand(first.trigger);
   const secondTriggerHand = singleHand(second.trigger);
-  if (!opposite(firstTriggerHand, secondTriggerHand)) invalid('trigger が逆手でない');
+  if (!opposite(firstTriggerHand, secondTriggerHand)) invalid('triggerが逆手でない');
 
   const firstCells = faceCells(first);
   const secondCells = faceCells(second);
@@ -159,7 +159,7 @@ export function canFoldFaces(first: Face, second: Face): boolean {
 function singleTriggerGroups(faces: readonly Face[]): Map<string, Face[]> {
   const groups = new Map<string, Face[]>();
   faces.forEach((face, index) => {
-    // 2 キー以上の trigger は常にコンボであり、レイヤーの宣言だけ禁止する。
+    // 2キー以上のtriggerは常にコンボであり、レイヤーの宣言だけ禁止する。
     if (face.trigger.length > 1) {
       if (face.layer !== undefined) throw new Error('コンボ面にはレイヤーを宣言できない');
       return;

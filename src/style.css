@@ -627,3 +627,26 @@ dialog hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0 14px; }
 .callout-important .callout-title { color: var(--series-7); }
 .callout-warning { border-left-color: var(--series-4); }
 .callout-warning .callout-title { color: var(--series-4); }
+
+/* 指標の補足ボタン。見出しの一部ではないので、字面より一段弱く見せる */
+.info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  margin-left: 5px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-style: italic;
+  line-height: 1;
+  cursor: help;
+  vertical-align: middle;
+}
+.info:hover, .info:focus-visible { color: var(--fg); border-color: var(--fg); }
+
+.tooltip.wrap { white-space: normal; max-width: 300px; }

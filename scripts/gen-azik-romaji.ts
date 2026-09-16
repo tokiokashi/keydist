@@ -1,26 +1,26 @@
 /**
- * AZIK 拡張ローマ字テーブルを `src/romaji/azik.ts` として生成するスクリプト。
+ * AZIK拡張ローマ字テーブルを `src/romaji/azik.ts` として生成するスクリプト。
  *
- * 出典: https://github.com/toriwasa/azik-roman-table の `azik_romantable.txt`
- * （Google 日本語入力向け。ローマ字 → かな、非空行 576、すべて2列の TSV）
+ * 出典: https://github.com/toriwasa/azik-roman-tableの `azik_romantable.txt`
+ * （Google日本語入力向け。ローマ字 → かな、非空行576、すべて2列のTSV）
  *
- * 使い方（実行時にネットへは出ない。事前に出典をローカルへ clone しておく）:
+ * 使い方（実行時にネットへは出ない。事前に出典をローカルへcloneしておく）:
  *
  *   GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://github.com/toriwasa/azik-roman-table /tmp/azik
  *   node --experimental-strip-types scripts/gen-azik-romaji.ts /tmp/azik/azik_romantable.txt
  *
  * 変換で決めたこと（issue #33）:
  *
- * 1. 出典は「ローマ字 → かな」、keydist のテーブルは「かな → ローマ字」なので逆写像を作る。
+ * 1. 出典は「ローマ字 → かな」、keydistのテーブルは「かな → ローマ字」なので逆写像を作る。
  * 2. 1つの出力（かな、または複数かなの並び）に複数の綴りがある場合（134件、互換キー）は
- *    (a) 打鍵数（文字数）が最小のものを採る
- *    (b) 同数なら出典ファイルに先に現れた方を採る（AZIK 本来の綴りが先、互換キーが後に並ぶ）
- *    の順で1つに決める。Array.prototype.sort は安定ソートなので、長さで並べ替えても
+ *    (a)打鍵数（文字数）が最小のものを採る
+ *    (b)同数なら出典ファイルに先に現れた方を採る（AZIK本来の綴りが先、互換キーが後に並ぶ）
+ *    の順で1つに決める。Array.prototype.sortは安定ソートなので、長さで並べ替えても
  *    同じ長さの中の出現順は保たれる。
  * 3. 促音（っ）は出典で `;` の1行だけが対応する。`kunrei()` のように子音を重ねて
- *    自動生成すると AZIK の1打という利点を潰すので、生成ループは持たない。
- * 4. 出典は JIS 配列 + Google 日本語入力を前提にした記号（「」『』・…‥〜）を含むが、
- *    keydist は ANSI 刻印でキーを指すので、かな以外の出力は句読点（、。kunrei.ts と同じ綴り）
+ *    自動生成するとAZIKの1打という利点を潰すので、生成ループは持たない。
+ * 4. 出典はJIS配列 + Google日本語入力を前提にした記号（「」『』・…‥〜）を含むが、
+ *    keydistはANSI刻印でキーを指すので、かな以外の出力は句読点（、。kunrei.tsと同じ綴り）
  *    だけを残し、それ以外の記号は落とす。
  *
  * 生成物は手で直接編集せず、出典の更新時はこのスクリプトを再実行すること。
@@ -30,7 +30,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const KANA_CHARS = /^[぀-ゟヴー]+$/; // ひらがな + ヴ(カタカナ) + ー
-const KEEP_PUNCT = new Set(['、', '。']); // kunrei.ts の綴りと揃える。他の記号は JIS 配列前提なので落とす
+const KEEP_PUNCT = new Set(['、', '。']); // kunrei.tsの綴りと揃える。他の記号はJIS配列前提なので落とす
 const QWERTY_CHARS = new Set([..."1234567890-=qwertyuiop[]asdfghjkl;'zxcvbnm,./"]);
 
 interface Row {
@@ -71,7 +71,7 @@ function buildTable(rows: Row[]): { table: Record<string, string>; droppedSymbol
     const sorted = [...spellings].sort((a, b) => a.length - b.length);
     const chosen = sorted.find((s) => [...s].every((ch) => QWERTY_CHARS.has(ch)));
     if (chosen === undefined) {
-      throw new Error(`${kana} の全綴りが ANSI QWERTY に無い文字を含む: ${sorted.join(', ')}`);
+      throw new Error(`${kana} の全綴りがANSI QWERTYに無い文字を含む: ${sorted.join(', ')}`);
     }
     table[kana] = chosen;
   }
@@ -79,8 +79,8 @@ function buildTable(rows: Row[]): { table: Record<string, string>; droppedSymbol
 }
 
 /**
- * 出典ファイルが置かれた clone のコミットを拾う。
- * 生成物と出典の対応を後から辿れるようにするため。git 管理下でなければ空を返す
+ * 出典ファイルが置かれたcloneのコミットを拾う。
+ * 生成物と出典の対応を後から辿れるようにするため。git管理下でなければ空を返す
  */
 function sourceCommit(srcPath: string): string {
   try {
@@ -94,30 +94,30 @@ function sourceCommit(srcPath: string): string {
 }
 
 function render(table: Record<string, string>, commit: string): string {
-  // Unicode コードポイント順に並べる。生成の再現性を優先し、訓令式テーブルのような
+  // Unicodeコードポイント順に並べる。生成の再現性を優先し、訓令式テーブルのような
   // 手書きのグルーピングはしない
   const entries = Object.entries(table).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
   const lines = entries.map(([kana, roman]) => `  ${JSON.stringify(kana)}: ${JSON.stringify(roman)},`);
   return `/**
- * AZIK 拡張ローマ字入力のテーブル。
+ * AZIK拡張ローマ字入力のテーブル。
  *
- * 出典: https://github.com/toriwasa/azik-roman-table の \`azik_romantable.txt\`
- * （Google 日本語入力向け。AZIK 本体は
- * https://web.archive.org/web/20241217165614/http://hp.vector.co.jp/authors/VA002116/azik/azikinfo.htm ）
+ * 出典: https://github.com/toriwasa/azik-roman-tableの \`azik_romantable.txt\`
+ * （Google日本語入力向け。AZIK本体は
+ * https://web.archive.org/web/20241217165614/http://hp.vector.co.jp/authors/VA002116/azik/azikinfo.htm）
  *${commit ? `\n * 出典のコミット: ${commit}\n *` : ''}
  * このファイルは \`scripts/gen-azik-romaji.ts\` による生成物。直接編集しない。
  * 出典が「ローマ字 → かな」なのに対しこちらは「かな → ローマ字」なので逆写像である。
  * 出典の134件の重複（互換キー）は「打鍵数最小、同数なら出典で先に現れた方」で1つに決めた。
  * 詳細な変換規則はスクリプト本体のコメントを参照。
  *
- * kunrei.ts と違い、促音の自動生成ループは持たない。AZIK で「っ」を出すのは
- * \`;\` の1打だけであり、子音を重ねる生成をすると AZIK の利点（打鍵数の削減）を潰すため。
+ * kunrei.tsと違い、促音の自動生成ループは持たない。AZIKで「っ」を出すのは
+ * \`;\` の1打だけであり、子音を重ねる生成をするとAZIKの利点（打鍵数の削減）を潰すため。
  */
 const BASE: Record<string, string> = {
 ${lines.join('\n')}
 };
 
-/** AZIK テーブルを組み立てる。かな配列と同じ \`Map<string, string>\` の形で返す */
+/** AZIKテーブルを組み立てる。かな配列と同じ \`Map<string, string>\` の形で返す */
 export function azik(): Map<string, string> {
   return new Map(Object.entries(BASE));
 }

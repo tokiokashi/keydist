@@ -3,11 +3,11 @@ export type Finger =
   | 'LP' | 'LR' | 'LM' | 'LI' | 'LT'
   | 'RT' | 'RI' | 'RM' | 'RR' | 'RP';
 
-/** 親指を除く 8 本。隣接指間距離（§11.6）はこの範囲で見る */
+/** 親指を除く8本。隣接指間距離（§11.6）はこの範囲で見る */
 export type NonThumb = Exclude<Finger, 'LT' | 'RT'>;
 export const FINGERS: NonThumb[] = ['LP', 'LR', 'LM', 'LI', 'RI', 'RM', 'RR', 'RP'];
 
-/** 親指を含む全 10 本 */
+/** 親指を含む全10本 */
 export const ALL_FINGERS: Finger[] = ['LP', 'LR', 'LM', 'LI', 'LT', 'RT', 'RI', 'RM', 'RR', 'RP'];
 
 export const isThumb = (finger: Finger) => finger === 'LT' || finger === 'RT';
@@ -24,7 +24,7 @@ export interface Point {
 }
 
 export interface Key extends Point {
-  /** 物理キーの識別子。QWERTY 刻印の範囲内なら刻印文字、それ以外は `r{row}c{col}` */
+  /** 物理キーの識別子。QWERTY刻印の範囲内なら刻印文字、それ以外は `r{row}c{col}` */
   id: string;
   row: number;
   col: number;
@@ -42,12 +42,12 @@ export interface Geometry {
   /** 各手のホームとなる親指キー（仕様 §3.1） */
   thumbs: Record<'LT' | 'RT', Key>;
   homes: Record<Finger, Point>;
-  /** この形状の構築に使った指割り当て（仕様 §4.2 準拠。出力に併記するため保持する） */
+  /** この形状の構築に使った指割り当て（仕様 §4.2準拠。出力に併記するため保持する） */
   assignment: FingerAssignment;
 }
 
 /**
- * 物理キーの正式名は QWERTY 刻印とする。行列インデックスより読めるうえ、
+ * 物理キーの正式名はQWERTY刻印とする。行列インデックスより読めるうえ、
  * 公開されているかな配列の定義がそのまま写せる。
  */
 export const QWERTY_LEGEND = [
@@ -58,7 +58,7 @@ export const QWERTY_LEGEND = [
 ] as const;
 
 /**
- * 物理キーの id。QWERTY 刻印の範囲内（既定形状の行・列数以内）ならその文字を使い、
+ * 物理キーのid。QWERTY刻印の範囲内（既定形状の行・列数以内）ならその文字を使い、
  * 範囲外（形状定義でキー数を増やした場合）は `r{row}c{col}` で生成する。
  */
 export const keyId = (row: number, col: number): string => {
@@ -67,19 +67,19 @@ export const keyId = (row: number, col: number): string => {
   return `r${row}c${col}`;
 };
 
-/** 親指キーの id（既定形状のもの） */
+/** 親指キーのid（既定形状のもの） */
 export const THUMB_KEY = { LT: 'thumb-l', RT: 'thumb-r' } as const;
 
-/** 旧定義や localStorage に残る親指キー id を正式名へ解決する。 */
+/** 旧定義やlocalStorageに残る親指キーidを正式名へ解決する。 */
 export const resolveKeyId = (id: string): string => id === 'space' ? THUMB_KEY.RT : id;
 
-/** 各行の列数は刻印の長さで決まる（12 / 12 / 11 / 10）。既定形状の rowWidths に使う */
+/** 各行の列数は刻印の長さで決まる（12 / 12 / 11 / 10）。既定形状のrowWidthsに使う */
 const ROW_WIDTH = QWERTY_LEGEND.map((row) => row.length);
 
 /** 親指キーの行 */
 export const THUMB_ROW = 4;
 
-/** ホーム段の行インデックス。0=数字段 1=上段 2=ホーム段 3=下段 */
+/** ホーム段の行インデックス。0=数字段1=上段2=ホーム段3=下段 */
 export const HOME_ROW = 2;
 
 /**
@@ -89,11 +89,11 @@ export const HOME_ROW = 2;
 export interface FingerAssignment {
   id: string;
   name: string;
-  /** 物理キー id → 指。親指キーは含まない（親指の扱いは仕様 §3.1 で固定） */
+  /** 物理キーid → 指。親指キーは含まない（親指の扱いは仕様 §3.1で固定） */
   keyFinger: Record<string, Finger>;
   /**
-   * 各指のホーム位置となるキー id（仕様 §3 の H_f）。
-   * 座標はここで指した物理キーの実座標から引くため、形状（row-staggered 等）ごとに解決される。
+   * 各指のホーム位置となるキーid（仕様 §3のH_f）。
+   * 座標はここで指した物理キーの実座標から引くため、形状（row-staggered等）ごとに解決される。
    */
   homeKey: Record<NonThumb, string>;
 }
@@ -123,8 +123,8 @@ export function columnFingerAssignment(
 }
 
 /**
- * 既定の指割り当て。10 列目より右（`-` `=` `[` `]` `'` など）はすべて小指が担当し、
- * ホームは ASDF JKL; に置く。この既定を変えると既存の測定値が動くため変更しない。
+ * 既定の指割り当て。10列目より右（`-` `=` `[` `]` `'` など）はすべて小指が担当し、
+ * ホームはASDF JKL; に置く。この既定を変えると既存の測定値が動くため変更しない。
  */
 export const DEFAULT_FINGER_ASSIGNMENT: FingerAssignment = columnFingerAssignment(
   'default',
@@ -135,14 +135,14 @@ export const DEFAULT_FINGER_ASSIGNMENT: FingerAssignment = columnFingerAssignmen
 
 export type GeometryKind = 'row-staggered' | 'ortholinear' | 'column-staggered';
 
-/** 親指キー 1 個の定義。物理形状（`PhysicalShape`）が個数・位置を持つ（仕様 §3.1） */
+/** 親指キー1個の定義。物理形状（`PhysicalShape`）が個数・位置を持つ（仕様 §3.1） */
 export interface ThumbKeySpec {
-  /** 物理キー id */
+  /** 物理キーid */
   id: string;
   finger: 'LT' | 'RT';
-  /** ホーム段 (row = HOME_ROW) を基準にした列位置。x 座標はここから形状の xOf で求める */
+  /** ホーム段 (row = HOME_ROW)を基準にした列位置。x座標はここから形状のxOfで求める */
   col: number;
-  /** y 座標 [u] */
+  /** y座標 [u] */
   y: number;
 }
 
@@ -154,44 +154,44 @@ export interface ThumbKeySpec {
 export interface PhysicalShape {
   id: string;
   name: string;
-  /** 1u あたりの実距離 [mm] */
+  /** 1uあたりの実距離 [mm] */
   pitchMm: number;
   /** 各段のキー数。段の数はこの配列の長さで決まる */
   rowWidths: number[];
-  /** 段ごとの x オフセット [u]（row-staggered の段ずれ量）。省略時は全段 0 */
+  /** 段ごとのxオフセット [u]（row-staggeredの段ずれ量）。省略時は全段0 */
   rowStagger?: number[];
   /**
-   * 列ごとの y オフセット [u]（column-staggered 用）。省略時は全列 0（段番号がそのまま y）。
-   * col がこの配列の長さを超える場合は最後の値を使う
+   * 列ごとのyオフセット [u]（column-staggered用）。省略時は全列0（段番号がそのままy）。
+   * colがこの配列の長さを超える場合は最後の値を使う
    */
   columnStagger?: number[];
-  /** この列（col）以降に `splitGap` を x に加える（分割キーボード用）。省略時は分割なし */
+  /** この列（col）以降に `splitGap` をxに加える（分割キーボード用）。省略時は分割なし */
   splitAt?: number;
   /** 左右の手の間に空ける量 [u]（`splitAt` とセットで使う） */
   splitGap?: number;
-  /** 親指キーの定義。各手に 1 個以上必要 */
+  /** 親指キーの定義。各手に1個以上必要 */
   thumbs: ThumbKeySpec[];
   /**
-   * 親指キーが手ごとに複数ある場合、ホームとなるキー id を明示する（仕様 §3.1）。
-   * 1 個しかない手は省略してよい（その 1 個が自動でホームになる）
+   * 親指キーが手ごとに複数ある場合、ホームとなるキーidを明示する（仕様 §3.1）。
+   * 1個しかない手は省略してよい（その1個が自動でホームになる）
    */
   thumbHome?: Partial<Record<'LT' | 'RT', string>>;
 }
 
 /**
  * 段ずれ量 [数字段, 上段, ホーム段, 下段]。
- * ANSI/JIS の修飾キー幅から一意に決まる:
+ * ANSI/JISの修飾キー幅から一意に決まる:
  *   Backquote 1.0u → 1.5u / Tab 1.5u → 2.0u / CapsLock 1.75u → 2.25u / LShift 2.25u → 2.75u
  */
 const ROW_STAGGER = [0, 0.5, 0.75, 1.25];
 
-/** column-staggered の列ごとの y オフセット */
+/** column-staggeredの列ごとのyオフセット */
 const COLUMN_STAGGER = [0.34, 0.12, 0, 0.1, 0.3, 0.3, 0.1, 0, 0.12, 0.34];
 
-/** column-staggered で左右の手の間に空ける量 */
+/** column-staggeredで左右の手の間に空ける量 */
 const SPLIT_GAP = 2;
 
-/** column-staggered が分割を始める列 */
+/** column-staggeredが分割を始める列 */
 const SPLIT_AT = 5;
 
 const DEFAULT_THUMBS: ThumbKeySpec[] = [
@@ -206,7 +206,7 @@ const DEFAULT_THUMBS: ThumbKeySpec[] = [
 export const PHYSICAL_SHAPES: Record<GeometryKind, PhysicalShape> = {
   'row-staggered': {
     id: 'row-staggered',
-    name: '段ずれ（ANSI/JIS 準拠）',
+    name: '段ずれ（ANSI/JIS準拠）',
     pitchMm: 19.05,
     rowWidths: ROW_WIDTH,
     rowStagger: ROW_STAGGER,
@@ -264,7 +264,7 @@ export function buildGeometry(
     grid.push(line);
   });
 
-  // 親指キー。1 個しか無い手はホーム＝そのキー自身になるため移動距離は常に 0（仕様 §3.1）。
+  // 親指キー。1個しか無い手はホーム＝そのキー自身になるため移動距離は常に0（仕様 §3.1）。
   // 複数ある手は他の指と同じホーム復帰規則（§7〜§9）に従う
   const thumbsByFinger: Record<'LT' | 'RT', Key[]> = { LT: [], RT: [] };
   for (const spec of s.thumbs) {
@@ -293,7 +293,7 @@ export function buildGeometry(
         ? candidates[0]
         : undefined;
     if (!home) {
-      throw new Error(`形状「${s.id}」の ${finger} は親指キーが複数あるため thumbHome で明示する`);
+      throw new Error(`形状「${s.id}」の ${finger} は親指キーが複数あるためthumbHomeで明示する`);
     }
     thumbs[finger] = home;
   }

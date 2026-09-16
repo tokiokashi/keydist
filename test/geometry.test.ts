@@ -25,7 +25,7 @@ test('既定の指割り当てでは列ごとに同じ指になる（上段・�
   for (const id of ['q', 'a', 'z']) assert.equal(geometry.keys.get(id)!.finger, 'LP');
 });
 
-test('既定のホームは ASDF JKL; の座標になる', () => {
+test('既定のホームはASDF JKL; の座標になる', () => {
   const geometry = buildGeometry('row-staggered');
   const f = geometry.keys.get('f')!;
   const j = geometry.keys.get('j')!;
@@ -35,13 +35,13 @@ test('既定のホームは ASDF JKL; の座標になる', () => {
   near(geometry.homes.RI.y, j.y, 'RI home y');
 });
 
-test('geometry.assignment に既定の割り当てが記録される', () => {
+test('geometry.assignmentに既定の割り当てが記録される', () => {
   const geometry = buildGeometry('row-staggered');
   assert.equal(geometry.assignment, DEFAULT_FINGER_ASSIGNMENT);
   assert.equal(geometry.assignment.id, 'default');
 });
 
-test('metrics の出力に使用した指割り当てが併記される（仕様 §4.2）', () => {
+test('metricsの出力に使用した指割り当てが併記される（仕様 §4.2）', () => {
   const geometry = buildGeometry('row-staggered');
   const m = computeMetrics(evaluate('asdf', qwerty, geometry, opts), geometry);
   assert.equal(m.fingerAssignmentId, 'default');
@@ -49,8 +49,8 @@ test('metrics の出力に使用した指割り当てが併記される（仕様
 });
 
 /**
- * 小指を使わない割り当て。列 0（小指列）と列 9〜12（右外側の小指列）を薬指に回す。
- * ホームキー自体は変えない（薬指のホームは引き続き s / l）。
+ * 小指を使わない割り当て。列0（小指列）と列9〜12（右外側の小指列）を薬指に回す。
+ * ホームキー自体は変えない（薬指のホームは引き続きs / l）。
  */
 function noPinkyAssignment() {
   const columnFinger: Finger[] = [
@@ -79,8 +79,8 @@ test('ホームキーを変えなければ、列の再割り当てをしても�
   near(geometry.homes.LR.y, s.y, 'LR home y');
 });
 
-test('ホームキーの割り当てを変えると H_f の座標も連動する（仕様 §3）', () => {
-  // 人差し指のホームを標準の f / j から d / k へ動かす
+test('ホームキーの割り当てを変えるとH_fの座標も連動する（仕様 §3）', () => {
+  // 人差し指のホームを標準のf / jからd / kへ動かす
   const homeColumn: Record<NonThumb, number> = {
     LP: 0, LR: 1, LM: 2, LI: 2, RI: 7, RM: 7, RR: 8, RP: 9,
   };
@@ -98,8 +98,8 @@ test('ホームキーの割り当てを変えると H_f の座標も連動する
 });
 
 test('割り当てを変えると同指連続の数が変わりうる（配列間比較は同じ割り当ての中でのみ成立する）', () => {
-  // 'aq' は既定では LP→LP（同指連続）。no-pinky では LR→LR で依然として同指連続だが、
-  // 'as' は既定では LP→LR（異指）、no-pinky では LR→LR（同指連続）に変わる
+  // 'aq' は既定ではLP→LP（同指連続）。no-pinkyではLR→LRで依然として同指連続だが、
+  // 'as' は既定ではLP→LR（異指）、no-pinkyではLR→LR（同指連続）に変わる
   const defaultGeometry = buildGeometry('row-staggered');
   const noPinkyGeometry = buildGeometry('row-staggered', noPinkyAssignment());
 
@@ -110,11 +110,11 @@ test('割り当てを変えると同指連続の数が変わりうる（配列�
   assert.equal(noPinkyMetrics.sameFinger, 1);
 });
 
-test('割り当てに無いキーで geometry を作ろうとすると例外になる', () => {
+test('割り当てに無いキーでgeometryを作ろうとすると例外になる', () => {
   const incomplete = columnFingerAssignment(
     'broken',
     '不完全',
-    ['LP'], // 1 列分しか無い
+    ['LP'], // 1列分しか無い
     { LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9 },
   );
   assert.throws(() => buildGeometry('row-staggered', incomplete), /キー .* が無い/);
@@ -132,14 +132,14 @@ test('ホームキーが存在しない割り当ては例外になる', () => {
 
 // ---- 物理形状（issue #15。仕様 §3・§3.1） ----
 
-test('metrics の出力に使用した物理形状が併記される（仕様 §3）', () => {
+test('metricsの出力に使用した物理形状が併記される（仕様 §3）', () => {
   const geometry = buildGeometry('column-staggered');
   const m = computeMetrics(evaluate('asdf', qwerty, geometry, opts), geometry);
   assert.equal(m.geometryId, 'column-staggered');
   assert.equal(m.geometryName, geometry.name);
 });
 
-test('GeometryKind 文字列は PHYSICAL_SHAPES から解決される。直接渡しても同じ形状になる', () => {
+test('GeometryKind文字列はPHYSICAL_SHAPESから解決される。直接渡しても同じ形状になる', () => {
   const byKind = buildGeometry('row-staggered');
   const byShape = buildGeometry(PHYSICAL_SHAPES['row-staggered']);
   assert.equal(byKind.id, byShape.id);
@@ -147,7 +147,7 @@ test('GeometryKind 文字列は PHYSICAL_SHAPES から解決される。直接�
   near(byKind.homes.RT.x, byShape.homes.RT.x);
 });
 
-test('QWERTY 刻印の範囲を超える列は r{row}c{col} の id になる', () => {
+test('QWERTY刻印の範囲を超える列はr{row}c{col} のidになる', () => {
   assert.equal(keyId(0, 0), '1');
   assert.equal(keyId(0, 12), 'r0c12');
 });
@@ -160,7 +160,7 @@ test('ピッチ（pitch_mm）は形状ごとにカスタムできる', () => {
   near(m.totalMm, m.totalUnits * 17, 'totalMm');
 });
 
-test('段ずれ量（段ごとの x オフセット）は形状ごとにカスタムできる', () => {
+test('段ずれ量（段ごとのxオフセット）は形状ごとにカスタムできる', () => {
   const shape: PhysicalShape = {
     ...PHYSICAL_SHAPES.ortholinear,
     id: 'custom-row-stagger',
@@ -173,7 +173,7 @@ test('段ずれ量（段ごとの x オフセット）は形状ごとにカス�
   near(geometry.grid[3][0].x, 3, 'row3');
 });
 
-test('列ごとの y オフセット（column-staggered）は形状ごとにカスタムできる', () => {
+test('列ごとのyオフセット（column-staggered）は形状ごとにカスタムできる', () => {
   const shape: PhysicalShape = {
     ...PHYSICAL_SHAPES.ortholinear,
     id: 'custom-column-stagger',
@@ -186,7 +186,7 @@ test('列ごとの y オフセット（column-staggered）は形状ごとにカ�
   near(geometry.grid[0][5].y, 0.5, 'col5（はみ出し）');
 });
 
-/** 10 列 × 4 段のコンパクトな形状用の割り当て。ホーム位置の考え方は既定と同じ */
+/** 10列 × 4段のコンパクトな形状用の割り当て。ホーム位置の考え方は既定と同じ */
 function compactAssignment() {
   const columnFinger: Finger[] = ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP'];
   const homeColumn: Record<NonThumb, number> = {
@@ -205,7 +205,7 @@ test('段に置けるキー数は形状定義（rowWidths）から導かれる',
   const geometry = buildGeometry(shape, compactAssignment());
   assert.equal(geometry.grid[1].length, 10);
   assert.equal(geometry.keys.has('p'), true);
-  // 既定の ANSI 形状（12 列）にはある右外側の列が、この10列の形状には無い
+  // 既定のANSI形状（12列）にはある右外側の列が、この10列の形状には無い
   assert.equal(geometry.keys.has('['), false);
   assert.equal(geometry.keys.has(']'), false);
 });
@@ -226,17 +226,17 @@ function dualThumbShape(thumbHome?: Partial<Record<'LT' | 'RT', string>>): Physi
     thumbs: [
       { id: 'thumb-l', finger: 'LT', col: 3.5, y: 4 },
       { id: 'space', finger: 'RT', col: 5.5, y: 4 },
-      { id: 'thumb-r2', finger: 'RT', col: 6.5, y: 4 }, // ホームの 1u 右
+      { id: 'thumb-r2', finger: 'RT', col: 6.5, y: 4 }, // ホームの1u右
     ],
     thumbHome,
   };
 }
 
-test('親指キーが手ごとに複数ある形状は thumbHome を明示しないと例外になる', () => {
+test('親指キーが手ごとに複数ある形状はthumbHomeを明示しないと例外になる', () => {
   assert.throws(() => buildGeometry(dualThumbShape()), /thumbHome/);
 });
 
-test('thumbHome を指定すると複数の親指キーを持つ形状を構築できる', () => {
+test('thumbHomeを指定すると複数の親指キーを持つ形状を構築できる', () => {
   const geometry = buildGeometry(dualThumbShape({ RT: 'space' }));
   assert.equal(geometry.thumbs.RT.id, 'space');
   near(geometry.homes.RT.x, geometry.keys.get('space')!.x);
@@ -250,6 +250,6 @@ test('複数ある親指キーの間の移動は他の指と同じ規則で距�
     legends: new Map(),
   };
   const t = evaluate('x', l, geometry, opts);
-  // ホーム（space）から thumb-r2（1u 右）までの初回移動
-  near(t.strokes[0].distance, 1, 'thumb-r2 まで 1u');
+  // ホーム（space）からthumb-r2（1u右）までの初回移動
+  near(t.strokes[0].distance, 1, 'thumb-r2まで1u');
 });

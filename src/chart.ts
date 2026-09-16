@@ -1,9 +1,10 @@
-/** ツールチップ。SVG の外に置いた 1 つの要素を使い回す */
+/** ツールチップ。SVGの外に置いた1つの要素を使い回す */
 const tip = () => document.getElementById('tooltip') as HTMLDivElement;
 
-export function showTip(html: string, event: MouseEvent) {
+export function showTip(html: string, event: MouseEvent, wrap = false) {
   const el = tip();
   el.innerHTML = html;
+  el.classList.toggle('wrap', wrap);
   el.hidden = false;
   const pad = 12;
   const rect = el.getBoundingClientRect();
@@ -17,18 +18,19 @@ export function hideTip() {
   tip().hidden = true;
 }
 
-/** 図全体にツールチップの挙動を付ける。data-tip を持つ要素に反応する */
+/** 図全体にツールチップの挙動を付ける。data-tipを持つ要素に反応する */
 export function bindTips(root: HTMLElement) {
   root.addEventListener('mousemove', (e) => {
     const target = (e.target as Element).closest('[data-tip]');
-    if (target) showTip(target.getAttribute('data-tip')!, e);
+    // 補足ボタンの文は長いので折り返す。図のツールチップは1行のまま
+    if (target) showTip(target.getAttribute('data-tip')!, e, target.classList.contains('info'));
     else hideTip();
   });
   root.addEventListener('mouseleave', hideTip);
 }
 
 /**
- * データ端だけを 4px 丸めた横棒のパス。
+ * データ端だけを4px丸めた横棒のパス。
  * 起点（軸側）は角を立てたまま、伸びた先だけ丸める。
  */
 function barPath(x: number, y: number, w: number, h: number, r = 4): string {
@@ -42,9 +44,9 @@ function barPath(x: number, y: number, w: number, h: number, r = 4): string {
 export interface BarDatum {
   label: string;
   value: number;
-  /** 省略時は format(value)。値が個別に表示形式を持つ図で使う */
+  /** 省略時はformat(value)。値が個別に表示形式を持つ図で使う */
   valueLabel?: string;
-  /** 省略時は単一色（magnitude の図） */
+  /** 省略時は単一色（magnitudeの図） */
   color?: string;
   /** ツールチップに出す補足 */
   tip?: string;
@@ -57,11 +59,11 @@ export interface BarOptions {
   /** ラベル列の幅 [px] */
   labelWidth?: number;
   rowHeight?: number;
-  /** viewBox の幅。狭い枠に置く図は小さくすると相対的に文字が大きくなる */
+  /** viewBoxの幅。狭い枠に置く図は小さくすると相対的に文字が大きくなる */
   width?: number;
 }
 
-/** 横棒グラフ。magnitude を長さで、identity を色で表す */
+/** 横棒グラフ。magnitudeを長さで、identityを色で表す */
 export function barChart(data: BarDatum[], options: BarOptions = {}): string {
   const format = options.format ?? ((v: number) => v.toFixed(0));
   const labelW = options.labelWidth ?? 92;
@@ -97,19 +99,19 @@ export function barChart(data: BarDatum[], options: BarOptions = {}): string {
 export interface LineSeries {
   name: string;
   color: string;
-  /** y は描画に使う値、raw は併記する生値 */
+  /** yは描画に使う値、rawは併記する生値 */
   points: { x: number; y: number; raw?: number }[];
 }
 
 export interface LineOptions {
   /**
-   * y 軸の上端を固定する。
+   * y軸の上端を固定する。
    * 相対表示のように上限が理論で決まっている図は、目盛りをそこに合わせる。
    */
   yMax?: number;
 }
 
-/** 折れ線。x は等間隔の目盛り位置として扱う */
+/** 折れ線。xは等間隔の目盛り位置として扱う */
 export function lineChart(
   series: LineSeries[],
   xTicks: number[],
@@ -121,7 +123,7 @@ export function lineChart(
   // 右余白は終端ラベルの幅。日本語の配列名は長いので広めに取る
   const M = { top: 14, right: 176, bottom: 28, left: 54 };
   const all = series.flatMap((s) => s.points.map((p) => p.y));
-  // 比率を見る図なので 0 起点にはしない。データ範囲に余白を足して傾きを読めるようにする
+  // 比率を見る図なので0起点にはしない。データ範囲に余白を足して傾きを読めるようにする
   const lo = Math.min(...all);
   const hi = options.yMax ?? Math.max(...all);
   const pad = Math.max((hi - lo) * 0.12, Math.abs(hi) * 0.01, 1e-6);
@@ -168,7 +170,7 @@ export function lineChart(
     )
     .join('');
 
-  // 縦方向の当たり判定。x 目盛りごとに全系列の値を出す
+  // 縦方向の当たり判定。x目盛りごとに全系列の値を出す
   const bands = xTicks
     .map((tick, i) => {
       const half = (W - M.left - M.right) / Math.max(1, xTicks.length - 1) / 2;
@@ -204,7 +206,7 @@ export const escapeAttr = (s: string) => s.replace(/"/g, '&quot;');
 export interface ColumnDatum {
   label: string;
   value: number;
-  /** 同じ値が続く並びを 1 つの塊として扱い、塊の間に余白を置く（左手 / 右手など） */
+  /** 同じ値が続く並びを1つの塊として扱い、塊の間に余白を置く（左手 / 右手など） */
   group?: string;
   color?: string;
   tip?: string;
@@ -217,7 +219,7 @@ export interface ColumnOptions {
 }
 
 /**
- * 縦棒。x に並ぶ順序そのものが意味を持つ場合に使う
+ * 縦棒。xに並ぶ順序そのものが意味を持つ場合に使う
  * （指を左小指から右小指へ並べると、図の左右が手の左右と一致する）。
  */
 export function columnChart(data: ColumnDatum[], options: ColumnOptions = {}): string {
@@ -229,13 +231,13 @@ export function columnChart(data: ColumnDatum[], options: ColumnOptions = {}): s
   const plotH = H - top - bottom;
   const hi = Math.max(...data.map((d) => d.value), 0);
   const lo = Math.min(...data.map((d) => d.value), 0);
-  // 全値が 0 の場合も、ゼロ基準線は従来どおり図の下端に置く
+  // 全値が0の場合も、ゼロ基準線は従来どおり図の下端に置く
   const scaleHi = hi === 0 && lo === 0 ? 1 : hi;
   const span = Math.max(1e-9, scaleHi - lo);
   const yOf = (value: number) => top + ((scaleHi - value) / span) * plotH;
   const baselineY = yOf(0);
 
-  // 塊の切れ目に 1 本分の半分の余白を入れる
+  // 塊の切れ目に1本分の半分の余白を入れる
   const gaps = data.reduce((n, d, i) => (i > 0 && d.group !== data[i - 1].group ? n + 1 : n), 0);
   const slot = W / (data.length + gaps * 0.5);
   const barW = Math.min(slot - 4, 46);
@@ -246,7 +248,7 @@ export function columnChart(data: ColumnDatum[], options: ColumnOptions = {}): s
       if (i > 0 && d.group !== data[i - 1].group) cursor += slot * 0.5;
       const x = cursor + (slot - barW) / 2;
       cursor += slot;
-      // 0 を基準に、正値は上向き、負値は下向きに描く
+      // 0を基準に、正値は上向き、負値は下向きに描く
       const valueY = yOf(d.value);
       const h = Math.abs(valueY - baselineY);
       const y = Math.min(valueY, baselineY);
@@ -267,7 +269,7 @@ export function columnChart(data: ColumnDatum[], options: ColumnOptions = {}): s
     })
     .join('');
 
-  // 塊のラベルは軸の下にまとめて 1 つ置く
+  // 塊のラベルは軸の下にまとめて1つ置く
   let groupLabels = '';
   if (data.some((d) => d.group)) {
     let pos = 0;
@@ -312,13 +314,13 @@ export interface MatrixOptions {
   rowHeight?: number;
   /** この列番号の前に隙間を空ける（左手 / 右手の区切りなど） */
   columnSplit?: number;
-  /** 隙間の両側に出す見出し。columnSplit とセットで使う */
+  /** 隙間の両側に出す見出し。columnSplitとセットで使う */
   columnGroupLabels?: [string, string];
   /**
    * 色の下端をどこに置くか。
-   * `zero`（既定）は 0 を最も薄い色に固定する。0 が「無い」を意味する量（距離・押下数）向け。
+   * `zero`（既定）は0を最も薄い色に固定する。0が「無い」を意味する量（距離・押下数）向け。
    * `min` は実測の最小値を下端に取る。ホーム間隔からの超過のように値が狭い帯に固まる量は、
-   * 0 起点だと全セルが同じ濃さに見えるため、こちらで帯いっぱいに色を割り当てる。
+   * 0起点だと全セルが同じ濃さに見えるため、こちらで帯いっぱいに色を割り当てる。
    * 負の値もそのまま下端側に載る（クランプしない）。
    */
   colorBase?: 'zero' | 'min';
@@ -333,8 +335,8 @@ export interface MatrixSort {
 
 /**
  * 配列 × 指のように、行・列どちらも識別を持つ比較に使う。
- * セルの色は打鍵頻度ヒートマップと同じ heat 系（単一指標の強弱）、
- * 行の識別は左のスウォッチが担う。色は行列全体の最大値を 100% として塗る。
+ * セルの色は打鍵頻度ヒートマップと同じheat系（単一指標の強弱）、
+ * 行の識別は左のスウォッチが担う。色は行列全体の最大値を100%として塗る。
  */
 export function matrixChart(rows: MatrixRow[], columns: string[], options: MatrixOptions = {}): string {
   const format = options.format ?? ((v: number) => v.toFixed(2));
@@ -403,7 +405,7 @@ export function matrixChart(rows: MatrixRow[], columns: string[], options: Matri
     })
     .join('');
 
-  // 実寸を属性で持たせる。枚ごとに列数が違っても、CSS 側で幅を自動にすれば
+  // 実寸を属性で持たせる。枚ごとに列数が違っても、CSS側で幅を自動にすれば
   // セルの大きさが揃う（引き伸ばされた図だけセルが大きくなるのを防ぐ）
   return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img">${groupLabels}${colHeads}${body}</svg>`;
 }

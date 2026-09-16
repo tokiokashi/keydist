@@ -7,12 +7,12 @@ const SERIES = [
   { name: 'B', color: '#00f', points: [{ x: 0, y: 100 }, { x: 1, y: 99 }, { x: 2, y: 98.2 }] },
 ];
 
-/** y 軸の目盛りラベルだけを取り出す。x 軸のラベルは単位を持たない */
+/** y軸の目盛りラベルだけを取り出す。x軸のラベルは単位を持たない */
 function yTicks(svg: string): number[] {
   return [...svg.matchAll(/tabular-nums">([\d.]+)%<\/text>/g)].map((m) => Number(m[1]));
 }
 
-test('上端を指定すると y 軸はちょうどその値で止まる', () => {
+test('上端を指定するとy軸はちょうどその値で止まる', () => {
   const ticks = yTicks(lineChart(SERIES, [0, 1, 2], (v) => `${v.toFixed(1)}%`, { yMax: 100 }));
   assert.equal(Math.max(...ticks), 100);
 });
@@ -26,10 +26,10 @@ test('全系列が同じ値でも上端の指定が潰れない', () => {
   const flat = [{ name: 'A', color: '#f00', points: [{ x: 0, y: 100 }, { x: 1, y: 100 }] }];
   const ticks = yTicks(lineChart(flat, [0, 1], (v) => `${v.toFixed(1)}%`, { yMax: 100 }));
   assert.equal(Math.max(...ticks), 100);
-  assert.ok(Math.min(...ticks) < 100, '幅が 0 だと線が描けないので下側に余白を取る');
+  assert.ok(Math.min(...ticks) < 100, '幅が0だと線が描けないので下側に余白を取る');
 });
 
-test('縦棒は負の値を 0 基準の下向きに描く', () => {
+test('縦棒は負の値を0基準の下向きに描く', () => {
   const svg = columnChart([
     { label: '正', value: 2 },
     { label: '負', value: -1 },
@@ -49,7 +49,7 @@ test('横棒はデータ個別の表示値を使える', () => {
   assert.match(svg, />100\.0%<\/text>/);
 });
 
-/** セルの塗り強度（heat-1 の混合率）を読み取る */
+/** セルの塗り強度（heat-1の混合率）を読み取る */
 function cellMixes(svg: string): number[] {
   return [...svg.matchAll(/var\(--heat-1\) ([\d.]+)%, var\(--heat-0\)/g)].map((m) => Number(m[1]));
 }
@@ -72,18 +72,18 @@ test('セルの数は行数 × 列数になる', () => {
 test('色の強度は行列全体の最大値を基準にする', () => {
   const svg = matrixChart(MATRIX_ROWS, ['列1', '列2']);
   const mixes = cellMixes(svg);
-  // 最大値 20 のセルは 100%、値 0 のセルは 0% になる
+  // 最大値20のセルは100%、値0のセルは0%になる
   assert.equal(Math.max(...mixes), 100);
   assert.equal(Math.min(...mixes), 0);
 });
 
-test('tip を省略すると行ラベル・列ラベル・値から自動生成する', () => {
+test('tipを省略すると行ラベル・列ラベル・値から自動生成する', () => {
   const svg = matrixChart(MATRIX_ROWS, ['列1', '列2'], { format: (v) => v.toFixed(1) });
   assert.ok(svg.includes('配列A / 列1'));
   assert.ok(svg.includes('10.0'));
 });
 
-test('columnSplit を指定すると列の間に隙間が空き、全体の幅が広がる', () => {
+test('columnSplitを指定すると列の間に隙間が空き、全体の幅が広がる', () => {
   const withoutSplit = matrixChart(MATRIX_ROWS, ['列1', '列2']);
   const withSplit = matrixChart(MATRIX_ROWS, ['列1', '列2'], { columnSplit: 1 });
   const width = (svg: string) => Number(svg.match(/viewBox="0 0 ([\d.]+) /)![1]);

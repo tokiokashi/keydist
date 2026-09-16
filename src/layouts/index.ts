@@ -31,7 +31,7 @@ const ROMAJI = kunrei();
 const ROMAJI_OONISHI = oonishiRomaji();
 
 /**
- * 英字配列。行ごとの列数は ANSI の英数部に合わせる（12 / 12 / 11 / 10）。
+ * 英字配列。行ごとの列数はANSIの英数部に合わせる（12 / 12 / 11 / 10）。
  * 大西配列は `-` をホーム段に置くため、数字段には `-` を入れない。
  */
 const ALPHA: Layout[] = [
@@ -88,8 +88,8 @@ const ALPHA_BY_ID = new Map(ALPHA.map((l) => [l.id, l]));
 export const LAYOUTS: Layout[] = ALPHA.filter((l) => l.id !== 'oonishi-custom');
 
 /**
- * 七傑のうち実装待ちの定義。実装が済んだものだけ LAYOUTS_JA に移す。
- * 各配列の issue の PR が、自分の定義とこの配列から一覧への移動を担当する。
+ * 七傑のうち実装待ちの定義。実装が済んだものだけLAYOUTS_JAに移す。
+ * 各配列のissueのPRが、自分の定義とこの配列から一覧への移動を担当する。
  */
 export const KANA_PENDING: Layout[] = [
   ASUKA,
@@ -108,7 +108,7 @@ export const LAYOUTS_JA: Layout[] = [
   ...ALPHA.filter((l) => l.id.startsWith('oonishi') === false).map((l) =>
     withRomaji(l, ROMAJI),
   ),
-  // 大西配列は公式が前提とする綴り（シャ行 sh / じ ji / じゃ行 j）で打つ
+  // 大西配列は公式が前提とする綴り（シャ行sh / じji / じゃ行j）で打つ
   withRomaji(ALPHA_BY_ID.get('oonishi')!, ROMAJI_OONISHI),
   // TK音直入力法のコンボは訓令式（sya / zya）の綴りを前提に組まれている
   withRomaji(

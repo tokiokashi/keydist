@@ -21,8 +21,8 @@ function write(choice: ThemeChoice) {
 }
 
 /**
- * テーマ切替。3 状態（ライト / 自動 / ダーク）。
- * 「自動」は data-theme を外して OS の設定に従わせる。
+ * テーマ切替。3状態（ライト / 自動 / ダーク）。
+ * 「自動」はdata-themeを外してOSの設定に従わせる。
  */
 export function setupTheme(onChange: () => void) {
   const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-theme-set]')];
@@ -45,7 +45,7 @@ export function setupTheme(onChange: () => void) {
     });
   }
 
-  // 「自動」のときは OS 側の変更にも追従する
+  // 「自動」のときはOS側の変更にも追従する
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     if (read() === 'system') onChange();
   });
@@ -54,8 +54,8 @@ export function setupTheme(onChange: () => void) {
 }
 
 /**
- * CSS 変数の実効値を取り出す。SVG の fill に var() を書くと
- * ツールチップの凡例など HTML 側と色を揃えにくいため、値を解決して使う。
+ * CSS変数の実効値を取り出す。SVGのfillにvar()を書くと
+ * ツールチップの凡例などHTML側と色を揃えにくいため、値を解決して使う。
  */
 export function cssVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();

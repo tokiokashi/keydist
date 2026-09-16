@@ -6,13 +6,13 @@ import { figurePresses, gapFigure, SFB_TEXT } from '../src/gap-figure.ts';
 const geometry = buildGeometry('row-staggered');
 const svg = gapFigure(geometry);
 
-test('固定例は標準ローマ字で 15 打鍵に展開される', () => {
+test('固定例は標準ローマ字で15打鍵に展開される', () => {
   const presses = figurePresses(geometry);
   assert.equal(presses.map((p) => p.keyId).join(''), 'jouhouwoatumeru');
   assert.equal(presses.length, 15);
 });
 
-test('本文が拾う打鍵の g は仕様の 3 分岐に 1 つずつ対応する', () => {
+test('本文が拾う打鍵のgは仕様の3分岐に1つずつ対応する', () => {
   const presses = figurePresses(geometry);
   const at = (n: number) => presses.find((p) => p.number === n)!;
   assert.equal(at(4).gap, 0, 'u → h。同指連続');
@@ -25,31 +25,31 @@ test('図に出る距離は評価器と幾何から引いた値と一致する',
   const presses = figurePresses(geometry);
   const at = (n: number) => presses.find((p) => p.number === n)!;
   const k = (id: string) => geometry.keys.get(id)!;
-  // ホームから u。段ずれで真上ではない
+  // ホームからu。段ずれで真上ではない
   assert.equal(at(3).distance.toFixed(3), '1.031');
   // 同指連続はホームの方が近くても残った側を払う（§8・§9）
   assert.equal(at(4).distance.toFixed(3), '1.250');
   assert.ok(dist(geometry.homes.RI, k('h')) < at(4).distance, 'ホームの方が近い');
   // 窓の内側は短い方
   assert.equal(at(15).distance.toFixed(3), '1.031');
-  // 窓の外はホームから。残れば 0 でも払う
+  // 窓の外はホームから。残れば0でも払う
   assert.equal(at(11).distance.toFixed(3), '1.031');
   assert.ok(svg.includes('1.031u') && svg.includes('1.25u') && svg.includes('2.136u'));
 });
 
-test('距離の表記は末尾の 0 を落とす', () => {
-  assert.ok(svg.includes('1.25u'), '1.250 ではなく 1.25');
-  assert.ok(svg.includes('1u'), '1.000 ではなく 1');
+test('距離の表記は末尾の0を落とす', () => {
+  assert.ok(svg.includes('1.25u'), '1.250ではなく1.25');
+  assert.ok(svg.includes('1u'), '1.000ではなく1');
   assert.ok(!svg.includes('1.250u') && !svg.includes('1.000u'));
 });
 
 test('打鍵順は丸数字で出す', () => {
   assert.ok(svg.includes('①') && svg.includes('②'), '①② が出る');
-  assert.ok(svg.includes('⑥'), '窓の外の面は 6 打鍵ぶん振る');
-  assert.ok(!/#\d/.test(svg), '通し番号の #n は使わない');
+  assert.ok(svg.includes('⑥'), '窓の外の面は6打鍵ぶん振る');
+  assert.ok(!/#\d/.test(svg), '通し番号の #nは使わない');
 });
 
-test('オーソリニアでは同じ移動が 1 u になる', () => {
+test('オーソリニアでは同じ移動が1 uになる', () => {
   const ortho = buildGeometry('ortholinear');
   assert.equal(dist(ortho.homes.RI, ortho.keys.get('u')!).toFixed(3), '1.000');
   assert.ok(svg.includes('オーソリニア'));
@@ -59,7 +59,7 @@ test('ホームキーへ戻る同指連続は別の例で示す', () => {
   const sfb = figurePresses(geometry, SFB_TEXT);
   assert.equal(sfb.map((p) => p.keyId).join(''), 'iku');
   assert.equal(sfb[1].gap, 0);
-  assert.equal(sfb[1].keyId, 'k', 'k は右中指のホーム');
+  assert.equal(sfb[1].keyId, 'k', 'kは右中指のホーム');
   assert.equal(sfb[1].distance.toFixed(3), '1.031');
 });
 
@@ -69,7 +69,7 @@ test('採らなかった候補は消さずに残す', () => {
   assert.ok(svg.includes('候補にならない'));
 });
 
-test('SVG のツールチップは title 属性ではなく data-tip を使う', () => {
+test('SVGのツールチップはtitle属性ではなくdata-tipを使う', () => {
   assert.ok(svg.includes('data-tip='));
   assert.ok(!/<(svg|g|text|rect|line|polygon)[^>]*\stitle=/.test(svg));
 });
@@ -93,11 +93,11 @@ test('本文の数式にスペースを入れない', () => {
   }
   // 独立した式の行だけ等号の両側を空ける
   assert.ok(svg.includes('d(j,u) = '), '盤面のラベルは等号の両側を空ける');
-  assert.ok(svg.includes('d(j,u)') && svg.includes('d(u,h)'), '盤面のラベルは d(ab) の形');
+  assert.ok(svg.includes('d(j,u)') && svg.includes('d(u,h)'), '盤面のラベルはd(ab)の形');
   assert.ok(svg.includes('N = 3'), '前提条件の行');
 });
 
-test('囲みは note / important / warning の 3 種を使う', () => {
+test('囲みはnote / important / warningの3種を使う', () => {
   for (const kind of ['note', 'important', 'warning']) {
     assert.ok(svg.includes(`callout-${kind}`), `${kind} の囲みが出る`);
   }

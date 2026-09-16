@@ -7,14 +7,14 @@ const face = (trigger: string[], entries: Record<string, string>): Face =>
 /**
  * 親指シフト（NICOLA）J型。
  *
- * 配置は NICOLA 日本語入力コンソーシアムの規格書
- * (http://nicola.sunicom.co.jp/spec/kikaku.htm) に対応する DvorakJ の
- * 「NICOLA配列規格書」版 (https://github.com/k-ayaki/dvorakj_2023) から移植した。
- * 紅皿の定義 (https://github.com/k-ayaki/benizara) は D01/D11/D12/B10 で異なるため採らなかった。
- * 規格書 §3 の 2018.11 注記にある D12 の記載は DvorakJ の読みを採用し、
- * `゛` は B10 + 無変換、`゜` は D01 + 変換に置き、D12 の機能キー出力は追加していない。
+ * 配置はNICOLA日本語入力コンソーシアムの規格書
+ * (http://nicola.sunicom.co.jp/spec/kikaku.htm)に対応するDvorakJの
+ * 「NICOLA配列規格書」版 (https://github.com/k-ayaki/dvorakj_2023)から移植した。
+ * 紅皿の定義 (https://github.com/k-ayaki/benizara)はD01/D11/D12/B10で異なるため採らなかった。
+ * 規格書 §3の2018.11注記にあるD12の記載はDvorakJの読みを採用し、
+ * `゛` はB10 + 無変換、`゜` はD01 + 変換に置き、D12の機能キー出力は追加していない。
  *
- * NICOLA 専用キーボードを前提にした配置を ANSI のキー id へ写しているため、
+ * NICOLA専用キーボードを前提にした配置をANSIのキーidへ写しているため、
  * 既定の物理形状で出す距離の絶対値は参考値である。
  */
 export const NICOLA_FACES: Face[] = [

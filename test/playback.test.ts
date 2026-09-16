@@ -20,7 +20,7 @@ const playing = (cursor = 0) => ({
   playing: true,
 });
 
-test('再生カーソルは 0 から総ステップ数までに収まる', () => {
+test('再生カーソルは0から総ステップ数までに収まる', () => {
   assert.equal(clampPlaybackCursor(-1, 3), 0);
   assert.equal(clampPlaybackCursor(1, 3), 1);
   assert.equal(clampPlaybackCursor(9, 3), 3);
@@ -54,7 +54,7 @@ test('末尾では停止し、先頭へループしない', () => {
   assert.equal(advancePlayback(ended, 800, 2).cursor, 2);
 });
 
-test('表示する打鍵はカーソル 1 から直前の stroke を返す', () => {
+test('表示する打鍵はカーソル1から直前のstrokeを返す', () => {
   const strokes = [{ char: 'あ' }, { char: 'い' }] as never[];
   assert.equal(playbackStrokeAt(strokes, 0), undefined);
   assert.equal(playbackStrokeAt(strokes, 1)?.char, 'あ');
