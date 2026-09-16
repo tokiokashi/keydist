@@ -144,6 +144,55 @@ test('片手連続のキー移動は直前の同じ手のキーから現在の�
   assert.deepEqual(playbackHandKeyMotions(sameHand, 0), []);
 });
 
+test('親指キーはアルペジオに含めない', () => {
+  // スペース（親指）だけのステップは手の連続に参加しない
+  const withThumb = [
+    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }] },
+    { presses: [{ finger: 'RT', keys: [{ id: 'thumb-r' }] }] },
+    { presses: [{ finger: 'LR', keys: [{ id: 's' }] }] },
+  ] as never[];
+  assert.deepEqual(playbackHandKeyMotions(withThumb, 2), []);
+  assert.deepEqual(playbackHandKeyMotions(withThumb, 3), []);
+  assert.deepEqual([...playbackArpeggioOrders(withThumb, 3)], [['s', 1]]);
+
+  // 親指を伴う同時押しでも、起点・終点には親指キーが混ざらない
+  const shifted = [
+    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }, { finger: 'RT', keys: [{ id: 'thumb-r' }] }] },
+    { presses: [{ finger: 'LR', keys: [{ id: 's' }] }, { finger: 'RT', keys: [{ id: 'thumb-r' }] }] },
+  ] as never[];
+  assert.deepEqual(playbackHandKeyMotions(shifted, 2), [{
+    fromKey: 'a',
+    toKeys: ['s'],
+    finger: 'LR',
+  }]);
+  assert.deepEqual([...playbackArpeggioOrders(shifted, 2)], [['a', 1], ['s', 2]]);
+});
+
+test('左右同時押しが混ざっても片手の連続は途切れない', () => {
+  // 2打目が左右同時。左手の連続は a → s → d と続く
+  const strokes = [
+    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }] },
+    { presses: [{ finger: 'LR', keys: [{ id: 's' }] }, { finger: 'RI', keys: [{ id: 'j' }] }] },
+    { presses: [{ finger: 'LM', keys: [{ id: 'd' }] }] },
+  ] as never[];
+  assert.deepEqual(playbackHandKeyMotions(strokes, 3), [{
+    fromKey: 's',
+    toKeys: ['d'],
+    finger: 'LM',
+  }]);
+  assert.deepEqual([...playbackArpeggioOrders(strokes, 3)], [['a', 1], ['s', 2], ['d', 3]]);
+
+  // 同時押しのステップ自体では、続いている手それぞれに移動が出る
+  const bothContinue = [
+    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }, { finger: 'RP', keys: [{ id: 'k' }] }] },
+    { presses: [{ finger: 'LR', keys: [{ id: 's' }] }, { finger: 'RI', keys: [{ id: 'j' }] }] },
+  ] as never[];
+  assert.deepEqual(playbackHandKeyMotions(bothContinue, 2), [
+    { fromKey: 'a', toKeys: ['s'], finger: 'LR' },
+    { fromKey: 'k', toKeys: ['j'], finger: 'RI' },
+  ]);
+});
+
 test('片手連続の打鍵へ順番を付け、同指連打を除外できる', () => {
   const strokes = [
     { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }] },
