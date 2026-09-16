@@ -4,10 +4,14 @@ import {
   advancePlayback,
   clampPlaybackCursor,
   createPlaybackState,
+  playbackStrokeDisplay,
   playbackStrokeAt,
   setPlaybackSpeed,
   stepPlayback,
 } from '../src/playback.ts';
+import { buildGeometry } from '../src/geometry.ts';
+import { evaluate } from '../src/evaluate.ts';
+import { LAYOUT_BY_ID } from '../src/layouts/index.ts';
 
 const playing = (cursor = 0) => ({
   ...createPlaybackState(),
@@ -54,4 +58,26 @@ test('表示する打鍵はカーソル 1 から直前の stroke を返す', () 
   assert.equal(playbackStrokeAt(strokes, 0), undefined);
   assert.equal(playbackStrokeAt(strokes, 1)?.char, 'あ');
   assert.equal(playbackStrokeAt(strokes, 2)?.char, 'い');
+});
+
+test('レイヤー再生はシフトと出力キーの刻印を現在の面から引く', () => {
+  const layout = LAYOUT_BY_ID.get('tsuki-2-263')!;
+  const trace = evaluate('ぬ', layout, buildGeometry('row-staggered'));
+  const shift = playbackStrokeDisplay(layout, trace.strokes[0]);
+  const output = playbackStrokeDisplay(layout, trace.strokes[1]);
+
+  assert.equal(shift.character, undefined);
+  assert.equal(shift.keyLabels.get('d'), '⇧');
+  assert.equal(output.character, 'ぬ');
+  assert.equal(output.keyLabels.get('y'), 'ぬ');
+});
+
+test('薙刀式の濁音はシフトと出力かなを同じステップで表示する', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18')!;
+  const stroke = evaluate('が', layout, buildGeometry('row-staggered')).strokes[0];
+  const display = playbackStrokeDisplay(layout, stroke);
+
+  assert.equal(display.character, 'が');
+  assert.equal(display.keyLabels.get('j'), '⇧');
+  assert.equal(display.keyLabels.get('f'), 'が');
 });

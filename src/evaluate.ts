@@ -51,6 +51,8 @@ export interface Stroke {
   /** ステップの通し番号 */
   index: number;
   char: string;
+  /** ローマ字展開前の入力単位。かな配列では char と同じ */
+  inputChar: string;
   /** このステップに含まれるキー押下の帰属先。合成文字ではステップごとに異なりうる */
   layerId: string;
   /** このステップで層操作として押したキー。出力キーとの色分けに使う */
@@ -142,7 +144,12 @@ export function evaluate(
     let start = 0;
     for (const chunk of chunks) {
       const length = [...chunk.roman.toLowerCase()].length;
-      chunkRanges.push({ start, end: start + length, kanaLength: [...chunk.kana].length });
+      chunkRanges.push({
+        start,
+        end: start + length,
+        kana: chunk.kana,
+        kanaLength: [...chunk.kana].length,
+      });
       start += length;
     }
   }
@@ -171,6 +178,14 @@ export function evaluate(
       cursor++;
       continue;
     }
+    const inputStart = cursor;
+    const inputEnd = cursor + consumed;
+    const inputChar = chunks
+      ? chunkRanges
+        .filter((range) => range.start < inputEnd && inputStart < range.end)
+        .map((range) => range.kana)
+        .join('')
+      : char;
     cursor += consumed;
     if (comboConditions.has(char)) comboHits.push(char);
 
@@ -241,7 +256,17 @@ export function evaluate(
 
       // 指同士の姿勢は、対象キーを押した直後の状態として記録する
       const positions = snapshot(prev, last, index, geometry);
-      strokes.push({ index, char, layerId, triggerKeys, pairedTriggerKeys, presses, distance: total, positions });
+      strokes.push({
+        index,
+        char,
+        inputChar,
+        layerId,
+        triggerKeys,
+        pairedTriggerKeys,
+        presses,
+        distance: total,
+        positions,
+      });
       index++;
     }
   }
@@ -260,6 +285,7 @@ export function evaluate(
 interface RomajiChunkRange {
   start: number;
   end: number;
+  kana: string;
   kanaLength: number;
 }
 

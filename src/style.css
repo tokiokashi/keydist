@@ -322,6 +322,13 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   margin-bottom: 8px;
 }
 .playback-controls button { padding: 4px 9px; font-size: 0.76rem; }
+.playback-position {
+  margin-left: 2px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .playback-speed {
   display: flex;
   align-items: center;
@@ -342,13 +349,23 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-seek input { min-width: 120px; }
 .playback-status {
   display: flex;
+  align-items: baseline;
   flex-wrap: wrap;
   gap: 4px 14px;
   margin: 5px 0 10px;
   color: var(--muted);
   font-size: 0.76rem;
-  font-variant-numeric: tabular-nums;
 }
+.playback-current {
+  color: var(--fg);
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.playback-romaji { display: inline-flex; align-items: baseline; gap: 10px; }
+.playback-typed { color: var(--muted); }
+.playback-typed code { color: var(--fg); font-size: 0.9rem; }
+.playback-attribution { white-space: nowrap; }
 .playback-status b { color: var(--fg); font-weight: 600; }
 .playback-figure { border-top: 1px solid var(--line); padding-top: 10px; }
 .playback-figure svg { max-width: none; }
