@@ -9,7 +9,7 @@ import {
   type Finger,
   type GeometryKind,
 } from './geometry.ts';
-import { evaluate, type Options, type Trace } from './evaluate.ts';
+import { evaluate, type Options, type Trace, type Stroke } from './evaluate.ts';
 import { computeMetrics, type LayerStat, type Metrics } from './metrics.ts';
 import { normalizedLayerColors } from './layer-heatmap.ts';
 import { nSensitivity } from './sensitivity.ts';
@@ -38,6 +38,17 @@ import {
 } from './chart.ts';
 import { setupTheme } from './theme.ts';
 import { gapFigure } from './gap-figure.ts';
+import {
+  advancePlayback,
+  clampPlaybackCursor,
+  createPlaybackState,
+  playbackStrokeAt,
+  setPlaybackSpeed,
+  stepPlayback,
+  type PlaybackSpeed,
+  type PlaybackState,
+  PLAYBACK_SPEEDS,
+} from './playback.ts';
 import {
   ROW_LABELS,
   load as loadUserLayouts,
@@ -112,6 +123,7 @@ const el = {
   importError: $<HTMLParagraphElement>('import-error'),
   importWarning: $<HTMLParagraphElement>('import-warning'),
   detailLayout: $<HTMLSelectElement>('detail-layout'),
+  playback: $<HTMLDivElement>('playback'),
   heatmap: $<HTMLDivElement>('heatmap'),
   gapFigure: $<HTMLDivElement>('gap-figure'),
   fingerChart: $<HTMLDivElement>('finger-chart'),
@@ -764,6 +776,199 @@ type LayerColorScale = 'linear' | 'log';
 let layerColorScale: LayerColorScale = 'linear';
 let naginataLayerDetail = false;
 
+const PLAYBACK_KEY = 30;
+const PLAYBACK_PAD = 6;
+const PLAYBACK_THUMB_WIDTH = 1.9;
+let playbackState: PlaybackState = createPlaybackState();
+let playbackTrace: Trace | undefined;
+let playbackGeometry: ReturnType<typeof buildGeometry> | undefined;
+let playbackAnimationFrame: number | undefined;
+let playbackLastTimestamp: number | undefined;
+let playbackSeekWasPlaying: boolean | undefined;
+let playbackShowFingers = false;
+
+function cancelPlaybackAnimation() {
+  if (playbackAnimationFrame !== undefined) cancelAnimationFrame(playbackAnimationFrame);
+  playbackAnimationFrame = undefined;
+  playbackLastTimestamp = undefined;
+}
+
+function playbackLayerLabel(trace: Trace, stroke: Stroke | undefined): string {
+  if (!stroke) return '開始前';
+  return trace.layerDefinitions.find((definition) => definition.id === stroke.layerId)?.label ?? stroke.layerId;
+}
+
+function playbackPosition(
+  stroke: Stroke | undefined,
+  geometry: ReturnType<typeof buildGeometry>,
+  finger: Finger,
+) {
+  return stroke?.positions[finger] ?? geometry.homes[finger];
+}
+
+function updatePlaybackView() {
+  if (!playbackTrace || !playbackGeometry) return;
+  const total = playbackTrace.strokes.length;
+  const cursor = clampPlaybackCursor(playbackState.cursor, total);
+  const stroke = playbackStrokeAt(playbackTrace.strokes, cursor);
+  const activeKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
+  const triggerKeys = new Set(stroke?.triggerKeys ?? []);
+
+  for (const key of el.playback.querySelectorAll<SVGGElement>('[data-playback-key]')) {
+    const id = key.dataset.playbackKey!;
+    key.dataset.playbackActive = String(activeKeys.has(id));
+    key.dataset.playbackTrigger = String(triggerKeys.has(id));
+  }
+  for (const finger of el.playback.querySelectorAll<SVGGElement>('[data-playback-finger]')) {
+    const id = finger.dataset.playbackFinger as Finger;
+    const position = playbackPosition(stroke, playbackGeometry, id);
+    finger.setAttribute('transform', `translate(${position.x * PLAYBACK_KEY} ${position.y * PLAYBACK_KEY})`);
+    finger.setAttribute('visibility', playbackShowFingers ? 'visible' : 'hidden');
+  }
+
+  const position = el.playback.querySelector<HTMLElement>('[data-playback-position]');
+  const char = el.playback.querySelector<HTMLElement>('[data-playback-char]');
+  const layer = el.playback.querySelector<HTMLElement>('[data-playback-layer]');
+  const seek = el.playback.querySelector<HTMLInputElement>('[data-playback-seek]');
+  const toggle = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="toggle"]');
+  const stop = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="stop"]');
+  const back = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="back"]');
+  const forward = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="forward"]');
+  const fingers = el.playback.querySelector<HTMLInputElement>('[data-playback-fingers]');
+  if (position) position.textContent = `${cursor} / ${total} ステップ`;
+  if (char) char.textContent = stroke?.char ?? '—';
+  if (layer) layer.textContent = playbackLayerLabel(playbackTrace, stroke);
+  if (seek) seek.value = String(cursor);
+  if (toggle) {
+    toggle.textContent = playbackState.playing ? '一時停止' : '再生';
+    toggle.setAttribute('aria-label', playbackState.playing ? '再生を一時停止する' : '再生する');
+    toggle.disabled = total === 0 || cursor >= total;
+  }
+  if (stop) stop.disabled = cursor === 0 && !playbackState.playing;
+  if (back) back.disabled = playbackState.playing || cursor === 0;
+  if (forward) forward.disabled = playbackState.playing || cursor >= total;
+  if (fingers) fingers.checked = playbackShowFingers;
+}
+
+function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeometry>): string {
+  let maxX = 0;
+  let maxY = 0;
+  const keys = [...geometry.keys.values()].map((key) => {
+    const thumb = key.row === THUMB_ROW;
+    const width = (thumb ? PLAYBACK_THUMB_WIDTH : 1) * PLAYBACK_KEY;
+    const x = (key.x - (thumb ? (PLAYBACK_THUMB_WIDTH - 1) / 2 : 0)) * PLAYBACK_KEY;
+    const y = key.y * PLAYBACK_KEY;
+    maxX = Math.max(maxX, x + width);
+    maxY = Math.max(maxY, y + PLAYBACK_KEY);
+    const label = layout.legends.get(key.id) ?? '';
+    const fontSize = thumb ? 10 : label.length > 3 ? 9 : 12;
+    const tip = `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>${escapeText(FINGER_LABEL[key.finger])}`;
+    return `<g data-tip="${escapeAttr(tip)}" data-playback-key="${escapeAttr(key.id)}" data-playback-active="false" data-playback-trigger="false">
+      <rect x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" stroke="var(--line)"/>
+      <text x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
+    </g>`;
+  });
+  const W = maxX + PLAYBACK_PAD;
+  const H = maxY + PLAYBACK_PAD;
+  const fingerMarkers = ALL_FINGERS.map((finger) => `<g data-playback-finger="${finger}" class="playback-finger" aria-label="${escapeAttr(FINGER_LABEL[finger])}" visibility="hidden">
+    <circle cx="0" cy="0" r="7"/>
+    <text x="0" y="3" text-anchor="middle" pointer-events="none">${finger}</text>
+  </g>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
+    aria-label="${escapeAttr(`${layout.name}の打鍵再生`)}">${keys.join('')}${fingerMarkers}</svg>`;
+}
+
+function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeof buildGeometry>) {
+  cancelPlaybackAnimation();
+  playbackTrace = trace;
+  playbackGeometry = geometry;
+  playbackState = createPlaybackState(playbackState.speed);
+  playbackSeekWasPlaying = undefined;
+  const speeds = PLAYBACK_SPEEDS.map((speed) =>
+    `<option value="${speed}"${speed === playbackState.speed ? ' selected' : ''}>${speed}x</option>`,
+  ).join('');
+  el.playback.innerHTML = `<div class="playback-head">
+      <div>
+        <h3>打鍵再生</h3>
+        <p class="note">1ステップを同じ表示時間で再生する。配列ごとの速度差は付けない。</p>
+      </div>
+      <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${playbackShowFingers ? ' checked' : ''} />指の位置を表示</label>
+    </div>
+    <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
+      <button type="button" class="ghost" data-playback-action="back">1ステップ戻る</button>
+      <button type="button" data-playback-action="toggle" aria-label="再生する">再生</button>
+      <button type="button" class="secondary" data-playback-action="stop" disabled>停止</button>
+      <button type="button" class="ghost" data-playback-action="forward">1ステップ進む</button>
+      <label class="playback-speed"><span>速度</span><select data-playback-speed>${speeds}</select></label>
+    </div>
+    <label class="playback-seek"><span>再生位置</span><input type="range" data-playback-seek min="0" max="${trace.strokes.length}" step="1" value="0" /></label>
+    <p class="playback-status" aria-live="polite"><span data-playback-position>0 / ${trace.strokes.length} ステップ</span>
+      <span>文字: <b data-playback-char>—</b></span><span>帰属: <b data-playback-layer>開始前</b></span></p>
+    <div class="fig-fixed playback-figure">${renderPlaybackSvg(layout, geometry)}</div>`;
+  updatePlaybackView();
+}
+
+function startPlayback() {
+  if (!playbackTrace || playbackState.cursor >= playbackTrace.strokes.length) return;
+  cancelPlaybackAnimation();
+  playbackState = { ...playbackState, playing: true, elapsedMs: 0 };
+  updatePlaybackView();
+  playbackAnimationFrame = requestAnimationFrame((timestamp) => playbackFrame(timestamp));
+}
+
+function pausePlayback() {
+  cancelPlaybackAnimation();
+  playbackState = { ...playbackState, playing: false };
+  updatePlaybackView();
+}
+
+function stopPlayback() {
+  cancelPlaybackAnimation();
+  playbackState = createPlaybackState(playbackState.speed);
+  updatePlaybackView();
+}
+
+function playbackFrame(timestamp: number) {
+  playbackAnimationFrame = undefined;
+  if (!playbackState.playing || !playbackTrace) return;
+  if (playbackLastTimestamp === undefined) playbackLastTimestamp = timestamp;
+  else {
+    playbackState = advancePlayback(
+      playbackState,
+      timestamp - playbackLastTimestamp,
+      playbackTrace.strokes.length,
+    );
+    playbackLastTimestamp = timestamp;
+    updatePlaybackView();
+  }
+  if (playbackState.playing) playbackAnimationFrame = requestAnimationFrame((next) => playbackFrame(next));
+  else playbackLastTimestamp = undefined;
+}
+
+function beginPlaybackSeek() {
+  if (playbackSeekWasPlaying !== undefined) return;
+  playbackSeekWasPlaying = playbackState.playing;
+  if (playbackState.playing) pausePlayback();
+}
+
+function finishPlaybackSeek() {
+  if (playbackSeekWasPlaying === undefined) return;
+  const resume = playbackSeekWasPlaying;
+  playbackSeekWasPlaying = undefined;
+  if (resume) startPlayback();
+}
+
+function seekPlayback(value: string, playing = false) {
+  if (!playbackTrace) return;
+  playbackState = {
+    ...playbackState,
+    cursor: clampPlaybackCursor(Number(value), playbackTrace.strokes.length),
+    elapsedMs: 0,
+    playing,
+  };
+  updatePlaybackView();
+}
+
 function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sort: MatrixSort | null): T[] {
   if (!sort) return rows;
   return rows
@@ -794,6 +999,10 @@ function render() {
     });
 
   if (results.length === 0) {
+    cancelPlaybackAnimation();
+    playbackTrace = undefined;
+    playbackGeometry = undefined;
+    el.playback.innerHTML = '';
     el.textMeta.textContent = '配列を1つ以上選ぶ';
     el.compareChart.innerHTML = '';
     syncCompareBaselineOptions([]);
@@ -1209,6 +1418,7 @@ function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeomet
   const found = results.find((r) => r.layout.id === el.detailLayout.value) ?? results[0];
   const { metrics, layout } = found;
 
+  renderPlayback(found.trace, layout, geometry);
   renderHeatmap(metrics, layout, geometry);
 
   const total = metrics.totalUnits || 1;
@@ -1741,6 +1951,70 @@ el.heatmap.addEventListener('click', (e) => {
   if (target.dataset.layerTab !== undefined) {
     activeLayerTab = Number(target.dataset.layerTab);
     render();
+  }
+});
+
+el.playback.addEventListener('click', (e) => {
+  const target = (e.target as Element).closest<HTMLButtonElement>('button[data-playback-action]');
+  if (!target) return;
+  switch (target.dataset.playbackAction) {
+    case 'toggle':
+      if (playbackState.playing) pausePlayback();
+      else startPlayback();
+      break;
+    case 'stop':
+      stopPlayback();
+      break;
+    case 'back':
+      if (!playbackTrace) return;
+      playbackState = stepPlayback(playbackState, -1, playbackTrace.strokes.length);
+      updatePlaybackView();
+      break;
+    case 'forward':
+      if (!playbackTrace) return;
+      playbackState = stepPlayback(playbackState, 1, playbackTrace.strokes.length);
+      updatePlaybackView();
+      break;
+  }
+});
+
+el.playback.addEventListener('input', (e) => {
+  const target = (e.target as Element).closest<HTMLInputElement>('input[data-playback-seek]');
+  if (!target) return;
+  beginPlaybackSeek();
+  seekPlayback(target.value);
+});
+
+el.playback.addEventListener('pointerdown', (e) => {
+  if ((e.target as Element).closest('input[data-playback-seek]')) beginPlaybackSeek();
+});
+
+el.playback.addEventListener('pointerup', (e) => {
+  if ((e.target as Element).closest('input[data-playback-seek]')) finishPlaybackSeek();
+});
+
+el.playback.addEventListener('change', (e) => {
+  const target = e.target as Element;
+  const speed = target.closest<HTMLSelectElement>('select[data-playback-speed]');
+  if (speed) {
+    const value = Number(speed.value);
+    if (PLAYBACK_SPEEDS.includes(value as PlaybackSpeed)) {
+      playbackState = setPlaybackSpeed(playbackState, value as PlaybackSpeed);
+      updatePlaybackView();
+    }
+    return;
+  }
+  const fingers = target.closest<HTMLInputElement>('input[data-playback-fingers]');
+  if (fingers) {
+    playbackShowFingers = fingers.checked;
+    updatePlaybackView();
+    return;
+  }
+  const seek = target.closest<HTMLInputElement>('input[data-playback-seek]');
+  if (seek) {
+    // pointerupで終了済みなら再生状態を維持し、未終了ならここで確定する。
+    seekPlayback(seek.value, playbackState.playing);
+    if (playbackSeekWasPlaying !== undefined) finishPlaybackSeek();
   }
 });
 

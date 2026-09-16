@@ -1,29 +1,29 @@
 import { keyId, QWERTY_LEGEND, THUMB_KEY } from '../geometry.ts';
 import { groupFacesIntoLayers } from '../layers.ts';
 
-/** 1 ステップで同時に押すキーの集合。キーは QWERTY 刻印で指す（`thumb-r` `thumb-l` は親指キー）。`space` も入力互換で受け付ける */
+/** 1ステップで同時に押すキーの集合。キーはQWERTY刻印で指す（`thumb-r` `thumb-l` は親指キー）。`space` も入力互換で受け付ける */
 export type Step = string[];
 
-/** 1 文字を打つための打鍵ステップ列。順次打鍵はステップを並べる */
+/** 1文字を打つための打鍵ステップ列。順次打鍵はステップを並べる */
 export type Sequence = Step[];
 
-/** 面の発火方式。trigger と入力キーを同時に押すか、前後に分けるかを表す。 */
+/** 面の発火方式。triggerと入力キーを同時に押すか、前後に分けるかを表す。 */
 export type FaceMode = 'prefix' | 'suffix' | 'simultaneous';
 
 /**
- * 面の 1 行。文字列なら 1 文字ずつ、配列ならセルごとの文字列として読む。
- * 配列形式は「きゃ」のような複数文字の見出しを 1 セルに置くために使う。
+ * 面の1行。文字列なら1文字ずつ、配列ならセルごとの文字列として読む。
+ * 配列形式は「きゃ」のような複数文字の見出しを1セルに置くために使う。
  */
 export type FaceRow = string | readonly string[];
 
-/** trigger で発火するキー面。rows は QWERTY 刻印の 4 行に対応する。 */
+/** triggerで発火するキー面。rowsはQWERTY刻印の4行に対応する。 */
 export interface Face {
   trigger: readonly string[];
   mode: FaceMode;
   rows: readonly FaceRow[];
-  /** 同じ値を持つ単一キー面は 1 レイヤーへ畳む。省略時はその面が単独で 1 レイヤー */
+  /** 同じ値を持つ単一キー面は1レイヤーへ畳む。省略時はその面が単独で1レイヤー */
   layer?: string;
-  /** 面の種別。省略時は layer。trigger が 2 キー以上の面は常に combo */
+  /** 面の種別。省略時はlayer。triggerが2キー以上の面は常にcombo */
   role?: 'layer' | 'modifier';
 }
 
@@ -60,11 +60,11 @@ export interface Layout {
   /** 面から作った配列だけが持つ、表示用の元面。自作配列などは省略する */
   faces?: readonly Face[];
   /**
-   * map の見出しの最大文字数。1 より大きい場合、入力は最長一致で切り出す
+   * mapの見出しの最大文字数。1より大きい場合、入力は最長一致で切り出す
    * （「きゃ」を「き」「ゃ」に分けない）
    */
   maxCharLength?: number;
-  /** キー id → そのキーの刻印。表示用 */
+  /** キーid → そのキーの刻印。表示用 */
   legends: Map<string, string>;
   /**
    * かなテキストをローマ字へ展開してから打つ配列はテーブルを持つ。
@@ -72,17 +72,17 @@ export interface Layout {
    */
   romajiTable?: Map<string, string>;
   /**
-   * map のうちコンボとして追加した見出しと、その発火条件。ローマ字化で
+   * mapのうちコンボとして追加した見出しと、その発火条件。ローマ字化で
    * 失われるかなの境界を使った命中判定と、コンボの命中件数の集計に使う。
    */
   comboConditions?: ReadonlyMap<string, ComboCondition>;
-  /** 各見出しの Sequence のステップごとの帰属先。合成出力では層が混在しうる */
+  /** 各見出しのSequenceのステップごとの帰属先。合成出力では層が混在しうる */
   stepLayers?: ReadonlyMap<string, readonly string[]>;
-  /** 各見出しの Sequence のステップごとに、層操作として押すキー */
+  /** 各見出しのSequenceのステップごとに、層操作として押すキー */
   stepTriggerKeys?: ReadonlyMap<string, readonly (readonly string[])[]>;
   /** 層・コンボの表示順と種別。 */
   layerDefinitions?: readonly LayerDefinition[];
-  /** 面から展開した配列で、各面がどの帰属先へ属するかを UI が引くための表 */
+  /** 面から展開した配列で、各面がどの帰属先へ属するかをUIが引くための表 */
   faceLayerIds?: ReadonlyMap<Face, string>;
 }
 
@@ -90,7 +90,7 @@ const maxKeyLength = (keys: Iterable<string>) => Math.max(1, ...[...keys].map((k
 
 const QWERTY_KEYS = new Set([...QWERTY_LEGEND.join('')]);
 
-/** QWERTY 刻印のキー id で面を作る。未知のキーは空欄にせず定義ミスとして弾く。 */
+/** QWERTY刻印のキーidで面を作る。未知のキーは空欄にせず定義ミスとして弾く。 */
 export function faceFromEntries(
   trigger: readonly string[],
   mode: FaceMode,
@@ -106,7 +106,7 @@ export function faceFromEntries(
 }
 
 /**
- * 4 行 × N 列のグリッドに文字を並べた配列。
+ * 4行 × N列のグリッドに文字を並べた配列。
  * 単打のみの配列（QWERTY・大西配列など）はこの形で書ける。
  */
 export function fromRows(
@@ -204,7 +204,7 @@ export function fromFaces(
         map.set(output, sequence);
         stepLayers.set(output, sequence.map(() => layerId));
         stepTriggerKeys.set(output, expandFaceTriggerKeys(trigger, face.mode));
-        // 刻印は単打面の 1 文字だけを表示する。シフト面の出力で上書きしない。
+        // 刻印は単打面の1文字だけを表示する。シフト面の出力で上書きしない。
         if (trigger.length === 0 && [...output].length === 1) legends.set(key, output);
       });
     });
