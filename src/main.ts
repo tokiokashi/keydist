@@ -806,6 +806,7 @@ let playbackShowTrail = false;
 let playbackTrailTau = 5;
 let playbackShowOrderLabels = false;
 let playbackScale = 1.5;
+let playbackPanelOpen = false;
 
 function cancelPlaybackAnimation() {
   if (playbackAnimationFrame !== undefined) cancelAnimationFrame(playbackAnimationFrame);
@@ -993,6 +994,8 @@ function rerenderPlaybackFigure() {
 
 function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeof buildGeometry>) {
   cancelPlaybackAnimation();
+  const currentPanel = el.playback.querySelector<HTMLDetailsElement>('.playback-panel');
+  if (currentPanel) playbackPanelOpen = currentPanel.open;
   playbackTrace = trace;
   playbackGeometry = geometry;
   playbackLayout = layout;
@@ -1001,7 +1004,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
   const speeds = PLAYBACK_SPEEDS.map((speed) =>
     `<option value="${speed}"${speed === playbackState.speed ? ' selected' : ''}>${speed}x</option>`,
   ).join('');
-  el.playback.innerHTML = `<details class="playback-panel">
+  el.playback.innerHTML = `<details class="playback-panel"${playbackPanelOpen ? ' open' : ''}>
     <summary><span class="playback-summary-icon" aria-hidden="true">▶</span><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
       <div class="playback-head">
@@ -1038,6 +1041,10 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
       <div class="fig-fixed playback-figure">${renderPlaybackSvg(layout, geometry)}</div>
     </div>
   </details>`;
+  const panel = el.playback.querySelector<HTMLDetailsElement>('.playback-panel');
+  panel?.addEventListener('toggle', () => {
+    playbackPanelOpen = panel.open;
+  });
   updatePlaybackView();
 }
 
