@@ -17,7 +17,7 @@ import {
   playbackStrokeAt,
   playbackTrailKeys,
   playbackTrailOrders,
-  setPlaybackSpeed,
+  setPlaybackStepsPerSecond,
   stepPlayback,
 } from '../src/playback.ts';
 import { buildGeometry } from '../src/geometry.ts';
@@ -44,18 +44,18 @@ test('停止・一時停止中のステップ送りは同じ整数カーソル�
   assert.equal(stepPlayback(playing(1), 1, 3).cursor, 1);
 });
 
-test('経過時間で速度に応じて進み、速度変更ではカーソルを動かさない', () => {
+test('経過時間でステップ毎秒に応じて進み、速度変更ではカーソルを動かさない', () => {
   let state = playing();
   for (let i = 0; i < 7; i++) state = advancePlayback(state, 100, 3);
   assert.equal(state.cursor, 0);
   state = advancePlayback(state, 100, 3);
   assert.equal(state.cursor, 1);
 
-  let fast = setPlaybackSpeed(playing(), 4);
+  let fast = setPlaybackStepsPerSecond(playing(), 5);
   fast = advancePlayback(fast, 100, 3);
   fast = advancePlayback(fast, 100, 3);
   assert.equal(fast.cursor, 1);
-  assert.equal(setPlaybackSpeed({ ...state, cursor: 2 }, 4).cursor, 2);
+  assert.equal(setPlaybackStepsPerSecond({ ...state, cursor: 2 }, 5).cursor, 2);
 });
 
 test('末尾では停止し、先頭へループしない', () => {
