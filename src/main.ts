@@ -784,7 +784,6 @@ let playbackAnimationFrame: number | undefined;
 let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
 let playbackShowFingers = false;
-let playbackInitialized = false;
 
 function cancelPlaybackAnimation() {
   if (playbackAnimationFrame !== undefined) cancelAnimationFrame(playbackAnimationFrame);
@@ -878,7 +877,6 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
 }
 
 function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeof buildGeometry>) {
-  const firstRender = !playbackInitialized;
   cancelPlaybackAnimation();
   playbackTrace = trace;
   playbackGeometry = geometry;
@@ -906,8 +904,6 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
       <span>文字: <b data-playback-char>—</b></span><span>帰属: <b data-playback-layer>開始前</b></span></p>
     <div class="fig-fixed playback-figure">${renderPlaybackSvg(layout, geometry)}</div>`;
   updatePlaybackView();
-  playbackInitialized = true;
-  if (firstRender && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) startPlayback();
 }
 
 function startPlayback() {
@@ -960,13 +956,13 @@ function finishPlaybackSeek() {
   if (resume) startPlayback();
 }
 
-function seekPlayback(value: string) {
+function seekPlayback(value: string, playing = false) {
   if (!playbackTrace) return;
   playbackState = {
     ...playbackState,
     cursor: clampPlaybackCursor(Number(value), playbackTrace.strokes.length),
     elapsedMs: 0,
-    playing: false,
+    playing,
   };
   updatePlaybackView();
 }
@@ -2002,9 +1998,9 @@ el.playback.addEventListener('change', (e) => {
   }
   const seek = target.closest<HTMLInputElement>('input[data-playback-seek]');
   if (seek) {
-    beginPlaybackSeek();
-    seekPlayback(seek.value);
-    finishPlaybackSeek();
+    // pointerup で終了済みなら再生状態を維持し、未終了ならここで確定する。
+    seekPlayback(seek.value, playbackState.playing);
+    if (playbackSeekWasPlaying !== undefined) finishPlaybackSeek();
   }
 });
 
