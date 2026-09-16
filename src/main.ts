@@ -149,7 +149,7 @@ const SHORT_FINGER: Record<Finger, string> = {
 
 /**
  * 配列の識別色。色は一覧での位置に固定するので、選択を外しても残りの色は動かない。
- * スロットは 8 つで、自作配列を足して超えた分は巡回する（被って読みにくければ
+ * スロットは8つで、自作配列を足して超えた分は巡回する（被って読みにくければ
  * 選択を外せばよい）。
  */
 const PALETTE_SIZE = 8;
@@ -211,7 +211,7 @@ const MODES = {
   ja: { get layouts() { return layoutsOf('ja'); }, sample: SAMPLES.ja.modern },
 };
 
-/** 表示する配列の id。モードごとに覚える。保存値があればそれを使い、無ければ既定値 */
+/** 表示する配列のid。モードごとに覚える。保存値があればそれを使い、無ければ既定値 */
 const storedSelection = loadSelection();
 const selected: Record<ModeId, Set<string>> = {
   en: resolveSelection(storedSelection.en, INITIAL.en),
@@ -240,7 +240,7 @@ function fillSampleOptions() {
 fillSampleOptions();
 el.text.value = currentSample();
 
-/** 配列を追加する欄。段ごとに 1 行、数字段は任意 */
+/** 配列を追加する欄。段ごとに1行、数字段は任意 */
 function setupAddForm() {
   const inputs: HTMLInputElement[] = ROW_LABELS.map((label, i) => {
     const row = document.createElement('label');
@@ -291,7 +291,7 @@ function setupAddForm() {
     if (!file) return;
     try {
       const format = formatForFileName(file.name);
-      if (!format) throw new Error('DvorakJ の .txt、Vial の .vil、紅皿の .bnz / .ini を選ぶ');
+      if (!format) throw new Error('DvorakJの .txt、Vialの .vil、紅皿の .bnz / .iniを選ぶ');
       const bytes = await file.arrayBuffer();
       const source = decodeLayoutFile(bytes, format);
       const name = file.name.replace(/\.[^.]+$/, '');
@@ -496,7 +496,7 @@ function fillRomajiVariants() {
       const note = document.createElement('span');
       note.className = 'romaji-variant-note';
       note.hidden = input.value !== 'n';
-      note.textContent = 'ん = n は、次が母音・な行・や行の時や語末では実際には nn が必要です。この設定では区別できません。';
+      note.textContent = 'ん = nは、次が母音・な行・や行の時や語末では実際にはnnが必要です。この設定では区別できません。';
       row.append(note);
       input.addEventListener('input', () => { note.hidden = input.value.trim().toLowerCase() !== 'n'; });
     }
@@ -708,14 +708,14 @@ const TEXT_COLLAPSED_KEY = 'keydist:text-collapsed';
 
 /**
  * 計算方法の図解をモーダルで開く。ヘッダーの仕様リンクを置き換えたボタンから呼ぶ。
- * 閉じる口は 3 つ: 閉じるボタン・背景クリック・Esc（dialog 既定）。
- * 背景クリックを拾うため dialog 自身の padding は 0 にし、余白は .dialog-body が持つ。
+ * 閉じる口は3つ: 閉じるボタン・背景クリック・Esc（dialog既定）。
+ * 背景クリックを拾うためdialog自身のpaddingは0にし、余白は .dialog-bodyが持つ。
  */
 function setupHowDialog() {
   el.howOpen.addEventListener('click', () => el.howDialog.showModal());
   el.howClose.addEventListener('click', () => el.howDialog.close());
   el.howDialog.addEventListener('click', (event) => {
-    // 背景そのものを押した時だけ閉じる。中身の上なら target は子要素になる
+    // 背景そのものを押した時だけ閉じる。中身の上ならtargetは子要素になる
     if (event.target === el.howDialog) el.howDialog.close();
   });
 }
@@ -794,12 +794,12 @@ function render() {
     });
 
   if (results.length === 0) {
-    el.textMeta.textContent = '配列を 1 つ以上選ぶ';
+    el.textMeta.textContent = '配列を1つ以上選ぶ';
     el.compareChart.innerHTML = '';
     syncCompareBaselineOptions([]);
     syncCompareChartOptions(false);
     el.compare.innerHTML = '';
-    showSensitivityPlaceholder('配列を 1 つ以上選ぶ');
+    showSensitivityPlaceholder('配列を1つ以上選ぶ');
     el.heatmap.innerHTML = '';
     el.fingerChart.innerHTML = '';
     el.adjacentChart.innerHTML = '';
@@ -985,7 +985,7 @@ function syncCompareChartOptions(relative: boolean) {
   el.compareChartMetric.value = String(compareChartColumn);
 }
 
-/** data-tip を持つ補足ボタン。tip が無い列では何も出さない */
+/** data-tipを持つ補足ボタン。tipが無い列では何も出さない */
 function infoButton(tip: string | undefined): string {
   if (!tip) return '';
   const attr = escapeAttr(tip);
@@ -1011,7 +1011,7 @@ function compareHeader(label: string, column: number, relative: boolean): string
  * 配列 × 指の粒度でマトリックスに並べる。行は総移動距離の表と同じ選択順
  * （色のスロットが他の図と揃うことを優先し、総距離順の並べ替えはしない）。
  *
- * 指ごとの移動距離は入力文字数で正規化する（u/文字）。生の u は評価テキストの
+ * 指ごとの移動距離は入力文字数で正規化する（u/文字）。生のuは評価テキストの
  * 長さに引きずられるため、テキストを変えても配列間の比較が揺れないようにする。
  * 隣接指の統計はもともと打鍵ごとの値なので文字数に依存しない。選択中の指標を
  * そのまま表示し、詳細チャートと同じ指標を使う。
@@ -1044,9 +1044,9 @@ function renderMatrices(results: Result[]) {
     },
   );
 
-  // 押下数は親指も含めた 10 本で出す。親指の移動距離は定義上 0 なので距離の面からは
+  // 押下数は親指も含めた10本で出す。親指の移動距離は定義上0なので距離の面からは
   // 省いてあるが、押下は現に起きている（薙刀式の右親指など）。距離の面だけを見て
-  // 「この指を使っていない」と読まれるのを防ぐため、ここは 0 の列も含めて全部並べる。
+  // 「この指を使っていない」と読まれるのを防ぐため、ここは0の列も含めて全部並べる。
   const pressRows = sortMatrixRows(results.map((r) => ({
     label: r.layout.name,
     color: SERIES(r.slot),
@@ -1080,7 +1080,7 @@ function renderMatrices(results: Result[]) {
     labelWidth: 190,
     columnSplit: 3,
     columnGroupLabels: ['左手', '右手'] as [string, string],
-    // 隣接指の指標は 0.02〜0.6 の狭い帯に固まる。0 起点だと全セルが薄くなって差が読めない
+    // 隣接指の指標は0.02〜0.6の狭い帯に固まる。0起点だと全セルが薄くなって差が読めない
     colorBase: 'min' as const,
   };
   el.adjacentMeanMatrix.innerHTML = matrixChart(
@@ -1161,7 +1161,7 @@ function bindCompareSort(root: HTMLElement) {
 }
 
 /**
- * 相対は N=0 を 100% とした減り方、絶対はそのままの総移動距離。
+ * 相対はN=0を100%とした減り方、絶対はそのままの総移動距離。
  * 相対は傾きの比較に、絶対は配列間の差の比較に効く。
  */
 type SensitivityScale = 'relative' | 'absolute';
@@ -1192,13 +1192,13 @@ function renderSensitivity(
       points: points.map((p) => ({
         x: p.windowSize,
         y: relative ? (p.totalUnits / base) * 100 : p.totalUnits,
-        // 絶対表示では y 自身が生値なので併記しない
+        // 絶対表示ではy自身が生値なので併記しない
         raw: relative ? p.totalUnits : undefined,
       })),
     };
   });
-  // N を増やしても候補集合が広がるだけで距離は減る一方なので、相対値は 100% を超えない。
-  // 上端を 100% に固定して、自動調整で 105% のような目盛りが出るのを防ぐ
+  // Nを増やしても候補集合が広がるだけで距離は減る一方なので、相対値は100%を超えない。
+  // 上端を100%に固定して、自動調整で105%のような目盛りが出るのを防ぐ
   el.sensitivity.innerHTML = relative
     ? lineChart(series, range, (v) => `${v.toFixed(0)}%`, { yMax: 100 })
     : lineChart(series, range, (v) => `${v.toFixed(0)} u`);
@@ -1256,7 +1256,7 @@ function isNaginataCenterShift(layout: Layout, face: Layer['faces'][number]): bo
 }
 
 function displayTriggerText(layout: Layout, face: Layer['faces'][number]): string {
-  if (isNaginataCenterShift(layout, face)) return '左右の Space';
+  if (isNaginataCenterShift(layout, face)) return '左右のSpace';
   return displayTriggerKeys(layout, face)
     .map((key) => triggerKeyText(key, layout.legends))
     .join(' + ');
@@ -1329,7 +1329,7 @@ function layerCells(layer: Layer, layout: Layout): Map<string, LayerCell> {
 
 interface HeatmapValues {
   keyCounts: ReadonlyMap<string, number>;
-  /** 色の濃淡専用。ツールチップには keyCounts の実測値を使う。 */
+  /** 色の濃淡専用。ツールチップにはkeyCountsの実測値を使う。 */
   colorCounts: ReadonlyMap<string, number>;
   keyDistance: ReadonlyMap<string, number>;
   maxCount: number;
@@ -1367,7 +1367,7 @@ function renderLayerSvg(
     }
   }
   const max = values.maxCount;
-  // 隣に並ぶマトリックス（セル 54×24）と同じくらいの密度に合わせる。
+  // 隣に並ぶマトリックス（セル54×24）と同じくらいの密度に合わせる。
   // 図は実寸で置くので、この値がそのまま画面上のキーの大きさになる
   const KEY = 30;
   const PAD = 6;
@@ -1407,7 +1407,7 @@ function renderLayerSvg(
     const text = `<text x="${x + w / 2}" y="${y + KEY / 2 + 4}" text-anchor="middle"
         font-size="${fontSize}" fill="${showHeat && t > 0.5 ? 'var(--on-heat)' : 'var(--fg)'}"
         pointer-events="none">${escapeText(label)}</text>`;
-    // 隣り合う面が地色で 2px 離れるよう、キー矩形は内側に 1px 詰める
+    // 隣り合う面が地色で2px離れるよう、キー矩形は内側に1px詰める
     const fill = showHeat
       ? `color-mix(in oklab, var(--heat-1) ${(t * 100).toFixed(1)}%, var(--heat-0))`
       : 'var(--panel)';
@@ -1419,7 +1419,7 @@ function renderLayerSvg(
     </g>`;
   });
 
-  // 実寸を属性で持たせ、CSS 側（.fig-fixed）で引き伸ばさずに置く
+  // 実寸を属性で持たせ、CSS側（.fig-fixed）で引き伸ばさずに置く
   const W = maxX + PAD;
   const H = maxY + PAD;
   const caption = showHeat ? `${title}・打鍵頻度` : title;
@@ -1714,7 +1714,7 @@ el.sensitivityPanel.addEventListener('toggle', () => {
 el.sensitivityScale.addEventListener('click', (e) => {
   const button = (e.target as Element).closest<HTMLButtonElement>('button[data-scale]');
   if (!button) return;
-  // 尺度ボタンは summary 内にあるので、押しても details の開閉を起こさない
+  // 尺度ボタンはsummary内にあるので、押してもdetailsの開閉を起こさない
   e.preventDefault();
   setSensitivityScale(button.dataset.scale as SensitivityScale);
 });
@@ -1775,12 +1775,12 @@ bindMatrixSort(el.fingerMatrix, 'finger');
 bindMatrixSort(el.adjacentMeanMatrix, 'adjacentMean');
 bindMatrixSort(el.adjacentStdDevMatrix, 'adjacentStdDev');
 bindCompareSort(el.compare);
-// 図解は固定例（§7〜§9）。画面の選択に連動させず、起動時に 1 度だけ描く
+// 図解は固定例（§7〜§9）。画面の選択に連動させず、起動時に1度だけ描く
 el.gapFigure.innerHTML = gapFigure(buildGeometry('row-staggered'));
 setupHowDialog();
 bindTips(document.body);
-// 補足ボタン: summary の中に置くと details が開閉してしまうので握りつぶす。
-// キーボードでも読めるよう focus でも出す
+// 補足ボタン: summaryの中に置くとdetailsが開閉してしまうので握りつぶす。
+// キーボードでも読めるようfocusでも出す
 document.body.addEventListener('click', (e) => {
   const info = (e.target as Element).closest('.info');
   if (info) e.preventDefault();

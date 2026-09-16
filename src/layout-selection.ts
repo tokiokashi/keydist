@@ -1,4 +1,4 @@
-/** 配列の選択状態（どれを比較表示に含めるか）の localStorage 永続化 */
+/** 配列の選択状態（どれを比較表示に含めるか）のlocalStorage永続化 */
 
 /** 画面のモード。保存形式がモードごとに割れるので、その定義をここに置く */
 export type ModeId = 'en' | 'ja';
@@ -11,8 +11,8 @@ type StoredSelection = Partial<Record<ModeId, string[]>>;
  * 保存値と既定値から、実際に使う選択集合を決める。
  * 保存が無いモード（= 初回訪問）だけ既定値を使う。保存が空配列のモードは
  * 「全部オフ」を意図した状態として尊重し、既定値へは戻さない。
- * 保存値にもう存在しない配列 id が混ざっていても、呼び出し側（activeLayouts）が
- * filter で弾くので害はなく、ここでは弾かない。
+ * 保存値にもう存在しない配列idが混ざっていても、呼び出し側（activeLayouts）が
+ * filterで弾くので害はなく、ここでは弾かない。
  */
 export function resolveSelection(
   stored: string[] | undefined,

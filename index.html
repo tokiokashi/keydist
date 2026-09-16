@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>keydist — キーボード配列 指移動距離</title>
+    <title>keydist — キーボード配列指移動距離</title>
     <meta name="description" content="キーボード論理配列を指の総移動距離で評価する" />
     <link rel="icon" type="image/svg+xml" href="/keydist/favicon.svg" />
     <link rel="stylesheet" href="/src/style.css" />
@@ -46,7 +46,7 @@
           </label>
 
           <label class="ctl">
-            <span>窓幅 N <small>残す／戻すを比べる先読み打鍵数</small></span>
+            <span>窓幅N <small>残す／戻すを比べる先読み打鍵数</small></span>
             <span class="range-row">
               <input type="range" id="window" min="0" max="12" step="1" value="3" />
               <output id="window-out">3</output>
@@ -85,12 +85,12 @@
           <label class="ctl import-file">
             <span>定義ファイルから取り込む</span>
             <input type="file" id="import-layout" accept=".vil,.txt,.bnz,.ini,application/json,text/plain"
-              title="DvorakJ .txt、Vial .vil、紅皿 .bnz / .ini に対応する" />
+              title="DvorakJ .txt、Vial .vil、紅皿 .bnz / .iniに対応する" />
           </label>
           <p class="error" id="import-error" hidden></p>
           <p class="note" id="import-warning" hidden></p>
           <p class="note">
-            数字段が空なら QWERTY を使う。重複した文字は先に書いたキーで打つ。<br />
+            数字段が空ならQWERTYを使う。重複した文字は先に書いたキーで打つ。<br />
             追加した配列はこのブラウザに保存する。
           </p>
         </details>
@@ -123,7 +123,7 @@
             <div>
               <h3>指ごとの移動距離 [u]<button type="button" class="info" data-tip="文章を打ち切るまでに各指が動いた距離。短い経路を選んだ場合はその分短縮される。" aria-label="文章を打ち切るまでに各指が動いた距離。短い経路を選んだ場合はその分短縮される。">i</button></h3>
               <div id="finger-chart"></div>
-              <p class="note">親指の距離は常に 0 なので省く。押下数は図にかざすと出る。</p>
+              <p class="note">親指の距離は常に0なので省く。押下数は図にかざすと出る。</p>
             </div>
             <div>
               <h3>指間距離の標準偏差 [u]<button type="button" class="info" data-tip="指間距離のばらつき。平均が同じでも、常に一定の開き方をするか打鍵ごとに変わるかで差が出る。" aria-label="指間距離のばらつき。平均が同じでも、常に一定の開き方をするか打鍵ごとに変わるかで差が出る。">i</button></h3>
@@ -136,7 +136,7 @@
           <h2>総移動距離<button type="button" class="info" data-tip="全指の移動距離の合計。ホームポジションからどれだけ移動したかの指標。" aria-label="全指の移動距離の合計。ホームポジションからどれだけ移動したかの指標。">i</button></h2>
           <label class="ctl">
             <span>比較元</span>
-            <select id="compare-baseline" title="選ぶと比較元を 100% とした比率を表示する。比較できない項目は — と表示する。">
+            <select id="compare-baseline" title="選ぶと比較元を100%とした比率を表示する。比較できない項目は — と表示する。">
               <option value="">比較なし</option>
             </select>
           </label>
@@ -175,7 +175,7 @@
           </div>
           <p class="note">
             距離と押下数は文字数で割った値。色は図ごとの強弱を示す。<br />
-            隣接指の間隔はホーム時を 0 として測る。ばらつきは打鍵中の間隔の変動。
+            隣接指の間隔はホーム時を0として測る。ばらつきは打鍵中の間隔の変動。
           </p>
         </section>
 
@@ -189,7 +189,7 @@
           </summary>
           <div id="sensitivity"></div>
           <p class="note">
-            N を増やすと距離は減るか変わらない。見るべきは傾きの差。<br />
+            Nを増やすと距離は減るか変わらない。見るべきは傾きの差。<br />
             傾きが大きいほど、ホームから離れた連続打鍵が多い。
           </p>
         </details>
@@ -259,7 +259,7 @@
           <span>促音の後ろに子音を重ねた見出しを自動生成する（っか → kka）</span>
         </label>
         <label class="ctl">
-          <span>差分 <small>1 行に「かな = 綴り」。複数かなも可</small></span>
+          <span>差分 <small>1行に「かな = 綴り」。複数かなも可</small></span>
           <textarea id="romaji-overrides" rows="8" spellcheck="false" placeholder="しゃ = sha&#10;じゃ = ja&#10;ちゃ = cha"></textarea>
         </label>
         <p class="error" id="romaji-error" hidden></p>
