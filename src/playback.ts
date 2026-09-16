@@ -69,6 +69,40 @@ export function playbackSameFingerKeyMotions(
   return motions;
 }
 
+/**
+ * 直前のステップと今のステップの両方で押されているキーを返す。
+ *
+ * 同じキーを連打すると `data-playback-active` が点きっぱなしになり、打ち直した
+ * のか止まっているのか見分けが付かない。ここで拾ったキーへ毎ステップ発火演出を
+ * 重ねることで「今また打った」を示す。かな配列では面（レイヤー）が違えば同じ
+ * 物理キーに別のかなが乗るため、`character`ではなくキーid（物理キー）の一致で見る。
+ *
+ * 親指キーは対象から外す。新下駄・薙刀式では親指シフトがほぼ毎ステップ入るため、
+ * 含めると常時光り続けて「今また打った」という意味が薄れる
+ * （同指連続・チェーンの判定で親指を除く isThumb と同じ判断）。
+ */
+export function playbackRepeatedKeys(
+  strokes: readonly Stroke[],
+  cursor: number,
+): ReadonlySet<string> {
+  const index = Math.min(Math.max(0, cursor), strokes.length) - 1;
+  const repeated = new Set<string>();
+  if (index <= 0) return repeated;
+
+  const previousKeys = new Set(
+    strokes[index - 1].presses
+      .filter((press) => !isThumb(press.finger))
+      .flatMap((press) => press.keys.map((key) => key.id)),
+  );
+  for (const press of strokes[index].presses) {
+    if (isThumb(press.finger)) continue;
+    for (const key of press.keys) {
+      if (previousKeys.has(key.id)) repeated.add(key.id);
+    }
+  }
+  return repeated;
+}
+
 function fingerHand(finger: Finger): 'left' | 'right' {
   return finger.startsWith('L') ? 'left' : 'right';
 }
