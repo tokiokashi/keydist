@@ -42,6 +42,7 @@ import {
   loadPlaybackCalibration,
   PLAYBACK_CALIBRATION_STORAGE_KEY,
   savePlaybackCalibration,
+  sameHandFingerPairKey,
 } from '../src/playback-calibration.ts';
 
 const playing = (cursor = 0) => ({
@@ -114,6 +115,7 @@ test('個人キャリブレーションは通常打鍵と指移動を別々の�
   const calibration = {
     actionsPerSecond: 4,
     sameHandDifferentFingerActionsPerSecond: 2,
+    sameHandDifferentFingerActionsPerSecondByPair: { 'LM:LI': 3 },
     fingerSpeedUnitsPerSecond: { LI: 8 },
     fallbackFingerSpeedUnitsPerSecond: 12,
     measuredAt: 1,
@@ -128,7 +130,10 @@ test('個人キャリブレーションは通常打鍵と指移動を別々の�
 
   const sameHandPrevious = { presses: [{ finger: 'LM' }] } as never;
   const sameHandStroke = { presses: [{ finger: 'LI', sfb: false, distance: 100 }] } as never;
-  assert.equal(playbackStrokeDurationMs(sameHandStroke, 1, false, calibration, sameHandPrevious), 500);
+  assert.equal(playbackStrokeDurationMs(sameHandStroke, 1, false, calibration, sameHandPrevious), 1000 / 3);
+
+  const sameHandFallbackPrevious = { presses: [{ finger: 'LP' }] } as never;
+  assert.equal(playbackStrokeDurationMs(sameHandStroke, 1, false, calibration, sameHandFallbackPrevious), 500);
 
   const crossHandPrevious = { presses: [{ finger: 'RI' }] } as never;
   assert.equal(playbackStrokeDurationMs(sameHandStroke, 1, true, calibration, crossHandPrevious), 250);
@@ -160,6 +165,7 @@ test('キャリブレーションの保存値は壊れたJSONを無視する', (
   const calibration = {
     actionsPerSecond: 3.5,
     sameHandDifferentFingerActionsPerSecond: 2.5,
+    sameHandDifferentFingerActionsPerSecondByPair: { 'LP:LR': 2 },
     fingerSpeedUnitsPerSecond: { LI: 12 },
     fallbackFingerSpeedUnitsPerSecond: 12,
     measuredAt: 4,
@@ -168,8 +174,10 @@ test('キャリブレーションの保存値は壊れたJSONを無視する', (
   assert.deepEqual(loadPlaybackCalibration(storage), calibration);
   const oldV2 = { ...calibration } as Record<string, unknown>;
   delete oldV2.sameHandDifferentFingerActionsPerSecond;
+  delete oldV2.sameHandDifferentFingerActionsPerSecondByPair;
   data.set(PLAYBACK_CALIBRATION_STORAGE_KEY, JSON.stringify(oldV2));
   assert.equal(loadPlaybackCalibration(storage)?.sameHandDifferentFingerActionsPerSecond, calibration.actionsPerSecond);
+  assert.deepEqual(loadPlaybackCalibration(storage)?.sameHandDifferentFingerActionsPerSecondByPair, {});
   data.set(PLAYBACK_CALIBRATION_STORAGE_KEY, '{broken');
   assert.equal(loadPlaybackCalibration(storage), undefined);
   data.clear();
@@ -193,6 +201,13 @@ test('同手の別指測定は隣接以外も含む全組合せのホームキ�
   assert.equal(pairs.length, 12);
   assert.deepEqual(pairs.slice(0, 6), [['a', 's'], ['a', 'd'], ['a', 'f'], ['s', 'd'], ['s', 'f'], ['d', 'f']]);
   assert.deepEqual(pairs.slice(6), [['j', 'k'], ['j', 'l'], ['j', ';'], ['k', 'l'], ['k', ';'], ['l', ';']]);
+});
+
+test('同手別指の組キーは指順を正規化し、別手や親指を除外する', () => {
+  assert.equal(sameHandFingerPairKey('LI', 'LM'), 'LM:LI');
+  assert.equal(sameHandFingerPairKey('RM', 'RP'), 'RM:RP');
+  assert.equal(sameHandFingerPairKey('LI', 'RI'), undefined);
+  assert.equal(sameHandFingerPairKey('LT', 'LI'), undefined);
 });
 
 test('キャリブレーションはKeyboardEventの刻印と物理コードを受け付ける', () => {

@@ -362,7 +362,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
+  margin-left: 0;
   color: var(--muted);
   font-size: 0.76rem;
   white-space: nowrap;
@@ -415,7 +415,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-typed code { color: var(--fg); font-size: 0.9rem; }
 .playback-planned { margin-left: 8px; color: var(--series-3); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 400; }
 .playback-attribution { grid-column: 3; white-space: nowrap; }
-.playback-effective-rate { margin-left: 12px; color: var(--muted); white-space: nowrap; }
+.playback-effective-rate { margin-left: auto; color: var(--muted); white-space: nowrap; }
 .playback-status b { color: var(--fg); font-weight: 600; }
 .playback-history {
   margin-top: 4px;
