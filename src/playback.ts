@@ -202,21 +202,21 @@ export interface PlaybackInputPreviewSegment {
   kind: PlaybackInputPreviewKind;
 }
 
-/** 入力済み・現在・先読みの入力単位を表示順に返す。先読み値は文字数として扱う。 */
+/** 入力済み・現在・先読みの入力単位を表示順に返す。先読み値は打鍵ステップ数として扱う。 */
 export function playbackInputPreview(
   strokes: readonly Stroke[],
   cursor: number,
-  lookaheadChars = 0,
+  lookaheadSteps = 0,
   completedLimit = 10,
 ): PlaybackInputPreviewSegment[] {
   const end = Math.min(Math.max(0, cursor), strokes.length);
-  const groups: { inputIndex: number; text: string }[] = [];
+  const groups: { inputIndex: number; start: number; end: number; text: string }[] = [];
 
   for (let start = 0; start < strokes.length; ) {
     const inputIndex = strokes[start].inputIndex;
     let finish = start + 1;
     while (finish < strokes.length && strokes[finish].inputIndex === inputIndex) finish++;
-    groups.push({ inputIndex, text: strokes[start].inputChar });
+    groups.push({ inputIndex, start, end: finish, text: strokes[start].inputChar });
     start = finish;
   }
 
@@ -226,9 +226,10 @@ export function playbackInputPreview(
   const completed = currentGroupIndex < 0
     ? []
     : limit === 0 ? [] : groups.slice(0, currentGroupIndex).slice(-limit);
-  const plannedLimit = Math.max(0, Math.floor(lookaheadChars));
-  const plannedStart = currentGroupIndex < 0 ? 0 : currentGroupIndex + 1;
-  const planned = groups.slice(plannedStart, plannedStart + plannedLimit);
+  const futureEnd = Math.min(strokes.length, end + Math.max(0, Math.floor(lookaheadSteps)));
+  const planned = groups.filter((group) =>
+    group.inputIndex !== currentInputIndex && group.end > end && group.start < futureEnd,
+  );
 
   return [
     ...completed.map(({ text }) => ({ text, kind: 'completed' as const })),

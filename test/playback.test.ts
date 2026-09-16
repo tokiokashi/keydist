@@ -97,9 +97,12 @@ test('入力プレビューは現在の入力を下線対象にし、先読み�
 
   assert.deepEqual(playbackInputPreview(trace.strokes, 2, 1), [
     { text: 'きょ', kind: 'current' },
-    { text: 'う', kind: 'planned' },
   ]);
   assert.deepEqual(playbackInputPreview(trace.strokes, 2, 2), [
+    { text: 'きょ', kind: 'current' },
+    { text: 'う', kind: 'planned' },
+  ]);
+  assert.deepEqual(playbackInputPreview(trace.strokes, 2, 3), [
     { text: 'きょ', kind: 'current' },
     { text: 'う', kind: 'planned' },
     { text: 'あ', kind: 'planned' },
