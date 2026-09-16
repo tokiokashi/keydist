@@ -790,8 +790,8 @@ let naginataLayerDetail = false;
 const PLAYBACK_KEY = 30;
 const PLAYBACK_PAD = 6;
 const PLAYBACK_THUMB_WIDTH = 1.9;
-const PLAYBACK_SCALES = [1, 1.5, 2] as const;
-type PlaybackScale = (typeof PLAYBACK_SCALES)[number];
+const PLAYBACK_SCALE_MIN = 0.5;
+const PLAYBACK_SCALE_MAX = 4;
 let playbackState: PlaybackState = createPlaybackState();
 let playbackTrace: Trace | undefined;
 let playbackGeometry: ReturnType<typeof buildGeometry> | undefined;
@@ -805,7 +805,7 @@ let playbackShowPlanKeys = false;
 let playbackShowTrail = false;
 let playbackTrailTau = 5;
 let playbackShowOrderLabels = false;
-let playbackScale: PlaybackScale = 1.5;
+let playbackScale = 1.5;
 
 function cancelPlaybackAnimation() {
   if (playbackAnimationFrame !== undefined) cancelAnimationFrame(playbackAnimationFrame);
@@ -898,7 +898,7 @@ function updatePlaybackView() {
   const trail = el.playback.querySelector<HTMLInputElement>('[data-playback-trail]');
   const trailTau = el.playback.querySelector<HTMLInputElement>('[data-playback-trail-tau]');
   const orderLabels = el.playback.querySelector<HTMLInputElement>('[data-playback-order-labels]');
-  const scale = el.playback.querySelector<HTMLSelectElement>('select[data-playback-scale]');
+  const scale = el.playback.querySelector<HTMLInputElement>('input[data-playback-scale]');
   const playbackWindow = el.playback.querySelector<HTMLOutputElement>('[data-playback-window]');
   if (position) position.textContent = `${cursor} / ${total} ステップ`;
   if (current) {
@@ -1001,9 +1001,6 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
   const speeds = PLAYBACK_SPEEDS.map((speed) =>
     `<option value="${speed}"${speed === playbackState.speed ? ' selected' : ''}>${speed}x</option>`,
   ).join('');
-  const scales = PLAYBACK_SCALES.map((scale) =>
-    `<option value="${scale}"${scale === playbackScale ? ' selected' : ''}>${scale}倍</option>`,
-  ).join('');
   el.playback.innerHTML = `<details class="playback-panel">
     <summary><span class="playback-summary-icon" aria-hidden="true">▶</span><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
@@ -1015,7 +1012,8 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${playbackShowTrail ? ' checked' : ''} />押下履歴を残す</label>
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${playbackTrailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${playbackShowOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
-        <label class="playback-scale-setting" title="配列図の表示倍率">配列図 <select data-playback-scale aria-label="配列図の表示倍率">${scales}</select></label>
+        <label class="playback-scale-setting" title="0.5〜4倍の範囲で配列図の表示倍率を指定できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="any" list="playback-scale-options" value="${playbackScale}" aria-label="配列図の表示倍率" /> 倍</label>
+        <datalist id="playback-scale-options"><option value="1" label="標準"></option><option value="1.5" label="見やすい"></option><option value="2" label="大きめ"></option></datalist>
       </div>
       <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
         <button type="button" class="ghost" data-playback-action="back">1 ステップ戻る</button>
@@ -2179,11 +2177,11 @@ el.playback.addEventListener('change', (e) => {
     updatePlaybackView();
     return;
   }
-  const scale = target.closest<HTMLSelectElement>('select[data-playback-scale]');
+  const scale = target.closest<HTMLInputElement>('input[data-playback-scale]');
   if (scale) {
     const value = Number(scale.value);
-    if (PLAYBACK_SCALES.includes(value as PlaybackScale)) {
-      playbackScale = value as PlaybackScale;
+    if (Number.isFinite(value) && value >= PLAYBACK_SCALE_MIN && value <= PLAYBACK_SCALE_MAX) {
+      playbackScale = value;
       rerenderPlaybackFigure();
       updatePlaybackView();
     }

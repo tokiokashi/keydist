@@ -342,7 +342,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-window-setting output { color: var(--fg); font: inherit; font-variant-numeric: tabular-nums; }
 .playback-range-setting input { width: 4.5em; padding: 2px 4px; font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
 .playback-scale-setting { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 0.76rem; }
-.playback-scale-setting select { width: auto; padding: 3px 6px; font-size: 0.76rem; }
+.playback-scale-setting input { width: 4.5em; padding: 2px 4px; font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
 .playback-controls {
   display: flex;
   align-items: center;
