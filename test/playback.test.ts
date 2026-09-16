@@ -92,8 +92,12 @@ test('レイヤー再生はシフトと出力キーの刻印を現在の面か�
 
   assert.equal(shift.character, undefined);
   assert.equal(shift.keyLabels.get('d'), '⇧');
+  assert.equal(shift.keyLabels.get('q'), '');
+  assert.equal(shift.keyLabels.get('w'), '');
   assert.equal(output.character, 'ぬ');
   assert.equal(output.keyLabels.get('y'), 'ぬ');
+  assert.equal(output.keyLabels.get('q'), '');
+  assert.equal(output.keyLabels.get('w'), '');
 });
 
 test('薙刀式の濁音はシフトと出力かなを同じステップで表示する', () => {

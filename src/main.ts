@@ -912,7 +912,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
     `<option value="${speed}"${speed === playbackState.speed ? ' selected' : ''}>${speed}x</option>`,
   ).join('');
   el.playback.innerHTML = `<details class="playback-panel">
-    <summary>打鍵再生</summary>
+    <summary><span class="playback-summary-icon" aria-hidden="true">▶</span><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
       <div class="playback-head">
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${playbackShowFingers ? ' checked' : ''} />指の位置を表示</label>
