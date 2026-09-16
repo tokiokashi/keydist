@@ -74,6 +74,41 @@ function fingerHand(finger: Finger): 'left' | 'right' {
 }
 
 /**
+ * 親指キー（スペース等）はアルペジオの材料から外す。
+ *
+ * 新下駄・薙刀式のような配列では親指が同時押しのシフトを担う。これは指が鍵盤を
+ * 渡り歩く動きではないので、手の連続の判定にも移動の起点・終点にも使わない。
+ */
+function isThumb(finger: Finger): boolean {
+  return finger === 'LT' || finger === 'RT';
+}
+
+/**
+ * 打鍵を手ごとのキーidへ分ける。
+ *
+ * 左右同時押しのステップは両方の手に現れる。手ごとに見ることで、逆の手が混ざっても
+ * 片方の手の連続が途切れない。
+ */
+function strokeHandKeys(stroke: Stroke): Map<'left' | 'right', string[]> {
+  const hands = new Map<'left' | 'right', string[]>();
+  for (const press of stroke.presses) {
+    if (isThumb(press.finger)) continue;
+    const hand = fingerHand(press.finger);
+    const keys = hands.get(hand) ?? [];
+    keys.push(...press.keys.map((key) => key.id));
+    hands.set(hand, keys);
+  }
+  return hands;
+}
+
+/** その手が同指連打をしているか。親指は数えない。 */
+function handHasSameFinger(stroke: Stroke, hand: 'left' | 'right'): boolean {
+  return stroke.presses.some(
+    (press) => !isThumb(press.finger) && fingerHand(press.finger) === hand && press.sfb,
+  );
+}
+
+/**
  * 直前の打鍵が同じ手だった時、その位置から現在のキーへの移動を返す。
  *
  * 同指連続（playbackSameFingerKeyMotions）が「同じ指がキーをまたぐ」動きなのに対し、
@@ -89,21 +124,22 @@ export function playbackHandKeyMotions(
   if (index <= 0) return [];
 
   const stroke = strokes[index];
-  const previous = strokes[index - 1];
-  const hand = (target: Stroke): 'left' | 'right' | undefined => {
-    const hands = new Set(target.presses.map((press) => fingerHand(press.finger)));
-    return hands.size === 1 ? [...hands][0] : undefined;
-  };
-  const currentHand = hand(stroke);
-  if (!currentHand || currentHand !== hand(previous)) return [];
-  if (!includeSameFinger && stroke.presses.some((press) => press.sfb)) return [];
+  const current = strokeHandKeys(stroke);
+  const previous = strokeHandKeys(strokes[index - 1]);
 
-  // 同時押しの起点は先頭のキーに寄せる。どれを選んでも手の移動という意味は変わらない
-  const fromKey = previous.presses.flatMap((press) => press.keys)[0]?.id;
-  const toKeys = stroke.presses.flatMap((press) => press.keys.map((key) => key.id));
-  const finger = stroke.presses[0]?.finger;
-  if (!fromKey || toKeys.length === 0 || !finger) return [];
-  return [{ fromKey, toKeys, finger }];
+  const motions: PlaybackKeyMotion[] = [];
+  for (const [hand, toKeys] of current) {
+    const fromKeys = previous.get(hand);
+    if (!fromKeys || fromKeys.length === 0 || toKeys.length === 0) continue;
+    if (!includeSameFinger && handHasSameFinger(stroke, hand)) continue;
+    const finger = stroke.presses.find(
+      (press) => !isThumb(press.finger) && fingerHand(press.finger) === hand,
+    )?.finger;
+    if (!finger) continue;
+    // 同時押しの起点は先頭のキーに寄せる。どれを選んでも手の移動という意味は変わらない
+    motions.push({ fromKey: fromKeys[0], toKeys, finger });
+  }
+  return motions;
 }
 
 /** 直近の同じ手の連続打鍵へ、表示順を割り当てる。 */
@@ -118,33 +154,25 @@ export function playbackArpeggioOrders(
   const span = Math.max(0, Math.floor(limit));
   if (end === 0 || span === 0) return orders;
 
-  const handPresses = (stroke: Stroke): { hand: 'left' | 'right'; keys: readonly string[] } | undefined => {
-    const hands = new Set(stroke.presses.map((press) => fingerHand(press.finger)));
-    if (hands.size !== 1) return undefined;
-    return {
-      hand: [...hands][0],
-      keys: stroke.presses.flatMap((press) => press.keys.map((key) => key.id)),
-    };
-  };
+  // 手ごとに遡る。左右同時押しのステップは両方の連続に参加するため、逆の手が
+  // 混ざっても片方の手のアルペジオは途切れない。
+  for (const hand of strokeHandKeys(strokes[end - 1]).keys()) {
+    if (!includeSameFinger && handHasSameFinger(strokes[end - 1], hand)) continue;
 
-  const current = handPresses(strokes[end - 1]);
-  if (!current) return orders;
-  if (!includeSameFinger && strokes[end - 1].presses.some((press) => press.sfb)) return orders;
+    let start = end - 1;
+    while (start > 0) {
+      const previous = strokes[start - 1];
+      if (!strokeHandKeys(previous).has(hand)) break;
+      if (!includeSameFinger && handHasSameFinger(previous, hand)) break;
+      start--;
+    }
+    start = Math.max(start, end - span);
 
-  let start = end - 1;
-  while (start > 0) {
-    const previous = handPresses(strokes[start - 1]);
-    if (!previous || previous.hand !== current.hand) break;
-    if (!includeSameFinger && strokes[start - 1].presses.some((press) => press.sfb)) break;
-    start--;
-  }
-  start = Math.max(start, end - span);
-
-  for (let index = start; index < end; index++) {
-    const currentStroke = handPresses(strokes[index]);
-    if (!currentStroke) continue;
-    const order = index - start + 1;
-    for (const key of currentStroke.keys) orders.set(key, order);
+    for (let index = start; index < end; index++) {
+      const keys = strokeHandKeys(strokes[index]).get(hand);
+      if (!keys) continue;
+      for (const key of keys) orders.set(key, index - start + 1);
+    }
   }
   return orders;
 }
