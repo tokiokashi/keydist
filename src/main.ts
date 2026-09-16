@@ -12,7 +12,15 @@ import {
 import { evaluate, type Options, type Trace } from './evaluate.ts';
 import { computeMetrics, type Metrics } from './metrics.ts';
 import { nSensitivity } from './sensitivity.ts';
-import { LAYOUTS, LAYOUTS_JA, withRomaji, type Face, type Layout } from './layouts/index.ts';
+import {
+  COMBO_LAYER_ID,
+  LAYOUTS,
+  LAYOUTS_JA,
+  SINGLE_LAYER_ID,
+  withRomaji,
+  type Face,
+  type Layout,
+} from './layouts/index.ts';
 import { SAMPLE_TEXT } from './sample-text.ts';
 import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from './sample-text-ja.ts';
 import {
@@ -1289,6 +1297,14 @@ function layerCells(layer: Layer, layout: Layout): Map<string, LayerCell> {
   return cells;
 }
 
+interface HeatmapValues {
+  keyCounts: ReadonlyMap<string, number>;
+  keyDistance: ReadonlyMap<string, number>;
+  maxCount: number;
+  showHeat: boolean;
+  ariaSuffix: string;
+}
+
 function renderLayerSvg(
   metrics: Metrics,
   layout: Layout,
@@ -1297,9 +1313,10 @@ function renderLayerSvg(
   title: string,
   allLayerFaces: readonly Face[],
   faceShiftStyles: ReadonlyMap<Face, LayerShiftStyle>,
+  values: HeatmapValues,
 ): string {
   const labels = layerCells(layer, layout);
-  const showHeat = layer.faces.length === 0 || layer.faces.some((face) => face.trigger.length === 0);
+  const showHeat = values.showHeat;
   const triggerFaces = layer.faces.length === 0 ? allLayerFaces : layer.faces;
   const shiftStyles = new Map<string, LayerShiftStyle>();
   for (const face of triggerFaces) {
@@ -1309,7 +1326,7 @@ function renderLayerSvg(
       if (handOfKey(trigger)) shiftStyles.set(resolveKeyId(trigger), style);
     }
   }
-  const max = Math.max(1, ...metrics.keyCounts.values());
+  const max = values.maxCount;
   // 隣に並ぶマトリックス（セル 54×24）と同じくらいの密度に合わせる。
   // 図は実寸で置くので、この値がそのまま画面上のキーの大きさになる
   const KEY = 30;
@@ -1319,7 +1336,7 @@ function renderLayerSvg(
   let maxY = 0;
 
   const keys = [...geometry.keys.values()].map((key) => {
-    const count = metrics.keyCounts.get(key.id) ?? 0;
+    const count = values.keyCounts.get(key.id) ?? 0;
     const t = count / max;
     const thumb = key.row === THUMB_ROW;
     const w = (thumb ? THUMB_W : 1) * KEY;
@@ -1332,17 +1349,19 @@ function renderLayerSvg(
     const annotation = cell?.annotation;
     const shiftStyle = shiftStyles.get(key.id);
     const share = ((count / Math.max(1, metrics.presses)) * 100).toFixed(1);
-    const distance = metrics.keyDistance.get(key.id) ?? 0;
+    const distance = values.keyDistance.get(key.id) ?? 0;
     const shiftTip = shiftStyle
       ? `<br><b>${layout.id === 'naginata-v18' && (key.id === THUMB_KEY.LT || key.id === THUMB_KEY.RT)
         ? `SandS（レイヤー ${shiftStyle.layerIndex}）`
         : `レイヤー ${shiftStyle.layerIndex} のシフトトリガー`}</b>`
       : '';
+    const annotationText = annotation ? `<br>${escapeText(annotation)}` : '';
     const tip = showHeat
       ? `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>` +
-        `<b>${count}</b> 打 (${share}%)<br>移動 <b>${distance.toFixed(1)} u</b>`
+        `<b>${count}</b> 打 (${share}%)<br>移動 <b>${distance.toFixed(1)} u</b>` +
+        annotationText + shiftTip
       : `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span>` +
-        (annotation ? `<br>${escapeText(annotation)}` : '') + shiftTip;
+        annotationText + shiftTip;
     const fontSize = thumb ? 10 : label.length > 3 ? 9 : 12;
     const text = `<text x="${x + w / 2}" y="${y + KEY / 2 + 4}" text-anchor="middle"
         font-size="${fontSize}" fill="${showHeat && t > 0.5 ? 'var(--on-heat)' : 'var(--fg)'}"
@@ -1363,7 +1382,7 @@ function renderLayerSvg(
   const W = maxX + PAD;
   const H = maxY + PAD;
   const caption = showHeat ? `${title}・打鍵頻度` : title;
-  const ariaLabel = showHeat ? `${caption}（全レイヤー合算・物理位置）` : caption;
+  const ariaLabel = `${caption}${values.ariaSuffix}`;
   return `<figure class="layer-diagram" style="width:${W}px">
     <figcaption>${escapeText(caption)}</figcaption>
     <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
@@ -1404,6 +1423,51 @@ function renderModifierList(modifiers: readonly Layer[], legends: Map<string, st
   </details>`;
 }
 
+function layerIdForFace(layout: Layout, face: Face): string {
+  const known = layout.faceLayerIds?.get(face);
+  if (known) return known;
+  const index = layout.faces?.indexOf(face) ?? -1;
+  if (face.trigger.length > 1) return COMBO_LAYER_ID;
+  return face.layer === undefined ? `face:${index}` : `layer:${face.layer}`;
+}
+
+function orderedLayers(groups: ReturnType<typeof classifyFaces>, layout: Layout): Layer[] {
+  return [...groups.layers, ...groups.modifiers]
+    .sort((first, second) => {
+      const firstIndex = Math.min(...first.faces.map((face) => layout.faces?.indexOf(face) ?? Number.MAX_SAFE_INTEGER));
+      const secondIndex = Math.min(...second.faces.map((face) => layout.faces?.indexOf(face) ?? Number.MAX_SAFE_INTEGER));
+      return firstIndex - secondIndex;
+    });
+}
+
+function renderLayerStats(
+  metrics: Metrics,
+  layout: Layout,
+  layers: readonly Layer[],
+  titles: readonly string[],
+  hasCombos: boolean,
+): string {
+  const stats = new Map(metrics.layers.map((stat) => [stat.id, stat]));
+  const total = metrics.presses;
+  const rows = layers.map((layer, index) => {
+    const id = layer.faces.length > 0 ? layerIdForFace(layout, layer.faces[0]) : SINGLE_LAYER_ID;
+    const stat = stats.get(id);
+    const presses = stat?.presses ?? 0;
+    const share = total ? (presses / total) * 100 : 0;
+    return `<tr><th scope="row">${escapeText(titles[index])}</th>` +
+      `<td class="num">${presses}</td><td class="num">${share.toFixed(1)}%</td></tr>`;
+  }).join('');
+  const comboRow = hasCombos
+    ? `<tr><th scope="row">コンボ計</th><td class="num">${metrics.comboPresses}</td>` +
+      `<td class="num">${total ? ((metrics.comboPresses / total) * 100).toFixed(1) : '0.0'}%</td></tr>`
+    : '';
+  return `<div class="layer-stats scroll-x">
+    <table><thead><tr><th>帰属先</th><th>押下数</th><th>割合</th></tr></thead>
+    <tbody>${rows}${comboRow}</tbody></table>
+    <p class="note">層とコンボの押下数の合計: ${metrics.layers.reduce((sum, stat) => sum + stat.presses, 0) + metrics.comboPresses} / 総押下数: ${metrics.presses}</p>
+  </div>`;
+}
+
 function renderHeatmap(
   metrics: Metrics,
   layout: Layout,
@@ -1411,10 +1475,11 @@ function renderHeatmap(
 ) {
   const faces = layout.faces ?? [];
   const groups = classifyFaces(faces);
-  const layers: Layer[] = groups.layers.length > 0 ? groups.layers : [{ faces: [] }];
+  const layers: Layer[] = orderedLayers(groups, layout);
+  if (layers.length === 0) layers.push({ faces: [] });
   if (activeLayerTab >= layers.length) activeLayerTab = 0;
   const titles = layers.map((layer, index) => layerTitle(layer, index, layout));
-  const allLayerFaces = groups.layers.flatMap((layer) => layer.faces);
+  const allLayerFaces = layers.flatMap((layer) => layer.faces);
   const faceShiftStyles = layerShiftStyles(layers);
   const shiftLayers = layers
     .map((layer, index) => ({
@@ -1443,9 +1508,45 @@ function renderHeatmap(
         <button type="button" class="ghost" data-layer-view="tabs" aria-pressed="${selectedLayerView === 'tabs'}">タブ</button>
       </div>`
     : '';
-  const diagrams = layers.map((layer, index) =>
-    renderLayerSvg(metrics, layout, geometry, layer, titles[index], allLayerFaces, faceShiftStyles),
+  const commonMax = Math.max(1, ...metrics.keyCounts.values());
+  const baseLayer = layers.find((layer) => layer.faces.some((face) => face.trigger.length === 0)) ?? layers[0];
+  const integrated = renderLayerSvg(
+    metrics,
+    layout,
+    geometry,
+    baseLayer,
+    '統合',
+    allLayerFaces,
+    faceShiftStyles,
+    {
+      keyCounts: metrics.keyCounts,
+      keyDistance: metrics.keyDistance,
+      maxCount: commonMax,
+      showHeat: true,
+      ariaSuffix: '（全レイヤー合算・物理位置）',
+    },
   );
+  const layerStatsById = new Map(metrics.layers.map((stat) => [stat.id, stat]));
+  const diagrams = layers.map((layer, index) => {
+    const id = layer.faces.length > 0 ? layerIdForFace(layout, layer.faces[0]) : SINGLE_LAYER_ID;
+    const stat = layerStatsById.get(id);
+    return renderLayerSvg(
+      metrics,
+      layout,
+      geometry,
+      layer,
+      titles[index],
+      allLayerFaces,
+      faceShiftStyles,
+      {
+        keyCounts: stat?.keyCounts ?? new Map(),
+        keyDistance: stat?.keyDistance ?? new Map(),
+        maxCount: commonMax,
+        showHeat: true,
+        ariaSuffix: '（層別・共通スケール）',
+      },
+    );
+  });
   const content = selectedLayerView === 'tabs' && layers.length > 1
     ? `<div class="layer-tabs" role="tablist" aria-label="レイヤー">
         ${titles.map((_, index) => `<button type="button" class="ghost" role="tab"
@@ -1455,8 +1556,15 @@ function renderHeatmap(
         diagram.replace('<figure class="layer-diagram"', `<figure class="layer-diagram"${activeLayerTab === index ? '' : ' hidden'}`),
       ).join('')}</div>`
     : `<div class="layer-diagrams">${diagrams.join('')}</div>`;
+  const hasCombos = groups.combos.length > 0 || layout.layerDefinitions?.some((definition) => definition.kind === 'combo') === true;
   const layerSection = `<section class="layer-section">
-    <h3>レイヤー（${layers.length}）</h3>
+    <h3>統合ヒートマップ</h3>
+    <div class="layer-diagrams">${integrated}</div>
+  </section>
+  <section class="layer-section">
+    <h3>層別ヒートマップ（${layers.length}）</h3>
+    ${renderLayerStats(metrics, layout, layers, titles, hasCombos)}
+    <p class="note">色は統合ヒートマップを含む全体のキー押下数を共通の最大値にしている。</p>
     ${shiftLegend}${controls}${content}
   </section>`;
   el.heatmap.innerHTML = layerSection + renderModifierList(groups.modifiers, layout.legends) +

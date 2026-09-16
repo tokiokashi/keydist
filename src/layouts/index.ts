@@ -16,10 +16,13 @@ export type {
   Face,
   FaceMode,
   FaceRow,
+  LayerDefinition,
+  LayerKind,
   Layout,
   Sequence,
   Step,
 } from './types.ts';
+export { COMBO_LAYER_ID, SINGLE_LAYER_ID } from './types.ts';
 export { faceFromEntries, fromRows, fromFaces, fromKana, withRomaji, withCombos } from './types.ts';
 export { canFoldFaces, classifyFaces, faceCells, groupFacesIntoLayers, handOfKey } from '../layers.ts';
 export type { FaceGroups, Hand, Layer } from '../layers.ts';

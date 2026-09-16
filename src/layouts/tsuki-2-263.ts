@@ -1,5 +1,5 @@
 import { THUMB_KEY } from '../geometry.ts';
-import { faceFromEntries, fromFaces, type Face, type Layout, type Sequence } from './types.ts';
+import { faceFromEntries, fromFaces, SINGLE_LAYER_ID, type Face, type Layout, type Sequence } from './types.ts';
 
 /**
  * 月配列 2-263 式。
@@ -50,6 +50,7 @@ const SEMI_VOICED: Record<string, string> = {
 function appendComposed(layout: Layout, entries: Record<string, string>, mark: string) {
   const markSequence = layout.map.get(mark);
   if (!markSequence) throw new Error(`月配列の合成記号「${mark}」が未定義`);
+  const stepLayers = new Map(layout.stepLayers ?? []);
   for (const [source, output] of Object.entries(entries)) {
     const sourceSequence = layout.map.get(source);
     if (!sourceSequence) throw new Error(`月配列の清音「${source}」が未定義`);
@@ -59,7 +60,11 @@ function appendComposed(layout: Layout, entries: Record<string, string>, mark: s
       ...markSequence.map((step) => [...step]),
     ];
     layout.map.set(output, sequence);
+    const sourceLayers = layout.stepLayers?.get(source) ?? sourceSequence.map(() => SINGLE_LAYER_ID);
+    const markLayers = layout.stepLayers?.get(mark) ?? markSequence.map(() => SINGLE_LAYER_ID);
+    stepLayers.set(output, [...sourceLayers, ...markLayers]);
   }
+  layout.stepLayers = stepLayers;
 }
 
 appendComposed(layout, VOICED, '゛');

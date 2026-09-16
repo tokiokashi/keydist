@@ -124,6 +124,26 @@ test('コンボの定義数・命中定義数・延べ命中回数を分けて�
   assert.deepEqual(m.combos, { definitions: 73, matched: 4, hits: 4 });
 });
 
+test('層別集計と統合ヒートマップのキー押下数は保存則を満たす（#87）', () => {
+  const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
+  for (const layout of LAYOUTS_JA) {
+    const m = computeMetrics(evaluate(text, layout, geometry, opts()), geometry);
+    const layerPresses = m.layers.reduce((sum, layer) => sum + layer.presses, 0);
+    assert.equal(layerPresses + m.comboPresses, m.presses, `${layout.id} の層別押下数`);
+
+    const byKey = new Map<string, number>();
+    for (const layer of m.layers) {
+      for (const [key, count] of layer.keyCounts) {
+        byKey.set(key, (byKey.get(key) ?? 0) + count);
+      }
+    }
+    for (const [key, count] of m.comboKeyCounts) {
+      byKey.set(key, (byKey.get(key) ?? 0) + count);
+    }
+    assert.deepEqual(byKey, m.keyCounts, `${layout.id} の層別キー押下数`);
+  }
+});
+
 test('指ごとの押下数はサンプル文の実測値と一致する', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   const qwerty = LAYOUTS_JA.find((l) => l.id === 'qwerty')!;

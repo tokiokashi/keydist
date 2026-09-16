@@ -27,6 +27,18 @@ export interface Face {
   role?: 'layer' | 'modifier';
 }
 
+export type LayerKind = 'layer' | 'combo';
+
+/** 打鍵の帰属先。面を持たない配列も単打という暗黙の層を持つ。 */
+export interface LayerDefinition {
+  id: string;
+  kind: LayerKind;
+  label: string;
+}
+
+export const SINGLE_LAYER_ID = 'single';
+export const COMBO_LAYER_ID = 'combo';
+
 /** コンボを発火できる入力の条件。条件を省略したコンボは常に最長一致する。 */
 export interface ComboCondition {
   /** 拗音のローマ字塊の内部だけで発火する */
@@ -64,6 +76,12 @@ export interface Layout {
    * 失われるかなの境界を使った命中判定と、コンボの命中件数の集計に使う。
    */
   comboConditions?: ReadonlyMap<string, ComboCondition>;
+  /** 各見出しの Sequence のステップごとの帰属先。合成出力では層が混在しうる */
+  stepLayers?: ReadonlyMap<string, readonly string[]>;
+  /** 層・コンボの表示順と種別。 */
+  layerDefinitions?: readonly LayerDefinition[];
+  /** 面から展開した配列で、各面がどの帰属先へ属するかを UI が引くための表 */
+  faceLayerIds?: ReadonlyMap<Face, string>;
 }
 
 const maxKeyLength = (keys: Iterable<string>) => Math.max(1, ...[...keys].map((k) => k.length));
@@ -96,6 +114,7 @@ export function fromRows(
   thumbs: { LT?: string; RT?: string } = { RT: ' ' },
 ): Layout {
   const map = new Map<string, Sequence>();
+  const stepLayers = new Map<string, readonly string[]>();
   const legends = new Map<string, string>();
   rows.forEach((row, r) => {
     [...row].forEach((ch, c) => {
@@ -103,7 +122,10 @@ export function fromRows(
       const id = keyId(r, c);
       // 同じ文字が複数のキーに載る配列もある。打鍵には先に書いた方を使い、
       // 後の方は刻印だけ残す（どちらを使うか決めないと、静かに片方が死ぬ）
-      if (!map.has(ch)) map.set(ch, [[id]]);
+      if (!map.has(ch)) {
+        map.set(ch, [[id]]);
+        stepLayers.set(ch, [SINGLE_LAYER_ID]);
+      }
       legends.set(id, ch);
     });
   });
@@ -112,11 +134,20 @@ export function fromRows(
   legends.set(THUMB_KEY.RT, '空白');
   if (thumbs.LT) {
     map.set(thumbs.LT, [[THUMB_KEY.LT]]);
+    stepLayers.set(thumbs.LT, [SINGLE_LAYER_ID]);
   }
   if (thumbs.RT) {
     map.set(thumbs.RT, [[THUMB_KEY.RT]]);
+    stepLayers.set(thumbs.RT, [SINGLE_LAYER_ID]);
   }
-  return { id, name, map, legends };
+  return {
+    id,
+    name,
+    map,
+    legends,
+    stepLayers,
+    layerDefinitions: [{ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' }],
+  };
 }
 
 /** 面の集合を、評価器が使うかな → 打鍵ステップ列へ展開する。 */
@@ -129,10 +160,29 @@ export function fromFaces(
   // 定義時にレイヤーの宣言を検証し、表示時まで不正な組み合わせを遅延させない。
   groupFacesIntoLayers(faces);
   const map = new Map<string, Sequence>();
+  const stepLayers = new Map<string, readonly string[]>();
   const legends = new Map<string, string>();
+  const layerDefinitions: LayerDefinition[] = [];
+  const faceLayerIds = new Map<Face, string>();
 
-  for (const face of faces) {
+  const addDefinition = (definition: LayerDefinition) => {
+    if (!layerDefinitions.some((entry) => entry.id === definition.id)) {
+      layerDefinitions.push(definition);
+    }
+  };
+
+  for (const [faceIndex, face] of faces.entries()) {
     const trigger = [...new Set(face.trigger)];
+    const isCombo = trigger.length > 1;
+    const layerId = isCombo
+      ? COMBO_LAYER_ID
+      : face.layer === undefined ? `face:${faceIndex}` : `layer:${face.layer}`;
+    faceLayerIds.set(face, layerId);
+    addDefinition({
+      id: layerId,
+      kind: isCombo ? 'combo' : 'layer',
+      label: isCombo ? 'コンボ' : face.layer ?? (trigger.length === 0 ? '単打' : `面 ${faceIndex + 1}`),
+    });
     face.rows.forEach((row, r) => {
       const cells = typeof row === 'string' ? [...row] : [...row];
       cells.forEach((output, c) => {
@@ -142,7 +192,9 @@ export function fromFaces(
         }
 
         const key = keyId(r, c);
-        map.set(output, expandFace(trigger, face.mode, key));
+        const sequence = expandFace(trigger, face.mode, key);
+        map.set(output, sequence);
+        stepLayers.set(output, sequence.map(() => layerId));
         // 刻印は単打面の 1 文字だけを表示する。シフト面の出力で上書きしない。
         if (trigger.length === 0 && [...output].length === 1) legends.set(key, output);
       });
@@ -152,9 +204,30 @@ export function fromFaces(
   // 親指の刻印は、親指キーを文字入力へ追加しないかな配列でも表示する。
   legends.set(THUMB_KEY.LT, '親指');
   legends.set(THUMB_KEY.RT, '空白');
-  if (thumbs.LT) map.set(thumbs.LT, [[THUMB_KEY.LT]]);
-  if (thumbs.RT) map.set(thumbs.RT, [[THUMB_KEY.RT]]);
-  return { id, name, map, legends, faces: [...faces], maxCharLength: maxKeyLength(map.keys()) };
+  const baseFace = faces.find((face) => face.trigger.length === 0);
+  const baseLayerId = baseFace ? faceLayerIds.get(baseFace)! : SINGLE_LAYER_ID;
+  if (!baseFace && (thumbs.LT || thumbs.RT)) {
+    addDefinition({ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' });
+  }
+  if (thumbs.LT) {
+    map.set(thumbs.LT, [[THUMB_KEY.LT]]);
+    stepLayers.set(thumbs.LT, [baseLayerId]);
+  }
+  if (thumbs.RT) {
+    map.set(thumbs.RT, [[THUMB_KEY.RT]]);
+    stepLayers.set(thumbs.RT, [baseLayerId]);
+  }
+  return {
+    id,
+    name,
+    map,
+    legends,
+    faces: [...faces],
+    maxCharLength: maxKeyLength(map.keys()),
+    stepLayers,
+    layerDefinitions,
+    faceLayerIds,
+  };
 }
 
 function expandFace(trigger: string[], mode: FaceMode, key: string): Sequence {
@@ -167,6 +240,9 @@ function expandFace(trigger: string[], mode: FaceMode, key: string): Sequence {
 /** かな → 打鍵ステップ列を直接書いた配列（薙刀式など） */
 export function fromKana(id: string, name: string, def: Record<string, string[][]>): Layout {
   const map = new Map<string, Sequence>(Object.entries(def));
+  const stepLayers = new Map<string, readonly string[]>(
+    [...map].map(([kana, sequence]) => [kana, sequence.map(() => SINGLE_LAYER_ID)]),
+  );
   // 単打で出るかなをそのキーの刻印にする
   const legends = new Map<string, string>();
   for (const [kana, sequence] of map) {
@@ -176,7 +252,15 @@ export function fromKana(id: string, name: string, def: Record<string, string[][
   }
   legends.set(THUMB_KEY.RT, '空白');
   legends.set(THUMB_KEY.LT, '親指');
-  return { id, name, map, legends, maxCharLength: maxKeyLength(map.keys()) };
+  return {
+    id,
+    name,
+    map,
+    legends,
+    maxCharLength: maxKeyLength(map.keys()),
+    stepLayers,
+    layerDefinitions: [{ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' }],
+  };
 }
 
 /** ローマ字テーブルを付ける。評価時にかなテキストがローマ字へ展開される */
@@ -195,12 +279,20 @@ export function withCombos(
   combos: ComboDefinition[],
 ): Layout {
   const map = new Map(layout.map);
+  const stepLayers = new Map(layout.stepLayers ?? []);
+  const layerDefinitions = [...(layout.layerDefinitions ?? [])];
   const comboConditions = new Map(layout.comboConditions);
+  let hasCombo = layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID);
   for (const [output, inputs, condition] of combos) {
     const keys = inputs.map((ch) => layout.map.get(ch)?.[0]?.[0]);
     if (keys.some((k) => k === undefined)) continue;
     map.set(output, [keys as string[]]);
+    stepLayers.set(output, [COMBO_LAYER_ID]);
     comboConditions.set(output, condition ?? {});
+    if (!hasCombo) {
+      layerDefinitions.push({ id: COMBO_LAYER_ID, kind: 'combo', label: 'コンボ' });
+      hasCombo = true;
+    }
   }
   return {
     ...layout,
@@ -209,5 +301,7 @@ export function withCombos(
     map,
     maxCharLength: maxKeyLength(map.keys()),
     comboConditions,
+    stepLayers,
+    layerDefinitions,
   };
 }
