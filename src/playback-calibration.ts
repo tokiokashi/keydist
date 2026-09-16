@@ -1,9 +1,20 @@
-import { ALL_FINGERS, FINGERS, dist, type Finger, type Geometry, type Key } from './geometry.ts';
+import {
+  ALL_FINGERS,
+  FINGERS,
+  dist,
+  type Finger,
+  type Geometry,
+  type Key,
+} from './geometry.ts';
 
 /** 再生へ反映する個人の打鍵・指移動速度。 */
 export interface PlaybackCalibration {
   /** 通常の連続打鍵速度。 */
   actionsPerSecond: number;
+  /** 同じ手の別の指へ移る連続打鍵速度。 */
+  sameHandDifferentFingerActionsPerSecond: number;
+  /** 同じ手の別指の組ごとの測定速度。キーは正規化した指ペア（例: `LM:LI`）。 */
+  sameHandDifferentFingerActionsPerSecondByPair: Readonly<Record<string, number>>;
   /** 同指連続の指ごとの移動速度。測れなかった指は持たない。 */
   fingerSpeedUnitsPerSecond: Partial<Record<Finger, number>>;
   /** 指ごとの速度が無い場合に使う移動速度。単位は物理キーのu/秒。 */
@@ -30,6 +41,7 @@ export const CALIBRATION_FINGER_SPEED_MIN = 0.1;
 export const CALIBRATION_FINGER_SPEED_MAX = 100;
 export const CALIBRATION_ACTION_SAMPLES = 9;
 export const CALIBRATION_FINGER_SAMPLES = 6;
+export const CALIBRATION_SAME_HAND_SAMPLES = 6;
 
 function positiveFiniteValues(values: readonly number[]): number[] {
   return values.filter((value) => Number.isFinite(value) && value > 0);
@@ -89,10 +101,23 @@ export function fallbackFingerSpeedFromSamples(
   return median(samples.map(speedFromSample).filter((value): value is number => value !== undefined));
 }
 
+/** 同じ手の別指を識別する、順序に依存しないキーを返す。 */
+export function sameHandFingerPairKey(first: Finger, second: Finger): string | undefined {
+  if (first === second || first[0] !== second[0]) return undefined;
+  if (!FINGERS.includes(first as typeof FINGERS[number])
+    || !FINGERS.includes(second as typeof FINGERS[number])) return undefined;
+  const ordered = [first, second].sort((a, b) =>
+    FINGERS.indexOf(a as typeof FINGERS[number]) - FINGERS.indexOf(b as typeof FINGERS[number]),
+  );
+  return `${ordered[0]}:${ordered[1]}`;
+}
+
 function validCalibration(value: unknown): value is PlaybackCalibration {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as Partial<PlaybackCalibration>;
   const fingerSpeeds = candidate.fingerSpeedUnitsPerSecond;
+  const sameHandSpeed = candidate.sameHandDifferentFingerActionsPerSecond ?? candidate.actionsPerSecond;
+  const sameHandPairSpeeds = candidate.sameHandDifferentFingerActionsPerSecondByPair;
   const validFingerSpeeds = fingerSpeeds !== null
     && typeof fingerSpeeds === 'object'
     && !Array.isArray(fingerSpeeds)
@@ -102,9 +127,24 @@ function validCalibration(value: unknown): value is PlaybackCalibration {
       && speed >= CALIBRATION_FINGER_SPEED_MIN
       && speed <= CALIBRATION_FINGER_SPEED_MAX,
     );
+  const validSameHandPairSpeeds = sameHandPairSpeeds === undefined
+    || (sameHandPairSpeeds !== null
+      && typeof sameHandPairSpeeds === 'object'
+      && !Array.isArray(sameHandPairSpeeds)
+      && Object.entries(sameHandPairSpeeds).every(([pair, speed]) => {
+        const [first, second] = pair.split(':');
+        return sameHandFingerPairKey(first as Finger, second as Finger) === pair
+          && Number.isFinite(speed)
+          && speed >= CALIBRATION_ACTIONS_PER_SECOND_MIN
+          && speed <= CALIBRATION_ACTIONS_PER_SECOND_MAX;
+      }));
   return Number.isFinite(candidate.actionsPerSecond)
     && candidate.actionsPerSecond! >= CALIBRATION_ACTIONS_PER_SECOND_MIN
     && candidate.actionsPerSecond! <= CALIBRATION_ACTIONS_PER_SECOND_MAX
+    && Number.isFinite(sameHandSpeed)
+    && sameHandSpeed! >= CALIBRATION_ACTIONS_PER_SECOND_MIN
+    && sameHandSpeed! <= CALIBRATION_ACTIONS_PER_SECOND_MAX
+    && validSameHandPairSpeeds
     && validFingerSpeeds
     && Number.isFinite(candidate.fallbackFingerSpeedUnitsPerSecond)
     && candidate.fallbackFingerSpeedUnitsPerSecond! >= CALIBRATION_FINGER_SPEED_MIN
@@ -118,7 +158,15 @@ export function loadPlaybackCalibration(storage?: CalibrationStorage): PlaybackC
     const raw = storage.getItem(PLAYBACK_CALIBRATION_STORAGE_KEY);
     if (!raw) return undefined;
     const value: unknown = JSON.parse(raw);
-    return validCalibration(value) ? value : undefined;
+    if (!validCalibration(value)) return undefined;
+    return {
+      ...value,
+      // v2で保存された旧値は通常速度を同手・別指速度の初期値にする。
+      sameHandDifferentFingerActionsPerSecond:
+        value.sameHandDifferentFingerActionsPerSecond ?? value.actionsPerSecond,
+      sameHandDifferentFingerActionsPerSecondByPair:
+        value.sameHandDifferentFingerActionsPerSecondByPair ?? {},
+    };
   } catch {
     return undefined;
   }
@@ -131,13 +179,14 @@ export function savePlaybackCalibration(
   storage.setItem(PLAYBACK_CALIBRATION_STORAGE_KEY, JSON.stringify(calibration));
 }
 
+/** 数字段(row 0)を避け、ホーム段から上段・下段側のキーを選ぶ。 */
 function farthestKeyFromHome(geometry: Geometry, finger: typeof FINGERS[number], home: Key): Key | undefined {
   return [...geometry.keys.values()]
-    .filter((key) => key.finger === finger && key.id !== home.id)
+    .filter((key) => key.finger === finger && key.id !== home.id && key.row !== 0)
     .sort((a, b) => dist(home, b) - dist(home, a))[0];
 }
 
-/** 各指のホームと、ホームから最も離れた同じ指のキーを測定用の組にする。 */
+/** 各指のホームと、数字段を除く同じ指の最遠キーを測定用の組にする。 */
 export function calibrationKeyPairs(geometry: Geometry): CalibrationKeyPair[] {
   const pairs: CalibrationKeyPair[] = [];
   for (const finger of FINGERS) {
@@ -160,9 +209,25 @@ export function calibrationActionPair(geometry: Geometry): [string, string] | un
   return left && right && left !== right ? [left, right] : undefined;
 }
 
-export function calibrationKeyMatches(event: KeyboardEvent, keyId: string): boolean {
+/** 同じ手の別指を交互に打つ測定用のホームキー組。左右各指の全組合せを使う。 */
+export function calibrationSameHandPairs(geometry: Geometry): [string, string][] {
+  const pairs: [string, string][] = [];
+  for (const hand of ['L', 'R'] as const) {
+    const fingers = FINGERS.filter((finger) => finger.startsWith(hand));
+    for (let leftIndex = 0; leftIndex < fingers.length; leftIndex++) {
+      for (let rightIndex = leftIndex + 1; rightIndex < fingers.length; rightIndex++) {
+        const left = geometry.assignment.homeKey[fingers[leftIndex]];
+        const right = geometry.assignment.homeKey[fingers[rightIndex]];
+        if (left && right && left !== right) pairs.push([left, right]);
+      }
+    }
+  }
+  return pairs;
+}
+
+export function calibrationKeyMatches(event: KeyboardEvent, keyId: string, keyLabel = keyId): boolean {
   const eventKey = event.key.toLowerCase();
-  if (eventKey === keyId.toLowerCase()) return true;
+  if (eventKey === keyId.toLowerCase() || eventKey === keyLabel.toLowerCase()) return true;
 
   const codeToKey: Record<string, string> = {
     Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/',

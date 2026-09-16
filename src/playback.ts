@@ -2,7 +2,7 @@ import { ALL_FINGERS, keyId, resolveKeyId, type Finger, type Geometry } from './
 import { classifyFaces, faceCells, foldedLayerCells, type Layer } from './layers.ts';
 import type { Stroke } from './evaluate.ts';
 import type { Layout } from './layouts/types.ts';
-import type { PlaybackCalibration } from './playback-calibration.ts';
+import { sameHandFingerPairKey, type PlaybackCalibration } from './playback-calibration.ts';
 
 /** 再生速度の入力範囲。実際の打鍵時間や距離モデルとは無関係。 */
 export const PLAYBACK_STEPS_PER_SECOND_MIN = 0.1;
@@ -607,14 +607,48 @@ function normalPlaybackStepMs(stepsPerSecond: PlaybackStepsPerSecond): number {
     : Number.POSITIVE_INFINITY;
 }
 
+function playbackHasSameHandDifferentFinger(
+  stroke: Stroke | undefined,
+  previousStroke: Stroke | undefined,
+): boolean {
+  if (!stroke || !previousStroke) return false;
+  return stroke.presses.some((press) => previousStroke.presses.some((previousPress) =>
+    fingerHand(press.finger) === fingerHand(previousPress.finger)
+    && press.finger !== previousPress.finger,
+  ));
+}
+
+function playbackSameHandDifferentFingerPair(
+  stroke: Stroke | undefined,
+  previousStroke: Stroke | undefined,
+): string | undefined {
+  if (!stroke || !previousStroke) return undefined;
+  for (const press of stroke.presses) {
+    for (const previousPress of previousStroke.presses) {
+      if (fingerHand(press.finger) !== fingerHand(previousPress.finger)
+        || press.finger === previousPress.finger) continue;
+      const pair = sameHandFingerPairKey(press.finger, previousPress.finger);
+      if (pair !== undefined) return pair;
+    }
+  }
+  return undefined;
+}
+
 /** 1ステップを表示する時間。正規化ディレイは1uを通常の1アクション相当とする。 */
 export function playbackStrokeDurationMs(
   stroke: Stroke | undefined,
   stepsPerSecond: PlaybackStepsPerSecond,
   sameFingerDelay = false,
   calibration?: PlaybackCalibration,
+  previousStroke?: Stroke,
 ): number {
-  const normalMs = normalPlaybackStepMs(calibration?.actionsPerSecond ?? stepsPerSecond);
+  const sameHandDifferentFinger = playbackHasSameHandDifferentFinger(stroke, previousStroke);
+  const sameHandPair = playbackSameHandDifferentFingerPair(stroke, previousStroke);
+  const calibratedRate = sameHandDifferentFinger
+    ? calibration?.sameHandDifferentFingerActionsPerSecondByPair[sameHandPair ?? '']
+      ?? calibration?.sameHandDifferentFingerActionsPerSecond
+    : calibration?.actionsPerSecond;
+  const normalMs = normalPlaybackStepMs(calibratedRate ?? stepsPerSecond);
   if (!stroke || !sameFingerDelay) return normalMs;
 
   const sameFingerDistance = Math.max(
@@ -653,7 +687,16 @@ export function playbackRecentActionsPerSecond(
 
   const durationMs = strokes
     .slice(start, end)
-    .reduce((total, stroke) => total + playbackStrokeDurationMs(stroke, stepsPerSecond, sameFingerDelay, calibration), 0);
+    .reduce((total, stroke, offset) => {
+      const index = start + offset;
+      return total + playbackStrokeDurationMs(
+        stroke,
+        stepsPerSecond,
+        sameFingerDelay,
+        calibration,
+        strokes[index - 1],
+      );
+    }, 0);
   return durationMs > 0 ? ((end - start) * 1000) / durationMs : undefined;
 }
 
@@ -691,6 +734,7 @@ export function advancePlayback(
       state.stepsPerSecond,
       state.sameFingerDelay,
       state.calibration,
+      strokes[nextCursor - 1],
     );
     if (remaining < stepMs) break;
     remaining -= stepMs;
