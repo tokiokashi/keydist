@@ -6,6 +6,7 @@ import {
   createPlaybackState,
   playbackCompletedInputs,
   playbackFingerPositionKeys,
+  playbackPlannedKeys,
   playbackRomajiPlan,
   playbackStrokeDisplay,
   playbackStrokeAt,
@@ -92,6 +93,15 @@ test('ローマ字の現在入力単位に予定綴りと打鍵済み接頭辞�
   const trace = evaluate('きょ', layout, buildGeometry('row-staggered'));
 
   assert.deepEqual(playbackRomajiPlan(trace.strokes, 2), { planned: 'kyo', typed: 'ky' });
+});
+
+test('ローマ字の予定キーは次のキーほど緑を濃く表示する', () => {
+  const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
+  const trace = evaluate('きょ', layout, buildGeometry('row-staggered'));
+  const planned = playbackPlannedKeys(trace.strokes, 1);
+
+  assert.equal(planned.get('y'), 1);
+  assert.equal(planned.get('o'), 0.5);
 });
 
 test('押下履歴はtauステップ内で新しいほど濃くなる', () => {

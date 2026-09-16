@@ -44,6 +44,7 @@ import {
   createPlaybackState,
   playbackCompletedInputs,
   playbackFingerPositionKeys,
+  playbackPlannedKeys,
   playbackRomajiPlan,
   playbackStrokeAt,
   setPlaybackSpeed,
@@ -821,6 +822,9 @@ function updatePlaybackView() {
   const trailKeys = playbackShowTrail
     ? playbackTrailKeys(playbackTrace.strokes, cursor, playbackTrailTau)
     : new Map<string, number>();
+  const plannedKeys = playbackShowRomajiPlan && playbackLayout?.romajiTable !== undefined
+    ? playbackPlannedKeys(playbackTrace.strokes, cursor)
+    : new Map<string, number>();
 
   for (const key of el.playback.querySelectorAll<SVGGElement>('[data-playback-key]')) {
     const id = key.dataset.playbackKey!;
@@ -831,6 +835,10 @@ function updatePlaybackView() {
     key.dataset.playbackTrail = trailOpacity === undefined ? 'false' : 'true';
     if (trailOpacity === undefined) key.style.removeProperty('--playback-trail-opacity');
     else key.style.setProperty('--playback-trail-opacity', String(trailOpacity));
+    const plannedOpacity = plannedKeys.get(id);
+    key.dataset.playbackPlan = plannedOpacity === undefined ? 'false' : 'true';
+    if (plannedOpacity === undefined) key.style.removeProperty('--playback-plan-opacity');
+    else key.style.setProperty('--playback-plan-opacity', String(plannedOpacity));
     const label = key.querySelector('text');
     if (label) label.textContent = display?.keyLabels.get(id) ?? key.dataset.playbackBaseLabel ?? '';
   }
@@ -906,7 +914,7 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
     const label = layout.legends.get(key.id) ?? '';
     const fontSize = thumb ? 10 : label.length > 3 ? 9 : 12;
     const tip = `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>${escapeText(FINGER_LABEL[key.finger])}`;
-    return `<g data-tip="${escapeAttr(tip)}" data-playback-key="${escapeAttr(key.id)}" data-playback-finger="${key.finger}" data-playback-base-label="${escapeAttr(label)}" data-playback-active="false" data-playback-trigger="false" data-playback-finger-position="">
+    return `<g data-tip="${escapeAttr(tip)}" data-playback-key="${escapeAttr(key.id)}" data-playback-finger="${key.finger}" data-playback-base-label="${escapeAttr(label)}" data-playback-active="false" data-playback-trigger="false" data-playback-finger-position="" data-playback-plan="false">
       <rect x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" stroke="var(--line)"/>
       <text x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
     </g>`;
