@@ -435,7 +435,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
 }
-.playback-input-planned { color: color-mix(in oklab, var(--accent) 55%, var(--muted)); }
+.playback-input-planned { color: var(--series-3); }
 .playback-figure { border-top: 1px solid var(--line); padding-top: 10px; }
 .playback-figure svg { max-width: none; }
 .playback-figure [data-playback-trail='true'] rect {
