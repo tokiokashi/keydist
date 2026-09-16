@@ -1088,6 +1088,9 @@ function renderPlaybackMotions(
       clone.removeAttribute('data-playback-key');
       clone.removeAttribute('data-playback-base-label');
       clone.setAttribute('data-playback-motion-key', `${cursor}-${motionIndex++}`);
+      // 移動中のキーにアルペジオの脈動は要らない。クローンに属性が残ると
+      // 塗りのアニメーションが移動用の fill を上書きしてしまう。
+      clone.removeAttribute('data-playback-arpeggio');
       clone.setAttribute('transform', `translate(${dx} ${dy})`);
       clone.style.pointerEvents = 'none';
       const animation = document.createElementNS(SVG_NS, 'animateTransform');
@@ -1097,8 +1100,29 @@ function renderPlaybackMotions(
       animation.setAttribute('to', 'translate(0 0)');
       animation.setAttribute('dur', `${durationMs}ms`);
       animation.setAttribute('fill', 'freeze');
+      // begin既定値の0sはDOM挿入時ではなくSVGドキュメントのタイムライン基準の0秒を指す。
+      // 再生パネルのSVGは描画時点からタイムラインが進み続けているため、
+      // 再生が進んだ後にクローンを挿入するとbegin=0sは既に過去になっており、
+      // fill="freeze"によって終了状態（translate(0 0)）へ張り付いた状態で出現してしまう。
+      // indefiniteにして挿入後にbeginElement()を呼び、挿入時点を起点に明示的に開始させる。
+      animation.setAttribute('begin', 'indefinite');
       clone.append(animation);
       layer.append(clone);
+      // SMIL未対応環境ではbeginElementが存在しない、または呼び出しが例外を投げうる。
+      // アニメーションが始まらないだけに留め、再生全体を壊さないようtry/catchで防御する。
+      const animatable = animation as SVGAnimationElement & { beginElement?: () => void };
+      let started = false;
+      if (typeof animatable.beginElement === 'function') {
+        try {
+          animatable.beginElement();
+          started = true;
+        } catch {
+          started = false;
+        }
+      }
+      // 開始できなければ begin='indefinite' のまま永久に走らないため、クローンは
+      // 移動元の位置に幽霊として残る。表示しない方が縮退として素直なので捨てる。
+      if (!started) clone.remove();
     }
   }
 }
