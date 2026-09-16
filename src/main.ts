@@ -11,6 +11,7 @@ import {
 } from './geometry.ts';
 import { evaluate, type Options, type Trace } from './evaluate.ts';
 import { computeMetrics, type LayerStat, type Metrics } from './metrics.ts';
+import { normalizedLayerColors } from './layer-heatmap.ts';
 import { nSensitivity } from './sensitivity.ts';
 import {
   COMBO_LAYER_ID,
@@ -1458,6 +1459,8 @@ interface LayerViewEntry {
   layer: Layer;
   title: string;
   stat: LayerStat;
+  /** 薙刀式の合算表示で、色の正規化から除くトリガー押下。 */
+  colorTriggerKeyCounts?: ReadonlyMap<string, number>;
 }
 
 function emptyLayerStat(id: string, label: string): LayerStat {
@@ -1491,16 +1494,6 @@ function mergeLayerStats(id: string, label: string, stats: readonly LayerStat[])
   return { id, label, presses, keyCounts, keyDistance, triggerKeyCounts };
 }
 
-function normalizedLayerColors(stat: LayerStat): Map<string, number> {
-  const colorCounts = new Map(stat.keyCounts);
-  for (const [key, count] of stat.triggerKeyCounts) {
-    const remaining = (colorCounts.get(key) ?? 0) - count;
-    if (remaining > 0) colorCounts.set(key, remaining);
-    else colorCounts.delete(key);
-  }
-  return colorCounts;
-}
-
 function layerViewEntries(metrics: Metrics, layout: Layout, layers: readonly Layer[]): LayerViewEntry[] {
   const stats = new Map(metrics.layers.map((stat) => [stat.id, stat]));
   const entries = layers.map((layer, index) => {
@@ -1525,6 +1518,8 @@ function layerViewEntries(metrics: Metrics, layout: Layout, layers: readonly Lay
         base.stat,
         ...rest.map((entry) => entry.stat),
       ]),
+      // スペースを使わないレイヤー3以降は、この表示では単打側の出力として見せる。
+      colorTriggerKeyCounts: base.stat.triggerKeyCounts,
     },
     center,
   ];
@@ -1628,7 +1623,11 @@ function renderHeatmap(
       ariaSuffix: '（全レイヤー合算・物理位置）',
     },
   );
-  const colorCounts = entries.map((entry) => normalizedLayerColors(entry.stat));
+  const colorCounts = entries.map((entry) => normalizedLayerColors(
+    entry.layer,
+    entry.stat,
+    entry.colorTriggerKeyCounts,
+  ));
   const layerMax = Math.max(1, ...colorCounts.flatMap((counts) => [...counts.values()]));
   const diagrams = entries.map((entry, index) => {
     return renderLayerSvg(
@@ -1667,7 +1666,7 @@ function renderHeatmap(
   </section>
   <section class="layer-section">
     <h3>層別ヒートマップ（${entries.length}）</h3>
-    <p class="note">層別図の色は層操作キーを除いたキー押下数で正規化し、表示中の全層で共通の最大値にしている。色の尺度は${colorScaleLabel}。実際の押下数はツールチップと帰属先表に残る。</p>
+    <p class="note">層別図の色は層操作のための押下を除いたキー押下数で正規化し、表示中の全層で共通の最大値にしている。相互同時シフトと薙刀式の合算表示では、出力として扱うトリガー押下を色に残す。色の尺度は${colorScaleLabel}。実際の押下数はツールチップと帰属先表に残る。</p>
     ${colorScaleControls}${shiftLegend}${naginataControls}${controls}${content}
     ${renderLayerStats(metrics, entries, hasCombos)}
   </section>`;

@@ -16,6 +16,7 @@ import {
   handOfKey,
   layerShiftStyles,
 } from '../src/layers.ts';
+import { normalizedLayerColors } from '../src/layer-heatmap.ts';
 
 const faceAtF = (output: string) => ['', '', ['', '', '', output], ''];
 
@@ -185,6 +186,30 @@ test('シフトの表示色は手ではなく所属レイヤーで揃える', ()
   assert.equal(styles.get(layers[1].faces[0])?.layerIndex, 2);
   assert.equal(styles.get(layers[1].faces[0])?.colorSlot, styles.get(layers[1].faces[1])?.colorSlot);
   assert.notEqual(styles.get(layers[1].faces[0])?.colorSlot, styles.get(layers[2].faces[0])?.colorSlot);
+});
+
+test('相互同時シフトは両トリガーを 1 回分の色として残す', () => {
+  const layout = LAYOUT_BY_ID.get('shingeta')!;
+  const layers = groupFacesIntoLayers(layout.faces!);
+  for (const [layerIndex, trigger, output] of [[1, 'k', 'd'], [2, 'l', 's']] as const) {
+    const colors = normalizedLayerColors(layers[layerIndex], {
+      keyCounts: new Map([[trigger, 1], [output, 1]]),
+      triggerKeyCounts: new Map([[trigger, 1]]),
+    });
+
+    assert.deepEqual([...colors], [[trigger, 1], [output, 1]]);
+  }
+});
+
+test('薙刀式の合算表示はスペースなし層のトリガーを単打側の色に残す', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18')!;
+  const base = classifyFaces(layout.faces!).layers[0];
+  const colors = normalizedLayerColors(base, {
+    keyCounts: new Map([['j', 1], ['f', 1]]),
+    triggerKeyCounts: new Map([['j', 1]]),
+  }, new Map());
+
+  assert.deepEqual([...colors], [['j', 1], ['f', 1]]);
 });
 
 test('NICOLA は3面の直接かな入力を同時押しとして保持する', () => {
