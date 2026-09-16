@@ -6,8 +6,10 @@ import {
   createPlaybackState,
   playbackCompletedInputs,
   playbackFingerPositionKeys,
+  playbackRomajiPlan,
   playbackStrokeDisplay,
   playbackStrokeAt,
+  playbackTrailKeys,
   setPlaybackSpeed,
   stepPlayback,
 } from '../src/playback.ts';
@@ -83,6 +85,28 @@ test('ローマ字の入力履歴はかなごとの複数打鍵を重複させ�
   const trace = evaluate('なまえは', layout, buildGeometry('row-staggered'));
 
   assert.deepEqual(playbackCompletedInputs(trace.strokes, trace.strokes.length), ['な', 'ま', 'え']);
+});
+
+test('ローマ字の現在入力単位に予定綴りと打鍵済み接頭辞を表示できる', () => {
+  const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
+  const trace = evaluate('きょ', layout, buildGeometry('row-staggered'));
+
+  assert.deepEqual(playbackRomajiPlan(trace.strokes, 2), { planned: 'kyo', typed: 'ky' });
+});
+
+test('押下履歴はtauステップ内で新しいほど濃くなる', () => {
+  const strokes = [
+    { presses: [{ keys: [{ id: 'a' }] }] },
+    { presses: [{ keys: [{ id: 's' }] }] },
+    { presses: [{ keys: [{ id: 'd' }] }] },
+    { presses: [{ keys: [{ id: 'f' }] }] },
+  ] as never[];
+  const trail = playbackTrailKeys(strokes, 4, 3);
+
+  assert.equal(trail.has('a'), false);
+  assert.equal(trail.get('s'), 1 / 3);
+  assert.equal(trail.get('d'), 2 / 3);
+  assert.equal(trail.get('f'), 1);
 });
 
 test('指位置表示はホームと押下キーを指ごとのキー枠に割り当てる', () => {

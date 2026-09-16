@@ -26,6 +26,55 @@ export interface PlaybackStrokeDisplay {
   keyLabels: ReadonlyMap<string, string>;
 }
 
+export interface PlaybackRomajiPlan {
+  /** 現在の入力単位に対応する予定綴り */
+  planned: string;
+  /** 現在のカーソルまでに打ち終えた予定綴りの接頭辞 */
+  typed: string;
+}
+
+/** 現在の入力単位について、予定綴りと打鍵済みの接頭辞を返す。 */
+export function playbackRomajiPlan(
+  strokes: readonly Stroke[],
+  cursor: number,
+): PlaybackRomajiPlan | undefined {
+  const end = Math.min(Math.max(0, cursor), strokes.length);
+  if (end === 0) return undefined;
+  const inputIndex = strokes[end - 1].inputIndex;
+  let start = end - 1;
+  while (start > 0 && strokes[start - 1].inputIndex === inputIndex) start--;
+  let finish = end;
+  while (finish < strokes.length && strokes[finish].inputIndex === inputIndex) finish++;
+  return {
+    planned: strokes.slice(start, finish).map((stroke) => stroke.char).join(''),
+    typed: strokes.slice(start, end).map((stroke) => stroke.char).join(''),
+  };
+}
+
+/** 直近tauステップの押下キーと、残留表示に使う不透明度を返す。 */
+export function playbackTrailKeys(
+  strokes: readonly Stroke[],
+  cursor: number,
+  tau: number,
+): ReadonlyMap<string, number> {
+  const end = Math.min(Math.max(0, cursor), strokes.length);
+  const span = Math.floor(tau);
+  const trail = new Map<string, number>();
+  if (end === 0 || span <= 0) return trail;
+
+  const start = Math.max(0, end - span);
+  for (let index = start; index < end; index++) {
+    const age = end - index;
+    const opacity = (span - age + 1) / span;
+    for (const press of strokes[index].presses) {
+      for (const key of press.keys) {
+        trail.set(key.id, Math.max(trail.get(key.id) ?? 0, opacity));
+      }
+    }
+  }
+  return trail;
+}
+
 /** 再生中の層に対応する面グループを返す。単一面も含めて表示用に扱う。 */
 function playbackLayer(layout: Layout, layerId: string): Layer | undefined {
   if (!layout.faces || !layout.faceLayerIds) return undefined;
