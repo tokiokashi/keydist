@@ -460,6 +460,15 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-order-chain { fill: var(--series-2); font-size: 10px; font-weight: 700; }
 .playback-figure [data-playback-motion-key] rect { fill: var(--accent); stroke: var(--accent); }
 .playback-figure [data-playback-motion-key] text { fill: #fff; }
+/* 打鍵中・trail・plan の塗り指定は子孫セレクタなので、キーの <g> 配下の rect を
+   すべて拾う。連打フラッシュ用のオーバーレイまで同じ色に塗られ、重ねても画が
+   変わらなくなる（presentation attribute の fill は CSS に負ける）。
+   セレクタを一段詳しくして地の色を取り戻す。 */
+.playback-figure [data-playback-key] rect[data-playback-repeat-flash],
+.playback-figure [data-playback-motion-key] rect[data-playback-repeat-flash] {
+  fill: var(--panel);
+  stroke: none;
+}
 .playback-figure [data-playback-active='true'] rect { fill: var(--accent); stroke: var(--accent); }
 .playback-figure [data-playback-active='true'] text { fill: #fff; }
 .playback-figure [data-playback-trigger='true'] rect { stroke: var(--series-4); stroke-width: 3; }
