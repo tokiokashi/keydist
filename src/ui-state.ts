@@ -57,6 +57,11 @@ export interface UiPlaybackState {
   speedMultiplier: number;
 }
 
+/** 配列ごとに既定値から上書きする差分。空のplaybackは個別設定の有効化を表す。 */
+export interface UiStateConditionOverride extends Partial<UiStateConditionsDefaults> {
+  playback?: Partial<UiPlaybackState>;
+}
+
 /** 数値計算へ影響する条件の既定値。説明・保存・計算で同じ値を参照する。 */
 export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
   geometry: 'row-staggered',
@@ -96,7 +101,6 @@ export interface UiStateV1 {
       naginataDetail: boolean;
     };
     playback: UiPlaybackState;
-    playbackPerLayout: Record<string, UiPlaybackState>;
     panels: {
       addLayout: boolean;
       text: boolean;
@@ -110,7 +114,7 @@ export interface UiStateV1 {
   };
   conditions: {
     defaults: UiStateConditionsDefaults;
-    perLayout: Record<string, Partial<UiStateConditionsDefaults>>;
+    perLayout: Record<string, UiStateConditionOverride>;
   };
 }
 
@@ -190,7 +194,6 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
         stepsPerSecond: DEFAULT_PLAYBACK_STEPS_PER_SECOND,
         speedMultiplier: DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
       },
-      playbackPerLayout: {},
       panels: {
         addLayout: false,
         text: options.textPanelOpen,
@@ -324,15 +327,18 @@ function sanitizeConditionDefaults(
   };
 }
 
-function sanitizeConditionOverrides(value: unknown): Partial<UiStateConditionsDefaults> {
-  return validConditionValues(value);
-}
-
 function sanitizePlaybackSettings(value: unknown, fallback: UiPlaybackState): UiPlaybackState {
   const playback = record(value);
-  const showChain = boolean(playback.showChain, fallback.showChain);
+  const rawShowChain = boolean(playback.showChain, fallback.showChain);
   const legacyArpeggioDisplay = playback.arpeggioDisplay;
-  const legacyShowArpeggio = legacyArpeggioDisplay === 'arpeggio' || legacyArpeggioDisplay === 'both';
+  const hasModernArpeggioDisplay = typeof playback.showArpeggio === 'boolean';
+  // 旧形式の未保存値は旧既定値「both」として扱う。
+  const legacyDisplay = choice(legacyArpeggioDisplay, ['chain', 'arpeggio', 'both'], 'both');
+  const showChain = !hasModernArpeggioDisplay && legacyDisplay === 'arpeggio'
+    ? false
+    : rawShowChain;
+  const legacyShowArpeggio = rawShowChain
+    && legacyDisplay !== 'chain';
   return {
     showFingers: boolean(playback.showFingers, fallback.showFingers),
     showRomajiPlan: boolean(playback.showRomajiPlan, fallback.showRomajiPlan),
@@ -346,8 +352,8 @@ function sanitizePlaybackSettings(value: unknown, fallback: UiPlaybackState): Ui
     // arpeggioDisplayは旧保存値との互換用。新しい保存値ではshowArpeggioを優先する。
     showArpeggio: boolean(
       playback.showArpeggio,
-      typeof legacyArpeggioDisplay === 'string'
-        ? showChain && legacyShowArpeggio
+      !hasModernArpeggioDisplay
+        ? legacyShowArpeggio
         : fallback.showArpeggio,
     ),
     chainIncludeSameFinger: boolean(playback.chainIncludeSameFinger, fallback.chainIncludeSameFinger),
@@ -374,6 +380,33 @@ function sanitizePlaybackSettings(value: unknown, fallback: UiPlaybackState): Ui
   };
 }
 
+function sanitizePlaybackOverrides(
+  value: unknown,
+  fallback: UiPlaybackState,
+): Partial<UiPlaybackState> {
+  const source = record(value);
+  const result: Partial<UiPlaybackState> = {};
+  for (const key of Object.keys(fallback) as Array<keyof UiPlaybackState>) {
+    if (!(key in source)) continue;
+    const sanitized = sanitizePlaybackSettings({ [key]: source[key] }, fallback);
+    Object.assign(result, { [key]: sanitized[key] });
+  }
+  return result;
+}
+
+function sanitizeConditionOverrides(
+  value: unknown,
+  playbackFallback: UiPlaybackState,
+): UiStateConditionOverride {
+  const source = record(value);
+  const result: UiStateConditionOverride = validConditionValues(value);
+  if (isRecord(source.playback)) {
+    // 空オブジェクトも「配列固有設定を有効にした」印として保持する。
+    result.playback = sanitizePlaybackOverrides(source.playback, playbackFallback);
+  }
+  return result;
+}
+
 export function sanitizeUiState(
   value: unknown,
   defaults: UiStateV1,
@@ -392,7 +425,6 @@ export function sanitizeUiState(
   const sensitivity = record(ui.sensitivity);
   const layers = record(ui.layers);
   const playback = record(ui.playback);
-  const playbackPerLayout = record(ui.playbackPerLayout);
   const panels = record(ui.panels);
   const conditions = record(value.conditions);
   const conditionDefaults = record(conditions.defaults);
@@ -403,17 +435,12 @@ export function sanitizeUiState(
     ? input.customText
     : undefined;
   const allowedLayoutIds = new Set([...choices.layouts.en, ...choices.layouts.ja]);
-  const perLayout: Record<string, Partial<UiStateConditionsDefaults>> = {};
+  const sanitizedPlayback = sanitizePlaybackSettings(playback, defaults.ui.playback);
+  const perLayout: Record<string, UiStateConditionOverride> = {};
   for (const [layoutId, override] of Object.entries(conditionPerLayout)) {
     if (!allowedLayoutIds.has(layoutId) || !isRecord(override)) continue;
-    const sanitized = sanitizeConditionOverrides(override);
+    const sanitized = sanitizeConditionOverrides(override, sanitizedPlayback);
     if (Object.keys(sanitized).length > 0) perLayout[layoutId] = sanitized;
-  }
-  const sanitizedPlayback = sanitizePlaybackSettings(playback, defaults.ui.playback);
-  const playbackOverrides: Record<string, UiPlaybackState> = {};
-  for (const [layoutId, override] of Object.entries(playbackPerLayout)) {
-    if (!allowedLayoutIds.has(layoutId) || !isRecord(override)) continue;
-    playbackOverrides[layoutId] = sanitizePlaybackSettings(override, sanitizedPlayback);
   }
 
   return {
@@ -475,7 +502,6 @@ export function sanitizeUiState(
         naginataDetail: boolean(layers.naginataDetail, defaults.ui.layers.naginataDetail),
       },
       playback: sanitizedPlayback,
-      playbackPerLayout: playbackOverrides,
       panels: {
         addLayout: boolean(panels.addLayout, defaults.ui.panels.addLayout),
         text: boolean(panels.text, defaults.ui.panels.text),

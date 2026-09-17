@@ -553,21 +553,22 @@ function currentPlaybackLayoutId(): string | undefined {
 function isPlaybackLayoutOverride(): boolean {
   const layoutId = currentPlaybackLayoutId();
   if (!layoutId) return false;
-  return uiState.ui.playbackPerLayout[layoutId] !== undefined
+  return uiState.conditions.perLayout[layoutId]?.playback !== undefined
     || uiState.conditions.perLayout[layoutId]?.arpeggio !== undefined;
 }
 
 function playbackViewUiState(): UiStateV1 {
   const layoutId = currentPlaybackLayoutId();
   if (!layoutId) return uiState;
-  const playback = uiState.ui.playbackPerLayout[layoutId];
-  const arpeggio = uiState.conditions.perLayout[layoutId]?.arpeggio;
-  if (!playback && arpeggio === undefined) return uiState;
+  const layoutConditions = uiState.conditions.perLayout[layoutId];
+  const playback = layoutConditions?.playback;
+  const arpeggio = layoutConditions?.arpeggio;
+  if (playback === undefined && arpeggio === undefined) return uiState;
   return {
     ...uiState,
     ui: {
       ...uiState.ui,
-      playback: playback ?? uiState.ui.playback,
+      playback: { ...uiState.ui.playback, ...playback },
     },
     conditions: {
       ...uiState.conditions,
@@ -585,15 +586,19 @@ function updatePlaybackSetting<K extends keyof UiPlaybackState>(
 ): void {
   const layoutId = currentPlaybackLayoutId();
   updateUiState((draft) => {
-    const layoutOverride = layoutId ? draft.ui.playbackPerLayout[layoutId] : undefined;
     const hasLayoutOverride = layoutId !== undefined && (
-      layoutOverride !== undefined
+      draft.conditions.perLayout[layoutId]?.playback !== undefined
       || draft.conditions.perLayout[layoutId]?.arpeggio !== undefined
     );
-    const target = hasLayoutOverride && layoutId
-      ? (draft.ui.playbackPerLayout[layoutId] ??= structuredClone(draft.ui.playback))
-      : draft.ui.playback;
-    target[key] = value;
+    if (hasLayoutOverride && layoutId) {
+      const current = draft.conditions.perLayout[layoutId];
+      draft.conditions.perLayout[layoutId] = {
+        ...current,
+        playback: { ...current?.playback, [key]: value },
+      };
+    } else {
+      draft.ui.playback[key] = value;
+    }
   });
 }
 
@@ -601,7 +606,7 @@ function updateArpeggioConditions(conditions: ArpeggioConditions): void {
   const layoutId = currentPlaybackLayoutId();
   updateUiState((draft) => {
     const hasLayoutOverride = layoutId !== undefined && (
-      draft.ui.playbackPerLayout[layoutId] !== undefined
+      draft.conditions.perLayout[layoutId]?.playback !== undefined
       || draft.conditions.perLayout[layoutId]?.arpeggio !== undefined
     );
     if (hasLayoutOverride && layoutId) {
@@ -620,18 +625,15 @@ function setPlaybackLayoutOverride(enabled: boolean): void {
   if (!layoutId) return;
   updateUiState((draft) => {
     if (enabled) {
-      draft.ui.playbackPerLayout[layoutId] ??= structuredClone(draft.ui.playback);
       draft.conditions.perLayout[layoutId] = {
         ...draft.conditions.perLayout[layoutId],
-        arpeggio: structuredClone(
-          draft.conditions.perLayout[layoutId]?.arpeggio ?? draft.conditions.defaults.arpeggio,
-        ),
+        playback: draft.conditions.perLayout[layoutId]?.playback ?? {},
       };
       return;
     }
-    delete draft.ui.playbackPerLayout[layoutId];
     const conditions = draft.conditions.perLayout[layoutId];
     if (!conditions) return;
+    delete conditions.playback;
     delete conditions.arpeggio;
     if (Object.keys(conditions).length === 0) delete draft.conditions.perLayout[layoutId];
   });
