@@ -3,6 +3,7 @@ import type { Finger } from './geometry.ts';
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 export const el = {
+  app: $<HTMLDivElement>('app'),
   mode: $<HTMLSelectElement>('mode'),
   geometry: $<HTMLSelectElement>('geometry'),
   geometryEdit: $<HTMLButtonElement>('geometry-edit'),
@@ -51,6 +52,7 @@ export const el = {
   detailLayout: $<HTMLSelectElement>('detail-layout'),
   detailConditions: $<HTMLParagraphElement>('detail-conditions'),
   playback: $<HTMLDivElement>('playback'),
+  playbackSettingsPanel: $<HTMLDivElement>('playback-settings-panel'),
   heatmap: $<HTMLDivElement>('heatmap'),
   gapFigure: $<HTMLDivElement>('gap-figure'),
   fingerChart: $<HTMLDivElement>('finger-chart'),

@@ -107,7 +107,7 @@ function arpeggioPresetId(): string {
 }
 
 function readArpeggioConditions(): ArpeggioConditions | undefined {
-  const details = elements.playback.querySelector<HTMLElement>('[data-playback-arpeggio-conditions]');
+  const details = elements.playbackSettingsPanel.querySelector<HTMLElement>('[data-playback-arpeggio-conditions]');
   if (!details) return undefined;
   const input = (name: string): HTMLInputElement | null =>
     details.querySelector<HTMLInputElement>(`[data-playback-arpeggio-condition="${name}"]`);
@@ -137,7 +137,7 @@ function readArpeggioConditions(): ArpeggioConditions | undefined {
 }
 
 function syncArpeggioConditionControls(): void {
-  const details = elements.playback.querySelector<HTMLElement>('[data-playback-arpeggio-conditions]');
+  const details = elements.playbackSettingsPanel.querySelector<HTMLElement>('[data-playback-arpeggio-conditions]');
   if (!details) return;
   const conditions = ctx.getUiState().conditions.defaults.arpeggio;
   const input = (name: string): HTMLInputElement | null =>
