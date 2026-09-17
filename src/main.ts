@@ -1531,16 +1531,19 @@ function currentConditionLayoutId(): string | undefined {
   return el.detailLayout.value || currentPlaybackLayoutId();
 }
 
-function currentEffectiveWindowSize(): number {
+function currentEffectiveConditions(): UiStateConditionsDefaults {
   const layoutId = currentConditionLayoutId();
-  return (layoutId ? uiState.conditions.perLayout[layoutId]?.windowSize : undefined)
-    ?? uiState.conditions.defaults.windowSize;
+  const override = layoutId ? uiState.conditions.perLayout[layoutId] : undefined;
+  return { ...uiState.conditions.defaults, ...(override ?? {}) };
 }
 
-function syncEffectiveWindowControls(): void {
-  const windowSize = currentEffectiveWindowSize();
-  el.window.value = String(windowSize);
-  el.windowOut.value = String(windowSize);
+function syncEffectiveConditionControls(): void {
+  const conditions = currentEffectiveConditions();
+  el.geometry.value = conditions.geometry;
+  el.window.value = String(conditions.windowSize);
+  el.windowOut.value = String(conditions.windowSize);
+  el.sfbHome.checked = conditions.sfbHomeCost;
+  el.preferOppositeThumb.checked = conditions.preferOppositeThumb;
 }
 
 function isPlaybackLayoutOverride(): boolean {
@@ -1659,7 +1662,7 @@ resultsView = createResultsView({
 
 function render(): void {
   resultsView.render();
-  syncEffectiveWindowControls();
+  syncEffectiveConditionControls();
 }
 
 function onModeChange() {
@@ -1691,6 +1694,18 @@ el.compareChartMetric.addEventListener('change', () => {
 });
 el.geometry.addEventListener('change', () => {
   const geometry = el.geometry.value as GeometryKind;
+  const layoutId = currentConditionLayoutId();
+  const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
+  if (layoutId && useLayoutOverride) {
+    updateUiState((draft) => {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        geometry,
+      };
+    });
+    render();
+    return;
+  }
   const shape = selectedShapeForKind(geometry);
   if (!shape) return;
   updateUiState((draft) => {
@@ -1717,11 +1732,33 @@ el.window.addEventListener('input', (event) => {
   render();
 });
 el.sfbHome.addEventListener('change', () => {
-  updateUiState((draft) => { draft.conditions.defaults.sfbHomeCost = el.sfbHome.checked; });
+  const layoutId = currentConditionLayoutId();
+  const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
+  updateUiState((draft) => {
+    if (layoutId && useLayoutOverride) {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        sfbHomeCost: el.sfbHome.checked,
+      };
+    } else {
+      draft.conditions.defaults.sfbHomeCost = el.sfbHome.checked;
+    }
+  });
   render();
 });
 el.preferOppositeThumb.addEventListener('change', () => {
-  updateUiState((draft) => { draft.conditions.defaults.preferOppositeThumb = el.preferOppositeThumb.checked; });
+  const layoutId = currentConditionLayoutId();
+  const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
+  updateUiState((draft) => {
+    if (layoutId && useLayoutOverride) {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        preferOppositeThumb: el.preferOppositeThumb.checked,
+      };
+    } else {
+      draft.conditions.defaults.preferOppositeThumb = el.preferOppositeThumb.checked;
+    }
+  });
   render();
 });
 el.text.addEventListener('input', () => {
