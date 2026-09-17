@@ -144,6 +144,7 @@ import {
 import { resolveSelection, type ModeId } from './layout-selection.ts';
 import {
   createDefaultUiState,
+  DEFAULT_CONDITION_DEFAULTS,
   loadUiState,
   MAX_SAVED_TEXT_LENGTH,
   saveUiState,
@@ -154,6 +155,8 @@ import {
   type UiStateStorage,
   type UiStateV1,
 } from './ui-state.ts';
+import { resolveConditions } from './condition-resolution.ts';
+import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import {
   classifyFaces,
   displayTriggerKeys,
@@ -212,6 +215,10 @@ const el = {
   howDialog: $<HTMLDialogElement>('how-dialog'),
   howOpen: $<HTMLButtonElement>('how-open'),
   howClose: $<HTMLButtonElement>('how-close'),
+  conditionsDialog: $<HTMLDialogElement>('conditions-dialog'),
+  conditionsOpen: $<HTMLButtonElement>('conditions-open'),
+  conditionsClose: $<HTMLButtonElement>('conditions-close'),
+  conditionDescription: $<HTMLDivElement>('condition-description'),
   romajiDialog: $<HTMLDialogElement>('romaji-dialog'),
   romajiForm: $<HTMLFormElement>('romaji-form'),
   romajiEdit: $<HTMLSelectElement>('romaji-edit'),
@@ -307,6 +314,15 @@ function layoutsOf(mode: ModeId): Layout[] {
   return [...assigned, ...mine];
 }
 
+/** 配列に紐づくローマ字規則を、Metricsへ保存する識別子として解決する。 */
+function romajiRuleIdForLayout(layout: Layout): string | null {
+  if (!layout.romajiTable) return null;
+  const user = userLayouts.find((definition) => definition.id === layout.id);
+  return romajiSettings.assignments[layout.id]
+    ?? (user && !user.direct ? user.romaji : undefined)
+    ?? defaultRomajiRuleId(layout.id);
+}
+
 const MODES = {
   en: { get layouts() { return layoutsOf('en'); }, sample: SAMPLES.en.default },
   ja: { get layouts() { return layoutsOf('ja'); }, sample: SAMPLES.ja.modern },
@@ -368,7 +384,7 @@ if (!playbackCalibration && uiState.ui.playback.useCalibration) {
 }
 
 el.mode.value = uiState.ui.input.mode;
-el.geometry.value = uiState.ui.input.geometry;
+el.geometry.value = uiState.conditions.defaults.geometry;
 el.window.value = String(uiState.conditions.defaults.windowSize);
 el.sfbHome.checked = uiState.conditions.defaults.sfbHomeCost;
 el.preferOppositeThumb.checked = uiState.conditions.defaults.preferOppositeThumb;
@@ -915,6 +931,114 @@ function setupHowDialog() {
   });
 }
 
+function renderConditionDescription(): void {
+  const layoutNames = Object.fromEntries(
+    [...layoutsOf('en'), ...layoutsOf('ja')].map((layout) => [layout.id, layout.name]),
+  );
+  const description = describeConditions({
+    defaults: DEFAULT_CONDITION_DEFAULTS,
+    current: uiState.conditions.defaults,
+    perLayout: uiState.conditions.perLayout,
+    layoutNames,
+  });
+  const playbackDescription = describePlaybackConditions({
+    defaults: uiStateDefaults.ui.playback,
+    current: uiState.ui.playback,
+  });
+  const fragment = document.createDocumentFragment();
+
+  const appendConditionList = (
+    headingText: string,
+    noteText: string,
+    conditions: readonly {
+      label: string;
+      value: string;
+      defaultValue: string;
+      differsFromDefault: boolean;
+      effect: string;
+    }[],
+  ): void => {
+    const heading = document.createElement('h3');
+    heading.textContent = headingText;
+    const note = document.createElement('p');
+    note.className = 'note';
+    note.textContent = noteText;
+    const list = document.createElement('dl');
+    list.className = 'condition-list';
+    for (const condition of conditions) {
+      const term = document.createElement('dt');
+      term.textContent = condition.label;
+      const detail = document.createElement('dd');
+      const value = document.createElement('strong');
+      value.textContent = `現在: ${condition.value}`;
+      detail.append(value);
+      const difference = document.createElement('span');
+      difference.className = condition.differsFromDefault ? 'condition-changed' : 'condition-default';
+      difference.textContent = condition.differsFromDefault
+        ? `（既定: ${condition.defaultValue}）`
+        : '（既定どおり）';
+      detail.append(' ', difference);
+      const effect = document.createElement('p');
+      effect.textContent = condition.effect;
+      detail.append(effect);
+      list.append(term, detail);
+    }
+    fragment.append(heading, note, list);
+  };
+
+  appendConditionList(
+    '移動距離条件',
+    '移動距離を計算する処理に影響します。',
+    description.conditions,
+  );
+  appendConditionList(
+    '打鍵再生条件',
+    '打鍵再生を計算する処理に影響します。',
+    playbackDescription,
+  );
+
+  const overridesHeading = document.createElement('h3');
+  overridesHeading.textContent = '配列ごとの上書き';
+  fragment.append(overridesHeading);
+  if (description.overrides.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'note';
+    empty.textContent = '配列ごとの上書きはありません。';
+    fragment.append(empty);
+  } else {
+    const overrides = document.createElement('div');
+    overrides.className = 'condition-overrides';
+    for (const override of description.overrides) {
+      const section = document.createElement('section');
+      const heading = document.createElement('h4');
+      heading.textContent = override.layoutName;
+      section.append(heading);
+      const list = document.createElement('ul');
+      for (const condition of override.conditions) {
+        const item = document.createElement('li');
+        item.textContent = `${condition.label}: ${condition.value}（既定: ${condition.defaultValue}）`;
+        list.append(item);
+      }
+      section.append(list);
+      overrides.append(section);
+    }
+    fragment.append(overrides);
+  }
+  el.conditionDescription.replaceChildren(fragment);
+}
+
+/** シミュレーション条件の読み取り専用モーダル。条件は開く直前に再生成する。 */
+function setupConditionDialog() {
+  el.conditionsOpen.addEventListener('click', () => {
+    renderConditionDescription();
+    el.conditionsDialog.showModal();
+  });
+  el.conditionsClose.addEventListener('click', () => el.conditionsDialog.close());
+  el.conditionsDialog.addEventListener('click', (event) => {
+    if (event.target === el.conditionsDialog) el.conditionsDialog.close();
+  });
+}
+
 function setupPanelState() {
   el.addPanel.addEventListener('toggle', () => {
     updateUiState((draft) => { draft.ui.panels.addLayout = el.addPanel.open; });
@@ -928,6 +1052,8 @@ interface Result {
   layout: Layout;
   trace: Trace;
   metrics: Metrics;
+  geometry: ReturnType<typeof buildGeometry>;
+  options: Options;
   /** 一覧での位置。色はこれで決まるので、選択を外しても他の色は動かない */
   slot: number;
 }
@@ -951,6 +1077,7 @@ let playbackState: PlaybackState = createPlaybackState(
 let playbackTrace: Trace | undefined;
 let playbackGeometry: ReturnType<typeof buildGeometry> | undefined;
 let playbackLayout: Layout | undefined;
+let playbackOptions: Options | undefined;
 let playbackAnimationFrame: number | undefined;
 let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
@@ -1353,7 +1480,7 @@ function updateCalibrationDialog(): void {
 function beginCalibrationSession(): void {
   calibrationEditMode = false;
   calibrationFocusSession = undefined;
-  const geometry = playbackGeometry ?? buildGeometry(el.geometry.value as GeometryKind);
+  const geometry = playbackGeometry ?? buildGeometry(uiState.conditions.defaults.geometry);
   const eligibleKeyIds = calibrationEligibleKeyIds(geometry, playbackLayout?.legends);
   const actionKeys = calibrationActionPair(geometry, eligibleKeyIds);
   const pairs = calibrationKeyPairs(geometry, eligibleKeyIds);
@@ -1727,7 +1854,7 @@ function updatePlaybackView() {
   const stroke = playbackStrokeAt(playbackTrace.strokes, cursor);
   const display = playbackLayout && stroke ? playbackStrokeDisplay(playbackLayout, stroke) : undefined;
   const isRomaji = playbackLayout?.romajiTable !== undefined;
-  const windowSize = Number(el.window.value);
+  const windowSize = playbackOptions?.windowSize ?? uiState.conditions.defaults.windowSize;
   const activeKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
   const triggerKeys = new Set(stroke?.triggerKeys ?? []);
   const fingerPositionKeys = uiState.ui.playback.showFingers
@@ -2204,11 +2331,17 @@ function rerenderPlaybackFigure() {
   }
 }
 
-function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeof buildGeometry>) {
+function renderPlayback(
+  trace: Trace,
+  layout: Layout,
+  geometry: ReturnType<typeof buildGeometry>,
+  options: Options,
+) {
   cancelPlaybackAnimation();
   playbackTrace = trace;
   playbackGeometry = geometry;
   playbackLayout = layout;
+  playbackOptions = options;
   playbackState = createPlaybackState(
     uiState.ui.playback.stepsPerSecond,
     uiState.ui.playback.sameFingerDelay,
@@ -2227,7 +2360,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${uiState.ui.playback.showFingers ? ' checked' : ''} />指の位置を色で表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${uiState.ui.playback.showRomajiPlan ? ' checked' : ''} />予定ローマ字の盤面表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-plan-keys${uiState.ui.playback.showPlanKeys ? ' checked' : ''} />押下予定キーを表示</label>
-        <span class="playback-window-setting" title="サイドバーの窓幅Nと共通">N <output data-playback-window>${Number(el.window.value)}</output> ステップ</span>
+        <span class="playback-window-setting" title="選択中の配列に適用される窓幅N">N <output data-playback-window>${options.windowSize}</output> ステップ</span>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${uiState.ui.playback.showTrail ? ' checked' : ''} />押下履歴を残す</label>
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${uiState.ui.playback.trailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${uiState.ui.playback.showOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
@@ -2376,22 +2509,42 @@ function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sor
 }
 
 function render() {
-  const geometry = buildGeometry(el.geometry.value as GeometryKind);
-  const options: Options = {
-    windowSize: Number(el.window.value),
-    sfbHomeCost: el.sfbHome.checked,
-    preferOppositeThumb: el.preferOppositeThumb.checked,
+  const defaultConditions = resolveConditions(uiState.conditions.defaults, undefined);
+  const geometryCache = new Map<GeometryKind, ReturnType<typeof buildGeometry>>();
+  const geometryFor = (kind: GeometryKind) => {
+    const cached = geometryCache.get(kind);
+    if (cached) return cached;
+    const geometry = buildGeometry(kind);
+    geometryCache.set(kind, geometry);
+    return geometry;
   };
   const text = el.text.value;
-  el.windowOut.value = el.window.value;
+  el.windowOut.value = String(uiState.conditions.defaults.windowSize);
 
   const set = selected[currentModeId()];
   const results: Result[] = currentMode().layouts
     .map((layout, slot) => ({ layout, slot }))
     .filter((r) => set.has(r.layout.id))
     .map(({ layout, slot }) => {
-      const trace = evaluate(text, layout, geometry, options);
-      return { layout, trace, metrics: computeMetrics(trace, geometry), slot };
+      const conditions = resolveConditions(
+        uiState.conditions.defaults,
+        uiState.conditions.perLayout[layout.id],
+      );
+      const geometry = geometryFor(conditions.geometry);
+      const trace = evaluate(text, layout, geometry, conditions.options);
+      return {
+        layout,
+        trace,
+        metrics: computeMetrics(trace, geometry, {
+          windowSize: conditions.options.windowSize,
+          sfbHomeCost: conditions.options.sfbHomeCost,
+          preferOppositeThumb: conditions.options.preferOppositeThumb ?? false,
+          romajiRuleId: romajiRuleIdForLayout(layout),
+        }),
+        geometry,
+        options: conditions.options,
+        slot,
+      };
     });
 
   if (results.length === 0) {
@@ -2399,6 +2552,7 @@ function render() {
     playbackTrace = undefined;
     playbackGeometry = undefined;
     playbackLayout = undefined;
+    playbackOptions = undefined;
     el.playback.innerHTML = '';
     el.textMeta.textContent = '配列を1つ以上選ぶ';
     el.compareChart.innerHTML = '';
@@ -2433,11 +2587,11 @@ function render() {
   renderCompare(results);
   renderMatrices(results);
   if (el.sensitivityPanel.open) {
-    renderSensitivity(text, geometry, options);
+    renderSensitivity(text, geometryFor(defaultConditions.geometry), defaultConditions.options);
   } else {
     showSensitivityPlaceholder();
   }
-  renderDetail(results, geometry);
+  renderDetail(results);
 }
 
 const COMPARE_HEADERS = [
@@ -2804,7 +2958,7 @@ function renderSensitivity(
     .map((layout, slot) => ({ layout, slot }))
     .filter((s) => set.has(s.layout.id))
     .map(({ layout, slot }) => {
-    const points = nSensitivity(text, layout, geometry, options, range);
+    const points = nSensitivity(text, layout, geometry, options, range, romajiRuleIdForLayout(layout));
     const base = points[0].totalUnits || 1;
     return {
       name: layout.name,
@@ -2825,11 +2979,11 @@ function renderSensitivity(
   sensitivityDirty = false;
 }
 
-function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeometry>) {
+function renderDetail(results: Result[]) {
   const found = results.find((r) => r.layout.id === el.detailLayout.value) ?? results[0];
-  const { metrics, layout } = found;
+  const { metrics, layout, geometry, options } = found;
 
-  renderPlayback(found.trace, layout, geometry);
+  renderPlayback(found.trace, layout, geometry, options);
   renderHeatmap(metrics, layout, geometry);
 
   const total = metrics.totalUnits || 1;
@@ -3669,11 +3823,16 @@ el.compareChartMetric.addEventListener('change', () => {
   render();
 });
 el.geometry.addEventListener('change', () => {
-  updateUiState((draft) => { draft.ui.input.geometry = el.geometry.value as GeometryKind; });
+  const geometry = el.geometry.value as GeometryKind;
+  updateUiState((draft) => {
+    draft.ui.input.geometry = geometry;
+    draft.conditions.defaults.geometry = geometry;
+  });
   render();
 });
-el.window.addEventListener('input', () => {
-  updateUiState((draft) => { draft.conditions.defaults.windowSize = Number(el.window.value); });
+el.window.addEventListener('input', (event) => {
+  const windowSize = Number((event.currentTarget as HTMLInputElement).value);
+  updateUiState((draft) => { draft.conditions.defaults.windowSize = windowSize; });
   render();
 });
 el.sfbHome.addEventListener('change', () => {
@@ -3704,6 +3863,7 @@ el.compareBaseline.addEventListener('change', () => {
 setupAddForm();
 setupRomajiEditor();
 setupPanelState();
+setupConditionDialog();
 document.addEventListener('keydown', onCalibrationKeyDown);
 el.calibrationStart.addEventListener('click', beginCalibrationSession);
 el.calibrationSave.addEventListener('click', saveCalibrationFromDialog);

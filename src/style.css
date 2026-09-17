@@ -683,6 +683,8 @@ dialog::backdrop { background: rgb(0 0 0 / 0.38); }
 /* 本文の行長（100ch）から幅を決める。.dialog-body の左右余白 20px ぶんを足す */
 #how-dialog { width: min(calc(100ch + 40px), calc(100vw - 32px)); padding: 0; }
 #how-dialog .dialog-body { padding: 20px; }
+#conditions-dialog { width: min(760px, calc(100vw - 32px)); padding: 0; }
+#conditions-dialog .dialog-body { padding: 20px; }
 #playback-calibration-dialog { width: min(560px, calc(100vw - 32px)); }
 .calibration-progress { display: block; margin: 8px 0 12px; color: var(--muted); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
 .calibration-finger-details { margin-top: 14px; }
@@ -741,6 +743,30 @@ button.secondary {
   font-size: 0.72rem;
 }
 dialog hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0 14px; }
+.condition-list {
+  display: grid;
+  grid-template-columns: minmax(12em, 0.35fr) minmax(0, 1fr);
+  margin: 18px 0 24px;
+}
+.condition-list dt,
+.condition-list dd {
+  margin: 0;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.condition-list dt { font-weight: 600; }
+.condition-list dd p { margin: 6px 0 0; color: var(--muted); line-height: 1.55; }
+.condition-changed { color: var(--accent); }
+.condition-default { color: var(--muted); }
+#conditions-dialog h3 { margin: 22px 0 8px; font-size: 0.95rem; }
+.condition-overrides { display: grid; gap: 10px; }
+.condition-overrides section {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.condition-overrides h4 { margin: 0 0 6px; font-size: 0.86rem; }
+.condition-overrides ul { margin: 0; padding-left: 1.3em; color: var(--muted); }
 
 /* 計算方法の図解。本文と盤面を縦に流す */
 .gap-figure { max-width: 100%; }
