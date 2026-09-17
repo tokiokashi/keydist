@@ -146,7 +146,7 @@ import {
   type UiStateStorage,
   type UiStateV1,
 } from './ui-state.ts';
-import { describeConditions } from './condition-description.ts';
+import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import {
   classifyFaces,
   displayTriggerKeys,
@@ -920,29 +920,49 @@ function renderConditionDescription(): void {
     perLayout: uiState.conditions.perLayout,
     layoutNames,
   });
+  const playbackDescription = describePlaybackConditions({
+    defaults: uiStateDefaults.ui.playback,
+    current: uiState.ui.playback,
+  });
   const fragment = document.createDocumentFragment();
-  const list = document.createElement('dl');
-  list.className = 'condition-list';
 
-  for (const condition of description.conditions) {
-    const term = document.createElement('dt');
-    term.textContent = condition.label;
-    const detail = document.createElement('dd');
-    const value = document.createElement('strong');
-    value.textContent = `現在: ${condition.value}`;
-    detail.append(value);
-    const difference = document.createElement('span');
-    difference.className = condition.differsFromDefault ? 'condition-changed' : 'condition-default';
-    difference.textContent = condition.differsFromDefault
-      ? `（既定: ${condition.defaultValue}）`
-      : '（既定どおり）';
-    detail.append(' ', difference);
-    const effect = document.createElement('p');
-    effect.textContent = condition.effect;
-    detail.append(effect);
-    list.append(term, detail);
-  }
-  fragment.append(list);
+  const appendConditionList = (
+    headingText: string,
+    conditions: readonly {
+      label: string;
+      value: string;
+      defaultValue: string;
+      differsFromDefault: boolean;
+      effect: string;
+    }[],
+  ): void => {
+    const heading = document.createElement('h3');
+    heading.textContent = headingText;
+    const list = document.createElement('dl');
+    list.className = 'condition-list';
+    for (const condition of conditions) {
+      const term = document.createElement('dt');
+      term.textContent = condition.label;
+      const detail = document.createElement('dd');
+      const value = document.createElement('strong');
+      value.textContent = `現在: ${condition.value}`;
+      detail.append(value);
+      const difference = document.createElement('span');
+      difference.className = condition.differsFromDefault ? 'condition-changed' : 'condition-default';
+      difference.textContent = condition.differsFromDefault
+        ? `（既定: ${condition.defaultValue}）`
+        : '（既定どおり）';
+      detail.append(' ', difference);
+      const effect = document.createElement('p');
+      effect.textContent = condition.effect;
+      detail.append(effect);
+      list.append(term, detail);
+    }
+    fragment.append(heading, list);
+  };
+
+  appendConditionList('移動距離条件', description.conditions);
+  appendConditionList('打鍵再生条件', playbackDescription);
 
   const overridesHeading = document.createElement('h3');
   overridesHeading.textContent = '配列ごとの上書き';

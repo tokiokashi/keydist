@@ -1,6 +1,7 @@
 import {
   DEFAULT_CONDITION_DEFAULTS,
   type UiStateConditionsDefaults,
+  type UiStateV1,
 } from './ui-state.ts';
 
 export type ConditionKey = keyof UiStateConditionsDefaults;
@@ -8,7 +9,7 @@ export type ConditionKey = keyof UiStateConditionsDefaults;
 interface ConditionDescriptor {
   label: string;
   effect: string;
-  format(value: UiStateConditionsDefaults[ConditionKey]): string;
+  format: (value: UiStateConditionsDefaults[ConditionKey]) => string;
 }
 
 /** 条件を追加した時に説明の追従漏れを型とテストで検出するための一覧。 */
@@ -30,7 +31,41 @@ export const CONDITION_DESCRIPTORS = {
   },
 } satisfies Record<ConditionKey, ConditionDescriptor>;
 
+export type PlaybackConditionKey = 'stepsPerSecond' | 'speedMultiplier' | 'sameFingerDelay' | 'useCalibration';
+type PlaybackConditionValues = Pick<UiStateV1['ui']['playback'], PlaybackConditionKey>;
+
+interface PlaybackConditionDescriptor {
+  label: string;
+  effect: string;
+  format: (value: PlaybackConditionValues[PlaybackConditionKey]) => string;
+}
+
+/** 打鍵再生時間モデルの仕様にある条件。表示・保存側のUI状態から生成する。 */
+export const PLAYBACK_CONDITION_DESCRIPTORS = {
+  stepsPerSecond: {
+    label: '基準速度',
+    effect: '個人速度を使わない時の、再生の基準となるステップ毎秒です。値が大きいほど打鍵間隔が短くなります。',
+    format: (value) => `${value} ステップ/秒`,
+  },
+  speedMultiplier: {
+    label: '再生倍率',
+    effect: '基準速度や個人速度へ最後に掛ける倍率です。1より大きいと速く、1より小さいと遅くなります。',
+    format: (value) => `${value} 倍`,
+  },
+  sameFingerDelay: {
+    label: '同指ディレイ',
+    effect: '同じ指で離れたキーへ移る距離を、再生時間へ反映するかどうかです。',
+    format: (value) => value ? '有効' : '無効',
+  },
+  useCalibration: {
+    label: '個人速度',
+    effect: '測定した通常速度・同手別指速度・指移動速度を再生へ使うかどうかです。保存値がない場合は利用できません。',
+    format: (value) => value ? '有効' : '無効',
+  },
+} satisfies Record<PlaybackConditionKey, PlaybackConditionDescriptor>;
+
 const CONDITION_KEYS = Object.keys(DEFAULT_CONDITION_DEFAULTS) as ConditionKey[];
+const PLAYBACK_CONDITION_KEYS = Object.keys(PLAYBACK_CONDITION_DESCRIPTORS) as PlaybackConditionKey[];
 
 export interface ConditionDescriptionItem {
   key: ConditionKey;
@@ -50,6 +85,20 @@ export interface ConditionDescriptionOverride {
 export interface ConditionDescriptionResult {
   conditions: ConditionDescriptionItem[];
   overrides: ConditionDescriptionOverride[];
+}
+
+export interface PlaybackConditionDescriptionItem {
+  key: PlaybackConditionKey;
+  label: string;
+  value: string;
+  defaultValue: string;
+  differsFromDefault: boolean;
+  effect: string;
+}
+
+export interface PlaybackConditionDescriptionInput {
+  defaults: PlaybackConditionValues;
+  current: PlaybackConditionValues;
 }
 
 export interface ConditionDescriptionInput {
@@ -93,4 +142,22 @@ export function describeConditions(input: ConditionDescriptionInput): ConditionD
       }];
   });
   return { conditions, overrides };
+}
+
+export function describePlaybackConditions(
+  input: PlaybackConditionDescriptionInput,
+): PlaybackConditionDescriptionItem[] {
+  return PLAYBACK_CONDITION_KEYS.map((key) => {
+    const descriptor = PLAYBACK_CONDITION_DESCRIPTORS[key];
+    const value = input.current[key];
+    const defaultValue = input.defaults[key];
+    return {
+      key,
+      label: descriptor.label,
+      value: descriptor.format(value),
+      defaultValue: descriptor.format(defaultValue),
+      differsFromDefault: value !== defaultValue,
+      effect: descriptor.effect,
+    };
+  });
 }
