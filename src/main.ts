@@ -304,7 +304,6 @@ function setupAddForm() {
 
 const romajiEditor = createRomajiEditor({
   el,
-  layoutsOf,
   getUserLayouts: () => userLayouts,
   setUserLayouts: (layouts) => { userLayouts = layouts; },
   getRomajiSettings: () => romajiSettings,
@@ -567,7 +566,6 @@ calibrationDialog = createCalibrationDialog({
   getCalibration: () => playbackCalibration,
   setCalibration: (calibration) => { playbackCalibration = calibration; },
   setPlaybackCalibration: (calibration) => playbackView.setCalibration(calibration),
-  updatePlaybackView: () => playbackView.update(),
 });
 resultsView = createResultsView({
   el,

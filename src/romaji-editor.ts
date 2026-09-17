@@ -1,5 +1,5 @@
 import type { AppElements } from './app-dom.ts';
-import { LAYOUTS_JA, type Layout } from './layouts/index.ts';
+import { LAYOUTS_JA } from './layouts/index.ts';
 import { SAMPLE_TEXT_JA } from './sample-text-ja.ts';
 import { kanaToRomaji } from './romaji/kunrei.ts';
 import {
@@ -46,7 +46,6 @@ const ROMAJI_VARIANTS: RomajiVariant[] = [
 
 export interface RomajiEditorContext {
   el: AppElements;
-  layoutsOf: (mode: 'en' | 'ja') => Layout[];
   getUserLayouts: () => UserLayout[];
   setUserLayouts: (layouts: UserLayout[]) => void;
   getRomajiSettings: () => RomajiSettings;

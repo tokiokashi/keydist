@@ -26,7 +26,6 @@ export interface CalibrationDialogContext {
   getCalibration: () => PlaybackCalibration | undefined;
   setCalibration: (calibration: PlaybackCalibration) => void;
   setPlaybackCalibration: (calibration: PlaybackCalibration) => void;
-  updatePlaybackView: () => void;
 }
 
 export interface CalibrationDialogController {
@@ -794,7 +793,6 @@ function saveCalibrationFromDialog(): void {
   calibrationSession = undefined;
   calibrationFocusSession = undefined;
   elements.calibrationDialog.close('saved');
-  ctx.updatePlaybackView();
 }
 
 

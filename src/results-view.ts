@@ -106,7 +106,6 @@ function render() {
 
   if (results.length === 0) {
     ctx.playback.clear();
-    elements.playback.innerHTML = '';
     elements.textMeta.textContent = '配列を1つ以上選ぶ';
     elements.compareChart.innerHTML = '';
     syncCompareBaselineOptions([]);
