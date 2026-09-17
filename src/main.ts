@@ -977,12 +977,12 @@ function renderConditionDescription(): void {
 
   appendConditionList(
     '移動距離条件',
-    '配列を比較する数値（総移動距離など）に影響します。',
+    '移動距離を計算する処理に影響します。',
     description.conditions,
   );
   appendConditionList(
     '打鍵再生条件',
-    '再生の見え方にのみ影響し、配列を比較する数値には使いません。',
+    '打鍵再生を計算する処理に影響します。',
     playbackDescription,
   );
 
