@@ -906,6 +906,7 @@ function playbackRecentRateWindow(
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   arpeggio?: ArpeggioConditions,
   arpeggioDelayMode: 'before' | 'distributed' = 'before',
+  cachedArpeggioTimings?: ReadonlyMap<number, PlaybackArpeggioTiming>,
 ): PlaybackRateWindow | undefined {
   const end = clampPlaybackCursor(cursor, strokes.length);
   const span = Math.max(0, Math.floor(limit));
@@ -916,7 +917,7 @@ function playbackRecentRateWindow(
     ? calibration
     : playbackCalibrationWithoutArpeggio(calibration);
   const arpeggioTimings = arpeggio
-    ? playbackArpeggioTimings(
+    ? cachedArpeggioTimings ?? playbackArpeggioTimings(
       strokes,
       arpeggio,
       stepsPerSecond,
@@ -969,6 +970,7 @@ export function playbackRecentActionsPerSecond(
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   arpeggio?: ArpeggioConditions,
   arpeggioDelayMode: 'before' | 'distributed' = 'before',
+  cachedArpeggioTimings?: ReadonlyMap<number, PlaybackArpeggioTiming>,
 ): number | undefined {
   const recent = playbackRecentRateWindow(
     strokes,
@@ -980,6 +982,7 @@ export function playbackRecentActionsPerSecond(
     speedMultiplier,
     arpeggio,
     arpeggioDelayMode,
+    cachedArpeggioTimings,
   );
   return recent && recent.durationMs > 0
     ? ((recent.end - recent.start) * 1000) / recent.durationMs
@@ -997,6 +1000,7 @@ export function playbackRecentKanaPerSecond(
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   arpeggio?: ArpeggioConditions,
   arpeggioDelayMode: 'before' | 'distributed' = 'before',
+  cachedArpeggioTimings?: ReadonlyMap<number, PlaybackArpeggioTiming>,
 ): number | undefined {
   const recent = playbackRecentRateWindow(
     strokes,
@@ -1008,6 +1012,7 @@ export function playbackRecentKanaPerSecond(
     speedMultiplier,
     arpeggio,
     arpeggioDelayMode,
+    cachedArpeggioTimings,
   );
   if (!recent || recent.durationMs <= 0) return undefined;
 
@@ -1035,7 +1040,25 @@ export function playbackRateChartData(
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   arpeggio?: ArpeggioConditions,
   arpeggioDelayMode: 'before' | 'distributed' = 'before',
+  cachedArpeggioTimings?: ReadonlyMap<number, PlaybackArpeggioTiming>,
 ): PlaybackRateChartPoint[] {
+  const arpeggioSpans = arpeggio ? playbackArpeggioSpans(strokes, arpeggio) : undefined;
+  const arpeggioCursors = arpeggioSpans
+    ? new Set(arpeggioSpans.flatMap((span) => Array.from(
+      { length: span.end - span.start },
+      (_, offset) => span.start + offset,
+    )))
+    : undefined;
+  const arpeggioTimings = arpeggio
+    ? cachedArpeggioTimings ?? playbackArpeggioTimings(
+      strokes,
+      arpeggio,
+      stepsPerSecond,
+      calibration,
+      arpeggioDelayMode,
+      sameFingerDelay,
+    )
+    : undefined;
   const points: PlaybackRateChartPoint[] = [{ cursor: 0, inputText: '' }];
   for (let cursor = 1; cursor <= strokes.length; cursor++) {
     const recent = playbackRecentRateWindow(
@@ -1048,6 +1071,7 @@ export function playbackRateChartData(
       speedMultiplier,
       arpeggio,
       arpeggioDelayMode,
+      arpeggioTimings,
     );
     points.push({
       cursor,
@@ -1062,13 +1086,14 @@ export function playbackRateChartData(
         speedMultiplier,
         arpeggio,
         arpeggioDelayMode,
+        arpeggioTimings,
       ),
       actionsPerSecond: recent && recent.durationMs > 0
         ? ((recent.end - recent.start) * 1000) / recent.durationMs
         : undefined,
       chain: playbackChainOrders(strokes, cursor).size > 0,
-      arpeggio: arpeggio
-        ? playbackArpeggioSpans(strokes, arpeggio).some((span) => cursor - 1 >= span.start && cursor - 1 < span.end)
+      arpeggio: arpeggioCursors
+        ? arpeggioCursors.has(cursor - 1)
         : false,
     });
   }
