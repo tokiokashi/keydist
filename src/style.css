@@ -217,6 +217,9 @@ a { color: var(--accent); }
 .ctl:last-child { margin-bottom: 0; }
 .ctl > span small { color: var(--muted); font-weight: 400; margin-left: 5px; }
 .ctl.checkbox { flex-direction: row; align-items: flex-start; gap: 8px; line-height: 1.4; }
+.sample-controls { display: flex; gap: 8px; align-items: center; }
+.sample-controls select { flex: 1; min-width: 0; }
+.sample-controls button { white-space: nowrap; }
 .range-row { display: flex; align-items: center; gap: 10px; }
 .range-row input { flex: 1; }
 .range-row output {

@@ -1,11 +1,5 @@
-/** 配列の選択状態（どれを比較表示に含めるか）のlocalStorage永続化 */
-
-/** 画面のモード。保存形式がモードごとに割れるので、その定義をここに置く */
+/** 画面のモード。表示状態がモードごとに割れるので、その定義をここに置く */
 export type ModeId = 'en' | 'ja';
-
-const STORAGE_KEY = 'keydist:selected-layouts';
-
-type StoredSelection = Partial<Record<ModeId, string[]>>;
 
 /**
  * 保存値と既定値から、実際に使う選択集合を決める。
@@ -19,33 +13,4 @@ export function resolveSelection(
   initial: readonly string[],
 ): Set<string> {
   return new Set(stored ?? initial);
-}
-
-/** 保存値を読む。壊れていれば「保存無し」として扱う */
-export function loadSelection(): StoredSelection {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as StoredSelection;
-    const result: StoredSelection = {};
-    for (const mode of ['en', 'ja'] as ModeId[]) {
-      const v = parsed[mode];
-      if (Array.isArray(v) && v.every((x) => typeof x === 'string')) result[mode] = v;
-    }
-    return result;
-  } catch {
-    return {};
-  }
-}
-
-export function saveSelection(selection: Record<ModeId, Set<string>>) {
-  try {
-    const data: Record<ModeId, string[]> = {
-      en: [...selection.en],
-      ja: [...selection.ja],
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {
-    // 保存できなくてもその場の表示は成立する
-  }
 }

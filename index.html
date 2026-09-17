@@ -112,9 +112,13 @@
           </summary>
           <label class="ctl">
             <span>サンプル</span>
-            <select id="sample"></select>
+            <span class="sample-controls">
+              <select id="sample"></select>
+              <button type="button" class="secondary" id="sample-reset">サンプルへ戻す</button>
+            </span>
           </label>
           <textarea id="text" rows="12" spellcheck="false"></textarea>
+          <p class="note" id="text-save-status" hidden></p>
         </details>
 
         <section class="panel">
