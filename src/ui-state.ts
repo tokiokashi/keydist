@@ -1,5 +1,11 @@
 import type { MatrixSort } from './chart.ts';
-import { PHYSICAL_SHAPES, type GeometryKind } from './geometry.ts';
+import { isCustomGeometryKind, isPresetGeometryKind, type GeometryKind } from './geometry.ts';
+import {
+  DEFAULT_GEOMETRY_SETTINGS,
+  cloneGeometrySettings,
+  sanitizeGeometrySettings,
+  type GeometrySettings,
+} from './geometry-settings.ts';
 import type { ModeId } from './layout-selection.ts';
 import {
   DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
@@ -114,6 +120,7 @@ export interface UiStateV1 {
   };
   conditions: {
     defaults: UiStateConditionsDefaults;
+    geometrySettings: GeometrySettings;
     perLayout: Record<string, UiStateConditionOverride>;
   };
 }
@@ -207,6 +214,7 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
     },
     conditions: {
       defaults: { ...DEFAULT_CONDITION_DEFAULTS },
+      geometrySettings: cloneGeometrySettings(DEFAULT_GEOMETRY_SETTINGS),
       perLayout: {},
     },
   };
@@ -294,7 +302,7 @@ function selectedIds(value: unknown, allowed: readonly string[], fallback: reado
 function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults> {
   const source = record(value);
   const result: Partial<UiStateConditionsDefaults> = {};
-  if (typeof source.geometry === 'string' && source.geometry in PHYSICAL_SHAPES) {
+  if (isCustomGeometryKind(source.geometry) || isPresetGeometryKind(source.geometry)) {
     result.geometry = source.geometry as GeometryKind;
   }
   if (typeof source.windowSize === 'number'
@@ -407,6 +415,10 @@ function sanitizeConditionOverrides(
   return result;
 }
 
+function geometryChoice(value: unknown, fallback: GeometryKind): GeometryKind {
+  return isCustomGeometryKind(value) || isPresetGeometryKind(value) ? value as GeometryKind : fallback;
+}
+
 export function sanitizeUiState(
   value: unknown,
   defaults: UiStateV1,
@@ -449,9 +461,8 @@ export function sanitizeUiState(
       theme: choice(ui.theme, ['light', 'dark', 'system'], defaults.ui.theme),
       input: {
         mode: choice(input.mode, ['en', 'ja'], defaults.ui.input.mode),
-        geometry: choice(
+        geometry: geometryChoice(
           input.geometry,
-          ['row-staggered', 'ortholinear', 'column-staggered'],
           defaults.ui.input.geometry,
         ),
         selectedSampleByMode: {
@@ -519,6 +530,10 @@ export function sanitizeUiState(
         // v1では物理形状がui.inputにだけ保存されていたため、未保存なら旧値を引き継ぐ。
         geometry: conditionDefaults.geometry ?? input.geometry,
       }, defaults.conditions.defaults),
+      geometrySettings: sanitizeGeometrySettings(
+        conditions.geometrySettings,
+        defaults.conditions.geometrySettings,
+      ),
       perLayout,
     },
   };

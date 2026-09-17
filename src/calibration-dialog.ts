@@ -1,4 +1,6 @@
-import { buildGeometry, ALL_FINGERS, resolveKeyId, type Finger, type GeometryKind } from './geometry.ts';
+import {
+  ALL_FINGERS, assignmentWithHomeKeys, buildGeometry, isPresetGeometryKind, resolveKeyId, type Finger,
+} from './geometry.ts';
 import { ARPEGGIO_PRESETS, type ArpeggioConditions } from './playback-arpeggio.ts';
 import {
   actionsPerSecondFromIntervals, calibrationActionPair, calibrationEligibleKeyIds,
@@ -15,6 +17,7 @@ import type { Layout } from './layouts/index.ts';
 import { FINGER_LABEL, type AppElements } from './app-dom.ts';
 import type { UiPlaybackState, UiStateStorage, UiStateV1 } from './ui-state.ts';
 import { savePlaybackCalibration } from './playback-calibration.ts';
+import type { GeometrySettings } from './geometry-settings.ts';
 
 export interface CalibrationDialogContext {
   el: AppElements;
@@ -23,6 +26,7 @@ export interface CalibrationDialogContext {
   updateUiState: (change: (draft: UiStateV1) => void) => void;
   updatePlaybackSetting: <K extends keyof UiPlaybackState>(key: K, value: UiPlaybackState[K]) => void;
   getPlaybackGeometry: () => ReturnType<typeof buildGeometry> | undefined;
+  getGeometrySettings: () => GeometrySettings;
   getPlaybackLayout: () => Layout | undefined;
   getCalibration: () => PlaybackCalibration | undefined;
   setCalibration: (calibration: PlaybackCalibration) => void;
@@ -257,7 +261,15 @@ function renderCalibrationDirectedPairInputs(values: Readonly<Record<string, num
 }
 
 function startFocusedCalibration(token: string): void {
-  const geometry = ctx.getPlaybackGeometry() ?? buildGeometry(elements.geometry.value as GeometryKind);
+  const geometryKind = ctx.getUiState().conditions.defaults.geometry;
+  const assignment = assignmentWithHomeKeys(
+    ctx.getGeometrySettings().assignment,
+    ctx.getPlaybackLayout()?.homeKeys,
+  );
+  const geometry = ctx.getPlaybackGeometry() ?? buildGeometry(
+    isPresetGeometryKind(geometryKind) ? geometryKind : ctx.getGeometrySettings().shape,
+    assignment,
+  );
   const eligibleKeyIds = calibrationEligibleKeyIds(geometry, ctx.getPlaybackLayout()?.legends);
   const actionKeys = calibrationActionPair(geometry, eligibleKeyIds);
   const pairs = calibrationKeyPairs(geometry, eligibleKeyIds);
@@ -440,7 +452,15 @@ function updateCalibrationDialog(): void {
 function beginCalibrationSession(): void {
   calibrationEditMode = false;
   calibrationFocusSession = undefined;
-  const geometry = ctx.getPlaybackGeometry() ?? buildGeometry(ctx.getUiState().conditions.defaults.geometry);
+  const geometryKind = ctx.getUiState().conditions.defaults.geometry;
+  const assignment = assignmentWithHomeKeys(
+    ctx.getGeometrySettings().assignment,
+    ctx.getPlaybackLayout()?.homeKeys,
+  );
+  const geometry = ctx.getPlaybackGeometry() ?? buildGeometry(
+    isPresetGeometryKind(geometryKind) ? geometryKind : ctx.getGeometrySettings().shape,
+    assignment,
+  );
   const eligibleKeyIds = calibrationEligibleKeyIds(geometry, ctx.getPlaybackLayout()?.legends);
   const actionKeys = calibrationActionPair(geometry, eligibleKeyIds);
   const pairs = calibrationKeyPairs(geometry, eligibleKeyIds);

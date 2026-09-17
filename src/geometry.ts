@@ -100,6 +100,20 @@ export interface FingerAssignment {
   homeKey: Record<NonThumb, string>;
 }
 
+/** 配列ごとに既定のホームキーだけを上書きした運指設定を作る。 */
+export function assignmentWithHomeKeys(
+  assignment: FingerAssignment,
+  homeKeys?: Partial<Record<NonThumb, string>>,
+): FingerAssignment {
+  if (!homeKeys) return assignment;
+  const merged = { ...assignment.homeKey };
+  for (const finger of FINGERS) {
+    const key = homeKeys[finger];
+    if (key !== undefined && assignment.keyFinger[key] !== undefined) merged[finger] = key;
+  }
+  return { ...assignment, homeKey: merged };
+}
+
 /**
  * 列を単位に指を割り当てる（既定の割り当てが取る形）。同じ列は全行で同じ指になる。
  * `rowWidths` を渡すと既定（ANSI 12/12/11/10）以外の形状にも割り当てを作れる。
@@ -135,7 +149,14 @@ export const DEFAULT_FINGER_ASSIGNMENT: FingerAssignment = columnFingerAssignmen
   { LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9 },
 );
 
-export type GeometryKind = 'row-staggered' | 'ortholinear' | 'column-staggered';
+export type PresetGeometryKind = 'row-staggered' | 'ortholinear' | 'column-staggered';
+export type CustomGeometryKind = `custom:${string}`;
+export type GeometryKind = PresetGeometryKind | 'custom' | CustomGeometryKind;
+
+export const customGeometryKind = (shapeId: string): CustomGeometryKind => `custom:${shapeId}`;
+
+export const isCustomGeometryKind = (value: unknown): value is 'custom' | CustomGeometryKind =>
+  value === 'custom' || (typeof value === 'string' && value.startsWith('custom:'));
 
 /** 親指キー1個の定義。物理形状（`PhysicalShape`）が個数・位置を持つ（仕様 §3.1） */
 export interface ThumbKeySpec {
@@ -205,7 +226,7 @@ const DEFAULT_THUMBS: ThumbKeySpec[] = [
  * 既定の3形状。数値（ピッチ・段ずれ・列オフセット）はこれまでの固定実装と同じにしてあり、
  * ここを変えると既存の測定値が動くため変更しない。
  */
-export const PHYSICAL_SHAPES: Record<GeometryKind, PhysicalShape> = {
+export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
   'row-staggered': {
     id: 'row-staggered',
     name: '段ずれ（ANSI/JIS準拠）',
@@ -236,8 +257,11 @@ export const PHYSICAL_SHAPES: Record<GeometryKind, PhysicalShape> = {
   },
 };
 
+export const isPresetGeometryKind = (value: unknown): value is PresetGeometryKind =>
+  value === 'row-staggered' || value === 'ortholinear' || value === 'column-staggered';
+
 export function buildGeometry(
-  shape: PhysicalShape | GeometryKind,
+  shape: PhysicalShape | PresetGeometryKind,
   assignment: FingerAssignment = DEFAULT_FINGER_ASSIGNMENT,
 ): Geometry {
   const s = typeof shape === 'string' ? PHYSICAL_SHAPES[shape] : shape;
