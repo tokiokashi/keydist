@@ -105,6 +105,29 @@ function currentCalibrationDirectionalDraft(): typeof calibrationDirectionalDraf
   };
 }
 
+function hasNormalCalibrationFormValues(): boolean {
+  const baseValuesPresent = elements.calibrationActions.value.trim() !== ''
+    && elements.calibrationSameHand.value.trim() !== ''
+    && elements.calibrationFingerSpeed.value.trim() !== '';
+  if (!baseValuesPresent) return false;
+  return [...elements.calibrationSameHandPairs.querySelectorAll<HTMLInputElement>('[data-calibration-same-hand-pair]')]
+    .every((input) => input.value.trim() !== '');
+}
+
+function restoreCalibrationForm(calibration: PlaybackCalibration): void {
+  calibrationDirectionalDraft = currentCalibrationDirectionalDraft();
+  elements.calibrationActions.value = calibration.actionsPerSecond.toFixed(2);
+  elements.calibrationSameHand.value = calibration.sameHandDifferentFingerActionsPerSecond.toFixed(2);
+  elements.calibrationFingerSpeed.value = calibration.fallbackFingerSpeedUnitsPerSecond.toFixed(2);
+  renderCalibrationDirectionalInputs(calibration.actionsPerSecondByDirection);
+  renderCalibrationSameHandInputs(
+    calibration.sameHandDifferentFingerActionsPerSecondByPair,
+    Object.keys(calibration.sameHandDifferentFingerActionsPerSecondByPair),
+  );
+  renderCalibrationDirectedPairInputs(calibration.sameHandDifferentFingerActionsPerDirectedPair);
+  renderCalibrationFingerInputs(calibration.fingerSpeedUnitsPerSecond);
+}
+
 function calibrationKeyLabel(keyId: string): string {
   const layoutLabel = ctx.getPlaybackLayout()?.legends.get(resolveKeyId(keyId));
   const label = layoutLabel && layoutLabel.trim().length > 0 ? layoutLabel : keyId;
@@ -216,7 +239,7 @@ function renderCalibrationFingerInputs(values: Partial<Record<Finger, number>>):
     const label = document.createElement('label');
     label.className = 'ctl calibration-finger-speed';
     const name = document.createElement('span');
-    name.textContent = FINGER_LABEL[finger];
+    name.textContent = `${FINGER_LABEL[finger]}（u/秒）`;
     const input = document.createElement('input');
     input.type = 'number';
     input.min = String(CALIBRATION_FINGER_SPEED_MIN);
@@ -246,7 +269,7 @@ function renderCalibrationSameHandInputs(
     const label = document.createElement('label');
     label.className = 'ctl calibration-finger-speed';
     const name = document.createElement('span');
-    name.textContent = calibrationSameHandPairLabel(pairKey);
+    name.textContent = `${calibrationSameHandPairLabel(pairKey)}（アクション/秒）`;
     const input = document.createElement('input');
     input.type = 'number';
     input.min = String(CALIBRATION_ACTIONS_PER_SECOND_MIN);
@@ -270,7 +293,7 @@ function renderCalibrationDirectionalInputs(
     const label = document.createElement('label');
     label.className = 'ctl calibration-finger-speed';
     const name = document.createElement('span');
-    name.textContent = direction;
+    name.textContent = `${direction}（アクション/秒）`;
     const input = document.createElement('input');
     input.type = 'number';
     input.min = String(CALIBRATION_ACTIONS_PER_SECOND_MIN);
@@ -292,7 +315,7 @@ function renderCalibrationDirectedPairInputs(values: Readonly<Record<string, num
     label.className = 'ctl calibration-finger-speed';
     const name = document.createElement('span');
     const [from, to] = pairKey.split('>') as [Finger, Finger];
-    name.textContent = `${FINGER_LABEL[from] ?? from}→${FINGER_LABEL[to] ?? to}`;
+    name.textContent = `${FINGER_LABEL[from] ?? from}→${FINGER_LABEL[to] ?? to}（アクション/秒）`;
     const input = document.createElement('input');
     input.type = 'number';
     input.min = String(CALIBRATION_ACTIONS_PER_SECOND_MIN);
@@ -574,6 +597,15 @@ function beginCalibrationSession(): void {
 function beginArpeggioCalibrationSession(): void {
   calibrationEditMode = false;
   calibrationFocusSession = undefined;
+  if (!hasNormalCalibrationFormValues()) {
+    const calibration = ctx.getCalibration();
+    if (!calibration) {
+      setCalibrationError('先に通常測定を完了して保存値を用意してください。');
+      updateCalibrationDialog();
+      return;
+    }
+    restoreCalibrationForm(calibration);
+  }
   const geometryKind = ctx.getUiState().conditions.defaults.geometry;
   const assignment = assignmentWithHomeKeys(
     ctx.getGeometrySettings().assignment,
@@ -632,6 +664,16 @@ function beginArpeggioCalibrationSession(): void {
 }
 
 function finishArpeggioCalibrationSession(session: CalibrationSession): void {
+  if (!hasNormalCalibrationFormValues()) {
+    const calibration = ctx.getCalibration();
+    if (calibration) restoreCalibrationForm(calibration);
+    if (!hasNormalCalibrationFormValues()) {
+      setCalibrationError('通常測定の保存値が必要です。先に通常測定を完了してください。');
+      calibrationSession = undefined;
+      updateCalibrationDialog();
+      return;
+    }
+  }
   const actionsPerSecondByDirection = { ...calibrationDirectionalDraft.actionsPerSecondByDirection };
   const directedPairSpeeds = {
     ...calibrationDirectionalDraft.sameHandDifferentFingerActionsPerSecondByDirectedPair,
@@ -845,18 +887,8 @@ function openCalibrationEditDialog(): void {
   calibrationEditMode = true;
   calibrationSession = undefined;
   calibrationFocusSession = undefined;
-  calibrationDirectionalDraft = currentCalibrationDirectionalDraft();
   setCalibrationError('');
-  elements.calibrationActions.value = calibration.actionsPerSecond.toFixed(2);
-  elements.calibrationSameHand.value = calibration.sameHandDifferentFingerActionsPerSecond.toFixed(2);
-  elements.calibrationFingerSpeed.value = calibration.fallbackFingerSpeedUnitsPerSecond.toFixed(2);
-  renderCalibrationDirectionalInputs(
-    calibration.actionsPerSecondByDirection,
-  );
-  renderCalibrationSameHandInputs(
-    calibration.sameHandDifferentFingerActionsPerSecondByPair,
-    Object.keys(calibration.sameHandDifferentFingerActionsPerSecondByPair),
-  );
+  restoreCalibrationForm(calibration);
   renderCalibrationDirectedPairInputs(calibration.sameHandDifferentFingerActionsPerDirectedPair);
   renderCalibrationFingerInputs(calibration.fingerSpeedUnitsPerSecond);
   updateCalibrationDialog();
