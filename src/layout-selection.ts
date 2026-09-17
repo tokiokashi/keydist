@@ -1,6 +1,15 @@
 /** 画面のモード。表示状態がモードごとに割れるので、その定義をここに置く */
 export type ModeId = 'en' | 'ja';
 
+export interface LayoutTypeFilter {
+  romaji: boolean;
+  kana: boolean;
+}
+
+export function layoutVisibleInFilter(hasRomajiTable: boolean, filter: LayoutTypeFilter): boolean {
+  return hasRomajiTable ? filter.romaji : filter.kana;
+}
+
 /**
  * 保存値と既定値から、実際に使う選択集合を決める。
  * 保存が無いモード（= 初回訪問）だけ既定値を使う。保存が空配列のモードは

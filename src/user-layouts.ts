@@ -34,7 +34,7 @@ export function load(): UserLayout[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as UserLayout[];
-    return Array.isArray(parsed) ? parsed.filter(isValid) : [];
+    return sanitizeUserLayouts(parsed);
   } catch {
     return [];
   }
@@ -67,7 +67,7 @@ const isHomeKeys = (value: unknown): value is Partial<Record<NonThumb, string>> 
     && Object.values(value).every((key) => typeof key === 'string')
   );
 
-const isValid = (l: unknown): l is UserLayout => {
+export const isValidUserLayout = (l: unknown): l is UserLayout => {
   if (!l || typeof l !== 'object') return false;
   const value = l as Partial<UserLayout>;
   return typeof value.id === 'string' &&
@@ -82,6 +82,16 @@ const isValid = (l: unknown): l is UserLayout => {
     (value.direct === undefined || typeof value.direct === 'boolean') &&
     isHomeKeys(value.homeKeys);
 };
+
+export function sanitizeUserLayouts(value: unknown): UserLayout[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  return value.filter(isValidUserLayout).filter((layout) => {
+    if (seen.has(layout.id)) return false;
+    seen.add(layout.id);
+    return true;
+  });
+}
 
 /**
  * 入力を検査する。列数オーバーだけを弾く。

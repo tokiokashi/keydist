@@ -33,6 +33,8 @@ import {
   defaultRomajiRuleId,
   loadRomajiSettings,
   tableForRule,
+  allRomajiRules,
+  saveRomajiSettings,
 } from './romaji/rules.ts';
 import { loadPlaybackCalibration } from './playback-calibration.ts';
 import {
@@ -42,7 +44,7 @@ import {
   importDvorakJ,
   importVial,
 } from './layout-import.ts';
-import { resolveSelection, type ModeId } from './layout-selection.ts';
+import { layoutVisibleInFilter, resolveSelection, type LayoutTypeFilter, type ModeId } from './layout-selection.ts';
 import {
   createDefaultUiState,
   DEFAULT_CONDITION_DEFAULTS,
@@ -50,7 +52,9 @@ import {
   MAX_SAVED_TEXT_LENGTH,
   saveUiState,
   type UiPlaybackState,
+  type UiStateConditionsDefaults,
   type UiStateStorage,
+  type UiStateLayoutConditions,
   type UiStateV1,
 } from './ui-state.ts';
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
@@ -59,7 +63,6 @@ import { createRomajiEditor } from './romaji-editor.ts';
 import { createCalibrationDialog, type CalibrationDialogController } from './calibration-dialog.ts';
 import { createPlaybackView, type PlaybackViewController } from './playback-view.ts';
 import { createResultsView, type ResultsViewController } from './results-view.ts';
-import type { ArpeggioConditions } from './playback-arpeggio.ts';
 import {
   DEFAULT_GEOMETRY_SETTINGS,
   cloneGeometrySettings,
@@ -70,11 +73,26 @@ import {
   type GeometrySettings,
 } from './geometry-settings.ts';
 import { fromDisplayUnits, toDisplayUnits, type GeometryUnit } from './geometry-units.ts';
+import { ARPEGGIO_PRESETS, sameArpeggioConditions, type ArpeggioConditions } from './playback-arpeggio.ts';
 import {
   load as loadUserGeometryShapes,
   newId as newGeometryId,
   save as saveUserGeometryShapes,
 } from './user-geometries.ts';
+import {
+  allConditionPresets,
+  loadConditionPresets,
+  newConditionPresetId,
+  saveConditionPresets,
+  sameConditionDefaults,
+  type ConditionPreset,
+} from './condition-presets.ts';
+import { setLayoutGeometryOverride } from './condition-resolution.ts';
+import {
+  conditionBundleFromState,
+  parseConditionBundle,
+  serializeConditionBundle,
+} from './condition-bundle.ts';
 
 type SampleId = string;
 
@@ -100,7 +118,9 @@ const INITIAL = {
 let userLayouts: UserLayout[] = loadUserLayouts();
 let userGeometryShapes: PhysicalShape[] = loadUserGeometryShapes();
 let romajiSettings = loadRomajiSettings();
+let conditionPresets: ConditionPreset[] = loadConditionPresets();
 const ROMAJI_TABLE_CACHE = new Map<string, Map<string, string>>();
+let conditionState: UiStateV1 | undefined;
 
 /** 同じルールのテーブルは描画間で共有し、設定を保存した時だけ捨てる。 */
 function cachedRomajiTable(ruleId: RomajiRuleId): Map<string, string> {
@@ -117,12 +137,16 @@ function layoutsOf(mode: ModeId): Layout[] {
   if (mode === 'en') return [...built, ...userLayouts.map(toLayout)];
   const assigned = built.map((layout) => {
     if (!layout.romajiTable) return layout;
-    const ruleId = romajiSettings.assignments[layout.id] ?? defaultRomajiRuleId(layout.id);
+    const ruleId = conditionState?.conditions.perLayout[layout.id]?.romajiRule
+      ?? romajiSettings.assignments[layout.id]
+      ?? defaultRomajiRuleId(layout.id);
     return { ...layout, romajiTable: cachedRomajiTable(ruleId) };
   });
   const mine = userLayouts.map((d) => d.direct
     ? toLayout(d)
-    : withRomaji(toLayout(d), cachedRomajiTable(d.romaji)));
+    : withRomaji(toLayout(d), cachedRomajiTable(
+      conditionState?.conditions.perLayout[d.id]?.romajiRule ?? d.romaji,
+    )));
   return [...assigned, ...mine];
 }
 
@@ -130,7 +154,8 @@ function layoutsOf(mode: ModeId): Layout[] {
 function romajiRuleIdForLayout(layout: Layout): string | null {
   if (!layout.romajiTable) return null;
   const user = userLayouts.find((definition) => definition.id === layout.id);
-  return romajiSettings.assignments[layout.id]
+  return conditionState?.conditions.perLayout[layout.id]?.romajiRule
+    ?? romajiSettings.assignments[layout.id]
     ?? (user && !user.direct ? user.romaji : undefined)
     ?? defaultRomajiRuleId(layout.id);
 }
@@ -165,7 +190,21 @@ const uiStateChoices = {
     ja: Object.keys(SAMPLES.ja),
   },
 };
+
+function addLayoutChoices(layoutIds: readonly string[]): void {
+  for (const mode of ['en', 'ja'] as const) {
+    uiStateChoices.layouts[mode] = [...new Set([...uiStateChoices.layouts[mode], ...layoutIds])];
+  }
+}
+
+function removeLayoutChoice(layoutId: string): void {
+  for (const mode of ['en', 'ja'] as const) {
+    uiStateChoices.layouts[mode] = uiStateChoices.layouts[mode].filter((id) => id !== layoutId);
+  }
+}
+
 let uiState = loadUiState(uiStorage, uiStateDefaults, uiStateChoices).state;
+conditionState = uiState;
 let uiStateSaveTimer: number | undefined;
 
 function flushUiState(): void {
@@ -179,6 +218,7 @@ function updateUiState(change: (draft: UiStateV1) => void, debounce = false): vo
   const next = structuredClone(uiState);
   change(next);
   uiState = next;
+  conditionState = uiState;
   if (uiStateSaveTimer !== undefined) window.clearTimeout(uiStateSaveTimer);
   if (debounce) {
     uiStateSaveTimer = window.setTimeout(() => {
@@ -253,6 +293,8 @@ function saveSelectedLayouts(): void {
     };
   });
 }
+
+const pickerFilter: LayoutTypeFilter = { romaji: true, kana: true };
 
 const currentModeId = () => el.mode.value as ModeId;
 const currentMode = () => MODES[currentModeId()];
@@ -350,6 +392,7 @@ function setupAddForm() {
     };
     userLayouts = [...userLayouts, def];
     saveUserLayouts(userLayouts);
+    addLayoutChoices([def.id]);
 
     // 追加したものは自動で表示に入れる
     selected.en.add(def.id);
@@ -390,6 +433,7 @@ function setupAddForm() {
       };
       userLayouts = [...userLayouts, def];
       saveUserLayouts(userLayouts);
+      addLayoutChoices([def.id]);
       selected.en.add(def.id);
       selected.ja.add(def.id);
       saveSelectedLayouts();
@@ -426,6 +470,7 @@ const romajiEditor = createRomajiEditor({
 function removeUserLayout(id: string) {
   userLayouts = userLayouts.filter((l) => l.id !== id);
   saveUserLayouts(userLayouts);
+  removeLayoutChoice(id);
   selected.en.delete(id);
   selected.ja.delete(id);
   updateUiState((draft) => {
@@ -447,7 +492,35 @@ function removeUserLayout(id: string) {
 function fillPicker() {
   const set = selected[currentModeId()];
   el.picker.replaceChildren();
+  if (currentModeId() === 'ja') {
+    const filters = document.createElement('div');
+    filters.className = 'picker-filters';
+    filters.setAttribute('role', 'group');
+    filters.setAttribute('aria-label', '配列の種類で絞り込む');
+    const filterButton = (key: 'romaji' | 'kana', labelText: string): HTMLButtonElement => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'ghost';
+      button.textContent = labelText;
+      button.setAttribute('aria-pressed', String(pickerFilter[key]));
+      button.addEventListener('click', () => {
+        pickerFilter[key] = !pickerFilter[key];
+        fillPicker();
+      });
+      return button;
+    };
+    filters.append(
+      document.createTextNode('表示: '),
+      filterButton('romaji', 'ローマ字配列'),
+      filterButton('kana', 'かな・直接入力'),
+    );
+    el.picker.append(filters);
+  }
+  let visible = 0;
   currentMode().layouts.forEach((layout, i) => {
+    const isRomaji = layout.romajiTable !== undefined;
+    if (currentModeId() === 'ja' && !layoutVisibleInFilter(isRomaji, pickerFilter)) return;
+    visible++;
     const on = set.has(layout.id);
     const label = document.createElement('label');
     label.className = on ? '' : 'off';
@@ -485,6 +558,24 @@ function fillPicker() {
 
     el.picker.append(label);
   });
+  if (visible === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'note picker-empty';
+    empty.textContent = '表示する配列がありません。上の絞り込みをオンにしてください。';
+    el.picker.append(empty);
+  }
+}
+
+function fillDetailGeometryOptions(layoutId: string | undefined): void {
+  el.detailGeometry.replaceChildren(
+    new Option('ロウスタッガード', 'row-staggered'),
+    new Option('オーソリニア', 'ortholinear'),
+    new Option('カラムスタッガード', 'column-staggered'),
+    ...userGeometryShapes.map((shape) => new Option(`自作: ${shape.name}`, customGeometryKind(shape.id))),
+  );
+  const override = layoutId ? uiState.conditions.perLayout[layoutId] : undefined;
+  el.detailGeometry.value = override?.geometry ?? uiState.conditions.defaults.geometry;
+  if (el.detailGeometry.value === '') el.detailGeometry.value = 'row-staggered';
 }
 
 /** 詳細セレクタはモードで配列の顔ぶれが変わるので作り直す */
@@ -495,8 +586,12 @@ function fillDetailOptions() {
   for (const layout of layouts) {
     el.detailLayout.append(new Option(layout.name, layout.id));
   }
-  if (layouts.length === 0) return;
+  if (layouts.length === 0) {
+    fillDetailGeometryOptions(undefined);
+    return;
+  }
   el.detailLayout.value = layouts.some((l) => l.id === keep) ? keep : layouts[0].id;
+  fillDetailGeometryOptions(el.detailLayout.value);
 }
 
 function syncSampleText() {
@@ -598,6 +693,15 @@ function selectedShapeForKind(kind: GeometryKind): PhysicalShape | undefined {
     return stored ? clonePhysicalShape(stored) : clonePhysicalShape(uiState.conditions.geometrySettings.shape);
   }
   return undefined;
+}
+
+/** 配列行で選ばれた形状だけを差し替え、運指設定は共通の現在値を使う。 */
+function geometrySettingsForKind(kind: GeometryKind): GeometrySettings {
+  const current = uiState.conditions.geometrySettings;
+  return {
+    assignment: current.assignment,
+    shape: selectedShapeForKind(kind) ?? current.shape,
+  };
 }
 
 /** 運指と形状を編集するモーダル。 */
@@ -979,7 +1083,298 @@ function setupHowDialog() {
   });
 }
 
-function renderConditionDescription(): void {
+type ConditionTab = 'romaji' | 'physical' | 'model' | 'arpeggio' | 'delay';
+
+const CONDITION_TABS: readonly [ConditionTab, string][] = [
+  ['romaji', 'ローマ字'],
+  ['physical', '物理形状'],
+  ['model', 'モデル'],
+  ['arpeggio', 'アルペジオ'],
+  ['delay', 'ディレイ'],
+];
+
+let conditionTab: ConditionTab = 'model';
+
+function conditionPresetId(value: ArpeggioConditions): string {
+  const found = Object.entries(ARPEGGIO_PRESETS).find(([, preset]) =>
+    sameArpeggioConditions(preset, value));
+  return found?.[0] ?? 'custom';
+}
+
+function currentConditionPresetId(): string {
+  return allConditionPresets(conditionPresets).find((preset) =>
+    sameConditionDefaults(preset.conditions, uiState.conditions.defaults))?.id ?? '';
+}
+
+function conditionOverrideEnabled(layoutId: string): boolean {
+  return Object.prototype.hasOwnProperty.call(uiState.conditions.perLayout, layoutId);
+}
+
+function commitCondition<K extends keyof UiStateConditionsDefaults>(
+  layoutId: string | undefined,
+  key: K,
+  value: UiStateConditionsDefaults[K],
+): void;
+function commitCondition(
+  layoutId: string,
+  key: 'romajiRule',
+  value: string,
+): void;
+function commitCondition(
+  layoutId: string | undefined,
+  key: keyof UiStateLayoutConditions,
+  value: UiStateLayoutConditions[keyof UiStateLayoutConditions],
+): void {
+  updateUiState((draft) => {
+    if (layoutId === undefined) {
+      if (key === 'romajiRule') return;
+      Object.assign(draft.conditions.defaults, { [key]: structuredClone(value) });
+      return;
+    }
+    const target = draft.conditions.perLayout[layoutId] ?? {};
+    Object.assign(target, { [key]: structuredClone(value) });
+    draft.conditions.perLayout[layoutId] = target;
+  });
+  syncGlobalConditionControls();
+  if (key === 'geometry') {
+    fillGeometryOptions();
+    fillDetailGeometryOptions(el.detailLayout.value);
+  }
+  renderConditionDescription();
+  render();
+}
+
+function toggleConditionOverride(layoutId: string, enabled: boolean): void {
+  updateUiState((draft) => {
+    if (enabled) draft.conditions.perLayout[layoutId] ??= {};
+    else delete draft.conditions.perLayout[layoutId];
+  });
+  renderConditionDescription();
+  render();
+}
+
+function geometryOptions(select: HTMLSelectElement): void {
+  select.replaceChildren(
+    new Option('ロウスタッガード', 'row-staggered'),
+    new Option('オーソリニア', 'ortholinear'),
+    new Option('カラムスタッガード', 'column-staggered'),
+    ...userGeometryShapes.map((shape) => new Option(`自作: ${shape.name}`, customGeometryKind(shape.id))),
+  );
+}
+
+function syncGlobalConditionControls(): void {
+  el.geometry.value = uiState.conditions.defaults.geometry;
+  el.window.value = String(uiState.conditions.defaults.windowSize);
+  el.sfbHome.checked = uiState.conditions.defaults.sfbHomeCost;
+  el.preferOppositeThumb.checked = uiState.conditions.defaults.preferOppositeThumb;
+}
+
+function conditionNumber(
+  parent: HTMLElement,
+  value: number,
+  disabled: boolean,
+  onCommit: (value: number) => void,
+  options: { min: string; max: string; step: string },
+): void {
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.value = String(value);
+  input.min = options.min;
+  input.max = options.max;
+  input.step = options.step;
+  input.disabled = disabled;
+  input.addEventListener('change', () => {
+    const next = Number(input.value);
+    if (Number.isFinite(next) && next >= Number(options.min) && next <= Number(options.max)) onCommit(next);
+  });
+  parent.append(input);
+}
+
+function conditionRow(
+  tab: ConditionTab,
+  layout: Layout | undefined,
+): HTMLTableRowElement {
+  const row = document.createElement('tr');
+  const heading = document.createElement('th');
+  heading.scope = 'row';
+  heading.textContent = layout?.name ?? '既定値（全配列）';
+  row.append(heading);
+
+  const overrideCell = document.createElement('td');
+  if (layout) {
+    const enabled = conditionOverrideEnabled(layout.id);
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = enabled;
+    checkbox.title = `${layout.name}だけ個別設定する`;
+    checkbox.setAttribute('aria-label', `${layout.name}を個別設定する`);
+    checkbox.addEventListener('change', () => toggleConditionOverride(layout.id, checkbox.checked));
+    overrideCell.append(checkbox);
+  } else {
+    overrideCell.textContent = '全体';
+  }
+  row.append(overrideCell);
+  const cell = document.createElement('td');
+  row.append(cell);
+
+  const override = layout ? uiState.conditions.perLayout[layout.id] : undefined;
+  const enabled = layout === undefined || conditionOverrideEnabled(layout.id);
+  const defaults = uiState.conditions.defaults;
+  const value = <K extends keyof typeof defaults>(key: K): typeof defaults[K] =>
+    (override?.[key] ?? defaults[key]) as typeof defaults[K];
+
+  if (tab === 'romaji') {
+    if (layout && !layout.romajiTable) {
+      cell.textContent = 'かな入力の設定は不要';
+      return row;
+    }
+    if (!layout) {
+      cell.textContent = '各かな配列の既定値を使用';
+      return row;
+    }
+    const select = document.createElement('select');
+    for (const rule of allRomajiRules(romajiSettings.rules)) select.append(new Option(rule.name, rule.id));
+    const current = override?.romajiRule ?? romajiRuleIdForLayout(layout) ?? defaultRomajiRuleId(layout.id);
+    select.value = current;
+    select.disabled = !enabled;
+    select.addEventListener('change', () => commitCondition(layout.id, 'romajiRule', select.value));
+    cell.append(select);
+    return row;
+  }
+
+  if (tab === 'physical') {
+    const select = document.createElement('select');
+    geometryOptions(select);
+    select.value = value('geometry');
+    select.disabled = !enabled;
+    select.addEventListener('change', () => commitCondition(layout?.id, 'geometry', select.value as GeometryKind));
+    cell.append(select);
+    return row;
+  }
+
+  if (tab === 'model') {
+    const fields = document.createElement('div');
+    fields.className = 'condition-fields';
+    const windowLabel = document.createElement('label');
+    windowLabel.append('窓幅N ');
+    conditionNumber(windowLabel, value('windowSize'), !enabled, (next) => commitCondition(layout?.id, 'windowSize', next), {
+      min: '0', max: '12', step: '1',
+    });
+    const sfbLabel = document.createElement('label');
+    const sfb = document.createElement('input');
+    sfb.type = 'checkbox'; sfb.checked = value('sfbHomeCost'); sfb.disabled = !enabled;
+    sfbLabel.append(sfb, ' SFBホーム');
+    sfb.addEventListener('change', () => commitCondition(layout?.id, 'sfbHomeCost', sfb.checked));
+    const thumbLabel = document.createElement('label');
+    const thumb = document.createElement('input');
+    thumb.type = 'checkbox'; thumb.checked = value('preferOppositeThumb'); thumb.disabled = !enabled;
+    thumbLabel.append(thumb, ' 逆側親指');
+    thumb.addEventListener('change', () => commitCondition(layout?.id, 'preferOppositeThumb', thumb.checked));
+    fields.append(windowLabel, sfbLabel, thumbLabel);
+    cell.append(fields);
+    return row;
+  }
+
+  if (tab === 'arpeggio') {
+    const conditions = value('arpeggio');
+    const fields = document.createElement('div');
+    fields.className = 'condition-fields condition-arpeggio-fields';
+    const preset = document.createElement('select');
+    for (const [id, label] of [['standard', '標準'], ['strict', '厳格'], ['loose', '緩い'], ['custom', 'カスタム']] as const) {
+      preset.append(new Option(label, id));
+    }
+    preset.value = conditionPresetId(conditions);
+    preset.disabled = !enabled;
+    preset.addEventListener('change', () => {
+      const next = ARPEGGIO_PRESETS[preset.value];
+      if (next) commitCondition(layout?.id, 'arpeggio', next);
+    });
+    fields.append(preset);
+    const detail = document.createElement('details');
+    const summary = document.createElement('summary'); summary.textContent = '詳細'; detail.append(summary);
+    const spread = document.createElement('label'); spread.append('横の開き ');
+    conditionNumber(spread, conditions.minHorizontalSpread, !enabled, (next) => commitCondition(layout?.id, 'arpeggio', { ...conditions, minHorizontalSpread: next }), {
+      min: '0', max: '20', step: '0.1',
+    }); spread.append(' u');
+    const rowLimit = (key: 'maxRowReversal' | 'maxRowStep', labelText: string): HTMLLabelElement => {
+      const label = document.createElement('label'); label.append(`${labelText} `);
+      const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.max = '10'; input.step = '1';
+      input.placeholder = '無制限'; input.disabled = !enabled;
+      if (conditions[key] !== null) input.value = String(conditions[key]);
+      input.addEventListener('change', () => {
+        const next = input.value.trim() === '' ? null : Number(input.value);
+        if (next === null || (Number.isInteger(next) && next >= 0 && next <= 10)) {
+          commitCondition(layout?.id, 'arpeggio', { ...conditions, [key]: next });
+        }
+      }); label.append(input); return label;
+    };
+    const thumbLabel = document.createElement('label'); const includeThumb = document.createElement('input');
+    includeThumb.type = 'checkbox'; includeThumb.checked = conditions.includeThumb; includeThumb.disabled = !enabled;
+    includeThumb.addEventListener('change', () => commitCondition(layout?.id, 'arpeggio', { ...conditions, includeThumb: includeThumb.checked }));
+    thumbLabel.append(includeThumb, ' 出力親指を含める');
+    const handLabel = document.createElement('label'); const oppositeHand = document.createElement('input');
+    oppositeHand.type = 'checkbox'; oppositeHand.checked = conditions.breakOnOppositeHand; oppositeHand.disabled = !enabled;
+    oppositeHand.addEventListener('change', () => commitCondition(layout?.id, 'arpeggio', { ...conditions, breakOnOppositeHand: oppositeHand.checked }));
+    handLabel.append(oppositeHand, ' 逆手同時押しで区切る');
+    detail.append(spread, rowLimit('maxRowReversal', '折り返し振幅'), rowLimit('maxRowStep', '1遷移の行差'), thumbLabel, handLabel);
+    fields.append(detail); cell.append(fields); return row;
+  }
+
+  cell.textContent = 'この項目は全体設定です。配列ごとの上書きはできません。';
+  return row;
+}
+
+function renderConditionTable(tab: ConditionTab): HTMLTableElement {
+  const table = document.createElement('table');
+  table.className = 'condition-grid';
+  const head = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  for (const label of ['配列', '個別設定', tab === 'romaji' ? '設定値' : '条件']) {
+    const th = document.createElement('th'); th.textContent = label; headerRow.append(th);
+  }
+  head.append(headerRow); table.append(head);
+  const body = document.createElement('tbody');
+  body.append(conditionRow(tab, undefined));
+  for (const layout of currentMode().layouts) body.append(conditionRow(tab, layout));
+  table.append(body);
+  return table;
+}
+
+function renderGlobalDelayControls(parent: HTMLElement): void {
+  const playback = uiState.ui.playback;
+  const fields = document.createElement('div'); fields.className = 'condition-delay-fields';
+  const speed = document.createElement('label'); speed.append('基準速度 ');
+  conditionNumber(speed, playback.stepsPerSecond, false, (value) => {
+    updateUiState((draft) => { draft.ui.playback.stepsPerSecond = value; }); renderConditionDescription(); render();
+  }, { min: '0.1', max: '20', step: 'any' }); speed.append(' ステップ/秒');
+  const multiplier = document.createElement('label'); multiplier.append('再生倍率 ');
+  conditionNumber(multiplier, playback.speedMultiplier, false, (value) => {
+    updateUiState((draft) => { draft.ui.playback.speedMultiplier = value; }); renderConditionDescription(); render();
+  }, { min: '0.1', max: '8', step: '0.1' }); multiplier.append(' 倍');
+  const sameFinger = document.createElement('label'); const sameFingerInput = document.createElement('input');
+  sameFingerInput.type = 'checkbox'; sameFingerInput.checked = playback.sameFingerDelay;
+  sameFingerInput.addEventListener('change', () => {
+    updateUiState((draft) => { draft.ui.playback.sameFingerDelay = sameFingerInput.checked; }); renderConditionDescription(); render();
+  }); sameFinger.append(sameFingerInput, ' 指の移動速度を考慮');
+  const delayMode = document.createElement('label'); delayMode.append('アルペジオ遅延 ');
+  const delaySelect = document.createElement('select');
+  delaySelect.append(new Option('前寄せ', 'before'), new Option('分散', 'distributed'));
+  delaySelect.value = playback.arpeggioDelayMode;
+  delaySelect.addEventListener('change', () => {
+    updateUiState((draft) => { draft.ui.playback.arpeggioDelayMode = delaySelect.value as 'before' | 'distributed'; }); renderConditionDescription(); render();
+  }); delayMode.append(delaySelect);
+  const calibration = document.createElement('label'); const calibrationInput = document.createElement('input');
+  calibrationInput.type = 'checkbox'; calibrationInput.checked = playback.useCalibration; calibrationInput.disabled = !playbackCalibration;
+  calibrationInput.addEventListener('change', () => {
+    updateUiState((draft) => { draft.ui.playback.useCalibration = calibrationInput.checked; }); renderConditionDescription(); render();
+  }); calibration.append(calibrationInput, ' 個人速度を使う');
+  fields.append(speed, multiplier, sameFinger, delayMode, calibration);
+  parent.append(fields);
+}
+
+function appendConditionSummary(parent: DocumentFragment | HTMLElement): void {
+  const summary = document.createElement('details'); summary.className = 'condition-summary';
+  const title = document.createElement('summary'); title.textContent = '現在値と既定値の差分を見る'; summary.append(title);
   const layoutNames = Object.fromEntries(
     [...layoutsOf('en'), ...layoutsOf('ja')].map((layout) => [layout.id, layout.name]),
   );
@@ -993,94 +1388,121 @@ function renderConditionDescription(): void {
     defaults: uiStateDefaults.ui.playback,
     current: uiState.ui.playback,
   });
-  const fragment = document.createDocumentFragment();
-
-  const appendConditionList = (
-    headingText: string,
-    noteText: string,
-    conditions: readonly {
-      label: string;
-      value: string;
-      defaultValue: string;
-      differsFromDefault: boolean;
-      effect: string;
-    }[],
-  ): void => {
-    const heading = document.createElement('h3');
-    heading.textContent = headingText;
-    const note = document.createElement('p');
-    note.className = 'note';
-    note.textContent = noteText;
-    const list = document.createElement('dl');
-    list.className = 'condition-list';
+  const addList = (headingText: string, conditions: readonly { label: string; value: string; defaultValue: string; differsFromDefault: boolean; effect: string }[]) => {
+    const heading = document.createElement('h3'); heading.textContent = headingText;
+    const list = document.createElement('dl'); list.className = 'condition-list';
     for (const condition of conditions) {
-      const term = document.createElement('dt');
-      term.textContent = condition.label;
+      const term = document.createElement('dt'); term.textContent = condition.label;
       const detail = document.createElement('dd');
-      const value = document.createElement('strong');
-      value.textContent = `現在: ${condition.value}`;
-      detail.append(value);
+      const value = document.createElement('strong'); value.textContent = `現在: ${condition.value}`;
       const difference = document.createElement('span');
       difference.className = condition.differsFromDefault ? 'condition-changed' : 'condition-default';
-      difference.textContent = condition.differsFromDefault
-        ? `（既定: ${condition.defaultValue}）`
-        : '（既定どおり）';
-      detail.append(' ', difference);
-      const effect = document.createElement('p');
-      effect.textContent = condition.effect;
-      detail.append(effect);
-      list.append(term, detail);
+      difference.textContent = condition.differsFromDefault ? `（既定: ${condition.defaultValue}）` : '（既定どおり）';
+      const effect = document.createElement('p'); effect.textContent = condition.effect;
+      detail.append(value, ' ', difference, effect); list.append(term, detail);
     }
-    fragment.append(heading, note, list);
+    summary.append(heading, list);
   };
-
-  appendConditionList(
-    '移動距離条件',
-    '移動距離を計算する処理に影響します。',
-    description.conditions,
-  );
-  appendConditionList(
-    '打鍵再生条件',
-    '打鍵再生を計算する処理に影響します。',
-    playbackDescription,
-  );
-
-  const overridesHeading = document.createElement('h3');
-  overridesHeading.textContent = '配列ごとの上書き';
-  fragment.append(overridesHeading);
-  if (description.overrides.length === 0) {
-    const empty = document.createElement('p');
-    empty.className = 'note';
-    empty.textContent = '配列ごとの上書きはありません。';
-    fragment.append(empty);
-  } else {
-    const overrides = document.createElement('div');
-    overrides.className = 'condition-overrides';
-    for (const override of description.overrides) {
-      const section = document.createElement('section');
-      const heading = document.createElement('h4');
-      heading.textContent = override.layoutName;
-      section.append(heading);
-      const list = document.createElement('ul');
-      for (const condition of override.conditions) {
-        const item = document.createElement('li');
-        item.textContent = `${condition.label}: ${condition.value}（既定: ${condition.defaultValue}）`;
-        list.append(item);
-      }
-      section.append(list);
-      overrides.append(section);
-    }
-    fragment.append(overrides);
-  }
-  el.conditionDescription.replaceChildren(fragment);
+  addList('移動距離条件', description.conditions);
+  addList('打鍵再生条件', playbackDescription);
+  const overrides = document.createElement('p');
+  overrides.className = 'note';
+  overrides.textContent = description.overrides.length === 0
+    ? '配列ごとの上書きはありません。'
+    : `配列ごとの上書き: ${description.overrides.map((item) => item.layoutName).join('、')}`;
+  summary.append(overrides); parent.append(summary);
 }
 
-/** シミュレーション条件の読み取り専用モーダル。条件は開く直前に再生成する。 */
+function renderConditionDescription(selectedPresetId?: string): void {
+  const root = document.createDocumentFragment();
+  const toolbar = document.createElement('div'); toolbar.className = 'condition-toolbar';
+  const presetLabel = document.createElement('label'); presetLabel.append('プリセット ');
+  const presetSelect = document.createElement('select');
+  presetSelect.append(new Option('選ばない', ''));
+  for (const preset of allConditionPresets(conditionPresets)) presetSelect.append(new Option(preset.name, preset.id));
+  presetSelect.value = selectedPresetId ?? currentConditionPresetId();
+  presetSelect.addEventListener('change', () => {
+    const preset = allConditionPresets(conditionPresets).find((candidate) => candidate.id === presetSelect.value);
+    if (!preset) return;
+    updateUiState((draft) => { draft.conditions.defaults = structuredClone(preset.conditions); });
+    syncGlobalConditionControls(); fillGeometryOptions(); fillDetailGeometryOptions(el.detailLayout.value);
+    renderConditionDescription(preset.id); render();
+  }); presetLabel.append(presetSelect);
+  const savePreset = document.createElement('button'); savePreset.type = 'button'; savePreset.className = 'secondary'; savePreset.textContent = '現在値を保存';
+  savePreset.addEventListener('click', () => {
+    const name = window.prompt('プリセット名');
+    if (!name?.trim()) return;
+    const preset: ConditionPreset = { id: newConditionPresetId(), name: name.trim(), conditions: structuredClone(uiState.conditions.defaults) };
+    conditionPresets = [...conditionPresets, preset]; saveConditionPresets(conditionPresets); renderConditionDescription(preset.id);
+  });
+  const deletePreset = document.createElement('button'); deletePreset.type = 'button'; deletePreset.className = 'ghost'; deletePreset.textContent = '保存したプリセットを削除';
+  deletePreset.addEventListener('click', () => {
+    const id = presetSelect.value;
+    if (!id.startsWith('custom-')) return;
+    conditionPresets = conditionPresets.filter((preset) => preset.id !== id); saveConditionPresets(conditionPresets); renderConditionDescription();
+  });
+  const exportButton = document.createElement('button'); exportButton.type = 'button'; exportButton.className = 'secondary'; exportButton.textContent = '条件と配列を書き出す';
+  exportButton.addEventListener('click', () => {
+    const bundle = conditionBundleFromState(uiState, userLayouts, userGeometryShapes, romajiSettings, conditionPresets);
+    const url = URL.createObjectURL(new Blob([serializeConditionBundle(bundle)], { type: 'application/json' }));
+    const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'keydist-conditions.json'; anchor.click(); URL.revokeObjectURL(url);
+  });
+  const importLabel = document.createElement('label'); importLabel.className = 'secondary file-button'; importLabel.textContent = '条件と配列を読み込む';
+  const importInput = document.createElement('input'); importInput.type = 'file'; importInput.accept = 'application/json,.json'; importLabel.append(importInput);
+  const status = document.createElement('span'); status.className = 'note condition-import-status';
+  importInput.addEventListener('change', async () => {
+    const file = importInput.files?.[0]; if (!file) return;
+    try {
+      const fallback = conditionBundleFromState(uiState, userLayouts, userGeometryShapes, romajiSettings, conditionPresets);
+      const bundle = parseConditionBundle(await file.text(), fallback, uiStateDefaults, uiStateChoices);
+      const builtIds = new Set([...LAYOUTS, ...LAYOUTS_JA].map((layout) => layout.id));
+      const mergedLayouts = new Map(userLayouts.map((layout) => [layout.id, layout]));
+      for (const layout of bundle.layouts) if (!builtIds.has(layout.id)) mergedLayouts.set(layout.id, layout);
+      userLayouts = [...mergedLayouts.values()]; saveUserLayouts(userLayouts);
+      const mergedShapes = new Map(userGeometryShapes.map((shape) => [shape.id, shape]));
+      for (const shape of bundle.geometryShapes) mergedShapes.set(shape.id, shape);
+      userGeometryShapes = [...mergedShapes.values()]; saveUserGeometryShapes(userGeometryShapes);
+      romajiSettings = bundle.romajiSettings; saveRomajiSettings(romajiSettings); ROMAJI_TABLE_CACHE.clear();
+      conditionPresets = bundle.presets; saveConditionPresets(conditionPresets);
+      addLayoutChoices(userLayouts.map((layout) => layout.id));
+      updateUiState((draft) => { draft.conditions = bundle.conditions; });
+      syncGlobalConditionControls(); fillGeometryOptions(); fillDetailOptions();
+      fillPicker(); romajiEditor.fillRomajiSelect(el.newRomaji); renderConditionDescription(); render();
+      status.textContent = '条件と配列を読み込んだ';
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : '条件ファイルを読み込めない';
+    } finally { importInput.value = ''; }
+  });
+  toolbar.append(presetLabel, savePreset, deletePreset, exportButton, importLabel, status);
+  root.append(toolbar);
+  const note = document.createElement('p'); note.className = 'note'; note.textContent = '行は配列、列は条件です。個別設定をオフにすると既定値を使い、選択した項目だけ既定値から差し替えます。プリセットは全体の既定値だけを置き換え、配列ごとの個別設定は保持します。'; root.append(note);
+  const tabs = document.createElement('div'); tabs.className = 'condition-tabs'; tabs.setAttribute('role', 'tablist');
+  for (const [id, labelText] of CONDITION_TABS) {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'ghost'; button.textContent = labelText;
+    button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(conditionTab === id));
+    button.addEventListener('click', () => { conditionTab = id; renderConditionDescription(); }); tabs.append(button);
+  }
+  root.append(tabs);
+  if (conditionTab === 'delay') {
+    const global = document.createElement('section'); global.className = 'condition-global';
+    const heading = document.createElement('h3'); heading.textContent = '全体の再生設定'; global.append(heading);
+    renderGlobalDelayControls(global);
+    const note = document.createElement('p'); note.className = 'note'; note.textContent = 'ディレイと個人速度は人・文章に紐づくため、配列ごとの上書きはできません。'; global.append(note); root.append(global);
+  } else {
+    const tableWrap = document.createElement('div'); tableWrap.className = 'scroll-x condition-table-wrap'; tableWrap.append(renderConditionTable(conditionTab)); root.append(tableWrap);
+  }
+  appendConditionSummary(root);
+  el.conditionDescription.replaceChildren(root);
+}
+
+/** シミュレーション条件の編集モーダル。条件は開く直前に再生成する。 */
 function setupConditionDialog() {
-  el.conditionsOpen.addEventListener('click', () => {
+  const open = () => {
     renderConditionDescription();
     el.conditionsDialog.showModal();
-  });
+  };
+  el.conditionsOpen.addEventListener('click', open);
+  el.conditionsOpenSidebar.addEventListener('click', open);
   el.conditionsClose.addEventListener('click', () => el.conditionsDialog.close());
   el.conditionsDialog.addEventListener('click', (event) => {
     if (event.target === el.conditionsDialog) el.conditionsDialog.close();
@@ -1232,7 +1654,7 @@ resultsView = createResultsView({
   currentMode,
   selected,
   romajiRuleIdForLayout,
-  getGeometrySettings: () => uiState.conditions.geometrySettings,
+  getGeometrySettingsForKind: geometrySettingsForKind,
   playback: playbackView,
 });
 
@@ -1300,6 +1722,22 @@ el.text.addEventListener('input', () => {
 el.text.addEventListener('change', () => syncTextState(false));
 el.detailLayout.addEventListener('change', () => {
   updateUiState((draft) => { draft.ui.layouts.detailByMode[currentModeId()] = el.detailLayout.value; });
+  fillDetailGeometryOptions(el.detailLayout.value);
+  render();
+});
+el.detailGeometry.addEventListener('change', () => {
+  const layoutId = el.detailLayout.value;
+  if (!layoutId) return;
+  const geometry = el.detailGeometry.value as GeometryKind;
+  updateUiState((draft) => {
+    setLayoutGeometryOverride(
+      draft.conditions.perLayout,
+      layoutId,
+      geometry,
+      draft.conditions.defaults.geometry,
+    );
+  });
+  fillDetailGeometryOptions(layoutId);
   render();
 });
 el.compareBaseline.addEventListener('change', () => {

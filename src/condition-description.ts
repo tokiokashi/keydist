@@ -4,7 +4,7 @@ import {
   type UiStateV1,
 } from './ui-state.ts';
 import { isCustomGeometryKind, type PresetGeometryKind } from './geometry.ts';
-import { ARPEGGIO_PRESETS, type ArpeggioConditions } from './playback-arpeggio.ts';
+import { ARPEGGIO_PRESETS, sameArpeggioConditions, type ArpeggioConditions } from './playback-arpeggio.ts';
 
 export type ConditionKey = keyof UiStateConditionsDefaults;
 
@@ -35,7 +35,7 @@ const ARPEGGIO_PRESET_LABEL: Record<string, string> = {
 
 function formatArpeggioConditions(value: ArpeggioConditions): string {
   const presetKey = Object.keys(ARPEGGIO_PRESETS).find(
-    (key) => JSON.stringify(ARPEGGIO_PRESETS[key]) === JSON.stringify(value),
+    (key) => sameArpeggioConditions(ARPEGGIO_PRESETS[key], value),
   );
   const presetLabel = presetKey ? ARPEGGIO_PRESET_LABEL[presetKey] ?? presetKey : 'カスタム';
   const reversal = value.maxRowReversal === null ? '無制限' : `${value.maxRowReversal}`;

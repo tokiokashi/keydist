@@ -33,6 +33,14 @@ export const ARPEGGIO_PRESETS: Readonly<Record<string, ArpeggioConditions>> = {
   },
 };
 
+export function sameArpeggioConditions(left: ArpeggioConditions, right: ArpeggioConditions): boolean {
+  return left.minHorizontalSpread === right.minHorizontalSpread
+    && left.maxRowReversal === right.maxRowReversal
+    && left.maxRowStep === right.maxRowStep
+    && left.includeThumb === right.includeThumb
+    && left.breakOnOppositeHand === right.breakOnOppositeHand;
+}
+
 export interface ArpeggioSpan {
   start: number;
   end: number;

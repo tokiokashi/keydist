@@ -1,6 +1,6 @@
 import type { GeometryKind } from './geometry.ts';
 import type { Options } from './evaluate.ts';
-import type { UiStateConditionsDefaults } from './ui-state.ts';
+import type { UiStateConditionsDefaults, UiStateLayoutConditions } from './ui-state.ts';
 
 export interface ResolvedConditions {
   geometry: GeometryKind;
@@ -21,4 +21,20 @@ export function resolveConditions(
       preferOppositeThumb: values.preferOppositeThumb,
     },
   };
+}
+
+/** 詳細画面の形状変更。既存の配列別条件は geometry 以外も含めて保持する。 */
+export function setLayoutGeometryOverride(
+  perLayout: Record<string, UiStateLayoutConditions>,
+  layoutId: string,
+  geometry: GeometryKind,
+  defaultGeometry: GeometryKind,
+): void {
+  const override = perLayout[layoutId];
+  if (override === undefined) {
+    if (geometry !== defaultGeometry) perLayout[layoutId] = { geometry };
+    return;
+  }
+  if (geometry === defaultGeometry) delete override.geometry;
+  else override.geometry = geometry;
 }

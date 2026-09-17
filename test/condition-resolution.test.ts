@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { resolveConditions } from '../src/condition-resolution.ts';
+import { resolveConditions, setLayoutGeometryOverride } from '../src/condition-resolution.ts';
 import { DEFAULT_CONDITION_DEFAULTS } from '../src/ui-state.ts';
 
 test('配列別条件は既定値へ部分的に重なる', () => {
@@ -22,4 +22,19 @@ test('配列別条件が空なら既定値と同じになる', () => {
     resolveConditions(DEFAULT_CONDITION_DEFAULTS, undefined),
     resolveConditions(DEFAULT_CONDITION_DEFAULTS, {}),
   );
+});
+
+test('詳細画面で形状を既定へ戻しても他の配列別条件を消さない', () => {
+  const perLayout = { qwerty: { romajiRule: 'azik', windowSize: 7 } };
+  setLayoutGeometryOverride(perLayout, 'qwerty', 'row-staggered', 'ortholinear');
+  assert.deepEqual(perLayout.qwerty, { romajiRule: 'azik', windowSize: 7, geometry: 'row-staggered' });
+
+  setLayoutGeometryOverride(perLayout, 'qwerty', 'ortholinear', 'ortholinear');
+  assert.deepEqual(perLayout.qwerty, { romajiRule: 'azik', windowSize: 7 });
+});
+
+test('個別設定がオンの空オブジェクトは形状を既定へ戻しても残る', () => {
+  const perLayout = { qwerty: {} };
+  setLayoutGeometryOverride(perLayout, 'qwerty', 'row-staggered', 'row-staggered');
+  assert.deepEqual(perLayout.qwerty, {});
 });
