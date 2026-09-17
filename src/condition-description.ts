@@ -13,7 +13,18 @@ interface ConditionDescriptor {
 }
 
 /** 条件を追加した時に説明の追従漏れを型とテストで検出するための一覧。 */
+const GEOMETRY_LABEL: Record<UiStateConditionsDefaults['geometry'], string> = {
+  'row-staggered': 'ロウスタッガード',
+  ortholinear: 'オーソリニア',
+  'column-staggered': 'カラムスタッガード',
+};
+
 export const CONDITION_DESCRIPTORS = {
+  geometry: {
+    label: '物理形状',
+    effect: 'ピッチ・段ずれ・列オフセットを決める物理形状です。形状を変えると距離の絶対値が変わります。',
+    format: (value) => GEOMETRY_LABEL[value as UiStateConditionsDefaults['geometry']],
+  },
   windowSize: {
     label: '窓幅 N',
     effect: '同じ指を残すかホームへ戻すかを比べる先読みの打鍵数です。値が大きいほど、離れた連続打鍵でも指を残す候補を比較します。',

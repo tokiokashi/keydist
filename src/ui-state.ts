@@ -1,5 +1,5 @@
 import type { MatrixSort } from './chart.ts';
-import type { GeometryKind } from './geometry.ts';
+import { PHYSICAL_SHAPES, type GeometryKind } from './geometry.ts';
 import type { ModeId } from './layout-selection.ts';
 import {
   DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
@@ -25,6 +25,7 @@ export type LayerColorScale = 'linear' | 'log';
 export type SensitivityScale = 'relative' | 'absolute';
 
 export interface UiStateConditionsDefaults {
+  geometry: GeometryKind;
   windowSize: number;
   sfbHomeCost: boolean;
   preferOppositeThumb: boolean;
@@ -32,6 +33,7 @@ export interface UiStateConditionsDefaults {
 
 /** 数値計算へ影響する条件の既定値。説明・保存・計算で同じ値を参照する。 */
 export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
+  geometry: 'row-staggered',
   windowSize: 3,
   sfbHomeCost: true,
   preferOppositeThumb: false,
@@ -247,6 +249,9 @@ function selectedIds(value: unknown, allowed: readonly string[], fallback: reado
 function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults> {
   const source = record(value);
   const result: Partial<UiStateConditionsDefaults> = {};
+  if (typeof source.geometry === 'string' && source.geometry in PHYSICAL_SHAPES) {
+    result.geometry = source.geometry as GeometryKind;
+  }
   if (typeof source.windowSize === 'number'
     && Number.isInteger(source.windowSize)
     && source.windowSize >= 0
@@ -266,6 +271,7 @@ function sanitizeConditionDefaults(
 ): UiStateConditionsDefaults {
   const values = validConditionValues(value);
   return {
+    geometry: values.geometry ?? fallback.geometry,
     windowSize: values.windowSize ?? fallback.windowSize,
     sfbHomeCost: values.sfbHomeCost ?? fallback.sfbHomeCost,
     preferOppositeThumb: values.preferOppositeThumb ?? fallback.preferOppositeThumb,
@@ -296,6 +302,7 @@ export function sanitizeUiState(
   const playback = record(ui.playback);
   const panels = record(ui.panels);
   const conditions = record(value.conditions);
+  const conditionDefaults = record(conditions.defaults);
   const conditionPerLayout = record(conditions.perLayout);
   const samples = record(input.selectedSampleByMode);
   const customText = typeof input.customText === 'string'
@@ -412,7 +419,11 @@ export function sanitizeUiState(
       },
     },
     conditions: {
-      defaults: sanitizeConditionDefaults(conditions.defaults, defaults.conditions.defaults),
+      defaults: sanitizeConditionDefaults({
+        ...conditionDefaults,
+        // v1では物理形状がui.inputにだけ保存されていたため、未保存なら旧値を引き継ぐ。
+        geometry: conditionDefaults.geometry ?? input.geometry,
+      }, defaults.conditions.defaults),
       perLayout,
     },
   };
