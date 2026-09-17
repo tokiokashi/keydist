@@ -1543,9 +1543,8 @@ function playbackViewUiState(): UiStateV1 {
   if (!layoutId) return uiState;
   const layoutConditions = uiState.conditions.perLayout[layoutId];
   const playback = layoutConditions?.playback;
-  const windowSize = layoutConditions?.windowSize;
   const arpeggio = layoutConditions?.arpeggio;
-  if (windowSize === undefined && playback === undefined && arpeggio === undefined) return uiState;
+  if (playback === undefined && arpeggio === undefined) return uiState;
   return {
     ...uiState,
     ui: {
@@ -1556,7 +1555,6 @@ function playbackViewUiState(): UiStateV1 {
       ...uiState.conditions,
       defaults: {
         ...uiState.conditions.defaults,
-        ...(windowSize === undefined ? {} : { windowSize }),
         ...(arpeggio === undefined ? {} : { arpeggio }),
       },
     },
@@ -1712,7 +1710,15 @@ el.geometry.addEventListener('change', () => {
 });
 el.window.addEventListener('input', (event) => {
   const windowSize = Number((event.currentTarget as HTMLInputElement).value);
-  updateUiState((draft) => { draft.conditions.defaults.windowSize = windowSize; });
+  const layoutId = currentPlaybackLayoutId();
+  updateUiState((draft) => {
+    const conditions = layoutId ? draft.conditions.perLayout[layoutId] : undefined;
+    if (layoutId && hasPlaybackLayoutOverride(conditions)) {
+      draft.conditions.perLayout[layoutId] = { ...conditions, windowSize };
+    } else {
+      draft.conditions.defaults.windowSize = windowSize;
+    }
+  });
   render();
 });
 el.sfbHome.addEventListener('change', () => {
