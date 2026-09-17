@@ -30,6 +30,13 @@ export interface UiStateConditionsDefaults {
   preferOppositeThumb: boolean;
 }
 
+/** 数値計算へ影響する条件の既定値。説明・保存・計算で同じ値を参照する。 */
+export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
+  windowSize: 3,
+  sfbHomeCost: true,
+  preferOppositeThumb: false,
+};
+
 export interface UiStateV1 {
   version: typeof UI_STATE_VERSION;
   ui: {
@@ -177,11 +184,7 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
       },
     },
     conditions: {
-      defaults: {
-        windowSize: 3,
-        sfbHomeCost: true,
-        preferOppositeThumb: false,
-      },
+      defaults: { ...DEFAULT_CONDITION_DEFAULTS },
       perLayout: {},
     },
   };
