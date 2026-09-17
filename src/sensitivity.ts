@@ -19,10 +19,16 @@ export function nSensitivity(
   geometry: Geometry,
   options: Options,
   range: number[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  romajiRuleId: string | null = null,
 ): SensitivityPoint[] {
   return range.map((windowSize) => {
     const trace = evaluate(text, layout, geometry, { ...options, windowSize });
-    const m = computeMetrics(trace, geometry);
+    const m = computeMetrics(trace, geometry, {
+      windowSize,
+      sfbHomeCost: options.sfbHomeCost,
+      preferOppositeThumb: options.preferOppositeThumb ?? false,
+      romajiRuleId,
+    });
     return { windowSize, totalUnits: m.totalUnits, totalMm: m.totalMm };
   });
 }
