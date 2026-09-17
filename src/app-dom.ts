@@ -39,6 +39,7 @@ export const el = {
   sensitivity: $<HTMLDivElement>('sensitivity'),
   sensitivityScale: $<HTMLDivElement>('sensitivity-scale'),
   picker: $<HTMLDivElement>('layout-picker'),
+  conditionsOpenSidebar: $<HTMLButtonElement>('conditions-open-sidebar'),
   romajiSettings: $<HTMLButtonElement>('romaji-settings'),
   newName: $<HTMLInputElement>('new-name'),
   newRows: $<HTMLDivElement>('new-rows'),

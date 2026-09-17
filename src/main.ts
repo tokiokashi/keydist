@@ -44,7 +44,7 @@ import {
   importDvorakJ,
   importVial,
 } from './layout-import.ts';
-import { resolveSelection, type ModeId } from './layout-selection.ts';
+import { layoutVisibleInFilter, resolveSelection, type LayoutTypeFilter, type ModeId } from './layout-selection.ts';
 import {
   createDefaultUiState,
   DEFAULT_CONDITION_DEFAULTS,
@@ -52,6 +52,7 @@ import {
   MAX_SAVED_TEXT_LENGTH,
   saveUiState,
   type UiPlaybackState,
+  type UiStateConditionsDefaults,
   type UiStateStorage,
   type UiStateLayoutConditions,
   type UiStateV1,
@@ -72,7 +73,7 @@ import {
   type GeometrySettings,
 } from './geometry-settings.ts';
 import { fromDisplayUnits, toDisplayUnits, type GeometryUnit } from './geometry-units.ts';
-import { ARPEGGIO_PRESETS, type ArpeggioConditions } from './playback-arpeggio.ts';
+import { ARPEGGIO_PRESETS, sameArpeggioConditions, type ArpeggioConditions } from './playback-arpeggio.ts';
 import {
   load as loadUserGeometryShapes,
   newId as newGeometryId,
@@ -83,8 +84,10 @@ import {
   loadConditionPresets,
   newConditionPresetId,
   saveConditionPresets,
+  sameConditionDefaults,
   type ConditionPreset,
 } from './condition-presets.ts';
+import { setLayoutGeometryOverride } from './condition-resolution.ts';
 import {
   conditionBundleFromState,
   parseConditionBundle,
@@ -187,6 +190,19 @@ const uiStateChoices = {
     ja: Object.keys(SAMPLES.ja),
   },
 };
+
+function addLayoutChoices(layoutIds: readonly string[]): void {
+  for (const mode of ['en', 'ja'] as const) {
+    uiStateChoices.layouts[mode] = [...new Set([...uiStateChoices.layouts[mode], ...layoutIds])];
+  }
+}
+
+function removeLayoutChoice(layoutId: string): void {
+  for (const mode of ['en', 'ja'] as const) {
+    uiStateChoices.layouts[mode] = uiStateChoices.layouts[mode].filter((id) => id !== layoutId);
+  }
+}
+
 let uiState = loadUiState(uiStorage, uiStateDefaults, uiStateChoices).state;
 conditionState = uiState;
 let uiStateSaveTimer: number | undefined;
@@ -278,7 +294,7 @@ function saveSelectedLayouts(): void {
   });
 }
 
-const pickerFilter = { romaji: true, kana: true };
+const pickerFilter: LayoutTypeFilter = { romaji: true, kana: true };
 
 const currentModeId = () => el.mode.value as ModeId;
 const currentMode = () => MODES[currentModeId()];
@@ -376,6 +392,7 @@ function setupAddForm() {
     };
     userLayouts = [...userLayouts, def];
     saveUserLayouts(userLayouts);
+    addLayoutChoices([def.id]);
 
     // 追加したものは自動で表示に入れる
     selected.en.add(def.id);
@@ -416,6 +433,7 @@ function setupAddForm() {
       };
       userLayouts = [...userLayouts, def];
       saveUserLayouts(userLayouts);
+      addLayoutChoices([def.id]);
       selected.en.add(def.id);
       selected.ja.add(def.id);
       saveSelectedLayouts();
@@ -452,6 +470,7 @@ const romajiEditor = createRomajiEditor({
 function removeUserLayout(id: string) {
   userLayouts = userLayouts.filter((l) => l.id !== id);
   saveUserLayouts(userLayouts);
+  removeLayoutChoice(id);
   selected.en.delete(id);
   selected.ja.delete(id);
   updateUiState((draft) => {
@@ -473,32 +492,34 @@ function removeUserLayout(id: string) {
 function fillPicker() {
   const set = selected[currentModeId()];
   el.picker.replaceChildren();
-  const filters = document.createElement('div');
-  filters.className = 'picker-filters';
-  filters.setAttribute('role', 'group');
-  filters.setAttribute('aria-label', '配列の種類で絞り込む');
-  const filterButton = (key: 'romaji' | 'kana', labelText: string): HTMLButtonElement => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'ghost';
-    button.textContent = labelText;
-    button.setAttribute('aria-pressed', String(pickerFilter[key]));
-    button.addEventListener('click', () => {
-      pickerFilter[key] = !pickerFilter[key];
-      fillPicker();
-    });
-    return button;
-  };
-  filters.append(
-    document.createTextNode('表示: '),
-    filterButton('romaji', 'ローマ字配列'),
-    filterButton('kana', 'かな配列'),
-  );
-  el.picker.append(filters);
+  if (currentModeId() === 'ja') {
+    const filters = document.createElement('div');
+    filters.className = 'picker-filters';
+    filters.setAttribute('role', 'group');
+    filters.setAttribute('aria-label', '配列の種類で絞り込む');
+    const filterButton = (key: 'romaji' | 'kana', labelText: string): HTMLButtonElement => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'ghost';
+      button.textContent = labelText;
+      button.setAttribute('aria-pressed', String(pickerFilter[key]));
+      button.addEventListener('click', () => {
+        pickerFilter[key] = !pickerFilter[key];
+        fillPicker();
+      });
+      return button;
+    };
+    filters.append(
+      document.createTextNode('表示: '),
+      filterButton('romaji', 'ローマ字配列'),
+      filterButton('kana', 'かな・直接入力'),
+    );
+    el.picker.append(filters);
+  }
   let visible = 0;
   currentMode().layouts.forEach((layout, i) => {
-    const isKana = layout.romajiTable !== undefined;
-    if ((isKana && !pickerFilter.kana) || (!isKana && !pickerFilter.romaji)) return;
+    const isRomaji = layout.romajiTable !== undefined;
+    if (currentModeId() === 'ja' && !layoutVisibleInFilter(isRomaji, pickerFilter)) return;
     visible++;
     const on = set.has(layout.id);
     const label = document.createElement('label');
@@ -1076,25 +1097,43 @@ let conditionTab: ConditionTab = 'model';
 
 function conditionPresetId(value: ArpeggioConditions): string {
   const found = Object.entries(ARPEGGIO_PRESETS).find(([, preset]) =>
-    JSON.stringify(preset) === JSON.stringify(value));
+    sameArpeggioConditions(preset, value));
   return found?.[0] ?? 'custom';
+}
+
+function currentConditionPresetId(): string {
+  return allConditionPresets(conditionPresets).find((preset) =>
+    sameConditionDefaults(preset.conditions, uiState.conditions.defaults))?.id ?? '';
 }
 
 function conditionOverrideEnabled(layoutId: string): boolean {
   return Object.prototype.hasOwnProperty.call(uiState.conditions.perLayout, layoutId);
 }
 
+function commitCondition<K extends keyof UiStateConditionsDefaults>(
+  layoutId: string | undefined,
+  key: K,
+  value: UiStateConditionsDefaults[K],
+): void;
+function commitCondition(
+  layoutId: string,
+  key: 'romajiRule',
+  value: string,
+): void;
 function commitCondition(
   layoutId: string | undefined,
-  key: string,
-  value: unknown,
+  key: keyof UiStateLayoutConditions,
+  value: UiStateLayoutConditions[keyof UiStateLayoutConditions],
 ): void {
   updateUiState((draft) => {
-    const target = layoutId === undefined
-      ? draft.conditions.defaults as unknown as Record<string, unknown>
-      : (draft.conditions.perLayout[layoutId] ?? {}) as Record<string, unknown>;
-    target[key] = structuredClone(value);
-    if (layoutId !== undefined) draft.conditions.perLayout[layoutId] = target as UiStateLayoutConditions;
+    if (layoutId === undefined) {
+      if (key === 'romajiRule') return;
+      Object.assign(draft.conditions.defaults, { [key]: structuredClone(value) });
+      return;
+    }
+    const target = draft.conditions.perLayout[layoutId] ?? {};
+    Object.assign(target, { [key]: structuredClone(value) });
+    draft.conditions.perLayout[layoutId] = target;
   });
   syncGlobalConditionControls();
   if (key === 'geometry') {
@@ -1208,7 +1247,7 @@ function conditionRow(
     geometryOptions(select);
     select.value = value('geometry');
     select.disabled = !enabled;
-    select.addEventListener('change', () => commitCondition(layout?.id, 'geometry', select.value));
+    select.addEventListener('change', () => commitCondition(layout?.id, 'geometry', select.value as GeometryKind));
     cell.append(select);
     return row;
   }
@@ -1374,26 +1413,27 @@ function appendConditionSummary(parent: DocumentFragment | HTMLElement): void {
   summary.append(overrides); parent.append(summary);
 }
 
-function renderConditionDescription(): void {
+function renderConditionDescription(selectedPresetId?: string): void {
   const root = document.createDocumentFragment();
   const toolbar = document.createElement('div'); toolbar.className = 'condition-toolbar';
   const presetLabel = document.createElement('label'); presetLabel.append('プリセット ');
   const presetSelect = document.createElement('select');
   presetSelect.append(new Option('選ばない', ''));
   for (const preset of allConditionPresets(conditionPresets)) presetSelect.append(new Option(preset.name, preset.id));
+  presetSelect.value = selectedPresetId ?? currentConditionPresetId();
   presetSelect.addEventListener('change', () => {
     const preset = allConditionPresets(conditionPresets).find((candidate) => candidate.id === presetSelect.value);
     if (!preset) return;
     updateUiState((draft) => { draft.conditions.defaults = structuredClone(preset.conditions); });
     syncGlobalConditionControls(); fillGeometryOptions(); fillDetailGeometryOptions(el.detailLayout.value);
-    renderConditionDescription(); render();
+    renderConditionDescription(preset.id); render();
   }); presetLabel.append(presetSelect);
   const savePreset = document.createElement('button'); savePreset.type = 'button'; savePreset.className = 'secondary'; savePreset.textContent = '現在値を保存';
   savePreset.addEventListener('click', () => {
     const name = window.prompt('プリセット名');
     if (!name?.trim()) return;
     const preset: ConditionPreset = { id: newConditionPresetId(), name: name.trim(), conditions: structuredClone(uiState.conditions.defaults) };
-    conditionPresets = [...conditionPresets, preset]; saveConditionPresets(conditionPresets); renderConditionDescription();
+    conditionPresets = [...conditionPresets, preset]; saveConditionPresets(conditionPresets); renderConditionDescription(preset.id);
   });
   const deletePreset = document.createElement('button'); deletePreset.type = 'button'; deletePreset.className = 'ghost'; deletePreset.textContent = '保存したプリセットを削除';
   deletePreset.addEventListener('click', () => {
@@ -1424,11 +1464,7 @@ function renderConditionDescription(): void {
       userGeometryShapes = [...mergedShapes.values()]; saveUserGeometryShapes(userGeometryShapes);
       romajiSettings = bundle.romajiSettings; saveRomajiSettings(romajiSettings); ROMAJI_TABLE_CACHE.clear();
       conditionPresets = bundle.presets; saveConditionPresets(conditionPresets);
-      const importedIds = userLayouts.map((layout) => layout.id);
-      for (const mode of ['en', 'ja'] as const) {
-        const list = uiStateChoices.layouts[mode] as string[];
-        for (const id of importedIds) if (!list.includes(id)) list.push(id);
-      }
+      addLayoutChoices(userLayouts.map((layout) => layout.id));
       updateUiState((draft) => { draft.conditions = bundle.conditions; });
       syncGlobalConditionControls(); fillGeometryOptions(); fillDetailOptions();
       fillPicker(); romajiEditor.fillRomajiSelect(el.newRomaji); renderConditionDescription(); render();
@@ -1439,7 +1475,7 @@ function renderConditionDescription(): void {
   });
   toolbar.append(presetLabel, savePreset, deletePreset, exportButton, importLabel, status);
   root.append(toolbar);
-  const note = document.createElement('p'); note.className = 'note'; note.textContent = '行は配列、列は条件です。個別設定をオフにすると既定値を使い、選択した項目だけ既定値から差し替えます。'; root.append(note);
+  const note = document.createElement('p'); note.className = 'note'; note.textContent = '行は配列、列は条件です。個別設定をオフにすると既定値を使い、選択した項目だけ既定値から差し替えます。プリセットは全体の既定値だけを置き換え、配列ごとの個別設定は保持します。'; root.append(note);
   const tabs = document.createElement('div'); tabs.className = 'condition-tabs'; tabs.setAttribute('role', 'tablist');
   for (const [id, labelText] of CONDITION_TABS) {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'ghost'; button.textContent = labelText;
@@ -1461,10 +1497,12 @@ function renderConditionDescription(): void {
 
 /** シミュレーション条件の編集モーダル。条件は開く直前に再生成する。 */
 function setupConditionDialog() {
-  el.conditionsOpen.addEventListener('click', () => {
+  const open = () => {
     renderConditionDescription();
     el.conditionsDialog.showModal();
-  });
+  };
+  el.conditionsOpen.addEventListener('click', open);
+  el.conditionsOpenSidebar.addEventListener('click', open);
   el.conditionsClose.addEventListener('click', () => el.conditionsDialog.close());
   el.conditionsDialog.addEventListener('click', (event) => {
     if (event.target === el.conditionsDialog) el.conditionsDialog.close();
@@ -1692,11 +1730,12 @@ el.detailGeometry.addEventListener('change', () => {
   if (!layoutId) return;
   const geometry = el.detailGeometry.value as GeometryKind;
   updateUiState((draft) => {
-    const override = draft.conditions.perLayout[layoutId] ?? {};
-    if (geometry === draft.conditions.defaults.geometry) delete override.geometry;
-    else override.geometry = geometry;
-    if (Object.keys(override).length === 0) delete draft.conditions.perLayout[layoutId];
-    else draft.conditions.perLayout[layoutId] = override;
+    setLayoutGeometryOverride(
+      draft.conditions.perLayout,
+      layoutId,
+      geometry,
+      draft.conditions.defaults.geometry,
+    );
   });
   fillDetailGeometryOptions(layoutId);
   render();

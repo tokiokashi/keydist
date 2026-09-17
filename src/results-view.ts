@@ -214,9 +214,7 @@ function metricConditionText(metrics: Metrics, layout: Layout): string {
   const hasLayoutHomeKeys = layout.homeKeys !== undefined && Object.keys(layout.homeKeys).length > 0;
   const defaults = ctx.getUiState().conditions.defaults;
   const override = ctx.getUiState().conditions.perLayout[layout.id];
-  const defaultGeometryId = defaults.geometry.startsWith('custom:')
-    ? defaults.geometry.slice('custom:'.length)
-    : defaults.geometry;
+  const defaultGeometryId = ctx.getGeometrySettingsForKind(defaults.geometry).shape.id;
   const differences = [
     metrics.geometryId !== defaultGeometryId ? `形状: ${metrics.geometryName}` : '',
     metrics.fingerAssignmentId !== 'default' ? `運指: ${metrics.fingerAssignmentName}` : '',
@@ -558,7 +556,7 @@ function sensitivityLabel(
   const defaults = ctx.getUiState().conditions.defaults;
   const override = ctx.getUiState().conditions.perLayout[layout.id];
   const differences = [
-    geometry.id !== defaults.geometry.replace(/^custom:/, '') ? `形状=${geometry.name}` : '',
+    geometry.id !== ctx.getGeometrySettingsForKind(defaults.geometry).shape.id ? `形状=${geometry.name}` : '',
     options.windowSize !== defaults.windowSize ? `N=${options.windowSize}` : '',
     options.sfbHomeCost !== defaults.sfbHomeCost ? 'SFBホーム設定変更' : '',
     options.preferOppositeThumb !== defaults.preferOppositeThumb ? '逆側親指設定変更' : '',

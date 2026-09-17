@@ -1,4 +1,4 @@
-import { ARPEGGIO_PRESETS } from './playback-arpeggio.ts';
+import { ARPEGGIO_PRESETS, sameArpeggioConditions } from './playback-arpeggio.ts';
 import {
   DEFAULT_CONDITION_DEFAULTS,
   sanitizeConditionDefaults,
@@ -91,4 +91,15 @@ export function allConditionPresets(userPresets: readonly ConditionPreset[]): Co
     ...preset,
     conditions: structuredClone(preset.conditions),
   }));
+}
+
+export function sameConditionDefaults(
+  left: UiStateConditionsDefaults,
+  right: UiStateConditionsDefaults,
+): boolean {
+  return left.geometry === right.geometry
+    && left.windowSize === right.windowSize
+    && left.sfbHomeCost === right.sfbHomeCost
+    && left.preferOppositeThumb === right.preferOppositeThumb
+    && sameArpeggioConditions(left.arpeggio, right.arpeggio);
 }
