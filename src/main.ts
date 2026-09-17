@@ -2346,7 +2346,7 @@ function renderSensitivity(
     .map((layout, slot) => ({ layout, slot }))
     .filter((s) => set.has(s.layout.id))
     .map(({ layout, slot }) => {
-    const points = nSensitivity(text, layout, geometry, options, range);
+    const points = nSensitivity(text, layout, geometry, options, range, romajiRuleIdForLayout(layout));
     const base = points[0].totalUnits || 1;
     return {
       name: layout.name,
