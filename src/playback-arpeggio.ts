@@ -194,6 +194,10 @@ export function playbackArpeggioOrders(
   if (end === 0) return orders;
   for (const span of playbackArpeggioSpans(strokes, conditions)) {
     if (end - 1 < span.start || end - 1 >= span.end) continue;
+    // 1つのキーを区間の中で何度も踏むことがある。単純に上書きすると後の番号だけが
+    // 残り、手前の番号が見えなくなる。カーソルが今いる位置から見て次に踏む番号を
+    // 出す（通り過ぎた番号は出さない）。playbackChainOrdersと同じ考え方。
+    const visits = new Map<string, number[]>();
     for (let index = span.start; index < span.end; index++) {
       const order = index - span.start + 1;
       for (const press of strokes[index].presses) {
@@ -202,9 +206,17 @@ export function playbackArpeggioOrders(
         const triggers = new Set(strokes[index].triggerKeys.map(resolveKeyId));
         for (const key of press.keys) {
           const id = resolveKeyId(key.id);
-          if (!triggers.has(id)) orders.set(id, order);
+          if (triggers.has(id)) continue;
+          const seen = visits.get(id);
+          if (!seen) visits.set(id, [order]);
+          else if (seen[seen.length - 1] !== order) seen.push(order);
         }
       }
+    }
+    const position = end - span.start;
+    for (const [id, list] of visits) {
+      // 全部通り過ぎていれば最後の番号を残す。踏んだ実績まで消す必要はない
+      orders.set(id, list.find((order) => order >= position) ?? list[list.length - 1]);
     }
   }
   return orders;
