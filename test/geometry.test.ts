@@ -97,7 +97,7 @@ test('ホームキーの割り当てを変えるとH_fの座標も連動する�
   near(geometry.homes.RI.y, k.y, 'RI home y');
 });
 
-test('割り当てを変えると同指連続の数が変わりうる（配列間比較は同じ割り当ての中でのみ成立する）', () => {
+test('割り当てを変えると同指連続の数が変わりうる（測定条件は数値に付随する。仕様 §12.3）', () => {
   // 'aq' は既定ではLP→LP（同指連続）。no-pinkyではLR→LRで依然として同指連続だが、
   // 'as' は既定ではLP→LR（異指）、no-pinkyではLR→LR（同指連続）に変わる
   const defaultGeometry = buildGeometry('row-staggered');
