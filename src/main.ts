@@ -938,6 +938,7 @@ function renderConditionDescription(): void {
 
   const appendConditionList = (
     headingText: string,
+    noteText: string,
     conditions: readonly {
       label: string;
       value: string;
@@ -948,6 +949,9 @@ function renderConditionDescription(): void {
   ): void => {
     const heading = document.createElement('h3');
     heading.textContent = headingText;
+    const note = document.createElement('p');
+    note.className = 'note';
+    note.textContent = noteText;
     const list = document.createElement('dl');
     list.className = 'condition-list';
     for (const condition of conditions) {
@@ -968,11 +972,19 @@ function renderConditionDescription(): void {
       detail.append(effect);
       list.append(term, detail);
     }
-    fragment.append(heading, list);
+    fragment.append(heading, note, list);
   };
 
-  appendConditionList('移動距離条件', description.conditions);
-  appendConditionList('打鍵再生条件', playbackDescription);
+  appendConditionList(
+    '移動距離条件',
+    '配列を比較する数値（総移動距離など）に影響します。',
+    description.conditions,
+  );
+  appendConditionList(
+    '打鍵再生条件',
+    '再生の見え方にのみ影響し、配列を比較する数値には使いません。',
+    playbackDescription,
+  );
 
   const overridesHeading = document.createElement('h3');
   overridesHeading.textContent = '配列ごとの上書き';
