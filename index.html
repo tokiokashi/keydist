@@ -38,15 +38,6 @@
           </label>
 
           <label class="ctl">
-            <span>物理配列</span>
-            <select id="geometry">
-              <option value="row-staggered">ロウスタッガード</option>
-              <option value="ortholinear">オーソリニア</option>
-              <option value="column-staggered">カラムスタッガード</option>
-            </select>
-          </label>
-
-          <label class="ctl">
             <span>窓幅N <small>残す／戻すを比べる先読み打鍵数</small></span>
             <span class="range-row">
               <input type="range" id="window" min="0" max="12" step="1" value="3" />
@@ -71,6 +62,29 @@
           </div>
         </div>
 
+        <details class="panel" id="geometry-panel">
+          <summary>打ち手と機材</summary>
+          <p class="note">
+            形状と運指は設定モーダルで編集できます。ホームキーは配列ごとに指定し、未指定なら物理形状の既定値を使います。
+            形状と運指を変えると距離の絶対値と同指連続数が変わるため、結果には設定名を併記します。
+          </p>
+          <label class="ctl">
+            <span>物理形状</span>
+            <select id="geometry">
+            </select>
+          </label>
+          <p class="note" id="geometry-current"></p>
+          <button type="button" class="secondary" id="geometry-edit">形状と運指を編集</button>
+          <div class="geometry-file-actions">
+            <button type="button" class="secondary" id="geometry-export">設定を書き出す</button>
+            <label class="secondary file-button">
+              設定を読み込む
+              <input type="file" id="geometry-import" accept="application/json,.json" />
+            </label>
+          </div>
+          <p class="note" id="geometry-status" hidden></p>
+        </details>
+
         <details class="panel" id="add-panel">
           <summary>配列を追加</summary>
 
@@ -80,6 +94,8 @@
           </label>
 
           <div class="rows" id="new-rows"></div>
+
+          <div id="new-home-keys"></div>
 
           <label class="ctl">
             <span>ローマ字の綴り</span>
@@ -128,6 +144,7 @@
             <span>配列</span>
             <select id="detail-layout"></select>
           </label>
+          <p class="note metric-conditions" id="detail-conditions"></p>
           <div id="playback"></div>
           <div class="fig-fixed" id="heatmap"></div>
           <div class="split">
@@ -220,11 +237,11 @@
           <ul>
             <li>出てきた数字を絶対値として評価することは難しいと考えています。現在自分が使っている配列の数字と相対比較して他の配列の特性をイメージするといった用途に向いていると考えています。</li>
             <li>タイピングという2次元的な動きを距離という1次元に圧縮しています。</li>
-            <li>全ての計算は指がホームポジションにあるのが良いということ前提としているため、それに同意できない場合はホームポジション設定機能の追加をお待ちください。</li>
+            <li>全ての計算は指がホームポジションにあるのが良いということを前提としています。配列追加時にホームキーを指定でき、未指定なら物理形状の既定値を使います。</li>
             <li>指の長さや手の動きなどの個人差のある部分は意図的にモデルから排除しています。あくまで配列の押すキーの解析情報と捉えてください。</li>
             <li>同じ理由で「指の疲れ」等を導出することはありません。指の特性や係数など全ての項目をフィッティングすることは困難と考えるためです。疲労を考えたい人は移動距離や指間距離などの数値の傾向から相対的に判断してください。</li>
-            <li>キーと指の対応は固定です。運指最適化は現状搭載していません。QWERTYの数字が悪く出すぎているので今後の追加候補としています。</li>
-            <li>連続打鍵以外のホームへ戻る移動は距離に含んでいません。指が自然にホームに戻っていることを期待しているからです。中段以外に指を置いた方が楽な配列（QWERTYなど）は把握しているのでホームポジション変更機能も機能追加予定としています。</li>
+            <li>任意の指を自動探索する運指最適化はありません。キーと指の対応は設定モーダルから明示的に指定します。</li>
+            <li>連続打鍵以外のホームへ戻る移動は距離に含んでいません。指が自然にホームに戻っていることを期待しているからです。</li>
             <li>物理配列と論理配列は結びついているので、物理配列を入れ替えてみて同数字が動くのかを考えてみてください。</li>
           </ul>
         </details>
@@ -259,6 +276,37 @@
             target="_blank" rel="noopener">移動距離モデルの仕様</a>
         </p>
       </div>
+    </dialog>
+
+    <dialog id="geometry-dialog">
+      <form method="dialog" id="geometry-form">
+        <div class="dialog-head">
+          <h2>形状と運指の設定</h2>
+          <button type="submit" value="cancel" class="ghost close">閉じる</button>
+        </div>
+        <p class="note">
+          物理形状は内部ではキーピッチ単位 [u] で保存します。段ずれ・列オフセット・親指位置・分割間隔は、現在のピッチを使ってmm表示にも切り替えられます。
+        </p>
+        <label class="ctl">
+          <span>形状名</span>
+          <input type="text" id="geometry-modal-name" />
+        </label>
+        <label class="ctl">
+          <span>数値の表示単位</span>
+          <select id="geometry-modal-unit">
+            <option value="mm">mm（実測値）</option>
+            <option value="u">u（キーピッチ単位）</option>
+          </select>
+        </label>
+        <div id="geometry-modal-editor"></div>
+        <p class="error" id="geometry-modal-error" hidden></p>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" id="geometry-modal-delete">このカスタム形状を削除</button>
+          <span class="spacer"></span>
+          <button type="button" class="secondary" id="geometry-modal-save-as">名前を付けて保存</button>
+          <button type="button" id="geometry-modal-save">上書き保存</button>
+        </div>
+      </form>
     </dialog>
 
     <dialog id="romaji-dialog">

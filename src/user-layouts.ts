@@ -1,4 +1,4 @@
-import { QWERTY_LEGEND, resolveKeyId } from './geometry.ts';
+import { QWERTY_LEGEND, resolveKeyId, type NonThumb } from './geometry.ts';
 import { fromRows, withRomaji, type Layout } from './layouts/index.ts';
 import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from './romaji/rules.ts';
 import type { Sequence } from './layouts/types.ts';
@@ -21,6 +21,8 @@ export interface UserLayout {
   legends?: [string, string][];
   /** かなをローマ字へ変換せず、sequencesを直接使う */
   direct?: boolean;
+  /** 配列側が前提とする非親指のホームキー。省略時は物理形状側の既定値を使う */
+  homeKeys?: Partial<Record<NonThumb, string>>;
 }
 
 /** 各段に置けるキーの数 */
@@ -59,6 +61,12 @@ const isLegendEntry = (entry: unknown): entry is [string, string] =>
   typeof entry[0] === 'string' &&
   typeof entry[1] === 'string';
 
+const isHomeKeys = (value: unknown): value is Partial<Record<NonThumb, string>> =>
+  value === undefined || (
+    value !== null && typeof value === 'object' && !Array.isArray(value)
+    && Object.values(value).every((key) => typeof key === 'string')
+  );
+
 const isValid = (l: unknown): l is UserLayout => {
   if (!l || typeof l !== 'object') return false;
   const value = l as Partial<UserLayout>;
@@ -71,7 +79,8 @@ const isValid = (l: unknown): l is UserLayout => {
       (Array.isArray(value.sequences) && value.sequences.every(isSequenceEntry))) &&
     (value.legends === undefined ||
       (Array.isArray(value.legends) && value.legends.every(isLegendEntry))) &&
-    (value.direct === undefined || typeof value.direct === 'boolean');
+    (value.direct === undefined || typeof value.direct === 'boolean') &&
+    isHomeKeys(value.homeKeys);
 };
 
 /**
@@ -95,13 +104,13 @@ export function toLayout(def: UserLayout): Layout {
   const imported = def.sequences !== undefined || def.legends !== undefined;
   const rows = def.rows.map((r, i) => (r.trim() === '' && !imported ? QWERTY_LEGEND[i] : r));
   const layout = fromRows(def.id, def.name, rows);
-  if (!def.sequences && !def.legends) return layout;
+  if (!def.sequences && !def.legends) return { ...layout, homeKeys: def.homeKeys };
   const map = new Map(layout.map);
   for (const [output, sequence] of def.sequences ?? []) map.set(output, sequence);
   const legends = new Map(layout.legends);
   for (const [key, label] of def.legends ?? []) legends.set(resolveKeyId(key), label);
   const maxCharLength = Math.max(1, ...[...map.keys()].map((key) => key.length));
-  return { ...layout, map, legends, maxCharLength };
+  return { ...layout, map, legends, maxCharLength, homeKeys: def.homeKeys };
 }
 
 export function toJapaneseLayout(def: UserLayout, customRules: UserRomajiRule[] = []): Layout {
