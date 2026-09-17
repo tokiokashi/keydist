@@ -83,6 +83,7 @@ export const el = {
   romajiNew: $<HTMLButtonElement>('romaji-new'),
   calibrationDialog: $<HTMLDialogElement>('playback-calibration-dialog'),
   calibrationStart: $<HTMLButtonElement>('playback-calibration-start'),
+  calibrationArpeggioStart: $<HTMLButtonElement>('playback-calibration-arpeggio-start'),
   calibrationSave: $<HTMLButtonElement>('playback-calibration-save'),
   calibrationInstruction: $<HTMLParagraphElement>('playback-calibration-instruction'),
   calibrationProgress: $<HTMLOutputElement>('playback-calibration-progress'),
