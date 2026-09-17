@@ -26,7 +26,7 @@
 |---|---|---|---|
 | 基準速度 `stepsPerSecond` | ステップ/秒 | 0.1 〜 20 | 1.25 |
 | 再生倍率 `speedMultiplier` | 倍 | 0.1 〜 10 | 1 |
-| 同指ディレイ `sameFingerDelay` | — | 真偽 | 偽 |
+| 指の移動速度を考慮 `sameFingerDelay` | — | 真偽 | 真 |
 | 個人速度 `calibration` | — | 有無 | 無し |
 | アルペジオ時間 `arpeggioEnabled` | — | 真偽 | 真 |
 | アルペジオ遅延 `arpeggioDelayMode` | — | `before` / `distributed` | `before` |

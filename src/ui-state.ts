@@ -176,7 +176,7 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
         showTrail: false,
         trailTau: 5,
         showOrderLabels: false,
-        sameFingerDelay: false,
+        sameFingerDelay: true,
         useCalibration: options.usePlaybackCalibration,
         showChain: false,
         chainIncludeSameFinger: false,
