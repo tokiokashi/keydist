@@ -144,6 +144,10 @@
             <span>配列</span>
             <select id="detail-layout"></select>
           </label>
+          <label class="ctl">
+            <span>この配列の物理形状</span>
+            <select id="detail-geometry"></select>
+          </label>
           <p class="note metric-conditions" id="detail-conditions"></p>
           <div id="playback"></div>
           <div class="fig-fixed" id="heatmap"></div>
@@ -219,7 +223,7 @@
           <p class="note">
             Nを増やすと距離は減るか変わらない。見るべきは傾きの差。<br />
             傾きが大きいほど、ホームから離れた連続打鍵が多い。<br />
-            N感度は配列ごとの上書きを使わず、全体の既定条件でNだけを変化させる。
+            配列ごとの現在条件を使い、Nだけを0〜10で変化させる。
           </p>
         </details>
       </div>
@@ -264,7 +268,7 @@
           <button type="button" class="ghost close" id="conditions-close">閉じる</button>
         </div>
         <p class="note">
-          現在の条件と、アプリの既定値との差分を表示しています。条件を変更すると、次に開いた時の内容へ反映されます。
+          既定値の行を変えると全配列へ反映します。配列の個別設定をオンにすると、その配列だけ好きな条件を持てます。
         </p>
         <div id="condition-description"></div>
         <hr />

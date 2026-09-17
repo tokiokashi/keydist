@@ -174,7 +174,7 @@ export function formatOverrides(overrides: Record<string, string>): string {
   return Object.entries(overrides).map(([kana, roman]) => `${kana} = ${roman}`).join('\n');
 }
 
-function isUserRomajiRule(value: unknown): value is UserRomajiRule {
+export function isUserRomajiRule(value: unknown): value is UserRomajiRule {
   if (!isRecord(value)) return false;
   return typeof value.id === 'string' && value.id.length > 0 &&
     typeof value.name === 'string' && value.name.length > 0 &&
@@ -182,6 +182,17 @@ function isUserRomajiRule(value: unknown): value is UserRomajiRule {
     Object.entries(value.overrides).every(([kana, roman]) =>
       kana.length > 0 && typeof roman === 'string' && roman.length > 0,
     ) && typeof value.generateSokuon === 'boolean';
+}
+
+export function sanitizeRomajiSettings(value: unknown): RomajiSettings {
+  if (!isRecord(value)) return { rules: [], assignments: {} };
+  const rules = Array.isArray(value.rules) ? value.rules.filter(isUserRomajiRule) : [];
+  const assignments = isRecord(value.assignments)
+    ? Object.fromEntries(Object.entries(value.assignments).filter(([, id]) =>
+      typeof id === 'string' && id.length > 0,
+    ))
+    : {};
+  return { rules, assignments };
 }
 
 function isRecord(value: unknown): value is Record<string, any> {

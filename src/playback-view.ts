@@ -175,6 +175,13 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
   </div>`;
 }
 
+function playbackArpeggioConditions(): ArpeggioConditions {
+  const override = playbackLayout
+    ? ctx.getUiState().conditions.perLayout[playbackLayout.id]?.arpeggio
+    : undefined;
+  return override ?? ctx.getUiState().conditions.defaults.arpeggio;
+}
+
 function cachedPlaybackArpeggioTimings(): ReadonlyMap<number, PlaybackArpeggioTiming> | undefined {
   if (!playbackTrace || !playbackState.arpeggio) return undefined;
   const arpeggio = playbackState.arpeggio;
@@ -267,7 +274,7 @@ function updatePlaybackView() {
     ? playbackArpeggioOrders(
       playbackTrace.strokes,
       cursor,
-      ctx.getUiState().conditions.defaults.arpeggio,
+      playbackArpeggioConditions(),
     )
     : new Map<string, number>();
   const sameFingerMotions = playbackState.sameFingerDelay
@@ -293,7 +300,7 @@ function updatePlaybackView() {
     ? playbackArpeggioKeyMotions(
       playbackTrace.strokes,
       cursor,
-      ctx.getUiState().conditions.defaults.arpeggio,
+      playbackArpeggioConditions(),
     )
     : []
   ).flatMap((motion) => {
@@ -734,7 +741,7 @@ function renderPlayback(
     ctx.getUiState().ui.playback.sameFingerDelay,
     ctx.getUiState().ui.playback.useCalibration ? ctx.getCalibration() : undefined,
     ctx.getUiState().ui.playback.speedMultiplier,
-    ctx.getUiState().ui.playback.arpeggioEnabled ? ctx.getUiState().conditions.defaults.arpeggio : undefined,
+    ctx.getUiState().ui.playback.arpeggioEnabled ? playbackArpeggioConditions() : undefined,
     ctx.getUiState().ui.playback.arpeggioDelayMode,
   );
   playbackMotionCursor = -1;
@@ -802,7 +809,7 @@ function stopPlayback() {
     playbackState.sameFingerDelay,
     ctx.getUiState().ui.playback.useCalibration ? ctx.getCalibration() : undefined,
     playbackState.speedMultiplier,
-    ctx.getUiState().ui.playback.arpeggioEnabled ? ctx.getUiState().conditions.defaults.arpeggio : undefined,
+    ctx.getUiState().ui.playback.arpeggioEnabled ? playbackArpeggioConditions() : undefined,
     ctx.getUiState().ui.playback.arpeggioDelayMode,
   );
   playbackMotionCursor = -1;

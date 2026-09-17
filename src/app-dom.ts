@@ -50,6 +50,7 @@ export const el = {
   importError: $<HTMLParagraphElement>('import-error'),
   importWarning: $<HTMLParagraphElement>('import-warning'),
   detailLayout: $<HTMLSelectElement>('detail-layout'),
+  detailGeometry: $<HTMLSelectElement>('detail-geometry'),
   detailConditions: $<HTMLParagraphElement>('detail-conditions'),
   playback: $<HTMLDivElement>('playback'),
   playbackSettingsPanel: $<HTMLDivElement>('playback-settings-panel'),

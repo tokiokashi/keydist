@@ -64,9 +64,13 @@ export interface UiPlaybackState {
 }
 
 /** 配列ごとに既定値から上書きする差分。空のplaybackは個別設定の有効化を表す。 */
-export interface UiStateConditionOverride extends Partial<UiStateConditionsDefaults> {
+export interface UiStateLayoutConditions extends Partial<UiStateConditionsDefaults> {
+  romajiRule?: string;
   playback?: Partial<UiPlaybackState>;
 }
+
+/** main 側の呼び出しとの互換名。保存形式は UiStateLayoutConditions に統一する。 */
+export type UiStateConditionOverride = UiStateLayoutConditions;
 
 /** 数値計算へ影響する条件の既定値。説明・保存・計算で同じ値を参照する。 */
 export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
@@ -121,7 +125,7 @@ export interface UiStateV1 {
   conditions: {
     defaults: UiStateConditionsDefaults;
     geometrySettings: GeometrySettings;
-    perLayout: Record<string, UiStateConditionOverride>;
+    perLayout: Record<string, UiStateLayoutConditions>;
   };
 }
 
@@ -321,7 +325,16 @@ function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults
   return result;
 }
 
-function sanitizeConditionDefaults(
+function validLayoutConditionValues(value: unknown): UiStateLayoutConditions {
+  const result: UiStateLayoutConditions = validConditionValues(value);
+  const source = record(value);
+  if (typeof source.romajiRule === 'string' && /^[a-z0-9][a-z0-9-]*$/i.test(source.romajiRule)) {
+    result.romajiRule = source.romajiRule;
+  }
+  return result;
+}
+
+export function sanitizeConditionDefaults(
   value: unknown,
   fallback: UiStateConditionsDefaults,
 ): UiStateConditionsDefaults {
@@ -402,12 +415,12 @@ function sanitizePlaybackOverrides(
   return result;
 }
 
-function sanitizeConditionOverrides(
+export function sanitizeConditionOverrides(
   value: unknown,
   playbackFallback: UiPlaybackState,
 ): UiStateConditionOverride {
   const source = record(value);
-  const result: UiStateConditionOverride = validConditionValues(value);
+  const result: UiStateConditionOverride = validLayoutConditionValues(value);
   if (isRecord(source.playback)) {
     // 空オブジェクトも「配列固有設定を有効にした」印として保持する。
     result.playback = sanitizePlaybackOverrides(source.playback, playbackFallback);
@@ -448,11 +461,13 @@ export function sanitizeUiState(
     : undefined;
   const allowedLayoutIds = new Set([...choices.layouts.en, ...choices.layouts.ja]);
   const sanitizedPlayback = sanitizePlaybackSettings(playback, defaults.ui.playback);
-  const perLayout: Record<string, UiStateConditionOverride> = {};
+  const perLayout: Record<string, UiStateLayoutConditions> = {};
   for (const [layoutId, override] of Object.entries(conditionPerLayout)) {
     if (!allowedLayoutIds.has(layoutId) || !isRecord(override)) continue;
     const sanitized = sanitizeConditionOverrides(override, sanitizedPlayback);
-    if (Object.keys(sanitized).length > 0) perLayout[layoutId] = sanitized;
+    // 空オブジェクトも「個別設定する」がオンだった状態として保存する。
+    // チェックをオフにした時だけ、UI側がエントリ自体を削除する。
+    perLayout[layoutId] = sanitized;
   }
 
   return {

@@ -1,6 +1,6 @@
 import {
-  ADJACENT_PAIRS, ALL_FINGERS, FINGERS, PHYSICAL_SHAPES, resolveKeyId, THUMB_KEY, THUMB_ROW,
-  assignmentWithHomeKeys, isPresetGeometryKind, type GeometryKind,
+  ADJACENT_PAIRS, ALL_FINGERS, FINGERS, resolveKeyId, THUMB_KEY, THUMB_ROW,
+  assignmentWithHomeKeys, type GeometryKind,
 } from './geometry.ts';
 import { evaluate, type Options, type Trace } from './evaluate.ts';
 import { computeMetrics, type LayerStat, type Metrics } from './metrics.ts';
@@ -42,7 +42,7 @@ export interface ResultsViewContext {
   currentMode: () => { layouts: Layout[] };
   selected: Record<ModeId, Set<string>>;
   romajiRuleIdForLayout: (layout: Layout) => string | null;
-  getGeometrySettings: () => GeometrySettings;
+  getGeometrySettingsForKind: (kind: GeometryKind) => GeometrySettings;
   playback: PlaybackViewController;
 }
 
@@ -68,17 +68,14 @@ function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sor
 }
 
 function render() {
-  const defaultConditions = resolveConditions(ctx.getUiState().conditions.defaults, undefined);
   const geometryCache = new Map<string, ReturnType<typeof buildGeometry>>();
   const geometryFor = (kind: GeometryKind, layout: Layout) => {
-    const cacheKey = `${kind}|${JSON.stringify(layout.homeKeys ?? {})}`;
+    const settings = ctx.getGeometrySettingsForKind(kind);
+    const cacheKey = `${kind}|${settings.shape.id}|${settings.assignment.id}|${JSON.stringify(layout.homeKeys ?? {})}`;
     const cached = geometryCache.get(cacheKey);
     if (cached) return cached;
-    const settings = ctx.getGeometrySettings();
     const assignment = assignmentWithHomeKeys(settings.assignment, layout.homeKeys);
-    const geometry = isPresetGeometryKind(kind)
-      ? buildGeometry(PHYSICAL_SHAPES[kind], assignment)
-      : buildGeometry(settings.shape, assignment);
+    const geometry = buildGeometry(settings.shape, assignment);
     geometryCache.set(cacheKey, geometry);
     return geometry;
   };
@@ -146,11 +143,7 @@ function render() {
   renderCompare(results);
   renderMatrices(results);
   if (elements.sensitivityPanel.open) {
-    renderSensitivity(
-      text,
-      geometryFor(defaultConditions.geometry, results[0].layout),
-      defaultConditions.options,
-    );
+    renderSensitivity(text, results);
   } else {
     showSensitivityPlaceholder();
   }
@@ -219,12 +212,24 @@ function compareMetricValues(metrics: Metrics): number[] {
 
 function metricConditionText(metrics: Metrics, layout: Layout): string {
   const hasLayoutHomeKeys = layout.homeKeys !== undefined && Object.keys(layout.homeKeys).length > 0;
-  const changed = metrics.geometryId !== 'row-staggered'
-    || metrics.fingerAssignmentId !== 'default'
-    || hasLayoutHomeKeys;
+  const defaults = ctx.getUiState().conditions.defaults;
+  const override = ctx.getUiState().conditions.perLayout[layout.id];
+  const defaultGeometryId = defaults.geometry.startsWith('custom:')
+    ? defaults.geometry.slice('custom:'.length)
+    : defaults.geometry;
+  const differences = [
+    metrics.geometryId !== defaultGeometryId ? `形状: ${metrics.geometryName}` : '',
+    metrics.fingerAssignmentId !== 'default' ? `運指: ${metrics.fingerAssignmentName}` : '',
+    hasLayoutHomeKeys ? 'ホーム: 配列指定' : '',
+    metrics.conditions.windowSize !== defaults.windowSize ? `N=${metrics.conditions.windowSize}` : '',
+    metrics.conditions.sfbHomeCost !== defaults.sfbHomeCost ? 'SFBホーム設定変更' : '',
+    metrics.conditions.preferOppositeThumb !== defaults.preferOppositeThumb ? '逆側親指設定変更' : '',
+    override?.romajiRule !== undefined ? `ローマ字: ${override.romajiRule}` : '',
+    override?.arpeggio !== undefined ? 'アルペジオ: 配列個別設定' : '',
+  ].filter(Boolean);
   return `形状: ${metrics.geometryName} / 運指: ${metrics.fingerAssignmentName}`
     + ` / ホーム: ${hasLayoutHomeKeys ? '配列指定' : '形状既定'}`
-    + (changed ? '（既定から変更）' : '（既定）');
+    + (differences.length > 0 ? ` / 条件差分: ${differences.join('、')}` : ' / 既定条件');
 }
 
 function relativePercent(value: number, baseline: number): number | null {
@@ -520,22 +525,14 @@ function showSensitivityPlaceholder(message = 'N感度はパネルを開くと�
   sensitivityDirty = true;
 }
 
-function renderSensitivity(
-  text: string,
-  geometry: ReturnType<typeof buildGeometry>,
-  options: Options,
-) {
+function renderSensitivity(text: string, results: readonly Result[]) {
   const range = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const relative = ctx.getUiState().ui.sensitivity.scale === 'relative';
-  const set = ctx.selected[ctx.currentModeId()];
-  const series = ctx.currentMode().layouts
-    .map((layout, slot) => ({ layout, slot }))
-    .filter((s) => set.has(s.layout.id))
-    .map(({ layout, slot }) => {
+  const series = results.map(({ layout, slot, geometry, options }) => {
     const points = nSensitivity(text, layout, geometry, options, range, ctx.romajiRuleIdForLayout(layout));
     const base = points[0].totalUnits || 1;
     return {
-      name: layout.name,
+      name: sensitivityLabel(layout, options, geometry),
       color: SERIES(slot),
       points: points.map((p) => ({
         x: p.windowSize,
@@ -551,6 +548,24 @@ function renderSensitivity(
     ? lineChart(series, range, (v) => `${v.toFixed(0)}%`, { yMax: 100 })
     : lineChart(series, range, (v) => `${v.toFixed(0)} u`);
   sensitivityDirty = false;
+}
+
+function sensitivityLabel(
+  layout: Layout,
+  options: Options,
+  geometry: ReturnType<typeof buildGeometry>,
+): string {
+  const defaults = ctx.getUiState().conditions.defaults;
+  const override = ctx.getUiState().conditions.perLayout[layout.id];
+  const differences = [
+    geometry.id !== defaults.geometry.replace(/^custom:/, '') ? `形状=${geometry.name}` : '',
+    options.windowSize !== defaults.windowSize ? `N=${options.windowSize}` : '',
+    options.sfbHomeCost !== defaults.sfbHomeCost ? 'SFBホーム設定変更' : '',
+    options.preferOppositeThumb !== defaults.preferOppositeThumb ? '逆側親指設定変更' : '',
+    override?.romajiRule !== undefined ? 'ローマ字個別設定' : '',
+    override?.arpeggio !== undefined ? 'アルペジオ個別設定' : '',
+  ].filter(Boolean);
+  return differences.length === 0 ? layout.name : `${layout.name}（${differences.join('・')}）`;
 }
 
 function renderDetail(results: Result[]) {

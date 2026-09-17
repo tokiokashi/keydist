@@ -185,7 +185,15 @@ a { color: var(--accent); }
   border-radius: 10px;
   box-shadow: 0 12px 40px rgb(0 0 0 / 0.18);
 }
-.sidebar { position: sticky; top: 68px; }
+.sidebar {
+  position: sticky;
+  top: 68px;
+  max-height: calc(100vh - 68px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sidebar::-webkit-scrollbar { display: none; }
 .stack { display: flex; flex-direction: column; gap: 20px; }
 .text-panel > summary {
   display: flex;
@@ -213,7 +221,7 @@ a { color: var(--accent); }
 @media (max-width: 900px) {
   .app { grid-template-columns: minmax(0, 1fr); }
   .app.playback-settings-open { grid-template-columns: minmax(0, 1fr); }
-  .sidebar { position: static; }
+  .sidebar { position: static; max-height: none; overflow: visible; }
   .stack > .text-panel > summary { position: static; }
   .playback-settings-aside {
     position: fixed;
@@ -730,6 +738,9 @@ footer { padding: 8px 20px 32px; font-size: 0.78rem; color: var(--muted); text-a
 
 /* 表示する配列の選択 */
 .picker { display: flex; flex-direction: column; gap: 4px; }
+.picker-filters { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; color: var(--muted); font-size: 0.74rem; }
+.picker-filters button[aria-pressed='true'] { color: var(--accent); border-color: var(--accent); }
+.picker-empty { margin: 4px 0; }
 .picker label {
   display: flex;
   align-items: center;
@@ -858,6 +869,31 @@ dialog::backdrop { background: rgb(0 0 0 / 0.38); }
 #how-dialog .dialog-body { padding: 20px; }
 #conditions-dialog { width: min(760px, calc(100vw - 32px)); padding: 0; }
 #conditions-dialog .dialog-body { padding: 20px; }
+.condition-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 14px 0 10px; }
+.condition-toolbar select { width: auto; min-width: 9em; padding: 3px 6px; }
+.condition-import-status { flex: 1 1 100%; min-height: 1.3em; margin: 0; }
+.condition-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 12px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.condition-tabs button[aria-selected='true'] { color: var(--accent); border-color: var(--accent); background: color-mix(in oklab, var(--accent) 10%, var(--panel)); }
+.condition-table-wrap { max-height: min(52vh, 540px); overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
+.condition-grid { min-width: 540px; }
+.condition-grid th, .condition-grid td { vertical-align: top; }
+.condition-grid thead th { position: sticky; top: 0; z-index: 1; background: var(--panel); }
+.condition-grid tbody tr:first-child { background: color-mix(in oklab, var(--accent) 7%, var(--panel)); }
+.condition-grid tbody tr:first-child th { font-weight: 700; }
+.condition-grid td:nth-child(2) { text-align: center; width: 5.5em; }
+.condition-grid td:nth-child(3) { min-width: 20em; }
+.condition-grid select { width: min(100%, 260px); padding: 3px 5px; }
+.condition-fields, .condition-delay-fields { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 12px; }
+.condition-fields label, .condition-delay-fields label { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 0.76rem; }
+.condition-fields input[type='number'], .condition-delay-fields input[type='number'] { width: 5.2em; padding: 3px 4px; font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line-strong); border-radius: 4px; }
+.condition-arpeggio-fields { align-items: flex-start; }
+.condition-arpeggio-fields details { min-width: 100%; margin-top: 3px; }
+.condition-arpeggio-fields details > summary { color: var(--muted); cursor: pointer; font-size: 0.76rem; }
+.condition-arpeggio-fields details label { margin: 4px 12px 0 0; }
+.condition-global { margin: 16px 0; padding: 12px; border: 1px solid var(--line); border-radius: 6px; }
+.condition-global h3 { margin-top: 0 !important; }
+.condition-summary { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 10px; }
+.condition-summary > summary { color: var(--muted); cursor: pointer; }
 #playback-calibration-dialog { width: min(560px, calc(100vw - 32px)); }
 .calibration-progress { display: block; margin: 8px 0 12px; color: var(--muted); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
 .calibration-finger-details { margin-top: 14px; }
