@@ -3,6 +3,7 @@ import {
   type UiStateConditionsDefaults,
   type UiStateV1,
 } from './ui-state.ts';
+import { ARPEGGIO_PRESETS, type ArpeggioConditions } from './playback-arpeggio.ts';
 
 export type ConditionKey = keyof UiStateConditionsDefaults;
 
@@ -19,7 +20,29 @@ const GEOMETRY_LABEL: Record<UiStateConditionsDefaults['geometry'], string> = {
   'column-staggered': 'カラムスタッガード',
 };
 
+const ARPEGGIO_PRESET_LABEL: Record<string, string> = {
+  standard: '標準',
+  strict: '厳格',
+  loose: '緩い',
+};
+
+function formatArpeggioConditions(value: ArpeggioConditions): string {
+  const presetKey = Object.keys(ARPEGGIO_PRESETS).find(
+    (key) => JSON.stringify(ARPEGGIO_PRESETS[key]) === JSON.stringify(value),
+  );
+  const presetLabel = presetKey ? ARPEGGIO_PRESET_LABEL[presetKey] ?? presetKey : 'カスタム';
+  const reversal = value.maxRowReversal === null ? '無制限' : `${value.maxRowReversal}`;
+  const rowStep = value.maxRowStep === null ? '無制限' : `${value.maxRowStep}`;
+  return `${presetLabel}（開き${value.minHorizontalSpread}u・折返し${reversal}・行差${rowStep}・`
+    + `親指${value.includeThumb ? '含む' : '含まない'}・逆手${value.breakOnOppositeHand ? '区切る' : '区切らない'}）`;
+}
+
 export const CONDITION_DESCRIPTORS = {
+  arpeggio: {
+    label: 'アルペジオ判定条件',
+    effect: '同じ手の連続打鍵をアルペジオと見なす幾何条件（開き・折り返し・親指・逆手の扱い）です。',
+    format: (value) => formatArpeggioConditions(value as ArpeggioConditions),
+  },
   geometry: {
     label: '物理形状',
     effect: 'ピッチ・段ずれ・列オフセットを決める物理形状です。形状を変えると距離の絶対値が変わります。',

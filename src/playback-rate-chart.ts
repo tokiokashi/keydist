@@ -1,6 +1,8 @@
 import { escapeAttr, escapeText } from './chart.ts';
 import type { PlaybackRateChartPoint } from './playback.ts';
 
+type PlaybackDisplay = 'chain' | 'arpeggio' | 'both';
+
 const WIDTH = 760;
 const HEIGHT = 260;
 const MARGIN = { top: 30, right: 18, bottom: 30, left: 54 };
@@ -34,7 +36,10 @@ function tooltip(point: PlaybackRateChartPoint): string {
 }
 
 /** 打鍵再生の直近速度を、カーソルごとのクリック可能な折れ線グラフへ描画する。 */
-export function renderPlaybackRateChart(points: readonly PlaybackRateChartPoint[]): string {
+export function renderPlaybackRateChart(
+  points: readonly PlaybackRateChartPoint[],
+  display: PlaybackDisplay = 'both',
+): string {
   const total = points.at(-1)?.cursor ?? 0;
   if (total === 0) return '<p class="playback-rate-chart-empty">打鍵データがありません。</p>';
 
@@ -60,6 +65,20 @@ export function renderPlaybackRateChart(points: readonly PlaybackRateChartPoint[
   const actionPath = linePath(points, (point) => point.actionsPerSecond, xOf, yOf);
   const paths = `${kanaPath ? `<path d="${kanaPath}" fill="none" stroke="${KANA_COLOR}" stroke-width="2" stroke-linejoin="round"/>` : ''}`
     + `${actionPath ? `<path d="${actionPath}" fill="none" stroke="${ACTION_COLOR}" stroke-width="2" stroke-linejoin="round"/>` : ''}`;
+
+  const band = (kind: 'chain' | 'arpeggio', color: string): string => {
+    if (display !== 'both' && display !== kind) return '';
+    return points
+      .filter((point) => point[kind] === true)
+      .map((point) => {
+        const start = Math.max(0, point.cursor - 1);
+        const x = xOf(start);
+        const width = xOf(point.cursor) - x;
+        return `<rect x="${x}" y="${MARGIN.top}" width="${width}" height="${plotHeight}" fill="${color}" opacity="0.10" pointer-events="none"/>`;
+      })
+      .join('');
+  };
+  const bands = band('chain', 'var(--series-2)') + band('arpeggio', 'var(--series-3)');
 
   const legend = `<g aria-label="凡例">`
     + `<line x1="${MARGIN.left}" y1="14" x2="${MARGIN.left + 18}" y2="14" stroke="${KANA_COLOR}" stroke-width="3"/>`
@@ -96,7 +115,7 @@ export function renderPlaybackRateChart(points: readonly PlaybackRateChartPoint[
   const currentLine = `<line data-playback-rate-cursor-line x1="${xOf(0)}" y1="${MARGIN.top}" x2="${xOf(0)}" y2="${HEIGHT - MARGIN.bottom}"`
     + ` stroke="var(--fg)" stroke-width="1.5" stroke-dasharray="3 3" pointer-events="none"/>`;
   return `<svg viewBox="0 0 ${WIDTH} ${HEIGHT}" role="img" aria-label="かな毎秒とアクション毎秒の推移"`
-    + ` data-playback-rate-total="${total}">${legend}${grid}${paths}${markers}${currentLine}${xLabels}${hitAreas}</svg>`;
+    + ` data-playback-rate-total="${total}">${legend}${grid}${bands}${paths}${markers}${currentLine}${xLabels}${hitAreas}</svg>`;
 }
 
 /** 再生カーソルの変更を、再描画なしでグラフへ反映する。 */

@@ -10,6 +10,10 @@ import {
   PLAYBACK_STEPS_PER_SECOND_MIN,
 } from './playback.ts';
 import type { ThemeChoice } from './theme.ts';
+import {
+  DEFAULT_ARPEGGIO_CONDITIONS,
+  type ArpeggioConditions,
+} from './playback-arpeggio.ts';
 
 export const UI_STATE_STORAGE_KEY = 'keydist:ui-state';
 export const UI_STATE_VERSION = 1;
@@ -23,12 +27,15 @@ export type MatrixKind = 'press' | 'finger' | 'adjacentMean' | 'adjacentStdDev';
 export type LayerView = 'auto' | 'side-by-side' | 'tabs';
 export type LayerColorScale = 'linear' | 'log';
 export type SensitivityScale = 'relative' | 'absolute';
+export type ArpeggioDelayMode = 'before' | 'distributed';
+export type ArpeggioDisplay = 'chain' | 'arpeggio' | 'both';
 
 export interface UiStateConditionsDefaults {
   geometry: GeometryKind;
   windowSize: number;
   sfbHomeCost: boolean;
   preferOppositeThumb: boolean;
+  arpeggio: ArpeggioConditions;
 }
 
 /** 数値計算へ影響する条件の既定値。説明・保存・計算で同じ値を参照する。 */
@@ -37,6 +44,7 @@ export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
   windowSize: 3,
   sfbHomeCost: true,
   preferOppositeThumb: false,
+  arpeggio: { ...DEFAULT_ARPEGGIO_CONDITIONS },
 };
 
 export interface UiStateV1 {
@@ -80,6 +88,9 @@ export interface UiStateV1 {
       showChain: boolean;
       chainIncludeSameFinger: boolean;
       chainIncludeLayerKeys: boolean;
+      arpeggioEnabled: boolean;
+      arpeggioDelayMode: ArpeggioDelayMode;
+      arpeggioDisplay: ArpeggioDisplay;
       scale: number;
       stepsPerSecond: number;
       speedMultiplier: number;
@@ -170,6 +181,9 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
         showChain: false,
         chainIncludeSameFinger: false,
         chainIncludeLayerKeys: true,
+        arpeggioEnabled: true,
+        arpeggioDelayMode: 'before',
+        arpeggioDisplay: 'both',
         scale: 1.5,
         stepsPerSecond: DEFAULT_PLAYBACK_STEPS_PER_SECOND,
         speedMultiplier: DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
@@ -220,6 +234,31 @@ function integerInRange(value: unknown, min: number, max: number, fallback: numb
     : fallback;
 }
 
+function arpeggio(value: unknown, fallback: ArpeggioConditions): ArpeggioConditions {
+  const source = record(value);
+  const minHorizontalSpread = numberInRange(
+    source.minHorizontalSpread,
+    0,
+    20,
+    fallback.minHorizontalSpread,
+  );
+  const rowLimit = (candidate: unknown, defaultValue: number | null): number | null => {
+    if (candidate === undefined) return defaultValue;
+    if (candidate === null) return null;
+    return typeof candidate === 'number' && Number.isFinite(candidate)
+      && candidate >= 0 && candidate <= 10
+      ? candidate
+      : defaultValue;
+  };
+  return {
+    minHorizontalSpread,
+    maxRowReversal: rowLimit(source.maxRowReversal, fallback.maxRowReversal),
+    maxRowStep: rowLimit(source.maxRowStep, fallback.maxRowStep),
+    includeThumb: boolean(source.includeThumb, fallback.includeThumb),
+    breakOnOppositeHand: boolean(source.breakOnOppositeHand, fallback.breakOnOppositeHand),
+  };
+}
+
 function optionalId(value: unknown, allowed: readonly string[]): string | undefined {
   return typeof value === 'string' && allowed.includes(value) ? value : undefined;
 }
@@ -262,6 +301,9 @@ function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults
   if (typeof source.preferOppositeThumb === 'boolean') {
     result.preferOppositeThumb = source.preferOppositeThumb;
   }
+  if (isRecord(source.arpeggio)) {
+    result.arpeggio = arpeggio(source.arpeggio, DEFAULT_ARPEGGIO_CONDITIONS);
+  }
   return result;
 }
 
@@ -275,6 +317,7 @@ function sanitizeConditionDefaults(
     windowSize: values.windowSize ?? fallback.windowSize,
     sfbHomeCost: values.sfbHomeCost ?? fallback.sfbHomeCost,
     preferOppositeThumb: values.preferOppositeThumb ?? fallback.preferOppositeThumb,
+    arpeggio: values.arpeggio ?? fallback.arpeggio,
   };
 }
 
@@ -392,6 +435,17 @@ export function sanitizeUiState(
         chainIncludeLayerKeys: boolean(
           playback.chainIncludeLayerKeys,
           defaults.ui.playback.chainIncludeLayerKeys,
+        ),
+        arpeggioEnabled: boolean(playback.arpeggioEnabled, defaults.ui.playback.arpeggioEnabled),
+        arpeggioDelayMode: choice(
+          playback.arpeggioDelayMode,
+          ['before', 'distributed'],
+          defaults.ui.playback.arpeggioDelayMode,
+        ),
+        arpeggioDisplay: choice(
+          playback.arpeggioDisplay,
+          ['chain', 'arpeggio', 'both'],
+          defaults.ui.playback.arpeggioDisplay,
         ),
         scale: numberInRange(playback.scale, 0.5, 4, defaults.ui.playback.scale),
         stepsPerSecond: numberInRange(

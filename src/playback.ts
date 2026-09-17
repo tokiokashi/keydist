@@ -2,7 +2,16 @@ import { ALL_FINGERS, keyId, resolveKeyId, type Finger, type Geometry } from './
 import { classifyFaces, faceCells, foldedLayerCells, type Layer } from './layers.ts';
 import type { Stroke } from './evaluate.ts';
 import type { Layout } from './layouts/types.ts';
-import { sameHandFingerPairKey, type PlaybackCalibration } from './playback-calibration.ts';
+import {
+  handDirection,
+  sameHandDirectedFingerPairKey,
+  sameHandFingerPairKey,
+  type PlaybackCalibration,
+} from './playback-calibration.ts';
+import {
+  playbackArpeggioSpans,
+  type ArpeggioConditions,
+} from './playback-arpeggio.ts';
 
 /** 再生速度の入力範囲。実際の打鍵時間や距離モデルとは無関係。 */
 export const PLAYBACK_STEPS_PER_SECOND_MIN = 0.1;
@@ -26,6 +35,9 @@ export interface PlaybackState {
   sameFingerDelay: boolean;
   /** 有効にしている個人の打鍵・指移動速度。 */
   calibration?: PlaybackCalibration;
+  /** アルペジオ時間モデル。未指定なら従来の時間モデルを使う。 */
+  arpeggio?: ArpeggioConditions;
+  arpeggioDelayMode: 'before' | 'distributed';
   playing: boolean;
   elapsedMs: number;
 }
@@ -193,6 +205,39 @@ export function playbackHandKeyMotions(
     motions.push({ fromKey: fromKeys[0], toKeys, finger });
   }
   return motions;
+}
+
+/** アルペジオ判定済み区間の直前キーから現在キーへの移動を返す。 */
+export function playbackArpeggioKeyMotions(
+  strokes: readonly Stroke[],
+  cursor: number,
+  conditions: ArpeggioConditions,
+): PlaybackKeyMotion[] {
+  const index = Math.min(Math.max(0, cursor), strokes.length) - 1;
+  if (index <= 0) return [];
+  const span = playbackArpeggioSpans(strokes, conditions)
+    .find((candidate) => index >= candidate.start && index < candidate.end);
+  if (!span) return [];
+
+  const outputKeys = (stroke: Stroke): string[] => {
+    const triggers = new Set(stroke.triggerKeys.map(resolveKeyId));
+    return stroke.presses
+      .filter((press) => !isThumb(press.finger) && fingerHand(press.finger) === span.hand)
+      .flatMap((press) => press.keys.map((key) => resolveKeyId(key.id)))
+      .filter((key) => !triggers.has(key));
+  };
+  const toKeys = outputKeys(strokes[index]);
+  if (toKeys.length === 0) return [];
+  let previousIndex = index - 1;
+  while (previousIndex >= span.start && outputKeys(strokes[previousIndex]).length === 0) previousIndex--;
+  if (previousIndex < span.start) return [];
+  const fromKey = outputKeys(strokes[previousIndex])[0];
+  const finger = strokes[index].presses.find(
+    (press) => !isThumb(press.finger) && fingerHand(press.finger) === span.hand,
+  )?.finger;
+  return finger && fromKey
+    ? [{ fromKey, toKeys, finger }]
+    : [];
 }
 
 /** 直近の同じ手の連続打鍵へ、表示順を割り当てる。 */
@@ -572,6 +617,8 @@ export function createPlaybackState(
   sameFingerDelay = false,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+  arpeggio?: ArpeggioConditions,
+  arpeggioDelayMode: 'before' | 'distributed' = 'before',
 ): PlaybackState {
   return {
     cursor: 0,
@@ -579,6 +626,8 @@ export function createPlaybackState(
     speedMultiplier,
     sameFingerDelay,
     calibration,
+    arpeggio,
+    arpeggioDelayMode,
     playing: false,
     elapsedMs: 0,
   };
@@ -622,21 +671,18 @@ export function setPlaybackCalibration(
   return { ...state, calibration, elapsedMs: 0 };
 }
 
+export function setPlaybackArpeggio(
+  state: PlaybackState,
+  arpeggio: ArpeggioConditions | undefined,
+  arpeggioDelayMode: 'before' | 'distributed' = state.arpeggioDelayMode,
+): PlaybackState {
+  return { ...state, arpeggio, arpeggioDelayMode, elapsedMs: 0 };
+}
+
 function normalPlaybackStepMs(stepsPerSecond: PlaybackStepsPerSecond): number {
   return Number.isFinite(stepsPerSecond) && stepsPerSecond > 0
     ? 1000 / stepsPerSecond
     : Number.POSITIVE_INFINITY;
-}
-
-function playbackHasSameHandDifferentFinger(
-  stroke: Stroke | undefined,
-  previousStroke: Stroke | undefined,
-): boolean {
-  if (!stroke || !previousStroke) return false;
-  return stroke.presses.some((press) => previousStroke.presses.some((previousPress) =>
-    fingerHand(press.finger) === fingerHand(previousPress.finger)
-    && press.finger !== previousPress.finger,
-  ));
 }
 
 function playbackSameHandDifferentFingerPair(
@@ -655,6 +701,139 @@ function playbackSameHandDifferentFingerPair(
   return undefined;
 }
 
+function playbackCrossHandDirection(
+  stroke: Stroke | undefined,
+  previousStroke: Stroke | undefined,
+): 'L→R' | 'R→L' | undefined {
+  if (!stroke || !previousStroke) return undefined;
+  for (const press of stroke.presses) {
+    for (const previousPress of previousStroke.presses) {
+      const direction = handDirection(previousPress.finger, press.finger);
+      if (direction !== undefined) return direction;
+    }
+  }
+  return undefined;
+}
+
+function playbackSameHandDirectedPair(
+  stroke: Stroke | undefined,
+  previousStroke: Stroke | undefined,
+): string | undefined {
+  if (!stroke || !previousStroke) return undefined;
+  for (const press of stroke.presses) {
+    for (const previousPress of previousStroke.presses) {
+      if (fingerHand(press.finger) !== fingerHand(previousPress.finger)
+        || press.finger === previousPress.finger) continue;
+      const pair = sameHandDirectedFingerPairKey(previousPress.finger, press.finger);
+      if (pair !== undefined) return pair;
+    }
+  }
+  return undefined;
+}
+
+function playbackTransitionRate(
+  stroke: Stroke | undefined,
+  previousStroke: Stroke | undefined,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  calibration?: PlaybackCalibration,
+  useArpeggioCalibration = false,
+): number {
+  const crossDirection = playbackCrossHandDirection(stroke, previousStroke);
+  if (useArpeggioCalibration && crossDirection !== undefined) {
+    return calibration?.actionsPerSecondByDirection?.[crossDirection]
+      ?? calibration?.actionsPerSecond
+      ?? stepsPerSecond;
+  }
+  const sameHandPair = playbackSameHandDifferentFingerPair(stroke, previousStroke);
+  if (sameHandPair !== undefined) {
+    const sameHandDirectedPair = useArpeggioCalibration
+      ? playbackSameHandDirectedPair(stroke, previousStroke)
+      : undefined;
+    return (sameHandDirectedPair === undefined
+      ? undefined
+      : calibration?.sameHandDifferentFingerActionsPerDirectedPair?.[sameHandDirectedPair])
+      ?? calibration?.sameHandDifferentFingerActionsPerSecondByPair[sameHandPair]
+      ?? calibration?.sameHandDifferentFingerActionsPerSecond
+      ?? stepsPerSecond;
+  }
+  return calibration?.actionsPerSecond ?? stepsPerSecond;
+}
+
+/** アルペジオ判定を切った時は、拡張した方向別速度を従来の再生へ持ち込まない。 */
+function playbackCalibrationWithoutArpeggio(
+  calibration: PlaybackCalibration | undefined,
+): PlaybackCalibration | undefined {
+  if (!calibration) return undefined;
+  const {
+    actionsPerSecondByDirection: _actionsPerSecondByDirection,
+    sameHandDifferentFingerActionsPerDirectedPair: _directedPair,
+    ...legacyCalibration
+  } = calibration;
+  return legacyCalibration;
+}
+
+export interface PlaybackArpeggioTiming {
+  intervalMs: number;
+  /** 区間の手前へまとめる遅れ。分散モードでは0。 */
+  leadDelayMs: number;
+}
+
+/** アルペジオ区間の各エッジへ、方向別速度から得た時間を割り当てる。 */
+export function playbackArpeggioTimings(
+  strokes: readonly Stroke[],
+  conditions: ArpeggioConditions,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  calibration?: PlaybackCalibration,
+  delayMode: 'before' | 'distributed' = 'before',
+  sameFingerDelay = false,
+): ReadonlyMap<number, PlaybackArpeggioTiming> {
+  const timings = new Map<number, PlaybackArpeggioTiming>();
+  for (const span of playbackArpeggioSpans(strokes, conditions)) {
+    const edges: { index: number; intervalMs: number; normalMs: number }[] = [];
+    for (let index = span.start + 1; index < span.end; index++) {
+      const intervalMs = normalPlaybackStepMs(playbackTransitionRate(
+        strokes[index],
+        strokes[index - 1],
+        stepsPerSecond,
+        calibration,
+        true,
+      ));
+      const normalMs = playbackStrokeDurationMs(
+        strokes[index],
+        stepsPerSecond,
+        sameFingerDelay,
+        calibration,
+        strokes[index - 1],
+        1,
+      );
+      edges.push({ index, intervalMs, normalMs });
+    }
+    const leadDelayMs = delayMode === 'before'
+      ? edges.reduce((total, edge) => total + Math.max(0, edge.intervalMs - edge.normalMs), 0)
+      : 0;
+    for (const edge of edges) {
+      const timing = {
+        // 前寄せでは個別のアルペジオ間隔を通常時間へ重ねず、超過分だけを
+        // 区間の先頭へ寄せる。これで分散時と総時間が一致する。
+        intervalMs: delayMode === 'before' ? 0 : edge.intervalMs,
+        leadDelayMs: delayMode === 'before' && edge.index === span.start + 1
+          ? leadDelayMs
+          : 0,
+      };
+      const previous = timings.get(edge.index);
+      if (!previous
+        || timing.intervalMs > previous.intervalMs
+        || timing.leadDelayMs > previous.leadDelayMs) {
+        timings.set(edge.index, {
+          intervalMs: Math.max(previous?.intervalMs ?? 0, timing.intervalMs),
+          leadDelayMs: Math.max(previous?.leadDelayMs ?? 0, timing.leadDelayMs),
+        });
+      }
+    }
+  }
+  return timings;
+}
+
 /** 1ステップを表示する時間。正規化ディレイは1uを通常の1アクション相当とする。 */
 export function playbackStrokeDurationMs(
   stroke: Stroke | undefined,
@@ -663,24 +842,28 @@ export function playbackStrokeDurationMs(
   calibration?: PlaybackCalibration,
   previousStroke?: Stroke,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+  arpeggioTiming?: PlaybackArpeggioTiming,
 ): number {
-  const sameHandDifferentFinger = playbackHasSameHandDifferentFinger(stroke, previousStroke);
-  const sameHandPair = playbackSameHandDifferentFingerPair(stroke, previousStroke);
-  const calibratedRate = sameHandDifferentFinger
-    ? calibration?.sameHandDifferentFingerActionsPerSecondByPair[sameHandPair ?? '']
-      ?? calibration?.sameHandDifferentFingerActionsPerSecond
-    : calibration?.actionsPerSecond;
-  const normalMs = normalPlaybackStepMs(calibratedRate ?? stepsPerSecond);
+  const normalMs = normalPlaybackStepMs(playbackTransitionRate(
+    stroke,
+    previousStroke,
+    stepsPerSecond,
+    calibration,
+  ));
+  const arpeggioMs = arpeggioTiming?.intervalMs ?? 0;
+  const leadDelayMs = arpeggioTiming?.leadDelayMs ?? 0;
   const multiplier = Number.isFinite(speedMultiplier) && speedMultiplier > 0
     ? speedMultiplier
     : DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
-  if (!stroke || !sameFingerDelay) return normalMs / multiplier;
+  if (!stroke || !sameFingerDelay) return (Math.max(normalMs, arpeggioMs) + leadDelayMs) / multiplier;
 
   const sameFingerDistance = Math.max(
     1,
     ...stroke.presses.filter((press) => press.sfb).map((press) => press.distance),
   );
-  if (!stroke.presses.some((press) => press.sfb)) return normalMs / multiplier;
+  if (!stroke.presses.some((press) => press.sfb)) {
+    return (Math.max(normalMs, arpeggioMs) + leadDelayMs) / multiplier;
+  }
   if (calibration) {
     const movementMs = Math.max(
       ...stroke.presses
@@ -691,9 +874,10 @@ export function playbackStrokeDurationMs(
           return (press.distance / speed) * 1000;
         }),
     );
-    return Math.max(normalMs, movementMs) / multiplier;
+    return (Math.max(normalMs, arpeggioMs, movementMs) + leadDelayMs) / multiplier;
   }
-  return (normalMs * sameFingerDistance) / multiplier;
+  const movementMs = normalMs * sameFingerDistance;
+  return (Math.max(normalMs, arpeggioMs, movementMs) + leadDelayMs) / multiplier;
 }
 
 interface PlaybackRateWindow {
@@ -708,6 +892,8 @@ export interface PlaybackRateChartPoint {
   inputText: string;
   kanaPerSecond?: number;
   actionsPerSecond?: number;
+  chain?: boolean;
+  arpeggio?: boolean;
 }
 
 function playbackRecentRateWindow(
@@ -718,12 +904,27 @@ function playbackRecentRateWindow(
   limit: number,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+  arpeggio?: ArpeggioConditions,
+  arpeggioDelayMode: 'before' | 'distributed' = 'before',
 ): PlaybackRateWindow | undefined {
   const end = clampPlaybackCursor(cursor, strokes.length);
   const span = Math.max(0, Math.floor(limit));
   const start = Math.max(0, end - span);
   if (start === end) return undefined;
 
+  const timingCalibration = arpeggio
+    ? calibration
+    : playbackCalibrationWithoutArpeggio(calibration);
+  const arpeggioTimings = arpeggio
+    ? playbackArpeggioTimings(
+      strokes,
+      arpeggio,
+      stepsPerSecond,
+      timingCalibration,
+      arpeggioDelayMode,
+      sameFingerDelay,
+    )
+    : undefined;
   const durationMs = strokes
     .slice(start, end)
     .reduce((total, stroke, offset) => {
@@ -732,9 +933,10 @@ function playbackRecentRateWindow(
         stroke,
         stepsPerSecond,
         sameFingerDelay,
-        calibration,
+        timingCalibration,
         strokes[index - 1],
         speedMultiplier,
+        arpeggioTimings?.get(index),
       );
     }, 0);
   return { start, end, durationMs };
@@ -765,6 +967,8 @@ export function playbackRecentActionsPerSecond(
   limit = 10,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+  arpeggio?: ArpeggioConditions,
+  arpeggioDelayMode: 'before' | 'distributed' = 'before',
 ): number | undefined {
   const recent = playbackRecentRateWindow(
     strokes,
@@ -774,6 +978,8 @@ export function playbackRecentActionsPerSecond(
     limit,
     calibration,
     speedMultiplier,
+    arpeggio,
+    arpeggioDelayMode,
   );
   return recent && recent.durationMs > 0
     ? ((recent.end - recent.start) * 1000) / recent.durationMs
@@ -789,6 +995,8 @@ export function playbackRecentKanaPerSecond(
   limit = 10,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+  arpeggio?: ArpeggioConditions,
+  arpeggioDelayMode: 'before' | 'distributed' = 'before',
 ): number | undefined {
   const recent = playbackRecentRateWindow(
     strokes,
@@ -798,6 +1006,8 @@ export function playbackRecentKanaPerSecond(
     limit,
     calibration,
     speedMultiplier,
+    arpeggio,
+    arpeggioDelayMode,
   );
   if (!recent || recent.durationMs <= 0) return undefined;
 
@@ -823,6 +1033,8 @@ export function playbackRateChartData(
   limit = 10,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+  arpeggio?: ArpeggioConditions,
+  arpeggioDelayMode: 'before' | 'distributed' = 'before',
 ): PlaybackRateChartPoint[] {
   const points: PlaybackRateChartPoint[] = [{ cursor: 0, inputText: '' }];
   for (let cursor = 1; cursor <= strokes.length; cursor++) {
@@ -834,6 +1046,8 @@ export function playbackRateChartData(
       limit,
       calibration,
       speedMultiplier,
+      arpeggio,
+      arpeggioDelayMode,
     );
     points.push({
       cursor,
@@ -846,10 +1060,16 @@ export function playbackRateChartData(
         limit,
         calibration,
         speedMultiplier,
+        arpeggio,
+        arpeggioDelayMode,
       ),
       actionsPerSecond: recent && recent.durationMs > 0
         ? ((recent.end - recent.start) * 1000) / recent.durationMs
         : undefined,
+      chain: playbackChainOrders(strokes, cursor).size > 0,
+      arpeggio: arpeggio
+        ? playbackArpeggioSpans(strokes, arpeggio).some((span) => cursor - 1 >= span.start && cursor - 1 < span.end)
+        : false,
     });
   }
   return points;
@@ -883,14 +1103,28 @@ export function advancePlayback(
 
   let remaining = state.elapsedMs + Math.min(Math.max(0, elapsedMs), MAX_FRAME_MS);
   let nextCursor = cursor;
+  const timingCalibration = state.arpeggio
+    ? state.calibration
+    : playbackCalibrationWithoutArpeggio(state.calibration);
+  const arpeggioTimings = state.arpeggio
+    ? playbackArpeggioTimings(
+      strokes,
+      state.arpeggio,
+      state.stepsPerSecond,
+      timingCalibration,
+      state.arpeggioDelayMode,
+      state.sameFingerDelay,
+    )
+    : undefined;
   while (nextCursor < strokeCount) {
     const stepMs = playbackStrokeDurationMs(
       strokes[nextCursor],
       state.stepsPerSecond,
       state.sameFingerDelay,
-      state.calibration,
+      timingCalibration,
       strokes[nextCursor - 1],
       state.speedMultiplier,
+      arpeggioTimings?.get(nextCursor),
     );
     if (remaining < stepMs) break;
     remaining -= stepMs;
