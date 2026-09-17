@@ -66,6 +66,10 @@ test('画面状態を単一キーで保存・復元する', () => {
   state.ui.input.customText = 'edited';
   state.ui.layouts.selectedByMode.ja = [];
   state.ui.playback.stepsPerSecond = 3.2;
+  state.ui.playbackPerLayout.oonishi = {
+    ...state.ui.playback,
+    stepsPerSecond: 4.5,
+  };
   state.ui.panels.playback = true;
 
   assert.equal(saveUiState(storage, state), true);
@@ -119,6 +123,20 @@ test('アルペジオ条件は数値範囲とnullを保ったまま保存・復�
   assert.equal(sanitized.conditions.defaults.arpeggio.minHorizontalSpread, fallback.conditions.defaults.arpeggio.minHorizontalSpread);
   assert.equal(sanitized.conditions.defaults.arpeggio.maxRowStep, fallback.conditions.defaults.arpeggio.maxRowStep);
   assert.equal(sanitized.conditions.defaults.arpeggio.maxRowReversal, null);
+});
+
+test('配列固有の打鍵再生設定は既存配列だけ復元する', () => {
+  const fallback = defaults();
+  const value = structuredClone(fallback);
+  value.ui.playbackPerLayout = {
+    oonishi: { ...fallback.ui.playback, stepsPerSecond: 4.5 },
+    removed: { ...fallback.ui.playback, stepsPerSecond: 6 },
+  };
+
+  const state = sanitizeUiState(value, fallback, choices);
+
+  assert.equal(state.ui.playbackPerLayout.oonishi.stepsPerSecond, 4.5);
+  assert.deepEqual(Object.keys(state.ui.playbackPerLayout), ['oonishi']);
 });
 
 test('条件説明は既定値にある条件をすべて説明する', () => {

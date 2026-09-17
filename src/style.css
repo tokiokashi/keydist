@@ -326,10 +326,29 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-head {
   display: flex;
   align-items: flex-start;
-  justify-content: flex-end;
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 10px;
+}
+.playback-setting-button {
+  display: flex;
+  min-width: 9.5em;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 5px 10px;
+  text-align: left;
+}
+.playback-setting-button small {
+  max-width: 26em;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 400;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .playback-finger-toggle {
   display: flex;
@@ -352,6 +371,63 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-arpeggio-details summary { cursor: pointer; }
 .playback-arpeggio-details label { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; }
 .playback-arpeggio-details input[type="number"] { width: 4em; padding: 2px 4px; font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
+.playback-settings-dialog { width: min(620px, calc(100vw - 32px)); }
+.playback-settings-scope {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+.playback-settings-scope strong { color: var(--fg); font-weight: 600; }
+.playback-settings-scope button { padding: 3px 7px; font-size: 0.72rem; }
+.playback-settings-scope small { grid-column: 1 / -1; color: var(--muted); font-size: 0.68rem; }
+.playback-settings-tabs {
+  display: flex;
+  gap: 2px;
+  margin: 18px 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+.playback-settings-tab {
+  padding: 5px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 5px 5px 0 0;
+  color: var(--muted);
+  background: transparent;
+  font-size: 0.78rem;
+}
+.playback-settings-tab[aria-selected='true'] {
+  border-bottom-color: var(--accent);
+  color: var(--fg);
+  background: color-mix(in oklab, var(--accent) 8%, var(--panel));
+}
+.playback-settings-panel[hidden] { display: none; }
+.playback-dialog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+  margin-top: 16px;
+}
+.playback-dialog-grid > .playback-finger-toggle,
+.playback-dialog-grid > .playback-speed,
+.playback-dialog-grid > .playback-select-setting,
+.playback-dialog-grid > .playback-range-setting,
+.playback-dialog-grid > .playback-scale-setting {
+  min-height: 2.2em;
+}
+.playback-settings-dialog .playback-arpeggio-details {
+  margin-top: 18px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.playback-settings-dialog .playback-arpeggio-details label {
+  margin: 8px 0 0;
+}
 .calibration-remeasure { padding: 2px 6px; font-size: 0.72rem; }
 .playback-controls {
   display: flex;

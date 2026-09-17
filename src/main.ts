@@ -35,6 +35,7 @@ import {
   loadUiState,
   MAX_SAVED_TEXT_LENGTH,
   saveUiState,
+  type UiPlaybackState,
   type UiStateStorage,
   type UiStateV1,
 } from './ui-state.ts';
@@ -44,6 +45,7 @@ import { createRomajiEditor } from './romaji-editor.ts';
 import { createCalibrationDialog, type CalibrationDialogController } from './calibration-dialog.ts';
 import { createPlaybackView, type PlaybackViewController } from './playback-view.ts';
 import { createResultsView, type ResultsViewController } from './results-view.ts';
+import type { ArpeggioConditions } from './playback-arpeggio.ts';
 
 type SampleId = string;
 
@@ -544,12 +546,109 @@ let playbackView: PlaybackViewController;
 let calibrationDialog: CalibrationDialogController;
 let resultsView: ResultsViewController;
 
+function currentPlaybackLayoutId(): string | undefined {
+  return playbackView?.getLayout()?.id;
+}
+
+function isPlaybackLayoutOverride(): boolean {
+  const layoutId = currentPlaybackLayoutId();
+  if (!layoutId) return false;
+  return uiState.ui.playbackPerLayout[layoutId] !== undefined
+    || uiState.conditions.perLayout[layoutId]?.arpeggio !== undefined;
+}
+
+function playbackViewUiState(): UiStateV1 {
+  const layoutId = currentPlaybackLayoutId();
+  if (!layoutId) return uiState;
+  const playback = uiState.ui.playbackPerLayout[layoutId];
+  const arpeggio = uiState.conditions.perLayout[layoutId]?.arpeggio;
+  if (!playback && arpeggio === undefined) return uiState;
+  return {
+    ...uiState,
+    ui: {
+      ...uiState.ui,
+      playback: playback ?? uiState.ui.playback,
+    },
+    conditions: {
+      ...uiState.conditions,
+      defaults: {
+        ...uiState.conditions.defaults,
+        ...(arpeggio === undefined ? {} : { arpeggio }),
+      },
+    },
+  };
+}
+
+function updatePlaybackSetting<K extends keyof UiPlaybackState>(
+  key: K,
+  value: UiPlaybackState[K],
+): void {
+  const layoutId = currentPlaybackLayoutId();
+  updateUiState((draft) => {
+    const layoutOverride = layoutId ? draft.ui.playbackPerLayout[layoutId] : undefined;
+    const hasLayoutOverride = layoutId !== undefined && (
+      layoutOverride !== undefined
+      || draft.conditions.perLayout[layoutId]?.arpeggio !== undefined
+    );
+    const target = hasLayoutOverride && layoutId
+      ? (draft.ui.playbackPerLayout[layoutId] ??= structuredClone(draft.ui.playback))
+      : draft.ui.playback;
+    target[key] = value;
+  });
+}
+
+function updateArpeggioConditions(conditions: ArpeggioConditions): void {
+  const layoutId = currentPlaybackLayoutId();
+  updateUiState((draft) => {
+    const hasLayoutOverride = layoutId !== undefined && (
+      draft.ui.playbackPerLayout[layoutId] !== undefined
+      || draft.conditions.perLayout[layoutId]?.arpeggio !== undefined
+    );
+    if (hasLayoutOverride && layoutId) {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        arpeggio: structuredClone(conditions),
+      };
+    } else {
+      draft.conditions.defaults.arpeggio = structuredClone(conditions);
+    }
+  });
+}
+
+function setPlaybackLayoutOverride(enabled: boolean): void {
+  const layoutId = currentPlaybackLayoutId();
+  if (!layoutId) return;
+  updateUiState((draft) => {
+    if (enabled) {
+      draft.ui.playbackPerLayout[layoutId] ??= structuredClone(draft.ui.playback);
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        arpeggio: structuredClone(
+          draft.conditions.perLayout[layoutId]?.arpeggio ?? draft.conditions.defaults.arpeggio,
+        ),
+      };
+      return;
+    }
+    delete draft.ui.playbackPerLayout[layoutId];
+    const conditions = draft.conditions.perLayout[layoutId];
+    if (!conditions) return;
+    delete conditions.arpeggio;
+    if (Object.keys(conditions).length === 0) delete draft.conditions.perLayout[layoutId];
+  });
+}
+
 playbackView = createPlaybackView({
   el,
   storage: uiStorage,
-  getUiState: () => uiState,
+  getUiState: playbackViewUiState,
+  getPlaybackSettings: () => playbackViewUiState().ui.playback,
+  updatePlaybackSetting,
+  isPlaybackLayoutOverride,
+  setPlaybackLayoutOverride,
   updateUiState,
   getCalibration: () => playbackCalibration,
+  getArpeggioConditions: () => playbackViewUiState().conditions.defaults.arpeggio,
+  updateArpeggioConditions,
   readArpeggioConditions: () => calibrationDialog.readArpeggioConditions(),
   syncArpeggioConditionControls: () => calibrationDialog.syncArpeggioConditionControls(),
   arpeggioPresetId: () => calibrationDialog.arpeggioPresetId(),
@@ -559,8 +658,9 @@ playbackView = createPlaybackView({
 calibrationDialog = createCalibrationDialog({
   el,
   storage: uiStorage,
-  getUiState: () => uiState,
+  getUiState: playbackViewUiState,
   updateUiState,
+  updatePlaybackSetting,
   getPlaybackGeometry: () => playbackView.getGeometry(),
   getPlaybackLayout: () => playbackView.getLayout(),
   getCalibration: () => playbackCalibration,
