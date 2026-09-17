@@ -483,10 +483,10 @@ function updateCalibrationDialog(): void {
               ? `同手別指 ${focus.token.slice('same-hand-pair:'.length)}`
               : '通常速度';
       const speedDescription = focus.kind === 'direction' || focus.kind === 'directed-pair'
-        ? 'アルペジオを弾く時の速さ'
+        ? 'アルペジオで入力するときの速さ'
         : '普段の速度';
       elements.calibrationInstruction.textContent = focus.kind === 'direction' || focus.kind === 'directed-pair'
-        ? `${label}: 「${calibrationKeyLabel(focus.keys[0])}」→「${calibrationKeyLabel(focus.keys[1])}」の順で、${speedDescription}で繰り返してください。アルペジオ以外の時間は計測しないため、落ち着いて入力してください。`
+        ? `${label}: 「${calibrationKeyLabel(focus.keys[0])}」→「${calibrationKeyLabel(focus.keys[1])}」の順で、${speedDescription}で繰り返してください。アルペジオ部分以外の時間は測定していません。`
         : `${label}: 「${calibrationKeyLabel(focus.keys[0])}」と「${calibrationKeyLabel(focus.keys[1])}」を${speedDescription}で交互に打ってください。`;
       elements.calibrationProgress.textContent = `残り${Math.max(0, calibrationFocusSampleCount(focus.kind) - focus.intervals.length)}回`;
       return;
@@ -536,7 +536,7 @@ function updateCalibrationDialog(): void {
     const requiredSamples = pair.kind === 'direction'
       ? CALIBRATION_ACTION_SAMPLES
       : CALIBRATION_SAME_HAND_SAMPLES;
-    elements.calibrationInstruction.textContent = `${label}: 「${calibrationKeyLabel(pair.keys[0])}」→「${calibrationKeyLabel(pair.keys[1])}」の順で、アルペジオを弾くときの速さで繰り返してください。アルペジオ以外の時間は計測しないため、落ち着いて入力してください。`;
+    elements.calibrationInstruction.textContent = `${label}: 「${calibrationKeyLabel(pair.keys[0])}」→「${calibrationKeyLabel(pair.keys[1])}」の順で、アルペジオで入力するときの速さで繰り返してください。アルペジオ部分以外の時間は測定していません。`;
     elements.calibrationProgress.textContent = `${session.arpeggioPairIndex + 1} / ${session.arpeggioPairs.length} 方向、残り${Math.max(0, requiredSamples - session.arpeggioPairSampleCount)}回`;
     return;
   }
