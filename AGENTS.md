@@ -20,7 +20,8 @@
    §11 に節を挿入したら、以降の節番号とコード内の参照コメントを漏れなく振り直す
 3. **コミットメッセージは Angular 規約**（`CONTRIBUTING.md`）。commit-msg フックと CI が機械的に検査する。
    clone 直後に `git config core.hooksPath .githooks` を実行する
-4. **`main` に直接 push しない。** ブランチを切って PR を出す。CI が通ればマージしてよい
+4. **`main` に直接 push しない。** ブランチを切って PR を出す。
+   受け入れ条件を満たし、CI が通り、レビューの指摘が残っていなければマージしてよい
 5. **push 前に `npm test` と `npm run build` を通す。** CI も同じものを回す
 
 ## 数値を扱う時
