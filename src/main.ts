@@ -1527,6 +1527,22 @@ function currentPlaybackLayoutId(): string | undefined {
   return playbackView?.getLayout()?.id;
 }
 
+function currentConditionLayoutId(): string | undefined {
+  return el.detailLayout.value || currentPlaybackLayoutId();
+}
+
+function currentEffectiveWindowSize(): number {
+  const layoutId = currentConditionLayoutId();
+  return (layoutId ? uiState.conditions.perLayout[layoutId]?.windowSize : undefined)
+    ?? uiState.conditions.defaults.windowSize;
+}
+
+function syncEffectiveWindowControls(): void {
+  const windowSize = currentEffectiveWindowSize();
+  el.window.value = String(windowSize);
+  el.windowOut.value = String(windowSize);
+}
+
 function isPlaybackLayoutOverride(): boolean {
   const layoutId = currentPlaybackLayoutId();
   if (!layoutId) return false;
@@ -1643,6 +1659,7 @@ resultsView = createResultsView({
 
 function render(): void {
   resultsView.render();
+  syncEffectiveWindowControls();
 }
 
 function onModeChange() {
@@ -1687,7 +1704,7 @@ el.geometry.addEventListener('change', () => {
 });
 el.window.addEventListener('input', (event) => {
   const windowSize = Number((event.currentTarget as HTMLInputElement).value);
-  const layoutId = currentPlaybackLayoutId();
+  const layoutId = currentConditionLayoutId();
   const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
   updateUiState((draft) => {
     const conditions = layoutId ? draft.conditions.perLayout[layoutId] : undefined;
