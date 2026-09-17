@@ -599,7 +599,7 @@ function renderPlayback(
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${ctx.getUiState().ui.playback.showTrail ? ' checked' : ''} />押下履歴を残す</label>
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${ctx.getUiState().ui.playback.trailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${ctx.getUiState().ui.playback.showOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
-        <label class="playback-finger-toggle" title="1uの移動を通常の1アクション相当として同指連続の距離を再生時間へ反映"><input type="checkbox" data-playback-sfb-delay${playbackState.sameFingerDelay ? ' checked' : ''} />同指ディレイ</label>
+        <label class="playback-finger-toggle" title="同じ指の連続打鍵に指の移動速度を反映。個人速度が無ければ距離に比例した簡易換算で代用"><input type="checkbox" data-playback-sfb-delay${playbackState.sameFingerDelay ? ' checked' : ''} />指の移動速度を考慮</label>
         <label class="playback-finger-toggle" title="キャリブレーションした通常速度・同手別指速度・指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${ctx.getUiState().ui.playback.useCalibration ? ' checked' : ''}${ctx.getCalibration() ? '' : ' disabled'} />個人速度を使う</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${ctx.getUiState().ui.playback.showChain ? ' checked' : ''} />チェーン（片手の連続運指）</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-sfb${ctx.getUiState().ui.playback.chainIncludeSameFinger ? ' checked' : ''}${ctx.getUiState().ui.playback.showChain ? '' : ' disabled'} />同指連打も含める</label>

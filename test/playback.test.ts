@@ -120,7 +120,7 @@ test('同指ディレイは移動距離に応じてステップ間隔を延ば�
     { presses: [{ sfb: true, distance: 2 }] },
     { presses: [] },
   ] as never[];
-  assert.equal(playbackStrokeDurationMs(strokes[0], 2), 500);
+  assert.equal(playbackStrokeDurationMs(strokes[0], 2, false), 500);
   assert.equal(playbackStrokeDurationMs(strokes[0], 2, true), 1000);
 
   let state = setPlaybackStepsPerSecond(setPlaybackSameFingerDelay(playing(), true), 2);
