@@ -1,6 +1,6 @@
 import {
-  ADJACENT_PAIRS, ALL_FINGERS, FINGERS, resolveKeyId, THUMB_KEY, THUMB_ROW,
-  type GeometryKind,
+  ADJACENT_PAIRS, ALL_FINGERS, FINGERS, PHYSICAL_SHAPES, resolveKeyId, THUMB_KEY, THUMB_ROW,
+  assignmentWithHomeKeys, isPresetGeometryKind, type GeometryKind,
 } from './geometry.ts';
 import { evaluate, type Options, type Trace } from './evaluate.ts';
 import { computeMetrics, type LayerStat, type Metrics } from './metrics.ts';
@@ -13,6 +13,7 @@ import { FINGER_LABEL, SHORT_FINGER, SERIES, type AppElements } from './app-dom.
 import {
   type LayerColorScale, type LayerView, type MatrixKind, type SensitivityScale, type UiStateV1,
 } from './ui-state.ts';
+import type { GeometrySettings } from './geometry-settings.ts';
 import { resolveConditions } from './condition-resolution.ts';
 import { classifyFaces, displayTriggerKeys, faceCells, foldedLayerCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID } from './layouts/index.ts';
@@ -41,6 +42,7 @@ export interface ResultsViewContext {
   currentMode: () => { layouts: Layout[] };
   selected: Record<ModeId, Set<string>>;
   romajiRuleIdForLayout: (layout: Layout) => string | null;
+  getGeometrySettings: () => GeometrySettings;
   playback: PlaybackViewController;
 }
 
@@ -67,12 +69,17 @@ function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sor
 
 function render() {
   const defaultConditions = resolveConditions(ctx.getUiState().conditions.defaults, undefined);
-  const geometryCache = new Map<GeometryKind, ReturnType<typeof buildGeometry>>();
-  const geometryFor = (kind: GeometryKind) => {
-    const cached = geometryCache.get(kind);
+  const geometryCache = new Map<string, ReturnType<typeof buildGeometry>>();
+  const geometryFor = (kind: GeometryKind, layout: Layout) => {
+    const cacheKey = `${kind}|${JSON.stringify(layout.homeKeys ?? {})}`;
+    const cached = geometryCache.get(cacheKey);
     if (cached) return cached;
-    const geometry = buildGeometry(kind);
-    geometryCache.set(kind, geometry);
+    const settings = ctx.getGeometrySettings();
+    const assignment = assignmentWithHomeKeys(settings.assignment, layout.homeKeys);
+    const geometry = isPresetGeometryKind(kind)
+      ? buildGeometry(PHYSICAL_SHAPES[kind], assignment)
+      : buildGeometry(settings.shape, assignment);
+    geometryCache.set(cacheKey, geometry);
     return geometry;
   };
   const text = elements.text.value;
@@ -87,7 +94,7 @@ function render() {
         ctx.getUiState().conditions.defaults,
         ctx.getUiState().conditions.perLayout[layout.id],
       );
-      const geometry = geometryFor(conditions.geometry);
+      const geometry = geometryFor(conditions.geometry, layout);
       const trace = evaluate(text, layout, geometry, conditions.options);
       return {
         layout,
@@ -139,7 +146,11 @@ function render() {
   renderCompare(results);
   renderMatrices(results);
   if (elements.sensitivityPanel.open) {
-    renderSensitivity(text, geometryFor(defaultConditions.geometry), defaultConditions.options);
+    renderSensitivity(
+      text,
+      geometryFor(defaultConditions.geometry, results[0].layout),
+      defaultConditions.options,
+    );
   } else {
     showSensitivityPlaceholder();
   }
@@ -206,6 +217,16 @@ function compareMetricValues(metrics: Metrics): number[] {
   ];
 }
 
+function metricConditionText(metrics: Metrics, layout: Layout): string {
+  const hasLayoutHomeKeys = layout.homeKeys !== undefined && Object.keys(layout.homeKeys).length > 0;
+  const changed = metrics.geometryId !== 'row-staggered'
+    || metrics.fingerAssignmentId !== 'default'
+    || hasLayoutHomeKeys;
+  return `形状: ${metrics.geometryName} / 運指: ${metrics.fingerAssignmentName}`
+    + ` / ホーム: ${hasLayoutHomeKeys ? '配列指定' : '形状既定'}`
+    + (changed ? '（既定から変更）' : '（既定）');
+}
+
 function relativePercent(value: number, baseline: number): number | null {
   if (baseline === 0) return value === 0 ? 100 : null;
   return (value / baseline) * 100;
@@ -267,7 +288,7 @@ function renderCompare(results: Result[]) {
 
   const rows = sortedRows
     .map(({ result: r, cells }) => `<tr${r.metrics.totalUnits === best ? ' class="best"' : ''}>
-      <td><span class="swatch" style="background:${SERIES(r.slot)}"></span>${escapeText(r.layout.name)}</td>
+      <td><span class="swatch" style="background:${SERIES(r.slot)}"></span>${escapeText(r.layout.name)}<small class="metric-conditions">${escapeText(metricConditionText(r.metrics, r.layout))}</small></td>
       ${cells.map((cell) => `<td class="num">${cell.display}</td>`).join('')}
     </tr>`)
     .join('');
@@ -535,6 +556,8 @@ function renderSensitivity(
 function renderDetail(results: Result[]) {
   const found = results.find((r) => r.layout.id === elements.detailLayout.value) ?? results[0];
   const { metrics, layout, geometry, options } = found;
+
+  elements.detailConditions.textContent = metricConditionText(metrics, layout);
 
   ctx.playback.render(found.trace, layout, geometry, options);
   renderHeatmap(metrics, layout, geometry);

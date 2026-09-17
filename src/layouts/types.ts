@@ -1,4 +1,4 @@
-import { keyId, QWERTY_LEGEND, THUMB_KEY } from '../geometry.ts';
+import { keyId, QWERTY_LEGEND, THUMB_KEY, type NonThumb } from '../geometry.ts';
 import { groupFacesIntoLayers } from '../layers.ts';
 
 /** 1ステップで同時に押すキーの集合。キーはQWERTY刻印で指す（`thumb-r` `thumb-l` は親指キー）。`space` も入力互換で受け付ける */
@@ -68,6 +68,8 @@ export interface Layout {
   legends: Map<string, string>;
   /** 運指設定で左右の親指を振り替えられるシフトキー。 */
   thumbShiftKey?: string;
+  /** この配列が前提とする非親指のホームキー。省略時は物理形状側の既定値を使う。 */
+  homeKeys?: Partial<Record<NonThumb, string>>;
   /**
    * かなテキストをローマ字へ展開してから打つ配列はテーブルを持つ。
    * かな配列は持たない。同じかなテキストを両者に食わせて比較できる。

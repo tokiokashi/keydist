@@ -3,6 +3,7 @@ import {
   type UiStateConditionsDefaults,
   type UiStateV1,
 } from './ui-state.ts';
+import { isCustomGeometryKind, type PresetGeometryKind } from './geometry.ts';
 import { ARPEGGIO_PRESETS, type ArpeggioConditions } from './playback-arpeggio.ts';
 
 export type ConditionKey = keyof UiStateConditionsDefaults;
@@ -14,11 +15,17 @@ interface ConditionDescriptor {
 }
 
 /** 条件を追加した時に説明の追従漏れを型とテストで検出するための一覧。 */
-const GEOMETRY_LABEL: Record<UiStateConditionsDefaults['geometry'], string> = {
+const GEOMETRY_LABEL: Record<PresetGeometryKind | 'custom', string> = {
   'row-staggered': 'ロウスタッガード',
   ortholinear: 'オーソリニア',
   'column-staggered': 'カラムスタッガード',
+  custom: 'カスタム形状',
 };
+
+function geometryLabel(value: UiStateConditionsDefaults['geometry']): string {
+  if (isCustomGeometryKind(value)) return 'カスタム形状';
+  return GEOMETRY_LABEL[value];
+}
 
 const ARPEGGIO_PRESET_LABEL: Record<string, string> = {
   standard: '標準',
@@ -46,7 +53,7 @@ export const CONDITION_DESCRIPTORS = {
   geometry: {
     label: '物理形状',
     effect: 'ピッチ・段ずれ・列オフセットを決める物理形状です。形状を変えると距離の絶対値が変わります。',
-    format: (value) => GEOMETRY_LABEL[value as UiStateConditionsDefaults['geometry']],
+    format: (value) => geometryLabel(value as UiStateConditionsDefaults['geometry']),
   },
   windowSize: {
     label: '窓幅 N',

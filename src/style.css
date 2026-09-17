@@ -638,6 +638,41 @@ input[type='text'] {
   padding: 6px 8px;
 }
 
+.geometry-fields, .assignment-fields { margin-top: 14px; }
+.geometry-fields h3, .assignment-fields h3 { margin: 0 0 8px; font-size: 0.95rem; }
+.geometry-fields h4, .assignment-fields h4 { margin: 14px 0 6px; color: var(--muted); font-size: 0.76rem; }
+.geometry-number-grid, .assignment-columns, .assignment-homes { display: grid; gap: 6px; }
+.geometry-number-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.geometry-column-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.geometry-number { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--muted); font-size: 0.72rem; }
+.geometry-number > span { min-width: 4.7em; }
+.geometry-number input, .geometry-number select { min-width: 0; width: 100%; padding: 3px 4px; font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line-strong); border-radius: 4px; }
+.geometry-thumb-grid { display: grid; gap: 6px; }
+.geometry-thumb-row { display: grid; grid-template-columns: 5.5em 1fr 1fr; gap: 6px; align-items: center; }
+.geometry-thumb-row > span { color: var(--muted); font-size: 0.72rem; }
+.geometry-thumb-row .geometry-number { display: grid; grid-template-columns: auto 1fr; }
+.geometry-thumb-row .geometry-number > span { min-width: 0; }
+.assignment-columns { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.assignment-columns select { min-width: 0; width: 100%; padding: 3px 2px; font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line-strong); border-radius: 4px; }
+.assignment-keyboard { display: grid; gap: 4px; overflow-x: auto; padding-bottom: 4px; }
+.assignment-keyboard-row { display: flex; gap: 3px; min-width: max-content; }
+.assignment-key { min-width: 3.8em; padding: 4px 3px; border-color: var(--series-4); background: color-mix(in srgb, var(--series-4) 12%, var(--panel)); color: var(--fg); font-size: 0.68rem; }
+.assignment-key[data-finger='LP'], .assignment-key[data-finger='RP'] { border-color: var(--series-1); background: color-mix(in srgb, var(--series-1) 12%, var(--panel)); }
+.assignment-key[data-finger='LR'], .assignment-key[data-finger='RR'] { border-color: var(--series-2); background: color-mix(in srgb, var(--series-2) 12%, var(--panel)); }
+.assignment-key[data-finger='LM'], .assignment-key[data-finger='RM'] { border-color: var(--series-3); background: color-mix(in srgb, var(--series-3) 12%, var(--panel)); }
+.geometry-actions, .geometry-file-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.file-button { display: inline-flex; align-items: center; padding: 2px 7px; border: 1px solid var(--accent); border-radius: 6px; background: transparent; color: var(--accent); font-size: 0.72rem; cursor: pointer; }
+.file-button input { display: none; }
+.metric-conditions { display: block; color: var(--muted); font-size: 0.7rem; font-weight: 400; line-height: 1.35; }
+.compare-panel td:first-child { min-width: 15em; }
+.geometry-current { margin: 4px 0 8px; }
+#geometry-edit { margin-top: 0; }
+#new-home-keys { margin-top: 16px; }
+#new-home-keys h4 { margin: 0 0 6px; color: var(--muted); font-size: 0.76rem; }
+#geometry-dialog { width: min(760px, calc(100vw - 32px)); }
+#geometry-modal-editor { margin-top: 12px; }
+.dialog-actions .spacer { flex: 1; }
+
 .rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .rows label { display: flex; align-items: center; gap: 8px; font-size: 0.76rem; }
 .rows label > span { flex: none; width: 5.2em; color: var(--muted); }
