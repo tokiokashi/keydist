@@ -145,6 +145,7 @@ import {
   type UiStateStorage,
   type UiStateV1,
 } from './ui-state.ts';
+import { resolveConditions } from './condition-resolution.ts';
 import {
   classifyFaces,
   displayTriggerKeys,
@@ -357,7 +358,7 @@ if (!playbackCalibration && uiState.ui.playback.useCalibration) {
 }
 
 el.mode.value = uiState.ui.input.mode;
-el.geometry.value = uiState.ui.input.geometry;
+el.geometry.value = uiState.conditions.defaults.geometry;
 el.window.value = String(uiState.conditions.defaults.windowSize);
 el.sfbHome.checked = uiState.conditions.defaults.sfbHomeCost;
 el.preferOppositeThumb.checked = uiState.conditions.defaults.preferOppositeThumb;
@@ -917,6 +918,8 @@ interface Result {
   layout: Layout;
   trace: Trace;
   metrics: Metrics;
+  geometry: ReturnType<typeof buildGeometry>;
+  options: Options;
   /** 一覧での位置。色はこれで決まるので、選択を外しても他の色は動かない */
   slot: number;
 }
@@ -938,6 +941,7 @@ let playbackState: PlaybackState = createPlaybackState(
 let playbackTrace: Trace | undefined;
 let playbackGeometry: ReturnType<typeof buildGeometry> | undefined;
 let playbackLayout: Layout | undefined;
+let playbackOptions: Options | undefined;
 let playbackAnimationFrame: number | undefined;
 let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
@@ -1075,7 +1079,7 @@ function updateCalibrationDialog(): void {
 
 function beginCalibrationSession(): void {
   calibrationEditMode = false;
-  const geometry = playbackGeometry ?? buildGeometry(el.geometry.value as GeometryKind);
+  const geometry = playbackGeometry ?? buildGeometry(uiState.conditions.defaults.geometry);
   const eligibleKeyIds = calibrationEligibleKeyIds(geometry, playbackLayout?.legends);
   const actionKeys = calibrationActionPair(geometry, eligibleKeyIds);
   const pairs = calibrationKeyPairs(geometry, eligibleKeyIds);
@@ -1327,7 +1331,7 @@ function updatePlaybackView() {
   const stroke = playbackStrokeAt(playbackTrace.strokes, cursor);
   const display = playbackLayout && stroke ? playbackStrokeDisplay(playbackLayout, stroke) : undefined;
   const isRomaji = playbackLayout?.romajiTable !== undefined;
-  const windowSize = Number(el.window.value);
+  const windowSize = playbackOptions?.windowSize ?? uiState.conditions.defaults.windowSize;
   const activeKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
   const triggerKeys = new Set(stroke?.triggerKeys ?? []);
   const fingerPositionKeys = uiState.ui.playback.showFingers
@@ -1754,11 +1758,17 @@ function rerenderPlaybackFigure() {
   }
 }
 
-function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeof buildGeometry>) {
+function renderPlayback(
+  trace: Trace,
+  layout: Layout,
+  geometry: ReturnType<typeof buildGeometry>,
+  options: Options,
+) {
   cancelPlaybackAnimation();
   playbackTrace = trace;
   playbackGeometry = geometry;
   playbackLayout = layout;
+  playbackOptions = options;
   playbackState = createPlaybackState(
     uiState.ui.playback.stepsPerSecond,
     uiState.ui.playback.sameFingerDelay,
@@ -1775,7 +1785,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${uiState.ui.playback.showFingers ? ' checked' : ''} />指の位置を色で表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${uiState.ui.playback.showRomajiPlan ? ' checked' : ''} />予定ローマ字の盤面表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-plan-keys${uiState.ui.playback.showPlanKeys ? ' checked' : ''} />押下予定キーを表示</label>
-        <span class="playback-window-setting" title="サイドバーの窓幅Nと共通">N <output data-playback-window>${Number(el.window.value)}</output> ステップ</span>
+        <span class="playback-window-setting" title="選択中の配列に適用される窓幅N">N <output data-playback-window>${options.windowSize}</output> ステップ</span>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${uiState.ui.playback.showTrail ? ' checked' : ''} />押下履歴を残す</label>
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${uiState.ui.playback.trailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${uiState.ui.playback.showOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
@@ -1899,22 +1909,37 @@ function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sor
 }
 
 function render() {
-  const geometry = buildGeometry(el.geometry.value as GeometryKind);
-  const options: Options = {
-    windowSize: Number(el.window.value),
-    sfbHomeCost: el.sfbHome.checked,
-    preferOppositeThumb: el.preferOppositeThumb.checked,
+  const defaultConditions = resolveConditions(uiState.conditions.defaults, undefined);
+  const geometryCache = new Map<GeometryKind, ReturnType<typeof buildGeometry>>();
+  const geometryFor = (kind: GeometryKind) => {
+    const cached = geometryCache.get(kind);
+    if (cached) return cached;
+    const geometry = buildGeometry(kind);
+    geometryCache.set(kind, geometry);
+    return geometry;
   };
   const text = el.text.value;
-  el.windowOut.value = el.window.value;
+  el.windowOut.value = String(uiState.conditions.defaults.windowSize);
 
   const set = selected[currentModeId()];
   const results: Result[] = currentMode().layouts
     .map((layout, slot) => ({ layout, slot }))
     .filter((r) => set.has(r.layout.id))
     .map(({ layout, slot }) => {
-      const trace = evaluate(text, layout, geometry, options);
-      return { layout, trace, metrics: computeMetrics(trace, geometry), slot };
+      const conditions = resolveConditions(
+        uiState.conditions.defaults,
+        uiState.conditions.perLayout[layout.id],
+      );
+      const geometry = geometryFor(conditions.geometry);
+      const trace = evaluate(text, layout, geometry, conditions.options);
+      return {
+        layout,
+        trace,
+        metrics: computeMetrics(trace, geometry),
+        geometry,
+        options: conditions.options,
+        slot,
+      };
     });
 
   if (results.length === 0) {
@@ -1922,6 +1947,7 @@ function render() {
     playbackTrace = undefined;
     playbackGeometry = undefined;
     playbackLayout = undefined;
+    playbackOptions = undefined;
     el.playback.innerHTML = '';
     el.textMeta.textContent = '配列を1つ以上選ぶ';
     el.compareChart.innerHTML = '';
@@ -1956,11 +1982,11 @@ function render() {
   renderCompare(results);
   renderMatrices(results);
   if (el.sensitivityPanel.open) {
-    renderSensitivity(text, geometry, options);
+    renderSensitivity(text, geometryFor(defaultConditions.geometry), defaultConditions.options);
   } else {
     showSensitivityPlaceholder();
   }
-  renderDetail(results, geometry);
+  renderDetail(results);
 }
 
 const COMPARE_HEADERS = [
@@ -2348,11 +2374,11 @@ function renderSensitivity(
   sensitivityDirty = false;
 }
 
-function renderDetail(results: Result[], geometry: ReturnType<typeof buildGeometry>) {
+function renderDetail(results: Result[]) {
   const found = results.find((r) => r.layout.id === el.detailLayout.value) ?? results[0];
-  const { metrics, layout } = found;
+  const { metrics, layout, geometry, options } = found;
 
-  renderPlayback(found.trace, layout, geometry);
+  renderPlayback(found.trace, layout, geometry, options);
   renderHeatmap(metrics, layout, geometry);
 
   const total = metrics.totalUnits || 1;
@@ -3126,11 +3152,16 @@ el.compareChartMetric.addEventListener('change', () => {
   render();
 });
 el.geometry.addEventListener('change', () => {
-  updateUiState((draft) => { draft.ui.input.geometry = el.geometry.value as GeometryKind; });
+  const geometry = el.geometry.value as GeometryKind;
+  updateUiState((draft) => {
+    draft.ui.input.geometry = geometry;
+    draft.conditions.defaults.geometry = geometry;
+  });
   render();
 });
-el.window.addEventListener('input', () => {
-  updateUiState((draft) => { draft.conditions.defaults.windowSize = Number(el.window.value); });
+el.window.addEventListener('input', (event) => {
+  const windowSize = Number((event.currentTarget as HTMLInputElement).value);
+  updateUiState((draft) => { draft.conditions.defaults.windowSize = windowSize; });
   render();
 });
 el.sfbHome.addEventListener('change', () => {

@@ -75,12 +75,13 @@ test('保存形式はuiとconditionsに分かれ、既存配列の条件だけ�
   const fallback = defaults();
   const value = structuredClone(fallback);
   value.conditions.defaults = {
+    geometry: 'column-staggered',
     windowSize: 5,
     sfbHomeCost: false,
     preferOppositeThumb: true,
   };
   value.conditions.perLayout = {
-    oonishi: { windowSize: 7, sfbHomeCost: false },
+    oonishi: { geometry: 'ortholinear', windowSize: 7, sfbHomeCost: false },
     removed: { windowSize: 9 },
     invalid: { windowSize: 99 },
   };
@@ -91,7 +92,7 @@ test('保存形式はuiとconditionsに分かれ、既存配列の条件だけ�
   assert.deepEqual(Object.keys(state).sort(), ['conditions', 'ui', 'version']);
   assert.deepEqual(state.conditions.defaults, value.conditions.defaults);
   assert.deepEqual(state.conditions.perLayout, {
-    oonishi: { windowSize: 7, sfbHomeCost: false },
+    oonishi: { geometry: 'ortholinear', windowSize: 7, sfbHomeCost: false },
   });
 });
 
