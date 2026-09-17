@@ -614,7 +614,7 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
 
 export function createPlaybackState(
   stepsPerSecond: PlaybackStepsPerSecond = DEFAULT_PLAYBACK_STEPS_PER_SECOND,
-  sameFingerDelay = false,
+  sameFingerDelay = true,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   arpeggio?: ArpeggioConditions,
@@ -785,7 +785,7 @@ export function playbackArpeggioTimings(
   stepsPerSecond: PlaybackStepsPerSecond,
   calibration?: PlaybackCalibration,
   delayMode: 'before' | 'distributed' = 'before',
-  sameFingerDelay = false,
+  sameFingerDelay = true,
 ): ReadonlyMap<number, PlaybackArpeggioTiming> {
   const timings = new Map<number, PlaybackArpeggioTiming>();
   for (const span of playbackArpeggioSpans(strokes, conditions)) {
@@ -838,7 +838,7 @@ export function playbackArpeggioTimings(
 export function playbackStrokeDurationMs(
   stroke: Stroke | undefined,
   stepsPerSecond: PlaybackStepsPerSecond,
-  sameFingerDelay = false,
+  sameFingerDelay = true,
   calibration?: PlaybackCalibration,
   previousStroke?: Stroke,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
@@ -963,7 +963,7 @@ export function playbackRecentActionsPerSecond(
   strokes: readonly Stroke[],
   cursor: number,
   stepsPerSecond: PlaybackStepsPerSecond,
-  sameFingerDelay = false,
+  sameFingerDelay = true,
   limit = 10,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
@@ -991,7 +991,7 @@ export function playbackRecentKanaPerSecond(
   strokes: readonly Stroke[],
   cursor: number,
   stepsPerSecond: PlaybackStepsPerSecond,
-  sameFingerDelay = false,
+  sameFingerDelay = true,
   limit = 10,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
@@ -1029,7 +1029,7 @@ export function playbackRecentKanaPerSecond(
 export function playbackRateChartData(
   strokes: readonly Stroke[],
   stepsPerSecond: PlaybackStepsPerSecond,
-  sameFingerDelay = false,
+  sameFingerDelay = true,
   limit = 10,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
