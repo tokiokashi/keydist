@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   createDefaultUiState,
+  DEFAULT_CONDITION_DEFAULTS,
   LEGACY_SELECTION_KEY,
   LEGACY_TEXT_COLLAPSED_KEY,
   LEGACY_THEME_KEY,
@@ -13,6 +14,7 @@ import {
   type UiStateChoices,
   type UiStateStorage,
 } from '../src/ui-state.ts';
+import { describeConditions, describePlaybackConditions } from '../src/condition-description.ts';
 
 class MemoryStorage implements UiStateStorage {
   readonly data = new Map<string, string>();
@@ -93,6 +95,64 @@ test('保存形式はuiとconditionsに分かれ、既存配列の条件だけ�
   assert.deepEqual(state.conditions.perLayout, {
     oonishi: { windowSize: 7, sfbHomeCost: false },
   });
+});
+
+test('条件説明は既定値にある条件をすべて説明する', () => {
+  const result = describeConditions({
+    defaults: DEFAULT_CONDITION_DEFAULTS,
+    current: DEFAULT_CONDITION_DEFAULTS,
+    perLayout: {},
+  });
+
+  assert.deepEqual(
+    result.conditions.map((condition) => condition.key),
+    Object.keys(DEFAULT_CONDITION_DEFAULTS),
+  );
+});
+
+test('条件説明は変更値と配列ごとの上書きを表現する', () => {
+  const result = describeConditions({
+    defaults: DEFAULT_CONDITION_DEFAULTS,
+    current: { ...DEFAULT_CONDITION_DEFAULTS, windowSize: 7 },
+    perLayout: { oonishi: { sfbHomeCost: false } },
+    layoutNames: { oonishi: '大西配列' },
+  });
+
+  assert.equal(result.conditions.find((condition) => condition.key === 'windowSize')?.differsFromDefault, true);
+  assert.equal(result.conditions.find((condition) => condition.key === 'sfbHomeCost')?.differsFromDefault, false);
+  assert.deepEqual(result.overrides, [{
+    layoutId: 'oonishi',
+    layoutName: '大西配列',
+    conditions: [{
+      key: 'sfbHomeCost',
+      label: '同指連続のホームコスト',
+      value: '加算しない',
+      defaultValue: '加算する',
+      differsFromDefault: true,
+      effect: '同じ指でホームキーを打つ移動を距離へ加算するかどうかです。オフならホームキー上の移動は0として扱います。',
+    }],
+  }]);
+});
+
+test('条件説明は打鍵再生の条件も既定値との差分を表現する', () => {
+  const fallback = defaults();
+  const result = describePlaybackConditions({
+    defaults: fallback.ui.playback,
+    current: {
+      ...fallback.ui.playback,
+      stepsPerSecond: 3,
+      sameFingerDelay: true,
+    },
+  });
+
+  assert.deepEqual(
+    result.map((condition) => condition.key),
+    ['stepsPerSecond', 'speedMultiplier', 'sameFingerDelay', 'useCalibration'],
+  );
+  assert.equal(result.find((condition) => condition.key === 'stepsPerSecond')?.value, '3 ステップ/秒');
+  assert.equal(result.find((condition) => condition.key === 'stepsPerSecond')?.differsFromDefault, true);
+  assert.equal(result.find((condition) => condition.key === 'sameFingerDelay')?.value, '有効');
+  assert.equal(result.find((condition) => condition.key === 'useCalibration')?.differsFromDefault, false);
 });
 
 test('無効な値は項目ごとに既定値へ戻す', () => {

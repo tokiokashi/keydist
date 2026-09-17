@@ -14,6 +14,7 @@
       <p class="lede">
         論理配列を打った時の指の総移動距離で評価する
         <button type="button" class="how-open" id="how-open">計算方法</button>
+        <button type="button" class="how-open" id="conditions-open">シミュレーション条件</button>
       </p>
       <div class="spacer"></div>
       <div class="theme-toggle" role="group" aria-label="表示テーマ">
@@ -233,6 +234,28 @@
         <p>
           <a href="https://github.com/tokiokashi/keydist/blob/main/spec/distance-model.md"
             target="_blank" rel="noopener">仕様の全文を読む</a>
+        </p>
+      </div>
+    </dialog>
+
+    <dialog id="conditions-dialog">
+      <div class="dialog-body">
+        <div class="dialog-head">
+          <h2>シミュレーション条件</h2>
+          <button type="button" class="ghost close" id="conditions-close">閉じる</button>
+        </div>
+        <p class="note">
+          現在の条件と、アプリの既定値との差分を表示しています。条件を変更すると、次に開いた時の内容へ反映されます。
+        </p>
+        <div id="condition-description"></div>
+        <hr />
+        <p class="note">条件の定義は仕様書を参照してください。</p>
+        <p>
+          <a href="https://github.com/tokiokashi/keydist/blob/main/spec/playback-timing.md"
+            target="_blank" rel="noopener">打鍵再生時間モデルの仕様</a>
+          <br />
+          <a href="https://github.com/tokiokashi/keydist/blob/main/spec/distance-model.md"
+            target="_blank" rel="noopener">移動距離モデルの仕様</a>
         </p>
       </div>
     </dialog>
