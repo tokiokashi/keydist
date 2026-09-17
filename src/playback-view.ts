@@ -96,7 +96,10 @@ let playbackArpeggioTimingCache: {
   delayMode: 'before' | 'distributed';
   timings: ReadonlyMap<number, PlaybackArpeggioTiming>;
 } | undefined;
+type PlaybackSettingsTab = 'display' | 'conditions' | 'timeline';
+
 let playbackSettingsOpen = false;
+let playbackSettingsTab: PlaybackSettingsTab = 'display';
 
 function setPlaybackSettingsOpen(open: boolean): void {
   playbackSettingsOpen = open;
@@ -108,6 +111,7 @@ function setPlaybackSettingsOpen(open: boolean): void {
 }
 
 function playbackSettingsMarkup(layout: Layout, options: Options): string {
+  const activeTab = playbackSettingsTab;
   return `<div class="playback-settings-content">
     <div class="dialog-head">
       <h2>打鍵再生の設定</h2>
@@ -119,11 +123,11 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
       <small>配列固有にすると、この配列を表示したときだけ設定を使います。</small>
     </div>
     <div class="playback-settings-tabs" role="tablist" aria-label="打鍵再生設定の分類">
-      <button type="button" class="playback-settings-tab" role="tab" aria-selected="true" aria-controls="playback-settings-display" data-playback-settings-tab="display">キーボード表示</button>
-      <button type="button" class="playback-settings-tab" role="tab" aria-selected="false" aria-controls="playback-settings-conditions" data-playback-settings-tab="conditions">シミュレーション条件</button>
-      <button type="button" class="playback-settings-tab" role="tab" aria-selected="false" aria-controls="playback-settings-timeline" data-playback-settings-tab="timeline">タイムライン表示</button>
+      <button type="button" class="playback-settings-tab" role="tab" aria-selected="${activeTab === 'display'}" aria-controls="playback-settings-display" data-playback-settings-tab="display">表示設定</button>
+      <button type="button" class="playback-settings-tab" role="tab" aria-selected="${activeTab === 'conditions'}" aria-controls="playback-settings-conditions" data-playback-settings-tab="conditions">シミュレーション条件</button>
+      <button type="button" class="playback-settings-tab" role="tab" aria-selected="${activeTab === 'timeline'}" aria-controls="playback-settings-timeline" data-playback-settings-tab="timeline">タイムライン設定</button>
     </div>
-    <section id="playback-settings-display" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="display">
+    <section id="playback-settings-display" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="display"${activeTab === 'display' ? '' : ' hidden'}>
       <p class="note">キーボード画面に重ねる情報を設定します。変更はすぐに反映されます。</p>
       <div class="playback-dialog-grid">
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${ctx.getUiState().ui.playback.showFingers ? ' checked' : ''} />指の位置を色で表示</label>
@@ -140,7 +144,7 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${ctx.getUiState().ui.playback.showArpeggio ? ' checked' : ''} />アルペジオの動的表示</label>
       </div>
     </section>
-    <section id="playback-settings-conditions" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="conditions" hidden>
+    <section id="playback-settings-conditions" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="conditions"${activeTab === 'conditions' ? '' : ' hidden'}>
       <p class="note">再生時間とアルペジオ判定の計算方法を設定します。変更は実効速度と再生の進み方に反映されます。</p>
       <div class="playback-dialog-grid">
         <label class="playback-speed"><span>標準速度</span><input type="number" data-playback-rate min="${PLAYBACK_STEPS_PER_SECOND_MIN}" max="${PLAYBACK_STEPS_PER_SECOND_MAX}" step="any" value="${playbackState.stepsPerSecond}" aria-label="再生の標準速度（ステップ毎秒）" /> <span>ステップ/秒</span></label>
@@ -168,7 +172,7 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
       </select></label>
       <label class="playback-speed playback-speed-final"><span>再生倍率</span><input type="number" data-playback-multiplier min="${PLAYBACK_SPEED_MULTIPLIER_MIN}" max="${PLAYBACK_SPEED_MULTIPLIER_MAX}" step="any" value="${playbackState.speedMultiplier}" aria-label="再生速度の倍率" /> <span>倍</span></label>
     </section>
-    <section id="playback-settings-timeline" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="timeline" hidden>
+    <section id="playback-settings-timeline" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="timeline"${activeTab === 'timeline' ? '' : ' hidden'}>
       <p class="note">タイムラインの進み方に関わる設定です。現在はアルペジオ時間だけを扱います。</p>
       <label class="playback-finger-toggle" title="アルペジオ区間の間隔を再生時間へ反映"><input type="checkbox" data-playback-arpeggio-enabled${ctx.getUiState().ui.playback.arpeggioEnabled ? ' checked' : ''} />アルペジオ時間</label>
     </section>
@@ -937,6 +941,8 @@ function seekPlayback(value: string, playing = false) {
       const settingsTab = targetElement.closest<HTMLButtonElement>('[data-playback-settings-tab]');
       if (settingsTab?.dataset.playbackSettingsTab) {
         const tabId = settingsTab.dataset.playbackSettingsTab;
+        if (tabId !== 'display' && tabId !== 'conditions' && tabId !== 'timeline') return;
+        playbackSettingsTab = tabId;
         for (const tab of elements.playbackSettingsPanel.querySelectorAll<HTMLButtonElement>('[data-playback-settings-tab]')) {
           tab.setAttribute('aria-selected', String(tab === settingsTab));
         }

@@ -1603,7 +1603,8 @@ function setPlaybackLayoutOverride(enabled: boolean): void {
     if (enabled) {
       draft.conditions.perLayout[layoutId] = {
         ...draft.conditions.perLayout[layoutId],
-        playback: draft.conditions.perLayout[layoutId]?.playback ?? {},
+        playback: { ...draft.ui.playback },
+        arpeggio: structuredClone(draft.conditions.defaults.arpeggio),
       };
       return;
     }

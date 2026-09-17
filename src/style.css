@@ -457,14 +457,15 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-settings-scope small { grid-column: 1 / -1; color: var(--muted); font-size: 0.68rem; }
 .playback-settings-tabs {
   display: flex;
+  justify-content: space-between;
   gap: 2px;
   margin: 18px 0 14px;
-  overflow-x: auto;
+  overflow: hidden;
   border-bottom: 1px solid var(--line);
 }
 .playback-settings-tab {
   flex: 0 0 auto;
-  padding: 5px 10px;
+  padding: 5px 4px;
   border: 0;
   border-bottom: 2px solid transparent;
   border-radius: 5px 5px 0 0;
