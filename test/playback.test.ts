@@ -200,7 +200,7 @@ test('左右交互の打鍵は通常速度の測定値を使う', () => {
   assert.equal(playbackStrokeDurationMs(current, 1, false, calibration, previous), 200);
 });
 
-test('方向別キャリブレーションは異手と同手別指の向きを分ける', () => {
+test('通常再生はアルペジオ用の方向別キャリブレーションを使わない', () => {
   assert.equal(handDirection('LI', 'RI'), 'L→R');
   assert.equal(handDirection('RI', 'LI'), 'R→L');
   assert.equal(sameHandDirectedFingerPairKey('LM', 'LI'), 'LM>LI');
@@ -216,10 +216,10 @@ test('方向別キャリブレーションは異手と同手別指の向きを�
   };
   const leftToRight = { presses: [{ finger: 'RI' }] } as never;
   const previous = { presses: [{ finger: 'LI' }] } as never;
-  assert.equal(playbackStrokeDurationMs(leftToRight, 1, false, calibration, previous), 125);
+  assert.equal(playbackStrokeDurationMs(leftToRight, 1, false, calibration, previous), 200);
   const sameHand = { presses: [{ finger: 'LI' }] } as never;
   const samePrevious = { presses: [{ finger: 'LM' }] } as never;
-  assert.equal(playbackStrokeDurationMs(sameHand, 1, false, calibration, samePrevious), 1000 / 6);
+  assert.equal(playbackStrokeDurationMs(sameHand, 1, false, calibration, samePrevious), 1000 / 3);
 });
 
 test('アルペジオ時間を無効にすると方向別の拡張値を通常再生へ持ち込まない', () => {

@@ -736,20 +736,23 @@ function playbackTransitionRate(
   previousStroke: Stroke | undefined,
   stepsPerSecond: PlaybackStepsPerSecond,
   calibration?: PlaybackCalibration,
+  useArpeggioCalibration = false,
 ): number {
   const crossDirection = playbackCrossHandDirection(stroke, previousStroke);
-  if (crossDirection !== undefined) {
+  if (useArpeggioCalibration && crossDirection !== undefined) {
     return calibration?.actionsPerSecondByDirection?.[crossDirection]
       ?? calibration?.actionsPerSecond
       ?? stepsPerSecond;
   }
-  const sameHandDirectedPair = playbackSameHandDirectedPair(stroke, previousStroke);
   const sameHandPair = playbackSameHandDifferentFingerPair(stroke, previousStroke);
-  if (sameHandDirectedPair !== undefined) {
-    return calibration?.sameHandDifferentFingerActionsPerDirectedPair?.[sameHandDirectedPair]
-      ?? (sameHandPair === undefined
-        ? undefined
-        : calibration?.sameHandDifferentFingerActionsPerSecondByPair[sameHandPair])
+  if (sameHandPair !== undefined) {
+    const sameHandDirectedPair = useArpeggioCalibration
+      ? playbackSameHandDirectedPair(stroke, previousStroke)
+      : undefined;
+    return (sameHandDirectedPair === undefined
+      ? undefined
+      : calibration?.sameHandDifferentFingerActionsPerDirectedPair?.[sameHandDirectedPair])
+      ?? calibration?.sameHandDifferentFingerActionsPerSecondByPair[sameHandPair]
       ?? calibration?.sameHandDifferentFingerActionsPerSecond
       ?? stepsPerSecond;
   }
@@ -793,6 +796,7 @@ export function playbackArpeggioTimings(
         strokes[index - 1],
         stepsPerSecond,
         calibration,
+        true,
       ));
       const normalMs = playbackStrokeDurationMs(
         strokes[index],

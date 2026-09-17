@@ -1305,7 +1305,10 @@ function updateCalibrationDialog(): void {
             : focus.kind === 'same-hand-pair'
               ? `同手別指 ${focus.token.slice('same-hand-pair:'.length)}`
               : '通常速度';
-      el.calibrationInstruction.textContent = `${label}: 「${calibrationKeyLabel(focus.keys[0])}」と「${calibrationKeyLabel(focus.keys[1])}」を${focus.kind === 'finger' || focus.kind === 'actions' ? '普段の速度' : 'アルペジオを弾く時の速さ'}で交互に打ってください。`;
+      const speedDescription = focus.kind === 'direction' || focus.kind === 'directed-pair'
+        ? 'アルペジオを弾く時の速さ'
+        : '普段の速度';
+      el.calibrationInstruction.textContent = `${label}: 「${calibrationKeyLabel(focus.keys[0])}」と「${calibrationKeyLabel(focus.keys[1])}」を${speedDescription}で交互に打ってください。`;
       el.calibrationProgress.textContent = `残り${Math.max(0, calibrationFocusSampleCount(focus.kind) - focus.intervals.length)}回`;
       return;
     }
@@ -1339,7 +1342,7 @@ function updateCalibrationDialog(): void {
   }
   if (session.phase === 'same-hand') {
     const pair = session.sameHandPairs[session.sameHandPairIndex];
-    el.calibrationInstruction.textContent = `同じ手の別指: ${calibrationPairText(pair)}をアルペジオを弾く時の速さで交互に打ってください。`;
+    el.calibrationInstruction.textContent = `同じ手の別指: ${calibrationPairText(pair)}を普段の速度で交互に打ってください。`;
     el.calibrationProgress.textContent = `${session.sameHandPairIndex + 1} / ${session.sameHandPairs.length} 組、残り${Math.max(0, CALIBRATION_SAME_HAND_SAMPLES * 2 - session.sameHandPairSampleCount)}回`;
     return;
   }
