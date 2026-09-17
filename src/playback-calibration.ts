@@ -1,4 +1,5 @@
 import {
+  ADJACENT_PAIRS,
   ALL_FINGERS,
   FINGERS,
   HOME_ROW,
@@ -307,6 +308,22 @@ export function calibrationSameHandPairs(
         }
       }
     }
+  }
+  return pairs;
+}
+
+/** アルペジオ用の同手・隣接指の片方向キー組を、往復分作る。 */
+export function calibrationAdjacentSameHandPairs(
+  geometry: Geometry,
+  eligibleKeyIds = calibrationEligibleKeyIds(geometry),
+): [string, string][] {
+  const pairs: [string, string][] = [];
+  for (const [firstFinger, secondFinger] of ADJACENT_PAIRS) {
+    const first = geometry.assignment.homeKey[firstFinger];
+    const second = geometry.assignment.homeKey[secondFinger];
+    if (!first || !second || first === second
+      || !eligibleKeyIds.has(first) || !eligibleKeyIds.has(second)) continue;
+    pairs.push([first, second], [second, first]);
   }
   return pairs;
 }

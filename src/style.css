@@ -905,7 +905,8 @@ dialog::backdrop { background: rgb(0 0 0 / 0.38); }
 .calibration-finger-details { margin-top: 14px; }
 .calibration-finger-details > summary { cursor: pointer; color: var(--muted); }
 .calibration-finger-speed { margin: 10px 0 0; }
-.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.calibration-live-prompt { display: block; min-height: 1.2em; color: var(--accent); font-size: 0.76rem; }
+.dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .dialog-head h2 { margin: 0; }
 dialog .close { flex: none; }
