@@ -40,6 +40,21 @@ test('アルペジオは指順と横方向が一致する2打を拾う', () => {
   ], 1).get('r'), 2);
 });
 
+test('同じキーを区間内で何度も踏む時、通り過ぎた番号ではなく次の番号を出す', () => {
+  const zigzag = [
+    stroke('LM', 'e', 2, 1),
+    stroke('LI', 'r', 4, 1),
+    stroke('LM', 'e', 2, 1),
+  ];
+  assert.equal(playbackArpeggioSpans(zigzag).length, 1);
+  // カーソル1（1打目のみ完了）: 'e'はまだ1番目が未通過なので1を出す
+  assert.equal(playbackArpeggioOrders(zigzag, 1).get('e'), 1);
+  // カーソル2（2打目まで完了）: 1番目は通り過ぎたので次の3番目を出す
+  assert.equal(playbackArpeggioOrders(zigzag, 2).get('e'), 3);
+  // カーソル3（全打完了）: 全部通り過ぎているので最後の番号を残す
+  assert.equal(playbackArpeggioOrders(zigzag, 3).get('e'), 3);
+});
+
 test('横の開きが小さい遷移と指順に逆らう遷移は拾わない', () => {
   assert.deepEqual(playbackArpeggioSpans([
     stroke('LM', 'e', 2, 1),
