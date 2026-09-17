@@ -391,7 +391,6 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 }
 .playback-panel[open] > summary::after { content: '−'; }
 .playback-panel[open] > summary { margin-bottom: 10px; border-bottom-color: var(--line); }
-.playback-summary-icon { color: var(--accent); font-size: 1rem; line-height: 1; }
 .playback-summary-hint { margin-left: auto; color: var(--muted); font-size: 0.72rem; font-weight: 500; }
 .playback-head {
   display: flex;
@@ -511,7 +510,8 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   gap: 6px;
   margin-bottom: 8px;
 }
-.playback-controls button { padding: 4px 9px; font-size: 0.76rem; }
+.playback-controls button { display: inline-flex; align-items: center; padding: 4px 9px; font-size: 0.76rem; }
+.playback-control-icon { display: inline-block; min-width: 1em; margin-right: 4px; text-align: center; }
 .playback-position {
   margin-left: 2px;
   color: var(--muted);

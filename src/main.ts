@@ -1619,6 +1619,8 @@ function setPlaybackLayoutOverride(enabled: boolean): void {
     delete conditions.arpeggio;
     if (Object.keys(conditions).length === 0) delete draft.conditions.perLayout[layoutId];
   });
+  syncGlobalConditionControls();
+  render();
 }
 
 playbackView = createPlaybackView({

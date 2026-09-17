@@ -477,7 +477,10 @@ function updatePlaybackView() {
   if (layer) layer.textContent = playbackLayerLabel(playbackTrace, stroke);
   if (seek) seek.value = String(cursor);
   if (toggle) {
-    toggle.textContent = playbackState.playing ? '一時停止' : '再生';
+    const toggleIcon = toggle.querySelector<HTMLElement>('[data-playback-toggle-icon]');
+    const toggleLabel = toggle.querySelector<HTMLElement>('[data-playback-toggle-label]');
+    if (toggleIcon) toggleIcon.textContent = playbackState.playing ? '⏸' : '▶';
+    if (toggleLabel) toggleLabel.textContent = playbackState.playing ? '一時停止' : '再生';
     toggle.setAttribute('aria-label', playbackState.playing ? '再生を一時停止する' : '再生する');
     toggle.disabled = total === 0 || cursor >= total;
   }
@@ -753,7 +756,7 @@ function renderPlayback(
   playbackRateChartSignature = undefined;
   playbackArpeggioTimingCache = undefined;
   elements.playback.innerHTML = `<details class="playback-panel"${ctx.getUiState().ui.panels.playback ? ' open' : ''}>
-    <summary><span class="playback-summary-icon" aria-hidden="true">▶</span><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
+    <summary><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
       <div class="playback-head">
         <button type="button" class="secondary playback-setting-button" data-playback-settings-open aria-controls="playback-settings-panel" aria-expanded="false">
@@ -761,10 +764,10 @@ function renderPlayback(
         </button>
       </div>
       <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
-        <button type="button" class="ghost" data-playback-action="back">1 ステップ戻る</button>
-        <button type="button" data-playback-action="toggle" aria-label="再生する">再生</button>
-        <button type="button" class="secondary" data-playback-action="stop" disabled>停止</button>
-        <button type="button" class="ghost" data-playback-action="forward">1 ステップ進む</button>
+        <button type="button" class="ghost" data-playback-action="back"><span class="playback-control-icon" aria-hidden="true">◀</span><span>1 ステップ戻る</span></button>
+        <button type="button" data-playback-action="toggle" aria-label="再生する"><span class="playback-control-icon" data-playback-toggle-icon aria-hidden="true">▶</span><span data-playback-toggle-label>再生</span></button>
+        <button type="button" class="secondary" data-playback-action="stop" disabled><span class="playback-control-icon" aria-hidden="true">■</span><span>停止</span></button>
+        <button type="button" class="ghost" data-playback-action="forward"><span class="playback-control-icon" aria-hidden="true">▶</span><span>1 ステップ進む</span></button>
         <span class="playback-position" aria-live="polite" data-playback-position>0 / ${trace.strokes.length} ステップ</span>
         <span class="playback-effective-rates"><span class="playback-effective-kana-rate" data-playback-effective-kana-rate>実効 — かな/秒</span><span class="playback-effective-rate" data-playback-effective-rate>実効 — アクション/秒</span></span>
       </div>
