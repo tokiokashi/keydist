@@ -37,6 +37,7 @@ import { LAYOUT_BY_ID, withRomaji } from '../src/layouts/index.ts';
 import { kunrei } from '../src/romaji/kunrei.ts';
 import {
   actionsPerSecondFromIntervals,
+  clearPlaybackCalibration,
   calibrationActionPair,
   calibrationEligibleKeyIds,
   calibrationKeyMatches,
@@ -268,6 +269,7 @@ test('キャリブレーションの保存値は壊れたJSONを無視する', (
   const storage = {
     getItem: (key: string) => data.get(key) ?? null,
     setItem: (key: string, value: string) => data.set(key, value),
+    removeItem: (key: string) => { data.delete(key); },
   };
   const calibration = {
     actionsPerSecond: 40,
@@ -294,6 +296,21 @@ test('キャリブレーションの保存値は壊れたJSONを無視する', (
   data.clear();
   data.set('keydist.playback-calibration.v1', JSON.stringify(calibration));
   assert.equal(loadPlaybackCalibration(storage), undefined);
+});
+
+test('キャリブレーションの保存値を新旧キーから削除できる', () => {
+  const data = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: string) => data.set(key, value),
+    removeItem: (key: string) => { data.delete(key); },
+  };
+  data.set(PLAYBACK_CALIBRATION_STORAGE_KEY, '{}');
+  data.set('keydist.playback-calibration.v2', '{}');
+
+  clearPlaybackCalibration(storage);
+
+  assert.equal(data.size, 0);
 });
 
 test('キャリブレーションの指ペアはホーム段と下段で揃える', () => {

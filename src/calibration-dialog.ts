@@ -11,7 +11,7 @@ import {
   CALIBRATION_FINGER_SAMPLES, CALIBRATION_FINGER_SPEED_MAX,
   CALIBRATION_FINGER_SPEED_MIN, CALIBRATION_SAME_HAND_SAMPLES,
   fallbackFingerSpeedFromSamples, fingerSpeedFromSamples, handDirection,
-  sameHandDirectedFingerPairKey, sameHandFingerPairKey,
+  clearPlaybackCalibration, sameHandDirectedFingerPairKey, sameHandFingerPairKey,
   type CalibrationKeyPair, type FingerSpeedSample, type PlaybackCalibration,
 } from './playback-calibration.ts';
 import type { Layout } from './layouts/index.ts';
@@ -30,8 +30,8 @@ export interface CalibrationDialogContext {
   getGeometrySettings: () => GeometrySettings;
   getPlaybackLayout: () => Layout | undefined;
   getCalibration: () => PlaybackCalibration | undefined;
-  setCalibration: (calibration: PlaybackCalibration) => void;
-  setPlaybackCalibration: (calibration: PlaybackCalibration) => void;
+  setCalibration: (calibration: PlaybackCalibration | undefined) => void;
+  setPlaybackCalibration: (calibration: PlaybackCalibration | undefined) => void;
 }
 
 export interface CalibrationDialogController {
@@ -126,6 +126,17 @@ function restoreCalibrationForm(calibration: PlaybackCalibration): void {
   );
   renderCalibrationDirectedPairInputs(calibration.sameHandDifferentFingerActionsPerDirectedPair);
   renderCalibrationFingerInputs(calibration.fingerSpeedUnitsPerSecond);
+}
+
+function clearCalibrationForm(): void {
+  calibrationDirectionalDraft = {};
+  elements.calibrationActions.value = '';
+  elements.calibrationSameHand.value = '';
+  elements.calibrationFingerSpeed.value = '';
+  renderCalibrationDirectionalInputs(undefined);
+  renderCalibrationSameHandInputs({}, []);
+  renderCalibrationDirectedPairInputs(undefined);
+  renderCalibrationFingerInputs({});
 }
 
 function calibrationKeyLabel(keyId: string): string {
@@ -900,6 +911,26 @@ function openCalibrationEditDialog(): void {
   if (!elements.calibrationDialog.open) elements.calibrationDialog.showModal();
 }
 
+function discardCalibration(): void {
+  if (!window.confirm('保存したキャリブレーションの値をすべて破棄しますか？')) return;
+  try {
+    if (!ctx.storage) throw new Error('storage unavailable');
+    clearPlaybackCalibration(ctx.storage);
+  } catch {
+    setCalibrationError('このブラウザの保存値を破棄できませんでした。');
+    return;
+  }
+  ctx.setCalibration(undefined);
+  ctx.updatePlaybackSetting('useCalibration', false);
+  ctx.setPlaybackCalibration(undefined);
+  calibrationEditMode = false;
+  calibrationSession = undefined;
+  calibrationFocusSession = undefined;
+  clearCalibrationForm();
+  setCalibrationError('');
+  updateCalibrationDialog();
+}
+
 function saveCalibrationFromDialog(): void {
   const actionsPerSecond = Number(elements.calibrationActions.value);
   const sameHandDifferentFingerActionsPerSecond = Number(elements.calibrationSameHand.value);
@@ -1017,6 +1048,7 @@ function saveCalibrationFromDialog(): void {
     elements.calibrationStart.addEventListener('click', beginCalibrationSession);
     elements.calibrationArpeggioStart.addEventListener('click', beginArpeggioCalibrationSession);
     elements.calibrationSave.addEventListener('click', saveCalibrationFromDialog);
+    elements.calibrationDiscard.addEventListener('click', discardCalibration);
     elements.calibrationDialog.addEventListener('close', () => {
       calibrationEditMode = false;
       calibrationSession = undefined;

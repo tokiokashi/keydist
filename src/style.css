@@ -900,13 +900,33 @@ dialog::backdrop { background: rgb(0 0 0 / 0.38); }
 .condition-global h3 { margin-top: 0 !important; }
 .condition-summary { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 10px; }
 .condition-summary > summary { color: var(--muted); cursor: pointer; }
-#playback-calibration-dialog { width: min(560px, calc(100vw - 32px)); }
+#playback-calibration-dialog { width: min(560px, calc(100vw - 32px)); padding: 0; }
+#playback-calibration-form { margin: 0; }
+.calibration-modal-header,
+.calibration-modal-footer {
+  position: sticky;
+  z-index: 2;
+  background: var(--panel);
+}
+.calibration-modal-header {
+  top: 0;
+  padding: 20px 20px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.calibration-modal-footer {
+  bottom: 0;
+  margin-top: 0;
+  padding: 12px 20px 20px;
+  border-top: 1px solid var(--line);
+}
+#playback-calibration-result { padding: 0 20px 20px; }
 .calibration-progress { display: block; margin: 8px 0 12px; color: var(--muted); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
 .calibration-finger-details { margin-top: 14px; }
 .calibration-finger-details > summary { cursor: pointer; color: var(--muted); }
 .calibration-finger-speed { margin: 10px 0 0; }
 .calibration-live-prompt { display: block; min-height: 1.2em; color: var(--accent); font-size: 0.76rem; }
 .dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+#playback-calibration-dialog .calibration-modal-footer { margin-top: 0; }
 .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .dialog-head h2 { margin: 0; }
 dialog .close { flex: none; }

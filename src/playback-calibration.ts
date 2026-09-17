@@ -30,6 +30,7 @@ export interface PlaybackCalibration {
 export interface CalibrationStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+  removeItem(key: string): void;
 }
 
 export interface CalibrationKeyPair {
@@ -225,6 +226,11 @@ export function savePlaybackCalibration(
   calibration: PlaybackCalibration,
 ): void {
   storage.setItem(PLAYBACK_CALIBRATION_STORAGE_KEY, JSON.stringify(calibration));
+}
+
+export function clearPlaybackCalibration(storage: CalibrationStorage): void {
+  storage.removeItem(PLAYBACK_CALIBRATION_STORAGE_KEY);
+  storage.removeItem(LEGACY_PLAYBACK_CALIBRATION_STORAGE_KEY);
 }
 
 const CALIBRATION_KEY_LABEL_PATTERN = /\p{L}|\p{P}/u;
