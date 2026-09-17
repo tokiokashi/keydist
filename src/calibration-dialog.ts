@@ -3,7 +3,7 @@ import {
 } from './geometry.ts';
 import { ARPEGGIO_PRESETS, type ArpeggioConditions } from './playback-arpeggio.ts';
 import {
-  actionsPerSecondFromIntervals, calibrationActionPair, calibrationAdjacentSameHandPairs,
+  actionsPerSecondFromIntervals, calibrationActionPair, calibrationDirectedSameHandPairs,
   calibrationEligibleKeyIds,
   calibrationKeyMatches, calibrationKeyPairs, calibrationSameHandPairs,
   CALIBRATION_ACTION_SAMPLES, CALIBRATION_ACTIONS_PER_SECOND_MAX,
@@ -532,7 +532,7 @@ function updateCalibrationDialog(): void {
     const pair = session.arpeggioPairs[session.arpeggioPairIndex];
     const label = pair.kind === 'direction'
       ? `異手 ${pair.token}`
-      : `同手・隣接 ${pair.token}`;
+      : `同手・別指 ${pair.token}`;
     const requiredSamples = pair.kind === 'direction'
       ? CALIBRATION_ACTION_SAMPLES
       : CALIBRATION_SAME_HAND_SAMPLES;
@@ -629,7 +629,7 @@ function beginArpeggioCalibrationSession(): void {
       { kind: 'direction', token: 'R→L', keys: [actionKeys[1], actionKeys[0]] },
     );
   }
-  for (const [fromKey, toKey] of calibrationAdjacentSameHandPairs(geometry, eligibleKeyIds)) {
+  for (const [fromKey, toKey] of calibrationDirectedSameHandPairs(geometry, eligibleKeyIds)) {
     const fromFinger = geometry.keys.get(fromKey)?.finger;
     const toFinger = geometry.keys.get(toKey)?.finger;
     const token = fromFinger && toFinger

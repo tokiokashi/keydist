@@ -200,10 +200,10 @@ stepMs = max(arpeggioIntervalMs, movementMs, normalMs)
 | 測定 | 何を打つか | 回数 | 得る量 |
 |---|---|---|---|
 | 異手 L→R / R→L | 左右人差し指のホームキーを指定方向へ繰り返す | 各方向9間隔 | `actionsPerSecondByDirection` |
-| 同手・隣接 内ロール / 外ロール | `ADJACENT_PAIRS` の隣接2指を指定方向へ繰り返す | 各方向6間隔 | `sameHandDifferentFingerActionsPerSecondByDirectedPair` |
+| 同手・別指の全組合せ | 同じ手のホームキー2本を指定方向へ繰り返す | 各組・各方向6間隔 | `sameHandDifferentFingerActionsPerSecondByDirectedPair` |
 
 通常枠とアルペジオ枠は別々に開始できる。アルペジオ枠で測定しなかった方向・組の保存値は
-更新せず、既存値をそのまま使う。飛び指の組はアルペジオ枠では測らない。
+更新せず、既存値をそのまま使う。
 
 - **通常速度**は連続する打鍵の間隔 [ms] の中央値の逆数を取る（`1000 / 中央値`）
 - **指の移動速度**は各試行の `距離 / 所要時間` を取り、指ごとに中央値を取る。
