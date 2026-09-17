@@ -34,7 +34,6 @@ export type LayerView = 'auto' | 'side-by-side' | 'tabs';
 export type LayerColorScale = 'linear' | 'log';
 export type SensitivityScale = 'relative' | 'absolute';
 export type ArpeggioDelayMode = 'before' | 'distributed';
-export type ArpeggioDisplay = 'chain' | 'arpeggio' | 'both';
 
 export interface UiStateConditionsDefaults {
   geometry: GeometryKind;
@@ -42,6 +41,31 @@ export interface UiStateConditionsDefaults {
   sfbHomeCost: boolean;
   preferOppositeThumb: boolean;
   arpeggio: ArpeggioConditions;
+}
+
+export interface UiPlaybackState {
+  showFingers: boolean;
+  showRomajiPlan: boolean;
+  showPlanKeys: boolean;
+  showTrail: boolean;
+  trailTau: number;
+  showOrderLabels: boolean;
+  sameFingerDelay: boolean;
+  useCalibration: boolean;
+  showChain: boolean;
+  showArpeggio: boolean;
+  chainIncludeSameFinger: boolean;
+  chainIncludeLayerKeys: boolean;
+  arpeggioEnabled: boolean;
+  arpeggioDelayMode: ArpeggioDelayMode;
+  scale: number;
+  stepsPerSecond: number;
+  speedMultiplier: number;
+}
+
+/** 配列ごとに既定値から上書きする差分。空のplaybackは個別設定の有効化を表す。 */
+export interface UiStateConditionOverride extends Partial<UiStateConditionsDefaults> {
+  playback?: Partial<UiPlaybackState>;
 }
 
 /** 数値計算へ影響する条件の既定値。説明・保存・計算で同じ値を参照する。 */
@@ -82,25 +106,7 @@ export interface UiStateV1 {
       colorScale: LayerColorScale;
       naginataDetail: boolean;
     };
-    playback: {
-      showFingers: boolean;
-      showRomajiPlan: boolean;
-      showPlanKeys: boolean;
-      showTrail: boolean;
-      trailTau: number;
-      showOrderLabels: boolean;
-      sameFingerDelay: boolean;
-      useCalibration: boolean;
-      showChain: boolean;
-      chainIncludeSameFinger: boolean;
-      chainIncludeLayerKeys: boolean;
-      arpeggioEnabled: boolean;
-      arpeggioDelayMode: ArpeggioDelayMode;
-      arpeggioDisplay: ArpeggioDisplay;
-      scale: number;
-      stepsPerSecond: number;
-      speedMultiplier: number;
-    };
+    playback: UiPlaybackState;
     panels: {
       addLayout: boolean;
       text: boolean;
@@ -115,7 +121,7 @@ export interface UiStateV1 {
   conditions: {
     defaults: UiStateConditionsDefaults;
     geometrySettings: GeometrySettings;
-    perLayout: Record<string, Partial<UiStateConditionsDefaults>>;
+    perLayout: Record<string, UiStateConditionOverride>;
   };
 }
 
@@ -186,11 +192,11 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
         sameFingerDelay: true,
         useCalibration: options.usePlaybackCalibration,
         showChain: false,
+        showArpeggio: false,
         chainIncludeSameFinger: false,
         chainIncludeLayerKeys: true,
         arpeggioEnabled: true,
         arpeggioDelayMode: 'before',
-        arpeggioDisplay: 'both',
         scale: 1.5,
         stepsPerSecond: DEFAULT_PLAYBACK_STEPS_PER_SECOND,
         speedMultiplier: DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
@@ -329,8 +335,84 @@ function sanitizeConditionDefaults(
   };
 }
 
-function sanitizeConditionOverrides(value: unknown): Partial<UiStateConditionsDefaults> {
-  return validConditionValues(value);
+function sanitizePlaybackSettings(value: unknown, fallback: UiPlaybackState): UiPlaybackState {
+  const playback = record(value);
+  const rawShowChain = boolean(playback.showChain, fallback.showChain);
+  const legacyArpeggioDisplay = playback.arpeggioDisplay;
+  const hasModernArpeggioDisplay = typeof playback.showArpeggio === 'boolean';
+  // 旧形式の未保存値は旧既定値「both」として扱う。
+  const legacyDisplay = choice(legacyArpeggioDisplay, ['chain', 'arpeggio', 'both'], 'both');
+  const showChain = !hasModernArpeggioDisplay && legacyDisplay === 'arpeggio'
+    ? false
+    : rawShowChain;
+  const legacyShowArpeggio = rawShowChain
+    && legacyDisplay !== 'chain';
+  return {
+    showFingers: boolean(playback.showFingers, fallback.showFingers),
+    showRomajiPlan: boolean(playback.showRomajiPlan, fallback.showRomajiPlan),
+    showPlanKeys: boolean(playback.showPlanKeys, fallback.showPlanKeys),
+    showTrail: boolean(playback.showTrail, fallback.showTrail),
+    trailTau: integerInRange(playback.trailTau, 1, 20, fallback.trailTau),
+    showOrderLabels: boolean(playback.showOrderLabels, fallback.showOrderLabels),
+    sameFingerDelay: boolean(playback.sameFingerDelay, fallback.sameFingerDelay),
+    useCalibration: boolean(playback.useCalibration, fallback.useCalibration),
+    showChain,
+    // arpeggioDisplayは旧保存値との互換用。新しい保存値ではshowArpeggioを優先する。
+    showArpeggio: boolean(
+      playback.showArpeggio,
+      !hasModernArpeggioDisplay
+        ? legacyShowArpeggio
+        : fallback.showArpeggio,
+    ),
+    chainIncludeSameFinger: boolean(playback.chainIncludeSameFinger, fallback.chainIncludeSameFinger),
+    chainIncludeLayerKeys: boolean(playback.chainIncludeLayerKeys, fallback.chainIncludeLayerKeys),
+    arpeggioEnabled: boolean(playback.arpeggioEnabled, fallback.arpeggioEnabled),
+    arpeggioDelayMode: choice(
+      playback.arpeggioDelayMode,
+      ['before', 'distributed'],
+      fallback.arpeggioDelayMode,
+    ),
+    scale: numberInRange(playback.scale, 0.5, 4, fallback.scale),
+    stepsPerSecond: numberInRange(
+      playback.stepsPerSecond,
+      PLAYBACK_STEPS_PER_SECOND_MIN,
+      PLAYBACK_STEPS_PER_SECOND_MAX,
+      fallback.stepsPerSecond,
+    ),
+    speedMultiplier: numberInRange(
+      playback.speedMultiplier,
+      PLAYBACK_SPEED_MULTIPLIER_MIN,
+      PLAYBACK_SPEED_MULTIPLIER_MAX,
+      fallback.speedMultiplier,
+    ),
+  };
+}
+
+function sanitizePlaybackOverrides(
+  value: unknown,
+  fallback: UiPlaybackState,
+): Partial<UiPlaybackState> {
+  const source = record(value);
+  const result: Partial<UiPlaybackState> = {};
+  for (const key of Object.keys(fallback) as Array<keyof UiPlaybackState>) {
+    if (!(key in source)) continue;
+    const sanitized = sanitizePlaybackSettings({ [key]: source[key] }, fallback);
+    Object.assign(result, { [key]: sanitized[key] });
+  }
+  return result;
+}
+
+function sanitizeConditionOverrides(
+  value: unknown,
+  playbackFallback: UiPlaybackState,
+): UiStateConditionOverride {
+  const source = record(value);
+  const result: UiStateConditionOverride = validConditionValues(value);
+  if (isRecord(source.playback)) {
+    // 空オブジェクトも「配列固有設定を有効にした」印として保持する。
+    result.playback = sanitizePlaybackOverrides(source.playback, playbackFallback);
+  }
+  return result;
 }
 
 function geometryChoice(value: unknown, fallback: GeometryKind): GeometryKind {
@@ -365,10 +447,11 @@ export function sanitizeUiState(
     ? input.customText
     : undefined;
   const allowedLayoutIds = new Set([...choices.layouts.en, ...choices.layouts.ja]);
-  const perLayout: Record<string, Partial<UiStateConditionsDefaults>> = {};
+  const sanitizedPlayback = sanitizePlaybackSettings(playback, defaults.ui.playback);
+  const perLayout: Record<string, UiStateConditionOverride> = {};
   for (const [layoutId, override] of Object.entries(conditionPerLayout)) {
     if (!allowedLayoutIds.has(layoutId) || !isRecord(override)) continue;
-    const sanitized = sanitizeConditionOverrides(override);
+    const sanitized = sanitizeConditionOverrides(override, sanitizedPlayback);
     if (Object.keys(sanitized).length > 0) perLayout[layoutId] = sanitized;
   }
 
@@ -429,49 +512,7 @@ export function sanitizeUiState(
         colorScale: choice(layers.colorScale, ['linear', 'log'], defaults.ui.layers.colorScale),
         naginataDetail: boolean(layers.naginataDetail, defaults.ui.layers.naginataDetail),
       },
-      playback: {
-        showFingers: boolean(playback.showFingers, defaults.ui.playback.showFingers),
-        showRomajiPlan: boolean(playback.showRomajiPlan, defaults.ui.playback.showRomajiPlan),
-        showPlanKeys: boolean(playback.showPlanKeys, defaults.ui.playback.showPlanKeys),
-        showTrail: boolean(playback.showTrail, defaults.ui.playback.showTrail),
-        trailTau: integerInRange(playback.trailTau, 1, 20, defaults.ui.playback.trailTau),
-        showOrderLabels: boolean(playback.showOrderLabels, defaults.ui.playback.showOrderLabels),
-        sameFingerDelay: boolean(playback.sameFingerDelay, defaults.ui.playback.sameFingerDelay),
-        useCalibration: boolean(playback.useCalibration, defaults.ui.playback.useCalibration),
-        showChain: boolean(playback.showChain, defaults.ui.playback.showChain),
-        chainIncludeSameFinger: boolean(
-          playback.chainIncludeSameFinger,
-          defaults.ui.playback.chainIncludeSameFinger,
-        ),
-        chainIncludeLayerKeys: boolean(
-          playback.chainIncludeLayerKeys,
-          defaults.ui.playback.chainIncludeLayerKeys,
-        ),
-        arpeggioEnabled: boolean(playback.arpeggioEnabled, defaults.ui.playback.arpeggioEnabled),
-        arpeggioDelayMode: choice(
-          playback.arpeggioDelayMode,
-          ['before', 'distributed'],
-          defaults.ui.playback.arpeggioDelayMode,
-        ),
-        arpeggioDisplay: choice(
-          playback.arpeggioDisplay,
-          ['chain', 'arpeggio', 'both'],
-          defaults.ui.playback.arpeggioDisplay,
-        ),
-        scale: numberInRange(playback.scale, 0.5, 4, defaults.ui.playback.scale),
-        stepsPerSecond: numberInRange(
-          playback.stepsPerSecond,
-          PLAYBACK_STEPS_PER_SECOND_MIN,
-          PLAYBACK_STEPS_PER_SECOND_MAX,
-          defaults.ui.playback.stepsPerSecond,
-        ),
-        speedMultiplier: numberInRange(
-          playback.speedMultiplier,
-          PLAYBACK_SPEED_MULTIPLIER_MIN,
-          PLAYBACK_SPEED_MULTIPLIER_MAX,
-          defaults.ui.playback.speedMultiplier,
-        ),
-      },
+      playback: sanitizedPlayback,
       panels: {
         addLayout: boolean(panels.addLayout, defaults.ui.panels.addLayout),
         text: boolean(panels.text, defaults.ui.panels.text),

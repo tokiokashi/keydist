@@ -1,7 +1,7 @@
 import { escapeAttr, escapeText } from './chart.ts';
 import type { PlaybackRateChartPoint } from './playback.ts';
 
-type PlaybackDisplay = 'chain' | 'arpeggio' | 'both';
+type PlaybackDisplay = 'none' | 'chain' | 'arpeggio' | 'both';
 
 const WIDTH = 760;
 const HEIGHT = 260;

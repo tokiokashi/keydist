@@ -15,7 +15,7 @@ import {
 } from './playback-calibration.ts';
 import type { Layout } from './layouts/index.ts';
 import { FINGER_LABEL, type AppElements } from './app-dom.ts';
-import type { UiStateStorage, UiStateV1 } from './ui-state.ts';
+import type { UiPlaybackState, UiStateStorage, UiStateV1 } from './ui-state.ts';
 import { savePlaybackCalibration } from './playback-calibration.ts';
 import type { GeometrySettings } from './geometry-settings.ts';
 
@@ -24,6 +24,7 @@ export interface CalibrationDialogContext {
   storage: UiStateStorage | undefined;
   getUiState: () => UiStateV1;
   updateUiState: (change: (draft: UiStateV1) => void) => void;
+  updatePlaybackSetting: <K extends keyof UiPlaybackState>(key: K, value: UiPlaybackState[K]) => void;
   getPlaybackGeometry: () => ReturnType<typeof buildGeometry> | undefined;
   getGeometrySettings: () => GeometrySettings;
   getPlaybackLayout: () => Layout | undefined;
@@ -807,7 +808,7 @@ function saveCalibrationFromDialog(): void {
     return;
   }
   ctx.setCalibration(calibration);
-  ctx.updateUiState((draft) => { draft.ui.playback.useCalibration = true; });
+  ctx.updatePlaybackSetting('useCalibration', true);
   ctx.setPlaybackCalibration(calibration);
   calibrationEditMode = false;
   calibrationSession = undefined;
