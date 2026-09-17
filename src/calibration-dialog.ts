@@ -204,8 +204,13 @@ function setCalibrationError(message: string): void {
 }
 
 function calibrationLivePromptText(focus: CalibrationFocusSession): string {
+  const firstKey = calibrationKeyLabel(focus.keys[0]);
+  const secondKey = calibrationKeyLabel(focus.keys[1]);
   const expected = focus.keys[focus.expectedKeyIndex];
-  return `次は「${calibrationKeyLabel(expected)}」を押してください。`;
+  const combination = focus.kind === 'direction' || focus.kind === 'directed-pair'
+    ? `「${firstKey}」→「${secondKey}」`
+    : `「${firstKey}」↔「${secondKey}」`;
+  return `${combination}を入力してください。次は「${calibrationKeyLabel(expected)}」です。`;
 }
 
 function syncCalibrationLivePrompts(): void {
@@ -481,7 +486,7 @@ function updateCalibrationDialog(): void {
         ? 'アルペジオを弾く時の速さ'
         : '普段の速度';
       elements.calibrationInstruction.textContent = focus.kind === 'direction' || focus.kind === 'directed-pair'
-        ? `${label}: 「${calibrationKeyLabel(focus.keys[0])}」→「${calibrationKeyLabel(focus.keys[1])}」の順で、${speedDescription}で繰り返してください。戻りは位置を戻すための入力です。`
+        ? `${label}: 「${calibrationKeyLabel(focus.keys[0])}」→「${calibrationKeyLabel(focus.keys[1])}」の順で、${speedDescription}で繰り返してください。アルペジオ以外の時間は計測しないため、落ち着いて入力してください。`
         : `${label}: 「${calibrationKeyLabel(focus.keys[0])}」と「${calibrationKeyLabel(focus.keys[1])}」を${speedDescription}で交互に打ってください。`;
       elements.calibrationProgress.textContent = `残り${Math.max(0, calibrationFocusSampleCount(focus.kind) - focus.intervals.length)}回`;
       return;
@@ -531,7 +536,7 @@ function updateCalibrationDialog(): void {
     const requiredSamples = pair.kind === 'direction'
       ? CALIBRATION_ACTION_SAMPLES
       : CALIBRATION_SAME_HAND_SAMPLES;
-    elements.calibrationInstruction.textContent = `${label}: 「${calibrationKeyLabel(pair.keys[0])}」→「${calibrationKeyLabel(pair.keys[1])}」の順で、アルペジオを弾くときの速さで繰り返してください。戻りは位置を戻すための入力です。`;
+    elements.calibrationInstruction.textContent = `${label}: 「${calibrationKeyLabel(pair.keys[0])}」→「${calibrationKeyLabel(pair.keys[1])}」の順で、アルペジオを弾くときの速さで繰り返してください。アルペジオ以外の時間は計測しないため、落ち着いて入力してください。`;
     elements.calibrationProgress.textContent = `${session.arpeggioPairIndex + 1} / ${session.arpeggioPairs.length} 方向、残り${Math.max(0, requiredSamples - session.arpeggioPairSampleCount)}回`;
     return;
   }
