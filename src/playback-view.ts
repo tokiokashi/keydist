@@ -6,11 +6,12 @@ import {
   playbackPlannedOrders, playbackRomajiPlan, playbackRomajiPlannedKeys,
   playbackRomajiPlannedOrders, playbackOrderLabel, playbackRateChartData,
   playbackRecentActionsPerSecond, playbackRecentKanaPerSecond, setPlaybackArpeggio,
+  playbackArpeggioTimings,
   playbackHandKeyMotions, playbackSameFingerKeyMotions, playbackRepeatedKeys,
   playbackStrokeAt, playbackStrokeDurationMs, setPlaybackSameFingerDelay,
   setPlaybackStepsPerSecond, stepPlayback, playbackTrailKeys, playbackTrailOrders,
   playbackStrokeDisplay, setPlaybackCalibration, setPlaybackSpeedMultiplier,
-  type PlaybackStepsPerSecond, type PlaybackState, PLAYBACK_SPEED_MULTIPLIER_MAX,
+  type PlaybackArpeggioTiming, type PlaybackStepsPerSecond, type PlaybackState, PLAYBACK_SPEED_MULTIPLIER_MAX,
   PLAYBACK_SPEED_MULTIPLIER_MIN, PLAYBACK_STEPS_PER_SECOND_MAX,
   PLAYBACK_STEPS_PER_SECOND_MIN,
 } from './playback.ts';
@@ -70,6 +71,48 @@ let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
 let playbackMotionCursor = -1;
 let playbackRateChartSignature: string | undefined;
+let playbackArpeggioTimingCache: {
+  trace: Trace;
+  arpeggio: ArpeggioConditions;
+  stepsPerSecond: PlaybackStepsPerSecond;
+  sameFingerDelay: boolean;
+  calibration: PlaybackCalibration | undefined;
+  delayMode: 'before' | 'distributed';
+  timings: ReadonlyMap<number, PlaybackArpeggioTiming>;
+} | undefined;
+
+function cachedPlaybackArpeggioTimings(): ReadonlyMap<number, PlaybackArpeggioTiming> | undefined {
+  if (!playbackTrace || !playbackState.arpeggio) return undefined;
+  const arpeggio = playbackState.arpeggio;
+  const cache = playbackArpeggioTimingCache;
+  if (cache
+    && cache.trace === playbackTrace
+    && cache.arpeggio === arpeggio
+    && cache.stepsPerSecond === playbackState.stepsPerSecond
+    && cache.sameFingerDelay === playbackState.sameFingerDelay
+    && cache.calibration === playbackState.calibration
+    && cache.delayMode === playbackState.arpeggioDelayMode) {
+    return cache.timings;
+  }
+  const timings = playbackArpeggioTimings(
+    playbackTrace.strokes,
+    arpeggio,
+    playbackState.stepsPerSecond,
+    playbackState.calibration,
+    playbackState.arpeggioDelayMode,
+    playbackState.sameFingerDelay,
+  );
+  playbackArpeggioTimingCache = {
+    trace: playbackTrace,
+    arpeggio,
+    stepsPerSecond: playbackState.stepsPerSecond,
+    sameFingerDelay: playbackState.sameFingerDelay,
+    calibration: playbackState.calibration,
+    delayMode: playbackState.arpeggioDelayMode,
+    timings,
+  };
+  return timings;
+}
 
 function cancelPlaybackAnimation() {
   if (playbackAnimationFrame !== undefined) cancelAnimationFrame(playbackAnimationFrame);
@@ -115,6 +158,7 @@ function updatePlaybackView() {
     ? playbackTrailOrders(playbackTrace.strokes, cursor, ctx.getUiState().ui.playback.trailTau)
     : new Map<string, number>();
   const arpeggioDisplayChoice = ctx.getUiState().ui.playback.arpeggioDisplay;
+  const arpeggioTimings = cachedPlaybackArpeggioTimings();
   const chainOrders = ctx.getUiState().ui.playback.showChain && arpeggioDisplayChoice !== 'arpeggio'
     ? playbackChainOrders(
       playbackTrace.strokes,
@@ -319,6 +363,7 @@ function updatePlaybackView() {
         playbackState.speedMultiplier,
         playbackState.arpeggio,
         playbackState.arpeggioDelayMode,
+        arpeggioTimings,
       ), ctx.getUiState().ui.playback.arpeggioDisplay);
       playbackRateChartSignature = chartSignature;
     }
@@ -385,6 +430,7 @@ function updatePlaybackView() {
       playbackState.speedMultiplier,
       playbackState.arpeggio,
       playbackState.arpeggioDelayMode,
+      arpeggioTimings,
     );
     effectiveKanaRate.textContent = value === undefined
       ? '実効 — かな/秒'
@@ -401,6 +447,7 @@ function updatePlaybackView() {
       playbackState.speedMultiplier,
       playbackState.arpeggio,
       playbackState.arpeggioDelayMode,
+      arpeggioTimings,
     );
     effectiveRate.textContent = value === undefined
       ? '実効 — アクション/秒'
@@ -588,6 +635,7 @@ function renderPlayback(
   playbackMotionCursor = -1;
   playbackSeekWasPlaying = undefined;
   playbackRateChartSignature = undefined;
+  playbackArpeggioTimingCache = undefined;
   elements.playback.innerHTML = `<details class="playback-panel"${ctx.getUiState().ui.panels.playback ? ' open' : ''}>
     <summary><span class="playback-summary-icon" aria-hidden="true">▶</span><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
@@ -896,6 +944,7 @@ function seekPlayback(value: string, playing = false) {
     clear: () => {
       cancelPlaybackAnimation();
       playbackTrace = undefined; playbackGeometry = undefined; playbackLayout = undefined; playbackOptions = undefined;
+      playbackArpeggioTimingCache = undefined;
       elements.playback.innerHTML = '';
     },
     update: updatePlaybackView,
