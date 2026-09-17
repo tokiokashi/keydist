@@ -59,63 +59,96 @@ const defaults = () => createDefaultUiState({
 test('画面状態を単一キーで保存・復元する', () => {
   const storage = new MemoryStorage();
   const state = defaults();
-  state.theme = 'dark';
-  state.input.mode = 'en';
-  state.input.customText = 'edited';
-  state.layouts.selectedByMode.ja = [];
-  state.playback.stepsPerSecond = 3.2;
-  state.panels.playback = true;
+  state.ui.theme = 'dark';
+  state.ui.input.mode = 'en';
+  state.ui.input.customText = 'edited';
+  state.ui.layouts.selectedByMode.ja = [];
+  state.ui.playback.stepsPerSecond = 3.2;
+  state.ui.panels.playback = true;
 
   assert.equal(saveUiState(storage, state), true);
   assert.deepEqual(loadUiState(storage, defaults(), choices).state, state);
   assert.equal(storage.data.size, 1);
 });
 
+test('保存形式はuiとconditionsに分かれ、既存配列の条件だけ復元する', () => {
+  const fallback = defaults();
+  const value = structuredClone(fallback);
+  value.conditions.defaults = {
+    windowSize: 5,
+    sfbHomeCost: false,
+    preferOppositeThumb: true,
+  };
+  value.conditions.perLayout = {
+    oonishi: { windowSize: 7, sfbHomeCost: false },
+    removed: { windowSize: 9 },
+    invalid: { windowSize: 99 },
+  };
+  (value.conditions.perLayout.invalid as Record<string, unknown>).preferOppositeThumb = 'yes';
+
+  const state = sanitizeUiState(value, fallback, choices);
+
+  assert.deepEqual(Object.keys(state).sort(), ['conditions', 'ui', 'version']);
+  assert.deepEqual(state.conditions.defaults, value.conditions.defaults);
+  assert.deepEqual(state.conditions.perLayout, {
+    oonishi: { windowSize: 7, sfbHomeCost: false },
+  });
+});
+
 test('無効な値は項目ごとに既定値へ戻す', () => {
   const fallback = defaults();
   const state = sanitizeUiState({
     ...fallback,
-    input: {
-      ...fallback.input,
-      mode: 'unknown',
-      geometry: 'curved',
-      windowSize: 99,
-      selectedSampleByMode: { en: 'removed', ja: 'legacy' },
+    ui: {
+      ...fallback.ui,
+      input: {
+        ...fallback.ui.input,
+        mode: 'unknown',
+        geometry: 'curved',
+        selectedSampleByMode: { en: 'removed', ja: 'legacy' },
+      },
+      layouts: {
+        selectedByMode: { en: [], ja: ['removed'] },
+        detailByMode: { en: 'removed', ja: 'oonishi' },
+      },
+      comparison: {
+        ...fallback.ui.comparison,
+        chartColumn: 99,
+        sort: { column: -1, direction: 'asc' },
+        baselineByMode: { en: 'removed', ja: 'oonishi' },
+      },
+      playback: {
+        ...fallback.ui.playback,
+        trailTau: 0,
+        scale: 10,
+        stepsPerSecond: 0,
+        speedMultiplier: Number.NaN,
+      },
     },
-    layouts: {
-      selectedByMode: { en: [], ja: ['removed'] },
-      detailByMode: { en: 'removed', ja: 'oonishi' },
-    },
-    comparison: {
-      ...fallback.comparison,
-      chartColumn: 99,
-      sort: { column: -1, direction: 'asc' },
-      baselineByMode: { en: 'removed', ja: 'oonishi' },
-    },
-    playback: {
-      ...fallback.playback,
-      trailTau: 0,
-      scale: 10,
-      stepsPerSecond: 0,
-      speedMultiplier: Number.NaN,
+    conditions: {
+      defaults: {
+        ...fallback.conditions.defaults,
+        windowSize: 99,
+      },
+      perLayout: {},
     },
   }, fallback, choices);
 
-  assert.equal(state.input.mode, fallback.input.mode);
-  assert.equal(state.input.geometry, fallback.input.geometry);
-  assert.equal(state.input.windowSize, fallback.input.windowSize);
-  assert.equal(state.input.selectedSampleByMode.en, 'default');
-  assert.equal(state.input.selectedSampleByMode.ja, 'legacy');
-  assert.deepEqual(state.layouts.selectedByMode.en, []);
-  assert.deepEqual(state.layouts.selectedByMode.ja, fallback.layouts.selectedByMode.ja);
-  assert.deepEqual(state.layouts.detailByMode, { ja: 'oonishi' });
-  assert.deepEqual(state.comparison.baselineByMode, { ja: 'oonishi' });
-  assert.equal(state.comparison.chartColumn, fallback.comparison.chartColumn);
-  assert.equal(state.comparison.sort, null);
-  assert.equal(state.playback.trailTau, fallback.playback.trailTau);
-  assert.equal(state.playback.scale, fallback.playback.scale);
-  assert.equal(state.playback.stepsPerSecond, fallback.playback.stepsPerSecond);
-  assert.equal(state.playback.speedMultiplier, fallback.playback.speedMultiplier);
+  assert.equal(state.ui.input.mode, fallback.ui.input.mode);
+  assert.equal(state.ui.input.geometry, fallback.ui.input.geometry);
+  assert.equal(state.conditions.defaults.windowSize, fallback.conditions.defaults.windowSize);
+  assert.equal(state.ui.input.selectedSampleByMode.en, 'default');
+  assert.equal(state.ui.input.selectedSampleByMode.ja, 'legacy');
+  assert.deepEqual(state.ui.layouts.selectedByMode.en, []);
+  assert.deepEqual(state.ui.layouts.selectedByMode.ja, fallback.ui.layouts.selectedByMode.ja);
+  assert.deepEqual(state.ui.layouts.detailByMode, { ja: 'oonishi' });
+  assert.deepEqual(state.ui.comparison.baselineByMode, { ja: 'oonishi' });
+  assert.equal(state.ui.comparison.chartColumn, fallback.ui.comparison.chartColumn);
+  assert.equal(state.ui.comparison.sort, null);
+  assert.equal(state.ui.playback.trailTau, fallback.ui.playback.trailTau);
+  assert.equal(state.ui.playback.scale, fallback.ui.playback.scale);
+  assert.equal(state.ui.playback.stepsPerSecond, fallback.ui.playback.stepsPerSecond);
+  assert.equal(state.ui.playback.speedMultiplier, fallback.ui.playback.speedMultiplier);
 });
 
 test('未知のバージョンと壊れたJSONは既定値へ戻す', () => {
@@ -135,9 +168,9 @@ test('旧キーを初回読み込み時に移行して削除する', () => {
   const loaded = loadUiState(storage, defaults(), choices);
 
   assert.equal(loaded.migratedLegacy, true);
-  assert.equal(loaded.state.theme, 'dark');
-  assert.equal(loaded.state.panels.text, false);
-  assert.deepEqual(loaded.state.layouts.selectedByMode, { en: [], ja: ['oonishi'] });
+  assert.equal(loaded.state.ui.theme, 'dark');
+  assert.equal(loaded.state.ui.panels.text, false);
+  assert.deepEqual(loaded.state.ui.layouts.selectedByMode, { en: [], ja: ['oonishi'] });
   assert.ok(storage.data.has(UI_STATE_STORAGE_KEY));
   assert.equal(storage.data.has(LEGACY_THEME_KEY), false);
   assert.equal(storage.data.has(LEGACY_TEXT_COLLAPSED_KEY), false);
@@ -151,7 +184,7 @@ test('新形式を保存できなければ旧キーを削除しない', () => {
 
   const loaded = loadUiState(storage, defaults(), choices);
 
-  assert.equal(loaded.state.theme, 'dark');
+  assert.equal(loaded.state.ui.theme, 'dark');
   assert.equal(loaded.migratedLegacy, false);
   assert.equal(storage.data.get(LEGACY_THEME_KEY), 'dark');
 });
@@ -163,7 +196,7 @@ test('旧キーの削除に失敗しても移行済みの状態を使う', () =>
 
   const loaded = loadUiState(storage, defaults(), choices);
 
-  assert.equal(loaded.state.theme, 'dark');
+  assert.equal(loaded.state.ui.theme, 'dark');
   assert.equal(loaded.migratedLegacy, true);
   assert.ok(storage.data.has(UI_STATE_STORAGE_KEY));
 });
@@ -181,15 +214,15 @@ test('localStorageの読み書きが失敗しても既定状態で動く', () =>
 test('上限を超える本文だけを破棄し、他の設定は復元する', () => {
   const fallback = defaults();
   const value = structuredClone(fallback);
-  value.theme = 'dark';
-  value.input.customText = 'あ'.repeat(MAX_SAVED_TEXT_LENGTH + 1);
+  value.ui.theme = 'dark';
+  value.ui.input.customText = 'あ'.repeat(MAX_SAVED_TEXT_LENGTH + 1);
 
   const state = sanitizeUiState(value, fallback, choices);
-  assert.equal(state.input.customText, undefined);
-  assert.equal(state.theme, 'dark');
+  assert.equal(state.ui.input.customText, undefined);
+  assert.equal(state.ui.theme, 'dark');
 
   const storage = new MemoryStorage();
   assert.equal(saveUiState(storage, value), true);
-  const saved = JSON.parse(storage.data.get(UI_STATE_STORAGE_KEY)!) as { input: { customText?: string } };
-  assert.equal(saved.input.customText, undefined);
+  const saved = JSON.parse(storage.data.get(UI_STATE_STORAGE_KEY)!) as { ui: { customText?: string; input: { customText?: string } } };
+  assert.equal(saved.ui.input.customText, undefined);
 });

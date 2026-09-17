@@ -352,28 +352,28 @@ function updateUiState(change: (draft: UiStateV1) => void, debounce = false): vo
 
 window.addEventListener('pagehide', flushUiState);
 
-if (!playbackCalibration && uiState.playback.useCalibration) {
-  updateUiState((draft) => { draft.playback.useCalibration = false; });
+if (!playbackCalibration && uiState.ui.playback.useCalibration) {
+  updateUiState((draft) => { draft.ui.playback.useCalibration = false; });
 }
 
-el.mode.value = uiState.input.mode;
-el.geometry.value = uiState.input.geometry;
-el.window.value = String(uiState.input.windowSize);
-el.sfbHome.checked = uiState.input.sfbHomeCost;
-el.preferOppositeThumb.checked = uiState.input.preferOppositeThumb;
-el.addPanel.open = uiState.panels.addLayout;
-el.textPanel.open = uiState.panels.text;
-el.sensitivityPanel.open = uiState.panels.sensitivity;
+el.mode.value = uiState.ui.input.mode;
+el.geometry.value = uiState.ui.input.geometry;
+el.window.value = String(uiState.conditions.defaults.windowSize);
+el.sfbHome.checked = uiState.conditions.defaults.sfbHomeCost;
+el.preferOppositeThumb.checked = uiState.conditions.defaults.preferOppositeThumb;
+el.addPanel.open = uiState.ui.panels.addLayout;
+el.textPanel.open = uiState.ui.panels.text;
+el.sensitivityPanel.open = uiState.ui.panels.sensitivity;
 
 /** 表示する配列のid。モードごとに覚える。保存値があればそれを使い、無ければ既定値 */
 const selected: Record<ModeId, Set<string>> = {
-  en: resolveSelection(uiState.layouts.selectedByMode.en, INITIAL.en),
-  ja: resolveSelection(uiState.layouts.selectedByMode.ja, INITIAL.ja),
+  en: resolveSelection(uiState.ui.layouts.selectedByMode.en, INITIAL.en),
+  ja: resolveSelection(uiState.ui.layouts.selectedByMode.ja, INITIAL.ja),
 };
 
 function saveSelectedLayouts(): void {
   updateUiState((draft) => {
-    draft.layouts.selectedByMode = {
+    draft.ui.layouts.selectedByMode = {
       en: [...selected.en],
       ja: [...selected.ja],
     };
@@ -382,7 +382,7 @@ function saveSelectedLayouts(): void {
 
 const currentModeId = () => el.mode.value as ModeId;
 const currentMode = () => MODES[currentModeId()];
-const currentSample = () => SAMPLES[currentModeId()][uiState.input.selectedSampleByMode[currentModeId()]]
+const currentSample = () => SAMPLES[currentModeId()][uiState.ui.input.selectedSampleByMode[currentModeId()]]
   ?? currentMode().sample;
 
 /** 選択されている配列。色のスロットは選択順ではなく一覧順に固定する */
@@ -397,11 +397,11 @@ function fillSampleOptions() {
   for (const [id, name] of Object.entries(SAMPLE_NAMES[mode])) {
     el.sample.append(new Option(name, id));
   }
-  el.sample.value = uiState.input.selectedSampleByMode[mode];
+  el.sample.value = uiState.ui.input.selectedSampleByMode[mode];
 }
 
 fillSampleOptions();
-el.text.value = uiState.input.customText ?? currentSample();
+el.text.value = uiState.ui.input.customText ?? currentSample();
 
 /** 配列を追加する欄。段ごとに1行、数字段は任意 */
 function setupAddForm() {
@@ -801,14 +801,14 @@ function removeUserLayout(id: string) {
   selected.en.delete(id);
   selected.ja.delete(id);
   updateUiState((draft) => {
-    draft.layouts.selectedByMode = {
+    draft.ui.layouts.selectedByMode = {
       en: [...selected.en],
       ja: [...selected.ja],
     };
-    if (draft.layouts.detailByMode.en === id) delete draft.layouts.detailByMode.en;
-    if (draft.layouts.detailByMode.ja === id) delete draft.layouts.detailByMode.ja;
-    if (draft.comparison.baselineByMode.en === id) delete draft.comparison.baselineByMode.en;
-    if (draft.comparison.baselineByMode.ja === id) delete draft.comparison.baselineByMode.ja;
+    if (draft.ui.layouts.detailByMode.en === id) delete draft.ui.layouts.detailByMode.en;
+    if (draft.ui.layouts.detailByMode.ja === id) delete draft.ui.layouts.detailByMode.ja;
+    if (draft.ui.comparison.baselineByMode.en === id) delete draft.ui.comparison.baselineByMode.en;
+    if (draft.ui.comparison.baselineByMode.ja === id) delete draft.ui.comparison.baselineByMode.ja;
   });
   fillPicker();
   fillDetailOptions();
@@ -861,7 +861,7 @@ function fillPicker() {
 
 /** 詳細セレクタはモードで配列の顔ぶれが変わるので作り直す */
 function fillDetailOptions() {
-  const keep = uiState.layouts.detailByMode[currentModeId()] || el.detailLayout.value;
+  const keep = uiState.ui.layouts.detailByMode[currentModeId()] || el.detailLayout.value;
   const layouts = activeLayouts();
   el.detailLayout.replaceChildren();
   for (const layout of layouts) {
@@ -885,8 +885,8 @@ function syncTextState(debounce = true): void {
     : '';
   el.textSaveStatus.hidden = !tooLong;
   updateUiState((draft) => {
-    if (isSample || tooLong) delete draft.input.customText;
-    else draft.input.customText = text;
+    if (isSample || tooLong) delete draft.ui.input.customText;
+    else draft.ui.input.customText = text;
   }, debounce);
 }
 
@@ -906,10 +906,10 @@ function setupHowDialog() {
 
 function setupPanelState() {
   el.addPanel.addEventListener('toggle', () => {
-    updateUiState((draft) => { draft.panels.addLayout = el.addPanel.open; });
+    updateUiState((draft) => { draft.ui.panels.addLayout = el.addPanel.open; });
   });
   el.textPanel.addEventListener('toggle', () => {
-    updateUiState((draft) => { draft.panels.text = el.textPanel.open; });
+    updateUiState((draft) => { draft.ui.panels.text = el.textPanel.open; });
   });
 }
 
@@ -930,10 +930,10 @@ const PLAYBACK_THUMB_WIDTH = 1.9;
 const PLAYBACK_SCALE_MIN = 0.5;
 const PLAYBACK_SCALE_MAX = 4;
 let playbackState: PlaybackState = createPlaybackState(
-  uiState.playback.stepsPerSecond,
-  uiState.playback.sameFingerDelay,
-  uiState.playback.useCalibration ? playbackCalibration : undefined,
-  uiState.playback.speedMultiplier,
+  uiState.ui.playback.stepsPerSecond,
+  uiState.ui.playback.sameFingerDelay,
+  uiState.ui.playback.useCalibration ? playbackCalibration : undefined,
+  uiState.ui.playback.speedMultiplier,
 );
 let playbackTrace: Trace | undefined;
 let playbackGeometry: ReturnType<typeof buildGeometry> | undefined;
@@ -1301,7 +1301,7 @@ function saveCalibrationFromDialog(): void {
     return;
   }
   playbackCalibration = calibration;
-  updateUiState((draft) => { draft.playback.useCalibration = true; });
+  updateUiState((draft) => { draft.ui.playback.useCalibration = true; });
   playbackState = setPlaybackCalibration(playbackState, calibration);
   calibrationEditMode = false;
   calibrationSession = undefined;
@@ -1330,35 +1330,35 @@ function updatePlaybackView() {
   const windowSize = Number(el.window.value);
   const activeKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
   const triggerKeys = new Set(stroke?.triggerKeys ?? []);
-  const fingerPositionKeys = uiState.playback.showFingers
+  const fingerPositionKeys = uiState.ui.playback.showFingers
     ? playbackFingerPositionKeys(stroke, playbackGeometry)
     : new Map<string, Finger>();
-  const trailKeys = uiState.playback.showTrail
-    ? playbackTrailKeys(playbackTrace.strokes, cursor, uiState.playback.trailTau)
+  const trailKeys = uiState.ui.playback.showTrail
+    ? playbackTrailKeys(playbackTrace.strokes, cursor, uiState.ui.playback.trailTau)
     : new Map<string, number>();
-  const romajiPlannedKeys = isRomaji && uiState.playback.showRomajiPlan
+  const romajiPlannedKeys = isRomaji && uiState.ui.playback.showRomajiPlan
     ? playbackRomajiPlannedKeys(playbackTrace.strokes, cursor)
     : new Map<string, number>();
-  const plannedKeys = uiState.playback.showPlanKeys
+  const plannedKeys = uiState.ui.playback.showPlanKeys
     ? playbackPlannedKeys(playbackTrace.strokes, cursor, windowSize)
     : romajiPlannedKeys;
-  const plannedOrders = uiState.playback.showOrderLabels
-    ? uiState.playback.showPlanKeys
+  const plannedOrders = uiState.ui.playback.showOrderLabels
+    ? uiState.ui.playback.showPlanKeys
       ? playbackPlannedOrders(playbackTrace.strokes, cursor, windowSize)
-      : uiState.playback.showRomajiPlan
+      : uiState.ui.playback.showRomajiPlan
         ? playbackRomajiPlannedOrders(playbackTrace.strokes, cursor)
         : new Map<string, number>()
     : new Map<string, number>();
-  const trailOrders = uiState.playback.showOrderLabels && uiState.playback.showTrail
-    ? playbackTrailOrders(playbackTrace.strokes, cursor, uiState.playback.trailTau)
+  const trailOrders = uiState.ui.playback.showOrderLabels && uiState.ui.playback.showTrail
+    ? playbackTrailOrders(playbackTrace.strokes, cursor, uiState.ui.playback.trailTau)
     : new Map<string, number>();
-  const chainOrders = uiState.playback.showChain
+  const chainOrders = uiState.ui.playback.showChain
     ? playbackChainOrders(
       playbackTrace.strokes,
       cursor,
-      uiState.playback.chainIncludeSameFinger,
+      uiState.ui.playback.chainIncludeSameFinger,
       undefined,
-      uiState.playback.chainIncludeLayerKeys,
+      uiState.ui.playback.chainIncludeLayerKeys,
     )
     : new Map<string, number>();
   const sameFingerMotions = playbackState.sameFingerDelay
@@ -1367,12 +1367,12 @@ function updatePlaybackView() {
   const sameFingerTargets = new Set(sameFingerMotions.flatMap((motion) => motion.toKeys));
   // 同指連続は同じ手でもあるため、両方を有効にすると同じキーへ2枚が重なる。
   // より具体的な同指側を優先し、片手連続はそれが拾わなかったキーだけを動かす。
-  const handMotions = (uiState.playback.showChain
+  const handMotions = (uiState.ui.playback.showChain
     ? playbackHandKeyMotions(
       playbackTrace.strokes,
       cursor,
-      uiState.playback.chainIncludeSameFinger,
-      uiState.playback.chainIncludeLayerKeys,
+      uiState.ui.playback.chainIncludeSameFinger,
+      uiState.ui.playback.chainIncludeLayerKeys,
     )
     : []
   ).flatMap((motion) => {
@@ -1534,32 +1534,32 @@ function updatePlaybackView() {
   if (stop) stop.disabled = cursor === 0 && !playbackState.playing;
   if (back) back.disabled = playbackState.playing || cursor === 0;
   if (forward) forward.disabled = playbackState.playing || cursor >= total;
-  if (fingers) fingers.checked = uiState.playback.showFingers;
+  if (fingers) fingers.checked = uiState.ui.playback.showFingers;
   const romajiPlan = el.playback.querySelector<HTMLInputElement>('[data-playback-romaji-plan]');
   if (romajiPlan) {
-    romajiPlan.checked = uiState.playback.showRomajiPlan;
+    romajiPlan.checked = uiState.ui.playback.showRomajiPlan;
     romajiPlan.disabled = !isRomaji;
   }
   if (planKeys) {
-    planKeys.checked = uiState.playback.showPlanKeys;
+    planKeys.checked = uiState.ui.playback.showPlanKeys;
     planKeys.disabled = false;
   }
-  if (trail) trail.checked = uiState.playback.showTrail;
-  if (trailTau) trailTau.value = String(uiState.playback.trailTau);
-  if (orderLabels) orderLabels.checked = uiState.playback.showOrderLabels;
-  if (scale) scale.value = String(uiState.playback.scale);
+  if (trail) trail.checked = uiState.ui.playback.showTrail;
+  if (trailTau) trailTau.value = String(uiState.ui.playback.trailTau);
+  if (orderLabels) orderLabels.checked = uiState.ui.playback.showOrderLabels;
+  if (scale) scale.value = String(uiState.ui.playback.scale);
   if (sameFingerDelay) sameFingerDelay.checked = playbackState.sameFingerDelay;
-  if (chain) chain.checked = uiState.playback.showChain;
+  if (chain) chain.checked = uiState.ui.playback.showChain;
   if (chainSameFinger) {
-    chainSameFinger.checked = uiState.playback.chainIncludeSameFinger;
-    chainSameFinger.disabled = !uiState.playback.showChain;
+    chainSameFinger.checked = uiState.ui.playback.chainIncludeSameFinger;
+    chainSameFinger.disabled = !uiState.ui.playback.showChain;
   }
   if (chainLayerKeys) {
-    chainLayerKeys.checked = uiState.playback.chainIncludeLayerKeys;
-    chainLayerKeys.disabled = !uiState.playback.showChain;
+    chainLayerKeys.checked = uiState.ui.playback.chainIncludeLayerKeys;
+    chainLayerKeys.disabled = !uiState.ui.playback.showChain;
   }
   if (calibration) {
-    calibration.checked = uiState.playback.useCalibration;
+    calibration.checked = uiState.ui.playback.useCalibration;
     calibration.disabled = playbackCalibration === undefined;
   }
   if (calibrationButton) calibrationButton.textContent = playbackCalibration ? '速度を再測定' : '速度を測定';
@@ -1622,7 +1622,7 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
   });
   const W = maxX + PLAYBACK_PAD;
   const H = maxY + PLAYBACK_PAD;
-  return `<svg viewBox="0 0 ${W} ${H}" width="${W * uiState.playback.scale}" height="${H * uiState.playback.scale}" role="img"
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W * uiState.ui.playback.scale}" height="${H * uiState.ui.playback.scale}" role="img"
     aria-label="${escapeAttr(`${layout.name}の打鍵再生`)}">${keys.join('')}<g data-playback-motion-layer aria-hidden="true"></g></svg>`;
 }
 
@@ -1760,31 +1760,31 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
   playbackGeometry = geometry;
   playbackLayout = layout;
   playbackState = createPlaybackState(
-    uiState.playback.stepsPerSecond,
-    uiState.playback.sameFingerDelay,
-    uiState.playback.useCalibration ? playbackCalibration : undefined,
-    uiState.playback.speedMultiplier,
+    uiState.ui.playback.stepsPerSecond,
+    uiState.ui.playback.sameFingerDelay,
+    uiState.ui.playback.useCalibration ? playbackCalibration : undefined,
+    uiState.ui.playback.speedMultiplier,
   );
   playbackMotionCursor = -1;
   playbackSeekWasPlaying = undefined;
   playbackRateChartSignature = undefined;
-  el.playback.innerHTML = `<details class="playback-panel"${uiState.panels.playback ? ' open' : ''}>
+  el.playback.innerHTML = `<details class="playback-panel"${uiState.ui.panels.playback ? ' open' : ''}>
     <summary><span class="playback-summary-icon" aria-hidden="true">▶</span><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
       <div class="playback-head">
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${uiState.playback.showFingers ? ' checked' : ''} />指の位置を色で表示</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${uiState.playback.showRomajiPlan ? ' checked' : ''} />予定ローマ字の盤面表示</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-plan-keys${uiState.playback.showPlanKeys ? ' checked' : ''} />押下予定キーを表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${uiState.ui.playback.showFingers ? ' checked' : ''} />指の位置を色で表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${uiState.ui.playback.showRomajiPlan ? ' checked' : ''} />予定ローマ字の盤面表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-plan-keys${uiState.ui.playback.showPlanKeys ? ' checked' : ''} />押下予定キーを表示</label>
         <span class="playback-window-setting" title="サイドバーの窓幅Nと共通">N <output data-playback-window>${Number(el.window.value)}</output> ステップ</span>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${uiState.playback.showTrail ? ' checked' : ''} />押下履歴を残す</label>
-        <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${uiState.playback.trailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${uiState.playback.showOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${uiState.ui.playback.showTrail ? ' checked' : ''} />押下履歴を残す</label>
+        <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${uiState.ui.playback.trailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${uiState.ui.playback.showOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
         <label class="playback-finger-toggle" title="1uの移動を通常の1アクション相当として同指連続の距離を再生時間へ反映"><input type="checkbox" data-playback-sfb-delay${playbackState.sameFingerDelay ? ' checked' : ''} />同指ディレイ</label>
-        <label class="playback-finger-toggle" title="キャリブレーションした通常速度・同手別指速度・指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${uiState.playback.useCalibration ? ' checked' : ''}${playbackCalibration ? '' : ' disabled'} />個人速度を使う</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${uiState.playback.showChain ? ' checked' : ''} />チェーン（片手の連続運指）</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-sfb${uiState.playback.chainIncludeSameFinger ? ' checked' : ''}${uiState.playback.showChain ? '' : ' disabled'} />同指連打も含める</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-layer${uiState.playback.chainIncludeLayerKeys ? ' checked' : ''}${uiState.playback.showChain ? '' : ' disabled'} />レイヤーキーも含める</label>
-        <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${uiState.playback.scale}" aria-label="配列図の表示倍率" /> 倍</label>
+        <label class="playback-finger-toggle" title="キャリブレーションした通常速度・同手別指速度・指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${uiState.ui.playback.useCalibration ? ' checked' : ''}${playbackCalibration ? '' : ' disabled'} />個人速度を使う</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${uiState.ui.playback.showChain ? ' checked' : ''} />チェーン（片手の連続運指）</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-sfb${uiState.ui.playback.chainIncludeSameFinger ? ' checked' : ''}${uiState.ui.playback.showChain ? '' : ' disabled'} />同指連打も含める</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-layer${uiState.ui.playback.chainIncludeLayerKeys ? ' checked' : ''}${uiState.ui.playback.showChain ? '' : ' disabled'} />レイヤーキーも含める</label>
+        <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${uiState.ui.playback.scale}" aria-label="配列図の表示倍率" /> 倍</label>
       </div>
       <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
         <button type="button" class="ghost" data-playback-action="back">1 ステップ戻る</button>
@@ -1810,7 +1810,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
           <span data-playback-history-text></span>
         </div>
       </div>
-      <details class="playback-rate-chart-panel"${uiState.panels.playbackRateChart ? ' open' : ''}>
+      <details class="playback-rate-chart-panel"${uiState.ui.panels.playbackRateChart ? ' open' : ''}>
         <summary>かな/秒・アクション/秒の推移</summary>
         <div class="playback-rate-chart" data-playback-rate-chart></div>
       </details>
@@ -1839,7 +1839,7 @@ function stopPlayback() {
   playbackState = createPlaybackState(
     playbackState.stepsPerSecond,
     playbackState.sameFingerDelay,
-    uiState.playback.useCalibration ? playbackCalibration : undefined,
+    uiState.ui.playback.useCalibration ? playbackCalibration : undefined,
     playbackState.speedMultiplier,
   );
   playbackMotionCursor = -1;
@@ -2056,28 +2056,28 @@ function renderCompare(results: Result[]) {
     return { result: r, cells };
   });
 
-  const sortedRows = sortMatrixRows(compareRows, uiState.comparison.sort);
+  const sortedRows = sortMatrixRows(compareRows, uiState.ui.comparison.sort);
   syncCompareChartOptions(baseline !== undefined);
-  const chartBest = Math.min(...sortedRows.map((row) => row.cells[uiState.comparison.chartColumn].value));
+  const chartBest = Math.min(...sortedRows.map((row) => row.cells[uiState.ui.comparison.chartColumn].value));
   const chartRelative = baseline !== undefined;
   const chartLabel = compareLabel(
-    COMPARE_HEADERS[uiState.comparison.chartColumn],
+    COMPARE_HEADERS[uiState.ui.comparison.chartColumn],
     chartRelative,
-    uiState.comparison.chartColumn,
+    uiState.ui.comparison.chartColumn,
   );
   el.compareChart.innerHTML = barChart(
     sortedRows.map(({ result: r, cells }) => ({
       label: r.layout.name,
-      value: cells[uiState.comparison.chartColumn].value,
-      valueLabel: cells[uiState.comparison.chartColumn].display,
+      value: cells[uiState.ui.comparison.chartColumn].value,
+      valueLabel: cells[uiState.ui.comparison.chartColumn].display,
       color: SERIES(r.slot),
-      emphasise: cells[uiState.comparison.chartColumn].value === chartBest,
-      tip: `${escapeText(r.layout.name)}<br>${escapeText(chartLabel)} <b>${cells[uiState.comparison.chartColumn].display}</b>`,
+      emphasise: cells[uiState.ui.comparison.chartColumn].value === chartBest,
+      tip: `${escapeText(r.layout.name)}<br>${escapeText(chartLabel)} <b>${cells[uiState.ui.comparison.chartColumn].display}</b>`,
     })),
     {
       format: chartRelative
         ? (value) => `${value.toFixed(1)}%`
-        : COMPARE_FORMATS[uiState.comparison.chartColumn],
+        : COMPARE_FORMATS[uiState.ui.comparison.chartColumn],
       labelWidth: 150,
     },
   );
@@ -2096,7 +2096,7 @@ function renderCompare(results: Result[]) {
 }
 
 function syncCompareBaselineOptions(results: Result[]) {
-  const current = uiState.comparison.baselineByMode[currentModeId()]
+  const current = uiState.ui.comparison.baselineByMode[currentModeId()]
     || el.compareBaseline.value
     || '';
   el.compareBaseline.replaceChildren(new Option('比較なし', ''));
@@ -2111,8 +2111,8 @@ function compareLabel(label: string, relative: boolean, column: number): string 
 }
 
 function syncCompareChartOptions(relative: boolean) {
-  if (uiState.comparison.chartColumn < 0 || uiState.comparison.chartColumn >= COMPARE_HEADERS.length) {
-    updateUiState((draft) => { draft.comparison.chartColumn = 1; });
+  if (uiState.ui.comparison.chartColumn < 0 || uiState.ui.comparison.chartColumn >= COMPARE_HEADERS.length) {
+    updateUiState((draft) => { draft.ui.comparison.chartColumn = 1; });
   }
   el.compareChartMetric.replaceChildren();
   for (let column = 0; column < COMPARE_HEADERS.length; column++) {
@@ -2121,7 +2121,7 @@ function syncCompareChartOptions(relative: boolean) {
       String(column),
     ));
   }
-  el.compareChartMetric.value = String(uiState.comparison.chartColumn);
+  el.compareChartMetric.value = String(uiState.ui.comparison.chartColumn);
 }
 
 /** data-tipを持つ補足ボタン。tipが無い列では何も出さない */
@@ -2137,8 +2137,8 @@ const COMPARE_HEADER_TIPS: Record<number, string> = {
 };
 
 function compareHeader(label: string, column: number, relative: boolean): string {
-  const active = uiState.comparison.sort?.column === column
-    ? uiState.comparison.sort.direction
+  const active = uiState.ui.comparison.sort?.column === column
+    ? uiState.ui.comparison.sort.direction
     : undefined;
   const marker = active === 'asc' ? ' ↑' : active === 'desc' ? ' ↓' : '';
   const ariaSort = active === 'asc' ? 'ascending' : active === 'desc' ? 'descending' : 'none';
@@ -2171,7 +2171,7 @@ function renderMatrices(results: Result[]) {
           `<b>${perChar.toFixed(3)} u/文字</b> (全体の ${share.toFixed(1)}%)`,
       };
     }),
-  })), uiState.comparison.matrixSorts.finger);
+  })), uiState.ui.comparison.matrixSorts.finger);
 
   el.fingerMatrix.innerHTML = matrixChart(
     fingerRows,
@@ -2181,7 +2181,7 @@ function renderMatrices(results: Result[]) {
       labelWidth: 190,
       columnSplit: 4,
       columnGroupLabels: ['左手', '右手'],
-      sort: uiState.comparison.matrixSorts.finger ?? undefined,
+      sort: uiState.ui.comparison.matrixSorts.finger ?? undefined,
     },
   );
 
@@ -2201,7 +2201,7 @@ function renderMatrices(results: Result[]) {
           `押下 <b>${r.metrics.perFingerPresses[f]}</b> 回`,
       };
     }),
-  })), uiState.comparison.matrixSorts.press);
+  })), uiState.ui.comparison.matrixSorts.press);
 
   el.pressMatrix.innerHTML = matrixChart(
     pressRows,
@@ -2211,7 +2211,7 @@ function renderMatrices(results: Result[]) {
       labelWidth: 190,
       columnSplit: 5,
       columnGroupLabels: ['左手', '右手'],
-      sort: uiState.comparison.matrixSorts.press ?? undefined,
+      sort: uiState.ui.comparison.matrixSorts.press ?? undefined,
     },
   );
 
@@ -2227,12 +2227,12 @@ function renderMatrices(results: Result[]) {
   el.adjacentMeanMatrix.innerHTML = matrixChart(
     adjacentRows(results, 'adjacentMean'),
     adjacentColumns,
-    { ...adjacentChartOptions, sort: uiState.comparison.matrixSorts.adjacentMean ?? undefined },
+    { ...adjacentChartOptions, sort: uiState.ui.comparison.matrixSorts.adjacentMean ?? undefined },
   );
   el.adjacentStdDevMatrix.innerHTML = matrixChart(
     adjacentRows(results, 'adjacentStdDev'),
     adjacentColumns,
-    { ...adjacentChartOptions, sort: uiState.comparison.matrixSorts.adjacentStdDev ?? undefined },
+    { ...adjacentChartOptions, sort: uiState.ui.comparison.matrixSorts.adjacentStdDev ?? undefined },
   );
 }
 
@@ -2248,13 +2248,13 @@ function adjacentRows(results: Result[], kind: AdjacentMatrixKind) {
         `超過の実測最大 <b>${s.maxExcess.toFixed(3)} u</b><br>` +
         `標準偏差 <b>${s.stdDev.toFixed(3)} u</b>`,
     })),
-  })), uiState.comparison.matrixSorts[kind]);
+  })), uiState.ui.comparison.matrixSorts[kind]);
 }
 
 function cycleMatrixSort(kind: MatrixKind, column: number) {
   updateUiState((draft) => {
-    const current = draft.comparison.matrixSorts[kind];
-    draft.comparison.matrixSorts[kind] =
+    const current = draft.ui.comparison.matrixSorts[kind];
+    draft.ui.comparison.matrixSorts[kind] =
       !current || current.column !== column
         ? { column, direction: 'asc' }
         : current.direction === 'asc'
@@ -2280,9 +2280,9 @@ function bindMatrixSort(root: HTMLElement, kind: MatrixKind) {
 
 function cycleCompareSort(column: number) {
   updateUiState((draft) => {
-    draft.comparison.chartColumn = column;
-    const current = draft.comparison.sort;
-    draft.comparison.sort =
+    draft.ui.comparison.chartColumn = column;
+    const current = draft.ui.comparison.sort;
+    draft.ui.comparison.sort =
       !current || current.column !== column
         ? { column, direction: 'asc' }
         : current.direction === 'asc'
@@ -2321,7 +2321,7 @@ function renderSensitivity(
   options: Options,
 ) {
   const range = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  const relative = uiState.sensitivity.scale === 'relative';
+  const relative = uiState.ui.sensitivity.scale === 'relative';
   const set = selected[currentModeId()];
   const series = currentMode().layouts
     .map((layout, slot) => ({ layout, slot }))
@@ -2581,7 +2581,7 @@ function renderComboTable(combos: readonly Face[], legends: Map<string, string>)
     const outputs = [...faceCells(face).values()].join(' / ');
     return `<tr><td>${escapeText(triggerText(face, legends))}</td><td>${escapeText(outputs)}</td></tr>`;
   }).join('');
-  return `<details class="combo-table collapsible-list"${uiState.panels.comboTable ? ' open' : ''}>
+  return `<details class="combo-table collapsible-list"${uiState.ui.panels.comboTable ? ' open' : ''}>
     <summary>コンボ（${combos.length}）</summary>
     <div class="scroll-x"><table>
       <thead><tr><th>トリガー</th><th>出力</th></tr></thead>
@@ -2599,7 +2599,7 @@ function renderModifierList(modifiers: readonly Layer[], legends: Map<string, st
     const outputs = layer.faces.flatMap((face) => [...faceCells(face).values()]).join(' / ');
     return `<tr><td>${escapeText(title)}</td><td>${escapeText(outputs)}</td></tr>`;
   }).join('');
-  return `<details class="modifier-list collapsible-list"${uiState.panels.modifierList ? ' open' : ''}>
+  return `<details class="modifier-list collapsible-list"${uiState.ui.panels.modifierList ? ' open' : ''}>
     <summary>修飾（${modifiers.length}）</summary>
     <div class="scroll-x"><table>
       <thead><tr><th>トリガー</th><th>出力</th></tr></thead>
@@ -2678,7 +2678,7 @@ function layerViewEntries(metrics: Metrics, layout: Layout, layers: readonly Lay
       stat: stats.get(id) ?? emptyLayerStat(id, title),
     };
   });
-  if (layout.id !== 'naginata-v18' || uiState.layers.naginataDetail || entries.length <= 2) return entries;
+  if (layout.id !== 'naginata-v18' || uiState.ui.layers.naginataDetail || entries.length <= 2) return entries;
 
   const base = entries[0];
   const center = entries[1];
@@ -2712,7 +2712,7 @@ function renderLayerStats(
     ? `<tr><th scope="row">コンボ計</th><td class="num">${metrics.comboPresses}</td>` +
       `<td class="num">${total ? ((metrics.comboPresses / total) * 100).toFixed(1) : '0.0'}%</td></tr>`
     : '';
-  return `<details class="layer-stats collapsible-list"${uiState.panels.layerStats ? ' open' : ''}>
+  return `<details class="layer-stats collapsible-list"${uiState.ui.panels.layerStats ? ' open' : ''}>
     <summary>帰属先（${entries.length + (hasCombos ? 1 : 0)}）</summary>
     <div class="scroll-x"><table><thead><tr><th>帰属先</th><th>押下数</th><th>割合</th></tr></thead>
     <tbody>${rows}${comboRow}</tbody></table></div>
@@ -2730,8 +2730,8 @@ function renderHeatmap(
   const layers = orderedLayers(groups, layout);
   if (layers.length === 0) layers.push({ faces: [] });
   const entries = layerViewEntries(metrics, layout, layers);
-  if (uiState.layers.activeTab >= entries.length) {
-    updateUiState((draft) => { draft.layers.activeTab = 0; });
+  if (uiState.ui.layers.activeTab >= entries.length) {
+    updateUiState((draft) => { draft.ui.layers.activeTab = 0; });
   }
   const titles = entries.map((entry) => entry.title);
   const allLayerFaces = layers.flatMap((layer) => layer.faces);
@@ -2756,19 +2756,19 @@ function renderHeatmap(
         }).join('')}
       </div>`
     : '';
-  const selectedLayerView = uiState.layers.view === 'auto'
+  const selectedLayerView = uiState.ui.layers.view === 'auto'
     ? (entries.length <= 5 ? 'side-by-side' : 'tabs')
-    : uiState.layers.view;
+    : uiState.ui.layers.view;
   const colorScaleControls = `<div class="layer-view-controls" role="group" aria-label="層別ヒートマップの色の尺度">
       <span>色の尺度</span>
-      <button type="button" class="ghost" data-layer-color-scale="linear" aria-pressed="${uiState.layers.colorScale === 'linear'}">線形</button>
-      <button type="button" class="ghost" data-layer-color-scale="log" aria-pressed="${uiState.layers.colorScale === 'log'}">対数</button>
+      <button type="button" class="ghost" data-layer-color-scale="linear" aria-pressed="${uiState.ui.layers.colorScale === 'linear'}">線形</button>
+      <button type="button" class="ghost" data-layer-color-scale="log" aria-pressed="${uiState.ui.layers.colorScale === 'log'}">対数</button>
     </div>`;
   const naginataControls = layout.id === 'naginata-v18' && layers.length > 2
     ? `<div class="layer-view-controls" role="group" aria-label="薙刀式のレイヤー表示">
         <span>薙刀式の表示</span>
-        <button type="button" class="ghost" data-naginata-layer-detail="false" aria-pressed="${!uiState.layers.naginataDetail}">2面にまとめる</button>
-        <button type="button" class="ghost" data-naginata-layer-detail="true" aria-pressed="${uiState.layers.naginataDetail}">全レイヤー詳細</button>
+        <button type="button" class="ghost" data-naginata-layer-detail="false" aria-pressed="${!uiState.ui.layers.naginataDetail}">2面にまとめる</button>
+        <button type="button" class="ghost" data-naginata-layer-detail="true" aria-pressed="${uiState.ui.layers.naginataDetail}">全レイヤー詳細</button>
       </div>`
     : '';
   const controls = entries.length > 1
@@ -2814,23 +2814,23 @@ function renderHeatmap(
         colorCounts: colorCounts[index],
         keyDistance: entry.stat.keyDistance,
         maxCount: layerMax,
-        colorScale: uiState.layers.colorScale,
+        colorScale: uiState.ui.layers.colorScale,
         showHeat: true,
-        ariaSuffix: `（層別・${uiState.layers.colorScale === 'log' ? '対数' : '線形'}・共通スケール）`,
+        ariaSuffix: `（層別・${uiState.ui.layers.colorScale === 'log' ? '対数' : '線形'}・共通スケール）`,
       },
     );
   });
   const content = selectedLayerView === 'tabs' && entries.length > 1
     ? `<div class="layer-tabs" role="tablist" aria-label="レイヤー">
         ${titles.map((_, index) => `<button type="button" class="ghost" role="tab"
-          aria-selected="${uiState.layers.activeTab === index}" data-layer-tab="${index}">${escapeText(`レイヤー ${index + 1}`)}</button>`).join('')}
+          aria-selected="${uiState.ui.layers.activeTab === index}" data-layer-tab="${index}">${escapeText(`レイヤー ${index + 1}`)}</button>`).join('')}
       </div>
       <div class="layer-tab-panel">${diagrams.map((diagram, index) =>
-        diagram.replace('<figure class="layer-diagram"', `<figure class="layer-diagram"${uiState.layers.activeTab === index ? '' : ' hidden'}`),
+        diagram.replace('<figure class="layer-diagram"', `<figure class="layer-diagram"${uiState.ui.layers.activeTab === index ? '' : ' hidden'}`),
       ).join('')}</div>`
     : `<div class="layer-diagrams">${diagrams.join('')}</div>`;
   const hasCombos = groups.combos.length > 0 || layout.layerDefinitions?.some((definition) => definition.kind === 'combo') === true;
-  const colorScaleLabel = uiState.layers.colorScale === 'log' ? '対数' : '線形';
+  const colorScaleLabel = uiState.ui.layers.colorScale === 'log' ? '対数' : '線形';
   const layerSection = `<section class="layer-section">
     <h3>統合ヒートマップ</h3>
     <div class="layer-diagrams">${integrated}</div>
@@ -2847,17 +2847,17 @@ function renderHeatmap(
 
 function syncSensitivityScaleButtons(): void {
   for (const button of el.sensitivityScale.querySelectorAll('button')) {
-    button.setAttribute('aria-pressed', String(button.dataset.scale === uiState.sensitivity.scale));
+    button.setAttribute('aria-pressed', String(button.dataset.scale === uiState.ui.sensitivity.scale));
   }
 }
 
 function setSensitivityScale(scale: SensitivityScale) {
-  updateUiState((draft) => { draft.sensitivity.scale = scale; });
+  updateUiState((draft) => { draft.ui.sensitivity.scale = scale; });
   syncSensitivityScaleButtons();
   render();
 }
 el.sensitivityPanel.addEventListener('toggle', () => {
-  updateUiState((draft) => { draft.panels.sensitivity = el.sensitivityPanel.open; });
+  updateUiState((draft) => { draft.ui.panels.sensitivity = el.sensitivityPanel.open; });
   if (!el.sensitivityPanel.open) {
     showSensitivityPlaceholder();
     return;
@@ -2877,24 +2877,24 @@ el.heatmap.addEventListener('click', (e) => {
   if (!target) return;
   if (target.dataset.naginataLayerDetail !== undefined) {
     updateUiState((draft) => {
-      draft.layers.naginataDetail = target.dataset.naginataLayerDetail === 'true';
-      draft.layers.activeTab = 0;
+      draft.ui.layers.naginataDetail = target.dataset.naginataLayerDetail === 'true';
+      draft.ui.layers.activeTab = 0;
     });
     render();
     return;
   }
   if (target.dataset.layerColorScale === 'linear' || target.dataset.layerColorScale === 'log') {
-    updateUiState((draft) => { draft.layers.colorScale = target.dataset.layerColorScale as LayerColorScale; });
+    updateUiState((draft) => { draft.ui.layers.colorScale = target.dataset.layerColorScale as LayerColorScale; });
     render();
     return;
   }
   if (target.dataset.layerView === 'side-by-side' || target.dataset.layerView === 'tabs') {
-    updateUiState((draft) => { draft.layers.view = target.dataset.layerView as LayerView; });
+    updateUiState((draft) => { draft.ui.layers.view = target.dataset.layerView as LayerView; });
     render();
     return;
   }
   if (target.dataset.layerTab !== undefined) {
-    updateUiState((draft) => { draft.layers.activeTab = Number(target.dataset.layerTab); });
+    updateUiState((draft) => { draft.ui.layers.activeTab = Number(target.dataset.layerTab); });
     render();
   }
 });
@@ -2903,11 +2903,11 @@ el.heatmap.addEventListener('toggle', (e) => {
   const details = e.target as HTMLDetailsElement;
   if (!(details instanceof HTMLDetailsElement)) return;
   if (details.classList.contains('layer-stats')) {
-    updateUiState((draft) => { draft.panels.layerStats = details.open; });
+      updateUiState((draft) => { draft.ui.panels.layerStats = details.open; });
   } else if (details.classList.contains('modifier-list')) {
-    updateUiState((draft) => { draft.panels.modifierList = details.open; });
+      updateUiState((draft) => { draft.ui.panels.modifierList = details.open; });
   } else if (details.classList.contains('combo-table')) {
-    updateUiState((draft) => { draft.panels.comboTable = details.open; });
+      updateUiState((draft) => { draft.ui.panels.comboTable = details.open; });
   }
 }, true);
 
@@ -2915,9 +2915,9 @@ el.playback.addEventListener('toggle', (e) => {
   const details = e.target as HTMLDetailsElement;
   if (!(details instanceof HTMLDetailsElement)) return;
   if (details.classList.contains('playback-panel')) {
-    updateUiState((draft) => { draft.panels.playback = details.open; });
+      updateUiState((draft) => { draft.ui.panels.playback = details.open; });
   } else if (details.classList.contains('playback-rate-chart-panel')) {
-    updateUiState((draft) => { draft.panels.playbackRateChart = details.open; });
+      updateUiState((draft) => { draft.ui.panels.playbackRateChart = details.open; });
   }
 }, true);
 
@@ -2978,26 +2978,26 @@ el.playback.addEventListener('change', (e) => {
   const sameFingerDelay = target.closest<HTMLInputElement>('[data-playback-sfb-delay]');
   if (sameFingerDelay) {
     playbackState = setPlaybackSameFingerDelay(playbackState, sameFingerDelay.checked);
-    updateUiState((draft) => { draft.playback.sameFingerDelay = sameFingerDelay.checked; });
+    updateUiState((draft) => { draft.ui.playback.sameFingerDelay = sameFingerDelay.checked; });
     playbackMotionCursor = -1;
     updatePlaybackView();
     return;
   }
   const chain = target.closest<HTMLInputElement>('[data-playback-chain]');
   if (chain) {
-    updateUiState((draft) => { draft.playback.showChain = chain.checked; });
+    updateUiState((draft) => { draft.ui.playback.showChain = chain.checked; });
     updatePlaybackView();
     return;
   }
   const chainSameFinger = target.closest<HTMLInputElement>('[data-playback-chain-sfb]');
   if (chainSameFinger) {
-    updateUiState((draft) => { draft.playback.chainIncludeSameFinger = chainSameFinger.checked; });
+    updateUiState((draft) => { draft.ui.playback.chainIncludeSameFinger = chainSameFinger.checked; });
     updatePlaybackView();
     return;
   }
   const chainLayerKeys = target.closest<HTMLInputElement>('[data-playback-chain-layer]');
   if (chainLayerKeys) {
-    updateUiState((draft) => { draft.playback.chainIncludeLayerKeys = chainLayerKeys.checked; });
+    updateUiState((draft) => { draft.ui.playback.chainIncludeLayerKeys = chainLayerKeys.checked; });
     // 移動の起点・終点が変わるため、同じカーソルでも描き直す
     playbackMotionCursor = -1;
     updatePlaybackView();
@@ -3005,10 +3005,10 @@ el.playback.addEventListener('change', (e) => {
   }
   const calibration = target.closest<HTMLInputElement>('[data-playback-calibration]');
   if (calibration) {
-    updateUiState((draft) => { draft.playback.useCalibration = calibration.checked; });
+    updateUiState((draft) => { draft.ui.playback.useCalibration = calibration.checked; });
     playbackState = setPlaybackCalibration(
       playbackState,
-      uiState.playback.useCalibration ? playbackCalibration : undefined,
+      uiState.ui.playback.useCalibration ? playbackCalibration : undefined,
     );
     updatePlaybackView();
     return;
@@ -3022,7 +3022,7 @@ el.playback.addEventListener('change', (e) => {
       && value <= PLAYBACK_STEPS_PER_SECOND_MAX
     ) {
       playbackState = setPlaybackStepsPerSecond(playbackState, value as PlaybackStepsPerSecond);
-      updateUiState((draft) => { draft.playback.stepsPerSecond = value; });
+      updateUiState((draft) => { draft.ui.playback.stepsPerSecond = value; });
     }
     updatePlaybackView();
     return;
@@ -3036,32 +3036,32 @@ el.playback.addEventListener('change', (e) => {
       && value <= PLAYBACK_SPEED_MULTIPLIER_MAX
     ) {
       playbackState = setPlaybackSpeedMultiplier(playbackState, value);
-      updateUiState((draft) => { draft.playback.speedMultiplier = value; });
+      updateUiState((draft) => { draft.ui.playback.speedMultiplier = value; });
     }
     updatePlaybackView();
     return;
   }
   const fingers = target.closest<HTMLInputElement>('input[data-playback-fingers]');
   if (fingers) {
-    updateUiState((draft) => { draft.playback.showFingers = fingers.checked; });
+    updateUiState((draft) => { draft.ui.playback.showFingers = fingers.checked; });
     updatePlaybackView();
     return;
   }
   const romajiPlan = target.closest<HTMLInputElement>('input[data-playback-romaji-plan]');
   if (romajiPlan) {
-    updateUiState((draft) => { draft.playback.showRomajiPlan = romajiPlan.checked; });
+    updateUiState((draft) => { draft.ui.playback.showRomajiPlan = romajiPlan.checked; });
     updatePlaybackView();
     return;
   }
   const planKeys = target.closest<HTMLInputElement>('input[data-playback-plan-keys]');
   if (planKeys) {
-    updateUiState((draft) => { draft.playback.showPlanKeys = planKeys.checked; });
+    updateUiState((draft) => { draft.ui.playback.showPlanKeys = planKeys.checked; });
     updatePlaybackView();
     return;
   }
   const trail = target.closest<HTMLInputElement>('input[data-playback-trail]');
   if (trail) {
-    updateUiState((draft) => { draft.playback.showTrail = trail.checked; });
+    updateUiState((draft) => { draft.ui.playback.showTrail = trail.checked; });
     updatePlaybackView();
     return;
   }
@@ -3069,14 +3069,14 @@ el.playback.addEventListener('change', (e) => {
   if (trailTau) {
     const value = Number(trailTau.value);
     if (Number.isInteger(value) && value >= 1 && value <= 20) {
-      updateUiState((draft) => { draft.playback.trailTau = value; });
+      updateUiState((draft) => { draft.ui.playback.trailTau = value; });
     }
     updatePlaybackView();
     return;
   }
   const orderLabels = target.closest<HTMLInputElement>('input[data-playback-order-labels]');
   if (orderLabels) {
-    updateUiState((draft) => { draft.playback.showOrderLabels = orderLabels.checked; });
+    updateUiState((draft) => { draft.ui.playback.showOrderLabels = orderLabels.checked; });
     updatePlaybackView();
     return;
   }
@@ -3084,7 +3084,7 @@ el.playback.addEventListener('change', (e) => {
   if (scale) {
     const value = Number(scale.value);
     if (Number.isFinite(value) && value >= PLAYBACK_SCALE_MIN && value <= PLAYBACK_SCALE_MAX) {
-      updateUiState((draft) => { draft.playback.scale = value; });
+      updateUiState((draft) => { draft.ui.playback.scale = value; });
       rerenderPlaybackFigure();
       updatePlaybackView();
     }
@@ -3099,7 +3099,7 @@ el.playback.addEventListener('change', (e) => {
 });
 
 function onModeChange() {
-  updateUiState((draft) => { draft.input.mode = currentModeId(); });
+  updateUiState((draft) => { draft.ui.input.mode = currentModeId(); });
   fillSampleOptions();
   syncSampleText();
   fillPicker();
@@ -3109,36 +3109,36 @@ function onModeChange() {
 el.mode.addEventListener('change', onModeChange);
 el.sample.addEventListener('change', () => {
   updateUiState((draft) => {
-    draft.input.selectedSampleByMode[currentModeId()] = el.sample.value;
-    delete draft.input.customText;
+    draft.ui.input.selectedSampleByMode[currentModeId()] = el.sample.value;
+    delete draft.ui.input.customText;
   });
   el.text.value = currentSample();
   render();
 });
 el.sampleReset.addEventListener('click', () => {
   el.text.value = currentSample();
-  updateUiState((draft) => { delete draft.input.customText; });
+  updateUiState((draft) => { delete draft.ui.input.customText; });
   el.textSaveStatus.hidden = true;
   render();
 });
 el.compareChartMetric.addEventListener('change', () => {
-  updateUiState((draft) => { draft.comparison.chartColumn = Number(el.compareChartMetric.value); });
+  updateUiState((draft) => { draft.ui.comparison.chartColumn = Number(el.compareChartMetric.value); });
   render();
 });
 el.geometry.addEventListener('change', () => {
-  updateUiState((draft) => { draft.input.geometry = el.geometry.value as GeometryKind; });
+  updateUiState((draft) => { draft.ui.input.geometry = el.geometry.value as GeometryKind; });
   render();
 });
 el.window.addEventListener('input', () => {
-  updateUiState((draft) => { draft.input.windowSize = Number(el.window.value); });
+  updateUiState((draft) => { draft.conditions.defaults.windowSize = Number(el.window.value); });
   render();
 });
 el.sfbHome.addEventListener('change', () => {
-  updateUiState((draft) => { draft.input.sfbHomeCost = el.sfbHome.checked; });
+  updateUiState((draft) => { draft.conditions.defaults.sfbHomeCost = el.sfbHome.checked; });
   render();
 });
 el.preferOppositeThumb.addEventListener('change', () => {
-  updateUiState((draft) => { draft.input.preferOppositeThumb = el.preferOppositeThumb.checked; });
+  updateUiState((draft) => { draft.conditions.defaults.preferOppositeThumb = el.preferOppositeThumb.checked; });
   render();
 });
 el.text.addEventListener('input', () => {
@@ -3147,14 +3147,14 @@ el.text.addEventListener('input', () => {
 });
 el.text.addEventListener('change', () => syncTextState(false));
 el.detailLayout.addEventListener('change', () => {
-  updateUiState((draft) => { draft.layouts.detailByMode[currentModeId()] = el.detailLayout.value; });
+  updateUiState((draft) => { draft.ui.layouts.detailByMode[currentModeId()] = el.detailLayout.value; });
   render();
 });
 el.compareBaseline.addEventListener('change', () => {
   updateUiState((draft) => {
     const mode = currentModeId();
-    if (el.compareBaseline.value) draft.comparison.baselineByMode[mode] = el.compareBaseline.value;
-    else delete draft.comparison.baselineByMode[mode];
+    if (el.compareBaseline.value) draft.ui.comparison.baselineByMode[mode] = el.compareBaseline.value;
+    else delete draft.ui.comparison.baselineByMode[mode];
   });
   render();
 });
@@ -3201,7 +3201,7 @@ document.body.addEventListener('focusin', (e) => {
 document.body.addEventListener('focusout', (e) => {
   if ((e.target as Element).closest('.info')) hideTip();
 });
-setupTheme(uiState.theme, (choice) => {
-  if (choice !== uiState.theme) updateUiState((draft) => { draft.theme = choice; });
+setupTheme(uiState.ui.theme, (choice) => {
+  if (choice !== uiState.ui.theme) updateUiState((draft) => { draft.ui.theme = choice; });
   render();
 });
