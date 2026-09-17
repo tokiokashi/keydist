@@ -270,7 +270,7 @@ test('キャリブレーションの保存値は壊れたJSONを無視する', (
     setItem: (key: string, value: string) => data.set(key, value),
   };
   const calibration = {
-    actionsPerSecond: 3.5,
+    actionsPerSecond: 40,
     sameHandDifferentFingerActionsPerSecond: 2.5,
     sameHandDifferentFingerActionsPerSecondByPair: { 'LP:LR': 2 },
     fingerSpeedUnitsPerSecond: { LI: 12 },

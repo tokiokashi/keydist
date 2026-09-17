@@ -218,7 +218,7 @@ stepMs = max(arpeggioIntervalMs, movementMs, normalMs)
 
 ### 保存
 
-`localStorage` に保存する。値の範囲（アクション/秒は 0.1 〜 20、
+`localStorage` に保存する。値の範囲（アクション/秒は 0.1 〜 40、
 指の移動速度は 0.1 〜 100 [u/秒]）を外れる保存値は読み込まず、個人速度無しとして扱う。
 
 ## 7. 本モデルの適用範囲

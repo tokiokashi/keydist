@@ -42,7 +42,7 @@ export interface CalibrationKeyPair {
 export const PLAYBACK_CALIBRATION_STORAGE_KEY = 'keydist.playback-calibration.v3';
 const LEGACY_PLAYBACK_CALIBRATION_STORAGE_KEY = 'keydist.playback-calibration.v2';
 export const CALIBRATION_ACTIONS_PER_SECOND_MIN = 0.1;
-export const CALIBRATION_ACTIONS_PER_SECOND_MAX = 20;
+export const CALIBRATION_ACTIONS_PER_SECOND_MAX = 40;
 export const CALIBRATION_FINGER_SPEED_MIN = 0.1;
 export const CALIBRATION_FINGER_SPEED_MAX = 100;
 export const CALIBRATION_ACTION_SAMPLES = 9;
