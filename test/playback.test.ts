@@ -37,11 +37,12 @@ import { LAYOUT_BY_ID, withRomaji } from '../src/layouts/index.ts';
 import { kunrei } from '../src/romaji/kunrei.ts';
 import {
   actionsPerSecondFromIntervals,
-  calibrationAdjacentSameHandPairs,
+  clearPlaybackCalibration,
   calibrationActionPair,
   calibrationEligibleKeyIds,
   calibrationKeyMatches,
   calibrationKeyPairs,
+  calibrationDirectedSameHandPairs,
   calibrationSameHandPairs,
   fallbackFingerSpeedFromSamples,
   fingerSpeedFromSamples,
@@ -268,9 +269,10 @@ test('キャリブレーションの保存値は壊れたJSONを無視する', (
   const storage = {
     getItem: (key: string) => data.get(key) ?? null,
     setItem: (key: string, value: string) => data.set(key, value),
+    removeItem: (key: string) => { data.delete(key); },
   };
   const calibration = {
-    actionsPerSecond: 3.5,
+    actionsPerSecond: 40,
     sameHandDifferentFingerActionsPerSecond: 2.5,
     sameHandDifferentFingerActionsPerSecondByPair: { 'LP:LR': 2 },
     fingerSpeedUnitsPerSecond: { LI: 12 },
@@ -294,6 +296,21 @@ test('キャリブレーションの保存値は壊れたJSONを無視する', (
   data.clear();
   data.set('keydist.playback-calibration.v1', JSON.stringify(calibration));
   assert.equal(loadPlaybackCalibration(storage), undefined);
+});
+
+test('キャリブレーションの保存値を新旧キーから削除できる', () => {
+  const data = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: string) => data.set(key, value),
+    removeItem: (key: string) => { data.delete(key); },
+  };
+  data.set(PLAYBACK_CALIBRATION_STORAGE_KEY, '{}');
+  data.set('keydist.playback-calibration.v2', '{}');
+
+  clearPlaybackCalibration(storage);
+
+  assert.equal(data.size, 0);
 });
 
 test('キャリブレーションの指ペアはホーム段と下段で揃える', () => {
@@ -332,17 +349,18 @@ test('同手の別指測定は隣接以外も含む全組合せのホームキ�
   assert.deepEqual(pairs.slice(6), [['j', 'k'], ['j', 'l'], ['j', ';'], ['k', 'l'], ['k', ';'], ['l', ';']]);
 });
 
-test('アルペジオ用の同手測定は隣接指の往復を片方向組として作る', () => {
+test('アルペジオ用の同手測定は全組合せを片方向組として作る', () => {
   const geometry = buildGeometry('row-staggered');
-  const pairs = calibrationAdjacentSameHandPairs(geometry);
-  assert.equal(pairs.length, 12);
-  assert.deepEqual(pairs.slice(0, 6), [
-    ['a', 's'], ['s', 'a'], ['s', 'd'], ['d', 's'], ['d', 'f'], ['f', 'd'],
+  const pairs = calibrationDirectedSameHandPairs(geometry);
+  assert.equal(pairs.length, 24);
+  assert.deepEqual(pairs.slice(0, 12), [
+    ['a', 's'], ['s', 'a'], ['a', 'd'], ['d', 'a'], ['a', 'f'], ['f', 'a'],
+    ['s', 'd'], ['d', 's'], ['s', 'f'], ['f', 's'], ['d', 'f'], ['f', 'd'],
   ]);
-  assert.deepEqual(pairs.slice(6), [
-    ['j', 'k'], ['k', 'j'], ['k', 'l'], ['l', 'k'], ['l', ';'], [';', 'l'],
+  assert.deepEqual(pairs.slice(12), [
+    ['j', 'k'], ['k', 'j'], ['j', 'l'], ['l', 'j'], ['j', ';'], [';', 'j'],
+    ['k', 'l'], ['l', 'k'], ['k', ';'], [';', 'k'], ['l', ';'], [';', 'l'],
   ]);
-  assert.equal(pairs.some(([from, to]) => from === 'a' && to === 'd'), false);
 });
 
 test('同手別指の組キーは指順を正規化し、別手や親指を除外する', () => {

@@ -3,7 +3,7 @@ import {
 } from './geometry.ts';
 import { ARPEGGIO_PRESETS, type ArpeggioConditions } from './playback-arpeggio.ts';
 import {
-  actionsPerSecondFromIntervals, calibrationActionPair, calibrationAdjacentSameHandPairs,
+  actionsPerSecondFromIntervals, calibrationActionPair, calibrationDirectedSameHandPairs,
   calibrationEligibleKeyIds,
   calibrationKeyMatches, calibrationKeyPairs, calibrationSameHandPairs,
   CALIBRATION_ACTION_SAMPLES, CALIBRATION_ACTIONS_PER_SECOND_MAX,
@@ -11,7 +11,7 @@ import {
   CALIBRATION_FINGER_SAMPLES, CALIBRATION_FINGER_SPEED_MAX,
   CALIBRATION_FINGER_SPEED_MIN, CALIBRATION_SAME_HAND_SAMPLES,
   fallbackFingerSpeedFromSamples, fingerSpeedFromSamples, handDirection,
-  sameHandDirectedFingerPairKey, sameHandFingerPairKey,
+  clearPlaybackCalibration, sameHandDirectedFingerPairKey, sameHandFingerPairKey,
   type CalibrationKeyPair, type FingerSpeedSample, type PlaybackCalibration,
 } from './playback-calibration.ts';
 import type { Layout } from './layouts/index.ts';
@@ -30,8 +30,8 @@ export interface CalibrationDialogContext {
   getGeometrySettings: () => GeometrySettings;
   getPlaybackLayout: () => Layout | undefined;
   getCalibration: () => PlaybackCalibration | undefined;
-  setCalibration: (calibration: PlaybackCalibration) => void;
-  setPlaybackCalibration: (calibration: PlaybackCalibration) => void;
+  setCalibration: (calibration: PlaybackCalibration | undefined) => void;
+  setPlaybackCalibration: (calibration: PlaybackCalibration | undefined) => void;
 }
 
 export interface CalibrationDialogController {
@@ -128,6 +128,17 @@ function restoreCalibrationForm(calibration: PlaybackCalibration): void {
   renderCalibrationFingerInputs(calibration.fingerSpeedUnitsPerSecond);
 }
 
+function clearCalibrationForm(): void {
+  calibrationDirectionalDraft = {};
+  elements.calibrationActions.value = '';
+  elements.calibrationSameHand.value = '';
+  elements.calibrationFingerSpeed.value = '';
+  renderCalibrationDirectionalInputs(undefined);
+  renderCalibrationSameHandInputs({}, []);
+  renderCalibrationDirectedPairInputs(undefined);
+  renderCalibrationFingerInputs({});
+}
+
 function calibrationKeyLabel(keyId: string): string {
   const layoutLabel = ctx.getPlaybackLayout()?.legends.get(resolveKeyId(keyId));
   const label = layoutLabel && layoutLabel.trim().length > 0 ? layoutLabel : keyId;
@@ -204,8 +215,13 @@ function setCalibrationError(message: string): void {
 }
 
 function calibrationLivePromptText(focus: CalibrationFocusSession): string {
+  const firstKey = calibrationKeyLabel(focus.keys[0]);
+  const secondKey = calibrationKeyLabel(focus.keys[1]);
   const expected = focus.keys[focus.expectedKeyIndex];
-  return `次は「${calibrationKeyLabel(expected)}」を押してください。`;
+  const combination = focus.kind === 'direction' || focus.kind === 'directed-pair'
+    ? `「${firstKey}」→「${secondKey}」`
+    : `「${firstKey}」↔「${secondKey}」`;
+  return `${combination}を入力してください。次は「${calibrationKeyLabel(expected)}」です。`;
 }
 
 function syncCalibrationLivePrompts(): void {
@@ -478,10 +494,10 @@ function updateCalibrationDialog(): void {
               ? `同手別指 ${focus.token.slice('same-hand-pair:'.length)}`
               : '通常速度';
       const speedDescription = focus.kind === 'direction' || focus.kind === 'directed-pair'
-        ? 'アルペジオを弾く時の速さ'
+        ? 'アルペジオで入力するときの速さ'
         : '普段の速度';
       elements.calibrationInstruction.textContent = focus.kind === 'direction' || focus.kind === 'directed-pair'
-        ? `${label}: 「${calibrationKeyLabel(focus.keys[0])}」→「${calibrationKeyLabel(focus.keys[1])}」の順で、${speedDescription}で繰り返してください。戻りは位置を戻すための入力です。`
+        ? `${label}: 「${calibrationKeyLabel(focus.keys[0])}」→「${calibrationKeyLabel(focus.keys[1])}」の順で、${speedDescription}で繰り返してください。アルペジオ部分以外の時間は測定していません。`
         : `${label}: 「${calibrationKeyLabel(focus.keys[0])}」と「${calibrationKeyLabel(focus.keys[1])}」を${speedDescription}で交互に打ってください。`;
       elements.calibrationProgress.textContent = `残り${Math.max(0, calibrationFocusSampleCount(focus.kind) - focus.intervals.length)}回`;
       return;
@@ -527,11 +543,11 @@ function updateCalibrationDialog(): void {
     const pair = session.arpeggioPairs[session.arpeggioPairIndex];
     const label = pair.kind === 'direction'
       ? `異手 ${pair.token}`
-      : `同手・隣接 ${pair.token}`;
+      : `同手・別指 ${pair.token}`;
     const requiredSamples = pair.kind === 'direction'
       ? CALIBRATION_ACTION_SAMPLES
       : CALIBRATION_SAME_HAND_SAMPLES;
-    elements.calibrationInstruction.textContent = `${label}: 「${calibrationKeyLabel(pair.keys[0])}」→「${calibrationKeyLabel(pair.keys[1])}」の順で、アルペジオを弾くときの速さで繰り返してください。戻りは位置を戻すための入力です。`;
+    elements.calibrationInstruction.textContent = `${label}: 「${calibrationKeyLabel(pair.keys[0])}」→「${calibrationKeyLabel(pair.keys[1])}」の順で、アルペジオで入力するときの速さで繰り返してください。アルペジオ部分以外の時間は測定していません。`;
     elements.calibrationProgress.textContent = `${session.arpeggioPairIndex + 1} / ${session.arpeggioPairs.length} 方向、残り${Math.max(0, requiredSamples - session.arpeggioPairSampleCount)}回`;
     return;
   }
@@ -624,7 +640,7 @@ function beginArpeggioCalibrationSession(): void {
       { kind: 'direction', token: 'R→L', keys: [actionKeys[1], actionKeys[0]] },
     );
   }
-  for (const [fromKey, toKey] of calibrationAdjacentSameHandPairs(geometry, eligibleKeyIds)) {
+  for (const [fromKey, toKey] of calibrationDirectedSameHandPairs(geometry, eligibleKeyIds)) {
     const fromFinger = geometry.keys.get(fromKey)?.finger;
     const toFinger = geometry.keys.get(toKey)?.finger;
     const token = fromFinger && toFinger
@@ -895,6 +911,26 @@ function openCalibrationEditDialog(): void {
   if (!elements.calibrationDialog.open) elements.calibrationDialog.showModal();
 }
 
+function discardCalibration(): void {
+  if (!window.confirm('保存したキャリブレーションの値をすべて破棄しますか？')) return;
+  try {
+    if (!ctx.storage) throw new Error('storage unavailable');
+    clearPlaybackCalibration(ctx.storage);
+  } catch {
+    setCalibrationError('このブラウザの保存値を破棄できませんでした。');
+    return;
+  }
+  ctx.setCalibration(undefined);
+  ctx.updatePlaybackSetting('useCalibration', false);
+  ctx.setPlaybackCalibration(undefined);
+  calibrationEditMode = false;
+  calibrationSession = undefined;
+  calibrationFocusSession = undefined;
+  clearCalibrationForm();
+  setCalibrationError('');
+  updateCalibrationDialog();
+}
+
 function saveCalibrationFromDialog(): void {
   const actionsPerSecond = Number(elements.calibrationActions.value);
   const sameHandDifferentFingerActionsPerSecond = Number(elements.calibrationSameHand.value);
@@ -1012,6 +1048,7 @@ function saveCalibrationFromDialog(): void {
     elements.calibrationStart.addEventListener('click', beginCalibrationSession);
     elements.calibrationArpeggioStart.addEventListener('click', beginArpeggioCalibrationSession);
     elements.calibrationSave.addEventListener('click', saveCalibrationFromDialog);
+    elements.calibrationDiscard.addEventListener('click', discardCalibration);
     elements.calibrationDialog.addEventListener('close', () => {
       calibrationEditMode = false;
       calibrationSession = undefined;

@@ -47,7 +47,7 @@ export interface PlaybackViewController {
   render: (trace: Trace, layout: Layout, geometry: ReturnType<typeof buildGeometry>, options: Options) => void;
   clear: () => void;
   update: () => void;
-  setCalibration: (calibration: PlaybackCalibration) => void;
+  setCalibration: (calibration: PlaybackCalibration | undefined) => void;
   getGeometry: () => ReturnType<typeof buildGeometry> | undefined;
   getLayout: () => Layout | undefined;
 }

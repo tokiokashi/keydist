@@ -85,6 +85,7 @@ export const el = {
   calibrationStart: $<HTMLButtonElement>('playback-calibration-start'),
   calibrationArpeggioStart: $<HTMLButtonElement>('playback-calibration-arpeggio-start'),
   calibrationSave: $<HTMLButtonElement>('playback-calibration-save'),
+  calibrationDiscard: $<HTMLButtonElement>('playback-calibration-discard'),
   calibrationInstruction: $<HTMLParagraphElement>('playback-calibration-instruction'),
   calibrationProgress: $<HTMLOutputElement>('playback-calibration-progress'),
   calibrationError: $<HTMLParagraphElement>('playback-calibration-error'),

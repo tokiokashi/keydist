@@ -361,23 +361,25 @@
 
     <dialog id="playback-calibration-dialog">
       <form method="dialog" id="playback-calibration-form">
-        <div class="dialog-head">
-          <h2>打鍵速度のキャリブレーション</h2>
-          <button type="submit" value="cancel" class="ghost close">閉じる</button>
+        <div id="playback-calibration-header" class="calibration-modal-header">
+          <div class="dialog-head">
+            <h2>打鍵速度のキャリブレーション</h2>
+            <button type="submit" value="cancel" class="ghost close">閉じる</button>
+          </div>
+          <p class="note">
+            通常枠では通常速度・同手別指・指移動を測り、アルペジオ枠では異手と同手別指の方向別速度を測ります。選択中の配列で文字または句読点が刻印されたキーだけを使います。指移動はホーム段と下段の組で揃え、候補のない指は測定から除外します。測定中はこの画面で指定されたキーだけを押してください。
+          </p>
+          <p id="playback-calibration-instruction">通常枠で通常速度・同手別指・指移動を測り、必要ならアルペジオ枠で方向別速度を測定します。</p>
+          <output class="calibration-progress" id="playback-calibration-progress" aria-live="polite"></output>
+          <p class="error" id="playback-calibration-error" hidden></p>
         </div>
-        <p class="note">
-          通常枠では通常速度・同手別指・指移動を測り、アルペジオ枠では異手と同手隣接の方向別速度を測ります。選択中の配列で文字または句読点が刻印されたキーだけを使います。指移動はホーム段と下段の組で揃え、候補のない指は測定から除外します。測定中はこの画面で指定されたキーだけを押してください。
-        </p>
-        <p id="playback-calibration-instruction">通常枠で通常速度・同手別指・指移動を測り、必要ならアルペジオ枠で方向別速度を測定します。</p>
-        <output class="calibration-progress" id="playback-calibration-progress" aria-live="polite"></output>
-        <p class="error" id="playback-calibration-error" hidden></p>
 
         <div id="playback-calibration-result" hidden>
           <hr />
           <h3>保存値</h3>
           <label class="ctl">
             <span>通常速度（手変更を含む） <small>アクション/秒</small></span>
-            <input type="number" id="playback-calibration-actions" min="0.1" max="20" step="0.01" />
+            <input type="number" id="playback-calibration-actions" min="0.1" max="40" step="0.01" />
             <button type="button" class="ghost calibration-remeasure" data-calibration-remeasure="actions">この項目だけ測り直す</button>
             <small class="calibration-live-prompt" data-calibration-live-prompt="actions"></small>
           </label>
@@ -387,7 +389,7 @@
           </div>
           <label class="ctl">
             <span>同手・別指速度 <small>アクション/秒</small></span>
-            <input type="number" id="playback-calibration-same-hand" min="0.1" max="20" step="0.01" />
+            <input type="number" id="playback-calibration-same-hand" min="0.1" max="40" step="0.01" />
             <small>個別の組は下のボタンから測り直せます</small>
           </label>
           <details class="calibration-finger-details">
@@ -408,7 +410,9 @@
           </details>
         </div>
 
-        <div class="dialog-actions">
+        <div id="playback-calibration-footer" class="dialog-actions calibration-modal-footer">
+          <button type="button" class="ghost" id="playback-calibration-discard">保存値をすべて破棄</button>
+          <span class="spacer"></span>
           <button type="button" class="secondary" id="playback-calibration-start">測定を開始</button>
           <button type="button" id="playback-calibration-arpeggio-start">アルペジオ用を測定</button>
           <button type="button" id="playback-calibration-save" hidden>この値を保存</button>

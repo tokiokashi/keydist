@@ -1,5 +1,4 @@
 import {
-  ADJACENT_PAIRS,
   ALL_FINGERS,
   FINGERS,
   HOME_ROW,
@@ -31,6 +30,7 @@ export interface PlaybackCalibration {
 export interface CalibrationStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+  removeItem(key: string): void;
 }
 
 export interface CalibrationKeyPair {
@@ -43,7 +43,7 @@ export interface CalibrationKeyPair {
 export const PLAYBACK_CALIBRATION_STORAGE_KEY = 'keydist.playback-calibration.v3';
 const LEGACY_PLAYBACK_CALIBRATION_STORAGE_KEY = 'keydist.playback-calibration.v2';
 export const CALIBRATION_ACTIONS_PER_SECOND_MIN = 0.1;
-export const CALIBRATION_ACTIONS_PER_SECOND_MAX = 20;
+export const CALIBRATION_ACTIONS_PER_SECOND_MAX = 40;
 export const CALIBRATION_FINGER_SPEED_MIN = 0.1;
 export const CALIBRATION_FINGER_SPEED_MAX = 100;
 export const CALIBRATION_ACTION_SAMPLES = 9;
@@ -228,6 +228,11 @@ export function savePlaybackCalibration(
   storage.setItem(PLAYBACK_CALIBRATION_STORAGE_KEY, JSON.stringify(calibration));
 }
 
+export function clearPlaybackCalibration(storage: CalibrationStorage): void {
+  storage.removeItem(PLAYBACK_CALIBRATION_STORAGE_KEY);
+  storage.removeItem(LEGACY_PLAYBACK_CALIBRATION_STORAGE_KEY);
+}
+
 const CALIBRATION_KEY_LABEL_PATTERN = /\p{L}|\p{P}/u;
 
 /** 選択中の配列で文字・ピリオド・コンマが刻印された物理キーだけを候補にする。 */
@@ -312,17 +317,13 @@ export function calibrationSameHandPairs(
   return pairs;
 }
 
-/** アルペジオ用の同手・隣接指の片方向キー組を、往復分作る。 */
-export function calibrationAdjacentSameHandPairs(
+/** アルペジオ用の同手・別指の全方向キー組を作る。 */
+export function calibrationDirectedSameHandPairs(
   geometry: Geometry,
   eligibleKeyIds = calibrationEligibleKeyIds(geometry),
 ): [string, string][] {
   const pairs: [string, string][] = [];
-  for (const [firstFinger, secondFinger] of ADJACENT_PAIRS) {
-    const first = geometry.assignment.homeKey[firstFinger];
-    const second = geometry.assignment.homeKey[secondFinger];
-    if (!first || !second || first === second
-      || !eligibleKeyIds.has(first) || !eligibleKeyIds.has(second)) continue;
+  for (const [first, second] of calibrationSameHandPairs(geometry, eligibleKeyIds)) {
     pairs.push([first, second], [second, first]);
   }
   return pairs;
