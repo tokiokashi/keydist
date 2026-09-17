@@ -54,7 +54,9 @@ import {
   playbackRateChartData,
   playbackRecentActionsPerSecond,
   playbackRecentKanaPerSecond,
+  setPlaybackArpeggio,
   playbackHandKeyMotions,
+  playbackArpeggioKeyMotions,
   playbackSameFingerKeyMotions,
   playbackRepeatedKeys,
   playbackStrokeAt,
@@ -74,6 +76,11 @@ import {
   PLAYBACK_STEPS_PER_SECOND_MAX,
   PLAYBACK_STEPS_PER_SECOND_MIN,
 } from './playback.ts';
+import {
+  ARPEGGIO_PRESETS,
+  playbackArpeggioOrders,
+  type ArpeggioConditions,
+} from './playback-arpeggio.ts';
 import {
   renderPlaybackRateChart,
   updatePlaybackRateChartCursor,
@@ -96,6 +103,8 @@ import {
   fingerSpeedFromSamples,
   loadPlaybackCalibration,
   savePlaybackCalibration,
+  handDirection,
+  sameHandDirectedFingerPairKey,
   sameHandFingerPairKey,
   type CalibrationKeyPair,
   type FingerSpeedSample,
@@ -222,8 +231,10 @@ const el = {
   calibrationError: $<HTMLParagraphElement>('playback-calibration-error'),
   calibrationResult: $<HTMLDivElement>('playback-calibration-result'),
   calibrationActions: $<HTMLInputElement>('playback-calibration-actions'),
+  calibrationDirections: $<HTMLDivElement>('playback-calibration-directions'),
   calibrationSameHand: $<HTMLInputElement>('playback-calibration-same-hand'),
   calibrationSameHandPairs: $<HTMLDivElement>('playback-calibration-same-hand-pairs'),
+  calibrationDirectedPairs: $<HTMLDivElement>('playback-calibration-directed-pairs'),
   calibrationFingerSpeed: $<HTMLInputElement>('playback-calibration-finger-speed'),
   calibrationFingerInputs: $<HTMLDivElement>('playback-calibration-finger-inputs'),
 };
@@ -934,6 +945,8 @@ let playbackState: PlaybackState = createPlaybackState(
   uiState.ui.playback.sameFingerDelay,
   uiState.ui.playback.useCalibration ? playbackCalibration : undefined,
   uiState.ui.playback.speedMultiplier,
+  uiState.ui.playback.arpeggioEnabled ? uiState.conditions.defaults.arpeggio : undefined,
+  uiState.ui.playback.arpeggioDelayMode,
 );
 let playbackTrace: Trace | undefined;
 let playbackGeometry: ReturnType<typeof buildGeometry> | undefined;
@@ -949,6 +962,7 @@ interface CalibrationSession {
   phase: CalibrationPhase;
   actionKeys: [string, string];
   actionIntervals: number[];
+  actionIntervalsByDirection: Record<'L→R' | 'R→L', number[]>;
   expectedKeyIndex: number;
   lastTimestamp?: number;
   pairs: CalibrationKeyPair[];
@@ -960,10 +974,27 @@ interface CalibrationSession {
   sameHandPairIndex: number;
   sameHandIntervals: number[];
   sameHandPairIntervals: number[][];
+  sameHandPairDirectedIntervals: Record<string, number[]>;
   sameHandPairSampleCount: number;
 }
+type CalibrationFocusKind = 'actions' | 'direction' | 'finger' | 'same-hand-pair' | 'directed-pair';
+interface CalibrationFocusSession {
+  kind: CalibrationFocusKind;
+  token: string;
+  keys: [string, string];
+  finger?: Finger;
+  distance?: number;
+  intervals: number[];
+  expectedKeyIndex: number;
+  lastTimestamp?: number;
+}
 let calibrationSession: CalibrationSession | undefined;
+let calibrationFocusSession: CalibrationFocusSession | undefined;
 let calibrationEditMode = false;
+let calibrationDirectionalDraft: {
+  actionsPerSecondByDirection?: Readonly<Partial<Record<'L→R' | 'R→L', number>>>;
+  sameHandDifferentFingerActionsPerSecondByDirectedPair?: Readonly<Record<string, number>>;
+} = {};
 
 function calibrationKeyLabel(keyId: string): string {
   const layoutLabel = playbackLayout?.legends.get(resolveKeyId(keyId));
@@ -975,9 +1006,78 @@ function calibrationPairText(pair: [string, string]): string {
   return `「${calibrationKeyLabel(pair[0])}」と「${calibrationKeyLabel(pair[1])}」`;
 }
 
+function arpeggioPresetId(): string {
+  const current = uiState.conditions.defaults.arpeggio;
+  const entry = Object.entries(ARPEGGIO_PRESETS).find(([, preset]) =>
+    preset.minHorizontalSpread === current.minHorizontalSpread
+    && preset.maxRowReversal === current.maxRowReversal
+    && preset.maxRowStep === current.maxRowStep
+    && preset.includeThumb === current.includeThumb
+    && preset.breakOnOppositeHand === current.breakOnOppositeHand,
+  );
+  return entry?.[0] ?? 'custom';
+}
+
+function readArpeggioConditions(): ArpeggioConditions | undefined {
+  const details = el.playback.querySelector<HTMLElement>('[data-playback-arpeggio-conditions]');
+  if (!details) return undefined;
+  const input = (name: string): HTMLInputElement | null =>
+    details.querySelector<HTMLInputElement>(`[data-playback-arpeggio-condition="${name}"]`);
+  const spreadInput = input('minHorizontalSpread');
+  const reversalInput = input('maxRowReversal');
+  const stepInput = input('maxRowStep');
+  const includeThumbInput = input('includeThumb');
+  const oppositeHandInput = input('breakOnOppositeHand');
+  if (!spreadInput || !reversalInput || !stepInput || !includeThumbInput || !oppositeHandInput) return undefined;
+  const spread = Number(spreadInput.value);
+  const nullableRowLimit = (rowInput: HTMLInputElement): number | null | undefined => {
+    if (rowInput.value.trim() === '') return null;
+    const value = Number(rowInput.value);
+    return Number.isFinite(value) && value >= 0 && value <= 10 ? value : undefined;
+  };
+  const maxRowReversal = nullableRowLimit(reversalInput);
+  const maxRowStep = nullableRowLimit(stepInput);
+  if (!Number.isFinite(spread) || spread < 0 || spread > 20
+    || maxRowReversal === undefined || maxRowStep === undefined) return undefined;
+  return {
+    minHorizontalSpread: spread,
+    maxRowReversal,
+    maxRowStep,
+    includeThumb: includeThumbInput.checked,
+    breakOnOppositeHand: oppositeHandInput.checked,
+  };
+}
+
+function syncArpeggioConditionControls(): void {
+  const details = el.playback.querySelector<HTMLElement>('[data-playback-arpeggio-conditions]');
+  if (!details) return;
+  const conditions = uiState.conditions.defaults.arpeggio;
+  const input = (name: string): HTMLInputElement | null =>
+    details.querySelector<HTMLInputElement>(`[data-playback-arpeggio-condition="${name}"]`);
+  const spreadInput = input('minHorizontalSpread');
+  const reversalInput = input('maxRowReversal');
+  const stepInput = input('maxRowStep');
+  const includeThumbInput = input('includeThumb');
+  const oppositeHandInput = input('breakOnOppositeHand');
+  if (spreadInput) spreadInput.value = String(conditions.minHorizontalSpread);
+  if (reversalInput) reversalInput.value = conditions.maxRowReversal === null ? '' : String(conditions.maxRowReversal);
+  if (stepInput) stepInput.value = conditions.maxRowStep === null ? '' : String(conditions.maxRowStep);
+  if (includeThumbInput) includeThumbInput.checked = conditions.includeThumb;
+  if (oppositeHandInput) oppositeHandInput.checked = conditions.breakOnOppositeHand;
+}
+
 function setCalibrationError(message: string): void {
   el.calibrationError.textContent = message;
   el.calibrationError.hidden = message.length === 0;
+}
+
+function calibrationRemeasureButton(token: string): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'ghost calibration-remeasure';
+  button.dataset.calibrationRemeasure = token;
+  button.textContent = 'この項目だけ測り直す';
+  return button;
 }
 
 function renderCalibrationFingerInputs(values: Partial<Record<Finger, number>>): void {
@@ -996,7 +1096,7 @@ function renderCalibrationFingerInputs(values: Partial<Record<Finger, number>>):
     input.setAttribute('aria-label', `${FINGER_LABEL[finger]}の指移動速度（u/秒）`);
     const value = values[finger];
     if (value !== undefined) input.value = value.toFixed(2);
-    label.append(name, input);
+    label.append(name, input, calibrationRemeasureButton(`finger:${finger}`));
     el.calibrationFingerInputs.append(label);
   }
 }
@@ -1025,9 +1125,165 @@ function renderCalibrationSameHandInputs(
     input.setAttribute('aria-label', `${calibrationSameHandPairLabel(pairKey)}のアクション速度`);
     const value = values[pairKey];
     if (value !== undefined) input.value = value.toFixed(2);
-    label.append(name, input);
+    label.append(name, input, calibrationRemeasureButton(`same-hand-pair:${pairKey}`));
     el.calibrationSameHandPairs.append(label);
   }
+}
+
+function renderCalibrationDirectionalInputs(
+  values: Readonly<Partial<Record<'L→R' | 'R→L', number>>> | undefined,
+): void {
+  el.calibrationDirections.replaceChildren();
+  for (const direction of ['L→R', 'R→L'] as const) {
+    const label = document.createElement('label');
+    label.className = 'ctl calibration-finger-speed';
+    const name = document.createElement('span');
+    name.textContent = direction;
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = String(CALIBRATION_ACTIONS_PER_SECOND_MIN);
+    input.max = String(CALIBRATION_ACTIONS_PER_SECOND_MAX);
+    input.step = '0.01';
+    input.dataset.calibrationDirection = direction;
+    const value = values?.[direction];
+    if (value !== undefined) input.value = value.toFixed(2);
+    label.append(name, input, calibrationRemeasureButton(`direction:${direction}`));
+    el.calibrationDirections.append(label);
+  }
+}
+
+function renderCalibrationDirectedPairInputs(values: Readonly<Record<string, number>> | undefined): void {
+  el.calibrationDirectedPairs.replaceChildren();
+  for (const [pairKey, value] of Object.entries(values ?? {})) {
+    const label = document.createElement('label');
+    label.className = 'ctl calibration-finger-speed';
+    const name = document.createElement('span');
+    const [from, to] = pairKey.split('>') as [Finger, Finger];
+    name.textContent = `${FINGER_LABEL[from] ?? from}→${FINGER_LABEL[to] ?? to}`;
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = String(CALIBRATION_ACTIONS_PER_SECOND_MIN);
+    input.max = String(CALIBRATION_ACTIONS_PER_SECOND_MAX);
+    input.step = '0.01';
+    input.dataset.calibrationDirectedPair = pairKey;
+    input.value = value.toFixed(2);
+    label.append(name, input, calibrationRemeasureButton(`directed-pair:${pairKey}`));
+    el.calibrationDirectedPairs.append(label);
+  }
+}
+
+function startFocusedCalibration(token: string): void {
+  const geometry = playbackGeometry ?? buildGeometry(el.geometry.value as GeometryKind);
+  const eligibleKeyIds = calibrationEligibleKeyIds(geometry, playbackLayout?.legends);
+  const actionKeys = calibrationActionPair(geometry, eligibleKeyIds);
+  const pairs = calibrationKeyPairs(geometry, eligibleKeyIds);
+  const sameHandPairs = calibrationSameHandPairs(geometry, eligibleKeyIds);
+  const homeKey = (finger: Finger): string | undefined => geometry.assignment.homeKey[finger as Exclude<Finger, 'LT' | 'RT'>];
+  let kind: CalibrationFocusKind;
+  let keys: [string, string] | undefined;
+  let finger: Finger | undefined;
+  let distance: number | undefined;
+  const prefix = token.split(':', 1)[0];
+  const value = prefix === token ? undefined : token.slice(prefix.length + 1);
+  if (token === 'actions' && actionKeys) {
+    kind = 'actions';
+    keys = actionKeys;
+  } else if (prefix === 'direction' && actionKeys && (value === 'L→R' || value === 'R→L')) {
+    kind = 'direction';
+    keys = value === 'L→R' ? actionKeys : [actionKeys[1], actionKeys[0]];
+  } else if (prefix === 'finger' && value && ALL_FINGERS.includes(value as Finger)) {
+    const pair = pairs.find((candidate) => candidate.finger === value);
+    kind = 'finger';
+    finger = value as Finger;
+    keys = pair ? [pair.fromKey, pair.toKey] : undefined;
+    distance = pair?.distance;
+  } else if (prefix === 'same-hand-pair' && value) {
+    const pair = sameHandPairs.find(([first, second]) => {
+      const firstFinger = geometry.keys.get(first)?.finger;
+      const secondFinger = geometry.keys.get(second)?.finger;
+      return firstFinger && secondFinger && sameHandFingerPairKey(firstFinger, secondFinger) === value;
+    });
+    kind = 'same-hand-pair';
+    keys = pair;
+  } else if (prefix === 'directed-pair' && value) {
+    const [from, to] = value.split('>') as [Finger, Finger];
+    kind = 'directed-pair';
+    const fromKey = homeKey(from);
+    const toKey = homeKey(to);
+    keys = fromKey && toKey ? [fromKey, toKey] : undefined;
+  } else {
+    setCalibrationError('この項目の測定キーを解決できません。');
+    return;
+  }
+  if (!keys || !eligibleKeyIds.has(keys[0]) || !eligibleKeyIds.has(keys[1])) {
+    setCalibrationError('この項目では測定用のキーを作れません。');
+    return;
+  }
+  calibrationFocusSession = {
+    kind,
+    token,
+    keys,
+    finger,
+    distance,
+    intervals: [],
+    expectedKeyIndex: 0,
+  };
+  calibrationSession = undefined;
+  calibrationEditMode = true;
+  setCalibrationError('');
+  updateCalibrationDialog();
+}
+
+function calibrationFocusSampleCount(kind: CalibrationFocusKind): number {
+  if (kind === 'finger') return CALIBRATION_FINGER_SAMPLES;
+  if (kind === 'actions' || kind === 'direction') return CALIBRATION_ACTION_SAMPLES;
+  // 方向別の同手速度は交互入力の各方向を6回ずつ取る。
+  if (kind === 'directed-pair') return CALIBRATION_SAME_HAND_SAMPLES * 2;
+  return CALIBRATION_SAME_HAND_SAMPLES;
+}
+
+function finishFocusedCalibration(): void {
+  const session = calibrationFocusSession;
+  if (!session) return;
+  const rate = actionsPerSecondFromIntervals(session.intervals);
+  if (rate === undefined) {
+    setCalibrationError('測定値が不足しています。もう一度測ってください。');
+    calibrationFocusSession = undefined;
+    updateCalibrationDialog();
+    return;
+  }
+  if (session.kind === 'actions') {
+    el.calibrationActions.value = rate.toFixed(2);
+  } else if (session.kind === 'direction') {
+    const input = el.calibrationDirections.querySelector<HTMLInputElement>(
+      `[data-calibration-direction="${CSS.escape(session.token.slice('direction:'.length))}"]`,
+    );
+    if (input) input.value = rate.toFixed(2);
+  } else if (session.kind === 'same-hand-pair') {
+    const input = el.calibrationSameHandPairs.querySelector<HTMLInputElement>(
+      `[data-calibration-same-hand-pair="${CSS.escape(session.token.slice('same-hand-pair:'.length))}"]`,
+    );
+    if (input) input.value = rate.toFixed(2);
+  } else if (session.kind === 'directed-pair') {
+    const input = el.calibrationDirectedPairs.querySelector<HTMLInputElement>(
+      `[data-calibration-directed-pair="${CSS.escape(session.token.slice('directed-pair:'.length))}"]`,
+    );
+    if (input) input.value = rate.toFixed(2);
+  } else if (session.kind === 'finger' && session.finger !== undefined && session.distance !== undefined) {
+    const speed = fingerSpeedFromSamples(session.intervals.map((durationMs) => ({
+      finger: session.finger!,
+      distance: session.distance!,
+      durationMs,
+    })));
+    const input = el.calibrationFingerInputs.querySelector<HTMLInputElement>(
+      `[data-calibration-finger="${CSS.escape(session.finger)}"]`,
+    );
+    const value = speed.get(session.finger);
+    if (input && value !== undefined) input.value = value.toFixed(2);
+  }
+  calibrationFocusSession = undefined;
+  setCalibrationError('');
+  updateCalibrationDialog();
 }
 
 function updateCalibrationDialog(): void {
@@ -1038,6 +1294,24 @@ function updateCalibrationDialog(): void {
   el.calibrationSave.hidden = !showingResult;
   el.calibrationStart.textContent = session?.phase === 'result' ? '測り直す' : '測定を開始';
   if (!session) {
+    if (calibrationFocusSession) {
+      const focus = calibrationFocusSession;
+      const label = focus.kind === 'finger' && focus.finger
+        ? `${FINGER_LABEL[focus.finger]}の指移動`
+        : focus.kind === 'direction'
+          ? `異手 ${focus.token.slice('direction:'.length)}`
+          : focus.kind === 'directed-pair'
+            ? `同手別指 ${focus.token.slice('directed-pair:'.length)}`
+            : focus.kind === 'same-hand-pair'
+              ? `同手別指 ${focus.token.slice('same-hand-pair:'.length)}`
+              : '通常速度';
+      el.calibrationInstruction.textContent = `${label}: 「${calibrationKeyLabel(focus.keys[0])}」と「${calibrationKeyLabel(focus.keys[1])}」を${focus.kind === 'finger' || focus.kind === 'actions' ? '普段の速度' : 'アルペジオを弾く時の速さ'}で交互に打ってください。`;
+      el.calibrationProgress.textContent = `残り${Math.max(0, calibrationFocusSampleCount(focus.kind) - focus.intervals.length)}回`;
+      return;
+    }
+    const context = playbackGeometry && playbackLayout
+      ? `${playbackGeometry.name}の形状で${playbackLayout.name}配列のキーを使ってキャリブレーションします。`
+      : '選択中の物理形状と配列のキーを使ってキャリブレーションします。';
     const sameHandPairCount = playbackCalibration
       ? Object.keys(playbackCalibration.sameHandDifferentFingerActionsPerSecondByPair).length
       : 0;
@@ -1047,26 +1321,26 @@ function updateCalibrationDialog(): void {
     } else {
       el.calibrationInstruction.textContent = playbackCalibration
         ? `保存済み: 通常 ${playbackCalibration.actionsPerSecond.toFixed(2)}、同手・別指 ${playbackCalibration.sameHandDifferentFingerActionsPerSecond.toFixed(2)} アクション/秒（組別 ${sameHandPairCount} 組）、未測定指の指移動 ${playbackCalibration.fallbackFingerSpeedUnitsPerSecond.toFixed(2)} u/秒。`
-        : '通常の打鍵速度、同じ手の別指の交互打鍵速度、各指の移動速度を測定して再生に反映します。';
-      el.calibrationProgress.textContent = '';
+        : `${context} 通常の打鍵速度、同じ手の別指の速度、各指の移動速度を測定して再生に反映します。`;
+      el.calibrationProgress.textContent = playbackCalibration ? context : '';
     }
     return;
   }
   if (session.phase === 'actions') {
     el.calibrationInstruction.textContent = `${calibrationPairText(session.actionKeys)}を交互に、普段の速度で打ってください。`;
-    el.calibrationProgress.textContent = `${session.actionIntervals.length} / ${CALIBRATION_ACTION_SAMPLES} 間隔`;
+    el.calibrationProgress.textContent = `残り${Math.max(0, CALIBRATION_ACTION_SAMPLES - session.actionIntervals.length)}回`;
     return;
   }
   if (session.phase === 'finger') {
     const pair = session.pairs[session.pairIndex];
     el.calibrationInstruction.textContent = `${FINGER_LABEL[pair.finger]}: 「${calibrationKeyLabel(pair.fromKey)}」と「${calibrationKeyLabel(pair.toKey)}」を交互に打ってください。`;
-    el.calibrationProgress.textContent = `${session.pairIndex + 1} / ${session.pairs.length} 指、${session.pairSampleCount} / ${CALIBRATION_FINGER_SAMPLES} 回`;
+    el.calibrationProgress.textContent = `${session.pairIndex + 1} / ${session.pairs.length} 指、残り${Math.max(0, CALIBRATION_FINGER_SAMPLES - session.pairSampleCount)}回`;
     return;
   }
   if (session.phase === 'same-hand') {
     const pair = session.sameHandPairs[session.sameHandPairIndex];
-    el.calibrationInstruction.textContent = `同じ手の別指: ${calibrationPairText(pair)}を交互に打ってください。`;
-    el.calibrationProgress.textContent = `${session.sameHandPairIndex + 1} / ${session.sameHandPairs.length} 組、${session.sameHandPairSampleCount} / ${CALIBRATION_SAME_HAND_SAMPLES} 回`;
+    el.calibrationInstruction.textContent = `同じ手の別指: ${calibrationPairText(pair)}をアルペジオを弾く時の速さで交互に打ってください。`;
+    el.calibrationProgress.textContent = `${session.sameHandPairIndex + 1} / ${session.sameHandPairs.length} 組、残り${Math.max(0, CALIBRATION_SAME_HAND_SAMPLES * 2 - session.sameHandPairSampleCount)}回`;
     return;
   }
   el.calibrationInstruction.textContent = '測定結果を確認し、必要なら数値を調整して保存してください。';
@@ -1075,6 +1349,7 @@ function updateCalibrationDialog(): void {
 
 function beginCalibrationSession(): void {
   calibrationEditMode = false;
+  calibrationFocusSession = undefined;
   const geometry = playbackGeometry ?? buildGeometry(el.geometry.value as GeometryKind);
   const eligibleKeyIds = calibrationEligibleKeyIds(geometry, playbackLayout?.legends);
   const actionKeys = calibrationActionPair(geometry, eligibleKeyIds);
@@ -1096,6 +1371,7 @@ function beginCalibrationSession(): void {
     phase: 'actions',
     actionKeys,
     actionIntervals: [],
+    actionIntervalsByDirection: { 'L→R': [], 'R→L': [] },
     expectedKeyIndex: 0,
     pairs,
     pairIndex: 0,
@@ -1106,6 +1382,7 @@ function beginCalibrationSession(): void {
     sameHandPairIndex: 0,
     sameHandIntervals: [],
     sameHandPairIntervals: sameHandPairs.map(() => []),
+    sameHandPairDirectedIntervals: {},
     sameHandPairSampleCount: 0,
   };
   setCalibrationError('');
@@ -1115,7 +1392,15 @@ function beginCalibrationSession(): void {
 function finishCalibrationSession(): void {
   if (!calibrationSession) return;
   const actionsPerSecond = actionsPerSecondFromIntervals(calibrationSession.actionIntervals);
+  const actionsPerSecondByDirection = Object.fromEntries(
+    (Object.entries(calibrationSession.actionIntervalsByDirection) as ['L→R' | 'R→L', number[]][])
+      .map(([direction, intervals]) => [direction, actionsPerSecondFromIntervals(intervals)]),
+  );
   const sameHandDifferentFingerActionsPerSecond = actionsPerSecondFromIntervals(calibrationSession.sameHandIntervals);
+  const sameHandDifferentFingerActionsPerSecondByDirectedPair = Object.fromEntries(
+    Object.entries(calibrationSession.sameHandPairDirectedIntervals)
+      .map(([pair, intervals]) => [pair, actionsPerSecondFromIntervals(intervals)]),
+  );
   const sameHandPairSpeeds = Object.fromEntries(
     calibrationSession.sameHandPairFingerKeys.map((pairKey, index) => [
       pairKey,
@@ -1125,6 +1410,7 @@ function finishCalibrationSession(): void {
   const fingerSpeeds = fingerSpeedFromSamples(calibrationSession.fingerSamples);
   const fallbackFingerSpeedUnitsPerSecond = fallbackFingerSpeedFromSamples(calibrationSession.fingerSamples);
   if (actionsPerSecond === undefined
+    || Object.values(actionsPerSecondByDirection).some((value) => value === undefined)
     || sameHandDifferentFingerActionsPerSecond === undefined
     || Object.values(sameHandPairSpeeds).some((value) => value === undefined)
     || fingerSpeeds.size === 0
@@ -1135,10 +1421,22 @@ function finishCalibrationSession(): void {
     return;
   }
   calibrationSession.phase = 'result';
+  calibrationDirectionalDraft = {
+    actionsPerSecondByDirection: Object.fromEntries(
+      Object.entries(actionsPerSecondByDirection)
+        .filter((entry): entry is [string, number] => typeof entry[1] === 'number'),
+    ) as Partial<Record<'L→R' | 'R→L', number>>,
+    sameHandDifferentFingerActionsPerSecondByDirectedPair: Object.fromEntries(
+      Object.entries(sameHandDifferentFingerActionsPerSecondByDirectedPair)
+        .filter((entry): entry is [string, number] => typeof entry[1] === 'number'),
+    ),
+  };
   el.calibrationActions.value = actionsPerSecond.toFixed(2);
   el.calibrationSameHand.value = sameHandDifferentFingerActionsPerSecond.toFixed(2);
   el.calibrationFingerSpeed.value = fallbackFingerSpeedUnitsPerSecond.toFixed(2);
+  renderCalibrationDirectionalInputs(calibrationDirectionalDraft.actionsPerSecondByDirection);
   renderCalibrationSameHandInputs(sameHandPairSpeeds as Record<string, number>, calibrationSession.sameHandPairFingerKeys);
+  renderCalibrationDirectedPairInputs(calibrationDirectionalDraft.sameHandDifferentFingerActionsPerSecondByDirectedPair);
   renderCalibrationFingerInputs(Object.fromEntries(fingerSpeeds) as Partial<Record<Finger, number>>);
   setCalibrationError('');
   updateCalibrationDialog();
@@ -1146,7 +1444,29 @@ function finishCalibrationSession(): void {
 
 function onCalibrationKeyDown(event: KeyboardEvent): void {
   const session = calibrationSession;
-  if (!session || !el.calibrationDialog.open || session.phase === 'result' || event.repeat) return;
+  if (!el.calibrationDialog.open || event.repeat) return;
+  if (calibrationFocusSession) {
+    const focus = calibrationFocusSession;
+    const expected = focus.keys[focus.expectedKeyIndex];
+    if (!calibrationKeyMatches(event, expected, calibrationKeyLabel(expected))) {
+      setCalibrationError(`今は「${calibrationKeyLabel(expected)}」を押す番です。`);
+      return;
+    }
+    event.preventDefault();
+    setCalibrationError('');
+    const now = performance.now();
+    if (focus.lastTimestamp !== undefined) {
+      const durationMs = now - focus.lastTimestamp;
+      if (durationMs <= 0) return;
+      focus.intervals.push(durationMs);
+    }
+    focus.lastTimestamp = now;
+    focus.expectedKeyIndex = focus.expectedKeyIndex === 0 ? 1 : 0;
+    if (focus.intervals.length >= calibrationFocusSampleCount(focus.kind)) finishFocusedCalibration();
+    else updateCalibrationDialog();
+    return;
+  }
+  if (!session || session.phase === 'result') return;
   const expected = session.phase === 'actions'
     ? session.actionKeys[session.expectedKeyIndex]
     : session.phase === 'finger'
@@ -1164,6 +1484,12 @@ function onCalibrationKeyDown(event: KeyboardEvent): void {
     if (durationMs <= 0) return;
     if (session.phase === 'actions') {
       session.actionIntervals.push(durationMs);
+      const fromKey = session.actionKeys[session.expectedKeyIndex];
+      const toKey = session.actionKeys[session.expectedKeyIndex === 0 ? 1 : 0];
+      const fromFinger = playbackGeometry?.keys.get(fromKey)?.finger;
+      const toFinger = playbackGeometry?.keys.get(toKey)?.finger;
+      const direction = fromFinger && toFinger ? handDirection(fromFinger, toFinger) : undefined;
+      if (direction) session.actionIntervalsByDirection[direction].push(durationMs);
     } else if (session.phase === 'finger') {
       session.fingerSamples.push({
         finger: session.pairs[session.pairIndex].finger,
@@ -1174,6 +1500,19 @@ function onCalibrationKeyDown(event: KeyboardEvent): void {
     } else {
       session.sameHandIntervals.push(durationMs);
       session.sameHandPairIntervals[session.sameHandPairIndex].push(durationMs);
+      const pair = session.sameHandPairs[session.sameHandPairIndex];
+      const fromKey = pair[session.expectedKeyIndex];
+      const toKey = pair[session.expectedKeyIndex === 0 ? 1 : 0];
+      const fromFinger = playbackGeometry?.keys.get(fromKey)?.finger;
+      const toFinger = playbackGeometry?.keys.get(toKey)?.finger;
+      const directedPair = fromFinger && toFinger
+        ? sameHandDirectedFingerPairKey(fromFinger, toFinger)
+        : undefined;
+      if (directedPair) {
+        const intervals = session.sameHandPairDirectedIntervals[directedPair] ?? [];
+        intervals.push(durationMs);
+        session.sameHandPairDirectedIntervals[directedPair] = intervals;
+      }
       session.sameHandPairSampleCount++;
     }
   }
@@ -1197,7 +1536,8 @@ function onCalibrationKeyDown(event: KeyboardEvent): void {
       session.expectedKeyIndex = 0;
       session.lastTimestamp = undefined;
     }
-  } else if (session.phase === 'same-hand' && session.sameHandPairSampleCount >= CALIBRATION_SAME_HAND_SAMPLES) {
+  } else if (session.phase === 'same-hand'
+    && session.sameHandPairSampleCount >= CALIBRATION_SAME_HAND_SAMPLES * 2) {
     if (session.sameHandPairIndex + 1 >= session.sameHandPairs.length) finishCalibrationSession();
     else {
       session.sameHandPairIndex++;
@@ -1212,6 +1552,8 @@ function onCalibrationKeyDown(event: KeyboardEvent): void {
 function openCalibrationDialog(): void {
   calibrationEditMode = false;
   calibrationSession = undefined;
+  calibrationFocusSession = undefined;
+  calibrationDirectionalDraft = {};
   setCalibrationError('');
   updateCalibrationDialog();
   if (!el.calibrationDialog.open) el.calibrationDialog.showModal();
@@ -1221,14 +1563,27 @@ function openCalibrationEditDialog(): void {
   if (!playbackCalibration) return;
   calibrationEditMode = true;
   calibrationSession = undefined;
+  calibrationFocusSession = undefined;
+  calibrationDirectionalDraft = {
+    actionsPerSecondByDirection: playbackCalibration.actionsPerSecondByDirection,
+    sameHandDifferentFingerActionsPerSecondByDirectedPair:
+      playbackCalibration.sameHandDifferentFingerActionsPerDirectedPair,
+  };
   setCalibrationError('');
   el.calibrationActions.value = playbackCalibration.actionsPerSecond.toFixed(2);
   el.calibrationSameHand.value = playbackCalibration.sameHandDifferentFingerActionsPerSecond.toFixed(2);
   el.calibrationFingerSpeed.value = playbackCalibration.fallbackFingerSpeedUnitsPerSecond.toFixed(2);
+  renderCalibrationDirectionalInputs(
+    playbackCalibration.actionsPerSecondByDirection ?? {
+      'L→R': playbackCalibration.actionsPerSecond,
+      'R→L': playbackCalibration.actionsPerSecond,
+    },
+  );
   renderCalibrationSameHandInputs(
     playbackCalibration.sameHandDifferentFingerActionsPerSecondByPair,
     Object.keys(playbackCalibration.sameHandDifferentFingerActionsPerSecondByPair),
   );
+  renderCalibrationDirectedPairInputs(playbackCalibration.sameHandDifferentFingerActionsPerDirectedPair);
   renderCalibrationFingerInputs(playbackCalibration.fingerSpeedUnitsPerSecond);
   updateCalibrationDialog();
   if (!el.calibrationDialog.open) el.calibrationDialog.showModal();
@@ -1285,10 +1640,51 @@ function saveCalibrationFromDialog(): void {
     }
     sameHandDifferentFingerActionsPerSecondByPair[pairKey] = value;
   }
+  const actionsPerSecondByDirection: Partial<Record<'L→R' | 'R→L', number>> = {};
+  for (const input of el.calibrationDirections.querySelectorAll<HTMLInputElement>('[data-calibration-direction]')) {
+    const direction = input.dataset.calibrationDirection as 'L→R' | 'R→L' | undefined;
+    if (!direction || input.value.trim() === '') {
+      setCalibrationError('異手・方向別の速度をすべて入力してください。');
+      return;
+    }
+    const value = Number(input.value);
+    if (!Number.isFinite(value)
+      || value < CALIBRATION_ACTIONS_PER_SECOND_MIN
+      || value > CALIBRATION_ACTIONS_PER_SECOND_MAX) {
+      setCalibrationError(`異手・方向別の速度は ${CALIBRATION_ACTIONS_PER_SECOND_MIN}〜${CALIBRATION_ACTIONS_PER_SECOND_MAX} の範囲で入力してください。`);
+      return;
+    }
+    actionsPerSecondByDirection[direction] = value;
+  }
+  const sameHandDifferentFingerActionsPerSecondByDirectedPair: Record<string, number> = {};
+  for (const input of el.calibrationDirectedPairs.querySelectorAll<HTMLInputElement>('[data-calibration-directed-pair]')) {
+    const pairKey = input.dataset.calibrationDirectedPair;
+    if (!pairKey || input.value.trim() === '') {
+      setCalibrationError('同手・別指の方向別速度をすべて入力してください。');
+      return;
+    }
+    const value = Number(input.value);
+    if (!Number.isFinite(value)
+      || value < CALIBRATION_ACTIONS_PER_SECOND_MIN
+      || value > CALIBRATION_ACTIONS_PER_SECOND_MAX) {
+      setCalibrationError(`同手・別指の方向別速度は ${CALIBRATION_ACTIONS_PER_SECOND_MIN}〜${CALIBRATION_ACTIONS_PER_SECOND_MAX} の範囲で入力してください。`);
+      return;
+    }
+    sameHandDifferentFingerActionsPerSecondByDirectedPair[pairKey] = value;
+  }
   const calibration: PlaybackCalibration = {
     actionsPerSecond,
+    ...(Object.keys(actionsPerSecondByDirection).length === 0
+      ? {}
+      : { actionsPerSecondByDirection }),
     sameHandDifferentFingerActionsPerSecond,
     sameHandDifferentFingerActionsPerSecondByPair,
+    ...(Object.keys(sameHandDifferentFingerActionsPerSecondByDirectedPair).length === 0
+      ? {}
+      : {
+        sameHandDifferentFingerActionsPerDirectedPair:
+          sameHandDifferentFingerActionsPerSecondByDirectedPair,
+      }),
     fingerSpeedUnitsPerSecond,
     fallbackFingerSpeedUnitsPerSecond,
     measuredAt: Date.now(),
@@ -1305,6 +1701,7 @@ function saveCalibrationFromDialog(): void {
   playbackState = setPlaybackCalibration(playbackState, calibration);
   calibrationEditMode = false;
   calibrationSession = undefined;
+  calibrationFocusSession = undefined;
   el.calibrationDialog.close('saved');
   updatePlaybackView();
 }
@@ -1352,7 +1749,8 @@ function updatePlaybackView() {
   const trailOrders = uiState.ui.playback.showOrderLabels && uiState.ui.playback.showTrail
     ? playbackTrailOrders(playbackTrace.strokes, cursor, uiState.ui.playback.trailTau)
     : new Map<string, number>();
-  const chainOrders = uiState.ui.playback.showChain
+  const arpeggioDisplayChoice = uiState.ui.playback.arpeggioDisplay;
+  const chainOrders = uiState.ui.playback.showChain && arpeggioDisplayChoice !== 'arpeggio'
     ? playbackChainOrders(
       playbackTrace.strokes,
       cursor,
@@ -1361,13 +1759,22 @@ function updatePlaybackView() {
       uiState.ui.playback.chainIncludeLayerKeys,
     )
     : new Map<string, number>();
+  const arpeggioOrders = uiState.ui.playback.showChain
+    && uiState.ui.playback.arpeggioEnabled
+    && arpeggioDisplayChoice !== 'chain'
+    ? playbackArpeggioOrders(
+      playbackTrace.strokes,
+      cursor,
+      uiState.conditions.defaults.arpeggio,
+    )
+    : new Map<string, number>();
   const sameFingerMotions = playbackState.sameFingerDelay
     ? playbackSameFingerKeyMotions(playbackTrace.strokes, cursor)
     : [];
   const sameFingerTargets = new Set(sameFingerMotions.flatMap((motion) => motion.toKeys));
   // 同指連続は同じ手でもあるため、両方を有効にすると同じキーへ2枚が重なる。
   // より具体的な同指側を優先し、片手連続はそれが拾わなかったキーだけを動かす。
-  const handMotions = (uiState.ui.playback.showChain
+  const handMotions = (uiState.ui.playback.showChain && arpeggioDisplayChoice !== 'arpeggio'
     ? playbackHandKeyMotions(
       playbackTrace.strokes,
       cursor,
@@ -1379,10 +1786,23 @@ function updatePlaybackView() {
     const toKeys = motion.toKeys.filter((key) => !sameFingerTargets.has(key));
     return toKeys.length === 0 ? [] : [{ ...motion, toKeys }];
   });
+  const arpeggioMotions = (uiState.ui.playback.showChain
+    && uiState.ui.playback.arpeggioEnabled
+    && arpeggioDisplayChoice !== 'chain'
+    ? playbackArpeggioKeyMotions(
+      playbackTrace.strokes,
+      cursor,
+      uiState.conditions.defaults.arpeggio,
+    )
+    : []
+  ).flatMap((motion) => {
+    const toKeys = motion.toKeys.filter((key) => !sameFingerTargets.has(key));
+    return toKeys.length === 0 ? [] : [{ ...motion, toKeys }];
+  });
   // 起点と終点が同じキーなら動きが無く、クローンは描かれない。それでも
   // animatedKeys に入れてしまうと打鍵中の塗りだけが抑止されて空白になる。
   // 面が違えば同じ物理キーに別のかなが乗るため、かな配列では普通に起きる。
-  const motions = [...sameFingerMotions, ...handMotions].flatMap((motion) => {
+  const motions = [...sameFingerMotions, ...handMotions, ...arpeggioMotions].flatMap((motion) => {
     const toKeys = motion.toKeys.filter((key) => key !== motion.fromKey);
     return toKeys.length === 0 ? [] : [{ ...motion, toKeys }];
   });
@@ -1422,6 +1842,13 @@ function updatePlaybackView() {
       chainOrderLabel.setAttribute('visibility', chainOrder === undefined ? 'hidden' : 'visible');
     }
     key.dataset.playbackChain = chainOrder === undefined ? 'false' : 'true';
+    const arpeggioOrder = arpeggioOrders.get(id);
+    const arpeggioOrderLabel = key.querySelector<SVGTextElement>('[data-playback-order="arpeggio"]');
+    if (arpeggioOrderLabel) {
+      arpeggioOrderLabel.textContent = arpeggioOrder === undefined ? '' : String(arpeggioOrder);
+      arpeggioOrderLabel.setAttribute('visibility', arpeggioOrder === undefined ? 'hidden' : 'visible');
+    }
+    key.dataset.playbackArpeggio = arpeggioOrder === undefined ? 'false' : 'true';
     const label = key.querySelector<SVGTextElement>('[data-playback-label]');
     if (label) label.textContent = display?.keyLabels.get(id) ?? key.dataset.playbackBaseLabel ?? '';
   }
@@ -1460,7 +1887,10 @@ function updatePlaybackView() {
   const chainSameFinger = el.playback.querySelector<HTMLInputElement>('[data-playback-chain-sfb]');
   const chainLayerKeys = el.playback.querySelector<HTMLInputElement>('[data-playback-chain-layer]');
   const calibration = el.playback.querySelector<HTMLInputElement>('[data-playback-calibration]');
-  const calibrationButton = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="calibration"]');
+  const arpeggioEnabled = el.playback.querySelector<HTMLInputElement>('[data-playback-arpeggio-enabled]');
+  const arpeggioPreset = el.playback.querySelector<HTMLSelectElement>('[data-playback-arpeggio-preset]');
+  const arpeggioDelay = el.playback.querySelector<HTMLSelectElement>('[data-playback-arpeggio-delay]');
+  const arpeggioDisplay = el.playback.querySelector<HTMLSelectElement>('[data-playback-arpeggio-display]');
   const rate = el.playback.querySelector<HTMLInputElement>('input[data-playback-rate]');
   const multiplier = el.playback.querySelector<HTMLInputElement>('input[data-playback-multiplier]');
   const effectiveKanaRate = el.playback.querySelector<HTMLElement>('[data-playback-effective-kana-rate]');
@@ -1509,6 +1939,9 @@ function updatePlaybackView() {
       speedMultiplier: playbackState.speedMultiplier,
       sameFingerDelay: playbackState.sameFingerDelay,
       calibration: playbackState.calibration,
+      arpeggio: playbackState.arpeggio,
+      arpeggioDelayMode: playbackState.arpeggioDelayMode,
+      arpeggioDisplay: uiState.ui.playback.arpeggioDisplay,
       strokeCount: playbackTrace.strokes.length,
     });
     if (playbackRateChartSignature !== chartSignature) {
@@ -1519,7 +1952,9 @@ function updatePlaybackView() {
         10,
         playbackState.calibration,
         playbackState.speedMultiplier,
-      ));
+        playbackState.arpeggio,
+        playbackState.arpeggioDelayMode,
+      ), uiState.ui.playback.arpeggioDisplay);
       playbackRateChartSignature = chartSignature;
     }
     updatePlaybackRateChartCursor(rateChart, cursor);
@@ -1562,9 +1997,16 @@ function updatePlaybackView() {
     calibration.checked = uiState.ui.playback.useCalibration;
     calibration.disabled = playbackCalibration === undefined;
   }
-  if (calibrationButton) calibrationButton.textContent = playbackCalibration ? '速度を再測定' : '速度を測定';
   const calibrationEditButton = el.playback.querySelector<HTMLButtonElement>('[data-playback-action="calibration-edit"]');
-  if (calibrationEditButton) calibrationEditButton.disabled = playbackCalibration === undefined;
+  if (calibrationEditButton) {
+    calibrationEditButton.disabled = false;
+    calibrationEditButton.textContent = playbackCalibration ? '保存値を確認・編集' : '速度を測定';
+  }
+  if (arpeggioEnabled) arpeggioEnabled.checked = uiState.ui.playback.arpeggioEnabled;
+  if (arpeggioPreset) arpeggioPreset.value = arpeggioPresetId();
+  syncArpeggioConditionControls();
+  if (arpeggioDelay) arpeggioDelay.value = uiState.ui.playback.arpeggioDelayMode;
+  if (arpeggioDisplay) arpeggioDisplay.value = uiState.ui.playback.arpeggioDisplay;
   if (rate) rate.value = String(playbackState.stepsPerSecond);
   if (multiplier) multiplier.value = String(playbackState.speedMultiplier);
   if (effectiveKanaRate) {
@@ -1576,6 +2018,8 @@ function updatePlaybackView() {
       10,
       playbackState.calibration,
       playbackState.speedMultiplier,
+      playbackState.arpeggio,
+      playbackState.arpeggioDelayMode,
     );
     effectiveKanaRate.textContent = value === undefined
       ? '実効 — かな/秒'
@@ -1590,6 +2034,8 @@ function updatePlaybackView() {
       10,
       playbackState.calibration,
       playbackState.speedMultiplier,
+      playbackState.arpeggio,
+      playbackState.arpeggioDelayMode,
     );
     effectiveRate.textContent = value === undefined
       ? '実効 — アクション/秒'
@@ -1617,6 +2063,7 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
       <text class="playback-order playback-order-plan" data-playback-order="plan" x="${x + 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
       <text class="playback-order playback-order-trail" data-playback-order="trail" x="${x + width - 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
       <text class="playback-order playback-order-chain" data-playback-order="chain" x="${x + width / 2}" y="${y + PLAYBACK_KEY - 5}" text-anchor="middle" visibility="hidden"> </text>
+      <text class="playback-order playback-order-arpeggio" data-playback-order="arpeggio" x="${x + width / 2}" y="${y + 11}" text-anchor="middle" visibility="hidden"> </text>
       <text class="playback-key-label" data-playback-label x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
     </g>`;
   });
@@ -1764,6 +2211,8 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
     uiState.ui.playback.sameFingerDelay,
     uiState.ui.playback.useCalibration ? playbackCalibration : undefined,
     uiState.ui.playback.speedMultiplier,
+    uiState.ui.playback.arpeggioEnabled ? uiState.conditions.defaults.arpeggio : undefined,
+    uiState.ui.playback.arpeggioDelayMode,
   );
   playbackMotionCursor = -1;
   playbackSeekWasPlaying = undefined;
@@ -1784,6 +2233,30 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${uiState.ui.playback.showChain ? ' checked' : ''} />チェーン（片手の連続運指）</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-sfb${uiState.ui.playback.chainIncludeSameFinger ? ' checked' : ''}${uiState.ui.playback.showChain ? '' : ' disabled'} />同指連打も含める</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-layer${uiState.ui.playback.chainIncludeLayerKeys ? ' checked' : ''}${uiState.ui.playback.showChain ? '' : ' disabled'} />レイヤーキーも含める</label>
+        <label class="playback-finger-toggle" title="アルペジオ区間の間隔を再生時間へ反映"><input type="checkbox" data-playback-arpeggio-enabled${uiState.ui.playback.arpeggioEnabled ? ' checked' : ''} />アルペジオ時間</label>
+        <label class="playback-select-setting">判定 <select data-playback-arpeggio-preset aria-label="アルペジオ判定プリセット">
+          <option value="standard"${arpeggioPresetId() === 'standard' ? ' selected' : ''}>標準</option>
+          <option value="strict"${arpeggioPresetId() === 'strict' ? ' selected' : ''}>厳格</option>
+          <option value="loose"${arpeggioPresetId() === 'loose' ? ' selected' : ''}>緩い</option>
+          <option value="custom"${arpeggioPresetId() === 'custom' ? ' selected' : ''} disabled>カスタム</option>
+        </select></label>
+        <details class="playback-arpeggio-details" data-playback-arpeggio-conditions>
+          <summary>判定の詳細</summary>
+          <label>横の開き <input type="number" min="0" max="20" step="0.1" data-playback-arpeggio-condition="minHorizontalSpread" aria-label="アルペジオの最小横開き" /> u</label>
+          <label>折り返し振幅 <input type="number" min="0" max="10" step="1" data-playback-arpeggio-condition="maxRowReversal" placeholder="無制限" aria-label="アルペジオの折り返し振幅上限" /></label>
+          <label>1遷移の行差 <input type="number" min="0" max="10" step="1" data-playback-arpeggio-condition="maxRowStep" placeholder="無制限" aria-label="アルペジオの1遷移の行差上限" /></label>
+          <label><input type="checkbox" data-playback-arpeggio-condition="includeThumb" />出力親指を含める</label>
+          <label><input type="checkbox" data-playback-arpeggio-condition="breakOnOppositeHand" />逆手同時押しで区切る</label>
+        </details>
+        <label class="playback-select-setting">表示 <select data-playback-arpeggio-display aria-label="チェーン表示の範囲">
+          <option value="chain"${uiState.ui.playback.arpeggioDisplay === 'chain' ? ' selected' : ''}>チェーン</option>
+          <option value="arpeggio"${uiState.ui.playback.arpeggioDisplay === 'arpeggio' ? ' selected' : ''}>アルペジオ</option>
+          <option value="both"${uiState.ui.playback.arpeggioDisplay === 'both' ? ' selected' : ''}>両方</option>
+        </select></label>
+        <label class="playback-select-setting">遅延 <select data-playback-arpeggio-delay aria-label="アルペジオ遅延の配置">
+          <option value="before"${uiState.ui.playback.arpeggioDelayMode === 'before' ? ' selected' : ''}>塊の手前</option>
+          <option value="distributed"${uiState.ui.playback.arpeggioDelayMode === 'distributed' ? ' selected' : ''}>各ステップへ分散</option>
+        </select></label>
         <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${uiState.ui.playback.scale}" aria-label="配列図の表示倍率" /> 倍</label>
       </div>
       <div class="playback-controls" role="group" aria-label="打鍵再生の操作">
@@ -1795,8 +2268,7 @@ function renderPlayback(trace: Trace, layout: Layout, geometry: ReturnType<typeo
         <span class="playback-effective-rates"><span class="playback-effective-kana-rate" data-playback-effective-kana-rate>実効 — かな/秒</span><span class="playback-effective-rate" data-playback-effective-rate>実効 — アクション/秒</span></span>
         <label class="playback-speed"><span>基準速度</span><input type="number" data-playback-rate min="${PLAYBACK_STEPS_PER_SECOND_MIN}" max="${PLAYBACK_STEPS_PER_SECOND_MAX}" step="any" value="${playbackState.stepsPerSecond}" aria-label="再生の基準速度（ステップ毎秒）" /> <span>ステップ/秒</span></label>
         <label class="playback-speed"><span>再生倍率</span><input type="number" data-playback-multiplier min="${PLAYBACK_SPEED_MULTIPLIER_MIN}" max="${PLAYBACK_SPEED_MULTIPLIER_MAX}" step="any" value="${playbackState.speedMultiplier}" aria-label="再生速度の倍率" /> <span>倍</span></label>
-        <button type="button" class="secondary" data-playback-action="calibration">${playbackCalibration ? '速度を再測定' : '速度を測定'}</button>
-        <button type="button" class="ghost" data-playback-action="calibration-edit"${playbackCalibration ? '' : ' disabled'}>保存値を確認・編集</button>
+        <button type="button" class="ghost" data-playback-action="calibration-edit">${playbackCalibration ? '保存値を確認・編集' : '速度を測定'}</button>
       </div>
       <label class="playback-seek"><span>再生位置</span><input type="range" data-playback-seek min="0" max="${trace.strokes.length}" step="1" value="0" /></label>
       <div class="playback-status" aria-live="polite">
@@ -1841,6 +2313,8 @@ function stopPlayback() {
     playbackState.sameFingerDelay,
     uiState.ui.playback.useCalibration ? playbackCalibration : undefined,
     playbackState.speedMultiplier,
+    uiState.ui.playback.arpeggioEnabled ? uiState.conditions.defaults.arpeggio : undefined,
+    uiState.ui.playback.arpeggioDelayMode,
   );
   playbackMotionCursor = -1;
   updatePlaybackView();
@@ -2934,7 +3408,8 @@ el.playback.addEventListener('click', (e) => {
     return;
   }
   if (target.dataset.playbackAction === 'calibration-edit') {
-    openCalibrationEditDialog();
+    if (playbackCalibration) openCalibrationEditDialog();
+    else openCalibrationDialog();
     return;
   }
   switch (target.dataset.playbackAction) {
@@ -2986,6 +3461,71 @@ el.playback.addEventListener('change', (e) => {
   const chain = target.closest<HTMLInputElement>('[data-playback-chain]');
   if (chain) {
     updateUiState((draft) => { draft.ui.playback.showChain = chain.checked; });
+    updatePlaybackView();
+    return;
+  }
+  const arpeggioEnabled = target.closest<HTMLInputElement>('[data-playback-arpeggio-enabled]');
+  if (arpeggioEnabled) {
+    updateUiState((draft) => { draft.ui.playback.arpeggioEnabled = arpeggioEnabled.checked; });
+    playbackState = setPlaybackArpeggio(
+      playbackState,
+      arpeggioEnabled.checked ? uiState.conditions.defaults.arpeggio : undefined,
+      uiState.ui.playback.arpeggioDelayMode,
+    );
+    playbackRateChartSignature = undefined;
+    updatePlaybackView();
+    return;
+  }
+  const arpeggioPreset = target.closest<HTMLSelectElement>('[data-playback-arpeggio-preset]');
+  if (arpeggioPreset) {
+    const preset = ARPEGGIO_PRESETS[arpeggioPreset.value];
+    if (!preset) return;
+    updateUiState((draft) => { draft.conditions.defaults.arpeggio = { ...preset }; });
+    playbackState = setPlaybackArpeggio(
+      playbackState,
+      uiState.ui.playback.arpeggioEnabled ? uiState.conditions.defaults.arpeggio : undefined,
+      uiState.ui.playback.arpeggioDelayMode,
+    );
+    playbackMotionCursor = -1;
+    playbackRateChartSignature = undefined;
+    updatePlaybackView();
+    return;
+  }
+  if (target.closest('[data-playback-arpeggio-conditions]')) {
+    const conditions = readArpeggioConditions();
+    if (!conditions) {
+      updatePlaybackView();
+      return;
+    }
+    updateUiState((draft) => { draft.conditions.defaults.arpeggio = conditions; });
+    playbackState = setPlaybackArpeggio(
+      playbackState,
+      uiState.ui.playback.arpeggioEnabled ? conditions : undefined,
+      uiState.ui.playback.arpeggioDelayMode,
+    );
+    playbackMotionCursor = -1;
+    playbackRateChartSignature = undefined;
+    updatePlaybackView();
+    return;
+  }
+  const arpeggioDelay = target.closest<HTMLSelectElement>('[data-playback-arpeggio-delay]');
+  if (arpeggioDelay && (arpeggioDelay.value === 'before' || arpeggioDelay.value === 'distributed')) {
+    const mode = arpeggioDelay.value as 'before' | 'distributed';
+    updateUiState((draft) => { draft.ui.playback.arpeggioDelayMode = mode; });
+    playbackState = setPlaybackArpeggio(
+      playbackState,
+      uiState.ui.playback.arpeggioEnabled ? uiState.conditions.defaults.arpeggio : undefined,
+      mode,
+    );
+    playbackRateChartSignature = undefined;
+    updatePlaybackView();
+    return;
+  }
+  const arpeggioDisplay = target.closest<HTMLSelectElement>('[data-playback-arpeggio-display]');
+  if (arpeggioDisplay && ['chain', 'arpeggio', 'both'].includes(arpeggioDisplay.value)) {
+    updateUiState((draft) => {
+      draft.ui.playback.arpeggioDisplay = arpeggioDisplay.value as 'chain' | 'arpeggio' | 'both';
+    });
     updatePlaybackView();
     return;
   }
@@ -3167,8 +3707,14 @@ el.calibrationSave.addEventListener('click', saveCalibrationFromDialog);
 el.calibrationDialog.addEventListener('close', () => {
   calibrationEditMode = false;
   calibrationSession = undefined;
+  calibrationFocusSession = undefined;
   setCalibrationError('');
   updateCalibrationDialog();
+});
+el.calibrationDialog.addEventListener('click', (event) => {
+  const button = (event.target as Element).closest<HTMLButtonElement>('[data-calibration-remeasure]');
+  if (!button?.dataset.calibrationRemeasure) return;
+  startFocusedCalibration(button.dataset.calibrationRemeasure);
 });
 fillPicker();
 fillDetailOptions();

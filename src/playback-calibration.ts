@@ -12,10 +12,14 @@ import {
 export interface PlaybackCalibration {
   /** 通常の連続打鍵速度。 */
   actionsPerSecond: number;
+  /** 異手の方向別連続打鍵速度。旧保存値では省略される。 */
+  actionsPerSecondByDirection?: Readonly<Partial<Record<HandDirection, number>>>;
   /** 同じ手の別の指へ移る連続打鍵速度。 */
   sameHandDifferentFingerActionsPerSecond: number;
   /** 同じ手の別指の組ごとの測定速度。キーは正規化した指ペア（例: `LM:LI`）。 */
   sameHandDifferentFingerActionsPerSecondByPair: Readonly<Record<string, number>>;
+  /** 同じ手の別指の方向別測定速度。キーは `LM>LI` 形式。 */
+  sameHandDifferentFingerActionsPerDirectedPair?: Readonly<Record<string, number>>;
   /** 同指連続の指ごとの移動速度。測れなかった指は持たない。 */
   fingerSpeedUnitsPerSecond: Partial<Record<Finger, number>>;
   /** 指ごとの速度が無い場合に使う移動速度。単位は物理キーのu/秒。 */
@@ -35,7 +39,8 @@ export interface CalibrationKeyPair {
   distance: number;
 }
 
-export const PLAYBACK_CALIBRATION_STORAGE_KEY = 'keydist.playback-calibration.v2';
+export const PLAYBACK_CALIBRATION_STORAGE_KEY = 'keydist.playback-calibration.v3';
+const LEGACY_PLAYBACK_CALIBRATION_STORAGE_KEY = 'keydist.playback-calibration.v2';
 export const CALIBRATION_ACTIONS_PER_SECOND_MIN = 0.1;
 export const CALIBRATION_ACTIONS_PER_SECOND_MAX = 20;
 export const CALIBRATION_FINGER_SPEED_MIN = 0.1;
@@ -43,6 +48,8 @@ export const CALIBRATION_FINGER_SPEED_MAX = 100;
 export const CALIBRATION_ACTION_SAMPLES = 9;
 export const CALIBRATION_FINGER_SAMPLES = 6;
 export const CALIBRATION_SAME_HAND_SAMPLES = 6;
+
+export type HandDirection = 'L→R' | 'R→L';
 
 function positiveFiniteValues(values: readonly number[]): number[] {
   return values.filter((value) => Number.isFinite(value) && value > 0);
@@ -113,12 +120,28 @@ export function sameHandFingerPairKey(first: Finger, second: Finger): string | u
   return `${ordered[0]}:${ordered[1]}`;
 }
 
+/** 異手の方向を、保存キーに使える記号へ正規化する。 */
+export function handDirection(first: Finger, second: Finger): HandDirection | undefined {
+  if (first[0] === second[0]) return undefined;
+  return first[0] === 'L' ? 'L→R' : 'R→L';
+}
+
+/** 同手別指の順序を残した保存キーを返す。 */
+export function sameHandDirectedFingerPairKey(from: Finger, to: Finger): string | undefined {
+  if (from === to || from[0] !== to[0]) return undefined;
+  if (!FINGERS.includes(from as typeof FINGERS[number])
+    || !FINGERS.includes(to as typeof FINGERS[number])) return undefined;
+  return `${from}>${to}`;
+}
+
 function validCalibration(value: unknown): value is PlaybackCalibration {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as Partial<PlaybackCalibration>;
   const fingerSpeeds = candidate.fingerSpeedUnitsPerSecond;
   const sameHandSpeed = candidate.sameHandDifferentFingerActionsPerSecond ?? candidate.actionsPerSecond;
   const sameHandPairSpeeds = candidate.sameHandDifferentFingerActionsPerSecondByPair;
+  const directionalSpeeds = candidate.actionsPerSecondByDirection;
+  const directedPairSpeeds = candidate.sameHandDifferentFingerActionsPerDirectedPair;
   const validFingerSpeeds = fingerSpeeds !== null
     && typeof fingerSpeeds === 'object'
     && !Array.isArray(fingerSpeeds)
@@ -139,6 +162,27 @@ function validCalibration(value: unknown): value is PlaybackCalibration {
           && speed >= CALIBRATION_ACTIONS_PER_SECOND_MIN
           && speed <= CALIBRATION_ACTIONS_PER_SECOND_MAX;
       }));
+  const validDirectionalSpeeds = directionalSpeeds === undefined
+    || (directionalSpeeds !== null
+      && typeof directionalSpeeds === 'object'
+      && !Array.isArray(directionalSpeeds)
+      && Object.entries(directionalSpeeds).every(([direction, speed]) =>
+        (direction === 'L→R' || direction === 'R→L')
+        && Number.isFinite(speed)
+        && speed >= CALIBRATION_ACTIONS_PER_SECOND_MIN
+        && speed <= CALIBRATION_ACTIONS_PER_SECOND_MAX,
+      ));
+  const validDirectedPairSpeeds = directedPairSpeeds === undefined
+    || (directedPairSpeeds !== null
+      && typeof directedPairSpeeds === 'object'
+      && !Array.isArray(directedPairSpeeds)
+      && Object.entries(directedPairSpeeds).every(([pair, speed]) => {
+        const [from, to] = pair.split('>');
+        return sameHandDirectedFingerPairKey(from as Finger, to as Finger) === pair
+          && Number.isFinite(speed)
+          && speed >= CALIBRATION_ACTIONS_PER_SECOND_MIN
+          && speed <= CALIBRATION_ACTIONS_PER_SECOND_MAX;
+      }));
   return Number.isFinite(candidate.actionsPerSecond)
     && candidate.actionsPerSecond! >= CALIBRATION_ACTIONS_PER_SECOND_MIN
     && candidate.actionsPerSecond! <= CALIBRATION_ACTIONS_PER_SECOND_MAX
@@ -146,6 +190,8 @@ function validCalibration(value: unknown): value is PlaybackCalibration {
     && sameHandSpeed! >= CALIBRATION_ACTIONS_PER_SECOND_MIN
     && sameHandSpeed! <= CALIBRATION_ACTIONS_PER_SECOND_MAX
     && validSameHandPairSpeeds
+    && validDirectionalSpeeds
+    && validDirectedPairSpeeds
     && validFingerSpeeds
     && Number.isFinite(candidate.fallbackFingerSpeedUnitsPerSecond)
     && candidate.fallbackFingerSpeedUnitsPerSecond! >= CALIBRATION_FINGER_SPEED_MIN
@@ -156,7 +202,8 @@ function validCalibration(value: unknown): value is PlaybackCalibration {
 export function loadPlaybackCalibration(storage?: CalibrationStorage): PlaybackCalibration | undefined {
   if (!storage) return undefined;
   try {
-    const raw = storage.getItem(PLAYBACK_CALIBRATION_STORAGE_KEY);
+    const raw = storage.getItem(PLAYBACK_CALIBRATION_STORAGE_KEY)
+      ?? storage.getItem(LEGACY_PLAYBACK_CALIBRATION_STORAGE_KEY);
     if (!raw) return undefined;
     const value: unknown = JSON.parse(raw);
     if (!validCalibration(value)) return undefined;

@@ -44,9 +44,11 @@ import {
   calibrationSameHandPairs,
   fallbackFingerSpeedFromSamples,
   fingerSpeedFromSamples,
+  handDirection,
   loadPlaybackCalibration,
   PLAYBACK_CALIBRATION_STORAGE_KEY,
   savePlaybackCalibration,
+  sameHandDirectedFingerPairKey,
   sameHandFingerPairKey,
 } from '../src/playback-calibration.ts';
 
@@ -198,6 +200,51 @@ test('左右交互の打鍵は通常速度の測定値を使う', () => {
   assert.equal(playbackStrokeDurationMs(current, 1, false, calibration, previous), 200);
 });
 
+test('方向別キャリブレーションは異手と同手別指の向きを分ける', () => {
+  assert.equal(handDirection('LI', 'RI'), 'L→R');
+  assert.equal(handDirection('RI', 'LI'), 'R→L');
+  assert.equal(sameHandDirectedFingerPairKey('LM', 'LI'), 'LM>LI');
+  const calibration = {
+    actionsPerSecond: 5,
+    actionsPerSecondByDirection: { 'L→R': 8, 'R→L': 7 },
+    sameHandDifferentFingerActionsPerSecond: 2,
+    sameHandDifferentFingerActionsPerSecondByPair: { 'LM:LI': 3 },
+    sameHandDifferentFingerActionsPerDirectedPair: { 'LM>LI': 6 },
+    fingerSpeedUnitsPerSecond: {},
+    fallbackFingerSpeedUnitsPerSecond: 10,
+    measuredAt: 1,
+  };
+  const leftToRight = { presses: [{ finger: 'RI' }] } as never;
+  const previous = { presses: [{ finger: 'LI' }] } as never;
+  assert.equal(playbackStrokeDurationMs(leftToRight, 1, false, calibration, previous), 125);
+  const sameHand = { presses: [{ finger: 'LI' }] } as never;
+  const samePrevious = { presses: [{ finger: 'LM' }] } as never;
+  assert.equal(playbackStrokeDurationMs(sameHand, 1, false, calibration, samePrevious), 1000 / 6);
+});
+
+test('アルペジオ時間を無効にすると方向別の拡張値を通常再生へ持ち込まない', () => {
+  const calibration = {
+    actionsPerSecond: 5,
+    actionsPerSecondByDirection: { 'L→R': 20 },
+    sameHandDifferentFingerActionsPerSecond: 2,
+    sameHandDifferentFingerActionsPerSecondByPair: {},
+    fingerSpeedUnitsPerSecond: {},
+    fallbackFingerSpeedUnitsPerSecond: 10,
+    measuredAt: 1,
+  };
+  const strokes = [
+    { presses: [{ finger: 'LI' }] },
+    { presses: [{ finger: 'RI' }] },
+  ] as never[];
+  const state = advancePlayback({
+    ...createPlaybackState(5, false, calibration),
+    cursor: 1,
+    playing: true,
+  }, 100, strokes);
+  assert.equal(state.cursor, 1);
+  assert.equal(state.elapsedMs, 100);
+});
+
 test('キャリブレーションの中央値は外れ値を抑えて速度を求める', () => {
   assert.equal(actionsPerSecondFromIntervals([250, 250, 1000, 250]), 4);
   const speeds = fingerSpeedFromSamples([
@@ -237,6 +284,10 @@ test('キャリブレーションの保存値は壊れたJSONを無視する', (
   data.set(PLAYBACK_CALIBRATION_STORAGE_KEY, JSON.stringify(oldV2));
   assert.equal(loadPlaybackCalibration(storage)?.sameHandDifferentFingerActionsPerSecond, calibration.actionsPerSecond);
   assert.deepEqual(loadPlaybackCalibration(storage)?.sameHandDifferentFingerActionsPerSecondByPair, {});
+  data.clear();
+  data.set('keydist.playback-calibration.v2', JSON.stringify(oldV2));
+  assert.equal(loadPlaybackCalibration(storage)?.actionsPerSecond, calibration.actionsPerSecond);
+  assert.equal(loadPlaybackCalibration(storage)?.actionsPerSecondByDirection, undefined);
   data.set(PLAYBACK_CALIBRATION_STORAGE_KEY, '{broken');
   assert.equal(loadPlaybackCalibration(storage), undefined);
   data.clear();

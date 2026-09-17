@@ -78,6 +78,7 @@ test('保存形式はuiとconditionsに分かれ、既存配列の条件だけ�
     windowSize: 5,
     sfbHomeCost: false,
     preferOppositeThumb: true,
+    arpeggio: fallback.conditions.defaults.arpeggio,
   };
   value.conditions.perLayout = {
     oonishi: { windowSize: 7, sfbHomeCost: false },
@@ -93,6 +94,28 @@ test('保存形式はuiとconditionsに分かれ、既存配列の条件だけ�
   assert.deepEqual(state.conditions.perLayout, {
     oonishi: { windowSize: 7, sfbHomeCost: false },
   });
+});
+
+test('アルペジオ条件は数値範囲とnullを保ったまま保存・復元する', () => {
+  const fallback = defaults();
+  const value = structuredClone(fallback);
+  value.conditions.defaults.arpeggio = {
+    minHorizontalSpread: 1.5,
+    maxRowReversal: null,
+    maxRowStep: 1,
+    includeThumb: true,
+    breakOnOppositeHand: true,
+  };
+  const state = sanitizeUiState(value, fallback, choices);
+  assert.deepEqual(state.conditions.defaults.arpeggio, value.conditions.defaults.arpeggio);
+
+  const invalid = structuredClone(value);
+  invalid.conditions.defaults.arpeggio.minHorizontalSpread = 99;
+  invalid.conditions.defaults.arpeggio.maxRowStep = -1;
+  const sanitized = sanitizeUiState(invalid, fallback, choices);
+  assert.equal(sanitized.conditions.defaults.arpeggio.minHorizontalSpread, fallback.conditions.defaults.arpeggio.minHorizontalSpread);
+  assert.equal(sanitized.conditions.defaults.arpeggio.maxRowStep, fallback.conditions.defaults.arpeggio.maxRowStep);
+  assert.equal(sanitized.conditions.defaults.arpeggio.maxRowReversal, null);
 });
 
 test('無効な値は項目ごとに既定値へ戻す', () => {
