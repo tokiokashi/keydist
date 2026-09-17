@@ -28,7 +28,6 @@ export type LayerView = 'auto' | 'side-by-side' | 'tabs';
 export type LayerColorScale = 'linear' | 'log';
 export type SensitivityScale = 'relative' | 'absolute';
 export type ArpeggioDelayMode = 'before' | 'distributed';
-export type ArpeggioDisplay = 'chain' | 'arpeggio' | 'both';
 
 export interface UiStateConditionsDefaults {
   geometry: GeometryKind;
@@ -48,11 +47,11 @@ export interface UiPlaybackState {
   sameFingerDelay: boolean;
   useCalibration: boolean;
   showChain: boolean;
+  showArpeggio: boolean;
   chainIncludeSameFinger: boolean;
   chainIncludeLayerKeys: boolean;
   arpeggioEnabled: boolean;
   arpeggioDelayMode: ArpeggioDelayMode;
-  arpeggioDisplay: ArpeggioDisplay;
   scale: number;
   stepsPerSecond: number;
   speedMultiplier: number;
@@ -182,11 +181,11 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
         sameFingerDelay: true,
         useCalibration: options.usePlaybackCalibration,
         showChain: false,
+        showArpeggio: false,
         chainIncludeSameFinger: false,
         chainIncludeLayerKeys: true,
         arpeggioEnabled: true,
         arpeggioDelayMode: 'before',
-        arpeggioDisplay: 'both',
         scale: 1.5,
         stepsPerSecond: DEFAULT_PLAYBACK_STEPS_PER_SECOND,
         speedMultiplier: DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
@@ -331,6 +330,9 @@ function sanitizeConditionOverrides(value: unknown): Partial<UiStateConditionsDe
 
 function sanitizePlaybackSettings(value: unknown, fallback: UiPlaybackState): UiPlaybackState {
   const playback = record(value);
+  const showChain = boolean(playback.showChain, fallback.showChain);
+  const legacyArpeggioDisplay = playback.arpeggioDisplay;
+  const legacyShowArpeggio = legacyArpeggioDisplay === 'arpeggio' || legacyArpeggioDisplay === 'both';
   return {
     showFingers: boolean(playback.showFingers, fallback.showFingers),
     showRomajiPlan: boolean(playback.showRomajiPlan, fallback.showRomajiPlan),
@@ -340,7 +342,14 @@ function sanitizePlaybackSettings(value: unknown, fallback: UiPlaybackState): Ui
     showOrderLabels: boolean(playback.showOrderLabels, fallback.showOrderLabels),
     sameFingerDelay: boolean(playback.sameFingerDelay, fallback.sameFingerDelay),
     useCalibration: boolean(playback.useCalibration, fallback.useCalibration),
-    showChain: boolean(playback.showChain, fallback.showChain),
+    showChain,
+    // arpeggioDisplayは旧保存値との互換用。新しい保存値ではshowArpeggioを優先する。
+    showArpeggio: boolean(
+      playback.showArpeggio,
+      typeof legacyArpeggioDisplay === 'string'
+        ? showChain && legacyShowArpeggio
+        : fallback.showArpeggio,
+    ),
     chainIncludeSameFinger: boolean(playback.chainIncludeSameFinger, fallback.chainIncludeSameFinger),
     chainIncludeLayerKeys: boolean(playback.chainIncludeLayerKeys, fallback.chainIncludeLayerKeys),
     arpeggioEnabled: boolean(playback.arpeggioEnabled, fallback.arpeggioEnabled),
@@ -348,11 +357,6 @@ function sanitizePlaybackSettings(value: unknown, fallback: UiPlaybackState): Ui
       playback.arpeggioDelayMode,
       ['before', 'distributed'],
       fallback.arpeggioDelayMode,
-    ),
-    arpeggioDisplay: choice(
-      playback.arpeggioDisplay,
-      ['chain', 'arpeggio', 'both'],
-      fallback.arpeggioDisplay,
     ),
     scale: numberInRange(playback.scale, 0.5, 4, fallback.scale),
     stepsPerSecond: numberInRange(

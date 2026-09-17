@@ -77,13 +77,13 @@ interface PlaybackConditionDescriptor {
 /** 打鍵再生時間モデルの仕様にある条件。表示・保存側のUI状態から生成する。 */
 export const PLAYBACK_CONDITION_DESCRIPTORS = {
   stepsPerSecond: {
-    label: '基準速度',
-    effect: '個人速度を使わない時の、再生の基準となるステップ毎秒です。値が大きいほど打鍵間隔が短くなります。',
+    label: '標準速度',
+    effect: '個人速度を適用しない時の、再生の標準となるステップ毎秒です。値が大きいほど打鍵間隔が短くなります。',
     format: (value) => `${value} ステップ/秒`,
   },
   speedMultiplier: {
     label: '再生倍率',
-    effect: '基準速度や個人速度へ最後に掛ける倍率です。1より大きいと速く、1より小さいと遅くなります。',
+    effect: '標準速度や個人速度へ最後に掛ける倍率です。1より大きいと速く、1より小さいと遅くなります。',
     format: (value) => `${value} 倍`,
   },
   sameFingerDelay: {
@@ -92,7 +92,7 @@ export const PLAYBACK_CONDITION_DESCRIPTORS = {
     format: (value) => value ? '有効' : '無効',
   },
   useCalibration: {
-    label: '個人速度',
+    label: '個人速度を適用',
     effect: '測定した通常速度・同手別指速度・指移動速度を再生へ使うかどうかです。保存値がない場合は利用できません。',
     format: (value) => value ? '有効' : '無効',
   },

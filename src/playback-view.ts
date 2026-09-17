@@ -60,6 +60,16 @@ const PLAYBACK_PAD = 6;
 const PLAYBACK_THUMB_WIDTH = 1.9;
 const PLAYBACK_SCALE_MIN = 0.5;
 const PLAYBACK_SCALE_MAX = 4;
+
+type PlaybackDynamicDisplay = 'none' | 'chain' | 'arpeggio' | 'both';
+
+function dynamicPlaybackDisplay(settings: UiPlaybackState): PlaybackDynamicDisplay {
+  if (settings.showChain && settings.showArpeggio) return 'both';
+  if (settings.showChain) return 'chain';
+  if (settings.showArpeggio) return 'arpeggio';
+  return 'none';
+}
+
 let playbackState: PlaybackState = createPlaybackState(
   ctx.getUiState().ui.playback.stepsPerSecond,
   ctx.getUiState().ui.playback.sameFingerDelay,
@@ -163,9 +173,9 @@ function updatePlaybackView() {
   const trailOrders = ctx.getUiState().ui.playback.showOrderLabels && ctx.getUiState().ui.playback.showTrail
     ? playbackTrailOrders(playbackTrace.strokes, cursor, ctx.getUiState().ui.playback.trailTau)
     : new Map<string, number>();
-  const arpeggioDisplayChoice = ctx.getUiState().ui.playback.arpeggioDisplay;
+  const dynamicDisplay = dynamicPlaybackDisplay(ctx.getUiState().ui.playback);
   const arpeggioTimings = cachedPlaybackArpeggioTimings();
-  const chainOrders = ctx.getUiState().ui.playback.showChain && arpeggioDisplayChoice !== 'arpeggio'
+  const chainOrders = ctx.getUiState().ui.playback.showChain
     ? playbackChainOrders(
       playbackTrace.strokes,
       cursor,
@@ -174,9 +184,8 @@ function updatePlaybackView() {
       ctx.getUiState().ui.playback.chainIncludeLayerKeys,
     )
     : new Map<string, number>();
-  const arpeggioOrders = ctx.getUiState().ui.playback.showChain
+  const arpeggioOrders = ctx.getUiState().ui.playback.showArpeggio
     && ctx.getUiState().ui.playback.arpeggioEnabled
-    && arpeggioDisplayChoice !== 'chain'
     ? playbackArpeggioOrders(
       playbackTrace.strokes,
       cursor,
@@ -189,7 +198,7 @@ function updatePlaybackView() {
   const sameFingerTargets = new Set(sameFingerMotions.flatMap((motion) => motion.toKeys));
   // 同指連続は同じ手でもあるため、両方を有効にすると同じキーへ2枚が重なる。
   // より具体的な同指側を優先し、片手連続はそれが拾わなかったキーだけを動かす。
-  const handMotions = (ctx.getUiState().ui.playback.showChain && arpeggioDisplayChoice !== 'arpeggio'
+  const handMotions = (ctx.getUiState().ui.playback.showChain
     ? playbackHandKeyMotions(
       playbackTrace.strokes,
       cursor,
@@ -201,9 +210,8 @@ function updatePlaybackView() {
     const toKeys = motion.toKeys.filter((key) => !sameFingerTargets.has(key));
     return toKeys.length === 0 ? [] : [{ ...motion, toKeys }];
   });
-  const arpeggioMotions = (ctx.getUiState().ui.playback.showChain
+  const arpeggioMotions = (ctx.getUiState().ui.playback.showArpeggio
     && ctx.getUiState().ui.playback.arpeggioEnabled
-    && arpeggioDisplayChoice !== 'chain'
     ? playbackArpeggioKeyMotions(
       playbackTrace.strokes,
       cursor,
@@ -305,7 +313,7 @@ function updatePlaybackView() {
   const arpeggioEnabled = elements.playback.querySelector<HTMLInputElement>('[data-playback-arpeggio-enabled]');
   const arpeggioPreset = elements.playback.querySelector<HTMLSelectElement>('[data-playback-arpeggio-preset]');
   const arpeggioDelay = elements.playback.querySelector<HTMLSelectElement>('[data-playback-arpeggio-delay]');
-  const arpeggioDisplay = elements.playback.querySelector<HTMLSelectElement>('[data-playback-arpeggio-display]');
+  const showArpeggio = elements.playback.querySelector<HTMLInputElement>('[data-playback-arpeggio]');
   const rate = elements.playback.querySelector<HTMLInputElement>('input[data-playback-rate]');
   const multiplier = elements.playback.querySelector<HTMLInputElement>('input[data-playback-multiplier]');
   const effectiveKanaRate = elements.playback.querySelector<HTMLElement>('[data-playback-effective-kana-rate]');
@@ -357,7 +365,7 @@ function updatePlaybackView() {
       calibration: playbackState.calibration,
       arpeggio: playbackState.arpeggio,
       arpeggioDelayMode: playbackState.arpeggioDelayMode,
-      arpeggioDisplay: ctx.getUiState().ui.playback.arpeggioDisplay,
+      dynamicDisplay,
       strokeCount: playbackTrace.strokes.length,
     });
     if (playbackRateChartSignature !== chartSignature) {
@@ -371,7 +379,7 @@ function updatePlaybackView() {
         playbackState.arpeggio,
         playbackState.arpeggioDelayMode,
         arpeggioTimings,
-      ), ctx.getUiState().ui.playback.arpeggioDisplay);
+      ), dynamicDisplay);
       playbackRateChartSignature = chartSignature;
     }
     updatePlaybackRateChartCursor(rateChart, cursor);
@@ -402,6 +410,7 @@ function updatePlaybackView() {
   if (scale) scale.value = String(ctx.getUiState().ui.playback.scale);
   if (sameFingerDelay) sameFingerDelay.checked = playbackState.sameFingerDelay;
   if (chain) chain.checked = ctx.getUiState().ui.playback.showChain;
+  if (showArpeggio) showArpeggio.checked = ctx.getUiState().ui.playback.showArpeggio;
   if (chainSameFinger) {
     chainSameFinger.checked = ctx.getUiState().ui.playback.chainIncludeSameFinger;
     chainSameFinger.disabled = !ctx.getUiState().ui.playback.showChain;
@@ -417,13 +426,12 @@ function updatePlaybackView() {
   const calibrationEditButton = elements.playback.querySelector<HTMLButtonElement>('[data-playback-action="calibration-edit"]');
   if (calibrationEditButton) {
     calibrationEditButton.disabled = false;
-    calibrationEditButton.textContent = ctx.getCalibration() ? '保存値を確認・編集' : '速度を測定';
+    calibrationEditButton.textContent = ctx.getCalibration() ? '保存値を確認・編集' : '個人速度を測定';
   }
   if (arpeggioEnabled) arpeggioEnabled.checked = ctx.getUiState().ui.playback.arpeggioEnabled;
   if (arpeggioPreset) arpeggioPreset.value = ctx.arpeggioPresetId();
   ctx.syncArpeggioConditionControls();
   if (arpeggioDelay) arpeggioDelay.value = ctx.getUiState().ui.playback.arpeggioDelayMode;
-  if (arpeggioDisplay) arpeggioDisplay.value = ctx.getUiState().ui.playback.arpeggioDisplay;
   if (rate) rate.value = String(playbackState.stepsPerSecond);
   if (multiplier) multiplier.value = String(playbackState.speedMultiplier);
   if (settingsSummary) {
@@ -688,29 +696,20 @@ function renderPlayback(
               <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${ctx.getUiState().ui.playback.showTrail ? ' checked' : ''} />押下履歴を残す</label>
               <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${ctx.getUiState().ui.playback.trailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
               <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${ctx.getUiState().ui.playback.showOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
-              <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${ctx.getUiState().ui.playback.showChain ? ' checked' : ''} />チェーン（片手の連続運指）</label>
-              <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-sfb${ctx.getUiState().ui.playback.chainIncludeSameFinger ? ' checked' : ''}${ctx.getUiState().ui.playback.showChain ? '' : ' disabled'} />同指連打も含める</label>
-              <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-layer${ctx.getUiState().ui.playback.chainIncludeLayerKeys ? ' checked' : ''}${ctx.getUiState().ui.playback.showChain ? '' : ' disabled'} />レイヤーキーも含める</label>
-              <label class="playback-select-setting">アルペジオの表示範囲 <select data-playback-arpeggio-display aria-label="チェーン表示の範囲">
-                <option value="chain"${ctx.getUiState().ui.playback.arpeggioDisplay === 'chain' ? ' selected' : ''}>チェーン</option>
-                <option value="arpeggio"${ctx.getUiState().ui.playback.arpeggioDisplay === 'arpeggio' ? ' selected' : ''}>アルペジオ</option>
-                <option value="both"${ctx.getUiState().ui.playback.arpeggioDisplay === 'both' ? ' selected' : ''}>両方</option>
-              </select></label>
+              <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${ctx.getUiState().ui.playback.showChain ? ' checked' : ''} />チェーンの動的表示</label>
+              <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-sfb${ctx.getUiState().ui.playback.chainIncludeSameFinger ? ' checked' : ''}${ctx.getUiState().ui.playback.showChain ? '' : ' disabled'} />チェーンに同指連続を含める</label>
+              <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-layer${ctx.getUiState().ui.playback.chainIncludeLayerKeys ? ' checked' : ''}${ctx.getUiState().ui.playback.showChain ? '' : ' disabled'} />チェーンにレイヤーキーを含める</label>
+              <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${ctx.getUiState().ui.playback.showArpeggio ? ' checked' : ''} />アルペジオの動的表示</label>
               <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${ctx.getUiState().ui.playback.scale}" aria-label="配列図の表示倍率" /> 倍</label>
             </div>
           </section>
           <section id="playback-settings-conditions" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="conditions" hidden>
             <p class="note">再生時間とアルペジオ判定の計算方法を設定します。変更は実効速度と再生の進み方に反映されます。</p>
             <div class="playback-dialog-grid">
-              <label class="playback-speed"><span>基準速度</span><input type="number" data-playback-rate min="${PLAYBACK_STEPS_PER_SECOND_MIN}" max="${PLAYBACK_STEPS_PER_SECOND_MAX}" step="any" value="${playbackState.stepsPerSecond}" aria-label="再生の基準速度（ステップ毎秒）" /> <span>ステップ/秒</span></label>
-              <label class="playback-speed"><span>再生倍率</span><input type="number" data-playback-multiplier min="${PLAYBACK_SPEED_MULTIPLIER_MIN}" max="${PLAYBACK_SPEED_MULTIPLIER_MAX}" step="any" value="${playbackState.speedMultiplier}" aria-label="再生速度の倍率" /> <span>倍</span></label>
+              <label class="playback-speed"><span>標準速度</span><input type="number" data-playback-rate min="${PLAYBACK_STEPS_PER_SECOND_MIN}" max="${PLAYBACK_STEPS_PER_SECOND_MAX}" step="any" value="${playbackState.stepsPerSecond}" aria-label="再生の標準速度（ステップ毎秒）" /> <span>ステップ/秒</span></label>
               <label class="playback-finger-toggle" title="同じ指の連続打鍵に指の移動速度を反映。個人速度が無ければ距離に比例した簡易換算で代用"><input type="checkbox" data-playback-sfb-delay${playbackState.sameFingerDelay ? ' checked' : ''} />指の移動速度を考慮</label>
-              <label class="playback-finger-toggle" title="キャリブレーションした通常速度・同手別指速度・指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${ctx.getUiState().ui.playback.useCalibration ? ' checked' : ''}${ctx.getCalibration() ? '' : ' disabled'} />個人速度を使う</label>
-              <button type="button" class="ghost" data-playback-action="calibration-edit">${ctx.getCalibration() ? '保存値を確認・編集' : '速度を測定'}</button>
-              <label class="playback-select-setting">アルペジオ遅延の配置 <select data-playback-arpeggio-delay aria-label="アルペジオ遅延の配置">
-                <option value="before"${ctx.getUiState().ui.playback.arpeggioDelayMode === 'before' ? ' selected' : ''}>塊の手前</option>
-                <option value="distributed"${ctx.getUiState().ui.playback.arpeggioDelayMode === 'distributed' ? ' selected' : ''}>各ステップへ分散</option>
-              </select></label>
+              <label class="playback-finger-toggle" title="キャリブレーションした通常速度・同手別指速度・指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${ctx.getUiState().ui.playback.useCalibration ? ' checked' : ''}${ctx.getCalibration() ? '' : ' disabled'} />個人速度を適用</label>
+              <button type="button" class="ghost" data-playback-action="calibration-edit">${ctx.getCalibration() ? '保存値を確認・編集' : '個人速度を測定'}</button>
             </div>
             <label class="playback-select-setting">アルペジオ判定プリセット <select data-playback-arpeggio-preset aria-label="アルペジオ判定プリセット">
               <option value="standard"${ctx.arpeggioPresetId() === 'standard' ? ' selected' : ''}>標準</option>
@@ -726,6 +725,11 @@ function renderPlayback(
               <label><input type="checkbox" data-playback-arpeggio-condition="includeThumb" />出力親指を含める</label>
               <label><input type="checkbox" data-playback-arpeggio-condition="breakOnOppositeHand" />逆手同時押しで区切る</label>
             </details>
+            <label class="playback-select-setting">アルペジオ遅延の配置 <select data-playback-arpeggio-delay aria-label="アルペジオ遅延の配置">
+              <option value="before"${ctx.getUiState().ui.playback.arpeggioDelayMode === 'before' ? ' selected' : ''}>塊の手前</option>
+              <option value="distributed"${ctx.getUiState().ui.playback.arpeggioDelayMode === 'distributed' ? ' selected' : ''}>各ステップへ分散</option>
+            </select></label>
+            <label class="playback-speed playback-speed-final"><span>再生倍率</span><input type="number" data-playback-multiplier min="${PLAYBACK_SPEED_MULTIPLIER_MIN}" max="${PLAYBACK_SPEED_MULTIPLIER_MAX}" step="any" value="${playbackState.speedMultiplier}" aria-label="再生速度の倍率" /> <span>倍</span></label>
           </section>
           <section id="playback-settings-timeline" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="timeline" hidden>
             <p class="note">タイムラインの進み方に関わる設定です。現在はアルペジオ時間だけを扱います。</p>
@@ -946,6 +950,8 @@ function seekPlayback(value: string, playing = false) {
       }
       const chain = target.closest<HTMLInputElement>('[data-playback-chain]');
       if (chain) { ctx.updatePlaybackSetting('showChain', chain.checked); updatePlaybackView(); return; }
+      const showArpeggio = target.closest<HTMLInputElement>('[data-playback-arpeggio]');
+      if (showArpeggio) { ctx.updatePlaybackSetting('showArpeggio', showArpeggio.checked); updatePlaybackView(); return; }
       const arpeggioEnabled = target.closest<HTMLInputElement>('[data-playback-arpeggio-enabled]');
       if (arpeggioEnabled) {
         ctx.updatePlaybackSetting('arpeggioEnabled', arpeggioEnabled.checked);
@@ -973,11 +979,6 @@ function seekPlayback(value: string, playing = false) {
         ctx.updatePlaybackSetting('arpeggioDelayMode', mode);
         playbackState = setPlaybackArpeggio(playbackState, ctx.getUiState().ui.playback.arpeggioEnabled ? ctx.getArpeggioConditions() : undefined, mode);
         playbackRateChartSignature = undefined; updatePlaybackView(); return;
-      }
-      const arpeggioDisplay = target.closest<HTMLSelectElement>('[data-playback-arpeggio-display]');
-      if (arpeggioDisplay && ['chain', 'arpeggio', 'both'].includes(arpeggioDisplay.value)) {
-        ctx.updatePlaybackSetting('arpeggioDisplay', arpeggioDisplay.value as 'chain' | 'arpeggio' | 'both');
-        updatePlaybackView(); return;
       }
       const chainSameFinger = target.closest<HTMLInputElement>('[data-playback-chain-sfb]');
       if (chainSameFinger) { ctx.updatePlaybackSetting('chainIncludeSameFinger', chainSameFinger.checked); updatePlaybackView(); return; }

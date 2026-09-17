@@ -29,7 +29,7 @@ export interface PlaybackState {
   /** 0は開始前、nはn打鍵ぶん進んだ位置。 */
   cursor: number;
   stepsPerSecond: PlaybackStepsPerSecond;
-  /** 測定値・基準速度に掛ける再生速度の倍率。 */
+  /** 測定値・標準速度に最後に掛ける再生速度の倍率。 */
   speedMultiplier: number;
   /** 同指連続の移動距離を再生時間へ反映するか。 */
   sameFingerDelay: boolean;
