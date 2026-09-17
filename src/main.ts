@@ -1106,8 +1106,8 @@ function currentConditionPresetId(): string {
     sameConditionDefaults(preset.conditions, uiState.conditions.defaults))?.id ?? '';
 }
 
-function conditionOverrideEnabled(layoutId: string): boolean {
-  return Object.prototype.hasOwnProperty.call(uiState.conditions.perLayout, layoutId);
+function conditionOverrideEnabled(layoutId: string, state: UiStateV1 = uiState): boolean {
+  return Object.prototype.hasOwnProperty.call(state.conditions.perLayout, layoutId);
 }
 
 function commitCondition<K extends keyof UiStateConditionsDefaults>(
@@ -1149,6 +1149,7 @@ function toggleConditionOverride(layoutId: string, enabled: boolean): void {
     if (enabled) draft.conditions.perLayout[layoutId] ??= {};
     else delete draft.conditions.perLayout[layoutId];
   });
+  syncGlobalConditionControls();
   renderConditionDescription();
   render();
 }
@@ -1526,16 +1527,10 @@ function currentPlaybackLayoutId(): string | undefined {
   return playbackView?.getLayout()?.id;
 }
 
-function hasPlaybackLayoutOverride(conditions: UiStateLayoutConditions | undefined): boolean {
-  return conditions?.windowSize !== undefined
-    || conditions?.playback !== undefined
-    || conditions?.arpeggio !== undefined;
-}
-
 function isPlaybackLayoutOverride(): boolean {
   const layoutId = currentPlaybackLayoutId();
   if (!layoutId) return false;
-  return hasPlaybackLayoutOverride(uiState.conditions.perLayout[layoutId]);
+  return conditionOverrideEnabled(layoutId);
 }
 
 function playbackViewUiState(): UiStateV1 {
@@ -1568,7 +1563,7 @@ function updatePlaybackSetting<K extends keyof UiPlaybackState>(
   const layoutId = currentPlaybackLayoutId();
   updateUiState((draft) => {
     const hasLayoutOverride = layoutId !== undefined
-      && hasPlaybackLayoutOverride(draft.conditions.perLayout[layoutId]);
+      && conditionOverrideEnabled(layoutId, draft);
     if (hasLayoutOverride && layoutId) {
       const current = draft.conditions.perLayout[layoutId];
       draft.conditions.perLayout[layoutId] = {
@@ -1585,7 +1580,7 @@ function updateArpeggioConditions(conditions: ArpeggioConditions): void {
   const layoutId = currentPlaybackLayoutId();
   updateUiState((draft) => {
     const hasLayoutOverride = layoutId !== undefined
-      && hasPlaybackLayoutOverride(draft.conditions.perLayout[layoutId]);
+      && conditionOverrideEnabled(layoutId, draft);
     if (hasLayoutOverride && layoutId) {
       draft.conditions.perLayout[layoutId] = {
         ...draft.conditions.perLayout[layoutId],
@@ -1600,25 +1595,7 @@ function updateArpeggioConditions(conditions: ArpeggioConditions): void {
 function setPlaybackLayoutOverride(enabled: boolean): void {
   const layoutId = currentPlaybackLayoutId();
   if (!layoutId) return;
-  updateUiState((draft) => {
-    if (enabled) {
-      draft.conditions.perLayout[layoutId] = {
-        ...draft.conditions.perLayout[layoutId],
-        windowSize: draft.conditions.defaults.windowSize,
-        playback: { ...draft.ui.playback },
-        arpeggio: structuredClone(draft.conditions.defaults.arpeggio),
-      };
-      return;
-    }
-    const conditions = draft.conditions.perLayout[layoutId];
-    if (!conditions) return;
-    delete conditions.windowSize;
-    delete conditions.playback;
-    delete conditions.arpeggio;
-    if (Object.keys(conditions).length === 0) delete draft.conditions.perLayout[layoutId];
-  });
-  syncGlobalConditionControls();
-  render();
+  toggleConditionOverride(layoutId, enabled);
 }
 
 playbackView = createPlaybackView({
@@ -1711,9 +1688,10 @@ el.geometry.addEventListener('change', () => {
 el.window.addEventListener('input', (event) => {
   const windowSize = Number((event.currentTarget as HTMLInputElement).value);
   const layoutId = currentPlaybackLayoutId();
+  const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
   updateUiState((draft) => {
     const conditions = layoutId ? draft.conditions.perLayout[layoutId] : undefined;
-    if (layoutId && hasPlaybackLayoutOverride(conditions)) {
+    if (layoutId && useLayoutOverride) {
       draft.conditions.perLayout[layoutId] = { ...conditions, windowSize };
     } else {
       draft.conditions.defaults.windowSize = windowSize;
