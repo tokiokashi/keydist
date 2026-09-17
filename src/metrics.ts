@@ -60,6 +60,11 @@ export interface Metrics {
    */
   fingerAssignmentId: string;
   fingerAssignmentName: string;
+  /**
+   * この数値を算出した測定条件のスナップショット。条件を変えても後から出典を辿れるよう、
+   * 表示用の状態ではなく数値と同じ入れ物へ保存する（仕様 §12.3）。
+   */
+  conditions: MetricConditions;
   /** 打鍵ステップ数。同時押しは1と数える */
   strokes: number;
   /** キー押下数。同時押しは押したキーの数だけ数える */
@@ -115,7 +120,29 @@ export interface Metrics {
   keyDistance: Map<string, number>;
 }
 
-export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
+export interface MetricConditions {
+  /** 窓幅N（打鍵単位） */
+  windowSize: number;
+  /** 同指連続でホームキーの移動を計上するか */
+  sfbHomeCost: boolean;
+  /** 親指シフトを出力キーと反対側の親指へ振り替えたか */
+  preferOppositeThumb: boolean;
+  /** ローマ字入力に使った綴り規則の識別子。かな直接入力はnull */
+  romajiRuleId: string | null;
+}
+
+export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
+  windowSize: 3,
+  sfbHomeCost: true,
+  preferOppositeThumb: false,
+  romajiRuleId: null,
+};
+
+export function computeMetrics(
+  trace: Trace,
+  geometry: Geometry,
+  conditions: MetricConditions = DEFAULT_METRIC_CONDITIONS,
+): Metrics {
   const perFinger = {} as Record<Finger, number>;
   const perFingerPresses = {} as Record<Finger, number>;
   for (const finger of ALL_FINGERS) {
@@ -221,6 +248,7 @@ export function computeMetrics(trace: Trace, geometry: Geometry): Metrics {
     geometryName: geometry.name,
     fingerAssignmentId: geometry.assignment.id,
     fingerAssignmentName: geometry.assignment.name,
+    conditions: { ...conditions },
     strokes: n,
     presses,
     skipped: trace.skipped,

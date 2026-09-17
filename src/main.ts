@@ -135,6 +135,7 @@ import {
 import { resolveSelection, type ModeId } from './layout-selection.ts';
 import {
   createDefaultUiState,
+  DEFAULT_CONDITION_DEFAULTS,
   loadUiState,
   MAX_SAVED_TEXT_LENGTH,
   saveUiState,
@@ -146,6 +147,7 @@ import {
   type UiStateV1,
 } from './ui-state.ts';
 import { resolveConditions } from './condition-resolution.ts';
+import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import {
   classifyFaces,
   displayTriggerKeys,
@@ -204,6 +206,10 @@ const el = {
   howDialog: $<HTMLDialogElement>('how-dialog'),
   howOpen: $<HTMLButtonElement>('how-open'),
   howClose: $<HTMLButtonElement>('how-close'),
+  conditionsDialog: $<HTMLDialogElement>('conditions-dialog'),
+  conditionsOpen: $<HTMLButtonElement>('conditions-open'),
+  conditionsClose: $<HTMLButtonElement>('conditions-close'),
+  conditionDescription: $<HTMLDivElement>('condition-description'),
   romajiDialog: $<HTMLDialogElement>('romaji-dialog'),
   romajiForm: $<HTMLFormElement>('romaji-form'),
   romajiEdit: $<HTMLSelectElement>('romaji-edit'),
@@ -295,6 +301,15 @@ function layoutsOf(mode: ModeId): Layout[] {
     ? toLayout(d)
     : withRomaji(toLayout(d), cachedRomajiTable(d.romaji)));
   return [...assigned, ...mine];
+}
+
+/** 配列に紐づくローマ字規則を、Metricsへ保存する識別子として解決する。 */
+function romajiRuleIdForLayout(layout: Layout): string | null {
+  if (!layout.romajiTable) return null;
+  const user = userLayouts.find((definition) => definition.id === layout.id);
+  return romajiSettings.assignments[layout.id]
+    ?? (user && !user.direct ? user.romaji : undefined)
+    ?? defaultRomajiRuleId(layout.id);
 }
 
 const MODES = {
@@ -902,6 +917,102 @@ function setupHowDialog() {
   el.howDialog.addEventListener('click', (event) => {
     // 背景そのものを押した時だけ閉じる。中身の上ならtargetは子要素になる
     if (event.target === el.howDialog) el.howDialog.close();
+  });
+}
+
+function renderConditionDescription(): void {
+  const layoutNames = Object.fromEntries(
+    [...layoutsOf('en'), ...layoutsOf('ja')].map((layout) => [layout.id, layout.name]),
+  );
+  const description = describeConditions({
+    defaults: DEFAULT_CONDITION_DEFAULTS,
+    current: uiState.conditions.defaults,
+    perLayout: uiState.conditions.perLayout,
+    layoutNames,
+  });
+  const playbackDescription = describePlaybackConditions({
+    defaults: uiStateDefaults.ui.playback,
+    current: uiState.ui.playback,
+  });
+  const fragment = document.createDocumentFragment();
+
+  const appendConditionList = (
+    headingText: string,
+    conditions: readonly {
+      label: string;
+      value: string;
+      defaultValue: string;
+      differsFromDefault: boolean;
+      effect: string;
+    }[],
+  ): void => {
+    const heading = document.createElement('h3');
+    heading.textContent = headingText;
+    const list = document.createElement('dl');
+    list.className = 'condition-list';
+    for (const condition of conditions) {
+      const term = document.createElement('dt');
+      term.textContent = condition.label;
+      const detail = document.createElement('dd');
+      const value = document.createElement('strong');
+      value.textContent = `現在: ${condition.value}`;
+      detail.append(value);
+      const difference = document.createElement('span');
+      difference.className = condition.differsFromDefault ? 'condition-changed' : 'condition-default';
+      difference.textContent = condition.differsFromDefault
+        ? `（既定: ${condition.defaultValue}）`
+        : '（既定どおり）';
+      detail.append(' ', difference);
+      const effect = document.createElement('p');
+      effect.textContent = condition.effect;
+      detail.append(effect);
+      list.append(term, detail);
+    }
+    fragment.append(heading, list);
+  };
+
+  appendConditionList('移動距離条件', description.conditions);
+  appendConditionList('打鍵再生条件', playbackDescription);
+
+  const overridesHeading = document.createElement('h3');
+  overridesHeading.textContent = '配列ごとの上書き';
+  fragment.append(overridesHeading);
+  if (description.overrides.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'note';
+    empty.textContent = '配列ごとの上書きはありません。';
+    fragment.append(empty);
+  } else {
+    const overrides = document.createElement('div');
+    overrides.className = 'condition-overrides';
+    for (const override of description.overrides) {
+      const section = document.createElement('section');
+      const heading = document.createElement('h4');
+      heading.textContent = override.layoutName;
+      section.append(heading);
+      const list = document.createElement('ul');
+      for (const condition of override.conditions) {
+        const item = document.createElement('li');
+        item.textContent = `${condition.label}: ${condition.value}（既定: ${condition.defaultValue}）`;
+        list.append(item);
+      }
+      section.append(list);
+      overrides.append(section);
+    }
+    fragment.append(overrides);
+  }
+  el.conditionDescription.replaceChildren(fragment);
+}
+
+/** シミュレーション条件の読み取り専用モーダル。条件は開く直前に再生成する。 */
+function setupConditionDialog() {
+  el.conditionsOpen.addEventListener('click', () => {
+    renderConditionDescription();
+    el.conditionsDialog.showModal();
+  });
+  el.conditionsClose.addEventListener('click', () => el.conditionsDialog.close());
+  el.conditionsDialog.addEventListener('click', (event) => {
+    if (event.target === el.conditionsDialog) el.conditionsDialog.close();
   });
 }
 
@@ -1935,7 +2046,12 @@ function render() {
       return {
         layout,
         trace,
-        metrics: computeMetrics(trace, geometry),
+        metrics: computeMetrics(trace, geometry, {
+          windowSize: conditions.options.windowSize,
+          sfbHomeCost: conditions.options.sfbHomeCost,
+          preferOppositeThumb: conditions.options.preferOppositeThumb ?? false,
+          romajiRuleId: romajiRuleIdForLayout(layout),
+        }),
         geometry,
         options: conditions.options,
         slot,
@@ -2353,7 +2469,7 @@ function renderSensitivity(
     .map((layout, slot) => ({ layout, slot }))
     .filter((s) => set.has(s.layout.id))
     .map(({ layout, slot }) => {
-    const points = nSensitivity(text, layout, geometry, options, range);
+    const points = nSensitivity(text, layout, geometry, options, range, romajiRuleIdForLayout(layout));
     const base = points[0].totalUnits || 1;
     return {
       name: layout.name,
@@ -3192,6 +3308,7 @@ el.compareBaseline.addEventListener('change', () => {
 setupAddForm();
 setupRomajiEditor();
 setupPanelState();
+setupConditionDialog();
 document.addEventListener('keydown', onCalibrationKeyDown);
 el.calibrationStart.addEventListener('click', beginCalibrationSession);
 el.calibrationSave.addEventListener('click', saveCalibrationFromDialog);

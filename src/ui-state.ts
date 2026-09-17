@@ -31,7 +31,7 @@ export interface UiStateConditionsDefaults {
   preferOppositeThumb: boolean;
 }
 
-/** 数値計算へ影響する条件の既定値。 */
+/** 数値計算へ影響する条件の既定値。説明・保存・計算で同じ値を参照する。 */
 export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
   geometry: 'row-staggered',
   windowSize: 3,
