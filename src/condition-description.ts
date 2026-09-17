@@ -64,8 +64,8 @@ export const PLAYBACK_CONDITION_DESCRIPTORS = {
     format: (value) => `${value} 倍`,
   },
   sameFingerDelay: {
-    label: '同指ディレイ',
-    effect: '同じ指で離れたキーへ移る距離を、再生時間へ反映するかどうかです。',
+    label: '指の移動速度を考慮',
+    effect: 'オンにすると、同じ指の連続打鍵に指の移動速度が反映されます。個人速度が無い場合は距離に比例した簡易換算で代用します。オフだと同指連続かどうかに関わらず通常速度で進みます。',
     format: (value) => value ? '有効' : '無効',
   },
   useCalibration: {
