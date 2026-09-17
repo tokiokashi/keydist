@@ -27,6 +27,23 @@ test('入力文字数はローマ字展開前の文字数になる', () => {
   assert.equal(t.inputChars, 1);
 });
 
+test('Metricsは数値を算出した測定条件をスナップショットで保持する', () => {
+  const trace = evaluate('し', qwerty, geometry, opts({ windowSize: 7, sfbHomeCost: false }));
+  const metrics = computeMetrics(trace, geometry, {
+    windowSize: 7,
+    sfbHomeCost: false,
+    preferOppositeThumb: true,
+    romajiRuleId: 'qwerty',
+  });
+
+  assert.deepEqual(metrics.conditions, {
+    windowSize: 7,
+    sfbHomeCost: false,
+    preferOppositeThumb: true,
+    romajiRuleId: 'qwerty',
+  });
+});
+
 test('旧日本語サンプルは過去の測定用に290文字で残る', () => {
   assert.equal(SAMPLE_TEXT_JA_LEGACY.replace(/\s+/g, '').length, 290);
 });

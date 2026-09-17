@@ -296,6 +296,15 @@ function layoutsOf(mode: ModeId): Layout[] {
   return [...assigned, ...mine];
 }
 
+/** 配列に紐づくローマ字規則を、Metricsへ保存する識別子として解決する。 */
+function romajiRuleIdForLayout(layout: Layout): string | null {
+  if (!layout.romajiTable) return null;
+  const user = userLayouts.find((definition) => definition.id === layout.id);
+  return romajiSettings.assignments[layout.id]
+    ?? (user && !user.direct ? user.romaji : undefined)
+    ?? defaultRomajiRuleId(layout.id);
+}
+
 const MODES = {
   en: { get layouts() { return layoutsOf('en'); }, sample: SAMPLES.en.default },
   ja: { get layouts() { return layoutsOf('ja'); }, sample: SAMPLES.ja.modern },
@@ -1914,7 +1923,17 @@ function render() {
     .filter((r) => set.has(r.layout.id))
     .map(({ layout, slot }) => {
       const trace = evaluate(text, layout, geometry, options);
-      return { layout, trace, metrics: computeMetrics(trace, geometry), slot };
+      return {
+        layout,
+        trace,
+        metrics: computeMetrics(trace, geometry, {
+          windowSize: options.windowSize,
+          sfbHomeCost: options.sfbHomeCost,
+          preferOppositeThumb: options.preferOppositeThumb ?? false,
+          romajiRuleId: romajiRuleIdForLayout(layout),
+        }),
+        slot,
+      };
     });
 
   if (results.length === 0) {
