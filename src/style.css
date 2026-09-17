@@ -155,14 +155,20 @@ a { color: var(--accent); }
   max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
-  transition: grid-template-columns 200ms ease;
+  transition: grid-template-columns 200ms ease, max-width 200ms ease;
 }
-.app.playback-settings-open { grid-template-columns: 300px minmax(0, 1fr) 320px; }
+.app.playback-settings-open {
+  grid-template-columns: 300px minmax(0, 1fr) 320px;
+  max-width: 1740px;
+}
 .playback-settings-aside {
   grid-column: 3;
   grid-row: 1;
   min-width: 0;
-  overflow: hidden;
+  position: sticky;
+  top: 88px;
+  max-height: calc(100vh - 108px);
+  overflow: auto;
   visibility: hidden;
   opacity: 0;
   transition: opacity 200ms ease, visibility 0s linear 200ms;
@@ -174,10 +180,6 @@ a { color: var(--accent); }
 }
 .playback-settings-content {
   width: 320px;
-  max-height: calc(100vh - 108px);
-  overflow: auto;
-  position: sticky;
-  top: 88px;
   padding: 16px;
   color: var(--fg);
   background: var(--panel);
@@ -230,6 +232,7 @@ a { color: var(--accent); }
     bottom: 0;
     z-index: 20;
     width: min(320px, calc(100vw - 24px));
+    max-height: none;
     padding: 0;
     overflow: auto;
     background: var(--panel);
@@ -248,7 +251,6 @@ a { color: var(--accent); }
     position: static;
     width: auto;
     min-height: 100%;
-    max-height: none;
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -389,7 +391,6 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 }
 .playback-panel[open] > summary::after { content: '−'; }
 .playback-panel[open] > summary { margin-bottom: 10px; border-bottom-color: var(--line); }
-.playback-summary-icon { color: var(--accent); font-size: 1rem; line-height: 1; }
 .playback-summary-hint { margin-left: auto; color: var(--muted); font-size: 0.72rem; font-weight: 500; }
 .playback-head {
   display: flex;
@@ -455,18 +456,22 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-settings-scope small { grid-column: 1 / -1; color: var(--muted); font-size: 0.68rem; }
 .playback-settings-tabs {
   display: flex;
+  justify-content: space-between;
   gap: 2px;
   margin: 18px 0 14px;
+  overflow: hidden;
   border-bottom: 1px solid var(--line);
 }
 .playback-settings-tab {
-  padding: 5px 10px;
+  flex: 0 0 auto;
+  padding: 5px 4px;
   border: 0;
   border-bottom: 2px solid transparent;
   border-radius: 5px 5px 0 0;
   color: var(--muted);
   background: transparent;
   font-size: 0.78rem;
+  white-space: nowrap;
 }
 .playback-settings-tab[aria-selected='true'] {
   border-bottom-color: var(--accent);
@@ -505,7 +510,8 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   gap: 6px;
   margin-bottom: 8px;
 }
-.playback-controls button { padding: 4px 9px; font-size: 0.76rem; }
+.playback-controls button { display: inline-flex; align-items: center; padding: 4px 9px; font-size: 0.76rem; }
+.playback-control-icon { display: inline-block; min-width: 1em; margin-right: 4px; text-align: center; }
 .playback-position {
   margin-left: 2px;
   color: var(--muted);

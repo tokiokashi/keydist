@@ -1106,8 +1106,8 @@ function currentConditionPresetId(): string {
     sameConditionDefaults(preset.conditions, uiState.conditions.defaults))?.id ?? '';
 }
 
-function conditionOverrideEnabled(layoutId: string): boolean {
-  return Object.prototype.hasOwnProperty.call(uiState.conditions.perLayout, layoutId);
+function conditionOverrideEnabled(layoutId: string, state: UiStateV1 = uiState): boolean {
+  return Object.prototype.hasOwnProperty.call(state.conditions.perLayout, layoutId);
 }
 
 function commitCondition<K extends keyof UiStateConditionsDefaults>(
@@ -1149,6 +1149,7 @@ function toggleConditionOverride(layoutId: string, enabled: boolean): void {
     if (enabled) draft.conditions.perLayout[layoutId] ??= {};
     else delete draft.conditions.perLayout[layoutId];
   });
+  syncGlobalConditionControls();
   renderConditionDescription();
   render();
 }
@@ -1526,11 +1527,29 @@ function currentPlaybackLayoutId(): string | undefined {
   return playbackView?.getLayout()?.id;
 }
 
+function currentConditionLayoutId(): string | undefined {
+  return el.detailLayout.value || currentPlaybackLayoutId();
+}
+
+function currentEffectiveConditions(): UiStateConditionsDefaults {
+  const layoutId = currentConditionLayoutId();
+  const override = layoutId ? uiState.conditions.perLayout[layoutId] : undefined;
+  return { ...uiState.conditions.defaults, ...(override ?? {}) };
+}
+
+function syncEffectiveConditionControls(): void {
+  const conditions = currentEffectiveConditions();
+  el.geometry.value = conditions.geometry;
+  el.window.value = String(conditions.windowSize);
+  el.windowOut.value = String(conditions.windowSize);
+  el.sfbHome.checked = conditions.sfbHomeCost;
+  el.preferOppositeThumb.checked = conditions.preferOppositeThumb;
+}
+
 function isPlaybackLayoutOverride(): boolean {
   const layoutId = currentPlaybackLayoutId();
   if (!layoutId) return false;
-  return uiState.conditions.perLayout[layoutId]?.playback !== undefined
-    || uiState.conditions.perLayout[layoutId]?.arpeggio !== undefined;
+  return conditionOverrideEnabled(layoutId);
 }
 
 function playbackViewUiState(): UiStateV1 {
@@ -1562,10 +1581,8 @@ function updatePlaybackSetting<K extends keyof UiPlaybackState>(
 ): void {
   const layoutId = currentPlaybackLayoutId();
   updateUiState((draft) => {
-    const hasLayoutOverride = layoutId !== undefined && (
-      draft.conditions.perLayout[layoutId]?.playback !== undefined
-      || draft.conditions.perLayout[layoutId]?.arpeggio !== undefined
-    );
+    const hasLayoutOverride = layoutId !== undefined
+      && conditionOverrideEnabled(layoutId, draft);
     if (hasLayoutOverride && layoutId) {
       const current = draft.conditions.perLayout[layoutId];
       draft.conditions.perLayout[layoutId] = {
@@ -1581,10 +1598,8 @@ function updatePlaybackSetting<K extends keyof UiPlaybackState>(
 function updateArpeggioConditions(conditions: ArpeggioConditions): void {
   const layoutId = currentPlaybackLayoutId();
   updateUiState((draft) => {
-    const hasLayoutOverride = layoutId !== undefined && (
-      draft.conditions.perLayout[layoutId]?.playback !== undefined
-      || draft.conditions.perLayout[layoutId]?.arpeggio !== undefined
-    );
+    const hasLayoutOverride = layoutId !== undefined
+      && conditionOverrideEnabled(layoutId, draft);
     if (hasLayoutOverride && layoutId) {
       draft.conditions.perLayout[layoutId] = {
         ...draft.conditions.perLayout[layoutId],
@@ -1599,20 +1614,7 @@ function updateArpeggioConditions(conditions: ArpeggioConditions): void {
 function setPlaybackLayoutOverride(enabled: boolean): void {
   const layoutId = currentPlaybackLayoutId();
   if (!layoutId) return;
-  updateUiState((draft) => {
-    if (enabled) {
-      draft.conditions.perLayout[layoutId] = {
-        ...draft.conditions.perLayout[layoutId],
-        playback: draft.conditions.perLayout[layoutId]?.playback ?? {},
-      };
-      return;
-    }
-    const conditions = draft.conditions.perLayout[layoutId];
-    if (!conditions) return;
-    delete conditions.playback;
-    delete conditions.arpeggio;
-    if (Object.keys(conditions).length === 0) delete draft.conditions.perLayout[layoutId];
-  });
+  toggleConditionOverride(layoutId, enabled);
 }
 
 playbackView = createPlaybackView({
@@ -1660,6 +1662,7 @@ resultsView = createResultsView({
 
 function render(): void {
   resultsView.render();
+  syncEffectiveConditionControls();
 }
 
 function onModeChange() {
@@ -1691,6 +1694,18 @@ el.compareChartMetric.addEventListener('change', () => {
 });
 el.geometry.addEventListener('change', () => {
   const geometry = el.geometry.value as GeometryKind;
+  const layoutId = currentConditionLayoutId();
+  const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
+  if (layoutId && useLayoutOverride) {
+    updateUiState((draft) => {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        geometry,
+      };
+    });
+    render();
+    return;
+  }
   const shape = selectedShapeForKind(geometry);
   if (!shape) return;
   updateUiState((draft) => {
@@ -1704,15 +1719,46 @@ el.geometry.addEventListener('change', () => {
 });
 el.window.addEventListener('input', (event) => {
   const windowSize = Number((event.currentTarget as HTMLInputElement).value);
-  updateUiState((draft) => { draft.conditions.defaults.windowSize = windowSize; });
+  const layoutId = currentConditionLayoutId();
+  const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
+  updateUiState((draft) => {
+    const conditions = layoutId ? draft.conditions.perLayout[layoutId] : undefined;
+    if (layoutId && useLayoutOverride) {
+      draft.conditions.perLayout[layoutId] = { ...conditions, windowSize };
+    } else {
+      draft.conditions.defaults.windowSize = windowSize;
+    }
+  });
   render();
 });
 el.sfbHome.addEventListener('change', () => {
-  updateUiState((draft) => { draft.conditions.defaults.sfbHomeCost = el.sfbHome.checked; });
+  const layoutId = currentConditionLayoutId();
+  const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
+  updateUiState((draft) => {
+    if (layoutId && useLayoutOverride) {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        sfbHomeCost: el.sfbHome.checked,
+      };
+    } else {
+      draft.conditions.defaults.sfbHomeCost = el.sfbHome.checked;
+    }
+  });
   render();
 });
 el.preferOppositeThumb.addEventListener('change', () => {
-  updateUiState((draft) => { draft.conditions.defaults.preferOppositeThumb = el.preferOppositeThumb.checked; });
+  const layoutId = currentConditionLayoutId();
+  const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
+  updateUiState((draft) => {
+    if (layoutId && useLayoutOverride) {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        preferOppositeThumb: el.preferOppositeThumb.checked,
+      };
+    } else {
+      draft.conditions.defaults.preferOppositeThumb = el.preferOppositeThumb.checked;
+    }
+  });
   render();
 });
 el.text.addEventListener('input', () => {
