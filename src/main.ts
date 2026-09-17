@@ -598,11 +598,10 @@ function selectedShapeForKind(kind: GeometryKind): PhysicalShape | undefined {
   return undefined;
 }
 
-/** 運指と形状を編集するモーダル。現在の運指図だけをサイドバーへ表示する。 */
+/** 運指と形状を編集するモーダル。 */
 let refreshGeometryEditor = (): void => undefined;
 
 function setupGeometryEditor(): void {
-  const root = el.geometryEditor;
   const assignmentFields = document.createElement('div');
   assignmentFields.className = 'assignment-fields';
   const assignmentActions = document.createElement('div');
@@ -618,7 +617,6 @@ function setupGeometryEditor(): void {
     renderEditor();
   });
   assignmentActions.append(resetAssignment);
-  root.replaceChildren();
 
   let shapeDraft: PhysicalShape | undefined;
   let shapeUnit: GeometryUnit = 'mm';

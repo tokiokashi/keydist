@@ -7,7 +7,6 @@ export const el = {
   geometry: $<HTMLSelectElement>('geometry'),
   geometryEdit: $<HTMLButtonElement>('geometry-edit'),
   geometryCurrent: $<HTMLParagraphElement>('geometry-current'),
-  geometryEditor: $<HTMLDivElement>('geometry-editor'),
   geometryExport: $<HTMLButtonElement>('geometry-export'),
   geometryImport: $<HTMLInputElement>('geometry-import'),
   geometryStatus: $<HTMLParagraphElement>('geometry-status'),

@@ -20,6 +20,7 @@ export interface GeometrySettings {
   shape: PhysicalShape;
 }
 
+// TODO(#8): 配列定義JSONの書き出し・読み込みへ統合する際、geometrySettingsを同じファイルへ含める方針を検討する。
 export interface GeometrySettingsFile {
   version: typeof GEOMETRY_SETTINGS_VERSION;
   settings: GeometrySettings;
