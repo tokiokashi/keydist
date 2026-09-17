@@ -1526,11 +1526,16 @@ function currentPlaybackLayoutId(): string | undefined {
   return playbackView?.getLayout()?.id;
 }
 
+function hasPlaybackLayoutOverride(conditions: UiStateLayoutConditions | undefined): boolean {
+  return conditions?.windowSize !== undefined
+    || conditions?.playback !== undefined
+    || conditions?.arpeggio !== undefined;
+}
+
 function isPlaybackLayoutOverride(): boolean {
   const layoutId = currentPlaybackLayoutId();
   if (!layoutId) return false;
-  return uiState.conditions.perLayout[layoutId]?.playback !== undefined
-    || uiState.conditions.perLayout[layoutId]?.arpeggio !== undefined;
+  return hasPlaybackLayoutOverride(uiState.conditions.perLayout[layoutId]);
 }
 
 function playbackViewUiState(): UiStateV1 {
@@ -1538,8 +1543,9 @@ function playbackViewUiState(): UiStateV1 {
   if (!layoutId) return uiState;
   const layoutConditions = uiState.conditions.perLayout[layoutId];
   const playback = layoutConditions?.playback;
+  const windowSize = layoutConditions?.windowSize;
   const arpeggio = layoutConditions?.arpeggio;
-  if (playback === undefined && arpeggio === undefined) return uiState;
+  if (windowSize === undefined && playback === undefined && arpeggio === undefined) return uiState;
   return {
     ...uiState,
     ui: {
@@ -1550,6 +1556,7 @@ function playbackViewUiState(): UiStateV1 {
       ...uiState.conditions,
       defaults: {
         ...uiState.conditions.defaults,
+        ...(windowSize === undefined ? {} : { windowSize }),
         ...(arpeggio === undefined ? {} : { arpeggio }),
       },
     },
@@ -1562,10 +1569,8 @@ function updatePlaybackSetting<K extends keyof UiPlaybackState>(
 ): void {
   const layoutId = currentPlaybackLayoutId();
   updateUiState((draft) => {
-    const hasLayoutOverride = layoutId !== undefined && (
-      draft.conditions.perLayout[layoutId]?.playback !== undefined
-      || draft.conditions.perLayout[layoutId]?.arpeggio !== undefined
-    );
+    const hasLayoutOverride = layoutId !== undefined
+      && hasPlaybackLayoutOverride(draft.conditions.perLayout[layoutId]);
     if (hasLayoutOverride && layoutId) {
       const current = draft.conditions.perLayout[layoutId];
       draft.conditions.perLayout[layoutId] = {
@@ -1581,10 +1586,8 @@ function updatePlaybackSetting<K extends keyof UiPlaybackState>(
 function updateArpeggioConditions(conditions: ArpeggioConditions): void {
   const layoutId = currentPlaybackLayoutId();
   updateUiState((draft) => {
-    const hasLayoutOverride = layoutId !== undefined && (
-      draft.conditions.perLayout[layoutId]?.playback !== undefined
-      || draft.conditions.perLayout[layoutId]?.arpeggio !== undefined
-    );
+    const hasLayoutOverride = layoutId !== undefined
+      && hasPlaybackLayoutOverride(draft.conditions.perLayout[layoutId]);
     if (hasLayoutOverride && layoutId) {
       draft.conditions.perLayout[layoutId] = {
         ...draft.conditions.perLayout[layoutId],
@@ -1603,6 +1606,7 @@ function setPlaybackLayoutOverride(enabled: boolean): void {
     if (enabled) {
       draft.conditions.perLayout[layoutId] = {
         ...draft.conditions.perLayout[layoutId],
+        windowSize: draft.conditions.defaults.windowSize,
         playback: { ...draft.ui.playback },
         arpeggio: structuredClone(draft.conditions.defaults.arpeggio),
       };
@@ -1610,6 +1614,7 @@ function setPlaybackLayoutOverride(enabled: boolean): void {
     }
     const conditions = draft.conditions.perLayout[layoutId];
     if (!conditions) return;
+    delete conditions.windowSize;
     delete conditions.playback;
     delete conditions.arpeggio;
     if (Object.keys(conditions).length === 0) delete draft.conditions.perLayout[layoutId];
