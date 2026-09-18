@@ -967,8 +967,7 @@ function playbackEwmaRate(
   if (end === 0 || halfLifeSeconds <= 0) return undefined;
 
   let actionRate: number | undefined;
-  let kanaRate = 0;
-  let completedKana = 0;
+  let kanaRate: number | undefined;
   const completedInputs: string[] = [];
 
   for (let index = 0; index < end; index++) {
@@ -995,16 +994,21 @@ function playbackEwmaRate(
     const completedHere = nextStartsNewInput
       ? Array.from(strokes[index].inputChar).length
       : 0;
-    kanaRate = decay * kanaRate + (1 - decay) * ((completedHere * 1000) / durationMs);
     if (completedHere > 0) {
-      completedKana += completedHere;
+      const kanaInstant = (completedHere * 1000) / durationMs;
+      kanaRate = kanaRate === undefined
+        ? kanaInstant
+        : decay * kanaRate + (1 - decay) * kanaInstant;
       completedInputs.push(strokes[index].inputChar);
+    } else if (kanaRate !== undefined) {
+      // 最初の入力単位が完了するまでは未観測。以後の入力途中Strokeでは0へ時間減衰する。
+      kanaRate *= decay;
     }
   }
 
   return {
     inputText: completedInputs.slice(-6).join(''),
-    kanaPerSecond: completedKana > 0 ? kanaRate : undefined,
+    kanaPerSecond: kanaRate,
     actionsPerSecond: actionRate,
   };
 }
