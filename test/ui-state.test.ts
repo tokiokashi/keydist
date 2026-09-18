@@ -87,6 +87,7 @@ test('保存形式はuiとconditionsに分かれ、既存配列の条件だけ�
     sfbHomeCost: false,
     preferOppositeThumb: true,
     chain: fallback.conditions.defaults.chain,
+    arpeggioPolicy: fallback.conditions.defaults.arpeggioPolicy,
     arpeggio: fallback.conditions.defaults.arpeggio,
   };
   value.conditions.perLayout = {
@@ -133,6 +134,31 @@ test('旧Chain UI設定は保存互換のままChainPolicyへ移行する', () =
   });
   assert.equal(state.ui.playback.chainIncludeSameFinger, true);
   assert.equal(state.ui.playback.chainIncludeLayerKeys, false);
+});
+
+test('新ArpeggioPolicyは旧arpeggio条件と独立して保存・復元する', () => {
+  const fallback = defaults();
+  const value = structuredClone(fallback);
+  value.conditions.defaults.arpeggioPolicy = {
+    includeThumb: true,
+    bridgeSameFinger: true,
+    includeSingleRedirectTail: true,
+  };
+  value.conditions.perLayout.oonishi = {
+    arpeggioPolicy: {
+      includeThumb: false,
+      bridgeSameFinger: true,
+      includeSingleRedirectTail: false,
+    },
+  };
+
+  const state = sanitizeUiState(value, fallback, choices);
+  assert.deepEqual(state.conditions.defaults.arpeggioPolicy, value.conditions.defaults.arpeggioPolicy);
+  assert.deepEqual(
+    state.conditions.perLayout.oonishi.arpeggioPolicy,
+    value.conditions.perLayout.oonishi.arpeggioPolicy,
+  );
+  assert.deepEqual(state.conditions.defaults.arpeggio, fallback.conditions.defaults.arpeggio);
 });
 
 test('アルペジオ条件は数値範囲とnullを保ったまま保存・復元する', () => {
