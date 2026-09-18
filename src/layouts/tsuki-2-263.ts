@@ -14,7 +14,7 @@ const face = (trigger: string[], entries: Record<string, string>, layer?: string
   ...faceFromEntries(trigger, 'prefix', entries),
   layer,
   inputRole: trigger.length > 0 ? 'modifier' : 'layer',
-  ...(trigger.length > 0 ? { triggerBehavior: 'one-shot' as const } : {}),
+  ...(trigger.length > 0 ? { triggerPersistence: 'single' as const } : {}),
 });
 
 export const TSUKI_2_263_FACES: Face[] = [
