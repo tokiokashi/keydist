@@ -84,8 +84,10 @@ export interface RawHandStep {
   readonly thumbOnly: boolean;
   /** 親指だけ、かつ新規triggerだけのStroke。#166用のhook。 */
   readonly thumbTriggerOnly: boolean;
-  /** 現在Strokeで同指移動(sfb)が起きた。 */
+  /** 現在Strokeで同指移動(sfb)が起きた。親指もfactとして保持する。 */
   readonly sameFinger: boolean;
+  /** 旧chainIncludeSameFingerと同じく、親指を除く同指移動。 */
+  readonly nonThumbSameFinger: boolean;
   /** 同じStrokeに逆手のoutputが存在する。 */
   readonly oppositeHandOutput: boolean;
 }
@@ -148,6 +150,9 @@ function rawStep(strokes: readonly Stroke[], strokeIndex: number, hand: Hand): R
   const sameFinger = stroke.presses.some(
     (press) => handOf(press.finger) === hand && press.sfb,
   );
+  const nonThumbSameFinger = stroke.presses.some(
+    (press) => handOf(press.finger) === hand && !isThumb(press.finger) && press.sfb,
+  );
   const oppositeHandOutput = stroke.participations.some(
     (participation) => participation.hand === opposite(hand) && participation.roles.includes('output'),
   );
@@ -164,6 +169,7 @@ function rawStep(strokes: readonly Stroke[], strokeIndex: number, hand: Hand): R
     thumbOnly,
     thumbTriggerOnly: thumbOnly && hasTrigger && !hasOutput,
     sameFinger,
+    nonThumbSameFinger,
     oppositeHandOutput,
   });
 }
@@ -201,7 +207,9 @@ export function buildRawHandRuns(strokes: readonly Stroke[]): readonly RawHandRu
 }
 
 function breaksChain(step: RawHandStep, policy: ChainPolicy): boolean {
-  return (policy.breakOnSameFinger && step.sameFinger)
+  // 親指SFBはRaw factには残すが、#200/#166で境界が未決なので
+  // 既存UI互換のsame-finger Policyでは非親指だけを対象にする。
+  return (policy.breakOnSameFinger && step.nonThumbSameFinger)
     || (policy.breakOnTriggerOnly && step.triggerOnly)
     || (policy.breakOnOppositeHandSimultaneous && step.oppositeHandOutput);
 }
