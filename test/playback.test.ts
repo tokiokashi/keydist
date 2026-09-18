@@ -410,6 +410,61 @@ test('速度の集計窓は数値表示とグラフで同じ直近Stroke数を�
   assert.equal(playbackRateChartData(strokes, 2, true, 50)[4].inputText, 'あいうえ');
 });
 
+test('EWMAは確定Timingの経過時間を半減期として使う', () => {
+  const strokes = [
+    { inputIndex: 0, inputChar: 'あ', presses: [] },
+    { inputIndex: 1, inputChar: 'い', presses: [] },
+  ] as never[];
+  const analysis = timingAnalysis(strokes);
+  const schedule = [
+    { strokeIndex: 0, startMs: 0, endMs: 500 },
+    { strokeIndex: 1, startMs: 500, endMs: 1500 },
+  ];
+
+  const actions = playbackRecentActionsPerSecondAnalysis(
+    analysis, 2, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
+  );
+  // 1打目は2/s。そこから1秒経過で寄与が1/2になり、
+  // 2打目の瞬時値1/sが残り1/2を占めるため1.5/s。
+  assert.ok(actions !== undefined);
+  assert.ok(Math.abs(actions - 1.5) < 1e-9);
+
+  const kana = playbackRecentKanaPerSecondAnalysis(
+    analysis, 2, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
+  );
+  assert.ok(kana !== undefined);
+  assert.ok(Math.abs(kana - 1.25) < 1e-9);
+
+  const points = playbackRateChartDataAnalysis(
+    analysis, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
+  );
+  assert.ok(Math.abs(points[2].actionsPerSecond! - actions) < 1e-9);
+  assert.ok(Math.abs(points[2].kanaPerSecond! - kana) < 1e-9);
+});
+
+test('EWMAのかな速度は入力単位の完了時だけ文字数を加える', () => {
+  const strokes = [
+    { inputIndex: 0, inputChar: 'きょ', presses: [] },
+    { inputIndex: 0, inputChar: 'きょ', presses: [] },
+  ] as never[];
+  const analysis = timingAnalysis(strokes);
+  const schedule = [
+    { strokeIndex: 0, startMs: 0, endMs: 500 },
+    { strokeIndex: 1, startMs: 500, endMs: 1000 },
+  ];
+
+  assert.equal(
+    playbackRecentKanaPerSecondAnalysis(
+      analysis, 1, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
+    ),
+    undefined,
+  );
+  const completed = playbackRecentKanaPerSecondAnalysis(
+    analysis, 2, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
+  );
+  assert.ok(completed !== undefined && completed > 0);
+});
+
 test('速度グラフのChain帯はAnalysis Chain所属を直接使う', () => {
   const strokes = [
     { presses: [{ finger: 'LP', keys: [{ id: 'a', x: 1, y: 2, row: 2 }] }] },
