@@ -169,11 +169,11 @@ function render() {
 }
 
 const COMPARE_HEADERS = [
-  'Action',
+  '動作数',
   '距離',
   'u/打鍵',
   'u/文字',
-  'Action/文字',
+  '動作数/文字',
   '押下/文字',
   '基底面率',
   '同指',
@@ -183,11 +183,11 @@ const COMPARE_HEADERS = [
 ];
 
 const COMPARE_RELATIVE_HEADERS = [
-  'Action比',
+  '動作数比',
   '距離比',
   'u/打鍵比',
   'u/文字比',
-  'Action/文字比',
+  '動作数/文字比',
   '押下/文字比',
   '基底面率比',
   '同指比',
