@@ -610,7 +610,13 @@ D / C                       [u/文字]
 
 **11.5入力文字あたりのアクション数**
 
-**アクション = ステップ**（§4.1。同時押し・コンボも1アクション）。
+基本は **アクション = realized Strokeのステップ**（§4.1。同時押し・コンボも1アクション）。
+
+ただし #220 の `HoldStartActionPolicy.countAsSeparateStep=true` の場合だけ、
+outputと同一Strokeにrealizeされた `held-trigger/start` を追加の独立actionとして1件数える。
+`prefix` 等ですでにtrigger-only Strokeが独立して存在する場合は追加しない。
+このPolicyは**計上だけ**を変え、realized Stroke列・距離・Press数・Chain / Transition /
+Timingを変更しない。既定は `false` で従来互換。
 
 ```
 A = ステップ数 / C          [アクション/文字]
