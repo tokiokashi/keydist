@@ -39,6 +39,7 @@ function geometryLabel(value: UiStateConditionsDefaults['geometry']): string {
 function formatChainPolicy(value: ChainPolicy): string {
   return `同指${value.breakOnSameFinger ? '区切る' : '区切らない'}・`
     + `trigger-only${value.breakOnTriggerOnly ? '区切る' : '区切らない'}・`
+    + `親指only${value.breakOnThumbOnly ? '区切る' : '区切らない'}・`
     + `逆手同時${value.breakOnOppositeHandSimultaneous ? '区切る' : '区切らない'}`;
 }
 
@@ -59,7 +60,7 @@ function formatHoldStartActionPolicy(value: HoldStartActionPolicy): string {
 export const CONDITION_DESCRIPTORS = {
   chain: {
     label: 'Chain境界条件',
-    effect: 'Raw hand runをAnalysis Chainへ分割する条件です。同指・trigger-only・逆手同時入力を独立に扱います。親指onlyの既定は未決のため、この設定では決めません。',
+    effect: 'Raw hand runをAnalysis Chainへ分割する条件です。同指・trigger-only・親指only・逆手同時入力を独立に扱います。',
     format: (value) => formatChainPolicy(value as ChainPolicy),
   },
   arpeggioPolicy: {

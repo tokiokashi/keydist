@@ -307,6 +307,7 @@ function chainPolicy(value: unknown, fallback: ChainPolicy): ChainPolicy {
   return {
     breakOnSameFinger: boolean(source.breakOnSameFinger, fallback.breakOnSameFinger),
     breakOnTriggerOnly: boolean(source.breakOnTriggerOnly, fallback.breakOnTriggerOnly),
+    breakOnThumbOnly: boolean(source.breakOnThumbOnly, fallback.breakOnThumbOnly),
     breakOnOppositeHandSimultaneous: boolean(
       source.breakOnOppositeHandSimultaneous,
       fallback.breakOnOppositeHandSimultaneous,

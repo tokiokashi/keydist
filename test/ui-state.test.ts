@@ -174,6 +174,7 @@ test('保存形式はuiとconditionsに分かれ、canonical条件だけ復元�
     chain: {
       breakOnSameFinger: false,
       breakOnTriggerOnly: true,
+      breakOnThumbOnly: false,
       breakOnOppositeHandSimultaneous: true,
     },
     arpeggioPolicy: {
@@ -224,11 +225,13 @@ test('旧Chain UI設定はChainPolicyへ移行し旧playback fieldを保存し�
   assert.deepEqual(state.conditions.defaults.chain, {
     breakOnSameFinger: false,
     breakOnTriggerOnly: true,
+    breakOnThumbOnly: true,
     breakOnOppositeHandSimultaneous: false,
   });
   assert.deepEqual(state.conditions.perLayout.oonishi.chain, {
     breakOnSameFinger: true,
     breakOnTriggerOnly: true,
+    breakOnThumbOnly: true,
     breakOnOppositeHandSimultaneous: false,
   });
   assert.equal('chainIncludeSameFinger' in state.ui.playback, false);
@@ -619,6 +622,7 @@ test('旧Chain UI fieldだけのmigrationではArpeggio刷新通知を出さな�
   assert.deepEqual(loaded.state.conditions.defaults.chain, {
     breakOnSameFinger: false,
     breakOnTriggerOnly: true,
+    breakOnThumbOnly: true,
     breakOnOppositeHandSimultaneous: false,
   });
 

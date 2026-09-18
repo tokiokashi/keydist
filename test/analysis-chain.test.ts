@@ -62,8 +62,19 @@ test('Raw hand runは参加factを保持し、trigger/thumb/逆手同時から�
   assert.deepEqual(
     analysis.chains.filter((chain) => chain.hand === 'left')
       .map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
+    [[0, 3]],
+    '既定では親指only StrokeをChain境界にする',
+  );
+
+  const keepThumb = analyzeChains(strokes, {
+    ...DEFAULT_CHAIN_POLICY,
+    breakOnThumbOnly: false,
+  });
+  assert.deepEqual(
+    keepThumb.chains.filter((chain) => chain.hand === 'left')
+      .map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
     [[0, 4]],
-    '未決のthumb-onlyやtrigger factだけでは既定Chainを切らない',
+    'breakOnThumbOnly=falseなら親指only StrokeをまたいでChainを維持する',
   );
 });
 
@@ -159,8 +170,47 @@ test('旧include設定は意味が対応するChainPolicyへだけ変換する',
     {
       breakOnSameFinger: false,
       breakOnTriggerOnly: true,
+      breakOnThumbOnly: true,
       breakOnOppositeHandSimultaneous: false,
     },
+  );
+});
+
+test('親指only境界とtrigger-only境界は独立に適用する', () => {
+  const strokes = [
+    stroke(0, [participation('left', 'LI', ['output'])]),
+    stroke(1, [participation('left', 'LM', ['trigger'])]),
+    stroke(2, [participation('left', 'LR', ['output'])]),
+    stroke(3, [participation('left', 'LT', ['output'])]),
+    stroke(4, [participation('left', 'LP', ['output'])]),
+  ];
+
+  const thumbOnly = {
+    ...DEFAULT_CHAIN_POLICY,
+    breakOnSameFinger: false,
+    breakOnTriggerOnly: false,
+    breakOnThumbOnly: true,
+  };
+  assert.deepEqual(
+    analyzeChains(strokes, thumbOnly).chains
+      .filter((chain) => chain.hand === 'left')
+      .map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
+    [[0, 3], [4, 5]],
+    '非親指trigger-onlyでは切らず、親指onlyだけで切る',
+  );
+
+  const triggerOnly = {
+    ...DEFAULT_CHAIN_POLICY,
+    breakOnSameFinger: false,
+    breakOnTriggerOnly: true,
+    breakOnThumbOnly: false,
+  };
+  assert.deepEqual(
+    analyzeChains(strokes, triggerOnly).chains
+      .filter((chain) => chain.hand === 'left')
+      .map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
+    [[0, 1], [2, 5]],
+    'trigger-onlyで切っても親指outputだけでは切らない',
   );
 });
 

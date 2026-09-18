@@ -68,6 +68,7 @@ const output = (p: Press): PressSemantic => ({ press: p, roles: ['output'] });
 const keepSameFinger = {
   ...DEFAULT_CHAIN_POLICY,
   breakOnSameFinger: false,
+  breakOnThumbOnly: false,
 };
 
 test('A → B → C → D はmaximal LongRoll 1件だけで部分LongRoll/TwoRollを作らない', () => {

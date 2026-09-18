@@ -22,18 +22,30 @@ function activeStrokeIndex(strokes: readonly Stroke[], cursor: number): number |
   return index >= 0 ? index : undefined;
 }
 
-function participationKeys(stroke: Stroke, hand: Hand, outputOnly: boolean): string[] {
+function participationKeys(
+  stroke: Stroke,
+  hand: Hand,
+  outputOnly: boolean,
+  excludeThumb = false,
+): string[] {
   return stroke.participations
     .filter((participation) =>
       participation.hand === hand
-      && (!outputOnly || participation.roles.includes('output')))
+      && (!outputOnly || participation.roles.includes('output'))
+      && (!excludeThumb || (participation.finger !== 'LT' && participation.finger !== 'RT')))
     .flatMap((participation) => participation.keys.map((key) => resolveKeyId(key.id)));
 }
 
-function participationFinger(stroke: Stroke, hand: Hand, outputOnly: boolean): Finger | undefined {
+function participationFinger(
+  stroke: Stroke,
+  hand: Hand,
+  outputOnly: boolean,
+  excludeThumb = false,
+): Finger | undefined {
   return stroke.participations.find((participation) =>
     participation.hand === hand
-    && (!outputOnly || participation.roles.includes('output')))?.finger;
+    && (!outputOnly || participation.roles.includes('output'))
+    && (!excludeThumb || (participation.finger !== 'LT' && participation.finger !== 'RT')))?.finger;
 }
 
 function ordersForRange(
@@ -43,6 +55,7 @@ function ordersForRange(
   endStrokeIndex: number,
   cursor: number,
   outputOnly: boolean,
+  excludeThumb = false,
 ): ReadonlyMap<string, number> {
   const active = activeStrokeIndex(strokes, cursor);
   const orders = new Map<string, number>();
@@ -51,7 +64,7 @@ function ordersForRange(
   const visits = new Map<string, number[]>();
   for (let index = startStrokeIndex; index < endStrokeIndex; index++) {
     const order = index - startStrokeIndex + 1;
-    for (const key of participationKeys(strokes[index], hand, outputOnly)) {
+    for (const key of participationKeys(strokes[index], hand, outputOnly, excludeThumb)) {
       const seen = visits.get(key);
       if (!seen) visits.set(key, [order]);
       else if (seen[seen.length - 1] !== order) seen.push(order);
@@ -80,6 +93,7 @@ export function playbackAnalysisChainOrders(
       chain.endStrokeIndex,
       cursor,
       false,
+      true,
     );
     return orders.size === 0 ? [] : [{ sourceIndex: chain.chainIndex, orders }];
   });
@@ -113,12 +127,13 @@ function motionForRange(
   endStrokeIndex: number,
   cursor: number,
   outputOnly: boolean,
+  excludeThumb = false,
 ): PlaybackKeyMotion[] {
   const index = activeStrokeIndex(strokes, cursor);
   if (index === undefined || index <= startStrokeIndex || index >= endStrokeIndex) return [];
-  const toKeys = participationKeys(strokes[index], hand, outputOnly);
-  const fromKeys = participationKeys(strokes[index - 1], hand, outputOnly);
-  const finger = participationFinger(strokes[index], hand, outputOnly);
+  const toKeys = participationKeys(strokes[index], hand, outputOnly, excludeThumb);
+  const fromKeys = participationKeys(strokes[index - 1], hand, outputOnly, excludeThumb);
+  const finger = participationFinger(strokes[index], hand, outputOnly, excludeThumb);
   return finger && fromKeys.length > 0 && toKeys.length > 0
     ? [{ fromKey: fromKeys[0], toKeys, finger }]
     : [];
@@ -136,6 +151,7 @@ export function playbackAnalysisChainMotions(
       chain.endStrokeIndex,
       cursor,
       false,
+      true,
     ));
 }
 
