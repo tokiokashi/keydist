@@ -889,7 +889,7 @@ function seekPlayback(value: string, playing = false) {
       const settingsTab = targetElement.closest<HTMLButtonElement>('[data-playback-settings-tab]');
       if (settingsTab?.dataset.playbackSettingsTab) {
         const tabId = settingsTab.dataset.playbackSettingsTab;
-        if (tabId !== 'display' && tabId !== 'conditions' && tabId !== 'timeline') return;
+        if (tabId !== 'display' && tabId !== 'conditions') return;
         playbackSettingsTab = tabId;
         for (const tab of elements.playbackSettingsPanel.querySelectorAll<HTMLButtonElement>('[data-playback-settings-tab]')) {
           tab.setAttribute('aria-selected', String(tab === settingsTab));
