@@ -1,7 +1,36 @@
 # 打鍵再生 時間モデル仕様
 
 本書は**打鍵再生が1ステップをどれだけの時間で表示するか**を定める。
-対象は `src/playback.ts` と `src/playback-calibration.ts`。
+対象は `src/playback.ts` と `src/playback-calibration.ts` に加え、#200 で定義した
+structural analysis の結果を Timing が受け取る境界である。
+
+依存方向は次の一方向とする。
+
+```
+Layout definition
+  ↓
+Stroke semantic normalization
+  ↓
+Raw hand run
+  ↓ ChainPolicy
+Analysis Chain
+  ↓
+Transition facts
+  ↓
+LongRoll / TwoRoll / Redirect / SFB
+  ↓ ArpeggioPolicy
+ArpeggioSpan
+  ↓
+Structural result
+
+PlaybackCalibration ───────────────┐
+                                  ↓
+Structural result ───────────→ Timing
+```
+
+構造解析は `PlaybackCalibration`、速度、時間、`stepMs` を参照しない。
+逆に Calibration は Chain / Roll / Redirect / Arpeggio の判定を行わない。
+**Timing だけが structural result と Calibration を結合する。**
 
 ## 1. 目的と、距離モデルとの関係
 
@@ -104,42 +133,59 @@ T(i)   = (normalMs × d) / multiplier
 上記いずれの分岐でも、最後に `multiplier` で割る。
 `multiplier` が有限の正数でない場合は既定値（1）を使う。
 
-### 3.5 アルペジオ
+### 3.5 Structural result とアルペジオ
 
-同じ手の異なる指が、指順と整合する水平方向へ順に開く連続をアルペジオと呼ぶ。
-判定は打鍵が間に合うかではなく、`Stroke` が持つキーの指・座標だけで行う。
-アルペジオの条件は次のオブジェクトで持つ。
+Timing は Arpeggio を独自に再判定しない。#200 の structural analysis が生成した
+Transition / LongRoll / TwoRoll / Redirect / SFB / ArpeggioSpan を入力として使う。
+
+keydist における Arpeggio は、幾何条件そのものではなく、LongRoll と standalone TwoRoll を
+core とし、`ArpeggioPolicy` を適用して得る派生区間である。
 
 ```ts
-{
-  minHorizontalSpread: number,   // 既定 1.0 u
-  maxRowReversal: number | null, // 既定 1。null は無制限
-  maxRowStep: number | null,     // 既定 null（未使用）
-  includeThumb: boolean,         // 既定 false
-  breakOnOppositeHand: boolean,  // 既定 false
-}
+type ArpeggioPolicy = {
+  includeThumb: boolean;                // default false
+  bridgeSameFinger: boolean;            // default false
+  includeSingleRedirectTail: boolean;   // default false
+};
 ```
 
-標準・厳格・緩いの3プリセットは、それぞれ
-`(1.0, 1, null)`、`(1.5, 1, 1)`、`(0.5, 2, null)` の値を使う。
-プリセットを選んだ後も詳細設定で各値を変更でき、変更後はカスタム条件として保存する。
-`includeThumb` が有効でも、対象は出力キーとしての親指だけで、層操作の親指は除く。
-親指は幾何の開きや折り返しには使わず、同じステップにある出力キーの表示対象へ加えるだけにする。
-親指だけのステップは既存の片手チェーンどおり区切る。逆手の同時押しは既定では区切らない。
+旧来の `minHorizontalSpread` / `maxRowReversal` / `maxRowStep` 等は、
+Arpeggio の structural condition として扱わない。geometry quality として再利用する場合は、
+構造判定とは別の分析軸で定義する。
 
-まず片手の連続運指（チェーン）を切り出し、条件に合う隣接打鍵をつなぐ。
-分割後に2打以上残った区間をアルペジオとする。アルペジオの時間は、次のステップで
-通常の打鍵時間・同指移動時間と比較して遅い方を採る。`normalMs` は従来の再生時間モデル
-（通常速度・順序なしの同手別指速度）から求め、幾何条件を通過したエッジだけが方向別の
-アルペジオ速度から `arpeggioIntervalMs` を求める。条件を通過しなかった同手別指の遷移には
-方向別の値を適用しない。
+### 3.6 Transition と Calibration の結合
 
-```
-stepMs = max(arpeggioIntervalMs, movementMs, normalMs)
-```
+Timing は各隣接 Stroke 間の Transition を1回だけ評価する。
+同手・別指では対応する**有向指ペア**の Calibration を優先し、
+値が無ければ既存の順序なしペア値、さらに代表値へフォールバックする。
 
-アルペジオ区間の遅れは既定では区間の手前の1ステップへまとめ、設定で各ステップへ
-分散できる。判定結果と時間の計算はDOMへ依存しない。
+structural analysis の `inward` / `outward` は指順の事実であり、速度値ではない。
+例えば `LM → LI` が inward でも、Timing は「inward 用の一律速度」を使わず、
+`LM → LI` の directed pair Calibration を参照する。
+
+異手遷移も同様に L→R / R→L の Calibration を使い、構造ラベルから速度を推測しない。
+
+### 3.7 ArpeggioSpan の重複
+
+ArpeggioSpan は overlap を許容するが、Timing 効果を重複適用しない。
+同じ Transition が複数の ArpeggioSpan に含まれていても、その Transition の時間評価は1回だけ行う。
+
+3打以上の Roll / Arpeggio も、内部 Transition ごとの有向ペアとして評価する。
+Span 全体へ「Arpeggio だから高速化」「Redirect だから減速」といった任意係数を掛けない。
+
+新しい補正係数が必要な場合は、現象・根拠・既存 Calibration で表現できない理由を
+仕様で確定してから追加する。
+
+### 3.8 未決事項
+
+次は本仕様では確定しない。実装者が推測で Timing / structural analysis の規則へ追加しない。
+
+- `held-trigger/start` を pure roll 境界としてどう扱うか
+- 明示的 release 境界の扱い
+- Press / Release を独立 event にした場合の詳細
+- 親指を含む directed pair の追加 Calibration 測定セット
+- 新しい Timing 補正係数
+
 
 ## 4. 再生の進行
 
@@ -238,11 +284,15 @@ stepMs = max(arpeggioIntervalMs, movementMs, normalMs)
 指の組と方向で引くため、`LM` → `LI` と `LI` → `LM` は別の値を持てる。
 方向別の測定値が無ければ、既存の順序なしペア値、さらに同手・別指の代表値へ落ちる。
 
-### 7.3 アルペジオは区間で扱う
+### 7.3 構造区間は解析結果から受け取る
 
-通常の打鍵時間は `i` と `i-1` の関係だけで決まる。アルペジオだけはチェーンを
-条件で分割した区間を使い、3打以上も2打の連続として近似する。区間の時間は総量を
-変えず、遅れを区間の手前へまとめるか各ステップへ分散するかを選べる。
+通常の打鍵時間は隣接 Stroke 間の Transition を基準に決める。
+LongRoll / TwoRoll / Redirect / ArpeggioSpan の区間判定は Timing 内で再実装せず、
+structural analysis の結果を参照する。
+
+3打以上の Roll / Arpeggio も内部 Transition 単位で directed pair Calibration を適用する。
+表示上の遅延配置を区間手前へまとめるか各ステップへ分散する既存UI表現を維持する場合も、
+構造区間の source of truth は AnalysisResult とする。
 
 ### 7.4 打鍵以外の待機を持たない
 
