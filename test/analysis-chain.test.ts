@@ -41,7 +41,7 @@ test('Raw hand runは参加factを保持し、trigger/thumb/逆手同時から�
       participation('left', 'LR', ['output']),
       participation('right', 'RI', ['output']),
     ]),
-    stroke(3, [participation('left', 'LT', ['trigger'])]),
+    stroke(3, [participation('left', 'LT', ['trigger'])], [{ finger: 'LT', sfb: true }]),
   ];
 
   const raw = buildRawHandRuns(strokes);
@@ -54,6 +54,8 @@ test('Raw hand runは参加factを保持し、trigger/thumb/逆手同時から�
   assert.equal(left.steps[2].oppositeHandOutput, true);
   assert.equal(left.steps[3].thumbOnly, true);
   assert.equal(left.steps[3].thumbTriggerOnly, true);
+  assert.equal(left.steps[3].sameFinger, true, '親指SFBもRaw factとしては失わない');
+  assert.equal(left.steps[3].nonThumbSameFinger, false);
 
   const analysis = analyzeChains(strokes);
   assert.deepEqual(
