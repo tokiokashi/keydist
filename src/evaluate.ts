@@ -350,7 +350,7 @@ function resolveStepSemantic(
   }
 
   // 旧Layout / user layout向けの互換fallback。
-  // triggerKeysはtriggerの物理キーだけを復元し、成立方法（chord/hold/one-shot）は推測しない。
+  // triggerKeysはtriggerの物理キーだけを復元し、triggerPersistence (single / hold-capable) は推測しない。
   const triggers = new Set(triggerKeys.map(resolveKeyId));
   return {
     inputRole: isCombo ? 'composition' : 'layer',
