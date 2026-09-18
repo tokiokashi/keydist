@@ -84,6 +84,38 @@ test('overlapするArpeggioSpanは表示projectionでも別sourceのまま保持
   assert.equal(playbackAnalysisArpeggioMotions(analysis, 3).length, 2);
 });
 
+test('adjacentなArpeggioSpanはprojectionでも別sourceのまま切り替わる', () => {
+  const analysis = analyzeStrokeStructure([
+    stroke(0, press('LP', 'a', 1)),
+    stroke(1, press('LR', 's', 2)),
+    stroke(2, press('LM', 'd', 3)),
+    stroke(3, press('LM', 'e', 3, true)),
+    stroke(4, press('LP', 'q', 1)),
+  ], keepSameFinger);
+
+  assert.deepEqual(
+    analysis.arpeggioSpans.map((span) => [
+      span.startStrokeIndex,
+      span.endStrokeIndex,
+      span.direction,
+    ]),
+    [
+      [0, 3, 'inward'],
+      [3, 5, 'outward'],
+    ],
+  );
+
+  const beforeBoundary = playbackAnalysisArpeggioOrders(analysis, 3);
+  const afterBoundary = playbackAnalysisArpeggioOrders(analysis, 4);
+  assert.deepEqual(beforeBoundary.map((entry) => entry.sourceIndex), [0]);
+  assert.deepEqual(afterBoundary.map((entry) => entry.sourceIndex), [1]);
+  assert.equal(
+    analysis.arpeggioSpans.some((span) =>
+      span.startStrokeIndex === 0 && span.endStrokeIndex === 5),
+    false,
+  );
+});
+
 test('RedirectEventはpivotを中心に3 Stroke windowとして参照する', () => {
   const analysis = analyzeStrokeStructure([
     stroke(0, press('LP', 'a', 1)),
