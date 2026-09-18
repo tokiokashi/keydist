@@ -169,41 +169,44 @@ function render() {
 }
 
 const COMPARE_HEADERS = [
-  'アクション',
-  '距離 [u]',
-  '距離 [m]',
-  '1打鍵 [u]',
-  '1文字 [u]',
-  'アクション/文字',
+  'Action',
+  '距離',
+  'u/打鍵',
+  'u/文字',
+  'Action/文字',
   '押下/文字',
-  '同指連続',
-  '同指連続率',
-  '隣接指の平均 [u]',
+  '基底面率',
+  '同指',
+  '同指率',
+  '指間mean',
+  '指間σ',
 ];
 
 const COMPARE_RELATIVE_HEADERS = [
-  'アクション比',
-  '距離[u]比',
-  '距離[m]比',
-  '1打鍵[u]比',
-  '1文字[u]比',
-  'アクション/文字比',
+  'Action比',
+  '距離比',
+  'u/打鍵比',
+  'u/文字比',
+  'Action/文字比',
   '押下/文字比',
-  '同指連続比',
+  '基底面率比',
+  '同指比',
   '同指率比',
-  '隣接指の平均比',
+  '指間mean比',
+  '指間σ比',
 ];
 
 const COMPARE_FORMATS: Array<(value: number) => string> = [
   (value) => `${value}`,
   (value) => value.toFixed(0),
-  (value) => value.toFixed(2),
   (value) => value.toFixed(3),
   (value) => value.toFixed(3),
   (value) => value.toFixed(3),
   (value) => value.toFixed(3),
+  (value) => `${value.toFixed(1)}%`,
   (value) => `${value}`,
   (value) => `${value.toFixed(1)}%`,
+  (value) => value.toFixed(3),
   (value) => value.toFixed(3),
 ];
 
@@ -214,17 +217,19 @@ interface CompareCell {
 
 function compareMetricValues(metrics: Metrics): number[] {
   const adjacentMean = metrics.adjacent.reduce((a, b) => a + b.meanExcess, 0) / metrics.adjacent.length;
+  const adjacentStdDev = metrics.adjacent.reduce((a, b) => a + b.stdDev, 0) / metrics.adjacent.length;
   return [
     metrics.actions,
     metrics.totalUnits,
-    metrics.totalMm / 1000,
     metrics.meanPerStroke,
     metrics.perCharUnits,
     metrics.perCharSteps,
     metrics.perCharPresses,
+    metrics.baseLayerRate,
     metrics.sameFinger,
     (metrics.sameFinger / Math.max(1, metrics.strokes)) * 100,
     adjacentMean,
+    adjacentStdDev,
   ];
 }
 
@@ -286,7 +291,8 @@ function renderCompare(results: Result[]) {
 
   const sortedRows = sortMatrixRows(compareRows, ctx.getUiState().ui.comparison.sort);
   syncCompareChartOptions(baseline !== undefined);
-  const chartBest = Math.min(...sortedRows.map((row) => row.cells[ctx.getUiState().ui.comparison.chartColumn].value));
+  const chartColumn = ctx.getUiState().ui.comparison.chartColumn;
+  const chartBest = Math.min(...sortedRows.map((row) => row.cells[chartColumn].value));
   const chartRelative = baseline !== undefined;
   const chartLabel = compareLabel(
     COMPARE_HEADERS[ctx.getUiState().ui.comparison.chartColumn],
@@ -299,7 +305,7 @@ function renderCompare(results: Result[]) {
       value: cells[ctx.getUiState().ui.comparison.chartColumn].value,
       valueLabel: cells[ctx.getUiState().ui.comparison.chartColumn].display,
       color: SERIES(r.slot),
-      emphasise: cells[ctx.getUiState().ui.comparison.chartColumn].value === chartBest,
+      emphasise: chartColumn !== 6 && cells[chartColumn].value === chartBest,
       tip: `${escapeText(r.layout.name)}<br>${escapeText(chartLabel)} <b>${cells[ctx.getUiState().ui.comparison.chartColumn].display}</b>`,
     })),
     {
@@ -352,16 +358,19 @@ function syncCompareChartOptions(relative: boolean) {
   elements.compareChartMetric.value = String(ctx.getUiState().ui.comparison.chartColumn);
 }
 
-/** data-tipを持つ補足ボタン。tipが無い列では何も出さない */
-function infoButton(tip: string | undefined): string {
-  if (!tip) return '';
-  const attr = escapeAttr(tip);
-  return `<button type="button" class="info" data-tip="${attr}" aria-label="${attr}">i</button>`;
-}
-
-/** 列ごとの補足。指標の定義だけを書き、良し悪しの解釈は書かない */
+/** 列ごとの補足。単位と定義だけを書き、良し悪しの解釈は書かない。 */
 const COMPARE_HEADER_TIPS: Record<number, string> = {
-  7: '同じ指で違うキーを続けて打った回数。',
+  0: 'Policy適用後の総アクション数。単位: Action。',
+  1: '全指の総移動距離。単位: u。',
+  2: '1打鍵あたりの平均移動距離。単位: u/打鍵。',
+  3: '入力1文字あたりの総移動距離。単位: u/文字。',
+  4: '入力1文字あたりのアクション数。単位: Action/文字。',
+  5: '入力1文字あたりの物理キー押下数。単位: 押下/文字。',
+  6: '打鍵可能な入力文字のうち、基底面の1キーだけで直接出力できた文字の割合。シフト面・複数キーコンボ・複数打鍵は含まない。単位: %。',
+  7: '同じ指で違うキーを続けて打った回数。単位: 回。',
+  8: '同指連続回数をphysical Stroke数で割った割合。単位: %。',
+  9: '隣接指間距離のホーム間隔からの平均超過を6ペアで平均した値。単位: u。',
+  10: '隣接指間距離の標準偏差を6ペアで平均した値。単位: u。',
 };
 
 function compareHeader(label: string, column: number, relative: boolean): string {
@@ -372,9 +381,14 @@ function compareHeader(label: string, column: number, relative: boolean): string
   const marker = active === 'asc' ? ' ↑' : active === 'desc' ? ' ↓' : '';
   const ariaSort = active === 'asc' ? 'ascending' : active === 'desc' ? 'descending' : 'none';
   const shownLabel = compareLabel(label, relative, column);
+  const metricTip = COMPARE_HEADER_TIPS[column];
+  const tip = relative
+    ? `比較元を100%とした比率。表示単位: %。元指標: ${metricTip}`
+    : metricTip;
+  const title = `${tip} クリックごとに昇順・降順・選択順へ切り替える。`;
   return `<th><span class="table-sort" data-compare-sort="${column}" role="button" tabindex="0"
-    aria-label="${escapeAttr(`${shownLabel}で配列を並べ替え`)}" aria-sort="${ariaSort}"
-    title="クリックごとに昇順・降順・選択順へ切り替える">${escapeText(shownLabel)}${marker}</span>${infoButton(COMPARE_HEADER_TIPS[column])}</th>`;
+    aria-label="${escapeAttr(`${shownLabel}。 ${title}`)}" aria-sort="${ariaSort}"
+    title="${escapeAttr(title)}">${escapeText(shownLabel)}${marker}</span></th>`;
 }
 
 /**
