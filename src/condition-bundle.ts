@@ -96,16 +96,17 @@ export function parseConditionBundle(
     sanitizedState.conditions.geometrySettings,
     fallback.conditions.geometrySettings,
   );
+  const conditionDefaults = sanitizeConditionDefaults(
+    sanitizedState.conditions.defaults,
+    fallback.conditions.defaults,
+  );
   const conditions = {
-    defaults: sanitizeConditionDefaults(
-      sanitizedState.conditions.defaults,
-      fallback.conditions.defaults,
-    ),
+    defaults: conditionDefaults,
     geometrySettings,
     perLayout: Object.fromEntries(
       Object.entries(sanitizedState.conditions.perLayout).map(([id, values]) => [
         id,
-        sanitizeConditionOverrides(values, defaults.ui.playback),
+        sanitizeConditionOverrides(values, defaults.ui.playback, conditionDefaults.chain),
       ]),
     ),
   };
