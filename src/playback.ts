@@ -708,9 +708,24 @@ export interface PlaybackTimingStep {
   endMs: number;
 }
 
+export interface PlaybackTimingOptions {
+  /** 全指の物理移動が間に合う時刻までStrokeを遅らせる。既定false。 */
+  allFingerMovementDelay?: boolean;
+  /** allFingerMovementDelay=trueの時にホーム位置を得るため必須。 */
+  geometry?: Geometry;
+}
+
+export function playbackTimingStepDurationMs(
+  schedule: readonly PlaybackTimingStep[] | undefined,
+  strokeIndex: number,
+): number | undefined {
+  const step = schedule?.[strokeIndex];
+  return step ? Math.max(0, step.endMs - step.startMs) : undefined;
+}
+
 /**
- * §3で確定した各Stroke durationを累積したTiming schedule。
- * 表示側はこの結果を参照し、duration選択ロジックを複製しない。
+ * §3で確定したbase durationを累積したTiming schedule。
+ * allFingerMovementDelay=trueでは、各指の到達可能時刻を追加max制約として適用する。
  */
 export function playbackTimingSchedule(
   analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'transitions'>,
@@ -718,20 +733,77 @@ export function playbackTimingSchedule(
   sameFingerDelay = true,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+  options: PlaybackTimingOptions = {},
 ): PlaybackTimingStep[] {
-  let atMs = 0;
-  return analysis.strokes.map((_stroke, strokeIndex) => {
-    const startMs = atMs;
-    atMs += playbackStepDurationMs(
+  const baseDurations = analysis.strokes.map((_stroke, strokeIndex) =>
+    playbackStepDurationMs(
       analysis,
       strokeIndex,
       stepsPerSecond,
       sameFingerDelay,
       calibration,
       speedMultiplier,
-    );
-    return { strokeIndex, startMs, endMs: atMs };
-  });
+    ));
+
+  if (!options.allFingerMovementDelay) {
+    let atMs = 0;
+    return baseDurations.map((durationMs, strokeIndex) => {
+      const startMs = atMs;
+      atMs += durationMs;
+      return { strokeIndex, startMs, endMs: atMs };
+    });
+  }
+
+  const geometry = options.geometry;
+  if (!geometry) throw new Error('allFingerMovementDelay requires geometry');
+
+  const lastPosition = {} as Record<Finger, Point>;
+  const freeAtMs = {} as Record<Finger, number>;
+  for (const finger of ALL_FINGERS) {
+    lastPosition[finger] = geometry.homes[finger];
+    freeAtMs[finger] = 0;
+  }
+
+  const schedule: PlaybackTimingStep[] = [];
+  let atMs = 0;
+
+  for (const [strokeIndex, stroke] of analysis.strokes.entries()) {
+    const startMs = atMs;
+    let endMs = startMs + baseDurations[strokeIndex];
+
+    // actual Pressだけが新しい移動要求。held-trigger/continueは後段で占有時間だけ延ばす。
+    for (const press of stroke.presses) {
+      const moveMs = playbackFingerMoveMs(
+        lastPosition[press.finger],
+        press.target,
+        press.finger,
+        stepsPerSecond,
+        calibration,
+        speedMultiplier,
+      );
+      endMs = Math.max(endMs, freeAtMs[press.finger] + moveMs);
+    }
+
+    schedule.push({ strokeIndex, startMs, endMs });
+    atMs = endMs;
+
+    const pressedFingers = new Set(stroke.presses.map((press) => press.finger));
+    for (const press of stroke.presses) {
+      lastPosition[press.finger] = press.target;
+      freeAtMs[press.finger] = endMs;
+    }
+
+    // held-trigger/continueは新規Pressではないが、保持Stroke終了まではその指を動かせない。
+    for (const participation of stroke.participations) {
+      if (pressedFingers.has(participation.finger)) continue;
+      if (!participation.roles.includes('held-trigger')) continue;
+      lastPosition[participation.finger] = stroke.positions[participation.finger]
+        ?? lastPosition[participation.finger];
+      freeAtMs[participation.finger] = endMs;
+    }
+  }
+
+  return schedule;
 }
 
 function isActualPressParticipation(
@@ -869,6 +941,7 @@ function playbackRecentRateWindow(
   limit: number,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+  schedule?: readonly PlaybackTimingStep[],
 ): PlaybackRateWindow | undefined {
   const strokes = analysis.strokes;
   const end = clampPlaybackCursor(cursor, strokes.length);
@@ -879,13 +952,16 @@ function playbackRecentRateWindow(
   const durationMs = Array.from(
     { length: end - start },
     (_, offset) => start + offset,
-  ).reduce((total, index) => total + playbackStepDurationMs(
-    analysis,
-    index,
-    stepsPerSecond,
-    sameFingerDelay,
-    calibration,
-    speedMultiplier,
+  ).reduce((total, index) => total + (
+    playbackTimingStepDurationMs(schedule, index)
+      ?? playbackStepDurationMs(
+        analysis,
+        index,
+        stepsPerSecond,
+        sameFingerDelay,
+        calibration,
+        speedMultiplier,
+      )
   ), 0);
   return { start, end, durationMs };
 }
@@ -915,6 +991,7 @@ export function playbackRecentActionsPerSecond(
   limit = 10,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+  schedule?: readonly PlaybackTimingStep[],
 ): number | undefined {
   const recent = playbackRecentRateWindow(
     analysis,
@@ -924,6 +1001,7 @@ export function playbackRecentActionsPerSecond(
     limit,
     calibration,
     speedMultiplier,
+    schedule,
   );
   return recent && recent.durationMs > 0
     ? ((recent.end - recent.start) * 1000) / recent.durationMs
@@ -939,6 +1017,7 @@ export function playbackRecentKanaPerSecond(
   limit = 10,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+  schedule?: readonly PlaybackTimingStep[],
 ): number | undefined {
   const strokes = analysis.strokes;
   const recent = playbackRecentRateWindow(
@@ -949,6 +1028,7 @@ export function playbackRecentKanaPerSecond(
     limit,
     calibration,
     speedMultiplier,
+    schedule,
   );
   if (!recent || recent.durationMs <= 0) return undefined;
 
@@ -974,6 +1054,7 @@ export function playbackRateChartData(
   limit = 10,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+  schedule?: readonly PlaybackTimingStep[],
 ): PlaybackRateChartPoint[] {
   const strokes = analysis.strokes;
   const points: PlaybackRateChartPoint[] = [{ cursor: 0, inputText: '' }];
@@ -986,6 +1067,7 @@ export function playbackRateChartData(
       limit,
       calibration,
       speedMultiplier,
+      schedule,
     );
     points.push({
       cursor,
@@ -998,6 +1080,7 @@ export function playbackRateChartData(
         limit,
         calibration,
         speedMultiplier,
+        schedule,
       ),
       actionsPerSecond: recent && recent.durationMs > 0
         ? ((recent.end - recent.start) * 1000) / recent.durationMs
@@ -1077,6 +1160,8 @@ export function reconcilePlaybackStateAfterAnalysisRefresh(
   previousAnalysis: AggregatedAnalysisResult,
   nextAnalysis: AggregatedAnalysisResult,
   nextCursor = previousState.cursor,
+  previousSchedule?: readonly PlaybackTimingStep[],
+  nextSchedule?: readonly PlaybackTimingStep[],
 ): PlaybackState {
   const nextStrokeCount = nextAnalysis.strokes.length;
   const cursor = clampPlaybackCursor(nextCursor, nextStrokeCount);
@@ -1097,22 +1182,24 @@ export function reconcilePlaybackStateAfterAnalysisRefresh(
     };
   }
 
-  const previousStepMs = playbackStepDurationMs(
-    previousAnalysis,
-    previousCursor,
-    previousState.stepsPerSecond,
-    previousState.sameFingerDelay,
-    previousState.calibration,
-    previousState.speedMultiplier,
-  );
-  const nextStepMs = playbackStepDurationMs(
-    nextAnalysis,
-    cursor,
-    nextBaseState.stepsPerSecond,
-    nextBaseState.sameFingerDelay,
-    nextBaseState.calibration,
-    nextBaseState.speedMultiplier,
-  );
+  const previousStepMs = playbackTimingStepDurationMs(previousSchedule, previousCursor)
+    ?? playbackStepDurationMs(
+      previousAnalysis,
+      previousCursor,
+      previousState.stepsPerSecond,
+      previousState.sameFingerDelay,
+      previousState.calibration,
+      previousState.speedMultiplier,
+    );
+  const nextStepMs = playbackTimingStepDurationMs(nextSchedule, cursor)
+    ?? playbackStepDurationMs(
+      nextAnalysis,
+      cursor,
+      nextBaseState.stepsPerSecond,
+      nextBaseState.sameFingerDelay,
+      nextBaseState.calibration,
+      nextBaseState.speedMultiplier,
+    );
   const progress = previousStepMs > 0
     ? Math.min(1, Math.max(0, previousState.elapsedMs / previousStepMs))
     : 0;
@@ -1130,6 +1217,7 @@ export function advancePlayback(
   state: PlaybackState,
   elapsedMs: number,
   analysis: AggregatedAnalysisResult,
+  schedule?: readonly PlaybackTimingStep[],
 ): PlaybackState {
   const strokeCount = analysis.strokes.length;
   const cursor = clampPlaybackCursor(state.cursor, strokeCount);
@@ -1140,14 +1228,15 @@ export function advancePlayback(
   let remaining = state.elapsedMs + Math.min(Math.max(0, elapsedMs), MAX_FRAME_MS);
   let nextCursor = cursor;
   while (nextCursor < strokeCount) {
-    const stepMs = playbackStepDurationMs(
-      analysis,
-      nextCursor,
-      state.stepsPerSecond,
-      state.sameFingerDelay,
-      state.calibration,
-      state.speedMultiplier,
-    );
+    const stepMs = playbackTimingStepDurationMs(schedule, nextCursor)
+      ?? playbackStepDurationMs(
+        analysis,
+        nextCursor,
+        state.stepsPerSecond,
+        state.sameFingerDelay,
+        state.calibration,
+        state.speedMultiplier,
+      );
     if (remaining < stepMs) break;
     remaining -= stepMs;
     nextCursor++;
