@@ -9,6 +9,7 @@ import {
   type PlaybackCalibration,
 } from './playback-calibration.ts';
 import type { AggregatedAnalysisResult } from './analysis-aggregate.ts';
+import { playbackArpeggioSpans, type ArpeggioConditions } from './playback-arpeggio.ts';
 
 /** 再生速度の入力範囲。実際の打鍵時間や距離モデルとは無関係。 */
 export const PLAYBACK_STEPS_PER_SECOND_MIN = 0.1;
