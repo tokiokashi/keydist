@@ -783,13 +783,13 @@ function playbackFingerMoveMs(
  * held-triggerの継続だけのparticipationは「次のPress」として扱わない。
  */
 export function playbackPreparedFingerPositionKeys(
-  analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'transitions'>,
+  analysis: Pick<AggregatedAnalysisResult, 'strokes'>,
+  schedule: readonly PlaybackTimingStep[],
   cursor: number,
   elapsedMs: number,
   geometry: Geometry,
   preparationSeconds: number,
   stepsPerSecond: PlaybackStepsPerSecond,
-  sameFingerDelay = true,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
 ): ReadonlyMap<string, Finger> {
@@ -802,13 +802,6 @@ export function playbackPreparedFingerPositionKeys(
     : 0;
   if (preparationMs === 0 || end >= strokes.length) return positionedKeys;
 
-  const schedule = playbackTimingSchedule(
-    analysis,
-    stepsPerSecond,
-    sameFingerDelay,
-    calibration,
-    speedMultiplier,
-  );
   const nowMs = (end > 0 ? schedule[end - 1]?.endMs ?? 0 : 0) + Math.max(0, elapsedMs);
 
   for (const finger of ALL_FINGERS) {
