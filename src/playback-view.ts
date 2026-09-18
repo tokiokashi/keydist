@@ -6,7 +6,7 @@ import {
   playbackPlannedOrders, playbackRomajiPlan, playbackRomajiPlannedKeys,
   playbackRomajiPlannedOrders, playbackOrderLabel, playbackRateChartData,
   playbackRecentActionsPerSecond, playbackRecentKanaPerSecond,
-  playbackSameFingerKeyMotions, playbackRepeatedKeys,
+  playbackSameFingerKeyMotions,
   playbackStrokeAt, playbackStepDurationMs, playbackTimingSchedule, playbackTimingStepDurationMs, playbackCursorForEquivalentInputPosition, reconcilePlaybackStateAfterAnalysisRefresh, setPlaybackSameFingerDelay,
   setPlaybackStepsPerSecond, stepPlayback, playbackTrailKeys, playbackTrailOrders,
   playbackStrokeDisplay, setPlaybackCalibration, setPlaybackSpeedMultiplier,
@@ -19,7 +19,12 @@ import { FINGER_LABEL, type AppElements } from './app-dom.ts';
 import { escapeAttr, escapeText } from './chart.ts';
 import type { Layout } from './layouts/index.ts';
 import type { PlaybackCalibration } from './playback-calibration.ts';
-import type { UiPlaybackState, UiStateStorage, UiStateV1 } from './ui-state.ts';
+import type {
+  PlaybackKeyFeedbackStyle,
+  UiPlaybackState,
+  UiStateStorage,
+  UiStateV1,
+} from './ui-state.ts';
 import type { AggregatedAnalysisResult } from './analysis-aggregate.ts';
 import type { ChainPolicy } from './analysis-chain.ts';
 import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
@@ -114,6 +119,7 @@ let playbackAnimationFrame: number | undefined;
 let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
 let playbackMotionCursor = -1;
+let playbackFeedbackCursor = -1;
 let playbackRateChartSignature: string | undefined;
 let playbackTiming: readonly PlaybackTimingStep[] = [];
 type PlaybackSettingsTab = 'display' | 'conditions';
@@ -171,6 +177,14 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
       <p class="note">キーボード画面に重ねる情報を設定します。変更はすぐに反映されます。</p>
       <div class="playback-dialog-grid">
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${ctx.getUiState().ui.playback.showFingers ? ' checked' : ''} />指の位置を色で表示</label>
+        <label class="playback-range-setting"><span>押下フィードバック</span>
+          <select data-playback-key-feedback aria-label="キー押下のフィードバック">
+            <option value="off"${ctx.getUiState().ui.playback.keyFeedbackStyle === 'off' ? ' selected' : ''}>オフ</option>
+            <option value="fade"${ctx.getUiState().ui.playback.keyFeedbackStyle === 'fade' ? ' selected' : ''}>フェード</option>
+            <option value="pulse"${ctx.getUiState().ui.playback.keyFeedbackStyle === 'pulse' ? ' selected' : ''}>パルス</option>
+            <option value="bounce"${ctx.getUiState().ui.playback.keyFeedbackStyle === 'bounce' ? ' selected' : ''}>バウンス</option>
+          </select>
+        </label>
         <label class="playback-range-setting" title="次の実Pressへ向け、指位置表示を打鍵時刻より先に到着させる時間。0なら従来どおり"><span>準備時間</span> <input type="number" data-playback-finger-preparation min="0" step="0.05" value="${ctx.getUiState().ui.playback.fingerPreparationSeconds}" aria-label="指位置表示の準備時間（秒）" /> 秒</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${ctx.getUiState().ui.playback.showRomajiPlan ? ' checked' : ''} />予定ローマ字の盤面表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-plan-keys${ctx.getUiState().ui.playback.showPlanKeys ? ' checked' : ''} />押下予定キーを表示</label>
@@ -229,6 +243,7 @@ function updatePlaybackView() {
   const display = playbackLayout && stroke ? playbackStrokeDisplay(playbackLayout, stroke) : undefined;
   const isRomaji = playbackLayout?.romajiTable !== undefined;
   const windowSize = playbackOptions?.windowSize ?? ctx.getUiState().conditions.defaults.windowSize;
+  const rateWindow = ctx.getUiState().conditions.defaults.playbackRateWindow;
   const activeKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
   const triggerKeys = new Set(stroke?.triggerKeys ?? []);
   const fingerPositionKeys = ctx.getUiState().ui.playback.showFingers
@@ -303,13 +318,10 @@ function updatePlaybackView() {
     return toKeys.length === 0 ? [] : [{ ...motion, toKeys }];
   });
   const animatedKeys = new Set(motions.flatMap((motion) => motion.toKeys));
-  const repeatedKeys = playbackRepeatedKeys(playbackTrace.strokes, cursor);
-
   for (const key of elements.playback.querySelectorAll<SVGGElement>('[data-playback-key]')) {
     const id = key.dataset.playbackKey!;
     key.dataset.playbackActive = String(activeKeys.has(id) && !animatedKeys.has(id));
     key.dataset.playbackTrigger = String(triggerKeys.has(id));
-    key.dataset.playbackRepeat = String(repeatedKeys.has(id));
     key.dataset.playbackFingerPosition = fingerPositionKeys.get(id) ?? '';
     const trailOpacity = trailKeys.get(id);
     key.dataset.playbackTrail = trailOpacity === undefined ? 'false' : 'true';
@@ -354,7 +366,10 @@ function updatePlaybackView() {
   if (cursor !== playbackMotionCursor) {
     renderPlaybackMotions(motions, cursor, stroke);
     playbackMotionCursor = cursor;
-    triggerPlaybackRepeatFlash(repeatedKeys);
+  }
+  if (cursor !== playbackFeedbackCursor) {
+    triggerPlaybackKeyFeedback(activeKeys, ctx.getUiState().ui.playback.keyFeedbackStyle);
+    playbackFeedbackCursor = cursor;
   }
 
   const settingsRoot = elements.playbackSettingsPanel;
@@ -375,6 +390,7 @@ function updatePlaybackView() {
   const back = elements.playback.querySelector<HTMLButtonElement>('[data-playback-action="back"]');
   const forward = elements.playback.querySelector<HTMLButtonElement>('[data-playback-action="forward"]');
   const fingers = settingsRoot.querySelector<HTMLInputElement>('[data-playback-fingers]');
+  const keyFeedback = settingsRoot.querySelector<HTMLSelectElement>('[data-playback-key-feedback]');
   const fingerPreparation = settingsRoot.querySelector<HTMLInputElement>('[data-playback-finger-preparation]');
   const planKeys = settingsRoot.querySelector<HTMLInputElement>('[data-playback-plan-keys]');
   const trail = settingsRoot.querySelector<HTMLInputElement>('[data-playback-trail]');
@@ -437,6 +453,7 @@ function updatePlaybackView() {
       sameFingerDelay: playbackState.sameFingerDelay,
       calibration: playbackState.calibration,
       allFingerMovementDelay: ctx.getUiState().ui.playback.allFingerMovementDelay,
+      rateWindow,
       dynamicDisplay,
       strokeCount: playbackTrace.strokes.length,
     });
@@ -445,7 +462,7 @@ function updatePlaybackView() {
         playbackAnalysis,
         playbackState.stepsPerSecond,
         playbackState.sameFingerDelay,
-        10,
+        rateWindow,
         playbackState.calibration,
         playbackState.speedMultiplier,
         playbackTiming,
@@ -478,6 +495,7 @@ function updatePlaybackView() {
   if (back) back.disabled = playbackState.playing || cursor === 0;
   if (forward) forward.disabled = playbackState.playing || cursor >= total;
   if (fingers) fingers.checked = ctx.getUiState().ui.playback.showFingers;
+  if (keyFeedback) keyFeedback.value = ctx.getUiState().ui.playback.keyFeedbackStyle;
   if (fingerPreparation) fingerPreparation.value = String(ctx.getUiState().ui.playback.fingerPreparationSeconds);
   const romajiPlan = settingsRoot.querySelector<HTMLInputElement>('[data-playback-romaji-plan]');
   if (romajiPlan) {
@@ -547,8 +565,8 @@ function updatePlaybackView() {
       playbackTiming,
     );
     effectiveKanaRate.textContent = value === undefined
-      ? '実効 — かな/秒'
-      : `実効 ${value.toFixed(2)} かな/秒`;
+      ? `直近${rateWindow}打鍵 — かな/秒`
+      : `直近${rateWindow}打鍵 ${value.toFixed(2)} かな/秒`;
   }
   if (effectiveRate) {
     const value = playbackRecentActionsPerSecond(
@@ -562,8 +580,8 @@ function updatePlaybackView() {
       playbackTiming,
     );
     effectiveRate.textContent = value === undefined
-      ? '実効 — アクション/秒'
-      : `実効 ${value.toFixed(2)} アクション/秒`;
+      ? `直近${rateWindow}打鍵 — アクション/秒`
+      : `直近${rateWindow}打鍵 ${value.toFixed(2)} アクション/秒`;
   }
   if (playbackWindow) playbackWindow.textContent = String(windowSize);
 }
@@ -583,7 +601,7 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
     const tip = `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>${escapeText(FINGER_LABEL[key.finger])}`;
     return `<g data-tip="${escapeAttr(tip)}" data-playback-key="${escapeAttr(key.id)}" data-playback-finger="${key.finger}" data-playback-base-label="${escapeAttr(label)}" data-playback-active="false" data-playback-trigger="false" data-playback-finger-position="" data-playback-plan="false">
       <rect x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" stroke="var(--line)"/>
-      <rect data-playback-repeat-flash x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" opacity="0" pointer-events="none"/>
+      <rect data-playback-feedback-overlay x="${x + 1}" y="${y + 1}" width="${width - 2}" height="${PLAYBACK_KEY - 2}" rx="5" fill="var(--panel)" opacity="0" pointer-events="none"/>
       <text class="playback-order playback-order-plan" data-playback-order="plan" x="${x + 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
       <text class="playback-order playback-order-trail" data-playback-order="trail" x="${x + width - 7}" y="${y + 10}" text-anchor="middle" visibility="hidden"> </text>
       <text class="playback-order playback-order-chain" data-playback-order="chain" x="${x + width / 2}" y="${y + PLAYBACK_KEY - 5}" text-anchor="middle" visibility="hidden"> </text>
@@ -689,37 +707,57 @@ function renderPlaybackMotions(
 }
 
 /**
- * 連打キーの上に重ねたオーバーレイ矩形をWeb Animations APIで光らせる。
- *
- * CSSアニメーションでdata属性を付け替える方式だと、連打2回目以降は属性値が
- * 「true」のまま変わらないため再生し直されない（過去にこれで踏んだ）。
- * element.animate()は呼ぶたびに新しいAnimationを作るので、毎ステップ確実に
- * 発火し直せる。`fill`（塗り）はアクティブキーの表示に使っているため触らず、
- * 別のoverlay要素のopacityだけを動かして「今どこを打っているか」を壊さない。
- *
- * overlayの色は地の色（--panel）。連打しているキーは必ず打鍵中でもあり
- * --accent で塗られているので、accentを重ねても同色同士で見た目が変わらない。
- * 地の色へ一瞬抜くことで、押されたままのキーでも打ち直しが読み取れる。
+ * 現在Strokeで実際に押した全キーへ同じフィードバック経路を適用する。
+ * 連打も通常打鍵も区別せず、cursorが進むたびに既存animationをcancelして再発火する。
  */
-function triggerPlaybackRepeatFlash(repeatedKeys: ReadonlySet<string>) {
-  if (repeatedKeys.size === 0) return;
+function triggerPlaybackKeyFeedback(
+  keyIds: ReadonlySet<string>,
+  style: PlaybackKeyFeedbackStyle,
+): void {
+  if (style === 'off' || keyIds.size === 0) return;
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-  for (const id of repeatedKeys) {
-    const overlay = elements.playback.querySelector<SVGRectElement>(
-      `[data-playback-key="${CSS.escape(id)}"] [data-playback-repeat-flash]`,
+
+  for (const id of keyIds) {
+    const key = elements.playback.querySelector<SVGGElement>(
+      `[data-playback-key="${CSS.escape(id)}"]`,
     );
-    if (!overlay) continue;
+    const overlay = key?.querySelector<SVGRectElement>('[data-playback-feedback-overlay]');
+    if (!key || !overlay) continue;
+
+    key.getAnimations().forEach((animation) => animation.cancel());
+    overlay.getAnimations().forEach((animation) => animation.cancel());
+    overlay.style.transition = 'none';
+    overlay.style.opacity = '0';
+
     if (reducedMotion) {
-      // 動きを止める代わりに、瞬間的な不透明化で「打った」だけは伝える。
-      overlay.style.opacity = '0.5';
-      overlay.style.transition = 'opacity 120ms ease-out';
+      // motionは出さず、1フレームだけ押下を示す。
+      overlay.style.opacity = '0.45';
       requestAnimationFrame(() => { overlay.style.opacity = '0'; });
       continue;
     }
-    overlay.getAnimations().forEach((animation) => animation.cancel());
-    overlay.animate(
-      [{ opacity: 0.6 }, { opacity: 0 }],
-      { duration: 220, easing: 'ease-out' },
+
+    if (style === 'fade') {
+      // CSS transition。毎回0.32へ戻してstyleをflushするので連打でも再発火する。
+      overlay.style.opacity = '0.32';
+      void overlay.getBoundingClientRect();
+      overlay.style.transition = 'opacity 80ms ease-out';
+      overlay.style.opacity = '0';
+      continue;
+    }
+
+    if (style === 'pulse') {
+      overlay.animate(
+        [{ opacity: 0.58 }, { opacity: 0 }],
+        { duration: 160, easing: 'ease-out' },
+      );
+      continue;
+    }
+
+    key.style.transformBox = 'fill-box';
+    key.style.transformOrigin = 'center';
+    key.animate(
+      [{ transform: 'scale(1)' }, { transform: 'scale(1.06)' }, { transform: 'scale(1)' }],
+      { duration: 110, easing: 'ease-out' },
     );
   }
 }
@@ -792,6 +830,8 @@ function renderPlayback(
   playbackMotionCursor = -1;
   playbackSeekWasPlaying = undefined;
   playbackRateChartSignature = undefined;
+  playbackFeedbackCursor = -1;
+  const rateWindow = ctx.getUiState().conditions.defaults.playbackRateWindow;
   elements.playback.innerHTML = `<details class="playback-panel"${ctx.getUiState().ui.panels.playback ? ' open' : ''}>
     <summary><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
@@ -806,7 +846,7 @@ function renderPlayback(
         <button type="button" class="secondary" data-playback-action="stop" disabled><span class="playback-control-icon" aria-hidden="true">■</span><span>停止</span></button>
         <button type="button" class="ghost" data-playback-action="forward"><span class="playback-control-icon" aria-hidden="true">▶</span><span>1 ステップ進む</span></button>
         <span class="playback-position" aria-live="polite" data-playback-position>0 / ${trace.strokes.length} ステップ</span>
-        <span class="playback-effective-rates"><span class="playback-effective-kana-rate" data-playback-effective-kana-rate>実効 — かな/秒</span><span class="playback-effective-rate" data-playback-effective-rate>実効 — アクション/秒</span></span>
+        <span class="playback-effective-rates"><span class="playback-effective-kana-rate" data-playback-effective-kana-rate>直近${rateWindow}打鍵 — かな/秒</span><span class="playback-effective-rate" data-playback-effective-rate>直近${rateWindow}打鍵 — アクション/秒</span></span>
       </div>
       <label class="playback-seek"><span>再生位置</span><input type="range" data-playback-seek min="0" max="${trace.strokes.length}" step="1" value="0" /></label>
       <div class="playback-status" aria-live="polite">
@@ -822,7 +862,7 @@ function renderPlayback(
         </div>
       </div>
       <details class="playback-rate-chart-panel"${ctx.getUiState().ui.panels.playbackRateChart ? ' open' : ''}>
-        <summary>かな/秒・アクション/秒の推移</summary>
+        <summary>かな/秒・アクション/秒の移動平均</summary>
         <div class="playback-rate-chart" data-playback-rate-chart></div>
       </details>
       <div class="fig-fixed playback-figure">${renderPlaybackSvg(layout, geometry)}</div>
@@ -1082,6 +1122,14 @@ function refreshStructuralAnalysis(): void {
       }
       const fingers = target.closest<HTMLInputElement>('input[data-playback-fingers]');
       if (fingers) { ctx.updatePlaybackSetting('showFingers', fingers.checked); updatePlaybackView(); return; }
+      const keyFeedback = target.closest<HTMLSelectElement>('select[data-playback-key-feedback]');
+      if (keyFeedback) {
+        const value = keyFeedback.value;
+        if (value === 'off' || value === 'fade' || value === 'pulse' || value === 'bounce') {
+          ctx.updatePlaybackSetting('keyFeedbackStyle', value);
+        }
+        return;
+      }
       const fingerPreparation = target.closest<HTMLInputElement>('input[data-playback-finger-preparation]');
       if (fingerPreparation) {
         const value = Number(fingerPreparation.value);
@@ -1127,6 +1175,7 @@ function refreshStructuralAnalysis(): void {
       cancelPlaybackAnimation();
       playbackTrace = undefined; playbackAnalysis = undefined; playbackGeometry = undefined; playbackLayout = undefined; playbackOptions = undefined;
       playbackTiming = [];
+      playbackFeedbackCursor = -1;
       preserveStateOnNextRender = undefined;
           setPlaybackSettingsOpen(false);
       elements.playbackSettingsPanel.innerHTML = '';
