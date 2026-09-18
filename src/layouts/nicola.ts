@@ -8,7 +8,7 @@ const face = (
 ): Face => ({
   ...faceFromEntries(trigger, 'simultaneous', entries),
   inputRole,
-  ...(trigger.length > 0 ? { triggerBehavior: 'chord' as const } : {}),
+  ...(trigger.length > 0 ? { triggerPersistence: 'single' as const } : {}),
 });
 
 /**
