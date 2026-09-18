@@ -78,7 +78,7 @@ test('画面状態を単一キーで保存・復元する', () => {
   assert.equal(storage.data.size, 1);
 });
 
-test('保存形式はuiとconditionsに分かれ、既存配列の条件だけ復元する', () => {
+test('保存形式はuiとconditionsに分かれ、canonical条件だけ復元する', () => {
   const fallback = defaults();
   const value = structuredClone(fallback);
   value.conditions.defaults = {
@@ -86,9 +86,16 @@ test('保存形式はuiとconditionsに分かれ、既存配列の条件だけ�
     windowSize: 5,
     sfbHomeCost: false,
     preferOppositeThumb: true,
-    chain: fallback.conditions.defaults.chain,
-    arpeggioPolicy: fallback.conditions.defaults.arpeggioPolicy,
-    arpeggio: fallback.conditions.defaults.arpeggio,
+    chain: {
+      breakOnSameFinger: false,
+      breakOnTriggerOnly: true,
+      breakOnOppositeHandSimultaneous: true,
+    },
+    arpeggioPolicy: {
+      includeThumb: true,
+      bridgeSameFinger: true,
+      includeSingleRedirectTail: false,
+    },
   };
   value.conditions.perLayout = {
     oonishi: { geometry: 'ortholinear', windowSize: 7, sfbHomeCost: false, romajiRule: 'azik' },
@@ -107,11 +114,10 @@ test('保存形式はuiとconditionsに分かれ、既存配列の条件だけ�
     qwerty: {},
   });
 });
-
-test('旧Chain UI設定は保存互換のままChainPolicyへ移行する', () => {
+test('旧Chain UI設定はChainPolicyへ移行し旧playback fieldを保存しない', () => {
   const fallback = defaults();
-  const value = structuredClone(fallback);
-  delete (value.conditions.defaults as Partial<typeof value.conditions.defaults>).chain;
+  const value = structuredClone(fallback) as unknown as Record<string, any>;
+  delete value.conditions.defaults.chain;
   value.ui.playback.chainIncludeSameFinger = true;
   value.ui.playback.chainIncludeLayerKeys = false;
   value.conditions.perLayout.oonishi = {
@@ -132,11 +138,11 @@ test('旧Chain UI設定は保存互換のままChainPolicyへ移行する', () =
     breakOnTriggerOnly: true,
     breakOnOppositeHandSimultaneous: false,
   });
-  assert.equal(state.ui.playback.chainIncludeSameFinger, true);
-  assert.equal(state.ui.playback.chainIncludeLayerKeys, false);
+  assert.equal('chainIncludeSameFinger' in state.ui.playback, false);
+  assert.equal('chainIncludeLayerKeys' in state.ui.playback, false);
+  assert.equal('chainIncludeSameFinger' in (state.conditions.perLayout.oonishi.playback ?? {}), false);
 });
-
-test('新ArpeggioPolicyは旧arpeggio条件と独立して保存・復元する', () => {
+test('ArpeggioPolicyはcanonical条件として保存・復元する', () => {
   const fallback = defaults();
   const value = structuredClone(fallback);
   value.conditions.defaults.arpeggioPolicy = {
@@ -158,12 +164,12 @@ test('新ArpeggioPolicyは旧arpeggio条件と独立して保存・復元する'
     state.conditions.perLayout.oonishi.arpeggioPolicy,
     value.conditions.perLayout.oonishi.arpeggioPolicy,
   );
-  assert.deepEqual(state.conditions.defaults.arpeggio, fallback.conditions.defaults.arpeggio);
+  assert.equal('arpeggio' in state.conditions.defaults, false);
 });
-
-test('アルペジオ条件は数値範囲とnullを保ったまま保存・復元する', () => {
+test('旧ArpeggioConditionsはincludeThumbだけ新Policyへ移し幾何条件を破棄する', () => {
   const fallback = defaults();
-  const value = structuredClone(fallback);
+  const value = structuredClone(fallback) as unknown as Record<string, any>;
+  delete value.conditions.defaults.arpeggioPolicy;
   value.conditions.defaults.arpeggio = {
     minHorizontalSpread: 1.5,
     maxRowReversal: null,
@@ -171,18 +177,17 @@ test('アルペジオ条件は数値範囲とnullを保ったまま保存・復�
     includeThumb: true,
     breakOnOppositeHand: true,
   };
+
   const state = sanitizeUiState(value, fallback, choices);
-  assert.deepEqual(state.conditions.defaults.arpeggio, value.conditions.defaults.arpeggio);
-
-  const invalid = structuredClone(value);
-  invalid.conditions.defaults.arpeggio.minHorizontalSpread = 99;
-  invalid.conditions.defaults.arpeggio.maxRowStep = -1;
-  const sanitized = sanitizeUiState(invalid, fallback, choices);
-  assert.equal(sanitized.conditions.defaults.arpeggio.minHorizontalSpread, fallback.conditions.defaults.arpeggio.minHorizontalSpread);
-  assert.equal(sanitized.conditions.defaults.arpeggio.maxRowStep, fallback.conditions.defaults.arpeggio.maxRowStep);
-  assert.equal(sanitized.conditions.defaults.arpeggio.maxRowReversal, null);
+  assert.deepEqual(state.conditions.defaults.arpeggioPolicy, {
+    includeThumb: true,
+    bridgeSameFinger: false,
+    includeSingleRedirectTail: false,
+  });
+  assert.equal('arpeggio' in state.conditions.defaults, false);
+  assert.equal('minHorizontalSpread' in state.conditions.defaults.arpeggioPolicy, false);
+  assert.equal('breakOnOppositeHand' in state.conditions.defaults.arpeggioPolicy, false);
 });
-
 test('配列固有の打鍵再生設定は既定値からの差分だけ復元する', () => {
   const fallback = defaults();
   const value = structuredClone(fallback);
@@ -400,6 +405,79 @@ test('未知のバージョンと壊れたJSONは既定値へ戻す', () => {
   const storage = new MemoryStorage();
   storage.data.set(UI_STATE_STORAGE_KEY, '{broken');
   assert.deepEqual(loadUiState(storage, defaults(), choices).state, defaults());
+});
+
+test('旧Chain UI fieldだけのmigrationではArpeggio刷新通知を出さない', () => {
+  const storage = new MemoryStorage();
+  const legacy = structuredClone(defaults()) as unknown as Record<string, any>;
+  delete legacy.conditions.defaults.chain;
+  legacy.ui.playback.chainIncludeSameFinger = true;
+  legacy.ui.playback.chainIncludeLayerKeys = false;
+  storage.data.set(UI_STATE_STORAGE_KEY, JSON.stringify(legacy));
+
+  const loaded = loadUiState(storage, defaults(), choices);
+  assert.equal(loaded.migratedArpeggioModel, false);
+  assert.deepEqual(loaded.state.conditions.defaults.chain, {
+    breakOnSameFinger: false,
+    breakOnTriggerOnly: true,
+    breakOnOppositeHandSimultaneous: false,
+  });
+
+  const saved = JSON.parse(storage.data.get(UI_STATE_STORAGE_KEY)!) as Record<string, any>;
+  assert.equal('chainIncludeSameFinger' in saved.ui.playback, false);
+  assert.equal('chainIncludeLayerKeys' in saved.ui.playback, false);
+});
+
+test('旧Arpeggio保存値は初回だけmigration通知対象になりcanonical stateへ再保存する', () => {
+  const storage = new MemoryStorage();
+  const legacy = structuredClone(defaults()) as unknown as Record<string, any>;
+  legacy.ui.theme = 'dark';
+  legacy.ui.panels.playback = true;
+  legacy.ui.playback.arpeggioEnabled = true;
+  legacy.ui.playback.arpeggioDelayMode = 'distributed';
+  legacy.conditions.defaults.arpeggio = {
+    minHorizontalSpread: 2,
+    maxRowReversal: 1,
+    maxRowStep: 2,
+    includeThumb: true,
+    breakOnOppositeHand: true,
+  };
+  legacy.conditions.perLayout.oonishi = {
+    arpeggio: {
+      minHorizontalSpread: 3,
+      maxRowReversal: 0,
+      maxRowStep: 1,
+      includeThumb: false,
+      breakOnOppositeHand: false,
+    },
+  };
+  storage.data.set(UI_STATE_STORAGE_KEY, JSON.stringify(legacy));
+
+  const first = loadUiState(storage, defaults(), choices);
+  assert.equal(first.migratedArpeggioModel, true);
+  assert.equal(first.state.ui.theme, 'dark');
+  assert.equal(first.state.ui.panels.playback, true);
+  assert.equal('arpeggioEnabled' in first.state.ui.playback, false);
+  assert.equal('arpeggioDelayMode' in first.state.ui.playback, false);
+  assert.deepEqual(first.state.conditions.defaults.arpeggioPolicy, {
+    includeThumb: true,
+    bridgeSameFinger: false,
+    includeSingleRedirectTail: false,
+  });
+  assert.deepEqual(first.state.conditions.perLayout.oonishi.arpeggioPolicy, {
+    includeThumb: false,
+    bridgeSameFinger: false,
+    includeSingleRedirectTail: false,
+  });
+
+  const saved = JSON.parse(storage.data.get(UI_STATE_STORAGE_KEY)!) as Record<string, any>;
+  assert.equal('arpeggio' in saved.conditions.defaults, false);
+  assert.equal('arpeggioEnabled' in saved.ui.playback, false);
+  assert.equal('arpeggioDelayMode' in saved.ui.playback, false);
+
+  const second = loadUiState(storage, defaults(), choices);
+  assert.equal(second.migratedArpeggioModel, false);
+  assert.deepEqual(second.state, first.state);
 });
 
 test('旧キーを初回読み込み時に移行して削除する', () => {

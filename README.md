@@ -84,6 +84,11 @@ Arpeggio / Redirect pivot / SFBの所属を保持します。構造の「件数�
 「coverage」は重複をunionしたユニークStroke数で数えるため、overlapするArpeggioSpanを
 coverageで二重計上しません。集計値には実効ChainPolicy / ArpeggioPolicyもsnapshotとして残します。
 
+一般的なbigram / trigram / SFB / roll / redirect / alternationと、
+keydist固有のRaw hand run / Analysis Chain / LongRoll / TwoRoll / RedirectEvent /
+ArpeggioSpanの関係、raw countとcoverageの違いは
+[docs/analysis-model.md](docs/analysis-model.md) にまとめています。
+
 薙刀式には、センターシフトを出力キーと反対側の親指へ振り替える設定があります。既定は定義どおり右親指で、
 設定をオンにすると片手だけの出力に対して逆側の親指を優先します。連続する同時押しシフトは、同じ親指キーが続く場合に
 既存の `g = 0` の規則で親指が残った扱いになります。
@@ -116,9 +121,9 @@ coverageで二重計上しません。集計値には実効ChainPolicy / Arpeggi
   速度変更・シークに対応し、同指連続の距離ディレイ、直近の実効アクション/秒、
   同指連続のキー移動アニメーション、チェーンの表示も切り替えられる。
   キャリブレーションで通常のアクション/秒・同じ手の別指の組ごとの交互打鍵速度・指ごとの移動速度 [u/秒] を測定し、組ごとの結果を保存して個人速度として再生へ反映できる
-- **チェーン**は片手が続けて打つ区間を指す。塗りつぶしたキーが前の打鍵位置から
-  滑って移動し、区間の何打目かを番号で示す。親指キーは区間に数えない。
-  同指連打を区間に含めるか、レイヤーキーを区間に数えるかはそれぞれ切り替えられる
+- **Analysis Chain** と **ArpeggioSpan** は構造解析済みの区間をそのまま再生図へ投影する。
+  表示側ではChain / Arpeggioを再判定しない。Chain境界とArpeggioPolicyはシミュレーション条件から編集でき、
+  ArpeggioPolicyは output親指・same bridge・redirect tail の3項目だけを持つ
 - 配列 × 指のマトリックスとして、指ごとの移動距離 [u/文字]、押下数 [押下/文字]、
   指間距離の平均 [u]を並べて出す。押下数の面には生の押下回数もツールチップで出す
 - 同指連続回数と比率

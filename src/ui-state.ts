@@ -25,10 +25,6 @@ import {
   PLAYBACK_STEPS_PER_SECOND_MIN,
 } from './playback.ts';
 import type { ThemeChoice } from './theme.ts';
-import {
-  DEFAULT_ARPEGGIO_CONDITIONS,
-  type ArpeggioConditions,
-} from './playback-arpeggio.ts';
 
 export const UI_STATE_STORAGE_KEY = 'keydist:ui-state';
 export const UI_STATE_VERSION = 1;
@@ -42,7 +38,6 @@ export type MatrixKind = 'press' | 'finger' | 'adjacentMean' | 'adjacentStdDev';
 export type LayerView = 'auto' | 'side-by-side' | 'tabs';
 export type LayerColorScale = 'linear' | 'log';
 export type SensitivityScale = 'relative' | 'absolute';
-export type ArpeggioDelayMode = 'before' | 'distributed';
 
 export interface UiStateConditionsDefaults {
   geometry: GeometryKind;
@@ -50,9 +45,7 @@ export interface UiStateConditionsDefaults {
   sfbHomeCost: boolean;
   preferOppositeThumb: boolean;
   chain: ChainPolicy;
-  /** 新structural analysis用。旧arpeggio schemaはcutoverまで並存する。 */
   arpeggioPolicy: ArpeggioPolicy;
-  arpeggio: ArpeggioConditions;
 }
 
 export interface UiPlaybackState {
@@ -67,10 +60,6 @@ export interface UiPlaybackState {
   useCalibration: boolean;
   showChain: boolean;
   showArpeggio: boolean;
-  chainIncludeSameFinger: boolean;
-  chainIncludeLayerKeys: boolean;
-  arpeggioEnabled: boolean;
-  arpeggioDelayMode: ArpeggioDelayMode;
   scale: number;
   stepsPerSecond: number;
   speedMultiplier: number;
@@ -93,7 +82,6 @@ export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
   preferOppositeThumb: false,
   chain: { ...DEFAULT_CHAIN_POLICY },
   arpeggioPolicy: { ...DEFAULT_ARPEGGIO_POLICY },
-  arpeggio: { ...DEFAULT_ARPEGGIO_CONDITIONS },
 };
 
 export interface UiStateV1 {
@@ -164,6 +152,7 @@ export interface UiStateStorage {
 export interface UiStateLoadResult {
   state: UiStateV1;
   migratedLegacy: boolean;
+  migratedArpeggioModel: boolean;
 }
 
 export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1 {
@@ -213,10 +202,6 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
         useCalibration: options.usePlaybackCalibration,
         showChain: false,
         showArpeggio: false,
-        chainIncludeSameFinger: false,
-        chainIncludeLayerKeys: true,
-        arpeggioEnabled: true,
-        arpeggioDelayMode: 'before',
         scale: 1.5,
         stepsPerSecond: DEFAULT_PLAYBACK_STEPS_PER_SECOND,
         speedMultiplier: DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
@@ -292,31 +277,6 @@ function arpeggioPolicy(value: unknown, fallback: ArpeggioPolicy): ArpeggioPolic
   };
 }
 
-function arpeggio(value: unknown, fallback: ArpeggioConditions): ArpeggioConditions {
-  const source = record(value);
-  const minHorizontalSpread = numberInRange(
-    source.minHorizontalSpread,
-    0,
-    20,
-    fallback.minHorizontalSpread,
-  );
-  const rowLimit = (candidate: unknown, defaultValue: number | null): number | null => {
-    if (candidate === undefined) return defaultValue;
-    if (candidate === null) return null;
-    return typeof candidate === 'number' && Number.isFinite(candidate)
-      && candidate >= 0 && candidate <= 10
-      ? candidate
-      : defaultValue;
-  };
-  return {
-    minHorizontalSpread,
-    maxRowReversal: rowLimit(source.maxRowReversal, fallback.maxRowReversal),
-    maxRowStep: rowLimit(source.maxRowStep, fallback.maxRowStep),
-    includeThumb: boolean(source.includeThumb, fallback.includeThumb),
-    breakOnOppositeHand: boolean(source.breakOnOppositeHand, fallback.breakOnOppositeHand),
-  };
-}
-
 function optionalId(value: unknown, allowed: readonly string[]): string | undefined {
   return typeof value === 'string' && allowed.includes(value) ? value : undefined;
 }
@@ -365,8 +325,13 @@ function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults
   if (isRecord(source.arpeggioPolicy)) {
     result.arpeggioPolicy = arpeggioPolicy(source.arpeggioPolicy, DEFAULT_ARPEGGIO_POLICY);
   }
-  if (isRecord(source.arpeggio)) {
-    result.arpeggio = arpeggio(source.arpeggio, DEFAULT_ARPEGGIO_CONDITIONS);
+  // 旧ArpeggioConditionsから意味が一致するincludeThumbだけ移行する。
+  // geometry閾値 / breakOnOppositeHandは新structural Policyへ推測変換しない。
+  if (isRecord(source.arpeggio) && typeof source.arpeggio.includeThumb === 'boolean') {
+    result.arpeggioPolicy = {
+      ...(result.arpeggioPolicy ?? DEFAULT_ARPEGGIO_POLICY),
+      includeThumb: source.arpeggio.includeThumb,
+    };
   }
   return result;
 }
@@ -392,7 +357,6 @@ export function sanitizeConditionDefaults(
     preferOppositeThumb: values.preferOppositeThumb ?? fallback.preferOppositeThumb,
     chain: values.chain ?? fallback.chain,
     arpeggioPolicy: values.arpeggioPolicy ?? fallback.arpeggioPolicy,
-    arpeggio: values.arpeggio ?? fallback.arpeggio,
   };
 }
 
@@ -425,14 +389,6 @@ function sanitizePlaybackSettings(value: unknown, fallback: UiPlaybackState): Ui
       !hasModernArpeggioDisplay
         ? legacyShowArpeggio
         : fallback.showArpeggio,
-    ),
-    chainIncludeSameFinger: boolean(playback.chainIncludeSameFinger, fallback.chainIncludeSameFinger),
-    chainIncludeLayerKeys: boolean(playback.chainIncludeLayerKeys, fallback.chainIncludeLayerKeys),
-    arpeggioEnabled: boolean(playback.arpeggioEnabled, fallback.arpeggioEnabled),
-    arpeggioDelayMode: choice(
-      playback.arpeggioDelayMode,
-      ['before', 'distributed'],
-      fallback.arpeggioDelayMode,
     ),
     scale: numberInRange(playback.scale, 0.5, 4, fallback.scale),
     stepsPerSecond: numberInRange(
@@ -474,15 +430,20 @@ export function sanitizeConditionOverrides(
   if (isRecord(source.playback)) {
     // 空オブジェクトも「配列固有設定を有効にした」印として保持する。
     result.playback = sanitizePlaybackOverrides(source.playback, playbackFallback);
-    // #227の移行期間: 旧chain表示設定が保存されていて新Policyが無い場合だけ、
-    // 意味が一意に対応する項目をPolicyへ移す。旧フィールド自体はまだ残す。
+    // cutover時、旧chain表示設定が保存されていて新Policyが無い場合だけ、
+    // 意味が一意に対応する項目をPolicyへ移す。旧フィールドは保存結果へ残さない。
     if (!isRecord(source.chain)
       && ('chainIncludeSameFinger' in source.playback || 'chainIncludeLayerKeys' in source.playback)) {
+      const legacyPlayback = record(source.playback);
       result.chain = chainPolicyFromLegacyUi({
-        chainIncludeSameFinger: result.playback.chainIncludeSameFinger
-          ?? !chainFallback.breakOnSameFinger,
-        chainIncludeLayerKeys: result.playback.chainIncludeLayerKeys
-          ?? !chainFallback.breakOnTriggerOnly,
+        chainIncludeSameFinger: boolean(
+          legacyPlayback.chainIncludeSameFinger,
+          !chainFallback.breakOnSameFinger,
+        ),
+        chainIncludeLayerKeys: boolean(
+          legacyPlayback.chainIncludeLayerKeys,
+          !chainFallback.breakOnTriggerOnly,
+        ),
       }, chainFallback);
     }
   }
@@ -527,11 +488,18 @@ export function sanitizeUiState(
     // v1では物理形状がui.inputにだけ保存されていたため、未保存なら旧値を引き継ぐ。
     geometry: conditionDefaults.geometry ?? input.geometry,
   }, defaults.conditions.defaults);
-  if (!isRecord(conditionDefaults.chain)) {
-    sanitizedConditionDefaults.chain = chainPolicyFromLegacyUi(
-      sanitizedPlayback,
-      sanitizedConditionDefaults.chain,
-    );
+  if (!isRecord(conditionDefaults.chain)
+    && ('chainIncludeSameFinger' in playback || 'chainIncludeLayerKeys' in playback)) {
+    sanitizedConditionDefaults.chain = chainPolicyFromLegacyUi({
+      chainIncludeSameFinger: boolean(
+        playback.chainIncludeSameFinger,
+        !sanitizedConditionDefaults.chain.breakOnSameFinger,
+      ),
+      chainIncludeLayerKeys: boolean(
+        playback.chainIncludeLayerKeys,
+        !sanitizedConditionDefaults.chain.breakOnTriggerOnly,
+      ),
+    }, sanitizedConditionDefaults.chain);
   }
   const perLayout: Record<string, UiStateLayoutConditions> = {};
   for (const [layoutId, override] of Object.entries(conditionPerLayout)) {
@@ -674,22 +642,74 @@ export function saveUiState(storage: UiStateStorage | undefined, state: UiStateV
   }
 }
 
+function hasArpeggioModelMigration(value: unknown): boolean {
+  const root = record(value);
+  const ui = record(root.ui);
+  const playback = record(ui.playback);
+  const conditions = record(root.conditions);
+  const defaults = record(conditions.defaults);
+  const perLayout = record(conditions.perLayout);
+
+  if (isRecord(defaults.arpeggio)
+    || 'arpeggioEnabled' in playback
+    || 'arpeggioDelayMode' in playback) return true;
+
+  return Object.values(perLayout).some((candidate) => {
+    const override = record(candidate);
+    const overridePlayback = record(override.playback);
+    return isRecord(override.arpeggio)
+      || 'arpeggioEnabled' in overridePlayback
+      || 'arpeggioDelayMode' in overridePlayback;
+  });
+}
+
+function hasCutoverModelMigration(value: unknown): boolean {
+  if (hasArpeggioModelMigration(value)) return true;
+  const root = record(value);
+  const ui = record(root.ui);
+  const playback = record(ui.playback);
+  const conditions = record(root.conditions);
+  const perLayout = record(conditions.perLayout);
+  if ('chainIncludeSameFinger' in playback || 'chainIncludeLayerKeys' in playback) return true;
+  return Object.values(perLayout).some((candidate) => {
+    const overridePlayback = record(record(candidate).playback);
+    return 'chainIncludeSameFinger' in overridePlayback || 'chainIncludeLayerKeys' in overridePlayback;
+  });
+}
+
 export function loadUiState(
   storage: UiStateStorage | undefined,
   defaults: UiStateV1,
   choices: UiStateChoices,
 ): UiStateLoadResult {
-  if (!storage) return { state: structuredClone(defaults), migratedLegacy: false };
+  if (!storage) return {
+    state: structuredClone(defaults),
+    migratedLegacy: false,
+    migratedArpeggioModel: false,
+  };
   try {
     const raw = storage.getItem(UI_STATE_STORAGE_KEY);
     if (raw !== null) {
-      return { state: sanitizeUiState(JSON.parse(raw), defaults, choices), migratedLegacy: false };
+      const parsed = JSON.parse(raw);
+      const migratedArpeggioModel = hasArpeggioModelMigration(parsed);
+      const migratedCutoverModel = hasCutoverModelMigration(parsed);
+      const state = sanitizeUiState(parsed, defaults, choices);
+      if (migratedCutoverModel) saveUiState(storage, state);
+      return { state, migratedLegacy: false, migratedArpeggioModel };
     }
 
     const legacy = legacyState(storage, defaults);
-    if (!legacy) return { state: structuredClone(defaults), migratedLegacy: false };
+    if (!legacy) return {
+      state: structuredClone(defaults),
+      migratedLegacy: false,
+      migratedArpeggioModel: false,
+    };
     const state = sanitizeUiState(legacy, defaults, choices);
-    if (!saveUiState(storage, state)) return { state, migratedLegacy: false };
+    if (!saveUiState(storage, state)) return {
+      state,
+      migratedLegacy: false,
+      migratedArpeggioModel: false,
+    };
     for (const key of [LEGACY_THEME_KEY, LEGACY_SELECTION_KEY, LEGACY_TEXT_COLLAPSED_KEY]) {
       try {
         storage.removeItem(key);
@@ -697,8 +717,12 @@ export function loadUiState(
         // 新形式の保存は完了している。旧キーの掃除に失敗しても復元結果は維持する
       }
     }
-    return { state, migratedLegacy: true };
+    return { state, migratedLegacy: true, migratedArpeggioModel: false };
   } catch {
-    return { state: structuredClone(defaults), migratedLegacy: false };
+    return {
+      state: structuredClone(defaults),
+      migratedLegacy: false,
+      migratedArpeggioModel: false,
+    };
   }
 }

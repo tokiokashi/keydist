@@ -36,6 +36,7 @@ import { evaluate } from '../src/evaluate.ts';
 import { LAYOUT_BY_ID, withRomaji } from '../src/layouts/index.ts';
 import { kunrei } from '../src/romaji/kunrei.ts';
 import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
+import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from '../src/analysis-chain.ts';
 import {
   actionsPerSecondFromIntervals,
   clearPlaybackCalibration,
@@ -61,7 +62,10 @@ const playing = (cursor = 0) => ({
   playing: true,
 });
 const emptyStrokes = (length: number) => Array.from({ length }, () => ({ presses: [] })) as never[];
-const timingAnalysis = (strokes: readonly any[]) => {
+const timingAnalysis = (
+  strokes: readonly any[],
+  chainPolicy?: ChainPolicy,
+) => {
   const normalized = strokes.map((source, index) => {
     const presses = (source.presses ?? []).map((raw: any) => {
       const keys = (raw.keys ?? []).map((key: any, keyIndex: number) => ({
@@ -104,7 +108,7 @@ const timingAnalysis = (strokes: readonly any[]) => {
       positions: source.positions ?? {},
     };
   });
-  return analyzeStrokeStructure(normalized as never[]);
+  return analyzeStrokeStructure(normalized as never[], chainPolicy);
 };
 
 const advancePlayback = (
@@ -262,6 +266,45 @@ test('速度グラフ用データはカーソルごとの集計入力と速度�
   assert.equal(points[3].inputText, 'あはい');
   assert.equal(points[3].kanaPerSecond, 2);
   assert.equal(points[3].actionsPerSecond, 2);
+});
+
+test('速度グラフのChain帯はAnalysis Chain所属を直接使う', () => {
+  const strokes = [
+    { presses: [{ finger: 'LP', keys: [{ id: 'a', x: 1, y: 2, row: 2 }] }] },
+    { presses: [{ finger: 'LP', sfb: true, keys: [{ id: 'q', x: 1, y: 1, row: 1 }] }] },
+    { presses: [{ finger: 'LR', keys: [{ id: 's', x: 2, y: 2, row: 2 }] }] },
+  ] as never[];
+  const policy = { ...DEFAULT_CHAIN_POLICY, breakOnSameFinger: false };
+  const analysis = timingAnalysis(strokes, policy);
+  const points = playbackRateChartDataAnalysis(analysis, 2);
+
+  assert.deepEqual(
+    points.slice(1).map((point) => point.chain),
+    analysis.strokes.map((_, strokeIndex) =>
+      analysis.chains.some((chain) =>
+        strokeIndex >= chain.startStrokeIndex && strokeIndex < chain.endStrokeIndex)),
+  );
+});
+
+test('速度グラフは旧デフォルトChain判定ではなく適用済みChainPolicyに従う', () => {
+  const strokes = [
+    { presses: [{ finger: 'LP', keys: [{ id: 'a', x: 1, y: 2, row: 2 }] }] },
+    { presses: [{ finger: 'LP', sfb: true, keys: [{ id: 'q', x: 1, y: 1, row: 1 }] }] },
+    { presses: [{ finger: 'LR', keys: [{ id: 's', x: 2, y: 2, row: 2 }] }] },
+  ] as never[];
+  // 旧表示helperの既定ではSFB Stroke自身はChain外。
+  assert.equal(playbackChainOrders(strokes, 2).size, 0);
+
+  const analysis = timingAnalysis(strokes, {
+    ...DEFAULT_CHAIN_POLICY,
+    breakOnSameFinger: false,
+  });
+  assert.equal(
+    analysis.chains.some((chain) =>
+      1 >= chain.startStrokeIndex && 1 < chain.endStrokeIndex),
+    true,
+  );
+  assert.equal(playbackRateChartDataAnalysis(analysis, 2)[2].chain, true);
 });
 
 test('個人キャリブレーションは通常打鍵と指移動を別々の速度として再生へ反映する', () => {
