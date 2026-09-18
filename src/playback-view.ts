@@ -7,10 +7,10 @@ import {
   playbackRomajiPlannedOrders, playbackOrderLabel, playbackRateChartData,
   playbackRecentActionsPerSecond, playbackRecentKanaPerSecond,
   playbackSameFingerKeyMotions, playbackRepeatedKeys,
-  playbackStrokeAt, playbackStepDurationMs, setPlaybackSameFingerDelay,
+  playbackStrokeAt, playbackStepDurationMs, playbackTimingSchedule, setPlaybackSameFingerDelay,
   setPlaybackStepsPerSecond, stepPlayback, playbackTrailKeys, playbackTrailOrders,
   playbackStrokeDisplay, setPlaybackCalibration, setPlaybackSpeedMultiplier,
-  type PlaybackStepsPerSecond, type PlaybackState, PLAYBACK_SPEED_MULTIPLIER_MAX,
+  type PlaybackStepsPerSecond, type PlaybackState, type PlaybackTimingStep, PLAYBACK_SPEED_MULTIPLIER_MAX,
   PLAYBACK_SPEED_MULTIPLIER_MIN, PLAYBACK_STEPS_PER_SECOND_MAX,
   PLAYBACK_STEPS_PER_SECOND_MIN,
 } from './playback.ts';
@@ -111,10 +111,23 @@ let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
 let playbackMotionCursor = -1;
 let playbackRateChartSignature: string | undefined;
+let playbackTiming: readonly PlaybackTimingStep[] = [];
 type PlaybackSettingsTab = 'display' | 'conditions';
 
 let playbackSettingsOpen = false;
 let playbackSettingsTab: PlaybackSettingsTab = 'display';
+
+function refreshPlaybackTiming(): void {
+  playbackTiming = playbackAnalysis
+    ? playbackTimingSchedule(
+      playbackAnalysis,
+      playbackState.stepsPerSecond,
+      playbackState.sameFingerDelay,
+      playbackState.calibration,
+      playbackState.speedMultiplier,
+    )
+    : [];
+}
 
 function setPlaybackSettingsOpen(open: boolean): void {
   playbackSettingsOpen = open;
@@ -209,12 +222,12 @@ function updatePlaybackView() {
   const fingerPositionKeys = ctx.getUiState().ui.playback.showFingers
     ? playbackPreparedFingerPositionKeys(
       playbackAnalysis,
+      playbackTiming,
       cursor,
       playbackState.elapsedMs,
       playbackGeometry,
       ctx.getUiState().ui.playback.fingerPreparationSeconds,
       playbackState.stepsPerSecond,
-      playbackState.sameFingerDelay,
       playbackState.calibration,
       playbackState.speedMultiplier,
     )
@@ -714,6 +727,7 @@ function renderPlayback(
     ctx.getUiState().ui.playback.useCalibration ? ctx.getCalibration() : undefined,
     ctx.getUiState().ui.playback.speedMultiplier,
   );
+  refreshPlaybackTiming();
   playbackMotionCursor = -1;
   playbackSeekWasPlaying = undefined;
   playbackRateChartSignature = undefined;
@@ -797,6 +811,7 @@ function syncPlaybackStateFromSettings(): void {
     settings.speedMultiplier,
   );
   playbackState = { ...playbackState, cursor };
+  refreshPlaybackTiming();
   playbackMotionCursor = -1;
   playbackRateChartSignature = undefined;
 }
@@ -947,6 +962,7 @@ function seekPlayback(value: string, playing = false) {
       const sameFingerDelay = target.closest<HTMLInputElement>('[data-playback-sfb-delay]');
       if (sameFingerDelay) {
         playbackState = setPlaybackSameFingerDelay(playbackState, sameFingerDelay.checked);
+        refreshPlaybackTiming();
         ctx.updatePlaybackSetting('sameFingerDelay', sameFingerDelay.checked);
         playbackMotionCursor = -1; updatePlaybackView(); return;
       }
@@ -981,6 +997,7 @@ function seekPlayback(value: string, playing = false) {
       if (calibration) {
         ctx.updatePlaybackSetting('useCalibration', calibration.checked);
         playbackState = setPlaybackCalibration(playbackState, ctx.getUiState().ui.playback.useCalibration ? ctx.getCalibration() : undefined);
+        refreshPlaybackTiming();
         updatePlaybackView(); return;
       }
       const rate = target.closest<HTMLInputElement>('input[data-playback-rate]');
@@ -988,6 +1005,7 @@ function seekPlayback(value: string, playing = false) {
         const value = Number(rate.value);
         if (Number.isFinite(value) && value >= PLAYBACK_STEPS_PER_SECOND_MIN && value <= PLAYBACK_STEPS_PER_SECOND_MAX) {
           playbackState = setPlaybackStepsPerSecond(playbackState, value as PlaybackStepsPerSecond);
+          refreshPlaybackTiming();
           ctx.updatePlaybackSetting('stepsPerSecond', value);
         }
         updatePlaybackView(); return;
@@ -997,6 +1015,7 @@ function seekPlayback(value: string, playing = false) {
         const value = Number(multiplier.value);
         if (Number.isFinite(value) && value >= PLAYBACK_SPEED_MULTIPLIER_MIN && value <= PLAYBACK_SPEED_MULTIPLIER_MAX) {
           playbackState = setPlaybackSpeedMultiplier(playbackState, value);
+          refreshPlaybackTiming();
           ctx.updatePlaybackSetting('speedMultiplier', value);
         }
         updatePlaybackView(); return;
@@ -1047,6 +1066,7 @@ function seekPlayback(value: string, playing = false) {
     clear: () => {
       cancelPlaybackAnimation();
       playbackTrace = undefined; playbackAnalysis = undefined; playbackGeometry = undefined; playbackLayout = undefined; playbackOptions = undefined;
+      playbackTiming = [];
           setPlaybackSettingsOpen(false);
       elements.playbackSettingsPanel.innerHTML = '';
       elements.playback.innerHTML = '';
@@ -1054,6 +1074,7 @@ function seekPlayback(value: string, playing = false) {
     update: updatePlaybackView,
     setCalibration: (calibration) => {
       playbackState = setPlaybackCalibration(playbackState, calibration);
+      refreshPlaybackTiming();
       updatePlaybackView();
     },
     getGeometry: () => playbackGeometry,
