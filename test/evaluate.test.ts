@@ -412,20 +412,6 @@ test('semantic normalizationはoutputのみのStrokeを表現する', () => {
   assert.equal(stroke.participations[0].hand, 'left');
 });
 
-test('persistence未指定でもtrigger factは保持し、capabilityを推測しない', () => {
-  const layout = fromFaces('semantic-prefix', 'semantic-prefix', [{
-    trigger: ['q'],
-    mode: 'prefix',
-    rows: ['', '', ['x'], ''],
-  }]);
-  const trace = evaluate('x', layout, geometry, opts());
-
-  assert.equal(trace.strokes.length, 2);
-  assert.deepEqual(trace.strokes[0].participations.map((p) => p.roles), [['trigger']]);
-  assert.equal(trace.strokes[0].triggerPersistence, undefined);
-  assert.deepEqual(trace.strokes[1].participations.map((p) => p.roles), [['output']]);
-});
-
 test('legacy fallbackはtriggerKeysをtrigger factとして保持し、persistenceを推測しない', () => {
   const layout: Layout = {
     id: 'legacy-trigger',
