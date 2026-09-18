@@ -129,6 +129,7 @@ test('prefix hold-capableはassociationでoutputへ保持を伝播しtrigger再�
     outputKeys: ['f'],
     triggerKeys: [] as string[],
     associatedTriggerKeys: ['q'],
+    associatedTriggerPersistence: 'hold-capable' as const,
   };
 
   const start = realizeTriggerStep(['q'], triggerSemantic, policy, undefined);
@@ -186,6 +187,45 @@ test('suffix hold-capableは次対象の別triggerを直前holdから誤伝播�
     && participation.holdPhase === 'start'));
 });
 
+test('suffix singleは同じtriggerでもactive holdを継承しない', () => {
+  const layout = fromFaces('suffix-single', 'suffix-single', [
+    {
+      trigger: ['q'],
+      mode: 'suffix',
+      rows: ['', '', ['', '', 'x'], ''],
+      inputRole: 'modifier',
+      triggerPersistence: 'hold-capable',
+    },
+    {
+      trigger: ['q'],
+      mode: 'suffix',
+      rows: ['', '', ['', '', '', 'y'], ''],
+      inputRole: 'modifier',
+      triggerPersistence: 'single',
+    },
+  ]);
+  const trace = evaluate('xy', layout, geometry, {
+    windowSize: 3,
+    sfbHomeCost: true,
+    triggerRealizationPolicy: { useHold: true },
+  });
+
+  const yOutput = trace.strokes.find((stroke) =>
+    stroke.char === 'y'
+    && stroke.participations.some((participation) => participation.roles.includes('output')));
+  assert.ok(yOutput);
+  assert.equal(yOutput.participations.some((participation) =>
+    participation.roles.includes('held-trigger')), false);
+
+  const yTrigger = trace.strokes.find((stroke) =>
+    stroke.char === 'y'
+    && stroke.participations.some((participation) => participation.roles.includes('trigger')));
+  assert.ok(yTrigger);
+  assert.equal(yTrigger.triggerPersistence, 'single');
+  assert.equal(yTrigger.participations.some((participation) =>
+    participation.roles.includes('held-trigger')), false);
+});
+
 test('suffix hold-capableは同じtriggerの次対象ならoutputへcontinueできる', () => {
   const layout = fromFaces('suffix-same', 'suffix-same', [{
     trigger: ['d'],
@@ -226,7 +266,8 @@ test('held triggerがoutputでもある場合はcontinueせずrelease/restartす
 
   assert.equal(trace.strokes.length, 2);
   for (const stroke of trace.strokes) {
-    assert.ok(stroke.presses.some((press) => press.keys.some((key) => key.id === 'a')));
+    assert.equal(stroke.presses.length, 1);
+    assert.deepEqual(stroke.presses[0].keys.map((key) => key.id), ['a']);
     assert.ok(stroke.participations.some((participation) =>
       participation.roles.includes('output')
       && participation.roles.includes('trigger')
@@ -235,6 +276,9 @@ test('held triggerがoutputでもある場合はcontinueせずrelease/restartす
     assert.equal(stroke.participations.some((participation) =>
       participation.holdPhase === 'continue'), false);
   }
+  const metrics = computeMetrics(trace, geometry);
+  assert.equal(metrics.presses, 2);
+  assert.equal(metrics.perCharPresses, 1);
 });
 
 test('associationが無いoutputでactive holdを終了する', () => {
