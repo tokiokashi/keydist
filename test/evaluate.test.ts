@@ -226,6 +226,17 @@ test('prefix配列のシフト単独ステップでも後続出力を見て反�
   assert.equal(oppositeRight.strokes[1].presses[0].keys[0].id, 'j');
 });
 
+test('新JIS prefixでも振り替え後の親指がtrigger semanticsへ伝播する', () => {
+  const shinJis = LAYOUT_BY_ID.get('shin-jis-prefix')!;
+  const trace = evaluate('お', shinJis, geometry, opts({ preferOppositeThumb: true }));
+
+  assert.equal(trace.strokes.length, 2);
+  assert.equal(trace.strokes[0].presses[0].keys[0].id, 'thumb-l');
+  assert.deepEqual(trace.strokes[0].triggerKeys, ['thumb-l']);
+  assert.deepEqual(trace.strokes[0].participations[0].roles, ['chord-trigger']);
+  assert.equal(trace.strokes[1].presses[0].keys[0].id, 'j');
+});
+
 test('薙刀式のシフトは設定時に出力キーと反対側の親指へ振り替える', () => {
   const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
   const fixed = evaluate('おせ', naginata, geometry, opts());
