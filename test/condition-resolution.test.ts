@@ -14,9 +14,11 @@ test('配列別条件は既定値へ部分的に重なる', () => {
     windowSize: 7,
     sfbHomeCost: true,
     preferOppositeThumb: false,
+    triggerRealizationPolicy: { useHold: false },
   });
   assert.deepEqual(resolved.chainPolicy, DEFAULT_CONDITION_DEFAULTS.chain);
   assert.deepEqual(resolved.arpeggioPolicy, DEFAULT_CONDITION_DEFAULTS.arpeggioPolicy);
+  assert.deepEqual(resolved.triggerRealizationPolicy, DEFAULT_CONDITION_DEFAULTS.triggerRealization);
 });
 
 test('配列別条件が空なら既定値と同じになる', () => {
