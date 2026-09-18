@@ -367,9 +367,9 @@
             <button type="submit" value="cancel" class="ghost close">閉じる</button>
           </div>
           <p class="note">
-            通常枠では通常速度・同手別指・指移動を測り、アルペジオ枠では異手と同手別指の方向別速度を測ります。選択中の配列で文字または句読点が刻印されたキーだけを使います。指移動はホーム段と下段の組で揃え、候補のない指は測定から除外します。測定中はこの画面で指定されたキーだけを押してください。
+            通常測定では通常速度・同手別指・指移動を測り、方向別Transition測定では異手と同手別指の有向Transition速度を測ります。選択中の配列で文字または句読点が刻印されたキーだけを使います。指移動はホーム段と下段の組で揃え、候補のない指は測定から除外します。測定中はこの画面で指定されたキーだけを押してください。
           </p>
-          <p id="playback-calibration-instruction">通常枠で通常速度・同手別指・指移動を測り、必要ならアルペジオ枠で方向別速度を測定します。</p>
+          <p id="playback-calibration-instruction">通常速度・同手別指・指移動を測り、必要なら方向別Transition Calibrationを追加で測定します。</p>
           <output class="calibration-progress" id="playback-calibration-progress" aria-live="polite"></output>
           <p class="error" id="playback-calibration-error" hidden></p>
         </div>
@@ -384,7 +384,7 @@
             <small class="calibration-live-prompt" data-calibration-live-prompt="actions"></small>
           </label>
           <div class="calibration-subsection">
-            <h4>異手・方向別速度（アルペジオ用）</h4>
+            <h4>異手・方向別Transition速度</h4>
             <div id="playback-calibration-directions"></div>
           </div>
           <label class="ctl">
@@ -397,7 +397,7 @@
             <div id="playback-calibration-same-hand-pairs"></div>
           </details>
           <details class="calibration-finger-details">
-            <summary>同手・別指の方向別速度（アルペジオ用）</summary>
+            <summary>同手・別指の有向Transition速度</summary>
             <div id="playback-calibration-directed-pairs"></div>
           </details>
           <label class="ctl">
@@ -414,7 +414,7 @@
           <button type="button" class="ghost" id="playback-calibration-discard">保存値をすべて破棄</button>
           <span class="spacer"></span>
           <button type="button" class="secondary" id="playback-calibration-start">測定を開始</button>
-          <button type="button" id="playback-calibration-arpeggio-start">アルペジオ用を測定</button>
+          <button type="button" id="playback-calibration-arpeggio-start">方向別Transitionを測定</button>
           <button type="button" id="playback-calibration-save" hidden>この値を保存</button>
         </div>
       </form>
