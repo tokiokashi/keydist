@@ -485,6 +485,43 @@ Timing durationのsourceにはせず、Roll / Redirect / Key / Point等の詳細
 Metrics condition snapshotへ載せるが、旧 `conditions.arpeggio` の削除・保存値migration・
 strict/loose preset撤去は#227のcutoverまで行わない。
 
+### 10.6 StrokeAnnotation / structural aggregation
+
+LongRoll / TwoRoll / RedirectEvent / SFB event / ArpeggioSpanはStroke本体へフラグを書き込まず、
+Stroke indexを使って**非排他的な派生Annotation**へ投影する。
+
+```ts
+type StrokeAnnotation = {
+  inLongRoll: boolean;
+  inTwoRoll: boolean;
+  inArpeggio: boolean;
+  inRedirect: boolean;
+  inSfb: boolean;
+};
+```
+
+- `inLongRoll`: LongRoll spanのunion
+- `inTwoRoll`: standalone TwoRoll両端のunion
+- `inArpeggio`: ArpeggioSpanのunion
+- `inRedirect`: RedirectEventのpivot Strokeのみ
+- `inSfb`: SFB event両端Strokeのunion
+- `inAnyRoll` は保存せず `inLongRoll || inTwoRoll` から派生する
+
+同一Strokeへ複数属性が同時に付いてよい。たとえばsame bridge後のStrokeは
+`inArpeggio=true` と `inSfb=true` を同時に持てる。
+
+構造集計は **raw countとcoverageを分離**する。
+
+- Arpeggio: raw Span数 / 平均Span長 / unique Stroke coverage
+- LongRoll / TwoRoll / AnyRoll: unique Stroke coverage
+- directional pair: HandTransition単位
+- Redirect: raw Event数 / unique pivot coverage
+- SFB: raw Transition event数 / unique関与Stroke coverage
+
+重複Spanや重複Eventはraw countでは保持し、coverageではStroke indexのunionとして1回だけ数える。
+集計結果には解決済み `ChainPolicy` / `ArpeggioPolicy` のimmutable snapshotを持たせ、
+後からUI stateが変わっても算出条件を追跡できるようにする。
+
 ## 11. 出力指標
 
 合成スコアは作らない。各指標を独立に出す。
