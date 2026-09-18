@@ -96,7 +96,6 @@ export const LAYOUTS: Layout[] = ALPHA.filter((l) => l.id !== 'oonishi-custom');
  * 各配列のissueのPRが、自分の定義とこの配列から一覧への移動を担当する。
  */
 export const KANA_PENDING: Layout[] = [
-  ASUKA,
 ];
 
 /**
@@ -124,6 +123,7 @@ export const LAYOUTS_JA: Layout[] = [
   NAGINATA_V18,
   NICOLA,
   SHIN_KOUME,
+  ASUKA,
   SHIN_JIS_PREFIX,
   SHIN_JIS_SIMULTANEOUS,
   SHINGETA,

@@ -299,6 +299,7 @@ test('面定義を出典フィクスチャの全セルと照合する（#83）',
   for (const id of [
     'naginata-v18',
     'nicola',
+    'asuka',
     'shin-jis-prefix',
     'shin-jis-simultaneous',
     'shingeta',
@@ -356,6 +357,7 @@ test('新JISは同じかな配置を逐次シフトと通常シフトで共有�
 
 test('かな配列七傑の未実装枠は一覧へ登録しない', () => {
   const pendingIds = ['asuka'];
+  const pendingIds = ['shin-koume'];
   const noThumbIds = new Set<string>();
   assert.deepEqual(KANA_PENDING.map((layout) => layout.id), pendingIds);
   for (const layout of KANA_PENDING) {

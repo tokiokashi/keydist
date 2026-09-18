@@ -88,8 +88,14 @@ export interface UiPlaybackState {
   /** 全指が次のPressへ物理的に到達できる時刻でTimingを律速する。 */
   allFingerMovementDelay: boolean;
   useCalibration: boolean;
+  /** 配列図上のAnalysis Chain表示。 */
   showChain: boolean;
+  /** 配列図上のArpeggioSpan表示。 */
   showArpeggio: boolean;
+  /** 速度グラフ上のAnalysis Chain背景帯。配列図表示とは独立。 */
+  showChainOnRateChart: boolean;
+  /** 速度グラフ上のArpeggioSpan背景帯。配列図表示とは独立。 */
+  showArpeggioOnRateChart: boolean;
   scale: number;
   stepsPerSecond: number;
   speedMultiplier: number;
@@ -243,6 +249,8 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
         useCalibration: options.usePlaybackCalibration,
         showChain: false,
         showArpeggio: false,
+        showChainOnRateChart: false,
+        showArpeggioOnRateChart: false,
         scale: 1.5,
         stepsPerSecond: DEFAULT_PLAYBACK_STEPS_PER_SECOND,
         speedMultiplier: DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
@@ -471,6 +479,12 @@ function sanitizePlaybackSettings(value: unknown, fallback: UiPlaybackState): Ui
     : rawShowChain;
   const legacyShowArpeggio = rawShowChain
     && legacyDisplay !== 'chain';
+  const showArpeggio = boolean(
+    playback.showArpeggio,
+    !hasModernArpeggioDisplay
+      ? legacyShowArpeggio
+      : fallback.showArpeggio,
+  );
   return {
     showFingers: boolean(playback.showFingers, fallback.showFingers),
     showRomajiPlan: boolean(playback.showRomajiPlan, fallback.showRomajiPlan),
@@ -497,12 +511,11 @@ function sanitizePlaybackSettings(value: unknown, fallback: UiPlaybackState): Ui
     useCalibration: boolean(playback.useCalibration, fallback.useCalibration),
     showChain,
     // arpeggioDisplayは旧保存値との互換用。新しい保存値ではshowArpeggioを優先する。
-    showArpeggio: boolean(
-      playback.showArpeggio,
-      !hasModernArpeggioDisplay
-        ? legacyShowArpeggio
-        : fallback.showArpeggio,
-    ),
+    showArpeggio,
+    // 独立設定が導入される前は配列図とグラフが同じ表示値を共有していた。
+    // 新フィールド未保存時はその実効値を引き継ぎ、見た目を変えずに移行する。
+    showChainOnRateChart: boolean(playback.showChainOnRateChart, showChain),
+    showArpeggioOnRateChart: boolean(playback.showArpeggioOnRateChart, showArpeggio),
     scale: numberInRange(playback.scale, 0.5, 4, fallback.scale),
     stepsPerSecond: numberInRange(
       playback.stepsPerSecond,

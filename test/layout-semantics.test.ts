@@ -15,6 +15,7 @@ const BUILTIN_KANA_IDS = [
   'naginata-v18',
   'nicola',
   'shin-koume',
+  'asuka',
   'shin-jis-prefix',
   'shin-jis-simultaneous',
   'shingeta',

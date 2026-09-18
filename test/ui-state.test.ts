@@ -68,6 +68,10 @@ test('画面状態を単一キーで保存・復元する', () => {
   state.ui.playback.stepsPerSecond = 3.2;
   state.ui.playback.fingerPreparationSeconds = 0.35;
   state.ui.playback.keyFeedbackStyle = 'bounce';
+  state.ui.playback.showChain = true;
+  state.ui.playback.showChainOnRateChart = false;
+  state.ui.playback.showArpeggio = false;
+  state.ui.playback.showArpeggioOnRateChart = true;
   state.conditions.defaults.playbackRateWindow = 24;
   state.ui.playback.allFingerMovementDelay = true;
   state.conditions.perLayout.oonishi = {
@@ -318,6 +322,34 @@ test('配列固有の打鍵再生設定は既定値からの差分だけ復元�
   });
 });
 
+test('配列図と速度グラフの構造表示は独立して保存・復元する', () => {
+  const fallback = defaults();
+  const value = structuredClone(fallback);
+  value.ui.playback.showChain = true;
+  value.ui.playback.showArpeggio = false;
+  value.ui.playback.showChainOnRateChart = false;
+  value.ui.playback.showArpeggioOnRateChart = true;
+
+  const state = sanitizeUiState(value, fallback, choices);
+  assert.equal(state.ui.playback.showChain, true);
+  assert.equal(state.ui.playback.showArpeggio, false);
+  assert.equal(state.ui.playback.showChainOnRateChart, false);
+  assert.equal(state.ui.playback.showArpeggioOnRateChart, true);
+});
+
+test('独立設定導入前の構造表示はグラフ側にも同じ実効値を引き継ぐ', () => {
+  const fallback = defaults();
+  const value = structuredClone(fallback) as unknown as Record<string, any>;
+  delete value.ui.playback.showChainOnRateChart;
+  delete value.ui.playback.showArpeggioOnRateChart;
+  value.ui.playback.showChain = true;
+  value.ui.playback.showArpeggio = false;
+
+  const state = sanitizeUiState(value, fallback, choices);
+  assert.equal(state.ui.playback.showChainOnRateChart, true);
+  assert.equal(state.ui.playback.showArpeggioOnRateChart, false);
+});
+
 test('同指移動の表示設定はモデル設定と独立して保存・復元する', () => {
   const fallback = defaults();
   assert.equal(fallback.ui.playback.sameFingerDelay, true);
@@ -346,6 +378,8 @@ test('旧アルペジオ表示範囲は実効表示を保ったまま個別表�
       const value = structuredClone(fallback);
       const playback = value.ui.playback as unknown as Record<string, unknown>;
       delete playback.showArpeggio;
+      delete playback.showChainOnRateChart;
+      delete playback.showArpeggioOnRateChart;
       playback.showChain = savedShowChain;
       if (legacyDisplay === undefined) delete playback.arpeggioDisplay;
       else playback.arpeggioDisplay = legacyDisplay;
@@ -355,10 +389,17 @@ test('旧アルペジオ表示範囲は実効表示を保ったまま個別表�
         {
           showChain: state.ui.playback.showChain,
           showArpeggio: state.ui.playback.showArpeggio,
+          showChainOnRateChart: state.ui.playback.showChainOnRateChart,
+          showArpeggioOnRateChart: state.ui.playback.showArpeggioOnRateChart,
         },
         {
           showChain: legacyDisplay === 'arpeggio' ? false : savedShowChain,
           showArpeggio: savedShowChain
+            && (legacyDisplay === undefined
+              || legacyDisplay === 'arpeggio'
+              || legacyDisplay === 'both'),
+          showChainOnRateChart: legacyDisplay === 'arpeggio' ? false : savedShowChain,
+          showArpeggioOnRateChart: savedShowChain
             && (legacyDisplay === undefined
               || legacyDisplay === 'arpeggio'
               || legacyDisplay === 'both'),
