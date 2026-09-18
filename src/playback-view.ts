@@ -7,7 +7,7 @@ import {
   playbackRomajiPlannedOrders, playbackOrderLabel, playbackRateChartData,
   playbackRecentActionsPerSecond, playbackRecentKanaPerSecond,
   playbackSameFingerKeyMotions, playbackRepeatedKeys,
-  playbackStrokeAt, playbackStepDurationMs, playbackTimingSchedule, playbackCursorForEquivalentInputPosition, reconcilePlaybackStateAfterAnalysisRefresh, setPlaybackSameFingerDelay,
+  playbackStrokeAt, playbackStepDurationMs, playbackTimingSchedule, playbackTimingStepDurationMs, playbackCursorForEquivalentInputPosition, reconcilePlaybackStateAfterAnalysisRefresh, setPlaybackSameFingerDelay,
   setPlaybackStepsPerSecond, stepPlayback, playbackTrailKeys, playbackTrailOrders,
   playbackStrokeDisplay, setPlaybackCalibration, setPlaybackSpeedMultiplier,
   type PlaybackStepsPerSecond, type PlaybackState, type PlaybackTimingStep, PLAYBACK_SPEED_MULTIPLIER_MAX,
@@ -123,6 +123,7 @@ let playbackSettingsTab: PlaybackSettingsTab = 'display';
 let preserveStateOnNextRender: PlaybackPreserveMode | undefined;
 
 function refreshPlaybackTiming(): void {
+  const settings = ctx.getPlaybackSettings();
   playbackTiming = playbackAnalysis
     ? playbackTimingSchedule(
       playbackAnalysis,
@@ -130,8 +131,13 @@ function refreshPlaybackTiming(): void {
       playbackState.sameFingerDelay,
       playbackState.calibration,
       playbackState.speedMultiplier,
+      {
+        allFingerMovementDelay: settings.allFingerMovementDelay && playbackGeometry !== undefined,
+        geometry: playbackGeometry,
+      },
     )
     : [];
+  playbackRateChartSignature = undefined;
 }
 
 function setPlaybackSettingsOpen(open: boolean): void {
@@ -183,6 +189,7 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
       <div class="playback-dialog-grid">
         <label class="playback-speed"><span>標準速度</span><input type="number" data-playback-rate min="${PLAYBACK_STEPS_PER_SECOND_MIN}" max="${PLAYBACK_STEPS_PER_SECOND_MAX}" step="any" value="${playbackState.stepsPerSecond}" aria-label="再生の標準速度（ステップ毎秒）" /> <span>ステップ/秒</span></label>
         <label class="playback-finger-toggle" title="同じ指の連続打鍵に指の移動速度を反映。個人速度が無ければ距離に比例した簡易換算で代用"><input type="checkbox" data-playback-sfb-delay${playbackState.sameFingerDelay ? ' checked' : ''} />指の移動速度を考慮</label>
+        <label class="playback-finger-toggle" title="全指について次のPressまでの物理移動時間を確認し、base Timingに間に合わないStrokeだけ必要量を延長"><input type="checkbox" data-playback-all-finger-delay${ctx.getUiState().ui.playback.allFingerMovementDelay ? ' checked' : ''} />全指の移動時間で律速</label>
         <label class="playback-finger-toggle" title="キャリブレーションした通常速度・Transition方向別速度・指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${ctx.getUiState().ui.playback.useCalibration ? ' checked' : ''}${ctx.getCalibration() ? '' : ' disabled'} />個人速度を適用</label>
         <button type="button" class="ghost" data-playback-action="calibration-edit">${ctx.getCalibration() ? '保存値を確認・編集' : '個人速度を測定'}</button>
       </div>
@@ -376,6 +383,7 @@ function updatePlaybackView() {
   const sameFingerMotion = settingsRoot.querySelector<HTMLInputElement>('[data-playback-same-finger-motion]');
   const scale = settingsRoot.querySelector<HTMLInputElement>('input[data-playback-scale]');
   const sameFingerDelay = settingsRoot.querySelector<HTMLInputElement>('[data-playback-sfb-delay]');
+  const allFingerMovementDelay = settingsRoot.querySelector<HTMLInputElement>('[data-playback-all-finger-delay]');
   const chain = settingsRoot.querySelector<HTMLInputElement>('[data-playback-chain]');
   const calibration = settingsRoot.querySelector<HTMLInputElement>('[data-playback-calibration]');
   const showArpeggio = settingsRoot.querySelector<HTMLInputElement>('[data-playback-arpeggio]');
@@ -428,6 +436,7 @@ function updatePlaybackView() {
       speedMultiplier: playbackState.speedMultiplier,
       sameFingerDelay: playbackState.sameFingerDelay,
       calibration: playbackState.calibration,
+      allFingerMovementDelay: ctx.getUiState().ui.playback.allFingerMovementDelay,
       dynamicDisplay,
       strokeCount: playbackTrace.strokes.length,
     });
@@ -439,6 +448,7 @@ function updatePlaybackView() {
         10,
         playbackState.calibration,
         playbackState.speedMultiplier,
+        playbackTiming,
       ), dynamicDisplay);
       playbackRateChartSignature = chartSignature;
     }
@@ -484,6 +494,9 @@ function updatePlaybackView() {
   if (sameFingerMotion) sameFingerMotion.checked = ctx.getUiState().ui.playback.showSameFingerMotion;
   if (scale) scale.value = String(ctx.getUiState().ui.playback.scale);
   if (sameFingerDelay) sameFingerDelay.checked = playbackState.sameFingerDelay;
+  if (allFingerMovementDelay) {
+    allFingerMovementDelay.checked = ctx.getUiState().ui.playback.allFingerMovementDelay;
+  }
   if (chain) chain.checked = ctx.getUiState().ui.playback.showChain;
   if (showArpeggio) showArpeggio.checked = ctx.getUiState().ui.playback.showArpeggio;
   if (calibration) {
@@ -531,6 +544,7 @@ function updatePlaybackView() {
       10,
       playbackState.calibration,
       playbackState.speedMultiplier,
+      playbackTiming,
     );
     effectiveKanaRate.textContent = value === undefined
       ? '実効 — かな/秒'
@@ -545,6 +559,7 @@ function updatePlaybackView() {
       10,
       playbackState.calibration,
       playbackState.speedMultiplier,
+      playbackTiming,
     );
     effectiveRate.textContent = value === undefined
       ? '実効 — アクション/秒'
@@ -600,16 +615,21 @@ function renderPlaybackMotions(
   for (const key of elements.playback.querySelectorAll<SVGGElement>('[data-playback-key]')) {
     sourceKeys.set(key.dataset.playbackKey!, key);
   }
+  const durationIndex = Math.max(0, cursor - 1);
   const durationMs = Math.max(
     150,
-    Math.min(1500, playbackStepDurationMs(
-      playbackAnalysis!,
-      Math.max(0, cursor - 1),
-      playbackState.stepsPerSecond,
-      playbackState.sameFingerDelay,
-      playbackState.calibration,
-      playbackState.speedMultiplier,
-    )),
+    Math.min(
+      1500,
+      playbackTimingStepDurationMs(playbackTiming, durationIndex)
+        ?? playbackStepDurationMs(
+          playbackAnalysis!,
+          durationIndex,
+          playbackState.stepsPerSecond,
+          playbackState.sameFingerDelay,
+          playbackState.calibration,
+          playbackState.speedMultiplier,
+        ),
+    ),
   );
   let motionIndex = 0;
   for (const motion of motions) {
@@ -722,6 +742,7 @@ function renderPlayback(
 ) {
   const previousAnalysis = playbackAnalysis;
   const previousState = playbackState;
+  const previousTiming = playbackTiming;
   const preserveMode = preserveStateOnNextRender;
   preserveStateOnNextRender = undefined;
   const preserveState = preserveMode !== undefined && previousAnalysis !== undefined;
@@ -745,6 +766,17 @@ function renderPlayback(
       previousState.cursor,
     )
     : previousState.cursor;
+  const nextTiming = playbackTimingSchedule(
+    analysis,
+    nextBaseState.stepsPerSecond,
+    nextBaseState.sameFingerDelay,
+    nextBaseState.calibration,
+    nextBaseState.speedMultiplier,
+    {
+      allFingerMovementDelay: nextSettings.allFingerMovementDelay,
+      geometry,
+    },
+  );
   playbackState = preserveState
     ? reconcilePlaybackStateAfterAnalysisRefresh(
       previousState,
@@ -752,9 +784,11 @@ function renderPlayback(
       previousAnalysis,
       analysis,
       nextCursor,
+      previousTiming,
+      nextTiming,
     )
     : nextBaseState;
-  refreshPlaybackTiming();
+  playbackTiming = nextTiming;
   playbackMotionCursor = -1;
   playbackSeekWasPlaying = undefined;
   playbackRateChartSignature = undefined;
@@ -839,6 +873,7 @@ function playbackFrame(timestamp: number) {
       playbackState,
       timestamp - playbackLastTimestamp,
       playbackAnalysis,
+      playbackTiming,
     );
     playbackLastTimestamp = timestamp;
     updatePlaybackView();
@@ -981,6 +1016,15 @@ function refreshStructuralAnalysis(): void {
         refreshPlaybackTiming();
         ctx.updatePlaybackSetting('sameFingerDelay', sameFingerDelay.checked);
         playbackMotionCursor = -1; updatePlaybackView(); return;
+      }
+      const allFingerDelay = target.closest<HTMLInputElement>('[data-playback-all-finger-delay]');
+      if (allFingerDelay) {
+        ctx.updatePlaybackSetting('allFingerMovementDelay', allFingerDelay.checked);
+        playbackState = { ...playbackState, elapsedMs: 0 };
+        refreshPlaybackTiming();
+        playbackMotionCursor = -1;
+        updatePlaybackView();
+        return;
       }
       const sameFingerMotion = target.closest<HTMLInputElement>('[data-playback-same-finger-motion]');
       if (sameFingerMotion) {
