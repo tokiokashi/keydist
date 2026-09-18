@@ -111,6 +111,7 @@ test('保存形式はuiとconditionsに分かれ、canonical条件だけ復元�
   value.conditions.defaults = {
     geometry: 'column-staggered',
     windowSize: 5,
+    playbackRateWindow: 20,
     sfbHomeCost: false,
     preferOppositeThumb: true,
     chain: {
