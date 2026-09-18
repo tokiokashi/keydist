@@ -166,7 +166,7 @@
         </section>
 
         <section class="panel compare-panel">
-          <h2>総移動距離<button type="button" class="info" data-tip="全指の移動距離の合計。ホームポジションからどれだけ移動したかの指標。" aria-label="全指の移動距離の合計。ホームポジションからどれだけ移動したかの指標。">i</button></h2>
+          <h2>配列比較<button type="button" class="info" data-tip="配列ごとの移動距離、入力効率、運指統計を比較する。" aria-label="配列ごとの移動距離、入力効率、運指統計を比較する。">i</button></h2>
           <label class="ctl">
             <span>比較元</span>
             <select id="compare-baseline" title="選ぶと比較元を100%とした比率を表示する。比較できない項目は — と表示する。">
@@ -176,13 +176,13 @@
           <label class="ctl">
             <span>棒グラフの項目</span>
             <select id="compare-chart-metric" title="棒グラフの項目を選ぶ。表を並び替えるとその列に追従する。">
-              <option value="1">距離 [u]</option>
+              <option value="1">距離</option>
             </select>
           </label>
           <div id="compare-chart"></div>
           <div class="scroll-x"><table id="compare"></table></div>
           <p class="note">
-            総移動距離は小さい候補を採った下界。実際の運指はこれ以上になる。
+            距離は各打鍵で採用された短い候補の累積値。実際の運指ではこれ以上になる場合がある。
           </p>
         </section>
 
