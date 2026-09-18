@@ -251,7 +251,6 @@ export function evaluate(
       const realization = realizeTriggerStep(
         baseStep,
         semantic,
-        layerId,
         options.triggerRealizationPolicy ?? DEFAULT_TRIGGER_REALIZATION_POLICY,
         triggerHoldState,
       );
@@ -383,6 +382,15 @@ function resolveStepSemantic(
       ...declared,
       outputKeys: remapSemanticKeys(declared.outputKeys, layout, remappedShiftKey),
       triggerKeys: remapSemanticKeys(declared.triggerKeys, layout, remappedShiftKey),
+      ...(declared.associatedTriggerKeys !== undefined
+        ? {
+            associatedTriggerKeys: remapSemanticKeys(
+              declared.associatedTriggerKeys,
+              layout,
+              remappedShiftKey,
+            ),
+          }
+        : {}),
     };
   }
 
