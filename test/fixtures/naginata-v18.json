@@ -3,7 +3,7 @@
   "layoutId": "naginata-v18",
   "source": {
     "url": "https://oookaworks.up.seesaa.net/image/E89699E58880E5BC8Fv18.txt",
-    "sha": "source-file-2026-07-14",
+    "sha": "6472668ee04443367b346f620450b22b794ef5f1a044287e2733c7f9f01afa04",
     "path": "薙刀式v18.txt",
     "transform": "DvorakJ v18の音の配列表から、実装対象の33面を選び、JIS 13/12/12/11列をANSI 12/12/11/10列へ先頭列対応で投影する"
   },
