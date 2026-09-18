@@ -331,9 +331,9 @@ th, td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--li
 th:first-child, td:first-child { text-align: left; }
 thead th { color: var(--muted); font-weight: 600; font-size: 0.74rem; }
 #compare { table-layout: fixed; font-size: 0.76rem; }
-#compare th, #compare td { padding-inline: 5px; }
-#compare th { white-space: nowrap; }
-#compare th:first-child { width: 14%; }
+#compare th, #compare td { padding-inline: 4px; }
+#compare th { white-space: nowrap; font-size: 0.70rem; }
+#compare th:first-child { width: 13%; }
 #compare td:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .table-sort { cursor: pointer; }
 .table-sort:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
