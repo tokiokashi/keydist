@@ -21,6 +21,11 @@ export const DEFAULT_PLAYBACK_SPEED_MULTIPLIER = 1;
 export const PLAYBACK_RATE_WINDOW_MIN = 1;
 export const PLAYBACK_RATE_WINDOW_MAX = 50;
 export const DEFAULT_PLAYBACK_RATE_WINDOW = 10;
+export type PlaybackRateAverage = 'sma' | 'ewma';
+export const DEFAULT_PLAYBACK_RATE_AVERAGE: PlaybackRateAverage = 'sma';
+export const PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN = 0.1;
+export const PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX = 10;
+export const DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS = 1;
 
 /** 非アクティブなタブから戻った時の一気送りを防ぐため、1フレームの経過時間を制限する。 */
 const MAX_FRAME_MS = 100;
@@ -941,6 +946,69 @@ function playbackRateWindowInputText(
   return inputs.join('');
 }
 
+interface PlaybackEwmaRate {
+  inputText: string;
+  kanaPerSecond?: number;
+  actionsPerSecond?: number;
+}
+
+function playbackEwmaRate(
+  analysis: AggregatedAnalysisResult,
+  cursor: number,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  sameFingerDelay: boolean,
+  halfLifeSeconds: number,
+  calibration?: PlaybackCalibration,
+  speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+  schedule?: readonly PlaybackTimingStep[],
+): PlaybackEwmaRate | undefined {
+  const strokes = analysis.strokes;
+  const end = clampPlaybackCursor(cursor, strokes.length);
+  if (end === 0 || halfLifeSeconds <= 0) return undefined;
+
+  let actionRate: number | undefined;
+  let kanaRate = 0;
+  let completedKana = 0;
+  const completedInputs: string[] = [];
+
+  for (let index = 0; index < end; index++) {
+    const durationMs = playbackTimingStepDurationMs(schedule, index)
+      ?? playbackStepDurationMs(
+        analysis,
+        index,
+        stepsPerSecond,
+        sameFingerDelay,
+        calibration,
+        speedMultiplier,
+      );
+    if (!(durationMs > 0)) continue;
+
+    const decay = 2 ** (-(durationMs / 1000) / halfLifeSeconds);
+    const actionInstant = 1000 / durationMs;
+    actionRate = actionRate === undefined
+      ? actionInstant
+      : decay * actionRate + (1 - decay) * actionInstant;
+
+    const inputIndex = strokes[index].inputIndex;
+    const nextStartsNewInput = index + 1 >= strokes.length
+      || strokes[index + 1].inputIndex !== inputIndex;
+    const completedHere = nextStartsNewInput
+      ? Array.from(strokes[index].inputChar).length
+      : 0;
+    kanaRate = decay * kanaRate + (1 - decay) * ((completedHere * 1000) / durationMs);
+    if (completedHere > 0) {
+      completedKana += completedHere;
+      completedInputs.push(strokes[index].inputChar);
+    }
+  }
+
+  return {
+    inputText: completedInputs.slice(-6).join(''),
+    kanaPerSecond: completedKana > 0 ? kanaRate : undefined,
+    actionsPerSecond: actionRate,
+  };
+}
+
 /** 直近の完了済みStrokeを確定Timingで割った移動平均アクション毎秒。 */
 export function playbackRecentActionsPerSecond(
   analysis: AggregatedAnalysisResult,
@@ -951,7 +1019,21 @@ export function playbackRecentActionsPerSecond(
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   schedule?: readonly PlaybackTimingStep[],
+  average: PlaybackRateAverage = DEFAULT_PLAYBACK_RATE_AVERAGE,
+  halfLifeSeconds = DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
 ): number | undefined {
+  if (average === 'ewma') {
+    return playbackEwmaRate(
+      analysis,
+      cursor,
+      stepsPerSecond,
+      sameFingerDelay,
+      halfLifeSeconds,
+      calibration,
+      speedMultiplier,
+      schedule,
+    )?.actionsPerSecond;
+  }
   const recent = playbackRecentRateWindow(
     analysis,
     cursor,
@@ -977,7 +1059,21 @@ export function playbackRecentKanaPerSecond(
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   schedule?: readonly PlaybackTimingStep[],
+  average: PlaybackRateAverage = DEFAULT_PLAYBACK_RATE_AVERAGE,
+  halfLifeSeconds = DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
 ): number | undefined {
+  if (average === 'ewma') {
+    return playbackEwmaRate(
+      analysis,
+      cursor,
+      stepsPerSecond,
+      sameFingerDelay,
+      halfLifeSeconds,
+      calibration,
+      speedMultiplier,
+      schedule,
+    )?.kanaPerSecond;
+  }
   const strokes = analysis.strokes;
   const recent = playbackRecentRateWindow(
     analysis,
@@ -1014,24 +1110,14 @@ export function playbackRateChartData(
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   schedule?: readonly PlaybackTimingStep[],
+  average: PlaybackRateAverage = DEFAULT_PLAYBACK_RATE_AVERAGE,
+  halfLifeSeconds = DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
 ): PlaybackRateChartPoint[] {
   const strokes = analysis.strokes;
   const points: PlaybackRateChartPoint[] = [{ cursor: 0, inputText: '' }];
   for (let cursor = 1; cursor <= strokes.length; cursor++) {
-    const recent = playbackRecentRateWindow(
-      analysis,
-      cursor,
-      stepsPerSecond,
-      sameFingerDelay,
-      limit,
-      calibration,
-      speedMultiplier,
-      schedule,
-    );
-    points.push({
-      cursor,
-      inputText: recent ? playbackRateWindowInputText(strokes, recent) : '',
-      kanaPerSecond: playbackRecentKanaPerSecond(
+    const recent = average === 'sma'
+      ? playbackRecentRateWindow(
         analysis,
         cursor,
         stepsPerSecond,
@@ -1040,10 +1126,40 @@ export function playbackRateChartData(
         calibration,
         speedMultiplier,
         schedule,
-      ),
-      actionsPerSecond: recent && recent.durationMs > 0
-        ? ((recent.end - recent.start) * 1000) / recent.durationMs
-        : undefined,
+      )
+      : undefined;
+    const ewma = average === 'ewma'
+      ? playbackEwmaRate(
+        analysis,
+        cursor,
+        stepsPerSecond,
+        sameFingerDelay,
+        halfLifeSeconds,
+        calibration,
+        speedMultiplier,
+        schedule,
+      )
+      : undefined;
+    points.push({
+      cursor,
+      inputText: ewma?.inputText ?? (recent ? playbackRateWindowInputText(strokes, recent) : ''),
+      kanaPerSecond: average === 'ewma'
+        ? ewma?.kanaPerSecond
+        : playbackRecentKanaPerSecond(
+          analysis,
+          cursor,
+          stepsPerSecond,
+          sameFingerDelay,
+          limit,
+          calibration,
+          speedMultiplier,
+          schedule,
+        ),
+      actionsPerSecond: average === 'ewma'
+        ? ewma?.actionsPerSecond
+        : recent && recent.durationMs > 0
+          ? ((recent.end - recent.start) * 1000) / recent.durationMs
+          : undefined,
       chain: analysis.chains.some((chain) =>
         cursor - 1 >= chain.startStrokeIndex && cursor - 1 < chain.endStrokeIndex),
       arpeggio: analysis.annotations[cursor - 1]?.inArpeggio ?? false,
