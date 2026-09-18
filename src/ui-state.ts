@@ -430,8 +430,8 @@ export function sanitizeConditionOverrides(
   if (isRecord(source.playback)) {
     // 空オブジェクトも「配列固有設定を有効にした」印として保持する。
     result.playback = sanitizePlaybackOverrides(source.playback, playbackFallback);
-    // #227の移行期間: 旧chain表示設定が保存されていて新Policyが無い場合だけ、
-    // 意味が一意に対応する項目をPolicyへ移す。旧フィールド自体はまだ残す。
+    // cutover時、旧chain表示設定が保存されていて新Policyが無い場合だけ、
+    // 意味が一意に対応する項目をPolicyへ移す。旧フィールドは保存結果へ残さない。
     if (!isRecord(source.chain)
       && ('chainIncludeSameFinger' in source.playback || 'chainIncludeLayerKeys' in source.playback)) {
       const legacyPlayback = record(source.playback);
@@ -652,18 +652,28 @@ function hasArpeggioModelMigration(value: unknown): boolean {
 
   if (isRecord(defaults.arpeggio)
     || 'arpeggioEnabled' in playback
-    || 'arpeggioDelayMode' in playback
-    || 'chainIncludeSameFinger' in playback
-    || 'chainIncludeLayerKeys' in playback) return true;
+    || 'arpeggioDelayMode' in playback) return true;
 
   return Object.values(perLayout).some((candidate) => {
     const override = record(candidate);
     const overridePlayback = record(override.playback);
     return isRecord(override.arpeggio)
       || 'arpeggioEnabled' in overridePlayback
-      || 'arpeggioDelayMode' in overridePlayback
-      || 'chainIncludeSameFinger' in overridePlayback
-      || 'chainIncludeLayerKeys' in overridePlayback;
+      || 'arpeggioDelayMode' in overridePlayback;
+  });
+}
+
+function hasCutoverModelMigration(value: unknown): boolean {
+  if (hasArpeggioModelMigration(value)) return true;
+  const root = record(value);
+  const ui = record(root.ui);
+  const playback = record(ui.playback);
+  const conditions = record(root.conditions);
+  const perLayout = record(conditions.perLayout);
+  if ('chainIncludeSameFinger' in playback || 'chainIncludeLayerKeys' in playback) return true;
+  return Object.values(perLayout).some((candidate) => {
+    const overridePlayback = record(record(candidate).playback);
+    return 'chainIncludeSameFinger' in overridePlayback || 'chainIncludeLayerKeys' in overridePlayback;
   });
 }
 
@@ -682,8 +692,9 @@ export function loadUiState(
     if (raw !== null) {
       const parsed = JSON.parse(raw);
       const migratedArpeggioModel = hasArpeggioModelMigration(parsed);
+      const migratedCutoverModel = hasCutoverModelMigration(parsed);
       const state = sanitizeUiState(parsed, defaults, choices);
-      if (migratedArpeggioModel) saveUiState(storage, state);
+      if (migratedCutoverModel) saveUiState(storage, state);
       return { state, migratedLegacy: false, migratedArpeggioModel };
     }
 
