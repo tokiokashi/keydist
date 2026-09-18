@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { test } from 'node:test';
 import {
   type SourceManifest,
@@ -28,11 +28,17 @@ function makeManifest(): SourceManifest {
 }
 
 test('現在のかな source manifest は omission 完全性検証を通る（#201）', () => {
-  for (const id of ['naginata-v18', 'nicola', 'shingeta', 'tsuki-2-263']) {
+  const sourceDir = new URL('./fixtures/sources/', import.meta.url);
+  const fileNames = readdirSync(sourceDir)
+    .filter((name) => name.endsWith('.json'))
+    .sort();
+
+  assert.ok(fileNames.length > 0);
+  for (const fileName of fileNames) {
     const manifest = JSON.parse(
-      readFileSync(new URL(`./fixtures/sources/${id}.json`, import.meta.url), 'utf8'),
+      readFileSync(new URL(fileName, sourceDir), 'utf8'),
     ) as SourceManifest;
-    assert.doesNotThrow(() => validateSourceManifest(`${id}.json`, manifest));
+    assert.doesNotThrow(() => validateSourceManifest(fileName, manifest));
   }
 });
 
