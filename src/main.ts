@@ -1404,12 +1404,17 @@ function renderGlobalDelayControls(parent: HTMLElement): void {
   sameFingerInput.addEventListener('change', () => {
     updateUiState((draft) => { draft.ui.playback.sameFingerDelay = sameFingerInput.checked; }); renderConditionDescription(); render();
   }); sameFinger.append(sameFingerInput, ' 指の移動速度を考慮');
+  const allFinger = document.createElement('label'); const allFingerInput = document.createElement('input');
+  allFingerInput.type = 'checkbox'; allFingerInput.checked = playback.allFingerMovementDelay;
+  allFingerInput.addEventListener('change', () => {
+    updateUiState((draft) => { draft.ui.playback.allFingerMovementDelay = allFingerInput.checked; }); renderConditionDescription(); render();
+  }); allFinger.append(allFingerInput, ' 全指の移動時間で律速');
   const calibration = document.createElement('label'); const calibrationInput = document.createElement('input');
   calibrationInput.type = 'checkbox'; calibrationInput.checked = playback.useCalibration; calibrationInput.disabled = !playbackCalibration;
   calibrationInput.addEventListener('change', () => {
     updateUiState((draft) => { draft.ui.playback.useCalibration = calibrationInput.checked; }); renderConditionDescription(); render();
   }); calibration.append(calibrationInput, ' 個人速度を使う');
-  fields.append(speed, multiplier, sameFinger, calibration);
+  fields.append(speed, multiplier, sameFinger, allFinger, calibration);
   parent.append(fields);
 }
 
