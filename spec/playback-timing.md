@@ -213,6 +213,7 @@ arrival    = min(T, start + move)
 ```
 
 `move` は既存Calibrationの指移動速度を使い、無い場合は§3.3のfallbackと同じ正規化を使う。
+`held-trigger/continue` は次のPress候補にはしないが、保持中はその指が塞がっているため `previousFingerActionEnd` のclamp対象に含める。
 この表示処理はTimingを遅らせない。物理的に `T` より前へ到着できない場合は、
 その指の表示だけを `T` で切り替える。
 
