@@ -731,6 +731,13 @@ function renderPlayback(
   playbackGeometry = geometry;
   playbackLayout = layout;
   playbackOptions = options;
+  const nextSettings = ctx.getPlaybackSettings();
+  const nextBaseState = createPlaybackState(
+    nextSettings.stepsPerSecond,
+    nextSettings.sameFingerDelay,
+    nextSettings.useCalibration ? ctx.getCalibration() : undefined,
+    nextSettings.speedMultiplier,
+  );
   const nextCursor = preserveMode === 'input-position' && previousAnalysis
     ? playbackCursorForEquivalentInputPosition(
       previousAnalysis.strokes,
@@ -741,16 +748,12 @@ function renderPlayback(
   playbackState = preserveState
     ? reconcilePlaybackStateAfterAnalysisRefresh(
       previousState,
+      nextBaseState,
       previousAnalysis,
       analysis,
       nextCursor,
     )
-    : createPlaybackState(
-      ctx.getUiState().ui.playback.stepsPerSecond,
-      ctx.getUiState().ui.playback.sameFingerDelay,
-      ctx.getUiState().ui.playback.useCalibration ? ctx.getCalibration() : undefined,
-      ctx.getUiState().ui.playback.speedMultiplier,
-    );
+    : nextBaseState;
   refreshPlaybackTiming();
   playbackMotionCursor = -1;
   playbackSeekWasPlaying = undefined;
