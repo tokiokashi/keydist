@@ -17,13 +17,18 @@ const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => 
   col: 0,
 });
 
-const press = (finger: Finger, keys: Key[], target?: Point): Press => ({
+const press = (
+  finger: Finger,
+  keys: Key[],
+  target?: Point,
+  sfb = false,
+): Press => ({
   finger,
   keys,
   target: target ?? { x: keys[0].x, y: keys[0].y },
   gap: 1,
   distance: 0,
-  sfb: false,
+  sfb,
 });
 
 const participation = (p: Press): StrokeParticipation => ({
@@ -89,7 +94,7 @@ test('1 Stroke / 1 handに複数Pressがある場合もPress×Press直積をす�
 test('飛び指とgeometry factをcandidate削減なしで保持する', () => {
   const strokes = [
     stroke(0, [press('LP', [key('a', 'LP', 0, 2)])]),
-    stroke(1, [press('LI', [key('r', 'LI', 3.5, 1)])]),
+    stroke(1, [press('LI', [key('r', 'LI', 3.5, 1)], undefined, true)]),
   ];
   const candidate = analyzeStrokeTransitions(strokes, keepSameFinger)
     .transitions[0].candidates[0];
