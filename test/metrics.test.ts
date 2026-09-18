@@ -7,6 +7,7 @@ import { LAYOUTS_JA, LAYOUT_BY_ID, type Layout } from '../src/layouts/index.ts';
 import { dist } from '../src/geometry.ts';
 import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '../src/sample-text-ja.ts';
 import { DEFAULT_CHAIN_POLICY } from '../src/analysis-chain.ts';
+import { DEFAULT_ARPEGGIO_POLICY } from '../src/analysis-arpeggio.ts';
 
 const geometry = buildGeometry('row-staggered');
 // LAYOUT_BY_IDの 'qwerty' はローマ字テーブル付きのJA版で上書きされる。
@@ -38,6 +39,10 @@ test('Metricsは数値を算出した測定条件をスナップショットで�
       ...DEFAULT_CHAIN_POLICY,
       breakOnOppositeHandSimultaneous: true,
     },
+    arpeggioPolicy: {
+      ...DEFAULT_ARPEGGIO_POLICY,
+      bridgeSameFinger: true,
+    },
     romajiRuleId: 'qwerty',
   });
 
@@ -48,6 +53,10 @@ test('Metricsは数値を算出した測定条件をスナップショットで�
     chainPolicy: {
       ...DEFAULT_CHAIN_POLICY,
       breakOnOppositeHandSimultaneous: true,
+    },
+    arpeggioPolicy: {
+      ...DEFAULT_ARPEGGIO_POLICY,
+      bridgeSameFinger: true,
     },
     romajiRuleId: 'qwerty',
   });

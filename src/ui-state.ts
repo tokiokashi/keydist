@@ -4,6 +4,10 @@ import {
   chainPolicyFromLegacyUi,
   type ChainPolicy,
 } from './analysis-chain.ts';
+import {
+  DEFAULT_ARPEGGIO_POLICY,
+  type ArpeggioPolicy,
+} from './analysis-arpeggio.ts';
 import { isCustomGeometryKind, isPresetGeometryKind, type GeometryKind } from './geometry.ts';
 import {
   DEFAULT_GEOMETRY_SETTINGS,
@@ -46,6 +50,8 @@ export interface UiStateConditionsDefaults {
   sfbHomeCost: boolean;
   preferOppositeThumb: boolean;
   chain: ChainPolicy;
+  /** 新structural analysis用。旧arpeggio schemaはcutoverまで並存する。 */
+  arpeggioPolicy: ArpeggioPolicy;
   arpeggio: ArpeggioConditions;
 }
 
@@ -86,6 +92,7 @@ export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
   sfbHomeCost: true,
   preferOppositeThumb: false,
   chain: { ...DEFAULT_CHAIN_POLICY },
+  arpeggioPolicy: { ...DEFAULT_ARPEGGIO_POLICY },
   arpeggio: { ...DEFAULT_ARPEGGIO_CONDITIONS },
 };
 
@@ -273,6 +280,18 @@ function chainPolicy(value: unknown, fallback: ChainPolicy): ChainPolicy {
   };
 }
 
+function arpeggioPolicy(value: unknown, fallback: ArpeggioPolicy): ArpeggioPolicy {
+  const source = record(value);
+  return {
+    includeThumb: boolean(source.includeThumb, fallback.includeThumb),
+    bridgeSameFinger: boolean(source.bridgeSameFinger, fallback.bridgeSameFinger),
+    includeSingleRedirectTail: boolean(
+      source.includeSingleRedirectTail,
+      fallback.includeSingleRedirectTail,
+    ),
+  };
+}
+
 function arpeggio(value: unknown, fallback: ArpeggioConditions): ArpeggioConditions {
   const source = record(value);
   const minHorizontalSpread = numberInRange(
@@ -343,6 +362,9 @@ function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults
   if (isRecord(source.chain)) {
     result.chain = chainPolicy(source.chain, DEFAULT_CHAIN_POLICY);
   }
+  if (isRecord(source.arpeggioPolicy)) {
+    result.arpeggioPolicy = arpeggioPolicy(source.arpeggioPolicy, DEFAULT_ARPEGGIO_POLICY);
+  }
   if (isRecord(source.arpeggio)) {
     result.arpeggio = arpeggio(source.arpeggio, DEFAULT_ARPEGGIO_CONDITIONS);
   }
@@ -369,6 +391,7 @@ export function sanitizeConditionDefaults(
     sfbHomeCost: values.sfbHomeCost ?? fallback.sfbHomeCost,
     preferOppositeThumb: values.preferOppositeThumb ?? fallback.preferOppositeThumb,
     chain: values.chain ?? fallback.chain,
+    arpeggioPolicy: values.arpeggioPolicy ?? fallback.arpeggioPolicy,
     arpeggio: values.arpeggio ?? fallback.arpeggio,
   };
 }
