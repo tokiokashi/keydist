@@ -1,4 +1,4 @@
-import { ALL_FINGERS, keyId, type Finger, type Geometry } from './geometry.ts';
+import { ALL_FINGERS, keyId, resolveKeyId, type Finger, type Geometry } from './geometry.ts';
 import { classifyFaces, faceCells, foldedLayerCells, type Layer } from './layers.ts';
 import type { Stroke } from './evaluate.ts';
 import type { Layout } from './layouts/types.ts';
