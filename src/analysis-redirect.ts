@@ -1,0 +1,154 @@
+import type { Finger } from './geometry.ts';
+import type { Hand } from './analysis-chain.ts';
+import {
+  analyzeStrokeTransitions,
+  type FingerTransition,
+  type TransitionAnalysisResult,
+} from './analysis-transition.ts';
+import type { Stroke } from './evaluate.ts';
+import type { ChainPolicy } from './analysis-chain.ts';
+
+export interface RedirectCandidate {
+  readonly candidateIndex: number;
+  readonly beforeCandidateIndex: number;
+  readonly afterCandidateIndex: number;
+  readonly fromFinger: Finger;
+  readonly pivotFinger: Finger;
+  readonly toFinger: Finger;
+}
+
+/**
+ * 3 Stroke window内に方向反転pathが1本以上存在するという局所event。
+ * candidate数によらず1 windowにつき最大1件。
+ */
+export interface RedirectEvent {
+  /** 1回のAnalysisResult内で安定するindex。stable IDではない。 */
+  readonly redirectIndex: number;
+  readonly chainIndex: number;
+  readonly hand: Hand;
+  readonly pivotStrokeIndex: number;
+  readonly beforeTransitionIndex: number;
+  readonly afterTransitionIndex: number;
+  readonly candidates: readonly RedirectCandidate[];
+}
+
+export interface RedirectAnalysisResult extends TransitionAnalysisResult {
+  readonly redirects: readonly RedirectEvent[];
+}
+
+function isDirectional(candidate: FingerTransition): boolean {
+  return candidate.fingerDirection !== 'same';
+}
+
+function reversesDirection(
+  before: FingerTransition,
+  after: FingerTransition,
+): boolean {
+  return isDirectional(before)
+    && isDirectional(after)
+    && before.fingerDirection !== after.fingerDirection;
+}
+
+/**
+ * before.to と after.from が同じpivot Stroke上の同じPress / participationを指すことを確認する。
+ * 別pivot候補の継ぎ接ぎで架空のredirect pathを作らない。
+ */
+function samePivotParticipation(
+  before: FingerTransition,
+  after: FingerTransition,
+): boolean {
+  if (before.toPressIndex !== after.fromPressIndex) return false;
+  if (before.toFinger !== after.fromFinger) return false;
+
+  const beforeParticipation = before.toParticipationIndex;
+  const afterParticipation = after.fromParticipationIndex;
+  if (beforeParticipation !== undefined && afterParticipation !== undefined) {
+    return beforeParticipation === afterParticipation;
+  }
+  return beforeParticipation === afterParticipation;
+}
+
+function redirectCandidates(
+  before: TransitionAnalysisResult['transitions'][number],
+  after: TransitionAnalysisResult['transitions'][number],
+): readonly RedirectCandidate[] {
+  const candidates: RedirectCandidate[] = [];
+
+  for (const beforeCandidate of before.candidates) {
+    for (const afterCandidate of after.candidates) {
+      if (!samePivotParticipation(beforeCandidate, afterCandidate)) continue;
+      if (!reversesDirection(beforeCandidate, afterCandidate)) continue;
+
+      candidates.push(Object.freeze({
+        candidateIndex: candidates.length,
+        beforeCandidateIndex: beforeCandidate.candidateIndex,
+        afterCandidateIndex: afterCandidate.candidateIndex,
+        fromFinger: beforeCandidate.fromFinger,
+        pivotFinger: beforeCandidate.toFinger,
+        toFinger: afterCandidate.toFinger,
+      }));
+    }
+  }
+
+  return Object.freeze(candidates);
+}
+
+/**
+ * 同一Analysis Chain内で隣接する2 Transitionを3 Stroke windowとして走査する。
+ *
+ * Redirectはpure runではなく「実在する反転pathがある」というexistential factなので、
+ * pivot Strokeが対象手の複数Pressを含むこと自体では除外しない。
+ */
+export function buildRedirectEvents(
+  analysis: TransitionAnalysisResult,
+): readonly RedirectEvent[] {
+  const events: RedirectEvent[] = [];
+
+  for (const chain of analysis.chains) {
+    const transitions = analysis.transitions.filter(
+      (transition) => transition.chainIndex === chain.chainIndex,
+    );
+
+    for (let index = 0; index + 1 < transitions.length; index++) {
+      const before = transitions[index];
+      const after = transitions[index + 1];
+
+      // 同じChain内でも将来非連続Transitionが入る拡張に備え、3 Stroke windowを明示検証する。
+      if (before.toStrokeIndex !== after.fromStrokeIndex) continue;
+      if (before.hand !== after.hand) continue;
+
+      const candidates = redirectCandidates(before, after);
+      if (candidates.length === 0) continue;
+
+      events.push(Object.freeze({
+        redirectIndex: events.length,
+        chainIndex: chain.chainIndex,
+        hand: chain.hand,
+        pivotStrokeIndex: before.toStrokeIndex,
+        beforeTransitionIndex: before.transitionIndex,
+        afterTransitionIndex: after.transitionIndex,
+        candidates,
+      }));
+    }
+  }
+
+  return Object.freeze(events);
+}
+
+export function analyzeRedirects(
+  transitionAnalysis: TransitionAnalysisResult,
+): RedirectAnalysisResult {
+  const redirects = buildRedirectEvents(transitionAnalysis);
+  return Object.freeze({
+    ...transitionAnalysis,
+    redirects,
+  });
+}
+
+/** 呼び出し側向けの合成入口。 */
+export function analyzeStrokeRedirects(
+  strokes: readonly Stroke[],
+  policy?: ChainPolicy,
+): RedirectAnalysisResult {
+  return analyzeRedirects(analyzeStrokeTransitions(strokes, policy));
+}
