@@ -62,6 +62,11 @@ Analysis Chain内の隣接Strokeからは、手ごとの **Transition fact** を
 決めません。同じ指のcandidateを持つTransitionはSFB eventとして数え、event数と
 関与Strokeのcoverageは別に扱います。
 
+3 Stroke内で指の方向が反転する場合は **RedirectEvent** として別に保持します。
+同時押しのpivotでも実在する同じpivot Pressを通る反転pathがあればcandidateにでき、
+candidateが複数でも1 windowのEventは1件です。別のpivot finger同士を継ぎ接ぎして
+架空のredirectを作ることはありません。
+
 薙刀式には、センターシフトを出力キーと反対側の親指へ振り替える設定があります。既定は定義どおり右親指で、
 設定をオンにすると片手だけの出力に対して逆側の親指を優先します。連続する同時押しシフトは、同じ親指キーが続く場合に
 既存の `g = 0` の規則で親指が残った扱いになります。
