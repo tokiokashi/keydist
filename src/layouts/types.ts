@@ -182,21 +182,11 @@ export function fromRows(
       outputKeys: [THUMB_KEY.LT],
       triggerKeys: [],
     }]);
-    stepSemantics.set(thumbs.LT, [{
-      inputRole: 'layer',
-      outputKeys: [THUMB_KEY.LT],
-      triggerKeys: [],
-    }]);
   }
   if (thumbs.RT) {
     map.set(thumbs.RT, [[THUMB_KEY.RT]]);
     stepLayers.set(thumbs.RT, [SINGLE_LAYER_ID]);
     stepTriggerKeys.set(thumbs.RT, [[]]);
-    stepSemantics.set(thumbs.RT, [{
-      inputRole: 'layer',
-      outputKeys: [THUMB_KEY.RT],
-      triggerKeys: [],
-    }]);
     stepSemantics.set(thumbs.RT, [{
       inputRole: 'layer',
       outputKeys: [THUMB_KEY.RT],
@@ -288,11 +278,21 @@ export function fromFaces(
     map.set(thumbs.LT, [[THUMB_KEY.LT]]);
     stepLayers.set(thumbs.LT, [baseLayerId]);
     stepTriggerKeys.set(thumbs.LT, [[]]);
+    stepSemantics.set(thumbs.LT, [{
+      inputRole: 'layer',
+      outputKeys: [THUMB_KEY.LT],
+      triggerKeys: [],
+    }]);
   }
   if (thumbs.RT) {
     map.set(thumbs.RT, [[THUMB_KEY.RT]]);
     stepLayers.set(thumbs.RT, [baseLayerId]);
     stepTriggerKeys.set(thumbs.RT, [[]]);
+    stepSemantics.set(thumbs.RT, [{
+      inputRole: 'layer',
+      outputKeys: [THUMB_KEY.RT],
+      triggerKeys: [],
+    }]);
   }
   return {
     id,
