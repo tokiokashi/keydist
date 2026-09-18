@@ -25,15 +25,14 @@ const face = (
   trigger: string[],
   mode: FaceMode,
   entries: Record<string, string>,
+  triggerBehavior?: Face['triggerBehavior'],
 ): Face => ({
   ...faceFromEntries(trigger, mode, entries),
   inputRole: trigger.length > 0 ? 'modifier' : 'layer',
-  ...(trigger.length > 0
-    ? { triggerBehavior: mode === 'simultaneous' ? 'chord' as const : 'one-shot' as const }
-    : {}),
+  ...(trigger.length > 0 && triggerBehavior !== undefined ? { triggerBehavior } : {}),
 });
 
-function shinJisFaces(mode: FaceMode): Face[] {
+function shinJisFaces(mode: FaceMode, triggerBehavior: NonNullable<Face['triggerBehavior']>): Face[] {
   return [
     face([], mode, {
       q: 'そ', w: 'け', e: 'せ', r: 'て', t: 'ょ', y: 'つ', u: 'ん', i: 'の', o: 'を', p: 'り', '[': 'ち',
@@ -44,7 +43,7 @@ function shinJisFaces(mode: FaceMode): Face[] {
       q: 'ぁ', w: '゜', e: 'ほ', r: 'ふ', t: 'め', y: 'ひ', u: 'え', i: 'み', o: 'や', p: 'ぬ', '[': '「',
       a: 'ぃ', s: 'へ', d: 'ら', f: 'ゅ', g: 'よ', h: 'ま', j: 'お', k: 'も', l: 'わ', ';': 'ゆ', "'": '」',
       z: 'ぅ', x: 'ぇ', c: 'ぉ', v: 'ね', b: 'ゃ', n: 'む', m: 'ろ', ',': '・', '.': 'ー',
-    }),
+    }, triggerBehavior),
   ];
 }
 
@@ -99,8 +98,13 @@ function appendComposed(layout: Layout, entries: Record<string, string>, mark: s
   layout.stepSemantics = stepSemantics;
 }
 
-function makeLayout(id: string, name: string, mode: FaceMode): Layout {
-  const layout = fromFaces(id, name, shinJisFaces(mode));
+function makeLayout(
+  id: string,
+  name: string,
+  mode: FaceMode,
+  triggerBehavior: NonNullable<Face['triggerBehavior']>,
+): Layout {
+  const layout = fromFaces(id, name, shinJisFaces(mode, triggerBehavior));
   appendComposed(layout, VOICED, '゛');
   appendComposed(layout, SEMI_VOICED, '゜');
 
@@ -110,5 +114,10 @@ function makeLayout(id: string, name: string, mode: FaceMode): Layout {
   return layout;
 }
 
-export const SHIN_JIS_PREFIX = makeLayout('shin-jis-prefix', '新JIS（逐次シフト）', 'prefix');
-export const SHIN_JIS_SIMULTANEOUS = makeLayout('shin-jis-simultaneous', '新JIS（通常シフト）', 'simultaneous');
+export const SHIN_JIS_PREFIX = makeLayout('shin-jis-prefix', '新JIS（逐次シフト）', 'prefix', 'one-shot');
+export const SHIN_JIS_SIMULTANEOUS = makeLayout(
+  'shin-jis-simultaneous',
+  '新JIS（通常シフト）',
+  'simultaneous',
+  'chord',
+);
