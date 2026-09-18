@@ -740,15 +740,17 @@ function isActualPressParticipation(
   return participation.roles.includes('output') || participation.roles.includes('trigger');
 }
 
-function previousFingerActionEndMs(
+function previousFingerOccupancyEndMs(
   strokes: readonly Stroke[],
   schedule: readonly PlaybackTimingStep[],
   beforeStrokeIndex: number,
   finger: Finger,
 ): number {
   for (let index = beforeStrokeIndex - 1; index >= 0; index--) {
+    // held-trigger/continue は次のPressではないが、その指は保持中で移動できない。
+    // 実Pressだけでなくparticipation全体を見て、最後に指が塞がるStrokeの終了までclampする。
     if (strokes[index].participations.some((participation) =>
-      participation.finger === finger && isActualPressParticipation(participation))) {
+      participation.finger === finger)) {
       return schedule[index]?.endMs ?? 0;
     }
   }
@@ -836,7 +838,7 @@ export function playbackPreparedFingerPositionKeys(
     const idealStartMs = pressTimeMs - preparationMs - moveMs;
     const actualStartMs = Math.max(
       idealStartMs,
-      previousFingerActionEndMs(strokes, schedule, targetIndex, finger),
+      previousFingerOccupancyEndMs(strokes, schedule, targetIndex, finger),
     );
     const arrivalMs = Math.min(pressTimeMs, actualStartMs + moveMs);
     if (nowMs < arrivalMs) continue;
