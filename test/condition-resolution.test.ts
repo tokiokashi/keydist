@@ -15,6 +15,7 @@ test('配列別条件は既定値へ部分的に重なる', () => {
     sfbHomeCost: true,
     preferOppositeThumb: false,
   });
+  assert.deepEqual(resolved.chainPolicy, DEFAULT_CONDITION_DEFAULTS.chain);
 });
 
 test('配列別条件が空なら既定値と同じになる', () => {

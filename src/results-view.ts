@@ -3,6 +3,7 @@ import {
   assignmentWithHomeKeys, type GeometryKind,
 } from './geometry.ts';
 import { evaluate, type Options, type Trace } from './evaluate.ts';
+import { analyzeChains, sameChainPolicy, type ChainAnalysisResult } from './analysis-chain.ts';
 import { computeMetrics, type LayerStat, type Metrics } from './metrics.ts';
 import { normalizedLayerColors } from './layer-heatmap.ts';
 import { nSensitivity } from './sensitivity.ts';
@@ -25,6 +26,7 @@ import { buildGeometry } from './geometry.ts';
 export interface Result {
   layout: Layout;
   trace: Trace;
+  analysis: ChainAnalysisResult;
   metrics: Metrics;
   geometry: ReturnType<typeof buildGeometry>;
   options: Options;
@@ -93,13 +95,16 @@ function render() {
       );
       const geometry = geometryFor(conditions.geometry, layout);
       const trace = evaluate(text, layout, geometry, conditions.options);
+      const analysis = analyzeChains(trace.strokes, conditions.chainPolicy);
       return {
         layout,
         trace,
+        analysis,
         metrics: computeMetrics(trace, geometry, {
           windowSize: conditions.options.windowSize,
           sfbHomeCost: conditions.options.sfbHomeCost,
           preferOppositeThumb: conditions.options.preferOppositeThumb ?? false,
+          chainPolicy: conditions.chainPolicy,
           romajiRuleId: ctx.romajiRuleIdForLayout(layout),
         }),
         geometry,
@@ -222,6 +227,7 @@ function metricConditionText(metrics: Metrics, layout: Layout): string {
     metrics.conditions.windowSize !== defaults.windowSize ? `N=${metrics.conditions.windowSize}` : '',
     metrics.conditions.sfbHomeCost !== defaults.sfbHomeCost ? 'SFBホーム設定変更' : '',
     metrics.conditions.preferOppositeThumb !== defaults.preferOppositeThumb ? '逆側親指設定変更' : '',
+    !sameChainPolicy(metrics.conditions.chainPolicy, defaults.chain) ? 'Chain境界設定変更' : '',
     override?.romajiRule !== undefined ? `ローマ字: ${override.romajiRule}` : '',
     override?.arpeggio !== undefined ? 'アルペジオ: 配列個別設定' : '',
   ].filter(Boolean);
@@ -526,8 +532,16 @@ function showSensitivityPlaceholder(message = 'N感度はパネルを開くと�
 function renderSensitivity(text: string, results: readonly Result[]) {
   const range = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const relative = ctx.getUiState().ui.sensitivity.scale === 'relative';
-  const series = results.map(({ layout, slot, geometry, options }) => {
-    const points = nSensitivity(text, layout, geometry, options, range, ctx.romajiRuleIdForLayout(layout));
+  const series = results.map(({ layout, slot, geometry, options, analysis }) => {
+    const points = nSensitivity(
+      text,
+      layout,
+      geometry,
+      options,
+      range,
+      ctx.romajiRuleIdForLayout(layout),
+      analysis.chainPolicy,
+    );
     const base = points[0].totalUnits || 1;
     return {
       name: sensitivityLabel(layout, options, geometry),

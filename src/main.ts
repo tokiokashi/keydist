@@ -88,6 +88,7 @@ import {
   type ConditionPreset,
 } from './condition-presets.ts';
 import { setLayoutGeometryOverride } from './condition-resolution.ts';
+import { chainPolicyFromLegacyUi, legacyUiFromChainPolicy } from './analysis-chain.ts';
 import {
   conditionBundleFromState,
   parseConditionBundle,
@@ -1554,21 +1555,26 @@ function isPlaybackLayoutOverride(): boolean {
 
 function playbackViewUiState(): UiStateV1 {
   const layoutId = currentPlaybackLayoutId();
-  if (!layoutId) return uiState;
-  const layoutConditions = uiState.conditions.perLayout[layoutId];
+  const layoutConditions = layoutId ? uiState.conditions.perLayout[layoutId] : undefined;
   const playback = layoutConditions?.playback;
   const arpeggio = layoutConditions?.arpeggio;
-  if (playback === undefined && arpeggio === undefined) return uiState;
+  const chain = layoutConditions?.chain ?? uiState.conditions.defaults.chain;
   return {
     ...uiState,
     ui: {
       ...uiState.ui,
-      playback: { ...uiState.ui.playback, ...playback },
+      // #227移行期間は旧UIフィールドを残すが、表示へ渡す値はcanonical ChainPolicyから導出する。
+      playback: {
+        ...uiState.ui.playback,
+        ...playback,
+        ...legacyUiFromChainPolicy(chain),
+      },
     },
     conditions: {
       ...uiState.conditions,
       defaults: {
         ...uiState.conditions.defaults,
+        chain,
         ...(arpeggio === undefined ? {} : { arpeggio }),
       },
     },
@@ -1583,14 +1589,46 @@ function updatePlaybackSetting<K extends keyof UiPlaybackState>(
   updateUiState((draft) => {
     const hasLayoutOverride = layoutId !== undefined
       && conditionOverrideEnabled(layoutId, draft);
+    const chainSetting = key === 'chainIncludeSameFinger' || key === 'chainIncludeLayerKeys';
     if (hasLayoutOverride && layoutId) {
-      const current = draft.conditions.perLayout[layoutId];
+      const current = draft.conditions.perLayout[layoutId] ?? {};
+      const baseChain = current.chain ?? draft.conditions.defaults.chain;
+      let playback = { ...current.playback, [key]: value };
+      let chain = current.chain;
+      if (chainSetting) {
+        const legacyChain = legacyUiFromChainPolicy(baseChain);
+        const nextLegacyChain = {
+          chainIncludeSameFinger: key === 'chainIncludeSameFinger' && typeof value === 'boolean'
+            ? value
+            : legacyChain.chainIncludeSameFinger,
+          chainIncludeLayerKeys: key === 'chainIncludeLayerKeys' && typeof value === 'boolean'
+            ? value
+            : legacyChain.chainIncludeLayerKeys,
+        };
+        chain = chainPolicyFromLegacyUi(nextLegacyChain, baseChain);
+        playback = { ...playback, ...nextLegacyChain };
+      }
       draft.conditions.perLayout[layoutId] = {
         ...current,
-        playback: { ...current?.playback, [key]: value },
+        playback,
+        ...(chain === undefined ? {} : { chain }),
       };
     } else {
       draft.ui.playback[key] = value;
+      if (chainSetting) {
+        const legacyChain = {
+          ...legacyUiFromChainPolicy(draft.conditions.defaults.chain),
+          [key]: value,
+        };
+        draft.conditions.defaults.chain = chainPolicyFromLegacyUi(
+          legacyChain,
+          draft.conditions.defaults.chain,
+        );
+        Object.assign(
+          draft.ui.playback,
+          legacyUiFromChainPolicy(draft.conditions.defaults.chain),
+        );
+      }
     }
   });
 }

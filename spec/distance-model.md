@@ -337,6 +337,37 @@ position(f, i) = target(f, i)                  if f is pressed at i
                  H_f                            otherwise
 ```
 
+### 10.1 構造解析用のRaw hand runとAnalysis Chain
+
+打鍵列の構造解析では、正規化済みStrokeからいきなりChain境界を決めない。
+まず各Strokeの `StrokeParticipation` を手ごとに投影し、連続してその手が参加した区間を
+**Raw hand run** として作る。この段階で保持するのは参加factだけで、同指・trigger・親指・
+逆手同時入力を理由に区切る判断はしない。
+
+Raw hand runへ **ChainPolicy** を適用した結果が **Analysis Chain** である。
+現時点でPolicyが持つ境界条件は次の3つ。
+
+- `breakOnSameFinger`: 同指移動Strokeを境界にする。既定 `true`（従来の
+  `chainIncludeSameFinger=false` と同じ）
+- `breakOnTriggerOnly`: 新規triggerだけでoutputを持たないStrokeを境界にする。
+  既定 `false`（従来の `chainIncludeLayerKeys=true` と同じ）
+- `breakOnOppositeHandSimultaneous`: 同じStrokeに逆手のoutputがある場合を境界にする。
+  既定 `false`
+
+親指only、特にlayer/modifier操作由来の親指only Strokeを境界にするかは未決であり、
+既定値を置かない。Raw hand run側には `thumbOnly` / `thumbTriggerOnly` のfactを残し、
+後でPolicyを追加できるようにする。TriggerPersistenceは「hold可能か」という能力なので、
+実際のhold利用やChain境界の推測には使わない。
+
+Analysis結果はStrokeを複製せず、1回の結果内で安定する `StrokeIndex` と
+`chainIndex` で参照する。永続的なstable IDは作らない。後段のRoll / Redirect /
+Arpeggio等の構造要素はAnalysis Chain境界を越えてはならない。
+
+ChainPolicyは測定条件の一部として `conditions.defaults` / `conditions.perLayout` で
+配列ごとに解決し、`Metrics.conditions` のsnapshotにも保存する（§12.3）。
+旧 `ui.playback.chainIncludeSameFinger` / `chainIncludeLayerKeys` は移行期間の互換入口として
+残すが、意味が一意に対応する項目だけをadapterでChainPolicyへ変換する。
+
 ## 11. 出力指標
 
 合成スコアは作らない。各指標を独立に出す。

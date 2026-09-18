@@ -50,6 +50,12 @@ g > N        →  d(ホーム, 今のキー)                 復帰済み
 
 詳細は [spec/distance-model.md](spec/distance-model.md)。
 
+構造解析では、正規化したStrokeを手ごとの参加factで **Raw hand run** にまとめた後、
+ChainPolicyを適用して **Analysis Chain** を作ります。semantic normalization自体は
+Chain境界を決めません。同指・trigger-only・逆手同時入力は独立したPolicy条件で、
+親指だけのlayer/modifier操作を区切るかは未決のため推測していません。
+ChainPolicyは配列ごとの測定条件として数値のsnapshotにも残します。
+
 薙刀式には、センターシフトを出力キーと反対側の親指へ振り替える設定があります。既定は定義どおり右親指で、
 設定をオンにすると片手だけの出力に対して逆側の親指を優先します。連続する同時押しシフトは、同じ親指キーが続く場合に
 既存の `g = 0` の規則で親指が残った扱いになります。

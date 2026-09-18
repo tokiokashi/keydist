@@ -1,5 +1,6 @@
 import { ADJACENT_PAIRS, ALL_FINGERS, dist, type Finger, type Geometry } from './geometry.ts';
 import type { Trace } from './evaluate.ts';
+import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from './analysis-chain.ts';
 import { COMBO_LAYER_ID } from './layouts/types.ts';
 
 /**
@@ -127,6 +128,8 @@ export interface MetricConditions {
   sfbHomeCost: boolean;
   /** 親指シフトを出力キーと反対側の親指へ振り替えたか */
   preferOppositeThumb: boolean;
+  /** Analysis Chainを作ったChainPolicy。 */
+  chainPolicy: ChainPolicy;
   /** ローマ字入力に使った綴り規則の識別子。かな直接入力はnull */
   romajiRuleId: string | null;
 }
@@ -135,6 +138,7 @@ export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
   windowSize: 3,
   sfbHomeCost: true,
   preferOppositeThumb: false,
+  chainPolicy: { ...DEFAULT_CHAIN_POLICY },
   romajiRuleId: null,
 };
 
@@ -248,7 +252,7 @@ export function computeMetrics(
     geometryName: geometry.name,
     fingerAssignmentId: geometry.assignment.id,
     fingerAssignmentName: geometry.assignment.name,
-    conditions: { ...conditions },
+    conditions: { ...conditions, chainPolicy: { ...conditions.chainPolicy } },
     strokes: n,
     presses,
     skipped: trace.skipped,
