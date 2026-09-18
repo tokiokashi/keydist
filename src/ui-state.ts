@@ -17,11 +17,15 @@ import {
 } from './geometry-settings.ts';
 import type { ModeId } from './layout-selection.ts';
 import {
+  DEFAULT_PLAYBACK_RATE_AVERAGE,
+  DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
   DEFAULT_PLAYBACK_RATE_WINDOW,
   DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   DEFAULT_PLAYBACK_STEPS_PER_SECOND,
   PLAYBACK_SPEED_MULTIPLIER_MAX,
   PLAYBACK_SPEED_MULTIPLIER_MIN,
+  PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX,
+  PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN,
   PLAYBACK_RATE_WINDOW_MAX,
   PLAYBACK_RATE_WINDOW_MIN,
   PLAYBACK_STEPS_PER_SECOND_MAX,
@@ -88,7 +92,10 @@ export interface UiPlaybackState {
 }
 
 /** 配列ごとに既定値から上書きする差分。空のplaybackは個別設定の有効化を表す。 */
-export type UiStateLayoutConditions = Partial<Omit<UiStateConditionsDefaults, 'playbackRateWindow'>> & {
+export type UiStateLayoutConditions = Partial<Omit<
+  UiStateConditionsDefaults,
+  'playbackRateAverage' | 'playbackRateWindow' | 'playbackRateHalfLifeSeconds'
+>> & {
   romajiRule?: string;
   playback?: Partial<UiPlaybackState>;
 };
@@ -100,7 +107,9 @@ export type UiStateConditionOverride = UiStateLayoutConditions;
 export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
   geometry: 'row-staggered',
   windowSize: 3,
+  playbackRateAverage: DEFAULT_PLAYBACK_RATE_AVERAGE,
   playbackRateWindow: DEFAULT_PLAYBACK_RATE_WINDOW,
+  playbackRateHalfLifeSeconds: DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
   sfbHomeCost: true,
   preferOppositeThumb: false,
   chain: { ...DEFAULT_CHAIN_POLICY },
@@ -363,11 +372,20 @@ function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults
     && source.windowSize <= 12) {
     result.windowSize = source.windowSize;
   }
+  if (source.playbackRateAverage === 'sma' || source.playbackRateAverage === 'ewma') {
+    result.playbackRateAverage = source.playbackRateAverage;
+  }
   if (typeof source.playbackRateWindow === 'number'
     && Number.isInteger(source.playbackRateWindow)
     && source.playbackRateWindow >= PLAYBACK_RATE_WINDOW_MIN
     && source.playbackRateWindow <= PLAYBACK_RATE_WINDOW_MAX) {
     result.playbackRateWindow = source.playbackRateWindow;
+  }
+  if (typeof source.playbackRateHalfLifeSeconds === 'number'
+    && Number.isFinite(source.playbackRateHalfLifeSeconds)
+    && source.playbackRateHalfLifeSeconds >= PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN
+    && source.playbackRateHalfLifeSeconds <= PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX) {
+    result.playbackRateHalfLifeSeconds = source.playbackRateHalfLifeSeconds;
   }
   if (typeof source.sfbHomeCost === 'boolean') result.sfbHomeCost = source.sfbHomeCost;
   if (typeof source.preferOppositeThumb === 'boolean') {
@@ -403,7 +421,12 @@ function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults
 }
 
 function validLayoutConditionValues(value: unknown): UiStateLayoutConditions {
-  const { playbackRateWindow: _globalOnly, ...layoutValues } = validConditionValues(value);
+  const {
+    playbackRateAverage: _globalAverage,
+    playbackRateWindow: _globalWindow,
+    playbackRateHalfLifeSeconds: _globalHalfLife,
+    ...layoutValues
+  } = validConditionValues(value);
   const result: UiStateLayoutConditions = layoutValues;
   const source = record(value);
   if (typeof source.romajiRule === 'string' && /^[a-z0-9][a-z0-9-]*$/i.test(source.romajiRule)) {
@@ -420,7 +443,9 @@ export function sanitizeConditionDefaults(
   return {
     geometry: values.geometry ?? fallback.geometry,
     windowSize: values.windowSize ?? fallback.windowSize,
+    playbackRateAverage: values.playbackRateAverage ?? fallback.playbackRateAverage,
     playbackRateWindow: values.playbackRateWindow ?? fallback.playbackRateWindow,
+    playbackRateHalfLifeSeconds: values.playbackRateHalfLifeSeconds ?? fallback.playbackRateHalfLifeSeconds,
     sfbHomeCost: values.sfbHomeCost ?? fallback.sfbHomeCost,
     preferOppositeThumb: values.preferOppositeThumb ?? fallback.preferOppositeThumb,
     chain: values.chain ?? fallback.chain,
