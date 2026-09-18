@@ -25,7 +25,11 @@ const face = (
   trigger: string[],
   mode: FaceMode,
   entries: Record<string, string>,
-): Face => faceFromEntries(trigger, mode, entries);
+): Face => ({
+  ...faceFromEntries(trigger, mode, entries),
+  inputRole: trigger.length > 0 ? 'modifier' : 'layer',
+  ...(trigger.length > 0 ? { triggerBehavior: 'chord' as const } : {}),
+});
 
 function shinJisFaces(mode: FaceMode): Face[] {
   return [
@@ -59,6 +63,7 @@ function appendComposed(layout: Layout, entries: Record<string, string>, mark: s
   if (!markSequence) throw new Error(`新JISの合成記号「${mark}」が未定義`);
   const stepLayers = new Map(layout.stepLayers ?? []);
   const stepTriggerKeys = new Map(layout.stepTriggerKeys ?? []);
+  const stepSemantics = new Map(layout.stepSemantics ?? []);
 
   for (const [source, output] of Object.entries(entries)) {
     const sourceSequence = layout.map.get(source);
@@ -78,10 +83,18 @@ function appendComposed(layout: Layout, entries: Record<string, string>, mark: s
     const sourceTriggers = layout.stepTriggerKeys?.get(source) ?? sourceSequence.map(() => []);
     const markTriggers = layout.stepTriggerKeys?.get(mark) ?? markSequence.map(() => []);
     stepTriggerKeys.set(output, [...sourceTriggers, ...markTriggers]);
+
+    const sourceSemantics = layout.stepSemantics?.get(source);
+    const markSemantics = layout.stepSemantics?.get(mark);
+    if (!sourceSemantics || !markSemantics) {
+      throw new Error(`新JISの合成semantic「${source}」「${mark}」が未定義`);
+    }
+    stepSemantics.set(output, [...sourceSemantics, ...markSemantics]);
   }
 
   layout.stepLayers = stepLayers;
   layout.stepTriggerKeys = stepTriggerKeys;
+  layout.stepSemantics = stepSemantics;
 }
 
 function makeLayout(id: string, name: string, mode: FaceMode): Layout {
