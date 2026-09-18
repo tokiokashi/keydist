@@ -17,7 +17,8 @@ import {
  *
  * 規格が定めるのはシフト面への切り替えで、シフト機構自体は実装依存のため、
  * 同じ配置を逐次シフト（prefix）と通常シフト（simultaneous）の2定義として持つ。
- * シフトの物理キーは両定義とも右親指を基準にし、preferOppositeThumb で左右を振り替えられる。
+ * シフトの物理キーは両定義とも右親指を基準にする。
+ * preferOppositeThumb による左右振り替えは simultaneous 側で有効で、prefix 側は #214 で対応予定。
  */
 
 const face = (
