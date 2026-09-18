@@ -4,11 +4,11 @@ import {
 } from './geometry.ts';
 import { evaluate, type Options, type Trace } from './evaluate.ts';
 import { sameChainPolicy } from './analysis-chain.ts';
+import { sameArpeggioPolicy } from './analysis-arpeggio.ts';
 import {
-  analyzeStrokeArpeggios,
-  sameArpeggioPolicy,
-  type ArpeggioAnalysisResult,
-} from './analysis-arpeggio.ts';
+  analyzeStrokeStructure,
+  type AggregatedAnalysisResult,
+} from './analysis-aggregate.ts';
 import { computeMetrics, type LayerStat, type Metrics } from './metrics.ts';
 import { normalizedLayerColors } from './layer-heatmap.ts';
 import { nSensitivity } from './sensitivity.ts';
@@ -31,7 +31,7 @@ import { buildGeometry } from './geometry.ts';
 export interface Result {
   layout: Layout;
   trace: Trace;
-  analysis: ArpeggioAnalysisResult;
+  analysis: AggregatedAnalysisResult;
   metrics: Metrics;
   geometry: ReturnType<typeof buildGeometry>;
   options: Options;
@@ -100,7 +100,7 @@ function render() {
       );
       const geometry = geometryFor(conditions.geometry, layout);
       const trace = evaluate(text, layout, geometry, conditions.options);
-      const analysis = analyzeStrokeArpeggios(
+      const analysis = analyzeStrokeStructure(
         trace.strokes,
         conditions.chainPolicy,
         conditions.arpeggioPolicy,
