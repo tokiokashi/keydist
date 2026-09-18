@@ -26,7 +26,19 @@ export interface StepSemantic {
   inputRole: InputRole;
   triggerPersistence?: TriggerPersistence;
   outputKeys: readonly string[];
+  /** このstepで新たに物理操作するtrigger。 */
   triggerKeys: readonly string[];
+  /**
+   * このstepが属する対象入力を成立させるtrigger集合。
+   * prefix / suffix のoutput stepでも元Faceのtrigger集合を保持し、
+   * hold継続判定をstep順序やlayer idから推測しないために使う。
+   */
+  associatedTriggerKeys?: readonly string[];
+  /**
+   * associatedTriggerKeysが表すtrigger集合の持続能力。
+   * triggerを物理操作しないprefix / suffix output stepでもFace capabilityを保持する。
+   */
+  associatedTriggerPersistence?: TriggerPersistence;
 }
 
 /**
@@ -321,7 +333,7 @@ export function fromFaces(
 
 function expandFace(trigger: string[], mode: FaceMode, key: string): Sequence {
   if (trigger.length === 0) return [[key]];
-  if (mode === 'simultaneous') return [[...trigger, key]];
+  if (mode === 'simultaneous') return [[...new Set([...trigger, key])]];
   if (mode === 'prefix') return [[...trigger], [key]];
   return [[key], [...trigger]];
 }
@@ -341,22 +353,61 @@ function expandFaceSemantics(
   triggerPersistence: TriggerPersistence | undefined,
 ): readonly StepSemantic[] {
   const triggerKeys = [...trigger];
+  const associatedTriggerKeys = [...trigger];
   const output = [key];
   if (trigger.length === 0) {
-    return [{ inputRole, outputKeys: output, triggerKeys: [] }];
+    return [{
+      inputRole,
+      outputKeys: output,
+      triggerKeys: [],
+      associatedTriggerKeys: [],
+    }];
   }
   if (mode === 'simultaneous') {
-    return [{ inputRole, triggerPersistence, outputKeys: output, triggerKeys }];
+    return [{
+      inputRole,
+      triggerPersistence,
+      outputKeys: output,
+      triggerKeys,
+      associatedTriggerKeys,
+      associatedTriggerPersistence: triggerPersistence,
+    }];
   }
   if (mode === 'prefix') {
     return [
-      { inputRole, triggerPersistence, outputKeys: [], triggerKeys },
-      { inputRole, outputKeys: output, triggerKeys: [] },
+      {
+        inputRole,
+        triggerPersistence,
+        outputKeys: [],
+        triggerKeys,
+        associatedTriggerKeys,
+        associatedTriggerPersistence: triggerPersistence,
+      },
+      {
+        inputRole,
+        outputKeys: output,
+        triggerKeys: [],
+        associatedTriggerKeys,
+        associatedTriggerPersistence: triggerPersistence,
+      },
     ];
   }
   return [
-    { inputRole, outputKeys: output, triggerKeys: [] },
-    { inputRole, triggerPersistence, outputKeys: [], triggerKeys },
+    {
+      inputRole,
+      outputKeys: output,
+      triggerKeys: [],
+      associatedTriggerKeys,
+      associatedTriggerPersistence: triggerPersistence,
+    },
+    {
+      inputRole,
+      triggerPersistence,
+      outputKeys: [],
+      triggerKeys,
+      associatedTriggerKeys,
+      associatedTriggerPersistence: triggerPersistence,
+    },
   ];
 }
 

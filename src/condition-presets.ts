@@ -1,5 +1,6 @@
 import { sameChainPolicy } from './analysis-chain.ts';
 import { sameArpeggioPolicy } from './analysis-arpeggio.ts';
+import { sameTriggerRealizationPolicy } from './trigger-realization.ts';
 import {
   DEFAULT_CONDITION_DEFAULTS,
   sanitizeConditionDefaults,
@@ -93,5 +94,6 @@ export function sameConditionDefaults(
     && left.sfbHomeCost === right.sfbHomeCost
     && left.preferOppositeThumb === right.preferOppositeThumb
     && sameChainPolicy(left.chain, right.chain)
-    && sameArpeggioPolicy(left.arpeggioPolicy, right.arpeggioPolicy);
+    && sameArpeggioPolicy(left.arpeggioPolicy, right.arpeggioPolicy)
+    && sameTriggerRealizationPolicy(left.triggerRealization, right.triggerRealization);
 }

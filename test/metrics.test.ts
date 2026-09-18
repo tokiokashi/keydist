@@ -43,6 +43,7 @@ test('Metricsは数値を算出した測定条件をスナップショットで�
       ...DEFAULT_ARPEGGIO_POLICY,
       bridgeSameFinger: true,
     },
+    triggerRealizationPolicy: { useHold: true },
     romajiRuleId: 'qwerty',
   });
 
@@ -58,6 +59,7 @@ test('Metricsは数値を算出した測定条件をスナップショットで�
       ...DEFAULT_ARPEGGIO_POLICY,
       bridgeSameFinger: true,
     },
+    triggerRealizationPolicy: { useHold: true },
     romajiRuleId: 'qwerty',
   });
 });

@@ -96,6 +96,7 @@ test('保存形式はuiとconditionsに分かれ、canonical条件だけ復元�
       bridgeSameFinger: true,
       includeSingleRedirectTail: false,
     },
+    triggerRealization: { useHold: true },
   };
   value.conditions.perLayout = {
     oonishi: { geometry: 'ortholinear', windowSize: 7, sfbHomeCost: false, romajiRule: 'azik' },
@@ -166,6 +167,19 @@ test('ArpeggioPolicyはcanonical条件として保存・復元する', () => {
   );
   assert.equal('arpeggio' in state.conditions.defaults, false);
 });
+test('TriggerRealizationPolicyはglobal / per-layoutで保存・復元する', () => {
+  const fallback = defaults();
+  const value = structuredClone(fallback);
+  value.conditions.defaults.triggerRealization = { useHold: true };
+  value.conditions.perLayout.oonishi = {
+    triggerRealization: { useHold: false },
+  };
+
+  const state = sanitizeUiState(value, fallback, choices);
+  assert.deepEqual(state.conditions.defaults.triggerRealization, { useHold: true });
+  assert.deepEqual(state.conditions.perLayout.oonishi.triggerRealization, { useHold: false });
+});
+
 test('旧ArpeggioConditionsはincludeThumbだけ新Policyへ移し幾何条件を破棄する', () => {
   const fallback = defaults();
   const value = structuredClone(fallback) as unknown as Record<string, any>;

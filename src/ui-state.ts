@@ -25,6 +25,10 @@ import {
   PLAYBACK_STEPS_PER_SECOND_MIN,
 } from './playback.ts';
 import type { ThemeChoice } from './theme.ts';
+import {
+  DEFAULT_TRIGGER_REALIZATION_POLICY,
+  type TriggerRealizationPolicy,
+} from './trigger-realization.ts';
 
 export const UI_STATE_STORAGE_KEY = 'keydist:ui-state';
 export const UI_STATE_VERSION = 1;
@@ -46,6 +50,7 @@ export interface UiStateConditionsDefaults {
   preferOppositeThumb: boolean;
   chain: ChainPolicy;
   arpeggioPolicy: ArpeggioPolicy;
+  triggerRealization: TriggerRealizationPolicy;
 }
 
 export interface UiPlaybackState {
@@ -82,6 +87,7 @@ export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
   preferOppositeThumb: false,
   chain: { ...DEFAULT_CHAIN_POLICY },
   arpeggioPolicy: { ...DEFAULT_ARPEGGIO_POLICY },
+  triggerRealization: { ...DEFAULT_TRIGGER_REALIZATION_POLICY },
 };
 
 export interface UiStateV1 {
@@ -277,6 +283,16 @@ function arpeggioPolicy(value: unknown, fallback: ArpeggioPolicy): ArpeggioPolic
   };
 }
 
+function triggerRealizationPolicy(
+  value: unknown,
+  fallback: TriggerRealizationPolicy,
+): TriggerRealizationPolicy {
+  const source = record(value);
+  return {
+    useHold: boolean(source.useHold, fallback.useHold),
+  };
+}
+
 function optionalId(value: unknown, allowed: readonly string[]): string | undefined {
   return typeof value === 'string' && allowed.includes(value) ? value : undefined;
 }
@@ -325,6 +341,12 @@ function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults
   if (isRecord(source.arpeggioPolicy)) {
     result.arpeggioPolicy = arpeggioPolicy(source.arpeggioPolicy, DEFAULT_ARPEGGIO_POLICY);
   }
+  if (isRecord(source.triggerRealization)) {
+    result.triggerRealization = triggerRealizationPolicy(
+      source.triggerRealization,
+      DEFAULT_TRIGGER_REALIZATION_POLICY,
+    );
+  }
   // 旧ArpeggioConditionsから意味が一致するincludeThumbだけ移行する。
   // geometry閾値 / breakOnOppositeHandは新structural Policyへ推測変換しない。
   if (isRecord(source.arpeggio) && typeof source.arpeggio.includeThumb === 'boolean') {
@@ -357,6 +379,7 @@ export function sanitizeConditionDefaults(
     preferOppositeThumb: values.preferOppositeThumb ?? fallback.preferOppositeThumb,
     chain: values.chain ?? fallback.chain,
     arpeggioPolicy: values.arpeggioPolicy ?? fallback.arpeggioPolicy,
+    triggerRealization: values.triggerRealization ?? fallback.triggerRealization,
   };
 }
 

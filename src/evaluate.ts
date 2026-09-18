@@ -12,6 +12,12 @@ import {
   type TriggerPersistence,
 } from './layouts/types.ts';
 import { kanaToRomajiChunks } from './romaji/kunrei.ts';
+import {
+  DEFAULT_TRIGGER_REALIZATION_POLICY,
+  realizeTriggerStep,
+  type TriggerHoldState,
+  type TriggerRealizationPolicy,
+} from './trigger-realization.ts';
 
 export interface Options {
   /** 窓幅N（打鍵単位）。この打鍵数までは残す候補を比較する */
@@ -23,12 +29,15 @@ export interface Options {
   sfbHomeCost: boolean;
   /** 親指シフトを出力キーと反対側の親指へ振り替えるか。 */
   preferOppositeThumb?: boolean;
+  /** hold-capable triggerを実際の連続保持へrealizeする条件。 */
+  triggerRealizationPolicy?: TriggerRealizationPolicy;
 }
 
 export const DEFAULT_OPTIONS: Options = {
   windowSize: 3,
   sfbHomeCost: true,
   preferOppositeThumb: false,
+  triggerRealizationPolicy: { ...DEFAULT_TRIGGER_REALIZATION_POLICY },
 };
 
 export type ParticipationRole = 'output' | 'trigger' | 'held-trigger';
@@ -157,6 +166,7 @@ export function evaluate(
   }
   let skipped = 0;
   let index = 0;
+  let triggerHoldState: TriggerHoldState | undefined;
 
   // ローマ字配列はかなテキストを展開してから打つ。コンボの誤命中を防ぐため、
   // 展開前の単位も残しておく。かな配列はそのまま打つ。
@@ -222,28 +232,39 @@ export function evaluate(
     const stepSemantics = layout.stepSemantics?.get(char);
     for (const [stepIndex, originalStep] of sequence.entries()) {
       const remapped = remapThumbShift(originalStep, sequence, stepIndex, layout, geometry, options);
-      const step = remapped.step;
+      const baseStep = remapped.step;
       const layerId = stepLayerIds?.[stepIndex] ??
         (comboConditions.has(char) ? COMBO_LAYER_ID : SINGLE_LAYER_ID);
-      const triggerKeys = remapThumbShiftKeys(
+      const baseTriggerKeys = remapThumbShiftKeys(
         stepTriggerKeys?.[stepIndex] ?? [],
         layout,
         remapped.shiftKey,
       );
+      const semantic = resolveStepSemantic(
+        stepSemantics?.[stepIndex],
+        baseStep,
+        baseTriggerKeys,
+        comboConditions.has(char),
+        layout,
+        remapped.shiftKey,
+      );
+      const realization = realizeTriggerStep(
+        baseStep,
+        semantic,
+        options.triggerRealizationPolicy ?? DEFAULT_TRIGGER_REALIZATION_POLICY,
+        triggerHoldState,
+      );
+      triggerHoldState = realization.holdState;
+      if (realization.omitStroke) continue;
+
+      const step = realization.stepKeys;
+      const triggerKeys = realization.triggerKeys;
       const layerTriggers = layerTriggerKeys.get(layerId) ?? new Set<string>();
       const pressedLayerTriggers = [...new Set(step.map(resolveKeyId))]
         .filter((key) => layerTriggers.has(key));
       const pairedTriggerKeys = pressedLayerTriggers.length >= 2
         ? triggerKeys.filter((key) => layerTriggers.has(key))
         : [];
-      const semantic = resolveStepSemantic(
-        stepSemantics?.[stepIndex],
-        step,
-        triggerKeys,
-        comboConditions.has(char),
-        layout,
-        remapped.shiftKey,
-      );
       const byFinger = new Map<Finger, Key[]>();
 
       for (const id of step) {
@@ -274,7 +295,14 @@ export function evaluate(
 
       if (presses.length === 0) continue;
 
-      const participations = normalizeParticipations(presses, semantic);
+      const participations = normalizeParticipations(
+        presses,
+        semantic,
+        realization.heldTriggerKeys,
+        realization.holdPhase,
+        geometry,
+        realization.holdPhase !== 'continue',
+      );
 
       let total = 0;
       for (const press of presses) {
@@ -298,6 +326,14 @@ export function evaluate(
         prev[press.finger] = press.target;
         last[press.finger] = index;
       }
+      // held-trigger/continueは新規Pressではないが、指はtrigger位置を占有し続ける。
+      // 同じ指が現在Strokeで物理Pressも持つ場合は、そのPressのtargetを優先する。
+      const pressedFingers = new Set(presses.map((press) => press.finger));
+      for (const [finger, keys] of heldKeysByFinger(realization.heldTriggerKeys, geometry)) {
+        if (pressedFingers.has(finger)) continue;
+        prev[finger] = centroid(keys);
+        last[finger] = index;
+      }
 
       // 指同士の姿勢は、対象キーを押した直後の状態として記録する
       const positions = snapshot(prev, last, index, geometry);
@@ -308,8 +344,8 @@ export function evaluate(
         inputIndex,
         layerId,
         inputRole: semantic.inputRole,
-        ...(semantic.triggerPersistence !== undefined
-          ? { triggerPersistence: semantic.triggerPersistence }
+        ...(realization.triggerPersistence !== undefined
+          ? { triggerPersistence: realization.triggerPersistence }
           : {}),
         triggerKeys,
         pairedTriggerKeys,
@@ -346,6 +382,15 @@ function resolveStepSemantic(
       ...declared,
       outputKeys: remapSemanticKeys(declared.outputKeys, layout, remappedShiftKey),
       triggerKeys: remapSemanticKeys(declared.triggerKeys, layout, remappedShiftKey),
+      ...(declared.associatedTriggerKeys !== undefined
+        ? {
+            associatedTriggerKeys: remapSemanticKeys(
+              declared.associatedTriggerKeys,
+              layout,
+              remappedShiftKey,
+            ),
+          }
+        : {}),
     };
   }
 
@@ -375,22 +420,64 @@ function remapSemanticKeys(
 function normalizeParticipations(
   presses: readonly Press[],
   semantic: StepSemantic,
+  heldTriggerKeys: readonly string[],
+  holdPhase: HoldPhase | undefined,
+  geometry: Geometry,
+  includeNewTrigger: boolean,
 ): readonly StrokeParticipation[] {
   const outputs = new Set(semantic.outputKeys.map(resolveKeyId));
   const triggers = new Set(semantic.triggerKeys.map(resolveKeyId));
+  const held = new Set(heldTriggerKeys.map(resolveKeyId));
+  const byFinger = new Map<Finger, { keys: Key[]; roles: Set<ParticipationRole> }>();
 
-  return presses.map((press) => {
-    const ids = press.keys.map((key) => key.id);
-    const roles = new Set<ParticipationRole>();
-    if (ids.some((id) => outputs.has(id))) roles.add('output');
-    if (ids.some((id) => triggers.has(id))) roles.add('trigger');
-    return {
-      hand: press.finger.startsWith('L') ? 'left' : 'right',
-      finger: press.finger,
-      keys: press.keys,
-      roles: [...roles],
-    };
-  });
+  const entry = (finger: Finger) => {
+    const existing = byFinger.get(finger);
+    if (existing) return existing;
+    const created = { keys: [] as Key[], roles: new Set<ParticipationRole>() };
+    byFinger.set(finger, created);
+    return created;
+  };
+
+  for (const press of presses) {
+    const current = entry(press.finger);
+    for (const key of press.keys) {
+      if (!current.keys.some((candidate) => candidate.id === key.id)) current.keys.push(key);
+      if (outputs.has(key.id)) current.roles.add('output');
+      if (includeNewTrigger && triggers.has(key.id)) current.roles.add('trigger');
+      if (held.has(key.id)) current.roles.add('held-trigger');
+    }
+  }
+
+  for (const keyId of held) {
+    const key = geometry.keys.get(keyId);
+    if (!key) continue;
+    const current = entry(key.finger);
+    if (!current.keys.some((candidate) => candidate.id === key.id)) current.keys.push(key);
+    current.roles.add('held-trigger');
+  }
+
+  return [...byFinger].map(([finger, value]) => ({
+    hand: finger.startsWith('L') ? 'left' : 'right',
+    finger,
+    keys: value.keys,
+    roles: [...value.roles],
+    ...(value.roles.has('held-trigger') && holdPhase !== undefined ? { holdPhase } : {}),
+  }));
+}
+
+function heldKeysByFinger(
+  heldTriggerKeys: readonly string[],
+  geometry: Geometry,
+): Map<Finger, Key[]> {
+  const byFinger = new Map<Finger, Key[]>();
+  for (const id of heldTriggerKeys) {
+    const key = geometry.keys.get(resolveKeyId(id));
+    if (!key) continue;
+    const keys = byFinger.get(key.finger);
+    if (keys) keys.push(key);
+    else byFinger.set(key.finger, [key]);
+  }
+  return byFinger;
 }
 
 interface RemappedThumbShift {

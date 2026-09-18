@@ -6,6 +6,10 @@ import {
 import { isCustomGeometryKind, type PresetGeometryKind } from './geometry.ts';
 import { sameChainPolicy, type ChainPolicy } from './analysis-chain.ts';
 import { sameArpeggioPolicy, type ArpeggioPolicy } from './analysis-arpeggio.ts';
+import {
+  sameTriggerRealizationPolicy,
+  type TriggerRealizationPolicy,
+} from './trigger-realization.ts';
 
 export type ConditionKey = keyof UiStateConditionsDefaults;
 
@@ -40,6 +44,10 @@ function formatArpeggioPolicy(value: ArpeggioPolicy): string {
     + `redirect tail${value.includeSingleRedirectTail ? '有効' : '無効'}`;
 }
 
+function formatTriggerRealizationPolicy(value: TriggerRealizationPolicy): string {
+  return value.useHold ? 'hold-capable triggerを連続保持する' : '連続保持しない';
+}
+
 export const CONDITION_DESCRIPTORS = {
   chain: {
     label: 'Chain境界条件',
@@ -50,6 +58,11 @@ export const CONDITION_DESCRIPTORS = {
     label: 'Arpeggio構造Policy',
     effect: 'LongRoll / TwoRollからArpeggioSpanを派生する条件です。親指core、同指bridge、末尾1回のredirect吸収だけを扱います。',
     format: (value) => formatArpeggioPolicy(value as ArpeggioPolicy),
+  },
+  triggerRealization: {
+    label: 'Trigger保持Policy',
+    effect: 'hold-capable triggerを実際の連続保持としてrealizeするかを決めます。single triggerやcomposition capabilityの推測には使いません。',
+    format: (value) => formatTriggerRealizationPolicy(value as TriggerRealizationPolicy),
   },
   geometry: {
     label: '物理形状',
@@ -161,6 +174,12 @@ function sameConditionValue(
   if (key === 'chain') return sameChainPolicy(left as ChainPolicy, right as ChainPolicy);
   if (key === 'arpeggioPolicy') {
     return sameArpeggioPolicy(left as ArpeggioPolicy, right as ArpeggioPolicy);
+  }
+  if (key === 'triggerRealization') {
+    return sameTriggerRealizationPolicy(
+      left as TriggerRealizationPolicy,
+      right as TriggerRealizationPolicy,
+    );
   }
   return left === right;
 }

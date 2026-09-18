@@ -104,6 +104,7 @@ function render() {
         trace.strokes,
         conditions.chainPolicy,
         conditions.arpeggioPolicy,
+        conditions.triggerRealizationPolicy,
       );
       return {
         layout,
@@ -115,6 +116,7 @@ function render() {
           preferOppositeThumb: conditions.options.preferOppositeThumb ?? false,
           chainPolicy: conditions.chainPolicy,
           arpeggioPolicy: conditions.arpeggioPolicy,
+          triggerRealizationPolicy: conditions.triggerRealizationPolicy,
           romajiRuleId: ctx.romajiRuleIdForLayout(layout),
         }),
         geometry,

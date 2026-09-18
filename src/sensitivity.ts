@@ -4,6 +4,7 @@ import type { Geometry } from './geometry.ts';
 import type { Layout } from './layouts/index.ts';
 import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from './analysis-chain.ts';
 import { DEFAULT_ARPEGGIO_POLICY, type ArpeggioPolicy } from './analysis-arpeggio.ts';
+import { DEFAULT_TRIGGER_REALIZATION_POLICY } from './trigger-realization.ts';
 
 export interface SensitivityPoint {
   windowSize: number;
@@ -33,6 +34,9 @@ export function nSensitivity(
       preferOppositeThumb: options.preferOppositeThumb ?? false,
       chainPolicy: { ...chainPolicy },
       arpeggioPolicy: { ...arpeggioPolicy },
+      triggerRealizationPolicy: {
+        ...(options.triggerRealizationPolicy ?? DEFAULT_TRIGGER_REALIZATION_POLICY),
+      },
       romajiRuleId,
     });
     return { windowSize, totalUnits: m.totalUnits, totalMm: m.totalMm };

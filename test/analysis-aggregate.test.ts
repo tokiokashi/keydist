@@ -9,6 +9,7 @@ import {
   DEFAULT_ARPEGGIO_POLICY,
 } from '../src/analysis-arpeggio.ts';
 import { DEFAULT_CHAIN_POLICY } from '../src/analysis-chain.ts';
+import { DEFAULT_TRIGGER_REALIZATION_POLICY } from '../src/trigger-realization.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({
   id,
@@ -241,12 +242,18 @@ test('集計結果は解決済みChainPolicy / ArpeggioPolicyをsnapshotで保�
   assert.deepEqual(result.aggregate.conditions, {
     chainPolicy,
     arpeggioPolicy,
+    triggerRealizationPolicy: DEFAULT_TRIGGER_REALIZATION_POLICY,
   });
   assert.notEqual(result.aggregate.conditions.chainPolicy, chainPolicy);
   assert.notEqual(result.aggregate.conditions.arpeggioPolicy, arpeggioPolicy);
+  assert.notEqual(
+    result.aggregate.conditions.triggerRealizationPolicy,
+    DEFAULT_TRIGGER_REALIZATION_POLICY,
+  );
   assert.equal(Object.isFrozen(result.aggregate.conditions), true);
   assert.equal(Object.isFrozen(result.aggregate.conditions.chainPolicy), true);
   assert.equal(Object.isFrozen(result.aggregate.conditions.arpeggioPolicy), true);
+  assert.equal(Object.isFrozen(result.aggregate.conditions.triggerRealizationPolicy), true);
 });
 
 test('Stroke本体をannotation生成でmutateしない', () => {
