@@ -1072,45 +1072,55 @@ export function playbackCursorForEquivalentInputPosition(
  * cursor/playingは維持し、現在Stroke内の進捗率を新しいdurationへ変換する。
  */
 export function reconcilePlaybackStateAfterAnalysisRefresh(
-  state: PlaybackState,
+  previousState: PlaybackState,
+  nextBaseState: PlaybackState,
   previousAnalysis: AggregatedAnalysisResult,
   nextAnalysis: AggregatedAnalysisResult,
-  nextCursor = state.cursor,
+  nextCursor = previousState.cursor,
 ): PlaybackState {
   const nextStrokeCount = nextAnalysis.strokes.length;
   const cursor = clampPlaybackCursor(nextCursor, nextStrokeCount);
   if (nextStrokeCount === 0 || cursor >= nextStrokeCount) {
-    return { ...state, cursor, playing: false, elapsedMs: 0 };
+    return { ...nextBaseState, cursor, playing: false, elapsedMs: 0 };
   }
 
-  const previousCursor = clampPlaybackCursor(state.cursor, previousAnalysis.strokes.length);
+  const previousCursor = clampPlaybackCursor(
+    previousState.cursor,
+    previousAnalysis.strokes.length,
+  );
   if (previousCursor >= previousAnalysis.strokes.length) {
-    return { ...state, cursor, elapsedMs: 0 };
+    return {
+      ...nextBaseState,
+      cursor,
+      playing: previousState.playing,
+      elapsedMs: 0,
+    };
   }
 
   const previousStepMs = playbackStepDurationMs(
     previousAnalysis,
     previousCursor,
-    state.stepsPerSecond,
-    state.sameFingerDelay,
-    state.calibration,
-    state.speedMultiplier,
+    previousState.stepsPerSecond,
+    previousState.sameFingerDelay,
+    previousState.calibration,
+    previousState.speedMultiplier,
   );
   const nextStepMs = playbackStepDurationMs(
     nextAnalysis,
     cursor,
-    state.stepsPerSecond,
-    state.sameFingerDelay,
-    state.calibration,
-    state.speedMultiplier,
+    nextBaseState.stepsPerSecond,
+    nextBaseState.sameFingerDelay,
+    nextBaseState.calibration,
+    nextBaseState.speedMultiplier,
   );
   const progress = previousStepMs > 0
-    ? Math.min(1, Math.max(0, state.elapsedMs / previousStepMs))
+    ? Math.min(1, Math.max(0, previousState.elapsedMs / previousStepMs))
     : 0;
 
   return {
-    ...state,
+    ...nextBaseState,
     cursor,
+    playing: previousState.playing,
     elapsedMs: progress * nextStepMs,
   };
 }
