@@ -23,9 +23,9 @@ const faceAtF = (output: string) => ['', '', ['', '', '', output], ''];
 test('面はprefix / suffix / simultaneousをSequenceに展開する', () => {
   const layout = fromFaces('faces', 'faces', [
     { trigger: [], mode: 'simultaneous', rows: faceAtF('あ') },
-    { trigger: ['d'], mode: 'prefix', rows: faceAtF('か') },
-    { trigger: ['d'], mode: 'suffix', rows: faceAtF('さ') },
-    { trigger: ['j'], mode: 'simultaneous', rows: faceAtF('た') },
+    { trigger: ['d'], mode: 'prefix', rows: faceAtF('か'), triggerPersistence: 'single' },
+    { trigger: ['d'], mode: 'suffix', rows: faceAtF('さ'), triggerPersistence: 'single' },
+    { trigger: ['j'], mode: 'simultaneous', rows: faceAtF('た'), triggerPersistence: 'single' },
   ]);
 
   assert.deepEqual(layout.map.get('あ'), [['f']]);
@@ -37,9 +37,9 @@ test('面はprefix / suffix / simultaneousをSequenceに展開する', () => {
 test('面の展開後も各ステップの層帰属を保持する（#87）', () => {
   const layout = fromFaces('attribution', 'attribution', [
     { trigger: [], mode: 'simultaneous', rows: faceAtF('あ') },
-    { trigger: ['d'], mode: 'prefix', rows: faceAtF('か'), layer: '中指' },
-    { trigger: ['j'], mode: 'prefix', rows: faceAtF('さ'), layer: '人差指' },
-    { trigger: ['k', 'l'], mode: 'simultaneous', rows: faceAtF('た') },
+    { trigger: ['d'], mode: 'prefix', rows: faceAtF('か'), layer: '中指', triggerPersistence: 'single' },
+    { trigger: ['j'], mode: 'prefix', rows: faceAtF('さ'), layer: '人差指', triggerPersistence: 'single' },
+    { trigger: ['k', 'l'], mode: 'simultaneous', rows: faceAtF('た'), triggerPersistence: 'single' },
   ]);
   const trace = evaluate('あかさた', layout, buildGeometry('row-staggered'), DEFAULT_OPTIONS);
 
@@ -51,6 +51,19 @@ test('面の展開後も各ステップの層帰属を保持する（#87）', ()
     ['face:0', 1], ['layer:中指', 2], ['layer:人差指', 2],
   ]);
   assert.equal(metrics.comboPresses, 3);
+});
+
+test('出力を持つtrigger FaceはtriggerPersistence必須、空placeholderは許容する', () => {
+  assert.throws(
+    () => fromFaces('invalid-persistence', 'invalid-persistence', [
+      { trigger: ['d'], mode: 'prefix', rows: faceAtF('か') },
+    ]),
+    /triggerを持つFaceはtriggerPersistenceを明示する必要がある/,
+  );
+
+  assert.doesNotThrow(() => fromFaces('empty-placeholder', 'empty-placeholder', [
+    { trigger: ['d'], mode: 'prefix', rows: ['', '', '', ''] },
+  ]));
 });
 
 test('面定義の未知のキーは空欄にせずエラーにする', () => {

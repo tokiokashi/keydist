@@ -9,6 +9,7 @@ import {
   type Layout,
   type Sequence,
   type StepSemantic,
+  type TriggerPersistence,
 } from './layouts/types.ts';
 import { kanaToRomajiChunks } from './romaji/kunrei.ts';
 
@@ -30,7 +31,7 @@ export const DEFAULT_OPTIONS: Options = {
   preferOppositeThumb: false,
 };
 
-export type ParticipationRole = 'output' | 'chord-trigger' | 'held-trigger';
+export type ParticipationRole = 'output' | 'trigger' | 'held-trigger';
 
 export interface StrokeParticipation {
   hand: 'left' | 'right';
@@ -75,6 +76,8 @@ export interface Stroke {
   layerId: string;
   /** 解決されたFace/combo文脈の入力意味。 */
   inputRole: InputRole;
+  /** このステップのtriggerが持つ持続能力。triggerなしstepでは未指定。 */
+  triggerPersistence?: TriggerPersistence;
   /** このステップで層操作として押したキー。出力キーとの色分けに使う */
   triggerKeys: readonly string[];
   /** 同じ層の文字トリガーを複数同時押下したキー。表示色の例外に使う */
@@ -305,6 +308,9 @@ export function evaluate(
         inputIndex,
         layerId,
         inputRole: semantic.inputRole,
+        ...(semantic.triggerPersistence !== undefined
+          ? { triggerPersistence: semantic.triggerPersistence }
+          : {}),
         triggerKeys,
         pairedTriggerKeys,
         participations,
@@ -343,12 +349,11 @@ function resolveStepSemantic(
     };
   }
 
-  // 旧Layout / user layout向けの互換fallback。comboだからという理由だけで
-  // chord-triggerにはせず、明示されたtriggerKeysだけをtriggerとして扱う。
+  // 旧Layout / user layout向けの互換fallback。
+  // triggerKeysはtriggerの物理キーだけを復元し、triggerPersistence (single / hold-capable) は推測しない。
   const triggers = new Set(triggerKeys.map(resolveKeyId));
   return {
     inputRole: isCombo ? 'composition' : 'layer',
-    triggerBehavior: triggers.size > 0 ? 'chord' : undefined,
     outputKeys: step.map(resolveKeyId).filter((key) => !triggers.has(key)),
     triggerKeys: [...triggers],
   };
@@ -373,23 +378,17 @@ function normalizeParticipations(
 ): readonly StrokeParticipation[] {
   const outputs = new Set(semantic.outputKeys.map(resolveKeyId));
   const triggers = new Set(semantic.triggerKeys.map(resolveKeyId));
-  const triggerRole: ParticipationRole | undefined = triggers.size === 0
-    ? undefined
-    : semantic.triggerBehavior === 'hold' ? 'held-trigger' : 'chord-trigger';
 
   return presses.map((press) => {
     const ids = press.keys.map((key) => key.id);
     const roles = new Set<ParticipationRole>();
     if (ids.some((id) => outputs.has(id))) roles.add('output');
-    if (triggerRole && ids.some((id) => triggers.has(id))) roles.add(triggerRole);
+    if (ids.some((id) => triggers.has(id))) roles.add('trigger');
     return {
       hand: press.finger.startsWith('L') ? 'left' : 'right',
       finger: press.finger,
       keys: press.keys,
       roles: [...roles],
-      ...(roles.has('held-trigger') && semantic.holdPhase
-        ? { holdPhase: semantic.holdPhase }
-        : {}),
     };
   });
 }

@@ -233,7 +233,7 @@ test('新JIS prefixでも振り替え後の親指がtrigger semanticsへ伝播�
   assert.equal(trace.strokes.length, 2);
   assert.equal(trace.strokes[0].presses[0].keys[0].id, 'thumb-l');
   assert.deepEqual(trace.strokes[0].triggerKeys, ['thumb-l']);
-  assert.deepEqual(trace.strokes[0].participations[0].roles, ['chord-trigger']);
+  assert.deepEqual(trace.strokes[0].participations[0].roles, ['trigger']);
   assert.equal(trace.strokes[1].presses[0].keys[0].id, 'j');
 });
 
@@ -405,84 +405,77 @@ test('semantic normalizationはoutputのみのStrokeを表現する', () => {
   const stroke = trace.strokes[0];
 
   assert.equal(stroke.inputRole, 'layer');
+  assert.equal(stroke.triggerPersistence, undefined);
   assert.equal(stroke.participations.length, 1);
   assert.deepEqual(stroke.participations[0].roles, ['output']);
   assert.equal(stroke.participations[0].finger, 'LP');
   assert.equal(stroke.participations[0].hand, 'left');
 });
 
-test('prefix triggerはtrigger-only Strokeとoutput Strokeへ分離して正規化する', () => {
-  const layout = fromFaces('semantic-prefix', 'semantic-prefix', [{
+test('legacy fallbackはtriggerKeysをtrigger factとして保持し、persistenceを推測しない', () => {
+  const layout: Layout = {
+    id: 'legacy-trigger',
+    name: 'legacy-trigger',
+    map: new Map([['x', [['q', 'j']]]]),
+    legends: new Map(),
+    stepTriggerKeys: new Map([['x', [['q']]]]),
+  };
+  const trace = evaluate('x', layout, geometry, opts());
+  const byFinger = new Map(trace.strokes[0].participations.map((p) => [p.finger, p]));
+
+  assert.deepEqual(byFinger.get('LP')?.roles, ['trigger']);
+  assert.deepEqual(byFinger.get('RI')?.roles, ['output']);
+  assert.equal(trace.strokes[0].triggerPersistence, undefined);
+});
+
+test('prefix + singleはtrigger-only Strokeとして正規化する', () => {
+  const layout = fromFaces('semantic-prefix-single', 'semantic-prefix-single', [{
     trigger: ['q'],
     mode: 'prefix',
     rows: ['', '', ['x'], ''],
+    inputRole: 'modifier',
+    triggerPersistence: 'single',
   }]);
   const trace = evaluate('x', layout, geometry, opts());
 
   assert.equal(trace.strokes.length, 2);
-  assert.deepEqual(trace.strokes[0].participations.map((p) => p.roles), [['chord-trigger']]);
+  assert.equal(trace.strokes[0].triggerPersistence, 'single');
+  assert.deepEqual(trace.strokes[0].participations.map((p) => p.roles), [['trigger']]);
   assert.deepEqual(trace.strokes[1].participations.map((p) => p.roles), [['output']]);
 });
 
-test('同一キーはoutput + chord-triggerの複合roleを持てる', () => {
+test('同一キーはoutput + triggerの複合roleを持てる', () => {
   const layout = fromFaces('semantic-composite', 'semantic-composite', [{
     trigger: ['a'],
     mode: 'simultaneous',
     rows: ['', '', ['x'], ''],
+    triggerPersistence: 'single',
   }]);
   const trace = evaluate('x', layout, geometry, opts());
   const participation = trace.strokes[0].participations[0];
 
   assert.equal(participation.finger, 'LP');
-  assert.deepEqual(new Set(participation.roles), new Set(['output', 'chord-trigger']));
+  assert.deepEqual(new Set(participation.roles), new Set(['output', 'trigger']));
 });
 
-test('hold triggerはheld-trigger/continueをそのままStrokeへ伝播できる', () => {
-  const layout: Layout = {
-    id: 'semantic-hold',
-    name: 'semantic-hold',
-    map: new Map([['x', [['q']]]]),
-    legends: new Map(),
-    stepSemantics: new Map([['x', [{
-      inputRole: 'modifier',
-      triggerBehavior: 'hold',
-      outputKeys: [],
-      triggerKeys: ['q'],
-      holdPhase: 'continue',
-    }]]]),
-  };
+test('hold-capableはcapabilityとして伝播し、base normalizationではheld-triggerを生成しない', () => {
+  const layout = fromFaces('semantic-hold-capable', 'semantic-hold-capable', [{
+    trigger: ['q'],
+    mode: 'simultaneous',
+    rows: ['', '', ['x'], ''],
+    inputRole: 'modifier',
+    triggerPersistence: 'hold-capable',
+  }]);
   const trace = evaluate('x', layout, geometry, opts());
   const stroke = trace.strokes[0];
 
   assert.equal(stroke.inputRole, 'modifier');
-  assert.deepEqual(stroke.participations[0].roles, ['held-trigger']);
-  assert.equal(stroke.participations[0].holdPhase, 'continue');
+  assert.equal(stroke.triggerPersistence, 'hold-capable');
+  assert.ok(stroke.participations.some((p) => p.roles.includes('trigger')));
+  assert.ok(stroke.participations.every((p) => !p.roles.includes('held-trigger')));
 });
 
-test('holdPhaseはheld-trigger participationだけに付与する', () => {
-  const layout: Layout = {
-    id: 'semantic-hold-mixed',
-    name: 'semantic-hold-mixed',
-    map: new Map([['x', [['q', 'j']]]]),
-    legends: new Map(),
-    stepSemantics: new Map([['x', [{
-      inputRole: 'modifier',
-      triggerBehavior: 'hold',
-      outputKeys: ['j'],
-      triggerKeys: ['q'],
-      holdPhase: 'continue',
-    }]]]),
-  };
-  const trace = evaluate('x', layout, geometry, opts());
-  const byFinger = new Map(trace.strokes[0].participations.map((p) => [p.finger, p]));
-
-  assert.deepEqual(byFinger.get('LP')?.roles, ['held-trigger']);
-  assert.equal(byFinger.get('LP')?.holdPhase, 'continue');
-  assert.deepEqual(byFinger.get('RI')?.roles, ['output']);
-  assert.equal(byFinger.get('RI')?.holdPhase, undefined);
-});
-
-test('文字コンボはcompositionとして伝播し、trigger宣言なしではchord-triggerにしない', () => {
+test('文字コンボはcompositionとして伝播し、trigger宣言なしではtriggerにしない', () => {
   const layout = withCombos('semantic-combo', 'semantic-combo', qwerty, [
     ['ab', ['a', 'b']],
   ]);
@@ -490,6 +483,7 @@ test('文字コンボはcompositionとして伝播し、trigger宣言なしで�
   const stroke = trace.strokes[0];
 
   assert.equal(stroke.inputRole, 'composition');
+  assert.equal(stroke.triggerPersistence, undefined);
   assert.ok(stroke.participations.length >= 1);
   for (const participation of stroke.participations) {
     assert.deepEqual(participation.roles, ['output']);
@@ -499,7 +493,7 @@ test('文字コンボはcompositionとして伝播し、trigger宣言なしで�
 test('semantic normalizationはlayout idに依存しない', () => {
   const semantics = new Map([['x', [{
     inputRole: 'composition' as const,
-    triggerBehavior: 'chord' as const,
+    triggerPersistence: 'single' as const,
     outputKeys: ['a'],
     triggerKeys: ['q'],
   }]]]);
@@ -513,6 +507,7 @@ test('semantic normalizationはlayout idに依存しない', () => {
   const second = evaluate('x', { ...base, id: 'semantic-b' }, geometry, opts()).strokes[0];
 
   assert.equal(first.inputRole, second.inputRole);
+  assert.equal(first.triggerPersistence, second.triggerPersistence);
   assert.deepEqual(
     first.participations.map((p) => ({ hand: p.hand, finger: p.finger, roles: p.roles })),
     second.participations.map((p) => ({ hand: p.hand, finger: p.finger, roles: p.roles })),

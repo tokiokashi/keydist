@@ -1,8 +1,15 @@
 import { THUMB_KEY } from '../geometry.ts';
 import { faceFromEntries, fromFaces, type Face, type Layout } from './types.ts';
 
-const face = (trigger: string[], entries: Record<string, string>): Face =>
-  faceFromEntries(trigger, 'simultaneous', entries);
+const face = (
+  trigger: string[],
+  entries: Record<string, string>,
+  inputRole: Face['inputRole'] = 'layer',
+): Face => ({
+  ...faceFromEntries(trigger, 'simultaneous', entries),
+  inputRole,
+  ...(trigger.length > 0 ? { triggerPersistence: 'single' as const } : {}),
+});
 
 /**
  * 親指シフト（NICOLA）J型。
@@ -31,14 +38,14 @@ export const NICOLA_FACES: Face[] = [
     q: 'ぁ', w: 'え', e: 'り', r: 'ゃ', t: 'れ', y: 'ぱ', u: 'ぢ', i: 'ぐ', o: 'づ', p: 'ぴ',
     a: 'を', s: 'あ', d: 'な', f: 'ゅ', g: 'も', h: 'ば', j: 'ど', k: 'ぎ', l: 'ぽ',
     z: 'ぅ', x: 'ー', c: 'ろ', v: 'や', b: 'ぃ', n: 'ぷ', m: 'ぞ', ',': 'ぺ', '.': 'ぼ', '/': '゛',
-  }),
+  }, 'modifier'),
 
   // 変換キーとの同時打鍵
   face([THUMB_KEY.RT], {
     q: '゜', w: 'が', e: 'だ', r: 'ご', t: 'ざ', y: 'よ', u: 'に', i: 'る', o: 'ま', p: 'ぇ',
     a: 'ヴ', s: 'じ', d: 'で', f: 'げ', g: 'ぜ', h: 'み', j: 'お', k: 'の', l: 'ょ', ';': 'っ',
     x: 'び', c: 'ず', v: 'ぶ', b: 'べ', n: 'ぬ', m: 'ゆ', ',': 'む', '.': 'わ', '/': 'ぉ',
-  }),
+  }, 'modifier'),
 ];
 
 export const NICOLA: Layout = fromFaces('nicola', '親指シフト（NICOLA）', NICOLA_FACES);

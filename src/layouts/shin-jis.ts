@@ -25,9 +25,14 @@ const face = (
   trigger: string[],
   mode: FaceMode,
   entries: Record<string, string>,
-): Face => faceFromEntries(trigger, mode, entries);
+  triggerPersistence?: Face['triggerPersistence'],
+): Face => ({
+  ...faceFromEntries(trigger, mode, entries),
+  inputRole: trigger.length > 0 ? 'modifier' : 'layer',
+  ...(trigger.length > 0 && triggerPersistence !== undefined ? { triggerPersistence } : {}),
+});
 
-function shinJisFaces(mode: FaceMode): Face[] {
+function shinJisFaces(mode: FaceMode, triggerPersistence: NonNullable<Face['triggerPersistence']>): Face[] {
   return [
     face([], mode, {
       q: 'そ', w: 'け', e: 'せ', r: 'て', t: 'ょ', y: 'つ', u: 'ん', i: 'の', o: 'を', p: 'り', '[': 'ち',
@@ -38,7 +43,7 @@ function shinJisFaces(mode: FaceMode): Face[] {
       q: 'ぁ', w: '゜', e: 'ほ', r: 'ふ', t: 'め', y: 'ひ', u: 'え', i: 'み', o: 'や', p: 'ぬ', '[': '「',
       a: 'ぃ', s: 'へ', d: 'ら', f: 'ゅ', g: 'よ', h: 'ま', j: 'お', k: 'も', l: 'わ', ';': 'ゆ', "'": '」',
       z: 'ぅ', x: 'ぇ', c: 'ぉ', v: 'ね', b: 'ゃ', n: 'む', m: 'ろ', ',': '・', '.': 'ー',
-    }),
+    }, triggerPersistence),
   ];
 }
 
@@ -59,6 +64,7 @@ function appendComposed(layout: Layout, entries: Record<string, string>, mark: s
   if (!markSequence) throw new Error(`新JISの合成記号「${mark}」が未定義`);
   const stepLayers = new Map(layout.stepLayers ?? []);
   const stepTriggerKeys = new Map(layout.stepTriggerKeys ?? []);
+  const stepSemantics = new Map(layout.stepSemantics ?? []);
 
   for (const [source, output] of Object.entries(entries)) {
     const sourceSequence = layout.map.get(source);
@@ -78,14 +84,27 @@ function appendComposed(layout: Layout, entries: Record<string, string>, mark: s
     const sourceTriggers = layout.stepTriggerKeys?.get(source) ?? sourceSequence.map(() => []);
     const markTriggers = layout.stepTriggerKeys?.get(mark) ?? markSequence.map(() => []);
     stepTriggerKeys.set(output, [...sourceTriggers, ...markTriggers]);
+
+    const sourceSemantics = layout.stepSemantics?.get(source);
+    const markSemantics = layout.stepSemantics?.get(mark);
+    if (!sourceSemantics || !markSemantics) {
+      throw new Error(`新JISの合成semantic「${source}」「${mark}」が未定義`);
+    }
+    stepSemantics.set(output, [...sourceSemantics, ...markSemantics]);
   }
 
   layout.stepLayers = stepLayers;
   layout.stepTriggerKeys = stepTriggerKeys;
+  layout.stepSemantics = stepSemantics;
 }
 
-function makeLayout(id: string, name: string, mode: FaceMode): Layout {
-  const layout = fromFaces(id, name, shinJisFaces(mode));
+function makeLayout(
+  id: string,
+  name: string,
+  mode: FaceMode,
+  triggerPersistence: NonNullable<Face['triggerPersistence']>,
+): Layout {
+  const layout = fromFaces(id, name, shinJisFaces(mode, triggerPersistence));
   appendComposed(layout, VOICED, '゛');
   appendComposed(layout, SEMI_VOICED, '゜');
 
@@ -95,5 +114,10 @@ function makeLayout(id: string, name: string, mode: FaceMode): Layout {
   return layout;
 }
 
-export const SHIN_JIS_PREFIX = makeLayout('shin-jis-prefix', '新JIS（逐次シフト）', 'prefix');
-export const SHIN_JIS_SIMULTANEOUS = makeLayout('shin-jis-simultaneous', '新JIS（通常シフト）', 'simultaneous');
+export const SHIN_JIS_PREFIX = makeLayout('shin-jis-prefix', '新JIS（逐次シフト）', 'prefix', 'single');
+export const SHIN_JIS_SIMULTANEOUS = makeLayout(
+  'shin-jis-simultaneous',
+  '新JIS（通常シフト）',
+  'simultaneous',
+  'hold-capable',
+);
