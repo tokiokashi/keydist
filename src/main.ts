@@ -1412,17 +1412,17 @@ function renderGlobalDelayControls(parent: HTMLElement): void {
     const average = rateAverageSelect.value;
     if (average !== 'sma' && average !== 'ewma') return;
     updateUiState((draft) => { draft.conditions.defaults.playbackRateAverage = average; });
-    renderConditionDescription(); render();
+    renderConditionDescription(); playbackView?.update();
   });
   rateAverage.append(rateAverageSelect);
   const rateWindow = document.createElement('label'); rateWindow.append('SMA窓幅 ');
   conditionNumber(rateWindow, uiState.conditions.defaults.playbackRateWindow, false, (value) => {
     if (!Number.isInteger(value)) return;
-    updateUiState((draft) => { draft.conditions.defaults.playbackRateWindow = value; }); renderConditionDescription(); render();
+    updateUiState((draft) => { draft.conditions.defaults.playbackRateWindow = value; }); renderConditionDescription(); playbackView?.update();
   }, { min: '1', max: '50', step: '1' }); rateWindow.append(' 打鍵');
   const rateHalfLife = document.createElement('label'); rateHalfLife.append('EWMA半減期 ');
   conditionNumber(rateHalfLife, uiState.conditions.defaults.playbackRateHalfLifeSeconds, false, (value) => {
-    updateUiState((draft) => { draft.conditions.defaults.playbackRateHalfLifeSeconds = value; }); renderConditionDescription(); render();
+    updateUiState((draft) => { draft.conditions.defaults.playbackRateHalfLifeSeconds = value; }); renderConditionDescription(); playbackView?.update();
   }, { min: '0.1', max: '10', step: '0.1' }); rateHalfLife.append(' 秒');
   const sameFinger = document.createElement('label'); const sameFingerInput = document.createElement('input');
   sameFingerInput.type = 'checkbox'; sameFingerInput.checked = playback.sameFingerDelay;
