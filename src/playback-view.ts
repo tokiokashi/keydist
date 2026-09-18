@@ -2,7 +2,7 @@ import { buildGeometry, THUMB_ROW, type Finger } from './geometry.ts';
 import { type Options, type Stroke, type Trace } from './evaluate.ts';
 import {
   advancePlayback, clampPlaybackCursor, createPlaybackState,
-  playbackFingerPositionKeys, playbackPreparedFingerPositionKeys, playbackInputPreview, playbackPlannedKeys,
+  playbackPreparedFingerPositionKeys, playbackInputPreview, playbackPlannedKeys,
   playbackPlannedOrders, playbackRomajiPlan, playbackRomajiPlannedKeys,
   playbackRomajiPlannedOrders, playbackOrderLabel, playbackRateChartData,
   playbackRecentActionsPerSecond, playbackRecentKanaPerSecond,
