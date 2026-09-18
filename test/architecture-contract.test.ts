@@ -73,6 +73,11 @@ test('PlaybackCalibrationはstructural analysisへ依存しない', async () => 
 });
 
 test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async () => {
+  const builtInLayoutLiterals = new Set(
+    [...LAYOUTS, ...LAYOUTS_JA, ...KANA_PENDING]
+      .flatMap((layout) => [layout.id, layout.name]),
+  );
+
   for (const { path, source } of await structuralAnalysisSources()) {
     for (const specifier of moduleSpecifiers(source)) {
       if (!specifier.startsWith('./layouts/')) continue;
@@ -88,6 +93,15 @@ test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async 
       /\blayout(?:Id|Name)\b|\blayout\s*\.\s*(?:id|name)\b/,
       `${relative(ROOT, path)} must not branch on layout ID/name`,
     );
+
+    for (const literal of builtInLayoutLiterals) {
+      const quotedLiteral = new RegExp(`[\\'\"\\\`]${escapeRegExp(literal)}[\\'\"\\\`]`);
+      assert.doesNotMatch(
+        source,
+        quotedLiteral,
+        `${relative(ROOT, path)} must not hard-code built-in layout ID/name: ${literal}`,
+      );
+    }
   }
 });
 
