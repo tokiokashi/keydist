@@ -2,7 +2,7 @@ import { buildGeometry, THUMB_ROW, type Finger } from './geometry.ts';
 import { type Options, type Stroke, type Trace } from './evaluate.ts';
 import {
   advancePlayback, clampPlaybackCursor, createPlaybackState,
-  playbackFingerPositionKeys, playbackInputPreview, playbackPlannedKeys,
+  playbackFingerPositionKeys, playbackPreparedFingerPositionKeys, playbackInputPreview, playbackPlannedKeys,
   playbackPlannedOrders, playbackRomajiPlan, playbackRomajiPlannedKeys,
   playbackRomajiPlannedOrders, playbackOrderLabel, playbackRateChartData,
   playbackRecentActionsPerSecond, playbackRecentKanaPerSecond,
@@ -147,6 +147,7 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
       <p class="note">キーボード画面に重ねる情報を設定します。変更はすぐに反映されます。</p>
       <div class="playback-dialog-grid">
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${ctx.getUiState().ui.playback.showFingers ? ' checked' : ''} />指の位置を色で表示</label>
+        <label class="playback-range-setting" title="次の実Pressへ向け、指位置表示を打鍵時刻より先に到着させる時間。0なら従来どおり"><span>準備時間</span> <input type="number" data-playback-finger-preparation min="0" step="0.05" value="${ctx.getUiState().ui.playback.fingerPreparationSeconds}" aria-label="指位置表示の準備時間（秒）" /> 秒</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${ctx.getUiState().ui.playback.showRomajiPlan ? ' checked' : ''} />予定ローマ字の盤面表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-plan-keys${ctx.getUiState().ui.playback.showPlanKeys ? ' checked' : ''} />押下予定キーを表示</label>
         <div class="playback-window-setting" title="選択中の配列に適用される窓幅N">N <output data-playback-window>${options.windowSize}</output> ステップ</div>
@@ -206,7 +207,17 @@ function updatePlaybackView() {
   const activeKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
   const triggerKeys = new Set(stroke?.triggerKeys ?? []);
   const fingerPositionKeys = ctx.getUiState().ui.playback.showFingers
-    ? playbackFingerPositionKeys(stroke, playbackGeometry)
+    ? playbackPreparedFingerPositionKeys(
+      playbackAnalysis,
+      cursor,
+      playbackState.elapsedMs,
+      playbackGeometry,
+      ctx.getUiState().ui.playback.fingerPreparationSeconds,
+      playbackState.stepsPerSecond,
+      playbackState.sameFingerDelay,
+      playbackState.calibration,
+      playbackState.speedMultiplier,
+    )
     : new Map<string, Finger>();
   const trailKeys = ctx.getUiState().ui.playback.showTrail
     ? playbackTrailKeys(playbackTrace.strokes, cursor, ctx.getUiState().ui.playback.trailTau)
@@ -339,6 +350,7 @@ function updatePlaybackView() {
   const back = elements.playback.querySelector<HTMLButtonElement>('[data-playback-action="back"]');
   const forward = elements.playback.querySelector<HTMLButtonElement>('[data-playback-action="forward"]');
   const fingers = settingsRoot.querySelector<HTMLInputElement>('[data-playback-fingers]');
+  const fingerPreparation = settingsRoot.querySelector<HTMLInputElement>('[data-playback-finger-preparation]');
   const planKeys = settingsRoot.querySelector<HTMLInputElement>('[data-playback-plan-keys]');
   const trail = settingsRoot.querySelector<HTMLInputElement>('[data-playback-trail]');
   const trailTau = settingsRoot.querySelector<HTMLInputElement>('[data-playback-trail-tau]');
@@ -438,6 +450,7 @@ function updatePlaybackView() {
   if (back) back.disabled = playbackState.playing || cursor === 0;
   if (forward) forward.disabled = playbackState.playing || cursor >= total;
   if (fingers) fingers.checked = ctx.getUiState().ui.playback.showFingers;
+  if (fingerPreparation) fingerPreparation.value = String(ctx.getUiState().ui.playback.fingerPreparationSeconds);
   const romajiPlan = settingsRoot.querySelector<HTMLInputElement>('[data-playback-romaji-plan]');
   if (romajiPlan) {
     romajiPlan.checked = ctx.getUiState().ui.playback.showRomajiPlan;
@@ -990,6 +1003,14 @@ function seekPlayback(value: string, playing = false) {
       }
       const fingers = target.closest<HTMLInputElement>('input[data-playback-fingers]');
       if (fingers) { ctx.updatePlaybackSetting('showFingers', fingers.checked); updatePlaybackView(); return; }
+      const fingerPreparation = target.closest<HTMLInputElement>('input[data-playback-finger-preparation]');
+      if (fingerPreparation) {
+        const value = Number(fingerPreparation.value);
+        if (Number.isFinite(value) && value >= 0) {
+          ctx.updatePlaybackSetting('fingerPreparationSeconds', value);
+        }
+        updatePlaybackView(); return;
+      }
       const romajiPlan = target.closest<HTMLInputElement>('input[data-playback-romaji-plan]');
       if (romajiPlan) { ctx.updatePlaybackSetting('showRomajiPlan', romajiPlan.checked); updatePlaybackView(); return; }
       const planKeys = target.closest<HTMLInputElement>('input[data-playback-plan-keys]');
