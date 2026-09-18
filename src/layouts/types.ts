@@ -203,6 +203,13 @@ export function fromRows(
   };
 }
 
+function faceHasOutput(face: Face): boolean {
+  return face.rows.some((row) => {
+    const cells = typeof row === 'string' ? [...row] : [...row];
+    return cells.some((output) => output !== '' && output !== ' ');
+  });
+}
+
 /** 面の集合を、評価器が使うかな → 打鍵ステップ列へ展開する。 */
 export function fromFaces(
   id: string,
@@ -228,6 +235,11 @@ export function fromFaces(
 
   for (const [faceIndex, face] of faces.entries()) {
     const trigger = [...new Set(face.trigger)];
+    if (trigger.length > 0 && faceHasOutput(face) && face.triggerPersistence === undefined) {
+      throw new Error(
+        `triggerを持つFaceはtriggerPersistenceを明示する必要がある（face:${faceIndex}）`,
+      );
+    }
     const isCombo = trigger.length > 1;
     const layerId = isCombo
       ? COMBO_LAYER_ID
