@@ -137,7 +137,7 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${ctx.getUiState().ui.playback.showTrail ? ' checked' : ''} />押下履歴を残す</label>
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${ctx.getUiState().ui.playback.trailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${ctx.getUiState().ui.playback.showOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-same-finger-motion${ctx.getUiState().ui.playback.showSameFingerMotion ? ' checked' : ''}${playbackState.sameFingerDelay ? '' : ' disabled'} />同指移動のアニメーションを表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-same-finger-motion${ctx.getUiState().ui.playback.showSameFingerMotion ? ' checked' : ''} />同指移動のアニメーションを表示</label>
         <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${ctx.getUiState().ui.playback.scale}" aria-label="配列図の表示倍率" /> 倍</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-sfb${ctx.getUiState().ui.playback.chainIncludeSameFinger ? ' checked' : ''}${ctx.getUiState().ui.playback.showChain ? '' : ' disabled'} />チェーンに同指連続を含める</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-layer${ctx.getUiState().ui.playback.chainIncludeLayerKeys ? ' checked' : ''}${ctx.getUiState().ui.playback.showChain ? '' : ' disabled'} />チェーンにレイヤーキーを含める</label>
@@ -507,10 +507,7 @@ function updatePlaybackView() {
   if (trail) trail.checked = ctx.getUiState().ui.playback.showTrail;
   if (trailTau) trailTau.value = String(ctx.getUiState().ui.playback.trailTau);
   if (orderLabels) orderLabels.checked = ctx.getUiState().ui.playback.showOrderLabels;
-  if (sameFingerMotion) {
-    sameFingerMotion.checked = ctx.getUiState().ui.playback.showSameFingerMotion;
-    sameFingerMotion.disabled = !playbackState.sameFingerDelay;
-  }
+  if (sameFingerMotion) sameFingerMotion.checked = ctx.getUiState().ui.playback.showSameFingerMotion;
   if (scale) scale.value = String(ctx.getUiState().ui.playback.scale);
   if (sameFingerDelay) sameFingerDelay.checked = playbackState.sameFingerDelay;
   if (chain) chain.checked = ctx.getUiState().ui.playback.showChain;
