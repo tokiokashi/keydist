@@ -117,6 +117,7 @@ function render() {
           chainPolicy: conditions.chainPolicy,
           arpeggioPolicy: conditions.arpeggioPolicy,
           triggerRealizationPolicy: conditions.triggerRealizationPolicy,
+          holdStartActionPolicy: conditions.holdStartActionPolicy,
           romajiRuleId: ctx.romajiRuleIdForLayout(layout),
         }),
         geometry,
