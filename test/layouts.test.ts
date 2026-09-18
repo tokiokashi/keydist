@@ -283,7 +283,14 @@ test('新下駄配列は7面の直接かな入力を同時押しとして保持�
 });
 
 test('面定義を出典フィクスチャの全セルと照合する（#83）', () => {
-  for (const id of ['naginata-v18', 'nicola', 'shingeta', 'tsuki-2-263']) {
+  for (const id of [
+    'naginata-v18',
+    'nicola',
+    'shin-jis-prefix',
+    'shin-jis-simultaneous',
+    'shingeta',
+    'tsuki-2-263',
+  ]) {
     assertKanaLayoutFixture(LAYOUT_BY_ID.get(id)!);
   }
 });
@@ -303,10 +310,38 @@ test('月配列2-263式はクロスシフトと濁音の逐次合成を保持す
   assertKanaLayout(layout, ['ゎ', 'ヴ']);
 });
 
+test('新JISは同じかな配置を逐次シフトと通常シフトで共有する', () => {
+  const prefix = LAYOUT_BY_ID.get('shin-jis-prefix')!;
+  const simultaneous = LAYOUT_BY_ID.get('shin-jis-simultaneous')!;
+
+  assertKanaLayout(prefix, ['ゎ', 'ヴ']);
+  assertKanaLayout(simultaneous, ['ゎ', 'ヴ']);
+
+  const faceCells = (layout: typeof prefix) => layout.faces!.map((face) =>
+    face.rows.map((row) => typeof row === 'string' ? [...row] : [...row]),
+  );
+  assert.deepEqual(faceCells(prefix), faceCells(simultaneous));
+  assert.deepEqual([...prefix.map.keys()].sort(), [...simultaneous.map.keys()].sort());
+
+  assert.deepEqual(prefix.map.get('そ'), [['q']]);
+  assert.deepEqual(simultaneous.map.get('そ'), [['q']]);
+  assert.deepEqual(prefix.map.get('ぁ'), [['thumb-r'], ['q']]);
+  assert.deepEqual(simultaneous.map.get('ぁ'), [['thumb-r', 'q']]);
+  assert.deepEqual(prefix.map.get('が'), [['s'], ['l']]);
+  assert.deepEqual(simultaneous.map.get('が'), [['s'], ['l']]);
+  assert.deepEqual(prefix.map.get('ぱ'), [['a'], ['thumb-r'], ['w']]);
+  assert.deepEqual(simultaneous.map.get('ぱ'), [['a'], ['thumb-r', 'w']]);
+
+  assert.equal(prefix.thumbShiftKey, 'thumb-r');
+  assert.equal(simultaneous.thumbShiftKey, 'thumb-r');
+  for (const layout of [prefix, simultaneous]) {
+    assert.equal(layout.legends.get('thumb-l'), 'シフト');
+    assert.equal(layout.legends.get('thumb-r'), 'シフト');
+  }
+});
+
 test('かな配列七傑の未実装枠は一覧へ登録しない', () => {
-  const pendingIds = [
-    'asuka', 'shin-koume', 'shin-jis-prefix', 'shin-jis-simultaneous',
-  ];
+  const pendingIds = ['asuka', 'shin-koume'];
   const noThumbIds = new Set<string>();
   assert.deepEqual(KANA_PENDING.map((layout) => layout.id), pendingIds);
   for (const layout of KANA_PENDING) {
