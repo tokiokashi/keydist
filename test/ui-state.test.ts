@@ -86,6 +86,7 @@ test('保存形式はuiとconditionsに分かれ、既存配列の条件だけ�
     windowSize: 5,
     sfbHomeCost: false,
     preferOppositeThumb: true,
+    chain: fallback.conditions.defaults.chain,
     arpeggio: fallback.conditions.defaults.arpeggio,
   };
   value.conditions.perLayout = {
@@ -104,6 +105,34 @@ test('保存形式はuiとconditionsに分かれ、既存配列の条件だけ�
     oonishi: { geometry: 'ortholinear', windowSize: 7, sfbHomeCost: false, romajiRule: 'azik' },
     qwerty: {},
   });
+});
+
+test('旧Chain UI設定は保存互換のままChainPolicyへ移行する', () => {
+  const fallback = defaults();
+  const value = structuredClone(fallback);
+  delete (value.conditions.defaults as Partial<typeof value.conditions.defaults>).chain;
+  value.ui.playback.chainIncludeSameFinger = true;
+  value.ui.playback.chainIncludeLayerKeys = false;
+  value.conditions.perLayout.oonishi = {
+    playback: {
+      chainIncludeSameFinger: false,
+      chainIncludeLayerKeys: false,
+    },
+  };
+
+  const state = sanitizeUiState(value, fallback, choices);
+  assert.deepEqual(state.conditions.defaults.chain, {
+    breakOnSameFinger: false,
+    breakOnTriggerOnly: true,
+    breakOnOppositeHandSimultaneous: false,
+  });
+  assert.deepEqual(state.conditions.perLayout.oonishi.chain, {
+    breakOnSameFinger: true,
+    breakOnTriggerOnly: true,
+    breakOnOppositeHandSimultaneous: false,
+  });
+  assert.equal(state.ui.playback.chainIncludeSameFinger, true);
+  assert.equal(state.ui.playback.chainIncludeLayerKeys, false);
 });
 
 test('アルペジオ条件は数値範囲とnullを保ったまま保存・復元する', () => {
