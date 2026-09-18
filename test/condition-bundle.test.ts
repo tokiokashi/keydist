@@ -72,6 +72,19 @@ test('ArpeggioPolicyはglobal / per-layoutともcondition bundleで往復する'
   );
 });
 
+test('TriggerRealizationPolicyはglobal / per-layoutともcondition bundleで往復する', () => {
+  const current = state();
+  current.conditions.defaults.triggerRealization = { useHold: true };
+  current.conditions.perLayout.qwerty = {
+    triggerRealization: { useHold: false },
+  };
+  const bundle = conditionBundleFromState(current, [], [], { rules: [], assignments: {} }, []);
+  const parsed = parseConditionBundle(serializeConditionBundle(bundle), bundle, current, choices);
+
+  assert.deepEqual(parsed.conditions.defaults.triggerRealization, { useHold: true });
+  assert.deepEqual(parsed.conditions.perLayout.qwerty.triggerRealization, { useHold: false });
+});
+
 test('未知の配列への個別設定は読み込み時に捨てる', () => {
   const current = state();
   const bundle = conditionBundleFromState(current, [], [], { rules: [], assignments: {} }, []);
