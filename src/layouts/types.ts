@@ -257,7 +257,7 @@ export function fromFaces(
           trigger,
           face.mode,
           key,
-          face.inputRole ?? face.role ?? 'layer',
+          face.inputRole ?? face.role ?? (isCombo ? 'composition' : 'layer'),
           trigger.length > 0 ? face.triggerBehavior ?? 'chord' : undefined,
         ));
         // 刻印は単打面の1文字だけを表示する。シフト面の出力で上書きしない。
