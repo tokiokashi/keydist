@@ -396,6 +396,29 @@ test('hold triggerはheld-trigger/continueをそのままStrokeへ伝播でき�
   assert.equal(stroke.participations[0].holdPhase, 'continue');
 });
 
+test('holdPhaseはheld-trigger participationだけに付与する', () => {
+  const layout: Layout = {
+    id: 'semantic-hold-mixed',
+    name: 'semantic-hold-mixed',
+    map: new Map([['x', [['q', 'j']]]]),
+    legends: new Map(),
+    stepSemantics: new Map([['x', [{
+      inputRole: 'modifier',
+      triggerBehavior: 'hold',
+      outputKeys: ['j'],
+      triggerKeys: ['q'],
+      holdPhase: 'continue',
+    }]]]),
+  };
+  const trace = evaluate('x', layout, geometry, opts());
+  const byFinger = new Map(trace.strokes[0].participations.map((p) => [p.finger, p]));
+
+  assert.deepEqual(byFinger.get('LP')?.roles, ['held-trigger']);
+  assert.equal(byFinger.get('LP')?.holdPhase, 'continue');
+  assert.deepEqual(byFinger.get('RI')?.roles, ['output']);
+  assert.equal(byFinger.get('RI')?.holdPhase, undefined);
+});
+
 test('文字コンボはcompositionとして伝播し、trigger宣言なしではchord-triggerにしない', () => {
   const layout = withCombos('semantic-combo', 'semantic-combo', qwerty, [
     ['ab', ['a', 'b']],
