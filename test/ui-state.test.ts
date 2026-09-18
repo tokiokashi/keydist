@@ -66,6 +66,7 @@ test('画面状態を単一キーで保存・復元する', () => {
   state.ui.input.customText = 'edited';
   state.ui.layouts.selectedByMode.ja = [];
   state.ui.playback.stepsPerSecond = 3.2;
+  state.ui.playback.fingerPreparationSeconds = 0.35;
   state.conditions.perLayout.oonishi = {
     playback: {
       stepsPerSecond: 4.5,
@@ -76,6 +77,19 @@ test('画面状態を単一キーで保存・復元する', () => {
   assert.equal(saveUiState(storage, state), true);
   assert.deepEqual(loadUiState(storage, defaults(), choices).state, state);
   assert.equal(storage.data.size, 1);
+});
+
+test('指位置の準備時間は非負の有限値だけ復元する', () => {
+  const fallback = defaults();
+  const value = structuredClone(fallback);
+  value.ui.playback.fingerPreparationSeconds = 0.4;
+  assert.equal(sanitizeUiState(value, fallback, choices).ui.playback.fingerPreparationSeconds, 0.4);
+
+  value.ui.playback.fingerPreparationSeconds = -1;
+  assert.equal(sanitizeUiState(value, fallback, choices).ui.playback.fingerPreparationSeconds, 0);
+
+  value.ui.playback.fingerPreparationSeconds = Number.POSITIVE_INFINITY;
+  assert.equal(sanitizeUiState(value, fallback, choices).ui.playback.fingerPreparationSeconds, 0);
 });
 
 test('保存形式はuiとconditionsに分かれ、canonical条件だけ復元する', () => {
