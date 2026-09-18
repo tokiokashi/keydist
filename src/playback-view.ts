@@ -830,24 +830,6 @@ function stopPlayback() {
   updatePlaybackView();
 }
 
-function syncPlaybackStateFromSettings(): void {
-  const settings = ctx.getPlaybackSettings();
-  const cursor = playbackTrace
-    ? clampPlaybackCursor(playbackState.cursor, playbackTrace.strokes.length)
-    : 0;
-  cancelPlaybackAnimation();
-  playbackState = createPlaybackState(
-    settings.stepsPerSecond,
-    settings.sameFingerDelay,
-    settings.useCalibration ? ctx.getCalibration() : undefined,
-    settings.speedMultiplier,
-  );
-  playbackState = { ...playbackState, cursor };
-  refreshPlaybackTiming();
-  playbackMotionCursor = -1;
-  playbackRateChartSignature = undefined;
-}
-
 function playbackFrame(timestamp: number) {
   playbackAnimationFrame = undefined;
   if (!playbackState.playing || !playbackTrace || !playbackAnalysis) return;
@@ -966,8 +948,6 @@ function refreshStructuralAnalysis(): void {
       const layoutOverride = targetElement.closest<HTMLButtonElement>('[data-playback-layout-override]');
       if (layoutOverride) {
         ctx.setPlaybackLayoutOverride(layoutOverride.dataset.playbackLayoutOverride === 'enable');
-        syncPlaybackStateFromSettings();
-        updatePlaybackView();
         return;
       }
       const action = targetElement.closest<HTMLButtonElement>('button[data-playback-action]');
