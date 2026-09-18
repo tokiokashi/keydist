@@ -424,6 +424,21 @@ test('behavior未指定のtriggerを暗黙chordへ正規化しない', () => {
   assert.deepEqual(trace.strokes[1].participations.map((p) => p.roles), [['output']]);
 });
 
+test('legacy fallbackもtriggerKeysだけからchordを推測しない', () => {
+  const layout: Layout = {
+    id: 'legacy-trigger',
+    name: 'legacy-trigger',
+    map: new Map([['x', [['q', 'j']]]]),
+    legends: new Map(),
+    stepTriggerKeys: new Map([['x', [['q']]]]),
+  };
+  const trace = evaluate('x', layout, geometry, opts());
+  const byFinger = new Map(trace.strokes[0].participations.map((p) => [p.finger, p]));
+
+  assert.deepEqual(byFinger.get('LP')?.roles, []);
+  assert.deepEqual(byFinger.get('RI')?.roles, ['output']);
+});
+
 test('one-shot triggerはone-shot-triggerとして正規化する', () => {
   const layout = fromFaces('semantic-one-shot', 'semantic-one-shot', [{
     trigger: ['q'],
