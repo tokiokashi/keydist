@@ -137,13 +137,34 @@ test('速度の移動平均窓は1〜50の整数だけ復元する', () => {
   assert.equal(sanitizeUiState(value, fallback, choices).conditions.defaults.playbackRateWindow, 10);
 });
 
+test('速度平均方式とEWMA半減期は有効範囲だけ復元する', () => {
+  const fallback = defaults();
+  assert.equal(fallback.conditions.defaults.playbackRateAverage, 'sma');
+  assert.equal(fallback.conditions.defaults.playbackRateHalfLifeSeconds, 1);
+
+  const value = structuredClone(fallback) as unknown as Record<string, any>;
+  value.conditions.defaults.playbackRateAverage = 'ewma';
+  value.conditions.defaults.playbackRateHalfLifeSeconds = 2.5;
+  const valid = sanitizeUiState(value, fallback, choices);
+  assert.equal(valid.conditions.defaults.playbackRateAverage, 'ewma');
+  assert.equal(valid.conditions.defaults.playbackRateHalfLifeSeconds, 2.5);
+
+  value.conditions.defaults.playbackRateAverage = 'median';
+  value.conditions.defaults.playbackRateHalfLifeSeconds = 0;
+  const invalid = sanitizeUiState(value, fallback, choices);
+  assert.equal(invalid.conditions.defaults.playbackRateAverage, 'sma');
+  assert.equal(invalid.conditions.defaults.playbackRateHalfLifeSeconds, 1);
+});
+
 test('保存形式はuiとconditionsに分かれ、canonical条件だけ復元する', () => {
   const fallback = defaults();
   const value = structuredClone(fallback);
   value.conditions.defaults = {
     geometry: 'column-staggered',
     windowSize: 5,
+    playbackRateAverage: 'ewma',
     playbackRateWindow: 20,
+    playbackRateHalfLifeSeconds: 1.5,
     sfbHomeCost: false,
     preferOppositeThumb: true,
     chain: {
@@ -166,7 +187,9 @@ test('保存形式はuiとconditionsに分かれ、canonical条件だけ復元�
     invalid: { windowSize: 99 },
   };
   (value.conditions.perLayout.invalid as Record<string, unknown>).preferOppositeThumb = 'yes';
+  (value.conditions.perLayout.oonishi as Record<string, unknown>).playbackRateAverage = 'ewma';
   (value.conditions.perLayout.oonishi as Record<string, unknown>).playbackRateWindow = 40;
+  (value.conditions.perLayout.oonishi as Record<string, unknown>).playbackRateHalfLifeSeconds = 2;
 
   const state = sanitizeUiState(value, fallback, choices);
 
@@ -176,7 +199,9 @@ test('保存形式はuiとconditionsに分かれ、canonical条件だけ復元�
     oonishi: { geometry: 'ortholinear', windowSize: 7, sfbHomeCost: false, romajiRule: 'azik' },
     qwerty: {},
   });
+  assert.equal('playbackRateAverage' in state.conditions.perLayout.oonishi, false);
   assert.equal('playbackRateWindow' in state.conditions.perLayout.oonishi, false);
+  assert.equal('playbackRateHalfLifeSeconds' in state.conditions.perLayout.oonishi, false);
 });
 test('旧Chain UI設定はChainPolicyへ移行し旧playback fieldを保存しない', () => {
   const fallback = defaults();
@@ -469,7 +494,9 @@ test('無効な値は項目ごとに既定値へ戻す', () => {
       defaults: {
         ...fallback.conditions.defaults,
         windowSize: 99,
+        playbackRateAverage: 'median' as never,
         playbackRateWindow: 0,
+        playbackRateHalfLifeSeconds: 0,
       },
       perLayout: {},
     },
@@ -478,7 +505,9 @@ test('無効な値は項目ごとに既定値へ戻す', () => {
   assert.equal(state.ui.input.mode, fallback.ui.input.mode);
   assert.equal(state.ui.input.geometry, fallback.ui.input.geometry);
   assert.equal(state.conditions.defaults.windowSize, fallback.conditions.defaults.windowSize);
+  assert.equal(state.conditions.defaults.playbackRateAverage, fallback.conditions.defaults.playbackRateAverage);
   assert.equal(state.conditions.defaults.playbackRateWindow, fallback.conditions.defaults.playbackRateWindow);
+  assert.equal(state.conditions.defaults.playbackRateHalfLifeSeconds, fallback.conditions.defaults.playbackRateHalfLifeSeconds);
   assert.equal(state.ui.input.selectedSampleByMode.en, 'default');
   assert.equal(state.ui.input.selectedSampleByMode.ja, 'legacy');
   assert.deepEqual(state.ui.layouts.selectedByMode.en, []);
