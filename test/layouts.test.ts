@@ -299,6 +299,7 @@ test('面定義を出典フィクスチャの全セルと照合する（#83）',
   for (const id of [
     'naginata-v18',
     'nicola',
+    'asuka',
     'shin-jis-prefix',
     'shin-jis-simultaneous',
     'shingeta',
