@@ -3,6 +3,10 @@ import type { Trace } from './evaluate.ts';
 import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from './analysis-chain.ts';
 import { DEFAULT_ARPEGGIO_POLICY, type ArpeggioPolicy } from './analysis-arpeggio.ts';
 import { COMBO_LAYER_ID } from './layouts/types.ts';
+import {
+  DEFAULT_TRIGGER_REALIZATION_POLICY,
+  type TriggerRealizationPolicy,
+} from './trigger-realization.ts';
 
 /**
  * 隣接ペアのホーム間隔 [u]（仕様 §11.6で引く基準）。
@@ -133,6 +137,8 @@ export interface MetricConditions {
   chainPolicy: ChainPolicy;
   /** ArpeggioSpanを派生したArpeggioPolicy。 */
   arpeggioPolicy: ArpeggioPolicy;
+  /** hold-capable triggerをrealizeしたPolicy。 */
+  triggerRealizationPolicy: TriggerRealizationPolicy;
   /** ローマ字入力に使った綴り規則の識別子。かな直接入力はnull */
   romajiRuleId: string | null;
 }
@@ -143,6 +149,7 @@ export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
   preferOppositeThumb: false,
   chainPolicy: { ...DEFAULT_CHAIN_POLICY },
   arpeggioPolicy: { ...DEFAULT_ARPEGGIO_POLICY },
+  triggerRealizationPolicy: { ...DEFAULT_TRIGGER_REALIZATION_POLICY },
   romajiRuleId: null,
 };
 
