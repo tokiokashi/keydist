@@ -94,8 +94,6 @@ export const LAYOUTS: Layout[] = ALPHA.filter((l) => l.id !== 'oonishi-custom');
 export const KANA_PENDING: Layout[] = [
   ASUKA,
   SHIN_KOUME,
-  SHIN_JIS_PREFIX,
-  SHIN_JIS_SIMULTANEOUS,
 ];
 
 /**
@@ -122,6 +120,8 @@ export const LAYOUTS_JA: Layout[] = [
   ),
   NAGINATA_V18,
   NICOLA,
+  SHIN_JIS_PREFIX,
+  SHIN_JIS_SIMULTANEOUS,
   SHINGETA,
   TSUKI_2_263,
 ];
