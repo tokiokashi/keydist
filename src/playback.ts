@@ -90,16 +90,6 @@ function fingerHand(finger: Finger): 'left' | 'right' {
   return finger.startsWith('L') ? 'left' : 'right';
 }
 
-/**
- * 親指キー（スペース等）はチェーンの材料から外す。
- *
- * 新下駄・薙刀式のような配列では親指が同時押しのシフトを担う。これは指が鍵盤を
- * 渡り歩く動きではないので、手の連続の判定にも移動の起点・終点にも使わない。
- */
-function isThumb(finger: Finger): boolean {
-  return finger === 'LT' || finger === 'RT';
-}
-
 /** 打鍵順を既存の図解と同じ丸数字で表示する。 */
 export function playbackOrderLabel(order: number): string {
   return order >= 1 && order <= 20 ? String.fromCharCode(0x245f + order) : `(${order})`;
