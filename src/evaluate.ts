@@ -343,12 +343,11 @@ function resolveStepSemantic(
     };
   }
 
-  // 旧Layout / user layout向けの互換fallback。comboだからという理由だけで
-  // chord-triggerにはせず、明示されたtriggerKeysだけをtriggerとして扱う。
+  // 旧Layout / user layout向けの互換fallback。
+  // triggerKeysはtriggerの物理キーだけを復元し、成立方法（chord/hold/one-shot）は推測しない。
   const triggers = new Set(triggerKeys.map(resolveKeyId));
   return {
     inputRole: isCombo ? 'composition' : 'layer',
-    triggerBehavior: triggers.size > 0 ? 'chord' : undefined,
     outputKeys: step.map(resolveKeyId).filter((key) => !triggers.has(key)),
     triggerKeys: [...triggers],
   };
