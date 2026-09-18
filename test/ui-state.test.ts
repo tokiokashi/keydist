@@ -67,6 +67,7 @@ test('画面状態を単一キーで保存・復元する', () => {
   state.ui.layouts.selectedByMode.ja = [];
   state.ui.playback.stepsPerSecond = 3.2;
   state.ui.playback.fingerPreparationSeconds = 0.35;
+  state.ui.playback.allFingerMovementDelay = true;
   state.conditions.perLayout.oonishi = {
     playback: {
       stepsPerSecond: 4.5,
@@ -77,6 +78,18 @@ test('画面状態を単一キーで保存・復元する', () => {
   assert.equal(saveUiState(storage, state), true);
   assert.deepEqual(loadUiState(storage, defaults(), choices).state, state);
   assert.equal(storage.data.size, 1);
+});
+
+test('全指移動律速は既定OFFでbooleanだけ復元する', () => {
+  const fallback = defaults();
+  assert.equal(fallback.ui.playback.allFingerMovementDelay, false);
+
+  const value = structuredClone(fallback) as unknown as Record<string, any>;
+  value.ui.playback.allFingerMovementDelay = true;
+  assert.equal(sanitizeUiState(value, fallback, choices).ui.playback.allFingerMovementDelay, true);
+
+  value.ui.playback.allFingerMovementDelay = 'yes';
+  assert.equal(sanitizeUiState(value, fallback, choices).ui.playback.allFingerMovementDelay, false);
 });
 
 test('指位置の準備時間は非負の有限値だけ復元する', () => {
@@ -377,11 +390,12 @@ test('条件説明は打鍵再生の条件も既定値との差分を表現す�
 
   assert.deepEqual(
     result.map((condition) => condition.key),
-    ['stepsPerSecond', 'speedMultiplier', 'sameFingerDelay', 'useCalibration'],
+    ['stepsPerSecond', 'speedMultiplier', 'sameFingerDelay', 'allFingerMovementDelay', 'useCalibration'],
   );
   assert.equal(result.find((condition) => condition.key === 'stepsPerSecond')?.value, '3 ステップ/秒');
   assert.equal(result.find((condition) => condition.key === 'stepsPerSecond')?.differsFromDefault, true);
   assert.equal(result.find((condition) => condition.key === 'sameFingerDelay')?.value, '有効');
+  assert.equal(result.find((condition) => condition.key === 'allFingerMovementDelay')?.value, '無効');
   assert.equal(result.find((condition) => condition.key === 'useCalibration')?.differsFromDefault, false);
 });
 
