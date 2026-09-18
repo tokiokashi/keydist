@@ -69,6 +69,8 @@ export interface UiPlaybackState {
   /** 指位置表示を次のPressより先に到着させる準備時間 [秒]。 */
   fingerPreparationSeconds: number;
   sameFingerDelay: boolean;
+  /** 全指が次のPressへ物理的に到達できる時刻でTimingを律速する。 */
+  allFingerMovementDelay: boolean;
   useCalibration: boolean;
   showChain: boolean;
   showArpeggio: boolean;
@@ -214,6 +216,7 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
         showSameFingerMotion: false,
         fingerPreparationSeconds: 0,
         sameFingerDelay: true,
+        allFingerMovementDelay: false,
         useCalibration: options.usePlaybackCalibration,
         showChain: false,
         showArpeggio: false,
@@ -435,6 +438,10 @@ function sanitizePlaybackSettings(value: unknown, fallback: UiPlaybackState): Ui
       ? playback.fingerPreparationSeconds
       : fallback.fingerPreparationSeconds,
     sameFingerDelay: boolean(playback.sameFingerDelay, fallback.sameFingerDelay),
+    allFingerMovementDelay: boolean(
+      playback.allFingerMovementDelay,
+      fallback.allFingerMovementDelay,
+    ),
     useCalibration: boolean(playback.useCalibration, fallback.useCalibration),
     showChain,
     // arpeggioDisplayは旧保存値との互換用。新しい保存値ではshowArpeggioを優先する。
