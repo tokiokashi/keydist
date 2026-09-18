@@ -318,7 +318,41 @@ test('配列固有の打鍵再生設定は既定値からの差分だけ復元�
   const state = sanitizeUiState(value, fallback, choices);
 
   assert.deepEqual(state.conditions.perLayout, {
-    oonishi: { playback: { stepsPerSecond: 4.5, showChain: true, showSameFingerMotion: true } },
+    oonishi: {
+      playback: {
+        stepsPerSecond: 4.5,
+        showChain: true,
+        showChainOnRateChart: true,
+        showSameFingerMotion: true,
+      },
+    },
+  });
+});
+
+test('配列固有の旧共有構造表示だけを対応するグラフ表示へ移行する', () => {
+  const fallback = defaults();
+  fallback.ui.playback.showChain = false;
+  fallback.ui.playback.showArpeggio = true;
+  fallback.ui.playback.showChainOnRateChart = false;
+  fallback.ui.playback.showArpeggioOnRateChart = true;
+
+  const value = structuredClone(fallback);
+  value.conditions.perLayout = {
+    oonishi: {
+      playback: {
+        showChain: true,
+        showChainOnRateChart: false,
+        showArpeggio: false,
+      },
+    },
+  };
+
+  const state = sanitizeUiState(value, fallback, choices);
+  assert.deepEqual(state.conditions.perLayout.oonishi.playback, {
+    showChain: true,
+    showChainOnRateChart: false,
+    showArpeggio: false,
+    showArpeggioOnRateChart: false,
   });
 });
 
