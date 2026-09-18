@@ -6,6 +6,7 @@ import {
 import { isCustomGeometryKind, type PresetGeometryKind } from './geometry.ts';
 import { ARPEGGIO_PRESETS, sameArpeggioConditions, type ArpeggioConditions } from './playback-arpeggio.ts';
 import { sameChainPolicy, type ChainPolicy } from './analysis-chain.ts';
+import { sameArpeggioPolicy, type ArpeggioPolicy } from './analysis-arpeggio.ts';
 
 export type ConditionKey = keyof UiStateConditionsDefaults;
 
@@ -40,6 +41,12 @@ function formatChainPolicy(value: ChainPolicy): string {
     + `逆手同時${value.breakOnOppositeHandSimultaneous ? '区切る' : '区切らない'}`;
 }
 
+function formatArpeggioPolicy(value: ArpeggioPolicy): string {
+  return `親指${value.includeThumb ? '含む' : '含まない'}・`
+    + `同指bridge${value.bridgeSameFinger ? '有効' : '無効'}・`
+    + `redirect tail${value.includeSingleRedirectTail ? '有効' : '無効'}`;
+}
+
 function formatArpeggioConditions(value: ArpeggioConditions): string {
   const presetKey = Object.keys(ARPEGGIO_PRESETS).find(
     (key) => sameArpeggioConditions(ARPEGGIO_PRESETS[key], value),
@@ -56,6 +63,11 @@ export const CONDITION_DESCRIPTORS = {
     label: 'Chain境界条件',
     effect: 'Raw hand runをAnalysis Chainへ分割する条件です。同指・trigger-only・逆手同時入力を独立に扱います。親指onlyの既定は未決のため、この設定では決めません。',
     format: (value) => formatChainPolicy(value as ChainPolicy),
+  },
+  arpeggioPolicy: {
+    label: 'Arpeggio構造Policy',
+    effect: 'LongRoll / TwoRollからArpeggioSpanを派生する条件です。親指core、同指bridge、末尾1回のredirect吸収だけを扱います。',
+    format: (value) => formatArpeggioPolicy(value as ArpeggioPolicy),
   },
   arpeggio: {
     label: 'アルペジオ判定条件',
@@ -170,6 +182,9 @@ function sameConditionValue(
   right: UiStateConditionsDefaults[ConditionKey],
 ): boolean {
   if (key === 'chain') return sameChainPolicy(left as ChainPolicy, right as ChainPolicy);
+  if (key === 'arpeggioPolicy') {
+    return sameArpeggioPolicy(left as ArpeggioPolicy, right as ArpeggioPolicy);
+  }
   if (key === 'arpeggio') {
     return sameArpeggioConditions(left as ArpeggioConditions, right as ArpeggioConditions);
   }
