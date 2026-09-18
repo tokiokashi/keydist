@@ -137,6 +137,7 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${ctx.getUiState().ui.playback.showTrail ? ' checked' : ''} />押下履歴を残す</label>
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${ctx.getUiState().ui.playback.trailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${ctx.getUiState().ui.playback.showOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-same-finger-motion${ctx.getUiState().ui.playback.showSameFingerMotion ? ' checked' : ''}${playbackState.sameFingerDelay ? '' : ' disabled'} />同指移動のアニメーションを表示</label>
         <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${ctx.getUiState().ui.playback.scale}" aria-label="配列図の表示倍率" /> 倍</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-sfb${ctx.getUiState().ui.playback.chainIncludeSameFinger ? ' checked' : ''}${ctx.getUiState().ui.playback.showChain ? '' : ' disabled'} />チェーンに同指連続を含める</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-layer${ctx.getUiState().ui.playback.chainIncludeLayerKeys ? ' checked' : ''}${ctx.getUiState().ui.playback.showChain ? '' : ' disabled'} />チェーンにレイヤーキーを含める</label>
@@ -282,6 +283,7 @@ function updatePlaybackView() {
     )
     : new Map<string, number>();
   const sameFingerMotions = playbackState.sameFingerDelay
+    && ctx.getUiState().ui.playback.showSameFingerMotion
     ? playbackSameFingerKeyMotions(playbackTrace.strokes, cursor)
     : [];
   const sameFingerTargets = new Set(sameFingerMotions.flatMap((motion) => motion.toKeys));
@@ -314,7 +316,11 @@ function updatePlaybackView() {
   // 起点と終点が同じキーなら動きが無く、クローンは描かれない。それでも
   // animatedKeys に入れてしまうと打鍵中の塗りだけが抑止されて空白になる。
   // 面が違えば同じ物理キーに別のかなが乗るため、かな配列では普通に起きる。
-  const motions = [...sameFingerMotions, ...handMotions, ...arpeggioMotions].flatMap((motion) => {
+  const motions = [
+    ...sameFingerMotions.map((motion) => ({ ...motion, kind: 'sameFinger' as const })),
+    ...handMotions.map((motion) => ({ ...motion, kind: 'chain' as const })),
+    ...arpeggioMotions.map((motion) => ({ ...motion, kind: 'chain' as const })),
+  ].flatMap((motion) => {
     const toKeys = motion.toKeys.filter((key) => key !== motion.fromKey);
     return toKeys.length === 0 ? [] : [{ ...motion, toKeys }];
   });
@@ -394,6 +400,7 @@ function updatePlaybackView() {
   const trail = settingsRoot.querySelector<HTMLInputElement>('[data-playback-trail]');
   const trailTau = settingsRoot.querySelector<HTMLInputElement>('[data-playback-trail-tau]');
   const orderLabels = settingsRoot.querySelector<HTMLInputElement>('[data-playback-order-labels]');
+  const sameFingerMotion = settingsRoot.querySelector<HTMLInputElement>('[data-playback-same-finger-motion]');
   const scale = settingsRoot.querySelector<HTMLInputElement>('input[data-playback-scale]');
   const sameFingerDelay = settingsRoot.querySelector<HTMLInputElement>('[data-playback-sfb-delay]');
   const chain = settingsRoot.querySelector<HTMLInputElement>('[data-playback-chain]');
@@ -500,6 +507,10 @@ function updatePlaybackView() {
   if (trail) trail.checked = ctx.getUiState().ui.playback.showTrail;
   if (trailTau) trailTau.value = String(ctx.getUiState().ui.playback.trailTau);
   if (orderLabels) orderLabels.checked = ctx.getUiState().ui.playback.showOrderLabels;
+  if (sameFingerMotion) {
+    sameFingerMotion.checked = ctx.getUiState().ui.playback.showSameFingerMotion;
+    sameFingerMotion.disabled = !playbackState.sameFingerDelay;
+  }
   if (scale) scale.value = String(ctx.getUiState().ui.playback.scale);
   if (sameFingerDelay) sameFingerDelay.checked = playbackState.sameFingerDelay;
   if (chain) chain.checked = ctx.getUiState().ui.playback.showChain;
@@ -607,7 +618,9 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 function renderPlaybackMotions(
-  motions: readonly ReturnType<typeof playbackSameFingerKeyMotions>[number][],
+  motions: readonly (ReturnType<typeof playbackSameFingerKeyMotions>[number] & {
+    kind: 'sameFinger' | 'chain';
+  })[],
   cursor: number,
   stroke: Stroke | undefined,
 ) {
@@ -648,6 +661,7 @@ function renderPlaybackMotions(
       clone.removeAttribute('data-playback-key');
       clone.removeAttribute('data-playback-base-label');
       clone.setAttribute('data-playback-motion-key', `${cursor}-${motionIndex++}`);
+      clone.setAttribute('data-playback-motion-kind', motion.kind);
       clone.setAttribute('transform', `translate(${dx} ${dy})`);
       clone.style.pointerEvents = 'none';
       const animation = document.createElementNS(SVG_NS, 'animateTransform');
@@ -990,6 +1004,11 @@ function seekPlayback(value: string, playing = false) {
       if (sameFingerDelay) {
         playbackState = setPlaybackSameFingerDelay(playbackState, sameFingerDelay.checked);
         ctx.updatePlaybackSetting('sameFingerDelay', sameFingerDelay.checked);
+        playbackMotionCursor = -1; updatePlaybackView(); return;
+      }
+      const sameFingerMotion = target.closest<HTMLInputElement>('[data-playback-same-finger-motion]');
+      if (sameFingerMotion) {
+        ctx.updatePlaybackSetting('showSameFingerMotion', sameFingerMotion.checked);
         playbackMotionCursor = -1; updatePlaybackView(); return;
       }
       const chain = target.closest<HTMLInputElement>('[data-playback-chain]');
