@@ -1,4 +1,4 @@
-import { ALL_FINGERS, keyId, resolveKeyId, type Finger, type Geometry } from './geometry.ts';
+import { ALL_FINGERS, dist, keyId, resolveKeyId, type Finger, type Geometry, type Point } from './geometry.ts';
 import { classifyFaces, faceCells, foldedLayerCells, type Layer } from './layers.ts';
 import type { Stroke } from './evaluate.ts';
 import type { Layout } from './layouts/types.ts';
@@ -700,6 +700,154 @@ export function playbackStepDurationMs(
     calibration,
     speedMultiplier,
   );
+}
+
+export interface PlaybackTimingStep {
+  strokeIndex: number;
+  startMs: number;
+  endMs: number;
+}
+
+/**
+ * §3で確定した各Stroke durationを累積したTiming schedule。
+ * 表示側はこの結果を参照し、duration選択ロジックを複製しない。
+ */
+export function playbackTimingSchedule(
+  analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'transitions'>,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  sameFingerDelay = true,
+  calibration?: PlaybackCalibration,
+  speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+): PlaybackTimingStep[] {
+  let atMs = 0;
+  return analysis.strokes.map((_stroke, strokeIndex) => {
+    const startMs = atMs;
+    atMs += playbackStepDurationMs(
+      analysis,
+      strokeIndex,
+      stepsPerSecond,
+      sameFingerDelay,
+      calibration,
+      speedMultiplier,
+    );
+    return { strokeIndex, startMs, endMs: atMs };
+  });
+}
+
+function isActualPressParticipation(
+  participation: Stroke['participations'][number],
+): boolean {
+  return participation.roles.includes('output') || participation.roles.includes('trigger');
+}
+
+function previousFingerActionEndMs(
+  strokes: readonly Stroke[],
+  schedule: readonly PlaybackTimingStep[],
+  beforeStrokeIndex: number,
+  finger: Finger,
+): number {
+  for (let index = beforeStrokeIndex - 1; index >= 0; index--) {
+    if (strokes[index].participations.some((participation) =>
+      participation.finger === finger && isActualPressParticipation(participation))) {
+      return schedule[index]?.endMs ?? 0;
+    }
+  }
+  return 0;
+}
+
+function playbackFingerMoveMs(
+  from: Point,
+  to: Point,
+  finger: Finger,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  calibration: PlaybackCalibration | undefined,
+  speedMultiplier: number,
+): number {
+  const distance = dist(from, to);
+  if (distance <= 0) return 0;
+  const speed = calibration
+    ? calibration.fingerSpeedUnitsPerSecond[finger] ?? calibration.fallbackFingerSpeedUnitsPerSecond
+    : stepsPerSecond;
+  const multiplier = Number.isFinite(speedMultiplier) && speedMultiplier > 0
+    ? speedMultiplier
+    : DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
+  return Number.isFinite(speed) && speed > 0
+    ? (distance / speed) * 1000 / multiplier
+    : Number.POSITIVE_INFINITY;
+}
+
+/**
+ * 次の実Pressへ向けた準備時間を反映した指位置表示を返す。
+ * held-triggerの継続だけのparticipationは「次のPress」として扱わない。
+ */
+export function playbackPreparedFingerPositionKeys(
+  analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'transitions'>,
+  cursor: number,
+  elapsedMs: number,
+  geometry: Geometry,
+  preparationSeconds: number,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  sameFingerDelay = true,
+  calibration?: PlaybackCalibration,
+  speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+): ReadonlyMap<string, Finger> {
+  const strokes = analysis.strokes;
+  const end = clampPlaybackCursor(cursor, strokes.length);
+  const displayedStroke = end > 0 ? strokes[end - 1] : undefined;
+  const positionedKeys = new Map(playbackFingerPositionKeys(displayedStroke, geometry));
+  const preparationMs = Number.isFinite(preparationSeconds) && preparationSeconds > 0
+    ? preparationSeconds * 1000
+    : 0;
+  if (preparationMs === 0 || end >= strokes.length) return positionedKeys;
+
+  const schedule = playbackTimingSchedule(
+    analysis,
+    stepsPerSecond,
+    sameFingerDelay,
+    calibration,
+    speedMultiplier,
+  );
+  const nowMs = (end > 0 ? schedule[end - 1]?.endMs ?? 0 : 0) + Math.max(0, elapsedMs);
+
+  for (const finger of ALL_FINGERS) {
+    let targetIndex = -1;
+    for (let index = end; index < strokes.length; index++) {
+      if (strokes[index].participations.some((participation) =>
+        participation.finger === finger && isActualPressParticipation(participation))) {
+        targetIndex = index;
+        break;
+      }
+    }
+    if (targetIndex < 0) continue;
+
+    const press = strokes[targetIndex].presses.find((candidate) => candidate.finger === finger);
+    if (!press) continue;
+    const currentPosition = displayedStroke?.positions[finger] ?? geometry.homes[finger];
+    const moveMs = playbackFingerMoveMs(
+      currentPosition,
+      press.target,
+      finger,
+      stepsPerSecond,
+      calibration,
+      speedMultiplier,
+    );
+    const pressTimeMs = schedule[targetIndex]?.endMs;
+    if (pressTimeMs === undefined) continue;
+    const idealStartMs = pressTimeMs - preparationMs - moveMs;
+    const actualStartMs = Math.max(
+      idealStartMs,
+      previousFingerActionEndMs(strokes, schedule, targetIndex, finger),
+    );
+    const arrivalMs = Math.min(pressTimeMs, actualStartMs + moveMs);
+    if (nowMs < arrivalMs) continue;
+
+    for (const [keyId, positionedFinger] of [...positionedKeys]) {
+      if (positionedFinger === finger) positionedKeys.delete(keyId);
+    }
+    for (const key of press.keys) positionedKeys.set(key.id, finger);
+  }
+
+  return positionedKeys;
 }
 
 interface PlaybackRateWindow {
