@@ -8,10 +8,7 @@ import {
   sameHandFingerPairKey,
   type PlaybackCalibration,
 } from './playback-calibration.ts';
-import {
-  playbackArpeggioSpans,
-  type ArpeggioConditions,
-} from './playback-arpeggio.ts';
+import type { AggregatedAnalysisResult } from './analysis-aggregate.ts';
 
 /** 再生速度の入力範囲。実際の打鍵時間や距離モデルとは無関係。 */
 export const PLAYBACK_STEPS_PER_SECOND_MIN = 0.1;
@@ -35,9 +32,6 @@ export interface PlaybackState {
   sameFingerDelay: boolean;
   /** 有効にしている個人の打鍵・指移動速度。 */
   calibration?: PlaybackCalibration;
-  /** アルペジオ時間モデル。未指定なら従来の時間モデルを使う。 */
-  arpeggio?: ArpeggioConditions;
-  arpeggioDelayMode: 'before' | 'distributed';
   playing: boolean;
   elapsedMs: number;
 }
@@ -617,8 +611,6 @@ export function createPlaybackState(
   sameFingerDelay = true,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
-  arpeggio?: ArpeggioConditions,
-  arpeggioDelayMode: 'before' | 'distributed' = 'before',
 ): PlaybackState {
   return {
     cursor: 0,
@@ -626,8 +618,6 @@ export function createPlaybackState(
     speedMultiplier,
     sameFingerDelay,
     calibration,
-    arpeggio,
-    arpeggioDelayMode,
     playing: false,
     elapsedMs: 0,
   };
@@ -669,14 +659,6 @@ export function setPlaybackCalibration(
   calibration: PlaybackCalibration | undefined,
 ): PlaybackState {
   return { ...state, calibration, elapsedMs: 0 };
-}
-
-export function setPlaybackArpeggio(
-  state: PlaybackState,
-  arpeggio: ArpeggioConditions | undefined,
-  arpeggioDelayMode: 'before' | 'distributed' = state.arpeggioDelayMode,
-): PlaybackState {
-  return { ...state, arpeggio, arpeggioDelayMode, elapsedMs: 0 };
 }
 
 function normalPlaybackStepMs(stepsPerSecond: PlaybackStepsPerSecond): number {
@@ -736,102 +718,70 @@ function playbackTransitionRate(
   previousStroke: Stroke | undefined,
   stepsPerSecond: PlaybackStepsPerSecond,
   calibration?: PlaybackCalibration,
-  useArpeggioCalibration = false,
 ): number {
   const crossDirection = playbackCrossHandDirection(stroke, previousStroke);
-  if (useArpeggioCalibration && crossDirection !== undefined) {
+  if (crossDirection !== undefined) {
     return calibration?.actionsPerSecondByDirection?.[crossDirection]
       ?? calibration?.actionsPerSecond
       ?? stepsPerSecond;
   }
+
   const sameHandPair = playbackSameHandDifferentFingerPair(stroke, previousStroke);
   if (sameHandPair !== undefined) {
-    const sameHandDirectedPair = useArpeggioCalibration
-      ? playbackSameHandDirectedPair(stroke, previousStroke)
-      : undefined;
-    return (sameHandDirectedPair === undefined
+    const directedPair = playbackSameHandDirectedPair(stroke, previousStroke);
+    return (directedPair === undefined
       ? undefined
-      : calibration?.sameHandDifferentFingerActionsPerDirectedPair?.[sameHandDirectedPair])
+      : calibration?.sameHandDifferentFingerActionsPerDirectedPair?.[directedPair])
       ?? calibration?.sameHandDifferentFingerActionsPerSecondByPair[sameHandPair]
       ?? calibration?.sameHandDifferentFingerActionsPerSecond
       ?? stepsPerSecond;
   }
+
   return calibration?.actionsPerSecond ?? stepsPerSecond;
 }
 
-/** アルペジオ判定を切った時は、拡張した方向別速度を従来の再生へ持ち込まない。 */
-function playbackCalibrationWithoutArpeggio(
-  calibration: PlaybackCalibration | undefined,
-): PlaybackCalibration | undefined {
-  if (!calibration) return undefined;
-  const {
-    actionsPerSecondByDirection: _actionsPerSecondByDirection,
-    sameHandDifferentFingerActionsPerDirectedPair: _directedPair,
-    ...legacyCalibration
-  } = calibration;
-  return legacyCalibration;
-}
-
-export interface PlaybackArpeggioTiming {
-  intervalMs: number;
-  /** 区間の手前へまとめる遅れ。分散モードでは0。 */
-  leadDelayMs: number;
-}
-
-/** アルペジオ区間の各エッジへ、方向別速度から得た時間を割り当てる。 */
-export function playbackArpeggioTimings(
-  strokes: readonly Stroke[],
-  conditions: ArpeggioConditions,
+function playbackTransitionRateFromAnalysis(
+  analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'transitions'>,
+  strokeIndex: number,
   stepsPerSecond: PlaybackStepsPerSecond,
   calibration?: PlaybackCalibration,
-  delayMode: 'before' | 'distributed' = 'before',
-  sameFingerDelay = true,
-): ReadonlyMap<number, PlaybackArpeggioTiming> {
-  const timings = new Map<number, PlaybackArpeggioTiming>();
-  for (const span of playbackArpeggioSpans(strokes, conditions)) {
-    const edges: { index: number; intervalMs: number; normalMs: number }[] = [];
-    for (let index = span.start + 1; index < span.end; index++) {
-      const intervalMs = normalPlaybackStepMs(playbackTransitionRate(
-        strokes[index],
-        strokes[index - 1],
-        stepsPerSecond,
-        calibration,
-        true,
-      ));
-      const normalMs = playbackStrokeDurationMs(
-        strokes[index],
-        stepsPerSecond,
-        sameFingerDelay,
-        calibration,
-        strokes[index - 1],
-        1,
-      );
-      edges.push({ index, intervalMs, normalMs });
-    }
-    const leadDelayMs = delayMode === 'before'
-      ? edges.reduce((total, edge) => total + Math.max(0, edge.intervalMs - edge.normalMs), 0)
-      : 0;
-    for (const edge of edges) {
-      const timing = {
-        // 前寄せでは個別のアルペジオ間隔を通常時間へ重ねず、超過分だけを
-        // 区間の先頭へ寄せる。これで分散時と総時間が一致する。
-        intervalMs: delayMode === 'before' ? 0 : edge.intervalMs,
-        leadDelayMs: delayMode === 'before' && edge.index === span.start + 1
-          ? leadDelayMs
-          : 0,
-      };
-      const previous = timings.get(edge.index);
-      if (!previous
-        || timing.intervalMs > previous.intervalMs
-        || timing.leadDelayMs > previous.leadDelayMs) {
-        timings.set(edge.index, {
-          intervalMs: Math.max(previous?.intervalMs ?? 0, timing.intervalMs),
-          leadDelayMs: Math.max(previous?.leadDelayMs ?? 0, timing.leadDelayMs),
-        });
-      }
-    }
+): number {
+  const stroke = analysis.strokes[strokeIndex];
+  const previousStroke = analysis.strokes[strokeIndex - 1];
+
+  // 異手方向はAnalysisResult内の元Strokeから読む。L→R / R→Lは常に方向別Calibration対象。
+  const crossDirection = playbackCrossHandDirection(stroke, previousStroke);
+  if (crossDirection !== undefined) {
+    return calibration?.actionsPerSecondByDirection?.[crossDirection]
+      ?? calibration?.actionsPerSecond
+      ?? stepsPerSecond;
   }
-  return timings;
+
+  // 同手別指はHandTransitionのcandidateをsource of truthとして有向pairを選ぶ。
+  const transitionCandidates = analysis.transitions
+    .filter((transition) => transition.toStrokeIndex === strokeIndex)
+    .flatMap((transition) => transition.candidates);
+  for (const candidate of transitionCandidates) {
+    if (candidate.fromFinger === candidate.toFinger) continue;
+    const directedPair = sameHandDirectedFingerPairKey(
+      candidate.fromFinger,
+      candidate.toFinger,
+    );
+    const unorderedPair = sameHandFingerPairKey(
+      candidate.fromFinger,
+      candidate.toFinger,
+    );
+    if (unorderedPair === undefined) continue;
+    return (directedPair === undefined
+      ? undefined
+      : calibration?.sameHandDifferentFingerActionsPerDirectedPair?.[directedPair])
+      ?? calibration?.sameHandDifferentFingerActionsPerSecondByPair[unorderedPair]
+      ?? calibration?.sameHandDifferentFingerActionsPerSecond
+      ?? stepsPerSecond;
+  }
+
+  // Chain境界等でHandTransitionが無い場合も、元Strokeの通常fallbackは維持する。
+  return playbackTransitionRate(stroke, previousStroke, stepsPerSecond, calibration);
 }
 
 /** 1ステップを表示する時間。正規化ディレイは1uを通常の1アクション相当とする。 */
@@ -842,7 +792,6 @@ export function playbackStrokeDurationMs(
   calibration?: PlaybackCalibration,
   previousStroke?: Stroke,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
-  arpeggioTiming?: PlaybackArpeggioTiming,
 ): number {
   const normalMs = normalPlaybackStepMs(playbackTransitionRate(
     stroke,
@@ -850,34 +799,71 @@ export function playbackStrokeDurationMs(
     stepsPerSecond,
     calibration,
   ));
-  const arpeggioMs = arpeggioTiming?.intervalMs ?? 0;
-  const leadDelayMs = arpeggioTiming?.leadDelayMs ?? 0;
+  return playbackStrokeDurationFromNormalMs(
+    stroke,
+    normalMs,
+    sameFingerDelay,
+    calibration,
+    speedMultiplier,
+  );
+}
+
+function playbackStrokeDurationFromNormalMs(
+  stroke: Stroke | undefined,
+  normalMs: number,
+  sameFingerDelay: boolean,
+  calibration: PlaybackCalibration | undefined,
+  speedMultiplier: number,
+): number {
   const multiplier = Number.isFinite(speedMultiplier) && speedMultiplier > 0
     ? speedMultiplier
     : DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
-  if (!stroke || !sameFingerDelay) return (Math.max(normalMs, arpeggioMs) + leadDelayMs) / multiplier;
+  if (!stroke || !sameFingerDelay) return normalMs / multiplier;
 
-  const sameFingerDistance = Math.max(
-    1,
-    ...stroke.presses.filter((press) => press.sfb).map((press) => press.distance),
-  );
-  if (!stroke.presses.some((press) => press.sfb)) {
-    return (Math.max(normalMs, arpeggioMs) + leadDelayMs) / multiplier;
-  }
+  const sfbPresses = stroke.presses.filter((press) => press.sfb);
+  if (sfbPresses.length === 0) return normalMs / multiplier;
+
+  const sameFingerDistance = Math.max(1, ...sfbPresses.map((press) => press.distance));
   if (calibration) {
     const movementMs = Math.max(
-      ...stroke.presses
-        .filter((press) => press.sfb)
-        .map((press) => {
-          const speed = calibration.fingerSpeedUnitsPerSecond[press.finger]
-            ?? calibration.fallbackFingerSpeedUnitsPerSecond;
-          return (press.distance / speed) * 1000;
-        }),
+      ...sfbPresses.map((press) => {
+        const speed = calibration.fingerSpeedUnitsPerSecond[press.finger]
+          ?? calibration.fallbackFingerSpeedUnitsPerSecond;
+        return (press.distance / speed) * 1000;
+      }),
     );
-    return (Math.max(normalMs, arpeggioMs, movementMs) + leadDelayMs) / multiplier;
+    return Math.max(normalMs, movementMs) / multiplier;
   }
-  const movementMs = normalMs * sameFingerDistance;
-  return (Math.max(normalMs, arpeggioMs, movementMs) + leadDelayMs) / multiplier;
+  return Math.max(normalMs, normalMs * sameFingerDistance) / multiplier;
+}
+
+/**
+ * AnalysisResultの隣接Transitionを1回だけ評価するproduction用Timing入口。
+ * ArpeggioSpan / Roll / Redirect所属はduration sourceにしない。
+ */
+export function playbackStepDurationMs(
+  analysis: Pick<AggregatedAnalysisResult, 'strokes' | 'transitions'>,
+  strokeIndex: number,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  sameFingerDelay = true,
+  calibration?: PlaybackCalibration,
+  speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+): number {
+  const stroke = analysis.strokes[strokeIndex];
+  const rate = playbackTransitionRateFromAnalysis(
+    analysis,
+    strokeIndex,
+    stepsPerSecond,
+    calibration,
+  );
+  const normalMs = normalPlaybackStepMs(rate);
+  return playbackStrokeDurationFromNormalMs(
+    stroke,
+    normalMs,
+    sameFingerDelay,
+    calibration,
+    speedMultiplier,
+  );
 }
 
 interface PlaybackRateWindow {
