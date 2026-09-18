@@ -224,14 +224,19 @@ test('bridgeSameFingerを適用した後にredirect tailを適用する', () => 
     includeSingleRedirectTail: true,
   });
 
-  assert.deepEqual(result.arpeggioSpans, [{
-    startStrokeIndex: 0,
-    endStrokeIndex: 5,
-    hand: 'left',
-    coreKind: 'two-roll',
-    direction: 'inward',
-    extensions: ['same-finger-bridge', 'single-redirect-tail'],
-  }]);
+  assert.ok(result.arpeggioSpans.some((span) =>
+    span.startStrokeIndex === 0
+    && span.endStrokeIndex === 5
+    && span.hand === 'left'
+    && span.coreKind === 'two-roll'
+    && span.direction === 'inward'
+    && span.extensions.includes('same-finger-bridge')
+    && span.extensions.includes('single-redirect-tail')));
+  assert.ok(result.arpeggioSpans.some((span) =>
+    span.startStrokeIndex === 3
+    && span.endStrokeIndex === 5
+    && span.direction === 'outward'),
+  '構造的根拠が別のoverlap Spanはmergeしない');
 });
 
 test('redirect tail後方のsameは自動吸収しない', () => {
