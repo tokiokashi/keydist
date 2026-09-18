@@ -54,7 +54,7 @@ export type PlaybackKeyFeedbackStyle = 'off' | 'fade' | 'pulse' | 'bounce';
 export interface UiStateConditionsDefaults {
   geometry: GeometryKind;
   windowSize: number;
-  /** 実効速度の単純移動平均に使う直近Stroke数。全配列共通。 */
+  /** 速度の単純移動平均に使う直近Stroke数。全配列共通。 */
   playbackRateWindow: number;
   sfbHomeCost: boolean;
   preferOppositeThumb: boolean;
