@@ -132,15 +132,35 @@ test('配列固有の打鍵再生設定は既定値からの差分だけ復元�
   const fallback = defaults();
   const value = structuredClone(fallback);
   value.conditions.perLayout = {
-    oonishi: { playback: { stepsPerSecond: 4.5, showChain: true } },
+    oonishi: { playback: { stepsPerSecond: 4.5, showChain: true, showSameFingerMotion: true } },
     removed: { playback: { stepsPerSecond: 6 } },
   };
 
   const state = sanitizeUiState(value, fallback, choices);
 
   assert.deepEqual(state.conditions.perLayout, {
-    oonishi: { playback: { stepsPerSecond: 4.5, showChain: true } },
+    oonishi: { playback: { stepsPerSecond: 4.5, showChain: true, showSameFingerMotion: true } },
   });
+});
+
+test('同指移動の表示設定はモデル設定と独立して保存・復元する', () => {
+  const fallback = defaults();
+  assert.equal(fallback.ui.playback.sameFingerDelay, true);
+  assert.equal(fallback.ui.playback.showSameFingerMotion, false);
+
+  const value = structuredClone(fallback);
+  value.ui.playback.sameFingerDelay = true;
+  value.ui.playback.showSameFingerMotion = true;
+
+  const state = sanitizeUiState(value, fallback, choices);
+  assert.equal(state.ui.playback.sameFingerDelay, true);
+  assert.equal(state.ui.playback.showSameFingerMotion, true);
+
+  value.ui.playback.sameFingerDelay = false;
+  value.ui.playback.showSameFingerMotion = true;
+  const modelOff = sanitizeUiState(value, fallback, choices);
+  assert.equal(modelOff.ui.playback.sameFingerDelay, false);
+  assert.equal(modelOff.ui.playback.showSameFingerMotion, true);
 });
 
 test('旧アルペジオ表示範囲は実効表示を保ったまま個別表示へ移行する', () => {
