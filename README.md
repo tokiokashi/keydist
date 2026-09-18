@@ -67,6 +67,12 @@ Analysis Chain内の隣接Strokeからは、手ごとの **Transition fact** を
 candidateが複数でも1 windowのEventは1件です。別のpivot finger同士を継ぎ接ぎして
 架空のredirectを作ることはありません。
 
+そのTransition列からは、同じ方向へ3 Stroke以上続くmaximal区間を **LongRoll**、
+LongRollに含まれない独立した2 Stroke pairを **TwoRoll** として保持します。
+pure rollでは対象手の複数Press Strokeを除外し、output roleを持つ指だけを構成指にします。
+親指もoutputなら構造上のRollからは消しません。TwoRollはend StrokeがRedirect pivotの時だけ
+除外し、start側pivotは許容するという非対称な分類規則です。
+
 薙刀式には、センターシフトを出力キーと反対側の親指へ振り替える設定があります。既定は定義どおり右親指で、
 設定をオンにすると片手だけの出力に対して逆側の親指を優先します。連続する同時押しシフトは、同じ親指キーが続く場合に
 既存の `g = 0` の規則で親指が残った扱いになります。
