@@ -2,15 +2,15 @@ import { buildGeometry, THUMB_ROW, type Finger } from './geometry.ts';
 import { type Options, type Stroke, type Trace } from './evaluate.ts';
 import {
   advancePlayback, clampPlaybackCursor, createPlaybackState,
-  playbackFingerPositionKeys, playbackInputPreview, playbackPlannedKeys,
+  playbackPreparedFingerPositionKeys, playbackInputPreview, playbackPlannedKeys,
   playbackPlannedOrders, playbackRomajiPlan, playbackRomajiPlannedKeys,
   playbackRomajiPlannedOrders, playbackOrderLabel, playbackRateChartData,
   playbackRecentActionsPerSecond, playbackRecentKanaPerSecond,
   playbackSameFingerKeyMotions, playbackRepeatedKeys,
-  playbackStrokeAt, playbackStepDurationMs, setPlaybackSameFingerDelay,
+  playbackStrokeAt, playbackStepDurationMs, playbackTimingSchedule, setPlaybackSameFingerDelay,
   setPlaybackStepsPerSecond, stepPlayback, playbackTrailKeys, playbackTrailOrders,
   playbackStrokeDisplay, setPlaybackCalibration, setPlaybackSpeedMultiplier,
-  type PlaybackStepsPerSecond, type PlaybackState, PLAYBACK_SPEED_MULTIPLIER_MAX,
+  type PlaybackStepsPerSecond, type PlaybackState, type PlaybackTimingStep, PLAYBACK_SPEED_MULTIPLIER_MAX,
   PLAYBACK_SPEED_MULTIPLIER_MIN, PLAYBACK_STEPS_PER_SECOND_MAX,
   PLAYBACK_STEPS_PER_SECOND_MIN,
 } from './playback.ts';
@@ -111,10 +111,23 @@ let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
 let playbackMotionCursor = -1;
 let playbackRateChartSignature: string | undefined;
+let playbackTiming: readonly PlaybackTimingStep[] = [];
 type PlaybackSettingsTab = 'display' | 'conditions';
 
 let playbackSettingsOpen = false;
 let playbackSettingsTab: PlaybackSettingsTab = 'display';
+
+function refreshPlaybackTiming(): void {
+  playbackTiming = playbackAnalysis
+    ? playbackTimingSchedule(
+      playbackAnalysis,
+      playbackState.stepsPerSecond,
+      playbackState.sameFingerDelay,
+      playbackState.calibration,
+      playbackState.speedMultiplier,
+    )
+    : [];
+}
 
 function setPlaybackSettingsOpen(open: boolean): void {
   playbackSettingsOpen = open;
@@ -147,6 +160,7 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
       <p class="note">キーボード画面に重ねる情報を設定します。変更はすぐに反映されます。</p>
       <div class="playback-dialog-grid">
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${ctx.getUiState().ui.playback.showFingers ? ' checked' : ''} />指の位置を色で表示</label>
+        <label class="playback-range-setting" title="次の実Pressへ向け、指位置表示を打鍵時刻より先に到着させる時間。0なら従来どおり"><span>準備時間</span> <input type="number" data-playback-finger-preparation min="0" step="0.05" value="${ctx.getUiState().ui.playback.fingerPreparationSeconds}" aria-label="指位置表示の準備時間（秒）" /> 秒</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${ctx.getUiState().ui.playback.showRomajiPlan ? ' checked' : ''} />予定ローマ字の盤面表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-plan-keys${ctx.getUiState().ui.playback.showPlanKeys ? ' checked' : ''} />押下予定キーを表示</label>
         <div class="playback-window-setting" title="選択中の配列に適用される窓幅N">N <output data-playback-window>${options.windowSize}</output> ステップ</div>
@@ -206,7 +220,17 @@ function updatePlaybackView() {
   const activeKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
   const triggerKeys = new Set(stroke?.triggerKeys ?? []);
   const fingerPositionKeys = ctx.getUiState().ui.playback.showFingers
-    ? playbackFingerPositionKeys(stroke, playbackGeometry)
+    ? playbackPreparedFingerPositionKeys(
+      playbackAnalysis,
+      playbackTiming,
+      cursor,
+      playbackState.elapsedMs,
+      playbackGeometry,
+      ctx.getUiState().ui.playback.fingerPreparationSeconds,
+      playbackState.stepsPerSecond,
+      playbackState.calibration,
+      playbackState.speedMultiplier,
+    )
     : new Map<string, Finger>();
   const trailKeys = ctx.getUiState().ui.playback.showTrail
     ? playbackTrailKeys(playbackTrace.strokes, cursor, ctx.getUiState().ui.playback.trailTau)
@@ -339,6 +363,7 @@ function updatePlaybackView() {
   const back = elements.playback.querySelector<HTMLButtonElement>('[data-playback-action="back"]');
   const forward = elements.playback.querySelector<HTMLButtonElement>('[data-playback-action="forward"]');
   const fingers = settingsRoot.querySelector<HTMLInputElement>('[data-playback-fingers]');
+  const fingerPreparation = settingsRoot.querySelector<HTMLInputElement>('[data-playback-finger-preparation]');
   const planKeys = settingsRoot.querySelector<HTMLInputElement>('[data-playback-plan-keys]');
   const trail = settingsRoot.querySelector<HTMLInputElement>('[data-playback-trail]');
   const trailTau = settingsRoot.querySelector<HTMLInputElement>('[data-playback-trail-tau]');
@@ -438,6 +463,7 @@ function updatePlaybackView() {
   if (back) back.disabled = playbackState.playing || cursor === 0;
   if (forward) forward.disabled = playbackState.playing || cursor >= total;
   if (fingers) fingers.checked = ctx.getUiState().ui.playback.showFingers;
+  if (fingerPreparation) fingerPreparation.value = String(ctx.getUiState().ui.playback.fingerPreparationSeconds);
   const romajiPlan = settingsRoot.querySelector<HTMLInputElement>('[data-playback-romaji-plan]');
   if (romajiPlan) {
     romajiPlan.checked = ctx.getUiState().ui.playback.showRomajiPlan;
@@ -701,6 +727,7 @@ function renderPlayback(
     ctx.getUiState().ui.playback.useCalibration ? ctx.getCalibration() : undefined,
     ctx.getUiState().ui.playback.speedMultiplier,
   );
+  refreshPlaybackTiming();
   playbackMotionCursor = -1;
   playbackSeekWasPlaying = undefined;
   playbackRateChartSignature = undefined;
@@ -748,7 +775,9 @@ function renderPlayback(
 function startPlayback() {
   if (!playbackTrace || playbackState.cursor >= playbackTrace.strokes.length) return;
   cancelPlaybackAnimation();
-  playbackState = { ...playbackState, playing: true, elapsedMs: 0 };
+  // 一時停止からの再開では現在Stroke内の経過時間を維持する。
+  // 準備表示もelapsedMsを使うため、0へ戻すと到着済みの指が逆戻りしてしまう。
+  playbackState = { ...playbackState, playing: true };
   updatePlaybackView();
   playbackAnimationFrame = requestAnimationFrame((timestamp) => playbackFrame(timestamp));
 }
@@ -784,6 +813,7 @@ function syncPlaybackStateFromSettings(): void {
     settings.speedMultiplier,
   );
   playbackState = { ...playbackState, cursor };
+  refreshPlaybackTiming();
   playbackMotionCursor = -1;
   playbackRateChartSignature = undefined;
 }
@@ -934,6 +964,7 @@ function seekPlayback(value: string, playing = false) {
       const sameFingerDelay = target.closest<HTMLInputElement>('[data-playback-sfb-delay]');
       if (sameFingerDelay) {
         playbackState = setPlaybackSameFingerDelay(playbackState, sameFingerDelay.checked);
+        refreshPlaybackTiming();
         ctx.updatePlaybackSetting('sameFingerDelay', sameFingerDelay.checked);
         playbackMotionCursor = -1; updatePlaybackView(); return;
       }
@@ -968,6 +999,7 @@ function seekPlayback(value: string, playing = false) {
       if (calibration) {
         ctx.updatePlaybackSetting('useCalibration', calibration.checked);
         playbackState = setPlaybackCalibration(playbackState, ctx.getUiState().ui.playback.useCalibration ? ctx.getCalibration() : undefined);
+        refreshPlaybackTiming();
         updatePlaybackView(); return;
       }
       const rate = target.closest<HTMLInputElement>('input[data-playback-rate]');
@@ -975,6 +1007,7 @@ function seekPlayback(value: string, playing = false) {
         const value = Number(rate.value);
         if (Number.isFinite(value) && value >= PLAYBACK_STEPS_PER_SECOND_MIN && value <= PLAYBACK_STEPS_PER_SECOND_MAX) {
           playbackState = setPlaybackStepsPerSecond(playbackState, value as PlaybackStepsPerSecond);
+          refreshPlaybackTiming();
           ctx.updatePlaybackSetting('stepsPerSecond', value);
         }
         updatePlaybackView(); return;
@@ -984,12 +1017,21 @@ function seekPlayback(value: string, playing = false) {
         const value = Number(multiplier.value);
         if (Number.isFinite(value) && value >= PLAYBACK_SPEED_MULTIPLIER_MIN && value <= PLAYBACK_SPEED_MULTIPLIER_MAX) {
           playbackState = setPlaybackSpeedMultiplier(playbackState, value);
+          refreshPlaybackTiming();
           ctx.updatePlaybackSetting('speedMultiplier', value);
         }
         updatePlaybackView(); return;
       }
       const fingers = target.closest<HTMLInputElement>('input[data-playback-fingers]');
       if (fingers) { ctx.updatePlaybackSetting('showFingers', fingers.checked); updatePlaybackView(); return; }
+      const fingerPreparation = target.closest<HTMLInputElement>('input[data-playback-finger-preparation]');
+      if (fingerPreparation) {
+        const value = Number(fingerPreparation.value);
+        if (Number.isFinite(value) && value >= 0) {
+          ctx.updatePlaybackSetting('fingerPreparationSeconds', value);
+        }
+        updatePlaybackView(); return;
+      }
       const romajiPlan = target.closest<HTMLInputElement>('input[data-playback-romaji-plan]');
       if (romajiPlan) { ctx.updatePlaybackSetting('showRomajiPlan', romajiPlan.checked); updatePlaybackView(); return; }
       const planKeys = target.closest<HTMLInputElement>('input[data-playback-plan-keys]');
@@ -1026,6 +1068,7 @@ function seekPlayback(value: string, playing = false) {
     clear: () => {
       cancelPlaybackAnimation();
       playbackTrace = undefined; playbackAnalysis = undefined; playbackGeometry = undefined; playbackLayout = undefined; playbackOptions = undefined;
+      playbackTiming = [];
           setPlaybackSettingsOpen(false);
       elements.playbackSettingsPanel.innerHTML = '';
       elements.playback.innerHTML = '';
@@ -1033,6 +1076,7 @@ function seekPlayback(value: string, playing = false) {
     update: updatePlaybackView,
     setCalibration: (calibration) => {
       playbackState = setPlaybackCalibration(playbackState, calibration);
+      refreshPlaybackTiming();
       updatePlaybackView();
     },
     getGeometry: () => playbackGeometry,

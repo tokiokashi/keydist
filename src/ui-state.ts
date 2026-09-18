@@ -66,6 +66,8 @@ export interface UiPlaybackState {
   trailTau: number;
   showOrderLabels: boolean;
   showSameFingerMotion: boolean;
+  /** 指位置表示を次のPressより先に到着させる準備時間 [秒]。 */
+  fingerPreparationSeconds: number;
   sameFingerDelay: boolean;
   useCalibration: boolean;
   showChain: boolean;
@@ -210,6 +212,7 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
         trailTau: 5,
         showOrderLabels: false,
         showSameFingerMotion: false,
+        fingerPreparationSeconds: 0,
         sameFingerDelay: true,
         useCalibration: options.usePlaybackCalibration,
         showChain: false,
@@ -426,6 +429,11 @@ function sanitizePlaybackSettings(value: unknown, fallback: UiPlaybackState): Ui
     trailTau: integerInRange(playback.trailTau, 1, 20, fallback.trailTau),
     showOrderLabels: boolean(playback.showOrderLabels, fallback.showOrderLabels),
     showSameFingerMotion: boolean(playback.showSameFingerMotion, fallback.showSameFingerMotion),
+    fingerPreparationSeconds: typeof playback.fingerPreparationSeconds === 'number'
+      && Number.isFinite(playback.fingerPreparationSeconds)
+      && playback.fingerPreparationSeconds >= 0
+      ? playback.fingerPreparationSeconds
+      : fallback.fingerPreparationSeconds,
     sameFingerDelay: boolean(playback.sameFingerDelay, fallback.sameFingerDelay),
     useCalibration: boolean(playback.useCalibration, fallback.useCalibration),
     showChain,

@@ -196,6 +196,31 @@ Span 全体へ「Arpeggio だから高速化」「Redirect だから減速」と
 
 カーソルが最後のステップに達したら再生を止め、積算値を0に戻す。
 
+### 4.1 確定Timing scheduleと表示用の先行到着
+
+表示側が各ステップの時間計算を再実装しないよう、Timingは各Strokeについて
+`startMs / endMs` を持つ累積scheduleを生成できるものとする。scheduleの各区間は
+§3の `T(i)` をそのまま累積した値であり、構造ラベルや表示設定から別のdurationを足さない。
+再生中の表示はこの確定scheduleを再利用し、描画フレームごとに全StrokeのTimingを再計算しない。
+
+指位置表示の準備時間は、この**確定済みscheduleを読むだけの表示機能**とする。
+準備時間を `π`、次にその指が実際にPressする時刻を `T`、現在位置から次位置までの
+移動見積もりを `move` とすると、表示上の到着候補を次で求める。
+
+```
+idealStart = T - π - move
+start      = max(idealStart, previousFingerActionEnd)
+arrival    = min(T, start + move)
+```
+
+`move` は既存Calibrationの指移動速度を使い、無い場合は§3.3のfallbackと同じ正規化を使う。
+`held-trigger/continue` は次のPress候補にはしないが、保持中はその指が塞がっているため `previousFingerActionEnd` のclamp対象に含める。
+この表示処理はTimingを遅らせない。物理的に `T` より前へ到着できない場合は、
+その指の表示だけを `T` で切り替える。
+
+次のPress探索ではnormalized Stroke participationを使い、`held-trigger` の継続だけを
+新しいPressとして扱わない。準備時間が0なら、従来どおり打鍵時刻でのみ指位置が切り替わる。
+
 ## 5. 実効速度
 
 再生中の表示と推移グラフに出す指標。**直近の完了済みステップを、
