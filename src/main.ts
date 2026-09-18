@@ -73,7 +73,6 @@ import {
   type GeometrySettings,
 } from './geometry-settings.ts';
 import { fromDisplayUnits, toDisplayUnits, type GeometryUnit } from './geometry-units.ts';
-import { ARPEGGIO_PRESETS, sameArpeggioConditions, type ArpeggioConditions } from './playback-arpeggio.ts';
 import {
   load as loadUserGeometryShapes,
   newId as newGeometryId,
@@ -88,7 +87,8 @@ import {
   type ConditionPreset,
 } from './condition-presets.ts';
 import { setLayoutGeometryOverride } from './condition-resolution.ts';
-import { chainPolicyFromLegacyUi, legacyUiFromChainPolicy } from './analysis-chain.ts';
+import type { ChainPolicy } from './analysis-chain.ts';
+import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
 import {
   conditionBundleFromState,
   parseConditionBundle,
@@ -204,8 +204,14 @@ function removeLayoutChoice(layoutId: string): void {
   }
 }
 
-let uiState = loadUiState(uiStorage, uiStateDefaults, uiStateChoices).state;
+const loadedUiState = loadUiState(uiStorage, uiStateDefaults, uiStateChoices);
+let uiState = loadedUiState.state;
 conditionState = uiState;
+if (loadedUiState.migratedArpeggioModel) {
+  queueMicrotask(() => window.alert(
+    'Arpeggio構造判定を刷新し、旧幾何条件と旧Arpeggio Timingモードを廃止しました。',
+  ));
+}
 let uiStateSaveTimer: number | undefined;
 
 function flushUiState(): void {
@@ -1084,23 +1090,18 @@ function setupHowDialog() {
   });
 }
 
-type ConditionTab = 'romaji' | 'physical' | 'model' | 'arpeggio' | 'delay';
+type ConditionTab = 'romaji' | 'physical' | 'model' | 'chain' | 'arpeggio' | 'delay';
 
 const CONDITION_TABS: readonly [ConditionTab, string][] = [
   ['romaji', 'ローマ字'],
   ['physical', '物理形状'],
   ['model', 'モデル'],
-  ['arpeggio', 'アルペジオ'],
-  ['delay', 'ディレイ'],
+  ['chain', 'Chain'],
+  ['arpeggio', 'Arpeggio'],
+  ['delay', '再生'],
 ];
 
 let conditionTab: ConditionTab = 'model';
-
-function conditionPresetId(value: ArpeggioConditions): string {
-  const found = Object.entries(ARPEGGIO_PRESETS).find(([, preset]) =>
-    sameArpeggioConditions(preset, value));
-  return found?.[0] ?? 'custom';
-}
 
 function currentConditionPresetId(): string {
   return allConditionPresets(conditionPresets).find((preset) =>
@@ -1277,49 +1278,52 @@ function conditionRow(
     return row;
   }
 
+  if (tab === 'chain') {
+    const policy = value('chain');
+    const fields = document.createElement('div');
+    fields.className = 'condition-fields condition-chain-fields';
+    const checkbox = (key: keyof ChainPolicy, labelText: string): HTMLLabelElement => {
+      const label = document.createElement('label');
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = policy[key];
+      input.disabled = !enabled;
+      input.addEventListener('change', () =>
+        commitCondition(layout?.id, 'chain', { ...policy, [key]: input.checked }));
+      label.append(input, ` ${labelText}`);
+      return label;
+    };
+    fields.append(
+      checkbox('breakOnSameFinger', '非親指SFB Strokeで区切る'),
+      checkbox('breakOnTriggerOnly', 'trigger-only Strokeで区切る'),
+      checkbox('breakOnOppositeHandSimultaneous', '逆手同時outputで区切る'),
+    );
+    cell.append(fields);
+    return row;
+  }
+
   if (tab === 'arpeggio') {
-    const conditions = value('arpeggio');
+    const policy = value('arpeggioPolicy');
     const fields = document.createElement('div');
     fields.className = 'condition-fields condition-arpeggio-fields';
-    const preset = document.createElement('select');
-    for (const [id, label] of [['standard', '標準'], ['strict', '厳格'], ['loose', '緩い'], ['custom', 'カスタム']] as const) {
-      preset.append(new Option(label, id));
-    }
-    preset.value = conditionPresetId(conditions);
-    preset.disabled = !enabled;
-    preset.addEventListener('change', () => {
-      const next = ARPEGGIO_PRESETS[preset.value];
-      if (next) commitCondition(layout?.id, 'arpeggio', next);
-    });
-    fields.append(preset);
-    const detail = document.createElement('details');
-    const summary = document.createElement('summary'); summary.textContent = '詳細'; detail.append(summary);
-    const spread = document.createElement('label'); spread.append('横の開き ');
-    conditionNumber(spread, conditions.minHorizontalSpread, !enabled, (next) => commitCondition(layout?.id, 'arpeggio', { ...conditions, minHorizontalSpread: next }), {
-      min: '0', max: '20', step: '0.1',
-    }); spread.append(' u');
-    const rowLimit = (key: 'maxRowReversal' | 'maxRowStep', labelText: string): HTMLLabelElement => {
-      const label = document.createElement('label'); label.append(`${labelText} `);
-      const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.max = '10'; input.step = '1';
-      input.placeholder = '無制限'; input.disabled = !enabled;
-      if (conditions[key] !== null) input.value = String(conditions[key]);
-      input.addEventListener('change', () => {
-        const next = input.value.trim() === '' ? null : Number(input.value);
-        if (next === null || (Number.isInteger(next) && next >= 0 && next <= 10)) {
-          commitCondition(layout?.id, 'arpeggio', { ...conditions, [key]: next });
-        }
-      }); label.append(input); return label;
+    const checkbox = (key: keyof ArpeggioPolicy, labelText: string): HTMLLabelElement => {
+      const label = document.createElement('label');
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = policy[key];
+      input.disabled = !enabled;
+      input.addEventListener('change', () =>
+        commitCondition(layout?.id, 'arpeggioPolicy', { ...policy, [key]: input.checked }));
+      label.append(input, ` ${labelText}`);
+      return label;
     };
-    const thumbLabel = document.createElement('label'); const includeThumb = document.createElement('input');
-    includeThumb.type = 'checkbox'; includeThumb.checked = conditions.includeThumb; includeThumb.disabled = !enabled;
-    includeThumb.addEventListener('change', () => commitCondition(layout?.id, 'arpeggio', { ...conditions, includeThumb: includeThumb.checked }));
-    thumbLabel.append(includeThumb, ' 出力親指を含める');
-    const handLabel = document.createElement('label'); const oppositeHand = document.createElement('input');
-    oppositeHand.type = 'checkbox'; oppositeHand.checked = conditions.breakOnOppositeHand; oppositeHand.disabled = !enabled;
-    oppositeHand.addEventListener('change', () => commitCondition(layout?.id, 'arpeggio', { ...conditions, breakOnOppositeHand: oppositeHand.checked }));
-    handLabel.append(oppositeHand, ' 逆手同時押しで区切る');
-    detail.append(spread, rowLimit('maxRowReversal', '折り返し振幅'), rowLimit('maxRowStep', '1遷移の行差'), thumbLabel, handLabel);
-    fields.append(detail); cell.append(fields); return row;
+    fields.append(
+      checkbox('includeThumb', 'output親指をcoreに含める'),
+      checkbox('bridgeSameFinger', 'same Transitionを中立bridgeにする'),
+      checkbox('includeSingleRedirectTail', '末尾直後の逆方向1 Transitionを含める'),
+    );
+    cell.append(fields);
+    return row;
   }
 
   cell.textContent = 'この項目は全体設定です。配列ごとの上書きはできません。';
@@ -1358,19 +1362,12 @@ function renderGlobalDelayControls(parent: HTMLElement): void {
   sameFingerInput.addEventListener('change', () => {
     updateUiState((draft) => { draft.ui.playback.sameFingerDelay = sameFingerInput.checked; }); renderConditionDescription(); render();
   }); sameFinger.append(sameFingerInput, ' 指の移動速度を考慮');
-  const delayMode = document.createElement('label'); delayMode.append('アルペジオ遅延 ');
-  const delaySelect = document.createElement('select');
-  delaySelect.append(new Option('前寄せ', 'before'), new Option('分散', 'distributed'));
-  delaySelect.value = playback.arpeggioDelayMode;
-  delaySelect.addEventListener('change', () => {
-    updateUiState((draft) => { draft.ui.playback.arpeggioDelayMode = delaySelect.value as 'before' | 'distributed'; }); renderConditionDescription(); render();
-  }); delayMode.append(delaySelect);
   const calibration = document.createElement('label'); const calibrationInput = document.createElement('input');
   calibrationInput.type = 'checkbox'; calibrationInput.checked = playback.useCalibration; calibrationInput.disabled = !playbackCalibration;
   calibrationInput.addEventListener('change', () => {
     updateUiState((draft) => { draft.ui.playback.useCalibration = calibrationInput.checked; }); renderConditionDescription(); render();
   }); calibration.append(calibrationInput, ' 個人速度を使う');
-  fields.append(speed, multiplier, sameFinger, delayMode, calibration);
+  fields.append(speed, multiplier, sameFinger, calibration);
   parent.append(fields);
 }
 
@@ -1489,7 +1486,7 @@ function renderConditionDescription(selectedPresetId?: string): void {
     const global = document.createElement('section'); global.className = 'condition-global';
     const heading = document.createElement('h3'); heading.textContent = '全体の再生設定'; global.append(heading);
     renderGlobalDelayControls(global);
-    const note = document.createElement('p'); note.className = 'note'; note.textContent = 'ディレイと個人速度は人・文章に紐づくため、配列ごとの上書きはできません。'; global.append(note); root.append(global);
+    const note = document.createElement('p'); note.className = 'note'; note.textContent = '再生速度と個人速度は構造解析条件とは分離して扱います。'; global.append(note); root.append(global);
   } else {
     const tableWrap = document.createElement('div'); tableWrap.className = 'scroll-x condition-table-wrap'; tableWrap.append(renderConditionTable(conditionTab)); root.append(tableWrap);
   }
@@ -1557,17 +1554,15 @@ function playbackViewUiState(): UiStateV1 {
   const layoutId = currentPlaybackLayoutId();
   const layoutConditions = layoutId ? uiState.conditions.perLayout[layoutId] : undefined;
   const playback = layoutConditions?.playback;
-  const arpeggio = layoutConditions?.arpeggio;
   const chain = layoutConditions?.chain ?? uiState.conditions.defaults.chain;
+  const arpeggioPolicy = layoutConditions?.arpeggioPolicy ?? uiState.conditions.defaults.arpeggioPolicy;
   return {
     ...uiState,
     ui: {
       ...uiState.ui,
-      // #227移行期間は旧UIフィールドを残すが、表示へ渡す値はcanonical ChainPolicyから導出する。
       playback: {
         ...uiState.ui.playback,
         ...playback,
-        ...legacyUiFromChainPolicy(chain),
       },
     },
     conditions: {
@@ -1575,7 +1570,7 @@ function playbackViewUiState(): UiStateV1 {
       defaults: {
         ...uiState.conditions.defaults,
         chain,
-        ...(arpeggio === undefined ? {} : { arpeggio }),
+        arpeggioPolicy,
       },
     },
   };
@@ -1589,51 +1584,19 @@ function updatePlaybackSetting<K extends keyof UiPlaybackState>(
   updateUiState((draft) => {
     const hasLayoutOverride = layoutId !== undefined
       && conditionOverrideEnabled(layoutId, draft);
-    const chainSetting = key === 'chainIncludeSameFinger' || key === 'chainIncludeLayerKeys';
     if (hasLayoutOverride && layoutId) {
       const current = draft.conditions.perLayout[layoutId] ?? {};
-      const baseChain = current.chain ?? draft.conditions.defaults.chain;
-      let playback = { ...current.playback, [key]: value };
-      let chain = current.chain;
-      if (chainSetting) {
-        const legacyChain = legacyUiFromChainPolicy(baseChain);
-        const nextLegacyChain = {
-          chainIncludeSameFinger: key === 'chainIncludeSameFinger' && typeof value === 'boolean'
-            ? value
-            : legacyChain.chainIncludeSameFinger,
-          chainIncludeLayerKeys: key === 'chainIncludeLayerKeys' && typeof value === 'boolean'
-            ? value
-            : legacyChain.chainIncludeLayerKeys,
-        };
-        chain = chainPolicyFromLegacyUi(nextLegacyChain, baseChain);
-        playback = { ...playback, ...nextLegacyChain };
-      }
       draft.conditions.perLayout[layoutId] = {
         ...current,
-        playback,
-        ...(chain === undefined ? {} : { chain }),
+        playback: { ...current.playback, [key]: value },
       };
     } else {
       draft.ui.playback[key] = value;
-      if (chainSetting) {
-        const legacyChain = {
-          ...legacyUiFromChainPolicy(draft.conditions.defaults.chain),
-          [key]: value,
-        };
-        draft.conditions.defaults.chain = chainPolicyFromLegacyUi(
-          legacyChain,
-          draft.conditions.defaults.chain,
-        );
-        Object.assign(
-          draft.ui.playback,
-          legacyUiFromChainPolicy(draft.conditions.defaults.chain),
-        );
-      }
     }
   });
 }
 
-function updateArpeggioConditions(conditions: ArpeggioConditions): void {
+function updateChainPolicy(policy: ChainPolicy): void {
   const layoutId = currentPlaybackLayoutId();
   updateUiState((draft) => {
     const hasLayoutOverride = layoutId !== undefined
@@ -1641,10 +1604,26 @@ function updateArpeggioConditions(conditions: ArpeggioConditions): void {
     if (hasLayoutOverride && layoutId) {
       draft.conditions.perLayout[layoutId] = {
         ...draft.conditions.perLayout[layoutId],
-        arpeggio: structuredClone(conditions),
+        chain: structuredClone(policy),
       };
     } else {
-      draft.conditions.defaults.arpeggio = structuredClone(conditions);
+      draft.conditions.defaults.chain = structuredClone(policy);
+    }
+  });
+}
+
+function updateArpeggioPolicy(policy: ArpeggioPolicy): void {
+  const layoutId = currentPlaybackLayoutId();
+  updateUiState((draft) => {
+    const hasLayoutOverride = layoutId !== undefined
+      && conditionOverrideEnabled(layoutId, draft);
+    if (hasLayoutOverride && layoutId) {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        arpeggioPolicy: structuredClone(policy),
+      };
+    } else {
+      draft.conditions.defaults.arpeggioPolicy = structuredClone(policy);
     }
   });
 }
@@ -1665,11 +1644,10 @@ playbackView = createPlaybackView({
   setPlaybackLayoutOverride,
   updateUiState,
   getCalibration: () => playbackCalibration,
-  getArpeggioConditions: () => playbackViewUiState().conditions.defaults.arpeggio,
-  updateArpeggioConditions,
-  readArpeggioConditions: () => calibrationDialog.readArpeggioConditions(),
-  syncArpeggioConditionControls: () => calibrationDialog.syncArpeggioConditionControls(),
-  arpeggioPresetId: () => calibrationDialog.arpeggioPresetId(),
+  getChainPolicy: () => playbackViewUiState().conditions.defaults.chain,
+  updateChainPolicy,
+  getArpeggioPolicy: () => playbackViewUiState().conditions.defaults.arpeggioPolicy,
+  updateArpeggioPolicy,
   openCalibration: () => calibrationDialog.open(),
   openCalibrationEdit: () => calibrationDialog.openEdit(),
 });
