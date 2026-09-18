@@ -433,7 +433,9 @@ test('EWMAは確定Timingの経過時間を半減期として使う', () => {
     analysis, 2, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
   );
   assert.ok(kana !== undefined);
-  assert.ok(Math.abs(kana - 1.25) < 1e-9);
+  const expectedKana = (1 - 2 ** -0.5) * 2;
+  const expectedKanaAfterSecond = 0.5 * expectedKana + 0.5 * 1;
+  assert.ok(Math.abs(kana - expectedKanaAfterSecond) < 1e-9);
 
   const points = playbackRateChartDataAnalysis(
     analysis, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
