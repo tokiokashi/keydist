@@ -774,6 +774,7 @@ function triggerPlaybackKeyFeedback(
       const face = key.querySelector<SVGRectElement>('rect:not([data-playback-feedback-overlay])');
       if (face) {
         // 押下色そのものを地色からaccentへ遷移させる。連打でも毎回同じ経路を再発火する。
+        face.getAnimations().forEach((animation) => animation.cancel());
         face.animate(
           [
             { fill: 'var(--panel)', stroke: 'var(--line)' },
