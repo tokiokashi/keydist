@@ -114,7 +114,7 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
     return [layout.faces!.length, groups.layers.length, groups.modifiers.length, groups.combos.length];
   });
   assert.deepEqual(counts, [
-    [7, 5, 0, 0],
+    [7, 3, 0, 2],
     [3, 2, 0, 0],
     [3, 3, 0, 0],
     [33, 2, 6, 23],
@@ -122,7 +122,7 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
 
   assert.deepEqual(
     groupFacesIntoLayers(shingeta.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
-    [[[]], [['k'], ['d']], [['l'], ['s']], [['i']], [['o']]],
+    [[[]], [['k'], ['d']], [['l'], ['s']]],
   );
   assert.deepEqual(
     groupFacesIntoLayers(tsuki.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
@@ -302,6 +302,7 @@ test('面定義を出典フィクスチャの全セルと照合する（#83）',
     'shin-jis-prefix',
     'shin-jis-simultaneous',
     'shingeta',
+    'shin-koume',
     'tsuki-2-263',
   ]) {
     assertKanaLayoutFixture(LAYOUT_BY_ID.get(id)!);
