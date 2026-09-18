@@ -56,14 +56,14 @@ export const NAGINATA_V18_FACES: Face[] = [
   face(['j'], {
     f: 'が', w: 'ぎ', s: 'げ', v: 'ご', r: 'じ', a: 'ぜ', b: 'ぞ', g: 'ぢ', e: 'で',
     d: 'ど', c: 'ば', x: 'び', z: 'ぼ',
-  }, { layer: '濁音', role: 'modifier', inputRole: 'modifier', triggerBehavior: 'chord' }),
+  }, { layer: '濁音', role: 'modifier', inputRole: 'modifier', triggerBehavior: 'hold' }),
 
   // 濁音（左手側のトリガー）
-  face(['f'], { u: 'ざ', o: 'ず', n: 'だ', l: 'づ', h: 'ぐ', p: 'べ', ';': 'ぶ' }, { layer: '濁音', role: 'modifier', inputRole: 'modifier', triggerBehavior: 'chord' }),
+  face(['f'], { u: 'ざ', o: 'ず', n: 'だ', l: 'づ', h: 'ぐ', p: 'べ', ';': 'ぶ' }, { layer: '濁音', role: 'modifier', inputRole: 'modifier', triggerBehavior: 'hold' }),
 
   // 半濁音
-  face(['m'], { c: 'ぱ', x: 'ぴ', z: 'ぽ' }, { layer: '半濁音', role: 'modifier', inputRole: 'modifier', triggerBehavior: 'chord' }),
-  face(['v'], { p: 'ぺ', ';': 'ぷ' }, { layer: '半濁音', role: 'modifier', inputRole: 'modifier', triggerBehavior: 'chord' }),
+  face(['m'], { c: 'ぱ', x: 'ぴ', z: 'ぽ' }, { layer: '半濁音', role: 'modifier', inputRole: 'modifier', triggerBehavior: 'hold' }),
+  face(['v'], { p: 'ぺ', ';': 'ぷ' }, { layer: '半濁音', role: 'modifier', inputRole: 'modifier', triggerBehavior: 'hold' }),
 
   // 拗音の母音面
   face(['h'], { w: 'きゃ', r: 'しゃ', g: 'ちゃ', d: 'にゃ', x: 'ひゃ', s: 'みゃ', e: 'りゃ' }, { role: 'modifier', inputRole: 'modifier', triggerBehavior: 'chord' }),
