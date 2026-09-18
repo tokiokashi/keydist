@@ -18,6 +18,14 @@ export const DEFAULT_PLAYBACK_STEPS_PER_SECOND: PlaybackStepsPerSecond = 1.25;
 export const PLAYBACK_SPEED_MULTIPLIER_MIN = 0.1;
 export const PLAYBACK_SPEED_MULTIPLIER_MAX = 10;
 export const DEFAULT_PLAYBACK_SPEED_MULTIPLIER = 1;
+export const PLAYBACK_RATE_WINDOW_MIN = 1;
+export const PLAYBACK_RATE_WINDOW_MAX = 50;
+export const DEFAULT_PLAYBACK_RATE_WINDOW = 10;
+export type PlaybackRateAverage = 'sma' | 'ewma';
+export const DEFAULT_PLAYBACK_RATE_AVERAGE: PlaybackRateAverage = 'sma';
+export const PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN = 0.1;
+export const PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX = 10;
+export const DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS = 1;
 
 /** 非アクティブなタブから戻った時の一気送りを防ぐため、1フレームの経過時間を制限する。 */
 const MAX_FRAME_MS = 100;
@@ -83,52 +91,8 @@ export function playbackSameFingerKeyMotions(
   return motions;
 }
 
-/**
- * 直前のステップと今のステップの両方で押されているキーを返す。
- *
- * 同じキーを連打すると `data-playback-active` が点きっぱなしになり、打ち直した
- * のか止まっているのか見分けが付かない。ここで拾ったキーへ毎ステップ発火演出を
- * 重ねることで「今また打った」を示す。かな配列では面（レイヤー）が違えば同じ
- * 物理キーに別のかなが乗るため、`character`ではなくキーid（物理キー）の一致で見る。
- *
- * 親指キーは対象から外す。新下駄・薙刀式では親指シフトがほぼ毎ステップ入るため、
- * 含めると常時光り続けて「今また打った」という意味が薄れる
- * （同指連続・チェーンの判定で親指を除く isThumb と同じ判断）。
- */
-export function playbackRepeatedKeys(
-  strokes: readonly Stroke[],
-  cursor: number,
-): ReadonlySet<string> {
-  const index = Math.min(Math.max(0, cursor), strokes.length) - 1;
-  const repeated = new Set<string>();
-  if (index <= 0) return repeated;
-
-  const previousKeys = new Set(
-    strokes[index - 1].presses
-      .filter((press) => !isThumb(press.finger))
-      .flatMap((press) => press.keys.map((key) => key.id)),
-  );
-  for (const press of strokes[index].presses) {
-    if (isThumb(press.finger)) continue;
-    for (const key of press.keys) {
-      if (previousKeys.has(key.id)) repeated.add(key.id);
-    }
-  }
-  return repeated;
-}
-
 function fingerHand(finger: Finger): 'left' | 'right' {
   return finger.startsWith('L') ? 'left' : 'right';
-}
-
-/**
- * 親指キー（スペース等）はチェーンの材料から外す。
- *
- * 新下駄・薙刀式のような配列では親指が同時押しのシフトを担う。これは指が鍵盤を
- * 渡り歩く動きではないので、手の連続の判定にも移動の起点・終点にも使わない。
- */
-function isThumb(finger: Finger): boolean {
-  return finger === 'LT' || finger === 'RT';
 }
 
 /** 打鍵順を既存の図解と同じ丸数字で表示する。 */
@@ -328,7 +292,7 @@ export function playbackFingerPositionKeys(
 export function playbackCompletedInputs(
   strokes: readonly Stroke[],
   cursor: number,
-  limit = 10,
+  limit = DEFAULT_PLAYBACK_RATE_WINDOW,
 ): string[] {
   const end = Math.min(Math.max(0, cursor), strokes.length);
   if (end === 0 || limit <= 0) return [];
@@ -982,17 +946,98 @@ function playbackRateWindowInputText(
   return inputs.join('');
 }
 
-/** 直近の完了済み打鍵をTransition Timingで割った実効アクション毎秒。 */
+interface PlaybackEwmaRate {
+  inputText: string;
+  kanaPerSecond?: number;
+  actionsPerSecond?: number;
+}
+
+function playbackEwmaRate(
+  analysis: AggregatedAnalysisResult,
+  cursor: number,
+  stepsPerSecond: PlaybackStepsPerSecond,
+  sameFingerDelay: boolean,
+  halfLifeSeconds: number,
+  calibration?: PlaybackCalibration,
+  speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
+  schedule?: readonly PlaybackTimingStep[],
+): PlaybackEwmaRate | undefined {
+  const strokes = analysis.strokes;
+  const end = clampPlaybackCursor(cursor, strokes.length);
+  if (end === 0 || halfLifeSeconds <= 0) return undefined;
+
+  let actionRate: number | undefined;
+  let kanaRate: number | undefined;
+  const completedInputs: string[] = [];
+
+  for (let index = 0; index < end; index++) {
+    const durationMs = playbackTimingStepDurationMs(schedule, index)
+      ?? playbackStepDurationMs(
+        analysis,
+        index,
+        stepsPerSecond,
+        sameFingerDelay,
+        calibration,
+        speedMultiplier,
+      );
+    if (!(durationMs > 0)) continue;
+
+    const decay = 2 ** (-(durationMs / 1000) / halfLifeSeconds);
+    const actionInstant = 1000 / durationMs;
+    actionRate = actionRate === undefined
+      ? actionInstant
+      : decay * actionRate + (1 - decay) * actionInstant;
+
+    const inputIndex = strokes[index].inputIndex;
+    const nextStartsNewInput = index + 1 >= strokes.length
+      || strokes[index + 1].inputIndex !== inputIndex;
+    const completedHere = nextStartsNewInput
+      ? Array.from(strokes[index].inputChar).length
+      : 0;
+    if (completedHere > 0) {
+      const kanaInstant = (completedHere * 1000) / durationMs;
+      kanaRate = kanaRate === undefined
+        ? kanaInstant
+        : decay * kanaRate + (1 - decay) * kanaInstant;
+      completedInputs.push(strokes[index].inputChar);
+    } else if (kanaRate !== undefined) {
+      // 最初の入力単位が完了するまでは未観測。以後の入力途中Strokeでは0へ時間減衰する。
+      kanaRate *= decay;
+    }
+  }
+
+  return {
+    inputText: completedInputs.slice(-6).join(''),
+    kanaPerSecond: kanaRate,
+    actionsPerSecond: actionRate,
+  };
+}
+
+/** 直近の完了済みStrokeを確定Timingで割った移動平均アクション毎秒。 */
 export function playbackRecentActionsPerSecond(
   analysis: AggregatedAnalysisResult,
   cursor: number,
   stepsPerSecond: PlaybackStepsPerSecond,
   sameFingerDelay = true,
-  limit = 10,
+  limit = DEFAULT_PLAYBACK_RATE_WINDOW,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   schedule?: readonly PlaybackTimingStep[],
+  average: PlaybackRateAverage = DEFAULT_PLAYBACK_RATE_AVERAGE,
+  halfLifeSeconds = DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
 ): number | undefined {
+  if (average === 'ewma') {
+    return playbackEwmaRate(
+      analysis,
+      cursor,
+      stepsPerSecond,
+      sameFingerDelay,
+      halfLifeSeconds,
+      calibration,
+      speedMultiplier,
+      schedule,
+    )?.actionsPerSecond;
+  }
   const recent = playbackRecentRateWindow(
     analysis,
     cursor,
@@ -1014,11 +1059,25 @@ export function playbackRecentKanaPerSecond(
   cursor: number,
   stepsPerSecond: PlaybackStepsPerSecond,
   sameFingerDelay = true,
-  limit = 10,
+  limit = DEFAULT_PLAYBACK_RATE_WINDOW,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   schedule?: readonly PlaybackTimingStep[],
+  average: PlaybackRateAverage = DEFAULT_PLAYBACK_RATE_AVERAGE,
+  halfLifeSeconds = DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
 ): number | undefined {
+  if (average === 'ewma') {
+    return playbackEwmaRate(
+      analysis,
+      cursor,
+      stepsPerSecond,
+      sameFingerDelay,
+      halfLifeSeconds,
+      calibration,
+      speedMultiplier,
+      schedule,
+    )?.kanaPerSecond;
+  }
   const strokes = analysis.strokes;
   const recent = playbackRecentRateWindow(
     analysis,
@@ -1046,33 +1105,23 @@ export function playbackRecentKanaPerSecond(
   return kanaCount > 0 ? (kanaCount * 1000) / recent.durationMs : undefined;
 }
 
-/** 再生カーソルごとの実効速度と、その速度計算に触れた入力文字列。 */
+/** 再生カーソルごとの速度移動平均と、その集計窓に触れた入力文字列。 */
 export function playbackRateChartData(
   analysis: AggregatedAnalysisResult,
   stepsPerSecond: PlaybackStepsPerSecond,
   sameFingerDelay = true,
-  limit = 10,
+  limit = DEFAULT_PLAYBACK_RATE_WINDOW,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   schedule?: readonly PlaybackTimingStep[],
+  average: PlaybackRateAverage = DEFAULT_PLAYBACK_RATE_AVERAGE,
+  halfLifeSeconds = DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
 ): PlaybackRateChartPoint[] {
   const strokes = analysis.strokes;
   const points: PlaybackRateChartPoint[] = [{ cursor: 0, inputText: '' }];
   for (let cursor = 1; cursor <= strokes.length; cursor++) {
-    const recent = playbackRecentRateWindow(
-      analysis,
-      cursor,
-      stepsPerSecond,
-      sameFingerDelay,
-      limit,
-      calibration,
-      speedMultiplier,
-      schedule,
-    );
-    points.push({
-      cursor,
-      inputText: recent ? playbackRateWindowInputText(strokes, recent) : '',
-      kanaPerSecond: playbackRecentKanaPerSecond(
+    const recent = average === 'sma'
+      ? playbackRecentRateWindow(
         analysis,
         cursor,
         stepsPerSecond,
@@ -1081,10 +1130,40 @@ export function playbackRateChartData(
         calibration,
         speedMultiplier,
         schedule,
-      ),
-      actionsPerSecond: recent && recent.durationMs > 0
-        ? ((recent.end - recent.start) * 1000) / recent.durationMs
-        : undefined,
+      )
+      : undefined;
+    const ewma = average === 'ewma'
+      ? playbackEwmaRate(
+        analysis,
+        cursor,
+        stepsPerSecond,
+        sameFingerDelay,
+        halfLifeSeconds,
+        calibration,
+        speedMultiplier,
+        schedule,
+      )
+      : undefined;
+    points.push({
+      cursor,
+      inputText: ewma?.inputText ?? (recent ? playbackRateWindowInputText(strokes, recent) : ''),
+      kanaPerSecond: average === 'ewma'
+        ? ewma?.kanaPerSecond
+        : playbackRecentKanaPerSecond(
+          analysis,
+          cursor,
+          stepsPerSecond,
+          sameFingerDelay,
+          limit,
+          calibration,
+          speedMultiplier,
+          schedule,
+        ),
+      actionsPerSecond: average === 'ewma'
+        ? ewma?.actionsPerSecond
+        : recent && recent.durationMs > 0
+          ? ((recent.end - recent.start) * 1000) / recent.durationMs
+          : undefined,
       chain: analysis.chains.some((chain) =>
         cursor - 1 >= chain.startStrokeIndex && cursor - 1 < chain.endStrokeIndex),
       arpeggio: analysis.annotations[cursor - 1]?.inArpeggio ?? false,

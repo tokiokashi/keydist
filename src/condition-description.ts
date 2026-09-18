@@ -87,6 +87,21 @@ export const CONDITION_DESCRIPTORS = {
     effect: '同じ指を残すかホームへ戻すかを比べる先読みの打鍵数です。値が大きいほど、離れた連続打鍵でも指を残す候補を比較します。',
     format: (value) => `${value} ステップ`,
   },
+  playbackRateAverage: {
+    label: '速度の平均方式',
+    effect: 'SMAは直近Stroke数、EWMAは確定Timingの経過時間で減衰する時間ベースの指数移動平均です。TimingやCalibration自体は変更しません。',
+    format: (value) => value === 'ewma' ? 'EWMA' : 'SMA',
+  },
+  playbackRateWindow: {
+    label: 'SMA窓幅',
+    effect: 'SMAで、直近いくつの完了Strokeを集計するかです。全配列で同じ値を使います。',
+    format: (value) => `直近 ${value} 打鍵`,
+  },
+  playbackRateHalfLifeSeconds: {
+    label: 'EWMA半減期',
+    effect: 'EWMAで過去の速度寄与が半分になる経過時間です。Stroke数ではなく確定Timing上の秒数で減衰します。',
+    format: (value) => `${value} 秒`,
+  },
   sfbHomeCost: {
     label: '同指連続のホームコスト',
     effect: '同じ指でホームキーを打つ移動を距離へ加算するかどうかです。オフならホームキー上の移動は0として扱います。',

@@ -1129,8 +1129,9 @@ function commitCondition(
 ): void;
 function commitCondition(
   layoutId: string | undefined,
-  key: keyof UiStateLayoutConditions,
-  value: UiStateLayoutConditions[keyof UiStateLayoutConditions],
+  key: keyof UiStateConditionsDefaults | keyof UiStateLayoutConditions,
+  value: UiStateConditionsDefaults[keyof UiStateConditionsDefaults]
+    | UiStateLayoutConditions[keyof UiStateLayoutConditions],
 ): void {
   updateUiState((draft) => {
     if (layoutId === undefined) {
@@ -1138,6 +1139,7 @@ function commitCondition(
       Object.assign(draft.conditions.defaults, { [key]: structuredClone(value) });
       return;
     }
+    if (key === 'playbackRateWindow') return;
     const target = draft.conditions.perLayout[layoutId] ?? {};
     Object.assign(target, { [key]: structuredClone(value) });
     draft.conditions.perLayout[layoutId] = target;
@@ -1233,8 +1235,11 @@ function conditionRow(
   const override = layout ? uiState.conditions.perLayout[layout.id] : undefined;
   const enabled = layout === undefined || conditionOverrideEnabled(layout.id);
   const defaults = uiState.conditions.defaults;
-  const value = <K extends keyof typeof defaults>(key: K): typeof defaults[K] =>
-    (override?.[key] ?? defaults[key]) as typeof defaults[K];
+  const value = <K extends keyof typeof defaults>(key: K): typeof defaults[K] => {
+    if (key === 'playbackRateWindow') return defaults[key];
+    const layoutValue = override?.[key as keyof UiStateLayoutConditions];
+    return (layoutValue ?? defaults[key]) as typeof defaults[K];
+  };
 
   if (tab === 'romaji') {
     if (layout && !layout.romajiTable) {
@@ -1399,6 +1404,26 @@ function renderGlobalDelayControls(parent: HTMLElement): void {
   conditionNumber(multiplier, playback.speedMultiplier, false, (value) => {
     updateUiState((draft) => { draft.ui.playback.speedMultiplier = value; }); renderConditionDescription(); render();
   }, { min: '0.1', max: '8', step: '0.1' }); multiplier.append(' 倍');
+  const rateAverage = document.createElement('label'); rateAverage.append('速度平均 ');
+  const rateAverageSelect = document.createElement('select');
+  rateAverageSelect.append(new Option('SMA（単純移動平均）', 'sma'), new Option('EWMA（指数移動平均）', 'ewma'));
+  rateAverageSelect.value = uiState.conditions.defaults.playbackRateAverage;
+  rateAverageSelect.addEventListener('change', () => {
+    const average = rateAverageSelect.value;
+    if (average !== 'sma' && average !== 'ewma') return;
+    updateUiState((draft) => { draft.conditions.defaults.playbackRateAverage = average; });
+    renderConditionDescription(); playbackView?.update();
+  });
+  rateAverage.append(rateAverageSelect);
+  const rateWindow = document.createElement('label'); rateWindow.append('SMA窓幅 ');
+  conditionNumber(rateWindow, uiState.conditions.defaults.playbackRateWindow, false, (value) => {
+    if (!Number.isInteger(value)) return;
+    updateUiState((draft) => { draft.conditions.defaults.playbackRateWindow = value; }); renderConditionDescription(); playbackView?.update();
+  }, { min: '1', max: '50', step: '1' }); rateWindow.append(' 打鍵');
+  const rateHalfLife = document.createElement('label'); rateHalfLife.append('EWMA半減期 ');
+  conditionNumber(rateHalfLife, uiState.conditions.defaults.playbackRateHalfLifeSeconds, false, (value) => {
+    updateUiState((draft) => { draft.conditions.defaults.playbackRateHalfLifeSeconds = value; }); renderConditionDescription(); playbackView?.update();
+  }, { min: '0.1', max: '10', step: '0.1' }); rateHalfLife.append(' 秒');
   const sameFinger = document.createElement('label'); const sameFingerInput = document.createElement('input');
   sameFingerInput.type = 'checkbox'; sameFingerInput.checked = playback.sameFingerDelay;
   sameFingerInput.addEventListener('change', () => {
@@ -1414,7 +1439,7 @@ function renderGlobalDelayControls(parent: HTMLElement): void {
   calibrationInput.addEventListener('change', () => {
     updateUiState((draft) => { draft.ui.playback.useCalibration = calibrationInput.checked; }); renderConditionDescription(); render();
   }); calibration.append(calibrationInput, ' 個人速度を使う');
-  fields.append(speed, multiplier, sameFinger, allFinger, calibration);
+  fields.append(speed, multiplier, rateAverage, rateWindow, rateHalfLife, sameFinger, allFinger, calibration);
   parent.append(fields);
 }
 
@@ -1449,7 +1474,7 @@ function appendConditionSummary(parent: DocumentFragment | HTMLElement): void {
     }
     summary.append(heading, list);
   };
-  addList('移動距離条件', description.conditions);
+  addList('解析・集計条件', description.conditions);
   addList('打鍵再生条件', playbackDescription);
   const overrides = document.createElement('p');
   overrides.className = 'note';

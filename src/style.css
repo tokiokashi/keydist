@@ -669,11 +669,11 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-figure [data-playback-motion-kind='chain'] rect { fill: var(--series-8); stroke: var(--series-8); }
 .playback-figure [data-playback-motion-key] text { fill: #fff; }
 /* 打鍵中・trail・plan の塗り指定は子孫セレクタなので、キーの <g> 配下の rect を
-   すべて拾う。連打フラッシュ用のオーバーレイまで同じ色に塗られ、重ねても画が
+   すべて拾う。押下フィードバック用のオーバーレイまで同じ色に塗られ、重ねても画が
    変わらなくなる（presentation attribute の fill は CSS に負ける）。
    セレクタを一段詳しくして地の色を取り戻す。 */
-.playback-figure [data-playback-key] rect[data-playback-repeat-flash],
-.playback-figure [data-playback-motion-key] rect[data-playback-repeat-flash] {
+.playback-figure [data-playback-key] rect[data-playback-feedback-overlay],
+.playback-figure [data-playback-motion-key] rect[data-playback-feedback-overlay] {
   fill: var(--panel);
   stroke: none;
 }

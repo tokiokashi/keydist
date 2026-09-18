@@ -92,6 +92,9 @@ export function sameConditionDefaults(
 ): boolean {
   return left.geometry === right.geometry
     && left.windowSize === right.windowSize
+    && left.playbackRateAverage === right.playbackRateAverage
+    && left.playbackRateWindow === right.playbackRateWindow
+    && left.playbackRateHalfLifeSeconds === right.playbackRateHalfLifeSeconds
     && left.sfbHomeCost === right.sfbHomeCost
     && left.preferOppositeThumb === right.preferOppositeThumb
     && sameChainPolicy(left.chain, right.chain)
