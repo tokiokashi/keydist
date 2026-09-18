@@ -1024,7 +1024,8 @@ export function playbackRateChartData(
       actionsPerSecond: recent && recent.durationMs > 0
         ? ((recent.end - recent.start) * 1000) / recent.durationMs
         : undefined,
-      chain: playbackChainOrders(strokes, cursor).size > 0,
+      chain: analysis.chains.some((chain) =>
+        cursor - 1 >= chain.startStrokeIndex && cursor - 1 < chain.endStrokeIndex),
       arpeggio: analysis.annotations[cursor - 1]?.inArpeggio ?? false,
     });
   }
