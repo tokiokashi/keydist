@@ -378,6 +378,8 @@ test('旧アルペジオ表示範囲は実効表示を保ったまま個別表�
       const value = structuredClone(fallback);
       const playback = value.ui.playback as unknown as Record<string, unknown>;
       delete playback.showArpeggio;
+      delete playback.showChainOnRateChart;
+      delete playback.showArpeggioOnRateChart;
       playback.showChain = savedShowChain;
       if (legacyDisplay === undefined) delete playback.arpeggioDisplay;
       else playback.arpeggioDisplay = legacyDisplay;
