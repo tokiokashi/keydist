@@ -1,8 +1,28 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { buildGeometry } from '../src/geometry.ts';
 import { DEFAULT_OPTIONS, evaluate } from '../src/evaluate.ts';
 import type { Layout } from '../src/layouts/index.ts';
 import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '../src/sample-text-ja.ts';
+
+type FixtureFace = {
+  trigger: string[];
+  mode: 'prefix' | 'suffix' | 'simultaneous';
+  cells: string[][];
+};
+
+type KanaLayoutFixture = {
+  version: 1;
+  layoutId: string;
+  faces: FixtureFace[];
+  omissions: Array<{
+    faceIndex: number;
+    row: number;
+    column: number;
+    value: string;
+    reason: string;
+  }>;
+};
 
 /** かな配列が持つべき標準的な入力文字。配列固有の欠落は呼び出し側で明示する。 */
 const EXPECTED_KANA = [...[
@@ -38,5 +58,34 @@ export function assertKanaLayout(layout: Layout, missing: readonly string[] = []
     const trace = evaluate(text, layout, geometry, DEFAULT_OPTIONS);
     assert.equal(trace.skipped, 0, `${layout.id} の ${name} で未定義文字がある`);
     assert.deepEqual(trace.errors, [], `${layout.id} の ${name} でキー解決エラーがある`);
+  }
+}
+
+/** 出典から生成した面フィクスチャと、実装の全セルを照合する。 */
+export function assertKanaLayoutFixture(layout: Layout) {
+  const fixture = JSON.parse(
+    readFileSync(new URL(`./fixtures/${layout.id}.json`, import.meta.url), 'utf8'),
+  ) as KanaLayoutFixture;
+  assert.equal(fixture.version, 1);
+  assert.equal(fixture.layoutId, layout.id);
+  assert.ok(layout.faces, `${layout.id} は面定義を持つ`);
+  assert.equal(fixture.faces.length, layout.faces.length, `${layout.id} の面数が出典と違う`);
+
+  for (const [faceIndex, [actual, expected]] of layout.faces.map((face, index) => [
+    face,
+    fixture.faces[index],
+  ] as const).entries()) {
+    assert.ok(expected, `${layout.id} の face ${faceIndex} のフィクスチャが無い`);
+    const actualCells = actual.rows.map((row) => [...row]);
+    assert.deepEqual(
+      { trigger: [...actual.trigger], mode: actual.mode, cells: actualCells },
+      expected,
+      `${layout.id} の face ${faceIndex} が出典フィクスチャと違う`,
+    );
+  }
+
+  for (const omission of fixture.omissions) {
+    assert.ok(omission.reason.length > 0, `${layout.id} の除外理由が空`);
+    assert.ok(omission.value.length > 0, `${layout.id} の除外元セルが空`);
   }
 }
