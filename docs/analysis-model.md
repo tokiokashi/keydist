@@ -47,6 +47,11 @@ keydist 固有の内部モデルは同じものではないため、以下では
 既定は `useHold=false` で、従来のStroke列と評価値を維持する。実際にrealizeされた
 Stroke streamだけをRaw hand run以降へ渡し、Chain / Transition / Timingが独自にhold判定しない。
 
+`HoldStartActionPolicy` はこのrealizationとは別の**計上Policy**。realize済み
+`held-trigger/start` がoutputと同じStrokeにある場合だけ、必要なら+1の独立actionとして数える。
+prefix trigger-only Strokeのように既に独立している操作は二重計上しない。Policyを変えても
+Stroke列、Press数、距離、構造解析、Timingは書き換えない。
+
 ### Raw hand run / Analysis Chain
 
 **Raw hand run** は、各手がStroke列へ連続して参加したというfactだけを集めた区間。
