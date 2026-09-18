@@ -90,9 +90,9 @@ const PLAYBACK_SCALE_MAX = 4;
 type PlaybackDynamicDisplay = 'none' | 'chain' | 'arpeggio' | 'both';
 
 function dynamicPlaybackDisplay(settings: UiPlaybackState): PlaybackDynamicDisplay {
-  if (settings.showChain && settings.showArpeggio) return 'both';
-  if (settings.showChain) return 'chain';
-  if (settings.showArpeggio) return 'arpeggio';
+  if (settings.showChainOnRateChart && settings.showArpeggioOnRateChart) return 'both';
+  if (settings.showChainOnRateChart) return 'chain';
+  if (settings.showArpeggioOnRateChart) return 'arpeggio';
   return 'none';
 }
 
@@ -196,6 +196,8 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${ctx.getUiState().ui.playback.trailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${ctx.getUiState().ui.playback.showOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
         <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${ctx.getUiState().ui.playback.scale}" aria-label="配列図の表示倍率" /> 倍</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${ctx.getUiState().ui.playback.showChain ? ' checked' : ''} />Analysis Chainの動的表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${ctx.getUiState().ui.playback.showArpeggio ? ' checked' : ''} />ArpeggioSpanの動的表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-same-finger-motion${ctx.getUiState().ui.playback.showSameFingerMotion ? ' checked' : ''} />同指移動の動的表示</label>
       </div>
     </section>
@@ -210,8 +212,8 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
         </label>
         <label class="playback-range-setting"><span>SMA窓幅</span> <input type="number" data-playback-rate-window min="${PLAYBACK_RATE_WINDOW_MIN}" max="${PLAYBACK_RATE_WINDOW_MAX}" step="1" value="${ctx.getUiState().conditions.defaults.playbackRateWindow}" aria-label="SMAの窓幅" /> 打鍵</label>
         <label class="playback-range-setting"><span>EWMA半減期</span> <input type="number" data-playback-rate-half-life min="${PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN}" max="${PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX}" step="0.1" value="${ctx.getUiState().conditions.defaults.playbackRateHalfLifeSeconds}" aria-label="EWMAの半減期（秒）" /> 秒</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${ctx.getUiState().ui.playback.showChain ? ' checked' : ''} />Chain区間を配列図・グラフに表示</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${ctx.getUiState().ui.playback.showArpeggio ? ' checked' : ''} />Arpeggio区間を配列図・グラフに表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chart-chain${ctx.getUiState().ui.playback.showChainOnRateChart ? ' checked' : ''} />Chain区間をグラフに表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chart-arpeggio${ctx.getUiState().ui.playback.showArpeggioOnRateChart ? ' checked' : ''} />Arpeggio区間をグラフに表示</label>
       </div>
     </section>
     <section id="playback-settings-conditions" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="conditions"${activeTab === 'conditions' ? '' : ' hidden'}>
@@ -421,6 +423,8 @@ function updatePlaybackView() {
   const chain = settingsRoot.querySelector<HTMLInputElement>('[data-playback-chain]');
   const calibration = settingsRoot.querySelector<HTMLInputElement>('[data-playback-calibration]');
   const showArpeggio = settingsRoot.querySelector<HTMLInputElement>('[data-playback-arpeggio]');
+  const chartChain = settingsRoot.querySelector<HTMLInputElement>('[data-playback-chart-chain]');
+  const chartArpeggio = settingsRoot.querySelector<HTMLInputElement>('[data-playback-chart-arpeggio]');
   const rateAverageControl = settingsRoot.querySelector<HTMLSelectElement>('[data-playback-rate-average]');
   const rateWindowControl = settingsRoot.querySelector<HTMLInputElement>('[data-playback-rate-window]');
   const rateHalfLifeControl = settingsRoot.querySelector<HTMLInputElement>('[data-playback-rate-half-life]');
@@ -542,6 +546,8 @@ function updatePlaybackView() {
   }
   if (chain) chain.checked = ctx.getUiState().ui.playback.showChain;
   if (showArpeggio) showArpeggio.checked = ctx.getUiState().ui.playback.showArpeggio;
+  if (chartChain) chartChain.checked = ctx.getUiState().ui.playback.showChainOnRateChart;
+  if (chartArpeggio) chartArpeggio.checked = ctx.getUiState().ui.playback.showArpeggioOnRateChart;
   if (rateAverageControl) rateAverageControl.value = rateAverage;
   if (rateWindowControl) rateWindowControl.value = String(rateWindow);
   if (rateHalfLifeControl) rateHalfLifeControl.value = String(rateHalfLife);
@@ -1127,13 +1133,27 @@ function refreshStructuralAnalysis(): void {
       const chain = target.closest<HTMLInputElement>('[data-playback-chain]');
       if (chain) {
         ctx.updatePlaybackSetting('showChain', chain.checked);
-        playbackRateChartSignature = undefined;
+        playbackMotionCursor = -1;
         updatePlaybackView();
         return;
       }
       const showArpeggio = target.closest<HTMLInputElement>('[data-playback-arpeggio]');
       if (showArpeggio) {
         ctx.updatePlaybackSetting('showArpeggio', showArpeggio.checked);
+        playbackMotionCursor = -1;
+        updatePlaybackView();
+        return;
+      }
+      const chartChain = target.closest<HTMLInputElement>('[data-playback-chart-chain]');
+      if (chartChain) {
+        ctx.updatePlaybackSetting('showChainOnRateChart', chartChain.checked);
+        playbackRateChartSignature = undefined;
+        updatePlaybackView();
+        return;
+      }
+      const chartArpeggio = target.closest<HTMLInputElement>('[data-playback-chart-arpeggio]');
+      if (chartArpeggio) {
+        ctx.updatePlaybackSetting('showArpeggioOnRateChart', chartArpeggio.checked);
         playbackRateChartSignature = undefined;
         updatePlaybackView();
         return;
