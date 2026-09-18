@@ -537,12 +537,25 @@ function sanitizePlaybackOverrides(
   fallback: UiPlaybackState,
 ): Partial<UiPlaybackState> {
   const source = record(value);
+  const sanitized = sanitizePlaybackSettings(source, fallback);
   const result: Partial<UiPlaybackState> = {};
   for (const key of Object.keys(fallback) as Array<keyof UiPlaybackState>) {
     if (!(key in source)) continue;
-    const sanitized = sanitizePlaybackSettings({ [key]: source[key] }, fallback);
     Object.assign(result, { [key]: sanitized[key] });
   }
+
+  // 配列固有overrideも、グラフ表示分離前は配列図と同じ表示設定を共有していた。
+  // 新フィールドが未保存なら、overrideに明示されていた旧共有値だけ対応する
+  // グラフ側へコピーする。明示されていない側はglobal値の継承を維持する。
+  if (!('showChainOnRateChart' in source)
+    && ('showChain' in source || 'arpeggioDisplay' in source)) {
+    result.showChainOnRateChart = sanitized.showChain;
+  }
+  if (!('showArpeggioOnRateChart' in source)
+    && ('showArpeggio' in source || 'arpeggioDisplay' in source)) {
+    result.showArpeggioOnRateChart = sanitized.showArpeggio;
+  }
+
   return result;
 }
 
