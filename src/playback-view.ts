@@ -142,7 +142,7 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-layer${ctx.getUiState().ui.playback.chainIncludeLayerKeys ? ' checked' : ''}${ctx.getUiState().ui.playback.showChain ? '' : ' disabled'} />チェーンにレイヤーキーを含める</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${ctx.getUiState().ui.playback.showChain ? ' checked' : ''} />チェーンの動的表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${ctx.getUiState().ui.playback.showArpeggio ? ' checked' : ''} />アルペジオの動的表示</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-same-finger-motion${ctx.getUiState().ui.playback.showSameFingerMotion ? ' checked' : ''} />同指移動のアニメーションを表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-same-finger-motion${ctx.getUiState().ui.playback.showSameFingerMotion ? ' checked' : ''} />同指移動の動的表示</label>
       </div>
     </section>
     <section id="playback-settings-conditions" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="conditions"${activeTab === 'conditions' ? '' : ' hidden'}>
