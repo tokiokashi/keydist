@@ -12,7 +12,9 @@ import {
   playbackStrokeDisplay, setPlaybackCalibration, setPlaybackSpeedMultiplier,
   type PlaybackStepsPerSecond, type PlaybackState, type PlaybackTimingStep, PLAYBACK_SPEED_MULTIPLIER_MAX,
   PLAYBACK_SPEED_MULTIPLIER_MIN, PLAYBACK_STEPS_PER_SECOND_MAX,
-  PLAYBACK_STEPS_PER_SECOND_MIN,
+  PLAYBACK_STEPS_PER_SECOND_MIN, PLAYBACK_RATE_WINDOW_MIN,
+  PLAYBACK_RATE_WINDOW_MAX, PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN,
+  PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX,
 } from './playback.ts';
 import { renderPlaybackRateChart, updatePlaybackRateChartCursor } from './playback-rate-chart.ts';
 import { FINGER_LABEL, type AppElements } from './app-dom.ts';
@@ -122,7 +124,7 @@ let playbackMotionCursor = -1;
 let playbackFeedbackPending = false;
 let playbackRateChartSignature: string | undefined;
 let playbackTiming: readonly PlaybackTimingStep[] = [];
-type PlaybackSettingsTab = 'display' | 'conditions';
+type PlaybackSettingsTab = 'display' | 'graph' | 'conditions';
 
 let playbackSettingsOpen = false;
 let playbackSettingsTab: PlaybackSettingsTab = 'display';
@@ -171,6 +173,7 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
     </div>
     <div class="playback-settings-tabs" role="tablist" aria-label="打鍵再生設定の分類">
       <button type="button" class="playback-settings-tab" role="tab" aria-selected="${activeTab === 'display'}" aria-controls="playback-settings-display" data-playback-settings-tab="display">表示設定</button>
+      <button type="button" class="playback-settings-tab" role="tab" aria-selected="${activeTab === 'graph'}" aria-controls="playback-settings-graph" data-playback-settings-tab="graph">グラフ設定</button>
       <button type="button" class="playback-settings-tab" role="tab" aria-selected="${activeTab === 'conditions'}" aria-controls="playback-settings-conditions" data-playback-settings-tab="conditions">シミュレーション条件</button>
     </div>
     <section id="playback-settings-display" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="display"${activeTab === 'display' ? '' : ' hidden'}>
@@ -196,6 +199,21 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${ctx.getUiState().ui.playback.showChain ? ' checked' : ''} />Analysis Chainの動的表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${ctx.getUiState().ui.playback.showArpeggio ? ' checked' : ''} />ArpeggioSpanの動的表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-same-finger-motion${ctx.getUiState().ui.playback.showSameFingerMotion ? ' checked' : ''} />同指移動の動的表示</label>
+      </div>
+    </section>
+    <section id="playback-settings-graph" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="graph"${activeTab === 'graph' ? '' : ' hidden'}>
+      <p class="note">かな/秒・アクション/秒の平均と、グラフ上に重ねる構造区間を設定します。平均条件は全配列共通です。</p>
+      <div class="playback-dialog-grid">
+        <label class="playback-range-setting"><span>平均方式</span>
+          <select data-playback-rate-average aria-label="速度グラフの平均方式">
+            <option value="sma"${ctx.getUiState().conditions.defaults.playbackRateAverage === 'sma' ? ' selected' : ''}>SMA（単純移動平均）</option>
+            <option value="ewma"${ctx.getUiState().conditions.defaults.playbackRateAverage === 'ewma' ? ' selected' : ''}>EWMA（指数移動平均）</option>
+          </select>
+        </label>
+        <label class="playback-range-setting"><span>SMA窓幅</span> <input type="number" data-playback-rate-window min="${PLAYBACK_RATE_WINDOW_MIN}" max="${PLAYBACK_RATE_WINDOW_MAX}" step="1" value="${ctx.getUiState().conditions.defaults.playbackRateWindow}" aria-label="SMAの窓幅" /> 打鍵</label>
+        <label class="playback-range-setting"><span>EWMA半減期</span> <input type="number" data-playback-rate-half-life min="${PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN}" max="${PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX}" step="0.1" value="${ctx.getUiState().conditions.defaults.playbackRateHalfLifeSeconds}" aria-label="EWMAの半減期（秒）" /> 秒</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${ctx.getUiState().ui.playback.showChain ? ' checked' : ''} />Chain区間を配列図・グラフに表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${ctx.getUiState().ui.playback.showArpeggio ? ' checked' : ''} />Arpeggio区間を配列図・グラフに表示</label>
       </div>
     </section>
     <section id="playback-settings-conditions" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="conditions"${activeTab === 'conditions' ? '' : ' hidden'}>
@@ -749,18 +767,24 @@ function triggerPlaybackKeyFeedback(
     }
 
     if (style === 'fade') {
-      // CSS transition。毎回0.32へ戻してstyleをflushするので連打でも再発火する。
-      overlay.style.opacity = '0.32';
-      void overlay.getBoundingClientRect();
-      overlay.style.transition = 'opacity 80ms ease-out';
-      overlay.style.opacity = '0';
+      const face = key.querySelector<SVGRectElement>('rect:not([data-playback-feedback-overlay])');
+      if (face) {
+        // 押下色そのものを地色からaccentへ遷移させる。連打でも毎回同じ経路を再発火する。
+        face.animate(
+          [
+            { fill: 'var(--panel)', stroke: 'var(--line)' },
+            { fill: 'var(--accent)', stroke: 'var(--accent)' },
+          ],
+          { duration: 120, easing: 'ease-out' },
+        );
+      }
       continue;
     }
 
     if (style === 'pulse') {
       overlay.animate(
-        [{ opacity: 0.58 }, { opacity: 0 }],
-        { duration: 160, easing: 'ease-out' },
+        [{ opacity: 0.62 }, { opacity: 0 }],
+        { duration: 220, easing: 'ease-out' },
       );
       continue;
     }
@@ -768,8 +792,8 @@ function triggerPlaybackKeyFeedback(
     key.style.transformBox = 'fill-box';
     key.style.transformOrigin = 'center';
     key.animate(
-      [{ transform: 'scale(1)' }, { transform: 'scale(1.06)' }, { transform: 'scale(1)' }],
-      { duration: 110, easing: 'ease-out' },
+      [{ transform: 'scale(1)' }, { transform: 'scale(1.065)' }, { transform: 'scale(1)' }],
+      { duration: 160, easing: 'ease-out' },
     );
   }
 }
@@ -1034,7 +1058,7 @@ function refreshStructuralAnalysis(): void {
       const settingsTab = targetElement.closest<HTMLButtonElement>('[data-playback-settings-tab]');
       if (settingsTab?.dataset.playbackSettingsTab) {
         const tabId = settingsTab.dataset.playbackSettingsTab;
-        if (tabId !== 'display' && tabId !== 'conditions') return;
+        if (tabId !== 'display' && tabId !== 'graph' && tabId !== 'conditions') return;
         playbackSettingsTab = tabId;
         for (const tab of elements.playbackSettingsPanel.querySelectorAll<HTMLButtonElement>('[data-playback-settings-tab]')) {
           tab.setAttribute('aria-selected', String(tab === settingsTab));
@@ -1096,9 +1120,49 @@ function refreshStructuralAnalysis(): void {
         playbackMotionCursor = -1; updatePlaybackView(); return;
       }
       const chain = target.closest<HTMLInputElement>('[data-playback-chain]');
-      if (chain) { ctx.updatePlaybackSetting('showChain', chain.checked); updatePlaybackView(); return; }
+      if (chain) {
+        ctx.updatePlaybackSetting('showChain', chain.checked);
+        playbackRateChartSignature = undefined;
+        updatePlaybackView();
+        return;
+      }
       const showArpeggio = target.closest<HTMLInputElement>('[data-playback-arpeggio]');
-      if (showArpeggio) { ctx.updatePlaybackSetting('showArpeggio', showArpeggio.checked); updatePlaybackView(); return; }
+      if (showArpeggio) {
+        ctx.updatePlaybackSetting('showArpeggio', showArpeggio.checked);
+        playbackRateChartSignature = undefined;
+        updatePlaybackView();
+        return;
+      }
+      const rateAverage = target.closest<HTMLSelectElement>('select[data-playback-rate-average]');
+      if (rateAverage) {
+        const value = rateAverage.value;
+        if (value === 'sma' || value === 'ewma') {
+          ctx.updateUiState((draft) => { draft.conditions.defaults.playbackRateAverage = value; });
+          playbackRateChartSignature = undefined;
+          updatePlaybackView();
+        }
+        return;
+      }
+      const rateWindow = target.closest<HTMLInputElement>('input[data-playback-rate-window]');
+      if (rateWindow) {
+        const value = Number(rateWindow.value);
+        if (Number.isInteger(value) && value >= PLAYBACK_RATE_WINDOW_MIN && value <= PLAYBACK_RATE_WINDOW_MAX) {
+          ctx.updateUiState((draft) => { draft.conditions.defaults.playbackRateWindow = value; });
+          playbackRateChartSignature = undefined;
+          updatePlaybackView();
+        }
+        return;
+      }
+      const rateHalfLife = target.closest<HTMLInputElement>('input[data-playback-rate-half-life]');
+      if (rateHalfLife) {
+        const value = Number(rateHalfLife.value);
+        if (Number.isFinite(value) && value >= PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN && value <= PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX) {
+          ctx.updateUiState((draft) => { draft.conditions.defaults.playbackRateHalfLifeSeconds = value; });
+          playbackRateChartSignature = undefined;
+          updatePlaybackView();
+        }
+        return;
+      }
       const chainPolicyInput = target.closest<HTMLInputElement>('[data-playback-chain-policy]');
       if (chainPolicyInput) {
         const key = chainPolicyInput.dataset.playbackChainPolicy;
