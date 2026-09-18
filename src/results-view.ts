@@ -169,7 +169,7 @@ function render() {
 }
 
 const COMPARE_HEADERS = [
-  'ステップ',
+  'アクション',
   '距離 [u]',
   '距離 [m]',
   '1打鍵 [u]',
@@ -182,7 +182,7 @@ const COMPARE_HEADERS = [
 ];
 
 const COMPARE_RELATIVE_HEADERS = [
-  'ステップ比',
+  'アクション比',
   '距離[u]比',
   '距離[m]比',
   '1打鍵[u]比',
@@ -215,7 +215,7 @@ interface CompareCell {
 function compareMetricValues(metrics: Metrics): number[] {
   const adjacentMean = metrics.adjacent.reduce((a, b) => a + b.meanExcess, 0) / metrics.adjacent.length;
   return [
-    metrics.strokes,
+    metrics.actions,
     metrics.totalUnits,
     metrics.totalMm / 1000,
     metrics.meanPerStroke,
