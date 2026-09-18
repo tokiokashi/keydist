@@ -252,7 +252,8 @@ export function fromFaces(
         `triggerを持つFaceはtriggerPersistenceを明示する必要がある（face:${faceIndex}）`,
       );
     }
-    const isCombo = trigger.length > 1;
+    const inputRole = face.inputRole ?? face.role ?? (trigger.length > 1 ? 'composition' : 'layer');
+    const isCombo = trigger.length > 1 || inputRole === 'composition';
     const layerId = isCombo
       ? COMBO_LAYER_ID
       : face.layer === undefined ? `face:${faceIndex}` : `layer:${face.layer}`;
@@ -279,7 +280,7 @@ export function fromFaces(
           trigger,
           face.mode,
           key,
-          face.inputRole ?? face.role ?? (isCombo ? 'composition' : 'layer'),
+          inputRole,
           trigger.length > 0 ? face.triggerPersistence : undefined,
         ));
         // 刻印は単打面の1文字だけを表示する。シフト面の出力で上書きしない。

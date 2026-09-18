@@ -210,7 +210,7 @@ function breaksChain(step: RawHandStep, policy: ChainPolicy): boolean {
   // 親指SFBはRaw factには残すが、#200/#166で境界が未決なので
   // 既存UI互換のsame-finger Policyでは非親指だけを対象にする。
   return (policy.breakOnSameFinger && step.nonThumbSameFinger)
-    || (policy.breakOnTriggerOnly && step.triggerOnly)
+    || (policy.breakOnTriggerOnly && step.triggerOnly && step.inputRole !== 'composition')
     || (policy.breakOnOppositeHandSimultaneous && step.oppositeHandOutput);
 }
 

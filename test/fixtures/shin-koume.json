@@ -1,0 +1,1588 @@
+{
+  "version": 1,
+  "layoutId": "shin-koume",
+  "source": {
+    "url": "https://github.com/k-ayaki/benizara/blob/master/シン蜂蜜小梅配列(小指シフトで英大文字).bnz",
+    "sha": "ffaa1eb5639bd64e3ef5c6a25747dd65dea09334",
+    "path": "シン蜂蜜小梅配列(小指シフトで英大文字).bnz",
+    "transform": "紅皿定義からかな入力面をANSI 12/12/11/10列へ投影する。タイプアシスト定型句・記号を除外し、半濁音は重複する親指面/{u}/{:}を採らず{g}/{h}の文字キー同時押しをcanonical化する。重複する小書き・ゑ/ゐ/ゎ/をは既存の親指面または{k}面を採用し、{e}/{y}/{d}/{:}/{c}のsource-only面は実装Faceから除外する"
+  },
+  "faces": [
+    {
+      "trigger": [],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "。",
+          "な",
+          "て",
+          "せ",
+          "そ",
+          "",
+          "お",
+          "の",
+          "に",
+          "",
+          "、",
+          ""
+        ],
+        [
+          "こ",
+          "た",
+          "か",
+          "る",
+          "は",
+          "ー",
+          "ん",
+          "い",
+          "し",
+          "と",
+          ""
+        ],
+        [
+          "ゆ",
+          "ほ",
+          "ま",
+          "ろ",
+          "",
+          "っ",
+          "う",
+          "す",
+          "ら",
+          "へ"
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        "thumb-l"
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "け",
+          "よ",
+          "",
+          "",
+          "ゑ",
+          "び",
+          "ぎ",
+          "づ",
+          "",
+          "",
+          ""
+        ],
+        [
+          "め",
+          "や",
+          "も",
+          "さ",
+          "ぅ",
+          "ぃ",
+          "ぁ",
+          "ぐ",
+          "じ",
+          "ど",
+          ""
+        ],
+        [
+          "ゅ",
+          "ゃ",
+          "ふ",
+          "ょ",
+          "ぉ",
+          "ぇ",
+          "ヴ",
+          "ず",
+          "ぢ",
+          "べ"
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        "thumb-r"
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "げ",
+          "で",
+          "ぜ",
+          "ぞ",
+          "ゐ",
+          "ひ",
+          "き",
+          "つ",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ご",
+          "だ",
+          "が",
+          "ざ",
+          "ば",
+          "む",
+          "れ",
+          "く",
+          "り",
+          "わ",
+          "ね"
+        ],
+        [
+          "",
+          "ぼ",
+          "ぶ",
+          "",
+          "ゎ",
+          "み",
+          "あ",
+          "え",
+          "ち",
+          "ぬ"
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        "g"
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ぴ",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "ぺ"
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        "u"
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ひぇ",
+          "ひゅ",
+          "ひょ",
+          "ひゃ",
+          "ひぃ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "びぇ",
+          "びゅ",
+          "びょ",
+          "びゃ",
+          "びぃ",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        "i"
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "きぇ",
+          "きゅ",
+          "きょ",
+          "きゃ",
+          "きぃ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ぎぇ",
+          "ぎゅ",
+          "ぎょ",
+          "ぎゃ",
+          "ぎぃ",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        "o"
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "つぇ",
+          "",
+          "つぉ",
+          "つぁ",
+          "つぃ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "にぇ",
+          "にゅ",
+          "にょ",
+          "にゃ",
+          "にぃ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "づぇ",
+          "",
+          "づぉ",
+          "づぁ",
+          "づぃ",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        "h"
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ぴぇ",
+          "ぴゅ",
+          "ぴょ",
+          "ぴゃ",
+          "ぴぃ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "ぱ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "ぽ",
+          "ぷ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        "j"
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ふぇ",
+          "ふゅ",
+          "ふぉ",
+          "ふぁ",
+          "ふぃ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ぶぇ",
+          "ぶゅ",
+          "ぶぉ",
+          "ぶぁ",
+          "ぶぃ",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        "k"
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "くぇ",
+          "くゎ",
+          "くぉ",
+          "くぁ",
+          "くぃ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "いぇ",
+          "",
+          "を",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ぐぇ",
+          "ぐゎ",
+          "ぐぉ",
+          "ぐぁ",
+          "ぐぃ",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        "l"
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "りぇ",
+          "りゅ",
+          "りょ",
+          "りゃ",
+          "りぃ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "しぇ",
+          "しゅ",
+          "しょ",
+          "しゃ",
+          "しぃ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "じぇ",
+          "じゅ",
+          "じょ",
+          "じゃ",
+          "じぃ",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        ";"
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "とぅ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "どぅ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        "n"
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "みぇ",
+          "みゅ",
+          "みょ",
+          "みゃ",
+          "みぃ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        "m"
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "うぇ",
+          "",
+          "うぉ",
+          "",
+          "うぃ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ヴぇ",
+          "ヴゅ",
+          "ヴぉ",
+          "ヴぁ",
+          "ヴぃ",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        ","
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "てゅ",
+          "",
+          "",
+          "てぃ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "でゅ",
+          "",
+          "",
+          "でぃ",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        "."
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ちぇ",
+          "ちゅ",
+          "ちょ",
+          "ちゃ",
+          "ちぃ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "ぢぇ",
+          "ぢゅ",
+          "ぢょ",
+          "ぢゃ",
+          "ぢぃ",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    {
+      "trigger": [
+        "/"
+      ],
+      "mode": "simultaneous",
+      "cells": [
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "ぬぉ",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    }
+  ],
+  "omissions": [
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 0,
+      "value": "１",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 1,
+      "value": "２",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 2,
+      "value": "３",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 3,
+      "value": "４",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 4,
+      "value": "５",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 5,
+      "value": "６",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 6,
+      "value": "７",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 7,
+      "value": "８",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 8,
+      "value": "９",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 9,
+      "value": "０",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 10,
+      "value": "－",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 11,
+      "value": "＾",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 0,
+      "column": 12,
+      "value": "￥",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 0,
+      "row": 1,
+      "column": 5,
+      "value": "／",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 1,
+      "column": 9,
+      "value": "［］入左",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 0,
+      "row": 1,
+      "column": 11,
+      "value": "（）入左",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 0,
+      "row": 2,
+      "column": 10,
+      "value": "後",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 0,
+      "row": 2,
+      "column": 11,
+      "value": "逃",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 0,
+      "row": 3,
+      "column": 4,
+      "value": "～",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 0,
+      "row": 3,
+      "column": 10,
+      "value": "＿",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 0,
+      "value": "？",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 1,
+      "value": "／",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 2,
+      "value": "～",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 3,
+      "value": "［",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 4,
+      "value": "］",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 5,
+      "value": "＆",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 6,
+      "value": "’",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 7,
+      "value": "＜",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 8,
+      "value": "＞",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 9,
+      "value": "＋",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 10,
+      "value": "＝",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 11,
+      "value": "‘",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 0,
+      "column": 12,
+      "value": "｜",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 1,
+      "row": 1,
+      "column": 0,
+      "value": "ぺ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 1,
+      "row": 1,
+      "column": 3,
+      "value": "－",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 1,
+      "column": 9,
+      "value": "］",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 1,
+      "row": 1,
+      "column": 10,
+      "value": "濁",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 1,
+      "row": 1,
+      "column": 11,
+      "value": "半",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 1,
+      "row": 2,
+      "column": 10,
+      "value": "ぴ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 1,
+      "row": 2,
+      "column": 11,
+      "value": "＊",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 1,
+      "row": 3,
+      "column": 10,
+      "value": "！",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 0,
+      "value": "！",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 1,
+      "value": "”",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 2,
+      "value": "＃",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 3,
+      "value": "＄",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 4,
+      "value": "％",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 5,
+      "value": "［",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 6,
+      "value": "］",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 7,
+      "value": "（",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 8,
+      "value": "）",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 9,
+      "value": "｛",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 0,
+      "column": 10,
+      "value": "｝",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 1,
+      "column": 0,
+      "value": "ぱ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 2,
+      "row": 1,
+      "column": 9,
+      "value": "［",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 2,
+      "row": 1,
+      "column": 10,
+      "value": "（）",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 2,
+      "row": 1,
+      "column": 11,
+      "value": "｛",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 2,
+      "row": 2,
+      "column": 11,
+      "value": "｝",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 2,
+      "row": 3,
+      "column": 0,
+      "value": "ぽ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 2,
+      "row": 3,
+      "column": 3,
+      "value": "ぷ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 2,
+      "row": 3,
+      "column": 10,
+      "value": "？",
+      "reason": "jis-only-key"
+    },
+    {
+      "faceIndex": 4,
+      "row": 2,
+      "column": 4,
+      "value": "ぴ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 5,
+      "row": 1,
+      "column": 8,
+      "value": "いき",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 7,
+      "row": 2,
+      "column": 1,
+      "value": "！",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 7,
+      "row": 2,
+      "column": 2,
+      "value": "？",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 9,
+      "row": 2,
+      "column": 6,
+      "value": "くれ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 9,
+      "row": 2,
+      "column": 8,
+      "value": "われ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 11,
+      "row": 1,
+      "column": 0,
+      "value": "ゑ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 11,
+      "row": 1,
+      "column": 3,
+      "value": "ゎ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 11,
+      "row": 1,
+      "column": 4,
+      "value": "ゐ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 13,
+      "row": 1,
+      "column": 0,
+      "value": "ぇ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 13,
+      "row": 1,
+      "column": 1,
+      "value": "ぅ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 13,
+      "row": 1,
+      "column": 2,
+      "value": "ぉ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 13,
+      "row": 1,
+      "column": 3,
+      "value": "ぁ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 13,
+      "row": 1,
+      "column": 4,
+      "value": "ぃ",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 14,
+      "row": 2,
+      "column": 2,
+      "value": "，",
+      "reason": "symbol"
+    },
+    {
+      "faceIndex": 14,
+      "row": 3,
+      "column": 8,
+      "value": "あり",
+      "reason": "source-only"
+    },
+    {
+      "faceIndex": 15,
+      "row": 2,
+      "column": 2,
+      "value": "．",
+      "reason": "symbol"
+    }
+  ]
+}

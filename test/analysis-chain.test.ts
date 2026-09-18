@@ -18,12 +18,13 @@ const stroke = (
   index: number,
   participations: readonly StrokeParticipation[],
   presses: Array<{ finger: StrokeParticipation['finger']; sfb: boolean }> = [],
+  inputRole: Stroke['inputRole'] | 'output' = 'output',
 ): Stroke => ({
   index,
   inputIndex: index,
   inputChar: String(index),
   char: String(index),
-  inputRole: 'output',
+  inputRole,
   triggerKeys: [],
   pairedTriggerKeys: [],
   participations,
@@ -108,6 +109,37 @@ test('ChainPolicyはsame-finger / trigger-only / 逆手同時を独立に分割�
       .map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
     [[0, 3], [4, 5]],
     '既定ではsame-finger境界Strokeを従来どおりChainから外す',
+  );
+});
+
+test('breakOnTriggerOnlyはcompositionの片手triggerをshift扱いで除外しない', () => {
+  const strokes = [
+    stroke(0, [
+      participation('left', 'LI', ['output']),
+      participation('right', 'RI', ['trigger']),
+    ], [], 'composition'),
+  ];
+  const policy = {
+    ...DEFAULT_CHAIN_POLICY,
+    breakOnSameFinger: false,
+    breakOnTriggerOnly: true,
+  };
+
+  const raw = buildRawHandRuns(strokes);
+  const right = raw.find((run) => run.hand === 'right')!.steps[0];
+  assert.equal(right.triggerOnly, true, 'Raw factとしてtrigger-onlyは保持する');
+  assert.equal(right.inputRole, 'composition');
+
+  assert.deepEqual(
+    analyzeChains(strokes, policy).chains.map((chain) => [
+      chain.hand,
+      chain.startStrokeIndex,
+      chain.endStrokeIndex,
+    ]),
+    [
+      ['left', 0, 1],
+      ['right', 0, 1],
+    ],
   );
 });
 

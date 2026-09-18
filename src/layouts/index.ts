@@ -92,14 +92,6 @@ const ALPHA_BY_ID = new Map(ALPHA.map((l) => [l.id, l]));
 export const LAYOUTS: Layout[] = ALPHA.filter((l) => l.id !== 'oonishi-custom');
 
 /**
- * 七傑のうち実装待ちの定義。実装が済んだものだけLAYOUTS_JAに移す。
- * 各配列のissueのPRが、自分の定義とこの配列から一覧への移動を担当する。
- */
-export const KANA_PENDING: Layout[] = [
-  SHIN_KOUME,
-];
-
-/**
  * 日本語のかなテキストを打つ配列。
  * ローマ字配列はテーブルを通して展開し、かな配列はそのまま打つ。
  * 最終形はどちらも打鍵ステップ列なので、同じテキストで比較できる。
@@ -123,6 +115,7 @@ export const LAYOUTS_JA: Layout[] = [
   ),
   NAGINATA_V18,
   NICOLA,
+  SHIN_KOUME,
   ASUKA,
   SHIN_JIS_PREFIX,
   SHIN_JIS_SIMULTANEOUS,

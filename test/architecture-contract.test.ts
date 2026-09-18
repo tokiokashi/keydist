@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { KANA_PENDING, LAYOUTS, LAYOUTS_JA } from '../src/layouts/index.ts';
+import { LAYOUTS, LAYOUTS_JA } from '../src/layouts/index.ts';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');
@@ -69,7 +69,7 @@ test('PlaybackCalibrationはstructural analysisへ依存しない', async () => 
 
 test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async () => {
   const builtInLayoutLiterals = new Set(
-    [...LAYOUTS, ...LAYOUTS_JA, ...KANA_PENDING]
+    [...LAYOUTS, ...LAYOUTS_JA]
       .flatMap((layout) => [layout.id, layout.name]),
   );
 
