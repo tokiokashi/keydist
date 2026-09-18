@@ -352,7 +352,7 @@ type TriggerRealizationPolicy = {
 };
 ```
 
-保持を使う場合、同一layerかつtrigger集合が完全一致する連続対象だけを同じhold区間とする。
+保持を使う場合、各stepへsemantic normalizationが付与した `associatedTriggerKeys` を連続判定keyとする。active holdのtrigger集合と `associatedTriggerKeys` が完全一致する連続対象だけを同じhold区間とし、layer idは継続条件に使わない。
 
 ```text
 区間先頭
@@ -366,10 +366,12 @@ type TriggerRealizationPolicy = {
 - `single` triggerをholdへ昇格しない
 - composition等の `InputRole` だけからholdを推測しない
 - trigger集合の部分一致を同一holdとして扱わない
+- prefix / suffix のoutput stepにも、その対象Faceのtrigger集合を `associatedTriggerKeys` として保持する
+- active holdとassociationが一致しないstepの直前でholdを終了する。triggerを持たない通常outputもrelease境界になる
 - continueでは保持中triggerを `Press` として再生成しない
+- 保持中triggerキー自身がoutputでもあるstepは、保持継続のまま同じキーを再押下できないためholdをrelease/restartし、新規 `trigger + held-trigger/start` としてrealizeする
 - 保持中のキー位置は指位置snapshotには残す
 - 明示release専用Stroke / Press / Release eventはこの初期実装では導入しない
-- 次Strokeで `held-trigger` が存在しなくなった時点を保持区間の終了境界とする
 - 後段のChain / Transition / Roll / Timingはrealized Stroke streamだけを読み、
   独自にhold可能性を再判定しない
 
