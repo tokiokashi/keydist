@@ -21,6 +21,7 @@ import {
   playbackStrokeDurationMs,
   playbackSameFingerKeyMotions,
   playbackRepeatedKeys,
+  playbackCursorForEquivalentInputPosition,
   reconcilePlaybackStateAfterAnalysisRefresh,
   playbackTrailKeys,
   playbackTrailOrders,
@@ -167,6 +168,34 @@ const playbackRateChartData = (
   calibration,
   speedMultiplier,
 );
+
+test('配列切替ではinputIndexと入力内の進捗から対応cursorを求める', () => {
+  const previous = [
+    { inputIndex: 0 },
+    { inputIndex: 1 },
+    { inputIndex: 1 },
+    { inputIndex: 2 },
+  ];
+  const next = [
+    { inputIndex: 0 },
+    { inputIndex: 1 },
+    { inputIndex: 1 },
+    { inputIndex: 1 },
+    { inputIndex: 2 },
+  ];
+
+  assert.equal(playbackCursorForEquivalentInputPosition(previous, next, 0), 0);
+  assert.equal(playbackCursorForEquivalentInputPosition(previous, next, 1), 1);
+  assert.equal(playbackCursorForEquivalentInputPosition(previous, next, 2), 2);
+  assert.equal(playbackCursorForEquivalentInputPosition(previous, next, 4), 5);
+});
+
+test('配列切替先で現在inputIndexが打てない場合は次の入力位置へ進める', () => {
+  const previous = [{ inputIndex: 0 }, { inputIndex: 1 }, { inputIndex: 2 }];
+  const next = [{ inputIndex: 0 }, { inputIndex: 2 }];
+
+  assert.equal(playbackCursorForEquivalentInputPosition(previous, next, 1), 1);
+});
 
 test('構造解析の再生成ではcursor/playingとStroke内進捗率を維持する', () => {
   const calibration = {
