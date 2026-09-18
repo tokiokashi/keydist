@@ -7,7 +7,7 @@ import {
   playbackRomajiPlannedOrders, playbackOrderLabel, playbackRateChartData,
   playbackRecentActionsPerSecond, playbackRecentKanaPerSecond,
   playbackSameFingerKeyMotions, playbackRepeatedKeys,
-  playbackStrokeAt, playbackStepDurationMs, playbackTimingSchedule, setPlaybackSameFingerDelay,
+  playbackStrokeAt, playbackStepDurationMs, playbackTimingSchedule, reconcilePlaybackStateAfterAnalysisRefresh, setPlaybackSameFingerDelay,
   setPlaybackStepsPerSecond, stepPlayback, playbackTrailKeys, playbackTrailOrders,
   playbackStrokeDisplay, setPlaybackCalibration, setPlaybackSpeedMultiplier,
   type PlaybackStepsPerSecond, type PlaybackState, type PlaybackTimingStep, PLAYBACK_SPEED_MULTIPLIER_MAX,
@@ -47,6 +47,7 @@ export interface PlaybackViewContext {
   updateChainPolicy: (policy: ChainPolicy) => void;
   getArpeggioPolicy: () => ArpeggioPolicy;
   updateArpeggioPolicy: (policy: ArpeggioPolicy) => void;
+  refreshAnalysis: () => void;
   openCalibration: () => void;
   openCalibrationEdit: () => void;
 }
@@ -116,6 +117,7 @@ type PlaybackSettingsTab = 'display' | 'conditions';
 
 let playbackSettingsOpen = false;
 let playbackSettingsTab: PlaybackSettingsTab = 'display';
+let preserveStateOnNextRender = false;
 
 function refreshPlaybackTiming(): void {
   playbackTiming = playbackAnalysis
@@ -715,18 +717,23 @@ function renderPlayback(
   options: Options,
   analysis: AggregatedAnalysisResult,
 ) {
+  const previousAnalysis = playbackAnalysis;
+  const previousState = playbackState;
+  const preserveState = preserveStateOnNextRender && previousAnalysis !== undefined;
   cancelPlaybackAnimation();
   playbackTrace = trace;
   playbackAnalysis = analysis;
   playbackGeometry = geometry;
   playbackLayout = layout;
   playbackOptions = options;
-  playbackState = createPlaybackState(
-    ctx.getUiState().ui.playback.stepsPerSecond,
-    ctx.getUiState().ui.playback.sameFingerDelay,
-    ctx.getUiState().ui.playback.useCalibration ? ctx.getCalibration() : undefined,
-    ctx.getUiState().ui.playback.speedMultiplier,
-  );
+  playbackState = preserveState
+    ? reconcilePlaybackStateAfterAnalysisRefresh(previousState, previousAnalysis, analysis)
+    : createPlaybackState(
+      ctx.getUiState().ui.playback.stepsPerSecond,
+      ctx.getUiState().ui.playback.sameFingerDelay,
+      ctx.getUiState().ui.playback.useCalibration ? ctx.getCalibration() : undefined,
+      ctx.getUiState().ui.playback.speedMultiplier,
+    );
   refreshPlaybackTiming();
   playbackMotionCursor = -1;
   playbackSeekWasPlaying = undefined;
@@ -770,6 +777,9 @@ function renderPlayback(
   elements.playbackSettingsPanel.innerHTML = playbackSettingsMarkup(layout, options);
   setPlaybackSettingsOpen(playbackSettingsOpen);
   updatePlaybackView();
+  if (preserveState && playbackState.playing) {
+    playbackAnimationFrame = requestAnimationFrame((timestamp) => playbackFrame(timestamp));
+  }
 }
 
 function startPlayback() {
@@ -859,6 +869,14 @@ function seekPlayback(value: string, playing = false) {
   updatePlaybackView();
 }
 
+function refreshStructuralAnalysis(): void {
+  preserveStateOnNextRender = true;
+  try {
+    ctx.refreshAnalysis();
+  } finally {
+    preserveStateOnNextRender = false;
+  }
+}
 
 
   function setup(): void {
@@ -982,7 +1000,7 @@ function seekPlayback(value: string, playing = false) {
         const key = chainPolicyInput.dataset.playbackChainPolicy;
         if (key === 'breakOnSameFinger' || key === 'breakOnTriggerOnly' || key === 'breakOnOppositeHandSimultaneous') {
           ctx.updateChainPolicy({ ...ctx.getChainPolicy(), [key]: chainPolicyInput.checked });
-          playbackMotionCursor = -1; playbackRateChartSignature = undefined; updatePlaybackView();
+          refreshStructuralAnalysis();
         }
         return;
       }
@@ -991,7 +1009,7 @@ function seekPlayback(value: string, playing = false) {
         const key = arpeggioPolicyInput.dataset.playbackArpeggioPolicy;
         if (key === 'includeThumb' || key === 'bridgeSameFinger' || key === 'includeSingleRedirectTail') {
           ctx.updateArpeggioPolicy({ ...ctx.getArpeggioPolicy(), [key]: arpeggioPolicyInput.checked });
-          playbackMotionCursor = -1; playbackRateChartSignature = undefined; updatePlaybackView();
+          refreshStructuralAnalysis();
         }
         return;
       }
