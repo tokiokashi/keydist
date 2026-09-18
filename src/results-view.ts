@@ -540,7 +540,7 @@ function renderSensitivity(text: string, results: readonly Result[]) {
       options,
       range,
       ctx.romajiRuleIdForLayout(layout),
-      analysis.chainPolicy as typeof analysis.chainPolicy & { breakOnSameFinger: boolean },
+      analysis.chainPolicy,
     );
     const base = points[0].totalUnits || 1;
     return {
