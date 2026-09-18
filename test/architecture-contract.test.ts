@@ -1,0 +1,111 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readdir, readFile } from 'node:fs/promises';
+import { dirname, join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+const SRC = join(ROOT, 'src');
+
+async function tsFiles(dir: string): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const nested = await Promise.all(entries.map(async (entry) => {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) return tsFiles(path);
+    return entry.isFile() && entry.name.endsWith('.ts') ? [path] : [];
+  }));
+  return nested.flat();
+}
+
+function moduleSpecifiers(source: string): readonly string[] {
+  const specs = new Set<string>();
+  for (const pattern of [
+    /\bfrom\s+['"]([^'"]+)['"]/g,
+    /\bimport\s+['"]([^'"]+)['"]/g,
+    /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+  ]) {
+    for (const match of source.matchAll(pattern)) specs.add(match[1]);
+  }
+  return [...specs];
+}
+
+async function structuralAnalysisSources() {
+  const paths = (await tsFiles(SRC))
+    .filter((path) => /^analysis-.*\.ts$/.test(path.split(/[\\/]/).at(-1) ?? ''));
+  return Promise.all(paths.map(async (path) => ({
+    path,
+    source: await readFile(path, 'utf8'),
+  })));
+}
+
+test('structural analysisはPlayback / Calibration / UIへ依存しない', async () => {
+  const forbiddenModule = /(?:^|\/)(?:playback(?:[-.]|$)|[^/]*calibration[^/]*|app-dom(?:\.|$)|ui-state(?:\.|$)|[^/]*-view(?:\.|$)|chart(?:\.|$))/;
+
+  for (const { path, source } of await structuralAnalysisSources()) {
+    for (const specifier of moduleSpecifiers(source)) {
+      assert.equal(
+        forbiddenModule.test(specifier),
+        false,
+        `${relative(ROOT, path)} must not import ${specifier}`,
+      );
+    }
+  }
+});
+
+test('PlaybackCalibrationはstructural analysisへ依存しない', async () => {
+  const path = join(SRC, 'playback-calibration.ts');
+  const source = await readFile(path, 'utf8');
+  const structuralImports = moduleSpecifiers(source)
+    .filter((specifier) => /(?:^|\/)analysis-/.test(specifier));
+
+  assert.deepEqual(structuralImports, []);
+});
+
+test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async () => {
+  for (const { path, source } of await structuralAnalysisSources()) {
+    for (const specifier of moduleSpecifiers(source)) {
+      if (!specifier.startsWith('./layouts/')) continue;
+      assert.equal(
+        specifier,
+        './layouts/types.ts',
+        `${relative(ROOT, path)} must use semantic layout types, not concrete layouts: ${specifier}`,
+      );
+    }
+
+    assert.doesNotMatch(
+      source,
+      /\blayout(?:Id|Name)\b|\blayout\s*\.\s*(?:id|name)\b/,
+      `${relative(ROOT, path)} must not branch on layout ID/name`,
+    );
+  }
+});
+
+test('廃止済み#200 legacy symbol / production helperをsrcへ再導入しない', async () => {
+  const forbidden = [
+    'arpeggioEnabled',
+    'arpeggioDelayMode',
+    'leadDelayMs',
+    'playbackArpeggioSpans',
+    'ARPEGGIO_PRESETS',
+    'TriggerBehavior',
+    'chord-trigger',
+    'one-shot-trigger',
+    'minHorizontalSpread',
+    'maxRowReversal',
+    'maxRowStep',
+  ] as const;
+
+  for (const path of await tsFiles(SRC)) {
+    const source = await readFile(path, 'utf8');
+    for (const symbol of forbidden) {
+      assert.equal(
+        source.includes(symbol),
+        false,
+        `${relative(ROOT, path)} reintroduced legacy symbol: ${symbol}`,
+      );
+    }
+  }
+
+  const sourcePaths = (await tsFiles(SRC)).map((path) => relative(SRC, path).replaceAll('\\', '/'));
+  assert.equal(sourcePaths.includes('playback-arpeggio.ts'), false);
+});
