@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
 import { evaluate, type Options } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
-import { LAYOUT_BY_ID, type Layout, withCombos, withRomaji } from '../src/layouts/index.ts';
+import { fromFaces, LAYOUT_BY_ID, type Layout, withCombos, withRomaji } from '../src/layouts/index.ts';
 import { kunrei } from '../src/romaji/kunrei.ts';
 
 const geometry = buildGeometry('row-staggered');
@@ -334,4 +334,124 @@ test('ヤ行コンボは拗音の内部だけで発火し、単独ヤ行を奪�
 
   assert.deepEqual(evaluate('やく', generic, geometry, opts()).strokes.map((s) => s.char), ['yaku']);
   assert.deepEqual(evaluate('やく', restricted, geometry, opts()).strokes.map((s) => s.char), ['y', 'aku']);
+});
+
+
+test('semantic normalizationはoutputのみのStrokeを表現する', () => {
+  const trace = evaluate('a', qwerty, geometry, opts());
+  const stroke = trace.strokes[0];
+
+  assert.equal(stroke.inputRole, 'layer');
+  assert.equal(stroke.participations.length, 1);
+  assert.deepEqual(stroke.participations[0].roles, ['output']);
+  assert.equal(stroke.participations[0].finger, 'LP');
+  assert.equal(stroke.participations[0].hand, 'left');
+});
+
+test('prefix triggerはtrigger-only Strokeとoutput Strokeへ分離して正規化する', () => {
+  const layout = fromFaces('semantic-prefix', 'semantic-prefix', [{
+    trigger: ['q'],
+    mode: 'prefix',
+    rows: ['', '', ['x'], ''],
+  }]);
+  const trace = evaluate('x', layout, geometry, opts());
+
+  assert.equal(trace.strokes.length, 2);
+  assert.deepEqual(trace.strokes[0].participations.map((p) => p.roles), [['chord-trigger']]);
+  assert.deepEqual(trace.strokes[1].participations.map((p) => p.roles), [['output']]);
+});
+
+test('同一キーはoutput + chord-triggerの複合roleを持てる', () => {
+  const layout = fromFaces('semantic-composite', 'semantic-composite', [{
+    trigger: ['a'],
+    mode: 'simultaneous',
+    rows: ['', '', ['x'], ''],
+  }]);
+  const trace = evaluate('x', layout, geometry, opts());
+  const participation = trace.strokes[0].participations[0];
+
+  assert.equal(participation.finger, 'LP');
+  assert.deepEqual(new Set(participation.roles), new Set(['output', 'chord-trigger']));
+});
+
+test('hold triggerはheld-trigger/continueをそのままStrokeへ伝播できる', () => {
+  const layout: Layout = {
+    id: 'semantic-hold',
+    name: 'semantic-hold',
+    map: new Map([['x', [['q']]]]),
+    legends: new Map(),
+    stepSemantics: new Map([['x', [{
+      inputRole: 'modifier',
+      triggerBehavior: 'hold',
+      outputKeys: [],
+      triggerKeys: ['q'],
+      holdPhase: 'continue',
+    }]]]),
+  };
+  const trace = evaluate('x', layout, geometry, opts());
+  const stroke = trace.strokes[0];
+
+  assert.equal(stroke.inputRole, 'modifier');
+  assert.deepEqual(stroke.participations[0].roles, ['held-trigger']);
+  assert.equal(stroke.participations[0].holdPhase, 'continue');
+});
+
+test('holdPhaseはheld-trigger participationだけに付与する', () => {
+  const layout: Layout = {
+    id: 'semantic-hold-mixed',
+    name: 'semantic-hold-mixed',
+    map: new Map([['x', [['q', 'j']]]]),
+    legends: new Map(),
+    stepSemantics: new Map([['x', [{
+      inputRole: 'modifier',
+      triggerBehavior: 'hold',
+      outputKeys: ['j'],
+      triggerKeys: ['q'],
+      holdPhase: 'continue',
+    }]]]),
+  };
+  const trace = evaluate('x', layout, geometry, opts());
+  const byFinger = new Map(trace.strokes[0].participations.map((p) => [p.finger, p]));
+
+  assert.deepEqual(byFinger.get('LP')?.roles, ['held-trigger']);
+  assert.equal(byFinger.get('LP')?.holdPhase, 'continue');
+  assert.deepEqual(byFinger.get('RI')?.roles, ['output']);
+  assert.equal(byFinger.get('RI')?.holdPhase, undefined);
+});
+
+test('文字コンボはcompositionとして伝播し、trigger宣言なしではchord-triggerにしない', () => {
+  const layout = withCombos('semantic-combo', 'semantic-combo', qwerty, [
+    ['ab', ['a', 'b']],
+  ]);
+  const trace = evaluate('ab', layout, geometry, opts());
+  const stroke = trace.strokes[0];
+
+  assert.equal(stroke.inputRole, 'composition');
+  assert.ok(stroke.participations.length >= 1);
+  for (const participation of stroke.participations) {
+    assert.deepEqual(participation.roles, ['output']);
+  }
+});
+
+test('semantic normalizationはlayout idに依存しない', () => {
+  const semantics = new Map([['x', [{
+    inputRole: 'composition' as const,
+    triggerBehavior: 'chord' as const,
+    outputKeys: ['a'],
+    triggerKeys: ['q'],
+  }]]]);
+  const base = {
+    name: 'same',
+    map: new Map([['x', [['q', 'a']]]]),
+    legends: new Map<string, string>(),
+    stepSemantics: semantics,
+  };
+  const first = evaluate('x', { ...base, id: 'semantic-a' }, geometry, opts()).strokes[0];
+  const second = evaluate('x', { ...base, id: 'semantic-b' }, geometry, opts()).strokes[0];
+
+  assert.equal(first.inputRole, second.inputRole);
+  assert.deepEqual(
+    first.participations.map((p) => ({ hand: p.hand, finger: p.finger, roles: p.roles })),
+    second.participations.map((p) => ({ hand: p.hand, finger: p.finger, roles: p.roles })),
+  );
 });

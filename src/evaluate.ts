@@ -3,9 +3,12 @@ import {
   COMBO_LAYER_ID,
   SINGLE_LAYER_ID,
   type ComboCondition,
+  type HoldPhase,
+  type InputRole,
   type LayerDefinition,
   type Layout,
   type Sequence,
+  type StepSemantic,
 } from './layouts/types.ts';
 import { kanaToRomajiChunks } from './romaji/kunrei.ts';
 
@@ -26,6 +29,16 @@ export const DEFAULT_OPTIONS: Options = {
   sfbHomeCost: true,
   preferOppositeThumb: false,
 };
+
+export type ParticipationRole = 'output' | 'chord-trigger' | 'held-trigger';
+
+export interface StrokeParticipation {
+  hand: 'left' | 'right';
+  finger: Finger;
+  keys: readonly Key[];
+  roles: readonly ParticipationRole[];
+  holdPhase?: HoldPhase;
+}
 
 /** 1ステップの中の1指分の押下 */
 export interface Press {
@@ -60,10 +73,14 @@ export interface Stroke {
   inputIndex: number;
   /** このステップに含まれるキー押下の帰属先。合成文字ではステップごとに異なりうる */
   layerId: string;
+  /** 解決されたFace/combo文脈の入力意味。 */
+  inputRole: InputRole;
   /** このステップで層操作として押したキー。出力キーとの色分けに使う */
   triggerKeys: readonly string[];
   /** 同じ層の文字トリガーを複数同時押下したキー。表示色の例外に使う */
   pairedTriggerKeys: readonly string[];
+  /** 後段解析がlayout idを見ずに使う正規化済み参加意味。 */
+  participations: readonly StrokeParticipation[];
   presses: Press[];
   /** ステップ内の押下距離の合計 [u] */
   distance: number;
@@ -199,6 +216,7 @@ export function evaluate(
 
     const stepLayerIds = layout.stepLayers?.get(char);
     const stepTriggerKeys = layout.stepTriggerKeys?.get(char);
+    const stepSemantics = layout.stepSemantics?.get(char);
     for (const [stepIndex, originalStep] of sequence.entries()) {
       const remapped = remapThumbShift(originalStep, layout, geometry, options);
       const step = remapped.step;
@@ -215,6 +233,14 @@ export function evaluate(
       const pairedTriggerKeys = pressedLayerTriggers.length >= 2
         ? triggerKeys.filter((key) => layerTriggers.has(key))
         : [];
+      const semantic = resolveStepSemantic(
+        stepSemantics?.[stepIndex],
+        step,
+        triggerKeys,
+        comboConditions.has(char),
+        layout,
+        remapped.shiftKey,
+      );
       const byFinger = new Map<Finger, Key[]>();
 
       for (const id of step) {
@@ -244,6 +270,8 @@ export function evaluate(
       });
 
       if (presses.length === 0) continue;
+
+      const participations = normalizeParticipations(presses, semantic);
 
       let total = 0;
       for (const press of presses) {
@@ -276,8 +304,10 @@ export function evaluate(
         inputChar,
         inputIndex,
         layerId,
+        inputRole: semantic.inputRole,
         triggerKeys,
         pairedTriggerKeys,
+        participations,
         presses,
         distance: total,
         positions,
@@ -295,6 +325,73 @@ export function evaluate(
     layerDefinitions,
     errors,
   };
+}
+
+function resolveStepSemantic(
+  declared: StepSemantic | undefined,
+  step: readonly string[],
+  triggerKeys: readonly string[],
+  isCombo: boolean,
+  layout: Layout,
+  remappedShiftKey: string | undefined,
+): StepSemantic {
+  if (declared) {
+    return {
+      ...declared,
+      outputKeys: remapSemanticKeys(declared.outputKeys, layout, remappedShiftKey),
+      triggerKeys: remapSemanticKeys(declared.triggerKeys, layout, remappedShiftKey),
+    };
+  }
+
+  // 旧Layout / user layout向けの互換fallback。comboだからという理由だけで
+  // chord-triggerにはせず、明示されたtriggerKeysだけをtriggerとして扱う。
+  const triggers = new Set(triggerKeys.map(resolveKeyId));
+  return {
+    inputRole: isCombo ? 'composition' : 'layer',
+    triggerBehavior: triggers.size > 0 ? 'chord' : undefined,
+    outputKeys: step.map(resolveKeyId).filter((key) => !triggers.has(key)),
+    triggerKeys: [...triggers],
+  };
+}
+
+function remapSemanticKeys(
+  keys: readonly string[],
+  layout: Layout,
+  remappedShiftKey: string | undefined,
+): readonly string[] {
+  const configured = layout.thumbShiftKey === undefined
+    ? undefined
+    : resolveKeyId(layout.thumbShiftKey);
+  return [...new Set(keys.map(resolveKeyId).map((key) =>
+    key === configured ? remappedShiftKey ?? key : key,
+  ))];
+}
+
+function normalizeParticipations(
+  presses: readonly Press[],
+  semantic: StepSemantic,
+): readonly StrokeParticipation[] {
+  const outputs = new Set(semantic.outputKeys.map(resolveKeyId));
+  const triggers = new Set(semantic.triggerKeys.map(resolveKeyId));
+  const triggerRole: ParticipationRole | undefined = triggers.size === 0
+    ? undefined
+    : semantic.triggerBehavior === 'hold' ? 'held-trigger' : 'chord-trigger';
+
+  return presses.map((press) => {
+    const ids = press.keys.map((key) => key.id);
+    const roles = new Set<ParticipationRole>();
+    if (ids.some((id) => outputs.has(id))) roles.add('output');
+    if (triggerRole && ids.some((id) => triggers.has(id))) roles.add(triggerRole);
+    return {
+      hand: press.finger.startsWith('L') ? 'left' : 'right',
+      finger: press.finger,
+      keys: press.keys,
+      roles: [...roles],
+      ...(roles.has('held-trigger') && semantic.holdPhase
+        ? { holdPhase: semantic.holdPhase }
+        : {}),
+    };
+  });
 }
 
 interface RemappedThumbShift {
