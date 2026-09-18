@@ -16,11 +16,15 @@ export type {
   Face,
   FaceMode,
   FaceRow,
+  HoldPhase,
+  InputRole,
   LayerDefinition,
   LayerKind,
   Layout,
   Sequence,
   Step,
+  StepSemantic,
+  TriggerBehavior,
 } from './types.ts';
 export { COMBO_LAYER_ID, SINGLE_LAYER_ID } from './types.ts';
 export { faceFromEntries, fromRows, fromFaces, fromKana, withRomaji, withCombos } from './types.ts';
