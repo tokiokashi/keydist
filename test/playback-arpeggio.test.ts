@@ -5,11 +5,6 @@ import {
   playbackArpeggioOrders,
   playbackArpeggioSpans,
 } from '../src/playback-arpeggio.ts';
-import {
-  createPlaybackState,
-  playbackArpeggioTimings,
-  playbackStrokeDurationMs,
-} from '../src/playback.ts';
 
 function stroke(
   finger: string,
@@ -123,37 +118,4 @@ test('層操作のtriggerKeysは出力キーとして数えない', () => {
     stroke('LM', 'q', 1, 1, { triggerKeys: ['q'] }),
     stroke('LI', 'r', 4, 1),
   ]), []);
-});
-
-test('アルペジオ判定済みのエッジだけ方向別速度を使い、前寄せ遅延を適用する', () => {
-  const strokes = [
-    stroke('LM', 'e', 2, 1),
-    stroke('LI', 'r', 4, 1),
-  ];
-  const conditions = DEFAULT_ARPEGGIO_CONDITIONS;
-  const calibration = {
-    actionsPerSecond: 5,
-    sameHandDifferentFingerActionsPerSecond: 2,
-    sameHandDifferentFingerActionsPerSecondByPair: { 'LM:LI': 3 },
-    sameHandDifferentFingerActionsPerDirectedPair: { 'LM>LI': 0.2 },
-    fingerSpeedUnitsPerSecond: {},
-    fallbackFingerSpeedUnitsPerSecond: 10,
-    measuredAt: 1,
-  };
-  const normalMs = playbackStrokeDurationMs(strokes[1], 1, false, calibration, strokes[0]);
-  assert.equal(normalMs, 1000 / 3);
-  const timings = playbackArpeggioTimings(strokes, conditions, 1, calibration);
-  assert.equal(timings.get(1)?.intervalMs, 0);
-  assert.ok(Math.abs((timings.get(1)?.leadDelayMs ?? 0) - (5000 - normalMs)) < 1e-9);
-  assert.equal(playbackStrokeDurationMs(strokes[1], 1, false, calibration, strokes[0], 1, timings.get(1)), 5000);
-  const distributed = playbackArpeggioTimings(strokes, conditions, 1, calibration, 'distributed');
-  assert.equal(distributed.get(1)?.intervalMs, 5000);
-  assert.equal(playbackStrokeDurationMs(strokes[1], 1, false, calibration, strokes[0], 1, distributed.get(1)), 5000);
-  const nonArpeggio = [
-    stroke('LM', 'e', 2, 1),
-    stroke('LI', 'r', 2.5, 1),
-  ];
-  assert.deepEqual(playbackArpeggioTimings(nonArpeggio, conditions, 1, calibration), new Map());
-  assert.equal(playbackStrokeDurationMs(nonArpeggio[1], 1, false, calibration, nonArpeggio[0]), 1000 / 3);
-  assert.equal(createPlaybackState(1, false, undefined, 1, conditions).arpeggio, conditions);
 });

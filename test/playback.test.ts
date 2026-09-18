@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  advancePlayback,
+  advancePlayback as advancePlaybackAnalysis,
   clampPlaybackCursor,
   createPlaybackState,
   playbackCompletedInputs,
@@ -10,9 +10,9 @@ import {
   playbackPlannedKeys,
   playbackPlannedOrders,
   playbackChainOrders,
-  playbackRecentActionsPerSecond,
-  playbackRecentKanaPerSecond,
-  playbackRateChartData,
+  playbackRecentActionsPerSecond as playbackRecentActionsPerSecondAnalysis,
+  playbackRecentKanaPerSecond as playbackRecentKanaPerSecondAnalysis,
+  playbackRateChartData as playbackRateChartDataAnalysis,
   playbackOrderLabel,
   playbackRomajiPlannedKeys,
   playbackRomajiPlannedOrders,
@@ -35,6 +35,7 @@ import { buildGeometry } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
 import { LAYOUT_BY_ID, withRomaji } from '../src/layouts/index.ts';
 import { kunrei } from '../src/romaji/kunrei.ts';
+import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
 import {
   actionsPerSecondFromIntervals,
   clearPlaybackCalibration,
@@ -60,6 +61,109 @@ const playing = (cursor = 0) => ({
   playing: true,
 });
 const emptyStrokes = (length: number) => Array.from({ length }, () => ({ presses: [] })) as never[];
+const timingAnalysis = (strokes: readonly any[]) => {
+  const normalized = strokes.map((source, index) => {
+    const presses = (source.presses ?? []).map((raw: any) => {
+      const keys = (raw.keys ?? []).map((key: any, keyIndex: number) => ({
+        id: key.id ?? `k-${index}-${keyIndex}`,
+        finger: raw.finger ?? 'LI',
+        x: key.x ?? 0,
+        y: key.y ?? key.row ?? 0,
+        row: key.row ?? 0,
+        col: key.col ?? keyIndex,
+      }));
+      return {
+        finger: raw.finger ?? 'LI',
+        keys,
+        target: raw.target ?? {
+          x: keys[0]?.x ?? 0,
+          y: keys[0]?.y ?? 0,
+        },
+        gap: raw.gap ?? 1,
+        distance: raw.distance ?? 0,
+        sfb: raw.sfb ?? false,
+      };
+    });
+    return {
+      index,
+      char: source.char ?? String(index),
+      inputChar: source.inputChar ?? source.char ?? String(index),
+      inputIndex: source.inputIndex ?? index,
+      layerId: source.layerId ?? 'single',
+      inputRole: source.inputRole ?? 'layer',
+      triggerKeys: source.triggerKeys ?? [],
+      pairedTriggerKeys: source.pairedTriggerKeys ?? [],
+      participations: presses.map((press: any) => ({
+        hand: press.finger.startsWith('L') ? 'left' : 'right',
+        finger: press.finger,
+        keys: press.keys,
+        roles: ['output'],
+      })),
+      presses,
+      distance: source.distance ?? 0,
+      positions: source.positions ?? {},
+    };
+  });
+  return analyzeStrokeStructure(normalized as never[]);
+};
+
+const advancePlayback = (
+  state: ReturnType<typeof createPlaybackState>,
+  elapsedMs: number,
+  strokes: readonly never[],
+) => advancePlaybackAnalysis(state, elapsedMs, timingAnalysis(strokes));
+
+const playbackRecentActionsPerSecond = (
+  strokes: readonly never[],
+  cursor: number,
+  stepsPerSecond: number,
+  sameFingerDelay = true,
+  limit = 10,
+  calibration?: Parameters<typeof playbackRecentActionsPerSecondAnalysis>[5],
+  speedMultiplier?: number,
+) => playbackRecentActionsPerSecondAnalysis(
+  timingAnalysis(strokes),
+  cursor,
+  stepsPerSecond,
+  sameFingerDelay,
+  limit,
+  calibration,
+  speedMultiplier,
+);
+
+const playbackRecentKanaPerSecond = (
+  strokes: readonly never[],
+  cursor: number,
+  stepsPerSecond: number,
+  sameFingerDelay = true,
+  limit = 10,
+  calibration?: Parameters<typeof playbackRecentKanaPerSecondAnalysis>[5],
+  speedMultiplier?: number,
+) => playbackRecentKanaPerSecondAnalysis(
+  timingAnalysis(strokes),
+  cursor,
+  stepsPerSecond,
+  sameFingerDelay,
+  limit,
+  calibration,
+  speedMultiplier,
+);
+
+const playbackRateChartData = (
+  strokes: readonly never[],
+  stepsPerSecond: number,
+  sameFingerDelay = true,
+  limit = 10,
+  calibration?: Parameters<typeof playbackRateChartDataAnalysis>[4],
+  speedMultiplier?: number,
+) => playbackRateChartDataAnalysis(
+  timingAnalysis(strokes),
+  stepsPerSecond,
+  sameFingerDelay,
+  limit,
+  calibration,
+  speedMultiplier,
+);
 
 test('再生カーソルは0から総ステップ数までに収まる', () => {
   assert.equal(clampPlaybackCursor(-1, 3), 0);
@@ -202,7 +306,7 @@ test('左右交互の打鍵は通常速度の測定値を使う', () => {
   assert.equal(playbackStrokeDurationMs(current, 1, false, calibration, previous), 200);
 });
 
-test('通常再生はアルペジオ用の方向別キャリブレーションを使わない', () => {
+test('通常再生でも方向別Transition Calibrationを使う', () => {
   assert.equal(handDirection('LI', 'RI'), 'L→R');
   assert.equal(handDirection('RI', 'LI'), 'R→L');
   assert.equal(sameHandDirectedFingerPairKey('LM', 'LI'), 'LM>LI');
@@ -218,13 +322,13 @@ test('通常再生はアルペジオ用の方向別キャリブレーション�
   };
   const leftToRight = { presses: [{ finger: 'RI' }] } as never;
   const previous = { presses: [{ finger: 'LI' }] } as never;
-  assert.equal(playbackStrokeDurationMs(leftToRight, 1, false, calibration, previous), 200);
+  assert.equal(playbackStrokeDurationMs(leftToRight, 1, false, calibration, previous), 125);
   const sameHand = { presses: [{ finger: 'LI' }] } as never;
   const samePrevious = { presses: [{ finger: 'LM' }] } as never;
-  assert.equal(playbackStrokeDurationMs(sameHand, 1, false, calibration, samePrevious), 1000 / 3);
+  assert.equal(playbackStrokeDurationMs(sameHand, 1, false, calibration, samePrevious), 1000 / 6);
 });
 
-test('アルペジオ時間を無効にすると方向別の拡張値を通常再生へ持ち込まない', () => {
+test('方向別Transition CalibrationはArpeggio設定に依存せず再生へ反映する', () => {
   const calibration = {
     actionsPerSecond: 5,
     actionsPerSecondByDirection: { 'L→R': 20 },
@@ -243,8 +347,8 @@ test('アルペジオ時間を無効にすると方向別の拡張値を通常�
     cursor: 1,
     playing: true,
   }, 100, strokes);
-  assert.equal(state.cursor, 1);
-  assert.equal(state.elapsedMs, 100);
+  assert.equal(state.cursor, 2);
+  assert.equal(state.elapsedMs, 0);
 });
 
 test('キャリブレーションの中央値は外れ値を抑えて速度を求める', () => {
