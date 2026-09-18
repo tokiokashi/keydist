@@ -1,4 +1,4 @@
-import { keyId, QWERTY_LEGEND, THUMB_KEY, type NonThumb } from '../geometry.ts';
+import { keyId, QWERTY_LEGEND, resolveKeyId, THUMB_KEY, type NonThumb } from '../geometry.ts';
 import { groupFacesIntoLayers } from '../layers.ts';
 
 /** 1ステップで同時に押すキーの集合。キーはQWERTY刻印で指す（`thumb-r` `thumb-l` は親指キー）。`space` も入力互換で受け付ける */
