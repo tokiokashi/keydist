@@ -941,7 +941,7 @@ function playbackRateWindowInputText(
   return inputs.join('');
 }
 
-/** 直近の完了済み打鍵をTransition Timingで割った実効アクション毎秒。 */
+/** 直近の完了済みStrokeを確定Timingで割った移動平均アクション毎秒。 */
 export function playbackRecentActionsPerSecond(
   analysis: AggregatedAnalysisResult,
   cursor: number,
@@ -1005,7 +1005,7 @@ export function playbackRecentKanaPerSecond(
   return kanaCount > 0 ? (kanaCount * 1000) / recent.durationMs : undefined;
 }
 
-/** 再生カーソルごとの実効速度と、その速度計算に触れた入力文字列。 */
+/** 再生カーソルごとの速度移動平均と、その集計窓に触れた入力文字列。 */
 export function playbackRateChartData(
   analysis: AggregatedAnalysisResult,
   stepsPerSecond: PlaybackStepsPerSecond,
