@@ -243,7 +243,9 @@ function updatePlaybackView() {
   const display = playbackLayout && stroke ? playbackStrokeDisplay(playbackLayout, stroke) : undefined;
   const isRomaji = playbackLayout?.romajiTable !== undefined;
   const windowSize = playbackOptions?.windowSize ?? ctx.getUiState().conditions.defaults.windowSize;
+  const rateAverage = ctx.getUiState().conditions.defaults.playbackRateAverage;
   const rateWindow = ctx.getUiState().conditions.defaults.playbackRateWindow;
+  const rateHalfLife = ctx.getUiState().conditions.defaults.playbackRateHalfLifeSeconds;
   const activeKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
   const triggerKeys = new Set(stroke?.triggerKeys ?? []);
   const fingerPositionKeys = ctx.getUiState().ui.playback.showFingers
@@ -453,7 +455,9 @@ function updatePlaybackView() {
       sameFingerDelay: playbackState.sameFingerDelay,
       calibration: playbackState.calibration,
       allFingerMovementDelay: ctx.getUiState().ui.playback.allFingerMovementDelay,
+      rateAverage,
       rateWindow,
+      rateHalfLife,
       dynamicDisplay,
       strokeCount: playbackTrace.strokes.length,
     });
@@ -466,6 +470,8 @@ function updatePlaybackView() {
         playbackState.calibration,
         playbackState.speedMultiplier,
         playbackTiming,
+        rateAverage,
+        rateHalfLife,
       ), dynamicDisplay);
       playbackRateChartSignature = chartSignature;
     }
@@ -563,10 +569,13 @@ function updatePlaybackView() {
       playbackState.calibration,
       playbackState.speedMultiplier,
       playbackTiming,
+      rateAverage,
+      rateHalfLife,
     );
+    const rateLabel = rateAverage === 'ewma' ? `EWMA(${rateHalfLife}秒)` : `直近${rateWindow}打鍵`;
     effectiveKanaRate.textContent = value === undefined
-      ? `直近${rateWindow}打鍵 — かな/秒`
-      : `直近${rateWindow}打鍵 ${value.toFixed(2)} かな/秒`;
+      ? `${rateLabel} — かな/秒`
+      : `${rateLabel} ${value.toFixed(2)} かな/秒`;
   }
   if (effectiveRate) {
     const value = playbackRecentActionsPerSecond(
@@ -578,10 +587,13 @@ function updatePlaybackView() {
       playbackState.calibration,
       playbackState.speedMultiplier,
       playbackTiming,
+      rateAverage,
+      rateHalfLife,
     );
+    const rateLabel = rateAverage === 'ewma' ? `EWMA(${rateHalfLife}秒)` : `直近${rateWindow}打鍵`;
     effectiveRate.textContent = value === undefined
-      ? `直近${rateWindow}打鍵 — アクション/秒`
-      : `直近${rateWindow}打鍵 ${value.toFixed(2)} アクション/秒`;
+      ? `${rateLabel} — アクション/秒`
+      : `${rateLabel} ${value.toFixed(2)} アクション/秒`;
   }
   if (playbackWindow) playbackWindow.textContent = String(windowSize);
 }
@@ -831,7 +843,12 @@ function renderPlayback(
   playbackSeekWasPlaying = undefined;
   playbackRateChartSignature = undefined;
   playbackFeedbackCursor = -1;
+  const rateAverage = ctx.getUiState().conditions.defaults.playbackRateAverage;
   const rateWindow = ctx.getUiState().conditions.defaults.playbackRateWindow;
+  const rateHalfLife = ctx.getUiState().conditions.defaults.playbackRateHalfLifeSeconds;
+  const rateInitialLabel = rateAverage === 'ewma'
+    ? `EWMA(${rateHalfLife}秒)`
+    : `直近${rateWindow}打鍵`;
   elements.playback.innerHTML = `<details class="playback-panel"${ctx.getUiState().ui.panels.playback ? ' open' : ''}>
     <summary><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
@@ -846,7 +863,7 @@ function renderPlayback(
         <button type="button" class="secondary" data-playback-action="stop" disabled><span class="playback-control-icon" aria-hidden="true">■</span><span>停止</span></button>
         <button type="button" class="ghost" data-playback-action="forward"><span class="playback-control-icon" aria-hidden="true">▶</span><span>1 ステップ進む</span></button>
         <span class="playback-position" aria-live="polite" data-playback-position>0 / ${trace.strokes.length} ステップ</span>
-        <span class="playback-effective-rates"><span class="playback-effective-kana-rate" data-playback-effective-kana-rate>直近${rateWindow}打鍵 — かな/秒</span><span class="playback-effective-rate" data-playback-effective-rate>直近${rateWindow}打鍵 — アクション/秒</span></span>
+        <span class="playback-effective-rates"><span class="playback-effective-kana-rate" data-playback-effective-kana-rate>${rateInitialLabel} — かな/秒</span><span class="playback-effective-rate" data-playback-effective-rate>${rateInitialLabel} — アクション/秒</span></span>
       </div>
       <label class="playback-seek"><span>再生位置</span><input type="range" data-playback-seek min="0" max="${trace.strokes.length}" step="1" value="0" /></label>
       <div class="playback-status" aria-live="polite">
@@ -862,7 +879,7 @@ function renderPlayback(
         </div>
       </div>
       <details class="playback-rate-chart-panel"${ctx.getUiState().ui.panels.playbackRateChart ? ' open' : ''}>
-        <summary>かな/秒・アクション/秒の移動平均</summary>
+        <summary>かな/秒・アクション/秒の平均推移</summary>
         <div class="playback-rate-chart" data-playback-rate-chart></div>
       </details>
       <div class="fig-fixed playback-figure">${renderPlaybackSvg(layout, geometry)}</div>
