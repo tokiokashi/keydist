@@ -600,7 +600,7 @@ function renderDetail(results: Result[]) {
 
   elements.detailConditions.textContent = metricConditionText(metrics, layout);
 
-  ctx.playback.render(found.trace, layout, geometry, options);
+  ctx.playback.render(found.trace, layout, geometry, options, found.analysis);
   renderHeatmap(metrics, layout, geometry);
 
   const total = metrics.totalUnits || 1;
