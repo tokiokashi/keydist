@@ -87,6 +87,11 @@ export const CONDITION_DESCRIPTORS = {
     effect: '同じ指を残すかホームへ戻すかを比べる先読みの打鍵数です。値が大きいほど、離れた連続打鍵でも指を残す候補を比較します。',
     format: (value) => `${value} ステップ`,
   },
+  playbackRateWindow: {
+    label: '速度の移動平均窓',
+    effect: '実効かな/秒・アクション/秒を、直近いくつの完了Strokeで集計するかです。全配列で同じ値を使い、TimingやCalibration自体は変更しません。',
+    format: (value) => `直近 ${value} 打鍵`,
+  },
   sfbHomeCost: {
     label: '同指連続のホームコスト',
     effect: '同じ指でホームキーを打つ移動を距離へ加算するかどうかです。オフならホームキー上の移動は0として扱います。',
