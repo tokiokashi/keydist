@@ -76,8 +76,10 @@ export interface Metrics {
    * 表示用の状態ではなく数値と同じ入れ物へ保存する（仕様 §12.3）。
    */
   conditions: MetricConditions;
-  /** 打鍵ステップ数。同時押しは1と数える */
+  /** physical Stroke数。同時押しは1 Stroke。Policy上のvirtual actionは含めない。 */
   strokes: number;
+  /** Policy適用後のaction総数。held-trigger/startのvirtual actionを含みうる。 */
+  actions: number;
   /** キー押下数。同時押しは押したキーの数だけ数える */
   presses: number;
   /** 配列に無く打鍵できなかった文字数 */
@@ -264,7 +266,8 @@ export function computeMetrics(
     hits: trace.comboHits.length,
   };
 
-  const n = trace.strokes.length
+  const strokes = trace.strokes.length;
+  const actions = strokes
     + additionalHoldStartSteps(trace.strokes, conditions.holdStartActionPolicy);
   const { inputChars } = trace;
   return {
@@ -279,7 +282,8 @@ export function computeMetrics(
       triggerRealizationPolicy: { ...conditions.triggerRealizationPolicy },
       holdStartActionPolicy: { ...conditions.holdStartActionPolicy },
     },
-    strokes: n,
+    strokes,
+    actions,
     presses,
     skipped: trace.skipped,
     inputChars,
@@ -287,9 +291,9 @@ export function computeMetrics(
     perFingerPresses,
     totalUnits,
     totalMm: totalUnits * geometry.pitchMm,
-    meanPerStroke: n ? totalUnits / n : 0,
+    meanPerStroke: strokes ? totalUnits / strokes : 0,
     perCharUnits: inputChars ? totalUnits / inputChars : 0,
-    perCharSteps: inputChars ? n / inputChars : 0,
+    perCharSteps: inputChars ? actions / inputChars : 0,
     perCharPresses: inputChars ? presses / inputChars : 0,
     adjacent,
     sameFinger,
