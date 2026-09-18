@@ -79,6 +79,11 @@ Policyを有効にしても元のRoll / Redirect / SFB factは変更せず、Arp
 同指bridgeを使う場合はsameを除いて同一方向が続く範囲をmaximal化し、その後で必要なら
 末尾の逆方向1 Transitionだけをredirect tailとして追加します。
 
+解析結果はさらにStroke単位の非排他的なAnnotationへ投影し、LongRoll / TwoRoll /
+Arpeggio / Redirect pivot / SFBの所属を保持します。構造の「件数」はraw Event/Spanを数え、
+「coverage」は重複をunionしたユニークStroke数で数えるため、overlapするArpeggioSpanを
+coverageで二重計上しません。集計値には実効ChainPolicy / ArpeggioPolicyもsnapshotとして残します。
+
 薙刀式には、センターシフトを出力キーと反対側の親指へ振り替える設定があります。既定は定義どおり右親指で、
 設定をオンにすると片手だけの出力に対して逆側の親指を優先します。連続する同時押しシフトは、同じ親指キーが続く場合に
 既存の `g = 0` の規則で親指が残った扱いになります。
