@@ -1592,27 +1592,37 @@ function updatePlaybackSetting<K extends keyof UiPlaybackState>(
     const chainSetting = key === 'chainIncludeSameFinger' || key === 'chainIncludeLayerKeys';
     if (hasLayoutOverride && layoutId) {
       const current = draft.conditions.perLayout[layoutId] ?? {};
-      const playback = { ...current.playback, [key]: value };
+      const baseChain = current.chain ?? draft.conditions.defaults.chain;
+      const legacyChain = legacyUiFromChainPolicy(baseChain);
+      const playback = {
+        ...current.playback,
+        ...(chainSetting ? legacyChain : {}),
+        [key]: value,
+      };
+      const chain = chainSetting
+        ? chainPolicyFromLegacyUi(playback, baseChain)
+        : current.chain;
       draft.conditions.perLayout[layoutId] = {
         ...current,
-        playback,
-        ...(chainSetting
-          ? {
-              chain: chainPolicyFromLegacyUi({
-                chainIncludeSameFinger: playback.chainIncludeSameFinger
-                  ?? draft.ui.playback.chainIncludeSameFinger,
-                chainIncludeLayerKeys: playback.chainIncludeLayerKeys
-                  ?? draft.ui.playback.chainIncludeLayerKeys,
-              }, current.chain ?? draft.conditions.defaults.chain),
-            }
-          : {}),
+        playback: chainSetting
+          ? { ...playback, ...legacyUiFromChainPolicy(chain!) }
+          : playback,
+        ...(chain === undefined ? {} : { chain }),
       };
     } else {
       draft.ui.playback[key] = value;
       if (chainSetting) {
+        const legacyChain = {
+          ...legacyUiFromChainPolicy(draft.conditions.defaults.chain),
+          [key]: value,
+        };
         draft.conditions.defaults.chain = chainPolicyFromLegacyUi(
-          draft.ui.playback,
+          legacyChain,
           draft.conditions.defaults.chain,
+        );
+        Object.assign(
+          draft.ui.playback,
+          legacyUiFromChainPolicy(draft.conditions.defaults.chain),
         );
       }
     }
