@@ -1,4 +1,3 @@
-import { ARPEGGIO_PRESETS, sameArpeggioConditions } from './playback-arpeggio.ts';
 import { sameChainPolicy } from './analysis-chain.ts';
 import { sameArpeggioPolicy } from './analysis-arpeggio.ts';
 import {
@@ -21,16 +20,6 @@ const copyDefaults = (): UiStateConditionsDefaults => structuredClone(DEFAULT_CO
 /** 同梱プリセットはコードで固定し、ユーザー保存領域から分離する。 */
 export const BUILTIN_CONDITION_PRESETS: readonly ConditionPreset[] = [
   { id: 'standard', name: '標準', conditions: copyDefaults() },
-  {
-    id: 'strict',
-    name: '厳格なアルペジオ',
-    conditions: { ...copyDefaults(), arpeggio: structuredClone(ARPEGGIO_PRESETS.strict) },
-  },
-  {
-    id: 'loose',
-    name: '緩いアルペジオ',
-    conditions: { ...copyDefaults(), arpeggio: structuredClone(ARPEGGIO_PRESETS.loose) },
-  },
 ];
 
 function storageOrUndefined(): UiStateStorage | undefined {
@@ -104,6 +93,5 @@ export function sameConditionDefaults(
     && left.sfbHomeCost === right.sfbHomeCost
     && left.preferOppositeThumb === right.preferOppositeThumb
     && sameChainPolicy(left.chain, right.chain)
-    && sameArpeggioPolicy(left.arpeggioPolicy, right.arpeggioPolicy)
-    && sameArpeggioConditions(left.arpeggio, right.arpeggio);
+    && sameArpeggioPolicy(left.arpeggioPolicy, right.arpeggioPolicy);
 }
