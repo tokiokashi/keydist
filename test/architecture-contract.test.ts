@@ -44,15 +44,20 @@ async function structuralAnalysisSources() {
   })));
 }
 
-test('structural analysisはPlayback / Calibration / UIへ依存しない', async () => {
-  const forbiddenModule = /(?:^|\/)(?:playback(?:[-.]|$)|[^/]*calibration[^/]*|app-dom(?:\.|$)|ui-state(?:\.|$)|[^/]*-view(?:\.|$)|chart(?:\.|$))/;
+test('structural analysisのimport先をsemantic / structural layerへ限定する', async () => {
+  const allowedModule = (specifier: string) =>
+    specifier === './geometry.ts'
+    || specifier === './evaluate.ts'
+    || specifier === './layouts/types.ts'
+    || specifier === './trigger-realization.ts'
+    || /^\.\/analysis-[^/]+\.ts$/.test(specifier);
 
   for (const { path, source } of await structuralAnalysisSources()) {
     for (const specifier of moduleSpecifiers(source)) {
       assert.equal(
-        forbiddenModule.test(specifier),
-        false,
-        `${relative(ROOT, path)} must not import ${specifier}`,
+        allowedModule(specifier),
+        true,
+        `${relative(ROOT, path)} imports outside the allowed analysis dependency layer: ${specifier}`,
       );
     }
   }
