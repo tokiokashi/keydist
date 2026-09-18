@@ -17,10 +17,13 @@ import {
 } from './geometry-settings.ts';
 import type { ModeId } from './layout-selection.ts';
 import {
+  DEFAULT_PLAYBACK_RATE_WINDOW,
   DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   DEFAULT_PLAYBACK_STEPS_PER_SECOND,
   PLAYBACK_SPEED_MULTIPLIER_MAX,
   PLAYBACK_SPEED_MULTIPLIER_MIN,
+  PLAYBACK_RATE_WINDOW_MAX,
+  PLAYBACK_RATE_WINDOW_MIN,
   PLAYBACK_STEPS_PER_SECOND_MAX,
   PLAYBACK_STEPS_PER_SECOND_MIN,
 } from './playback.ts';
@@ -46,10 +49,13 @@ export type MatrixKind = 'press' | 'finger' | 'adjacentMean' | 'adjacentStdDev';
 export type LayerView = 'auto' | 'side-by-side' | 'tabs';
 export type LayerColorScale = 'linear' | 'log';
 export type SensitivityScale = 'relative' | 'absolute';
+export type PlaybackKeyFeedbackStyle = 'off' | 'fade' | 'pulse' | 'bounce';
 
 export interface UiStateConditionsDefaults {
   geometry: GeometryKind;
   windowSize: number;
+  /** 実効速度の単純移動平均に使う直近Stroke数。全配列共通。 */
+  playbackRateWindow: number;
   sfbHomeCost: boolean;
   preferOppositeThumb: boolean;
   chain: ChainPolicy;
@@ -66,6 +72,8 @@ export interface UiPlaybackState {
   trailTau: number;
   showOrderLabels: boolean;
   showSameFingerMotion: boolean;
+  /** キー押下時の表示フィードバック。数値計算には影響しない。 */
+  keyFeedbackStyle: PlaybackKeyFeedbackStyle;
   /** 指位置表示を次のPressより先に到着させる準備時間 [秒]。 */
   fingerPreparationSeconds: number;
   sameFingerDelay: boolean;
@@ -80,10 +88,10 @@ export interface UiPlaybackState {
 }
 
 /** 配列ごとに既定値から上書きする差分。空のplaybackは個別設定の有効化を表す。 */
-export interface UiStateLayoutConditions extends Partial<UiStateConditionsDefaults> {
+export type UiStateLayoutConditions = Partial<Omit<UiStateConditionsDefaults, 'playbackRateWindow'>> & {
   romajiRule?: string;
   playback?: Partial<UiPlaybackState>;
-}
+};
 
 /** main 側の呼び出しとの互換名。保存形式は UiStateLayoutConditions に統一する。 */
 export type UiStateConditionOverride = UiStateLayoutConditions;
@@ -92,6 +100,7 @@ export type UiStateConditionOverride = UiStateLayoutConditions;
 export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
   geometry: 'row-staggered',
   windowSize: 3,
+  playbackRateWindow: DEFAULT_PLAYBACK_RATE_WINDOW,
   sfbHomeCost: true,
   preferOppositeThumb: false,
   chain: { ...DEFAULT_CHAIN_POLICY },
@@ -214,6 +223,7 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
         trailTau: 5,
         showOrderLabels: false,
         showSameFingerMotion: false,
+        keyFeedbackStyle: 'fade',
         fingerPreparationSeconds: 0,
         sameFingerDelay: true,
         allFingerMovementDelay: false,
@@ -353,6 +363,12 @@ function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults
     && source.windowSize <= 12) {
     result.windowSize = source.windowSize;
   }
+  if (typeof source.playbackRateWindow === 'number'
+    && Number.isInteger(source.playbackRateWindow)
+    && source.playbackRateWindow >= PLAYBACK_RATE_WINDOW_MIN
+    && source.playbackRateWindow <= PLAYBACK_RATE_WINDOW_MAX) {
+    result.playbackRateWindow = source.playbackRateWindow;
+  }
   if (typeof source.sfbHomeCost === 'boolean') result.sfbHomeCost = source.sfbHomeCost;
   if (typeof source.preferOppositeThumb === 'boolean') {
     result.preferOppositeThumb = source.preferOppositeThumb;
@@ -387,7 +403,8 @@ function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults
 }
 
 function validLayoutConditionValues(value: unknown): UiStateLayoutConditions {
-  const result: UiStateLayoutConditions = validConditionValues(value);
+  const { playbackRateWindow: _globalOnly, ...layoutValues } = validConditionValues(value);
+  const result: UiStateLayoutConditions = layoutValues;
   const source = record(value);
   if (typeof source.romajiRule === 'string' && /^[a-z0-9][a-z0-9-]*$/i.test(source.romajiRule)) {
     result.romajiRule = source.romajiRule;
@@ -403,6 +420,7 @@ export function sanitizeConditionDefaults(
   return {
     geometry: values.geometry ?? fallback.geometry,
     windowSize: values.windowSize ?? fallback.windowSize,
+    playbackRateWindow: values.playbackRateWindow ?? fallback.playbackRateWindow,
     sfbHomeCost: values.sfbHomeCost ?? fallback.sfbHomeCost,
     preferOppositeThumb: values.preferOppositeThumb ?? fallback.preferOppositeThumb,
     chain: values.chain ?? fallback.chain,
@@ -432,6 +450,11 @@ function sanitizePlaybackSettings(value: unknown, fallback: UiPlaybackState): Ui
     trailTau: integerInRange(playback.trailTau, 1, 20, fallback.trailTau),
     showOrderLabels: boolean(playback.showOrderLabels, fallback.showOrderLabels),
     showSameFingerMotion: boolean(playback.showSameFingerMotion, fallback.showSameFingerMotion),
+    keyFeedbackStyle: choice(
+      playback.keyFeedbackStyle,
+      ['off', 'fade', 'pulse', 'bounce'] as const,
+      fallback.keyFeedbackStyle,
+    ),
     fingerPreparationSeconds: typeof playback.fingerPreparationSeconds === 'number'
       && Number.isFinite(playback.fingerPreparationSeconds)
       && playback.fingerPreparationSeconds >= 0
