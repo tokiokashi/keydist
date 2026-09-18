@@ -142,6 +142,58 @@ test('SFB event数と関与Strokeのunionを分離して取得する', () => {
   assert.equal(result.transitions[1].candidates[0].fingerDirection, 'same');
 });
 
+test('1 Transitionにsame candidateが複数あってもSFB Eventは1件でcandidate indexを全保持する', () => {
+  const result = analyzeStrokeTransitions([
+    stroke(0, [
+      press('LI', [key('f1', 'LI', 4, 2)]),
+      press('LI', [key('f2', 'LI', 4.2, 2)]),
+    ]),
+    stroke(1, [
+      press('LI', [key('r1', 'LI', 3.5, 1)]),
+      press('LI', [key('r2', 'LI', 3.7, 1)]),
+    ]),
+  ], keepSameFinger);
+
+  assert.equal(result.transitions.length, 1);
+  assert.equal(result.transitions[0].candidates.length, 4);
+  assert.equal(result.sfbEvents.length, 1);
+  assert.deepEqual(result.sfbEvents[0].candidateIndexes, [0, 1, 2, 3]);
+  assert.deepEqual(result.sfbStrokeIndexes, [0, 1]);
+});
+
+test('Analysis Chain境界を跨ぐTransitionは生成しない', () => {
+  const result = analyzeStrokeTransitions([
+    stroke(0, [press('LP', [key('a', 'LP', 1, 2)])]),
+    stroke(1, [press('LI', [key('f', 'LI', 4, 2)])]),
+    stroke(2, [press('RI', [key('j', 'RI', 7, 2)])]),
+    stroke(3, [press('LM', [key('d', 'LM', 3, 2)])]),
+  ], keepSameFinger);
+
+  assert.deepEqual(
+    result.transitions.map((transition) => [
+      transition.hand,
+      transition.fromStrokeIndex,
+      transition.toStrokeIndex,
+    ]),
+    [['left', 0, 1]],
+  );
+});
+
+test('既定breakOnSameFinger=trueでは非親指same StrokeがChain境界になりSFB Transitionを作らない', () => {
+  const result = analyzeStrokeTransitions([
+    stroke(0, [press('LI', [key('f', 'LI', 4, 2)])]),
+    stroke(1, [press('LI', [key('r', 'LI', 3.5, 1)])]),
+    stroke(2, [press('LM', [key('d', 'LM', 3, 2)])]),
+  ]);
+
+  assert.equal(result.sfbEvents.length, 0);
+  assert.equal(
+    result.transitions.some((transition) =>
+      transition.fromStrokeIndex === 0 && transition.toStrokeIndex === 1),
+    false,
+  );
+});
+
 test('Transition / candidate / SFB結果は1回の解析内でimmutable index契約を持つ', () => {
   const result = analyzeStrokeTransitions([
     stroke(0, [press('LP', [key('a', 'LP', 1, 2)])]),
