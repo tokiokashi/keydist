@@ -775,7 +775,9 @@ function renderPlayback(
 function startPlayback() {
   if (!playbackTrace || playbackState.cursor >= playbackTrace.strokes.length) return;
   cancelPlaybackAnimation();
-  playbackState = { ...playbackState, playing: true, elapsedMs: 0 };
+  // 一時停止からの再開では現在Stroke内の経過時間を維持する。
+  // 準備表示もelapsedMsを使うため、0へ戻すと到着済みの指が逆戻りしてしまう。
+  playbackState = { ...playbackState, playing: true };
   updatePlaybackView();
   playbackAnimationFrame = requestAnimationFrame((timestamp) => playbackFrame(timestamp));
 }
