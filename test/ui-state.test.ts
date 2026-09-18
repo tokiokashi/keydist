@@ -286,6 +286,37 @@ test('条件説明は変更値と配列ごとの上書きを表現する', () =>
   }]);
 });
 
+test('ArpeggioPolicyの条件説明はsemantic comparatorで差分判定する', () => {
+  const same = describeConditions({
+    defaults: DEFAULT_CONDITION_DEFAULTS,
+    current: {
+      ...DEFAULT_CONDITION_DEFAULTS,
+      arpeggioPolicy: { ...DEFAULT_CONDITION_DEFAULTS.arpeggioPolicy },
+    },
+    perLayout: {},
+  });
+  assert.equal(
+    same.conditions.find((condition) => condition.key === 'arpeggioPolicy')?.differsFromDefault,
+    false,
+  );
+
+  const changed = describeConditions({
+    defaults: DEFAULT_CONDITION_DEFAULTS,
+    current: {
+      ...DEFAULT_CONDITION_DEFAULTS,
+      arpeggioPolicy: {
+        ...DEFAULT_CONDITION_DEFAULTS.arpeggioPolicy,
+        bridgeSameFinger: true,
+      },
+    },
+    perLayout: {},
+  });
+  assert.equal(
+    changed.conditions.find((condition) => condition.key === 'arpeggioPolicy')?.differsFromDefault,
+    true,
+  );
+});
+
 test('条件説明は打鍵再生の条件も既定値との差分を表現する', () => {
   const fallback = defaults();
   const result = describePlaybackConditions({
