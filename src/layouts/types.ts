@@ -26,7 +26,14 @@ export interface StepSemantic {
   inputRole: InputRole;
   triggerPersistence?: TriggerPersistence;
   outputKeys: readonly string[];
+  /** このstepで新たに物理操作するtrigger。 */
   triggerKeys: readonly string[];
+  /**
+   * このstepが属する対象入力を成立させるtrigger集合。
+   * prefix / suffix のoutput stepでも元Faceのtrigger集合を保持し、
+   * hold継続判定をstep順序やlayer idから推測しないために使う。
+   */
+  associatedTriggerKeys?: readonly string[];
 }
 
 /**
@@ -341,22 +348,41 @@ function expandFaceSemantics(
   triggerPersistence: TriggerPersistence | undefined,
 ): readonly StepSemantic[] {
   const triggerKeys = [...trigger];
+  const associatedTriggerKeys = [...trigger];
   const output = [key];
   if (trigger.length === 0) {
-    return [{ inputRole, outputKeys: output, triggerKeys: [] }];
+    return [{ inputRole, outputKeys: output, triggerKeys: [], associatedTriggerKeys: [] }];
   }
   if (mode === 'simultaneous') {
-    return [{ inputRole, triggerPersistence, outputKeys: output, triggerKeys }];
+    return [{
+      inputRole,
+      triggerPersistence,
+      outputKeys: output,
+      triggerKeys,
+      associatedTriggerKeys,
+    }];
   }
   if (mode === 'prefix') {
     return [
-      { inputRole, triggerPersistence, outputKeys: [], triggerKeys },
-      { inputRole, outputKeys: output, triggerKeys: [] },
+      {
+        inputRole,
+        triggerPersistence,
+        outputKeys: [],
+        triggerKeys,
+        associatedTriggerKeys,
+      },
+      { inputRole, outputKeys: output, triggerKeys: [], associatedTriggerKeys },
     ];
   }
   return [
-    { inputRole, outputKeys: output, triggerKeys: [] },
-    { inputRole, triggerPersistence, outputKeys: [], triggerKeys },
+    { inputRole, outputKeys: output, triggerKeys: [], associatedTriggerKeys },
+    {
+      inputRole,
+      triggerPersistence,
+      outputKeys: [],
+      triggerKeys,
+      associatedTriggerKeys,
+    },
   ];
 }
 
