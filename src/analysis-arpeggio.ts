@@ -125,24 +125,29 @@ function coreSeeds(
 }
 
 /**
- * bridgeに利用できるsame Transition。
+ * bridgeSameFingerでSpanをmaximal化する時に使えるTransition direction。
  *
- * 任意candidateを選んで複数Press Strokeを通過しないよう、
- * Roll constituent eligibilityと単一candidateを要求する。
+ * Roll eligibilityを満たす単一candidateだけを使い、includeThumb=falseなら
+ * 親指Transitionを拡張経路にも入れない。sameは中立、同方向は継続として扱う。
  */
-function bridgeableSameTransition(
+function bridgeTransitionDirection(
   analysis: RollAnalysisResult,
   transition: HandTransition,
-): boolean {
+  policy: ArpeggioPolicy,
+): 'same' | RollDirection | undefined {
   const fromStroke = analysis.strokes[transition.fromStrokeIndex];
   const toStroke = analysis.strokes[transition.toStrokeIndex];
   if (!isRollEligibleStroke(fromStroke, transition.hand)
-    || !isRollEligibleStroke(toStroke, transition.hand)) return false;
-  return transition.candidates.length === 1
-    && transition.candidates[0].fingerDirection === 'same';
+    || !isRollEligibleStroke(toStroke, transition.hand)) return undefined;
+  if (transition.candidates.length !== 1) return undefined;
+
+  const candidate = transition.candidates[0];
+  if (!policy.includeThumb
+    && (isThumb(candidate.fromFinger) || isThumb(candidate.toFinger))) return undefined;
+  return candidate.fingerDirection;
 }
 
-function sameTransitionEndingAt(
+function transitionEndingAt(
   analysis: RollAnalysisResult,
   chainIndex: number,
   strokeIndex: number,
@@ -150,12 +155,11 @@ function sameTransitionEndingAt(
   return analysis.transitions.find(
     (transition) =>
       transition.chainIndex === chainIndex
-      && transition.toStrokeIndex === strokeIndex
-      && bridgeableSameTransition(analysis, transition),
+      && transition.toStrokeIndex === strokeIndex,
   );
 }
 
-function sameTransitionStartingAt(
+function transitionStartingAt(
   analysis: RollAnalysisResult,
   chainIndex: number,
   strokeIndex: number,
@@ -163,46 +167,53 @@ function sameTransitionStartingAt(
   return analysis.transitions.find(
     (transition) =>
       transition.chainIndex === chainIndex
-      && transition.fromStrokeIndex === strokeIndex
-      && bridgeableSameTransition(analysis, transition),
+      && transition.fromStrokeIndex === strokeIndex,
   );
 }
 
-function expandSeedAcrossSame(
+function expandSeedForBridge(
   analysis: RollAnalysisResult,
   seed: SpanSeed,
+  policy: ArpeggioPolicy,
 ): SpanSeed {
   let startStrokeIndex = seed.startStrokeIndex;
   let endStrokeIndex = seed.endStrokeIndex;
-  let bridged = false;
+  let changed = false;
+  let sawSame = false;
 
   while (true) {
-    const transition = sameTransitionEndingAt(
+    const transition = transitionEndingAt(
       analysis,
       seed.chainIndex,
       startStrokeIndex,
     );
     if (!transition) break;
+    const direction = bridgeTransitionDirection(analysis, transition, policy);
+    if (direction !== 'same' && direction !== seed.direction) break;
+    if (direction === 'same') sawSame = true;
     startStrokeIndex = transition.fromStrokeIndex;
-    bridged = true;
+    changed = true;
   }
 
   while (true) {
-    const transition = sameTransitionStartingAt(
+    const transition = transitionStartingAt(
       analysis,
       seed.chainIndex,
       endStrokeIndex - 1,
     );
     if (!transition) break;
+    const direction = bridgeTransitionDirection(analysis, transition, policy);
+    if (direction !== 'same' && direction !== seed.direction) break;
+    if (direction === 'same') sawSame = true;
     endStrokeIndex = transition.toStrokeIndex + 1;
-    bridged = true;
+    changed = true;
   }
 
   return {
     ...seed,
     startStrokeIndex,
     endStrokeIndex,
-    extensions: bridged ? ['same-finger-bridge'] : [],
+    extensions: changed && sawSame ? ['same-finger-bridge'] : [],
   };
 }
 
@@ -278,10 +289,12 @@ function normalizeBridgedSeeds(
 function applySameFingerBridge(
   analysis: RollAnalysisResult,
   seeds: readonly SpanSeed[],
-  enabled: boolean,
+  policy: ArpeggioPolicy,
 ): readonly SpanSeed[] {
-  if (!enabled) return Object.freeze([...seeds]);
-  return normalizeBridgedSeeds(seeds.map((seed) => expandSeedAcrossSame(analysis, seed)));
+  if (!policy.bridgeSameFinger) return Object.freeze([...seeds]);
+  return normalizeBridgedSeeds(
+    seeds.map((seed) => expandSeedForBridge(analysis, seed, policy)),
+  );
 }
 
 function redirectTailFor(
@@ -388,7 +401,7 @@ export function buildArpeggioSpans(
   policy: ArpeggioPolicy = DEFAULT_ARPEGGIO_POLICY,
 ): readonly ArpeggioSpan[] {
   const seeds = coreSeeds(analysis, policy);
-  const bridged = applySameFingerBridge(analysis, seeds, policy.bridgeSameFinger);
+  const bridged = applySameFingerBridge(analysis, seeds, policy);
   const tailed = applyRedirectTail(
     analysis,
     bridged,
