@@ -1404,11 +1404,25 @@ function renderGlobalDelayControls(parent: HTMLElement): void {
   conditionNumber(multiplier, playback.speedMultiplier, false, (value) => {
     updateUiState((draft) => { draft.ui.playback.speedMultiplier = value; }); renderConditionDescription(); render();
   }, { min: '0.1', max: '8', step: '0.1' }); multiplier.append(' 倍');
-  const rateWindow = document.createElement('label'); rateWindow.append('速度の移動平均 ');
+  const rateAverage = document.createElement('label'); rateAverage.append('速度平均 ');
+  const rateAverageSelect = document.createElement('select');
+  rateAverageSelect.append(new Option('SMA（単純移動平均）', 'sma'), new Option('EWMA（指数移動平均）', 'ewma'));
+  rateAverageSelect.value = uiState.conditions.defaults.playbackRateAverage;
+  rateAverageSelect.addEventListener('change', () => {
+    if (rateAverageSelect.value !== 'sma' && rateAverageSelect.value !== 'ewma') return;
+    updateUiState((draft) => { draft.conditions.defaults.playbackRateAverage = rateAverageSelect.value; });
+    renderConditionDescription(); render();
+  });
+  rateAverage.append(rateAverageSelect);
+  const rateWindow = document.createElement('label'); rateWindow.append('SMA窓幅 ');
   conditionNumber(rateWindow, uiState.conditions.defaults.playbackRateWindow, false, (value) => {
     if (!Number.isInteger(value)) return;
     updateUiState((draft) => { draft.conditions.defaults.playbackRateWindow = value; }); renderConditionDescription(); render();
   }, { min: '1', max: '50', step: '1' }); rateWindow.append(' 打鍵');
+  const rateHalfLife = document.createElement('label'); rateHalfLife.append('EWMA半減期 ');
+  conditionNumber(rateHalfLife, uiState.conditions.defaults.playbackRateHalfLifeSeconds, false, (value) => {
+    updateUiState((draft) => { draft.conditions.defaults.playbackRateHalfLifeSeconds = value; }); renderConditionDescription(); render();
+  }, { min: '0.1', max: '10', step: '0.1' }); rateHalfLife.append(' 秒');
   const sameFinger = document.createElement('label'); const sameFingerInput = document.createElement('input');
   sameFingerInput.type = 'checkbox'; sameFingerInput.checked = playback.sameFingerDelay;
   sameFingerInput.addEventListener('change', () => {
@@ -1424,7 +1438,7 @@ function renderGlobalDelayControls(parent: HTMLElement): void {
   calibrationInput.addEventListener('change', () => {
     updateUiState((draft) => { draft.ui.playback.useCalibration = calibrationInput.checked; }); renderConditionDescription(); render();
   }); calibration.append(calibrationInput, ' 個人速度を使う');
-  fields.append(speed, multiplier, rateWindow, sameFinger, allFinger, calibration);
+  fields.append(speed, multiplier, rateAverage, rateWindow, rateHalfLife, sameFinger, allFinger, calibration);
   parent.append(fields);
 }
 
