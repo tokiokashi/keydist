@@ -1013,11 +1013,15 @@ function refreshStructuralAnalysis(): void {
           playbackState = stepPlayback(playbackState, -1, playbackTrace.strokes.length);
           updatePlaybackView();
           break;
-        case 'forward':
+        case 'forward': {
           if (!playbackTrace) return;
-          playbackState = stepPlayback(playbackState, 1, playbackTrace.strokes.length);
+          const previousCursor = playbackState.cursor;
+          const nextState = stepPlayback(playbackState, 1, playbackTrace.strokes.length);
+          playbackFeedbackPending ||= nextState.cursor > previousCursor;
+          playbackState = nextState;
           updatePlaybackView();
           break;
+        }
       }
     });
     elements.playbackSettingsPanel.addEventListener('click', (e) => {
