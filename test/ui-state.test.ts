@@ -97,6 +97,7 @@ test('保存形式はuiとconditionsに分かれ、canonical条件だけ復元�
       includeSingleRedirectTail: false,
     },
     triggerRealization: { useHold: true },
+    holdStartAction: { countAsSeparateStep: true },
   };
   value.conditions.perLayout = {
     oonishi: { geometry: 'ortholinear', windowSize: 7, sfbHomeCost: false, romajiRule: 'azik' },
@@ -178,6 +179,19 @@ test('TriggerRealizationPolicyはglobal / per-layoutで保存・復元する', (
   const state = sanitizeUiState(value, fallback, choices);
   assert.deepEqual(state.conditions.defaults.triggerRealization, { useHold: true });
   assert.deepEqual(state.conditions.perLayout.oonishi.triggerRealization, { useHold: false });
+});
+
+test('HoldStartActionPolicyはglobal / per-layoutで保存・復元する', () => {
+  const fallback = defaults();
+  const value = structuredClone(fallback);
+  value.conditions.defaults.holdStartAction = { countAsSeparateStep: true };
+  value.conditions.perLayout.oonishi = {
+    holdStartAction: { countAsSeparateStep: false },
+  };
+
+  const state = sanitizeUiState(value, fallback, choices);
+  assert.deepEqual(state.conditions.defaults.holdStartAction, { countAsSeparateStep: true });
+  assert.deepEqual(state.conditions.perLayout.oonishi.holdStartAction, { countAsSeparateStep: false });
 });
 
 test('旧ArpeggioConditionsはincludeThumbだけ新Policyへ移し幾何条件を破棄する', () => {
