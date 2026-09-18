@@ -407,6 +407,27 @@ test('未知のバージョンと壊れたJSONは既定値へ戻す', () => {
   assert.deepEqual(loadUiState(storage, defaults(), choices).state, defaults());
 });
 
+test('旧Chain UI fieldだけのmigrationではArpeggio刷新通知を出さない', () => {
+  const storage = new MemoryStorage();
+  const legacy = structuredClone(defaults()) as unknown as Record<string, any>;
+  delete legacy.conditions.defaults.chain;
+  legacy.ui.playback.chainIncludeSameFinger = true;
+  legacy.ui.playback.chainIncludeLayerKeys = false;
+  storage.data.set(UI_STATE_STORAGE_KEY, JSON.stringify(legacy));
+
+  const loaded = loadUiState(storage, defaults(), choices);
+  assert.equal(loaded.migratedArpeggioModel, false);
+  assert.deepEqual(loaded.state.conditions.defaults.chain, {
+    breakOnSameFinger: false,
+    breakOnTriggerOnly: true,
+    breakOnOppositeHandSimultaneous: false,
+  });
+
+  const saved = JSON.parse(storage.data.get(UI_STATE_STORAGE_KEY)!) as Record<string, any>;
+  assert.equal('chainIncludeSameFinger' in saved.ui.playback, false);
+  assert.equal('chainIncludeLayerKeys' in saved.ui.playback, false);
+});
+
 test('旧Arpeggio保存値は初回だけmigration通知対象になりcanonical stateへ再保存する', () => {
   const storage = new MemoryStorage();
   const legacy = structuredClone(defaults()) as unknown as Record<string, any>;
