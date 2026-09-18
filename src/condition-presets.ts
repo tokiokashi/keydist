@@ -1,5 +1,6 @@
 import { ARPEGGIO_PRESETS, sameArpeggioConditions } from './playback-arpeggio.ts';
 import { sameChainPolicy } from './analysis-chain.ts';
+import { sameArpeggioPolicy } from './analysis-arpeggio.ts';
 import {
   DEFAULT_CONDITION_DEFAULTS,
   sanitizeConditionDefaults,
@@ -103,5 +104,6 @@ export function sameConditionDefaults(
     && left.sfbHomeCost === right.sfbHomeCost
     && left.preferOppositeThumb === right.preferOppositeThumb
     && sameChainPolicy(left.chain, right.chain)
+    && sameArpeggioPolicy(left.arpeggioPolicy, right.arpeggioPolicy)
     && sameArpeggioConditions(left.arpeggio, right.arpeggio);
 }
