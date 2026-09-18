@@ -1,4 +1,9 @@
 import type { MatrixSort } from './chart.ts';
+import {
+  DEFAULT_CHAIN_POLICY,
+  chainPolicyFromLegacyUi,
+  type ChainPolicy,
+} from './analysis-chain.ts';
 import { isCustomGeometryKind, isPresetGeometryKind, type GeometryKind } from './geometry.ts';
 import {
   DEFAULT_GEOMETRY_SETTINGS,
@@ -40,6 +45,7 @@ export interface UiStateConditionsDefaults {
   windowSize: number;
   sfbHomeCost: boolean;
   preferOppositeThumb: boolean;
+  chain: ChainPolicy;
   arpeggio: ArpeggioConditions;
 }
 
@@ -79,6 +85,7 @@ export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
   windowSize: 3,
   sfbHomeCost: true,
   preferOppositeThumb: false,
+  chain: { ...DEFAULT_CHAIN_POLICY },
   arpeggio: { ...DEFAULT_ARPEGGIO_CONDITIONS },
 };
 
@@ -254,6 +261,18 @@ function integerInRange(value: unknown, min: number, max: number, fallback: numb
     : fallback;
 }
 
+function chainPolicy(value: unknown, fallback: ChainPolicy): ChainPolicy {
+  const source = record(value);
+  return {
+    breakOnSameFinger: boolean(source.breakOnSameFinger, fallback.breakOnSameFinger),
+    breakOnTriggerOnly: boolean(source.breakOnTriggerOnly, fallback.breakOnTriggerOnly),
+    breakOnOppositeHandSimultaneous: boolean(
+      source.breakOnOppositeHandSimultaneous,
+      fallback.breakOnOppositeHandSimultaneous,
+    ),
+  };
+}
+
 function arpeggio(value: unknown, fallback: ArpeggioConditions): ArpeggioConditions {
   const source = record(value);
   const minHorizontalSpread = numberInRange(
@@ -321,6 +340,9 @@ function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults
   if (typeof source.preferOppositeThumb === 'boolean') {
     result.preferOppositeThumb = source.preferOppositeThumb;
   }
+  if (isRecord(source.chain)) {
+    result.chain = chainPolicy(source.chain, DEFAULT_CHAIN_POLICY);
+  }
   if (isRecord(source.arpeggio)) {
     result.arpeggio = arpeggio(source.arpeggio, DEFAULT_ARPEGGIO_CONDITIONS);
   }
@@ -346,6 +368,7 @@ export function sanitizeConditionDefaults(
     windowSize: values.windowSize ?? fallback.windowSize,
     sfbHomeCost: values.sfbHomeCost ?? fallback.sfbHomeCost,
     preferOppositeThumb: values.preferOppositeThumb ?? fallback.preferOppositeThumb,
+    chain: values.chain ?? fallback.chain,
     arpeggio: values.arpeggio ?? fallback.arpeggio,
   };
 }
@@ -421,12 +444,24 @@ function sanitizePlaybackOverrides(
 export function sanitizeConditionOverrides(
   value: unknown,
   playbackFallback: UiPlaybackState,
+  chainFallback: ChainPolicy = DEFAULT_CHAIN_POLICY,
 ): UiStateConditionOverride {
   const source = record(value);
   const result: UiStateConditionOverride = validLayoutConditionValues(value);
   if (isRecord(source.playback)) {
     // 空オブジェクトも「配列固有設定を有効にした」印として保持する。
     result.playback = sanitizePlaybackOverrides(source.playback, playbackFallback);
+    // #227の移行期間: 旧chain表示設定が保存されていて新Policyが無い場合だけ、
+    // 意味が一意に対応する項目をPolicyへ移す。旧フィールド自体はまだ残す。
+    if (!isRecord(source.chain)
+      && ('chainIncludeSameFinger' in source.playback || 'chainIncludeLayerKeys' in source.playback)) {
+      result.chain = chainPolicyFromLegacyUi({
+        chainIncludeSameFinger: result.playback.chainIncludeSameFinger
+          ?? !chainFallback.breakOnSameFinger,
+        chainIncludeLayerKeys: result.playback.chainIncludeLayerKeys
+          ?? !chainFallback.breakOnTriggerOnly,
+      }, chainFallback);
+    }
   }
   return result;
 }
@@ -464,10 +499,25 @@ export function sanitizeUiState(
     : undefined;
   const allowedLayoutIds = new Set([...choices.layouts.en, ...choices.layouts.ja]);
   const sanitizedPlayback = sanitizePlaybackSettings(playback, defaults.ui.playback);
+  const sanitizedConditionDefaults = sanitizeConditionDefaults({
+    ...conditionDefaults,
+    // v1では物理形状がui.inputにだけ保存されていたため、未保存なら旧値を引き継ぐ。
+    geometry: conditionDefaults.geometry ?? input.geometry,
+  }, defaults.conditions.defaults);
+  if (!isRecord(conditionDefaults.chain)) {
+    sanitizedConditionDefaults.chain = chainPolicyFromLegacyUi(
+      sanitizedPlayback,
+      sanitizedConditionDefaults.chain,
+    );
+  }
   const perLayout: Record<string, UiStateLayoutConditions> = {};
   for (const [layoutId, override] of Object.entries(conditionPerLayout)) {
     if (!allowedLayoutIds.has(layoutId) || !isRecord(override)) continue;
-    const sanitized = sanitizeConditionOverrides(override, sanitizedPlayback);
+    const sanitized = sanitizeConditionOverrides(
+      override,
+      sanitizedPlayback,
+      sanitizedConditionDefaults.chain,
+    );
     // 空オブジェクトも「個別設定する」がオンだった状態として保存する。
     // チェックをオフにした時だけ、UI側がエントリ自体を削除する。
     perLayout[layoutId] = sanitized;
@@ -543,11 +593,7 @@ export function sanitizeUiState(
       },
     },
     conditions: {
-      defaults: sanitizeConditionDefaults({
-        ...conditionDefaults,
-        // v1では物理形状がui.inputにだけ保存されていたため、未保存なら旧値を引き継ぐ。
-        geometry: conditionDefaults.geometry ?? input.geometry,
-      }, defaults.conditions.defaults),
+      defaults: sanitizedConditionDefaults,
       geometrySettings: sanitizeGeometrySettings(
         conditions.geometrySettings,
         defaults.conditions.geometrySettings,
