@@ -35,7 +35,7 @@ import { buildGeometry } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
 import { LAYOUT_BY_ID, withRomaji } from '../src/layouts/index.ts';
 import { kunrei } from '../src/romaji/kunrei.ts';
-import type { AggregatedAnalysisResult } from '../src/analysis-aggregate.ts';
+import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
 import {
   actionsPerSecondFromIntervals,
   clearPlaybackCalibration,
@@ -61,17 +61,51 @@ const playing = (cursor = 0) => ({
   playing: true,
 });
 const emptyStrokes = (length: number) => Array.from({ length }, () => ({ presses: [] })) as never[];
-const timingAnalysis = (strokes: readonly never[]): AggregatedAnalysisResult => ({
-  strokes,
-  transitions: [],
-  annotations: Array.from({ length: strokes.length }, () => ({
-    inLongRoll: false,
-    inTwoRoll: false,
-    inArpeggio: false,
-    inRedirect: false,
-    inSfb: false,
-  })),
-} as unknown as AggregatedAnalysisResult);
+const timingAnalysis = (strokes: readonly any[]) => {
+  const normalized = strokes.map((source, index) => {
+    const presses = (source.presses ?? []).map((raw: any) => {
+      const keys = (raw.keys ?? []).map((key: any, keyIndex: number) => ({
+        id: key.id ?? `k-${index}-${keyIndex}`,
+        finger: raw.finger ?? 'LI',
+        x: key.x ?? 0,
+        y: key.y ?? key.row ?? 0,
+        row: key.row ?? 0,
+        col: key.col ?? keyIndex,
+      }));
+      return {
+        finger: raw.finger ?? 'LI',
+        keys,
+        target: raw.target ?? {
+          x: keys[0]?.x ?? 0,
+          y: keys[0]?.y ?? 0,
+        },
+        gap: raw.gap ?? 1,
+        distance: raw.distance ?? 0,
+        sfb: raw.sfb ?? false,
+      };
+    });
+    return {
+      index,
+      char: source.char ?? String(index),
+      inputChar: source.inputChar ?? source.char ?? String(index),
+      inputIndex: source.inputIndex ?? index,
+      layerId: source.layerId ?? 'single',
+      inputRole: source.inputRole ?? 'layer',
+      triggerKeys: source.triggerKeys ?? [],
+      pairedTriggerKeys: source.pairedTriggerKeys ?? [],
+      participations: presses.map((press: any) => ({
+        hand: press.finger.startsWith('L') ? 'left' : 'right',
+        finger: press.finger,
+        keys: press.keys,
+        roles: ['output'],
+      })),
+      presses,
+      distance: source.distance ?? 0,
+      positions: source.positions ?? {},
+    };
+  });
+  return analyzeStrokeStructure(normalized as never[]);
+};
 
 const advancePlayback = (
   state: ReturnType<typeof createPlaybackState>,
