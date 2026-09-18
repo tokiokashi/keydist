@@ -67,6 +67,16 @@ test('代表FaceのinputRole / triggerBehaviorが意味どおり伝播する', (
   assert.equal(naginata.inputRole, 'modifier');
   assert.deepEqual(naginata.participations.find((p) => p.roles.includes('held-trigger'))?.roles, ['held-trigger']);
 
+  const naginataVoiced = evaluate('が', LAYOUT_BY_ID.get('naginata-v18')!, geometry, opts()).strokes[0];
+  assert.equal(naginataVoiced.inputRole, 'modifier');
+  assert.ok(naginataVoiced.participations.some((p) => p.roles.includes('held-trigger')));
+  assert.ok(naginataVoiced.participations.every((p) => !p.roles.includes('chord-trigger')));
+
+  const naginataSemiVoiced = evaluate('ぱ', LAYOUT_BY_ID.get('naginata-v18')!, geometry, opts()).strokes[0];
+  assert.equal(naginataSemiVoiced.inputRole, 'modifier');
+  assert.ok(naginataSemiVoiced.participations.some((p) => p.roles.includes('held-trigger')));
+  assert.ok(naginataSemiVoiced.participations.every((p) => !p.roles.includes('chord-trigger')));
+
   const naginataComposition = evaluate('いぇ', LAYOUT_BY_ID.get('naginata-v18')!, geometry, opts()).strokes[0];
   assert.equal(naginataComposition.inputRole, 'composition');
   assert.ok(naginataComposition.participations.some((p) => p.roles.includes('chord-trigger')));
