@@ -99,7 +99,24 @@ test('複数RedirectCandidate pathが成立しても3 Stroke windowのEventは1�
   ], keepSameFinger);
 
   assert.equal(result.redirects.length, 1);
-  assert.ok(result.redirects[0].candidates.length > 1);
+  assert.equal(result.redirects[0].candidates.length, 8);
+  assert.deepEqual(
+    result.redirects[0].candidates.map((candidate) => [
+      candidate.fromFinger,
+      candidate.pivotFinger,
+      candidate.toFinger,
+    ]),
+    [
+      ['LP', 'LM', 'LP'],
+      ['LP', 'LM', 'LR'],
+      ['LP', 'LI', 'LP'],
+      ['LP', 'LI', 'LR'],
+      ['LR', 'LM', 'LP'],
+      ['LR', 'LM', 'LR'],
+      ['LR', 'LI', 'LP'],
+      ['LR', 'LI', 'LR'],
+    ],
+  );
   assert.deepEqual(
     result.redirects[0].candidates.map((candidate) => candidate.candidateIndex),
     result.redirects[0].candidates.map((_, index) => index),
