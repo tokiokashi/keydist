@@ -59,6 +59,21 @@ const stroke = (index: number, p: Press): Stroke => ({
   positions: {} as Stroke['positions'],
 });
 
+const multiStroke = (index: number, presses: Press[]): Stroke => ({
+  index,
+  char: String(index),
+  inputChar: String(index),
+  inputIndex: index,
+  layerId: 'single',
+  inputRole: 'layer',
+  triggerKeys: [],
+  pairedTriggerKeys: [],
+  participations: presses.map(participation),
+  presses,
+  distance: 0,
+  positions: {} as Stroke['positions'],
+});
+
 const keepSameFinger = {
   ...DEFAULT_CHAIN_POLICY,
   breakOnSameFinger: false,
@@ -179,6 +194,58 @@ test('overlapするArpeggioSpanがあっても同じTransition時間を二重加
     0,
   );
   assert.equal(withOverlap, withoutOverlap);
+});
+
+test('複数candidate時は既存のfirst-match規則を順序込みで固定する', () => {
+  const analysis = analyzeStrokeStructure([
+    multiStroke(0, [
+      press('LP', [key('a', 'LP', 1, 2)]),
+      press('LM', [key('d', 'LM', 3, 2)]),
+    ]),
+    multiStroke(1, [
+      press('LR', [key('s', 'LR', 2, 2)]),
+      press('LI', [key('f', 'LI', 4, 2)]),
+    ]),
+  ], keepSameFinger);
+
+  assert.deepEqual(
+    analysis.transitions[0].candidates.map((candidate) =>
+      `${candidate.fromFinger}>${candidate.toFinger}`),
+    ['LP>LR', 'LP>LI', 'LM>LR', 'LM>LI'],
+  );
+
+  const multiCalibration = {
+    ...calibration,
+    sameHandDifferentFingerActionsPerDirectedPair: {
+      'LP>LR': 10,
+      'LP>LI': 20,
+      'LM>LR': 30,
+      'LM>LI': 40,
+    },
+  };
+  assert.equal(
+    playbackStepDurationMs(analysis, 1, 1, false, multiCalibration),
+    100,
+    'Press×Press候補の先頭different-finger pairを既存規則どおり使う',
+  );
+});
+
+test('Chain境界でHandTransitionが無い場合は元StrokeのTiming fallbackを使う', () => {
+  const analysis = analyzeStrokeStructure([
+    stroke(0, press('LI', [key('f', 'LI', 4, 2)])),
+    stroke(1, press('LI', [key('r', 'LI', 3.5, 1)], undefined, true, 3)),
+  ], DEFAULT_CHAIN_POLICY);
+
+  assert.equal(
+    analysis.transitions.some((transition) => transition.toStrokeIndex === 1),
+    false,
+    '既定breakOnSameFingerでAnalysis Chain Transitionは生成されない',
+  );
+  assert.equal(
+    playbackStepDurationMs(analysis, 1, 1, false, calibration),
+    200,
+    'Transitionが無くても通常速度fallbackを維持する',
+  );
 });
 
 test('SFBの移動速度による律速はTransition Timing移行後も維持する', () => {
