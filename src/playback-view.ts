@@ -196,8 +196,6 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${ctx.getUiState().ui.playback.trailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${ctx.getUiState().ui.playback.showOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
         <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${ctx.getUiState().ui.playback.scale}" aria-label="配列図の表示倍率" /> 倍</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${ctx.getUiState().ui.playback.showChain ? ' checked' : ''} />Analysis Chainの動的表示</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${ctx.getUiState().ui.playback.showArpeggio ? ' checked' : ''} />ArpeggioSpanの動的表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-same-finger-motion${ctx.getUiState().ui.playback.showSameFingerMotion ? ' checked' : ''} />同指移動の動的表示</label>
       </div>
     </section>
@@ -423,6 +421,9 @@ function updatePlaybackView() {
   const chain = settingsRoot.querySelector<HTMLInputElement>('[data-playback-chain]');
   const calibration = settingsRoot.querySelector<HTMLInputElement>('[data-playback-calibration]');
   const showArpeggio = settingsRoot.querySelector<HTMLInputElement>('[data-playback-arpeggio]');
+  const rateAverageControl = settingsRoot.querySelector<HTMLSelectElement>('[data-playback-rate-average]');
+  const rateWindowControl = settingsRoot.querySelector<HTMLInputElement>('[data-playback-rate-window]');
+  const rateHalfLifeControl = settingsRoot.querySelector<HTMLInputElement>('[data-playback-rate-half-life]');
   const rate = settingsRoot.querySelector<HTMLInputElement>('input[data-playback-rate]');
   const multiplier = settingsRoot.querySelector<HTMLInputElement>('input[data-playback-multiplier]');
   const effectiveKanaRate = elements.playback.querySelector<HTMLElement>('[data-playback-effective-kana-rate]');
@@ -541,6 +542,9 @@ function updatePlaybackView() {
   }
   if (chain) chain.checked = ctx.getUiState().ui.playback.showChain;
   if (showArpeggio) showArpeggio.checked = ctx.getUiState().ui.playback.showArpeggio;
+  if (rateAverageControl) rateAverageControl.value = rateAverage;
+  if (rateWindowControl) rateWindowControl.value = String(rateWindow);
+  if (rateHalfLifeControl) rateHalfLifeControl.value = String(rateHalfLife);
   if (calibration) {
     calibration.checked = ctx.getUiState().ui.playback.useCalibration;
     calibration.disabled = ctx.getCalibration() === undefined;
