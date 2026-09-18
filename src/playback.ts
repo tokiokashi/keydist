@@ -1025,6 +1025,53 @@ export function stepPlayback(
 }
 
 /** requestAnimationFrameの経過時間から再生位置を進める。 */
+/**
+ * 構造Policy変更でAnalysisだけ再生成した時、現在の再生位置を新しいTimingへ写す。
+ * cursor/playingは維持し、現在Stroke内の進捗率を新しいdurationへ変換する。
+ */
+export function reconcilePlaybackStateAfterAnalysisRefresh(
+  state: PlaybackState,
+  previousAnalysis: AggregatedAnalysisResult,
+  nextAnalysis: AggregatedAnalysisResult,
+): PlaybackState {
+  const nextStrokeCount = nextAnalysis.strokes.length;
+  const cursor = clampPlaybackCursor(state.cursor, nextStrokeCount);
+  if (nextStrokeCount === 0 || cursor >= nextStrokeCount) {
+    return { ...state, cursor, playing: false, elapsedMs: 0 };
+  }
+
+  const previousCursor = clampPlaybackCursor(state.cursor, previousAnalysis.strokes.length);
+  if (previousCursor >= previousAnalysis.strokes.length) {
+    return { ...state, cursor, elapsedMs: 0 };
+  }
+
+  const previousStepMs = playbackStepDurationMs(
+    previousAnalysis,
+    previousCursor,
+    state.stepsPerSecond,
+    state.sameFingerDelay,
+    state.calibration,
+    state.speedMultiplier,
+  );
+  const nextStepMs = playbackStepDurationMs(
+    nextAnalysis,
+    cursor,
+    state.stepsPerSecond,
+    state.sameFingerDelay,
+    state.calibration,
+    state.speedMultiplier,
+  );
+  const progress = previousStepMs > 0
+    ? Math.min(1, Math.max(0, state.elapsedMs / previousStepMs))
+    : 0;
+
+  return {
+    ...state,
+    cursor,
+    elapsedMs: progress * nextStepMs,
+  };
+}
+
 export function advancePlayback(
   state: PlaybackState,
   elapsedMs: number,
