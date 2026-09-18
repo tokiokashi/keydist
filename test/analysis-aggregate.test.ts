@@ -173,6 +173,37 @@ test('LongRoll内部pairはinTwoRollにならずAnyRollはunionになる', () =>
   assert.deepEqual(result.aggregate.roll.anyRoll, { strokes: 4, rate: 1 });
 });
 
+test('standalone TwoRollの両端だけinTwoRoll=trueになりcoverageへunionする', () => {
+  const result = analyzeStrokeStructure([
+    stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
+    stroke(1, press('LM', [key('d', 'LM', 3, 2)])),
+    stroke(2, press('LR', [key('s', 'LR', 2, 2)])),
+  ], keepSameFinger);
+
+  assert.deepEqual(result.redirects.map((redirect) => redirect.pivotStrokeIndex), [1]);
+  assert.deepEqual(result.twoRolls, [{
+    chainIndex: 0,
+    startStrokeIndex: 1,
+    endStrokeIndex: 3,
+    direction: 'outward',
+  }]);
+  assert.deepEqual(
+    result.annotations.map((annotation) => [
+      annotation.inLongRoll,
+      annotation.inTwoRoll,
+      annotation.inRedirect,
+    ]),
+    [
+      [false, false, false],
+      [false, true, true],
+      [false, true, false],
+    ],
+  );
+  assert.deepEqual(result.aggregate.roll.longRoll, { strokes: 0, rate: 0 });
+  assert.deepEqual(result.aggregate.roll.twoRoll, { strokes: 2, rate: 2 / 3 });
+  assert.deepEqual(result.aggregate.roll.anyRoll, { strokes: 2, rate: 2 / 3 });
+});
+
 test('directional pair統計はcandidate数ではなくHandTransitionを基準に数える', () => {
   const result = analyzeStrokeStructure([
     stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
