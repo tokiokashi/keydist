@@ -1409,8 +1409,9 @@ function renderGlobalDelayControls(parent: HTMLElement): void {
   rateAverageSelect.append(new Option('SMA（単純移動平均）', 'sma'), new Option('EWMA（指数移動平均）', 'ewma'));
   rateAverageSelect.value = uiState.conditions.defaults.playbackRateAverage;
   rateAverageSelect.addEventListener('change', () => {
-    if (rateAverageSelect.value !== 'sma' && rateAverageSelect.value !== 'ewma') return;
-    updateUiState((draft) => { draft.conditions.defaults.playbackRateAverage = rateAverageSelect.value; });
+    const average = rateAverageSelect.value;
+    if (average !== 'sma' && average !== 'ewma') return;
+    updateUiState((draft) => { draft.conditions.defaults.playbackRateAverage = average; });
     renderConditionDescription(); render();
   });
   rateAverage.append(rateAverageSelect);
