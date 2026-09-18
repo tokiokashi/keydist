@@ -1681,6 +1681,7 @@ playbackView = createPlaybackView({
   updateChainPolicy,
   getArpeggioPolicy: () => playbackViewUiState().conditions.defaults.arpeggioPolicy,
   updateArpeggioPolicy,
+  refreshAnalysis: render,
   openCalibration: () => calibrationDialog.open(),
   openCalibrationEdit: () => calibrationDialog.openEdit(),
 });
