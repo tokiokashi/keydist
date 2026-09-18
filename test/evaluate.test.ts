@@ -237,6 +237,27 @@ test('新JIS prefixでも振り替え後の親指がtrigger semanticsへ伝播�
   assert.equal(trace.strokes[1].presses[0].keys[0].id, 'j');
 });
 
+test('suffix配列はpreferOppositeThumbでも親指を振り替えない', () => {
+  const suffix: Layout = {
+    id: 'suffix-thumb-shift',
+    name: 'suffix-thumb-shift',
+    map: new Map([
+      ['左', [['q'], ['thumb-r']]],
+      ['右', [['j'], ['thumb-r']]],
+    ]),
+    legends: new Map(),
+    thumbShiftKey: 'thumb-r',
+  };
+
+  const left = evaluate('左', suffix, geometry, opts({ preferOppositeThumb: true }));
+  const right = evaluate('右', suffix, geometry, opts({ preferOppositeThumb: true }));
+
+  assert.equal(left.strokes.length, 2);
+  assert.equal(right.strokes.length, 2);
+  assert.equal(left.strokes[1].presses[0].keys[0].id, 'thumb-r');
+  assert.equal(right.strokes[1].presses[0].keys[0].id, 'thumb-r');
+});
+
 test('薙刀式のシフトは設定時に出力キーと反対側の親指へ振り替える', () => {
   const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
   const fixed = evaluate('おせ', naginata, geometry, opts());
