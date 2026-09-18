@@ -28,7 +28,9 @@ const face = (
 ): Face => ({
   ...faceFromEntries(trigger, mode, entries),
   inputRole: trigger.length > 0 ? 'modifier' : 'layer',
-  ...(trigger.length > 0 ? { triggerBehavior: 'chord' as const } : {}),
+  ...(trigger.length > 0 && mode === 'simultaneous'
+    ? { triggerBehavior: 'chord' as const }
+    : {}),
 });
 
 function shinJisFaces(mode: FaceMode): Face[] {
