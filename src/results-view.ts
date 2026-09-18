@@ -381,7 +381,10 @@ function compareHeader(label: string, column: number, relative: boolean): string
   const marker = active === 'asc' ? ' ↑' : active === 'desc' ? ' ↓' : '';
   const ariaSort = active === 'asc' ? 'ascending' : active === 'desc' ? 'descending' : 'none';
   const shownLabel = compareLabel(label, relative, column);
-  const tip = COMPARE_HEADER_TIPS[column];
+  const metricTip = COMPARE_HEADER_TIPS[column];
+  const tip = relative
+    ? `比較元を100%とした比率。表示単位: %。元指標: ${metricTip}`
+    : metricTip;
   const title = `${tip} クリックごとに昇順・降順・選択順へ切り替える。`;
   return `<th><span class="table-sort" data-compare-sort="${column}" role="button" tabindex="0"
     aria-label="${escapeAttr(`${shownLabel}。 ${title}`)}" aria-sort="${ariaSort}"
