@@ -29,6 +29,10 @@ import {
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   type TriggerRealizationPolicy,
 } from './trigger-realization.ts';
+import {
+  DEFAULT_HOLD_START_ACTION_POLICY,
+  type HoldStartActionPolicy,
+} from './hold-start-action.ts';
 
 export const UI_STATE_STORAGE_KEY = 'keydist:ui-state';
 export const UI_STATE_VERSION = 1;
@@ -51,6 +55,7 @@ export interface UiStateConditionsDefaults {
   chain: ChainPolicy;
   arpeggioPolicy: ArpeggioPolicy;
   triggerRealization: TriggerRealizationPolicy;
+  holdStartAction: HoldStartActionPolicy;
 }
 
 export interface UiPlaybackState {
@@ -88,6 +93,7 @@ export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
   chain: { ...DEFAULT_CHAIN_POLICY },
   arpeggioPolicy: { ...DEFAULT_ARPEGGIO_POLICY },
   triggerRealization: { ...DEFAULT_TRIGGER_REALIZATION_POLICY },
+  holdStartAction: { ...DEFAULT_HOLD_START_ACTION_POLICY },
 };
 
 export interface UiStateV1 {
@@ -293,6 +299,16 @@ function triggerRealizationPolicy(
   };
 }
 
+function holdStartActionPolicy(
+  value: unknown,
+  fallback: HoldStartActionPolicy,
+): HoldStartActionPolicy {
+  const source = record(value);
+  return {
+    countAsSeparateStep: boolean(source.countAsSeparateStep, fallback.countAsSeparateStep),
+  };
+}
+
 function optionalId(value: unknown, allowed: readonly string[]): string | undefined {
   return typeof value === 'string' && allowed.includes(value) ? value : undefined;
 }
@@ -347,6 +363,12 @@ function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults
       DEFAULT_TRIGGER_REALIZATION_POLICY,
     );
   }
+  if (isRecord(source.holdStartAction)) {
+    result.holdStartAction = holdStartActionPolicy(
+      source.holdStartAction,
+      DEFAULT_HOLD_START_ACTION_POLICY,
+    );
+  }
   // 旧ArpeggioConditionsから意味が一致するincludeThumbだけ移行する。
   // geometry閾値 / breakOnOppositeHandは新structural Policyへ推測変換しない。
   if (isRecord(source.arpeggio) && typeof source.arpeggio.includeThumb === 'boolean') {
@@ -380,6 +402,7 @@ export function sanitizeConditionDefaults(
     chain: values.chain ?? fallback.chain,
     arpeggioPolicy: values.arpeggioPolicy ?? fallback.arpeggioPolicy,
     triggerRealization: values.triggerRealization ?? fallback.triggerRealization,
+    holdStartAction: values.holdStartAction ?? fallback.holdStartAction,
   };
 }
 
