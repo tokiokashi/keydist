@@ -242,7 +242,6 @@ function metricConditionText(metrics: Metrics, layout: Layout): string {
       ? 'Arpeggio構造Policy変更'
       : '',
     override?.romajiRule !== undefined ? `ローマ字: ${override.romajiRule}` : '',
-    override?.arpeggio !== undefined ? 'アルペジオ: 配列個別設定' : '',
   ].filter(Boolean);
   return `形状: ${metrics.geometryName} / 運指: ${metrics.fingerAssignmentName}`
     + ` / ホーム: ${hasLayoutHomeKeys ? '配列指定' : '形状既定'}`
@@ -589,7 +588,13 @@ function sensitivityLabel(
     options.sfbHomeCost !== defaults.sfbHomeCost ? 'SFBホーム設定変更' : '',
     options.preferOppositeThumb !== defaults.preferOppositeThumb ? '逆側親指設定変更' : '',
     override?.romajiRule !== undefined ? 'ローマ字個別設定' : '',
-    override?.arpeggio !== undefined ? 'アルペジオ個別設定' : '',
+    override?.chain !== undefined && !sameChainPolicy(override.chain, defaults.chain)
+      ? 'Chain境界個別設定'
+      : '',
+    override?.arpeggioPolicy !== undefined
+      && !sameArpeggioPolicy(override.arpeggioPolicy, defaults.arpeggioPolicy)
+      ? 'ArpeggioPolicy個別設定'
+      : '',
   ].filter(Boolean);
   return differences.length === 0 ? layout.name : `${layout.name}（${differences.join('・')}）`;
 }
@@ -600,7 +605,7 @@ function renderDetail(results: Result[]) {
 
   elements.detailConditions.textContent = metricConditionText(metrics, layout);
 
-  ctx.playback.render(found.trace, layout, geometry, options);
+  ctx.playback.render(found.trace, layout, geometry, options, found.analysis);
   renderHeatmap(metrics, layout, geometry);
 
   const total = metrics.totalUnits || 1;

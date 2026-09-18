@@ -1,7 +1,6 @@
 import {
   ALL_FINGERS, assignmentWithHomeKeys, buildGeometry, isPresetGeometryKind, resolveKeyId, type Finger,
 } from './geometry.ts';
-import { ARPEGGIO_PRESETS, type ArpeggioConditions } from './playback-arpeggio.ts';
 import {
   actionsPerSecondFromIntervals, calibrationActionPair, calibrationDirectedSameHandPairs,
   calibrationEligibleKeyIds,
@@ -38,9 +37,6 @@ export interface CalibrationDialogController {
   setup: () => void;
   open: () => void;
   openEdit: () => void;
-  readArpeggioConditions: () => ArpeggioConditions | undefined;
-  syncArpeggioConditionControls: () => void;
-  arpeggioPresetId: () => string;
 }
 
 export function createCalibrationDialog(ctx: CalibrationDialogContext): CalibrationDialogController {
@@ -147,66 +143,6 @@ function calibrationKeyLabel(keyId: string): string {
 
 function calibrationPairText(pair: [string, string]): string {
   return `「${calibrationKeyLabel(pair[0])}」と「${calibrationKeyLabel(pair[1])}」`;
-}
-
-function arpeggioPresetId(): string {
-  const current = ctx.getUiState().conditions.defaults.arpeggio;
-  const entry = Object.entries(ARPEGGIO_PRESETS).find(([, preset]) =>
-    preset.minHorizontalSpread === current.minHorizontalSpread
-    && preset.maxRowReversal === current.maxRowReversal
-    && preset.maxRowStep === current.maxRowStep
-    && preset.includeThumb === current.includeThumb
-    && preset.breakOnOppositeHand === current.breakOnOppositeHand,
-  );
-  return entry?.[0] ?? 'custom';
-}
-
-function readArpeggioConditions(): ArpeggioConditions | undefined {
-  const details = elements.playbackSettingsPanel.querySelector<HTMLElement>('[data-playback-arpeggio-conditions]');
-  if (!details) return undefined;
-  const input = (name: string): HTMLInputElement | null =>
-    details.querySelector<HTMLInputElement>(`[data-playback-arpeggio-condition="${name}"]`);
-  const spreadInput = input('minHorizontalSpread');
-  const reversalInput = input('maxRowReversal');
-  const stepInput = input('maxRowStep');
-  const includeThumbInput = input('includeThumb');
-  const oppositeHandInput = input('breakOnOppositeHand');
-  if (!spreadInput || !reversalInput || !stepInput || !includeThumbInput || !oppositeHandInput) return undefined;
-  const spread = Number(spreadInput.value);
-  const nullableRowLimit = (rowInput: HTMLInputElement): number | null | undefined => {
-    if (rowInput.value.trim() === '') return null;
-    const value = Number(rowInput.value);
-    return Number.isFinite(value) && value >= 0 && value <= 10 ? value : undefined;
-  };
-  const maxRowReversal = nullableRowLimit(reversalInput);
-  const maxRowStep = nullableRowLimit(stepInput);
-  if (!Number.isFinite(spread) || spread < 0 || spread > 20
-    || maxRowReversal === undefined || maxRowStep === undefined) return undefined;
-  return {
-    minHorizontalSpread: spread,
-    maxRowReversal,
-    maxRowStep,
-    includeThumb: includeThumbInput.checked,
-    breakOnOppositeHand: oppositeHandInput.checked,
-  };
-}
-
-function syncArpeggioConditionControls(): void {
-  const details = elements.playbackSettingsPanel.querySelector<HTMLElement>('[data-playback-arpeggio-conditions]');
-  if (!details) return;
-  const conditions = ctx.getUiState().conditions.defaults.arpeggio;
-  const input = (name: string): HTMLInputElement | null =>
-    details.querySelector<HTMLInputElement>(`[data-playback-arpeggio-condition="${name}"]`);
-  const spreadInput = input('minHorizontalSpread');
-  const reversalInput = input('maxRowReversal');
-  const stepInput = input('maxRowStep');
-  const includeThumbInput = input('includeThumb');
-  const oppositeHandInput = input('breakOnOppositeHand');
-  if (spreadInput) spreadInput.value = String(conditions.minHorizontalSpread);
-  if (reversalInput) reversalInput.value = conditions.maxRowReversal === null ? '' : String(conditions.maxRowReversal);
-  if (stepInput) stepInput.value = conditions.maxRowStep === null ? '' : String(conditions.maxRowStep);
-  if (includeThumbInput) includeThumbInput.checked = conditions.includeThumb;
-  if (oppositeHandInput) oppositeHandInput.checked = conditions.breakOnOppositeHand;
 }
 
 function setCalibrationError(message: string): void {
@@ -494,10 +430,10 @@ function updateCalibrationDialog(): void {
               ? `同手別指 ${focus.token.slice('same-hand-pair:'.length)}`
               : '通常速度';
       const speedDescription = focus.kind === 'direction' || focus.kind === 'directed-pair'
-        ? 'アルペジオで入力するときの速さ'
+        ? '方向をそろえたTransitionとして入力するときの速さ'
         : '普段の速度';
       elements.calibrationInstruction.textContent = focus.kind === 'direction' || focus.kind === 'directed-pair'
-        ? `${label}: 「${calibrationKeyLabel(focus.keys[0])}」→「${calibrationKeyLabel(focus.keys[1])}」の順で、${speedDescription}で繰り返してください。アルペジオ部分以外の時間は測定していません。`
+        ? `${label}: 「${calibrationKeyLabel(focus.keys[0])}」→「${calibrationKeyLabel(focus.keys[1])}」の順で、${speedDescription}で繰り返してください。この有向Transitionの時間だけを測定します。`
         : `${label}: 「${calibrationKeyLabel(focus.keys[0])}」と「${calibrationKeyLabel(focus.keys[1])}」を${speedDescription}で交互に打ってください。`;
       elements.calibrationProgress.textContent = `残り${Math.max(0, calibrationFocusSampleCount(focus.kind) - focus.intervals.length)}回`;
       return;
@@ -547,7 +483,7 @@ function updateCalibrationDialog(): void {
     const requiredSamples = pair.kind === 'direction'
       ? CALIBRATION_ACTION_SAMPLES
       : CALIBRATION_SAME_HAND_SAMPLES;
-    elements.calibrationInstruction.textContent = `${label}: 「${calibrationKeyLabel(pair.keys[0])}」→「${calibrationKeyLabel(pair.keys[1])}」の順で、アルペジオで入力するときの速さで繰り返してください。アルペジオ部分以外の時間は測定していません。`;
+    elements.calibrationInstruction.textContent = `${label}: 「${calibrationKeyLabel(pair.keys[0])}」→「${calibrationKeyLabel(pair.keys[1])}」の順で、方向をそろえたTransitionとして入力するときの速さで繰り返してください。この有向Transitionの時間だけを測定します。`;
     elements.calibrationProgress.textContent = `${session.arpeggioPairIndex + 1} / ${session.arpeggioPairs.length} 方向、残り${Math.max(0, requiredSamples - session.arpeggioPairSampleCount)}回`;
     return;
   }
@@ -649,7 +585,7 @@ function beginArpeggioCalibrationSession(): void {
     if (token) arpeggioPairs.push({ kind: 'directed-pair', token, keys: [fromKey, toKey] });
   }
   if (!actionKeys || arpeggioPairs.length === 0) {
-    setCalibrationError('この物理配列ではアルペジオ用の測定キーを作れません。');
+    setCalibrationError('この物理配列では方向別Transition測定用のキーを作れません。');
     return;
   }
   calibrationSession = {
@@ -697,7 +633,7 @@ function finishArpeggioCalibrationSession(session: CalibrationSession): void {
   for (const [index, pair] of session.arpeggioPairs.entries()) {
     const rate = actionsPerSecondFromIntervals(session.arpeggioPairIntervals[index]);
     if (rate === undefined) {
-      setCalibrationError('アルペジオの測定値が不足しています。最初からもう一度測ってください。');
+      setCalibrationError('方向別Transitionの測定値が不足しています。最初からもう一度測ってください。');
       calibrationSession = undefined;
       updateCalibrationDialog();
       return;
@@ -1066,8 +1002,5 @@ function saveCalibrationFromDialog(): void {
     setup,
     open: openCalibrationDialog,
     openEdit: openCalibrationEditDialog,
-    readArpeggioConditions,
-    syncArpeggioConditionControls,
-    arpeggioPresetId,
   };
 }

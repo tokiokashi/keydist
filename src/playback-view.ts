@@ -1,27 +1,37 @@
 import { buildGeometry, THUMB_ROW, type Finger } from './geometry.ts';
 import { type Options, type Stroke, type Trace } from './evaluate.ts';
 import {
-  advancePlayback, clampPlaybackCursor, createPlaybackState, playbackArpeggioKeyMotions,
-  playbackChainOrders, playbackFingerPositionKeys, playbackInputPreview, playbackPlannedKeys,
+  advancePlayback, clampPlaybackCursor, createPlaybackState,
+  playbackFingerPositionKeys, playbackInputPreview, playbackPlannedKeys,
   playbackPlannedOrders, playbackRomajiPlan, playbackRomajiPlannedKeys,
   playbackRomajiPlannedOrders, playbackOrderLabel, playbackRateChartData,
-  playbackRecentActionsPerSecond, playbackRecentKanaPerSecond, setPlaybackArpeggio,
-  playbackArpeggioTimings,
-  playbackHandKeyMotions, playbackSameFingerKeyMotions, playbackRepeatedKeys,
-  playbackStrokeAt, playbackStrokeDurationMs, setPlaybackSameFingerDelay,
+  playbackRecentActionsPerSecond, playbackRecentKanaPerSecond,
+  playbackSameFingerKeyMotions, playbackRepeatedKeys,
+  playbackStrokeAt, playbackStepDurationMs, setPlaybackSameFingerDelay,
   setPlaybackStepsPerSecond, stepPlayback, playbackTrailKeys, playbackTrailOrders,
   playbackStrokeDisplay, setPlaybackCalibration, setPlaybackSpeedMultiplier,
-  type PlaybackArpeggioTiming, type PlaybackStepsPerSecond, type PlaybackState, PLAYBACK_SPEED_MULTIPLIER_MAX,
+  type PlaybackStepsPerSecond, type PlaybackState, PLAYBACK_SPEED_MULTIPLIER_MAX,
   PLAYBACK_SPEED_MULTIPLIER_MIN, PLAYBACK_STEPS_PER_SECOND_MAX,
   PLAYBACK_STEPS_PER_SECOND_MIN,
 } from './playback.ts';
-import { ARPEGGIO_PRESETS, playbackArpeggioOrders, type ArpeggioConditions } from './playback-arpeggio.ts';
 import { renderPlaybackRateChart, updatePlaybackRateChartCursor } from './playback-rate-chart.ts';
 import { FINGER_LABEL, type AppElements } from './app-dom.ts';
 import { escapeAttr, escapeText } from './chart.ts';
 import type { Layout } from './layouts/index.ts';
 import type { PlaybackCalibration } from './playback-calibration.ts';
 import type { UiPlaybackState, UiStateStorage, UiStateV1 } from './ui-state.ts';
+import type { AggregatedAnalysisResult } from './analysis-aggregate.ts';
+import type { ChainPolicy } from './analysis-chain.ts';
+import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
+import {
+  playbackAnalysisArpeggioMotions,
+  playbackAnalysisArpeggioOrders,
+  playbackAnalysisChainMotions,
+  playbackAnalysisChainOrders,
+  playbackRedirectWindows,
+  playbackStrokeAnnotation,
+  type PlaybackOrderSpan,
+} from './playback-analysis-display.ts';
 
 export interface PlaybackViewContext {
   el: AppElements;
@@ -33,18 +43,23 @@ export interface PlaybackViewContext {
   setPlaybackLayoutOverride: (enabled: boolean) => void;
   updateUiState: (change: (draft: UiStateV1) => void) => void;
   getCalibration: () => PlaybackCalibration | undefined;
-  getArpeggioConditions: () => ArpeggioConditions;
-  updateArpeggioConditions: (conditions: ArpeggioConditions) => void;
-  readArpeggioConditions: () => ArpeggioConditions | undefined;
-  syncArpeggioConditionControls: () => void;
-  arpeggioPresetId: () => string;
+  getChainPolicy: () => ChainPolicy;
+  updateChainPolicy: (policy: ChainPolicy) => void;
+  getArpeggioPolicy: () => ArpeggioPolicy;
+  updateArpeggioPolicy: (policy: ArpeggioPolicy) => void;
   openCalibration: () => void;
   openCalibrationEdit: () => void;
 }
 
 export interface PlaybackViewController {
   setup: () => void;
-  render: (trace: Trace, layout: Layout, geometry: ReturnType<typeof buildGeometry>, options: Options) => void;
+  render: (
+    trace: Trace,
+    layout: Layout,
+    geometry: ReturnType<typeof buildGeometry>,
+    options: Options,
+    analysis: AggregatedAnalysisResult,
+  ) => void;
   clear: () => void;
   update: () => void;
   setCalibration: (calibration: PlaybackCalibration | undefined) => void;
@@ -70,15 +85,24 @@ function dynamicPlaybackDisplay(settings: UiPlaybackState): PlaybackDynamicDispl
   return 'none';
 }
 
+function displayedOrders(spans: readonly PlaybackOrderSpan[]): ReadonlyMap<string, number> {
+  const orders = new Map<string, number>();
+  for (const span of spans) {
+    for (const [key, order] of span.orders) {
+      if (!orders.has(key)) orders.set(key, order);
+    }
+  }
+  return orders;
+}
+
 let playbackState: PlaybackState = createPlaybackState(
   ctx.getUiState().ui.playback.stepsPerSecond,
   ctx.getUiState().ui.playback.sameFingerDelay,
   ctx.getUiState().ui.playback.useCalibration ? ctx.getCalibration() : undefined,
   ctx.getUiState().ui.playback.speedMultiplier,
-  ctx.getUiState().ui.playback.arpeggioEnabled ? ctx.getUiState().conditions.defaults.arpeggio : undefined,
-  ctx.getUiState().ui.playback.arpeggioDelayMode,
 );
 let playbackTrace: Trace | undefined;
+let playbackAnalysis: AggregatedAnalysisResult | undefined;
 let playbackGeometry: ReturnType<typeof buildGeometry> | undefined;
 let playbackLayout: Layout | undefined;
 let playbackOptions: Options | undefined;
@@ -87,16 +111,7 @@ let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
 let playbackMotionCursor = -1;
 let playbackRateChartSignature: string | undefined;
-let playbackArpeggioTimingCache: {
-  trace: Trace;
-  arpeggio: ArpeggioConditions;
-  stepsPerSecond: PlaybackStepsPerSecond;
-  sameFingerDelay: boolean;
-  calibration: PlaybackCalibration | undefined;
-  delayMode: 'before' | 'distributed';
-  timings: ReadonlyMap<number, PlaybackArpeggioTiming>;
-} | undefined;
-type PlaybackSettingsTab = 'display' | 'conditions' | 'timeline';
+type PlaybackSettingsTab = 'display' | 'conditions';
 
 let playbackSettingsOpen = false;
 let playbackSettingsTab: PlaybackSettingsTab = 'display';
@@ -112,6 +127,8 @@ function setPlaybackSettingsOpen(open: boolean): void {
 
 function playbackSettingsMarkup(layout: Layout, options: Options): string {
   const activeTab = playbackSettingsTab;
+  const chainPolicy = ctx.getChainPolicy();
+  const arpeggioPolicy = ctx.getArpeggioPolicy();
   return `<div class="playback-settings-content">
     <div class="dialog-head">
       <h2>打鍵再生の設定</h2>
@@ -125,7 +142,6 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
     <div class="playback-settings-tabs" role="tablist" aria-label="打鍵再生設定の分類">
       <button type="button" class="playback-settings-tab" role="tab" aria-selected="${activeTab === 'display'}" aria-controls="playback-settings-display" data-playback-settings-tab="display">表示設定</button>
       <button type="button" class="playback-settings-tab" role="tab" aria-selected="${activeTab === 'conditions'}" aria-controls="playback-settings-conditions" data-playback-settings-tab="conditions">シミュレーション条件</button>
-      <button type="button" class="playback-settings-tab" role="tab" aria-selected="${activeTab === 'timeline'}" aria-controls="playback-settings-timeline" data-playback-settings-tab="timeline">タイムライン設定</button>
     </div>
     <section id="playback-settings-display" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="display"${activeTab === 'display' ? '' : ' hidden'}>
       <p class="note">キーボード画面に重ねる情報を設定します。変更はすぐに反映されます。</p>
@@ -138,86 +154,34 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${ctx.getUiState().ui.playback.trailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${ctx.getUiState().ui.playback.showOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
         <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${ctx.getUiState().ui.playback.scale}" aria-label="配列図の表示倍率" /> 倍</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-sfb${ctx.getUiState().ui.playback.chainIncludeSameFinger ? ' checked' : ''}${ctx.getUiState().ui.playback.showChain ? '' : ' disabled'} />チェーンに同指連続を含める</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain-layer${ctx.getUiState().ui.playback.chainIncludeLayerKeys ? ' checked' : ''}${ctx.getUiState().ui.playback.showChain ? '' : ' disabled'} />チェーンにレイヤーキーを含める</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${ctx.getUiState().ui.playback.showChain ? ' checked' : ''} />チェーンの動的表示</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${ctx.getUiState().ui.playback.showArpeggio ? ' checked' : ''} />アルペジオの動的表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${ctx.getUiState().ui.playback.showChain ? ' checked' : ''} />Analysis Chainの動的表示</label>
+        <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${ctx.getUiState().ui.playback.showArpeggio ? ' checked' : ''} />ArpeggioSpanの動的表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-same-finger-motion${ctx.getUiState().ui.playback.showSameFingerMotion ? ' checked' : ''} />同指移動の動的表示</label>
       </div>
     </section>
     <section id="playback-settings-conditions" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="conditions"${activeTab === 'conditions' ? '' : ' hidden'}>
-      <p class="note">再生時間とアルペジオ判定の計算方法を設定します。変更は実効速度と再生の進み方に反映されます。</p>
+      <p class="note">再生時間はTransition Calibration、構造表示はAnalysis Chain / ArpeggioPolicyを使用します。</p>
       <div class="playback-dialog-grid">
         <label class="playback-speed"><span>標準速度</span><input type="number" data-playback-rate min="${PLAYBACK_STEPS_PER_SECOND_MIN}" max="${PLAYBACK_STEPS_PER_SECOND_MAX}" step="any" value="${playbackState.stepsPerSecond}" aria-label="再生の標準速度（ステップ毎秒）" /> <span>ステップ/秒</span></label>
         <label class="playback-finger-toggle" title="同じ指の連続打鍵に指の移動速度を反映。個人速度が無ければ距離に比例した簡易換算で代用"><input type="checkbox" data-playback-sfb-delay${playbackState.sameFingerDelay ? ' checked' : ''} />指の移動速度を考慮</label>
-        <label class="playback-finger-toggle" title="キャリブレーションした通常速度・同手別指速度・指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${ctx.getUiState().ui.playback.useCalibration ? ' checked' : ''}${ctx.getCalibration() ? '' : ' disabled'} />個人速度を適用</label>
+        <label class="playback-finger-toggle" title="キャリブレーションした通常速度・Transition方向別速度・指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${ctx.getUiState().ui.playback.useCalibration ? ' checked' : ''}${ctx.getCalibration() ? '' : ' disabled'} />個人速度を適用</label>
         <button type="button" class="ghost" data-playback-action="calibration-edit">${ctx.getCalibration() ? '保存値を確認・編集' : '個人速度を測定'}</button>
       </div>
-      <label class="playback-select-setting">アルペジオ判定プリセット <select data-playback-arpeggio-preset aria-label="アルペジオ判定プリセット">
-        <option value="standard"${ctx.arpeggioPresetId() === 'standard' ? ' selected' : ''}>標準</option>
-        <option value="strict"${ctx.arpeggioPresetId() === 'strict' ? ' selected' : ''}>厳格</option>
-        <option value="loose"${ctx.arpeggioPresetId() === 'loose' ? ' selected' : ''}>緩い</option>
-        <option value="custom"${ctx.arpeggioPresetId() === 'custom' ? ' selected' : ''} disabled>カスタム</option>
-      </select></label>
-      <details class="playback-arpeggio-details" data-playback-arpeggio-conditions>
-        <summary>アルペジオ判定の詳細</summary>
-        <label>横の開き <input type="number" min="0" max="20" step="0.1" data-playback-arpeggio-condition="minHorizontalSpread" aria-label="アルペジオの最小横開き" /> u</label>
-        <label>折り返し振幅 <input type="number" min="0" max="10" step="1" data-playback-arpeggio-condition="maxRowReversal" placeholder="無制限" aria-label="アルペジオの折り返し振幅上限" /></label>
-        <label>1遷移の行差 <input type="number" min="0" max="10" step="1" data-playback-arpeggio-condition="maxRowStep" placeholder="無制限" aria-label="アルペジオの1遷移の行差上限" /></label>
-        <label><input type="checkbox" data-playback-arpeggio-condition="includeThumb" />出力親指を含める</label>
-        <label><input type="checkbox" data-playback-arpeggio-condition="breakOnOppositeHand" />逆手同時押しで区切る</label>
+      <details class="playback-arpeggio-details" open>
+        <summary>Analysis Chain境界</summary>
+        <label><input type="checkbox" data-playback-chain-policy="breakOnSameFinger"${chainPolicy.breakOnSameFinger ? ' checked' : ''} />非親指SFB Strokeで区切る</label>
+        <label><input type="checkbox" data-playback-chain-policy="breakOnTriggerOnly"${chainPolicy.breakOnTriggerOnly ? ' checked' : ''} />trigger-only Strokeで区切る</label>
+        <label><input type="checkbox" data-playback-chain-policy="breakOnOppositeHandSimultaneous"${chainPolicy.breakOnOppositeHandSimultaneous ? ' checked' : ''} />逆手同時outputで区切る</label>
       </details>
-      <label class="playback-select-setting playback-arpeggio-delay-setting">アルペジオ遅延の配置 <select data-playback-arpeggio-delay aria-label="アルペジオ遅延の配置">
-        <option value="before"${ctx.getUiState().ui.playback.arpeggioDelayMode === 'before' ? ' selected' : ''}>塊の手前</option>
-        <option value="distributed"${ctx.getUiState().ui.playback.arpeggioDelayMode === 'distributed' ? ' selected' : ''}>各ステップへ分散</option>
-      </select></label>
+      <details class="playback-arpeggio-details" open>
+        <summary>ArpeggioPolicy</summary>
+        <label><input type="checkbox" data-playback-arpeggio-policy="includeThumb"${arpeggioPolicy.includeThumb ? ' checked' : ''} />output親指をcoreに含める</label>
+        <label><input type="checkbox" data-playback-arpeggio-policy="bridgeSameFinger"${arpeggioPolicy.bridgeSameFinger ? ' checked' : ''} />same Transitionを中立bridgeとしてSpanを拡張</label>
+        <label><input type="checkbox" data-playback-arpeggio-policy="includeSingleRedirectTail"${arpeggioPolicy.includeSingleRedirectTail ? ' checked' : ''} />末尾直後の逆方向1 Transitionを含める</label>
+      </details>
       <label class="playback-speed playback-speed-final"><span>再生倍率</span><input type="number" data-playback-multiplier min="${PLAYBACK_SPEED_MULTIPLIER_MIN}" max="${PLAYBACK_SPEED_MULTIPLIER_MAX}" step="0.1" value="${playbackState.speedMultiplier}" aria-label="再生速度の倍率" /> <span>倍</span></label>
     </section>
-    <section id="playback-settings-timeline" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="timeline"${activeTab === 'timeline' ? '' : ' hidden'}>
-      <p class="note">タイムラインの進み方に関わる設定です。現在はアルペジオ時間だけを扱います。</p>
-      <label class="playback-finger-toggle" title="アルペジオ区間の間隔を再生時間へ反映"><input type="checkbox" data-playback-arpeggio-enabled${ctx.getUiState().ui.playback.arpeggioEnabled ? ' checked' : ''} />アルペジオ時間</label>
-    </section>
   </div>`;
-}
-
-function playbackArpeggioConditions(): ArpeggioConditions {
-  const override = playbackLayout
-    ? ctx.getUiState().conditions.perLayout[playbackLayout.id]?.arpeggio
-    : undefined;
-  return override ?? ctx.getUiState().conditions.defaults.arpeggio;
-}
-
-function cachedPlaybackArpeggioTimings(): ReadonlyMap<number, PlaybackArpeggioTiming> | undefined {
-  if (!playbackTrace || !playbackState.arpeggio) return undefined;
-  const arpeggio = playbackState.arpeggio;
-  const cache = playbackArpeggioTimingCache;
-  if (cache
-    && cache.trace === playbackTrace
-    && cache.arpeggio === arpeggio
-    && cache.stepsPerSecond === playbackState.stepsPerSecond
-    && cache.sameFingerDelay === playbackState.sameFingerDelay
-    && cache.calibration === playbackState.calibration
-    && cache.delayMode === playbackState.arpeggioDelayMode) {
-    return cache.timings;
-  }
-  const timings = playbackArpeggioTimings(
-    playbackTrace.strokes,
-    arpeggio,
-    playbackState.stepsPerSecond,
-    playbackState.calibration,
-    playbackState.arpeggioDelayMode,
-    playbackState.sameFingerDelay,
-  );
-  playbackArpeggioTimingCache = {
-    trace: playbackTrace,
-    arpeggio,
-    stepsPerSecond: playbackState.stepsPerSecond,
-    sameFingerDelay: playbackState.sameFingerDelay,
-    calibration: playbackState.calibration,
-    delayMode: playbackState.arpeggioDelayMode,
-    timings,
-  };
-  return timings;
 }
 
 function cancelPlaybackAnimation() {
@@ -232,7 +196,7 @@ function playbackLayerLabel(trace: Trace, stroke: Stroke | undefined): string {
 }
 
 function updatePlaybackView() {
-  if (!playbackTrace || !playbackGeometry) return;
+  if (!playbackTrace || !playbackGeometry || !playbackAnalysis) return;
   const total = playbackTrace.strokes.length;
   const cursor = clampPlaybackCursor(playbackState.cursor, total);
   const stroke = playbackStrokeAt(playbackTrace.strokes, cursor);
@@ -264,50 +228,28 @@ function updatePlaybackView() {
     ? playbackTrailOrders(playbackTrace.strokes, cursor, ctx.getUiState().ui.playback.trailTau)
     : new Map<string, number>();
   const dynamicDisplay = dynamicPlaybackDisplay(ctx.getUiState().ui.playback);
-  const arpeggioTimings = cachedPlaybackArpeggioTimings();
-  const chainOrders = ctx.getUiState().ui.playback.showChain
-    ? playbackChainOrders(
-      playbackTrace.strokes,
-      cursor,
-      ctx.getUiState().ui.playback.chainIncludeSameFinger,
-      undefined,
-      ctx.getUiState().ui.playback.chainIncludeLayerKeys,
-    )
-    : new Map<string, number>();
-  const arpeggioOrders = ctx.getUiState().ui.playback.showArpeggio
-    && ctx.getUiState().ui.playback.arpeggioEnabled
-    ? playbackArpeggioOrders(
-      playbackTrace.strokes,
-      cursor,
-      playbackArpeggioConditions(),
-    )
-    : new Map<string, number>();
+  const chainDisplays = ctx.getUiState().ui.playback.showChain
+    ? playbackAnalysisChainOrders(playbackAnalysis, cursor)
+    : [];
+  const chainOrders = displayedOrders(chainDisplays);
+  const arpeggioDisplays = ctx.getUiState().ui.playback.showArpeggio
+    ? playbackAnalysisArpeggioOrders(playbackAnalysis, cursor)
+    : [];
+  const arpeggioOrders = displayedOrders(arpeggioDisplays);
   const sameFingerMotions = playbackState.sameFingerDelay
     && ctx.getUiState().ui.playback.showSameFingerMotion
     ? playbackSameFingerKeyMotions(playbackTrace.strokes, cursor)
     : [];
   const sameFingerTargets = new Set(sameFingerMotions.flatMap((motion) => motion.toKeys));
-  // 同指連続は同じ手でもあるため、両方を有効にすると同じキーへ2枚が重なる。
-  // より具体的な同指側を優先し、片手連続はそれが拾わなかったキーだけを動かす。
   const handMotions = (ctx.getUiState().ui.playback.showChain
-    ? playbackHandKeyMotions(
-      playbackTrace.strokes,
-      cursor,
-      ctx.getUiState().ui.playback.chainIncludeSameFinger,
-      ctx.getUiState().ui.playback.chainIncludeLayerKeys,
-    )
+    ? playbackAnalysisChainMotions(playbackAnalysis, cursor)
     : []
   ).flatMap((motion) => {
     const toKeys = motion.toKeys.filter((key) => !sameFingerTargets.has(key));
     return toKeys.length === 0 ? [] : [{ ...motion, toKeys }];
   });
   const arpeggioMotions = (ctx.getUiState().ui.playback.showArpeggio
-    && ctx.getUiState().ui.playback.arpeggioEnabled
-    ? playbackArpeggioKeyMotions(
-      playbackTrace.strokes,
-      cursor,
-      playbackArpeggioConditions(),
-    )
+    ? playbackAnalysisArpeggioMotions(playbackAnalysis, cursor)
     : []
   ).flatMap((motion) => {
     const toKeys = motion.toKeys.filter((key) => !sameFingerTargets.has(key));
@@ -390,6 +332,7 @@ function updatePlaybackView() {
   const rateChart = elements.playback.querySelector<HTMLElement>('[data-playback-rate-chart]');
   const planned = elements.playback.querySelector<HTMLElement>('[data-playback-planned]');
   const layer = elements.playback.querySelector<HTMLElement>('[data-playback-layer]');
+  const structure = elements.playback.querySelector<HTMLElement>('[data-playback-structure]');
   const seek = elements.playback.querySelector<HTMLInputElement>('[data-playback-seek]');
   const toggle = elements.playback.querySelector<HTMLButtonElement>('[data-playback-action="toggle"]');
   const stop = elements.playback.querySelector<HTMLButtonElement>('[data-playback-action="stop"]');
@@ -404,12 +347,7 @@ function updatePlaybackView() {
   const scale = settingsRoot.querySelector<HTMLInputElement>('input[data-playback-scale]');
   const sameFingerDelay = settingsRoot.querySelector<HTMLInputElement>('[data-playback-sfb-delay]');
   const chain = settingsRoot.querySelector<HTMLInputElement>('[data-playback-chain]');
-  const chainSameFinger = settingsRoot.querySelector<HTMLInputElement>('[data-playback-chain-sfb]');
-  const chainLayerKeys = settingsRoot.querySelector<HTMLInputElement>('[data-playback-chain-layer]');
   const calibration = settingsRoot.querySelector<HTMLInputElement>('[data-playback-calibration]');
-  const arpeggioEnabled = settingsRoot.querySelector<HTMLInputElement>('[data-playback-arpeggio-enabled]');
-  const arpeggioPreset = settingsRoot.querySelector<HTMLSelectElement>('[data-playback-arpeggio-preset]');
-  const arpeggioDelay = settingsRoot.querySelector<HTMLSelectElement>('[data-playback-arpeggio-delay]');
   const showArpeggio = settingsRoot.querySelector<HTMLInputElement>('[data-playback-arpeggio]');
   const rate = settingsRoot.querySelector<HTMLInputElement>('input[data-playback-rate]');
   const multiplier = settingsRoot.querySelector<HTMLInputElement>('input[data-playback-multiplier]');
@@ -460,28 +398,33 @@ function updatePlaybackView() {
       speedMultiplier: playbackState.speedMultiplier,
       sameFingerDelay: playbackState.sameFingerDelay,
       calibration: playbackState.calibration,
-      arpeggio: playbackState.arpeggio,
-      arpeggioDelayMode: playbackState.arpeggioDelayMode,
       dynamicDisplay,
       strokeCount: playbackTrace.strokes.length,
     });
     if (playbackRateChartSignature !== chartSignature) {
       rateChart.innerHTML = renderPlaybackRateChart(playbackRateChartData(
-        playbackTrace.strokes,
+        playbackAnalysis,
         playbackState.stepsPerSecond,
         playbackState.sameFingerDelay,
         10,
         playbackState.calibration,
         playbackState.speedMultiplier,
-        playbackState.arpeggio,
-        playbackState.arpeggioDelayMode,
-        arpeggioTimings,
       ), dynamicDisplay);
       playbackRateChartSignature = chartSignature;
     }
     updatePlaybackRateChartCursor(rateChart, cursor);
   }
   if (layer) layer.textContent = playbackLayerLabel(playbackTrace, stroke);
+  if (structure) {
+    const annotation = playbackStrokeAnnotation(playbackAnalysis, cursor);
+    const tags: string[] = [];
+    if (annotation?.inLongRoll) tags.push('LongRoll');
+    if (annotation?.inTwoRoll) tags.push('TwoRoll');
+    if (annotation?.inArpeggio) tags.push('Arpeggio');
+    if (playbackRedirectWindows(playbackAnalysis, cursor).length > 0) tags.push('Redirect(3打)');
+    if (annotation?.inSfb) tags.push('SFB');
+    structure.textContent = tags.length > 0 ? tags.join(' / ') : '—';
+  }
   if (seek) seek.value = String(cursor);
   if (toggle) {
     const toggleIcon = toggle.querySelector<HTMLElement>('[data-playback-toggle-icon]');
@@ -512,14 +455,6 @@ function updatePlaybackView() {
   if (sameFingerDelay) sameFingerDelay.checked = playbackState.sameFingerDelay;
   if (chain) chain.checked = ctx.getUiState().ui.playback.showChain;
   if (showArpeggio) showArpeggio.checked = ctx.getUiState().ui.playback.showArpeggio;
-  if (chainSameFinger) {
-    chainSameFinger.checked = ctx.getUiState().ui.playback.chainIncludeSameFinger;
-    chainSameFinger.disabled = !ctx.getUiState().ui.playback.showChain;
-  }
-  if (chainLayerKeys) {
-    chainLayerKeys.checked = ctx.getUiState().ui.playback.chainIncludeLayerKeys;
-    chainLayerKeys.disabled = !ctx.getUiState().ui.playback.showChain;
-  }
   if (calibration) {
     calibration.checked = ctx.getUiState().ui.playback.useCalibration;
     calibration.disabled = ctx.getCalibration() === undefined;
@@ -529,14 +464,24 @@ function updatePlaybackView() {
     calibrationEditButton.disabled = false;
     calibrationEditButton.textContent = ctx.getCalibration() ? '保存値を確認・編集' : '個人速度を測定';
   }
-  if (arpeggioEnabled) arpeggioEnabled.checked = ctx.getUiState().ui.playback.arpeggioEnabled;
-  if (arpeggioPreset) arpeggioPreset.value = ctx.arpeggioPresetId();
-  ctx.syncArpeggioConditionControls();
-  if (arpeggioDelay) arpeggioDelay.value = ctx.getUiState().ui.playback.arpeggioDelayMode;
   if (rate) rate.value = String(playbackState.stepsPerSecond);
   if (multiplier) multiplier.value = String(playbackState.speedMultiplier);
+  const chainPolicy = ctx.getChainPolicy();
+  for (const input of settingsRoot.querySelectorAll<HTMLInputElement>('[data-playback-chain-policy]')) {
+    const key = input.dataset.playbackChainPolicy;
+    if (key === 'breakOnSameFinger' || key === 'breakOnTriggerOnly' || key === 'breakOnOppositeHandSimultaneous') {
+      input.checked = chainPolicy[key];
+    }
+  }
+  const arpeggioPolicy = ctx.getArpeggioPolicy();
+  for (const input of settingsRoot.querySelectorAll<HTMLInputElement>('[data-playback-arpeggio-policy]')) {
+    const key = input.dataset.playbackArpeggioPolicy;
+    if (key === 'includeThumb' || key === 'bridgeSameFinger' || key === 'includeSingleRedirectTail') {
+      input.checked = arpeggioPolicy[key];
+    }
+  }
   if (settingsSummary) {
-    settingsSummary.textContent = `${playbackState.stepsPerSecond}ステップ/秒・${playbackState.speedMultiplier}倍・アルペジオ時間${ctx.getUiState().ui.playback.arpeggioEnabled ? 'ON' : 'OFF'}`;
+    settingsSummary.textContent = `${playbackState.stepsPerSecond}ステップ/秒・${playbackState.speedMultiplier}倍`;
   }
   const scope = settingsRoot.querySelector<HTMLElement>('[data-playback-settings-scope]');
   if (scope) scope.textContent = ctx.isPlaybackLayoutOverride() ? `${playbackLayout?.name ?? 'この配列'}専用` : '共通設定';
@@ -548,16 +493,13 @@ function updatePlaybackView() {
   }
   if (effectiveKanaRate) {
     const value = playbackRecentKanaPerSecond(
-      playbackTrace.strokes,
+      playbackAnalysis,
       cursor,
       playbackState.stepsPerSecond,
       playbackState.sameFingerDelay,
       10,
       playbackState.calibration,
       playbackState.speedMultiplier,
-      playbackState.arpeggio,
-      playbackState.arpeggioDelayMode,
-      arpeggioTimings,
     );
     effectiveKanaRate.textContent = value === undefined
       ? '実効 — かな/秒'
@@ -565,16 +507,13 @@ function updatePlaybackView() {
   }
   if (effectiveRate) {
     const value = playbackRecentActionsPerSecond(
-      playbackTrace.strokes,
+      playbackAnalysis,
       cursor,
       playbackState.stepsPerSecond,
       playbackState.sameFingerDelay,
       10,
       playbackState.calibration,
       playbackState.speedMultiplier,
-      playbackState.arpeggio,
-      playbackState.arpeggioDelayMode,
-      arpeggioTimings,
     );
     effectiveRate.textContent = value === undefined
       ? '実効 — アクション/秒'
@@ -632,12 +571,12 @@ function renderPlaybackMotions(
   }
   const durationMs = Math.max(
     150,
-    Math.min(1500, playbackStrokeDurationMs(
-      stroke,
+    Math.min(1500, playbackStepDurationMs(
+      playbackAnalysis!,
+      Math.max(0, cursor - 1),
       playbackState.stepsPerSecond,
       playbackState.sameFingerDelay,
       playbackState.calibration,
-      playbackTrace?.strokes[cursor - 2],
       playbackState.speedMultiplier,
     )),
   );
@@ -748,9 +687,11 @@ function renderPlayback(
   layout: Layout,
   geometry: ReturnType<typeof buildGeometry>,
   options: Options,
+  analysis: AggregatedAnalysisResult,
 ) {
   cancelPlaybackAnimation();
   playbackTrace = trace;
+  playbackAnalysis = analysis;
   playbackGeometry = geometry;
   playbackLayout = layout;
   playbackOptions = options;
@@ -759,13 +700,10 @@ function renderPlayback(
     ctx.getUiState().ui.playback.sameFingerDelay,
     ctx.getUiState().ui.playback.useCalibration ? ctx.getCalibration() : undefined,
     ctx.getUiState().ui.playback.speedMultiplier,
-    ctx.getUiState().ui.playback.arpeggioEnabled ? playbackArpeggioConditions() : undefined,
-    ctx.getUiState().ui.playback.arpeggioDelayMode,
   );
   playbackMotionCursor = -1;
   playbackSeekWasPlaying = undefined;
   playbackRateChartSignature = undefined;
-  playbackArpeggioTimingCache = undefined;
   elements.playback.innerHTML = `<details class="playback-panel"${ctx.getUiState().ui.panels.playback ? ' open' : ''}>
     <summary><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
@@ -788,6 +726,7 @@ function renderPlayback(
           <span class="playback-current" data-playback-current>—</span>
           <span class="playback-romaji" data-playback-romaji hidden><span class="playback-current" data-playback-kana>—</span><span class="playback-typed">打鍵: <code data-playback-typed>—</code><span class="playback-planned" data-playback-planned hidden></span></span></span>
           <span class="playback-attribution">帰属: <b data-playback-layer>開始前</b></span>
+          <span class="playback-attribution">構造: <b data-playback-structure>—</b></span>
         </div>
         <div class="playback-history" data-playback-history hidden>
           <span class="playback-history-label">入力:</span>
@@ -827,8 +766,6 @@ function stopPlayback() {
     playbackState.sameFingerDelay,
     ctx.getUiState().ui.playback.useCalibration ? ctx.getCalibration() : undefined,
     playbackState.speedMultiplier,
-    ctx.getUiState().ui.playback.arpeggioEnabled ? playbackArpeggioConditions() : undefined,
-    ctx.getUiState().ui.playback.arpeggioDelayMode,
   );
   playbackMotionCursor = -1;
   updatePlaybackView();
@@ -845,24 +782,21 @@ function syncPlaybackStateFromSettings(): void {
     settings.sameFingerDelay,
     settings.useCalibration ? ctx.getCalibration() : undefined,
     settings.speedMultiplier,
-    settings.arpeggioEnabled ? ctx.getArpeggioConditions() : undefined,
-    settings.arpeggioDelayMode,
   );
   playbackState = { ...playbackState, cursor };
   playbackMotionCursor = -1;
   playbackRateChartSignature = undefined;
-  playbackArpeggioTimingCache = undefined;
 }
 
 function playbackFrame(timestamp: number) {
   playbackAnimationFrame = undefined;
-  if (!playbackState.playing || !playbackTrace) return;
+  if (!playbackState.playing || !playbackTrace || !playbackAnalysis) return;
   if (playbackLastTimestamp === undefined) playbackLastTimestamp = timestamp;
   else {
     playbackState = advancePlayback(
       playbackState,
       timestamp - playbackLastTimestamp,
-      playbackTrace.strokes,
+      playbackAnalysis,
     );
     playbackLastTimestamp = timestamp;
     updatePlaybackView();
@@ -955,7 +889,7 @@ function seekPlayback(value: string, playing = false) {
       const settingsTab = targetElement.closest<HTMLButtonElement>('[data-playback-settings-tab]');
       if (settingsTab?.dataset.playbackSettingsTab) {
         const tabId = settingsTab.dataset.playbackSettingsTab;
-        if (tabId !== 'display' && tabId !== 'conditions' && tabId !== 'timeline') return;
+        if (tabId !== 'display' && tabId !== 'conditions') return;
         playbackSettingsTab = tabId;
         for (const tab of elements.playbackSettingsPanel.querySelectorAll<HTMLButtonElement>('[data-playback-settings-tab]')) {
           tab.setAttribute('aria-selected', String(tab === settingsTab));
@@ -1012,38 +946,24 @@ function seekPlayback(value: string, playing = false) {
       if (chain) { ctx.updatePlaybackSetting('showChain', chain.checked); updatePlaybackView(); return; }
       const showArpeggio = target.closest<HTMLInputElement>('[data-playback-arpeggio]');
       if (showArpeggio) { ctx.updatePlaybackSetting('showArpeggio', showArpeggio.checked); updatePlaybackView(); return; }
-      const arpeggioEnabled = target.closest<HTMLInputElement>('[data-playback-arpeggio-enabled]');
-      if (arpeggioEnabled) {
-        ctx.updatePlaybackSetting('arpeggioEnabled', arpeggioEnabled.checked);
-        playbackState = setPlaybackArpeggio(playbackState, arpeggioEnabled.checked ? ctx.getArpeggioConditions() : undefined, ctx.getUiState().ui.playback.arpeggioDelayMode);
-        playbackRateChartSignature = undefined; updatePlaybackView(); return;
+      const chainPolicyInput = target.closest<HTMLInputElement>('[data-playback-chain-policy]');
+      if (chainPolicyInput) {
+        const key = chainPolicyInput.dataset.playbackChainPolicy;
+        if (key === 'breakOnSameFinger' || key === 'breakOnTriggerOnly' || key === 'breakOnOppositeHandSimultaneous') {
+          ctx.updateChainPolicy({ ...ctx.getChainPolicy(), [key]: chainPolicyInput.checked });
+          playbackMotionCursor = -1; playbackRateChartSignature = undefined; updatePlaybackView();
+        }
+        return;
       }
-      const arpeggioPreset = target.closest<HTMLSelectElement>('[data-playback-arpeggio-preset]');
-      if (arpeggioPreset) {
-        const preset = ARPEGGIO_PRESETS[arpeggioPreset.value];
-        if (!preset) return;
-        ctx.updateArpeggioConditions({ ...preset });
-        playbackState = setPlaybackArpeggio(playbackState, ctx.getUiState().ui.playback.arpeggioEnabled ? ctx.getArpeggioConditions() : undefined, ctx.getUiState().ui.playback.arpeggioDelayMode);
-        playbackMotionCursor = -1; playbackRateChartSignature = undefined; updatePlaybackView(); return;
+      const arpeggioPolicyInput = target.closest<HTMLInputElement>('[data-playback-arpeggio-policy]');
+      if (arpeggioPolicyInput) {
+        const key = arpeggioPolicyInput.dataset.playbackArpeggioPolicy;
+        if (key === 'includeThumb' || key === 'bridgeSameFinger' || key === 'includeSingleRedirectTail') {
+          ctx.updateArpeggioPolicy({ ...ctx.getArpeggioPolicy(), [key]: arpeggioPolicyInput.checked });
+          playbackMotionCursor = -1; playbackRateChartSignature = undefined; updatePlaybackView();
+        }
+        return;
       }
-      if (target.closest('[data-playback-arpeggio-conditions]')) {
-        const conditions = ctx.readArpeggioConditions();
-        if (!conditions) { updatePlaybackView(); return; }
-        ctx.updateArpeggioConditions(conditions);
-        playbackState = setPlaybackArpeggio(playbackState, ctx.getUiState().ui.playback.arpeggioEnabled ? conditions : undefined, ctx.getUiState().ui.playback.arpeggioDelayMode);
-        playbackMotionCursor = -1; playbackRateChartSignature = undefined; updatePlaybackView(); return;
-      }
-      const arpeggioDelay = target.closest<HTMLSelectElement>('[data-playback-arpeggio-delay]');
-      if (arpeggioDelay && (arpeggioDelay.value === 'before' || arpeggioDelay.value === 'distributed')) {
-        const mode = arpeggioDelay.value as 'before' | 'distributed';
-        ctx.updatePlaybackSetting('arpeggioDelayMode', mode);
-        playbackState = setPlaybackArpeggio(playbackState, ctx.getUiState().ui.playback.arpeggioEnabled ? ctx.getArpeggioConditions() : undefined, mode);
-        playbackRateChartSignature = undefined; updatePlaybackView(); return;
-      }
-      const chainSameFinger = target.closest<HTMLInputElement>('[data-playback-chain-sfb]');
-      if (chainSameFinger) { ctx.updatePlaybackSetting('chainIncludeSameFinger', chainSameFinger.checked); updatePlaybackView(); return; }
-      const chainLayerKeys = target.closest<HTMLInputElement>('[data-playback-chain-layer]');
-      if (chainLayerKeys) { ctx.updatePlaybackSetting('chainIncludeLayerKeys', chainLayerKeys.checked); playbackMotionCursor = -1; updatePlaybackView(); return; }
       const calibration = target.closest<HTMLInputElement>('[data-playback-calibration]');
       if (calibration) {
         ctx.updatePlaybackSetting('useCalibration', calibration.checked);
@@ -1105,9 +1025,8 @@ function seekPlayback(value: string, playing = false) {
     render: renderPlayback,
     clear: () => {
       cancelPlaybackAnimation();
-      playbackTrace = undefined; playbackGeometry = undefined; playbackLayout = undefined; playbackOptions = undefined;
-      playbackArpeggioTimingCache = undefined;
-      setPlaybackSettingsOpen(false);
+      playbackTrace = undefined; playbackAnalysis = undefined; playbackGeometry = undefined; playbackLayout = undefined; playbackOptions = undefined;
+          setPlaybackSettingsOpen(false);
       elements.playbackSettingsPanel.innerHTML = '';
       elements.playback.innerHTML = '';
     },
