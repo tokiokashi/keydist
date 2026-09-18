@@ -259,13 +259,16 @@ arrival    = min(T, start + move)
 次のPress探索ではnormalized Stroke participationを使い、`held-trigger` の継続だけを
 新しいPressとして扱わない。準備時間が0なら、従来どおり打鍵時刻でのみ指位置が切り替わる。
 
-## 5. かな/秒・アクション/秒の移動平均
+## 5. かな/秒・アクション/秒の平均
 
-再生中の数値表示と推移グラフに出す指標。**直近の完了済みStrokeを、
-そのStroke列の確定schedule上の表示時間合計で割る単純移動平均（SMA）**とする。
+再生中の数値表示と推移グラフに出す指標。平均方式は `playbackRateAverage` で
+**SMA / EWMA** を選べる。既定は従来互換のSMAとする。どちらも確定Timing scheduleだけを入力に使い、
+AnalysisResultやCalibrationの選択規則へ逆流しない。
 
-集計窓 `playbackRateWindow` は **1〜50 Stroke、既定10** とし、
-`conditions.defaults` に全配列共通で保存する。per-layout overrideは持たない。
+### 5.1 SMA
+
+直近の完了済みStrokeを、そのStroke列の確定schedule上の表示時間合計で割る単純移動平均。
+集計窓 `playbackRateWindow` は **1〜50 Stroke、既定10** とする。
 ここで1単位は確定Timing scheduleの1要素、すなわちnormalized Stroke 1件である。
 距離モデルの窓幅 `N` とは無関係で、連動しない。
 
@@ -281,6 +284,27 @@ arrival    = min(T, start + move)
 窓の境界にまたがる入力単位は数えない（途中まで打った単位を1文字と数えないため）。
 
 `D` が0以下、または数えた文字数が0の場合は値を出さない。
+
+### 5.2 EWMA
+
+EWMAはStroke数ではなく、確定scheduleの経過時間で減衰させる。
+半減期 `playbackRateHalfLifeSeconds` は **0.1〜10秒、既定1秒** とする。
+Stroke `i` のdurationを `Δt` 秒、半減期を `H` 秒とすると、
+
+```
+decay = 2 ^ (-Δt / H)
+ewma  = decay * previous + (1 - decay) * instantaneous
+```
+
+アクションの瞬時値は `1 / Δt`、かなの瞬時値はそのStrokeで完了した入力単位のかな文字数を
+`Δt` で割った値とする。入力単位がまだ完了していないStrokeでは、かなの瞬時値は0である。
+これによりSMAのような窓境界は存在せず、古い寄与は時間とともに連続的に減衰する。
+
+かなは入力単位の**完了時**だけ文字数をイベントとして加えるため、途中入力を1文字と数えない。
+半減期1秒なら、同じ条件の寄与は1秒経過後に1/2、2秒後に1/4になる。
+
+SMA / EWMAの方式、SMA窓幅、EWMA半減期はいずれも `conditions.defaults` に
+全配列共通で保存し、per-layout overrideは持たない。
 
 これらは**再生の表示時間から導く値**であり、実測ではない。
 パラメータを変えれば値も変わる。
@@ -366,11 +390,11 @@ before/distributed配置は行わない。
 表示時間はすべて打鍵そのものの時間として積まれる。
 したがって §5 の移動平均は、打鍵の速さだけを反映する。
 
-### 7.5 移動平均の集計窓は全配列共通
+### 7.5 速度平均条件は全配列共通
 
-§5 の集計窓は `playbackRateWindow` で変更できるが、配列ごとの上書きは持たない。
-同じ画面で配列を比較する時に別々の窓幅を混ぜないためである。
-窓が入力全体より大きい場合は、存在する完了済みStrokeだけを使う。
+§5 の平均方式・SMA窓幅・EWMA半減期は変更できるが、配列ごとの上書きは持たない。
+同じ画面で配列を比較する時に異なる平均条件を混ぜないためである。
+SMAの窓が入力全体より大きい場合は、存在する完了済みStrokeだけを使う。
 
 ### 7.6 個人速度は配列に紐づかない
 
