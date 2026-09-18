@@ -56,6 +56,12 @@ Chain境界を決めません。同指・trigger-only・逆手同時入力は独
 親指だけのlayer/modifier操作を区切るかは未決のため推測していません。
 ChainPolicyは配列ごとの測定条件として数値のsnapshotにも残します。
 
+Analysis Chain内の隣接Strokeからは、手ごとの **Transition fact** を作ります。
+同時押しで1手に複数Pressがある場合もPress×Press候補を全部残し、指の内向き/外向き、
+飛び指、親指、物理的な `dx/dy` を事実として保持します。この段階ではrollやArpeggioの可否を
+決めません。同じ指のcandidateを持つTransitionはSFB eventとして数え、event数と
+関与Strokeのcoverageは別に扱います。
+
 薙刀式には、センターシフトを出力キーと反対側の親指へ振り替える設定があります。既定は定義どおり右親指で、
 設定をオンにすると片手だけの出力に対して逆側の親指を優先します。連続する同時押しシフトは、同じ親指キーが続く場合に
 既存の `g = 0` の規則で親指が残った扱いになります。
