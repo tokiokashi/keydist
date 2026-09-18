@@ -447,6 +447,44 @@ AnyRoll = LongRoll ∪ TwoRoll
 Stroke spanから対応Transitionを得る変換は共通helperへ集約し、後段が個別に
 off-by-one変換を実装しない。
 
+### 10.5 ArpeggioPolicy / ArpeggioSpan
+
+ArpeggioはLongRoll / standalone TwoRollというstructural factそのものではなく、
+それらへ **ArpeggioPolicy** を適用して得るkeydist固有の派生Spanとする。
+
+初期Policyは次の3項目だけを持つ。
+
+- `includeThumb`（既定false）: 親指を含むstructural Rollをcoreとして採用するか
+- `bridgeSameFinger`（既定false）: same Transitionを中立bridgeとしてSpanだけをmaximal化するか
+- `includeSingleRedirectTail`（既定false）: 完成Span末尾直後の逆方向1 Transitionだけを吸収するか
+
+`includeThumb=false` でもTransition / LongRoll / TwoRollという構造的事実は消さない。
+`bridgeSameFinger` もRollElement / TwoRoll / SFB eventを書き換えず、ArpeggioSpanだけを拡張する。
+
+bridgeはsameを除いたdirectionが単一方向の範囲だけで行い、same個数に上限を置かない。
+Policy適用後に同じ `(startStrokeIndex,endStrokeIndex,hand,direction)` へ到達したSpanは
+1件へ正規化する。生成根拠にLongRollが含まれれば `coreKind='roll'`、
+含まれなければ `coreKind='two-roll'` とする。
+
+Policy適用順は必ず:
+
+```
+bridgeSameFinger
+  ↓
+includeSingleRedirectTail
+```
+
+redirect tailは末尾1 Transitionだけで、leading redirectやtail後方のsameを連鎖吸収しない。
+異なるstructural根拠を持つSpan同士はoverlapを許容し、adjacentだからという理由ではmergeしない。
+
+ArpeggioSpanはStroke index half-open範囲、hand、coreKind、direction、適用extensionだけを持つ。
+Timing durationのsourceにはせず、Roll / Redirect / Key / Point等の詳細を重複コピーしない。
+
+移行期間中は旧production用 `ArpeggioConditions` と新 `ArpeggioPolicy` を並存させる。
+新Policyは `conditions.arpeggioPolicy` / condition bundle / condition-description /
+Metrics condition snapshotへ載せるが、旧 `conditions.arpeggio` の削除・保存値migration・
+strict/loose preset撤去は#227のcutoverまで行わない。
+
 ## 11. 出力指標
 
 合成スコアは作らない。各指標を独立に出す。
