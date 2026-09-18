@@ -20,7 +20,6 @@ import {
   playbackStrokeAt,
   playbackStrokeDurationMs,
   playbackSameFingerKeyMotions,
-  playbackRepeatedKeys,
   playbackCursorForEquivalentInputPosition,
   reconcilePlaybackStateAfterAnalysisRefresh,
   playbackTrailKeys,
@@ -392,6 +391,25 @@ test('速度グラフ用データはカーソルごとの集計入力と速度�
   assert.equal(points[3].actionsPerSecond, 2);
 });
 
+test('速度の集計窓は数値表示とグラフで同じ直近Stroke数を使う', () => {
+  const strokes = [
+    { inputIndex: 0, inputChar: 'あ', presses: [] },
+    { inputIndex: 1, inputChar: 'い', presses: [] },
+    { inputIndex: 2, inputChar: 'う', presses: [] },
+    { inputIndex: 3, inputChar: 'え', presses: [] },
+  ] as never[];
+
+  assert.equal(playbackRecentActionsPerSecond(strokes, 4, 2, true, 2), 2);
+  assert.equal(playbackRecentKanaPerSecond(strokes, 4, 2, true, 2), 2);
+  const points = playbackRateChartData(strokes, 2, true, 2);
+  assert.equal(points[4].inputText, 'うえ');
+  assert.equal(points[4].actionsPerSecond, 2);
+  assert.equal(points[4].kanaPerSecond, 2);
+
+  // 入力長より大きな窓でも、存在する完了Strokeだけを集計する。
+  assert.equal(playbackRateChartData(strokes, 2, true, 50)[4].inputText, 'あいうえ');
+});
+
 test('速度グラフのChain帯はAnalysis Chain所属を直接使う', () => {
   const strokes = [
     { presses: [{ finger: 'LP', keys: [{ id: 'a', x: 1, y: 2, row: 2 }] }] },
@@ -656,39 +674,6 @@ test('同指連続のキー移動は直前のキーから現在のキーを返�
     toKeys: ['s'],
     finger: 'LP',
   }]);
-});
-
-test('連打キーは直前と今の両方で押されているキーIDを返す', () => {
-  const repeated = [
-    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }] },
-    { presses: [{ finger: 'LM', keys: [{ id: 'a' }] }] },
-  ] as never[];
-  assert.deepEqual([...playbackRepeatedKeys(repeated, 2)], ['a']);
-
-  // 別キーなら連打ではない
-  const notRepeated = [
-    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }] },
-    { presses: [{ finger: 'LM', keys: [{ id: 's' }] }] },
-  ] as never[];
-  assert.deepEqual([...playbackRepeatedKeys(notRepeated, 2)], []);
-
-  // 開始直後（直前のステップが無い）は連打として扱わない
-  assert.deepEqual([...playbackRepeatedKeys(repeated, 1)], []);
-  assert.deepEqual([...playbackRepeatedKeys(repeated, 0)], []);
-
-  // 同時押しの一部だけが連打の場合、その分だけ拾う
-  const partial = [
-    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }, { finger: 'RI', keys: [{ id: 'j' }] }] },
-    { presses: [{ finger: 'LP', keys: [{ id: 'a' }] }, { finger: 'RM', keys: [{ id: 'k' }] }] },
-  ] as never[];
-  assert.deepEqual([...playbackRepeatedKeys(partial, 2)], ['a']);
-
-  // 親指キーは連打の対象から除外する（シフトがほぼ毎ステップ入るため）
-  const thumb = [
-    { presses: [{ finger: 'LT', keys: [{ id: 'space' }] }] },
-    { presses: [{ finger: 'RT', keys: [{ id: 'space' }] }] },
-  ] as never[];
-  assert.deepEqual([...playbackRepeatedKeys(thumb, 2)], []);
 });
 
 test('末尾では停止し、先頭へループしない', () => {
