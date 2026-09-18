@@ -233,7 +233,7 @@ test('新JIS prefixでも振り替え後の親指がtrigger semanticsへ伝播�
   assert.equal(trace.strokes.length, 2);
   assert.equal(trace.strokes[0].presses[0].keys[0].id, 'thumb-l');
   assert.deepEqual(trace.strokes[0].triggerKeys, ['thumb-l']);
-  assert.deepEqual(trace.strokes[0].participations[0].roles, ['chord-trigger']);
+  assert.deepEqual(trace.strokes[0].participations[0].roles, ['one-shot-trigger']);
   assert.equal(trace.strokes[1].presses[0].keys[0].id, 'j');
 });
 
@@ -411,7 +411,7 @@ test('semantic normalizationはoutputのみのStrokeを表現する', () => {
   assert.equal(stroke.participations[0].hand, 'left');
 });
 
-test('prefix triggerはtrigger-only Strokeとoutput Strokeへ分離して正規化する', () => {
+test('behavior未指定のtriggerを暗黙chordへ正規化しない', () => {
   const layout = fromFaces('semantic-prefix', 'semantic-prefix', [{
     trigger: ['q'],
     mode: 'prefix',
@@ -420,7 +420,22 @@ test('prefix triggerはtrigger-only Strokeとoutput Strokeへ分離して正規�
   const trace = evaluate('x', layout, geometry, opts());
 
   assert.equal(trace.strokes.length, 2);
-  assert.deepEqual(trace.strokes[0].participations.map((p) => p.roles), [['chord-trigger']]);
+  assert.deepEqual(trace.strokes[0].participations.map((p) => p.roles), [[]]);
+  assert.deepEqual(trace.strokes[1].participations.map((p) => p.roles), [['output']]);
+});
+
+test('one-shot triggerはone-shot-triggerとして正規化する', () => {
+  const layout = fromFaces('semantic-one-shot', 'semantic-one-shot', [{
+    trigger: ['q'],
+    mode: 'prefix',
+    rows: ['', '', ['x'], ''],
+    inputRole: 'modifier',
+    triggerBehavior: 'one-shot',
+  }]);
+  const trace = evaluate('x', layout, geometry, opts());
+
+  assert.equal(trace.strokes.length, 2);
+  assert.deepEqual(trace.strokes[0].participations.map((p) => p.roles), [['one-shot-trigger']]);
   assert.deepEqual(trace.strokes[1].participations.map((p) => p.roles), [['output']]);
 });
 
@@ -429,6 +444,7 @@ test('同一キーはoutput + chord-triggerの複合roleを持てる', () => {
     trigger: ['a'],
     mode: 'simultaneous',
     rows: ['', '', ['x'], ''],
+    triggerBehavior: 'chord',
   }]);
   const trace = evaluate('x', layout, geometry, opts());
   const participation = trace.strokes[0].participations[0];
