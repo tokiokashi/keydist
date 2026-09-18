@@ -48,6 +48,30 @@ test('条件と自作配列をJSONで往復でき、配列ごとのローマ字�
   assert.deepEqual(parsed.conditions.perLayout['user-test'], { romajiRule: 'azik', windowSize: 7 });
 });
 
+test('ArpeggioPolicyはglobal / per-layoutともcondition bundleで往復する', () => {
+  const current = state();
+  current.conditions.defaults.arpeggioPolicy = {
+    includeThumb: true,
+    bridgeSameFinger: false,
+    includeSingleRedirectTail: true,
+  };
+  current.conditions.perLayout.qwerty = {
+    arpeggioPolicy: {
+      includeThumb: false,
+      bridgeSameFinger: true,
+      includeSingleRedirectTail: false,
+    },
+  };
+  const bundle = conditionBundleFromState(current, [], [], { rules: [], assignments: {} }, []);
+  const parsed = parseConditionBundle(serializeConditionBundle(bundle), bundle, current, choices);
+
+  assert.deepEqual(parsed.conditions.defaults.arpeggioPolicy, current.conditions.defaults.arpeggioPolicy);
+  assert.deepEqual(
+    parsed.conditions.perLayout.qwerty.arpeggioPolicy,
+    current.conditions.perLayout.qwerty.arpeggioPolicy,
+  );
+});
+
 test('未知の配列への個別設定は読み込み時に捨てる', () => {
   const current = state();
   const bundle = conditionBundleFromState(current, [], [], { rules: [], assignments: {} }, []);
