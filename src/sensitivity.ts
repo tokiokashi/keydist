@@ -3,6 +3,7 @@ import { computeMetrics } from './metrics.ts';
 import type { Geometry } from './geometry.ts';
 import type { Layout } from './layouts/index.ts';
 import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from './analysis-chain.ts';
+import { DEFAULT_ARPEGGIO_POLICY, type ArpeggioPolicy } from './analysis-arpeggio.ts';
 
 export interface SensitivityPoint {
   windowSize: number;
@@ -22,6 +23,7 @@ export function nSensitivity(
   range: number[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   romajiRuleId: string | null = null,
   chainPolicy: Readonly<ChainPolicy> = DEFAULT_CHAIN_POLICY,
+  arpeggioPolicy: Readonly<ArpeggioPolicy> = DEFAULT_ARPEGGIO_POLICY,
 ): SensitivityPoint[] {
   return range.map((windowSize) => {
     const trace = evaluate(text, layout, geometry, { ...options, windowSize });
@@ -30,6 +32,7 @@ export function nSensitivity(
       sfbHomeCost: options.sfbHomeCost,
       preferOppositeThumb: options.preferOppositeThumb ?? false,
       chainPolicy: { ...chainPolicy },
+      arpeggioPolicy: { ...arpeggioPolicy },
       romajiRuleId,
     });
     return { windowSize, totalUnits: m.totalUnits, totalMm: m.totalMm };
