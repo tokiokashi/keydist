@@ -67,6 +67,8 @@ test('画面状態を単一キーで保存・復元する', () => {
   state.ui.layouts.selectedByMode.ja = [];
   state.ui.playback.stepsPerSecond = 3.2;
   state.ui.playback.fingerPreparationSeconds = 0.35;
+  state.ui.playback.keyFeedbackStyle = 'bounce';
+  state.conditions.defaults.playbackRateWindow = 24;
   state.ui.playback.allFingerMovementDelay = true;
   state.conditions.perLayout.oonishi = {
     playback: {
@@ -105,6 +107,36 @@ test('指位置の準備時間は非負の有限値だけ復元する', () => {
   assert.equal(sanitizeUiState(value, fallback, choices).ui.playback.fingerPreparationSeconds, 0);
 });
 
+test('キー押下フィードバックは選択肢だけ復元し既定はフェード', () => {
+  const fallback = defaults();
+  assert.equal(fallback.ui.playback.keyFeedbackStyle, 'fade');
+
+  const value = structuredClone(fallback) as unknown as Record<string, any>;
+  value.ui.playback.keyFeedbackStyle = 'pulse';
+  assert.equal(sanitizeUiState(value, fallback, choices).ui.playback.keyFeedbackStyle, 'pulse');
+
+  value.ui.playback.keyFeedbackStyle = 'spin';
+  assert.equal(sanitizeUiState(value, fallback, choices).ui.playback.keyFeedbackStyle, 'fade');
+});
+
+test('速度の移動平均窓は1〜50の整数だけ復元する', () => {
+  const fallback = defaults();
+  assert.equal(fallback.conditions.defaults.playbackRateWindow, 10);
+
+  const value = structuredClone(fallback);
+  value.conditions.defaults.playbackRateWindow = 25;
+  assert.equal(sanitizeUiState(value, fallback, choices).conditions.defaults.playbackRateWindow, 25);
+
+  value.conditions.defaults.playbackRateWindow = 0;
+  assert.equal(sanitizeUiState(value, fallback, choices).conditions.defaults.playbackRateWindow, 10);
+
+  value.conditions.defaults.playbackRateWindow = 51;
+  assert.equal(sanitizeUiState(value, fallback, choices).conditions.defaults.playbackRateWindow, 10);
+
+  value.conditions.defaults.playbackRateWindow = 2.5;
+  assert.equal(sanitizeUiState(value, fallback, choices).conditions.defaults.playbackRateWindow, 10);
+});
+
 test('保存形式はuiとconditionsに分かれ、canonical条件だけ復元する', () => {
   const fallback = defaults();
   const value = structuredClone(fallback);
@@ -134,6 +166,7 @@ test('保存形式はuiとconditionsに分かれ、canonical条件だけ復元�
     invalid: { windowSize: 99 },
   };
   (value.conditions.perLayout.invalid as Record<string, unknown>).preferOppositeThumb = 'yes';
+  (value.conditions.perLayout.oonishi as Record<string, unknown>).playbackRateWindow = 40;
 
   const state = sanitizeUiState(value, fallback, choices);
 
@@ -143,6 +176,7 @@ test('保存形式はuiとconditionsに分かれ、canonical条件だけ復元�
     oonishi: { geometry: 'ortholinear', windowSize: 7, sfbHomeCost: false, romajiRule: 'azik' },
     qwerty: {},
   });
+  assert.equal('playbackRateWindow' in state.conditions.perLayout.oonishi, false);
 });
 test('旧Chain UI設定はChainPolicyへ移行し旧playback fieldを保存しない', () => {
   const fallback = defaults();
@@ -428,12 +462,14 @@ test('無効な値は項目ごとに既定値へ戻す', () => {
         scale: 10,
         stepsPerSecond: 0,
         speedMultiplier: Number.NaN,
+        keyFeedbackStyle: 'spin' as never,
       },
     },
     conditions: {
       defaults: {
         ...fallback.conditions.defaults,
         windowSize: 99,
+        playbackRateWindow: 0,
       },
       perLayout: {},
     },
@@ -442,6 +478,7 @@ test('無効な値は項目ごとに既定値へ戻す', () => {
   assert.equal(state.ui.input.mode, fallback.ui.input.mode);
   assert.equal(state.ui.input.geometry, fallback.ui.input.geometry);
   assert.equal(state.conditions.defaults.windowSize, fallback.conditions.defaults.windowSize);
+  assert.equal(state.conditions.defaults.playbackRateWindow, fallback.conditions.defaults.playbackRateWindow);
   assert.equal(state.ui.input.selectedSampleByMode.en, 'default');
   assert.equal(state.ui.input.selectedSampleByMode.ja, 'legacy');
   assert.deepEqual(state.ui.layouts.selectedByMode.en, []);
@@ -454,6 +491,7 @@ test('無効な値は項目ごとに既定値へ戻す', () => {
   assert.equal(state.ui.playback.scale, fallback.ui.playback.scale);
   assert.equal(state.ui.playback.stepsPerSecond, fallback.ui.playback.stepsPerSecond);
   assert.equal(state.ui.playback.speedMultiplier, fallback.ui.playback.speedMultiplier);
+  assert.equal(state.ui.playback.keyFeedbackStyle, fallback.ui.playback.keyFeedbackStyle);
 });
 
 test('未知のバージョンと壊れたJSONは既定値へ戻す', () => {
