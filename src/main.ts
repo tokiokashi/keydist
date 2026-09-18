@@ -1129,8 +1129,9 @@ function commitCondition(
 ): void;
 function commitCondition(
   layoutId: string | undefined,
-  key: keyof UiStateLayoutConditions,
-  value: UiStateLayoutConditions[keyof UiStateLayoutConditions],
+  key: keyof UiStateConditionsDefaults | keyof UiStateLayoutConditions,
+  value: UiStateConditionsDefaults[keyof UiStateConditionsDefaults]
+    | UiStateLayoutConditions[keyof UiStateLayoutConditions],
 ): void {
   updateUiState((draft) => {
     if (layoutId === undefined) {
@@ -1138,6 +1139,7 @@ function commitCondition(
       Object.assign(draft.conditions.defaults, { [key]: structuredClone(value) });
       return;
     }
+    if (key === 'playbackRateWindow') return;
     const target = draft.conditions.perLayout[layoutId] ?? {};
     Object.assign(target, { [key]: structuredClone(value) });
     draft.conditions.perLayout[layoutId] = target;
@@ -1399,6 +1401,11 @@ function renderGlobalDelayControls(parent: HTMLElement): void {
   conditionNumber(multiplier, playback.speedMultiplier, false, (value) => {
     updateUiState((draft) => { draft.ui.playback.speedMultiplier = value; }); renderConditionDescription(); render();
   }, { min: '0.1', max: '8', step: '0.1' }); multiplier.append(' 倍');
+  const rateWindow = document.createElement('label'); rateWindow.append('速度の移動平均 ');
+  conditionNumber(rateWindow, uiState.conditions.defaults.playbackRateWindow, false, (value) => {
+    if (!Number.isInteger(value)) return;
+    updateUiState((draft) => { draft.conditions.defaults.playbackRateWindow = value; }); renderConditionDescription(); render();
+  }, { min: '1', max: '50', step: '1' }); rateWindow.append(' 打鍵');
   const sameFinger = document.createElement('label'); const sameFingerInput = document.createElement('input');
   sameFingerInput.type = 'checkbox'; sameFingerInput.checked = playback.sameFingerDelay;
   sameFingerInput.addEventListener('change', () => {
@@ -1414,7 +1421,7 @@ function renderGlobalDelayControls(parent: HTMLElement): void {
   calibrationInput.addEventListener('change', () => {
     updateUiState((draft) => { draft.ui.playback.useCalibration = calibrationInput.checked; }); renderConditionDescription(); render();
   }); calibration.append(calibrationInput, ' 個人速度を使う');
-  fields.append(speed, multiplier, sameFinger, allFinger, calibration);
+  fields.append(speed, multiplier, rateWindow, sameFinger, allFinger, calibration);
   parent.append(fields);
 }
 
@@ -1449,7 +1456,7 @@ function appendConditionSummary(parent: DocumentFragment | HTMLElement): void {
     }
     summary.append(heading, list);
   };
-  addList('移動距離条件', description.conditions);
+  addList('解析・集計条件', description.conditions);
   addList('打鍵再生条件', playbackDescription);
   const overrides = document.createElement('p');
   overrides.className = 'note';
