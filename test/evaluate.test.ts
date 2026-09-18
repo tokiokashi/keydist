@@ -195,6 +195,37 @@ test('同時押しと順次打鍵の差はステップ数に出る。押下数�
   near(b.totalUnits, a.totalUnits, 'total');
 });
 
+test('prefix配列のシフト単独ステップでも後続出力を見て反対側親指へ振り替える', () => {
+  const prefix: Layout = {
+    id: 'prefix-thumb-shift',
+    name: 'prefix-thumb-shift',
+    map: new Map([
+      ['左', [['thumb-r'], ['q']]],
+      ['右', [['thumb-r'], ['j']]],
+    ]),
+    legends: new Map(),
+    thumbShiftKey: 'thumb-r',
+  };
+
+  const fixedLeft = evaluate('左', prefix, geometry, opts());
+  const fixedRight = evaluate('右', prefix, geometry, opts());
+  const oppositeLeft = evaluate('左', prefix, geometry, opts({ preferOppositeThumb: true }));
+  const oppositeRight = evaluate('右', prefix, geometry, opts({ preferOppositeThumb: true }));
+
+  assert.equal(fixedLeft.strokes.length, 2);
+  assert.equal(fixedRight.strokes.length, 2);
+  assert.equal(oppositeLeft.strokes.length, 2);
+  assert.equal(oppositeRight.strokes.length, 2);
+
+  assert.equal(fixedLeft.strokes[0].presses[0].keys[0].id, 'thumb-r');
+  assert.equal(fixedRight.strokes[0].presses[0].keys[0].id, 'thumb-r');
+  assert.equal(oppositeLeft.strokes[0].presses[0].keys[0].id, 'thumb-r');
+  assert.equal(oppositeRight.strokes[0].presses[0].keys[0].id, 'thumb-l');
+
+  assert.equal(oppositeLeft.strokes[1].presses[0].keys[0].id, 'q');
+  assert.equal(oppositeRight.strokes[1].presses[0].keys[0].id, 'j');
+});
+
 test('薙刀式のシフトは設定時に出力キーと反対側の親指へ振り替える', () => {
   const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
   const fixed = evaluate('おせ', naginata, geometry, opts());
