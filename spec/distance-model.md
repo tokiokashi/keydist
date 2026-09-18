@@ -612,11 +612,26 @@ D / C                       [u/文字]
 
 **11.5入力文字あたりのアクション数**
 
-**アクション = ステップ**（§4.1。同時押し・コンボも1アクション）。
+physical Stroke数とPolicy上のaction数は分離する。
 
 ```
-A = ステップ数 / C          [アクション/文字]
+S = realized Stroke数
+A_total = S + virtual hold-start action数
+A = A_total / C             [アクション/文字]
 ```
+
+基本は1 realized Stroke = 1 action（§4.1。同時押し・コンボも1 action）。
+
+ただし #220 の `HoldStartActionPolicy.countAsSeparateStep=true` の場合だけ、
+layer / modifierのoutputと同一Strokeにrealizeされた `held-trigger/start` を
+追加のvirtual actionとして1件数える。compositionは対象外。
+`prefix` 等ですでにtrigger-only Strokeが独立して存在する場合も追加しない。
+
+このPolicyは**action計上だけ**を変える。`Metrics.strokes` は常にphysical `S` を保持し、
+`Metrics.actions` だけが `A_total` を持つ。`meanPerStroke`、同指連続率など
+physical Strokeを分母にする既存指標は `S` を使い続ける。
+realized Stroke列・距離・Press数・Chain / Transition / Timingは変更しない。
+既定は `false` で従来互換。
 
 `C` は §11.4と同じ、入力文字数（ローマ字展開・コンボ結合の前）。ローマ字配列は
 綴りが同じなら配置に依らず同じ値になる。この軸で差が付くのはコンボとかな直接入力のみ
@@ -628,7 +643,7 @@ A = ステップ数 / C          [アクション/文字]
 P = 押下キー数 / C          [押下/文字]
 ```
 
-`A` はステップ数、`P` は押下キー数を分子に取る。両者は分子だけが違う。
+`A` はPolicy適用後のaction数、`P` は押下キー数を分子に取る。両者は分子だけが違う。
 コンボは複数キーを1ステップにまとめるため `A` を下げるが、押すキー自体は減らないため
 `P` は下げない。2つを並べることで、コンボがステップ数（時間的なコスト）を減らす一方で
 押下キー数（総仕事量）は減らしていないことが見える。片方だけでは、コンボが

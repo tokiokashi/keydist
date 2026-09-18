@@ -85,6 +85,19 @@ test('TriggerRealizationPolicyはglobal / per-layoutともcondition bundleで往
   assert.deepEqual(parsed.conditions.perLayout.qwerty.triggerRealization, { useHold: false });
 });
 
+test('HoldStartActionPolicyはglobal / per-layoutともcondition bundleで往復する', () => {
+  const current = state();
+  current.conditions.defaults.holdStartAction = { countAsSeparateStep: true };
+  current.conditions.perLayout.qwerty = {
+    holdStartAction: { countAsSeparateStep: false },
+  };
+  const bundle = conditionBundleFromState(current, [], [], { rules: [], assignments: {} }, []);
+  const parsed = parseConditionBundle(serializeConditionBundle(bundle), bundle, current, choices);
+
+  assert.deepEqual(parsed.conditions.defaults.holdStartAction, { countAsSeparateStep: true });
+  assert.deepEqual(parsed.conditions.perLayout.qwerty.holdStartAction, { countAsSeparateStep: false });
+});
+
 test('未知の配列への個別設定は読み込み時に捨てる', () => {
   const current = state();
   const bundle = conditionBundleFromState(current, [], [], { rules: [], assignments: {} }, []);

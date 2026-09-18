@@ -7,6 +7,11 @@ import {
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   type TriggerRealizationPolicy,
 } from './trigger-realization.ts';
+import {
+  additionalHoldStartSteps,
+  DEFAULT_HOLD_START_ACTION_POLICY,
+  type HoldStartActionPolicy,
+} from './hold-start-action.ts';
 
 /**
  * 隣接ペアのホーム間隔 [u]（仕様 §11.6で引く基準）。
@@ -71,8 +76,10 @@ export interface Metrics {
    * 表示用の状態ではなく数値と同じ入れ物へ保存する（仕様 §12.3）。
    */
   conditions: MetricConditions;
-  /** 打鍵ステップ数。同時押しは1と数える */
+  /** physical Stroke数。同時押しは1 Stroke。Policy上のvirtual actionは含めない。 */
   strokes: number;
+  /** Policy適用後のaction総数。held-trigger/startのvirtual actionを含みうる。 */
+  actions: number;
   /** キー押下数。同時押しは押したキーの数だけ数える */
   presses: number;
   /** 配列に無く打鍵できなかった文字数 */
@@ -139,6 +146,8 @@ export interface MetricConditions {
   arpeggioPolicy: ArpeggioPolicy;
   /** hold-capable triggerをrealizeしたPolicy。 */
   triggerRealizationPolicy: TriggerRealizationPolicy;
+  /** held-trigger/startを独立actionとして数えるPolicy。 */
+  holdStartActionPolicy: HoldStartActionPolicy;
   /** ローマ字入力に使った綴り規則の識別子。かな直接入力はnull */
   romajiRuleId: string | null;
 }
@@ -150,6 +159,7 @@ export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
   chainPolicy: { ...DEFAULT_CHAIN_POLICY },
   arpeggioPolicy: { ...DEFAULT_ARPEGGIO_POLICY },
   triggerRealizationPolicy: { ...DEFAULT_TRIGGER_REALIZATION_POLICY },
+  holdStartActionPolicy: { ...DEFAULT_HOLD_START_ACTION_POLICY },
   romajiRuleId: null,
 };
 
@@ -256,7 +266,9 @@ export function computeMetrics(
     hits: trace.comboHits.length,
   };
 
-  const n = trace.strokes.length;
+  const strokes = trace.strokes.length;
+  const actions = strokes
+    + additionalHoldStartSteps(trace.strokes, conditions.holdStartActionPolicy);
   const { inputChars } = trace;
   return {
     geometryId: geometry.id,
@@ -268,8 +280,10 @@ export function computeMetrics(
       chainPolicy: { ...conditions.chainPolicy },
       arpeggioPolicy: { ...conditions.arpeggioPolicy },
       triggerRealizationPolicy: { ...conditions.triggerRealizationPolicy },
+      holdStartActionPolicy: { ...conditions.holdStartActionPolicy },
     },
-    strokes: n,
+    strokes,
+    actions,
     presses,
     skipped: trace.skipped,
     inputChars,
@@ -277,9 +291,9 @@ export function computeMetrics(
     perFingerPresses,
     totalUnits,
     totalMm: totalUnits * geometry.pitchMm,
-    meanPerStroke: n ? totalUnits / n : 0,
+    meanPerStroke: strokes ? totalUnits / strokes : 0,
     perCharUnits: inputChars ? totalUnits / inputChars : 0,
-    perCharSteps: inputChars ? n / inputChars : 0,
+    perCharSteps: inputChars ? actions / inputChars : 0,
     perCharPresses: inputChars ? presses / inputChars : 0,
     adjacent,
     sameFinger,

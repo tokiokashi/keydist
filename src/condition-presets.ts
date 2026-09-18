@@ -1,6 +1,7 @@
 import { sameChainPolicy } from './analysis-chain.ts';
 import { sameArpeggioPolicy } from './analysis-arpeggio.ts';
 import { sameTriggerRealizationPolicy } from './trigger-realization.ts';
+import { sameHoldStartActionPolicy } from './hold-start-action.ts';
 import {
   DEFAULT_CONDITION_DEFAULTS,
   sanitizeConditionDefaults,
@@ -95,5 +96,6 @@ export function sameConditionDefaults(
     && left.preferOppositeThumb === right.preferOppositeThumb
     && sameChainPolicy(left.chain, right.chain)
     && sameArpeggioPolicy(left.arpeggioPolicy, right.arpeggioPolicy)
-    && sameTriggerRealizationPolicy(left.triggerRealization, right.triggerRealization);
+    && sameTriggerRealizationPolicy(left.triggerRealization, right.triggerRealization)
+    && sameHoldStartActionPolicy(left.holdStartAction, right.holdStartAction);
 }

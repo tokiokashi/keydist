@@ -1280,18 +1280,33 @@ function conditionRow(
   }
 
   if (tab === 'trigger') {
-    const policy = value('triggerRealization');
+    const realization = value('triggerRealization');
+    const action = value('holdStartAction');
     const fields = document.createElement('div');
     fields.className = 'condition-fields';
-    const label = document.createElement('label');
-    const input = document.createElement('input');
-    input.type = 'checkbox';
-    input.checked = policy.useHold;
-    input.disabled = !enabled;
-    input.addEventListener('change', () =>
-      commitCondition(layout?.id, 'triggerRealization', { ...policy, useHold: input.checked }));
-    label.append(input, ' hold-capable triggerを連続保持する');
-    fields.append(label);
+
+    const holdLabel = document.createElement('label');
+    const holdInput = document.createElement('input');
+    holdInput.type = 'checkbox';
+    holdInput.checked = realization.useHold;
+    holdInput.disabled = !enabled;
+    holdInput.addEventListener('change', () =>
+      commitCondition(layout?.id, 'triggerRealization', { ...realization, useHold: holdInput.checked }));
+    holdLabel.append(holdInput, ' hold-capable triggerを連続保持する');
+
+    const actionLabel = document.createElement('label');
+    const actionInput = document.createElement('input');
+    actionInput.type = 'checkbox';
+    actionInput.checked = action.countAsSeparateStep;
+    actionInput.disabled = !enabled;
+    actionInput.addEventListener('change', () =>
+      commitCondition(layout?.id, 'holdStartAction', {
+        ...action,
+        countAsSeparateStep: actionInput.checked,
+      }));
+    actionLabel.append(actionInput, ' hold開始を独立stepとして数える');
+
+    fields.append(holdLabel, actionLabel);
     cell.append(fields);
     return row;
   }

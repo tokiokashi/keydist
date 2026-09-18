@@ -3,6 +3,7 @@ import type { ChainPolicy } from './analysis-chain.ts';
 import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
 import type { Options } from './evaluate.ts';
 import type { TriggerRealizationPolicy } from './trigger-realization.ts';
+import type { HoldStartActionPolicy } from './hold-start-action.ts';
 import type { UiStateConditionsDefaults, UiStateLayoutConditions } from './ui-state.ts';
 
 export interface ResolvedConditions {
@@ -11,6 +12,7 @@ export interface ResolvedConditions {
   chainPolicy: ChainPolicy;
   arpeggioPolicy: ArpeggioPolicy;
   triggerRealizationPolicy: TriggerRealizationPolicy;
+  holdStartActionPolicy: HoldStartActionPolicy;
 }
 
 /** 全体の既定値へ配列ごとの差分を重ね、評価へ渡す条件を一つに決める。 */
@@ -24,6 +26,7 @@ export function resolveConditions(
     chainPolicy: { ...values.chain },
     arpeggioPolicy: { ...values.arpeggioPolicy },
     triggerRealizationPolicy: { ...values.triggerRealization },
+    holdStartActionPolicy: { ...values.holdStartAction },
     options: {
       windowSize: values.windowSize,
       sfbHomeCost: values.sfbHomeCost,
