@@ -119,6 +119,7 @@ export function realizeTriggerStep(
     policy.useHold
     && previous !== undefined
     && declaredTriggers.length === 0
+    && semantic.associatedTriggerPersistence === 'hold-capable'
     && sameAssociatedSet
     && !outputOverlapsActiveHold
   ) {
