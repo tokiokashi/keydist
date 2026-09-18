@@ -1,5 +1,6 @@
 import type { GeometryKind } from './geometry.ts';
 import type { ChainPolicy } from './analysis-chain.ts';
+import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
 import type { Options } from './evaluate.ts';
 import type { UiStateConditionsDefaults, UiStateLayoutConditions } from './ui-state.ts';
 
@@ -7,6 +8,7 @@ export interface ResolvedConditions {
   geometry: GeometryKind;
   options: Options;
   chainPolicy: ChainPolicy;
+  arpeggioPolicy: ArpeggioPolicy;
 }
 
 /** 全体の既定値へ配列ごとの差分を重ね、評価へ渡す条件を一つに決める。 */
@@ -18,6 +20,7 @@ export function resolveConditions(
   return {
     geometry: values.geometry,
     chainPolicy: { ...values.chain },
+    arpeggioPolicy: { ...values.arpeggioPolicy },
     options: {
       windowSize: values.windowSize,
       sfbHomeCost: values.sfbHomeCost,
