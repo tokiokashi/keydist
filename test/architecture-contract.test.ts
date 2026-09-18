@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { KANA_PENDING, LAYOUTS, LAYOUTS_JA } from '../src/layouts/index.ts';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');
@@ -15,6 +16,11 @@ async function tsFiles(dir: string): Promise<string[]> {
     return entry.isFile() && entry.name.endsWith('.ts') ? [path] : [];
   }));
   return nested.flat();
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^$(){}|[\]\\]/g, '\\function moduleSpecifiers(source: string): readonly string[] {
+');
 }
 
 function moduleSpecifiers(source: string): readonly string[] {
