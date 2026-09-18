@@ -10,6 +10,10 @@ import {
   sameTriggerRealizationPolicy,
   type TriggerRealizationPolicy,
 } from './trigger-realization.ts';
+import {
+  sameHoldStartActionPolicy,
+  type HoldStartActionPolicy,
+} from './hold-start-action.ts';
 
 export type ConditionKey = keyof UiStateConditionsDefaults;
 
@@ -48,6 +52,10 @@ function formatTriggerRealizationPolicy(value: TriggerRealizationPolicy): string
   return value.useHold ? 'hold-capable triggerを連続保持する' : '連続保持しない';
 }
 
+function formatHoldStartActionPolicy(value: HoldStartActionPolicy): string {
+  return value.countAsSeparateStep ? 'hold開始を独立stepとして数える' : 'outputと同じstepで数える';
+}
+
 export const CONDITION_DESCRIPTORS = {
   chain: {
     label: 'Chain境界条件',
@@ -63,6 +71,11 @@ export const CONDITION_DESCRIPTORS = {
     label: 'Trigger保持Policy',
     effect: 'hold-capable triggerを実際の連続保持としてrealizeするかを決めます。single triggerやcomposition capabilityの推測には使いません。',
     format: (value) => formatTriggerRealizationPolicy(value as TriggerRealizationPolicy),
+  },
+  holdStartAction: {
+    label: 'Hold開始action',
+    effect: 'realize済みのheld-trigger/startがoutputと同じStrokeにある時、その開始を追加の独立stepとして数えるかを決めます。prefix等の既存trigger-only Strokeは追加計上しません。',
+    format: (value) => formatHoldStartActionPolicy(value as HoldStartActionPolicy),
   },
   geometry: {
     label: '物理形状',
@@ -180,6 +193,9 @@ function sameConditionValue(
       left as TriggerRealizationPolicy,
       right as TriggerRealizationPolicy,
     );
+  }
+  if (key === 'holdStartAction') {
+    return sameHoldStartActionPolicy(left as HoldStartActionPolicy, right as HoldStartActionPolicy);
   }
   return left === right;
 }
