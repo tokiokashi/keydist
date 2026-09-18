@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
 import { DEFAULT_OPTIONS, evaluate } from '../src/evaluate.ts';
-import { LAYOUT_BY_ID } from '../src/layouts/index.ts';
+import { analyzeChains, DEFAULT_CHAIN_POLICY } from '../src/analysis-chain.ts';
+import { COMBO_LAYER_ID, classifyFaces, LAYOUT_BY_ID } from '../src/layouts/index.ts';
 import { assertKanaLayout } from './kana-layout-helpers.ts';
 
 const layout = LAYOUT_BY_ID.get('shin-koume')!;
@@ -44,6 +45,33 @@ test('親指shiftはlayer + single、文字キーcomboはcomposition + singleと
   assert.equal(composition.triggerPersistence, 'single');
   assert.ok(composition.participations.some((p) => p.roles.includes('trigger')));
   assert.ok(composition.participations.every((p) => !p.roles.includes('held-trigger')));
+});
+
+test('文字compositionは表示・集計でも通常layerではなくcomboへ帰属する', () => {
+  const groups = classifyFaces(layout.faces!);
+  assert.ok(groups.combos.length > 0);
+  assert.ok(groups.combos.every((face) => face.inputRole === 'composition'));
+  assert.ok(groups.layers.flatMap((group) => group.faces)
+    .every((face) => face.inputRole !== 'composition'));
+  assert.deepEqual(layout.stepLayers?.get('ぱ'), [COMBO_LAYER_ID]);
+});
+
+test('breakOnTriggerOnly=trueでも文字compositionをshift扱いでChainから除外しない', () => {
+  const trace = evaluate('ぱ', layout, geometry, DEFAULT_OPTIONS);
+  const analysis = analyzeChains(trace.strokes, {
+    ...DEFAULT_CHAIN_POLICY,
+    breakOnSameFinger: false,
+    breakOnTriggerOnly: true,
+  });
+
+  assert.equal(trace.strokes[0].inputRole, 'composition');
+  assert.deepEqual(
+    analysis.chains.map((chain) => [chain.hand, chain.startStrokeIndex, chain.endStrokeIndex]),
+    [
+      ['left', 0, 1],
+      ['right', 0, 1],
+    ],
+  );
 });
 
 test('文字compositionはhold利用ONでもheld-triggerへ昇格しない', () => {
