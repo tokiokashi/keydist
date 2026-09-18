@@ -5,6 +5,7 @@ import {
 } from './ui-state.ts';
 import { isCustomGeometryKind, type PresetGeometryKind } from './geometry.ts';
 import { ARPEGGIO_PRESETS, sameArpeggioConditions, type ArpeggioConditions } from './playback-arpeggio.ts';
+import { sameChainPolicy, type ChainPolicy } from './analysis-chain.ts';
 
 export type ConditionKey = keyof UiStateConditionsDefaults;
 
@@ -33,6 +34,12 @@ const ARPEGGIO_PRESET_LABEL: Record<string, string> = {
   loose: '緩い',
 };
 
+function formatChainPolicy(value: ChainPolicy): string {
+  return `同指${value.breakOnSameFinger ? '区切る' : '区切らない'}・`
+    + `trigger-only${value.breakOnTriggerOnly ? '区切る' : '区切らない'}・`
+    + `逆手同時${value.breakOnOppositeHandSimultaneous ? '区切る' : '区切らない'}`;
+}
+
 function formatArpeggioConditions(value: ArpeggioConditions): string {
   const presetKey = Object.keys(ARPEGGIO_PRESETS).find(
     (key) => sameArpeggioConditions(ARPEGGIO_PRESETS[key], value),
@@ -45,6 +52,11 @@ function formatArpeggioConditions(value: ArpeggioConditions): string {
 }
 
 export const CONDITION_DESCRIPTORS = {
+  chain: {
+    label: 'Chain境界条件',
+    effect: 'Raw hand runをAnalysis Chainへ分割する条件です。同指・trigger-only・逆手同時入力を独立に扱います。親指onlyの既定は未決のため、この設定では決めません。',
+    format: (value) => formatChainPolicy(value as ChainPolicy),
+  },
   arpeggio: {
     label: 'アルペジオ判定条件',
     effect: '同じ手の連続打鍵をアルペジオと見なす幾何条件（開き・折り返し・親指・逆手の扱い）です。',
@@ -152,6 +164,18 @@ export interface ConditionDescriptionInput {
   layoutNames?: Readonly<Record<string, string>>;
 }
 
+function sameConditionValue(
+  key: ConditionKey,
+  left: UiStateConditionsDefaults[ConditionKey],
+  right: UiStateConditionsDefaults[ConditionKey],
+): boolean {
+  if (key === 'chain') return sameChainPolicy(left as ChainPolicy, right as ChainPolicy);
+  if (key === 'arpeggio') {
+    return sameArpeggioConditions(left as ArpeggioConditions, right as ArpeggioConditions);
+  }
+  return left === right;
+}
+
 function describeItem(
   key: ConditionKey,
   value: UiStateConditionsDefaults[ConditionKey],
@@ -163,7 +187,7 @@ function describeItem(
     label: descriptor.label,
     value: descriptor.format(value),
     defaultValue: descriptor.format(defaults[key]),
-    differsFromDefault: value !== defaults[key],
+    differsFromDefault: !sameConditionValue(key, value, defaults[key]),
     effect: descriptor.effect,
   };
 }
