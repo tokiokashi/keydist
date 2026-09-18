@@ -89,9 +89,11 @@ test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async 
       `${relative(ROOT, path)} must not branch on layout ID/name`,
     );
 
-    const stringLiterals = new Set(
-      [...source.matchAll(/(['\"`])([^'\"`\\n]+)\\1/g)].map((match) => match[2]),
-    );
+    const stringLiterals = new Set([
+      ...source.matchAll(/'([^'\\n]+)'/g),
+      ...source.matchAll(/\"([^\"\\n]+)\"/g),
+      ...source.matchAll(/`([^`\\n]+)`/g),
+    ].map((match) => match[1]));
     for (const literal of builtInLayoutLiterals) {
       assert.equal(
         stringLiterals.has(literal),
@@ -146,7 +148,7 @@ test('廃止済み#200 legacy symbol / production helperをsrcへ再導入しな
   for (const symbol of migrationOnly) {
     const occurrencePattern = new RegExp(symbol, 'g');
     const detectionPattern = new RegExp(
-      `['"]${escapeRegExp(symbol)}['"]\\s+in\\s+(?:override)?playback\\b`,
+      `['"]${symbol}['"]\\s+in\\s+(?:override)?playback\\b`,
       'gi',
     );
     const allowedRanges = [...uiState.matchAll(detectionPattern)].map((match) => ({
