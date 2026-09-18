@@ -119,7 +119,7 @@ let playbackAnimationFrame: number | undefined;
 let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
 let playbackMotionCursor = -1;
-let playbackFeedbackCursor = -1;
+let playbackFeedbackPending = false;
 let playbackRateChartSignature: string | undefined;
 let playbackTiming: readonly PlaybackTimingStep[] = [];
 type PlaybackSettingsTab = 'display' | 'conditions';
@@ -369,9 +369,9 @@ function updatePlaybackView() {
     renderPlaybackMotions(motions, cursor, stroke);
     playbackMotionCursor = cursor;
   }
-  if (cursor !== playbackFeedbackCursor) {
+  if (playbackFeedbackPending) {
     triggerPlaybackKeyFeedback(activeKeys, ctx.getUiState().ui.playback.keyFeedbackStyle);
-    playbackFeedbackCursor = cursor;
+    playbackFeedbackPending = false;
   }
 
   const settingsRoot = elements.playbackSettingsPanel;
@@ -842,7 +842,7 @@ function renderPlayback(
   playbackMotionCursor = -1;
   playbackSeekWasPlaying = undefined;
   playbackRateChartSignature = undefined;
-  playbackFeedbackCursor = -1;
+  playbackFeedbackPending = false;
   const rateAverage = ctx.getUiState().conditions.defaults.playbackRateAverage;
   const rateWindow = ctx.getUiState().conditions.defaults.playbackRateWindow;
   const rateHalfLife = ctx.getUiState().conditions.defaults.playbackRateHalfLifeSeconds;
@@ -926,12 +926,15 @@ function playbackFrame(timestamp: number) {
   if (!playbackState.playing || !playbackTrace || !playbackAnalysis) return;
   if (playbackLastTimestamp === undefined) playbackLastTimestamp = timestamp;
   else {
-    playbackState = advancePlayback(
+    const previousCursor = playbackState.cursor;
+    const nextState = advancePlayback(
       playbackState,
       timestamp - playbackLastTimestamp,
       playbackAnalysis,
       playbackTiming,
     );
+    playbackFeedbackPending ||= nextState.cursor > previousCursor;
+    playbackState = nextState;
     playbackLastTimestamp = timestamp;
     updatePlaybackView();
   }
@@ -1192,7 +1195,7 @@ function refreshStructuralAnalysis(): void {
       cancelPlaybackAnimation();
       playbackTrace = undefined; playbackAnalysis = undefined; playbackGeometry = undefined; playbackLayout = undefined; playbackOptions = undefined;
       playbackTiming = [];
-      playbackFeedbackCursor = -1;
+      playbackFeedbackPending = false;
       preserveStateOnNextRender = undefined;
           setPlaybackSettingsOpen(false);
       elements.playbackSettingsPanel.innerHTML = '';
