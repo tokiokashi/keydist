@@ -46,8 +46,8 @@ Structural result ───────────→ Timing
 本モデルの数値は**配列の評価に使わない**。使うのは再生の表示と、
 再生から導く実効速度の表示（§5）だけである。
 
-距離モデルの数値が時間へ入る経路は同指連続の1箇所だけで、そこも
-「1u の移動を通常の1アクション相当とみなす」という正規化を通す（§3.3）。
+距離 [u] が時間へ入る経路は、同指連続（§3.3）と任意の全指移動制約（§3.8）だけである。
+どちらもCalibrationが無い場合は「1u の移動を通常の1アクション相当」とする同じ正規化を使う。
 
 ## 2. パラメータ
 
@@ -56,6 +56,7 @@ Structural result ───────────→ Timing
 | 基準速度 `stepsPerSecond` | ステップ/秒 | 0.1 〜 20 | 1.25 |
 | 再生倍率 `speedMultiplier` | 倍 | 0.1 〜 10 | 1 |
 | 指の移動速度を考慮 `sameFingerDelay` | — | 真偽 | 真 |
+| 全指の移動時間で律速 `allFingerMovementDelay` | — | 真偽 | 偽 |
 | 個人速度 `calibration` | — | 有無 | 無し |
 
 再生倍率は**測定値・基準速度のどちらに対しても最後に掛かる**（§3.4）。
@@ -174,7 +175,42 @@ Span 全体へ「Arpeggio だから高速化」「Redirect だから減速」と
 新しい補正係数が必要な場合は、現象・根拠・既存 Calibration で表現できない理由を
 仕様で確定してから追加する。
 
-### 3.8 未決事項
+### 3.8 全指の移動時間によるschedule制約
+
+`allFingerMovementDelay=false` のときは従来どおり、§3.1〜§3.7で得た `T(i)` をそのまま累積する。
+
+`allFingerMovementDelay=true` のときは、各Strokeのbase終了時刻へ全指の移動可能時刻を
+**追加のmax制約**として適用する。base duration自体やTransition Calibrationの選択規則は置き換えない。
+
+Stroke `i` の開始時刻を `start(i)`、base durationを `T(i)` とし、
+そのStrokeで実際にPressする各指 `f` について、最後に自由になった時刻 `free(f)`、
+最後の位置 `pos(f)`、今回のPress target `target(f,i)` から移動時間 `move(f,i)` を求める。
+
+```
+baseEnd(i)     = start(i) + T(i)
+required(f, i) = free(f) + move(pos(f), target(f, i))
+end(i)         = max(baseEnd(i), max over actual presses required(f, i))
+start(i + 1)   = end(i)
+```
+
+同時押しは各指が並列に移動できるため、必要時刻の**最大値**だけがStrokeを律速する。
+normal output / triggerのPress後、その指は `end(i)` で自由になる。
+`held-trigger/continue` は新しいPressではないが、そのStroke終了までは指を占有するため、
+その指の `free(f)` を `end(i)` まで延長する。明示release eventは無いため、
+保持が終わる境界でrelease自体の追加時間は置かない。
+
+`move` は既存の指移動Calibrationを使う。指個別値が無ければ全指fallback値を使う。
+Calibration自体が無い場合は§3.3と同じく `stepsPerSecond` を [u/秒] の正規化速度として使う。
+いずれも最後に `speedMultiplier` を適用する。
+
+directed finger-pair / cross-hand Calibrationはすでに `T(i)` のbase durationへ反映済みである。
+全指制約側ではそれらをもう一度使わず、**finger movementだけ**を評価する。
+これにより同じ現象を加算で二重計上せず、「base Timing」と「物理的に間に合う最短時刻」の遅い方を採る。
+
+`sameFingerDelay` は既存のbase duration規則として残す。両方ONでも加算せずmax制約なので、
+同指移動がbase duration内で既に満たされていれば追加延長は発生しない。
+
+### 3.9 未決事項
 
 次は本仕様では確定しない。実装者が推測で Timing / structural analysis の規則へ追加しない。
 
@@ -199,9 +235,11 @@ Span 全体へ「Arpeggio だから高速化」「Redirect だから減速」と
 ### 4.1 確定Timing scheduleと表示用の先行到着
 
 表示側が各ステップの時間計算を再実装しないよう、Timingは各Strokeについて
-`startMs / endMs` を持つ累積scheduleを生成できるものとする。scheduleの各区間は
-§3の `T(i)` をそのまま累積した値であり、構造ラベルや表示設定から別のdurationを足さない。
-再生中の表示はこの確定scheduleを再利用し、描画フレームごとに全StrokeのTimingを再計算しない。
+`startMs / endMs` を持つ累積scheduleを生成できるものとする。
+`allFingerMovementDelay=false` なら§3の `T(i)` をそのまま累積し、
+ONなら§3.8の全指max制約を適用したscheduleを確定結果とする。
+構造ラベルや表示設定から別のdurationを足さない。
+再生・実効速度・指位置表示は同じ確定scheduleを再利用し、描画フレームごとに全StrokeのTimingを再計算しない。
 
 指位置表示の準備時間は、この**確定済みscheduleを読むだけの表示機能**とする。
 準備時間を `π`、次にその指が実際にPressする時刻を `T`、現在位置から次位置までの
