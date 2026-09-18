@@ -13,8 +13,8 @@ export type FaceMode = 'prefix' | 'suffix' | 'simultaneous';
 /** Face が担う入力意味。表示上のlayer分類とは独立したsemantic情報。 */
 export type InputRole = 'layer' | 'modifier' | 'composition';
 
-/** trigger の成立方法。同期押下・複数Strokeへの保持・次の対象入力1回への作用を区別する。 */
-export type TriggerBehavior = 'chord' | 'hold' | 'one-shot';
+/** trigger を複数の対象入力へ保持して作用させられるかという capability。 */
+export type TriggerPersistence = 'single' | 'hold-capable';
 
 export type HoldPhase = 'start' | 'continue' | 'end';
 
@@ -24,7 +24,7 @@ export type HoldPhase = 'start' | 'continue' | 'end';
  */
 export interface StepSemantic {
   inputRole: InputRole;
-  triggerBehavior?: TriggerBehavior;
+  triggerPersistence?: TriggerPersistence;
   outputKeys: readonly string[];
   triggerKeys: readonly string[];
   /** holdの開始/継続/終了は静的Faceから推測せず、必要な呼び出し側だけが明示する。 */
@@ -48,8 +48,8 @@ export interface Face {
   role?: 'layer' | 'modifier';
   /** 解析へ渡す入力意味。省略時は既存role（無ければlayer）を使う。 */
   inputRole?: InputRole;
-  /** triggerの成立方法。省略時は成立方法を推測しない。 */
-  triggerBehavior?: TriggerBehavior;
+  /** triggerの持続能力。FaceModeとは独立し、triggerを持つcanonical Faceでは明示する。 */
+  triggerPersistence?: TriggerPersistence;
 }
 
 export type LayerKind = 'layer' | 'combo';
@@ -258,7 +258,7 @@ export function fromFaces(
           face.mode,
           key,
           face.inputRole ?? face.role ?? (isCombo ? 'composition' : 'layer'),
-          trigger.length > 0 ? face.triggerBehavior : undefined,
+          trigger.length > 0 ? face.triggerPersistence : undefined,
         ));
         // 刻印は単打面の1文字だけを表示する。シフト面の出力で上書きしない。
         if (trigger.length === 0 && [...output].length === 1) legends.set(key, output);
@@ -328,7 +328,7 @@ function expandFaceSemantics(
   mode: FaceMode,
   key: string,
   inputRole: InputRole,
-  triggerBehavior: TriggerBehavior | undefined,
+  triggerPersistence: TriggerPersistence | undefined,
 ): readonly StepSemantic[] {
   const triggerKeys = [...trigger];
   const output = [key];
@@ -336,17 +336,17 @@ function expandFaceSemantics(
     return [{ inputRole, outputKeys: output, triggerKeys: [] }];
   }
   if (mode === 'simultaneous') {
-    return [{ inputRole, triggerBehavior, outputKeys: output, triggerKeys }];
+    return [{ inputRole, triggerPersistence, outputKeys: output, triggerKeys }];
   }
   if (mode === 'prefix') {
     return [
-      { inputRole, triggerBehavior, outputKeys: [], triggerKeys },
+      { inputRole, triggerPersistence, outputKeys: [], triggerKeys },
       { inputRole, outputKeys: output, triggerKeys: [] },
     ];
   }
   return [
     { inputRole, outputKeys: output, triggerKeys: [] },
-    { inputRole, triggerBehavior, outputKeys: [], triggerKeys },
+    { inputRole, triggerPersistence, outputKeys: [], triggerKeys },
   ];
 }
 
