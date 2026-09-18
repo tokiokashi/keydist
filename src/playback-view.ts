@@ -7,7 +7,7 @@ import {
   playbackRomajiPlannedOrders, playbackOrderLabel, playbackRateChartData,
   playbackRecentActionsPerSecond, playbackRecentKanaPerSecond,
   playbackSameFingerKeyMotions, playbackRepeatedKeys,
-  playbackStrokeAt, playbackStepDurationMs, playbackTimingSchedule, reconcilePlaybackStateAfterAnalysisRefresh, setPlaybackSameFingerDelay,
+  playbackStrokeAt, playbackStepDurationMs, playbackTimingSchedule, playbackCursorForEquivalentInputPosition, reconcilePlaybackStateAfterAnalysisRefresh, setPlaybackSameFingerDelay,
   setPlaybackStepsPerSecond, stepPlayback, playbackTrailKeys, playbackTrailOrders,
   playbackStrokeDisplay, setPlaybackCalibration, setPlaybackSpeedMultiplier,
   type PlaybackStepsPerSecond, type PlaybackState, type PlaybackTimingStep, PLAYBACK_SPEED_MULTIPLIER_MAX,
@@ -52,6 +52,8 @@ export interface PlaybackViewContext {
   openCalibrationEdit: () => void;
 }
 
+export type PlaybackPreserveMode = 'cursor' | 'input-position';
+
 export interface PlaybackViewController {
   setup: () => void;
   render: (
@@ -63,6 +65,7 @@ export interface PlaybackViewController {
   ) => void;
   clear: () => void;
   update: () => void;
+  preserveNextRender: (mode: PlaybackPreserveMode) => void;
   setCalibration: (calibration: PlaybackCalibration | undefined) => void;
   getGeometry: () => ReturnType<typeof buildGeometry> | undefined;
   getLayout: () => Layout | undefined;
@@ -117,7 +120,7 @@ type PlaybackSettingsTab = 'display' | 'conditions';
 
 let playbackSettingsOpen = false;
 let playbackSettingsTab: PlaybackSettingsTab = 'display';
-let preserveStateOnNextRender = false;
+let preserveStateOnNextRender: PlaybackPreserveMode | undefined;
 
 function refreshPlaybackTiming(): void {
   playbackTiming = playbackAnalysis
@@ -719,15 +722,29 @@ function renderPlayback(
 ) {
   const previousAnalysis = playbackAnalysis;
   const previousState = playbackState;
-  const preserveState = preserveStateOnNextRender && previousAnalysis !== undefined;
+  const preserveMode = preserveStateOnNextRender;
+  preserveStateOnNextRender = undefined;
+  const preserveState = preserveMode !== undefined && previousAnalysis !== undefined;
   cancelPlaybackAnimation();
   playbackTrace = trace;
   playbackAnalysis = analysis;
   playbackGeometry = geometry;
   playbackLayout = layout;
   playbackOptions = options;
+  const nextCursor = preserveMode === 'input-position' && previousAnalysis
+    ? playbackCursorForEquivalentInputPosition(
+      previousAnalysis.strokes,
+      analysis.strokes,
+      previousState.cursor,
+    )
+    : previousState.cursor;
   playbackState = preserveState
-    ? reconcilePlaybackStateAfterAnalysisRefresh(previousState, previousAnalysis, analysis)
+    ? reconcilePlaybackStateAfterAnalysisRefresh(
+      previousState,
+      previousAnalysis,
+      analysis,
+      nextCursor,
+    )
     : createPlaybackState(
       ctx.getUiState().ui.playback.stepsPerSecond,
       ctx.getUiState().ui.playback.sameFingerDelay,
@@ -870,12 +887,8 @@ function seekPlayback(value: string, playing = false) {
 }
 
 function refreshStructuralAnalysis(): void {
-  preserveStateOnNextRender = true;
-  try {
-    ctx.refreshAnalysis();
-  } finally {
-    preserveStateOnNextRender = false;
-  }
+  preserveStateOnNextRender = 'cursor';
+  ctx.refreshAnalysis();
 }
 
 
@@ -1087,11 +1100,13 @@ function refreshStructuralAnalysis(): void {
       cancelPlaybackAnimation();
       playbackTrace = undefined; playbackAnalysis = undefined; playbackGeometry = undefined; playbackLayout = undefined; playbackOptions = undefined;
       playbackTiming = [];
+      preserveStateOnNextRender = undefined;
           setPlaybackSettingsOpen(false);
       elements.playbackSettingsPanel.innerHTML = '';
       elements.playback.innerHTML = '';
     },
     update: updatePlaybackView,
+    preserveNextRender: (mode) => { preserveStateOnNextRender = mode; },
     setCalibration: (calibration) => {
       playbackState = setPlaybackCalibration(playbackState, calibration);
       refreshPlaybackTiming();
