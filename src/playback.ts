@@ -883,49 +883,31 @@ export interface PlaybackRateChartPoint {
 }
 
 function playbackRecentRateWindow(
-  strokes: readonly Stroke[],
+  analysis: AggregatedAnalysisResult,
   cursor: number,
   stepsPerSecond: PlaybackStepsPerSecond,
   sameFingerDelay: boolean,
   limit: number,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
-  arpeggio?: ArpeggioConditions,
-  arpeggioDelayMode: 'before' | 'distributed' = 'before',
-  cachedArpeggioTimings?: ReadonlyMap<number, PlaybackArpeggioTiming>,
 ): PlaybackRateWindow | undefined {
+  const strokes = analysis.strokes;
   const end = clampPlaybackCursor(cursor, strokes.length);
   const span = Math.max(0, Math.floor(limit));
   const start = Math.max(0, end - span);
   if (start === end) return undefined;
 
-  const timingCalibration = arpeggio
-    ? calibration
-    : playbackCalibrationWithoutArpeggio(calibration);
-  const arpeggioTimings = arpeggio
-    ? cachedArpeggioTimings ?? playbackArpeggioTimings(
-      strokes,
-      arpeggio,
-      stepsPerSecond,
-      timingCalibration,
-      arpeggioDelayMode,
-      sameFingerDelay,
-    )
-    : undefined;
-  const durationMs = strokes
-    .slice(start, end)
-    .reduce((total, stroke, offset) => {
-      const index = start + offset;
-      return total + playbackStrokeDurationMs(
-        stroke,
-        stepsPerSecond,
-        sameFingerDelay,
-        timingCalibration,
-        strokes[index - 1],
-        speedMultiplier,
-        arpeggioTimings?.get(index),
-      );
-    }, 0);
+  const durationMs = Array.from(
+    { length: end - start },
+    (_, offset) => start + offset,
+  ).reduce((total, index) => total + playbackStepDurationMs(
+    analysis,
+    index,
+    stepsPerSecond,
+    sameFingerDelay,
+    calibration,
+    speedMultiplier,
+  ), 0);
   return { start, end, durationMs };
 }
 
@@ -945,60 +927,49 @@ function playbackRateWindowInputText(
   return inputs.join('');
 }
 
-/** 直近の完了済み打鍵を実際の表示時間で割った実効アクション毎秒。 */
+/** 直近の完了済み打鍵をTransition Timingで割った実効アクション毎秒。 */
 export function playbackRecentActionsPerSecond(
-  strokes: readonly Stroke[],
+  analysis: AggregatedAnalysisResult,
   cursor: number,
   stepsPerSecond: PlaybackStepsPerSecond,
   sameFingerDelay = true,
   limit = 10,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
-  arpeggio?: ArpeggioConditions,
-  arpeggioDelayMode: 'before' | 'distributed' = 'before',
-  cachedArpeggioTimings?: ReadonlyMap<number, PlaybackArpeggioTiming>,
 ): number | undefined {
   const recent = playbackRecentRateWindow(
-    strokes,
+    analysis,
     cursor,
     stepsPerSecond,
     sameFingerDelay,
     limit,
     calibration,
     speedMultiplier,
-    arpeggio,
-    arpeggioDelayMode,
-    cachedArpeggioTimings,
   );
   return recent && recent.durationMs > 0
     ? ((recent.end - recent.start) * 1000) / recent.durationMs
     : undefined;
 }
 
-/** 直近の入力単位に含まれるかな文字数を、同じ表示時間で割った実効かな毎秒。 */
+/** 直近の入力単位に含まれるかな文字数を、同じTransition Timingで割る。 */
 export function playbackRecentKanaPerSecond(
-  strokes: readonly Stroke[],
+  analysis: AggregatedAnalysisResult,
   cursor: number,
   stepsPerSecond: PlaybackStepsPerSecond,
   sameFingerDelay = true,
   limit = 10,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
-  arpeggio?: ArpeggioConditions,
-  arpeggioDelayMode: 'before' | 'distributed' = 'before',
-  cachedArpeggioTimings?: ReadonlyMap<number, PlaybackArpeggioTiming>,
 ): number | undefined {
+  const strokes = analysis.strokes;
   const recent = playbackRecentRateWindow(
-    strokes,
+    analysis,
     cursor,
     stepsPerSecond,
     sameFingerDelay,
     limit,
     calibration,
     speedMultiplier,
-    arpeggio,
-    arpeggioDelayMode,
-    cachedArpeggioTimings,
   );
   if (!recent || recent.durationMs <= 0) return undefined;
 
@@ -1018,69 +989,42 @@ export function playbackRecentKanaPerSecond(
 
 /** 再生カーソルごとの実効速度と、その速度計算に触れた入力文字列。 */
 export function playbackRateChartData(
-  strokes: readonly Stroke[],
+  analysis: AggregatedAnalysisResult,
   stepsPerSecond: PlaybackStepsPerSecond,
   sameFingerDelay = true,
   limit = 10,
   calibration?: PlaybackCalibration,
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
-  arpeggio?: ArpeggioConditions,
-  arpeggioDelayMode: 'before' | 'distributed' = 'before',
-  cachedArpeggioTimings?: ReadonlyMap<number, PlaybackArpeggioTiming>,
 ): PlaybackRateChartPoint[] {
-  const arpeggioSpans = arpeggio ? playbackArpeggioSpans(strokes, arpeggio) : undefined;
-  const arpeggioCursors = arpeggioSpans
-    ? new Set(arpeggioSpans.flatMap((span) => Array.from(
-      { length: span.end - span.start },
-      (_, offset) => span.start + offset,
-    )))
-    : undefined;
-  const arpeggioTimings = arpeggio
-    ? cachedArpeggioTimings ?? playbackArpeggioTimings(
-      strokes,
-      arpeggio,
-      stepsPerSecond,
-      calibration,
-      arpeggioDelayMode,
-      sameFingerDelay,
-    )
-    : undefined;
+  const strokes = analysis.strokes;
   const points: PlaybackRateChartPoint[] = [{ cursor: 0, inputText: '' }];
   for (let cursor = 1; cursor <= strokes.length; cursor++) {
     const recent = playbackRecentRateWindow(
-      strokes,
+      analysis,
       cursor,
       stepsPerSecond,
       sameFingerDelay,
       limit,
       calibration,
       speedMultiplier,
-      arpeggio,
-      arpeggioDelayMode,
-      arpeggioTimings,
     );
     points.push({
       cursor,
       inputText: recent ? playbackRateWindowInputText(strokes, recent) : '',
       kanaPerSecond: playbackRecentKanaPerSecond(
-        strokes,
+        analysis,
         cursor,
         stepsPerSecond,
         sameFingerDelay,
         limit,
         calibration,
         speedMultiplier,
-        arpeggio,
-        arpeggioDelayMode,
-        arpeggioTimings,
       ),
       actionsPerSecond: recent && recent.durationMs > 0
         ? ((recent.end - recent.start) * 1000) / recent.durationMs
         : undefined,
       chain: playbackChainOrders(strokes, cursor).size > 0,
-      arpeggio: arpeggioCursors
-        ? arpeggioCursors.has(cursor - 1)
-        : false,
+      arpeggio: analysis.annotations[cursor - 1]?.inArpeggio ?? false,
     });
   }
   return points;
@@ -1104,9 +1048,9 @@ export function stepPlayback(
 export function advancePlayback(
   state: PlaybackState,
   elapsedMs: number,
-  strokes: readonly Stroke[],
+  analysis: AggregatedAnalysisResult,
 ): PlaybackState {
-  const strokeCount = strokes.length;
+  const strokeCount = analysis.strokes.length;
   const cursor = clampPlaybackCursor(state.cursor, strokeCount);
   if (!state.playing || strokeCount === 0 || cursor >= strokeCount) {
     return { ...state, cursor, playing: false, elapsedMs: 0 };
@@ -1114,28 +1058,14 @@ export function advancePlayback(
 
   let remaining = state.elapsedMs + Math.min(Math.max(0, elapsedMs), MAX_FRAME_MS);
   let nextCursor = cursor;
-  const timingCalibration = state.arpeggio
-    ? state.calibration
-    : playbackCalibrationWithoutArpeggio(state.calibration);
-  const arpeggioTimings = state.arpeggio
-    ? playbackArpeggioTimings(
-      strokes,
-      state.arpeggio,
-      state.stepsPerSecond,
-      timingCalibration,
-      state.arpeggioDelayMode,
-      state.sameFingerDelay,
-    )
-    : undefined;
   while (nextCursor < strokeCount) {
-    const stepMs = playbackStrokeDurationMs(
-      strokes[nextCursor],
+    const stepMs = playbackStepDurationMs(
+      analysis,
+      nextCursor,
       state.stepsPerSecond,
       state.sameFingerDelay,
-      timingCalibration,
-      strokes[nextCursor - 1],
+      state.calibration,
       state.speedMultiplier,
-      arpeggioTimings?.get(nextCursor),
     );
     if (remaining < stepMs) break;
     remaining -= stepMs;
