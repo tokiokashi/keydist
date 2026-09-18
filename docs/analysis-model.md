@@ -35,14 +35,16 @@ keydist 固有の内部モデルは同じものではないため、以下では
 
 `TriggerPersistence='hold-capable'` は保持できる能力であり、base normalizationの時点では
 通常の `trigger` として残す。評価条件 `TriggerRealizationPolicy.useHold` を有効にした時だけ、
-同一layer・同一trigger集合が続く区間を実際の保持へrealizeする。
+`associatedTriggerKeys` がactive holdのtrigger集合と完全一致する区間を実際の保持へrealizeする。layer idは継続判定に使わない。
 
 - 区間先頭: 新規 `trigger` + `held-trigger/start`
 - 継続Stroke: triggerを再押下せず `held-trigger/continue`
 - `single` triggerはholdへ昇格しない
+- prefix / suffix のoutput stepにも元Faceのtrigger集合を `associatedTriggerKeys` として持たせる
 - trigger集合は部分一致ではなく完全一致で継続判定する
-- 明示的なrelease専用Stroke/eventは現段階では作らない。次Strokeで `held-trigger` が
-  消えたことを保持区間の終了境界とし、将来のPress/Release event形式を先取りして固定しない
+- active holdとassociationが一致しないstepの直前をrelease境界とする
+- 保持中triggerキー自身がoutputでもある場合はcontinueせずrelease/restartし、新規Pressと `held-trigger/start` にする
+- 明示的なrelease専用Stroke/eventは現段階では作らず、将来のPress/Release event形式を先取りして固定しない
 
 既定は `useHold=false` で、従来のStroke列と評価値を維持する。実際にrealizeされた
 Stroke streamだけをRaw hand run以降へ渡し、Chain / Transition / Timingが独自にhold判定しない。
