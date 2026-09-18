@@ -387,7 +387,7 @@ function normalizeParticipations(
       finger: press.finger,
       keys: press.keys,
       roles: [...roles],
-      ...(triggerRole === 'held-trigger' && semantic.holdPhase
+      ...(roles.has('held-trigger') && semantic.holdPhase
         ? { holdPhase: semantic.holdPhase }
         : {}),
     };
