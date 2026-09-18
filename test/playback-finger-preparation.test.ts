@@ -81,3 +81,52 @@ test('held-trigger継続だけのparticipationは次のPressとして扱わな�
   assert.equal(prepared.get('f'), 'LI');
   assert.equal(prepared.has('g'), false);
 });
+
+
+test('held-trigger継続中は前動作が空いたとみなさず、間に合わなければPress時刻まで保持する', () => {
+  const trace = evaluate('fjg', layout, geometry);
+  const strokes = trace.strokes.map((stroke) => ({
+    ...stroke,
+    positions: { ...stroke.positions },
+    participations: stroke.participations.map((participation) => ({ ...participation })),
+  }));
+  const liParticipation = strokes[0].participations.find((participation) => participation.finger === 'LI');
+  assert.ok(liParticipation);
+
+  // 2打目の間もLIがfを保持している状況を作る。
+  // 次の実Pressは3打目のgだが、LIが空くのは2打目終了時なので、
+  // f→gの1u移動はT=3000msちょうどまで掛かり、先行到着できない。
+  strokes[1] = {
+    ...strokes[1],
+    positions: { ...strokes[1].positions, LI: strokes[0].positions.LI },
+    participations: [
+      ...strokes[1].participations,
+      { ...liParticipation, roles: ['held-trigger'] as const, holdPhase: 'continue' as const },
+    ],
+  };
+  const analysis = analyzeStrokeStructure(strokes);
+
+  const justBeforePress = playbackPreparedFingerPositionKeys(
+    analysis,
+    2,
+    999,
+    geometry,
+    10,
+    1,
+    true,
+  );
+  assert.equal(justBeforePress.get('f'), 'LI');
+  assert.equal(justBeforePress.has('g'), false);
+
+  const atPress = playbackPreparedFingerPositionKeys(
+    analysis,
+    3,
+    0,
+    geometry,
+    10,
+    1,
+    true,
+  );
+  assert.equal(atPress.get('g'), 'LI');
+  assert.equal(atPress.has('f'), false);
+});
