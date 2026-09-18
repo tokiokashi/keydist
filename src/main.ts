@@ -1343,6 +1343,7 @@ function conditionRow(
     fields.append(
       checkbox('breakOnSameFinger', '非親指SFB Strokeで区切る'),
       checkbox('breakOnTriggerOnly', 'trigger-only Strokeで区切る'),
+      checkbox('breakOnThumbOnly', '親指only Strokeで区切る'),
       checkbox('breakOnOppositeHandSimultaneous', '逆手同時outputで区切る'),
     );
     cell.append(fields);

@@ -4,15 +4,12 @@ import type { InputRole } from './layouts/types.ts';
 
 export type Hand = 'left' | 'right';
 
-/**
- * Chain境界を決めるPolicy。
- *
- * 親指onlyのlayer/modifier triggerを切るかどうかは #200 / #166 で未決のため、
- * ここへ既定値を追加しない。RawHandStepのfactを見れば後からPolicyへ昇格できる。
- */
+/** Chain境界を決めるPolicy。各条件は独立して適用する。 */
 export interface ChainPolicy {
   breakOnSameFinger: boolean;
   breakOnTriggerOnly: boolean;
+  /** 対象手の参加指がすべて親指のStrokeを境界にする。 */
+  breakOnThumbOnly: boolean;
   breakOnOppositeHandSimultaneous: boolean;
 }
 
@@ -25,6 +22,7 @@ export interface ChainPolicy {
 export const DEFAULT_CHAIN_POLICY: ChainPolicy = {
   breakOnSameFinger: true,
   breakOnTriggerOnly: false,
+  breakOnThumbOnly: true,
   breakOnOppositeHandSimultaneous: false,
 };
 
@@ -61,6 +59,7 @@ export function legacyUiFromChainPolicy(policy: ChainPolicy): LegacyChainUiSetti
 export function sameChainPolicy(left: ChainPolicy, right: ChainPolicy): boolean {
   return left.breakOnSameFinger === right.breakOnSameFinger
     && left.breakOnTriggerOnly === right.breakOnTriggerOnly
+    && left.breakOnThumbOnly === right.breakOnThumbOnly
     && left.breakOnOppositeHandSimultaneous === right.breakOnOppositeHandSimultaneous;
 }
 
@@ -80,7 +79,7 @@ export interface RawHandStep {
   readonly hasHeldTrigger: boolean;
   /** 新規triggerだけでoutputを持たないStroke。 */
   readonly triggerOnly: boolean;
-  /** この手の参加指がすべて親指。Chain境界にするかは未決。 */
+  /** この手の参加指がすべて親指。 */
   readonly thumbOnly: boolean;
   /** 親指だけ、かつ新規triggerだけのStroke。#166用のhook。 */
   readonly thumbTriggerOnly: boolean;
@@ -207,10 +206,10 @@ export function buildRawHandRuns(strokes: readonly Stroke[]): readonly RawHandRu
 }
 
 function breaksChain(step: RawHandStep, policy: ChainPolicy): boolean {
-  // 親指SFBはRaw factには残すが、#200/#166で境界が未決なので
-  // 既存UI互換のsame-finger Policyでは非親指だけを対象にする。
+  // same-fingerは旧UI互換のため非親指だけを対象にし、親指onlyは独立Policyで扱う。
   return (policy.breakOnSameFinger && step.nonThumbSameFinger)
     || (policy.breakOnTriggerOnly && step.triggerOnly && step.inputRole !== 'composition')
+    || (policy.breakOnThumbOnly && step.thumbOnly)
     || (policy.breakOnOppositeHandSimultaneous && step.oppositeHandOutput);
 }
 
@@ -218,7 +217,6 @@ function breaksChain(step: RawHandStep, policy: ChainPolicy): boolean {
  * Raw hand runへPolicyを適用する。
  *
  * 境界Strokeは従来のsame-finger / layer-key除外と同じくChain自体には含めない。
- * 親指onlyはfactだけ保持し、未決のPolicyをここで発明しない。
  */
 export function buildAnalysisChains(
   rawHandRuns: readonly RawHandRun[],

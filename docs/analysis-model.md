@@ -62,13 +62,14 @@ virtual actionを混ぜない。Policyを変えてもStroke列、Press数、距�
 ここには良し悪しやRoll判定を入れない。
 
 **Analysis Chain** はRaw hand runへ **ChainPolicy** を適用した解析用区間。
-現在のPolicyは次の3条件を独立に持つ。
+現在のPolicyは次の4条件を独立に持つ。
 
 - 非親指SFB Strokeで区切るか
 - trigger-only Strokeで区切るか
+- 親指only Strokeで区切るか
 - 逆手の同時outputで区切るか
 
-親指onlyをどのように境界扱いするかは未決事項であり、現在の既定値から推測しない。
+親指only境界は既定で有効。trigger-onlyとは独立して設定できる。
 
 ### HandTransition / FingerTransition
 

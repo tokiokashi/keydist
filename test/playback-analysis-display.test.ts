@@ -47,6 +47,26 @@ const stroke = (index: number, p: Press): Stroke => ({
 });
 const keepSameFinger = { ...DEFAULT_CHAIN_POLICY, breakOnSameFinger: false };
 
+const simultaneousThumbShiftStroke = (
+  index: number,
+  output: Press,
+  thumb: Press,
+): Stroke => ({
+  ...stroke(index, output),
+  inputRole: 'modifier',
+  triggerKeys: [thumb.keys[0].id],
+  participations: [
+    participation(output),
+    {
+      hand: 'left',
+      finger: thumb.finger,
+      keys: thumb.keys,
+      roles: ['trigger'],
+    },
+  ],
+  presses: [output, thumb],
+});
+
 test('Analysis Chainを再分類せず表示順とmotionへ投影する', () => {
   const analysis = analyzeStrokeStructure([
     stroke(0, press('LP', 'a', 1)),
@@ -58,6 +78,28 @@ test('Analysis Chainを再分類せず表示順とmotionへ投影する', () => 
   assert.equal(displays.length, 1);
   assert.equal(displays[0].sourceIndex, analysis.chains[0].chainIndex);
   assert.deepEqual([...displays[0].orders], [['a', 1], ['s', 2], ['d', 3]]);
+  assert.deepEqual(playbackAnalysisChainMotions(analysis, 2), [{
+    fromKey: 'a',
+    toKeys: ['s'],
+    finger: 'LR',
+  }]);
+});
+
+test('Chain動的表示はsimultaneous親指triggerを順序・motionから除外する', () => {
+  const analysis = analyzeStrokeStructure([
+    stroke(0, press('LP', 'a', 1)),
+    simultaneousThumbShiftStroke(
+      1,
+      press('LR', 's', 2),
+      press('LT', 'thumb-l', 0),
+    ),
+    stroke(2, press('LM', 'd', 3)),
+  ], keepSameFinger);
+
+  const displays = playbackAnalysisChainOrders(analysis, 2);
+  assert.equal(displays.length, 1);
+  assert.deepEqual([...displays[0].orders], [['a', 1], ['s', 2], ['d', 3]]);
+  assert.equal(displays[0].orders.has('thumb-l'), false);
   assert.deepEqual(playbackAnalysisChainMotions(analysis, 2), [{
     fromKey: 'a',
     toKeys: ['s'],

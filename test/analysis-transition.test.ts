@@ -56,6 +56,7 @@ const stroke = (index: number, presses: Press[]): Stroke => ({
 const keepSameFinger = {
   ...DEFAULT_CHAIN_POLICY,
   breakOnSameFinger: false,
+  breakOnThumbOnly: false,
 };
 
 test('finger relationは左右の物理x方向と独立した解剖学的rankを使う', () => {

@@ -57,6 +57,7 @@ const stroke = (index: number, p: Press): Stroke => ({
 const keepSameFinger = {
   ...DEFAULT_CHAIN_POLICY,
   breakOnSameFinger: false,
+  breakOnThumbOnly: false,
 };
 
 test('既定PolicyはLongRoll / standalone TwoRollをそのままArpeggio coreにする', () => {

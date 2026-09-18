@@ -89,6 +89,17 @@ const PLAYBACK_SCALE_MAX = 4;
 
 type PlaybackDynamicDisplay = 'none' | 'chain' | 'arpeggio' | 'both';
 
+const CHAIN_POLICY_KEYS: Record<keyof ChainPolicy, true> = {
+  breakOnSameFinger: true,
+  breakOnTriggerOnly: true,
+  breakOnThumbOnly: true,
+  breakOnOppositeHandSimultaneous: true,
+};
+
+function isChainPolicyKey(value: string | undefined): value is keyof ChainPolicy {
+  return value !== undefined && Object.prototype.hasOwnProperty.call(CHAIN_POLICY_KEYS, value);
+}
+
 function dynamicPlaybackDisplay(settings: UiPlaybackState): PlaybackDynamicDisplay {
   if (settings.showChainOnRateChart && settings.showArpeggioOnRateChart) return 'both';
   if (settings.showChainOnRateChart) return 'chain';
@@ -229,6 +240,7 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
         <summary>Analysis Chain境界</summary>
         <label><input type="checkbox" data-playback-chain-policy="breakOnSameFinger"${chainPolicy.breakOnSameFinger ? ' checked' : ''} />非親指SFB Strokeで区切る</label>
         <label><input type="checkbox" data-playback-chain-policy="breakOnTriggerOnly"${chainPolicy.breakOnTriggerOnly ? ' checked' : ''} />trigger-only Strokeで区切る</label>
+        <label><input type="checkbox" data-playback-chain-policy="breakOnThumbOnly"${chainPolicy.breakOnThumbOnly ? ' checked' : ''} />親指only Strokeで区切る</label>
         <label><input type="checkbox" data-playback-chain-policy="breakOnOppositeHandSimultaneous"${chainPolicy.breakOnOppositeHandSimultaneous ? ' checked' : ''} />逆手同時outputで区切る</label>
       </details>
       <details class="playback-arpeggio-details" open>
@@ -565,9 +577,7 @@ function updatePlaybackView() {
   const chainPolicy = ctx.getChainPolicy();
   for (const input of settingsRoot.querySelectorAll<HTMLInputElement>('[data-playback-chain-policy]')) {
     const key = input.dataset.playbackChainPolicy;
-    if (key === 'breakOnSameFinger' || key === 'breakOnTriggerOnly' || key === 'breakOnOppositeHandSimultaneous') {
-      input.checked = chainPolicy[key];
-    }
+    if (isChainPolicyKey(key)) input.checked = chainPolicy[key];
   }
   const arpeggioPolicy = ctx.getArpeggioPolicy();
   for (const input of settingsRoot.querySelectorAll<HTMLInputElement>('[data-playback-arpeggio-policy]')) {
@@ -1191,7 +1201,7 @@ function refreshStructuralAnalysis(): void {
       const chainPolicyInput = target.closest<HTMLInputElement>('[data-playback-chain-policy]');
       if (chainPolicyInput) {
         const key = chainPolicyInput.dataset.playbackChainPolicy;
-        if (key === 'breakOnSameFinger' || key === 'breakOnTriggerOnly' || key === 'breakOnOppositeHandSimultaneous') {
+        if (isChainPolicyKey(key)) {
           ctx.updateChainPolicy({ ...ctx.getChainPolicy(), [key]: chainPolicyInput.checked });
           refreshStructuralAnalysis();
         }

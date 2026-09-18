@@ -393,13 +393,14 @@ Raw hand runへ **ChainPolicy** を適用した結果が **Analysis Chain** で�
   `chainIncludeSameFinger=false` と同じ）
 - `breakOnTriggerOnly`: 新規triggerだけでoutputを持たないStrokeを境界にする。
   既定 `false`（従来の `chainIncludeLayerKeys=true` と同じ）
+- `breakOnThumbOnly`: 対象手の参加指がすべて親指のStrokeを境界にする。
+  既定 `true`。旧playbackで親指だけのstepがChain参加から落ちていた挙動を維持する
 - `breakOnOppositeHandSimultaneous`: 同じStrokeに逆手のoutputがある場合を境界にする。
   既定 `false`
 
-親指only、特にlayer/modifier操作由来の親指only Strokeを境界にするかは未決であり、
-既定値を置かない。Raw hand run側には `thumbOnly` / `thumbTriggerOnly` のfactを残し、
-後でPolicyを追加できるようにする。TriggerPersistenceは「hold可能か」という能力なので、
-実際のhold利用やChain境界の推測には使わない。
+親指onlyはtrigger-onlyとは独立した条件として扱う。Raw hand run側の
+`thumbOnly` / `thumbTriggerOnly` factは保持し、Policy適用前の事実を失わない。
+TriggerPersistenceは「hold可能か」という能力なので、実際のhold利用やChain境界の推測には使わない。
 
 Analysis結果はStrokeを複製せず、1回の結果内で安定する `StrokeIndex` と
 `chainIndex` で参照する。永続的なstable IDは作らない。後段のRoll / Redirect /
