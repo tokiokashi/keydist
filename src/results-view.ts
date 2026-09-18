@@ -104,6 +104,7 @@ function render() {
         trace.strokes,
         conditions.chainPolicy,
         conditions.arpeggioPolicy,
+        conditions.triggerRealizationPolicy,
       );
       return {
         layout,
