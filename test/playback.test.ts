@@ -429,13 +429,20 @@ test('EWMAは確定Timingの経過時間を半減期として使う', () => {
   assert.ok(actions !== undefined);
   assert.ok(Math.abs(actions - 1.5) < 1e-9);
 
+  const kanaAtFirstStroke = playbackRecentKanaPerSecondAnalysis(
+    analysis, 1, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
+  );
+  const actionsAtFirstStroke = playbackRecentActionsPerSecondAnalysis(
+    analysis, 1, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
+  );
+  assert.equal(kanaAtFirstStroke, actionsAtFirstStroke);
+
   const kana = playbackRecentKanaPerSecondAnalysis(
     analysis, 2, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
   );
   assert.ok(kana !== undefined);
-  const expectedKana = (1 - 2 ** -0.5) * 2;
-  const expectedKanaAfterSecond = 0.5 * expectedKana + 0.5 * 1;
-  assert.ok(Math.abs(kana - expectedKanaAfterSecond) < 1e-9);
+  // 1 Stroke = 1かなならinstantaneous系列が同じなのでEWMAも一致する。
+  assert.ok(Math.abs(kana - actions) < 1e-9);
 
   const points = playbackRateChartDataAnalysis(
     analysis, 2, true, 10, undefined, 1, schedule, 'ewma', 1,
