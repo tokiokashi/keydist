@@ -1593,20 +1593,24 @@ function updatePlaybackSetting<K extends keyof UiPlaybackState>(
     if (hasLayoutOverride && layoutId) {
       const current = draft.conditions.perLayout[layoutId] ?? {};
       const baseChain = current.chain ?? draft.conditions.defaults.chain;
-      const legacyChain = legacyUiFromChainPolicy(baseChain);
-      const playback = {
-        ...current.playback,
-        ...(chainSetting ? legacyChain : {}),
-        [key]: value,
-      };
-      const chain = chainSetting
-        ? chainPolicyFromLegacyUi(playback, baseChain)
-        : current.chain;
+      let playback = { ...current.playback, [key]: value };
+      let chain = current.chain;
+      if (chainSetting) {
+        const legacyChain = legacyUiFromChainPolicy(baseChain);
+        const nextLegacyChain = {
+          chainIncludeSameFinger: key === 'chainIncludeSameFinger' && typeof value === 'boolean'
+            ? value
+            : legacyChain.chainIncludeSameFinger,
+          chainIncludeLayerKeys: key === 'chainIncludeLayerKeys' && typeof value === 'boolean'
+            ? value
+            : legacyChain.chainIncludeLayerKeys,
+        };
+        chain = chainPolicyFromLegacyUi(nextLegacyChain, baseChain);
+        playback = { ...playback, ...nextLegacyChain };
+      }
       draft.conditions.perLayout[layoutId] = {
         ...current,
-        playback: chainSetting
-          ? { ...playback, ...legacyUiFromChainPolicy(chain!) }
-          : playback,
+        playback,
         ...(chain === undefined ? {} : { chain }),
       };
     } else {
