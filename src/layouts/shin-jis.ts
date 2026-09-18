@@ -25,14 +25,14 @@ const face = (
   trigger: string[],
   mode: FaceMode,
   entries: Record<string, string>,
-  triggerBehavior?: Face['triggerBehavior'],
+  triggerPersistence?: Face['triggerPersistence'],
 ): Face => ({
   ...faceFromEntries(trigger, mode, entries),
   inputRole: trigger.length > 0 ? 'modifier' : 'layer',
-  ...(trigger.length > 0 && triggerBehavior !== undefined ? { triggerBehavior } : {}),
+  ...(trigger.length > 0 && triggerPersistence !== undefined ? { triggerPersistence } : {}),
 });
 
-function shinJisFaces(mode: FaceMode, triggerBehavior: NonNullable<Face['triggerBehavior']>): Face[] {
+function shinJisFaces(mode: FaceMode, triggerPersistence: NonNullable<Face['triggerPersistence']>): Face[] {
   return [
     face([], mode, {
       q: 'そ', w: 'け', e: 'せ', r: 'て', t: 'ょ', y: 'つ', u: 'ん', i: 'の', o: 'を', p: 'り', '[': 'ち',
@@ -43,7 +43,7 @@ function shinJisFaces(mode: FaceMode, triggerBehavior: NonNullable<Face['trigger
       q: 'ぁ', w: '゜', e: 'ほ', r: 'ふ', t: 'め', y: 'ひ', u: 'え', i: 'み', o: 'や', p: 'ぬ', '[': '「',
       a: 'ぃ', s: 'へ', d: 'ら', f: 'ゅ', g: 'よ', h: 'ま', j: 'お', k: 'も', l: 'わ', ';': 'ゆ', "'": '」',
       z: 'ぅ', x: 'ぇ', c: 'ぉ', v: 'ね', b: 'ゃ', n: 'む', m: 'ろ', ',': '・', '.': 'ー',
-    }, triggerBehavior),
+    }, triggerPersistence),
   ];
 }
 
@@ -102,9 +102,9 @@ function makeLayout(
   id: string,
   name: string,
   mode: FaceMode,
-  triggerBehavior: NonNullable<Face['triggerBehavior']>,
+  triggerPersistence: NonNullable<Face['triggerPersistence']>,
 ): Layout {
-  const layout = fromFaces(id, name, shinJisFaces(mode, triggerBehavior));
+  const layout = fromFaces(id, name, shinJisFaces(mode, triggerPersistence));
   appendComposed(layout, VOICED, '゛');
   appendComposed(layout, SEMI_VOICED, '゜');
 
@@ -114,10 +114,10 @@ function makeLayout(
   return layout;
 }
 
-export const SHIN_JIS_PREFIX = makeLayout('shin-jis-prefix', '新JIS（逐次シフト）', 'prefix', 'one-shot');
+export const SHIN_JIS_PREFIX = makeLayout('shin-jis-prefix', '新JIS（逐次シフト）', 'prefix', 'single');
 export const SHIN_JIS_SIMULTANEOUS = makeLayout(
   'shin-jis-simultaneous',
   '新JIS（通常シフト）',
   'simultaneous',
-  'chord',
+  'hold-capable',
 );
