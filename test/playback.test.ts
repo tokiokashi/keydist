@@ -222,11 +222,48 @@ test('構造解析の再生成ではcursor/playingとStroke内進捗率を維持
     elapsedMs: 62.5,
   };
 
-  const refreshed = reconcilePlaybackStateAfterAnalysisRefresh(state, previous, next);
+  const refreshed = reconcilePlaybackStateAfterAnalysisRefresh(
+    state,
+    state,
+    previous,
+    next,
+  );
 
   assert.equal(refreshed.cursor, 1);
   assert.equal(refreshed.playing, true);
   assert.equal(refreshed.elapsedMs, 250);
+});
+
+test('配列切替では位置だけ引き継ぎTiming設定は新配列へ切り替える', () => {
+  const previous = timingAnalysis([
+    { presses: [] },
+    { presses: [] },
+  ]);
+  const next = timingAnalysis([
+    { presses: [] },
+    { presses: [] },
+  ]);
+  const previousState = {
+    ...createPlaybackState(4, false, undefined, 1),
+    cursor: 1,
+    playing: true,
+    elapsedMs: 125,
+  };
+  const nextBaseState = createPlaybackState(8, true, undefined, 2);
+
+  const refreshed = reconcilePlaybackStateAfterAnalysisRefresh(
+    previousState,
+    nextBaseState,
+    previous,
+    next,
+  );
+
+  assert.equal(refreshed.cursor, 1);
+  assert.equal(refreshed.playing, true);
+  assert.equal(refreshed.stepsPerSecond, 8);
+  assert.equal(refreshed.sameFingerDelay, true);
+  assert.equal(refreshed.speedMultiplier, 2);
+  assert.equal(refreshed.elapsedMs, 31.25);
 });
 
 test('構造解析の再生成後にcursorが末尾なら再生を停止する', () => {
@@ -244,7 +281,12 @@ test('構造解析の再生成後にcursorが末尾なら再生を停止する',
     elapsedMs: 123,
   };
 
-  const refreshed = reconcilePlaybackStateAfterAnalysisRefresh(state, previous, next);
+  const refreshed = reconcilePlaybackStateAfterAnalysisRefresh(
+    state,
+    state,
+    previous,
+    next,
+  );
 
   assert.equal(refreshed.cursor, 1);
   assert.equal(refreshed.playing, false);
