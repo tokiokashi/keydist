@@ -1,4 +1,4 @@
-import { ALL_FINGERS, keyId, resolveKeyId, type Finger, type Geometry } from './geometry.ts';
+import { ALL_FINGERS, keyId, type Finger, type Geometry } from './geometry.ts';
 import { classifyFaces, faceCells, foldedLayerCells, type Layer } from './layers.ts';
 import type { Stroke } from './evaluate.ts';
 import type { Layout } from './layouts/types.ts';
@@ -9,7 +9,6 @@ import {
   type PlaybackCalibration,
 } from './playback-calibration.ts';
 import type { AggregatedAnalysisResult } from './analysis-aggregate.ts';
-import { playbackArpeggioSpans, type ArpeggioConditions } from './playback-arpeggio.ts';
 
 /** 再生速度の入力範囲。実際の打鍵時間や距離モデルとは無関係。 */
 export const PLAYBACK_STEPS_PER_SECOND_MIN = 0.1;
@@ -130,170 +129,6 @@ function fingerHand(finger: Finger): 'left' | 'right' {
  */
 function isThumb(finger: Finger): boolean {
   return finger === 'LT' || finger === 'RT';
-}
-
-/**
- * 打鍵を手ごとのキーidへ分ける。
- *
- * 左右同時押しのステップは両方の手に現れる。手ごとに見ることで、逆の手が混ざっても
- * 片方の手の連続が途切れない。
- */
-function strokeHandKeys(
-  stroke: Stroke,
-  includeLayerKeys = true,
-): Map<'left' | 'right', string[]> {
-  // 層操作として押したキー。親指シフトはどのみち親指として落ちるので、ここで
-  // 効くのは中指シフトのように親指以外がトリガーを兼ねる配列になる。
-  const triggers = includeLayerKeys
-    ? undefined
-    : new Set(stroke.triggerKeys.map(resolveKeyId));
-  const hands = new Map<'left' | 'right', string[]>();
-  for (const press of stroke.presses) {
-    if (isThumb(press.finger)) continue;
-    const keys = press.keys
-      .map((key) => key.id)
-      .filter((id) => !triggers?.has(id));
-    if (keys.length === 0) continue;
-    const hand = fingerHand(press.finger);
-    hands.set(hand, [...(hands.get(hand) ?? []), ...keys]);
-  }
-  return hands;
-}
-
-/** その手が同指連打をしているか。親指は数えない。 */
-function handHasSameFinger(stroke: Stroke, hand: 'left' | 'right'): boolean {
-  return stroke.presses.some(
-    (press) => !isThumb(press.finger) && fingerHand(press.finger) === hand && press.sfb,
-  );
-}
-
-/**
- * 直前の打鍵が同じ手だった時、その位置から現在のキーへの移動を返す。
- *
- * 同指連続（playbackSameFingerKeyMotions）が「同じ指がキーをまたぐ」動きなのに対し、
- * こちらは「手が鍵盤を横切る」動きを1枚のキーで見せる。区間全体を一度に動かさず
- * 1ステップ1本に絞るのは、2キーの短い区間でも必ず動きが出るようにするため。
- */
-export function playbackHandKeyMotions(
-  strokes: readonly Stroke[],
-  cursor: number,
-  includeSameFinger = false,
-  includeLayerKeys = true,
-): PlaybackKeyMotion[] {
-  const index = Math.min(Math.max(0, cursor), strokes.length) - 1;
-  if (index <= 0) return [];
-
-  const stroke = strokes[index];
-  const current = strokeHandKeys(stroke, includeLayerKeys);
-  const previous = strokeHandKeys(strokes[index - 1], includeLayerKeys);
-
-  const motions: PlaybackKeyMotion[] = [];
-  for (const [hand, toKeys] of current) {
-    const fromKeys = previous.get(hand);
-    if (!fromKeys || fromKeys.length === 0 || toKeys.length === 0) continue;
-    if (!includeSameFinger && handHasSameFinger(stroke, hand)) continue;
-    const finger = stroke.presses.find(
-      (press) => !isThumb(press.finger) && fingerHand(press.finger) === hand,
-    )?.finger;
-    if (!finger) continue;
-    // 同時押しの起点は先頭のキーに寄せる。どれを選んでも手の移動という意味は変わらない
-    motions.push({ fromKey: fromKeys[0], toKeys, finger });
-  }
-  return motions;
-}
-
-/** アルペジオ判定済み区間の直前キーから現在キーへの移動を返す。 */
-export function playbackArpeggioKeyMotions(
-  strokes: readonly Stroke[],
-  cursor: number,
-  conditions: ArpeggioConditions,
-): PlaybackKeyMotion[] {
-  const index = Math.min(Math.max(0, cursor), strokes.length) - 1;
-  if (index <= 0) return [];
-  const span = playbackArpeggioSpans(strokes, conditions)
-    .find((candidate) => index >= candidate.start && index < candidate.end);
-  if (!span) return [];
-
-  const outputKeys = (stroke: Stroke): string[] => {
-    const triggers = new Set(stroke.triggerKeys.map(resolveKeyId));
-    return stroke.presses
-      .filter((press) => !isThumb(press.finger) && fingerHand(press.finger) === span.hand)
-      .flatMap((press) => press.keys.map((key) => resolveKeyId(key.id)))
-      .filter((key) => !triggers.has(key));
-  };
-  const toKeys = outputKeys(strokes[index]);
-  if (toKeys.length === 0) return [];
-  let previousIndex = index - 1;
-  while (previousIndex >= span.start && outputKeys(strokes[previousIndex]).length === 0) previousIndex--;
-  if (previousIndex < span.start) return [];
-  const fromKey = outputKeys(strokes[previousIndex])[0];
-  const finger = strokes[index].presses.find(
-    (press) => !isThumb(press.finger) && fingerHand(press.finger) === span.hand,
-  )?.finger;
-  return finger && fromKey
-    ? [{ fromKey, toKeys, finger }]
-    : [];
-}
-
-/** 直近の同じ手の連続打鍵へ、表示順を割り当てる。 */
-export function playbackChainOrders(
-  strokes: readonly Stroke[],
-  cursor: number,
-  includeSameFinger = false,
-  limit = Number.POSITIVE_INFINITY,
-  includeLayerKeys = true,
-): ReadonlyMap<string, number> {
-  const end = Math.min(Math.max(0, cursor), strokes.length);
-  const orders = new Map<string, number>();
-  const span = Math.max(0, Math.floor(limit));
-  if (end === 0 || span === 0) return orders;
-
-  // 手ごとに、現在の打鍵を含む区間を前後へ広げる。
-  //
-  // 遡るだけだと区間の番号が打つたびに増えていき、区間の全体像は最後の打鍵まで
-  // 見えない。チェーンは1つのまとまりとして読みたいので、先の打鍵も数える。
-  //
-  // 左右同時押しのステップは両方の手の区間に参加するため、逆の手が混ざっても
-  // 片方の手のチェーンは途切れない。
-  for (const hand of strokeHandKeys(strokes[end - 1], includeLayerKeys).keys()) {
-    // 同指連打は区間の区切り。区切り自身はどちらの区間にも属さない
-    if (!includeSameFinger && handHasSameFinger(strokes[end - 1], hand)) continue;
-
-    const belongs = (index: number): boolean => {
-      const stroke = strokes[index];
-      if (!strokeHandKeys(stroke, includeLayerKeys).has(hand)) return false;
-      return includeSameFinger || !handHasSameFinger(stroke, hand);
-    };
-
-    let start = end - 1;
-    while (start > 0 && belongs(start - 1)) start--;
-    let finish = end;
-    while (finish < strokes.length && belongs(finish)) finish++;
-    finish = Math.min(finish, start + span);
-
-    // 1つのキーをチェーンの中で何度も踏むことがある。単純に上書きすると後の
-    // 番号だけが残り、手前の番号が見えなくなる。カーソルが今いる位置から見て
-    // 次に踏む番号を出す（通り過ぎた番号は出さない）。
-    const visits = new Map<string, number[]>();
-    for (let index = start; index < finish; index++) {
-      const keys = strokeHandKeys(strokes[index], includeLayerKeys).get(hand);
-      if (!keys) continue;
-      const order = index - start + 1;
-      for (const key of keys) {
-        const seen = visits.get(key);
-        // 同じステップで同時押しされた同一キーは1回として数える
-        if (!seen) visits.set(key, [order]);
-        else if (seen[seen.length - 1] !== order) seen.push(order);
-      }
-    }
-
-    const position = end - start;
-    for (const [key, list] of visits) {
-      // 全部通り過ぎていれば最後の番号を残す。踏んだ実績まで消す必要はない
-      orders.set(key, list.find((order) => order >= position) ?? list[list.length - 1]);
-    }
-  }
-  return orders;
 }
 
 /** 打鍵順を既存の図解と同じ丸数字で表示する。 */
