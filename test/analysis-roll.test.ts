@@ -212,6 +212,58 @@ test('trigger-onlyの親指はRoll構成指にしない', () => {
   assert.equal(isRollEligibleStroke(trigger, 'left'), false);
 });
 
+test('finger jumpだけではLongRollから除外しない', () => {
+  const result = analyzeStrokeRolls([
+    stroke(0, [output(press('LP', [key('a', 'LP', 1, 2)]))]),
+    stroke(1, [output(press('LM', [key('d', 'LM', 3, 2)]))]),
+    stroke(2, [output(press('LI', [key('f', 'LI', 4, 2)]))]),
+  ], keepSameFinger);
+
+  assert.deepEqual(result.longRolls, [{
+    chainIndex: 0,
+    startStrokeIndex: 0,
+    endStrokeIndex: 3,
+    direction: 'inward',
+  }]);
+  assert.deepEqual(
+    result.transitions.map((transition) => transition.candidates[0].fingerStep),
+    [2, 1],
+  );
+});
+
+test('trigger-only Strokeを列の中間に置くとpure LongRollを分断する', () => {
+  const result = analyzeStrokeRolls([
+    stroke(0, [output(press('LP', [key('a', 'LP', 1, 2)]))]),
+    stroke(1, [{
+      press: press('LT', [key('thumb-l', 'LT', 4.5, 4, 4)]),
+      roles: ['trigger'],
+    }]),
+    stroke(2, [output(press('LM', [key('d', 'LM', 3, 2)]))]),
+  ], {
+    ...keepSameFinger,
+    breakOnTriggerOnly: false,
+  });
+
+  assert.equal(result.transitions.length, 2);
+  assert.deepEqual(result.longRolls, []);
+  assert.deepEqual(result.twoRolls, []);
+});
+
+test('standalone TwoRollを正例として保持しLongRollとは排他的になる', () => {
+  const result = analyzeStrokeRolls([
+    stroke(0, [output(press('LP', [key('a', 'LP', 1, 2)]))]),
+    stroke(1, [output(press('LR', [key('s', 'LR', 2, 2)]))]),
+  ], keepSameFinger);
+
+  assert.deepEqual(result.longRolls, []);
+  assert.deepEqual(result.twoRolls, [{
+    chainIndex: 0,
+    startStrokeIndex: 0,
+    endStrokeIndex: 2,
+    direction: 'inward',
+  }]);
+});
+
 test('Roll resultはimmutableでLongRollとTwoRollが排他的', () => {
   const result = analyzeStrokeRolls([
     stroke(0, [output(press('LP', [key('a', 'LP', 1, 2)]))]),

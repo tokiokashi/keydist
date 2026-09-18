@@ -258,6 +258,77 @@ test('redirect tail後方のsameは自動吸収しない', () => {
   assert.deepEqual(roll.extensions, ['single-redirect-tail']);
 });
 
+test('→ same → same → はbridge有効時にsame個数上限なしで1つのmaximal Spanになる', () => {
+  const result = analyzeStrokeArpeggios([
+    stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
+    stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
+    stroke(2, press('LR', [key('w', 'LR', 2, 1)], undefined, true)),
+    stroke(3, press('LR', [key('x', 'LR', 2.2, 3)], undefined, true)),
+    stroke(4, press('LM', [key('d', 'LM', 3, 2)])),
+  ], keepSameFinger, {
+    ...DEFAULT_ARPEGGIO_POLICY,
+    bridgeSameFinger: true,
+  });
+
+  assert.deepEqual(result.arpeggioSpans, [{
+    startStrokeIndex: 0,
+    endStrokeIndex: 5,
+    hand: 'left',
+    coreKind: 'two-roll',
+    direction: 'inward',
+    extensions: ['same-finger-bridge'],
+  }]);
+  assert.equal(result.sfbEvents.length, 2);
+});
+
+test('adjacentな別Spanはend === startでもmergeしない', () => {
+  const result = analyzeStrokeArpeggios([
+    stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
+    stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
+    stroke(2, press('LM', [key('d', 'LM', 3, 2)])),
+    stroke(3, press('LM', [key('e', 'LM', 3, 1)], undefined, true)),
+    stroke(4, press('LP', [key('q', 'LP', 1, 1)])),
+  ], keepSameFinger);
+
+  assert.deepEqual(
+    result.arpeggioSpans.map((span) => [
+      span.startStrokeIndex,
+      span.endStrokeIndex,
+      span.direction,
+    ]),
+    [
+      [0, 3, 'inward'],
+      [3, 5, 'outward'],
+    ],
+  );
+});
+
+test('includeSingleRedirectTailはleading redirectを吸収しない', () => {
+  const result = analyzeStrokeArpeggios([
+    stroke(0, press('LM', [key('d', 'LM', 3, 2)])),
+    stroke(1, press('LP', [key('a', 'LP', 1, 2)])),
+    stroke(2, press('LR', [key('s', 'LR', 2, 2)])),
+    stroke(3, press('LM', [key('e', 'LM', 3, 1)])),
+  ], keepSameFinger, {
+    ...DEFAULT_ARPEGGIO_POLICY,
+    includeSingleRedirectTail: true,
+  });
+
+  const roll = result.arpeggioSpans.find((span) =>
+    span.startStrokeIndex === 1
+    && span.endStrokeIndex === 4
+    && span.direction === 'inward');
+  assert.ok(roll);
+  assert.equal(roll.startStrokeIndex, 1);
+  assert.equal(
+    result.arpeggioSpans.some((span) =>
+      span.startStrokeIndex === 0
+      && span.endStrokeIndex === 4
+      && span.direction === 'inward'),
+    false,
+  );
+});
+
 test('ArpeggioPolicy比較はobject identityではなく3項目の意味で比較する', () => {
   assert.equal(sameArpeggioPolicy(
     DEFAULT_ARPEGGIO_POLICY,
