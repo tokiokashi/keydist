@@ -4,7 +4,6 @@ import {
   type UiStateV1,
 } from './ui-state.ts';
 import { isCustomGeometryKind, type PresetGeometryKind } from './geometry.ts';
-import { ARPEGGIO_PRESETS, sameArpeggioConditions, type ArpeggioConditions } from './playback-arpeggio.ts';
 import { sameChainPolicy, type ChainPolicy } from './analysis-chain.ts';
 import { sameArpeggioPolicy, type ArpeggioPolicy } from './analysis-arpeggio.ts';
 
@@ -29,12 +28,6 @@ function geometryLabel(value: UiStateConditionsDefaults['geometry']): string {
   return GEOMETRY_LABEL[value];
 }
 
-const ARPEGGIO_PRESET_LABEL: Record<string, string> = {
-  standard: '標準',
-  strict: '厳格',
-  loose: '緩い',
-};
-
 function formatChainPolicy(value: ChainPolicy): string {
   return `同指${value.breakOnSameFinger ? '区切る' : '区切らない'}・`
     + `trigger-only${value.breakOnTriggerOnly ? '区切る' : '区切らない'}・`
@@ -47,17 +40,6 @@ function formatArpeggioPolicy(value: ArpeggioPolicy): string {
     + `redirect tail${value.includeSingleRedirectTail ? '有効' : '無効'}`;
 }
 
-function formatArpeggioConditions(value: ArpeggioConditions): string {
-  const presetKey = Object.keys(ARPEGGIO_PRESETS).find(
-    (key) => sameArpeggioConditions(ARPEGGIO_PRESETS[key], value),
-  );
-  const presetLabel = presetKey ? ARPEGGIO_PRESET_LABEL[presetKey] ?? presetKey : 'カスタム';
-  const reversal = value.maxRowReversal === null ? '無制限' : `${value.maxRowReversal}`;
-  const rowStep = value.maxRowStep === null ? '無制限' : `${value.maxRowStep}`;
-  return `${presetLabel}（開き${value.minHorizontalSpread}u・折返し${reversal}・行差${rowStep}・`
-    + `親指${value.includeThumb ? '含む' : '含まない'}・逆手${value.breakOnOppositeHand ? '区切る' : '区切らない'}）`;
-}
-
 export const CONDITION_DESCRIPTORS = {
   chain: {
     label: 'Chain境界条件',
@@ -68,11 +50,6 @@ export const CONDITION_DESCRIPTORS = {
     label: 'Arpeggio構造Policy',
     effect: 'LongRoll / TwoRollからArpeggioSpanを派生する条件です。親指core、同指bridge、末尾1回のredirect吸収だけを扱います。',
     format: (value) => formatArpeggioPolicy(value as ArpeggioPolicy),
-  },
-  arpeggio: {
-    label: 'アルペジオ判定条件',
-    effect: '同じ手の連続打鍵をアルペジオと見なす幾何条件（開き・折り返し・親指・逆手の扱い）です。',
-    format: (value) => formatArpeggioConditions(value as ArpeggioConditions),
   },
   geometry: {
     label: '物理形状',
@@ -184,9 +161,6 @@ function sameConditionValue(
   if (key === 'chain') return sameChainPolicy(left as ChainPolicy, right as ChainPolicy);
   if (key === 'arpeggioPolicy') {
     return sameArpeggioPolicy(left as ArpeggioPolicy, right as ArpeggioPolicy);
-  }
-  if (key === 'arpeggio') {
-    return sameArpeggioConditions(left as ArpeggioConditions, right as ArpeggioConditions);
   }
   return left === right;
 }
