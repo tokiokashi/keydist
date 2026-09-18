@@ -480,10 +480,15 @@ redirect tailは末尾1 Transitionだけで、leading redirectやtail後方のsa
 ArpeggioSpanはStroke index half-open範囲、hand、coreKind、direction、適用extensionだけを持つ。
 Timing durationのsourceにはせず、Roll / Redirect / Key / Point等の詳細を重複コピーしない。
 
-移行期間中は旧production用 `ArpeggioConditions` と新 `ArpeggioPolicy` を並存させる。
-新Policyは `conditions.arpeggioPolicy` / condition bundle / condition-description /
-Metrics condition snapshotへ載せるが、旧 `conditions.arpeggio` の削除・保存値migration・
-strict/loose preset撤去は#227のcutoverまで行わない。
+cutover後のcanonical設定は `conditions.arpeggioPolicy` のみとする。
+旧 `conditions.arpeggio` を読み込んだ場合は、意味が一致する `includeThumb` だけを移行し、
+`minHorizontalSpread` / `maxRowReversal` / `maxRowStep` /
+`breakOnOppositeHand` は推測変換せず破棄する。新規 `bridgeSameFinger` /
+`includeSingleRedirectTail` はfalseから始める。
+
+旧 `arpeggioEnabled` / `arpeggioDelayMode` はPlayback Timingから廃止済みで、
+strict / looseの旧geometry presetも残さない。migration後のstateは再保存し、
+同じmigration通知を次回起動で繰り返さない。
 
 ### 10.6 StrokeAnnotation / structural aggregation
 
