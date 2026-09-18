@@ -60,11 +60,9 @@ const SHIN_KOUME_FACES: Face[] = [
     x: 'ぼ', c: 'ぶ', b: 'ゎ', n: 'み', m: 'あ', ',': 'え', '.': 'ち', '/': 'ぬ',
   }, '右親指'),
 
-  // 半濁音: 作者ブログで示された新しい文字キー同時押し。
-  compositionFace('h', { g: 'ぱ', x: 'ぽ', c: 'ぷ' }),
+  // 半濁音・拗音・外来音。紅皿定義の文字キー同時押しをcompositionとして表す。
   compositionFace('g', { u: 'ぴ', '/': 'ぺ' }),
 
-  // 拗音・外来音。紅皿定義の文字キー同時押しをそのままcompositionとして表す。
   compositionFace('u', {
     q: 'ひぇ', w: 'ひゅ', e: 'ひょ', r: 'ひゃ', t: 'ひぃ',
     z: 'びぇ', x: 'びゅ', c: 'びょ', v: 'びゃ', b: 'びぃ',
@@ -88,7 +86,7 @@ const SHIN_KOUME_FACES: Face[] = [
   }),
   compositionFace('k', {
     q: 'くぇ', w: 'くゎ', e: 'くぉ', r: 'くぁ', t: 'くぃ',
-    a: 'いぇ',
+    a: 'いぇ', d: 'を',
     z: 'ぐぇ', x: 'ぐゎ', c: 'ぐぉ', v: 'ぐぁ', b: 'ぐぃ',
   }),
   compositionFace('l', {
@@ -97,7 +95,6 @@ const SHIN_KOUME_FACES: Face[] = [
     z: 'じぇ', x: 'じゅ', c: 'じょ', v: 'じゃ', b: 'じぃ',
   }),
   compositionFace(';', {
-    q: 'ゑ', r: 'ゎ', t: 'ゐ',
     s: 'とぅ',
     x: 'どぅ',
   }),
@@ -105,12 +102,11 @@ const SHIN_KOUME_FACES: Face[] = [
     q: 'みぇ', w: 'みゅ', e: 'みょ', r: 'みゃ', t: 'みぃ',
   }),
   compositionFace('m', {
-    q: 'ぇ', w: 'ぅ', e: 'ぉ', r: 'ぁ', t: 'ぃ',
-    a: 'うぇ', c: 'うぉ', g: 'うぃ',
+    a: 'うぇ', d: 'うぉ', g: 'うぃ',
     z: 'ヴぇ', x: 'ヴゅ', c: 'ヴぉ', v: 'ヴぁ', b: 'ヴぃ',
   }),
   compositionFace(',', {
-    w: 'てゅ', g: 'てぃ',
+    s: 'てゅ', g: 'てぃ',
     x: 'でゅ', b: 'でぃ',
   }),
   compositionFace('.', {
