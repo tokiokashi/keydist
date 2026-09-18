@@ -5,6 +5,7 @@ import type { Press, Stroke, StrokeParticipation } from '../src/evaluate.ts';
 import {
   analyzeStrokeRedirects,
   buildRedirectEvents,
+  redirectGeometryQualities,
 } from '../src/analysis-redirect.ts';
 import {
   type FingerTransition,
@@ -233,6 +234,86 @@ test('Chain境界を跨いでRedirectEventを生成しない', () => {
 
   assert.equal(result.redirects.length, 0);
   assert.equal(result.transitions.length, 0);
+});
+
+test('横方向折り返し振幅はphysical dxの引き返し共通量としてcandidateごとに導出する', () => {
+  const qualityFor = (xs: readonly [number, number, number]) => {
+    const result = analyzeStrokeRedirects([
+      stroke(0, [press('LP', [key('a', 'LP', xs[0], 2)])]),
+      stroke(1, [press('LM', [key('d', 'LM', xs[1], 2)])]),
+      stroke(2, [press('LR', [key('s', 'LR', xs[2], 2)])]),
+    ], keepSameFinger);
+    assert.equal(result.redirects.length, 1);
+    const qualities = redirectGeometryQualities(result, result.redirects[0]);
+    assert.equal(qualities.length, 1);
+    return qualities[0];
+  };
+
+  assert.deepEqual(qualityFor([0, 1, 0.75]), {
+    candidateIndex: 0,
+    beforeDx: 1,
+    afterDx: -0.25,
+    horizontalReversal: 0.25,
+  });
+  assert.deepEqual(qualityFor([0, 2, 0.5]), {
+    candidateIndex: 0,
+    beforeDx: 2,
+    afterDx: -1.5,
+    horizontalReversal: 1.5,
+  });
+  assert.deepEqual(qualityFor([0, 2, 1.75]), {
+    candidateIndex: 0,
+    beforeDx: 2,
+    afterDx: -0.25,
+    horizontalReversal: 0.25,
+  });
+});
+
+test('finger-direction上はRedirectでもphysical xが反転しなければhorizontalReversalは0', () => {
+  const result = analyzeStrokeRedirects([
+    stroke(0, [press('LP', [key('a', 'LP', 0, 2)])]),
+    stroke(1, [press('LM', [key('d', 'LM', 1, 2)])]),
+    stroke(2, [press('LR', [key('s', 'LR', 1.5, 2)])]),
+  ], keepSameFinger);
+
+  assert.equal(result.redirects.length, 1);
+  assert.deepEqual(
+    redirectGeometryQualities(result, result.redirects[0]),
+    [{
+      candidateIndex: 0,
+      beforeDx: 1,
+      afterDx: 0.5,
+      horizontalReversal: 0,
+    }],
+  );
+});
+
+test('複数RedirectCandidateのgeometry qualityをevent単位へ集約せず全件保持する', () => {
+  const result = analyzeStrokeRedirects([
+    stroke(0, [
+      press('LP', [key('a', 'LP', 0, 2)]),
+      press('LR', [key('s', 'LR', 1, 2)]),
+    ]),
+    stroke(1, [
+      press('LM', [key('d', 'LM', 3, 2)]),
+      press('LI', [key('f', 'LI', 4, 2)]),
+    ]),
+    stroke(2, [
+      press('LP', [key('q', 'LP', 0.5, 1)]),
+      press('LR', [key('w', 'LR', 2.5, 1)]),
+    ]),
+  ], keepSameFinger);
+
+  const event = result.redirects[0];
+  const qualities = redirectGeometryQualities(result, event);
+  assert.equal(qualities.length, event.candidates.length);
+  assert.deepEqual(
+    qualities.map((quality) => quality.candidateIndex),
+    event.candidates.map((candidate) => candidate.candidateIndex),
+  );
+  assert.equal(Object.isFrozen(qualities), true);
+  assert.ok(qualities.every((quality) => Object.isFrozen(quality)));
+  assert.ok(new Set(qualities.map((quality) => quality.horizontalReversal)).size > 1);
 });
 
 test('Redirect result / Event / candidateはimmutableな結果内indexとして保持する', () => {

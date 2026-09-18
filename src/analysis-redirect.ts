@@ -36,6 +36,19 @@ export interface RedirectAnalysisResult extends TransitionAnalysisResult {
   readonly redirects: readonly RedirectEvent[];
 }
 
+/**
+ * RedirectCandidateのgeometry quality。
+ *
+ * structural Redirectの成立可否とは独立した派生factで、閾値や良否判定は持たない。
+ * horizontalReversalはpivotを境にx方向で実際に引き返した共通量 [u]。
+ */
+export interface RedirectGeometryQuality {
+  readonly candidateIndex: number;
+  readonly beforeDx: number;
+  readonly afterDx: number;
+  readonly horizontalReversal: number;
+}
+
 function isDirectional(candidate: FingerTransition): boolean {
   return candidate.fingerDirection !== 'same';
 }
@@ -133,6 +146,57 @@ export function buildRedirectEvents(
   }
 
   return Object.freeze(events);
+}
+
+function transitionCandidate(
+  analysis: TransitionAnalysisResult,
+  transitionIndex: number,
+  candidateIndex: number,
+): FingerTransition {
+  const transition = analysis.transitions[transitionIndex];
+  const candidate = transition?.candidates.find(
+    (entry) => entry.candidateIndex === candidateIndex,
+  );
+  if (!candidate) {
+    throw new Error(
+      `Redirect geometry参照が不正: transition=${transitionIndex}, candidate=${candidateIndex}`,
+    );
+  }
+  return candidate;
+}
+
+/**
+ * 1 RedirectEventの各candidateについてhorizontal geometry qualityを導出する。
+ *
+ * finger-direction上のRedirectでもphysical dxが反転しない場合は0。
+ * Event単位のmax/min等へ集約せず、candidateごとの値をそのまま返す。
+ */
+export function redirectGeometryQualities(
+  analysis: TransitionAnalysisResult,
+  event: RedirectEvent,
+): readonly RedirectGeometryQuality[] {
+  return Object.freeze(event.candidates.map((candidate) => {
+    const before = transitionCandidate(
+      analysis,
+      event.beforeTransitionIndex,
+      candidate.beforeCandidateIndex,
+    );
+    const after = transitionCandidate(
+      analysis,
+      event.afterTransitionIndex,
+      candidate.afterCandidateIndex,
+    );
+    const horizontalReversal = before.dx * after.dx < 0
+      ? Math.min(Math.abs(before.dx), Math.abs(after.dx))
+      : 0;
+
+    return Object.freeze({
+      candidateIndex: candidate.candidateIndex,
+      beforeDx: before.dx,
+      afterDx: after.dx,
+      horizontalReversal,
+    });
+  }));
 }
 
 export function analyzeRedirects(

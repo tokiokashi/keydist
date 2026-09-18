@@ -97,6 +97,21 @@ participationを通る場合、そのwindowを **RedirectEvent** とする。
 成立pathは **RedirectCandidate** として複数保持できるが、candidate数にかかわらず
 1 windowのEventは最大1件。別pivot同士の候補を継ぎ接ぎして架空のredirectを作らない。
 
+Redirectの**構造**と物理geometryの**quality**は分離する。各RedirectCandidateについて、
+前後Transitionの `dx` が物理的にも反転する場合だけ、pivotを境にx方向へ実際に
+引き返した共通量を次で導出する。
+
+```text
+horizontalReversal =
+  sign(before.dx) != sign(after.dx)
+    ? min(abs(before.dx), abs(after.dx))
+    : 0
+```
+
+単位は `u`。finger-direction上はRedirectでもphysical xが反転しなければ0になる。
+この値はcandidateごとのraw quality factであり、Event単位のmax/minや閾値判定へ
+自動集約しない。また、この値によってRedirectEvent / Roll / ArpeggioSpanを削除しない。
+
 ### ArpeggioSpan / ArpeggioPolicy
 
 keydistの **Arpeggio** は一般語としてのrollそのものではなく、LongRoll / standalone TwoRollへ

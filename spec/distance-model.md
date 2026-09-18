@@ -455,6 +455,26 @@ Eventは `pivotStrokeIndex` / `beforeTransitionIndex` / `afterTransitionIndex` �
 weak / weak-ish等はfinger pathから派生可能なためbooleanを重複保存しない。
 連続する方向反転は重なる個別Eventとして保持し、RedirectRunは導入しない。
 
+#### Redirect horizontal geometry quality
+
+Redirectの成立判定とgeometry qualityを分離する。各RedirectCandidateについて、
+対応するbefore / after FingerTransitionの既存 `dx` factから次を派生できるようにする。
+
+```
+horizontalReversal =
+  before.dx * after.dx < 0
+    ? min(abs(before.dx), abs(after.dx))
+    : 0
+```
+
+これはpivotを境に**x方向で実際に引き返した共通量** [u]。
+finger-directionが反転していてもphysical dxの符号が反転しない場合や、片側が `dx=0` の場合は0。
+
+- candidateごとに保持/導出し、Event単位の代表値へ潰さない
+- 閾値や「良い/悪い」の分類をraw geometry factへ混ぜない
+- この値でRedirectEvent / LongRoll / TwoRoll / ArpeggioSpanの成立可否を変更しない
+- 旧Arpeggio geometry条件へ戻さない
+
 ### 10.4 LongRoll / TwoRoll
 
 Transition / Redirect factsからpure roll構造を作る時は、LongRollとTwoRollで同じ
