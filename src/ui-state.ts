@@ -58,8 +58,12 @@ export type PlaybackKeyFeedbackStyle = 'off' | 'fade' | 'pulse' | 'bounce';
 export interface UiStateConditionsDefaults {
   geometry: GeometryKind;
   windowSize: number;
-  /** 速度の単純移動平均に使う直近Stroke数。全配列共通。 */
+  /** 速度平均の方式。全配列共通。 */
+  playbackRateAverage: 'sma' | 'ewma';
+  /** SMAで使う直近Stroke数。全配列共通。 */
   playbackRateWindow: number;
+  /** EWMAで過去寄与が半分になる時間 [秒]。全配列共通。 */
+  playbackRateHalfLifeSeconds: number;
   sfbHomeCost: boolean;
   preferOppositeThumb: boolean;
   chain: ChainPolicy;
