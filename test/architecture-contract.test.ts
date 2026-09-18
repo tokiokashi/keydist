@@ -18,11 +18,6 @@ async function tsFiles(dir: string): Promise<string[]> {
   return nested.flat();
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^$(){}|[\]\\]/g, '\\function moduleSpecifiers(source: string): readonly string[] {
-');
-}
-
 function moduleSpecifiers(source: string): readonly string[] {
   const specs = new Set<string>();
   for (const pattern of [
@@ -94,11 +89,13 @@ test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async 
       `${relative(ROOT, path)} must not branch on layout ID/name`,
     );
 
+    const stringLiterals = new Set(
+      [...source.matchAll(/(['\"`])([^'\"`\\n]+)\\1/g)].map((match) => match[2]),
+    );
     for (const literal of builtInLayoutLiterals) {
-      const quotedLiteral = new RegExp(`[\\'\"\\\`]${escapeRegExp(literal)}[\\'\"\\\`]`);
-      assert.doesNotMatch(
-        source,
-        quotedLiteral,
+      assert.equal(
+        stringLiterals.has(literal),
+        false,
         `${relative(ROOT, path)} must not hard-code built-in layout ID/name: ${literal}`,
       );
     }
@@ -147,7 +144,7 @@ test('廃止済み#200 legacy symbol / production helperをsrcへ再導入しな
 
   const uiState = await readFile(join(SRC, 'ui-state.ts'), 'utf8');
   for (const symbol of migrationOnly) {
-    const occurrencePattern = new RegExp(escapeRegExp(symbol), 'g');
+    const occurrencePattern = new RegExp(symbol, 'g');
     const detectionPattern = new RegExp(
       `['"]${escapeRegExp(symbol)}['"]\\s+in\\s+(?:override)?playback\\b`,
       'gi',
