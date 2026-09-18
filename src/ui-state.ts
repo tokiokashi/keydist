@@ -50,6 +50,7 @@ export interface UiPlaybackState {
   showTrail: boolean;
   trailTau: number;
   showOrderLabels: boolean;
+  showSameFingerMotion: boolean;
   sameFingerDelay: boolean;
   useCalibration: boolean;
   showChain: boolean;
@@ -193,6 +194,7 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
         showTrail: false,
         trailTau: 5,
         showOrderLabels: false,
+        showSameFingerMotion: false,
         sameFingerDelay: true,
         useCalibration: options.usePlaybackCalibration,
         showChain: false,
@@ -367,6 +369,7 @@ function sanitizePlaybackSettings(value: unknown, fallback: UiPlaybackState): Ui
     showTrail: boolean(playback.showTrail, fallback.showTrail),
     trailTau: integerInRange(playback.trailTau, 1, 20, fallback.trailTau),
     showOrderLabels: boolean(playback.showOrderLabels, fallback.showOrderLabels),
+    showSameFingerMotion: boolean(playback.showSameFingerMotion, fallback.showSameFingerMotion),
     sameFingerDelay: boolean(playback.sameFingerDelay, fallback.sameFingerDelay),
     useCalibration: boolean(playback.useCalibration, fallback.useCalibration),
     showChain,
