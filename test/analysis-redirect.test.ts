@@ -288,6 +288,25 @@ test('finger-direction上はRedirectでもphysical xが反転しなければhori
   );
 });
 
+test('片側のphysical dxが0ならhorizontalReversalは0', () => {
+  const result = analyzeStrokeRedirects([
+    stroke(0, [press('LP', [key('a', 'LP', 0, 2)])]),
+    stroke(1, [press('LM', [key('d', 'LM', 1, 2)])]),
+    stroke(2, [press('LR', [key('s', 'LR', 1, 2)])]),
+  ], keepSameFinger);
+
+  assert.equal(result.redirects.length, 1);
+  assert.deepEqual(
+    redirectGeometryQualities(result, result.redirects[0]),
+    [{
+      candidateIndex: 0,
+      beforeDx: 1,
+      afterDx: 0,
+      horizontalReversal: 0,
+    }],
+  );
+});
+
 test('複数RedirectCandidateのgeometry qualityをevent単位へ集約せず全件保持する', () => {
   const result = analyzeStrokeRedirects([
     stroke(0, [
