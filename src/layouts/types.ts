@@ -13,8 +13,8 @@ export type FaceMode = 'prefix' | 'suffix' | 'simultaneous';
 /** Face が担う入力意味。表示上のlayer分類とは独立したsemantic情報。 */
 export type InputRole = 'layer' | 'modifier' | 'composition';
 
-/** trigger が対象Strokeごとに同期押下されるか、複数Strokeへ保持可能か。 */
-export type TriggerBehavior = 'chord' | 'hold';
+/** trigger の成立方法。同期押下・複数Strokeへの保持・次の対象入力1回への作用を区別する。 */
+export type TriggerBehavior = 'chord' | 'hold' | 'one-shot';
 
 export type HoldPhase = 'start' | 'continue' | 'end';
 
@@ -48,7 +48,7 @@ export interface Face {
   role?: 'layer' | 'modifier';
   /** 解析へ渡す入力意味。省略時は既存role（無ければlayer）を使う。 */
   inputRole?: InputRole;
-  /** triggerの成立方法。triggerを持つFaceで省略時は既存互換のchord。 */
+  /** triggerの成立方法。省略時は成立方法を推測しない。 */
   triggerBehavior?: TriggerBehavior;
 }
 
@@ -258,7 +258,7 @@ export function fromFaces(
           face.mode,
           key,
           face.inputRole ?? face.role ?? (isCombo ? 'composition' : 'layer'),
-          trigger.length > 0 ? face.triggerBehavior ?? 'chord' : undefined,
+          trigger.length > 0 ? face.triggerBehavior : undefined,
         ));
         // 刻印は単打面の1文字だけを表示する。シフト面の出力で上書きしない。
         if (trigger.length === 0 && [...output].length === 1) legends.set(key, output);
