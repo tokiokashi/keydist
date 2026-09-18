@@ -27,8 +27,6 @@ export interface StepSemantic {
   triggerPersistence?: TriggerPersistence;
   outputKeys: readonly string[];
   triggerKeys: readonly string[];
-  /** holdの開始/継続/終了は静的Faceから推測せず、必要な呼び出し側だけが明示する。 */
-  holdPhase?: HoldPhase;
 }
 
 /**
