@@ -1090,12 +1090,13 @@ function setupHowDialog() {
   });
 }
 
-type ConditionTab = 'romaji' | 'physical' | 'model' | 'chain' | 'arpeggio' | 'delay';
+type ConditionTab = 'romaji' | 'physical' | 'model' | 'trigger' | 'chain' | 'arpeggio' | 'delay';
 
 const CONDITION_TABS: readonly [ConditionTab, string][] = [
   ['romaji', 'ローマ字'],
   ['physical', '物理形状'],
   ['model', 'モデル'],
+  ['trigger', 'Trigger'],
   ['chain', 'Chain'],
   ['arpeggio', 'Arpeggio'],
   ['delay', '再生'],
@@ -1274,6 +1275,23 @@ function conditionRow(
     thumbLabel.append(thumb, ' 逆側親指');
     thumb.addEventListener('change', () => commitCondition(layout?.id, 'preferOppositeThumb', thumb.checked));
     fields.append(windowLabel, sfbLabel, thumbLabel);
+    cell.append(fields);
+    return row;
+  }
+
+  if (tab === 'trigger') {
+    const policy = value('triggerRealization');
+    const fields = document.createElement('div');
+    fields.className = 'condition-fields';
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = policy.useHold;
+    input.disabled = !enabled;
+    input.addEventListener('change', () =>
+      commitCondition(layout?.id, 'triggerRealization', { ...policy, useHold: input.checked }));
+    label.append(input, ' hold-capable triggerを連続保持する');
+    fields.append(label);
     cell.append(fields);
     return row;
   }
