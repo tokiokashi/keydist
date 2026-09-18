@@ -147,11 +147,24 @@ test('廃止済み#200 legacy symbol / production helperをsrcへ再導入しな
 
   const uiState = await readFile(join(SRC, 'ui-state.ts'), 'utf8');
   for (const symbol of migrationOnly) {
-    assert.match(
-      uiState,
-      new RegExp(`['"]${symbol}['"]\\s+in\\s+(?:override)?playback\\b`, 'i'),
-      `ui-state.ts may reference ${symbol} only as legacy state detection`,
+    const occurrencePattern = new RegExp(escapeRegExp(symbol), 'g');
+    const detectionPattern = new RegExp(
+      `['"]${escapeRegExp(symbol)}['"]\\s+in\\s+(?:override)?playback\\b`,
+      'gi',
     );
+    const allowedRanges = [...uiState.matchAll(detectionPattern)].map((match) => ({
+      start: match.index,
+      end: match.index + match[0].length,
+    }));
+
+    for (const occurrence of uiState.matchAll(occurrencePattern)) {
+      const index = occurrence.index;
+      assert.equal(
+        allowedRanges.some((range) => range.start <= index && index < range.end),
+        true,
+        `ui-state.ts may reference ${symbol} only as legacy state detection`,
+      );
+    }
   }
 
   const sourcePaths = (await tsFiles(SRC)).map((path) => relative(SRC, path).replaceAll('\\', '/'));
