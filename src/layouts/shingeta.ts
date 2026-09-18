@@ -20,7 +20,7 @@ const face = (
   ...faceFromEntries(trigger, 'simultaneous', entries),
   layer,
   inputRole,
-  ...(trigger.length > 0 ? { triggerBehavior: 'chord' as const } : {}),
+  ...(trigger.length > 0 ? { triggerPersistence: 'single' as const } : {}),
 });
 
 export const SHINGETA_FACES: Face[] = [
