@@ -1,5 +1,5 @@
 import { ADJACENT_PAIRS, ALL_FINGERS, dist, type Finger, type Geometry } from './geometry.ts';
-import type { Trace } from './evaluate.ts';
+import type { Stroke, Trace } from './evaluate.ts';
 import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from './analysis-chain.ts';
 import { DEFAULT_ARPEGGIO_POLICY, type ArpeggioPolicy } from './analysis-arpeggio.ts';
 import { COMBO_LAYER_ID } from './layouts/types.ts';
@@ -113,6 +113,11 @@ export interface Metrics {
    * `perCharSteps` が下がっても `perCharPresses` は下がらない場合がある。
    */
   perCharPresses: number;
+  /**
+   * 打鍵可能な入力文字のうち、基底面の1キーだけで直接出力された文字の割合 [%]。
+   * シフト面・複数キーコンボ・複数Stroke入力は含めない（仕様 §11.5.1）。
+   */
+  baseLayerRate: number;
   /** 隣接指間距離の統計。ホーム間隔からの超過で持つ（仕様 §11.6） */
   adjacent: PairStat[];
   /** 同指連続回数。同じ指で異なる位置を続けて打った数 */
@@ -295,6 +300,7 @@ export function computeMetrics(
     perCharUnits: inputChars ? totalUnits / inputChars : 0,
     perCharSteps: inputChars ? actions / inputChars : 0,
     perCharPresses: inputChars ? presses / inputChars : 0,
+    baseLayerRate: baseLayerRate(trace),
     adjacent,
     sameFinger,
     combos,
@@ -305,6 +311,43 @@ export function computeMetrics(
     keyCounts,
     keyDistance,
   };
+}
+
+/**
+ * 打鍵可能だった入力単位を inputIndex ごとにまとめ、元の文字数で重み付けする。
+ * 「基底面」は、1 Stroke・1キー・layer出力で、trigger / held-trigger / compositionを
+ * 一切伴わない直接入力とする。hold利用ON/OFFで値が変わらないよう、held-triggerも除外する。
+ */
+function baseLayerRate(trace: Trace): number {
+  const byInput = new Map<number, Stroke[]>();
+  for (const stroke of trace.strokes) {
+    const group = byInput.get(stroke.inputIndex);
+    if (group) group.push(stroke);
+    else byInput.set(stroke.inputIndex, [stroke]);
+  }
+
+  let typableChars = 0;
+  let baseChars = 0;
+  for (const strokes of byInput.values()) {
+    const charCount = [...strokes[0].inputChar].length;
+    typableChars += charCount;
+    if (strokes.length !== 1) continue;
+
+    const stroke = strokes[0];
+    const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);
+    const hasTriggerParticipation = stroke.participations.some((participation) =>
+      participation.roles.includes('trigger') || participation.roles.includes('held-trigger'));
+
+    if (stroke.layerId !== COMBO_LAYER_ID
+      && stroke.inputRole === 'layer'
+      && stroke.triggerKeys.length === 0
+      && !hasTriggerParticipation
+      && keyCount === 1) {
+      baseChars += charCount;
+    }
+  }
+
+  return typableChars ? (baseChars / typableChars) * 100 : 0;
 }
 
 function meanStdDevMax(values: number[]): { mean: number; stdDev: number; max: number } {
