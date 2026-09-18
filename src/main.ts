@@ -490,6 +490,7 @@ function removeUserLayout(id: string) {
     if (draft.ui.comparison.baselineByMode.en === id) delete draft.ui.comparison.baselineByMode.en;
     if (draft.ui.comparison.baselineByMode.ja === id) delete draft.ui.comparison.baselineByMode.ja;
   });
+  playbackView?.preserveNextRender('input-position');
   fillPicker();
   fillDetailOptions();
   render();
@@ -540,6 +541,7 @@ function fillPicker() {
       else set.delete(layout.id);
       saveSelectedLayouts();
       label.className = box.checked ? '' : 'off';
+      playbackView?.preserveNextRender('input-position');
       fillDetailOptions();
       render();
     });
@@ -972,6 +974,7 @@ function setupGeometryEditor(): void {
     });
     fillGeometryOptions();
     renderEditor();
+    playbackView?.preserveNextRender('cursor');
     render();
   }
 
@@ -1061,6 +1064,7 @@ function setupGeometryEditor(): void {
       });
       fillGeometryOptions();
       renderEditor();
+      playbackView?.preserveNextRender('cursor');
       render();
       el.geometryStatus.textContent = '打ち手と機材の設定を読み込んだ';
       el.geometryStatus.hidden = false;
@@ -1143,6 +1147,10 @@ function commitCondition(
     fillGeometryOptions();
     fillDetailGeometryOptions(el.detailLayout.value);
   }
+  if (key === 'romajiRule') playbackView?.preserveNextRender('input-position');
+  else if (key === 'geometry' || key === 'chain' || key === 'arpeggioPolicy') {
+    playbackView?.preserveNextRender('cursor');
+  }
   renderConditionDescription();
   render();
 }
@@ -1153,6 +1161,7 @@ function toggleConditionOverride(layoutId: string, enabled: boolean): void {
     else delete draft.conditions.perLayout[layoutId];
   });
   syncGlobalConditionControls();
+  playbackView?.preserveNextRender('input-position');
   renderConditionDescription();
   render();
 }
@@ -1681,6 +1690,7 @@ playbackView = createPlaybackView({
   updateChainPolicy,
   getArpeggioPolicy: () => playbackViewUiState().conditions.defaults.arpeggioPolicy,
   updateArpeggioPolicy,
+  refreshAnalysis: render,
   openCalibration: () => calibrationDialog.open(),
   openCalibrationEdit: () => calibrationDialog.openEdit(),
 });
@@ -1752,6 +1762,7 @@ el.geometry.addEventListener('change', () => {
         geometry,
       };
     });
+    playbackView.preserveNextRender('cursor');
     render();
     return;
   }
@@ -1764,6 +1775,7 @@ el.geometry.addEventListener('change', () => {
   });
   fillGeometryOptions();
   refreshGeometryEditor();
+  playbackView.preserveNextRender('cursor');
   render();
 });
 el.window.addEventListener('input', (event) => {
@@ -1838,6 +1850,7 @@ el.text.addEventListener('change', () => {
 el.detailLayout.addEventListener('change', () => {
   updateUiState((draft) => { draft.ui.layouts.detailByMode[currentModeId()] = el.detailLayout.value; });
   fillDetailGeometryOptions(el.detailLayout.value);
+  playbackView.preserveNextRender('input-position');
   render();
 });
 el.detailGeometry.addEventListener('change', () => {
@@ -1853,6 +1866,7 @@ el.detailGeometry.addEventListener('change', () => {
     );
   });
   fillDetailGeometryOptions(layoutId);
+  playbackView.preserveNextRender('cursor');
   render();
 });
 el.compareBaseline.addEventListener('change', () => {

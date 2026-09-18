@@ -1024,6 +1024,107 @@ export function stepPlayback(
   };
 }
 
+/**
+ * 配列を切り替えた時、次に再生するStrokeの入力位置を新しいStroke列へ写す。
+ * 同じinputIndexが複数Strokeを持つ場合は、その入力内で完了済みのStroke数も維持する。
+ */
+export function playbackCursorForEquivalentInputPosition(
+  previousStrokes: readonly Pick<Stroke, 'inputIndex'>[],
+  nextStrokes: readonly Pick<Stroke, 'inputIndex'>[],
+  cursor: number,
+): number {
+  const previousCursor = clampPlaybackCursor(cursor, previousStrokes.length);
+  if (previousCursor === 0) return 0;
+  if (previousCursor >= previousStrokes.length) return nextStrokes.length;
+
+  const targetInputIndex = previousStrokes[previousCursor].inputIndex;
+  let previousGroupStart = previousCursor;
+  while (
+    previousGroupStart > 0
+    && previousStrokes[previousGroupStart - 1].inputIndex === targetInputIndex
+  ) previousGroupStart--;
+  const completedInGroup = previousCursor - previousGroupStart;
+
+  const nextGroupStart = nextStrokes.findIndex(
+    (stroke) => stroke.inputIndex === targetInputIndex,
+  );
+  if (nextGroupStart < 0) {
+    const nextLater = nextStrokes.findIndex(
+      (stroke) => stroke.inputIndex > targetInputIndex,
+    );
+    return nextLater < 0 ? nextStrokes.length : nextLater;
+  }
+
+  let nextGroupEnd = nextGroupStart + 1;
+  while (
+    nextGroupEnd < nextStrokes.length
+    && nextStrokes[nextGroupEnd].inputIndex === targetInputIndex
+  ) nextGroupEnd++;
+
+  return nextGroupStart + Math.min(
+    completedInGroup,
+    nextGroupEnd - nextGroupStart,
+  );
+}
+
+/**
+ * Analysisを再生成した時、現在の再生位置を新しいTimingへ写す。
+ * cursor/playingは維持し、現在Stroke内の進捗率を新しいdurationへ変換する。
+ */
+export function reconcilePlaybackStateAfterAnalysisRefresh(
+  previousState: PlaybackState,
+  nextBaseState: PlaybackState,
+  previousAnalysis: AggregatedAnalysisResult,
+  nextAnalysis: AggregatedAnalysisResult,
+  nextCursor = previousState.cursor,
+): PlaybackState {
+  const nextStrokeCount = nextAnalysis.strokes.length;
+  const cursor = clampPlaybackCursor(nextCursor, nextStrokeCount);
+  if (nextStrokeCount === 0 || cursor >= nextStrokeCount) {
+    return { ...nextBaseState, cursor, playing: false, elapsedMs: 0 };
+  }
+
+  const previousCursor = clampPlaybackCursor(
+    previousState.cursor,
+    previousAnalysis.strokes.length,
+  );
+  if (previousCursor >= previousAnalysis.strokes.length) {
+    return {
+      ...nextBaseState,
+      cursor,
+      playing: previousState.playing,
+      elapsedMs: 0,
+    };
+  }
+
+  const previousStepMs = playbackStepDurationMs(
+    previousAnalysis,
+    previousCursor,
+    previousState.stepsPerSecond,
+    previousState.sameFingerDelay,
+    previousState.calibration,
+    previousState.speedMultiplier,
+  );
+  const nextStepMs = playbackStepDurationMs(
+    nextAnalysis,
+    cursor,
+    nextBaseState.stepsPerSecond,
+    nextBaseState.sameFingerDelay,
+    nextBaseState.calibration,
+    nextBaseState.speedMultiplier,
+  );
+  const progress = previousStepMs > 0
+    ? Math.min(1, Math.max(0, previousState.elapsedMs / previousStepMs))
+    : 0;
+
+  return {
+    ...nextBaseState,
+    cursor,
+    playing: previousState.playing,
+    elapsedMs: progress * nextStepMs,
+  };
+}
+
 /** requestAnimationFrameの経過時間から再生位置を進める。 */
 export function advancePlayback(
   state: PlaybackState,
