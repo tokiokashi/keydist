@@ -354,7 +354,7 @@ test('新JISは同じかな配置を逐次シフトと通常シフトで共有�
 });
 
 test('かな配列七傑の未実装枠は一覧へ登録しない', () => {
-  const pendingIds = ['asuka', 'shin-koume'];
+  const pendingIds = ['asuka'];
   const noThumbIds = new Set<string>();
   assert.deepEqual(KANA_PENDING.map((layout) => layout.id), pendingIds);
   for (const layout of KANA_PENDING) {
