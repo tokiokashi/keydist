@@ -352,7 +352,7 @@ type TriggerRealizationPolicy = {
 };
 ```
 
-保持を使う場合、各stepへsemantic normalizationが付与した `associatedTriggerKeys` を連続判定keyとする。active holdのtrigger集合と `associatedTriggerKeys` が完全一致する連続対象だけを同じhold区間とし、layer idは継続条件に使わない。
+保持を使う場合、各stepへsemantic normalizationが付与した `associatedTriggerKeys` と、そのassociationの `TriggerPersistence` を連続判定に使う。active holdのtrigger集合と `associatedTriggerKeys` が完全一致し、かつそのassociationが `hold-capable` の連続対象だけを同じhold区間とする。layer idは継続条件に使わない。
 
 ```text
 区間先頭
@@ -366,8 +366,8 @@ type TriggerRealizationPolicy = {
 - `single` triggerをholdへ昇格しない
 - composition等の `InputRole` だけからholdを推測しない
 - trigger集合の部分一致を同一holdとして扱わない
-- prefix / suffix のoutput stepにも、その対象Faceのtrigger集合を `associatedTriggerKeys` として保持する
-- active holdとassociationが一致しないstepの直前でholdを終了する。triggerを持たない通常outputもrelease境界になる
+- prefix / suffix のoutput stepにも、その対象Faceのtrigger集合を `associatedTriggerKeys`、持続能力を `associatedTriggerPersistence` として保持する
+- active holdとassociationが一致しない、またはassociationが `single` のstep直前でholdを終了する。triggerを持たない通常outputもrelease境界になる
 - continueでは保持中triggerを `Press` として再生成しない
 - 保持中triggerキー自身がoutputでもあるstepは、保持継続のまま同じキーを再押下できないためholdをrelease/restartし、新規 `trigger + held-trigger/start` としてrealizeする
 - 保持中のキー位置は指位置snapshotには残す
