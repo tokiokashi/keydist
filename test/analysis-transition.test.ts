@@ -184,19 +184,19 @@ test('Analysis Chain境界を跨ぐTransitionは生成しない', () => {
   );
 });
 
-test('既定breakOnSameFinger=trueでは非親指same StrokeがChain境界になりSFB Transitionを作らない', () => {
+test('既定breakOnSameFinger=trueでは非親指SFB StrokeがChain境界になりSFB Transitionを作らない', () => {
   const result = analyzeStrokeTransitions([
     stroke(0, [press('LI', [key('f', 'LI', 4, 2)])]),
-    stroke(1, [press('LI', [key('r', 'LI', 3.5, 1)])]),
+    stroke(1, [press('LI', [key('r', 'LI', 3.5, 1)], undefined, true)]),
     stroke(2, [press('LM', [key('d', 'LM', 3, 2)])]),
   ]);
 
-  assert.equal(result.sfbEvents.length, 0);
-  assert.equal(
-    result.transitions.some((transition) =>
-      transition.fromStrokeIndex === 0 && transition.toStrokeIndex === 1),
-    false,
+  assert.deepEqual(
+    result.chains.map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
+    [[0, 1], [2, 3]],
   );
+  assert.equal(result.transitions.length, 0);
+  assert.equal(result.sfbEvents.length, 0);
 });
 
 test('Transition / candidate / SFB結果は1回の解析内でimmutable index契約を持つ', () => {
