@@ -20,14 +20,22 @@ const BUILTIN_KANA_IDS = [
   'tsuki-2-263',
 ] as const;
 
-test('built-inかな配列は全Faceのsemanticを明示する', () => {
+test('built-inかな配列はFaceのinputRoleを明示し、同期triggerだけchordを明示する', () => {
   for (const id of BUILTIN_KANA_IDS) {
     const layout = LAYOUT_BY_ID.get(id)!;
     assert.ok(layout.faces && layout.faces.length > 0, id);
     for (const face of layout.faces) {
       assert.notEqual(face.inputRole, undefined, `${id}: inputRole`);
-      if (face.trigger.length > 0) {
-        assert.notEqual(face.triggerBehavior, undefined, `${id}: triggerBehavior`);
+      if (face.trigger.length === 0) continue;
+
+      if (face.mode === 'simultaneous') {
+        assert.notEqual(face.triggerBehavior, undefined, `${id}: simultaneous triggerBehavior`);
+      } else {
+        assert.equal(
+          face.triggerBehavior,
+          undefined,
+          `${id}: sequential trigger must not be inferred as chord/hold`,
+        );
       }
     }
   }
@@ -82,7 +90,8 @@ test('代表FaceのinputRole / triggerBehaviorが意味どおり伝播する', (
 
   const tsuki = evaluate('ぬ', LAYOUT_BY_ID.get('tsuki-2-263')!, geometry, opts());
   assert.equal(tsuki.strokes[0].inputRole, 'modifier');
-  assert.ok(tsuki.strokes[0].participations.some((p) => p.roles.includes('chord-trigger')));
+  assert.ok(tsuki.strokes[0].participations.every((p) => !p.roles.includes('chord-trigger')));
+  assert.ok(tsuki.strokes[0].participations.every((p) => !p.roles.includes('held-trigger')));
 });
 
 test('新JISはprefix/simultaneousの順序とsemanticを独立して持つ', () => {
@@ -93,7 +102,8 @@ test('新JISはprefix/simultaneousの順序とsemanticを独立して持つ', ()
   assert.equal(simultaneous.strokes.length, 1);
   assert.equal(prefix.strokes[0].inputRole, 'modifier');
   assert.equal(simultaneous.strokes[0].inputRole, 'modifier');
-  assert.ok(prefix.strokes[0].participations.some((p) => p.roles.includes('chord-trigger')));
+  assert.ok(prefix.strokes[0].participations.every((p) => !p.roles.includes('chord-trigger')));
+  assert.ok(prefix.strokes[0].participations.every((p) => !p.roles.includes('held-trigger')));
   assert.ok(simultaneous.strokes[0].participations.some((p) => p.roles.includes('chord-trigger')));
 });
 
@@ -119,5 +129,5 @@ test('新JIS prefixの親指remap後もsemantic keyが一致する', () => {
 
   assert.equal(trace.strokes[0].presses[0].keys[0].id, 'thumb-l');
   assert.deepEqual(trace.strokes[0].triggerKeys, ['thumb-l']);
-  assert.deepEqual(trace.strokes[0].participations[0].roles, ['chord-trigger']);
+  assert.deepEqual(trace.strokes[0].participations[0].roles, []);
 });
