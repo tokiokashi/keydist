@@ -1761,11 +1761,31 @@ el.preferOppositeThumb.addEventListener('change', () => {
   });
   render();
 });
+const TEXT_RENDER_DEBOUNCE_MS = 250;
+let textRenderTimer: number | undefined;
+
+function scheduleTextRender(): void {
+  if (textRenderTimer !== undefined) window.clearTimeout(textRenderTimer);
+  textRenderTimer = window.setTimeout(() => {
+    textRenderTimer = undefined;
+    render();
+  }, TEXT_RENDER_DEBOUNCE_MS);
+}
+
+function flushTextRender(): void {
+  if (textRenderTimer !== undefined) window.clearTimeout(textRenderTimer);
+  textRenderTimer = undefined;
+  render();
+}
+
 el.text.addEventListener('input', () => {
   syncTextState();
-  render();
+  scheduleTextRender();
 });
-el.text.addEventListener('change', () => syncTextState(false));
+el.text.addEventListener('change', () => {
+  syncTextState(false);
+  flushTextRender();
+});
 el.detailLayout.addEventListener('change', () => {
   updateUiState((draft) => { draft.ui.layouts.detailByMode[currentModeId()] = el.detailLayout.value; });
   fillDetailGeometryOptions(el.detailLayout.value);
