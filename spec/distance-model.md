@@ -395,6 +395,24 @@ rankが増える方向をinward、減る方向をoutwardとする。したがっ
 そのeventの両端Stroke indexのunionで数える。1 Transitionにsame candidateが複数あっても
 event自体を重複させない。
 
+### 10.3 RedirectEvent / RedirectCandidate
+
+同一Analysis Chain内の3 Stroke windowは、隣接する2 HandTransitionとして扱う。
+before / after TransitionのFingerTransition候補を接続し、inward → outward または
+outward → inwardへ反転する実在pathを **RedirectCandidate** とする。
+
+before側の `to` と after側の `from` は、pivot Stroke上の**同じPress / participation**を
+参照していなければならない。別pivot fingerの候補を継ぎ接ぎして架空のpathを作らない。
+
+Redirectはpureな連続運指ではなく、局所的に反転pathが存在するというexistential factなので、
+pivot Strokeに対象手の複数Pressがあること自体では除外しない。実在する同一pivot pathが
+1本以上あれば **RedirectEvent** を1件生成し、成立したcandidateをすべて保持する。
+candidateが複数でも、3 Stroke windowにつきEventは最大1件。
+
+Eventは `pivotStrokeIndex` / `beforeTransitionIndex` / `afterTransitionIndex` で元解析結果を参照する。
+weak / weak-ish等はfinger pathから派生可能なためbooleanを重複保存しない。
+連続する方向反転は重なる個別Eventとして保持し、RedirectRunは導入しない。
+
 ## 11. 出力指標
 
 合成スコアは作らない。各指標を独立に出す。
