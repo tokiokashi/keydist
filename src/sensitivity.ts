@@ -21,7 +21,7 @@ export function nSensitivity(
   options: Options,
   range: number[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   romajiRuleId: string | null = null,
-  chainPolicy: ChainPolicy = DEFAULT_CHAIN_POLICY,
+  chainPolicy: Readonly<ChainPolicy> = DEFAULT_CHAIN_POLICY,
 ): SensitivityPoint[] {
   return range.map((windowSize) => {
     const trace = evaluate(text, layout, geometry, { ...options, windowSize });
@@ -29,7 +29,7 @@ export function nSensitivity(
       windowSize,
       sfbHomeCost: options.sfbHomeCost,
       preferOppositeThumb: options.preferOppositeThumb ?? false,
-      chainPolicy,
+      chainPolicy: { ...chainPolicy },
       romajiRuleId,
     });
     return { windowSize, totalUnits: m.totalUnits, totalMm: m.totalMm };
