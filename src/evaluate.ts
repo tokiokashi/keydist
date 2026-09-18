@@ -30,7 +30,7 @@ export const DEFAULT_OPTIONS: Options = {
   preferOppositeThumb: false,
 };
 
-export type ParticipationRole = 'output' | 'chord-trigger' | 'held-trigger';
+export type ParticipationRole = 'output' | 'chord-trigger' | 'held-trigger' | 'one-shot-trigger';
 
 export interface StrokeParticipation {
   hand: 'left' | 'right';
@@ -375,7 +375,13 @@ function normalizeParticipations(
   const triggers = new Set(semantic.triggerKeys.map(resolveKeyId));
   const triggerRole: ParticipationRole | undefined = triggers.size === 0
     ? undefined
-    : semantic.triggerBehavior === 'hold' ? 'held-trigger' : 'chord-trigger';
+    : semantic.triggerBehavior === 'chord'
+      ? 'chord-trigger'
+      : semantic.triggerBehavior === 'hold'
+        ? 'held-trigger'
+        : semantic.triggerBehavior === 'one-shot'
+          ? 'one-shot-trigger'
+          : undefined;
 
   return presses.map((press) => {
     const ids = press.keys.map((key) => key.id);
