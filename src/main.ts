@@ -1235,8 +1235,11 @@ function conditionRow(
   const override = layout ? uiState.conditions.perLayout[layout.id] : undefined;
   const enabled = layout === undefined || conditionOverrideEnabled(layout.id);
   const defaults = uiState.conditions.defaults;
-  const value = <K extends keyof typeof defaults>(key: K): typeof defaults[K] =>
-    (override?.[key] ?? defaults[key]) as typeof defaults[K];
+  const value = <K extends keyof typeof defaults>(key: K): typeof defaults[K] => {
+    if (key === 'playbackRateWindow') return defaults[key];
+    const layoutValue = override?.[key as keyof UiStateLayoutConditions];
+    return (layoutValue ?? defaults[key]) as typeof defaults[K];
+  };
 
   if (tab === 'romaji') {
     if (layout && !layout.romajiTable) {
