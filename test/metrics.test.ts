@@ -61,6 +61,7 @@ test('Metricsは数値を算出した測定条件をスナップショットで�
       bridgeSameFinger: true,
     },
     triggerRealizationPolicy: { useHold: true },
+    holdStartActionPolicy: { countAsSeparateStep: true },
     romajiRuleId: 'qwerty',
   });
 });
