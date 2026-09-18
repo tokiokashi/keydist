@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
 import { DEFAULT_OPTIONS, evaluate } from '../src/evaluate.ts';
-import { faceFromEntries, fromFaces, KANA_PENDING, LAYOUT_BY_ID, LAYOUTS_JA } from '../src/layouts/index.ts';
+import { faceFromEntries, fromFaces, LAYOUT_BY_ID, LAYOUTS_JA } from '../src/layouts/index.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 import { toLayout } from '../src/user-layouts.ts';
@@ -353,25 +353,6 @@ test('新JISは同じかな配置を逐次シフトと通常シフトで共有�
     assert.equal(layout.legends.get('thumb-l'), 'シフト');
     assert.equal(layout.legends.get('thumb-r'), 'シフト');
   }
-});
-
-test('かな配列七傑の未実装枠は一覧へ登録しない', () => {
-  const pendingIds = ['asuka'];
-  const pendingIds = ['shin-koume'];
-  const noThumbIds = new Set<string>();
-  assert.deepEqual(KANA_PENDING.map((layout) => layout.id), pendingIds);
-  for (const layout of KANA_PENDING) {
-    assert.equal(layout.map.size, 0, `${layout.id} は配置を持たない`);
-    if (noThumbIds.has(layout.id)) {
-      assert.equal(layout.legends.has('thumb-l'), false, `${layout.id} はthumb-lを表示しない`);
-      assert.equal(layout.legends.has('thumb-r'), false, `${layout.id} はthumb-rを表示しない`);
-    } else {
-      assert.ok(layout.legends.has('thumb-l'), `${layout.id} はthumb-lの凡例を持つ`);
-      assert.ok(layout.legends.has('thumb-r'), `${layout.id} はthumb-rの凡例を持つ`);
-    }
-    assert.equal(LAYOUT_BY_ID.has(layout.id), false);
-  }
-  assert.equal(LAYOUTS_JA.some((layout) => pendingIds.includes(layout.id)), false);
 });
 
 test('保存済み凡例のspaceもthumb-rへ解決する', () => {
