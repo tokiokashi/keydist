@@ -337,6 +337,46 @@ position(f, i) = target(f, i)                  if f is pressed at i
                  H_f                            otherwise
 ```
 
+### 10.0 Trigger realization
+
+canonical Faceの `TriggerPersistence='hold-capable'` は「保持できる」というcapabilityであり、
+base semantic normalizationだけでは `held-trigger` を生成しない。
+評価条件 `TriggerRealizationPolicy` が保持利用を有効にした時だけ、正規化後のStroke列を
+realized Stroke streamへ変換してから構造解析へ渡す。
+
+初期Policy:
+
+```ts
+type TriggerRealizationPolicy = {
+  useHold: boolean; // default false
+};
+```
+
+保持を使う場合、同一layerかつtrigger集合が完全一致する連続対象だけを同じhold区間とする。
+
+```text
+区間先頭
+  trigger + held-trigger/start
+
+区間継続
+  held-trigger/continue
+  （triggerは物理的に再押下しない）
+```
+
+- `single` triggerをholdへ昇格しない
+- composition等の `InputRole` だけからholdを推測しない
+- trigger集合の部分一致を同一holdとして扱わない
+- continueでは保持中triggerを `Press` として再生成しない
+- 保持中のキー位置は指位置snapshotには残す
+- 明示release専用Stroke / Press / Release eventはこの初期実装では導入しない
+- 次Strokeで `held-trigger` が存在しなくなった時点を保持区間の終了境界とする
+- 後段のChain / Transition / Roll / Timingはrealized Stroke streamだけを読み、
+  独自にhold可能性を再判定しない
+
+既定 `useHold=false` は従来評価と互換にする。
+Policyは数値へ影響するため `conditions.defaults` / `conditions.perLayout` に置き、
+Metrics / structural aggregationのcondition snapshotにも実効値を保存する。
+
 ### 10.1 構造解析用のRaw hand runとAnalysis Chain
 
 打鍵列の構造解析では、正規化済みStrokeからいきなりChain境界を決めない。
@@ -524,7 +564,7 @@ type StrokeAnnotation = {
 - SFB: raw Transition event数 / unique関与Stroke coverage
 
 重複Spanや重複Eventはraw countでは保持し、coverageではStroke indexのunionとして1回だけ数える。
-集計結果には解決済み `ChainPolicy` / `ArpeggioPolicy` のimmutable snapshotを持たせ、
+集計結果には解決済み `TriggerRealizationPolicy` / `ChainPolicy` / `ArpeggioPolicy` のimmutable snapshotを持たせ、
 後からUI stateが変わっても算出条件を追跡できるようにする。
 
 ## 11. 出力指標
