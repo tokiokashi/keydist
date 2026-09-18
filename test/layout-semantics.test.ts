@@ -14,6 +14,7 @@ const opts = (o: Partial<Options> = {}): Options => ({
 const BUILTIN_KANA_IDS = [
   'naginata-v18',
   'nicola',
+  'asuka',
   'shin-jis-prefix',
   'shin-jis-simultaneous',
   'shingeta',
