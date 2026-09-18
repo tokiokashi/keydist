@@ -21,6 +21,7 @@ import {
   playbackStrokeDurationMs,
   playbackSameFingerKeyMotions,
   playbackRepeatedKeys,
+  reconcilePlaybackStateAfterAnalysisRefresh,
   playbackTrailKeys,
   playbackTrailOrders,
   setPlaybackCalibration,
@@ -166,6 +167,60 @@ const playbackRateChartData = (
   calibration,
   speedMultiplier,
 );
+
+test('構造解析の再生成ではcursor/playingとStroke内進捗率を維持する', () => {
+  const calibration = {
+    actionsPerSecond: 4,
+    actionsPerSecondByDirection: { 'L→R': 8 },
+    sameHandDifferentFingerActionsPerSecond: 2,
+    sameHandDifferentFingerActionsPerSecondByPair: {},
+    fingerSpeedUnitsPerSecond: {},
+    fallbackFingerSpeedUnitsPerSecond: 10,
+    measuredAt: 1,
+  };
+  const previous = timingAnalysis([
+    { presses: [{ finger: 'LI' }] },
+    { presses: [{ finger: 'RI' }] },
+  ]);
+  const next = timingAnalysis([
+    { presses: [{ finger: 'LI' }] },
+    { presses: [{ finger: 'LM' }] },
+  ]);
+  const state = {
+    ...createPlaybackState(4, false, calibration),
+    cursor: 1,
+    playing: true,
+    elapsedMs: 62.5,
+  };
+
+  const refreshed = reconcilePlaybackStateAfterAnalysisRefresh(state, previous, next);
+
+  assert.equal(refreshed.cursor, 1);
+  assert.equal(refreshed.playing, true);
+  assert.equal(refreshed.elapsedMs, 250);
+});
+
+test('構造解析の再生成後にcursorが末尾なら再生を停止する', () => {
+  const previous = timingAnalysis([
+    { presses: [{ finger: 'LI' }] },
+    { presses: [{ finger: 'LM' }] },
+  ]);
+  const next = timingAnalysis([
+    { presses: [{ finger: 'LI' }] },
+  ]);
+  const state = {
+    ...createPlaybackState(),
+    cursor: 2,
+    playing: true,
+    elapsedMs: 123,
+  };
+
+  const refreshed = reconcilePlaybackStateAfterAnalysisRefresh(state, previous, next);
+
+  assert.equal(refreshed.cursor, 1);
+  assert.equal(refreshed.playing, false);
+  assert.equal(refreshed.elapsedMs, 0);
+});
 
 test('再生カーソルは0から総ステップ数までに収まる', () => {
   assert.equal(clampPlaybackCursor(-1, 3), 0);
