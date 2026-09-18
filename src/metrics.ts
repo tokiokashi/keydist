@@ -1,6 +1,7 @@
 import { ADJACENT_PAIRS, ALL_FINGERS, dist, type Finger, type Geometry } from './geometry.ts';
 import type { Trace } from './evaluate.ts';
 import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from './analysis-chain.ts';
+import { DEFAULT_ARPEGGIO_POLICY, type ArpeggioPolicy } from './analysis-arpeggio.ts';
 import { COMBO_LAYER_ID } from './layouts/types.ts';
 
 /**
@@ -130,6 +131,8 @@ export interface MetricConditions {
   preferOppositeThumb: boolean;
   /** Analysis Chainを作ったChainPolicy。 */
   chainPolicy: ChainPolicy;
+  /** ArpeggioSpanを派生したArpeggioPolicy。 */
+  arpeggioPolicy: ArpeggioPolicy;
   /** ローマ字入力に使った綴り規則の識別子。かな直接入力はnull */
   romajiRuleId: string | null;
 }
@@ -139,6 +142,7 @@ export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
   sfbHomeCost: true,
   preferOppositeThumb: false,
   chainPolicy: { ...DEFAULT_CHAIN_POLICY },
+  arpeggioPolicy: { ...DEFAULT_ARPEGGIO_POLICY },
   romajiRuleId: null,
 };
 
@@ -252,7 +256,11 @@ export function computeMetrics(
     geometryName: geometry.name,
     fingerAssignmentId: geometry.assignment.id,
     fingerAssignmentName: geometry.assignment.name,
-    conditions: { ...conditions, chainPolicy: { ...conditions.chainPolicy } },
+    conditions: {
+      ...conditions,
+      chainPolicy: { ...conditions.chainPolicy },
+      arpeggioPolicy: { ...conditions.arpeggioPolicy },
+    },
     strokes: n,
     presses,
     skipped: trace.skipped,
