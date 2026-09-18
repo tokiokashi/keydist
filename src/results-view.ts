@@ -3,7 +3,8 @@ import {
   assignmentWithHomeKeys, type GeometryKind,
 } from './geometry.ts';
 import { evaluate, type Options, type Trace } from './evaluate.ts';
-import { analyzeChains, sameChainPolicy, type ChainAnalysisResult } from './analysis-chain.ts';
+import { sameChainPolicy } from './analysis-chain.ts';
+import { analyzeStrokeTransitions, type TransitionAnalysisResult } from './analysis-transition.ts';
 import { computeMetrics, type LayerStat, type Metrics } from './metrics.ts';
 import { normalizedLayerColors } from './layer-heatmap.ts';
 import { nSensitivity } from './sensitivity.ts';
@@ -26,7 +27,7 @@ import { buildGeometry } from './geometry.ts';
 export interface Result {
   layout: Layout;
   trace: Trace;
-  analysis: ChainAnalysisResult;
+  analysis: TransitionAnalysisResult;
   metrics: Metrics;
   geometry: ReturnType<typeof buildGeometry>;
   options: Options;
@@ -95,7 +96,7 @@ function render() {
       );
       const geometry = geometryFor(conditions.geometry, layout);
       const trace = evaluate(text, layout, geometry, conditions.options);
-      const analysis = analyzeChains(trace.strokes, conditions.chainPolicy);
+      const analysis = analyzeStrokeTransitions(trace.strokes, conditions.chainPolicy);
       return {
         layout,
         trace,

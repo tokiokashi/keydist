@@ -368,6 +368,33 @@ ChainPolicyは測定条件の一部として `conditions.defaults` / `conditions
 旧 `ui.playback.chainIncludeSameFinger` / `chainIncludeLayerKeys` は移行期間の互換入口として
 残すが、意味が一意に対応する項目だけをadapterでChainPolicyへ変換する。
 
+### 10.2 Transition facts
+
+Analysis Chain内では、同じ手が参加する隣接Stroke `Stroke[i] -> Stroke[i+1]` ごとに
+**HandTransition** を1件作る。各Strokeに対象手のPressが複数ある場合は、
+前StrokeのPress × 後StrokeのPressの直積を **FingerTransition** としてすべて保持し、
+代表1候補へ潰さない。
+
+各FingerTransitionは元StrokeのPress / Participation indexとKey参照を持ち、
+次のfactだけを保持する。
+
+- from / to finger
+- `fingerDirection = inward | outward | same`
+- `fingerStep`
+- Press target間の `dx / dy`
+
+finger rankは左右とも `pinky -> ring -> middle -> index -> thumb` とし、
+rankが増える方向をinward、減る方向をoutwardとする。したがって右手では
+物理x座標の符号とfingerDirectionが逆になる場合がある。飛び指や親指もfactから除外しない。
+
+この層ではRoll / Redirect / Arpeggio可否、距離閾値、速度、Calibrationを判断しない。
+`dx / dy` や `fingerStep` は後段が参照できる品質factであり、candidate削減条件ではない。
+
+同一fingerのcandidate（`fingerDirection='same'`）を1つ以上含むHandTransitionは
+構造上のSFB eventとして取得できる。SFBのevent数はTransition数で数え、coverageは
+そのeventの両端Stroke indexのunionで数える。1 Transitionにsame candidateが複数あっても
+event自体を重複させない。
+
 ## 11. 出力指標
 
 合成スコアは作らない。各指標を独立に出す。
