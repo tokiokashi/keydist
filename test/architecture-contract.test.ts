@@ -81,9 +81,7 @@ test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async 
 });
 
 test('廃止済み#200 legacy symbol / production helperをsrcへ再導入しない', async () => {
-  const forbidden = [
-    'arpeggioEnabled',
-    'arpeggioDelayMode',
+  const forbiddenEverywhere = [
     'leadDelayMs',
     'playbackArpeggioSpans',
     'ARPEGGIO_PRESETS',
@@ -94,16 +92,41 @@ test('廃止済み#200 legacy symbol / production helperをsrcへ再導入しな
     'maxRowReversal',
     'maxRowStep',
   ] as const;
+  const migrationOnly = [
+    'arpeggioEnabled',
+    'arpeggioDelayMode',
+  ] as const;
 
   for (const path of await tsFiles(SRC)) {
     const source = await readFile(path, 'utf8');
-    for (const symbol of forbidden) {
+    const relativePath = relative(SRC, path).replaceAll('\\', '/');
+
+    for (const symbol of forbiddenEverywhere) {
       assert.equal(
         source.includes(symbol),
         false,
         `${relative(ROOT, path)} reintroduced legacy symbol: ${symbol}`,
       );
     }
+
+    if (relativePath !== 'ui-state.ts') {
+      for (const symbol of migrationOnly) {
+        assert.equal(
+          source.includes(symbol),
+          false,
+          `${relative(ROOT, path)} reintroduced migration-only symbol: ${symbol}`,
+        );
+      }
+    }
+  }
+
+  const uiState = await readFile(join(SRC, 'ui-state.ts'), 'utf8');
+  for (const symbol of migrationOnly) {
+    assert.match(
+      uiState,
+      new RegExp(`['"]${symbol}['"]\\s+in\\s+(?:override)?playback\\b`, 'i'),
+      `ui-state.ts may reference ${symbol} only as legacy state detection`,
+    );
   }
 
   const sourcePaths = (await tsFiles(SRC)).map((path) => relative(SRC, path).replaceAll('\\', '/'));
