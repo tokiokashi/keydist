@@ -267,6 +267,7 @@ export function computeMetrics(
       ...conditions,
       chainPolicy: { ...conditions.chainPolicy },
       arpeggioPolicy: { ...conditions.arpeggioPolicy },
+      triggerRealizationPolicy: { ...conditions.triggerRealizationPolicy },
     },
     strokes: n,
     presses,
