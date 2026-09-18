@@ -22,7 +22,9 @@ const QWERTY_ROWS = [
 const face = (
   trigger: string[],
   entries: Record<string, string>,
-  options: Pick<Face, 'layer' | 'role'> = {},
+  options: Pick<Face, 'layer' | 'role' | 'inputRole' | 'triggerBehavior'> = {
+    inputRole: 'layer',
+  },
 ): Face => ({
   trigger,
   mode: 'simultaneous',
@@ -45,53 +47,53 @@ export const NAGINATA_V18_FACES: Face[] = [
     v: '、', m: '。', o: 'え', n: 'お', u: 'さ', a: 'せ', g: 'ち', l: 'つ',
     d: 'に', b: 'ぬ', w: 'ね', j: 'の', ';': 'ふ', f: 'ま', s: 'み', ',': 'む',
     r: 'め', k: 'も', h: 'や', p: 'ゆ', i: 'よ', e: 'り', '.': 'わ', c: 'を',
-  }),
+  }, { inputRole: 'modifier', triggerBehavior: 'hold' }),
 
   // 小書き
-  face(['q'], { j: 'ぁ', k: 'ぃ', l: 'ぅ', o: 'ぇ', n: 'ぉ', h: 'ゃ', p: 'ゅ', i: 'ょ', '.': 'ゎ' }, { role: 'modifier' }),
+  face(['q'], { j: 'ぁ', k: 'ぃ', l: 'ぅ', o: 'ぇ', n: 'ぉ', h: 'ゃ', p: 'ゅ', i: 'ょ', '.': 'ゎ' }, { role: 'modifier', inputRole: 'modifier', triggerBehavior: 'chord' }),
 
   // 濁音（右手側のトリガー）
   face(['j'], {
     f: 'が', w: 'ぎ', s: 'げ', v: 'ご', r: 'じ', a: 'ぜ', b: 'ぞ', g: 'ぢ', e: 'で',
     d: 'ど', c: 'ば', x: 'び', z: 'ぼ',
-  }, { layer: '濁音', role: 'modifier' }),
+  }, { layer: '濁音', role: 'modifier', inputRole: 'modifier', triggerBehavior: 'chord' }),
 
   // 濁音（左手側のトリガー）
-  face(['f'], { u: 'ざ', o: 'ず', n: 'だ', l: 'づ', h: 'ぐ', p: 'べ', ';': 'ぶ' }, { layer: '濁音', role: 'modifier' }),
+  face(['f'], { u: 'ざ', o: 'ず', n: 'だ', l: 'づ', h: 'ぐ', p: 'べ', ';': 'ぶ' }, { layer: '濁音', role: 'modifier', inputRole: 'modifier', triggerBehavior: 'chord' }),
 
   // 半濁音
-  face(['m'], { c: 'ぱ', x: 'ぴ', z: 'ぽ' }, { layer: '半濁音', role: 'modifier' }),
-  face(['v'], { p: 'ぺ', ';': 'ぷ' }, { layer: '半濁音', role: 'modifier' }),
+  face(['m'], { c: 'ぱ', x: 'ぴ', z: 'ぽ' }, { layer: '半濁音', role: 'modifier', inputRole: 'modifier', triggerBehavior: 'chord' }),
+  face(['v'], { p: 'ぺ', ';': 'ぷ' }, { layer: '半濁音', role: 'modifier', inputRole: 'modifier', triggerBehavior: 'chord' }),
 
   // 拗音の母音面
-  face(['h'], { w: 'きゃ', r: 'しゃ', g: 'ちゃ', d: 'にゃ', x: 'ひゃ', s: 'みゃ', e: 'りゃ' }, { role: 'modifier' }),
-  face(['p'], { w: 'きゅ', r: 'しゅ', g: 'ちゅ', d: 'にゅ', x: 'ひゅ', s: 'みゅ', e: 'りゅ' }, { role: 'modifier' }),
-  face(['i'], { w: 'きょ', r: 'しょ', g: 'ちょ', d: 'にょ', x: 'ひょ', s: 'みょ', e: 'りょ' }, { role: 'modifier' }),
+  face(['h'], { w: 'きゃ', r: 'しゃ', g: 'ちゃ', d: 'にゃ', x: 'ひゃ', s: 'みゃ', e: 'りゃ' }, { role: 'modifier', inputRole: 'modifier', triggerBehavior: 'chord' }),
+  face(['p'], { w: 'きゅ', r: 'しゅ', g: 'ちゅ', d: 'にゅ', x: 'ひゅ', s: 'みゅ', e: 'りゅ' }, { role: 'modifier', inputRole: 'modifier', triggerBehavior: 'chord' }),
+  face(['i'], { w: 'きょ', r: 'しょ', g: 'ちょ', d: 'にょ', x: 'ひょ', s: 'みょ', e: 'りょ' }, { role: 'modifier', inputRole: 'modifier', triggerBehavior: 'chord' }),
 
   // 外来音・濁音拗音。triggerは残りのキーをまとめて1面にする。
-  face(['o', 'v'], { k: 'いぇ', l: 'うぇ', h: 'くぇ', ';': 'ふぇ' }),
-  face(['k', 'v'], { l: 'うぃ', h: 'くぃ', ';': 'ふぃ' }),
-  face(['n', 'v'], { l: 'うぉ', h: 'くぉ', ';': 'ふぉ' }),
-  face(['h', 'j'], { w: 'ぎゃ', r: 'じゃ', g: 'ぢゃ', x: 'びゃ' }),
-  face(['j', 'p'], { w: 'ぎゅ', r: 'じゅ', g: 'ぢゅ', e: 'でゅ', x: 'びゅ' }),
-  face(['i', 'j'], { w: 'ぎょ', r: 'じょ', g: 'ぢょ', x: 'びょ' }),
-  face(['j', 'v'], { h: 'くぁ', l: 'つぁ', ';': 'ふぁ' }),
-  face(['k', 'm'], { e: 'てぃ' }),
-  face(['m', 'p'], { e: 'てゅ', x: 'ぴゅ' }),
-  face(['j', 'k'], { e: 'でぃ' }),
-  face(['l', 'm'], { d: 'とぅ' }),
-  face(['j', 'l'], { d: 'どぅ' }),
-  face(['h', 'm'], { x: 'ぴゃ' }),
-  face(['i', 'm'], { x: 'ぴょ' }),
-  face(['j', 'o'], { r: 'じぇ', g: 'ぢぇ' }),
-  face(['m', 'o'], { r: 'しぇ', g: 'ちぇ' }),
-  face(['f', 'j'], { h: 'ぐぁ' }),
-  face(['f', 'k'], { h: 'ぐぃ' }),
-  face(['f', 'o'], { h: 'ぐぇ' }),
-  face(['f', 'n'], { h: 'ぐぉ' }),
-  face(['.', 'f'], { h: 'ぐゎ' }),
-  face(['.', 'v'], { h: 'くゎ' }),
-  face(['p', 'v'], { ';': 'ふゅ' }),
+  face(['o', 'v'], { k: 'いぇ', l: 'うぇ', h: 'くぇ', ';': 'ふぇ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['k', 'v'], { l: 'うぃ', h: 'くぃ', ';': 'ふぃ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['n', 'v'], { l: 'うぉ', h: 'くぉ', ';': 'ふぉ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['h', 'j'], { w: 'ぎゃ', r: 'じゃ', g: 'ぢゃ', x: 'びゃ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['j', 'p'], { w: 'ぎゅ', r: 'じゅ', g: 'ぢゅ', e: 'でゅ', x: 'びゅ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['i', 'j'], { w: 'ぎょ', r: 'じょ', g: 'ぢょ', x: 'びょ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['j', 'v'], { h: 'くぁ', l: 'つぁ', ';': 'ふぁ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['k', 'm'], { e: 'てぃ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['m', 'p'], { e: 'てゅ', x: 'ぴゅ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['j', 'k'], { e: 'でぃ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['l', 'm'], { d: 'とぅ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['j', 'l'], { d: 'どぅ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['h', 'm'], { x: 'ぴゃ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['i', 'm'], { x: 'ぴょ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['j', 'o'], { r: 'じぇ', g: 'ぢぇ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['m', 'o'], { r: 'しぇ', g: 'ちぇ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['f', 'j'], { h: 'ぐぁ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['f', 'k'], { h: 'ぐぃ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['f', 'o'], { h: 'ぐぇ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['f', 'n'], { h: 'ぐぉ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['.', 'f'], { h: 'ぐゎ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['.', 'v'], { h: 'くゎ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
+  face(['p', 'v'], { ';': 'ふゅ' }, { inputRole: 'composition', triggerBehavior: 'chord' }),
 ];
 
 export const NAGINATA_V18: Layout = fromFaces('naginata-v18', '薙刀式v18', NAGINATA_V18_FACES);
