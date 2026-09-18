@@ -7,6 +7,11 @@ import {
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   type TriggerRealizationPolicy,
 } from './trigger-realization.ts';
+import {
+  additionalHoldStartSteps,
+  DEFAULT_HOLD_START_ACTION_POLICY,
+  type HoldStartActionPolicy,
+} from './hold-start-action.ts';
 
 /**
  * 隣接ペアのホーム間隔 [u]（仕様 §11.6で引く基準）。
@@ -139,6 +144,8 @@ export interface MetricConditions {
   arpeggioPolicy: ArpeggioPolicy;
   /** hold-capable triggerをrealizeしたPolicy。 */
   triggerRealizationPolicy: TriggerRealizationPolicy;
+  /** held-trigger/startを独立actionとして数えるPolicy。 */
+  holdStartActionPolicy: HoldStartActionPolicy;
   /** ローマ字入力に使った綴り規則の識別子。かな直接入力はnull */
   romajiRuleId: string | null;
 }
@@ -150,6 +157,7 @@ export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
   chainPolicy: { ...DEFAULT_CHAIN_POLICY },
   arpeggioPolicy: { ...DEFAULT_ARPEGGIO_POLICY },
   triggerRealizationPolicy: { ...DEFAULT_TRIGGER_REALIZATION_POLICY },
+  holdStartActionPolicy: { ...DEFAULT_HOLD_START_ACTION_POLICY },
   romajiRuleId: null,
 };
 
@@ -256,7 +264,8 @@ export function computeMetrics(
     hits: trace.comboHits.length,
   };
 
-  const n = trace.strokes.length;
+  const n = trace.strokes.length
+    + additionalHoldStartSteps(trace.strokes, conditions.holdStartActionPolicy);
   const { inputChars } = trace;
   return {
     geometryId: geometry.id,
@@ -268,6 +277,7 @@ export function computeMetrics(
       chainPolicy: { ...conditions.chainPolicy },
       arpeggioPolicy: { ...conditions.arpeggioPolicy },
       triggerRealizationPolicy: { ...conditions.triggerRealizationPolicy },
+      holdStartActionPolicy: { ...conditions.holdStartActionPolicy },
     },
     strokes: n,
     presses,
