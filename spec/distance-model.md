@@ -413,6 +413,40 @@ Eventは `pivotStrokeIndex` / `beforeTransitionIndex` / `afterTransitionIndex` �
 weak / weak-ish等はfinger pathから派生可能なためbooleanを重複保存しない。
 連続する方向反転は重なる個別Eventとして保持し、RedirectRunは導入しない。
 
+### 10.4 LongRoll / TwoRoll
+
+Transition / Redirect factsからpure roll構造を作る時は、LongRollとTwoRollで同じ
+**Roll constituent Stroke eligibility** を使う。
+
+- 対象handのPressが1本だけ
+- そのPressのnormalized participationが `output` roleを持つ
+- output親指も構造候補として扱う
+- opposite-handの新規 `trigger` activationが同一Strokeにある場合はpure rollから除外
+- opposite-hand `held-trigger` だけでは除外しない
+- trigger-only Strokeの境界はChainPolicyへ従う
+
+対象handの複数Press Strokeは、Transition候補から都合のよい1本を選んでpure rollへ
+通してはいけない。Redirectはexistential eventなので同じStrokeがpivotになれる場合があるが、
+この非対称は意図的である。
+
+**LongRoll** は同一Analysis Chain内でinwardまたはoutwardが2 Transition以上連続する
+3 Stroke以上のmaximal区間だけを保持する。sameは区間を切り、finger jumpだけを理由に
+除外しない。正規範囲はStroke index half-open `[startStrokeIndex,endStrokeIndex)` とし、
+Transition範囲をRollElementへ重複保存しない。
+
+**TwoRoll** はLongRollへ包含されない2 Strokeのdirectional pair。
+2 Stroke双方へ上記eligibilityを適用し、end StrokeがRedirect pivotの場合だけ除外する。
+start Strokeがpivotでも除外しない。この非対称は「直後に反転するpairをTwoRollにしない」
+という分類規則であり、Timing / Calibration判定ではない。
+
+```
+LongRoll ∩ TwoRoll = ∅
+AnyRoll = LongRoll ∪ TwoRoll
+```
+
+Stroke spanから対応Transitionを得る変換は共通helperへ集約し、後段が個別に
+off-by-one変換を実装しない。
+
 ## 11. 出力指標
 
 合成スコアは作らない。各指標を独立に出す。
