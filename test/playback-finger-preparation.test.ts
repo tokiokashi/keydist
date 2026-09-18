@@ -17,14 +17,15 @@ test('準備時間0では従来の指位置表示と一致する', () => {
   const trace = evaluate('fjg', layout, geometry);
   const analysis = analyzeStrokeStructure(trace.strokes);
   const current = playbackFingerPositionKeys(trace.strokes[1], geometry);
+  const schedule = playbackTimingSchedule(analysis, 1, true);
   const prepared = playbackPreparedFingerPositionKeys(
     analysis,
+    schedule,
     2,
     0,
     geometry,
     0,
     1,
-    true,
   );
 
   assert.deepEqual([...prepared], [...current]);
@@ -39,12 +40,12 @@ test('空き時間があれば次の実Press位置へ打鍵前に到着する', 
 
   const prepared = playbackPreparedFingerPositionKeys(
     analysis,
+    schedule,
     2,
     0,
     geometry,
     1,
     1,
-    true,
   );
 
   // LIは1打目fのあと2打目では空いている。gまで1uなので、
@@ -67,15 +68,16 @@ test('held-trigger継続だけのparticipationは次のPressとして扱わな�
         : participation),
   };
   const analysis = analyzeStrokeStructure(strokes);
+  const schedule = playbackTimingSchedule(analysis, 1, true);
 
   const prepared = playbackPreparedFingerPositionKeys(
     analysis,
+    schedule,
     2,
     0,
     geometry,
     10,
     1,
-    true,
   );
 
   assert.equal(prepared.get('f'), 'LI');
@@ -105,27 +107,28 @@ test('held-trigger継続中は前動作が空いたとみなさず、間に合�
     ],
   };
   const analysis = analyzeStrokeStructure(strokes);
+  const schedule = playbackTimingSchedule(analysis, 1, true);
 
   const justBeforePress = playbackPreparedFingerPositionKeys(
     analysis,
+    schedule,
     2,
     999,
     geometry,
     10,
     1,
-    true,
   );
   assert.equal(justBeforePress.get('f'), 'LI');
   assert.equal(justBeforePress.has('g'), false);
 
   const atPress = playbackPreparedFingerPositionKeys(
     analysis,
+    schedule,
     3,
     0,
     geometry,
     10,
     1,
-    true,
   );
   assert.equal(atPress.get('g'), 'LI');
   assert.equal(atPress.has('f'), false);
