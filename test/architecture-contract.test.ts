@@ -90,9 +90,9 @@ test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async 
     );
 
     const stringLiterals = new Set([
-      ...source.matchAll(/'([^'\\n]+)'/g),
-      ...source.matchAll(/\"([^\"\\n]+)\"/g),
-      ...source.matchAll(/`([^`\\n]+)`/g),
+      ...source.matchAll(/'([^'\r\n]+)'/g),
+      ...source.matchAll(/"([^"\r\n]+)"/g),
+      ...source.matchAll(/`([^`\r\n]+)`/g),
     ].map((match) => match[1]));
     for (const literal of builtInLayoutLiterals) {
       assert.equal(
