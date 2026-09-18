@@ -5,6 +5,12 @@ import {
   playbackArpeggioOrders,
   playbackArpeggioSpans,
 } from '../src/playback-arpeggio.ts';
+import {
+  createPlaybackState,
+  playbackStepDurationMs,
+} from '../src/playback.ts';
+import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
+import { DEFAULT_CHAIN_POLICY } from '../src/analysis-chain.ts';
 
 function stroke(
   finger: string,
@@ -118,4 +124,93 @@ test('層操作のtriggerKeysは出力キーとして数えない', () => {
     stroke('LM', 'q', 1, 1, { triggerKeys: ['q'] }),
     stroke('LI', 'r', 4, 1),
   ]), []);
+});
+
+
+function timingStroke(
+  index: number,
+  finger: 'LM' | 'LI',
+  id: string,
+  x: number,
+  row: number,
+): any {
+  const key = { id, finger, x, y: row, row, col: 0 };
+  const press = {
+    finger,
+    keys: [key],
+    target: { x, y: row },
+    gap: 1,
+    distance: 0,
+    sfb: false,
+  };
+  return {
+    index,
+    char: String(index),
+    inputChar: String(index),
+    inputIndex: index,
+    layerId: 'single',
+    inputRole: 'layer',
+    triggerKeys: [],
+    pairedTriggerKeys: [],
+    participations: [{
+      hand: 'left',
+      finger,
+      keys: [key],
+      roles: ['output'],
+    }],
+    presses: [press],
+    distance: 0,
+    positions: {},
+  };
+}
+
+test('旧アルペジオTiming fixtureはSpan判定ではなくTransition Calibrationへ移行する', () => {
+  const legacyArpeggio = [
+    stroke('LM', 'e', 2, 1),
+    stroke('LI', 'r', 4, 1),
+  ];
+  assert.deepEqual(
+    playbackArpeggioSpans(legacyArpeggio),
+    [{ start: 0, end: 2, hand: 'left' }],
+  );
+
+  const calibration = {
+    actionsPerSecond: 5,
+    sameHandDifferentFingerActionsPerSecond: 2,
+    sameHandDifferentFingerActionsPerSecondByPair: { 'LM:LI': 3 },
+    sameHandDifferentFingerActionsPerDirectedPair: { 'LM>LI': 0.2 },
+    fingerSpeedUnitsPerSecond: {},
+    fallbackFingerSpeedUnitsPerSecond: 10,
+    measuredAt: 1,
+  };
+  const chainPolicy = {
+    ...DEFAULT_CHAIN_POLICY,
+    breakOnSameFinger: false,
+  };
+
+  const qualified = analyzeStrokeStructure([
+    timingStroke(0, 'LM', 'e', 2, 1),
+    timingStroke(1, 'LI', 'r', 4, 1),
+  ], chainPolicy);
+  assert.equal(
+    playbackStepDurationMs(qualified, 1, 1, false, calibration),
+    5000,
+  );
+
+  // 旧geometry heuristicでは非Arpeggioでも、新Timingは同じLM>LI Transitionを同じ速度で評価する。
+  const legacyNonArpeggio = [
+    stroke('LM', 'e', 2, 1),
+    stroke('LI', 'r', 2.5, 1),
+  ];
+  assert.deepEqual(playbackArpeggioSpans(legacyNonArpeggio), []);
+  const nonQualified = analyzeStrokeStructure([
+    timingStroke(0, 'LM', 'e', 2, 1),
+    timingStroke(1, 'LI', 'r', 2.5, 1),
+  ], chainPolicy);
+  assert.equal(
+    playbackStepDurationMs(nonQualified, 1, 1, false, calibration),
+    5000,
+  );
+
+  assert.equal('arpeggio' in createPlaybackState(), false);
 });
