@@ -27,6 +27,14 @@ const prefix = fromFaces('hold-action-prefix', 'hold-action-prefix', [{
   triggerPersistence: 'hold-capable',
 }]);
 
+const composition = fromFaces('hold-action-composition', 'hold-action-composition', [{
+  trigger: ['q'],
+  mode: 'simultaneous',
+  rows: ['', '', ['', '', 'y', 'x'], ''],
+  inputRole: 'composition',
+  triggerPersistence: 'hold-capable',
+}]);
+
 const realized = (text: string, layout = simultaneous) => evaluate(text, layout, geometry, {
   windowSize: 3,
   sfbHomeCost: true,
@@ -55,7 +63,7 @@ test('simultaneousのhold開始だけを1区間につき1 additional stepとし�
   assert.equal(continues.length, 2);
 });
 
-test('action計上ONはstep数だけを増やしpress数と距離を変えない', () => {
+test('action計上ONはaction数だけを増やしphysical Stroke・press・距離を変えない', () => {
   const trace = realized('xyz');
   const baseConditions = {
     ...DEFAULT_METRIC_CONDITIONS,
@@ -70,12 +78,34 @@ test('action計上ONはstep数だけを増やしpress数と距離を変えない
     holdStartActionPolicy: { countAsSeparateStep: true },
   });
 
-  assert.equal(on.strokes, off.strokes + 1);
+  assert.equal(on.strokes, off.strokes);
+  assert.equal(on.actions, off.actions + 1);
   assert.equal(on.perCharSteps, off.perCharSteps + 1 / trace.inputChars);
+  assert.equal(on.meanPerStroke, off.meanPerStroke);
+  assert.equal(on.sameFinger, off.sameFinger);
   assert.equal(on.presses, off.presses);
   assert.equal(on.perCharPresses, off.perCharPresses);
   assert.equal(on.totalUnits, off.totalUnits);
   assert.equal(on.perCharUnits, off.perCharUnits);
+});
+
+test('compositionのheld-trigger/startは追加actionとして数えない', () => {
+  const trace = realized('xy', composition);
+  assert.ok(trace.strokes.some((stroke) =>
+    stroke.inputRole === 'composition'
+    && stroke.participations.some((participation) =>
+      participation.roles.includes('held-trigger') && participation.holdPhase === 'start')));
+  assert.equal(
+    additionalHoldStartSteps(trace.strokes, { countAsSeparateStep: true }),
+    0,
+  );
+
+  const metrics = computeMetrics(trace, geometry, {
+    ...DEFAULT_METRIC_CONDITIONS,
+    triggerRealizationPolicy: { useHold: true },
+    holdStartActionPolicy: { countAsSeparateStep: true },
+  });
+  assert.equal(metrics.actions, metrics.strokes);
 });
 
 test('prefix trigger-only Strokeは既に独立stepなので追加計上しない', () => {
