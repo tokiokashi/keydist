@@ -6,7 +6,7 @@ import { faceFromEntries, fromFaces, KANA_PENDING, LAYOUT_BY_ID, LAYOUTS_JA } fr
 import { computeMetrics } from '../src/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 import { toLayout } from '../src/user-layouts.ts';
-import { assertKanaLayout } from './kana-layout-helpers.ts';
+import { assertKanaLayout, assertKanaLayoutFixture } from './kana-layout-helpers.ts';
 import {
   canFoldFaces,
   classifyFaces,
@@ -280,6 +280,12 @@ test('新下駄配列は7面の直接かな入力を同時押しとして保持�
   assert.equal(layout.legends.has('thumb-r'), false);
   for (const sequence of layout.map.values()) assert.equal(sequence.length, 1);
   assertKanaLayout(layout);
+});
+
+test('面定義を出典フィクスチャの全セルと照合する（#83）', () => {
+  for (const id of ['naginata-v18', 'nicola', 'shingeta', 'tsuki-2-263']) {
+    assertKanaLayoutFixture(LAYOUT_BY_ID.get(id)!);
+  }
 });
 
 test('月配列2-263式はクロスシフトと濁音の逐次合成を保持する', () => {
