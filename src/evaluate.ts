@@ -218,7 +218,7 @@ export function evaluate(
     const stepTriggerKeys = layout.stepTriggerKeys?.get(char);
     const stepSemantics = layout.stepSemantics?.get(char);
     for (const [stepIndex, originalStep] of sequence.entries()) {
-      const remapped = remapThumbShift(originalStep, layout, geometry, options);
+      const remapped = remapThumbShift(originalStep, sequence, stepIndex, layout, geometry, options);
       const step = remapped.step;
       const layerId = stepLayerIds?.[stepIndex] ??
         (comboConditions.has(char) ? COMBO_LAYER_ID : SINGLE_LAYER_ID);
@@ -402,6 +402,8 @@ interface RemappedThumbShift {
 /** 親指シフトの設定が有効なら、出力キーと反対側の親指へトリガーを振り替える。 */
 function remapThumbShift(
   originalStep: readonly string[],
+  sequence: Sequence,
+  stepIndex: number,
   layout: Layout,
   geometry: Geometry,
   options: Options,
@@ -415,12 +417,20 @@ function remapThumbShift(
   if (!options.preferOppositeThumb) return { step, shiftKey };
 
   const outputKeys = step.filter((key) => key !== shiftKey);
-  const outputHands = new Set(
-    outputKeys
-      .map((key) => geometry.keys.get(key)?.finger)
-      .filter((finger): finger is Finger => finger !== undefined && finger !== 'LT' && finger !== 'RT')
-      .map((finger) => finger.startsWith('L') ? 'left' : 'right'),
-  );
+  let outputHands = nonThumbHands(outputKeys, geometry);
+
+  // prefix配列ではシフト単独ステップになるため、同一ステップだけでは
+  // 出力側の手が分からない。直後以降の最初の非親指出力ステップを参照する。
+  // suffixは後続出力が無いので従来どおり振り替えない。
+  if (outputHands.size === 0 && step.length === 1 && step[0] === shiftKey) {
+    for (const followingStep of sequence.slice(stepIndex + 1)) {
+      const followingKeys = followingStep.map(resolveKeyId).filter((key) => key !== shiftKey);
+      const followingHands = nonThumbHands(followingKeys, geometry);
+      if (followingHands.size === 0) continue;
+      outputHands = followingHands;
+      break;
+    }
+  }
   if (outputHands.size !== 1) return { step, shiftKey };
 
   const outputHand = [...outputHands][0];
@@ -429,6 +439,18 @@ function remapThumbShift(
     step: step.map((key) => key === shiftKey ? oppositeThumb : key),
     shiftKey: oppositeThumb,
   };
+}
+
+function nonThumbHands(
+  keys: readonly string[],
+  geometry: Geometry,
+): Set<'left' | 'right'> {
+  return new Set(
+    keys
+      .map((key) => geometry.keys.get(key)?.finger)
+      .filter((finger): finger is Finger => finger !== undefined && finger !== 'LT' && finger !== 'RT')
+      .map((finger) => finger.startsWith('L') ? 'left' as const : 'right' as const),
+  );
 }
 
 function remapThumbShiftKeys(
