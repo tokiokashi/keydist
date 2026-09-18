@@ -110,6 +110,28 @@ test('ANSI対象外セルと omission の値が食い違えば失敗する（#20
   );
 });
 
+test('未定義の omission reason は失敗する（#201）', () => {
+  const manifest = makeManifest();
+  (manifest.omissions as Array<{
+    faceIndex: number;
+    row: number;
+    column: number;
+    value: string;
+    reason: string;
+  }>).push({
+    faceIndex: 0,
+    row: 3,
+    column: 10,
+    value: '・',
+    reason: 'unknown-reason',
+  });
+
+  assert.throws(
+    () => validateSourceManifest('unknown-reason.json', manifest),
+    /未定義の除外理由 unknown-reason/,
+  );
+});
+
 test('ANSI対象列の omission は従来どおりセルの空欄化を必須にする（#201）', () => {
   const manifest = makeManifest();
   manifest.faces[0].rows[0][0] = 'ヶ';
