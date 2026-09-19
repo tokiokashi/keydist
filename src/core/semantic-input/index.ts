@@ -19,5 +19,7 @@ export type {
 
 export {
   flattenBaseActionRealizations,
+  validateBaseActionRealization,
+  validateBaseActionRealizations,
   type SemanticInputAction,
 } from './realization.ts';
