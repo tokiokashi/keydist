@@ -68,7 +68,6 @@ function selectShortestFaces(sources: readonly SourceFace[]): Face[] {
 
 const KAWASEMI_PLUS_SOURCES: SourceFace[] = [
   sourceFace([], {
-      "-": "ー",
       "q": "に",
       "w": "が",
       "e": "じ",
