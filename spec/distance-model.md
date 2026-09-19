@@ -651,8 +651,9 @@ layer / modifierのoutputと同一Strokeにrealizeされた `held-trigger/start`
 このPolicyは**action計上だけ**を変える。`Metrics.strokes` は常にphysical `S` を保持し、
 `Metrics.actions` だけが `A_total` を持つ。`meanPerStroke`、同指連続率など
 physical Strokeを分母にする既存指標は `S` を使い続ける。
-realized Stroke列・距離・Press数・Chain / Transition / Timingは変更しない。
-既定は `false` で従来互換。
+realized Stroke列・距離・Press数・Chain / Transitionは変更しない。
+再生では同じPolicyを可視化するため、対象Strokeを `hold開始 → output` の2 virtual actionとして表示し、
+確定Timing scheduleにも追加action時間を持たせる。既定は `false` で従来互換。
 
 `C` は §11.4と同じ、入力文字数（ローマ字展開・コンボ結合の前）。ローマ字配列は
 綴りが同じなら配置に依らず同じ値になる。この軸で差が付くのはコンボとかな直接入力のみ

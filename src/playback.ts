@@ -9,6 +9,11 @@ import {
   type PlaybackCalibration,
 } from './playback-calibration.ts';
 import type { AggregatedAnalysisResult } from './analysis-aggregate.ts';
+import {
+  DEFAULT_HOLD_START_ACTION_POLICY,
+  hasSeparateHoldStartAction,
+  type HoldStartActionPolicy,
+} from './hold-start-action.ts';
 
 /** 再生速度の入力範囲。実際の打鍵時間や距離モデルとは無関係。 */
 export const PLAYBACK_STEPS_PER_SECOND_MIN = 0.1;
@@ -670,6 +675,10 @@ export interface PlaybackTimingStep {
   strokeIndex: number;
   startMs: number;
   endMs: number;
+  /** このphysical Strokeを何actionとして再生するか。通常1、hold開始分離時は2。 */
+  actionCount?: number;
+  /** hold開始virtual actionの終了時刻。未分離ならundefined。 */
+  holdStartEndMs?: number;
 }
 
 export interface PlaybackTimingOptions {
@@ -677,6 +686,8 @@ export interface PlaybackTimingOptions {
   allFingerMovementDelay?: boolean;
   /** allFingerMovementDelay=trueの時にホーム位置を得るため必須。 */
   geometry?: Geometry;
+  /** hold開始を独立actionとして再生へ反映するPolicy。 */
+  holdStartActionPolicy?: HoldStartActionPolicy;
 }
 
 export function playbackTimingStepDurationMs(
@@ -685,6 +696,42 @@ export function playbackTimingStepDurationMs(
 ): number | undefined {
   const step = schedule?.[strokeIndex];
   return step ? Math.max(0, step.endMs - step.startMs) : undefined;
+}
+
+export function playbackTimingActionCount(
+  schedule: readonly PlaybackTimingStep[] | undefined,
+  strokeIndex: number,
+): number {
+  return schedule?.[strokeIndex]?.actionCount ?? 1;
+}
+
+export type PlaybackVirtualPhase = 'hold-start' | 'output';
+
+/**
+ * 再生中の次Strokeがhold開始分離対象なら、そのStroke内のvirtual action段階を返す。
+ * cursorは「完了済みStroke数」なのでschedule[cursor]が現在進行中のStroke。
+ */
+export function playbackVirtualPhase(
+  schedule: readonly PlaybackTimingStep[] | undefined,
+  cursor: number,
+  elapsedMs: number,
+): PlaybackVirtualPhase | undefined {
+  const step = schedule?.[cursor];
+  if (!step || step.holdStartEndMs === undefined) return undefined;
+  const holdStartDurationMs = Math.max(0, step.holdStartEndMs - step.startMs);
+  return Math.max(0, elapsedMs) < holdStartDurationMs ? 'hold-start' : 'output';
+}
+
+function playbackTimingActionCountRange(
+  schedule: readonly PlaybackTimingStep[] | undefined,
+  start: number,
+  end: number,
+): number {
+  let count = 0;
+  for (let index = start; index < end; index++) {
+    count += playbackTimingActionCount(schedule, index);
+  }
+  return count;
 }
 
 /**
@@ -699,6 +746,7 @@ export function playbackTimingSchedule(
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   options: PlaybackTimingOptions = {},
 ): PlaybackTimingStep[] {
+  const holdStartActionPolicy = options.holdStartActionPolicy ?? DEFAULT_HOLD_START_ACTION_POLICY;
   const baseDurations = analysis.strokes.map((_stroke, strokeIndex) =>
     playbackStepDurationMs(
       analysis,
@@ -708,13 +756,32 @@ export function playbackTimingSchedule(
       calibration,
       speedMultiplier,
     ));
+  const holdStartDurations = analysis.strokes.map((stroke, strokeIndex) =>
+    hasSeparateHoldStartAction(stroke, holdStartActionPolicy)
+      ? normalPlaybackStepMs(playbackTransitionRateFromAnalysis(
+          analysis,
+          strokeIndex,
+          stepsPerSecond,
+          calibration,
+        )) / (Number.isFinite(speedMultiplier) && speedMultiplier > 0
+          ? speedMultiplier
+          : DEFAULT_PLAYBACK_SPEED_MULTIPLIER)
+      : 0);
 
   if (!options.allFingerMovementDelay) {
     let atMs = 0;
     return baseDurations.map((durationMs, strokeIndex) => {
       const startMs = atMs;
-      atMs += durationMs;
-      return { strokeIndex, startMs, endMs: atMs };
+      const holdStartDurationMs = holdStartDurations[strokeIndex];
+      const holdStartEndMs = holdStartDurationMs > 0 ? startMs + holdStartDurationMs : undefined;
+      atMs += holdStartDurationMs + durationMs;
+      return {
+        strokeIndex,
+        startMs,
+        endMs: atMs,
+        actionCount: holdStartDurationMs > 0 ? 2 : 1,
+        ...(holdStartEndMs === undefined ? {} : { holdStartEndMs }),
+      };
     });
   }
 
@@ -733,7 +800,9 @@ export function playbackTimingSchedule(
 
   for (const [strokeIndex, stroke] of analysis.strokes.entries()) {
     const startMs = atMs;
-    let endMs = startMs + baseDurations[strokeIndex];
+    const holdStartDurationMs = holdStartDurations[strokeIndex];
+    const holdStartEndMs = holdStartDurationMs > 0 ? startMs + holdStartDurationMs : undefined;
+    let endMs = startMs + holdStartDurationMs + baseDurations[strokeIndex];
 
     // actual Pressだけが新しい移動要求。held-trigger/continueは後段で占有時間だけ延ばす。
     for (const press of stroke.presses) {
@@ -748,7 +817,13 @@ export function playbackTimingSchedule(
       endMs = Math.max(endMs, freeAtMs[press.finger] + moveMs);
     }
 
-    schedule.push({ strokeIndex, startMs, endMs });
+    schedule.push({
+      strokeIndex,
+      startMs,
+      endMs,
+      actionCount: holdStartDurationMs > 0 ? 2 : 1,
+      ...(holdStartEndMs === undefined ? {} : { holdStartEndMs }),
+    });
     atMs = endMs;
 
     const pressedFingers = new Set(stroke.presses.map((press) => press.finger));
@@ -983,7 +1058,7 @@ function playbackEwmaRate(
     if (!(durationMs > 0)) continue;
 
     const decay = 2 ** (-(durationMs / 1000) / halfLifeSeconds);
-    const actionInstant = 1000 / durationMs;
+    const actionInstant = (playbackTimingActionCount(schedule, index) * 1000) / durationMs;
     actionRate = actionRate === undefined
       ? actionInstant
       : decay * actionRate + (1 - decay) * actionInstant;
@@ -1049,7 +1124,7 @@ export function playbackRecentActionsPerSecond(
     schedule,
   );
   return recent && recent.durationMs > 0
-    ? ((recent.end - recent.start) * 1000) / recent.durationMs
+    ? (playbackTimingActionCountRange(schedule, recent.start, recent.end) * 1000) / recent.durationMs
     : undefined;
 }
 
@@ -1162,7 +1237,7 @@ export function playbackRateChartData(
       actionsPerSecond: average === 'ewma'
         ? ewma?.actionsPerSecond
         : recent && recent.durationMs > 0
-          ? ((recent.end - recent.start) * 1000) / recent.durationMs
+          ? (playbackTimingActionCountRange(schedule, recent.start, recent.end) * 1000) / recent.durationMs
           : undefined,
       chain: analysis.chains.some((chain) =>
         cursor - 1 >= chain.startStrokeIndex && cursor - 1 < chain.endStrokeIndex),

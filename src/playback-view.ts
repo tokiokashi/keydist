@@ -7,7 +7,9 @@ import {
   playbackRomajiPlannedOrders, playbackOrderLabel, playbackRateChartData,
   playbackRecentActionsPerSecond, playbackRecentKanaPerSecond,
   playbackSameFingerKeyMotions,
-  playbackStrokeAt, playbackStepDurationMs, playbackTimingSchedule, playbackTimingStepDurationMs, playbackCursorForEquivalentInputPosition, reconcilePlaybackStateAfterAnalysisRefresh, setPlaybackSameFingerDelay,
+  playbackStrokeAt, playbackStepDurationMs, playbackTimingSchedule, playbackTimingStepDurationMs,
+  playbackTimingActionCount, playbackVirtualPhase, playbackCursorForEquivalentInputPosition,
+  reconcilePlaybackStateAfterAnalysisRefresh, setPlaybackSameFingerDelay,
   setPlaybackStepsPerSecond, stepPlayback, playbackTrailKeys, playbackTrailOrders,
   playbackStrokeDisplay, setPlaybackCalibration, setPlaybackSpeedMultiplier,
   type PlaybackStepsPerSecond, type PlaybackState, type PlaybackTimingStep, PLAYBACK_SPEED_MULTIPLIER_MAX,
@@ -30,6 +32,8 @@ import type {
 import type { AggregatedAnalysisResult } from './analysis-aggregate.ts';
 import type { ChainPolicy } from './analysis-chain.ts';
 import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
+import type { TriggerRealizationPolicy } from './trigger-realization.ts';
+import type { HoldStartActionPolicy } from './hold-start-action.ts';
 import {
   playbackAnalysisArpeggioMotions,
   playbackAnalysisArpeggioOrders,
@@ -54,6 +58,10 @@ export interface PlaybackViewContext {
   updateChainPolicy: (policy: ChainPolicy) => void;
   getArpeggioPolicy: () => ArpeggioPolicy;
   updateArpeggioPolicy: (policy: ArpeggioPolicy) => void;
+  getTriggerRealization: () => TriggerRealizationPolicy;
+  updateTriggerRealization: (useHold: boolean) => void;
+  getHoldStartAction: () => HoldStartActionPolicy;
+  updateHoldStartAction: (countAsSeparateStep: boolean) => void;
   refreshAnalysis: () => void;
   openCalibration: () => void;
   openCalibrationEdit: () => void;
@@ -133,6 +141,8 @@ let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
 let playbackMotionCursor = -1;
 let playbackFeedbackPending = false;
+/** 停止中にvirtual hold-start actionだけを1step進めた状態。cursorはphysical Stroke境界のまま。 */
+let playbackPausedVirtualHoldStart: number | undefined;
 let playbackRateChartSignature: string | undefined;
 let playbackTiming: readonly PlaybackTimingStep[] = [];
 type PlaybackSettingsTab = 'display' | 'graph' | 'conditions';
@@ -153,6 +163,7 @@ function refreshPlaybackTiming(): void {
       {
         allFingerMovementDelay: settings.allFingerMovementDelay && playbackGeometry !== undefined,
         geometry: playbackGeometry,
+        holdStartActionPolicy: ctx.getHoldStartAction(),
       },
     )
     : [];
@@ -231,6 +242,8 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
       <p class="note">再生時間はTransition Calibration、構造表示はAnalysis Chain / ArpeggioPolicyを使用します。</p>
       <div class="playback-dialog-grid">
         <label class="playback-speed"><span>標準速度</span><input type="number" data-playback-rate min="${PLAYBACK_STEPS_PER_SECOND_MIN}" max="${PLAYBACK_STEPS_PER_SECOND_MAX}" step="any" value="${playbackState.stepsPerSecond}" aria-label="再生の標準速度（ステップ毎秒）" /> <span>ステップ/秒</span></label>
+        <label class="playback-finger-toggle" title="hold-capableなtriggerを次の対応入力まで押し続け、再押下を省略する"><input type="checkbox" data-playback-trigger-hold${ctx.getTriggerRealization().useHold ? ' checked' : ''} />hold-capable triggerを連続保持する</label>
+        <label class="playback-finger-toggle" title="hold開始を計算上の独立actionとして数え、再生でもtrigger→outputの2段階で表示する"><input type="checkbox" data-playback-hold-start-action${ctx.getHoldStartAction().countAsSeparateStep ? ' checked' : ''}${ctx.getTriggerRealization().useHold ? '' : ' disabled'} />hold開始を独立stepとして数える <small>（連続保持時のみ）</small></label>
         <label class="playback-finger-toggle" title="同じ指の連続打鍵に指の移動速度を反映。個人速度が無ければ距離に比例した簡易換算で代用"><input type="checkbox" data-playback-sfb-delay${playbackState.sameFingerDelay ? ' checked' : ''} />指の移動速度を考慮</label>
         <label class="playback-finger-toggle" title="全指について次のPressまでの物理移動時間を確認し、base Timingに間に合わないStrokeだけ必要量を延長"><input type="checkbox" data-playback-all-finger-delay${ctx.getUiState().ui.playback.allFingerMovementDelay ? ' checked' : ''} />全指の移動時間で律速</label>
         <label class="playback-finger-toggle" title="キャリブレーションした通常速度・Transition方向別速度・指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${ctx.getUiState().ui.playback.useCalibration ? ' checked' : ''}${ctx.getCalibration() ? '' : ' disabled'} />個人速度を適用</label>
@@ -269,17 +282,34 @@ function updatePlaybackView() {
   if (!playbackTrace || !playbackGeometry || !playbackAnalysis) return;
   const total = playbackTrace.strokes.length;
   const cursor = clampPlaybackCursor(playbackState.cursor, total);
-  const stroke = playbackStrokeAt(playbackTrace.strokes, cursor);
+  const completedStroke = playbackStrokeAt(playbackTrace.strokes, cursor);
+  const pausedVirtualHoldStart = !playbackState.playing
+    && playbackPausedVirtualHoldStart === cursor;
+  const virtualPhase = pausedVirtualHoldStart
+    ? 'hold-start'
+    : playbackState.playing || playbackState.elapsedMs > 0
+      ? playbackVirtualPhase(playbackTiming, cursor, playbackState.elapsedMs)
+      : undefined;
+  const virtualStroke = virtualPhase === undefined ? undefined : playbackTrace.strokes[cursor];
+  const stroke = virtualStroke ?? completedStroke;
   const display = playbackLayout && stroke ? playbackStrokeDisplay(playbackLayout, stroke) : undefined;
   const isRomaji = playbackLayout?.romajiTable !== undefined;
   const windowSize = playbackOptions?.windowSize ?? ctx.getUiState().conditions.defaults.windowSize;
   const rateAverage = ctx.getUiState().conditions.defaults.playbackRateAverage;
   const rateWindow = ctx.getUiState().conditions.defaults.playbackRateWindow;
   const rateHalfLife = ctx.getUiState().conditions.defaults.playbackRateHalfLifeSeconds;
-  const activeKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
+  const pressedKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
   const triggerKeys = new Set(stroke?.triggerKeys ?? []);
+  const completedWasSplit = virtualPhase === undefined
+    && cursor > 0
+    && playbackTimingActionCount(playbackTiming, cursor - 1) > 1;
+  const activeKeys = virtualPhase === 'hold-start'
+    ? new Set(triggerKeys)
+    : virtualPhase === 'output' || completedWasSplit
+      ? new Set([...pressedKeys].filter((key) => !triggerKeys.has(key)))
+      : pressedKeys;
   const fingerPositionKeys = ctx.getUiState().ui.playback.showFingers
-    ? playbackPreparedFingerPositionKeys(
+    ? new Map(playbackPreparedFingerPositionKeys(
       playbackAnalysis,
       playbackTiming,
       cursor,
@@ -289,8 +319,15 @@ function updatePlaybackView() {
       playbackState.stepsPerSecond,
       playbackState.calibration,
       playbackState.speedMultiplier,
-    )
+    ))
     : new Map<string, Finger>();
+  if (virtualStroke && ctx.getUiState().ui.playback.showFingers) {
+    for (const press of virtualStroke.presses) {
+      for (const key of press.keys) {
+        if (triggerKeys.has(key.id)) fingerPositionKeys.set(key.id, press.finger);
+      }
+    }
+  }
   const trailKeys = ctx.getUiState().ui.playback.showTrail
     ? playbackTrailKeys(playbackTrace.strokes, cursor, ctx.getUiState().ui.playback.trailTau)
     : new Map<string, number>();
@@ -396,7 +433,7 @@ function updatePlaybackView() {
   // クローンは cloneNode で盤面のキーを丸ごと写すため、刻印を今のステップへ
   // 更新し終えてから作る。先に作ると前のレイヤーの文字を持ったまま移動する。
   if (cursor !== playbackMotionCursor) {
-    renderPlaybackMotions(motions, cursor, stroke);
+    renderPlaybackMotions(motions, cursor, completedStroke);
     playbackMotionCursor = cursor;
   }
   if (playbackFeedbackPending) {
@@ -430,6 +467,8 @@ function updatePlaybackView() {
   const orderLabels = settingsRoot.querySelector<HTMLInputElement>('[data-playback-order-labels]');
   const sameFingerMotion = settingsRoot.querySelector<HTMLInputElement>('[data-playback-same-finger-motion]');
   const scale = settingsRoot.querySelector<HTMLInputElement>('input[data-playback-scale]');
+  const triggerHold = settingsRoot.querySelector<HTMLInputElement>('[data-playback-trigger-hold]');
+  const holdStartAction = settingsRoot.querySelector<HTMLInputElement>('[data-playback-hold-start-action]');
   const sameFingerDelay = settingsRoot.querySelector<HTMLInputElement>('[data-playback-sfb-delay]');
   const allFingerMovementDelay = settingsRoot.querySelector<HTMLInputElement>('[data-playback-all-finger-delay]');
   const chain = settingsRoot.querySelector<HTMLInputElement>('[data-playback-chain]');
@@ -446,7 +485,20 @@ function updatePlaybackView() {
   const effectiveRate = elements.playback.querySelector<HTMLElement>('[data-playback-effective-rate]');
   const playbackWindow = settingsRoot.querySelector<HTMLOutputElement>('[data-playback-window]');
   const settingsSummary = elements.playback.querySelector<HTMLElement>('[data-playback-settings-summary]');
-  if (position) position.textContent = `${cursor} / ${total} ステップ`;
+  if (position) {
+    const hasVirtualActions = playbackTiming.some((step) => (step.actionCount ?? 1) > 1);
+    if (hasVirtualActions) {
+      const totalActions = playbackTiming.reduce((sum, step) => sum + (step.actionCount ?? 1), 0);
+      let completedActions = 0;
+      for (let index = 0; index < cursor; index++) {
+        completedActions += playbackTimingActionCount(playbackTiming, index);
+      }
+      if (virtualPhase === 'output' || pausedVirtualHoldStart) completedActions++;
+      position.textContent = `${completedActions} / ${totalActions} アクション`;
+    } else {
+      position.textContent = `${cursor} / ${total} ステップ`;
+    }
+  }
   const inputPreview = playbackInputPreview(
     playbackTrace.strokes,
     cursor,
@@ -455,7 +507,9 @@ function updatePlaybackView() {
   if (current) {
     current.hidden = isRomaji;
     current.textContent = stroke
-      ? display?.character ?? (stroke.triggerKeys.length > 0 ? '⇧' : stroke.char)
+      ? virtualPhase === 'hold-start'
+        ? '⇧'
+        : display?.character ?? (stroke.triggerKeys.length > 0 ? '⇧' : stroke.char)
       : '—';
   }
   if (romaji) romaji.hidden = !isRomaji;
@@ -532,8 +586,12 @@ function updatePlaybackView() {
     toggle.setAttribute('aria-label', playbackState.playing ? '再生を一時停止する' : '再生する');
     toggle.disabled = total === 0 || cursor >= total;
   }
-  if (stop) stop.disabled = cursor === 0 && !playbackState.playing;
-  if (back) back.disabled = playbackState.playing || cursor === 0;
+  if (stop) stop.disabled = cursor === 0
+    && !playbackState.playing
+    && playbackState.elapsedMs === 0
+    && playbackPausedVirtualHoldStart === undefined;
+  if (back) back.disabled = playbackState.playing
+    || (cursor === 0 && playbackState.elapsedMs === 0 && playbackPausedVirtualHoldStart === undefined);
   if (forward) forward.disabled = playbackState.playing || cursor >= total;
   if (fingers) fingers.checked = ctx.getUiState().ui.playback.showFingers;
   if (keyFeedback) keyFeedback.value = ctx.getUiState().ui.playback.keyFeedbackStyle;
@@ -552,6 +610,11 @@ function updatePlaybackView() {
   if (orderLabels) orderLabels.checked = ctx.getUiState().ui.playback.showOrderLabels;
   if (sameFingerMotion) sameFingerMotion.checked = ctx.getUiState().ui.playback.showSameFingerMotion;
   if (scale) scale.value = String(ctx.getUiState().ui.playback.scale);
+  if (triggerHold) triggerHold.checked = ctx.getTriggerRealization().useHold;
+  if (holdStartAction) {
+    holdStartAction.checked = ctx.getHoldStartAction().countAsSeparateStep;
+    holdStartAction.disabled = !ctx.getTriggerRealization().useHold;
+  }
   if (sameFingerDelay) sameFingerDelay.checked = playbackState.sameFingerDelay;
   if (allFingerMovementDelay) {
     allFingerMovementDelay.checked = ctx.getUiState().ui.playback.allFingerMovementDelay;
@@ -870,6 +933,7 @@ function renderPlayback(
     {
       allFingerMovementDelay: nextSettings.allFingerMovementDelay,
       geometry,
+      holdStartActionPolicy: ctx.getHoldStartAction(),
     },
   );
   playbackState = preserveState
@@ -941,6 +1005,15 @@ function renderPlayback(
 function startPlayback() {
   if (!playbackTrace || playbackState.cursor >= playbackTrace.strokes.length) return;
   cancelPlaybackAnimation();
+  // 手動送りでhold-startだけ完了している場合はoutput phaseから再開する。
+  if (playbackPausedVirtualHoldStart === playbackState.cursor) {
+    const step = playbackTiming[playbackState.cursor];
+    const holdStartDurationMs = step?.holdStartEndMs === undefined
+      ? 0
+      : Math.max(0, step.holdStartEndMs - step.startMs);
+    playbackState = { ...playbackState, elapsedMs: holdStartDurationMs };
+    playbackPausedVirtualHoldStart = undefined;
+  }
   // 一時停止からの再開では現在Stroke内の経過時間を維持する。
   // 準備表示もelapsedMsを使うため、0へ戻すと到着済みの指が逆戻りしてしまう。
   playbackState = { ...playbackState, playing: true };
@@ -963,6 +1036,7 @@ function stopPlayback() {
     playbackState.speedMultiplier,
   );
   playbackMotionCursor = -1;
+  playbackPausedVirtualHoldStart = undefined;
   updatePlaybackView();
 }
 
@@ -1002,6 +1076,7 @@ function finishPlaybackSeek() {
 
 function seekPlayback(value: string, playing = false) {
   if (!playbackTrace) return;
+  playbackPausedVirtualHoldStart = undefined;
   playbackState = {
     ...playbackState,
     cursor: clampPlaybackCursor(Number(value), playbackTrace.strokes.length),
@@ -1053,17 +1128,43 @@ function refreshStructuralAnalysis(): void {
       switch (target.dataset.playbackAction) {
         case 'toggle': if (playbackState.playing) pausePlayback(); else startPlayback(); break;
         case 'stop': stopPlayback(); break;
-        case 'back':
+        case 'back': {
           if (!playbackTrace) return;
-          playbackState = stepPlayback(playbackState, -1, playbackTrace.strokes.length);
+          const cursor = playbackState.cursor;
+          const phase = playbackVirtualPhase(playbackTiming, cursor, playbackState.elapsedMs);
+          if (playbackPausedVirtualHoldStart === cursor || phase === 'hold-start') {
+            playbackPausedVirtualHoldStart = undefined;
+            playbackState = { ...playbackState, elapsedMs: 0 };
+          } else if (phase === 'output') {
+            playbackPausedVirtualHoldStart = cursor;
+            playbackState = { ...playbackState, elapsedMs: 0 };
+          } else if (cursor > 0 && playbackTimingActionCount(playbackTiming, cursor - 1) > 1) {
+            playbackState = { ...stepPlayback(playbackState, -1, playbackTrace.strokes.length), elapsedMs: 0 };
+            playbackPausedVirtualHoldStart = cursor - 1;
+          } else {
+            playbackState = stepPlayback(playbackState, -1, playbackTrace.strokes.length);
+          }
           updatePlaybackView();
           break;
+        }
         case 'forward': {
           if (!playbackTrace) return;
-          const previousCursor = playbackState.cursor;
-          const nextState = stepPlayback(playbackState, 1, playbackTrace.strokes.length);
-          playbackFeedbackPending ||= nextState.cursor > previousCursor;
-          playbackState = nextState;
+          const cursor = playbackState.cursor;
+          const phase = playbackVirtualPhase(playbackTiming, cursor, playbackState.elapsedMs);
+          if (playbackPausedVirtualHoldStart === cursor || phase === 'output') {
+            playbackPausedVirtualHoldStart = undefined;
+            const nextState = stepPlayback({ ...playbackState, elapsedMs: 0 }, 1, playbackTrace.strokes.length);
+            playbackFeedbackPending ||= nextState.cursor > cursor;
+            playbackState = nextState;
+          } else if (phase === 'hold-start' || playbackTimingActionCount(playbackTiming, cursor) > 1) {
+            playbackPausedVirtualHoldStart = cursor;
+            playbackState = { ...playbackState, elapsedMs: 0 };
+            playbackFeedbackPending = true;
+          } else {
+            const nextState = stepPlayback(playbackState, 1, playbackTrace.strokes.length);
+            playbackFeedbackPending ||= nextState.cursor > cursor;
+            playbackState = nextState;
+          }
           updatePlaybackView();
           break;
         }
@@ -1119,6 +1220,20 @@ function refreshStructuralAnalysis(): void {
     });
     elements.app.addEventListener('change', (e) => {
       const target = e.target as Element;
+      const triggerHold = target.closest<HTMLInputElement>('[data-playback-trigger-hold]');
+      if (triggerHold) {
+        ctx.updateTriggerRealization(triggerHold.checked);
+        preserveStateOnNextRender = 'input-position';
+        ctx.refreshAnalysis();
+        return;
+      }
+      const holdStartAction = target.closest<HTMLInputElement>('[data-playback-hold-start-action]');
+      if (holdStartAction) {
+        ctx.updateHoldStartAction(holdStartAction.checked);
+        preserveStateOnNextRender = 'cursor';
+        ctx.refreshAnalysis();
+        return;
+      }
       const sameFingerDelay = target.closest<HTMLInputElement>('[data-playback-sfb-delay]');
       if (sameFingerDelay) {
         playbackState = setPlaybackSameFingerDelay(playbackState, sameFingerDelay.checked);
@@ -1299,6 +1414,7 @@ function refreshStructuralAnalysis(): void {
       playbackTrace = undefined; playbackAnalysis = undefined; playbackGeometry = undefined; playbackLayout = undefined; playbackOptions = undefined;
       playbackTiming = [];
       playbackFeedbackPending = false;
+      playbackPausedVirtualHoldStart = undefined;
       preserveStateOnNextRender = undefined;
           setPlaybackSettingsOpen(false);
       elements.playbackSettingsPanel.innerHTML = '';
