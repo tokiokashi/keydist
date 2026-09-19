@@ -1312,7 +1312,7 @@ function renderHeatmap(
   const pickerLegendOverrides = pickerCandidateLabels;
   // ガイド表示のON/OFF設定自体は保持しつつ、選択が始まったら表示だけ引っ込める。
   // 選択後は青枠・レジェンド書き換えという別のガイドが働くので、両方出すと煩雑になる。
-  const pickerGuideSetting = ctx.getUiState().ui.layers.comboGuide;
+  const pickerGuideSetting = ctx.getUiState().ui.layers.keyPatternGuide;
   const pickerGuideEnabled = pickerGuideSetting && pickerSelection.size === 0;
   const pickerGuideColors = pickerGuideEnabled ? pickerGuideColorMap(groups, faceShiftStyles, layout) : undefined;
   // レイヤー選択中は層別ヒートマップと同じ色（series-N）に揃える。それ以外（コンボ選択・
@@ -1442,7 +1442,7 @@ function setSensitivityScale(scale: SensitivityScale) {
     elements.heatmap.addEventListener('change', (e) => {
       const guideCheckbox = (e.target as Element).closest<HTMLInputElement>('input[data-picker-guide]');
       if (guideCheckbox) {
-        ctx.updateUiState((draft) => { draft.ui.layers.comboGuide = guideCheckbox.checked; });
+        ctx.updateUiState((draft) => { draft.ui.layers.keyPatternGuide = guideCheckbox.checked; });
         refreshPickerDisplay();
         return;
       }
