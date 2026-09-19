@@ -371,6 +371,7 @@ export function compileSequenceInputArtifacts(
     semanticInputs.map((input, index) => ({
       input,
       actions: [sequence[index].map(resolveKeyId)],
+      defaultOutputKeys: [...input.physicalKeys],
     }));
   validateBaseActionRealizations(baseActionRealizations);
   return {
