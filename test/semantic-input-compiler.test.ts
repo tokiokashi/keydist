@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { compileFaceSemanticInputs, type SemanticInput } from '../src/core/semantic-input/index.ts';
+import { LAYOUTS_JA } from '../src/layouts/index.ts';
 import { faceFromEntries, type Face, type FaceMode } from '../src/layouts/types.ts';
 
 const face = (
@@ -166,14 +167,40 @@ test('同一physical operationのoutput衝突をerrorにする', () => {
   );
 });
 
-test('同一physicalKeysのactivation variantをerrorにする', () => {
+test('同一physicalKeysで同時成立し得るactivation variantをerrorにする', () => {
+  assert.throws(
+    () => compileFaceSemanticInputs([
+      face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' }),
+      face(['d'], 'prefix', { h: 'ほ' }, { layer: '中指シフト' }),
+    ]),
+    /同時成立し得るRequirement\/Capability set/,
+  );
+});
+
+test('同一outputの複数activation variantはOR未対応なのでerrorにする', () => {
   assert.throws(
     () => compileFaceSemanticInputs([
       face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' }),
       face(['d'], 'prefix', { h: 'へ' }, { layer: '中指シフト' }),
     ]),
-    /異なるRequirement\/Capability set/,
+    /同一outputに複数のRequirement\/Capability set/,
   );
+});
+
+test('逆向きorderでmutually exclusiveな同一physicalKeysは別SemanticInputとして共存する', () => {
+  const inputs = compileFaceSemanticInputs([
+    face(['d'], 'prefix', { k: 'も' }, { layer: '中指シフト' }),
+    face(['k'], 'prefix', { d: 'ら' }, { layer: '中指シフト' }),
+  ]);
+
+  assert.equal(inputs.length, 2);
+  const byOutput = new Map(inputs.map((input) => [input.output, input]));
+  assert.deepEqual(byOutput.get('も')?.requirements, [
+    { kind: 'order', before: ['d'], after: ['k'] },
+  ]);
+  assert.deepEqual(byOutput.get('ら')?.requirements, [
+    { kind: 'order', before: ['k'], after: ['d'] },
+  ]);
 });
 
 test('subset / superset physicalKeysは別SemanticInputとして共存できる', () => {
@@ -249,4 +276,15 @@ test('canonical sortはlocale非依存のcode-unit順を使う', () => {
   assert.deepEqual(input.capabilities, [
     { kind: 'while-held', keys: ['Z', 'ä'] },
   ]);
+});
+
+
+test('Faceを持つbuilt-in layoutはSemanticInput compilerで検証できる', () => {
+  for (const layout of LAYOUTS_JA) {
+    if (!layout.faces) continue;
+    assert.doesNotThrow(
+      () => compileFaceSemanticInputs(layout.faces!),
+      `${layout.id} should compile to SemanticInput`,
+    );
+  }
 });
