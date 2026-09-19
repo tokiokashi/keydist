@@ -24,7 +24,7 @@ import { resolveConditions } from './condition-resolution.ts';
 import { classifyFaces, displayTriggerKeys, faceCells, foldedLayerCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID, faceFromEntries } from './layouts/index.ts';
 import type { Face, Layout } from './layouts/index.ts';
-import { allTriggerKeys, matchCombos, summarizeCandidateMatches } from './combo-picker.ts';
+import { allTriggerKeys, findActiveLayerFace, matchCombos, summarizeCandidateMatches } from './combo-picker.ts';
 import type { ModeId } from './layout-selection.ts';
 import type { PlaybackViewController } from './playback-view.ts';
 import { buildGeometry } from './geometry.ts';
@@ -769,6 +769,13 @@ interface ComboPickerValues {
   candidateLabels: ReadonlyMap<string, string>;
   /** ガイド表示ON時、常時トリガーとして薄く示す物理キー集合。 */
   guideKeys?: ReadonlySet<string>;
+  /** 選択中のキーに使う枠色のseries番号。レイヤー選択中はそのレイヤーの色、コンボ選択中は専用色に揃える。 */
+  selectedColorSlot: number;
+  /**
+   * 選択中のキーが単一キーのレイヤートリガーに一致する時、そのレイヤーの表示ラベルへ
+   * 差し替えるための面。統合ヒートマップだけに渡し、層別図はもともとそのレイヤー自身を表示している。
+   */
+  legendFace?: Face;
 }
 
 interface HeatmapValues {
@@ -802,7 +809,8 @@ function renderLayerSvg(
   faceShiftStyles: ReadonlyMap<Face, LayerShiftStyle>,
   values: HeatmapValues,
 ): string {
-  const labels = layerCells(layer, layout);
+  const legendFace = values.picker?.legendFace;
+  const labels = legendFace ? layerCells({ faces: [legendFace] }, layout) : layerCells(layer, layout);
   const showHeat = values.showHeat;
   const triggerFaces = layer.faces.length === 0 ? allLayerFaces : layer.faces;
   const shiftStyles = new Map<string, LayerShiftStyle>();
@@ -871,7 +879,7 @@ function renderLayerSvg(
       ? `color-mix(in oklab, var(--heat-1) ${(t * 100).toFixed(1)}%, var(--heat-0))`
       : 'var(--panel)';
     const stroke = isSelected
-      ? 'var(--series-2)'
+      ? `var(--series-${picker?.selectedColorSlot ?? 2})`
       : candidateLabel
         ? 'var(--series-3)'
         : isGuide
@@ -1231,12 +1239,22 @@ function renderHeatmap(
   );
   const pickerGuideEnabled = comboPickerGuideEnabled.get(layout.id) ?? false;
   const pickerGuideKeys = pickerGuideEnabled ? allTriggerKeys(layout) : undefined;
+  // レイヤー選択中は層別ヒートマップと同じ色に揃え、コンボ選択中はコンボ配列図と同じ色（series-4）に揃える。
+  // どちらでもなければ既定のオレンジ（series-2）のまま。
+  const pickerActiveLayerFace = findActiveLayerFace(layout, pickerSelection);
+  const pickerIsComboSelection = pickerMatch.exact.length > 0 || pickerMatch.candidates.size > 0;
+  const pickerSelectedColorSlot = pickerActiveLayerFace
+    ? faceShiftStyles.get(pickerActiveLayerFace)?.colorSlot ?? 2
+    : pickerIsComboSelection
+      ? 4
+      : 2;
   const pickerBase: ComboPickerValues = {
     layoutId: layout.id,
     clickable: true,
     selected: pickerSelection,
     candidateLabels: pickerCandidateLabels,
     guideKeys: pickerGuideKeys,
+    selectedColorSlot: pickerSelectedColorSlot,
   };
 
   const integrated = renderLayerSvg(
@@ -1255,7 +1273,7 @@ function renderHeatmap(
       colorScale: 'linear',
       showHeat: true,
       ariaSuffix: '（全レイヤー合算・物理位置）',
-      picker: pickerBase,
+      picker: { ...pickerBase, legendFace: pickerActiveLayerFace },
     },
   );
   const colorCounts = entries.map((entry) => normalizedLayerColors(entry.layer, entry.stat));
@@ -1281,13 +1299,23 @@ function renderHeatmap(
       },
     );
   });
+  const layerConfirmedOutput = (() => {
+    if (!pickerActiveLayerFace) return undefined;
+    const triggerKey = resolveKeyId(pickerActiveLayerFace.trigger[0]);
+    const otherKeys = [...pickerSelection].filter((key) => key !== triggerKey);
+    return otherKeys.length === 1 ? faceCells(pickerActiveLayerFace).get(otherKeys[0]) : undefined;
+  })();
   const pickerResultText = pickerSelection.size === 0
-    ? 'キーをクリックすると、コンボのトリガーを選べます。'
+    ? 'キーをクリックすると、コンボやレイヤーのトリガーを選べます。'
     : pickerMatch.exact.length > 0
       ? `確定: <b>${pickerMatch.exact.map((match) => escapeText(match.output)).join(' / ')}</b>`
-      : pickerMatch.candidates.size > 0
-        ? '緑の枠が相方候補です。もう1キーでコンボが確定します。'
-        : 'このキーの組み合わせに一致するコンボはありません。';
+      : layerConfirmedOutput !== undefined
+        ? `確定: <b>${escapeText(layerConfirmedOutput)}</b>`
+        : pickerActiveLayerFace
+          ? 'このレイヤーの出力をキーに表示中です。文字キーも選ぶと確定します。'
+          : pickerMatch.candidates.size > 0
+            ? '緑の枠が相方候補です。もう1キーでコンボが確定します。'
+            : 'このキーの組み合わせに一致するコンボはありません。';
   const pickerControls = `<div class="combo-picker-controls">
       <p class="combo-picker-result">${pickerResultText}</p>
       <label><input type="checkbox" data-picker-guide data-layout-id="${escapeAttr(layout.id)}"${pickerGuideEnabled ? ' checked' : ''}> コンボ・レイヤートリガーをガイド表示</label>

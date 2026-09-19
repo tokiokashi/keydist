@@ -1,6 +1,6 @@
 import { resolveKeyId } from './geometry.ts';
 import { faceCells } from './layers.ts';
-import type { Layout } from './layouts/index.ts';
+import type { Face, Layout } from './layouts/index.ts';
 
 export interface ComboPickerMatch {
   output: string;
@@ -69,6 +69,20 @@ export function matchCombos(layout: Layout, selected: ReadonlySet<string>): Comb
  */
 export function summarizeCandidateMatches(matches: readonly ComboPickerMatch[]): string {
   return matches.map((match) => match.output).join(' / ');
+}
+
+/**
+ * 選択中のキーが単一キーのレイヤートリガー（シフト面など）に一致するなら、その面を返す。
+ * コンボ（inputRole==='composition'、または複数キーtrigger）はここでは扱わない。
+ * レイヤーが特定できれば、統合ヒートマップのレジェンドをそのレイヤーの出力へ
+ * 差し替え、枠色も層別ヒートマップと同じ色に揃えるのに使う。
+ */
+export function findActiveLayerFace(layout: Layout, selected: ReadonlySet<string>): Face | undefined {
+  if (selected.size === 0) return undefined;
+  return (layout.faces ?? []).find((face) => {
+    if (face.trigger.length !== 1 || face.inputRole === 'composition') return false;
+    return selected.has(resolveKeyId(face.trigger[0]));
+  });
 }
 
 /** ガイド表示用: 配列が持つ全triggerキー（層操作・コンボ問わず）の物理キーid集合。 */

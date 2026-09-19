@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { faceFromEntries } from '../src/layouts/index.ts';
 import type { Layout } from '../src/layouts/index.ts';
-import { allTriggerKeys, matchCombos, summarizeCandidateMatches } from '../src/combo-picker.ts';
+import { allTriggerKeys, findActiveLayerFace, matchCombos, summarizeCandidateMatches } from '../src/combo-picker.ts';
 
 function stubLayout(overrides: Partial<Layout>): Layout {
   return {
@@ -91,4 +91,24 @@ test('allTriggerKeys: FaceのtriggerとresolvedComboの物理キーを両方拾�
   assert.ok(keys.has('j'));
   assert.ok(keys.has('l'));
   assert.ok(keys.has(';'));
+});
+
+test('findActiveLayerFace: 単キーtriggerが選択されていればその面を返す', () => {
+  const shiftFace = faceFromEntries(['f'], 'prefix', { j: 'あ', k: 'い' });
+  const layout = stubLayout({ faces: [shiftFace] });
+  assert.equal(findActiveLayerFace(layout, new Set(['f'])), shiftFace);
+  assert.equal(findActiveLayerFace(layout, new Set()), undefined);
+  assert.equal(findActiveLayerFace(layout, new Set(['z'])), undefined);
+});
+
+test('findActiveLayerFace: コンボ（複数キーtrigger）はレイヤーとして扱わない', () => {
+  const comboFace = faceFromEntries(['j', 'k'], 'simultaneous', { j: 'あ' });
+  const layout = stubLayout({ faces: [comboFace] });
+  assert.equal(findActiveLayerFace(layout, new Set(['j', 'k'])), undefined);
+});
+
+test('findActiveLayerFace: inputRole===compositionの単キー面もコンボ扱いで除外する', () => {
+  const comboFace = { ...faceFromEntries(['f'], 'simultaneous', { j: 'あ' }), inputRole: 'composition' as const };
+  const layout = stubLayout({ faces: [comboFace] });
+  assert.equal(findActiveLayerFace(layout, new Set(['f'])), undefined);
 });
