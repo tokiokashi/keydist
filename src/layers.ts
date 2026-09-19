@@ -91,10 +91,15 @@ export function foldedLayerCells(layer: Layer, faces: readonly Face[]): Map<stri
   // 片面のレイヤーや単打面には、相互シフトの補完を適用しない。
   if (layer.faces.length !== 2) return cells;
   const mode = layer.faces[0].mode;
+  const triggerOrder = effectiveTriggerOrder(layer.faces[0]);
   const triggers = new Set(layer.faces.flatMap((face) => face.trigger).map(resolveKeyId));
 
   for (const face of faces) {
-    if (face.trigger.length !== 1 || face.mode !== mode) continue;
+    if (
+      face.trigger.length !== 1
+      || face.mode !== mode
+      || effectiveTriggerOrder(face) !== triggerOrder
+    ) continue;
     const targetKey = resolveKeyId(face.trigger[0]);
     if (cells.has(targetKey)) continue;
     const source = faceCells(face);
@@ -131,6 +136,9 @@ const singleHand = (keys: Iterable<string>): Hand | undefined => {
 const opposite = (first: Hand | undefined, second: Hand | undefined) =>
   first !== undefined && second !== undefined && first !== second;
 
+const effectiveTriggerOrder = (face: Face): 'prefix' | 'suffix' | undefined =>
+  face.triggerOrder ?? (face.mode === 'prefix' || face.mode === 'suffix' ? face.mode : undefined);
+
 /** 宣言された2面がissue #84の構造条件を満たすか検証する。 */
 export function canFoldFaces(first: Face, second: Face): boolean {
   if (first.layer === undefined || first.layer !== second.layer) return false;
@@ -139,6 +147,7 @@ export function canFoldFaces(first: Face, second: Face): boolean {
   };
   if (first.trigger.length !== 1 || second.trigger.length !== 1) invalid('triggerは単一キーである必要がある');
   if (first.mode !== second.mode) invalid('modeが異なる');
+  if (effectiveTriggerOrder(first) !== effectiveTriggerOrder(second)) invalid('triggerOrderが異なる');
 
   const firstTriggerHand = singleHand(first.trigger);
   const secondTriggerHand = singleHand(second.trigger);
