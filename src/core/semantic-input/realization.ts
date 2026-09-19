@@ -68,7 +68,7 @@ export function validateBaseActionRealization(
   }
 
   const validateParticipationKeys = (
-    label: 'defaultOutputKeys' | 'defaultTriggerKeys',
+    label: string,
     keys: readonly PhysicalKeyId[],
     allowEmpty: boolean,
   ): PhysicalKeyId[] => {
@@ -92,7 +92,7 @@ export function validateBaseActionRealization(
     view: BaseParticipationView,
   ): { triggerKeys: PhysicalKeyId[]; holdKeys?: PhysicalKeyId[] } => {
     validateParticipationKeys(
-      `${label}.outputKeys` as 'defaultOutputKeys',
+      `${label}.outputKeys`,
       view.outputKeys,
       false,
     );
