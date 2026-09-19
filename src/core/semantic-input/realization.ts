@@ -18,7 +18,10 @@ export interface SemanticInputAction {
  * - action keyはinput.physicalKeysのsubset
  * - input.physicalKeysをrealization全体で過不足なく1回ずつcover
  * - alias解決後に同一physical keyへ衝突する重複をreject
- * - defaultHoldKeysは非空・physicalKeys subset・while-held Capabilityとexact match
+ * - defaultOutputKeysは非空・physicalKeys subset
+ * - defaultTriggerKeysは指定時non-empty・physicalKeys subset
+ * - output / triggerは重複可
+ * - defaultHoldKeysは非空・defaultTriggerKeys subset・while-held Capabilityとexact match
  */
 export function validateBaseActionRealization(
   realization: BaseActionRealization,
@@ -61,6 +64,31 @@ export function validateBaseActionRealization(
     );
   }
 
+  const validateParticipationKeys = (
+    label: 'defaultOutputKeys' | 'defaultTriggerKeys',
+    keys: readonly PhysicalKeyId[],
+    allowEmpty: boolean,
+  ): PhysicalKeyId[] => {
+    if (!allowEmpty && keys.length === 0) {
+      throw new Error(`BaseActionRealization.${label}は非空である必要がある`);
+    }
+    const normalized = keys.map(resolveKeyId);
+    if (new Set(normalized).size !== normalized.length) {
+      throw new Error(`BaseActionRealization.${label}にphysical key重複がある`);
+    }
+    if (normalized.some((key) => !physicalKeySet.has(key))) {
+      throw new Error(
+        `BaseActionRealization.${label}がinput.physicalKeys外を参照している`,
+      );
+    }
+    return normalized;
+  };
+
+  validateParticipationKeys('defaultOutputKeys', realization.defaultOutputKeys, false);
+  const defaultTriggerKeys = realization.defaultTriggerKeys === undefined
+    ? []
+    : validateParticipationKeys('defaultTriggerKeys', realization.defaultTriggerKeys, false);
+
   if (realization.defaultHoldKeys !== undefined) {
     if (realization.defaultHoldKeys.length === 0) {
       throw new Error('BaseActionRealization.defaultHoldKeysは非空である必要がある');
@@ -71,6 +99,11 @@ export function validateBaseActionRealization(
     }
     if (normalized.some((key) => !physicalKeySet.has(key))) {
       throw new Error('BaseActionRealization.defaultHoldKeysがinput.physicalKeys外を参照している');
+    }
+    if (normalized.some((key) => !defaultTriggerKeys.includes(key))) {
+      throw new Error(
+        'BaseActionRealization.defaultHoldKeysはdefaultTriggerKeysのsubsetである必要がある',
+      );
     }
     const matchesCapability = realization.input.capabilities.some((capability) => {
       if (capability.kind !== 'while-held') return false;
