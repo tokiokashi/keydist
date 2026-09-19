@@ -150,7 +150,7 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
     return [layout.faces!.length, groups.layers.length, groups.modifiers.length, groups.combos.length];
   });
   assert.deepEqual(counts, [
-    [7, 3, 0, 2],
+    [7, 5, 0, 0],
     [3, 2, 0, 0],
     [3, 3, 0, 0],
     [33, 2, 6, 23],
@@ -158,7 +158,7 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
 
   assert.deepEqual(
     groupFacesIntoLayers(shingeta.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
-    [[[]], [['k'], ['d']], [['l'], ['s']]],
+    [[[]], [['k'], ['d']], [['l'], ['s']], [['i']], [['o']]],
   );
   assert.deepEqual(
     groupFacesIntoLayers(tsuki.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
