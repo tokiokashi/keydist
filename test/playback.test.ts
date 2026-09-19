@@ -320,6 +320,48 @@ test('経過時間でステップ毎秒に応じて進み、速度変更では�
   assert.equal(setPlaybackStepsPerSecond({ ...state, cursor: 2 }, 5).cursor, 2);
 });
 
+test('hold開始を独立stepにするとTimingとアニメーションphaseも2 actionになる', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18')!;
+  const geometry = buildGeometry('row-staggered');
+  const trace = evaluate('のの', layout, geometry, {
+    windowSize: 3,
+    sfbHomeCost: true,
+    triggerRealizationPolicy: { useHold: true },
+  });
+  const analysis = analyzeStrokeStructure(trace.strokes);
+  const schedule = playbackTimingSchedule(
+    analysis,
+    2,
+    false,
+    undefined,
+    1,
+    { holdStartActionPolicy: { countAsSeparateStep: true } },
+  );
+
+  assert.equal(trace.strokes.length, 2);
+  assert.equal(playbackTimingActionCount(schedule, 0), 2);
+  assert.equal(playbackTimingActionCount(schedule, 1), 1);
+  assert.equal(schedule[0].holdStartEndMs, 500);
+  assert.equal(schedule[0].endMs, 1000);
+  assert.equal(schedule[1].endMs, 1500);
+  assert.equal(playbackVirtualPhase(schedule, 0, 0), 'hold-start');
+  assert.equal(playbackVirtualPhase(schedule, 0, 499), 'hold-start');
+  assert.equal(playbackVirtualPhase(schedule, 0, 500), 'output');
+  assert.equal(playbackVirtualPhase(schedule, 1, 0), undefined);
+
+  const rate = playbackRecentActionsPerSecondAnalysis(
+    analysis,
+    2,
+    2,
+    false,
+    10,
+    undefined,
+    1,
+    schedule,
+  );
+  assert.equal(rate, 2);
+});
+
 test('再生速度は固定候補に限らず任意のステップ毎秒を設定できる', () => {
   const strokes = emptyStrokes(3);
   let custom = setPlaybackStepsPerSecond(playing(), 3.2);
