@@ -56,13 +56,13 @@ export const SHINGETA_FACES: Face[] = [
     q: 'ひゅ', w: 'しゅ', e: 'しょ', r: 'きゅ', t: 'ちゅ',
     a: 'ひょ', f: 'きょ', g: 'ちょ',
     z: 'ひゃ', c: 'しゃ', v: 'きゃ', b: 'ちゃ',
-  }, undefined, 'composition'),
+  }, '拗音1', 'modifier'),
   face(['o'], {
     1: 'ょ', 2: 'ぴゃ', 3: 'ぴゅ', 4: 'ぴょ',
     q: 'りゅ', w: 'じゅ', e: 'じょ', r: 'ぎゅ', t: 'にゅ',
     a: 'りょ', f: 'ぎょ', g: 'にょ',
     z: 'りゃ', c: 'じゃ', v: 'ぎゃ', b: 'にゃ',
-  }, undefined, 'composition'),
+  }, '拗音2', 'modifier'),
 ];
 
 const layout: Layout = fromFaces('shingeta', '新下駄', SHINGETA_FACES);
