@@ -56,6 +56,36 @@ const acceptsHoldGroup = (
 ): boolean => input.capabilities.some((capability) =>
   capability.kind === 'while-held' && sameKeys(capability.keys, keys));
 
+/**
+ * active hold keyはcurrent inputのfresh keyより前からdownしている。
+ *
+ * order(before, after) に対して after側がheldなのに before側へfresh Pressが必要なら、
+ * current inputでは before < after を満たせないためcontinue不可。
+ *
+ * held before + fresh after は成立可能。
+ * held before + held after はhold開始時の成立順序を維持しているものとして許容する。
+ */
+const holdContinuationSatisfiesRequirements = (
+  input: SemanticInput,
+  heldKeys: readonly PhysicalKeyId[],
+): boolean => {
+  const held = new Set(canonicalKeys(heldKeys));
+
+  return input.requirements.every((requirement) => {
+    if (requirement.kind !== 'order') return true;
+
+    const afterHasHeld = requirement.after
+      .map(resolveKeyId)
+      .some((key) => held.has(key));
+    if (!afterHasHeld) return true;
+
+    const beforeNeedsFreshPress = requirement.before
+      .map(resolveKeyId)
+      .some((key) => !held.has(key));
+    return !beforeNeedsFreshPress;
+  });
+};
+
 const withoutHeldKeys = (
   action: readonly PhysicalKeyId[],
   heldKeys: readonly PhysicalKeyId[],
@@ -100,6 +130,7 @@ function realizeOne(
 
   const canContinue = previous !== undefined
     && acceptsHoldGroup(realization.input, previous.keys)
+    && holdContinuationSatisfiesRequirements(realization.input, previous.keys)
     && !wouldEraseFreshOutputEvent(realization, previous.keys);
 
   if (canContinue) {
