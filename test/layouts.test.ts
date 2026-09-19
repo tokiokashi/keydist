@@ -92,7 +92,7 @@ test('TK音直入力法は正式名称を表示し、内部idは維持する（#
   const desita = combo?.comboDefinitions?.find((definition) => definition.output === 'desita');
   assert.deepEqual(desita?.inputs, ['d', 's', 't']);
   assert.deepEqual(desita?.keys, ['m', 'l', 'j']);
-  assert.equal(combo?.comboDefinitions?.length, 74);
+  assert.equal(combo?.comboDefinitions?.length, 73);
   assert.equal(tsuki?.name, '月配列2-263式');
   assert.ok(!oonishi?.name.includes(' '));
   assert.ok(!tsuki?.name.includes(' '));
