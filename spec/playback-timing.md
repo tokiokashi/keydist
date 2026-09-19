@@ -57,6 +57,7 @@ Structural result ───────────→ Timing
 | 再生倍率 `speedMultiplier` | 倍 | 0.1 〜 10 | 1 |
 | 指の移動速度を考慮 `sameFingerDelay` | — | 真偽 | 真 |
 | 全指の移動時間で律速 `allFingerMovementDelay` | — | 真偽 | 偽 |
+| hold開始を独立stepとして数える `HoldStartActionPolicy.countAsSeparateStep` | — | 真偽 | 偽 |
 | 個人速度 `calibration` | — | 有無 | 無し |
 
 再生倍率は**測定値・基準速度のどちらに対しても最後に掛かる**（§3.4）。
@@ -235,9 +236,12 @@ directed finger-pair / cross-hand Calibrationはすでに `T(i)` のbase duratio
 ### 4.1 確定Timing scheduleと表示用の先行到着
 
 表示側が各ステップの時間計算を再実装しないよう、Timingは各Strokeについて
-`startMs / endMs` を持つ累積scheduleを生成できるものとする。
-`allFingerMovementDelay=false` なら§3の `T(i)` をそのまま累積し、
-ONなら§3.8の全指max制約を適用したscheduleを確定結果とする。
+`startMs / endMs` を持つ累積scheduleを生成できるものとする。`hold-start` を独立actionとして
+数えるStrokeでは `actionCount=2` と `holdStartEndMs` も持ち、同一physical Strokeを
+`hold開始 → output` の2 virtual actionとして再生する。realized Stroke列そのものは分割しない。
+`allFingerMovementDelay=false` なら§3の `T(i)` を累積し、hold開始を独立actionとして数える場合は
+対象Strokeの前に通常1action相当のvirtual hold-start時間を加える。
+ONならそのうえで§3.8の全指max制約を適用したscheduleを確定結果とする。
 構造ラベルや表示設定から別のdurationを足さない。
 再生・速度の移動平均・指位置表示は同じ確定scheduleを再利用し、描画フレームごとに全StrokeのTimingを再計算しない。
 
@@ -277,7 +281,7 @@ AnalysisResultやCalibrationの選択規則へ逆流しない。
 
 窓に含まれるステップ列の表示時間の合計を `D` とすると、
 
-- **アクション/秒** = `窓のStroke数 × 1000 / D`
+- **アクション/秒** = `窓のschedule actionCount合計 × 1000 / D`
 - **かな/秒** = `窓に含まれる入力単位のかな文字数 × 1000 / D`
 
 かなの数え方は、窓の中で**始まりかつ終わる**入力単位だけを数える。
@@ -296,7 +300,7 @@ decay = 2 ^ (-Δt / H)
 ewma  = decay * previous + (1 - decay) * instantaneous
 ```
 
-アクションの瞬時値は `1 / Δt`、かなの瞬時値はそのStrokeで完了した入力単位のかな文字数を
+アクションの瞬時値は `actionCount / Δt`、かなの瞬時値はそのStrokeで完了した入力単位のかな文字数を
 `Δt` で割った値とする。action / kanaとも、**最初の有効な瞬時値をEWMAの初期値**とする。
 かなは最初の入力単位が完了するまでは未観測とし、完了後の入力途中Strokeでは瞬時値0として
 既存EWMAを時間減衰させる。したがって1 Stroke = 1かなで瞬時値系列が同じなら、
