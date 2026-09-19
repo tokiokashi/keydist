@@ -92,7 +92,7 @@ test('prefixはtrigger actionでstartし後続targetへcontinueする', () => {
   ]);
 });
 
-test('suffixはtarget後にholdをstartし次入力ではtrigger-only再Pressを省略する', () => {
+test('suffixはactive holdがorderを破るためrelease/repressしてRequirementを維持する', () => {
   const first = realizeTriggerActions(base('suffix', 'x'), { useHold: true });
   assert.deepEqual(first.actions.map((action) => ({
     keys: action.keys,
@@ -109,7 +109,71 @@ test('suffixはtarget後にholdをstartし次入力ではtrigger-only再Pressを
     held: action.heldKeys,
     phase: action.holdPhase,
   })), [
-    { keys: ['g'], held: ['q'], phase: 'continue' },
+    { keys: ['g'], held: [], phase: undefined },
+    { keys: ['q'], held: ['q'], phase: 'start' },
+  ]);
+});
+
+test('order.after側がheldでbefore側にfresh Pressが必要ならcontinueしない', () => {
+  const input: SemanticInput = {
+    output: 'x',
+    physicalKeys: ['d', 'q'],
+    requirements: [{ kind: 'order', before: ['d'], after: ['q'] }],
+    capabilities: [{ kind: 'while-held', keys: ['q'] }],
+    layerId: 'single',
+    roles: [{ key: 'q', role: 'modifier' }],
+    faceMemberships: [],
+  };
+  const realization: BaseActionRealization = {
+    input,
+    actions: [['d'], ['q']],
+    defaultHoldKeys: ['q'],
+  };
+
+  const result = realizeTriggerActions(
+    [realization],
+    { useHold: true },
+    { keys: ['q'] },
+  );
+
+  assert.deepEqual(result.actions.map((action) => ({
+    keys: action.keys,
+    held: action.heldKeys,
+    phase: action.holdPhase,
+  })), [
+    { keys: ['d'], held: [], phase: undefined },
+    { keys: ['q'], held: ['q'], phase: 'start' },
+  ]);
+});
+
+test('order.before側がheldでafter側がfreshならcontinueできる', () => {
+  const input: SemanticInput = {
+    output: 'x',
+    physicalKeys: ['d', 'q'],
+    requirements: [{ kind: 'order', before: ['q'], after: ['d'] }],
+    capabilities: [{ kind: 'while-held', keys: ['q'] }],
+    layerId: 'single',
+    roles: [{ key: 'q', role: 'modifier' }],
+    faceMemberships: [],
+  };
+  const realization: BaseActionRealization = {
+    input,
+    actions: [['q'], ['d']],
+    defaultHoldKeys: ['q'],
+  };
+
+  const result = realizeTriggerActions(
+    [realization],
+    { useHold: true },
+    { keys: ['q'] },
+  );
+
+  assert.deepEqual(result.actions.map((action) => ({
+    keys: action.keys,
+    held: action.heldKeys,
+    phase: action.holdPhase,
+  })), [
+    { keys: ['d'], held: ['q'], phase: 'continue' },
   ]);
 });
 
