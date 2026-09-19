@@ -1,10 +1,10 @@
 {
   "version": 1,
   "source": {
-    "url": "https://github.com/k-ayaki/dvorakj_2023/blob/master/data/lang/jpn/順に打鍵する配列/その他/新 JIS 配列.txt",
-    "sha": "903f777dea9cdcebf3cbb12dc5938979fde1e9a2",
-    "path": "data/lang/jpn/順に打鍵する配列/その他/新 JIS 配列.txt",
-    "transform": "DvorakJの単打・shift面からかな配置を転記し、JIS 13/12/12/11列をANSI 12/12/11/10列へ先頭列対応で投影する。shift面は simultaneous として解釈する"
+    "url": "https://github.com/tor-nky/KeyLayout/blob/master/SinJIS/Mac/SinJIS_Layout.json",
+    "sha": "017b0071a2b70de60e579f5f532920a519a985c7",
+    "path": "SinJIS/Mac/SinJIS_Layout.json",
+    "transform": "JIS X 6004の公開配列表を仕様根拠とし、MITライセンスのKeyLayout実装と照合。かな配置をkeydistのsimultaneous Face表現へ独自に記述する"
   },
   "faces": [
     {
