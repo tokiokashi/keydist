@@ -280,17 +280,27 @@ function updatePlaybackView() {
   if (!playbackTrace || !playbackGeometry || !playbackAnalysis) return;
   const total = playbackTrace.strokes.length;
   const cursor = clampPlaybackCursor(playbackState.cursor, total);
-  const stroke = playbackStrokeAt(playbackTrace.strokes, cursor);
+  const completedStroke = playbackStrokeAt(playbackTrace.strokes, cursor);
+  const virtualPhase = playbackState.playing
+    ? playbackVirtualPhase(playbackTiming, cursor, playbackState.elapsedMs)
+    : undefined;
+  const virtualStroke = virtualPhase === undefined ? undefined : playbackTrace.strokes[cursor];
+  const stroke = virtualStroke ?? completedStroke;
   const display = playbackLayout && stroke ? playbackStrokeDisplay(playbackLayout, stroke) : undefined;
   const isRomaji = playbackLayout?.romajiTable !== undefined;
   const windowSize = playbackOptions?.windowSize ?? ctx.getUiState().conditions.defaults.windowSize;
   const rateAverage = ctx.getUiState().conditions.defaults.playbackRateAverage;
   const rateWindow = ctx.getUiState().conditions.defaults.playbackRateWindow;
   const rateHalfLife = ctx.getUiState().conditions.defaults.playbackRateHalfLifeSeconds;
-  const activeKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
+  const pressedKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
   const triggerKeys = new Set(stroke?.triggerKeys ?? []);
+  const activeKeys = virtualPhase === 'hold-start'
+    ? new Set(triggerKeys)
+    : virtualPhase === 'output'
+      ? new Set([...pressedKeys].filter((key) => !triggerKeys.has(key)))
+      : pressedKeys;
   const fingerPositionKeys = ctx.getUiState().ui.playback.showFingers
-    ? playbackPreparedFingerPositionKeys(
+    ? new Map(playbackPreparedFingerPositionKeys(
       playbackAnalysis,
       playbackTiming,
       cursor,
@@ -300,8 +310,15 @@ function updatePlaybackView() {
       playbackState.stepsPerSecond,
       playbackState.calibration,
       playbackState.speedMultiplier,
-    )
+    ))
     : new Map<string, Finger>();
+  if (virtualStroke && ctx.getUiState().ui.playback.showFingers) {
+    for (const press of virtualStroke.presses) {
+      for (const key of press.keys) {
+        if (triggerKeys.has(key.id)) fingerPositionKeys.set(key.id, press.finger);
+      }
+    }
+  }
   const trailKeys = ctx.getUiState().ui.playback.showTrail
     ? playbackTrailKeys(playbackTrace.strokes, cursor, ctx.getUiState().ui.playback.trailTau)
     : new Map<string, number>();
@@ -407,7 +424,7 @@ function updatePlaybackView() {
   // クローンは cloneNode で盤面のキーを丸ごと写すため、刻印を今のステップへ
   // 更新し終えてから作る。先に作ると前のレイヤーの文字を持ったまま移動する。
   if (cursor !== playbackMotionCursor) {
-    renderPlaybackMotions(motions, cursor, stroke);
+    renderPlaybackMotions(motions, cursor, completedStroke);
     playbackMotionCursor = cursor;
   }
   if (playbackFeedbackPending) {
@@ -459,7 +476,20 @@ function updatePlaybackView() {
   const effectiveRate = elements.playback.querySelector<HTMLElement>('[data-playback-effective-rate]');
   const playbackWindow = settingsRoot.querySelector<HTMLOutputElement>('[data-playback-window]');
   const settingsSummary = elements.playback.querySelector<HTMLElement>('[data-playback-settings-summary]');
-  if (position) position.textContent = `${cursor} / ${total} ステップ`;
+  if (position) {
+    const hasVirtualActions = playbackTiming.some((step) => (step.actionCount ?? 1) > 1);
+    if (hasVirtualActions) {
+      const totalActions = playbackTiming.reduce((sum, step) => sum + (step.actionCount ?? 1), 0);
+      let completedActions = 0;
+      for (let index = 0; index < cursor; index++) {
+        completedActions += playbackTimingActionCount(playbackTiming, index);
+      }
+      if (virtualPhase === 'output') completedActions++;
+      position.textContent = `${completedActions} / ${totalActions} アクション`;
+    } else {
+      position.textContent = `${cursor} / ${total} ステップ`;
+    }
+  }
   const inputPreview = playbackInputPreview(
     playbackTrace.strokes,
     cursor,
@@ -468,7 +498,9 @@ function updatePlaybackView() {
   if (current) {
     current.hidden = isRomaji;
     current.textContent = stroke
-      ? display?.character ?? (stroke.triggerKeys.length > 0 ? '⇧' : stroke.char)
+      ? virtualPhase === 'hold-start'
+        ? '⇧'
+        : display?.character ?? (stroke.triggerKeys.length > 0 ? '⇧' : stroke.char)
       : '—';
   }
   if (romaji) romaji.hidden = !isRomaji;
