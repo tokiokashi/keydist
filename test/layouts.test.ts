@@ -11,6 +11,7 @@ import {
   canFoldFaces,
   classifyFaces,
   displayTriggerKeys,
+  faceCells,
   foldedLayerCells,
   groupFacesIntoLayers,
   handOfKey,
