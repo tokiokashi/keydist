@@ -12,9 +12,9 @@ import {
 /**
  * 新JISけん盤配列（JIS X 6004）。
  *
- * かな配置はJIS X 6004の公開資料を基準に、MITライセンスの
- * tor-nky/KeyLayout (SinJIS/Mac/SinJIS_Layout.json) と照合した。
- * keydistでは規格票の文章・図版ではなく、配列仕様を独自のFace定義として記述する。
+ * かな配置はJIS X 6004として公開されている配列仕様に基づく。
+ * 参考: https://jisx6004.client.jp/layout-kana.html
+ * keydistでは規格票の文章・図版ではなく、キーとかなの対応をFace定義として独自に記述する。
  *
  * 規格が定めるのはシフト面への切り替えで、シフト機構自体は実装依存のため、
  * 同じ配置を逐次シフト（prefix）と通常シフト（simultaneous）の2定義として持つ。
