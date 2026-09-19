@@ -841,7 +841,7 @@ function renderComboTable(
   layout: Layout,
   geometry: ReturnType<typeof buildGeometry>,
 ): string {
-  const resolvedCombos = layout.comboDefinitions ?? [];
+  const resolvedCombos = layout.resolvedComboDefinitions ?? [];
   if (combos.length === 0 && resolvedCombos.length === 0) return '';
 
   type ComboDiagramItem = {

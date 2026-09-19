@@ -139,7 +139,7 @@ export interface Layout {
    */
   comboConditions?: ReadonlyMap<string, ComboCondition>;
   /** withCombos由来のコンボ定義。物理キーまで解決済みで、配列図等の表示にも使う。 */
-  comboDefinitions?: readonly ResolvedComboDefinition[];
+  resolvedComboDefinitions?: readonly ResolvedComboDefinition[];
   /** 各見出しのSequenceのステップごとの帰属先。合成出力では層が混在しうる */
   stepLayers?: ReadonlyMap<string, readonly string[]>;
   /** 各見出しのSequenceのステップごとに、層操作として押すキー */
@@ -496,7 +496,7 @@ export function withCombos(
   const stepSemantics = new Map(layout.stepSemantics ?? []);
   const layerDefinitions = [...(layout.layerDefinitions ?? [])];
   const comboConditions = new Map(layout.comboConditions);
-  const comboDefinitions: ResolvedComboDefinition[] = [...(layout.comboDefinitions ?? [])];
+  const resolvedComboDefinitions: ResolvedComboDefinition[] = [...(layout.resolvedComboDefinitions ?? [])];
   let hasCombo = layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID);
   for (const [output, inputs, condition, presentation] of combos) {
     const keys = inputs.map((ch) => layout.map.get(ch)?.[0]?.[0]);
@@ -512,7 +512,7 @@ export function withCombos(
       && foldTriggerKeys.length === foldTriggerInputs.length
       ? resolvedKeys.filter((key) => !foldTriggerSet.has(key))
       : [];
-    comboDefinitions.push({
+    resolvedComboDefinitions.push({
       output,
       inputs: [...inputs],
       keys: resolvedKeys,
@@ -543,7 +543,7 @@ export function withCombos(
     map,
     maxCharLength: maxKeyLength(map.keys()),
     comboConditions,
-    comboDefinitions,
+    resolvedComboDefinitions,
     stepLayers,
     stepTriggerKeys,
     stepSemantics,

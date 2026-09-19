@@ -78,7 +78,7 @@ test('TK音直入力法は英文モードでも英字配置として選べる', 
   assert.ok(layout);
   assert.equal(layout.name, 'TK音直入力法');
   assert.equal(layout.romajiTable, undefined);
-  assert.equal(layout.comboDefinitions, undefined);
+  assert.equal(layout.resolvedComboDefinitions, undefined);
 });
 
 test('日本語の配列一覧にDvorakを含める（#48）', () => {
@@ -97,23 +97,23 @@ test('TK音直入力法は正式名称を表示し、内部idは維持する（#
   assert.equal(oonishi?.name, '大西配列');
   assert.equal(combo?.id, 'oonishi-custom-combo');
   assert.equal(combo?.name, 'TK音直入力法');
-  const desita = combo?.comboDefinitions?.find((definition) => definition.output === 'desita');
+  const desita = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'desita');
   assert.deepEqual(desita?.inputs, ['d', 's', 't']);
   assert.deepEqual(desita?.keys, ['m', 'l', 'j']);
   assert.equal(desita?.group, '語彙拡張');
   assert.equal(desita?.foldTriggerInputs, undefined);
 
-  const ya = combo?.comboDefinitions?.find((definition) => definition.output === 'ya');
-  const yaku = combo?.comboDefinitions?.find((definition) => definition.output === 'yaku');
-  const atu = combo?.comboDefinitions?.find((definition) => definition.output === 'atu');
-  const ai = combo?.comboDefinitions?.find((definition) => definition.output === 'ai');
+  const ya = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'ya');
+  const yaku = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'yaku');
+  const atu = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'atu');
+  const ai = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'ai');
   assert.deepEqual(ya?.foldTriggerInputs, ['i']);
   assert.deepEqual(yaku?.foldTriggerInputs, ['i', 'a']);
   assert.deepEqual(atu?.foldTriggerInputs, [',']);
   assert.deepEqual(ai?.foldTriggerInputs, ['e']);
 
   const groupCounts = new Map<string, number>();
-  for (const definition of combo?.comboDefinitions ?? []) {
+  for (const definition of combo?.resolvedComboDefinitions ?? []) {
     if (definition.group) groupCounts.set(definition.group, (groupCounts.get(definition.group) ?? 0) + 1);
   }
   assert.deepEqual(Object.fromEntries(groupCounts), {
@@ -123,7 +123,7 @@ test('TK音直入力法は正式名称を表示し、内部idは維持する（#
     '撥音拡張': 7,
     '二重母音拡張': 10,
   });
-  assert.equal(combo?.comboDefinitions?.length, 73);
+  assert.equal(combo?.resolvedComboDefinitions?.length, 73);
   assert.ok(LAYOUTS_JA.some((layout) => layout.id === 'oonishi-custom-combo'));
   assert.equal(tsuki?.name, '月配列2-263式');
   assert.ok(!oonishi?.name.includes(' '));
