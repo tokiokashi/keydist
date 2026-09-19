@@ -141,6 +141,8 @@ let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
 let playbackMotionCursor = -1;
 let playbackFeedbackPending = false;
+/** 停止中にvirtual hold-start actionだけを1step進めた状態。cursorはphysical Stroke境界のまま。 */
+let playbackPausedVirtualHoldStart: number | undefined;
 let playbackRateChartSignature: string | undefined;
 let playbackTiming: readonly PlaybackTimingStep[] = [];
 type PlaybackSettingsTab = 'display' | 'graph' | 'conditions';
@@ -281,9 +283,13 @@ function updatePlaybackView() {
   const total = playbackTrace.strokes.length;
   const cursor = clampPlaybackCursor(playbackState.cursor, total);
   const completedStroke = playbackStrokeAt(playbackTrace.strokes, cursor);
-  const virtualPhase = playbackState.playing || playbackState.elapsedMs > 0
-    ? playbackVirtualPhase(playbackTiming, cursor, playbackState.elapsedMs)
-    : undefined;
+  const pausedVirtualHoldStart = !playbackState.playing
+    && playbackPausedVirtualHoldStart === cursor;
+  const virtualPhase = pausedVirtualHoldStart
+    ? 'hold-start'
+    : playbackState.playing || playbackState.elapsedMs > 0
+      ? playbackVirtualPhase(playbackTiming, cursor, playbackState.elapsedMs)
+      : undefined;
   const virtualStroke = virtualPhase === undefined ? undefined : playbackTrace.strokes[cursor];
   const stroke = virtualStroke ?? completedStroke;
   const display = playbackLayout && stroke ? playbackStrokeDisplay(playbackLayout, stroke) : undefined;
@@ -487,7 +493,7 @@ function updatePlaybackView() {
       for (let index = 0; index < cursor; index++) {
         completedActions += playbackTimingActionCount(playbackTiming, index);
       }
-      if (virtualPhase === 'output') completedActions++;
+      if (virtualPhase === 'output' || pausedVirtualHoldStart) completedActions++;
       position.textContent = `${completedActions} / ${totalActions} アクション`;
     } else {
       position.textContent = `${cursor} / ${total} ステップ`;
@@ -580,8 +586,12 @@ function updatePlaybackView() {
     toggle.setAttribute('aria-label', playbackState.playing ? '再生を一時停止する' : '再生する');
     toggle.disabled = total === 0 || cursor >= total;
   }
-  if (stop) stop.disabled = cursor === 0 && !playbackState.playing;
-  if (back) back.disabled = playbackState.playing || cursor === 0;
+  if (stop) stop.disabled = cursor === 0
+    && !playbackState.playing
+    && playbackState.elapsedMs === 0
+    && playbackPausedVirtualHoldStart === undefined;
+  if (back) back.disabled = playbackState.playing
+    || (cursor === 0 && playbackState.elapsedMs === 0 && playbackPausedVirtualHoldStart === undefined);
   if (forward) forward.disabled = playbackState.playing || cursor >= total;
   if (fingers) fingers.checked = ctx.getUiState().ui.playback.showFingers;
   if (keyFeedback) keyFeedback.value = ctx.getUiState().ui.playback.keyFeedbackStyle;
@@ -995,6 +1005,15 @@ function renderPlayback(
 function startPlayback() {
   if (!playbackTrace || playbackState.cursor >= playbackTrace.strokes.length) return;
   cancelPlaybackAnimation();
+  // 手動送りでhold-startだけ完了している場合はoutput phaseから再開する。
+  if (playbackPausedVirtualHoldStart === playbackState.cursor) {
+    const step = playbackTiming[playbackState.cursor];
+    const holdStartDurationMs = step?.holdStartEndMs === undefined
+      ? 0
+      : Math.max(0, step.holdStartEndMs - step.startMs);
+    playbackState = { ...playbackState, elapsedMs: holdStartDurationMs };
+    playbackPausedVirtualHoldStart = undefined;
+  }
   // 一時停止からの再開では現在Stroke内の経過時間を維持する。
   // 準備表示もelapsedMsを使うため、0へ戻すと到着済みの指が逆戻りしてしまう。
   playbackState = { ...playbackState, playing: true };
@@ -1017,6 +1036,7 @@ function stopPlayback() {
     playbackState.speedMultiplier,
   );
   playbackMotionCursor = -1;
+  playbackPausedVirtualHoldStart = undefined;
   updatePlaybackView();
 }
 
@@ -1056,6 +1076,7 @@ function finishPlaybackSeek() {
 
 function seekPlayback(value: string, playing = false) {
   if (!playbackTrace) return;
+  playbackPausedVirtualHoldStart = undefined;
   playbackState = {
     ...playbackState,
     cursor: clampPlaybackCursor(Number(value), playbackTrace.strokes.length),
@@ -1107,17 +1128,43 @@ function refreshStructuralAnalysis(): void {
       switch (target.dataset.playbackAction) {
         case 'toggle': if (playbackState.playing) pausePlayback(); else startPlayback(); break;
         case 'stop': stopPlayback(); break;
-        case 'back':
+        case 'back': {
           if (!playbackTrace) return;
-          playbackState = stepPlayback(playbackState, -1, playbackTrace.strokes.length);
+          const cursor = playbackState.cursor;
+          const phase = playbackVirtualPhase(playbackTiming, cursor, playbackState.elapsedMs);
+          if (playbackPausedVirtualHoldStart === cursor || phase === 'hold-start') {
+            playbackPausedVirtualHoldStart = undefined;
+            playbackState = { ...playbackState, elapsedMs: 0 };
+          } else if (phase === 'output') {
+            playbackPausedVirtualHoldStart = cursor;
+            playbackState = { ...playbackState, elapsedMs: 0 };
+          } else if (cursor > 0 && playbackTimingActionCount(playbackTiming, cursor - 1) > 1) {
+            playbackState = { ...stepPlayback(playbackState, -1, playbackTrace.strokes.length), elapsedMs: 0 };
+            playbackPausedVirtualHoldStart = cursor - 1;
+          } else {
+            playbackState = stepPlayback(playbackState, -1, playbackTrace.strokes.length);
+          }
           updatePlaybackView();
           break;
+        }
         case 'forward': {
           if (!playbackTrace) return;
-          const previousCursor = playbackState.cursor;
-          const nextState = stepPlayback(playbackState, 1, playbackTrace.strokes.length);
-          playbackFeedbackPending ||= nextState.cursor > previousCursor;
-          playbackState = nextState;
+          const cursor = playbackState.cursor;
+          const phase = playbackVirtualPhase(playbackTiming, cursor, playbackState.elapsedMs);
+          if (playbackPausedVirtualHoldStart === cursor || phase === 'output') {
+            playbackPausedVirtualHoldStart = undefined;
+            const nextState = stepPlayback({ ...playbackState, elapsedMs: 0 }, 1, playbackTrace.strokes.length);
+            playbackFeedbackPending ||= nextState.cursor > cursor;
+            playbackState = nextState;
+          } else if (phase === 'hold-start' || playbackTimingActionCount(playbackTiming, cursor) > 1) {
+            playbackPausedVirtualHoldStart = cursor;
+            playbackState = { ...playbackState, elapsedMs: 0 };
+            playbackFeedbackPending = true;
+          } else {
+            const nextState = stepPlayback(playbackState, 1, playbackTrace.strokes.length);
+            playbackFeedbackPending ||= nextState.cursor > cursor;
+            playbackState = nextState;
+          }
           updatePlaybackView();
           break;
         }
@@ -1367,6 +1414,7 @@ function refreshStructuralAnalysis(): void {
       playbackTrace = undefined; playbackAnalysis = undefined; playbackGeometry = undefined; playbackLayout = undefined; playbackOptions = undefined;
       playbackTiming = [];
       playbackFeedbackPending = false;
+      playbackPausedVirtualHoldStart = undefined;
       preserveStateOnNextRender = undefined;
           setPlaybackSettingsOpen(false);
       elements.playbackSettingsPanel.innerHTML = '';
