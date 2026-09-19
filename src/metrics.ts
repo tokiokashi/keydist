@@ -118,6 +118,11 @@ export interface Metrics {
    * シフト面・複数キーコンボ・複数Stroke入力は含めない（仕様 §11.5.1）。
    */
   baseLayerRate: number;
+  /**
+   * 打鍵可能な入力文字のうち、その文字を1 Stroke・1キーだけで、
+   * trigger / held-triggerに依存せず出力した割合 [%]（仕様 §11.5.2）。
+   */
+  singleTapRate: number;
   /** 隣接指間距離の統計。ホーム間隔からの超過で持つ（仕様 §11.6） */
   adjacent: PairStat[];
   /** 同指連続回数。同じ指で異なる位置を続けて打った数 */
@@ -301,6 +306,7 @@ export function computeMetrics(
     perCharSteps: inputChars ? actions / inputChars : 0,
     perCharPresses: inputChars ? presses / inputChars : 0,
     baseLayerRate: baseLayerRate(trace),
+    singleTapRate: singleTapRate(trace),
     adjacent,
     sameFinger,
     combos,
@@ -348,6 +354,40 @@ function baseLayerRate(trace: Trace): number {
   }
 
   return typableChars ? (baseChars / typableChars) * 100 : 0;
+}
+
+/**
+ * 打鍵可能だった入力単位を inputIndex ごとにまとめ、元の文字数で重み付けする。
+ * その入力を1 physical Stroke・1物理キーだけで処理し、trigger / held-triggerに
+ * 依存しない場合だけ単打とする。
+ *
+ * prefix / suffixは複数Strokeなので除外する。simultaneousな多キー入力も除外する。
+ * hold continuationは新規押下が1キーでもheld-triggerに依存するため単打には含めない。
+ */
+function singleTapRate(trace: Trace): number {
+  const byInput = new Map<number, Stroke[]>();
+  for (const stroke of trace.strokes) {
+    const group = byInput.get(stroke.inputIndex);
+    if (group) group.push(stroke);
+    else byInput.set(stroke.inputIndex, [stroke]);
+  }
+
+  let typableChars = 0;
+  let singleTapChars = 0;
+  for (const strokes of byInput.values()) {
+    const charCount = [...strokes[0].inputChar].length;
+    typableChars += charCount;
+    if (strokes.length !== 1) continue;
+
+    const stroke = strokes[0];
+    const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);
+    const hasShiftParticipation = stroke.participations.some((participation) =>
+      participation.roles.includes('trigger') || participation.roles.includes('held-trigger'));
+
+    if (keyCount === 1 && !hasShiftParticipation) singleTapChars += charCount;
+  }
+
+  return typableChars ? (singleTapChars / typableChars) * 100 : 0;
 }
 
 function meanStdDevMax(values: number[]): { mean: number; stdDev: number; max: number } {

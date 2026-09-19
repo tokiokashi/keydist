@@ -109,9 +109,10 @@ test('NICOLA / 新下駄は現在の同期Faceをsingleとして明示する', (
   assert.equal(shingetaModifier.triggerPersistence, 'single');
   assert.ok(shingetaModifier.participations.some((p) => p.roles.includes('trigger')));
 
-  const shingetaComposition = evaluate('きゃ', LAYOUT_BY_ID.get('shingeta')!, geometry, opts()).strokes[0];
-  assert.equal(shingetaComposition.inputRole, 'composition');
-  assert.equal(shingetaComposition.triggerPersistence, 'single');
+  const shingetaYouon = evaluate('きゃ', LAYOUT_BY_ID.get('shingeta')!, geometry, opts()).strokes[0];
+  assert.equal(shingetaYouon.inputRole, 'modifier');
+  assert.equal(shingetaYouon.triggerPersistence, 'single');
+  assert.ok(shingetaYouon.participations.some((p) => p.roles.includes('trigger')));
 });
 
 test('月配列prefixはtrigger-only Stroke + singleとして正規化する', () => {

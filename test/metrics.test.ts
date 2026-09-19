@@ -140,6 +140,32 @@ test('基底面率は基底面の1キー直接出力だけを文字数ベース�
   near(romajiMetrics.baseLayerRate, 50, 'ローマ字: 1キーの「あ」だけを数え、2打鍵の「か」は含めない');
 });
 
+test('単打率は1 Stroke・新規1キーだけを文字数ベースで数える', () => {
+  const romajiMetrics = computeMetrics(evaluate('あか', qwerty, geometry, opts()), geometry);
+  near(romajiMetrics.singleTapRate, 50, 'ローマ字: あは1打、かは2打');
+
+  const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
+  const prefixMetrics = computeMetrics(evaluate('あ', tsuki, geometry, opts()), geometry);
+  near(prefixMetrics.singleTapRate, 0, '月配列: 前置シフトは各Strokeが1キーでも単打には含めない');
+
+  const shingeta = LAYOUT_BY_ID.get('shingeta')!;
+  const comboMetrics = computeMetrics(evaluate('きゃ', shingeta, geometry, opts()), geometry);
+  near(comboMetrics.singleTapRate, 0, '新下駄: 1 Strokeでも多キー同時押しは単打に含めない');
+});
+
+test('単打率はhold継続中の1キー入力を単打に含めない', () => {
+  const asuka = LAYOUT_BY_ID.get('asuka')!;
+  const trace = evaluate('あだ', asuka, geometry, opts({
+    triggerRealizationPolicy: { useHold: true },
+  }));
+  const metrics = computeMetrics(trace, geometry);
+
+  assert.equal(trace.strokes.length, 2);
+  assert.ok(trace.strokes[1].participations.some((p) => p.roles.includes('held-trigger')));
+  near(metrics.singleTapRate, 0, 'held triggerに依存する文字は新規1キーでも単打ではない');
+  near(metrics.baseLayerRate, 0, 'hold継続の文字は基底面にも含めない');
+});
+
 test('基底面率はhold継続中のシフト文字を基底面扱いしない', () => {
   const asuka = LAYOUT_BY_ID.get('asuka')!;
   const trace = evaluate('あだ', asuka, geometry, opts({
