@@ -1,16 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  planSemanticInputActions,
-  planSemanticInputSequenceActions,
+  compileSequenceInputArtifacts,
+  flattenBaseActionRealizations,
+  type BaseActionRealization,
   type SemanticInput,
 } from '../src/core/semantic-input/index.ts';
 import { resolveKeyId } from '../src/geometry.ts';
-import { LAYOUT_BY_ID } from '../src/layouts/index.ts';
+import { fromFaces, LAYOUT_BY_ID, type Face } from '../src/layouts/index.ts';
 
-const input = (
+const semanticInput = (
   physicalKeys: readonly string[],
-  requirements: SemanticInput['requirements'],
+  requirements: SemanticInput['requirements'] = [],
 ): SemanticInput => ({
   output: 'x',
   physicalKeys,
@@ -21,101 +22,135 @@ const input = (
   faceMemberships: [],
 });
 
-const actionKeys = (semantic: SemanticInput): readonly (readonly string[])[] =>
-  planSemanticInputActions(semantic).map((action) => action.keys);
+test('BaseActionRealizationはRequirementからgroupingを推測せず明示actionを使う', () => {
+  const input = semanticInput(['d', 'h'], [
+    { kind: 'overlap', keys: ['d', 'h'] },
+  ]);
+  const combined: BaseActionRealization = {
+    input,
+    actions: [['d', 'h']],
+  };
+  const separate: BaseActionRealization = {
+    input,
+    actions: [['d'], ['h']],
+  };
 
-test('Requirementなしは全physicalKeysを1 actionにする', () => {
   assert.deepEqual(
-    actionKeys(input(['a', 'd'], [])),
-    [['a', 'd']],
-  );
-});
-
-test('overlapは1 actionへまとめる', () => {
-  assert.deepEqual(
-    actionKeys(input(['d', 'h'], [
-      { kind: 'overlap', keys: ['d', 'h'] },
-    ])),
+    flattenBaseActionRealizations([combined]).map((action) => action.keys),
     [['d', 'h']],
   );
-});
-
-test('prefix型orderはbefore / afterを別actionへする', () => {
   assert.deepEqual(
-    actionKeys(input(['d', 'h'], [
-      { kind: 'order', before: ['d'], after: ['h'] },
-    ])),
+    flattenBaseActionRealizations([separate]).map((action) => action.keys),
     [['d'], ['h']],
   );
 });
 
-test('suffix型orderは逆順のaction列になる', () => {
+test('Requirementなしのmulti-key入力もcombined/separateをRealization側で選べる', () => {
+  const input = semanticInput(['a', 'd']);
+  const combined: BaseActionRealization = {
+    input,
+    actions: [['a', 'd']],
+  };
+  const separate: BaseActionRealization = {
+    input,
+    actions: [['a'], ['d']],
+  };
+
   assert.deepEqual(
-    actionKeys(input(['d', 'h'], [
-      { kind: 'order', before: ['h'], after: ['d'] },
-    ])),
-    [['h'], ['d']],
+    flattenBaseActionRealizations([combined]).map((action) => action.keys),
+    [['a', 'd']],
+  );
+  assert.deepEqual(
+    flattenBaseActionRealizations([separate]).map((action) => action.keys),
+    [['a'], ['d']],
   );
 });
 
-test('multi-trigger orderは同一topological levelを1 actionへまとめる', () => {
-  assert.deepEqual(
-    actionKeys(input(['d', 'j', 'k'], [
-      { kind: 'order', before: ['d', 'k'], after: ['j'] },
-    ])),
-    [['d', 'k'], ['j']],
+test('legacy Sequence compilerはsource Step境界をbase actionとして保持する', () => {
+  const artifacts = compileSequenceInputArtifacts(
+    'x',
+    [['space', 'j'], ['j']],
+    'single',
   );
+
+  assert.equal(artifacts.semanticInputs.length, 2);
+  assert.equal(artifacts.baseActionRealizations.length, 2);
+  assert.equal(
+    artifacts.baseActionRealizations[0].input,
+    artifacts.semanticInputs[0],
+  );
+  assert.equal(
+    artifacts.baseActionRealizations[1].input,
+    artifacts.semanticInputs[1],
+  );
+  assert.deepEqual(artifacts.baseActionRealizations[0].actions, [['thumb-r', 'j']]);
+  assert.deepEqual(artifacts.baseActionRealizations[1].actions, [['j']]);
 });
 
-test('overlap + orderはSandSとして1 actionのまま保つ', () => {
-  assert.deepEqual(
-    actionKeys(input(['j', 'thumb-r'], [
-      { kind: 'overlap', keys: ['j', 'thumb-r'] },
-      { kind: 'order', before: ['thumb-r'], after: ['j'] },
-    ])),
-    [['j', 'thumb-r']],
-  );
-});
+test('Face prefix multi-triggerのdefault groupingはFace sourceから[T] -> [K]として作る', () => {
+  const face: Face = {
+    trigger: ['d', 'k'],
+    mode: 'prefix',
+    rows: ['', '', ['', '', '', '', '', '', 'x'], ''],
+    inputRole: 'modifier',
+    triggerPersistence: 'single',
+  };
+  const layout = fromFaces('prefix-base-realization', 'prefix-base-realization', [face]);
+  const semantic = layout.semanticInputSequences?.get('x');
+  const base = layout.baseActionRealizations?.get('x');
 
-test('partial overlap componentをorder DAGのlevelへ展開する', () => {
-  assert.deepEqual(
-    actionKeys(input(['a', 'd', 'j', 'k'], [
-      { kind: 'overlap', keys: ['d', 'k'] },
-      { kind: 'order', before: ['a'], after: ['d'] },
-      { kind: 'order', before: ['k'], after: ['j'] },
-    ])),
-    [['a'], ['d', 'k'], ['j']],
-  );
-});
-
-test('SemanticInput sequenceは各inputのaction列を順番にflattenする', () => {
-  const first = input(['d', 'h'], [
-    { kind: 'order', before: ['d'], after: ['h'] },
+  assert.ok(semantic);
+  assert.ok(base);
+  assert.equal(semantic.length, 1);
+  assert.deepEqual(semantic[0].requirements, [
+    { kind: 'order', before: ['d', 'k'], after: ['j'] },
   ]);
-  const second = input(['j', 'k'], [
-    { kind: 'overlap', keys: ['j', 'k'] },
-  ]);
-
-  const actions = planSemanticInputSequenceActions([first, second]);
-  assert.deepEqual(actions.map((action) => action.keys), [
-    ['d'],
-    ['h'],
-    ['j', 'k'],
-  ]);
-  assert.equal(actions[0].input, first);
-  assert.equal(actions[1].input, first);
-  assert.equal(actions[2].input, second);
+  assert.equal(base.length, 1);
+  assert.equal(base[0].input, semantic[0]);
+  assert.deepEqual(base[0].actions, [['d', 'k'], ['j']]);
 });
 
-test('built-in全outputでcanonical base action列がlegacy Layout.mapと一致する', () => {
+test('Face simultaneous + orderのdefault groupingはFace sourceどおり1 actionを保つ', () => {
+  const face: Face = {
+    trigger: ['space'],
+    mode: 'simultaneous',
+    triggerOrder: 'prefix',
+    rows: ['', '', ['', '', '', '', '', '', 'x'], ''],
+    inputRole: 'modifier',
+    triggerPersistence: 'hold-capable',
+  };
+  const layout = fromFaces('sands-base-realization', 'sands-base-realization', [face]);
+  const semantic = layout.semanticInputSequences?.get('x');
+  const base = layout.baseActionRealizations?.get('x');
+
+  assert.ok(semantic);
+  assert.ok(base);
+  assert.deepEqual(semantic[0].requirements, [
+    { kind: 'order', before: ['thumb-r'], after: ['j'] },
+    { kind: 'overlap', keys: ['j', 'thumb-r'] },
+  ]);
+  assert.deepEqual(base[0].actions, [['thumb-r', 'j']]);
+});
+
+test('built-in全outputでauthoring-derived base actionがlegacy Layout.mapと一致する', () => {
   for (const layout of LAYOUT_BY_ID.values()) {
     assert.ok(layout.semanticInputSequences, `${layout.id}: semanticInputSequences`);
+    assert.ok(layout.baseActionRealizations, `${layout.id}: baseActionRealizations`);
 
     for (const [output, legacySequence] of layout.map) {
       const semanticSequence = layout.semanticInputSequences.get(output);
-      assert.ok(semanticSequence, `${layout.id}: ${output} canonical sequence`);
+      const baseRealizations = layout.baseActionRealizations.get(output);
+      assert.ok(semanticSequence, `${layout.id}: ${output} semantic sequence`);
+      assert.ok(baseRealizations, `${layout.id}: ${output} base realization`);
 
-      const actions = planSemanticInputSequenceActions(semanticSequence);
+      for (const realization of baseRealizations) {
+        assert.ok(
+          semanticSequence.includes(realization.input),
+          `${layout.id}: ${output} realization input belongs to semantic sequence`,
+        );
+      }
+
+      const actions = flattenBaseActionRealizations(baseRealizations);
       assert.equal(
         actions.length,
         legacySequence.length,
@@ -128,5 +163,21 @@ test('built-in全outputでcanonical base action列がlegacy Layout.mapと一致�
         assert.deepEqual(actual, expected, `${layout.id}: ${output} action ${index}`);
       }
     }
+  }
+});
+
+test('composed outputはcomponentのBaseActionRealization objectを再利用する', () => {
+  for (const id of ['shin-jis-prefix', 'shin-jis-simultaneous', 'tsuki-2-263']) {
+    const layout = LAYOUT_BY_ID.get(id)!;
+    const source = layout.baseActionRealizations?.get('ほ');
+    const mark = layout.baseActionRealizations?.get('゛');
+    const output = layout.baseActionRealizations?.get('ぼ');
+
+    assert.ok(source, `${id}: source`);
+    assert.ok(mark, `${id}: mark`);
+    assert.ok(output, `${id}: output`);
+    assert.equal(output.length, source.length + mark.length, id);
+    assert.equal(output[0], source[0], `${id}: source realization reuse`);
+    assert.equal(output.at(-1), mark.at(-1), `${id}: mark realization reuse`);
   }
 });
