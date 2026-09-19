@@ -4,6 +4,7 @@ import {
   compileSequenceInputArtifacts,
   flattenBaseActionRealizations,
   type BaseActionRealization,
+  type BaseActionRealizationSequence,
   type SemanticInput,
 } from '../src/core/semantic-input/index.ts';
 import { resolveKeyId } from '../src/geometry.ts';
@@ -139,7 +140,8 @@ test('built-in全outputでauthoring-derived base actionがlegacy Layout.mapと�
 
     for (const [output, legacySequence] of layout.map) {
       const semanticSequence = layout.semanticInputSequences.get(output);
-      const baseRealizations = layout.baseActionRealizations.get(output);
+      const baseRealizations: BaseActionRealizationSequence | undefined =
+        layout.baseActionRealizations.get(output);
       assert.ok(semanticSequence, `${layout.id}: ${output} semantic sequence`);
       assert.ok(baseRealizations, `${layout.id}: ${output} base realization`);
 
