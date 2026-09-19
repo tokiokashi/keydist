@@ -78,6 +78,18 @@ export function createResultsView(ctx: ResultsViewContext): ResultsViewControlle
     return selection;
   }
 
+  /**
+   * 直近のrenderDetailが使った詳細表示対象。ピッカーの選択・ガイド表示は
+   * テキスト評価やmetricsを変えないので、これを使って配列図だけ軽く引き直す。
+   * render()をフルで回すとテキストが長いほどevaluate/playbackが重くなるため、
+   * ピッカー操作のたびに全体を再計算するのは避ける。
+   */
+  let lastDetail: { metrics: Metrics; layout: Layout; geometry: ReturnType<typeof buildGeometry> } | null = null;
+
+  function refreshPickerDisplay(): void {
+    if (lastDetail) renderHeatmap(lastDetail.metrics, lastDetail.layout, lastDetail.geometry);
+  }
+
 function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sort: MatrixSort | null): T[] {
   if (!sort) return rows;
   return rows
@@ -142,6 +154,7 @@ function render() {
     });
 
   if (results.length === 0) {
+    lastDetail = null;
     ctx.playback.clear();
     elements.textMeta.textContent = '配列を1つ以上選ぶ';
     elements.compareChart.innerHTML = '';
@@ -620,6 +633,7 @@ function sensitivityLabel(
 function renderDetail(results: Result[]) {
   const found = results.find((r) => r.layout.id === elements.detailLayout.value) ?? results[0];
   const { metrics, layout, geometry, options } = found;
+  lastDetail = { metrics, layout, geometry };
 
   elements.detailConditions.textContent = metricConditionText(metrics, layout);
 
@@ -1268,12 +1282,12 @@ function renderHeatmap(
     );
   });
   const pickerResultText = pickerSelection.size === 0
-    ? '配列図のキーをクリックすると、コンボのトリガーとして選べる。'
+    ? 'キーをクリックすると、コンボのトリガーを選べます。'
     : pickerMatch.exact.length > 0
-      ? `選択中のキーで確定: <b>${pickerMatch.exact.map((match) => escapeText(match.output)).join(' / ')}</b>`
+      ? `確定: <b>${pickerMatch.exact.map((match) => escapeText(match.output)).join(' / ')}</b>`
       : pickerMatch.candidates.size > 0
-        ? '緑の枠が相方候補。もう1キー選ぶとコンボが確定する。'
-        : 'このキーの組み合わせに一致するコンボは無い。';
+        ? '緑の枠が相方候補です。もう1キーでコンボが確定します。'
+        : 'このキーの組み合わせに一致するコンボはありません。';
   const pickerControls = `<div class="combo-picker-controls">
       <p class="combo-picker-result">${pickerResultText}</p>
       <label><input type="checkbox" data-picker-guide data-layout-id="${escapeAttr(layout.id)}"${pickerGuideEnabled ? ' checked' : ''}> コンボ・レイヤートリガーをガイド表示</label>
@@ -1336,7 +1350,7 @@ function setSensitivityScale(scale: SensitivityScale) {
       if (guideCheckbox) {
         const layoutId = guideCheckbox.dataset.layoutId;
         if (layoutId) comboPickerGuideEnabled.set(layoutId, guideCheckbox.checked);
-        render();
+        refreshPickerDisplay();
         return;
       }
       const select = (e.target as Element).closest<HTMLSelectElement>('select[data-combo-face-select]');
@@ -1359,7 +1373,7 @@ function setSensitivityScale(scale: SensitivityScale) {
           const selection = getPickerSelection(layoutId);
           if (selection.has(keyId)) selection.delete(keyId);
           else selection.add(keyId);
-          render();
+          refreshPickerDisplay();
         }
         return;
       }
@@ -1368,7 +1382,7 @@ function setSensitivityScale(scale: SensitivityScale) {
       if (target.dataset.pickerClear !== undefined) {
         const layoutId = target.dataset.layoutId;
         if (layoutId) getPickerSelection(layoutId).clear();
-        render();
+        refreshPickerDisplay();
         return;
       }
       if (target.dataset.naginataLayerDetail !== undefined) {
