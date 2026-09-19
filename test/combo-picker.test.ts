@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { faceFromEntries } from '../src/layouts/index.ts';
+import { faceFromEntries, LAYOUT_BY_ID } from '../src/layouts/index.ts';
 import type { Face, Layout } from '../src/layouts/index.ts';
 import {
   allTriggerKeys, buildComboPickerMatrix, findActiveLayerFace, matchCombos, summarizeCandidateMatches,
@@ -93,6 +93,25 @@ test('matchCombos: resolvedComboDefinitionsもexact/candidateの両方で見る'
   assert.equal(exact.exact[0]?.output, 'ye');
   const partial = matchCombos(layout, new Set(['k']));
   assert.equal(partial.candidates.get('d')?.[0].output, 'ye');
+});
+
+test('matchCombos: TK音直でi選択後、eの物理キーにyeを表示できる', () => {
+  const layout = LAYOUT_BY_ID.get('oonishi-custom-combo');
+  assert.ok(layout);
+  const iKey = layout.map.get('i')?.[0]?.[0];
+  const eKey = layout.map.get('e')?.[0]?.[0];
+  assert.ok(iKey);
+  assert.ok(eKey);
+  const result = matchCombos(layout, new Set([iKey]));
+  assert.ok(result.candidates.get(eKey)?.some((match) => match.output === 'ye'));
+});
+
+test('matchCombos: 薙刀式で「じ」確定後もh追加の「じゃ」を候補表示する', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18');
+  assert.ok(layout);
+  const result = matchCombos(layout, new Set(['r', 'j']));
+  assert.ok(result.exact.some((match) => match.output === 'じ'));
+  assert.ok(result.candidates.get('h')?.some((match) => match.output === 'じゃ'));
 });
 
 test('matchCombos: 選択が空なら何も返らない', () => {
