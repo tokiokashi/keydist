@@ -705,6 +705,23 @@ export function playbackTimingActionCount(
   return schedule?.[strokeIndex]?.actionCount ?? 1;
 }
 
+export type PlaybackVirtualPhase = 'hold-start' | 'output';
+
+/**
+ * 再生中の次Strokeがhold開始分離対象なら、そのStroke内のvirtual action段階を返す。
+ * cursorは「完了済みStroke数」なのでschedule[cursor]が現在進行中のStroke。
+ */
+export function playbackVirtualPhase(
+  schedule: readonly PlaybackTimingStep[] | undefined,
+  cursor: number,
+  elapsedMs: number,
+): PlaybackVirtualPhase | undefined {
+  const step = schedule?.[cursor];
+  if (!step || step.holdStartEndMs === undefined) return undefined;
+  const holdStartDurationMs = Math.max(0, step.holdStartEndMs - step.startMs);
+  return Math.max(0, elapsedMs) < holdStartDurationMs ? 'hold-start' : 'output';
+}
+
 function playbackTimingActionCountRange(
   schedule: readonly PlaybackTimingStep[] | undefined,
   start: number,
