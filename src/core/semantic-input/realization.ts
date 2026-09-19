@@ -83,6 +83,15 @@ export function validateBaseActionRealization(
         'BaseActionRealization.defaultHoldKeysはwhile-held Capabilityと一致する必要がある',
       );
     }
+    const containedInOneAction = realization.actions.some((action) => {
+      const actionKeys = action.map(resolveKeyId);
+      return normalized.every((key) => actionKeys.includes(key));
+    });
+    if (!containedInOneAction) {
+      throw new Error(
+        'BaseActionRealization.defaultHoldKeysはdefault realization上の1 actionに収まる必要がある',
+      );
+    }
   }
 }
 
