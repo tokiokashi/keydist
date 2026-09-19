@@ -15,10 +15,9 @@ const face = (
  * 親指シフト（NICOLA）J型。
  *
  * 配置はNICOLA日本語入力コンソーシアムの規格書
- * (http://nicola.sunicom.co.jp/spec/kikaku.htm)に対応するDvorakJの
- * 「NICOLA配列規格書」版 (https://github.com/k-ayaki/dvorakj_2023)から移植した。
- * 紅皿の定義 (https://github.com/k-ayaki/benizara)はD01/D11/D12/B10で異なるため採らなかった。
- * 規格書 §3の2018.11注記にあるD12の記載はDvorakJの読みを採用し、
+ * (http://nicola.sunicom.co.jp/spec/kikaku.htm)を仕様根拠としてkeydist形式で記述した。
+ * 紅皿など個別ソフトの派生定義は仕様根拠にしない。
+ * 規格書 §3の2018.11注記にあるD12の記載に従い、
  * `゛` はB10 + 無変換、`゜` はD01 + 変換に置き、D12の機能キー出力は追加していない。
  *
  * NICOLA専用キーボードを前提にした配置をANSIのキーidへ写しているため、

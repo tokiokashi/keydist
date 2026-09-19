@@ -12,8 +12,9 @@ import {
 /**
  * 新JISけん盤配列（JIS X 6004）。
  *
- * かな配置は DvorakJ 同梱の「新 JIS 配列.txt」から移植する。
- * https://github.com/k-ayaki/dvorakj_2023
+ * かな配置はJIS X 6004として公開されている配列仕様に基づく。
+ * 参考: https://jisx6004.client.jp/layout-kana.html
+ * keydistでは規格票の文章・図版ではなく、キーとかなの対応をFace定義として独自に記述する。
  *
  * 規格が定めるのはシフト面への切り替えで、シフト機構自体は実装依存のため、
  * 同じ配置を逐次シフト（prefix）と通常シフト（simultaneous）の2定義として持つ。

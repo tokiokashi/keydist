@@ -1,10 +1,10 @@
 {
   "version": 1,
   "source": {
-    "url": "https://github.com/k-ayaki/dvorakj_2023/blob/master/data/lang/jpn/順に打鍵する配列/その他/新 JIS 配列.txt",
-    "sha": "903f777dea9cdcebf3cbb12dc5938979fde1e9a2",
-    "path": "data/lang/jpn/順に打鍵する配列/その他/新 JIS 配列.txt",
-    "transform": "DvorakJの単打・shift面からかな配置を転記し、JIS 13/12/12/11列をANSI 12/12/11/10列へ先頭列対応で投影する。shift面は simultaneous として解釈する"
+    "url": "https://jisx6004.client.jp/layout-kana.html",
+    "sha": "jis-x-6004-public-layout",
+    "path": "新JIS JIS X 6004-1986 公開配列表",
+    "transform": "JIS X 6004として公開されているキーとかなの対応を仕様根拠として、keydistのsimultaneous Face表現へ独自に記述する"
   },
   "faces": [
     {

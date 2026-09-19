@@ -3,11 +3,11 @@ import { faceFromEntries, fromFaces, type Face, type Layout } from './types.ts';
 
 /**
  * 新下駄配列。
- * 準公式定義: https://github.com/k-ayaki/dvorakj_2023の
- * `data/lang/jpn/同時に打鍵する配列/下駄配列系/新下駄配列.txt`。
- * 考案者の記事: http://kouy.exblog.jp/13627994/
- * DvorakJの数字・記号・機能キーはかな面の定義から除き、数字段にある小書きかなと
- * QWERTYの文字キー段にあるかな・句読点を写す。単打面の重複する長音は、元記事の主要部に合わせてqを採る。
+ * 考案者kouy氏による公開配列表:
+ * https://kouy.exblog.jp/13627994/
+ * keydistではこの公開された配列仕様をFace定義として独自に記述し、
+ * 機能キーやJIS専用キーは解析対象から除く。
+ * 単打面の重複する長音は元記事の主要部に合わせてqを採り、
  * D面の重複する括弧や機能キーは採らず、単打面の `「` を残す。
  */
 
