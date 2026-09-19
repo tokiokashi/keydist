@@ -30,6 +30,8 @@ import type {
 import type { AggregatedAnalysisResult } from './analysis-aggregate.ts';
 import type { ChainPolicy } from './analysis-chain.ts';
 import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
+import type { TriggerRealizationPolicy } from './trigger-realization.ts';
+import type { HoldStartActionPolicy } from './hold-start-action.ts';
 import {
   playbackAnalysisArpeggioMotions,
   playbackAnalysisArpeggioOrders,
@@ -54,6 +56,10 @@ export interface PlaybackViewContext {
   updateChainPolicy: (policy: ChainPolicy) => void;
   getArpeggioPolicy: () => ArpeggioPolicy;
   updateArpeggioPolicy: (policy: ArpeggioPolicy) => void;
+  getTriggerRealization: () => TriggerRealizationPolicy;
+  updateTriggerRealization: (useHold: boolean) => void;
+  getHoldStartAction: () => HoldStartActionPolicy;
+  updateHoldStartAction: (countAsSeparateStep: boolean) => void;
   refreshAnalysis: () => void;
   openCalibration: () => void;
   openCalibrationEdit: () => void;
@@ -153,6 +159,7 @@ function refreshPlaybackTiming(): void {
       {
         allFingerMovementDelay: settings.allFingerMovementDelay && playbackGeometry !== undefined,
         geometry: playbackGeometry,
+        holdStartActionPolicy: ctx.getHoldStartAction(),
       },
     )
     : [];
@@ -231,6 +238,8 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
       <p class="note">再生時間はTransition Calibration、構造表示はAnalysis Chain / ArpeggioPolicyを使用します。</p>
       <div class="playback-dialog-grid">
         <label class="playback-speed"><span>標準速度</span><input type="number" data-playback-rate min="${PLAYBACK_STEPS_PER_SECOND_MIN}" max="${PLAYBACK_STEPS_PER_SECOND_MAX}" step="any" value="${playbackState.stepsPerSecond}" aria-label="再生の標準速度（ステップ毎秒）" /> <span>ステップ/秒</span></label>
+        <label class="playback-finger-toggle" title="hold-capableなtriggerを次の対応入力まで押し続け、再押下を省略する"><input type="checkbox" data-playback-trigger-hold${ctx.getTriggerRealization().useHold ? ' checked' : ''} />hold-capable triggerを連続保持する</label>
+        <label class="playback-finger-toggle" title="hold開始を計算上の独立actionとして数え、再生でもtrigger→outputの2段階で表示する"><input type="checkbox" data-playback-hold-start-action${ctx.getHoldStartAction().countAsSeparateStep ? ' checked' : ''}${ctx.getTriggerRealization().useHold ? '' : ' disabled'} />hold開始を独立stepとして数える <small>（連続保持時のみ）</small></label>
         <label class="playback-finger-toggle" title="同じ指の連続打鍵に指の移動速度を反映。個人速度が無ければ距離に比例した簡易換算で代用"><input type="checkbox" data-playback-sfb-delay${playbackState.sameFingerDelay ? ' checked' : ''} />指の移動速度を考慮</label>
         <label class="playback-finger-toggle" title="全指について次のPressまでの物理移動時間を確認し、base Timingに間に合わないStrokeだけ必要量を延長"><input type="checkbox" data-playback-all-finger-delay${ctx.getUiState().ui.playback.allFingerMovementDelay ? ' checked' : ''} />全指の移動時間で律速</label>
         <label class="playback-finger-toggle" title="キャリブレーションした通常速度・Transition方向別速度・指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${ctx.getUiState().ui.playback.useCalibration ? ' checked' : ''}${ctx.getCalibration() ? '' : ' disabled'} />個人速度を適用</label>
