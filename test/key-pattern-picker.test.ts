@@ -87,6 +87,17 @@ test('matchKeyPatterns: prefixはtriggerを先に選んだ時だけ出力キー�
   assert.equal(outputFirst.candidates.has('d'), false);
 });
 
+test('matchKeyPatterns: prefixのexactもtrigger先押しの選択順だけ成立する', () => {
+  const face = faceFromEntries(['d'], 'prefix', { j: 'お' });
+  const layout = stubLayout({ faces: [face] });
+
+  const valid = matchKeyPatterns(layout, new Set(['d', 'j']));
+  assert.ok(valid.exact.some((match) => match.output === 'お'));
+
+  const invalid = matchKeyPatterns(layout, new Set(['j', 'd']));
+  assert.equal(invalid.exact.some((match) => match.output === 'お'), false);
+});
+
 test('matchKeyPatterns: 2キー以上先の出力はまだ候補表示しない', () => {
   const face = faceFromEntries(['h', 'j'], 'simultaneous', { r: 'じゃ' });
   const layout = stubLayout({ faces: [face] });
@@ -158,7 +169,7 @@ test('matchKeyPatterns: 月配列prefixは通常キーからシフトキーへ�
   assert.ok(shifted.candidates.get('j')?.some((match) => match.output === 'お'));
 });
 
-test('matchKeyPatterns: 薙刀式Spaceも先押しした時だけセンターシフト候補を出す', () => {
+test('matchKeyPatterns: 薙刀式Spaceも先押しした時だけセンターシフト候補・exactを出す', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18');
   assert.ok(layout);
   const space = resolveKeyId('space');
@@ -169,6 +180,8 @@ test('matchKeyPatterns: 薙刀式Spaceも先押しした時だけセンターシ
 
   const shifted = matchKeyPatterns(layout, new Set([space]));
   assert.ok(shifted.candidates.get('j')?.some((match) => match.output === 'の'));
+  assert.ok(matchKeyPatterns(layout, new Set([space, 'j'])).exact.some((match) => match.output === 'の'));
+  assert.equal(matchKeyPatterns(layout, new Set(['j', space])).exact.some((match) => match.output === 'の'), false);
 });
 
 test('matchKeyPatterns: 選択が空なら何も返らない', () => {
