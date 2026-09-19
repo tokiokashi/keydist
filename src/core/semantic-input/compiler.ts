@@ -1,12 +1,14 @@
 import { keyId, resolveKeyId } from '../../geometry.ts';
 import type { Face } from '../../layouts/types.ts';
 import type {
+  BaseActionRealizationSequence,
   FaceMembership,
   InputCapability,
   KeyRole,
   PhysicalKeyId,
   Requirement,
   SemanticInput,
+  SemanticInputSequence,
 } from './types.ts';
 
 interface MutableSemanticInput {
@@ -347,6 +349,30 @@ export function compileSequenceSemanticInputs(
     assertCanonicalInput(input);
     return input;
   });
+}
+
+export interface CompiledSequenceArtifacts {
+  readonly semanticInputs: SemanticInputSequence;
+  readonly baseActionRealizations: BaseActionRealizationSequence;
+}
+
+/**
+ * legacy Step authoringをsemanticとdefault/base realizationへ同時にcompileする。
+ * action groupingはRequirementから推測せず、source Step境界をそのまま保持する。
+ */
+export function compileSequenceInputArtifacts(
+  output: string,
+  sequence: readonly (readonly string[])[],
+  layerId: string,
+): CompiledSequenceArtifacts {
+  const semanticInputs = compileSequenceSemanticInputs(output, sequence, layerId);
+  return {
+    semanticInputs,
+    baseActionRealizations: semanticInputs.map((input, index) => ({
+      input,
+      actions: [sequence[index].map(resolveKeyId)],
+    })),
+  };
 }
 
 export function compileFaceSemanticInputs(faces: readonly Face[]): readonly SemanticInput[] {
