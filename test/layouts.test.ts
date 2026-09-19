@@ -238,6 +238,23 @@ test('薙刀式のSandS表示だけ左右のSpaceを強調する', () => {
   assert.deepEqual(layout.map.get('の'), [['space', 'j']]);
 });
 
+test('triggerOrderが異なるFaceは同じレイヤーへ畳まない', () => {
+  const first: Face = {
+    ...faceFromEntries(['k'], 'simultaneous', { d: 'あ' }),
+    layer: '順序',
+    triggerOrder: 'prefix',
+    triggerPersistence: 'single',
+  };
+  const second: Face = {
+    ...faceFromEntries(['d'], 'simultaneous', { k: 'い' }),
+    layer: '順序',
+    triggerPersistence: 'single',
+  };
+
+  assert.throws(() => canFoldFaces(first, second), /triggerOrderが異なる/);
+  assert.throws(() => groupFacesIntoLayers([first, second]), /triggerOrderが異なる/);
+});
+
 test('シフトの表示色は手ではなく所属レイヤーで揃える', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
   const layers = groupFacesIntoLayers(layout.faces!);
