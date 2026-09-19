@@ -676,7 +676,7 @@ export interface PlaybackTimingStep {
   startMs: number;
   endMs: number;
   /** このphysical Strokeを何actionとして再生するか。通常1、hold開始分離時は2。 */
-  actionCount: number;
+  actionCount?: number;
   /** hold開始virtual actionの終了時刻。未分離ならundefined。 */
   holdStartEndMs?: number;
 }
