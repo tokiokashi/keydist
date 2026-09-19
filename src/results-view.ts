@@ -867,7 +867,7 @@ function renderLayerSvg(
             : 'var(--line)';
     const strokeWidth = isSelected || candidateLabel ? 3 : shiftStyle ? 3 : isGuide ? 2 : 1;
     const pickerAttrs = picker?.clickable
-      ? ` class="picker-key" data-picker-key="${escapeAttr(key.id)}" data-layout-id="${escapeAttr(picker.layoutId)}"`
+      ? ` class="picker-key tip-wrap" data-picker-key="${escapeAttr(key.id)}" data-layout-id="${escapeAttr(picker.layoutId)}"`
       : '';
     return `<g data-tip="${escapeAttr(tip)}"${pickerAttrs}>
       <rect x="${x + 1}" y="${y + 1}" width="${w - 2}" height="${KEY - 2}" rx="5"

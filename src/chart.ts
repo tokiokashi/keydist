@@ -22,8 +22,8 @@ export function hideTip() {
 export function bindTips(root: HTMLElement) {
   root.addEventListener('mousemove', (e) => {
     const target = (e.target as Element).closest('[data-tip]');
-    // 補足ボタンの文は長いので折り返す。図のツールチップは1行のまま
-    if (target) showTip(target.getAttribute('data-tip')!, e, target.classList.contains('info'));
+    // 補足ボタンとコンボ相方候補の文は長いので折り返す。それ以外の図のツールチップは1行のまま
+    if (target) showTip(target.getAttribute('data-tip')!, e, target.classList.contains('info') || target.classList.contains('tip-wrap'));
     else hideTip();
   });
   root.addEventListener('mouseleave', hideTip);

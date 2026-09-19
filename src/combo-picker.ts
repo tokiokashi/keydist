@@ -62,20 +62,13 @@ export function matchCombos(layout: Layout, selected: ReadonlySet<string>): Comb
 }
 
 /**
- * 相方候補が多いコンボ群を、キー上に載せる短い要約へ畳む。
- * 規則化されたコンボ（TK音直の拡張など）は同じキーに何十件もぶら下がりうるため、
- * 閾値を超えたらグループ単位の件数表示に落とす。
+ * 相方候補の一覧を、キー上のツールチップに載せる文字列へまとめる。
+ * 規則化されたコンボ（TK音直の拡張など）は同じキーに何件もぶら下がりうるが、
+ * どの文字が出るか自体がカンペとして知りたい情報なので、件数で畳まず全部並べる。
+ * ツールチップ側を折り返し表示にすることで、件数が多くても表示は崩れない。
  */
-export function summarizeCandidateMatches(matches: readonly ComboPickerMatch[], threshold = 4): string {
-  if (matches.length <= threshold) {
-    return matches.map((match) => match.output).join(' / ');
-  }
-  const byGroup = new Map<string, number>();
-  for (const match of matches) {
-    const label = match.group ?? 'その他';
-    byGroup.set(label, (byGroup.get(label) ?? 0) + 1);
-  }
-  return [...byGroup].map(([label, count]) => `${label} ×${count}`).join(' / ');
+export function summarizeCandidateMatches(matches: readonly ComboPickerMatch[]): string {
+  return matches.map((match) => match.output).join(' / ');
 }
 
 /** ガイド表示用: 配列が持つ全triggerキー（層操作・コンボ問わず）の物理キーid集合。 */

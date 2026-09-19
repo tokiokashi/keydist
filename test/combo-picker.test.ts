@@ -76,14 +76,9 @@ test('summarizeCandidateMatches: 閾値以下は出力を列挙する', () => {
   assert.equal(summarizeCandidateMatches(matches), 'あ / い');
 });
 
-test('summarizeCandidateMatches: 閾値を超えたらグループ件数へ畳む', () => {
+test('summarizeCandidateMatches: 件数が多くても畳まず全部並べる（表示側で折り返す前提）', () => {
   const matches = Array.from({ length: 6 }, (_, i) => ({ output: `out${i}`, group: '入声拡張', keys: ['j'] }));
-  assert.equal(summarizeCandidateMatches(matches), '入声拡張 ×6');
-});
-
-test('summarizeCandidateMatches: グループを持たないコンボは「その他」へ集約する', () => {
-  const matches = Array.from({ length: 5 }, (_, i) => ({ output: `out${i}`, keys: ['j'] }));
-  assert.equal(summarizeCandidateMatches(matches), 'その他 ×5');
+  assert.equal(summarizeCandidateMatches(matches), 'out0 / out1 / out2 / out3 / out4 / out5');
 });
 
 test('allTriggerKeys: FaceのtriggerとresolvedComboの物理キーを両方拾う', () => {
