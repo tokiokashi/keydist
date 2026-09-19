@@ -95,13 +95,25 @@ const normalizeMemberships = (memberships: readonly FaceMembership[]): FaceMembe
     left.faceIndex - right.faceIndex || compareString(left.cellKey, right.cellKey));
 };
 
+const requirementSetSignature = (requirements: readonly Requirement[]): string =>
+  requirements.map(requirementSignature).join('\u0001');
+
 const activationSignature = (
   requirements: readonly Requirement[],
   capabilities: readonly InputCapability[],
 ): string => [
-  requirements.map(requirementSignature).join('\u0001'),
+  requirementSetSignature(requirements),
   capabilities.map(capabilitySignature).join('\u0001'),
 ].join('\u0002');
+
+const operationIdentity = (input: Pick<
+  SemanticInput,
+  'output' | 'physicalKeys' | 'requirements'
+>): string => [
+  input.physicalKeys.join('\u0000'),
+  requirementSetSignature(input.requirements),
+  input.output,
+].join('\u0003');
 
 const semanticIdentity = (input: Pick<
   SemanticInput,
@@ -332,13 +344,10 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
       assertCanonicalInput(candidate);
 
       const siblings = inputsByPhysicalKeys.get(physicalSignature) ?? [];
-      const candidateActivation = activationSignature(requirements, capabilities);
+      const candidateRequirements = requirementSetSignature(requirements);
       for (const sibling of siblings) {
-        const siblingActivation = activationSignature(
-          sibling.requirements,
-          sibling.capabilities,
-        );
-        if (siblingActivation === candidateActivation) {
+        const siblingRequirements = requirementSetSignature(sibling.requirements);
+        if (siblingRequirements === candidateRequirements) {
           if (sibling.output !== candidate.output) {
             throw new Error(
               `同一physical operationに異なるoutputがある: ${sibling.output} / ${candidate.output}`,
@@ -348,17 +357,17 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
         }
         if (sibling.output === candidate.output) {
           throw new Error(
-            `同一outputに複数のRequirement/Capability setがある: ${candidate.output}`,
+            `同一outputに複数のRequirement setがある: ${candidate.output}`,
           );
         }
         if (!requirementsMutuallyExclusive(sibling.requirements, candidate.requirements)) {
           throw new Error(
-            `同一physicalKeysに同時成立し得るRequirement/Capability setがある: ${physicalKeys.join(', ')}`,
+            `同一physicalKeysに同時成立し得るRequirement setがある: ${physicalKeys.join(', ')}`,
           );
         }
       }
 
-      const identity = semanticIdentity(candidate);
+      const identity = operationIdentity(candidate);
       const existing = byIdentity.get(identity);
       if (existing === undefined) {
         byIdentity.set(identity, candidate);
@@ -371,6 +380,10 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
           `同一SemanticInputが異なるlayerIdへ属している: ${existing.layerId} / ${layerId}`,
         );
       }
+      existing.capabilities = normalizeCapabilities([
+        ...existing.capabilities,
+        ...capabilities,
+      ]);
       existing.roles = normalizeRoles([...existing.roles, ...roles]);
       existing.faceMemberships = normalizeMemberships([
         ...existing.faceMemberships,
