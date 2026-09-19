@@ -15,6 +15,7 @@ export type {
   SemanticRole,
   BaseActionRealization,
   BaseActionRealizationSequence,
+  BaseParticipationView,
 } from './types.ts';
 
 export {

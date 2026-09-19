@@ -2,6 +2,7 @@ import { resolveKeyId } from '../../geometry.ts';
 import type {
   BaseActionRealization,
   BaseActionRealizationSequence,
+  BaseParticipationView,
   PhysicalKeyId,
   SemanticInput,
 } from './types.ts';
@@ -9,6 +10,8 @@ import type {
 export interface SemanticInputAction {
   readonly keys: readonly PhysicalKeyId[];
   readonly input: SemanticInput;
+  readonly outputKeys: readonly PhysicalKeyId[];
+  readonly triggerKeys: readonly PhysicalKeyId[];
 }
 
 /**
@@ -18,7 +21,10 @@ export interface SemanticInputAction {
  * - action keyはinput.physicalKeysのsubset
  * - input.physicalKeysをrealization全体で過不足なく1回ずつcover
  * - alias解決後に同一physical keyへ衝突する重複をreject
- * - defaultHoldKeysは非空・physicalKeys subset・while-held Capabilityとexact match
+ * - defaultOutputKeysは非空・physicalKeys subset
+ * - defaultTriggerKeysは指定時non-empty・physicalKeys subset
+ * - output / triggerは重複可
+ * - defaultHoldKeysは非空・defaultTriggerKeys subset・while-held Capabilityとexact match
  */
 export function validateBaseActionRealization(
   realization: BaseActionRealization,
@@ -61,6 +67,87 @@ export function validateBaseActionRealization(
     );
   }
 
+  const validateParticipationKeys = (
+    label: string,
+    keys: readonly PhysicalKeyId[],
+    allowEmpty: boolean,
+  ): PhysicalKeyId[] => {
+    if (!allowEmpty && keys.length === 0) {
+      throw new Error(`BaseActionRealization.${label}は非空である必要がある`);
+    }
+    const normalized = keys.map(resolveKeyId);
+    if (new Set(normalized).size !== normalized.length) {
+      throw new Error(`BaseActionRealization.${label}にphysical key重複がある`);
+    }
+    if (normalized.some((key) => !physicalKeySet.has(key))) {
+      throw new Error(
+        `BaseActionRealization.${label}がinput.physicalKeys外を参照している`,
+      );
+    }
+    return normalized;
+  };
+
+  const validateView = (
+    label: string,
+    view: BaseParticipationView,
+  ): { triggerKeys: PhysicalKeyId[]; holdKeys?: PhysicalKeyId[] } => {
+    validateParticipationKeys(
+      `${label}.outputKeys`,
+      view.outputKeys,
+      false,
+    );
+    const triggerKeys = view.triggerKeys.length === 0
+      ? []
+      : validateParticipationKeys(
+          `${label}.triggerKeys` as 'defaultTriggerKeys',
+          view.triggerKeys,
+          false,
+        );
+    if (view.holdKeys === undefined) return { triggerKeys };
+
+    if (view.holdKeys.length === 0) {
+      throw new Error(`BaseActionRealization.${label}.holdKeysは非空である必要がある`);
+    }
+    const holdKeys = view.holdKeys.map(resolveKeyId);
+    if (new Set(holdKeys).size !== holdKeys.length) {
+      throw new Error(`BaseActionRealization.${label}.holdKeysにphysical key重複がある`);
+    }
+    if (holdKeys.some((key) => !physicalKeySet.has(key))) {
+      throw new Error(`BaseActionRealization.${label}.holdKeysがinput.physicalKeys外を参照している`);
+    }
+    if (holdKeys.some((key) => !triggerKeys.includes(key))) {
+      throw new Error(
+        `BaseActionRealization.${label}.holdKeysはtriggerKeysのsubsetである必要がある`,
+      );
+    }
+    const matchesCapability = realization.input.capabilities.some((capability) => {
+      if (capability.kind !== 'while-held') return false;
+      const capabilityKeys = capability.keys.map(resolveKeyId);
+      return capabilityKeys.length === holdKeys.length
+        && capabilityKeys.every((key) => holdKeys.includes(key));
+    });
+    if (!matchesCapability) {
+      throw new Error(
+        `BaseActionRealization.${label}.holdKeysはwhile-held Capabilityと一致する必要がある`,
+      );
+    }
+    const containedInOneAction = realization.actions.some((action) => {
+      const actionKeys = action.map(resolveKeyId);
+      return holdKeys.every((key) => actionKeys.includes(key));
+    });
+    if (!containedInOneAction) {
+      throw new Error(
+        `BaseActionRealization.${label}.holdKeysはdefault realization上の1 actionに収まる必要がある`,
+      );
+    }
+    return { triggerKeys, holdKeys };
+  };
+
+  validateParticipationKeys('defaultOutputKeys', realization.defaultOutputKeys, false);
+  const defaultTriggerKeys = realization.defaultTriggerKeys === undefined
+    ? []
+    : validateParticipationKeys('defaultTriggerKeys', realization.defaultTriggerKeys, false);
+
   if (realization.defaultHoldKeys !== undefined) {
     if (realization.defaultHoldKeys.length === 0) {
       throw new Error('BaseActionRealization.defaultHoldKeysは非空である必要がある');
@@ -71,6 +158,11 @@ export function validateBaseActionRealization(
     }
     if (normalized.some((key) => !physicalKeySet.has(key))) {
       throw new Error('BaseActionRealization.defaultHoldKeysがinput.physicalKeys外を参照している');
+    }
+    if (normalized.some((key) => !defaultTriggerKeys.includes(key))) {
+      throw new Error(
+        'BaseActionRealization.defaultHoldKeysはdefaultTriggerKeysのsubsetである必要がある',
+      );
     }
     const matchesCapability = realization.input.capabilities.some((capability) => {
       if (capability.kind !== 'while-held') return false;
@@ -93,6 +185,22 @@ export function validateBaseActionRealization(
       );
     }
   }
+
+  const seenHoldGroups = new Set<string>();
+  if (realization.defaultHoldKeys !== undefined) {
+    seenHoldGroups.add([...realization.defaultHoldKeys.map(resolveKeyId)].sort().join('\u0000'));
+  }
+  for (const [index, view] of (realization.alternateParticipations ?? []).entries()) {
+    const validated = validateView(`alternateParticipations[${index}]`, view);
+    if (validated.holdKeys === undefined) continue;
+    const signature = [...validated.holdKeys].sort().join('\u0000');
+    if (seenHoldGroups.has(signature)) {
+      throw new Error(
+        'BaseActionRealizationのparticipation viewでhold groupが重複している',
+      );
+    }
+    seenHoldGroups.add(signature);
+  }
 }
 
 export function validateBaseActionRealizations(
@@ -111,10 +219,17 @@ export function flattenBaseActionRealizations(
   sequence: BaseActionRealizationSequence,
 ): readonly SemanticInputAction[] {
   validateBaseActionRealizations(sequence);
-  return sequence.flatMap((realization) =>
-    realization.actions.map((keys) => ({
-      keys: keys.map(resolveKeyId),
-      input: realization.input,
-    })),
-  );
+  return sequence.flatMap((realization) => {
+    const outputs = new Set(realization.defaultOutputKeys.map(resolveKeyId));
+    const triggers = new Set((realization.defaultTriggerKeys ?? []).map(resolveKeyId));
+    return realization.actions.map((keys) => {
+      const canonical = keys.map(resolveKeyId);
+      return {
+        keys: canonical,
+        input: realization.input,
+        outputKeys: canonical.filter((key) => outputs.has(key)),
+        triggerKeys: canonical.filter((key) => triggers.has(key)),
+      };
+    });
+  });
 }
