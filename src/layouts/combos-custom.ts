@@ -107,23 +107,30 @@ function comboPresentation(
     return { group: '拗音拡張', ...(foldTriggerInputs ? { foldTriggerInputs } : {}) };
   }
 
-  if (/^[-aeiou](ki|ku|nn|ti|tu)$/.test(output)) {
+  if (/^[-aeiou]nn$/.test(output) || output === 'nn') {
+    const foldTriggerInputs = /^(ann|enn|inn|unn)$/.test(output) ? ['v'] : undefined;
+    return {
+      group: '撥音拡張',
+      ...(foldTriggerInputs ? { foldTriggerInputs } : {}),
+    };
+  }
+
+  if (/^[aeiou](ki|ku|ti|tu)$/.test(output)) {
     const foldTriggerInputs =
       /^(eki|iki|oki|uki)$/.test(output) ? ['c']
       : /^(aku|iku|oku|uku)$/.test(output) ? ['x']
-      : /^(ann|enn|inn|unn)$/.test(output) ? ['v']
       : /^(ati|eti|oti|uti)$/.test(output) ? ['l']
       : /^[aeiou]tu$/.test(output) ? [',']
       : undefined;
     return {
-      group: 'き・く・ん・ち・つ拡張',
+      group: '入声拡張',
       ...(foldTriggerInputs ? { foldTriggerInputs } : {}),
     };
   }
 
   const foldTriggerInputs = /^(ai|ei|ui)$/.test(output) ? ['e'] : undefined;
   return {
-    group: '二重母音・撥音拡張',
+    group: '二重母音拡張',
     ...(foldTriggerInputs ? { foldTriggerInputs } : {}),
   };
 }
