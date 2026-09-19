@@ -3,10 +3,10 @@ import { faceFromEntries, fromFaces, SINGLE_LAYER_ID, type Face, type Layout, ty
 
 /**
  * 月配列2-263式。
+ * 成立時の配列表（新JIS・月スレッド2の263番）:
+ * https://jisx6004.client.jp/data/2chlog/1055763380.html
  * 解説・配列表: https://jisx6004.client.jp/tsuki.html
- * 配置は上記資料を基準に、MITライセンスの tor-nky/KeyLayout
- * (Tsuki2-263/Mac/Tsuki2-263_Layout.json) と照合した。
- * keydistでは配列仕様を独自のFace定義として記述する。
+ * keydistでは公開された2-263式の配列仕様をFace定義として独自に記述する。
  * クロスシフトとして左側の対象キーを `k`、右側の対象キーを `d` に割り当て、
  * JIS専用キーの `・` はANSIでは表現しない。
  */
