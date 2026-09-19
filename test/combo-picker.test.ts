@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { faceFromEntries } from '../src/layouts/index.ts';
-import type { Layout } from '../src/layouts/index.ts';
+import type { Face, Layout } from '../src/layouts/index.ts';
 import {
-  allTriggerKeys, crossTriggerAnnotations, findActiveLayerFace, matchCombos, summarizeCandidateMatches,
+  allTriggerKeys, buildComboPickerMatrix, findActiveLayerFace, matchCombos, summarizeCandidateMatches,
 } from '../src/combo-picker.ts';
 
 function stubLayout(overrides: Partial<Layout>): Layout {
@@ -16,71 +16,107 @@ function stubLayout(overrides: Partial<Layout>): Layout {
   };
 }
 
-test('matchCombos: 完全一致でexactに出力が入る', () => {
-  const face = faceFromEntries(['j', 'k'], 'simultaneous', { j: 'あ', k: 'い' });
+test('buildComboPickerMatrix: 単キーtrigger + 文字キーを物理キー集合へ展開する', () => {
+  const face = faceFromEntries(['j'], 'simultaneous', { r: 'じ' });
   const layout = stubLayout({ faces: [face] });
-  const result = matchCombos(layout, new Set(['j', 'k']));
-  assert.equal(result.exact.length, 1);
-  assert.equal(result.exact[0].output, 'あ / い');
+  const matrix = buildComboPickerMatrix(layout);
+  assert.deepEqual(matrix, [{ output: 'じ', group: undefined, keys: ['j', 'r'] }]);
+});
+
+test('buildComboPickerMatrix: 複数trigger + 文字キーも同じ表へ展開する', () => {
+  const face = faceFromEntries(['h', 'j'], 'simultaneous', { r: 'じゃ' });
+  const layout = stubLayout({ faces: [face] });
+  const matrix = buildComboPickerMatrix(layout);
+  assert.deepEqual(matrix, [{ output: 'じゃ', group: undefined, keys: ['h', 'j', 'r'] }]);
+});
+
+test('buildComboPickerMatrix: triggerなしの単打面は候補表へ入れない', () => {
+  const face = faceFromEntries([], 'simultaneous', { r: 'し' });
+  const layout = stubLayout({ faces: [face] });
+  assert.equal(buildComboPickerMatrix(layout).length, 0);
+});
+
+test('buildComboPickerMatrix: resolvedComboDefinitionsも同じ表へ入れる', () => {
+  const layout = stubLayout({
+    resolvedComboDefinitions: [
+      { output: 'ye', inputs: ['i', 'e'], keys: ['k', 'd'], group: '拗音拡張' },
+    ],
+  });
+  assert.deepEqual(buildComboPickerMatrix(layout), [
+    { output: 'ye', group: '拗音拡張', keys: ['k', 'd'] },
+  ]);
+});
+
+test('matchCombos: レイヤー出力はtrigger + 文字キーの完全一致でexactになる', () => {
+  const face = faceFromEntries(['j'], 'simultaneous', { r: 'じ' });
+  const layout = stubLayout({ faces: [face] });
+  const result = matchCombos(layout, new Set(['j', 'r']));
+  assert.deepEqual(result.exact.map((match) => match.output), ['じ']);
   assert.equal(result.candidates.size, 0);
 });
 
-test('matchCombos: 部分一致で相方候補が返る', () => {
-  const face = faceFromEntries(['j', 'k'], 'simultaneous', { j: 'あ' });
+test('matchCombos: 選択集合 + 1キーで完成する出力を相方候補へ返す', () => {
+  const face = faceFromEntries(['j'], 'simultaneous', { r: 'じ' });
+  const layout = stubLayout({ faces: [face] });
+  const result = matchCombos(layout, new Set(['j']));
+  assert.deepEqual([...result.candidates.keys()], ['r']);
+  assert.equal(result.candidates.get('r')?.[0].output, 'じ');
+});
+
+test('matchCombos: 2キー以上先の出力はまだ候補表示しない', () => {
+  const face = faceFromEntries(['h', 'j'], 'simultaneous', { r: 'じゃ' });
   const layout = stubLayout({ faces: [face] });
   const result = matchCombos(layout, new Set(['j']));
   assert.equal(result.exact.length, 0);
-  assert.deepEqual([...result.candidates.keys()], ['k']);
-  assert.equal(result.candidates.get('k')?.[0].output, 'あ');
+  assert.equal(result.candidates.size, 0);
+});
+
+test('matchCombos: exactがあっても1キー追加で成立する上位出力を候補に残す', () => {
+  const dakuon = faceFromEntries(['j'], 'simultaneous', { r: 'じ' });
+  const youon = {
+    ...faceFromEntries(['h', 'j'], 'simultaneous', { r: 'じゃ' }),
+    inputRole: 'composition' as const,
+  };
+  const layout = stubLayout({ faces: [dakuon, youon] });
+  const result = matchCombos(layout, new Set(['j', 'r']));
+  assert.deepEqual(result.exact.map((match) => match.output), ['じ']);
+  assert.equal(result.candidates.get('h')?.[0].output, 'じゃ');
+});
+
+test('matchCombos: resolvedComboDefinitionsもexact/candidateの両方で見る', () => {
+  const layout = stubLayout({
+    resolvedComboDefinitions: [
+      { output: 'ye', inputs: ['i', 'e'], keys: ['k', 'd'], group: '拗音拡張' },
+    ],
+  });
+  const exact = matchCombos(layout, new Set(['k', 'd']));
+  assert.equal(exact.exact[0]?.output, 'ye');
+  const partial = matchCombos(layout, new Set(['k']));
+  assert.equal(partial.candidates.get('d')?.[0].output, 'ye');
 });
 
 test('matchCombos: 選択が空なら何も返らない', () => {
-  const face = faceFromEntries(['j', 'k'], 'simultaneous', { j: 'あ' });
+  const face = faceFromEntries(['j'], 'simultaneous', { r: 'じ' });
   const layout = stubLayout({ faces: [face] });
   const result = matchCombos(layout, new Set());
   assert.equal(result.exact.length, 0);
   assert.equal(result.candidates.size, 0);
 });
 
-test('matchCombos: 選択がコンボのtriggerを超えて含む場合は一致しない', () => {
-  const face = faceFromEntries(['j', 'k'], 'simultaneous', { j: 'あ' });
+test('matchCombos: 選択が定義外キーを含む場合は一致しない', () => {
+  const face = faceFromEntries(['j'], 'simultaneous', { r: 'じ' });
   const layout = stubLayout({ faces: [face] });
-  const result = matchCombos(layout, new Set(['j', 'l']));
+  const result = matchCombos(layout, new Set(['j', 'z']));
   assert.equal(result.exact.length, 0);
   assert.equal(result.candidates.size, 0);
 });
 
-test('matchCombos: 単キーのFaceはコンボ候補に数えない（レイヤートリガーとの混同を避ける）', () => {
-  const face = faceFromEntries(['j'], 'simultaneous', { k: 'あ' });
-  const layout = stubLayout({ faces: [face] });
-  const result = matchCombos(layout, new Set(['j']));
-  assert.equal(result.exact.length, 0);
-  assert.equal(result.candidates.size, 0);
-});
-
-test('matchCombos: resolvedComboDefinitions（規則化コンボ）も見る', () => {
-  const layout = stubLayout({
-    resolvedComboDefinitions: [
-      { output: 'yaku', inputs: ['y', 'a', 'k', 'u'], keys: ['j', 'k'], group: '拗音拡張' },
-    ],
-  });
-  const exact = matchCombos(layout, new Set(['j', 'k']));
-  assert.equal(exact.exact[0]?.output, 'yaku');
-  const partial = matchCombos(layout, new Set(['j']));
-  assert.equal(partial.candidates.get('k')?.[0].output, 'yaku');
-});
-
-test('summarizeCandidateMatches: 閾値以下は出力を列挙する', () => {
+test('summarizeCandidateMatches: 複数候補も畳まず全部並べる', () => {
   const matches = [
     { output: 'あ', keys: ['j'] },
     { output: 'い', keys: ['j'] },
   ];
   assert.equal(summarizeCandidateMatches(matches), 'あ / い');
-});
-
-test('summarizeCandidateMatches: 件数が多くても畳まず全部並べる（表示側で折り返す前提）', () => {
-  const matches = Array.from({ length: 6 }, (_, i) => ({ output: `out${i}`, group: '入声拡張', keys: ['j'] }));
-  assert.equal(summarizeCandidateMatches(matches), 'out0 / out1 / out2 / out3 / out4 / out5');
 });
 
 test('allTriggerKeys: FaceのtriggerとresolvedComboの物理キーを両方拾う', () => {
@@ -95,59 +131,26 @@ test('allTriggerKeys: FaceのtriggerとresolvedComboの物理キーを両方拾�
   assert.ok(keys.has(';'));
 });
 
-test('findActiveLayerFace: 単キーtriggerが選択されていればその面を返す', () => {
+test('findActiveLayerFace: 単キーtriggerだけを選択した時はその面を返す', () => {
   const shiftFace = faceFromEntries(['f'], 'prefix', { j: 'あ', k: 'い' });
   const layout = stubLayout({ faces: [shiftFace] });
   assert.equal(findActiveLayerFace(layout, new Set(['f'])), shiftFace);
   assert.equal(findActiveLayerFace(layout, new Set()), undefined);
   assert.equal(findActiveLayerFace(layout, new Set(['z'])), undefined);
+  assert.equal(findActiveLayerFace(layout, new Set(['f', 'j'])), undefined);
 });
 
-test('findActiveLayerFace: コンボ（複数キーtrigger）はレイヤーとして扱わない', () => {
-  const comboFace = faceFromEntries(['j', 'k'], 'simultaneous', { j: 'あ' });
+test('findActiveLayerFace: 複数キーtriggerはレイヤーとして扱わない', () => {
+  const comboFace = faceFromEntries(['j', 'k'], 'simultaneous', { r: 'あ' });
   const layout = stubLayout({ faces: [comboFace] });
   assert.equal(findActiveLayerFace(layout, new Set(['j', 'k'])), undefined);
 });
 
-test('findActiveLayerFace: inputRole===compositionの単キー面もコンボ扱いで除外する', () => {
-  const comboFace = { ...faceFromEntries(['f'], 'simultaneous', { j: 'あ' }), inputRole: 'composition' as const };
+test('findActiveLayerFace: inputRole===compositionの単キー面も除外する', () => {
+  const comboFace: Face = {
+    ...faceFromEntries(['f'], 'simultaneous', { j: 'あ' }),
+    inputRole: 'composition',
+  };
   const layout = stubLayout({ faces: [comboFace] });
   assert.equal(findActiveLayerFace(layout, new Set(['f'])), undefined);
-});
-
-test('findActiveLayerFace: 左右で別の面に分かれたレイヤーは、選んだ方の面だけを返す', () => {
-  // 新下駄の左右親指シフトのように、各面が両手分の出力を自分で完結して持つ設計を前提とする。
-  // ここで複数面を推測して合成すると、配列定義にない状態を表示してしまう。
-  const rightFace = { ...faceFromEntries(['k'], 'simultaneous', { j: 'あ', f: 'い' }), layer: 'mid-shift' };
-  const leftFace = { ...faceFromEntries(['d'], 'simultaneous', { f: 'う', j: 'え' }), layer: 'mid-shift' };
-  const layout = stubLayout({ faces: [rightFace, leftFace] });
-  assert.equal(findActiveLayerFace(layout, new Set(['k'])), rightFace);
-  assert.equal(findActiveLayerFace(layout, new Set(['d'])), leftFace);
-});
-
-test('crossTriggerAnnotations: 暫定対応。他の面のtrigger列を、その面自身の位置へ注記する（新下駄の中指/薬指シフト相当）', () => {
-  // kFaceのd列に'れ'があるが、dFaceにはk列が無い。lFaceのd列に'お'があるが、dFaceにはl列が無い。
-  const kFace = faceFromEntries(['k'], 'simultaneous', { d: 'れ' });
-  const dFace = faceFromEntries(['d'], 'simultaneous', { y: 'あ' });
-  const lFace = faceFromEntries(['l'], 'simultaneous', { d: 'お' });
-  const layout = stubLayout({ faces: [kFace, dFace, lFace] });
-
-  const annotations = crossTriggerAnnotations(layout, dFace);
-  assert.equal(annotations.get('k'), 'れ');
-  assert.equal(annotations.get('l'), 'お');
-  assert.equal(annotations.get('d'), undefined);
-});
-
-test('crossTriggerAnnotations: modeが異なる面は見ない', () => {
-  const kFace = faceFromEntries(['k'], 'prefix', { d: 'れ' });
-  const dFace = faceFromEntries(['d'], 'simultaneous', { y: 'あ' });
-  const layout = stubLayout({ faces: [kFace, dFace] });
-  assert.equal(crossTriggerAnnotations(layout, dFace).size, 0);
-});
-
-test('crossTriggerAnnotations: compositionの面は見ない', () => {
-  const kFace = { ...faceFromEntries(['k'], 'simultaneous', { d: 'れ' }), inputRole: 'composition' as const };
-  const dFace = faceFromEntries(['d'], 'simultaneous', { y: 'あ' });
-  const layout = stubLayout({ faces: [kFace, dFace] });
-  assert.equal(crossTriggerAnnotations(layout, dFace).size, 0);
 });
