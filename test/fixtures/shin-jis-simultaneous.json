@@ -2,10 +2,10 @@
   "version": 1,
   "layoutId": "shin-jis-simultaneous",
   "source": {
-    "url": "https://github.com/tor-nky/KeyLayout/blob/master/SinJIS/Mac/SinJIS_Layout.json",
-    "sha": "017b0071a2b70de60e579f5f532920a519a985c7",
-    "path": "SinJIS/Mac/SinJIS_Layout.json",
-    "transform": "JIS X 6004の公開配列表を仕様根拠とし、MITライセンスのKeyLayout実装と照合。かな配置をkeydistのsimultaneous Face表現へ独自に記述する"
+    "url": "https://jisx6004.client.jp/layout-kana.html",
+    "sha": "jis-x-6004-public-layout",
+    "path": "新JIS JIS X 6004-1986 公開配列表",
+    "transform": "JIS X 6004として公開されているキーとかなの対応を仕様根拠として、keydistのsimultaneous Face表現へ独自に記述する"
   },
   "faces": [
     {
