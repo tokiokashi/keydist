@@ -2,10 +2,10 @@
   "version": 1,
   "layoutId": "tsuki-2-263",
   "source": {
-    "url": "https://github.com/tor-nky/KeyLayout/blob/master/Tsuki2-263/Mac/Tsuki2-263_Layout.json",
-    "sha": "3a609ab121b92b3ae5ec58dc648ad152635bc151",
-    "path": "Tsuki2-263/Mac/Tsuki2-263_Layout.json",
-    "transform": "月配列2-263の公開配列表を仕様根拠とし、MITライセンスのKeyLayout実装と照合。単打面と左右クロスシフト面をkeydistのprefix Face表現へ独自に記述する"
+    "url": "https://jisx6004.client.jp/data/2chlog/1055763380.html",
+    "sha": "thread-2-res-263-2003-09-01",
+    "path": "新JIS・月 キーボード配列 2打鍵目 / 263",
+    "transform": "2-263式が成立したスレッド263番の公開配列表を仕様根拠として、単打面と左右クロスシフト面をkeydistのprefix Face表現へ独自に記述する"
   },
   "faces": [
     {
