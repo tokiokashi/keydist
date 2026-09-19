@@ -93,7 +93,7 @@ const KAWASEMI_KAI_SOURCES: SourceFace[] = [
       ",": "、",
       ".": "。",
       "/": "ー",
-    }),
+    }, { inputRole: 'layer' }),
   sourceFace(["a"], {
       "u": "にょ",
       "i": "にゅ",

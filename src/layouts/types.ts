@@ -1,3 +1,4 @@
+import { compileFaceSemanticInputs, type SemanticInput } from '../core/semantic-input/index.ts';
 import { keyId, QWERTY_LEGEND, resolveKeyId, THUMB_KEY, type NonThumb } from '../geometry.ts';
 import { groupFacesIntoLayers } from '../layers.ts';
 
@@ -263,6 +264,22 @@ export function fromFaces(
   faces: readonly Face[],
   thumbs: { LT?: string; RT?: string } = {},
 ): Layout {
+  // legacy fallbackをFace compilerの外で解決し、canonical compiler自体には持ち込まない。
+  const canonicalFaces: Face[] = faces.map((face) => ({
+    ...face,
+    inputRole: face.inputRole ?? face.role ?? (face.trigger.length > 1 ? 'composition' : 'layer'),
+  }));
+  const semanticInputs = compileFaceSemanticInputs(canonicalFaces);
+  const semanticByMembership = new Map<string, SemanticInput>();
+  for (const input of semanticInputs) {
+    for (const membership of input.faceMemberships) {
+      semanticByMembership.set(
+        `${membership.faceIndex}\u0000${membership.cellKey}`,
+        input,
+      );
+    }
+  }
+
   // 定義時にレイヤーの宣言を検証し、表示時まで不正な組み合わせを遅延させない。
   groupFacesIntoLayers(faces);
   const map = new Map<string, Sequence>();
@@ -272,6 +289,7 @@ export function fromFaces(
   const legends = new Map<string, string>();
   const layerDefinitions: LayerDefinition[] = [];
   const faceLayerIds = new Map<Face, string>();
+  const outputSemanticInputs = new Map<string, SemanticInput>();
 
   const addDefinition = (definition: LayerDefinition) => {
     if (!layerDefinitions.some((entry) => entry.id === definition.id)) {
@@ -301,11 +319,20 @@ export function fromFaces(
       const cells = typeof row === 'string' ? [...row] : [...row];
       cells.forEach((output, c) => {
         if (output === '' || output === ' ') return;
-        if (map.has(output)) {
-          throw new Error(`面の出力「${output}」が重複している`);
-        }
 
         const key = keyId(r, c);
+        const semanticInput = semanticByMembership.get(
+          `${faceIndex}\u0000${resolveKeyId(key)}`,
+        );
+        if (!semanticInput) {
+          throw new Error(`Face compilerのmembershipが見つからない（face:${faceIndex}, key:${key}）`);
+        }
+        if (map.has(output)) {
+          if (outputSemanticInputs.get(output) === semanticInput) return;
+          throw new Error(`面の出力「${output}」が重複している`);
+        }
+        outputSemanticInputs.set(output, semanticInput);
+
         const sequence = expandFace(trigger, face.mode, key);
         map.set(output, sequence);
         stepLayers.set(output, sequence.map(() => layerId));

@@ -60,7 +60,7 @@ export const NAGINATA_V18_FACES: Face[] = [
   }, { layer: '濁音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
 
   // 濁音（左手側のトリガー）
-  face(['f'], { u: 'ざ', o: 'ず', n: 'だ', l: 'づ', h: 'ぐ', p: 'べ', ';': 'ぶ' }, { layer: '濁音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['f'], { u: 'ざ', o: 'ず', n: 'だ', l: 'づ', h: 'ぐ', j: 'が', p: 'べ', ';': 'ぶ' }, { layer: '濁音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
 
   // 半濁音
   face(['m'], { c: 'ぱ', x: 'ぴ', z: 'ぽ' }, { layer: '半濁音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),

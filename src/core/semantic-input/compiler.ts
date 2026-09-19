@@ -95,13 +95,25 @@ const normalizeMemberships = (memberships: readonly FaceMembership[]): FaceMembe
     left.faceIndex - right.faceIndex || compareString(left.cellKey, right.cellKey));
 };
 
+const requirementSetSignature = (requirements: readonly Requirement[]): string =>
+  requirements.map(requirementSignature).join('\u0001');
+
 const activationSignature = (
   requirements: readonly Requirement[],
   capabilities: readonly InputCapability[],
 ): string => [
-  requirements.map(requirementSignature).join('\u0001'),
+  requirementSetSignature(requirements),
   capabilities.map(capabilitySignature).join('\u0001'),
 ].join('\u0002');
+
+const operationIdentity = (input: Pick<
+  SemanticInput,
+  'output' | 'physicalKeys' | 'requirements'
+>): string => [
+  input.physicalKeys.join('\u0000'),
+  requirementSetSignature(input.requirements),
+  input.output,
+].join('\u0003');
 
 const semanticIdentity = (input: Pick<
   SemanticInput,
@@ -111,6 +123,45 @@ const semanticIdentity = (input: Pick<
   activationSignature(input.requirements, input.capabilities),
   input.output,
 ].join('\u0003');
+
+const hasOrderCycle = (requirements: readonly Requirement[]): boolean => {
+  const edges = new Map<PhysicalKeyId, Set<PhysicalKeyId>>();
+  const nodes = new Set<PhysicalKeyId>();
+
+  for (const requirement of requirements) {
+    if (requirement.kind !== 'order') continue;
+    for (const before of requirement.before) {
+      nodes.add(before);
+      const outgoing = edges.get(before) ?? new Set<PhysicalKeyId>();
+      for (const after of requirement.after) {
+        nodes.add(after);
+        outgoing.add(after);
+      }
+      edges.set(before, outgoing);
+    }
+  }
+
+  const visiting = new Set<PhysicalKeyId>();
+  const visited = new Set<PhysicalKeyId>();
+  const visit = (key: PhysicalKeyId): boolean => {
+    if (visiting.has(key)) return true;
+    if (visited.has(key)) return false;
+    visiting.add(key);
+    for (const next of edges.get(key) ?? []) {
+      if (visit(next)) return true;
+    }
+    visiting.delete(key);
+    visited.add(key);
+    return false;
+  };
+
+  return [...nodes].some(visit);
+};
+
+const requirementsMutuallyExclusive = (
+  left: readonly Requirement[],
+  right: readonly Requirement[],
+): boolean => hasOrderCycle([...left, ...right]);
 
 const isSubset = (
   subset: readonly PhysicalKeyId[],
@@ -144,6 +195,10 @@ const assertCanonicalInput = (input: Pick<
     if (!isSubset(requirement.before, physicalKeys) || !isSubset(requirement.after, physicalKeys)) {
       throw new Error('RequirementがphysicalKeys外のkeyを参照している');
     }
+  }
+
+  if (hasOrderCycle(input.requirements)) {
+    throw new Error('order Requirement setが循環しており成立不能');
   }
 
   for (const capability of input.capabilities) {
@@ -257,8 +312,7 @@ const faceCells = (face: Face): readonly { key: PhysicalKeyId; output: string }[
 
 export function compileFaceSemanticInputs(faces: readonly Face[]): readonly SemanticInput[] {
   const byIdentity = new Map<string, MutableSemanticInput>();
-  const activationByPhysicalKeys = new Map<string, string>();
-  const outputByOperation = new Map<string, string>();
+  const inputsByPhysicalKeys = new Map<string, MutableSemanticInput[]>();
 
   faces.forEach((face, faceIndex) => {
     if (face.inputRole === undefined) {
@@ -277,24 +331,6 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
       const roles = faceRoles(face, triggerKeys);
       const layerId = normalizedLayerId(face, faceIndex, triggerKeys);
       const physicalSignature = physicalKeys.join('\u0000');
-      const activation = activationSignature(requirements, capabilities);
-
-      const previousActivation = activationByPhysicalKeys.get(physicalSignature);
-      if (previousActivation !== undefined && previousActivation !== activation) {
-        throw new Error(
-          `同一physicalKeysに異なるRequirement/Capability setがある: ${physicalKeys.join(', ')}`,
-        );
-      }
-      activationByPhysicalKeys.set(physicalSignature, activation);
-
-      const operationSignature = `${physicalSignature}\u0003${activation}`;
-      const previousOutput = outputByOperation.get(operationSignature);
-      if (previousOutput !== undefined && previousOutput !== cell.output) {
-        throw new Error(
-          `同一physical operationに異なるoutputがある: ${previousOutput} / ${cell.output}`,
-        );
-      }
-      outputByOperation.set(operationSignature, cell.output);
 
       const candidate: MutableSemanticInput = {
         output: cell.output,
@@ -306,10 +342,37 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
         faceMemberships: [{ faceIndex, cellKey: cell.key }],
       };
       assertCanonicalInput(candidate);
-      const identity = semanticIdentity(candidate);
+
+      const siblings = inputsByPhysicalKeys.get(physicalSignature) ?? [];
+      const candidateRequirements = requirementSetSignature(requirements);
+      for (const sibling of siblings) {
+        const siblingRequirements = requirementSetSignature(sibling.requirements);
+        if (siblingRequirements === candidateRequirements) {
+          if (sibling.output !== candidate.output) {
+            throw new Error(
+              `同一physical operationに異なるoutputがある: ${sibling.output} / ${candidate.output}`,
+            );
+          }
+          continue;
+        }
+        if (sibling.output === candidate.output) {
+          throw new Error(
+            `同一outputに複数のRequirement setがある: ${candidate.output}`,
+          );
+        }
+        if (!requirementsMutuallyExclusive(sibling.requirements, candidate.requirements)) {
+          throw new Error(
+            `同一physicalKeysに同時成立し得るRequirement setがある: ${physicalKeys.join(', ')}`,
+          );
+        }
+      }
+
+      const identity = operationIdentity(candidate);
       const existing = byIdentity.get(identity);
       if (existing === undefined) {
         byIdentity.set(identity, candidate);
+        siblings.push(candidate);
+        inputsByPhysicalKeys.set(physicalSignature, siblings);
         continue;
       }
       if (existing.layerId !== layerId) {
@@ -317,6 +380,10 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
           `同一SemanticInputが異なるlayerIdへ属している: ${existing.layerId} / ${layerId}`,
         );
       }
+      existing.capabilities = normalizeCapabilities([
+        ...existing.capabilities,
+        ...capabilities,
+      ]);
       existing.roles = normalizeRoles([...existing.roles, ...roles]);
       existing.faceMemberships = normalizeMemberships([
         ...existing.faceMemberships,

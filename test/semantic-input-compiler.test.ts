@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { compileFaceSemanticInputs, type SemanticInput } from '../src/core/semantic-input/index.ts';
+import { LAYOUTS_JA } from '../src/layouts/index.ts';
 import { faceFromEntries, type Face, type FaceMode } from '../src/layouts/types.ts';
 
 const face = (
@@ -166,14 +167,64 @@ test('同一physical operationのoutput衝突をerrorにする', () => {
   );
 });
 
-test('同一physicalKeysのactivation variantをerrorにする', () => {
+test('同一physicalKeysで同時成立し得るactivation variantをerrorにする', () => {
+  assert.throws(
+    () => compileFaceSemanticInputs([
+      face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' }),
+      face(['d'], 'prefix', { h: 'ほ' }, { layer: '中指シフト' }),
+    ]),
+    /同時成立し得るRequirement set/,
+  );
+});
+
+test('同一outputの複数activation variantはOR未対応なのでerrorにする', () => {
   assert.throws(
     () => compileFaceSemanticInputs([
       face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' }),
       face(['d'], 'prefix', { h: 'へ' }, { layer: '中指シフト' }),
     ]),
-    /異なるRequirement\/Capability set/,
+    /同一outputに複数のRequirement set/,
   );
+});
+
+test('同一Requirement/outputのreciprocal FaceはCapabilityをunionする', () => {
+  const inputs = compileFaceSemanticInputs([
+    face(['j'], 'simultaneous', { f: 'が' }, {
+      layer: '濁音',
+      triggerPersistence: 'hold-capable',
+    }),
+    face(['f'], 'simultaneous', { j: 'が' }, {
+      layer: '濁音',
+      triggerPersistence: 'hold-capable',
+    }),
+  ]);
+
+  assert.equal(inputs.length, 1);
+  assert.deepEqual(inputs[0].capabilities, [
+    { kind: 'while-held', keys: ['f'] },
+    { kind: 'while-held', keys: ['j'] },
+  ]);
+  assert.deepEqual(inputs[0].roles, [
+    { key: 'f', role: 'modifier' },
+    { key: 'j', role: 'modifier' },
+  ]);
+  assert.equal(inputs[0].faceMemberships.length, 2);
+});
+
+test('逆向きorderでmutually exclusiveな同一physicalKeysは別SemanticInputとして共存する', () => {
+  const inputs = compileFaceSemanticInputs([
+    face(['d'], 'prefix', { k: 'も' }, { layer: '中指シフト' }),
+    face(['k'], 'prefix', { d: 'ら' }, { layer: '中指シフト' }),
+  ]);
+
+  assert.equal(inputs.length, 2);
+  const byOutput = new Map(inputs.map((input) => [input.output, input]));
+  assert.deepEqual(byOutput.get('も')?.requirements, [
+    { kind: 'order', before: ['d'], after: ['k'] },
+  ]);
+  assert.deepEqual(byOutput.get('ら')?.requirements, [
+    { kind: 'order', before: ['k'], after: ['d'] },
+  ]);
 });
 
 test('subset / superset physicalKeysは別SemanticInputとして共存できる', () => {
@@ -249,4 +300,55 @@ test('canonical sortはlocale非依存のcode-unit順を使う', () => {
   assert.deepEqual(input.capabilities, [
     { kind: 'while-held', keys: ['Z', 'ä'] },
   ]);
+});
+
+
+test('Faceを持つbuilt-in layoutはSemanticInput compilerで検証できる', () => {
+  for (const layout of LAYOUTS_JA) {
+    if (!layout.faces) continue;
+    assert.doesNotThrow(
+      () => compileFaceSemanticInputs(layout.faces!),
+      `${layout.id} should compile to SemanticInput`,
+    );
+  }
+});
+
+
+test('built-inの相互Face membershipはauthoring側へ明示される', () => {
+  const shingeta = LAYOUTS_JA.find((layout) => layout.id === 'shingeta')!;
+  const shingetaInputs = compileFaceSemanticInputs(shingeta.faces!);
+  const re = shingetaInputs.find((input) => input.output === 'れ'
+    && input.physicalKeys.length === 2
+    && input.physicalKeys.includes('d')
+    && input.physicalKeys.includes('k'))!;
+  assert.deepEqual(re.roles, [
+    { key: 'd', role: 'modifier' },
+    { key: 'k', role: 'modifier' },
+  ]);
+  assert.equal(re.faceMemberships.length, 2);
+
+  const naginata = LAYOUTS_JA.find((layout) => layout.id === 'naginata-v18')!;
+  const naginataInputs = compileFaceSemanticInputs(naginata.faces!);
+  const ga = naginataInputs.find((input) => input.output === 'が'
+    && input.physicalKeys.length === 2
+    && input.physicalKeys.includes('f')
+    && input.physicalKeys.includes('j'))!;
+  assert.deepEqual(ga.roles, [
+    { key: 'f', role: 'modifier' },
+    { key: 'j', role: 'modifier' },
+  ]);
+  assert.deepEqual(ga.capabilities, [
+    { kind: 'while-held', keys: ['f'] },
+    { kind: 'while-held', keys: ['j'] },
+  ]);
+  assert.equal(ga.faceMemberships.length, 2);
+});
+
+test('legacy fromFaces mapは相互Faceを明示しても既存の打鍵列を保持する', () => {
+  const shingeta = LAYOUTS_JA.find((layout) => layout.id === 'shingeta')!;
+  assert.deepEqual(shingeta.map.get('れ'), [['k', 'd']]);
+  assert.deepEqual(shingeta.map.get('さ'), [['l', 's']]);
+
+  const naginata = LAYOUTS_JA.find((layout) => layout.id === 'naginata-v18')!;
+  assert.deepEqual(naginata.map.get('が'), [['j', 'f']]);
 });
