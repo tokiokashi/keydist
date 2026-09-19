@@ -1,4 +1,6 @@
+import { resolveKeyId } from '../../geometry.ts';
 import type {
+  BaseActionRealization,
   BaseActionRealizationSequence,
   PhysicalKeyId,
   SemanticInput,
@@ -10,6 +12,62 @@ export interface SemanticInputAction {
 }
 
 /**
+ * BaseActionRealizationの境界invariantを検証する。
+ *
+ * - realization / actionは非空
+ * - action keyはinput.physicalKeysのsubset
+ * - input.physicalKeysをrealization全体で過不足なく1回ずつcover
+ * - alias解決後に同一physical keyへ衝突する重複をreject
+ */
+export function validateBaseActionRealization(
+  realization: BaseActionRealization,
+): void {
+  if (realization.actions.length === 0) {
+    throw new Error('BaseActionRealizationは1 action以上必要');
+  }
+
+  const physicalKeys = realization.input.physicalKeys.map(resolveKeyId);
+  const physicalKeySet = new Set(physicalKeys);
+  const seen = new Set<PhysicalKeyId>();
+
+  for (const [actionIndex, action] of realization.actions.entries()) {
+    if (action.length === 0) {
+      throw new Error(`BaseActionRealizationのaction ${actionIndex} は1 key以上必要`);
+    }
+
+    const actionSeen = new Set<PhysicalKeyId>();
+    for (const rawKey of action) {
+      const key = resolveKeyId(rawKey);
+      if (!physicalKeySet.has(key)) {
+        throw new Error(
+          `BaseActionRealizationのkey「${rawKey}」がinput.physicalKeys外を参照している`,
+        );
+      }
+      if (actionSeen.has(key) || seen.has(key)) {
+        throw new Error(
+          `BaseActionRealizationでphysical key「${key}」が重複している`,
+        );
+      }
+      actionSeen.add(key);
+      seen.add(key);
+    }
+  }
+
+  const missing = physicalKeys.filter((key) => !seen.has(key));
+  if (missing.length > 0) {
+    throw new Error(
+      `BaseActionRealizationがinput.physicalKeysを欠落している: ${missing.join(', ')}`,
+    );
+  }
+}
+
+export function validateBaseActionRealizations(
+  sequence: BaseActionRealizationSequence,
+): void {
+  for (const realization of sequence) validateBaseActionRealization(realization);
+}
+
+/**
  * authoring sourceが明示したBaseActionRealizationをflat action streamへ展開する。
  *
  * Requirementからaction groupingを推測しない。
@@ -18,9 +76,10 @@ export interface SemanticInputAction {
 export function flattenBaseActionRealizations(
   sequence: BaseActionRealizationSequence,
 ): readonly SemanticInputAction[] {
+  validateBaseActionRealizations(sequence);
   return sequence.flatMap((realization) =>
     realization.actions.map((keys) => ({
-      keys: [...keys],
+      keys: keys.map(resolveKeyId),
       input: realization.input,
     })),
   );
