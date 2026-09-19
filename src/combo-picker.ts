@@ -87,6 +87,38 @@ export function findActiveLayerFace(layout: Layout, selected: ReadonlySet<string
   });
 }
 
+/**
+ * 暫定対応（issue #261）。選択中のレイヤーFace（例: 新下駄の中指シフトd）と、
+ * 他のシフト系Face（例: 同k, 薬指シフトl/s）の間には、本来同じ物理操作
+ * （dとkの同時押し等）が両方のFace定義に非対称にしか書かれていないケースがある
+ * （kFaceのd列には出力があるが、dFaceのk列には無い、等）。
+ * 既存の層別ヒートマップ（layers.tsのfoldedLayerCells）はこれを表示側で推測して
+ * 埋め合わせており、ここではレイヤーピッカーの表示にも同じ推測を及ばせる。
+ * 配列定義（#261）が直り次第、この関数と呼び出し側は削除する。
+ */
+export function crossTriggerAnnotations(layout: Layout, activeFace: Face): ReadonlyMap<string, string> {
+  const annotations = new Map<string, string>();
+  const activeTriggerKey = activeFace.trigger[0];
+  if (activeFace.trigger.length !== 1 || activeTriggerKey === undefined) return annotations;
+  const activeKey = resolveKeyId(activeTriggerKey);
+  const activeCells = faceCells(activeFace);
+
+  for (const face of layout.faces ?? []) {
+    if (face === activeFace) continue;
+    if (face.trigger.length !== 1 || face.inputRole === 'composition' || face.mode !== activeFace.mode) continue;
+    const otherKey = resolveKeyId(face.trigger[0]);
+    // 相手の面の中に「activeFaceのtrigger」に対応する列があれば、相手の面自身の
+    // triggerキーの位置へ注記する（例: lFaceのd列にある出力を、l自身の位置に示す）
+    const fromOther = faceCells(face).get(activeKey);
+    if (fromOther !== undefined) annotations.set(otherKey, fromOther);
+    // 逆に、activeFace自身の中に「相手のtrigger」に対応する列があれば、activeFace
+    // 自身のtriggerキーの位置へ注記する（既存の層別図が示す重複表示と同じ）
+    const fromActive = activeCells.get(otherKey);
+    if (fromActive !== undefined) annotations.set(activeKey, fromActive);
+  }
+  return annotations;
+}
+
 /** ガイド表示用: 配列が持つ全triggerキー（層操作・コンボ問わず）の物理キーid集合。 */
 export function allTriggerKeys(layout: Layout): ReadonlySet<string> {
   const keys = new Set<string>();

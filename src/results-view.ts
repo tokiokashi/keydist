@@ -24,7 +24,7 @@ import { resolveConditions } from './condition-resolution.ts';
 import { classifyFaces, displayTriggerKeys, faceCells, foldedLayerCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID, faceFromEntries } from './layouts/index.ts';
 import type { Face, Layout } from './layouts/index.ts';
-import { findActiveLayerFace, matchCombos, summarizeCandidateMatches } from './combo-picker.ts';
+import { crossTriggerAnnotations, findActiveLayerFace, matchCombos, summarizeCandidateMatches } from './combo-picker.ts';
 import type { ModeId } from './layout-selection.ts';
 import type { PlaybackViewController } from './playback-view.ts';
 import { buildGeometry } from './geometry.ts';
@@ -850,6 +850,14 @@ function renderLayerSvg(
 ): string {
   const legendFace = values.picker?.legendFace;
   const labels = legendFace ? layerCells({ faces: [legendFace] }, layout) : layerCells(layer, layout);
+  if (legendFace) {
+    // 暫定対応（issue #261）。配列定義側にtrigger同士の相互情報が非対称にしか
+    // 無いケースを、既存の層別図と同じ推測で埋め合わせる。配列定義が直ったら
+    // crossTriggerAnnotations ごと削除する。
+    for (const [key, output] of crossTriggerAnnotations(layout, legendFace)) {
+      if (!labels.has(key)) labels.set(key, { label: output });
+    }
+  }
   if (values.picker?.legendOverrides) {
     for (const [key, output] of values.picker.legendOverrides) {
       labels.set(key, { label: output, annotation: labels.get(key)?.annotation });

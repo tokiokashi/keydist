@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { faceFromEntries } from '../src/layouts/index.ts';
 import type { Layout } from '../src/layouts/index.ts';
-import { allTriggerKeys, findActiveLayerFace, matchCombos, summarizeCandidateMatches } from '../src/combo-picker.ts';
+import {
+  allTriggerKeys, crossTriggerAnnotations, findActiveLayerFace, matchCombos, summarizeCandidateMatches,
+} from '../src/combo-picker.ts';
 
 function stubLayout(overrides: Partial<Layout>): Layout {
   return {
@@ -121,4 +123,31 @@ test('findActiveLayerFace: 左右で別の面に分かれたレイヤーは、�
   const layout = stubLayout({ faces: [rightFace, leftFace] });
   assert.equal(findActiveLayerFace(layout, new Set(['k'])), rightFace);
   assert.equal(findActiveLayerFace(layout, new Set(['d'])), leftFace);
+});
+
+test('crossTriggerAnnotations: 暫定対応。他の面のtrigger列を、その面自身の位置へ注記する（新下駄の中指/薬指シフト相当）', () => {
+  // kFaceのd列に'れ'があるが、dFaceにはk列が無い。lFaceのd列に'お'があるが、dFaceにはl列が無い。
+  const kFace = faceFromEntries(['k'], 'simultaneous', { d: 'れ' });
+  const dFace = faceFromEntries(['d'], 'simultaneous', { y: 'あ' });
+  const lFace = faceFromEntries(['l'], 'simultaneous', { d: 'お' });
+  const layout = stubLayout({ faces: [kFace, dFace, lFace] });
+
+  const annotations = crossTriggerAnnotations(layout, dFace);
+  assert.equal(annotations.get('k'), 'れ');
+  assert.equal(annotations.get('l'), 'お');
+  assert.equal(annotations.get('d'), undefined);
+});
+
+test('crossTriggerAnnotations: modeが異なる面は見ない', () => {
+  const kFace = faceFromEntries(['k'], 'prefix', { d: 'れ' });
+  const dFace = faceFromEntries(['d'], 'simultaneous', { y: 'あ' });
+  const layout = stubLayout({ faces: [kFace, dFace] });
+  assert.equal(crossTriggerAnnotations(layout, dFace).size, 0);
+});
+
+test('crossTriggerAnnotations: compositionの面は見ない', () => {
+  const kFace = { ...faceFromEntries(['k'], 'simultaneous', { d: 'れ' }), inputRole: 'composition' as const };
+  const dFace = faceFromEntries(['d'], 'simultaneous', { y: 'あ' });
+  const layout = stubLayout({ faces: [kFace, dFace] });
+  assert.equal(crossTriggerAnnotations(layout, dFace).size, 0);
 });
