@@ -1,4 +1,5 @@
 import { keyId, resolveKeyId } from '../../geometry.ts';
+import { validateBaseActionRealizations } from './realization.ts';
 import type { Face } from '../../layouts/types.ts';
 import type {
   BaseActionRealizationSequence,
@@ -366,12 +367,15 @@ export function compileSequenceInputArtifacts(
   layerId: string,
 ): CompiledSequenceArtifacts {
   const semanticInputs = compileSequenceSemanticInputs(output, sequence, layerId);
-  return {
-    semanticInputs,
-    baseActionRealizations: semanticInputs.map((input, index) => ({
+  const baseActionRealizations: BaseActionRealizationSequence =
+    semanticInputs.map((input, index) => ({
       input,
       actions: [sequence[index].map(resolveKeyId)],
-    })),
+    }));
+  validateBaseActionRealizations(baseActionRealizations);
+  return {
+    semanticInputs,
+    baseActionRealizations,
   };
 }
 
