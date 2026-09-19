@@ -195,17 +195,21 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
   assert.throws(() => groupFacesIntoLayers(invalidFaces), /レイヤー「不正」の面が畳み条件を満たさない/);
 });
 
-test('畳んだレイヤーの空きセルを相互シフトの対称位置から描画用に補完する（#95）', () => {
+test('畳んだレイヤーは明示済み相互Faceを使いcross-triggerだけ描画補完する（#95, #261）', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
   const layers = groupFacesIntoLayers(layout.faces!);
   const middle = foldedLayerCells(layers[1], layout.faces!);
   const ring = foldedLayerCells(layers[2], layout.faces!);
 
-  // Layout.mapの定義は片方向のままでも、図では同じ同時押しを相方の位置に出す。
+  // 同一レイヤー内の相互Face membershipはauthoring側へ明示済み。
+  assert.equal(faceCells(layers[1].faces[1]).get('k'), 'れ');
+  assert.equal(faceCells(layers[2].faces[1]).get('l'), 'さ');
   assert.equal(middle.get('k'), 'れ');
+  assert.equal(ring.get('l'), 'さ');
+
+  // 別レイヤーtriggerとの交点表示はまだpresentation補完として残る。
   assert.equal(middle.get('l'), 'お');
   assert.equal(ring.get('k'), 'じ');
-  assert.equal(ring.get('l'), 'さ');
   assert.deepEqual(layout.map.get('じ'), [['k', 's']]);
   assert.deepEqual(layout.map.get('さ'), [['l', 's']]);
 
