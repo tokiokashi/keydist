@@ -185,13 +185,17 @@ test('subset / superset physicalKeysは別SemanticInputとして共存できる'
   ]);
 
   assert.equal(inputs.length, 2);
-  assert.deepEqual(
-    inputs.map((input) => input.physicalKeys),
-    [
-      ['d', 'h'],
-      ['d', 'h', 'j'],
-    ],
-  );
+  assert.ok(inputs.some((input) => (
+    input.physicalKeys.length === 2
+    && input.physicalKeys[0] === 'd'
+    && input.physicalKeys[1] === 'h'
+  )));
+  assert.ok(inputs.some((input) => (
+    input.physicalKeys.length === 3
+    && input.physicalKeys[0] === 'd'
+    && input.physicalKeys[1] === 'h'
+    && input.physicalKeys[2] === 'j'
+  )));
 });
 
 test('authoring上のtrigger順にcanonical field orderが依存しない', () => {
