@@ -19,8 +19,11 @@ interface MutableSemanticInput {
   faceMemberships: FaceMembership[];
 }
 
+const compareString = (left: string, right: string): number =>
+  left < right ? -1 : left > right ? 1 : 0;
+
 const sortedUniqueKeys = (keys: readonly string[]): PhysicalKeyId[] =>
-  [...new Set(keys.map(resolveKeyId))].sort();
+  [...new Set(keys.map(resolveKeyId))].sort(compareString);
 
 const requirementSignature = (requirement: Requirement): string => {
   if (requirement.kind === 'overlap') return `overlap:${requirement.keys.join('\u0000')}`;
@@ -49,7 +52,7 @@ const normalizeRequirements = (requirements: readonly Requirement[]): Requiremen
     const leftRank = left.kind === 'overlap' ? 0 : 1;
     const rightRank = right.kind === 'overlap' ? 0 : 1;
     if (leftRank !== rightRank) return leftRank - rightRank;
-    return requirementSignature(left).localeCompare(requirementSignature(right));
+    return compareString(requirementSignature(left), requirementSignature(right));
   });
 };
 
@@ -63,7 +66,7 @@ const normalizeCapabilities = (capabilities: readonly InputCapability[]): InputC
     unique.set(capabilitySignature(normalized), normalized);
   }
   return [...unique.values()].sort((left, right) =>
-    capabilitySignature(left).localeCompare(capabilitySignature(right)));
+    compareString(capabilitySignature(left), capabilitySignature(right)));
 };
 
 const normalizeRoles = (roles: readonly KeyRole[]): KeyRole[] => {
@@ -76,7 +79,7 @@ const normalizeRoles = (roles: readonly KeyRole[]): KeyRole[] => {
     unique.set(`${normalized.key}\u0000${normalized.role}`, normalized);
   }
   return [...unique.values()].sort((left, right) =>
-    left.key.localeCompare(right.key) || left.role.localeCompare(right.role));
+    compareString(left.key, right.key) || compareString(left.role, right.role));
 };
 
 const normalizeMemberships = (memberships: readonly FaceMembership[]): FaceMembership[] => {
@@ -89,7 +92,7 @@ const normalizeMemberships = (memberships: readonly FaceMembership[]): FaceMembe
     unique.set(`${normalized.faceIndex}\u0000${normalized.cellKey}`, normalized);
   }
   return [...unique.values()].sort((left, right) =>
-    left.faceIndex - right.faceIndex || left.cellKey.localeCompare(right.cellKey));
+    left.faceIndex - right.faceIndex || compareString(left.cellKey, right.cellKey));
 };
 
 const activationSignature = (
@@ -108,6 +111,56 @@ const semanticIdentity = (input: Pick<
   activationSignature(input.requirements, input.capabilities),
   input.output,
 ].join('\u0003');
+
+const isSubset = (
+  subset: readonly PhysicalKeyId[],
+  superset: ReadonlySet<PhysicalKeyId>,
+): boolean => subset.every((key) => superset.has(key));
+
+const assertCanonicalInput = (input: Pick<
+  SemanticInput,
+  'physicalKeys' | 'requirements' | 'capabilities' | 'roles'
+>): void => {
+  const physicalKeys = new Set(input.physicalKeys);
+
+  for (const requirement of input.requirements) {
+    if (requirement.kind === 'overlap') {
+      if (requirement.keys.length === 0) {
+        throw new Error('overlap Requirementのkeysは非空である必要がある');
+      }
+      if (!isSubset(requirement.keys, physicalKeys)) {
+        throw new Error('RequirementがphysicalKeys外のkeyを参照している');
+      }
+      continue;
+    }
+
+    if (requirement.before.length === 0 || requirement.after.length === 0) {
+      throw new Error('order Requirementのbefore / afterは非空である必要がある');
+    }
+    const before = new Set(requirement.before);
+    if (requirement.after.some((key) => before.has(key))) {
+      throw new Error('order Requirementのbefore / afterは互いに素である必要がある');
+    }
+    if (!isSubset(requirement.before, physicalKeys) || !isSubset(requirement.after, physicalKeys)) {
+      throw new Error('RequirementがphysicalKeys外のkeyを参照している');
+    }
+  }
+
+  for (const capability of input.capabilities) {
+    if (capability.keys.length === 0) {
+      throw new Error('Capabilityのkeysは非空である必要がある');
+    }
+    if (!isSubset(capability.keys, physicalKeys)) {
+      throw new Error('CapabilityがphysicalKeys外のkeyを参照している');
+    }
+  }
+
+  for (const role of input.roles) {
+    if (!physicalKeys.has(role.key)) {
+      throw new Error('roleがphysicalKeys外のkeyを参照している');
+    }
+  }
+};
 
 const normalizedLayerId = (
   face: Face,
@@ -252,6 +305,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
         roles,
         faceMemberships: [{ faceIndex, cellKey: cell.key }],
       };
+      assertCanonicalInput(candidate);
       const identity = semanticIdentity(candidate);
       const existing = byIdentity.get(identity);
       if (existing === undefined) {
@@ -281,5 +335,5 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
       roles: normalizeRoles(input.roles),
       faceMemberships: normalizeMemberships(input.faceMemberships),
     }))
-    .sort((left, right) => semanticIdentity(left).localeCompare(semanticIdentity(right)));
+    .sort((left, right) => compareString(semanticIdentity(left), semanticIdentity(right)));
 }
