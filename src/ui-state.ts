@@ -235,7 +235,7 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
         activeTab: 0,
         colorScale: 'linear',
         naginataDetail: false,
-        comboGuide: false,
+        comboGuide: true,
       },
       playback: {
         showFingers: false,
