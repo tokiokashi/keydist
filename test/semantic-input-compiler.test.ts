@@ -223,3 +223,30 @@ test('prefix / suffix modeと逆向きtriggerOrderの併記はerrorにする', (
     /mode=prefixとtriggerOrder=suffixが矛盾/,
   );
 });
+
+
+test('self-triggerでorderのbefore / afterが重なるauthoringをerrorにする', () => {
+  assert.throws(
+    () => compileFaceSemanticInputs([
+      face(['d'], 'prefix', { d: 'x' }),
+    ]),
+    /before \/ afterは互いに素/,
+  );
+});
+
+test('canonical sortはlocale非依存のcode-unit順を使う', () => {
+  const [input] = compileFaceSemanticInputs([
+    face(['ä', 'Z'], 'simultaneous', { a: 'x' }, {
+      inputRole: 'composition',
+      triggerPersistence: 'hold-capable',
+    }),
+  ]);
+
+  assert.deepEqual(input.physicalKeys, ['Z', 'a', 'ä']);
+  assert.deepEqual(input.requirements, [
+    { kind: 'overlap', keys: ['Z', 'a', 'ä'] },
+  ]);
+  assert.deepEqual(input.capabilities, [
+    { kind: 'while-held', keys: ['Z', 'ä'] },
+  ]);
+});
