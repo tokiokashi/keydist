@@ -22,7 +22,7 @@ import {
 import type { GeometrySettings } from './geometry-settings.ts';
 import { resolveConditions } from './condition-resolution.ts';
 import { classifyFaces, displayTriggerKeys, faceCells, foldedLayerCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
-import { COMBO_LAYER_ID, SINGLE_LAYER_ID } from './layouts/index.ts';
+import { COMBO_LAYER_ID, SINGLE_LAYER_ID, faceFromEntries } from './layouts/index.ts';
 import type { Face, Layout } from './layouts/index.ts';
 import type { ModeId } from './layout-selection.ts';
 import type { PlaybackViewController } from './playback-view.ts';
@@ -847,42 +847,56 @@ function renderComboTable(
   type ComboDiagramItem = {
     face: Face;
     trigger: string;
-    output: string;
     optionLabel: string;
-    showBaseLabels: boolean;
   };
 
   const faceItems: ComboDiagramItem[] = combos.map((face) => {
     const trigger = triggerText(face, layout.legends);
-    return {
-      face,
-      trigger,
-      output: [...faceCells(face).values()].join(' / '),
-      optionLabel: trigger,
-      showBaseLabels: false,
-    };
+    return { face, trigger, optionLabel: trigger };
   });
 
-  const resolvedItems: ComboDiagramItem[] = resolvedCombos.map((combo) => {
-    const trigger = combo.inputs.join(' + ');
-    const output = combo.output;
+  const foldedResolved = new Map<string, {
+    group: string;
+    triggerInputs: readonly string[];
+    triggerKeys: readonly string[];
+    entries: Record<string, string>;
+  }>();
+  for (const combo of resolvedCombos) {
+    if (
+      combo.foldTriggerInputs === undefined
+      || combo.foldTriggerKeys === undefined
+      || combo.foldTargetKey === undefined
+    ) continue;
+
+    const group = combo.group ?? 'コンボ';
+    const key = `${group}\0${combo.foldTriggerKeys.join('\0')}`;
+    const folded = foldedResolved.get(key) ?? {
+      group,
+      triggerInputs: combo.foldTriggerInputs,
+      triggerKeys: combo.foldTriggerKeys,
+      entries: {},
+    };
+    folded.entries[combo.foldTargetKey] = combo.output;
+    foldedResolved.set(key, folded);
+  }
+
+  const resolvedItems: ComboDiagramItem[] = [...foldedResolved.values()].map((folded) => {
+    const trigger = folded.triggerInputs.join(' + ');
     return {
       face: {
-        trigger: [...combo.keys],
-        mode: 'simultaneous',
-        rows: ['', '', '', ''],
+        ...faceFromEntries(folded.triggerKeys, 'simultaneous', folded.entries),
         inputRole: 'composition',
         triggerPersistence: 'single',
       },
       trigger,
-      output,
-      optionLabel: `${trigger} → ${output}`,
-      showBaseLabels: true,
+      optionLabel: `${folded.group}: ${trigger}`,
     };
   });
 
   const items = [...faceItems, ...resolvedItems];
-  const selected = Math.min(comboDiagramSelection.get(layout.id) ?? 0, items.length - 1);
+  const selected = items.length === 0
+    ? 0
+    : Math.min(comboDiagramSelection.get(layout.id) ?? 0, items.length - 1);
   const comboStyles = new Map<Face, LayerShiftStyle>(
     items.map(({ face }) => [face, { layerIndex: 1, colorSlot: 4 }]),
   );
@@ -892,7 +906,7 @@ function renderComboTable(
       metrics,
       layout,
       geometry,
-      item.showBaseLabels ? { faces: [] } : { faces: [item.face] },
+      { faces: [item.face] },
       item.optionLabel,
       [item.face],
       comboStyles,
@@ -917,18 +931,29 @@ function renderComboTable(
     `<option value="${index}"${index === selected ? ' selected' : ''}>${escapeText(item.optionLabel)}</option>`
   ).join('');
 
-  const rows = items.map((item) =>
-    `<tr><td>${escapeText(item.trigger)}</td><td>${escapeText(item.output)}</td></tr>`
-  ).join('');
+  const faceRows = combos.map((face) => {
+    const outputs = [...faceCells(face).values()].join(' / ');
+    return `<tr><td>${escapeText(triggerText(face, layout.legends))}</td><td>${escapeText(outputs)}</td></tr>`;
+  });
+  const resolvedRows = resolvedCombos.map((combo) => {
+    const trigger = combo.inputs.join(' + ');
+    const prefix = combo.group ? `${combo.group}: ` : '';
+    return `<tr><td>${escapeText(prefix + trigger)}</td><td>${escapeText(combo.output)}</td></tr>`;
+  });
+  const rows = [...faceRows, ...resolvedRows].join('');
 
-  return `<section class="combo-section">
-    <h3>コンボ（${items.length}）</h3>
+  const diagramBlock = items.length === 0 ? '' : `
     <div class="combo-diagram-controls">
       <label>配列図
         <select data-combo-face-select data-layout-id="${escapeAttr(layout.id)}">${options}</select>
       </label>
     </div>
-    <div class="combo-diagram-panel">${diagrams}</div>
+    <div class="combo-diagram-panel">${diagrams}</div>`;
+
+  const count = combos.length + resolvedCombos.length;
+  return `<section class="combo-section">
+    <h3>コンボ（${count}）</h3>
+    ${diagramBlock}
     <details class="combo-table collapsible-list"${ctx.getUiState().ui.panels.comboTable ? ' open' : ''}>
       <summary>コンボ表</summary>
       <div class="scroll-x"><table>
