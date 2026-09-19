@@ -26,6 +26,10 @@ export interface RealizedSemanticAction {
   /** 今回新たに物理Pressするkey。active hold中のkeyは含まない。 */
   readonly keys: readonly PhysicalKeyId[];
   readonly input: SemanticInput;
+  /** 今回の新規Pressのうちauthoring source上のoutput参加key。 */
+  readonly outputKeys: readonly PhysicalKeyId[];
+  /** 今回の新規Pressのうちauthoring source上のtrigger参加key。 */
+  readonly triggerKeys: readonly PhysicalKeyId[];
   /** このaction時点で保持中のkey。 */
   readonly heldKeys: readonly PhysicalKeyId[];
   readonly holdPhase?: TriggerHoldPhase;
@@ -94,6 +98,35 @@ const withoutHeldKeys = (
   return canonicalKeys(action).filter((key) => !held.has(key));
 };
 
+const intersectKeys = (
+  keys: readonly PhysicalKeyId[],
+  selected: readonly PhysicalKeyId[] | undefined,
+): PhysicalKeyId[] => {
+  if (selected === undefined) return [];
+  const set = new Set(canonicalKeys(selected));
+  return canonicalKeys(keys).filter((key) => set.has(key));
+};
+
+const realizedAction = (
+  realization: BaseActionRealization,
+  baseKeys: readonly PhysicalKeyId[],
+  keys: readonly PhysicalKeyId[],
+  heldKeys: readonly PhysicalKeyId[],
+  holdPhase?: TriggerHoldPhase,
+): RealizedSemanticAction => {
+  const pressed = new Set(canonicalKeys(keys));
+  return {
+    keys: canonicalKeys(keys),
+    input: realization.input,
+    outputKeys: intersectKeys(baseKeys, realization.defaultOutputKeys)
+      .filter((key) => pressed.has(key)),
+    triggerKeys: intersectKeys(baseKeys, realization.defaultTriggerKeys)
+      .filter((key) => pressed.has(key)),
+    heldKeys: canonicalKeys(heldKeys),
+    ...(holdPhase === undefined ? {} : { holdPhase }),
+  };
+};
+
 const wouldEraseFreshOutputEvent = (
   realization: BaseActionRealization,
   heldKeys: readonly PhysicalKeyId[],
@@ -120,11 +153,8 @@ function realizeOne(
 
   if (!policy.useHold) {
     return {
-      actions: realization.actions.map((keys) => ({
-        keys: canonicalKeys(keys),
-        input: realization.input,
-        heldKeys: [],
-      })),
+      actions: realization.actions.map((keys) =>
+        realizedAction(realization, keys, keys, [])),
     };
   }
 
@@ -137,12 +167,15 @@ function realizeOne(
     const actions = realization.actions.flatMap((baseAction): RealizedSemanticAction[] => {
       const keys = withoutHeldKeys(baseAction, previous.keys);
       if (keys.length === 0) return [];
-      return [{
-        keys,
-        input: realization.input,
-        heldKeys: canonicalKeys(previous.keys),
-        holdPhase: 'continue',
-      }];
+      return [
+        realizedAction(
+          realization,
+          baseAction,
+          keys,
+          previous.keys,
+          'continue',
+        ),
+      ];
     });
     return {
       actions,
@@ -153,11 +186,8 @@ function realizeOne(
   const defaultHoldKeys = realization.defaultHoldKeys;
   if (defaultHoldKeys === undefined) {
     return {
-      actions: realization.actions.map((keys) => ({
-        keys: canonicalKeys(keys),
-        input: realization.input,
-        heldKeys: [],
-      })),
+      actions: realization.actions.map((keys) =>
+        realizedAction(realization, keys, keys, [])),
     };
   }
 
@@ -169,18 +199,15 @@ function realizeOne(
 
   const actions = realization.actions.map((keys, index): RealizedSemanticAction => {
     if (index < startAt) {
-      return {
-        keys: canonicalKeys(keys),
-        input: realization.input,
-        heldKeys: [],
-      };
+      return realizedAction(realization, keys, keys, []);
     }
-    return {
-      keys: canonicalKeys(keys),
-      input: realization.input,
-      heldKeys: holdKeys,
-      holdPhase: index === startAt ? 'start' : 'continue',
-    };
+    return realizedAction(
+      realization,
+      keys,
+      keys,
+      holdKeys,
+      index === startAt ? 'start' : 'continue',
+    );
   });
   return {
     actions,
