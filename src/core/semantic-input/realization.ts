@@ -9,6 +9,8 @@ import type {
 export interface SemanticInputAction {
   readonly keys: readonly PhysicalKeyId[];
   readonly input: SemanticInput;
+  readonly outputKeys: readonly PhysicalKeyId[];
+  readonly triggerKeys: readonly PhysicalKeyId[];
 }
 
 /**
@@ -144,10 +146,17 @@ export function flattenBaseActionRealizations(
   sequence: BaseActionRealizationSequence,
 ): readonly SemanticInputAction[] {
   validateBaseActionRealizations(sequence);
-  return sequence.flatMap((realization) =>
-    realization.actions.map((keys) => ({
-      keys: keys.map(resolveKeyId),
-      input: realization.input,
-    })),
-  );
+  return sequence.flatMap((realization) => {
+    const outputs = new Set(realization.defaultOutputKeys.map(resolveKeyId));
+    const triggers = new Set((realization.defaultTriggerKeys ?? []).map(resolveKeyId));
+    return realization.actions.map((keys) => {
+      const canonical = keys.map(resolveKeyId);
+      return {
+        keys: canonical,
+        input: realization.input,
+        outputKeys: canonical.filter((key) => outputs.has(key)),
+        triggerKeys: canonical.filter((key) => triggers.has(key)),
+      };
+    });
+  });
 }
