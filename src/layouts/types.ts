@@ -362,19 +362,59 @@ export function fromFaces(
         if (!semanticInput) {
           throw new Error(`Face compilerのmembershipが見つからない（face:${faceIndex}, key:${key}）`);
         }
+        const sequence = expandFace(trigger, face.mode, key);
+        const participationView = {
+          outputKeys: [resolveKeyId(key)],
+          triggerKeys: trigger.map(resolveKeyId),
+          ...(face.triggerPersistence === 'hold-capable' && trigger.length > 0
+            ? { holdKeys: trigger.map(resolveKeyId) }
+            : {}),
+        };
+
         if (map.has(output)) {
-          if (outputSemanticInputs.get(output) === semanticInput) return;
-          throw new Error(`面の出力「${output}」が重複している`);
+          if (outputSemanticInputs.get(output) !== semanticInput) {
+            throw new Error(`面の出力「${output}」が重複している`);
+          }
+          const existing = baseActionRealizations.get(output)?.[0];
+          if (!existing) {
+            throw new Error(`面の出力「${output}」のBaseActionRealizationが見つからない`);
+          }
+          if (!sameActionGrouping(existing.actions, sequence)) {
+            throw new Error(
+              `同一SemanticInputのreciprocal Faceでaction groupingが一致しない: ${output}`,
+            );
+          }
+          const defaultView = {
+            outputKeys: existing.defaultOutputKeys,
+            triggerKeys: existing.defaultTriggerKeys ?? [],
+            ...(existing.defaultHoldKeys !== undefined
+              ? { holdKeys: existing.defaultHoldKeys }
+              : {}),
+          };
+          const alternates = existing.alternateParticipations ?? [];
+          if (!sameParticipationView(defaultView, participationView)
+            && !alternates.some((view) => sameParticipationView(view, participationView))) {
+            const updated = {
+              ...existing,
+              alternateParticipations: [...alternates, participationView],
+            };
+            validateBaseActionRealization(updated);
+            baseActionRealizations.set(output, [updated]);
+          }
+          return;
         }
         outputSemanticInputs.set(output, semanticInput);
         semanticInputSequences.set(output, [semanticInput]);
 
-        const sequence = expandFace(trigger, face.mode, key);
         const baseRealization = {
           input: semanticInput,
           actions: sequence.map((step) => step.map(resolveKeyId)),
-          ...(face.triggerPersistence === 'hold-capable' && trigger.length > 0
-            ? { defaultHoldKeys: trigger.map(resolveKeyId) }
+          defaultOutputKeys: participationView.outputKeys,
+          ...(participationView.triggerKeys.length > 0
+            ? { defaultTriggerKeys: participationView.triggerKeys }
+            : {}),
+          ...(participationView.holdKeys !== undefined
+            ? { defaultHoldKeys: participationView.holdKeys }
             : {}),
         };
         validateBaseActionRealization(baseRealization);
@@ -446,6 +486,32 @@ export function fromFaces(
     layerDefinitions,
     faceLayerIds,
   };
+}
+
+function sameActionGrouping(
+  left: readonly (readonly string[])[],
+  right: readonly (readonly string[])[],
+): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((step, index) => {
+    const l = [...new Set(step.map(resolveKeyId))].sort();
+    const r = [...new Set(right[index].map(resolveKeyId))].sort();
+    return l.length === r.length && l.every((key, keyIndex) => key === r[keyIndex]);
+  });
+}
+
+function sameParticipationView(
+  left: { outputKeys: readonly string[]; triggerKeys: readonly string[]; holdKeys?: readonly string[] },
+  right: { outputKeys: readonly string[]; triggerKeys: readonly string[]; holdKeys?: readonly string[] },
+): boolean {
+  const same = (a: readonly string[] | undefined, b: readonly string[] | undefined) => {
+    const aa = [...new Set((a ?? []).map(resolveKeyId))].sort();
+    const bb = [...new Set((b ?? []).map(resolveKeyId))].sort();
+    return aa.length === bb.length && aa.every((key, index) => key === bb[index]);
+  };
+  return same(left.outputKeys, right.outputKeys)
+    && same(left.triggerKeys, right.triggerKeys)
+    && same(left.holdKeys, right.holdKeys);
 }
 
 function expandFace(trigger: string[], mode: FaceMode, key: string): Sequence {

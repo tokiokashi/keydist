@@ -27,6 +27,8 @@ test('useHold=falseはauthoring-derived base actionをそのまま返す', () =>
   const result = realizeTriggerActions(base('simultaneous', 'x'), { useHold: false });
 
   assert.deepEqual(result.actions.map((action) => action.keys), [['q', 'f']]);
+  assert.deepEqual(result.actions.map((action) => action.outputKeys), [['f']]);
+  assert.deepEqual(result.actions.map((action) => action.triggerKeys), [['q']]);
   assert.deepEqual(result.actions.map((action) => action.heldKeys), [[]]);
   assert.equal(result.holdState, undefined);
 });
@@ -51,10 +53,14 @@ test('simultaneous holdはstart後に同じgroupをcontinueして再Pressを除�
   );
   assert.deepEqual(second.actions.map((action) => ({
     keys: action.keys,
+    output: action.outputKeys,
+    trigger: action.triggerKeys,
     held: action.heldKeys,
     phase: action.holdPhase,
   })), [{
     keys: ['g'],
+    output: ['g'],
+    trigger: [],
     held: ['q'],
     phase: 'continue',
   }]);
@@ -127,6 +133,8 @@ test('order.after側がheldでbefore側にfresh Pressが必要ならcontinueし�
   const realization: BaseActionRealization = {
     input,
     actions: [['d'], ['q']],
+    defaultOutputKeys: ['d'],
+    defaultTriggerKeys: ['q'],
     defaultHoldKeys: ['q'],
   };
 
@@ -159,6 +167,8 @@ test('order.before側がheldでafter側がfreshならcontinueできる', () => {
   const realization: BaseActionRealization = {
     input,
     actions: [['q'], ['d']],
+    defaultOutputKeys: ['d'],
+    defaultTriggerKeys: ['q'],
     defaultHoldKeys: ['q'],
   };
 
@@ -214,7 +224,14 @@ test('reciprocal Capabilityはdefault groupと別groupのactive holdも受け入
   const realization: BaseActionRealization = {
     input,
     actions: [['f', 'j']],
+    defaultOutputKeys: ['f'],
+    defaultTriggerKeys: ['j'],
     defaultHoldKeys: ['j'],
+    alternateParticipations: [{
+      outputKeys: ['j'],
+      triggerKeys: ['f'],
+      holdKeys: ['f'],
+    }],
   };
 
   const withFActive = realizeTriggerActions(
@@ -223,9 +240,14 @@ test('reciprocal Capabilityはdefault groupと別groupのactive holdも受け入
     { keys: ['f'] },
   );
   assert.deepEqual(withFActive.actions.map((action) => action.keys), [['j']]);
+  assert.deepEqual(withFActive.actions.map((action) => action.outputKeys), [['j']]);
+  assert.deepEqual(withFActive.actions.map((action) => action.triggerKeys), [[]]);
+  assert.deepEqual(withFActive.actions.map((action) => action.heldKeys), [['f']]);
   assert.deepEqual(withFActive.holdState?.keys, ['f']);
 
   const fresh = realizeTriggerActions([realization], { useHold: true });
+  assert.deepEqual(fresh.actions.map((action) => action.outputKeys), [['f']]);
+  assert.deepEqual(fresh.actions.map((action) => action.triggerKeys), [['j']]);
   assert.deepEqual(fresh.holdState?.keys, ['j']);
 });
 
@@ -242,6 +264,8 @@ test('partial while-held groupだけを保持し残りkeyは対象ごとに再Pr
   const realization: BaseActionRealization = {
     input,
     actions: [['thumb-r', 'd', 'j']],
+    defaultOutputKeys: ['j'],
+    defaultTriggerKeys: ['thumb-r', 'd'],
     defaultHoldKeys: ['thumb-r'],
   };
 
@@ -276,11 +300,14 @@ test('current inputがactive groupのCapabilityを持たなければholdを終�
   const start = realizeTriggerActions([{
     input: heldInput,
     actions: [['q', 'f']],
+    defaultOutputKeys: ['f'],
+    defaultTriggerKeys: ['q'],
     defaultHoldKeys: ['q'],
   }], { useHold: true });
   const plain = realizeTriggerActions([{
     input: plainInput,
     actions: [['j']],
+    defaultOutputKeys: ['j'],
   }], { useHold: true }, start.holdState);
 
   assert.deepEqual(plain.actions[0].keys, ['j']);
