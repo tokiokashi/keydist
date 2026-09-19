@@ -281,7 +281,7 @@ function updatePlaybackView() {
   const total = playbackTrace.strokes.length;
   const cursor = clampPlaybackCursor(playbackState.cursor, total);
   const completedStroke = playbackStrokeAt(playbackTrace.strokes, cursor);
-  const virtualPhase = playbackState.playing
+  const virtualPhase = playbackState.playing || playbackState.elapsedMs > 0
     ? playbackVirtualPhase(playbackTiming, cursor, playbackState.elapsedMs)
     : undefined;
   const virtualStroke = virtualPhase === undefined ? undefined : playbackTrace.strokes[cursor];
