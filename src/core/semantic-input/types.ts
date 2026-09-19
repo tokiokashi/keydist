@@ -51,6 +51,11 @@ export type SemanticInputSequence = readonly SemanticInput[];
 export interface BaseActionRealization {
   readonly input: SemanticInput;
   readonly actions: readonly (readonly PhysicalKeyId[])[];
+  /**
+   * authoring source由来のdefault hold group。
+   * semantic capabilityそのものではなく、既定realizationでどのwhile-held groupを選ぶかを表す。
+   */
+  readonly defaultHoldKeys?: readonly PhysicalKeyId[];
 }
 
 export type BaseActionRealizationSequence = readonly BaseActionRealization[];
