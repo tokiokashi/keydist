@@ -24,6 +24,7 @@ import { resolveConditions } from './condition-resolution.ts';
 import { classifyFaces, displayTriggerKeys, faceCells, foldedLayerCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID, faceFromEntries } from './layouts/index.ts';
 import type { Face, Layout } from './layouts/index.ts';
+import { allTriggerKeys, matchCombos, summarizeCandidateMatches } from './combo-picker.ts';
 import type { ModeId } from './layout-selection.ts';
 import type { PlaybackViewController } from './playback-view.ts';
 import { buildGeometry } from './geometry.ts';
@@ -63,6 +64,19 @@ export function createResultsView(ctx: ResultsViewContext): ResultsViewControlle
   const elements = ctx.el;
   let sensitivityDirty = true;
   const comboDiagramSelection = new Map<string, number>();
+  /** 配列図でクリック選択中のトリガー候補キー（物理キーid）。配列ごとに独立して覚える。 */
+  const comboPickerSelection = new Map<string, Set<string>>();
+  /** ベース配列図で全コンボ・レイヤートリガーの位置を常時ガイド表示するか。 */
+  const comboPickerGuideEnabled = new Map<string, boolean>();
+
+  function getPickerSelection(layoutId: string): Set<string> {
+    let selection = comboPickerSelection.get(layoutId);
+    if (!selection) {
+      selection = new Set();
+      comboPickerSelection.set(layoutId, selection);
+    }
+    return selection;
+  }
 
 function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sort: MatrixSort | null): T[] {
   if (!sort) return rows;
@@ -728,6 +742,21 @@ function layerCells(layer: Layer, layout: Layout): Map<string, LayerCell> {
   return cells;
 }
 
+/**
+ * 配列図のキーをクリックしてコンボトリガーを選び、相方候補を探すための表示情報。
+ * 選択状態そのものは呼び出し側（createResultsViewのクロージャ）が持つ。
+ */
+interface ComboPickerValues {
+  layoutId: string;
+  /** このSVGでクリックによる選択操作を受け付けるか。 */
+  clickable: boolean;
+  selected: ReadonlySet<string>;
+  /** 相方候補キーごとの要約ラベル（少数なら出力そのもの、多数ならグループ件数）。 */
+  candidateLabels: ReadonlyMap<string, string>;
+  /** ガイド表示ON時、常時トリガーとして薄く示す物理キー集合。 */
+  guideKeys?: ReadonlySet<string>;
+}
+
 interface HeatmapValues {
   keyCounts: ReadonlyMap<string, number>;
   /** 色の濃淡専用。ツールチップにはkeyCountsの実測値を使う。 */
@@ -739,6 +768,7 @@ interface HeatmapValues {
   ariaSuffix: string;
   /** レイヤー図以外でtriggerを強調表示する場合のツールチップ文言。 */
   triggerTipLabel?: string;
+  picker?: ComboPickerValues;
 }
 
 function heatIntensity(count: number, maxCount: number, scale: LayerColorScale): number {
@@ -800,13 +830,24 @@ function renderLayerSvg(
           ? `SandS（レイヤー ${shiftStyle.layerIndex}）`
           : `レイヤー ${shiftStyle.layerIndex} のシフトトリガー`)}</b>`
       : '';
+    const picker = values.picker;
+    const isSelected = picker?.selected.has(key.id) ?? false;
+    const candidateLabel = picker?.candidateLabels.get(key.id);
+    const isGuide = !isSelected && !candidateLabel && (picker?.guideKeys?.has(key.id) ?? false);
+    const pickerTip = isSelected
+      ? '<br><b>選択中のトリガー</b>'
+      : candidateLabel
+        ? `<br><b>相方候補:</b> ${escapeText(candidateLabel)}`
+        : isGuide
+          ? '<br><span style="color:var(--muted)">コンボ/レイヤーのトリガー</span>'
+          : '';
     const annotationText = annotation ? `<br>${escapeText(annotation)}` : '';
     const tip = showHeat
       ? `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span><br>` +
         `<b>${count}</b> 打 (${share}%)<br>移動 <b>${distance.toFixed(1)} u</b>` +
-        annotationText + shiftTip
+        annotationText + shiftTip + pickerTip
       : `${escapeText(label || key.id)} <span style="color:var(--muted)">(${key.id})</span>` +
-        annotationText + shiftTip;
+        annotationText + shiftTip + pickerTip;
     const fontSize = thumb ? 10 : label.length > 3 ? 9 : 12;
     const text = `<text x="${x + w / 2}" y="${y + KEY / 2 + 4}" text-anchor="middle"
         font-size="${fontSize}" fill="${showHeat && t > 0.5 ? 'var(--on-heat)' : 'var(--fg)'}"
@@ -815,10 +856,22 @@ function renderLayerSvg(
     const fill = showHeat
       ? `color-mix(in oklab, var(--heat-1) ${(t * 100).toFixed(1)}%, var(--heat-0))`
       : 'var(--panel)';
-    return `<g data-tip="${escapeAttr(tip)}">
+    const stroke = isSelected
+      ? 'var(--series-2)'
+      : candidateLabel
+        ? 'var(--series-3)'
+        : isGuide
+          ? 'var(--series-4)'
+          : shiftStyle
+            ? `var(--series-${shiftStyle.colorSlot})`
+            : 'var(--line)';
+    const strokeWidth = isSelected || candidateLabel ? 3 : shiftStyle ? 3 : isGuide ? 2 : 1;
+    const pickerAttrs = picker?.clickable
+      ? ` class="picker-key" data-picker-key="${escapeAttr(key.id)}" data-layout-id="${escapeAttr(picker.layoutId)}"`
+      : '';
+    return `<g data-tip="${escapeAttr(tip)}"${pickerAttrs}>
       <rect x="${x + 1}" y="${y + 1}" width="${w - 2}" height="${KEY - 2}" rx="5"
-        fill="${fill}" stroke="${shiftStyle ? `var(--series-${shiftStyle.colorSlot})` : 'var(--line)'}"
-        stroke-width="${shiftStyle ? 3 : 1}"/>
+        fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}"/>
       ${text}
     </g>`;
   });
@@ -840,6 +893,7 @@ function renderComboTable(
   combos: readonly Face[],
   layout: Layout,
   geometry: ReturnType<typeof buildGeometry>,
+  picker: ComboPickerValues,
 ): string {
   const resolvedCombos = layout.resolvedComboDefinitions ?? [];
   if (combos.length === 0 && resolvedCombos.length === 0) return '';
@@ -919,6 +973,7 @@ function renderComboTable(
         showHeat: false,
         ariaSuffix: '（コンボ配列図）',
         triggerTipLabel: `コンボ: ${item.trigger}`,
+        picker: { ...picker, guideKeys: undefined },
       },
     );
     return diagram.replace(
@@ -1154,6 +1209,22 @@ function renderHeatmap(
     : '';
   const commonMax = Math.max(1, ...metrics.keyCounts.values());
   const baseLayer = layers.find((layer) => layer.faces.some((face) => face.trigger.length === 0)) ?? layers[0];
+
+  const pickerSelection = getPickerSelection(layout.id);
+  const pickerMatch = matchCombos(layout, pickerSelection);
+  const pickerCandidateLabels = new Map(
+    [...pickerMatch.candidates].map(([key, matches]) => [key, summarizeCandidateMatches(matches)]),
+  );
+  const pickerGuideEnabled = comboPickerGuideEnabled.get(layout.id) ?? false;
+  const pickerGuideKeys = pickerGuideEnabled ? allTriggerKeys(layout) : undefined;
+  const pickerBase: ComboPickerValues = {
+    layoutId: layout.id,
+    clickable: true,
+    selected: pickerSelection,
+    candidateLabels: pickerCandidateLabels,
+    guideKeys: pickerGuideKeys,
+  };
+
   const integrated = renderLayerSvg(
     metrics,
     layout,
@@ -1170,6 +1241,7 @@ function renderHeatmap(
       colorScale: 'linear',
       showHeat: true,
       ariaSuffix: '（全レイヤー合算・物理位置）',
+      picker: pickerBase,
     },
   );
   const colorCounts = entries.map((entry) => normalizedLayerColors(entry.layer, entry.stat));
@@ -1191,9 +1263,22 @@ function renderHeatmap(
         colorScale: ctx.getUiState().ui.layers.colorScale,
         showHeat: true,
         ariaSuffix: `（層別・${ctx.getUiState().ui.layers.colorScale === 'log' ? '対数' : '線形'}・共通スケール）`,
+        picker: { ...pickerBase, guideKeys: undefined },
       },
     );
   });
+  const pickerResultText = pickerSelection.size === 0
+    ? '配列図のキーをクリックすると、コンボのトリガーとして選べる。'
+    : pickerMatch.exact.length > 0
+      ? `選択中のキーで確定: <b>${pickerMatch.exact.map((match) => escapeText(match.output)).join(' / ')}</b>`
+      : pickerMatch.candidates.size > 0
+        ? '緑の枠が相方候補。もう1キー選ぶとコンボが確定する。'
+        : 'このキーの組み合わせに一致するコンボは無い。';
+  const pickerControls = `<div class="combo-picker-controls">
+      <p class="combo-picker-result">${pickerResultText}</p>
+      <label><input type="checkbox" data-picker-guide data-layout-id="${escapeAttr(layout.id)}"${pickerGuideEnabled ? ' checked' : ''}> コンボ・レイヤートリガーをガイド表示</label>
+      <button type="button" class="ghost" data-picker-clear data-layout-id="${escapeAttr(layout.id)}"${pickerSelection.size === 0 ? ' disabled' : ''}>選択をクリア</button>
+    </div>`;
   const content = selectedLayerView === 'tabs' && entries.length > 1
     ? `<div class="layer-tabs" role="tablist" aria-label="レイヤー">
         ${titles.map((_, index) => `<button type="button" class="ghost" role="tab"
@@ -1207,6 +1292,7 @@ function renderHeatmap(
   const colorScaleLabel = ctx.getUiState().ui.layers.colorScale === 'log' ? '対数' : '線形';
   const layerSection = `<section class="layer-section">
     <h3>統合ヒートマップ</h3>
+    ${pickerControls}
     <div class="layer-diagrams">${integrated}</div>
   </section>
   <section class="layer-section">
@@ -1216,7 +1302,7 @@ function renderHeatmap(
     ${renderLayerStats(metrics, entries, hasCombos)}
   </section>`;
   elements.heatmap.innerHTML = layerSection + renderModifierList(groups.modifiers, layout.legends) +
-    renderComboTable(metrics, groups.combos, layout, geometry);
+    renderComboTable(metrics, groups.combos, layout, geometry, pickerBase);
 }
 
 function syncSensitivityScaleButtons(): void {
@@ -1246,6 +1332,13 @@ function setSensitivityScale(scale: SensitivityScale) {
       setSensitivityScale(button.dataset.scale as SensitivityScale);
     });
     elements.heatmap.addEventListener('change', (e) => {
+      const guideCheckbox = (e.target as Element).closest<HTMLInputElement>('input[data-picker-guide]');
+      if (guideCheckbox) {
+        const layoutId = guideCheckbox.dataset.layoutId;
+        if (layoutId) comboPickerGuideEnabled.set(layoutId, guideCheckbox.checked);
+        render();
+        return;
+      }
       const select = (e.target as Element).closest<HTMLSelectElement>('select[data-combo-face-select]');
       if (!select) return;
       const index = Number(select.value);
@@ -1258,8 +1351,26 @@ function setSensitivityScale(scale: SensitivityScale) {
       }
     });
     elements.heatmap.addEventListener('click', (e) => {
+      const pickerKey = (e.target as Element).closest<SVGGElement>('[data-picker-key]');
+      if (pickerKey) {
+        const keyId = pickerKey.dataset.pickerKey;
+        const layoutId = pickerKey.dataset.layoutId;
+        if (keyId && layoutId) {
+          const selection = getPickerSelection(layoutId);
+          if (selection.has(keyId)) selection.delete(keyId);
+          else selection.add(keyId);
+          render();
+        }
+        return;
+      }
       const target = (e.target as Element).closest<HTMLButtonElement>('button');
       if (!target) return;
+      if (target.dataset.pickerClear !== undefined) {
+        const layoutId = target.dataset.layoutId;
+        if (layoutId) getPickerSelection(layoutId).clear();
+        render();
+        return;
+      }
       if (target.dataset.naginataLayerDetail !== undefined) {
         ctx.updateUiState((draft) => {
           draft.ui.layers.naginataDetail = target.dataset.naginataLayerDetail === 'true';
