@@ -10,6 +10,7 @@ import { SHIN_JIS_PREFIX, SHIN_JIS_SIMULTANEOUS } from './shin-jis.ts';
 import { SHINGETA } from './shingeta.ts';
 import { TSUKI_2_263 } from './tsuki-2-263.ts';
 import { KAWASEMI_PLUS } from './kawasemi-plus.ts';
+import { KAWASEMI_KAI } from './kawasemi-kai.ts';
 
 export type {
   ComboCondition,
@@ -122,6 +123,7 @@ export const LAYOUTS_JA: Layout[] = [
   SHIN_JIS_SIMULTANEOUS,
   SHINGETA,
   TSUKI_2_263,
+  KAWASEMI_KAI,
   KAWASEMI_PLUS,
 ];
 
