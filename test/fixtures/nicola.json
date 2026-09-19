@@ -2,10 +2,10 @@
   "version": 1,
   "layoutId": "nicola",
   "source": {
-    "url": "https://github.com/k-ayaki/dvorakj_2023/blob/master/data/lang/jpn/同時に打鍵する配列/NICOLA 配列系/「NICOLA配列規格書」版/NICOLA配列（無変換、変換）.txt",
-    "sha": "a0ba2bf70d23db6c13d7e00971c58a2d0711b0ec",
-    "path": "data/lang/jpn/同時に打鍵する配列/NICOLA 配列系/「NICOLA配列規格書」版/NICOLA配列（無変換、変換）.txt",
-    "transform": "DvorakJの3ブロックから、JIS 13/12/12/11列をANSI 12/12/11/10列へ先頭列対応で投影し、親指キーの機能出力は除外する"
+    "url": "http://nicola.sunicom.co.jp/spec/kikaku.htm",
+    "sha": "specification-reference",
+    "path": "NICOLA配列規格書",
+    "transform": "NICOLA配列規格書を仕様根拠として、文字・左右親指シフトの対応をkeydistのANSI Face表現へ独自に記述し、機能キー出力は解析対象から除外する"
   },
   "faces": [
     {
