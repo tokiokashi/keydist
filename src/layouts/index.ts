@@ -22,6 +22,7 @@ export type {
   LayerDefinition,
   LayerKind,
   Layout,
+  ResolvedComboDefinition,
   Sequence,
   Step,
   StepSemantic,
