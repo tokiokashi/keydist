@@ -295,6 +295,23 @@ test('新下駄配列は7面の直接かな入力を同時押しとして保持�
   assertKanaLayout(layout);
 });
 
+
+test('かわせみ配列+はKikyo版の4拡張を同時打鍵として保持する', () => {
+  const layout = LAYOUT_BY_ID.get('kawasemi-plus')!;
+
+  assert.equal(layout.name, 'かわせみ配列+');
+  assert.deepEqual(layout.map.get('あ'), [[';']]);
+  assert.deepEqual(layout.map.get('けい'), [['h', 'j', 's']]);
+  assert.deepEqual(layout.map.get('きょう'), [['u', 'i', 's']]);
+  assert.deepEqual(layout.map.get('そく'), [['thumb-r', 'd', 'j']]);
+  assert.deepEqual(layout.map.get('てつ'), [['thumb-l', 'v']]);
+  assert.deepEqual(layout.map.get('ヴ'), [['t', '8']]);
+  assert.equal(layout.legends.get('thumb-l'), '左親指');
+  assert.equal(layout.legends.get('thumb-r'), '右親指');
+  for (const sequence of layout.map.values()) assert.equal(sequence.length, 1);
+  assertKanaLayout(layout);
+});
+
 test('面定義を出典フィクスチャの全セルと照合する（#83）', () => {
   for (const id of [
     'naginata-v18',
