@@ -89,6 +89,10 @@ test('TK音直入力法は正式名称を表示し、内部idは維持する（#
   assert.equal(oonishi?.name, '大西配列');
   assert.equal(combo?.id, 'oonishi-custom-combo');
   assert.equal(combo?.name, 'TK音直入力法');
+  const desita = combo?.comboDefinitions?.find((definition) => definition.output === 'desita');
+  assert.deepEqual(desita?.inputs, ['d', 's', 't']);
+  assert.deepEqual(desita?.keys, ['m', 'l', 'j']);
+  assert.equal(combo?.comboDefinitions?.length, 74);
   assert.equal(tsuki?.name, '月配列2-263式');
   assert.ok(!oonishi?.name.includes(' '));
   assert.ok(!tsuki?.name.includes(' '));
