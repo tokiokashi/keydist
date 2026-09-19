@@ -24,7 +24,7 @@ import { resolveConditions } from './condition-resolution.ts';
 import { classifyFaces, displayTriggerKeys, faceCells, foldedLayerCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID, faceFromEntries } from './layouts/index.ts';
 import type { Face, Layout } from './layouts/index.ts';
-import { crossTriggerAnnotations, findActiveLayerFace, matchCombos, summarizeCandidateMatches } from './combo-picker.ts';
+import { findActiveLayerFace, matchCombos, summarizeCandidateMatches } from './combo-picker.ts';
 import type { ModeId } from './layout-selection.ts';
 import type { PlaybackViewController } from './playback-view.ts';
 import { buildGeometry } from './geometry.ts';
@@ -775,11 +775,9 @@ interface ComboPickerValues {
    */
   selectedStroke: string;
   /**
-   * 選択中のキーが単一キーのレイヤートリガーに一致する時、そのレイヤーの表示ラベルへ
-   * 差し替えるための面。統合ヒートマップだけに渡し、層別図はもともとそのレイヤー自身を表示している。
+   * 選択中のキー集合に対し、あと1キーで成立する出力をそのキーへ表示する。
+   * 選択開始後はベース刻印を隠し、この表に存在する文字だけを表示する。
    */
-  legendFace?: Face;
-  /** コンボの相方候補が1件だけに絞れた時、そのキーのレジェンドをその出力へ差し替える。 */
   legendOverrides?: ReadonlyMap<string, string>;
 }
 
@@ -848,19 +846,13 @@ function renderLayerSvg(
   faceShiftStyles: ReadonlyMap<Face, LayerShiftStyle>,
   values: HeatmapValues,
 ): string {
-  const legendFace = values.picker?.legendFace;
-  const labels = legendFace ? layerCells({ faces: [legendFace] }, layout) : layerCells(layer, layout);
-  if (legendFace) {
-    // 暫定対応（issue #261）。配列定義側にtrigger同士の相互情報が非対称にしか
-    // 無いケースを、既存の層別図と同じ推測で埋め合わせる。配列定義が直ったら
-    // crossTriggerAnnotations ごと削除する。
-    for (const [key, output] of crossTriggerAnnotations(layout, legendFace)) {
-      if (!labels.has(key)) labels.set(key, { label: output });
-    }
-  }
+  const pickerSelected = (values.picker?.selected.size ?? 0) > 0;
+  // 1キーでも選択されたらベース面/層別面の文字は隠し、
+  // 「現在の選択 + 1キー」で成立する定義だけを表示する。
+  const labels = pickerSelected ? new Map<string, LayerCell>() : layerCells(layer, layout);
   if (values.picker?.legendOverrides) {
     for (const [key, output] of values.picker.legendOverrides) {
-      labels.set(key, { label: output, annotation: labels.get(key)?.annotation });
+      labels.set(key, { label: output });
     }
   }
   const showHeat = values.showHeat;
@@ -1290,13 +1282,9 @@ function renderHeatmap(
   const pickerCandidateLabels = new Map(
     [...pickerMatch.candidates].map(([key, matches]) => [key, summarizeCandidateMatches(matches)]),
   );
-  // 相方候補が1件に絞れているキーは、迷う余地がないのでレジェンドをその出力へ差し替える。
-  // 複数件残っている時はキー1つに収まらないので、緑枠+ツールチップの一覧のまま。
-  const pickerLegendOverrides = new Map(
-    [...pickerMatch.candidates]
-      .filter(([, matches]) => matches.length === 1)
-      .map(([key, matches]) => [key, matches[0].output]),
-  );
+  // 候補が複数ある場合も「定義が存在するキー」は空欄にしない。
+  // 同じ追加キーで成立する出力は / 区切りでそのままキー上に表示する。
+  const pickerLegendOverrides = pickerCandidateLabels;
   // ガイド表示のON/OFF設定自体は保持しつつ、選択が始まったら表示だけ引っ込める。
   // 選択後は緑枠・レジェンド書き換えという別のガイドが働くので、両方出すと煩雑になる。
   const pickerGuideSetting = ctx.getUiState().ui.layers.comboGuide;
@@ -1316,8 +1304,7 @@ function renderHeatmap(
     candidateLabels: pickerCandidateLabels,
     guideStrokes: pickerGuideColors,
     selectedStroke: pickerSelectedStroke,
-    // レイヤーがアクティブな時はレイヤーのレジェンドを優先し、コンボ上書きは適用しない
-    legendOverrides: pickerActiveLayerFace ? undefined : pickerLegendOverrides,
+    legendOverrides: pickerLegendOverrides,
   };
 
   const integrated = renderLayerSvg(
@@ -1336,7 +1323,7 @@ function renderHeatmap(
       colorScale: 'linear',
       showHeat: true,
       ariaSuffix: '（全レイヤー合算・物理位置）',
-      picker: { ...pickerBase, legendFace: pickerActiveLayerFace },
+      picker: pickerBase,
     },
   );
   const colorCounts = entries.map((entry) => normalizedLayerColors(entry.layer, entry.stat));
@@ -1362,23 +1349,14 @@ function renderHeatmap(
       },
     );
   });
-  const layerConfirmedOutput = (() => {
-    if (!pickerActiveLayerFace) return undefined;
-    const triggerKey = resolveKeyId(pickerActiveLayerFace.trigger[0]);
-    const otherKeys = [...pickerSelection].filter((key) => key !== triggerKey);
-    return otherKeys.length === 1 ? faceCells(pickerActiveLayerFace).get(otherKeys[0]) : undefined;
-  })();
   const pickerResultText = pickerSelection.size === 0
     ? 'キーをクリックすると、コンボやレイヤーのトリガーを選べます。'
     : pickerMatch.exact.length > 0
       ? `確定: <b>${pickerMatch.exact.map((match) => escapeText(match.output)).join(' / ')}</b>`
-      : layerConfirmedOutput !== undefined
-        ? `確定: <b>${escapeText(layerConfirmedOutput)}</b>`
-        : pickerActiveLayerFace
-          ? 'このレイヤーの出力をキーに表示中です。文字キーも選ぶと確定します。'
-          : pickerMatch.candidates.size > 0
-            ? '緑の枠が相方候補です。もう1キーでコンボが確定します。'
-            : 'このキーの組み合わせに一致するコンボはありません。';
+        + (pickerMatch.candidates.size > 0 ? ' / 緑の枠で追加候補も選べます。' : '')
+      : pickerMatch.candidates.size > 0
+        ? '緑の枠が相方候補です。もう1キーで出力が確定します。'
+        : 'このキーの組み合わせに一致する出力はありません。';
   const pickerControls = `<div class="combo-picker-controls">
       <p class="combo-picker-result">${pickerResultText}</p>
       <label><input type="checkbox" data-picker-guide data-layout-id="${escapeAttr(layout.id)}"${pickerGuideSetting ? ' checked' : ''}> コンボ・レイヤートリガーをガイド表示</label>
