@@ -98,7 +98,7 @@ test('全指移動律速は既定OFFでbooleanだけ復元する', () => {
   assert.equal(sanitizeUiState(value, fallback, choices).ui.playback.allFingerMovementDelay, false);
 });
 
-test('コンボ・レイヤーのガイド表示は既定OFFでbooleanだけ復元する', () => {
+test('コンボ・レイヤーのガイド表示は既定ONでbooleanだけ復元する', () => {
   const fallback = defaults();
   assert.equal(fallback.ui.layers.comboGuide, true);
 

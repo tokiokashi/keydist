@@ -127,6 +127,56 @@ test('1文字あたりの押下キー数は押下数を入力文字数で割っ�
   near(m.perCharPresses, 2, '押下/文字 = 押下数 / 入力文字数');
 });
 
+test('基底面率は基底面の1キー直接出力だけを文字数ベースで数える', () => {
+  const asuka = LAYOUT_BY_ID.get('asuka')!;
+  const asukaMetrics = computeMetrics(evaluate('はあ', asuka, geometry, opts()), geometry);
+  near(asukaMetrics.baseLayerRate, 50, '飛鳥: 基底面「は」だけを数える');
+
+  const shingeta = LAYOUT_BY_ID.get('shingeta')!;
+  const shingetaMetrics = computeMetrics(evaluate('のきゃ', shingeta, geometry, opts()), geometry);
+  near(shingetaMetrics.baseLayerRate, 100 / 3, '新下駄: 2文字コンボ「きゃ」は基底面率へ含めない');
+
+  const romajiMetrics = computeMetrics(evaluate('あか', qwerty, geometry, opts()), geometry);
+  near(romajiMetrics.baseLayerRate, 50, 'ローマ字: 1キーの「あ」だけを数え、2打鍵の「か」は含めない');
+});
+
+test('単打率は1 Stroke・新規1キーだけを文字数ベースで数える', () => {
+  const romajiMetrics = computeMetrics(evaluate('あか', qwerty, geometry, opts()), geometry);
+  near(romajiMetrics.singleTapRate, 50, 'ローマ字: あは1打、かは2打');
+
+  const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
+  const prefixMetrics = computeMetrics(evaluate('あ', tsuki, geometry, opts()), geometry);
+  near(prefixMetrics.singleTapRate, 0, '月配列: 前置シフトは各Strokeが1キーでも単打には含めない');
+
+  const shingeta = LAYOUT_BY_ID.get('shingeta')!;
+  const comboMetrics = computeMetrics(evaluate('きゃ', shingeta, geometry, opts()), geometry);
+  near(comboMetrics.singleTapRate, 0, '新下駄: 1 Strokeでも多キー同時押しは単打に含めない');
+});
+
+test('単打率はhold継続中の1キー入力を単打に含めない', () => {
+  const asuka = LAYOUT_BY_ID.get('asuka')!;
+  const trace = evaluate('あだ', asuka, geometry, opts({
+    triggerRealizationPolicy: { useHold: true },
+  }));
+  const metrics = computeMetrics(trace, geometry);
+
+  assert.equal(trace.strokes.length, 2);
+  assert.ok(trace.strokes[1].participations.some((p) => p.roles.includes('held-trigger')));
+  near(metrics.singleTapRate, 0, 'held triggerに依存する文字は新規1キーでも単打ではない');
+  near(metrics.baseLayerRate, 0, 'hold継続の文字は基底面にも含めない');
+});
+
+test('基底面率はhold継続中のシフト文字を基底面扱いしない', () => {
+  const asuka = LAYOUT_BY_ID.get('asuka')!;
+  const trace = evaluate('あだ', asuka, geometry, opts({
+    triggerRealizationPolicy: { useHold: true },
+  }));
+  const metrics = computeMetrics(trace, geometry);
+  near(metrics.baseLayerRate, 0);
+  assert.ok(trace.strokes.some((stroke) =>
+    stroke.participations.some((p) => p.roles.includes('held-trigger'))));
+});
+
 test('コンボはアクション/文字を下げるが、押下/文字は下げない', () => {
   // 「きゃ」を3キー同時押しの1ステップで打てる配列と、2ステップに分けて打つ配列を比較する。
   // コンボは押すキー自体は減らさないため、押下数は両者で変わらない
