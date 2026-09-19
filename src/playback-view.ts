@@ -7,7 +7,9 @@ import {
   playbackRomajiPlannedOrders, playbackOrderLabel, playbackRateChartData,
   playbackRecentActionsPerSecond, playbackRecentKanaPerSecond,
   playbackSameFingerKeyMotions,
-  playbackStrokeAt, playbackStepDurationMs, playbackTimingSchedule, playbackTimingStepDurationMs, playbackCursorForEquivalentInputPosition, reconcilePlaybackStateAfterAnalysisRefresh, setPlaybackSameFingerDelay,
+  playbackStrokeAt, playbackStepDurationMs, playbackTimingSchedule, playbackTimingStepDurationMs,
+  playbackTimingActionCount, playbackVirtualPhase, playbackCursorForEquivalentInputPosition,
+  reconcilePlaybackStateAfterAnalysisRefresh, setPlaybackSameFingerDelay,
   setPlaybackStepsPerSecond, stepPlayback, playbackTrailKeys, playbackTrailOrders,
   playbackStrokeDisplay, setPlaybackCalibration, setPlaybackSpeedMultiplier,
   type PlaybackStepsPerSecond, type PlaybackState, type PlaybackTimingStep, PLAYBACK_SPEED_MULTIPLIER_MAX,
@@ -439,6 +441,8 @@ function updatePlaybackView() {
   const orderLabels = settingsRoot.querySelector<HTMLInputElement>('[data-playback-order-labels]');
   const sameFingerMotion = settingsRoot.querySelector<HTMLInputElement>('[data-playback-same-finger-motion]');
   const scale = settingsRoot.querySelector<HTMLInputElement>('input[data-playback-scale]');
+  const triggerHold = settingsRoot.querySelector<HTMLInputElement>('[data-playback-trigger-hold]');
+  const holdStartAction = settingsRoot.querySelector<HTMLInputElement>('[data-playback-hold-start-action]');
   const sameFingerDelay = settingsRoot.querySelector<HTMLInputElement>('[data-playback-sfb-delay]');
   const allFingerMovementDelay = settingsRoot.querySelector<HTMLInputElement>('[data-playback-all-finger-delay]');
   const chain = settingsRoot.querySelector<HTMLInputElement>('[data-playback-chain]');
@@ -561,6 +565,11 @@ function updatePlaybackView() {
   if (orderLabels) orderLabels.checked = ctx.getUiState().ui.playback.showOrderLabels;
   if (sameFingerMotion) sameFingerMotion.checked = ctx.getUiState().ui.playback.showSameFingerMotion;
   if (scale) scale.value = String(ctx.getUiState().ui.playback.scale);
+  if (triggerHold) triggerHold.checked = ctx.getTriggerRealization().useHold;
+  if (holdStartAction) {
+    holdStartAction.checked = ctx.getHoldStartAction().countAsSeparateStep;
+    holdStartAction.disabled = !ctx.getTriggerRealization().useHold;
+  }
   if (sameFingerDelay) sameFingerDelay.checked = playbackState.sameFingerDelay;
   if (allFingerMovementDelay) {
     allFingerMovementDelay.checked = ctx.getUiState().ui.playback.allFingerMovementDelay;
@@ -879,6 +888,7 @@ function renderPlayback(
     {
       allFingerMovementDelay: nextSettings.allFingerMovementDelay,
       geometry,
+      holdStartActionPolicy: ctx.getHoldStartAction(),
     },
   );
   playbackState = preserveState
@@ -1128,6 +1138,20 @@ function refreshStructuralAnalysis(): void {
     });
     elements.app.addEventListener('change', (e) => {
       const target = e.target as Element;
+      const triggerHold = target.closest<HTMLInputElement>('[data-playback-trigger-hold]');
+      if (triggerHold) {
+        ctx.updateTriggerRealization(triggerHold.checked);
+        preserveStateOnNextRender = 'input-position';
+        ctx.refreshAnalysis();
+        return;
+      }
+      const holdStartAction = target.closest<HTMLInputElement>('[data-playback-hold-start-action]');
+      if (holdStartAction) {
+        ctx.updateHoldStartAction(holdStartAction.checked);
+        preserveStateOnNextRender = 'cursor';
+        ctx.refreshAnalysis();
+        return;
+      }
       const sameFingerDelay = target.closest<HTMLInputElement>('[data-playback-sfb-delay]');
       if (sameFingerDelay) {
         playbackState = setPlaybackSameFingerDelay(playbackState, sameFingerDelay.checked);
