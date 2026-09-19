@@ -303,6 +303,7 @@ test('かわせみ配列+はKikyo版の4拡張を同時打鍵として保持す�
   assert.deepEqual(layout.map.get('あ'), [[';']]);
   assert.deepEqual(layout.map.get('けい'), [['h', 'j', 's']]);
   assert.deepEqual(layout.map.get('きょう'), [['u', 'i', 's']]);
+  assert.deepEqual(layout.map.get('こと'), [['d', 's']]);
   assert.deepEqual(layout.map.get('そく'), [['thumb-r', 'd', 'j']]);
   assert.deepEqual(layout.map.get('てつ'), [['thumb-l', 'v']]);
   assert.deepEqual(layout.map.get('ヴ'), [['t', '8']]);
