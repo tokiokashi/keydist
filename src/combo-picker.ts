@@ -73,9 +73,11 @@ export function summarizeCandidateMatches(matches: readonly ComboPickerMatch[]):
 
 /**
  * 選択中のキーが単一キーのレイヤートリガー（シフト面など）に一致するなら、その面を返す。
+ * その面が定義する出力だけを見る。配列によっては左右の親指シフトが別々の面に
+ * 分かれることもあるが、それぞれの面が両手分の出力を自分で完結して持つのが
+ * 配列定義の作法（新下駄の左右親指シフトなど）なので、UI側で複数面を推測して
+ * 合成することはしない。合成が必要なら配列定義自体に書くべき情報だから。
  * コンボ（inputRole==='composition'、または複数キーtrigger）はここでは扱わない。
- * レイヤーが特定できれば、統合ヒートマップのレジェンドをそのレイヤーの出力へ
- * 差し替え、枠色も層別ヒートマップと同じ色に揃えるのに使う。
  */
 export function findActiveLayerFace(layout: Layout, selected: ReadonlySet<string>): Face | undefined {
   if (selected.size === 0) return undefined;

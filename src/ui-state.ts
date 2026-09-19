@@ -156,6 +156,8 @@ export interface UiStateV1 {
       activeTab: number;
       colorScale: LayerColorScale;
       naginataDetail: boolean;
+      /** 配列図でコンボ・レイヤーのトリガーを常時ハイライトするか。 */
+      comboGuide: boolean;
     };
     playback: UiPlaybackState;
     panels: {
@@ -233,6 +235,7 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
         activeTab: 0,
         colorScale: 'linear',
         naginataDetail: false,
+        comboGuide: false,
       },
       playback: {
         showFingers: false,
@@ -710,6 +713,7 @@ export function sanitizeUiState(
         activeTab: integerInRange(layers.activeTab, 0, 100, defaults.ui.layers.activeTab),
         colorScale: choice(layers.colorScale, ['linear', 'log'], defaults.ui.layers.colorScale),
         naginataDetail: boolean(layers.naginataDetail, defaults.ui.layers.naginataDetail),
+        comboGuide: boolean(layers.comboGuide, defaults.ui.layers.comboGuide),
       },
       playback: sanitizedPlayback,
       panels: {

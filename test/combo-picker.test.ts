@@ -112,3 +112,13 @@ test('findActiveLayerFace: inputRole===compositionの単キー面もコンボ扱
   const layout = stubLayout({ faces: [comboFace] });
   assert.equal(findActiveLayerFace(layout, new Set(['f'])), undefined);
 });
+
+test('findActiveLayerFace: 左右で別の面に分かれたレイヤーは、選んだ方の面だけを返す', () => {
+  // 新下駄の左右親指シフトのように、各面が両手分の出力を自分で完結して持つ設計を前提とする。
+  // ここで複数面を推測して合成すると、配列定義にない状態を表示してしまう。
+  const rightFace = { ...faceFromEntries(['k'], 'simultaneous', { j: 'あ', f: 'い' }), layer: 'mid-shift' };
+  const leftFace = { ...faceFromEntries(['d'], 'simultaneous', { f: 'う', j: 'え' }), layer: 'mid-shift' };
+  const layout = stubLayout({ faces: [rightFace, leftFace] });
+  assert.equal(findActiveLayerFace(layout, new Set(['k'])), rightFace);
+  assert.equal(findActiveLayerFace(layout, new Set(['d'])), leftFace);
+});

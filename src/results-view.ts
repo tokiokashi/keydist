@@ -24,7 +24,7 @@ import { resolveConditions } from './condition-resolution.ts';
 import { classifyFaces, displayTriggerKeys, faceCells, foldedLayerCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID, faceFromEntries } from './layouts/index.ts';
 import type { Face, Layout } from './layouts/index.ts';
-import { allTriggerKeys, findActiveLayerFace, matchCombos, summarizeCandidateMatches } from './combo-picker.ts';
+import { findActiveLayerFace, matchCombos, summarizeCandidateMatches } from './combo-picker.ts';
 import type { ModeId } from './layout-selection.ts';
 import type { PlaybackViewController } from './playback-view.ts';
 import { buildGeometry } from './geometry.ts';
@@ -66,8 +66,6 @@ export function createResultsView(ctx: ResultsViewContext): ResultsViewControlle
   const comboDiagramSelection = new Map<string, number>();
   /** 配列図でクリック選択中のトリガー候補キー（物理キーid）。配列ごとに独立して覚える。 */
   const comboPickerSelection = new Map<string, Set<string>>();
-  /** ベース配列図で全コンボ・レイヤートリガーの位置を常時ガイド表示するか。 */
-  const comboPickerGuideEnabled = new Map<string, boolean>();
 
   function getPickerSelection(layoutId: string): Set<string> {
     let selection = comboPickerSelection.get(layoutId);
@@ -767,8 +765,8 @@ interface ComboPickerValues {
   selected: ReadonlySet<string>;
   /** 相方候補キーごとの要約ラベル（少数なら出力そのもの、多数ならグループ件数）。 */
   candidateLabels: ReadonlyMap<string, string>;
-  /** ガイド表示ON時、常時トリガーとして薄く示す物理キー集合。 */
-  guideKeys?: ReadonlySet<string>;
+  /** ガイド表示ON時、常時トリガーとして薄く示す物理キーとそのseries色番号。 */
+  guideColors?: ReadonlyMap<string, number>;
   /** 選択中のキーに使う枠色のseries番号。レイヤー選択中はそのレイヤーの色、コンボ選択中は専用色に揃える。 */
   selectedColorSlot: number;
   /**
@@ -776,6 +774,8 @@ interface ComboPickerValues {
    * 差し替えるための面。統合ヒートマップだけに渡し、層別図はもともとそのレイヤー自身を表示している。
    */
   legendFace?: Face;
+  /** コンボの相方候補が1件だけに絞れた時、そのキーのレジェンドをその出力へ差し替える。 */
+  legendOverrides?: ReadonlyMap<string, string>;
 }
 
 interface HeatmapValues {
@@ -790,6 +790,37 @@ interface HeatmapValues {
   /** レイヤー図以外でtriggerを強調表示する場合のツールチップ文言。 */
   triggerTipLabel?: string;
   picker?: ComboPickerValues;
+}
+
+/**
+ * ガイド表示（常時トリガー表示）で使う、キーごとの枠色。
+ * レイヤーのtriggerキーは層別ヒートマップと同じ色（faceShiftStylesのcolorSlot）、
+ * コンボのtriggerキーはコンボ配列図と同じseries-4に揃える。
+ */
+function pickerGuideColorMap(
+  groups: ReturnType<typeof classifyFaces>,
+  faceShiftStyles: ReadonlyMap<Face, LayerShiftStyle>,
+  layout: Layout,
+): Map<string, number> {
+  const colors = new Map<string, number>();
+  for (const layer of [...groups.layers, ...groups.modifiers]) {
+    for (const face of layer.faces) {
+      const slot = faceShiftStyles.get(face)?.colorSlot ?? 2;
+      for (const trigger of face.trigger) colors.set(resolveKeyId(trigger), slot);
+    }
+  }
+  for (const face of groups.combos) {
+    for (const trigger of face.trigger) {
+      const key = resolveKeyId(trigger);
+      if (!colors.has(key)) colors.set(key, 4);
+    }
+  }
+  for (const combo of layout.resolvedComboDefinitions ?? []) {
+    for (const key of combo.keys) {
+      if (!colors.has(key)) colors.set(key, 4);
+    }
+  }
+  return colors;
 }
 
 function heatIntensity(count: number, maxCount: number, scale: LayerColorScale): number {
@@ -811,6 +842,11 @@ function renderLayerSvg(
 ): string {
   const legendFace = values.picker?.legendFace;
   const labels = legendFace ? layerCells({ faces: [legendFace] }, layout) : layerCells(layer, layout);
+  if (values.picker?.legendOverrides) {
+    for (const [key, output] of values.picker.legendOverrides) {
+      labels.set(key, { label: output, annotation: labels.get(key)?.annotation });
+    }
+  }
   const showHeat = values.showHeat;
   const triggerFaces = layer.faces.length === 0 ? allLayerFaces : layer.faces;
   const shiftStyles = new Map<string, LayerShiftStyle>();
@@ -855,7 +891,8 @@ function renderLayerSvg(
     const picker = values.picker;
     const isSelected = picker?.selected.has(key.id) ?? false;
     const candidateLabel = picker?.candidateLabels.get(key.id);
-    const isGuide = !isSelected && !candidateLabel && (picker?.guideKeys?.has(key.id) ?? false);
+    const guideColorSlot = picker?.guideColors?.get(key.id);
+    const isGuide = !isSelected && !candidateLabel && guideColorSlot !== undefined;
     const pickerTip = isSelected
       ? '<br><b>選択中のトリガー</b>'
       : candidateLabel
@@ -883,7 +920,7 @@ function renderLayerSvg(
       : candidateLabel
         ? 'var(--series-3)'
         : isGuide
-          ? 'var(--series-4)'
+          ? `var(--series-${guideColorSlot})`
           : shiftStyle
             ? `var(--series-${shiftStyle.colorSlot})`
             : 'var(--line)';
@@ -995,7 +1032,7 @@ function renderComboTable(
         showHeat: false,
         ariaSuffix: '（コンボ配列図）',
         triggerTipLabel: `コンボ: ${item.trigger}`,
-        picker: { ...picker, guideKeys: undefined },
+        picker: { ...picker, guideColors: undefined },
       },
     );
     return diagram.replace(
@@ -1237,8 +1274,15 @@ function renderHeatmap(
   const pickerCandidateLabels = new Map(
     [...pickerMatch.candidates].map(([key, matches]) => [key, summarizeCandidateMatches(matches)]),
   );
-  const pickerGuideEnabled = comboPickerGuideEnabled.get(layout.id) ?? false;
-  const pickerGuideKeys = pickerGuideEnabled ? allTriggerKeys(layout) : undefined;
+  // 相方候補が1件に絞れているキーは、迷う余地がないのでレジェンドをその出力へ差し替える。
+  // 複数件残っている時はキー1つに収まらないので、緑枠+ツールチップの一覧のまま。
+  const pickerLegendOverrides = new Map(
+    [...pickerMatch.candidates]
+      .filter(([, matches]) => matches.length === 1)
+      .map(([key, matches]) => [key, matches[0].output]),
+  );
+  const pickerGuideEnabled = ctx.getUiState().ui.layers.comboGuide;
+  const pickerGuideColors = pickerGuideEnabled ? pickerGuideColorMap(groups, faceShiftStyles, layout) : undefined;
   // レイヤー選択中は層別ヒートマップと同じ色に揃え、コンボ選択中はコンボ配列図と同じ色（series-4）に揃える。
   // どちらでもなければ既定のオレンジ（series-2）のまま。
   const pickerActiveLayerFace = findActiveLayerFace(layout, pickerSelection);
@@ -1253,8 +1297,10 @@ function renderHeatmap(
     clickable: true,
     selected: pickerSelection,
     candidateLabels: pickerCandidateLabels,
-    guideKeys: pickerGuideKeys,
+    guideColors: pickerGuideColors,
     selectedColorSlot: pickerSelectedColorSlot,
+    // レイヤーがアクティブな時はレイヤーのレジェンドを優先し、コンボ上書きは適用しない
+    legendOverrides: pickerActiveLayerFace ? undefined : pickerLegendOverrides,
   };
 
   const integrated = renderLayerSvg(
@@ -1295,7 +1341,7 @@ function renderHeatmap(
         colorScale: ctx.getUiState().ui.layers.colorScale,
         showHeat: true,
         ariaSuffix: `（層別・${ctx.getUiState().ui.layers.colorScale === 'log' ? '対数' : '線形'}・共通スケール）`,
-        picker: { ...pickerBase, guideKeys: undefined },
+        picker: { ...pickerBase, guideColors: undefined },
       },
     );
   });
@@ -1319,7 +1365,7 @@ function renderHeatmap(
   const pickerControls = `<div class="combo-picker-controls">
       <p class="combo-picker-result">${pickerResultText}</p>
       <label><input type="checkbox" data-picker-guide data-layout-id="${escapeAttr(layout.id)}"${pickerGuideEnabled ? ' checked' : ''}> コンボ・レイヤートリガーをガイド表示</label>
-      <button type="button" class="ghost" data-picker-clear data-layout-id="${escapeAttr(layout.id)}"${pickerSelection.size === 0 ? ' disabled' : ''}>選択をクリア</button>
+      <button type="button" class="secondary" data-picker-clear data-layout-id="${escapeAttr(layout.id)}"${pickerSelection.size === 0 ? ' disabled' : ''}>選択をクリア</button>
     </div>`;
   const content = selectedLayerView === 'tabs' && entries.length > 1
     ? `<div class="layer-tabs" role="tablist" aria-label="レイヤー">
@@ -1376,8 +1422,7 @@ function setSensitivityScale(scale: SensitivityScale) {
     elements.heatmap.addEventListener('change', (e) => {
       const guideCheckbox = (e.target as Element).closest<HTMLInputElement>('input[data-picker-guide]');
       if (guideCheckbox) {
-        const layoutId = guideCheckbox.dataset.layoutId;
-        if (layoutId) comboPickerGuideEnabled.set(layoutId, guideCheckbox.checked);
+        ctx.updateUiState((draft) => { draft.ui.layers.comboGuide = guideCheckbox.checked; });
         refreshPickerDisplay();
         return;
       }
