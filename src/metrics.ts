@@ -119,10 +119,15 @@ export interface Metrics {
    */
   baseLayerRate: number;
   /**
-   * 打鍵可能な入力文字のうち、その文字を1 Stroke・1キーだけで、
-   * trigger / held-triggerに依存せず出力した割合 [%]（仕様 §11.5.2）。
+   * 総アクションのうち、1 physical Stroke・1物理キーだけでひらがなを1文字以上直接出力し、
+   * trigger / held-triggerに依存しない「単打」アクションの割合 [%]（仕様 §11.5.2）。
    */
   singleTapRate: number;
+  /**
+   * physical Strokeのうち、押下した物理キーが1個だけだったStrokeの割合 [%]（仕様 §11.5.3）。
+   * 入力意味は問わず、ローマ字・シフト操作・hold継続中の出力も打鍵形態だけで判定する。
+   */
+  singleKeyRate: number;
   /** 隣接指間距離の統計。ホーム間隔からの超過で持つ（仕様 §11.6） */
   adjacent: PairStat[];
   /** 同指連続回数。同じ指で異なる位置を続けて打った数 */
@@ -306,7 +311,8 @@ export function computeMetrics(
     perCharSteps: inputChars ? actions / inputChars : 0,
     perCharPresses: inputChars ? presses / inputChars : 0,
     baseLayerRate: baseLayerRate(trace),
-    singleTapRate: singleTapRate(trace),
+    singleTapRate: singleTapRate(trace, actions),
+    singleKeyRate: singleKeyRate(trace),
     adjacent,
     sameFinger,
     combos,
@@ -357,14 +363,18 @@ function baseLayerRate(trace: Trace): number {
 }
 
 /**
- * 打鍵可能だった入力単位を inputIndex ごとにまとめ、元の文字数で重み付けする。
- * その入力を1 physical Stroke・1物理キーだけで処理し、trigger / held-triggerに
- * 依存しない場合だけ単打とする。
+ * 総アクションのうち、かな配列でいう「単打」に相当するアクションの割合。
  *
- * prefix / suffixは複数Strokeなので除外する。simultaneousな多キー入力も除外する。
- * hold continuationは新規押下が1キーでもheld-triggerに依存するため単打には含めない。
+ * 単打は、1 physical Stroke・1物理キーだけでひらがなを1文字以上直接出力し、
+ * trigger / held-triggerに依存せず、その入力単位が1 Strokeで完結するものとする。
+ * ローマ字入力の各英字Strokeや、prefix / suffixの一部だけを単打とは数えない。
+ *
+ * 分母はPolicy適用後の総アクション数。held-trigger/startのvirtual actionは分母には
+ * 入るがphysical Strokeではないため分子には入らない。
  */
-function singleTapRate(trace: Trace): number {
+function singleTapRate(trace: Trace, actions: number): number {
+  if (actions === 0) return 0;
+
   const byInput = new Map<number, Stroke[]>();
   for (const stroke of trace.strokes) {
     const group = byInput.get(stroke.inputIndex);
@@ -372,22 +382,34 @@ function singleTapRate(trace: Trace): number {
     else byInput.set(stroke.inputIndex, [stroke]);
   }
 
-  let typableChars = 0;
-  let singleTapChars = 0;
+  let singleTapActions = 0;
   for (const strokes of byInput.values()) {
-    const charCount = [...strokes[0].inputChar].length;
-    typableChars += charCount;
     if (strokes.length !== 1) continue;
 
     const stroke = strokes[0];
+    if (!/^\p{Script=Hiragana}+$/u.test(stroke.char)) continue;
+
     const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);
+    const hasOutput = stroke.participations.some((participation) =>
+      participation.roles.includes('output'));
     const hasShiftParticipation = stroke.participations.some((participation) =>
       participation.roles.includes('trigger') || participation.roles.includes('held-trigger'));
 
-    if (keyCount === 1 && !hasShiftParticipation) singleTapChars += charCount;
+    if (keyCount === 1 && hasOutput && !hasShiftParticipation) singleTapActions++;
   }
 
-  return typableChars ? (singleTapChars / typableChars) * 100 : 0;
+  return (singleTapActions / actions) * 100;
+}
+
+/**
+ * physical Strokeのうち、押下した物理キーが1個だけだった割合。
+ * これは「単打」の意味論とは独立し、そのStrokeで新規に押したキー数だけを見る。
+ */
+function singleKeyRate(trace: Trace): number {
+  if (trace.strokes.length === 0) return 0;
+  const singleKeyStrokes = trace.strokes.filter((stroke) =>
+    stroke.presses.reduce((sum, press) => sum + press.keys.length, 0) === 1).length;
+  return (singleKeyStrokes / trace.strokes.length) * 100;
 }
 
 function meanStdDevMax(values: number[]): { mean: number; stdDev: number; max: number } {
