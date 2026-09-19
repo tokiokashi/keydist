@@ -52,6 +52,16 @@ export interface BaseActionRealization {
   readonly input: SemanticInput;
   readonly actions: readonly (readonly PhysicalKeyId[])[];
   /**
+   * authoring source上でoutput側として扱うphysical key。
+   * semantic target roleではなく、Stroke participationを作るdefault realization metadata。
+   */
+  readonly defaultOutputKeys: readonly PhysicalKeyId[];
+  /**
+   * authoring source上でtrigger側として扱うphysical key。
+   * canonical SemanticInput identityには含めない。outputKeysとの重複を許す。
+   */
+  readonly defaultTriggerKeys?: readonly PhysicalKeyId[];
+  /**
    * authoring source由来のdefault hold group。
    * semantic capabilityそのものではなく、既定realizationでどのwhile-held groupを選ぶかを表す。
    */
