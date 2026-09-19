@@ -98,16 +98,25 @@ test('全指移動律速は既定OFFでbooleanだけ復元する', () => {
   assert.equal(sanitizeUiState(value, fallback, choices).ui.playback.allFingerMovementDelay, false);
 });
 
-test('コンボ・レイヤーのガイド表示は既定ONでbooleanだけ復元する', () => {
+test('キー入力パターンのガイド表示は既定ONでbooleanだけ復元する', () => {
   const fallback = defaults();
-  assert.equal(fallback.ui.layers.comboGuide, true);
+  assert.equal(fallback.ui.layers.keyPatternGuide, true);
 
   const value = structuredClone(fallback) as unknown as Record<string, any>;
-  value.ui.layers.comboGuide = true;
-  assert.equal(sanitizeUiState(value, fallback, choices).ui.layers.comboGuide, true);
+  value.ui.layers.keyPatternGuide = false;
+  assert.equal(sanitizeUiState(value, fallback, choices).ui.layers.keyPatternGuide, false);
 
-  value.ui.layers.comboGuide = 'yes';
-  assert.equal(sanitizeUiState(value, fallback, choices).ui.layers.comboGuide, true);
+  value.ui.layers.keyPatternGuide = 'yes';
+  assert.equal(sanitizeUiState(value, fallback, choices).ui.layers.keyPatternGuide, true);
+});
+
+test('旧comboGuide設定はkeyPatternGuideへ互換移行する', () => {
+  const fallback = defaults();
+  const value = structuredClone(fallback) as unknown as Record<string, any>;
+  delete value.ui.layers.keyPatternGuide;
+  value.ui.layers.comboGuide = false;
+
+  assert.equal(sanitizeUiState(value, fallback, choices).ui.layers.keyPatternGuide, false);
 });
 
 test('指位置の準備時間は非負の有限値だけ復元する', () => {

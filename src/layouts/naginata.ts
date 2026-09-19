@@ -6,7 +6,8 @@ import { fromFaces, type Face, type Layout } from './types.ts';
  * 公式配布のDvorakJ定義ファイルから機械的に起こした。
  * https://oookaworks.seesaa.net/article/456099128.html
  *
- * センターシフトは旧idのspace（thumb-r）との同時押し。濁音は逆手の人差指中段（f / j）、
+ * センターシフトは旧idのspace（thumb-r）を先押しして重ねるSandS。Stroke表現は同時押しのまま、
+ * triggerOrder='prefix' で先押し制約を保持する。濁音は逆手の人差指中段（f / j）、
  * 半濁音は逆手の人差指下段（v / m）、小書きはqとの同時押し。
  * 拗音・外来音は3キー同時押しを含む。
  */
@@ -22,7 +23,7 @@ const QWERTY_ROWS = [
 const face = (
   trigger: string[],
   entries: Record<string, string>,
-  options: Pick<Face, 'layer' | 'role' | 'inputRole' | 'triggerPersistence'> = {
+  options: Pick<Face, 'layer' | 'role' | 'inputRole' | 'triggerPersistence' | 'triggerOrder'> = {
     inputRole: 'layer',
   },
 ): Face => ({
@@ -47,7 +48,7 @@ export const NAGINATA_V18_FACES: Face[] = [
     v: '、', m: '。', o: 'え', n: 'お', u: 'さ', a: 'せ', g: 'ち', l: 'つ',
     d: 'に', b: 'ぬ', w: 'ね', j: 'の', ';': 'ふ', f: 'ま', s: 'み', ',': 'む',
     r: 'め', k: 'も', h: 'や', p: 'ゆ', i: 'よ', e: 'り', '.': 'わ', c: 'を',
-  }, { inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  }, { inputRole: 'modifier', triggerPersistence: 'hold-capable', triggerOrder: 'prefix' }),
 
   // 小書き
   face(['q'], { j: 'ぁ', k: 'ぃ', l: 'ぅ', o: 'ぇ', n: 'ぉ', h: 'ゃ', p: 'ゅ', i: 'ょ', '.': 'ゎ' }, { role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),

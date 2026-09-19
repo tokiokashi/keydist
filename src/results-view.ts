@@ -24,7 +24,7 @@ import { resolveConditions } from './condition-resolution.ts';
 import { classifyFaces, displayTriggerKeys, faceCells, foldedLayerCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID, faceFromEntries } from './layouts/index.ts';
 import type { Face, Layout } from './layouts/index.ts';
-import { findActiveLayerFace, matchCombos, summarizeCandidateMatches } from './combo-picker.ts';
+import { findActiveLayerFace, matchKeyPatterns, summarizeCandidateMatches } from './key-pattern-picker.ts';
 import type { ModeId } from './layout-selection.ts';
 import type { PlaybackViewController } from './playback-view.ts';
 import { buildGeometry } from './geometry.ts';
@@ -65,13 +65,13 @@ export function createResultsView(ctx: ResultsViewContext): ResultsViewControlle
   let sensitivityDirty = true;
   const comboDiagramSelection = new Map<string, number>();
   /** 配列図でクリック選択中のトリガー候補キー（物理キーid）。配列ごとに独立して覚える。 */
-  const comboPickerSelection = new Map<string, Set<string>>();
+  const keyPatternPickerSelection = new Map<string, Set<string>>();
 
   function getPickerSelection(layoutId: string): Set<string> {
-    let selection = comboPickerSelection.get(layoutId);
+    let selection = keyPatternPickerSelection.get(layoutId);
     if (!selection) {
       selection = new Set();
-      comboPickerSelection.set(layoutId, selection);
+      keyPatternPickerSelection.set(layoutId, selection);
     }
     return selection;
   }
@@ -780,15 +780,15 @@ function layerCells(layer: Layer, layout: Layout): Map<string, LayerCell> {
 }
 
 /**
- * 配列図のキーをクリックしてコンボトリガーを選び、相方候補を探すための表示情報。
+ * 配列図のキーをクリックして入力パターンを選び、成立出力と候補を探すための表示情報。
  * 選択状態そのものは呼び出し側（createResultsViewのクロージャ）が持つ。
  */
-interface ComboPickerValues {
+interface KeyPatternPickerValues {
   layoutId: string;
   /** このSVGでクリックによる選択操作を受け付けるか。 */
   clickable: boolean;
   selected: ReadonlySet<string>;
-  /** 相方候補キーごとの要約ラベル（少数なら出力そのもの、多数ならグループ件数）。 */
+  /** 候補キーごとの要約ラベル。 */
   candidateLabels: ReadonlyMap<string, string>;
   /** ガイド表示ON時、常時トリガーとして薄く示す物理キーとそのCSS色（var(--...)）。 */
   guideStrokes?: ReadonlyMap<string, string>;
@@ -817,7 +817,7 @@ interface HeatmapValues {
   ariaSuffix: string;
   /** レイヤー図以外でtriggerを強調表示する場合のツールチップ文言。 */
   triggerTipLabel?: string;
-  picker?: ComboPickerValues;
+  picker?: KeyPatternPickerValues;
 }
 
 /**
@@ -929,7 +929,7 @@ function renderLayerSvg(
     const pickerTip = isSelected
       ? '<br><b>選択中のトリガー</b>'
       : candidateLabel
-        ? `<br><b>相方候補:</b> ${escapeText(candidateLabel)}`
+        ? `<br><b>候補:</b> ${escapeText(candidateLabel)}`
         : isGuide
           ? '<br><span style="color:var(--muted)">コンボ/レイヤーのトリガー</span>'
           : '';
@@ -985,7 +985,7 @@ function renderComboTable(
   combos: readonly Face[],
   layout: Layout,
   geometry: ReturnType<typeof buildGeometry>,
-  picker: ComboPickerValues,
+  picker: KeyPatternPickerValues,
 ): string {
   const resolvedCombos = layout.resolvedComboDefinitions ?? [];
   if (combos.length === 0 && resolvedCombos.length === 0) return '';
@@ -1303,7 +1303,7 @@ function renderHeatmap(
   const baseLayer = layers.find((layer) => layer.faces.some((face) => face.trigger.length === 0)) ?? layers[0];
 
   const pickerSelection = getPickerSelection(layout.id);
-  const pickerMatch = matchCombos(layout, pickerSelection);
+  const pickerMatch = matchKeyPatterns(layout, pickerSelection);
   const pickerCandidateLabels = new Map(
     [...pickerMatch.candidates].map(([key, matches]) => [key, summarizeCandidateMatches(matches)]),
   );
@@ -1311,8 +1311,8 @@ function renderHeatmap(
   // 同じ追加キーで成立する出力は / 区切りでそのままキー上に表示する。
   const pickerLegendOverrides = pickerCandidateLabels;
   // ガイド表示のON/OFF設定自体は保持しつつ、選択が始まったら表示だけ引っ込める。
-  // 選択後は緑枠・レジェンド書き換えという別のガイドが働くので、両方出すと煩雑になる。
-  const pickerGuideSetting = ctx.getUiState().ui.layers.comboGuide;
+  // 選択後は青枠・レジェンド書き換えという別のガイドが働くので、両方出すと煩雑になる。
+  const pickerGuideSetting = ctx.getUiState().ui.layers.keyPatternGuide;
   const pickerGuideEnabled = pickerGuideSetting && pickerSelection.size === 0;
   const pickerGuideColors = pickerGuideEnabled ? pickerGuideColorMap(groups, faceShiftStyles, layout) : undefined;
   // レイヤー選択中は層別ヒートマップと同じ色（series-N）に揃える。それ以外（コンボ選択・
@@ -1322,7 +1322,7 @@ function renderHeatmap(
   const pickerSelectedStroke = pickerLayerColorSlot !== undefined
     ? `var(--series-${pickerLayerColorSlot})`
     : 'var(--picker-selected)';
-  const pickerBase: ComboPickerValues = {
+  const pickerBase: KeyPatternPickerValues = {
     layoutId: layout.id,
     clickable: true,
     selected: pickerSelection,
@@ -1375,16 +1375,16 @@ function renderHeatmap(
     );
   });
   const pickerResultText = pickerSelection.size === 0
-    ? 'キーをクリックすると、コンボやレイヤーのトリガーを選べます。'
-    : pickerMatch.exact.length > 0
-      ? `確定: <b>${pickerMatch.exact.map((match) => escapeText(match.output)).join(' / ')}</b>`
-        + (pickerMatch.candidates.size > 0 ? ' / 緑の枠で追加候補も選べます。' : '')
-      : pickerMatch.candidates.size > 0
-        ? '緑の枠が相方候補です。もう1キーで出力が確定します。'
+    ? 'キーをクリックすると、入力パターンを確認できます。'
+    : pickerMatch.exact.length === 0 && pickerMatch.candidates.size > 0
+      ? '青い枠が候補です。'
+      : pickerMatch.exact.length > 0
+        ? `確定: <b>${pickerMatch.exact.map((match) => escapeText(match.output)).join(' / ')}</b>`
+          + (pickerMatch.candidates.size > 0 ? ' / 青い枠が候補です。' : '')
         : 'このキーの組み合わせに一致する出力はありません。';
-  const pickerControls = `<div class="combo-picker-controls">
-      <p class="combo-picker-result">${pickerResultText}</p>
-      <label><input type="checkbox" data-picker-guide data-layout-id="${escapeAttr(layout.id)}"${pickerGuideSetting ? ' checked' : ''}> コンボ・レイヤートリガーをガイド表示</label>
+  const pickerControls = `<div class="key-pattern-picker-controls">
+      <p class="key-pattern-picker-result">${pickerResultText}</p>
+      <label><input type="checkbox" data-picker-guide data-layout-id="${escapeAttr(layout.id)}"${pickerGuideSetting ? ' checked' : ''}> トリガーをガイド表示</label>
       <button type="button" class="secondary" data-picker-clear data-layout-id="${escapeAttr(layout.id)}"${pickerSelection.size === 0 ? ' disabled' : ''}>選択をクリア</button>
     </div>`;
   const content = selectedLayerView === 'tabs' && entries.length > 1
@@ -1442,7 +1442,7 @@ function setSensitivityScale(scale: SensitivityScale) {
     elements.heatmap.addEventListener('change', (e) => {
       const guideCheckbox = (e.target as Element).closest<HTMLInputElement>('input[data-picker-guide]');
       if (guideCheckbox) {
-        ctx.updateUiState((draft) => { draft.ui.layers.comboGuide = guideCheckbox.checked; });
+        ctx.updateUiState((draft) => { draft.ui.layers.keyPatternGuide = guideCheckbox.checked; });
         refreshPickerDisplay();
         return;
       }
@@ -1522,7 +1522,7 @@ function setSensitivityScale(scale: SensitivityScale) {
     document.addEventListener('click', (e) => {
       if ((e.target as Element).closest('.layer-diagram')) return;
       const layoutId = elements.detailLayout.value;
-      const selection = comboPickerSelection.get(layoutId);
+      const selection = keyPatternPickerSelection.get(layoutId);
       if (selection && selection.size > 0) {
         selection.clear();
         refreshPickerDisplay();

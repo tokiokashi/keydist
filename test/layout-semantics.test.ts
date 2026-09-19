@@ -64,7 +64,7 @@ test('semantic migrationで物理Sequenceは変えない', () => {
   }
 });
 
-test('薙刀式はsimultaneousとhold-capableを独立して持つ', () => {
+test('薙刀式はsimultaneousとhold-capableを独立して持ち、Spaceだけ先押し制約を持つ', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
 
   for (const face of layout.faces ?? []) {
@@ -72,6 +72,11 @@ test('薙刀式はsimultaneousとhold-capableを独立して持つ', () => {
       assert.equal(face.mode, 'simultaneous');
       assert.equal(face.triggerPersistence, 'hold-capable');
     }
+  }
+  const centerFace = layout.faces?.find((face) => face.trigger.includes('space'));
+  assert.equal(centerFace?.triggerOrder, 'prefix');
+  for (const face of layout.faces ?? []) {
+    if (face !== centerFace) assert.equal(face.triggerOrder, undefined);
   }
 
   const center = evaluate('え', layout, geometry, opts()).strokes[0];
