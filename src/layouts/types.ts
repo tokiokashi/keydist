@@ -80,11 +80,22 @@ export interface ComboCondition {
   youonOnly?: boolean;
 }
 
-/** コンボの出力、入力キー、発火条件。 */
+export interface ComboPresentation {
+  /** UIでまとめる規則群。解析には使わない。 */
+  group?: string;
+  /**
+   * 配列図で共通triggerとして畳む論理入力。
+   * 残りがちょうど1キーの時だけ1面へ畳める。
+   */
+  foldTriggerInputs?: readonly string[];
+}
+
+/** コンボの出力、入力キー、発火条件、表示用属性。 */
 export type ComboDefinition = [
   output: string,
   inputs: string[],
   condition?: ComboCondition,
+  presentation?: ComboPresentation,
 ];
 
 /** withCombosで解決済みのコンボ。表示・検証で元定義と物理キー集合を参照する。 */
@@ -93,6 +104,10 @@ export interface ResolvedComboDefinition {
   inputs: readonly string[];
   keys: readonly string[];
   condition?: ComboCondition;
+  group?: string;
+  foldTriggerInputs?: readonly string[];
+  foldTriggerKeys?: readonly string[];
+  foldTargetKey?: string;
 }
 
 export interface Layout {
@@ -483,15 +498,27 @@ export function withCombos(
   const comboConditions = new Map(layout.comboConditions);
   const comboDefinitions: ResolvedComboDefinition[] = [...(layout.comboDefinitions ?? [])];
   let hasCombo = layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID);
-  for (const [output, inputs, condition] of combos) {
+  for (const [output, inputs, condition, presentation] of combos) {
     const keys = inputs.map((ch) => layout.map.get(ch)?.[0]?.[0]);
     if (keys.some((k) => k === undefined)) continue;
     const resolvedKeys = (keys as string[]).map(resolveKeyId);
+    const foldTriggerInputs = presentation?.foldTriggerInputs;
+    const foldTriggerKeys = foldTriggerInputs?.map((ch) => layout.map.get(ch)?.[0]?.[0])
+      .filter((key): key is string => key !== undefined)
+      .map(resolveKeyId);
+    const foldTriggerSet = new Set(foldTriggerKeys ?? []);
+    const foldTargets = foldTriggerKeys?.length === foldTriggerInputs?.length
+      ? resolvedKeys.filter((key) => !foldTriggerSet.has(key))
+      : [];
     comboDefinitions.push({
       output,
       inputs: [...inputs],
       keys: resolvedKeys,
       ...(condition === undefined ? {} : { condition }),
+      ...(presentation?.group === undefined ? {} : { group: presentation.group }),
+      ...(foldTriggerInputs === undefined ? {} : { foldTriggerInputs: [...foldTriggerInputs] }),
+      ...(foldTriggerKeys === undefined ? {} : { foldTriggerKeys }),
+      ...(foldTargets.length === 1 ? { foldTargetKey: foldTargets[0] } : {}),
     });
     map.set(output, [keys as string[]]);
     stepLayers.set(output, [COMBO_LAYER_ID]);
