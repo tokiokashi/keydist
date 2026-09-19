@@ -507,7 +507,9 @@ export function withCombos(
       .filter((key): key is string => key !== undefined)
       .map(resolveKeyId);
     const foldTriggerSet = new Set(foldTriggerKeys ?? []);
-    const foldTargets = foldTriggerKeys?.length === foldTriggerInputs?.length
+    const foldTargets = foldTriggerKeys !== undefined
+      && foldTriggerInputs !== undefined
+      && foldTriggerKeys.length === foldTriggerInputs.length
       ? resolvedKeys.filter((key) => !foldTriggerSet.has(key))
       : [];
     comboDefinitions.push({
