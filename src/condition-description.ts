@@ -75,7 +75,7 @@ export const CONDITION_DESCRIPTORS = {
   },
   holdStartAction: {
     label: 'Hold開始action',
-    effect: 'realize済みのheld-trigger/startがoutputと同じStrokeにある時、その開始を追加の独立stepとして数えるかを決めます。prefix等の既存trigger-only Strokeは追加計上しません。',
+    effect: 'realize済みのheld-trigger/startがoutputと同じStrokeにある時、その開始を追加の独立stepとして数えるかを決めます。連続保持が有効な時だけ作用し、再生でもhold開始→outputを2段階で表示します。prefix等の既存trigger-only Strokeは追加計上しません。',
     format: (value) => formatHoldStartActionPolicy(value as HoldStartActionPolicy),
   },
   geometry: {
