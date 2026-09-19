@@ -927,11 +927,11 @@ function renderLayerSvg(
     const guideStroke = picker?.guideStrokes?.get(key.id);
     const isGuide = !isSelected && !candidateLabel && guideStroke !== undefined;
     const pickerTip = isSelected
-      ? '<br><b>選択中のトリガー</b>'
+      ? '<br><b>選択中</b>'
       : candidateLabel
         ? `<br><b>候補:</b> ${escapeText(candidateLabel)}`
         : isGuide
-          ? '<br><span style="color:var(--muted)">コンボ/レイヤーのトリガー</span>'
+          ? '<br><span style="color:var(--muted)">入力パターンのトリガー</span>'
           : '';
     const annotationText = annotation ? `<br>${escapeText(annotation)}` : '';
     const tip = showHeat
