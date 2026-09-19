@@ -209,7 +209,7 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
       input: {
         mode: 'ja',
         geometry: 'row-staggered',
-        selectedSampleByMode: { en: 'default', ja: 'modern' },
+        selectedSampleByMode: { en: 'default', ja: 'legacy' },
       },
       layouts: {
         selectedByMode: {
