@@ -134,5 +134,5 @@ export const CUSTOM_COMBOS: ComboDefinition[] = RAW_CUSTOM_COMBOS.map(
     inputs,
     condition,
     comboPresentation(output, condition),
-  ],
+  ] as ComboDefinition,
 );
