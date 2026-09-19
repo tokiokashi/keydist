@@ -1,4 +1,9 @@
-import { compileFaceSemanticInputs, type SemanticInput } from '../core/semantic-input/index.ts';
+import {
+  compileFaceSemanticInputs,
+  compileSequenceSemanticInputs,
+  type SemanticInput,
+  type SemanticInputSequence,
+} from '../core/semantic-input/index.ts';
 import { keyId, QWERTY_LEGEND, resolveKeyId, THUMB_KEY, type NonThumb } from '../geometry.ts';
 import { groupFacesIntoLayers } from '../layers.ts';
 
@@ -125,6 +130,11 @@ export interface Layout {
   name: string;
   /** 文字 → 打鍵ステップ列 */
   map: Map<string, Sequence>;
+  /**
+   * logical output → canonical SemanticInput列。
+   * migration中のみoptionalで、consumer cutover後にrequired化する。
+   */
+  semanticInputSequences?: ReadonlyMap<string, SemanticInputSequence>;
   /** 面から作った配列だけが持つ、表示用の元面。自作配列などは省略する */
   faces?: readonly Face[];
   /**
@@ -192,6 +202,7 @@ export function fromRows(
   thumbs: { LT?: string; RT?: string } = { RT: ' ' },
 ): Layout {
   const map = new Map<string, Sequence>();
+  const semanticInputSequences = new Map<string, SemanticInputSequence>();
   const stepLayers = new Map<string, readonly string[]>();
   const stepTriggerKeys = new Map<string, readonly (readonly string[])[]>();
   const stepSemantics = new Map<string, readonly StepSemantic[]>();
@@ -203,7 +214,12 @@ export function fromRows(
       // 同じ文字が複数のキーに載る配列もある。打鍵には先に書いた方を使い、
       // 後の方は刻印だけ残す（どちらを使うか決めないと、静かに片方が死ぬ）
       if (!map.has(ch)) {
-        map.set(ch, [[id]]);
+        const sequence: Sequence = [[id]];
+        map.set(ch, sequence);
+        semanticInputSequences.set(
+          ch,
+          compileSequenceSemanticInputs(ch, sequence, SINGLE_LAYER_ID),
+        );
         stepLayers.set(ch, [SINGLE_LAYER_ID]);
         stepTriggerKeys.set(ch, [[]]);
         stepSemantics.set(ch, [{
@@ -219,7 +235,12 @@ export function fromRows(
   legends.set(THUMB_KEY.LT, '親指');
   legends.set(THUMB_KEY.RT, '空白');
   if (thumbs.LT) {
-    map.set(thumbs.LT, [[THUMB_KEY.LT]]);
+    const sequence: Sequence = [[THUMB_KEY.LT]];
+    map.set(thumbs.LT, sequence);
+    semanticInputSequences.set(
+      thumbs.LT,
+      compileSequenceSemanticInputs(thumbs.LT, sequence, SINGLE_LAYER_ID),
+    );
     stepLayers.set(thumbs.LT, [SINGLE_LAYER_ID]);
     stepTriggerKeys.set(thumbs.LT, [[]]);
     stepSemantics.set(thumbs.LT, [{
@@ -229,7 +250,12 @@ export function fromRows(
     }]);
   }
   if (thumbs.RT) {
-    map.set(thumbs.RT, [[THUMB_KEY.RT]]);
+    const sequence: Sequence = [[THUMB_KEY.RT]];
+    map.set(thumbs.RT, sequence);
+    semanticInputSequences.set(
+      thumbs.RT,
+      compileSequenceSemanticInputs(thumbs.RT, sequence, SINGLE_LAYER_ID),
+    );
     stepLayers.set(thumbs.RT, [SINGLE_LAYER_ID]);
     stepTriggerKeys.set(thumbs.RT, [[]]);
     stepSemantics.set(thumbs.RT, [{
@@ -242,6 +268,7 @@ export function fromRows(
     id,
     name,
     map,
+    semanticInputSequences,
     legends,
     stepLayers,
     stepTriggerKeys,
@@ -290,6 +317,7 @@ export function fromFaces(
   const layerDefinitions: LayerDefinition[] = [];
   const faceLayerIds = new Map<Face, string>();
   const outputSemanticInputs = new Map<string, SemanticInput>();
+  const semanticInputSequences = new Map<string, SemanticInputSequence>();
 
   const addDefinition = (definition: LayerDefinition) => {
     if (!layerDefinitions.some((entry) => entry.id === definition.id)) {
@@ -332,6 +360,7 @@ export function fromFaces(
           throw new Error(`面の出力「${output}」が重複している`);
         }
         outputSemanticInputs.set(output, semanticInput);
+        semanticInputSequences.set(output, [semanticInput]);
 
         const sequence = expandFace(trigger, face.mode, key);
         map.set(output, sequence);
@@ -359,7 +388,12 @@ export function fromFaces(
     addDefinition({ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' });
   }
   if (thumbs.LT) {
-    map.set(thumbs.LT, [[THUMB_KEY.LT]]);
+    const sequence: Sequence = [[THUMB_KEY.LT]];
+    map.set(thumbs.LT, sequence);
+    semanticInputSequences.set(
+      thumbs.LT,
+      compileSequenceSemanticInputs(thumbs.LT, sequence, SINGLE_LAYER_ID),
+    );
     stepLayers.set(thumbs.LT, [baseLayerId]);
     stepTriggerKeys.set(thumbs.LT, [[]]);
     stepSemantics.set(thumbs.LT, [{
@@ -369,7 +403,12 @@ export function fromFaces(
     }]);
   }
   if (thumbs.RT) {
-    map.set(thumbs.RT, [[THUMB_KEY.RT]]);
+    const sequence: Sequence = [[THUMB_KEY.RT]];
+    map.set(thumbs.RT, sequence);
+    semanticInputSequences.set(
+      thumbs.RT,
+      compileSequenceSemanticInputs(thumbs.RT, sequence, SINGLE_LAYER_ID),
+    );
     stepLayers.set(thumbs.RT, [baseLayerId]);
     stepTriggerKeys.set(thumbs.RT, [[]]);
     stepSemantics.set(thumbs.RT, [{
@@ -382,6 +421,7 @@ export function fromFaces(
     id,
     name,
     map,
+    semanticInputSequences,
     legends,
     faces: [...faces],
     maxCharLength: maxKeyLength(map.keys()),
@@ -476,6 +516,13 @@ function expandFaceSemantics(
 /** かな → 打鍵ステップ列を直接書いた配列（薙刀式など） */
 export function fromKana(id: string, name: string, def: Record<string, string[][]>): Layout {
   const map = new Map<string, Sequence>(Object.entries(def));
+  const semanticInputSequences = new Map<string, SemanticInputSequence>();
+  for (const [output, sequence] of map) {
+    semanticInputSequences.set(
+      output,
+      compileSequenceSemanticInputs(output, sequence, SINGLE_LAYER_ID),
+    );
+  }
   const stepLayers = new Map<string, readonly string[]>(
     [...map].map(([kana, sequence]) => [kana, sequence.map(() => SINGLE_LAYER_ID)]),
   );
@@ -502,12 +549,86 @@ export function fromKana(id: string, name: string, def: Record<string, string[][
     id,
     name,
     map,
+    semanticInputSequences,
     legends,
     maxCharLength: maxKeyLength(map.keys()),
     stepLayers,
     stepTriggerKeys,
     stepSemantics,
     layerDefinitions: [{ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' }],
+  };
+}
+
+/**
+ * 既存outputと合成記号の入力列を連結し、新しいlogical outputを追加する。
+ * canonical側は既存SemanticInput列を再利用し、Requirement等を再推測しない。
+ */
+export function withComposedOutputs(
+  layout: Layout,
+  entries: Readonly<Record<string, string>>,
+  mark: string,
+  context = '合成出力',
+): Layout {
+  const markSequence = layout.map.get(mark);
+  const markSemanticInputs = layout.semanticInputSequences?.get(mark);
+  if (!markSequence || !markSemanticInputs) {
+    throw new Error(`${context}の合成記号「${mark}」が未定義`);
+  }
+
+  const map = new Map(layout.map);
+  const semanticInputSequences = new Map(layout.semanticInputSequences ?? []);
+  const stepLayers = new Map(layout.stepLayers ?? []);
+  const stepTriggerKeys = new Map(layout.stepTriggerKeys ?? []);
+  const stepSemantics = new Map(layout.stepSemantics ?? []);
+
+  for (const [source, output] of Object.entries(entries)) {
+    const sourceSequence = layout.map.get(source);
+    const sourceSemanticInputs = layout.semanticInputSequences?.get(source);
+    if (!sourceSequence || !sourceSemanticInputs) {
+      throw new Error(`${context}の元出力「${source}」が未定義`);
+    }
+    if (map.has(output)) {
+      throw new Error(`${context}「${output}」が重複している`);
+    }
+
+    const sequence: Sequence = [
+      ...sourceSequence.map((step) => [...step]),
+      ...markSequence.map((step) => [...step]),
+    ];
+    map.set(output, sequence);
+    semanticInputSequences.set(output, [
+      ...sourceSemanticInputs,
+      ...markSemanticInputs,
+    ]);
+
+    const sourceLayers = layout.stepLayers?.get(source)
+      ?? sourceSequence.map(() => SINGLE_LAYER_ID);
+    const markLayers = layout.stepLayers?.get(mark)
+      ?? markSequence.map(() => SINGLE_LAYER_ID);
+    stepLayers.set(output, [...sourceLayers, ...markLayers]);
+
+    const sourceTriggers = layout.stepTriggerKeys?.get(source)
+      ?? sourceSequence.map(() => []);
+    const markTriggers = layout.stepTriggerKeys?.get(mark)
+      ?? markSequence.map(() => []);
+    stepTriggerKeys.set(output, [...sourceTriggers, ...markTriggers]);
+
+    const sourceSemantics = layout.stepSemantics?.get(source);
+    const markSemantics = layout.stepSemantics?.get(mark);
+    if (!sourceSemantics || !markSemantics) {
+      throw new Error(`${context}semantic「${source}」「${mark}」が未定義`);
+    }
+    stepSemantics.set(output, [...sourceSemantics, ...markSemantics]);
+  }
+
+  return {
+    ...layout,
+    map,
+    semanticInputSequences,
+    maxCharLength: maxKeyLength(map.keys()),
+    stepLayers,
+    stepTriggerKeys,
+    stepSemantics,
   };
 }
 
@@ -527,6 +648,7 @@ export function withCombos(
   combos: ComboDefinition[],
 ): Layout {
   const map = new Map(layout.map);
+  const semanticInputSequences = new Map(layout.semanticInputSequences ?? []);
   const stepLayers = new Map(layout.stepLayers ?? []);
   const stepTriggerKeys = new Map(layout.stepTriggerKeys ?? []);
   const stepSemantics = new Map(layout.stepSemantics ?? []);
@@ -558,7 +680,12 @@ export function withCombos(
       ...(foldTriggerKeys === undefined ? {} : { foldTriggerKeys }),
       ...(foldTargets.length === 1 ? { foldTargetKey: foldTargets[0] } : {}),
     });
-    map.set(output, [keys as string[]]);
+    const sequence: Sequence = [keys as string[]];
+    map.set(output, sequence);
+    semanticInputSequences.set(
+      output,
+      compileSequenceSemanticInputs(output, sequence, COMBO_LAYER_ID),
+    );
     stepLayers.set(output, [COMBO_LAYER_ID]);
     stepTriggerKeys.set(output, [[]]);
     stepSemantics.set(output, [{
@@ -577,6 +704,7 @@ export function withCombos(
     id,
     name,
     map,
+    semanticInputSequences,
     maxCharLength: maxKeyLength(map.keys()),
     comboConditions,
     resolvedComboDefinitions,

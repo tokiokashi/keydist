@@ -1,5 +1,11 @@
 import { THUMB_KEY } from '../geometry.ts';
-import { faceFromEntries, fromFaces, SINGLE_LAYER_ID, type Face, type Layout, type Sequence } from './types.ts';
+import {
+  faceFromEntries,
+  fromFaces,
+  withComposedOutputs,
+  type Face,
+  type Layout,
+} from './types.ts';
 
 /**
  * 月配列2-263式。
@@ -50,41 +56,12 @@ const SEMI_VOICED: Record<string, string> = {
   は: 'ぱ', ひ: 'ぴ', ふ: 'ぷ', へ: 'ぺ', ほ: 'ぽ',
 };
 
-function appendComposed(layout: Layout, entries: Record<string, string>, mark: string) {
-  const markSequence = layout.map.get(mark);
-  if (!markSequence) throw new Error(`月配列の合成記号「${mark}」が未定義`);
-  const stepLayers = new Map(layout.stepLayers ?? []);
-  const stepTriggerKeys = new Map(layout.stepTriggerKeys ?? []);
-  const stepSemantics = new Map(layout.stepSemantics ?? []);
-  for (const [source, output] of Object.entries(entries)) {
-    const sourceSequence = layout.map.get(source);
-    if (!sourceSequence) throw new Error(`月配列の清音「${source}」が未定義`);
-    if (layout.map.has(output)) throw new Error(`月配列の合成出力「${output}」が重複している`);
-    const sequence: Sequence = [
-      ...sourceSequence.map((step) => [...step]),
-      ...markSequence.map((step) => [...step]),
-    ];
-    layout.map.set(output, sequence);
-    const sourceLayers = layout.stepLayers?.get(source) ?? sourceSequence.map(() => SINGLE_LAYER_ID);
-    const markLayers = layout.stepLayers?.get(mark) ?? markSequence.map(() => SINGLE_LAYER_ID);
-    stepLayers.set(output, [...sourceLayers, ...markLayers]);
-    const sourceTriggers = layout.stepTriggerKeys?.get(source) ?? sourceSequence.map(() => []);
-    const markTriggers = layout.stepTriggerKeys?.get(mark) ?? markSequence.map(() => []);
-    stepTriggerKeys.set(output, [...sourceTriggers, ...markTriggers]);
-    const sourceSemantics = layout.stepSemantics?.get(source);
-    const markSemantics = layout.stepSemantics?.get(mark);
-    if (!sourceSemantics || !markSemantics) {
-      throw new Error(`月配列の合成semantic「${source}」「${mark}」が未定義`);
-    }
-    stepSemantics.set(output, [...sourceSemantics, ...markSemantics]);
-  }
-  layout.stepLayers = stepLayers;
-  layout.stepTriggerKeys = stepTriggerKeys;
-  layout.stepSemantics = stepSemantics;
-}
-
-appendComposed(layout, VOICED, '゛');
-appendComposed(layout, SEMI_VOICED, '゜');
-layout.legends.delete(THUMB_KEY.LT);
-layout.legends.delete(THUMB_KEY.RT);
-export const TSUKI_2_263 = layout;
+const composed = withComposedOutputs(
+  withComposedOutputs(layout, VOICED, '゛', '月配列'),
+  SEMI_VOICED,
+  '゜',
+  '月配列',
+);
+composed.legends.delete(THUMB_KEY.LT);
+composed.legends.delete(THUMB_KEY.RT);
+export const TSUKI_2_263 = composed;

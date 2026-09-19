@@ -310,6 +310,45 @@ const faceCells = (face: Face): readonly { key: PhysicalKeyId; output: string }[
   return cells;
 };
 
+
+/**
+ * richerなauthoring semanticを持たないlegacy Step列をcanonical入力列へ変換する。
+ * Step間の順序は返却配列の順序で表し、Requirement.orderへ重複させない。
+ */
+export function compileSequenceSemanticInputs(
+  output: string,
+  sequence: readonly (readonly string[])[],
+  layerId: string,
+): readonly SemanticInput[] {
+  if (sequence.length === 0) {
+    throw new Error(`SemanticInput sequence「${output}」は1 step以上必要`);
+  }
+
+  return sequence.map((step, stepIndex): SemanticInput => {
+    const physicalKeys = sortedUniqueKeys(step);
+    if (physicalKeys.length === 0) {
+      throw new Error(
+        `SemanticInput sequence「${output}」のstep ${stepIndex} は1 key以上必要`,
+      );
+    }
+
+    const requirements = physicalKeys.length > 1
+      ? normalizeRequirements([{ kind: 'overlap', keys: physicalKeys }])
+      : [];
+    const input: SemanticInput = {
+      output: stepIndex === sequence.length - 1 ? output : '',
+      physicalKeys,
+      requirements,
+      capabilities: [],
+      layerId,
+      roles: [],
+      faceMemberships: [],
+    };
+    assertCanonicalInput(input);
+    return input;
+  });
+}
+
 export function compileFaceSemanticInputs(faces: readonly Face[]): readonly SemanticInput[] {
   const byIdentity = new Map<string, MutableSemanticInput>();
   const inputsByPhysicalKeys = new Map<string, MutableSemanticInput[]>();

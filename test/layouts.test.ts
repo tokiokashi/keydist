@@ -462,6 +462,29 @@ test('新JISは同じかな配置を逐次シフトと通常シフトで共有�
   }
 });
 
+test('imported user Sequenceもcanonical SemanticInput列へ同期する', () => {
+  const layout = toLayout({
+    id: 'user-sequence',
+    name: 'user-sequence',
+    rows: ['', '', '', ''],
+    romaji: 'kunrei',
+    sequences: [['x', [['space', 'j'], ['j']]]],
+    legends: [],
+    direct: true,
+  });
+
+  const inputs = layout.semanticInputSequences?.get('x');
+  assert.ok(inputs);
+  assert.equal(inputs.length, 2);
+  assert.deepEqual(inputs[0].physicalKeys, ['j', 'thumb-r']);
+  assert.deepEqual(inputs[0].requirements, [
+    { kind: 'overlap', keys: ['j', 'thumb-r'] },
+  ]);
+  assert.equal(inputs[0].output, '');
+  assert.deepEqual(inputs[1].physicalKeys, ['j']);
+  assert.equal(inputs[1].output, 'x');
+});
+
 test('保存済み凡例のspaceもthumb-rへ解決する', () => {
   const layout = toLayout({
     id: 'user-legacy',
@@ -475,6 +498,7 @@ test('保存済み凡例のspaceもthumb-rへ解決する', () => {
 
   assert.equal(layout.legends.get('thumb-r'), 'Space');
   assert.equal(layout.legends.has('space'), false);
+  assert.deepEqual(layout.semanticInputSequences?.get('x')?.[0].physicalKeys, ['thumb-r']);
 });
 
 test('薙刀式v18の面移行で総距離とステップ数を維持する', () => {

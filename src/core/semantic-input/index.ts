@@ -1,4 +1,4 @@
-export { compileFaceSemanticInputs } from './compiler.ts';
+export { compileFaceSemanticInputs, compileSequenceSemanticInputs } from './compiler.ts';
 export type {
   FaceMembership,
   InputCapability,
@@ -6,5 +6,6 @@ export type {
   PhysicalKeyId,
   Requirement,
   SemanticInput,
+  SemanticInputSequence,
   SemanticRole,
 } from './types.ts';

@@ -1,5 +1,6 @@
+import { compileSequenceSemanticInputs } from './core/semantic-input/index.ts';
 import { QWERTY_LEGEND, resolveKeyId, type NonThumb } from './geometry.ts';
-import { fromRows, withRomaji, type Layout } from './layouts/index.ts';
+import { fromRows, SINGLE_LAYER_ID, withRomaji, type Layout } from './layouts/index.ts';
 import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from './romaji/rules.ts';
 import type { Sequence } from './layouts/types.ts';
 
@@ -116,11 +117,25 @@ export function toLayout(def: UserLayout): Layout {
   const layout = fromRows(def.id, def.name, rows);
   if (!def.sequences && !def.legends) return { ...layout, homeKeys: def.homeKeys };
   const map = new Map(layout.map);
-  for (const [output, sequence] of def.sequences ?? []) map.set(output, sequence);
+  const semanticInputSequences = new Map(layout.semanticInputSequences ?? []);
+  for (const [output, sequence] of def.sequences ?? []) {
+    map.set(output, sequence);
+    semanticInputSequences.set(
+      output,
+      compileSequenceSemanticInputs(output, sequence, SINGLE_LAYER_ID),
+    );
+  }
   const legends = new Map(layout.legends);
   for (const [key, label] of def.legends ?? []) legends.set(resolveKeyId(key), label);
   const maxCharLength = Math.max(1, ...[...map.keys()].map((key) => key.length));
-  return { ...layout, map, legends, maxCharLength, homeKeys: def.homeKeys };
+  return {
+    ...layout,
+    map,
+    semanticInputSequences,
+    legends,
+    maxCharLength,
+    homeKeys: def.homeKeys,
+  };
 }
 
 export function toJapaneseLayout(def: UserLayout, customRules: UserRomajiRule[] = []): Layout {
