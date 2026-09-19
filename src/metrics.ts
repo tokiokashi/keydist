@@ -119,10 +119,10 @@ export interface Metrics {
    */
   baseLayerRate: number;
   /**
-   * physical Strokeのうち、そのStrokeで新規に押した物理キーが1個だけだった割合 [%]。
-   * held-triggerは新規押下ではないため数えない（仕様 §11.5.2）。
+   * 打鍵可能な入力文字のうち、その文字を1 Stroke・新規1キー押下だけで出力した割合 [%]。
+   * prefix/suffixの複数Strokeや多キー同時押しは含めず、hold継続中の1キー出力は含む（仕様 §11.5.2）。
    */
-  singleKeyStrokeRate: number;
+  singleTapRate: number;
   /** 隣接指間距離の統計。ホーム間隔からの超過で持つ（仕様 §11.6） */
   adjacent: PairStat[];
   /** 同指連続回数。同じ指で異なる位置を続けて打った数 */
@@ -306,7 +306,7 @@ export function computeMetrics(
     perCharSteps: inputChars ? actions / inputChars : 0,
     perCharPresses: inputChars ? presses / inputChars : 0,
     baseLayerRate: baseLayerRate(trace),
-    singleKeyStrokeRate: singleKeyStrokeRate(trace),
+    singleTapRate: singleTapRate(trace),
     adjacent,
     sameFinger,
     combos,
@@ -357,20 +357,32 @@ function baseLayerRate(trace: Trace): number {
 }
 
 /**
- * physical Strokeごとに、そのStrokeで新規に押した物理キー数を数える。
- * 1キーだけなら単打。複数キー同時押しは除外し、held-triggerはpressesに含まれないため
- * continuationで出力キー1個だけを新規押下したStrokeは単打として数える。
+ * 打鍵可能だった入力単位を inputIndex ごとにまとめ、元の文字数で重み付けする。
+ * その入力を1 physical Strokeだけで処理し、そのStrokeで新規に押した物理キーが1個なら単打。
+ *
+ * prefix / suffixは複数Strokeなので除外する。simultaneousな多キー入力も除外する。
+ * held-triggerは新規押下ではないため、hold continuationで出力キー1個だけを押す場合は単打に含む。
  */
-function singleKeyStrokeRate(trace: Trace): number {
-  const strokes = trace.strokes.length;
-  if (strokes === 0) return 0;
-
-  let singleKeyStrokes = 0;
+function singleTapRate(trace: Trace): number {
+  const byInput = new Map<number, Stroke[]>();
   for (const stroke of trace.strokes) {
-    const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);
-    if (keyCount === 1) singleKeyStrokes++;
+    const group = byInput.get(stroke.inputIndex);
+    if (group) group.push(stroke);
+    else byInput.set(stroke.inputIndex, [stroke]);
   }
-  return (singleKeyStrokes / strokes) * 100;
+
+  let typableChars = 0;
+  let singleTapChars = 0;
+  for (const strokes of byInput.values()) {
+    const charCount = [...strokes[0].inputChar].length;
+    typableChars += charCount;
+    if (strokes.length !== 1) continue;
+
+    const keyCount = strokes[0].presses.reduce((sum, press) => sum + press.keys.length, 0);
+    if (keyCount === 1) singleTapChars += charCount;
+  }
+
+  return typableChars ? (singleTapChars / typableChars) * 100 : 0;
 }
 
 function meanStdDevMax(values: number[]): { mean: number; stdDev: number; max: number } {
