@@ -14,6 +14,7 @@ import { KAWASEMI_PLUS } from './kawasemi-plus.ts';
 export type {
   ComboCondition,
   ComboDefinition,
+  ComboPresentation,
   Face,
   FaceMode,
   FaceRow,
