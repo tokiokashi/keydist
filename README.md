@@ -186,6 +186,7 @@ TK音直入力法のコンボのヤ行19件で、拗音のローマ字塊の内�
 | 親指シフト（NICOLA） | [NICOLA配列規格書](http://nicola.sunicom.co.jp/spec/kikaku.htm)準拠のDvorakJ定義から移植。専用キーボードの配置をANSIに写しているため、距離の絶対値は参考値 |
 | 新下駄 | [DvorakJの定義](https://github.com/k-ayaki/dvorakj_2023/blob/master/data/lang/jpn/%E5%90%8C%E6%99%82%E3%81%AB%E6%89%93%E9%8D%B5%E3%81%99%E3%82%8B%E9%85%8D%E5%88%97/%E4%B8%8B%E9%A7%84%E9%85%8D%E5%88%97%E7%B3%BB/%E6%96%B0%E4%B8%8B%E9%A7%84%E9%85%8D%E5%88%97.txt)から移植した7面の同時打鍵配列 |
 | 月配列2-263式 | [DvorakJの定義](https://github.com/k-ayaki/dvorakj_2023/blob/master/data/lang/jpn/%E9%A0%86%E3%81%AB%E6%89%93%E9%8D%B5%E3%81%99%E3%82%8B%E9%85%8D%E5%88%97/%E6%9C%88%E9%85%8D%E5%88%97%E7%B3%BB/%E6%9C%882-263.txt)から移植した中指前置シフト配列 |
+| かわせみ配列+ | [公式Kikyo定義](https://github.com/semialt/kawasemi/blob/plus/Kikyo/%E3%81%8B%E3%82%8F%E3%81%9B%E3%81%BF%E9%85%8D%E5%88%97%2B.kky)から移植。二重母音・くき・つち・左手コンボ拡張を含む |
 
 コンボは「出力する文字列 → その文字を出すキーの集合」で書きます。
 キーを物理位置ではなく文字で指すので、同じ定義を別の英字配列にも適用できます。
