@@ -227,6 +227,11 @@ test('reciprocal Capabilityはdefault groupと別groupのactive holdも受け入
     defaultOutputKeys: ['f'],
     defaultTriggerKeys: ['j'],
     defaultHoldKeys: ['j'],
+    alternateParticipations: [{
+      outputKeys: ['j'],
+      triggerKeys: ['f'],
+      holdKeys: ['f'],
+    }],
   };
 
   const withFActive = realizeTriggerActions(
@@ -235,9 +240,14 @@ test('reciprocal Capabilityはdefault groupと別groupのactive holdも受け入
     { keys: ['f'] },
   );
   assert.deepEqual(withFActive.actions.map((action) => action.keys), [['j']]);
+  assert.deepEqual(withFActive.actions.map((action) => action.outputKeys), [['j']]);
+  assert.deepEqual(withFActive.actions.map((action) => action.triggerKeys), [[]]);
+  assert.deepEqual(withFActive.actions.map((action) => action.heldKeys), [['f']]);
   assert.deepEqual(withFActive.holdState?.keys, ['f']);
 
   const fresh = realizeTriggerActions([realization], { useHold: true });
+  assert.deepEqual(fresh.actions.map((action) => action.outputKeys), [['f']]);
+  assert.deepEqual(fresh.actions.map((action) => action.triggerKeys), [['j']]);
   assert.deepEqual(fresh.holdState?.keys, ['j']);
 });
 
