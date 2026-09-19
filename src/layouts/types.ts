@@ -1,6 +1,7 @@
 import {
   compileFaceSemanticInputs,
   compileSequenceInputArtifacts,
+  validateBaseActionRealization,
   type BaseActionRealizationSequence,
   type SemanticInput,
   type SemanticInputSequence,
@@ -369,10 +370,12 @@ export function fromFaces(
         semanticInputSequences.set(output, [semanticInput]);
 
         const sequence = expandFace(trigger, face.mode, key);
-        baseActionRealizations.set(output, [{
+        const baseRealization = {
           input: semanticInput,
           actions: sequence.map((step) => step.map(resolveKeyId)),
-        }]);
+        };
+        validateBaseActionRealization(baseRealization);
+        baseActionRealizations.set(output, [baseRealization]);
         map.set(output, sequence);
         stepLayers.set(output, sequence.map(() => layerId));
         stepTriggerKeys.set(output, expandFaceTriggerKeys(trigger, face.mode));
