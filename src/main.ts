@@ -1629,6 +1629,10 @@ function playbackViewUiState(): UiStateV1 {
   const playback = layoutConditions?.playback;
   const chain = layoutConditions?.chain ?? uiState.conditions.defaults.chain;
   const arpeggioPolicy = layoutConditions?.arpeggioPolicy ?? uiState.conditions.defaults.arpeggioPolicy;
+  const triggerRealization = layoutConditions?.triggerRealization
+    ?? uiState.conditions.defaults.triggerRealization;
+  const holdStartAction = layoutConditions?.holdStartAction
+    ?? uiState.conditions.defaults.holdStartAction;
   return {
     ...uiState,
     ui: {
@@ -1644,6 +1648,8 @@ function playbackViewUiState(): UiStateV1 {
         ...uiState.conditions.defaults,
         chain,
         arpeggioPolicy,
+        triggerRealization,
+        holdStartAction,
       },
     },
   };
@@ -1701,6 +1707,38 @@ function updateArpeggioPolicy(policy: ArpeggioPolicy): void {
   });
 }
 
+function updateTriggerRealization(useHold: boolean): void {
+  const layoutId = currentPlaybackLayoutId();
+  updateUiState((draft) => {
+    const hasLayoutOverride = layoutId !== undefined
+      && conditionOverrideEnabled(layoutId, draft);
+    if (hasLayoutOverride && layoutId) {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        triggerRealization: { useHold },
+      };
+    } else {
+      draft.conditions.defaults.triggerRealization = { useHold };
+    }
+  });
+}
+
+function updateHoldStartAction(countAsSeparateStep: boolean): void {
+  const layoutId = currentPlaybackLayoutId();
+  updateUiState((draft) => {
+    const hasLayoutOverride = layoutId !== undefined
+      && conditionOverrideEnabled(layoutId, draft);
+    if (hasLayoutOverride && layoutId) {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        holdStartAction: { countAsSeparateStep },
+      };
+    } else {
+      draft.conditions.defaults.holdStartAction = { countAsSeparateStep };
+    }
+  });
+}
+
 function setPlaybackLayoutOverride(enabled: boolean): void {
   const layoutId = currentPlaybackLayoutId();
   if (!layoutId) return;
@@ -1721,6 +1759,10 @@ playbackView = createPlaybackView({
   updateChainPolicy,
   getArpeggioPolicy: () => playbackViewUiState().conditions.defaults.arpeggioPolicy,
   updateArpeggioPolicy,
+  getTriggerRealization: () => playbackViewUiState().conditions.defaults.triggerRealization,
+  updateTriggerRealization,
+  getHoldStartAction: () => playbackViewUiState().conditions.defaults.holdStartAction,
+  updateHoldStartAction,
   refreshAnalysis: render,
   openCalibration: () => calibrationDialog.open(),
   openCalibrationEdit: () => calibrationDialog.openEdit(),
