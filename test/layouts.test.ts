@@ -116,13 +116,13 @@ test('TK音直入力法は正式名称を表示し、内部idは維持する（#
   for (const definition of combo?.comboDefinitions ?? []) {
     if (definition.group) groupCounts.set(definition.group, (groupCounts.get(definition.group) ?? 0) + 1);
   }
-  assert.deepEqual([...groupCounts], [
-    ['語彙拡張', 17],
-    ['拗音拡張', 19],
-    ['入声拡張', 20],
-    ['撥音拡張', 7],
-    ['二重母音拡張', 10],
-  ]);
+  assert.deepEqual(Object.fromEntries(groupCounts), {
+    '語彙拡張': 17,
+    '拗音拡張': 19,
+    '入声拡張': 20,
+    '撥音拡張': 7,
+    '二重母音拡張': 10,
+  });
   assert.equal(combo?.comboDefinitions?.length, 73);
   assert.ok(LAYOUTS_JA.some((layout) => layout.id === 'oonishi-custom-combo'));
   assert.equal(tsuki?.name, '月配列2-263式');
