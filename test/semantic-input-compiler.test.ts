@@ -288,3 +288,39 @@ test('Faceを持つbuilt-in layoutはSemanticInput compilerで検証できる', 
     );
   }
 });
+
+
+test('built-inの相互Face membershipはauthoring側へ明示される', () => {
+  const shingeta = LAYOUTS_JA.find((layout) => layout.id === 'shingeta')!;
+  const shingetaInputs = compileFaceSemanticInputs(shingeta.faces!);
+  const re = shingetaInputs.find((input) => input.output === 'れ'
+    && input.physicalKeys.length === 2
+    && input.physicalKeys.includes('d')
+    && input.physicalKeys.includes('k'))!;
+  assert.deepEqual(re.roles, [
+    { key: 'd', role: 'modifier' },
+    { key: 'k', role: 'modifier' },
+  ]);
+  assert.equal(re.faceMemberships.length, 2);
+
+  const naginata = LAYOUTS_JA.find((layout) => layout.id === 'naginata-v18')!;
+  const naginataInputs = compileFaceSemanticInputs(naginata.faces!);
+  const ga = naginataInputs.find((input) => input.output === 'が'
+    && input.physicalKeys.length === 2
+    && input.physicalKeys.includes('f')
+    && input.physicalKeys.includes('j'))!;
+  assert.deepEqual(ga.roles, [
+    { key: 'f', role: 'modifier' },
+    { key: 'j', role: 'modifier' },
+  ]);
+  assert.equal(ga.faceMemberships.length, 2);
+});
+
+test('legacy fromFaces mapは相互Faceを明示しても既存の打鍵列を保持する', () => {
+  const shingeta = LAYOUTS_JA.find((layout) => layout.id === 'shingeta')!;
+  assert.deepEqual(shingeta.map.get('れ'), [['k', 'd']]);
+  assert.deepEqual(shingeta.map.get('さ'), [['l', 's']]);
+
+  const naginata = LAYOUTS_JA.find((layout) => layout.id === 'naginata-v18')!;
+  assert.deepEqual(naginata.map.get('が'), [['j', 'f']]);
+});
