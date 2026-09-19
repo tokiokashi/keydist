@@ -841,22 +841,60 @@ function renderComboTable(
   layout: Layout,
   geometry: ReturnType<typeof buildGeometry>,
 ): string {
-  if (combos.length === 0) return '';
+  const resolvedCombos = layout.comboDefinitions ?? [];
+  if (combos.length === 0 && resolvedCombos.length === 0) return '';
 
-  const selected = Math.min(comboDiagramSelection.get(layout.id) ?? 0, combos.length - 1);
+  type ComboDiagramItem = {
+    face: Face;
+    trigger: string;
+    output: string;
+    optionLabel: string;
+    showBaseLabels: boolean;
+  };
+
+  const faceItems: ComboDiagramItem[] = combos.map((face) => {
+    const trigger = triggerText(face, layout.legends);
+    return {
+      face,
+      trigger,
+      output: [...faceCells(face).values()].join(' / '),
+      optionLabel: trigger,
+      showBaseLabels: false,
+    };
+  });
+
+  const resolvedItems: ComboDiagramItem[] = resolvedCombos.map((combo) => {
+    const trigger = combo.inputs.join(' + ');
+    const output = combo.output;
+    return {
+      face: {
+        trigger: [...combo.keys],
+        mode: 'simultaneous',
+        rows: ['', '', '', ''],
+        inputRole: 'composition',
+        triggerPersistence: 'single',
+      },
+      trigger,
+      output,
+      optionLabel: `${trigger} → ${output}`,
+      showBaseLabels: true,
+    };
+  });
+
+  const items = [...faceItems, ...resolvedItems];
+  const selected = Math.min(comboDiagramSelection.get(layout.id) ?? 0, items.length - 1);
   const comboStyles = new Map<Face, LayerShiftStyle>(
-    combos.map((face) => [face, { layerIndex: 1, colorSlot: 4 }]),
+    items.map(({ face }) => [face, { layerIndex: 1, colorSlot: 4 }]),
   );
   const emptyCounts = new Map<string, number>();
-  const diagrams = combos.map((face, index) => {
-    const trigger = triggerText(face, layout.legends);
+  const diagrams = items.map((item, index) => {
     const diagram = renderLayerSvg(
       metrics,
       layout,
       geometry,
-      { faces: [face] },
-      trigger,
-      [face],
+      item.showBaseLabels ? { faces: [] } : { faces: [item.face] },
+      item.optionLabel,
+      [item.face],
       comboStyles,
       {
         keyCounts: emptyCounts,
@@ -866,7 +904,7 @@ function renderComboTable(
         colorScale: 'linear',
         showHeat: false,
         ariaSuffix: '（コンボ配列図）',
-        triggerTipLabel: `コンボトリガー: ${trigger}`,
+        triggerTipLabel: `コンボ: ${item.trigger}`,
       },
     );
     return diagram.replace(
@@ -875,18 +913,16 @@ function renderComboTable(
     );
   }).join('');
 
-  const options = combos.map((face, index) => {
-    const trigger = triggerText(face, layout.legends);
-    return `<option value="${index}"${index === selected ? ' selected' : ''}>${escapeText(trigger)}</option>`;
-  }).join('');
+  const options = items.map((item, index) =>
+    `<option value="${index}"${index === selected ? ' selected' : ''}>${escapeText(item.optionLabel)}</option>`
+  ).join('');
 
-  const rows = combos.map((face) => {
-    const outputs = [...faceCells(face).values()].join(' / ');
-    return `<tr><td>${escapeText(triggerText(face, layout.legends))}</td><td>${escapeText(outputs)}</td></tr>`;
-  }).join('');
+  const rows = items.map((item) =>
+    `<tr><td>${escapeText(item.trigger)}</td><td>${escapeText(item.output)}</td></tr>`
+  ).join('');
 
   return `<section class="combo-section">
-    <h3>コンボ（${combos.length}）</h3>
+    <h3>コンボ（${items.length}）</h3>
     <div class="combo-diagram-controls">
       <label>配列図
         <select data-combo-face-select data-layout-id="${escapeAttr(layout.id)}">${options}</select>
