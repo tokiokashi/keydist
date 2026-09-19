@@ -11,6 +11,24 @@ type FixtureFace = {
   cells: string[][];
 };
 
+type AuthoringDerivation = {
+  faceIndex: number;
+  row: number;
+  column: number;
+  value: string;
+  reason: string;
+};
+
+const AUTHORING_DERIVATIONS: Readonly<Record<string, readonly AuthoringDerivation[]>> = {
+  shingeta: [
+    { faceIndex: 2, row: 2, column: 7, value: 'れ', reason: '#261 reciprocal Face membership' },
+    { faceIndex: 4, row: 2, column: 8, value: 'さ', reason: '#261 reciprocal Face membership' },
+  ],
+  'naginata-v18': [
+    { faceIndex: 4, row: 2, column: 6, value: 'が', reason: '#261 reciprocal Face membership' },
+  ],
+};
+
 type KanaLayoutFixture = {
   version: 1;
   layoutId: string;
@@ -71,12 +89,36 @@ export function assertKanaLayoutFixture(layout: Layout) {
   assert.ok(layout.faces, `${layout.id} は面定義を持つ`);
   assert.equal(fixture.faces.length, layout.faces.length, `${layout.id} の面数が出典と違う`);
 
+  const derivations = AUTHORING_DERIVATIONS[layout.id] ?? [];
+  const derivationsByFace = new Map<number, AuthoringDerivation[]>();
+  for (const derivation of derivations) {
+    assert.ok(derivation.reason.length > 0, `${layout.id} のauthoring派生理由が空`);
+    const group = derivationsByFace.get(derivation.faceIndex) ?? [];
+    group.push(derivation);
+    derivationsByFace.set(derivation.faceIndex, group);
+  }
+
   for (const [faceIndex, [actual, expected]] of layout.faces.map((face, index) => [
     face,
     fixture.faces[index],
   ] as const).entries()) {
     assert.ok(expected, `${layout.id} の face ${faceIndex} のフィクスチャが無い`);
     const actualCells = actual.rows.map((row) => [...row]);
+
+    for (const derivation of derivationsByFace.get(faceIndex) ?? []) {
+      assert.equal(
+        expected.cells[derivation.row]?.[derivation.column],
+        '',
+        `${layout.id} face ${faceIndex} の派生セル元は出典上空である必要がある`,
+      );
+      assert.equal(
+        actualCells[derivation.row]?.[derivation.column],
+        derivation.value,
+        `${layout.id} face ${faceIndex} のauthoring派生セルが違う`,
+      );
+      actualCells[derivation.row][derivation.column] = '';
+    }
+
     assert.deepEqual(
       { trigger: [...actual.trigger], mode: actual.mode, cells: actualCells },
       expected,
