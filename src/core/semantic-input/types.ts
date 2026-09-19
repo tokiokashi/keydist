@@ -43,3 +43,14 @@ export interface SemanticInput {
  * 配列順自体がSemanticInput間の順序を表す。
  */
 export type SemanticInputSequence = readonly SemanticInput[];
+
+/**
+ * authoring sourceが定めるdefault/base action grouping。
+ * Requirementから推測せず、SemanticInput semanticとは独立に保持する。
+ */
+export interface BaseActionRealization {
+  readonly input: SemanticInput;
+  readonly actions: readonly (readonly PhysicalKeyId[])[];
+}
+
+export type BaseActionRealizationSequence = readonly BaseActionRealization[];
