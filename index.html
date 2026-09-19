@@ -38,6 +38,15 @@
           </label>
 
           <label class="ctl">
+            <span>配列</span>
+            <select id="detail-layout"></select>
+          </label>
+          <label class="ctl">
+            <span>この配列の物理形状</span>
+            <select id="detail-geometry"></select>
+          </label>
+
+          <label class="ctl">
             <span>窓幅N <small>残す／戻すを比べる先読み打鍵数</small></span>
             <span class="range-row">
               <input type="range" id="window" min="0" max="12" step="1" value="3" />
@@ -141,14 +150,6 @@
 
         <section class="panel">
           <h2>配列の詳細</h2>
-          <label class="ctl">
-            <span>配列</span>
-            <select id="detail-layout"></select>
-          </label>
-          <label class="ctl">
-            <span>この配列の物理形状</span>
-            <select id="detail-geometry"></select>
-          </label>
           <p class="note metric-conditions" id="detail-conditions"></p>
           <div id="playback"></div>
           <div class="fig-fixed" id="heatmap"></div>

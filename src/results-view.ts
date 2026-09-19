@@ -765,10 +765,15 @@ interface ComboPickerValues {
   selected: ReadonlySet<string>;
   /** 相方候補キーごとの要約ラベル（少数なら出力そのもの、多数ならグループ件数）。 */
   candidateLabels: ReadonlyMap<string, string>;
-  /** ガイド表示ON時、常時トリガーとして薄く示す物理キーとそのseries色番号。 */
-  guideColors?: ReadonlyMap<string, number>;
-  /** 選択中のキーに使う枠色のseries番号。レイヤー選択中はそのレイヤーの色、コンボ選択中は専用色に揃える。 */
-  selectedColorSlot: number;
+  /** ガイド表示ON時、常時トリガーとして薄く示す物理キーとそのCSS色（var(--...)）。 */
+  guideStrokes?: ReadonlyMap<string, string>;
+  /**
+   * 選択中のキーに使うCSS枠色。レイヤー選択中はそのレイヤーの色（series-N）に揃え、
+   * コンボ選択中・未分類の選択は専用色（--picker-selected）を使う。
+   * series-1〜8はレイヤーの色分けに再利用されるため、コンボ側に固定で
+   * series-Nを割り当てると番号が偶然一致してレイヤーと見分けが付かなくなる。
+   */
+  selectedStroke: string;
   /**
    * 選択中のキーが単一キーのレイヤートリガーに一致する時、そのレイヤーの表示ラベルへ
    * 差し替えるための面。統合ヒートマップだけに渡し、層別図はもともとそのレイヤー自身を表示している。
@@ -795,29 +800,32 @@ interface HeatmapValues {
 /**
  * ガイド表示（常時トリガー表示）で使う、キーごとの枠色。
  * レイヤーのtriggerキーは層別ヒートマップと同じ色（faceShiftStylesのcolorSlot）、
- * コンボのtriggerキーはコンボ配列図と同じseries-4に揃える。
+ * コンボのtriggerキーは専用色（--picker-selectedと同じ色相のグループ色）に揃える。
+ * series-1〜8はレイヤーの色分けに使われる番号と偶然一致しうるため、
+ * コンボ側には別枠の色を割り当てて見分けを保つ。
  */
 function pickerGuideColorMap(
   groups: ReturnType<typeof classifyFaces>,
   faceShiftStyles: ReadonlyMap<Face, LayerShiftStyle>,
   layout: Layout,
-): Map<string, number> {
-  const colors = new Map<string, number>();
+): Map<string, string> {
+  const colors = new Map<string, string>();
   for (const layer of [...groups.layers, ...groups.modifiers]) {
     for (const face of layer.faces) {
-      const slot = faceShiftStyles.get(face)?.colorSlot ?? 2;
-      for (const trigger of face.trigger) colors.set(resolveKeyId(trigger), slot);
+      const slot = faceShiftStyles.get(face)?.colorSlot;
+      const stroke = slot === undefined ? 'var(--picker-selected)' : `var(--series-${slot})`;
+      for (const trigger of face.trigger) colors.set(resolveKeyId(trigger), stroke);
     }
   }
   for (const face of groups.combos) {
     for (const trigger of face.trigger) {
       const key = resolveKeyId(trigger);
-      if (!colors.has(key)) colors.set(key, 4);
+      if (!colors.has(key)) colors.set(key, 'var(--picker-selected)');
     }
   }
   for (const combo of layout.resolvedComboDefinitions ?? []) {
     for (const key of combo.keys) {
-      if (!colors.has(key)) colors.set(key, 4);
+      if (!colors.has(key)) colors.set(key, 'var(--picker-selected)');
     }
   }
   return colors;
@@ -891,8 +899,8 @@ function renderLayerSvg(
     const picker = values.picker;
     const isSelected = picker?.selected.has(key.id) ?? false;
     const candidateLabel = picker?.candidateLabels.get(key.id);
-    const guideColorSlot = picker?.guideColors?.get(key.id);
-    const isGuide = !isSelected && !candidateLabel && guideColorSlot !== undefined;
+    const guideStroke = picker?.guideStrokes?.get(key.id);
+    const isGuide = !isSelected && !candidateLabel && guideStroke !== undefined;
     const pickerTip = isSelected
       ? '<br><b>選択中のトリガー</b>'
       : candidateLabel
@@ -916,11 +924,11 @@ function renderLayerSvg(
       ? `color-mix(in oklab, var(--heat-1) ${(t * 100).toFixed(1)}%, var(--heat-0))`
       : 'var(--panel)';
     const stroke = isSelected
-      ? `var(--series-${picker?.selectedColorSlot ?? 2})`
+      ? picker?.selectedStroke ?? 'var(--picker-selected)'
       : candidateLabel
-        ? 'var(--series-3)'
+        ? 'var(--picker-candidate)'
         : isGuide
-          ? `var(--series-${guideColorSlot})`
+          ? guideStroke!
           : shiftStyle
             ? `var(--series-${shiftStyle.colorSlot})`
             : 'var(--line)';
@@ -1032,7 +1040,7 @@ function renderComboTable(
         showHeat: false,
         ariaSuffix: '（コンボ配列図）',
         triggerTipLabel: `コンボ: ${item.trigger}`,
-        picker: { ...picker, guideColors: undefined },
+        picker: { ...picker, guideStrokes: undefined },
       },
     );
     return diagram.replace(
@@ -1281,24 +1289,25 @@ function renderHeatmap(
       .filter(([, matches]) => matches.length === 1)
       .map(([key, matches]) => [key, matches[0].output]),
   );
-  const pickerGuideEnabled = ctx.getUiState().ui.layers.comboGuide;
+  // ガイド表示のON/OFF設定自体は保持しつつ、選択が始まったら表示だけ引っ込める。
+  // 選択後は緑枠・レジェンド書き換えという別のガイドが働くので、両方出すと煩雑になる。
+  const pickerGuideSetting = ctx.getUiState().ui.layers.comboGuide;
+  const pickerGuideEnabled = pickerGuideSetting && pickerSelection.size === 0;
   const pickerGuideColors = pickerGuideEnabled ? pickerGuideColorMap(groups, faceShiftStyles, layout) : undefined;
-  // レイヤー選択中は層別ヒートマップと同じ色に揃え、コンボ選択中はコンボ配列図と同じ色（series-4）に揃える。
-  // どちらでもなければ既定のオレンジ（series-2）のまま。
+  // レイヤー選択中は層別ヒートマップと同じ色（series-N）に揃える。それ以外（コンボ選択・
+  // 未分類の選択）はレイヤー色と数字が偶然一致しうるので、専用色（--picker-selected）を使う。
   const pickerActiveLayerFace = findActiveLayerFace(layout, pickerSelection);
-  const pickerIsComboSelection = pickerMatch.exact.length > 0 || pickerMatch.candidates.size > 0;
-  const pickerSelectedColorSlot = pickerActiveLayerFace
-    ? faceShiftStyles.get(pickerActiveLayerFace)?.colorSlot ?? 2
-    : pickerIsComboSelection
-      ? 4
-      : 2;
+  const pickerLayerColorSlot = pickerActiveLayerFace ? faceShiftStyles.get(pickerActiveLayerFace)?.colorSlot : undefined;
+  const pickerSelectedStroke = pickerLayerColorSlot !== undefined
+    ? `var(--series-${pickerLayerColorSlot})`
+    : 'var(--picker-selected)';
   const pickerBase: ComboPickerValues = {
     layoutId: layout.id,
     clickable: true,
     selected: pickerSelection,
     candidateLabels: pickerCandidateLabels,
-    guideColors: pickerGuideColors,
-    selectedColorSlot: pickerSelectedColorSlot,
+    guideStrokes: pickerGuideColors,
+    selectedStroke: pickerSelectedStroke,
     // レイヤーがアクティブな時はレイヤーのレジェンドを優先し、コンボ上書きは適用しない
     legendOverrides: pickerActiveLayerFace ? undefined : pickerLegendOverrides,
   };
@@ -1341,7 +1350,7 @@ function renderHeatmap(
         colorScale: ctx.getUiState().ui.layers.colorScale,
         showHeat: true,
         ariaSuffix: `（層別・${ctx.getUiState().ui.layers.colorScale === 'log' ? '対数' : '線形'}・共通スケール）`,
-        picker: { ...pickerBase, guideColors: undefined },
+        picker: { ...pickerBase, guideStrokes: undefined },
       },
     );
   });
@@ -1364,7 +1373,7 @@ function renderHeatmap(
             : 'このキーの組み合わせに一致するコンボはありません。';
   const pickerControls = `<div class="combo-picker-controls">
       <p class="combo-picker-result">${pickerResultText}</p>
-      <label><input type="checkbox" data-picker-guide data-layout-id="${escapeAttr(layout.id)}"${pickerGuideEnabled ? ' checked' : ''}> コンボ・レイヤートリガーをガイド表示</label>
+      <label><input type="checkbox" data-picker-guide data-layout-id="${escapeAttr(layout.id)}"${pickerGuideSetting ? ' checked' : ''}> コンボ・レイヤートリガーをガイド表示</label>
       <button type="button" class="secondary" data-picker-clear data-layout-id="${escapeAttr(layout.id)}"${pickerSelection.size === 0 ? ' disabled' : ''}>選択をクリア</button>
     </div>`;
   const content = selectedLayerView === 'tabs' && entries.length > 1
@@ -1498,6 +1507,16 @@ function setSensitivityScale(scale: SensitivityScale) {
     bindMatrixSort(elements.adjacentStdDevMatrix, 'adjacentStdDev');
     bindCompareSort(elements.compare);
     syncSensitivityScaleButtons();
+    // 配列図（キーボードSVG）以外のどこかをクリックしたら、今表示中の配列の選択を解く。
+    document.addEventListener('click', (e) => {
+      if ((e.target as Element).closest('.layer-diagram')) return;
+      const layoutId = elements.detailLayout.value;
+      const selection = comboPickerSelection.get(layoutId);
+      if (selection && selection.size > 0) {
+        selection.clear();
+        refreshPickerDisplay();
+      }
+    });
   }
 
   return { setup, render, syncSensitivityScaleButtons };
