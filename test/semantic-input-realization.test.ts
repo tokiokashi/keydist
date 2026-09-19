@@ -370,17 +370,20 @@ test('built-in全outputでbase participationがlegacy StepSemanticと一致す�
           `${layout.id}: ${output} inputRole ${index}`,
         );
 
-        const sourceRealization = base.find((item) => item.input === action.input);
-        const defaultTriggers = sourceRealization?.defaultTriggerKeys ?? [];
+        const sourceRealization: BaseActionRealization | undefined =
+          base.find((item: BaseActionRealization) => item.input === action.input);
+        const defaultTriggers: readonly string[] =
+          sourceRealization?.defaultTriggerKeys ?? [];
+        const hasHoldCapability: boolean = action.input.capabilities.some(
+          (capability): boolean =>
+            capability.kind === 'while-held'
+            && capability.keys.length === defaultTriggers.length
+            && capability.keys.every((key): boolean => defaultTriggers.includes(key)),
+        );
         const derivedPersistence: 'single' | 'hold-capable' | undefined =
           action.triggerKeys.length === 0
             ? undefined
-            : action.input.capabilities.some((capability) =>
-              capability.kind === 'while-held'
-              && capability.keys.length === defaultTriggers.length
-              && capability.keys.every((key) => defaultTriggers.includes(key)))
-              ? 'hold-capable'
-              : 'single';
+            : hasHoldCapability ? 'hold-capable' : 'single';
         assert.equal(
           derivedPersistence,
           legacy[index].triggerPersistence,
