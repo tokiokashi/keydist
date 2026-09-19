@@ -114,17 +114,17 @@ export interface Metrics {
    */
   perCharPresses: number;
   /**
-   * 打鍵可能な入力文字のうち、基底面の1キーだけで直接出力された文字の割合 [%]。
+   * 打鍵可能な入力文字のうち、単打面の1キーだけで直接出力された文字の割合 [%]。
    * シフト面・複数キーコンボ・複数Stroke入力は含めない（仕様 §11.5.1）。
    */
-  baseLayerRate: number;
+  singleTapLayerRate: number;
   /**
    * 総アクションのうち、1 physical Stroke・1物理キーだけでひらがなを1文字以上直接出力し、
    * trigger / held-triggerに依存しない「単打」アクションの割合 [%]（仕様 §11.5.2）。
    */
   singleTapRate: number;
   /**
-   * physical Strokeのうち、押下した物理キーが1個だけだったStrokeの割合 [%]（仕様 §11.5.3）。
+   * 総アクションのうち、1物理キーだけを入力するアクションの割合 [%]（仕様 §11.5.3）。
    * 入力意味は問わず、ローマ字・シフト操作・hold継続中の出力も打鍵形態だけで判定する。
    */
   singleKeyRate: number;
@@ -310,9 +310,9 @@ export function computeMetrics(
     perCharUnits: inputChars ? totalUnits / inputChars : 0,
     perCharSteps: inputChars ? actions / inputChars : 0,
     perCharPresses: inputChars ? presses / inputChars : 0,
-    baseLayerRate: baseLayerRate(trace),
+    singleTapLayerRate: singleTapLayerRate(trace),
     singleTapRate: singleTapRate(trace, actions),
-    singleKeyRate: singleKeyRate(trace),
+    singleKeyRate: singleKeyRate(trace, actions, conditions.holdStartActionPolicy),
     adjacent,
     sameFinger,
     combos,
@@ -327,10 +327,10 @@ export function computeMetrics(
 
 /**
  * 打鍵可能だった入力単位を inputIndex ごとにまとめ、元の文字数で重み付けする。
- * 「基底面」は、1 Stroke・1キー・layer出力で、trigger / held-trigger / compositionを
- * 一切伴わない直接入力とする。hold利用ON/OFFで値が変わらないよう、held-triggerも除外する。
+ * 「単打面」は、1 Stroke・1キー・layer出力で、trigger / held-trigger / compositionを
+ * 一切伴わない直接入力面とする。hold利用ON/OFFで値が変わらないよう、held-triggerも除外する。
  */
-function baseLayerRate(trace: Trace): number {
+function singleTapLayerRate(trace: Trace): number {
   const byInput = new Map<number, Stroke[]>();
   for (const stroke of trace.strokes) {
     const group = byInput.get(stroke.inputIndex);
@@ -402,14 +402,37 @@ function singleTapRate(trace: Trace, actions: number): number {
 }
 
 /**
- * physical Strokeのうち、押下した物理キーが1個だけだった割合。
- * これは「単打」の意味論とは独立し、そのStrokeで新規に押したキー数だけを見る。
+ * 総アクションのうち、1物理キーだけを入力するアクションの割合。
+ * 「単打」のかな入力上の意味は持たず、入力する物理キー数だけを見る。
+ *
+ * held-trigger/startを独立actionとして数えるPolicyでは、同一Strokeにrealizeされた
+ * trigger actionとoutput actionを分けて判定する。
  */
-function singleKeyRate(trace: Trace): number {
-  if (trace.strokes.length === 0) return 0;
-  const singleKeyStrokes = trace.strokes.filter((stroke) =>
-    stroke.presses.reduce((sum, press) => sum + press.keys.length, 0) === 1).length;
-  return (singleKeyStrokes / trace.strokes.length) * 100;
+function singleKeyRate(
+  trace: Trace,
+  actions: number,
+  holdStartActionPolicy: HoldStartActionPolicy,
+): number {
+  if (actions === 0) return 0;
+
+  let singleKeyActions = 0;
+  for (const stroke of trace.strokes) {
+    const keyIds = new Set(stroke.presses.flatMap((press) => press.keys.map((key) => key.id)));
+    const hasSeparateHoldStart = additionalHoldStartSteps([stroke], holdStartActionPolicy) === 1;
+
+    if (!hasSeparateHoldStart) {
+      if (keyIds.size === 1) singleKeyActions++;
+      continue;
+    }
+
+    const triggerKeys = new Set(stroke.triggerKeys);
+    if (triggerKeys.size === 1) singleKeyActions++;
+
+    const outputKeyCount = [...keyIds].filter((key) => !triggerKeys.has(key)).length;
+    if (outputKeyCount === 1) singleKeyActions++;
+  }
+
+  return (singleKeyActions / actions) * 100;
 }
 
 function meanStdDevMax(values: number[]): { mean: number; stdDev: number; max: number } {
