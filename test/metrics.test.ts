@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, ALL_FINGERS } from '../src/geometry.ts';
 import { evaluate, type Options } from '../src/evaluate.ts';
-import { computeMetrics, homeSpacing } from '../src/metrics.ts';
+import { computeMetrics, DEFAULT_METRIC_CONDITIONS, homeSpacing } from '../src/metrics.ts';
 import { LAYOUTS_JA, LAYOUT_BY_ID, type Layout } from '../src/layouts/index.ts';
 import { dist } from '../src/geometry.ts';
 import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '../src/sample-text-ja.ts';
@@ -175,6 +175,39 @@ test('単打率はかなを1キーで直接出す独立actionだけを数える'
   const comboMetrics = computeMetrics(evaluate('きゃ', shingeta, geometry, opts()), geometry);
   near(comboMetrics.singleTapRate, 0, '新下駄: 多キー同時押しは単打に含めない');
   near(comboMetrics.singleKeyRate, 0, '新下駄: 多キー同時押しは1キー打鍵でもない');
+});
+
+test('単打率の分母はphysical Stroke数ではなくPolicy適用後の総action数', () => {
+  const layout: Layout = {
+    id: 'action-denominator',
+    name: 'action-denominator',
+    map: new Map([['あ', [['f']]], ['い', [['j']]]]),
+    legends: new Map(),
+    maxCharLength: 1,
+  };
+  const trace = evaluate('あい', layout, geometry, opts());
+  trace.strokes[1] = {
+    ...trace.strokes[1],
+    inputRole: 'modifier',
+    participations: trace.strokes[1].participations.map((participation, index) =>
+      index === 0
+        ? {
+            ...participation,
+            roles: ['output', 'held-trigger'] as const,
+            holdPhase: 'start' as const,
+          }
+        : participation),
+  };
+
+  const metrics = computeMetrics(trace, geometry, {
+    ...DEFAULT_METRIC_CONDITIONS,
+    holdStartActionPolicy: { countAsSeparateStep: true },
+  });
+
+  assert.equal(metrics.strokes, 2);
+  assert.equal(metrics.actions, 3);
+  near(metrics.singleTapRate, 100 / 3, '単打1 action / 総3 action');
+  near(metrics.singleKeyRate, 100, '1キー率の分母はphysical Strokeのまま');
 });
 
 test('単打率はhold継続中の1キー入力を単打に含めない', () => {
