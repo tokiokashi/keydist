@@ -1312,13 +1312,21 @@ function conditionRow(
     const actionInput = document.createElement('input');
     actionInput.type = 'checkbox';
     actionInput.checked = action.countAsSeparateStep;
-    actionInput.disabled = !enabled;
+    actionInput.disabled = !enabled || !realization.useHold;
     actionInput.addEventListener('change', () =>
       commitCondition(layout?.id, 'holdStartAction', {
         ...action,
         countAsSeparateStep: actionInput.checked,
       }));
+    actionLabel.title = realization.useHold
+      ? 'hold開始を計算上の独立actionとして数え、再生でもtrigger→outputの2段階で表示します。'
+      : '「hold-capable triggerを連続保持する」を有効にした時だけ適用されます。';
     actionLabel.append(actionInput, ' hold開始を独立stepとして数える');
+    if (!realization.useHold) {
+      const note = document.createElement('small');
+      note.textContent = '（連続保持時のみ）';
+      actionLabel.append(note);
+    }
 
     fields.append(holdLabel, actionLabel);
     cell.append(fields);
