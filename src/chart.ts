@@ -1,13 +1,26 @@
 /** ツールチップ。SVGの外に置いた1つの要素を使い回す */
 const tip = () => document.getElementById('tooltip') as HTMLDivElement;
 
-export function showTip(html: string, event: MouseEvent, wrap = false) {
+/**
+ * anchorを渡すと、マウス座標ではなくその要素の右側に固定表示する。
+ * 配列図はホバーのたびにマウス追従のツールチップが動くと目で追いにくいので、
+ * 配列図の右に固定して、中でどのキーを見てもツールチップの位置が動かないようにする。
+ */
+export function showTip(html: string, event: MouseEvent, wrap = false, anchor?: Element) {
   const el = tip();
   el.innerHTML = html;
   el.classList.toggle('wrap', wrap);
   el.hidden = false;
   const pad = 12;
   const rect = el.getBoundingClientRect();
+  if (anchor) {
+    const anchorRect = anchor.getBoundingClientRect();
+    const x = Math.min(anchorRect.right + pad, window.innerWidth - rect.width - 8);
+    const y = Math.min(Math.max(anchorRect.top, 8), window.innerHeight - rect.height - 8);
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    return;
+  }
   const x = Math.min(event.clientX + pad, window.innerWidth - rect.width - 8);
   const y = Math.max(event.clientY - rect.height - pad, 8);
   el.style.left = `${x}px`;
@@ -22,9 +35,15 @@ export function hideTip() {
 export function bindTips(root: HTMLElement) {
   root.addEventListener('mousemove', (e) => {
     const target = (e.target as Element).closest('[data-tip]');
-    // 補足ボタンの文は長いので折り返す。図のツールチップは1行のまま
-    if (target) showTip(target.getAttribute('data-tip')!, e, target.classList.contains('info'));
-    else hideTip();
+    if (!target) {
+      hideTip();
+      return;
+    }
+    // 補足ボタンとコンボ相方候補の文は長いので折り返す。それ以外の図のツールチップは1行のまま
+    const wrap = target.classList.contains('info') || target.classList.contains('tip-wrap');
+    // 配列図はホバーのたびにマウス追従だと目で追いにくいので、その図の右に固定表示する
+    const diagram = target.closest('.layer-diagram') ?? undefined;
+    showTip(target.getAttribute('data-tip')!, e, wrap, diagram);
   });
   root.addEventListener('mouseleave', hideTip);
 }
