@@ -696,8 +696,8 @@ export function sanitizeUiState(
             ? {}
             : { ja: optionalId(baselineByMode.ja, choices.layouts.ja) }),
         },
-        chartColumn: integerInRange(comparison.chartColumn, 0, 10, defaults.ui.comparison.chartColumn),
-        sort: sort(comparison.sort, defaults.ui.comparison.sort, 10),
+        chartColumn: integerInRange(comparison.chartColumn, 0, 12, defaults.ui.comparison.chartColumn),
+        sort: sort(comparison.sort, defaults.ui.comparison.sort, 12),
         matrixSorts: {
           press: sort(matrixSorts.press, defaults.ui.comparison.matrixSorts.press, 9),
           finger: sort(matrixSorts.finger, defaults.ui.comparison.matrixSorts.finger, 9),

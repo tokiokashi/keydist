@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, ALL_FINGERS } from '../src/geometry.ts';
 import { evaluate, type Options } from '../src/evaluate.ts';
-import { computeMetrics, homeSpacing } from '../src/metrics.ts';
+import { computeMetrics, DEFAULT_METRIC_CONDITIONS, homeSpacing } from '../src/metrics.ts';
 import { LAYOUTS_JA, LAYOUT_BY_ID, type Layout } from '../src/layouts/index.ts';
 import { dist } from '../src/geometry.ts';
 import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '../src/sample-text-ja.ts';
@@ -140,17 +140,74 @@ test('基底面率は基底面の1キー直接出力だけを文字数ベース�
   near(romajiMetrics.baseLayerRate, 50, 'ローマ字: 1キーの「あ」だけを数え、2打鍵の「か」は含めない');
 });
 
-test('単打率は1 Stroke・新規1キーだけを文字数ベースで数える', () => {
+test('基底面率・単打率・1キー率はそれぞれ文字・action・Strokeを分母にする', () => {
+  const layout: Layout = {
+    id: 'rate-bases',
+    name: 'rate-bases',
+    map: new Map([
+      ['きゃ', [['f']]],
+      ['あ', [['d'], ['k']]],
+    ]),
+    legends: new Map(),
+    maxCharLength: 2,
+  };
+  const metrics = computeMetrics(evaluate('きゃあ', layout, geometry, opts()), geometry);
+
+  assert.equal(metrics.inputChars, 3);
+  assert.equal(metrics.actions, 3);
+  assert.equal(metrics.strokes, 3);
+  near(metrics.baseLayerRate, 200 / 3, '基底面率: きゃの2文字 / 全3文字');
+  near(metrics.singleTapRate, 100 / 3, '単打率: きゃの1単打action / 全3action');
+  near(metrics.singleKeyRate, 100, '1キー率: 3 Strokeすべて1物理キー');
+});
+
+test('単打率はかなを1キーで直接出す独立actionだけを数える', () => {
   const romajiMetrics = computeMetrics(evaluate('あか', qwerty, geometry, opts()), geometry);
-  near(romajiMetrics.singleTapRate, 50, 'ローマ字: あは1打、かは2打');
+  near(romajiMetrics.singleTapRate, 0, 'ローマ字のa / k / aをかな配列の単打とは数えない');
+  near(romajiMetrics.singleKeyRate, 100, 'ローマ字の各Strokeは1キー打鍵として数える');
 
   const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
   const prefixMetrics = computeMetrics(evaluate('あ', tsuki, geometry, opts()), geometry);
-  near(prefixMetrics.singleTapRate, 0, '月配列: 前置シフトは各Strokeが1キーでも単打には含めない');
+  near(prefixMetrics.singleTapRate, 0, '月配列: 前置シフトを含む入力は単打には含めない');
+  near(prefixMetrics.singleKeyRate, 100, '月配列: 前置シフトも出力も各Stroke自体は1キー');
 
   const shingeta = LAYOUT_BY_ID.get('shingeta')!;
   const comboMetrics = computeMetrics(evaluate('きゃ', shingeta, geometry, opts()), geometry);
-  near(comboMetrics.singleTapRate, 0, '新下駄: 1 Strokeでも多キー同時押しは単打に含めない');
+  near(comboMetrics.singleTapRate, 0, '新下駄: 多キー同時押しは単打に含めない');
+  near(comboMetrics.singleKeyRate, 0, '新下駄: 多キー同時押しは1キー打鍵でもない');
+});
+
+test('単打率の分母はphysical Stroke数ではなくPolicy適用後の総action数', () => {
+  const layout: Layout = {
+    id: 'action-denominator',
+    name: 'action-denominator',
+    map: new Map([['あ', [['f']]], ['い', [['j']]]]),
+    legends: new Map(),
+    maxCharLength: 1,
+  };
+  const trace = evaluate('あい', layout, geometry, opts());
+  trace.strokes[1] = {
+    ...trace.strokes[1],
+    inputRole: 'modifier',
+    participations: trace.strokes[1].participations.map((participation, index) =>
+      index === 0
+        ? {
+            ...participation,
+            roles: ['output', 'held-trigger'] as const,
+            holdPhase: 'start' as const,
+          }
+        : participation),
+  };
+
+  const metrics = computeMetrics(trace, geometry, {
+    ...DEFAULT_METRIC_CONDITIONS,
+    holdStartActionPolicy: { countAsSeparateStep: true },
+  });
+
+  assert.equal(metrics.strokes, 2);
+  assert.equal(metrics.actions, 3);
+  near(metrics.singleTapRate, 100 / 3, '単打1 action / 総3 action');
+  near(metrics.singleKeyRate, 100, '1キー率の分母はphysical Strokeのまま');
 });
 
 test('単打率はhold継続中の1キー入力を単打に含めない', () => {
