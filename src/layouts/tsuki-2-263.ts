@@ -3,11 +3,12 @@ import { faceFromEntries, fromFaces, SINGLE_LAYER_ID, type Face, type Layout, ty
 
 /**
  * 月配列2-263式。
- * 準公式定義: https://github.com/k-ayaki/dvorakj_2023の
- * `data/lang/jpn/順に打鍵する配列/月配列系/月2-263.txt`。
- * 解説ページ: https://jisx6004.client.jp/tsuki.html
- * DvorakJの `[d],[k]` シフト面は、クロスシフトとして左側の対象キーを `k`、
- * 右側の対象キーを `d` に割り当てる。JIS専用キーの `・` はANSIでは表現しない。
+ * 解説・配列表: https://jisx6004.client.jp/tsuki.html
+ * 配置は上記資料を基準に、MITライセンスの tor-nky/KeyLayout
+ * (Tsuki2-263/Mac/Tsuki2-263_Layout.json) と照合した。
+ * keydistでは配列仕様を独自のFace定義として記述する。
+ * クロスシフトとして左側の対象キーを `k`、右側の対象キーを `d` に割り当て、
+ * JIS専用キーの `・` はANSIでは表現しない。
  */
 
 const face = (trigger: string[], entries: Record<string, string>, layer?: string): Face => ({
