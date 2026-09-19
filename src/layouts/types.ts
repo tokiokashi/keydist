@@ -516,12 +516,13 @@ function expandFaceSemantics(
 /** かな → 打鍵ステップ列を直接書いた配列（薙刀式など） */
 export function fromKana(id: string, name: string, def: Record<string, string[][]>): Layout {
   const map = new Map<string, Sequence>(Object.entries(def));
-  const semanticInputSequences = new Map<string, SemanticInputSequence>(
-    [...map].map(([output, sequence]) => [
+  const semanticInputSequences = new Map<string, SemanticInputSequence>();
+  for (const [output, sequence] of map) {
+    semanticInputSequences.set(
       output,
       compileSequenceSemanticInputs(output, sequence, SINGLE_LAYER_ID),
-    ]),
-  );
+    );
+  }
   const stepLayers = new Map<string, readonly string[]>(
     [...map].map(([kana, sequence]) => [kana, sequence.map(() => SINGLE_LAYER_ID)]),
   );
