@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
 import { DEFAULT_OPTIONS, evaluate } from '../src/evaluate.ts';
-import { faceFromEntries, fromFaces, LAYOUT_BY_ID, LAYOUTS_JA } from '../src/layouts/index.ts';
+import { faceFromEntries, fromFaces, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA } from '../src/layouts/index.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 import { toLayout } from '../src/user-layouts.ts';
@@ -73,6 +73,14 @@ test('面定義の未知のキーは空欄にせずエラーにする', () => {
   );
 });
 
+test('TK音直入力法は英文モードでも英字配置として選べる', () => {
+  const layout = LAYOUTS.find((entry) => entry.id === 'oonishi-custom');
+  assert.ok(layout);
+  assert.equal(layout.name, 'TK音直入力法');
+  assert.equal(layout.romajiTable, undefined);
+  assert.equal(layout.comboDefinitions, undefined);
+});
+
 test('日本語の配列一覧にDvorakを含める（#48）', () => {
   const dvorak = LAYOUTS_JA.find((layout) => layout.id === 'dvorak');
 
@@ -111,10 +119,12 @@ test('TK音直入力法は正式名称を表示し、内部idは維持する（#
   assert.deepEqual([...groupCounts], [
     ['語彙拡張', 17],
     ['拗音拡張', 19],
-    ['き・く・ん・ち・つ拡張', 26],
-    ['二重母音・撥音拡張', 11],
+    ['入声拡張', 20],
+    ['撥音拡張', 7],
+    ['二重母音拡張', 10],
   ]);
   assert.equal(combo?.comboDefinitions?.length, 73);
+  assert.ok(LAYOUTS_JA.some((layout) => layout.id === 'oonishi-custom-combo'));
   assert.equal(tsuki?.name, '月配列2-263式');
   assert.ok(!oonishi?.name.includes(' '));
   assert.ok(!tsuki?.name.includes(' '));
