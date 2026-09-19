@@ -8,10 +8,11 @@ export type {
   SemanticInput,
   SemanticInputSequence,
   SemanticRole,
+  BaseActionRealization,
+  BaseActionRealizationSequence,
 } from './types.ts';
 
 export {
-  planSemanticInputActions,
-  planSemanticInputSequenceActions,
+  flattenBaseActionRealizations,
   type SemanticInputAction,
 } from './realization.ts';
