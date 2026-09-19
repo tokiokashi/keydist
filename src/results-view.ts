@@ -62,6 +62,7 @@ export interface ResultsViewController {
 export function createResultsView(ctx: ResultsViewContext): ResultsViewController {
   const elements = ctx.el;
   let sensitivityDirty = true;
+  const comboDiagramSelection = new Map<string, number>();
 
 function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sort: MatrixSort | null): T[] {
   if (!sort) return rows;
@@ -736,6 +737,8 @@ interface HeatmapValues {
   colorScale: LayerColorScale;
   showHeat: boolean;
   ariaSuffix: string;
+  /** レイヤー図以外でtriggerを強調表示する場合のツールチップ文言。 */
+  triggerTipLabel?: string;
 }
 
 function heatIntensity(count: number, maxCount: number, scale: LayerColorScale): number {
@@ -792,9 +795,10 @@ function renderLayerSvg(
     const share = ((count / Math.max(1, metrics.presses)) * 100).toFixed(1);
     const distance = values.keyDistance.get(key.id) ?? 0;
     const shiftTip = shiftStyle
-      ? `<br><b>${layout.id === 'naginata-v18' && (key.id === THUMB_KEY.LT || key.id === THUMB_KEY.RT)
-        ? `SandS（レイヤー ${shiftStyle.layerIndex}）`
-        : `レイヤー ${shiftStyle.layerIndex} のシフトトリガー`}</b>`
+      ? `<br><b>${values.triggerTipLabel
+        ?? (layout.id === 'naginata-v18' && (key.id === THUMB_KEY.LT || key.id === THUMB_KEY.RT)
+          ? `SandS（レイヤー ${shiftStyle.layerIndex}）`
+          : `レイヤー ${shiftStyle.layerIndex} のシフトトリガー`)}</b>`
       : '';
     const annotationText = annotation ? `<br>${escapeText(annotation)}` : '';
     const tip = showHeat
@@ -831,14 +835,64 @@ function renderLayerSvg(
   </figure>`;
 }
 
-function renderComboTable(combos: readonly Face[], legends: Map<string, string>): string {
+function renderComboTable(
+  metrics: Metrics,
+  combos: readonly Face[],
+  layout: Layout,
+  geometry: ReturnType<typeof buildGeometry>,
+): string {
   if (combos.length === 0) return '';
+
+  const selected = Math.min(comboDiagramSelection.get(layout.id) ?? 0, combos.length - 1);
+  const comboStyles = new Map<Face, LayerShiftStyle>(
+    combos.map((face) => [face, { layerIndex: 1, colorSlot: 4 }]),
+  );
+  const emptyCounts = new Map<string, number>();
+  const diagrams = combos.map((face, index) => {
+    const trigger = triggerText(face, layout.legends);
+    const diagram = renderLayerSvg(
+      metrics,
+      layout,
+      geometry,
+      { faces: [face] },
+      trigger,
+      [face],
+      comboStyles,
+      {
+        keyCounts: emptyCounts,
+        colorCounts: emptyCounts,
+        keyDistance: emptyCounts,
+        maxCount: 1,
+        colorScale: 'linear',
+        showHeat: false,
+        ariaSuffix: '（コンボ配列図）',
+        triggerTipLabel: `コンボトリガー: ${trigger}`,
+      },
+    );
+    return diagram.replace(
+      '<figure class="layer-diagram"',
+      `<figure class="layer-diagram combo-diagram" data-combo-diagram="${index}"${index === selected ? '' : ' hidden'}`,
+    );
+  }).join('');
+
+  const options = combos.map((face, index) => {
+    const trigger = triggerText(face, layout.legends);
+    return `<option value="${index}"${index === selected ? ' selected' : ''}>${escapeText(trigger)}</option>`;
+  }).join('');
+
   const rows = combos.map((face) => {
     const outputs = [...faceCells(face).values()].join(' / ');
-    return `<tr><td>${escapeText(triggerText(face, legends))}</td><td>${escapeText(outputs)}</td></tr>`;
+    return `<tr><td>${escapeText(triggerText(face, layout.legends))}</td><td>${escapeText(outputs)}</td></tr>`;
   }).join('');
+
   return `<details class="combo-table collapsible-list"${ctx.getUiState().ui.panels.comboTable ? ' open' : ''}>
     <summary>コンボ（${combos.length}）</summary>
+    <div class="combo-diagram-controls">
+      <label>配列図
+        <select data-combo-face-select data-layout-id="${escapeAttr(layout.id)}">${options}</select>
+      </label>
+    </div>
+    <div class="combo-diagram-panel">${diagrams}</div>
     <div class="scroll-x"><table>
       <thead><tr><th>トリガー</th><th>出力</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -1098,7 +1152,7 @@ function renderHeatmap(
     ${renderLayerStats(metrics, entries, hasCombos)}
   </section>`;
   elements.heatmap.innerHTML = layerSection + renderModifierList(groups.modifiers, layout.legends) +
-    renderComboTable(groups.combos, layout.legends);
+    renderComboTable(metrics, groups.combos, layout, geometry);
 }
 
 function syncSensitivityScaleButtons(): void {
@@ -1126,6 +1180,18 @@ function setSensitivityScale(scale: SensitivityScale) {
       if (!button) return;
       e.preventDefault();
       setSensitivityScale(button.dataset.scale as SensitivityScale);
+    });
+    elements.heatmap.addEventListener('change', (e) => {
+      const select = (e.target as Element).closest<HTMLSelectElement>('select[data-combo-face-select]');
+      if (!select) return;
+      const index = Number(select.value);
+      const layoutId = select.dataset.layoutId;
+      if (layoutId) comboDiagramSelection.set(layoutId, index);
+      const container = select.closest('.combo-table');
+      if (!container) return;
+      for (const diagram of container.querySelectorAll<HTMLElement>('[data-combo-diagram]')) {
+        diagram.hidden = Number(diagram.dataset.comboDiagram) !== index;
+      }
     });
     elements.heatmap.addEventListener('click', (e) => {
       const target = (e.target as Element).closest<HTMLButtonElement>('button');
