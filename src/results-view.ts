@@ -885,19 +885,22 @@ function renderComboTable(
     return `<tr><td>${escapeText(triggerText(face, layout.legends))}</td><td>${escapeText(outputs)}</td></tr>`;
   }).join('');
 
-  return `<details class="combo-table collapsible-list"${ctx.getUiState().ui.panels.comboTable ? ' open' : ''}>
-    <summary>コンボ（${combos.length}）</summary>
+  return `<section class="combo-section">
+    <h3>コンボ（${combos.length}）</h3>
     <div class="combo-diagram-controls">
       <label>配列図
         <select data-combo-face-select data-layout-id="${escapeAttr(layout.id)}">${options}</select>
       </label>
     </div>
     <div class="combo-diagram-panel">${diagrams}</div>
-    <div class="scroll-x"><table>
-      <thead><tr><th>トリガー</th><th>出力</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>
-  </details>`;
+    <details class="combo-table collapsible-list"${ctx.getUiState().ui.panels.comboTable ? ' open' : ''}>
+      <summary>コンボ表</summary>
+      <div class="scroll-x"><table>
+        <thead><tr><th>トリガー</th><th>出力</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </details>
+  </section>`;
 }
 
 function renderModifierList(modifiers: readonly Layer[], legends: Map<string, string>): string {
