@@ -88,11 +88,8 @@ const ALPHA: Layout[] = [
 
 const ALPHA_BY_ID = new Map(ALPHA.map((l) => [l.id, l]));
 
-/**
- * 英文をそのまま打つ配列。
- * TK音直入力法は日本語のコンボ運用と対で意味を持つので、英文の一覧には出さない。
- */
-export const LAYOUTS: Layout[] = ALPHA.filter((l) => l.id !== 'oonishi-custom');
+/** 英文をそのまま打つ配列。TK音直入力法も英字配置として選択できる。 */
+export const LAYOUTS: Layout[] = ALPHA;
 
 /**
  * 日本語のかなテキストを打つ配列。
