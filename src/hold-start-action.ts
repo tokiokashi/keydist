@@ -28,6 +28,17 @@ function hasHeldTriggerStart(stroke: Stroke): boolean {
     participation.roles.includes('held-trigger') && participation.holdPhase === 'start');
 }
 
+/** Policy上、同一physical Stroke内のhold開始を独立actionとして扱うStrokeか。 */
+export function hasSeparateHoldStartAction(
+  stroke: Stroke,
+  policy: HoldStartActionPolicy = DEFAULT_HOLD_START_ACTION_POLICY,
+): boolean {
+  return policy.countAsSeparateStep
+    && stroke.inputRole !== 'composition'
+    && hasOutput(stroke)
+    && hasHeldTriggerStart(stroke);
+}
+
 /**
  * #220 の計上Policy。
  *
@@ -42,13 +53,7 @@ export function additionalHoldStartSteps(
 ): number {
   if (!policy.countAsSeparateStep) return 0;
   return strokes.reduce(
-    (count, stroke) => count + (
-      stroke.inputRole !== 'composition'
-      && hasOutput(stroke)
-      && hasHeldTriggerStart(stroke)
-        ? 1
-        : 0
-    ),
+    (count, stroke) => count + (hasSeparateHoldStartAction(stroke, policy) ? 1 : 0),
     0,
   );
 }
