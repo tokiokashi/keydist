@@ -2,10 +2,10 @@
   "version": 1,
   "layoutId": "shingeta",
   "source": {
-    "url": "https://github.com/tor-nky/KeyLayout/blob/master/SinGeta/Mac/SinGeta_Layout.json",
-    "sha": "fabd5d958b10f01d41f6cc7b4a8ae87c6975e1f5",
-    "path": "SinGeta/Mac/SinGeta_Layout.json",
-    "transform": "考案者の公開資料を仕様根拠とし、MITライセンスのKeyLayout実装と照合。keydistのANSI Face表現へ独自に記述し、機能キー・記号セルとJIS専用列を解析対象から除外する"
+    "url": "https://kouy.exblog.jp/13627994/",
+    "sha": "published-2010-11-13",
+    "path": "新下駄配列を作りました / 公開配列表",
+    "transform": "考案者kouy氏が公開した配列表を仕様根拠として、keydistのANSI Face表現へ独自に記述し、機能キー・記号セルとJIS専用列を解析対象から除外する"
   },
   "faces": [
     {
