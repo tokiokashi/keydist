@@ -192,6 +192,17 @@ test('BaseActionRealization.defaultHoldKeysはwhile-held Capabilityとexact matc
     }),
     /Capabilityと一致/,
   );
+  assert.throws(
+    () => validateBaseActionRealization({
+      input: {
+        ...input,
+        capabilities: [{ kind: 'while-held', keys: ['d', 'k'] }],
+      },
+      actions: [['d'], ['k']],
+      defaultHoldKeys: ['d', 'k'],
+    }),
+    /1 actionに収まる/,
+  );
 });
 
 test('BaseActionRealizationはalias解決後のphysical key重複をrejectする', () => {
