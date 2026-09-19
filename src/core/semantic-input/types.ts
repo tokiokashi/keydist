@@ -44,6 +44,15 @@ export interface SemanticInput {
  */
 export type SemanticInputSequence = readonly SemanticInput[];
 
+export interface BaseParticipationView {
+  /** このauthoring viewでoutput側として扱うphysical key。 */
+  readonly outputKeys: readonly PhysicalKeyId[];
+  /** このauthoring viewでtrigger側として扱うphysical key。 */
+  readonly triggerKeys: readonly PhysicalKeyId[];
+  /** このviewをwhile-held continuationで選ぶhold group。 */
+  readonly holdKeys?: readonly PhysicalKeyId[];
+}
+
 /**
  * authoring sourceが定めるdefault/base action grouping。
  * Requirementから推測せず、SemanticInput semanticとは独立に保持する。
@@ -66,6 +75,11 @@ export interface BaseActionRealization {
    * semantic capabilityそのものではなく、既定realizationでどのwhile-held groupを選ぶかを表す。
    */
   readonly defaultHoldKeys?: readonly PhysicalKeyId[];
+  /**
+   * reciprocal authoring等で同一SemanticInputに複数のtrigger/output viewがある場合の代替view。
+   * default action grouping自体は共有し、participationだけをactive hold groupに応じて切り替える。
+   */
+  readonly alternateParticipations?: readonly BaseParticipationView[];
 }
 
 export type BaseActionRealizationSequence = readonly BaseActionRealization[];
