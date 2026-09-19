@@ -92,6 +92,28 @@ test('TK音直入力法は正式名称を表示し、内部idは維持する（#
   const desita = combo?.comboDefinitions?.find((definition) => definition.output === 'desita');
   assert.deepEqual(desita?.inputs, ['d', 's', 't']);
   assert.deepEqual(desita?.keys, ['m', 'l', 'j']);
+  assert.equal(desita?.group, '語彙拡張');
+  assert.equal(desita?.foldTriggerInputs, undefined);
+
+  const ya = combo?.comboDefinitions?.find((definition) => definition.output === 'ya');
+  const yaku = combo?.comboDefinitions?.find((definition) => definition.output === 'yaku');
+  const atu = combo?.comboDefinitions?.find((definition) => definition.output === 'atu');
+  const ai = combo?.comboDefinitions?.find((definition) => definition.output === 'ai');
+  assert.deepEqual(ya?.foldTriggerInputs, ['i']);
+  assert.deepEqual(yaku?.foldTriggerInputs, ['i', 'a']);
+  assert.deepEqual(atu?.foldTriggerInputs, [',']);
+  assert.deepEqual(ai?.foldTriggerInputs, ['e']);
+
+  const groupCounts = new Map<string, number>();
+  for (const definition of combo?.comboDefinitions ?? []) {
+    if (definition.group) groupCounts.set(definition.group, (groupCounts.get(definition.group) ?? 0) + 1);
+  }
+  assert.deepEqual([...groupCounts], [
+    ['語彙拡張', 17],
+    ['拗音拡張', 19],
+    ['き・く・ん・ち・つ拡張', 26],
+    ['二重母音・撥音拡張', 11],
+  ]);
   assert.equal(combo?.comboDefinitions?.length, 73);
   assert.equal(tsuki?.name, '月配列2-263式');
   assert.ok(!oonishi?.name.includes(' '));
