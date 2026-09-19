@@ -393,3 +393,21 @@ test('built-in全outputでbase participationがlegacy StepSemanticと一致す�
     }
   }
 });
+
+
+test('薙刀式がはreciprocal Faceのalternate participation viewを保持する', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18')!;
+  const base = layout.baseActionRealizations?.get('が');
+  assert.ok(base);
+  assert.equal(base.length, 1);
+
+  const realization = base[0];
+  assert.deepEqual(realization.defaultTriggerKeys, ['j']);
+  assert.deepEqual(realization.defaultOutputKeys, ['f']);
+  assert.deepEqual(realization.defaultHoldKeys, ['j']);
+  assert.deepEqual(realization.alternateParticipations, [{
+    outputKeys: ['j'],
+    triggerKeys: ['f'],
+    holdKeys: ['f'],
+  }]);
+});
