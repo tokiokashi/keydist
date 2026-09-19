@@ -17,26 +17,121 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node.js
+        id: setup-node
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
+
+      - name: Install dependencies
+        id: install
+        shell: bash
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee "$RUNNER_TEMP/npm-ci.log"
+
+      - name: Typecheck
+        id: typecheck
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee "$RUNNER_TEMP/typecheck.log"
+
+      - name: Test
+        id: test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee "$RUNNER_TEMP/test.log"
+
+      - name: Build
+        id: build
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      - name: Write CI summary
+        if: always()
+        shell: bash
+        env:
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          SETUP_NODE_OUTCOME: ${{ steps.setup-node.outcome }}
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+        run: |
+          icon() {
+            case "$1" in
+              success) printf '✅' ;;
+              failure) printf '❌' ;;
+              skipped) printf '⏭️' ;;
+              cancelled) printf '🚫' ;;
+              *) printf '❔' ;;
+            esac
+          }
+
+          {
+            echo "## CI Summary"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            printf '| Checkout | %s %s |\n' "$(icon "$CHECKOUT_OUTCOME")" "$CHECKOUT_OUTCOME"
+            printf '| Setup Node.js | %s %s |\n' "$(icon "$SETUP_NODE_OUTCOME")" "$SETUP_NODE_OUTCOME"
+            printf '| Install dependencies | %s %s |\n' "$(icon "$INSTALL_OUTCOME")" "$INSTALL_OUTCOME"
+            printf '| Typecheck | %s %s |\n' "$(icon "$TYPECHECK_OUTCOME")" "$TYPECHECK_OUTCOME"
+            printf '| Test | %s %s |\n' "$(icon "$TEST_OUTCOME")" "$TEST_OUTCOME"
+            printf '| Build | %s %s |\n' "$(icon "$BUILD_OUTCOME")" "$BUILD_OUTCOME"
+            echo
+            echo "[Open full run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          append_failure_log() {
+            local title="$1"
+            local outcome="$2"
+            local log_file="$3"
+
+            if [ "$outcome" != "failure" ] || [ ! -s "$log_file" ]; then
+              return
+            fi
+
+            {
+              echo
+              echo "<details open>"
+              echo "<summary>❌ $title — last 80 log lines</summary>"
+              echo
+              echo '~~~text'
+              tail -n 80 "$log_file"
+              echo '~~~'
+              echo "</details>"
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          append_failure_log "Install dependencies" "$INSTALL_OUTCOME" "$RUNNER_TEMP/npm-ci.log"
+          append_failure_log "Typecheck" "$TYPECHECK_OUTCOME" "$RUNNER_TEMP/typecheck.log"
+          append_failure_log "Test" "$TEST_OUTCOME" "$RUNNER_TEMP/test.log"
+          append_failure_log "Build" "$BUILD_OUTCOME" "$RUNNER_TEMP/build.log"
 
   commit-messages:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Angular 規約の検査
+        id: commit-message-check
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
@@ -51,3 +146,31 @@ jobs:
             fi
           done
           exit $status
+
+      - name: Write commit message summary
+        if: always()
+        shell: bash
+        env:
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          COMMIT_MESSAGE_OUTCOME: ${{ steps.commit-message-check.outcome }}
+        run: |
+          icon() {
+            case "$1" in
+              success) printf '✅' ;;
+              failure) printf '❌' ;;
+              skipped) printf '⏭️' ;;
+              cancelled) printf '🚫' ;;
+              *) printf '❔' ;;
+            esac
+          }
+
+          {
+            echo "## Commit message check"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            printf '| Checkout | %s %s |\n' "$(icon "$CHECKOUT_OUTCOME")" "$CHECKOUT_OUTCOME"
+            printf '| Angular commit convention | %s %s |\n' "$(icon "$COMMIT_MESSAGE_OUTCOME")" "$COMMIT_MESSAGE_OUTCOME"
+            echo
+            echo "[Open full run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } >> "$GITHUB_STEP_SUMMARY"

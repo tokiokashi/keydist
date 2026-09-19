@@ -18,21 +18,113 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        id: setup-node
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
-      - uses: actions/configure-pages@v5
+
+      - name: Install dependencies
+        id: install
+        shell: bash
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee "$RUNNER_TEMP/npm-ci.log"
+
+      - name: Test
+        id: test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee "$RUNNER_TEMP/test.log"
+
+      - name: Build
+        id: build
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      - name: Configure Pages
+        id: configure-pages
+        uses: actions/configure-pages@v5
         with:
           # Pages が未設定なら Actions ソースとして有効化を試みる
           enablement: true
-      - uses: actions/upload-pages-artifact@v3
+
+      - name: Upload Pages artifact
+        id: upload-pages
+        uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+
+      - name: Write build summary
+        if: always()
+        shell: bash
+        env:
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          SETUP_NODE_OUTCOME: ${{ steps.setup-node.outcome }}
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          CONFIGURE_PAGES_OUTCOME: ${{ steps.configure-pages.outcome }}
+          UPLOAD_PAGES_OUTCOME: ${{ steps.upload-pages.outcome }}
+        run: |
+          icon() {
+            case "$1" in
+              success) printf '✅' ;;
+              failure) printf '❌' ;;
+              skipped) printf '⏭️' ;;
+              cancelled) printf '🚫' ;;
+              *) printf '❔' ;;
+            esac
+          }
+
+          {
+            echo "## Pages build summary"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            printf '| Checkout | %s %s |\n' "$(icon "$CHECKOUT_OUTCOME")" "$CHECKOUT_OUTCOME"
+            printf '| Setup Node.js | %s %s |\n' "$(icon "$SETUP_NODE_OUTCOME")" "$SETUP_NODE_OUTCOME"
+            printf '| Install dependencies | %s %s |\n' "$(icon "$INSTALL_OUTCOME")" "$INSTALL_OUTCOME"
+            printf '| Test | %s %s |\n' "$(icon "$TEST_OUTCOME")" "$TEST_OUTCOME"
+            printf '| Build | %s %s |\n' "$(icon "$BUILD_OUTCOME")" "$BUILD_OUTCOME"
+            printf '| Configure Pages | %s %s |\n' "$(icon "$CONFIGURE_PAGES_OUTCOME")" "$CONFIGURE_PAGES_OUTCOME"
+            printf '| Upload Pages artifact | %s %s |\n' "$(icon "$UPLOAD_PAGES_OUTCOME")" "$UPLOAD_PAGES_OUTCOME"
+            echo
+            echo "[Open full run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          append_failure_log() {
+            local title="$1"
+            local outcome="$2"
+            local log_file="$3"
+
+            if [ "$outcome" != "failure" ] || [ ! -s "$log_file" ]; then
+              return
+            fi
+
+            {
+              echo
+              echo "<details open>"
+              echo "<summary>❌ $title — last 80 log lines</summary>"
+              echo
+              echo '~~~text'
+              tail -n 80 "$log_file"
+              echo '~~~'
+              echo "</details>"
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          append_failure_log "Install dependencies" "$INSTALL_OUTCOME" "$RUNNER_TEMP/npm-ci.log"
+          append_failure_log "Test" "$TEST_OUTCOME" "$RUNNER_TEMP/test.log"
+          append_failure_log "Build" "$BUILD_OUTCOME" "$RUNNER_TEMP/build.log"
 
   deploy:
     needs: build
@@ -41,5 +133,30 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
+      - name: Deploy Pages
+        id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Write deploy summary
+        if: always()
+        shell: bash
+        env:
+          DEPLOY_OUTCOME: ${{ steps.deployment.outcome }}
+        run: |
+          case "$DEPLOY_OUTCOME" in
+            success) icon='✅' ;;
+            failure) icon='❌' ;;
+            skipped) icon='⏭️' ;;
+            cancelled) icon='🚫' ;;
+            *) icon='❔' ;;
+          esac
+
+          {
+            echo "## Pages deploy summary"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            printf '| Deploy Pages | %s %s |\n' "$icon" "$DEPLOY_OUTCOME"
+            echo
+            echo "[Open full run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } >> "$GITHUB_STEP_SUMMARY"
