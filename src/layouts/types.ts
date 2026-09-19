@@ -373,6 +373,9 @@ export function fromFaces(
         const baseRealization = {
           input: semanticInput,
           actions: sequence.map((step) => step.map(resolveKeyId)),
+          ...(face.triggerPersistence === 'hold-capable' && trigger.length > 0
+            ? { defaultHoldKeys: trigger.map(resolveKeyId) }
+            : {}),
         };
         validateBaseActionRealization(baseRealization);
         baseActionRealizations.set(output, [baseRealization]);
