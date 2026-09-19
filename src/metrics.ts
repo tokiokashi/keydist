@@ -119,8 +119,8 @@ export interface Metrics {
    */
   baseLayerRate: number;
   /**
-   * 打鍵可能な入力文字のうち、その文字を1 Stroke・新規1キー押下だけで出力した割合 [%]。
-   * prefix/suffixの複数Strokeや多キー同時押しは含めず、hold継続中の1キー出力は含む（仕様 §11.5.2）。
+   * 打鍵可能な入力文字のうち、その文字を1 Stroke・1キーだけで、
+   * trigger / held-triggerに依存せず出力した割合 [%]（仕様 §11.5.2）。
    */
   singleTapRate: number;
   /** 隣接指間距離の統計。ホーム間隔からの超過で持つ（仕様 §11.6） */
@@ -358,10 +358,11 @@ function baseLayerRate(trace: Trace): number {
 
 /**
  * 打鍵可能だった入力単位を inputIndex ごとにまとめ、元の文字数で重み付けする。
- * その入力を1 physical Strokeだけで処理し、そのStrokeで新規に押した物理キーが1個なら単打。
+ * その入力を1 physical Stroke・1物理キーだけで処理し、trigger / held-triggerに
+ * 依存しない場合だけ単打とする。
  *
  * prefix / suffixは複数Strokeなので除外する。simultaneousな多キー入力も除外する。
- * held-triggerは新規押下ではないため、hold continuationで出力キー1個だけを押す場合は単打に含む。
+ * hold continuationは新規押下が1キーでもheld-triggerに依存するため単打には含めない。
  */
 function singleTapRate(trace: Trace): number {
   const byInput = new Map<number, Stroke[]>();
@@ -378,8 +379,12 @@ function singleTapRate(trace: Trace): number {
     typableChars += charCount;
     if (strokes.length !== 1) continue;
 
-    const keyCount = strokes[0].presses.reduce((sum, press) => sum + press.keys.length, 0);
-    if (keyCount === 1) singleTapChars += charCount;
+    const stroke = strokes[0];
+    const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);
+    const hasShiftParticipation = stroke.participations.some((participation) =>
+      participation.roles.includes('trigger') || participation.roles.includes('held-trigger'));
+
+    if (keyCount === 1 && !hasShiftParticipation) singleTapChars += charCount;
   }
 
   return typableChars ? (singleTapChars / typableChars) * 100 : 0;
