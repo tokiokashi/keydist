@@ -188,9 +188,9 @@ TK音直入力法のコンボのヤ行19件で、拗音のローマ字塊の内�
 | 大西配列 | 公式配置。公式が前提とする綴り（シャ行 `sh` / じ `ji` / じゃ行 `j`）で打つ |
 | TK音直入力法 | 下段を差し替えた版に、Vialキーマップのコンボ73件を適用。綴りは訓令式 |
 | 薙刀式v18 | [公式配布のDvorakJ定義](https://oookaworks.seesaa.net/article/456099128.html)から機械的に生成 |
-| 親指シフト（NICOLA） | [NICOLA配列規格書](http://nicola.sunicom.co.jp/spec/kikaku.htm)準拠のDvorakJ定義から移植。専用キーボードの配置をANSIに写しているため、距離の絶対値は参考値 |
-| 新下駄 | [DvorakJの定義](https://github.com/k-ayaki/dvorakj_2023/blob/master/data/lang/jpn/%E5%90%8C%E6%99%82%E3%81%AB%E6%89%93%E9%8D%B5%E3%81%99%E3%82%8B%E9%85%8D%E5%88%97/%E4%B8%8B%E9%A7%84%E9%85%8D%E5%88%97%E7%B3%BB/%E6%96%B0%E4%B8%8B%E9%A7%84%E9%85%8D%E5%88%97.txt)から移植した7面の同時打鍵配列 |
-| 月配列2-263式 | [DvorakJの定義](https://github.com/k-ayaki/dvorakj_2023/blob/master/data/lang/jpn/%E9%A0%86%E3%81%AB%E6%89%93%E9%8D%B5%E3%81%99%E3%82%8B%E9%85%8D%E5%88%97/%E6%9C%88%E9%85%8D%E5%88%97%E7%B3%BB/%E6%9C%882-263.txt)から移植した中指前置シフト配列 |
+| 親指シフト（NICOLA） | [NICOLA配列規格書](http://nicola.sunicom.co.jp/spec/kikaku.htm)を仕様根拠として実装。専用キーボードの配置をANSIに写しているため、距離の絶対値は参考値 |
+| 新下駄 | 考案者の公開資料を仕様根拠とし、MITライセンスの [KeyLayout実装](https://github.com/tor-nky/KeyLayout/tree/master/SinGeta) と照合した7面の同時打鍵配列 |
+| 月配列2-263式 | [月配列の公開資料](https://jisx6004.client.jp/tsuki.html)を仕様根拠とし、MITライセンスの [KeyLayout実装](https://github.com/tor-nky/KeyLayout/tree/master/Tsuki2-263) と照合した中指前置シフト配列 |
 | かわせみ配列+ | [公式Kikyo定義](https://github.com/semialt/kawasemi/blob/plus/Kikyo/%E3%81%8B%E3%82%8F%E3%81%9B%E3%81%BF%E9%85%8D%E5%88%97%2B.kky)から移植。二重母音・くき・つち・左手コンボ拡張を含む |
 
 コンボは「出力する文字列 → その文字を出すキーの集合」で書きます。
