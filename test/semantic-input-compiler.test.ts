@@ -173,7 +173,7 @@ test('同一physicalKeysで同時成立し得るactivation variantをerrorにす
       face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' }),
       face(['d'], 'prefix', { h: 'ほ' }, { layer: '中指シフト' }),
     ]),
-    /同時成立し得るRequirement\/Capability set/,
+    /同時成立し得るRequirement set/,
   );
 });
 
@@ -183,8 +183,32 @@ test('同一outputの複数activation variantはOR未対応なのでerrorにす�
       face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' }),
       face(['d'], 'prefix', { h: 'へ' }, { layer: '中指シフト' }),
     ]),
-    /同一outputに複数のRequirement\/Capability set/,
+    /同一outputに複数のRequirement set/,
   );
+});
+
+test('同一Requirement/outputのreciprocal FaceはCapabilityをunionする', () => {
+  const inputs = compileFaceSemanticInputs([
+    face(['j'], 'simultaneous', { f: 'が' }, {
+      layer: '濁音',
+      triggerPersistence: 'hold-capable',
+    }),
+    face(['f'], 'simultaneous', { j: 'が' }, {
+      layer: '濁音',
+      triggerPersistence: 'hold-capable',
+    }),
+  ]);
+
+  assert.equal(inputs.length, 1);
+  assert.deepEqual(inputs[0].capabilities, [
+    { kind: 'while-held', keys: ['f'] },
+    { kind: 'while-held', keys: ['j'] },
+  ]);
+  assert.deepEqual(inputs[0].roles, [
+    { key: 'f', role: 'modifier' },
+    { key: 'j', role: 'modifier' },
+  ]);
+  assert.equal(inputs[0].faceMemberships.length, 2);
 });
 
 test('逆向きorderでmutually exclusiveな同一physicalKeysは別SemanticInputとして共存する', () => {
@@ -312,6 +336,10 @@ test('built-inの相互Face membershipはauthoring側へ明示される', () => 
   assert.deepEqual(ga.roles, [
     { key: 'f', role: 'modifier' },
     { key: 'j', role: 'modifier' },
+  ]);
+  assert.deepEqual(ga.capabilities, [
+    { kind: 'while-held', keys: ['f'] },
+    { kind: 'while-held', keys: ['j'] },
   ]);
   assert.equal(ga.faceMemberships.length, 2);
 });
