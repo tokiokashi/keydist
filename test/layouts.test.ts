@@ -309,6 +309,20 @@ test('かわせみ配列+はKikyo版の4拡張を同時打鍵として保持す�
   assert.deepEqual(layout.map.get('ヴ'), [['t', '8']]);
   assert.equal(layout.legends.get('thumb-l'), '左親指');
   assert.equal(layout.legends.get('thumb-r'), '右親指');
+
+  const rightThumb = layout.faces?.find((face) => face.layer === '右親指');
+  const leftThumb = layout.faces?.find((face) => face.layer === '左親指');
+  assert.equal(rightThumb?.inputRole, 'modifier');
+  assert.equal(rightThumb?.triggerPersistence, 'hold-capable');
+  assert.equal(leftThumb?.inputRole, 'modifier');
+  assert.equal(leftThumb?.triggerPersistence, 'hold-capable');
+
+  // 現行schemaでは複合triggerの一部（親指だけ）を保持対象にできないため、
+  // 親指 + 行指定の3キーコンボはwhole-trigger holdに誤解されないようsingleとする。
+  const rightThumbSa = layout.faces?.find((face) =>
+    face.trigger.includes('thumb-r') && face.trigger.includes('d')
+  );
+  assert.equal(rightThumbSa?.triggerPersistence, 'single');
   for (const sequence of layout.map.values()) assert.equal(sequence.length, 1);
   assertKanaLayout(layout);
 });
