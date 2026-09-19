@@ -294,9 +294,12 @@ function updatePlaybackView() {
   const rateHalfLife = ctx.getUiState().conditions.defaults.playbackRateHalfLifeSeconds;
   const pressedKeys = new Set(stroke?.presses.flatMap((press) => press.keys.map((key) => key.id)) ?? []);
   const triggerKeys = new Set(stroke?.triggerKeys ?? []);
+  const completedWasSplit = virtualPhase === undefined
+    && cursor > 0
+    && playbackTimingActionCount(playbackTiming, cursor - 1) > 1;
   const activeKeys = virtualPhase === 'hold-start'
     ? new Set(triggerKeys)
-    : virtualPhase === 'output'
+    : virtualPhase === 'output' || completedWasSplit
       ? new Set([...pressedKeys].filter((key) => !triggerKeys.has(key)))
       : pressedKeys;
   const fingerPositionKeys = ctx.getUiState().ui.playback.showFingers
