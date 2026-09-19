@@ -118,6 +118,11 @@ export interface Metrics {
    * シフト面・複数キーコンボ・複数Stroke入力は含めない（仕様 §11.5.1）。
    */
   baseLayerRate: number;
+  /**
+   * physical Strokeのうち、そのStrokeで新規に押した物理キーが1個だけだった割合 [%]。
+   * held-triggerは新規押下ではないため数えない（仕様 §11.5.2）。
+   */
+  singleKeyStrokeRate: number;
   /** 隣接指間距離の統計。ホーム間隔からの超過で持つ（仕様 §11.6） */
   adjacent: PairStat[];
   /** 同指連続回数。同じ指で異なる位置を続けて打った数 */
@@ -301,6 +306,7 @@ export function computeMetrics(
     perCharSteps: inputChars ? actions / inputChars : 0,
     perCharPresses: inputChars ? presses / inputChars : 0,
     baseLayerRate: baseLayerRate(trace),
+    singleKeyStrokeRate: singleKeyStrokeRate(trace),
     adjacent,
     sameFinger,
     combos,
@@ -348,6 +354,23 @@ function baseLayerRate(trace: Trace): number {
   }
 
   return typableChars ? (baseChars / typableChars) * 100 : 0;
+}
+
+/**
+ * physical Strokeごとに、そのStrokeで新規に押した物理キー数を数える。
+ * 1キーだけなら単打。複数キー同時押しは除外し、held-triggerはpressesに含まれないため
+ * continuationで出力キー1個だけを新規押下したStrokeは単打として数える。
+ */
+function singleKeyStrokeRate(trace: Trace): number {
+  const strokes = trace.strokes.length;
+  if (strokes === 0) return 0;
+
+  let singleKeyStrokes = 0;
+  for (const stroke of trace.strokes) {
+    const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);
+    if (keyCount === 1) singleKeyStrokes++;
+  }
+  return (singleKeyStrokes / strokes) * 100;
 }
 
 function meanStdDevMax(values: number[]): { mean: number; stdDev: number; max: number } {
