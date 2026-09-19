@@ -229,7 +229,6 @@ test('薙刀式v18は面から生成され、全定義を1ステップで保持�
   assert.equal(layout.legends.get('thumb-l'), '親指');
   assert.equal(layout.legends.get('thumb-r'), 'Space');
   assert.equal(layout.legends.has('space'), false);
-  assert.deepEqual(layout.semanticInputSequences?.get('x')?.[0].physicalKeys, ['thumb-r']);
   for (const sequence of layout.map.values()) assert.equal(sequence.length, 1);
   assert.deepEqual(layout.map.get('きゃ'), [['h', 'w']]);
   assert.deepEqual(layout.map.get('ぐゎ'), [['.', 'f', 'h']]);
@@ -499,6 +498,7 @@ test('保存済み凡例のspaceもthumb-rへ解決する', () => {
 
   assert.equal(layout.legends.get('thumb-r'), 'Space');
   assert.equal(layout.legends.has('space'), false);
+  assert.deepEqual(layout.semanticInputSequences?.get('x')?.[0].physicalKeys, ['thumb-r']);
 });
 
 test('薙刀式v18の面移行で総距離とステップ数を維持する', () => {
