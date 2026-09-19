@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   compileSequenceInputArtifacts,
   flattenBaseActionRealizations,
+  validateBaseActionRealization,
   type BaseActionRealization,
   type BaseActionRealizationSequence,
   type SemanticInput,
@@ -131,6 +132,62 @@ test('Face simultaneous + orderのdefault groupingはFace sourceどおり1 actio
     { kind: 'order', before: ['thumb-r'], after: ['j'] },
   ]);
   assert.deepEqual(base[0].actions, [['thumb-r', 'j']]);
+});
+
+test('BaseActionRealizationは空realization / 空actionをrejectする', () => {
+  const input = semanticInput(['d']);
+
+  assert.throws(
+    () => validateBaseActionRealization({ input, actions: [] }),
+    /1 action以上必要/,
+  );
+  assert.throws(
+    () => validateBaseActionRealization({ input, actions: [[]] }),
+    /1 key以上必要/,
+  );
+});
+
+test('BaseActionRealizationはinput.physicalKeys外のkeyをrejectする', () => {
+  const input = semanticInput(['d']);
+
+  assert.throws(
+    () => validateBaseActionRealization({ input, actions: [['k']] }),
+    /physicalKeys外/,
+  );
+});
+
+test('BaseActionRealizationは必要physicalKeysの欠落をrejectする', () => {
+  const input = semanticInput(['d', 'k']);
+
+  assert.throws(
+    () => validateBaseActionRealization({ input, actions: [['d']] }),
+    /欠落している: k/,
+  );
+});
+
+test('BaseActionRealizationはalias解決後のphysical key重複をrejectする', () => {
+  const input = semanticInput(['thumb-r']);
+
+  assert.throws(
+    () => validateBaseActionRealization({
+      input,
+      actions: [['space', 'thumb-r']],
+    }),
+    /physical key「thumb-r」が重複/,
+  );
+});
+
+test('flatten時はaliasをcanonical PhysicalKeyIdへ正規化する', () => {
+  const input = semanticInput(['thumb-r']);
+  const realization: BaseActionRealization = {
+    input,
+    actions: [['space']],
+  };
+
+  assert.deepEqual(
+    flattenBaseActionRealizations([realization]).map((action) => action.keys),
+    [['thumb-r']],
+  );
 });
 
 test('built-in全outputでauthoring-derived base actionがlegacy Layout.mapと一致する', () => {
