@@ -37,3 +37,9 @@ export interface SemanticInput {
   roles: readonly KeyRole[];
   faceMemberships: readonly FaceMembership[];
 }
+
+/**
+ * 1つのlogical outputを成立させるcanonical入力列。
+ * 配列順自体がSemanticInput間の順序を表す。
+ */
+export type SemanticInputSequence = readonly SemanticInput[];
