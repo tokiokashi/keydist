@@ -2,10 +2,10 @@
   "version": 1,
   "layoutId": "shingeta",
   "source": {
-    "url": "https://github.com/k-ayaki/dvorakj_2023/blob/master/data/lang/jpn/同時に打鍵する配列/下駄配列系/新下駄配列.txt",
-    "sha": "697e264f4d1f5f40e40385d6a15e8c5aabdc4f68",
-    "path": "data/lang/jpn/同時に打鍵する配列/下駄配列系/新下駄配列.txt",
-    "transform": "DvorakJの7ブロックから、JIS 13/12/12/11列をANSI 12/12/11/10列へ先頭列対応で投影し、機能キー・記号セルとJIS専用列を除外する"
+    "url": "https://github.com/tor-nky/KeyLayout/blob/master/SinGeta/Mac/SinGeta_Layout.json",
+    "sha": "fabd5d958b10f01d41f6cc7b4a8ae87c6975e1f5",
+    "path": "SinGeta/Mac/SinGeta_Layout.json",
+    "transform": "考案者の公開資料を仕様根拠とし、MITライセンスのKeyLayout実装と照合。keydistのANSI Face表現へ独自に記述し、機能キー・記号セルとJIS専用列を解析対象から除外する"
   },
   "faces": [
     {
