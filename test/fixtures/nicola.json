@@ -3,9 +3,9 @@
   "layoutId": "nicola",
   "source": {
     "url": "http://nicola.sunicom.co.jp/spec/kikaku.htm",
-    "sha": "specification-reference",
-    "path": "NICOLA配列規格書",
-    "transform": "NICOLA配列規格書を仕様根拠として、文字・左右親指シフトの対応をkeydistのANSI Face表現へ独自に記述し、機能キー出力は解析対象から除外する"
+    "sha": "official-specification-reference",
+    "path": "NICOLA日本語入力コンソーシアム / NICOLA配列規格書",
+    "transform": "NICOLA配列規格書のキーとかなの対応を仕様根拠として、文字・左右親指シフトをkeydistのANSI Face表現へ独自に記述し、機能キー出力は解析対象から除外する"
   },
   "faces": [
     {
