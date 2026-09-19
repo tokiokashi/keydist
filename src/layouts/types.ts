@@ -87,6 +87,14 @@ export type ComboDefinition = [
   condition?: ComboCondition,
 ];
 
+/** withCombosで解決済みのコンボ。表示・検証で元定義と物理キー集合を参照する。 */
+export interface ResolvedComboDefinition {
+  output: string;
+  inputs: readonly string[];
+  keys: readonly string[];
+  condition?: ComboCondition;
+}
+
 export interface Layout {
   id: string;
   name: string;
@@ -115,6 +123,8 @@ export interface Layout {
    * 失われるかなの境界を使った命中判定と、コンボの命中件数の集計に使う。
    */
   comboConditions?: ReadonlyMap<string, ComboCondition>;
+  /** withCombos由来のコンボ定義。物理キーまで解決済みで、配列図等の表示にも使う。 */
+  comboDefinitions?: readonly ResolvedComboDefinition[];
   /** 各見出しのSequenceのステップごとの帰属先。合成出力では層が混在しうる */
   stepLayers?: ReadonlyMap<string, readonly string[]>;
   /** 各見出しのSequenceのステップごとに、層操作として押すキー */
@@ -471,10 +481,18 @@ export function withCombos(
   const stepSemantics = new Map(layout.stepSemantics ?? []);
   const layerDefinitions = [...(layout.layerDefinitions ?? [])];
   const comboConditions = new Map(layout.comboConditions);
+  const comboDefinitions: ResolvedComboDefinition[] = [...(layout.comboDefinitions ?? [])];
   let hasCombo = layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID);
   for (const [output, inputs, condition] of combos) {
     const keys = inputs.map((ch) => layout.map.get(ch)?.[0]?.[0]);
     if (keys.some((k) => k === undefined)) continue;
+    const resolvedKeys = (keys as string[]).map(resolveKeyId);
+    comboDefinitions.push({
+      output,
+      inputs: [...inputs],
+      keys: resolvedKeys,
+      ...(condition === undefined ? {} : { condition }),
+    });
     map.set(output, [keys as string[]]);
     stepLayers.set(output, [COMBO_LAYER_ID]);
     stepTriggerKeys.set(output, [[]]);
@@ -496,6 +514,7 @@ export function withCombos(
     map,
     maxCharLength: maxKeyLength(map.keys()),
     comboConditions,
+    comboDefinitions,
     stepLayers,
     stepTriggerKeys,
     stepSemantics,
