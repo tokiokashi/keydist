@@ -1,4 +1,4 @@
-import { compileSequenceSemanticInputs } from './core/semantic-input/index.ts';
+import { compileSequenceInputArtifacts } from './core/semantic-input/index.ts';
 import { QWERTY_LEGEND, resolveKeyId, type NonThumb } from './geometry.ts';
 import { fromRows, SINGLE_LAYER_ID, withRomaji, type Layout } from './layouts/index.ts';
 import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from './romaji/rules.ts';
@@ -118,12 +118,12 @@ export function toLayout(def: UserLayout): Layout {
   if (!def.sequences && !def.legends) return { ...layout, homeKeys: def.homeKeys };
   const map = new Map(layout.map);
   const semanticInputSequences = new Map(layout.semanticInputSequences ?? []);
+  const baseActionRealizations = new Map(layout.baseActionRealizations ?? []);
   for (const [output, sequence] of def.sequences ?? []) {
     map.set(output, sequence);
-    semanticInputSequences.set(
-      output,
-      compileSequenceSemanticInputs(output, sequence, SINGLE_LAYER_ID),
-    );
+    const artifacts = compileSequenceInputArtifacts(output, sequence, SINGLE_LAYER_ID);
+    semanticInputSequences.set(output, artifacts.semanticInputs);
+    baseActionRealizations.set(output, artifacts.baseActionRealizations);
   }
   const legends = new Map(layout.legends);
   for (const [key, label] of def.legends ?? []) legends.set(resolveKeyId(key), label);
@@ -132,6 +132,7 @@ export function toLayout(def: UserLayout): Layout {
     ...layout,
     map,
     semanticInputSequences,
+    baseActionRealizations,
     legends,
     maxCharLength,
     homeKeys: def.homeKeys,
