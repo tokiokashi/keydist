@@ -107,7 +107,7 @@ const SAMPLES: Record<ModeId, Record<SampleId, string>> = {
 
 const SAMPLE_NAMES: Record<ModeId, Record<SampleId, string>> = {
   en: { default: '英文（既定）' },
-  ja: { modern: '現代文（既定）', legacy: '旧文「吾輩は猫である」' },
+  ja: { modern: '現代文', legacy: '旧文「吾輩は猫である」（既定）' },
 };
 
 /** 既定で表示する配列 */
