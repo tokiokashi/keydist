@@ -9,3 +9,9 @@ export type {
   SemanticInputSequence,
   SemanticRole,
 } from './types.ts';
+
+export {
+  planSemanticInputActions,
+  planSemanticInputSequenceActions,
+  type SemanticInputAction,
+} from './realization.ts';
