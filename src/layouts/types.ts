@@ -10,6 +10,9 @@ export type Sequence = Step[];
 /** 面の発火方式。triggerと入力キーを同時に押すか、前後に分けるかを表す。 */
 export type FaceMode = 'prefix' | 'suffix' | 'simultaneous';
 
+/** trigger と出力キーの順序制約。Stroke分割を意味せず、同時押し表現にも付与できる。 */
+export type TriggerOrder = 'prefix' | 'suffix';
+
 /** Face が担う入力意味。表示上のlayer分類とは独立したsemantic情報。 */
 export type InputRole = 'layer' | 'modifier' | 'composition';
 
@@ -60,6 +63,12 @@ export interface Face {
   inputRole?: InputRole;
   /** triggerの持続能力。FaceModeとは独立し、triggerを持つcanonical Faceでは明示する。 */
   triggerPersistence?: TriggerPersistence;
+  /**
+   * trigger が出力キーより先/後である必要がある場合の順序制約。
+   * mode='prefix' / 'suffix' は暗黙に同じ制約を持つ。simultaneousのまま
+   * 「先押しして重ねる」入力を表す場合だけ明示する。
+   */
+  triggerOrder?: TriggerOrder;
 }
 
 export type LayerKind = 'layer' | 'combo';
