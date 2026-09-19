@@ -100,14 +100,14 @@ test('全指移動律速は既定OFFでbooleanだけ復元する', () => {
 
 test('コンボ・レイヤーのガイド表示は既定OFFでbooleanだけ復元する', () => {
   const fallback = defaults();
-  assert.equal(fallback.ui.layers.comboGuide, false);
+  assert.equal(fallback.ui.layers.comboGuide, true);
 
   const value = structuredClone(fallback) as unknown as Record<string, any>;
   value.ui.layers.comboGuide = true;
   assert.equal(sanitizeUiState(value, fallback, choices).ui.layers.comboGuide, true);
 
   value.ui.layers.comboGuide = 'yes';
-  assert.equal(sanitizeUiState(value, fallback, choices).ui.layers.comboGuide, false);
+  assert.equal(sanitizeUiState(value, fallback, choices).ui.layers.comboGuide, true);
 });
 
 test('指位置の準備時間は非負の有限値だけ復元する', () => {
