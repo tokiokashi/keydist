@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
 import { DEFAULT_OPTIONS, evaluate } from '../src/evaluate.ts';
-import { faceFromEntries, fromFaces, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA } from '../src/layouts/index.ts';
+import { faceFromEntries, fromFaces, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA, type Face } from '../src/layouts/index.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 import { toLayout } from '../src/user-layouts.ts';
@@ -236,6 +236,23 @@ test('薙刀式のSandS表示だけ左右のSpaceを強調する', () => {
   assert.deepEqual(centerShift.trigger, ['space']);
   assert.deepEqual(displayTriggerKeys(layout, centerShift), ['thumb-l', 'thumb-r']);
   assert.deepEqual(layout.map.get('の'), [['space', 'j']]);
+});
+
+test('triggerOrderが異なるFaceは同じレイヤーへ畳まない', () => {
+  const first: Face = {
+    ...faceFromEntries(['k'], 'simultaneous', { d: 'あ' }),
+    layer: '順序',
+    triggerOrder: 'prefix',
+    triggerPersistence: 'single',
+  };
+  const second: Face = {
+    ...faceFromEntries(['d'], 'simultaneous', { k: 'い' }),
+    layer: '順序',
+    triggerPersistence: 'single',
+  };
+
+  assert.throws(() => canFoldFaces(first, second), /triggerOrderが異なる/);
+  assert.throws(() => groupFacesIntoLayers([first, second]), /triggerOrderが異なる/);
 });
 
 test('シフトの表示色は手ではなく所属レイヤーで揃える', () => {
