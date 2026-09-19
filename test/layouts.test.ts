@@ -349,6 +349,22 @@ test('新下駄配列は7面の直接かな入力を同時押しとして保持�
 });
 
 
+test('かわせみ配列改は二重母音拡張のみを追加し長音をQWERTY /位置に置く', () => {
+  const layout = LAYOUT_BY_ID.get('kawasemi-kai')!;
+
+  assert.equal(layout.name, 'かわせみ配列改');
+  assert.deepEqual(layout.map.get('あ'), [[';']]);
+  assert.deepEqual(layout.map.get('ー'), [['/']]);
+  assert.deepEqual(layout.map.get('けい'), [['h', 'j', 's']]);
+  assert.deepEqual(layout.map.get('きょう'), [['u', 'i', 's']]);
+  assert.deepEqual(layout.map.get('うい'), [['.', ',']]);
+  assert.deepEqual(layout.map.get('ヴ'), [['t', '8']]);
+  assert.equal(layout.map.has('そく'), false);
+  assert.equal(layout.map.has('てつ'), false);
+  for (const sequence of layout.map.values()) assert.equal(sequence.length, 1);
+  assertKanaLayout(layout);
+});
+
 test('かわせみ配列+はKikyo版の4拡張を同時打鍵として保持する', () => {
   const layout = LAYOUT_BY_ID.get('kawasemi-plus')!;
 
