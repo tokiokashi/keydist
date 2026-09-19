@@ -1,6 +1,8 @@
 import {
   compileFaceSemanticInputs,
-  compileSequenceSemanticInputs,
+  compileSequenceInputArtifacts,
+  validateBaseActionRealization,
+  type BaseActionRealizationSequence,
   type SemanticInput,
   type SemanticInputSequence,
 } from '../core/semantic-input/index.ts';
@@ -135,6 +137,11 @@ export interface Layout {
    * migration中のみoptionalで、consumer cutover後にrequired化する。
    */
   semanticInputSequences?: ReadonlyMap<string, SemanticInputSequence>;
+  /**
+   * logical output → authoring source由来のdefault/base action grouping。
+   * Requirementから推測せず、ActionRealizationPolicy入力として別管理する。
+   */
+  baseActionRealizations?: ReadonlyMap<string, BaseActionRealizationSequence>;
   /** 面から作った配列だけが持つ、表示用の元面。自作配列などは省略する */
   faces?: readonly Face[];
   /**
@@ -203,6 +210,7 @@ export function fromRows(
 ): Layout {
   const map = new Map<string, Sequence>();
   const semanticInputSequences = new Map<string, SemanticInputSequence>();
+  const baseActionRealizations = new Map<string, BaseActionRealizationSequence>();
   const stepLayers = new Map<string, readonly string[]>();
   const stepTriggerKeys = new Map<string, readonly (readonly string[])[]>();
   const stepSemantics = new Map<string, readonly StepSemantic[]>();
@@ -216,10 +224,9 @@ export function fromRows(
       if (!map.has(ch)) {
         const sequence: Sequence = [[id]];
         map.set(ch, sequence);
-        semanticInputSequences.set(
-          ch,
-          compileSequenceSemanticInputs(ch, sequence, SINGLE_LAYER_ID),
-        );
+        const artifacts = compileSequenceInputArtifacts(ch, sequence, SINGLE_LAYER_ID);
+        semanticInputSequences.set(ch, artifacts.semanticInputs);
+        baseActionRealizations.set(ch, artifacts.baseActionRealizations);
         stepLayers.set(ch, [SINGLE_LAYER_ID]);
         stepTriggerKeys.set(ch, [[]]);
         stepSemantics.set(ch, [{
@@ -237,10 +244,9 @@ export function fromRows(
   if (thumbs.LT) {
     const sequence: Sequence = [[THUMB_KEY.LT]];
     map.set(thumbs.LT, sequence);
-    semanticInputSequences.set(
-      thumbs.LT,
-      compileSequenceSemanticInputs(thumbs.LT, sequence, SINGLE_LAYER_ID),
-    );
+    const artifacts = compileSequenceInputArtifacts(thumbs.LT, sequence, SINGLE_LAYER_ID);
+    semanticInputSequences.set(thumbs.LT, artifacts.semanticInputs);
+    baseActionRealizations.set(thumbs.LT, artifacts.baseActionRealizations);
     stepLayers.set(thumbs.LT, [SINGLE_LAYER_ID]);
     stepTriggerKeys.set(thumbs.LT, [[]]);
     stepSemantics.set(thumbs.LT, [{
@@ -252,10 +258,9 @@ export function fromRows(
   if (thumbs.RT) {
     const sequence: Sequence = [[THUMB_KEY.RT]];
     map.set(thumbs.RT, sequence);
-    semanticInputSequences.set(
-      thumbs.RT,
-      compileSequenceSemanticInputs(thumbs.RT, sequence, SINGLE_LAYER_ID),
-    );
+    const artifacts = compileSequenceInputArtifacts(thumbs.RT, sequence, SINGLE_LAYER_ID);
+    semanticInputSequences.set(thumbs.RT, artifacts.semanticInputs);
+    baseActionRealizations.set(thumbs.RT, artifacts.baseActionRealizations);
     stepLayers.set(thumbs.RT, [SINGLE_LAYER_ID]);
     stepTriggerKeys.set(thumbs.RT, [[]]);
     stepSemantics.set(thumbs.RT, [{
@@ -269,6 +274,7 @@ export function fromRows(
     name,
     map,
     semanticInputSequences,
+    baseActionRealizations,
     legends,
     stepLayers,
     stepTriggerKeys,
@@ -318,6 +324,7 @@ export function fromFaces(
   const faceLayerIds = new Map<Face, string>();
   const outputSemanticInputs = new Map<string, SemanticInput>();
   const semanticInputSequences = new Map<string, SemanticInputSequence>();
+  const baseActionRealizations = new Map<string, BaseActionRealizationSequence>();
 
   const addDefinition = (definition: LayerDefinition) => {
     if (!layerDefinitions.some((entry) => entry.id === definition.id)) {
@@ -363,6 +370,12 @@ export function fromFaces(
         semanticInputSequences.set(output, [semanticInput]);
 
         const sequence = expandFace(trigger, face.mode, key);
+        const baseRealization = {
+          input: semanticInput,
+          actions: sequence.map((step) => step.map(resolveKeyId)),
+        };
+        validateBaseActionRealization(baseRealization);
+        baseActionRealizations.set(output, [baseRealization]);
         map.set(output, sequence);
         stepLayers.set(output, sequence.map(() => layerId));
         stepTriggerKeys.set(output, expandFaceTriggerKeys(trigger, face.mode));
@@ -390,10 +403,9 @@ export function fromFaces(
   if (thumbs.LT) {
     const sequence: Sequence = [[THUMB_KEY.LT]];
     map.set(thumbs.LT, sequence);
-    semanticInputSequences.set(
-      thumbs.LT,
-      compileSequenceSemanticInputs(thumbs.LT, sequence, SINGLE_LAYER_ID),
-    );
+    const artifacts = compileSequenceInputArtifacts(thumbs.LT, sequence, SINGLE_LAYER_ID);
+    semanticInputSequences.set(thumbs.LT, artifacts.semanticInputs);
+    baseActionRealizations.set(thumbs.LT, artifacts.baseActionRealizations);
     stepLayers.set(thumbs.LT, [baseLayerId]);
     stepTriggerKeys.set(thumbs.LT, [[]]);
     stepSemantics.set(thumbs.LT, [{
@@ -405,10 +417,9 @@ export function fromFaces(
   if (thumbs.RT) {
     const sequence: Sequence = [[THUMB_KEY.RT]];
     map.set(thumbs.RT, sequence);
-    semanticInputSequences.set(
-      thumbs.RT,
-      compileSequenceSemanticInputs(thumbs.RT, sequence, SINGLE_LAYER_ID),
-    );
+    const artifacts = compileSequenceInputArtifacts(thumbs.RT, sequence, SINGLE_LAYER_ID);
+    semanticInputSequences.set(thumbs.RT, artifacts.semanticInputs);
+    baseActionRealizations.set(thumbs.RT, artifacts.baseActionRealizations);
     stepLayers.set(thumbs.RT, [baseLayerId]);
     stepTriggerKeys.set(thumbs.RT, [[]]);
     stepSemantics.set(thumbs.RT, [{
@@ -422,6 +433,7 @@ export function fromFaces(
     name,
     map,
     semanticInputSequences,
+    baseActionRealizations,
     legends,
     faces: [...faces],
     maxCharLength: maxKeyLength(map.keys()),
@@ -517,11 +529,11 @@ function expandFaceSemantics(
 export function fromKana(id: string, name: string, def: Record<string, string[][]>): Layout {
   const map = new Map<string, Sequence>(Object.entries(def));
   const semanticInputSequences = new Map<string, SemanticInputSequence>();
+  const baseActionRealizations = new Map<string, BaseActionRealizationSequence>();
   for (const [output, sequence] of map) {
-    semanticInputSequences.set(
-      output,
-      compileSequenceSemanticInputs(output, sequence, SINGLE_LAYER_ID),
-    );
+    const artifacts = compileSequenceInputArtifacts(output, sequence, SINGLE_LAYER_ID);
+    semanticInputSequences.set(output, artifacts.semanticInputs);
+    baseActionRealizations.set(output, artifacts.baseActionRealizations);
   }
   const stepLayers = new Map<string, readonly string[]>(
     [...map].map(([kana, sequence]) => [kana, sequence.map(() => SINGLE_LAYER_ID)]),
@@ -550,6 +562,7 @@ export function fromKana(id: string, name: string, def: Record<string, string[][
     name,
     map,
     semanticInputSequences,
+    baseActionRealizations,
     legends,
     maxCharLength: maxKeyLength(map.keys()),
     stepLayers,
@@ -571,12 +584,14 @@ export function withComposedOutputs(
 ): Layout {
   const markSequence = layout.map.get(mark);
   const markSemanticInputs = layout.semanticInputSequences?.get(mark);
-  if (!markSequence || !markSemanticInputs) {
+  const markBaseRealizations = layout.baseActionRealizations?.get(mark);
+  if (!markSequence || !markSemanticInputs || !markBaseRealizations) {
     throw new Error(`${context}の合成記号「${mark}」が未定義`);
   }
 
   const map = new Map(layout.map);
   const semanticInputSequences = new Map(layout.semanticInputSequences ?? []);
+  const baseActionRealizations = new Map(layout.baseActionRealizations ?? []);
   const stepLayers = new Map(layout.stepLayers ?? []);
   const stepTriggerKeys = new Map(layout.stepTriggerKeys ?? []);
   const stepSemantics = new Map(layout.stepSemantics ?? []);
@@ -584,7 +599,8 @@ export function withComposedOutputs(
   for (const [source, output] of Object.entries(entries)) {
     const sourceSequence = layout.map.get(source);
     const sourceSemanticInputs = layout.semanticInputSequences?.get(source);
-    if (!sourceSequence || !sourceSemanticInputs) {
+    const sourceBaseRealizations = layout.baseActionRealizations?.get(source);
+    if (!sourceSequence || !sourceSemanticInputs || !sourceBaseRealizations) {
       throw new Error(`${context}の元出力「${source}」が未定義`);
     }
     if (map.has(output)) {
@@ -599,6 +615,10 @@ export function withComposedOutputs(
     semanticInputSequences.set(output, [
       ...sourceSemanticInputs,
       ...markSemanticInputs,
+    ]);
+    baseActionRealizations.set(output, [
+      ...sourceBaseRealizations,
+      ...markBaseRealizations,
     ]);
 
     const sourceLayers = layout.stepLayers?.get(source)
@@ -625,6 +645,7 @@ export function withComposedOutputs(
     ...layout,
     map,
     semanticInputSequences,
+    baseActionRealizations,
     maxCharLength: maxKeyLength(map.keys()),
     stepLayers,
     stepTriggerKeys,
@@ -649,6 +670,7 @@ export function withCombos(
 ): Layout {
   const map = new Map(layout.map);
   const semanticInputSequences = new Map(layout.semanticInputSequences ?? []);
+  const baseActionRealizations = new Map(layout.baseActionRealizations ?? []);
   const stepLayers = new Map(layout.stepLayers ?? []);
   const stepTriggerKeys = new Map(layout.stepTriggerKeys ?? []);
   const stepSemantics = new Map(layout.stepSemantics ?? []);
@@ -682,10 +704,9 @@ export function withCombos(
     });
     const sequence: Sequence = [keys as string[]];
     map.set(output, sequence);
-    semanticInputSequences.set(
-      output,
-      compileSequenceSemanticInputs(output, sequence, COMBO_LAYER_ID),
-    );
+    const artifacts = compileSequenceInputArtifacts(output, sequence, COMBO_LAYER_ID);
+    semanticInputSequences.set(output, artifacts.semanticInputs);
+    baseActionRealizations.set(output, artifacts.baseActionRealizations);
     stepLayers.set(output, [COMBO_LAYER_ID]);
     stepTriggerKeys.set(output, [[]]);
     stepSemantics.set(output, [{
@@ -705,6 +726,7 @@ export function withCombos(
     name,
     map,
     semanticInputSequences,
+    baseActionRealizations,
     maxCharLength: maxKeyLength(map.keys()),
     comboConditions,
     resolvedComboDefinitions,

@@ -1,4 +1,9 @@
-export { compileFaceSemanticInputs, compileSequenceSemanticInputs } from './compiler.ts';
+export {
+  compileFaceSemanticInputs,
+  compileSequenceInputArtifacts,
+  compileSequenceSemanticInputs,
+  type CompiledSequenceArtifacts,
+} from './compiler.ts';
 export type {
   FaceMembership,
   InputCapability,
@@ -8,4 +13,13 @@ export type {
   SemanticInput,
   SemanticInputSequence,
   SemanticRole,
+  BaseActionRealization,
+  BaseActionRealizationSequence,
 } from './types.ts';
+
+export {
+  flattenBaseActionRealizations,
+  validateBaseActionRealization,
+  validateBaseActionRealizations,
+  type SemanticInputAction,
+} from './realization.ts';
