@@ -1190,7 +1190,7 @@ function setSensitivityScale(scale: SensitivityScale) {
       const index = Number(select.value);
       const layoutId = select.dataset.layoutId;
       if (layoutId) comboDiagramSelection.set(layoutId, index);
-      const container = select.closest('.combo-table');
+      const container = select.closest('.combo-section');
       if (!container) return;
       for (const diagram of container.querySelectorAll<HTMLElement>('[data-combo-diagram]')) {
         diagram.hidden = Number(diagram.dataset.comboDiagram) !== index;
