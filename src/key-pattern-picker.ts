@@ -99,6 +99,27 @@ export function buildKeyPatternMatrix(layout: Layout): readonly KeyPatternMatch[
   return matrix;
 }
 
+function exactAllowedByOrder(
+  match: KeyPatternMatch,
+  selected: ReadonlySet<string>,
+): boolean {
+  if (match.triggerOrder === undefined || match.triggerKeys === undefined) return true;
+
+  const triggers = new Set(match.triggerKeys);
+  const ordered = [...selected];
+  const triggerPositions = ordered
+    .map((key, index) => triggers.has(key) ? index : -1)
+    .filter((index) => index >= 0);
+  const outputPositions = ordered
+    .map((key, index) => !triggers.has(key) ? index : -1)
+    .filter((index) => index >= 0);
+  if (triggerPositions.length === 0 || outputPositions.length === 0) return true;
+
+  return match.triggerOrder === 'prefix'
+    ? Math.max(...triggerPositions) < Math.min(...outputPositions)
+    : Math.min(...triggerPositions) > Math.max(...outputPositions);
+}
+
 function candidateAllowedByOrder(
   match: KeyPatternMatch,
   selected: ReadonlySet<string>,
@@ -137,7 +158,7 @@ export function matchKeyPatterns(layout: Layout, selected: ReadonlySet<string>):
     if (!isSubset(selected, keySet)) continue;
 
     if (keySet.size === selected.size) {
-      exact.push(match);
+      if (exactAllowedByOrder(match, selected)) exact.push(match);
       continue;
     }
 
