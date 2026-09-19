@@ -153,7 +153,7 @@ test('単打率は1 Stroke・新規1キーだけを文字数ベースで数え�
   near(comboMetrics.singleTapRate, 0, '新下駄: 1 Strokeでも多キー同時押しは単打に含めない');
 });
 
-test('単打率はhold継続中に新規1キーだけ押す文字を単打として数える', () => {
+test('単打率はhold継続中の1キー入力を単打に含めない', () => {
   const asuka = LAYOUT_BY_ID.get('asuka')!;
   const trace = evaluate('あだ', asuka, geometry, opts({
     triggerRealizationPolicy: { useHold: true },
@@ -162,8 +162,8 @@ test('単打率はhold継続中に新規1キーだけ押す文字を単打とし
 
   assert.equal(trace.strokes.length, 2);
   assert.ok(trace.strokes[1].participations.some((p) => p.roles.includes('held-trigger')));
-  near(metrics.singleTapRate, 50, '2文字目はheld triggerを保持したまま新規1キーだけ押す');
-  near(metrics.baseLayerRate, 0, 'hold継続の単打は基底面には含めない');
+  near(metrics.singleTapRate, 0, 'held triggerに依存する文字は新規1キーでも単打ではない');
+  near(metrics.baseLayerRate, 0, 'hold継続の文字は基底面にも含めない');
 });
 
 test('基底面率はhold継続中のシフト文字を基底面扱いしない', () => {
