@@ -1,4 +1,4 @@
-import type { ComboCondition, ComboDefinition } from './types.ts';
+import type { ComboCondition, ComboDefinition, ComboPresentation } from './types.ts';
 
 /**
  * 利用者のVialキーマップ（Corne V4）から起こしたコンボ。
@@ -8,7 +8,7 @@ import type { ComboCondition, ComboDefinition } from './types.ts';
  */
 const YOUON_ONLY: ComboCondition = { youonOnly: true };
 
-export const CUSTOM_COMBOS: ComboDefinition[] = [
+const RAW_CUSTOM_COMBOS: ComboDefinition[] = [
   ['desita', ['d', 's', 't']],
   ['masita', ['m', 's', 't']],
   ['siteha', ['s', 't', 'h']],
@@ -83,3 +83,63 @@ export const CUSTOM_COMBOS: ComboDefinition[] = [
   ['yo', ['i', 'o'], YOUON_ONLY],
   ['yu', ['i', 'u'], YOUON_ONLY],
 ];
+
+
+const VOCABULARY_OUTPUTS = new Set([
+  'desita', 'masita', 'siteha', 'deha', 'desu', 'kara', 'koto', 'masu', 'mono',
+  'nado', 'niha', 'sika', 'sita', 'site', 'suru', 'tame', 'toha',
+]);
+
+function comboPresentation(
+  output: string,
+  condition: ComboCondition | undefined,
+): ComboPresentation {
+  if (VOCABULARY_OUTPUTS.has(output)) return { group: '語彙拡張' };
+
+  if (condition?.youonOnly) {
+    const foldTriggerInputs =
+      ['ya', 'ye', 'yo', 'yu'].includes(output) ? ['i']
+      : ['yaku', 'yann', 'yatu', 'yau', 'you'].includes(output) ? ['i', 'a']
+      : ['yenn', 'yetu'].includes(output) ? ['i', 'e']
+      : ['yoku', 'yonn', 'yotu'].includes(output) ? ['i', 'o']
+      : ['yuku', 'yunn', 'yutu', 'yuu'].includes(output) ? ['i', 'u']
+      : undefined;
+    return { group: '拗音拡張', ...(foldTriggerInputs ? { foldTriggerInputs } : {}) };
+  }
+
+  if (/^[-aeiou]nn$/.test(output) || output === 'nn') {
+    const foldTriggerInputs = /^(ann|enn|inn|unn)$/.test(output) ? ['v'] : undefined;
+    return {
+      group: '撥音拡張',
+      ...(foldTriggerInputs ? { foldTriggerInputs } : {}),
+    };
+  }
+
+  if (/^[aeiou](ki|ku|ti|tu)$/.test(output)) {
+    const foldTriggerInputs =
+      /^(eki|iki|oki|uki)$/.test(output) ? ['c']
+      : /^(aku|iku|oku|uku)$/.test(output) ? ['x']
+      : /^(ati|eti|oti|uti)$/.test(output) ? ['l']
+      : /^[aeiou]tu$/.test(output) ? [',']
+      : undefined;
+    return {
+      group: '入声拡張',
+      ...(foldTriggerInputs ? { foldTriggerInputs } : {}),
+    };
+  }
+
+  const foldTriggerInputs = /^(ai|ei|ui)$/.test(output) ? ['e'] : undefined;
+  return {
+    group: '二重母音拡張',
+    ...(foldTriggerInputs ? { foldTriggerInputs } : {}),
+  };
+}
+
+export const CUSTOM_COMBOS: ComboDefinition[] = RAW_CUSTOM_COMBOS.map(
+  ([output, inputs, condition]) => [
+    output,
+    inputs,
+    condition,
+    comboPresentation(output, condition),
+  ] as ComboDefinition,
+);

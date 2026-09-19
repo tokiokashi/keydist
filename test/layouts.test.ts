@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
 import { DEFAULT_OPTIONS, evaluate } from '../src/evaluate.ts';
-import { faceFromEntries, fromFaces, LAYOUT_BY_ID, LAYOUTS_JA } from '../src/layouts/index.ts';
+import { faceFromEntries, fromFaces, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA } from '../src/layouts/index.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 import { toLayout } from '../src/user-layouts.ts';
@@ -73,6 +73,14 @@ test('面定義の未知のキーは空欄にせずエラーにする', () => {
   );
 });
 
+test('TK音直入力法は英文モードでも英字配置として選べる', () => {
+  const layout = LAYOUTS.find((entry) => entry.id === 'oonishi-custom');
+  assert.ok(layout);
+  assert.equal(layout.name, 'TK音直入力法');
+  assert.equal(layout.romajiTable, undefined);
+  assert.equal(layout.resolvedComboDefinitions, undefined);
+});
+
 test('日本語の配列一覧にDvorakを含める（#48）', () => {
   const dvorak = LAYOUTS_JA.find((layout) => layout.id === 'dvorak');
 
@@ -89,6 +97,34 @@ test('TK音直入力法は正式名称を表示し、内部idは維持する（#
   assert.equal(oonishi?.name, '大西配列');
   assert.equal(combo?.id, 'oonishi-custom-combo');
   assert.equal(combo?.name, 'TK音直入力法');
+  const desita = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'desita');
+  assert.deepEqual(desita?.inputs, ['d', 's', 't']);
+  assert.deepEqual(desita?.keys, ['m', 'l', 'j']);
+  assert.equal(desita?.group, '語彙拡張');
+  assert.equal(desita?.foldTriggerInputs, undefined);
+
+  const ya = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'ya');
+  const yaku = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'yaku');
+  const atu = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'atu');
+  const ai = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'ai');
+  assert.deepEqual(ya?.foldTriggerInputs, ['i']);
+  assert.deepEqual(yaku?.foldTriggerInputs, ['i', 'a']);
+  assert.deepEqual(atu?.foldTriggerInputs, [',']);
+  assert.deepEqual(ai?.foldTriggerInputs, ['e']);
+
+  const groupCounts = new Map<string, number>();
+  for (const definition of combo?.resolvedComboDefinitions ?? []) {
+    if (definition.group) groupCounts.set(definition.group, (groupCounts.get(definition.group) ?? 0) + 1);
+  }
+  assert.deepEqual(Object.fromEntries(groupCounts), {
+    '語彙拡張': 17,
+    '拗音拡張': 19,
+    '入声拡張': 20,
+    '撥音拡張': 7,
+    '二重母音拡張': 10,
+  });
+  assert.equal(combo?.resolvedComboDefinitions?.length, 73);
+  assert.ok(LAYOUTS_JA.some((layout) => layout.id === 'oonishi-custom-combo'));
   assert.equal(tsuki?.name, '月配列2-263式');
   assert.ok(!oonishi?.name.includes(' '));
   assert.ok(!tsuki?.name.includes(' '));
@@ -291,6 +327,38 @@ test('新下駄配列は7面の直接かな入力を同時押しとして保持�
   assert.deepEqual(layout.map.get('ヴ'), [['d', '/']]);
   assert.equal(layout.legends.has('thumb-l'), false);
   assert.equal(layout.legends.has('thumb-r'), false);
+  for (const sequence of layout.map.values()) assert.equal(sequence.length, 1);
+  assertKanaLayout(layout);
+});
+
+
+test('かわせみ配列+はKikyo版の4拡張を同時打鍵として保持する', () => {
+  const layout = LAYOUT_BY_ID.get('kawasemi-plus')!;
+
+  assert.equal(layout.name, 'かわせみ配列+');
+  assert.deepEqual(layout.map.get('あ'), [[';']]);
+  assert.deepEqual(layout.map.get('けい'), [['h', 'j', 's']]);
+  assert.deepEqual(layout.map.get('きょう'), [['u', 'i', 's']]);
+  assert.deepEqual(layout.map.get('こと'), [['d', 's']]);
+  assert.deepEqual(layout.map.get('そく'), [['thumb-r', 'd', 'j']]);
+  assert.deepEqual(layout.map.get('てつ'), [['thumb-l', 'v']]);
+  assert.deepEqual(layout.map.get('ヴ'), [['t', '8']]);
+  assert.equal(layout.legends.get('thumb-l'), '左親指');
+  assert.equal(layout.legends.get('thumb-r'), '右親指');
+
+  const rightThumb = layout.faces?.find((face) => face.layer === '右親指');
+  const leftThumb = layout.faces?.find((face) => face.layer === '左親指');
+  assert.equal(rightThumb?.inputRole, 'modifier');
+  assert.equal(rightThumb?.triggerPersistence, 'hold-capable');
+  assert.equal(leftThumb?.inputRole, 'modifier');
+  assert.equal(leftThumb?.triggerPersistence, 'hold-capable');
+
+  // 現行schemaでは複合triggerの一部（親指だけ）を保持対象にできないため、
+  // 親指 + 行指定の3キーコンボはwhole-trigger holdに誤解されないようsingleとする。
+  const rightThumbSa = layout.faces?.find((face) =>
+    face.trigger.includes('thumb-r') && face.trigger.includes('d')
+  );
+  assert.equal(rightThumbSa?.triggerPersistence, 'single');
   for (const sequence of layout.map.values()) assert.equal(sequence.length, 1);
   assertKanaLayout(layout);
 });

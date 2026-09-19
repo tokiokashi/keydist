@@ -9,10 +9,12 @@ import { SHIN_KOUME } from './shin-koume.ts';
 import { SHIN_JIS_PREFIX, SHIN_JIS_SIMULTANEOUS } from './shin-jis.ts';
 import { SHINGETA } from './shingeta.ts';
 import { TSUKI_2_263 } from './tsuki-2-263.ts';
+import { KAWASEMI_PLUS } from './kawasemi-plus.ts';
 
 export type {
   ComboCondition,
   ComboDefinition,
+  ComboPresentation,
   Face,
   FaceMode,
   FaceRow,
@@ -21,6 +23,7 @@ export type {
   LayerDefinition,
   LayerKind,
   Layout,
+  ResolvedComboDefinition,
   Sequence,
   Step,
   StepSemantic,
@@ -85,11 +88,8 @@ const ALPHA: Layout[] = [
 
 const ALPHA_BY_ID = new Map(ALPHA.map((l) => [l.id, l]));
 
-/**
- * 英文をそのまま打つ配列。
- * TK音直入力法は日本語のコンボ運用と対で意味を持つので、英文の一覧には出さない。
- */
-export const LAYOUTS: Layout[] = ALPHA.filter((l) => l.id !== 'oonishi-custom');
+/** 英文をそのまま打つ配列。TK音直入力法も英字配置として選択できる。 */
+export const LAYOUTS: Layout[] = ALPHA;
 
 /**
  * 日本語のかなテキストを打つ配列。
@@ -121,6 +121,7 @@ export const LAYOUTS_JA: Layout[] = [
   SHIN_JIS_SIMULTANEOUS,
   SHINGETA,
   TSUKI_2_263,
+  KAWASEMI_PLUS,
 ];
 
 export const LAYOUT_BY_ID = new Map([...LAYOUTS, ...LAYOUTS_JA].map((l) => [l.id, l]));

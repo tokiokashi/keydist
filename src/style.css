@@ -710,8 +710,14 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .shift-key-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 10px; color: var(--muted); font-size: 0.76rem; }
 .shift-key-swatch { padding: 1px 6px; border: 3px solid var(--shift-color); border-radius: 4px; }
 .layer-tab-panel .layer-diagram[hidden] { display: none; }
-.layer-section, .modifier-list, .combo-table { margin-top: 20px; }
-.layer-section h3 { margin-bottom: 8px; }
+.combo-diagram[hidden] { display: none; }
+.combo-diagram-controls { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
+.combo-diagram-controls label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.76rem; }
+.combo-diagram-controls select { min-width: 9em; max-width: 24em; padding: 4px 6px; font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line-strong); border-radius: 4px; }
+.combo-diagram-panel { margin: 0 0 12px; overflow-x: auto; }
+.layer-section, .combo-section, .modifier-list { margin-top: 20px; }
+.combo-table { margin-top: 12px; }
+.layer-section h3, .combo-section h3 { margin-bottom: 8px; }
 .collapsible-list > summary {
   color: var(--muted);
   font-size: 0.82rem;

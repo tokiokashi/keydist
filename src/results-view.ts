@@ -22,7 +22,7 @@ import {
 import type { GeometrySettings } from './geometry-settings.ts';
 import { resolveConditions } from './condition-resolution.ts';
 import { classifyFaces, displayTriggerKeys, faceCells, foldedLayerCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
-import { COMBO_LAYER_ID, SINGLE_LAYER_ID } from './layouts/index.ts';
+import { COMBO_LAYER_ID, SINGLE_LAYER_ID, faceFromEntries } from './layouts/index.ts';
 import type { Face, Layout } from './layouts/index.ts';
 import type { ModeId } from './layout-selection.ts';
 import type { PlaybackViewController } from './playback-view.ts';
@@ -62,6 +62,7 @@ export interface ResultsViewController {
 export function createResultsView(ctx: ResultsViewContext): ResultsViewController {
   const elements = ctx.el;
   let sensitivityDirty = true;
+  const comboDiagramSelection = new Map<string, number>();
 
 function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sort: MatrixSort | null): T[] {
   if (!sort) return rows;
@@ -750,6 +751,8 @@ interface HeatmapValues {
   colorScale: LayerColorScale;
   showHeat: boolean;
   ariaSuffix: string;
+  /** レイヤー図以外でtriggerを強調表示する場合のツールチップ文言。 */
+  triggerTipLabel?: string;
 }
 
 function heatIntensity(count: number, maxCount: number, scale: LayerColorScale): number {
@@ -806,9 +809,10 @@ function renderLayerSvg(
     const share = ((count / Math.max(1, metrics.presses)) * 100).toFixed(1);
     const distance = values.keyDistance.get(key.id) ?? 0;
     const shiftTip = shiftStyle
-      ? `<br><b>${layout.id === 'naginata-v18' && (key.id === THUMB_KEY.LT || key.id === THUMB_KEY.RT)
-        ? `SandS（レイヤー ${shiftStyle.layerIndex}）`
-        : `レイヤー ${shiftStyle.layerIndex} のシフトトリガー`}</b>`
+      ? `<br><b>${values.triggerTipLabel
+        ?? (layout.id === 'naginata-v18' && (key.id === THUMB_KEY.LT || key.id === THUMB_KEY.RT)
+          ? `SandS（レイヤー ${shiftStyle.layerIndex}）`
+          : `レイヤー ${shiftStyle.layerIndex} のシフトトリガー`)}</b>`
       : '';
     const annotationText = annotation ? `<br>${escapeText(annotation)}` : '';
     const tip = showHeat
@@ -845,19 +849,133 @@ function renderLayerSvg(
   </figure>`;
 }
 
-function renderComboTable(combos: readonly Face[], legends: Map<string, string>): string {
-  if (combos.length === 0) return '';
-  const rows = combos.map((face) => {
-    const outputs = [...faceCells(face).values()].join(' / ');
-    return `<tr><td>${escapeText(triggerText(face, legends))}</td><td>${escapeText(outputs)}</td></tr>`;
+function renderComboTable(
+  metrics: Metrics,
+  combos: readonly Face[],
+  layout: Layout,
+  geometry: ReturnType<typeof buildGeometry>,
+): string {
+  const resolvedCombos = layout.resolvedComboDefinitions ?? [];
+  if (combos.length === 0 && resolvedCombos.length === 0) return '';
+
+  type ComboDiagramItem = {
+    face: Face;
+    trigger: string;
+    optionLabel: string;
+  };
+
+  const faceItems: ComboDiagramItem[] = combos.map((face) => {
+    const trigger = triggerText(face, layout.legends);
+    return { face, trigger, optionLabel: trigger };
+  });
+
+  const foldedResolved = new Map<string, {
+    group: string;
+    triggerInputs: readonly string[];
+    triggerKeys: readonly string[];
+    entries: Record<string, string>;
+  }>();
+  for (const combo of resolvedCombos) {
+    if (
+      combo.foldTriggerInputs === undefined
+      || combo.foldTriggerKeys === undefined
+      || combo.foldTargetKey === undefined
+    ) continue;
+
+    const group = combo.group ?? 'コンボ';
+    const key = `${group}\0${combo.foldTriggerKeys.join('\0')}`;
+    const folded = foldedResolved.get(key) ?? {
+      group,
+      triggerInputs: combo.foldTriggerInputs,
+      triggerKeys: combo.foldTriggerKeys,
+      entries: {},
+    };
+    folded.entries[combo.foldTargetKey] = combo.output;
+    foldedResolved.set(key, folded);
+  }
+
+  const resolvedItems: ComboDiagramItem[] = [...foldedResolved.values()].map((folded) => {
+    const trigger = folded.triggerInputs.join(' + ');
+    return {
+      face: {
+        ...faceFromEntries(folded.triggerKeys, 'simultaneous', folded.entries),
+        inputRole: 'composition',
+        triggerPersistence: 'single',
+      },
+      trigger,
+      optionLabel: `${folded.group}: ${trigger}`,
+    };
+  });
+
+  const items = [...faceItems, ...resolvedItems];
+  const selected = items.length === 0
+    ? 0
+    : Math.min(comboDiagramSelection.get(layout.id) ?? 0, items.length - 1);
+  const comboStyles = new Map<Face, LayerShiftStyle>(
+    items.map(({ face }) => [face, { layerIndex: 1, colorSlot: 4 }]),
+  );
+  const emptyCounts = new Map<string, number>();
+  const diagrams = items.map((item, index) => {
+    const diagram = renderLayerSvg(
+      metrics,
+      layout,
+      geometry,
+      { faces: [item.face] },
+      item.optionLabel,
+      [item.face],
+      comboStyles,
+      {
+        keyCounts: emptyCounts,
+        colorCounts: emptyCounts,
+        keyDistance: emptyCounts,
+        maxCount: 1,
+        colorScale: 'linear',
+        showHeat: false,
+        ariaSuffix: '（コンボ配列図）',
+        triggerTipLabel: `コンボ: ${item.trigger}`,
+      },
+    );
+    return diagram.replace(
+      '<figure class="layer-diagram"',
+      `<figure class="layer-diagram combo-diagram" data-combo-diagram="${index}"${index === selected ? '' : ' hidden'}`,
+    );
   }).join('');
-  return `<details class="combo-table collapsible-list"${ctx.getUiState().ui.panels.comboTable ? ' open' : ''}>
-    <summary>コンボ（${combos.length}）</summary>
-    <div class="scroll-x"><table>
-      <thead><tr><th>トリガー</th><th>出力</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>
-  </details>`;
+
+  const options = items.map((item, index) =>
+    `<option value="${index}"${index === selected ? ' selected' : ''}>${escapeText(item.optionLabel)}</option>`
+  ).join('');
+
+  const faceRows = combos.map((face) => {
+    const outputs = [...faceCells(face).values()].join(' / ');
+    return `<tr><td>${escapeText(triggerText(face, layout.legends))}</td><td>${escapeText(outputs)}</td></tr>`;
+  });
+  const resolvedRows = resolvedCombos.map((combo) => {
+    const trigger = combo.inputs.join(' + ');
+    const prefix = combo.group ? `${combo.group}: ` : '';
+    return `<tr><td>${escapeText(prefix + trigger)}</td><td>${escapeText(combo.output)}</td></tr>`;
+  });
+  const rows = [...faceRows, ...resolvedRows].join('');
+
+  const diagramBlock = items.length === 0 ? '' : `
+    <div class="combo-diagram-controls">
+      <label>配列図
+        <select data-combo-face-select data-layout-id="${escapeAttr(layout.id)}">${options}</select>
+      </label>
+    </div>
+    <div class="combo-diagram-panel">${diagrams}</div>`;
+
+  const count = combos.length + resolvedCombos.length;
+  return `<section class="combo-section">
+    <h3>コンボ（${count}）</h3>
+    ${diagramBlock}
+    <details class="combo-table collapsible-list"${ctx.getUiState().ui.panels.comboTable ? ' open' : ''}>
+      <summary>コンボ表</summary>
+      <div class="scroll-x"><table>
+        <thead><tr><th>トリガー</th><th>出力</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </details>
+  </section>`;
 }
 
 function renderModifierList(modifiers: readonly Layer[], legends: Map<string, string>): string {
@@ -1112,7 +1230,7 @@ function renderHeatmap(
     ${renderLayerStats(metrics, entries, hasCombos)}
   </section>`;
   elements.heatmap.innerHTML = layerSection + renderModifierList(groups.modifiers, layout.legends) +
-    renderComboTable(groups.combos, layout.legends);
+    renderComboTable(metrics, groups.combos, layout, geometry);
 }
 
 function syncSensitivityScaleButtons(): void {
@@ -1140,6 +1258,18 @@ function setSensitivityScale(scale: SensitivityScale) {
       if (!button) return;
       e.preventDefault();
       setSensitivityScale(button.dataset.scale as SensitivityScale);
+    });
+    elements.heatmap.addEventListener('change', (e) => {
+      const select = (e.target as Element).closest<HTMLSelectElement>('select[data-combo-face-select]');
+      if (!select) return;
+      const index = Number(select.value);
+      const layoutId = select.dataset.layoutId;
+      if (layoutId) comboDiagramSelection.set(layoutId, index);
+      const container = select.closest('.combo-section');
+      if (!container) return;
+      for (const diagram of container.querySelectorAll<HTMLElement>('[data-combo-diagram]')) {
+        diagram.hidden = Number(diagram.dataset.comboDiagram) !== index;
+      }
     });
     elements.heatmap.addEventListener('click', (e) => {
       const target = (e.target as Element).closest<HTMLButtonElement>('button');

@@ -80,12 +80,35 @@ export interface ComboCondition {
   youonOnly?: boolean;
 }
 
-/** コンボの出力、入力キー、発火条件。 */
+export interface ComboPresentation {
+  /** UIでまとめる規則群。解析には使わない。 */
+  group?: string;
+  /**
+   * 配列図で共通triggerとして畳む論理入力。
+   * 残りがちょうど1キーの時だけ1面へ畳める。
+   */
+  foldTriggerInputs?: readonly string[];
+}
+
+/** コンボの出力、入力キー、発火条件、表示用属性。 */
 export type ComboDefinition = [
   output: string,
   inputs: string[],
   condition?: ComboCondition,
+  presentation?: ComboPresentation,
 ];
+
+/** withCombosで解決済みのコンボ。表示・検証で元定義と物理キー集合を参照する。 */
+export interface ResolvedComboDefinition {
+  output: string;
+  inputs: readonly string[];
+  keys: readonly string[];
+  condition?: ComboCondition;
+  group?: string;
+  foldTriggerInputs?: readonly string[];
+  foldTriggerKeys?: readonly string[];
+  foldTargetKey?: string;
+}
 
 export interface Layout {
   id: string;
@@ -115,6 +138,8 @@ export interface Layout {
    * 失われるかなの境界を使った命中判定と、コンボの命中件数の集計に使う。
    */
   comboConditions?: ReadonlyMap<string, ComboCondition>;
+  /** withCombos由来のコンボ定義。物理キーまで解決済みで、配列図等の表示にも使う。 */
+  resolvedComboDefinitions?: readonly ResolvedComboDefinition[];
   /** 各見出しのSequenceのステップごとの帰属先。合成出力では層が混在しうる */
   stepLayers?: ReadonlyMap<string, readonly string[]>;
   /** 各見出しのSequenceのステップごとに、層操作として押すキー */
@@ -471,10 +496,32 @@ export function withCombos(
   const stepSemantics = new Map(layout.stepSemantics ?? []);
   const layerDefinitions = [...(layout.layerDefinitions ?? [])];
   const comboConditions = new Map(layout.comboConditions);
+  const resolvedComboDefinitions: ResolvedComboDefinition[] = [...(layout.resolvedComboDefinitions ?? [])];
   let hasCombo = layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID);
-  for (const [output, inputs, condition] of combos) {
+  for (const [output, inputs, condition, presentation] of combos) {
     const keys = inputs.map((ch) => layout.map.get(ch)?.[0]?.[0]);
     if (keys.some((k) => k === undefined)) continue;
+    const resolvedKeys = (keys as string[]).map(resolveKeyId);
+    const foldTriggerInputs = presentation?.foldTriggerInputs;
+    const foldTriggerKeys = foldTriggerInputs?.map((ch) => layout.map.get(ch)?.[0]?.[0])
+      .filter((key): key is string => key !== undefined)
+      .map(resolveKeyId);
+    const foldTriggerSet = new Set(foldTriggerKeys ?? []);
+    const foldTargets = foldTriggerKeys !== undefined
+      && foldTriggerInputs !== undefined
+      && foldTriggerKeys.length === foldTriggerInputs.length
+      ? resolvedKeys.filter((key) => !foldTriggerSet.has(key))
+      : [];
+    resolvedComboDefinitions.push({
+      output,
+      inputs: [...inputs],
+      keys: resolvedKeys,
+      ...(condition === undefined ? {} : { condition }),
+      ...(presentation?.group === undefined ? {} : { group: presentation.group }),
+      ...(foldTriggerInputs === undefined ? {} : { foldTriggerInputs: [...foldTriggerInputs] }),
+      ...(foldTriggerKeys === undefined ? {} : { foldTriggerKeys }),
+      ...(foldTargets.length === 1 ? { foldTargetKey: foldTargets[0] } : {}),
+    });
     map.set(output, [keys as string[]]);
     stepLayers.set(output, [COMBO_LAYER_ID]);
     stepTriggerKeys.set(output, [[]]);
@@ -496,6 +543,7 @@ export function withCombos(
     map,
     maxCharLength: maxKeyLength(map.keys()),
     comboConditions,
+    resolvedComboDefinitions,
     stepLayers,
     stepTriggerKeys,
     stepSemantics,
