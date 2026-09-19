@@ -400,10 +400,9 @@ export function fromFaces(
   if (thumbs.LT) {
     const sequence: Sequence = [[THUMB_KEY.LT]];
     map.set(thumbs.LT, sequence);
-    semanticInputSequences.set(
-      thumbs.LT,
-      compileSequenceSemanticInputs(thumbs.LT, sequence, SINGLE_LAYER_ID),
-    );
+    const artifacts = compileSequenceInputArtifacts(thumbs.LT, sequence, SINGLE_LAYER_ID);
+    semanticInputSequences.set(thumbs.LT, artifacts.semanticInputs);
+    baseActionRealizations.set(thumbs.LT, artifacts.baseActionRealizations);
     stepLayers.set(thumbs.LT, [baseLayerId]);
     stepTriggerKeys.set(thumbs.LT, [[]]);
     stepSemantics.set(thumbs.LT, [{
@@ -415,10 +414,9 @@ export function fromFaces(
   if (thumbs.RT) {
     const sequence: Sequence = [[THUMB_KEY.RT]];
     map.set(thumbs.RT, sequence);
-    semanticInputSequences.set(
-      thumbs.RT,
-      compileSequenceSemanticInputs(thumbs.RT, sequence, SINGLE_LAYER_ID),
-    );
+    const artifacts = compileSequenceInputArtifacts(thumbs.RT, sequence, SINGLE_LAYER_ID);
+    semanticInputSequences.set(thumbs.RT, artifacts.semanticInputs);
+    baseActionRealizations.set(thumbs.RT, artifacts.baseActionRealizations);
     stepLayers.set(thumbs.RT, [baseLayerId]);
     stepTriggerKeys.set(thumbs.RT, [[]]);
     stepSemantics.set(thumbs.RT, [{
