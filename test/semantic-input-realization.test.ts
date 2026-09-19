@@ -127,8 +127,8 @@ test('Face simultaneous + orderのdefault groupingはFace sourceどおり1 actio
   assert.ok(semantic);
   assert.ok(base);
   assert.deepEqual(semantic[0].requirements, [
-    { kind: 'order', before: ['thumb-r'], after: ['j'] },
     { kind: 'overlap', keys: ['j', 'thumb-r'] },
+    { kind: 'order', before: ['thumb-r'], after: ['j'] },
   ]);
   assert.deepEqual(base[0].actions, [['thumb-r', 'j']]);
 });
