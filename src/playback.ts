@@ -698,6 +698,25 @@ export function playbackTimingStepDurationMs(
   return step ? Math.max(0, step.endMs - step.startMs) : undefined;
 }
 
+export function playbackTimingActionCount(
+  schedule: readonly PlaybackTimingStep[] | undefined,
+  strokeIndex: number,
+): number {
+  return schedule?.[strokeIndex]?.actionCount ?? 1;
+}
+
+function playbackTimingActionCountRange(
+  schedule: readonly PlaybackTimingStep[] | undefined,
+  start: number,
+  end: number,
+): number {
+  let count = 0;
+  for (let index = start; index < end; index++) {
+    count += playbackTimingActionCount(schedule, index);
+  }
+  return count;
+}
+
 /**
  * §3で確定したbase durationを累積したTiming schedule。
  * allFingerMovementDelay=trueでは、各指の到達可能時刻を追加max制約として適用する。
@@ -1022,7 +1041,7 @@ function playbackEwmaRate(
     if (!(durationMs > 0)) continue;
 
     const decay = 2 ** (-(durationMs / 1000) / halfLifeSeconds);
-    const actionInstant = 1000 / durationMs;
+    const actionInstant = (playbackTimingActionCount(schedule, index) * 1000) / durationMs;
     actionRate = actionRate === undefined
       ? actionInstant
       : decay * actionRate + (1 - decay) * actionInstant;
@@ -1088,7 +1107,7 @@ export function playbackRecentActionsPerSecond(
     schedule,
   );
   return recent && recent.durationMs > 0
-    ? ((recent.end - recent.start) * 1000) / recent.durationMs
+    ? (playbackTimingActionCountRange(schedule, recent.start, recent.end) * 1000) / recent.durationMs
     : undefined;
 }
 
@@ -1201,7 +1220,7 @@ export function playbackRateChartData(
       actionsPerSecond: average === 'ewma'
         ? ewma?.actionsPerSecond
         : recent && recent.durationMs > 0
-          ? ((recent.end - recent.start) * 1000) / recent.durationMs
+          ? (playbackTimingActionCountRange(schedule, recent.start, recent.end) * 1000) / recent.durationMs
           : undefined,
       chain: analysis.chains.some((chain) =>
         cursor - 1 >= chain.startStrokeIndex && cursor - 1 < chain.endStrokeIndex),
