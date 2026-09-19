@@ -9,6 +9,11 @@ import {
   type PlaybackCalibration,
 } from './playback-calibration.ts';
 import type { AggregatedAnalysisResult } from './analysis-aggregate.ts';
+import {
+  DEFAULT_HOLD_START_ACTION_POLICY,
+  hasSeparateHoldStartAction,
+  type HoldStartActionPolicy,
+} from './hold-start-action.ts';
 
 /** 再生速度の入力範囲。実際の打鍵時間や距離モデルとは無関係。 */
 export const PLAYBACK_STEPS_PER_SECOND_MIN = 0.1;
@@ -670,6 +675,10 @@ export interface PlaybackTimingStep {
   strokeIndex: number;
   startMs: number;
   endMs: number;
+  /** このphysical Strokeを何actionとして再生するか。通常1、hold開始分離時は2。 */
+  actionCount: number;
+  /** hold開始virtual actionの終了時刻。未分離ならundefined。 */
+  holdStartEndMs?: number;
 }
 
 export interface PlaybackTimingOptions {
@@ -677,6 +686,8 @@ export interface PlaybackTimingOptions {
   allFingerMovementDelay?: boolean;
   /** allFingerMovementDelay=trueの時にホーム位置を得るため必須。 */
   geometry?: Geometry;
+  /** hold開始を独立actionとして再生へ反映するPolicy。 */
+  holdStartActionPolicy?: HoldStartActionPolicy;
 }
 
 export function playbackTimingStepDurationMs(
@@ -699,6 +710,7 @@ export function playbackTimingSchedule(
   speedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER,
   options: PlaybackTimingOptions = {},
 ): PlaybackTimingStep[] {
+  const holdStartActionPolicy = options.holdStartActionPolicy ?? DEFAULT_HOLD_START_ACTION_POLICY;
   const baseDurations = analysis.strokes.map((_stroke, strokeIndex) =>
     playbackStepDurationMs(
       analysis,
@@ -708,13 +720,32 @@ export function playbackTimingSchedule(
       calibration,
       speedMultiplier,
     ));
+  const holdStartDurations = analysis.strokes.map((stroke, strokeIndex) =>
+    hasSeparateHoldStartAction(stroke, holdStartActionPolicy)
+      ? normalPlaybackStepMs(playbackTransitionRateFromAnalysis(
+          analysis,
+          strokeIndex,
+          stepsPerSecond,
+          calibration,
+        )) / (Number.isFinite(speedMultiplier) && speedMultiplier > 0
+          ? speedMultiplier
+          : DEFAULT_PLAYBACK_SPEED_MULTIPLIER)
+      : 0);
 
   if (!options.allFingerMovementDelay) {
     let atMs = 0;
     return baseDurations.map((durationMs, strokeIndex) => {
       const startMs = atMs;
-      atMs += durationMs;
-      return { strokeIndex, startMs, endMs: atMs };
+      const holdStartDurationMs = holdStartDurations[strokeIndex];
+      const holdStartEndMs = holdStartDurationMs > 0 ? startMs + holdStartDurationMs : undefined;
+      atMs += holdStartDurationMs + durationMs;
+      return {
+        strokeIndex,
+        startMs,
+        endMs: atMs,
+        actionCount: holdStartDurationMs > 0 ? 2 : 1,
+        ...(holdStartEndMs === undefined ? {} : { holdStartEndMs }),
+      };
     });
   }
 
@@ -733,7 +764,9 @@ export function playbackTimingSchedule(
 
   for (const [strokeIndex, stroke] of analysis.strokes.entries()) {
     const startMs = atMs;
-    let endMs = startMs + baseDurations[strokeIndex];
+    const holdStartDurationMs = holdStartDurations[strokeIndex];
+    const holdStartEndMs = holdStartDurationMs > 0 ? startMs + holdStartDurationMs : undefined;
+    let endMs = startMs + holdStartDurationMs + baseDurations[strokeIndex];
 
     // actual Pressだけが新しい移動要求。held-trigger/continueは後段で占有時間だけ延ばす。
     for (const press of stroke.presses) {
@@ -748,7 +781,13 @@ export function playbackTimingSchedule(
       endMs = Math.max(endMs, freeAtMs[press.finger] + moveMs);
     }
 
-    schedule.push({ strokeIndex, startMs, endMs });
+    schedule.push({
+      strokeIndex,
+      startMs,
+      endMs,
+      actionCount: holdStartDurationMs > 0 ? 2 : 1,
+      ...(holdStartEndMs === undefined ? {} : { holdStartEndMs }),
+    });
     atMs = endMs;
 
     const pressedFingers = new Set(stroke.presses.map((press) => press.finger));
