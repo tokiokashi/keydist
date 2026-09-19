@@ -165,6 +165,46 @@ test('BaseActionRealizationは必要physicalKeysの欠落をrejectする', () =>
   );
 });
 
+test('BaseActionRealization.defaultHoldKeysはwhile-held Capabilityとexact matchする', () => {
+  const input: SemanticInput = {
+    ...semanticInput(['d', 'k']),
+    capabilities: [{ kind: 'while-held', keys: ['d'] }],
+  };
+
+  assert.doesNotThrow(() => validateBaseActionRealization({
+    input,
+    actions: [['d', 'k']],
+    defaultHoldKeys: ['d'],
+  }));
+  assert.throws(
+    () => validateBaseActionRealization({
+      input,
+      actions: [['d', 'k']],
+      defaultHoldKeys: [],
+    }),
+    /非空/,
+  );
+  assert.throws(
+    () => validateBaseActionRealization({
+      input,
+      actions: [['d', 'k']],
+      defaultHoldKeys: ['k'],
+    }),
+    /Capabilityと一致/,
+  );
+  assert.throws(
+    () => validateBaseActionRealization({
+      input: {
+        ...input,
+        capabilities: [{ kind: 'while-held', keys: ['d', 'k'] }],
+      },
+      actions: [['d'], ['k']],
+      defaultHoldKeys: ['d', 'k'],
+    }),
+    /1 actionに収まる/,
+  );
+});
+
 test('BaseActionRealizationはalias解決後のphysical key重複をrejectする', () => {
   const input = semanticInput(['thumb-r']);
 

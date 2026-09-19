@@ -23,3 +23,13 @@ export {
   validateBaseActionRealizations,
   type SemanticInputAction,
 } from './realization.ts';
+
+export {
+  DEFAULT_TRIGGER_REALIZATION_POLICY,
+  realizeTriggerActions,
+  type RealizedSemanticAction,
+  type TriggerHoldPhase,
+  type TriggerHoldState,
+  type TriggerRealizationPolicy,
+  type TriggerRealizationResult,
+} from './trigger-realization.ts';

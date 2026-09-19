@@ -18,6 +18,7 @@ export interface SemanticInputAction {
  * - action keyはinput.physicalKeysのsubset
  * - input.physicalKeysをrealization全体で過不足なく1回ずつcover
  * - alias解決後に同一physical keyへ衝突する重複をreject
+ * - defaultHoldKeysは非空・physicalKeys subset・while-held Capabilityとexact match
  */
 export function validateBaseActionRealization(
   realization: BaseActionRealization,
@@ -58,6 +59,39 @@ export function validateBaseActionRealization(
     throw new Error(
       `BaseActionRealizationがinput.physicalKeysを欠落している: ${missing.join(', ')}`,
     );
+  }
+
+  if (realization.defaultHoldKeys !== undefined) {
+    if (realization.defaultHoldKeys.length === 0) {
+      throw new Error('BaseActionRealization.defaultHoldKeysは非空である必要がある');
+    }
+    const normalized = realization.defaultHoldKeys.map(resolveKeyId);
+    if (new Set(normalized).size !== normalized.length) {
+      throw new Error('BaseActionRealization.defaultHoldKeysにphysical key重複がある');
+    }
+    if (normalized.some((key) => !physicalKeySet.has(key))) {
+      throw new Error('BaseActionRealization.defaultHoldKeysがinput.physicalKeys外を参照している');
+    }
+    const matchesCapability = realization.input.capabilities.some((capability) => {
+      if (capability.kind !== 'while-held') return false;
+      const capabilityKeys = capability.keys.map(resolveKeyId);
+      return capabilityKeys.length === normalized.length
+        && capabilityKeys.every((key) => normalized.includes(key));
+    });
+    if (!matchesCapability) {
+      throw new Error(
+        'BaseActionRealization.defaultHoldKeysはwhile-held Capabilityと一致する必要がある',
+      );
+    }
+    const containedInOneAction = realization.actions.some((action) => {
+      const actionKeys = action.map(resolveKeyId);
+      return normalized.every((key) => actionKeys.includes(key));
+    });
+    if (!containedInOneAction) {
+      throw new Error(
+        'BaseActionRealization.defaultHoldKeysはdefault realization上の1 actionに収まる必要がある',
+      );
+    }
   }
 }
 
