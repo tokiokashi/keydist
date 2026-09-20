@@ -125,6 +125,17 @@ test('triggerなしFaceを単打SemanticInputへcompileする', () => {
   });
 });
 
+test('triggerless compositionはexplicit author intentを優先してcomboへcompileする', () => {
+  const [input] = compileFaceSemanticInputs([
+    face([], 'simultaneous', { a: 'きゃ' }, { inputRole: 'composition' }),
+  ]);
+
+  assert.equal(input.layerId, 'combo');
+  assert.deepEqual(input.classifications, ['composition']);
+  assert.deepEqual(input.requirements, []);
+  assert.deepEqual(input.roles, []);
+});
+
 test('simultaneousはoverlap Requirementへcompileする', () => {
   const [input] = compileFaceSemanticInputs([
     face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' }),
