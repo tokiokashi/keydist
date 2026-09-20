@@ -491,6 +491,39 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
     }
   });
 
+  // presentation-only membershipはactivation / layer attributionを増やさない。
+  // 同じphysical operation/outputがrows側ですでにsemanticとして定義済みであることを要求し、
+  // presentation provenanceだけを既存SemanticInputへ追加する。
+  faces.forEach((face, faceIndex) => {
+    if (face.presentationCells === undefined) return;
+    const triggerKeys = sortedUniqueKeys(face.trigger);
+    const semanticCells = new Map(faceCells(face).map((cell) => [cell.key, cell.output] as const));
+
+    for (const [rawKey, output] of Object.entries(face.presentationCells)) {
+      if (output === '' || output === ' ') continue;
+      const cellKey = resolveKeyId(rawKey);
+      const semanticOutput = semanticCells.get(cellKey);
+      if (semanticOutput !== undefined && semanticOutput !== output) {
+        throw new Error(
+          `Face ${faceIndex} のpresentation cell ${cellKey}がsemantic cellと競合している: ${semanticOutput} / ${output}`,
+        );
+      }
+      const physicalKeys = sortedUniqueKeys([...triggerKeys, cellKey]);
+      const requirements = faceRequirements(face, triggerKeys, cellKey);
+      const identity = operationIdentity({ output, physicalKeys, requirements });
+      const existing = byIdentity.get(identity);
+      if (existing === undefined) {
+        throw new Error(
+          `Face ${faceIndex} のpresentation cell ${cellKey}=${output}に対応するSemanticInputがない`,
+        );
+      }
+      existing.faceMemberships = normalizeMemberships([
+        ...existing.faceMemberships,
+        { faceIndex, cellKey },
+      ]);
+    }
+  });
+
   return [...byIdentity.values()]
     .map((input): SemanticInput => ({
       output: input.output,
