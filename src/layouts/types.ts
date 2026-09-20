@@ -307,8 +307,8 @@ export function fromFaces(
         `triggerを持つFaceはtriggerPersistenceを明示する必要がある（face:${faceIndex}）`,
       );
     }
-    if (face.inputRole === undefined) {
-      throw new Error(`FaceはinputRoleを明示する必要がある（face:${faceIndex}）`);
+    if (faceHasOutput(face) && face.inputRole === undefined) {
+      throw new Error(`出力を持つFaceはinputRoleを明示する必要がある（face:${faceIndex}）`);
     }
     const isCombo = face.inputRole === 'composition';
     const layerId = isCombo
