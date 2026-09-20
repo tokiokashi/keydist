@@ -118,6 +118,7 @@ interface InputAlternative {
   semanticInputs: SemanticInputSequence;
   baseRealizations: BaseActionRealizationSequence;
   contextRequirements: InputContextRequirement[];
+  origin: "sequence" | "face" | "combo" | "composed";
 }
 
 type CanonicalInputMap =
@@ -165,6 +166,11 @@ physical activationとは別に、そのpathがruntime context上成立する条
 `{ kind: 'youon-only' }` は拗音ローマ字塊の内部だけで成立するpathを表す。
 これはlogical output全体の条件ではなくalternative単位のapplicabilityである。
 
+さらに、top-level authoring provenanceを `origin` として保持する。
+`sequence / face / combo / composed` は「どのauthoring経路がこのpathを生成したか」を表し、
+classificationやlayerIdとは別軸である。コンボ命中集計はselected pathの
+`origin='combo'` を基準にし、同outputに別のcomposition pathが存在しても誤算入しない。
+
 評価時は次の順で処理する。
 
 ```text
@@ -188,6 +194,8 @@ alternativeとして生成する。`preferOppositeThumb` はキーを書き換�
 authoring defaultを基準に、thumb keyだけが異なる合法variantの中からoutputと反対側の
 親指を使うpathを優先するselection policyである。opposite-hand variantが無ければdefaultを
 維持し、同じlogical outputのnon-thumb alternativeや別方式pathへこのPolicyだけで切り替えない。
+thumb variant生成時の重複判定はaction groupingだけではなくcanonical alternative全体で行い、
+Requirement / Capability / classification / role / layer / context / origin等が異なるpathを失わない。
 
 ### 4.1同時押しは1ステップとして数える
 
