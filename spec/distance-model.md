@@ -185,8 +185,8 @@ logical output matching
   -> Stroke
 ```
 
-`Layout.map / stepLayers / stepTriggerKeys / stepSemantics` はmigration / presentation用に残り得るが、
-evaluateのsemantic authorityではない。
+`Layout.map` はauthoring default / presentation互換として残るが、
+evaluateのsemantic authorityではない。stepLayers / stepTriggerKeys / stepSemanticsは削除済み。
 
 左右どちらの親指でも同じshift semanticを成立させられる配列は、
 `thumbShiftKeys` に合法な親指physical keyを持ち、authoring時に左右両pathをcanonical
@@ -438,8 +438,8 @@ type TriggerRealizationPolicy = {
 - held keyの位置は指位置snapshotには残す
 - 明示release専用Stroke / Press / Release eventは初期実装では導入しない
 
-`StepSemantic / associatedTriggerKeys / associatedTriggerPersistence` はlegacy metadataであり、
-evaluateのhold継続判定には使わない。layerIdやclassificationからhold可能性を推測しない。
+旧step semantic metadataは削除済み。evaluateのhold継続判定はcanonical Requirement /
+Capability / BaseActionRealizationだけを使い、layerIdやclassificationからhold可能性を推測しない。
 
 後段のChain / Transition / Roll / Timingはrealized Stroke streamだけを読み、
 独自にhold可能性を再判定しない。
