@@ -60,7 +60,7 @@ const RAW_CUSTOM_COMBOS: ComboDefinition[] = [
   ['onn', ['j', 'o']],
   ['oti', ['o', 'l']],
   ['otu', ['o', ',']],
-  ['uki', ['u', 'c']],
+  ['uki', ['u', 'j']],
   ['uku', ['u', 'x']],
   ['unn', ['u', 'v']],
   ['uti', ['u', 'l']],
@@ -129,7 +129,7 @@ function comboPresentation(
 
   if (/^[aeiou](ki|ku|ti|tu)$/.test(output)) {
     const foldTriggerInputs =
-      /^(eki|iki|oki|uki)$/.test(output) ? ['c']
+      /^(eki|iki|oki)$/.test(output) ? ['c']
       : /^(aku|iku|oku|uku)$/.test(output) ? ['x']
       : /^(ati|eti|oti|uti)$/.test(output) ? ['l']
       : /^[aeiou]tu$/.test(output) ? [',']
