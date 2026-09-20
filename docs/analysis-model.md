@@ -31,8 +31,11 @@ CanonicalInputMap
   logical output
     ├ InputAlternative A
     │   ├ SemanticInputSequence
-    │   └ BaseActionRealizationSequence
+    │   ├ BaseActionRealizationSequence
+    │   └ contextRequirements
     └ InputAlternative B ...
+        ↓ context requirement filter
+eligible InputAlternative[]
         ↓ Input Alternative Selection Policy
 selected BaseActionRealizationSequence
         ↓ TriggerRealizationPolicy
@@ -71,6 +74,12 @@ canonical pathを追加するconstructor / transformは、同じlogical output�
 canonical alternativeを上書きせずappendする。legacy `Layout.map` はauthoring default /
 presentation互換として先頭pathだけを保持してよいが、canonical alternativesを失ってはならない。
 
+physical activation以外の成立条件は `InputAlternative.contextRequirements` に保持する。
+現在は `{ kind: 'youon-only' }` を持ち、logical output全体ではなくそのpathだけへ適用する。
+runtimeではまずcontext requirementを満たすalternativeだけをeligibleに絞り、1つも無ければ
+その見出し自体を不成立として短い見出しへfallbackする。その後にselection policyを適用する。
+`Layout.comboConditions` はlegacy/presentation provenanceであり、evaluate legalityのauthorityではない。
+
 `preferOppositeThumb` はphysical key rewriteではなくalternative selection policyである。
 左右どちらの親指も合法なpathとしてauthoring時にcanonicalへ入り、policyがoutputと反対側の
 親指を使うpathを優先する。既定ではauthoring上の先頭alternativeを使う。
@@ -86,7 +95,8 @@ Strokeはselected alternativeをrealizeした結果から生成し、
 canonical semanticでは異なる軸を混ぜない。
 
 - `roles`: key単位の特別なsemantic role。現在は `modifier` のみ。
-- `requirements`: overlap / order等の成立条件。
+- `requirements`: physical activation上のoverlap / order成立条件。
+- `contextRequirements`: path単位のruntime context成立条件。
 - `capabilities`: while-held等のrealization能力。
 - `layerId`: aggregation上の帰属先。
 - `classifications`: 他のfactから再構成できないauthor intent。
