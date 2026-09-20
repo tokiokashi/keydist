@@ -119,6 +119,16 @@ test('key pattern pickerはinputRoleからpresentation layer帰属を再推測�
   );
 });
 
+test('key pattern pickerはlayouts registryをruntime importしない', async () => {
+  const source = await readFile(join(SRC, 'key-pattern-picker.ts'), 'utf8');
+
+  assert.doesNotMatch(
+    source,
+    /(?:from|import)\s+['"]\.\/layouts\/index\.ts['"]/,
+    'key-pattern-picker must depend on layouts/types.ts instead of the built-in registry barrel',
+  );
+});
+
 test('Strokeはlegacy Face semanticを再投影しない', async () => {
   const path = join(SRC, 'evaluate.ts');
   const source = await readFile(path, 'utf8');
