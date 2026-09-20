@@ -143,6 +143,41 @@ test('単打面率は単打面の1キー直接出力だけを文字数ベース�
   near(romajiMetrics.singleTapLayerRate, 50, 'ローマ字: 1キーの「あ」だけを数え、2打鍵の「か」は含めない');
 });
 
+test('単打面率はlegacy inputRoleではなくcanonical classificationをauthorityにする', () => {
+  const layout = fromKana('tap-authority', 'tap-authority', {
+    あ: [['f']],
+  });
+  const trace = evaluate('あ', layout, geometry, opts());
+
+  const legacyCompositionOnly = {
+    ...trace,
+    strokes: trace.strokes.map((stroke) => ({
+      ...stroke,
+      inputRole: 'composition' as const,
+      classifications: [],
+    })),
+  };
+  near(
+    computeMetrics(legacyCompositionOnly, geometry).singleTapLayerRate,
+    100,
+    'legacy inputRole=compositionだけでは単打面から除外しない',
+  );
+
+  const canonicalComposition = {
+    ...trace,
+    strokes: trace.strokes.map((stroke) => ({
+      ...stroke,
+      inputRole: 'layer' as const,
+      classifications: ['composition'] as const,
+    })),
+  };
+  near(
+    computeMetrics(canonicalComposition, geometry).singleTapLayerRate,
+    0,
+    'composition classificationがあればlegacy inputRole=layerでも単打面から除外する',
+  );
+});
+
 test('単打面率は文字数、単打率・1キー率はaction数を分母にする', () => {
   const layout = fromKana('rate-bases', 'rate-bases', {
     きゃ: [['f']],
