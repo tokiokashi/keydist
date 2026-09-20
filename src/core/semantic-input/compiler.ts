@@ -3,6 +3,7 @@ import { validateBaseActionRealizations } from './realization.ts';
 import type { Face } from '../../layouts/types.ts';
 import type {
   BaseActionRealizationSequence,
+  CanonicalInputMap,
   FaceMembership,
   InputAlternative,
   InputCapability,
@@ -507,4 +508,61 @@ export function compileSequenceInputAlternative(
     semanticInputs: artifacts.semanticInputs,
     baseRealizations: artifacts.baseActionRealizations,
   };
+}
+
+
+const samePhysicalKeySet = (
+  left: readonly PhysicalKeyId[],
+  right: readonly PhysicalKeyId[],
+): boolean => {
+  const l = sortedUniqueKeys(left);
+  const r = sortedUniqueKeys(right);
+  return l.length === r.length && l.every((key, index) => key === r[index]);
+};
+
+/**
+ * 2つのconcrete input pathが、現在証明できる範囲で同時成立し得るかを判定する。
+ *
+ * sequence長違い / prefix relation等のprecedenceはここでは証明しない。
+ * Capability / classification / action grouping差はactivation排他の根拠にしない。
+ */
+const activationPathsCanConflict = (
+  left: InputAlternative,
+  right: InputAlternative,
+): boolean => {
+  if (left.semanticInputs.length !== right.semanticInputs.length) return false;
+
+  return left.semanticInputs.every((leftInput, index) => {
+    const rightInput = right.semanticInputs[index];
+    if (!samePhysicalKeySet(leftInput.physicalKeys, rightInput.physicalKeys)) return false;
+    return !requirementsMutuallyExclusive(
+      leftInput.requirements,
+      rightInput.requirements,
+    );
+  });
+};
+
+/**
+ * CanonicalInputMapのkeymap境界invariantを検証する。
+ *
+ * 異なるlogical outputに対して、同じphysical activation pathまたは
+ * 同じphysicalKeys + 両立可能Requirement setを持つpathが共存する場合は曖昧なのでrejectする。
+ */
+export function validateCanonicalInputMap(inputs: CanonicalInputMap): void {
+  const paths = [...inputs].flatMap(([output, alternatives]) =>
+    alternatives.map((alternative) => ({ output, alternative })));
+
+  for (let leftIndex = 0; leftIndex < paths.length; leftIndex++) {
+    const left = paths[leftIndex];
+    for (let rightIndex = leftIndex + 1; rightIndex < paths.length; rightIndex++) {
+      const right = paths[rightIndex];
+      if (left.output === right.output) continue;
+      if (!activationPathsCanConflict(left.alternative, right.alternative)) continue;
+
+      throw new Error(
+        `異なるlogical outputに同時成立し得るcanonical activation pathがある: `
+        + `${left.output} / ${right.output}`,
+      );
+    }
+  }
 }
