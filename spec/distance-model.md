@@ -702,26 +702,31 @@ D / C                       [u/文字]
 
 **11.5入力文字あたりのアクション数**
 
-physical Stroke数とPolicy上のaction数は分離する。
+action数は `ActionRealizationPolicy` 適用後のrealized Stroke streamから数える。
 
 ```
-S = realized Stroke数
-A_total = S + virtual hold-start action数
-A = A_total / C             [アクション/文字]
+S = ActionRealizationPolicy適用後のrealized Stroke数
+A = S / C                    [アクション/文字]
 ```
 
-基本は1 realized Stroke = 1 action（§4.1。同時押し・コンボも1 action）。
+現行pipelineでは1 realized Stroke = 1 analytic action（§4.1）。
 
-ただし #220 の `HoldStartActionPolicy.countAsSeparateStep=true` の場合だけ、
-layer / modifierのoutputと同一Strokeにrealizeされた `held-trigger/start` を
-追加のvirtual actionとして1件数える。compositionは対象外。
-`prefix` 等ですでにtrigger-only Strokeが独立して存在する場合も追加しない。
+#220 のhold開始を分離する設定は `ActionRealizationPolicy.holdStart='separate'` へ移行した。
+layer / modifierのoutputと同一actionにrealizeされた `held-trigger/start` は、
 
-このPolicyは**action計上だけ**を変える。`Metrics.strokes` は常にphysical `S` を保持し、
-`Metrics.actions` だけが `A_total` を持つ。`meanPerStroke`、同指連続率など
-physical Strokeを分母にする既存指標は `S` を使い続ける。
-realized Stroke列・距離・Press数・Chain / Transition / Timingは変更しない。
-既定は `false` で従来互換。
+```text
+[held trigger + fresh output]
+    ↓
+[held trigger / start]
+[fresh output / held trigger continue]
+```
+
+としてStroke生成前に分割する。compositionは対象外。
+`prefix` 等ですでにtrigger-only actionが独立している場合も追加分割しない。
+
+したがってMetricsだけのvirtual action補正は行わない。Policy変更後は
+Chain / Transition / Metrics / Timing / Playbackがすべて同じrealized Stroke列を見る。
+既定 `holdStart='combined'` は従来の1 Stroke groupingを維持する。
 
 `C` は §11.4と同じ、入力文字数（ローマ字展開・コンボ結合の前）。ローマ字配列は
 綴りが同じなら配置に依らず同じ値になる。この軸で差が付くのはコンボとかな直接入力のみ
@@ -783,8 +788,8 @@ prefix / suffixシフトは入力単位が複数Strokeにまたがるため、�
 単打とは数えない。simultaneousな複数キー入力、コンボ、hold継続中の
 `held-trigger` 依存入力も単打には含めない。
 
-`held-trigger/start` を独立actionとして数えるPolicyでは、そのvirtual actionも分母 `A` に
-含める。ただしカナを直接出力するactionではないため単打の分子には含めない。
+`holdStart='separate'` では先行trigger Strokeも分母 `A` に含める。
+ただしカナを直接出力するactionではないため単打の分子には含めない。
 
 **11.5.3 1キー率**
 
@@ -801,9 +806,8 @@ singleKeyRate = K1 / A × 100       [%]
 1キーactionも分子へ入れる。逆に、1 actionで複数キーを同時入力する場合は、
 1本の指で複数キーを押す場合も含めて分子へ入れない。
 
-`held-trigger/start` を独立actionとして数えるPolicyでは、同一physical Stroke内に
-realizeされたtriggerとoutputを別actionとして扱う。各actionが1物理キーだけなら、
-それぞれ1キーactionとして分子 `K1` に入れる。
+`holdStart='separate'` ではtriggerとoutputが別realized Strokeになる。
+各Strokeが1物理キーだけなら、それぞれ1キーactionとして分子 `K1` に入れる。
 
 この指標は「単打」というかな入力上の意味を持たず、純粋に1 actionあたりの入力キー数を見る。
 比較表では **単打面率 → 単打率 → 1キー率** の順に並べる。単打率と1キー率は同じ
