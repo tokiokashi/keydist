@@ -9,7 +9,7 @@ export interface ActionRealizationPolicy {
    * while-held開始とfresh outputが同一actionにrealizeされた場合のanalytic action grouping。
    *
    * combined: trigger/outputを1 actionのまま扱う。
-   * separate: hold開始を先行actionへ分け、fresh outputをheld state下の後続actionへ分ける。
+   * separate: semantic orderを保てる場合だけhold開始とfresh outputを別actionへ分ける。
    */
   readonly holdStart: HoldStartActionGrouping;
 }
@@ -34,8 +34,43 @@ const selectKeys = (
 ): PhysicalKeyId[] =>
   canonicalKeys(keys).filter((key) => selected.has(key));
 
+const intersects = (
+  keys: readonly PhysicalKeyId[],
+  selected: ReadonlySet<PhysicalKeyId>,
+): boolean => canonicalKeys(keys).some((key) => selected.has(key));
+
 /**
- * 1つのhold-start actionを、必要な場合だけ
+ * hold groupをfresh groupより先のanalytic actionへ分けても、
+ * canonical order Requirementを壊さない場合だけtrue。
+ *
+ * Requirementからdefault groupingを推測するのではなく、Policy変換後の
+ * streamがsemanticに反しないことだけを検証する。
+ *
+ * - held -> fresh を要求: split可能
+ * - fresh -> held を要求: このPolicyのheld-first splitでは表現しない
+ * - 同じgroupがorder境界の両側へ跨る: conservativeにcombined維持
+ */
+function allowsHeldFirstSplit(
+  action: RealizedSemanticAction,
+  held: ReadonlySet<PhysicalKeyId>,
+  fresh: ReadonlySet<PhysicalKeyId>,
+): boolean {
+  return action.input.requirements.every((requirement) => {
+    if (requirement.kind !== 'order') return true;
+
+    const beforeHeld = intersects(requirement.before, held);
+    const afterHeld = intersects(requirement.after, held);
+    const beforeFresh = intersects(requirement.before, fresh);
+    const afterFresh = intersects(requirement.after, fresh);
+
+    if ((beforeHeld && afterHeld) || (beforeFresh && afterFresh)) return false;
+    if (beforeFresh && afterHeld) return false;
+    return true;
+  });
+}
+
+/**
+ * 1つのhold-start actionを、semantic orderを保てる場合だけ
  *
  *   [held trigger + fresh output]
  *
@@ -45,8 +80,8 @@ const selectKeys = (
  *
  * へ分ける。
  *
- * Requirementからgroupingを推測しない。Trigger realizationが確定した
- * heldKeys / holdPhase / participation factだけを使う。
+ * overlap等のRequirementからgrouping自体は推測しない。
+ * order RequirementはPolicy変換のsemantic validity gateとしてのみ使う。
  */
 function separateHoldStartAction(
   action: RealizedSemanticAction,
@@ -65,6 +100,8 @@ function separateHoldStartAction(
   const freshOutputKeys = selectKeys(action.outputKeys, freshSet);
   // prefix等、hold開始自体が既にtrigger-only actionなら分割しない。
   if (freshOutputKeys.length === 0) return [action];
+
+  if (!allowsHeldFirstSplit(action, heldSet, freshSet)) return [action];
 
   const holdStart: RealizedSemanticAction = {
     ...action,
@@ -90,7 +127,8 @@ function separateHoldStartAction(
 /**
  * Trigger realization済みのaction streamへanalytic grouping policyを適用する。
  *
- * defaultはidentity。semantic成立条件やhold可否はここで再判定しない。
+ * defaultはidentity。Requirementはgroupingの推測には使わず、
+ * policy変換がcanonical semanticを壊さないためのvalidity gateにだけ使う。
  */
 export function applyActionRealizationPolicy(
   actions: readonly RealizedSemanticAction[],
