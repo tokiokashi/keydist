@@ -119,7 +119,14 @@ export function validate(rows: string[]): string[] {
 export function toLayout(def: UserLayout): Layout {
   const imported = def.sequences !== undefined || def.legends !== undefined;
   const rows = def.rows.map((r, i) => (r.trim() === '' && !imported ? QWERTY_LEGEND[i] : r));
-  const layout = fromRows(def.id, def.name, rows);
+  // imported形式は物理spaceを機能キーとして扱う場合があるため、
+  // syntheticなthumb-r -> ' ' を足さず、明示されたsequenceだけをkeymapへ入れる。
+  const layout = fromRows(
+    def.id,
+    def.name,
+    rows,
+    imported ? {} : { RT: ' ' },
+  );
   if (!def.sequences && !def.legends) return { ...layout, homeKeys: def.homeKeys };
   const map = new Map(layout.map);
   const canonicalInputs = new Map<string, InputAlternative[]>(
