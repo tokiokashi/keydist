@@ -8,6 +8,7 @@ import type {
   InputAlternative,
   InputCapability,
   InputClassification,
+  InputContextRequirement,
   KeyRole,
   PhysicalKeyId,
   Requirement,
@@ -80,6 +81,13 @@ const normalizeClassifications = (
   classifications: readonly InputClassification[],
 ): InputClassification[] =>
   [...new Set(classifications)].sort(compareString);
+
+const normalizeContextRequirements = (
+  requirements: readonly InputContextRequirement[],
+): InputContextRequirement[] => {
+  const byKind = new Map(requirements.map((requirement) => [requirement.kind, requirement]));
+  return [...byKind.values()].sort((left, right) => compareString(left.kind, right.kind));
+};
 
 const normalizeRoles = (roles: readonly KeyRole[]): KeyRole[] => {
   const unique = new Map<string, KeyRole>();
@@ -502,11 +510,13 @@ export function compileSequenceInputAlternative(
   sequence: readonly (readonly PhysicalKeyId[])[],
   layerId: string,
   classifications: readonly InputClassification[] = [],
+  contextRequirements: readonly InputContextRequirement[] = [],
 ): InputAlternative {
   const artifacts = compileSequenceInputArtifacts(output, sequence, layerId, classifications);
   return {
     semanticInputs: artifacts.semanticInputs,
     baseRealizations: artifacts.baseActionRealizations,
+    contextRequirements: normalizeContextRequirements(contextRequirements),
   };
 }
 
