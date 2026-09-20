@@ -545,3 +545,40 @@ test('preferOppositeThumbはnon-thumb別方式alternativeへ切り替えない',
     ['q', 'thumb-l'],
   );
 });
+
+
+test('same-output direct alternativeはcomboのyouonOnlyに巻き込まれない', () => {
+  const base = fromKana('condition-scope', 'condition-scope', [
+    ['a', [['f']]],
+    ['b', [['j']]],
+    ['ab', [['q']]],
+  ]);
+  const layout = withCombos('condition-scope-combo', 'condition-scope-combo', base, [
+    ['ab', ['a', 'b'], { youonOnly: true }],
+  ]);
+
+  const trace = evaluate('ab', layout, geometry, opts());
+  assert.equal(trace.skipped, 0);
+  assert.deepEqual(
+    trace.strokes.flatMap((stroke) =>
+      stroke.presses.flatMap((press) => press.keys.map((key) => key.id))),
+    ['q'],
+  );
+  assert.deepEqual(trace.comboHits, [], 'selected direct alternativeはcombo hitに数えない');
+});
+
+test('youonOnlyしかない長い見出しは拗音外でeligibleにならず短い見出しへfallbackする', () => {
+  const base = fromKana('condition-fallback', 'condition-fallback', {
+    y: [['q']],
+    a: [['w']],
+    k: [['e']],
+    u: [['r']],
+  });
+  const layout = withCombos('condition-fallback-combo', 'condition-fallback-combo', base, [
+    ['yaku', ['y', 'a', 'k', 'u'], { youonOnly: true }],
+  ]);
+
+  const trace = evaluate('yaku', layout, geometry, opts());
+  assert.deepEqual(trace.strokes.map((stroke) => stroke.char), ['y', 'a', 'k', 'u']);
+  assert.deepEqual(trace.comboHits, []);
+});
