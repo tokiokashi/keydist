@@ -262,6 +262,14 @@ npm run build      # 型検査 + ビルド
 コミット規約・ブランチ運用は [CONTRIBUTING.md](CONTRIBUTING.md)にあります。
 clone直後に `git config core.hooksPath .githooks` を1度実行してください。
 
+## 数値の出どころについて
+
+本リポジトリが出力した数値と、改変版や第三者のツールが出力した数値は別物です。
+keydist の数値として示されたものについて回答できるのは、本リポジトリの出力に限ります。
+
+数値を引用する時は、画面に表示される条件（形状・運指・ホーム・条件差分）も併記してください。
+設定が違えば同じ配列でも数値は変わります。
+
 ## ライセンス
 
 Apache-2.0。詳細は [LICENSE](LICENSE) と [NOTICE](NOTICE)。
