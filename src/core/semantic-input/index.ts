@@ -10,6 +10,7 @@ export type {
   FaceMembership,
   InputCapability,
   InputClassification,
+  InputContextRequirement,
   KeyRole,
   PhysicalKeyId,
   Requirement,
