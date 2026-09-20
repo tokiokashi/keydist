@@ -59,7 +59,7 @@ test('Face semanticは推測せず明示を要求する', () => {
     () => fromFaces('missing-role', 'missing-role', [
       { trigger: [], mode: 'simultaneous', rows: faceAtF('あ') },
     ]),
-    /出力を持つFaceはinputRoleを明示する必要がある|FaceはinputRoleを明示する必要がある/,
+    /inputRoleを明示する必要がある/,
   );
 
   const face: Face = {
