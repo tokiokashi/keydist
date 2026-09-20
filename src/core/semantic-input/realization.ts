@@ -306,5 +306,9 @@ export function mapInputAlternativePhysicalKeys(
     return mapped;
   });
 
-  return { semanticInputs, baseRealizations };
+  return {
+    semanticInputs,
+    baseRealizations,
+    contextRequirements: alternative.contextRequirements,
+  };
 }
