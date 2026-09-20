@@ -329,6 +329,14 @@ test('層操作キーと出力キーを同時押しの中で分離する', () =>
 
     assert.deepEqual(trace.strokes[0].triggerKeys, [trigger], `${layoutId} のトリガー`);
     assert.deepEqual(trace.strokes[0].pairedTriggerKeys, [trigger], `${layoutId} の対向トリガー`);
+
+    const withoutFaceMetadata = { ...layout, faces: undefined, faceLayerIds: undefined };
+    const canonicalOnlyTrace = evaluate(text, withoutFaceMetadata, geometry, opts());
+    assert.deepEqual(
+      canonicalOnlyTrace.strokes[0].pairedTriggerKeys,
+      [trigger],
+      `${layoutId} はFace metadataなしでもcanonical roleから対向トリガーを判定する`,
+    );
     assert.equal(layer.keyCounts.get(trigger), 1, `${layoutId} のトリガー実押下`);
     assert.equal(layer.keyCounts.get(output), 1, `${layoutId} の出力実押下`);
     assert.equal(layer.triggerKeyCounts.get(trigger), 1, `${layoutId} のトリガー集計`);
