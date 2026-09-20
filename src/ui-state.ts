@@ -37,9 +37,9 @@ import {
   type TriggerRealizationPolicy,
 } from './trigger-realization.ts';
 import {
-  DEFAULT_HOLD_START_ACTION_POLICY,
-  type HoldStartActionPolicy,
-} from './hold-start-action.ts';
+  DEFAULT_ACTION_REALIZATION_POLICY,
+  type ActionRealizationPolicy,
+} from './core/semantic-input/action-realization.ts';
 
 export const UI_STATE_STORAGE_KEY = 'keydist:ui-state';
 export const UI_STATE_VERSION = 1;
@@ -69,7 +69,7 @@ export interface UiStateConditionsDefaults {
   chain: ChainPolicy;
   arpeggioPolicy: ArpeggioPolicy;
   triggerRealization: TriggerRealizationPolicy;
-  holdStartAction: HoldStartActionPolicy;
+  actionRealization: ActionRealizationPolicy;
 }
 
 export interface UiPlaybackState {
@@ -125,7 +125,7 @@ export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
   chain: { ...DEFAULT_CHAIN_POLICY },
   arpeggioPolicy: { ...DEFAULT_ARPEGGIO_POLICY },
   triggerRealization: { ...DEFAULT_TRIGGER_REALIZATION_POLICY },
-  holdStartAction: { ...DEFAULT_HOLD_START_ACTION_POLICY },
+  actionRealization: { ...DEFAULT_ACTION_REALIZATION_POLICY },
 };
 
 export interface UiStateV1 {
@@ -340,13 +340,13 @@ function triggerRealizationPolicy(
   };
 }
 
-function holdStartActionPolicy(
+function actionRealizationPolicy(
   value: unknown,
-  fallback: HoldStartActionPolicy,
-): HoldStartActionPolicy {
+  fallback: ActionRealizationPolicy,
+): ActionRealizationPolicy {
   const source = record(value);
   return {
-    countAsSeparateStep: boolean(source.countAsSeparateStep, fallback.countAsSeparateStep),
+    holdStart: choice(source.holdStart, ['combined', 'separate'] as const, fallback.holdStart),
   };
 }
 
@@ -419,10 +419,10 @@ function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults
       DEFAULT_TRIGGER_REALIZATION_POLICY,
     );
   }
-  if (isRecord(source.holdStartAction)) {
-    result.holdStartAction = holdStartActionPolicy(
-      source.holdStartAction,
-      DEFAULT_HOLD_START_ACTION_POLICY,
+  if (isRecord(source.actionRealization)) {
+    result.actionRealization = actionRealizationPolicy(
+      source.actionRealization,
+      DEFAULT_ACTION_REALIZATION_POLICY,
     );
   }
   // 旧ArpeggioConditionsから意味が一致するincludeThumbだけ移行する。
@@ -467,7 +467,7 @@ export function sanitizeConditionDefaults(
     chain: values.chain ?? fallback.chain,
     arpeggioPolicy: values.arpeggioPolicy ?? fallback.arpeggioPolicy,
     triggerRealization: values.triggerRealization ?? fallback.triggerRealization,
-    holdStartAction: values.holdStartAction ?? fallback.holdStartAction,
+    actionRealization: values.actionRealization ?? fallback.actionRealization,
   };
 }
 
