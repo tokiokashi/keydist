@@ -2,7 +2,6 @@ import { ALL_FINGERS, dist, resolveKeyId, type Finger, type Geometry, type Key, 
 import {
   COMBO_LAYER_ID,
   SINGLE_LAYER_ID,
-  type ComboCondition,
   type HoldPhase,
   type InputRole,
   type LayerDefinition,
@@ -16,6 +15,7 @@ import {
   type InputAlternative,
   type InputAlternativeSet,
   type InputClassification,
+  type InputContextRequirement,
   type RealizedSemanticAction,
   type SemanticInput,
   type TriggerHoldState,
@@ -152,7 +152,13 @@ export function evaluate(
   const errors: string[] = [];
   const seen = new Set<string>();
   const comboHits: string[] = [];
-  const comboConditions = layout.comboConditions ?? new Map<string, ComboCondition>();
+  const resolvedComboDefinitions = layout.resolvedComboDefinitions ?? [];
+  const comboDefinitionOutputs = new Set(
+    resolvedComboDefinitions.map((definition) => definition.output),
+  );
+  const comboDefinitions = resolvedComboDefinitions.length
+    || layout.comboConditions?.size
+    || 0;
   const layerTriggerKeys = new Map<string, Set<string>>();
   for (const face of layout.faces ?? []) {
     const layerId = layout.faceLayerIds?.get(face);
@@ -166,7 +172,7 @@ export function evaluate(
     kind: 'layer' as const,
     label: '単打',
   }]];
-  if (comboConditions.size > 0 && !layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID)) {
+  if (comboDefinitions > 0 && !layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID)) {
     layerDefinitions.push({ id: COMBO_LAYER_ID, kind: 'combo', label: 'コンボ' });
   }
   let skipped = 0;
@@ -204,9 +210,15 @@ export function evaluate(
     for (let len = Math.min(maxLen, chars.length - cursor); len >= 1; len--) {
       const candidate = chars.slice(cursor, cursor + len).join('');
       const found = layout.canonicalInputs.get(candidate);
-      const condition = comboConditions.get(candidate);
-      if (found && (!condition?.youonOnly || canFireYouonOnlyCombo(cursor, chars, chunkRanges))) {
-        alternatives = found;
+      const eligible = found?.filter((alternative) =>
+        alternativeContextSatisfied(
+          alternative.contextRequirements,
+          cursor,
+          chars,
+          chunkRanges,
+        ));
+      if (eligible && eligible.length > 0) {
+        alternatives = eligible;
         char = candidate;
         consumed = len;
         break;
@@ -230,7 +242,6 @@ export function evaluate(
       ? chunkRanges.find((range) => range.start < inputEnd && inputStart < range.end)?.start ?? inputStart
       : inputStart;
     cursor += consumed;
-    if (comboConditions.has(char)) comboHits.push(char);
 
     const selectedAlternative = selectInputAlternative(
       alternatives,
@@ -238,6 +249,13 @@ export function evaluate(
       geometry,
       options,
     );
+    if (comboDefinitionOutputs.has(char)
+      && selectedAlternative.semanticInputs.some((input) =>
+        input.layerId === COMBO_LAYER_ID
+        && input.classifications.includes('composition'))) {
+      comboHits.push(char);
+    }
+
     const realized = realizeTriggerActions(
       selectedAlternative.baseRealizations,
       options.triggerRealizationPolicy ?? DEFAULT_TRIGGER_REALIZATION_POLICY,
@@ -347,7 +365,7 @@ export function evaluate(
     skipped,
     inputChars: [...text].length,
     comboHits,
-    comboDefinitions: comboConditions.size,
+    comboDefinitions,
     layerDefinitions,
     errors,
   };
@@ -560,6 +578,20 @@ interface RomajiChunkRange {
   end: number;
   kana: string;
   kanaLength: number;
+}
+
+function alternativeContextSatisfied(
+  requirements: readonly InputContextRequirement[],
+  cursor: number,
+  chars: string[],
+  chunks: RomajiChunkRange[],
+): boolean {
+  return requirements.every((requirement) => {
+    if (requirement.kind === 'youon-only') {
+      return canFireYouonOnlyCombo(cursor, chars, chunks);
+    }
+    return false;
+  });
 }
 
 function canFireYouonOnlyCombo(cursor: number, chars: string[], chunks: RomajiChunkRange[]): boolean {
