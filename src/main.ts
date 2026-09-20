@@ -1295,7 +1295,7 @@ function conditionRow(
 
   if (tab === 'trigger') {
     const realization = value('triggerRealization');
-    const action = value('holdStartAction');
+    const action = value('actionRealization');
     const fields = document.createElement('div');
     fields.className = 'condition-fields';
 
@@ -1311,12 +1311,12 @@ function conditionRow(
     const actionLabel = document.createElement('label');
     const actionInput = document.createElement('input');
     actionInput.type = 'checkbox';
-    actionInput.checked = action.countAsSeparateStep;
+    actionInput.checked = action.holdStart === 'separate';
     actionInput.disabled = !enabled;
     actionInput.addEventListener('change', () =>
-      commitCondition(layout?.id, 'holdStartAction', {
+      commitCondition(layout?.id, 'actionRealization', {
         ...action,
-        countAsSeparateStep: actionInput.checked,
+        holdStart: actionInput.checked ? 'separate' : 'combined',
       }));
     actionLabel.append(actionInput, ' hold開始を独立actionとしてrealizeする');
 
