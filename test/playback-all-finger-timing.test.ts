@@ -70,7 +70,6 @@ const stroke = (
   inputChar: String(index),
   inputIndex: index,
   layerId: 'single',
-  inputRole: 'layer',
   classifications: [],
   triggerKeys: [],
   pairedTriggerKeys: [],
