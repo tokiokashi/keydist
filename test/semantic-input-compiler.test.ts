@@ -15,6 +15,7 @@ import {
   fromRows,
   withCombos,
   withComposedOutputs,
+  withThumbShiftAlternatives,
 } from '../src/layouts/index.ts';
 import { faceFromEntries, type Face, type FaceMode } from '../src/layouts/types.ts';
 
@@ -679,4 +680,45 @@ test('composed alternativeはsourceとmarkのcontext requirementを引き継ぐ'
   assert.ok(alternatives.length > 0);
   assert.ok(alternatives.every((alternative) =>
     alternative.contextRequirements.some((requirement) => requirement.kind === 'youon-only')));
+});
+
+
+test('thumb派生はactionが同じでもsemanticが異なるalternativeを落とさない', () => {
+  const base = fromFaces('thumb-semantic-alts', 'thumb-semantic-alts', [
+    face(['thumb-r'], 'simultaneous', { q: 'x' }),
+    face(['thumb-r'], 'simultaneous', { q: 'x' }, { triggerOrder: 'prefix' }),
+  ]);
+  const before = base.canonicalInputs.get('x');
+  assert.ok(before);
+  assert.equal(before.length, 2);
+  assert.deepEqual(before.map((alternative) => alternative.origin), ['face', 'face']);
+
+  const layout = withThumbShiftAlternatives(
+    base,
+    'thumb-r',
+    ['thumb-r', 'thumb-l'],
+  );
+  const alternatives = layout.canonicalInputs.get('x');
+  assert.ok(alternatives);
+  assert.equal(alternatives.length, 4);
+
+  const leftThumb = alternatives.filter((alternative) =>
+    alternative.semanticInputs[0].physicalKeys.includes('thumb-l'));
+  assert.equal(leftThumb.length, 2);
+  assert.deepEqual(
+    leftThumb.map((alternative) => alternative.semanticInputs[0].requirements.length).sort(),
+    [1, 2],
+    'overlapだけ / overlap+order の両semantic pathを保持する',
+  );
+});
+
+test('withCombos由来pathはtop-level originをcomboとして保持する', () => {
+  const base = fromKana('combo-origin', 'combo-origin', {
+    a: [['f']],
+    b: [['j']],
+  });
+  const layout = withCombos('combo-origin-2', 'combo-origin-2', base, [
+    ['ab', ['a', 'b']],
+  ]);
+  assert.equal(layout.canonicalInputs.get('ab')?.[0]?.origin, 'combo');
 });
