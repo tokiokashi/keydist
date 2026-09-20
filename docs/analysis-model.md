@@ -94,8 +94,8 @@ Requirement / Capability / classification / role / layer / context / origin等�
 opposite-hand variantが無ければdefaultを維持する。同じoutputのnon-thumb pathや
 別方式alternativeへ `preferOppositeThumb` だけを理由に切り替えない。
 
-Strokeはselected alternativeをrealizeした結果から生成し、
-`Layout.map / stepLayers / stepTriggerKeys / stepSemantics` をsemantic authorityとして読まない。
+Strokeはselected alternativeをrealizeした結果から生成する。
+`Layout.map` はauthoring default / presentation互換として残るが、semantic authorityではない。
 
 ### Semantic role / classification
 
@@ -132,8 +132,7 @@ realizeTriggerActions()
 RealizedSemanticAction
 ```
 
-で行う。`StepSemantic / associatedTriggerKeys / associatedTriggerPersistence` はlegacy metadataであり、
-evaluateのauthorityではない。
+で行う。旧step semantic metadataは削除済みで、evaluateはcanonical realizationだけをauthorityとする。
 
 `while-held` Capabilityは保持できる能力であって、必ずholdする指定ではない。
 既定 `useHold=false` ではbase realizationをそのまま使う。`useHold=true` の場合だけ、
