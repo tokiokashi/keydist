@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  CONDITION_BUNDLE_VERSION,
   conditionBundleFromState,
   parseConditionBundle,
   serializeConditionBundle,
@@ -20,6 +21,20 @@ const state = () => createDefaultUiState({
   textPanelOpen: true,
   usePlaybackCalibration: false,
   selectedLayouts: { en: ['qwerty'], ja: ['qwerty'] },
+});
+
+test('ActionRealizationPolicyへの保存schema変更でcondition bundle versionを2へ上げる', () => {
+  assert.equal(CONDITION_BUNDLE_VERSION, 2);
+
+  const current = state();
+  const bundle = conditionBundleFromState(current, [], [], { rules: [], assignments: {} }, []);
+  const source = JSON.parse(serializeConditionBundle(bundle)) as { version: number };
+  source.version = 1;
+
+  assert.throws(
+    () => parseConditionBundle(JSON.stringify(source), bundle, current, choices),
+    /バージョンが違う/,
+  );
 });
 
 test('条件の個別設定が空でもチェック状態を保存・復元する', () => {
