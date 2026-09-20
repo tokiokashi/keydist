@@ -7,6 +7,7 @@ import type {
   FaceMembership,
   InputAlternative,
   InputCapability,
+  InputAlternativeOrigin,
   InputClassification,
   InputContextRequirement,
   KeyRole,
@@ -511,12 +512,14 @@ export function compileSequenceInputAlternative(
   layerId: string,
   classifications: readonly InputClassification[] = [],
   contextRequirements: readonly InputContextRequirement[] = [],
+  origin: InputAlternativeOrigin = 'sequence',
 ): InputAlternative {
   const artifacts = compileSequenceInputArtifacts(output, sequence, layerId, classifications);
   return {
     semanticInputs: artifacts.semanticInputs,
     baseRealizations: artifacts.baseActionRealizations,
     contextRequirements: normalizeContextRequirements(contextRequirements),
+    origin,
   };
 }
 
@@ -575,4 +578,35 @@ export function validateCanonicalInputMap(inputs: CanonicalInputMap): void {
       );
     }
   }
+}
+
+
+/**
+ * InputAlternativeの情報保持identity。
+ * activation identityとは別で、thumb派生等のdedupe時にsemantic/provenanceを落とさないために使う。
+ */
+export function canonicalInputAlternativeIdentity(
+  alternative: InputAlternative,
+): string {
+  return JSON.stringify({
+    semanticInputs: alternative.semanticInputs.map((input) => ({
+      output: input.output,
+      physicalKeys: input.physicalKeys,
+      requirements: input.requirements,
+      capabilities: input.capabilities,
+      layerId: input.layerId,
+      classifications: input.classifications,
+      roles: input.roles,
+      faceMemberships: input.faceMemberships,
+    })),
+    baseRealizations: alternative.baseRealizations.map((realization) => ({
+      actions: realization.actions,
+      defaultOutputKeys: realization.defaultOutputKeys,
+      defaultTriggerKeys: realization.defaultTriggerKeys ?? [],
+      defaultHoldKeys: realization.defaultHoldKeys ?? [],
+      alternateParticipations: realization.alternateParticipations ?? [],
+    })),
+    contextRequirements: alternative.contextRequirements,
+    origin: alternative.origin,
+  });
 }
