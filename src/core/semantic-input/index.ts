@@ -1,5 +1,6 @@
 export {
   compileFaceSemanticInputs,
+  canonicalInputAlternativeIdentity,
   compileSequenceInputAlternative,
   compileSequenceInputArtifacts,
   compileSequenceSemanticInputs,
@@ -9,6 +10,7 @@ export {
 export type {
   FaceMembership,
   InputCapability,
+  InputAlternativeOrigin,
   InputClassification,
   InputContextRequirement,
   KeyRole,
