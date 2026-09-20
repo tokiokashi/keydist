@@ -58,6 +58,17 @@ test('structural analysisのimport先をsemantic / structural layerへ限定す�
   }
 });
 
+test('Metricsはlegacy inputRoleへ依存しない', async () => {
+  const path = join(SRC, 'metrics.ts');
+  const source = await readFile(path, 'utf8');
+
+  assert.doesNotMatch(
+    source,
+    /\binputRole\b/,
+    'metrics.ts must use canonical / realized facts instead of legacy inputRole',
+  );
+});
+
 test('PlaybackCalibrationはstructural analysisへ依存しない', async () => {
   const path = join(SRC, 'playback-calibration.ts');
   const source = await readFile(path, 'utf8');
