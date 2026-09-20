@@ -644,3 +644,39 @@ test('withCombosは既存direct pathを失わずcombo alternativeをappendする
   );
   assert.deepEqual(layout.map.get('ab'), [['q']], 'legacy defaultはdirect pathを維持する');
 });
+
+
+test('youonOnlyはcombo alternative自身のcontext requirementとして保持する', () => {
+  const base = fromKana('context-alt', 'context-alt', [
+    ['a', [['f']]],
+    ['b', [['j']]],
+    ['ab', [['q']]],
+  ]);
+  const layout = withCombos('context-alt-combo', 'context-alt-combo', base, [
+    ['ab', ['a', 'b'], { youonOnly: true }],
+  ]);
+
+  const alternatives = layout.canonicalInputs.get('ab');
+  assert.ok(alternatives);
+  assert.equal(alternatives.length, 2);
+  assert.deepEqual(alternatives[0].contextRequirements, []);
+  assert.deepEqual(alternatives[1].contextRequirements, [{ kind: 'youon-only' }]);
+});
+
+test('composed alternativeはsourceとmarkのcontext requirementを引き継ぐ', () => {
+  const sourceBase = fromKana('context-compose', 'context-compose', {
+    a: [['f']],
+    b: [['j']],
+    mark: [['k']],
+  });
+  const conditioned = withCombos('context-compose-combo', 'context-compose-combo', sourceBase, [
+    ['source', ['a', 'b'], { youonOnly: true }],
+  ]);
+  const layout = withComposedOutputs(conditioned, { source: 'output' }, 'mark', 'test');
+
+  const alternatives = layout.canonicalInputs.get('output');
+  assert.ok(alternatives);
+  assert.ok(alternatives.length > 0);
+  assert.ok(alternatives.every((alternative) =>
+    alternative.contextRequirements.some((requirement) => requirement.kind === 'youon-only')));
+});
