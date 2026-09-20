@@ -3,7 +3,8 @@ import type { ChainPolicy } from './analysis-chain.ts';
 import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
 import type { Options } from './evaluate.ts';
 import type { TriggerRealizationPolicy } from './trigger-realization.ts';
-import type { HoldStartActionPolicy } from './hold-start-action.ts';
+import type { ActionRealizationPolicy } from './core/semantic-input/index.ts';
+import { toActionRealizationPolicy } from './hold-start-action.ts';
 import type { UiStateConditionsDefaults, UiStateLayoutConditions } from './ui-state.ts';
 
 export interface ResolvedConditions {
@@ -12,7 +13,7 @@ export interface ResolvedConditions {
   chainPolicy: ChainPolicy;
   arpeggioPolicy: ArpeggioPolicy;
   triggerRealizationPolicy: TriggerRealizationPolicy;
-  holdStartActionPolicy: HoldStartActionPolicy;
+  actionRealizationPolicy: ActionRealizationPolicy;
 }
 
 /** 全体の既定値へ配列ごとの差分を重ね、評価へ渡す条件を一つに決める。 */
@@ -21,17 +22,19 @@ export function resolveConditions(
   override: Partial<UiStateConditionsDefaults> | undefined,
 ): ResolvedConditions {
   const values = { ...defaults, ...override };
+  const actionRealizationPolicy = toActionRealizationPolicy(values.holdStartAction);
   return {
     geometry: values.geometry,
     chainPolicy: { ...values.chain },
     arpeggioPolicy: { ...values.arpeggioPolicy },
     triggerRealizationPolicy: { ...values.triggerRealization },
-    holdStartActionPolicy: { ...values.holdStartAction },
+    actionRealizationPolicy,
     options: {
       windowSize: values.windowSize,
       sfbHomeCost: values.sfbHomeCost,
       preferOppositeThumb: values.preferOppositeThumb,
       triggerRealizationPolicy: { ...values.triggerRealization },
+      actionRealizationPolicy: { ...actionRealizationPolicy },
     },
   };
 }
