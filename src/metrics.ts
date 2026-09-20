@@ -8,10 +8,9 @@ import {
   type TriggerRealizationPolicy,
 } from './trigger-realization.ts';
 import {
-  additionalHoldStartSteps,
-  DEFAULT_HOLD_START_ACTION_POLICY,
-  type HoldStartActionPolicy,
-} from './hold-start-action.ts';
+  DEFAULT_ACTION_REALIZATION_POLICY,
+  type ActionRealizationPolicy,
+} from './core/semantic-input/index.ts';
 
 /**
  * 隣接ペアのホーム間隔 [u]（仕様 §11.6で引く基準）。
@@ -76,9 +75,9 @@ export interface Metrics {
    * 表示用の状態ではなく数値と同じ入れ物へ保存する（仕様 §12.3）。
    */
   conditions: MetricConditions;
-  /** physical Stroke数。同時押しは1 Stroke。Policy上のvirtual actionは含めない。 */
+  /** ActionRealizationPolicy適用後のrealized Stroke数。 */
   strokes: number;
-  /** Policy適用後のaction総数。held-trigger/startのvirtual actionを含みうる。 */
+  /** 現行pipelineでは1 realized Stroke = 1 analytic action。 */
   actions: number;
   /** キー押下数。同時押しは押したキーの数だけ数える */
   presses: number;
@@ -161,8 +160,8 @@ export interface MetricConditions {
   arpeggioPolicy: ArpeggioPolicy;
   /** hold-capable triggerをrealizeしたPolicy。 */
   triggerRealizationPolicy: TriggerRealizationPolicy;
-  /** held-trigger/startを独立actionとして数えるPolicy。 */
-  holdStartActionPolicy: HoldStartActionPolicy;
+  /** Trigger realization後のaction groupingへ適用したPolicy。 */
+  actionRealizationPolicy: ActionRealizationPolicy;
   /** ローマ字入力に使った綴り規則の識別子。かな直接入力はnull */
   romajiRuleId: string | null;
 }
@@ -174,7 +173,7 @@ export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
   chainPolicy: { ...DEFAULT_CHAIN_POLICY },
   arpeggioPolicy: { ...DEFAULT_ARPEGGIO_POLICY },
   triggerRealizationPolicy: { ...DEFAULT_TRIGGER_REALIZATION_POLICY },
-  holdStartActionPolicy: { ...DEFAULT_HOLD_START_ACTION_POLICY },
+  actionRealizationPolicy: { ...DEFAULT_ACTION_REALIZATION_POLICY },
   romajiRuleId: null,
 };
 
@@ -282,8 +281,9 @@ export function computeMetrics(
   };
 
   const strokes = trace.strokes.length;
-  const actions = strokes
-    + additionalHoldStartSteps(trace.strokes, conditions.holdStartActionPolicy);
+  // ActionRealizationPolicyはevaluateでStroke生成前に適用済み。
+  // Metrics側ではvirtual actionを足さず、共通realized streamをそのまま数える。
+  const actions = strokes;
   const { inputChars } = trace;
   return {
     geometryId: geometry.id,
@@ -295,7 +295,7 @@ export function computeMetrics(
       chainPolicy: { ...conditions.chainPolicy },
       arpeggioPolicy: { ...conditions.arpeggioPolicy },
       triggerRealizationPolicy: { ...conditions.triggerRealizationPolicy },
-      holdStartActionPolicy: { ...conditions.holdStartActionPolicy },
+      actionRealizationPolicy: { ...conditions.actionRealizationPolicy },
     },
     strokes,
     actions,
@@ -312,7 +312,7 @@ export function computeMetrics(
     perCharPresses: inputChars ? presses / inputChars : 0,
     singleTapLayerRate: singleTapLayerRate(trace),
     singleTapRate: singleTapRate(trace, actions),
-    singleKeyRate: singleKeyRate(trace, actions, conditions.holdStartActionPolicy),
+    singleKeyRate: singleKeyRate(trace, actions),
     adjacent,
     sameFinger,
     combos,
@@ -369,8 +369,8 @@ function singleTapLayerRate(trace: Trace): number {
  * trigger / held-triggerに依存せず、その入力単位が1 Strokeで完結するものとする。
  * ローマ字入力の各英字Strokeや、prefix / suffixの一部だけを単打とは数えない。
  *
- * 分母はPolicy適用後の総アクション数。held-trigger/startのvirtual actionは分母には
- * 入るがphysical Strokeではないため分子には入らない。
+ * 分母はActionRealizationPolicy適用後のrealized action数。
+ * hold-startをseparateにした場合は先行trigger Strokeも通常の分母へ入る。
  */
 function singleTapRate(trace: Trace, actions: number): number {
   if (actions === 0) return 0;
@@ -405,31 +405,19 @@ function singleTapRate(trace: Trace, actions: number): number {
  * 総アクションのうち、1物理キーだけを入力するアクションの割合。
  * 「単打」のかな入力上の意味は持たず、入力する物理キー数だけを見る。
  *
- * held-trigger/startを独立actionとして数えるPolicyでは、同一Strokeにrealizeされた
- * trigger actionとoutput actionを分けて判定する。
+ * ActionRealizationPolicyによる分割はStroke生成前に完了しているため、
+ * Metrics側でvirtual splitを再構成しない。
  */
 function singleKeyRate(
   trace: Trace,
   actions: number,
-  holdStartActionPolicy: HoldStartActionPolicy,
 ): number {
   if (actions === 0) return 0;
 
   let singleKeyActions = 0;
   for (const stroke of trace.strokes) {
     const keyIds = new Set(stroke.presses.flatMap((press) => press.keys.map((key) => key.id)));
-    const hasSeparateHoldStart = additionalHoldStartSteps([stroke], holdStartActionPolicy) === 1;
-
-    if (!hasSeparateHoldStart) {
-      if (keyIds.size === 1) singleKeyActions++;
-      continue;
-    }
-
-    const triggerKeys = new Set(stroke.triggerKeys);
-    if (triggerKeys.size === 1) singleKeyActions++;
-
-    const outputKeyCount = [...keyIds].filter((key) => !triggerKeys.has(key)).length;
-    if (outputKeyCount === 1) singleKeyActions++;
+    if (keyIds.size === 1) singleKeyActions++;
   }
 
   return (singleKeyActions / actions) * 100;
