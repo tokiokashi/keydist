@@ -656,7 +656,7 @@ type StrokeAnnotation = {
 - SFB: raw Transition event数 / unique関与Stroke coverage
 
 重複Spanや重複Eventはraw countでは保持し、coverageではStroke indexのunionとして1回だけ数える。
-集計結果には解決済み `TriggerRealizationPolicy` / `ChainPolicy` / `ArpeggioPolicy` のimmutable snapshotを持たせ、
+集計結果には解決済み `TriggerRealizationPolicy` / `ActionRealizationPolicy` / `ChainPolicy` / `ArpeggioPolicy` のimmutable snapshotを持たせ、
 後からUI stateが変わっても算出条件を追跡できるようにする。
 
 ## 11. 出力指標
@@ -721,8 +721,17 @@ layer / modifierのoutputと同一actionにrealizeされた `held-trigger/start`
 [fresh output / held trigger continue]
 ```
 
-としてStroke生成前に分割する。compositionは対象外。
-`prefix` 等ですでにtrigger-only actionが独立している場合も追加分割しない。
+としてStroke生成前に分割する。ただし `separate` はsemantic Requirementを
+保てる場合だけsplitする。
+
+- overlapだけ、または `order(held -> fresh)` ならsplitする
+- `order(fresh -> held)` を要求するsuffix型はcombinedを維持する
+- held / fresh groupがorder境界の両側へ跨る場合もcombinedを維持する
+- compositionは対象外
+- `prefix` 等ですでにtrigger-only actionが独立している場合も追加分割しない
+
+Requirementはaction groupingを推測するためには使わず、変換後streamがsemanticに反しないかを
+判定するvalidity gateとしてのみ使う。
 
 したがってMetricsだけのvirtual action補正は行わない。Policy変更後は
 Chain / Transition / Metrics / Timing / Playbackがすべて同じrealized Stroke列を見る。
