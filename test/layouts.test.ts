@@ -76,6 +76,27 @@ test('Face semanticは推測せず明示を要求する', () => {
   assert.deepEqual(classifyFaces(layout.faces!).combos, []);
 });
 
+test('triggerless compositionはcanonicalとpresentationの両方でcomboへ帰属する', () => {
+  const face: Face = {
+    trigger: [],
+    mode: 'simultaneous',
+    rows: faceAtF('きゃ'),
+    inputRole: 'composition',
+  };
+  const layout = fromFaces('triggerless-composition', 'triggerless-composition', [face]);
+
+  const input = layout.canonicalInputs.get('きゃ')?.[0]?.semanticInputs[0];
+  assert.ok(input);
+  assert.equal(input.layerId, 'combo');
+  assert.ok(input.classifications.includes('composition'));
+  assert.equal(layout.faceLayerIds?.get(face), 'combo');
+  assert.deepEqual(
+    layout.layerDefinitions?.find((definition) => definition.id === 'combo'),
+    { id: 'combo', kind: 'combo', label: 'コンボ' },
+  );
+  assert.deepEqual(classifyFaces(layout.faces!).combos, [face]);
+});
+
 test('出力を持つtrigger FaceはtriggerPersistence必須、空placeholderは許容する', () => {
   assert.throws(
     () => fromFaces('invalid-persistence', 'invalid-persistence', [
