@@ -130,6 +130,7 @@ function render() {
         conditions.chainPolicy,
         conditions.arpeggioPolicy,
         conditions.triggerRealizationPolicy,
+        conditions.actionRealizationPolicy,
       );
       return {
         layout,
