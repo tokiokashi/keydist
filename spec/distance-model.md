@@ -117,6 +117,7 @@ authoring sourceはcompile時に `SemanticInput` と `BaseActionRealization` へ
 interface InputAlternative {
   semanticInputs: SemanticInputSequence;
   baseRealizations: BaseActionRealizationSequence;
+  contextRequirements: InputContextRequirement[];
 }
 
 type CanonicalInputMap =
@@ -159,11 +160,18 @@ faceMemberships
 stable classification IDとしてcanonicalへ保持する。一方、left/right hand、distance、
 currently-held、preferred alternativeのようにgeometry/runtimeから導出できるfactは重複保存しない。
 
+physical activationとは別に、そのpathがruntime context上成立する条件を
+`InputAlternative.contextRequirements` に保持する。現在の
+`{ kind: 'youon-only' }` は拗音ローマ字塊の内部だけで成立するpathを表す。
+これはlogical output全体の条件ではなくalternative単位のapplicabilityである。
+
 評価時は次の順で処理する。
 
 ```text
 logical output matching
   -> CanonicalInputMap[output]
+  -> context requirement filter
+  -> eligible InputAlternative[]
   -> Input Alternative Selection Policy
   -> selected BaseActionRealizationSequence
   -> TriggerRealizationPolicy
@@ -224,10 +232,11 @@ output側と反対の手の親指を使うalternativeを優先する。canonical
 保持する。どのコンボを使うかは配列定義が決めることであり、評価器は見出しの綴りから
 独自の発火規則を選択しない。コンボ定義が発火条件を持つ場合だけ、評価器はその条件に従う。
 
-現時点で `youonOnly` 条件を持つのはTK音直入力法のコンボのヤ行19件である。この条件を持つコンボは、
-拗音の見出しのローマ字塊の途中で、直前の文字が子音になる場合だけ発火する。単独の `や` `ゆ`
-`よ` などの `ya` `yu` `yo` はコンボで丸ごと置き換えず、`y` と母音へ分ける。条件を持たない
-コンボは、かなの境界をまたぐ場合も従来どおり最長一致で切り出す。
+現時点でauthoring `youonOnly` 条件を持つのはTK音直入力法のコンボのヤ行19件である。
+compile時にcombo alternativeへ `{ kind: 'youon-only' }` context requirementとして保持する。
+拗音の見出しのローマ字塊の途中で、直前の文字が子音になる場合だけそのalternativeがeligibleになる。
+単独の `や` `ゆ` `よ` などの `ya` `yu` `yo` ではそのalternativeを除外し、
+同じlogical outputに無条件alternativeがあればそちらを使い、無ければ短い見出しへfallbackする。
 
 ### 4.4ローマ字テーブルは配列と分けて持つ
 
