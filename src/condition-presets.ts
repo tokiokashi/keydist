@@ -1,7 +1,7 @@
 import { sameChainPolicy } from './analysis-chain.ts';
 import { sameArpeggioPolicy } from './analysis-arpeggio.ts';
 import { sameTriggerRealizationPolicy } from './trigger-realization.ts';
-import { sameHoldStartActionPolicy } from './hold-start-action.ts';
+import { sameActionRealizationPolicy } from './core/semantic-input/action-realization.ts';
 import {
   DEFAULT_CONDITION_DEFAULTS,
   sanitizeConditionDefaults,
@@ -100,5 +100,5 @@ export function sameConditionDefaults(
     && sameChainPolicy(left.chain, right.chain)
     && sameArpeggioPolicy(left.arpeggioPolicy, right.arpeggioPolicy)
     && sameTriggerRealizationPolicy(left.triggerRealization, right.triggerRealization)
-    && sameHoldStartActionPolicy(left.holdStartAction, right.holdStartAction);
+    && sameActionRealizationPolicy(left.actionRealization, right.actionRealization);
 }
