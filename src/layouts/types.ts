@@ -35,29 +35,6 @@ export type TriggerPersistence = 'single' | 'hold-capable';
 export type HoldPhase = 'start' | 'continue' | 'end';
 
 /**
- * 1ステップへ展開した後のsemantic情報。
- * outputKeys と triggerKeys は重なってよく、同一キーが output + trigger の複合roleを持てる。
- */
-export interface StepSemantic {
-  inputRole: InputRole;
-  triggerPersistence?: TriggerPersistence;
-  outputKeys: readonly string[];
-  /** このstepで新たに物理操作するtrigger。 */
-  triggerKeys: readonly string[];
-  /**
-   * このstepが属する対象入力を成立させるtrigger集合。
-   * prefix / suffix のoutput stepでも元Faceのtrigger集合を保持し、
-   * hold継続判定をstep順序やlayer idから推測しないために使う。
-   */
-  associatedTriggerKeys?: readonly string[];
-  /**
-   * associatedTriggerKeysが表すtrigger集合の持続能力。
-   * triggerを物理操作しないprefix / suffix output stepでもFace capabilityを保持する。
-   */
-  associatedTriggerPersistence?: TriggerPersistence;
-}
-
-/**
  * 面の1行。文字列なら1文字ずつ、配列ならセルごとの文字列として読む。
  * 配列形式は「きゃ」のような複数文字の見出しを1セルに置くために使う。
  */
@@ -171,12 +148,6 @@ export interface Layout {
   comboConditions?: ReadonlyMap<string, ComboCondition>;
   /** withCombos由来のコンボ定義。物理キーまで解決済みで、配列図等の表示にも使う。 */
   resolvedComboDefinitions?: readonly ResolvedComboDefinition[];
-  /** 各見出しのSequenceのステップごとの帰属先。合成出力では層が混在しうる */
-  stepLayers?: ReadonlyMap<string, readonly string[]>;
-  /** 各見出しのSequenceのステップごとに、層操作として押すキー */
-  stepTriggerKeys?: ReadonlyMap<string, readonly (readonly string[])[]>;
-  /** 各見出しをStrokeへ正規化するためのstep単位semantic metadata。 */
-  stepSemantics?: ReadonlyMap<string, readonly StepSemantic[]>;
   /** 層・コンボの表示順と種別。 */
   layerDefinitions?: readonly LayerDefinition[];
   /** 面から展開した配列で、各面がどの帰属先へ属するかをUIが引くための表 */
@@ -246,9 +217,6 @@ export function fromRows(
 ): Layout {
   const map = new Map<string, Sequence>();
   const canonicalInputs = new Map<string, InputAlternative[]>();
-  const stepLayers = new Map<string, readonly string[]>();
-  const stepTriggerKeys = new Map<string, readonly (readonly string[])[]>();
-  const stepSemantics = new Map<string, readonly StepSemantic[]>();
   const legends = new Map<string, string>();
 
   const addDirect = (output: string, key: string) => {
@@ -260,13 +228,6 @@ export function fromRows(
     );
     if (map.has(output)) return;
     map.set(output, sequence);
-    stepLayers.set(output, [SINGLE_LAYER_ID]);
-    stepTriggerKeys.set(output, [[]]);
-    stepSemantics.set(output, [{
-      inputRole: 'layer',
-      outputKeys: [key],
-      triggerKeys: [],
-    }]);
   };
 
   rows.forEach((row, r) => {
@@ -290,9 +251,6 @@ export function fromRows(
     map,
     canonicalInputs,
     legends,
-    stepLayers,
-    stepTriggerKeys,
-    stepSemantics,
     layerDefinitions: [{ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' }],
   };
 }
@@ -330,9 +288,6 @@ export function fromFaces(
   // 定義時にレイヤーの宣言を検証し、表示時まで不正な組み合わせを遅延させない。
   groupFacesIntoLayers(faces);
   const map = new Map<string, Sequence>();
-  const stepLayers = new Map<string, readonly string[]>();
-  const stepTriggerKeys = new Map<string, readonly (readonly string[])[]>();
-  const stepSemantics = new Map<string, readonly StepSemantic[]>();
   const legends = new Map<string, string>();
   const layerDefinitions: LayerDefinition[] = [];
   const faceLayerIds = new Map<Face, string>();
@@ -445,19 +400,8 @@ export function fromFaces(
           origin: 'face',
         });
 
-        // legacy/presentation metadataはauthoring上の先頭pathだけを保持する。
-        if (!map.has(output)) {
-          map.set(output, sequence);
-          stepLayers.set(output, sequence.map(() => layerId));
-          stepTriggerKeys.set(output, expandFaceTriggerKeys(trigger, face.mode));
-          stepSemantics.set(output, expandFaceSemantics(
-            trigger,
-            face.mode,
-            key,
-            inputRole,
-            trigger.length > 0 ? face.triggerPersistence : undefined,
-          ));
-        }
+        // legacy/presentation mapはauthoring上の先頭pathだけを保持する。
+        if (!map.has(output)) map.set(output, sequence);
         // 刻印は単打面の1文字だけを表示する。シフト面の出力で上書きしない。
         if (trigger.length === 0 && [...output].length === 1) legends.set(key, output);
       });
@@ -468,7 +412,6 @@ export function fromFaces(
   legends.set(THUMB_KEY.LT, '親指');
   legends.set(THUMB_KEY.RT, '空白');
   const baseFace = faces.find((face) => face.trigger.length === 0);
-  const baseLayerId = baseFace ? faceLayerIds.get(baseFace)! : SINGLE_LAYER_ID;
   if (!baseFace && (thumbs.LT || thumbs.RT)) {
     addDefinition({ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' });
   }
@@ -480,13 +423,6 @@ export function fromFaces(
       thumbs.LT,
       compileSequenceInputAlternative(thumbs.LT, sequence, SINGLE_LAYER_ID),
     );
-    stepLayers.set(thumbs.LT, [baseLayerId]);
-    stepTriggerKeys.set(thumbs.LT, [[]]);
-    stepSemantics.set(thumbs.LT, [{
-      inputRole: 'layer',
-      outputKeys: [THUMB_KEY.LT],
-      triggerKeys: [],
-    }]);
   }
   if (thumbs.RT) {
     const sequence: Sequence = [[THUMB_KEY.RT]];
@@ -496,13 +432,6 @@ export function fromFaces(
       thumbs.RT,
       compileSequenceInputAlternative(thumbs.RT, sequence, SINGLE_LAYER_ID),
     );
-    stepLayers.set(thumbs.RT, [baseLayerId]);
-    stepTriggerKeys.set(thumbs.RT, [[]]);
-    stepSemantics.set(thumbs.RT, [{
-      inputRole: 'layer',
-      outputKeys: [THUMB_KEY.RT],
-      triggerKeys: [],
-    }]);
   }
   validateCanonicalInputMap(canonicalInputs);
   return {
@@ -513,9 +442,6 @@ export function fromFaces(
     legends,
     faces: [...faces],
     maxCharLength: maxKeyLength(map.keys()),
-    stepLayers,
-    stepTriggerKeys,
-    stepSemantics,
     layerDefinitions,
     faceLayerIds,
   };
@@ -554,79 +480,6 @@ function expandFace(trigger: string[], mode: FaceMode, key: string): Sequence {
   return [[key], [...trigger]];
 }
 
-function expandFaceTriggerKeys(trigger: string[], mode: FaceMode): readonly (readonly string[])[] {
-  if (trigger.length === 0) return [[]];
-  if (mode === 'simultaneous') return [trigger];
-  if (mode === 'prefix') return [trigger, []];
-  return [[], trigger];
-}
-
-function expandFaceSemantics(
-  trigger: readonly string[],
-  mode: FaceMode,
-  key: string,
-  inputRole: InputRole,
-  triggerPersistence: TriggerPersistence | undefined,
-): readonly StepSemantic[] {
-  const triggerKeys = [...trigger];
-  const associatedTriggerKeys = [...trigger];
-  const output = [key];
-  if (trigger.length === 0) {
-    return [{
-      inputRole,
-      outputKeys: output,
-      triggerKeys: [],
-      associatedTriggerKeys: [],
-    }];
-  }
-  if (mode === 'simultaneous') {
-    return [{
-      inputRole,
-      triggerPersistence,
-      outputKeys: output,
-      triggerKeys,
-      associatedTriggerKeys,
-      associatedTriggerPersistence: triggerPersistence,
-    }];
-  }
-  if (mode === 'prefix') {
-    return [
-      {
-        inputRole,
-        triggerPersistence,
-        outputKeys: [],
-        triggerKeys,
-        associatedTriggerKeys,
-        associatedTriggerPersistence: triggerPersistence,
-      },
-      {
-        inputRole,
-        outputKeys: output,
-        triggerKeys: [],
-        associatedTriggerKeys,
-        associatedTriggerPersistence: triggerPersistence,
-      },
-    ];
-  }
-  return [
-    {
-      inputRole,
-      outputKeys: output,
-      triggerKeys: [],
-      associatedTriggerKeys,
-      associatedTriggerPersistence: triggerPersistence,
-    },
-    {
-      inputRole,
-      triggerPersistence,
-      outputKeys: [],
-      triggerKeys,
-      associatedTriggerKeys,
-      associatedTriggerPersistence: triggerPersistence,
-    },
-  ];
-}
-
 /** かな → 打鍵ステップ列を直接書いた配列（薙刀式など） */
 export type KanaDefinition =
   | Record<string, string[][]>
@@ -637,9 +490,6 @@ export function fromKana(id: string, name: string, def: KanaDefinition): Layout 
     Array.isArray(def) ? def : Object.entries(def);
   const map = new Map<string, Sequence>();
   const canonicalInputs = new Map<string, InputAlternative[]>();
-  const stepLayers = new Map<string, readonly string[]>();
-  const stepTriggerKeys = new Map<string, readonly (readonly string[])[]>();
-  const stepSemantics = new Map<string, readonly StepSemantic[]>();
 
   for (const [output, sequence] of entries) {
     appendCanonicalAlternative(
@@ -649,13 +499,6 @@ export function fromKana(id: string, name: string, def: KanaDefinition): Layout 
     );
     if (map.has(output)) continue;
     map.set(output, sequence);
-    stepLayers.set(output, sequence.map(() => SINGLE_LAYER_ID));
-    stepTriggerKeys.set(output, sequence.map(() => []));
-    stepSemantics.set(output, sequence.map((step) => ({
-      inputRole: 'layer',
-      outputKeys: step.map(resolveKeyId),
-      triggerKeys: [],
-    })));
   }
 
   const legends = new Map<string, string>();
@@ -675,9 +518,6 @@ export function fromKana(id: string, name: string, def: KanaDefinition): Layout 
     canonicalInputs,
     legends,
     maxCharLength: maxKeyLength(map.keys()),
-    stepLayers,
-    stepTriggerKeys,
-    stepSemantics,
     layerDefinitions: [{ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' }],
   };
 }
@@ -748,9 +588,6 @@ export function withComposedOutputs(
 
   const map = new Map(layout.map);
   const canonicalInputs = cloneCanonicalInputs(layout.canonicalInputs);
-  const stepLayers = new Map(layout.stepLayers ?? []);
-  const stepTriggerKeys = new Map(layout.stepTriggerKeys ?? []);
-  const stepSemantics = new Map(layout.stepSemantics ?? []);
 
   for (const [source, output] of Object.entries(entries)) {
     const sourceSequence = layout.map.get(source);
@@ -788,24 +625,6 @@ export function withComposedOutputs(
     ];
     map.set(output, sequence);
 
-    const sourceLayers = layout.stepLayers?.get(source)
-      ?? sourceSequence.map(() => SINGLE_LAYER_ID);
-    const markLayers = layout.stepLayers?.get(mark)
-      ?? markSequence.map(() => SINGLE_LAYER_ID);
-    stepLayers.set(output, [...sourceLayers, ...markLayers]);
-
-    const sourceTriggers = layout.stepTriggerKeys?.get(source)
-      ?? sourceSequence.map(() => []);
-    const markTriggers = layout.stepTriggerKeys?.get(mark)
-      ?? markSequence.map(() => []);
-    stepTriggerKeys.set(output, [...sourceTriggers, ...markTriggers]);
-
-    const sourceSemantics = layout.stepSemantics?.get(source);
-    const markSemantics = layout.stepSemantics?.get(mark);
-    if (!sourceSemantics || !markSemantics) {
-      throw new Error(`${context}semantic「${source}」「${mark}」が未定義`);
-    }
-    stepSemantics.set(output, [...sourceSemantics, ...markSemantics]);
   }
 
   validateCanonicalInputMap(canonicalInputs);
@@ -814,9 +633,6 @@ export function withComposedOutputs(
     map,
     canonicalInputs,
     maxCharLength: maxKeyLength(map.keys()),
-    stepLayers,
-    stepTriggerKeys,
-    stepSemantics,
   };
 }
 
@@ -837,9 +653,6 @@ export function withCombos(
 ): Layout {
   const map = new Map(layout.map);
   const canonicalInputs = cloneCanonicalInputs(layout.canonicalInputs);
-  const stepLayers = new Map(layout.stepLayers ?? []);
-  const stepTriggerKeys = new Map(layout.stepTriggerKeys ?? []);
-  const stepSemantics = new Map(layout.stepSemantics ?? []);
   const layerDefinitions = [...(layout.layerDefinitions ?? [])];
   const comboConditions = new Map(layout.comboConditions);
   const resolvedComboDefinitions: ResolvedComboDefinition[] = [...(layout.resolvedComboDefinitions ?? [])];
@@ -923,13 +736,6 @@ export function withCombos(
     if (!map.has(output)) {
       const sequence: Sequence = [keys];
       map.set(output, sequence);
-      stepLayers.set(output, [COMBO_LAYER_ID]);
-      stepTriggerKeys.set(output, [[]]);
-      stepSemantics.set(output, [{
-        inputRole: 'composition',
-        outputKeys: keys.map(resolveKeyId),
-        triggerKeys: [],
-      }]);
       comboConditions.set(output, condition ?? {});
     }
     if (!hasCombo) {
@@ -947,9 +753,6 @@ export function withCombos(
     maxCharLength: maxKeyLength(map.keys()),
     comboConditions,
     resolvedComboDefinitions,
-    stepLayers,
-    stepTriggerKeys,
-    stepSemantics,
     layerDefinitions,
   };
 }
