@@ -487,6 +487,7 @@ function thumbVariantSignature(
       })),
       faceMemberships: input.faceMemberships,
     })),
+    contextRequirements: alternative.contextRequirements,
     baseRealizations: alternative.baseRealizations.map((realization) => ({
       actions: realization.actions.map(normalizeKeys),
       defaultOutputKeys: normalizeKeys(realization.defaultOutputKeys),
