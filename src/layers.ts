@@ -72,43 +72,15 @@ export function faceCells(face: Face): Map<string, string> {
   return cells;
 }
 
-/**
- * 畳んだレイヤーの表示用セルを作る。
- *
- * 面の定義は同じ同時押しを2回持たないよう片方向だけを書くため、
- * たとえばk面のdセルはdシフトのkセルにも表示できる。評価用の
- * `Layout.map` には触れず、描画時だけ全単一キー面からこの対称位置を補う。
- */
-export function foldedLayerCells(layer: Layer, faces: readonly Face[]): Map<string, string> {
-  const cells = new Map<string, string>();
-  for (const face of layer.faces) {
-    for (const [key, label] of faceCells(face)) {
-      const previous = cells.get(key);
-      cells.set(key, previous === undefined ? label : `${previous} / ${label}`);
-    }
-  }
-
-  // 片面のレイヤーや単打面には、相互シフトの補完を適用しない。
-  if (layer.faces.length !== 2) return cells;
-  const mode = layer.faces[0].mode;
-  const triggerOrder = effectiveTriggerOrder(layer.faces[0]);
-  const triggers = new Set(layer.faces.flatMap((face) => face.trigger).map(resolveKeyId));
-
-  for (const face of faces) {
-    if (
-      face.trigger.length !== 1
-      || face.mode !== mode
-      || effectiveTriggerOrder(face) !== triggerOrder
-    ) continue;
-    const targetKey = resolveKeyId(face.trigger[0]);
-    if (cells.has(targetKey)) continue;
-    const source = faceCells(face);
-    const mirrored = [...triggers]
-      .map((trigger) => source.get(trigger))
-      .filter((label): label is string => label !== undefined);
-    if (mirrored.length > 0) {
-      cells.set(targetKey, [...new Set(mirrored)].join(' / '));
-    }
+/** semantic cellと明示presentation membershipを、このFaceの表示セルとして統合する。 */
+export function faceDisplayCells(face: Face): Map<string, string> {
+  const cells = faceCells(face);
+  for (const [rawKey, label] of Object.entries(face.presentationCells ?? {})) {
+    if (label === '' || label === ' ') continue;
+    const key = resolveKeyId(rawKey);
+    const previous = cells.get(key);
+    if (previous === undefined) cells.set(key, label);
+    else if (previous !== label) cells.set(key, `${previous} / ${label}`);
   }
   return cells;
 }
