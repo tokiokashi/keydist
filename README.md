@@ -264,4 +264,4 @@ clone直後に `git config core.hooksPath .githooks` を1度実行してくだ�
 
 ## ライセンス
 
-Apache-2.0。詳細は [LICENSE](LICENSE) と [NOTICE](NOTICE)。
+BSD-3-Clause。詳細は [LICENSE](LICENSE)。
