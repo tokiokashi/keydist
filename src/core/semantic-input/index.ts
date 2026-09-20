@@ -36,6 +36,14 @@ export {
 } from './realization.ts';
 
 export {
+  applyActionRealizationPolicy,
+  DEFAULT_ACTION_REALIZATION_POLICY,
+  sameActionRealizationPolicy,
+  type ActionRealizationPolicy,
+  type HoldStartActionGrouping,
+} from './action-realization.ts';
+
+export {
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   realizeTriggerActions,
   sameTriggerRealizationPolicy,
