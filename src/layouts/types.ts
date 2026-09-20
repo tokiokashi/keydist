@@ -1,4 +1,5 @@
 import {
+  canonicalInputAlternativeIdentity,
   compileFaceSemanticInputs,
   compileSequenceInputAlternative,
   mapInputAlternativePhysicalKeys,
@@ -226,18 +227,12 @@ const mergeContextRequirements = (
     left.kind < right.kind ? -1 : left.kind > right.kind ? 1 : 0);
 };
 
-const sameAlternativeActions = (
+const sameCanonicalAlternative = (
   left: InputAlternative,
   right: InputAlternative,
-): boolean => {
-  const signature = (alternative: InputAlternative) => JSON.stringify({
-    actions: alternative.baseRealizations
-      .flatMap((realization) => realization.actions)
-      .map((action) => action.map(resolveKeyId)),
-    contextRequirements: alternative.contextRequirements,
-  });
-  return signature(left) === signature(right);
-};
+): boolean =>
+  canonicalInputAlternativeIdentity(left) === canonicalInputAlternativeIdentity(right);
+
 
 /**
  * 4行 × N列のグリッドに文字を並べた配列。
@@ -447,6 +442,7 @@ export function fromFaces(
           semanticInputs: [semanticInput],
           baseRealizations: [baseRealization],
           contextRequirements: [],
+          origin: 'face',
         });
 
         // legacy/presentation metadataはauthoring上の先頭pathだけを保持する。
@@ -717,7 +713,7 @@ export function withThumbShiftAlternatives(
           alternative,
           (key) => resolveKeyId(key) === source ? target : resolveKeyId(key),
         );
-        if (!next.some((candidate) => sameAlternativeActions(candidate, mapped))) {
+        if (!next.some((candidate) => sameCanonicalAlternative(candidate, mapped))) {
           next.push(mapped);
         }
       }
@@ -777,6 +773,7 @@ export function withComposedOutputs(
           sourceAlternative.contextRequirements,
           markAlternative.contextRequirements,
         ),
+        origin: 'composed' as const,
       })));
     for (const alternative of generated) {
       appendCanonicalAlternative(canonicalInputs, output, alternative);
@@ -916,6 +913,7 @@ export function withCombos(
           combination.contextRequirements,
           comboContextRequirements,
         ),
+        'combo',
       ));
     for (const alternative of generatedAlternatives) {
       appendCanonicalAlternative(canonicalInputs, output, alternative);
