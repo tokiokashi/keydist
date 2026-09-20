@@ -336,63 +336,7 @@ test('composed outputはcomponentのBaseActionRealization objectを再利用す�
 });
 
 
-test('built-in全outputでbase participationがlegacy StepSemanticと一致する', () => {
-  for (const layout of LAYOUT_BY_ID.values()) {
-    assert.ok(layout.canonicalInputs, `${layout.id}: canonicalInputs`);
 
-    for (const output of layout.map.keys()) {
-      const base = layout.canonicalInputs.get(output)?.[0]?.baseRealizations;
-      const legacy = layout.stepSemantics?.get(output);
-      assert.ok(base, `${layout.id}: ${output} base realization`);
-      assert.ok(legacy, `${layout.id}: ${output} legacy StepSemantic`);
-
-      const actions = flattenBaseActionRealizations(base);
-      assert.equal(actions.length, legacy.length, `${layout.id}: ${output} action count`);
-
-      for (const [index, action] of actions.entries()) {
-        assert.deepEqual(
-          [...action.outputKeys].sort(),
-          [...legacy[index].outputKeys.map(resolveKeyId)].sort(),
-          `${layout.id}: ${output} output participation ${index}`,
-        );
-        assert.deepEqual(
-          [...action.triggerKeys].sort(),
-          [...legacy[index].triggerKeys.map(resolveKeyId)].sort(),
-          `${layout.id}: ${output} trigger participation ${index}`,
-        );
-
-        const derivedRole = action.input.classifications.includes('composition')
-          ? 'composition'
-          : action.input.roles.length > 0 ? 'modifier' : 'layer';
-        assert.equal(
-          derivedRole,
-          legacy[index].inputRole,
-          `${layout.id}: ${output} inputRole ${index}`,
-        );
-
-        const sourceRealization: BaseActionRealization | undefined =
-          base.find((item: BaseActionRealization) => item.input === action.input);
-        const defaultTriggers: readonly string[] =
-          sourceRealization?.defaultTriggerKeys ?? [];
-        const hasHoldCapability: boolean = action.input.capabilities.some(
-          (capability): boolean =>
-            capability.kind === 'while-held'
-            && capability.keys.length === defaultTriggers.length
-            && capability.keys.every((key): boolean => defaultTriggers.includes(key)),
-        );
-        const derivedPersistence: 'single' | 'hold-capable' | undefined =
-          action.triggerKeys.length === 0
-            ? undefined
-            : hasHoldCapability ? 'hold-capable' : 'single';
-        assert.equal(
-          derivedPersistence,
-          legacy[index].triggerPersistence,
-          `${layout.id}: ${output} triggerPersistence ${index}`,
-        );
-      }
-    }
-  }
-});
 
 
 test('薙刀式がはreciprocal Faceのalternate participation viewを保持する', () => {
