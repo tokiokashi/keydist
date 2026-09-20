@@ -1,0 +1,16 @@
+keydist
+Copyright 2026 tokiokashi
+
+This product includes software developed by tokiokashi
+(https://github.com/tokiokashi/keydist).
+
+改変版について:
+本ソフトウェアの改変・再配布は Apache License 2.0 の条件で自由です。
+ただし、改変版が出力した数値を keydist の出力として示さないでください。
+数値の出どころについて回答できるのは、上記リポジトリが出力したものに限ります。
+
+On modified versions:
+You may modify and redistribute this software under the Apache License 2.0.
+However, do not present numbers produced by a modified version as output of
+keydist. The author can only answer for numbers produced by the repository
+above.
