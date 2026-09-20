@@ -765,8 +765,9 @@ singleTapLayerRate = L1 / T × 100       [%]
 ```
 
 判定は入力文字単位で行う。ローマ字展開や複数文字コンボの内部Stroke数では重み付けせず、
-元の入力文字数を数える。「単打面の1キー直接入力」は、1 Stroke・1物理キー・
-`inputRole='layer'` で、trigger / held-trigger / compositionを伴わない入力とする。
+元の入力文字数を数える。「単打面の1キー直接入力」は、1 Stroke・1物理キーで、
+`layerId !== 'combo'`、`composition` classificationなし、かつtrigger / held-triggerを
+伴わない入力とする。legacy `inputRole` は判定に使わない。
 
 したがって、親指シフト・前置/後置シフト・文字キー同時押しコンボ・複数打鍵のローマ字入力は
 含めない。hold-capableなシフトを実際に保持した場合も、その対象文字を単打面へ昇格させない。
