@@ -13,7 +13,7 @@ import {
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   type ActionRealizationPolicy,
-} from './core/semantic-input/index.ts';
+} from './core/semantic-input/action-realization.ts';
 
 export interface StrokeAnnotation {
   readonly inLongRoll: boolean;
