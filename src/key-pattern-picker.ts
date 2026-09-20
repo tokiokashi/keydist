@@ -1,5 +1,6 @@
 import { resolveKeyId } from './geometry.ts';
 import { faceCells } from './layers.ts';
+import { COMBO_LAYER_ID } from './layouts/index.ts';
 import type { Face, Layout } from './layouts/index.ts';
 
 export interface KeyPatternMatch {
@@ -184,13 +185,20 @@ export function summarizeCandidateMatches(matches: readonly KeyPatternMatch[]): 
 /**
  * 選択中のキーが単一キーのレイヤートリガー（シフト面など）に一致するなら、その面を返す。
  * 枠色を既存のレイヤー色へ揃えるための表示補助にだけ使う。
- * composition、複数キーtriggerはここではレイヤー扱いしない。
+ * aggregation帰属はfaceLayerIdsをauthorityとし、combo・複数キーtriggerは除外する。
  */
 export function findActiveLayerFace(layout: Layout, selected: ReadonlySet<string>): Face | undefined {
-  if (selected.size === 0) return undefined;
-  return (layout.faces ?? []).find((face) => {
-    if (face.trigger.length !== 1 || face.inputRole === 'composition') return false;
-    return selected.size === 1 && selected.has(resolveKeyId(face.trigger[0]));
+  if (selected.size !== 1 || !layout.faces) return undefined;
+  if (!layout.faceLayerIds) {
+    throw new Error('Face表示にはfaceLayerIdsの明示が必要');
+  }
+  return layout.faces.find((face) => {
+    const layerId = layout.faceLayerIds?.get(face);
+    if (layerId === undefined) {
+      throw new Error('Face表示には全FaceのfaceLayerIds明示が必要');
+    }
+    if (layerId === COMBO_LAYER_ID || face.trigger.length !== 1) return false;
+    return selected.has(resolveKeyId(face.trigger[0]));
   });
 }
 
