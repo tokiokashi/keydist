@@ -77,25 +77,27 @@ mm表示は現在のピッチで変換する。形状は `shape-{識別子}` の
 省略時は物理形状側の既定運指のホームキーへフォールバックする。これにより配列を切り替えても、
 配列固有のホーム段を自動的に維持できる。
 
-## 4. 配列定義
+## 4. 配列定義とcanonical input
 
-論理配列は **文字 → 打鍵ステップ列** の写像として書く。
+Face / Sequence / combo定義は、人間が配列を記述するための**authoring表現**である。
+評価器のsemantic authorityはauthoring表現そのものではなく、compile / normalize後の
+canonical inputである。
+
+legacy Sequence authoringは次の形を使う。
 
 ```
 Sequence = Step[]      順次打鍵。前から順に打つ
 Step     = KeyId[]     同時に押すキーの集合
 ```
 
-配列定義は省略可能な `homeKeys`（非親指の指から物理キーidへの写像）も持てる。省略時は物理形状側の既定値を使う。
+キーは **QWERTY刻印**で指す（`d`、`;`、`-`、および親指キーの
+`thumb-l` / `thumb-r`）。旧来の `space` は入力互換のエイリアスとして受け付け、
+canonical化時に `thumb-r` へ解決する。
 
-キーは **QWERTY刻印**で指す（`d`、`;`、`-`、および親指キーの `thumb-l` / `thumb-r`）。
-旧来の `space` は入力互換のエイリアスとして受け付け、内部では `thumb-r` に解決する。
-行列インデックスより読めるうえ、公開されているかな配列の定義をそのまま写せる。
+配列定義は省略可能な `homeKeys`（非親指の指から物理キーidへの写像）も持てる。
+省略時は物理形状側の既定値を使う。
 
-ステップの列であることが順次性を、ステップが集合であることが同時性を表す。
-この1つの形で単打・同時押し・前置シフト・後置シフト・レイヤーがすべて書ける。
-
-配列定義はこの写像を直接書くほか、**面**から展開してもよい。面は次の形を持つ。
+Face authoringは次の概念を持つ。
 
 ```
 Face = {
@@ -103,43 +105,70 @@ Face = {
   mode: "prefix" | "suffix" | "simultaneous",
   rows: FaceRow[],
   layer?: string,
-  role?: "layer" | "modifier",
+  inputRole?: "layer" | "modifier" | "composition",
+  triggerPersistence?: "single" | "hold-capable",
 }
 FaceRow = string | string[]
 ```
 
-配列が特定の親指キーをシフトトリガーとして使い、運指設定でそのキーを左右に
-振り分けられる場合は、`thumb_shift_key?: KeyId` を持たせる。省略時は親指シフトの
-自動振り分けを行わず、`Sequence` に書かれたキーをそのまま使う。
+authoring sourceはcompile時に `SemanticInput` と `BaseActionRealization` へ変換する。
 
-`rows` はQWERTYの4行に対応する。文字列の行は1文字ずつセルに分け、配列の行は
-セルごとの見出しを置く。後者を使えば `きゃ` のような複数文字の見出しも1セルに置ける。
-セルの位置にあるキーを `k` とすると、面は次の `Sequence` に展開する。
+```ts
+interface InputAlternative {
+  semanticInputs: SemanticInputSequence;
+  baseRealizations: BaseActionRealizationSequence;
+}
 
-```
-trigger = []          → [[k]]
-mode = simultaneous   → [[...trigger, k]]
-mode = prefix         → [[...trigger], [k]]
-mode = suffix         → [[k], [...trigger]]
+type CanonicalInputMap =
+  ReadonlyMap<logicalOutput, readonly InputAlternative[]>;
 ```
 
-`trigger` はキーの集合として扱うため、同時押しの順序は意味を持たない。面を展開した後の
-評価器は、直接書いた定義と同じ `Sequence` だけを受け取る。したがって面の導入は、既存の
-距離モデルやステップの数え方を変えない。
+Map keyは最終的なlogical output、1 alternativeはそのoutputを成立させる1つの具体canonical
+input pathである。各SemanticInputのRequirementはANDだけを持ち、同一outputに複数の
+合法pathがある場合のORは `InputAlternative[]` で表す。
 
-`layer` を宣言した単一キー面は、同じ値の面を1つの層として扱う。`layer` を省略した面は
- その面だけで1つの層になる。`role` が `modifier` の面も、打鍵の帰属では同じ規則に従うが、
- 盤面の置き換え図とは別の修飾面として表示してよい。triggerが2キー以上の面は層ではなく
- 1つのコンボ枠に分類する。
+したがって同じ文字が複数キーに配置された場合も、最初の定義だけを打鍵用に残さず、
+全てcanonical alternativeとして保持する。reciprocal Faceのように同じSemanticInputを
+別authoring viewから記述しているだけのケースはalternativeを増やさず、同一SemanticInputへ
+dedupeする。
 
-面から `Sequence` へ展開しても、各ステップがどの面から出たかは保持する。面の出力を別の
-出力と合成する場合も、元の各ステップの帰属をそのまま連結する。
+canonical `SemanticInput` は少なくとも次の独立factを持つ。
 
-```json
-"が": [["thumb-r", "r2c1"]]   同時押し（押しっぱなしの修飾も同じ）
-"が": [["shift"], ["r2c1"]]   前置シフト
-"が": [["r2c1"], ["shift"]]   後置シフト
+```text
+physicalKeys
+requirements
+capabilities
+roles
+layerId
+classifications
+faceMemberships
 ```
+
+`modifier` はkey単位のSemanticRole。`composition` はroleではなくclassificationであり、
+`layerId='combo'` から再推測しない。語彙拡張等もauthorが明示しないと失われるため、
+stable classification IDとしてcanonicalへ保持する。一方、left/right hand、distance、
+currently-held、preferred alternativeのようにgeometry/runtimeから導出できるfactは重複保存しない。
+
+評価時は次の順で処理する。
+
+```text
+logical output matching
+  -> CanonicalInputMap[output]
+  -> Input Alternative Selection Policy
+  -> selected BaseActionRealizationSequence
+  -> TriggerRealizationPolicy
+  -> RealizedSemanticAction
+  -> Stroke
+```
+
+`Layout.map / stepLayers / stepTriggerKeys / stepSemantics` はmigration / presentation用に残り得るが、
+evaluateのsemantic authorityではない。
+
+左右どちらの親指でも同じshift semanticを成立させられる配列は、
+`thumbShiftKeys` に合法な親指physical keyを持ち、authoring時に左右両pathをcanonical
+alternativeとして生成する。`preferOppositeThumb` はキーを書き換える機能ではなく、
+そのalternative集合からoutputと反対側の親指を使うpathを優先するselection policyである。
+既定時はauthoring上の先頭alternativeを使用する。
 
 ### 4.1同時押しは1ステップとして数える
 
@@ -164,16 +193,14 @@ mode = suffix         → [[k], [...trigger]]
 割り当てを変えると同指連続の数も距離も変わる。どの割り当てで測ったかも形状と同じく
 数値に付随する情報であり、出力に併記する（§12.3）。
 
-ただし、`thumb_shift_key` を持つ配列で `prefer_opposite_thumb` を有効にした場合は、
-シフトトリガーと同時に押す出力キーが片手だけに属するステップに限り、出力キーと反対側の
-親指キーへシフトトリガーを振り替える。出力キーが両手にまたがる場合や、出力キーが無い
-場合は、配列定義のシフトキーを使う。これは任意の指を探索する機能ではなく、配列が指定
-した2本の親指の選択だけを切り替える設定である。
+ただし、複数の親指alternativeを合法pathとして持つ配列で
+`preferOppositeThumb` を有効にした場合は、Input Alternative Selection Policyが
+output側と反対の手の親指を使うalternativeを優先する。canonical inputのkeyをruntimeで
+別physical keyへ書き換える処理ではない。
 
-同じ親指キーを使う同時押しシフトが連続する場合は、同じキーを同じ親指で続けて打つため、
-既存の `g = 0` の規則によってその親指が残った状態として計算される。連続シフト用の
-別の保持設定は設けない。出力側の手が変われば、反対側の親指を優先する設定に従って
-親指キーも切り替わる。
+同じ親指alternativeが連続して選ばれた場合の距離・`g` は通常のStroke列に対する規則で
+計算する。保持可能なshiftを実際にholdするかどうかは `TriggerRealizationPolicy` の責務であり、
+親指alternative selectionとは独立している。
 
 ### 4.3見出しは最長一致で切り出す
 
@@ -213,8 +240,9 @@ mode = suffix         → [[k], [...trigger]]
 オフにする。
 設定欄から入力した綴りは評価時の英字キー表記に合わせて小文字へ正規化する。
 
-かな配列はテーブルを通さず `かな → ステップ列` を直接書く。
-どちらも最終形は同じステップ列なので、評価器は両者を区別しない。
+かな配列はテーブルを通さず `かな → Sequence` をauthoringする。
+ローマ字配列・かな配列のどちらも最終的に `CanonicalInputMap` へcompileされ、
+評価器はauthoring sourceではなくselected canonical alternativeを処理する。
 
 ---
 
@@ -224,7 +252,7 @@ mode = suffix         → [[k], [...trigger]]
 |---|---|---|---|
 | `N` | int | — | 窓幅（打鍵単位）。この打鍵数までは指を残す候補とホーム復帰候補を比較する。打ち手ごとに異なるため利用者が設定する |
 | `sfb_home_cost` | bool | `true` | 同指連続でホームキーを打つ場合に距離を加算するか（§8） |
-| `prefer_opposite_thumb` | bool | `false` | `thumb_shift_key` を持つ配列で、シフト出力キーと反対側の親指を優先するか |
+| `prefer_opposite_thumb` | bool | `false` | 左右の合法な親指alternativeを持つ配列で、出力キーと反対側の親指pathを優先するか |
 
 ## 6. 状態
 
@@ -339,10 +367,25 @@ position(f, i) = target(f, i)                  if f is pressed at i
 
 ### 10.0 Trigger realization
 
-canonical Faceの `TriggerPersistence='hold-capable'` は「保持できる」というcapabilityであり、
-base semantic normalizationだけでは `held-trigger` を生成しない。
-評価条件 `TriggerRealizationPolicy` が保持利用を有効にした時だけ、正規化後のStroke列を
-realized Stroke streamへ変換してから構造解析へ渡す。
+Input Alternative Selection Policyで1つのcanonical pathを選択した後、
+その `BaseActionRealizationSequence` を `TriggerRealizationPolicy` へ渡す。
+
+```text
+SemanticInput.requirements / capabilities
++ BaseActionRealization default/alternate participation
++ TriggerHoldState
++ TriggerRealizationPolicy
+        ↓
+realizeTriggerActions()
+        ↓
+RealizedSemanticAction
+        ↓
+Stroke
+```
+
+Faceの `TriggerPersistence='hold-capable'` はcompile時にSemanticInputの
+`while-held` Capabilityへ変換される。`single` はCapability不在で表す。
+Capabilityは「保持できる」ことを示すだけで、base realizationの時点ではholdを強制しない。
 
 初期Policy:
 
@@ -352,30 +395,27 @@ type TriggerRealizationPolicy = {
 };
 ```
 
-保持を使う場合、各stepへsemantic normalizationが付与した `associatedTriggerKeys` と、そのassociationの `TriggerPersistence` を連続判定に使う。active holdのtrigger集合と `associatedTriggerKeys` が完全一致し、かつそのassociationが `hold-capable` の連続対象だけを同じhold区間とする。layer idは継続条件に使わない。
+`useHold=false` ではselected base realizationをそのままphysical action列へする。
+`useHold=true` ではactive `TriggerHoldState` と現在inputのCapability / Requirementを照合する。
 
-```text
-区間先頭
-  trigger + held-trigger/start
+- active hold groupは現在inputの `while-held.keys` のいずれかとexact matchする場合だけ候補
+- Capabilityが一致してもRequirementを免除しない
+- prefix型 `order(trigger -> target)` ではheld triggerを先行状態として継続可能
+- suffix型 `order(target -> trigger)` では前入力からtriggerをholdしたまま次targetへ進めない
+- `defaultHoldKeys` はauthoring/default realizationが選んだhold groupでありSemanticInput identityではない
+- reciprocal inputではactive hold groupに対応するalternate participation viewを選択できる
+- continue時はheld keyを新規Pressとして再生成しない
+- held keyを除いた結果、logical outputを新たに発生させるfresh physical eventが0件になる場合は
+  continueせずrelease/restartする
+- held keyの位置は指位置snapshotには残す
+- 明示release専用Stroke / Press / Release eventは初期実装では導入しない
 
-区間継続
-  held-trigger/continue
-  （triggerは物理的に再押下しない）
-```
+`StepSemantic / associatedTriggerKeys / associatedTriggerPersistence` はlegacy metadataであり、
+evaluateのhold継続判定には使わない。layerIdやclassificationからhold可能性を推測しない。
 
-- `single` triggerをholdへ昇格しない
-- composition等の `InputRole` だけからholdを推測しない
-- trigger集合の部分一致を同一holdとして扱わない
-- prefix / suffix のoutput stepにも、その対象Faceのtrigger集合を `associatedTriggerKeys`、持続能力を `associatedTriggerPersistence` として保持する
-- active holdとassociationが一致しない、またはassociationが `single` のstep直前でholdを終了する。triggerを持たない通常outputもrelease境界になる
-- continueでは保持中triggerを `Press` として再生成しない
-- 保持中triggerキー自身がoutputでもあるstepは、保持継続のまま同じキーを再押下できないためholdをrelease/restartし、新規 `trigger + held-trigger/start` としてrealizeする
-- 保持中のキー位置は指位置snapshotには残す
-- 明示release専用Stroke / Press / Release eventはこの初期実装では導入しない
-- 後段のChain / Transition / Roll / Timingはrealized Stroke streamだけを読み、
-  独自にhold可能性を再判定しない
+後段のChain / Transition / Roll / Timingはrealized Stroke streamだけを読み、
+独自にhold可能性を再判定しない。
 
-既定 `useHold=false` は従来評価と互換にする。
 Policyは数値へ影響するため `conditions.defaults` / `conditions.perLayout` に置き、
 Metrics / structural aggregationのcondition snapshotにも実効値を保存する。
 

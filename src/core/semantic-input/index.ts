@@ -1,5 +1,6 @@
 export {
   compileFaceSemanticInputs,
+  compileSequenceInputAlternative,
   compileSequenceInputArtifacts,
   compileSequenceSemanticInputs,
   type CompiledSequenceArtifacts,
@@ -7,6 +8,7 @@ export {
 export type {
   FaceMembership,
   InputCapability,
+  InputClassification,
   KeyRole,
   PhysicalKeyId,
   Requirement,
@@ -16,10 +18,14 @@ export type {
   BaseActionRealization,
   BaseActionRealizationSequence,
   BaseParticipationView,
+  CanonicalInputMap,
+  InputAlternative,
+  InputAlternativeSet,
 } from './types.ts';
 
 export {
   flattenBaseActionRealizations,
+  mapInputAlternativePhysicalKeys,
   validateBaseActionRealization,
   validateBaseActionRealizations,
   type SemanticInputAction,
@@ -28,6 +34,7 @@ export {
 export {
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   realizeTriggerActions,
+  sameTriggerRealizationPolicy,
   type RealizedSemanticAction,
   type TriggerHoldPhase,
   type TriggerHoldState,

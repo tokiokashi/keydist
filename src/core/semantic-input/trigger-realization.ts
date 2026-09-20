@@ -17,6 +17,13 @@ export const DEFAULT_TRIGGER_REALIZATION_POLICY: TriggerRealizationPolicy = {
   useHold: false,
 };
 
+export function sameTriggerRealizationPolicy(
+  left: TriggerRealizationPolicy,
+  right: TriggerRealizationPolicy,
+): boolean {
+  return left.useHold === right.useHold;
+}
+
 export interface TriggerHoldState {
   readonly keys: readonly PhysicalKeyId[];
 }

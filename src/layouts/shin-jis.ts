@@ -3,6 +3,7 @@ import {
   faceFromEntries,
   fromFaces,
   withComposedOutputs,
+  withThumbShiftAlternatives,
   type Face,
   type FaceMode,
   type Layout,
@@ -65,19 +66,21 @@ function makeLayout(
   mode: FaceMode,
   triggerPersistence: NonNullable<Face['triggerPersistence']>,
 ): Layout {
-  const layout = withComposedOutputs(
+  const layout = withThumbShiftAlternatives(
     withComposedOutputs(
-      fromFaces(id, name, shinJisFaces(mode, triggerPersistence)),
-      VOICED,
-      '゛',
+      withComposedOutputs(
+        fromFaces(id, name, shinJisFaces(mode, triggerPersistence)),
+        VOICED,
+        '゛',
+        '新JIS',
+      ),
+      SEMI_VOICED,
+      '゜',
       '新JIS',
     ),
-    SEMI_VOICED,
-    '゜',
-    '新JIS',
+    THUMB_KEY.RT,
+    [THUMB_KEY.RT, THUMB_KEY.LT],
   );
-
-  layout.thumbShiftKey = THUMB_KEY.RT;
   layout.legends.set(THUMB_KEY.LT, 'シフト');
   layout.legends.set(THUMB_KEY.RT, 'シフト');
   return layout;

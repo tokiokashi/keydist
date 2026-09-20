@@ -4,7 +4,9 @@ import type { Face } from '../../layouts/types.ts';
 import type {
   BaseActionRealizationSequence,
   FaceMembership,
+  InputAlternative,
   InputCapability,
+  InputClassification,
   KeyRole,
   PhysicalKeyId,
   Requirement,
@@ -18,6 +20,7 @@ interface MutableSemanticInput {
   requirements: Requirement[];
   capabilities: InputCapability[];
   layerId: string;
+  classifications: InputClassification[];
   roles: KeyRole[];
   faceMemberships: FaceMembership[];
 }
@@ -71,6 +74,11 @@ const normalizeCapabilities = (capabilities: readonly InputCapability[]): InputC
   return [...unique.values()].sort((left, right) =>
     compareString(capabilitySignature(left), capabilitySignature(right)));
 };
+
+const normalizeClassifications = (
+  classifications: readonly InputClassification[],
+): InputClassification[] =>
+  [...new Set(classifications)].sort(compareString);
 
 const normalizeRoles = (roles: readonly KeyRole[]): KeyRole[] => {
   const unique = new Map<string, KeyRole>();
@@ -287,6 +295,9 @@ const faceCapabilities = (
   return normalizeCapabilities([{ kind: 'while-held', keys: [...triggerKeys] }]);
 };
 
+const faceClassifications = (face: Face): InputClassification[] =>
+  face.inputRole === 'composition' ? ['composition'] : [];
+
 const faceRoles = (
   face: Face,
   triggerKeys: readonly PhysicalKeyId[],
@@ -322,6 +333,7 @@ export function compileSequenceSemanticInputs(
   output: string,
   sequence: readonly (readonly string[])[],
   layerId: string,
+  classifications: readonly InputClassification[] = [],
 ): readonly SemanticInput[] {
   if (sequence.length === 0) {
     throw new Error(`SemanticInput sequence「${output}」は1 step以上必要`);
@@ -344,6 +356,7 @@ export function compileSequenceSemanticInputs(
       requirements,
       capabilities: [],
       layerId,
+      classifications: normalizeClassifications(classifications),
       roles: [],
       faceMemberships: [],
     };
@@ -365,8 +378,9 @@ export function compileSequenceInputArtifacts(
   output: string,
   sequence: readonly (readonly string[])[],
   layerId: string,
+  classifications: readonly InputClassification[] = [],
 ): CompiledSequenceArtifacts {
-  const semanticInputs = compileSequenceSemanticInputs(output, sequence, layerId);
+  const semanticInputs = compileSequenceSemanticInputs(output, sequence, layerId, classifications);
   const baseActionRealizations: BaseActionRealizationSequence =
     semanticInputs.map((input, index) => ({
       input,
@@ -398,6 +412,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
       const physicalKeys = sortedUniqueKeys([...triggerKeys, cell.key]);
       const requirements = faceRequirements(face, triggerKeys, cell.key);
       const capabilities = faceCapabilities(face, triggerKeys);
+      const classifications = faceClassifications(face);
       const roles = faceRoles(face, triggerKeys);
       const layerId = normalizedLayerId(face, faceIndex, triggerKeys);
       const physicalSignature = physicalKeys.join('\u0000');
@@ -408,6 +423,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
         requirements,
         capabilities,
         layerId,
+        classifications,
         roles,
         faceMemberships: [{ faceIndex, cellKey: cell.key }],
       };
@@ -426,9 +442,8 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
           continue;
         }
         if (sibling.output === candidate.output) {
-          throw new Error(
-            `同一outputに複数のRequirement setがある: ${candidate.output}`,
-          );
+          // 同一logical outputの別activation pathは上位InputAlternativeでORとして保持する。
+          continue;
         }
         if (!requirementsMutuallyExclusive(sibling.requirements, candidate.requirements)) {
           throw new Error(
@@ -454,6 +469,10 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
         ...existing.capabilities,
         ...capabilities,
       ]);
+      existing.classifications = normalizeClassifications([
+        ...existing.classifications,
+        ...classifications,
+      ]);
       existing.roles = normalizeRoles([...existing.roles, ...roles]);
       existing.faceMemberships = normalizeMemberships([
         ...existing.faceMemberships,
@@ -469,8 +488,23 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
       requirements: normalizeRequirements(input.requirements),
       capabilities: normalizeCapabilities(input.capabilities),
       layerId: input.layerId,
+      classifications: normalizeClassifications(input.classifications),
       roles: normalizeRoles(input.roles),
       faceMemberships: normalizeMemberships(input.faceMemberships),
     }))
     .sort((left, right) => compareString(semanticIdentity(left), semanticIdentity(right)));
+}
+
+
+export function compileSequenceInputAlternative(
+  output: string,
+  sequence: readonly (readonly PhysicalKeyId[])[],
+  layerId: string,
+  classifications: readonly InputClassification[] = [],
+): InputAlternative {
+  const artifacts = compileSequenceInputArtifacts(output, sequence, layerId, classifications);
+  return {
+    semanticInputs: artifacts.semanticInputs,
+    baseRealizations: artifacts.baseActionRealizations,
+  };
 }

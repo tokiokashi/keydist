@@ -20,6 +20,7 @@ const semanticInput = (
   requirements,
   capabilities: [],
   layerId: 'single',
+  classifications: [],
   roles: [],
   faceMemberships: [],
 });
@@ -100,8 +101,8 @@ test('Face prefix multi-triggerのdefault groupingはFace sourceから[T] -> [K]
     triggerPersistence: 'single',
   };
   const layout = fromFaces('prefix-base-realization', 'prefix-base-realization', [face]);
-  const semantic = layout.semanticInputSequences?.get('x');
-  const base = layout.baseActionRealizations?.get('x');
+  const semantic = layout.canonicalInputs.get('x')?.[0]?.semanticInputs;
+  const base = layout.canonicalInputs.get('x')?.[0]?.baseRealizations;
 
   assert.ok(semantic);
   assert.ok(base);
@@ -126,8 +127,8 @@ test('Face simultaneous + orderのdefault groupingはFace sourceどおり1 actio
     triggerPersistence: 'hold-capable',
   };
   const layout = fromFaces('sands-base-realization', 'sands-base-realization', [face]);
-  const semantic = layout.semanticInputSequences?.get('x');
-  const base = layout.baseActionRealizations?.get('x');
+  const semantic = layout.canonicalInputs.get('x')?.[0]?.semanticInputs;
+  const base = layout.canonicalInputs.get('x')?.[0]?.baseRealizations;
 
   assert.ok(semantic);
   assert.ok(base);
@@ -286,13 +287,12 @@ test('flatten時はaliasをcanonical PhysicalKeyIdへ正規化する', () => {
 
 test('built-in全outputでauthoring-derived base actionがlegacy Layout.mapと一致する', () => {
   for (const layout of LAYOUT_BY_ID.values()) {
-    assert.ok(layout.semanticInputSequences, `${layout.id}: semanticInputSequences`);
-    assert.ok(layout.baseActionRealizations, `${layout.id}: baseActionRealizations`);
+    assert.ok(layout.canonicalInputs, `${layout.id}: canonicalInputs`);
 
     for (const [output, legacySequence] of layout.map) {
-      const semanticSequence = layout.semanticInputSequences.get(output);
+      const semanticSequence = layout.canonicalInputs.get(output)?.[0]?.semanticInputs;
       const baseRealizations: BaseActionRealizationSequence | undefined =
-        layout.baseActionRealizations.get(output);
+        layout.canonicalInputs.get(output)?.[0]?.baseRealizations;
       assert.ok(semanticSequence, `${layout.id}: ${output} semantic sequence`);
       assert.ok(baseRealizations, `${layout.id}: ${output} base realization`);
 
@@ -322,9 +322,9 @@ test('built-in全outputでauthoring-derived base actionがlegacy Layout.mapと�
 test('composed outputはcomponentのBaseActionRealization objectを再利用する', () => {
   for (const id of ['shin-jis-prefix', 'shin-jis-simultaneous', 'tsuki-2-263']) {
     const layout = LAYOUT_BY_ID.get(id)!;
-    const source = layout.baseActionRealizations?.get('ほ');
-    const mark = layout.baseActionRealizations?.get('゛');
-    const output = layout.baseActionRealizations?.get('ぼ');
+    const source = layout.canonicalInputs.get('ほ')?.[0]?.baseRealizations;
+    const mark = layout.canonicalInputs.get('゛')?.[0]?.baseRealizations;
+    const output = layout.canonicalInputs.get('ぼ')?.[0]?.baseRealizations;
 
     assert.ok(source, `${id}: source`);
     assert.ok(mark, `${id}: mark`);
@@ -338,10 +338,10 @@ test('composed outputはcomponentのBaseActionRealization objectを再利用す�
 
 test('built-in全outputでbase participationがlegacy StepSemanticと一致する', () => {
   for (const layout of LAYOUT_BY_ID.values()) {
-    assert.ok(layout.baseActionRealizations, `${layout.id}: baseActionRealizations`);
+    assert.ok(layout.canonicalInputs, `${layout.id}: canonicalInputs`);
 
     for (const output of layout.map.keys()) {
-      const base = layout.baseActionRealizations.get(output);
+      const base = layout.canonicalInputs.get(output)?.[0]?.baseRealizations;
       const legacy = layout.stepSemantics?.get(output);
       assert.ok(base, `${layout.id}: ${output} base realization`);
       assert.ok(legacy, `${layout.id}: ${output} legacy StepSemantic`);
@@ -361,7 +361,7 @@ test('built-in全outputでbase participationがlegacy StepSemanticと一致す�
           `${layout.id}: ${output} trigger participation ${index}`,
         );
 
-        const derivedRole = action.input.layerId === 'combo'
+        const derivedRole = action.input.classifications.includes('composition')
           ? 'composition'
           : action.input.roles.length > 0 ? 'modifier' : 'layer';
         assert.equal(
@@ -397,7 +397,7 @@ test('built-in全outputでbase participationがlegacy StepSemanticと一致す�
 
 test('薙刀式がはreciprocal Faceのalternate participation viewを保持する', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
-  const base = layout.baseActionRealizations?.get('が');
+  const base = layout.canonicalInputs.get('が')?.[0]?.baseRealizations;
   assert.ok(base);
   assert.equal(base.length, 1);
 

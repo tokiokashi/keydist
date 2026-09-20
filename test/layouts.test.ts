@@ -45,11 +45,11 @@ test('面の展開後も各ステップの層帰属を保持する（#87）', ()
   const trace = evaluate('あかさた', layout, buildGeometry('row-staggered'), DEFAULT_OPTIONS);
 
   assert.deepEqual(trace.strokes.map((stroke) => stroke.layerId), [
-    'face:0', 'layer:中指', 'layer:中指', 'layer:人差指', 'layer:人差指', 'combo',
+    'single', 'layer:中指', 'layer:中指', 'layer:人差指', 'layer:人差指', 'combo',
   ]);
   const metrics = computeMetrics(trace, buildGeometry('row-staggered'));
   assert.deepEqual(metrics.layers.map((layer) => [layer.id, layer.presses]), [
-    ['face:0', 1], ['layer:中指', 2], ['layer:人差指', 2],
+    ['single', 1], ['layer:中指', 2], ['layer:人差指', 2],
   ]);
   assert.equal(metrics.comboPresses, 3);
 });
@@ -456,6 +456,8 @@ test('新JISは同じかな配置を逐次シフトと通常シフトで共有�
 
   assert.equal(prefix.thumbShiftKey, 'thumb-r');
   assert.equal(simultaneous.thumbShiftKey, 'thumb-r');
+  assert.deepEqual(prefix.thumbShiftKeys, ['thumb-r', 'thumb-l']);
+  assert.deepEqual(simultaneous.thumbShiftKeys, ['thumb-r', 'thumb-l']);
   for (const layout of [prefix, simultaneous]) {
     assert.equal(layout.legends.get('thumb-l'), 'シフト');
     assert.equal(layout.legends.get('thumb-r'), 'シフト');
@@ -473,7 +475,7 @@ test('imported user Sequenceもcanonical SemanticInput列へ同期する', () =>
     direct: true,
   });
 
-  const inputs = layout.semanticInputSequences?.get('x');
+  const inputs = layout.canonicalInputs.get('x')?.[0]?.semanticInputs;
   assert.ok(inputs);
   assert.equal(inputs.length, 2);
   assert.deepEqual(inputs[0].physicalKeys, ['j', 'thumb-r']);
@@ -498,7 +500,7 @@ test('保存済み凡例のspaceもthumb-rへ解決する', () => {
 
   assert.equal(layout.legends.get('thumb-r'), 'Space');
   assert.equal(layout.legends.has('space'), false);
-  assert.deepEqual(layout.semanticInputSequences?.get('x')?.[0].physicalKeys, ['thumb-r']);
+  assert.deepEqual(layout.canonicalInputs.get('x')?.[0]?.semanticInputs?.[0].physicalKeys, ['thumb-r']);
 });
 
 test('薙刀式v18の面移行で総距離とステップ数を維持する', () => {
@@ -512,4 +514,15 @@ test('薙刀式v18の面移行で総距離とステップ数を維持する', ()
   assert.equal(metrics.strokes, 1654);
   assert.equal(metrics.presses, 2440);
   assert.ok(Math.abs(metrics.totalUnits - 1131.0836338355334) < 1e-9);
+});
+
+
+test('custom combo classificationはpresentation groupと独立してcanonicalへ保持する', () => {
+  const layout = LAYOUT_BY_ID.get('oonishi-custom-combo')!;
+  const vocabulary = layout.canonicalInputs.get('desita')?.[0]?.semanticInputs[0];
+  const youon = layout.canonicalInputs.get('yaku')?.[0]?.semanticInputs[0];
+  assert.ok(vocabulary);
+  assert.ok(youon);
+  assert.deepEqual(vocabulary.classifications, ['composition', 'vocabulary-extension']);
+  assert.deepEqual(youon.classifications, ['composition', 'youon-extension']);
 });

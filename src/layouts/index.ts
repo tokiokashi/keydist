@@ -21,6 +21,7 @@ export type {
   FaceRow,
   HoldPhase,
   InputRole,
+  KanaDefinition,
   LayerDefinition,
   LayerKind,
   Layout,
@@ -38,6 +39,7 @@ export {
   fromFaces,
   fromKana,
   withComposedOutputs,
+  withThumbShiftAlternatives,
   withRomaji,
   withCombos,
 } from './types.ts';

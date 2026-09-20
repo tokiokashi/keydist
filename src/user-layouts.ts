@@ -1,4 +1,7 @@
-import { compileSequenceInputArtifacts } from './core/semantic-input/index.ts';
+import {
+  compileSequenceInputAlternative,
+  type InputAlternative,
+} from './core/semantic-input/index.ts';
 import { QWERTY_LEGEND, resolveKeyId, type NonThumb } from './geometry.ts';
 import { fromRows, SINGLE_LAYER_ID, withRomaji, type Layout } from './layouts/index.ts';
 import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from './romaji/rules.ts';
@@ -96,7 +99,8 @@ export function sanitizeUserLayouts(value: unknown): UserLayout[] {
 
 /**
  * 入力を検査する。列数オーバーだけを弾く。
- * 同じ文字が複数のキーに載る配列はありうるので重複は通す（打鍵には先の方を使う）。
+ * 同じ文字が複数のキーに載る配列はありうるので重複は通し、
+ * canonical input alternativeとして全pathを保持する。
  */
 export function validate(rows: string[]): string[] {
   const errors: string[] = [];
@@ -117,13 +121,20 @@ export function toLayout(def: UserLayout): Layout {
   const layout = fromRows(def.id, def.name, rows);
   if (!def.sequences && !def.legends) return { ...layout, homeKeys: def.homeKeys };
   const map = new Map(layout.map);
-  const semanticInputSequences = new Map(layout.semanticInputSequences ?? []);
-  const baseActionRealizations = new Map(layout.baseActionRealizations ?? []);
+  const canonicalInputs = new Map<string, InputAlternative[]>(
+    [...layout.canonicalInputs].map(([output, alternatives]) =>
+      [output, [...alternatives]] as const),
+  );
   for (const [output, sequence] of def.sequences ?? []) {
+    // imported sequenceは従来mapを上書きしていたためauthoring defaultとして先頭へ置く。
     map.set(output, sequence);
-    const artifacts = compileSequenceInputArtifacts(output, sequence, SINGLE_LAYER_ID);
-    semanticInputSequences.set(output, artifacts.semanticInputs);
-    baseActionRealizations.set(output, artifacts.baseActionRealizations);
+    const alternative = compileSequenceInputAlternative(output, sequence, SINGLE_LAYER_ID);
+    canonicalInputs.set(output, [
+      alternative,
+      ...(canonicalInputs.get(output) ?? []).filter((candidate) =>
+        JSON.stringify(candidate.baseRealizations.map((realization) => realization.actions))
+          !== JSON.stringify(alternative.baseRealizations.map((realization) => realization.actions))),
+    ]);
   }
   const legends = new Map(layout.legends);
   for (const [key, label] of def.legends ?? []) legends.set(resolveKeyId(key), label);
@@ -131,8 +142,7 @@ export function toLayout(def: UserLayout): Layout {
   return {
     ...layout,
     map,
-    semanticInputSequences,
-    baseActionRealizations,
+    canonicalInputs,
     legends,
     maxCharLength,
     homeKeys: def.homeKeys,

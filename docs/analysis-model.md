@@ -19,37 +19,108 @@ keydist 固有の内部モデルは同じものではないため、以下では
 
 ## keydist の構造モデル
 
-### Strokeとsemantic role
+### Canonical input / Stroke
 
-長文は文字単位ではなく、正規化された **Stroke** の列として解析する。
-1 Stroke内には複数Pressを持てるため、同時押しも1ステップとして保持できる。
+Face / Sequence はauthoring表現であり、構造解析のsource of truthではない。
+authoring後はlogical outputごとに複数の具体input pathを保持する。
 
-- **InputRole**: 入力の役割。layer操作や通常出力など、入力列上の意味を表す。
-- **FaceMode**: `prefix` / `suffix` / `simultaneous` など、面をどう発火するかを表す。
-- **TriggerPersistence**: triggerがそのStrokeだけのactivationか、後続へ保持されるかを表す。
+```text
+Face / Sequence / combo authoring
+        ↓ compile / normalize
+CanonicalInputMap
+  logical output
+    ├ InputAlternative A
+    │   ├ SemanticInputSequence
+    │   └ BaseActionRealizationSequence
+    └ InputAlternative B ...
+        ↓ Input Alternative Selection Policy
+selected BaseActionRealizationSequence
+        ↓ TriggerRealizationPolicy
+RealizedSemanticAction
+        ↓
+Stroke
+```
 
-これらはsemantic normalizationの材料であり、それ自体を「Chainを切る」等の規則へ
-自動変換しない。構造境界は明示的なPolicyで決める。
+1つの `SemanticInput` は1つの具体activationを表し、RequirementはANDだけを持つ。
+同じlogical outputへ複数の合法なphysical pathがある場合はORをSemanticInputへ入れず、
+`InputAlternative[]` として上位に保持する。
+
+例:
+
+```text
+「あ」
+  alt A -> f
+  alt B -> j
+
+「お」
+  alt A -> thumb-l + j
+  alt B -> thumb-r + j
+```
+
+reciprocal Faceのように同じSemanticInputを別のauthoring viewから記述した場合は
+alternativeを増やさず、同じSemanticInputへCapability / role / Face membershipをunionし、
+BaseActionRealizationのdefault / alternate participation viewとして保持する。
+
+`preferOppositeThumb` はphysical key rewriteではなくalternative selection policyである。
+左右どちらの親指も合法なpathとしてauthoring時にcanonicalへ入り、policyがoutputと反対側の
+親指を使うpathを優先する。既定ではauthoring上の先頭alternativeを使う。
+
+Strokeはselected alternativeをrealizeした結果から生成し、
+`Layout.map / stepLayers / stepTriggerKeys / stepSemantics` をsemantic authorityとして読まない。
+
+### Semantic role / classification
+
+canonical semanticでは異なる軸を混ぜない。
+
+- `roles`: key単位の特別なsemantic role。現在は `modifier` のみ。
+- `requirements`: overlap / order等の成立条件。
+- `capabilities`: while-held等のrealization能力。
+- `layerId`: aggregation上の帰属先。
+- `classifications`: 他のfactから再構成できないauthor intent。
+- `faceMemberships`: presentation provenance。
+
+`composition` はkey roleではなくclassificationであり、`layerId='combo'` から逆推測しない。
+語彙拡張・拗音拡張・撥音拡張・入声拡張・二重母音拡張もpresentation labelだけに落とさず、
+stable classification IDとしてcanonical inputへ保持する。geometry、左右hand、距離、
+currently-held、preferred alternative等の導出可能factはcanonicalへ重複保存しない。
+
+compatibility用の旧 `InputRole` はStroke生成時にcanonical classification / roleから導出する。
 
 ### Trigger realization
 
-`TriggerPersistence='hold-capable'` は保持できる能力であり、base normalizationの時点では
-通常の `trigger` として残す。評価条件 `TriggerRealizationPolicy.useHold` を有効にした時だけ、
-`associatedTriggerKeys` がactive holdのtrigger集合と完全一致し、かつ `associatedTriggerPersistence='hold-capable'` の区間だけを実際の保持へrealizeする。layer idは継続判定に使わない。
+Trigger realizationは
 
-- 区間先頭: 新規 `trigger` + `held-trigger/start`
-- 継続Stroke: triggerを再押下せず `held-trigger/continue`
-- `single` triggerはholdへ昇格しない
-- prefix / suffix のoutput stepにも元Faceのtrigger集合を `associatedTriggerKeys`、持続能力を `associatedTriggerPersistence` として持たせる
-- trigger集合は部分一致ではなく完全一致で継続判定する
-- active holdとassociationが一致しない、またはassociationが `single` のstep直前をrelease境界とする
-- 保持中triggerキー自身がoutputでもある場合はcontinueせずrelease/restartし、新規Pressと `held-trigger/start` にする
-- 明示的なrelease専用Stroke/eventは現段階では作らず、将来のPress/Release event形式を先取りして固定しない
+```text
+SemanticInput.requirements / capabilities
++ BaseActionRealization default/alternate participation
++ TriggerHoldState
++ TriggerRealizationPolicy
+        ↓
+realizeTriggerActions()
+        ↓
+RealizedSemanticAction
+```
 
-既定は `useHold=false` で、従来のStroke列と評価値を維持する。実際にrealizeされた
-Stroke streamだけをRaw hand run以降へ渡し、Chain / Transition / Timingが独自にhold判定しない。
+で行う。`StepSemantic / associatedTriggerKeys / associatedTriggerPersistence` はlegacy metadataであり、
+evaluateのauthorityではない。
 
-`HoldStartActionPolicy` はこのrealizationとは別の**計上Policy**。realize済み
+`while-held` Capabilityは保持できる能力であって、必ずholdする指定ではない。
+既定 `useHold=false` ではbase realizationをそのまま使う。`useHold=true` の場合だけ、
+active hold groupとCapability / Requirementを照合して継続可否を決める。
+
+- active hold groupはCapabilityのkey groupとexact matchする場合だけ候補になる
+- CapabilityがあってもRequirementを免除しない
+- prefixの `order(trigger -> target)` はheld triggerを先行状態として継続できる
+- suffixの `order(target -> trigger)` はtriggerを前入力から保持したまま次targetへ進めない
+- `defaultHoldKeys` はauthoring/default realizationで選ばれたhold groupで、SemanticInput identityではない
+- reciprocal inputではactive hold groupに応じてalternate participation viewを選べる
+- held keyを除くとlogical outputを発生させるfresh physical eventが消える場合はcontinueせずrelease/restartする
+- 明示的なrelease専用Stroke/eventは現段階では作らない
+
+実際にrealizeされたStroke streamだけをRaw hand run以降へ渡し、
+Chain / Transition / Timingが独自にhold可能性を再判定しない。
+
+`HoldStartActionPolicy` はTrigger realizationとは別の**計上Policy**。realize済み
 `held-trigger/start` がlayer / modifierのoutputと同じStrokeにある場合だけ、必要なら+1の
 virtual actionとして数える。compositionと、prefix trigger-only Strokeのように既に独立している
 操作は追加計上しない。physical Stroke数は `Metrics.strokes`、Policy適用後のaction総数は

@@ -50,6 +50,7 @@ const stroke = (index: number, entries: PressSemantic[]): Stroke => ({
   inputIndex: index,
   layerId: 'single',
   inputRole: 'layer',
+  classifications: [],
   triggerKeys: [],
   pairedTriggerKeys: [],
   participations: entries.map(({ press: p, roles = ['output'], holdPhase }) => ({

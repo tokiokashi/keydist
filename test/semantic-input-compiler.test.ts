@@ -5,7 +5,7 @@ import {
   compileSequenceSemanticInputs,
   type SemanticInput,
 } from '../src/core/semantic-input/index.ts';
-import { LAYOUTS, LAYOUTS_JA, fromKana } from '../src/layouts/index.ts';
+import { LAYOUTS, LAYOUTS_JA, fromFaces, fromKana, fromRows } from '../src/layouts/index.ts';
 import { faceFromEntries, type Face, type FaceMode } from '../src/layouts/types.ts';
 
 const face = (
@@ -39,6 +39,7 @@ test('legacy Step列はordered SemanticInput sequenceへcompileする', () => {
     ],
     capabilities: [],
     layerId: 'single',
+    classifications: [],
     roles: [],
     faceMemberships: [],
   });
@@ -48,6 +49,7 @@ test('legacy Step列はordered SemanticInput sequenceへcompileする', () => {
     requirements: [],
     capabilities: [],
     layerId: 'single',
+    classifications: [],
     roles: [],
     faceMemberships: [],
   });
@@ -84,7 +86,7 @@ test('fromKanaはlegacy Step列をcanonical SemanticInput列として保持す�
   const layout = fromKana('direct-sequence', 'direct-sequence', {
     x: [['space', 'j'], ['j']],
   });
-  const inputs = layout.semanticInputSequences?.get('x');
+  const inputs = layout.canonicalInputs.get('x')?.[0]?.semanticInputs;
 
   assert.ok(inputs);
   assert.equal(inputs.length, 2);
@@ -106,6 +108,7 @@ test('triggerなしFaceを単打SemanticInputへcompileする', () => {
     requirements: [],
     capabilities: [],
     layerId: 'single',
+    classifications: [],
     roles: [],
     faceMemberships: [{ faceIndex: 0, cellKey: 'a' }],
   });
@@ -186,6 +189,7 @@ test('SemanticInput IRは一部キーだけのwhile-held capabilityを表現で�
       { kind: 'while-held', keys: ['thumb-r'] },
     ],
     layerId: 'combo',
+    classifications: [],
     roles: [],
     faceMemberships: [],
   };
@@ -222,6 +226,7 @@ test('相互シフトを両Faceから定義すると1 SemanticInputへdedupeし�
     ],
     capabilities: [],
     layerId: 'layer:中指シフト',
+    classifications: [],
     roles: [
       { key: 'd', role: 'modifier' },
       { key: 'k', role: 'modifier' },
@@ -253,13 +258,25 @@ test('同一physicalKeysで同時成立し得るactivation variantをerrorにす
   );
 });
 
-test('同一outputの複数activation variantはOR未対応なのでerrorにする', () => {
-  assert.throws(
-    () => compileFaceSemanticInputs([
-      face(['d'], 'simultaneous', { h: 'へ' }, { layer: '中指シフト' }),
-      face(['d'], 'prefix', { h: 'へ' }, { layer: '中指シフト' }),
-    ]),
-    /同一outputに複数のRequirement set/,
+test('同一outputの複数activation variantは別SemanticInputとして保持する', () => {
+  const faces = [
+    face(['d'], 'simultaneous', { h: 'へ' }),
+    face(['d'], 'prefix', { h: 'へ' }),
+  ];
+  const inputs = compileFaceSemanticInputs(faces);
+  assert.equal(inputs.length, 2);
+  assert.ok(inputs.every((input) => input.output === 'へ'));
+
+  const layout = fromFaces('same-output-alternatives', 'same-output-alternatives', faces);
+  const alternatives = layout.canonicalInputs.get('へ');
+  assert.ok(alternatives);
+  assert.equal(alternatives.length, 2);
+  assert.deepEqual(
+    alternatives.map((alternative) => alternative.semanticInputs[0].requirements),
+    [
+      [{ kind: 'overlap', keys: ['d', 'h'] }],
+      [{ kind: 'order', before: ['d'], after: ['h'] }],
+    ],
   );
 });
 
@@ -432,9 +449,9 @@ test('legacy fromFaces mapは相互Faceを明示しても既存の打鍵列を�
 
 test('built-in Layoutは全map outputにcanonical SemanticInput sequenceを持つ', () => {
   for (const layout of [...LAYOUTS, ...LAYOUTS_JA]) {
-    assert.ok(layout.semanticInputSequences, `${layout.id}: semanticInputSequences`);
+    assert.ok(layout.canonicalInputs, `${layout.id}: canonicalInputs`);
     for (const output of layout.map.keys()) {
-      const inputs = layout.semanticInputSequences.get(output);
+      const inputs = layout.canonicalInputs.get(output)?.[0]?.semanticInputs;
       assert.ok(inputs && inputs.length > 0, `${layout.id}: ${output}`);
     }
   }
@@ -444,7 +461,7 @@ test('Face prefixはlegacy 2 Stepでもcanonicalでは1 SemanticInputのorder制
   const tsuki = LAYOUTS_JA.find((layout) => layout.id === 'tsuki-2-263')!;
   assert.equal(tsuki.map.get('ぬ')?.length, 2);
 
-  const inputs = tsuki.semanticInputSequences?.get('ぬ');
+  const inputs = tsuki.canonicalInputs.get('ぬ')?.[0]?.semanticInputs;
   assert.ok(inputs);
   assert.equal(inputs.length, 1);
   assert.deepEqual(inputs[0].requirements, [
@@ -455,9 +472,9 @@ test('Face prefixはlegacy 2 Stepでもcanonicalでは1 SemanticInputのorder制
 test('composed outputはsource / markのcanonical SemanticInput列を再利用して連結する', () => {
   for (const id of ['shin-jis-prefix', 'shin-jis-simultaneous', 'tsuki-2-263']) {
     const layout = LAYOUTS_JA.find((candidate) => candidate.id === id)!;
-    const source = layout.semanticInputSequences?.get('ほ');
-    const mark = layout.semanticInputSequences?.get('゛');
-    const output = layout.semanticInputSequences?.get('ぼ');
+    const source = layout.canonicalInputs.get('ほ')?.[0]?.semanticInputs;
+    const mark = layout.canonicalInputs.get('゛')?.[0]?.semanticInputs;
+    const output = layout.canonicalInputs.get('ぼ')?.[0]?.semanticInputs;
 
     assert.ok(source, `${id}: source`);
     assert.ok(mark, `${id}: mark`);
@@ -468,10 +485,10 @@ test('composed outputはsource / markのcanonical SemanticInput列を再利用�
   }
 });
 
-test('canonical base layerはsingleを使いlegacy face:0とはcutoverまで分離する', () => {
+test('consumer cutover後はbase layerをcanonical singleへ統一する', () => {
   const tsuki = LAYOUTS_JA.find((layout) => layout.id === 'tsuki-2-263')!;
-  assert.equal(tsuki.semanticInputSequences?.get('そ')?.[0].layerId, 'single');
-  assert.deepEqual(tsuki.stepLayers?.get('そ'), ['face:0']);
+  assert.equal(tsuki.canonicalInputs.get('そ')?.[0]?.semanticInputs?.[0].layerId, 'single');
+  assert.deepEqual(tsuki.stepLayers?.get('そ'), ['single']);
 });
 
 test('withCombos由来outputは1つのcombo SemanticInput + overlapになる', () => {
@@ -479,10 +496,65 @@ test('withCombos由来outputは1つのcombo SemanticInput + overlapになる', (
     ?? LAYOUTS.find((layout) => layout.id === 'oonishi-custom-combo');
   assert.ok(combo);
 
-  const inputs = combo.semanticInputSequences?.get('desita');
+  const inputs = combo.canonicalInputs.get('desita')?.[0]?.semanticInputs;
   assert.ok(inputs);
   assert.equal(inputs.length, 1);
   assert.equal(inputs[0].layerId, 'combo');
   assert.equal(inputs[0].requirements[0]?.kind, 'overlap');
   assert.equal(inputs[0].output, 'desita');
+});
+
+
+test('fromRowsは同じoutputの複数物理キーをcanonical alternativeとして保持する', () => {
+  const layout = fromRows('duplicate-output', 'duplicate-output', [
+    '',
+    'aa',
+    '',
+    '',
+  ]);
+  const alternatives = layout.canonicalInputs.get('a');
+  assert.ok(alternatives);
+  assert.equal(alternatives.length, 2);
+  assert.deepEqual(
+    alternatives.map((alternative) => alternative.semanticInputs[0].physicalKeys),
+    [['q'], ['w']],
+  );
+  assert.deepEqual(layout.map.get('a'), [['q']], 'legacy mapはauthoring defaultだけを保持する');
+});
+
+test('fromKana tuple定義は同じoutputの複数pathを保持する', () => {
+  const layout = fromKana('duplicate-kana', 'duplicate-kana', [
+    ['x', [['f']]],
+    ['x', [['j']]],
+  ]);
+  const alternatives = layout.canonicalInputs.get('x');
+  assert.ok(alternatives);
+  assert.equal(alternatives.length, 2);
+  assert.deepEqual(
+    alternatives.map((alternative) => alternative.semanticInputs[0].physicalKeys),
+    [['f'], ['j']],
+  );
+});
+
+test('別SemanticInputから同じFace outputが成立する場合は別alternativeになる', () => {
+  const layout = fromFaces('face-alternatives', 'face-alternatives', [
+    face(['d'], 'simultaneous', { f: 'x' }),
+    face(['k'], 'simultaneous', { j: 'x' }),
+  ]);
+  const alternatives = layout.canonicalInputs.get('x');
+  assert.ok(alternatives);
+  assert.equal(alternatives.length, 2);
+  assert.notEqual(alternatives[0].semanticInputs[0], alternatives[1].semanticInputs[0]);
+});
+
+
+test('composition Faceはclassificationをcanonicalへ保持する', () => {
+  const [input] = compileFaceSemanticInputs([
+    face(['d', 'k'], 'simultaneous', { j: 'x' }, {
+      inputRole: 'composition',
+      triggerPersistence: 'single',
+    }),
+  ]);
+  assert.deepEqual(input.classifications, ['composition']);
+  assert.equal(input.layerId, 'combo');
 });
