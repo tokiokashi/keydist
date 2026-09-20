@@ -183,6 +183,20 @@ test('面のセル配列は複数文字の見出しを1キーへ置ける', () =
   assert.equal(layout.maxCharLength, 2);
 });
 
+test('Faceを持つLayoutは全FaceのfaceLayerIdsを明示する', () => {
+  for (const layout of LAYOUTS_JA) {
+    if (!layout.faces) continue;
+    assert.ok(layout.faceLayerIds, `${layout.id}: faceLayerIds`);
+    for (const face of layout.faces) {
+      assert.notEqual(
+        layout.faceLayerIds.get(face),
+        undefined,
+        `${layout.id}: Face layerId`,
+      );
+    }
+  }
+});
+
 test('宣言された面だけを逆手の条件でレイヤーへ集約する', () => {
   const shingeta = LAYOUT_BY_ID.get('shingeta')!;
   const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
