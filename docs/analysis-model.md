@@ -32,7 +32,8 @@ CanonicalInputMap
     ├ InputAlternative A
     │   ├ SemanticInputSequence
     │   ├ BaseActionRealizationSequence
-    │   └ contextRequirements
+    │   ├ contextRequirements
+    │   └ origin
     └ InputAlternative B ...
         ↓ context requirement filter
 eligible InputAlternative[]
@@ -75,6 +76,9 @@ canonical alternativeを上書きせずappendする。legacy `Layout.map` はaut
 presentation互換として先頭pathだけを保持してよいが、canonical alternativesを失ってはならない。
 
 physical activation以外の成立条件は `InputAlternative.contextRequirements` に保持する。
+また、pathを生成したtop-level authoring provenanceは `InputAlternative.origin` に保持する。
+現在は `sequence / face / combo / composed` を持ち、classificationやlayerIdから逆推測しない。
+`comboHits` は実際にselectedされた `origin='combo'` pathだけを数える。
 現在は `{ kind: 'youon-only' }` を持ち、logical output全体ではなくそのpathだけへ適用する。
 runtimeではまずcontext requirementを満たすalternativeだけをeligibleに絞り、1つも無ければ
 その見出し自体を不成立として短い見出しへfallbackする。その後にselection policyを適用する。
@@ -84,6 +88,9 @@ runtimeではまずcontext requirementを満たすalternativeだけをeligible�
 左右どちらの親指も合法なpathとしてauthoring時にcanonicalへ入り、policyがoutputと反対側の
 親指を使うpathを優先する。既定ではauthoring上の先頭alternativeを使う。
 このPolicyはauthoring defaultとthumb keyだけが異なる合法variantに候補を限定し、
+thumb alternative派生時のdedupeはaction列だけではなくcanonical alternative全体のidentityで行う。
+Requirement / Capability / classification / role / layer / context / origin等が異なるpathは保持する。
+
 opposite-hand variantが無ければdefaultを維持する。同じoutputのnon-thumb pathや
 別方式alternativeへ `preferOppositeThumb` だけを理由に切り替えない。
 
@@ -100,6 +107,7 @@ canonical semanticでは異なる軸を混ぜない。
 - `capabilities`: while-held等のrealization能力。
 - `layerId`: aggregation上の帰属先。
 - `classifications`: 他のfactから再構成できないauthor intent。
+- `InputAlternative.origin`: path生成元のtop-level authoring provenance。
 - `faceMemberships`: presentation provenance。
 
 `composition` はkey roleではなくclassificationであり、`layerId='combo'` から逆推測しない。
