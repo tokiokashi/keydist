@@ -498,7 +498,6 @@ test('composed outputはsource / markのcanonical SemanticInput列を再利用�
 
 test('consumer cutover後はbase layerをcanonical singleへ統一する', () => {
   const tsuki = LAYOUTS_JA.find((layout) => layout.id === 'tsuki-2-263')!;
-  assert.equal(tsuki.canonicalInputs.get('そ')?.[0]?.semanticInputs?.[0].layerId, 'single');
   assert.equal(tsuki.canonicalInputs.get('そ')?.[0]?.semanticInputs[0].layerId, 'single');
 });
 
