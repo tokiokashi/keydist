@@ -11,9 +11,9 @@ import {
   type TriggerRealizationPolicy,
 } from './trigger-realization.ts';
 import {
-  sameHoldStartActionPolicy,
-  type HoldStartActionPolicy,
-} from './hold-start-action.ts';
+  sameActionRealizationPolicy,
+  type ActionRealizationPolicy,
+} from './core/semantic-input/action-realization.ts';
 
 export type ConditionKey = keyof UiStateConditionsDefaults;
 
@@ -53,8 +53,10 @@ function formatTriggerRealizationPolicy(value: TriggerRealizationPolicy): string
   return value.useHold ? 'hold-capable triggerを連続保持する' : '連続保持しない';
 }
 
-function formatHoldStartActionPolicy(value: HoldStartActionPolicy): string {
-  return value.countAsSeparateStep ? 'hold開始を独立actionとしてrealizeする' : 'outputと同じactionでrealizeする';
+function formatActionRealizationPolicy(value: ActionRealizationPolicy): string {
+  return value.holdStart === 'separate'
+    ? 'hold開始を独立actionとしてrealizeする'
+    : 'outputと同じactionでrealizeする';
 }
 
 export const CONDITION_DESCRIPTORS = {
@@ -73,10 +75,10 @@ export const CONDITION_DESCRIPTORS = {
     effect: 'hold-capable triggerを実際の連続保持としてrealizeするかを決めます。single triggerやcomposition capabilityの推測には使いません。',
     format: (value) => formatTriggerRealizationPolicy(value as TriggerRealizationPolicy),
   },
-  holdStartAction: {
-    label: 'Hold開始action',
+  actionRealization: {
+    label: 'Action realization',
     effect: 'hold開始とfresh outputを別actionへ分け、解析・Timing・Playbackすべてに同じrealized streamを適用するかを決めます。prefix等の既存trigger-only actionは二重分割しません。',
-    format: (value) => formatHoldStartActionPolicy(value as HoldStartActionPolicy),
+    format: (value) => formatActionRealizationPolicy(value as ActionRealizationPolicy),
   },
   geometry: {
     label: '物理形状',
@@ -215,8 +217,11 @@ function sameConditionValue(
       right as TriggerRealizationPolicy,
     );
   }
-  if (key === 'holdStartAction') {
-    return sameHoldStartActionPolicy(left as HoldStartActionPolicy, right as HoldStartActionPolicy);
+  if (key === 'actionRealization') {
+    return sameActionRealizationPolicy(
+      left as ActionRealizationPolicy,
+      right as ActionRealizationPolicy,
+    );
   }
   return left === right;
 }
