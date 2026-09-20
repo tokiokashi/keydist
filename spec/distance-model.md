@@ -132,6 +132,16 @@ input pathである。各SemanticInputのRequirementはANDだけを持ち、同�
 別authoring viewから記述しているだけのケースはalternativeを増やさず、同一SemanticInputへ
 dedupeする。
 
+CanonicalInputMap完成時は、異なるlogical output同士のactivation conflictを共通validationする。
+同一canonical activation path、または同じphysicalKeysで両立可能なRequirement setを持つ
+異outputは曖昧なのでerrorとする。Capability / classification / action grouping差は
+activation排他の根拠にしない。mutually exclusiveと証明できるorder pathは共存可とする。
+sequence長違い / prefix relation等のprecedenceは本節では決めない。
+
+constructorやtransformが同じlogical outputへ新しい合法pathを追加する場合、
+canonical alternativesは既存値を上書きせずappendする。legacy `Layout.map` は
+presentation/default互換として先頭pathを保持してよい。
+
 canonical `SemanticInput` は少なくとも次の独立factを持つ。
 
 ```text
@@ -167,8 +177,9 @@ evaluateのsemantic authorityではない。
 左右どちらの親指でも同じshift semanticを成立させられる配列は、
 `thumbShiftKeys` に合法な親指physical keyを持ち、authoring時に左右両pathをcanonical
 alternativeとして生成する。`preferOppositeThumb` はキーを書き換える機能ではなく、
-そのalternative集合からoutputと反対側の親指を使うpathを優先するselection policyである。
-既定時はauthoring上の先頭alternativeを使用する。
+authoring defaultを基準に、thumb keyだけが異なる合法variantの中からoutputと反対側の
+親指を使うpathを優先するselection policyである。opposite-hand variantが無ければdefaultを
+維持し、同じlogical outputのnon-thumb alternativeや別方式pathへこのPolicyだけで切り替えない。
 
 ### 4.1同時押しは1ステップとして数える
 
