@@ -66,6 +66,88 @@ test('hold startをseparateにするとtrigger actionとheld下のoutput action�
   });
 });
 
+test('overlapだけならhold-start -> outputへsplitする', () => {
+  const semantic: SemanticInput = {
+    ...input(),
+    requirements: [{ kind: 'overlap', keys: ['j', 'thumb-r'] }],
+  };
+  const result = applyActionRealizationPolicy([
+    action({ input: semantic }),
+  ], { holdStart: 'separate' });
+
+  assert.deepEqual(result.map((candidate) => candidate.keys), [
+    ['thumb-r'],
+    ['j'],
+  ]);
+});
+
+test('prefix orderならhold-start -> outputの順を維持してsplitする', () => {
+  const semantic: SemanticInput = {
+    ...input(),
+    requirements: [
+      { kind: 'overlap', keys: ['j', 'thumb-r'] },
+      { kind: 'order', before: ['thumb-r'], after: ['j'] },
+    ],
+  };
+  const result = applyActionRealizationPolicy([
+    action({ input: semantic }),
+  ], { holdStart: 'separate' });
+
+  assert.deepEqual(result.map((candidate) => candidate.keys), [
+    ['thumb-r'],
+    ['j'],
+  ]);
+});
+
+test('suffix orderはheld-firstへ反転せずconservativeにcombinedを維持する', () => {
+  const semantic: SemanticInput = {
+    ...input(),
+    requirements: [
+      { kind: 'overlap', keys: ['j', 'thumb-r'] },
+      { kind: 'order', before: ['j'], after: ['thumb-r'] },
+    ],
+  };
+  const original = action({ input: semantic });
+  const result = applyActionRealizationPolicy(
+    [original],
+    { holdStart: 'separate' },
+  );
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0], original);
+});
+
+test('partial holdでheld/fresh groupがorder境界の両側へ跨る場合はcombinedを維持する', () => {
+  const semantic: SemanticInput = {
+    ...input(),
+    physicalKeys: ['j', 'k', 'q', 'thumb-r'],
+    requirements: [{
+      kind: 'order',
+      before: ['j', 'thumb-r'],
+      after: ['k', 'q'],
+    }],
+    capabilities: [{ kind: 'while-held', keys: ['q', 'thumb-r'] }],
+    roles: [
+      { key: 'q', role: 'modifier' },
+      { key: 'thumb-r', role: 'modifier' },
+    ],
+  };
+  const original = action({
+    input: semantic,
+    keys: ['q', 'thumb-r', 'j', 'k'],
+    outputKeys: ['j', 'k'],
+    triggerKeys: ['q', 'thumb-r'],
+    heldKeys: ['q', 'thumb-r'],
+  });
+  const result = applyActionRealizationPolicy(
+    [original],
+    { holdStart: 'separate' },
+  );
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0], original);
+});
+
 test('partial holdではhold groupだけを先行actionへ分け、他triggerはoutput側へ残す', () => {
   const semantic: SemanticInput = {
     ...input(),
