@@ -94,6 +94,21 @@ test('evaluate realized factはFace authoring metadataへ依存しない', async
   );
 });
 
+test('results viewはFaceからaggregation layerIdを再推測しない', async () => {
+  const source = await readFile(join(SRC, 'results-view.ts'), 'utf8');
+
+  assert.doesNotMatch(
+    source,
+    /face\.inputRole\s*===\s*['"]composition['"]/,
+    'results-view must use faceLayerIds instead of inputRole to derive aggregation layerId',
+  );
+  assert.doesNotMatch(
+    source,
+    /face\.layer\s*===\s*undefined\s*\?\s*`face:/,
+    'results-view must not reconstruct face:<index> aggregation ids',
+  );
+});
+
 test('Strokeはlegacy Face semanticを再投影しない', async () => {
   const path = join(SRC, 'evaluate.ts');
   const source = await readFile(path, 'utf8');
