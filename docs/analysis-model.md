@@ -167,8 +167,8 @@ canonical semanticに反していないことを確認するvalidity gateとし�
 
 この変換はStroke生成**前**に行うため、Metricsだけのvirtual +1は行わない。
 Chain / Transition / Metrics / Timing / Playbackはすべて同じPolicy適用後Stroke streamを見る。
-UIに残る旧 `holdStartAction.countAsSeparateStep` は保存形式のcompatibility adapterであり、
-condition resolution境界で `ActionRealizationPolicy.holdStart` へ変換する。
+UI・保存形式・condition resolutionも `ActionRealizationPolicy.holdStart` を直接扱い、
+旧 `HoldStartActionPolicy` / `countAsSeparateStep` adapterは持たない。
 
 ### Raw hand run / Analysis Chain
 

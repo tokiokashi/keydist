@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  CONDITION_BUNDLE_VERSION,
   conditionBundleFromState,
   parseConditionBundle,
   serializeConditionBundle,
@@ -20,6 +21,20 @@ const state = () => createDefaultUiState({
   textPanelOpen: true,
   usePlaybackCalibration: false,
   selectedLayouts: { en: ['qwerty'], ja: ['qwerty'] },
+});
+
+test('ActionRealizationPolicyへの保存schema変更でcondition bundle versionを2へ上げる', () => {
+  assert.equal(CONDITION_BUNDLE_VERSION, 2);
+
+  const current = state();
+  const bundle = conditionBundleFromState(current, [], [], { rules: [], assignments: {} }, []);
+  const source = JSON.parse(serializeConditionBundle(bundle)) as { version: number };
+  source.version = 1;
+
+  assert.throws(
+    () => parseConditionBundle(JSON.stringify(source), bundle, current, choices),
+    /バージョンが違う/,
+  );
 });
 
 test('条件の個別設定が空でもチェック状態を保存・復元する', () => {
@@ -85,17 +100,17 @@ test('TriggerRealizationPolicyはglobal / per-layoutともcondition bundleで往
   assert.deepEqual(parsed.conditions.perLayout.qwerty.triggerRealization, { useHold: false });
 });
 
-test('HoldStartActionPolicyはglobal / per-layoutともcondition bundleで往復する', () => {
+test('ActionRealizationPolicyはglobal / per-layoutともcondition bundleで往復する', () => {
   const current = state();
-  current.conditions.defaults.holdStartAction = { countAsSeparateStep: true };
+  current.conditions.defaults.actionRealization = { holdStart: 'separate' };
   current.conditions.perLayout.qwerty = {
-    holdStartAction: { countAsSeparateStep: false },
+    actionRealization: { holdStart: 'combined' },
   };
   const bundle = conditionBundleFromState(current, [], [], { rules: [], assignments: {} }, []);
   const parsed = parseConditionBundle(serializeConditionBundle(bundle), bundle, current, choices);
 
-  assert.deepEqual(parsed.conditions.defaults.holdStartAction, { countAsSeparateStep: true });
-  assert.deepEqual(parsed.conditions.perLayout.qwerty.holdStartAction, { countAsSeparateStep: false });
+  assert.deepEqual(parsed.conditions.defaults.actionRealization, { holdStart: 'separate' });
+  assert.deepEqual(parsed.conditions.perLayout.qwerty.actionRealization, { holdStart: 'combined' });
 });
 
 test('未知の配列への個別設定は読み込み時に捨てる', () => {

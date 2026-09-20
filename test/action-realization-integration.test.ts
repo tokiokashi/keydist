@@ -6,11 +6,6 @@ import { fromFaces } from '../src/layouts/index.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
 import { playbackTimingSchedule } from '../src/playback.ts';
-import {
-  DEFAULT_HOLD_START_ACTION_POLICY,
-  toActionRealizationPolicy,
-} from '../src/hold-start-action.ts';
-
 const geometry = buildGeometry('row-staggered');
 
 const simultaneous = fromFaces('hold-action-sim', 'hold-action-sim', [{
@@ -46,18 +41,6 @@ const realized = (
   sfbHomeCost: true,
   triggerRealizationPolicy: { useHold: true },
   actionRealizationPolicy: { holdStart },
-});
-
-test('旧hold-start設定はActionRealizationPolicyへ1対1で変換する', () => {
-  assert.deepEqual(DEFAULT_HOLD_START_ACTION_POLICY, { countAsSeparateStep: false });
-  assert.deepEqual(
-    toActionRealizationPolicy({ countAsSeparateStep: false }),
-    { holdStart: 'combined' },
-  );
-  assert.deepEqual(
-    toActionRealizationPolicy({ countAsSeparateStep: true }),
-    { holdStart: 'separate' },
-  );
 });
 
 test('combinedではhold開始をoutputと同じrealized Strokeに保つ', () => {

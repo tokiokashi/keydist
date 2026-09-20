@@ -23,9 +23,9 @@ test('配列別条件は既定値へ部分的に重なる', () => {
   assert.deepEqual(resolved.actionRealizationPolicy, { holdStart: 'combined' });
 });
 
-test('旧holdStartAction設定はActionRealizationPolicyへ変換する', () => {
+test('ActionRealizationPolicyはconditionからevaluate optionsへそのまま渡す', () => {
   const separated = resolveConditions(DEFAULT_CONDITION_DEFAULTS, {
-    holdStartAction: { countAsSeparateStep: true },
+    actionRealization: { holdStart: 'separate' },
   });
   assert.deepEqual(separated.actionRealizationPolicy, { holdStart: 'separate' });
   assert.deepEqual(separated.options.actionRealizationPolicy, { holdStart: 'separate' });

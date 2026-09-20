@@ -131,6 +131,9 @@ test('廃止済み#200 legacy symbol / production helperをsrcへ再導入しな
     'minHorizontalSpread',
     'maxRowReversal',
     'maxRowStep',
+    'HoldStartActionPolicy',
+    'holdStartAction',
+    'countAsSeparateStep',
   ] as const;
   const migrationOnly = [
     'arpeggioEnabled',
@@ -184,4 +187,5 @@ test('廃止済み#200 legacy symbol / production helperをsrcへ再導入しな
 
   const sourcePaths = (await tsFiles(SRC)).map((path) => relative(SRC, path).replaceAll('\\', '/'));
   assert.equal(sourcePaths.includes('playback-arpeggio.ts'), false);
+  assert.equal(sourcePaths.includes('hold-start-action.ts'), false);
 });
