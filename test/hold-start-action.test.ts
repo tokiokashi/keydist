@@ -4,6 +4,8 @@ import { buildGeometry } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
 import { fromFaces } from '../src/layouts/index.ts';
 import { computeMetrics } from '../src/metrics.ts';
+import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
+import { playbackTimingSchedule } from '../src/playback.ts';
 import {
   DEFAULT_HOLD_START_ACTION_POLICY,
   toActionRealizationPolicy,
@@ -102,6 +104,37 @@ test('separate後はMetricsもvirtual補正せず共通Stroke streamを数える
   assert.equal(separate.actions, separateTrace.strokes.length);
   assert.equal(separate.actions, combined.actions + 1);
   assert.equal(separate.presses, combined.presses);
+});
+
+test('Chain / Timing / PlaybackはActionRealizationPolicy適用後の同じStroke streamを読む', () => {
+  const combinedTrace = realized('xyz', simultaneous, 'combined');
+  const separateTrace = realized('xyz', simultaneous, 'separate');
+
+  const combinedAnalysis = analyzeStrokeStructure(combinedTrace.strokes);
+  const separateAnalysis = analyzeStrokeStructure(separateTrace.strokes);
+  const combinedSchedule = playbackTimingSchedule(combinedAnalysis, 4, false);
+  const separateSchedule = playbackTimingSchedule(separateAnalysis, 4, false);
+
+  assert.equal(combinedTrace.strokes.length, 3);
+  assert.equal(separateTrace.strokes.length, 4);
+
+  // structural analysis / Chainへ渡すstrokes自体がevaluateのrealized stream。
+  assert.equal(combinedAnalysis.strokes, combinedTrace.strokes);
+  assert.equal(separateAnalysis.strokes, separateTrace.strokes);
+  assert.equal(combinedAnalysis.aggregate.strokeCount, combinedTrace.strokes.length);
+  assert.equal(separateAnalysis.aggregate.strokeCount, separateTrace.strokes.length);
+
+  // Timing / Playback scheduleも同じStroke index列をそのまま使う。
+  assert.equal(combinedSchedule.length, combinedTrace.strokes.length);
+  assert.equal(separateSchedule.length, separateTrace.strokes.length);
+  assert.deepEqual(
+    combinedSchedule.map((step) => step.strokeIndex),
+    combinedTrace.strokes.map((stroke) => stroke.index),
+  );
+  assert.deepEqual(
+    separateSchedule.map((step) => step.strokeIndex),
+    separateTrace.strokes.map((stroke) => stroke.index),
+  );
 });
 
 test('compositionのhold startはseparate指定でも分割しない', () => {
