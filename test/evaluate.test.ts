@@ -397,8 +397,7 @@ test('semantic normalizationはoutputのみのStrokeを表現する', () => {
   const trace = evaluate('a', qwerty, geometry, opts());
   const stroke = trace.strokes[0];
 
-  assert.equal(stroke.inputRole, 'layer');
-  assert.equal(stroke.triggerPersistence, undefined);
+  assert.deepEqual(stroke.classifications, []);
   assert.equal(stroke.participations.length, 1);
   assert.deepEqual(stroke.participations[0].roles, ['output']);
   assert.equal(stroke.participations[0].finger, 'LP');
@@ -416,7 +415,6 @@ test('prefix + singleはtrigger-only Strokeとして正規化する', () => {
   const trace = evaluate('x', layout, geometry, opts());
 
   assert.equal(trace.strokes.length, 2);
-  assert.equal(trace.strokes[0].triggerPersistence, 'single');
   assert.deepEqual(trace.strokes[0].participations.map((p) => p.roles), [['trigger']]);
   assert.deepEqual(trace.strokes[1].participations.map((p) => p.roles), [['output']]);
 });
@@ -446,8 +444,11 @@ test('hold-capableはcapabilityとして伝播し、base normalizationではheld
   const trace = evaluate('x', layout, geometry, opts());
   const stroke = trace.strokes[0];
 
-  assert.equal(stroke.inputRole, 'modifier');
-  assert.equal(stroke.triggerPersistence, 'hold-capable');
+  assert.deepEqual(
+    layout.canonicalInputs.get('x')?.[0]?.semanticInputs[0].capabilities,
+    [{ kind: 'while-held', keys: ['q'] }],
+  );
+  assert.deepEqual(stroke.classifications, []);
   assert.ok(stroke.participations.some((p) => p.roles.includes('trigger')));
   assert.ok(stroke.participations.every((p) => !p.roles.includes('held-trigger')));
 });
@@ -459,8 +460,7 @@ test('文字コンボはcompositionとして伝播し、trigger宣言なしで�
   const trace = evaluate('ab', layout, geometry, opts());
   const stroke = trace.strokes[0];
 
-  assert.equal(stroke.inputRole, 'composition');
-  assert.equal(stroke.triggerPersistence, undefined);
+  assert.ok(stroke.classifications.includes('composition'));
   assert.ok(stroke.participations.length >= 1);
   for (const participation of stroke.participations) {
     assert.deepEqual(participation.roles, ['output']);
@@ -478,8 +478,8 @@ test('semantic normalizationはlayout idに依存しない', () => {
   const first = evaluate('x', make('semantic-a'), geometry, opts()).strokes[0];
   const second = evaluate('x', make('semantic-b'), geometry, opts()).strokes[0];
 
-  assert.equal(first.inputRole, second.inputRole);
-  assert.equal(first.triggerPersistence, second.triggerPersistence);
+  assert.deepEqual(first.classifications, second.classifications);
+  assert.deepEqual(first.triggerKeys, second.triggerKeys);
   assert.deepEqual(
     first.participations.map((p) => ({ hand: p.hand, finger: p.finger, roles: p.roles })),
     second.participations.map((p) => ({ hand: p.hand, finger: p.finger, roles: p.roles })),
@@ -506,7 +506,6 @@ test('classificationはselected canonical alternativeからStrokeまで伝播す
     trace.strokes[0].classifications,
     ['composition', 'vocabulary-extension'],
   );
-  assert.equal(trace.strokes[0].inputRole, 'composition');
 });
 
 
