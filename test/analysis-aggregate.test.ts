@@ -10,6 +10,7 @@ import {
 } from '../src/analysis-arpeggio.ts';
 import { DEFAULT_CHAIN_POLICY } from '../src/analysis-chain.ts';
 import { DEFAULT_TRIGGER_REALIZATION_POLICY } from '../src/trigger-realization.ts';
+import { DEFAULT_ACTION_REALIZATION_POLICY } from '../src/core/semantic-input/index.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({
   id,
@@ -244,6 +245,7 @@ test('集計結果は解決済みChainPolicy / ArpeggioPolicyをsnapshotで保�
     chainPolicy,
     arpeggioPolicy,
     triggerRealizationPolicy: DEFAULT_TRIGGER_REALIZATION_POLICY,
+    actionRealizationPolicy: DEFAULT_ACTION_REALIZATION_POLICY,
   });
   assert.notEqual(result.aggregate.conditions.chainPolicy, chainPolicy);
   assert.notEqual(result.aggregate.conditions.arpeggioPolicy, arpeggioPolicy);
@@ -251,10 +253,15 @@ test('集計結果は解決済みChainPolicy / ArpeggioPolicyをsnapshotで保�
     result.aggregate.conditions.triggerRealizationPolicy,
     DEFAULT_TRIGGER_REALIZATION_POLICY,
   );
+  assert.notEqual(
+    result.aggregate.conditions.actionRealizationPolicy,
+    DEFAULT_ACTION_REALIZATION_POLICY,
+  );
   assert.equal(Object.isFrozen(result.aggregate.conditions), true);
   assert.equal(Object.isFrozen(result.aggregate.conditions.chainPolicy), true);
   assert.equal(Object.isFrozen(result.aggregate.conditions.arpeggioPolicy), true);
   assert.equal(Object.isFrozen(result.aggregate.conditions.triggerRealizationPolicy), true);
+  assert.equal(Object.isFrozen(result.aggregate.conditions.actionRealizationPolicy), true);
 });
 
 test('Stroke本体をannotation生成でmutateしない', () => {
