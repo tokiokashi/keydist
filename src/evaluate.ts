@@ -436,6 +436,57 @@ function heldKeysByFinger(
  * logical outputの合法なcanonical path群から今回のphysical realizationを選ぶ。
  * authoring defaultは先頭。preferOppositeThumbはkey rewriteせずpath selectionとして適用する。
  */
+function thumbVariantSignature(
+  alternative: InputAlternative,
+  thumbKeys: ReadonlySet<string>,
+): string {
+  const normalizeKey = (key: string) =>
+    thumbKeys.has(resolveKeyId(key)) ? '<thumb>' : resolveKeyId(key);
+  const normalizeKeys = (keys: readonly string[]) =>
+    keys.map(normalizeKey).sort();
+
+  return JSON.stringify({
+    semanticInputs: alternative.semanticInputs.map((input) => ({
+      output: input.output,
+      physicalKeys: normalizeKeys(input.physicalKeys),
+      requirements: input.requirements.map((requirement) =>
+        requirement.kind === 'overlap'
+          ? { kind: 'overlap', keys: normalizeKeys(requirement.keys) }
+          : {
+              kind: 'order',
+              before: normalizeKeys(requirement.before),
+              after: normalizeKeys(requirement.after),
+            }),
+      capabilities: input.capabilities.map((capability) => ({
+        kind: capability.kind,
+        keys: normalizeKeys(capability.keys),
+      })),
+      layerId: input.layerId,
+      classifications: [...input.classifications],
+      roles: input.roles.map((role) => ({
+        key: normalizeKey(role.key),
+        role: role.role,
+      })),
+      faceMemberships: input.faceMemberships,
+    })),
+    baseRealizations: alternative.baseRealizations.map((realization) => ({
+      actions: realization.actions.map(normalizeKeys),
+      defaultOutputKeys: normalizeKeys(realization.defaultOutputKeys),
+      defaultTriggerKeys: normalizeKeys(realization.defaultTriggerKeys ?? []),
+      defaultHoldKeys: normalizeKeys(realization.defaultHoldKeys ?? []),
+      alternateParticipations: (realization.alternateParticipations ?? []).map((view) => ({
+        outputKeys: normalizeKeys(view.outputKeys),
+        triggerKeys: normalizeKeys(view.triggerKeys),
+        holdKeys: normalizeKeys(view.holdKeys ?? []),
+      })),
+    })),
+  });
+}
+
+/**
+ * authoring defaultを基準に、同じpathの合法なthumb variantだけを比較する。
+ * non-thumb alternativeや別方式alternativeはpreferOppositeThumbでは選ばない。
+ */
 function selectInputAlternative(
   alternatives: InputAlternativeSet,
   layout: Layout,
@@ -475,13 +526,18 @@ function selectInputAlternative(
     return value;
   };
 
+  if (score(fallback) > 0) return fallback;
+
+  const fallbackSignature = thumbVariantSignature(fallback, thumbKeys);
   let selected = fallback;
-  let best = score(fallback);
+  let bestOppositeScore = 0;
+
   for (const alternative of alternatives.slice(1)) {
-    const candidate = score(alternative);
-    if (candidate > best) {
+    if (thumbVariantSignature(alternative, thumbKeys) !== fallbackSignature) continue;
+    const candidateScore = score(alternative);
+    if (candidateScore > bestOppositeScore) {
       selected = alternative;
-      best = candidate;
+      bestOppositeScore = candidateScore;
     }
   }
   return selected;
