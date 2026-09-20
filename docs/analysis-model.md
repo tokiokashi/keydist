@@ -152,12 +152,23 @@ active hold groupとCapability / Requirementを照合して継続可否を決め
 実際にrealizeされたStroke streamだけをRaw hand run以降へ渡し、
 Chain / Transition / Timingが独自にhold可能性を再判定しない。
 
-`HoldStartActionPolicy` はTrigger realizationとは別の**計上Policy**。realize済み
-`held-trigger/start` がlayer / modifierのoutputと同じStrokeにある場合だけ、必要なら+1の
-virtual actionとして数える。compositionと、prefix trigger-only Strokeのように既に独立している
-操作は追加計上しない。physical Stroke数は `Metrics.strokes`、Policy適用後のaction総数は
-`Metrics.actions` として分離し、`meanPerStroke` や同指連続率などphysical Stroke由来の指標へ
-virtual actionを混ぜない。Policyを変えてもStroke列、Press数、距離、構造解析、Timingは書き換えない。
+Trigger realizationの後に `ActionRealizationPolicy` を適用し、同じ入力事実を
+どのaction列として解析するかを決める。現在の `holdStart` は `combined | separate` を持つ。
+`separate` ではlayer / modifierのoutputと同一actionにrealizeされた `held-trigger/start` を、
+**semantic Requirementを保てる場合だけ**先行trigger actionとheld state下のfresh output actionへ分ける。
+
+- overlapだけ、または `order(held -> fresh)` を要求する場合はsplitできる
+- `order(fresh -> held)` を要求するsuffix型は、順序を反転させずcombinedを維持する
+- held / fresh group自体がorder境界の両側へ跨る場合もcombinedを維持する
+- compositionと、prefix trigger-only actionのように既に分離済みの操作は変換しない
+
+Requirementはdefault groupingを推測する材料には使わず、Policy変換後のstreamが
+canonical semanticに反していないことを確認するvalidity gateとしてだけ使う。
+
+この変換はStroke生成**前**に行うため、Metricsだけのvirtual +1は行わない。
+Chain / Transition / Metrics / Timing / Playbackはすべて同じPolicy適用後Stroke streamを見る。
+UIに残る旧 `holdStartAction.countAsSeparateStep` は保存形式のcompatibility adapterであり、
+condition resolution境界で `ActionRealizationPolicy.holdStart` へ変換する。
 
 ### Raw hand run / Analysis Chain
 
