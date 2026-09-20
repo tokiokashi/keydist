@@ -154,14 +154,6 @@ export function evaluate(
   const comboDefinitions = resolvedComboDefinitions.length
     || layout.comboConditions?.size
     || 0;
-  const layerTriggerKeys = new Map<string, Set<string>>();
-  for (const face of layout.faces ?? []) {
-    const layerId = layout.faceLayerIds?.get(face);
-    if (layerId === undefined || face.trigger.length !== 1) continue;
-    const keys = layerTriggerKeys.get(layerId) ?? new Set<string>();
-    keys.add(resolveKeyId(face.trigger[0]));
-    layerTriggerKeys.set(layerId, keys);
-  }
   const layerDefinitions = [...layout.layerDefinitions ?? [{
     id: SINGLE_LAYER_ID,
     kind: 'layer' as const,
@@ -261,11 +253,15 @@ export function evaluate(
       const step = action.keys;
       const triggerKeys = action.triggerKeys;
       const layerId = action.input.layerId;
-      const layerTriggers = layerTriggerKeys.get(layerId) ?? new Set<string>();
-      const pressedLayerTriggers = [...new Set(step.map(resolveKeyId))]
-        .filter((key) => layerTriggers.has(key));
-      const pairedTriggerKeys = pressedLayerTriggers.length >= 2
-        ? triggerKeys.filter((key) => layerTriggers.has(key))
+      const modifierKeys = new Set(
+        action.input.roles
+          .filter((role) => role.role === 'modifier')
+          .map((role) => resolveKeyId(role.key)),
+      );
+      const pressedModifierKeys = [...new Set(step.map(resolveKeyId))]
+        .filter((key) => modifierKeys.has(key));
+      const pairedTriggerKeys = pressedModifierKeys.length >= 2
+        ? triggerKeys.filter((key) => modifierKeys.has(resolveKeyId(key)))
         : [];
       const byFinger = new Map<Finger, Key[]>();
 
