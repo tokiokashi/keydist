@@ -243,8 +243,8 @@ const normalizedLayerId = (
   faceIndex: number,
   triggerKeys: readonly PhysicalKeyId[],
 ): string => {
-  if (triggerKeys.length === 0) return 'single';
   if (face.inputRole === 'composition') return 'combo';
+  if (triggerKeys.length === 0) return 'single';
   if (face.layer !== undefined) return `layer:${face.layer}`;
   return `face:${faceIndex}`;
 };
