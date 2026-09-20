@@ -3,6 +3,7 @@ import {
   compileSequenceInputAlternative,
   mapInputAlternativePhysicalKeys,
   validateBaseActionRealization,
+  validateCanonicalInputMap,
   type CanonicalInputMap,
   type InputAlternative,
   type InputClassification,
@@ -206,6 +207,7 @@ const appendCanonicalAlternative = (
   const current = map.get(output);
   if (current) current.push(alternative);
   else map.set(output, [alternative]);
+  validateCanonicalInputMap(map);
 };
 
 const cloneCanonicalInputs = (
@@ -707,6 +709,7 @@ export function withThumbShiftAlternatives(
     canonicalInputs.set(output, next);
   }
 
+  validateCanonicalInputMap(canonicalInputs);
   return {
     ...layout,
     canonicalInputs,
@@ -743,29 +746,30 @@ export function withComposedOutputs(
     if (!sourceSequence || !sourceAlternatives) {
       throw new Error(`${context}の元出力「${source}」が未定義`);
     }
-    if (map.has(output)) {
-      throw new Error(`${context}「${output}」が重複している`);
+
+    const generated = sourceAlternatives.flatMap((sourceAlternative) =>
+      markAlternatives.map((markAlternative) => ({
+        semanticInputs: [
+          ...sourceAlternative.semanticInputs,
+          ...markAlternative.semanticInputs,
+        ],
+        baseRealizations: [
+          ...sourceAlternative.baseRealizations,
+          ...markAlternative.baseRealizations,
+        ],
+      })));
+    for (const alternative of generated) {
+      appendCanonicalAlternative(canonicalInputs, output, alternative);
     }
+
+    // legacy/presentation metadataはauthoring上の先頭pathだけを保持する。
+    if (map.has(output)) continue;
 
     const sequence: Sequence = [
       ...sourceSequence.map((step) => [...step]),
       ...markSequence.map((step) => [...step]),
     ];
     map.set(output, sequence);
-    canonicalInputs.set(
-      output,
-      sourceAlternatives.flatMap((sourceAlternative) =>
-        markAlternatives.map((markAlternative) => ({
-          semanticInputs: [
-            ...sourceAlternative.semanticInputs,
-            ...markAlternative.semanticInputs,
-          ],
-          baseRealizations: [
-            ...sourceAlternative.baseRealizations,
-            ...markAlternative.baseRealizations,
-          ],
-        }))),
-    );
 
     const sourceLayers = layout.stepLayers?.get(source)
       ?? sourceSequence.map(() => SINGLE_LAYER_ID);
@@ -787,6 +791,7 @@ export function withComposedOutputs(
     stepSemantics.set(output, [...sourceSemantics, ...markSemantics]);
   }
 
+  validateCanonicalInputMap(canonicalInputs);
   return {
     ...layout,
     map,
@@ -862,31 +867,36 @@ export function withCombos(
       ...(foldTriggerKeys === undefined ? {} : { foldTriggerKeys }),
       ...(foldTargets.length === 1 ? { foldTargetKey: foldTargets[0] } : {}),
     });
-    const sequence: Sequence = [keys];
-    map.set(output, sequence);
-    canonicalInputs.set(
-      output,
-      uniqueCombinations.map((combination) =>
-        compileSequenceInputAlternative(
-          output,
-          [combination],
-          COMBO_LAYER_ID,
-          ['composition', ...classifications],
-        )),
-    );
-    stepLayers.set(output, [COMBO_LAYER_ID]);
-    stepTriggerKeys.set(output, [[]]);
-    stepSemantics.set(output, [{
-      inputRole: 'composition',
-      outputKeys: keys.map(resolveKeyId),
-      triggerKeys: [],
-    }]);
-    comboConditions.set(output, condition ?? {});
+    const generatedAlternatives = uniqueCombinations.map((combination) =>
+      compileSequenceInputAlternative(
+        output,
+        [combination],
+        COMBO_LAYER_ID,
+        ['composition', ...classifications],
+      ));
+    for (const alternative of generatedAlternatives) {
+      appendCanonicalAlternative(canonicalInputs, output, alternative);
+    }
+
+    // legacy/presentation metadataは既存defaultを上書きしない。
+    if (!map.has(output)) {
+      const sequence: Sequence = [keys];
+      map.set(output, sequence);
+      stepLayers.set(output, [COMBO_LAYER_ID]);
+      stepTriggerKeys.set(output, [[]]);
+      stepSemantics.set(output, [{
+        inputRole: 'composition',
+        outputKeys: keys.map(resolveKeyId),
+        triggerKeys: [],
+      }]);
+      comboConditions.set(output, condition ?? {});
+    }
     if (!hasCombo) {
       layerDefinitions.push({ id: COMBO_LAYER_ID, kind: 'combo', label: 'コンボ' });
       hasCombo = true;
     }
   }
+  validateCanonicalInputMap(canonicalInputs);
   return {
     ...layout,
     id,
