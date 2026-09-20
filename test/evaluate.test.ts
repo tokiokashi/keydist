@@ -582,3 +582,35 @@ test('youonOnlyしかない長い見出しは拗音外でeligibleにならず短
   assert.deepEqual(trace.strokes.map((stroke) => stroke.char), ['y', 'a', 'k', 'u']);
   assert.deepEqual(trace.comboHits, []);
 });
+
+
+test('Face compositionがselectedされた場合は同outputのwithCombos定義をcombo hitに数えない', () => {
+  const base = fromFaces('combo-origin-selection', 'combo-origin-selection', [
+    {
+      ...faceFromEntries([], 'simultaneous', { f: 'a', j: 'b' }),
+      inputRole: 'layer',
+    },
+    {
+      ...faceFromEntries(['d', 'k'], 'simultaneous', { q: 'x' }),
+      inputRole: 'composition',
+      triggerPersistence: 'single',
+    },
+  ]);
+  const layout = withCombos(
+    'combo-origin-selection-2',
+    'combo-origin-selection-2',
+    base,
+    [['x', ['a', 'b']]],
+  );
+
+  const alternatives = layout.canonicalInputs.get('x');
+  assert.ok(alternatives);
+  assert.deepEqual(alternatives.map((alternative) => alternative.origin), ['face', 'combo']);
+
+  const trace = evaluate('x', layout, geometry, opts());
+  assert.deepEqual(trace.comboHits, []);
+  assert.deepEqual(
+    trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)).sort(),
+    ['d', 'k', 'q'],
+  );
+});
