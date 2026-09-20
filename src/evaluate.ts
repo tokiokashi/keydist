@@ -10,8 +10,11 @@ import {
 } from './layouts/types.ts';
 import { kanaToRomajiChunks } from './romaji/kunrei.ts';
 import {
+  applyActionRealizationPolicy,
+  DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   realizeTriggerActions,
+  type ActionRealizationPolicy,
   type InputAlternative,
   type InputAlternativeSet,
   type InputClassification,
@@ -34,6 +37,8 @@ export interface Options {
   preferOppositeThumb?: boolean;
   /** hold-capable triggerを実際の連続保持へrealizeする条件。 */
   triggerRealizationPolicy?: TriggerRealizationPolicy;
+  /** Trigger realization後のaction grouping。 */
+  actionRealizationPolicy?: ActionRealizationPolicy;
 }
 
 export const DEFAULT_OPTIONS: Options = {
@@ -41,6 +46,7 @@ export const DEFAULT_OPTIONS: Options = {
   sfbHomeCost: true,
   preferOppositeThumb: false,
   triggerRealizationPolicy: { ...DEFAULT_TRIGGER_REALIZATION_POLICY },
+  actionRealizationPolicy: { ...DEFAULT_ACTION_REALIZATION_POLICY },
 };
 
 export type ParticipationRole = 'output' | 'trigger' | 'held-trigger';
@@ -254,8 +260,12 @@ export function evaluate(
       triggerHoldState,
     );
     triggerHoldState = realized.holdState;
+    const actions = applyActionRealizationPolicy(
+      realized.actions,
+      options.actionRealizationPolicy ?? DEFAULT_ACTION_REALIZATION_POLICY,
+    );
 
-    for (const action of realized.actions) {
+    for (const action of actions) {
       const step = action.keys;
       const triggerKeys = action.triggerKeys;
       const layerId = action.input.layerId;
