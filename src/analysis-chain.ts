@@ -1,6 +1,5 @@
 import type { Finger } from './geometry.ts';
 import type { Stroke } from './evaluate.ts';
-import type { InputRole } from './layouts/types.ts';
 
 export type Hand = 'left' | 'right';
 
@@ -71,7 +70,8 @@ export interface RawHandStep {
   readonly strokeIndex: number;
   readonly hand: Hand;
   readonly participationIndexes: readonly number[];
-  readonly inputRole: InputRole;
+  /** canonical classificationから導出したcomposition fact。 */
+  readonly isComposition: boolean;
   /** 同じ手でこのStrokeにoutputが存在する。 */
   readonly hasOutput: boolean;
   /** 今回新たに操作したtriggerが存在する。held-triggerは含めない。 */
@@ -160,7 +160,7 @@ function rawStep(strokes: readonly Stroke[], strokeIndex: number, hand: Hand): R
     strokeIndex,
     hand,
     participationIndexes: Object.freeze(participationIndexes),
-    inputRole: stroke.inputRole,
+    isComposition: stroke.classifications.includes('composition'),
     hasOutput,
     hasTrigger,
     hasHeldTrigger,
@@ -208,7 +208,7 @@ export function buildRawHandRuns(strokes: readonly Stroke[]): readonly RawHandRu
 function breaksChain(step: RawHandStep, policy: ChainPolicy): boolean {
   // same-fingerは旧UI互換のため非親指だけを対象にし、親指onlyは独立Policyで扱う。
   return (policy.breakOnSameFinger && step.nonThumbSameFinger)
-    || (policy.breakOnTriggerOnly && step.triggerOnly && step.inputRole !== 'composition')
+    || (policy.breakOnTriggerOnly && step.triggerOnly && !step.isComposition)
     || (policy.breakOnThumbOnly && step.thumbOnly)
     || (policy.breakOnOppositeHandSimultaneous && step.oppositeHandOutput);
 }
