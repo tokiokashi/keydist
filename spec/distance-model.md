@@ -439,8 +439,8 @@ type TriggerRealizationPolicy = {
 - held keyの位置は指位置snapshotには残す
 - 明示release専用Stroke / Press / Release eventは初期実装では導入しない
 
-`StepSemantic / associatedTriggerKeys / associatedTriggerPersistence` はlegacy metadataであり、
-evaluateのhold継続判定には使わない。layerIdやclassificationからhold可能性を推測しない。
+旧 `StepSemantic / associatedTriggerKeys / associatedTriggerPersistence` は削除済みで、
+Trigger realizationはcanonical factだけを入力にする。layerIdやclassificationからhold可能性を推測しない。
 
 後段のChain / Transition / Roll / Timingはrealized Stroke streamだけを読み、
 独自にhold可能性を再判定しない。
