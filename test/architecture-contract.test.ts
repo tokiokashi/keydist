@@ -43,7 +43,6 @@ test('structural analysisのimport先をsemantic / structural layerへ限定す�
   const allowedModule = (specifier: string) =>
     specifier === './geometry.ts'
     || specifier === './evaluate.ts'
-    || specifier === './layouts/types.ts'
     || specifier === './trigger-realization.ts'
     || /^\.\/analysis-[^/]+\.ts$/.test(specifier);
 
@@ -75,13 +74,18 @@ test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async 
 
   for (const { path, source } of await structuralAnalysisSources()) {
     for (const specifier of moduleSpecifiers(source)) {
-      if (!specifier.startsWith('./layouts/')) continue;
       assert.equal(
-        specifier,
-        './layouts/types.ts',
-        `${relative(ROOT, path)} must use semantic layout types, not concrete layouts: ${specifier}`,
+        specifier.startsWith('./layouts/'),
+        false,
+        `${relative(ROOT, path)} must not import layout authoring modules: ${specifier}`,
       );
     }
+
+    assert.doesNotMatch(
+      source,
+      /\binputRole\b/,
+      `${relative(ROOT, path)} must not depend on legacy inputRole`,
+    );
 
     assert.doesNotMatch(
       source,
