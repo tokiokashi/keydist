@@ -522,3 +522,26 @@ test('classificationはselected canonical alternativeからStrokeまで伝播す
   );
   assert.equal(trace.strokes[0].inputRole, 'composition');
 });
+
+
+test('preferOppositeThumbはnon-thumb別方式alternativeへ切り替えない', () => {
+  const layout = fromFaces('thumb-policy-scope', 'thumb-policy-scope', [
+    {
+      ...faceFromEntries(['thumb-l'], 'simultaneous', { q: 'x' }),
+      inputRole: 'modifier',
+      triggerPersistence: 'single',
+    },
+    {
+      ...faceFromEntries([], 'simultaneous', { j: 'x' }),
+      inputRole: 'layer',
+    },
+  ]);
+  layout.thumbShiftKey = 'thumb-l';
+  layout.thumbShiftKeys = ['thumb-l', 'thumb-r'];
+
+  const trace = evaluate('x', layout, geometry, opts({ preferOppositeThumb: true }));
+  assert.deepEqual(
+    trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)).sort(),
+    ['q', 'thumb-l'],
+  );
+});
