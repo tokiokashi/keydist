@@ -110,8 +110,20 @@ test('Chain / Timing / PlaybackはActionRealizationPolicy適用後の同じStrok
   const combinedTrace = realized('xyz', simultaneous, 'combined');
   const separateTrace = realized('xyz', simultaneous, 'separate');
 
-  const combinedAnalysis = analyzeStrokeStructure(combinedTrace.strokes);
-  const separateAnalysis = analyzeStrokeStructure(separateTrace.strokes);
+  const combinedAnalysis = analyzeStrokeStructure(
+    combinedTrace.strokes,
+    undefined,
+    undefined,
+    undefined,
+    { holdStart: 'combined' },
+  );
+  const separateAnalysis = analyzeStrokeStructure(
+    separateTrace.strokes,
+    undefined,
+    undefined,
+    undefined,
+    { holdStart: 'separate' },
+  );
   const combinedSchedule = playbackTimingSchedule(combinedAnalysis, 4, false);
   const separateSchedule = playbackTimingSchedule(separateAnalysis, 4, false);
 
@@ -123,6 +135,14 @@ test('Chain / Timing / PlaybackはActionRealizationPolicy適用後の同じStrok
   assert.equal(separateAnalysis.strokes, separateTrace.strokes);
   assert.equal(combinedAnalysis.aggregate.strokeCount, combinedTrace.strokes.length);
   assert.equal(separateAnalysis.aggregate.strokeCount, separateTrace.strokes.length);
+  assert.deepEqual(
+    combinedAnalysis.aggregate.conditions.actionRealizationPolicy,
+    { holdStart: 'combined' },
+  );
+  assert.deepEqual(
+    separateAnalysis.aggregate.conditions.actionRealizationPolicy,
+    { holdStart: 'separate' },
+  );
 
   // Timing / Playback scheduleも同じStroke index列をそのまま使う。
   assert.equal(combinedSchedule.length, combinedTrace.strokes.length);
