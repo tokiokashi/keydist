@@ -79,6 +79,21 @@ test('Face semanticをpresentation roleやtrigger数から推測しない', asyn
   );
 });
 
+test('evaluate realized factはFace authoring metadataへ依存しない', async () => {
+  const source = await readFile(join(SRC, 'evaluate.ts'), 'utf8');
+
+  assert.doesNotMatch(
+    source,
+    /layout\.faces\b/,
+    'evaluate.ts must not derive realized facts from Layout.faces',
+  );
+  assert.doesNotMatch(
+    source,
+    /\bfaceLayerIds\b/,
+    'evaluate.ts must not derive realized facts from presentation faceLayerIds',
+  );
+});
+
 test('Strokeはlegacy Face semanticを再投影しない', async () => {
   const path = join(SRC, 'evaluate.ts');
   const source = await readFile(path, 'utf8');

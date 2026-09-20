@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { buildGeometry, ALL_FINGERS } from '../src/geometry.ts';
 import { evaluate, type Options } from '../src/evaluate.ts';
 import { computeMetrics, DEFAULT_METRIC_CONDITIONS, homeSpacing } from '../src/metrics.ts';
-import { fromKana, LAYOUTS_JA, LAYOUT_BY_ID } from '../src/layouts/index.ts';
+import { faceFromEntries, fromFaces, fromKana, LAYOUTS_JA, LAYOUT_BY_ID } from '../src/layouts/index.ts';
 import { dist } from '../src/geometry.ts';
 import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '../src/sample-text-ja.ts';
 import { DEFAULT_CHAIN_POLICY } from '../src/analysis-chain.ts';
@@ -329,6 +329,14 @@ test('層操作キーと出力キーを同時押しの中で分離する', () =>
 
     assert.deepEqual(trace.strokes[0].triggerKeys, [trigger], `${layoutId} のトリガー`);
     assert.deepEqual(trace.strokes[0].pairedTriggerKeys, [trigger], `${layoutId} の対向トリガー`);
+
+    const withoutFaceMetadata = { ...layout, faces: undefined, faceLayerIds: undefined };
+    const canonicalOnlyTrace = evaluate(text, withoutFaceMetadata, geometry, opts());
+    assert.deepEqual(
+      canonicalOnlyTrace.strokes[0].pairedTriggerKeys,
+      [trigger],
+      `${layoutId} はFace metadataなしでもcanonical roleから対向トリガーを判定する`,
+    );
     assert.equal(layer.keyCounts.get(trigger), 1, `${layoutId} のトリガー実押下`);
     assert.equal(layer.keyCounts.get(output), 1, `${layoutId} の出力実押下`);
     assert.equal(layer.triggerKeyCounts.get(trigger), 1, `${layoutId} のトリガー集計`);
@@ -336,6 +344,21 @@ test('層操作キーと出力キーを同時押しの中で分離する', () =>
     assert.equal(layer.pairedTriggerKeyCounts.get(trigger), 1, `${layoutId} の対向トリガー`);
     assert.equal(layer.pairedTriggerKeyCounts.get(output) ?? 0, 0, `${layoutId} の出力を対向トリガー扱いしない`);
   }
+});
+
+test('2-key explicit modifierはcanonical roleからpaired triggerとして扱う', () => {
+  const layout = fromFaces('paired-explicit-modifier', 'paired-explicit-modifier', [{
+    ...faceFromEntries(['d', 'k'], 'simultaneous', { f: 'x' }),
+    inputRole: 'modifier',
+    triggerPersistence: 'single',
+  }]);
+
+  const withoutFaceMetadata = { ...layout, faces: undefined, faceLayerIds: undefined };
+  const trace = evaluate('x', withoutFaceMetadata, geometry, opts());
+
+  assert.equal(trace.strokes.length, 1);
+  assert.deepEqual(trace.strokes[0].triggerKeys, ['d', 'k']);
+  assert.deepEqual(trace.strokes[0].pairedTriggerKeys, ['d', 'k']);
 });
 
 test('層トリガー1個の同時打鍵は対向トリガー扱いしない', () => {
