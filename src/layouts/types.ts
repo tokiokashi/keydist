@@ -47,9 +47,9 @@ export interface Face {
   rows: readonly FaceRow[];
   /** 同じ値を持つ単一キー面は1レイヤーへ畳む。省略時はその面が単独で1レイヤー */
   layer?: string;
-  /** 面の表示分類。既存UI互換用。省略時はlayer。triggerが2キー以上の面は常にcombo */
+  /** 面の表示分類。既存UI互換用。省略時はlayer。canonical semanticには使わない。 */
   role?: 'layer' | 'modifier';
-  /** 解析へ渡す入力意味。省略時は既存role（無ければlayer）を使う。 */
+  /** authoring時に明示する入力意味。fromFacesは値を推測しない。 */
   inputRole?: InputRole;
   /** triggerの持続能力。FaceModeとは独立し、triggerを持つcanonical Faceでは明示する。 */
   triggerPersistence?: TriggerPersistence;
@@ -275,12 +275,7 @@ export function fromFaces(
   faces: readonly Face[],
   thumbs: { LT?: string; RT?: string } = {},
 ): Layout {
-  // legacy fallbackをFace compilerの外で解決し、canonical compiler自体には持ち込まない。
-  const canonicalFaces: Face[] = faces.map((face) => ({
-    ...face,
-    inputRole: face.inputRole ?? face.role ?? (face.trigger.length > 1 ? 'composition' : 'layer'),
-  }));
-  const semanticInputs = compileFaceSemanticInputs(canonicalFaces);
+  const semanticInputs = compileFaceSemanticInputs(faces);
   const semanticByMembership = new Map<string, SemanticInput>();
   for (const input of semanticInputs) {
     for (const membership of input.faceMemberships) {
@@ -312,8 +307,7 @@ export function fromFaces(
         `triggerを持つFaceはtriggerPersistenceを明示する必要がある（face:${faceIndex}）`,
       );
     }
-    const inputRole = face.inputRole ?? face.role ?? (trigger.length > 1 ? 'composition' : 'layer');
-    const isCombo = trigger.length > 1 || inputRole === 'composition';
+    const isCombo = face.inputRole === 'composition';
     const layerId = isCombo
       ? COMBO_LAYER_ID
       : trigger.length === 0

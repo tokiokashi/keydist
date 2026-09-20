@@ -58,6 +58,27 @@ test('structural analysisのimport先をsemantic / structural layerへ限定す�
   }
 });
 
+test('Face semanticをpresentation roleやtrigger数から推測しない', async () => {
+  const layoutTypes = await readFile(join(SRC, 'layouts', 'types.ts'), 'utf8');
+  const layers = await readFile(join(SRC, 'layers.ts'), 'utf8');
+
+  assert.doesNotMatch(
+    layoutTypes,
+    /inputRole\s*\?\?/,
+    'fromFaces must not infer canonical inputRole from presentation metadata',
+  );
+  assert.doesNotMatch(
+    layoutTypes,
+    /trigger\.length\s*>\s*1[^\n]*composition/,
+    'fromFaces must not infer composition from trigger count',
+  );
+  assert.doesNotMatch(
+    layers,
+    /inputRole[^\n]*\|\|[^\n]*trigger\.length\s*>\s*1/,
+    'presentation grouping must not infer combo from trigger count',
+  );
+});
+
 test('Strokeはlegacy Face semanticを再投影しない', async () => {
   const path = join(SRC, 'evaluate.ts');
   const source = await readFile(path, 'utf8');

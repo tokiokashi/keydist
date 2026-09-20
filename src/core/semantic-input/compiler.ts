@@ -243,8 +243,8 @@ const normalizedLayerId = (
   faceIndex: number,
   triggerKeys: readonly PhysicalKeyId[],
 ): string => {
-  if (triggerKeys.length === 0) return 'single';
   if (face.inputRole === 'composition') return 'combo';
+  if (triggerKeys.length === 0) return 'single';
   if (face.layer !== undefined) return `layer:${face.layer}`;
   return `face:${faceIndex}`;
 };
@@ -409,7 +409,8 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
   const inputsByPhysicalKeys = new Map<string, MutableSemanticInput[]>();
 
   faces.forEach((face, faceIndex) => {
-    if (face.inputRole === undefined) {
+    const cells = faceCells(face);
+    if (cells.length > 0 && face.inputRole === undefined) {
       throw new Error(`Face ${faceIndex} はinputRoleを明示する必要がある`);
     }
 
@@ -418,7 +419,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
       throw new Error(`Face ${faceIndex} はtriggerなしでtriggerPersistenceを指定できない`);
     }
 
-    for (const cell of faceCells(face)) {
+    for (const cell of cells) {
       const physicalKeys = sortedUniqueKeys([...triggerKeys, cell.key]);
       const requirements = faceRequirements(face, triggerKeys, cell.key);
       const capabilities = faceCapabilities(face, triggerKeys);

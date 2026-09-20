@@ -23,10 +23,10 @@ const faceAtF = (output: string) => ['', '', ['', '', '', output], ''];
 
 test('面はprefix / suffix / simultaneousをSequenceに展開する', () => {
   const layout = fromFaces('faces', 'faces', [
-    { trigger: [], mode: 'simultaneous', rows: faceAtF('あ') },
-    { trigger: ['d'], mode: 'prefix', rows: faceAtF('か'), triggerPersistence: 'single' },
-    { trigger: ['d'], mode: 'suffix', rows: faceAtF('さ'), triggerPersistence: 'single' },
-    { trigger: ['j'], mode: 'simultaneous', rows: faceAtF('た'), triggerPersistence: 'single' },
+    { trigger: [], mode: 'simultaneous', rows: faceAtF('あ'), inputRole: 'layer' },
+    { trigger: ['d'], mode: 'prefix', rows: faceAtF('か'), inputRole: 'modifier', triggerPersistence: 'single' },
+    { trigger: ['d'], mode: 'suffix', rows: faceAtF('さ'), inputRole: 'modifier', triggerPersistence: 'single' },
+    { trigger: ['j'], mode: 'simultaneous', rows: faceAtF('た'), inputRole: 'modifier', triggerPersistence: 'single' },
   ]);
 
   assert.deepEqual(layout.map.get('あ'), [['f']]);
@@ -37,10 +37,10 @@ test('面はprefix / suffix / simultaneousをSequenceに展開する', () => {
 
 test('面の展開後も各ステップの層帰属を保持する（#87）', () => {
   const layout = fromFaces('attribution', 'attribution', [
-    { trigger: [], mode: 'simultaneous', rows: faceAtF('あ') },
-    { trigger: ['d'], mode: 'prefix', rows: faceAtF('か'), layer: '中指', triggerPersistence: 'single' },
-    { trigger: ['j'], mode: 'prefix', rows: faceAtF('さ'), layer: '人差指', triggerPersistence: 'single' },
-    { trigger: ['k', 'l'], mode: 'simultaneous', rows: faceAtF('た'), triggerPersistence: 'single' },
+    { trigger: [], mode: 'simultaneous', rows: faceAtF('あ'), inputRole: 'layer' },
+    { trigger: ['d'], mode: 'prefix', rows: faceAtF('か'), layer: '中指', inputRole: 'modifier', triggerPersistence: 'single' },
+    { trigger: ['j'], mode: 'prefix', rows: faceAtF('さ'), layer: '人差指', inputRole: 'modifier', triggerPersistence: 'single' },
+    { trigger: ['k', 'l'], mode: 'simultaneous', rows: faceAtF('た'), inputRole: 'composition', triggerPersistence: 'single' },
   ]);
   const trace = evaluate('あかさた', layout, buildGeometry('row-staggered'), DEFAULT_OPTIONS);
 
@@ -54,10 +54,53 @@ test('面の展開後も各ステップの層帰属を保持する（#87）', ()
   assert.equal(metrics.comboPresses, 3);
 });
 
+test('Face semanticは推測せず明示を要求する', () => {
+  assert.throws(
+    () => fromFaces('missing-role', 'missing-role', [
+      { trigger: [], mode: 'simultaneous', rows: faceAtF('あ') },
+    ]),
+    /inputRoleを明示する必要がある/,
+  );
+
+  const face: Face = {
+    trigger: ['d', 'k'],
+    mode: 'simultaneous',
+    rows: faceAtF('あ'),
+    role: 'modifier',
+    inputRole: 'modifier',
+    triggerPersistence: 'single',
+  };
+  const layout = fromFaces('multi-trigger-modifier', 'multi-trigger-modifier', [face]);
+  assert.equal(layout.faceLayerIds?.get(face), 'face:0');
+  assert.equal(layout.layerDefinitions?.some((definition) => definition.kind === 'combo'), false);
+  assert.deepEqual(classifyFaces(layout.faces!).combos, []);
+});
+
+test('triggerless compositionはcanonicalとpresentationの両方でcomboへ帰属する', () => {
+  const face: Face = {
+    trigger: [],
+    mode: 'simultaneous',
+    rows: faceAtF('きゃ'),
+    inputRole: 'composition',
+  };
+  const layout = fromFaces('triggerless-composition', 'triggerless-composition', [face]);
+
+  const input = layout.canonicalInputs.get('きゃ')?.[0]?.semanticInputs[0];
+  assert.ok(input);
+  assert.equal(input.layerId, 'combo');
+  assert.ok(input.classifications.includes('composition'));
+  assert.equal(layout.faceLayerIds?.get(face), 'combo');
+  assert.deepEqual(
+    layout.layerDefinitions?.find((definition) => definition.id === 'combo'),
+    { id: 'combo', kind: 'combo', label: 'コンボ' },
+  );
+  assert.deepEqual(classifyFaces(layout.faces!).combos, [face]);
+});
+
 test('出力を持つtrigger FaceはtriggerPersistence必須、空placeholderは許容する', () => {
   assert.throws(
     () => fromFaces('invalid-persistence', 'invalid-persistence', [
-      { trigger: ['d'], mode: 'prefix', rows: faceAtF('か') },
+      { trigger: ['d'], mode: 'prefix', rows: faceAtF('か'), inputRole: 'modifier' },
     ]),
     /triggerを持つFaceはtriggerPersistenceを明示する必要がある/,
   );
@@ -133,7 +176,7 @@ test('TK音直入力法は正式名称を表示し、内部idは維持する（#
 
 test('面のセル配列は複数文字の見出しを1キーへ置ける', () => {
   const layout = fromFaces('multi', 'multi', [
-    { trigger: [], mode: 'simultaneous', rows: ['', '', ['', '', '', 'きゃ'], ''] },
+    { trigger: [], mode: 'simultaneous', rows: ['', '', ['', '', '', 'きゃ'], ''], inputRole: 'layer' },
   ]);
 
   assert.deepEqual(layout.map.get('きゃ'), [['f']]);
