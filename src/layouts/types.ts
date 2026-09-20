@@ -59,6 +59,12 @@ export interface Face {
    * 「先押しして重ねる」入力を表す場合だけ明示する。
    */
   triggerOrder?: TriggerOrder;
+  /**
+   * semantic activationを追加せず、このFace上にも表示する既存入力のセル。
+   * key -> output。compilerは同じphysical operation/outputのSemanticInputが
+   * rows側に既に存在することを要求し、faceMembershipだけを追加する。
+   */
+  presentationCells?: Readonly<Record<string, string>>;
 }
 
 export type LayerKind = 'layer' | 'combo';
