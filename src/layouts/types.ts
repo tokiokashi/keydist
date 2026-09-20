@@ -207,7 +207,6 @@ const appendCanonicalAlternative = (
   const current = map.get(output);
   if (current) current.push(alternative);
   else map.set(output, [alternative]);
-  validateCanonicalInputMap(map);
 };
 
 const cloneCanonicalInputs = (
@@ -276,6 +275,7 @@ export function fromRows(
   if (thumbs.LT) addDirect(thumbs.LT, THUMB_KEY.LT);
   if (thumbs.RT) addDirect(thumbs.RT, THUMB_KEY.RT);
 
+  validateCanonicalInputMap(canonicalInputs);
   return {
     id,
     name,
@@ -494,6 +494,7 @@ export function fromFaces(
       triggerKeys: [],
     }]);
   }
+  validateCanonicalInputMap(canonicalInputs);
   return {
     id,
     name,
@@ -656,6 +657,7 @@ export function fromKana(id: string, name: string, def: KanaDefinition): Layout 
   legends.set(THUMB_KEY.RT, '空白');
   legends.set(THUMB_KEY.LT, '親指');
 
+  validateCanonicalInputMap(canonicalInputs);
   return {
     id,
     name,
