@@ -45,6 +45,7 @@ test('structural analysisのimport先をsemantic / structural layerへ限定す�
     || specifier === './evaluate.ts'
     || specifier === './layouts/types.ts'
     || specifier === './trigger-realization.ts'
+    || specifier === './core/semantic-input/action-realization.ts'
     || /^\.\/analysis-[^/]+\.ts$/.test(specifier);
 
   for (const { path, source } of await structuralAnalysisSources()) {

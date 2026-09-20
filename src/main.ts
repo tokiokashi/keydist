@@ -1318,7 +1318,7 @@ function conditionRow(
         ...action,
         countAsSeparateStep: actionInput.checked,
       }));
-    actionLabel.append(actionInput, ' hold開始を独立stepとして数える');
+    actionLabel.append(actionInput, ' hold開始を独立actionとしてrealizeする');
 
     fields.append(holdLabel, actionLabel);
     cell.append(fields);

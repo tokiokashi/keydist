@@ -130,6 +130,7 @@ function render() {
         conditions.chainPolicy,
         conditions.arpeggioPolicy,
         conditions.triggerRealizationPolicy,
+        conditions.actionRealizationPolicy,
       );
       return {
         layout,
@@ -142,7 +143,7 @@ function render() {
           chainPolicy: conditions.chainPolicy,
           arpeggioPolicy: conditions.arpeggioPolicy,
           triggerRealizationPolicy: conditions.triggerRealizationPolicy,
-          holdStartActionPolicy: conditions.holdStartActionPolicy,
+          actionRealizationPolicy: conditions.actionRealizationPolicy,
           romajiRuleId: ctx.romajiRuleIdForLayout(layout),
         }),
         geometry,
