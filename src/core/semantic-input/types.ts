@@ -18,6 +18,9 @@ export type InputCapability = {
 
 export type SemanticRole = 'modifier';
 
+export type InputContextRequirement =
+  | { kind: 'youon-only' };
+
 export type InputClassification =
   | 'composition'
   | 'vocabulary-extension'
@@ -102,6 +105,11 @@ export type BaseActionRealizationSequence = readonly BaseActionRealization[];
 export interface InputAlternative {
   readonly semanticInputs: SemanticInputSequence;
   readonly baseRealizations: BaseActionRealizationSequence;
+  /**
+   * physical activation以外のruntime contextに対するpath成立条件。
+   * alternative selectionより前にfilterし、条件を満たさないpathはeligibleにしない。
+   */
+  readonly contextRequirements: readonly InputContextRequirement[];
 }
 
 export type InputAlternativeSet = readonly InputAlternative[];
