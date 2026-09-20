@@ -157,6 +157,39 @@ test('breakOnTriggerOnlyはcanonical composition classificationをshift扱いで
   );
 });
 
+test('legacy inputRoleだけcompositionでもcanonical classificationなしなら通常のtrigger-only境界にする', () => {
+  const strokes = [
+    stroke(0, [
+      participation('left', 'LI', ['output']),
+      participation('right', 'RI', ['trigger']),
+    ], [], [], 'composition'),
+  ];
+  const policy = {
+    ...DEFAULT_CHAIN_POLICY,
+    breakOnSameFinger: false,
+    breakOnTriggerOnly: true,
+    breakOnThumbOnly: false,
+  };
+
+  const raw = buildRawHandRuns(strokes);
+  const right = raw.find((run) => run.hand === 'right')!.steps[0];
+  assert.equal(right.triggerOnly, true);
+  assert.equal(right.isComposition, false);
+  assert.equal(strokes[0].inputRole, 'composition', 'legacy roleはcanonical factを上書きしない');
+
+  assert.deepEqual(
+    analyzeChains(strokes, policy).chains.map((chain) => [
+      chain.hand,
+      chain.startStrokeIndex,
+      chain.endStrokeIndex,
+    ]),
+    [
+      ['left', 0, 1],
+    ],
+    'classificationなしのtrigger-onlyはlegacy inputRoleに関係なく境界として除外する',
+  );
+});
+
 test('旧include設定は意味が対応するChainPolicyへだけ変換する', () => {
   assert.deepEqual(
     chainPolicyFromLegacyUi({
