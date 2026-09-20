@@ -18,13 +18,15 @@ const stroke = (
   index: number,
   participations: readonly StrokeParticipation[],
   presses: Array<{ finger: StrokeParticipation['finger']; sfb: boolean }> = [],
-  inputRole: Stroke['inputRole'] | 'output' = 'output',
+  classifications: Stroke['classifications'] = [],
+  inputRole: Stroke['inputRole'] = 'layer',
 ): Stroke => ({
   index,
   inputIndex: index,
   inputChar: String(index),
   char: String(index),
   inputRole,
+  classifications,
   triggerKeys: [],
   pairedTriggerKeys: [],
   participations,
@@ -123,12 +125,12 @@ test('ChainPolicyはsame-finger / trigger-only / 逆手同時を独立に分割�
   );
 });
 
-test('breakOnTriggerOnlyはcompositionの片手triggerをshift扱いで除外しない', () => {
+test('breakOnTriggerOnlyはcanonical composition classificationをshift扱いで除外しない', () => {
   const strokes = [
     stroke(0, [
       participation('left', 'LI', ['output']),
       participation('right', 'RI', ['trigger']),
-    ], [], 'composition'),
+    ], [], ['composition'], 'layer'),
   ];
   const policy = {
     ...DEFAULT_CHAIN_POLICY,
@@ -139,7 +141,8 @@ test('breakOnTriggerOnlyはcompositionの片手triggerをshift扱いで除外し
   const raw = buildRawHandRuns(strokes);
   const right = raw.find((run) => run.hand === 'right')!.steps[0];
   assert.equal(right.triggerOnly, true, 'Raw factとしてtrigger-onlyは保持する');
-  assert.equal(right.inputRole, 'composition');
+  assert.equal(right.isComposition, true);
+  assert.equal(strokes[0].inputRole, 'layer', 'legacy compatibility roleには依存しない');
 
   assert.deepEqual(
     analyzeChains(strokes, policy).chains.map((chain) => [
