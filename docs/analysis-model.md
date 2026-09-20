@@ -116,7 +116,8 @@ canonical semanticでは異なる軸を混ぜない。
 stable classification IDとしてcanonical inputへ保持する。geometry、左右hand、距離、
 currently-held、preferred alternative等の導出可能factはcanonicalへ重複保存しない。
 
-compatibility用の旧 `InputRole` はStroke生成時にcanonical classification / roleから導出する。
+Strokeはauthoring互換の `InputRole` / `TriggerPersistence` を持たない。
+compositionは `classifications`、trigger/hold状態は `participations` とrealized action由来のfactを使う。
 
 ### Trigger realization
 
