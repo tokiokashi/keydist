@@ -185,7 +185,8 @@ logical output matching
   -> Stroke
 ```
 
-`Layout.map / stepLayers / stepTriggerKeys / stepSemantics` はmigration / presentation用に残り得るが、
+`stepLayers / stepTriggerKeys / stepSemantics / StepSemantic` はcanonical cutover後に削除済み。
+legacy `Layout.map` だけをauthoring default / presentation互換として残すが、
 evaluateのsemantic authorityではない。
 
 左右どちらの親指でも同じshift semanticを成立させられる配列は、
