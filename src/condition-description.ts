@@ -54,7 +54,7 @@ function formatTriggerRealizationPolicy(value: TriggerRealizationPolicy): string
 }
 
 function formatHoldStartActionPolicy(value: HoldStartActionPolicy): string {
-  return value.countAsSeparateStep ? 'hold開始を独立stepとして数える' : 'outputと同じstepで数える';
+  return value.countAsSeparateStep ? 'hold開始を独立actionとしてrealizeする' : 'outputと同じactionでrealizeする';
 }
 
 export const CONDITION_DESCRIPTORS = {
@@ -75,7 +75,7 @@ export const CONDITION_DESCRIPTORS = {
   },
   holdStartAction: {
     label: 'Hold開始action',
-    effect: 'realize済みのheld-trigger/startがoutputと同じStrokeにある時、その開始を追加の独立stepとして数えるかを決めます。prefix等の既存trigger-only Strokeは追加計上しません。',
+    effect: 'hold開始とfresh outputを別actionへ分け、解析・Timing・Playbackすべてに同じrealized streamを適用するかを決めます。prefix等の既存trigger-only actionは二重分割しません。',
     format: (value) => formatHoldStartActionPolicy(value as HoldStartActionPolicy),
   },
   geometry: {
