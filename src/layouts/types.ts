@@ -163,8 +163,9 @@ export interface Layout {
    */
   romajiTable?: Map<string, string>;
   /**
-   * mapのうちコンボとして追加した見出しと、その発火条件。ローマ字化で
-   * 失われるかなの境界を使った命中判定と、コンボの命中件数の集計に使う。
+   * legacy/presentation互換のoutput単位コンボ条件。
+   * canonical legalityはInputAlternative.contextRequirementsがauthorityであり、
+   * evaluateはこのMapから成立条件を再構成しない。
    */
   comboConditions?: ReadonlyMap<string, ComboCondition>;
   /** withCombos由来のコンボ定義。物理キーまで解決済みで、配列図等の表示にも使う。 */
@@ -229,11 +230,12 @@ const sameAlternativeActions = (
   left: InputAlternative,
   right: InputAlternative,
 ): boolean => {
-  const signature = (alternative: InputAlternative) =>
-    alternative.baseRealizations
+  const signature = (alternative: InputAlternative) => JSON.stringify({
+    actions: alternative.baseRealizations
       .flatMap((realization) => realization.actions)
-      .map((action) => action.map(resolveKeyId).join('\u0001'))
-      .join('\u0002');
+      .map((action) => action.map(resolveKeyId)),
+    contextRequirements: alternative.contextRequirements,
+  });
   return signature(left) === signature(right);
 };
 
