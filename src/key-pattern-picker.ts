@@ -1,7 +1,6 @@
 import { resolveKeyId } from './geometry.ts';
 import { faceCells } from './layers.ts';
-import { COMBO_LAYER_ID } from './layouts/index.ts';
-import type { Face, Layout } from './layouts/index.ts';
+import { COMBO_LAYER_ID, type Face, type Layout } from './layouts/types.ts';
 
 export interface KeyPatternMatch {
   output: string;
