@@ -7,6 +7,7 @@ import {
   type CanonicalInputMap,
   type InputAlternative,
   type InputClassification,
+  type InputContextRequirement,
   type SemanticInput,
 } from '../core/semantic-input/index.ts';
 import { keyId, QWERTY_LEGEND, resolveKeyId, THUMB_KEY, type NonThumb } from '../geometry.ts';
@@ -213,6 +214,16 @@ const cloneCanonicalInputs = (
   inputs: CanonicalInputMap,
 ): Map<string, InputAlternative[]> =>
   new Map([...inputs].map(([output, alternatives]) => [output, [...alternatives]]));
+
+const mergeContextRequirements = (
+  ...groups: readonly (readonly InputContextRequirement[])[]
+): InputContextRequirement[] => {
+  const byKind = new Map(
+    groups.flat().map((requirement) => [requirement.kind, requirement] as const),
+  );
+  return [...byKind.values()].sort((left, right) =>
+    left.kind < right.kind ? -1 : left.kind > right.kind ? 1 : 0);
+};
 
 const sameAlternativeActions = (
   left: InputAlternative,
@@ -433,6 +444,7 @@ export function fromFaces(
         appendCanonicalAlternative(canonicalInputs, output, {
           semanticInputs: [semanticInput],
           baseRealizations: [baseRealization],
+          contextRequirements: [],
         });
 
         // legacy/presentation metadataはauthoring上の先頭pathだけを保持する。
@@ -759,6 +771,10 @@ export function withComposedOutputs(
           ...sourceAlternative.baseRealizations,
           ...markAlternative.baseRealizations,
         ],
+        contextRequirements: mergeContextRequirements(
+          sourceAlternative.contextRequirements,
+          markAlternative.contextRequirements,
+        ),
       })));
     for (const alternative of generated) {
       appendCanonicalAlternative(canonicalInputs, output, alternative);
@@ -835,19 +851,36 @@ export function withCombos(
         if (alternative.baseRealizations.length !== 1) return [];
         const realization = alternative.baseRealizations[0];
         if (realization.actions.length !== 1 || realization.actions[0].length !== 1) return [];
-        return [resolveKeyId(realization.actions[0][0])];
+        return [{
+          key: resolveKeyId(realization.actions[0][0]),
+          contextRequirements: alternative.contextRequirements,
+        }];
       }));
     if (keyChoices.some((choices) => choices.length === 0)) continue;
 
-    const combinations = keyChoices.reduce<string[][]>(
+    const combinations = keyChoices.reduce<
+      { keys: string[]; contextRequirements: InputContextRequirement[] }[]
+    >(
       (acc, choices) => acc.flatMap((prefix) =>
-        choices.map((key) => [...prefix, key])),
-      [[]],
+        choices.map((choice) => ({
+          keys: [...prefix.keys, choice.key],
+          contextRequirements: mergeContextRequirements(
+            prefix.contextRequirements,
+            choice.contextRequirements,
+          ),
+        }))),
+      [{ keys: [], contextRequirements: [] }],
     );
     const uniqueCombinations = [...new Map(
-      combinations.map((keys) => [keys.join('\u0000'), keys] as const),
+      combinations.map((combination) => [
+        [
+          combination.keys.join('\u0000'),
+          combination.contextRequirements.map((requirement) => requirement.kind).join('\u0001'),
+        ].join('\u0002'),
+        combination,
+      ] as const),
     ).values()];
-    const keys = uniqueCombinations[0];
+    const keys = uniqueCombinations[0].keys;
     const resolvedKeys = keys.map(resolveKeyId);
     const foldTriggerInputs = presentation?.foldTriggerInputs;
     const foldTriggerKeys = foldTriggerInputs?.map((ch) => layout.map.get(ch)?.[0]?.[0])
@@ -869,12 +902,18 @@ export function withCombos(
       ...(foldTriggerKeys === undefined ? {} : { foldTriggerKeys }),
       ...(foldTargets.length === 1 ? { foldTargetKey: foldTargets[0] } : {}),
     });
+    const comboContextRequirements: readonly InputContextRequirement[] =
+      condition?.youonOnly ? [{ kind: 'youon-only' }] : [];
     const generatedAlternatives = uniqueCombinations.map((combination) =>
       compileSequenceInputAlternative(
         output,
-        [combination],
+        [combination.keys],
         COMBO_LAYER_ID,
         ['composition', ...classifications],
+        mergeContextRequirements(
+          combination.contextRequirements,
+          comboContextRequirements,
+        ),
       ));
     for (const alternative of generatedAlternatives) {
       appendCanonicalAlternative(canonicalInputs, output, alternative);
