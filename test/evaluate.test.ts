@@ -424,6 +424,7 @@ test('同一キーはoutput + triggerの複合roleを持てる', () => {
     trigger: ['a'],
     mode: 'simultaneous',
     rows: ['', '', ['x'], ''],
+    inputRole: 'modifier',
     triggerPersistence: 'single',
   }]);
   const trace = evaluate('x', layout, geometry, opts());
