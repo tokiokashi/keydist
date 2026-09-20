@@ -3,6 +3,7 @@ export {
   compileSequenceInputAlternative,
   compileSequenceInputArtifacts,
   compileSequenceSemanticInputs,
+  validateCanonicalInputMap,
   type CompiledSequenceArtifacts,
 } from './compiler.ts';
 export type {
