@@ -19,7 +19,7 @@ export interface FaceGroups {
   layers: Layer[];
   /** かなへ作用する修飾面。宣言されたlayerはここでも畳む */
   modifiers: Layer[];
-  /** composition面、または2キー以上のtriggerを持つ面 */
+  /** compositionとして明示された面 */
   combos: readonly Face[];
 }
 
@@ -140,9 +140,7 @@ export function canFoldFaces(first: Face, second: Face): boolean {
 function singleTriggerGroups(faces: readonly Face[]): Map<string, Face[]> {
   const groups = new Map<string, Face[]>();
   faces.forEach((face, index) => {
-    // compositionはtrigger数にかかわらず文字キーコンボとして扱う。
-    // 2キー以上triggerのlegacy Faceも従来どおりコンボ。
-    if (face.inputRole === 'composition' || face.trigger.length > 1) {
+    if (face.inputRole === 'composition') {
       if (face.layer !== undefined) throw new Error('コンボ面にはレイヤーを宣言できない');
       return;
     }
@@ -177,7 +175,7 @@ export function classifyFaces(faces: readonly Face[]): FaceGroups {
   return {
     layers,
     modifiers,
-    combos: faces.filter((face) => face.inputRole === 'composition' || face.trigger.length > 1),
+    combos: faces.filter((face) => face.inputRole === 'composition'),
   };
 }
 
