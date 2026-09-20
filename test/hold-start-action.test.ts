@@ -114,14 +114,14 @@ test('Chain / Timing / PlaybackはActionRealizationPolicy適用後の同じStrok
     combinedTrace.strokes,
     undefined,
     undefined,
-    undefined,
+    { useHold: true },
     { holdStart: 'combined' },
   );
   const separateAnalysis = analyzeStrokeStructure(
     separateTrace.strokes,
     undefined,
     undefined,
-    undefined,
+    { useHold: true },
     { holdStart: 'separate' },
   );
   const combinedSchedule = playbackTimingSchedule(combinedAnalysis, 4, false);
@@ -135,6 +135,14 @@ test('Chain / Timing / PlaybackはActionRealizationPolicy適用後の同じStrok
   assert.equal(separateAnalysis.strokes, separateTrace.strokes);
   assert.equal(combinedAnalysis.aggregate.strokeCount, combinedTrace.strokes.length);
   assert.equal(separateAnalysis.aggregate.strokeCount, separateTrace.strokes.length);
+  assert.deepEqual(
+    combinedAnalysis.aggregate.conditions.triggerRealizationPolicy,
+    { useHold: true },
+  );
+  assert.deepEqual(
+    separateAnalysis.aggregate.conditions.triggerRealizationPolicy,
+    { useHold: true },
+  );
   assert.deepEqual(
     combinedAnalysis.aggregate.conditions.actionRealizationPolicy,
     { holdStart: 'combined' },
