@@ -25,7 +25,7 @@ const face = (
   entries: Record<string, string>,
   options: Partial<Pick<
     Face,
-    'layer' | 'inputRole' | 'triggerPersistence' | 'triggerOrder'
+    'layer' | 'inputRole' | 'triggerPersistence' | 'triggerOrder' | 'presentationCells'
   >> = {},
 ): Face => ({
   ...faceFromEntries(trigger, mode, entries),
@@ -431,6 +431,26 @@ test('built-inの相互Face membershipはauthoring側へ明示される', () => 
   ]);
   assert.equal(re.faceMemberships.length, 2);
 
+  const o = shingetaInputs.find((input) => input.output === 'お'
+    && input.physicalKeys.length === 2
+    && input.physicalKeys.includes('d')
+    && input.physicalKeys.includes('l'))!;
+  assert.equal(o.layerId, 'layer:薬指シフト');
+  assert.deepEqual(o.faceMemberships, [
+    { faceIndex: 2, cellKey: 'l' },
+    { faceIndex: 3, cellKey: 'd' },
+  ]);
+
+  const ji = shingetaInputs.find((input) => input.output === 'じ'
+    && input.physicalKeys.length === 2
+    && input.physicalKeys.includes('k')
+    && input.physicalKeys.includes('s'))!;
+  assert.equal(ji.layerId, 'layer:中指シフト');
+  assert.deepEqual(ji.faceMemberships, [
+    { faceIndex: 1, cellKey: 's' },
+    { faceIndex: 4, cellKey: 'k' },
+  ]);
+
   const naginata = LAYOUTS_JA.find((layout) => layout.id === 'naginata-v18')!;
   const naginataInputs = compileFaceSemanticInputs(naginata.faces!);
   const ga = naginataInputs.find((input) => input.output === 'が'
@@ -446,6 +466,47 @@ test('built-inの相互Face membershipはauthoring側へ明示される', () => 
     { kind: 'while-held', keys: ['j'] },
   ]);
   assert.equal(ga.faceMemberships.length, 2);
+});
+
+test('presentation-only membershipは既存SemanticInputへfaceMembershipだけを追加する', () => {
+  const inputs = compileFaceSemanticInputs([
+    face(['l'], 'simultaneous', { d: 'お' }, { layer: '薬指シフト' }),
+    face(['d'], 'simultaneous', { j: 'あ' }, {
+      layer: '中指シフト',
+      presentationCells: { l: 'お' },
+    }),
+  ]);
+
+  const input = inputs.find((candidate) => candidate.output === 'お')!;
+  assert.equal(input.layerId, 'layer:薬指シフト');
+  assert.deepEqual(input.physicalKeys, ['d', 'l']);
+  assert.deepEqual(input.faceMemberships, [
+    { faceIndex: 0, cellKey: 'd' },
+    { faceIndex: 1, cellKey: 'l' },
+  ]);
+});
+
+test('presentation-only membershipは対応するsemantic operationが無ければerrorにする', () => {
+  assert.throws(
+    () => compileFaceSemanticInputs([
+      face(['d'], 'simultaneous', { j: 'あ' }, {
+        layer: '中指シフト',
+        presentationCells: { l: 'お' },
+      }),
+    ]),
+    /presentation cell l=おに対応するSemanticInputがない/,
+  );
+});
+
+test('presentation-only membershipは同じセルの異なるsemantic outputと競合できない', () => {
+  assert.throws(
+    () => compileFaceSemanticInputs([
+      face(['d'], 'simultaneous', { l: 'あ' }, {
+        presentationCells: { l: 'お' },
+      }),
+    ]),
+    /presentation cell lがsemantic cellと競合している/,
+  );
 });
 
 test('legacy fromFaces mapは相互Faceを明示しても既存の打鍵列を保持する', () => {
