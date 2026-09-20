@@ -49,7 +49,6 @@ const stroke = (index: number, entries: PressSemantic[]): Stroke => ({
   inputChar: String(index),
   inputIndex: index,
   layerId: 'single',
-  inputRole: 'layer',
   classifications: [],
   triggerKeys: [],
   pairedTriggerKeys: [],
