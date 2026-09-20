@@ -16,10 +16,12 @@ const face = (
   entries: Record<string, string>,
   layer?: string,
   inputRole: Face['inputRole'] = 'layer',
+  presentationCells?: Readonly<Record<string, string>>,
 ): Face => ({
   ...faceFromEntries(trigger, 'simultaneous', entries),
   layer,
   inputRole,
+  ...(presentationCells === undefined ? {} : { presentationCells }),
   ...(trigger.length > 0 ? { triggerPersistence: 'single' as const } : {}),
 });
 
@@ -39,7 +41,7 @@ export const SHINGETA_FACES: Face[] = [
     y: 'うぃ', u: 'ぱ', i: 'よ', o: 'み', p: 'うぇ', '[': 'うぉ',
     h: 'へ', j: 'あ', k: 'れ', ';': 'え',
     n: 'せ', m: 'ね', ',': 'べ', '.': 'ぷ', '/': 'ヴ',
-  }, '中指シフト', 'modifier'),
+  }, '中指シフト', 'modifier', { l: 'お' }),
   face(['l'], {
     1: 'ゃ', 2: 'みゃ', 3: 'みゅ', 4: 'みょ', 5: 'ゎ',
     q: 'ぢ', w: 'め', e: 'け', r: 'てぃ', t: 'でぃ',
@@ -50,7 +52,7 @@ export const SHINGETA_FACES: Face[] = [
     y: 'しぇ', u: 'ぺ', i: 'ど', o: 'や', p: 'じぇ',
     h: 'び', j: 'ら', l: 'さ', ';': 'そ',
     n: 'わ', m: 'だ', ',': 'ぴ', '.': 'ぽ', '/': 'ちぇ',
-  }, '薬指シフト', 'modifier'),
+  }, '薬指シフト', 'modifier', { k: 'じ' }),
   face(['i'], {
     1: 'ゅ', 2: 'びゃ', 3: 'びゅ', 4: 'びょ',
     q: 'ひゅ', w: 'しゅ', e: 'しょ', r: 'きゅ', t: 'ちゅ',
