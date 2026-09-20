@@ -15,11 +15,20 @@ test('配列別条件は既定値へ部分的に重なる', () => {
     sfbHomeCost: true,
     preferOppositeThumb: false,
     triggerRealizationPolicy: { useHold: false },
+    actionRealizationPolicy: { holdStart: 'combined' },
   });
   assert.deepEqual(resolved.chainPolicy, DEFAULT_CONDITION_DEFAULTS.chain);
   assert.deepEqual(resolved.arpeggioPolicy, DEFAULT_CONDITION_DEFAULTS.arpeggioPolicy);
   assert.deepEqual(resolved.triggerRealizationPolicy, DEFAULT_CONDITION_DEFAULTS.triggerRealization);
-  assert.deepEqual(resolved.holdStartActionPolicy, DEFAULT_CONDITION_DEFAULTS.holdStartAction);
+  assert.deepEqual(resolved.actionRealizationPolicy, { holdStart: 'combined' });
+});
+
+test('旧holdStartAction設定はActionRealizationPolicyへ変換する', () => {
+  const separated = resolveConditions(DEFAULT_CONDITION_DEFAULTS, {
+    holdStartAction: { countAsSeparateStep: true },
+  });
+  assert.deepEqual(separated.actionRealizationPolicy, { holdStart: 'separate' });
+  assert.deepEqual(separated.options.actionRealizationPolicy, { holdStart: 'separate' });
 });
 
 test('配列別条件が空なら既定値と同じになる', () => {
