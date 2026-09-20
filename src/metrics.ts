@@ -327,8 +327,9 @@ export function computeMetrics(
 
 /**
  * 打鍵可能だった入力単位を inputIndex ごとにまとめ、元の文字数で重み付けする。
- * 「単打面」は、1 Stroke・1キー・layer出力で、trigger / held-trigger / compositionを
- * 一切伴わない直接入力面とする。hold利用ON/OFFで値が変わらないよう、held-triggerも除外する。
+ * 「単打面」は、1 Stroke・1キーで、combo aggregation / composition classification /
+ * trigger / held-triggerを一切伴わない直接入力とする。
+ * hold利用ON/OFFで値が変わらないよう、held-triggerも除外する。
  */
 function singleTapLayerRate(trace: Trace): number {
   const byInput = new Map<number, Stroke[]>();
@@ -351,7 +352,7 @@ function singleTapLayerRate(trace: Trace): number {
       participation.roles.includes('trigger') || participation.roles.includes('held-trigger'));
 
     if (stroke.layerId !== COMBO_LAYER_ID
-      && stroke.inputRole === 'layer'
+      && !stroke.classifications.includes('composition')
       && stroke.triggerKeys.length === 0
       && !hasTriggerParticipation
       && keyCount === 1) {
