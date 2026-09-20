@@ -94,6 +94,7 @@ const timingAnalysis = (
       inputIndex: source.inputIndex ?? index,
       layerId: source.layerId ?? 'single',
       inputRole: source.inputRole ?? 'layer',
+      classifications: source.classifications ?? [],
       triggerKeys: source.triggerKeys ?? [],
       pairedTriggerKeys: source.pairedTriggerKeys ?? [],
       participations: presses.map((press: any) => ({
