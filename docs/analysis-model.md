@@ -61,9 +61,22 @@ reciprocal Faceのように同じSemanticInputを別のauthoring viewから記�
 alternativeを増やさず、同じSemanticInputへCapability / role / Face membershipをunionし、
 BaseActionRealizationのdefault / alternate participation viewとして保持する。
 
+CanonicalInputMap完成時にはkeymap境界のactivation conflictを共通validationする。
+異なるlogical outputに同じcanonical activation pathがある場合、または同じphysicalKeysで
+Requirement setが両立し得る場合は曖昧なのでrejectする。Capability / classification /
+action groupingの差はactivation排他の根拠にしない。逆向きorder等、Requirementから
+mutually exclusiveと証明できるpathは共存できる。sequence長違い等のprecedenceは別設計とする。
+
+canonical pathを追加するconstructor / transformは、同じlogical outputに既存pathがあっても
+canonical alternativeを上書きせずappendする。legacy `Layout.map` はauthoring default /
+presentation互換として先頭pathだけを保持してよいが、canonical alternativesを失ってはならない。
+
 `preferOppositeThumb` はphysical key rewriteではなくalternative selection policyである。
 左右どちらの親指も合法なpathとしてauthoring時にcanonicalへ入り、policyがoutputと反対側の
 親指を使うpathを優先する。既定ではauthoring上の先頭alternativeを使う。
+このPolicyはauthoring defaultとthumb keyだけが異なる合法variantに候補を限定し、
+opposite-hand variantが無ければdefaultを維持する。同じoutputのnon-thumb pathや
+別方式alternativeへ `preferOppositeThumb` だけを理由に切り替えない。
 
 Strokeはselected alternativeをrealizeした結果から生成し、
 `Layout.map / stepLayers / stepTriggerKeys / stepSemantics` をsemantic authorityとして読まない。
