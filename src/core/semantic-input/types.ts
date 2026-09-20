@@ -21,6 +21,12 @@ export type SemanticRole = 'modifier';
 export type InputContextRequirement =
   | { kind: 'youon-only' };
 
+export type InputAlternativeOrigin =
+  | 'sequence'
+  | 'face'
+  | 'combo'
+  | 'composed';
+
 export type InputClassification =
   | 'composition'
   | 'vocabulary-extension'
@@ -110,6 +116,8 @@ export interface InputAlternative {
    * alternative selectionより前にfilterし、条件を満たさないpathはeligibleにしない。
    */
   readonly contextRequirements: readonly InputContextRequirement[];
+  /** このpathを生成したtop-level authoring provenance。導出で再構成しない。 */
+  readonly origin: InputAlternativeOrigin;
 }
 
 export type InputAlternativeSet = readonly InputAlternative[];
