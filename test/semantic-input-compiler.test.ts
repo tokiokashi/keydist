@@ -2,10 +2,20 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   compileFaceSemanticInputs,
+  compileSequenceInputAlternative,
   compileSequenceSemanticInputs,
+  validateCanonicalInputMap,
   type SemanticInput,
 } from '../src/core/semantic-input/index.ts';
-import { LAYOUTS, LAYOUTS_JA, fromFaces, fromKana, fromRows } from '../src/layouts/index.ts';
+import {
+  LAYOUTS,
+  LAYOUTS_JA,
+  fromFaces,
+  fromKana,
+  fromRows,
+  withCombos,
+  withComposedOutputs,
+} from '../src/layouts/index.ts';
 import { faceFromEntries, type Face, type FaceMode } from '../src/layouts/types.ts';
 
 const face = (
@@ -557,4 +567,80 @@ test('composition Faceはclassificationをcanonicalへ保持する', () => {
   ]);
   assert.deepEqual(input.classifications, ['composition']);
   assert.equal(input.layerId, 'combo');
+});
+
+
+test('CanonicalInputMapは異なるoutputの同一activationをrejectする', () => {
+  assert.throws(
+    () => fromKana('conflict', 'conflict', [
+      ['あ', [['f']]],
+      ['い', [['f']]],
+    ]),
+    /異なるlogical outputに同時成立し得るcanonical activation path/,
+  );
+});
+
+test('CanonicalInputMapはclassification差をactivation排他の根拠にしない', () => {
+  const plain = compileSequenceInputAlternative('あ', [['f']], 'single');
+  const classified = compileSequenceInputAlternative(
+    'い',
+    [['f']],
+    'single',
+    ['vocabulary-extension'],
+  );
+
+  assert.throws(
+    () => validateCanonicalInputMap(new Map([
+      ['あ', [plain]],
+      ['い', [classified]],
+    ])),
+    /あ \/ い/,
+  );
+});
+
+test('CanonicalInputMapはmutually exclusiveなorder pathを共存させる', () => {
+  assert.doesNotThrow(() => fromFaces('exclusive', 'exclusive', [
+    face(['d'], 'prefix', { k: 'も' }),
+    face(['k'], 'prefix', { d: 'ら' }),
+  ]));
+});
+
+test('withComposedOutputsは既存direct pathを失わずcomposed alternativeをappendする', () => {
+  const base = fromKana('composed-alternative', 'composed-alternative', [
+    ['か', [['f']]],
+    ['゛', [['j']]],
+    ['が', [['k']]],
+  ]);
+  const layout = withComposedOutputs(base, { か: 'が' }, '゛', 'test');
+
+  const alternatives = layout.canonicalInputs.get('が');
+  assert.ok(alternatives);
+  assert.equal(alternatives.length, 2);
+  assert.deepEqual(alternatives[0].semanticInputs[0].physicalKeys, ['k']);
+  assert.deepEqual(
+    alternatives[1].semanticInputs.map((input) => input.physicalKeys),
+    [['f'], ['j']],
+  );
+  assert.deepEqual(layout.map.get('が'), [['k']], 'legacy defaultはdirect pathを維持する');
+});
+
+test('withCombosは既存direct pathを失わずcombo alternativeをappendする', () => {
+  const base = fromKana('combo-alternative', 'combo-alternative', [
+    ['a', [['f']]],
+    ['b', [['j']]],
+    ['ab', [['q']]],
+  ]);
+  const layout = withCombos('combo-alternative-2', 'combo-alternative-2', base, [
+    ['ab', ['a', 'b']],
+  ]);
+
+  const alternatives = layout.canonicalInputs.get('ab');
+  assert.ok(alternatives);
+  assert.equal(alternatives.length, 2);
+  assert.deepEqual(alternatives[0].semanticInputs[0].physicalKeys, ['q']);
+  assert.deepEqual(
+    alternatives[1].semanticInputs[0].physicalKeys,
+    ['f', 'j'],
+  );
+  assert.deepEqual(layout.map.get('ab'), [['q']], 'legacy defaultはdirect pathを維持する');
 });
