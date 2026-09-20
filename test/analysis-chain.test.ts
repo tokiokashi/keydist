@@ -19,13 +19,11 @@ const stroke = (
   participations: readonly StrokeParticipation[],
   presses: Array<{ finger: StrokeParticipation['finger']; sfb: boolean }> = [],
   classifications: Stroke['classifications'] = [],
-  inputRole: Stroke['inputRole'] = 'layer',
 ): Stroke => ({
   index,
   inputIndex: index,
   inputChar: String(index),
   char: String(index),
-  inputRole,
   classifications,
   triggerKeys: [],
   pairedTriggerKeys: [],
@@ -130,7 +128,7 @@ test('breakOnTriggerOnlyはcanonical composition classificationをshift扱いで
     stroke(0, [
       participation('left', 'LI', ['output']),
       participation('right', 'RI', ['trigger']),
-    ], [], ['composition'], 'layer'),
+    ], [], ['composition']),
   ];
   const policy = {
     ...DEFAULT_CHAIN_POLICY,
@@ -142,7 +140,6 @@ test('breakOnTriggerOnlyはcanonical composition classificationをshift扱いで
   const right = raw.find((run) => run.hand === 'right')!.steps[0];
   assert.equal(right.triggerOnly, true, 'Raw factとしてtrigger-onlyは保持する');
   assert.equal(right.isComposition, true);
-  assert.equal(strokes[0].inputRole, 'layer', 'legacy compatibility roleには依存しない');
 
   assert.deepEqual(
     analyzeChains(strokes, policy).chains.map((chain) => [
@@ -157,12 +154,12 @@ test('breakOnTriggerOnlyはcanonical composition classificationをshift扱いで
   );
 });
 
-test('legacy inputRoleだけcompositionでもcanonical classificationなしなら通常のtrigger-only境界にする', () => {
+test('composition classificationなしのtrigger-onlyは通常のChain境界にする', () => {
   const strokes = [
     stroke(0, [
       participation('left', 'LI', ['output']),
       participation('right', 'RI', ['trigger']),
-    ], [], [], 'composition'),
+    ]),
   ];
   const policy = {
     ...DEFAULT_CHAIN_POLICY,
@@ -175,7 +172,6 @@ test('legacy inputRoleだけcompositionでもcanonical classificationなしな�
   const right = raw.find((run) => run.hand === 'right')!.steps[0];
   assert.equal(right.triggerOnly, true);
   assert.equal(right.isComposition, false);
-  assert.equal(strokes[0].inputRole, 'composition', 'legacy roleはcanonical factを上書きしない');
 
   assert.deepEqual(
     analyzeChains(strokes, policy).chains.map((chain) => [
@@ -186,7 +182,6 @@ test('legacy inputRoleだけcompositionでもcanonical classificationなしな�
     [
       ['left', 0, 1],
     ],
-    'classificationなしのtrigger-onlyはlegacy inputRoleに関係なく境界として除外する',
   );
 });
 
