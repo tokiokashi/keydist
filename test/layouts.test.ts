@@ -12,7 +12,7 @@ import {
   classifyFaces,
   displayTriggerKeys,
   faceCells,
-  foldedLayerCells,
+  faceDisplayCells,
   groupFacesIntoLayers,
   handOfKey,
   layerShiftStyles,
@@ -196,27 +196,33 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
   assert.throws(() => groupFacesIntoLayers(invalidFaces), /レイヤー「不正」の面が畳み条件を満たさない/);
 });
 
-test('畳んだレイヤーは明示済み相互Faceを使いcross-triggerだけ描画補完する（#95, #261）', () => {
+test('畳んだレイヤーはauthoringで明示したpresentation membershipだけを表示する（#95, #261）', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
   const layers = groupFacesIntoLayers(layout.faces!);
-  const middle = foldedLayerCells(layers[1], layout.faces!);
-  const ring = foldedLayerCells(layers[2], layout.faces!);
+  const middleLeft = layers[1].faces[0];
+  const middleRight = layers[1].faces[1];
+  const ringLeft = layers[2].faces[0];
+  const ringRight = layers[2].faces[1];
 
-  // 同一レイヤー内の相互Face membershipはauthoring側へ明示済み。
-  assert.equal(faceCells(layers[1].faces[1]).get('k'), 'れ');
-  assert.equal(faceCells(layers[2].faces[1]).get('l'), 'さ');
-  assert.equal(middle.get('k'), 'れ');
-  assert.equal(ring.get('l'), 'さ');
+  // reciprocal semantic membershipはrows側へ明示済み。
+  assert.equal(faceCells(middleRight).get('k'), 'れ');
+  assert.equal(faceCells(ringRight).get('l'), 'さ');
 
-  // 別レイヤーtriggerとの交点表示はまだpresentation補完として残る。
-  assert.equal(middle.get('l'), 'お');
-  assert.equal(ring.get('k'), 'じ');
+  // 別レイヤー交点はsemantic rowsを増やさずpresentation-onlyで明示する。
+  assert.equal(faceCells(middleRight).has('l'), false);
+  assert.equal(faceCells(ringRight).has('k'), false);
+  assert.equal(faceDisplayCells(middleRight).get('l'), 'お');
+  assert.equal(faceDisplayCells(ringRight).get('k'), 'じ');
+  assert.equal(faceDisplayCells(middleLeft).get('d'), 'れ');
+  assert.equal(faceDisplayCells(ringLeft).get('s'), 'さ');
+
+  assert.deepEqual(layout.map.get('お'), [['l', 'd']]);
   assert.deepEqual(layout.map.get('じ'), [['k', 's']]);
   assert.deepEqual(layout.map.get('さ'), [['l', 's']]);
 
   const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
   const tsukiLayer = groupFacesIntoLayers(tsuki.faces!)[1];
-  const tsukiCells = foldedLayerCells(tsukiLayer, tsuki.faces!);
+  const tsukiCells = new Map(tsukiLayer.faces.flatMap((face) => [...faceDisplayCells(face)]));
   assert.equal(tsukiCells.get('d'), 'ら');
   assert.equal(tsukiCells.get('k'), 'も');
 });
