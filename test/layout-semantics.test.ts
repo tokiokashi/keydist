@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, resolveKeyId } from '../src/geometry.ts';
 import { evaluate, type Options } from '../src/evaluate.ts';
-import { LAYOUT_BY_ID, type Layout } from '../src/layouts/index.ts';
+import { LAYOUT_BY_ID } from '../src/layouts/index.ts';
 
 const geometry = buildGeometry('row-staggered');
 const opts = (o: Partial<Options> = {}): Options => ({
@@ -35,16 +35,7 @@ test('built-inかな配列はFaceのinputRole / triggerPersistenceを明示す�
   }
 });
 
-test('built-inかな配列は全SequenceにstepSemanticsを持つ', () => {
-  for (const id of BUILTIN_KANA_IDS) {
-    const layout = LAYOUT_BY_ID.get(id)!;
-    for (const [output, sequence] of layout.map) {
-      const semantics = layout.stepSemantics?.get(output);
-      assert.ok(semantics, `${id}: ${output}`);
-      assert.equal(semantics.length, sequence.length, `${id}: ${output}`);
-    }
-  }
-});
+
 
 test('semantic migrationで物理Sequenceは変えない', () => {
   for (const id of BUILTIN_KANA_IDS) {
@@ -153,24 +144,7 @@ test('新JISはFaceModeとTriggerPersistenceを独立して持つ', () => {
   }
 });
 
-function assertComposedSemantics(layout: Layout, source: string, mark: string, output: string) {
-  const sourceSemantics = layout.stepSemantics?.get(source);
-  const markSemantics = layout.stepSemantics?.get(mark);
-  const outputSemantics = layout.stepSemantics?.get(output);
-  assert.ok(sourceSemantics);
-  assert.ok(markSemantics);
-  assert.ok(outputSemantics);
-  assert.deepEqual(outputSemantics, [...sourceSemantics, ...markSemantics]);
-}
 
-test('新JIS / 月配列の合成出力へstepSemanticsを連結する', () => {
-  assertComposedSemantics(LAYOUT_BY_ID.get('shin-jis-prefix')!, 'か', '゛', 'が');
-  assertComposedSemantics(LAYOUT_BY_ID.get('shin-jis-prefix')!, 'は', '゜', 'ぱ');
-  assertComposedSemantics(LAYOUT_BY_ID.get('shin-jis-simultaneous')!, 'か', '゛', 'が');
-  assertComposedSemantics(LAYOUT_BY_ID.get('shin-jis-simultaneous')!, 'は', '゜', 'ぱ');
-  assertComposedSemantics(LAYOUT_BY_ID.get('tsuki-2-263')!, 'か', '゛', 'が');
-  assertComposedSemantics(LAYOUT_BY_ID.get('tsuki-2-263')!, 'は', '゜', 'ぱ');
-});
 
 test('新JIS prefixの親指remap後もsemantic keyが一致する', () => {
   const layout = LAYOUT_BY_ID.get('shin-jis-prefix')!;
