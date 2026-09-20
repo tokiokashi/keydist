@@ -28,7 +28,6 @@ export type {
   ResolvedComboDefinition,
   Sequence,
   Step,
-  StepSemantic,
   TriggerPersistence,
   TriggerOrder,
 } from './types.ts';

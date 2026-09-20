@@ -185,7 +185,8 @@ logical output matching
   -> Stroke
 ```
 
-`Layout.map / stepLayers / stepTriggerKeys / stepSemantics` はmigration / presentation用に残り得るが、
+`stepLayers / stepTriggerKeys / stepSemantics / StepSemantic` はcanonical cutover後に削除済み。
+legacy `Layout.map` だけをauthoring default / presentation互換として残すが、
 evaluateのsemantic authorityではない。
 
 左右どちらの親指でも同じshift semanticを成立させられる配列は、
@@ -438,8 +439,8 @@ type TriggerRealizationPolicy = {
 - held keyの位置は指位置snapshotには残す
 - 明示release専用Stroke / Press / Release eventは初期実装では導入しない
 
-`StepSemantic / associatedTriggerKeys / associatedTriggerPersistence` はlegacy metadataであり、
-evaluateのhold継続判定には使わない。layerIdやclassificationからhold可能性を推測しない。
+旧 `StepSemantic / associatedTriggerKeys / associatedTriggerPersistence` は削除済みで、
+Trigger realizationはcanonical factだけを入力にする。layerIdやclassificationからhold可能性を推測しない。
 
 後段のChain / Transition / Roll / Timingはrealized Stroke streamだけを読み、
 独自にhold可能性を再判定しない。

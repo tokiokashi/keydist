@@ -53,7 +53,10 @@ test('文字compositionは表示・集計でも通常layerではなくcomboへ�
   assert.ok(groups.combos.every((face) => face.inputRole === 'composition'));
   assert.ok(groups.layers.flatMap((group) => group.faces)
     .every((face) => face.inputRole !== 'composition'));
-  assert.deepEqual(layout.stepLayers?.get('ぱ'), [COMBO_LAYER_ID]);
+  assert.equal(
+    layout.canonicalInputs.get('ぱ')?.[0]?.semanticInputs[0].layerId,
+    COMBO_LAYER_ID,
+  );
 });
 
 test('breakOnTriggerOnly=trueでも文字compositionをshift扱いでChainから除外しない', () => {
