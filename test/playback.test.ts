@@ -900,7 +900,7 @@ test('レイヤー再生はシフトと出力キーの刻印を現在の面か�
   assert.equal(output.keyLabels.get('w'), 'ひ');
 });
 
-test('左右の同一レイヤーを畳み、反対側シフト由来の刻印も表示する', () => {
+test('左右の同一レイヤーを畳み、明示presentation membershipの刻印も表示する', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
   const stroke = evaluate('あ', layout, buildGeometry('row-staggered')).strokes[0];
   const display = playbackStrokeDisplay(layout, stroke);
