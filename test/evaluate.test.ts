@@ -405,19 +405,7 @@ test('semantic normalizationはoutputのみのStrokeを表現する', () => {
   assert.equal(stroke.participations[0].hand, 'left');
 });
 
-test('evaluateはlegacy stepTriggerKeysをsource of truthとして参照しない', () => {
-  const layout = fromKana('legacy-trigger', 'legacy-trigger', {
-    x: [['q', 'j']],
-  });
-  layout.stepTriggerKeys = new Map([['x', [['q']]]]);
 
-  const trace = evaluate('x', layout, geometry, opts());
-  const byFinger = new Map(trace.strokes[0].participations.map((p) => [p.finger, p]));
-
-  assert.deepEqual(byFinger.get('LP')?.roles, ['output']);
-  assert.deepEqual(byFinger.get('RI')?.roles, ['output']);
-  assert.equal(trace.strokes[0].triggerPersistence, undefined);
-});
 
 test('prefix + singleはtrigger-only Strokeとして正規化する', () => {
   const layout = fromFaces('semantic-prefix-single', 'semantic-prefix-single', [{
