@@ -58,6 +58,19 @@ test('structural analysisのimport先をsemantic / structural layerへ限定す�
   }
 });
 
+test('Strokeはlegacy Face semanticを再投影しない', async () => {
+  const path = join(SRC, 'evaluate.ts');
+  const source = await readFile(path, 'utf8');
+
+  for (const symbol of ['InputRole', 'inputRole', 'TriggerPersistence', 'triggerPersistence']) {
+    assert.equal(
+      source.includes(symbol),
+      false,
+      `evaluate.ts must not project legacy Face semantic onto Stroke: ${symbol}`,
+    );
+  }
+});
+
 test('Metricsはlegacy inputRoleへ依存しない', async () => {
   const path = join(SRC, 'metrics.ts');
   const source = await readFile(path, 'utf8');
