@@ -31,8 +31,7 @@ test('飛鳥の親指面はsimultaneous + layer + hold-capableを明示する', 
   }
 
   const base = evaluate('あ', layout, geometry, DEFAULT_OPTIONS).strokes[0];
-  assert.equal(base.inputRole, 'layer');
-  assert.equal(base.triggerPersistence, 'hold-capable');
+  assert.deepEqual(base.classifications, []);
   assert.ok(base.participations.some((p) => p.roles.includes('trigger')));
   assert.ok(base.participations.every((p) => !p.roles.includes('held-trigger')));
 });

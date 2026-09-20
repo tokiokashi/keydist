@@ -48,7 +48,6 @@ const stroke = (index: number, p: Press): Stroke => ({
   inputChar: String(index),
   inputIndex: index,
   layerId: 'single',
-  inputRole: 'layer',
   classifications: [],
   triggerKeys: [],
   pairedTriggerKeys: [],

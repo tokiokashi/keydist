@@ -36,13 +36,11 @@ test('親指shiftはlayer + single、文字キーcomboはcomposition + singleと
   }
 
   const thumb = evaluate('ば', layout, geometry, DEFAULT_OPTIONS).strokes[0];
-  assert.equal(thumb.inputRole, 'layer');
-  assert.equal(thumb.triggerPersistence, 'single');
+  assert.deepEqual(thumb.classifications, []);
   assert.ok(thumb.participations.some((p) => p.roles.includes('trigger')));
 
   const composition = evaluate('ぱ', layout, geometry, DEFAULT_OPTIONS).strokes[0];
-  assert.equal(composition.inputRole, 'composition');
-  assert.equal(composition.triggerPersistence, 'single');
+  assert.ok(composition.classifications.includes('composition'));
   assert.ok(composition.participations.some((p) => p.roles.includes('trigger')));
   assert.ok(composition.participations.every((p) => !p.roles.includes('held-trigger')));
 });
@@ -67,7 +65,7 @@ test('breakOnTriggerOnly=trueでも文字compositionをshift扱いでChainから
     breakOnTriggerOnly: true,
   });
 
-  assert.equal(trace.strokes[0].inputRole, 'composition');
+  assert.ok(trace.strokes[0].classifications.includes('composition'));
   assert.deepEqual(
     analysis.chains.map((chain) => [chain.hand, chain.startStrokeIndex, chain.endStrokeIndex]),
     [

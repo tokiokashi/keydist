@@ -3,10 +3,8 @@ import {
   COMBO_LAYER_ID,
   SINGLE_LAYER_ID,
   type HoldPhase,
-  type InputRole,
   type LayerDefinition,
   type Layout,
-  type TriggerPersistence,
 } from './layouts/types.ts';
 import { kanaToRomajiChunks } from './romaji/kunrei.ts';
 import {
@@ -19,8 +17,6 @@ import {
   type InputAlternativeSet,
   type InputClassification,
   type InputContextRequirement,
-  type RealizedSemanticAction,
-  type SemanticInput,
   type TriggerHoldState,
   type TriggerRealizationPolicy,
 } from './core/semantic-input/index.ts';
@@ -92,12 +88,8 @@ export interface Stroke {
   inputIndex: number;
   /** このステップに含まれるキー押下の帰属先。合成文字ではステップごとに異なりうる */
   layerId: string;
-  /** compatibility用の旧入力role。canonical classification / roleから導出する。 */
-  inputRole: InputRole;
   /** authoring由来のcanonical classification。 */
   classifications: readonly InputClassification[];
-  /** このステップのtriggerが持つ持続能力。triggerなしstepでは未指定。 */
-  triggerPersistence?: TriggerPersistence;
   /** このステップで層操作として押したキー。出力キーとの色分けに使う */
   triggerKeys: readonly string[];
   /** 同じ層の文字トリガーを複数同時押下したキー。表示色の例外に使う */
@@ -341,16 +333,13 @@ export function evaluate(
       }
 
       const positions = snapshot(prev, last, index, geometry);
-      const triggerPersistence = triggerPersistenceOf(action);
       strokes.push({
         index,
         char,
         inputChar,
         inputIndex,
         layerId,
-        inputRole: inputRoleOf(action.input),
         classifications: action.input.classifications,
-        ...(triggerPersistence === undefined ? {} : { triggerPersistence }),
         triggerKeys,
         pairedTriggerKeys,
         participations,
@@ -371,22 +360,6 @@ export function evaluate(
     layerDefinitions,
     errors,
   };
-}
-
-function inputRoleOf(input: SemanticInput): InputRole {
-  if (input.classifications.includes('composition')) return 'composition';
-  return input.roles.some((role) => role.role === 'modifier') ? 'modifier' : 'layer';
-}
-
-function triggerPersistenceOf(
-  action: RealizedSemanticAction,
-): TriggerPersistence | undefined {
-  if (action.triggerKeys.length === 0) return undefined;
-  const freshTriggers = new Set(action.triggerKeys.map(resolveKeyId));
-  const holdCapable = action.input.capabilities.some((capability) =>
-    capability.kind === 'while-held'
-    && capability.keys.every((key) => freshTriggers.has(resolveKeyId(key))));
-  return holdCapable ? 'hold-capable' : 'single';
 }
 
 function normalizeParticipations(
