@@ -37,7 +37,6 @@ const stroke = (index: number, p: Press): Stroke => ({
   inputChar: String(index),
   inputIndex: index,
   layerId: 'single',
-  inputRole: 'layer',
   classifications: [],
   triggerKeys: [],
   pairedTriggerKeys: [],
@@ -54,7 +53,6 @@ const simultaneousThumbShiftStroke = (
   thumb: Press,
 ): Stroke => ({
   ...stroke(index, output),
-  inputRole: 'modifier',
   triggerKeys: [thumb.keys[0].id],
   participations: [
     participation(output),
