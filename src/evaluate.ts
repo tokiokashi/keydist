@@ -153,9 +153,6 @@ export function evaluate(
   const seen = new Set<string>();
   const comboHits: string[] = [];
   const resolvedComboDefinitions = layout.resolvedComboDefinitions ?? [];
-  const comboDefinitionOutputs = new Set(
-    resolvedComboDefinitions.map((definition) => definition.output),
-  );
   const comboDefinitions = resolvedComboDefinitions.length
     || layout.comboConditions?.size
     || 0;
@@ -249,12 +246,7 @@ export function evaluate(
       geometry,
       options,
     );
-    if (comboDefinitionOutputs.has(char)
-      && selectedAlternative.semanticInputs.some((input) =>
-        input.layerId === COMBO_LAYER_ID
-        && input.classifications.includes('composition'))) {
-      comboHits.push(char);
-    }
+    if (selectedAlternative.origin === 'combo') comboHits.push(char);
 
     const realized = realizeTriggerActions(
       selectedAlternative.baseRealizations,
@@ -488,6 +480,7 @@ function thumbVariantSignature(
       faceMemberships: input.faceMemberships,
     })),
     contextRequirements: alternative.contextRequirements,
+    origin: alternative.origin,
     baseRealizations: alternative.baseRealizations.map((realization) => ({
       actions: realization.actions.map(normalizeKeys),
       defaultOutputKeys: normalizeKeys(realization.defaultOutputKeys),
