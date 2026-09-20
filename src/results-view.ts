@@ -1130,7 +1130,7 @@ function layerIdForFace(layout: Layout, face: Face): string {
   const known = layout.faceLayerIds?.get(face);
   if (known) return known;
   const index = layout.faces?.indexOf(face) ?? -1;
-  if (face.trigger.length > 1) return COMBO_LAYER_ID;
+  if (face.inputRole === 'composition') return COMBO_LAYER_ID;
   return face.layer === undefined ? `face:${index}` : `layer:${face.layer}`;
 }
 
