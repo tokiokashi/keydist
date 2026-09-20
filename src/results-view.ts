@@ -22,7 +22,7 @@ import {
 import type { GeometrySettings } from './geometry-settings.ts';
 import { resolveConditions } from './condition-resolution.ts';
 import { classifyFaces, displayTriggerKeys, faceCells, faceDisplayCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
-import { COMBO_LAYER_ID, SINGLE_LAYER_ID, faceFromEntries } from './layouts/index.ts';
+import { SINGLE_LAYER_ID, faceFromEntries } from './layouts/index.ts';
 import type { Face, Layout } from './layouts/index.ts';
 import { findActiveLayerFace, matchKeyPatterns, summarizeCandidateMatches } from './key-pattern-picker.ts';
 import type { ModeId } from './layout-selection.ts';
@@ -1127,11 +1127,11 @@ function renderModifierList(modifiers: readonly Layer[], legends: Map<string, st
 }
 
 function layerIdForFace(layout: Layout, face: Face): string {
-  const known = layout.faceLayerIds?.get(face);
-  if (known) return known;
-  const index = layout.faces?.indexOf(face) ?? -1;
-  if (face.inputRole === 'composition') return COMBO_LAYER_ID;
-  return face.layer === undefined ? `face:${index}` : `layer:${face.layer}`;
+  const layerId = layout.faceLayerIds?.get(face);
+  if (layerId === undefined) {
+    throw new Error('Face表示にはfaceLayerIdsの明示が必要');
+  }
+  return layerId;
 }
 
 function orderedLayers(groups: ReturnType<typeof classifyFaces>, layout: Layout): Layer[] {
