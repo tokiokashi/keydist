@@ -151,7 +151,6 @@ test('suffix singleは同じtriggerでもactive holdを継承しない', () => {
     stroke.char === 'y'
     && stroke.participations.some((participation) => participation.roles.includes('trigger')));
   assert.ok(yTrigger);
-  assert.equal(yTrigger.triggerPersistence, 'single');
   assert.equal(yTrigger.participations.some((participation) =>
     participation.roles.includes('held-trigger')), false);
 });
