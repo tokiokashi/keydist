@@ -1,5 +1,5 @@
 import { ALL_FINGERS, dist, keyId, resolveKeyId, type Finger, type Geometry, type Point } from './geometry.ts';
-import { classifyFaces, faceCells, foldedLayerCells, type Layer } from './layers.ts';
+import { classifyFaces, faceCells, faceDisplayCells, type Layer } from './layers.ts';
 import type { Stroke } from './evaluate.ts';
 import type { Layout } from './layouts/types.ts';
 import {
@@ -386,15 +386,10 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
       cells.forEach((_label, colIndex) => keyLabels.set(keyId(rowIndex, colIndex), ''));
     });
   }
-  const labels = layer ? foldedLayerCells(layer, layout.faces ?? []) : undefined;
-  if (labels) {
-    for (const [key, label] of labels) keyLabels.set(key, label);
-  } else {
-    for (const face of faces) {
-      for (const [key, label] of faceCells(face)) {
-        const previous = keyLabels.get(key);
-        keyLabels.set(key, previous && label !== previous ? `${previous} / ${label}` : label);
-      }
+  for (const face of layer?.faces ?? faces) {
+    for (const [key, label] of faceDisplayCells(face)) {
+      const previous = keyLabels.get(key);
+      keyLabels.set(key, previous && label !== previous ? `${previous} / ${label}` : label);
     }
   }
   for (const key of triggerKeys) keyLabels.set(key, '⇧');
