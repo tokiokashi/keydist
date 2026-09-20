@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { buildGeometry, ALL_FINGERS } from '../src/geometry.ts';
 import { evaluate, type Options } from '../src/evaluate.ts';
 import { computeMetrics, DEFAULT_METRIC_CONDITIONS, homeSpacing } from '../src/metrics.ts';
-import { LAYOUTS_JA, LAYOUT_BY_ID, type Layout } from '../src/layouts/index.ts';
+import { fromKana, LAYOUTS_JA, LAYOUT_BY_ID } from '../src/layouts/index.ts';
 import { dist } from '../src/geometry.ts';
 import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '../src/sample-text-ja.ts';
 import { DEFAULT_CHAIN_POLICY } from '../src/analysis-chain.ts';
@@ -91,18 +91,21 @@ test('1文字あたりの距離は打鍵数ではなく入力文字数を分母�
 
 test('コンボ相当（複数文字を1見出しで打つ）でも入力文字数は変わらない', () => {
   // 「きゃ」を1ステップで打てる配列でも、入力文字数は原文通り2
-  const l: Layout = {
-    id: 't', name: 't',
-    map: new Map([['き', [['d']]], ['ゃ', [['k']]], ['きゃ', [['f']]]]),
-    legends: new Map(),
-    maxCharLength: 2,
-  };
+  const l = fromKana('t', 't', {
+    き: [['d']],
+    ゃ: [['k']],
+    きゃ: [['f']],
+  });
   const combo = computeMetrics(evaluate('きゃ', l, geometry, opts()), geometry);
   assert.equal(combo.strokes, 1);
   assert.equal(combo.inputChars, 2);
 
+  const splitLayout = fromKana('t-split', 't-split', {
+    き: [['d']],
+    ゃ: [['k']],
+  });
   const split = computeMetrics(
-    evaluate('きゃ', { ...l, map: new Map([['き', [['d']]], ['ゃ', [['k']]]]) }, geometry, opts()),
+    evaluate('きゃ', splitLayout, geometry, opts()),
     geometry,
   );
   assert.equal(split.strokes, 2);
@@ -141,16 +144,10 @@ test('単打面率は単打面の1キー直接出力だけを文字数ベース�
 });
 
 test('単打面率は文字数、単打率・1キー率はaction数を分母にする', () => {
-  const layout: Layout = {
-    id: 'rate-bases',
-    name: 'rate-bases',
-    map: new Map([
-      ['きゃ', [['f']]],
-      ['あ', [['d'], ['k']]],
-    ]),
-    legends: new Map(),
-    maxCharLength: 2,
-  };
+  const layout = fromKana('rate-bases', 'rate-bases', {
+    きゃ: [['f']],
+    あ: [['d'], ['k']],
+  });
   const metrics = computeMetrics(evaluate('きゃあ', layout, geometry, opts()), geometry);
 
   assert.equal(metrics.inputChars, 3);
@@ -230,18 +227,13 @@ test('単打面率はhold継続中のシフト文字を単打面扱いしない'
 test('コンボはアクション/文字を下げるが、押下/文字は下げない', () => {
   // 「きゃ」を3キー同時押しの1ステップで打てる配列と、2ステップに分けて打つ配列を比較する。
   // コンボは押すキー自体は減らさないため、押下数は両者で変わらない
-  const combo: Layout = {
-    id: 'combo', name: 'combo',
-    map: new Map([['きゃ', [['d', 'k', 'l']]]]),
-    legends: new Map(),
-    maxCharLength: 2,
-  };
-  const split: Layout = {
-    id: 'split', name: 'split',
-    map: new Map([['き', [['d']]], ['ゃ', [['k', 'l']]]]),
-    legends: new Map(),
-    maxCharLength: 2,
-  };
+  const combo = fromKana('combo', 'combo', {
+    きゃ: [['d', 'k', 'l']],
+  });
+  const split = fromKana('split', 'split', {
+    き: [['d']],
+    ゃ: [['k', 'l']],
+  });
 
   const comboMetrics = computeMetrics(evaluate('きゃ', combo, geometry, opts()), geometry);
   const splitMetrics = computeMetrics(evaluate('きゃ', split, geometry, opts()), geometry);

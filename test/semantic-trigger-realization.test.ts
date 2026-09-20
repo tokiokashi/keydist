@@ -18,7 +18,7 @@ const holdFaceLayout = (
 
 const base = (mode: FaceMode, output: 'x' | 'y') => {
   const layout = holdFaceLayout(mode);
-  const realization = layout.baseActionRealizations?.get(output);
+  const realization = layout.canonicalInputs.get(output)?.[0]?.baseRealizations;
   assert.ok(realization);
   return realization;
 };
@@ -68,7 +68,7 @@ test('simultaneous holdはstart後に同じgroupをcontinueして再Pressを除�
 
 test('single Capability不在ではuseHold=trueでもholdを開始しない', () => {
   const layout = holdFaceLayout('simultaneous', 'single');
-  const realization = layout.baseActionRealizations?.get('x');
+  const realization = layout.canonicalInputs.get('x')?.[0]?.baseRealizations;
   assert.ok(realization);
 
   const result = realizeTriggerActions(realization, { useHold: true });
@@ -127,6 +127,7 @@ test('order.after側がheldでbefore側にfresh Pressが必要ならcontinueし�
     requirements: [{ kind: 'order', before: ['d'], after: ['q'] }],
     capabilities: [{ kind: 'while-held', keys: ['q'] }],
     layerId: 'single',
+    classifications: [],
     roles: [{ key: 'q', role: 'modifier' }],
     faceMemberships: [],
   };
@@ -161,6 +162,7 @@ test('order.before側がheldでafter側がfreshならcontinueできる', () => {
     requirements: [{ kind: 'order', before: ['q'], after: ['d'] }],
     capabilities: [{ kind: 'while-held', keys: ['q'] }],
     layerId: 'single',
+    classifications: [],
     roles: [{ key: 'q', role: 'modifier' }],
     faceMemberships: [],
   };
@@ -193,7 +195,7 @@ test('held keyだけで新outputを作る入力はcontinueせずrelease/restart�
     inputRole: 'modifier',
     triggerPersistence: 'hold-capable',
   }]);
-  const realization = layout.baseActionRealizations?.get('x');
+  const realization = layout.canonicalInputs.get('x')?.[0]?.baseRealizations;
   assert.ok(realization);
 
   const first = realizeTriggerActions(realization, { useHold: true });
@@ -215,6 +217,7 @@ test('reciprocal Capabilityはdefault groupと別groupのactive holdも受け入
       { kind: 'while-held', keys: ['j'] },
     ],
     layerId: 'layer:濁音',
+    classifications: [],
     roles: [
       { key: 'f', role: 'modifier' },
       { key: 'j', role: 'modifier' },
@@ -258,6 +261,7 @@ test('partial while-held groupだけを保持し残りkeyは対象ごとに再Pr
     requirements: [{ kind: 'overlap', keys: ['d', 'j', 'thumb-r'] }],
     capabilities: [{ kind: 'while-held', keys: ['thumb-r'] }],
     layerId: 'combo',
+    classifications: [],
     roles: [{ key: 'thumb-r', role: 'modifier' }, { key: 'd', role: 'modifier' }],
     faceMemberships: [],
   };
@@ -284,6 +288,7 @@ test('current inputがactive groupのCapabilityを持たなければholdを終�
     requirements: [{ kind: 'overlap', keys: ['f', 'q'] }],
     capabilities: [{ kind: 'while-held', keys: ['q'] }],
     layerId: 'single',
+    classifications: [],
     roles: [{ key: 'q', role: 'modifier' }],
     faceMemberships: [],
   };
@@ -293,6 +298,7 @@ test('current inputがactive groupのCapabilityを持たなければholdを終�
     requirements: [],
     capabilities: [],
     layerId: 'single',
+    classifications: [],
     roles: [],
     faceMemberships: [],
   };

@@ -1,10 +1,15 @@
 import {
+  canonicalInputAlternativeIdentity,
   compileFaceSemanticInputs,
-  compileSequenceInputArtifacts,
+  compileSequenceInputAlternative,
+  mapInputAlternativePhysicalKeys,
   validateBaseActionRealization,
-  type BaseActionRealizationSequence,
+  validateCanonicalInputMap,
+  type CanonicalInputMap,
+  type InputAlternative,
+  type InputClassification,
+  type InputContextRequirement,
   type SemanticInput,
-  type SemanticInputSequence,
 } from '../core/semantic-input/index.ts';
 import { keyId, QWERTY_LEGEND, resolveKeyId, THUMB_KEY, type NonThumb } from '../geometry.ts';
 import { groupFacesIntoLayers } from '../layers.ts';
@@ -113,6 +118,7 @@ export type ComboDefinition = [
   inputs: string[],
   condition?: ComboCondition,
   presentation?: ComboPresentation,
+  classifications?: readonly InputClassification[],
 ];
 
 /** withCombosで解決済みのコンボ。表示・検証で元定義と物理キー集合を参照する。 */
@@ -133,15 +139,10 @@ export interface Layout {
   /** 文字 → 打鍵ステップ列 */
   map: Map<string, Sequence>;
   /**
-   * logical output → canonical SemanticInput列。
-   * migration中のみoptionalで、consumer cutover後にrequired化する。
+   * logical output → 具体canonical input path群。
+   * OR activationをSemanticInput内部へ入れず、合法な物理実現をalternativeとして保持する。
    */
-  semanticInputSequences?: ReadonlyMap<string, SemanticInputSequence>;
-  /**
-   * logical output → authoring source由来のdefault/base action grouping。
-   * Requirementから推測せず、ActionRealizationPolicy入力として別管理する。
-   */
-  baseActionRealizations?: ReadonlyMap<string, BaseActionRealizationSequence>;
+  canonicalInputs: CanonicalInputMap;
   /** 面から作った配列だけが持つ、表示用の元面。自作配列などは省略する */
   faces?: readonly Face[];
   /**
@@ -151,8 +152,10 @@ export interface Layout {
   maxCharLength?: number;
   /** キーid → そのキーの刻印。表示用 */
   legends: Map<string, string>;
-  /** 運指設定で左右の親指を振り替えられるシフトキー。 */
+  /** authoring上の既定親指シフトキー。 */
   thumbShiftKey?: string;
+  /** 同じshift semanticを成立させられる合法な親指キー集合。 */
+  thumbShiftKeys?: readonly string[];
   /** この配列が前提とする非親指のホームキー。省略時は物理形状側の既定値を使う。 */
   homeKeys?: Partial<Record<NonThumb, string>>;
   /**
@@ -161,8 +164,9 @@ export interface Layout {
    */
   romajiTable?: Map<string, string>;
   /**
-   * mapのうちコンボとして追加した見出しと、その発火条件。ローマ字化で
-   * 失われるかなの境界を使った命中判定と、コンボの命中件数の集計に使う。
+   * legacy/presentation互換のoutput単位コンボ条件。
+   * canonical legalityはInputAlternative.contextRequirementsがauthorityであり、
+   * evaluateはこのMapから成立条件を再構成しない。
    */
   comboConditions?: ReadonlyMap<string, ComboCondition>;
   /** withCombos由来のコンボ定義。物理キーまで解決済みで、配列図等の表示にも使う。 */
@@ -198,6 +202,38 @@ export function faceFromEntries(
   };
 }
 
+const appendCanonicalAlternative = (
+  map: Map<string, InputAlternative[]>,
+  output: string,
+  alternative: InputAlternative,
+): void => {
+  const current = map.get(output);
+  if (current) current.push(alternative);
+  else map.set(output, [alternative]);
+};
+
+const cloneCanonicalInputs = (
+  inputs: CanonicalInputMap,
+): Map<string, InputAlternative[]> =>
+  new Map([...inputs].map(([output, alternatives]) => [output, [...alternatives]]));
+
+const mergeContextRequirements = (
+  ...groups: readonly (readonly InputContextRequirement[])[]
+): InputContextRequirement[] => {
+  const byKind = new Map(
+    groups.flat().map((requirement) => [requirement.kind, requirement] as const),
+  );
+  return [...byKind.values()].sort((left, right) =>
+    left.kind < right.kind ? -1 : left.kind > right.kind ? 1 : 0);
+};
+
+const sameCanonicalAlternative = (
+  left: InputAlternative,
+  right: InputAlternative,
+): boolean =>
+  canonicalInputAlternativeIdentity(left) === canonicalInputAlternativeIdentity(right);
+
+
 /**
  * 4行 × N列のグリッドに文字を並べた配列。
  * 単打のみの配列（QWERTY・大西配列など）はこの形で書ける。
@@ -209,72 +245,50 @@ export function fromRows(
   thumbs: { LT?: string; RT?: string } = { RT: ' ' },
 ): Layout {
   const map = new Map<string, Sequence>();
-  const semanticInputSequences = new Map<string, SemanticInputSequence>();
-  const baseActionRealizations = new Map<string, BaseActionRealizationSequence>();
+  const canonicalInputs = new Map<string, InputAlternative[]>();
   const stepLayers = new Map<string, readonly string[]>();
   const stepTriggerKeys = new Map<string, readonly (readonly string[])[]>();
   const stepSemantics = new Map<string, readonly StepSemantic[]>();
   const legends = new Map<string, string>();
+
+  const addDirect = (output: string, key: string) => {
+    const sequence: Sequence = [[key]];
+    appendCanonicalAlternative(
+      canonicalInputs,
+      output,
+      compileSequenceInputAlternative(output, sequence, SINGLE_LAYER_ID),
+    );
+    if (map.has(output)) return;
+    map.set(output, sequence);
+    stepLayers.set(output, [SINGLE_LAYER_ID]);
+    stepTriggerKeys.set(output, [[]]);
+    stepSemantics.set(output, [{
+      inputRole: 'layer',
+      outputKeys: [key],
+      triggerKeys: [],
+    }]);
+  };
+
   rows.forEach((row, r) => {
-    [...row].forEach((ch, c) => {
+    [...row].forEach((ch, col) => {
       if (ch === ' ') return;
-      const id = keyId(r, c);
-      // 同じ文字が複数のキーに載る配列もある。打鍵には先に書いた方を使い、
-      // 後の方は刻印だけ残す（どちらを使うか決めないと、静かに片方が死ぬ）
-      if (!map.has(ch)) {
-        const sequence: Sequence = [[id]];
-        map.set(ch, sequence);
-        const artifacts = compileSequenceInputArtifacts(ch, sequence, SINGLE_LAYER_ID);
-        semanticInputSequences.set(ch, artifacts.semanticInputs);
-        baseActionRealizations.set(ch, artifacts.baseActionRealizations);
-        stepLayers.set(ch, [SINGLE_LAYER_ID]);
-        stepTriggerKeys.set(ch, [[]]);
-        stepSemantics.set(ch, [{
-          inputRole: 'layer',
-          outputKeys: [id],
-          triggerKeys: [],
-        }]);
-      }
-      legends.set(id, ch);
+      const key = keyId(r, col);
+      addDirect(ch, key);
+      legends.set(key, ch);
     });
   });
-  // 親指の刻印は、親指キーを文字入力へ追加しないかな配列でも表示する。
+
   legends.set(THUMB_KEY.LT, '親指');
   legends.set(THUMB_KEY.RT, '空白');
-  if (thumbs.LT) {
-    const sequence: Sequence = [[THUMB_KEY.LT]];
-    map.set(thumbs.LT, sequence);
-    const artifacts = compileSequenceInputArtifacts(thumbs.LT, sequence, SINGLE_LAYER_ID);
-    semanticInputSequences.set(thumbs.LT, artifacts.semanticInputs);
-    baseActionRealizations.set(thumbs.LT, artifacts.baseActionRealizations);
-    stepLayers.set(thumbs.LT, [SINGLE_LAYER_ID]);
-    stepTriggerKeys.set(thumbs.LT, [[]]);
-    stepSemantics.set(thumbs.LT, [{
-      inputRole: 'layer',
-      outputKeys: [THUMB_KEY.LT],
-      triggerKeys: [],
-    }]);
-  }
-  if (thumbs.RT) {
-    const sequence: Sequence = [[THUMB_KEY.RT]];
-    map.set(thumbs.RT, sequence);
-    const artifacts = compileSequenceInputArtifacts(thumbs.RT, sequence, SINGLE_LAYER_ID);
-    semanticInputSequences.set(thumbs.RT, artifacts.semanticInputs);
-    baseActionRealizations.set(thumbs.RT, artifacts.baseActionRealizations);
-    stepLayers.set(thumbs.RT, [SINGLE_LAYER_ID]);
-    stepTriggerKeys.set(thumbs.RT, [[]]);
-    stepSemantics.set(thumbs.RT, [{
-      inputRole: 'layer',
-      outputKeys: [THUMB_KEY.RT],
-      triggerKeys: [],
-    }]);
-  }
+  if (thumbs.LT) addDirect(thumbs.LT, THUMB_KEY.LT);
+  if (thumbs.RT) addDirect(thumbs.RT, THUMB_KEY.RT);
+
+  validateCanonicalInputMap(canonicalInputs);
   return {
     id,
     name,
     map,
-    semanticInputSequences,
-    baseActionRealizations,
+    canonicalInputs,
     legends,
     stepLayers,
     stepTriggerKeys,
@@ -322,9 +336,7 @@ export function fromFaces(
   const legends = new Map<string, string>();
   const layerDefinitions: LayerDefinition[] = [];
   const faceLayerIds = new Map<Face, string>();
-  const outputSemanticInputs = new Map<string, SemanticInput>();
-  const semanticInputSequences = new Map<string, SemanticInputSequence>();
-  const baseActionRealizations = new Map<string, BaseActionRealizationSequence>();
+  const canonicalInputs = new Map<string, InputAlternative[]>();
 
   const addDefinition = (definition: LayerDefinition) => {
     if (!layerDefinitions.some((entry) => entry.id === definition.id)) {
@@ -343,7 +355,9 @@ export function fromFaces(
     const isCombo = trigger.length > 1 || inputRole === 'composition';
     const layerId = isCombo
       ? COMBO_LAYER_ID
-      : face.layer === undefined ? `face:${faceIndex}` : `layer:${face.layer}`;
+      : trigger.length === 0
+        ? SINGLE_LAYER_ID
+        : face.layer === undefined ? `face:${faceIndex}` : `layer:${face.layer}`;
     faceLayerIds.set(face, layerId);
     addDefinition({
       id: layerId,
@@ -371,11 +385,14 @@ export function fromFaces(
             : {}),
         };
 
-        if (map.has(output)) {
-          if (outputSemanticInputs.get(output) !== semanticInput) {
-            throw new Error(`面の出力「${output}」が重複している`);
-          }
-          const existing = baseActionRealizations.get(output)?.[0];
+        const alternatives = canonicalInputs.get(output) ?? [];
+        const sameSemanticIndex = alternatives.findIndex((alternative) =>
+          alternative.semanticInputs.length === 1
+          && alternative.semanticInputs[0] === semanticInput);
+
+        if (sameSemanticIndex >= 0) {
+          const existingAlternative = alternatives[sameSemanticIndex];
+          const existing = existingAlternative.baseRealizations[0];
           if (!existing) {
             throw new Error(`面の出力「${output}」のBaseActionRealizationが見つからない`);
           }
@@ -399,12 +416,15 @@ export function fromFaces(
               alternateParticipations: [...alternates, participationView],
             };
             validateBaseActionRealization(updated);
-            baseActionRealizations.set(output, [updated]);
+            const updatedAlternatives = [...alternatives];
+            updatedAlternatives[sameSemanticIndex] = {
+              ...existingAlternative,
+              baseRealizations: [updated],
+            };
+            canonicalInputs.set(output, updatedAlternatives);
           }
           return;
         }
-        outputSemanticInputs.set(output, semanticInput);
-        semanticInputSequences.set(output, [semanticInput]);
 
         const baseRealization = {
           input: semanticInput,
@@ -418,17 +438,26 @@ export function fromFaces(
             : {}),
         };
         validateBaseActionRealization(baseRealization);
-        baseActionRealizations.set(output, [baseRealization]);
-        map.set(output, sequence);
-        stepLayers.set(output, sequence.map(() => layerId));
-        stepTriggerKeys.set(output, expandFaceTriggerKeys(trigger, face.mode));
-        stepSemantics.set(output, expandFaceSemantics(
-          trigger,
-          face.mode,
-          key,
-          inputRole,
-          trigger.length > 0 ? face.triggerPersistence : undefined,
-        ));
+        appendCanonicalAlternative(canonicalInputs, output, {
+          semanticInputs: [semanticInput],
+          baseRealizations: [baseRealization],
+          contextRequirements: [],
+          origin: 'face',
+        });
+
+        // legacy/presentation metadataはauthoring上の先頭pathだけを保持する。
+        if (!map.has(output)) {
+          map.set(output, sequence);
+          stepLayers.set(output, sequence.map(() => layerId));
+          stepTriggerKeys.set(output, expandFaceTriggerKeys(trigger, face.mode));
+          stepSemantics.set(output, expandFaceSemantics(
+            trigger,
+            face.mode,
+            key,
+            inputRole,
+            trigger.length > 0 ? face.triggerPersistence : undefined,
+          ));
+        }
         // 刻印は単打面の1文字だけを表示する。シフト面の出力で上書きしない。
         if (trigger.length === 0 && [...output].length === 1) legends.set(key, output);
       });
@@ -446,9 +475,11 @@ export function fromFaces(
   if (thumbs.LT) {
     const sequence: Sequence = [[THUMB_KEY.LT]];
     map.set(thumbs.LT, sequence);
-    const artifacts = compileSequenceInputArtifacts(thumbs.LT, sequence, SINGLE_LAYER_ID);
-    semanticInputSequences.set(thumbs.LT, artifacts.semanticInputs);
-    baseActionRealizations.set(thumbs.LT, artifacts.baseActionRealizations);
+    appendCanonicalAlternative(
+      canonicalInputs,
+      thumbs.LT,
+      compileSequenceInputAlternative(thumbs.LT, sequence, SINGLE_LAYER_ID),
+    );
     stepLayers.set(thumbs.LT, [baseLayerId]);
     stepTriggerKeys.set(thumbs.LT, [[]]);
     stepSemantics.set(thumbs.LT, [{
@@ -460,9 +491,11 @@ export function fromFaces(
   if (thumbs.RT) {
     const sequence: Sequence = [[THUMB_KEY.RT]];
     map.set(thumbs.RT, sequence);
-    const artifacts = compileSequenceInputArtifacts(thumbs.RT, sequence, SINGLE_LAYER_ID);
-    semanticInputSequences.set(thumbs.RT, artifacts.semanticInputs);
-    baseActionRealizations.set(thumbs.RT, artifacts.baseActionRealizations);
+    appendCanonicalAlternative(
+      canonicalInputs,
+      thumbs.RT,
+      compileSequenceInputAlternative(thumbs.RT, sequence, SINGLE_LAYER_ID),
+    );
     stepLayers.set(thumbs.RT, [baseLayerId]);
     stepTriggerKeys.set(thumbs.RT, [[]]);
     stepSemantics.set(thumbs.RT, [{
@@ -471,12 +504,12 @@ export function fromFaces(
       triggerKeys: [],
     }]);
   }
+  validateCanonicalInputMap(canonicalInputs);
   return {
     id,
     name,
     map,
-    semanticInputSequences,
-    baseActionRealizations,
+    canonicalInputs,
     legends,
     faces: [...faces],
     maxCharLength: maxKeyLength(map.keys()),
@@ -595,29 +628,36 @@ function expandFaceSemantics(
 }
 
 /** かな → 打鍵ステップ列を直接書いた配列（薙刀式など） */
-export function fromKana(id: string, name: string, def: Record<string, string[][]>): Layout {
-  const map = new Map<string, Sequence>(Object.entries(def));
-  const semanticInputSequences = new Map<string, SemanticInputSequence>();
-  const baseActionRealizations = new Map<string, BaseActionRealizationSequence>();
-  for (const [output, sequence] of map) {
-    const artifacts = compileSequenceInputArtifacts(output, sequence, SINGLE_LAYER_ID);
-    semanticInputSequences.set(output, artifacts.semanticInputs);
-    baseActionRealizations.set(output, artifacts.baseActionRealizations);
-  }
-  const stepLayers = new Map<string, readonly string[]>(
-    [...map].map(([kana, sequence]) => [kana, sequence.map(() => SINGLE_LAYER_ID)]),
-  );
+export type KanaDefinition =
+  | Record<string, string[][]>
+  | readonly (readonly [string, string[][]])[];
+
+export function fromKana(id: string, name: string, def: KanaDefinition): Layout {
+  const entries: readonly (readonly [string, string[][]])[] =
+    Array.isArray(def) ? def : Object.entries(def);
+  const map = new Map<string, Sequence>();
+  const canonicalInputs = new Map<string, InputAlternative[]>();
+  const stepLayers = new Map<string, readonly string[]>();
   const stepTriggerKeys = new Map<string, readonly (readonly string[])[]>();
   const stepSemantics = new Map<string, readonly StepSemantic[]>();
-  for (const [kana, sequence] of map) {
-    stepTriggerKeys.set(kana, sequence.map(() => []));
-    stepSemantics.set(kana, sequence.map((step) => ({
+
+  for (const [output, sequence] of entries) {
+    appendCanonicalAlternative(
+      canonicalInputs,
+      output,
+      compileSequenceInputAlternative(output, sequence, SINGLE_LAYER_ID),
+    );
+    if (map.has(output)) continue;
+    map.set(output, sequence);
+    stepLayers.set(output, sequence.map(() => SINGLE_LAYER_ID));
+    stepTriggerKeys.set(output, sequence.map(() => []));
+    stepSemantics.set(output, sequence.map((step) => ({
       inputRole: 'layer',
       outputKeys: step.map(resolveKeyId),
       triggerKeys: [],
     })));
   }
-  // 単打で出るかなをそのキーの刻印にする
+
   const legends = new Map<string, string>();
   for (const [kana, sequence] of map) {
     if (sequence.length !== 1 || sequence[0].length !== 1) continue;
@@ -626,18 +666,67 @@ export function fromKana(id: string, name: string, def: Record<string, string[][
   }
   legends.set(THUMB_KEY.RT, '空白');
   legends.set(THUMB_KEY.LT, '親指');
+
+  validateCanonicalInputMap(canonicalInputs);
   return {
     id,
     name,
     map,
-    semanticInputSequences,
-    baseActionRealizations,
+    canonicalInputs,
     legends,
     maxCharLength: maxKeyLength(map.keys()),
     stepLayers,
     stepTriggerKeys,
     stepSemantics,
     layerDefinitions: [{ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' }],
+  };
+}
+
+/**
+ * 既存のauthoring default thumb shift pathから、同じsemanticを成立させる合法な
+ * physical thumb alternativeをcanonical pathとして派生する。
+ */
+export function withThumbShiftAlternatives(
+  layout: Layout,
+  defaultKey: string,
+  legalKeys: readonly string[],
+): Layout {
+  const source = resolveKeyId(defaultKey);
+  const legal = [...new Set(legalKeys.map(resolveKeyId))];
+  if (!legal.includes(source)) {
+    throw new Error('thumb shift alternativesにはdefault keyを含める必要がある');
+  }
+
+  const canonicalInputs = cloneCanonicalInputs(layout.canonicalInputs);
+  for (const [output, alternatives] of canonicalInputs) {
+    const next = [...alternatives];
+    for (const alternative of alternatives) {
+      const usesSourceAsTrigger = alternative.baseRealizations.some((realization) =>
+        (realization.defaultTriggerKeys ?? []).map(resolveKeyId).includes(source)
+        || (realization.alternateParticipations ?? []).some((view) =>
+          view.triggerKeys.map(resolveKeyId).includes(source)));
+      if (!usesSourceAsTrigger) continue;
+
+      for (const target of legal) {
+        if (target === source) continue;
+        const mapped = mapInputAlternativePhysicalKeys(
+          alternative,
+          (key) => resolveKeyId(key) === source ? target : resolveKeyId(key),
+        );
+        if (!next.some((candidate) => sameCanonicalAlternative(candidate, mapped))) {
+          next.push(mapped);
+        }
+      }
+    }
+    canonicalInputs.set(output, next);
+  }
+
+  validateCanonicalInputMap(canonicalInputs);
+  return {
+    ...layout,
+    canonicalInputs,
+    thumbShiftKey: source,
+    thumbShiftKeys: legal,
   };
 }
 
@@ -652,43 +741,52 @@ export function withComposedOutputs(
   context = '合成出力',
 ): Layout {
   const markSequence = layout.map.get(mark);
-  const markSemanticInputs = layout.semanticInputSequences?.get(mark);
-  const markBaseRealizations = layout.baseActionRealizations?.get(mark);
-  if (!markSequence || !markSemanticInputs || !markBaseRealizations) {
+  const markAlternatives = layout.canonicalInputs.get(mark);
+  if (!markSequence || !markAlternatives) {
     throw new Error(`${context}の合成記号「${mark}」が未定義`);
   }
 
   const map = new Map(layout.map);
-  const semanticInputSequences = new Map(layout.semanticInputSequences ?? []);
-  const baseActionRealizations = new Map(layout.baseActionRealizations ?? []);
+  const canonicalInputs = cloneCanonicalInputs(layout.canonicalInputs);
   const stepLayers = new Map(layout.stepLayers ?? []);
   const stepTriggerKeys = new Map(layout.stepTriggerKeys ?? []);
   const stepSemantics = new Map(layout.stepSemantics ?? []);
 
   for (const [source, output] of Object.entries(entries)) {
     const sourceSequence = layout.map.get(source);
-    const sourceSemanticInputs = layout.semanticInputSequences?.get(source);
-    const sourceBaseRealizations = layout.baseActionRealizations?.get(source);
-    if (!sourceSequence || !sourceSemanticInputs || !sourceBaseRealizations) {
+    const sourceAlternatives = layout.canonicalInputs.get(source);
+    if (!sourceSequence || !sourceAlternatives) {
       throw new Error(`${context}の元出力「${source}」が未定義`);
     }
-    if (map.has(output)) {
-      throw new Error(`${context}「${output}」が重複している`);
+
+    const generated = sourceAlternatives.flatMap((sourceAlternative) =>
+      markAlternatives.map((markAlternative) => ({
+        semanticInputs: [
+          ...sourceAlternative.semanticInputs,
+          ...markAlternative.semanticInputs,
+        ],
+        baseRealizations: [
+          ...sourceAlternative.baseRealizations,
+          ...markAlternative.baseRealizations,
+        ],
+        contextRequirements: mergeContextRequirements(
+          sourceAlternative.contextRequirements,
+          markAlternative.contextRequirements,
+        ),
+        origin: 'composed' as const,
+      })));
+    for (const alternative of generated) {
+      appendCanonicalAlternative(canonicalInputs, output, alternative);
     }
+
+    // legacy/presentation metadataはauthoring上の先頭pathだけを保持する。
+    if (map.has(output)) continue;
 
     const sequence: Sequence = [
       ...sourceSequence.map((step) => [...step]),
       ...markSequence.map((step) => [...step]),
     ];
     map.set(output, sequence);
-    semanticInputSequences.set(output, [
-      ...sourceSemanticInputs,
-      ...markSemanticInputs,
-    ]);
-    baseActionRealizations.set(output, [
-      ...sourceBaseRealizations,
-      ...markBaseRealizations,
-    ]);
 
     const sourceLayers = layout.stepLayers?.get(source)
       ?? sourceSequence.map(() => SINGLE_LAYER_ID);
@@ -710,11 +808,11 @@ export function withComposedOutputs(
     stepSemantics.set(output, [...sourceSemantics, ...markSemantics]);
   }
 
+  validateCanonicalInputMap(canonicalInputs);
   return {
     ...layout,
     map,
-    semanticInputSequences,
-    baseActionRealizations,
+    canonicalInputs,
     maxCharLength: maxKeyLength(map.keys()),
     stepLayers,
     stepTriggerKeys,
@@ -738,8 +836,7 @@ export function withCombos(
   combos: ComboDefinition[],
 ): Layout {
   const map = new Map(layout.map);
-  const semanticInputSequences = new Map(layout.semanticInputSequences ?? []);
-  const baseActionRealizations = new Map(layout.baseActionRealizations ?? []);
+  const canonicalInputs = cloneCanonicalInputs(layout.canonicalInputs);
   const stepLayers = new Map(layout.stepLayers ?? []);
   const stepTriggerKeys = new Map(layout.stepTriggerKeys ?? []);
   const stepSemantics = new Map(layout.stepSemantics ?? []);
@@ -747,10 +844,43 @@ export function withCombos(
   const comboConditions = new Map(layout.comboConditions);
   const resolvedComboDefinitions: ResolvedComboDefinition[] = [...(layout.resolvedComboDefinitions ?? [])];
   let hasCombo = layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID);
-  for (const [output, inputs, condition, presentation] of combos) {
-    const keys = inputs.map((ch) => layout.map.get(ch)?.[0]?.[0]);
-    if (keys.some((k) => k === undefined)) continue;
-    const resolvedKeys = (keys as string[]).map(resolveKeyId);
+  for (const [output, inputs, condition, presentation, classifications = []] of combos) {
+    const keyChoices = inputs.map((input) =>
+      (layout.canonicalInputs.get(input) ?? []).flatMap((alternative) => {
+        if (alternative.baseRealizations.length !== 1) return [];
+        const realization = alternative.baseRealizations[0];
+        if (realization.actions.length !== 1 || realization.actions[0].length !== 1) return [];
+        return [{
+          key: resolveKeyId(realization.actions[0][0]),
+          contextRequirements: alternative.contextRequirements,
+        }];
+      }));
+    if (keyChoices.some((choices) => choices.length === 0)) continue;
+
+    const combinations = keyChoices.reduce<
+      { keys: string[]; contextRequirements: InputContextRequirement[] }[]
+    >(
+      (acc, choices) => acc.flatMap((prefix) =>
+        choices.map((choice) => ({
+          keys: [...prefix.keys, choice.key],
+          contextRequirements: mergeContextRequirements(
+            prefix.contextRequirements,
+            choice.contextRequirements,
+          ),
+        }))),
+      [{ keys: [], contextRequirements: [] }],
+    );
+    const uniqueCombinations = [...new Map(
+      combinations.map((combination) => [
+        [
+          combination.keys.join('\u0000'),
+          combination.contextRequirements.map((requirement) => requirement.kind).join('\u0001'),
+        ].join('\u0002'),
+        combination,
+      ] as const),
+    ).values()];
+    const keys = uniqueCombinations[0].keys;
+    const resolvedKeys = keys.map(resolveKeyId);
     const foldTriggerInputs = presentation?.foldTriggerInputs;
     const foldTriggerKeys = foldTriggerInputs?.map((ch) => layout.map.get(ch)?.[0]?.[0])
       .filter((key): key is string => key !== undefined)
@@ -771,31 +901,49 @@ export function withCombos(
       ...(foldTriggerKeys === undefined ? {} : { foldTriggerKeys }),
       ...(foldTargets.length === 1 ? { foldTargetKey: foldTargets[0] } : {}),
     });
-    const sequence: Sequence = [keys as string[]];
-    map.set(output, sequence);
-    const artifacts = compileSequenceInputArtifacts(output, sequence, COMBO_LAYER_ID);
-    semanticInputSequences.set(output, artifacts.semanticInputs);
-    baseActionRealizations.set(output, artifacts.baseActionRealizations);
-    stepLayers.set(output, [COMBO_LAYER_ID]);
-    stepTriggerKeys.set(output, [[]]);
-    stepSemantics.set(output, [{
-      inputRole: 'composition',
-      outputKeys: (keys as string[]).map(resolveKeyId),
-      triggerKeys: [],
-    }]);
-    comboConditions.set(output, condition ?? {});
+    const comboContextRequirements: readonly InputContextRequirement[] =
+      condition?.youonOnly ? [{ kind: 'youon-only' }] : [];
+    const generatedAlternatives = uniqueCombinations.map((combination) =>
+      compileSequenceInputAlternative(
+        output,
+        [combination.keys],
+        COMBO_LAYER_ID,
+        ['composition', ...classifications],
+        mergeContextRequirements(
+          combination.contextRequirements,
+          comboContextRequirements,
+        ),
+        'combo',
+      ));
+    for (const alternative of generatedAlternatives) {
+      appendCanonicalAlternative(canonicalInputs, output, alternative);
+    }
+
+    // legacy/presentation metadataは既存defaultを上書きしない。
+    if (!map.has(output)) {
+      const sequence: Sequence = [keys];
+      map.set(output, sequence);
+      stepLayers.set(output, [COMBO_LAYER_ID]);
+      stepTriggerKeys.set(output, [[]]);
+      stepSemantics.set(output, [{
+        inputRole: 'composition',
+        outputKeys: keys.map(resolveKeyId),
+        triggerKeys: [],
+      }]);
+      comboConditions.set(output, condition ?? {});
+    }
     if (!hasCombo) {
       layerDefinitions.push({ id: COMBO_LAYER_ID, kind: 'combo', label: 'コンボ' });
       hasCombo = true;
     }
   }
+  validateCanonicalInputMap(canonicalInputs);
   return {
     ...layout,
     id,
     name,
     map,
-    semanticInputSequences,
-    baseActionRealizations,
+    canonicalInputs,
     maxCharLength: maxKeyLength(map.keys()),
     comboConditions,
     resolvedComboDefinitions,

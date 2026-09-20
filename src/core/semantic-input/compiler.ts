@@ -3,8 +3,13 @@ import { validateBaseActionRealizations } from './realization.ts';
 import type { Face } from '../../layouts/types.ts';
 import type {
   BaseActionRealizationSequence,
+  CanonicalInputMap,
   FaceMembership,
+  InputAlternative,
   InputCapability,
+  InputAlternativeOrigin,
+  InputClassification,
+  InputContextRequirement,
   KeyRole,
   PhysicalKeyId,
   Requirement,
@@ -18,6 +23,7 @@ interface MutableSemanticInput {
   requirements: Requirement[];
   capabilities: InputCapability[];
   layerId: string;
+  classifications: InputClassification[];
   roles: KeyRole[];
   faceMemberships: FaceMembership[];
 }
@@ -70,6 +76,18 @@ const normalizeCapabilities = (capabilities: readonly InputCapability[]): InputC
   }
   return [...unique.values()].sort((left, right) =>
     compareString(capabilitySignature(left), capabilitySignature(right)));
+};
+
+const normalizeClassifications = (
+  classifications: readonly InputClassification[],
+): InputClassification[] =>
+  [...new Set(classifications)].sort(compareString);
+
+const normalizeContextRequirements = (
+  requirements: readonly InputContextRequirement[],
+): InputContextRequirement[] => {
+  const byKind = new Map(requirements.map((requirement) => [requirement.kind, requirement]));
+  return [...byKind.values()].sort((left, right) => compareString(left.kind, right.kind));
 };
 
 const normalizeRoles = (roles: readonly KeyRole[]): KeyRole[] => {
@@ -287,6 +305,9 @@ const faceCapabilities = (
   return normalizeCapabilities([{ kind: 'while-held', keys: [...triggerKeys] }]);
 };
 
+const faceClassifications = (face: Face): InputClassification[] =>
+  face.inputRole === 'composition' ? ['composition'] : [];
+
 const faceRoles = (
   face: Face,
   triggerKeys: readonly PhysicalKeyId[],
@@ -322,6 +343,7 @@ export function compileSequenceSemanticInputs(
   output: string,
   sequence: readonly (readonly string[])[],
   layerId: string,
+  classifications: readonly InputClassification[] = [],
 ): readonly SemanticInput[] {
   if (sequence.length === 0) {
     throw new Error(`SemanticInput sequence「${output}」は1 step以上必要`);
@@ -344,6 +366,7 @@ export function compileSequenceSemanticInputs(
       requirements,
       capabilities: [],
       layerId,
+      classifications: normalizeClassifications(classifications),
       roles: [],
       faceMemberships: [],
     };
@@ -365,8 +388,9 @@ export function compileSequenceInputArtifacts(
   output: string,
   sequence: readonly (readonly string[])[],
   layerId: string,
+  classifications: readonly InputClassification[] = [],
 ): CompiledSequenceArtifacts {
-  const semanticInputs = compileSequenceSemanticInputs(output, sequence, layerId);
+  const semanticInputs = compileSequenceSemanticInputs(output, sequence, layerId, classifications);
   const baseActionRealizations: BaseActionRealizationSequence =
     semanticInputs.map((input, index) => ({
       input,
@@ -398,6 +422,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
       const physicalKeys = sortedUniqueKeys([...triggerKeys, cell.key]);
       const requirements = faceRequirements(face, triggerKeys, cell.key);
       const capabilities = faceCapabilities(face, triggerKeys);
+      const classifications = faceClassifications(face);
       const roles = faceRoles(face, triggerKeys);
       const layerId = normalizedLayerId(face, faceIndex, triggerKeys);
       const physicalSignature = physicalKeys.join('\u0000');
@@ -408,6 +433,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
         requirements,
         capabilities,
         layerId,
+        classifications,
         roles,
         faceMemberships: [{ faceIndex, cellKey: cell.key }],
       };
@@ -426,9 +452,8 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
           continue;
         }
         if (sibling.output === candidate.output) {
-          throw new Error(
-            `同一outputに複数のRequirement setがある: ${candidate.output}`,
-          );
+          // 同一logical outputの別activation pathは上位InputAlternativeでORとして保持する。
+          continue;
         }
         if (!requirementsMutuallyExclusive(sibling.requirements, candidate.requirements)) {
           throw new Error(
@@ -454,6 +479,10 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
         ...existing.capabilities,
         ...capabilities,
       ]);
+      existing.classifications = normalizeClassifications([
+        ...existing.classifications,
+        ...classifications,
+      ]);
       existing.roles = normalizeRoles([...existing.roles, ...roles]);
       existing.faceMemberships = normalizeMemberships([
         ...existing.faceMemberships,
@@ -469,8 +498,115 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
       requirements: normalizeRequirements(input.requirements),
       capabilities: normalizeCapabilities(input.capabilities),
       layerId: input.layerId,
+      classifications: normalizeClassifications(input.classifications),
       roles: normalizeRoles(input.roles),
       faceMemberships: normalizeMemberships(input.faceMemberships),
     }))
     .sort((left, right) => compareString(semanticIdentity(left), semanticIdentity(right)));
+}
+
+
+export function compileSequenceInputAlternative(
+  output: string,
+  sequence: readonly (readonly PhysicalKeyId[])[],
+  layerId: string,
+  classifications: readonly InputClassification[] = [],
+  contextRequirements: readonly InputContextRequirement[] = [],
+  origin: InputAlternativeOrigin = 'sequence',
+): InputAlternative {
+  const artifacts = compileSequenceInputArtifacts(output, sequence, layerId, classifications);
+  return {
+    semanticInputs: artifacts.semanticInputs,
+    baseRealizations: artifacts.baseActionRealizations,
+    contextRequirements: normalizeContextRequirements(contextRequirements),
+    origin,
+  };
+}
+
+
+const samePhysicalKeySet = (
+  left: readonly PhysicalKeyId[],
+  right: readonly PhysicalKeyId[],
+): boolean => {
+  const l = sortedUniqueKeys(left);
+  const r = sortedUniqueKeys(right);
+  return l.length === r.length && l.every((key, index) => key === r[index]);
+};
+
+/**
+ * 2つのconcrete input pathが、現在証明できる範囲で同時成立し得るかを判定する。
+ *
+ * sequence長違い / prefix relation等のprecedenceはここでは証明しない。
+ * Capability / classification / action grouping差はactivation排他の根拠にしない。
+ */
+const activationPathsCanConflict = (
+  left: InputAlternative,
+  right: InputAlternative,
+): boolean => {
+  if (left.semanticInputs.length !== right.semanticInputs.length) return false;
+
+  return left.semanticInputs.every((leftInput, index) => {
+    const rightInput = right.semanticInputs[index];
+    if (!samePhysicalKeySet(leftInput.physicalKeys, rightInput.physicalKeys)) return false;
+    return !requirementsMutuallyExclusive(
+      leftInput.requirements,
+      rightInput.requirements,
+    );
+  });
+};
+
+/**
+ * CanonicalInputMapのkeymap境界invariantを検証する。
+ *
+ * 異なるlogical outputに対して、同じphysical activation pathまたは
+ * 同じphysicalKeys + 両立可能Requirement setを持つpathが共存する場合は曖昧なのでrejectする。
+ */
+export function validateCanonicalInputMap(inputs: CanonicalInputMap): void {
+  const paths = [...inputs].flatMap(([output, alternatives]) =>
+    alternatives.map((alternative) => ({ output, alternative })));
+
+  for (let leftIndex = 0; leftIndex < paths.length; leftIndex++) {
+    const left = paths[leftIndex];
+    for (let rightIndex = leftIndex + 1; rightIndex < paths.length; rightIndex++) {
+      const right = paths[rightIndex];
+      if (left.output === right.output) continue;
+      if (!activationPathsCanConflict(left.alternative, right.alternative)) continue;
+
+      throw new Error(
+        `異なるlogical outputに同時成立し得るcanonical activation pathがある: `
+        + `${left.output} / ${right.output}`,
+      );
+    }
+  }
+}
+
+
+/**
+ * InputAlternativeの情報保持identity。
+ * activation identityとは別で、thumb派生等のdedupe時にsemantic/provenanceを落とさないために使う。
+ */
+export function canonicalInputAlternativeIdentity(
+  alternative: InputAlternative,
+): string {
+  return JSON.stringify({
+    semanticInputs: alternative.semanticInputs.map((input) => ({
+      output: input.output,
+      physicalKeys: input.physicalKeys,
+      requirements: input.requirements,
+      capabilities: input.capabilities,
+      layerId: input.layerId,
+      classifications: input.classifications,
+      roles: input.roles,
+      faceMemberships: input.faceMemberships,
+    })),
+    baseRealizations: alternative.baseRealizations.map((realization) => ({
+      actions: realization.actions,
+      defaultOutputKeys: realization.defaultOutputKeys,
+      defaultTriggerKeys: realization.defaultTriggerKeys ?? [],
+      defaultHoldKeys: realization.defaultHoldKeys ?? [],
+      alternateParticipations: realization.alternateParticipations ?? [],
+    })),
+    contextRequirements: alternative.contextRequirements,
+    origin: alternative.origin,
+  });
 }

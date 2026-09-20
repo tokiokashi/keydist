@@ -71,6 +71,7 @@ const stroke = (
   inputIndex: index,
   layerId: 'single',
   inputRole: 'layer',
+  classifications: [],
   triggerKeys: [],
   pairedTriggerKeys: [],
   participations: [

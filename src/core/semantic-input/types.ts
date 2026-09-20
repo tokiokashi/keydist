@@ -18,6 +18,23 @@ export type InputCapability = {
 
 export type SemanticRole = 'modifier';
 
+export type InputContextRequirement =
+  | { kind: 'youon-only' };
+
+export type InputAlternativeOrigin =
+  | 'sequence'
+  | 'face'
+  | 'combo'
+  | 'composed';
+
+export type InputClassification =
+  | 'composition'
+  | 'vocabulary-extension'
+  | 'youon-extension'
+  | 'hatsuon-extension'
+  | 'checked-syllable-extension'
+  | 'diphthong-extension';
+
 export interface KeyRole {
   key: PhysicalKeyId;
   role: SemanticRole;
@@ -34,6 +51,8 @@ export interface SemanticInput {
   requirements: readonly Requirement[];
   capabilities: readonly InputCapability[];
   layerId: string;
+  /** authoring intent / analysis classification。activation identityには含めない。 */
+  classifications: readonly InputClassification[];
   roles: readonly KeyRole[];
   faceMemberships: readonly FaceMembership[];
 }
@@ -83,3 +102,23 @@ export interface BaseActionRealization {
 }
 
 export type BaseActionRealizationSequence = readonly BaseActionRealization[];
+
+
+/**
+ * 1 logical outputを成立させる具体的なcanonical input path。
+ * OR activationをSemanticInput内部へ持ち込まず、path自体を複数保持する。
+ */
+export interface InputAlternative {
+  readonly semanticInputs: SemanticInputSequence;
+  readonly baseRealizations: BaseActionRealizationSequence;
+  /**
+   * physical activation以外のruntime contextに対するpath成立条件。
+   * alternative selectionより前にfilterし、条件を満たさないpathはeligibleにしない。
+   */
+  readonly contextRequirements: readonly InputContextRequirement[];
+  /** このpathを生成したtop-level authoring provenance。導出で再構成しない。 */
+  readonly origin: InputAlternativeOrigin;
+}
+
+export type InputAlternativeSet = readonly InputAlternative[];
+export type CanonicalInputMap = ReadonlyMap<string, InputAlternativeSet>;

@@ -16,6 +16,7 @@ function stubLayout(overrides: Partial<Layout>): Layout {
     id: 'stub',
     name: 'stub',
     map: new Map(),
+    canonicalInputs: new Map(),
     legends: new Map(),
     ...overrides,
   };

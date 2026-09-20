@@ -12,7 +12,7 @@ import {
 } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
-import { LAYOUT_BY_ID, type Layout } from '../src/layouts/index.ts';
+import { fromKana, LAYOUT_BY_ID } from '../src/layouts/index.ts';
 
 const near = (a: number, b: number, msg?: string) =>
   assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ''} expected ${b}, got ${a}`);
@@ -244,11 +244,7 @@ test('thumbHomeを指定すると複数の親指キーを持つ形状を構築�
 
 test('複数ある親指キーの間の移動は他の指と同じ規則で距離が計上される（仕様 §3.1）', () => {
   const geometry = buildGeometry(dualThumbShape({ RT: 'space' }));
-  const l: Layout = {
-    id: 't', name: 't',
-    map: new Map([['x', [['thumb-r2']]]]),
-    legends: new Map(),
-  };
+  const l = fromKana('t', 't', { x: [['thumb-r2']] });
   const t = evaluate('x', l, geometry, opts);
   // ホーム（space）からthumb-r2（1u右）までの初回移動
   near(t.strokes[0].distance, 1, 'thumb-r2まで1u');

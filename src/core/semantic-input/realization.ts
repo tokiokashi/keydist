@@ -3,6 +3,7 @@ import type {
   BaseActionRealization,
   BaseActionRealizationSequence,
   BaseParticipationView,
+  InputAlternative,
   PhysicalKeyId,
   SemanticInput,
 } from './types.ts';
@@ -232,4 +233,83 @@ export function flattenBaseActionRealizations(
       };
     });
   });
+}
+
+
+/**
+ * 具体canonical pathのphysical key参照を同じ写像で置換する。
+ *
+ * authoring-timeの派生path生成用。FaceMembershipはauthoring provenanceなので
+ * runtime/physical key変換では書き換えない。
+ */
+export function mapInputAlternativePhysicalKeys(
+  alternative: InputAlternative,
+  mapKey: (key: PhysicalKeyId) => PhysicalKeyId,
+): InputAlternative {
+  const mappedInputs = new Map<SemanticInput, SemanticInput>();
+  const mapKeys = (keys: readonly PhysicalKeyId[]) =>
+    keys.map((key) => mapKey(resolveKeyId(key)));
+
+  const mapInput = (input: SemanticInput): SemanticInput => {
+    const existing = mappedInputs.get(input);
+    if (existing) return existing;
+    const mapped: SemanticInput = {
+      ...input,
+      physicalKeys: mapKeys(input.physicalKeys),
+      requirements: input.requirements.map((requirement) =>
+        requirement.kind === 'overlap'
+          ? { ...requirement, keys: mapKeys(requirement.keys) }
+          : {
+              ...requirement,
+              before: mapKeys(requirement.before),
+              after: mapKeys(requirement.after),
+            }),
+      capabilities: input.capabilities.map((capability) => ({
+        ...capability,
+        keys: mapKeys(capability.keys),
+      })),
+      roles: input.roles.map((role) => ({
+        ...role,
+        key: mapKey(resolveKeyId(role.key)),
+      })),
+      // presentation provenanceはauthoring sourceのまま保持する。
+      faceMemberships: input.faceMemberships,
+    };
+    mappedInputs.set(input, mapped);
+    return mapped;
+  };
+
+  const semanticInputs = alternative.semanticInputs.map(mapInput);
+  const baseRealizations = alternative.baseRealizations.map((realization) => {
+    const mapped: BaseActionRealization = {
+      ...realization,
+      input: mapInput(realization.input),
+      actions: realization.actions.map(mapKeys),
+      defaultOutputKeys: mapKeys(realization.defaultOutputKeys),
+      ...(realization.defaultTriggerKeys === undefined
+        ? {}
+        : { defaultTriggerKeys: mapKeys(realization.defaultTriggerKeys) }),
+      ...(realization.defaultHoldKeys === undefined
+        ? {}
+        : { defaultHoldKeys: mapKeys(realization.defaultHoldKeys) }),
+      ...(realization.alternateParticipations === undefined
+        ? {}
+        : {
+            alternateParticipations: realization.alternateParticipations.map((view) => ({
+              outputKeys: mapKeys(view.outputKeys),
+              triggerKeys: mapKeys(view.triggerKeys),
+              ...(view.holdKeys === undefined ? {} : { holdKeys: mapKeys(view.holdKeys) }),
+            })),
+          }),
+    };
+    validateBaseActionRealization(mapped);
+    return mapped;
+  });
+
+  return {
+    semanticInputs,
+    baseRealizations,
+    contextRequirements: alternative.contextRequirements,
+    origin: alternative.origin,
+  };
 }

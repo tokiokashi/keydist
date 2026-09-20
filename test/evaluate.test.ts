@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
 import { evaluate, type Options } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
-import { fromFaces, LAYOUT_BY_ID, type Layout, withCombos, withRomaji } from '../src/layouts/index.ts';
+import { faceFromEntries, fromFaces, fromKana, LAYOUT_BY_ID, type Layout, withCombos, withRomaji, withThumbShiftAlternatives } from '../src/layouts/index.ts';
 import { kunrei } from '../src/romaji/kunrei.ts';
 
 const geometry = buildGeometry('row-staggered');
@@ -148,11 +148,8 @@ test('親指の連打でも距離は増えない', () => {
 
 // ---- 同時押しと前置・後置シフト ----
 
-const chord = (map: Record<string, string[][]>): Layout => ({
-  id: 'test', name: 'test',
-  map: new Map(Object.entries(map)),
-  legends: new Map(),
-});
+const chord = (map: Record<string, string[][]>): Layout =>
+  fromKana('test', 'test', map);
 
 test('同時押しは1ステップ、押下は押したキーの数だけ数える', () => {
   const l = chord({ x: [['space', 'q']] });
@@ -196,16 +193,15 @@ test('同時押しと順次打鍵の差はステップ数に出る。押下数�
 });
 
 test('prefix配列のシフト単独ステップでも後続出力を見て反対側親指へ振り替える', () => {
-  const prefix: Layout = {
-    id: 'prefix-thumb-shift',
-    name: 'prefix-thumb-shift',
-    map: new Map([
-      ['左', [['thumb-r'], ['q']]],
-      ['右', [['thumb-r'], ['j']]],
-    ]),
-    legends: new Map(),
-    thumbShiftKey: 'thumb-r',
-  };
+  const prefix = withThumbShiftAlternatives(
+    fromFaces('prefix-thumb-shift', 'prefix-thumb-shift', [{
+      ...faceFromEntries(['thumb-r'], 'prefix', { q: '左', j: '右' }),
+      inputRole: 'modifier',
+      triggerPersistence: 'single',
+    }]),
+    'thumb-r',
+    ['thumb-r', 'thumb-l'],
+  );
 
   const fixedLeft = evaluate('左', prefix, geometry, opts());
   const fixedRight = evaluate('右', prefix, geometry, opts());
@@ -237,17 +233,16 @@ test('新JIS prefixでも振り替え後の親指がtrigger semanticsへ伝播�
   assert.equal(trace.strokes[1].presses[0].keys[0].id, 'j');
 });
 
-test('suffix配列はpreferOppositeThumbでも親指を振り替えない', () => {
-  const suffix: Layout = {
-    id: 'suffix-thumb-shift',
-    name: 'suffix-thumb-shift',
-    map: new Map([
-      ['左', [['q'], ['thumb-r']]],
-      ['右', [['j'], ['thumb-r']]],
-    ]),
-    legends: new Map(),
-    thumbShiftKey: 'thumb-r',
-  };
+test('suffix配列も合法alternativeから反対側親指pathを選択する', () => {
+  const suffix = withThumbShiftAlternatives(
+    fromFaces('suffix-thumb-shift', 'suffix-thumb-shift', [{
+      ...faceFromEntries(['thumb-r'], 'suffix', { q: '左', j: '右' }),
+      inputRole: 'modifier',
+      triggerPersistence: 'single',
+    }]),
+    'thumb-r',
+    ['thumb-r', 'thumb-l'],
+  );
 
   const left = evaluate('左', suffix, geometry, opts({ preferOppositeThumb: true }));
   const right = evaluate('右', suffix, geometry, opts({ preferOppositeThumb: true }));
@@ -255,7 +250,7 @@ test('suffix配列はpreferOppositeThumbでも親指を振り替えない', () =
   assert.equal(left.strokes.length, 2);
   assert.equal(right.strokes.length, 2);
   assert.equal(left.strokes[1].presses[0].keys[0].id, 'thumb-r');
-  assert.equal(right.strokes[1].presses[0].keys[0].id, 'thumb-r');
+  assert.equal(right.strokes[1].presses[0].keys[0].id, 'thumb-l');
 });
 
 test('薙刀式のシフトは設定時に出力キーと反対側の親指へ振り替える', () => {
@@ -330,35 +325,33 @@ test('存在しないキーidはエラーとして記録する', () => {
 // ---- 複数文字の見出し ----
 
 test('「きゃ」を見出しに持つ配列は1単位として当てる', () => {
-  const l: Layout = {
-    id: 't', name: 't',
-    map: new Map([['き', [['d']]], ['ゃ', [['k']]], ['きゃ', [['f']]]]),
-    legends: new Map(),
-    maxCharLength: 2,
-  };
+  const l = fromKana('t', 't', {
+    き: [['d']],
+    ゃ: [['k']],
+    きゃ: [['f']],
+  });
   const t = evaluate('きゃ', l, geometry, opts());
   assert.equal(t.strokes.length, 1);
   assert.equal(t.strokes[0].char, 'きゃ');
 });
 
 test('「きゃ」を見出しに持たない配列は「き」「ゃ」に分解する', () => {
-  const l: Layout = {
-    id: 't', name: 't',
-    map: new Map([['き', [['d']]], ['ゃ', [['k']]]]),
-    legends: new Map(),
-  };
+  const l = fromKana('t', 't', {
+    き: [['d']],
+    ゃ: [['k']],
+  });
   const t = evaluate('きゃ', l, geometry, opts());
   assert.equal(t.strokes.length, 2);
   assert.deepEqual(t.strokes.map((s) => s.char), ['き', 'ゃ']);
 });
 
 test('最長一致は後続の文字を食い過ぎない', () => {
-  const l: Layout = {
-    id: 't', name: 't',
-    map: new Map([['き', [['d']]], ['ゃ', [['k']]], ['きゃ', [['f']]], ['く', [['j']]]]),
-    legends: new Map(),
-    maxCharLength: 2,
-  };
+  const l = fromKana('t', 't', {
+    き: [['d']],
+    ゃ: [['k']],
+    きゃ: [['f']],
+    く: [['j']],
+  });
   const t = evaluate('きゃく', l, geometry, opts());
   assert.deepEqual(t.strokes.map((s) => s.char), ['きゃ', 'く']);
 });
@@ -412,18 +405,16 @@ test('semantic normalizationはoutputのみのStrokeを表現する', () => {
   assert.equal(stroke.participations[0].hand, 'left');
 });
 
-test('legacy fallbackはtriggerKeysをtrigger factとして保持し、persistenceを推測しない', () => {
-  const layout: Layout = {
-    id: 'legacy-trigger',
-    name: 'legacy-trigger',
-    map: new Map([['x', [['q', 'j']]]]),
-    legends: new Map(),
-    stepTriggerKeys: new Map([['x', [['q']]]]),
-  };
+test('evaluateはlegacy stepTriggerKeysをsource of truthとして参照しない', () => {
+  const layout = fromKana('legacy-trigger', 'legacy-trigger', {
+    x: [['q', 'j']],
+  });
+  layout.stepTriggerKeys = new Map([['x', [['q']]]]);
+
   const trace = evaluate('x', layout, geometry, opts());
   const byFinger = new Map(trace.strokes[0].participations.map((p) => [p.finger, p]));
 
-  assert.deepEqual(byFinger.get('LP')?.roles, ['trigger']);
+  assert.deepEqual(byFinger.get('LP')?.roles, ['output']);
   assert.deepEqual(byFinger.get('RI')?.roles, ['output']);
   assert.equal(trace.strokes[0].triggerPersistence, undefined);
 });
@@ -491,25 +482,135 @@ test('文字コンボはcompositionとして伝播し、trigger宣言なしで�
 });
 
 test('semantic normalizationはlayout idに依存しない', () => {
-  const semantics = new Map([['x', [{
-    inputRole: 'composition' as const,
-    triggerPersistence: 'single' as const,
-    outputKeys: ['a'],
-    triggerKeys: ['q'],
-  }]]]);
-  const base = {
-    name: 'same',
-    map: new Map([['x', [['q', 'a']]]]),
-    legends: new Map<string, string>(),
-    stepSemantics: semantics,
-  };
-  const first = evaluate('x', { ...base, id: 'semantic-a' }, geometry, opts()).strokes[0];
-  const second = evaluate('x', { ...base, id: 'semantic-b' }, geometry, opts()).strokes[0];
+  const make = (id: string) => fromFaces(id, 'same', [{
+    trigger: ['q'],
+    mode: 'simultaneous',
+    rows: ['', '', ['x'], ''],
+    inputRole: 'modifier',
+    triggerPersistence: 'single',
+  }]);
+  const first = evaluate('x', make('semantic-a'), geometry, opts()).strokes[0];
+  const second = evaluate('x', make('semantic-b'), geometry, opts()).strokes[0];
 
   assert.equal(first.inputRole, second.inputRole);
   assert.equal(first.triggerPersistence, second.triggerPersistence);
   assert.deepEqual(
     first.participations.map((p) => ({ hand: p.hand, finger: p.finger, roles: p.roles })),
     second.participations.map((p) => ({ hand: p.hand, finger: p.finger, roles: p.roles })),
+  );
+});
+
+
+test('同じlogical outputの複数alternativeは既定でauthoring先頭pathを使う', () => {
+  const layout = fromKana('alternative-default', 'alternative-default', [
+    ['x', [['f']]],
+    ['x', [['j']]],
+  ]);
+  const trace = evaluate('x', layout, geometry, opts());
+  assert.deepEqual(trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)), ['f']);
+});
+
+
+test('classificationはselected canonical alternativeからStrokeまで伝播する', () => {
+  const layout = withCombos('classified-combo', 'classified-combo', qwerty, [
+    ['ab', ['a', 'b'], undefined, undefined, ['vocabulary-extension']],
+  ]);
+  const trace = evaluate('ab', layout, geometry, opts());
+  assert.deepEqual(
+    trace.strokes[0].classifications,
+    ['composition', 'vocabulary-extension'],
+  );
+  assert.equal(trace.strokes[0].inputRole, 'composition');
+});
+
+
+test('preferOppositeThumbはnon-thumb別方式alternativeへ切り替えない', () => {
+  const layout = fromFaces('thumb-policy-scope', 'thumb-policy-scope', [
+    {
+      ...faceFromEntries(['thumb-l'], 'simultaneous', { q: 'x' }),
+      inputRole: 'modifier',
+      triggerPersistence: 'single',
+    },
+    {
+      ...faceFromEntries([], 'simultaneous', { j: 'x' }),
+      inputRole: 'layer',
+    },
+  ]);
+  layout.thumbShiftKey = 'thumb-l';
+  layout.thumbShiftKeys = ['thumb-l', 'thumb-r'];
+
+  const trace = evaluate('x', layout, geometry, opts({ preferOppositeThumb: true }));
+  assert.deepEqual(
+    trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)).sort(),
+    ['q', 'thumb-l'],
+  );
+});
+
+
+test('same-output direct alternativeはcomboのyouonOnlyに巻き込まれない', () => {
+  const base = fromKana('condition-scope', 'condition-scope', [
+    ['a', [['f']]],
+    ['b', [['j']]],
+    ['ab', [['q']]],
+  ]);
+  const layout = withCombos('condition-scope-combo', 'condition-scope-combo', base, [
+    ['ab', ['a', 'b'], { youonOnly: true }],
+  ]);
+
+  const trace = evaluate('ab', layout, geometry, opts());
+  assert.equal(trace.skipped, 0);
+  assert.deepEqual(
+    trace.strokes.flatMap((stroke) =>
+      stroke.presses.flatMap((press) => press.keys.map((key) => key.id))),
+    ['q'],
+  );
+  assert.deepEqual(trace.comboHits, [], 'selected direct alternativeはcombo hitに数えない');
+});
+
+test('youonOnlyしかない長い見出しは拗音外でeligibleにならず短い見出しへfallbackする', () => {
+  const base = fromKana('condition-fallback', 'condition-fallback', {
+    y: [['q']],
+    a: [['w']],
+    k: [['e']],
+    u: [['r']],
+  });
+  const layout = withCombos('condition-fallback-combo', 'condition-fallback-combo', base, [
+    ['yaku', ['y', 'a', 'k', 'u'], { youonOnly: true }],
+  ]);
+
+  const trace = evaluate('yaku', layout, geometry, opts());
+  assert.deepEqual(trace.strokes.map((stroke) => stroke.char), ['y', 'a', 'k', 'u']);
+  assert.deepEqual(trace.comboHits, []);
+});
+
+
+test('Face compositionがselectedされた場合は同outputのwithCombos定義をcombo hitに数えない', () => {
+  const base = fromFaces('combo-origin-selection', 'combo-origin-selection', [
+    {
+      ...faceFromEntries([], 'simultaneous', { f: 'a', j: 'b' }),
+      inputRole: 'layer',
+    },
+    {
+      ...faceFromEntries(['d', 'k'], 'simultaneous', { q: 'x' }),
+      inputRole: 'composition',
+      triggerPersistence: 'single',
+    },
+  ]);
+  const layout = withCombos(
+    'combo-origin-selection-2',
+    'combo-origin-selection-2',
+    base,
+    [['x', ['a', 'b']]],
+  );
+
+  const alternatives = layout.canonicalInputs.get('x');
+  assert.ok(alternatives);
+  assert.deepEqual(alternatives.map((alternative) => alternative.origin), ['face', 'combo']);
+
+  const trace = evaluate('x', layout, geometry, opts());
+  assert.deepEqual(trace.comboHits, []);
+  assert.deepEqual(
+    trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)).sort(),
+    ['d', 'k', 'q'],
   );
 });

@@ -4,10 +4,7 @@ import { buildGeometry } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { fromFaces } from '../src/layouts/index.ts';
-import {
-  DEFAULT_TRIGGER_REALIZATION_POLICY,
-  realizeTriggerStep,
-} from '../src/trigger-realization.ts';
+import { DEFAULT_TRIGGER_REALIZATION_POLICY } from '../src/trigger-realization.ts';
 
 const geometry = buildGeometry('row-staggered');
 
@@ -72,76 +69,9 @@ test('single triggerはhold利用ONでもheld-triggerへ昇格しない', () => 
     stroke.participations.every((participation) => !participation.roles.includes('held-trigger'))));
 });
 
-test('full trigger集合が一致する時だけcontinueする', () => {
-  const semantic = {
-    inputRole: 'modifier' as const,
-    triggerPersistence: 'hold-capable' as const,
-    outputKeys: ['f'],
-    triggerKeys: ['q', 'w'],
-    associatedTriggerKeys: ['q', 'w'],
-  };
-  const start = realizeTriggerStep(
-    ['q', 'w', 'f'],
-    semantic,
-    { useHold: true },
-    undefined,
-  );
-  assert.equal(start.holdPhase, 'start');
 
-  const continued = realizeTriggerStep(
-    ['w', 'q', 'f'],
-    {
-      ...semantic,
-      triggerKeys: ['w', 'q'],
-      associatedTriggerKeys: ['w', 'q'],
-    },
-    { useHold: true },
-    start.holdState,
-  );
-  assert.equal(continued.holdPhase, 'continue');
-  assert.deepEqual(continued.triggerKeys, []);
 
-  const changed = realizeTriggerStep(
-    ['q', 'f'],
-    {
-      ...semantic,
-      triggerKeys: ['q'],
-      associatedTriggerKeys: ['q'],
-    },
-    { useHold: true },
-    start.holdState,
-  );
-  assert.equal(changed.holdPhase, 'start');
-  assert.deepEqual(changed.triggerKeys, ['q']);
-});
 
-test('prefix hold-capableはassociationでoutputへ保持を伝播しtrigger再押下を省略する', () => {
-  const policy = { useHold: true };
-  const triggerSemantic = {
-    inputRole: 'modifier' as const,
-    triggerPersistence: 'hold-capable' as const,
-    outputKeys: [] as string[],
-    triggerKeys: ['q'],
-    associatedTriggerKeys: ['q'],
-  };
-  const outputSemantic = {
-    inputRole: 'modifier' as const,
-    outputKeys: ['f'],
-    triggerKeys: [] as string[],
-    associatedTriggerKeys: ['q'],
-    associatedTriggerPersistence: 'hold-capable' as const,
-  };
-
-  const start = realizeTriggerStep(['q'], triggerSemantic, policy, undefined);
-  const output = realizeTriggerStep(['f'], outputSemantic, policy, start.holdState);
-  const repeatedTrigger = realizeTriggerStep(['q'], triggerSemantic, policy, output.holdState);
-
-  assert.equal(start.holdPhase, 'start');
-  assert.equal(output.holdPhase, 'continue');
-  assert.deepEqual(output.heldTriggerKeys, ['q']);
-  assert.equal(repeatedTrigger.holdPhase, 'continue');
-  assert.equal(repeatedTrigger.omitStroke, true);
-});
 
 test('suffix hold-capableは次対象の別triggerを直前holdから誤伝播しない', () => {
   const layout = fromFaces('suffix-association', 'suffix-association', [
@@ -226,7 +156,7 @@ test('suffix singleは同じtriggerでもactive holdを継承しない', () => {
     participation.roles.includes('held-trigger')), false);
 });
 
-test('suffix hold-capableは同じtriggerの次対象ならoutputへcontinueできる', () => {
+test('suffix hold-capableは同じtriggerでも次対象へhold continuationせずorderを維持する', () => {
   const layout = fromFaces('suffix-same', 'suffix-same', [{
     trigger: ['d'],
     mode: 'suffix',
@@ -241,13 +171,17 @@ test('suffix hold-capableは同じtriggerの次対象ならoutputへcontinueで�
   });
   const outputs = trace.strokes.filter((stroke) =>
     stroke.participations.some((participation) => participation.roles.includes('output')));
+  const triggers = trace.strokes.filter((stroke) =>
+    stroke.participations.some((participation) => participation.roles.includes('trigger')));
 
   assert.equal(outputs.length, 2);
-  assert.equal(outputs[0].participations.some((participation) =>
-    participation.roles.includes('held-trigger')), false);
-  assert.ok(outputs[1].participations.some((participation) =>
-    participation.roles.includes('held-trigger')
-    && participation.holdPhase === 'continue'));
+  assert.equal(triggers.length, 2);
+  assert.ok(outputs.every((stroke) =>
+    stroke.participations.every((participation) => !participation.roles.includes('held-trigger'))));
+  assert.ok(triggers.every((stroke) =>
+    stroke.participations.some((participation) =>
+      participation.roles.includes('held-trigger')
+      && participation.holdPhase === 'start')));
 });
 
 test('held triggerがoutputでもある場合はcontinueせずrelease/restartする', () => {
@@ -281,35 +215,7 @@ test('held triggerがoutputでもある場合はcontinueせずrelease/restartす
   assert.equal(metrics.perCharPresses, 1);
 });
 
-test('associationが無いoutputでactive holdを終了する', () => {
-  const start = realizeTriggerStep(
-    ['q', 'f'],
-    {
-      inputRole: 'modifier',
-      triggerPersistence: 'hold-capable',
-      outputKeys: ['f'],
-      triggerKeys: ['q'],
-      associatedTriggerKeys: ['q'],
-    },
-    { useHold: true },
-    undefined,
-  );
-  const plain = realizeTriggerStep(
-    ['j'],
-    {
-      inputRole: 'layer',
-      outputKeys: ['j'],
-      triggerKeys: [],
-      associatedTriggerKeys: [],
-    },
-    { useHold: true },
-    start.holdState,
-  );
 
-  assert.equal(plain.holdState, undefined);
-  assert.deepEqual(plain.heldTriggerKeys, []);
-  assert.equal(plain.holdPhase, undefined);
-});
 
 test('Policy defaultはhold未使用', () => {
   assert.deepEqual(DEFAULT_TRIGGER_REALIZATION_POLICY, { useHold: false });

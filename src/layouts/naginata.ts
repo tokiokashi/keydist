@@ -1,5 +1,5 @@
 import { THUMB_KEY } from '../geometry.ts';
-import { fromFaces, type Face, type Layout } from './types.ts';
+import { fromFaces, withThumbShiftAlternatives, type Face, type Layout } from './types.ts';
 
 /**
  * 薙刀式v18（作: 大岡俊彦）。
@@ -97,6 +97,9 @@ export const NAGINATA_V18_FACES: Face[] = [
   face(['p', 'v'], { ';': 'ふゅ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
 ];
 
-export const NAGINATA_V18: Layout = fromFaces('naginata-v18', '薙刀式v18', NAGINATA_V18_FACES);
-NAGINATA_V18.thumbShiftKey = THUMB_KEY.RT;
+export const NAGINATA_V18: Layout = withThumbShiftAlternatives(
+  fromFaces('naginata-v18', '薙刀式v18', NAGINATA_V18_FACES),
+  THUMB_KEY.RT,
+  [THUMB_KEY.RT, THUMB_KEY.LT],
+);
 NAGINATA_V18.legends.set(THUMB_KEY.RT, 'Space');

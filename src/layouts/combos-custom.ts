@@ -1,3 +1,4 @@
+import type { InputClassification } from '../core/semantic-input/index.ts';
 import type { ComboCondition, ComboDefinition, ComboPresentation } from './types.ts';
 
 /**
@@ -90,6 +91,17 @@ const VOCABULARY_OUTPUTS = new Set([
   'nado', 'niha', 'sika', 'sita', 'site', 'suru', 'tame', 'toha',
 ]);
 
+function comboClassification(
+  output: string,
+  condition: ComboCondition | undefined,
+): InputClassification {
+  if (VOCABULARY_OUTPUTS.has(output)) return 'vocabulary-extension';
+  if (condition?.youonOnly) return 'youon-extension';
+  if (/^[-aeiou]nn$/.test(output) || output === 'nn') return 'hatsuon-extension';
+  if (/^[aeiou](ki|ku|ti|tu)$/.test(output)) return 'checked-syllable-extension';
+  return 'diphthong-extension';
+}
+
 function comboPresentation(
   output: string,
   condition: ComboCondition | undefined,
@@ -141,5 +153,6 @@ export const CUSTOM_COMBOS: ComboDefinition[] = RAW_CUSTOM_COMBOS.map(
     inputs,
     condition,
     comboPresentation(output, condition),
+    [comboClassification(output, condition)],
   ] as ComboDefinition,
 );
