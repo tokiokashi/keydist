@@ -222,8 +222,9 @@ test('畳んだレイヤーはauthoringで明示したpresentation membershipだ
 
   const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
   const tsukiLayer = groupFacesIntoLayers(tsuki.faces!)[1];
-  assert.equal(faceDisplayCells(tsukiLayer.faces[0]).get('d'), 'ら');
-  assert.equal(faceDisplayCells(tsukiLayer.faces[1]).get('k'), 'も');
+  const tsukiCells = new Map(tsukiLayer.faces.flatMap((face) => [...faceDisplayCells(face)]));
+  assert.equal(tsukiCells.get('d'), 'ら');
+  assert.equal(tsukiCells.get('k'), 'も');
 });
 
 test('薙刀式v18は面から生成され、全定義を1ステップで保持する', () => {
