@@ -310,5 +310,6 @@ export function mapInputAlternativePhysicalKeys(
     semanticInputs,
     baseRealizations,
     contextRequirements: alternative.contextRequirements,
+    origin: alternative.origin,
   };
 }
