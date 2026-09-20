@@ -500,6 +500,7 @@ test('保存済み凡例のspaceもthumb-rへ解決する', () => {
 
   assert.equal(layout.legends.get('thumb-r'), 'Space');
   assert.equal(layout.legends.has('space'), false);
+  assert.equal(layout.canonicalInputs.has(' '), false, 'imported keymapへsynthetic spaceを追加しない');
   assert.deepEqual(layout.canonicalInputs.get('x')?.[0]?.semanticInputs?.[0].physicalKeys, ['thumb-r']);
 });
 
