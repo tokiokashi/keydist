@@ -154,9 +154,16 @@ Chain / Transition / Timingが独自にhold可能性を再判定しない。
 
 Trigger realizationの後に `ActionRealizationPolicy` を適用し、同じ入力事実を
 どのaction列として解析するかを決める。現在の `holdStart` は `combined | separate` を持つ。
-`separate` ではlayer / modifierのoutputと同一actionにrealizeされた `held-trigger/start` を
-先行trigger actionと、held state下のfresh output actionへ分ける。compositionと、
-prefix trigger-only actionのように既に分離済みの操作は変換しない。
+`separate` ではlayer / modifierのoutputと同一actionにrealizeされた `held-trigger/start` を、
+**semantic Requirementを保てる場合だけ**先行trigger actionとheld state下のfresh output actionへ分ける。
+
+- overlapだけ、または `order(held -> fresh)` を要求する場合はsplitできる
+- `order(fresh -> held)` を要求するsuffix型は、順序を反転させずcombinedを維持する
+- held / fresh group自体がorder境界の両側へ跨る場合もcombinedを維持する
+- compositionと、prefix trigger-only actionのように既に分離済みの操作は変換しない
+
+Requirementはdefault groupingを推測する材料には使わず、Policy変換後のstreamが
+canonical semanticに反していないことを確認するvalidity gateとしてだけ使う。
 
 この変換はStroke生成**前**に行うため、Metricsだけのvirtual +1は行わない。
 Chain / Transition / Metrics / Timing / Playbackはすべて同じPolicy適用後Stroke streamを見る。
