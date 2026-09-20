@@ -10,6 +10,10 @@ import {
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   type TriggerRealizationPolicy,
 } from './trigger-realization.ts';
+import {
+  DEFAULT_ACTION_REALIZATION_POLICY,
+  type ActionRealizationPolicy,
+} from './core/semantic-input/index.ts';
 
 export interface StrokeAnnotation {
   readonly inLongRoll: boolean;
@@ -65,6 +69,7 @@ export interface StructuralConditionSnapshot {
   readonly chainPolicy: Readonly<ChainPolicy>;
   readonly arpeggioPolicy: Readonly<ArpeggioPolicy>;
   readonly triggerRealizationPolicy: Readonly<TriggerRealizationPolicy>;
+  readonly actionRealizationPolicy: Readonly<ActionRealizationPolicy>;
 }
 
 export interface StructuralAggregate {
@@ -210,6 +215,7 @@ export function aggregateStructuralAnalysis(
   analysis: ArpeggioAnalysisResult,
   annotations: readonly StrokeAnnotation[] = buildStrokeAnnotations(analysis),
   triggerRealizationPolicy: TriggerRealizationPolicy = DEFAULT_TRIGGER_REALIZATION_POLICY,
+  actionRealizationPolicy: ActionRealizationPolicy = DEFAULT_ACTION_REALIZATION_POLICY,
 ): StructuralAggregate {
   const arpeggioLengths = analysis.arpeggioSpans.map(
     (span) => span.endStrokeIndex - span.startStrokeIndex,
@@ -250,6 +256,7 @@ export function aggregateStructuralAnalysis(
       chainPolicy: Object.freeze({ ...analysis.chainPolicy }),
       arpeggioPolicy: Object.freeze({ ...analysis.arpeggioPolicy }),
       triggerRealizationPolicy: Object.freeze({ ...triggerRealizationPolicy }),
+      actionRealizationPolicy: Object.freeze({ ...actionRealizationPolicy }),
     }),
   });
 }
@@ -257,9 +264,15 @@ export function aggregateStructuralAnalysis(
 export function aggregateAnalysis(
   analysis: ArpeggioAnalysisResult,
   triggerRealizationPolicy: TriggerRealizationPolicy = DEFAULT_TRIGGER_REALIZATION_POLICY,
+  actionRealizationPolicy: ActionRealizationPolicy = DEFAULT_ACTION_REALIZATION_POLICY,
 ): AggregatedAnalysisResult {
   const annotations = buildStrokeAnnotations(analysis);
-  const aggregate = aggregateStructuralAnalysis(analysis, annotations, triggerRealizationPolicy);
+  const aggregate = aggregateStructuralAnalysis(
+    analysis,
+    annotations,
+    triggerRealizationPolicy,
+    actionRealizationPolicy,
+  );
   return Object.freeze({
     ...analysis,
     annotations,
@@ -272,9 +285,11 @@ export function analyzeStrokeStructure(
   chainPolicy?: ChainPolicy,
   arpeggioPolicy?: ArpeggioPolicy,
   triggerRealizationPolicy: TriggerRealizationPolicy = DEFAULT_TRIGGER_REALIZATION_POLICY,
+  actionRealizationPolicy: ActionRealizationPolicy = DEFAULT_ACTION_REALIZATION_POLICY,
 ): AggregatedAnalysisResult {
   return aggregateAnalysis(
     analyzeStrokeArpeggios(strokes, chainPolicy, arpeggioPolicy),
     triggerRealizationPolicy,
+    actionRealizationPolicy,
   );
 }
