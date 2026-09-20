@@ -21,7 +21,7 @@ import {
 } from './ui-state.ts';
 import type { GeometrySettings } from './geometry-settings.ts';
 import { resolveConditions } from './condition-resolution.ts';
-import { classifyFaces, displayTriggerKeys, faceCells, foldedLayerCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
+import { classifyFaces, displayTriggerKeys, faceCells, faceDisplayCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID, faceFromEntries } from './layouts/index.ts';
 import type { Face, Layout } from './layouts/index.ts';
 import { findActiveLayerFace, matchKeyPatterns, summarizeCandidateMatches } from './key-pattern-picker.ts';
@@ -761,20 +761,16 @@ function layerCells(layer: Layer, layout: Layout): Map<string, LayerCell> {
   }
 
   const cells = new Map<string, LayerCell>();
-  const labels = foldedLayerCells(layer, layout.faces ?? []);
   for (const face of layer.faces) {
     const annotation = face.trigger.length > 0
       ? displayTriggerAnnotation(layout, face)
       : undefined;
-    for (const [key, label] of faceCells(face)) {
+    for (const [key, label] of faceDisplayCells(face)) {
       const previous = cells.get(key);
       cells.set(key, previous
         ? { label: `${previous.label} / ${label}`, annotation: previous.annotation ?? annotation }
         : { label, annotation });
     }
-  }
-  for (const [key, label] of labels) {
-    if (!cells.has(key)) cells.set(key, { label });
   }
   return cells;
 }
