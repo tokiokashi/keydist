@@ -4,7 +4,6 @@ import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
 import type { Options } from './evaluate.ts';
 import type { TriggerRealizationPolicy } from './trigger-realization.ts';
 import type { ActionRealizationPolicy } from './core/semantic-input/index.ts';
-import { toActionRealizationPolicy } from './hold-start-action.ts';
 import type { UiStateConditionsDefaults, UiStateLayoutConditions } from './ui-state.ts';
 
 export interface ResolvedConditions {
@@ -22,7 +21,7 @@ export function resolveConditions(
   override: Partial<UiStateConditionsDefaults> | undefined,
 ): ResolvedConditions {
   const values = { ...defaults, ...override };
-  const actionRealizationPolicy = toActionRealizationPolicy(values.holdStartAction);
+  const actionRealizationPolicy = { ...values.actionRealization };
   return {
     geometry: values.geometry,
     chainPolicy: { ...values.chain },
