@@ -8,12 +8,10 @@ import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 import { toLayout } from '../src/user-layouts.ts';
 import { assertKanaLayout, assertKanaLayoutFixture } from './kana-layout-helpers.ts';
 import {
-  canFoldFaces,
   classifyPresentationFaces,
   displayTriggerKeys,
   faceCells,
   faceDisplayCells,
-  groupFacesIntoLayers,
   handOfKey,
   layerShiftStyles,
 } from '../src/layers.ts';
@@ -311,19 +309,19 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
   ]);
 
   assert.deepEqual(
-    groupFacesIntoLayers(shingeta.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    classifyPresentationFaces(shingeta).layers.map((layer) => layer.faces.map((face) => face.trigger)),
     [[[]], [['k'], ['d']], [['l'], ['s']], [['i']], [['o']]],
   );
   assert.deepEqual(
-    groupFacesIntoLayers(tsuki.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    classifyPresentationFaces(tsuki).layers.map((layer) => layer.faces.map((face) => face.trigger)),
     [[[]], [['d'], ['k']]],
   );
   assert.deepEqual(
-    groupFacesIntoLayers(nicola.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    classifyPresentationFaces(nicola).layers.map((layer) => layer.faces.map((face) => face.trigger)),
     [[[]], [['thumb-l']], [['thumb-r']]],
   );
   assert.deepEqual(
-    groupFacesIntoLayers(naginata.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    classifyPresentationFaces(naginata).layers.map((layer) => layer.faces.map((face) => face.trigger)),
     [[[]], [['space']]],
   );
   assert.deepEqual(
@@ -332,26 +330,34 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
   );
 
   assert.equal(handOfKey('space'), 'right');
-  assert.equal(canFoldFaces(shingeta.faces![1], shingeta.faces![2]), true);
-  assert.equal(canFoldFaces(shingeta.faces![1], shingeta.faces![5]), false);
-  assert.equal(canFoldFaces(naginata.faces![3], naginata.faces![4]), true);
-  assert.equal(canFoldFaces(naginata.faces![5], naginata.faces![6]), true);
-  assert.equal(canFoldFaces(nicola.faces![1], nicola.faces![2]), false);
-  assert.equal(canFoldFaces(
-    { trigger: ['k'], mode: 'simultaneous', rows: faceAtF('x') },
-    { trigger: ['d'], mode: 'prefix', rows: ['', '', ['', '', '', '', '', '', 'y'], ''] },
-  ), false);
-  const invalidFaces = [
-    { trigger: ['a'], mode: 'simultaneous' as const, rows: faceAtF('x'), layer: '不正' },
-    { trigger: ['s'], mode: 'simultaneous' as const, rows: faceAtF('y'), layer: '不正' },
+
+  const invalidFaces: Face[] = [
+    {
+      trigger: ['a'],
+      mode: 'simultaneous',
+      rows: faceAtF('x'),
+      layer: '不正',
+      inputRole: 'layer',
+      triggerPersistence: 'single',
+    },
+    {
+      trigger: ['s'],
+      mode: 'simultaneous',
+      rows: faceAtF('y'),
+      layer: '不正',
+      inputRole: 'layer',
+      triggerPersistence: 'single',
+    },
   ];
-  assert.throws(() => canFoldFaces(invalidFaces[0], invalidFaces[1]), /レイヤー「不正」の面が畳み条件を満たさない/);
-  assert.throws(() => groupFacesIntoLayers(invalidFaces), /レイヤー「不正」の面が畳み条件を満たさない/);
+  assert.throws(
+    () => fromFaces('invalid-fold', 'invalid-fold', invalidFaces),
+    /レイヤー「不正」の面が畳み条件を満たさない/,
+  );
 });
 
 test('畳んだレイヤーはauthoringで明示したpresentation membershipだけを表示する（#95, #261）', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
-  const layers = groupFacesIntoLayers(layout.faces!);
+  const layers = classifyPresentationFaces(layout).layers;
   const middleLeft = layers[1].faces[0];
   const middleRight = layers[1].faces[1];
   const ringLeft = layers[2].faces[0];
@@ -374,7 +380,7 @@ test('畳んだレイヤーはauthoringで明示したpresentation membershipだ
   assert.deepEqual(layout.map.get('さ'), [['l', 's']]);
 
   const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
-  const tsukiLayer = groupFacesIntoLayers(tsuki.faces!)[1];
+  const tsukiLayer = classifyPresentationFaces(tsuki).layers[1];
   const tsukiCells = new Map(tsukiLayer.faces.flatMap((face) => [...faceDisplayCells(face)]));
   assert.equal(tsukiCells.get('d'), 'ら');
   assert.equal(tsukiCells.get('k'), 'も');
@@ -395,7 +401,7 @@ test('薙刀式v18は面から生成され、全定義を1ステップで保持�
 
 test('薙刀式のSandS presentationをFace authoringで明示する', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
-  const centerShift = groupFacesIntoLayers(layout.faces!)[1].faces[0];
+  const centerShift = classifyPresentationFaces(layout).layers[1].faces[0];
 
   assert.deepEqual(centerShift.trigger, ['space']);
   assert.deepEqual(centerShift.presentationTriggerKeys, ['thumb-l', 'thumb-r']);
@@ -485,13 +491,18 @@ test('triggerOrderが異なるFaceは同じレイヤーへ畳まない', () => {
     triggerPersistence: 'single',
   };
 
-  assert.throws(() => canFoldFaces(first, second), /triggerOrderが異なる/);
-  assert.throws(() => groupFacesIntoLayers([first, second]), /triggerOrderが異なる/);
+  assert.throws(
+    () => fromFaces('invalid-trigger-order', 'invalid-trigger-order', [
+      { ...first, inputRole: 'layer' },
+      { ...second, inputRole: 'layer' },
+    ]),
+    /triggerOrderが異なる/,
+  );
 });
 
 test('シフトの表示色は手ではなく所属aggregationで揃え、singleはshift扱いしない', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
-  const layers = groupFacesIntoLayers(layout.faces!);
+  const layers = classifyPresentationFaces(layout).layers;
   const styles = layerShiftStyles(layers);
 
   assert.equal(layers[0].id, 'single');
@@ -505,7 +516,7 @@ test('シフトの表示色は手ではなく所属aggregationで揃え、single
 
 test('相互同時シフトは両トリガーを1回分の色として残す', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
-  const layers = groupFacesIntoLayers(layout.faces!);
+  const layers = classifyPresentationFaces(layout).layers;
   for (const [layerIndex, trigger, output] of [[1, 'k', 'd'], [2, 'l', 's']] as const) {
     const colors = normalizedLayerColors(layers[layerIndex], {
       keyCounts: new Map([[trigger, 1], [output, 1]]),
@@ -535,7 +546,7 @@ test('薙刀式の合算表示はスペースなし層のトリガーを単打�
 
 test('通常の層トリガーは残さず、薙刀式の濁音詳細も除外する', () => {
   const shingeta = LAYOUT_BY_ID.get('shingeta')!;
-  const middle = groupFacesIntoLayers(shingeta.faces!)[1];
+  const middle = classifyPresentationFaces(shingeta).layers[1];
   const normalColors = normalizedLayerColors(middle, {
     keyCounts: new Map([['k', 1], ['w', 1]]),
     triggerKeyCounts: new Map([['k', 1]]),
