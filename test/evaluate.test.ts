@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
 import { evaluate, type Options } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
+import { compileSequenceInputAlternative } from '../src/core/semantic-input/index.ts';
 import { faceFromEntries, fromFaces, fromKana, LAYOUT_BY_ID, type Layout, withCombos, withRomaji, withThumbShiftAlternatives } from '../src/layouts/index.ts';
 import { kunrei } from '../src/romaji/kunrei.ts';
 
@@ -323,6 +324,29 @@ test('存在しないキーidはエラーとして記録する', () => {
 });
 
 // ---- 複数文字の見出し ----
+
+test('最長一致の探索上限はcanonicalInputsだけから決まる', () => {
+  const base = fromKana('canonical-match-length', 'canonical-match-length', {
+    き: [['d']],
+    ゃ: [['k']],
+  });
+  const canonicalInputs = new Map(base.canonicalInputs);
+  canonicalInputs.set('きゃ', [
+    compileSequenceInputAlternative('きゃ', [['f']], 'single'),
+  ]);
+  const layout = { ...base, canonicalInputs };
+
+  assert.equal(layout.map.has('きゃ'), false, 'legacy mapには長い見出しを追加しない');
+
+  const trace = evaluate('きゃ', layout, geometry, opts());
+  assert.equal(trace.skipped, 0);
+  assert.equal(trace.strokes.length, 1);
+  assert.equal(trace.strokes[0].char, 'きゃ');
+  assert.deepEqual(
+    trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)),
+    ['f'],
+  );
+});
 
 test('「きゃ」を見出しに持つ配列は1単位として当てる', () => {
   const l = fromKana('t', 't', {
