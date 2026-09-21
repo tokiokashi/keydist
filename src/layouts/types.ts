@@ -688,21 +688,21 @@ export function withComposedOutputs(
   mark: string,
   context = '合成出力',
 ): Layout {
-  const markSequence = layout.map.get(mark);
   const markAlternatives = layout.canonicalInputs.get(mark);
-  if (!markSequence || !markAlternatives) {
+  if (!markAlternatives) {
     throw new Error(`${context}の合成記号「${mark}」が未定義`);
   }
+  const markSequence = layout.map.get(mark);
 
   const map = new Map(layout.map);
   const canonicalInputs = cloneCanonicalInputs(layout.canonicalInputs);
 
   for (const [source, output] of Object.entries(entries)) {
-    const sourceSequence = layout.map.get(source);
     const sourceAlternatives = layout.canonicalInputs.get(source);
-    if (!sourceSequence || !sourceAlternatives) {
+    if (!sourceAlternatives) {
       throw new Error(`${context}の元出力「${source}」が未定義`);
     }
+    const sourceSequence = layout.map.get(source);
 
     const generated = sourceAlternatives.flatMap((sourceAlternative) =>
       markAlternatives.map((markAlternative) => ({
@@ -724,8 +724,9 @@ export function withComposedOutputs(
       appendCanonicalAlternative(canonicalInputs, output, alternative);
     }
 
-    // legacy/presentation metadataはauthoring上の先頭pathだけを保持する。
-    if (map.has(output)) continue;
+    // legacy/presentation mapは両componentにdefault sequenceがある場合だけ補完する。
+    // canonical composition自体の成立条件には使わない。
+    if (map.has(output) || !sourceSequence || !markSequence) continue;
 
     const sequence: Sequence = [
       ...sourceSequence.map((step) => [...step]),
