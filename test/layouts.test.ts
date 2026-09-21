@@ -737,3 +737,18 @@ test('同一aggregationで片側だけpresentationLabelなら順序によらずc
     );
   }
 });
+
+
+test('composition FaceのpresentationLabelはsilent ignoreせずrejectする', () => {
+  const face: Face = {
+    ...faceFromEntries(['d'], 'simultaneous', { j: '甲' }),
+    inputRole: 'composition',
+    triggerPersistence: 'single',
+    presentationLabel: 'Custom Combo',
+  };
+
+  assert.throws(
+    () => fromFaces('composition-presentation-label', 'composition-presentation-label', [face]),
+    /composition FaceではpresentationLabelを指定できない/,
+  );
+});
