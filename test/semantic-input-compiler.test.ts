@@ -770,6 +770,37 @@ test('CanonicalInputMapはmutually exclusiveなorder pathを共存させる', ()
   ]));
 });
 
+test('withComposedOutputsはcanonical sourceだけでsemantic compositionできる', () => {
+  const base = fromKana('canonical-only-composed', 'canonical-only-composed', [
+    ['か', [['f']]],
+    ['゛', [['j']]],
+  ]);
+  const map = new Map(base.map);
+  map.delete('か');
+  map.delete('゛');
+  const canonicalOnly = { ...base, map };
+
+  const layout = withComposedOutputs(
+    canonicalOnly,
+    { か: 'が' },
+    '゛',
+    'canonical-only',
+  );
+
+  const alternatives = layout.canonicalInputs.get('が');
+  assert.ok(alternatives);
+  assert.equal(alternatives.length, 1);
+  assert.deepEqual(
+    alternatives[0].semanticInputs.map((input) => input.physicalKeys),
+    [['f'], ['j']],
+  );
+  assert.equal(
+    layout.map.has('が'),
+    false,
+    'legacy map defaultが無くてもcanonical compositionは成立する',
+  );
+});
+
 test('withComposedOutputsは既存direct pathを失わずcomposed alternativeをappendする', () => {
   const base = fromKana('composed-alternative', 'composed-alternative', [
     ['か', [['f']]],
