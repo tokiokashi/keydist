@@ -113,6 +113,25 @@ test('alternative selection identityはcore helperをauthorityにする', async 
   }
 });
 
+test('logical output matching lengthはcanonicalInputsをauthorityにする', async () => {
+  const evaluateSource = await readFile(join(SRC, 'evaluate.ts'), 'utf8');
+  const layoutTypesSource = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
+  const userLayoutsSource = await readFile(join(SRC, 'user-layouts.ts'), 'utf8');
+
+  assert.doesNotMatch(layoutTypesSource, /\bmaxCharLength\b/);
+  assert.doesNotMatch(userLayoutsSource, /\bmaxCharLength\b/);
+  assert.doesNotMatch(
+    evaluateSource,
+    /layout\.maxCharLength\b/,
+    'evaluate must derive the longest-match bound from canonicalInputs',
+  );
+  assert.match(
+    evaluateSource,
+    /layout\.canonicalInputs\.keys\(\)/,
+    'canonicalInputs must be the authority for logical output match length',
+  );
+});
+
 test('evaluate realized factはFace authoring metadataへ依存しない', async () => {
   const source = await readFile(join(SRC, 'evaluate.ts'), 'utf8');
 

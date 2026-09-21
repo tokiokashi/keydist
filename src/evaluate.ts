@@ -187,8 +187,11 @@ export function evaluate(
       start += length;
     }
   }
-  // 見出しが複数文字ありうる配列（コンボや拗音）は最長一致で切り出す
-  const maxLen = Math.max(1, layout.maxCharLength ?? 1);
+  // 見出し探索のauthorityもcanonicalInputs。legacy Layout.map由来の長さmetadataへ依存しない。
+  const maxLen = Math.max(
+    1,
+    ...[...layout.canonicalInputs.keys()].map((output) => [...output].length),
+  );
 
   for (let cursor = 0; cursor < chars.length; ) {
     let alternatives: InputAlternativeSet | undefined;

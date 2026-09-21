@@ -229,7 +229,6 @@ test('面のセル配列は複数文字の見出しを1キーへ置ける', () =
   ]);
 
   assert.deepEqual(layout.map.get('きゃ'), [['f']]);
-  assert.equal(layout.maxCharLength, 2);
 });
 
 test('presentation分類はcompiled aggregation metadataをauthorityにする', () => {
@@ -652,7 +651,6 @@ test('NICOLAは3面の直接かな入力を同時押しとして保持する', (
   const layout = LAYOUT_BY_ID.get('nicola')!;
 
   assert.equal(layout.map.size, 89);
-  assert.equal(layout.maxCharLength, 1);
   assert.deepEqual(layout.map.get('。'), [['q']]);
   assert.deepEqual(layout.map.get('え'), [['thumb-l', 'w']]);
   assert.deepEqual(layout.map.get('が'), [['thumb-r', 'w']]);
