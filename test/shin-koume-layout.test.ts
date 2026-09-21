@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
 import { DEFAULT_OPTIONS, evaluate } from '../src/evaluate.ts';
 import { analyzeChains, DEFAULT_CHAIN_POLICY } from '../src/analysis-chain.ts';
-import { COMBO_LAYER_ID, classifyFaces, LAYOUT_BY_ID } from '../src/layouts/index.ts';
+import { COMBO_LAYER_ID, LAYOUT_BY_ID } from '../src/layouts/index.ts';
+import { classifyPresentationFaces } from '../src/layers.ts';
 import { assertKanaLayout } from './kana-layout-helpers.ts';
 
 const layout = LAYOUT_BY_ID.get('shin-koume')!;
@@ -46,7 +47,7 @@ test('親指shiftはlayer + single、文字キーcomboはcomposition + singleと
 });
 
 test('文字compositionは表示・集計でも通常layerではなくcomboへ帰属する', () => {
-  const groups = classifyFaces(layout.faces!);
+  const groups = classifyPresentationFaces(layout);
   assert.ok(groups.combos.length > 0);
   assert.ok(groups.combos.every((face) => face.inputRole === 'composition'));
   assert.ok(groups.layers.flatMap((group) => group.faces)
