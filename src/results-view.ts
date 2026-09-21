@@ -21,7 +21,7 @@ import {
 } from './ui-state.ts';
 import type { GeometrySettings } from './geometry-settings.ts';
 import { resolveConditions } from './condition-resolution.ts';
-import { classifyPresentationFaces, displayTriggerKeys, faceCells, faceDisplayCells, handOfKey, layerShiftStyles, orderedPresentationLayers, type Layer, type LayerShiftStyle } from './layers.ts';
+import { classifyPresentationFaces, displayTriggerAlternatives, displayTriggerKeys, faceCells, faceDisplayCells, handOfKey, layerShiftStyles, orderedPresentationLayers, type Layer, type LayerShiftStyle } from './layers.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID, faceFromEntries, type Face, type Layout } from './layouts/types.ts';
 import { findActiveLayerFace, matchKeyPatterns, summarizeCandidateMatches } from './key-pattern-picker.ts';
 import type { ModeId } from './layout-selection.ts';
