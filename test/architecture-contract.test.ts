@@ -126,6 +126,23 @@ test('legacy comboConditionsをsemantic/runtime authorityへ戻さない', async
   );
 });
 
+test('combo fold presentation provenanceはcanonicalInputsをauthorityにする', async () => {
+  const source = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
+  const start = source.indexOf('export function withCombos');
+  const end = source.indexOf('\n}', start);
+
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  const comboSource = source.slice(start, end + 2);
+
+  assert.match(comboSource, /layout\.canonicalInputs\.get\(input\)/);
+  assert.doesNotMatch(
+    comboSource,
+    /layout\.map\.get\(/,
+    'combo presentation provenance must not resolve physical keys from the legacy default map',
+  );
+});
+
 test('composed outputのsemantic availabilityはcanonicalInputsをauthorityにする', async () => {
   const source = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
   const start = source.indexOf('export function withComposedOutputs');
