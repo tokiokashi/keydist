@@ -7,13 +7,11 @@ import { isCustomGeometryKind, type PresetGeometryKind } from './geometry.ts';
 import { sameChainPolicy, type ChainPolicy } from './analysis-chain.ts';
 import { sameArpeggioPolicy, type ArpeggioPolicy } from './analysis-arpeggio.ts';
 import {
-  sameTriggerRealizationPolicy,
-  type TriggerRealizationPolicy,
-} from './trigger-realization.ts';
-import {
   sameActionRealizationPolicy,
+  sameTriggerRealizationPolicy,
   type ActionRealizationPolicy,
-} from './core/semantic-input/action-realization.ts';
+  type TriggerRealizationPolicy,
+} from './core/semantic-input/index.ts';
 
 export type ConditionKey = keyof UiStateConditionsDefaults;
 
