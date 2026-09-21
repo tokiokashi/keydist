@@ -19,13 +19,11 @@ jobs:
     steps:
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         id: setup-node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -54,9 +52,46 @@ jobs:
       - name: Build
         id: build
         shell: bash
+        env:
+          KEYDIST_BASE_PATH: /keydist/
         run: |
           set -o pipefail
+          # typecheck が生成した route tree に依存せず、Start plugin 単体で
+          # production build 時に再生成できることも検証する。
+          rm -f src/routeTree.gen.ts
           npm run build 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      - name: Pages artifact smoke check
+        id: pages-smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          paths=(
+            .output/public/index.html
+            .output/public/analyzer/index.html
+            .output/public/input/index.html
+            .output/public/legacy.html
+          )
+
+          for path in "${paths[@]}"; do
+            test -f "$path" || {
+              echo "Missing Pages artifact: $path" >&2
+              exit 1
+            }
+
+            bad_urls=$(
+              grep -Eo '(src|href)="/[^"]*"' "$path" \
+                | grep -v '="/keydist/' \
+                || true
+            )
+
+            if [ -n "$bad_urls" ]; then
+              echo "Found URL outside /keydist/ in $path:" >&2
+              echo "$bad_urls" >&2
+              exit 1
+            fi
+          done
 
       - name: Write CI summary
         if: always()
@@ -68,6 +103,7 @@ jobs:
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
           TEST_OUTCOME: ${{ steps.test.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
+          PAGES_SMOKE_OUTCOME: ${{ steps.pages-smoke.outcome }}
         run: |
           icon() {
             case "$1" in
@@ -90,6 +126,7 @@ jobs:
             printf '| Typecheck | %s %s |\n' "$(icon "$TYPECHECK_OUTCOME")" "$TYPECHECK_OUTCOME"
             printf '| Test | %s %s |\n' "$(icon "$TEST_OUTCOME")" "$TEST_OUTCOME"
             printf '| Build | %s %s |\n' "$(icon "$BUILD_OUTCOME")" "$BUILD_OUTCOME"
+            printf '| Pages artifact smoke | %s %s |\n' "$(icon "$PAGES_SMOKE_OUTCOME")" "$PAGES_SMOKE_OUTCOME"
             echo
             echo "[Open full run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -126,7 +163,7 @@ jobs:
     steps:
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
