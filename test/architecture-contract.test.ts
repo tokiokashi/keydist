@@ -9,17 +9,17 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');
 
 const PLATFORM_GLOBAL_PATTERNS = [
-  /\\b(?:window|document|navigator|localStorage|sessionStorage)\\s*\\./,
-  /\\btypeof\\s+(?:window|document|navigator)\\b/,
-  /\\b(?:Window|Document|Navigator|HTMLElement|KeyboardEvent|MutationObserver|ResizeObserver)\\b/,
-  /\\b(?:D1Database|KVNamespace|R2Bucket|DurableObject)\\b/,
+  /\b(?:window|document|navigator|localStorage|sessionStorage)\s*\./,
+  /\btypeof\s+(?:window|document|navigator)\b/,
+  /\b(?:Window|Document|Navigator|HTMLElement|KeyboardEvent|MutationObserver|ResizeObserver)\b/,
+  /\b(?:D1Database|KVNamespace|R2Bucket|DurableObject)\b/,
 ] as const;
 
 const FRAMEWORK_MODULE_PATTERNS = [
-  /^react(?:\\/|$)/,
-  /^react-dom(?:\\/|$)/,
-  /^@tanstack\\//,
-  /^@cloudflare\\//,
+  /^react(?:\/|$)/,
+  /^react-dom(?:\/|$)/,
+  /^@tanstack\//,
+  /^@cloudflare\//,
   /^cloudflare:/,
 ] as const;
 
