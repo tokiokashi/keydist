@@ -82,6 +82,7 @@ export class TypingInputEngine {
 
   readonly #pressed = new Set<PhysicalKeyId>();
   readonly #windowKeys = new Set<PhysicalKeyId>();
+  readonly #releasedWindowKeys = new Set<PhysicalKeyId>();
   readonly #pressOrder = new Map<PhysicalKeyId, number>();
   readonly #seededHoldKeys = new Set<PhysicalKeyId>();
 
@@ -123,14 +124,19 @@ export class TypingInputEngine {
 
     if (event.type === 'up') {
       this.#pressed.delete(key);
+      if (this.#windowKeys.has(key)) this.#releasedWindowKeys.add(key);
       if (this.#seededHoldKeys.has(key)) {
         this.#seededHoldKeys.delete(key);
         this.#windowKeys.delete(key);
+        this.#releasedWindowKeys.delete(key);
         this.#pressOrder.delete(key);
         this.#holdState = undefined;
       }
 
-      if (this.#pending?.input.physicalKeys.map(resolveKeyId).includes(key)) {
+      if (
+        this.#pending?.input.physicalKeys.map(resolveKeyId).includes(key)
+        && !this.#hasPotentialExtension(this.#pending)
+      ) {
         recognized.push(this.#commit(this.#pending));
       }
 
@@ -145,6 +151,7 @@ export class TypingInputEngine {
 
     this.#pressed.add(key);
     this.#windowKeys.add(key);
+    this.#releasedWindowKeys.delete(key);
     this.#pressOrder.set(key, this.#nextOrder);
     this.#nextOrder += 1;
 
@@ -167,6 +174,7 @@ export class TypingInputEngine {
   reset(): void {
     this.#pressed.clear();
     this.#windowKeys.clear();
+    this.#releasedWindowKeys.clear();
     this.#pressOrder.clear();
     this.#seededHoldKeys.clear();
     this.#nextOrder = 1;
@@ -241,7 +249,10 @@ export class TypingInputEngine {
     if (!isSubset(active, physical)) return false;
 
     return candidate.input.requirements.every((requirement) => {
-      if (requirement.kind === 'overlap') return true;
+      if (requirement.kind === 'overlap') {
+        return canonicalKeys(requirement.keys)
+          .every((key) => !this.#releasedWindowKeys.has(key));
+      }
 
       const before = canonicalKeys(requirement.before).map((key) => order.get(key));
       const after = canonicalKeys(requirement.after).map((key) => order.get(key));
@@ -296,6 +307,7 @@ export class TypingInputEngine {
 
   #resetRecognitionWindow(): void {
     this.#windowKeys.clear();
+    this.#releasedWindowKeys.clear();
     this.#pressOrder.clear();
     this.#seededHoldKeys.clear();
     this.#nextOrder = 1;
