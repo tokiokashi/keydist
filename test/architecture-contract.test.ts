@@ -39,6 +39,20 @@ async function structuralAnalysisSources() {
   })));
 }
 
+async function inputConverterCoreSources() {
+  const paths = await tsFiles(join(SRC, 'core', 'input-converter'));
+  return Promise.all(paths.map(async (path) => ({
+    path,
+    source: await readFile(path, 'utf8'),
+  })));
+}
+
+function isAllowedInputConverterCoreModule(specifier: string): boolean {
+  return /^\.\/[^/]+\.ts$/.test(specifier)
+    || specifier === '../semantic-input/index.ts'
+    || specifier === '../../geometry.ts';
+}
+
 function isAllowedStructuralAnalysisModule(specifier: string): boolean {
   return specifier === './geometry.ts'
     || specifier === './evaluate.ts'
@@ -122,6 +136,49 @@ test('realization policy consumerはsemantic core public entryをauthorityにす
       );
     }
   }
+});
+
+test('Input Converter coreはSemanticInput public APIを再利用しframework / DOMへ依存しない', async () => {
+  const sources = await inputConverterCoreSources();
+  const platformGlobalPatterns = [
+    /\b(?:window|document|navigator|localStorage|sessionStorage)\s*\./,
+    /\btypeof\s+(?:window|document|navigator)\b/,
+    /\b(?:Window|Document|Navigator|HTMLElement|KeyboardEvent|MutationObserver|ResizeObserver)\b/,
+    /\b(?:D1Database|KVNamespace|R2Bucket|DurableObject)\b/,
+  ];
+
+  assert.ok(sources.length > 0, 'input converter core source must exist');
+  for (const { path, source } of sources) {
+    for (const specifier of moduleSpecifiers(source)) {
+      assert.equal(
+        isAllowedInputConverterCoreModule(specifier),
+        true,
+        `${relative(ROOT, path)} imports outside input-converter core boundary: ${specifier}`,
+      );
+    }
+    for (const pattern of platformGlobalPatterns) {
+      assert.doesNotMatch(
+        source,
+        pattern,
+        `${relative(ROOT, path)} must stay independent from browser / Cloudflare platform globals`,
+      );
+    }
+  }
+
+  const engineSource = await readFile(
+    join(SRC, 'core', 'input-converter', 'typing-input-engine.ts'),
+    'utf8',
+  );
+  assert.match(
+    engineSource,
+    /from ['"]\.\.\/semantic-input\/index\.ts['"]/,
+    'Input Converter must reuse the SemanticInput / realization public entry',
+  );
+  assert.doesNotMatch(
+    engineSource,
+    /layouts\//,
+    'Input Converter core must not reinterpret Layout Face authoring metadata',
+  );
 });
 
 test('canonical semantic / structural analysis coreはframework / platform APIへ依存しない', async () => {
