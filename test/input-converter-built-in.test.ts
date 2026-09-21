@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TypingInputEngine } from '../src/core/input-converter/index.ts';
 import { browserKeyboardEventToPhysicalKeyEvent } from '../src/features/input-converter/browser-keyboard-adapter.ts';
+import { SHIN_JIS_SIMULTANEOUS } from '../src/layouts/shin-jis.ts';
 import { TSUKI_2_263 } from '../src/layouts/tsuki-2-263.ts';
 
 const physical = (
@@ -31,5 +32,26 @@ test('built-in月配列をbrowser adapter経由でprefix入力できる', () => 
   assert.deepEqual(
     engine.handle(physical('keydown', 'KeyH')).recognized.map((entry) => entry.output),
     ['ま'],
+  );
+});
+
+
+test('built-in新JIS通常シフトをbrowser adapter経由でhold入力できる', () => {
+  const engine = new TypingInputEngine(SHIN_JIS_SIMULTANEOUS.canonicalInputs, {
+    triggerRealizationPolicy: { useHold: true },
+  });
+
+  assert.deepEqual(engine.handle(physical('keydown', 'Space')).recognized, []);
+  assert.deepEqual(
+    engine.handle(physical('keydown', 'KeyH')).recognized.map((entry) => entry.output),
+    ['ま'],
+  );
+  engine.handle(physical('keyup', 'KeyH'));
+
+  const continued = engine.handle(physical('keydown', 'KeyJ')).recognized;
+  assert.deepEqual(continued.map((entry) => entry.output), ['お']);
+  assert.deepEqual(
+    continued[0].actions.map((action) => action.heldKeys),
+    [['thumb-r']],
   );
 });
