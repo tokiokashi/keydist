@@ -129,13 +129,29 @@ test('results viewはFace semantic authoring metadataへ依存しない', async 
   );
 });
 
-test('key pattern pickerはinputRoleからpresentation layer帰属を再推測しない', async () => {
+test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityにする', async () => {
   const source = await readFile(join(SRC, 'key-pattern-picker.ts'), 'utf8');
+
+  const matrixStart = source.indexOf('export function buildKeyPatternMatrix');
+  const matrixEnd = source.indexOf('function exactAllowedByOrder', matrixStart);
+  assert.ok(matrixStart >= 0 && matrixEnd > matrixStart, 'key pattern matrix section must remain discoverable');
+  const matrixSource = source.slice(matrixStart, matrixEnd);
+
+  assert.doesNotMatch(
+    matrixSource,
+    /layout\.map\b|layout\.faces\b|face\.mode\b|face\.triggerOrder\b|\bfaceCells\b/,
+    'key-pattern matching must use canonicalInputs instead of reconstructing activation from authoring Face/map',
+  );
+  assert.match(
+    matrixSource,
+    /layout\.canonicalInputs/,
+    'key-pattern matching must read canonicalInputs',
+  );
 
   assert.doesNotMatch(
     source,
     /face\.inputRole\b/,
-    'key-pattern-picker must use faceLayerIds for presentation layer membership',
+    'key-pattern picker must use faceLayerIds for presentation layer membership',
   );
 });
 

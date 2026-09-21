@@ -137,7 +137,10 @@ export type ComboDefinition = [
 export interface ResolvedComboDefinition {
   output: string;
   inputs: readonly string[];
+  /** authoring defaultとして表示に使う先頭physical path。 */
   keys: readonly string[];
+  /** 同じlogical comboを成立させる全physical path。presentation provenance用。 */
+  keyVariants?: readonly (readonly string[])[];
   condition?: ComboCondition;
   group?: string;
   foldTriggerInputs?: readonly string[];
@@ -754,6 +757,8 @@ export function withCombos(
     ).values()];
     const keys = uniqueCombinations[0].keys;
     const resolvedKeys = keys.map(resolveKeyId);
+    const resolvedKeyVariants = uniqueCombinations.map((combination) =>
+      combination.keys.map(resolveKeyId));
     const foldTriggerInputs = presentation?.foldTriggerInputs;
     const foldTriggerKeys = foldTriggerInputs?.map((ch) => layout.map.get(ch)?.[0]?.[0])
       .filter((key): key is string => key !== undefined)
@@ -768,6 +773,7 @@ export function withCombos(
       output,
       inputs: [...inputs],
       keys: resolvedKeys,
+      ...(resolvedKeyVariants.length <= 1 ? {} : { keyVariants: resolvedKeyVariants }),
       ...(condition === undefined ? {} : { condition }),
       ...(presentation?.group === undefined ? {} : { group: presentation.group }),
       ...(foldTriggerInputs === undefined ? {} : { foldTriggerInputs: [...foldTriggerInputs] }),

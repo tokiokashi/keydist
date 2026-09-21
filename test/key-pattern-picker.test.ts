@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveKeyId } from '../src/geometry.ts';
-import { COMBO_LAYER_ID, faceFromEntries, LAYOUT_BY_ID } from '../src/layouts/index.ts';
+import { COMBO_LAYER_ID, faceFromEntries, fromFaces, LAYOUT_BY_ID, withCombos } from '../src/layouts/index.ts';
 import type { Face, Layout } from '../src/layouts/index.ts';
+import { compileSequenceInputAlternative } from '../src/core/semantic-input/index.ts';
 import {
   allTriggerKeys,
   buildKeyPatternMatrix,
@@ -22,49 +23,85 @@ function stubLayout(overrides: Partial<Layout>): Layout {
   };
 }
 
+function compiledFaces(...faces: Face[]): Layout {
+  return fromFaces(
+    'stub',
+    'stub',
+    faces.map((face): Face => ({
+      ...face,
+      inputRole: face.inputRole ?? 'layer',
+      ...(face.trigger.length > 0 && face.triggerPersistence === undefined
+        ? { triggerPersistence: 'single' as const }
+        : {}),
+    })),
+  );
+}
+
+function directCanonical(output: string, key: string): Layout {
+  return stubLayout({
+    canonicalInputs: new Map([
+      [output, [compileSequenceInputAlternative(output, [[key]], 'single')]],
+    ]),
+  });
+}
+
+function comboCanonical(output: string, keys: readonly string[], group?: string): Layout {
+  return stubLayout({
+    canonicalInputs: new Map([
+      [output, [
+        compileSequenceInputAlternative(
+          output,
+          [keys],
+          COMBO_LAYER_ID,
+          ['composition'],
+          [],
+          'combo',
+        ),
+      ]],
+    ]),
+    resolvedComboDefinitions: [
+      { output, inputs: [...keys], keys: [...keys], ...(group === undefined ? {} : { group }) },
+    ],
+  });
+}
+
 test('buildKeyPatternMatrix: 単キーtrigger + 文字キーを物理キー集合へ展開する', () => {
   const face = faceFromEntries(['j'], 'simultaneous', { r: 'じ' });
-  const layout = stubLayout({ faces: [face] });
+  const layout = compiledFaces(face);
   const match = buildKeyPatternMatrix(layout).find((entry) => entry.output === 'じ');
   assert.deepEqual(match, {
     output: 'じ',
     keys: ['j', 'r'],
-    triggerKeys: ['j'],
   });
 });
 
 test('buildKeyPatternMatrix: 複数trigger + 文字キーも同じ表へ展開する', () => {
   const face = faceFromEntries(['h', 'j'], 'simultaneous', { r: 'じゃ' });
-  const layout = stubLayout({ faces: [face] });
+  const layout = compiledFaces(face);
   const match = buildKeyPatternMatrix(layout).find((entry) => entry.output === 'じゃ');
   assert.deepEqual(match, {
     output: 'じゃ',
     keys: ['h', 'j', 'r'],
-    triggerKeys: ['h', 'j'],
   });
 });
 
 test('buildKeyPatternMatrix: 1キー直接入力もexact判定用に含める', () => {
-  const layout = stubLayout({ map: new Map([['か', [['s']]]]) });
+  const layout = directCanonical('か', 's');
   const matrix = buildKeyPatternMatrix(layout);
   assert.deepEqual(matrix, [{ output: 'か', keys: ['s'] }]);
   assert.deepEqual(matchKeyPatterns(layout, new Set(['s'])).exact.map((match) => match.output), ['か']);
 });
 
 test('buildKeyPatternMatrix: resolvedComboDefinitionsも同じ表へ入れる', () => {
-  const layout = stubLayout({
-    resolvedComboDefinitions: [
-      { output: 'ye', inputs: ['i', 'e'], keys: ['k', 'd'], group: '拗音拡張' },
-    ],
-  });
+  const layout = comboCanonical('ye', ['k', 'd'], '拗音拡張');
   assert.deepEqual(buildKeyPatternMatrix(layout), [
-    { output: 'ye', group: '拗音拡張', keys: ['k', 'd'] },
+    { output: 'ye', group: '拗音拡張', keys: ['d', 'k'] },
   ]);
 });
 
 test('matchKeyPatterns: レイヤー出力はtrigger + 文字キーの完全一致でexactになる', () => {
   const face = faceFromEntries(['j'], 'simultaneous', { r: 'じ' });
-  const layout = stubLayout({ faces: [face] });
+  const layout = compiledFaces(face);
   const result = matchKeyPatterns(layout, new Set(['j', 'r']));
   assert.deepEqual(result.exact.map((match) => match.output), ['じ']);
   assert.equal(result.candidates.size, 0);
@@ -72,14 +109,14 @@ test('matchKeyPatterns: レイヤー出力はtrigger + 文字キーの完全一�
 
 test('matchKeyPatterns: simultaneousはどちら側から選んでも1キー先を候補にできる', () => {
   const face = faceFromEntries(['j'], 'simultaneous', { r: 'じ' });
-  const layout = stubLayout({ faces: [face] });
+  const layout = compiledFaces(face);
   assert.equal(matchKeyPatterns(layout, new Set(['j'])).candidates.get('r')?.[0].output, 'じ');
   assert.equal(matchKeyPatterns(layout, new Set(['r'])).candidates.get('j')?.[0].output, 'じ');
 });
 
 test('matchKeyPatterns: prefixはtriggerを先に選んだ時だけ出力キーを候補にする', () => {
   const face = faceFromEntries(['d'], 'prefix', { j: 'お' });
-  const layout = stubLayout({ faces: [face] });
+  const layout = compiledFaces(face);
 
   const triggerFirst = matchKeyPatterns(layout, new Set(['d']));
   assert.equal(triggerFirst.candidates.get('j')?.[0].output, 'お');
@@ -90,7 +127,7 @@ test('matchKeyPatterns: prefixはtriggerを先に選んだ時だけ出力キー�
 
 test('matchKeyPatterns: prefixのexactもtrigger先押しの選択順だけ成立する', () => {
   const face = faceFromEntries(['d'], 'prefix', { j: 'お' });
-  const layout = stubLayout({ faces: [face] });
+  const layout = compiledFaces(face);
 
   const valid = matchKeyPatterns(layout, new Set(['d', 'j']));
   assert.ok(valid.exact.some((match) => match.output === 'お'));
@@ -101,7 +138,7 @@ test('matchKeyPatterns: prefixのexactもtrigger先押しの選択順だけ成�
 
 test('matchKeyPatterns: 2キー以上先の出力はまだ候補表示しない', () => {
   const face = faceFromEntries(['h', 'j'], 'simultaneous', { r: 'じゃ' });
-  const layout = stubLayout({ faces: [face] });
+  const layout = compiledFaces(face);
   const result = matchKeyPatterns(layout, new Set(['j']));
   assert.equal(result.exact.length, 0);
   assert.equal(result.candidates.size, 0);
@@ -113,22 +150,52 @@ test('matchKeyPatterns: exactがあっても1キー追加で成立する上位�
     ...faceFromEntries(['h', 'j'], 'simultaneous', { r: 'じゃ' }),
     inputRole: 'composition' as const,
   };
-  const layout = stubLayout({ faces: [dakuon, youon] });
+  const layout = compiledFaces(dakuon, youon);
   const result = matchKeyPatterns(layout, new Set(['j', 'r']));
   assert.deepEqual(result.exact.map((match) => match.output), ['じ']);
   assert.equal(result.candidates.get('h')?.[0].output, 'じゃ');
 });
 
 test('matchKeyPatterns: resolvedComboDefinitionsもexact/candidateの両方で見る', () => {
-  const layout = stubLayout({
-    resolvedComboDefinitions: [
-      { output: 'ye', inputs: ['i', 'e'], keys: ['k', 'd'], group: '拗音拡張' },
-    ],
-  });
+  const layout = comboCanonical('ye', ['k', 'd'], '拗音拡張');
   const exact = matchKeyPatterns(layout, new Set(['k', 'd']));
   assert.equal(exact.exact[0]?.output, 'ye');
   const partial = matchKeyPatterns(layout, new Set(['k']));
   assert.equal(partial.candidates.get('d')?.[0].output, 'ye');
+});
+
+test('buildKeyPatternMatrix: combo groupは全canonical physical variantsへ保持する', () => {
+  const base = stubLayout({
+    map: new Map([
+      ['i', [['k']]],
+      ['e', [['d']]],
+    ]),
+    canonicalInputs: new Map([
+      ['i', [
+        compileSequenceInputAlternative('i', [['k']], 'single'),
+        compileSequenceInputAlternative('i', [['x']], 'single'),
+      ]],
+      ['e', [compileSequenceInputAlternative('e', [['d']], 'single')]],
+    ]),
+  });
+  const layout = withCombos(
+    'combo-variants',
+    'combo-variants',
+    base,
+    [['ye', ['i', 'e'], undefined, { group: '拗音拡張' }]],
+  );
+
+  const definition = layout.resolvedComboDefinitions?.find((combo) => combo.output === 'ye');
+  assert.deepEqual(definition?.keyVariants, [['k', 'd'], ['x', 'd']]);
+
+  const matches = buildKeyPatternMatrix(layout).filter((match) => match.output === 'ye');
+  assert.deepEqual(
+    matches.map((match) => ({ keys: match.keys, group: match.group })),
+    [
+      { keys: ['d', 'k'], group: '拗音拡張' },
+      { keys: ['d', 'x'], group: '拗音拡張' },
+    ],
+  );
 });
 
 test('matchKeyPatterns: TK音直でi選択後、eの物理キーにyeを表示できる', () => {
@@ -186,7 +253,7 @@ test('matchKeyPatterns: 薙刀式Spaceも先押しした時だけセンターシ
 });
 
 test('matchKeyPatterns: 選択が空なら何も返らない', () => {
-  const layout = stubLayout({ map: new Map([['あ', [['j']]]]) });
+  const layout = directCanonical('あ', 'j');
   const result = matchKeyPatterns(layout, new Set());
   assert.equal(result.exact.length, 0);
   assert.equal(result.candidates.size, 0);
@@ -194,7 +261,7 @@ test('matchKeyPatterns: 選択が空なら何も返らない', () => {
 
 test('matchKeyPatterns: 選択が定義外キーを含む場合は一致しない', () => {
   const face = faceFromEntries(['j'], 'simultaneous', { r: 'じ' });
-  const layout = stubLayout({ faces: [face] });
+  const layout = compiledFaces(face);
   const result = matchKeyPatterns(layout, new Set(['j', 'z']));
   assert.equal(result.exact.length, 0);
   assert.equal(result.candidates.size, 0);
@@ -208,12 +275,24 @@ test('summarizeCandidateMatches: 複数候補も畳まず全部並べる', () =>
   assert.equal(summarizeCandidateMatches(matches), 'あ / い');
 });
 
-test('allTriggerKeys: FaceのtriggerとresolvedComboの物理キーを両方拾う', () => {
+test('allTriggerKeys: canonical realizationのtriggerとcombo物理キーを両方拾う', () => {
   const face = faceFromEntries(['j'], 'simultaneous', { k: 'あ' });
-  const layout = stubLayout({
-    faces: [face],
-    resolvedComboDefinitions: [{ output: 'x', inputs: ['a', 'b'], keys: ['l', ';'] }],
-  });
+  const faceLayout = compiledFaces(face);
+  const combo = compileSequenceInputAlternative(
+    'x',
+    [['l', ';']],
+    COMBO_LAYER_ID,
+    ['composition'],
+    [],
+    'combo',
+  );
+  const layout = {
+    ...faceLayout,
+    canonicalInputs: new Map([
+      ...faceLayout.canonicalInputs,
+      ['x', [combo]] as const,
+    ]),
+  };
   const keys = allTriggerKeys(layout);
   assert.ok(keys.has('j'));
   assert.ok(keys.has('l'));
@@ -230,6 +309,19 @@ test('findActiveLayerFace: 単キーtriggerだけを選択した時はその面�
   assert.equal(findActiveLayerFace(layout, new Set()), undefined);
   assert.equal(findActiveLayerFace(layout, new Set(['z'])), undefined);
   assert.equal(findActiveLayerFace(layout, new Set(['f', 'j'])), undefined);
+});
+
+test('findActiveLayerFace: presentationTriggerKeysのphysical alternativeも同じFaceへ帰属する', () => {
+  const shiftFace: Face = {
+    ...faceFromEntries(['space'], 'simultaneous', { j: 'あ' }),
+    presentationTriggerKeys: ['thumb-l', 'thumb-r'],
+  };
+  const layout = stubLayout({
+    faces: [shiftFace],
+    faceLayerIds: new Map([[shiftFace, 'layer:SandS']]),
+  });
+  assert.equal(findActiveLayerFace(layout, new Set(['thumb-l'])), shiftFace);
+  assert.equal(findActiveLayerFace(layout, new Set(['thumb-r'])), shiftFace);
 });
 
 test('findActiveLayerFace: 複数キーtriggerはレイヤーとして扱わない', () => {

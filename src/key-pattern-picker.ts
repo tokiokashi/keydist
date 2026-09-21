@@ -1,15 +1,16 @@
 import { resolveKeyId } from './geometry.ts';
-import { faceCells } from './layers.ts';
+import { displayTriggerKeys } from './layers.ts';
+import type { Requirement } from './core/semantic-input/types.ts';
 import { COMBO_LAYER_ID, type Face, type Layout } from './layouts/types.ts';
+
+type OrderRequirement = Extract<Requirement, { kind: 'order' }>;
 
 export interface KeyPatternMatch {
   output: string;
   group?: string;
   keys: readonly string[];
-  /** Face由来のtriggerキー。順序制約の判定に使う。 */
-  triggerKeys?: readonly string[];
-  /** triggerが出力キーより先/後である必要がある場合の順序制約。 */
-  triggerOrder?: 'prefix' | 'suffix';
+  /** canonical Requirementから取り出した押下順序制約。 */
+  orderRequirements?: readonly OrderRequirement[];
 }
 
 export interface KeyPatternResult {
@@ -24,76 +25,59 @@ const isSubset = (subset: ReadonlySet<string>, superset: ReadonlySet<string>): b
 
 const uniqueKeys = (keys: readonly string[]): string[] => [...new Set(keys.map(resolveKeyId))];
 
-function faceTriggerOrder(face: Face): 'prefix' | 'suffix' | undefined {
-  if (face.triggerOrder !== undefined) return face.triggerOrder;
-  if (face.mode === 'prefix' || face.mode === 'suffix') return face.mode;
-  return undefined;
+const keySignature = (keys: readonly string[]): string =>
+  [...new Set(keys.map(resolveKeyId))].sort().join('\u0000');
+
+function comboGroupForCanonicalPath(
+  layout: Layout,
+  output: string,
+  keys: readonly string[],
+): string | undefined {
+  const signature = keySignature(keys);
+  return layout.resolvedComboDefinitions?.find((combo) =>
+    combo.output === output
+    && (combo.keyVariants ?? [combo.keys]).some((keys) => keySignature(keys) === signature)
+  )?.group;
 }
 
 /**
- * 表示用に、直接入力・レイヤー・composition Face・withCombosをすべて
- * 「物理キー集合 -> 出力」のフラットな表へ展開する。
+ * canonical input pathを「物理キー集合 -> 出力」の表示用マトリクスへ展開する。
  *
- * triggerなしの1キー直接入力もexact判定へ含める。これにより、かな配列で
- * 単打がすでに確定している状態と、未確定の途中状態を区別できる。
+ * pickerは1 SemanticInputで完結するpathだけを扱う。複数stepのsequence/composed
+ * pathは従来同様このUIの対象外。押下順序はFaceModeを再解釈せずRequirement.orderを使う。
  */
 export function buildKeyPatternMatrix(layout: Layout): readonly KeyPatternMatch[] {
   const matrix: KeyPatternMatch[] = [];
   const seen = new Set<string>();
 
-  const add = (
-    keys: readonly string[],
-    output: string,
-    options: {
-      group?: string;
-      triggerKeys?: readonly string[];
-      triggerOrder?: 'prefix' | 'suffix';
-    } = {},
-  ) => {
-    if (output === '') return;
-    const normalized = uniqueKeys(keys);
-    if (normalized.length === 0) return;
-    const triggerKeys = options.triggerKeys === undefined
-      ? undefined
-      : uniqueKeys(options.triggerKeys);
-    const signature = [
-      [...normalized].sort().join('\u0000'),
-      output,
-      options.group ?? '',
-      triggerKeys === undefined ? '' : [...triggerKeys].sort().join('\u0000'),
-      options.triggerOrder ?? '',
-    ].join('\u0001');
-    if (seen.has(signature)) return;
-    seen.add(signature);
-    matrix.push({
-      output,
-      ...(options.group === undefined ? {} : { group: options.group }),
-      keys: normalized,
-      ...(triggerKeys === undefined ? {} : { triggerKeys }),
-      ...(options.triggerOrder === undefined ? {} : { triggerOrder: options.triggerOrder }),
-    });
-  };
+  for (const [output, alternatives] of layout.canonicalInputs) {
+    for (const alternative of alternatives) {
+      if (alternative.semanticInputs.length !== 1) continue;
+      const input = alternative.semanticInputs[0];
+      if (input.physicalKeys.length === 0) continue;
 
-  // 1キーで完結する直接入力。空選択時には照合しないため、候補表示を増やさず
-  // 「すでに確定している」状態の判定だけに使える。
-  for (const [output, sequence] of layout.map) {
-    if (sequence.length !== 1) continue;
-    const keys = uniqueKeys(sequence[0]);
-    if (keys.length !== 1) continue;
-    add(keys, output);
-  }
+      const keys = uniqueKeys(input.physicalKeys);
+      const orderRequirements = input.requirements
+        .filter((requirement): requirement is OrderRequirement => requirement.kind === 'order');
+      const group = alternative.origin === 'combo'
+        ? comboGroupForCanonicalPath(layout, output, keys)
+        : undefined;
+      const signature = [
+        keySignature(keys),
+        output,
+        group ?? '',
+        JSON.stringify(orderRequirements),
+      ].join('\u0001');
+      if (seen.has(signature)) continue;
+      seen.add(signature);
 
-  for (const face of layout.faces ?? []) {
-    if (face.trigger.length === 0) continue;
-    const triggerKeys = face.trigger.map(resolveKeyId);
-    const triggerOrder = faceTriggerOrder(face);
-    for (const [key, output] of faceCells(face)) {
-      add([...triggerKeys, key], output, { triggerKeys, triggerOrder });
+      matrix.push({
+        output,
+        ...(group === undefined ? {} : { group }),
+        keys,
+        ...(orderRequirements.length === 0 ? {} : { orderRequirements }),
+      });
     }
-  }
-
-  for (const combo of layout.resolvedComboDefinitions ?? []) {
-    add(combo.keys, combo.output, { group: combo.group });
   }
 
   return matrix;
@@ -103,21 +87,17 @@ function exactAllowedByOrder(
   match: KeyPatternMatch,
   selected: ReadonlySet<string>,
 ): boolean {
-  if (match.triggerOrder === undefined || match.triggerKeys === undefined) return true;
+  if (match.orderRequirements === undefined) return true;
 
-  const triggers = new Set(match.triggerKeys);
   const ordered = [...selected];
-  const triggerPositions = ordered
-    .map((key, index) => triggers.has(key) ? index : -1)
-    .filter((index) => index >= 0);
-  const outputPositions = ordered
-    .map((key, index) => !triggers.has(key) ? index : -1)
-    .filter((index) => index >= 0);
-  if (triggerPositions.length === 0 || outputPositions.length === 0) return true;
-
-  return match.triggerOrder === 'prefix'
-    ? Math.max(...triggerPositions) < Math.min(...outputPositions)
-    : Math.min(...triggerPositions) > Math.max(...outputPositions);
+  return match.orderRequirements.every((requirement) => {
+    const beforePositions = requirement.before.map((key) => ordered.indexOf(key));
+    const afterPositions = requirement.after.map((key) => ordered.indexOf(key));
+    if (beforePositions.some((index) => index < 0) || afterPositions.some((index) => index < 0)) {
+      return false;
+    }
+    return Math.max(...beforePositions) < Math.min(...afterPositions);
+  });
 }
 
 function candidateAllowedByOrder(
@@ -125,16 +105,8 @@ function candidateAllowedByOrder(
   selected: ReadonlySet<string>,
   missing: string,
 ): boolean {
-  if (match.triggerOrder === undefined || match.triggerKeys === undefined) return true;
-
-  const triggers = new Set(match.triggerKeys);
-  if (match.triggerOrder === 'prefix') {
-    // prefixはtriggerを先に選び切った後で、出力キーだけを候補にする。
-    return !triggers.has(missing) && [...selected].every((key) => triggers.has(key));
-  }
-
-  // suffixは出力キーを先に選んだ後で、trigger側だけを候補にする。
-  return triggers.has(missing) && [...selected].some((key) => !triggers.has(key));
+  if (match.orderRequirements === undefined) return true;
+  return exactAllowedByOrder(match, new Set([...selected, missing]));
 }
 
 /**
@@ -197,18 +169,26 @@ export function findActiveLayerFace(layout: Layout, selected: ReadonlySet<string
       throw new Error('Face表示には全FaceのfaceLayerIds明示が必要');
     }
     if (layerId === COMBO_LAYER_ID || face.trigger.length !== 1) return false;
-    return selected.has(resolveKeyId(face.trigger[0]));
+    return displayTriggerKeys(face).some((key) => selected.has(key));
   });
 }
 
 /** ガイド表示用: 配列が持つ全triggerキー（層操作・コンボ問わず）の物理キーid集合。 */
+/** ガイド表示用: canonical pathが持つtriggerキー集合。 */
 export function allTriggerKeys(layout: Layout): ReadonlySet<string> {
   const keys = new Set<string>();
-  for (const face of layout.faces ?? []) {
-    for (const trigger of face.trigger) keys.add(resolveKeyId(trigger));
-  }
-  for (const combo of layout.resolvedComboDefinitions ?? []) {
-    for (const key of combo.keys) keys.add(key);
+  for (const alternatives of layout.canonicalInputs.values()) {
+    for (const alternative of alternatives) {
+      for (const realization of alternative.baseRealizations) {
+        for (const key of realization.defaultTriggerKeys ?? []) keys.add(resolveKeyId(key));
+        for (const view of realization.alternateParticipations ?? []) {
+          for (const key of view.triggerKeys) keys.add(resolveKeyId(key));
+        }
+      }
+      if (alternative.origin === 'combo' && alternative.semanticInputs.length === 1) {
+        for (const key of alternative.semanticInputs[0].physicalKeys) keys.add(resolveKeyId(key));
+      }
+    }
   }
   return keys;
 }
