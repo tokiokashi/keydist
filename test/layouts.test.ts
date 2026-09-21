@@ -9,7 +9,7 @@ import { toLayout } from '../src/user-layouts.ts';
 import { assertKanaLayout, assertKanaLayoutFixture } from './kana-layout-helpers.ts';
 import {
   canFoldFaces,
-  classifyFaces,
+  classifyPresentationFaces,
   displayTriggerKeys,
   faceCells,
   faceDisplayCells,
@@ -73,7 +73,7 @@ test('Face semanticは推測せず明示を要求する', () => {
   const layout = fromFaces('multi-trigger-modifier', 'multi-trigger-modifier', [face]);
   assert.equal(layout.faceLayerIds?.get(face), 'face:0');
   assert.equal(layout.layerDefinitions?.some((definition) => definition.kind === 'combo'), false);
-  assert.deepEqual(classifyFaces(layout.faces!).combos, []);
+  assert.deepEqual(classifyPresentationFaces(layout).combos, []);
 });
 
 test('triggerless compositionはcanonicalとpresentationの両方でcomboへ帰属する', () => {
@@ -94,7 +94,7 @@ test('triggerless compositionはcanonicalとpresentationの両方でcomboへ帰�
     layout.layerDefinitions?.find((definition) => definition.id === 'combo'),
     { id: 'combo', kind: 'combo', label: 'コンボ' },
   );
-  assert.deepEqual(classifyFaces(layout.faces!).combos, [face]);
+  assert.deepEqual(classifyPresentationFaces(layout).combos, [face]);
 });
 
 test('出力を持つtrigger FaceはtriggerPersistence必須、空placeholderは許容する', () => {
@@ -183,6 +183,35 @@ test('面のセル配列は複数文字の見出しを1キーへ置ける', () =
   assert.equal(layout.maxCharLength, 2);
 });
 
+test('presentation分類はinputRoleではなくcompiled aggregation metadataをauthorityにする', () => {
+  const legacyComposition: Face = {
+    ...faceFromEntries(['f'], 'simultaneous', { j: 'あ' }),
+    inputRole: 'composition',
+  };
+  const mappedLayer = {
+    faces: [legacyComposition],
+    faceLayerIds: new Map([[legacyComposition, 'face:0']]),
+    layerDefinitions: [{ id: 'face:0', kind: 'layer' as const, label: '面 1' }],
+  };
+  const layerGroups = classifyPresentationFaces(mappedLayer);
+  assert.deepEqual(layerGroups.combos, []);
+  assert.deepEqual(layerGroups.layers.flatMap((group) => group.faces), [legacyComposition]);
+
+  const legacyModifier: Face = {
+    ...faceFromEntries(['d'], 'simultaneous', { k: 'い' }),
+    inputRole: 'modifier',
+  };
+  const mappedCombo = {
+    faces: [legacyModifier],
+    faceLayerIds: new Map([[legacyModifier, 'combo']]),
+    layerDefinitions: [{ id: 'combo', kind: 'combo' as const, label: 'コンボ' }],
+  };
+  const comboGroups = classifyPresentationFaces(mappedCombo);
+  assert.deepEqual(comboGroups.combos, [legacyModifier]);
+  assert.deepEqual(comboGroups.layers, []);
+  assert.deepEqual(comboGroups.modifiers, []);
+});
+
 test('Faceを持つLayoutは全FaceのfaceLayerIdsを明示する', () => {
   for (const layout of LAYOUTS_JA) {
     if (!layout.faces) continue;
@@ -204,7 +233,7 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
   const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
 
   const counts = [shingeta, tsuki, nicola, naginata].map((layout) => {
-    const groups = classifyFaces(layout.faces!);
+    const groups = classifyPresentationFaces(layout);
     return [layout.faces!.length, groups.layers.length, groups.modifiers.length, groups.combos.length];
   });
   assert.deepEqual(counts, [
@@ -231,7 +260,7 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
     [[[]], [['space']]],
   );
   assert.deepEqual(
-    classifyFaces(naginata.faces!).modifiers.map((layer) => layer.faces.map((face) => face.trigger)),
+    classifyPresentationFaces(naginata).modifiers.map((layer) => layer.faces.map((face) => face.trigger)),
     [[['q']], [['j'], ['f']], [['m'], ['v']], [['h']], [['p']], [['i']]],
   );
 
@@ -353,7 +382,7 @@ test('相互同時シフトは両トリガーを1回分の色として残す', (
 
 test('薙刀式の合算表示はスペースなし層のトリガーを単打側の色に残す', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
-  const base = classifyFaces(layout.faces!).layers[0];
+  const base = classifyPresentationFaces(layout).layers[0];
   const colors = normalizedLayerColors(base, {
       keyCounts: new Map([['j', 1], ['f', 1]]),
       triggerKeyCounts: new Map([['j', 1]]),
@@ -376,7 +405,7 @@ test('通常の層トリガーは残さず、薙刀式の濁音詳細も除外�
   assert.deepEqual([...normalColors], [['w', 1]]);
 
   const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
-  const modifiers = classifyFaces(naginata.faces!).modifiers;
+  const modifiers = classifyPresentationFaces(naginata).modifiers;
   const voiced = modifiers.find((layer) => layer.faces.some((face) => face.layer === '濁音'))!;
   const detailColors = normalizedLayerColors(voiced, {
     keyCounts: new Map([['j', 1], ['f', 1]]),
