@@ -16,11 +16,11 @@ const physical = (
 test('built-in月配列をbrowser adapter経由で単打入力できる', () => {
   const engine = new TypingInputEngine(TSUKI_2_263.canonicalInputs);
 
-  assert.deepEqual(engine.handle(physical('keydown', 'KeyH')).recognized, []);
   assert.deepEqual(
-    engine.handle(physical('keyup', 'KeyH')).recognized.map((entry) => entry.output),
+    engine.handle(physical('keydown', 'KeyH')).recognized.map((entry) => entry.output),
     ['く'],
   );
+  assert.deepEqual(engine.handle(physical('keyup', 'KeyH')).recognized, []);
 });
 
 test('built-in月配列をbrowser adapter経由でprefix入力できる', () => {
