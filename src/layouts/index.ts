@@ -42,7 +42,7 @@ export {
   withRomaji,
   withCombos,
 } from './types.ts';
-export { canFoldFaces, classifyFaces, faceCells, groupFacesIntoLayers, handOfKey } from '../layers.ts';
+export { faceCells, handOfKey } from '../layers.ts';
 export type { FaceGroups, Hand, Layer } from '../layers.ts';
 
 const ROMAJI = kunrei();
