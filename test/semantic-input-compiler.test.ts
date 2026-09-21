@@ -735,6 +735,15 @@ test('composition Faceはclassificationをcanonicalへ保持する', () => {
 });
 
 
+test('CanonicalInputMapは空alternative setをrejectする', () => {
+  assert.throws(
+    () => validateCanonicalInputMap(new Map([
+      ['あ', []],
+    ])),
+    /canonical input「あ」には1つ以上のalternativeが必要/,
+  );
+});
+
 test('CanonicalInputMapは異なるoutputの同一activationをrejectする', () => {
   assert.throws(
     () => fromKana('conflict', 'conflict', [
@@ -768,6 +777,37 @@ test('CanonicalInputMapはmutually exclusiveなorder pathを共存させる', ()
     face(['d'], 'prefix', { k: 'も' }),
     face(['k'], 'prefix', { d: 'ら' }),
   ]));
+});
+
+test('withComposedOutputsはcanonical sourceだけでsemantic compositionできる', () => {
+  const base = fromKana('canonical-only-composed', 'canonical-only-composed', [
+    ['か', [['f']]],
+    ['゛', [['j']]],
+  ]);
+  const map = new Map(base.map);
+  map.delete('か');
+  map.delete('゛');
+  const canonicalOnly = { ...base, map };
+
+  const layout = withComposedOutputs(
+    canonicalOnly,
+    { か: 'が' },
+    '゛',
+    'canonical-only',
+  );
+
+  const alternatives = layout.canonicalInputs.get('が');
+  assert.ok(alternatives);
+  assert.equal(alternatives.length, 1);
+  assert.deepEqual(
+    alternatives[0].semanticInputs.map((input) => input.physicalKeys),
+    [['f'], ['j']],
+  );
+  assert.equal(
+    layout.map.has('が'),
+    false,
+    'legacy map defaultが無くてもcanonical compositionは成立する',
+  );
 });
 
 test('withComposedOutputsは既存direct pathを失わずcomposed alternativeをappendする', () => {

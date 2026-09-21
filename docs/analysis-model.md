@@ -82,7 +82,7 @@ physical activation以外の成立条件は `InputAlternative.contextRequirement
 現在は `{ kind: 'youon-only' }` を持ち、logical output全体ではなくそのpathだけへ適用する。
 runtimeではまずcontext requirementを満たすalternativeだけをeligibleに絞り、1つも無ければ
 その見出し自体を不成立として短い見出しへfallbackする。その後にselection policyを適用する。
-`Layout.comboConditions` はlegacy/presentation provenanceであり、evaluate legalityのauthorityではない。
+`ResolvedComboDefinition.condition` はpresentation provenanceとして保持できるが、evaluate legalityのauthorityではない。runtime legalityはInputAlternative.contextRequirementsだけを見る。
 
 `preferOppositeThumb` はphysical key rewriteではなくalternative selection policyである。
 左右どちらの親指も合法なpathとしてauthoring時にcanonicalへ入り、policyがoutputと反対側の

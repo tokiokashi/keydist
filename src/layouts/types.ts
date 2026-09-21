@@ -185,12 +185,6 @@ export interface Layout {
    * かな配列は持たない。同じかなテキストを両者に食わせて比較できる。
    */
   romajiTable?: Map<string, string>;
-  /**
-   * legacy/presentation互換のoutput単位コンボ条件。
-   * canonical legalityはInputAlternative.contextRequirementsがauthorityであり、
-   * evaluateはこのMapから成立条件を再構成しない。
-   */
-  comboConditions?: ReadonlyMap<string, ComboCondition>;
   /** withCombos由来のコンボ定義。物理キーまで解決済みで、配列図等の表示にも使う。 */
   resolvedComboDefinitions?: readonly ResolvedComboDefinition[];
   /** 層・コンボの表示順と種別。 */
@@ -688,21 +682,21 @@ export function withComposedOutputs(
   mark: string,
   context = '合成出力',
 ): Layout {
-  const markSequence = layout.map.get(mark);
   const markAlternatives = layout.canonicalInputs.get(mark);
-  if (!markSequence || !markAlternatives) {
+  if (!markAlternatives) {
     throw new Error(`${context}の合成記号「${mark}」が未定義`);
   }
+  const markSequence = layout.map.get(mark);
 
   const map = new Map(layout.map);
   const canonicalInputs = cloneCanonicalInputs(layout.canonicalInputs);
 
   for (const [source, output] of Object.entries(entries)) {
-    const sourceSequence = layout.map.get(source);
     const sourceAlternatives = layout.canonicalInputs.get(source);
-    if (!sourceSequence || !sourceAlternatives) {
+    if (!sourceAlternatives) {
       throw new Error(`${context}の元出力「${source}」が未定義`);
     }
+    const sourceSequence = layout.map.get(source);
 
     const generated = sourceAlternatives.flatMap((sourceAlternative) =>
       markAlternatives.map((markAlternative) => ({
@@ -724,8 +718,9 @@ export function withComposedOutputs(
       appendCanonicalAlternative(canonicalInputs, output, alternative);
     }
 
-    // legacy/presentation metadataはauthoring上の先頭pathだけを保持する。
-    if (map.has(output)) continue;
+    // legacy/presentation mapは両componentにdefault sequenceがある場合だけ補完する。
+    // canonical composition自体の成立条件には使わない。
+    if (map.has(output) || !sourceSequence || !markSequence) continue;
 
     const sequence: Sequence = [
       ...sourceSequence.map((step) => [...step]),
@@ -761,7 +756,6 @@ export function withCombos(
   const map = new Map(layout.map);
   const canonicalInputs = cloneCanonicalInputs(layout.canonicalInputs);
   const layerDefinitions = [...(layout.layerDefinitions ?? [])];
-  const comboConditions = new Map(layout.comboConditions);
   const resolvedComboDefinitions: ResolvedComboDefinition[] = [...(layout.resolvedComboDefinitions ?? [])];
   let hasCombo = layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID);
   for (const [output, inputs, condition, presentation, classifications = []] of combos) {
@@ -846,7 +840,6 @@ export function withCombos(
     if (!map.has(output)) {
       const sequence: Sequence = [keys];
       map.set(output, sequence);
-      comboConditions.set(output, condition ?? {});
     }
     if (!hasCombo) {
       layerDefinitions.push({ id: COMBO_LAYER_ID, kind: 'combo', label: 'コンボ' });
@@ -860,7 +853,6 @@ export function withCombos(
     name,
     map,
     canonicalInputs,
-    comboConditions,
     resolvedComboDefinitions,
     layerDefinitions,
   };
