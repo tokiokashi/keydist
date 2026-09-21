@@ -42,8 +42,7 @@ async function structuralAnalysisSources() {
 function isAllowedStructuralAnalysisModule(specifier: string): boolean {
   return specifier === './geometry.ts'
     || specifier === './evaluate.ts'
-    || specifier === './trigger-realization.ts'
-    || specifier === './core/semantic-input/action-realization.ts'
+    || specifier === './core/semantic-input/index.ts'
     || /^\.\/analysis-[^/]+\.ts$/.test(specifier);
 }
 
@@ -60,6 +59,32 @@ test('structural analysisのimport先をsemantic / structural layerへ限定す�
         isAllowedStructuralAnalysisModule(specifier),
         true,
         `${relative(ROOT, path)} imports outside the allowed analysis dependency layer: ${specifier}`,
+      );
+    }
+  }
+});
+
+test('realization policy consumerはsemantic core public entryをauthorityにする', async () => {
+  const rootFiles = await readdir(SRC);
+  assert.equal(
+    rootFiles.includes('trigger-realization.ts'),
+    false,
+    'legacy root trigger-realization re-export must not return',
+  );
+
+  for (const path of await tsFiles(SRC)) {
+    if (path.includes(join('core', 'semantic-input'))) continue;
+    const source = await readFile(path, 'utf8');
+    for (const specifier of moduleSpecifiers(source)) {
+      assert.notEqual(
+        specifier,
+        './trigger-realization.ts',
+        `${relative(ROOT, path)} must import trigger realization policy from semantic core`,
+      );
+      assert.notEqual(
+        specifier,
+        './core/semantic-input/action-realization.ts',
+        `${relative(ROOT, path)} must use the semantic core public entry`,
       );
     }
   }
