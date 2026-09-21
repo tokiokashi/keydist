@@ -14,7 +14,7 @@ export default defineConfig({
       prerender: {
         enabled: true,
         autoStaticPathsDiscovery: true,
-        crawlLinks: true,
+        crawlLinks: false,
         failOnError: true,
       },
     }),
