@@ -39,20 +39,75 @@ async function structuralAnalysisSources() {
   })));
 }
 
-test('structural analysisのimport先をsemantic / structural layerへ限定する', async () => {
-  const allowedModule = (specifier: string) =>
-    specifier === './geometry.ts'
+function isAllowedStructuralAnalysisModule(specifier: string): boolean {
+  return specifier === './geometry.ts'
     || specifier === './evaluate.ts'
     || specifier === './trigger-realization.ts'
     || specifier === './core/semantic-input/action-realization.ts'
     || /^\.\/analysis-[^/]+\.ts$/.test(specifier);
+}
 
+function isAllowedSemanticCoreModule(specifier: string): boolean {
+  return /^\.\/[^/]+\.ts$/.test(specifier)
+    || specifier === '../../geometry.ts'
+    || specifier === '../../layouts/types.ts';
+}
+
+test('structural analysisのimport先をsemantic / structural layerへ限定する', async () => {
   for (const { path, source } of await structuralAnalysisSources()) {
     for (const specifier of moduleSpecifiers(source)) {
       assert.equal(
-        allowedModule(specifier),
+        isAllowedStructuralAnalysisModule(specifier),
         true,
         `${relative(ROOT, path)} imports outside the allowed analysis dependency layer: ${specifier}`,
+      );
+    }
+  }
+});
+
+test('canonical semantic / structural analysis coreはframework / platform APIへ依存しない', async () => {
+  const semanticCorePaths = await tsFiles(join(SRC, 'core', 'semantic-input'));
+  const semanticSources = await Promise.all(semanticCorePaths.map(async (path) => ({
+    path,
+    source: await readFile(path, 'utf8'),
+  })));
+  const analysisSources = await structuralAnalysisSources();
+
+  assert.equal(isAllowedSemanticCoreModule('../../results-view.ts'), false);
+  assert.equal(isAllowedSemanticCoreModule('./../../results-view.ts'), false);
+
+  for (const { path, source } of semanticSources) {
+    for (const specifier of moduleSpecifiers(source)) {
+      assert.equal(
+        isAllowedSemanticCoreModule(specifier),
+        true,
+        `${relative(ROOT, path)} imports outside the allowed semantic-core dependency layer: ${specifier}`,
+      );
+    }
+  }
+  for (const { path, source } of analysisSources) {
+    for (const specifier of moduleSpecifiers(source)) {
+      assert.equal(
+        isAllowedStructuralAnalysisModule(specifier),
+        true,
+        `${relative(ROOT, path)} imports outside the allowed analysis dependency layer: ${specifier}`,
+      );
+    }
+  }
+
+  const platformGlobalPatterns = [
+    /\b(?:window|document|navigator|localStorage|sessionStorage)\s*\./,
+    /\btypeof\s+(?:window|document|navigator)\b/,
+    /\b(?:Window|Document|Navigator|HTMLElement|MutationObserver|ResizeObserver)\b/,
+    /\b(?:D1Database|KVNamespace|R2Bucket|DurableObject)\b/,
+  ];
+
+  for (const { path, source } of [...semanticSources, ...analysisSources]) {
+    for (const pattern of platformGlobalPatterns) {
+      assert.doesNotMatch(
+        source,
+        pattern,
+        `${relative(ROOT, path)} must stay independent from browser / Cloudflare platform globals`,
       );
     }
   }
