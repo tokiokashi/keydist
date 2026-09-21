@@ -186,6 +186,16 @@ test('presentation consumerはLayer.orderの共通helperを使う', async () => 
     /\[\.\.\.groups\.layers,\s*\.\.\.groups\.modifiers\]/,
     'picker must not give layer-role aggregations implicit priority over modifier-role aggregations',
   );
+
+  const guideStart = resultsSource.indexOf('function pickerGuideColorMap');
+  const guideEnd = resultsSource.indexOf('function heatIntensity', guideStart);
+  assert.ok(guideStart >= 0 && guideEnd > guideStart, 'picker guide section must remain discoverable');
+  const guideSource = resultsSource.slice(guideStart, guideEnd);
+  assert.match(
+    guideSource,
+    /if \(!colors\.has\(key\)\) colors\.set\(key, stroke\)/,
+    'picker guide must preserve the first Layer.order attribution for duplicate triggers',
+  );
 });
 
 test('results picker guideは明示presentation trigger / combo variantsを使う', async () => {
