@@ -72,7 +72,7 @@ export interface Face {
   presentationTriggerKeys?: readonly string[];
   /** trigger集合の表示文言。physical key集合から導出不能な表記だけ明示する。 */
   presentationTriggerText?: string;
-  /** 入力方式・層のpresentation-only名称。semantic classificationには使わない。 */
+  /** 入力方式・層のpresentation-only名称。semantic classificationには使わない。composition Faceでは指定不可。 */
   presentationLabel?: string;
 }
 
@@ -303,9 +303,31 @@ export function fromFaces(
   const faceLayerIds = new Map<Face, string>();
   const canonicalInputs = new Map<string, InputAlternative[]>();
 
-  const addDefinition = (definition: LayerDefinition) => {
-    if (!layerDefinitions.some((entry) => entry.id === definition.id)) {
+  const explicitLayerLabels = new Map<string, string>();
+  const addDefinition = (definition: LayerDefinition, explicitLabel?: string) => {
+    const index = layerDefinitions.findIndex((entry) => entry.id === definition.id);
+    if (index < 0) {
       layerDefinitions.push(definition);
+      if (explicitLabel !== undefined) explicitLayerLabels.set(definition.id, explicitLabel);
+      return;
+    }
+
+    const existing = layerDefinitions[index];
+    if (existing.kind !== definition.kind) {
+      throw new Error(`aggregation「${definition.id}」のkindが競合している`);
+    }
+
+    const previousExplicit = explicitLayerLabels.get(definition.id);
+    if (explicitLabel !== undefined) {
+      if (previousExplicit !== undefined && previousExplicit !== explicitLabel) {
+        throw new Error(
+          `aggregation「${definition.id}」のpresentationLabelが競合している: ${previousExplicit} / ${explicitLabel}`,
+        );
+      }
+      if (previousExplicit === undefined) {
+        explicitLayerLabels.set(definition.id, explicitLabel);
+        layerDefinitions[index] = { ...existing, label: explicitLabel };
+      }
     }
   };
 
@@ -317,6 +339,11 @@ export function fromFaces(
       );
     }
     const isCombo = face.inputRole === 'composition';
+    if (isCombo && face.presentationLabel !== undefined) {
+      throw new Error(
+        `composition FaceではpresentationLabelを指定できない（face:${faceIndex}）`,
+      );
+    }
     const layerId = isCombo
       ? COMBO_LAYER_ID
       : trigger.length === 0
@@ -326,8 +353,10 @@ export function fromFaces(
     addDefinition({
       id: layerId,
       kind: isCombo ? 'combo' : 'layer',
-      label: isCombo ? 'コンボ' : face.layer ?? (trigger.length === 0 ? '単打' : `面 ${faceIndex + 1}`),
-    });
+      label: isCombo
+        ? 'コンボ'
+        : face.presentationLabel ?? face.layer ?? (trigger.length === 0 ? '単打' : `面 ${faceIndex + 1}`),
+    }, isCombo ? undefined : face.presentationLabel);
     face.rows.forEach((row, r) => {
       const cells = typeof row === 'string' ? [...row] : [...row];
       cells.forEach((output, c) => {

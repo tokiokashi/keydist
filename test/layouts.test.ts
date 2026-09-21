@@ -667,3 +667,88 @@ test('custom combo classificationはpresentation groupと独立してcanonical�
   assert.deepEqual(vocabulary.classifications, ['composition', 'vocabulary-extension']);
   assert.deepEqual(youon.classifications, ['composition', 'youon-extension']);
 });
+
+
+test('presentationLabelはcompiled layerDefinition labelへ保持される', () => {
+  const face: Face = {
+    ...faceFromEntries(['space'], 'simultaneous', { j: 'の' }),
+    inputRole: 'modifier',
+    triggerPersistence: 'single',
+    presentationLabel: 'Custom Shift',
+  };
+  const layout = fromFaces('presentation-label', 'presentation-label', [face]);
+  const layerId = layout.faceLayerIds?.get(face);
+  assert.ok(layerId);
+  assert.equal(
+    layout.layerDefinitions?.find((definition) => definition.id === layerId)?.label,
+    'Custom Shift',
+  );
+});
+
+
+test('同一aggregationのpresentationLabel conflictはFace順によらずrejectする', () => {
+  const left: Face = {
+    ...faceFromEntries(['d'], 'simultaneous', { j: '甲' }),
+    layer: 'X',
+    role: 'modifier',
+    inputRole: 'modifier',
+    triggerPersistence: 'single',
+    presentationLabel: 'Alpha',
+  };
+  const right: Face = {
+    ...faceFromEntries(['k'], 'simultaneous', { f: '乙' }),
+    layer: 'X',
+    role: 'modifier',
+    inputRole: 'modifier',
+    triggerPersistence: 'single',
+    presentationLabel: 'Beta',
+  };
+
+  for (const faces of [[left, right], [right, left]] as const) {
+    assert.throws(
+      () => fromFaces('presentation-label-conflict', 'presentation-label-conflict', faces),
+      /presentationLabelが競合している/,
+    );
+  }
+});
+
+test('同一aggregationで片側だけpresentationLabelなら順序によらずcompiled labelへ採用する', () => {
+  const explicit: Face = {
+    ...faceFromEntries(['d'], 'simultaneous', { j: '甲' }),
+    layer: 'X',
+    role: 'modifier',
+    inputRole: 'modifier',
+    triggerPersistence: 'single',
+    presentationLabel: 'Custom X',
+  };
+  const implicit: Face = {
+    ...faceFromEntries(['k'], 'simultaneous', { f: '乙' }),
+    layer: 'X',
+    role: 'modifier',
+    inputRole: 'modifier',
+    triggerPersistence: 'single',
+  };
+
+  for (const faces of [[explicit, implicit], [implicit, explicit]] as const) {
+    const layout = fromFaces('presentation-label-merge', 'presentation-label-merge', faces);
+    assert.equal(
+      layout.layerDefinitions?.find((definition) => definition.id === 'layer:X')?.label,
+      'Custom X',
+    );
+  }
+});
+
+
+test('composition FaceのpresentationLabelはsilent ignoreせずrejectする', () => {
+  const face: Face = {
+    ...faceFromEntries(['d'], 'simultaneous', { j: '甲' }),
+    inputRole: 'composition',
+    triggerPersistence: 'single',
+    presentationLabel: 'Custom Combo',
+  };
+
+  assert.throws(
+    () => fromFaces('composition-presentation-label', 'composition-presentation-label', [face]),
+    /composition FaceではpresentationLabelを指定できない/,
+  );
+});
