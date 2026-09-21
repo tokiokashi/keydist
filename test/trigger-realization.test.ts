@@ -4,7 +4,7 @@ import { buildGeometry } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { fromFaces } from '../src/layouts/index.ts';
-import { DEFAULT_TRIGGER_REALIZATION_POLICY } from '../src/trigger-realization.ts';
+import { DEFAULT_TRIGGER_REALIZATION_POLICY } from '../src/core/semantic-input/index.ts';
 
 const geometry = buildGeometry('row-staggered');
 
