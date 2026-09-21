@@ -1,7 +1,7 @@
 import type { PhysicalKeyEvent } from '../../core/input-converter/index.ts';
 
 export interface BrowserKeyboardEventLike {
-  readonly type: 'keydown' | 'keyup';
+  readonly type: string;
   readonly code: string;
   readonly repeat?: boolean;
   readonly isComposing?: boolean;
@@ -43,6 +43,7 @@ export function browserCodeToPhysicalKey(
 export function browserKeyboardEventToPhysicalKeyEvent(
   event: BrowserKeyboardEventLike,
 ): PhysicalKeyEvent | undefined {
+  if (event.type !== 'keydown' && event.type !== 'keyup') return undefined;
   if (event.isComposing) return undefined;
   if (event.ctrlKey || event.altKey || event.metaKey) return undefined;
   if (event.type === 'keydown' && event.repeat) return undefined;
