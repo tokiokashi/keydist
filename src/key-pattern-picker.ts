@@ -1,5 +1,5 @@
 import { resolveKeyId } from './geometry.ts';
-import { classifyPresentationFaces, displayTriggerKeys } from './layers.ts';
+import { classifyPresentationFaces, displayTriggerKeys, orderedPresentationLayers } from './layers.ts';
 import type { Requirement } from './core/semantic-input/types.ts';
 import type { Face, Layout } from './layouts/types.ts';
 
@@ -161,7 +161,7 @@ export function summarizeCandidateMatches(matches: readonly KeyPatternMatch[]): 
 export function findActiveLayerFace(layout: Layout, selected: ReadonlySet<string>): Face | undefined {
   if (selected.size !== 1 || !layout.faces) return undefined;
   const groups = classifyPresentationFaces(layout);
-  for (const layer of [...groups.layers, ...groups.modifiers]) {
+  for (const layer of orderedPresentationLayers(groups)) {
     for (const face of layer.faces) {
       if (face.trigger.length !== 1) continue;
       if (displayTriggerKeys(face).some((key) => selected.has(key))) return face;
