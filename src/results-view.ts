@@ -21,9 +21,8 @@ import {
 } from './ui-state.ts';
 import type { GeometrySettings } from './geometry-settings.ts';
 import { resolveConditions } from './condition-resolution.ts';
-import { classifyFaces, displayTriggerKeys, faceCells, faceDisplayCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
-import { SINGLE_LAYER_ID, faceFromEntries } from './layouts/index.ts';
-import type { Face, Layout } from './layouts/index.ts';
+import { classifyPresentationFaces, displayTriggerKeys, faceCells, faceDisplayCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
+import { SINGLE_LAYER_ID, faceFromEntries, type Face, type Layout } from './layouts/types.ts';
 import { findActiveLayerFace, matchKeyPatterns, summarizeCandidateMatches } from './key-pattern-picker.ts';
 import type { ModeId } from './layout-selection.ts';
 import type { PlaybackViewController } from './playback-view.ts';
@@ -1134,7 +1133,7 @@ function layerIdForFace(layout: Layout, face: Face): string {
   return layerId;
 }
 
-function orderedLayers(groups: ReturnType<typeof classifyFaces>, layout: Layout): Layer[] {
+function orderedLayers(groups: ReturnType<typeof classifyPresentationFaces>, layout: Layout): Layer[] {
   return [...groups.layers, ...groups.modifiers]
     .sort((first, second) => {
       const firstIndex = Math.min(...first.faces.map((face) => layout.faces?.indexOf(face) ?? Number.MAX_SAFE_INTEGER));
@@ -1244,7 +1243,7 @@ function renderHeatmap(
   geometry: ReturnType<typeof buildGeometry>,
 ) {
   const faces = layout.faces ?? [];
-  const groups = classifyFaces(faces);
+  const groups = classifyPresentationFaces(layout);
   const layers = orderedLayers(groups, layout);
   if (layers.length === 0) layers.push({ faces: [] });
   const entries = layerViewEntries(metrics, layout, layers);
