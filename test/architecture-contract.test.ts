@@ -113,6 +113,29 @@ test('alternative selection identityはcore helperをauthorityにする', async 
   }
 });
 
+test('composed outputのsemantic availabilityはcanonicalInputsをauthorityにする', async () => {
+  const source = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
+  const start = source.indexOf('export function withComposedOutputs');
+  const end = source.indexOf('/** ローマ字テーブルを付ける。', start);
+
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  const composedSource = source.slice(start, end);
+
+  assert.match(composedSource, /const markAlternatives = layout\.canonicalInputs\.get\(mark\)/);
+  assert.match(composedSource, /const sourceAlternatives = layout\.canonicalInputs\.get\(source\)/);
+  assert.doesNotMatch(
+    composedSource,
+    /if \(!markSequence \|\| !markAlternatives\)/,
+    'legacy map sequence must not gate canonical mark availability',
+  );
+  assert.doesNotMatch(
+    composedSource,
+    /if \(!sourceSequence \|\| !sourceAlternatives\)/,
+    'legacy map sequence must not gate canonical source availability',
+  );
+});
+
 test('logical output matching lengthはcanonicalInputsをauthorityにする', async () => {
   const evaluateSource = await readFile(join(SRC, 'evaluate.ts'), 'utf8');
   const layoutTypesSource = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
