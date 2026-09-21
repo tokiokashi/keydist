@@ -95,7 +95,7 @@ test('buildKeyPatternMatrix: 1キー直接入力もexact判定用に含める', 
 test('buildKeyPatternMatrix: resolvedComboDefinitionsも同じ表へ入れる', () => {
   const layout = comboCanonical('ye', ['k', 'd'], '拗音拡張');
   assert.deepEqual(buildKeyPatternMatrix(layout), [
-    { output: 'ye', group: '拗音拡張', keys: ['k', 'd'] },
+    { output: 'ye', group: '拗音拡張', keys: ['d', 'k'] },
   ]);
 });
 
