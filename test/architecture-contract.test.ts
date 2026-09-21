@@ -58,6 +58,49 @@ test('structural analysisのimport先をsemantic / structural layerへ限定す�
   }
 });
 
+test('canonical semantic / structural analysis coreはframework / platform APIへ依存しない', async () => {
+  const semanticCorePaths = await tsFiles(join(SRC, 'core', 'semantic-input'));
+  const sources = [
+    ...await Promise.all(semanticCorePaths.map(async (path) => ({
+      path,
+      source: await readFile(path, 'utf8'),
+    }))),
+    ...await structuralAnalysisSources(),
+  ];
+
+  const platformGlobalPatterns = [
+    /\bwindow\b/,
+    /\bdocument\b/,
+    /\bnavigator\b/,
+    /\blocalStorage\b/,
+    /\bsessionStorage\b/,
+    /\bHTMLElement\b/,
+    /\bMutationObserver\b/,
+    /\bResizeObserver\b/,
+    /\bD1Database\b/,
+    /\bKVNamespace\b/,
+    /\bR2Bucket\b/,
+    /\bDurableObject\b/,
+  ];
+
+  for (const { path, source } of sources) {
+    for (const specifier of moduleSpecifiers(source)) {
+      assert.equal(
+        specifier.startsWith('.'),
+        true,
+        `${relative(ROOT, path)} must not import framework / platform package: ${specifier}`,
+      );
+    }
+    for (const pattern of platformGlobalPatterns) {
+      assert.doesNotMatch(
+        source,
+        pattern,
+        `${relative(ROOT, path)} must stay independent from browser / Cloudflare platform globals`,
+      );
+    }
+  }
+});
+
 test('Face semanticをpresentation roleやtrigger数から推測しない', async () => {
   const layoutTypes = await readFile(join(SRC, 'layouts', 'types.ts'), 'utf8');
   const layers = await readFile(join(SRC, 'layers.ts'), 'utf8');
