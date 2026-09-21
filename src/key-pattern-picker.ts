@@ -1,5 +1,5 @@
 import { resolveKeyId } from './geometry.ts';
-import { displayTriggerKeys } from './layers.ts';
+import { classifyPresentationFaces, displayTriggerKeys } from './layers.ts';
 import type { Requirement } from './core/semantic-input/types.ts';
 import { COMBO_LAYER_ID, type Face, type Layout } from './layouts/types.ts';
 
@@ -160,17 +160,14 @@ export function summarizeCandidateMatches(matches: readonly KeyPatternMatch[]): 
  */
 export function findActiveLayerFace(layout: Layout, selected: ReadonlySet<string>): Face | undefined {
   if (selected.size !== 1 || !layout.faces) return undefined;
-  if (!layout.faceLayerIds) {
-    throw new Error('Face表示にはfaceLayerIdsの明示が必要');
-  }
-  return layout.faces.find((face) => {
-    const layerId = layout.faceLayerIds?.get(face);
-    if (layerId === undefined) {
-      throw new Error('Face表示には全FaceのfaceLayerIds明示が必要');
+  const groups = classifyPresentationFaces(layout);
+  for (const layer of [...groups.layers, ...groups.modifiers]) {
+    for (const face of layer.faces) {
+      if (face.trigger.length !== 1) continue;
+      if (displayTriggerKeys(face).some((key) => selected.has(key))) return face;
     }
-    if (layerId === COMBO_LAYER_ID || face.trigger.length !== 1) return false;
-    return displayTriggerKeys(face).some((key) => selected.has(key));
-  });
+  }
+  return undefined;
 }
 
 /** ガイド表示用: 配列が持つ全triggerキー（層操作・コンボ問わず）の物理キーid集合。 */
