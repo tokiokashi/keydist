@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveKeyId } from '../src/geometry.ts';
-import { COMBO_LAYER_ID, faceFromEntries, fromFaces, LAYOUT_BY_ID } from '../src/layouts/index.ts';
+import { COMBO_LAYER_ID, faceFromEntries, fromFaces, LAYOUT_BY_ID, withCombos } from '../src/layouts/index.ts';
 import type { Face, Layout } from '../src/layouts/index.ts';
 import { compileSequenceInputAlternative } from '../src/core/semantic-input/index.ts';
 import {
@@ -164,6 +164,40 @@ test('matchKeyPatterns: resolvedComboDefinitionsもexact/candidateの両方で�
   assert.equal(partial.candidates.get('d')?.[0].output, 'ye');
 });
 
+test('buildKeyPatternMatrix: combo groupは全canonical physical variantsへ保持する', () => {
+  const base = stubLayout({
+    map: new Map([
+      ['i', [['k']]],
+      ['e', [['d']]],
+    ]),
+    canonicalInputs: new Map([
+      ['i', [
+        compileSequenceInputAlternative('i', [['k']], 'single'),
+        compileSequenceInputAlternative('i', [['x']], 'single'),
+      ]],
+      ['e', [compileSequenceInputAlternative('e', [['d']], 'single')]],
+    ]),
+  });
+  const layout = withCombos(
+    'combo-variants',
+    'combo-variants',
+    base,
+    [['ye', ['i', 'e'], undefined, { group: '拗音拡張' }]],
+  );
+
+  const definition = layout.resolvedComboDefinitions?.find((combo) => combo.output === 'ye');
+  assert.deepEqual(definition?.keyVariants, [['k', 'd'], ['x', 'd']]);
+
+  const matches = buildKeyPatternMatrix(layout).filter((match) => match.output === 'ye');
+  assert.deepEqual(
+    matches.map((match) => ({ keys: match.keys, group: match.group })),
+    [
+      { keys: ['d', 'k'], group: '拗音拡張' },
+      { keys: ['d', 'x'], group: '拗音拡張' },
+    ],
+  );
+});
+
 test('matchKeyPatterns: TK音直でi選択後、eの物理キーにyeを表示できる', () => {
   const layout = LAYOUT_BY_ID.get('oonishi-custom-combo');
   assert.ok(layout);
@@ -275,6 +309,19 @@ test('findActiveLayerFace: 単キーtriggerだけを選択した時はその面�
   assert.equal(findActiveLayerFace(layout, new Set()), undefined);
   assert.equal(findActiveLayerFace(layout, new Set(['z'])), undefined);
   assert.equal(findActiveLayerFace(layout, new Set(['f', 'j'])), undefined);
+});
+
+test('findActiveLayerFace: presentationTriggerKeysのphysical alternativeも同じFaceへ帰属する', () => {
+  const shiftFace: Face = {
+    ...faceFromEntries(['space'], 'simultaneous', { j: 'あ' }),
+    presentationTriggerKeys: ['thumb-l', 'thumb-r'],
+  };
+  const layout = stubLayout({
+    faces: [shiftFace],
+    faceLayerIds: new Map([[shiftFace, 'layer:SandS']]),
+  });
+  assert.equal(findActiveLayerFace(layout, new Set(['thumb-l'])), shiftFace);
+  assert.equal(findActiveLayerFace(layout, new Set(['thumb-r'])), shiftFace);
 });
 
 test('findActiveLayerFace: 複数キーtriggerはレイヤーとして扱わない', () => {
