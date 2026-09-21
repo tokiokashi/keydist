@@ -94,13 +94,18 @@ test('evaluate realized factはFace authoring metadataへ依存しない', async
   );
 });
 
-test('results viewはFaceからaggregation layerIdを再推測しない', async () => {
+test('results viewはFace semantic authoring metadataへ依存しない', async () => {
   const source = await readFile(join(SRC, 'results-view.ts'), 'utf8');
 
   assert.doesNotMatch(
     source,
-    /face\.inputRole\s*===\s*['"]composition['"]/,
-    'results-view must use faceLayerIds instead of inputRole to derive aggregation layerId',
+    /\binputRole\b/,
+    'results-view must not read or synthesize legacy Face inputRole',
+  );
+  assert.doesNotMatch(
+    source,
+    /\btriggerPersistence\b/,
+    'results-view must not read or synthesize legacy Face triggerPersistence',
   );
   assert.doesNotMatch(
     source,
