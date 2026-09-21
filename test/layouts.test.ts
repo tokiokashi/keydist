@@ -8,12 +8,10 @@ import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 import { toLayout } from '../src/user-layouts.ts';
 import { assertKanaLayout, assertKanaLayoutFixture } from './kana-layout-helpers.ts';
 import {
-  canFoldFaces,
   classifyPresentationFaces,
   displayTriggerKeys,
   faceCells,
   faceDisplayCells,
-  groupFacesIntoLayers,
   handOfKey,
   layerShiftStyles,
 } from '../src/layers.ts';
@@ -99,6 +97,17 @@ test('compiled presentation Layerはaggregation identity / role / orderを保持
     modifier,
     shifted,
   ]);
+
+  assert.deepEqual(
+    layout.layerDefinitions
+      ?.filter((definition) => definition.kind === 'layer')
+      .map((definition) => [definition.id, definition.presentationRole]),
+    [
+      ['single', 'layer'],
+      ['layer:中指', 'modifier'],
+      ['layer:人差指', 'layer'],
+    ],
+  );
 
   const groups = classifyPresentationFaces(layout);
   assert.deepEqual(
@@ -220,62 +229,72 @@ test('面のセル配列は複数文字の見出しを1キーへ置ける', () =
   assert.equal(layout.maxCharLength, 2);
 });
 
-test('presentation分類はinputRoleではなくcompiled aggregation metadataをauthorityにする', () => {
-  const legacyComposition: Face = {
+test('presentation分類はcompiled aggregation metadataをauthorityにする', () => {
+  const semanticCompositionMappedAsLayer: Face = {
     ...faceFromEntries(['f'], 'simultaneous', { j: 'あ' }),
     inputRole: 'composition',
+    role: 'modifier',
   };
   const mappedLayer = {
-    faces: [legacyComposition],
-    faceLayerIds: new Map([[legacyComposition, 'face:0']]),
-    layerDefinitions: [{ id: 'face:0', kind: 'layer' as const, label: '面 1' }],
+    faces: [semanticCompositionMappedAsLayer],
+    faceLayerIds: new Map([[semanticCompositionMappedAsLayer, 'face:0']]),
+    layerDefinitions: [{
+      id: 'face:0',
+      kind: 'layer' as const,
+      label: '面 1',
+      presentationRole: 'layer' as const,
+    }],
   };
   const layerGroups = classifyPresentationFaces(mappedLayer);
   assert.deepEqual(layerGroups.combos, []);
-  assert.deepEqual(layerGroups.layers.flatMap((group) => group.faces), [legacyComposition]);
+  assert.deepEqual(layerGroups.layers.flatMap((group) => group.faces), [semanticCompositionMappedAsLayer]);
+  assert.deepEqual(layerGroups.modifiers, []);
 
-  const legacyModifier: Face = {
+  const semanticLayerMappedAsModifier: Face = {
+    ...faceFromEntries(['a'], 'simultaneous', { ';': 'え' }),
+    inputRole: 'layer',
+  };
+  const mappedModifier = {
+    faces: [semanticLayerMappedAsModifier],
+    faceLayerIds: new Map([[semanticLayerMappedAsModifier, 'face:1']]),
+    layerDefinitions: [{
+      id: 'face:1',
+      kind: 'layer' as const,
+      label: '面 2',
+      presentationRole: 'modifier' as const,
+    }],
+  };
+  const modifierGroups = classifyPresentationFaces(mappedModifier);
+  assert.deepEqual(modifierGroups.layers, []);
+  assert.deepEqual(
+    modifierGroups.modifiers.flatMap((group) => group.faces),
+    [semanticLayerMappedAsModifier],
+  );
+
+  const semanticModifierMappedAsCombo: Face = {
     ...faceFromEntries(['d'], 'simultaneous', { k: 'い' }),
     inputRole: 'modifier',
   };
   const mappedCombo = {
-    faces: [legacyModifier],
-    faceLayerIds: new Map([[legacyModifier, 'combo']]),
+    faces: [semanticModifierMappedAsCombo],
+    faceLayerIds: new Map([[semanticModifierMappedAsCombo, 'combo']]),
     layerDefinitions: [{ id: 'combo', kind: 'combo' as const, label: 'コンボ' }],
   };
   const comboGroups = classifyPresentationFaces(mappedCombo);
-  assert.deepEqual(comboGroups.combos, [legacyModifier]);
+  assert.deepEqual(comboGroups.combos, [semanticModifierMappedAsCombo]);
   assert.deepEqual(comboGroups.layers, []);
   assert.deepEqual(comboGroups.modifiers, []);
+});
 
-  const semanticModifierWithoutPresentationRole: Face = {
-    ...faceFromEntries(['s'], 'simultaneous', { l: 'う' }),
-    inputRole: 'modifier',
-  };
-  const presentationModifierWithLayerSemantic: Face = {
-    ...faceFromEntries(['a'], 'simultaneous', { ';': 'え' }),
-    inputRole: 'layer',
-    role: 'modifier',
-  };
-  const roleMismatchLayout = {
-    faces: [semanticModifierWithoutPresentationRole, presentationModifierWithLayerSemantic],
-    faceLayerIds: new Map([
-      [semanticModifierWithoutPresentationRole, 'face:0'],
-      [presentationModifierWithLayerSemantic, 'face:1'],
-    ]),
-    layerDefinitions: [
-      { id: 'face:0', kind: 'layer' as const, label: '面 1' },
-      { id: 'face:1', kind: 'layer' as const, label: '面 2' },
-    ],
-  };
-  const roleGroups = classifyPresentationFaces(roleMismatchLayout);
-  assert.deepEqual(
-    roleGroups.layers.flatMap((group) => group.faces),
-    [semanticModifierWithoutPresentationRole],
-  );
-  assert.deepEqual(
-    roleGroups.modifiers.flatMap((group) => group.faces),
-    [presentationModifierWithLayerSemantic],
+test('layer aggregationのpresentationRole欠落は表示契約違反としてerrorにする', () => {
+  const face = faceFromEntries(['f'], 'simultaneous', { j: 'あ' });
+  assert.throws(
+    () => classifyPresentationFaces({
+      faces: [face],
+      faceLayerIds: new Map([[face, 'face:0']]),
+      layerDefinitions: [{ id: 'face:0', kind: 'layer', label: '面 1' }],
+    }),
+    /presentationRole明示が必要/,
   );
 });
 
@@ -311,19 +330,19 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
   ]);
 
   assert.deepEqual(
-    groupFacesIntoLayers(shingeta.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    classifyPresentationFaces(shingeta).layers.map((layer) => layer.faces.map((face) => face.trigger)),
     [[[]], [['k'], ['d']], [['l'], ['s']], [['i']], [['o']]],
   );
   assert.deepEqual(
-    groupFacesIntoLayers(tsuki.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    classifyPresentationFaces(tsuki).layers.map((layer) => layer.faces.map((face) => face.trigger)),
     [[[]], [['d'], ['k']]],
   );
   assert.deepEqual(
-    groupFacesIntoLayers(nicola.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    classifyPresentationFaces(nicola).layers.map((layer) => layer.faces.map((face) => face.trigger)),
     [[[]], [['thumb-l']], [['thumb-r']]],
   );
   assert.deepEqual(
-    groupFacesIntoLayers(naginata.faces!).map((layer) => layer.faces.map((face) => face.trigger)),
+    classifyPresentationFaces(naginata).layers.map((layer) => layer.faces.map((face) => face.trigger)),
     [[[]], [['space']]],
   );
   assert.deepEqual(
@@ -332,26 +351,34 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
   );
 
   assert.equal(handOfKey('space'), 'right');
-  assert.equal(canFoldFaces(shingeta.faces![1], shingeta.faces![2]), true);
-  assert.equal(canFoldFaces(shingeta.faces![1], shingeta.faces![5]), false);
-  assert.equal(canFoldFaces(naginata.faces![3], naginata.faces![4]), true);
-  assert.equal(canFoldFaces(naginata.faces![5], naginata.faces![6]), true);
-  assert.equal(canFoldFaces(nicola.faces![1], nicola.faces![2]), false);
-  assert.equal(canFoldFaces(
-    { trigger: ['k'], mode: 'simultaneous', rows: faceAtF('x') },
-    { trigger: ['d'], mode: 'prefix', rows: ['', '', ['', '', '', '', '', '', 'y'], ''] },
-  ), false);
-  const invalidFaces = [
-    { trigger: ['a'], mode: 'simultaneous' as const, rows: faceAtF('x'), layer: '不正' },
-    { trigger: ['s'], mode: 'simultaneous' as const, rows: faceAtF('y'), layer: '不正' },
+
+  const invalidFaces: Face[] = [
+    {
+      trigger: ['a'],
+      mode: 'simultaneous',
+      rows: faceAtF('x'),
+      layer: '不正',
+      inputRole: 'layer',
+      triggerPersistence: 'single',
+    },
+    {
+      trigger: ['s'],
+      mode: 'simultaneous',
+      rows: faceAtF('y'),
+      layer: '不正',
+      inputRole: 'layer',
+      triggerPersistence: 'single',
+    },
   ];
-  assert.throws(() => canFoldFaces(invalidFaces[0], invalidFaces[1]), /レイヤー「不正」の面が畳み条件を満たさない/);
-  assert.throws(() => groupFacesIntoLayers(invalidFaces), /レイヤー「不正」の面が畳み条件を満たさない/);
+  assert.throws(
+    () => fromFaces('invalid-fold', 'invalid-fold', invalidFaces),
+    /レイヤー「不正」の面が畳み条件を満たさない/,
+  );
 });
 
 test('畳んだレイヤーはauthoringで明示したpresentation membershipだけを表示する（#95, #261）', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
-  const layers = groupFacesIntoLayers(layout.faces!);
+  const layers = classifyPresentationFaces(layout).layers;
   const middleLeft = layers[1].faces[0];
   const middleRight = layers[1].faces[1];
   const ringLeft = layers[2].faces[0];
@@ -374,7 +401,7 @@ test('畳んだレイヤーはauthoringで明示したpresentation membershipだ
   assert.deepEqual(layout.map.get('さ'), [['l', 's']]);
 
   const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
-  const tsukiLayer = groupFacesIntoLayers(tsuki.faces!)[1];
+  const tsukiLayer = classifyPresentationFaces(tsuki).layers[1];
   const tsukiCells = new Map(tsukiLayer.faces.flatMap((face) => [...faceDisplayCells(face)]));
   assert.equal(tsukiCells.get('d'), 'ら');
   assert.equal(tsukiCells.get('k'), 'も');
@@ -395,7 +422,7 @@ test('薙刀式v18は面から生成され、全定義を1ステップで保持�
 
 test('薙刀式のSandS presentationをFace authoringで明示する', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
-  const centerShift = groupFacesIntoLayers(layout.faces!)[1].faces[0];
+  const centerShift = classifyPresentationFaces(layout).layers[1].faces[0];
 
   assert.deepEqual(centerShift.trigger, ['space']);
   assert.deepEqual(centerShift.presentationTriggerKeys, ['thumb-l', 'thumb-r']);
@@ -480,18 +507,24 @@ test('triggerOrderが異なるFaceは同じレイヤーへ畳まない', () => {
     triggerPersistence: 'single',
   };
   const second: Face = {
-    ...faceFromEntries(['d'], 'simultaneous', { k: 'い' }),
+    // canonical上は同一outputの別pathとして合法にし、authoring folding validationを直接踏む。
+    ...faceFromEntries(['d'], 'simultaneous', { k: 'あ' }),
     layer: '順序',
     triggerPersistence: 'single',
   };
 
-  assert.throws(() => canFoldFaces(first, second), /triggerOrderが異なる/);
-  assert.throws(() => groupFacesIntoLayers([first, second]), /triggerOrderが異なる/);
+  assert.throws(
+    () => fromFaces('invalid-trigger-order', 'invalid-trigger-order', [
+      { ...first, inputRole: 'layer' },
+      { ...second, inputRole: 'layer' },
+    ]),
+    /triggerOrderが異なる/,
+  );
 });
 
 test('シフトの表示色は手ではなく所属aggregationで揃え、singleはshift扱いしない', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
-  const layers = groupFacesIntoLayers(layout.faces!);
+  const layers = classifyPresentationFaces(layout).layers;
   const styles = layerShiftStyles(layers);
 
   assert.equal(layers[0].id, 'single');
@@ -505,7 +538,7 @@ test('シフトの表示色は手ではなく所属aggregationで揃え、single
 
 test('相互同時シフトは両トリガーを1回分の色として残す', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
-  const layers = groupFacesIntoLayers(layout.faces!);
+  const layers = classifyPresentationFaces(layout).layers;
   for (const [layerIndex, trigger, output] of [[1, 'k', 'd'], [2, 'l', 's']] as const) {
     const colors = normalizedLayerColors(layers[layerIndex], {
       keyCounts: new Map([[trigger, 1], [output, 1]]),
@@ -535,7 +568,7 @@ test('薙刀式の合算表示はスペースなし層のトリガーを単打�
 
 test('通常の層トリガーは残さず、薙刀式の濁音詳細も除外する', () => {
   const shingeta = LAYOUT_BY_ID.get('shingeta')!;
-  const middle = groupFacesIntoLayers(shingeta.faces!)[1];
+  const middle = classifyPresentationFaces(shingeta).layers[1];
   const normalColors = normalizedLayerColors(middle, {
     keyCounts: new Map([['k', 1], ['w', 1]]),
     triggerKeyCounts: new Map([['k', 1]]),
@@ -822,10 +855,10 @@ test('同一aggregationで片側だけpresentationLabelなら順序によらずc
 
   for (const faces of [[explicit, implicit], [implicit, explicit]] as const) {
     const layout = fromFaces('presentation-label-merge', 'presentation-label-merge', faces);
-    assert.equal(
-      layout.layerDefinitions?.find((definition) => definition.id === 'layer:X')?.label,
-      'Custom X',
-    );
+    const definition = layout.layerDefinitions?.find((entry) => entry.id === 'layer:X');
+    assert.equal(definition?.label, 'Custom X');
+    assert.equal(definition?.presentationRole, 'modifier');
+    assert.equal(definition?.presentationModeLabel, '同時');
   }
 });
 
