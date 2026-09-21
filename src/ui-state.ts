@@ -155,7 +155,7 @@ export interface UiStateV1 {
       view: LayerView;
       activeTab: number;
       colorScale: LayerColorScale;
-      naginataDetail: boolean;
+      showLayerDetails: boolean;
       /** 配列図でキー入力パターンのトリガーを常時ハイライトするか。 */
       keyPatternGuide: boolean;
     };
@@ -234,7 +234,7 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
         view: 'auto',
         activeTab: 0,
         colorScale: 'linear',
-        naginataDetail: false,
+        showLayerDetails: false,
         keyPatternGuide: true,
       },
       playback: {
@@ -712,7 +712,10 @@ export function sanitizeUiState(
         view: choice(layers.view, ['auto', 'side-by-side', 'tabs'], defaults.ui.layers.view),
         activeTab: integerInRange(layers.activeTab, 0, 100, defaults.ui.layers.activeTab),
         colorScale: choice(layers.colorScale, ['linear', 'log'], defaults.ui.layers.colorScale),
-        naginataDetail: boolean(layers.naginataDetail, defaults.ui.layers.naginataDetail),
+        showLayerDetails: boolean(
+          layers.showLayerDetails ?? layers.naginataDetail,
+          defaults.ui.layers.showLayerDetails,
+        ),
         keyPatternGuide: boolean(
           layers.keyPatternGuide ?? layers.comboGuide,
           defaults.ui.layers.keyPatternGuide,
