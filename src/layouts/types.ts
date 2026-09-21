@@ -72,7 +72,7 @@ export interface Face {
   presentationTriggerKeys?: readonly string[];
   /** trigger集合の表示文言。physical key集合から導出不能な表記だけ明示する。 */
   presentationTriggerText?: string;
-  /** 入力方式・層のpresentation-only名称。semantic classificationには使わない。 */
+  /** 入力方式・層のpresentation-only名称。semantic classificationには使わない。composition Faceでは指定不可。 */
   presentationLabel?: string;
 }
 
@@ -339,6 +339,11 @@ export function fromFaces(
       );
     }
     const isCombo = face.inputRole === 'composition';
+    if (isCombo && face.presentationLabel !== undefined) {
+      throw new Error(
+        `composition FaceではpresentationLabelを指定できない（face:${faceIndex}）`,
+      );
+    }
     const layerId = isCombo
       ? COMBO_LAYER_ID
       : trigger.length === 0
