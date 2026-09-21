@@ -46,11 +46,24 @@ export function layerShiftStyles(layers: readonly Layer[]): Map<Face, LayerShift
 }
 
 /**
- * Return the keys that should be emphasized when a layer trigger is shown.
- * This is presentation-only: the face trigger and Layout.map remain unchanged.
+ * presentation上のtrigger alternativeを正規化する。
+ * presentationTriggerKeysは各キーを単独alternativeとして扱い、
+ * 未指定時のFace.triggerは1つのchordとして保持する。
+ */
+export function displayTriggerAlternatives(face: Face): readonly (readonly string[])[] {
+  if (face.presentationTriggerKeys !== undefined) {
+    return [...new Set(face.presentationTriggerKeys.map(resolveKeyId))].map((key) => [key]);
+  }
+  const chord = [...new Set(face.trigger.map(resolveKeyId))];
+  return chord.length === 0 ? [] : [chord];
+}
+
+/**
+ * layer trigger表示で強調する全physical key。
+ * alternative/chordの区別を落としたhighlight用途専用view。
  */
 export function displayTriggerKeys(face: Face): readonly string[] {
-  return (face.presentationTriggerKeys ?? face.trigger).map(resolveKeyId);
+  return [...new Set(displayTriggerAlternatives(face).flat())];
 }
 
 /** 面の出力を、表示対象のキーidと出力文字の対応へ変換する。 */
