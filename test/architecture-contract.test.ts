@@ -8,6 +8,21 @@ import { LAYOUTS, LAYOUTS_JA } from '../src/layouts/index.ts';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');
 
+const PLATFORM_GLOBAL_PATTERNS = [
+  /\\b(?:window|document|navigator|localStorage|sessionStorage)\\s*\\./,
+  /\\btypeof\\s+(?:window|document|navigator)\\b/,
+  /\\b(?:Window|Document|Navigator|HTMLElement|KeyboardEvent|MutationObserver|ResizeObserver)\\b/,
+  /\\b(?:D1Database|KVNamespace|R2Bucket|DurableObject)\\b/,
+] as const;
+
+const FRAMEWORK_MODULE_PATTERNS = [
+  /^react(?:\\/|$)/,
+  /^react-dom(?:\\/|$)/,
+  /^@tanstack\\//,
+  /^@cloudflare\\//,
+  /^cloudflare:/,
+] as const;
+
 async function tsFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
   const nested = await Promise.all(entries.map(async (entry) => {
@@ -87,6 +102,29 @@ function isForbiddenRealizationConsumerImport(
     || REALIZATION_INTERNAL_MODULES.has(target);
 }
 
+test('core全体はframework / browser / Cloudflare platformへ依存しない', async () => {
+  const corePaths = await tsFiles(join(SRC, 'core'));
+  assert.ok(corePaths.length > 0, 'core source must exist');
+
+  for (const path of corePaths) {
+    const source = await readFile(path, 'utf8');
+    for (const specifier of moduleSpecifiers(source)) {
+      assert.equal(
+        FRAMEWORK_MODULE_PATTERNS.some((pattern) => pattern.test(specifier)),
+        false,
+        `${relative(ROOT, path)} imports app/framework/platform module: ${specifier}`,
+      );
+    }
+    for (const pattern of PLATFORM_GLOBAL_PATTERNS) {
+      assert.doesNotMatch(
+        source,
+        pattern,
+        `${relative(ROOT, path)} must stay independent from browser / Cloudflare platform globals`,
+      );
+    }
+  }
+});
+
 test('structural analysisのimport先をsemantic / structural layerへ限定する', async () => {
   for (const { path, source } of await structuralAnalysisSources()) {
     for (const specifier of moduleSpecifiers(source)) {
@@ -140,7 +178,7 @@ test('realization policy consumerはsemantic core public entryをauthorityにす
 
 test('Input Converter coreはSemanticInput public APIを再利用しframework / DOMへ依存しない', async () => {
   const sources = await inputConverterCoreSources();
-  const platformGlobalPatterns = [
+  const PLATFORM_GLOBAL_PATTERNS = [
     /\b(?:window|document|navigator|localStorage|sessionStorage)\s*\./,
     /\btypeof\s+(?:window|document|navigator)\b/,
     /\b(?:Window|Document|Navigator|HTMLElement|KeyboardEvent|MutationObserver|ResizeObserver)\b/,
@@ -156,7 +194,7 @@ test('Input Converter coreはSemanticInput public APIを再利用しframework / 
         `${relative(ROOT, path)} imports outside input-converter core boundary: ${specifier}`,
       );
     }
-    for (const pattern of platformGlobalPatterns) {
+    for (const pattern of PLATFORM_GLOBAL_PATTERNS) {
       assert.doesNotMatch(
         source,
         pattern,
@@ -211,7 +249,7 @@ test('canonical semantic / structural analysis coreはframework / platform API�
     }
   }
 
-  const platformGlobalPatterns = [
+  const PLATFORM_GLOBAL_PATTERNS = [
     /\b(?:window|document|navigator|localStorage|sessionStorage)\s*\./,
     /\btypeof\s+(?:window|document|navigator)\b/,
     /\b(?:Window|Document|Navigator|HTMLElement|MutationObserver|ResizeObserver)\b/,
@@ -219,7 +257,7 @@ test('canonical semantic / structural analysis coreはframework / platform API�
   ];
 
   for (const { path, source } of [...semanticSources, ...analysisSources]) {
-    for (const pattern of platformGlobalPatterns) {
+    for (const pattern of PLATFORM_GLOBAL_PATTERNS) {
       assert.doesNotMatch(
         source,
         pattern,
