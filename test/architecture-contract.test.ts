@@ -211,6 +211,16 @@ test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityに�
     /\bfaceLayerIds\b/,
     'key-pattern picker must consume classifyPresentationFaces instead of raw faceLayerIds',
   );
+  assert.doesNotMatch(
+    source,
+    /face\.trigger(?:\.length)?\b/,
+    'active layer presentation attribution must not reinterpret semantic Face.trigger shape',
+  );
+  assert.match(
+    source,
+    /displayTriggerAlternatives\(face\)/,
+    'active layer attribution must use normalized presentation trigger alternatives',
+  );
 });
 
 test('presentation consumerはLayer.orderの共通helperを使う', async () => {
