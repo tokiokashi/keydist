@@ -1,7 +1,7 @@
 import { ALL_FINGERS, dist, keyId, resolveKeyId, type Finger, type Geometry, type Point } from './geometry.ts';
-import { classifyFaces, faceCells, faceDisplayCells, type Layer } from './layers.ts';
+import { faceCells, faceDisplayCells } from './layers.ts';
 import type { Stroke } from './evaluate.ts';
-import type { Layout } from './layouts/types.ts';
+import { COMBO_LAYER_ID, type Layout } from './layouts/types.ts';
 import {
   handDirection,
   sameHandDirectedFingerPairKey,
@@ -256,15 +256,6 @@ export function playbackTrailOrders(
   return orders;
 }
 
-/** 再生中の層に対応する面グループを返す。単一面も含めて表示用に扱う。 */
-function playbackLayer(layout: Layout, layerId: string): Layer | undefined {
-  if (!layout.faces || !layout.faceLayerIds) return undefined;
-  const groups = classifyFaces(layout.faces);
-  return [...groups.layers, ...groups.modifiers].find((layer) =>
-    layer.faces.some((face) => layout.faceLayerIds?.get(face) === layerId),
-  );
-}
-
 /** 再生中の各指の位置に対応するキーと指を返す。 */
 export function playbackFingerPositionKeys(
   stroke: Stroke | undefined,
@@ -356,12 +347,21 @@ export function playbackInputPreview(
 
 /** 面定義と実際の押下から、再生中に表示する文字と刻印を引く。 */
 export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackStrokeDisplay {
-  if (layout.romajiTable || !layout.faces || !layout.faceLayerIds) {
+  if (layout.romajiTable || !layout.faces) {
     return { keyLabels: new Map() };
+  }
+  if (!layout.faceLayerIds) {
+    throw new Error('Face表示にはfaceLayerIdsの明示が必要');
   }
 
   const triggerKeys = new Set(stroke.triggerKeys.map(resolveKeyId));
-  const layerFaces = layout.faces.filter((face) => layout.faceLayerIds?.get(face) === stroke.layerId);
+  const layerFaces = layout.faces.filter((face) => {
+    const layerId = layout.faceLayerIds?.get(face);
+    if (layerId === undefined) {
+      throw new Error('Face表示には全FaceのfaceLayerIds明示が必要');
+    }
+    return layerId === stroke.layerId;
+  });
   const triggeredFaces = triggerKeys.size === 0
     ? layerFaces
     : layerFaces.filter((face) => {
@@ -376,17 +376,19 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
     ? layerFaces.filter((face) => outputKeys.some((key) => faceCells(face).get(key) === stroke.char))
     : [];
   const faces = outputFaces.length > 0 ? outputFaces : triggeredFaces;
-  const layer = playbackLayer(layout, stroke.layerId);
+  // 通常layerは同じaggregation帰属のFaceをまとめて表示する。
+  // comboは従来どおり、実際に発火した個別Faceだけを表示する。
+  const displayFaces = stroke.layerId === COMBO_LAYER_ID ? faces : layerFaces;
   const keyLabels = new Map<string, string>();
 
   // 面に空欄として定義されたキーは、基底面の刻印へ戻さず空欄にする。
-  for (const face of layer?.faces ?? faces) {
+  for (const face of displayFaces) {
     face.rows.forEach((row, rowIndex) => {
       const cells = typeof row === 'string' ? [...row] : [...row];
       cells.forEach((_label, colIndex) => keyLabels.set(keyId(rowIndex, colIndex), ''));
     });
   }
-  for (const face of layer?.faces ?? faces) {
+  for (const face of displayFaces) {
     for (const [key, label] of faceDisplayCells(face)) {
       const previous = keyLabels.get(key);
       keyLabels.set(key, previous && label !== previous ? `${previous} / ${label}` : label);
