@@ -22,11 +22,11 @@ jobs:
     steps:
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         id: setup-node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -37,6 +37,13 @@ jobs:
         run: |
           set -o pipefail
           npm ci 2>&1 | tee "$RUNNER_TEMP/npm-ci.log"
+
+      - name: Typecheck
+        id: typecheck
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee "$RUNNER_TEMP/typecheck.log"
 
       - name: Test
         id: test
@@ -54,13 +61,13 @@ jobs:
 
       - name: Configure Pages
         id: configure-pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
         with:
           enablement: true
 
       - name: Upload Pages artifact
         id: upload-pages
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: .output/public
 
@@ -71,6 +78,7 @@ jobs:
           CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
           SETUP_NODE_OUTCOME: ${{ steps.setup-node.outcome }}
           INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
           TEST_OUTCOME: ${{ steps.test.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           CONFIGURE_PAGES_OUTCOME: ${{ steps.configure-pages.outcome }}
@@ -94,6 +102,7 @@ jobs:
             printf '| Checkout | %s %s |\n' "$(icon "$CHECKOUT_OUTCOME")" "$CHECKOUT_OUTCOME"
             printf '| Setup Node.js | %s %s |\n' "$(icon "$SETUP_NODE_OUTCOME")" "$SETUP_NODE_OUTCOME"
             printf '| Install dependencies | %s %s |\n' "$(icon "$INSTALL_OUTCOME")" "$INSTALL_OUTCOME"
+            printf '| Typecheck | %s %s |\n' "$(icon "$TYPECHECK_OUTCOME")" "$TYPECHECK_OUTCOME"
             printf '| Test | %s %s |\n' "$(icon "$TEST_OUTCOME")" "$TEST_OUTCOME"
             printf '| Build | %s %s |\n' "$(icon "$BUILD_OUTCOME")" "$BUILD_OUTCOME"
             printf '| Configure Pages | %s %s |\n' "$(icon "$CONFIGURE_PAGES_OUTCOME")" "$CONFIGURE_PAGES_OUTCOME"
@@ -124,6 +133,7 @@ jobs:
           }
 
           append_failure_log "Install dependencies" "$INSTALL_OUTCOME" "$RUNNER_TEMP/npm-ci.log"
+          append_failure_log "Typecheck" "$TYPECHECK_OUTCOME" "$RUNNER_TEMP/typecheck.log"
           append_failure_log "Test" "$TEST_OUTCOME" "$RUNNER_TEMP/test.log"
           append_failure_log "Build" "$BUILD_OUTCOME" "$RUNNER_TEMP/build.log"
 
@@ -136,7 +146,7 @@ jobs:
     steps:
       - name: Deploy Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
       - name: Write deploy summary
         if: always()
