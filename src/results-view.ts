@@ -824,7 +824,7 @@ interface HeatmapValues {
  * コンボ側には別枠の色を割り当てて見分けを保つ。
  */
 function pickerGuideColorMap(
-  groups: ReturnType<typeof classifyFaces>,
+  groups: ReturnType<typeof classifyPresentationFaces>,
   faceShiftStyles: ReadonlyMap<Face, LayerShiftStyle>,
   layout: Layout,
 ): Map<string, string> {
