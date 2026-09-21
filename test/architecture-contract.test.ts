@@ -113,6 +113,19 @@ test('alternative selection identityはcore helperをauthorityにする', async 
   }
 });
 
+test('legacy comboConditionsをsemantic/runtime authorityへ戻さない', async () => {
+  const layoutTypesSource = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
+  const evaluateSource = await readFile(join(SRC, 'evaluate.ts'), 'utf8');
+
+  assert.doesNotMatch(layoutTypesSource, /\bcomboConditions\b/);
+  assert.doesNotMatch(evaluateSource, /\bcomboConditions\b/);
+  assert.match(
+    evaluateSource,
+    /const comboDefinitions = resolvedComboDefinitions\.length/,
+    'resolved combo definitions must be the combo definition-count authority',
+  );
+});
+
 test('composed outputのsemantic availabilityはcanonicalInputsをauthorityにする', async () => {
   const source = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
   const start = source.indexOf('export function withComposedOutputs');

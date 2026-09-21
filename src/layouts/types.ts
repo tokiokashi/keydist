@@ -185,12 +185,6 @@ export interface Layout {
    * かな配列は持たない。同じかなテキストを両者に食わせて比較できる。
    */
   romajiTable?: Map<string, string>;
-  /**
-   * legacy/presentation互換のoutput単位コンボ条件。
-   * canonical legalityはInputAlternative.contextRequirementsがauthorityであり、
-   * evaluateはこのMapから成立条件を再構成しない。
-   */
-  comboConditions?: ReadonlyMap<string, ComboCondition>;
   /** withCombos由来のコンボ定義。物理キーまで解決済みで、配列図等の表示にも使う。 */
   resolvedComboDefinitions?: readonly ResolvedComboDefinition[];
   /** 層・コンボの表示順と種別。 */
@@ -762,7 +756,6 @@ export function withCombos(
   const map = new Map(layout.map);
   const canonicalInputs = cloneCanonicalInputs(layout.canonicalInputs);
   const layerDefinitions = [...(layout.layerDefinitions ?? [])];
-  const comboConditions = new Map(layout.comboConditions);
   const resolvedComboDefinitions: ResolvedComboDefinition[] = [...(layout.resolvedComboDefinitions ?? [])];
   let hasCombo = layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID);
   for (const [output, inputs, condition, presentation, classifications = []] of combos) {
@@ -847,7 +840,6 @@ export function withCombos(
     if (!map.has(output)) {
       const sequence: Sequence = [keys];
       map.set(output, sequence);
-      comboConditions.set(output, condition ?? {});
     }
     if (!hasCombo) {
       layerDefinitions.push({ id: COMBO_LAYER_ID, kind: 'combo', label: 'コンボ' });
@@ -861,7 +853,6 @@ export function withCombos(
     name,
     map,
     canonicalInputs,
-    comboConditions,
     resolvedComboDefinitions,
     layerDefinitions,
   };
