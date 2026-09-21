@@ -46,11 +46,60 @@ export function layerShiftStyles(layers: readonly Layer[]): Map<Face, LayerShift
 }
 
 /**
- * Return the keys that should be emphasized when a layer trigger is shown.
- * This is presentation-only: the face trigger and Layout.map remain unchanged.
+ * presentation上のtrigger alternativeを正規化する。
+ * authoring済みの外側OR / 内側chord構造を保持し、key aliasと重複だけを除く。
+ * 未指定時はFace.trigger全体を1 chordとしてfallbackする。
+ */
+export function displayTriggerAlternatives(face: Face): readonly (readonly string[])[] {
+  const authored = face.presentationTriggerAlternatives;
+  if (authored === undefined) {
+    const chord = [...new Set(face.trigger.map(resolveKeyId))];
+    return chord.length === 0 ? [] : [chord];
+  }
+  if (authored.length === 0) {
+    throw new Error('presentationTriggerAlternativesは空にできない');
+  }
+
+  const seen = new Set<string>();
+  const alternatives: string[][] = [];
+  authored.forEach((alternative, index) => {
+    const chord = [...new Set(alternative.map(resolveKeyId))];
+    if (chord.length === 0) {
+      throw new Error(`presentationTriggerAlternatives[${index}]は空にできない`);
+    }
+    const signature = [...chord].sort().join('\u0000');
+    if (seen.has(signature)) return;
+    seen.add(signature);
+    alternatives.push(chord);
+  });
+  return alternatives;
+}
+
+/**
+ * presentation trigger alternative全体から安全に付けられる手ラベルを返す。
+ * 左OR右のようにalternative間で手が異なる場合は、両方同時と誤読させないため未指定。
+ * 1 alternative内に左右両手を含むchordだけは「両手」とする。
+ */
+export function displayTriggerHandLabel(face: Face): '左手' | '右手' | '両手' | undefined {
+  const labels = displayTriggerAlternatives(face).map((alternative) => {
+    const hands = new Set(alternative.map(handOfKey).filter(
+      (hand): hand is Hand => hand !== undefined,
+    ));
+    if (hands.size === 0) return undefined;
+    if (hands.size > 1) return '両手' as const;
+    return hands.has('left') ? '左手' as const : '右手' as const;
+  });
+  if (labels.length === 0 || labels.some((label) => label === undefined)) return undefined;
+  const unique = new Set(labels);
+  return unique.size === 1 ? labels[0] : undefined;
+}
+
+/**
+ * layer trigger表示で強調する全physical key。
+ * alternative/chordの区別を落としたhighlight用途専用view。
  */
 export function displayTriggerKeys(face: Face): readonly string[] {
-  return (face.presentationTriggerKeys ?? face.trigger).map(resolveKeyId);
+  return [...new Set(displayTriggerAlternatives(face).flat())];
 }
 
 /** 面の出力を、表示対象のキーidと出力文字の対応へ変換する。 */

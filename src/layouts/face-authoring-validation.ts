@@ -49,14 +49,32 @@ function validateFoldPair(first: Face, second: Face): void {
   if (!opposite(firstTargetHand, secondTargetHand)) invalid('対象セルが逆手でない');
 }
 
+function validatePresentationMetadata(face: Face, faceIndex: number): void {
+  const alternatives = face.presentationTriggerAlternatives;
+  if (alternatives === undefined) return;
+  if (alternatives.length === 0) {
+    throw new Error(
+      `presentationTriggerAlternativesは空にできない（face:${faceIndex}）`,
+    );
+  }
+  alternatives.forEach((alternative, alternativeIndex) => {
+    if (alternative.length === 0) {
+      throw new Error(
+        `presentationTriggerAlternatives[${alternativeIndex}]は空にできない（face:${faceIndex}）`,
+      );
+    }
+  });
+}
+
 /**
- * Face authoringのlayer folding宣言だけをconstructor境界で検証する。
- * compiled Layoutのconsumerへauthoring semantic分類APIを公開しない。
+ * Face authoring invariantをconstructor境界で検証する。
+ * semantic layer foldingとpresentation metadataの不正をconsumerまで遅延させない。
  */
-export function validateFaceLayerAuthoring(faces: readonly Face[]): void {
+export function validateFaceAuthoring(faces: readonly Face[]): void {
   const groups = new Map<string, Face[]>();
 
-  for (const face of faces) {
+  for (const [faceIndex, face] of faces.entries()) {
+    validatePresentationMetadata(face, faceIndex);
     if (face.inputRole === 'composition') {
       if (face.layer !== undefined) throw new Error('コンボ面にはレイヤーを宣言できない');
       continue;

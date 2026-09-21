@@ -21,7 +21,7 @@ import {
 } from './ui-state.ts';
 import type { GeometrySettings } from './geometry-settings.ts';
 import { resolveConditions } from './condition-resolution.ts';
-import { classifyPresentationFaces, displayTriggerKeys, faceCells, faceDisplayCells, handOfKey, layerShiftStyles, orderedPresentationLayers, type Layer, type LayerShiftStyle } from './layers.ts';
+import { classifyPresentationFaces, displayTriggerAlternatives, displayTriggerHandLabel, displayTriggerKeys, faceCells, faceDisplayCells, handOfKey, layerShiftStyles, orderedPresentationLayers, type Layer, type LayerShiftStyle } from './layers.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID, faceFromEntries, type Face, type Layout } from './layouts/types.ts';
 import { findActiveLayerFace, matchKeyPatterns, summarizeCandidateMatches } from './key-pattern-picker.ts';
 import type { ModeId } from './layout-selection.ts';
@@ -704,21 +704,18 @@ function triggerText(face: Layer['faces'][number], legends: Map<string, string>)
 }
 
 function displayTriggerText(layout: Layout, face: Layer['faces'][number]): string {
-  return face.presentationTriggerText ?? displayTriggerKeys(face)
-    .map((key) => triggerKeyText(key, layout.legends))
-    .join(' + ');
-}
-
-function triggerHandText(face: Layer['faces'][number]): string {
-  const hands = new Set(displayTriggerKeys(face).map(handOfKey)
-    .filter((hand): hand is NonNullable<typeof hand> => hand !== undefined));
-  if (hands.size !== 1) return '両手';
-  return hands.has('left') ? '左手' : '右手';
+  return face.presentationTriggerText ?? displayTriggerAlternatives(face)
+    .map((alternative) => alternative
+      .map((key) => triggerKeyText(key, layout.legends))
+      .join(' + '))
+    .join(' / ');
 }
 
 function displayTriggerAnnotation(layout: Layout, face: Layer['faces'][number]): string {
-  return face.presentationLabel
-    ?? `${triggerHandText(face)} ${displayTriggerText(layout, face)}を押す`;
+  if (face.presentationLabel !== undefined) return face.presentationLabel;
+  const trigger = displayTriggerText(layout, face);
+  const hand = displayTriggerHandLabel(face);
+  return hand === undefined ? `${trigger}を押す` : `${hand} ${trigger}を押す`;
 }
 
 function layerTitle(layer: Layer, index: number, layout: Layout): string {

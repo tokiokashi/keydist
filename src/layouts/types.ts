@@ -12,7 +12,7 @@ import {
   type SemanticInput,
 } from '../core/semantic-input/index.ts';
 import { keyId, QWERTY_LEGEND, resolveKeyId, THUMB_KEY, type NonThumb } from '../geometry.ts';
-import { validateFaceLayerAuthoring } from './face-authoring-validation.ts';
+import { validateFaceAuthoring } from './face-authoring-validation.ts';
 
 /** 1ステップで同時に押すキーの集合。キーはQWERTY刻印で指す（`thumb-r` `thumb-l` は親指キー）。`space` も入力互換で受け付ける */
 export type Step = string[];
@@ -41,6 +41,12 @@ export type HoldPhase = 'start' | 'continue' | 'end';
 export type FaceRow = string | readonly string[];
 
 /** triggerで発火するキー面。rowsはQWERTY刻印の4行に対応する。 */
+export type PresentationTriggerChord = readonly [string, ...string[]];
+export type PresentationTriggerAlternatives = readonly [
+  PresentationTriggerChord,
+  ...PresentationTriggerChord[],
+];
+
 export interface Face {
   trigger: readonly string[];
   mode: FaceMode;
@@ -66,10 +72,11 @@ export interface Face {
    */
   presentationCells?: Readonly<Record<string, string>>;
   /**
-   * triggerのsemantic activationを変えず、表示上だけ強調する物理キー。
-   * 省略時はtrigger自身を表示する。
+   * triggerのsemantic activationを変えず、presentation上の成立形だけを明示する。
+   * 外側配列はOR alternative、内側配列は1つのchord。
+   * 明示時は外側・内側ともnon-empty。省略時はFace.trigger全体を1 chordとして表示する。
    */
-  presentationTriggerKeys?: readonly string[];
+  presentationTriggerAlternatives?: PresentationTriggerAlternatives;
   /** trigger集合の表示文言。physical key集合から導出不能な表記だけ明示する。 */
   presentationTriggerText?: string;
   /** 入力方式・層のpresentation-only名称。semantic classificationには使わない。composition Faceでは指定不可。 */
@@ -325,8 +332,8 @@ export function fromFaces(
     }
   }
 
-  // 定義時にauthoring layer宣言だけを検証し、表示時まで不正な組み合わせを遅延させない。
-  validateFaceLayerAuthoring(faces);
+  // 定義時にFace authoring invariantを検証し、consumerまで不正を遅延させない。
+  validateFaceAuthoring(faces);
   const map = new Map<string, Sequence>();
   const legends = new Map<string, string>();
   const layerDefinitions: LayerDefinition[] = [];

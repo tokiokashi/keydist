@@ -182,6 +182,27 @@ test('results viewはFace semantic authoring metadataへ依存しない', async 
   );
 });
 
+test('presentation trigger authoringはnested alternative schemaを使う', async () => {
+  const typesSource = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
+  const layersSource = await readFile(join(SRC, 'layers.ts'), 'utf8');
+
+  assert.doesNotMatch(typesSource, /presentationTriggerKeys/);
+  assert.doesNotMatch(layersSource, /presentationTriggerKeys/);
+  assert.match(
+    typesSource,
+    /PresentationTriggerChord = readonly \[string, \.\.\.string\[\]\]/,
+  );
+  assert.match(
+    typesSource,
+    /presentationTriggerAlternatives\?: PresentationTriggerAlternatives/,
+  );
+  assert.match(layersSource, /face\.presentationTriggerAlternatives/);
+  assert.match(
+    layersSource,
+    /authored\.length === 0[\s\S]*presentationTriggerAlternativesは空にできない/,
+  );
+});
+
 test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityにする', async () => {
   const source = await readFile(join(SRC, 'key-pattern-picker.ts'), 'utf8');
 
@@ -210,6 +231,16 @@ test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityに�
     source,
     /\bfaceLayerIds\b/,
     'key-pattern picker must consume classifyPresentationFaces instead of raw faceLayerIds',
+  );
+  assert.doesNotMatch(
+    source,
+    /face\.trigger(?:\.length)?\b/,
+    'active layer presentation attribution must not reinterpret semantic Face.trigger shape',
+  );
+  assert.match(
+    source,
+    /displayTriggerAlternatives\(face\)/,
+    'active layer attribution must use normalized presentation trigger alternatives',
   );
 });
 
