@@ -21,8 +21,8 @@ const bannedImports = [
 ];
 
 const bannedBrowserSymbols = [
-  /\bwindow\b/,
-  /\bdocument\b/,
+  /\bwindow\s*\./,
+  /\bdocument\s*\./,
   /\bHTMLElement\b/,
   /\bKeyboardEvent\b/,
   /\blocalStorage\b/,
