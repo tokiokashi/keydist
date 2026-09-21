@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  canonicalInputAlternativeIdentity,
   compileFaceSemanticInputs,
   compileSequenceInputAlternative,
   compileSequenceSemanticInputs,
@@ -32,6 +33,29 @@ const face = (
   inputRole: trigger.length === 0 ? 'layer' : 'modifier',
   ...(trigger.length > 0 ? { triggerPersistence: 'single' as const } : {}),
   ...options,
+});
+
+test('canonical alternative identityはpresentation provenanceを情報保持identityに含める', () => {
+  const base = compileSequenceInputAlternative('x', [['j']], 'single');
+  const input = base.semanticInputs[0];
+  const withMembershipInput: SemanticInput = {
+    ...input,
+    faceMemberships: [{ faceIndex: 7, cellKey: 'j' }],
+  };
+  const withMembership = {
+    ...base,
+    semanticInputs: [withMembershipInput],
+    baseRealizations: base.baseRealizations.map((realization) => ({
+      ...realization,
+      input: withMembershipInput,
+    })),
+  };
+
+  assert.notEqual(
+    canonicalInputAlternativeIdentity(base),
+    canonicalInputAlternativeIdentity(withMembership),
+    'canonical dedupe identity must preserve Face presentation provenance',
+  );
 });
 
 test('legacy Step列はordered SemanticInput sequenceへcompileする', () => {
