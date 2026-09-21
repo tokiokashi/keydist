@@ -83,6 +83,36 @@ test('成立不能なprefix extensionは単打をpendingにせず後続単打も
   assert.deepEqual(engine.handle({ type: 'up', key: 'h' }).recognized, []);
 });
 
+test('単打outputを持つprefix triggerはkeyup後も逐次prefixへ延長できる', () => {
+  const layout = fromFaces('converter-prefix-trigger-single', 'converter-prefix-trigger-single', [
+    face([], 'simultaneous', { d: 'D', h: 'H' }),
+    face(['d'], 'prefix', { h: 'X' }, { layer: '中指シフト' }),
+  ]);
+  const engine = new TypingInputEngine(layout.canonicalInputs);
+
+  assert.deepEqual(engine.handle({ type: 'down', key: 'd' }).recognized, []);
+  assert.deepEqual(engine.handle({ type: 'up', key: 'd' }).recognized, []);
+  assert.deepEqual(
+    engine.handle({ type: 'down', key: 'h' }).recognized.map((entry) => entry.output),
+    ['X'],
+  );
+});
+
+test('単打outputを持つprefix triggerは延長しなければflushで単打確定できる', () => {
+  const layout = fromFaces('converter-prefix-trigger-flush', 'converter-prefix-trigger-flush', [
+    face([], 'simultaneous', { d: 'D', h: 'H' }),
+    face(['d'], 'prefix', { h: 'X' }, { layer: '中指シフト' }),
+  ]);
+  const engine = new TypingInputEngine(layout.canonicalInputs);
+
+  assert.deepEqual(engine.handle({ type: 'down', key: 'd' }).recognized, []);
+  assert.deepEqual(engine.handle({ type: 'up', key: 'd' }).recognized, []);
+  assert.deepEqual(
+    engine.flush().recognized.map((entry) => entry.output),
+    ['D'],
+  );
+});
+
 test('prefix Requirementはtrigger release後もpress順を使って認識する', () => {
   const layout = fromFaces('converter-prefix', 'converter-prefix', [
     face([], 'simultaneous', { h: 'ほ' }),
