@@ -166,7 +166,12 @@ test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityに�
   assert.doesNotMatch(
     source,
     /face\.inputRole\b/,
-    'key-pattern picker must use faceLayerIds for presentation layer membership',
+    'key-pattern picker must not use legacy inputRole for presentation layer membership',
+  );
+  assert.doesNotMatch(
+    source,
+    /\bfaceLayerIds\b/,
+    'key-pattern picker must consume classifyPresentationFaces instead of raw faceLayerIds',
   );
 });
 
@@ -208,6 +213,11 @@ test('playbackはFace classificationからpresentation layer帰属を再構成�
     source,
     /face\.inputRole\b/,
     'playback must not use legacy inputRole for presentation layer membership',
+  );
+  assert.doesNotMatch(
+    source,
+    /\bfaceLayerIds\b/,
+    'playback must consume compiled presentation Layer.id instead of raw faceLayerIds',
   );
 });
 
