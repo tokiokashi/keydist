@@ -883,6 +883,23 @@ test('imported user Sequenceもcanonical SemanticInput列へ同期する', () =>
   assert.equal(inputs[1].output, 'x');
 });
 
+test('imported user Sequenceの完全一致pathはcanonical identityで1件へdedupeする', () => {
+  const layout = toLayout({
+    id: 'user-sequence-dedupe',
+    name: 'user-sequence-dedupe',
+    rows: ['x', '', '', ''],
+    romaji: 'kunrei',
+    sequences: [['x', [['1']]]],
+    legends: [],
+    direct: true,
+  });
+
+  const alternatives = layout.canonicalInputs.get('x');
+  assert.ok(alternatives);
+  assert.equal(alternatives.length, 1);
+  assert.deepEqual(alternatives[0].baseRealizations[0].actions, [['1']]);
+});
+
 test('保存済み凡例のspaceもthumb-rへ解決する', () => {
   const layout = toLayout({
     id: 'user-legacy',
