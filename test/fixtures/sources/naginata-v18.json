@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "layoutId": "naginata-v18",
   "source": {
     "url": "https://oookaworks.up.seesaa.net/image/E89699E58880E5BC8Fv18.txt",
@@ -68,6 +68,12 @@
           "れ",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\tき\tて\tし\t\t\t\tる\tす\tへ\t\t",
+        "ろ\tけ\tと\tか\tっ\tく\tあ\tい\tう\tー\t\t] / JIS専用列",
+        "ほ\tひ\tは\tこ\tそ\tた\tな\tん\tら\tれ\t\\\\ / JIS専用列"
       ]
     },
     {
@@ -132,6 +138,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\tね\tり\tめ\t\t\tさ\tよ\tえ\tゆ\t\t",
+        "せ\tみ\tに\tま\tち\tや\tの\tも\tつ\tふ\t\t",
+        "\t\tを\t、\tぬ\tお\t。\tむ\tわ\t\t"
       ]
     },
     {
@@ -196,6 +208,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\tヶ\t\tヵ\t\t\t\tょ\tぇ\tゅ\t\t",
+        "\t\t\t\t\tゃ\tぁ\tぃ\tぅ\t\t\t",
+        "\t\t\t\t\tぉ\t\t\tゎ\t\t"
       ]
     },
     {
@@ -260,6 +278,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\tぎ\tで\tじ\t\t\t\t\t\t\t\t",
+        "ぜ\tげ\tど\tが\tぢ\t\t\t\t\t\t\t",
+        "ぼ\tび\tば\tご\tぞ\t\t\t\t\t\t"
       ]
     },
     {
@@ -324,6 +348,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\tざ\t\tず\tべ\t\t",
+        "\t\t\t\t\tぐ\t\t\tづ\tぶ\t\t",
+        "\t\t\t\t\tだ\t\t\t\t\t"
       ]
     },
     {
@@ -388,6 +418,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "ぽ\tぴ\tぱ\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -452,6 +488,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\tぺ\t\t",
+        "\t\t\t\t\t\t\t\t\tぷ\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -516,6 +558,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\tきゃ\tりゃ\tしゃ\t\t\t\t\t\t\t\t",
+        "\tみゃ\tにゃ\t\tちゃ\t\t\t\t\t\t\t",
+        "\tひゃ\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -580,6 +628,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\tきゅ\tりゅ\tしゅ\t\t\t\t\t\t\t\t",
+        "\tみゅ\tにゅ\t\tちゅ\t\t\t\t\t\t\t",
+        "\tひゅ\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -644,6 +698,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\tきょ\tりょ\tしょ\t\t\t\t\t\t\t\t",
+        "\tみょ\tにょ\t\tちょ\t\t\t\t\t\t\t",
+        "\tひょ\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -709,6 +769,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\tくぇ\t\tいぇ\tうぇ\tふぇ\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -774,6 +840,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\tくぃ\t\t\tうぃ\tふぃ\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -839,6 +911,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\tくぉ\t\t\tうぉ\tふぉ\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -904,6 +982,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\tぎゃ\t\tじゃ\t\t\t\t\t\t\t\t",
+        "\t\t\t\tぢゃ\t\t\t\t\t\t\t",
+        "\tびゃ\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -969,6 +1053,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\tぎゅ\tでゅ\tじゅ\t\t\t\t\t\t\t\t",
+        "\t\t\t\tぢゅ\t\t\t\t\t\t\t",
+        "\tびゅ\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -1034,6 +1124,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\tぎょ\t\tじょ\t\t\t\t\t\t\t\t",
+        "\t\t\t\tぢょ\t\t\t\t\t\t\t",
+        "\tびょ\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -1099,6 +1195,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\tくぁ\t\t\tつぁ\tふぁ\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -1164,6 +1266,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\tてぃ\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -1229,6 +1337,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\tてゅ\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\tぴゅ\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -1294,6 +1408,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\tでぃ\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -1359,6 +1479,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\tとぅ\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -1424,6 +1550,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\tどぅ\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -1489,6 +1621,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\tぴゃ\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -1554,6 +1692,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\tぴょ\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -1619,6 +1763,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\tじぇ\t\t\t\t\t\t\t\t",
+        "\t\t\t\tぢぇ\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -1684,6 +1834,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\tしぇ\t\t\t\t\t\t\t\t",
+        "\t\t\t\tちぇ\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -1749,6 +1905,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\tぐぁ\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -1814,6 +1976,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\tぐぃ\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -1879,6 +2047,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\tぐぇ\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -1944,6 +2118,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\tぐぉ\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -2009,6 +2189,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\tぐゎ\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -2074,6 +2260,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\tくゎ\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -2139,6 +2331,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\tふゅ\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     }
   ],

@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "layoutId": "tsuki-2-263",
   "source": {
     "url": "https://jisx6004.client.jp/data/2chlog/1055763380.html",
@@ -68,6 +68,12 @@
           "゜",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "そ\tこ\tし\tて\tょ\tつ\tん\tい\tの\tり\tち\t",
+        "は\tか\t\tと\tた\tく\tう\t\t゛\tき\tれ\t",
+        "す\tけ\tに\tな\tさ\tっ\tる\t、\t。\t゜\t・"
       ]
     },
     {
@@ -132,6 +138,12 @@
           "ぉ",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\tぬ\tえ\tみ\tや\tぇ\t「\t",
+        "\t\t\t\t\tま\tお\tも\tわ\tゆ\t」\t",
+        "\t\t\t\t\tむ\tろ\tね\tー\tぉ\t"
       ]
     },
     {
@@ -196,6 +208,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "ぁ\tひ\tほ\tふ\tめ\t\t\t\t\t\t\t",
+        "ぃ\tを\tら\tあ\tよ\t\t\t\t\t\t\t",
+        "ぅ\tへ\tせ\tゅ\tゃ\t\t\t\t\t\t"
       ]
     }
   ],

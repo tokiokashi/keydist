@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "layoutId": "shin-koume",
   "source": {
     "url": "https://github.com/k-ayaki/benizara/blob/master/シン蜂蜜小梅配列(小指シフトで英大文字).bnz",
@@ -25,7 +25,7 @@
           "",
           "",
           "",
-          "￥"
+          ""
         ],
         [
           "。",
@@ -53,7 +53,7 @@
           "し",
           "と",
           "",
-          "逃"
+          ""
         ],
         [
           "ゆ",
@@ -66,8 +66,14 @@
           "す",
           "ら",
           "へ",
-          "＿"
+          ""
         ]
+      ],
+      "sourceRows": [
+        "１\t２\t３\t４\t５\t６\t７\t８\t９\t０\t－\t＾\t￥",
+        "。\tな\tて\tせ\tそ\t／\tお\tの\tに\t［］入左\t、\t（）入左",
+        "こ\tた\tか\tる\tは\tー\tん\tい\tし\tと\t後\t逃",
+        "ゆ\tほ\tま\tろ\t～\tっ\tう\tす\tら\tへ\t＿"
       ]
     },
     {
@@ -89,7 +95,7 @@
           "",
           "",
           "",
-          "｜"
+          ""
         ],
         [
           "",
@@ -117,7 +123,7 @@
           "じ",
           "ど",
           "",
-          "＊"
+          ""
         ],
         [
           "ゅ",
@@ -130,8 +136,14 @@
           "ず",
           "ぢ",
           "べ",
-          "！"
+          ""
         ]
+      ],
+      "sourceRows": [
+        "？\t／\t～\t［\t］\t＆\t’\t＜\t＞\t＋\t＝\t‘\t｜",
+        "ぺ\tけ\tよ\t－\t\tゑ\tび\tぎ\tづ\t］\t濁\t半",
+        "め\tや\tも\tさ\tぅ\tぃ\tぁ\tぐ\tじ\tど\tぴ\t＊",
+        "ゅ\tゃ\tふ\tょ\tぉ\tぇ\tヴ\tず\tぢ\tべ\t！"
       ]
     },
     {
@@ -181,7 +193,7 @@
           "り",
           "わ",
           "ね",
-          "｝"
+          ""
         ],
         [
           "",
@@ -194,8 +206,14 @@
           "え",
           "ち",
           "ぬ",
-          "？"
+          ""
         ]
+      ],
+      "sourceRows": [
+        "！\t”\t＃\t＄\t％\t［\t］\t（\t）\t｛\t｝\t\t",
+        "ぱ\tげ\tで\tぜ\tぞ\tゐ\tひ\tき\tつ\t［\t（）\t｛",
+        "ご\tだ\tが\tざ\tば\tむ\tれ\tく\tり\tわ\tね\t｝",
+        "ぽ\tぼ\tぶ\tぷ\tゎ\tみ\tあ\tえ\tち\tぬ\t？"
       ]
     },
     {
@@ -260,6 +278,12 @@
           "ぺ",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\tぴ\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\tぺ\t"
       ]
     },
     {
@@ -324,6 +348,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "ひぇ\tひゅ\tひょ\tひゃ\tひぃ\t\t\t\t\t\t\t",
+        "\t\t\t\tぴ\t\t\t\t\t\t\t",
+        "びぇ\tびゅ\tびょ\tびゃ\tびぃ\t\t\t\t\t\t"
       ]
     },
     {
@@ -388,6 +418,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "きぇ\tきゅ\tきょ\tきゃ\tきぃ\t\t\t\tいき\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "ぎぇ\tぎゅ\tぎょ\tぎゃ\tぎぃ\t\t\t\t\t\t"
       ]
     },
     {
@@ -452,6 +488,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "つぇ\t\tつぉ\tつぁ\tつぃ\t\t\t\t\t\t\t",
+        "にぇ\tにゅ\tにょ\tにゃ\tにぃ\t\t\t\t\t\t\t",
+        "づぇ\t\tづぉ\tづぁ\tづぃ\t\t\t\t\t\t"
       ]
     },
     {
@@ -516,6 +558,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "ぴぇ\tぴゅ\tぴょ\tぴゃ\tぴぃ\t\t\t\t\t\t\t",
+        "\t！\t？\t\tぱ\t\t\t\t\t\t\t",
+        "\tぽ\tぷ\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -580,6 +628,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "ふぇ\tふゅ\tふぉ\tふぁ\tふぃ\t\t\t\t\t\t\t",
+        "ぶぇ\tぶゅ\tぶぉ\tぶぁ\tぶぃ\t\t\t\t\t\t"
       ]
     },
     {
@@ -644,6 +698,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "くぇ\tくゎ\tくぉ\tくぁ\tくぃ\t\t\t\t\t\t\t",
+        "いぇ\t\tを\t\t\t\tくれ\t\tわれ\t\t\t",
+        "ぐぇ\tぐゎ\tぐぉ\tぐぁ\tぐぃ\t\t\t\t\t\t"
       ]
     },
     {
@@ -708,6 +768,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "りぇ\tりゅ\tりょ\tりゃ\tりぃ\t\t\t\t\t\t\t",
+        "しぇ\tしゅ\tしょ\tしゃ\tしぃ\t\t\t\t\t\t\t",
+        "じぇ\tじゅ\tじょ\tじゃ\tじぃ\t\t\t\t\t\t"
       ]
     },
     {
@@ -772,6 +838,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "ゑ\t\t\tゎ\tゐ\t\t\t\t\t\t\t",
+        "\tとぅ\t\t\t\t\t\t\t\t\t\t",
+        "\tどぅ\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -836,6 +908,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "みぇ\tみゅ\tみょ\tみゃ\tみぃ\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     },
     {
@@ -900,6 +978,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "ぇ\tぅ\tぉ\tぁ\tぃ\t\t\t\t\t\t\t",
+        "うぇ\t\tうぉ\t\tうぃ\t\t\t\t\t\t\t",
+        "ヴぇ\tヴゅ\tヴぉ\tヴぁ\tヴぃ\t\t\t\t\t\t"
       ]
     },
     {
@@ -964,6 +1048,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\tてゅ\t，\t\tてぃ\t\t\t\t\t\t\t",
+        "\tでゅ\t\t\tでぃ\t\t\t\tあり\t\t"
       ]
     },
     {
@@ -1028,6 +1118,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "ちぇ\tちゅ\tちょ\tちゃ\tちぃ\t\t\t\t\t\t\t",
+        "\t\t．\t\t\t\t\t\t\t\t\t",
+        "ぢぇ\tぢゅ\tぢょ\tぢゃ\tぢぃ\t\t\t\t\t\t"
       ]
     },
     {
@@ -1092,6 +1188,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\tぬぉ\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\t\t\t\t\t\t"
       ]
     }
   ],

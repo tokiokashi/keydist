@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "source": {
     "url": "https://jisx6004.client.jp/layout-kana.html",
     "sha": "jis-x-6004-public-layout",
@@ -67,6 +67,12 @@
           "れ",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "そ\tけ\tせ\tて\tょ\tつ\tん\tの\tを\tり\tち\t",
+        "は\tか\tし\tと\tた\tく\tう\tい\t゛\tき\tな\t",
+        "す\tこ\tに\tさ\tあ\tっ\tる\t、\t。\tれ\t"
       ]
     },
     {
@@ -131,6 +137,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "ぁ\t゜\tほ\tふ\tめ\tひ\tえ\tみ\tや\tぬ\t「\t",
+        "ぃ\tへ\tら\tゅ\tよ\tま\tお\tも\tわ\tゆ\t」\t",
+        "ぅ\tぇ\tぉ\tね\tゃ\tむ\tろ\t・\tー\t\t"
       ]
     }
   ],

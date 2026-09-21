@@ -10,7 +10,7 @@ const SOURCE_ROW_WIDTHS = [13, 12, 12, 11] as const;
 
 function makeManifest(): SourceManifest {
   return {
-    version: 1,
+    version: 2,
     layoutId: 'test-layout',
     source: {
       url: 'https://example.com/source',
@@ -21,10 +21,23 @@ function makeManifest(): SourceManifest {
     faces: [{
       trigger: [],
       mode: 'simultaneous',
+      sourceRows: SOURCE_ROW_WIDTHS.map((width) => Array<string>(width).fill('').join('\t')),
       rows: SOURCE_ROW_WIDTHS.map((width) => Array<string>(width).fill('')),
     }],
     omissions: [],
   };
+}
+
+function setSourceCell(
+  manifest: SourceManifest,
+  faceIndex: number,
+  row: number,
+  column: number,
+  value: string,
+): void {
+  const cells = manifest.faces[faceIndex].sourceRows[row].split('\t');
+  cells[column] = value;
+  manifest.faces[faceIndex].sourceRows[row] = cells.join('\t');
 }
 
 test('現在のかな source manifest は omission 完全性検証を通る（#201）', () => {
@@ -44,17 +57,17 @@ test('現在のかな source manifest は omission 完全性検証を通る（#2
 
 test('ANSI対象外の非空セルに omission が無ければ失敗する（#201）', () => {
   const manifest = makeManifest();
-  manifest.faces[0].rows[0][12] = '」';
+  setSourceCell(manifest, 0, 0, 12, '」');
 
   assert.throws(
     () => validateSourceManifest('missing.json', manifest),
-    /ANSI対象外の非空セルに omissions が無い/,
+    /sourceから除外されたセルに omissions が無い/,
   );
 });
 
 test('ANSI対象外の非空セルは対応する omission があれば通る（#201）', () => {
   const manifest = makeManifest();
-  manifest.faces[0].rows[0][12] = '」';
+  setSourceCell(manifest, 0, 0, 12, '」');
   manifest.omissions.push({
     faceIndex: 0,
     row: 0,
@@ -68,6 +81,7 @@ test('ANSI対象外の非空セルは対応する omission があれば通る（
 
 test('同じセルの omission 重複指定は失敗する（#201）', () => {
   const manifest = makeManifest();
+  setSourceCell(manifest, 0, 3, 10, '・');
   const omission = {
     faceIndex: 0,
     row: 3,
@@ -101,7 +115,7 @@ test('値の無い不要な omission は失敗する（#201）', () => {
 
 test('ANSI対象外セルと omission の値が食い違えば失敗する（#201）', () => {
   const manifest = makeManifest();
-  manifest.faces[0].rows[3][10] = '・';
+  setSourceCell(manifest, 0, 3, 10, '・');
   manifest.omissions.push({
     faceIndex: 0,
     row: 3,
@@ -112,7 +126,7 @@ test('ANSI対象外セルと omission の値が食い違えば失敗する（#20
 
   assert.throws(
     () => validateSourceManifest('mismatch.json', manifest),
-    /ANSI対象外セルの値と omissions\.value が一致しない/,
+    /sourceRowsの値と omissions\.value が一致しない/,
   );
 });
 
@@ -138,9 +152,19 @@ test('未定義の omission reason は失敗する（#201）', () => {
   );
 });
 
-test('ANSI対象列の omission は従来どおりセルの空欄化を必須にする（#201）', () => {
+test('ANSI対象列でsourceから落としたセルに omission が無ければ失敗する（#201）', () => {
   const manifest = makeManifest();
-  manifest.faces[0].rows[0][0] = 'ヶ';
+  setSourceCell(manifest, 0, 0, 0, 'ヶ');
+
+  assert.throws(
+    () => validateSourceManifest('target-missing.json', manifest),
+    /sourceから除外されたセルに omissions が無い/,
+  );
+});
+
+test('ANSI対象列の omission はsource値を保持し採用側を空欄にする（#201）', () => {
+  const manifest = makeManifest();
+  setSourceCell(manifest, 0, 0, 0, 'ヶ');
   manifest.omissions.push({
     faceIndex: 0,
     row: 0,
@@ -149,8 +173,21 @@ test('ANSI対象列の omission は従来どおりセルの空欄化を必須に
     reason: 'source-only',
   });
 
+  assert.doesNotThrow(() => validateSourceManifest('target-covered.json', manifest));
+
+  manifest.faces[0].rows[0][0] = 'ヶ';
   assert.throws(
-    () => validateSourceManifest('target-cell.json', manifest),
-    /ANSI対象列の除外セルが空欄になっていない/,
+    () => validateSourceManifest('target-not-blank.json', manifest),
+    /omission対象セルが採用側rowsで空欄になっていない/,
+  );
+});
+
+test('sourceにない値を採用側rowsへ追加すると失敗する（#201）', () => {
+  const manifest = makeManifest();
+  manifest.faces[0].rows[0][0] = 'ヶ';
+
+  assert.throws(
+    () => validateSourceManifest('invented.json', manifest),
+    /sourceRowsと採用側rowsの差分がomissionとして表現されていない/,
   );
 });

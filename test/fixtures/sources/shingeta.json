@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "layoutId": "shingeta",
   "source": {
     "url": "https://kouy.exblog.jp/13627994/",
@@ -68,6 +68,12 @@
           "ぶ",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "ー\tに\tは\t、\tち\tぐ\tば\tこ\tが\tひ\tげ\t「",
+        "の\tと\tか\tん\tっ\tく\tう\tい\tし\tな\t{BS}\t」",
+        "す\tま\tき\tる\tつ\tて\tた\tで\t。\tぶ\t￥"
       ]
     },
     {
@@ -132,6 +138,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "ぁ\tぃ\tぅ\tぇ\tぉ\t\t\t\t\t\t\t\t",
+        "ふぁ\tご\tふ\tふぃ\tふぇ\t\t\t\t\t\t\t",
+        "ほ\tじ\tれ\tも\tゆ\t\t\t\t\t\t\t",
+        "づ\tぞ\tぼ\tむ\tふぉ\t\t\t\t\t\t"
       ]
     },
     {
@@ -196,6 +208,12 @@
           "ヴ",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t，\t「\t」\t；\t＠\t\t",
+        "\t\t\t\t\tうぃ\tぱ\tよ\tみ\tうぇ\tうぉ\t",
+        "\t\t\t\t\tへ\tあ\t\t\tえ\t\t",
+        "\t\t\t\t\tせ\tね\tべ\tぷ\tヴ\t"
       ]
     },
     {
@@ -260,6 +278,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "ゃ\tみゃ\tみゅ\tみょ\tゎ\t\t\t\t\t\t\t\t",
+        "ぢ\tめ\tけ\tてぃ\tでぃ\t\t\t\t\t\t\t",
+        "を\tさ\tお\tり\tず\t\t\t\t\t\t\t",
+        "ぜ\tざ\tぎ\tろ\tぬ\t\t\t\t\t\t"
       ]
     },
     {
@@ -324,6 +348,12 @@
           "ちぇ",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "\t\t\t\t\tしぇ\tぺ\tど\tや\tじぇ\t\t",
+        "\t\t\t\t\tび\tら\t\t\tそ\t\t",
+        "\t\t\t\t\tわ\tだ\tぴ\tぽ\tちぇ\t"
       ]
     },
     {
@@ -388,6 +418,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "ゅ\tびゃ\tびゅ\tびょ\t\t\t\t\t\t\t\t\t",
+        "ひゅ\tしゅ\tしょ\tきゅ\tちゅ\t\t\t\t\t\t\t",
+        "ひょ\t\t\tきょ\tちょ\t\t\t\t\t\t\t",
+        "ひゃ\t\tしゃ\tきゃ\tちゃ\t\t\t\t\t\t"
       ]
     },
     {
@@ -452,6 +488,12 @@
           "",
           ""
         ]
+      ],
+      "sourceRows": [
+        "ょ\tぴゃ\tぴゅ\tぴょ\t\t\t\t\t\t\t\t\t",
+        "りゅ\tじゅ\tじょ\tぎゅ\tにゅ\t\t\t\t\t\t\t",
+        "りょ\t\t\tぎょ\tにょ\t\t\t\t\t\t\t",
+        "りゃ\t\tじゃ\tぎゃ\tにゃ\t\t\t\t\t\t"
       ]
     }
   ],

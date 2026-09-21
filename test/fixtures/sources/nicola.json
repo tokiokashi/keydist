@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "layoutId": "nicola",
   "source": {
     "url": "http://nicola.sunicom.co.jp/spec/kikaku.htm",
@@ -68,6 +68,12 @@
           "・",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "。\tか\tた\tこ\tさ\tら\tち\tく\tつ\t，\t、\t",
+        "う\tし\tて\tけ\tせ\tは\tと\tき\tい\tん\t\t",
+        "．\tひ\tす\tふ\tへ\tめ\tそ\tね\tほ\t・\t"
       ]
     },
     {
@@ -132,6 +138,12 @@
           "゛",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "ぁ\tえ\tり\tゃ\tれ\tぱ\tぢ\tぐ\tづ\tぴ\t\t",
+        "を\tあ\tな\tゅ\tも\tば\tど\tぎ\tぽ\t\t\t",
+        "ぅ\tー\tろ\tや\tぃ\tぷ\tぞ\tぺ\tぼ\t゛\t{無変換}"
       ]
     },
     {
@@ -196,6 +208,12 @@
           "ぉ",
           ""
         ]
+      ],
+      "sourceRows": [
+        "\t\t\t\t\t\t\t\t\t\t\t\t",
+        "゜\tが\tだ\tご\tざ\tよ\tに\tる\tま\tぇ\t\t",
+        "ヴ\tじ\tで\tげ\tぜ\tみ\tお\tの\tょ\tっ\t\t",
+        "\tび\tず\tぶ\tべ\tぬ\tゆ\tむ\tわ\tぉ\t{変換}"
       ]
     }
   ],

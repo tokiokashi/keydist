@@ -2,7 +2,7 @@ import { ADJACENT_PAIRS, ALL_FINGERS, dist, type Finger, type Geometry } from '.
 import type { Stroke, Trace } from './evaluate.ts';
 import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from './analysis-chain.ts';
 import { DEFAULT_ARPEGGIO_POLICY, type ArpeggioPolicy } from './analysis-arpeggio.ts';
-import { COMBO_LAYER_ID } from './layouts/types.ts';
+import { COMBO_LAYER_ID, SINGLE_LAYER_ID } from './layouts/types.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
@@ -116,8 +116,9 @@ export interface Metrics {
    */
   singleTapLayerRate: number;
   /**
-   * 総アクションのうち、1 physical Stroke・1物理キーだけでひらがなを1文字以上直接出力し、
-   * trigger / held-triggerに依存しない「単打」アクションの割合 [%]（仕様 §11.5.2）。
+   * 総アクションのうち、単打面（base layer）の1 physical Stroke・1物理キーだけで
+   * 入力単位を直接出力し、trigger / held-triggerに依存しない「単打」アクションの割合 [%]
+   * （仕様 §11.5.2）。
    */
   singleTapRate: number;
   /**
@@ -364,9 +365,10 @@ function singleTapLayerRate(trace: Trace): number {
 /**
  * 総アクションのうち、かな配列でいう「単打」に相当するアクションの割合。
  *
- * 単打は、1 physical Stroke・1物理キーだけでひらがなを1文字以上直接出力し、
+ * 単打は、単打面（base layer）の1 physical Stroke・1物理キーだけで入力単位を直接出力し、
  * trigger / held-triggerに依存せず、その入力単位が1 Strokeで完結するものとする。
- * ローマ字入力の各英字Strokeや、prefix / suffixの一部だけを単打とは数えない。
+ * 文字種のwhite listは持たない。ローマ字展開後の各英字Strokeや、
+ * prefix / suffixの一部だけを単打とは数えない。
  *
  * 分母はActionRealizationPolicy適用後のrealized action数。
  * hold-startをseparateにした場合は先行trigger Strokeも通常の分母へ入る。
@@ -386,7 +388,8 @@ function singleTapRate(trace: Trace, actions: number): number {
     if (strokes.length !== 1) continue;
 
     const stroke = strokes[0];
-    if (!/^\p{Script=Hiragana}+$/u.test(stroke.char)) continue;
+    if (stroke.layerId !== SINGLE_LAYER_ID) continue;
+    if (stroke.char !== stroke.inputChar) continue;
 
     const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);
     const hasOutput = stroke.participations.some((participation) =>
