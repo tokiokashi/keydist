@@ -82,18 +82,35 @@ test('Face semanticをpresentation roleやtrigger数から推測しない', asyn
 test('alternative selection identityはcore helperをauthorityにする', async () => {
   const evaluateSource = await readFile(join(SRC, 'evaluate.ts'), 'utf8');
   const compilerSource = await readFile(join(SRC, 'core/semantic-input/compiler.ts'), 'utf8');
-  const start = compilerSource.indexOf('export function inputAlternativeSelectionIdentity');
-  const end = compilerSource.indexOf('\n}', start);
+  const selectionStart = compilerSource.indexOf('export function inputAlternativeSelectionIdentity');
+  const selectionEnd = compilerSource.indexOf('\n}', selectionStart);
+  const thumbStart = evaluateSource.indexOf('function thumbVariantSignature');
+  const thumbEnd = evaluateSource.indexOf('function selectInputAlternative', thumbStart);
 
   assert.match(
     evaluateSource,
     /inputAlternativeSelectionIdentity\(/,
     'evaluate must use the canonical selection identity helper instead of reserializing alternatives',
   );
-  assert.notEqual(start, -1);
-  assert.notEqual(end, -1);
-  const identitySource = compilerSource.slice(start, end + 2);
+  assert.notEqual(selectionStart, -1);
+  assert.notEqual(selectionEnd, -1);
+  const identitySource = compilerSource.slice(selectionStart, selectionEnd + 2);
   assert.match(identitySource, /includeFaceMemberships:\s*false/);
+
+  assert.notEqual(thumbStart, -1);
+  assert.notEqual(thumbEnd, -1);
+  const thumbSource = evaluateSource.slice(thumbStart, thumbEnd);
+  for (const pattern of [
+    /JSON\.stringify/,
+    /\.semanticInputs\b/,
+    /\.baseRealizations\b/,
+  ]) {
+    assert.doesNotMatch(
+      thumbSource,
+      pattern,
+      'thumb policy must only provide the physical-key projection to the core selection identity helper',
+    );
+  }
 });
 
 test('evaluate realized factはFace authoring metadataへ依存しない', async () => {
