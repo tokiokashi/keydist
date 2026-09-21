@@ -1,5 +1,9 @@
 import { resolveKeyId } from './geometry.ts';
-import { classifyPresentationFaces, displayTriggerKeys, orderedPresentationLayers } from './layers.ts';
+import {
+  classifyPresentationFaces,
+  displayTriggerAlternatives,
+  orderedPresentationLayers,
+} from './layers.ts';
 import type { Requirement } from './core/semantic-input/types.ts';
 import type { Face, Layout } from './layouts/types.ts';
 
@@ -154,17 +158,21 @@ export function summarizeCandidateMatches(matches: readonly KeyPatternMatch[]): 
 }
 
 /**
- * 選択中のキーが単一キーのレイヤートリガー（シフト面など）に一致するなら、その面を返す。
+ * 選択中の単一キーがpresentation上の単キーtrigger alternativeに一致するなら、その面を返す。
  * 枠色を既存のレイヤー色へ揃えるための表示補助にだけ使う。
- * aggregation帰属はclassifyPresentationFaces()のcompiled Layerをauthorityとし、combo・複数キーtriggerは除外する。
+ * semantic Face.triggerの形状は再解釈せず、presentation alternativeとのexact matchだけを見る。
  */
 export function findActiveLayerFace(layout: Layout, selected: ReadonlySet<string>): Face | undefined {
   if (selected.size !== 1 || !layout.faces) return undefined;
+  const selectedKey = [...selected][0];
   const groups = classifyPresentationFaces(layout);
   for (const layer of orderedPresentationLayers(groups)) {
     for (const face of layer.faces) {
-      if (face.trigger.length !== 1) continue;
-      if (displayTriggerKeys(face).some((key) => selected.has(key))) return face;
+      if (displayTriggerAlternatives(face).some(
+        (alternative) => alternative.length === 1 && alternative[0] === selectedKey,
+      )) {
+        return face;
+      }
     }
   }
   return undefined;
