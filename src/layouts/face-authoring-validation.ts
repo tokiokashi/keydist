@@ -1,7 +1,5 @@
+import { faceCells, handOfKey, type Hand } from './face-geometry.ts';
 import type { Face } from './types.ts';
-import { faceCells, handOfKey } from '../layers.ts';
-
-type Hand = 'left' | 'right';
 
 const singleHand = (keys: Iterable<string>): Hand | undefined => {
   const hands = new Set<Hand>();
