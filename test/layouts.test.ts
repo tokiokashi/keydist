@@ -98,6 +98,17 @@ test('compiled presentation Layerはaggregation identity / role / orderを保持
     shifted,
   ]);
 
+  assert.deepEqual(
+    layout.layerDefinitions
+      ?.filter((definition) => definition.kind === 'layer')
+      .map((definition) => [definition.id, definition.presentationRole]),
+    [
+      ['single', 'layer'],
+      ['layer:中指', 'modifier'],
+      ['layer:人差指', 'layer'],
+    ],
+  );
+
   const groups = classifyPresentationFaces(layout);
   assert.deepEqual(
     [...groups.layers, ...groups.modifiers]
@@ -218,62 +229,72 @@ test('面のセル配列は複数文字の見出しを1キーへ置ける', () =
   assert.equal(layout.maxCharLength, 2);
 });
 
-test('presentation分類はinputRoleではなくcompiled aggregation metadataをauthorityにする', () => {
-  const legacyComposition: Face = {
+test('presentation分類はcompiled aggregation metadataをauthorityにする', () => {
+  const semanticCompositionMappedAsLayer: Face = {
     ...faceFromEntries(['f'], 'simultaneous', { j: 'あ' }),
     inputRole: 'composition',
+    role: 'modifier',
   };
   const mappedLayer = {
-    faces: [legacyComposition],
-    faceLayerIds: new Map([[legacyComposition, 'face:0']]),
-    layerDefinitions: [{ id: 'face:0', kind: 'layer' as const, label: '面 1' }],
+    faces: [semanticCompositionMappedAsLayer],
+    faceLayerIds: new Map([[semanticCompositionMappedAsLayer, 'face:0']]),
+    layerDefinitions: [{
+      id: 'face:0',
+      kind: 'layer' as const,
+      label: '面 1',
+      presentationRole: 'layer' as const,
+    }],
   };
   const layerGroups = classifyPresentationFaces(mappedLayer);
   assert.deepEqual(layerGroups.combos, []);
-  assert.deepEqual(layerGroups.layers.flatMap((group) => group.faces), [legacyComposition]);
+  assert.deepEqual(layerGroups.layers.flatMap((group) => group.faces), [semanticCompositionMappedAsLayer]);
+  assert.deepEqual(layerGroups.modifiers, []);
 
-  const legacyModifier: Face = {
+  const semanticLayerMappedAsModifier: Face = {
+    ...faceFromEntries(['a'], 'simultaneous', { ';': 'え' }),
+    inputRole: 'layer',
+  };
+  const mappedModifier = {
+    faces: [semanticLayerMappedAsModifier],
+    faceLayerIds: new Map([[semanticLayerMappedAsModifier, 'face:1']]),
+    layerDefinitions: [{
+      id: 'face:1',
+      kind: 'layer' as const,
+      label: '面 2',
+      presentationRole: 'modifier' as const,
+    }],
+  };
+  const modifierGroups = classifyPresentationFaces(mappedModifier);
+  assert.deepEqual(modifierGroups.layers, []);
+  assert.deepEqual(
+    modifierGroups.modifiers.flatMap((group) => group.faces),
+    [semanticLayerMappedAsModifier],
+  );
+
+  const semanticModifierMappedAsCombo: Face = {
     ...faceFromEntries(['d'], 'simultaneous', { k: 'い' }),
     inputRole: 'modifier',
   };
   const mappedCombo = {
-    faces: [legacyModifier],
-    faceLayerIds: new Map([[legacyModifier, 'combo']]),
+    faces: [semanticModifierMappedAsCombo],
+    faceLayerIds: new Map([[semanticModifierMappedAsCombo, 'combo']]),
     layerDefinitions: [{ id: 'combo', kind: 'combo' as const, label: 'コンボ' }],
   };
   const comboGroups = classifyPresentationFaces(mappedCombo);
-  assert.deepEqual(comboGroups.combos, [legacyModifier]);
+  assert.deepEqual(comboGroups.combos, [semanticModifierMappedAsCombo]);
   assert.deepEqual(comboGroups.layers, []);
   assert.deepEqual(comboGroups.modifiers, []);
+});
 
-  const semanticModifierWithoutPresentationRole: Face = {
-    ...faceFromEntries(['s'], 'simultaneous', { l: 'う' }),
-    inputRole: 'modifier',
-  };
-  const presentationModifierWithLayerSemantic: Face = {
-    ...faceFromEntries(['a'], 'simultaneous', { ';': 'え' }),
-    inputRole: 'layer',
-    role: 'modifier',
-  };
-  const roleMismatchLayout = {
-    faces: [semanticModifierWithoutPresentationRole, presentationModifierWithLayerSemantic],
-    faceLayerIds: new Map([
-      [semanticModifierWithoutPresentationRole, 'face:0'],
-      [presentationModifierWithLayerSemantic, 'face:1'],
-    ]),
-    layerDefinitions: [
-      { id: 'face:0', kind: 'layer' as const, label: '面 1' },
-      { id: 'face:1', kind: 'layer' as const, label: '面 2' },
-    ],
-  };
-  const roleGroups = classifyPresentationFaces(roleMismatchLayout);
-  assert.deepEqual(
-    roleGroups.layers.flatMap((group) => group.faces),
-    [semanticModifierWithoutPresentationRole],
-  );
-  assert.deepEqual(
-    roleGroups.modifiers.flatMap((group) => group.faces),
-    [presentationModifierWithLayerSemantic],
+test('layer aggregationのpresentationRole欠落は表示契約違反としてerrorにする', () => {
+  const face = faceFromEntries(['f'], 'simultaneous', { j: 'あ' });
+  assert.throws(
+    () => classifyPresentationFaces({
+      faces: [face],
+      faceLayerIds: new Map([[face, 'face:0']]),
+      layerDefinitions: [{ id: 'face:0', kind: 'layer', label: '面 1' }],
+    }),
+    /presentationRole明示が必要/,
   );
 });
 
@@ -834,10 +855,10 @@ test('同一aggregationで片側だけpresentationLabelなら順序によらずc
 
   for (const faces of [[explicit, implicit], [implicit, explicit]] as const) {
     const layout = fromFaces('presentation-label-merge', 'presentation-label-merge', faces);
-    assert.equal(
-      layout.layerDefinitions?.find((definition) => definition.id === 'layer:X')?.label,
-      'Custom X',
-    );
+    const definition = layout.layerDefinitions?.find((entry) => entry.id === 'layer:X');
+    assert.equal(definition?.label, 'Custom X');
+    assert.equal(definition?.presentationRole, 'modifier');
+    assert.equal(definition?.presentationModeLabel, '同時');
   }
 });
 

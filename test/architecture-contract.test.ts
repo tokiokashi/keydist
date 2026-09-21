@@ -102,6 +102,7 @@ test('runtime layers moduleはFace authoring semanticを解釈しない', async 
     /face\.mode\b/,
     /face\.triggerOrder\b/,
     /face\.layer\b/,
+    /face\.role\b/,
     /\bcanFoldFaces\b/,
     /\bclassifyFaces\b/,
     /\bgroupFacesIntoLayers\b/,
@@ -112,6 +113,11 @@ test('runtime layers moduleはFace authoring semanticを解釈しない', async 
       'runtime layers.ts must only consume compiled presentation attribution',
     );
   }
+  assert.match(
+    source,
+    /definition\.presentationRole/,
+    'runtime layers.ts must consume compiled LayerDefinition.presentationRole',
+  );
 });
 
 test('layouts barrelはlegacy Face authoring classifierを公開しない', async () => {

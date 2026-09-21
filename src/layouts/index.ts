@@ -24,6 +24,7 @@ export type {
   KanaDefinition,
   LayerDefinition,
   LayerKind,
+  LayerPresentationRole,
   Layout,
   ResolvedComboDefinition,
   Sequence,
