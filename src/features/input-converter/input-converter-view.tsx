@@ -3,6 +3,8 @@ import { QWERTY_LEGEND, THUMB_KEY } from '../../geometry.ts';
 import { LAYOUTS_JA, type Layout } from '../../layouts/index.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
+const INPUT_LAYOUTS = LAYOUTS_JA.filter((layout) => layout.romajiTable === undefined);
+
 function KeyboardPreview({
   layout,
   pressedKeys,
@@ -75,7 +77,7 @@ function RecognizedDetail({
 }
 
 export function InputConverterView() {
-  const [layout, setLayout] = useState<Layout>(() => LAYOUTS_JA[0]);
+  const [layout, setLayout] = useState<Layout>(() => INPUT_LAYOUTS[0] ?? LAYOUTS_JA[0]);
   const session = useTypingSession(layout);
 
   return (
@@ -93,11 +95,11 @@ export function InputConverterView() {
           <select
             value={layout.id}
             onChange={(event) => {
-              const next = LAYOUTS_JA.find((candidate) => candidate.id === event.target.value);
+              const next = INPUT_LAYOUTS.find((candidate) => candidate.id === event.target.value);
               if (next !== undefined) setLayout(next);
             }}
           >
-            {LAYOUTS_JA.map((candidate) => (
+            {INPUT_LAYOUTS.map((candidate) => (
               <option key={candidate.id} value={candidate.id}>
                 {candidate.name}
               </option>
@@ -146,8 +148,9 @@ export function InputConverterView() {
       </div>
 
       <p className="input-note">
-        Phase 1では単打・基本prefix・simultaneous・hold-capableの既存core経路を使う。
-        multi-step / suffix / combo等の追加coverageはPhase 2で実在配列をfixtureにして広げる。
+        Phase 1では直接かなを出力する配列を対象に、単打・基本prefix・simultaneous・
+        hold-capableの既存core経路を使う。ローマ字→かな変換とmulti-step / suffix /
+        combo等の追加coverageは、必要なsemanticを分けて後続で広げる。
       </p>
     </section>
   );
