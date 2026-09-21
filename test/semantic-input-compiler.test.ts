@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   canonicalInputAlternativeIdentity,
+  inputAlternativeSelectionIdentity,
   compileFaceSemanticInputs,
   compileSequenceInputAlternative,
   compileSequenceSemanticInputs,
@@ -55,6 +56,37 @@ test('canonical alternative identityはpresentation provenanceを情報保持ide
     canonicalInputAlternativeIdentity(base),
     canonicalInputAlternativeIdentity(withMembership),
     'canonical dedupe identity must preserve Face presentation provenance',
+  );
+});
+
+test('selection identityはpresentation provenanceだけを無視する', () => {
+  const base = compileSequenceInputAlternative('x', [['j']], 'single');
+  const input = base.semanticInputs[0];
+  const withMembershipInput: SemanticInput = {
+    ...input,
+    faceMemberships: [{ faceIndex: 7, cellKey: 'j' }],
+  };
+  const withMembership = {
+    ...base,
+    semanticInputs: [withMembershipInput],
+    baseRealizations: base.baseRealizations.map((realization) => ({
+      ...realization,
+      input: withMembershipInput,
+    })),
+  };
+
+  assert.equal(
+    inputAlternativeSelectionIdentity(base),
+    inputAlternativeSelectionIdentity(withMembership),
+    'selection identity must ignore Face presentation provenance',
+  );
+  assert.notEqual(
+    inputAlternativeSelectionIdentity(base),
+    inputAlternativeSelectionIdentity({
+      ...withMembership,
+      origin: 'combo',
+    }),
+    'selection identity must retain top-level authoring origin',
   );
 });
 
