@@ -79,6 +79,21 @@ test('Face semanticをpresentation roleやtrigger数から推測しない', asyn
   );
 });
 
+test('alternative selectionはpresentation provenanceをpath identityに使わない', async () => {
+  const source = await readFile(join(SRC, 'evaluate.ts'), 'utf8');
+  const start = source.indexOf('function thumbVariantSignature');
+  const end = source.indexOf('function selectInputAlternative', start);
+
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  const signatureSource = source.slice(start, end);
+  assert.doesNotMatch(
+    signatureSource,
+    /\bfaceMemberships\b/,
+    'thumb alternative selection must ignore Face presentation provenance',
+  );
+});
+
 test('evaluate realized factはFace authoring metadataへ依存しない', async () => {
   const source = await readFile(join(SRC, 'evaluate.ts'), 'utf8');
 
