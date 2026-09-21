@@ -129,6 +129,16 @@ test('results viewはFace semantic authoring metadataへ依存しない', async 
   );
   assert.doesNotMatch(
     source,
+    /\bfaceLayerIds\b|\blayerIdForFace\b/,
+    'results-view must consume presentation Layer.id instead of reverse-looking-up Face attribution',
+  );
+  assert.doesNotMatch(
+    source,
+    /layer\.faces\.some\([^\n]*face\.trigger\.length\s*===\s*0/,
+    'results-view must identify the base aggregation by Layer.id instead of trigger shape',
+  );
+  assert.doesNotMatch(
+    source,
     /from\s+['"]\.\/layouts\/index\.ts['"]/,
     'results-view must not runtime-import the built-in layout registry barrel',
   );
@@ -157,6 +167,22 @@ test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityに�
     source,
     /face\.inputRole\b/,
     'key-pattern picker must use faceLayerIds for presentation layer membership',
+  );
+});
+
+test('results picker guideは明示presentation trigger / combo variantsを使う', async () => {
+  const source = await readFile(join(SRC, 'results-view.ts'), 'utf8');
+  const start = source.indexOf('function pickerGuideColorMap');
+  const end = source.indexOf('function heatIntensity', start);
+  assert.ok(start >= 0 && end > start, 'picker guide section must remain discoverable');
+  const section = source.slice(start, end);
+
+  assert.match(section, /displayTriggerKeys\(face\)/);
+  assert.match(section, /combo\.keyVariants\s*\?\?\s*\[combo\.keys\]/);
+  assert.doesNotMatch(
+    section,
+    /for \(const trigger of face\.trigger\)/,
+    'picker guide must not ignore presentation trigger alternatives',
   );
 });
 
