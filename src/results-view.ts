@@ -704,9 +704,11 @@ function triggerText(face: Layer['faces'][number], legends: Map<string, string>)
 }
 
 function displayTriggerText(layout: Layout, face: Layer['faces'][number]): string {
-  return face.presentationTriggerText ?? displayTriggerKeys(face)
-    .map((key) => triggerKeyText(key, layout.legends))
-    .join(' + ');
+  return face.presentationTriggerText ?? displayTriggerAlternatives(face)
+    .map((alternative) => alternative
+      .map((key) => triggerKeyText(key, layout.legends))
+      .join(' + '))
+    .join(' / ');
 }
 
 function triggerHandText(face: Layer['faces'][number]): string {
