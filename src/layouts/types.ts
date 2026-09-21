@@ -326,7 +326,9 @@ export function fromFaces(
     addDefinition({
       id: layerId,
       kind: isCombo ? 'combo' : 'layer',
-      label: isCombo ? 'コンボ' : face.layer ?? (trigger.length === 0 ? '単打' : `面 ${faceIndex + 1}`),
+      label: isCombo
+        ? 'コンボ'
+        : face.presentationLabel ?? face.layer ?? (trigger.length === 0 ? '単打' : `面 ${faceIndex + 1}`),
     });
     face.rows.forEach((row, r) => {
       const cells = typeof row === 'string' ? [...row] : [...row];
