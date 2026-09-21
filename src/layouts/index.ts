@@ -43,8 +43,9 @@ export {
   withRomaji,
   withCombos,
 } from './types.ts';
-export { faceCells, handOfKey } from '../layers.ts';
-export type { FaceGroups, Hand, Layer } from '../layers.ts';
+export { faceCells, handOfKey } from './face-geometry.ts';
+export type { Hand } from './face-geometry.ts';
+export type { FaceGroups, Layer } from '../layers.ts';
 
 const ROMAJI = kunrei();
 const ROMAJI_OONISHI = oonishiRomaji();

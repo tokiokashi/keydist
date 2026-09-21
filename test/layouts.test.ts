@@ -12,6 +12,7 @@ import {
   displayTriggerAlternatives,
   displayTriggerHandLabel,
   displayTriggerKeys,
+  matchesDisplayTriggerAlternative,
   faceCells,
   faceDisplayCells,
   handOfKey,
@@ -472,6 +473,22 @@ test('trigger presentationは明示alternativeとchordを区別して正規化�
   };
   assert.deepEqual(displayTriggerAlternatives(twoHandChord), [['thumb-l', 'thumb-r']]);
   assert.equal(displayTriggerHandLabel(twoHandChord), '両手');
+});
+
+test('presentation trigger matcherはalternative単位のexact matchだけを許可する', () => {
+  const face: Face = {
+    ...faceFromEntries(['space'], 'simultaneous', { j: 'あ' }),
+    presentationTriggerAlternatives: [
+      ['thumb-l'],
+      ['thumb-r'],
+      ['j', 'k'],
+    ],
+  };
+  assert.equal(matchesDisplayTriggerAlternative(face, new Set(['thumb-l'])), true);
+  assert.equal(matchesDisplayTriggerAlternative(face, new Set(['thumb-r'])), true);
+  assert.equal(matchesDisplayTriggerAlternative(face, new Set(['j', 'k'])), true);
+  assert.equal(matchesDisplayTriggerAlternative(face, new Set(['j'])), false);
+  assert.equal(matchesDisplayTriggerAlternative(face, new Set(['thumb-l', 'thumb-r'])), false);
 });
 
 test('presentation trigger alternativesはalias・重複を正規化し空authoringを拒否する', () => {

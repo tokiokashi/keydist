@@ -699,10 +699,6 @@ function triggerKeyText(key: string, legends: Map<string, string>): string {
     : resolved;
 }
 
-function triggerText(face: Layer['faces'][number], legends: Map<string, string>): string {
-  return face.trigger.map((key) => triggerKeyText(key, legends)).join(' + ');
-}
-
 function displayTriggerText(layout: Layout, face: Layer['faces'][number]): string {
   return face.presentationTriggerText ?? displayTriggerAlternatives(face)
     .map((alternative) => alternative
@@ -990,7 +986,7 @@ function renderComboTable(
   };
 
   const faceItems: ComboDiagramItem[] = combos.map((face) => {
-    const trigger = triggerText(face, layout.legends);
+    const trigger = displayTriggerText(layout, face);
     return { face, trigger, optionLabel: trigger };
   });
 
@@ -1069,7 +1065,7 @@ function renderComboTable(
 
   const faceRows = combos.map((face) => {
     const outputs = [...faceCells(face).values()].join(' / ');
-    return `<tr><td>${escapeText(triggerText(face, layout.legends))}</td><td>${escapeText(outputs)}</td></tr>`;
+    return `<tr><td>${escapeText(displayTriggerText(layout, face))}</td><td>${escapeText(outputs)}</td></tr>`;
   });
   const resolvedRows = resolvedCombos.map((combo) => {
     const trigger = combo.inputs.join(' + ');

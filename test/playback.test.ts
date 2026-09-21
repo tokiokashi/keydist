@@ -32,7 +32,13 @@ import {
 } from '../src/playback.ts';
 import { buildGeometry } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
-import { LAYOUT_BY_ID, withRomaji } from '../src/layouts/index.ts';
+import {
+  faceFromEntries,
+  fromFaces,
+  LAYOUT_BY_ID,
+  withRomaji,
+  withThumbShiftAlternatives,
+} from '../src/layouts/index.ts';
 import { kunrei } from '../src/romaji/kunrei.ts';
 import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
 import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from '../src/analysis-chain.ts';
@@ -950,6 +956,35 @@ test('Face再生でaggregation mappingが欠落していればerrorにする', (
     () => playbackStrokeDisplay({ ...layout, faceLayerIds: undefined }, stroke),
     /faceLayerIdsの明示が必要/,
   );
+});
+
+test('combo再生はpresentation trigger alternativeで選択済み親指pathをFaceへ帰属する', () => {
+  const face = {
+    ...faceFromEntries(['thumb-r'], 'simultaneous', { j: 'あ' }),
+    inputRole: 'composition' as const,
+    triggerPersistence: 'single' as const,
+    presentationTriggerAlternatives: [['thumb-r'], ['thumb-l']] as const,
+  };
+  const layout = withThumbShiftAlternatives(
+    fromFaces('combo-thumb-presentation', 'combo-thumb-presentation', [face]),
+    'thumb-r',
+    ['thumb-r', 'thumb-l'],
+  );
+  const trace = evaluate(
+    'あ',
+    layout,
+    buildGeometry('row-staggered'),
+    { windowSize: 3, sfbHomeCost: true, preferOppositeThumb: true },
+  );
+  const stroke = trace.strokes[0];
+
+  assert.equal(stroke.layerId, 'combo');
+  assert.deepEqual(stroke.triggerKeys, ['thumb-l']);
+
+  const display = playbackStrokeDisplay(layout, stroke);
+  assert.equal(display.character, 'あ');
+  assert.equal(display.keyLabels.get('thumb-l'), '⇧');
+  assert.equal(display.keyLabels.get('j'), 'あ');
 });
 
 test('薙刀式の濁音はシフトと出力かなを同じステップで表示する', () => {

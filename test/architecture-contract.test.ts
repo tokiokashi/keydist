@@ -94,6 +94,23 @@ test('evaluate realized factはFace authoring metadataへ依存しない', async
   );
 });
 
+test('Face authoring validationはruntime presentation moduleへ依存しない', async () => {
+  const validationSource = await readFile(join(SRC, 'layouts/face-authoring-validation.ts'), 'utf8');
+  const geometrySource = await readFile(join(SRC, 'layouts/face-geometry.ts'), 'utf8');
+
+  assert.doesNotMatch(
+    validationSource,
+    /\.\.\/layers\.ts/,
+    'authoring validation must depend on neutral Face geometry helpers, not runtime layers.ts',
+  );
+  assert.match(validationSource, /\.\/face-geometry\.ts/);
+  assert.doesNotMatch(
+    geometrySource,
+    /layers\.ts/,
+    'neutral Face geometry helpers must not depend on runtime presentation',
+  );
+});
+
 test('runtime layers moduleはFace authoring semanticを解釈しない', async () => {
   const source = await readFile(join(SRC, 'layers.ts'), 'utf8');
 
@@ -239,8 +256,8 @@ test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityに�
   );
   assert.match(
     source,
-    /displayTriggerAlternatives\(face\)/,
-    'active layer attribution must use normalized presentation trigger alternatives',
+    /matchesDisplayTriggerAlternative\(face, selected\)/,
+    'active layer attribution must use the shared presentation trigger matcher',
   );
 });
 
@@ -265,6 +282,17 @@ test('presentation consumerはLayer.orderの共通helperを使う', async () => 
     /if \(!colors\.has\(key\)\) colors\.set\(key, stroke\)/,
     'picker guide must preserve the first Layer.order attribution for duplicate triggers',
   );
+});
+
+test('results presentationはraw Face.trigger textを再構成しない', async () => {
+  const source = await readFile(join(SRC, 'results-view.ts'), 'utf8');
+
+  assert.doesNotMatch(
+    source,
+    /face\.trigger\b/,
+    'results presentation must use normalized display trigger alternatives',
+  );
+  assert.match(source, /displayTriggerText\(layout, face\)/);
 });
 
 test('results picker guideは明示presentation trigger / combo variantsを使う', async () => {
@@ -310,6 +338,16 @@ test('playbackはFace classificationからpresentation layer帰属を再構成�
     source,
     /\bfaceLayerIds\b/,
     'playback must consume compiled presentation Layer.id instead of raw faceLayerIds',
+  );
+  assert.doesNotMatch(
+    source,
+    /face\.trigger\b/,
+    'playback presentation matching must not reinterpret raw Face.trigger',
+  );
+  assert.match(
+    source,
+    /matchesDisplayTriggerAlternative\(face, triggerKeys\)/,
+    'playback must match realized trigger keys through presentation alternatives',
   );
 });
 
