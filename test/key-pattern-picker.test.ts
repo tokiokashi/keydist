@@ -357,13 +357,15 @@ test('findActiveLayerFace: presentationTriggerKeysのphysical alternativeも同�
   assert.equal(findActiveLayerFace(layout, new Set(['thumb-r'])), shiftFace);
 });
 
-test('findActiveLayerFace: 複数キーtriggerはレイヤーとして扱わない', () => {
+test('findActiveLayerFace: 複数キーtrigger chordは単キー選択へ誤帰属しない', () => {
   const comboFace = faceFromEntries(['j', 'k'], 'simultaneous', { r: 'あ' });
   const layout = stubLayout({
     faces: [comboFace],
     faceLayerIds: new Map([[comboFace, 'face:0']]),
     layerDefinitions: [{ id: 'face:0', kind: 'layer', label: '面 1', presentationRole: 'layer' }],
   });
+  assert.equal(findActiveLayerFace(layout, new Set(['j'])), undefined);
+  assert.equal(findActiveLayerFace(layout, new Set(['k'])), undefined);
   assert.equal(findActiveLayerFace(layout, new Set(['j', 'k'])), undefined);
 });
 
