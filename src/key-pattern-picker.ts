@@ -156,7 +156,7 @@ export function summarizeCandidateMatches(matches: readonly KeyPatternMatch[]): 
 /**
  * 選択中のキーが単一キーのレイヤートリガー（シフト面など）に一致するなら、その面を返す。
  * 枠色を既存のレイヤー色へ揃えるための表示補助にだけ使う。
- * aggregation帰属はfaceLayerIdsをauthorityとし、combo・複数キーtriggerは除外する。
+ * aggregation帰属はclassifyPresentationFaces()のcompiled Layerをauthorityとし、combo・複数キーtriggerは除外する。
  */
 export function findActiveLayerFace(layout: Layout, selected: ReadonlySet<string>): Face | undefined {
   if (selected.size !== 1 || !layout.faces) return undefined;
@@ -170,7 +170,6 @@ export function findActiveLayerFace(layout: Layout, selected: ReadonlySet<string
   return undefined;
 }
 
-/** ガイド表示用: 配列が持つ全triggerキー（層操作・コンボ問わず）の物理キーid集合。 */
 /** ガイド表示用: canonical pathが持つtriggerキー集合。 */
 export function allTriggerKeys(layout: Layout): ReadonlySet<string> {
   const keys = new Set<string>();
