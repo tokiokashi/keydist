@@ -175,6 +175,19 @@ test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityに�
   );
 });
 
+test('presentation consumerはLayer.orderの共通helperを使う', async () => {
+  const pickerSource = await readFile(join(SRC, 'key-pattern-picker.ts'), 'utf8');
+  const resultsSource = await readFile(join(SRC, 'results-view.ts'), 'utf8');
+
+  assert.match(pickerSource, /orderedPresentationLayers\(groups\)/);
+  assert.match(resultsSource, /orderedPresentationLayers\(groups\)/);
+  assert.doesNotMatch(
+    pickerSource,
+    /\[\.\.\.groups\.layers,\s*\.\.\.groups\.modifiers\]/,
+    'picker must not give layer-role aggregations implicit priority over modifier-role aggregations',
+  );
+});
+
 test('results picker guideは明示presentation trigger / combo variantsを使う', async () => {
   const source = await readFile(join(SRC, 'results-view.ts'), 'utf8');
   const start = source.indexOf('function pickerGuideColorMap');
