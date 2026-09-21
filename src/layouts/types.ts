@@ -83,6 +83,8 @@ export interface LayerDefinition {
   id: string;
   kind: LayerKind;
   label: string;
+  /** aggregation titleに添えるpresentation-onlyの入力方式表示。 */
+  presentationModeLabel?: string;
 }
 
 export interface CompactLayerViewPresentation {
@@ -341,6 +343,25 @@ export function fromFaces(
     if (existing.kind !== definition.kind) {
       throw new Error(`aggregation「${definition.id}」のkindが競合している`);
     }
+    if (
+      existing.presentationModeLabel !== undefined
+      && definition.presentationModeLabel !== undefined
+      && existing.presentationModeLabel !== definition.presentationModeLabel
+    ) {
+      throw new Error(
+        `aggregation「${definition.id}」のpresentation modeが競合している: `
+        + `${existing.presentationModeLabel} / ${definition.presentationModeLabel}`,
+      );
+    }
+    if (
+      existing.presentationModeLabel === undefined
+      && definition.presentationModeLabel !== undefined
+    ) {
+      layerDefinitions[index] = {
+        ...existing,
+        presentationModeLabel: definition.presentationModeLabel,
+      };
+    }
 
     const previousExplicit = explicitLayerLabels.get(definition.id);
     if (explicitLabel !== undefined) {
@@ -375,12 +396,16 @@ export function fromFaces(
         ? SINGLE_LAYER_ID
         : face.layer === undefined ? `face:${faceIndex}` : `layer:${face.layer}`;
     faceLayerIds.set(face, layerId);
+    const presentationModeLabel = trigger.length === 0 || isCombo
+      ? undefined
+      : face.mode === 'simultaneous' ? '同時' : face.mode === 'prefix' ? '前置' : '後置';
     addDefinition({
       id: layerId,
       kind: isCombo ? 'combo' : 'layer',
       label: isCombo
         ? 'コンボ'
         : face.presentationLabel ?? face.layer ?? (trigger.length === 0 ? '単打' : `面 ${faceIndex + 1}`),
+      ...(presentationModeLabel === undefined ? {} : { presentationModeLabel }),
     }, isCombo ? undefined : face.presentationLabel);
     face.rows.forEach((row, r) => {
       const cells = typeof row === 'string' ? [...row] : [...row];
