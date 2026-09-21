@@ -486,7 +486,8 @@ test('triggerOrderが異なるFaceは同じレイヤーへ畳まない', () => {
     triggerPersistence: 'single',
   };
   const second: Face = {
-    ...faceFromEntries(['d'], 'simultaneous', { k: 'い' }),
+    // canonical上は同一outputの別pathとして合法にし、authoring folding validationを直接踏む。
+    ...faceFromEntries(['d'], 'simultaneous', { k: 'あ' }),
     layer: '順序',
     triggerPersistence: 'single',
   };
