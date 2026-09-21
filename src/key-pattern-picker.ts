@@ -1,4 +1,5 @@
 import { resolveKeyId } from './geometry.ts';
+import { displayTriggerKeys } from './layers.ts';
 import type { Requirement } from './core/semantic-input/types.ts';
 import { COMBO_LAYER_ID, type Face, type Layout } from './layouts/types.ts';
 
@@ -34,7 +35,8 @@ function comboGroupForCanonicalPath(
 ): string | undefined {
   const signature = keySignature(keys);
   return layout.resolvedComboDefinitions?.find((combo) =>
-    combo.output === output && keySignature(combo.keys) === signature
+    combo.output === output
+    && (combo.keyVariants ?? [combo.keys]).some((keys) => keySignature(keys) === signature)
   )?.group;
 }
 
@@ -167,7 +169,7 @@ export function findActiveLayerFace(layout: Layout, selected: ReadonlySet<string
       throw new Error('Face表示には全FaceのfaceLayerIds明示が必要');
     }
     if (layerId === COMBO_LAYER_ID || face.trigger.length !== 1) return false;
-    return selected.has(resolveKeyId(face.trigger[0]));
+    return displayTriggerKeys(face).some((key) => selected.has(key));
   });
 }
 
