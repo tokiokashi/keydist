@@ -1,5 +1,7 @@
 node_modules/
 dist/
+.output/
+src/routeTree.gen.ts
 *.log
 
 # サブエージェントを worktree 分離で走らせると、リポジトリの中に作業用の
