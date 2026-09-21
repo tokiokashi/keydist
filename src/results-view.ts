@@ -824,7 +824,7 @@ function pickerGuideColorMap(
     }
   }
   for (const face of groups.combos) {
-    for (const trigger of face.trigger) {
+    for (const trigger of displayTriggerKeys(face)) {
       const key = resolveKeyId(trigger);
       if (!colors.has(key)) colors.set(key, 'var(--picker-selected)');
     }
