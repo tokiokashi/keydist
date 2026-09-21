@@ -703,13 +703,8 @@ function triggerText(face: Layer['faces'][number], legends: Map<string, string>)
   return face.trigger.map((key) => triggerKeyText(key, legends)).join(' + ');
 }
 
-function isNaginataCenterShift(layout: Layout, face: Layer['faces'][number]): boolean {
-  return layout.id === 'naginata-v18' && displayTriggerKeys(layout, face).length === 2;
-}
-
 function displayTriggerText(layout: Layout, face: Layer['faces'][number]): string {
-  if (isNaginataCenterShift(layout, face)) return '左右のSpace';
-  return displayTriggerKeys(layout, face)
+  return face.presentationTriggerText ?? displayTriggerKeys(face)
     .map((key) => triggerKeyText(key, layout.legends))
     .join(' + ');
 }
@@ -721,15 +716,8 @@ function triggerHandText(face: Layer['faces'][number]): string {
 }
 
 function displayTriggerAnnotation(layout: Layout, face: Layer['faces'][number]): string {
-  if (isNaginataCenterShift(layout, face)) return 'SandS';
-  return `${triggerHandText(face)} ${displayTriggerText(layout, face)}を押す`;
-}
-
-function displayLayerLegend(layout: Layout, key: string, label: string): string {
-  const resolved = resolveKeyId(key);
-  return layout.id === 'naginata-v18' && (resolved === THUMB_KEY.LT || resolved === THUMB_KEY.RT)
-    ? 'Space'
-    : label;
+  return face.presentationLabel
+    ?? `${triggerHandText(face)} ${displayTriggerText(layout, face)}を押す`;
 }
 
 function layerTitle(layer: Layer, index: number, layout: Layout): string {
@@ -738,10 +726,12 @@ function layerTitle(layer: Layer, index: number, layout: Layout): string {
     .filter((face) => face.trigger.length > 0)
     .map((face) => displayTriggerText(layout, face));
   if (triggers.length === 0) return `レイヤー ${index + 1}: 単打`;
-  const names = [...new Set(layer.faces.map((face) => face.layer).filter((name): name is string => name !== undefined))];
-  const name = names.length === 1
-    ? names[0]
-    : layer.faces.some((face) => isNaginataCenterShift(layout, face)) ? 'SandS' : 'シフト';
+  const names = [...new Set(
+    layer.faces
+      .map((face) => face.layer ?? face.presentationLabel)
+      .filter((name): name is string => name !== undefined),
+  )];
+  const name = names.length === 1 ? names[0] : 'シフト';
   const modes = [...new Set(layer.faces.map((face) => face.mode))]
     .map((mode) => mode === 'simultaneous' ? '同時' : mode === 'prefix' ? '前置' : '後置')
     .join(' / ');
@@ -755,9 +745,7 @@ interface LayerCell {
 
 function layerCells(layer: Layer, layout: Layout): Map<string, LayerCell> {
   if (layer.faces.length === 0) {
-    return new Map([...layout.legends].map(([key, label]) => [key, {
-      label: displayLayerLegend(layout, key, label),
-    }]));
+    return new Map([...layout.legends].map(([key, label]) => [key, { label }]));
   }
 
   const cells = new Map<string, LayerCell>();
