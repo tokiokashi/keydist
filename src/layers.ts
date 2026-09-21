@@ -162,7 +162,7 @@ function validateGroup(group: readonly Face[]): void {
   }
 }
 
-/** 面をレイヤー・修飾・コンボへ分類し、宣言された面の畳み条件を検証する。 */
+/** authoring Faceをレイヤー・修飾・コンボへ分類し、宣言された面の畳み条件を検証する。 */
 export function classifyFaces(faces: readonly Face[]): FaceGroups {
   const layers: Layer[] = [];
   const modifiers: Layer[] = [];
@@ -177,6 +177,56 @@ export function classifyFaces(faces: readonly Face[]): FaceGroups {
     modifiers,
     combos: faces.filter((face) => face.inputRole === 'composition'),
   };
+}
+
+/**
+ * compiled Layoutのpresentation Faceをaggregation mappingで分類する。
+ * semantic authoringのinputRole / face.layerは再解釈せず、
+ * faceLayerIdsを帰属authority、layerDefinitionsをkind authorityとして使う。
+ */
+export function classifyPresentationFaces(
+  layout: Pick<Layout, 'faces' | 'faceLayerIds' | 'layerDefinitions'>,
+): FaceGroups {
+  const faces = layout.faces ?? [];
+  if (faces.length === 0) return { layers: [], modifiers: [], combos: [] };
+  if (!layout.faceLayerIds) {
+    throw new Error('Face表示にはfaceLayerIdsの明示が必要');
+  }
+
+  const kinds = new Map(
+    (layout.layerDefinitions ?? []).map((definition) => [definition.id, definition.kind] as const),
+  );
+  const groups = new Map<string, Face[]>();
+  const combos: Face[] = [];
+
+  for (const face of faces) {
+    const layerId = layout.faceLayerIds.get(face);
+    if (layerId === undefined) {
+      throw new Error('Face表示には全FaceのfaceLayerIds明示が必要');
+    }
+    const kind = kinds.get(layerId);
+    if (kind === undefined) {
+      throw new Error(`Face表示にはaggregation「${layerId}」のlayerDefinitions明示が必要`);
+    }
+    if (kind === 'combo') {
+      combos.push(face);
+      continue;
+    }
+    const group = groups.get(layerId);
+    if (group) group.push(face);
+    else groups.set(layerId, [face]);
+  }
+
+  const layers: Layer[] = [];
+  const modifiers: Layer[] = [];
+  for (const group of groups.values()) {
+    const roles = new Set(group.map((face) => face.role === 'modifier' ? 'modifier' : 'layer'));
+    if (roles.size > 1) {
+      throw new Error('同じpresentation aggregationへ異なる表示roleのFaceを混在させられない');
+    }
+    (roles.has('modifier') ? modifiers : layers).push({ faces: group });
+  }
+  return { layers, modifiers, combos };
 }
 
 /** 面の順序を保ちながら、盤面を置き換える単一キー面だけをレイヤーへ集約する。 */
