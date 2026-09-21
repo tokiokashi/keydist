@@ -615,6 +615,65 @@ export function validateCanonicalInputMap(inputs: CanonicalInputMap): void {
 }
 
 
+type AlternativeIdentityProjection = {
+  mapKey: (key: PhysicalKeyId) => PhysicalKeyId;
+  mapKeys: (keys: readonly PhysicalKeyId[]) => readonly PhysicalKeyId[];
+  includeFaceMemberships: boolean;
+  preserveOptionalParticipationHoldKeys: boolean;
+};
+
+function inputAlternativeIdentity(
+  alternative: InputAlternative,
+  projection: AlternativeIdentityProjection,
+): string {
+  const {
+    mapKey,
+    mapKeys,
+    includeFaceMemberships,
+    preserveOptionalParticipationHoldKeys,
+  } = projection;
+  return JSON.stringify({
+    semanticInputs: alternative.semanticInputs.map((input) => ({
+      output: input.output,
+      physicalKeys: mapKeys(input.physicalKeys),
+      requirements: input.requirements.map((requirement) =>
+        requirement.kind === 'overlap'
+          ? { kind: 'overlap', keys: mapKeys(requirement.keys) }
+          : {
+              kind: 'order',
+              before: mapKeys(requirement.before),
+              after: mapKeys(requirement.after),
+            }),
+      capabilities: input.capabilities.map((capability) => ({
+        kind: capability.kind,
+        keys: mapKeys(capability.keys),
+      })),
+      layerId: input.layerId,
+      classifications: input.classifications,
+      roles: input.roles.map((role) => ({
+        key: mapKey(role.key),
+        role: role.role,
+      })),
+      ...(includeFaceMemberships ? { faceMemberships: input.faceMemberships } : {}),
+    })),
+    baseRealizations: alternative.baseRealizations.map((realization) => ({
+      actions: realization.actions.map(mapKeys),
+      defaultOutputKeys: mapKeys(realization.defaultOutputKeys),
+      defaultTriggerKeys: mapKeys(realization.defaultTriggerKeys ?? []),
+      defaultHoldKeys: mapKeys(realization.defaultHoldKeys ?? []),
+      alternateParticipations: (realization.alternateParticipations ?? []).map((view) => ({
+        outputKeys: mapKeys(view.outputKeys),
+        triggerKeys: mapKeys(view.triggerKeys),
+        ...(view.holdKeys === undefined && preserveOptionalParticipationHoldKeys
+          ? {}
+          : { holdKeys: mapKeys(view.holdKeys ?? []) }),
+      })),
+    })),
+    contextRequirements: alternative.contextRequirements,
+    origin: alternative.origin,
+  });
+}
+
 /**
  * InputAlternativeの情報保持identity。
  * activation identityとは別で、thumb派生等のdedupe時にsemantic/provenanceを落とさないために使う。
@@ -622,25 +681,29 @@ export function validateCanonicalInputMap(inputs: CanonicalInputMap): void {
 export function canonicalInputAlternativeIdentity(
   alternative: InputAlternative,
 ): string {
-  return JSON.stringify({
-    semanticInputs: alternative.semanticInputs.map((input) => ({
-      output: input.output,
-      physicalKeys: input.physicalKeys,
-      requirements: input.requirements,
-      capabilities: input.capabilities,
-      layerId: input.layerId,
-      classifications: input.classifications,
-      roles: input.roles,
-      faceMemberships: input.faceMemberships,
-    })),
-    baseRealizations: alternative.baseRealizations.map((realization) => ({
-      actions: realization.actions,
-      defaultOutputKeys: realization.defaultOutputKeys,
-      defaultTriggerKeys: realization.defaultTriggerKeys ?? [],
-      defaultHoldKeys: realization.defaultHoldKeys ?? [],
-      alternateParticipations: realization.alternateParticipations ?? [],
-    })),
-    contextRequirements: alternative.contextRequirements,
-    origin: alternative.origin,
+  return inputAlternativeIdentity(alternative, {
+    mapKey: (key) => key,
+    mapKeys: (keys) => keys,
+    includeFaceMemberships: true,
+    preserveOptionalParticipationHoldKeys: true,
+  });
+}
+
+/**
+ * runtime selection policyが同じcanonical path familyか比較するためのidentity。
+ * FaceMembershipはpresentation provenanceなので除外し、physical keyだけpolicy指定の写像を許す。
+ */
+export function inputAlternativeSelectionIdentity(
+  alternative: InputAlternative,
+  mapPhysicalKey: (key: PhysicalKeyId) => PhysicalKeyId = resolveKeyId,
+): string {
+  const mapKey = (key: PhysicalKeyId) => mapPhysicalKey(resolveKeyId(key));
+  const mapKeys = (keys: readonly PhysicalKeyId[]) =>
+    keys.map(mapKey).sort(compareString);
+  return inputAlternativeIdentity(alternative, {
+    mapKey,
+    mapKeys,
+    includeFaceMemberships: false,
+    preserveOptionalParticipationHoldKeys: false,
   });
 }

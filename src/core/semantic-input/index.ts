@@ -1,6 +1,7 @@
 export {
   compileFaceSemanticInputs,
   canonicalInputAlternativeIdentity,
+  inputAlternativeSelectionIdentity,
   compileSequenceInputAlternative,
   compileSequenceInputArtifacts,
   compileSequenceSemanticInputs,
