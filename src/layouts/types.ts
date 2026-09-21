@@ -65,6 +65,15 @@ export interface Face {
    * rows側に既に存在することを要求し、faceMembershipだけを追加する。
    */
   presentationCells?: Readonly<Record<string, string>>;
+  /**
+   * triggerのsemantic activationを変えず、表示上だけ強調する物理キー。
+   * 省略時はtrigger自身を表示する。
+   */
+  presentationTriggerKeys?: readonly string[];
+  /** trigger集合の表示文言。physical key集合から導出不能な表記だけ明示する。 */
+  presentationTriggerText?: string;
+  /** 入力方式・層のpresentation-only名称。semantic classificationには使わない。 */
+  presentationLabel?: string;
 }
 
 export type LayerKind = 'layer' | 'combo';
