@@ -862,11 +862,17 @@ function renderLayerSvg(
   const showHeat = values.showHeat;
   const triggerFaces = layer.faces.length === 0 ? allLayerFaces : layer.faces;
   const shiftStyles = new Map<string, LayerShiftStyle>();
+  const shiftTipLabels = new Map<string, string>();
   for (const face of triggerFaces) {
     const style = faceShiftStyles.get(face);
     if (!style) continue;
     for (const trigger of displayTriggerKeys(face)) {
-      if (handOfKey(trigger)) shiftStyles.set(resolveKeyId(trigger), style);
+      if (!handOfKey(trigger)) continue;
+      const keyId = resolveKeyId(trigger);
+      shiftStyles.set(keyId, style);
+      if (face.presentationLabel !== undefined) {
+        shiftTipLabels.set(keyId, `${face.presentationLabel}（レイヤー ${style.layerIndex}）`);
+      }
     }
   }
   const max = values.maxCount;
@@ -894,11 +900,13 @@ function renderLayerSvg(
     const shiftStyle = shiftStyles.get(key.id);
     const share = ((count / Math.max(1, metrics.presses)) * 100).toFixed(1);
     const distance = values.keyDistance.get(key.id) ?? 0;
-    const shiftTip = shiftStyle
-      ? `<br><b>${values.triggerTipLabel
-        ?? (layout.id === 'naginata-v18' && (key.id === THUMB_KEY.LT || key.id === THUMB_KEY.RT)
-          ? `SandS（レイヤー ${shiftStyle.layerIndex}）`
-          : `レイヤー ${shiftStyle.layerIndex} のシフトトリガー`)}</b>`
+    const shiftTipLabel = shiftStyle
+      ? values.triggerTipLabel
+        ?? shiftTipLabels.get(key.id)
+        ?? `レイヤー ${shiftStyle.layerIndex} のシフトトリガー`
+      : undefined;
+    const shiftTip = shiftTipLabel !== undefined
+      ? `<br><b>${escapeText(shiftTipLabel)}</b>`
       : '';
     const picker = values.picker;
     const isSelected = picker?.selected.has(key.id) ?? false;
@@ -1136,6 +1144,7 @@ function orderedLayers(groups: ReturnType<typeof classifyPresentationFaces>, lay
 }
 
 interface LayerViewEntry {
+  id: string;
   layer: Layer;
   title: string;
   stat: LayerStat;
@@ -1183,27 +1192,46 @@ function layerViewEntries(metrics: Metrics, layout: Layout, layers: readonly Lay
     const id = layer.faces.length > 0 ? layerIdForFace(layout, layer.faces[0]) : SINGLE_LAYER_ID;
     const title = layerTitle(layer, index, layout, id);
     return {
+      id,
       layer,
       title,
       stat: stats.get(id) ?? emptyLayerStat(id, title),
     };
   });
-  if (layout.id !== 'naginata-v18' || ctx.getUiState().ui.layers.naginataDetail || entries.length <= 2) return entries;
 
-  const base = entries[0];
-  const center = entries[1];
-  const rest = entries.slice(2);
-  return [
-    {
-      ...base,
-      title: `${base.title}（レイヤー3以降を合算）`,
-      stat: mergeLayerStats('naginata-default', `${base.title}（レイヤー3以降を合算）`, [
-        base.stat,
-        ...rest.map((entry) => entry.stat),
-      ]),
-    },
-    center,
-  ];
+  const compact = layout.layerViewPresentation?.compact;
+  if (compact === undefined || ctx.getUiState().ui.layers.showLayerDetails) return entries;
+
+  const keepLayerIds = new Set(compact.keepLayerIds);
+  if (keepLayerIds.size !== compact.keepLayerIds.length) {
+    throw new Error('compact layer presentationのkeepLayerIdsに重複がある');
+  }
+  if (!keepLayerIds.has(compact.mergeIntoLayerId)) {
+    throw new Error('compact layer presentationのmergeIntoLayerIdはkeepLayerIdsに含める必要がある');
+  }
+
+  const byId = new Map(entries.map((entry) => [entry.id, entry]));
+  const kept = compact.keepLayerIds.map((id) => {
+    const entry = byId.get(id);
+    if (!entry) throw new Error(`compact layer presentationのaggregation「${id}」が見つからない`);
+    return entry;
+  });
+  const merged = entries.filter((entry) => !keepLayerIds.has(entry.id));
+  if (merged.length === 0) return entries;
+
+  return kept.map((entry) => {
+    if (entry.id !== compact.mergeIntoLayerId) return entry;
+    const title = `${entry.title}${compact.mergedTitleSuffix}`;
+    return {
+      ...entry,
+      title,
+      stat: mergeLayerStats(
+        `compact:${entry.id}`,
+        title,
+        [entry.stat, ...merged.map((item) => item.stat)],
+      ),
+    };
+  });
 }
 
 function renderLayerStats(
@@ -1248,23 +1276,19 @@ function renderHeatmap(
   const faceShiftStyles = layerShiftStyles(displayLayers);
   const shiftLayers = entries
     .map((entry, index) => ({
+      id: entry.id,
       layer: entry.layer,
       index,
       style: entry.layer.faces
         .map((face) => faceShiftStyles.get(face))
         .find((style): style is LayerShiftStyle => style !== undefined),
     }))
-    .filter((entry): entry is { layer: Layer; index: number; style: LayerShiftStyle } => entry.style !== undefined);
+    .filter((entry): entry is { id: string; layer: Layer; index: number; style: LayerShiftStyle } => entry.style !== undefined);
   const shiftLegend = shiftLayers.length > 0
     ? `<div class="shift-key-legend" aria-label="シフトキーの枠色">
-        ${shiftLayers.map(({ layer, index, style }) => {
-          const labels = [...new Set(
-            layer.faces
-              .map((face) => face.presentationLabel)
-              .filter((label): label is string => label !== undefined),
-          )];
-          const label = labels.length === 1 ? labels[0] : 'シフト';
-          return `<span class="shift-key-swatch" style="--shift-color:var(--series-${style.colorSlot})">レイヤー ${index + 1} の${label}</span>`;
+        ${shiftLayers.map(({ id, index, style }) => {
+          const label = layerLabelForId(layout, id);
+          return `<span class="shift-key-swatch" style="--shift-color:var(--series-${style.colorSlot})">レイヤー ${index + 1} の${escapeText(label)}</span>`;
         }).join('')}
       </div>`
     : '';
@@ -1276,11 +1300,13 @@ function renderHeatmap(
       <button type="button" class="ghost" data-layer-color-scale="linear" aria-pressed="${ctx.getUiState().ui.layers.colorScale === 'linear'}">線形</button>
       <button type="button" class="ghost" data-layer-color-scale="log" aria-pressed="${ctx.getUiState().ui.layers.colorScale === 'log'}">対数</button>
     </div>`;
-  const naginataControls = layout.id === 'naginata-v18' && layers.length > 2
-    ? `<div class="layer-view-controls" role="group" aria-label="薙刀式のレイヤー表示">
-        <span>薙刀式の表示</span>
-        <button type="button" class="ghost" data-naginata-layer-detail="false" aria-pressed="${!ctx.getUiState().ui.layers.naginataDetail}">2面にまとめる</button>
-        <button type="button" class="ghost" data-naginata-layer-detail="true" aria-pressed="${ctx.getUiState().ui.layers.naginataDetail}">全レイヤー詳細</button>
+  const compactPresentation = layout.layerViewPresentation?.compact;
+  const compactControls = compactPresentation !== undefined
+    && layers.length > compactPresentation.keepLayerIds.length
+    ? `<div class="layer-view-controls" role="group" aria-label="${escapeAttr(compactPresentation.controlLabel)}">
+        <span>${escapeText(compactPresentation.controlLabel)}</span>
+        <button type="button" class="ghost" data-layer-detail="false" aria-pressed="${!ctx.getUiState().ui.layers.showLayerDetails}">${escapeText(compactPresentation.compactLabel)}</button>
+        <button type="button" class="ghost" data-layer-detail="true" aria-pressed="${ctx.getUiState().ui.layers.showLayerDetails}">${escapeText(compactPresentation.detailLabel)}</button>
       </div>`
     : '';
   const controls = entries.length > 1
@@ -1396,8 +1422,8 @@ function renderHeatmap(
   </section>
   <section class="layer-section">
     <h3>層別ヒートマップ（${entries.length}）</h3>
-    <p class="note">層別図の色は層操作のための押下を除いたキー押下数で正規化し、表示中の全層で共通の最大値にしている。相互同時シフトと薙刀式の合算表示では、出力として扱うトリガー押下を色に残す。色の尺度は${colorScaleLabel}。実際の押下数はツールチップと帰属先表に残る。</p>
-    ${colorScaleControls}${shiftLegend}${naginataControls}${controls}${content}
+    <p class="note">層別図の色は層操作のための押下を除いたキー押下数で正規化し、表示中の全層で共通の最大値にしている。相互同時シフトとレイヤー合算表示では、出力として扱うトリガー押下を色に残す。色の尺度は${colorScaleLabel}。実際の押下数はツールチップと帰属先表に残る。</p>
+    ${colorScaleControls}${shiftLegend}${compactControls}${controls}${content}
     ${renderLayerStats(metrics, entries, hasCombos)}
   </section>`;
   elements.heatmap.innerHTML = layerSection + renderModifierList(layout, groups.modifiers) +
@@ -1469,9 +1495,9 @@ function setSensitivityScale(scale: SensitivityScale) {
         refreshPickerDisplay();
         return;
       }
-      if (target.dataset.naginataLayerDetail !== undefined) {
+      if (target.dataset.layerDetail !== undefined) {
         ctx.updateUiState((draft) => {
-          draft.ui.layers.naginataDetail = target.dataset.naginataLayerDetail === 'true';
+          draft.ui.layers.showLayerDetails = target.dataset.layerDetail === 'true';
           draft.ui.layers.activeTab = 0;
         });
         render();

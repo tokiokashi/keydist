@@ -215,6 +215,11 @@ test('SandS trigger presentationはlayout IDへ依存しない', async () => {
     /isNaginataCenterShift|displayLayerLegend/,
     'legacy SandS presentation inference helpers must not return',
   );
+  assert.doesNotMatch(
+    resultsSource,
+    /naginata-v18|naginataDetail|data-naginata-layer-detail/,
+    'results presentation must use explicit layout metadata instead of Naginata-specific branches/state',
+  );
 });
 
 test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async () => {

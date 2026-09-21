@@ -119,6 +119,19 @@ test('旧comboGuide設定はkeyPatternGuideへ互換移行する', () => {
   assert.equal(sanitizeUiState(value, fallback, choices).ui.layers.keyPatternGuide, false);
 });
 
+test('layer detail表示は汎用stateで保存し旧naginataDetailも互換移行する', () => {
+  const fallback = defaults();
+  assert.equal(fallback.ui.layers.showLayerDetails, false);
+
+  const value = structuredClone(fallback) as unknown as Record<string, any>;
+  value.ui.layers.showLayerDetails = true;
+  assert.equal(sanitizeUiState(value, fallback, choices).ui.layers.showLayerDetails, true);
+
+  delete value.ui.layers.showLayerDetails;
+  value.ui.layers.naginataDetail = true;
+  assert.equal(sanitizeUiState(value, fallback, choices).ui.layers.showLayerDetails, true);
+});
+
 test('指位置の準備時間は非負の有限値だけ復元する', () => {
   const fallback = defaults();
   const value = structuredClone(fallback);

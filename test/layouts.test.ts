@@ -365,6 +365,15 @@ test('薙刀式のSandS presentationをFace authoringで明示する', () => {
   assert.equal(centerShift.presentationTriggerText, '左右のSpace');
   assert.equal(centerShift.presentationLabel, 'SandS');
   assert.deepEqual(displayTriggerKeys(centerShift), ['thumb-l', 'thumb-r']);
+  assert.equal(layout.faceLayerIds?.get(centerShift), 'layer:SandS');
+  assert.deepEqual(layout.layerViewPresentation?.compact, {
+    keepLayerIds: ['single', 'layer:SandS'],
+    mergeIntoLayerId: 'single',
+    mergedTitleSuffix: '（レイヤー3以降を合算）',
+    controlLabel: '薙刀式の表示',
+    compactLabel: '2面にまとめる',
+    detailLabel: '全レイヤー詳細',
+  });
   assert.deepEqual(layout.map.get('の'), [['space', 'j']]);
 });
 

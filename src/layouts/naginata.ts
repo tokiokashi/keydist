@@ -1,5 +1,5 @@
 import { THUMB_KEY } from '../geometry.ts';
-import { fromFaces, withThumbShiftAlternatives, type Face, type Layout } from './types.ts';
+import { SINGLE_LAYER_ID, fromFaces, withThumbShiftAlternatives, type Face, type Layout } from './types.ts';
 
 /**
  * 薙刀式v18（作: 大岡俊彦）。
@@ -49,6 +49,7 @@ export const NAGINATA_V18_FACES: Face[] = [
     d: 'に', b: 'ぬ', w: 'ね', j: 'の', ';': 'ふ', f: 'ま', s: 'み', ',': 'む',
     r: 'め', k: 'も', h: 'や', p: 'ゆ', i: 'よ', e: 'り', '.': 'わ', c: 'を',
   }, {
+    layer: 'SandS',
     inputRole: 'modifier',
     triggerPersistence: 'hold-capable',
     triggerOrder: 'prefix',
@@ -105,7 +106,19 @@ export const NAGINATA_V18_FACES: Face[] = [
 ];
 
 export const NAGINATA_V18: Layout = withThumbShiftAlternatives(
-  fromFaces('naginata-v18', '薙刀式v18', NAGINATA_V18_FACES),
+  {
+    ...fromFaces('naginata-v18', '薙刀式v18', NAGINATA_V18_FACES),
+    layerViewPresentation: {
+      compact: {
+        keepLayerIds: [SINGLE_LAYER_ID, 'layer:SandS'],
+        mergeIntoLayerId: SINGLE_LAYER_ID,
+        mergedTitleSuffix: '（レイヤー3以降を合算）',
+        controlLabel: '薙刀式の表示',
+        compactLabel: '2面にまとめる',
+        detailLabel: '全レイヤー詳細',
+      },
+    },
+  },
   THUMB_KEY.RT,
   [THUMB_KEY.RT, THUMB_KEY.LT],
 );
