@@ -456,7 +456,6 @@ function thumbVariantSignature(
         key: normalizeKey(role.key),
         role: role.role,
       })),
-      faceMemberships: input.faceMemberships,
     })),
     contextRequirements: alternative.contextRequirements,
     origin: alternative.origin,
