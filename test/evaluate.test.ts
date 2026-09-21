@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
 import { evaluate, type Options } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
+import { compileSequenceInputAlternative } from '../src/core/semantic-input/index.ts';
 import { faceFromEntries, fromFaces, fromKana, LAYOUT_BY_ID, type Layout, withCombos, withRomaji, withThumbShiftAlternatives } from '../src/layouts/index.ts';
 import { kunrei } from '../src/romaji/kunrei.ts';
 
@@ -324,6 +325,29 @@ test('存在しないキーidはエラーとして記録する', () => {
 
 // ---- 複数文字の見出し ----
 
+test('最長一致の探索上限はcanonicalInputsだけから決まる', () => {
+  const base = fromKana('canonical-match-length', 'canonical-match-length', {
+    き: [['d']],
+    ゃ: [['k']],
+  });
+  const canonicalInputs = new Map(base.canonicalInputs);
+  canonicalInputs.set('きゃ', [
+    compileSequenceInputAlternative('きゃ', [['f']], 'single'),
+  ]);
+  const layout = { ...base, canonicalInputs };
+
+  assert.equal(layout.map.has('きゃ'), false, 'legacy mapには長い見出しを追加しない');
+
+  const trace = evaluate('きゃ', layout, geometry, opts());
+  assert.equal(trace.skipped, 0);
+  assert.equal(trace.strokes.length, 1);
+  assert.equal(trace.strokes[0].char, 'きゃ');
+  assert.deepEqual(
+    trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)),
+    ['f'],
+  );
+});
+
 test('「きゃ」を見出しに持つ配列は1単位として当てる', () => {
   const l = fromKana('t', 't', {
     き: [['d']],
@@ -509,6 +533,51 @@ test('classificationはselected canonical alternativeからStrokeまで伝播す
   );
 });
 
+
+test('preferOppositeThumbのpath同一性はFace presentation provenanceに依存しない', () => {
+  const base = withThumbShiftAlternatives(
+    fromFaces('thumb-presentation-provenance', 'thumb-presentation-provenance', [{
+      ...faceFromEntries(['thumb-r'], 'simultaneous', { j: 'x' }),
+      inputRole: 'modifier',
+      triggerPersistence: 'single',
+    }]),
+    'thumb-r',
+    ['thumb-r', 'thumb-l'],
+  );
+  const alternatives = base.canonicalInputs.get('x');
+  assert.ok(alternatives);
+  assert.equal(alternatives.length, 2);
+
+  const opposite = alternatives[1];
+  const mappedInputs = new Map(
+    opposite.semanticInputs.map((input) => [
+      input,
+      {
+        ...input,
+        // physical/semantic/realization factは同じまま、presentation provenanceだけを変える。
+        faceMemberships: [{ faceIndex: 999, cellKey: 'q' }],
+      },
+    ] as const),
+  );
+  const provenanceOnlyDifferent = {
+    ...opposite,
+    semanticInputs: opposite.semanticInputs.map((input) => mappedInputs.get(input)!),
+    baseRealizations: opposite.baseRealizations.map((realization) => ({
+      ...realization,
+      input: mappedInputs.get(realization.input) ?? realization.input,
+    })),
+  };
+  const canonicalInputs = new Map(base.canonicalInputs);
+  canonicalInputs.set('x', [alternatives[0], provenanceOnlyDifferent]);
+  const layout = { ...base, canonicalInputs };
+
+  const trace = evaluate('x', layout, geometry, opts({ preferOppositeThumb: true }));
+  assert.deepEqual(
+    trace.strokes[0].triggerKeys,
+    ['thumb-l'],
+    'presentation provenance差だけで合法なopposite-thumb variantを除外しない',
+  );
+});
 
 test('preferOppositeThumbはnon-thumb別方式alternativeへ切り替えない', () => {
   const layout = fromFaces('thumb-policy-scope', 'thumb-policy-scope', [

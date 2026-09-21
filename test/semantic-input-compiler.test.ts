@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  canonicalInputAlternativeIdentity,
+  inputAlternativeSelectionIdentity,
   compileFaceSemanticInputs,
   compileSequenceInputAlternative,
   compileSequenceSemanticInputs,
@@ -32,6 +34,97 @@ const face = (
   inputRole: trigger.length === 0 ? 'layer' : 'modifier',
   ...(trigger.length > 0 ? { triggerPersistence: 'single' as const } : {}),
   ...options,
+});
+
+test('canonical alternative identityはpresentation provenanceを情報保持identityに含める', () => {
+  const base = compileSequenceInputAlternative('x', [['j']], 'single');
+  const input = base.semanticInputs[0];
+  const withMembershipInput: SemanticInput = {
+    ...input,
+    faceMemberships: [{ faceIndex: 7, cellKey: 'j' }],
+  };
+  const withMembership = {
+    ...base,
+    semanticInputs: [withMembershipInput],
+    baseRealizations: base.baseRealizations.map((realization) => ({
+      ...realization,
+      input: withMembershipInput,
+    })),
+  };
+
+  assert.notEqual(
+    canonicalInputAlternativeIdentity(base),
+    canonicalInputAlternativeIdentity(withMembership),
+    'canonical dedupe identity must preserve Face presentation provenance',
+  );
+});
+
+test('selection identityはpresentation provenanceだけを無視する', () => {
+  const base = compileSequenceInputAlternative('x', [['j']], 'single');
+  const input = base.semanticInputs[0];
+  const withMembershipInput: SemanticInput = {
+    ...input,
+    faceMemberships: [{ faceIndex: 7, cellKey: 'j' }],
+  };
+  const withMembership = {
+    ...base,
+    semanticInputs: [withMembershipInput],
+    baseRealizations: base.baseRealizations.map((realization) => ({
+      ...realization,
+      input: withMembershipInput,
+    })),
+  };
+
+  assert.equal(
+    inputAlternativeSelectionIdentity(base),
+    inputAlternativeSelectionIdentity(withMembership),
+    'selection identity must ignore Face presentation provenance',
+  );
+  assert.notEqual(
+    inputAlternativeSelectionIdentity(base),
+    inputAlternativeSelectionIdentity({
+      ...withMembership,
+      origin: 'combo',
+    }),
+    'selection identity must retain top-level authoring origin',
+  );
+});
+
+test('canonical identityはoptional holdKeysの情報を保持しselection identityは正規化する', () => {
+  const base = compileSequenceInputAlternative('x', [['j']], 'single');
+  const realization = base.baseRealizations[0];
+  const withoutHold = {
+    ...base,
+    baseRealizations: [{
+      ...realization,
+      alternateParticipations: [{
+        outputKeys: realization.defaultOutputKeys,
+        triggerKeys: realization.defaultTriggerKeys ?? [],
+      }],
+    }],
+  };
+  const withEmptyHold = {
+    ...base,
+    baseRealizations: [{
+      ...realization,
+      alternateParticipations: [{
+        outputKeys: realization.defaultOutputKeys,
+        triggerKeys: realization.defaultTriggerKeys ?? [],
+        holdKeys: [],
+      }],
+    }],
+  };
+
+  assert.notEqual(
+    canonicalInputAlternativeIdentity(withoutHold),
+    canonicalInputAlternativeIdentity(withEmptyHold),
+    'information-preserving identity must retain optional-field presence',
+  );
+  assert.equal(
+    inputAlternativeSelectionIdentity(withoutHold),
+    inputAlternativeSelectionIdentity(withEmptyHold),
+    'selection identity normalizes absent holdKeys to an empty selection group',
+  );
 });
 
 test('legacy Step列はordered SemanticInput sequenceへcompileする', () => {

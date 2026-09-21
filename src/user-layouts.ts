@@ -146,14 +146,12 @@ export function toLayout(def: UserLayout): Layout {
   }
   const legends = new Map(layout.legends);
   for (const [key, label] of def.legends ?? []) legends.set(resolveKeyId(key), label);
-  const maxCharLength = Math.max(1, ...[...map.keys()].map((key) => key.length));
   validateCanonicalInputMap(canonicalInputs);
   return {
     ...layout,
     map,
     canonicalInputs,
     legends,
-    maxCharLength,
     homeKeys: def.homeKeys,
   };
 }

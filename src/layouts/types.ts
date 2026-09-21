@@ -172,11 +172,6 @@ export interface Layout {
   canonicalInputs: CanonicalInputMap;
   /** 面から作った配列だけが持つ、表示用の元面。自作配列などは省略する */
   faces?: readonly Face[];
-  /**
-   * mapの見出しの最大文字数。1より大きい場合、入力は最長一致で切り出す
-   * （「きゃ」を「き」「ゃ」に分けない）
-   */
-  maxCharLength?: number;
   /** キーid → そのキーの刻印。表示用 */
   legends: Map<string, string>;
   /** authoring上の既定親指シフトキー。 */
@@ -205,8 +200,6 @@ export interface Layout {
   /** layer表示だけに使うLayout-level presentation metadata。semantic評価には使わない。 */
   layerViewPresentation?: LayerViewPresentation;
 }
-
-const maxKeyLength = (keys: Iterable<string>) => Math.max(1, ...[...keys].map((k) => k.length));
 
 const QWERTY_KEYS = new Set([...QWERTY_LEGEND.join('')]);
 
@@ -558,7 +551,6 @@ export function fromFaces(
     canonicalInputs,
     legends,
     faces: [...faces],
-    maxCharLength: maxKeyLength(map.keys()),
     layerDefinitions,
     faceLayerIds,
   };
@@ -634,7 +626,6 @@ export function fromKana(id: string, name: string, def: KanaDefinition): Layout 
     map,
     canonicalInputs,
     legends,
-    maxCharLength: maxKeyLength(map.keys()),
     layerDefinitions: [{ id: SINGLE_LAYER_ID, kind: 'layer', label: '単打' }],
   };
 }
@@ -749,7 +740,6 @@ export function withComposedOutputs(
     ...layout,
     map,
     canonicalInputs,
-    maxCharLength: maxKeyLength(map.keys()),
   };
 }
 
@@ -870,7 +860,6 @@ export function withCombos(
     name,
     map,
     canonicalInputs,
-    maxCharLength: maxKeyLength(map.keys()),
     comboConditions,
     resolvedComboDefinitions,
     layerDefinitions,
