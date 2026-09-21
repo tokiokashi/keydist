@@ -54,14 +54,13 @@ jobs:
         id: configure-pages
         uses: actions/configure-pages@v5
         with:
-          # Pages が未設定なら Actions ソースとして有効化を試みる
           enablement: true
 
       - name: Upload Pages artifact
         id: upload-pages
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: .output/public
 
       - name: Write build summary
         if: always()

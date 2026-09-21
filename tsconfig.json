@@ -12,7 +12,7 @@
     "noFallthroughCasesInSwitch": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    "verbatimModuleSyntax": true
+    "jsx": "react-jsx"
   },
-  "include": ["src", "test"]
+  "include": ["src", "test", "vite.config.ts", "vite.legacy.config.ts"]
 }
