@@ -1,13 +1,13 @@
+import { resolveKeyId } from './geometry.ts';
 import {
-  DEFAULT_FINGER_ASSIGNMENT,
-  keyId,
-  resolveKeyId,
-  THUMB_KEY,
-  type Finger,
-} from './geometry.ts';
+  faceCells,
+  handOfKey,
+  type Hand,
+} from './layouts/face-geometry.ts';
 import type { Face, LayerPresentationRole, Layout } from './layouts/types.ts';
 
-export type Hand = 'left' | 'right';
+export { faceCells, handOfKey };
+export type { Hand };
 
 export interface Layer {
   /** compiled presentation aggregation id。consumerはFaceから逆算しない。 */
@@ -115,19 +115,6 @@ export function matchesDisplayTriggerAlternative(
   );
 }
 
-/** 面の出力を、表示対象のキーidと出力文字の対応へ変換する。 */
-export function faceCells(face: Face): Map<string, string> {
-  const cells = new Map<string, string>();
-  face.rows.forEach((row, rowIndex) => {
-    const outputs = typeof row === 'string' ? [...row] : [...row];
-    outputs.forEach((output, colIndex) => {
-      if (output === '' || output === ' ') return;
-      cells.set(keyId(rowIndex, colIndex), output);
-    });
-  });
-  return cells;
-}
-
 /** semantic cellと明示presentation membershipを、このFaceの表示セルとして統合する。 */
 export function faceDisplayCells(face: Face): Map<string, string> {
   const cells = faceCells(face);
@@ -139,16 +126,6 @@ export function faceDisplayCells(face: Face): Map<string, string> {
     else if (previous !== label) cells.set(key, `${previous} / ${label}`);
   }
   return cells;
-}
-
-/** 物理キーidから、既定の指割り当てに基づく手を引く。 */
-export function handOfKey(key: string): Hand | undefined {
-  const resolved = resolveKeyId(key);
-  if (resolved === THUMB_KEY.LT) return 'left';
-  if (resolved === THUMB_KEY.RT) return 'right';
-  const finger: Finger | undefined = DEFAULT_FINGER_ASSIGNMENT.keyFinger[resolved];
-  if (!finger) return undefined;
-  return finger.startsWith('L') ? 'left' : 'right';
 }
 
 /**
