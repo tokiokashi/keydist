@@ -94,6 +94,26 @@ test('evaluate realized factはFace authoring metadataへ依存しない', async
   );
 });
 
+test('runtime layers moduleはFace authoring semanticを解釈しない', async () => {
+  const source = await readFile(join(SRC, 'layers.ts'), 'utf8');
+
+  for (const pattern of [
+    /\binputRole\b/,
+    /face\.mode\b/,
+    /face\.triggerOrder\b/,
+    /face\.layer\b/,
+    /\bcanFoldFaces\b/,
+    /\bclassifyFaces\b/,
+    /\bgroupFacesIntoLayers\b/,
+  ]) {
+    assert.doesNotMatch(
+      source,
+      pattern,
+      'runtime layers.ts must only consume compiled presentation attribution',
+    );
+  }
+});
+
 test('results viewはFace semantic authoring metadataへ依存しない', async () => {
   const source = await readFile(join(SRC, 'results-view.ts'), 'utf8');
 
