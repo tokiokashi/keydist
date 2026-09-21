@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
+import { mapInputAlternativePhysicalKeys } from '../src/core/semantic-input/index.ts';
 import { DEFAULT_OPTIONS, evaluate } from '../src/evaluate.ts';
 import { faceFromEntries, fromFaces, fromRows, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA, withCombos, type Face } from '../src/layouts/index.ts';
 import { computeMetrics } from '../src/metrics.ts';
@@ -246,6 +247,51 @@ test('combo fold presentation provenanceはcanonical inputから解決する', (
   const definition = layout.resolvedComboDefinitions?.find((entry) => entry.output === '愛');
   assert.ok(definition);
   assert.deepEqual(definition.foldTriggerInputs, ['あ']);
+  assert.deepEqual(definition.foldTriggerKeys, ['1']);
+  assert.equal(definition.foldTargetKey, '2');
+});
+
+test('combo fold provenanceは先頭default pathを使いkeyVariantsは全pathを保持する', () => {
+  const base = fromRows(
+    'canonical-fold-variants',
+    'canonical-fold-variants',
+    ['あい', '', '', ''],
+    {},
+  );
+  const canonicalInputs = new Map(base.canonicalInputs);
+  const defaultAlternative = canonicalInputs.get('あ')?.[0];
+  assert.ok(defaultAlternative);
+  canonicalInputs.set('あ', [
+    defaultAlternative,
+    mapInputAlternativePhysicalKeys(
+      defaultAlternative,
+      (key) => key === '1' ? '3' : key,
+    ),
+  ]);
+  const canonicalOnly = {
+    ...base,
+    map: new Map<string, string[][]>(),
+    canonicalInputs,
+  };
+  const layout = withCombos(
+    'canonical-fold-variants-combo',
+    'canonical-fold-variants-combo',
+    canonicalOnly,
+    [[
+      '愛',
+      ['あ', 'い'],
+      undefined,
+      { foldTriggerInputs: ['あ'] },
+    ]],
+  );
+
+  const definition = layout.resolvedComboDefinitions?.find((entry) => entry.output === '愛');
+  assert.ok(definition);
+  assert.deepEqual(definition.keys, ['1', '2']);
+  assert.deepEqual(definition.keyVariants, [
+    ['1', '2'],
+    ['3', '2'],
+  ]);
   assert.deepEqual(definition.foldTriggerKeys, ['1']);
   assert.equal(definition.foldTargetKey, '2');
 });
