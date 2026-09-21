@@ -392,6 +392,49 @@ test('trigger presentationはlayout IDやキー形状ではなくFace authoring 
   assert.deepEqual(displayTriggerKeys(ordinary), ['thumb-r']);
 });
 
+test('fromFacesはFaceModeをaggregation presentation metadataへcompileする', () => {
+  const simultaneous: Face = {
+    ...faceFromEntries(['d'], 'simultaneous', { j: 'あ' }),
+    layer: '同時層',
+    inputRole: 'layer',
+    triggerPersistence: 'single',
+  };
+  const prefix: Face = {
+    ...faceFromEntries(['f'], 'prefix', { k: 'い' }),
+    layer: '前置層',
+    inputRole: 'layer',
+    triggerPersistence: 'single',
+  };
+  const suffix: Face = {
+    ...faceFromEntries(['g'], 'suffix', { l: 'う' }),
+    layer: '後置層',
+    inputRole: 'layer',
+    triggerPersistence: 'single',
+  };
+  const layout = fromFaces('mode-presentation', 'mode-presentation', [
+    simultaneous,
+    prefix,
+    suffix,
+  ]);
+
+  assert.equal(
+    layout.layerDefinitions?.find((definition) => definition.id === 'layer:同時層')?.presentationModeLabel,
+    '同時',
+  );
+  assert.equal(
+    layout.layerDefinitions?.find((definition) => definition.id === 'layer:前置層')?.presentationModeLabel,
+    '前置',
+  );
+  assert.equal(
+    layout.layerDefinitions?.find((definition) => definition.id === 'layer:後置層')?.presentationModeLabel,
+    '後置',
+  );
+  assert.equal(
+    layout.layerDefinitions?.find((definition) => definition.id === 'single')?.presentationModeLabel,
+    undefined,
+  );
+});
+
 test('triggerOrderが異なるFaceは同じレイヤーへ畳まない', () => {
   const first: Face = {
     ...faceFromEntries(['k'], 'simultaneous', { d: 'あ' }),

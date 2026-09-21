@@ -721,16 +721,19 @@ function displayTriggerAnnotation(layout: Layout, face: Layer['faces'][number]):
 }
 
 function layerTitle(layer: Layer, index: number, layout: Layout, layerId: string): string {
-  const label = layerLabelForId(layout, layerId);
+  const definition = layerDefinitionForId(layout, layerId);
+  const label = definition.label;
   if (layer.faces.length === 0) return `レイヤー ${index + 1}: ${label}`;
   const triggers = layer.faces
     .filter((face) => face.trigger.length > 0)
     .map((face) => displayTriggerText(layout, face));
   if (triggers.length === 0) return `レイヤー ${index + 1}: ${label}`;
-  const modes = [...new Set(layer.faces.map((face) => face.mode))]
-    .map((mode) => mode === 'simultaneous' ? '同時' : mode === 'prefix' ? '前置' : '後置')
-    .join(' / ');
-  return `レイヤー ${index + 1}: ${label} [${triggers.join(' / ')}]・${modes}`;
+  if (definition.presentationModeLabel === undefined) {
+    throw new Error(
+      `レイヤー表示にはaggregation「${layerId}」のpresentationModeLabel明示が必要`,
+    );
+  }
+  return `レイヤー ${index + 1}: ${label} [${triggers.join(' / ')}]・${definition.presentationModeLabel}`;
 }
 
 interface LayerCell {
@@ -1094,12 +1097,16 @@ function renderComboTable(
   </section>`;
 }
 
-function layerLabelForId(layout: Layout, layerId: string): string {
-  const label = layout.layerDefinitions?.find((definition) => definition.id === layerId)?.label;
-  if (label === undefined) {
+function layerDefinitionForId(layout: Layout, layerId: string) {
+  const definition = layout.layerDefinitions?.find((entry) => entry.id === layerId);
+  if (definition === undefined) {
     throw new Error(`レイヤー表示にはaggregation「${layerId}」のlayerDefinitions明示が必要`);
   }
-  return label;
+  return definition;
+}
+
+function layerLabelForId(layout: Layout, layerId: string): string {
+  return layerDefinitionForId(layout, layerId).label;
 }
 
 function renderModifierList(layout: Layout, modifiers: readonly Layer[]): string {
