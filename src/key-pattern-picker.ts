@@ -1,7 +1,7 @@
 import { resolveKeyId } from './geometry.ts';
 import { classifyPresentationFaces, displayTriggerKeys } from './layers.ts';
 import type { Requirement } from './core/semantic-input/types.ts';
-import { COMBO_LAYER_ID, type Face, type Layout } from './layouts/types.ts';
+import type { Face, Layout } from './layouts/types.ts';
 
 type OrderRequirement = Extract<Requirement, { kind: 'order' }>;
 
