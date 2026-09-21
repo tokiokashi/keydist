@@ -596,6 +596,12 @@ const activationPathsCanConflict = (
  * 同じphysicalKeys + 両立可能Requirement setを持つpathが共存する場合は曖昧なのでrejectする。
  */
 export function validateCanonicalInputMap(inputs: CanonicalInputMap): void {
+  for (const [output, alternatives] of inputs) {
+    if (alternatives.length === 0) {
+      throw new Error(`canonical input「${output}」には1つ以上のalternativeが必要`);
+    }
+  }
+
   const paths = [...inputs].flatMap(([output, alternatives]) =>
     alternatives.map((alternative) => ({ output, alternative })));
 
