@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { faceFromEntries, type Face } from '../src/layouts/index.ts';
-import { validateFaceLayerAuthoring } from '../src/layouts/face-authoring-validation.ts';
+import { validateFaceAuthoring } from '../src/layouts/face-authoring-validation.ts';
+import { fromFaces } from '../src/layouts/types.ts';
 
 const face = (
   trigger: readonly string[],
@@ -14,7 +15,7 @@ const face = (
 });
 
 test('Face authoring layer validationは合法なreciprocal foldを許可する', () => {
-  assert.doesNotThrow(() => validateFaceLayerAuthoring([
+  assert.doesNotThrow(() => validateFaceAuthoring([
     face(['k'], 'd'),
     face(['d'], 'k'),
   ]));
@@ -91,7 +92,7 @@ test('Face authoring layer validationは各authoring invariantを個別に検証
 
   for (const entry of cases) {
     assert.throws(
-      () => validateFaceLayerAuthoring(entry.faces),
+      () => validateFaceAuthoring(entry.faces),
       entry.expected,
       entry.name,
     );
@@ -99,7 +100,7 @@ test('Face authoring layer validationは各authoring invariantを個別に検証
 });
 
 test('layer未指定Faceはfolding validation対象にしない', () => {
-  assert.doesNotThrow(() => validateFaceLayerAuthoring([
+  assert.doesNotThrow(() => validateFaceAuthoring([
     {
       ...faceFromEntries(['k', 'l'], 'simultaneous', { d: 'あ' }),
       inputRole: 'layer',
@@ -109,4 +110,31 @@ test('layer未指定Faceはfolding validation対象にしない', () => {
       inputRole: 'layer',
     },
   ]));
+});
+
+
+test('presentation trigger metadataの不正はfromFaces constructor境界でrejectする', () => {
+  const base: Face = {
+    ...faceFromEntries(['space'], 'simultaneous', { j: 'あ' }),
+    inputRole: 'modifier',
+    triggerPersistence: 'single',
+  };
+
+  assert.throws(
+    () => fromFaces('invalid-empty-alternatives', 'invalid-empty-alternatives', [{
+      ...base,
+      presentationTriggerAlternatives:
+        [] as unknown as NonNullable<Face['presentationTriggerAlternatives']>,
+    }]),
+    /presentationTriggerAlternativesは空にできない（face:0）/,
+  );
+
+  assert.throws(
+    () => fromFaces('invalid-empty-chord', 'invalid-empty-chord', [{
+      ...base,
+      presentationTriggerAlternatives:
+        [[]] as unknown as NonNullable<Face['presentationTriggerAlternatives']>,
+    }]),
+    /presentationTriggerAlternatives\[0\]は空にできない（face:0）/,
+  );
 });
