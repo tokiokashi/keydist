@@ -474,7 +474,7 @@ test('trigger presentationは明示alternativeとchordを区別して正規化�
   assert.equal(displayTriggerHandLabel(twoHandChord), '両手');
 });
 
-test('presentation trigger alternativesはalias・重複を正規化し空chordを拒否する', () => {
+test('presentation trigger alternativesはalias・重複を正規化し空authoringを拒否する', () => {
   const face: Face = {
     ...faceFromEntries(['space'], 'simultaneous', { j: 'あ' }),
     presentationTriggerAlternatives: [
@@ -487,9 +487,16 @@ test('presentation trigger alternativesはalias・重複を正規化し空chord�
   assert.throws(
     () => displayTriggerAlternatives({
       ...face,
-      presentationTriggerAlternatives: [[]],
+      presentationTriggerAlternatives: [[]] as unknown as NonNullable<Face['presentationTriggerAlternatives']>,
     }),
     /空にできない/,
+  );
+  assert.throws(
+    () => displayTriggerAlternatives({
+      ...face,
+      presentationTriggerAlternatives: [] as unknown as NonNullable<Face['presentationTriggerAlternatives']>,
+    }),
+    /presentationTriggerAlternativesは空にできない/,
   );
 });
 
