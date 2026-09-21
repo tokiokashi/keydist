@@ -1016,11 +1016,7 @@ function renderComboTable(
   const resolvedItems: ComboDiagramItem[] = [...foldedResolved.values()].map((folded) => {
     const trigger = folded.triggerInputs.join(' + ');
     return {
-      face: {
-        ...faceFromEntries(folded.triggerKeys, 'simultaneous', folded.entries),
-        inputRole: 'composition',
-        triggerPersistence: 'single',
-      },
+      face: faceFromEntries(folded.triggerKeys, 'simultaneous', folded.entries),
       trigger,
       optionLabel: `${folded.group}: ${trigger}`,
     };
