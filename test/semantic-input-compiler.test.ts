@@ -90,6 +90,43 @@ test('selection identityはpresentation provenanceだけを無視する', () => 
   );
 });
 
+test('canonical identityはoptional holdKeysの情報を保持しselection identityは正規化する', () => {
+  const base = compileSequenceInputAlternative('x', [['j']], 'single');
+  const realization = base.baseRealizations[0];
+  const withoutHold = {
+    ...base,
+    baseRealizations: [{
+      ...realization,
+      alternateParticipations: [{
+        outputKeys: realization.defaultOutputKeys,
+        triggerKeys: realization.defaultTriggerKeys ?? [],
+      }],
+    }],
+  };
+  const withEmptyHold = {
+    ...base,
+    baseRealizations: [{
+      ...realization,
+      alternateParticipations: [{
+        outputKeys: realization.defaultOutputKeys,
+        triggerKeys: realization.defaultTriggerKeys ?? [],
+        holdKeys: [],
+      }],
+    }],
+  };
+
+  assert.notEqual(
+    canonicalInputAlternativeIdentity(withoutHold),
+    canonicalInputAlternativeIdentity(withEmptyHold),
+    'information-preserving identity must retain optional-field presence',
+  );
+  assert.equal(
+    inputAlternativeSelectionIdentity(withoutHold),
+    inputAlternativeSelectionIdentity(withEmptyHold),
+    'selection identity normalizes absent holdKeys to an empty selection group',
+  );
+});
+
 test('legacy Step列はordered SemanticInput sequenceへcompileする', () => {
   const inputs = compileSequenceSemanticInputs(
     'x',
