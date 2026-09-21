@@ -820,7 +820,10 @@ function pickerGuideColorMap(
     for (const face of layer.faces) {
       const slot = faceShiftStyles.get(face)?.colorSlot;
       const stroke = slot === undefined ? 'var(--picker-selected)' : `var(--series-${slot})`;
-      for (const trigger of displayTriggerKeys(face)) colors.set(resolveKeyId(trigger), stroke);
+      for (const trigger of displayTriggerKeys(face)) {
+        const key = resolveKeyId(trigger);
+        if (!colors.has(key)) colors.set(key, stroke);
+      }
     }
   }
   for (const face of groups.combos) {
