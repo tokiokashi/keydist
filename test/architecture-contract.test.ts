@@ -182,6 +182,16 @@ test('results viewはFace semantic authoring metadataへ依存しない', async 
   );
 });
 
+test('presentation trigger authoringはnested alternative schemaを使う', async () => {
+  const typesSource = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
+  const layersSource = await readFile(join(SRC, 'layers.ts'), 'utf8');
+
+  assert.doesNotMatch(typesSource, /presentationTriggerKeys/);
+  assert.doesNotMatch(layersSource, /presentationTriggerKeys/);
+  assert.match(typesSource, /presentationTriggerAlternatives\?: readonly \(readonly string\[\]\)\[\]/);
+  assert.match(layersSource, /face\.presentationTriggerAlternatives/);
+});
+
 test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityにする', async () => {
   const source = await readFile(join(SRC, 'key-pattern-picker.ts'), 'utf8');
 
