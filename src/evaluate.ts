@@ -11,6 +11,7 @@ import {
   applyActionRealizationPolicy,
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
+  inputAlternativeSelectionIdentity,
   realizeTriggerActions,
   type ActionRealizationPolicy,
   type InputAlternative,
@@ -429,48 +430,10 @@ function thumbVariantSignature(
   alternative: InputAlternative,
   thumbKeys: ReadonlySet<string>,
 ): string {
-  const normalizeKey = (key: string) =>
-    thumbKeys.has(resolveKeyId(key)) ? '<thumb>' : resolveKeyId(key);
-  const normalizeKeys = (keys: readonly string[]) =>
-    keys.map(normalizeKey).sort();
-
-  return JSON.stringify({
-    semanticInputs: alternative.semanticInputs.map((input) => ({
-      output: input.output,
-      physicalKeys: normalizeKeys(input.physicalKeys),
-      requirements: input.requirements.map((requirement) =>
-        requirement.kind === 'overlap'
-          ? { kind: 'overlap', keys: normalizeKeys(requirement.keys) }
-          : {
-              kind: 'order',
-              before: normalizeKeys(requirement.before),
-              after: normalizeKeys(requirement.after),
-            }),
-      capabilities: input.capabilities.map((capability) => ({
-        kind: capability.kind,
-        keys: normalizeKeys(capability.keys),
-      })),
-      layerId: input.layerId,
-      classifications: [...input.classifications],
-      roles: input.roles.map((role) => ({
-        key: normalizeKey(role.key),
-        role: role.role,
-      })),
-    })),
-    contextRequirements: alternative.contextRequirements,
-    origin: alternative.origin,
-    baseRealizations: alternative.baseRealizations.map((realization) => ({
-      actions: realization.actions.map(normalizeKeys),
-      defaultOutputKeys: normalizeKeys(realization.defaultOutputKeys),
-      defaultTriggerKeys: normalizeKeys(realization.defaultTriggerKeys ?? []),
-      defaultHoldKeys: normalizeKeys(realization.defaultHoldKeys ?? []),
-      alternateParticipations: (realization.alternateParticipations ?? []).map((view) => ({
-        outputKeys: normalizeKeys(view.outputKeys),
-        triggerKeys: normalizeKeys(view.triggerKeys),
-        holdKeys: normalizeKeys(view.holdKeys ?? []),
-      })),
-    })),
-  });
+  return inputAlternativeSelectionIdentity(
+    alternative,
+    (key) => thumbKeys.has(resolveKeyId(key)) ? '<thumb>' : resolveKeyId(key),
+  );
 }
 
 /**
