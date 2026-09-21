@@ -619,13 +619,19 @@ type AlternativeIdentityProjection = {
   mapKey: (key: PhysicalKeyId) => PhysicalKeyId;
   mapKeys: (keys: readonly PhysicalKeyId[]) => readonly PhysicalKeyId[];
   includeFaceMemberships: boolean;
+  preserveOptionalParticipationHoldKeys: boolean;
 };
 
 function inputAlternativeIdentity(
   alternative: InputAlternative,
   projection: AlternativeIdentityProjection,
 ): string {
-  const { mapKey, mapKeys, includeFaceMemberships } = projection;
+  const {
+    mapKey,
+    mapKeys,
+    includeFaceMemberships,
+    preserveOptionalParticipationHoldKeys,
+  } = projection;
   return JSON.stringify({
     semanticInputs: alternative.semanticInputs.map((input) => ({
       output: input.output,
@@ -658,7 +664,9 @@ function inputAlternativeIdentity(
       alternateParticipations: (realization.alternateParticipations ?? []).map((view) => ({
         outputKeys: mapKeys(view.outputKeys),
         triggerKeys: mapKeys(view.triggerKeys),
-        holdKeys: mapKeys(view.holdKeys ?? []),
+        ...(view.holdKeys === undefined && preserveOptionalParticipationHoldKeys
+          ? {}
+          : { holdKeys: mapKeys(view.holdKeys ?? []) }),
       })),
     })),
     contextRequirements: alternative.contextRequirements,
@@ -677,6 +685,7 @@ export function canonicalInputAlternativeIdentity(
     mapKey: (key) => key,
     mapKeys: (keys) => keys,
     includeFaceMemberships: true,
+    preserveOptionalParticipationHoldKeys: true,
   });
 }
 
@@ -695,5 +704,6 @@ export function inputAlternativeSelectionIdentity(
     mapKey,
     mapKeys,
     includeFaceMemberships: false,
+    preserveOptionalParticipationHoldKeys: false,
   });
 }
