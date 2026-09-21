@@ -187,6 +187,31 @@ test('PlaybackCalibrationはstructural analysisへ依存しない', async () => 
   assert.deepEqual(structuralImports, []);
 });
 
+test('SandS trigger presentationはlayout IDへ依存しない', async () => {
+  const layersSource = await readFile(join(SRC, 'layers.ts'), 'utf8');
+  assert.doesNotMatch(
+    layersSource,
+    /layout\.id\s*===/,
+    'layers presentation helper must use explicit Face metadata instead of layout ID',
+  );
+
+  const resultsSource = await readFile(join(SRC, 'results-view.ts'), 'utf8');
+  const start = resultsSource.indexOf('function displayTriggerText');
+  const end = resultsSource.indexOf('interface LayerCell');
+  assert.ok(start >= 0 && end > start, 'SandS presentation section must remain discoverable');
+  const presentationSection = resultsSource.slice(start, end);
+  assert.doesNotMatch(
+    presentationSection,
+    /naginata-v18|layout\.id/,
+    'SandS presentation path must not infer built-in layout identity',
+  );
+  assert.doesNotMatch(
+    presentationSection,
+    /isNaginataCenterShift|displayLayerLegend/,
+    'legacy SandS presentation inference helpers must not return',
+  );
+});
+
 test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async () => {
   const builtInLayoutLiterals = new Set(
     [...LAYOUTS, ...LAYOUTS_JA]
