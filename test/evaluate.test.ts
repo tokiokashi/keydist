@@ -510,6 +510,51 @@ test('classificationはselected canonical alternativeからStrokeまで伝播す
 });
 
 
+test('preferOppositeThumbのpath同一性はFace presentation provenanceに依存しない', () => {
+  const base = withThumbShiftAlternatives(
+    fromFaces('thumb-presentation-provenance', 'thumb-presentation-provenance', [{
+      ...faceFromEntries(['thumb-r'], 'simultaneous', { j: 'x' }),
+      inputRole: 'modifier',
+      triggerPersistence: 'single',
+    }]),
+    'thumb-r',
+    ['thumb-r', 'thumb-l'],
+  );
+  const alternatives = base.canonicalInputs.get('x');
+  assert.ok(alternatives);
+  assert.equal(alternatives.length, 2);
+
+  const opposite = alternatives[1];
+  const mappedInputs = new Map(
+    opposite.semanticInputs.map((input) => [
+      input,
+      {
+        ...input,
+        // physical/semantic/realization factは同じまま、presentation provenanceだけを変える。
+        faceMemberships: [{ faceIndex: 999, cellKey: 'q' }],
+      },
+    ] as const),
+  );
+  const provenanceOnlyDifferent = {
+    ...opposite,
+    semanticInputs: opposite.semanticInputs.map((input) => mappedInputs.get(input)!),
+    baseRealizations: opposite.baseRealizations.map((realization) => ({
+      ...realization,
+      input: mappedInputs.get(realization.input) ?? realization.input,
+    })),
+  };
+  const canonicalInputs = new Map(base.canonicalInputs);
+  canonicalInputs.set('x', [alternatives[0], provenanceOnlyDifferent]);
+  const layout = { ...base, canonicalInputs };
+
+  const trace = evaluate('x', layout, geometry, opts({ preferOppositeThumb: true }));
+  assert.deepEqual(
+    trace.strokes[0].triggerKeys,
+    ['thumb-l'],
+    'presentation provenance差だけで合法なopposite-thumb variantを除外しない',
+  );
+});
+
 test('preferOppositeThumbはnon-thumb別方式alternativeへ切り替えない', () => {
   const layout = fromFaces('thumb-policy-scope', 'thumb-policy-scope', [
     {
