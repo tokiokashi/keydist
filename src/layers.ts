@@ -56,6 +56,9 @@ export function displayTriggerAlternatives(face: Face): readonly (readonly strin
     const chord = [...new Set(face.trigger.map(resolveKeyId))];
     return chord.length === 0 ? [] : [chord];
   }
+  if (authored.length === 0) {
+    throw new Error('presentationTriggerAlternativesは空にできない');
+  }
 
   const seen = new Set<string>();
   const alternatives: string[][] = [];
