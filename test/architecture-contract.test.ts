@@ -109,6 +109,11 @@ test('results viewはFace semantic authoring metadataへ依存しない', async 
   );
   assert.doesNotMatch(
     source,
+    /face\.mode\b/,
+    'results-view must use compiled layer presentation metadata instead of FaceMode',
+  );
+  assert.doesNotMatch(
+    source,
     /face\.layer\s*===\s*undefined\s*\?\s*`face:/,
     'results-view must not reconstruct face:<index> aggregation ids',
   );
