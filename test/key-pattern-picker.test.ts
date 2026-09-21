@@ -343,10 +343,10 @@ test('findActiveLayerFace: 同triggerが複数aggregationにある時はLayer.or
   assert.equal(findActiveLayerFace(layout, new Set(['d'])), modifierFirst);
 });
 
-test('findActiveLayerFace: presentationTriggerKeysのphysical alternativeも同じFaceへ帰属する', () => {
+test('findActiveLayerFace: presentationTriggerAlternativesの単キーORも同じFaceへ帰属する', () => {
   const shiftFace: Face = {
     ...faceFromEntries(['space'], 'simultaneous', { j: 'あ' }),
-    presentationTriggerKeys: ['thumb-l', 'thumb-r'],
+    presentationTriggerAlternatives: [['thumb-l'], ['thumb-r']],
   };
   const layout = stubLayout({
     faces: [shiftFace],
@@ -367,6 +367,20 @@ test('findActiveLayerFace: 複数キーtrigger chordは単キー選択へ誤帰�
   assert.equal(findActiveLayerFace(layout, new Set(['j'])), undefined);
   assert.equal(findActiveLayerFace(layout, new Set(['k'])), undefined);
   assert.equal(findActiveLayerFace(layout, new Set(['j', 'k'])), undefined);
+});
+
+test('findActiveLayerFace: 明示2キーpresentation chordも単キー選択へ誤帰属しない', () => {
+  const chordFace: Face = {
+    ...faceFromEntries(['space'], 'simultaneous', { r: 'あ' }),
+    presentationTriggerAlternatives: [['thumb-l', 'thumb-r']],
+  };
+  const layout = stubLayout({
+    faces: [chordFace],
+    faceLayerIds: new Map([[chordFace, 'face:0']]),
+    layerDefinitions: [{ id: 'face:0', kind: 'layer', label: '面 1', presentationRole: 'layer' }],
+  });
+  assert.equal(findActiveLayerFace(layout, new Set(['thumb-l'])), undefined);
+  assert.equal(findActiveLayerFace(layout, new Set(['thumb-r'])), undefined);
 });
 
 test('findActiveLayerFace: aggregation帰属はinputRoleではなくcompiled presentation mappingをauthorityにする', () => {
