@@ -11,7 +11,7 @@ export interface LayerColorData {
 
 /** 修飾面のトリガーは、詳細表示でも通常の層操作キーとして除外する。 */
 function keepsPairedTriggers(layer: Layer): boolean {
-  return layer.faces.every((face) => face.role !== 'modifier');
+  return layer.role !== 'modifier';
 }
 
 /** 層別ヒートマップの色用押下数を作る。実測値は `data.keyCounts` のまま残す。 */
