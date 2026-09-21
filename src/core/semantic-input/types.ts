@@ -120,5 +120,9 @@ export interface InputAlternative {
   readonly origin: InputAlternativeOrigin;
 }
 
+/**
+ * public shapeはreadonly array。non-empty invariantはCanonicalInputMap validation境界で保証する。
+ * builder途中ではmutable empty arrayを許すためtuple型へはしない。
+ */
 export type InputAlternativeSet = readonly InputAlternative[];
 export type CanonicalInputMap = ReadonlyMap<string, InputAlternativeSet>;
