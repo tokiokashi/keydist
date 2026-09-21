@@ -107,6 +107,16 @@ test('results viewはFaceからaggregation layerIdを再推測しない', async 
     /face\.layer\s*===\s*undefined\s*\?\s*`face:/,
     'results-view must not reconstruct face:<index> aggregation ids',
   );
+  assert.doesNotMatch(
+    source,
+    /\bclassifyFaces\b/,
+    'results-view must use compiled presentation aggregation instead of authoring Face classification',
+  );
+  assert.doesNotMatch(
+    source,
+    /from\s+['"]\.\/layouts\/index\.ts['"]/,
+    'results-view must not runtime-import the built-in layout registry barrel',
+  );
 });
 
 test('key pattern pickerはinputRoleからpresentation layer帰属を再推測しない', async () => {
