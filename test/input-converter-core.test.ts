@@ -76,8 +76,9 @@ test('成立不能なprefix extensionは単打をpendingにせず後続単打も
     engine.handle({ type: 'down', key: 'd' }).recognized.map((entry) => entry.output),
     [],
   );
+  assert.deepEqual(engine.handle({ type: 'up', key: 'd' }).recognized, []);
   assert.deepEqual(
-    engine.handle({ type: 'up', key: 'd' }).recognized.map((entry) => entry.output),
+    engine.flush().recognized.map((entry) => entry.output),
     ['D'],
   );
   assert.deepEqual(engine.handle({ type: 'up', key: 'h' }).recognized, []);
