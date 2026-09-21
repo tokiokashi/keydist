@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LAYOUTS, LAYOUTS_JA } from '../src/layouts/index.ts';
 
@@ -42,8 +42,7 @@ async function structuralAnalysisSources() {
 function isAllowedStructuralAnalysisModule(specifier: string): boolean {
   return specifier === './geometry.ts'
     || specifier === './evaluate.ts'
-    || specifier === './trigger-realization.ts'
-    || specifier === './core/semantic-input/action-realization.ts'
+    || specifier === './core/semantic-input/index.ts'
     || /^\.\/analysis-[^/]+\.ts$/.test(specifier);
 }
 
@@ -53,6 +52,27 @@ function isAllowedSemanticCoreModule(specifier: string): boolean {
     || specifier === '../../layouts/types.ts';
 }
 
+const LEGACY_TRIGGER_REALIZATION_MODULE = join(SRC, 'trigger-realization.ts');
+const REALIZATION_INTERNAL_MODULES = new Set([
+  join(SRC, 'core', 'semantic-input', 'trigger-realization.ts'),
+  join(SRC, 'core', 'semantic-input', 'action-realization.ts'),
+]);
+
+function resolveRelativeModule(importerPath: string, specifier: string): string | undefined {
+  if (!specifier.startsWith('.')) return undefined;
+  return resolve(dirname(importerPath), specifier);
+}
+
+function isForbiddenRealizationConsumerImport(
+  importerPath: string,
+  specifier: string,
+): boolean {
+  const target = resolveRelativeModule(importerPath, specifier);
+  if (target === undefined) return false;
+  return target === LEGACY_TRIGGER_REALIZATION_MODULE
+    || REALIZATION_INTERNAL_MODULES.has(target);
+}
+
 test('structural analysisのimport先をsemantic / structural layerへ限定する', async () => {
   for (const { path, source } of await structuralAnalysisSources()) {
     for (const specifier of moduleSpecifiers(source)) {
@@ -60,6 +80,45 @@ test('structural analysisのimport先をsemantic / structural layerへ限定す�
         isAllowedStructuralAnalysisModule(specifier),
         true,
         `${relative(ROOT, path)} imports outside the allowed analysis dependency layer: ${specifier}`,
+      );
+    }
+  }
+});
+
+test('realization policy consumerはsemantic core public entryをauthorityにする', async () => {
+  const rootFiles = await readdir(SRC);
+  assert.equal(
+    rootFiles.includes('trigger-realization.ts'),
+    false,
+    'legacy root trigger-realization re-export must not return',
+  );
+
+  const nestedConsumer = join(SRC, 'feature', 'nested-consumer.ts');
+  assert.equal(
+    isForbiddenRealizationConsumerImport(
+      nestedConsumer,
+      '../core/semantic-input/action-realization.ts',
+    ),
+    true,
+    'nested consumer must not bypass the semantic core public entry',
+  );
+  assert.equal(
+    isForbiddenRealizationConsumerImport(
+      nestedConsumer,
+      '../core/semantic-input/trigger-realization.ts',
+    ),
+    true,
+    'nested consumer must not import trigger realization internals directly',
+  );
+
+  for (const path of await tsFiles(SRC)) {
+    if (path.includes(join('core', 'semantic-input'))) continue;
+    const source = await readFile(path, 'utf8');
+    for (const specifier of moduleSpecifiers(source)) {
+      assert.equal(
+        isForbiddenRealizationConsumerImport(path, specifier),
+        false,
+        `${relative(ROOT, path)} must use src/core/semantic-input/index.ts for realization policy APIs: ${specifier}`,
       );
     }
   }

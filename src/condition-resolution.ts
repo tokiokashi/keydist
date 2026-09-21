@@ -2,8 +2,10 @@ import type { GeometryKind } from './geometry.ts';
 import type { ChainPolicy } from './analysis-chain.ts';
 import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
 import type { Options } from './evaluate.ts';
-import type { TriggerRealizationPolicy } from './trigger-realization.ts';
-import type { ActionRealizationPolicy } from './core/semantic-input/index.ts';
+import type {
+  ActionRealizationPolicy,
+  TriggerRealizationPolicy,
+} from './core/semantic-input/index.ts';
 import type { UiStateConditionsDefaults, UiStateLayoutConditions } from './ui-state.ts';
 
 export interface ResolvedConditions {

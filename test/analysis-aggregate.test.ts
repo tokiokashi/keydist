@@ -9,8 +9,10 @@ import {
   DEFAULT_ARPEGGIO_POLICY,
 } from '../src/analysis-arpeggio.ts';
 import { DEFAULT_CHAIN_POLICY } from '../src/analysis-chain.ts';
-import { DEFAULT_TRIGGER_REALIZATION_POLICY } from '../src/trigger-realization.ts';
-import { DEFAULT_ACTION_REALIZATION_POLICY } from '../src/core/semantic-input/index.ts';
+import {
+  DEFAULT_ACTION_REALIZATION_POLICY,
+  DEFAULT_TRIGGER_REALIZATION_POLICY,
+} from '../src/core/semantic-input/index.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({
   id,
