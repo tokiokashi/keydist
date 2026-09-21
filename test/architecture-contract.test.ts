@@ -94,6 +94,23 @@ test('evaluate realized factはFace authoring metadataへ依存しない', async
   );
 });
 
+test('Face authoring validationはruntime presentation moduleへ依存しない', async () => {
+  const validationSource = await readFile(join(SRC, 'layouts/face-authoring-validation.ts'), 'utf8');
+  const geometrySource = await readFile(join(SRC, 'layouts/face-geometry.ts'), 'utf8');
+
+  assert.doesNotMatch(
+    validationSource,
+    /\.\.\/layers\.ts/,
+    'authoring validation must depend on neutral Face geometry helpers, not runtime layers.ts',
+  );
+  assert.match(validationSource, /\.\/face-geometry\.ts/);
+  assert.doesNotMatch(
+    geometrySource,
+    /layers\.ts/,
+    'neutral Face geometry helpers must not depend on runtime presentation',
+  );
+});
+
 test('runtime layers moduleはFace authoring semanticを解釈しない', async () => {
   const source = await readFile(join(SRC, 'layers.ts'), 'utf8');
 
