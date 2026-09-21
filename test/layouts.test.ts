@@ -9,6 +9,7 @@ import { toLayout } from '../src/user-layouts.ts';
 import { assertKanaLayout, assertKanaLayoutFixture } from './kana-layout-helpers.ts';
 import {
   classifyPresentationFaces,
+  displayTriggerAlternatives,
   displayTriggerKeys,
   faceCells,
   faceDisplayCells,
@@ -441,19 +442,25 @@ test('薙刀式のSandS presentationをFace authoringで明示する', () => {
   assert.deepEqual(layout.map.get('の'), [['space', 'j']]);
 });
 
-test('trigger presentationはlayout IDやキー形状ではなくFace authoring metadataだけで決まる', () => {
+test('trigger presentationは明示alternativeとchordを区別して正規化する', () => {
   const explicit: Face = {
-    ...faceFromEntries(['d'], 'simultaneous', { j: 'あ' }),
+    ...faceFromEntries(['space'], 'simultaneous', { j: 'あ' }),
     presentationTriggerKeys: ['thumb-l', 'thumb-r'],
     presentationTriggerText: '任意の両親指表示',
     presentationLabel: 'Custom Shift',
   };
+  assert.deepEqual(displayTriggerAlternatives(explicit), [['thumb-l'], ['thumb-r']]);
   assert.deepEqual(displayTriggerKeys(explicit), ['thumb-l', 'thumb-r']);
   assert.equal(explicit.presentationTriggerText, '任意の両親指表示');
   assert.equal(explicit.presentationLabel, 'Custom Shift');
 
   const ordinary = faceFromEntries(['space'], 'simultaneous', { j: 'あ' });
+  assert.deepEqual(displayTriggerAlternatives(ordinary), [['thumb-r']]);
   assert.deepEqual(displayTriggerKeys(ordinary), ['thumb-r']);
+
+  const chord = faceFromEntries(['j', 'k'], 'simultaneous', { r: 'い' });
+  assert.deepEqual(displayTriggerAlternatives(chord), [['j', 'k']]);
+  assert.deepEqual(displayTriggerKeys(chord), ['j', 'k']);
 });
 
 test('fromFacesはFaceModeをaggregation presentation metadataへcompileする', () => {
