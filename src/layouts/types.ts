@@ -12,7 +12,7 @@ import {
   type SemanticInput,
 } from '../core/semantic-input/index.ts';
 import { keyId, QWERTY_LEGEND, resolveKeyId, THUMB_KEY, type NonThumb } from '../geometry.ts';
-import { groupFacesIntoLayers } from '../layers.ts';
+import { validateFaceLayerAuthoring } from './face-authoring-validation.ts';
 
 /** 1ステップで同時に押すキーの集合。キーはQWERTY刻印で指す（`thumb-r` `thumb-l` は親指キー）。`space` も入力互換で受け付ける */
 export type Step = string[];
@@ -322,8 +322,8 @@ export function fromFaces(
     }
   }
 
-  // 定義時にレイヤーの宣言を検証し、表示時まで不正な組み合わせを遅延させない。
-  groupFacesIntoLayers(faces);
+  // 定義時にauthoring layer宣言だけを検証し、表示時まで不正な組み合わせを遅延させない。
+  validateFaceLayerAuthoring(faces);
   const map = new Map<string, Sequence>();
   const legends = new Map<string, string>();
   const layerDefinitions: LayerDefinition[] = [];
