@@ -1242,7 +1242,6 @@ function renderHeatmap(
   layout: Layout,
   geometry: ReturnType<typeof buildGeometry>,
 ) {
-  const faces = layout.faces ?? [];
   const groups = classifyPresentationFaces(layout);
   const layers = orderedLayers(groups, layout);
   if (layers.length === 0) layers.push({ faces: [] });
