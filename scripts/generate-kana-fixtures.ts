@@ -10,6 +10,9 @@ const FIXTURE_DIR = join(process.cwd(), 'test', 'fixtures');
 interface SourceFace {
   trigger: string[];
   mode: 'prefix' | 'suffix' | 'simultaneous';
+  /** 出典から転記した値。omission対象も消さずに保持する。 */
+  sourceRows: string[];
+  /** ANSI fixtureへ採用する値。除外セルは空文字にする。 */
   rows: string[][];
 }
 
@@ -24,7 +27,7 @@ interface Omission {
 }
 
 export interface SourceManifest {
-  version: 1;
+  version: 2;
   layoutId: string;
   source: {
     url: string;
@@ -56,17 +59,32 @@ function omissionKey(faceIndex: number, row: number, column: number) {
 }
 
 export function validateSourceManifest(fileName: string, manifest: SourceManifest) {
-  if (manifest.version !== 1) throw new Error(`${fileName}: 未対応のsource fixture version`);
+  if (manifest.version !== 2) throw new Error(`${fileName}: 未対応のsource fixture version`);
   if (manifest.faces.length === 0) throw new Error(`${fileName}: 面が空`);
+
+  const decodedSourceRows = manifest.faces.map((face, faceIndex) => {
+    if (face.sourceRows.length !== SOURCE_ROW_WIDTHS.length) {
+      throw new Error(`${fileName}: face ${faceIndex} sourceRows の行数が4ではない`);
+    }
+    return face.sourceRows.map((row, rowIndex) => {
+      const cells = row.split('\t');
+      if (cells.length !== SOURCE_ROW_WIDTHS[rowIndex]) {
+        throw new Error(
+          `${fileName}: face ${faceIndex} sourceRows row ${rowIndex} の列数が${SOURCE_ROW_WIDTHS[rowIndex]}ではない`,
+        );
+      }
+      return cells;
+    });
+  });
 
   for (const [faceIndex, face] of manifest.faces.entries()) {
     if (face.rows.length !== SOURCE_ROW_WIDTHS.length) {
-      throw new Error(`${fileName}: face ${faceIndex} の行数が4ではない`);
+      throw new Error(`${fileName}: face ${faceIndex} rows の行数が4ではない`);
     }
     for (const [rowIndex, row] of face.rows.entries()) {
       if (row.length !== SOURCE_ROW_WIDTHS[rowIndex]) {
         throw new Error(
-          `${fileName}: face ${faceIndex} row ${rowIndex} の列数が${SOURCE_ROW_WIDTHS[rowIndex]}ではない`,
+          `${fileName}: face ${faceIndex} rows row ${rowIndex} の列数が${SOURCE_ROW_WIDTHS[rowIndex]}ではない`,
         );
       }
     }
@@ -97,28 +115,50 @@ export function validateSourceManifest(fileName: string, manifest: SourceManifes
     }
     omissionKeys.add(key);
 
-    const cell = face.rows[omission.row][omission.column];
-    if (omission.column < TARGET_ROW_WIDTHS[omission.row]) {
-      if (cell !== '') {
-        throw new Error(`${fileName}: ANSI対象列の除外セルが空欄になっていない`);
-      }
-    } else if (cell !== '' && cell !== omission.value) {
+    const sourceCell = decodedSourceRows[omission.faceIndex][omission.row][omission.column];
+    const selectedCell = face.rows[omission.row][omission.column];
+    if (sourceCell !== omission.value) {
       throw new Error(
-        `${fileName}: ANSI対象外セルの値と omissions.value が一致しない (face ${omission.faceIndex}, row ${omission.row}, column ${omission.column})`,
+        `${fileName}: sourceRowsの値と omissions.value が一致しない (face ${omission.faceIndex}, row ${omission.row}, column ${omission.column})`,
+      );
+    }
+    if (selectedCell !== '') {
+      throw new Error(
+        `${fileName}: omission対象セルが採用側rowsで空欄になっていない (face ${omission.faceIndex}, row ${omission.row}, column ${omission.column})`,
       );
     }
   }
 
   for (const [faceIndex, face] of manifest.faces.entries()) {
-    for (const [rowIndex, row] of face.rows.entries()) {
-      for (let column = TARGET_ROW_WIDTHS[rowIndex]; column < row.length; column += 1) {
-        if (row[column] === '') continue;
+    for (const [rowIndex, sourceRow] of decodedSourceRows[faceIndex].entries()) {
+      const selectedRow = face.rows[rowIndex];
+      for (let column = 0; column < sourceRow.length; column += 1) {
+        const sourceCell = sourceRow[column];
+        const selectedCell = selectedRow[column];
         const key = omissionKey(faceIndex, rowIndex, column);
-        if (!omissionKeys.has(key)) {
+        const omitted = omissionKeys.has(key);
+        const inAnsi = column < TARGET_ROW_WIDTHS[rowIndex];
+
+        if (!inAnsi && selectedCell !== '') {
           throw new Error(
-            `${fileName}: ANSI対象外の非空セルに omissions が無い (face ${faceIndex}, row ${rowIndex}, column ${column})`,
+            `${fileName}: ANSI対象外セルが採用側rowsに残っている (face ${faceIndex}, row ${rowIndex}, column ${column})`,
           );
         }
+
+        if (sourceCell === selectedCell) continue;
+
+        if (sourceCell !== '' && selectedCell === '') {
+          if (!omitted) {
+            throw new Error(
+              `${fileName}: sourceから除外されたセルに omissions が無い (face ${faceIndex}, row ${rowIndex}, column ${column})`,
+            );
+          }
+          continue;
+        }
+
+        throw new Error(
+          `${fileName}: sourceRowsと採用側rowsの差分がomissionとして表現されていない (face ${faceIndex}, row ${rowIndex}, column ${column})`,
+        );
       }
     }
   }

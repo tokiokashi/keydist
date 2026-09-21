@@ -193,6 +193,21 @@ test('単打面率は文字数、単打率・1キー率はaction数を分母に�
   near(metrics.singleKeyRate, 100, '1キー率: 3 actionすべて1物理キー');
 });
 
+test('単打率は文字種ではなくbase layerの直接出力で判定する（#310）', () => {
+  const layout = fromKana('base-layer-taps', 'base-layer-taps', {
+    ー: [['f']],
+    '、': [['j']],
+    '☆': [['k']],
+    きゃ: [['l']],
+  });
+  const metrics = computeMetrics(evaluate('ー、☆きゃ', layout, geometry, opts()), geometry);
+
+  assert.equal(metrics.actions, 4);
+  near(metrics.singleTapLayerRate, 100, 'base layerの全出力を単打面として数える');
+  near(metrics.singleTapRate, 100, '文字種によらずbase layerの直接出力を単打として数える');
+  near(metrics.singleKeyRate, 100, '全actionが1キー');
+});
+
 test('単打率はかなを1キーで直接出す独立actionだけを数える', () => {
   const romajiMetrics = computeMetrics(evaluate('あか', qwerty, geometry, opts()), geometry);
   near(romajiMetrics.singleTapRate, 0, 'ローマ字のa / k / aをかな配列の単打とは数えない');
