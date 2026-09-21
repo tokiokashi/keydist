@@ -79,17 +79,19 @@ jobs:
               echo "Missing Pages artifact: $path" >&2
               exit 1
             }
+
+            bad_urls=$(
+              grep -Eo '(src|href)="/[^"]*"' "$path" \
+                | grep -v '="/keydist/' \
+                || true
+            )
+
+            if [ -n "$bad_urls" ]; then
+              echo "Found URL outside /keydist/ in $path:" >&2
+              echo "$bad_urls" >&2
+              exit 1
+            fi
           done
-
-          grep -Rqs '/keydist/' .output/public --include='*.html' || {
-            echo "Expected /keydist/ base path was not found in generated HTML" >&2
-            exit 1
-          }
-
-          if grep -REqs '(src|href)="/assets/' .output/public --include='*.html'; then
-            echo "Found root-relative /assets/ URL in Pages artifact" >&2
-            exit 1
-          fi
 
       - name: Write CI summary
         if: always()
