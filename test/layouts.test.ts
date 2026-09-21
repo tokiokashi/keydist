@@ -10,6 +10,7 @@ import { assertKanaLayout, assertKanaLayoutFixture } from './kana-layout-helpers
 import {
   classifyPresentationFaces,
   displayTriggerAlternatives,
+  displayTriggerHandLabel,
   displayTriggerKeys,
   faceCells,
   faceDisplayCells,
@@ -426,7 +427,7 @@ test('薙刀式のSandS presentationをFace authoringで明示する', () => {
   const centerShift = classifyPresentationFaces(layout).layers[1].faces[0];
 
   assert.deepEqual(centerShift.trigger, ['space']);
-  assert.deepEqual(centerShift.presentationTriggerKeys, ['thumb-l', 'thumb-r']);
+  assert.deepEqual(centerShift.presentationTriggerAlternatives, [['thumb-l'], ['thumb-r']]);
   assert.equal(centerShift.presentationTriggerText, '左右のSpace');
   assert.equal(centerShift.presentationLabel, 'SandS');
   assert.deepEqual(displayTriggerKeys(centerShift), ['thumb-l', 'thumb-r']);
@@ -445,22 +446,51 @@ test('薙刀式のSandS presentationをFace authoringで明示する', () => {
 test('trigger presentationは明示alternativeとchordを区別して正規化する', () => {
   const explicit: Face = {
     ...faceFromEntries(['space'], 'simultaneous', { j: 'あ' }),
-    presentationTriggerKeys: ['thumb-l', 'thumb-r'],
+    presentationTriggerAlternatives: [['thumb-l'], ['thumb-r']],
     presentationTriggerText: '任意の両親指表示',
     presentationLabel: 'Custom Shift',
   };
   assert.deepEqual(displayTriggerAlternatives(explicit), [['thumb-l'], ['thumb-r']]);
   assert.deepEqual(displayTriggerKeys(explicit), ['thumb-l', 'thumb-r']);
+  assert.equal(displayTriggerHandLabel(explicit), undefined);
   assert.equal(explicit.presentationTriggerText, '任意の両親指表示');
   assert.equal(explicit.presentationLabel, 'Custom Shift');
 
   const ordinary = faceFromEntries(['space'], 'simultaneous', { j: 'あ' });
   assert.deepEqual(displayTriggerAlternatives(ordinary), [['thumb-r']]);
   assert.deepEqual(displayTriggerKeys(ordinary), ['thumb-r']);
+  assert.equal(displayTriggerHandLabel(ordinary), '右手');
 
   const chord = faceFromEntries(['j', 'k'], 'simultaneous', { r: 'い' });
   assert.deepEqual(displayTriggerAlternatives(chord), [['j', 'k']]);
   assert.deepEqual(displayTriggerKeys(chord), ['j', 'k']);
+  assert.equal(displayTriggerHandLabel(chord), '右手');
+
+  const twoHandChord: Face = {
+    ...ordinary,
+    presentationTriggerAlternatives: [['thumb-l', 'thumb-r']],
+  };
+  assert.deepEqual(displayTriggerAlternatives(twoHandChord), [['thumb-l', 'thumb-r']]);
+  assert.equal(displayTriggerHandLabel(twoHandChord), '両手');
+});
+
+test('presentation trigger alternativesはalias・重複を正規化し空chordを拒否する', () => {
+  const face: Face = {
+    ...faceFromEntries(['space'], 'simultaneous', { j: 'あ' }),
+    presentationTriggerAlternatives: [
+      ['space', 'thumb-r'],
+      ['thumb-r'],
+    ],
+  };
+  assert.deepEqual(displayTriggerAlternatives(face), [['thumb-r']]);
+
+  assert.throws(
+    () => displayTriggerAlternatives({
+      ...face,
+      presentationTriggerAlternatives: [[]],
+    }),
+    /空にできない/,
+  );
 });
 
 test('fromFacesはFaceModeをaggregation presentation metadataへcompileする', () => {
