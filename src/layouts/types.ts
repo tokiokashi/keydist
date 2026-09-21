@@ -41,6 +41,12 @@ export type HoldPhase = 'start' | 'continue' | 'end';
 export type FaceRow = string | readonly string[];
 
 /** triggerで発火するキー面。rowsはQWERTY刻印の4行に対応する。 */
+export type PresentationTriggerChord = readonly [string, ...string[]];
+export type PresentationTriggerAlternatives = readonly [
+  PresentationTriggerChord,
+  ...PresentationTriggerChord[],
+];
+
 export interface Face {
   trigger: readonly string[];
   mode: FaceMode;
@@ -68,9 +74,9 @@ export interface Face {
   /**
    * triggerのsemantic activationを変えず、presentation上の成立形だけを明示する。
    * 外側配列はOR alternative、内側配列は1つのchord。
-   * 省略時はFace.trigger全体を1 chordとして表示する。
+   * 明示時は外側・内側ともnon-empty。省略時はFace.trigger全体を1 chordとして表示する。
    */
-  presentationTriggerAlternatives?: readonly (readonly string[])[];
+  presentationTriggerAlternatives?: PresentationTriggerAlternatives;
   /** trigger集合の表示文言。physical key集合から導出不能な表記だけ明示する。 */
   presentationTriggerText?: string;
   /** 入力方式・層のpresentation-only名称。semantic classificationには使わない。composition Faceでは指定不可。 */
