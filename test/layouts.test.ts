@@ -210,6 +210,36 @@ test('presentation分類はinputRoleではなくcompiled aggregation metadataを
   assert.deepEqual(comboGroups.combos, [legacyModifier]);
   assert.deepEqual(comboGroups.layers, []);
   assert.deepEqual(comboGroups.modifiers, []);
+
+  const semanticModifierWithoutPresentationRole: Face = {
+    ...faceFromEntries(['s'], 'simultaneous', { l: 'う' }),
+    inputRole: 'modifier',
+  };
+  const presentationModifierWithLayerSemantic: Face = {
+    ...faceFromEntries(['a'], 'simultaneous', { ';': 'え' }),
+    inputRole: 'layer',
+    role: 'modifier',
+  };
+  const roleMismatchLayout = {
+    faces: [semanticModifierWithoutPresentationRole, presentationModifierWithLayerSemantic],
+    faceLayerIds: new Map([
+      [semanticModifierWithoutPresentationRole, 'face:0'],
+      [presentationModifierWithLayerSemantic, 'face:1'],
+    ]),
+    layerDefinitions: [
+      { id: 'face:0', kind: 'layer' as const, label: '面 1' },
+      { id: 'face:1', kind: 'layer' as const, label: '面 2' },
+    ],
+  };
+  const roleGroups = classifyPresentationFaces(roleMismatchLayout);
+  assert.deepEqual(
+    roleGroups.layers.flatMap((group) => group.faces),
+    [semanticModifierWithoutPresentationRole],
+  );
+  assert.deepEqual(
+    roleGroups.modifiers.flatMap((group) => group.faces),
+    [presentationModifierWithLayerSemantic],
+  );
 });
 
 test('Faceを持つLayoutは全FaceのfaceLayerIdsを明示する', () => {
