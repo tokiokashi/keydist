@@ -721,10 +721,7 @@ function displayTriggerAnnotation(layout: Layout, face: Layer['faces'][number]):
 }
 
 function layerTitle(layer: Layer, index: number, layout: Layout, layerId: string): string {
-  const label = layout.layerDefinitions?.find((definition) => definition.id === layerId)?.label;
-  if (label === undefined) {
-    throw new Error(`レイヤー表示にはaggregation「${layerId}」のlayerDefinitions明示が必要`);
-  }
+  const label = layerLabelForId(layout, layerId);
   if (layer.faces.length === 0) return `レイヤー ${index + 1}: ${label}`;
   const triggers = layer.faces
     .filter((face) => face.trigger.length > 0)
@@ -1093,12 +1090,22 @@ function renderComboTable(
   </section>`;
 }
 
-function renderModifierList(modifiers: readonly Layer[], legends: Map<string, string>): string {
+function layerLabelForId(layout: Layout, layerId: string): string {
+  const label = layout.layerDefinitions?.find((definition) => definition.id === layerId)?.label;
+  if (label === undefined) {
+    throw new Error(`レイヤー表示にはaggregation「${layerId}」のlayerDefinitions明示が必要`);
+  }
+  return label;
+}
+
+function renderModifierList(layout: Layout, modifiers: readonly Layer[]): string {
   if (modifiers.length === 0) return '';
   const rows = modifiers.map((layer) => {
-    const names = [...new Set(layer.faces.map((face) => face.layer).filter((name): name is string => name !== undefined))];
-    const triggers = layer.faces.map((face) => triggerText(face, legends)).join(' / ');
-    const title = names.length === 1 ? `${names[0]}: ${triggers}` : triggers;
+    const firstFace = layer.faces[0];
+    if (!firstFace) throw new Error('修飾表示にはFaceが必要');
+    const label = layerLabelForId(layout, layerIdForFace(layout, firstFace));
+    const triggers = layer.faces.map((face) => triggerText(face, layout.legends)).join(' / ');
+    const title = `${label}: ${triggers}`;
     const outputs = layer.faces.flatMap((face) => [...faceCells(face).values()]).join(' / ');
     return `<tr><td>${escapeText(title)}</td><td>${escapeText(outputs)}</td></tr>`;
   }).join('');
@@ -1393,7 +1400,7 @@ function renderHeatmap(
     ${colorScaleControls}${shiftLegend}${naginataControls}${controls}${content}
     ${renderLayerStats(metrics, entries, hasCombos)}
   </section>`;
-  elements.heatmap.innerHTML = layerSection + renderModifierList(groups.modifiers, layout.legends) +
+  elements.heatmap.innerHTML = layerSection + renderModifierList(layout, groups.modifiers) +
     renderComboTable(metrics, groups.combos, layout, geometry, pickerBase);
 }
 
