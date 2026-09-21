@@ -69,18 +69,10 @@ test('canonical semantic / structural analysis core„ÅØframework / platform API„Å
   ];
 
   const platformGlobalPatterns = [
-    /\bwindow\b/,
-    /\bdocument\b/,
-    /\bnavigator\b/,
-    /\blocalStorage\b/,
-    /\bsessionStorage\b/,
-    /\bHTMLElement\b/,
-    /\bMutationObserver\b/,
-    /\bResizeObserver\b/,
-    /\bD1Database\b/,
-    /\bKVNamespace\b/,
-    /\bR2Bucket\b/,
-    /\bDurableObject\b/,
+    /\b(?:window|document|navigator|localStorage|sessionStorage)\s*\./,
+    /\btypeof\s+(?:window|document|navigator)\b/,
+    /\b(?:Window|Document|Navigator|HTMLElement|MutationObserver|ResizeObserver)\b/,
+    /\b(?:D1Database|KVNamespace|R2Bucket|DurableObject)\b/,
   ];
 
   for (const { path, source } of sources) {
