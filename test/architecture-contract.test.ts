@@ -168,6 +168,21 @@ test('alternative selection identityはcore helperをauthorityにする', async 
   }
 });
 
+test('user layout alternative dedupeはcore canonical identityをauthorityにする', async () => {
+  const source = await readFile(join(SRC, 'user-layouts.ts'), 'utf8');
+
+  assert.match(
+    source,
+    /canonicalInputAlternativeIdentity\(/,
+    'user layout import must reuse the canonical alternative identity helper',
+  );
+  assert.doesNotMatch(
+    source,
+    /JSON\.stringify\([^\n]*baseRealizations|baseRealizations[^\n]*JSON\.stringify/,
+    'user layout import must not dedupe alternatives by reserializing only action realizations',
+  );
+});
+
 test('legacy comboConditionsをsemantic/runtime authorityへ戻さない', async () => {
   const layoutTypesSource = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
   const evaluateSource = await readFile(join(SRC, 'evaluate.ts'), 'utf8');

@@ -1,4 +1,5 @@
 import {
+  canonicalInputAlternativeIdentity,
   compileSequenceInputAlternative,
   validateCanonicalInputMap,
   type InputAlternative,
@@ -137,11 +138,11 @@ export function toLayout(def: UserLayout): Layout {
     // imported sequenceは従来mapを上書きしていたためauthoring defaultとして先頭へ置く。
     map.set(output, sequence);
     const alternative = compileSequenceInputAlternative(output, sequence, SINGLE_LAYER_ID);
+    const alternativeIdentity = canonicalInputAlternativeIdentity(alternative);
     canonicalInputs.set(output, [
       alternative,
       ...(canonicalInputs.get(output) ?? []).filter((candidate) =>
-        JSON.stringify(candidate.baseRealizations.map((realization) => realization.actions))
-          !== JSON.stringify(alternative.baseRealizations.map((realization) => realization.actions))),
+        canonicalInputAlternativeIdentity(candidate) !== alternativeIdentity),
     ]);
   }
   const legends = new Map(layout.legends);
