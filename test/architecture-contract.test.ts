@@ -114,6 +114,11 @@ test('results viewはFaceからaggregation layerIdを再推測しない', async 
   );
   assert.doesNotMatch(
     source,
+    /face\.layer\b/,
+    'results-view must use layerDefinitions.label instead of Face.layer for aggregation labels',
+  );
+  assert.doesNotMatch(
+    source,
     /from\s+['"]\.\/layouts\/index\.ts['"]/,
     'results-view must not runtime-import the built-in layout registry barrel',
   );
