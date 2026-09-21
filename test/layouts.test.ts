@@ -246,8 +246,8 @@ test('combo fold presentation provenanceはcanonical inputから解決する', (
   const definition = layout.resolvedComboDefinitions?.find((entry) => entry.output === '愛');
   assert.ok(definition);
   assert.deepEqual(definition.foldTriggerInputs, ['あ']);
-  assert.deepEqual(definition.foldTriggerKeys, ['q']);
-  assert.equal(definition.foldTargetKey, 'w');
+  assert.deepEqual(definition.foldTriggerKeys, ['1']);
+  assert.equal(definition.foldTargetKey, '2');
 });
 
 test('面のセル配列は複数文字の見出しを1キーへ置ける', () => {
