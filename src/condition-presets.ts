@@ -1,7 +1,9 @@
 import { sameChainPolicy } from './analysis-chain.ts';
 import { sameArpeggioPolicy } from './analysis-arpeggio.ts';
-import { sameTriggerRealizationPolicy } from './trigger-realization.ts';
-import { sameActionRealizationPolicy } from './core/semantic-input/action-realization.ts';
+import {
+  sameActionRealizationPolicy,
+  sameTriggerRealizationPolicy,
+} from './core/semantic-input/index.ts';
 import {
   DEFAULT_CONDITION_DEFAULTS,
   sanitizeConditionDefaults,
