@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveKeyId } from '../src/geometry.ts';
-import { faceFromEntries, LAYOUT_BY_ID } from '../src/layouts/index.ts';
+import { COMBO_LAYER_ID, faceFromEntries, LAYOUT_BY_ID } from '../src/layouts/index.ts';
 import type { Face, Layout } from '../src/layouts/index.ts';
 import {
   allTriggerKeys,
@@ -222,7 +222,10 @@ test('allTriggerKeys: FaceのtriggerとresolvedComboの物理キーを両方拾�
 
 test('findActiveLayerFace: 単キーtriggerだけを選択した時はその面を返す', () => {
   const shiftFace = faceFromEntries(['f'], 'prefix', { j: 'あ', k: 'い' });
-  const layout = stubLayout({ faces: [shiftFace] });
+  const layout = stubLayout({
+    faces: [shiftFace],
+    faceLayerIds: new Map([[shiftFace, 'face:0']]),
+  });
   assert.equal(findActiveLayerFace(layout, new Set(['f'])), shiftFace);
   assert.equal(findActiveLayerFace(layout, new Set()), undefined);
   assert.equal(findActiveLayerFace(layout, new Set(['z'])), undefined);
@@ -231,15 +234,39 @@ test('findActiveLayerFace: 単キーtriggerだけを選択した時はその面�
 
 test('findActiveLayerFace: 複数キーtriggerはレイヤーとして扱わない', () => {
   const comboFace = faceFromEntries(['j', 'k'], 'simultaneous', { r: 'あ' });
-  const layout = stubLayout({ faces: [comboFace] });
+  const layout = stubLayout({
+    faces: [comboFace],
+    faceLayerIds: new Map([[comboFace, 'face:0']]),
+  });
   assert.equal(findActiveLayerFace(layout, new Set(['j', 'k'])), undefined);
 });
 
-test('findActiveLayerFace: inputRole===compositionの単キー面も除外する', () => {
-  const comboFace: Face = {
+test('findActiveLayerFace: aggregation帰属はinputRoleではなくfaceLayerIdsをauthorityにする', () => {
+  const legacyComposition: Face = {
     ...faceFromEntries(['f'], 'simultaneous', { j: 'あ' }),
     inputRole: 'composition',
   };
-  const layout = stubLayout({ faces: [comboFace] });
-  assert.equal(findActiveLayerFace(layout, new Set(['f'])), undefined);
+  const mappedLayer = stubLayout({
+    faces: [legacyComposition],
+    faceLayerIds: new Map([[legacyComposition, 'face:0']]),
+  });
+  assert.equal(findActiveLayerFace(mappedLayer, new Set(['f'])), legacyComposition);
+
+  const explicitModifier: Face = {
+    ...faceFromEntries(['d'], 'simultaneous', { k: 'い' }),
+    inputRole: 'modifier',
+  };
+  const mappedCombo = stubLayout({
+    faces: [explicitModifier],
+    faceLayerIds: new Map([[explicitModifier, COMBO_LAYER_ID]]),
+  });
+  assert.equal(findActiveLayerFace(mappedCombo, new Set(['d'])), undefined);
+});
+
+test('findActiveLayerFace: Face mapping欠落は表示契約違反としてerrorにする', () => {
+  const face = faceFromEntries(['f'], 'prefix', { j: 'あ' });
+  assert.throws(
+    () => findActiveLayerFace(stubLayout({ faces: [face] }), new Set(['f'])),
+    /faceLayerIdsの明示が必要/,
+  );
 });
