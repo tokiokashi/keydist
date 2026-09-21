@@ -720,22 +720,20 @@ function displayTriggerAnnotation(layout: Layout, face: Layer['faces'][number]):
     ?? `${triggerHandText(face)} ${displayTriggerText(layout, face)}を押す`;
 }
 
-function layerTitle(layer: Layer, index: number, layout: Layout): string {
-  if (layer.faces.length === 0) return `レイヤー ${index + 1}: 単打`;
+function layerTitle(layer: Layer, index: number, layout: Layout, layerId: string): string {
+  const label = layout.layerDefinitions?.find((definition) => definition.id === layerId)?.label;
+  if (label === undefined) {
+    throw new Error(`レイヤー表示にはaggregation「${layerId}」のlayerDefinitions明示が必要`);
+  }
+  if (layer.faces.length === 0) return `レイヤー ${index + 1}: ${label}`;
   const triggers = layer.faces
     .filter((face) => face.trigger.length > 0)
     .map((face) => displayTriggerText(layout, face));
-  if (triggers.length === 0) return `レイヤー ${index + 1}: 単打`;
-  const names = [...new Set(
-    layer.faces
-      .map((face) => face.layer ?? face.presentationLabel)
-      .filter((name): name is string => name !== undefined),
-  )];
-  const name = names.length === 1 ? names[0] : 'シフト';
+  if (triggers.length === 0) return `レイヤー ${index + 1}: ${label}`;
   const modes = [...new Set(layer.faces.map((face) => face.mode))]
     .map((mode) => mode === 'simultaneous' ? '同時' : mode === 'prefix' ? '前置' : '後置')
     .join(' / ');
-  return `レイヤー ${index + 1}: ${name} [${triggers.join(' / ')}]・${modes}`;
+  return `レイヤー ${index + 1}: ${label} [${triggers.join(' / ')}]・${modes}`;
 }
 
 interface LayerCell {
@@ -1176,7 +1174,7 @@ function layerViewEntries(metrics: Metrics, layout: Layout, layers: readonly Lay
   const stats = new Map(metrics.layers.map((stat) => [stat.id, stat]));
   const entries = layers.map((layer, index) => {
     const id = layer.faces.length > 0 ? layerIdForFace(layout, layer.faces[0]) : SINGLE_LAYER_ID;
-    const title = layerTitle(layer, index, layout);
+    const title = layerTitle(layer, index, layout, id);
     return {
       layer,
       title,
