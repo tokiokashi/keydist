@@ -93,7 +93,7 @@ export function handOfKey(key: string): Hand | undefined {
 
 /**
  * compiled Layoutのpresentation Faceをaggregation mappingで分類する。
- * semantic authoringのinputRole / face.layerは再解釈せず、
+ * authoring semantic metadataは再解釈せず、
  * faceLayerIdsを帰属authority、layerDefinitionsをkind authorityとして使う。
  */
 export function classifyPresentationFaces(
