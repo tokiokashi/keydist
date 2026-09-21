@@ -113,6 +113,19 @@ test('alternative selection identityはcore helperをauthorityにする', async 
   }
 });
 
+test('legacy comboConditionsをsemantic/runtime authorityへ戻さない', async () => {
+  const layoutTypesSource = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
+  const evaluateSource = await readFile(join(SRC, 'evaluate.ts'), 'utf8');
+
+  assert.doesNotMatch(layoutTypesSource, /\bcomboConditions\b/);
+  assert.doesNotMatch(evaluateSource, /\bcomboConditions\b/);
+  assert.match(
+    evaluateSource,
+    /const comboDefinitions = resolvedComboDefinitions\.length/,
+    'resolved combo definitions must be the combo definition-count authority',
+  );
+});
+
 test('composed outputのsemantic availabilityはcanonicalInputsをauthorityにする', async () => {
   const source = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
   const start = source.indexOf('export function withComposedOutputs');
@@ -134,6 +147,18 @@ test('composed outputのsemantic availabilityはcanonicalInputsをauthorityに�
     /if \(!sourceSequence \|\| !sourceAlternatives\)/,
     'legacy map sequence must not gate canonical source availability',
   );
+});
+
+test('CanonicalInputMap validationはempty alternative setを許可しない', async () => {
+  const source = await readFile(join(SRC, 'core/semantic-input/compiler.ts'), 'utf8');
+  const start = source.indexOf('export function validateCanonicalInputMap');
+  const end = source.indexOf('\n}\n\n\ntype AlternativeIdentityProjection', start);
+
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  const validationSource = source.slice(start, end + 2);
+  assert.match(validationSource, /alternatives\.length === 0/);
+  assert.match(validationSource, /1つ以上のalternativeが必要/);
 });
 
 test('logical output matching lengthはcanonicalInputsをauthorityにする', async () => {

@@ -735,6 +735,15 @@ test('composition Faceはclassificationをcanonicalへ保持する', () => {
 });
 
 
+test('CanonicalInputMapは空alternative setをrejectする', () => {
+  assert.throws(
+    () => validateCanonicalInputMap(new Map([
+      ['あ', []],
+    ])),
+    /canonical input「あ」には1つ以上のalternativeが必要/,
+  );
+});
+
 test('CanonicalInputMapは異なるoutputの同一activationをrejectする', () => {
   assert.throws(
     () => fromKana('conflict', 'conflict', [

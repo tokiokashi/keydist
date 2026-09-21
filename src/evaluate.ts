@@ -152,9 +152,7 @@ export function evaluate(
   const seen = new Set<string>();
   const comboHits: string[] = [];
   const resolvedComboDefinitions = layout.resolvedComboDefinitions ?? [];
-  const comboDefinitions = resolvedComboDefinitions.length
-    || layout.comboConditions?.size
-    || 0;
+  const comboDefinitions = resolvedComboDefinitions.length;
   const layerDefinitions = [...layout.layerDefinitions ?? [{
     id: SINGLE_LAYER_ID,
     kind: 'layer' as const,
