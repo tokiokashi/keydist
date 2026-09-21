@@ -188,8 +188,19 @@ test('presentation trigger authoringはnested alternative schemaを使う', asyn
 
   assert.doesNotMatch(typesSource, /presentationTriggerKeys/);
   assert.doesNotMatch(layersSource, /presentationTriggerKeys/);
-  assert.match(typesSource, /presentationTriggerAlternatives\?: readonly \(readonly string\[\]\)\[\]/);
+  assert.match(
+    typesSource,
+    /PresentationTriggerChord = readonly \[string, \.\.\.string\[\]\]/,
+  );
+  assert.match(
+    typesSource,
+    /presentationTriggerAlternatives\?: PresentationTriggerAlternatives/,
+  );
   assert.match(layersSource, /face\.presentationTriggerAlternatives/);
+  assert.match(
+    layersSource,
+    /authored\.length === 0[\s\S]*presentationTriggerAlternativesは空にできない/,
+  );
 });
 
 test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityにする', async () => {
