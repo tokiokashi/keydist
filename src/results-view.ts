@@ -870,7 +870,7 @@ function renderLayerSvg(
   for (const face of triggerFaces) {
     const style = faceShiftStyles.get(face);
     if (!style) continue;
-    for (const trigger of displayTriggerKeys(layout, face)) {
+    for (const trigger of displayTriggerKeys(face)) {
       if (handOfKey(trigger)) shiftStyles.set(resolveKeyId(trigger), style);
     }
   }
@@ -1253,9 +1253,12 @@ function renderHeatmap(
   const shiftLegend = shiftLayers.length > 0
     ? `<div class="shift-key-legend" aria-label="シフトキーの枠色">
         ${shiftLayers.map(({ layer, index, style }) => {
-          const label = layer.faces.some((face) => isNaginataCenterShift(layout, face))
-            ? 'SandS'
-            : 'シフト';
+          const labels = [...new Set(
+            layer.faces
+              .map((face) => face.presentationLabel)
+              .filter((label): label is string => label !== undefined),
+          )];
+          const label = labels.length === 1 ? labels[0] : 'シフト';
           return `<span class="shift-key-swatch" style="--shift-color:var(--series-${style.colorSlot})">レイヤー ${index + 1} の${label}</span>`;
         }).join('')}
       </div>`
