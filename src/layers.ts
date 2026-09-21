@@ -5,16 +5,14 @@ import {
   THUMB_KEY,
   type Finger,
 } from './geometry.ts';
-import type { Face, Layout } from './layouts/types.ts';
+import type { Face, LayerPresentationRole, Layout } from './layouts/types.ts';
 
 export type Hand = 'left' | 'right';
-
-export type LayerPresentationRole = 'layer' | 'modifier';
 
 export interface Layer {
   /** compiled presentation aggregation id。consumerはFaceから逆算しない。 */
   id: string;
-  /** presentation上の区分。Face.roleは分類境界でここへ畳む。 */
+  /** compiled presentation aggregationの表示区分。 */
   role: LayerPresentationRole;
   /** 元Face列における最初の出現順。presentation ordering専用。 */
   order: number;
@@ -105,10 +103,14 @@ export function classifyPresentationFaces(
     throw new Error('Face表示にはfaceLayerIdsの明示が必要');
   }
 
-  const kinds = new Map(
-    (layout.layerDefinitions ?? []).map((definition) => [definition.id, definition.kind] as const),
+  const definitions = new Map(
+    (layout.layerDefinitions ?? []).map((definition) => [definition.id, definition] as const),
   );
-  const groups = new Map<string, { order: number; faces: Face[] }>();
+  const groups = new Map<string, {
+    order: number;
+    role: LayerPresentationRole;
+    faces: Face[];
+  }>();
   const combos: Face[] = [];
 
   for (const [faceIndex, face] of faces.entries()) {
@@ -116,30 +118,35 @@ export function classifyPresentationFaces(
     if (layerId === undefined) {
       throw new Error('Face表示には全FaceのfaceLayerIds明示が必要');
     }
-    const kind = kinds.get(layerId);
-    if (kind === undefined) {
+    const definition = definitions.get(layerId);
+    if (definition === undefined) {
       throw new Error(`Face表示にはaggregation「${layerId}」のlayerDefinitions明示が必要`);
     }
-    if (kind === 'combo') {
+    if (definition.kind === 'combo') {
       combos.push(face);
       continue;
     }
+    if (definition.presentationRole === undefined) {
+      throw new Error(
+        `Face表示にはaggregation「${layerId}」のpresentationRole明示が必要`,
+      );
+    }
+
     const group = groups.get(layerId);
     if (group) group.faces.push(face);
-    else groups.set(layerId, { order: faceIndex, faces: [face] });
+    else groups.set(layerId, {
+      order: faceIndex,
+      role: definition.presentationRole,
+      faces: [face],
+    });
   }
 
   const layers: Layer[] = [];
   const modifiers: Layer[] = [];
   for (const [id, group] of groups) {
-    const roles = new Set(group.faces.map((face) => face.role === 'modifier' ? 'modifier' : 'layer'));
-    if (roles.size > 1) {
-      throw new Error('同じpresentation aggregationへ異なる表示roleのFaceを混在させられない');
-    }
-    const role: LayerPresentationRole = roles.has('modifier') ? 'modifier' : 'layer';
-    (role === 'modifier' ? modifiers : layers).push({
+    (group.role === 'modifier' ? modifiers : layers).push({
       id,
-      role,
+      role: group.role,
       order: group.order,
       faces: group.faces,
     });
