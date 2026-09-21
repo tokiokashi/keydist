@@ -312,6 +312,27 @@ test('findActiveLayerFace: 単キーtriggerだけを選択した時はその面�
   assert.equal(findActiveLayerFace(layout, new Set(['f', 'j'])), undefined);
 });
 
+test('findActiveLayerFace: 同triggerが複数aggregationにある時はLayer.orderをauthorityにする', () => {
+  const modifierFirst: Face = {
+    ...faceFromEntries(['d'], 'simultaneous', { j: 'あ' }),
+    role: 'modifier',
+  };
+  const layerSecond: Face = faceFromEntries(['d'], 'simultaneous', { k: 'い' });
+  const layout = stubLayout({
+    faces: [modifierFirst, layerSecond],
+    faceLayerIds: new Map([
+      [modifierFirst, 'layer:modifier-first'],
+      [layerSecond, 'layer:layer-second'],
+    ]),
+    layerDefinitions: [
+      { id: 'layer:modifier-first', kind: 'layer', label: 'modifier first' },
+      { id: 'layer:layer-second', kind: 'layer', label: 'layer second' },
+    ],
+  });
+
+  assert.equal(findActiveLayerFace(layout, new Set(['d'])), modifierFirst);
+});
+
 test('findActiveLayerFace: presentationTriggerKeysのphysical alternativeも同じFaceへ帰属する', () => {
   const shiftFace: Face = {
     ...faceFromEntries(['space'], 'simultaneous', { j: 'あ' }),
