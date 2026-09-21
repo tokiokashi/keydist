@@ -23,7 +23,7 @@ const QWERTY_ROWS = [
 const face = (
   trigger: string[],
   entries: Record<string, string>,
-  options: Pick<Face, 'layer' | 'role' | 'inputRole' | 'triggerPersistence' | 'triggerOrder' | 'presentationTriggerKeys' | 'presentationTriggerText' | 'presentationLabel'> = {
+  options: Pick<Face, 'layer' | 'role' | 'inputRole' | 'triggerPersistence' | 'triggerOrder' | 'presentationTriggerAlternatives' | 'presentationTriggerText' | 'presentationLabel'> = {
     inputRole: 'layer',
   },
 ): Face => ({
@@ -53,7 +53,7 @@ export const NAGINATA_V18_FACES: Face[] = [
     inputRole: 'modifier',
     triggerPersistence: 'hold-capable',
     triggerOrder: 'prefix',
-    presentationTriggerKeys: [THUMB_KEY.LT, THUMB_KEY.RT],
+    presentationTriggerAlternatives: [[THUMB_KEY.LT], [THUMB_KEY.RT]],
     presentationTriggerText: '左右のSpace',
     presentationLabel: 'SandS',
   }),
