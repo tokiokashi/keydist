@@ -85,6 +85,26 @@ export interface LayerDefinition {
   label: string;
 }
 
+export interface CompactLayerViewPresentation {
+  /** コンパクト表示で個別に残すaggregation layerId。指定順が表示順になる。 */
+  keepLayerIds: readonly string[];
+  /** keepLayerIds以外のlayerを合算する先。keepLayerIds内に含める。 */
+  mergeIntoLayerId: string;
+  /** 合算先タイトルへ付ける表示用suffix。 */
+  mergedTitleSuffix: string;
+  /** 表示切替UIの見出し。 */
+  controlLabel: string;
+  /** compact側のボタン文言。 */
+  compactLabel: string;
+  /** detail側のボタン文言。 */
+  detailLabel: string;
+}
+
+export interface LayerViewPresentation {
+  /** 複数layerを明示した代表layerへ畳むpresentation-only policy。 */
+  compact?: CompactLayerViewPresentation;
+}
+
 export const SINGLE_LAYER_ID = 'single';
 export const COMBO_LAYER_ID = 'combo';
 
@@ -167,6 +187,8 @@ export interface Layout {
   layerDefinitions?: readonly LayerDefinition[];
   /** 面から展開した配列で、各面がどの帰属先へ属するかをUIが引くための表 */
   faceLayerIds?: ReadonlyMap<Face, string>;
+  /** layer表示だけに使うLayout-level presentation metadata。semantic評価には使わない。 */
+  layerViewPresentation?: LayerViewPresentation;
 }
 
 const maxKeyLength = (keys: Iterable<string>) => Math.max(1, ...[...keys].map((k) => k.length));
