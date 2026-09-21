@@ -40,13 +40,13 @@ function validateFoldPair(first: Face, second: Face): void {
 
   const firstCells = faceCells(first);
   const secondCells = faceCells(second);
-  const firstTargetHand = singleHand(firstCells.keys());
-  const secondTargetHand = singleHand(secondCells.keys());
-  if (!opposite(firstTargetHand, secondTargetHand)) invalid('対象セルが逆手でない');
-
   for (const key of firstCells.keys()) {
     if (secondCells.has(key)) invalid('対象セルが重複している');
   }
+
+  const firstTargetHand = singleHand(firstCells.keys());
+  const secondTargetHand = singleHand(secondCells.keys());
+  if (!opposite(firstTargetHand, secondTargetHand)) invalid('対象セルが逆手でない');
 }
 
 /**
