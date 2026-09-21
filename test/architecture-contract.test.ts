@@ -33,6 +33,16 @@ async function tsFiles(dir: string): Promise<string[]> {
   return nested.flat();
 }
 
+async function tsOrTsxFiles(dir: string): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const nested = await Promise.all(entries.map(async (entry) => {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) return tsOrTsxFiles(path);
+    return entry.isFile() && /\.tsx?$/.test(entry.name) ? [path] : [];
+  }));
+  return nested.flat();
+}
+
 function moduleSpecifiers(source: string): readonly string[] {
   const specs = new Set<string>();
   for (const pattern of [
@@ -103,7 +113,7 @@ function isForbiddenRealizationConsumerImport(
 }
 
 test('core全体はframework / browser / Cloudflare platformへ依存しない', async () => {
-  const corePaths = await tsFiles(join(SRC, 'core'));
+  const corePaths = await tsOrTsxFiles(join(SRC, 'core'));
   assert.ok(corePaths.length > 0, 'core source must exist');
 
   for (const path of corePaths) {
@@ -178,12 +188,6 @@ test('realization policy consumerはsemantic core public entryをauthorityにす
 
 test('Input Converter coreはSemanticInput public APIを再利用しframework / DOMへ依存しない', async () => {
   const sources = await inputConverterCoreSources();
-  const PLATFORM_GLOBAL_PATTERNS = [
-    /\b(?:window|document|navigator|localStorage|sessionStorage)\s*\./,
-    /\btypeof\s+(?:window|document|navigator)\b/,
-    /\b(?:Window|Document|Navigator|HTMLElement|KeyboardEvent|MutationObserver|ResizeObserver)\b/,
-    /\b(?:D1Database|KVNamespace|R2Bucket|DurableObject)\b/,
-  ];
 
   assert.ok(sources.length > 0, 'input converter core source must exist');
   for (const { path, source } of sources) {
@@ -249,12 +253,6 @@ test('canonical semantic / structural analysis coreはframework / platform API�
     }
   }
 
-  const PLATFORM_GLOBAL_PATTERNS = [
-    /\b(?:window|document|navigator|localStorage|sessionStorage)\s*\./,
-    /\btypeof\s+(?:window|document|navigator)\b/,
-    /\b(?:Window|Document|Navigator|HTMLElement|MutationObserver|ResizeObserver)\b/,
-    /\b(?:D1Database|KVNamespace|R2Bucket|DurableObject)\b/,
-  ];
 
   for (const { path, source } of [...semanticSources, ...analysisSources]) {
     for (const pattern of PLATFORM_GLOBAL_PATTERNS) {
