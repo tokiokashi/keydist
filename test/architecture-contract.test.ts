@@ -136,6 +136,18 @@ test('composed outputのsemantic availabilityはcanonicalInputsをauthorityに�
   );
 });
 
+test('CanonicalInputMap validationはempty alternative setを許可しない', async () => {
+  const source = await readFile(join(SRC, 'core/semantic-input/compiler.ts'), 'utf8');
+  const start = source.indexOf('export function validateCanonicalInputMap');
+  const end = source.indexOf('\n}\n\n\ntype AlternativeIdentityProjection', start);
+
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  const validationSource = source.slice(start, end + 2);
+  assert.match(validationSource, /alternatives\.length === 0/);
+  assert.match(validationSource, /1つ以上のalternativeが必要/);
+});
+
 test('logical output matching lengthはcanonicalInputsをauthorityにする', async () => {
   const evaluateSource = await readFile(join(SRC, 'evaluate.ts'), 'utf8');
   const layoutTypesSource = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
