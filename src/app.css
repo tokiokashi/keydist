@@ -112,3 +112,219 @@ h1 {
 .feature-placeholder {
   color: #666;
 }
+
+
+.input-feature {
+  max-width: 70rem;
+}
+
+.input-toolbar {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  margin: 2rem 0 1rem;
+}
+
+.input-toolbar label {
+  display: grid;
+  flex: 1;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.input-toolbar select,
+.input-toolbar button,
+.input-capture,
+.input-output {
+  font: inherit;
+}
+
+.input-toolbar select,
+.input-toolbar button {
+  min-height: 2.6rem;
+  border: 1px solid #c9c9c3;
+  border-radius: 0.55rem;
+  background: #fff;
+}
+
+.input-toolbar select {
+  padding: 0 0.7rem;
+}
+
+.input-toolbar button {
+  padding: 0 1rem;
+  cursor: pointer;
+}
+
+.input-output {
+  width: 100%;
+  resize: vertical;
+  padding: 1rem;
+  border: 1px solid #cfcfc9;
+  border-radius: 0.75rem;
+  background: #fff;
+  line-height: 1.7;
+}
+
+.input-capture {
+  display: grid;
+  gap: 0.25rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 2px dashed #b8b8b1;
+  border-radius: 0.75rem;
+  outline: none;
+  cursor: text;
+}
+
+.input-capture[data-active] {
+  border-style: solid;
+  border-color: #363633;
+  background: #fff;
+}
+
+.input-capture span,
+.input-note,
+.input-muted {
+  color: #686862;
+}
+
+.input-capture span,
+.input-note {
+  font-size: 0.9rem;
+}
+
+.input-keyboard {
+  display: grid;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding: 1rem 0;
+}
+
+.input-keyboard-row {
+  display: flex;
+  gap: 0.35rem;
+  min-width: max-content;
+}
+
+.input-keyboard-row:nth-child(2) {
+  padding-left: 1rem;
+}
+
+.input-keyboard-row:nth-child(3) {
+  padding-left: 1.6rem;
+}
+
+.input-keyboard-row:nth-child(4) {
+  padding-left: 2.3rem;
+}
+
+.input-key {
+  display: grid;
+  width: 3.25rem;
+  min-height: 3.15rem;
+  place-content: center;
+  gap: 0.15rem;
+  border: 1px solid #d2d2cc;
+  border-radius: 0.5rem;
+  background: #fff;
+  text-align: center;
+}
+
+.input-key > span {
+  font-weight: 700;
+}
+
+.input-key small {
+  color: #85857f;
+  font-size: 0.63rem;
+}
+
+.input-key[data-active] {
+  border-color: #171717;
+  background: #deded8;
+  transform: translateY(1px);
+}
+
+.input-keyboard-thumbs {
+  justify-content: center;
+  padding-left: 0;
+}
+
+.input-key-thumb {
+  width: 8rem;
+}
+
+.input-inspector {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.8fr) minmax(18rem, 1.2fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.input-inspector section {
+  padding: 1rem;
+  border: 1px solid #d6d6d1;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.input-inspector h2 {
+  margin: 0 0 0.7rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.input-inspector p {
+  margin: 0;
+}
+
+.input-recognized-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.input-recognized {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.input-recognized strong {
+  font-size: 1.4rem;
+}
+
+.input-recognized div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.input-recognized code {
+  padding: 0.2rem 0.35rem;
+  border-radius: 0.3rem;
+  background: #f1f1ed;
+  font-size: 0.75rem;
+}
+
+.input-note {
+  margin-top: 1.25rem;
+}
+
+@media (max-width: 680px) {
+  .app-shell {
+    padding-top: 3rem;
+  }
+
+  .input-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .input-inspector {
+    grid-template-columns: 1fr;
+  }
+}

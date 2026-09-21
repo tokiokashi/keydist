@@ -1,0 +1,35 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { TypingInputEngine } from '../src/core/input-converter/index.ts';
+import { browserKeyboardEventToPhysicalKeyEvent } from '../src/features/input-converter/browser-keyboard-adapter.ts';
+import { TSUKI_2_263 } from '../src/layouts/tsuki-2-263.ts';
+
+const physical = (
+  type: 'keydown' | 'keyup',
+  code: string,
+) => {
+  const event = browserKeyboardEventToPhysicalKeyEvent({ type, code });
+  assert.ok(event !== undefined);
+  return event;
+};
+
+test('built-in月配列をbrowser adapter経由で単打入力できる', () => {
+  const engine = new TypingInputEngine(TSUKI_2_263.canonicalInputs);
+
+  assert.deepEqual(engine.handle(physical('keydown', 'KeyH')).recognized, []);
+  assert.deepEqual(
+    engine.handle(physical('keyup', 'KeyH')).recognized.map((entry) => entry.output),
+    ['く'],
+  );
+});
+
+test('built-in月配列をbrowser adapter経由でprefix入力できる', () => {
+  const engine = new TypingInputEngine(TSUKI_2_263.canonicalInputs);
+
+  assert.deepEqual(engine.handle(physical('keydown', 'KeyD')).recognized, []);
+  assert.deepEqual(engine.handle(physical('keyup', 'KeyD')).recognized, []);
+  assert.deepEqual(
+    engine.handle(physical('keydown', 'KeyH')).recognized.map((entry) => entry.output),
+    ['ま'],
+  );
+});
