@@ -181,12 +181,18 @@ export class TypingInputEngine {
     };
   }
 
+  #activeWindowPressed(): ReadonlySet<PhysicalKeyId> {
+    return new Set(
+      [...this.#pressed].filter((key) => this.#windowKeys.has(key)),
+    );
+  }
+
   #candidateMatches(candidate: Candidate): boolean {
     if (!this.#contextSatisfied(candidate.alternative.contextRequirements)) return false;
 
     const physical = keySet(candidate.input.physicalKeys);
     if (!isSubset(physical, this.#windowKeys)) return false;
-    if (!isSubset(this.#pressed, physical)) return false;
+    if (!isSubset(this.#activeWindowPressed(), physical)) return false;
 
     return candidate.input.requirements.every((requirement) => {
       if (requirement.kind === 'overlap') {
@@ -216,12 +222,46 @@ export class TypingInputEngine {
         || left.order - right.order)[0];
   }
 
+  #candidateCanStillMatch(
+    candidate: Candidate,
+    nextKey?: PhysicalKeyId,
+  ): boolean {
+    if (!this.#contextSatisfied(candidate.alternative.contextRequirements)) return false;
+
+    const physical = keySet(candidate.input.physicalKeys);
+    if (!isSubset(this.#windowKeys, physical)) return false;
+    if (nextKey !== undefined && !physical.has(nextKey)) return false;
+
+    const active = new Set(this.#activeWindowPressed());
+    const order = new Map(this.#pressOrder);
+    if (nextKey !== undefined) {
+      active.add(nextKey);
+      order.set(nextKey, this.#nextOrder);
+    }
+    if (!isSubset(active, physical)) return false;
+
+    return candidate.input.requirements.every((requirement) => {
+      if (requirement.kind === 'overlap') return true;
+
+      const before = canonicalKeys(requirement.before).map((key) => order.get(key));
+      const after = canonicalKeys(requirement.after).map((key) => order.get(key));
+      const knownBefore = before.filter((value): value is number => value !== undefined);
+      const knownAfter = after.filter((value): value is number => value !== undefined);
+
+      // after側がすでに押されているのにbefore側が未入力なら、
+      // future keydownでbefore < afterを回復することはできない。
+      if (knownAfter.length > 0 && knownBefore.length !== before.length) return false;
+      if (knownBefore.length === 0 || knownAfter.length === 0) return true;
+      return Math.max(...knownBefore) < Math.min(...knownAfter);
+    });
+  }
+
   #hasPotentialExtension(candidate: Candidate): boolean {
     const current = keySet(candidate.input.physicalKeys);
     return this.#candidates.some((other) => {
       if (other === candidate) return false;
-      if (!this.#contextSatisfied(other.alternative.contextRequirements)) return false;
-      return isStrictSubset(current, keySet(other.input.physicalKeys));
+      return isStrictSubset(current, keySet(other.input.physicalKeys))
+        && this.#candidateCanStillMatch(other);
     });
   }
 
@@ -232,7 +272,7 @@ export class TypingInputEngine {
       const candidateKeys = keySet(candidate.input.physicalKeys);
       return isStrictSubset(pendingKeys, candidateKeys)
         && candidateKeys.has(key)
-        && this.#contextSatisfied(candidate.alternative.contextRequirements);
+        && this.#candidateCanStillMatch(candidate, key);
     });
   }
 
