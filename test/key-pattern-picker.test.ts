@@ -304,11 +304,33 @@ test('findActiveLayerFace: 単キーtriggerだけを選択した時はその面�
   const layout = stubLayout({
     faces: [shiftFace],
     faceLayerIds: new Map([[shiftFace, 'face:0']]),
+    layerDefinitions: [{ id: 'face:0', kind: 'layer', label: '面 1' }],
   });
   assert.equal(findActiveLayerFace(layout, new Set(['f'])), shiftFace);
   assert.equal(findActiveLayerFace(layout, new Set()), undefined);
   assert.equal(findActiveLayerFace(layout, new Set(['z'])), undefined);
   assert.equal(findActiveLayerFace(layout, new Set(['f', 'j'])), undefined);
+});
+
+test('findActiveLayerFace: 同triggerが複数aggregationにある時はLayer.orderをauthorityにする', () => {
+  const modifierFirst: Face = {
+    ...faceFromEntries(['d'], 'simultaneous', { j: 'あ' }),
+    role: 'modifier',
+  };
+  const layerSecond: Face = faceFromEntries(['d'], 'simultaneous', { k: 'い' });
+  const layout = stubLayout({
+    faces: [modifierFirst, layerSecond],
+    faceLayerIds: new Map([
+      [modifierFirst, 'layer:modifier-first'],
+      [layerSecond, 'layer:layer-second'],
+    ]),
+    layerDefinitions: [
+      { id: 'layer:modifier-first', kind: 'layer', label: 'modifier first' },
+      { id: 'layer:layer-second', kind: 'layer', label: 'layer second' },
+    ],
+  });
+
+  assert.equal(findActiveLayerFace(layout, new Set(['d'])), modifierFirst);
 });
 
 test('findActiveLayerFace: presentationTriggerKeysのphysical alternativeも同じFaceへ帰属する', () => {
@@ -319,6 +341,7 @@ test('findActiveLayerFace: presentationTriggerKeysのphysical alternativeも同�
   const layout = stubLayout({
     faces: [shiftFace],
     faceLayerIds: new Map([[shiftFace, 'layer:SandS']]),
+    layerDefinitions: [{ id: 'layer:SandS', kind: 'layer', label: 'SandS' }],
   });
   assert.equal(findActiveLayerFace(layout, new Set(['thumb-l'])), shiftFace);
   assert.equal(findActiveLayerFace(layout, new Set(['thumb-r'])), shiftFace);
@@ -329,11 +352,12 @@ test('findActiveLayerFace: 複数キーtriggerはレイヤーとして扱わな�
   const layout = stubLayout({
     faces: [comboFace],
     faceLayerIds: new Map([[comboFace, 'face:0']]),
+    layerDefinitions: [{ id: 'face:0', kind: 'layer', label: '面 1' }],
   });
   assert.equal(findActiveLayerFace(layout, new Set(['j', 'k'])), undefined);
 });
 
-test('findActiveLayerFace: aggregation帰属はinputRoleではなくfaceLayerIdsをauthorityにする', () => {
+test('findActiveLayerFace: aggregation帰属はinputRoleではなくcompiled presentation mappingをauthorityにする', () => {
   const legacyComposition: Face = {
     ...faceFromEntries(['f'], 'simultaneous', { j: 'あ' }),
     inputRole: 'composition',
@@ -341,6 +365,7 @@ test('findActiveLayerFace: aggregation帰属はinputRoleではなくfaceLayerIds
   const mappedLayer = stubLayout({
     faces: [legacyComposition],
     faceLayerIds: new Map([[legacyComposition, 'face:0']]),
+    layerDefinitions: [{ id: 'face:0', kind: 'layer', label: '面 1' }],
   });
   assert.equal(findActiveLayerFace(mappedLayer, new Set(['f'])), legacyComposition);
 
@@ -351,6 +376,7 @@ test('findActiveLayerFace: aggregation帰属はinputRoleではなくfaceLayerIds
   const mappedCombo = stubLayout({
     faces: [explicitModifier],
     faceLayerIds: new Map([[explicitModifier, COMBO_LAYER_ID]]),
+    layerDefinitions: [{ id: COMBO_LAYER_ID, kind: 'combo', label: 'コンボ' }],
   });
   assert.equal(findActiveLayerFace(mappedCombo, new Set(['d'])), undefined);
 });

@@ -76,6 +76,43 @@ test('Face semanticは推測せず明示を要求する', () => {
   assert.deepEqual(classifyPresentationFaces(layout).combos, []);
 });
 
+test('compiled presentation Layerはaggregation identity / role / orderを保持する', () => {
+  const base: Face = {
+    ...faceFromEntries([], 'simultaneous', { a: 'あ' }),
+    inputRole: 'layer',
+  };
+  const modifier: Face = {
+    ...faceFromEntries(['d'], 'prefix', { j: 'い' }),
+    layer: '中指',
+    role: 'modifier',
+    inputRole: 'modifier',
+    triggerPersistence: 'single',
+  };
+  const shifted: Face = {
+    ...faceFromEntries(['f'], 'prefix', { k: 'う' }),
+    layer: '人差指',
+    inputRole: 'layer',
+    triggerPersistence: 'single',
+  };
+  const layout = fromFaces('presentation-layer-id', 'presentation-layer-id', [
+    base,
+    modifier,
+    shifted,
+  ]);
+
+  const groups = classifyPresentationFaces(layout);
+  assert.deepEqual(
+    [...groups.layers, ...groups.modifiers]
+      .sort((left, right) => left.order - right.order)
+      .map((layer) => [layer.id, layer.role, layer.order]),
+    [
+      ['single', 'layer', 0],
+      ['layer:中指', 'modifier', 1],
+      ['layer:人差指', 'layer', 2],
+    ],
+  );
+});
+
 test('triggerless compositionはcanonicalとpresentationの両方でcomboへ帰属する', () => {
   const face: Face = {
     trigger: [],
@@ -452,11 +489,13 @@ test('triggerOrderが異なるFaceは同じレイヤーへ畳まない', () => {
   assert.throws(() => groupFacesIntoLayers([first, second]), /triggerOrderが異なる/);
 });
 
-test('シフトの表示色は手ではなく所属レイヤーで揃える', () => {
+test('シフトの表示色は手ではなく所属aggregationで揃え、singleはshift扱いしない', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
   const layers = groupFacesIntoLayers(layout.faces!);
   const styles = layerShiftStyles(layers);
 
+  assert.equal(layers[0].id, 'single');
+  assert.equal(styles.has(layers[0].faces[0]), false, 'single aggregationはシフト色を持たない');
   assert.ok(styles.has(layers[1].faces[0]), '相互シフトの片側に枠色がある');
   assert.ok(styles.has(layers[1].faces[1]), '相互シフトのもう片側にも枠色がある');
   assert.equal(styles.get(layers[1].faces[0])?.layerIndex, 2);

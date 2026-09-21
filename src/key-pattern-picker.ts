@@ -1,7 +1,7 @@
 import { resolveKeyId } from './geometry.ts';
-import { displayTriggerKeys } from './layers.ts';
+import { classifyPresentationFaces, displayTriggerKeys, orderedPresentationLayers } from './layers.ts';
 import type { Requirement } from './core/semantic-input/types.ts';
-import { COMBO_LAYER_ID, type Face, type Layout } from './layouts/types.ts';
+import type { Face, Layout } from './layouts/types.ts';
 
 type OrderRequirement = Extract<Requirement, { kind: 'order' }>;
 
@@ -156,24 +156,20 @@ export function summarizeCandidateMatches(matches: readonly KeyPatternMatch[]): 
 /**
  * 選択中のキーが単一キーのレイヤートリガー（シフト面など）に一致するなら、その面を返す。
  * 枠色を既存のレイヤー色へ揃えるための表示補助にだけ使う。
- * aggregation帰属はfaceLayerIdsをauthorityとし、combo・複数キーtriggerは除外する。
+ * aggregation帰属はclassifyPresentationFaces()のcompiled Layerをauthorityとし、combo・複数キーtriggerは除外する。
  */
 export function findActiveLayerFace(layout: Layout, selected: ReadonlySet<string>): Face | undefined {
   if (selected.size !== 1 || !layout.faces) return undefined;
-  if (!layout.faceLayerIds) {
-    throw new Error('Face表示にはfaceLayerIdsの明示が必要');
-  }
-  return layout.faces.find((face) => {
-    const layerId = layout.faceLayerIds?.get(face);
-    if (layerId === undefined) {
-      throw new Error('Face表示には全FaceのfaceLayerIds明示が必要');
+  const groups = classifyPresentationFaces(layout);
+  for (const layer of orderedPresentationLayers(groups)) {
+    for (const face of layer.faces) {
+      if (face.trigger.length !== 1) continue;
+      if (displayTriggerKeys(face).some((key) => selected.has(key))) return face;
     }
-    if (layerId === COMBO_LAYER_ID || face.trigger.length !== 1) return false;
-    return displayTriggerKeys(face).some((key) => selected.has(key));
-  });
+  }
+  return undefined;
 }
 
-/** ガイド表示用: 配列が持つ全triggerキー（層操作・コンボ問わず）の物理キーid集合。 */
 /** ガイド表示用: canonical pathが持つtriggerキー集合。 */
 export function allTriggerKeys(layout: Layout): ReadonlySet<string> {
   const keys = new Set<string>();

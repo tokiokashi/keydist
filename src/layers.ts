@@ -9,7 +9,15 @@ import type { Face, Layout } from './layouts/types.ts';
 
 export type Hand = 'left' | 'right';
 
+export type LayerPresentationRole = 'layer' | 'modifier';
+
 export interface Layer {
+  /** compiled presentation aggregation id。consumerはFaceから逆算しない。 */
+  id: string;
+  /** presentation上の区分。Face.roleは分類境界でここへ畳む。 */
+  role: LayerPresentationRole;
+  /** 元Face列における最初の出現順。presentation ordering専用。 */
+  order: number;
   /** このレイヤーに含めた面。通常は単独面、逆手の面だけ2面を持つ */
   faces: readonly Face[];
 }
@@ -32,10 +40,9 @@ export interface LayerShiftStyle {
 export function layerShiftStyles(layers: readonly Layer[]): Map<Face, LayerShiftStyle> {
   const styles = new Map<Face, LayerShiftStyle>();
   for (const [index, layer] of layers.entries()) {
+    if (layer.id === 'single') continue;
     const style = { layerIndex: index + 1, colorSlot: (index % 8) + 1 };
-    for (const face of layer.faces) {
-      if (face.trigger.length > 0) styles.set(face, style);
-    }
+    for (const face of layer.faces) styles.set(face, style);
   }
   return styles;
 }
@@ -126,17 +133,26 @@ export function canFoldFaces(first: Face, second: Face): boolean {
   return true;
 }
 
-function singleTriggerGroups(faces: readonly Face[]): Map<string, Face[]> {
-  const groups = new Map<string, Face[]>();
+interface AuthoringFaceGroup {
+  id: string;
+  order: number;
+  faces: Face[];
+}
+
+function singleTriggerGroups(faces: readonly Face[]): Map<string, AuthoringFaceGroup> {
+  const groups = new Map<string, AuthoringFaceGroup>();
   faces.forEach((face, index) => {
     if (face.inputRole === 'composition') {
       if (face.layer !== undefined) throw new Error('コンボ面にはレイヤーを宣言できない');
       return;
     }
     const groupKey = face.layer === undefined ? `single:${index}` : `layer:${face.layer}`;
+    const id = face.trigger.length === 0
+      ? 'single'
+      : face.layer === undefined ? `face:${index}` : `layer:${face.layer}`;
     const group = groups.get(groupKey);
-    if (group) group.push(face);
-    else groups.set(groupKey, [face]);
+    if (group) group.faces.push(face);
+    else groups.set(groupKey, { id, order: index, faces: [face] });
   });
   return groups;
 }
@@ -156,10 +172,18 @@ export function classifyFaces(faces: readonly Face[]): FaceGroups {
   const layers: Layer[] = [];
   const modifiers: Layer[] = [];
   for (const group of singleTriggerGroups(faces).values()) {
-    validateGroup(group);
-    const roles = new Set(group.map((face) => face.role === 'modifier' ? 'modifier' : 'layer'));
-    if (roles.size > 1) throw new Error(`レイヤー「${group[0].layer ?? ''}」に異なる役割の面を混在させられない`);
-    (roles.has('modifier') ? modifiers : layers).push({ faces: group });
+    validateGroup(group.faces);
+    const roles = new Set(group.faces.map((face) => face.role === 'modifier' ? 'modifier' : 'layer'));
+    if (roles.size > 1) {
+      throw new Error(`レイヤー「${group.faces[0].layer ?? ''}」に異なる役割の面を混在させられない`);
+    }
+    const role: LayerPresentationRole = roles.has('modifier') ? 'modifier' : 'layer';
+    (role === 'modifier' ? modifiers : layers).push({
+      id: group.id,
+      role,
+      order: group.order,
+      faces: group.faces,
+    });
   }
   return {
     layers,
@@ -185,10 +209,10 @@ export function classifyPresentationFaces(
   const kinds = new Map(
     (layout.layerDefinitions ?? []).map((definition) => [definition.id, definition.kind] as const),
   );
-  const groups = new Map<string, Face[]>();
+  const groups = new Map<string, { order: number; faces: Face[] }>();
   const combos: Face[] = [];
 
-  for (const face of faces) {
+  for (const [faceIndex, face] of faces.entries()) {
     const layerId = layout.faceLayerIds.get(face);
     if (layerId === undefined) {
       throw new Error('Face表示には全FaceのfaceLayerIds明示が必要');
@@ -202,20 +226,34 @@ export function classifyPresentationFaces(
       continue;
     }
     const group = groups.get(layerId);
-    if (group) group.push(face);
-    else groups.set(layerId, [face]);
+    if (group) group.faces.push(face);
+    else groups.set(layerId, { order: faceIndex, faces: [face] });
   }
 
   const layers: Layer[] = [];
   const modifiers: Layer[] = [];
-  for (const group of groups.values()) {
-    const roles = new Set(group.map((face) => face.role === 'modifier' ? 'modifier' : 'layer'));
+  for (const [id, group] of groups) {
+    const roles = new Set(group.faces.map((face) => face.role === 'modifier' ? 'modifier' : 'layer'));
     if (roles.size > 1) {
       throw new Error('同じpresentation aggregationへ異なる表示roleのFaceを混在させられない');
     }
-    (roles.has('modifier') ? modifiers : layers).push({ faces: group });
+    const role: LayerPresentationRole = roles.has('modifier') ? 'modifier' : 'layer';
+    (role === 'modifier' ? modifiers : layers).push({
+      id,
+      role,
+      order: group.order,
+      faces: group.faces,
+    });
   }
   return { layers, modifiers, combos };
+}
+
+/** compiled presentation aggregationを元Face列の出現順へ戻す。role別配列の連結順はauthorityにしない。 */
+export function orderedPresentationLayers(
+  groups: Pick<FaceGroups, 'layers' | 'modifiers'>,
+): Layer[] {
+  return [...groups.layers, ...groups.modifiers]
+    .sort((first, second) => first.order - second.order);
 }
 
 /** 面の順序を保ちながら、盤面を置き換える単一キー面だけをレイヤーへ集約する。 */

@@ -1,5 +1,5 @@
 import { ALL_FINGERS, dist, keyId, resolveKeyId, type Finger, type Geometry, type Point } from './geometry.ts';
-import { faceCells, faceDisplayCells } from './layers.ts';
+import { classifyPresentationFaces, faceCells, faceDisplayCells } from './layers.ts';
 import type { Stroke } from './evaluate.ts';
 import { COMBO_LAYER_ID, type Layout } from './layouts/types.ts';
 import {
@@ -350,18 +350,12 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
   if (layout.romajiTable || !layout.faces) {
     return { keyLabels: new Map() };
   }
-  if (!layout.faceLayerIds) {
-    throw new Error('Face表示にはfaceLayerIdsの明示が必要');
-  }
-
+  const groups = classifyPresentationFaces(layout);
   const triggerKeys = new Set(stroke.triggerKeys.map(resolveKeyId));
-  const layerFaces = layout.faces.filter((face) => {
-    const layerId = layout.faceLayerIds?.get(face);
-    if (layerId === undefined) {
-      throw new Error('Face表示には全FaceのfaceLayerIds明示が必要');
-    }
-    return layerId === stroke.layerId;
-  });
+  const layerFaces = stroke.layerId === COMBO_LAYER_ID
+    ? [...groups.combos]
+    : [...groups.layers, ...groups.modifiers]
+      .find((layer) => layer.id === stroke.layerId)?.faces ?? [];
   const triggeredFaces = triggerKeys.size === 0
     ? layerFaces
     : layerFaces.filter((face) => {

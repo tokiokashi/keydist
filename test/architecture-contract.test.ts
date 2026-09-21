@@ -129,6 +129,16 @@ test('results viewはFace semantic authoring metadataへ依存しない', async 
   );
   assert.doesNotMatch(
     source,
+    /\bfaceLayerIds\b|\blayerIdForFace\b/,
+    'results-view must consume presentation Layer.id instead of reverse-looking-up Face attribution',
+  );
+  assert.doesNotMatch(
+    source,
+    /layer\.faces\.some\([^\n]*face\.trigger\.length\s*===\s*0/,
+    'results-view must identify the base aggregation by Layer.id instead of trigger shape',
+  );
+  assert.doesNotMatch(
+    source,
     /from\s+['"]\.\/layouts\/index\.ts['"]/,
     'results-view must not runtime-import the built-in layout registry barrel',
   );
@@ -156,7 +166,51 @@ test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityに�
   assert.doesNotMatch(
     source,
     /face\.inputRole\b/,
-    'key-pattern picker must use faceLayerIds for presentation layer membership',
+    'key-pattern picker must not use legacy inputRole for presentation layer membership',
+  );
+  assert.doesNotMatch(
+    source,
+    /\bfaceLayerIds\b/,
+    'key-pattern picker must consume classifyPresentationFaces instead of raw faceLayerIds',
+  );
+});
+
+test('presentation consumerはLayer.orderの共通helperを使う', async () => {
+  const pickerSource = await readFile(join(SRC, 'key-pattern-picker.ts'), 'utf8');
+  const resultsSource = await readFile(join(SRC, 'results-view.ts'), 'utf8');
+
+  assert.match(pickerSource, /orderedPresentationLayers\(groups\)/);
+  assert.match(resultsSource, /orderedPresentationLayers\(groups\)/);
+  assert.doesNotMatch(
+    pickerSource,
+    /\[\.\.\.groups\.layers,\s*\.\.\.groups\.modifiers\]/,
+    'picker must not give layer-role aggregations implicit priority over modifier-role aggregations',
+  );
+
+  const guideStart = resultsSource.indexOf('function pickerGuideColorMap');
+  const guideEnd = resultsSource.indexOf('function heatIntensity', guideStart);
+  assert.ok(guideStart >= 0 && guideEnd > guideStart, 'picker guide section must remain discoverable');
+  const guideSource = resultsSource.slice(guideStart, guideEnd);
+  assert.match(
+    guideSource,
+    /if \(!colors\.has\(key\)\) colors\.set\(key, stroke\)/,
+    'picker guide must preserve the first Layer.order attribution for duplicate triggers',
+  );
+});
+
+test('results picker guideは明示presentation trigger / combo variantsを使う', async () => {
+  const source = await readFile(join(SRC, 'results-view.ts'), 'utf8');
+  const start = source.indexOf('function pickerGuideColorMap');
+  const end = source.indexOf('function heatIntensity', start);
+  assert.ok(start >= 0 && end > start, 'picker guide section must remain discoverable');
+  const section = source.slice(start, end);
+
+  assert.match(section, /displayTriggerKeys\(face\)/);
+  assert.match(section, /combo\.keyVariants\s*\?\?\s*\[combo\.keys\]/);
+  assert.doesNotMatch(
+    section,
+    /for \(const trigger of face\.trigger\)/,
+    'picker guide must not ignore presentation trigger alternatives',
   );
 });
 
@@ -182,6 +236,11 @@ test('playbackはFace classificationからpresentation layer帰属を再構成�
     source,
     /face\.inputRole\b/,
     'playback must not use legacy inputRole for presentation layer membership',
+  );
+  assert.doesNotMatch(
+    source,
+    /\bfaceLayerIds\b/,
+    'playback must consume compiled presentation Layer.id instead of raw faceLayerIds',
   );
 });
 

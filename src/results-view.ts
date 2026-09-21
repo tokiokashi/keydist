@@ -21,8 +21,8 @@ import {
 } from './ui-state.ts';
 import type { GeometrySettings } from './geometry-settings.ts';
 import { resolveConditions } from './condition-resolution.ts';
-import { classifyPresentationFaces, displayTriggerKeys, faceCells, faceDisplayCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
-import { SINGLE_LAYER_ID, faceFromEntries, type Face, type Layout } from './layouts/types.ts';
+import { classifyPresentationFaces, displayTriggerKeys, faceCells, faceDisplayCells, handOfKey, layerShiftStyles, orderedPresentationLayers, type Layer, type LayerShiftStyle } from './layers.ts';
+import { COMBO_LAYER_ID, SINGLE_LAYER_ID, faceFromEntries, type Face, type Layout } from './layouts/types.ts';
 import { findActiveLayerFace, matchKeyPatterns, summarizeCandidateMatches } from './key-pattern-picker.ts';
 import type { ModeId } from './layout-selection.ts';
 import type { PlaybackViewController } from './playback-view.ts';
@@ -710,7 +710,8 @@ function displayTriggerText(layout: Layout, face: Layer['faces'][number]): strin
 }
 
 function triggerHandText(face: Layer['faces'][number]): string {
-  const hands = new Set(face.trigger.map(handOfKey).filter((hand): hand is NonNullable<typeof hand> => hand !== undefined));
+  const hands = new Set(displayTriggerKeys(face).map(handOfKey)
+    .filter((hand): hand is NonNullable<typeof hand> => hand !== undefined));
   if (hands.size !== 1) return '両手';
   return hands.has('left') ? '左手' : '右手';
 }
@@ -720,17 +721,17 @@ function displayTriggerAnnotation(layout: Layout, face: Layer['faces'][number]):
     ?? `${triggerHandText(face)} ${displayTriggerText(layout, face)}を押す`;
 }
 
-function layerTitle(layer: Layer, index: number, layout: Layout, layerId: string): string {
-  const definition = layerDefinitionForId(layout, layerId);
+function layerTitle(layer: Layer, index: number, layout: Layout): string {
+  const definition = layerDefinitionForId(layout, layer.id);
   const label = definition.label;
-  if (layer.faces.length === 0) return `レイヤー ${index + 1}: ${label}`;
-  const triggers = layer.faces
-    .filter((face) => face.trigger.length > 0)
-    .map((face) => displayTriggerText(layout, face));
+  if (layer.faces.length === 0 || layer.id === SINGLE_LAYER_ID) {
+    return `レイヤー ${index + 1}: ${label}`;
+  }
+  const triggers = layer.faces.map((face) => displayTriggerText(layout, face));
   if (triggers.length === 0) return `レイヤー ${index + 1}: ${label}`;
   if (definition.presentationModeLabel === undefined) {
     throw new Error(
-      `レイヤー表示にはaggregation「${layerId}」のpresentationModeLabel明示が必要`,
+      `レイヤー表示にはaggregation「${layer.id}」のpresentationModeLabel明示が必要`,
     );
   }
   return `レイヤー ${index + 1}: ${label} [${triggers.join(' / ')}]・${definition.presentationModeLabel}`;
@@ -748,7 +749,7 @@ function layerCells(layer: Layer, layout: Layout): Map<string, LayerCell> {
 
   const cells = new Map<string, LayerCell>();
   for (const face of layer.faces) {
-    const annotation = face.trigger.length > 0
+    const annotation = layer.id !== SINGLE_LAYER_ID
       ? displayTriggerAnnotation(layout, face)
       : undefined;
     for (const [key, label] of faceDisplayCells(face)) {
@@ -815,22 +816,27 @@ function pickerGuideColorMap(
   layout: Layout,
 ): Map<string, string> {
   const colors = new Map<string, string>();
-  for (const layer of [...groups.layers, ...groups.modifiers]) {
+  for (const layer of orderedPresentationLayers(groups)) {
     for (const face of layer.faces) {
       const slot = faceShiftStyles.get(face)?.colorSlot;
       const stroke = slot === undefined ? 'var(--picker-selected)' : `var(--series-${slot})`;
-      for (const trigger of face.trigger) colors.set(resolveKeyId(trigger), stroke);
+      for (const trigger of displayTriggerKeys(face)) {
+        const key = resolveKeyId(trigger);
+        if (!colors.has(key)) colors.set(key, stroke);
+      }
     }
   }
   for (const face of groups.combos) {
-    for (const trigger of face.trigger) {
+    for (const trigger of displayTriggerKeys(face)) {
       const key = resolveKeyId(trigger);
       if (!colors.has(key)) colors.set(key, 'var(--picker-selected)');
     }
   }
   for (const combo of layout.resolvedComboDefinitions ?? []) {
-    for (const key of combo.keys) {
-      if (!colors.has(key)) colors.set(key, 'var(--picker-selected)');
+    for (const variant of combo.keyVariants ?? [combo.keys]) {
+      for (const key of variant) {
+        if (!colors.has(key)) colors.set(key, 'var(--picker-selected)');
+      }
     }
   }
   return colors;
@@ -1038,7 +1044,7 @@ function renderComboTable(
       metrics,
       layout,
       geometry,
-      { faces: [item.face] },
+      { id: COMBO_LAYER_ID, role: 'layer', order: 0, faces: [item.face] },
       item.optionLabel,
       [item.face],
       comboStyles,
@@ -1112,10 +1118,8 @@ function layerLabelForId(layout: Layout, layerId: string): string {
 function renderModifierList(layout: Layout, modifiers: readonly Layer[]): string {
   if (modifiers.length === 0) return '';
   const rows = modifiers.map((layer) => {
-    const firstFace = layer.faces[0];
-    if (!firstFace) throw new Error('修飾表示にはFaceが必要');
-    const label = layerLabelForId(layout, layerIdForFace(layout, firstFace));
-    const triggers = layer.faces.map((face) => triggerText(face, layout.legends)).join(' / ');
+    const label = layerLabelForId(layout, layer.id);
+    const triggers = layer.faces.map((face) => displayTriggerText(layout, face)).join(' / ');
     const title = `${label}: ${triggers}`;
     const outputs = layer.faces.flatMap((face) => [...faceCells(face).values()]).join(' / ');
     return `<tr><td>${escapeText(title)}</td><td>${escapeText(outputs)}</td></tr>`;
@@ -1127,23 +1131,6 @@ function renderModifierList(layout: Layout, modifiers: readonly Layer[]): string
       <tbody>${rows}</tbody>
     </table></div>
   </details>`;
-}
-
-function layerIdForFace(layout: Layout, face: Face): string {
-  const layerId = layout.faceLayerIds?.get(face);
-  if (layerId === undefined) {
-    throw new Error('Face表示にはfaceLayerIdsの明示が必要');
-  }
-  return layerId;
-}
-
-function orderedLayers(groups: ReturnType<typeof classifyPresentationFaces>, layout: Layout): Layer[] {
-  return [...groups.layers, ...groups.modifiers]
-    .sort((first, second) => {
-      const firstIndex = Math.min(...first.faces.map((face) => layout.faces?.indexOf(face) ?? Number.MAX_SAFE_INTEGER));
-      const secondIndex = Math.min(...second.faces.map((face) => layout.faces?.indexOf(face) ?? Number.MAX_SAFE_INTEGER));
-      return firstIndex - secondIndex;
-    });
 }
 
 interface LayerViewEntry {
@@ -1192,13 +1179,12 @@ function mergeLayerStats(id: string, label: string, stats: readonly LayerStat[])
 function layerViewEntries(metrics: Metrics, layout: Layout, layers: readonly Layer[]): LayerViewEntry[] {
   const stats = new Map(metrics.layers.map((stat) => [stat.id, stat]));
   const entries = layers.map((layer, index) => {
-    const id = layer.faces.length > 0 ? layerIdForFace(layout, layer.faces[0]) : SINGLE_LAYER_ID;
-    const title = layerTitle(layer, index, layout, id);
+    const title = layerTitle(layer, index, layout);
     return {
-      id,
+      id: layer.id,
       layer,
       title,
-      stat: stats.get(id) ?? emptyLayerStat(id, title),
+      stat: stats.get(layer.id) ?? emptyLayerStat(layer.id, title),
     };
   });
 
@@ -1267,8 +1253,8 @@ function renderHeatmap(
   geometry: ReturnType<typeof buildGeometry>,
 ) {
   const groups = classifyPresentationFaces(layout);
-  const layers = orderedLayers(groups, layout);
-  if (layers.length === 0) layers.push({ faces: [] });
+  const layers = orderedPresentationLayers(groups);
+  if (layers.length === 0) layers.push({ id: SINGLE_LAYER_ID, role: 'layer', order: 0, faces: [] });
   const entries = layerViewEntries(metrics, layout, layers);
   if (ctx.getUiState().ui.layers.activeTab >= entries.length) {
     ctx.updateUiState((draft) => { draft.ui.layers.activeTab = 0; });
@@ -1320,7 +1306,7 @@ function renderHeatmap(
       </div>`
     : '';
   const commonMax = Math.max(1, ...metrics.keyCounts.values());
-  const baseLayer = layers.find((layer) => layer.faces.some((face) => face.trigger.length === 0)) ?? layers[0];
+  const baseLayer = layers.find((layer) => layer.id === SINGLE_LAYER_ID) ?? layers[0];
 
   const pickerSelection = getPickerSelection(layout.id);
   const pickerMatch = matchKeyPatterns(layout, pickerSelection);
