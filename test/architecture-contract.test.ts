@@ -114,6 +114,18 @@ test('runtime layers moduleはFace authoring semanticを解釈しない', async 
   }
 });
 
+test('layouts barrelはlegacy Face authoring classifierを公開しない', async () => {
+  const source = await readFile(join(SRC, 'layouts/index.ts'), 'utf8');
+
+  for (const symbol of ['canFoldFaces', 'classifyFaces', 'groupFacesIntoLayers']) {
+    assert.equal(
+      source.includes(symbol),
+      false,
+      `layouts/index.ts must not export legacy authoring classifier: ${symbol}`,
+    );
+  }
+});
+
 test('results viewはFace semantic authoring metadataへ依存しない', async () => {
   const source = await readFile(join(SRC, 'results-view.ts'), 'utf8');
 
