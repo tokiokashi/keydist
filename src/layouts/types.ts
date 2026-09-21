@@ -758,17 +758,18 @@ export function withCombos(
   const layerDefinitions = [...(layout.layerDefinitions ?? [])];
   const resolvedComboDefinitions: ResolvedComboDefinition[] = [...(layout.resolvedComboDefinitions ?? [])];
   let hasCombo = layerDefinitions.some((definition) => definition.id === COMBO_LAYER_ID);
+  const singleActionKeyChoices = (input: string) =>
+    (layout.canonicalInputs.get(input) ?? []).flatMap((alternative) => {
+      if (alternative.baseRealizations.length !== 1) return [];
+      const realization = alternative.baseRealizations[0];
+      if (realization.actions.length !== 1 || realization.actions[0].length !== 1) return [];
+      return [{
+        key: resolveKeyId(realization.actions[0][0]),
+        contextRequirements: alternative.contextRequirements,
+      }];
+    });
   for (const [output, inputs, condition, presentation, classifications = []] of combos) {
-    const keyChoices = inputs.map((input) =>
-      (layout.canonicalInputs.get(input) ?? []).flatMap((alternative) => {
-        if (alternative.baseRealizations.length !== 1) return [];
-        const realization = alternative.baseRealizations[0];
-        if (realization.actions.length !== 1 || realization.actions[0].length !== 1) return [];
-        return [{
-          key: resolveKeyId(realization.actions[0][0]),
-          contextRequirements: alternative.contextRequirements,
-        }];
-      }));
+    const keyChoices = inputs.map(singleActionKeyChoices);
     if (keyChoices.some((choices) => choices.length === 0)) continue;
 
     const combinations = keyChoices.reduce<
@@ -798,9 +799,9 @@ export function withCombos(
     const resolvedKeyVariants = uniqueCombinations.map((combination) =>
       combination.keys.map(resolveKeyId));
     const foldTriggerInputs = presentation?.foldTriggerInputs;
-    const foldTriggerKeys = foldTriggerInputs?.map((ch) => layout.map.get(ch)?.[0]?.[0])
-      .filter((key): key is string => key !== undefined)
-      .map(resolveKeyId);
+    const foldTriggerKeys = foldTriggerInputs?.map((input) =>
+      singleActionKeyChoices(input)[0]?.key)
+      .filter((key): key is string => key !== undefined);
     const foldTriggerSet = new Set(foldTriggerKeys ?? []);
     const foldTargets = foldTriggerKeys !== undefined
       && foldTriggerInputs !== undefined
