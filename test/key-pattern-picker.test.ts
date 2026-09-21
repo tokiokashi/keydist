@@ -304,7 +304,7 @@ test('findActiveLayerFace: 単キーtriggerだけを選択した時はその面�
   const layout = stubLayout({
     faces: [shiftFace],
     faceLayerIds: new Map([[shiftFace, 'face:0']]),
-    layerDefinitions: [{ id: 'face:0', kind: 'layer', label: '面 1' }],
+    layerDefinitions: [{ id: 'face:0', kind: 'layer', label: '面 1', presentationRole: 'layer' }],
   });
   assert.equal(findActiveLayerFace(layout, new Set(['f'])), shiftFace);
   assert.equal(findActiveLayerFace(layout, new Set()), undefined);
@@ -325,8 +325,18 @@ test('findActiveLayerFace: 同triggerが複数aggregationにある時はLayer.or
       [layerSecond, 'layer:layer-second'],
     ]),
     layerDefinitions: [
-      { id: 'layer:modifier-first', kind: 'layer', label: 'modifier first' },
-      { id: 'layer:layer-second', kind: 'layer', label: 'layer second' },
+      {
+        id: 'layer:modifier-first',
+        kind: 'layer',
+        label: 'modifier first',
+        presentationRole: 'modifier',
+      },
+      {
+        id: 'layer:layer-second',
+        kind: 'layer',
+        label: 'layer second',
+        presentationRole: 'layer',
+      },
     ],
   });
 
@@ -341,7 +351,7 @@ test('findActiveLayerFace: presentationTriggerKeysのphysical alternativeも同�
   const layout = stubLayout({
     faces: [shiftFace],
     faceLayerIds: new Map([[shiftFace, 'layer:SandS']]),
-    layerDefinitions: [{ id: 'layer:SandS', kind: 'layer', label: 'SandS' }],
+    layerDefinitions: [{ id: 'layer:SandS', kind: 'layer', label: 'SandS', presentationRole: 'layer' }],
   });
   assert.equal(findActiveLayerFace(layout, new Set(['thumb-l'])), shiftFace);
   assert.equal(findActiveLayerFace(layout, new Set(['thumb-r'])), shiftFace);
@@ -352,7 +362,7 @@ test('findActiveLayerFace: 複数キーtriggerはレイヤーとして扱わな�
   const layout = stubLayout({
     faces: [comboFace],
     faceLayerIds: new Map([[comboFace, 'face:0']]),
-    layerDefinitions: [{ id: 'face:0', kind: 'layer', label: '面 1' }],
+    layerDefinitions: [{ id: 'face:0', kind: 'layer', label: '面 1', presentationRole: 'layer' }],
   });
   assert.equal(findActiveLayerFace(layout, new Set(['j', 'k'])), undefined);
 });
@@ -365,7 +375,7 @@ test('findActiveLayerFace: aggregation帰属はinputRoleではなくcompiled pre
   const mappedLayer = stubLayout({
     faces: [legacyComposition],
     faceLayerIds: new Map([[legacyComposition, 'face:0']]),
-    layerDefinitions: [{ id: 'face:0', kind: 'layer', label: '面 1' }],
+    layerDefinitions: [{ id: 'face:0', kind: 'layer', label: '面 1', presentationRole: 'layer' }],
   });
   assert.equal(findActiveLayerFace(mappedLayer, new Set(['f'])), legacyComposition);
 
