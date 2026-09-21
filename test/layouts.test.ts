@@ -667,3 +667,20 @@ test('custom combo classificationはpresentation groupと独立してcanonical�
   assert.deepEqual(vocabulary.classifications, ['composition', 'vocabulary-extension']);
   assert.deepEqual(youon.classifications, ['composition', 'youon-extension']);
 });
+
+
+test('presentationLabelはcompiled layerDefinition labelへ保持される', () => {
+  const face: Face = {
+    ...faceFromEntries(['space'], 'simultaneous', { j: 'の' }),
+    inputRole: 'modifier',
+    triggerPersistence: 'single',
+    presentationLabel: 'Custom Shift',
+  };
+  const layout = fromFaces('presentation-label', 'presentation-label', [face]);
+  const layerId = layout.faceLayerIds?.get(face);
+  assert.ok(layerId);
+  assert.equal(
+    layout.layerDefinitions?.find((definition) => definition.id === layerId)?.label,
+    'Custom Shift',
+  );
+});
