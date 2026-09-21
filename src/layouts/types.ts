@@ -77,12 +77,15 @@ export interface Face {
 }
 
 export type LayerKind = 'layer' | 'combo';
+export type LayerPresentationRole = 'layer' | 'modifier';
 
 /** 打鍵の帰属先。面を持たない配列も単打という暗黙の層を持つ。 */
 export interface LayerDefinition {
   id: string;
   kind: LayerKind;
   label: string;
+  /** aggregation単位のpresentation-only区分。Face.roleはconstructorでここへcompileする。 */
+  presentationRole?: LayerPresentationRole;
   /** aggregation titleに添えるpresentation-onlyの入力方式表示。 */
   presentationModeLabel?: string;
 }
@@ -343,6 +346,22 @@ export function fromFaces(
     if (existing.kind !== definition.kind) {
       throw new Error(`aggregation「${definition.id}」のkindが競合している`);
     }
+
+    let merged = existing;
+    if (
+      existing.presentationRole !== undefined
+      && definition.presentationRole !== undefined
+      && existing.presentationRole !== definition.presentationRole
+    ) {
+      throw new Error(
+        `aggregation「${definition.id}」のpresentation roleが競合している: `
+        + `${existing.presentationRole} / ${definition.presentationRole}`,
+      );
+    }
+    if (existing.presentationRole === undefined && definition.presentationRole !== undefined) {
+      merged = { ...merged, presentationRole: definition.presentationRole };
+    }
+
     if (
       existing.presentationModeLabel !== undefined
       && definition.presentationModeLabel !== undefined
@@ -357,10 +376,7 @@ export function fromFaces(
       existing.presentationModeLabel === undefined
       && definition.presentationModeLabel !== undefined
     ) {
-      layerDefinitions[index] = {
-        ...existing,
-        presentationModeLabel: definition.presentationModeLabel,
-      };
+      merged = { ...merged, presentationModeLabel: definition.presentationModeLabel };
     }
 
     const previousExplicit = explicitLayerLabels.get(definition.id);
@@ -372,9 +388,11 @@ export function fromFaces(
       }
       if (previousExplicit === undefined) {
         explicitLayerLabels.set(definition.id, explicitLabel);
-        layerDefinitions[index] = { ...existing, label: explicitLabel };
+        merged = { ...merged, label: explicitLabel };
       }
     }
+
+    layerDefinitions[index] = merged;
   };
 
   for (const [faceIndex, face] of faces.entries()) {
@@ -396,6 +414,9 @@ export function fromFaces(
         ? SINGLE_LAYER_ID
         : face.layer === undefined ? `face:${faceIndex}` : `layer:${face.layer}`;
     faceLayerIds.set(face, layerId);
+    const presentationRole: LayerPresentationRole | undefined = isCombo
+      ? undefined
+      : face.role === 'modifier' ? 'modifier' : 'layer';
     const presentationModeLabel = trigger.length === 0 || isCombo
       ? undefined
       : face.mode === 'simultaneous' ? '同時' : face.mode === 'prefix' ? '前置' : '後置';
@@ -405,6 +426,7 @@ export function fromFaces(
       label: isCombo
         ? 'コンボ'
         : face.presentationLabel ?? face.layer ?? (trigger.length === 0 ? '単打' : `面 ${faceIndex + 1}`),
+      ...(presentationRole === undefined ? {} : { presentationRole }),
       ...(presentationModeLabel === undefined ? {} : { presentationModeLabel }),
     }, isCombo ? undefined : face.presentationLabel);
     face.rows.forEach((row, r) => {
