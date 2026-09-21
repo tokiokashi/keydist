@@ -129,6 +129,21 @@ test('key pattern pickerはlayouts registryをruntime importしない', async ()
   );
 });
 
+test('playbackはFace classificationからpresentation layer帰属を再構成しない', async () => {
+  const source = await readFile(join(SRC, 'playback.ts'), 'utf8');
+
+  assert.doesNotMatch(
+    source,
+    /\bclassifyFaces\b/,
+    'playback must group presentation faces directly by faceLayerIds',
+  );
+  assert.doesNotMatch(
+    source,
+    /face\.inputRole\b/,
+    'playback must not use legacy inputRole for presentation layer membership',
+  );
+});
+
 test('Strokeはlegacy Face semanticを再投影しない', async () => {
   const path = join(SRC, 'evaluate.ts');
   const source = await readFile(path, 'utf8');
