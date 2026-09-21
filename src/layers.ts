@@ -102,6 +102,19 @@ export function displayTriggerKeys(face: Face): readonly string[] {
   return [...new Set(displayTriggerAlternatives(face).flat())];
 }
 
+/** presentation trigger alternativeとphysical key集合のexact match。 */
+export function matchesDisplayTriggerAlternative(
+  face: Face,
+  keys: ReadonlySet<string>,
+): boolean {
+  const resolved = new Set([...keys].map(resolveKeyId));
+  return displayTriggerAlternatives(face).some(
+    (alternative) =>
+      alternative.length === resolved.size
+      && alternative.every((key) => resolved.has(key)),
+  );
+}
+
 /** 面の出力を、表示対象のキーidと出力文字の対応へ変換する。 */
 export function faceCells(face: Face): Map<string, string> {
   const cells = new Map<string, string>();
