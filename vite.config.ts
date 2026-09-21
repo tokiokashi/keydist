@@ -3,8 +3,7 @@ import viteReact from '@vitejs/plugin-react';
 import { nitro } from 'nitro/vite';
 import { defineConfig } from 'vite';
 
-const base = process.env.KEYDIST_BASE_PATH
-  ?? (process.env.GITHUB_ACTIONS ? '/keydist/' : '/');
+const base = process.env.KEYDIST_BASE_PATH ?? '/';
 
 export default defineConfig({
   base,
