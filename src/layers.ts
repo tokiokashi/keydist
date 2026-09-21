@@ -248,6 +248,14 @@ export function classifyPresentationFaces(
   return { layers, modifiers, combos };
 }
 
+/** compiled presentation aggregationを元Face列の出現順へ戻す。role別配列の連結順はauthorityにしない。 */
+export function orderedPresentationLayers(
+  groups: Pick<FaceGroups, 'layers' | 'modifiers'>,
+): Layer[] {
+  return [...groups.layers, ...groups.modifiers]
+    .sort((first, second) => first.order - second.order);
+}
+
 /** 面の順序を保ちながら、盤面を置き換える単一キー面だけをレイヤーへ集約する。 */
 export function groupFacesIntoLayers(faces: readonly Face[]): Layer[] {
   return classifyFaces(faces).layers;
