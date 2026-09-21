@@ -44,19 +44,8 @@ export function layerShiftStyles(layers: readonly Layer[]): Map<Face, LayerShift
  * Return the keys that should be emphasized when a layer trigger is shown.
  * This is presentation-only: the face trigger and Layout.map remain unchanged.
  */
-export function displayTriggerKeys(
-  layout: Pick<Layout, 'id'>,
-  face: Face,
-): readonly string[] {
-  const triggerKeys = face.trigger.map(resolveKeyId);
-  if (
-    layout.id === 'naginata-v18' &&
-    triggerKeys.length === 1 &&
-    triggerKeys[0] === THUMB_KEY.RT
-  ) {
-    return [THUMB_KEY.LT, THUMB_KEY.RT];
-  }
-  return triggerKeys;
+export function displayTriggerKeys(face: Face): readonly string[] {
+  return (face.presentationTriggerKeys ?? face.trigger).map(resolveKeyId);
 }
 
 /** 面の出力を、表示対象のキーidと出力文字の対応へ変換する。 */

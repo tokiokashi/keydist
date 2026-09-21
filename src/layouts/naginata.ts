@@ -23,7 +23,7 @@ const QWERTY_ROWS = [
 const face = (
   trigger: string[],
   entries: Record<string, string>,
-  options: Pick<Face, 'layer' | 'role' | 'inputRole' | 'triggerPersistence' | 'triggerOrder'> = {
+  options: Pick<Face, 'layer' | 'role' | 'inputRole' | 'triggerPersistence' | 'triggerOrder' | 'presentationTriggerKeys' | 'presentationTriggerText' | 'presentationLabel'> = {
     inputRole: 'layer',
   },
 ): Face => ({
@@ -48,7 +48,14 @@ export const NAGINATA_V18_FACES: Face[] = [
     v: '、', m: '。', o: 'え', n: 'お', u: 'さ', a: 'せ', g: 'ち', l: 'つ',
     d: 'に', b: 'ぬ', w: 'ね', j: 'の', ';': 'ふ', f: 'ま', s: 'み', ',': 'む',
     r: 'め', k: 'も', h: 'や', p: 'ゆ', i: 'よ', e: 'り', '.': 'わ', c: 'を',
-  }, { inputRole: 'modifier', triggerPersistence: 'hold-capable', triggerOrder: 'prefix' }),
+  }, {
+    inputRole: 'modifier',
+    triggerPersistence: 'hold-capable',
+    triggerOrder: 'prefix',
+    presentationTriggerKeys: [THUMB_KEY.LT, THUMB_KEY.RT],
+    presentationTriggerText: '左右のSpace',
+    presentationLabel: 'SandS',
+  }),
 
   // 小書き
   face(['q'], { j: 'ぁ', k: 'ぃ', l: 'ぅ', o: 'ぇ', n: 'ぉ', h: 'ゃ', p: 'ゅ', i: 'ょ', '.': 'ゎ' }, { role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),

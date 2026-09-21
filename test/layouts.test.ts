@@ -356,13 +356,31 @@ test('薙刀式v18は面から生成され、全定義を1ステップで保持�
   assert.deepEqual(layout.map.get('ぐゎ'), [['.', 'f', 'h']]);
 });
 
-test('薙刀式のSandS表示だけ左右のSpaceを強調する', () => {
+test('薙刀式のSandS presentationをFace authoringで明示する', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
   const centerShift = groupFacesIntoLayers(layout.faces!)[1].faces[0];
 
   assert.deepEqual(centerShift.trigger, ['space']);
-  assert.deepEqual(displayTriggerKeys(layout, centerShift), ['thumb-l', 'thumb-r']);
+  assert.deepEqual(centerShift.presentationTriggerKeys, ['thumb-l', 'thumb-r']);
+  assert.equal(centerShift.presentationTriggerText, '左右のSpace');
+  assert.equal(centerShift.presentationLabel, 'SandS');
+  assert.deepEqual(displayTriggerKeys(centerShift), ['thumb-l', 'thumb-r']);
   assert.deepEqual(layout.map.get('の'), [['space', 'j']]);
+});
+
+test('trigger presentationはlayout IDやキー形状ではなくFace authoring metadataだけで決まる', () => {
+  const explicit: Face = {
+    ...faceFromEntries(['d'], 'simultaneous', { j: 'あ' }),
+    presentationTriggerKeys: ['thumb-l', 'thumb-r'],
+    presentationTriggerText: '任意の両親指表示',
+    presentationLabel: 'Custom Shift',
+  };
+  assert.deepEqual(displayTriggerKeys(explicit), ['thumb-l', 'thumb-r']);
+  assert.equal(explicit.presentationTriggerText, '任意の両親指表示');
+  assert.equal(explicit.presentationLabel, 'Custom Shift');
+
+  const ordinary = faceFromEntries(['space'], 'simultaneous', { j: 'あ' });
+  assert.deepEqual(displayTriggerKeys(ordinary), ['thumb-r']);
 });
 
 test('triggerOrderが異なるFaceは同じレイヤーへ畳まない', () => {
