@@ -1,5 +1,10 @@
 import { ALL_FINGERS, dist, keyId, resolveKeyId, type Finger, type Geometry, type Point } from './geometry.ts';
-import { classifyPresentationFaces, faceCells, faceDisplayCells } from './layers.ts';
+import {
+  classifyPresentationFaces,
+  faceCells,
+  faceDisplayCells,
+  matchesDisplayTriggerAlternative,
+} from './layers.ts';
 import type { Stroke } from './evaluate.ts';
 import { COMBO_LAYER_ID, type Layout } from './layouts/types.ts';
 import {
@@ -358,10 +363,7 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
       .find((layer) => layer.id === stroke.layerId)?.faces ?? [];
   const triggeredFaces = triggerKeys.size === 0
     ? layerFaces
-    : layerFaces.filter((face) => {
-      const faceTriggers = face.trigger.map(resolveKeyId);
-      return faceTriggers.length === triggerKeys.size && faceTriggers.every((key) => triggerKeys.has(key));
-    });
+    : layerFaces.filter((face) => matchesDisplayTriggerAlternative(face, triggerKeys));
   const pressedKeys = [...new Set(stroke.presses.flatMap((press) => press.keys.map((key) => key.id)))];
   const outputKeys = pressedKeys.filter((key) => !triggerKeys.has(key));
   // prefix/suffixの出力ステップではtriggerが空になるため、出力文字から元の面を絞る。
