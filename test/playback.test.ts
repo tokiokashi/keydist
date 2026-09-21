@@ -912,6 +912,46 @@ test('左右の同一レイヤーを畳み、明示presentation membershipの刻
   assert.equal(display.keyLabels.get('l'), 'お');
 });
 
+test('再生layer groupingはinputRoleではなくfaceLayerIdsをauthorityにする', () => {
+  const layout = LAYOUT_BY_ID.get('shingeta')!;
+  assert.ok(layout.faces);
+  assert.ok(layout.faceLayerIds);
+
+  const kFace = layout.faces.find((face) => face.trigger.length === 1 && face.trigger[0] === 'k');
+  const dFace = layout.faces.find((face) => face.trigger.length === 1 && face.trigger[0] === 'd');
+  assert.ok(kFace);
+  assert.ok(dFace);
+
+  const layerId = layout.faceLayerIds.get(kFace);
+  assert.ok(layerId);
+  assert.equal(layout.faceLayerIds.get(dFace), layerId);
+
+  const mismatchedKFace = { ...kFace, inputRole: 'composition' as const };
+  const copiedDFace = { ...dFace };
+  const presentationLayout = {
+    ...layout,
+    faces: [mismatchedKFace, copiedDFace],
+    faceLayerIds: new Map([
+      [mismatchedKFace, layerId],
+      [copiedDFace, layerId],
+    ]),
+  };
+  const stroke = evaluate('あ', layout, buildGeometry('row-staggered')).strokes[0];
+  const display = playbackStrokeDisplay(presentationLayout, stroke);
+
+  assert.equal(display.keyLabels.get('a'), 'ほ');
+  assert.equal(display.keyLabels.get('j'), 'あ');
+});
+
+test('Face再生でaggregation mappingが欠落していればerrorにする', () => {
+  const layout = LAYOUT_BY_ID.get('shingeta')!;
+  const stroke = evaluate('あ', layout, buildGeometry('row-staggered')).strokes[0];
+  assert.throws(
+    () => playbackStrokeDisplay({ ...layout, faceLayerIds: undefined }, stroke),
+    /faceLayerIdsの明示が必要/,
+  );
+});
+
 test('薙刀式の濁音はシフトと出力かなを同じステップで表示する', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
   const stroke = evaluate('が', layout, buildGeometry('row-staggered')).strokes[0];
