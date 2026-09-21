@@ -43,6 +43,46 @@ test('拡張候補を持つ単打はkeyupまで保留し単打として確定で
   assert.deepEqual(result.recognized[0].actions.map((action) => action.keys), [['h']]);
 });
 
+test('確定済み単打をreleaseする前でも次の単打を取りこぼさない', () => {
+  const layout = fromFaces('converter-overlapping-singles', 'converter-overlapping-singles', [
+    face([], 'simultaneous', { h: 'A', j: 'B' }),
+  ]);
+  const engine = new TypingInputEngine(layout.canonicalInputs);
+
+  assert.deepEqual(
+    engine.handle({ type: 'down', key: 'h' }).recognized.map((entry) => entry.output),
+    ['A'],
+  );
+  assert.deepEqual(
+    engine.handle({ type: 'down', key: 'j' }).recognized.map((entry) => entry.output),
+    ['B'],
+  );
+  assert.deepEqual(engine.handle({ type: 'up', key: 'h' }).recognized, []);
+  assert.deepEqual(engine.handle({ type: 'up', key: 'j' }).recognized, []);
+});
+
+test('成立不能なprefix extensionは単打をpendingにせず後続単打も失わない', () => {
+  const layout = fromFaces('converter-prefix-reverse', 'converter-prefix-reverse', [
+    face([], 'simultaneous', { h: 'H', d: 'D' }),
+    face(['d'], 'prefix', { h: 'X' }, { layer: '中指シフト' }),
+  ]);
+  const engine = new TypingInputEngine(layout.canonicalInputs);
+
+  assert.deepEqual(
+    engine.handle({ type: 'down', key: 'h' }).recognized.map((entry) => entry.output),
+    ['H'],
+  );
+  assert.deepEqual(
+    engine.handle({ type: 'down', key: 'd' }).recognized.map((entry) => entry.output),
+    [],
+  );
+  assert.deepEqual(
+    engine.handle({ type: 'up', key: 'd' }).recognized.map((entry) => entry.output),
+    ['D'],
+  );
+  assert.deepEqual(engine.handle({ type: 'up', key: 'h' }).recognized, []);
+});
+
 test('prefix Requirementはtrigger release後もpress順を使って認識する', () => {
   const layout = fromFaces('converter-prefix', 'converter-prefix', [
     face([], 'simultaneous', { h: 'ほ' }),
