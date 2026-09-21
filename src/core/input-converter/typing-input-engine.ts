@@ -66,7 +66,7 @@ const isStrictSubset = (
  * #270 Input Converter向けのframework-independent最小入力engine。
  *
  * 現段階では1 InputAlternative = 1 SemanticInputのpathを対象にする。
- * DOM KeyboardEventやlayout authoring Faceを参照せず、CanonicalInputMapだけを読む。
+ * browser固有のevent objectやlayout authoring Faceを参照せず、CanonicalInputMapだけを読む。
  *
  * chord候補を持つ単打はkeyupまで保留し、より長いphysical pathが成立すれば
  * そちらを優先する。prefixは同一recognition window内のpress順を保持するため、
