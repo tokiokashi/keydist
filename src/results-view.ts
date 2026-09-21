@@ -21,7 +21,7 @@ import {
 } from './ui-state.ts';
 import type { GeometrySettings } from './geometry-settings.ts';
 import { resolveConditions } from './condition-resolution.ts';
-import { classifyPresentationFaces, displayTriggerKeys, faceCells, faceDisplayCells, handOfKey, layerShiftStyles, type Layer, type LayerShiftStyle } from './layers.ts';
+import { classifyPresentationFaces, displayTriggerKeys, faceCells, faceDisplayCells, handOfKey, layerShiftStyles, orderedPresentationLayers, type Layer, type LayerShiftStyle } from './layers.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID, faceFromEntries, type Face, type Layout } from './layouts/types.ts';
 import { findActiveLayerFace, matchKeyPatterns, summarizeCandidateMatches } from './key-pattern-picker.ts';
 import type { ModeId } from './layout-selection.ts';
@@ -816,7 +816,7 @@ function pickerGuideColorMap(
   layout: Layout,
 ): Map<string, string> {
   const colors = new Map<string, string>();
-  for (const layer of [...groups.layers, ...groups.modifiers]) {
+  for (const layer of orderedPresentationLayers(groups)) {
     for (const face of layer.faces) {
       const slot = faceShiftStyles.get(face)?.colorSlot;
       const stroke = slot === undefined ? 'var(--picker-selected)' : `var(--series-${slot})`;
@@ -1130,11 +1130,6 @@ function renderModifierList(layout: Layout, modifiers: readonly Layer[]): string
   </details>`;
 }
 
-function orderedLayers(groups: ReturnType<typeof classifyPresentationFaces>): Layer[] {
-  return [...groups.layers, ...groups.modifiers]
-    .sort((first, second) => first.order - second.order);
-}
-
 interface LayerViewEntry {
   id: string;
   layer: Layer;
@@ -1255,7 +1250,7 @@ function renderHeatmap(
   geometry: ReturnType<typeof buildGeometry>,
 ) {
   const groups = classifyPresentationFaces(layout);
-  const layers = orderedLayers(groups);
+  const layers = orderedPresentationLayers(groups);
   if (layers.length === 0) layers.push({ id: SINGLE_LAYER_ID, role: 'layer', order: 0, faces: [] });
   const entries = layerViewEntries(metrics, layout, layers);
   if (ctx.getUiState().ui.layers.activeTab >= entries.length) {
