@@ -4,12 +4,10 @@ import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from './analysis-chain.ts';
 import { DEFAULT_ARPEGGIO_POLICY, type ArpeggioPolicy } from './analysis-arpeggio.ts';
 import { COMBO_LAYER_ID } from './layouts/types.ts';
 import {
-  DEFAULT_TRIGGER_REALIZATION_POLICY,
-  type TriggerRealizationPolicy,
-} from './trigger-realization.ts';
-import {
   DEFAULT_ACTION_REALIZATION_POLICY,
+  DEFAULT_TRIGGER_REALIZATION_POLICY,
   type ActionRealizationPolicy,
+  type TriggerRealizationPolicy,
 } from './core/semantic-input/index.ts';
 
 /**
