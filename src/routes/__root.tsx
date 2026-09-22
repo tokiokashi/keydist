@@ -40,6 +40,9 @@ function RootDocument({ children }: { children: ReactNode }) {
             <Link to="/input" activeProps={{ 'aria-current': 'page' }}>
               Input
             </Link>
+            <Link to="/flow" activeProps={{ 'aria-current': 'page' }}>
+              Flow
+            </Link>
           </nav>
         </header>
         <main className="app-shell">{children}</main>
