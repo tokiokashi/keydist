@@ -151,13 +151,13 @@ physicalKeys
 requirements
 capabilities
 roles
-layerId
+aggregationGroupId
 classifications
 faceMemberships
 ```
 
 `modifier` はkey単位のSemanticRole。`composition` はroleではなくclassificationであり、
-`layerId='combo'` から再推測しない。語彙拡張等もauthorが明示しないと失われるため、
+`aggregationGroupId='combo'` から再推測しない。語彙拡張等もauthorが明示しないと失われるため、
 stable classification IDとしてcanonicalへ保持する。一方、left/right hand、distance、
 currently-held、preferred alternativeのようにgeometry/runtimeから導出できるfactは重複保存しない。
 
@@ -168,7 +168,7 @@ physical activationとは別に、そのpathがruntime context上成立する条
 
 さらに、top-level authoring provenanceを `origin` として保持する。
 `sequence / face / combo / composed` は「どのauthoring経路がこのpathを生成したか」を表し、
-classificationやlayerIdとは別軸である。コンボ命中集計はselected pathの
+classificationやaggregationGroupIdとは別軸である。コンボ命中集計はselected pathの
 `origin='combo'` を基準にし、同outputに別のcomposition pathが存在しても誤算入しない。
 
 評価時は次の順で処理する。
@@ -440,7 +440,7 @@ type TriggerRealizationPolicy = {
 - 明示release専用Stroke / Press / Release eventは初期実装では導入しない
 
 旧 `StepSemantic / associatedTriggerKeys / associatedTriggerPersistence` は削除済みで、
-Trigger realizationはcanonical factだけを入力にする。layerIdやclassificationからhold可能性を推測しない。
+Trigger realizationはcanonical factだけを入力にする。aggregationGroupIdやclassificationからhold可能性を推測しない。
 
 後段のChain / Transition / Roll / Timingはrealized Stroke streamだけを読み、
 独自にhold可能性を再判定しない。
@@ -744,13 +744,13 @@ trigger/outputが同じphysical Pressを兼ねる場合は追加分割しない�
 
 大分類の既定値はclass overrideで変更でき、さらにcanonical selectorで個別overrideできる。
 
-- `triggerGroupId`: 同じ運動規則を持つlogical modifier group
-- `layerId`: aggregation scope
+- `modifierGroupIds`: fresh trigger群が担うlogical modifier group集合
 - `triggerKeys`: physical trigger集合
 
-優先度は physical trigger selector > logical trigger group > layer > activation class >
-semantic default。薙刀式ではSandSは `prepress-required`、濁音・半濁音・拗音・
-外来音等は `order-free` なので、独立action化を有効にした既定状態ではSandSだけが分離される。
+aggregationの `aggregationGroupId` はpolicy selectorへ使わない。優先度は
+physical trigger selector > modifier group集合 > activation class > semantic default。
+薙刀式ではSandSは `prepress-required`、濁音・半濁音・拗音・外来音等は
+`order-free` なので、独立action化を有効にした既定状態ではSandSだけが分離される。
 
 したがってMetricsだけのvirtual action補正は行わない。Policy変更後は
 Chain / Transition / Metrics / Timing / Playbackがすべて同じrealized Stroke列を見る。
@@ -784,7 +784,7 @@ singleTapLayerRate = L1 / T × 100       [%]
 
 判定は入力文字単位で行う。ローマ字展開や複数文字コンボの内部Stroke数では重み付けせず、
 元の入力文字数を数える。「単打面の1キー直接入力」は、1 Stroke・1物理キーで、
-`layerId !== 'combo'`、`composition` classificationなし、かつtrigger / held-triggerを
+`aggregationGroupId !== 'combo'`、`composition` classificationなし、かつtrigger / held-triggerを
 伴わない入力とする。legacy `inputRole` は判定に使わない。
 
 したがって、親指シフト・前置/後置シフト・文字キー同時押しコンボ・複数打鍵のローマ字入力は
