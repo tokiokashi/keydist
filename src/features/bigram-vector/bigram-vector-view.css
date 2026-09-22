@@ -284,6 +284,10 @@
   background: #c19de9;
 }
 
+.flow-dot-profile {
+  background: #82cbff;
+}
+
 .flow-coverage {
   padding-left: 0.65rem;
   border-left: 1px solid rgb(255 255 255 / 12%);
@@ -404,17 +408,31 @@
   stroke: currentColor;
 }
 
-.rose-sector {
-  stroke: rgb(255 255 255 / 12%);
-  stroke-width: 0.4;
+.direction-profile-layer {
+  pointer-events: none;
 }
 
-.rose-sector-inward {
-  fill: #7fc7a4;
+.direction-profile-spoke {
+  stroke: rgb(133 202 255 / 13%);
+  stroke-width: 0.65;
 }
 
-.rose-sector-outward {
-  fill: #c19de9;
+.direction-profile-polygon {
+  fill: rgb(96 169 255 / 10%);
+  stroke: rgb(130 203 255 / 76%);
+  stroke-width: 1.35;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 7px rgb(76 172 255 / 18%));
+}
+
+.direction-profile-point {
+  fill: #9bd5ff;
+  stroke: #dff2ff;
+  stroke-width: 0.65;
+}
+
+.actual-vector-layer {
+  pointer-events: none;
 }
 
 .mean-resultant {
@@ -446,11 +464,11 @@
   gap: 0.3rem;
 }
 
-.flow-relative-legend {
-  top: auto;
-  bottom: 0.65rem;
-  left: 0.8rem;
-  right: auto;
+.flow-profile-legend {
+  top: 2.2rem;
+  right: 0.8rem;
+  left: auto;
+  bottom: auto;
 }
 
 .roll-summary {
