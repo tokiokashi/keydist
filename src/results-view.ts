@@ -27,6 +27,7 @@ import { findActiveLayerFace, matchKeyPatterns, summarizeCandidateMatches } from
 import type { ModeId } from './layout-selection.ts';
 import type { PlaybackViewController } from './playback-view.ts';
 import { buildGeometry } from './geometry.ts';
+import { visibleGeometryKeys } from './layout-physical-keys.ts';
 
 export interface Result {
   layout: Layout;
@@ -886,13 +887,14 @@ function renderLayerSvg(
   let maxX = 0;
   let maxY = 0;
 
-  const keys = [...geometry.keys.values()].map((key) => {
+  const keys = visibleGeometryKeys(layout, geometry).map((key) => {
     const count = values.keyCounts.get(key.id) ?? 0;
     const colorCount = values.colorCounts.get(key.id) ?? 0;
     const t = heatIntensity(colorCount, max, values.colorScale);
     const thumb = key.row === THUMB_ROW;
-    const w = (thumb ? THUMB_W : 1) * KEY;
-    const x = (key.x - (thumb ? (THUMB_W - 1) / 2 : 0)) * KEY;
+    const widthU = thumb ? THUMB_W : (key.width ?? 1);
+    const w = widthU * KEY;
+    const x = (key.x - (widthU - 1) / 2) * KEY;
     const y = key.y * KEY;
     maxX = Math.max(maxX, x + w);
     maxY = Math.max(maxY, y + KEY);
