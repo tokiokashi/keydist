@@ -244,6 +244,58 @@ test('concrete overrideはclass defaultより優先される', () => {
   assert.equal(applyActionRealizationPolicy([dakuten], policy).length, 1);
 });
 
+test('aggregationGroupIdが違っても同じmodifier semantic selectorが適用される', () => {
+  const first = action({
+    input: input([], 'aggregation:A', [], 'SandS'),
+  });
+  const second = action({
+    input: input([], 'aggregation:B', [], 'SandS'),
+  });
+  const policy = semantic(
+    { 'order-free': 'combined' },
+    [{
+      selector: { modifierGroupIds: ['SandS'] },
+      grouping: 'separate',
+    }],
+  );
+
+  assert.equal(applyActionRealizationPolicy([first], policy).length, 2);
+  assert.equal(applyActionRealizationPolicy([second], policy).length, 2);
+});
+
+test('複数modifier group selectorは集合の完全一致だけに適用する', () => {
+  const multiModifier = action({
+    input: {
+      ...input([], 'aggregation:extension', [], '濁音'),
+      physicalKeys: ['h', 'j', 'w'],
+      roles: [
+        { key: 'h', role: 'modifier', modifierGroupId: '拗音' },
+        { key: 'j', role: 'modifier', modifierGroupId: '濁音' },
+      ],
+    },
+    keys: ['h', 'j', 'w'],
+    outputKeys: ['w'],
+    triggerKeys: ['j', 'h'],
+  });
+  const exact = semantic(
+    { 'order-free': 'combined' },
+    [{
+      selector: { modifierGroupIds: ['濁音', '拗音'] },
+      grouping: 'separate',
+    }],
+  );
+  const partial = semantic(
+    { 'order-free': 'combined' },
+    [{
+      selector: { modifierGroupIds: ['濁音'] },
+      grouping: 'separate',
+    }],
+  );
+
+  assert.equal(applyActionRealizationPolicy([multiModifier], exact).length, 2);
+  assert.equal(applyActionRealizationPolicy([multiModifier], partial).length, 1);
+});
+
 test('physical selectorはmodifier group selectorより優先されkey順に依存しない', () => {
   const multi = action({
     input: input([], 'layer:X', [], 'X'),
