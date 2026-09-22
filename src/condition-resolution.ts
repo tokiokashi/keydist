@@ -30,6 +30,9 @@ export function resolveConditions(
     },
     triggerActivationOverrides: (values.actionRealization.triggerActivationOverrides ?? []).map((item) => ({
       selector: {
+        ...(item.selector.triggerGroupId === undefined
+          ? {}
+          : { triggerGroupId: item.selector.triggerGroupId }),
         ...(item.selector.layerId === undefined ? {} : { layerId: item.selector.layerId }),
         ...(item.selector.triggerKeys === undefined ? {} : { triggerKeys: [...item.selector.triggerKeys] }),
       },
