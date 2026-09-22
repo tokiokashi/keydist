@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   browserCodeToPhysicalKey,
   browserKeyboardEventToPhysicalKeyEvent,
+  shouldCaptureBrowserKeyDown,
 } from '../src/features/input-converter/browser-keyboard-adapter.ts';
 
 test('browser adapterはKeyboardEvent.codeをQWERTY物理keyへ変換する', () => {
@@ -47,4 +48,33 @@ test('browser adapterはrepeat / composition / OS shortcutをcoreへ渡さない
     code: 'KeyH',
     metaKey: true,
   }), { type: 'up', key: 'h' });
+});
+
+
+test('layout所有Tabはrepeatでもbrowser既定動作をcaptureし、domain eventにはrepeatを流さない', () => {
+  const owned = new Set(['tab']);
+
+  const repeatTab = {
+    type: 'keydown',
+    code: 'Tab',
+    repeat: true,
+  } as const;
+
+  assert.equal(shouldCaptureBrowserKeyDown(repeatTab, owned), true);
+  assert.equal(browserKeyboardEventToPhysicalKeyEvent(repeatTab), undefined);
+
+  assert.equal(shouldCaptureBrowserKeyDown({
+    type: 'keydown',
+    code: 'Tab',
+    ctrlKey: true,
+  }, owned), false);
+  assert.equal(shouldCaptureBrowserKeyDown({
+    type: 'keydown',
+    code: 'Tab',
+    isComposing: true,
+  }, owned), false);
+  assert.equal(shouldCaptureBrowserKeyDown({
+    type: 'keydown',
+    code: 'Tab',
+  }, new Set()), false);
 });
