@@ -107,7 +107,7 @@ test('ActionRealizationPolicyはglobal / per-layoutともcondition bundleで往�
     triggerActivationClassOverrides: { 'order-free': 'separate' },
     triggerActivationOverrides: [{
       selector: {
-        layerId: 'layer:SandS',
+        modifierGroupIds: ['SandS'],
         triggerKeys: ['thumb-r'],
       },
       grouping: 'separate' as const,
@@ -118,7 +118,7 @@ test('ActionRealizationPolicyはglobal / per-layoutともcondition bundleで往�
       triggerActivation: 'disabled',
       triggerActivationClassOverrides: { 'prepress-required': 'combined' },
       triggerActivationOverrides: [{
-        selector: { layerId: 'layer:濁音', triggerKeys: ['j'] },
+        selector: { modifierGroupIds: ['濁音'], triggerKeys: ['j'] },
         grouping: 'separate',
       }],
     },
