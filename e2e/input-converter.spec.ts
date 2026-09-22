@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('Input Converter uses the wide FHD workspace without test-mode scrolling', async ({ page }) => {
+test('Input Converter uses a resizable wide FHD workspace without test-mode scrolling', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/input');
 
@@ -8,25 +8,53 @@ test('Input Converter uses the wide FHD workspace without test-mode scrolling', 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   const settings = page.locator('.input-settings-panel');
+  const settingsSummary = settings.locator('> summary');
   const guide = page.getByLabel('レイヤーカンペ一覧');
   const capture = page.locator('.input-capture-panel');
   const keyboardPanel = page.locator('.input-keyboard-panel');
+  const details = page.getByLabel('入力詳細');
   const layerLabel = page.locator('.input-active-layer');
+  const splitter = page.getByRole('separator', { name: 'カンペと入力領域の幅を調整' });
 
-  const [settingsBox, guideBox, captureBox, keyboardBox] = await Promise.all([
+  const [settingsBox, guideBox, captureBox, keyboardBox, detailsBox] = await Promise.all([
     settings.boundingBox(),
     guide.boundingBox(),
     capture.boundingBox(),
     keyboardPanel.boundingBox(),
+    details.boundingBox(),
   ]);
   expect(settingsBox).not.toBeNull();
   expect(guideBox).not.toBeNull();
   expect(captureBox).not.toBeNull();
   expect(keyboardBox).not.toBeNull();
+  expect(detailsBox).not.toBeNull();
   expect(settingsBox!.x).toBeLessThan(captureBox!.x);
   expect(guideBox!.x).toBeLessThan(keyboardBox!.x);
   expect(guideBox!.y).toBeGreaterThan(settingsBox!.y);
   expect(keyboardBox!.y).toBeGreaterThan(captureBox!.y);
+  expect(Math.abs(
+    (guideBox!.y + guideBox!.height) - (detailsBox!.y + detailsBox!.height),
+  )).toBeLessThanOrEqual(2);
+
+  await expect(splitter).toHaveAttribute('aria-valuenow', '63');
+  await splitter.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(splitter).toHaveAttribute('aria-valuenow', '61');
+
+  await expect(settings).toHaveJSProperty('open', true);
+  await settingsSummary.click();
+  await expect(settings).toHaveJSProperty('open', false);
+
+  const [collapsedGuideBox, collapsedDetailsBox] = await Promise.all([
+    guide.boundingBox(),
+    details.boundingBox(),
+  ]);
+  expect(collapsedGuideBox).not.toBeNull();
+  expect(collapsedDetailsBox).not.toBeNull();
+  expect(Math.abs(
+    (collapsedGuideBox!.y + collapsedGuideBox!.height)
+      - (collapsedDetailsBox!.y + collapsedDetailsBox!.height),
+  )).toBeLessThanOrEqual(2);
 
   const guideOverflowY = await guide.evaluate((element) => getComputedStyle(element).overflowY);
   expect(guideOverflowY).not.toBe('auto');
