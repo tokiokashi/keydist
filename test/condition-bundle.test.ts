@@ -103,7 +103,7 @@ test('TriggerRealizationPolicyはglobal / per-layoutともcondition bundleで往
 test('ActionRealizationPolicyはglobal / per-layoutともcondition bundleで往復する', () => {
   const current = state();
   current.conditions.defaults.actionRealization = {
-    triggerActivation: 'separate',
+    triggerActivation: 'semantic',
     triggerActivationOverrides: [{
       selector: {
         layerId: 'layer:SandS',
@@ -114,7 +114,7 @@ test('ActionRealizationPolicyはglobal / per-layoutともcondition bundleで往�
   };
   current.conditions.perLayout.qwerty = {
     actionRealization: {
-      triggerActivation: 'combined',
+      triggerActivation: 'disabled',
       triggerActivationOverrides: [{
         selector: { layerId: 'layer:濁音', triggerKeys: ['j'] },
         grouping: 'separate',
