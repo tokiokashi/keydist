@@ -188,69 +188,49 @@ h1 {
   margin: 0.45rem 0 1rem;
 }
 
-.input-keyboard {
-  display: grid;
-  gap: 0.35rem;
+.physical-keyboard {
   overflow-x: auto;
   padding: 1rem 0;
 }
 
-.input-keyboard-row {
-  display: flex;
-  gap: 0.35rem;
-  min-width: max-content;
+.physical-keyboard svg {
+  display: block;
+  max-width: none;
 }
 
-.input-keyboard-row:nth-child(2) {
-  padding-left: 1rem;
+.physical-keyboard-key rect {
+  fill: #fff;
+  stroke: #d2d2cc;
+  stroke-width: 1;
 }
 
-.input-keyboard-row:nth-child(3) {
-  padding-left: 1.6rem;
+.physical-keyboard-key[data-pressed] rect {
+  fill: #deded8;
+  stroke: #171717;
+  stroke-width: 1.5;
 }
 
-.input-keyboard-row:nth-child(4) {
-  padding-left: 2.3rem;
+.physical-keyboard-key[data-highlighted] rect {
+  stroke: #4b4b47;
+  stroke-width: 2;
 }
 
-.input-key {
-  display: grid;
-  width: 3.25rem;
-  min-height: 3.15rem;
-  place-content: center;
-  gap: 0.15rem;
-  border: 1px solid #d2d2cc;
-  border-radius: 0.5rem;
-  background: #fff;
-  text-align: center;
-}
-
-.input-key > span {
+.physical-keyboard-legend {
+  fill: #171717;
+  font-size: 13px;
   font-weight: 700;
+  pointer-events: none;
 }
 
-.input-key small {
-  color: #85857f;
-  font-size: 0.63rem;
+.physical-keyboard-secondary {
+  fill: #85857f;
+  font-size: 8px;
+  pointer-events: none;
 }
 
-.input-key[data-active] {
-  border-color: #171717;
-  background: #deded8;
-  transform: translateY(1px);
-}
-
-.input-keyboard-thumbs {
-  justify-content: center;
-  padding-left: 0;
-}
-
-.input-key-thumb {
-  width: 8rem;
-}
-
-.input-key-shift {
-  width: 6rem;
+.physical-keyboard-empty {
+  color: #686862;
+  font-size: 0.9rem;
 }
 
 .input-inspector {
