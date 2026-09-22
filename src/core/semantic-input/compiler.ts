@@ -682,11 +682,12 @@ function inputAlternativeIdentity(
         kind: capability.kind,
         keys: mapKeys(capability.keys),
       })),
-      layerId: input.layerId,
+      aggregationGroupId: input.aggregationGroupId,
       classifications: input.classifications,
       roles: input.roles.map((role) => ({
         key: mapKey(role.key),
         role: role.role,
+        ...(role.modifierGroupId === undefined ? {} : { modifierGroupId: role.modifierGroupId }),
       })),
       ...(includeFaceMemberships ? { faceMemberships: input.faceMemberships } : {}),
     })),
