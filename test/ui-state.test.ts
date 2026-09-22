@@ -217,7 +217,7 @@ test('保存形式はuiとconditionsに分かれ、canonical条件だけ復元�
       includeSingleRedirectTail: false,
     },
     triggerRealization: { useHold: true },
-    actionRealization: { triggerActivation: 'separate' },
+    actionRealization: { triggerActivation: 'separate', triggerActivationOverrides: [] },
   };
   value.conditions.perLayout = {
     oonishi: { geometry: 'ortholinear', windowSize: 7, sfbHomeCost: false, romajiRule: 'azik' },
@@ -312,14 +312,14 @@ test('TriggerRealizationPolicyはglobal / per-layoutで保存・復元する', (
 test('ActionRealizationPolicyはglobal / per-layoutで保存・復元する', () => {
   const fallback = defaults();
   const value = structuredClone(fallback);
-  value.conditions.defaults.actionRealization = { triggerActivation: 'separate' };
+  value.conditions.defaults.actionRealization = { triggerActivation: 'separate', triggerActivationOverrides: [] };
   value.conditions.perLayout.oonishi = {
-    actionRealization: { triggerActivation: 'combined' },
+    actionRealization: { triggerActivation: 'combined', triggerActivationOverrides: [] },
   };
 
   const state = sanitizeUiState(value, fallback, choices);
-  assert.deepEqual(state.conditions.defaults.actionRealization, { triggerActivation: 'separate' });
-  assert.deepEqual(state.conditions.perLayout.oonishi.actionRealization, { triggerActivation: 'combined' });
+  assert.deepEqual(state.conditions.defaults.actionRealization, { triggerActivation: 'separate', triggerActivationOverrides: [] });
+  assert.deepEqual(state.conditions.perLayout.oonishi.actionRealization, { triggerActivation: 'combined', triggerActivationOverrides: [] });
 });
 
 test('旧ArpeggioConditionsはincludeThumbだけ新Policyへ移し幾何条件を破棄する', () => {
