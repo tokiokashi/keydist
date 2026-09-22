@@ -1,0 +1,660 @@
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { useMemo, useState } from 'react';
+import {
+  aggregateBigramVectors,
+  buildBigramVectors,
+  directionBins,
+  directionSummary,
+  filterBigramVectors,
+  type BigramSource,
+  type BigramVector,
+  type FingerClass,
+} from '../../bigram-vectors.ts';
+import {
+  DEFAULT_FINGER_ASSIGNMENT,
+  assignmentWithHomeKeys,
+  buildGeometry,
+  type Geometry,
+  type Key,
+  type Point,
+} from '../../geometry.ts';
+import { DEFAULT_OPTIONS, evaluate } from '../../evaluate.ts';
+import { LAYOUTS_JA, type Layout } from '../../layouts/index.ts';
+import { SAMPLE_TEXT_JA } from '../../sample-text-ja.ts';
+import './bigram-vector-view.css';
+
+const SAMPLE = SAMPLE_TEXT_JA.replace(/\s+/g, '');
+const FINGER_OPTIONS: readonly { id: FingerClass; label: string }[] = [
+  { id: 'pinky', label: '小' },
+  { id: 'ring', label: '薬' },
+  { id: 'middle', label: '中' },
+  { id: 'index', label: '人' },
+];
+const SCALE = 58;
+const PAD = 42;
+
+interface RelativeVector {
+  id: string;
+  dx: number;
+  dy: number;
+  weight: number;
+  fromFingerClass: FingerClass;
+  toFingerClass: FingerClass;
+}
+
+function layoutGeometry(layout: Layout): Geometry {
+  return buildGeometry(
+    'row-staggered',
+    assignmentWithHomeKeys(DEFAULT_FINGER_ASSIGNMENT, layout.homeKeys),
+  );
+}
+
+function bounds(keys: readonly Key[]) {
+  const xs = keys.map((key) => key.x);
+  const ys = keys.map((key) => key.y);
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
+  };
+}
+
+function chartPoint(point: Point, minX: number, minY: number) {
+  return {
+    x: PAD + (point.x - minX) * SCALE,
+    y: PAD + (point.y - minY) * SCALE,
+  };
+}
+
+function edgePath(vector: BigramVector, minX: number, minY: number): string {
+  const from = chartPoint(vector.from, minX, minY);
+  const to = chartPoint(vector.to, minX, minY);
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.hypot(dx, dy);
+
+  if (length < 0.01) {
+    return [
+      `M ${from.x - 8} ${from.y - 15}`,
+      `C ${from.x - 28} ${from.y - 40}, ${from.x + 28} ${from.y - 40}, ${from.x + 8} ${from.y - 15}`,
+    ].join(' ');
+  }
+
+  const ux = dx / length;
+  const uy = dy / length;
+  const start = { x: from.x + ux * 20, y: from.y + uy * 18 };
+  const end = { x: to.x - ux * 24, y: to.y - uy * 21 };
+  const mid = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+  const directionKey = vector.fromKeyIds.join('+').localeCompare(vector.toKeyIds.join('+'));
+  const bend = directionKey <= 0 ? 9 : -9;
+  const control = {
+    x: mid.x - uy * bend,
+    y: mid.y + ux * bend,
+  };
+  return `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`;
+}
+
+function edgeClass(hand: BigramVector['hand']): string {
+  return `flow-edge flow-edge-${hand}`;
+}
+
+function KeyboardFlow({
+  geometry,
+  layout,
+  vectors,
+  selectedFingers,
+}: {
+  geometry: Geometry;
+  layout: Layout;
+  vectors: readonly BigramVector[];
+  selectedFingers: readonly FingerClass[];
+}) {
+  const reduceMotion = useReducedMotion();
+  const keys = useMemo(() => geometry.grid.flat(), [geometry]);
+  const keyBounds = useMemo(() => bounds(keys), [keys]);
+  const width = PAD * 2 + (keyBounds.maxX - keyBounds.minX) * SCALE;
+  const height = PAD * 2 + (keyBounds.maxY - keyBounds.minY) * SCALE;
+  const maxWeight = Math.max(1, ...vectors.map((vector) => vector.weight));
+
+  return (
+    <div className="flow-stage">
+      <svg
+        className="flow-keyboard-svg"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label="キーボード上のbigramベクトル"
+      >
+        <defs>
+          <marker id="flow-arrow-left" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 z" className="flow-marker-left" />
+          </marker>
+          <marker id="flow-arrow-right" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 z" className="flow-marker-right" />
+          </marker>
+          <marker id="flow-arrow-cross" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 z" className="flow-marker-cross" />
+          </marker>
+        </defs>
+
+        <g className="flow-vector-layer">
+          <AnimatePresence initial={false}>
+            {vectors.map((vector) => {
+              const widthByWeight = 1.1 + 5.2 * Math.sqrt(vector.weight / maxWeight);
+              return (
+                <motion.path
+                  key={vector.id}
+                  className={edgeClass(vector.hand)}
+                  d={edgePath(vector, keyBounds.minX, keyBounds.minY)}
+                  markerEnd={`url(#flow-arrow-${vector.hand})`}
+                  fill="none"
+                  strokeWidth={widthByWeight}
+                  initial={reduceMotion ? false : { opacity: 0, pathLength: 0 }}
+                  animate={{ opacity: 0.3 + 0.67 * (vector.weight / maxWeight), pathLength: 1 }}
+                  exit={reduceMotion ? undefined : { opacity: 0, pathLength: 0.5 }}
+                  transition={reduceMotion
+                    ? { duration: 0 }
+                    : { type: 'spring', stiffness: 210, damping: 28, mass: 0.7 }}
+                >
+                  <title>
+                    {`${vector.fromKeyIds.join('+')} → ${vector.toKeyIds.join('+')} · ${vector.weight}回`}
+                  </title>
+                </motion.path>
+              );
+            })}
+          </AnimatePresence>
+        </g>
+
+        <g className="flow-key-layer">
+          {keys.map((key) => {
+            const point = chartPoint(key, keyBounds.minX, keyBounds.minY);
+            const keyClass = key.finger[1] === 'P'
+              ? 'pinky'
+              : key.finger[1] === 'R'
+                ? 'ring'
+                : key.finger[1] === 'M'
+                  ? 'middle'
+                  : key.finger[1] === 'I'
+                    ? 'index'
+                    : undefined;
+            const selected = keyClass !== undefined && selectedFingers.includes(keyClass);
+            const label = layout.legends.get(key.id) ?? key.id;
+            return (
+              <g
+                className="flow-key"
+                data-selected={selected || undefined}
+                key={key.id}
+                transform={`translate(${point.x} ${point.y})`}
+              >
+                <rect x="-21" y="-19" width="42" height="38" rx="8" />
+                <text y="1" textAnchor="middle" dominantBaseline="middle">
+                  {label.length > 3 ? label.slice(0, 3) : label}
+                </text>
+                <text className="flow-key-id" y="13" textAnchor="middle">
+                  {key.id}
+                </text>
+              </g>
+            );
+          })}
+        </g>
+      </svg>
+      <div className="flow-legend" aria-hidden="true">
+        <span><i className="flow-dot flow-dot-left" /> Left</span>
+        <span><i className="flow-dot flow-dot-right" /> Right</span>
+        <span><i className="flow-dot flow-dot-cross" /> Cross-hand</span>
+      </div>
+    </div>
+  );
+}
+
+function relativeVectors(
+  vectors: readonly BigramVector[],
+  hand: 'left' | 'right',
+): RelativeVector[] {
+  const grouped = new Map<string, RelativeVector>();
+  for (const vector of vectors) {
+    if (vector.hand !== hand || vector.distance === 0) continue;
+    const key = [
+      vector.dx.toFixed(6),
+      vector.dy.toFixed(6),
+      vector.fromFingerClass,
+      vector.toFingerClass,
+    ].join('|');
+    const current = grouped.get(key);
+    grouped.set(key, current === undefined
+      ? {
+        id: key,
+        dx: vector.dx,
+        dy: vector.dy,
+        weight: vector.weight,
+        fromFingerClass: vector.fromFingerClass,
+        toFingerClass: vector.toFingerClass,
+      }
+      : { ...current, weight: current.weight + vector.weight });
+  }
+  return [...grouped.values()];
+}
+
+function RelativeMovementPlot({
+  vectors,
+  hand,
+}: {
+  vectors: readonly BigramVector[];
+  hand: 'left' | 'right';
+}) {
+  const reduceMotion = useReducedMotion();
+  const relative = useMemo(() => relativeVectors(vectors, hand), [vectors, hand]);
+  const maxDistance = Math.max(1, ...relative.map((vector) => Math.hypot(vector.dx, vector.dy)));
+  const maxWeight = Math.max(1, ...relative.map((vector) => vector.weight));
+  const cx = 120;
+  const cy = 108;
+  const radius = 78;
+  const plotScale = radius / maxDistance;
+
+  return (
+    <div className="flow-mini-panel">
+      <header>
+        <strong>{hand === 'left' ? 'Left' : 'Right'}</strong>
+        <span>{relative.reduce((sum, vector) => sum + vector.weight, 0)} transitions</span>
+      </header>
+      <svg viewBox="0 0 240 220" role="img" aria-label={`${hand} hand relative movement`}>
+        <defs>
+          <marker
+            id={`relative-arrow-${hand}`}
+            markerWidth="7"
+            markerHeight="7"
+            refX="6"
+            refY="3.5"
+            orient="auto"
+          >
+            <path d="M0,0 L7,3.5 L0,7 z" className={`relative-marker relative-marker-${hand}`} />
+          </marker>
+        </defs>
+        <circle className="flow-axis-ring" cx={cx} cy={cy} r={radius / 2} />
+        <circle className="flow-axis-ring" cx={cx} cy={cy} r={radius} />
+        <line className="flow-axis" x1="24" y1={cy} x2="216" y2={cy} />
+        <line className="flow-axis" x1={cx} y1="14" x2={cx} y2="202" />
+        <circle className="flow-origin" cx={cx} cy={cy} r="4" />
+        <AnimatePresence initial={false}>
+          {relative.map((vector) => (
+            <motion.line
+              key={vector.id}
+              className={`relative-vector relative-vector-${hand}`}
+              x1={cx}
+              y1={cy}
+              markerEnd={`url(#relative-arrow-${hand})`}
+              initial={reduceMotion ? false : { x2: cx, y2: cy, opacity: 0 }}
+              animate={{
+                x2: cx + vector.dx * plotScale,
+                y2: cy + vector.dy * plotScale,
+                opacity: 0.35 + 0.65 * vector.weight / maxWeight,
+              }}
+              exit={reduceMotion ? undefined : { opacity: 0 }}
+              strokeWidth={1.3 + 4.3 * Math.sqrt(vector.weight / maxWeight)}
+              transition={reduceMotion
+                ? { duration: 0 }
+                : { type: 'spring', stiffness: 240, damping: 27 }}
+            >
+              <title>
+                {`${vector.fromFingerClass} → ${vector.toFingerClass} · dx ${vector.dx.toFixed(2)}, dy ${vector.dy.toFixed(2)} · ${vector.weight}回`}
+              </title>
+            </motion.line>
+          ))}
+        </AnimatePresence>
+      </svg>
+    </div>
+  );
+}
+
+function polarPoint(cx: number, cy: number, radius: number, angle: number) {
+  return {
+    x: cx + Math.cos(angle) * radius,
+    y: cy + Math.sin(angle) * radius,
+  };
+}
+
+function sectorPath(
+  cx: number,
+  cy: number,
+  innerRadius: number,
+  outerRadius: number,
+  startAngle: number,
+  endAngle: number,
+): string {
+  const outerStart = polarPoint(cx, cy, outerRadius, startAngle);
+  const outerEnd = polarPoint(cx, cy, outerRadius, endAngle);
+  const innerEnd = polarPoint(cx, cy, innerRadius, endAngle);
+  const innerStart = polarPoint(cx, cy, innerRadius, startAngle);
+  const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
+  return [
+    `M ${outerStart.x} ${outerStart.y}`,
+    `A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${outerEnd.x} ${outerEnd.y}`,
+    `L ${innerEnd.x} ${innerEnd.y}`,
+    `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y}`,
+    'Z',
+  ].join(' ');
+}
+
+function DirectionPlot({
+  vectors,
+  hand,
+}: {
+  vectors: readonly BigramVector[];
+  hand: 'left' | 'right';
+}) {
+  const reduceMotion = useReducedMotion();
+  const bins = useMemo(() => directionBins(vectors, hand, 16), [vectors, hand]);
+  const summary = useMemo(() => directionSummary(vectors, hand), [vectors, hand]);
+  const maxWeight = Math.max(1, ...bins.map((bin) => bin.weight));
+  const cx = 120;
+  const cy = 112;
+  const baseRadius = 18;
+  const maxRadius = 88;
+  const meanRadius = summary.magnitude * 82;
+  const meanEnd = summary.angle === undefined
+    ? { x: cx, y: cy }
+    : polarPoint(cx, cy, meanRadius, summary.angle);
+  const rollTotal = summary.inwardWeight + summary.outwardWeight;
+  const inwardRate = rollTotal === 0 ? 0 : summary.inwardWeight / rollTotal;
+  const outwardRate = rollTotal === 0 ? 0 : summary.outwardWeight / rollTotal;
+
+  return (
+    <div className="flow-mini-panel flow-direction-panel">
+      <header>
+        <strong>{hand === 'left' ? 'Left' : 'Right'}</strong>
+        <span>集中度 {summary.magnitude.toFixed(2)}</span>
+      </header>
+      <svg viewBox="0 0 240 230" role="img" aria-label={`${hand} hand direction distribution`}>
+        <defs>
+          <marker
+            id={`mean-arrow-${hand}`}
+            markerWidth="7"
+            markerHeight="7"
+            refX="6"
+            refY="3.5"
+            orient="auto"
+          >
+            <path d="M0,0 L7,3.5 L0,7 z" className="mean-marker" />
+          </marker>
+        </defs>
+        {[36, 62, 88].map((radius) => (
+          <circle className="flow-axis-ring" cx={cx} cy={cy} r={radius} key={radius} />
+        ))}
+        <line className="flow-axis" x1="22" y1={cy} x2="218" y2={cy} />
+        <line className="flow-axis" x1={cx} y1="14" x2={cx} y2="210" />
+        {bins.map((bin) => {
+          const outerRadius = baseRadius + (maxRadius - baseRadius) * bin.weight / maxWeight;
+          return (
+            <motion.path
+              key={bin.index}
+              className={`rose-sector rose-sector-${hand}`}
+              initial={false}
+              animate={{
+                d: sectorPath(
+                  cx,
+                  cy,
+                  baseRadius,
+                  outerRadius,
+                  bin.startAngle + 0.025,
+                  bin.endAngle - 0.025,
+                ),
+                opacity: bin.weight === 0 ? 0.08 : 0.28 + 0.67 * bin.weight / maxWeight,
+              }}
+              transition={reduceMotion
+                ? { duration: 0 }
+                : { type: 'spring', stiffness: 180, damping: 25 }}
+            >
+              <title>{`${bin.weight} transitions`}</title>
+            </motion.path>
+          );
+        })}
+        <motion.line
+          className="mean-resultant"
+          x1={cx}
+          y1={cy}
+          markerEnd={`url(#mean-arrow-${hand})`}
+          animate={{ x2: meanEnd.x, y2: meanEnd.y, opacity: summary.angle === undefined ? 0 : 1 }}
+          transition={reduceMotion
+            ? { duration: 0 }
+            : { type: 'spring', stiffness: 170, damping: 22 }}
+        />
+        <circle className="flow-origin" cx={cx} cy={cy} r="4" />
+      </svg>
+      <div className="roll-summary">
+        <div className="roll-bar" aria-label="inward outward比率">
+          <motion.span
+            className="roll-inward"
+            animate={{ width: `${inwardRate * 100}%` }}
+            transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 190, damping: 24 }}
+          />
+          <motion.span
+            className="roll-outward"
+            animate={{ width: `${outwardRate * 100}%` }}
+            transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 190, damping: 24 }}
+          />
+        </div>
+        <div>
+          <span>inward {(inwardRate * 100).toFixed(1)}%</span>
+          <span>outward {(outwardRate * 100).toFixed(1)}%</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FingerControls({
+  selected,
+  onToggle,
+}: {
+  selected: readonly FingerClass[];
+  onToggle: (finger: FingerClass) => void;
+}) {
+  return (
+    <div className="flow-finger-buttons" role="group" aria-label="指の組み合わせ">
+      {FINGER_OPTIONS.map((finger) => {
+        const active = selected.includes(finger.id);
+        const blocked = selected.length >= 2 && !active;
+        return (
+          <motion.button
+            type="button"
+            key={finger.id}
+            aria-pressed={active}
+            disabled={blocked}
+            data-active={active || undefined}
+            onClick={() => onToggle(finger.id)}
+            whileHover={blocked ? undefined : { y: -2 }}
+            whileTap={blocked ? undefined : { scale: 0.94 }}
+          >
+            {finger.label}
+          </motion.button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function BigramVectorView() {
+  const [layoutId, setLayoutId] = useState(() =>
+    LAYOUTS_JA.some((layout) => layout.id === 'naginata-v18')
+      ? 'naginata-v18'
+      : LAYOUTS_JA[0]?.id ?? '');
+  const [source, setSource] = useState<BigramSource>('actual');
+  const [selectedFingers, setSelectedFingers] = useState<FingerClass[]>([]);
+
+  const layout = LAYOUTS_JA.find((candidate) => candidate.id === layoutId) ?? LAYOUTS_JA[0];
+  const geometry = useMemo(() => layoutGeometry(layout), [layout]);
+  const trace = useMemo(
+    () => evaluate(SAMPLE, layout, geometry, DEFAULT_OPTIONS),
+    [layout, geometry],
+  );
+  const vectors = useMemo(
+    () => buildBigramVectors(trace.strokes, source),
+    [trace.strokes, source],
+  );
+  const filtered = useMemo(
+    () => filterBigramVectors(vectors, selectedFingers),
+    [vectors, selectedFingers],
+  );
+  const aggregated = useMemo(
+    () => aggregateBigramVectors(filtered),
+    [filtered],
+  );
+
+  const toggleFinger = (finger: FingerClass) => {
+    setSelectedFingers((current) => {
+      if (current.includes(finger)) return current.filter((candidate) => candidate !== finger);
+      if (current.length >= 2) return current;
+      return [...current, finger];
+    });
+  };
+
+  const rawCount = filtered.reduce((sum, vector) => sum + vector.weight, 0);
+  const vectorAnalysisReady = selectedFingers.length === 2;
+
+  return (
+    <section className="feature-shell flow-feature">
+      <p className="eyebrow">Vector lab · #366</p>
+      <h1>Bigram Flow</h1>
+      <p>
+        bigramを物理座標のベクトルとして眺める。絶対位置・相対移動・方向分布を分け、
+        ロール傾向を単一スコアへ潰さず観察する。
+      </p>
+
+      <section className="flow-controls" aria-label="Bigram Flow controls">
+        <label className="flow-layout-select">
+          <span>配列</span>
+          <select value={layout.id} onChange={(event) => setLayoutId(event.target.value)}>
+            {LAYOUTS_JA.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>{candidate.name}</option>
+            ))}
+          </select>
+        </label>
+
+        <div className="flow-control-group">
+          <span>Bigram</span>
+          <div className="flow-segmented" role="group" aria-label="bigram source">
+            {(['actual', 'within-hand'] as const).map((candidate) => (
+              <button
+                type="button"
+                key={candidate}
+                aria-pressed={source === candidate}
+                data-active={source === candidate || undefined}
+                onClick={() => setSource(candidate)}
+              >
+                {candidate === 'actual' ? 'Actual' : 'Within-hand'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flow-control-group">
+          <span>Fingers</span>
+          <FingerControls selected={selectedFingers} onToggle={toggleFinger} />
+        </div>
+      </section>
+
+      <div className="flow-status">
+        <span>{layout.name}</span>
+        <span>{source === 'actual' ? '実Stroke bigram' : '反対手を飛ばした手内bigram'}</span>
+        <span>{rawCount.toLocaleString()} vectors</span>
+        {trace.skipped > 0 ? <span>{trace.skipped} skipped</span> : null}
+      </div>
+
+      <section className="flow-block">
+        <header className="flow-block-header">
+          <div>
+            <p className="eyebrow">Absolute</p>
+            <h2>Keyboard Flow</h2>
+          </div>
+          <p>矢印の太さは出現頻度。左右は物理キーボードを見たまま表示する。</p>
+        </header>
+        <KeyboardFlow
+          geometry={geometry}
+          layout={layout}
+          vectors={aggregated}
+          selectedFingers={selectedFingers}
+        />
+      </section>
+
+      <AnimatePresence initial={false}>
+        {vectorAnalysisReady ? (
+          <motion.section
+            className="flow-analysis"
+            key={selectedFingers.slice().sort().join('-')}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ type: 'spring', stiffness: 180, damping: 24 }}
+          >
+            <div className="flow-analysis-heading">
+              <div>
+                <p className="eyebrow">Pair analysis</p>
+                <h2>
+                  {FINGER_OPTIONS.find((finger) => finger.id === selectedFingers[0])?.label}
+                  {' + '}
+                  {FINGER_OPTIONS.find((finger) => finger.id === selectedFingers[1])?.label}
+                </h2>
+              </div>
+              <p>
+                押し順は固定しない。両方向を残したまま、左右の物理方向と解剖学的
+                inward / outwardを別々に読む。
+              </p>
+            </div>
+
+            <section className="flow-block">
+              <header className="flow-block-header">
+                <div>
+                  <p className="eyebrow">Relative</p>
+                  <h2>Relative Movement</h2>
+                </div>
+                <p>始点を原点へ揃え、距離を残した移動ベクトルとして表示する。</p>
+              </header>
+              <div className="flow-two-up">
+                <RelativeMovementPlot vectors={aggregated} hand="left" />
+                <RelativeMovementPlot vectors={aggregated} hand="right" />
+              </div>
+            </section>
+
+            <section className="flow-block">
+              <header className="flow-block-header">
+                <div>
+                  <p className="eyebrow">Direction only</p>
+                  <h2>Direction Distribution</h2>
+                </div>
+                <p>
+                  各vectorを単位長へ正規化。白い矢印はfrequency-weighted mean resultantで、
+                  長さが方向の集中度を表す。
+                </p>
+              </header>
+              <div className="flow-two-up">
+                <DirectionPlot vectors={aggregated} hand="left" />
+                <DirectionPlot vectors={aggregated} hand="right" />
+              </div>
+              {source === 'actual' && aggregated.some((vector) => vector.hand === 'cross') ? (
+                <p className="flow-footnote">
+                  Cross-hand bigramはKeyboard Flowには残すが、左右のroll方向を扱うVector Analysisからは除外している。
+                </p>
+              ) : null}
+            </section>
+          </motion.section>
+        ) : (
+          <motion.div
+            className="flow-analysis-locked"
+            key="locked"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <span>Vector Analysis</span>
+            <strong>指を2本選ぶと解放</strong>
+            <p>1本選択中はKeyboard Flowで、その指に関係する結合を探索できる。</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <p className="flow-footnote">
+        既定日本語サンプル {SAMPLE.length.toLocaleString()}文字・段ずれ形状・既定運指。
+        この画面の方向分布は観測値であり、配列の優劣スコアではない。
+      </p>
+    </section>
+  );
+}
