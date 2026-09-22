@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TypingInputEngine } from '../src/core/input-converter/index.ts';
-import { faceFromEntries, fromFaces, type Face, type FaceMode } from '../src/layouts/index.ts';
+import { faceFromEntries, fromFaces, fromKana, type Face, type FaceMode } from '../src/layouts/index.ts';
 
 const face = (
   trigger: readonly string[],
@@ -164,4 +164,68 @@ test('Input Converter coreは既存Trigger/Action realizationでhold start/conti
   })), [
     { keys: ['y'], heldKeys: ['q'], holdPhase: 'continue' },
   ]);
+});
+
+
+test('3-key候補の途中まで重なっても未定義2-keyなら両単打を保持する', () => {
+  const layout = fromKana('converter-unconsumed-overlap', 'converter-unconsumed-overlap', [
+    ['A', [['h']]],
+    ['B', [['j']]],
+    ['ABC', [['h', 'j', 'k']]],
+  ]);
+  const engine = new TypingInputEngine(layout.canonicalInputs);
+
+  const outputs: string[] = [];
+  for (const event of [
+    { type: 'down', key: 'h' },
+    { type: 'down', key: 'j' },
+    { type: 'up', key: 'h' },
+    { type: 'up', key: 'j' },
+  ] as const) {
+    outputs.push(...engine.handle(event).recognized.map((entry) => entry.output));
+  }
+
+  assert.deepEqual(outputs, ['A', 'B']);
+});
+
+test('未定義overlapは後から押したkeyを先にreleaseしてもpress順の単打を保持する', () => {
+  const layout = fromKana('converter-unconsumed-reverse-release', 'converter-unconsumed-reverse-release', [
+    ['A', [['h']]],
+    ['B', [['j']]],
+    ['ABC', [['h', 'j', 'k']]],
+  ]);
+  const engine = new TypingInputEngine(layout.canonicalInputs);
+
+  const outputs: string[] = [];
+  for (const event of [
+    { type: 'down', key: 'h' },
+    { type: 'down', key: 'j' },
+    { type: 'up', key: 'j' },
+    { type: 'up', key: 'h' },
+  ] as const) {
+    outputs.push(...engine.handle(event).recognized.map((entry) => entry.output));
+  }
+
+  assert.deepEqual(outputs, ['A', 'B']);
+});
+
+test('定義済み2-key chordは単打fallbackへ二重展開しない', () => {
+  const layout = fromKana('converter-defined-overlap', 'converter-defined-overlap', [
+    ['A', [['h']]],
+    ['B', [['j']]],
+    ['AB', [['h', 'j']]],
+  ]);
+  const engine = new TypingInputEngine(layout.canonicalInputs);
+
+  const outputs: string[] = [];
+  for (const event of [
+    { type: 'down', key: 'h' },
+    { type: 'down', key: 'j' },
+    { type: 'up', key: 'h' },
+    { type: 'up', key: 'j' },
+  ] as const) {
+    outputs.push(...engine.handle(event).recognized.map((entry) => entry.output));
+  }
+
+  assert.deepEqual(outputs, ['AB']);
 });

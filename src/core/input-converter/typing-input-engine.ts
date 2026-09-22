@@ -74,6 +74,12 @@ interface MultiStepMatch {
   readonly previousSegments: readonly RecognitionSegment[];
 }
 
+interface ReplayWindowKey {
+  readonly key: PhysicalKeyId;
+  readonly released: boolean;
+  readonly order: number;
+}
+
 const canonicalKeys = (keys: readonly PhysicalKeyId[]): PhysicalKeyId[] =>
   [...new Set(keys.map(resolveKeyId))];
 
@@ -445,6 +451,63 @@ export class TypingInputEngine {
       || left.candidate.order - right.candidate.order)[0];
   }
 
+  #unconsumedWindowKeys(
+    consumedKeys: readonly PhysicalKeyId[],
+  ): ReplayWindowKey[] {
+    const consumed = keySet(consumedKeys);
+    return [...this.#windowKeys]
+      .filter((key) => !consumed.has(key) && !this.#seededHoldKeys.has(key))
+      .map((key) => ({
+        key,
+        released: this.#releasedWindowKeys.has(key),
+        order: this.#pressOrder.get(key) ?? Number.MAX_SAFE_INTEGER,
+      }))
+      .sort((left, right) => left.order - right.order);
+  }
+
+  /**
+   * longest-match待ちのcandidate確定時に同じwindowへ入っていた未消費keyを、
+   * 元のpress順で新しいrecognition windowへ戻す。
+   *
+   * overlap量そのものは推定し直さない。release済みkeyはdown相当の評価後に
+   * released状態へ戻すことで、未定義の重なりを単打として失わず、
+   * prefix等のrelease後も有効なorder semanticはそのまま延長できる。
+   */
+  #replayUnconsumedWindowKeys(
+    keys: readonly ReplayWindowKey[],
+  ): RecognizedTypingInput[] {
+    const recognized: RecognizedTypingInput[] = [];
+
+    for (const replay of keys) {
+      if (this.#pending !== undefined && !this.#canExtendPendingWith(replay.key)) {
+        recognized.push(...this.#commitStep(this.#pending));
+      }
+
+      this.#windowKeys.add(replay.key);
+      this.#releasedWindowKeys.delete(replay.key);
+      this.#pressOrder.set(replay.key, this.#nextOrder);
+      this.#nextOrder += 1;
+
+      const match = this.#bestMatch();
+      if (match !== undefined) {
+        if (this.#hasPotentialExtension(match)) this.#pending = match;
+        else recognized.push(...this.#commitStep(match));
+      }
+
+      if (!replay.released || !this.#windowKeys.has(replay.key)) continue;
+
+      this.#releasedWindowKeys.add(replay.key);
+      if (
+        this.#pending?.input.physicalKeys.map(resolveKeyId).includes(replay.key)
+        && !this.#hasPotentialExtension(this.#pending)
+      ) {
+        recognized.push(...this.#commitStep(this.#pending));
+      }
+    }
+
+    return recognized;
+  }
+
   #realize(
     realizations: readonly BaseActionRealization[],
     previous: TriggerHoldState | undefined,
@@ -464,6 +527,7 @@ export class TypingInputEngine {
   }
 
   #commitStep(step: StepCandidate): RecognizedTypingInput[] {
+    const unconsumedWindowKeys = this.#unconsumedWindowKeys(step.input.physicalKeys);
     const holdStateBefore = this.#holdState;
     const provisional = this.#realize([step.realization], holdStateBefore);
     this.#holdState = provisional.holdState;
@@ -511,7 +575,7 @@ export class TypingInputEngine {
         ...(replacePreviousText.length === 0
           ? {}
           : { replacePreviousText }),
-      }];
+      }, ...this.#replayUnconsumedWindowKeys(unconsumedWindowKeys)];
     }
 
     const direct = this.#singleStepCandidate(step.signature);
@@ -539,7 +603,7 @@ export class TypingInputEngine {
         output: direct.output,
         alternative: direct.alternative,
         actions: realized.actions,
-      }];
+      }, ...this.#replayUnconsumedWindowKeys(unconsumedWindowKeys)];
     }
 
     this.#segments.push({
@@ -555,7 +619,7 @@ export class TypingInputEngine {
     });
     this.#trimSegments();
     this.#resetRecognitionWindow();
-    return [];
+    return this.#replayUnconsumedWindowKeys(unconsumedWindowKeys);
   }
 
   #trimSegments(): void {

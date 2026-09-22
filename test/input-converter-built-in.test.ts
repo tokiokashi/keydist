@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TypingInputEngine } from '../src/core/input-converter/index.ts';
 import { browserKeyboardEventToPhysicalKeyEvent } from '../src/features/input-converter/browser-keyboard-adapter.ts';
+import { NAGINATA_V18 } from '../src/layouts/naginata.ts';
 import { SHIN_JIS_SIMULTANEOUS } from '../src/layouts/shin-jis.ts';
 import { TSUKI_2_263 } from '../src/layouts/tsuki-2-263.ts';
 
@@ -72,4 +73,29 @@ test('shortcut modifier中のkeyupでもpressed stateを解放する', () => {
   });
   assert.ok(up !== undefined);
   assert.deepEqual(engine.handle(up).pressedKeys, []);
+});
+
+
+test('薙刀式の未定義roll overlapは左右どちらも単打を落とさない', () => {
+  const cases = [
+    { keys: ['d', 'f'] as const, outputs: ['と', 'か'] },
+    // h+j自体は未定義だが、h+j+w等の3-key候補があるためlongest-match待ちになる。
+    { keys: ['h', 'j'] as const, outputs: ['く', 'あ'] },
+  ];
+
+  for (const { keys, outputs: expected } of cases) {
+    const engine = new TypingInputEngine(NAGINATA_V18.canonicalInputs, {
+      triggerRealizationPolicy: { useHold: true },
+    });
+    const outputs: string[] = [];
+    for (const event of [
+      { type: 'down', key: keys[0] },
+      { type: 'down', key: keys[1] },
+      { type: 'up', key: keys[0] },
+      { type: 'up', key: keys[1] },
+    ] as const) {
+      outputs.push(...engine.handle(event).recognized.map((entry) => entry.output));
+    }
+    assert.deepEqual(outputs, expected, keys.join(' -> '));
+  }
 });
