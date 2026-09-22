@@ -1,5 +1,5 @@
 import {
-  ADJACENT_PAIRS, ALL_FINGERS, FINGERS, resolveKeyId, THUMB_KEY, THUMB_ROW,
+  ADJACENT_PAIRS, ALL_FINGERS, FINGERS, resolveKeyId, SHIFT_KEY, THUMB_KEY, THUMB_ROW,
   assignmentWithHomeKeys, type GeometryKind,
 } from './geometry.ts';
 import { evaluate, type Options, type Trace } from './evaluate.ts';
@@ -401,9 +401,9 @@ const COMPARE_HEADER_TIPS: Record<number, string> = {
   3: '入力1文字あたりの総移動距離 (u/文字)',
   4: '入力1文字あたりのアクション数 (1/文字)',
   5: '入力1文字あたりの物理キー押下数 (押下/文字)',
-  6: '打鍵可能な入力文字のうち、単打面の1キーだけで直接出力できた文字の割合 (%)。出力文字数ベース',
-  7: '総アクションのうち、1 Stroke・1物理キーだけでひらがなを1文字以上直接出力し、trigger / held-triggerに依存しない単打の割合 (%)',
-  8: '総アクションのうち、1物理キーだけを入力するアクションの割合 (%)',
+  6: '単打面に配置されている出力文字数 / 全出力文字数 (%)',
+  7: '単打面の文字を出力するアクション数 / 全アクション数 (%)',
+  8: 'freshに押す物理キーが1つだけのアクション数 / 全アクション数 (%)',
   9: '同じ指で違うキーを続けて打った回数',
   10: '同指連続回数をphysical Stroke数で割った割合 (%)',
   11: '隣接指間距離のホーム間隔からの平均超過を6ペアで平均した値 (u)',
@@ -886,7 +886,11 @@ function renderLayerSvg(
   let maxX = 0;
   let maxY = 0;
 
-  const keys = [...geometry.keys.values()].map((key) => {
+  const shiftKeys = new Set(layout.shiftKeys ?? []);
+  const keys = [...geometry.keys.values()]
+    .filter((key) =>
+      (key.id !== SHIFT_KEY.L && key.id !== SHIFT_KEY.R) || shiftKeys.has(key.id))
+    .map((key) => {
     const count = values.keyCounts.get(key.id) ?? 0;
     const colorCount = values.colorCounts.get(key.id) ?? 0;
     const t = heatIntensity(colorCount, max, values.colorScale);
