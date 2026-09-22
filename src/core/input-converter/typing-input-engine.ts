@@ -136,6 +136,7 @@ const sameStrings = (
  */
 export class TypingInputEngine {
   readonly #candidates: readonly Candidate[];
+  readonly #knownPhysicalKeys = new Set<PhysicalKeyId>();
   readonly #maxSequenceLength: number;
   readonly #triggerPolicy: TriggerRealizationPolicy;
   readonly #actionPolicy: ActionRealizationPolicy;
@@ -163,6 +164,11 @@ export class TypingInputEngine {
     for (const [output, alternatives] of canonicalInputs) {
       for (const alternative of alternatives) {
         if (alternative.semanticInputs.length === 0) continue;
+        for (const input of alternative.semanticInputs) {
+          for (const rawKey of input.physicalKeys) {
+            this.#knownPhysicalKeys.add(resolveKeyId(rawKey));
+          }
+        }
         if (alternative.semanticInputs.length !== alternative.baseRealizations.length) {
           throw new Error(
             'InputAlternativeのSemanticInput列とBaseActionRealization列の長さが一致しない',
@@ -222,6 +228,15 @@ export class TypingInputEngine {
     }
 
     this.#pressed.add(key);
+
+    if (!this.#knownPhysicalKeys.has(key)) {
+      // canonicalに一度も現れないphysical keyは出力なしのgesture boundaryとして扱う。
+      // one-shot/chord待ちは終了するが、#resetRecognitionWindow() は物理的に保持中の
+      // hold triggerだけseedし直すため、while-held状態は維持される。
+      this.#resetRecognitionWindow();
+      return this.#result(recognized);
+    }
+
     this.#windowKeys.add(key);
     this.#releasedWindowKeys.delete(key);
     this.#pressOrder.set(key, this.#nextOrder);
