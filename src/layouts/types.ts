@@ -103,7 +103,7 @@ export interface LayerDefinition {
 }
 
 export interface CompactLayerViewPresentation {
-  /** コンパクト表示で個別に残すaggregation layerId。指定順が表示順になる。 */
+  /** コンパクト表示で個別に残すpresentation layer ID。指定順が表示順になる。 */
   keepLayerIds: readonly string[];
   /** keepLayerIds以外のlayerを合算する先。keepLayerIds内に含める。 */
   mergeIntoLayerId: string;
@@ -194,7 +194,7 @@ export interface Layout {
   resolvedComboDefinitions?: readonly ResolvedComboDefinition[];
   /** 層・コンボの表示順と種別。 */
   layerDefinitions?: readonly LayerDefinition[];
-  /** 面から展開した配列で、各面がどの帰属先へ属するかをUIが引くための表 */
+  /** 面から展開した配列で、各面がどのpresentation layerへ属するかをUIが引くための表 */
   faceLayerIds?: ReadonlyMap<Face, string>;
   /** layer表示だけに使うLayout-level presentation metadata。semantic評価には使わない。 */
   layerViewPresentation?: LayerViewPresentation;
