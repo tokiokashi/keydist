@@ -478,7 +478,7 @@ test('presentation: prepress-requiredなhold layerはrelease後にprefix化し�
   const session = presentationStepper(layout);
 
   const down = session.step({ type: 'down', key: 'thumb-r' });
-  assert.deepEqual(down.state.activeAggregationGroupIds, ['layer:シフト']);
+  assert.deepEqual(down.state.activeAggregationGroupIds, ['face:1']);
   assert.ok(down.state.selectedKeys.includes('thumb-r'));
 
   const released = session.step({ type: 'up', key: 'thumb-r' });
