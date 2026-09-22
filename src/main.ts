@@ -90,6 +90,12 @@ import { setLayoutGeometryOverride } from './condition-resolution.ts';
 import type { ChainPolicy } from './analysis-chain.ts';
 import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
 import {
+  classifyTriggerActivation,
+  DEFAULT_TRIGGER_ACTIVATION_GROUPINGS,
+  type TriggerActivationClass,
+  type TriggerActivationGrouping,
+} from './core/semantic-input/index.ts';
+import {
   conditionBundleFromState,
   parseConditionBundle,
   serializeConditionBundle,
@@ -1209,23 +1215,29 @@ interface TriggerActivationGroup {
   readonly layerId: string;
   readonly triggerKeys: readonly string[];
   readonly label: string;
+  readonly activationClass: TriggerActivationClass;
+}
+
+interface TriggerActivationLayerGroup {
+  readonly layerId: string;
+  readonly label: string;
+  readonly activationClasses: readonly TriggerActivationClass[];
+  readonly groups: readonly TriggerActivationGroup[];
 }
 
 function canonicalTriggerKeys(keys: readonly string[]): string[] {
   return [...new Set(keys)].sort();
 }
 
-function sameTriggerActivationSelector(
+function samePhysicalTriggerSelector(
   selector: { readonly layerId?: string; readonly triggerKeys?: readonly string[] },
   group: TriggerActivationGroup,
 ): boolean {
+  if (selector.triggerKeys === undefined) return false;
   if (selector.layerId !== undefined && selector.layerId !== group.layerId) return false;
-  if (selector.triggerKeys !== undefined) {
-    const left = canonicalTriggerKeys(selector.triggerKeys);
-    const right = canonicalTriggerKeys(group.triggerKeys);
-    if (left.length !== right.length || left.some((key, index) => key !== right[index])) return false;
-  }
-  return selector.layerId !== undefined || selector.triggerKeys !== undefined;
+  const left = canonicalTriggerKeys(selector.triggerKeys);
+  const right = canonicalTriggerKeys(group.triggerKeys);
+  return left.length === right.length && left.every((key, index) => key === right[index]);
 }
 
 function triggerActivationGroups(layout: Layout): TriggerActivationGroup[] {
@@ -1234,26 +1246,89 @@ function triggerActivationGroups(layout: Layout): TriggerActivationGroup[] {
   for (const alternatives of layout.canonicalInputs.values()) {
     for (const alternative of alternatives) {
       for (const realization of alternative.baseRealizations) {
+        if (realization.input.classifications.includes('composition')) continue;
         const candidates = [
-          realization.defaultTriggerKeys ?? [],
-          ...(realization.alternateParticipations?.map((view) => view.triggerKeys) ?? []),
+          {
+            triggerKeys: realization.defaultTriggerKeys ?? [],
+            outputKeys: realization.defaultOutputKeys,
+          },
+          ...(realization.alternateParticipations?.map((view) => ({
+            triggerKeys: view.triggerKeys,
+            outputKeys: view.outputKeys,
+          })) ?? []),
         ];
-        for (const keys of candidates) {
-          const triggerKeys = canonicalTriggerKeys(keys);
-          if (triggerKeys.length === 0) continue;
-          const identity = `${realization.input.layerId}\u0001${triggerKeys.join('\u0000')}`;
+        for (const candidate of candidates) {
+          const triggerKeys = canonicalTriggerKeys(candidate.triggerKeys);
+          if (triggerKeys.length === 0 || candidate.outputKeys.length === 0) continue;
+          const activationClass = classifyTriggerActivation(
+            realization.input,
+            triggerKeys,
+            candidate.outputKeys,
+          );
+          const identity = [
+            realization.input.layerId,
+            activationClass,
+            triggerKeys.join('\u0000'),
+          ].join('\u0001');
           if (groups.has(identity)) continue;
           const layerLabel = labels.get(realization.input.layerId) ?? realization.input.layerId;
           groups.set(identity, {
             layerId: realization.input.layerId,
             triggerKeys,
             label: `${layerLabel}: ${triggerKeys.join(' + ')}`,
+            activationClass,
           });
         }
       }
     }
   }
   return [...groups.values()].sort((left, right) => left.label.localeCompare(right.label, 'ja'));
+}
+
+function triggerActivationLayerGroups(layout: Layout): TriggerActivationLayerGroup[] {
+  const byLayer = new Map<string, TriggerActivationGroup[]>();
+  for (const group of triggerActivationGroups(layout)) {
+    const values = byLayer.get(group.layerId) ?? [];
+    values.push(group);
+    byLayer.set(group.layerId, values);
+  }
+  const labels = new Map(layout.layerDefinitions?.map((definition) => [definition.id, definition.label]) ?? []);
+  return [...byLayer].map(([layerId, groups]) => ({
+    layerId,
+    label: labels.get(layerId) ?? layerId,
+    activationClasses: [...new Set(groups.map((group) => group.activationClass))],
+    groups,
+  })).sort((left, right) => left.label.localeCompare(right.label, 'ja'));
+}
+
+const TRIGGER_ACTIVATION_CLASS_LABELS: Record<TriggerActivationClass, string> = {
+  'prepress-required': '先押し必須',
+  'order-free': '押し順不問',
+  'postpress-required': '後押し必須',
+};
+
+function groupingSelect(
+  current: TriggerActivationGrouping | undefined,
+  semanticDefault: TriggerActivationGrouping,
+  disabled: boolean,
+  onChange: (value: TriggerActivationGrouping | undefined) => void,
+): HTMLSelectElement {
+  const select = document.createElement('select');
+  select.disabled = disabled;
+  select.append(
+    new Option(
+      `既定（${semanticDefault === 'separate' ? '独立action' : 'outputと同じaction'}）`,
+      'inherit',
+    ),
+    new Option('outputと同じaction', 'combined'),
+    new Option('独立action', 'separate'),
+  );
+  select.value = current ?? 'inherit';
+  select.addEventListener('change', () =>
+    onChange(select.value === 'combined' || select.value === 'separate'
+      ? select.value
+      : undefined));
+  return select;
 }
 
 function conditionRow(
@@ -1362,47 +1437,129 @@ function conditionRow(
     const actionLabel = document.createElement('label');
     const actionInput = document.createElement('input');
     actionInput.type = 'checkbox';
-    actionInput.checked = action.triggerActivation === 'separate';
+    actionInput.checked = action.triggerActivation === 'semantic';
     actionInput.disabled = !enabled;
     actionInput.addEventListener('change', () =>
       commitCondition(layout?.id, 'actionRealization', {
         ...action,
-        triggerActivation: actionInput.checked ? 'separate' : 'combined',
+        triggerActivation: actionInput.checked ? 'semantic' : 'disabled',
       }));
-    actionLabel.append(actionInput, ' trigger押下を独立actionとしてrealizeする');
+    actionLabel.append(actionInput, ' trigger押下の独立action化を有効にする');
 
     fields.append(holdLabel, actionLabel);
 
-    if (layout) {
-      for (const group of triggerActivationGroups(layout)) {
-        const label = document.createElement('label');
-        label.append(`${group.label} `);
-        const select = document.createElement('select');
-        select.disabled = !enabled;
-        select.append(
-          new Option('既定を使う', 'inherit'),
-          new Option('outputと同じaction', 'combined'),
-          new Option('独立action', 'separate'),
-        );
-        const current = action.triggerActivationOverrides?.find((override) =>
-          sameTriggerActivationSelector(override.selector, group));
-        select.value = current?.grouping ?? 'inherit';
-        select.addEventListener('change', () => {
-          const overrides = (action.triggerActivationOverrides ?? [])
-            .filter((override) => !sameTriggerActivationSelector(override.selector, group));
-          if (select.value === 'combined' || select.value === 'separate') {
-            overrides.push({
-              selector: { layerId: group.layerId, triggerKeys: group.triggerKeys },
-              grouping: select.value,
-            });
-          }
-          commitCondition(layout.id, 'actionRealization', {
+    const relevantClasses: TriggerActivationClass[] = layout
+      ? [...new Set(triggerActivationGroups(layout).map((group) => group.activationClass))]
+      : ['prepress-required', 'order-free'];
+    for (const activationClass of relevantClasses) {
+      if (activationClass === 'postpress-required') continue;
+      const row = document.createElement('label');
+      row.append(`${TRIGGER_ACTIVATION_CLASS_LABELS[activationClass]} `);
+      const current = action.triggerActivationClassOverrides?.[activationClass];
+      row.append(groupingSelect(
+        current,
+        DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[activationClass],
+        !enabled || action.triggerActivation !== 'semantic',
+        (grouping) => {
+          const next = { ...(action.triggerActivationClassOverrides ?? {}) };
+          if (grouping === undefined) delete next[activationClass];
+          else next[activationClass] = grouping;
+          commitCondition(layout?.id, 'actionRealization', {
             ...action,
-            triggerActivationOverrides: overrides,
+            triggerActivationClassOverrides: next,
           });
-        });
-        label.append(select);
-        fields.append(label);
+        },
+      ));
+      fields.append(row);
+    }
+
+    if (layout) {
+      const layerGroups = triggerActivationLayerGroups(layout)
+        .filter((group) => !group.activationClasses.includes('postpress-required'));
+      if (layerGroups.length > 0) {
+        const details = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.textContent = '個別設定';
+        details.append(summary);
+
+        const layerFields = document.createElement('div');
+        layerFields.className = 'condition-fields';
+        for (const layer of layerGroups) {
+          const label = document.createElement('label');
+          label.append(`${layer.label} `);
+          const existing = action.triggerActivationOverrides?.find((override) =>
+            override.selector.layerId === layer.layerId
+            && override.selector.triggerKeys === undefined);
+          const semanticDefault = layer.activationClasses.some((kind) =>
+            (action.triggerActivationClassOverrides?.[kind]
+              ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[kind]) === 'separate')
+            ? 'separate'
+            : 'combined';
+          label.append(groupingSelect(
+            existing?.grouping,
+            semanticDefault,
+            !enabled || action.triggerActivation !== 'semantic',
+            (grouping) => {
+              const overrides = (action.triggerActivationOverrides ?? [])
+                .filter((override) => !(
+                  override.selector.layerId === layer.layerId
+                  && override.selector.triggerKeys === undefined
+                ));
+              if (grouping !== undefined) {
+                overrides.push({ selector: { layerId: layer.layerId }, grouping });
+              }
+              commitCondition(layout.id, 'actionRealization', {
+                ...action,
+                triggerActivationOverrides: overrides,
+              });
+            },
+          ));
+          layerFields.append(label);
+        }
+
+        const physicalDetails = document.createElement('details');
+        const physicalSummary = document.createElement('summary');
+        physicalSummary.textContent = '物理trigger単位の詳細';
+        physicalDetails.append(physicalSummary);
+        const physicalFields = document.createElement('div');
+        physicalFields.className = 'condition-fields';
+        for (const group of triggerActivationGroups(layout)) {
+          if (group.activationClass === 'postpress-required') continue;
+          const label = document.createElement('label');
+          label.append(`${group.label} `);
+          const existing = action.triggerActivationOverrides?.find((override) =>
+            samePhysicalTriggerSelector(override.selector, group));
+          const layerOverride = action.triggerActivationOverrides?.find((override) =>
+            override.selector.layerId === group.layerId
+            && override.selector.triggerKeys === undefined);
+          const semanticDefault = layerOverride?.grouping
+            ?? action.triggerActivationClassOverrides?.[group.activationClass]
+            ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[group.activationClass];
+          label.append(groupingSelect(
+            existing?.grouping,
+            semanticDefault,
+            !enabled || action.triggerActivation !== 'semantic',
+            (grouping) => {
+              const overrides = (action.triggerActivationOverrides ?? [])
+                .filter((override) => !samePhysicalTriggerSelector(override.selector, group));
+              if (grouping !== undefined) {
+                overrides.push({
+                  selector: { layerId: group.layerId, triggerKeys: group.triggerKeys },
+                  grouping,
+                });
+              }
+              commitCondition(layout.id, 'actionRealization', {
+                ...action,
+                triggerActivationOverrides: overrides,
+              });
+            },
+          ));
+          physicalFields.append(label);
+        }
+        physicalDetails.append(physicalFields);
+        layerFields.append(physicalDetails);
+        details.append(layerFields);
+        fields.append(details);
       }
     }
 
