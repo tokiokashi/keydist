@@ -53,7 +53,7 @@ test('文字compositionは表示・集計でも通常layerではなくcomboへ�
   assert.ok(groups.layers.flatMap((group) => group.faces)
     .every((face) => face.inputRole !== 'composition'));
   assert.equal(
-    layout.canonicalInputs.get('ぱ')?.[0]?.semanticInputs[0].layerId,
+    layout.canonicalInputs.get('ぱ')?.[0]?.semanticInputs[0].aggregationGroupId,
     COMBO_LAYER_ID,
   );
 });
