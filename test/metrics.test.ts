@@ -216,7 +216,7 @@ test('単打率はかなを1キーで直接出す独立actionだけを数える'
   const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
   const prefixMetrics = computeMetrics(evaluate('あ', tsuki, geometry, opts()), geometry);
   near(prefixMetrics.singleTapRate, 0, '月配列: 前置シフトを含む入力は単打には含めない');
-  near(prefixMetrics.singleKeyRate, 50, '月配列: trigger-onlyは分子から除外し、出力1キーactionだけ数える');
+  near(prefixMetrics.singleKeyRate, 100, '月配列: 前置シフトも出力も各actionは1キー');
 
   const shingeta = LAYOUT_BY_ID.get('shingeta')!;
   const comboMetrics = computeMetrics(evaluate('きゃ', shingeta, geometry, opts()), geometry);
@@ -253,10 +253,10 @@ test('1キー率はActionRealizationPolicy適用後の共通Stroke streamを数�
   assert.equal(combined.actions, 2);
   assert.equal(separate.actions, 3);
   near(combined.singleKeyRate, 50, '2 action中、hold継続の1 actionだけが1キー');
-  near(separate.singleKeyRate, 200 / 3, 'trigger-onlyは分母には残るが1キー率の分子には入れない');
+  near(separate.singleKeyRate, 100, 'trigger-onlyを含め3 actionすべてfresh 1キー');
 });
 
-test('1キー率はtrigger-onlyを分子に含めず、held-trigger + outputは1キーとして数える', () => {
+test('1キー率はsemanticを見ずrealized Strokeのfresh key数だけ数える', () => {
   const asuka = LAYOUT_BY_ID.get('asuka')!;
   const trace = evaluate('あだ', asuka, geometry, opts({
     triggerRealizationPolicy: { useHold: true },
@@ -269,10 +269,31 @@ test('1キー率はtrigger-onlyを分子に含めず、held-trigger + outputは1
 
   assert.equal(trace.strokes.length, 3);
   assert.equal(trace.strokes[0].participations.some((p) => p.roles.includes('output')), false);
-  assert.ok(trace.strokes[1].participations.some((p) => p.roles.includes('output')));
-  assert.ok(trace.strokes[2].participations.some((p) => p.roles.includes('output')));
   assert.ok(trace.strokes[2].participations.some((p) => p.roles.includes('held-trigger')));
-  near(metrics.singleKeyRate, 200 / 3);
+  for (const stroke of trace.strokes) {
+    const keys = new Set(stroke.presses.flatMap((press) => press.keys.map((key) => key.id)));
+    assert.equal(keys.size, 1);
+  }
+  near(metrics.singleKeyRate, 100);
+});
+
+test('月配列2-263は全actionが1キーならサンプルでも1キー率100%', () => {
+  const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
+  const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
+  const metrics = computeMetrics(evaluate(text, tsuki, geometry, opts()), geometry);
+  near(metrics.singleKeyRate, 100);
+});
+
+test('複数文字の単打見出しは単打面率では文字数、単打率では1actionとして数える', () => {
+  const layout = fromKana('multi-char-single-tap', 'multi-char-single-tap', {
+    きゃ: [['f']],
+    あ: [['d'], ['k']],
+  });
+  const metrics = computeMetrics(evaluate('きゃあ', layout, geometry, opts()), geometry);
+
+  near(metrics.singleTapLayerRate, 200 / 3);
+  near(metrics.singleTapRate, 100 / 3);
+  near(metrics.singleKeyRate, 100);
 });
 
 test('単打率はhold継続中の1キー入力を単打に含めない', () => {
