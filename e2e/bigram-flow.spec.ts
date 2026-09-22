@@ -8,6 +8,7 @@ test('Bigram Flow filters finger pairs and unlocks vector analysis', async ({ pa
   await expect(page.getByRole('heading', { name: 'Bigram Flow' })).toBeVisible();
   await expect(page.getByRole('img', { name: 'キーボード上のbigramベクトル' })).toBeVisible();
   await expect(page.getByText('指を2本選ぶと解放')).toBeVisible();
+  await expect(page.getByText(/格子形状/)).toBeVisible();
 
   const flowEdges = page.locator('[data-flow-edge="true"]');
   const edgeCount = await flowEdges.count();
