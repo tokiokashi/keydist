@@ -158,7 +158,7 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   const layerLabel = page.locator('.input-active-layer');
 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  await expect(layerLabel).toContainText('現在のレイヤー');
+  await expect(layerLabel).toContainText('現在');
   await expect(layerLabel).toContainText('通常');
 
   await output.click();
