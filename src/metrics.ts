@@ -327,6 +327,7 @@ const isDirectSingleTapInput = (strokes: readonly Stroke[]): boolean => {
   if (strokes.length !== 1) return false;
   const stroke = strokes[0];
   if (stroke.aggregationGroupId !== SINGLE_LAYER_ID) return false;
+  if (stroke.classifications.includes('composition')) return false;
   if (stroke.char !== stroke.inputChar) return false;
 
   const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);
