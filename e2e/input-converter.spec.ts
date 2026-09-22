@@ -1,5 +1,51 @@
 import { expect, test } from '@playwright/test';
 
+test('Input Converter uses the wide FHD workspace without test-mode scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+
+  const settings = page.locator('.input-settings-panel');
+  const guide = page.getByLabel('レイヤーカンペ一覧');
+  const capture = page.locator('.input-capture-panel');
+  const keyboardPanel = page.locator('.input-keyboard-panel');
+  const layerLabel = page.locator('.input-active-layer');
+
+  const [settingsBox, guideBox, captureBox, keyboardBox] = await Promise.all([
+    settings.boundingBox(),
+    guide.boundingBox(),
+    capture.boundingBox(),
+    keyboardPanel.boundingBox(),
+  ]);
+  expect(settingsBox).not.toBeNull();
+  expect(guideBox).not.toBeNull();
+  expect(captureBox).not.toBeNull();
+  expect(keyboardBox).not.toBeNull();
+  expect(settingsBox!.x).toBeLessThan(captureBox!.x);
+  expect(guideBox!.x).toBeLessThan(keyboardBox!.x);
+  expect(guideBox!.y).toBeGreaterThan(settingsBox!.y);
+  expect(keyboardBox!.y).toBeGreaterThan(captureBox!.y);
+
+  const guideOverflowY = await guide.evaluate((element) => getComputedStyle(element).overflowY);
+  expect(guideOverflowY).not.toBe('auto');
+  expect(guideOverflowY).not.toBe('scroll');
+
+  const viewportOverflow = await page.evaluate(() =>
+    document.documentElement.scrollHeight - window.innerHeight);
+  expect(viewportOverflow).toBeLessThanOrEqual(1);
+
+  const before = await layerLabel.boundingBox();
+  await page.getByLabel('自由入力テキスト').click();
+  await page.keyboard.down('j');
+  const after = await layerLabel.boundingBox();
+  expect(before).not.toBeNull();
+  expect(after).not.toBeNull();
+  expect(after!.height).toBe(before!.height);
+  await page.keyboard.up('j');
+});
+
 test('Input Converter keeps browser key lifecycle consistent', async ({ page }) => {
   await page.goto('/input');
 
