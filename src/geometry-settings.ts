@@ -7,6 +7,7 @@ import {
   keyId,
   PHYSICAL_SHAPES,
   type Finger,
+  type ExtraPhysicalKeySpec,
   type FingerAssignment,
   type PhysicalShape,
   type PresetGeometryKind,
@@ -68,6 +69,22 @@ export function sanitizePhysicalShape(value: unknown, fallback: PhysicalShape): 
   const rowWidths = Array.isArray(source.rowWidths) && source.rowWidths.length === 4
     ? source.rowWidths.map((width, index) => integer(width, fallback.rowWidths[index] ?? 1, 1, 32))
     : [...fallback.rowWidths];
+  const fallbackExtraKeys = fallback.extraKeys?.map((key) => ({ ...key })) ?? [];
+  const fallbackExtraById = new Map(fallbackExtraKeys.map((key) => [key.id, key]));
+  const extraKeys: ExtraPhysicalKeySpec[] = Array.isArray(source.extraKeys)
+    ? source.extraKeys.slice(0, 64).flatMap((candidate) => {
+      const item = record(candidate);
+      if (typeof item.id !== 'string' || item.id.length === 0) return [];
+      const fallbackKey = fallbackExtraById.get(item.id);
+      return [{
+        id: item.id,
+        row: integer(item.row, fallbackKey?.row ?? -1, -32, 32),
+        col: integer(item.col, fallbackKey?.col ?? 0, -32, 32),
+        x: finite(item.x, fallbackKey?.x ?? 0, -32, 32),
+        y: finite(item.y, fallbackKey?.y ?? 0, -32, 32),
+      }];
+    })
+    : fallbackExtraKeys;
   const fallbackThumbs = fallback.thumbs.map((thumb) => ({ ...thumb }));
   const thumbs: ThumbKeySpec[] = Array.isArray(source.thumbs)
     ? source.thumbs.flatMap((candidate, index) => {
@@ -101,6 +118,7 @@ export function sanitizePhysicalShape(value: unknown, fallback: PhysicalShape): 
     name: typeof source.name === 'string' && source.name.length > 0 ? source.name : fallback.name,
     pitchMm: finite(source.pitchMm, fallback.pitchMm, 1, 100),
     rowWidths,
+    ...(extraKeys.length === 0 ? {} : { extraKeys }),
     thumbs: usableThumbs,
     ...(rowNumbers(source.rowStagger, fallback.rowStagger, -32, 32) === undefined
       ? {}
@@ -138,6 +156,12 @@ function sanitizeAssignment(value: unknown, fallback: FingerAssignment, shape: P
       keyFinger[id] = isNonThumb(candidate) ? candidate : fallbackKeyFinger(col);
     }
   });
+  for (const key of shape.extraKeys ?? []) {
+    const candidate = sourceKeyFinger[key.id] ?? fallbackKeyFingerMap[key.id];
+    keyFinger[key.id] = isNonThumb(candidate)
+      ? candidate
+      : fallbackKeyFinger(Math.max(0, Math.round(key.x)));
+  }
 
   const sourceHomeKey = record(source.homeKey);
   const fallbackHomeKey = record(fallback.homeKey);
