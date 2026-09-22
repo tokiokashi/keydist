@@ -204,7 +204,7 @@ function KeyboardFlow({
                   fill="none"
                   strokeWidth={0.75 + 2.35 * strength}
                   initial={reduceMotion ? false : { opacity: 0, pathLength: 0 }}
-                  animate={{ opacity: 0.12 + 0.76 * strength, pathLength: 1 }}
+                  animate={{ opacity: 0.62, pathLength: 1 }}
                   exit={reduceMotion ? undefined : { opacity: 0, pathLength: 0.5 }}
                   transition={reduceMotion
                     ? { duration: 0 }
@@ -299,18 +299,6 @@ function RelativeMovementPlot({
         <circle className="flow-axis-ring" cx={cx} cy={cy} r={radius} />
         <line className="flow-axis" x1="24" y1={cy} x2="216" y2={cy} />
         <line className="flow-axis" x1={cx} y1="14" x2={cx} y2="202" />
-        <motion.circle
-          className="mean-endpoint"
-          r="3.2"
-          animate={{
-            cx: meanEnd.x,
-            cy: meanEnd.y,
-            opacity: summary.angle === undefined ? 0 : 1,
-          }}
-          transition={reduceMotion
-            ? { duration: 0 }
-            : { type: 'spring', stiffness: 170, damping: 22 }}
-        />
         <circle className="flow-origin" cx={cx} cy={cy} r="4" />
         <AnimatePresence initial={false}>
           {relative.map((vector) => {
@@ -475,6 +463,18 @@ function DirectionPlot({
           x1={cx}
           y1={cy}
           animate={{ x2: meanEnd.x, y2: meanEnd.y, opacity: summary.angle === undefined ? 0 : 1 }}
+          transition={reduceMotion
+            ? { duration: 0 }
+            : { type: 'spring', stiffness: 170, damping: 22 }}
+        />
+        <motion.circle
+          className="mean-endpoint"
+          r="3.2"
+          animate={{
+            cx: meanEnd.x,
+            cy: meanEnd.y,
+            opacity: summary.angle === undefined ? 0 : 1,
+          }}
           transition={reduceMotion
             ? { duration: 0 }
             : { type: 'spring', stiffness: 170, damping: 22 }}
