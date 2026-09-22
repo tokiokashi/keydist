@@ -192,6 +192,21 @@
   stroke: currentColor;
 }
 
+.flow-edge-inward {
+  color: #7fc7a4;
+  stroke: currentColor;
+}
+
+.flow-edge-outward {
+  color: #c19de9;
+  stroke: currentColor;
+}
+
+.flow-edge-same {
+  color: #a5abb0;
+  stroke: currentColor;
+}
+
 .flow-marker-left {
   fill: #ff8a66;
 }
@@ -200,8 +215,17 @@
   fill: #60a9ff;
 }
 
-.flow-marker-cross {
+.flow-marker-cross,
+.flow-marker-same {
   fill: #a5abb0;
+}
+
+.flow-marker-inward {
+  fill: #7fc7a4;
+}
+
+.flow-marker-outward {
+  fill: #c19de9;
 }
 
 .flow-key rect {
@@ -271,6 +295,20 @@
 
 .flow-dot-cross {
   background: #a5abb0;
+}
+
+.flow-dot-inward {
+  background: #7fc7a4;
+}
+
+.flow-dot-outward {
+  background: #c19de9;
+}
+
+.flow-coverage {
+  padding-left: 0.65rem;
+  border-left: 1px solid rgb(255 255 255 / 12%);
+  color: #8d9699;
 }
 
 .flow-analysis {
@@ -373,22 +411,31 @@
   filter: drop-shadow(0 0 4px currentColor);
 }
 
-.relative-vector-left {
-  color: #ff8a66;
+.relative-vector-inward {
+  color: #7fc7a4;
   stroke: currentColor;
 }
 
-.relative-vector-right {
-  color: #60a9ff;
+.relative-vector-outward {
+  color: #c19de9;
   stroke: currentColor;
 }
 
-.relative-marker-left {
-  fill: #ff8a66;
+.relative-vector-same {
+  color: #a5abb0;
+  stroke: currentColor;
 }
 
-.relative-marker-right {
-  fill: #60a9ff;
+.relative-marker-inward {
+  fill: #7fc7a4;
+}
+
+.relative-marker-outward {
+  fill: #c19de9;
+}
+
+.relative-marker-same {
+  fill: #a5abb0;
 }
 
 .rose-sector {
@@ -396,12 +443,12 @@
   stroke-width: 0.4;
 }
 
-.rose-sector-left {
-  fill: #ff8a66;
+.rose-sector-inward {
+  fill: #7fc7a4;
 }
 
-.rose-sector-right {
-  fill: #60a9ff;
+.rose-sector-outward {
+  fill: #c19de9;
 }
 
 .mean-resultant {
@@ -413,6 +460,23 @@
 
 .mean-marker {
   fill: #f6f3dc;
+}
+
+.flow-roll-legend {
+  position: absolute;
+  top: 2.2rem;
+  right: 0.8rem;
+  z-index: 2;
+  display: flex;
+  gap: 0.65rem;
+  color: #aeb5b7;
+  font: 600 0.61rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.flow-roll-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .roll-summary {
