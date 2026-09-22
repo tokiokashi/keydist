@@ -23,7 +23,16 @@ export function resolveConditions(
   override: Partial<UiStateConditionsDefaults> | undefined,
 ): ResolvedConditions {
   const values = { ...defaults, ...override };
-  const actionRealizationPolicy = { ...values.actionRealization };
+  const actionRealizationPolicy: ActionRealizationPolicy = {
+    triggerActivation: values.actionRealization.triggerActivation,
+    triggerActivationOverrides: (values.actionRealization.triggerActivationOverrides ?? []).map((item) => ({
+      selector: {
+        ...(item.selector.layerId === undefined ? {} : { layerId: item.selector.layerId }),
+        ...(item.selector.triggerKeys === undefined ? {} : { triggerKeys: [...item.selector.triggerKeys] }),
+      },
+      grouping: item.grouping,
+    })),
+  };
   return {
     geometry: values.geometry,
     chainPolicy: { ...values.chain },
