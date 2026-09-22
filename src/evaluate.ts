@@ -173,9 +173,10 @@ export function evaluate(
   // ローマ字配列はかなテキストを展開してから打つ。コンボの誤命中を防ぐため、
   // 展開前の単位も残しておく。かな配列はそのまま打つ。
   const chunks = layout.romajiTable ? kanaToRomajiChunks(text, layout.romajiTable) : undefined;
-  const chars = chunks
+  const chars = (chunks
     ? chunks.flatMap((chunk) => [...chunk.roman])
-    : [...text];
+    : [...text])
+    .map(normalizeEvaluationChar);
   const chunkRanges: RomajiChunkRange[] = [];
   if (chunks) {
     let start = 0;
@@ -612,6 +613,14 @@ function canFireYouonOnlyCombo(cursor: number, chars: string[], chunks: RomajiCh
   if (cursor === 0 || !/[bcdfghjklmnpqrstvwxyz]/.test(chars[cursor - 1])) return false;
   return chunks.some((chunk) => chunk.kanaLength > 1 && chunk.start < cursor && cursor < chunk.end);
 }
+
+const EVALUATION_CHAR_ALIASES: Readonly<Record<string, string>> = {
+  '！': '!',
+  '？': '?',
+};
+
+const normalizeEvaluationChar = (char: string): string =>
+  EVALUATION_CHAR_ALIASES[char] ?? char;
 
 interface CostDecision {
   distance: number;
