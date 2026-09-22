@@ -74,6 +74,12 @@ interface MultiStepMatch {
   readonly previousSegments: readonly RecognitionSegment[];
 }
 
+interface ReplayWindowKey {
+  readonly key: PhysicalKeyId;
+  readonly released: boolean;
+  readonly order: number;
+}
+
 const canonicalKeys = (keys: readonly PhysicalKeyId[]): PhysicalKeyId[] =>
   [...new Set(keys.map(resolveKeyId))];
 
@@ -130,6 +136,7 @@ const sameStrings = (
  */
 export class TypingInputEngine {
   readonly #candidates: readonly Candidate[];
+  readonly #knownPhysicalKeys = new Set<PhysicalKeyId>();
   readonly #maxSequenceLength: number;
   readonly #triggerPolicy: TriggerRealizationPolicy;
   readonly #actionPolicy: ActionRealizationPolicy;
@@ -157,6 +164,11 @@ export class TypingInputEngine {
     for (const [output, alternatives] of canonicalInputs) {
       for (const alternative of alternatives) {
         if (alternative.semanticInputs.length === 0) continue;
+        for (const input of alternative.semanticInputs) {
+          for (const rawKey of input.physicalKeys) {
+            this.#knownPhysicalKeys.add(resolveKeyId(rawKey));
+          }
+        }
         if (alternative.semanticInputs.length !== alternative.baseRealizations.length) {
           throw new Error(
             'InputAlternativeのSemanticInput列とBaseActionRealization列の長さが一致しない',
@@ -216,6 +228,15 @@ export class TypingInputEngine {
     }
 
     this.#pressed.add(key);
+
+    if (!this.#knownPhysicalKeys.has(key)) {
+      // canonicalに一度も現れないphysical keyは出力なしのgesture boundaryとして扱う。
+      // one-shot/chord待ちは終了するが、#resetRecognitionWindow() は物理的に保持中の
+      // hold triggerだけseedし直すため、while-held状態は維持される。
+      this.#resetRecognitionWindow();
+      return this.#result(recognized);
+    }
+
     this.#windowKeys.add(key);
     this.#releasedWindowKeys.delete(key);
     this.#pressOrder.set(key, this.#nextOrder);
@@ -445,6 +466,80 @@ export class TypingInputEngine {
       || left.candidate.order - right.candidate.order)[0];
   }
 
+  #hasStandaloneInput(key: PhysicalKeyId): boolean {
+    return this.#candidates.some((candidate) => {
+      if (!this.#eligible(candidate)) return false;
+      if (
+        candidate.operationSignatures.length !== 1
+        || candidate.alternative.semanticInputs.length !== 1
+      ) return false;
+      const keys = canonicalKeys(candidate.alternative.semanticInputs[0].physicalKeys);
+      return keys.length === 1 && keys[0] === key;
+    });
+  }
+
+  #unconsumedWindowKeys(
+    consumedKeys: readonly PhysicalKeyId[],
+  ): ReplayWindowKey[] {
+    const consumed = keySet(consumedKeys);
+    return [...this.#windowKeys]
+      .filter((key) => {
+        if (consumed.has(key) || this.#seededHoldKeys.has(key)) return false;
+        // release済みのtrigger専用keyは、次の入力を1回消費した時点で役目を終える。
+        // 単打を持つkeyだけをfallback replayし、prefix one-shotを後続入力へ持ち越さない。
+        return !this.#releasedWindowKeys.has(key) || this.#hasStandaloneInput(key);
+      })
+      .map((key) => ({
+        key,
+        released: this.#releasedWindowKeys.has(key),
+        order: this.#pressOrder.get(key) ?? Number.MAX_SAFE_INTEGER,
+      }))
+      .sort((left, right) => left.order - right.order);
+  }
+
+  /**
+   * longest-match待ちのcandidate確定時に同じwindowへ入っていた未消費keyを、
+   * 元のpress順で新しいrecognition windowへ戻す。
+   *
+   * overlap量そのものは推定し直さない。release済みkeyはdown相当の評価後に
+   * released状態へ戻すことで、未定義の重なりを単打として失わず、
+   * prefix等のrelease後も有効なorder semanticはそのまま延長できる。
+   */
+  #replayUnconsumedWindowKeys(
+    keys: readonly ReplayWindowKey[],
+  ): RecognizedTypingInput[] {
+    const recognized: RecognizedTypingInput[] = [];
+
+    for (const replay of keys) {
+      if (this.#pending !== undefined && !this.#canExtendPendingWith(replay.key)) {
+        recognized.push(...this.#commitStep(this.#pending));
+      }
+
+      this.#windowKeys.add(replay.key);
+      this.#releasedWindowKeys.delete(replay.key);
+      this.#pressOrder.set(replay.key, this.#nextOrder);
+      this.#nextOrder += 1;
+
+      const match = this.#bestMatch();
+      if (match !== undefined) {
+        if (this.#hasPotentialExtension(match)) this.#pending = match;
+        else recognized.push(...this.#commitStep(match));
+      }
+
+      if (!replay.released || !this.#windowKeys.has(replay.key)) continue;
+
+      this.#releasedWindowKeys.add(replay.key);
+      if (
+        this.#pending?.input.physicalKeys.map(resolveKeyId).includes(replay.key)
+        && !this.#hasPotentialExtension(this.#pending)
+      ) {
+        recognized.push(...this.#commitStep(this.#pending));
+      }
+    }
+
+    return recognized;
+  }
+
   #realize(
     realizations: readonly BaseActionRealization[],
     previous: TriggerHoldState | undefined,
@@ -464,6 +559,7 @@ export class TypingInputEngine {
   }
 
   #commitStep(step: StepCandidate): RecognizedTypingInput[] {
+    const unconsumedWindowKeys = this.#unconsumedWindowKeys(step.input.physicalKeys);
     const holdStateBefore = this.#holdState;
     const provisional = this.#realize([step.realization], holdStateBefore);
     this.#holdState = provisional.holdState;
@@ -511,7 +607,7 @@ export class TypingInputEngine {
         ...(replacePreviousText.length === 0
           ? {}
           : { replacePreviousText }),
-      }];
+      }, ...this.#replayUnconsumedWindowKeys(unconsumedWindowKeys)];
     }
 
     const direct = this.#singleStepCandidate(step.signature);
@@ -539,7 +635,7 @@ export class TypingInputEngine {
         output: direct.output,
         alternative: direct.alternative,
         actions: realized.actions,
-      }];
+      }, ...this.#replayUnconsumedWindowKeys(unconsumedWindowKeys)];
     }
 
     this.#segments.push({
@@ -555,7 +651,7 @@ export class TypingInputEngine {
     });
     this.#trimSegments();
     this.#resetRecognitionWindow();
-    return [];
+    return this.#replayUnconsumedWindowKeys(unconsumedWindowKeys);
   }
 
   #trimSegments(): void {
