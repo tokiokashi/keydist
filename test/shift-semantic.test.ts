@@ -4,6 +4,7 @@ import { TypingInputEngine } from '../src/core/input-converter/index.ts';
 import { DEFAULT_OPTIONS, evaluate } from '../src/evaluate.ts';
 import { buildGeometry, SHIFT_KEY } from '../src/geometry.ts';
 import { LAYOUTS } from '../src/layouts/index.ts';
+import { computeMetrics } from '../src/metrics.ts';
 
 const qwerty = LAYOUTS.find((layout) => layout.id === 'qwerty')!;
 
@@ -174,4 +175,18 @@ test('通常Shiftはcompositionではなくmodifier semanticとして残る', ()
     assert.equal(input.roles.some((role) => role.role === 'modifier'), true);
     assert.equal(alternative.origin, 'sequence');
   }
+});
+
+
+test('Shift pressは通常のmetrics pipelineへそのまま計上される', () => {
+  const geometry = buildGeometry('row-staggered');
+  const lower = computeMetrics(evaluate('a', qwerty, geometry, DEFAULT_OPTIONS), geometry);
+  const upper = computeMetrics(evaluate('A', qwerty, geometry, DEFAULT_OPTIONS), geometry);
+
+  assert.equal(lower.presses, 1);
+  assert.equal(upper.presses, 2);
+  assert.equal(upper.perFingerPresses.RP, lower.perFingerPresses.RP + 1);
+  assert.equal(upper.keyCounts.get(SHIFT_KEY.R), 1);
+  assert.equal(upper.layers.find((layer) => layer.id === 'layer:Shift')?.presses, 2);
+  assert.equal(upper.singleTapLayerRate, 0);
 });
