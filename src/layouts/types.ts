@@ -60,10 +60,10 @@ export interface Face {
   /** triggerの持続能力。FaceModeとは独立し、triggerを持つcanonical Faceでは明示する。 */
   triggerPersistence?: TriggerPersistence;
   /**
-   * trigger action grouping等で使うcanonical logical group。
-   * presentation layerとは独立し、同じ運動規則を持つmodifier群をまとめる。
+   * modifier inputで各trigger keyが担うlogical semantic group。
+   * keyはFace.trigger内のauthoring key。複数triggerが異なるgroupを同時に要求できる。
    */
-  triggerGroup?: string;
+  modifierGroups?: Readonly<Record<string, string>>;
   /**
    * trigger が出力キーより先/後である必要がある場合の順序制約。
    * mode='prefix' / 'suffix' は暗黙に同じ制約を持つ。simultaneousのまま
