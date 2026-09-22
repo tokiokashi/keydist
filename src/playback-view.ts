@@ -266,7 +266,7 @@ function triggerSettingsMarkup(layout: Layout): string {
         </details>`}
       </details>`;
 
-  return `<details class="playback-arpeggio-details" open>
+  return `<details class="playback-arpeggio-details">
     <summary>Trigger realization</summary>
     <div class="playback-dialog-grid">
       <label class="playback-finger-toggle">
