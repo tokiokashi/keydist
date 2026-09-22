@@ -23,8 +23,8 @@ const state = () => createDefaultUiState({
   selectedLayouts: { en: ['qwerty'], ja: ['qwerty'] },
 });
 
-test('ActionRealizationPolicyへの保存schema変更でcondition bundle versionを2へ上げる', () => {
-  assert.equal(CONDITION_BUNDLE_VERSION, 2);
+test('trigger activation override対応でcondition bundle versionを3へ上げる', () => {
+  assert.equal(CONDITION_BUNDLE_VERSION, 3);
 
   const current = state();
   const bundle = conditionBundleFromState(current, [], [], { rules: [], assignments: {} }, []);
