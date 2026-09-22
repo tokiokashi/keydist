@@ -121,6 +121,26 @@ test('既定geometryは左右Shiftを小指のphysical keyとして持つ', () =
   }
 });
 
+test('row-staggeredのShift座標をbottom row基準で固定する', () => {
+  const geometry = buildGeometry('row-staggered');
+  assert.deepEqual(
+    {
+      left: {
+        x: geometry.keys.get(SHIFT_KEY.L)?.x,
+        y: geometry.keys.get(SHIFT_KEY.L)?.y,
+      },
+      right: {
+        x: geometry.keys.get(SHIFT_KEY.R)?.x,
+        y: geometry.keys.get(SHIFT_KEY.R)?.y,
+      },
+    },
+    {
+      left: { x: -0.375, y: 3 },
+      right: { x: 12.125, y: 3 },
+    },
+  );
+});
+
 
 test('全角！／？は半角Shift記号と同じphysical inputとして評価する', () => {
   const geometry = buildGeometry('row-staggered');
