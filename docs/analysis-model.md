@@ -154,25 +154,31 @@ active hold groupとCapability / Requirementを照合して継続可否を決め
 Chain / Transition / Timingが独自にhold可能性を再判定しない。
 
 Trigger realizationの後に `ActionRealizationPolicy` を適用し、fresh trigger activationと
-fresh outputをどのaction列として解析するかを決める。現在の
-`triggerActivation: combined | separate` はcontinuous holdとは独立した軸である。
+fresh outputをどのaction列として解析するかを決める。`triggerActivation` は
+`disabled | semantic` で、continuous holdとは独立した軸である。
 
-`separate` では、同一actionにあるfresh `triggerKeys` とfresh `outputKeys` を、
-**semantic Requirementを保てる場合だけ**先行trigger actionとoutput actionへ分ける。
-`useHold=false` でも各入力のfresh triggerを分離できる。`useHold=true` の場合は最初の
-activationだけがfresh triggerであり、continueではheld triggerを再Pressしないため追加分割しない。
+`semantic` ではcanonical Requirementからactivation classを分類し、既定groupingを決める。
 
-- overlapだけ、または `order(trigger -> output)` を要求する場合はsplitできる
-- `order(output -> trigger)` を要求するsuffix型は、順序を反転させずcombinedを維持する
-- trigger / remaining group自体がorder境界の両側へ跨る場合もcombinedを維持する
+- `prepress-required`: `order(trigger -> output)` がある → `separate`
+- `order-free`: trigger/output間のorder制約なし → `combined`
+- `postpress-required`: `order(output -> trigger)` がある → `combined`
+
+`separate` が選ばれたgroupだけ、同一actionにあるfresh `triggerKeys` とfresh
+`outputKeys` を、**semantic Requirementを保てる場合だけ**先行trigger actionとoutput
+actionへ分ける。`useHold=false` でもfresh triggerは分離できる。`useHold=true` の場合は
+最初のactivationだけがfresh triggerであり、continueではheld triggerを再Pressしないため
+追加分割しない。
+
+- trigger / remaining group自体がorder境界の両側へ跨る場合はcombinedを維持する
 - compositionと、prefix trigger-only actionのように既に分離済みの操作は変換しない
 - trigger/outputが同じphysical pressを兼ねるactionは分離しない
 
-Requirementはdefault groupingを推測する材料には使わず、Policy変換後のstreamが
-canonical semanticに反していないことを確認するvalidity gateとしてだけ使う。
+Policyはactivation classごとのoverrideに加え、canonical `triggerGroupId / layerId / triggerKeys`
+selectorによる個別overrideを持てる。優先度はphysical trigger selector > logical trigger group >
+layer > activation class > semantic default。layout id / Face index / presentation labelは解析判定に使わない。
 
-Policyはlayout全体の既定 `triggerActivation` に加え、canonical `layerId / triggerKeys`
-selectorによるgroup別overrideを持てる。layout id / Face index / presentation labelは解析判定に使わない。
+`triggerGroupId` はpresentation layerとは別のcanonical metadataで、薙刀式の「拗音」
+「外来音・濁音拗音」のように、同じ運動規則を共有するmodifier群をまとめるために使う。
 
 この変換はStroke生成**前**に行うため、Metricsだけのvirtual +1は行わない。
 Chain / Transition / Metrics / Timing / Playbackはすべて同じPolicy適用後Stroke streamを見る。
