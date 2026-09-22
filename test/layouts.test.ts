@@ -137,7 +137,7 @@ test('triggerless compositionはcanonicalとpresentationの両方でcomboへ帰�
 
   const input = layout.canonicalInputs.get('きゃ')?.[0]?.semanticInputs[0];
   assert.ok(input);
-  assert.equal(input.layerId, 'combo');
+  assert.equal(input.aggregationGroupId, 'combo');
   assert.ok(input.classifications.includes('composition'));
   assert.equal(layout.faceLayerIds?.get(face), 'combo');
   assert.deepEqual(
@@ -508,13 +508,21 @@ test('薙刀式の装飾triggerはcanonical logical groupを保持する', () =>
   assert.ok(youon);
   assert.ok(extension);
 
-  assert.equal(sandS.triggerGroupId, 'SandS');
-  assert.equal(youon.triggerGroupId, '拗音');
-  assert.equal(extension.triggerGroupId, '外来音・濁音拗音');
+  assert.deepEqual(
+    sandS.roles.filter((role) => role.role === 'modifier'),
+    [{ key: 'thumb-r', role: 'modifier', modifierGroupId: 'SandS' }],
+  );
+  assert.deepEqual(
+    youon.roles.filter((role) => role.role === 'modifier'),
+    [{ key: 'h', role: 'modifier', modifierGroupId: '拗音' }],
+  );
   assert.equal(extension.classifications.includes('composition'), false);
   assert.deepEqual(
-    extension.roles.map((role) => role.key).sort(),
-    ['.', 'f'],
+    extension.roles
+      .filter((role) => role.role === 'modifier')
+      .map((role) => [role.key, role.modifierGroupId])
+      .sort(),
+    [['.', '外来音'], ['f', '濁音']],
   );
 });
 
