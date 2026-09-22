@@ -87,11 +87,18 @@ function edgePath(vector: BigramVector, minX: number, minY: number): string {
   const start = { x: from.x + ux * 20, y: from.y + uy * 18 };
   const end = { x: to.x - ux * 24, y: to.y - uy * 21 };
   const mid = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
-  const directionKey = vector.fromKeyIds.join('+').localeCompare(vector.toKeyIds.join('+'));
-  const bend = directionKey <= 0 ? 9 : -9;
+  // 往復で弧の側が反転すると線が蛇行して見える。
+  // 法線を画面上側（ほぼ垂直なら右側）へ揃え、全edgeを同じ側へごく浅く曲げる。
+  let nx = -uy;
+  let ny = ux;
+  if (ny > 0 || (Math.abs(ny) < 0.15 && nx < 0)) {
+    nx *= -1;
+    ny *= -1;
+  }
+  const bend = Math.min(7, Math.max(3.5, length * 0.035));
   const control = {
-    x: mid.x - uy * bend,
-    y: mid.y + ux * bend,
+    x: mid.x + nx * bend,
+    y: mid.y + ny * bend,
   };
   return `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`;
 }
@@ -152,54 +159,6 @@ function KeyboardFlow({
         role="img"
         aria-label="キーボード上のbigramベクトル"
       >
-        <defs>
-          {(['left', 'right', 'cross', 'inward', 'outward', 'same'] as const).map((kind) => (
-            <marker
-              id={`flow-arrow-${kind}`}
-              key={kind}
-              markerUnits="userSpaceOnUse"
-              markerWidth="6"
-              markerHeight="6"
-              refX="5.3"
-              refY="3"
-              orient="auto"
-            >
-              <path d="M0,0 L6,3 L0,6 z" className={`flow-marker-${kind}`} />
-            </marker>
-          ))}
-        </defs>
-
-        <g className="flow-vector-layer">
-          <AnimatePresence initial={false}>
-            {displayedVectors.map((vector) => {
-              const strength = weightScale(vector.weight, maxWeight);
-              const markerKind = showRollDirection && vector.fingerDirection !== undefined
-                ? vector.fingerDirection
-                : vector.hand;
-              return (
-                <motion.path
-                  key={vector.id}
-                  className={edgeClass(vector, showRollDirection)}
-                  d={edgePath(vector, keyBounds.minX, keyBounds.minY)}
-                  markerEnd={`url(#flow-arrow-${markerKind})`}
-                  fill="none"
-                  strokeWidth={0.75 + 2.35 * strength}
-                  initial={reduceMotion ? false : { opacity: 0, pathLength: 0 }}
-                  animate={{ opacity: 0.12 + 0.76 * strength, pathLength: 1 }}
-                  exit={reduceMotion ? undefined : { opacity: 0, pathLength: 0.5 }}
-                  transition={reduceMotion
-                    ? { duration: 0 }
-                    : { type: 'spring', stiffness: 210, damping: 28, mass: 0.7 }}
-                >
-                  <title>
-                    {`${vector.fromKeyIds.join('+')} → ${vector.toKeyIds.join('+')} · ${vector.weight}回`}
-                  </title>
-                </motion.path>
-              );
-            })}
-          </AnimatePresence>
-        </g>
-
         <g className="flow-key-layer">
           {keys.map((key) => {
             const point = chartPoint(key, keyBounds.minX, keyBounds.minY);
@@ -231,6 +190,33 @@ function KeyboardFlow({
               </g>
             );
           })}
+        </g>
+
+        <g className="flow-vector-layer">
+          <AnimatePresence initial={false}>
+            {displayedVectors.map((vector) => {
+              const strength = weightScale(vector.weight, maxWeight);
+              return (
+                <motion.path
+                  key={vector.id}
+                  className={edgeClass(vector, showRollDirection)}
+                  d={edgePath(vector, keyBounds.minX, keyBounds.minY)}
+                  fill="none"
+                  strokeWidth={0.75 + 2.35 * strength}
+                  initial={reduceMotion ? false : { opacity: 0, pathLength: 0 }}
+                  animate={{ opacity: 0.12 + 0.76 * strength, pathLength: 1 }}
+                  exit={reduceMotion ? undefined : { opacity: 0, pathLength: 0.5 }}
+                  transition={reduceMotion
+                    ? { duration: 0 }
+                    : { type: 'spring', stiffness: 210, damping: 28, mass: 0.7 }}
+                >
+                  <title>
+                    {`${vector.fromKeyIds.join('+')} → ${vector.toKeyIds.join('+')} · ${vector.weight}回`}
+                  </title>
+                </motion.path>
+              );
+            })}
+          </AnimatePresence>
         </g>
       </svg>
       <div className="flow-legend" aria-hidden="true">
@@ -309,29 +295,22 @@ function RelativeMovementPlot({
         <span>{relative.reduce((sum, vector) => sum + vector.weight, 0)} transitions</span>
       </header>
       <svg viewBox="0 0 240 220" role="img" aria-label={`${hand} hand relative movement`}>
-        <defs>
-          {(['inward', 'outward', 'same'] as const).map((direction) => (
-            <marker
-              id={`relative-arrow-${hand}-${direction}`}
-              key={direction}
-              markerUnits="userSpaceOnUse"
-              markerWidth="6"
-              markerHeight="6"
-              refX="5.3"
-              refY="3"
-              orient="auto"
-            >
-              <path
-                d="M0,0 L6,3 L0,6 z"
-                className={`relative-marker relative-marker-${direction}`}
-              />
-            </marker>
-          ))}
-        </defs>
         <circle className="flow-axis-ring" cx={cx} cy={cy} r={radius / 2} />
         <circle className="flow-axis-ring" cx={cx} cy={cy} r={radius} />
         <line className="flow-axis" x1="24" y1={cy} x2="216" y2={cy} />
         <line className="flow-axis" x1={cx} y1="14" x2={cx} y2="202" />
+        <motion.circle
+          className="mean-endpoint"
+          r="3.2"
+          animate={{
+            cx: meanEnd.x,
+            cy: meanEnd.y,
+            opacity: summary.angle === undefined ? 0 : 1,
+          }}
+          transition={reduceMotion
+            ? { duration: 0 }
+            : { type: 'spring', stiffness: 170, damping: 22 }}
+        />
         <circle className="flow-origin" cx={cx} cy={cy} r="4" />
         <AnimatePresence initial={false}>
           {relative.map((vector) => {
@@ -343,7 +322,6 @@ function RelativeMovementPlot({
               className={`relative-vector relative-vector-${direction}`}
               x1={cx}
               y1={cy}
-              markerEnd={`url(#relative-arrow-${hand}-${direction})`}
               initial={reduceMotion ? false : { x2: cx, y2: cy, opacity: 0 }}
               animate={{
                 x2: cx + vector.dx * plotScale,
@@ -440,19 +418,6 @@ function DirectionPlot({
         <span>集中度 {summary.magnitude.toFixed(2)}</span>
       </header>
       <svg viewBox="0 0 240 230" role="img" aria-label={`${hand} hand direction distribution`}>
-        <defs>
-          <marker
-            id={`mean-arrow-${hand}`}
-            markerUnits="userSpaceOnUse"
-            markerWidth="7"
-            markerHeight="7"
-            refX="6.2"
-            refY="3.5"
-            orient="auto"
-          >
-            <path d="M0,0 L7,3.5 L0,7 z" className="mean-marker" />
-          </marker>
-        </defs>
         {[36, 62, 88].map((radius) => (
           <circle className="flow-axis-ring" cx={cx} cy={cy} r={radius} key={radius} />
         ))}
@@ -509,7 +474,6 @@ function DirectionPlot({
           className="mean-resultant"
           x1={cx}
           y1={cy}
-          markerEnd={`url(#mean-arrow-${hand})`}
           animate={{ x2: meanEnd.x, y2: meanEnd.y, opacity: summary.angle === undefined ? 0 : 1 }}
           transition={reduceMotion
             ? { duration: 0 }
@@ -523,20 +487,46 @@ function DirectionPlot({
       </div>
       <div className="roll-summary">
         <div className="roll-bar" aria-label="inward outward比率">
-          <motion.span
-            className="roll-inward"
-            animate={{ width: `${inwardRate * 100}%` }}
-            transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 190, damping: 24 }}
-          />
-          <motion.span
-            className="roll-outward"
-            animate={{ width: `${outwardRate * 100}%` }}
-            transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 190, damping: 24 }}
-          />
+          {hand === 'left' ? (
+            <>
+              <motion.span
+                className="roll-outward"
+                animate={{ width: `${outwardRate * 100}%` }}
+                transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 190, damping: 24 }}
+              />
+              <motion.span
+                className="roll-inward"
+                animate={{ width: `${inwardRate * 100}%` }}
+                transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 190, damping: 24 }}
+              />
+            </>
+          ) : (
+            <>
+              <motion.span
+                className="roll-inward"
+                animate={{ width: `${inwardRate * 100}%` }}
+                transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 190, damping: 24 }}
+              />
+              <motion.span
+                className="roll-outward"
+                animate={{ width: `${outwardRate * 100}%` }}
+                transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 190, damping: 24 }}
+              />
+            </>
+          )}
         </div>
         <div>
-          <span>inward {(inwardRate * 100).toFixed(1)}%</span>
-          <span>outward {(outwardRate * 100).toFixed(1)}%</span>
+          {hand === 'left' ? (
+            <>
+              <span>outward {(outwardRate * 100).toFixed(1)}%</span>
+              <span>inward {(inwardRate * 100).toFixed(1)}%</span>
+            </>
+          ) : (
+            <>
+              <span>inward {(inwardRate * 100).toFixed(1)}%</span>
+              <span>outward {(outwardRate * 100).toFixed(1)}%</span>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -685,8 +675,8 @@ export function BigramVectorView() {
             <h2>Keyboard Flow</h2>
           </div>
           <p>
-            頻度の高い経路を優先表示し、線幅は対数圧縮する。
-            2指選択時はinward / outwardを色分けする。
+            頻度の高い結合を優先表示し、太さを対数圧縮する。
+            線はキーの上へ重ね、2指選択時はinward / outwardを色分けする。
           </p>
         </header>
         <KeyboardFlow
@@ -754,7 +744,7 @@ export function BigramVectorView() {
                 </div>
                 <p>
                   各vectorを単位長へ正規化。sectorはinward / outwardを色分けする。
-                  白い矢印はfrequency-weighted mean resultantで、長さが方向の集中度を表す。
+                  白い線はfrequency-weighted mean resultantで、長さが方向の集中度を表す。
                 </p>
               </header>
               <div className="flow-two-up">
