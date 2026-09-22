@@ -161,10 +161,10 @@ test('Yodaka principle: direct + 2-key + 3-key chordを同じcanonical mapで扱
   engine.handle({ type: 'up', key: 'f' });
 
   engine.handle({ type: 'down', key: 'd' });
-  const kana = engine.handle({ type: 'down', key: 'j' }).recognized[0];
+  assert.deepEqual(engine.handle({ type: 'down', key: 'j' }).recognized, []);
+  const kana = engine.handle({ type: 'up', key: 'j' }).recognized[0];
   assert.equal(kana.output, 'か');
   assert.deepEqual(kana.actions.map((action) => action.keys), [['d', 'j']]);
-  engine.handle({ type: 'up', key: 'j' });
   engine.handle({ type: 'up', key: 'd' });
 
   engine.handle({ type: 'down', key: 'd' });
