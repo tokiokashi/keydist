@@ -25,10 +25,10 @@ import './bigram-vector-view.css';
 
 const SAMPLE = SAMPLE_TEXT_JA.replace(/\s+/g, '');
 const FINGER_OPTIONS: readonly { id: FingerClass; label: string }[] = [
-  { id: 'pinky', label: '小' },
-  { id: 'ring', label: '薬' },
-  { id: 'middle', label: '中' },
   { id: 'index', label: '人' },
+  { id: 'middle', label: '中' },
+  { id: 'ring', label: '薬' },
+  { id: 'pinky', label: '小' },
 ];
 const SCALE = 58;
 const PAD = 42;
@@ -40,6 +40,7 @@ interface RelativeVector {
   weight: number;
   fromFingerClass: FingerClass;
   toFingerClass: FingerClass;
+  fingerDirection: BigramVector['fingerDirection'];
 }
 
 function layoutGeometry(layout: Layout): Geometry {
@@ -95,8 +96,26 @@ function edgePath(vector: BigramVector, minX: number, minY: number): string {
   return `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`;
 }
 
-function edgeClass(hand: BigramVector['hand']): string {
-  return `flow-edge flow-edge-${hand}`;
+function edgeClass(vector: BigramVector, showRollDirection: boolean): string {
+  if (showRollDirection && vector.fingerDirection !== undefined) {
+    return `flow-edge flow-edge-${vector.fingerDirection}`;
+  }
+  return `flow-edge flow-edge-${vector.hand}`;
+}
+
+function weightScale(weight: number, maxWeight: number): number {
+  if (maxWeight <= 1) return 1;
+  return Math.log1p(weight) / Math.log1p(maxWeight);
+}
+
+function visibleKeyboardVectors(
+  vectors: readonly BigramVector[],
+  selectedFingerCount: number,
+): readonly BigramVector[] {
+  const limit = selectedFingerCount === 0 ? 42 : selectedFingerCount === 1 ? 54 : 72;
+  return [...vectors]
+    .sort((a, b) => b.weight - a.weight || a.id.localeCompare(b.id))
+    .slice(0, limit);
 }
 
 function KeyboardFlow({
@@ -115,7 +134,15 @@ function KeyboardFlow({
   const keyBounds = useMemo(() => bounds(keys), [keys]);
   const width = PAD * 2 + (keyBounds.maxX - keyBounds.minX) * SCALE;
   const height = PAD * 2 + (keyBounds.maxY - keyBounds.minY) * SCALE;
-  const maxWeight = Math.max(1, ...vectors.map((vector) => vector.weight));
+  const displayedVectors = useMemo(
+    () => visibleKeyboardVectors(vectors, selectedFingers.length),
+    [vectors, selectedFingers.length],
+  );
+  const maxWeight = Math.max(1, ...displayedVectors.map((vector) => vector.weight));
+  const totalWeight = vectors.reduce((sum, vector) => sum + vector.weight, 0);
+  const displayedWeight = displayedVectors.reduce((sum, vector) => sum + vector.weight, 0);
+  const coverage = totalWeight === 0 ? 0 : displayedWeight / totalWeight;
+  const showRollDirection = selectedFingers.length === 2;
 
   return (
     <div className="flow-stage">
@@ -126,31 +153,39 @@ function KeyboardFlow({
         aria-label="キーボード上のbigramベクトル"
       >
         <defs>
-          <marker id="flow-arrow-left" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-            <path d="M0,0 L7,3.5 L0,7 z" className="flow-marker-left" />
-          </marker>
-          <marker id="flow-arrow-right" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-            <path d="M0,0 L7,3.5 L0,7 z" className="flow-marker-right" />
-          </marker>
-          <marker id="flow-arrow-cross" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-            <path d="M0,0 L7,3.5 L0,7 z" className="flow-marker-cross" />
-          </marker>
+          {(['left', 'right', 'cross', 'inward', 'outward', 'same'] as const).map((kind) => (
+            <marker
+              id={`flow-arrow-${kind}`}
+              key={kind}
+              markerUnits="userSpaceOnUse"
+              markerWidth="6"
+              markerHeight="6"
+              refX="5.3"
+              refY="3"
+              orient="auto"
+            >
+              <path d="M0,0 L6,3 L0,6 z" className={`flow-marker-${kind}`} />
+            </marker>
+          ))}
         </defs>
 
         <g className="flow-vector-layer">
           <AnimatePresence initial={false}>
-            {vectors.map((vector) => {
-              const widthByWeight = 1.1 + 5.2 * Math.sqrt(vector.weight / maxWeight);
+            {displayedVectors.map((vector) => {
+              const strength = weightScale(vector.weight, maxWeight);
+              const markerKind = showRollDirection && vector.fingerDirection !== undefined
+                ? vector.fingerDirection
+                : vector.hand;
               return (
                 <motion.path
                   key={vector.id}
-                  className={edgeClass(vector.hand)}
+                  className={edgeClass(vector, showRollDirection)}
                   d={edgePath(vector, keyBounds.minX, keyBounds.minY)}
-                  markerEnd={`url(#flow-arrow-${vector.hand})`}
+                  markerEnd={`url(#flow-arrow-${markerKind})`}
                   fill="none"
-                  strokeWidth={widthByWeight}
+                  strokeWidth={0.75 + 2.35 * strength}
                   initial={reduceMotion ? false : { opacity: 0, pathLength: 0 }}
-                  animate={{ opacity: 0.3 + 0.67 * (vector.weight / maxWeight), pathLength: 1 }}
+                  animate={{ opacity: 0.12 + 0.76 * strength, pathLength: 1 }}
                   exit={reduceMotion ? undefined : { opacity: 0, pathLength: 0.5 }}
                   transition={reduceMotion
                     ? { duration: 0 }
@@ -199,9 +234,22 @@ function KeyboardFlow({
         </g>
       </svg>
       <div className="flow-legend" aria-hidden="true">
-        <span><i className="flow-dot flow-dot-left" /> Left</span>
-        <span><i className="flow-dot flow-dot-right" /> Right</span>
-        <span><i className="flow-dot flow-dot-cross" /> Cross-hand</span>
+        {showRollDirection ? (
+          <>
+            <span><i className="flow-dot flow-dot-inward" /> inward</span>
+            <span><i className="flow-dot flow-dot-outward" /> outward</span>
+            <span><i className="flow-dot flow-dot-cross" /> Cross-hand</span>
+          </>
+        ) : (
+          <>
+            <span><i className="flow-dot flow-dot-left" /> Left</span>
+            <span><i className="flow-dot flow-dot-right" /> Right</span>
+            <span><i className="flow-dot flow-dot-cross" /> Cross-hand</span>
+          </>
+        )}
+        <span className="flow-coverage">
+          {displayedVectors.length}/{vectors.length} paths · {(coverage * 100).toFixed(0)}%
+        </span>
       </div>
     </div>
   );
@@ -229,6 +277,7 @@ function relativeVectors(
         weight: vector.weight,
         fromFingerClass: vector.fromFingerClass,
         toFingerClass: vector.toFingerClass,
+        fingerDirection: vector.fingerDirection,
       }
       : { ...current, weight: current.weight + vector.weight });
   }
@@ -259,16 +308,23 @@ function RelativeMovementPlot({
       </header>
       <svg viewBox="0 0 240 220" role="img" aria-label={`${hand} hand relative movement`}>
         <defs>
-          <marker
-            id={`relative-arrow-${hand}`}
-            markerWidth="7"
-            markerHeight="7"
-            refX="6"
-            refY="3.5"
-            orient="auto"
-          >
-            <path d="M0,0 L7,3.5 L0,7 z" className={`relative-marker relative-marker-${hand}`} />
-          </marker>
+          {(['inward', 'outward', 'same'] as const).map((direction) => (
+            <marker
+              id={`relative-arrow-${hand}-${direction}`}
+              key={direction}
+              markerUnits="userSpaceOnUse"
+              markerWidth="6"
+              markerHeight="6"
+              refX="5.3"
+              refY="3"
+              orient="auto"
+            >
+              <path
+                d="M0,0 L6,3 L0,6 z"
+                className={`relative-marker relative-marker-${direction}`}
+              />
+            </marker>
+          ))}
         </defs>
         <circle className="flow-axis-ring" cx={cx} cy={cy} r={radius / 2} />
         <circle className="flow-axis-ring" cx={cx} cy={cy} r={radius} />
@@ -276,30 +332,34 @@ function RelativeMovementPlot({
         <line className="flow-axis" x1={cx} y1="14" x2={cx} y2="202" />
         <circle className="flow-origin" cx={cx} cy={cy} r="4" />
         <AnimatePresence initial={false}>
-          {relative.map((vector) => (
+          {relative.map((vector) => {
+            const direction = vector.fingerDirection ?? 'same';
+            const strength = weightScale(vector.weight, maxWeight);
+            return (
             <motion.line
               key={vector.id}
-              className={`relative-vector relative-vector-${hand}`}
+              className={`relative-vector relative-vector-${direction}`}
               x1={cx}
               y1={cy}
-              markerEnd={`url(#relative-arrow-${hand})`}
+              markerEnd={`url(#relative-arrow-${hand}-${direction})`}
               initial={reduceMotion ? false : { x2: cx, y2: cy, opacity: 0 }}
               animate={{
                 x2: cx + vector.dx * plotScale,
                 y2: cy + vector.dy * plotScale,
-                opacity: 0.35 + 0.65 * vector.weight / maxWeight,
+                opacity: 0.2 + 0.72 * strength,
               }}
               exit={reduceMotion ? undefined : { opacity: 0 }}
-              strokeWidth={1.3 + 4.3 * Math.sqrt(vector.weight / maxWeight)}
+              strokeWidth={0.9 + 2.6 * strength}
               transition={reduceMotion
                 ? { duration: 0 }
                 : { type: 'spring', stiffness: 240, damping: 27 }}
             >
               <title>
-                {`${vector.fromFingerClass} → ${vector.toFingerClass} · dx ${vector.dx.toFixed(2)}, dy ${vector.dy.toFixed(2)} · ${vector.weight}回`}
+                {`${vector.fromFingerClass} → ${vector.toFingerClass} · ${direction} · dx ${vector.dx.toFixed(2)}, dy ${vector.dy.toFixed(2)} · ${vector.weight}回`}
               </title>
             </motion.line>
-          ))}
+            );
+          })}
         </AnimatePresence>
       </svg>
     </div>
@@ -344,6 +404,14 @@ function DirectionPlot({
 }) {
   const reduceMotion = useReducedMotion();
   const bins = useMemo(() => directionBins(vectors, hand, 16), [vectors, hand]);
+  const inwardBins = useMemo(
+    () => directionBins(vectors.filter((vector) => vector.fingerDirection === 'inward'), hand, 16),
+    [vectors, hand],
+  );
+  const outwardBins = useMemo(
+    () => directionBins(vectors.filter((vector) => vector.fingerDirection === 'outward'), hand, 16),
+    [vectors, hand],
+  );
   const summary = useMemo(() => directionSummary(vectors, hand), [vectors, hand]);
   const maxWeight = Math.max(1, ...bins.map((bin) => bin.weight));
   const cx = 120;
@@ -368,9 +436,10 @@ function DirectionPlot({
         <defs>
           <marker
             id={`mean-arrow-${hand}`}
+            markerUnits="userSpaceOnUse"
             markerWidth="7"
             markerHeight="7"
-            refX="6"
+            refX="6.2"
             refY="3.5"
             orient="auto"
           >
@@ -382,31 +451,52 @@ function DirectionPlot({
         ))}
         <line className="flow-axis" x1="22" y1={cy} x2="218" y2={cy} />
         <line className="flow-axis" x1={cx} y1="14" x2={cx} y2="210" />
-        {bins.map((bin) => {
-          const outerRadius = baseRadius + (maxRadius - baseRadius) * bin.weight / maxWeight;
-          return (
-            <motion.path
-              key={bin.index}
-              className={`rose-sector rose-sector-${hand}`}
-              initial={false}
-              animate={{
-                d: sectorPath(
-                  cx,
-                  cy,
-                  baseRadius,
-                  outerRadius,
-                  bin.startAngle + 0.025,
-                  bin.endAngle - 0.025,
-                ),
-                opacity: bin.weight === 0 ? 0.08 : 0.28 + 0.67 * bin.weight / maxWeight,
-              }}
-              transition={reduceMotion
-                ? { duration: 0 }
-                : { type: 'spring', stiffness: 180, damping: 25 }}
-            >
-              <title>{`${bin.weight} transitions`}</title>
-            </motion.path>
-          );
+        {bins.flatMap((bin, index) => {
+          const inward = inwardBins[index]?.weight ?? 0;
+          const outward = outwardBins[index]?.weight ?? 0;
+          const midAngle = (bin.startAngle + bin.endAngle) / 2;
+          return ([
+            {
+              key: `${bin.index}-inward`,
+              weight: inward,
+              direction: 'inward',
+              startAngle: bin.startAngle + 0.025,
+              endAngle: midAngle - 0.012,
+            },
+            {
+              key: `${bin.index}-outward`,
+              weight: outward,
+              direction: 'outward',
+              startAngle: midAngle + 0.012,
+              endAngle: bin.endAngle - 0.025,
+            },
+          ] as const).map((part) => {
+            const outerRadius = baseRadius
+              + (maxRadius - baseRadius) * part.weight / maxWeight;
+            return (
+              <motion.path
+                key={part.key}
+                className={`rose-sector rose-sector-${part.direction}`}
+                initial={false}
+                animate={{
+                  d: sectorPath(
+                    cx,
+                    cy,
+                    baseRadius,
+                    outerRadius,
+                    part.startAngle,
+                    part.endAngle,
+                  ),
+                  opacity: part.weight === 0 ? 0.035 : 0.3 + 0.65 * part.weight / maxWeight,
+                }}
+                transition={reduceMotion
+                  ? { duration: 0 }
+                  : { type: 'spring', stiffness: 180, damping: 25 }}
+              >
+                <title>{`${part.direction} · ${part.weight} transitions`}</title>
+              </motion.path>
+            );
+          });
         })}
         <motion.line
           className="mean-resultant"
@@ -420,6 +510,10 @@ function DirectionPlot({
         />
         <circle className="flow-origin" cx={cx} cy={cy} r="4" />
       </svg>
+      <div className="flow-roll-legend" aria-hidden="true">
+        <span><i className="flow-dot flow-dot-inward" /> inward</span>
+        <span><i className="flow-dot flow-dot-outward" /> outward</span>
+      </div>
       <div className="roll-summary">
         <div className="roll-bar" aria-label="inward outward比率">
           <motion.span
@@ -525,7 +619,7 @@ export function BigramVectorView() {
       <h1>Bigram Flow</h1>
       <p>
         bigramを物理座標のベクトルとして眺める。絶対位置・相対移動・方向分布を分け、
-        ロール傾向を単一スコアへ潰さず観察する。
+        キー間の流れとロール傾向を視覚的に探索する。
       </p>
 
       <section className="flow-controls" aria-label="Bigram Flow controls">
@@ -574,7 +668,10 @@ export function BigramVectorView() {
             <p className="eyebrow">Absolute</p>
             <h2>Keyboard Flow</h2>
           </div>
-          <p>矢印の太さは出現頻度。左右は物理キーボードを見たまま表示する。</p>
+          <p>
+            頻度の高い経路を優先表示し、線幅は対数圧縮する。
+            2指選択時はinward / outwardを色分けする。
+          </p>
         </header>
         <KeyboardFlow
           geometry={geometry}
@@ -630,8 +727,8 @@ export function BigramVectorView() {
                   <h2>Direction Distribution</h2>
                 </div>
                 <p>
-                  各vectorを単位長へ正規化。白い矢印はfrequency-weighted mean resultantで、
-                  長さが方向の集中度を表す。
+                  各vectorを単位長へ正規化。sectorはinward / outwardを色分けする。
+                  白い矢印はfrequency-weighted mean resultantで、長さが方向の集中度を表す。
                 </p>
               </header>
               <div className="flow-two-up">
@@ -661,7 +758,7 @@ export function BigramVectorView() {
 
       <p className="flow-footnote">
         既定日本語サンプル {SAMPLE.length.toLocaleString()}文字・段ずれ形状・既定運指。
-        この画面の方向分布は観測値であり、配列の優劣スコアではない。
+        この画面の方向分布は観測値であり、配列の特性をビジュアル化したものです。
       </p>
     </section>
   );
