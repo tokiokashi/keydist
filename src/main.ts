@@ -1666,7 +1666,23 @@ function appendConditionSummary(parent: DocumentFragment | HTMLElement): void {
   summary.append(overrides); parent.append(summary);
 }
 
-function renderConditionDescription(selectedPresetId?: string): void {
+function renderConditionDescription(
+  selectedPresetId?: string,
+  preserveScroll = true,
+): void {
+  const dialogScrollTop = preserveScroll && el.conditionsDialog.open
+    ? el.conditionsDialog.scrollTop
+    : undefined;
+  const previousTableWrap = preserveScroll
+    ? el.conditionDescription.querySelector<HTMLElement>('.condition-table-wrap')
+    : null;
+  const tableScroll = previousTableWrap === null
+    ? undefined
+    : {
+      top: previousTableWrap.scrollTop,
+      left: previousTableWrap.scrollLeft,
+    };
+
   const root = document.createDocumentFragment();
   const toolbar = document.createElement('div'); toolbar.className = 'condition-toolbar';
   const presetLabel = document.createElement('label'); presetLabel.append('プリセット ');
@@ -1733,7 +1749,11 @@ function renderConditionDescription(selectedPresetId?: string): void {
   for (const [id, labelText] of CONDITION_TABS) {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'ghost'; button.textContent = labelText;
     button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(conditionTab === id));
-    button.addEventListener('click', () => { conditionTab = id; renderConditionDescription(); }); tabs.append(button);
+    button.addEventListener('click', () => {
+      conditionTab = id;
+      renderConditionDescription(undefined, false);
+      el.conditionsDialog.scrollTop = 0;
+    }); tabs.append(button);
   }
   root.append(tabs);
   if (conditionTab === 'delay') {
@@ -1746,13 +1766,25 @@ function renderConditionDescription(selectedPresetId?: string): void {
   }
   appendConditionSummary(root);
   el.conditionDescription.replaceChildren(root);
+
+  if (dialogScrollTop !== undefined) {
+    el.conditionsDialog.scrollTop = dialogScrollTop;
+  }
+  if (tableScroll !== undefined) {
+    const nextTableWrap = el.conditionDescription.querySelector<HTMLElement>('.condition-table-wrap');
+    if (nextTableWrap) {
+      nextTableWrap.scrollTop = tableScroll.top;
+      nextTableWrap.scrollLeft = tableScroll.left;
+    }
+  }
 }
 
 /** シミュレーション条件の編集モーダル。条件は開く直前に再生成する。 */
 function setupConditionDialog() {
   const open = () => {
-    renderConditionDescription();
+    renderConditionDescription(undefined, false);
     el.conditionsDialog.showModal();
+    el.conditionsDialog.scrollTop = 0;
   };
   el.conditionsOpen.addEventListener('click', open);
   el.conditionsOpenSidebar.addEventListener('click', open);
