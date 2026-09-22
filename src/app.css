@@ -135,7 +135,6 @@ h1 {
 
 .input-toolbar select,
 .input-toolbar button,
-.input-capture,
 .input-output {
   font: inherit;
 }
@@ -163,36 +162,30 @@ h1 {
   padding: 1rem;
   border: 1px solid #cfcfc9;
   border-radius: 0.75rem;
+  outline: none;
   background: #fff;
   line-height: 1.7;
-}
-
-.input-capture {
-  display: grid;
-  gap: 0.25rem;
-  margin: 1rem 0;
-  padding: 1rem;
-  border: 2px dashed #b8b8b1;
-  border-radius: 0.75rem;
-  outline: none;
   cursor: text;
 }
 
-.input-capture[data-active] {
-  border-style: solid;
+.input-output[data-active] {
   border-color: #363633;
-  background: #fff;
+  box-shadow: 0 0 0 1px #363633;
 }
 
-.input-capture span,
+.input-capture-hint,
 .input-note,
 .input-muted {
   color: #686862;
 }
 
-.input-capture span,
+.input-capture-hint,
 .input-note {
   font-size: 0.9rem;
+}
+
+.input-capture-hint {
+  margin: 0.45rem 0 1rem;
 }
 
 .input-keyboard {
