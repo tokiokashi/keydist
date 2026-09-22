@@ -11,6 +11,7 @@ import {
   type TypingInputResult,
 } from '../../core/input-converter/index.ts';
 import type { Layout } from '../../layouts/index.ts';
+import { kanaToRomaji } from '../../romaji/kunrei.ts';
 import { physicalKeysUsedByLayout } from '../../layout-physical-keys.ts';
 import {
   advanceKeyPatternPresentation,
@@ -26,6 +27,10 @@ import {
   EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
   type BrowserKeyBindingOverrides,
 } from './browser-keyboard-bindings.ts';
+import {
+  liveRomajiContextSatisfied,
+  romajiToKana,
+} from './live-romaji.ts';
 import {
   applyRecognizedTypingInputs,
   applyTypingTextEdit,
@@ -50,9 +55,12 @@ export function useTypingSession(
   browserBindings: BrowserKeyBindingOverrides = EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
 ): TypingSession {
   const captureRef = useRef<HTMLTextAreaElement>(null);
+  const rawTextRef = useRef('');
   const engine = useMemo(
     () => new TypingInputEngine(layout.canonicalInputs, {
       triggerRealizationPolicy: { useHold: true },
+      contextSatisfied: (requirements) =>
+        liveRomajiContextSatisfied(requirements, rawTextRef.current),
     }),
     [layout],
   );
@@ -68,6 +76,20 @@ export function useTypingSession(
   const [active, setActive] = useState(false);
   const [composing, setComposing] = useState(false);
   const [readyLayoutId, setReadyLayoutId] = useState<string>();
+
+  const displayFromRaw = (raw: string): string =>
+    layout.romajiTable === undefined
+      ? raw
+      : romajiToKana(raw, layout.romajiTable);
+
+  const rawFromDisplay = (display: string): string =>
+    layout.romajiTable === undefined
+      ? display
+      : kanaToRomaji(display, layout.romajiTable);
+
+  useEffect(() => {
+    rawTextRef.current = rawFromDisplay(text);
+  }, [layout, text]);
 
   useEffect(() => {
     const target = captureRef.current;
@@ -86,7 +108,12 @@ export function useTypingSession(
       if (result.recognized.length === 0) return;
 
       setLastRecognized(result.recognized);
-      setText((current) => applyRecognizedTypingInputs(current, result.recognized));
+      const nextRaw = applyRecognizedTypingInputs(
+        rawTextRef.current,
+        result.recognized,
+      );
+      rawTextRef.current = nextRaw;
+      setText(displayFromRaw(nextRaw));
     };
 
     const resetRecognition = () => {
@@ -125,10 +152,21 @@ export function useTypingSession(
           if (command.recognized.length > 0) {
             setLastRecognized(command.recognized);
           }
-          setText((current) => applyTypingTextEdit(
-            applyRecognizedTypingInputs(current, command.recognized),
-            command.textEdit,
-          ));
+          if (command.textEdit.kind === 'delete-last') {
+            setText((current) => {
+              const nextDisplay = applyTypingTextEdit(current, command.textEdit);
+              rawTextRef.current = rawFromDisplay(nextDisplay);
+              return nextDisplay;
+            });
+          } else {
+            const recognizedRaw = applyRecognizedTypingInputs(
+              rawTextRef.current,
+              command.recognized,
+            );
+            const nextRaw = applyTypingTextEdit(recognizedRaw, command.textEdit);
+            rawTextRef.current = nextRaw;
+            setText(displayFromRaw(nextRaw));
+          }
           return;
         }
       }
@@ -193,6 +231,7 @@ export function useTypingSession(
 
   const clear = () => {
     engine.reset();
+    rawTextRef.current = '';
     setText('');
     setPressedKeys([]);
     setRecognitionKeys([]);

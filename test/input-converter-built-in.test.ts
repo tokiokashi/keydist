@@ -38,6 +38,36 @@ test('built-in月配列をbrowser adapter経由でprefix入力できる', () => 
 });
 
 
+test('built-in新JIS通常シフトはrelease後の次打へ持ち越さない', () => {
+  const engine = new TypingInputEngine(SHIN_JIS_SIMULTANEOUS.canonicalInputs, {
+    triggerRealizationPolicy: { useHold: true },
+  });
+
+  engine.handle({ type: 'down', key: 'thumb-r' });
+  engine.handle({ type: 'up', key: 'thumb-r' });
+  assert.deepEqual(
+    engine.handle({ type: 'down', key: 'h' }).recognized.map((entry) => entry.output),
+    ['く'],
+  );
+});
+
+test('薙刀式の単キー装飾はrelease後の次打へ持ち越さない', () => {
+  const engine = new TypingInputEngine(NAGINATA_V18.canonicalInputs, {
+    triggerRealizationPolicy: { useHold: true },
+  });
+
+  const outputs: string[] = [];
+  for (const event of [
+    { type: 'down', key: 'j' },
+    { type: 'up', key: 'j' },
+    { type: 'down', key: 'f' },
+    { type: 'up', key: 'f' },
+  ] as const) {
+    outputs.push(...engine.handle(event).recognized.map((entry) => entry.output));
+  }
+  assert.deepEqual(outputs, ['あ', 'か']);
+});
+
 test('built-in新JIS通常シフトをbrowser adapter経由でhold入力できる', () => {
   const engine = new TypingInputEngine(SHIN_JIS_SIMULTANEOUS.canonicalInputs, {
     triggerRealizationPolicy: { useHold: true },

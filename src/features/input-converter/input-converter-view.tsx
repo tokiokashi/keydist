@@ -41,13 +41,21 @@ import {
   type ThumbKeyBindings,
 } from './browser-keyboard-bindings.ts';
 import { ThumbKeyBindingEditor } from './thumb-key-binding-editor.tsx';
+import {
+  reverseLookup,
+  reverseLookupRouteLabel,
+} from './reverse-lookup.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
 const DIRECT_JA_INPUT_LAYOUTS =
   LAYOUTS_JA.filter((layout) => layout.romajiTable === undefined);
+const TK_DIRECT_JA_LAYOUT = LAYOUTS_JA.find(
+  (layout) => layout.id === 'oonishi-custom-combo',
+);
 
 const INPUT_LAYOUTS = [
-  ...LAYOUTS,
+  ...LAYOUTS.filter((layout) => layout.id !== 'oonishi-custom'),
+  ...(TK_DIRECT_JA_LAYOUT === undefined ? [] : [TK_DIRECT_JA_LAYOUT]),
   ...DIRECT_JA_INPUT_LAYOUTS,
 ];
 
@@ -188,9 +196,10 @@ export function InputConverterView() {
   const [geometryId, setGeometryId] = useState(PHYSICAL_SHAPES['row-staggered'].id);
   const [showDynamicGuide, setShowDynamicGuide] = useState(true);
   const [showLayerGuide, setShowLayerGuide] = useState(true);
-  const [showTriggerColors, setShowTriggerColors] = useState(true);
+  const [showLayerKeys, setShowLayerKeys] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [splitPercent, setSplitPercent] = useState(DEFAULT_SPLIT_PERCENT);
+  const [lookupQuery, setLookupQuery] = useState('');
   const guideGridRef = useRef<HTMLDivElement>(null);
   const [guideGridLayout, setGuideGridLayout] = useState<GuideGridLayout>({
     columns: 1,
@@ -248,27 +257,49 @@ export function InputConverterView() {
     () => new Set(activeGroupIds.flatMap((id) => aggregationTriggerKeys(layout, id))),
     [activeGroupIds, layout],
   );
-  const triggerKeys = useMemo(() => allLayerTriggerKeys(layout), [layout]);
-  const triggerColorSlots = useMemo(
+  const layerKeys = useMemo(() => allLayerTriggerKeys(layout), [layout]);
+  const layerKeyColorSlots = useMemo(
     () => presentationTriggerColorSlots(layout),
     [layout],
   );
-  const comboKeys = useMemo(
-    () => new Set(
-      (layout.resolvedComboDefinitions ?? []).flatMap((combo) =>
-        (combo.keyVariants ?? [combo.keys]).flatMap((keys) => keys)),
-    ),
-    [layout],
-  );
-  const patternResult = useMemo(
-    () => matchKeyPatterns(layout, new Set(session.presentation.selectedKeys)),
-    [layout, session.presentation.selectedKeys],
-  );
+  const patternResult = useMemo(() => {
+    const result = matchKeyPatterns(
+      layout,
+      new Set(session.presentation.selectedKeys),
+    );
+    const active = new Set(activeGroupIds);
+    if (active.size === 0) {
+      return {
+        exact: [],
+        candidates: new Map(),
+        continuations: new Map(),
+      };
+    }
+
+    const filterMap = (
+      source: typeof result.candidates,
+    ): typeof result.candidates => new Map(
+      [...source]
+        .map(([key, matches]) => [
+          key,
+          matches.filter((match) => active.has(match.aggregationGroupId)),
+        ] as const)
+        .filter(([, matches]) => matches.length > 0),
+    );
+
+    return {
+      exact: result.exact.filter((match) => active.has(match.aggregationGroupId)),
+      candidates: filterMap(result.candidates),
+      continuations: filterMap(result.continuations),
+    };
+  }, [activeGroupIds, layout, session.presentation.selectedKeys]);
   const hasOneShotLayer = session.presentation.oneShotActivations.length > 0;
   const keyboardViews = useMemo(() => {
     const pressed = new Set(session.pressedKeys);
     const selected = new Set(session.presentation.selectedKeys);
-    const hasDynamicPath = showDynamicGuide && selected.size > 0;
+    const hasDynamicPath = showDynamicGuide
+      && activeGroupIds.length > 0
+      && selected.size > 0;
     return new Map<string, PhysicalKeyboardKeyView>(
       visibleKeys.map((key) => {
         const outputs = showDynamicGuide
@@ -301,28 +332,31 @@ export function InputConverterView() {
                 : key.id,
             pressed: pressed.has(key.id),
             highlighted: showDynamicGuide && activeTriggerKeys.has(key.id),
-            trigger: showTriggerColors && triggerKeys.has(key.id),
-            combo: showTriggerColors && comboKeys.has(key.id),
-            accentSlot: showTriggerColors ? triggerColorSlots.get(key.id) : undefined,
+            trigger: showLayerKeys && layerKeys.has(key.id),
+            accentSlot: showLayerKeys ? layerKeyColorSlots.get(key.id) : undefined,
             guide,
           },
         ] as const;
       }),
     );
   }, [
+    activeGroupIds,
     activeTriggerKeys,
-    comboKeys,
     hasOneShotLayer,
     layout,
     patternResult,
     session.pressedKeys,
     showDynamicGuide,
-    showTriggerColors,
+    showLayerKeys,
     thumbBindings,
-    triggerColorSlots,
-    triggerKeys,
+    layerKeyColorSlots,
+    layerKeys,
     visibleKeys,
   ]);
+  const lookupRoutes = useMemo(
+    () => reverseLookup(layout, lookupQuery, 3),
+    [layout, lookupQuery],
+  );
   const guideDefinitions = useMemo(
     () => compactLayerGuideDefinitions(layout),
     [layout],
@@ -581,10 +615,10 @@ export function InputConverterView() {
               <label>
                 <input
                   type="checkbox"
-                  checked={showTriggerColors}
-                  onChange={(event) => setShowTriggerColors(event.target.checked)}
+                  checked={showLayerKeys}
+                  onChange={(event) => setShowLayerKeys(event.target.checked)}
                 />
-                起点キー色
+                レイヤーキー
               </label>
             </div>
             <header className="input-keyboard-heading">
@@ -609,7 +643,37 @@ export function InputConverterView() {
                 keyViews={keyboardViews}
               />
             </div>
-            <div className="input-assist-slot" data-reserved="reverse-lookup" />
+            <section className="input-assist-slot" aria-label="打ち方逆引き">
+              <label className="input-lookup-field">
+                <span>打ち方を調べる</span>
+                <input
+                  aria-label="打ちたい文字"
+                  type="text"
+                  value={lookupQuery}
+                  onChange={(event) => setLookupQuery(event.target.value)}
+                  placeholder="例: ぎゃ"
+                  autoComplete="off"
+                />
+              </label>
+              <div className="input-lookup-results" aria-live="polite">
+                {lookupQuery.length === 0 ? (
+                  <span className="input-muted">文字を入れるとcanonical inputから逆引きする。</span>
+                ) : lookupRoutes.length === 0 ? (
+                  <span className="input-muted">この配列では打ち方を見つけられない。</span>
+                ) : (
+                  <ol>
+                    {lookupRoutes.map((route, index) => (
+                      <li key={`${reverseLookupRouteLabel(route)}:${index}`}>
+                        <code>{reverseLookupRouteLabel(route)}</code>
+                        {route.steps.some((step) => step.origin === 'combo')
+                          ? <small>コンボ</small>
+                          : null}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            </section>
           </section>
 
           <section className="input-debug" aria-label="入力詳細">

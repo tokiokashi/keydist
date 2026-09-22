@@ -472,6 +472,32 @@ test('presentation: prefix singleはrelease後も1打だけactiveで対象入力
   assert.deepEqual(completed.state.activeAggregationGroupIds, []);
 });
 
+test('presentation: prepress-requiredなhold layerはrelease後にprefix化しない', () => {
+  const layout = LAYOUT_BY_ID.get('shin-jis-simultaneous');
+  assert.ok(layout);
+  const session = presentationStepper(layout);
+
+  const down = session.step({ type: 'down', key: 'thumb-r' });
+  assert.deepEqual(down.state.activeAggregationGroupIds, ['face:1']);
+  assert.ok(down.state.selectedKeys.includes('thumb-r'));
+
+  const released = session.step({ type: 'up', key: 'thumb-r' });
+  assert.deepEqual(released.state.activeAggregationGroupIds, []);
+  assert.equal(released.state.selectedKeys.includes('thumb-r'), false);
+});
+
+test('presentation: 薙刀式のorder-free装飾keyはrelease後にactiveを残さない', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18');
+  assert.ok(layout);
+  const session = presentationStepper(layout);
+
+  const down = session.step({ type: 'down', key: 'j' });
+  assert.deepEqual(down.state.activeAggregationGroupIds, ['layer:濁音']);
+  const released = session.step({ type: 'up', key: 'j' });
+  assert.deepEqual(released.state.activeAggregationGroupIds, []);
+  assert.equal(released.state.selectedKeys.includes('j'), false);
+});
+
 test('presentation: simultaneous singleはtrigger releaseでactiveを残さない', () => {
   const layout = LAYOUT_BY_ID.get('nicola');
   assert.ok(layout);
@@ -527,6 +553,18 @@ test('presentation: 薙刀式SandSは左右thumb alternativeでも同じhold lay
   }
 });
 
+test('dynamic guide: 薙刀式の単キーlayerでは同じaggregationの候補だけを表示対象にできる', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18');
+  assert.ok(layout);
+
+  const result = matchKeyPatterns(layout, new Set(['j']));
+  const dakuon = result.candidates.get('f') ?? [];
+  const deeper = result.continuations.get('h') ?? [];
+
+  assert.ok(dakuon.some((match) => match.aggregationGroupId === 'layer:濁音'));
+  assert.ok(deeper.some((match) => match.aggregationGroupId !== 'layer:濁音'));
+});
+
 test('dynamic guide: 複数キー同時押しはpartial key集合から次キーと確定出力を段階表示する', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18');
   assert.ok(layout);
@@ -539,6 +577,16 @@ test('dynamic guide: 複数キー同時押しはpartial key集合から次キー
   assert.ok(second.candidates.get('r')?.some((match) => match.output === 'じゃ'));
 });
 
+
+test('allLayerTriggerKeysは複合layer triggerの構成キーを常時表示へ混ぜない', () => {
+  const single = faceFromEntries(['j'], 'simultaneous', { r: 'じ' });
+  const compound = faceFromEntries(['o', 'v'], 'simultaneous', { k: 'いぇ' });
+  const layout = compiledFaces(single, compound);
+  const keys = allLayerTriggerKeys(layout);
+  assert.equal(keys.has('j'), true);
+  assert.equal(keys.has('o'), false);
+  assert.equal(keys.has('v'), false);
+});
 
 test('allLayerTriggerKeysはcombo membershipをlayer triggerへ混ぜない', () => {
   const base = fromRows('combo-trigger-separation', 'combo-trigger-separation', [
