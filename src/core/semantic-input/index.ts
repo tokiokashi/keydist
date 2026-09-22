@@ -38,10 +38,14 @@ export {
 
 export {
   applyActionRealizationPolicy,
+  classifyTriggerActivation,
   DEFAULT_ACTION_REALIZATION_POLICY,
+  DEFAULT_TRIGGER_ACTIVATION_GROUPINGS,
   sameActionRealizationPolicy,
   type ActionRealizationPolicy,
+  type TriggerActivationClass,
   type TriggerActivationGrouping,
+  type TriggerActivationMode,
   type TriggerActivationOverride,
   type TriggerActivationSelector,
 } from './action-realization.ts';

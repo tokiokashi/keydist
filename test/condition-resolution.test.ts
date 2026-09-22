@@ -15,20 +15,21 @@ test('配列別条件は既定値へ部分的に重なる', () => {
     sfbHomeCost: true,
     preferOppositeThumb: false,
     triggerRealizationPolicy: { useHold: false },
-    actionRealizationPolicy: { triggerActivation: 'combined', triggerActivationOverrides: [] },
+    actionRealizationPolicy: { triggerActivation: 'disabled', triggerActivationClassOverrides: {}, triggerActivationOverrides: [] },
   });
   assert.deepEqual(resolved.chainPolicy, DEFAULT_CONDITION_DEFAULTS.chain);
   assert.deepEqual(resolved.arpeggioPolicy, DEFAULT_CONDITION_DEFAULTS.arpeggioPolicy);
   assert.deepEqual(resolved.triggerRealizationPolicy, DEFAULT_CONDITION_DEFAULTS.triggerRealization);
-  assert.deepEqual(resolved.actionRealizationPolicy, { triggerActivation: 'combined', triggerActivationOverrides: [] });
+  assert.deepEqual(resolved.actionRealizationPolicy, { triggerActivation: 'disabled', triggerActivationClassOverrides: {}, triggerActivationOverrides: [] });
 });
 
 test('ActionRealizationPolicyはoverrideを含めconditionからevaluate optionsへそのまま渡す', () => {
   const actionRealization = {
-    triggerActivation: 'separate' as const,
+    triggerActivation: 'semantic' as const,
+    triggerActivationClassOverrides: { 'order-free': 'separate' as const },
     triggerActivationOverrides: [{
       selector: {
-        layerId: 'layer:SandS',
+        modifierGroupIds: ['SandS'],
         triggerKeys: ['thumb-r'],
       },
       grouping: 'separate' as const,
@@ -38,6 +39,10 @@ test('ActionRealizationPolicyはoverrideを含めconditionからevaluate options
 
   assert.deepEqual(separated.actionRealizationPolicy, actionRealization);
   assert.deepEqual(separated.options.actionRealizationPolicy, actionRealization);
+  assert.notEqual(
+    separated.actionRealizationPolicy.triggerActivationClassOverrides,
+    actionRealization.triggerActivationClassOverrides,
+  );
   assert.notEqual(
     separated.actionRealizationPolicy.triggerActivationOverrides,
     actionRealization.triggerActivationOverrides,

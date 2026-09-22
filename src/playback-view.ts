@@ -262,7 +262,7 @@ function cancelPlaybackAnimation() {
 
 function playbackLayerLabel(trace: Trace, stroke: Stroke | undefined): string {
   if (!stroke) return '開始前';
-  return trace.layerDefinitions.find((definition) => definition.id === stroke.layerId)?.label ?? stroke.layerId;
+  return trace.layerDefinitions.find((definition) => definition.id === stroke.aggregationGroupId)?.label ?? stroke.aggregationGroupId;
 }
 
 function updatePlaybackView() {

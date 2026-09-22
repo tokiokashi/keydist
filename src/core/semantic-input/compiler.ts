@@ -22,8 +22,8 @@ interface MutableSemanticInput {
   physicalKeys: PhysicalKeyId[];
   requirements: Requirement[];
   capabilities: InputCapability[];
-  layerId: string;
-  classifications: InputClassification[];
+  aggregationGroupId: string;
+    classifications: InputClassification[];
   roles: KeyRole[];
   faceMemberships: FaceMembership[];
 }
@@ -96,11 +96,17 @@ const normalizeRoles = (roles: readonly KeyRole[]): KeyRole[] => {
     const normalized: KeyRole = {
       key: resolveKeyId(role.key),
       role: role.role,
+      ...(role.modifierGroupId === undefined ? {} : { modifierGroupId: role.modifierGroupId }),
     };
-    unique.set(`${normalized.key}\u0000${normalized.role}`, normalized);
+    unique.set(
+      `${normalized.key}\u0000${normalized.role}\u0000${normalized.modifierGroupId ?? ''}`,
+      normalized,
+    );
   }
   return [...unique.values()].sort((left, right) =>
-    compareString(left.key, right.key) || compareString(left.role, right.role));
+    compareString(left.key, right.key)
+    || compareString(left.role, right.role)
+    || compareString(left.modifierGroupId ?? '', right.modifierGroupId ?? ''));
 };
 
 const normalizeMemberships = (memberships: readonly FaceMembership[]): FaceMembership[] => {
@@ -231,14 +237,23 @@ const assertCanonicalInput = (input: Pick<
     }
   }
 
+  const modifierGroupsByKey = new Map<PhysicalKeyId, Set<string>>();
   for (const role of input.roles) {
     if (!physicalKeys.has(role.key)) {
       throw new Error('roleがphysicalKeys外のkeyを参照している');
     }
+    if (role.role === 'modifier' && role.modifierGroupId !== undefined) {
+      const groups = modifierGroupsByKey.get(role.key) ?? new Set<string>();
+      groups.add(role.modifierGroupId);
+      if (groups.size > 1) {
+        throw new Error(`同一physical keyに複数modifier groupを指定できない: ${role.key}`);
+      }
+      modifierGroupsByKey.set(role.key, groups);
+    }
   }
 };
 
-const normalizedLayerId = (
+const normalizedAggregationGroupId = (
   face: Face,
   faceIndex: number,
   triggerKeys: readonly PhysicalKeyId[],
@@ -316,7 +331,34 @@ const faceRoles = (
     throw new Error('FaceはinputRoleを明示する必要がある');
   }
   if (face.inputRole !== 'modifier') return [];
-  return normalizeRoles(triggerKeys.map((key) => ({ key, role: 'modifier' as const })));
+
+  const authoredGroups = face.modifierGroups ?? {};
+  const normalizedGroups = new Map<string, string>();
+  for (const [rawKey, groupId] of Object.entries(authoredGroups)) {
+    if (groupId.length === 0) throw new Error('modifier group idは空にできない');
+    const key = resolveKeyId(rawKey);
+    if (!triggerKeys.includes(key)) {
+      throw new Error(`modifierGroupsがFace.trigger外のkeyを参照している: ${rawKey}`);
+    }
+    const existing = normalizedGroups.get(key);
+    if (existing !== undefined && existing !== groupId) {
+      throw new Error(`同一trigger keyに複数modifier groupを指定できない: ${rawKey}`);
+    }
+    normalizedGroups.set(key, groupId);
+  }
+
+  if (face.modifierGroups !== undefined && normalizedGroups.size !== triggerKeys.length) {
+    const missing = triggerKeys.filter((key) => !normalizedGroups.has(key));
+    throw new Error(`modifierGroupsを明示したFaceは全trigger keyを分類する必要がある: ${missing.join(', ')}`);
+  }
+
+  return normalizeRoles(triggerKeys.map((key) => ({
+    key,
+    role: 'modifier' as const,
+    ...(normalizedGroups.get(key) === undefined
+      ? {}
+      : { modifierGroupId: normalizedGroups.get(key) }),
+  })));
 };
 
 const faceCells = (face: Face): readonly { key: PhysicalKeyId; output: string }[] => {
@@ -342,7 +384,7 @@ const faceCells = (face: Face): readonly { key: PhysicalKeyId; output: string }[
 export function compileSequenceSemanticInputs(
   output: string,
   sequence: readonly (readonly string[])[],
-  layerId: string,
+  aggregationGroupId: string,
   classifications: readonly InputClassification[] = [],
 ): readonly SemanticInput[] {
   if (sequence.length === 0) {
@@ -365,7 +407,7 @@ export function compileSequenceSemanticInputs(
       physicalKeys,
       requirements,
       capabilities: [],
-      layerId,
+      aggregationGroupId,
       classifications: normalizeClassifications(classifications),
       roles: [],
       faceMemberships: [],
@@ -387,10 +429,10 @@ export interface CompiledSequenceArtifacts {
 export function compileSequenceInputArtifacts(
   output: string,
   sequence: readonly (readonly string[])[],
-  layerId: string,
+  aggregationGroupId: string,
   classifications: readonly InputClassification[] = [],
 ): CompiledSequenceArtifacts {
-  const semanticInputs = compileSequenceSemanticInputs(output, sequence, layerId, classifications);
+  const semanticInputs = compileSequenceSemanticInputs(output, sequence, aggregationGroupId, classifications);
   const baseActionRealizations: BaseActionRealizationSequence =
     semanticInputs.map((input, index) => ({
       input,
@@ -425,7 +467,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
       const capabilities = faceCapabilities(face, triggerKeys);
       const classifications = faceClassifications(face);
       const roles = faceRoles(face, triggerKeys);
-      const layerId = normalizedLayerId(face, faceIndex, triggerKeys);
+      const aggregationGroupId = normalizedAggregationGroupId(face, faceIndex, triggerKeys);
       const physicalSignature = physicalKeys.join('\u0000');
 
       const candidate: MutableSemanticInput = {
@@ -433,7 +475,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
         physicalKeys,
         requirements,
         capabilities,
-        layerId,
+        aggregationGroupId,
         classifications,
         roles,
         faceMemberships: [{ faceIndex, cellKey: cell.key }],
@@ -471,9 +513,9 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
         inputsByPhysicalKeys.set(physicalSignature, siblings);
         continue;
       }
-      if (existing.layerId !== layerId) {
+      if (existing.aggregationGroupId !== aggregationGroupId) {
         throw new Error(
-          `同一SemanticInputが異なるlayerIdへ属している: ${existing.layerId} / ${layerId}`,
+          `同一SemanticInputが異なるaggregationGroupIdへ属している: ${existing.aggregationGroupId} / ${aggregationGroupId}`,
         );
       }
       existing.capabilities = normalizeCapabilities([
@@ -485,6 +527,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
         ...classifications,
       ]);
       existing.roles = normalizeRoles([...existing.roles, ...roles]);
+      assertCanonicalInput(existing);
       existing.faceMemberships = normalizeMemberships([
         ...existing.faceMemberships,
         ...candidate.faceMemberships,
@@ -531,7 +574,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
       physicalKeys: [...input.physicalKeys],
       requirements: normalizeRequirements(input.requirements),
       capabilities: normalizeCapabilities(input.capabilities),
-      layerId: input.layerId,
+      aggregationGroupId: input.aggregationGroupId,
       classifications: normalizeClassifications(input.classifications),
       roles: normalizeRoles(input.roles),
       faceMemberships: normalizeMemberships(input.faceMemberships),
@@ -543,12 +586,12 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
 export function compileSequenceInputAlternative(
   output: string,
   sequence: readonly (readonly PhysicalKeyId[])[],
-  layerId: string,
+  aggregationGroupId: string,
   classifications: readonly InputClassification[] = [],
   contextRequirements: readonly InputContextRequirement[] = [],
   origin: InputAlternativeOrigin = 'sequence',
 ): InputAlternative {
-  const artifacts = compileSequenceInputArtifacts(output, sequence, layerId, classifications);
+  const artifacts = compileSequenceInputArtifacts(output, sequence, aggregationGroupId, classifications);
   return {
     semanticInputs: artifacts.semanticInputs,
     baseRealizations: artifacts.baseActionRealizations,
@@ -654,11 +697,12 @@ function inputAlternativeIdentity(
         kind: capability.kind,
         keys: mapKeys(capability.keys),
       })),
-      layerId: input.layerId,
+      aggregationGroupId: input.aggregationGroupId,
       classifications: input.classifications,
       roles: input.roles.map((role) => ({
         key: mapKey(role.key),
         role: role.role,
+        ...(role.modifierGroupId === undefined ? {} : { modifierGroupId: role.modifierGroupId }),
       })),
       ...(includeFaceMemberships ? { faceMemberships: input.faceMemberships } : {}),
     })),

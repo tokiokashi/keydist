@@ -98,7 +98,7 @@ const timingAnalysis = (
       char: source.char ?? String(index),
       inputChar: source.inputChar ?? source.char ?? String(index),
       inputIndex: source.inputIndex ?? index,
-      layerId: source.layerId ?? 'single',
+      aggregationGroupId: source.aggregationGroupId ?? 'single',
       inputRole: source.inputRole ?? 'layer',
       classifications: source.classifications ?? [],
       triggerKeys: source.triggerKeys ?? [],
@@ -978,7 +978,7 @@ test('combo再生はpresentation trigger alternativeで選択済み親指pathを
   );
   const stroke = trace.strokes[0];
 
-  assert.equal(stroke.layerId, 'combo');
+  assert.equal(stroke.aggregationGroupId, 'combo');
   assert.deepEqual(stroke.triggerKeys, ['thumb-l']);
 
   const display = playbackStrokeDisplay(layout, stroke);

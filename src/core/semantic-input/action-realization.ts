@@ -1,12 +1,25 @@
 import { resolveKeyId } from '../../geometry.ts';
-import type { PhysicalKeyId } from './types.ts';
+import type { PhysicalKeyId, SemanticInput } from './types.ts';
 import type { RealizedSemanticAction } from './trigger-realization.ts';
 
 export type TriggerActivationGrouping = 'combined' | 'separate';
+export type TriggerActivationMode = 'disabled' | 'semantic';
+export type TriggerActivationClass =
+  | 'prepress-required'
+  | 'order-free'
+  | 'postpress-required';
+
+export const DEFAULT_TRIGGER_ACTIVATION_GROUPINGS: Readonly<
+  Record<TriggerActivationClass, TriggerActivationGrouping>
+> = {
+  'prepress-required': 'separate',
+  'order-free': 'combined',
+  'postpress-required': 'combined',
+};
 
 export interface TriggerActivationSelector {
-  /** 同じphysical trigger集合をsemantic contextごとに分ける時のscope。 */
-  readonly layerId?: string;
+  /** fresh trigger群が要求するcanonical modifier group集合。順序はidentityに含めない。 */
+  readonly modifierGroupIds?: readonly string[];
   /** fresh trigger pressのcanonical key集合。順序はidentityに含めない。 */
   readonly triggerKeys?: readonly PhysicalKeyId[];
 }
@@ -18,18 +31,24 @@ export interface TriggerActivationOverride {
 
 export interface ActionRealizationPolicy {
   /**
-   * fresh trigger activationとfresh outputが同一actionにrealizeされた場合のgrouping既定値。
-   *
-   * combined: trigger/outputを1 actionのまま扱う。
-   * separate: semantic orderを保てる場合だけtrigger activationを先行actionへ分ける。
+   * disabled: fresh trigger activationは常にoutputと同じactionのまま。
+   * semantic: Requirementに従う既定groupingを有効化する。
    */
-  readonly triggerActivation: TriggerActivationGrouping;
-  /** layout内のtrigger groupごとの例外。先頭一致を採用する。 */
+  readonly triggerActivation: TriggerActivationMode;
+  /**
+   * semantic既定値への大分類override。
+   * concrete selector overrideより優先度は低い。
+   */
+  readonly triggerActivationClassOverrides?: Readonly<
+    Partial<Record<TriggerActivationClass, TriggerActivationGrouping>>
+  >;
+  /** layout内のtrigger groupごとの例外。physical selectorほど優先する。 */
   readonly triggerActivationOverrides?: readonly TriggerActivationOverride[];
 }
 
 export const DEFAULT_ACTION_REALIZATION_POLICY: ActionRealizationPolicy = {
-  triggerActivation: 'combined',
+  triggerActivation: 'disabled',
+  triggerActivationClassOverrides: {},
   triggerActivationOverrides: [],
 };
 
@@ -46,17 +65,44 @@ const sameOptionalKeys = (
   ? right === undefined
   : right !== undefined && canonicalKeyIdentity(left) === canonicalKeyIdentity(right);
 
+const canonicalStringIdentity = (values: readonly string[]): string =>
+  [...new Set(values)].sort().join('\u0000');
+
+const sameOptionalStrings = (
+  left: readonly string[] | undefined,
+  right: readonly string[] | undefined,
+): boolean => left === undefined
+  ? right === undefined
+  : right !== undefined && canonicalStringIdentity(left) === canonicalStringIdentity(right);
+
 const sameSelector = (
   left: TriggerActivationSelector,
   right: TriggerActivationSelector,
-): boolean => left.layerId === right.layerId
+): boolean => sameOptionalStrings(left.modifierGroupIds, right.modifierGroupIds)
   && sameOptionalKeys(left.triggerKeys, right.triggerKeys);
+
+const ACTIVATION_CLASSES: readonly TriggerActivationClass[] = [
+  'prepress-required',
+  'order-free',
+  'postpress-required',
+];
+
+function sameClassOverrides(
+  left: ActionRealizationPolicy['triggerActivationClassOverrides'],
+  right: ActionRealizationPolicy['triggerActivationClassOverrides'],
+): boolean {
+  return ACTIVATION_CLASSES.every((key) => left?.[key] === right?.[key]);
+}
 
 export function sameActionRealizationPolicy(
   left: ActionRealizationPolicy,
   right: ActionRealizationPolicy,
 ): boolean {
   if (left.triggerActivation !== right.triggerActivation) return false;
+  if (!sameClassOverrides(
+    left.triggerActivationClassOverrides,
+    right.triggerActivationClassOverrides,
+  )) return false;
   const leftOverrides = left.triggerActivationOverrides ?? [];
   const rightOverrides = right.triggerActivationOverrides ?? [];
   if (leftOverrides.length !== rightOverrides.length) return false;
@@ -79,32 +125,95 @@ const intersects = (
   selected: ReadonlySet<PhysicalKeyId>,
 ): boolean => canonicalKeys(keys).some((key) => selected.has(key));
 
+/**
+ * trigger/output間のcanonical orderだけを分類する。
+ * release側の将来分離とは別概念で、postpress-requiredはtrigger-first split不可を表す。
+ */
+export function classifyTriggerActivation(
+  input: SemanticInput,
+  triggerKeys: readonly PhysicalKeyId[],
+  outputKeys: readonly PhysicalKeyId[],
+): TriggerActivationClass {
+  const trigger = new Set(canonicalKeys(triggerKeys));
+  const output = new Set(canonicalKeys(outputKeys));
+  let triggerBeforeOutput = false;
+  let outputBeforeTrigger = false;
+
+  for (const requirement of input.requirements) {
+    if (requirement.kind !== 'order') continue;
+    if (intersects(requirement.before, trigger) && intersects(requirement.after, output)) {
+      triggerBeforeOutput = true;
+    }
+    if (intersects(requirement.before, output) && intersects(requirement.after, trigger)) {
+      outputBeforeTrigger = true;
+    }
+  }
+
+  if (outputBeforeTrigger) return 'postpress-required';
+  if (triggerBeforeOutput) return 'prepress-required';
+  return 'order-free';
+}
+
+const modifierGroupIdsForAction = (
+  action: RealizedSemanticAction,
+): string[] => {
+  const trigger = new Set(canonicalKeys(action.triggerKeys));
+  return [...new Set(action.input.roles.flatMap((role) =>
+    role.role === 'modifier'
+      && role.modifierGroupId !== undefined
+      && trigger.has(resolveKeyId(role.key))
+      ? [role.modifierGroupId]
+      : []))].sort();
+};
+
 const selectorMatches = (
   selector: TriggerActivationSelector,
   action: RealizedSemanticAction,
 ): boolean => {
-  if (selector.layerId !== undefined && selector.layerId !== action.input.layerId) return false;
+  if (selector.modifierGroupIds !== undefined
+    && canonicalStringIdentity(selector.modifierGroupIds)
+      !== canonicalStringIdentity(modifierGroupIdsForAction(action))) {
+    return false;
+  }
   if (selector.triggerKeys !== undefined
     && canonicalKeyIdentity(selector.triggerKeys) !== canonicalKeyIdentity(action.triggerKeys)) {
     return false;
   }
-  return selector.layerId !== undefined || selector.triggerKeys !== undefined;
+  return selector.modifierGroupIds !== undefined || selector.triggerKeys !== undefined;
 };
+
+function concreteOverrideFor(
+  action: RealizedSemanticAction,
+  policy: ActionRealizationPolicy,
+): TriggerActivationGrouping | undefined {
+  const matches = (policy.triggerActivationOverrides ?? [])
+    .filter((override) => selectorMatches(override.selector, action));
+  return matches.find((override) => override.selector.triggerKeys !== undefined)?.grouping
+    ?? matches.find((override) => override.selector.modifierGroupIds !== undefined)?.grouping;
+}
 
 const groupingFor = (
   action: RealizedSemanticAction,
   policy: ActionRealizationPolicy,
-): TriggerActivationGrouping =>
-  policy.triggerActivationOverrides?.find((override) => selectorMatches(override.selector, action))
-    ?.grouping
-  ?? policy.triggerActivation;
+): TriggerActivationGrouping => {
+  if (policy.triggerActivation === 'disabled') return 'combined';
+  if (action.input.classifications.includes('composition')) return 'combined';
+
+  const concrete = concreteOverrideFor(action, policy);
+  if (concrete !== undefined) return concrete;
+
+  const activationClass = classifyTriggerActivation(
+    action.input,
+    action.triggerKeys,
+    action.outputKeys,
+  );
+  return policy.triggerActivationClassOverrides?.[activationClass]
+    ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[activationClass];
+};
 
 /**
  * trigger groupをremaining groupより先のanalytic actionへ分けても、
  * canonical order Requirementを壊さない場合だけtrue。
- *
- * Requirementからdefault groupingを推測するのではなく、Policy変換後の
- * streamがsemanticに反しないことだけを検証する。
  */
 function allowsTriggerFirstSplit(
   action: RealizedSemanticAction,
@@ -136,8 +245,7 @@ function allowsTriggerFirstSplit(
  *
  * へ分ける。
  *
- * hold状態は別軸。hold startなら後続outputへcontinueを引き継ぐが、
- * useHold=falseの通常triggerでも同じ分割規則を適用する。
+ * hold状態は別軸。hold startなら後続outputへcontinueを引き継ぐ。
  */
 function separateTriggerActivation(
   action: RealizedSemanticAction,
@@ -185,18 +293,14 @@ function separateTriggerActivation(
  * Trigger realization済みのaction streamへanalytic grouping policyを適用する。
  *
  * continuous holdとtrigger activation groupingは直交する。
- * Requirementはgroupingの推測には使わず、policy変換がcanonical semanticを
- * 壊さないためのvalidity gateにだけ使う。
+ * semantic modeではRequirementからactivation classを決め、
+ * prepress-requiredだけを既定で分離する。
  */
 export function applyActionRealizationPolicy(
   actions: readonly RealizedSemanticAction[],
   policy: ActionRealizationPolicy = DEFAULT_ACTION_REALIZATION_POLICY,
 ): readonly RealizedSemanticAction[] {
-  const overrides = policy.triggerActivationOverrides ?? [];
-  if (policy.triggerActivation === 'combined'
-    && overrides.every((override) => override.grouping === 'combined')) {
-    return actions;
-  }
+  if (policy.triggerActivation === 'disabled') return actions;
   return actions.flatMap((action) =>
     groupingFor(action, policy) === 'separate'
       ? separateTriggerActivation(action)

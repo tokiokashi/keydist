@@ -27,7 +27,7 @@ const face = (
   entries: Record<string, string>,
   options: Partial<Pick<
     Face,
-    'layer' | 'inputRole' | 'triggerPersistence' | 'triggerOrder' | 'presentationCells'
+    'layer' | 'inputRole' | 'triggerPersistence' | 'modifierGroups' | 'triggerOrder' | 'presentationCells'
   >> = {},
 ): Face => ({
   ...faceFromEntries(trigger, mode, entries),
@@ -142,7 +142,7 @@ test('legacy Step列はordered SemanticInput sequenceへcompileする', () => {
       { kind: 'overlap', keys: ['j', 'thumb-r'] },
     ],
     capabilities: [],
-    layerId: 'single',
+    aggregationGroupId: 'single',
     classifications: [],
     roles: [],
     faceMemberships: [],
@@ -152,7 +152,7 @@ test('legacy Step列はordered SemanticInput sequenceへcompileする', () => {
     physicalKeys: ['j'],
     requirements: [],
     capabilities: [],
-    layerId: 'single',
+    aggregationGroupId: 'single',
     classifications: [],
     roles: [],
     faceMemberships: [],
@@ -211,7 +211,7 @@ test('triggerなしFaceを単打SemanticInputへcompileする', () => {
     physicalKeys: ['a'],
     requirements: [],
     capabilities: [],
-    layerId: 'single',
+    aggregationGroupId: 'single',
     classifications: [],
     roles: [],
     faceMemberships: [{ faceIndex: 0, cellKey: 'a' }],
@@ -223,7 +223,7 @@ test('triggerless compositionはexplicit author intentを優先してcomboへcom
     face([], 'simultaneous', { a: 'きゃ' }, { inputRole: 'composition' }),
   ]);
 
-  assert.equal(input.layerId, 'combo');
+  assert.equal(input.aggregationGroupId, 'combo');
   assert.deepEqual(input.classifications, ['composition']);
   assert.deepEqual(input.requirements, []);
   assert.deepEqual(input.roles, []);
@@ -239,7 +239,35 @@ test('simultaneousはoverlap Requirementへcompileする', () => {
     { kind: 'overlap', keys: ['d', 'h'] },
   ]);
   assert.deepEqual(input.roles, [{ key: 'd', role: 'modifier' }]);
-  assert.equal(input.layerId, 'layer:中指シフト');
+  assert.equal(input.aggregationGroupId, 'layer:中指シフト');
+});
+
+test('modifierGroupsはphysical keyごとのlogical modifier semanticを保持する', () => {
+  const [input] = compileFaceSemanticInputs([
+    face(['h', 'j'], 'simultaneous', { w: 'ぎゃ' }, {
+      inputRole: 'modifier',
+      triggerPersistence: 'hold-capable',
+      modifierGroups: { h: '拗音', j: '濁音' },
+    }),
+  ]);
+
+  assert.deepEqual(input.roles, [
+    { key: 'h', role: 'modifier', modifierGroupId: '拗音' },
+    { key: 'j', role: 'modifier', modifierGroupId: '濁音' },
+  ]);
+});
+
+test('modifierGroupsを明示したFaceは全trigger keyのsemantic groupを要求する', () => {
+  assert.throws(
+    () => compileFaceSemanticInputs([
+      face(['h', 'j'], 'simultaneous', { w: 'ぎゃ' }, {
+        inputRole: 'modifier',
+        triggerPersistence: 'hold-capable',
+        modifierGroups: { h: '拗音' },
+      }),
+    ]),
+    /全trigger keyを分類する必要がある/,
+  );
 });
 
 test('prefixはorder Requirementだけを持つ', () => {
@@ -303,7 +331,7 @@ test('SemanticInput IRは一部キーだけのwhile-held capabilityを表現で�
     capabilities: [
       { kind: 'while-held', keys: ['thumb-r'] },
     ],
-    layerId: 'combo',
+    aggregationGroupId: 'combo',
     classifications: [],
     roles: [],
     faceMemberships: [],
@@ -340,7 +368,7 @@ test('相互シフトを両Faceから定義すると1 SemanticInputへdedupeし�
       { kind: 'overlap', keys: ['d', 'k'] },
     ],
     capabilities: [],
-    layerId: 'layer:中指シフト',
+    aggregationGroupId: 'layer:中指シフト',
     classifications: [],
     roles: [
       { key: 'd', role: 'modifier' },
@@ -539,7 +567,7 @@ test('built-inの相互Face membershipはauthoring側へ明示される', () => 
     && input.physicalKeys.length === 2
     && input.physicalKeys.includes('d')
     && input.physicalKeys.includes('l'))!;
-  assert.equal(o.layerId, 'layer:薬指シフト');
+  assert.equal(o.aggregationGroupId, 'layer:薬指シフト');
   assert.deepEqual(o.faceMemberships, [
     { faceIndex: 2, cellKey: 'l' },
     { faceIndex: 3, cellKey: 'd' },
@@ -549,7 +577,7 @@ test('built-inの相互Face membershipはauthoring側へ明示される', () => 
     && input.physicalKeys.length === 2
     && input.physicalKeys.includes('k')
     && input.physicalKeys.includes('s'))!;
-  assert.equal(ji.layerId, 'layer:中指シフト');
+  assert.equal(ji.aggregationGroupId, 'layer:中指シフト');
   assert.deepEqual(ji.faceMemberships, [
     { faceIndex: 1, cellKey: 's' },
     { faceIndex: 4, cellKey: 'k' },
@@ -562,8 +590,8 @@ test('built-inの相互Face membershipはauthoring側へ明示される', () => 
     && input.physicalKeys.includes('f')
     && input.physicalKeys.includes('j'))!;
   assert.deepEqual(ga.roles, [
-    { key: 'f', role: 'modifier' },
-    { key: 'j', role: 'modifier' },
+    { key: 'f', role: 'modifier', modifierGroupId: '濁音' },
+    { key: 'j', role: 'modifier', modifierGroupId: '濁音' },
   ]);
   assert.deepEqual(ga.capabilities, [
     { kind: 'while-held', keys: ['f'] },
@@ -582,7 +610,7 @@ test('presentation-only membershipは既存SemanticInputへfaceMembershipだけ�
   ]);
 
   const input = inputs.find((candidate) => candidate.output === 'お')!;
-  assert.equal(input.layerId, 'layer:薬指シフト');
+  assert.equal(input.aggregationGroupId, 'layer:薬指シフト');
   assert.deepEqual(input.physicalKeys, ['d', 'l']);
   assert.deepEqual(input.faceMemberships, [
     { faceIndex: 0, cellKey: 'd' },
@@ -663,7 +691,7 @@ test('composed outputはsource / markのcanonical SemanticInput列を再利用�
 
 test('consumer cutover後はbase layerをcanonical singleへ統一する', () => {
   const tsuki = LAYOUTS_JA.find((layout) => layout.id === 'tsuki-2-263')!;
-  assert.equal(tsuki.canonicalInputs.get('そ')?.[0]?.semanticInputs[0].layerId, 'single');
+  assert.equal(tsuki.canonicalInputs.get('そ')?.[0]?.semanticInputs[0].aggregationGroupId, 'single');
 });
 
 test('withCombos由来outputは1つのcombo SemanticInput + overlapになる', () => {
@@ -674,7 +702,7 @@ test('withCombos由来outputは1つのcombo SemanticInput + overlapになる', (
   const inputs = combo.canonicalInputs.get('desita')?.[0]?.semanticInputs;
   assert.ok(inputs);
   assert.equal(inputs.length, 1);
-  assert.equal(inputs[0].layerId, 'combo');
+  assert.equal(inputs[0].aggregationGroupId, 'combo');
   assert.equal(inputs[0].requirements[0]?.kind, 'overlap');
   assert.equal(inputs[0].output, 'desita');
 });
@@ -731,7 +759,7 @@ test('composition Faceはclassificationをcanonicalへ保持する', () => {
     }),
   ]);
   assert.deepEqual(input.classifications, ['composition']);
-  assert.equal(input.layerId, 'combo');
+  assert.equal(input.aggregationGroupId, 'combo');
 });
 
 
