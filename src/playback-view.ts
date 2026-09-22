@@ -1320,6 +1320,98 @@ function refreshInputRealizationAnalysis(): void {
         }
         return;
       }
+      const triggerHold = target.closest<HTMLInputElement>('[data-playback-trigger-hold]');
+      if (triggerHold) {
+        ctx.updateTriggerRealizationPolicy({
+          ...ctx.getTriggerRealizationPolicy(),
+          useHold: triggerHold.checked,
+        });
+        refreshInputRealizationAnalysis();
+        return;
+      }
+      const triggerActions = target.closest<HTMLInputElement>('[data-playback-trigger-actions]');
+      if (triggerActions) {
+        ctx.updateActionRealizationPolicy({
+          ...ctx.getActionRealizationPolicy(),
+          triggerActivation: triggerActions.checked ? 'semantic' : 'disabled',
+        });
+        refreshInputRealizationAnalysis();
+        return;
+      }
+      const triggerClass = target.closest<HTMLSelectElement>('select[data-playback-trigger-class]');
+      if (triggerClass) {
+        const kind = triggerClass.dataset.playbackTriggerClass;
+        if (kind === 'prepress-required' || kind === 'order-free' || kind === 'postpress-required') {
+          const action = ctx.getActionRealizationPolicy();
+          const overrides = { ...(action.triggerActivationClassOverrides ?? {}) };
+          if (triggerClass.value === 'combined' || triggerClass.value === 'separate') {
+            overrides[kind] = triggerClass.value;
+          } else {
+            delete overrides[kind];
+          }
+          ctx.updateActionRealizationPolicy({
+            ...action,
+            triggerActivationClassOverrides: overrides,
+          });
+          refreshInputRealizationAnalysis();
+        }
+        return;
+      }
+      const triggerModifierGroups = target.closest<HTMLSelectElement>('select[data-playback-trigger-modifier-groups]');
+      if (triggerModifierGroups) {
+        const encoded = triggerModifierGroups.dataset.playbackTriggerModifierGroups;
+        if (encoded) {
+          const modifierGroupIds = JSON.parse(encoded) as string[];
+          const action = ctx.getActionRealizationPolicy();
+          const overrides = (action.triggerActivationOverrides ?? [])
+            .filter((override) =>
+              !sameModifierGroupSelector(override.selector, modifierGroupIds));
+          if (triggerModifierGroups.value === 'combined' || triggerModifierGroups.value === 'separate') {
+            overrides.push({
+              selector: { modifierGroupIds },
+              grouping: triggerModifierGroups.value,
+            });
+          }
+          ctx.updateActionRealizationPolicy({
+            ...action,
+            triggerActivationOverrides: overrides,
+          });
+          refreshInputRealizationAnalysis();
+        }
+        return;
+      }
+      const triggerPhysical = target.closest<HTMLSelectElement>('select[data-playback-trigger-physical]');
+      if (triggerPhysical) {
+        const encoded = triggerPhysical.dataset.playbackTriggerPhysical;
+        if (encoded) {
+          const selector = JSON.parse(encoded) as {
+            modifierGroupIds: string[];
+            triggerKeys: string[];
+          };
+          const action = ctx.getActionRealizationPolicy();
+          const group = {
+            modifierGroupIds: selector.modifierGroupIds,
+            triggerKeys: selector.triggerKeys,
+            label: '',
+            activationClass: 'order-free' as const,
+          };
+          const overrides = (action.triggerActivationOverrides ?? [])
+            .filter((override) =>
+              !samePhysicalTriggerSelector(override.selector, group));
+          if (triggerPhysical.value === 'combined' || triggerPhysical.value === 'separate') {
+            overrides.push({
+              selector,
+              grouping: triggerPhysical.value,
+            });
+          }
+          ctx.updateActionRealizationPolicy({
+            ...action,
+            triggerActivationOverrides: overrides,
+          });
+          refreshInputRealizationAnalysis();
+        }
+        return;
+      }
       const chainPolicyInput = target.closest<HTMLInputElement>('[data-playback-chain-policy]');
       if (chainPolicyInput) {
         const key = chainPolicyInput.dataset.playbackChainPolicy;
