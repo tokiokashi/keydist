@@ -2,7 +2,7 @@ import { kunrei } from '../romaji/kunrei.ts';
 import { oonishiRomaji } from '../romaji/oonishi.ts';
 import { NAGINATA_V18 } from './naginata.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
-import { fromRows, withCombos, withRomaji, type Layout } from './types.ts';
+import { fromRows, withCombos, withRomaji, withShiftedOutputs, type Layout } from './types.ts';
 import { NICOLA } from './nicola.ts';
 import { ASUKA } from './asuka.ts';
 import { SHIN_KOUME } from './shin-koume.ts';
@@ -40,6 +40,7 @@ export {
   fromKana,
   withComposedOutputs,
   withThumbShiftAlternatives,
+  withShiftedOutputs,
   withRomaji,
   withCombos,
 } from './types.ts';
@@ -55,48 +56,48 @@ const ROMAJI_OONISHI = oonishiRomaji();
  * 大西配列は `-` をホーム段に置くため、数字段には `-` を入れない。
  */
 const ALPHA: Layout[] = [
-  fromRows('qwerty', 'QWERTY', [
+  withShiftedOutputs(fromRows('qwerty', 'QWERTY', [
     '1234567890-=',
     'qwertyuiop[]',
     "asdfghjkl;'",
     'zxcvbnm,./',
-  ]),
-  fromRows('dvorak', 'Dvorak', [
+  ])),
+  withShiftedOutputs(fromRows('dvorak', 'Dvorak', [
     '1234567890[]',
     "',.pyfgcrl/=",
     'aoeuidhtns-',
     ';qjkxbmwvz',
-  ]),
-  fromRows('colemak', 'Colemak', [
+  ])),
+  withShiftedOutputs(fromRows('colemak', 'Colemak', [
     '1234567890-=',
     'qwfpgjluy;[]',
     "arstdhneio'",
     'zxcvbkm,./',
-  ]),
-  fromRows('colemak-dh', 'Colemak-DH', [
+  ])),
+  withShiftedOutputs(fromRows('colemak-dh', 'Colemak-DH', [
     '1234567890-=',
     'qwfpbjluy;[]',
     "arstgmneio'",
     'zxcdvkh,./',
-  ]),
-  fromRows('workman', 'Workman', [
+  ])),
+  withShiftedOutputs(fromRows('workman', 'Workman', [
     '1234567890-=',
     'qdrwbjfup;[]',
     "ashtgyneoi'",
     'zxmcvkl,./',
-  ]),
-  fromRows('oonishi', '大西配列', [
+  ])),
+  withShiftedOutputs(fromRows('oonishi', '大西配列', [
     '1234567890',
     'qlu,.fwryp',
     'eiao-ktnsh',
     'zxcv;gdmjb',
-  ]),
-  fromRows('oonishi-custom', 'TK音直入力法', [
+  ])),
+  withShiftedOutputs(fromRows('oonishi-custom', 'TK音直入力法', [
     '1234567890',
     'qlu,.fwryp',
     'eiao-ktnsh',
     'xjcv/gdmzb',
-  ]),
+  ])),
 ];
 
 const ALPHA_BY_ID = new Map(ALPHA.map((l) => [l.id, l]));
