@@ -140,7 +140,7 @@ test('単打面率は単打面の1キー直接出力だけを文字数ベース�
   near(shingetaMetrics.singleTapLayerRate, 100 / 3, '新下駄: 2文字コンボ「きゃ」は単打面率へ含めない');
 
   const romajiMetrics = computeMetrics(evaluate('あか', qwerty, geometry, opts()), geometry);
-  near(romajiMetrics.singleTapLayerRate, 50, 'ローマ字: 1キーの「あ」だけを数え、2打鍵の「か」は含めない');
+  near(romajiMetrics.singleTapLayerRate, 0, 'ローマ字展開後の英字キーはカナ配列の単打面配置として数えない');
 });
 
 test('単打面率はlegacy inputRoleではなくcanonical classificationをauthorityにする', () => {
