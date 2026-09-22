@@ -88,9 +88,9 @@ export const CONDITION_DESCRIPTORS = {
     format: (value) => geometryLabel(value as UiStateConditionsDefaults['geometry']),
   },
   windowSize: {
-    label: '窓幅 N',
-    effect: '同じ指を残すかホームへ戻すかを比べる先読みの打鍵数です。値が大きいほど、離れた連続打鍵でも指を残す候補を比較します。',
-    format: (value) => `${value} ステップ`,
+    label: '先読み N',
+    effect: '同じ指を残すかホームへ戻すかを比べる先読み入力数です。evaluateが選んだcanonical inputを1単位とし、複数Strokeへの分割では増えません。',
+    format: (value) => `${value} 入力先`,
   },
   playbackRateAverage: {
     label: '速度の平均方式',
