@@ -4,6 +4,7 @@ import { TypingInputEngine } from '../src/core/input-converter/index.ts';
 import { browserKeyboardEventToPhysicalKeyEvent } from '../src/features/input-converter/browser-keyboard-adapter.ts';
 import { NAGINATA_V18 } from '../src/layouts/naginata.ts';
 import { SHINGETA } from '../src/layouts/shingeta.ts';
+import { SHIN_JIS_SIMULTANEOUS } from '../src/layouts/shin-jis.ts';
 import { faceFromEntries, fromFaces, fromKana, type Face } from '../src/layouts/index.ts';
 import { TSUKI_2_263 } from '../src/layouts/tsuki-2-263.ts';
 
@@ -208,4 +209,79 @@ test('composed prefixと無関係な次入力は通常の即時出力を維持�
   const next = engine.handle(browserPhysical('keydown', 'KeyH')).recognized[0];
   assert.equal(next.output, 'く');
   assert.equal(next.replacePreviousText, undefined);
+});
+
+
+test('multi-step再realizeはsequence開始前のholdなしを有効なbaselineとして保持する', () => {
+  const engine = new TypingInputEngine(SHIN_JIS_SIMULTANEOUS.canonicalInputs, {
+    triggerRealizationPolicy: { useHold: true },
+  });
+
+  assert.deepEqual(engine.handle(browserPhysical('keydown', 'Space')).recognized, []);
+  const source = engine.handle(browserPhysical('keydown', 'KeyY')).recognized[0];
+  assert.equal(source.output, 'ひ');
+  assert.deepEqual(source.actions.map((action) => ({
+    keys: action.keys,
+    heldKeys: action.heldKeys,
+    holdPhase: action.holdPhase,
+  })), [
+    {
+      keys: ['thumb-r', 'y'],
+      heldKeys: ['thumb-r'],
+      holdPhase: 'start',
+    },
+  ]);
+
+  engine.handle(browserPhysical('keyup', 'KeyY'));
+  const composed = engine.handle(browserPhysical('keydown', 'KeyW')).recognized[0];
+
+  assert.equal(composed.output, 'ぴ');
+  assert.equal(composed.replacePreviousText, 'ひ');
+  assert.deepEqual(composed.actions.map((action) => ({
+    keys: action.keys,
+    heldKeys: action.heldKeys,
+    holdPhase: action.holdPhase,
+  })), [
+    {
+      keys: ['thumb-r', 'y'],
+      heldKeys: ['thumb-r'],
+      holdPhase: 'start',
+    },
+    {
+      keys: ['w'],
+      heldKeys: ['thumb-r'],
+      holdPhase: 'continue',
+    },
+  ]);
+});
+
+test('longest multi-step sequenceはshorter composition成立後もreplacement chainingできる', () => {
+  const layout = fromKana('converter-longest-sequence', 'converter-longest-sequence', [
+    ['A', [['f']]],
+    ['X', [['f'], ['j']]],
+    ['Y', [['f'], ['j'], ['k']]],
+  ]);
+  const engine = new TypingInputEngine(layout.canonicalInputs);
+
+  const first = engine.handle({ type: 'down', key: 'f' }).recognized[0];
+  assert.equal(first.output, 'A');
+  assert.equal(first.replacePreviousText, undefined);
+  engine.handle({ type: 'up', key: 'f' });
+
+  const second = engine.handle({ type: 'down', key: 'j' }).recognized[0];
+  assert.equal(second.output, 'X');
+  assert.equal(second.replacePreviousText, 'A');
+  assert.deepEqual(
+    second.actions.map((action) => action.keys),
+    [['f'], ['j']],
+  );
+  engine.handle({ type: 'up', key: 'j' });
+
+  const third = engine.handle({ type: 'down', key: 'k' }).recognized[0];
+  assert.equal(third.output, 'Y');
+  assert.equal(third.replacePreviousText, 'X');
+  assert.deepEqual(
+    third.actions.map((action) => action.keys),
+    [['f'], ['j'], ['k']],
+  );
 });
