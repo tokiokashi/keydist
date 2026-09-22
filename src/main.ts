@@ -1326,7 +1326,7 @@ function conditionRow(
     const fields = document.createElement('div');
     fields.className = 'condition-fields';
     const windowLabel = document.createElement('label');
-    windowLabel.append('窓幅N ');
+    windowLabel.append('先読みN入力単位 ');
     conditionNumber(windowLabel, value('windowSize'), !enabled, (next) => commitCondition(layout?.id, 'windowSize', next), {
       min: '0', max: '12', step: '1',
     });
