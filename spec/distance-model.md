@@ -211,6 +211,10 @@ canonical上に残る。Input Converterでは実際に押された `ShiftLeft` /
 Shift keyのgeometryは既存PhysicalShapeの保存schemaへ混ぜず、bottom rowの実座標から標準Shiftの
 中心位置を派生させる。
 
+全角 `！` / `？` は半角 `!` / `?` と同じ物理入力として評価する。広いNFKC正規化は行わず、
+評価入力境界でこの2文字だけを明示aliasへ写像する。これにより他の全角記号・互換文字を
+意図せずASCIIへ潰さない。Strokeの `inputChar` は元入力を保持する。
+
 ### 4.1同時押しは1ステップとして数える
 
 `g` はステップ単位で数える。同時押しの中では時間が経過しないため。
