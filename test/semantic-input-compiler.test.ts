@@ -27,7 +27,7 @@ const face = (
   entries: Record<string, string>,
   options: Partial<Pick<
     Face,
-    'layer' | 'inputRole' | 'triggerPersistence' | 'triggerOrder' | 'presentationCells'
+    'layer' | 'inputRole' | 'triggerPersistence' | 'modifierGroups' | 'triggerOrder' | 'presentationCells'
   >> = {},
 ): Face => ({
   ...faceFromEntries(trigger, mode, entries),
