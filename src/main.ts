@@ -1311,12 +1311,12 @@ function conditionRow(
     const actionLabel = document.createElement('label');
     const actionInput = document.createElement('input');
     actionInput.type = 'checkbox';
-    actionInput.checked = action.holdStart === 'separate';
+    actionInput.checked = action.triggerActivation === 'separate';
     actionInput.disabled = !enabled;
     actionInput.addEventListener('change', () =>
       commitCondition(layout?.id, 'actionRealization', {
         ...action,
-        holdStart: actionInput.checked ? 'separate' : 'combined',
+        triggerActivation: actionInput.checked ? 'separate' : 'combined',
       }));
     actionLabel.append(actionInput, ' hold開始を独立actionとしてrealizeする');
 
