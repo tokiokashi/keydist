@@ -472,7 +472,9 @@ export class TypingInputEngine {
     const multiStep = this.#completedMultiStepMatch(step.signature);
     if (multiStep !== undefined) {
       const previousSegments = [...multiStep.previousSegments];
-      const baseline = previousSegments[0]?.holdStateBefore ?? holdStateBefore;
+      const baseline = previousSegments.length > 0
+        ? previousSegments[0].holdStateBefore
+        : holdStateBefore;
       const realized = this.#realize(
         multiStep.candidate.alternative.baseRealizations,
         baseline,
