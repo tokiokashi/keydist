@@ -46,7 +46,7 @@ test('面の展開後も各ステップの層帰属を保持する（#87）', ()
   ]);
   const trace = evaluate('あかさた', layout, buildGeometry('row-staggered'), DEFAULT_OPTIONS);
 
-  assert.deepEqual(trace.strokes.map((stroke) => stroke.layerId), [
+  assert.deepEqual(trace.strokes.map((stroke) => stroke.aggregationGroupId), [
     'single', 'layer:中指', 'layer:中指', 'layer:人差指', 'layer:人差指', 'combo',
   ]);
   const metrics = computeMetrics(trace, buildGeometry('row-staggered'));
