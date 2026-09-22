@@ -18,10 +18,8 @@ export const DEFAULT_TRIGGER_ACTIVATION_GROUPINGS: Readonly<
 };
 
 export interface TriggerActivationSelector {
-  /** authoring由来のcanonical logical trigger group。 */
-  readonly triggerGroupId?: string;
-  /** 同じphysical trigger集合をsemantic contextごとに分ける時のaggregation scope。 */
-  readonly layerId?: string;
+  /** fresh trigger群が要求するcanonical modifier group集合。順序はidentityに含めない。 */
+  readonly modifierGroupIds?: readonly string[];
   /** fresh trigger pressのcanonical key集合。順序はidentityに含めない。 */
   readonly triggerKeys?: readonly PhysicalKeyId[];
 }
@@ -67,11 +65,20 @@ const sameOptionalKeys = (
   ? right === undefined
   : right !== undefined && canonicalKeyIdentity(left) === canonicalKeyIdentity(right);
 
+const canonicalStringIdentity = (values: readonly string[]): string =>
+  [...new Set(values)].sort().join('\u0000');
+
+const sameOptionalStrings = (
+  left: readonly string[] | undefined,
+  right: readonly string[] | undefined,
+): boolean => left === undefined
+  ? right === undefined
+  : right !== undefined && canonicalStringIdentity(left) === canonicalStringIdentity(right);
+
 const sameSelector = (
   left: TriggerActivationSelector,
   right: TriggerActivationSelector,
-): boolean => left.triggerGroupId === right.triggerGroupId
-  && left.layerId === right.layerId
+): boolean => sameOptionalStrings(left.modifierGroupIds, right.modifierGroupIds)
   && sameOptionalKeys(left.triggerKeys, right.triggerKeys);
 
 const ACTIVATION_CLASSES: readonly TriggerActivationClass[] = [
@@ -147,20 +154,32 @@ export function classifyTriggerActivation(
   return 'order-free';
 }
 
+const modifierGroupIdsForAction = (
+  action: RealizedSemanticAction,
+): string[] => {
+  const trigger = new Set(canonicalKeys(action.triggerKeys));
+  return [...new Set(action.input.roles.flatMap((role) =>
+    role.role === 'modifier'
+      && role.modifierGroupId !== undefined
+      && trigger.has(resolveKeyId(role.key))
+      ? [role.modifierGroupId]
+      : []))].sort();
+};
+
 const selectorMatches = (
   selector: TriggerActivationSelector,
   action: RealizedSemanticAction,
 ): boolean => {
-  if (selector.triggerGroupId !== undefined
-    && selector.triggerGroupId !== action.input.triggerGroupId) return false;
-  if (selector.layerId !== undefined && selector.layerId !== action.input.layerId) return false;
+  if (selector.modifierGroupIds !== undefined
+    && canonicalStringIdentity(selector.modifierGroupIds)
+      !== canonicalStringIdentity(modifierGroupIdsForAction(action))) {
+    return false;
+  }
   if (selector.triggerKeys !== undefined
     && canonicalKeyIdentity(selector.triggerKeys) !== canonicalKeyIdentity(action.triggerKeys)) {
     return false;
   }
-  return selector.triggerGroupId !== undefined
-    || selector.layerId !== undefined
-    || selector.triggerKeys !== undefined;
+  return selector.modifierGroupIds !== undefined || selector.triggerKeys !== undefined;
 };
 
 function concreteOverrideFor(
@@ -170,8 +189,7 @@ function concreteOverrideFor(
   const matches = (policy.triggerActivationOverrides ?? [])
     .filter((override) => selectorMatches(override.selector, action));
   return matches.find((override) => override.selector.triggerKeys !== undefined)?.grouping
-    ?? matches.find((override) => override.selector.triggerGroupId !== undefined)?.grouping
-    ?? matches.find((override) => override.selector.layerId !== undefined)?.grouping;
+    ?? matches.find((override) => override.selector.modifierGroupIds !== undefined)?.grouping;
 }
 
 const groupingFor = (
