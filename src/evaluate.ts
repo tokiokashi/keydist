@@ -23,7 +23,7 @@ import {
 } from './core/semantic-input/index.ts';
 
 export interface Options {
-  /** 窓幅N（打鍵単位）。この打鍵数までは残す候補を比較する */
+  /** 先読みN入力。選択されたcanonical inputでN入力先まで残す候補を比較する */
   windowSize: number;
   /**
    * 同指連続（g=0）で打鍵先がその指のホームキー自身のとき、移動を加算するか。
@@ -63,8 +63,10 @@ export interface Press {
   keys: Key[];
   /** 指の目標位置。キーが複数なら重心（§4.2） */
   target: Point;
-  /** 前回この指を使ってから挟まったステップ数 */
+  /** 前回この指を使ってから挟まったrealized Stroke数。SFB判定用。 */
   gap: number;
+  /** 前回この指が参加したselected inputから何入力先か。N判定用。evaluate生成時は必ず入る。 */
+  inputDistance?: number;
   /** この押下で計上された移動距離 [u] */
   distance: number;
   /**
@@ -127,9 +129,9 @@ export interface Trace {
 /**
  * 仕様 §9。テキストを打鍵ステップ列へ展開し、各押下の移動距離を求める。
  *
- * g = 0        → d_stay               （同指連続。戻る時間がない）
- * 1 ≤ g ≤ N    → min(d_stay, d_home)  （残す選択肢が比較に入る）
- * g > N        → d_home               （復帰済み）
+ * realized Stroke gap = 0 → d_stay（同指連続。戻る時間がない）
+ * input distance ≤ N       → min(d_stay, d_home)
+ * input distance > N       → d_home
  *
  * ホームへの復帰移動そのものは計上しない（§7 R2）。
  * 同時押しステップは1ステップとして数え、距離は各指の単純和を採る。
@@ -142,9 +144,11 @@ export function evaluate(
 ): Trace {
   const prev = {} as Record<Finger, Point>;
   const last = {} as Record<Finger, number>;
+  const lastInputOrdinal = {} as Record<Finger, number>;
   for (const finger of ALL_FINGERS) {
     prev[finger] = geometry.homes[finger];
     last[finger] = Number.NEGATIVE_INFINITY;
+    lastInputOrdinal[finger] = Number.NEGATIVE_INFINITY;
   }
 
   const strokes: Stroke[] = [];
@@ -163,6 +167,7 @@ export function evaluate(
   }
   let skipped = 0;
   let index = 0;
+  let inputOrdinal = 0;
   let triggerHoldState: TriggerHoldState | undefined;
 
   // ローマ字配列はかなテキストを展開してから打つ。コンボの誤命中を防ぐため、
@@ -219,6 +224,7 @@ export function evaluate(
       cursor++;
       continue;
     }
+    const currentInputOrdinal = inputOrdinal++;
     const inputStart = cursor;
     const inputEnd = cursor + consumed;
     const inputChar = chunks
@@ -278,15 +284,22 @@ export function evaluate(
         else byFinger.set(key.finger, [key]);
       }
 
+      const inputDistanceByFinger = new Map<Finger, number>();
       const presses: Press[] = [...byFinger].map(([finger, keys]) => {
         const target = centroid(keys);
         const gap = index - last[finger] - 1;
+        const previousInputOrdinal = lastInputOrdinal[finger];
+        const inputDistance = Number.isFinite(previousInputOrdinal)
+          ? currentInputOrdinal - previousInputOrdinal
+          : Number.POSITIVE_INFINITY;
+        inputDistanceByFinger.set(finger, inputDistance);
         const at = prev[finger];
         return {
           finger,
           keys,
           target,
           gap,
+          inputDistance,
           distance: 0,
           sfb: gap === 0 && (at.x !== target.x || at.y !== target.y),
         };
@@ -305,7 +318,13 @@ export function evaluate(
 
       let total = 0;
       for (const press of presses) {
-        const decision = pressCost(press, prev, geometry, options);
+        const decision = pressCost(
+          press,
+          inputDistanceByFinger.get(press.finger) ?? Number.POSITIVE_INFINITY,
+          prev,
+          geometry,
+          options,
+        );
         press.distance = decision.distance;
         if (decision.stay) {
           restoreStaySnapshots(
@@ -321,6 +340,7 @@ export function evaluate(
       for (const press of presses) {
         prev[press.finger] = press.target;
         last[press.finger] = index;
+        lastInputOrdinal[press.finger] = currentInputOrdinal;
       }
 
       const pressedFingers = new Set(presses.map((press) => press.finger));
@@ -328,6 +348,7 @@ export function evaluate(
         if (pressedFingers.has(finger)) continue;
         prev[finger] = centroid(keys);
         last[finger] = index;
+        lastInputOrdinal[finger] = currentInputOrdinal;
       }
 
       const positions = snapshot(prev, last, index, geometry);
@@ -543,6 +564,7 @@ interface CostDecision {
 
 function pressCost(
   press: Press,
+  inputDistance: number,
   prev: Record<Finger, Point>,
   geometry: Geometry,
   options: Options,
@@ -559,7 +581,8 @@ function pressCost(
       stay: true,
     };
   }
-  if (gap <= options.windowSize) {
+  if (inputDistance <= options.windowSize) {
+    // Nは選択されたcanonical input単位で数える。realized Stroke分割数には依存しない。
     // 同値は既存のminの結果を維持し、「残す」側に寄せる。
     const stay = dStay <= dHome;
     return { distance: stay ? dStay : dHome, stay };

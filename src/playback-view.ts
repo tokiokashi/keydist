@@ -332,7 +332,7 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
         <label class="playback-range-setting" title="次の実Pressへ向け、指位置表示を打鍵時刻より先に到着させる時間。0なら従来どおり"><span>準備時間</span> <input type="number" data-playback-finger-preparation min="0" step="0.05" value="${ctx.getUiState().ui.playback.fingerPreparationSeconds}" aria-label="指位置表示の準備時間（秒）" /> 秒</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${ctx.getUiState().ui.playback.showRomajiPlan ? ' checked' : ''} />予定ローマ字の盤面表示</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-plan-keys${ctx.getUiState().ui.playback.showPlanKeys ? ' checked' : ''} />押下予定キーを表示</label>
-        <div class="playback-window-setting" title="選択中の配列に適用される窓幅N">N <output data-playback-window>${options.windowSize}</output> ステップ</div>
+        <div class="playback-window-setting" title="選択中の配列に適用される先読みN">N <output data-playback-window>${options.windowSize}</output> 入力先</div>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${ctx.getUiState().ui.playback.showTrail ? ' checked' : ''} />押下履歴を残す</label>
         <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${ctx.getUiState().ui.playback.trailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
         <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${ctx.getUiState().ui.playback.showOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>

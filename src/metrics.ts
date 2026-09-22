@@ -147,7 +147,7 @@ export interface Metrics {
 }
 
 export interface MetricConditions {
-  /** 窓幅N（打鍵単位） */
+  /** 先読みN入力。selected canonical input単位で数える */
   windowSize: number;
   /** 同指連続でホームキーの移動を計上するか */
   sfbHomeCost: boolean;
