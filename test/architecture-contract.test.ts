@@ -810,6 +810,7 @@ test('廃止済み#200 legacy symbol / production helperをsrcへ再導入しな
     'HoldStartActionPolicy',
     'holdStartAction',
     'countAsSeparateStep',
+    'holdStart',
   ] as const;
   const migrationOnly = [
     'arpeggioEnabled',
