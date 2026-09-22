@@ -23,7 +23,7 @@ const QWERTY_ROWS = [
 const face = (
   trigger: string[],
   entries: Record<string, string>,
-  options: Pick<Face, 'layer' | 'role' | 'inputRole' | 'triggerPersistence' | 'triggerOrder' | 'presentationTriggerAlternatives' | 'presentationTriggerText' | 'presentationLabel'> = {
+  options: Pick<Face, 'layer' | 'role' | 'inputRole' | 'triggerPersistence' | 'triggerGroup' | 'triggerOrder' | 'presentationTriggerAlternatives' | 'presentationTriggerText' | 'presentationLabel'> = {
     inputRole: 'layer',
   },
 ): Face => ({
