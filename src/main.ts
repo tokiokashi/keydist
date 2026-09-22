@@ -1121,6 +1121,19 @@ const CONDITION_TABS: readonly [ConditionTab, string][] = [
 ];
 
 let conditionTab: ConditionTab = 'model';
+const conditionDetailsOpen = new Map<string, boolean>();
+
+function bindConditionDetails(
+  details: HTMLDetailsElement,
+  key: string,
+  defaultOpen = false,
+): void {
+  details.dataset.conditionDetailsKey = key;
+  details.open = conditionDetailsOpen.get(key) ?? defaultOpen;
+  details.addEventListener('toggle', () => {
+    conditionDetailsOpen.set(key, details.open);
+  });
+}
 
 function currentConditionPresetId(): string {
   return allConditionPresets(conditionPresets).find((preset) =>
@@ -1333,6 +1346,7 @@ function conditionRow(
   }
 
   if (tab === 'trigger') {
+    const detailsScope = layout?.id ?? 'defaults';
     const realization = value('triggerRealization');
     const action = value('actionRealization');
     const fields = document.createElement('div');
@@ -1396,6 +1410,7 @@ function conditionRow(
         .filter((group) => !group.activationClasses.includes('postpress-required'));
       if (logicalGroups.length > 0) {
         const details = document.createElement('details');
+        bindConditionDetails(details, `${detailsScope}:trigger-individual`);
         const summary = document.createElement('summary');
         summary.textContent = '個別設定';
         details.append(summary);
@@ -1437,6 +1452,7 @@ function conditionRow(
         }
 
         const physicalDetails = document.createElement('details');
+        bindConditionDetails(physicalDetails, `${detailsScope}:trigger-physical`);
         const physicalSummary = document.createElement('summary');
         physicalSummary.textContent = '物理trigger単位の詳細';
         physicalDetails.append(physicalSummary);
