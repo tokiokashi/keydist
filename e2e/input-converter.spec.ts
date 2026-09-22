@@ -4,7 +4,7 @@ test('Input Converter keeps browser key lifecycle consistent', async ({ page }) 
   await page.goto('/input');
 
   const feature = page.locator('.input-feature');
-  await expect(feature).toHaveAttribute('data-input-ready', /.+/);
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   await page.getByLabel('配列').selectOption('tsuki-2-263');
   await expect(feature).toHaveAttribute('data-input-ready', 'tsuki-2-263');
 
