@@ -216,7 +216,7 @@ test('単打率はかなを1キーで直接出す独立actionだけを数える'
   const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
   const prefixMetrics = computeMetrics(evaluate('あ', tsuki, geometry, opts()), geometry);
   near(prefixMetrics.singleTapRate, 0, '月配列: 前置シフトを含む入力は単打には含めない');
-  near(prefixMetrics.singleKeyRate, 100, '月配列: 前置シフトも出力も各actionは1キー');
+  near(prefixMetrics.singleKeyRate, 50, '月配列: trigger-onlyは除外し、出力側1actionだけを1キーとして数える');
 
   const shingeta = LAYOUT_BY_ID.get('shingeta')!;
   const comboMetrics = computeMetrics(evaluate('きゃ', shingeta, geometry, opts()), geometry);
@@ -253,7 +253,23 @@ test('1キー率はActionRealizationPolicy適用後の共通Stroke streamを数�
   assert.equal(combined.actions, 2);
   assert.equal(separate.actions, 3);
   near(combined.singleKeyRate, 50, '2 action中、hold継続の1 actionだけが1キー');
-  near(separate.singleKeyRate, 100, 'trigger押下を分けると3 actionすべて1キー');
+  near(separate.singleKeyRate, 200 / 3, 'trigger-onlyを除外し、3 action中2つのoutput actionだけが1キー');
+});
+
+test('1キー率はtrigger-only actionを分子へ入れない', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18')!;
+  const trace = evaluate('お', layout, geometry, opts({
+    actionRealizationPolicy: { triggerActivation: 'semantic' },
+  }));
+  const metrics = computeMetrics(trace, geometry, {
+    ...DEFAULT_METRIC_CONDITIONS,
+    actionRealizationPolicy: { triggerActivation: 'semantic' },
+  });
+
+  assert.equal(trace.strokes.length, 2);
+  assert.equal(trace.strokes[0].participations.some((p) => p.roles.includes('output')), false);
+  assert.equal(trace.strokes[1].participations.some((p) => p.roles.includes('output')), true);
+  near(metrics.singleKeyRate, 50, '2 action中、outputを伴う1キーactionだけを数える');
 });
 
 test('単打率はhold継続中の1キー入力を単打に含めない', () => {
