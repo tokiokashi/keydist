@@ -46,7 +46,9 @@
 Tab / Esc等の4段grid外physical keyは `PhysicalShape.extraKeys` へstable physical key id、
 座標 `(x, y)`、表示幅を持てる。これらは通常gridへ無理に埋め込まず、評価時は他のキーと同じ
 `Geometry.keys` へ入る。**形状は位置を、`FingerAssignment` はそのキーを担当する指を持つ。**
-grid外キーの運指をshapeへ埋め込まない。
+grid外キーの運指をshapeへ埋め込まない。extra key idはcanonical physical identityそのものを
+保存し、`resolveKeyId(id) === id` を満たす必要がある。`space` のようなlegacy aliasを
+独立したphysical keyとして保存してはならない。
 
 指 `f` のホーム位置を `H_f` と書く。
 
