@@ -310,16 +310,25 @@ export function buildGeometry(
 
   // Tab / Esc等のgrid外physical key。shapeは座標、assignmentは運指だけを所有する。
   for (const spec of s.extraKeys ?? []) {
-    if (keys.has(spec.id) || s.thumbs.some((thumb) => thumb.id === spec.id)) {
+    const canonicalId = resolveKeyId(spec.id);
+    if (canonicalId !== spec.id) {
+      throw new Error(
+        `形状「${s.id}」の追加キー ${spec.id} はcanonical physical key idではない（${canonicalId}）`,
+      );
+    }
+    if (
+      keys.has(canonicalId)
+      || s.thumbs.some((thumb) => resolveKeyId(thumb.id) === canonicalId)
+    ) {
       throw new Error(`形状「${s.id}」の追加キー ${spec.id} が既存キーと重複している`);
     }
-    const finger = assignment.keyFinger[spec.id];
+    const finger = assignment.keyFinger[canonicalId];
     if (!finger) throw new Error(`指割り当て「${assignment.id}」にキー ${spec.id} が無い`);
     if (isThumb(finger)) {
       throw new Error(`追加キー ${spec.id} に親指 ${finger} は割り当てられない`);
     }
-    keys.set(spec.id, {
-      id: spec.id,
+    keys.set(canonicalId, {
+      id: canonicalId,
       row: spec.row,
       col: spec.col,
       x: spec.x,
