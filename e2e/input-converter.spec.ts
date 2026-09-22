@@ -284,7 +284,7 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await expect(feature).toHaveAttribute('data-active-layer', 'layer:濁音');
   await expect(layerLabel).toContainText('濁音');
   await expect(keyboard.locator('[data-key-id="f"] .physical-keyboard-legend')).toHaveText('が');
-  await expect(keyboard.locator('[data-key-id="h"]')).not.toHaveAttribute('data-guide', 'continuation');
+  await expect(keyboard.locator('[data-key-id="h"]')).toHaveAttribute('data-guide', 'continuation');
 
   await page.keyboard.down('h');
   await expect(keyboard.locator('[data-key-id="w"]')).toHaveAttribute('data-guide', 'output');
@@ -303,7 +303,9 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await expect(layerGuideToggle).toBeChecked();
   await expect(page.locator('.input-layer-guide')).toBeVisible();
 
-  await expect(keyboard.locator('[data-key-id="j"]')).toHaveAttribute('data-accent-slot', /[1-8]/);
+  await expect(keyboard.locator('[data-key-id="thumb-r"]')).toHaveAttribute('data-accent-slot', /[1-8]/);
+  await expect(keyboard.locator('[data-key-id="j"]')).not.toHaveAttribute('data-accent-slot', /[1-8]/);
+  await expect(keyboard.locator('[data-key-id="h"]')).not.toHaveAttribute('data-accent-slot', /[1-8]/);
   await expect(keyboard.locator('[data-key-id="o"]')).not.toHaveAttribute('data-accent-slot', /[1-8]/);
   await expect(keyboard.locator('[data-combo]')).toHaveCount(0);
   const triggerColorToggle = page.getByLabel('レイヤーキー');
@@ -315,7 +317,10 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await expect(triggerColorToggle).toBeChecked();
 
   await expect(page.locator('.input-layer-card')).toHaveCount(1);
-  await expect(page.locator('.input-layer-card').first()).toContainText('SandS');
+  const sandSCard = page.locator('.input-layer-card').first();
+  await expect(sandSCard).toContainText('SandS');
+  await expect(sandSCard.locator('[data-key-id="thumb-r"]')).toHaveAttribute('data-accent-slot', /[1-8]/);
+  await expect(sandSCard.locator('[data-key-id="j"]')).not.toHaveAttribute('data-accent-slot', /[1-8]/);
   await expect(page.getByLabel('意味論的な組み合わせ')).toContainText('濁音');
   await expect(page.getByLabel('意味論的な組み合わせ')).toContainText('拗音');
 
@@ -328,6 +333,19 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await expect(dynamicGuideToggle).not.toBeChecked();
   await expect(keyboard.locator('[data-guide]')).toHaveCount(0);
   await page.keyboard.up('j');
+
+  // 後続のorder-free検証では動的ガイドを戻す。
+  await page.keyboard.press('Space');
+  await expect(dynamicGuideToggle).toBeChecked();
+
+  // order-free chordはauthoring triggerでない側を先に保持しても相方を案内する。
+  await output.click();
+  await page.keyboard.down('w');
+  await expect(keyboard.locator('[data-key-id="h"]')).toHaveAttribute('data-guide', 'output');
+  await expect(keyboard.locator('[data-key-id="h"] .physical-keyboard-legend')).toHaveText('きゃ');
+  // 組み合わせで変わらないキーは単打凡例を残し、roll/arpeggio可能性を読めるようにする。
+  await expect(keyboard.locator('[data-key-id="f"] .physical-keyboard-legend')).toHaveText('か');
+  await page.keyboard.up('w');
 });
 
 test('月配列one-shotは未定義側へQWERTYを貫通せず1打で必ず消費する', async ({ page }) => {
@@ -422,6 +440,19 @@ test('TK音直入力法はかなを直接表示しcomboと拗音contextを認識
   await page.keyboard.up('d');
   await page.keyboard.up('s');
   await expect(output).toHaveValue('きゃ');
+
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await output.click();
+
+  // 撥音comboは onn の2nを保ち、後続の「や」を「にゃ」へ吸収しない。
+  await page.keyboard.down('x');
+  await page.keyboard.down('f');
+  await page.keyboard.up('f');
+  await page.keyboard.up('x');
+  await expect(output).toHaveValue('おん');
+  await page.keyboard.press('o');
+  await page.keyboard.press('d');
+  await expect(output).toHaveValue('おんや');
 });
 
 test('打ち方逆引きは配列ごとのcanonical inputを表示する', async ({ page }) => {
@@ -499,6 +530,83 @@ test('月配列は未定義の標準文字keyをQWERTYとして貫通させな�
   await expect(output).toHaveValue('と');
 });
 
+
+test('#387 Esc全削除・hold中Backspace・JISかな・仮想Shift表示を扱う', async ({ page }) => {
+  await page.goto('/input');
+  const feature = page.locator('.input-feature');
+  const output = page.getByLabel('自由入力テキスト');
+  const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
+  const layerLabel = page.locator('.input-active-layer');
+
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+
+  // Backspaceは文字を消してもphysical holdを維持する。
+  await output.click();
+  await page.keyboard.press('f');
+  await expect(output).toHaveValue('か');
+  await page.keyboard.down('j');
+  await expect(layerLabel).toContainText('濁音');
+  await page.keyboard.press('Backspace');
+  await expect(output).toHaveValue('');
+  await expect(layerLabel).toContainText('濁音');
+  await page.keyboard.press('f');
+  await expect(output).toHaveValue('が');
+  await page.keyboard.up('j');
+
+  // layout入力でないEscはblurせず全文クリア。
+  await page.keyboard.press('Escape');
+  await expect(output).toHaveValue('');
+  await expect(output).toBeFocused();
+
+  await page.getByLabel('配列', { exact: true }).selectOption('jis-kana');
+  await expect(feature).toHaveAttribute('data-input-ready', 'jis-kana');
+  await expect(page.getByLabel('物理配列')).toHaveValue('jis-row-staggered');
+  await output.click();
+
+  await page.keyboard.press('q');
+  await expect(output).toHaveValue('た');
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await output.click();
+  await page.keyboard.press('t');
+  await page.keyboard.press('[');
+  await expect(output).toHaveValue('が');
+
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await output.click();
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('3');
+  await page.keyboard.up('Shift');
+  await expect(output).toHaveValue('ぁ');
+
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await output.click();
+  await output.evaluate((element) => {
+    for (const type of ['keydown', 'keyup'] as const) {
+      element.dispatchEvent(new KeyboardEvent(type, {
+        key: 'ろ',
+        code: 'IntlRo',
+        bubbles: true,
+        cancelable: true,
+      }));
+    }
+  });
+  await expect(output).toHaveValue('ろ');
+
+  // Shiftは入力semanticには残すが既定では盤面から隠し、表示時も仮想1uにする。
+  await expect(keyboard.locator('[data-key-id="shift-l"]')).toHaveCount(0);
+  const shiftToggle = page.getByLabel('Shiftキー');
+  await shiftToggle.focus();
+  await page.keyboard.press('Space');
+  await expect(shiftToggle).toBeChecked();
+  const shiftRect = keyboard.locator('[data-key-id="shift-l"] rect');
+  const regularRect = keyboard.locator('[data-key-id="z"] rect');
+  await expect(shiftRect).toBeVisible();
+  const [shiftWidth, regularWidth] = await Promise.all([
+    shiftRect.evaluate((element) => Number(element.getAttribute('width'))),
+    regularRect.evaluate((element) => Number(element.getAttribute('width'))),
+  ]);
+  expect(Math.abs(shiftWidth - regularWidth)).toBeLessThanOrEqual(0.1);
+});
 
 test('親指physical keyを任意browser codeへ再割当して永続化できる', async ({ page }) => {
   await page.goto('/input');

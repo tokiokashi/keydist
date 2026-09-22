@@ -23,7 +23,8 @@ interface ConditionDescriptor {
 
 /** 条件を追加した時に説明の追従漏れを型とテストで検出するための一覧。 */
 const GEOMETRY_LABEL: Record<PresetGeometryKind | 'custom', string> = {
-  'row-staggered': 'ロウスタッガード',
+  'row-staggered': 'ロウスタッガード（ANSI）',
+  'jis-row-staggered': 'ロウスタッガード（JIS 109）',
   ortholinear: 'オーソリニア',
   'column-staggered': 'カラムスタッガード',
   custom: 'カスタム形状',

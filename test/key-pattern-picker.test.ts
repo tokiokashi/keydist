@@ -553,16 +553,14 @@ test('presentation: 薙刀式SandSは左右thumb alternativeでも同じhold lay
   }
 });
 
-test('dynamic guide: 薙刀式の単キーlayerでは同じaggregationの候補だけを表示対象にできる', () => {
+test('dynamic guide: order-freeな薙刀式は非trigger側を先に保持しても相方候補を出す', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18');
   assert.ok(layout);
 
-  const result = matchKeyPatterns(layout, new Set(['j']));
-  const dakuon = result.candidates.get('f') ?? [];
-  const deeper = result.continuations.get('h') ?? [];
-
-  assert.ok(dakuon.some((match) => match.aggregationGroupId === 'layer:濁音'));
-  assert.ok(deeper.some((match) => match.aggregationGroupId !== 'layer:濁音'));
+  const result = matchKeyPatterns(layout, new Set(['w']));
+  assert.ok(result.candidates.get('h')?.some((match) => match.output === 'きゃ'));
+  assert.ok(result.candidates.get('p')?.some((match) => match.output === 'きゅ'));
+  assert.ok(result.candidates.get('i')?.some((match) => match.output === 'きょ'));
 });
 
 test('dynamic guide: 複数キー同時押しはpartial key集合から次キーと確定出力を段階表示する', () => {
@@ -586,6 +584,14 @@ test('allLayerTriggerKeysは複合layer triggerの構成キーを常時表示へ
   assert.equal(keys.has('j'), true);
   assert.equal(keys.has('o'), false);
   assert.equal(keys.has('v'), false);
+});
+
+test('allLayerTriggerKeysは薙刀式のmodifier起点を常時表示せずSandSだけ残す', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18');
+  assert.ok(layout);
+  const keys = allLayerTriggerKeys(layout);
+
+  assert.deepEqual([...keys].sort(), ['thumb-l', 'thumb-r']);
 });
 
 test('allLayerTriggerKeysはcombo membershipをlayer triggerへ混ぜない', () => {

@@ -421,7 +421,9 @@ export function compactLayerGuideDefinitions(
   layout: Pick<Layout, 'layerDefinitions' | 'layerViewPresentation'>,
 ): readonly LayerDefinition[] {
   const definitions = (layout.layerDefinitions ?? [])
-    .filter((definition) => definition.kind === 'layer');
+    .filter((definition) =>
+      definition.kind === 'layer'
+      && definition.presentationRole === 'layer');
 
   const compact = layout.layerViewPresentation?.compact;
   if (compact === undefined) {
@@ -448,6 +450,7 @@ export function presentationTriggerColorSlots(layout: Layout): ReadonlyMap<strin
   const result = new Map<string, number>();
 
   for (const layer of layers) {
+    if (layer.role !== 'layer') continue;
     for (const face of layer.faces) {
       const slot = styles.get(face)?.colorSlot;
       if (slot === undefined) continue;

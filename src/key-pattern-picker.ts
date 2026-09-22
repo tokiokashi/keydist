@@ -508,15 +508,19 @@ export function allTriggerKeys(layout: Layout): ReadonlySet<string> {
  * 複合triggerの構成キーやcombo membershipは動的ガイドへ委ねる。
  */
 export function allLayerTriggerKeys(layout: Layout): ReadonlySet<string> {
-  const kinds = new Map(
-    (layout.layerDefinitions ?? []).map((definition) => [definition.id, definition.kind] as const),
+  const definitions = new Map(
+    (layout.layerDefinitions ?? []).map((definition) => [definition.id, definition] as const),
   );
   const keys = new Set<string>();
 
   for (const alternatives of layout.canonicalInputs.values()) {
     for (const alternative of alternatives) {
       alternative.semanticInputs.forEach((input, index) => {
-        if (kinds.get(input.aggregationGroupId) !== 'layer') return;
+        const definition = definitions.get(input.aggregationGroupId);
+        if (
+          definition?.kind !== 'layer'
+          || definition.presentationRole !== 'layer'
+        ) return;
         const realization = alternative.baseRealizations[index];
         const addVariant = (variant: readonly string[]) => {
           const resolved = uniqueKeys(variant);

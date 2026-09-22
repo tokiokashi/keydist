@@ -48,6 +48,8 @@ export function isBrowserTextInputCode(code: string): boolean {
       'Quote',
       'Backquote',
       'Backslash',
+      'IntlYen',
+      'IntlRo',
       'Comma',
       'Period',
       'Slash',
