@@ -366,12 +366,33 @@ function actionRealizationPolicy(
       }];
     })
     : fallback.triggerActivationOverrides;
+
+  const classSource = record(source.triggerActivationClassOverrides);
+  const fallbackClasses = fallback.triggerActivationClassOverrides ?? {};
+  const classOverride = (key: 'prepress-required' | 'order-free' | 'postpress-required') => {
+    const candidate = classSource[key];
+    if (candidate === 'combined' || candidate === 'separate') return candidate;
+    return fallbackClasses[key];
+  };
+  const triggerActivationClassOverrides = {
+    ...((classOverride('prepress-required') === undefined)
+      ? {}
+      : { 'prepress-required': classOverride('prepress-required') }),
+    ...((classOverride('order-free') === undefined)
+      ? {}
+      : { 'order-free': classOverride('order-free') }),
+    ...((classOverride('postpress-required') === undefined)
+      ? {}
+      : { 'postpress-required': classOverride('postpress-required') }),
+  };
+
   return {
     triggerActivation: choice(
       source.triggerActivation,
-      ['combined', 'separate'] as const,
+      ['disabled', 'semantic'] as const,
       fallback.triggerActivation,
     ),
+    triggerActivationClassOverrides,
     triggerActivationOverrides: overrides ?? [],
   };
 }
