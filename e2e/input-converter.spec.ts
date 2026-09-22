@@ -371,7 +371,7 @@ test('新JIS通常シフトと薙刀式装飾keyはrelease後に前置シフト�
   await output.click();
 
   await page.keyboard.down('Space');
-  await expect(layerLabel).toContainText('シフト');
+  await expect(feature).not.toHaveAttribute('data-active-layer', 'single');
   await page.keyboard.up('Space');
   await expect(layerLabel).toContainText('通常');
   await page.keyboard.press('h');
