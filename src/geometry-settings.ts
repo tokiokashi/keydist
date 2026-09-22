@@ -71,10 +71,16 @@ export function sanitizePhysicalShape(value: unknown, fallback: PhysicalShape): 
     : [...fallback.rowWidths];
   const fallbackExtraKeys = fallback.extraKeys?.map((key) => ({ ...key })) ?? [];
   const fallbackExtraById = new Map(fallbackExtraKeys.map((key) => [key.id, key]));
+  const seenExtraIds = new Set<string>();
   const extraKeys: ExtraPhysicalKeySpec[] = Array.isArray(source.extraKeys)
     ? source.extraKeys.slice(0, 64).flatMap((candidate) => {
       const item = record(candidate);
-      if (typeof item.id !== 'string' || item.id.length === 0) return [];
+      if (
+        typeof item.id !== 'string'
+        || item.id.length === 0
+        || seenExtraIds.has(item.id)
+      ) return [];
+      seenExtraIds.add(item.id);
       const fallbackKey = fallbackExtraById.get(item.id);
       return [{
         id: item.id,
@@ -82,6 +88,9 @@ export function sanitizePhysicalShape(value: unknown, fallback: PhysicalShape): 
         col: integer(item.col, fallbackKey?.col ?? 0, -32, 32),
         x: finite(item.x, fallbackKey?.x ?? 0, -32, 32),
         y: finite(item.y, fallbackKey?.y ?? 0, -32, 32),
+        ...(item.width === undefined
+          ? (fallbackKey?.width === undefined ? {} : { width: fallbackKey.width })
+          : { width: finite(item.width, fallbackKey?.width ?? 1, 0.25, 16) }),
       }];
     })
     : fallbackExtraKeys;
@@ -103,6 +112,11 @@ export function sanitizePhysicalShape(value: unknown, fallback: PhysicalShape): 
     && thumbs.some((thumb) => thumb.finger === 'RT')
     ? thumbs
     : fallbackThumbs;
+  const reservedIds = new Set(usableThumbs.map((thumb) => thumb.id));
+  rowWidths.forEach((width, row) => {
+    for (let col = 0; col < width; col++) reservedIds.add(keyId(row, col));
+  });
+  const usableExtraKeys = extraKeys.filter((key) => !reservedIds.has(key.id));
   const thumbHomeSource = record(source.thumbHome);
   const thumbHome: Partial<Record<'LT' | 'RT', string>> = {};
   for (const finger of ['LT', 'RT'] as const) {
@@ -118,7 +132,7 @@ export function sanitizePhysicalShape(value: unknown, fallback: PhysicalShape): 
     name: typeof source.name === 'string' && source.name.length > 0 ? source.name : fallback.name,
     pitchMm: finite(source.pitchMm, fallback.pitchMm, 1, 100),
     rowWidths,
-    ...(extraKeys.length === 0 ? {} : { extraKeys }),
+    ...(usableExtraKeys.length === 0 ? {} : { extraKeys: usableExtraKeys }),
     thumbs: usableThumbs,
     ...(rowNumbers(source.rowStagger, fallback.rowStagger, -32, 32) === undefined
       ? {}
