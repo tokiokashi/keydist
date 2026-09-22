@@ -369,22 +369,25 @@ d_home = dist(H_f,     k)      # ホームに戻っていた場合
 SFB判定とStroke位置snapshotのための `lastStroke[f]` はrealized Stroke indexで別に更新する。
 
 ```python
-def cost(i, k, f):
-    g = i - last[f] - 1
+def cost(unit, stroke, k, f):
+    delta = unit - lastUnit[f]
+    stroke_gap = stroke - lastStroke[f] - 1
     d_stay = dist(prev[f], k)
     d_home = dist(H[f], k)
 
-    if g == 0:
-        if not sfb_home_cost and k == H[f]:
+    if delta <= 1:
+        if not sfb_home_cost and stroke_gap == 0 and k == H[f]:
             d = 0.0
         else:
             d = d_stay
-    elif g <= N:
+    elif delta <= N:
         d = min(d_stay, d_home)
     else:
         d = d_home
 
-    prev[f], last[f] = k, i
+    prev[f] = k
+    lastUnit[f] = unit
+    lastStroke[f] = stroke
     return d
 ```
 
@@ -896,7 +899,8 @@ ortholinearでは結果的に1.000だが、これは定義ではなくたまた�
 
 **11.7同指連続回数**
 
-`g = 0` の出現回数。
+距離窓の `Δ` とは分離し、realized Stroke列で同じ指の異なる位置を連続して押した回数を数える。
+すなわち、その指について間に別Strokeを挟まない `stroke_gap = 0` のPressをSFBとする。
 
 **11.8コンボ命中数**
 
