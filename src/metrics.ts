@@ -325,10 +325,10 @@ export function computeMetrics(
 }
 
 /**
- * 打鍵可能だった入力単位を inputIndex ごとにまとめ、元の文字数で重み付けする。
- * 「単打面」は、1 Stroke・1キーで、combo aggregation / composition classification /
- * trigger / held-triggerを一切伴わない直接入力とする。
- * hold利用ON/OFFで値が変わらないよう、held-triggerも除外する。
+ * 単打面に配置された直接入力の出力文字数 / 全出力文字数。
+ *
+ * authorityは配列上の単打面配置であり、action groupingやholdの実現方法では変えない。
+ * 1キーで複数文字を直接出力する見出しは、その出力文字数ぶん分子へ入れる。
  */
 function singleTapLayerRate(trace: Trace): number {
   const byInput = new Map<number, Stroke[]>();
@@ -343,74 +343,53 @@ function singleTapLayerRate(trace: Trace): number {
   for (const strokes of byInput.values()) {
     const charCount = [...strokes[0].inputChar].length;
     typableChars += charCount;
-    if (strokes.length !== 1) continue;
 
-    const stroke = strokes[0];
-    const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);
-    const hasTriggerParticipation = stroke.participations.some((participation) =>
-      participation.roles.includes('trigger') || participation.roles.includes('held-trigger'));
-
-    if (stroke.aggregationGroupId !== COMBO_LAYER_ID
-      && !stroke.classifications.includes('composition')
-      && stroke.triggerKeys.length === 0
-      && !hasTriggerParticipation
-      && keyCount === 1) {
-      baseChars += charCount;
-    }
+    const directBaseOutput = strokes.some((stroke) => {
+      const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);
+      const hasOutput = stroke.participations.some((participation) =>
+        participation.roles.includes('output'));
+      return stroke.aggregationGroupId === SINGLE_LAYER_ID
+        && stroke.char === stroke.inputChar
+        && keyCount === 1
+        && hasOutput;
+    });
+    if (directBaseOutput) baseChars += charCount;
   }
 
   return typableChars ? (baseChars / typableChars) * 100 : 0;
 }
 
 /**
- * 総アクションのうち、かな配列でいう「単打」に相当するアクションの割合。
+ * カナ配列で、単打面の文字を出力するaction数 / 全action数。
  *
- * 単打は、単打面（base layer）の1 physical Stroke・1物理キーだけで入力単位を直接出力し、
- * trigger / held-triggerに依存せず、その入力単位が1 Strokeで完結するものとする。
- * 文字種のwhite listは持たない。ローマ字展開後の各英字Strokeや、
- * prefix / suffixの一部だけを単打とは数えない。
- *
- * 分母はActionRealizationPolicy適用後のrealized action数。
- * hold-startをseparateにした場合は先行trigger Strokeも通常の分母へ入る。
+ * 単打面の直接出力actionだけを数える。1キーで複数文字を直接出力する見出しも
+ * 1 actionとして分子へ入る。ローマ字展開後の英字Strokeは元のかな入力単位を
+ * 直接出力していないため含めない。
  */
 function singleTapRate(trace: Trace, actions: number): number {
   if (actions === 0) return 0;
 
-  const byInput = new Map<number, Stroke[]>();
-  for (const stroke of trace.strokes) {
-    const group = byInput.get(stroke.inputIndex);
-    if (group) group.push(stroke);
-    else byInput.set(stroke.inputIndex, [stroke]);
-  }
-
   let singleTapActions = 0;
-  for (const strokes of byInput.values()) {
-    if (strokes.length !== 1) continue;
-
-    const stroke = strokes[0];
+  for (const stroke of trace.strokes) {
     if (stroke.aggregationGroupId !== SINGLE_LAYER_ID) continue;
     if (stroke.char !== stroke.inputChar) continue;
 
     const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);
     const hasOutput = stroke.participations.some((participation) =>
       participation.roles.includes('output'));
-    const hasShiftParticipation = stroke.participations.some((participation) =>
-      participation.roles.includes('trigger') || participation.roles.includes('held-trigger'));
 
-    if (keyCount === 1 && hasOutput && !hasShiftParticipation) singleTapActions++;
+    if (keyCount === 1 && hasOutput) singleTapActions++;
   }
 
   return (singleTapActions / actions) * 100;
 }
 
 /**
- * 総アクションのうち、outputを伴い、fresh physical pressが1キーだけのアクションの割合。
+ * freshに押す物理キーが1つだけのaction数 / 全action数。
  *
- * trigger-only actionは文字を出していないため分子へ入れない。
- * held-triggerに依存していても、そのactionでfreshに押すoutput keyが1つなら1キーactionとする。
- *
- * ActionRealizationPolicyによる分割はStroke生成前に完了しているため、
- * Metrics側でvirtual splitを再構成しない。
+ * output / trigger / held-trigger / layer / modifierなどのsemantic条件は見ない。
+ * ActionRealizationPolicy適用後のrealized Stroke列に対して、そのStrokeで新規押下した
+ * physical key数だけを数える。
  */
 function singleKeyRate(
   trace: Trace,
@@ -420,10 +399,6 @@ function singleKeyRate(
 
   let singleKeyActions = 0;
   for (const stroke of trace.strokes) {
-    const hasOutput = stroke.participations.some((participation) =>
-      participation.roles.includes('output'));
-    if (!hasOutput) continue;
-
     const keyIds = new Set(stroke.presses.flatMap((press) => press.keys.map((key) => key.id)));
     if (keyIds.size === 1) singleKeyActions++;
   }
