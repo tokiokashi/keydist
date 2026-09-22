@@ -237,9 +237,18 @@ const assertCanonicalInput = (input: Pick<
     }
   }
 
+  const modifierGroupsByKey = new Map<PhysicalKeyId, Set<string>>();
   for (const role of input.roles) {
     if (!physicalKeys.has(role.key)) {
       throw new Error('roleがphysicalKeys外のkeyを参照している');
+    }
+    if (role.role === 'modifier' && role.modifierGroupId !== undefined) {
+      const groups = modifierGroupsByKey.get(role.key) ?? new Set<string>();
+      groups.add(role.modifierGroupId);
+      if (groups.size > 1) {
+        throw new Error(`同一physical keyに複数modifier groupを指定できない: ${role.key}`);
+      }
+      modifierGroupsByKey.set(role.key, groups);
     }
   }
 };
@@ -336,6 +345,11 @@ const faceRoles = (
       throw new Error(`同一trigger keyに複数modifier groupを指定できない: ${rawKey}`);
     }
     normalizedGroups.set(key, groupId);
+  }
+
+  if (face.modifierGroups !== undefined && normalizedGroups.size !== triggerKeys.length) {
+    const missing = triggerKeys.filter((key) => !normalizedGroups.has(key));
+    throw new Error(`modifierGroupsを明示したFaceは全trigger keyを分類する必要がある: ${missing.join(', ')}`);
   }
 
   return normalizeRoles(triggerKeys.map((key) => ({
@@ -513,6 +527,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
         ...classifications,
       ]);
       existing.roles = normalizeRoles([...existing.roles, ...roles]);
+      assertCanonicalInput(existing);
       existing.faceMemberships = normalizeMemberships([
         ...existing.faceMemberships,
         ...candidate.faceMemberships,
