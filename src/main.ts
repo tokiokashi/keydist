@@ -1336,7 +1336,7 @@ function conditionRow(
     const realization = value('triggerRealization');
     const action = value('actionRealization');
     const fields = document.createElement('div');
-    fields.className = 'condition-fields';
+    fields.className = 'condition-fields condition-trigger-fields';
 
     const holdLabel = document.createElement('label');
     const holdInput = document.createElement('input');
@@ -1396,7 +1396,7 @@ function conditionRow(
         details.append(summary);
 
         const logicalFields = document.createElement('div');
-        logicalFields.className = 'condition-fields';
+        logicalFields.className = 'condition-fields condition-trigger-fields';
         for (const logical of logicalGroups) {
           const label = document.createElement('label');
           label.append(`${logical.label} `);
@@ -1436,7 +1436,7 @@ function conditionRow(
         physicalSummary.textContent = '物理trigger単位の詳細';
         physicalDetails.append(physicalSummary);
         const physicalFields = document.createElement('div');
-        physicalFields.className = 'condition-fields';
+        physicalFields.className = 'condition-fields condition-trigger-fields';
         for (const group of triggerActivationGroups(layout)) {
           if (group.activationClass === 'postpress-required') continue;
           const label = document.createElement('label');
