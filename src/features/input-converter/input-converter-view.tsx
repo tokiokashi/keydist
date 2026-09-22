@@ -45,9 +45,13 @@ import { useTypingSession } from './use-typing-session.ts';
 
 const DIRECT_JA_INPUT_LAYOUTS =
   LAYOUTS_JA.filter((layout) => layout.romajiTable === undefined);
+const TK_DIRECT_JA_LAYOUT = LAYOUTS_JA.find(
+  (layout) => layout.id === 'oonishi-custom-combo',
+);
 
 const INPUT_LAYOUTS = [
-  ...LAYOUTS,
+  ...LAYOUTS.filter((layout) => layout.id !== 'oonishi-custom'),
+  ...(TK_DIRECT_JA_LAYOUT === undefined ? [] : [TK_DIRECT_JA_LAYOUT]),
   ...DIRECT_JA_INPUT_LAYOUTS,
 ];
 
