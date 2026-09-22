@@ -101,6 +101,10 @@ test('Input Converter keeps desktop Y bounded and lets cheatsheets scroll when w
   const guide = page.getByLabel('レイヤーカンペ一覧');
   const displaySettings = page.getByLabel('表示設定');
   const keyboardPanel = page.locator('.input-keyboard-panel');
+  const splitter = page.getByRole('separator', { name: 'カンペと入力領域の幅を調整' });
+
+  await splitter.focus();
+  await page.keyboard.press('Home');
 
   const [displayBox, keyboardBox] = await Promise.all([
     displaySettings.boundingBox(),
