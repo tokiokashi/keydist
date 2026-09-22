@@ -112,7 +112,7 @@ function visibleKeyboardVectors(
   vectors: readonly BigramVector[],
   selectedFingerCount: number,
 ): readonly BigramVector[] {
-  const limit = selectedFingerCount === 0 ? 42 : selectedFingerCount === 1 ? 54 : 72;
+  const limit = selectedFingerCount === 0 ? 32 : selectedFingerCount === 1 ? 40 : 64;
   return [...vectors]
     .sort((a, b) => b.weight - a.weight || a.id.localeCompare(b.id))
     .slice(0, limit);
@@ -287,14 +287,16 @@ function relativeVectors(
 function RelativeMovementPlot({
   vectors,
   hand,
+  maxDistance,
+  maxWeight,
 }: {
   vectors: readonly BigramVector[];
   hand: 'left' | 'right';
+  maxDistance: number;
+  maxWeight: number;
 }) {
   const reduceMotion = useReducedMotion();
   const relative = useMemo(() => relativeVectors(vectors, hand), [vectors, hand]);
-  const maxDistance = Math.max(1, ...relative.map((vector) => Math.hypot(vector.dx, vector.dy)));
-  const maxWeight = Math.max(1, ...relative.map((vector) => vector.weight));
   const cx = 120;
   const cy = 108;
   const radius = 78;
@@ -362,6 +364,11 @@ function RelativeMovementPlot({
           })}
         </AnimatePresence>
       </svg>
+      <div className="flow-roll-legend flow-relative-legend" aria-hidden="true">
+        <span><i className="flow-dot flow-dot-inward" /> inward</span>
+        <span><i className="flow-dot flow-dot-outward" /> outward</span>
+        <span>{maxDistance.toFixed(1)}u scale</span>
+      </div>
     </div>
   );
 }
@@ -609,6 +616,15 @@ export function BigramVectorView() {
 
   const rawCount = filtered.reduce((sum, vector) => sum + vector.weight, 0);
   const vectorAnalysisReady = selectedFingers.length === 2;
+  const relative = useMemo(() => [
+    ...relativeVectors(aggregated, 'left'),
+    ...relativeVectors(aggregated, 'right'),
+  ], [aggregated]);
+  const relativeMaxDistance = Math.max(
+    1,
+    ...relative.map((vector) => Math.hypot(vector.dx, vector.dy)),
+  );
+  const relativeMaxWeight = Math.max(1, ...relative.map((vector) => vector.weight));
 
   return (
     <section
@@ -715,8 +731,18 @@ export function BigramVectorView() {
                 <p>始点を原点へ揃え、距離を残した移動ベクトルとして表示する。</p>
               </header>
               <div className="flow-two-up">
-                <RelativeMovementPlot vectors={aggregated} hand="left" />
-                <RelativeMovementPlot vectors={aggregated} hand="right" />
+                <RelativeMovementPlot
+                  vectors={aggregated}
+                  hand="left"
+                  maxDistance={relativeMaxDistance}
+                  maxWeight={relativeMaxWeight}
+                />
+                <RelativeMovementPlot
+                  vectors={aggregated}
+                  hand="right"
+                  maxDistance={relativeMaxDistance}
+                  maxWeight={relativeMaxWeight}
+                />
               </div>
             </section>
 
