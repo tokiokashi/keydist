@@ -1212,14 +1212,16 @@ function conditionNumber(
 }
 
 interface TriggerActivationGroup {
+  readonly triggerGroupId?: string;
   readonly layerId: string;
   readonly triggerKeys: readonly string[];
   readonly label: string;
   readonly activationClass: TriggerActivationClass;
 }
 
-interface TriggerActivationLayerGroup {
-  readonly layerId: string;
+interface TriggerActivationLogicalGroup {
+  readonly triggerGroupId?: string;
+  readonly layerId?: string;
   readonly label: string;
   readonly activationClasses: readonly TriggerActivationClass[];
   readonly groups: readonly TriggerActivationGroup[];
@@ -1230,10 +1232,15 @@ function canonicalTriggerKeys(keys: readonly string[]): string[] {
 }
 
 function samePhysicalTriggerSelector(
-  selector: { readonly layerId?: string; readonly triggerKeys?: readonly string[] },
+  selector: {
+    readonly triggerGroupId?: string;
+    readonly layerId?: string;
+    readonly triggerKeys?: readonly string[];
+  },
   group: TriggerActivationGroup,
 ): boolean {
   if (selector.triggerKeys === undefined) return false;
+  if (selector.triggerGroupId !== undefined && selector.triggerGroupId !== group.triggerGroupId) return false;
   if (selector.layerId !== undefined && selector.layerId !== group.layerId) return false;
   const left = canonicalTriggerKeys(selector.triggerKeys);
   const right = canonicalTriggerKeys(group.triggerKeys);
@@ -1265,17 +1272,23 @@ function triggerActivationGroups(layout: Layout): TriggerActivationGroup[] {
             triggerKeys,
             candidate.outputKeys,
           );
+          const logicalLabel = realization.input.triggerGroupId
+            ?? labels.get(realization.input.layerId)
+            ?? realization.input.layerId;
           const identity = [
+            realization.input.triggerGroupId ?? '',
             realization.input.layerId,
             activationClass,
             triggerKeys.join('\u0000'),
           ].join('\u0001');
           if (groups.has(identity)) continue;
-          const layerLabel = labels.get(realization.input.layerId) ?? realization.input.layerId;
           groups.set(identity, {
+            ...(realization.input.triggerGroupId === undefined
+              ? {}
+              : { triggerGroupId: realization.input.triggerGroupId }),
             layerId: realization.input.layerId,
             triggerKeys,
-            label: `${layerLabel}: ${triggerKeys.join(' + ')}`,
+            label: `${logicalLabel}: ${triggerKeys.join(' + ')}`,
             activationClass,
           });
         }
@@ -1285,20 +1298,28 @@ function triggerActivationGroups(layout: Layout): TriggerActivationGroup[] {
   return [...groups.values()].sort((left, right) => left.label.localeCompare(right.label, 'ja'));
 }
 
-function triggerActivationLayerGroups(layout: Layout): TriggerActivationLayerGroup[] {
-  const byLayer = new Map<string, TriggerActivationGroup[]>();
+function triggerActivationLogicalGroups(layout: Layout): TriggerActivationLogicalGroup[] {
+  const byLogical = new Map<string, TriggerActivationGroup[]>();
   for (const group of triggerActivationGroups(layout)) {
-    const values = byLayer.get(group.layerId) ?? [];
+    const identity = group.triggerGroupId !== undefined
+      ? `group:${group.triggerGroupId}`
+      : `layer:${group.layerId}`;
+    const values = byLogical.get(identity) ?? [];
     values.push(group);
-    byLayer.set(group.layerId, values);
+    byLogical.set(identity, values);
   }
   const labels = new Map(layout.layerDefinitions?.map((definition) => [definition.id, definition.label]) ?? []);
-  return [...byLayer].map(([layerId, groups]) => ({
-    layerId,
-    label: labels.get(layerId) ?? layerId,
-    activationClasses: [...new Set(groups.map((group) => group.activationClass))],
-    groups,
-  })).sort((left, right) => left.label.localeCompare(right.label, 'ja'));
+  return [...byLogical.values()].map((groups) => {
+    const first = groups[0];
+    return {
+      ...(first.triggerGroupId === undefined
+        ? { layerId: first.layerId }
+        : { triggerGroupId: first.triggerGroupId }),
+      label: first.triggerGroupId ?? labels.get(first.layerId) ?? first.layerId,
+      activationClasses: [...new Set(groups.map((group) => group.activationClass))],
+      groups,
+    };
+  }).sort((left, right) => left.label.localeCompare(right.label, 'ja'));
 }
 
 const TRIGGER_ACTIVATION_CLASS_LABELS: Record<TriggerActivationClass, string> = {
