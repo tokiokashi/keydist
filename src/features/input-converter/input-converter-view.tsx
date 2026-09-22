@@ -41,6 +41,10 @@ import {
   type ThumbKeyBindings,
 } from './browser-keyboard-bindings.ts';
 import { ThumbKeyBindingEditor } from './thumb-key-binding-editor.tsx';
+import {
+  reverseLookup,
+  reverseLookupRouteLabel,
+} from './reverse-lookup.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
 const DIRECT_JA_INPUT_LAYOUTS =
@@ -195,6 +199,7 @@ export function InputConverterView() {
   const [showLayerKeys, setShowLayerKeys] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [splitPercent, setSplitPercent] = useState(DEFAULT_SPLIT_PERCENT);
+  const [lookupQuery, setLookupQuery] = useState('');
   const guideGridRef = useRef<HTMLDivElement>(null);
   const [guideGridLayout, setGuideGridLayout] = useState<GuideGridLayout>({
     columns: 1,
@@ -348,6 +353,10 @@ export function InputConverterView() {
     layerKeys,
     visibleKeys,
   ]);
+  const lookupRoutes = useMemo(
+    () => reverseLookup(layout, lookupQuery, 3),
+    [layout, lookupQuery],
+  );
   const guideDefinitions = useMemo(
     () => compactLayerGuideDefinitions(layout),
     [layout],
@@ -634,7 +643,37 @@ export function InputConverterView() {
                 keyViews={keyboardViews}
               />
             </div>
-            <div className="input-assist-slot" data-reserved="reverse-lookup" />
+            <section className="input-assist-slot" aria-label="打ち方逆引き">
+              <label className="input-lookup-field">
+                <span>打ち方を調べる</span>
+                <input
+                  aria-label="打ちたい文字"
+                  type="text"
+                  value={lookupQuery}
+                  onChange={(event) => setLookupQuery(event.target.value)}
+                  placeholder="例: ぎゃ"
+                  autoComplete="off"
+                />
+              </label>
+              <div className="input-lookup-results" aria-live="polite">
+                {lookupQuery.length === 0 ? (
+                  <span className="input-muted">文字を入れるとcanonical inputから逆引きする。</span>
+                ) : lookupRoutes.length === 0 ? (
+                  <span className="input-muted">この配列では打ち方を見つけられない。</span>
+                ) : (
+                  <ol>
+                    {lookupRoutes.map((route, index) => (
+                      <li key={`${reverseLookupRouteLabel(route)}:${index}`}>
+                        <code>{reverseLookupRouteLabel(route)}</code>
+                        {route.steps.some((step) => step.origin === 'combo')
+                          ? <small>コンボ</small>
+                          : null}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            </section>
           </section>
 
           <section className="input-debug" aria-label="入力詳細">
