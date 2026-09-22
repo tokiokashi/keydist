@@ -29,7 +29,7 @@ test('ActionRealizationPolicyはoverrideを含めconditionからevaluate options
     triggerActivationClassOverrides: { 'order-free': 'separate' as const },
     triggerActivationOverrides: [{
       selector: {
-        layerId: 'layer:SandS',
+        modifierGroupIds: ['SandS'],
         triggerKeys: ['thumb-r'],
       },
       grouping: 'separate' as const,
