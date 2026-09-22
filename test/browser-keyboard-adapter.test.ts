@@ -37,4 +37,14 @@ test('browser adapterはrepeat / composition / OS shortcutをcoreへ渡さない
     code: 'KeyA',
     repeat: true,
   }), { type: 'up', key: 'a' });
+  assert.deepEqual(browserKeyboardEventToPhysicalKeyEvent({
+    type: 'keyup',
+    code: 'KeyH',
+    ctrlKey: true,
+  }), { type: 'up', key: 'h' });
+  assert.deepEqual(browserKeyboardEventToPhysicalKeyEvent({
+    type: 'keyup',
+    code: 'KeyH',
+    metaKey: true,
+  }), { type: 'up', key: 'h' });
 });
