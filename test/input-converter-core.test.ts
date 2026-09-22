@@ -139,7 +139,7 @@ test('Input Converter coreは既存Trigger/Action realizationでhold start/conti
   ]);
   const engine = new TypingInputEngine(layout.canonicalInputs, {
     triggerRealizationPolicy: { useHold: true },
-    actionRealizationPolicy: { triggerActivation: 'separate' },
+    actionRealizationPolicy: { triggerActivation: 'semantic', triggerActivationClassOverrides: { 'order-free': 'separate' } },
   });
 
   assert.deepEqual(engine.handle({ type: 'down', key: 'q' }).recognized, []);
