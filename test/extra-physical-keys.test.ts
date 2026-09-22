@@ -5,6 +5,7 @@ import { TypingInputEngine } from '../src/core/input-converter/index.ts';
 import {
   DEFAULT_GEOMETRY_SETTINGS,
   parseGeometrySettings,
+  sanitizePhysicalShape,
   serializeGeometrySettings,
 } from '../src/geometry-settings.ts';
 import {
@@ -123,6 +124,17 @@ test('grid外physical keyは使うlayoutだけheatmap/playback表示対象にな
   assert.equal(visibleGeometryKeys(regular, geometry).some((key) => key.id === 'escape'), false);
   assert.equal(visibleGeometryKeys(extra, geometry).some((key) => key.id === 'tab'), true);
   assert.equal(visibleGeometryKeys(extra, geometry).some((key) => key.id === 'escape'), false);
+});
+
+test('extra key idはcanonical physical identityでなければならない', () => {
+  const aliased: PhysicalShape = {
+    ...shape,
+    extraKeys: [{ id: 'space', row: 4, col: 5, x: 5.5, y: 4 }],
+  };
+  assert.throws(() => buildGeometry(aliased, assignment), /canonical physical key id/);
+
+  const sanitized = sanitizePhysicalShape(aliased, PHYSICAL_SHAPES['row-staggered']);
+  assert.equal(sanitized.extraKeys, undefined);
 });
 
 test('extra key idはgrid・thumb・extra内で重複できない', () => {
