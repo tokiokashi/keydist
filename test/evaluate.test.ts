@@ -48,12 +48,12 @@ test('sfbHomeCostはホームキー以外の同指連続を変えない', () => 
   assert.equal(totalOf('hy', { sfbHomeCost: true }), totalOf('hy', { sfbHomeCost: false }));
 });
 
-test('窓の内側では残った場合と戻った場合の小さい方を採る', () => {
-  // y(上段col5) → 他指1打 → u(上段col6)。ともに右人差し指。
+test('N入力先までは残った場合と戻った場合の小さい方を採る', () => {
+  // y → a → u で、uはyから2入力先。
   //   d_stay = dist(y, u) = 1
   //   d_home = dist(j, u) = √(0.25² + 1²) ≈ 1.0308
-  // 窓内なので小さい方のd_stay = 1が採られる
-  const t = evaluate('yau', qwerty, geometry, opts({ windowSize: 3 }));
+  // N=2なら小さい方のd_stay = 1が採られる
+  const t = evaluate('yau', qwerty, geometry, opts({ windowSize: 2 }));
   const last = t.strokes[2];
   assert.equal(last.char, 'u');
   assert.equal(last.presses[0].gap, 1);
@@ -77,9 +77,9 @@ test('次の同指打鍵で残すと確定しない間は未使用指をホー�
   assert.deepEqual(t.strokes[1].positions.RI, geometry.homes.RI);
 });
 
-test('窓の外では必ずホームからの距離になる', () => {
-  // y → 他指4打 → u。windowSize=3なのでg=4 > N
-  const t = evaluate('yasdfu', qwerty, geometry, opts({ windowSize: 3 }));
+test('N入力先を超えると必ずホームからの距離になる', () => {
+  // y → a → s → d → f → u。uはyから5入力先なのでN=4では窓外。
+  const t = evaluate('yasdfu', qwerty, geometry, opts({ windowSize: 4 }));
   const last = t.strokes[5];
   assert.equal(last.char, 'u');
   assert.equal(last.presses[0].gap, 4);
@@ -91,6 +91,67 @@ test('窓の外では必ずホームからの距離になる', () => {
 test('gは全打鍵を数える（その指の打鍵だけではない）', () => {
   const t = evaluate('yasu', qwerty, geometry, opts());
   assert.equal(t.strokes[3].presses[0].gap, 2);
+});
+
+test('N=1は「次の1入力先まで」を意味する', () => {
+  const inside = evaluate('yu', qwerty, geometry, opts({ windowSize: 1 }));
+  const outside = evaluate('yu', qwerty, geometry, opts({ windowSize: 0 }));
+
+  near(inside.strokes[1].distance, 1, 'N=1なら次入力のuでstay候補を比較する');
+  const home = geometry.homes.RI;
+  const u = geometry.keys.get('u')!;
+  near(outside.strokes[1].distance, Math.hypot(home.x - u.x, home.y - u.y), 'N=0なら次入力でもhome');
+});
+
+test('複数文字見出しは選択された1入力単位としてNを数える', () => {
+  const layout = fromKana('multi-input-unit', 'multi-input-unit', {
+    y: [['y']],
+    きゃ: [['a']],
+    u: [['u']],
+  });
+  const inside = evaluate('yきゃu', layout, geometry, opts({ windowSize: 2 }));
+  const outside = evaluate('yきゃu', layout, geometry, opts({ windowSize: 1 }));
+
+  assert.equal(inside.strokes.length, 3, 'きゃは1見出しとして1 Stroke');
+  near(inside.strokes[2].distance, 1, 'yからuは2入力先なのでN=2でstay候補');
+  const home = geometry.homes.RI;
+  const u = geometry.keys.get('u')!;
+  near(outside.strokes[2].distance, Math.hypot(home.x - u.x, home.y - u.y), 'N=1では2入力先は窓外');
+});
+
+test('trigger action分離でNの入力距離は変わらない', () => {
+  const layout = fromFaces('lookahead-trigger-split', 'lookahead-trigger-split', [
+    {
+      trigger: [],
+      mode: 'simultaneous',
+      rows: ['', ['y', '', '', '', '', 'u'], '', ''],
+      inputRole: 'layer',
+    },
+    {
+      trigger: ['thumb-r'],
+      mode: 'simultaneous',
+      rows: ['', '', ['', '', '', 'x'], ''],
+      inputRole: 'modifier',
+      triggerPersistence: 'hold-capable',
+      triggerOrder: 'prefix',
+    },
+  ]);
+
+  const combined = evaluate('yxu', layout, geometry, opts({
+    windowSize: 1,
+    actionRealizationPolicy: { triggerActivation: 'disabled' },
+  }));
+  const separate = evaluate('yxu', layout, geometry, opts({
+    windowSize: 1,
+    actionRealizationPolicy: { triggerActivation: 'semantic' },
+  }));
+
+  assert.equal(combined.strokes.length + 1, separate.strokes.length, 'trigger-only Strokeだけ増える');
+  near(
+    computeMetrics(combined, geometry).totalUnits,
+    computeMetrics(separate, geometry).totalUnits,
+    'action分離でselected input列が同じなら距離は変わらない',
+  );
 });
 
 test('Nを大きくすると総移動距離は単調に減少する', () => {
