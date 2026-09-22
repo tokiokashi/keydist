@@ -55,3 +55,21 @@ test('built-in新JIS通常シフトをbrowser adapter経由でhold入力でき�
     [['thumb-r']],
   );
 });
+
+
+test('shortcut modifier中のkeyupでもpressed stateを解放する', () => {
+  const engine = new TypingInputEngine(TSUKI_2_263.canonicalInputs);
+
+  const down = browserKeyboardEventToPhysicalKeyEvent({ type: 'keydown', code: 'KeyH' });
+  assert.ok(down !== undefined);
+  const pressed = engine.handle(down);
+  assert.deepEqual(pressed.pressedKeys, ['h']);
+
+  const up = browserKeyboardEventToPhysicalKeyEvent({
+    type: 'keyup',
+    code: 'KeyH',
+    ctrlKey: true,
+  });
+  assert.ok(up !== undefined);
+  assert.deepEqual(engine.handle(up).pressedKeys, []);
+});
