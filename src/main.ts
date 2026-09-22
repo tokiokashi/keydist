@@ -1495,25 +1495,30 @@ function conditionRow(
     }
 
     if (layout) {
-      const layerGroups = triggerActivationLayerGroups(layout)
+      const logicalGroups = triggerActivationLogicalGroups(layout)
         .filter((group) => !group.activationClasses.includes('postpress-required'));
-      if (layerGroups.length > 0) {
+      if (logicalGroups.length > 0) {
         const details = document.createElement('details');
         const summary = document.createElement('summary');
         summary.textContent = '個別設定';
         details.append(summary);
 
-        const layerFields = document.createElement('div');
-        layerFields.className = 'condition-fields';
-        for (const layer of layerGroups) {
+        const logicalFields = document.createElement('div');
+        logicalFields.className = 'condition-fields';
+        for (const logical of logicalGroups) {
           const label = document.createElement('label');
-          label.append(`${layer.label} `);
+          label.append(`${logical.label} `);
           const existing = action.triggerActivationOverrides?.find((override) =>
-            override.selector.layerId === layer.layerId
-            && override.selector.triggerKeys === undefined);
-          const semanticDefault = layer.activationClasses.some((kind) =>
-            (action.triggerActivationClassOverrides?.[kind]
-              ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[kind]) === 'separate')
+            override.selector.triggerKeys === undefined
+            && (logical.triggerGroupId !== undefined
+              ? override.selector.triggerGroupId === logical.triggerGroupId
+                && override.selector.layerId === undefined
+              : override.selector.triggerGroupId === undefined
+                && override.selector.layerId === logical.layerId));
+          const semanticDefaults = logical.activationClasses.map((kind) =>
+            action.triggerActivationClassOverrides?.[kind]
+              ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[kind]);
+          const semanticDefault = semanticDefaults.every((value) => value === 'separate')
             ? 'separate'
             : 'combined';
           label.append(groupingSelect(
@@ -1523,11 +1528,20 @@ function conditionRow(
             (grouping) => {
               const overrides = (action.triggerActivationOverrides ?? [])
                 .filter((override) => !(
-                  override.selector.layerId === layer.layerId
-                  && override.selector.triggerKeys === undefined
+                  override.selector.triggerKeys === undefined
+                  && (logical.triggerGroupId !== undefined
+                    ? override.selector.triggerGroupId === logical.triggerGroupId
+                      && override.selector.layerId === undefined
+                    : override.selector.triggerGroupId === undefined
+                      && override.selector.layerId === logical.layerId)
                 ));
               if (grouping !== undefined) {
-                overrides.push({ selector: { layerId: layer.layerId }, grouping });
+                overrides.push({
+                  selector: logical.triggerGroupId !== undefined
+                    ? { triggerGroupId: logical.triggerGroupId }
+                    : { layerId: logical.layerId },
+                  grouping,
+                });
               }
               commitCondition(layout.id, 'actionRealization', {
                 ...action,
@@ -1535,7 +1549,7 @@ function conditionRow(
               });
             },
           ));
-          layerFields.append(label);
+          logicalFields.append(label);
         }
 
         const physicalDetails = document.createElement('details');
@@ -1550,10 +1564,14 @@ function conditionRow(
           label.append(`${group.label} `);
           const existing = action.triggerActivationOverrides?.find((override) =>
             samePhysicalTriggerSelector(override.selector, group));
-          const layerOverride = action.triggerActivationOverrides?.find((override) =>
-            override.selector.layerId === group.layerId
-            && override.selector.triggerKeys === undefined);
-          const semanticDefault = layerOverride?.grouping
+          const logicalOverride = action.triggerActivationOverrides?.find((override) =>
+            override.selector.triggerKeys === undefined
+            && (group.triggerGroupId !== undefined
+              ? override.selector.triggerGroupId === group.triggerGroupId
+                && override.selector.layerId === undefined
+              : override.selector.triggerGroupId === undefined
+                && override.selector.layerId === group.layerId));
+          const semanticDefault = logicalOverride?.grouping
             ?? action.triggerActivationClassOverrides?.[group.activationClass]
             ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[group.activationClass];
           label.append(groupingSelect(
@@ -1565,7 +1583,13 @@ function conditionRow(
                 .filter((override) => !samePhysicalTriggerSelector(override.selector, group));
               if (grouping !== undefined) {
                 overrides.push({
-                  selector: { layerId: group.layerId, triggerKeys: group.triggerKeys },
+                  selector: {
+                    ...(group.triggerGroupId === undefined
+                      ? {}
+                      : { triggerGroupId: group.triggerGroupId }),
+                    layerId: group.layerId,
+                    triggerKeys: group.triggerKeys,
+                  },
                   grouping,
                 });
               }
@@ -1578,8 +1602,8 @@ function conditionRow(
           physicalFields.append(label);
         }
         physicalDetails.append(physicalFields);
-        layerFields.append(physicalDetails);
-        details.append(layerFields);
+        logicalFields.append(physicalDetails);
+        details.append(logicalFields);
         fields.append(details);
       }
     }
