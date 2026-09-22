@@ -190,6 +190,7 @@ h1 {
 
 .input-main {
   grid-column: 3;
+  overflow: hidden;
 }
 
 .input-splitter {
@@ -474,7 +475,11 @@ h1 {
 }
 
 .input-keyboard-panel {
-  flex: 0 0 auto;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 10rem;
+  overflow: hidden;
   padding: 0.7rem 0.85rem 0.8rem;
 }
 
@@ -526,18 +531,30 @@ h1 {
 }
 
 .input-keyboard-main {
+  display: flex;
+  flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
 }
 
 .input-keyboard-main .physical-keyboard {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
-  padding: 0.45rem 0 0;
+  padding: 0.3rem 0 0;
 }
 
 .input-keyboard-main .physical-keyboard svg {
   width: 100%;
-  height: auto;
+  height: 100%;
   max-width: 100%;
+  max-height: 100%;
 }
 
 .physical-keyboard-key rect {
@@ -690,8 +707,10 @@ h1 {
 }
 
 .input-debug {
-  overflow: hidden;
-  margin-top: auto;
+  flex: 0 0 auto;
+  min-height: 7rem;
+  max-height: 9rem;
+  overflow: auto;
 }
 
 .input-debug-heading {
@@ -811,8 +830,24 @@ h1 {
     overflow: visible;
   }
 
+  .input-keyboard-panel {
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .input-keyboard-main .physical-keyboard {
+    height: auto;
+  }
+
+  .input-keyboard-main .physical-keyboard svg {
+    width: 100%;
+    height: auto;
+  }
+
   .input-debug {
-    margin-top: 0;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
   }
 }
 
