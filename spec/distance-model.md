@@ -279,7 +279,7 @@ compile時にcombo alternativeへ `{ kind: 'youon-only' }` context requirement�
 
 | 名前 | 型 | 既定 | 内容 |
 |---|---|---|---|
-| `N` | int | — | 窓幅（打鍵単位）。この打鍵数までは指を残す候補とホーム復帰候補を比較する。打ち手ごとに異なるため利用者が設定する |
+| `N` | int | — | 先読み入力数。selected canonical inputでN入力先まで、指を残す候補とホーム復帰候補を比較する。打ち手ごとに異なるため利用者が設定する |
 | `sfb_home_cost` | bool | `true` | 同指連続でホームキーを打つ場合に距離を加算するか（§8） |
 | `prefer_opposite_thumb` | bool | `false` | 左右の合法な親指alternativeを持つ配列で、出力キーと反対側の親指pathを優先するか |
 
@@ -288,7 +288,8 @@ compile時にcombo alternativeへ `{ kind: 'youon-only' }` context requirement�
 | 変数 | 内容 | 初期値 |
 |---|---|---|
 | `prev[f]` | 指 `f` が最後に打ったキー | `H_f` |
-| `last[f]` | 指 `f` が最後に打った打鍵の通し番号 | `-∞` |
+| `last[f]` | 指 `f` が最後に参加したrealized Strokeの通し番号 | `-∞` |
+| `lastInput[f]` | 指 `f` が最後に参加したselected canonical inputのordinal | `-∞` |
 
 ## 7. ホーム復帰ルール
 
@@ -297,34 +298,36 @@ compile時にcombo alternativeへ `{ kind: 'youon-only' }` context requirement�
 **R2. ホームへの復帰移動は距離に計上しない。**
 復帰は他の指が打鍵している裏で並行して起きるため、能動的な移動として数えない。
 
-**R3. 間隔 `g` が `N` を超えたら、復帰は完了している。**
+**R3. Nはselected canonical input単位で数える。**
 
-打鍵 `i` でキー `k` を指 `f` が打つとき、間隔は
+evaluateが最長一致・context filter・alternative selection後に選んだlogical inputを1単位とし、
+そのordinalを `inputOrdinal` とする。現在inputと、指 `f` が最後に参加したinputとの差を
 
 ```
-g = i - last[f] - 1        # 間に挟まった他の打鍵数
+ΔI = inputOrdinal - lastInput[f]
 ```
 
-`g` は**全打鍵**を数える。その指の打鍵だけを数えるのではない。
-他の指が動いている時間が復帰の余裕になるため。単位は打鍵であり、文字ではない。
+とする。次のinputは `ΔI=1`、5入力先は `ΔI=5` である。
 
-**R4. 窓の内側では、残った場合と戻った場合の両方を候補とし、小さい方を採る。**
+`きゃ` が1見出しとして選ばれれば1入力単位、`き` と `ゃ` が別々に選ばれれば2入力単位になる。
+1つのinputがprefixやtrigger action groupingによって複数Strokeへ分割されてもordinalは増えない。
+continuous holdの有無でもselected input列は変わらないため、Nの範囲は変わらない。
+
+**R4. Nの内側では、残った場合と戻った場合の両方を候補とし、小さい方を採る。**
 
 同値の場合は「残った場合」を採る。これは移動距離を変えないが、指間距離の
 スナップショットでどちらの位置を採るかを決めるためである。
 
 **R5. 指間距離では、実際に採用した候補だけを残留として扱う。**
 
-`1 ≤ g ≤ N` で `d_stay ≤ d_home` なら、次の同指打鍵までの区間を前回キーに
-残ったものとする。それ以外（`d_home < d_stay` または `g > N`）はホームに戻った
-ものとする。`N` は指を常に残す時間ではなく、次の同指打鍵に対して候補を比較する
-先読み範囲である。次の同指打鍵がまだ現れていない時点では、指間距離の計算上は
-ホームを既定とし、後続の打鍵で「残す」が選ばれた区間だけ前回キー位置に補正する。
+realized Strokeとして同指連続でなく、`ΔI ≤ N` かつ `d_stay ≤ d_home` なら、
+次の同指打鍵までの区間を前回キーに残ったものとする。それ以外はホームに戻ったものとする。
+`N` は指を常に残す時間ではなく、次の同指打鍵に対して候補を比較する先読み入力範囲である。
 
 ## 8. 同指連続ルール
 
-`g = 0`（間に他の打鍵が挟まらない）のとき、ホームへ戻る時間が物理的に存在しない。
-このとき候補は「残った場合」のみとなる。
+realized Stroke gap `g=0`（間に他のStrokeが挟まらない）のとき、
+ホームへ戻る時間が物理的に存在しない。このときNとは無関係に候補は「残った場合」のみとなる。
 
 打鍵先がその指のホームキー自身（`k == H_f`）であっても同様に適用する。
 `h` を打った直後に `j` を打つ場合、指は `h` から `j` へ1u移動しており、
@@ -332,13 +335,12 @@ g = i - last[f] - 1        # 間に挟まった他の打鍵数
 
 **この扱いには異論がありうるため `sfb_home_cost` で切り替える。**
 
-| `sfb_home_cost` | `g = 0` かつ `k == H_f` のとき |
+| `sfb_home_cost` | `g=0` かつ `k == H_f` のとき |
 |---|---|
 | `true`（既定） | `d = dist(prev[f], k)` を加算する |
 | `false` | `d = 0`。ホームキーへの復帰打鍵は移動として数えない |
 
-このフラグが結果を変えるのは `g = 0` かつ `k == H_f` の場合のみ。
-他のすべてのケースでは挙動が一致する。
+このフラグが結果を変えるのはrealized Stroke上の同指連続でホームキーを打つ場合のみ。
 
 ## 9. 距離の計算
 
@@ -349,19 +351,21 @@ d_stay = dist(prev[f], k)      # 前のキーに残っていた場合
 d_home = dist(H_f,     k)      # ホームに戻っていた場合
 ```
 
-として、`g` で候補集合を決めて最小値を採る。
+として、physicalな同指連続とselected input距離 `ΔI` で候補集合を決める。
 
-| `g` | 候補 | 採用 |
+| 条件 | 候補 | 採用 |
 |---|---|---|
-| `0` | `{d_stay}` | `d_stay` |
-| `1 ≤ g ≤ N` | `{d_stay, d_home}` | `min(d_stay, d_home)`（同値は `d_stay`） |
-| `g > N` | `{d_home}` | `d_home` |
+| realized Stroke gap `g=0` | `{d_stay}` | `d_stay` |
+| `g>0` かつ `ΔI ≤ N` | `{d_stay, d_home}` | `min(d_stay, d_home)`（同値は `d_stay`） |
+| `g>0` かつ `ΔI > N` | `{d_home}` | `d_home` |
 
-打鍵後、`prev[f] = k`、`last[f] = i` を更新する。
+打鍵後、fresh pressした指は `prev[f]` / `last[f]` / `lastInput[f]` を更新する。
+held triggerでそのinputに参加し続ける指も `lastInput[f]` を現在inputへ更新する。
 
 ```python
-def cost(i, k, f):
-    g = i - last[f] - 1
+def cost(stroke_index, input_ordinal, k, f):
+    g = stroke_index - last[f] - 1
+    delta_input = input_ordinal - lastInput[f]
     d_stay = dist(prev[f], k)
     d_home = dist(H[f], k)
 
@@ -370,12 +374,14 @@ def cost(i, k, f):
             d = 0.0
         else:
             d = d_stay
-    elif g <= N:
+    elif delta_input <= N:
         d = min(d_stay, d_home)
     else:
         d = d_home
 
-    prev[f], last[f] = k, i
+    prev[f] = k
+    last[f] = stroke_index
+    lastInput[f] = input_ordinal
     return d
 ```
 
