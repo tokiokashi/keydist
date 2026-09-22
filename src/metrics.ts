@@ -324,11 +324,23 @@ export function computeMetrics(
   };
 }
 
+const isDirectSingleTapInput = (strokes: readonly Stroke[]): boolean => {
+  if (strokes.length !== 1) return false;
+  const stroke = strokes[0];
+  if (stroke.aggregationGroupId !== SINGLE_LAYER_ID) return false;
+  if (stroke.char !== stroke.inputChar) return false;
+
+  const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);
+  const hasOutput = stroke.participations.some((participation) =>
+    participation.roles.includes('output'));
+  return keyCount === 1 && hasOutput;
+};
+
 /**
  * 単打面に配置された直接入力の出力文字数 / 全出力文字数。
  *
- * authorityは配列上の単打面配置であり、action groupingやholdの実現方法では変えない。
  * 1キーで複数文字を直接出力する見出しは、その出力文字数ぶん分子へ入れる。
+ * 複数actionで成立する入力は単打面の直接入力として数えない。
  */
 function singleTapLayerRate(trace: Trace): number {
   const byInput = new Map<number, Stroke[]>();
@@ -343,17 +355,7 @@ function singleTapLayerRate(trace: Trace): number {
   for (const strokes of byInput.values()) {
     const charCount = [...strokes[0].inputChar].length;
     typableChars += charCount;
-
-    const directBaseOutput = strokes.some((stroke) => {
-      const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);
-      const hasOutput = stroke.participations.some((participation) =>
-        participation.roles.includes('output'));
-      return stroke.aggregationGroupId === SINGLE_LAYER_ID
-        && stroke.char === stroke.inputChar
-        && keyCount === 1
-        && hasOutput;
-    });
-    if (directBaseOutput) baseChars += charCount;
+    if (isDirectSingleTapInput(strokes)) baseChars += charCount;
   }
 
   return typableChars ? (baseChars / typableChars) * 100 : 0;
@@ -362,23 +364,22 @@ function singleTapLayerRate(trace: Trace): number {
 /**
  * カナ配列で、単打面の文字を出力するaction数 / 全action数。
  *
- * 単打面の直接出力actionだけを数える。1キーで複数文字を直接出力する見出しも
- * 1 actionとして分子へ入る。ローマ字展開後の英字Strokeは元のかな入力単位を
- * 直接出力していないため含めない。
+ * 単打面の直接入力1件は1 actionとして分子へ入る。複数文字見出しでも1 action。
+ * ローマ字展開後の英字Strokeや複数action入力は分子へ入れない。
  */
 function singleTapRate(trace: Trace, actions: number): number {
   if (actions === 0) return 0;
 
-  let singleTapActions = 0;
+  const byInput = new Map<number, Stroke[]>();
   for (const stroke of trace.strokes) {
-    if (stroke.aggregationGroupId !== SINGLE_LAYER_ID) continue;
-    if (stroke.char !== stroke.inputChar) continue;
+    const group = byInput.get(stroke.inputIndex);
+    if (group) group.push(stroke);
+    else byInput.set(stroke.inputIndex, [stroke]);
+  }
 
-    const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);
-    const hasOutput = stroke.participations.some((participation) =>
-      participation.roles.includes('output'));
-
-    if (keyCount === 1 && hasOutput) singleTapActions++;
+  let singleTapActions = 0;
+  for (const strokes of byInput.values()) {
+    if (isDirectSingleTapInput(strokes)) singleTapActions++;
   }
 
   return (singleTapActions / actions) * 100;
