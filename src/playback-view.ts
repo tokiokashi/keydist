@@ -1,4 +1,5 @@
 import { buildGeometry, THUMB_ROW, type Finger } from './geometry.ts';
+import { visibleGeometryKeys } from './layout-physical-keys.ts';
 import { type Options, type Stroke, type Trace } from './evaluate.ts';
 import {
   advancePlayback, clampPlaybackCursor, createPlaybackState,
@@ -770,10 +771,11 @@ function updatePlaybackView() {
 function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeometry>): string {
   let maxX = 0;
   let maxY = 0;
-  const keys = [...geometry.keys.values()].map((key) => {
+  const keys = visibleGeometryKeys(layout, geometry).map((key) => {
     const thumb = key.row === THUMB_ROW;
-    const width = (thumb ? PLAYBACK_THUMB_WIDTH : 1) * PLAYBACK_KEY;
-    const x = (key.x - (thumb ? (PLAYBACK_THUMB_WIDTH - 1) / 2 : 0)) * PLAYBACK_KEY;
+    const widthU = thumb ? PLAYBACK_THUMB_WIDTH : (key.width ?? 1);
+    const width = widthU * PLAYBACK_KEY;
+    const x = (key.x - (widthU - 1) / 2) * PLAYBACK_KEY;
     const y = key.y * PLAYBACK_KEY;
     maxX = Math.max(maxX, x + width);
     maxY = Math.max(maxY, y + PLAYBACK_KEY);
