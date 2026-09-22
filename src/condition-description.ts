@@ -52,7 +52,7 @@ function formatTriggerRealizationPolicy(value: TriggerRealizationPolicy): string
 }
 
 function formatActionRealizationPolicy(value: ActionRealizationPolicy): string {
-  return value.holdStart === 'separate'
+  return value.triggerActivation === 'separate'
     ? 'hold開始を独立actionとしてrealizeする'
     : 'outputと同じactionでrealizeする';
 }
