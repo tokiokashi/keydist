@@ -157,7 +157,15 @@ type PlaybackSettingsTab = 'display' | 'graph' | 'conditions';
 
 let playbackSettingsOpen = false;
 let playbackSettingsTab: PlaybackSettingsTab = 'display';
+const playbackSettingsDetailsOpen = new Map<string, boolean>();
 let preserveStateOnNextRender: PlaybackPreserveMode | undefined;
+
+function playbackDetailsOpenAttribute(
+  key: string,
+  defaultOpen = false,
+): string {
+  return (playbackSettingsDetailsOpen.get(key) ?? defaultOpen) ? ' open' : '';
+}
 
 function refreshPlaybackTiming(): void {
   const settings = ctx.getPlaybackSettings();
@@ -257,31 +265,36 @@ function triggerSettingsMarkup(layout: Layout): string {
 
   const details = logicalRows.length === 0 && physicalRows.length === 0
     ? ''
-    : `<details class="playback-arpeggio-details">
-        <summary>trigger個別設定</summary>
-        <div class="playback-dialog-grid">${logicalRows}</div>
-        ${physicalRows.length === 0 ? '' : `<details class="playback-arpeggio-details">
+    : `<details class="playback-settings-tree playback-settings-tree-level-2" data-playback-details="trigger-individual"${playbackDetailsOpenAttribute('trigger-individual')}>
+        <summary>個別設定</summary>
+        <div class="playback-dialog-grid playback-trigger-option-list">${logicalRows}</div>
+        ${physicalRows.length === 0 ? '' : `<details class="playback-settings-tree playback-settings-tree-level-3" data-playback-details="trigger-physical"${playbackDetailsOpenAttribute('trigger-physical')}>
           <summary>物理trigger単位の詳細</summary>
-          <div class="playback-dialog-grid">${physicalRows}</div>
+          <div class="playback-dialog-grid playback-trigger-option-list">${physicalRows}</div>
         </details>`}
       </details>`;
 
-  return `<details class="playback-arpeggio-details">
+  return `<details class="playback-settings-group playback-trigger-settings" data-playback-details="trigger-realization"${playbackDetailsOpenAttribute('trigger-realization')}>
     <summary>Trigger realization</summary>
-    <div class="playback-dialog-grid">
-      <label class="playback-finger-toggle">
+    <div class="playback-settings-group-body">
+      <label class="playback-finger-toggle playback-setting-row">
         <input type="checkbox" data-playback-trigger-hold${realization.useHold ? ' checked' : ''} />
         hold-capable triggerを連続保持する
       </label>
-      <label class="playback-finger-toggle">
-        <input type="checkbox" data-playback-trigger-actions${action.triggerActivation === 'semantic' ? ' checked' : ''} />
-        trigger押下の独立action化を有効にする
-      </label>
-      <div class="condition-trigger-subheading">独立action化する対象</div>
-      ${classRows}
+      <div class="playback-trigger-action-group">
+        <label class="playback-finger-toggle playback-setting-row playback-trigger-action-toggle">
+          <input type="checkbox" data-playback-trigger-actions${action.triggerActivation === 'semantic' ? ' checked' : ''} />
+          trigger押下の独立action化を有効にする
+        </label>
+        <div class="condition-trigger-subheading">独立action化する対象</div>
+        <div class="playback-dialog-grid playback-trigger-option-list">
+          ${classRows}
+        </div>
+        ${details}
+      </div>
     </div>
-    ${details}
   </details>`;
+
 }
 
 function playbackSettingsMarkup(layout: Layout, options: Options): string {
@@ -354,14 +367,14 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
         <button type="button" class="ghost" data-playback-action="calibration-edit">${ctx.getCalibration() ? '保存値を確認・編集' : '個人速度を測定'}</button>
       </div>
       ${triggerSettings}
-      <details class="playback-arpeggio-details" open>
+      <details class="playback-settings-group" data-playback-details="chain-policy"${playbackDetailsOpenAttribute('chain-policy', true)}>
         <summary>Analysis Chain境界</summary>
         <label><input type="checkbox" data-playback-chain-policy="breakOnSameFinger"${chainPolicy.breakOnSameFinger ? ' checked' : ''} />非親指SFB Strokeで区切る</label>
         <label><input type="checkbox" data-playback-chain-policy="breakOnTriggerOnly"${chainPolicy.breakOnTriggerOnly ? ' checked' : ''} />trigger-only Strokeで区切る</label>
         <label><input type="checkbox" data-playback-chain-policy="breakOnThumbOnly"${chainPolicy.breakOnThumbOnly ? ' checked' : ''} />親指only Strokeで区切る</label>
         <label><input type="checkbox" data-playback-chain-policy="breakOnOppositeHandSimultaneous"${chainPolicy.breakOnOppositeHandSimultaneous ? ' checked' : ''} />逆手同時outputで区切る</label>
       </details>
-      <details class="playback-arpeggio-details" open>
+      <details class="playback-settings-group" data-playback-details="arpeggio-policy"${playbackDetailsOpenAttribute('arpeggio-policy', true)}>
         <summary>ArpeggioPolicy</summary>
         <label><input type="checkbox" data-playback-arpeggio-policy="includeThumb"${arpeggioPolicy.includeThumb ? ' checked' : ''} />output親指をcoreに含める</label>
         <label><input type="checkbox" data-playback-arpeggio-policy="bridgeSameFinger"${arpeggioPolicy.bridgeSameFinger ? ' checked' : ''} />same Transitionを中立bridgeとしてSpanを拡張</label>
@@ -1192,6 +1205,12 @@ function refreshInputRealizationAnalysis(): void {
         }
       }
     });
+    elements.playbackSettingsPanel.addEventListener('toggle', (e) => {
+      const details = e.target as HTMLDetailsElement;
+      if (!(details instanceof HTMLDetailsElement)) return;
+      const key = details.dataset.playbackDetails;
+      if (key) playbackSettingsDetailsOpen.set(key, details.open);
+    }, true);
     elements.playbackSettingsPanel.addEventListener('click', (e) => {
       const targetElement = e.target as Element;
       const close = targetElement.closest<HTMLButtonElement>('[data-playback-settings-close]');

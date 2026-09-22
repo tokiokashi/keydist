@@ -1121,6 +1121,19 @@ const CONDITION_TABS: readonly [ConditionTab, string][] = [
 ];
 
 let conditionTab: ConditionTab = 'model';
+const conditionDetailsOpen = new Map<string, boolean>();
+
+function bindConditionDetails(
+  details: HTMLDetailsElement,
+  key: string,
+  defaultOpen = false,
+): void {
+  details.dataset.conditionDetailsKey = key;
+  details.open = conditionDetailsOpen.get(key) ?? defaultOpen;
+  details.addEventListener('toggle', () => {
+    conditionDetailsOpen.set(key, details.open);
+  });
+}
 
 function currentConditionPresetId(): string {
   return allConditionPresets(conditionPresets).find((preset) =>
@@ -1333,6 +1346,7 @@ function conditionRow(
   }
 
   if (tab === 'trigger') {
+    const detailsScope = layout?.id ?? 'defaults';
     const realization = value('triggerRealization');
     const action = value('actionRealization');
     const fields = document.createElement('div');
@@ -1396,6 +1410,7 @@ function conditionRow(
         .filter((group) => !group.activationClasses.includes('postpress-required'));
       if (logicalGroups.length > 0) {
         const details = document.createElement('details');
+        bindConditionDetails(details, `${detailsScope}:trigger-individual`);
         const summary = document.createElement('summary');
         summary.textContent = '個別設定';
         details.append(summary);
@@ -1437,6 +1452,7 @@ function conditionRow(
         }
 
         const physicalDetails = document.createElement('details');
+        bindConditionDetails(physicalDetails, `${detailsScope}:trigger-physical`);
         const physicalSummary = document.createElement('summary');
         physicalSummary.textContent = '物理trigger単位の詳細';
         physicalDetails.append(physicalSummary);
@@ -1650,7 +1666,23 @@ function appendConditionSummary(parent: DocumentFragment | HTMLElement): void {
   summary.append(overrides); parent.append(summary);
 }
 
-function renderConditionDescription(selectedPresetId?: string): void {
+function renderConditionDescription(
+  selectedPresetId?: string,
+  preserveScroll = true,
+): void {
+  const dialogScrollTop = preserveScroll && el.conditionsDialog.open
+    ? el.conditionsDialog.scrollTop
+    : undefined;
+  const previousTableWrap = preserveScroll
+    ? el.conditionDescription.querySelector<HTMLElement>('.condition-table-wrap')
+    : null;
+  const tableScroll = previousTableWrap === null
+    ? undefined
+    : {
+      top: previousTableWrap.scrollTop,
+      left: previousTableWrap.scrollLeft,
+    };
+
   const root = document.createDocumentFragment();
   const toolbar = document.createElement('div'); toolbar.className = 'condition-toolbar';
   const presetLabel = document.createElement('label'); presetLabel.append('プリセット ');
@@ -1717,7 +1749,11 @@ function renderConditionDescription(selectedPresetId?: string): void {
   for (const [id, labelText] of CONDITION_TABS) {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'ghost'; button.textContent = labelText;
     button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(conditionTab === id));
-    button.addEventListener('click', () => { conditionTab = id; renderConditionDescription(); }); tabs.append(button);
+    button.addEventListener('click', () => {
+      conditionTab = id;
+      renderConditionDescription(undefined, false);
+      el.conditionsDialog.scrollTop = 0;
+    }); tabs.append(button);
   }
   root.append(tabs);
   if (conditionTab === 'delay') {
@@ -1730,13 +1766,25 @@ function renderConditionDescription(selectedPresetId?: string): void {
   }
   appendConditionSummary(root);
   el.conditionDescription.replaceChildren(root);
+
+  if (dialogScrollTop !== undefined) {
+    el.conditionsDialog.scrollTop = dialogScrollTop;
+  }
+  if (tableScroll !== undefined) {
+    const nextTableWrap = el.conditionDescription.querySelector<HTMLElement>('.condition-table-wrap');
+    if (nextTableWrap) {
+      nextTableWrap.scrollTop = tableScroll.top;
+      nextTableWrap.scrollLeft = tableScroll.left;
+    }
+  }
 }
 
 /** シミュレーション条件の編集モーダル。条件は開く直前に再生成する。 */
 function setupConditionDialog() {
   const open = () => {
-    renderConditionDescription();
+    renderConditionDescription(undefined, false);
     el.conditionsDialog.showModal();
+    el.conditionsDialog.scrollTop = 0;
   };
   el.conditionsOpen.addEventListener('click', open);
   el.conditionsOpenSidebar.addEventListener('click', open);
