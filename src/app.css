@@ -160,15 +160,43 @@ h1 {
   text-align: right;
 }
 
+@media (min-width: 901px) {
+  body:has(.input-feature) {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .app-shell:has(> .input-feature) {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .input-feature {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .input-page-heading {
+    flex: 0 0 auto;
+  }
+
+  .input-workspace {
+    flex: 1 1 auto;
+  }
+}
+
 .input-workspace {
   display: grid;
   grid-template-columns:
     minmax(0, var(--input-sidebar-width, 50%))
     0.65rem
     minmax(0, 1fr);
-  height: calc(100dvh - 10.5rem);
   min-height: 0;
-  max-height: calc(100dvh - 10.5rem);
   column-gap: 0.45rem;
   align-items: stretch;
 }
