@@ -53,8 +53,8 @@ const INPUT_LAYOUTS = [
 
 const PRESET_GEOMETRY_SHAPES = Object.values(PHYSICAL_SHAPES);
 const DEFAULT_SPLIT_PERCENT = 62.5;
-const MIN_SPLIT_PERCENT = 34;
-const MAX_SPLIT_PERCENT = 72;
+const MIN_SPLIT_PERCENT = 25;
+const MAX_SPLIT_PERCENT = 75;
 
 function clampSplitPercent(value: number): number {
   return Math.min(MAX_SPLIT_PERCENT, Math.max(MIN_SPLIT_PERCENT, value));
