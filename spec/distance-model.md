@@ -43,6 +43,13 @@
 各段のキー数（段の数を含む）も形状定義が持つ。既定形状はANSIの英数部に合わせて
 12 / 12 / 11 / 10とする。
 
+Tab / Esc等の4段grid外physical keyは `PhysicalShape.extraKeys` へstable physical key id、
+座標 `(x, y)`、表示幅を持てる。これらは通常gridへ無理に埋め込まず、評価時は他のキーと同じ
+`Geometry.keys` へ入る。**形状は位置を、`FingerAssignment` はそのキーを担当する指を持つ。**
+grid外キーの運指をshapeへ埋め込まない。extra key idはcanonical physical identityそのものを
+保存し、`resolveKeyId(id) === id` を満たす必要がある。`space` のようなlegacy aliasを
+独立したphysical keyとして保存してはならない。
+
 指 `f` のホーム位置を `H_f` と書く。
 
 ### 3.1親指
@@ -65,6 +72,7 @@
 
 - ピッチ、段ごとのxオフセット、列ごとのyオフセット、分割間隔
 - 左右の親指キーの列位置とy座標
+- grid外physical keyのstable id・座標・表示幅
 - 列単位の指割り当てと、列から外れるキー単位の上書き
 
 段ずれ・列オフセット・親指位置・分割間隔は、UIでmmとuを切り替えて入力する。内部の正準値はuであり、
@@ -90,9 +98,10 @@ Sequence = Step[]      順次打鍵。前から順に打つ
 Step     = KeyId[]     同時に押すキーの集合
 ```
 
-キーは **QWERTY刻印**で指す（`d`、`;`、`-`、および親指キーの
-`thumb-l` / `thumb-r`）。旧来の `space` は入力互換のエイリアスとして受け付け、
-canonical化時に `thumb-r` へ解決する。
+標準4段gridのキーは **QWERTY刻印**をphysical idとして指す（`d`、`;`、`-` 等）。
+親指キーは `thumb-l` / `thumb-r`、grid外キーは `tab` / `escape` 等のstable
+physical idを使う。これはlogical output名ではなく物理位置のidentityである。旧来の
+`space` は入力互換のエイリアスとして受け付け、canonical化時に `thumb-r` へ解決する。
 
 配列定義は省略可能な `homeKeys`（非親指の指から物理キーidへの写像）も持てる。
 省略時は物理形状側の既定値を使う。

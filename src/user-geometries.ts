@@ -16,6 +16,7 @@ const storageFallback: PhysicalShape = {
   splitAt: undefined,
   splitGap: undefined,
   thumbHome: undefined,
+  extraKeys: undefined,
 };
 
 function storageOrUndefined(): GeometryShapeStorage | undefined {

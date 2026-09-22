@@ -29,6 +29,8 @@ export interface Key extends Point {
   row: number;
   col: number;
   finger: Finger;
+  /** 表示上のキー幅 [u]。通常キーは1。 */
+  width?: number;
 }
 
 export interface Geometry {
@@ -169,6 +171,20 @@ export interface ThumbKeySpec {
   y: number;
 }
 
+/** grid外に置く一般physical key。運指はFingerAssignment側で別に持つ。 */
+export interface ExtraPhysicalKeySpec {
+  /** canonical physical key id（例: tab / escape） */
+  id: string;
+  /** grid互換consumer向けの論理row/col。実座標はx/yを正とする。 */
+  row: number;
+  col: number;
+  /** 物理座標 [u] */
+  x: number;
+  y: number;
+  /** 表示上のキー幅 [u]。省略時1。 */
+  width?: number;
+}
+
 /**
  * 物理形状の定義（仕様 §3）。ピッチ・各段のキー数・段ずれ量・列オフセット・
  * 親指キーの数と位置をまとめて持つ。既定の3形状（`PHYSICAL_SHAPES`）を変えると
@@ -192,6 +208,8 @@ export interface PhysicalShape {
   splitAt?: number;
   /** 左右の手の間に空ける量 [u]（`splitAt` とセットで使う） */
   splitGap?: number;
+  /** grid外の一般physical key。指はここへ埋め込まずFingerAssignmentで指定する。 */
+  extraKeys?: ExtraPhysicalKeySpec[];
   /** 親指キーの定義。各手に1個以上必要 */
   thumbs: ThumbKeySpec[];
   /**
@@ -289,6 +307,36 @@ export function buildGeometry(
     }
     grid.push(line);
   });
+
+  // Tab / Esc等のgrid外physical key。shapeは座標、assignmentは運指だけを所有する。
+  for (const spec of s.extraKeys ?? []) {
+    const canonicalId = resolveKeyId(spec.id);
+    if (canonicalId !== spec.id) {
+      throw new Error(
+        `形状「${s.id}」の追加キー ${spec.id} はcanonical physical key idではない（${canonicalId}）`,
+      );
+    }
+    if (
+      keys.has(canonicalId)
+      || s.thumbs.some((thumb) => resolveKeyId(thumb.id) === canonicalId)
+    ) {
+      throw new Error(`形状「${s.id}」の追加キー ${spec.id} が既存キーと重複している`);
+    }
+    const finger = assignment.keyFinger[canonicalId];
+    if (!finger) throw new Error(`指割り当て「${assignment.id}」にキー ${spec.id} が無い`);
+    if (isThumb(finger)) {
+      throw new Error(`追加キー ${spec.id} に親指 ${finger} は割り当てられない`);
+    }
+    keys.set(canonicalId, {
+      id: canonicalId,
+      row: spec.row,
+      col: spec.col,
+      x: spec.x,
+      y: spec.y,
+      finger,
+      ...(spec.width === undefined ? {} : { width: spec.width }),
+    });
+  }
 
   // 親指キー。1個しか無い手はホーム＝そのキー自身になるため移動距離は常に0（仕様 §3.1）。
   // 複数ある手は他の指と同じホーム復帰規則（§7〜§9）に従う

@@ -20,6 +20,11 @@ const CODE_TO_KEY: Readonly<Record<string, PhysicalKeyEvent['key']>> = {
   Comma: ',',
   Period: '.',
   Slash: '/',
+  Tab: 'tab',
+  Escape: 'escape',
+  CapsLock: 'caps-lock',
+  Backquote: 'backquote',
+  Backslash: 'backslash',
   Space: 'thumb-r',
   Convert: 'thumb-r',
   NonConvert: 'thumb-l',
@@ -31,6 +36,23 @@ export function browserCodeToPhysicalKey(
   if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase();
   if (/^Digit[0-9]$/.test(code)) return code.slice(5);
   return CODE_TO_KEY[code];
+}
+
+/**
+ * keydownをlayout inputとしてbrowserから所有するかを判定する。
+ *
+ * repeatはここでは除外しない。layoutがTab等を所有している間はrepeatでも
+ * browser既定動作を抑止しつつ、domain eventへの変換側でrepeat自体は捨てる。
+ * IME compositionとOS/browser shortcutは従来どおりbrowser側へ残す。
+ */
+export function shouldCaptureBrowserKeyDown(
+  event: BrowserKeyboardEventLike,
+  ownedPhysicalKeys: ReadonlySet<PhysicalKeyEvent['key']>,
+): boolean {
+  if (event.type !== 'keydown' || event.isComposing) return false;
+  if (event.ctrlKey || event.altKey || event.metaKey) return false;
+  const key = browserCodeToPhysicalKey(event.code);
+  return key !== undefined && ownedPhysicalKeys.has(key);
 }
 
 /**
