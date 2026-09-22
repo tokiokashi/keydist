@@ -404,8 +404,10 @@ function singleTapRate(trace: Trace, actions: number): number {
 }
 
 /**
- * 総アクションのうち、1物理キーだけを入力するアクションの割合。
- * 「単打」のかな入力上の意味は持たず、入力する物理キー数だけを見る。
+ * 総アクションのうち、outputを伴い、fresh physical pressが1キーだけのアクションの割合。
+ *
+ * trigger-only actionは文字を出していないため分子へ入れない。
+ * held-triggerに依存していても、そのactionでfreshに押すoutput keyが1つなら1キーactionとする。
  *
  * ActionRealizationPolicyによる分割はStroke生成前に完了しているため、
  * Metrics側でvirtual splitを再構成しない。
@@ -418,6 +420,10 @@ function singleKeyRate(
 
   let singleKeyActions = 0;
   for (const stroke of trace.strokes) {
+    const hasOutput = stroke.participations.some((participation) =>
+      participation.roles.includes('output'));
+    if (!hasOutput) continue;
+
     const keyIds = new Set(stroke.presses.flatMap((press) => press.keys.map((key) => key.id)));
     if (keyIds.size === 1) singleKeyActions++;
   }
