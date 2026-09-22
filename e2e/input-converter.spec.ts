@@ -284,7 +284,7 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await expect(feature).toHaveAttribute('data-active-layer', 'layer:濁音');
   await expect(layerLabel).toContainText('濁音');
   await expect(keyboard.locator('[data-key-id="f"] .physical-keyboard-legend')).toHaveText('が');
-  await expect(keyboard.locator('[data-key-id="h"]')).toHaveAttribute('data-guide', 'continuation');
+  await expect(keyboard.locator('[data-key-id="h"]')).not.toHaveAttribute('data-guide', 'continuation');
 
   await page.keyboard.down('h');
   await expect(keyboard.locator('[data-key-id="w"]')).toHaveAttribute('data-guide', 'output');
@@ -304,7 +304,9 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await expect(page.locator('.input-layer-guide')).toBeVisible();
 
   await expect(keyboard.locator('[data-key-id="j"]')).toHaveAttribute('data-accent-slot', /[1-8]/);
-  const triggerColorToggle = page.getByLabel('起点キー色');
+  await expect(keyboard.locator('[data-key-id="o"]')).not.toHaveAttribute('data-accent-slot', /[1-8]/);
+  await expect(keyboard.locator('[data-combo]')).toHaveCount(0);
+  const triggerColorToggle = page.getByLabel('レイヤーキー');
   await triggerColorToggle.focus();
   await page.keyboard.press('Space');
   await expect(triggerColorToggle).not.toBeChecked();
@@ -355,6 +357,88 @@ test('月配列one-shotは未定義側へQWERTYを貫通せず1打で必ず消�
   // 古いk triggerは復活せず、次の左側fもbaseの「と」。
   await page.keyboard.press('f');
   await expect(output).toHaveValue('くと');
+});
+
+test('新JIS通常シフトと薙刀式装飾keyはrelease後に前置シフト化しない', async ({ page }) => {
+  await page.goto('/input');
+  const feature = page.locator('.input-feature');
+  const output = page.getByLabel('自由入力テキスト');
+  const layerLabel = page.locator('.input-active-layer');
+
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await page.getByLabel('配列', { exact: true }).selectOption('shin-jis-simultaneous');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shin-jis-simultaneous');
+  await output.click();
+
+  await page.keyboard.down('Space');
+  await expect(feature).not.toHaveAttribute('data-active-layer', 'single');
+  await page.keyboard.up('Space');
+  await expect(layerLabel).toContainText('通常');
+  await page.keyboard.press('h');
+  await expect(output).toHaveValue('く');
+
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await page.getByLabel('配列', { exact: true }).selectOption('naginata-v18');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await output.click();
+  await page.keyboard.press('j');
+  await expect(layerLabel).toContainText('通常');
+  await page.keyboard.press('f');
+  await expect(output).toHaveValue('あか');
+});
+
+test('TK音直入力法はかなを直接表示しcomboと拗音contextを認識する', async ({ page }) => {
+  await page.goto('/input');
+  const feature = page.locator('.input-feature');
+  const output = page.getByLabel('自由入力テキスト');
+
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await page.getByLabel('配列', { exact: true }).selectOption('oonishi-custom-combo');
+  await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom-combo');
+  await output.click();
+
+  // TK音直のlogical k -> aを通常打鍵して「か」。
+  await page.keyboard.press('h');
+  await page.keyboard.press('d');
+  await expect(output).toHaveValue('か');
+
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await output.click();
+
+  // logical d+s combo -> "desu" をliveかな表示で「です」へ戻す。
+  await page.keyboard.down('m');
+  await page.keyboard.down('l');
+  await page.keyboard.up('l');
+  await page.keyboard.up('m');
+  await expect(output).toHaveValue('です');
+
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await output.click();
+
+  // k の後だけyouon-onlyの logical i+a combo ("ya") を許可し、kya -> きゃ。
+  await page.keyboard.press('h');
+  await page.keyboard.down('s');
+  await page.keyboard.down('d');
+  await page.keyboard.up('d');
+  await page.keyboard.up('s');
+  await expect(output).toHaveValue('きゃ');
+});
+
+test('打ち方逆引きは配列ごとのcanonical inputを表示する', async ({ page }) => {
+  await page.goto('/input');
+  const feature = page.locator('.input-feature');
+  const lookup = page.getByLabel('打ちたい文字');
+  const results = page.getByLabel('打ち方逆引き').locator('.input-lookup-results');
+
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await lookup.fill('ぎゃ');
+  await expect(results).toContainText('H + J + W');
+
+  await page.getByLabel('配列', { exact: true }).selectOption('oonishi-custom-combo');
+  await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom-combo');
+  await lookup.fill('です');
+  await expect(results).toContainText('M + L');
+  await expect(results).toContainText('コンボ');
 });
 
 test('かわせみ配列+の同時押しをbrowser lifecycleでも認識する', async ({ page }) => {

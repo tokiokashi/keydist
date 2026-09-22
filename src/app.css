@@ -711,7 +711,75 @@ h1 {
 }
 
 .input-assist-slot {
-  min-height: 0.15rem;
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.55fr) minmax(0, 1.45fr);
+  gap: 0.65rem;
+  align-items: center;
+  min-height: 3.4rem;
+  margin-top: 0.35rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid #e2e2dd;
+}
+
+.input-lookup-field {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.input-lookup-field > span {
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.input-lookup-field input {
+  width: 100%;
+  min-width: 0;
+  min-height: 2rem;
+  padding: 0 0.55rem;
+  border: 1px solid #c9c9c3;
+  border-radius: 0.45rem;
+  background: #fff;
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+.input-lookup-results {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.72rem;
+}
+
+.input-lookup-results ol {
+  display: grid;
+  gap: 0.22rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.input-lookup-results li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.input-lookup-results code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+}
+
+.input-lookup-results small {
+  flex: 0 0 auto;
+  padding: 0.1rem 0.3rem;
+  border: 1px solid #d6d6d1;
+  border-radius: 999px;
+  color: #686862;
+  font-size: 0.62rem;
 }
 
 .input-debug {
@@ -879,6 +947,10 @@ h1 {
   }
 
   .input-layer-guide-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .input-assist-slot {
     grid-template-columns: 1fr;
   }
 }
