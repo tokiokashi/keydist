@@ -3,9 +3,11 @@ import {
   DEFAULT_FINGER_ASSIGNMENT,
   FINGERS,
   buildGeometry,
+  defaultFingerForColumn,
   isPresetGeometryKind,
   keyId,
   PHYSICAL_SHAPES,
+  type ExtraPhysicalKeySpec,
   type Finger,
   type FingerAssignment,
   type PhysicalShape,
@@ -86,6 +88,40 @@ export function sanitizePhysicalShape(value: unknown, fallback: PhysicalShape): 
     && thumbs.some((thumb) => thumb.finger === 'RT')
     ? thumbs
     : fallbackThumbs;
+
+  const reservedIds = new Set<string>();
+  rowWidths.forEach((width, row) => {
+    for (let col = 0; col < width; col++) reservedIds.add(keyId(row, col));
+  });
+  for (const thumb of usableThumbs) reservedIds.add(thumb.id);
+
+  const seenExtraIds = new Set<string>();
+  const fallbackExtraKeys = fallback.extraKeys?.map((key) => ({ ...key })) ?? [];
+  const extraKeys: ExtraPhysicalKeySpec[] = Array.isArray(source.extraKeys)
+    ? source.extraKeys.flatMap((candidate) => {
+      const item = record(candidate);
+      if (typeof item.id !== 'string' || item.id.length === 0) return [];
+      if (reservedIds.has(item.id) || seenExtraIds.has(item.id)) return [];
+      if (
+        typeof item.x !== 'number' || !Number.isFinite(item.x)
+        || typeof item.y !== 'number' || !Number.isFinite(item.y)
+        || typeof item.row !== 'number' || !Number.isFinite(item.row)
+        || typeof item.col !== 'number' || !Number.isFinite(item.col)
+      ) return [];
+      seenExtraIds.add(item.id);
+      return [{
+        id: item.id,
+        x: finite(item.x, 0, -64, 64),
+        y: finite(item.y, 0, -64, 64),
+        row: finite(item.row, 0, -64, 64),
+        col: finite(item.col, 0, -64, 64),
+        ...(item.width === undefined
+          ? {}
+          : { width: finite(item.width, 1, 0.25, 16) }),
+      }];
+    })
+    : fallbackExtraKeys;
+
   const thumbHomeSource = record(source.thumbHome);
   const thumbHome: Partial<Record<'LT' | 'RT', string>> = {};
   for (const finger of ['LT', 'RT'] as const) {
@@ -102,6 +138,7 @@ export function sanitizePhysicalShape(value: unknown, fallback: PhysicalShape): 
     pitchMm: finite(source.pitchMm, fallback.pitchMm, 1, 100),
     rowWidths,
     thumbs: usableThumbs,
+    ...(extraKeys.length === 0 ? {} : { extraKeys }),
     ...(rowNumbers(source.rowStagger, fallback.rowStagger, -32, 32) === undefined
       ? {}
       : { rowStagger: rowNumbers(source.rowStagger, fallback.rowStagger, -32, 32) }),
@@ -119,13 +156,6 @@ export function sanitizePhysicalShape(value: unknown, fallback: PhysicalShape): 
   return result;
 }
 
-function fallbackKeyFinger(column: number): Exclude<Finger, 'LT' | 'RT'> {
-  const fingers: Exclude<Finger, 'LT' | 'RT'>[] = [
-    'LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP',
-  ];
-  return fingers[Math.min(column, fingers.length - 1)] ?? 'RP';
-}
-
 function sanitizeAssignment(value: unknown, fallback: FingerAssignment, shape: PhysicalShape): FingerAssignment {
   const source = record(value);
   const sourceKeyFinger = record(source.keyFinger);
@@ -135,9 +165,15 @@ function sanitizeAssignment(value: unknown, fallback: FingerAssignment, shape: P
     for (let col = 0; col < width; col++) {
       const id = keyId(row, col);
       const candidate = sourceKeyFinger[id] ?? fallbackKeyFingerMap[id];
-      keyFinger[id] = isNonThumb(candidate) ? candidate : fallbackKeyFinger(col);
+      keyFinger[id] = isNonThumb(candidate) ? candidate : defaultFingerForColumn(col);
     }
   });
+  for (const extraKey of shape.extraKeys ?? []) {
+    const candidate = sourceKeyFinger[extraKey.id] ?? fallbackKeyFingerMap[extraKey.id];
+    keyFinger[extraKey.id] = isNonThumb(candidate)
+      ? candidate
+      : defaultFingerForColumn(extraKey.col);
+  }
 
   const sourceHomeKey = record(source.homeKey);
   const fallbackHomeKey = record(fallback.homeKey);
@@ -185,6 +221,7 @@ export function sanitizeGeometrySettings(value: unknown, fallback = DEFAULT_GEOM
     columnStagger: undefined,
     splitAt: undefined,
     splitGap: undefined,
+    extraKeys: undefined,
     thumbHome: undefined,
   };
   const shapeFallback = typeof rawShape.id === 'string' && isPresetGeometryKind(rawShape.id)
