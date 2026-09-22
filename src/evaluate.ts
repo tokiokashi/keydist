@@ -254,7 +254,7 @@ export function evaluate(
     for (const action of actions) {
       const step = action.keys;
       const triggerKeys = action.triggerKeys;
-      const layerId = action.input.layerId;
+      const layerId = action.input.aggregationGroupId;
       const modifierKeys = new Set(
         action.input.roles
           .filter((role) => role.role === 'modifier')
