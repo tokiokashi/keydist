@@ -18,7 +18,9 @@ export const DEFAULT_TRIGGER_ACTIVATION_GROUPINGS: Readonly<
 };
 
 export interface TriggerActivationSelector {
-  /** 同じphysical trigger集合をsemantic contextごとに分ける時のscope。 */
+  /** authoring由来のcanonical logical trigger group。 */
+  readonly triggerGroupId?: string;
+  /** 同じphysical trigger集合をsemantic contextごとに分ける時のaggregation scope。 */
   readonly layerId?: string;
   /** fresh trigger pressのcanonical key集合。順序はidentityに含めない。 */
   readonly triggerKeys?: readonly PhysicalKeyId[];
@@ -68,7 +70,8 @@ const sameOptionalKeys = (
 const sameSelector = (
   left: TriggerActivationSelector,
   right: TriggerActivationSelector,
-): boolean => left.layerId === right.layerId
+): boolean => left.triggerGroupId === right.triggerGroupId
+  && left.layerId === right.layerId
   && sameOptionalKeys(left.triggerKeys, right.triggerKeys);
 
 const ACTIVATION_CLASSES: readonly TriggerActivationClass[] = [
@@ -148,12 +151,16 @@ const selectorMatches = (
   selector: TriggerActivationSelector,
   action: RealizedSemanticAction,
 ): boolean => {
+  if (selector.triggerGroupId !== undefined
+    && selector.triggerGroupId !== action.input.triggerGroupId) return false;
   if (selector.layerId !== undefined && selector.layerId !== action.input.layerId) return false;
   if (selector.triggerKeys !== undefined
     && canonicalKeyIdentity(selector.triggerKeys) !== canonicalKeyIdentity(action.triggerKeys)) {
     return false;
   }
-  return selector.layerId !== undefined || selector.triggerKeys !== undefined;
+  return selector.triggerGroupId !== undefined
+    || selector.layerId !== undefined
+    || selector.triggerKeys !== undefined;
 };
 
 function concreteOverrideFor(
@@ -163,6 +170,7 @@ function concreteOverrideFor(
   const matches = (policy.triggerActivationOverrides ?? [])
     .filter((override) => selectorMatches(override.selector, action));
   return matches.find((override) => override.selector.triggerKeys !== undefined)?.grouping
+    ?? matches.find((override) => override.selector.triggerGroupId !== undefined)?.grouping
     ?? matches.find((override) => override.selector.layerId !== undefined)?.grouping;
 }
 
