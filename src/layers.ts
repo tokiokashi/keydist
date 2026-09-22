@@ -437,7 +437,8 @@ export function compactLayerGuideDefinitions(
 }
 
 /**
- * legacy layer diagramと同じseries color slotを、1キー目のpresentation triggerへ割り当てる。
+ * legacy layer diagramと同じseries color slotを、単キーで成立するlayer keyへ割り当てる。
+ * 複合triggerの構成キーは常時着色せず、必要時の動的ガイドへ委ねる。
  * 同一physical keyが複数layerの起点ならauthoring順で先に現れるlayerの色を採用する。
  */
 export function presentationTriggerColorSlots(layout: Layout): ReadonlyMap<string, number> {
@@ -450,8 +451,9 @@ export function presentationTriggerColorSlots(layout: Layout): ReadonlyMap<strin
     for (const face of layer.faces) {
       const slot = styles.get(face)?.colorSlot;
       if (slot === undefined) continue;
-      for (const trigger of displayTriggerKeys(face)) {
-        const key = resolveKeyId(trigger);
+      for (const alternative of displayTriggerAlternatives(face)) {
+        if (alternative.length !== 1) continue;
+        const key = resolveKeyId(alternative[0]);
         if (!result.has(key)) result.set(key, slot);
       }
     }
