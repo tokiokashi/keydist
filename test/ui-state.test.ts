@@ -317,7 +317,7 @@ test('ActionRealizationPolicyはglobal / per-layoutで保存・復元する', ()
     triggerActivationClassOverrides: { 'order-free': 'separate' },
     triggerActivationOverrides: [{
       selector: {
-        layerId: 'layer:SandS',
+        modifierGroupIds: ['SandS'],
         triggerKeys: ['thumb-r'],
       },
       grouping: 'separate' as const,
