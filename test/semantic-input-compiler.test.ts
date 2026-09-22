@@ -577,8 +577,8 @@ test('built-inの相互Face membershipはauthoring側へ明示される', () => 
     && input.physicalKeys.includes('f')
     && input.physicalKeys.includes('j'))!;
   assert.deepEqual(ga.roles, [
-    { key: 'f', role: 'modifier' },
-    { key: 'j', role: 'modifier' },
+    { key: 'f', role: 'modifier', modifierGroupId: '濁音' },
+    { key: 'j', role: 'modifier', modifierGroupId: '濁音' },
   ]);
   assert.deepEqual(ga.capabilities, [
     { kind: 'while-held', keys: ['f'] },
