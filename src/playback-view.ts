@@ -769,6 +769,8 @@ function updatePlaybackView() {
 }
 
 function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeometry>): string {
+  let minX = 0;
+  let minY = 0;
   let maxX = 0;
   let maxY = 0;
   const keys = visibleGeometryKeys(layout, geometry).map((key) => {
@@ -777,6 +779,8 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
     const width = widthU * PLAYBACK_KEY;
     const x = (key.x - (widthU - 1) / 2) * PLAYBACK_KEY;
     const y = key.y * PLAYBACK_KEY;
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
     maxX = Math.max(maxX, x + width);
     maxY = Math.max(maxY, y + PLAYBACK_KEY);
     const label = layout.legends.get(key.id) ?? '';
@@ -792,9 +796,11 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
       <text class="playback-key-label" data-playback-label x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
     </g>`;
   });
-  const W = maxX + PLAYBACK_PAD;
-  const H = maxY + PLAYBACK_PAD;
-  return `<svg viewBox="0 0 ${W} ${H}" width="${W * ctx.getUiState().ui.playback.scale}" height="${H * ctx.getUiState().ui.playback.scale}" role="img"
+  const viewX = minX - PLAYBACK_PAD / 2;
+  const viewY = minY - PLAYBACK_PAD / 2;
+  const W = maxX - minX + PLAYBACK_PAD;
+  const H = maxY - minY + PLAYBACK_PAD;
+  return `<svg viewBox="${viewX} ${viewY} ${W} ${H}" width="${W * ctx.getUiState().ui.playback.scale}" height="${H * ctx.getUiState().ui.playback.scale}" role="img"
     aria-label="${escapeAttr(`${layout.name}の打鍵再生`)}">${keys.join('')}<g data-playback-motion-layer aria-hidden="true"></g></svg>`;
 }
 
