@@ -828,13 +828,15 @@ h1 {
 
 .input-recognized {
   display: grid;
-  grid-template-columns: 1.6rem 1fr;
+  grid-template-columns: max-content minmax(0, 1fr);
   gap: 0.5rem;
   align-items: start;
 }
 
 .input-recognized strong {
+  min-width: 2.5rem;
   font-size: 1.05rem;
+  white-space: nowrap;
 }
 
 .input-recognized div {
