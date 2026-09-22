@@ -220,7 +220,11 @@ test('concrete overrideはclass defaultより優先される', () => {
     ], 'SandS'),
   });
   const dakuten = action({
-    input: input([], 'layer:濁音', [], '濁音'),
+    input: {
+      ...input([], 'layer:濁音', [], '濁音'),
+      physicalKeys: ['j', 'f'],
+      roles: [{ key: 'j', role: 'modifier', modifierGroupId: '濁音' }],
+    },
     keys: ['j', 'f'],
     outputKeys: ['f'],
     triggerKeys: ['j'],
@@ -240,7 +244,7 @@ test('concrete overrideはclass defaultより優先される', () => {
   assert.equal(applyActionRealizationPolicy([dakuten], policy).length, 1);
 });
 
-test('physical selectorはlayer selectorより優先されkey順に依存しない', () => {
+test('physical selectorはmodifier group selectorより優先されkey順に依存しない', () => {
   const multi = action({
     input: input([], 'layer:X', [], 'X'),
     keys: ['q', 'thumb-r', 'j'],
