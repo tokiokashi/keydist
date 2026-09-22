@@ -472,6 +472,32 @@ test('presentation: prefix singleはrelease後も1打だけactiveで対象入力
   assert.deepEqual(completed.state.activeAggregationGroupIds, []);
 });
 
+test('presentation: prepress-requiredなhold layerはrelease後にprefix化しない', () => {
+  const layout = LAYOUT_BY_ID.get('shin-jis-simultaneous');
+  assert.ok(layout);
+  const session = presentationStepper(layout);
+
+  const down = session.step({ type: 'down', key: 'thumb-r' });
+  assert.deepEqual(down.state.activeAggregationGroupIds, ['layer:シフト']);
+  assert.ok(down.state.selectedKeys.includes('thumb-r'));
+
+  const released = session.step({ type: 'up', key: 'thumb-r' });
+  assert.deepEqual(released.state.activeAggregationGroupIds, []);
+  assert.equal(released.state.selectedKeys.includes('thumb-r'), false);
+});
+
+test('presentation: 薙刀式のorder-free装飾keyはrelease後にactiveを残さない', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18');
+  assert.ok(layout);
+  const session = presentationStepper(layout);
+
+  const down = session.step({ type: 'down', key: 'j' });
+  assert.deepEqual(down.state.activeAggregationGroupIds, ['layer:濁音']);
+  const released = session.step({ type: 'up', key: 'j' });
+  assert.deepEqual(released.state.activeAggregationGroupIds, []);
+  assert.equal(released.state.selectedKeys.includes('j'), false);
+});
+
 test('presentation: simultaneous singleはtrigger releaseでactiveを残さない', () => {
   const layout = LAYOUT_BY_ID.get('nicola');
   assert.ok(layout);
