@@ -45,7 +45,10 @@ export function browserKeyboardEventToPhysicalKeyEvent(
 ): PhysicalKeyEvent | undefined {
   if (event.type !== 'keydown' && event.type !== 'keyup') return undefined;
   if (event.isComposing) return undefined;
-  if (event.ctrlKey || event.altKey || event.metaKey) return undefined;
+  if (
+    event.type === 'keydown'
+    && (event.ctrlKey || event.altKey || event.metaKey)
+  ) return undefined;
   if (event.type === 'keydown' && event.repeat) return undefined;
 
   const key = browserCodeToPhysicalKey(event.code);
