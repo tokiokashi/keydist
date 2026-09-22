@@ -1,4 +1,8 @@
 import type { PhysicalKeyEvent } from '../../core/input-converter/index.ts';
+import {
+  EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
+  type BrowserKeyBindingOverrides,
+} from './browser-keyboard-bindings.ts';
 
 export interface BrowserKeyboardEventLike {
   readonly type: string;
@@ -52,7 +56,11 @@ export function isBrowserTextInputCode(code: string): boolean {
 
 export function browserCodeToPhysicalKey(
   code: string,
+  overrides: BrowserKeyBindingOverrides = EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
 ): PhysicalKeyEvent['key'] | undefined {
+  if (Object.prototype.hasOwnProperty.call(overrides, code)) {
+    return overrides[code] ?? undefined;
+  }
   if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase();
   if (/^Digit[0-9]$/.test(code)) return code.slice(5);
   return CODE_TO_KEY[code];
@@ -68,10 +76,11 @@ export function browserCodeToPhysicalKey(
 export function shouldCaptureBrowserKeyDown(
   event: BrowserKeyboardEventLike,
   ownedPhysicalKeys: ReadonlySet<PhysicalKeyEvent['key']>,
+  overrides: BrowserKeyBindingOverrides = EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
 ): boolean {
   if (event.type !== 'keydown' || event.isComposing) return false;
   if (event.ctrlKey || event.altKey || event.metaKey) return false;
-  const key = browserCodeToPhysicalKey(event.code);
+  const key = browserCodeToPhysicalKey(event.code, overrides);
   return key !== undefined
     && (ownedPhysicalKeys.has(key) || isBrowserTextInputCode(event.code));
 }
@@ -85,6 +94,7 @@ export function shouldCaptureBrowserKeyDown(
  */
 export function browserKeyboardEventToPhysicalKeyEvent(
   event: BrowserKeyboardEventLike,
+  overrides: BrowserKeyBindingOverrides = EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
 ): PhysicalKeyEvent | undefined {
   if (event.type !== 'keydown' && event.type !== 'keyup') return undefined;
   if (event.isComposing) return undefined;
@@ -94,7 +104,7 @@ export function browserKeyboardEventToPhysicalKeyEvent(
   ) return undefined;
   if (event.type === 'keydown' && event.repeat) return undefined;
 
-  const key = browserCodeToPhysicalKey(event.code);
+  const key = browserCodeToPhysicalKey(event.code, overrides);
   if (key === undefined) return undefined;
 
   return {

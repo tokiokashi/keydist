@@ -32,6 +32,15 @@ import {
   visibleGeometryKeys,
 } from '../../layout-physical-keys.ts';
 import { load as loadUserGeometryShapes } from '../../user-geometries.ts';
+import {
+  DEFAULT_THUMB_KEY_BINDINGS,
+  loadThumbKeyBindings,
+  saveThumbKeyBindings,
+  thumbBindingLabel,
+  thumbKeyBindingsToOverrides,
+  type ThumbKeyBindings,
+} from './browser-keyboard-bindings.ts';
+import { ThumbKeyBindingEditor } from './thumb-key-binding-editor.tsx';
 import { useTypingSession } from './use-typing-session.ts';
 
 const DIRECT_JA_INPUT_LAYOUTS =
@@ -77,7 +86,15 @@ export function InputConverterView() {
   const [layout, setLayout] = useState<Layout>(
     () => DIRECT_JA_INPUT_LAYOUTS[0] ?? INPUT_LAYOUTS[0],
   );
-  const session = useTypingSession(layout);
+  const [thumbBindings, setThumbBindings] = useState<ThumbKeyBindings>(() => ({
+    leftCodes: [...DEFAULT_THUMB_KEY_BINDINGS.leftCodes],
+    rightCodes: [...DEFAULT_THUMB_KEY_BINDINGS.rightCodes],
+  }));
+  const browserBindings = useMemo(
+    () => thumbKeyBindingsToOverrides(thumbBindings),
+    [thumbBindings],
+  );
+  const session = useTypingSession(layout, browserBindings);
   const [userGeometryShapes, setUserGeometryShapes] = useState<PhysicalShape[]>([]);
   const [geometryId, setGeometryId] = useState(PHYSICAL_SHAPES['row-staggered'].id);
   const [showDynamicGuide, setShowDynamicGuide] = useState(true);
@@ -87,7 +104,13 @@ export function InputConverterView() {
 
   useEffect(() => {
     setUserGeometryShapes(loadUserGeometryShapes());
+    setThumbBindings(loadThumbKeyBindings(window.localStorage));
   }, []);
+
+  const updateThumbBindings = (next: ThumbKeyBindings) => {
+    setThumbBindings(next);
+    saveThumbKeyBindings(next, window.localStorage);
+  };
 
   const geometryShapes = useMemo(
     () => [...PRESET_GEOMETRY_SHAPES, ...userGeometryShapes],
@@ -168,9 +191,9 @@ export function InputConverterView() {
                   : ''
                 : layout.legends.get(key.id) ?? ''),
             secondaryLegend: key.id === THUMB_KEY.LT
-              ? 'NonConvert'
+              ? thumbBindingLabel(thumbBindings, 'left')
               : key.id === THUMB_KEY.RT
-                ? 'Space / Convert'
+                ? thumbBindingLabel(thumbBindings, 'right')
                 : key.id,
             pressed: pressed.has(key.id),
             highlighted: showDynamicGuide && activeTriggerKeys.has(key.id),
@@ -191,6 +214,7 @@ export function InputConverterView() {
     session.pressedKeys,
     showDynamicGuide,
     showTriggerColors,
+    thumbBindings,
     triggerColorSlots,
     triggerKeys,
     visibleKeys,
@@ -281,6 +305,11 @@ export function InputConverterView() {
           起点キー色
         </label>
       </div>
+
+      <ThumbKeyBindingEditor
+        value={thumbBindings}
+        onChange={updateThumbBindings}
+      />
 
       <textarea
         className="input-output"

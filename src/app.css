@@ -149,6 +149,95 @@ h1 {
   font: inherit;
 }
 
+.input-thumb-bindings {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0 0 1rem;
+  padding: 0.85rem;
+  border: 1px solid #d6d6d1;
+  border-radius: 0.7rem;
+  background: #fff;
+}
+
+.input-thumb-bindings > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.input-thumb-bindings > header > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.input-thumb-bindings > header span {
+  color: #686862;
+  font-size: 0.78rem;
+}
+
+.input-thumb-bindings > header button,
+.input-binding-chip,
+.input-binding-add {
+  min-height: 2rem;
+  border: 1px solid #c9c9c3;
+  border-radius: 0.5rem;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.input-thumb-bindings > header button {
+  padding: 0 0.7rem;
+}
+
+.input-thumb-binding-side {
+  display: grid;
+  grid-template-columns: 5rem 1fr;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.input-thumb-binding-side > strong {
+  font-size: 0.82rem;
+}
+
+.input-thumb-binding-codes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.input-binding-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0 0.55rem;
+}
+
+.input-binding-chip span {
+  color: #686862;
+}
+
+.input-binding-add {
+  padding: 0 0.65rem;
+  border-style: dashed;
+}
+
+.input-binding-add[data-capturing] {
+  border-style: solid;
+  border-color: #4a3aa7;
+  box-shadow: 0 0 0 1px #4a3aa7;
+}
+
+.input-binding-capture {
+  margin: 0;
+  color: #4a3aa7;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
 .input-toolbar select,
 .input-toolbar button {
   min-height: 2.6rem;

@@ -121,3 +121,29 @@ test('未所有の標準文字keyはbrowser文字入力をcaptureし、navigatio
     ctrlKey: true,
   }, owned), false);
 });
+
+
+test('browser adapterは任意code overrideで通常keyを親指physical keyへ再割当できる', () => {
+  const overrides = {
+    KeyQ: 'thumb-l',
+    Space: null,
+  } as const;
+
+  assert.equal(browserCodeToPhysicalKey('KeyQ', overrides), 'thumb-l');
+  assert.equal(browserCodeToPhysicalKey('Space', overrides), undefined);
+  assert.equal(
+    shouldCaptureBrowserKeyDown(
+      { type: 'keydown', code: 'KeyQ' },
+      new Set(['thumb-l']),
+      overrides,
+    ),
+    true,
+  );
+  assert.deepEqual(
+    browserKeyboardEventToPhysicalKeyEvent(
+      { type: 'keydown', code: 'KeyQ' },
+      overrides,
+    ),
+    { type: 'down', key: 'thumb-l' },
+  );
+});
