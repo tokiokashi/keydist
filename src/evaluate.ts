@@ -336,7 +336,7 @@ export function evaluate(
         char,
         inputChar,
         inputIndex,
-        layerId,
+        aggregationGroupId,
         classifications: action.input.classifications,
         triggerKeys,
         pairedTriggerKeys,
