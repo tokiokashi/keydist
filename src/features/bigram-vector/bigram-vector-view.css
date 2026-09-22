@@ -479,6 +479,13 @@
   gap: 0.3rem;
 }
 
+.flow-relative-legend {
+  top: auto;
+  bottom: 0.65rem;
+  left: 0.8rem;
+  right: auto;
+}
+
 .roll-summary {
   position: absolute;
   right: 0.85rem;
