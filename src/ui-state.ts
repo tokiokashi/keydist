@@ -351,14 +351,18 @@ function actionRealizationPolicy(
         && selector.triggerKeys.every((key) => typeof key === 'string')
         ? selector.triggerKeys as string[]
         : undefined;
+      const triggerGroupId = typeof selector.triggerGroupId === 'string'
+        ? selector.triggerGroupId
+        : undefined;
       const layerId = typeof selector.layerId === 'string' ? selector.layerId : undefined;
-      if (triggerKeys === undefined && layerId === undefined) return [];
+      if (triggerKeys === undefined && layerId === undefined && triggerGroupId === undefined) return [];
       const grouping = item.grouping === 'combined' || item.grouping === 'separate'
         ? item.grouping
         : undefined;
       if (grouping === undefined) return [];
       return [{
         selector: {
+          ...(triggerGroupId === undefined ? {} : { triggerGroupId }),
           ...(layerId === undefined ? {} : { layerId }),
           ...(triggerKeys === undefined ? {} : { triggerKeys }),
         },
