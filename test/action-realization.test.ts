@@ -35,7 +35,7 @@ const action = (
 
 test('ActionRealizationPolicyの既定はtrigger-realized streamをそのまま保つ', () => {
   const actions = [action()];
-  assert.deepEqual(DEFAULT_ACTION_REALIZATION_POLICY, { holdStart: 'combined' });
+  assert.deepEqual(DEFAULT_ACTION_REALIZATION_POLICY, { triggerActivation: 'combined' });
   assert.equal(
     applyActionRealizationPolicy(actions, DEFAULT_ACTION_REALIZATION_POLICY),
     actions,
@@ -45,7 +45,7 @@ test('ActionRealizationPolicyの既定はtrigger-realized streamをそのまま�
 test('hold startをseparateにするとtrigger actionとheld下のoutput actionへ分ける', () => {
   const [holdStart, output] = applyActionRealizationPolicy(
     [action()],
-    { holdStart: 'separate' },
+    { triggerActivation: 'separate' },
   );
 
   assert.deepEqual(holdStart, {
@@ -73,7 +73,7 @@ test('overlapだけならhold-start -> outputへsplitする', () => {
   };
   const result = applyActionRealizationPolicy([
     action({ input: semantic }),
-  ], { holdStart: 'separate' });
+  ], { triggerActivation: 'separate' });
 
   assert.deepEqual(result.map((candidate) => candidate.keys), [
     ['thumb-r'],
@@ -91,7 +91,7 @@ test('prefix orderならhold-start -> outputの順を維持してsplitする', (
   };
   const result = applyActionRealizationPolicy([
     action({ input: semantic }),
-  ], { holdStart: 'separate' });
+  ], { triggerActivation: 'separate' });
 
   assert.deepEqual(result.map((candidate) => candidate.keys), [
     ['thumb-r'],
@@ -110,7 +110,7 @@ test('suffix orderはheld-firstへ反転せずconservativeにcombinedを維持�
   const original = action({ input: semantic });
   const result = applyActionRealizationPolicy(
     [original],
-    { holdStart: 'separate' },
+    { triggerActivation: 'separate' },
   );
 
   assert.equal(result.length, 1);
@@ -141,7 +141,7 @@ test('partial holdでheld/fresh groupがorder境界の両側へ跨る場合はco
   });
   const result = applyActionRealizationPolicy(
     [original],
-    { holdStart: 'separate' },
+    { triggerActivation: 'separate' },
   );
 
   assert.equal(result.length, 1);
@@ -163,7 +163,7 @@ test('partial holdではhold groupだけを先行actionへ分け、他triggerは
     keys: ['thumb-r', 'd', 'j'],
     outputKeys: ['j'],
     triggerKeys: ['thumb-r', 'd'],
-  })], { holdStart: 'separate' });
+  })], { triggerActivation: 'separate' });
 
   assert.deepEqual(holdStart.keys, ['thumb-r']);
   assert.deepEqual(holdStart.triggerKeys, ['thumb-r']);
@@ -181,7 +181,7 @@ test('prefix等ですでにtrigger-onlyのhold start actionは分割しない', 
   const actions = [triggerOnly];
 
   assert.deepEqual(
-    applyActionRealizationPolicy(actions, { holdStart: 'separate' }),
+    applyActionRealizationPolicy(actions, { triggerActivation: 'separate' }),
     actions,
   );
 });
@@ -196,7 +196,7 @@ test('hold continue actionは分割しない', () => {
   const actions = [continued];
 
   assert.deepEqual(
-    applyActionRealizationPolicy(actions, { holdStart: 'separate' }),
+    applyActionRealizationPolicy(actions, { triggerActivation: 'separate' }),
     actions,
   );
 });
@@ -208,7 +208,7 @@ test('compositionのhold startはseparate指定でも1 actionのまま保つ', (
   const actions = [composition];
 
   assert.deepEqual(
-    applyActionRealizationPolicy(actions, { holdStart: 'separate' }),
+    applyActionRealizationPolicy(actions, { triggerActivation: 'separate' }),
     actions,
   );
 });
@@ -216,15 +216,15 @@ test('compositionのhold startはseparate指定でも1 actionのまま保つ', (
 test('ActionRealizationPolicy比較はholdStart groupingだけを見る', () => {
   assert.equal(
     sameActionRealizationPolicy(
-      { holdStart: 'combined' },
-      { holdStart: 'combined' },
+      { triggerActivation: 'combined' },
+      { triggerActivation: 'combined' },
     ),
     true,
   );
   assert.equal(
     sameActionRealizationPolicy(
-      { holdStart: 'combined' },
-      { holdStart: 'separate' },
+      { triggerActivation: 'combined' },
+      { triggerActivation: 'separate' },
     ),
     false,
   );
