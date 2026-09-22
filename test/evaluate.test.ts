@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry } from '../src/geometry.ts';
+import {
+  DEFAULT_FINGER_ASSIGNMENT,
+  PHYSICAL_SHAPES,
+  buildGeometry,
+} from '../src/geometry.ts';
 import { evaluate, type Options } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { compileSequenceInputAlternative } from '../src/core/semantic-input/index.ts';
@@ -729,4 +733,44 @@ test('Face compositionがselectedされた場合は同outputのwithCombos定義�
     trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)).sort(),
     ['d', 'k', 'q'],
   );
+});
+
+
+test('grid外physical keyもdirect inputとしてevaluateとmetricsへ流れる', () => {
+  const shape = {
+    ...structuredClone(PHYSICAL_SHAPES['row-staggered']),
+    id: 'extra-physical-keys',
+    extraKeys: [
+      { id: 'escape', x: -1, y: 0, row: 0, col: -1 },
+      { id: 'tab', x: -0.25, y: 1, row: 1, col: -1, width: 1.5 },
+    ],
+  };
+  const assignment = {
+    ...structuredClone(DEFAULT_FINGER_ASSIGNMENT),
+    id: 'extra-physical-keys',
+    keyFinger: {
+      ...DEFAULT_FINGER_ASSIGNMENT.keyFinger,
+      escape: 'LP' as const,
+      tab: 'LP' as const,
+    },
+  };
+  const extraGeometry = buildGeometry(shape, assignment);
+  const layout = fromKana('extra-physical-keys', 'extra-physical-keys', {
+    ぬ: [['escape']],
+    よ: [['tab']],
+  });
+
+  const trace = evaluate('ぬよ', layout, extraGeometry, opts());
+  const metrics = computeMetrics(trace, extraGeometry);
+
+  assert.equal(trace.skipped, 0);
+  assert.deepEqual(trace.errors, []);
+  assert.deepEqual(
+    trace.strokes.map((stroke) => stroke.presses[0].keys[0].id),
+    ['escape', 'tab'],
+  );
+  assert.equal(metrics.presses, 2);
+  assert.equal(metrics.keyCounts.get('escape'), 1);
+  assert.equal(metrics.keyCounts.get('tab'), 1);
+  assert.equal(metrics.perFingerPresses.LP, 2);
 });
