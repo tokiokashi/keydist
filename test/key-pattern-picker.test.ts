@@ -553,6 +553,18 @@ test('presentation: 薙刀式SandSは左右thumb alternativeでも同じhold lay
   }
 });
 
+test('dynamic guide: 薙刀式の単キーlayerでは同じaggregationの候補だけを表示対象にできる', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18');
+  assert.ok(layout);
+
+  const result = matchKeyPatterns(layout, new Set(['j']));
+  const dakuon = result.candidates.get('f') ?? [];
+  const deeper = result.continuations.get('h') ?? [];
+
+  assert.ok(dakuon.some((match) => match.aggregationGroupId === 'layer:濁音'));
+  assert.ok(deeper.some((match) => match.aggregationGroupId !== 'layer:濁音'));
+});
+
 test('dynamic guide: 複数キー同時押しはpartial key集合から次キーと確定出力を段階表示する', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18');
   assert.ok(layout);
