@@ -36,10 +36,10 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
     (guideBox!.y + guideBox!.height) - (detailsBox!.y + detailsBox!.height),
   )).toBeLessThanOrEqual(2);
 
-  await expect(splitter).toHaveAttribute('aria-valuenow', '63');
+  await expect(splitter).toHaveAttribute('aria-valuenow', '50');
   await splitter.focus();
   await page.keyboard.press('ArrowLeft');
-  await expect(splitter).toHaveAttribute('aria-valuenow', '61');
+  await expect(splitter).toHaveAttribute('aria-valuenow', '48');
 
   await expect(settings).toHaveJSProperty('open', true);
   await settingsSummary.click();
@@ -57,8 +57,7 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   )).toBeLessThanOrEqual(2);
 
   const guideOverflowY = await guide.evaluate((element) => getComputedStyle(element).overflowY);
-  expect(guideOverflowY).not.toBe('auto');
-  expect(guideOverflowY).not.toBe('scroll');
+  expect(guideOverflowY).toBe('auto');
 
   const viewportOverflow = await page.evaluate(() =>
     document.documentElement.scrollHeight - window.innerHeight);
@@ -72,6 +71,40 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   expect(after).not.toBeNull();
   expect(after!.height).toBe(before!.height);
   await page.keyboard.up('j');
+});
+
+test('Input Converter keeps desktop Y bounded and lets cheatsheets scroll when width causes wrapping', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 768 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await page.getByLabel('配列', { exact: true }).selectOption('tsuki-2-263');
+  await expect(feature).toHaveAttribute('data-input-ready', 'tsuki-2-263');
+
+  const guide = page.getByLabel('レイヤーカンペ一覧');
+  const displaySettings = page.getByLabel('表示設定');
+  const keyboardPanel = page.locator('.input-keyboard-panel');
+
+  const [displayBox, keyboardBox] = await Promise.all([
+    displaySettings.boundingBox(),
+    keyboardPanel.boundingBox(),
+  ]);
+  expect(displayBox).not.toBeNull();
+  expect(keyboardBox).not.toBeNull();
+  expect(displayBox!.x).toBeGreaterThanOrEqual(keyboardBox!.x);
+
+  const dimensions = await guide.evaluate((element) => ({
+    clientHeight: element.clientHeight,
+    scrollHeight: element.scrollHeight,
+    overflowY: getComputedStyle(element).overflowY,
+  }));
+  expect(dimensions.overflowY).toBe('auto');
+  expect(dimensions.scrollHeight).toBeGreaterThan(dimensions.clientHeight);
+
+  const viewportOverflow = await page.evaluate(() =>
+    document.documentElement.scrollHeight - window.innerHeight);
+  expect(viewportOverflow).toBeLessThanOrEqual(1);
 });
 
 test('Input Converter keeps browser key lifecycle consistent', async ({ page }) => {
