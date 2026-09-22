@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import {
   PhysicalKeyboard,
   type PhysicalKeyboardKeyView,
@@ -52,6 +52,13 @@ const INPUT_LAYOUTS = [
 ];
 
 const PRESET_GEOMETRY_SHAPES = Object.values(PHYSICAL_SHAPES);
+const DEFAULT_SPLIT_PERCENT = 62.5;
+const MIN_SPLIT_PERCENT = 34;
+const MAX_SPLIT_PERCENT = 72;
+
+function clampSplitPercent(value: number): number {
+  return Math.min(MAX_SPLIT_PERCENT, Math.max(MIN_SPLIT_PERCENT, value));
+}
 
 function RecognizedDetail({
   recognized,
@@ -100,7 +107,17 @@ export function InputConverterView() {
   const [showDynamicGuide, setShowDynamicGuide] = useState(true);
   const [showLayerGuide, setShowLayerGuide] = useState(true);
   const [showTriggerColors, setShowTriggerColors] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(true);
+  const [splitPercent, setSplitPercent] = useState(DEFAULT_SPLIT_PERCENT);
   const escapeIsLayoutInput = physicalKeysUsedByLayout(layout).has('escape');
+
+  const updateSplitFromClientX = (clientX: number, splitter: HTMLElement) => {
+    const workspace = splitter.parentElement;
+    if (workspace === null) return;
+    const bounds = workspace.getBoundingClientRect();
+    if (bounds.width <= 0) return;
+    setSplitPercent(clampSplitPercent(((clientX - bounds.left) / bounds.width) * 100));
+  };
 
   useEffect(() => {
     setUserGeometryShapes(loadUserGeometryShapes());
@@ -245,14 +262,22 @@ export function InputConverterView() {
         </p>
       </header>
 
-      <div className="input-workspace">
+      <div
+        className="input-workspace"
+        style={{ '--input-sidebar-width': `${splitPercent}%` } as CSSProperties}
+      >
         <aside className="input-sidebar" aria-label="入力テスト設定とカンペ">
-          <section className="input-settings-panel">
-            <header className="input-panel-heading">
+          <details
+            className="input-settings-panel"
+            open={settingsOpen}
+            onToggle={(event) => setSettingsOpen(event.currentTarget.open)}
+          >
+            <summary className="input-panel-heading">
               <strong>設定</strong>
-              <button type="button" onClick={session.clear}>クリア</button>
-            </header>
+              <span>{settingsOpen ? '閉じる' : '開く'}</span>
+            </summary>
 
+            <div className="input-settings-body">
             <div className="input-toolbar">
               <label>
                 <span>配列</span>
@@ -320,7 +345,8 @@ export function InputConverterView() {
               value={thumbBindings}
               onChange={updateThumbBindings}
             />
-          </section>
+            </div>
+          </details>
 
           {showLayerGuide && (guideDefinitions.length > 0 || combinationLabels.length > 0) ? (
             <aside className="input-layer-guide" aria-label="レイヤーカンペ一覧">
@@ -379,8 +405,53 @@ export function InputConverterView() {
           ) : null}
         </aside>
 
+        <div
+          aria-label="カンペと入力領域の幅を調整"
+          aria-orientation="vertical"
+          aria-valuemax={MAX_SPLIT_PERCENT}
+          aria-valuemin={MIN_SPLIT_PERCENT}
+          aria-valuenow={Math.round(splitPercent)}
+          className="input-splitter"
+          onDoubleClick={() => setSplitPercent(DEFAULT_SPLIT_PERCENT)}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowLeft') {
+              event.preventDefault();
+              setSplitPercent((current) => clampSplitPercent(current - 2));
+            } else if (event.key === 'ArrowRight') {
+              event.preventDefault();
+              setSplitPercent((current) => clampSplitPercent(current + 2));
+            } else if (event.key === 'Home') {
+              event.preventDefault();
+              setSplitPercent(MIN_SPLIT_PERCENT);
+            } else if (event.key === 'End') {
+              event.preventDefault();
+              setSplitPercent(MAX_SPLIT_PERCENT);
+            }
+          }}
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            updateSplitFromClientX(event.clientX, event.currentTarget);
+          }}
+          onPointerMove={(event) => {
+            if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+            updateSplitFromClientX(event.clientX, event.currentTarget);
+          }}
+          onPointerUp={(event) => {
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+              event.currentTarget.releasePointerCapture(event.pointerId);
+            }
+          }}
+          role="separator"
+          tabIndex={0}
+          title="ドラッグで幅を調整。ダブルクリックで5:3に戻す。"
+        />
+
         <section className="input-main">
           <section className="input-capture-panel">
+            <header className="input-capture-heading">
+              <strong>入力</strong>
+              <button type="button" onClick={session.clear}>クリア</button>
+            </header>
             <textarea
               className="input-output"
               value={session.text}
