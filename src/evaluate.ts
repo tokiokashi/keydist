@@ -65,6 +65,8 @@ export interface Press {
   target: Point;
   /** 前回この指を使ってから挟まったrealized Stroke数。SFB判定用。 */
   gap: number;
+  /** 前回この指が参加したselected inputから何入力先か。N判定用。evaluate生成時は必ず入る。 */
+  inputDistance?: number;
   /** この押下で計上された移動距離 [u] */
   distance: number;
   /**
@@ -297,6 +299,7 @@ export function evaluate(
           keys,
           target,
           gap,
+          inputDistance,
           distance: 0,
           sfb: gap === 0 && (at.x !== target.x || at.y !== target.y),
         };
