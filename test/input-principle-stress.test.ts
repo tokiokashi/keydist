@@ -44,11 +44,11 @@ test('Phoenix principle: reverse-order alternativesは時間閾値なしで同�
     assert.deepEqual(engine.handle({ type: 'up', key: first }).recognized, []);
 
     const result = engine.handle({ type: 'down', key: second }).recognized[0];
-    assert.equal(result.output, 'か', \`\${first}->\${second}\`);
+    assert.equal(result.output, 'か', `${first}->${second}`);
     assert.deepEqual(
       result.actions.map((action) => action.keys),
       [[first], [second]],
-      \`\${first}->\${second}\`,
+      `${first}->${second}`,
     );
   }
 });
