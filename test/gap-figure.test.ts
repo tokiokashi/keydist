@@ -12,13 +12,13 @@ test('固定例は標準ローマ字で15打鍵に展開される', () => {
   assert.equal(presses.length, 15);
 });
 
-test('本文が拾う打鍵のgは仕様の3分岐に1つずつ対応する', () => {
+test('本文が拾う打鍵は同指連続とselected input距離の3分岐に対応する', () => {
   const presses = figurePresses(geometry);
   const at = (n: number) => presses.find((p) => p.number === n)!;
   assert.equal(at(4).gap, 0, 'u → h。同指連続');
   assert.equal(at(12).gap, 0, 'u → m。同指連続');
-  assert.equal(at(15).gap, 2, '1 ≤ g ≤ N。窓の内側');
-  assert.equal(at(11).gap, 4, 'g > N。復帰済み');
+  assert.equal(at(15).inputDistance, 3, '3入力先なのでN=3の内側');
+  assert.equal(at(11).inputDistance, 5, '5入力先なのでN=3の外');
 });
 
 test('図に出る距離は評価器と幾何から引いた値と一致する', () => {
@@ -95,6 +95,7 @@ test('本文の数式にスペースを入れない', () => {
   assert.ok(svg.includes('d(j,u) = '), '盤面のラベルは等号の両側を空ける');
   assert.ok(svg.includes('d(j,u)') && svg.includes('d(u,h)'), '盤面のラベルはd(ab)の形');
   assert.ok(svg.includes('N = 3'), '前提条件の行');
+  assert.ok(svg.includes('5入力先'), 'Nは入力先の距離として説明する');
 });
 
 test('囲みはnote / important / warningの3種を使う', () => {
