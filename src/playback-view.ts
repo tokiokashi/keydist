@@ -31,6 +31,20 @@ import type { AggregatedAnalysisResult } from './analysis-aggregate.ts';
 import type { ChainPolicy } from './analysis-chain.ts';
 import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
 import {
+  DEFAULT_TRIGGER_ACTIVATION_GROUPINGS,
+  type ActionRealizationPolicy,
+  type TriggerActivationClass,
+  type TriggerActivationGrouping,
+  type TriggerRealizationPolicy,
+} from './core/semantic-input/index.ts';
+import {
+  sameModifierGroupSelector,
+  samePhysicalTriggerSelector,
+  triggerActivationGroups,
+  triggerActivationLogicalGroups,
+  TRIGGER_ACTIVATION_CLASS_LABELS,
+} from './trigger-activation-groups.ts';
+import {
   playbackAnalysisArpeggioMotions,
   playbackAnalysisArpeggioOrders,
   playbackAnalysisChainMotions,
@@ -54,6 +68,10 @@ export interface PlaybackViewContext {
   updateChainPolicy: (policy: ChainPolicy) => void;
   getArpeggioPolicy: () => ArpeggioPolicy;
   updateArpeggioPolicy: (policy: ArpeggioPolicy) => void;
+  getTriggerRealizationPolicy: () => TriggerRealizationPolicy;
+  updateTriggerRealizationPolicy: (policy: TriggerRealizationPolicy) => void;
+  getActionRealizationPolicy: () => ActionRealizationPolicy;
+  updateActionRealizationPolicy: (policy: ActionRealizationPolicy) => void;
   refreshAnalysis: () => void;
   openCalibration: () => void;
   openCalibrationEdit: () => void;
@@ -168,10 +186,108 @@ function setPlaybackSettingsOpen(open: boolean): void {
   trigger?.setAttribute('aria-expanded', String(open));
 }
 
+function triggerGroupingOptions(
+  current: TriggerActivationGrouping | undefined,
+  semanticDefault: TriggerActivationGrouping,
+): string {
+  const inherited = `既定（${semanticDefault === 'separate' ? '独立action' : 'outputと同じaction'}）`;
+  return [
+    ['inherit', inherited],
+    ['combined', 'outputと同じaction'],
+    ['separate', '独立action'],
+  ].map(([value, label]) =>
+    `<option value="${value}"${(current ?? 'inherit') === value ? ' selected' : ''}>${escapeText(label)}</option>`
+  ).join('');
+}
+
+function triggerSettingsMarkup(layout: Layout): string {
+  const realization = ctx.getTriggerRealizationPolicy();
+  const action = ctx.getActionRealizationPolicy();
+  const groups = triggerActivationGroups(layout);
+  const relevantClasses = [...new Set(groups.map((group) => group.activationClass))]
+    .filter((kind): kind is Exclude<TriggerActivationClass, 'postpress-required'> =>
+      kind !== 'postpress-required');
+  const classRows = relevantClasses.map((kind) => {
+    const current = action.triggerActivationClassOverrides?.[kind];
+    return `<label class="playback-range-setting"><span>${escapeText(TRIGGER_ACTIVATION_CLASS_LABELS[kind])}</span>
+      <select data-playback-trigger-class="${kind}"${action.triggerActivation === 'semantic' ? '' : ' disabled'}>
+        ${triggerGroupingOptions(current, DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[kind])}
+      </select>
+    </label>`;
+  }).join('');
+
+  const logicalRows = triggerActivationLogicalGroups(layout)
+    .filter((group) => !group.activationClasses.includes('postpress-required'))
+    .map((logical) => {
+      const existing = action.triggerActivationOverrides?.find((override) =>
+        sameModifierGroupSelector(override.selector, logical.modifierGroupIds));
+      const defaults = logical.activationClasses.map((kind) =>
+        action.triggerActivationClassOverrides?.[kind]
+          ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[kind]);
+      const semanticDefault = defaults.every((value) => value === 'separate')
+        ? 'separate'
+        : 'combined';
+      return `<label class="playback-range-setting"><span>${escapeText(logical.label)}</span>
+        <select data-playback-trigger-modifier-groups="${escapeAttr(JSON.stringify(logical.modifierGroupIds))}"${action.triggerActivation === 'semantic' ? '' : ' disabled'}>
+          ${triggerGroupingOptions(existing?.grouping, semanticDefault)}
+        </select>
+      </label>`;
+    }).join('');
+
+  const physicalRows = groups
+    .filter((group) => group.activationClass !== 'postpress-required')
+    .map((group) => {
+      const existing = action.triggerActivationOverrides?.find((override) =>
+        samePhysicalTriggerSelector(override.selector, group));
+      const logicalOverride = action.triggerActivationOverrides?.find((override) =>
+        sameModifierGroupSelector(override.selector, group.modifierGroupIds));
+      const semanticDefault = logicalOverride?.grouping
+        ?? action.triggerActivationClassOverrides?.[group.activationClass]
+        ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[group.activationClass];
+      const selector = {
+        modifierGroupIds: group.modifierGroupIds,
+        triggerKeys: group.triggerKeys,
+      };
+      return `<label class="playback-range-setting"><span>${escapeText(group.label)}</span>
+        <select data-playback-trigger-physical="${escapeAttr(JSON.stringify(selector))}"${action.triggerActivation === 'semantic' ? '' : ' disabled'}>
+          ${triggerGroupingOptions(existing?.grouping, semanticDefault)}
+        </select>
+      </label>`;
+    }).join('');
+
+  const details = logicalRows.length === 0 && physicalRows.length === 0
+    ? ''
+    : `<details class="playback-arpeggio-details">
+        <summary>trigger個別設定</summary>
+        <div class="playback-dialog-grid">${logicalRows}</div>
+        ${physicalRows.length === 0 ? '' : `<details class="playback-arpeggio-details">
+          <summary>物理trigger単位の詳細</summary>
+          <div class="playback-dialog-grid">${physicalRows}</div>
+        </details>`}
+      </details>`;
+
+  return `<details class="playback-arpeggio-details" open>
+    <summary>Trigger realization</summary>
+    <div class="playback-dialog-grid">
+      <label class="playback-finger-toggle">
+        <input type="checkbox" data-playback-trigger-hold${realization.useHold ? ' checked' : ''} />
+        hold-capable triggerを連続保持する
+      </label>
+      <label class="playback-finger-toggle">
+        <input type="checkbox" data-playback-trigger-actions${action.triggerActivation === 'semantic' ? ' checked' : ''} />
+        trigger押下の独立action化を有効にする
+      </label>
+      ${classRows}
+    </div>
+    ${details}
+  </details>`;
+}
+
 function playbackSettingsMarkup(layout: Layout, options: Options): string {
   const activeTab = playbackSettingsTab;
   const chainPolicy = ctx.getChainPolicy();
   const arpeggioPolicy = ctx.getArpeggioPolicy();
+  const triggerSettings = triggerSettingsMarkup(layout);
   return `<div class="playback-settings-content">
     <div class="dialog-head">
       <h2>打鍵再生の設定</h2>
@@ -236,6 +352,7 @@ function playbackSettingsMarkup(layout: Layout, options: Options): string {
         <label class="playback-finger-toggle" title="キャリブレーションした通常速度・Transition方向別速度・指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${ctx.getUiState().ui.playback.useCalibration ? ' checked' : ''}${ctx.getCalibration() ? '' : ' disabled'} />個人速度を適用</label>
         <button type="button" class="ghost" data-playback-action="calibration-edit">${ctx.getCalibration() ? '保存値を確認・編集' : '個人速度を測定'}</button>
       </div>
+      ${triggerSettings}
       <details class="playback-arpeggio-details" open>
         <summary>Analysis Chain境界</summary>
         <label><input type="checkbox" data-playback-chain-policy="breakOnSameFinger"${chainPolicy.breakOnSameFinger ? ' checked' : ''} />非親指SFB Strokeで区切る</label>
@@ -1013,6 +1130,11 @@ function seekPlayback(value: string, playing = false) {
 
 function refreshStructuralAnalysis(): void {
   preserveStateOnNextRender = 'cursor';
+  ctx.refreshAnalysis();
+}
+
+function refreshInputRealizationAnalysis(): void {
+  preserveStateOnNextRender = 'input-position';
   ctx.refreshAnalysis();
 }
 
