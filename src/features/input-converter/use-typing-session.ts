@@ -13,6 +13,11 @@ import {
 import type { Layout } from '../../layouts/index.ts';
 import { physicalKeysUsedByLayout } from '../../layout-physical-keys.ts';
 import {
+  advanceKeyPatternPresentation,
+  EMPTY_KEY_PATTERN_PRESENTATION_STATE,
+  type KeyPatternPresentationState,
+} from '../../key-pattern-picker.ts';
+import {
   browserKeyboardEventToPhysicalKeyEvent,
   isBrowserTextInputCode,
   shouldCaptureBrowserKeyDown,
@@ -27,6 +32,8 @@ export interface TypingSession {
   readonly captureRef: RefObject<HTMLTextAreaElement | null>;
   readonly text: string;
   readonly pressedKeys: readonly string[];
+  readonly recognitionKeys: readonly string[];
+  readonly presentation: KeyPatternPresentationState;
   readonly lastRecognized: readonly RecognizedTypingInput[];
   readonly active: boolean;
   readonly composing: boolean;
@@ -46,6 +53,10 @@ export function useTypingSession(layout: Layout): TypingSession {
 
   const [text, setText] = useState('');
   const [pressedKeys, setPressedKeys] = useState<readonly string[]>([]);
+  const [recognitionKeys, setRecognitionKeys] = useState<readonly string[]>([]);
+  const [presentation, setPresentation] = useState<KeyPatternPresentationState>(
+    EMPTY_KEY_PATTERN_PRESENTATION_STATE,
+  );
   const [lastRecognized, setLastRecognized] = useState<readonly RecognizedTypingInput[]>([]);
   const [active, setActive] = useState(false);
   const [composing, setComposing] = useState(false);
@@ -57,8 +68,14 @@ export function useTypingSession(layout: Layout): TypingSession {
 
     let isComposing = false;
 
-    const applyResult = (result: TypingInputResult) => {
+    const applyResult = (
+      result: TypingInputResult,
+      physical: { type: 'down' | 'up'; key: string },
+    ) => {
       setPressedKeys(result.pressedKeys);
+      setRecognitionKeys(result.recognitionKeys);
+      setPresentation((current) =>
+        advanceKeyPatternPresentation(layout, current, physical, result));
       if (result.recognized.length === 0) return;
 
       setLastRecognized(result.recognized);
@@ -68,6 +85,8 @@ export function useTypingSession(layout: Layout): TypingSession {
     const resetRecognition = () => {
       engine.reset();
       setPressedKeys([]);
+      setRecognitionKeys([]);
+      setPresentation(EMPTY_KEY_PATTERN_PRESENTATION_STATE);
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -90,6 +109,8 @@ export function useTypingSession(layout: Layout): TypingSession {
             event.key === 'Backspace' ? 'backspace' : 'enter',
           );
           setPressedKeys([]);
+          setRecognitionKeys([]);
+          setPresentation(EMPTY_KEY_PATTERN_PRESENTATION_STATE);
           if (command.recognized.length > 0) {
             setLastRecognized(command.recognized);
           }
@@ -106,7 +127,7 @@ export function useTypingSession(layout: Layout): TypingSession {
       event.preventDefault();
       const physical = browserKeyboardEventToPhysicalKeyEvent(event);
       if (physical === undefined) return;
-      applyResult(engine.handle(physical));
+      applyResult(engine.handle(physical), physical);
     };
 
     const onKeyUp = (event: KeyboardEvent) => {
@@ -118,7 +139,7 @@ export function useTypingSession(layout: Layout): TypingSession {
       ) return;
 
       event.preventDefault();
-      applyResult(engine.handle(physical));
+      applyResult(engine.handle(physical), physical);
     };
 
     const onFocus = () => setActive(true);
@@ -163,6 +184,8 @@ export function useTypingSession(layout: Layout): TypingSession {
     engine.reset();
     setText('');
     setPressedKeys([]);
+    setRecognitionKeys([]);
+    setPresentation(EMPTY_KEY_PATTERN_PRESENTATION_STATE);
     setLastRecognized([]);
   };
 
@@ -170,6 +193,8 @@ export function useTypingSession(layout: Layout): TypingSession {
     captureRef,
     text,
     pressedKeys,
+    recognitionKeys,
+    presentation,
     lastRecognized,
     active,
     composing,

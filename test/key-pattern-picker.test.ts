@@ -1,12 +1,24 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveKeyId } from '../src/geometry.ts';
-import { COMBO_LAYER_ID, faceFromEntries, fromFaces, LAYOUT_BY_ID, withCombos } from '../src/layouts/index.ts';
+import {
+  COMBO_LAYER_ID,
+  faceFromEntries,
+  fromFaces,
+  fromRows,
+  LAYOUT_BY_ID,
+  withCombos,
+  withShiftedOutputs,
+} from '../src/layouts/index.ts';
 import type { Face, Layout } from '../src/layouts/index.ts';
+import { TypingInputEngine } from '../src/core/input-converter/index.ts';
 import { compileSequenceInputAlternative } from '../src/core/semantic-input/index.ts';
 import {
+  advanceKeyPatternPresentation,
+  allLayerTriggerKeys,
   allTriggerKeys,
   buildKeyPatternMatrix,
+  EMPTY_KEY_PATTERN_PRESENTATION_STATE,
   findActiveLayerFace,
   matchKeyPatterns,
   summarizeCandidateMatches,
@@ -69,34 +81,42 @@ test('buildKeyPatternMatrix: 単キーtrigger + 文字キーを物理キー集�
   const face = faceFromEntries(['j'], 'simultaneous', { r: 'じ' });
   const layout = compiledFaces(face);
   const match = buildKeyPatternMatrix(layout).find((entry) => entry.output === 'じ');
-  assert.deepEqual(match, {
-    output: 'じ',
-    keys: ['j', 'r'],
-  });
+  assert.deepEqual(
+    match && { output: match.output, keys: match.keys },
+    { output: 'じ', keys: ['j', 'r'] },
+  );
 });
 
 test('buildKeyPatternMatrix: 複数trigger + 文字キーも同じ表へ展開する', () => {
   const face = faceFromEntries(['h', 'j'], 'simultaneous', { r: 'じゃ' });
   const layout = compiledFaces(face);
   const match = buildKeyPatternMatrix(layout).find((entry) => entry.output === 'じゃ');
-  assert.deepEqual(match, {
-    output: 'じゃ',
-    keys: ['h', 'j', 'r'],
-  });
+  assert.deepEqual(
+    match && { output: match.output, keys: match.keys },
+    { output: 'じゃ', keys: ['h', 'j', 'r'] },
+  );
 });
 
 test('buildKeyPatternMatrix: 1キー直接入力もexact判定用に含める', () => {
   const layout = directCanonical('か', 's');
   const matrix = buildKeyPatternMatrix(layout);
-  assert.deepEqual(matrix, [{ output: 'か', keys: ['s'] }]);
+  assert.deepEqual(
+    matrix.map((match) => ({ output: match.output, keys: match.keys })),
+    [{ output: 'か', keys: ['s'] }],
+  );
   assert.deepEqual(matchKeyPatterns(layout, new Set(['s'])).exact.map((match) => match.output), ['か']);
 });
 
 test('buildKeyPatternMatrix: resolvedComboDefinitionsも同じ表へ入れる', () => {
   const layout = comboCanonical('ye', ['k', 'd'], '拗音拡張');
-  assert.deepEqual(buildKeyPatternMatrix(layout), [
-    { output: 'ye', group: '拗音拡張', keys: ['d', 'k'] },
-  ]);
+  assert.deepEqual(
+    buildKeyPatternMatrix(layout).map((match) => ({
+      output: match.output,
+      group: match.group,
+      keys: match.keys,
+    })),
+    [{ output: 'ye', group: '拗音拡張', keys: ['d', 'k'] }],
+  );
 });
 
 test('matchKeyPatterns: レイヤー出力はtrigger + 文字キーの完全一致でexactになる', () => {
@@ -142,6 +162,8 @@ test('matchKeyPatterns: 2キー以上先の出力はまだ候補表示しない'
   const result = matchKeyPatterns(layout, new Set(['j']));
   assert.equal(result.exact.length, 0);
   assert.equal(result.candidates.size, 0);
+  assert.ok(result.continuations.has('h'));
+  assert.ok(result.continuations.has('r'));
 });
 
 test('matchKeyPatterns: exactがあっても1キー追加で成立する上位出力を候補に残す', () => {
@@ -413,4 +435,156 @@ test('findActiveLayerFace: Face mapping欠落は表示契約違反としてerror
     () => findActiveLayerFace(stubLayout({ faces: [face] }), new Set(['f'])),
     /faceLayerIdsの明示が必要/,
   );
+});
+
+
+function presentationStepper(layout: Layout) {
+  const engine = new TypingInputEngine(layout.canonicalInputs, {
+    triggerRealizationPolicy: { useHold: true },
+  });
+  let state = EMPTY_KEY_PATTERN_PRESENTATION_STATE;
+
+  return {
+    step(event: { type: 'down' | 'up'; key: string }) {
+      const result = engine.handle(event);
+      state = advanceKeyPatternPresentation(layout, state, event, result);
+      return { result, state };
+    },
+  };
+}
+
+test('presentation: prefix singleはrelease後も1打だけactiveで対象入力後に通常へ戻る', () => {
+  const layout = LAYOUT_BY_ID.get('tsuki-2-263');
+  assert.ok(layout);
+  const session = presentationStepper(layout);
+
+  assert.deepEqual(
+    session.step({ type: 'down', key: 'd' }).state.activeAggregationGroupIds,
+    ['layer:中指シフト'],
+  );
+  assert.deepEqual(
+    session.step({ type: 'up', key: 'd' }).state.activeAggregationGroupIds,
+    ['layer:中指シフト'],
+  );
+
+  const completed = session.step({ type: 'down', key: 'h' });
+  assert.deepEqual(completed.result.recognized.map((entry) => entry.output), ['ま']);
+  assert.deepEqual(completed.state.activeAggregationGroupIds, []);
+});
+
+test('presentation: simultaneous singleはtrigger releaseでactiveを残さない', () => {
+  const layout = LAYOUT_BY_ID.get('nicola');
+  assert.ok(layout);
+  const session = presentationStepper(layout);
+
+  const down = session.step({ type: 'down', key: 'thumb-l' });
+  assert.ok(down.state.activeAggregationGroupIds.length > 0);
+  assert.deepEqual(
+    session.step({ type: 'up', key: 'thumb-l' }).state.activeAggregationGroupIds,
+    [],
+  );
+});
+
+test('presentation: hold-capable layerはtrigger hold中だけ確定後も継続する', () => {
+  const layout = LAYOUT_BY_ID.get('asuka');
+  assert.ok(layout);
+  const session = presentationStepper(layout);
+
+  assert.deepEqual(
+    session.step({ type: 'down', key: 'thumb-l' }).state.activeAggregationGroupIds,
+    ['layer:左親指'],
+  );
+  const output = session.step({ type: 'down', key: 's' });
+  assert.equal(output.result.recognized[0]?.output, 'あ');
+  assert.deepEqual(output.state.activeAggregationGroupIds, ['layer:左親指']);
+
+  session.step({ type: 'up', key: 's' });
+  assert.deepEqual(
+    session.step({ type: 'up', key: 'thumb-l' }).state.activeAggregationGroupIds,
+    [],
+  );
+});
+
+test('presentation: 薙刀式SandSは左右thumb alternativeでも同じhold layerになる', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18');
+  assert.ok(layout);
+
+  for (const thumb of ['thumb-l', 'thumb-r']) {
+    const session = presentationStepper(layout);
+    assert.deepEqual(
+      session.step({ type: 'down', key: thumb }).state.activeAggregationGroupIds,
+      ['layer:SandS'],
+      thumb,
+    );
+    const output = session.step({ type: 'down', key: 'f' });
+    assert.equal(output.result.recognized[0]?.output, 'ま');
+    assert.deepEqual(output.state.activeAggregationGroupIds, ['layer:SandS']);
+    session.step({ type: 'up', key: 'f' });
+    assert.deepEqual(
+      session.step({ type: 'up', key: thumb }).state.activeAggregationGroupIds,
+      [],
+    );
+  }
+});
+
+test('dynamic guide: 複数キー同時押しはpartial key集合から次キーと確定出力を段階表示する', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18');
+  assert.ok(layout);
+
+  const first = matchKeyPatterns(layout, new Set(['j']));
+  assert.ok(first.continuations.has('h'));
+
+  const second = matchKeyPatterns(layout, new Set(['j', 'h']));
+  assert.ok(second.candidates.get('w')?.some((match) => match.output === 'ぎゃ'));
+  assert.ok(second.candidates.get('r')?.some((match) => match.output === 'じゃ'));
+});
+
+
+test('allLayerTriggerKeysはcombo membershipをlayer triggerへ混ぜない', () => {
+  const base = fromRows('combo-trigger-separation', 'combo-trigger-separation', [
+    '',
+    'qwertyuiop',
+    'asdfghjkl;',
+    'zxcvbnm,./',
+  ], {});
+  const layout = withCombos(
+    'combo-trigger-separation',
+    'combo-trigger-separation',
+    base,
+    [['X', ['a', 's']]],
+  );
+  assert.equal(allTriggerKeys(layout).has('a'), true);
+  assert.equal(allLayerTriggerKeys(layout).has('a'), false);
+});
+
+test('presentation: 通常Shiftはwhile-pressedでdown中だけactiveになる', () => {
+  const base = fromRows('shift-presentation', 'shift-presentation', [
+    '1234567890-=',
+    'qwertyuiop[]',
+    "asdfghjkl;'",
+    'zxcvbnm,./',
+  ], {});
+  const layout = withShiftedOutputs(base);
+  const engine = new TypingInputEngine(layout.canonicalInputs, {
+    triggerRealizationPolicy: { useHold: true },
+  });
+  let state = EMPTY_KEY_PATTERN_PRESENTATION_STATE;
+
+  let result = engine.handle({ type: 'down', key: 'shift-l' });
+  state = advanceKeyPatternPresentation(
+    layout,
+    state,
+    { type: 'down', key: 'shift-l' },
+    result,
+  );
+  assert.deepEqual(state.activeAggregationGroupIds, ['layer:Shift']);
+
+  result = engine.handle({ type: 'up', key: 'shift-l' });
+  state = advanceKeyPatternPresentation(
+    layout,
+    state,
+    { type: 'up', key: 'shift-l' },
+    result,
+  );
+  assert.deepEqual(state.activeAggregationGroupIds, []);
 });
