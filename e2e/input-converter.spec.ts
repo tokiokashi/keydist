@@ -294,9 +294,11 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await expect(page.locator('.input-layer-guide')).toBeVisible();
 
   await expect(keyboard.locator('[data-key-id="j"]')).toHaveAttribute('data-accent-slot', /[1-8]/);
-  await page.getByLabel('起点キー色').uncheck();
+  await expect(keyboard.locator('[data-key-id="o"]')).not.toHaveAttribute('data-accent-slot', /[1-8]/);
+  await expect(keyboard.locator('[data-combo]')).toHaveCount(0);
+  await page.getByLabel('レイヤーキー').uncheck();
   await expect(keyboard.locator('[data-accent-slot]')).toHaveCount(0);
-  await page.getByLabel('起点キー色').check();
+  await page.getByLabel('レイヤーキー').check();
 
   await expect(page.locator('.input-layer-card')).toHaveCount(1);
   await expect(page.locator('.input-layer-card').first()).toContainText('SandS');
