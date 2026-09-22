@@ -362,22 +362,13 @@ function uniqueActivations(
 }
 
 function shouldKeepReleasedSelectionKey(
-  layout: Layout,
-  selectedKeys: readonly string[],
   releasedKey: string,
   oneShotActivations: readonly KeyPatternTriggerActivation[],
 ): boolean {
   const canonical = resolveKeyId(releasedKey);
-  if (oneShotActivations.some((activation) => activation.triggerKeys.includes(canonical))) {
-    return true;
-  }
-
-  const selected = new Set(selectedKeys);
-  return buildKeyPatternMatrix(layout).some((match) =>
-    isSubset(selected, new Set(match.keys))
-    && partialAllowedByOrder(match, selected)
-    && (match.orderRequirements ?? []).some((requirement) =>
-      requirement.before.map(resolveKeyId).includes(canonical)));
+  return oneShotActivations.some(
+    (activation) => activation.triggerKeys.includes(canonical),
+  );
 }
 
 function activeAggregationIds(
@@ -440,7 +431,7 @@ export function advanceKeyPatternPresentation(
       oneShot = [...uniqueActivations([...oneShot, ...newlyActive])];
     }
   } else if (event.type === 'up' && wasSelected) {
-    if (!shouldKeepReleasedSelectionKey(layout, selectedKeys, key, oneShot)) {
+    if (!shouldKeepReleasedSelectionKey(key, oneShot)) {
       selectedKeys = selectedKeys.filter((selected) => selected !== key);
     }
   }
