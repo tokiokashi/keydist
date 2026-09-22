@@ -285,3 +285,38 @@ test('longest multi-step sequenceはshorter composition成立後もreplacement c
     [['f'], ['j'], ['k']],
   );
 });
+
+
+test('multi-step final actionsは途中のhold release/restart境界を保持する', () => {
+  const engine = new TypingInputEngine(SHIN_JIS_SIMULTANEOUS.canonicalInputs, {
+    triggerRealizationPolicy: { useHold: true },
+  });
+
+  engine.handle(browserPhysical('keydown', 'Space'));
+  const source = engine.handle(browserPhysical('keydown', 'KeyY')).recognized[0];
+  assert.equal(source.output, 'ひ');
+  engine.handle(browserPhysical('keyup', 'KeyY'));
+  engine.handle(browserPhysical('keyup', 'Space'));
+
+  engine.handle(browserPhysical('keydown', 'Space'));
+  const composed = engine.handle(browserPhysical('keydown', 'KeyW')).recognized[0];
+
+  assert.equal(composed.output, 'ぴ');
+  assert.equal(composed.replacePreviousText, 'ひ');
+  assert.deepEqual(composed.actions.map((action) => ({
+    keys: action.keys,
+    heldKeys: action.heldKeys,
+    holdPhase: action.holdPhase,
+  })), [
+    {
+      keys: ['thumb-r', 'y'],
+      heldKeys: ['thumb-r'],
+      holdPhase: 'start',
+    },
+    {
+      keys: ['thumb-r', 'w'],
+      heldKeys: ['thumb-r'],
+      holdPhase: 'start',
+    },
+  ]);
+});
