@@ -23,7 +23,7 @@ test('Input Converter keeps browser key lifecycle consistent', async ({ page }) 
   });
   expect(repeatSpacePrevented).toBe(true);
 
-  await page.getByLabel('配列').selectOption('tsuki-2-263');
+  await page.getByLabel('配列', { exact: true }).selectOption('tsuki-2-263');
   await expect(feature).toHaveAttribute('data-input-ready', 'tsuki-2-263');
   await output.click();
 
@@ -57,7 +57,7 @@ test('Input Converter keeps browser key lifecycle consistent', async ({ page }) 
   await page.keyboard.down('d');
   await expect(pressed).toHaveText('d');
 
-  await page.getByLabel('配列').focus();
+  await page.getByLabel('配列', { exact: true }).focus();
   await expect(pressed).toHaveText('—');
 
   await output.click();
@@ -70,7 +70,7 @@ test('Input Converter keeps browser key lifecycle consistent', async ({ page }) 
   await expect(pressed).toHaveText('—');
 
   await page.getByRole('button', { name: 'クリア' }).click();
-  await page.getByLabel('配列').selectOption('qwerty');
+  await page.getByLabel('配列', { exact: true }).selectOption('qwerty');
   await expect(feature).toHaveAttribute('data-input-ready', 'qwerty');
   await output.click();
   await page.keyboard.down('Shift');
