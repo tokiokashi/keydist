@@ -22,6 +22,10 @@ test('名前付きカスタム形状を複数保存・復元できる', () => {
     id: 'shape-first',
     name: '手元の60%',
     rowStagger: [0, 0.4, 0.8, 1.1],
+    extraKeys: [
+      { id: 'escape', x: -1, y: 0, row: 0, col: -1 },
+      { id: 'tab', x: -0.25, y: 1, row: 1, col: -1, width: 1.5 },
+    ],
   };
   const second = {
     ...structuredClone(PHYSICAL_SHAPES.ortholinear),
