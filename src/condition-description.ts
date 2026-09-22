@@ -79,7 +79,7 @@ export const CONDITION_DESCRIPTORS = {
   },
   actionRealization: {
     label: 'Action realization',
-    effect: 'fresh trigger押下の独立action化を制御します。有効時は先押し必須を既定で分離し、押し順不問はcombinedのまま扱います。continuous holdとは独立し、大分類・layer・physical trigger単位でoverrideできます。release側の将来分離とは別概念です。',
+    effect: 'fresh trigger押下の独立action化を制御します。有効時は先押し必須を既定で分離し、押し順不問はcombinedのまま扱います。continuous holdとは独立し、大分類・modifier group・physical trigger単位でoverrideできます。release側の将来分離とは別概念です。',
     format: (value) => formatActionRealizationPolicy(value as ActionRealizationPolicy),
   },
   geometry: {
