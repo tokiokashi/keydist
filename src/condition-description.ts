@@ -89,8 +89,8 @@ export const CONDITION_DESCRIPTORS = {
   },
   windowSize: {
     label: '窓幅 N',
-    effect: '同じ指を残すかホームへ戻すかを比べる先読みの打鍵数です。値が大きいほど、離れた連続打鍵でも指を残す候補を比較します。',
-    format: (value) => `${value} ステップ`,
+    effect: '同じ指を残すかホームへ戻すかを比べる先読みの入力単位数です。配列で1見出しとして選ばれた「きゃ」などは1入力単位として数えます。',
+    format: (value) => `${value} 入力単位`,
   },
   playbackRateAverage: {
     label: '速度の平均方式',
