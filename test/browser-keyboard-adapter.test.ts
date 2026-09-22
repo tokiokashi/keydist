@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {
   browserCodeToPhysicalKey,
   browserKeyboardEventToPhysicalKeyEvent,
+  canonicalInputPhysicalKeys,
 } from '../src/features/input-converter/browser-keyboard-adapter.ts';
+import { fromKana } from '../src/layouts/index.ts';
 
 test('browser adapterはKeyboardEvent.codeをQWERTY物理keyへ変換する', () => {
   assert.equal(browserCodeToPhysicalKey('KeyA'), 'a');
@@ -14,6 +16,8 @@ test('browser adapterはKeyboardEvent.codeをQWERTY物理keyへ変換する', ()
   assert.equal(browserCodeToPhysicalKey('NonConvert'), 'thumb-l');
   assert.equal(browserCodeToPhysicalKey('ShiftLeft'), 'shift-l');
   assert.equal(browserCodeToPhysicalKey('ShiftRight'), 'shift-r');
+  assert.equal(browserCodeToPhysicalKey('Escape'), 'escape');
+  assert.equal(browserCodeToPhysicalKey('Tab'), 'tab');
   assert.equal(browserCodeToPhysicalKey('ArrowLeft'), undefined);
 });
 
@@ -49,4 +53,17 @@ test('browser adapterはrepeat / composition / OS shortcutをcoreへ渡さない
     code: 'KeyH',
     metaKey: true,
   }), { type: 'up', key: 'h' });
+});
+
+
+test('capture対象physical keyは選択layoutのcanonical inputから決まる', () => {
+  const layout = fromKana('extra-keys', 'extra-keys', {
+    よ: [['tab']],
+    ぬ: [['escape']],
+  });
+  const captured = canonicalInputPhysicalKeys(layout.canonicalInputs);
+
+  assert.equal(captured.has('tab'), true);
+  assert.equal(captured.has('escape'), true);
+  assert.equal(captured.has('q'), false);
 });
