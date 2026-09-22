@@ -279,7 +279,7 @@ compile時にcombo alternativeへ `{ kind: 'youon-only' }` context requirement�
 
 | 名前 | 型 | 既定 | 内容 |
 |---|---|---|---|
-| `N` | int | — | 窓幅（打鍵単位）。この打鍵数までは指を残す候補とホーム復帰候補を比較する。打ち手ごとに異なるため利用者が設定する |
+| `N` | int | — | 先読み窓幅（selected logical input unit単位）。N input units先まで指を残す候補とホーム復帰候補を比較する。打ち手ごとに異なるため利用者が設定する |
 | `sfb_home_cost` | bool | `true` | 同指連続でホームキーを打つ場合に距離を加算するか（§8） |
 | `prefer_opposite_thumb` | bool | `false` | 左右の合法な親指alternativeを持つ配列で、出力キーと反対側の親指pathを優先するか |
 
@@ -288,7 +288,8 @@ compile時にcombo alternativeへ `{ kind: 'youon-only' }` context requirement�
 | 変数 | 内容 | 初期値 |
 |---|---|---|
 | `prev[f]` | 指 `f` が最後に打ったキー | `H_f` |
-| `last[f]` | 指 `f` が最後に打った打鍵の通し番号 | `-∞` |
+| `lastUnit[f]` | 指 `f` が最後に参加したselected logical input unitの通し番号 | `-∞` |
+| `lastStroke[f]` | 指 `f` が最後に参加したrealized Strokeの通し番号（SFB / snapshot用） | `-∞` |
 
 ## 7. ホーム復帰ルール
 
@@ -297,16 +298,22 @@ compile時にcombo alternativeへ `{ kind: 'youon-only' }` context requirement�
 **R2. ホームへの復帰移動は距離に計上しない。**
 復帰は他の指が打鍵している裏で並行して起きるため、能動的な移動として数えない。
 
-**R3. 間隔 `g` が `N` を超えたら、復帰は完了している。**
+**R3. selected logical input unit距離 `Δ` が `N` を超えたら、復帰は完了している。**
 
-打鍵 `i` でキー `k` を指 `f` が打つとき、間隔は
+評価器がcanonical input mapから最長一致で1つのinput pathを選ぶたび、それを
+**selected logical input unit** 1個として数える。前回指 `f` を使ったunitを
+`lastUnit[f]`、現在のunitを `u` とすると、
 
 ```
-g = i - last[f] - 1        # 間に挟まった他の打鍵数
+Δ = u - lastUnit[f]
 ```
 
-`g` は**全打鍵**を数える。その指の打鍵だけを数えるのではない。
-他の指が動いている時間が復帰の余裕になるため。単位は打鍵であり、文字ではない。
+同じinput unit内で複数actionに分かれた場合は `Δ=0`、次のinput unitなら `Δ=1`。
+配列に `きゃ` が1見出しとして定義され、それが選ばれれば `きゃ` 全体で1 unitとなる。
+一方、`き` と `ゃ` を別々に選ぶ配列では2 unitsとなる。
+
+単位はrealized Strokeでも原文Unicode文字数でもない。prefix / trigger action separation /
+continuous holdでStroke数が変わっても `Δ` は変えない。
 
 **R4. 窓の内側では、残った場合と戻った場合の両方を候補とし、小さい方を採る。**
 
@@ -315,15 +322,16 @@ g = i - last[f] - 1        # 間に挟まった他の打鍵数
 
 **R5. 指間距離では、実際に採用した候補だけを残留として扱う。**
 
-`1 ≤ g ≤ N` で `d_stay ≤ d_home` なら、次の同指打鍵までの区間を前回キーに
-残ったものとする。それ以外（`d_home < d_stay` または `g > N`）はホームに戻った
-ものとする。`N` は指を常に残す時間ではなく、次の同指打鍵に対して候補を比較する
-先読み範囲である。次の同指打鍵がまだ現れていない時点では、指間距離の計算上は
+`2 ≤ Δ ≤ N` で `d_stay ≤ d_home` なら、次の同指入力までの区間を前回キーに
+残ったものとする。それ以外（`d_home < d_stay` または `Δ > N`）はホームに戻った
+ものとする。`N` は指を常に残す時間ではなく、次の同指入力に対して候補を比較する
+先読み範囲である。`N=5` は5 selected logical input units先までを意味する。次の同指打鍵がまだ現れていない時点では、指間距離の計算上は
 ホームを既定とし、後続の打鍵で「残す」が選ばれた区間だけ前回キー位置に補正する。
 
 ## 8. 同指連続ルール
 
-`g = 0`（間に他の打鍵が挟まらない）のとき、ホームへ戻る時間が物理的に存在しない。
+`Δ ≤ 1`（同じinput unit内、または次のinput unit）のとき、間に別のselected input unitがなく、
+ホームへ戻る余地をモデル上は置かない。
 このとき候補は「残った場合」のみとなる。
 
 打鍵先がその指のホームキー自身（`k == H_f`）であっても同様に適用する。
@@ -332,12 +340,12 @@ g = i - last[f] - 1        # 間に挟まった他の打鍵数
 
 **この扱いには異論がありうるため `sfb_home_cost` で切り替える。**
 
-| `sfb_home_cost` | `g = 0` かつ `k == H_f` のとき |
+| `sfb_home_cost` | `Δ ≤ 1` かつ `k == H_f` のとき |
 |---|---|
 | `true`（既定） | `d = dist(prev[f], k)` を加算する |
 | `false` | `d = 0`。ホームキーへの復帰打鍵は移動として数えない |
 
-このフラグが結果を変えるのは `g = 0` かつ `k == H_f` の場合のみ。
+このフラグが結果を変えるのは `Δ ≤ 1` かつ `k == H_f` の場合のみ。
 他のすべてのケースでは挙動が一致する。
 
 ## 9. 距離の計算
@@ -349,15 +357,16 @@ d_stay = dist(prev[f], k)      # 前のキーに残っていた場合
 d_home = dist(H_f,     k)      # ホームに戻っていた場合
 ```
 
-として、`g` で候補集合を決めて最小値を採る。
+として、`Δ` で候補集合を決めて最小値を採る。
 
-| `g` | 候補 | 採用 |
+| `Δ` | 候補 | 採用 |
 |---|---|---|
-| `0` | `{d_stay}` | `d_stay` |
-| `1 ≤ g ≤ N` | `{d_stay, d_home}` | `min(d_stay, d_home)`（同値は `d_stay`） |
-| `g > N` | `{d_home}` | `d_home` |
+| `Δ ≤ 1` | `{d_stay}` | `d_stay` |
+| `2 ≤ Δ ≤ N` | `{d_stay, d_home}` | `min(d_stay, d_home)`（同値は `d_stay`） |
+| `Δ > N` | `{d_home}` | `d_home` |
 
-打鍵後、`prev[f] = k`、`last[f] = i` を更新する。
+押下後、`prev[f] = k`、`lastUnit[f] = u` を更新する。
+SFB判定とStroke位置snapshotのための `lastStroke[f]` はrealized Stroke indexで別に更新する。
 
 ```python
 def cost(i, k, f):
