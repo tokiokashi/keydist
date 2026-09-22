@@ -87,8 +87,8 @@ export interface Stroke {
   inputChar: string;
   /** 展開後の入力列における入力単位の開始位置。同じかなを複数ステップで打つ場合も共有する */
   inputIndex: number;
-  /** このステップに含まれるキー押下の帰属先。合成文字ではステップごとに異なりうる */
-  layerId: string;
+  /** このステップに含まれるキー押下のaggregation帰属先。入力成立semanticではない。 */
+  aggregationGroupId: string;
   /** authoring由来のcanonical classification。 */
   classifications: readonly InputClassification[];
   /** このステップで層操作として押したキー。出力キーとの色分けに使う */
@@ -254,7 +254,7 @@ export function evaluate(
     for (const action of actions) {
       const step = action.keys;
       const triggerKeys = action.triggerKeys;
-      const layerId = action.input.aggregationGroupId;
+      const aggregationGroupId = action.input.aggregationGroupId;
       const modifierKeys = new Set(
         action.input.roles
           .filter((role) => role.role === 'modifier')
