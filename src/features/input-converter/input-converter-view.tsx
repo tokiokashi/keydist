@@ -81,7 +81,10 @@ export function InputConverterView() {
   const session = useTypingSession(layout);
 
   return (
-    <section className="feature-shell input-feature">
+    <section
+      className="feature-shell input-feature"
+      data-input-ready={session.readyLayoutId === layout.id ? layout.id : undefined}
+    >
       <p className="eyebrow">Phase B · #270</p>
       <h1>Input Converter</h1>
       <p>
