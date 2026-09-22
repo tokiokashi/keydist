@@ -256,6 +256,37 @@
   filter: drop-shadow(0 0 8px rgb(255 255 255 / 18%));
 }
 
+.flow-key[data-hovered] rect {
+  fill: #3b4144;
+  stroke: #fff;
+  stroke-width: 1.8;
+  filter: drop-shadow(0 0 10px rgb(255 255 255 / 28%));
+}
+
+.flow-overlay-layer {
+  pointer-events: none;
+}
+
+.flow-key-badge rect {
+  fill: rgb(9 11 12 / 92%);
+  stroke: rgb(255 255 255 / 28%);
+  stroke-width: 0.6;
+}
+
+.flow-key-badge text {
+  fill: #f4f5ef;
+  font: 700 6.2px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.flow-repeat-badge rect {
+  fill: rgb(53 57 59 / 88%);
+  stroke: rgb(190 196 198 / 30%);
+}
+
+.flow-repeat-badge text {
+  fill: #b7bec0;
+}
+
 .flow-legend {
   position: absolute;
   right: 0.8rem;
