@@ -52,9 +52,11 @@ function formatTriggerRealizationPolicy(value: TriggerRealizationPolicy): string
 }
 
 function formatActionRealizationPolicy(value: ActionRealizationPolicy): string {
-  return value.triggerActivation === 'separate'
-    ? 'hold開始を独立actionとしてrealizeする'
-    : 'outputと同じactionでrealizeする';
+  const base = value.triggerActivation === 'separate'
+    ? 'trigger押下を独立actionとしてrealizeする'
+    : 'trigger押下をoutputと同じactionでrealizeする';
+  const count = value.triggerActivationOverrides?.length ?? 0;
+  return count === 0 ? base : `${base}（trigger group別 override ${count}件）`;
 }
 
 export const CONDITION_DESCRIPTORS = {
@@ -75,7 +77,7 @@ export const CONDITION_DESCRIPTORS = {
   },
   actionRealization: {
     label: 'Action realization',
-    effect: 'hold開始とfresh outputを別actionへ分け、解析・Timing・Playbackすべてに同じrealized streamを適用するかを決めます。prefix等の既存trigger-only actionは二重分割しません。',
+    effect: 'fresh trigger押下をoutputと同じactionに含めるか、独立actionへ分けるかを決めます。continuous holdとは独立した条件で、trigger groupごとのoverrideも持てます。prefix等の既存trigger-only actionは二重分割しません。',
     format: (value) => formatActionRealizationPolicy(value as ActionRealizationPolicy),
   },
   geometry: {
