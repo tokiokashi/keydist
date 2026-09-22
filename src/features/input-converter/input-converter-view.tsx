@@ -6,8 +6,10 @@ import {
 import {
   buildGeometry,
   DEFAULT_FINGER_ASSIGNMENT,
+  JIS_FINGER_ASSIGNMENT,
   isPresetGeometryKind,
   PHYSICAL_SHAPES,
+  SHIFT_KEY,
   THUMB_KEY,
   type PhysicalShape,
 } from '../../geometry.ts';
@@ -26,6 +28,7 @@ import {
   matchKeyPatterns,
   summarizeCandidateMatches,
 } from '../../key-pattern-picker.ts';
+import { JIS_KANA } from '../../layouts/jis-kana.ts';
 import { LAYOUTS, LAYOUTS_JA, type Layout } from '../../layouts/index.ts';
 import {
   physicalKeysUsedByLayout,
@@ -57,6 +60,7 @@ const INPUT_LAYOUTS = [
   ...LAYOUTS.filter((layout) => layout.id !== 'oonishi-custom'),
   ...(TK_DIRECT_JA_LAYOUT === undefined ? [] : [TK_DIRECT_JA_LAYOUT]),
   ...DIRECT_JA_INPUT_LAYOUTS,
+  JIS_KANA,
 ];
 
 const PRESET_GEOMETRY_SHAPES = Object.values(PHYSICAL_SHAPES);
@@ -187,16 +191,23 @@ export function InputConverterView() {
     leftCodes: [...DEFAULT_THUMB_KEY_BINDINGS.leftCodes],
     rightCodes: [...DEFAULT_THUMB_KEY_BINDINGS.rightCodes],
   }));
-  const browserBindings = useMemo(
-    () => thumbKeyBindingsToOverrides(thumbBindings),
-    [thumbBindings],
-  );
+  const browserBindings = useMemo(() => ({
+    ...(layout.id === 'jis-kana'
+      ? {
+        Backslash: 'r2c11',
+        IntlYen: 'r0c12',
+        IntlRo: 'r3c10',
+      }
+      : {}),
+    ...thumbKeyBindingsToOverrides(thumbBindings),
+  }), [layout.id, thumbBindings]);
   const session = useTypingSession(layout, browserBindings);
   const [userGeometryShapes, setUserGeometryShapes] = useState<PhysicalShape[]>([]);
   const [geometryId, setGeometryId] = useState(PHYSICAL_SHAPES['row-staggered'].id);
   const [showDynamicGuide, setShowDynamicGuide] = useState(true);
   const [showLayerGuide, setShowLayerGuide] = useState(true);
   const [showLayerKeys, setShowLayerKeys] = useState(true);
+  const [showShiftKeys, setShowShiftKeys] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [splitPercent, setSplitPercent] = useState(DEFAULT_SPLIT_PERCENT);
   const [lookupQuery, setLookupQuery] = useState('');
@@ -205,7 +216,13 @@ export function InputConverterView() {
     columns: 1,
     cardMaxWidthPx: null,
   });
-  const escapeIsLayoutInput = physicalKeysUsedByLayout(layout).has('escape');
+  const layoutPhysicalKeys = useMemo(
+    () => physicalKeysUsedByLayout(layout),
+    [layout],
+  );
+  const escapeIsLayoutInput = layoutPhysicalKeys.has('escape');
+  const hasShiftKeys = layoutPhysicalKeys.has(SHIFT_KEY.L)
+    || layoutPhysicalKeys.has(SHIFT_KEY.R);
 
   const updateSplitFromClientX = (clientX: number, splitter: HTMLElement) => {
     const workspace = splitter.parentElement;
@@ -233,7 +250,12 @@ export function InputConverterView() {
     ?? PHYSICAL_SHAPES['row-staggered'];
   const geometry = useMemo(() => {
     if (isPresetGeometryKind(geometryId)) {
-      return buildGeometry(geometryId, DEFAULT_FINGER_ASSIGNMENT);
+      return buildGeometry(
+        geometryId,
+        geometryId === 'jis-row-staggered'
+          ? JIS_FINGER_ASSIGNMENT
+          : DEFAULT_FINGER_ASSIGNMENT,
+      );
     }
     const settings = sanitizeGeometrySettings({
       shape: selectedShape,
@@ -242,8 +264,15 @@ export function InputConverterView() {
     return buildGeometry(settings.shape, settings.assignment);
   }, [geometryId, selectedShape]);
   const visibleKeys = useMemo(
-    () => visibleGeometryKeys(layout, geometry),
-    [geometry, layout],
+    () => visibleGeometryKeys(layout, geometry)
+      .filter((key) =>
+        showShiftKeys
+        || (key.id !== SHIFT_KEY.L && key.id !== SHIFT_KEY.R))
+      .map((key) =>
+        key.id === SHIFT_KEY.L || key.id === SHIFT_KEY.R
+          ? { ...key, width: 1 }
+          : key),
+    [geometry, layout, showShiftKeys],
   );
   const activeGroupIds = session.presentation.activeAggregationGroupIds;
   const activeDefinitions = useMemo(() => {
@@ -268,13 +297,9 @@ export function InputConverterView() {
       new Set(session.presentation.selectedKeys),
     );
     const active = new Set(activeGroupIds);
-    if (active.size === 0) {
-      return {
-        exact: [],
-        candidates: new Map(),
-        continuations: new Map(),
-      };
-    }
+    const visible = (match: (typeof result.exact)[number]) =>
+      active.has(match.aggregationGroupId)
+      || (match.orderRequirements?.length ?? 0) === 0;
 
     const filterMap = (
       source: typeof result.candidates,
@@ -282,24 +307,19 @@ export function InputConverterView() {
       [...source]
         .map(([key, matches]) => [
           key,
-          matches.filter((match) => active.has(match.aggregationGroupId)),
+          matches.filter(visible),
         ] as const)
         .filter(([, matches]) => matches.length > 0),
     );
 
     return {
-      exact: result.exact.filter((match) => active.has(match.aggregationGroupId)),
+      exact: result.exact.filter(visible),
       candidates: filterMap(result.candidates),
       continuations: filterMap(result.continuations),
     };
   }, [activeGroupIds, layout, session.presentation.selectedKeys]);
-  const hasOneShotLayer = session.presentation.oneShotActivations.length > 0;
   const keyboardViews = useMemo(() => {
     const pressed = new Set(session.pressedKeys);
-    const selected = new Set(session.presentation.selectedKeys);
-    const hasDynamicPath = showDynamicGuide
-      && activeGroupIds.length > 0
-      && selected.size > 0;
     return new Map<string, PhysicalKeyboardKeyView>(
       visibleKeys.map((key) => {
         const outputs = showDynamicGuide
@@ -319,12 +339,7 @@ export function InputConverterView() {
         return [
           key.id,
           {
-            legend: guideLegend
-              ?? (hasDynamicPath
-                ? selected.has(key.id) || hasOneShotLayer
-                  ? layout.legends.get(key.id) ?? ''
-                  : ''
-                : layout.legends.get(key.id) ?? ''),
+            legend: guideLegend ?? layout.legends.get(key.id) ?? '',
             secondaryLegend: key.id === THUMB_KEY.LT
               ? thumbBindingLabel(thumbBindings, 'left')
               : key.id === THUMB_KEY.RT
@@ -342,7 +357,6 @@ export function InputConverterView() {
   }, [
     activeGroupIds,
     activeTriggerKeys,
-    hasOneShotLayer,
     layout,
     patternResult,
     session.pressedKeys,
@@ -427,7 +441,16 @@ export function InputConverterView() {
                   value={layout.id}
                   onChange={(event) => {
                     const next = INPUT_LAYOUTS.find((candidate) => candidate.id === event.target.value);
-                    if (next !== undefined) setLayout(next);
+                    if (next === undefined) return;
+                    if (next.id === 'jis-kana') {
+                      setGeometryId('jis-row-staggered');
+                    } else if (
+                      layout.id === 'jis-kana'
+                      && geometryId === 'jis-row-staggered'
+                    ) {
+                      setGeometryId('row-staggered');
+                    }
+                    setLayout(next);
                   }}
                 >
                   {INPUT_LAYOUTS.map((candidate) => (
@@ -588,7 +611,7 @@ export function InputConverterView() {
             <p className="input-capture-hint" id="input-capture-help">
               {session.active ? '入力受付中。' : '入力欄をクリックして入力開始。'}
               {' '}Backspaceで1文字削除、Enterで改行、
-              {escapeIsLayoutInput ? 'Escは配列入力として扱う。' : 'Escで入力解除。'}
+              {escapeIsLayoutInput ? 'Escは配列入力として扱う。' : 'Escで全削除。'}
               {session.composing ? ' IME composition中は認識を停止している。' : ''}
             </p>
           </section>
@@ -620,6 +643,16 @@ export function InputConverterView() {
                 />
                 レイヤーキー
               </label>
+              {hasShiftKeys ? (
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={showShiftKeys}
+                    onChange={(event) => setShowShiftKeys(event.target.checked)}
+                  />
+                  Shiftキー
+                </label>
+              ) : null}
             </div>
             <header className="input-keyboard-heading">
               <strong>Keyboard</strong>

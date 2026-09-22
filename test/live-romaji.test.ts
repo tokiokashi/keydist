@@ -14,6 +14,7 @@ test('romajiToKanaはlive roman streamを最長一致でかなへ戻す', () => 
   assert.equal(romajiToKana('desu', table), 'です');
   assert.equal(romajiToKana('kka', table), 'っか');
   assert.equal(romajiToKana('nn', table), 'ん');
+  assert.equal(romajiToKana('onnya', table), 'おんや');
 });
 
 test('romajiToKanaは未完成romanを失わない', () => {
@@ -26,6 +27,8 @@ test('youon-only live contextは直前子音がある時だけ成立する', () 
   const requirement = [{ kind: 'youon-only' as const }];
   assert.equal(liveRomajiContextSatisfied(requirement, 'k'), true);
   assert.equal(liveRomajiContextSatisfied(requirement, 's'), true);
+  assert.equal(liveRomajiContextSatisfied(requirement, 'n'), true);
+  assert.equal(liveRomajiContextSatisfied(requirement, 'onn'), false);
   assert.equal(liveRomajiContextSatisfied(requirement, ''), false);
   assert.equal(liveRomajiContextSatisfied(requirement, 'ki'), false);
 });

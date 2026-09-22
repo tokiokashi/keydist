@@ -1,3 +1,4 @@
+import { JIS_KANA } from '../src/layouts/jis-kana.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
@@ -165,6 +166,20 @@ test('面定義の未知のキーは空欄にせずエラーにする', () => {
     () => faceFromEntries([], 'simultaneous', { typo: 'あ' }),
     /面に未知のキーがある: typo/,
   );
+});
+
+test('JISかな配列はJIS専用列・Shift面・濁点合成を持つ', () => {
+  const layout = JIS_KANA;
+
+  assert.deepEqual(layout.map.get('ー'), [['r0c12']]);
+  assert.deepEqual(layout.map.get('む'), [['r2c11']]);
+  assert.deepEqual(layout.map.get('ろ'), [['r3c10']]);
+  assert.ok(layout.canonicalInputs.get('ぁ')?.some((alternative) =>
+    alternative.semanticInputs.some((input) =>
+      input.physicalKeys.includes('shift-l')
+      && input.physicalKeys.includes('3'))));
+  assert.ok(layout.canonicalInputs.has('が'));
+  assert.ok(layout.canonicalInputs.has('ぱ'));
 });
 
 test('TK音直入力法は英文モードでも英字配置として選べる', () => {

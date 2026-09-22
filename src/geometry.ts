@@ -80,6 +80,7 @@ export const resolveKeyId = (id: string): string => id === 'space' ? THUMB_KEY.R
 
 /** 各行の列数は刻印の長さで決まる（12 / 12 / 11 / 10）。既定形状のrowWidthsに使う */
 const ROW_WIDTH = QWERTY_LEGEND.map((row) => row.length);
+const JIS_ROW_WIDTH = [13, 12, 12, 11] as const;
 
 /** 親指キーの行 */
 export const THUMB_ROW = 4;
@@ -154,7 +155,19 @@ export const DEFAULT_FINGER_ASSIGNMENT: FingerAssignment = columnFingerAssignmen
   { LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9 },
 );
 
-export type PresetGeometryKind = 'row-staggered' | 'ortholinear' | 'column-staggered';
+export const JIS_FINGER_ASSIGNMENT: FingerAssignment = columnFingerAssignment(
+  'jis-default',
+  'JIS既定（列固定）',
+  ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP'],
+  { LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9 },
+  [...JIS_ROW_WIDTH],
+);
+
+export type PresetGeometryKind =
+  | 'row-staggered'
+  | 'jis-row-staggered'
+  | 'ortholinear'
+  | 'column-staggered';
 export type CustomGeometryKind = `custom:${string}`;
 export type GeometryKind = PresetGeometryKind | 'custom' | CustomGeometryKind;
 
@@ -250,9 +263,17 @@ const DEFAULT_THUMBS: ThumbKeySpec[] = [
 export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
   'row-staggered': {
     id: 'row-staggered',
-    name: '段ずれ（ANSI/JIS準拠）',
+    name: '段ずれ（ANSI）',
     pitchMm: 19.05,
     rowWidths: ROW_WIDTH,
+    rowStagger: ROW_STAGGER,
+    thumbs: DEFAULT_THUMBS,
+  },
+  'jis-row-staggered': {
+    id: 'jis-row-staggered',
+    name: '段ずれ（JIS 109）',
+    pitchMm: 19.05,
+    rowWidths: [...JIS_ROW_WIDTH],
     rowStagger: ROW_STAGGER,
     thumbs: DEFAULT_THUMBS,
   },
@@ -279,7 +300,10 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
 };
 
 export const isPresetGeometryKind = (value: unknown): value is PresetGeometryKind =>
-  value === 'row-staggered' || value === 'ortholinear' || value === 'column-staggered';
+  value === 'row-staggered'
+  || value === 'jis-row-staggered'
+  || value === 'ortholinear'
+  || value === 'column-staggered';
 
 export function buildGeometry(
   shape: PhysicalShape | PresetGeometryKind,

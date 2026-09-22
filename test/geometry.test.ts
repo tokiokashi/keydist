@@ -4,6 +4,7 @@ import {
   buildGeometry,
   columnFingerAssignment,
   DEFAULT_FINGER_ASSIGNMENT,
+  JIS_FINGER_ASSIGNMENT,
   keyId,
   PHYSICAL_SHAPES,
   type Finger,
@@ -145,6 +146,14 @@ test('GeometryKind文字列はPHYSICAL_SHAPESから解決される。直接渡�
   assert.equal(byKind.id, byShape.id);
   near(byKind.keys.get('a')!.x, byShape.keys.get('a')!.x);
   near(byKind.homes.RT.x, byShape.homes.RT.x);
+});
+
+test('JIS 109 presetはANSI外の3キー位置を持つ', () => {
+  const geometry = buildGeometry('jis-row-staggered', JIS_FINGER_ASSIGNMENT);
+  assert.deepEqual(geometry.grid.map((row) => row.length), [13, 12, 12, 11]);
+  assert.equal(geometry.keys.has('r0c12'), true);
+  assert.equal(geometry.keys.has('r2c11'), true);
+  assert.equal(geometry.keys.has('r3c10'), true);
 });
 
 test('QWERTY刻印の範囲を超える列はr{row}c{col} のidになる', () => {

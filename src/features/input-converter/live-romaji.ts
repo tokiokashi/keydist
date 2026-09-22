@@ -21,8 +21,22 @@ export function romajiToKana(
       || [...right.kana].length - [...left.kana].length);
 
   const chars = [...text];
+  const hatsuonRoman = table.get('ん');
+  const hatsuonChars = hatsuonRoman === undefined ? [] : [...hatsuonRoman];
   let result = '';
   for (let cursor = 0; cursor < chars.length;) {
+    // 促音自動生成には n 始まりも含まれるため、単純な最長一致だと
+    // "onnya" を o + "nnya"(っにゃ) と誤分割する。
+    // 明示された撥音綴りを先に確定し、「おん」+「や」の境界を守る。
+    if (
+      hatsuonChars.length > 0
+      && hatsuonChars.every((char, offset) => chars[cursor + offset] === char)
+    ) {
+      result += 'ん';
+      cursor += hatsuonChars.length;
+      continue;
+    }
+
     let matched: RomanKanaEntry | undefined;
     for (const entry of entries) {
       const roman = [...entry.roman];
@@ -57,6 +71,9 @@ export function liveRomajiContextSatisfied(
 ): boolean {
   return requirements.every((requirement) => {
     if (requirement.kind !== 'youon-only') return false;
-    return /[bcdfghjklmnpqrstvwxyz]$/i.test(rawRomanText);
+    if (!/[bcdfghjklmnpqrstvwxyz]$/i.test(rawRomanText)) return false;
+    // "nn" は既に撥音として完結している。後続の ya/yu/yo を
+    // 拗音comboとして吸収せず、「ん」+「や/ゆ/よ」の境界を保つ。
+    return !rawRomanText.endsWith('nn');
   });
 }

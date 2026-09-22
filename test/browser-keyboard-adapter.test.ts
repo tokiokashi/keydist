@@ -11,12 +11,34 @@ test('browser adapterはKeyboardEvent.codeをQWERTY物理keyへ変換する', ()
   assert.equal(browserCodeToPhysicalKey('KeyA'), 'a');
   assert.equal(browserCodeToPhysicalKey('Digit1'), '1');
   assert.equal(browserCodeToPhysicalKey('BracketLeft'), '[');
+  assert.equal(browserCodeToPhysicalKey('Backslash'), 'backslash');
+  assert.equal(browserCodeToPhysicalKey('IntlYen'), undefined);
+  assert.equal(browserCodeToPhysicalKey('IntlRo'), undefined);
   assert.equal(browserCodeToPhysicalKey('Space'), 'thumb-r');
   assert.equal(browserCodeToPhysicalKey('Convert'), 'thumb-r');
   assert.equal(browserCodeToPhysicalKey('NonConvert'), 'thumb-l');
   assert.equal(browserCodeToPhysicalKey('ShiftLeft'), 'shift-l');
   assert.equal(browserCodeToPhysicalKey('ShiftRight'), 'shift-r');
   assert.equal(browserCodeToPhysicalKey('ArrowLeft'), undefined);
+});
+
+test('browser adapterはJIS tester overrideで追加3キーをgrid位置へ割り当てられる', () => {
+  const overrides = {
+    Backslash: 'r2c11',
+    IntlYen: 'r0c12',
+    IntlRo: 'r3c10',
+  } as const;
+  assert.equal(browserCodeToPhysicalKey('Backslash', overrides), 'r2c11');
+  assert.equal(browserCodeToPhysicalKey('IntlYen', overrides), 'r0c12');
+  assert.equal(browserCodeToPhysicalKey('IntlRo', overrides), 'r3c10');
+
+  for (const code of ['Backslash', 'IntlYen', 'IntlRo']) {
+    assert.equal(
+      shouldCaptureBrowserKeyDown({ type: 'keydown', code }, new Set(), overrides),
+      true,
+      code,
+    );
+  }
 });
 
 test('browser adapterはrepeat / composition / OS shortcutをcoreへ渡さない', () => {

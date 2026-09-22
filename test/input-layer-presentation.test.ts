@@ -98,14 +98,11 @@ test('月配列の起点triggerは同じsemantic layer色を共有する', () =>
 });
 
 
-test('薙刀式のレイヤーキー色は単キーtriggerだけに限定する', () => {
+test('薙刀式のレイヤーキー色は実レイヤーのSandSだけに限定する', () => {
   const colors = presentationTriggerColorSlots(NAGINATA_V18);
-  assert.equal(colors.get('j'), colors.get('f'));
-  assert.notEqual(colors.get('thumb-r'), colors.get('j'));
   assert.equal(colors.get('thumb-r'), colors.get('thumb-l'));
-  assert.equal(typeof colors.get('q'), 'number');
-  assert.equal(typeof colors.get('h'), 'number');
-  assert.equal(colors.get('o'), undefined);
-  assert.equal(colors.get('k'), undefined);
-  assert.equal(colors.get('n'), undefined);
+  assert.equal(typeof colors.get('thumb-r'), 'number');
+  for (const key of ['j', 'f', 'q', 'h', 'p', 'i', 'o', 'k', 'n']) {
+    assert.equal(colors.get(key), undefined, key);
+  }
 });

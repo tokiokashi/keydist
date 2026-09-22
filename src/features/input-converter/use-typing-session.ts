@@ -56,6 +56,11 @@ export function useTypingSession(
 ): TypingSession {
   const captureRef = useRef<HTMLTextAreaElement>(null);
   const rawTextRef = useRef('');
+  const pressedKeysRef = useRef<readonly string[]>([]);
+  const recognitionKeysRef = useRef<readonly string[]>([]);
+  const presentationRef = useRef<KeyPatternPresentationState>(
+    EMPTY_KEY_PATTERN_PRESENTATION_STATE,
+  );
   const engine = useMemo(
     () => new TypingInputEngine(layout.canonicalInputs, {
       triggerRealizationPolicy: { useHold: true },
@@ -101,10 +106,18 @@ export function useTypingSession(
       result: TypingInputResult,
       physical: { type: 'down' | 'up'; key: string },
     ) => {
+      const nextPresentation = advanceKeyPatternPresentation(
+        layout,
+        presentationRef.current,
+        physical,
+        result,
+      );
+      pressedKeysRef.current = result.pressedKeys;
+      recognitionKeysRef.current = result.recognitionKeys;
+      presentationRef.current = nextPresentation;
       setPressedKeys(result.pressedKeys);
       setRecognitionKeys(result.recognitionKeys);
-      setPresentation((current) =>
-        advanceKeyPatternPresentation(layout, current, physical, result));
+      setPresentation(nextPresentation);
       if (result.recognized.length === 0) return;
 
       setLastRecognized(result.recognized);
@@ -118,9 +131,40 @@ export function useTypingSession(
 
     const resetRecognition = () => {
       engine.reset();
+      pressedKeysRef.current = [];
+      recognitionKeysRef.current = [];
+      presentationRef.current = EMPTY_KEY_PATTERN_PRESENTATION_STATE;
       setPressedKeys([]);
       setRecognitionKeys([]);
       setPresentation(EMPTY_KEY_PATTERN_PRESENTATION_STATE);
+    };
+
+    const reseedRecognition = (keys: readonly string[]) => {
+      engine.reset();
+      let nextPresentation = EMPTY_KEY_PATTERN_PRESENTATION_STATE;
+      let latest: TypingInputResult = {
+        recognized: [],
+        pressedKeys: [],
+        recognitionKeys: [],
+      };
+
+      for (const key of keys) {
+        const physical = { type: 'down' as const, key };
+        latest = engine.handle(physical);
+        nextPresentation = advanceKeyPatternPresentation(
+          layout,
+          nextPresentation,
+          physical,
+          latest,
+        );
+      }
+
+      pressedKeysRef.current = latest.pressedKeys;
+      recognitionKeysRef.current = latest.recognitionKeys;
+      presentationRef.current = nextPresentation;
+      setPressedKeys(latest.pressedKeys);
+      setRecognitionKeys(latest.recognitionKeys);
+      setPresentation(nextPresentation);
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -132,7 +176,10 @@ export function useTypingSession(
 
       if (event.key === 'Escape' && !capturesPhysicalKey) {
         event.preventDefault();
-        target.blur();
+        resetRecognition();
+        rawTextRef.current = '';
+        setText('');
+        setLastRecognized([]);
         return;
       }
 
@@ -142,13 +189,25 @@ export function useTypingSession(
           || (event.key === 'Enter' && !event.repeat)
         ) {
           event.preventDefault();
+          const preservingKeys = event.key === 'Backspace'
+            ? recognitionKeysRef.current.filter(
+              (key) => pressedKeysRef.current.includes(key),
+            )
+            : [];
           const command = executeTypingEditCommand(
             engine,
             event.key === 'Backspace' ? 'backspace' : 'enter',
           );
-          setPressedKeys([]);
-          setRecognitionKeys([]);
-          setPresentation(EMPTY_KEY_PATTERN_PRESENTATION_STATE);
+          if (event.key === 'Backspace') {
+            reseedRecognition(preservingKeys);
+          } else {
+            pressedKeysRef.current = [];
+            recognitionKeysRef.current = [];
+            presentationRef.current = EMPTY_KEY_PATTERN_PRESENTATION_STATE;
+            setPressedKeys([]);
+            setRecognitionKeys([]);
+            setPresentation(EMPTY_KEY_PATTERN_PRESENTATION_STATE);
+          }
           if (command.recognized.length > 0) {
             setLastRecognized(command.recognized);
           }
@@ -232,6 +291,9 @@ export function useTypingSession(
   const clear = () => {
     engine.reset();
     rawTextRef.current = '';
+    pressedKeysRef.current = [];
+    recognitionKeysRef.current = [];
+    presentationRef.current = EMPTY_KEY_PATTERN_PRESENTATION_STATE;
     setText('');
     setPressedKeys([]);
     setRecognitionKeys([]);
