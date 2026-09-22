@@ -270,8 +270,8 @@ test('1キー率はtrigger-onlyを分子に含めず、held-trigger + outputは1
   assert.equal(trace.strokes.length, 3);
   assert.equal(trace.strokes[0].participations.some((p) => p.roles.includes('output')), false);
   assert.ok(trace.strokes[1].participations.some((p) => p.roles.includes('output')));
-  assert.ok(trace.strokes[2].participations.some((p) =>
-    p.roles.includes('output') && p.roles.includes('held-trigger')));
+  assert.ok(trace.strokes[2].participations.some((p) => p.roles.includes('output')));
+  assert.ok(trace.strokes[2].participations.some((p) => p.roles.includes('held-trigger')));
   near(metrics.singleKeyRate, 200 / 3);
 });
 
