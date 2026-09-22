@@ -6,6 +6,7 @@ import {
   aggregateBigramVectors,
   buildBigramVectors,
   directionBins,
+  directionProfile,
   directionSummary,
   filterBigramVectors,
   type BigramVector,
@@ -216,4 +217,40 @@ test('direction binは画面上の物理方向を左右反転せず集計する'
   ], 'left', 4);
 
   assert.deepEqual(bins.map((bin) => bin.weight), [1, 1, 0, 0]);
+});
+
+
+test('direction profileは実角度ごとにfrequencyを集約して近い傾きを潰さない', () => {
+  const profile = directionProfile([
+    vector({
+      id: 'one-two-a',
+      dx: 1,
+      dy: 2,
+      distance: Math.hypot(1, 2),
+      angle: Math.atan2(2, 1),
+      weight: 2,
+    }),
+    vector({
+      id: 'one-two-b',
+      dx: 2,
+      dy: 4,
+      distance: Math.hypot(2, 4),
+      angle: Math.atan2(4, 2),
+      weight: 3,
+    }),
+    vector({
+      id: 'one-three',
+      dx: 1,
+      dy: 3,
+      distance: Math.hypot(1, 3),
+      angle: Math.atan2(3, 1),
+      weight: 4,
+    }),
+  ], 'left');
+
+  assert.equal(profile.length, 2);
+  assert.ok(Math.abs(profile[0].angle - Math.atan2(2, 1)) < 1e-6);
+  assert.equal(profile[0].weight, 5);
+  assert.ok(Math.abs(profile[1].angle - Math.atan2(3, 1)) < 1e-6);
+  assert.equal(profile[1].weight, 4);
 });
