@@ -135,3 +135,49 @@ test('Yau principle: 行キーの次が別行キーなら前のア段を巻き�
 
   assert.equal(text, 'から');
 });
+
+
+/**
+ * よだか配列の入力原理:
+ * - 頻出かなは単打
+ * - その他は行 + 段の2-key chord
+ * - 拗音は3-key chord
+ * - かな + 撥音も2-key chordの1 action
+ *
+ * ここではphysical配置全体を複製せず、原理ごとの最小fixtureだけを固定する。
+ */
+test('Yodaka principle: direct + 2-key + 3-key chordを同じcanonical mapで扱える', () => {
+  const yodaka = fromKana('yodaka-principle', 'Yodaka principle', [
+    ['の', [['f']]],
+    ['か', [['d', 'j']]],
+    ['きゃ', [['d', 'j', 'k']]],
+    ['かん', [['d', 'l']]],
+  ]);
+  const engine = new TypingInputEngine(yodaka.canonicalInputs);
+
+  const direct = engine.handle({ type: 'down', key: 'f' }).recognized[0];
+  assert.equal(direct.output, 'の');
+  assert.deepEqual(direct.actions.map((action) => action.keys), [['f']]);
+  engine.handle({ type: 'up', key: 'f' });
+
+  engine.handle({ type: 'down', key: 'd' });
+  const kana = engine.handle({ type: 'down', key: 'j' }).recognized[0];
+  assert.equal(kana.output, 'か');
+  assert.deepEqual(kana.actions.map((action) => action.keys), [['d', 'j']]);
+  engine.handle({ type: 'up', key: 'j' });
+  engine.handle({ type: 'up', key: 'd' });
+
+  engine.handle({ type: 'down', key: 'd' });
+  engine.handle({ type: 'down', key: 'j' });
+  const youon = engine.handle({ type: 'down', key: 'k' }).recognized[0];
+  assert.equal(youon.output, 'きゃ');
+  assert.deepEqual(youon.actions.map((action) => action.keys), [['d', 'j', 'k']]);
+  engine.handle({ type: 'up', key: 'k' });
+  engine.handle({ type: 'up', key: 'j' });
+  engine.handle({ type: 'up', key: 'd' });
+
+  engine.handle({ type: 'down', key: 'd' });
+  const hatsuon = engine.handle({ type: 'down', key: 'l' }).recognized[0];
+  assert.equal(hatsuon.output, 'かん');
+  assert.deepEqual(hatsuon.actions.map((action) => action.keys), [['d', 'l']]);
+});
