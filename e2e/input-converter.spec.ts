@@ -63,6 +63,22 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
     document.documentElement.scrollHeight - window.innerHeight);
   expect(viewportOverflow).toBeLessThanOrEqual(1);
 
+  await splitter.focus();
+  await page.keyboard.press('Home');
+
+  const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
+  const keyboardMain = page.locator('.input-keyboard-main');
+  const [wideKeyboardBox, keyboardMainBox, wideDetailsBox] = await Promise.all([
+    keyboard.boundingBox(),
+    keyboardMain.boundingBox(),
+    details.boundingBox(),
+  ]);
+  expect(wideKeyboardBox).not.toBeNull();
+  expect(keyboardMainBox).not.toBeNull();
+  expect(wideDetailsBox).not.toBeNull();
+  expect(wideDetailsBox!.height).toBeGreaterThanOrEqual(110);
+  expect(wideKeyboardBox!.height).toBeLessThanOrEqual(keyboardMainBox!.height + 1);
+
   const before = await layerLabel.boundingBox();
   await page.getByLabel('自由入力テキスト').click();
   await page.keyboard.down('j');
