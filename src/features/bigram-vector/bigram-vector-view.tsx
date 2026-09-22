@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   aggregateBigramVectors,
   buildBigramVectors,
-  directionBins,
+  directionProfile,
   directionSummary,
   filterBigramVectors,
   type BigramSource,
@@ -53,7 +53,7 @@ interface RelativeVector {
 
 function layoutGeometry(layout: Layout): Geometry {
   return buildGeometry(
-    'row-staggered',
+    'ortholinear',
     assignmentWithHomeKeys(DEFAULT_FINGER_ASSIGNMENT, layout.homeKeys),
   );
 }
@@ -376,75 +376,6 @@ function relativeVectors(
   return [...grouped.values()];
 }
 
-function RelativeMovementPlot({
-  vectors,
-  hand,
-  maxDistance,
-  maxWeight,
-}: {
-  vectors: readonly BigramVector[];
-  hand: 'left' | 'right';
-  maxDistance: number;
-  maxWeight: number;
-}) {
-  const reduceMotion = useReducedMotion();
-  const relative = useMemo(() => relativeVectors(vectors, hand), [vectors, hand]);
-  const cx = 120;
-  const cy = 108;
-  const radius = 78;
-  const plotScale = radius / maxDistance;
-
-  return (
-    <div className="flow-mini-panel">
-      <header>
-        <strong>{hand === 'left' ? 'Left' : 'Right'}</strong>
-        <span>{relative.reduce((sum, vector) => sum + vector.weight, 0)} transitions</span>
-      </header>
-      <svg viewBox="0 0 240 220" role="img" aria-label={`${hand} hand relative movement`}>
-        <circle className="flow-axis-ring" cx={cx} cy={cy} r={radius / 2} />
-        <circle className="flow-axis-ring" cx={cx} cy={cy} r={radius} />
-        <line className="flow-axis" x1="24" y1={cy} x2="216" y2={cy} />
-        <line className="flow-axis" x1={cx} y1="14" x2={cx} y2="202" />
-        <circle className="flow-origin" cx={cx} cy={cy} r="4" />
-        <AnimatePresence initial={false}>
-          {relative.map((vector) => {
-            const direction = vector.fingerDirection ?? 'same';
-            const strength = weightScale(vector.weight, maxWeight);
-            return (
-            <motion.line
-              key={vector.id}
-              className={`relative-vector relative-vector-${direction}`}
-              x1={cx}
-              y1={cy}
-              initial={reduceMotion ? false : { x2: cx, y2: cy, opacity: 0 }}
-              animate={{
-                x2: cx + vector.dx * plotScale,
-                y2: cy + vector.dy * plotScale,
-                opacity: 0.2 + 0.72 * strength,
-              }}
-              exit={reduceMotion ? undefined : { opacity: 0 }}
-              strokeWidth={0.9 + 2.6 * strength}
-              transition={reduceMotion
-                ? { duration: 0 }
-                : { type: 'spring', stiffness: 240, damping: 27 }}
-            >
-              <title>
-                {`${vector.fromFingerClass} → ${vector.toFingerClass} · ${direction} · dx ${vector.dx.toFixed(2)}, dy ${vector.dy.toFixed(2)} · ${vector.weight}回`}
-              </title>
-            </motion.line>
-            );
-          })}
-        </AnimatePresence>
-      </svg>
-      <div className="flow-roll-legend flow-relative-legend" aria-hidden="true">
-        <span><i className="flow-dot flow-dot-inward" /> inward</span>
-        <span><i className="flow-dot flow-dot-outward" /> outward</span>
-        <span>{maxDistance.toFixed(1)}u scale</span>
-      </div>
-    </div>
-  );
-}
-
 function polarPoint(cx: number, cy: number, radius: number, angle: number) {
   return {
     x: cx + Math.cos(angle) * radius,
@@ -452,52 +383,48 @@ function polarPoint(cx: number, cy: number, radius: number, angle: number) {
   };
 }
 
-function sectorPath(
-  cx: number,
-  cy: number,
-  innerRadius: number,
-  outerRadius: number,
-  startAngle: number,
-  endAngle: number,
-): string {
-  const outerStart = polarPoint(cx, cy, outerRadius, startAngle);
-  const outerEnd = polarPoint(cx, cy, outerRadius, endAngle);
-  const innerEnd = polarPoint(cx, cy, innerRadius, endAngle);
-  const innerStart = polarPoint(cx, cy, innerRadius, startAngle);
-  const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
-  return [
-    `M ${outerStart.x} ${outerStart.y}`,
-    `A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${outerEnd.x} ${outerEnd.y}`,
-    `L ${innerEnd.x} ${innerEnd.y}`,
-    `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y}`,
-    'Z',
-  ].join(' ');
+function polygonPath(points: readonly { x: number; y: number }[]): string {
+  if (points.length === 0) return '';
+  const [first, ...rest] = points;
+  const path = [`M ${first.x} ${first.y}`, ...rest.map((point) => `L ${point.x} ${point.y}`)];
+  if (points.length >= 3) path.push('Z');
+  return path.join(' ');
 }
 
-function DirectionPlot({
+function MovementProfilePlot({
   vectors,
   hand,
+  maxDistance,
+  maxVectorWeight,
+  maxDirectionWeight,
 }: {
   vectors: readonly BigramVector[];
   hand: 'left' | 'right';
+  maxDistance: number;
+  maxVectorWeight: number;
+  maxDirectionWeight: number;
 }) {
   const reduceMotion = useReducedMotion();
-  const bins = useMemo(() => directionBins(vectors, hand, 16), [vectors, hand]);
-  const inwardBins = useMemo(
-    () => directionBins(vectors.filter((vector) => vector.fingerDirection === 'inward'), hand, 16),
-    [vectors, hand],
-  );
-  const outwardBins = useMemo(
-    () => directionBins(vectors.filter((vector) => vector.fingerDirection === 'outward'), hand, 16),
-    [vectors, hand],
-  );
+  const relative = useMemo(() => relativeVectors(vectors, hand), [vectors, hand]);
+  const profile = useMemo(() => directionProfile(vectors, hand), [vectors, hand]);
   const summary = useMemo(() => directionSummary(vectors, hand), [vectors, hand]);
-  const maxWeight = Math.max(1, ...bins.map((bin) => bin.weight));
   const cx = 120;
   const cy = 112;
-  const baseRadius = 18;
-  const maxRadius = 88;
-  const meanRadius = summary.magnitude * 82;
+  const radius = 82;
+  const profileBaseRadius = 14;
+  const plotScale = radius / maxDistance;
+  const profilePoints = profile.map((point) => ({
+    ...point,
+    ...polarPoint(
+      cx,
+      cy,
+      profileBaseRadius
+        + (radius - profileBaseRadius) * (point.weight / Math.max(1, maxDirectionWeight)),
+      point.angle,
+    ),
+  }));
+  const profilePath = polygonPath(profilePoints);
+  const meanRadius = summary.magnitude * radius;
   const meanEnd = summary.angle === undefined
     ? { x: cx, y: cy }
     : polarPoint(cx, cy, meanRadius, summary.angle);
@@ -506,64 +433,85 @@ function DirectionPlot({
   const outwardRate = rollTotal === 0 ? 0 : summary.outwardWeight / rollTotal;
 
   return (
-    <div className="flow-mini-panel flow-direction-panel">
+    <div className="flow-mini-panel flow-profile-panel">
       <header>
         <strong>{hand === 'left' ? 'Left' : 'Right'}</strong>
-        <span>集中度 {summary.magnitude.toFixed(2)}</span>
+        <span>{profile.length} directions · 集中度 {summary.magnitude.toFixed(2)}</span>
       </header>
-      <svg viewBox="0 0 240 230" role="img" aria-label={`${hand} hand direction distribution`}>
-        {[36, 62, 88].map((radius) => (
-          <circle className="flow-axis-ring" cx={cx} cy={cy} r={radius} key={radius} />
+      <svg viewBox="0 0 240 236" role="img" aria-label={`${hand} hand movement profile`}>
+        {[radius / 3, radius * 2 / 3, radius].map((ringRadius) => (
+          <circle className="flow-axis-ring" cx={cx} cy={cy} r={ringRadius} key={ringRadius} />
         ))}
         <line className="flow-axis" x1="22" y1={cy} x2="218" y2={cy} />
         <line className="flow-axis" x1={cx} y1="14" x2={cx} y2="210" />
-        {bins.flatMap((bin, index) => {
-          const inward = inwardBins[index]?.weight ?? 0;
-          const outward = outwardBins[index]?.weight ?? 0;
-          const midAngle = (bin.startAngle + bin.endAngle) / 2;
-          return ([
-            {
-              key: `${bin.index}-inward`,
-              weight: inward,
-              direction: 'inward',
-              startAngle: bin.startAngle + 0.025,
-              endAngle: midAngle - 0.012,
-            },
-            {
-              key: `${bin.index}-outward`,
-              weight: outward,
-              direction: 'outward',
-              startAngle: midAngle + 0.012,
-              endAngle: bin.endAngle - 0.025,
-            },
-          ] as const).map((part) => {
-            const outerRadius = baseRadius
-              + (maxRadius - baseRadius) * part.weight / maxWeight;
-            return (
-              <motion.path
-                key={part.key}
-                className={`rose-sector rose-sector-${part.direction}`}
-                initial={false}
-                animate={{
-                  d: sectorPath(
-                    cx,
-                    cy,
-                    baseRadius,
-                    outerRadius,
-                    part.startAngle,
-                    part.endAngle,
-                  ),
-                  opacity: part.weight === 0 ? 0.035 : 0.3 + 0.65 * part.weight / maxWeight,
-                }}
-                transition={reduceMotion
-                  ? { duration: 0 }
-                  : { type: 'spring', stiffness: 180, damping: 25 }}
-              >
-                <title>{`${part.direction} · ${part.weight} transitions`}</title>
-              </motion.path>
-            );
-          });
-        })}
+
+        <g className="direction-profile-layer">
+          {profilePoints.map((point) => (
+            <line
+              className="direction-profile-spoke"
+              key={`spoke-${point.angle}`}
+              x1={cx}
+              y1={cy}
+              x2={point.x}
+              y2={point.y}
+            />
+          ))}
+          {profilePath !== '' ? (
+            <motion.path
+              className="direction-profile-polygon"
+              d={profilePath}
+              initial={reduceMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={reduceMotion ? { duration: 0 } : { duration: 0.3 }}
+            />
+          ) : null}
+          {profilePoints.map((point) => (
+            <circle
+              className="direction-profile-point"
+              cx={point.x}
+              cy={point.y}
+              r="2.8"
+              key={`point-${point.angle}`}
+            >
+              <title>
+                {`${(point.angle * 180 / Math.PI).toFixed(1)}° · ${point.weight} transitions`}
+              </title>
+            </circle>
+          ))}
+        </g>
+
+        <g className="actual-vector-layer">
+          <AnimatePresence initial={false}>
+            {relative.map((vector) => {
+              const direction = vector.fingerDirection ?? 'same';
+              const strength = weightScale(vector.weight, maxVectorWeight);
+              return (
+                <motion.line
+                  key={vector.id}
+                  className={`relative-vector relative-vector-${direction}`}
+                  x1={cx}
+                  y1={cy}
+                  initial={reduceMotion ? false : { x2: cx, y2: cy, opacity: 0 }}
+                  animate={{
+                    x2: cx + vector.dx * plotScale,
+                    y2: cy + vector.dy * plotScale,
+                    opacity: 0.24 + 0.7 * strength,
+                  }}
+                  exit={reduceMotion ? undefined : { opacity: 0 }}
+                  strokeWidth={0.85 + 2.45 * strength}
+                  transition={reduceMotion
+                    ? { duration: 0 }
+                    : { type: 'spring', stiffness: 240, damping: 27 }}
+                >
+                  <title>
+                    {`${vector.fromFingerClass} → ${vector.toFingerClass} · ${direction} · dx ${vector.dx.toFixed(2)}, dy ${vector.dy.toFixed(2)} · ${vector.weight}回`}
+                  </title>
+                </motion.line>
+              );
+            })}
+          </AnimatePresence>
+        </g>
+
         <motion.line
           className="mean-resultant"
           x1={cx}
@@ -587,10 +535,14 @@ function DirectionPlot({
         />
         <circle className="flow-origin" cx={cx} cy={cy} r="4" />
       </svg>
-      <div className="flow-roll-legend" aria-hidden="true">
+
+      <div className="flow-roll-legend flow-profile-legend" aria-hidden="true">
+        <span><i className="flow-dot flow-dot-profile" /> angle frequency</span>
         <span><i className="flow-dot flow-dot-inward" /> inward</span>
         <span><i className="flow-dot flow-dot-outward" /> outward</span>
+        <span>{maxDistance.toFixed(1)}u scale</span>
       </div>
+
       <div className="roll-summary">
         <div className="roll-bar" aria-label="inward outward比率">
           {hand === 'left' ? (
@@ -721,6 +673,11 @@ export function BigramVectorView() {
     ...relative.map((vector) => Math.hypot(vector.dx, vector.dy)),
   );
   const relativeMaxWeight = Math.max(1, ...relative.map((vector) => vector.weight));
+  const directionProfiles = useMemo(() => [
+    ...directionProfile(aggregated, 'left'),
+    ...directionProfile(aggregated, 'right'),
+  ], [aggregated]);
+  const directionMaxWeight = Math.max(1, ...directionProfiles.map((point) => point.weight));
 
   return (
     <section
@@ -730,8 +687,8 @@ export function BigramVectorView() {
       <p className="eyebrow">Vector lab · #366</p>
       <h1>Bigram Flow</h1>
       <p>
-        bigramを物理座標のベクトルとして眺める。絶対位置・相対移動・方向分布を分け、
-        キー間の流れとロール傾向を視覚的に探索する。
+        bigramを物理座標のベクトルとして眺める。キー上の結合と、
+        実移動ベクトル + 角度frequency profileから流れとロール傾向を視覚的に探索する。
       </p>
 
       <section className="flow-controls" aria-label="Bigram Flow controls">
@@ -821,41 +778,29 @@ export function BigramVectorView() {
             <section className="flow-block">
               <header className="flow-block-header">
                 <div>
-                  <p className="eyebrow">Relative</p>
-                  <h2>Relative Movement</h2>
-                </div>
-                <p>始点を原点へ揃え、距離を残した移動ベクトルとして表示する。</p>
-              </header>
-              <div className="flow-two-up">
-                <RelativeMovementPlot
-                  vectors={aggregated}
-                  hand="left"
-                  maxDistance={relativeMaxDistance}
-                  maxWeight={relativeMaxWeight}
-                />
-                <RelativeMovementPlot
-                  vectors={aggregated}
-                  hand="right"
-                  maxDistance={relativeMaxDistance}
-                  maxWeight={relativeMaxWeight}
-                />
-              </div>
-            </section>
-
-            <section className="flow-block">
-              <header className="flow-block-header">
-                <div>
-                  <p className="eyebrow">Direction only</p>
-                  <h2>Direction Distribution</h2>
+                  <p className="eyebrow">Movement profile</p>
+                  <h2>Vector + Angle Frequency</h2>
                 </div>
                 <p>
-                  各vectorを単位長へ正規化。sectorはinward / outwardを色分けする。
-                  白い線はfrequency-weighted mean resultantで、長さが方向の集中度を表す。
+                  線は距離を保持した実relative vector。背景の多角形は実際に出現した角度ごとのfrequencyを表す。
+                  白い線はfrequency-weighted mean resultantで、長さが方向の集中度。
                 </p>
               </header>
               <div className="flow-two-up">
-                <DirectionPlot vectors={aggregated} hand="left" />
-                <DirectionPlot vectors={aggregated} hand="right" />
+                <MovementProfilePlot
+                  vectors={aggregated}
+                  hand="left"
+                  maxDistance={relativeMaxDistance}
+                  maxVectorWeight={relativeMaxWeight}
+                  maxDirectionWeight={directionMaxWeight}
+                />
+                <MovementProfilePlot
+                  vectors={aggregated}
+                  hand="right"
+                  maxDistance={relativeMaxDistance}
+                  maxVectorWeight={relativeMaxWeight}
+                  maxDirectionWeight={directionMaxWeight}
+                />
               </div>
               {source === 'actual' && aggregated.some((vector) => vector.hand === 'cross') ? (
                 <p className="flow-footnote">
@@ -879,7 +824,7 @@ export function BigramVectorView() {
       </AnimatePresence>
 
       <p className="flow-footnote">
-        既定日本語サンプル {SAMPLE.length.toLocaleString()}文字・段ずれ形状・既定運指。
+        既定日本語サンプル {SAMPLE.length.toLocaleString()}文字・格子形状・既定運指。
         この画面の方向分布は観測値であり、配列の特性をビジュアル化したものです。
       </p>
     </section>
