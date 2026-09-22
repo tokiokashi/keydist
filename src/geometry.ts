@@ -177,18 +177,6 @@ export interface ThumbKeySpec {
  * 親指キーの数と位置をまとめて持つ。既定の3形状（`PHYSICAL_SHAPES`）を変えると
  * 既存の測定値が動くため変更しない。
  */
-export interface ExtraKeySpec {
-  /** grid / thumb以外の物理キーid。 */
-  id: string;
-  finger: Finger;
-  /** Geometry上の絶対座標 [u]。 */
-  x: number;
-  y: number;
-  /** 表示・解析用の論理row/col。gridには追加しない。 */
-  row: number;
-  col: number;
-}
-
 export interface PhysicalShape {
   id: string;
   name: string;
@@ -209,8 +197,6 @@ export interface PhysicalShape {
   splitGap?: number;
   /** 親指キーの定義。各手に1個以上必要 */
   thumbs: ThumbKeySpec[];
-  /** Shift等、英数grid外だが距離/運指へ参加する物理キー。 */
-  extraKeys?: ExtraKeySpec[];
   /**
    * 親指キーが手ごとに複数ある場合、ホームとなるキーidを明示する（仕様 §3.1）。
    * 1個しかない手は省略してよい（その1個が自動でホームになる）
@@ -239,16 +225,6 @@ const DEFAULT_THUMBS: ThumbKeySpec[] = [
   { id: THUMB_KEY.RT, finger: 'RT', col: 5.5, y: THUMB_ROW },
 ];
 
-const standardShiftKeys = (
-  leftX: number,
-  rightX: number,
-  leftY: number,
-  rightY: number,
-): ExtraKeySpec[] => [
-  { id: SHIFT_KEY.L, finger: 'LP', x: leftX, y: leftY, row: 3, col: -1 },
-  { id: SHIFT_KEY.R, finger: 'RP', x: rightX, y: rightY, row: 3, col: 10 },
-];
-
 /**
  * 既定の3形状。数値（ピッチ・段ずれ・列オフセット）はこれまでの固定実装と同じにしてあり、
  * ここを変えると既存の測定値が動くため変更しない。
@@ -261,7 +237,6 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
     rowWidths: ROW_WIDTH,
     rowStagger: ROW_STAGGER,
     thumbs: DEFAULT_THUMBS,
-    extraKeys: standardShiftKeys(-0.375, 12.125, 3, 3),
   },
   ortholinear: {
     id: 'ortholinear',
@@ -269,7 +244,6 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
     pitchMm: 19.05,
     rowWidths: ROW_WIDTH,
     thumbs: DEFAULT_THUMBS,
-    extraKeys: standardShiftKeys(-1.625, 10.875, 3, 3),
   },
   'column-staggered': {
     id: 'column-staggered',
@@ -283,7 +257,6 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
       { id: THUMB_KEY.LT, finger: 'LT', col: 3.5, y: THUMB_ROW + 0.35 },
       { id: THUMB_KEY.RT, finger: 'RT', col: 5.5, y: THUMB_ROW + 0.35 },
     ],
-    extraKeys: standardShiftKeys(-1.625, 12.875, 3.34, 3.34),
   },
 };
 
@@ -320,22 +293,33 @@ export function buildGeometry(
     grid.push(line);
   });
 
-  // 親指キー。1個しか無い手はホーム＝そのキー自身になるため移動距離は常に0（仕様 §3.1）。
-  // 複数ある手は他の指と同じホーム復帰規則（§7〜§9）に従う
-  for (const spec of s.extraKeys ?? []) {
-    if (keys.has(spec.id)) {
-      throw new Error(`形状「${s.id}」のextra key idが既存キーと重複している: ${spec.id}`);
-    }
-    keys.set(spec.id, {
-      id: spec.id,
-      row: spec.row,
-      col: spec.col,
-      x: spec.x,
-      y: spec.y,
-      finger: spec.finger,
+  // Shiftは既存PhysicalShape永続化schemaを増やさず、bottom rowの実座標から派生する。
+  // ANSI/JISの標準幅を前提に、左2.25u・右2.75u Shiftの中心を隣接キー中心から求める。
+  // custom shapeでもbottom rowの位置へ追随し、標準Shiftを使わない特殊形状は別semanticで扱う。
+  const bottomRow = grid[3] ?? grid.at(-1);
+  const firstBottomKey = bottomRow?.[0];
+  const lastBottomKey = bottomRow?.at(-1);
+  if (firstBottomKey !== undefined && lastBottomKey !== undefined) {
+    keys.set(SHIFT_KEY.L, {
+      id: SHIFT_KEY.L,
+      row: firstBottomKey.row,
+      col: -1,
+      x: firstBottomKey.x - 1.625,
+      y: firstBottomKey.y,
+      finger: 'LP',
+    });
+    keys.set(SHIFT_KEY.R, {
+      id: SHIFT_KEY.R,
+      row: lastBottomKey.row,
+      col: lastBottomKey.col + 1,
+      x: lastBottomKey.x + 1.875,
+      y: lastBottomKey.y,
+      finger: 'RP',
     });
   }
 
+  // 親指キー。1個しか無い手はホーム＝そのキー自身になるため移動距離は常に0（仕様 §3.1）。
+  // 複数ある手は他の指と同じホーム復帰規則（§7〜§9）に従う
   const thumbsByFinger: Record<'LT' | 'RT', Key[]> = { LT: [], RT: [] };
   for (const spec of s.thumbs) {
     const key: Key = {
