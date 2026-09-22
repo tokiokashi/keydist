@@ -27,8 +27,8 @@ test('Bigram Flow filters finger pairs and unlocks vector analysis', async ({ pa
 
   await page.getByRole('button', { name: '人' }).click();
   await expect(page.getByRole('heading', { name: '中 + 人' })).toBeVisible();
-  await expect(page.getByRole('img', { name: 'left hand relative movement' })).toBeVisible();
-  await expect(page.getByRole('img', { name: 'right hand direction distribution' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'left hand movement profile' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'right hand movement profile' })).toBeVisible();
   await expect(page.getByRole('button', { name: '小' })).toBeDisabled();
 
   await page.getByRole('button', { name: 'Within-hand' }).click();
