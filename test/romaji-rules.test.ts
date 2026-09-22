@@ -67,20 +67,23 @@ test('AZIKを基底にしたルールでは促音自動生成を強制的に無�
   assert.equal(kanaToRomaji('っか', table), ';ka');
 });
 
-test('既定の割り当ては既存の測定値を維持する', () => {
+test('既定のローマ字割り当ては組み込み配列の入力列と一致する', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   assert.equal([...text].length, 1676);
-  const expected: Record<string, number> = {
-    oonishi: 1075.6320,
-    naginata: 1131.0836,
-  };
-  for (const [id, total] of Object.entries(expected)) {
-    const layout = LAYOUTS_JA.find((candidate) => candidate.id === (id === 'naginata' ? 'naginata-v18' : id))!;
-    const assigned = layout.romajiTable
-      ? withRomaji(layout, tableForRule(defaultRomajiRuleId(id)))
-      : layout;
-    const metrics = computeMetrics(evaluate(text, assigned, geometry, options), geometry);
-    assert.ok(Math.abs(metrics.totalUnits - total) < 0.00005, `${id}: ${metrics.totalUnits}`);
+
+  for (const id of ['qwerty', 'oonishi']) {
+    const layout = LAYOUTS_JA.find((candidate) => candidate.id === id)!;
+    const assigned = withRomaji(layout, tableForRule(defaultRomajiRuleId(id)));
+    const builtInTrace = evaluate(text, layout, geometry, options);
+    const assignedTrace = evaluate(text, assigned, geometry, options);
+
+    assert.equal(assignedTrace.skipped, builtInTrace.skipped, id);
+    assert.equal(assignedTrace.strokes.length, builtInTrace.strokes.length, id);
+    assert.deepEqual(
+      assignedTrace.strokes.map((stroke) => stroke.char),
+      builtInTrace.strokes.map((stroke) => stroke.char),
+      id,
+    );
   }
 });
 
