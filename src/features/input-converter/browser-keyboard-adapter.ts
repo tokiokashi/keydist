@@ -1,4 +1,6 @@
+import type { CanonicalInputMap } from '../../core/semantic-input/index.ts';
 import type { PhysicalKeyEvent } from '../../core/input-converter/index.ts';
+import { EXTRA_KEY, resolveKeyId } from '../../geometry.ts';
 
 export interface BrowserKeyboardEventLike {
   readonly type: string;
@@ -11,6 +13,8 @@ export interface BrowserKeyboardEventLike {
 }
 
 const CODE_TO_KEY: Readonly<Record<string, PhysicalKeyEvent['key']>> = {
+  Escape: EXTRA_KEY.ESCAPE,
+  Tab: EXTRA_KEY.TAB,
   Minus: '-',
   Equal: '=',
   BracketLeft: '[',
@@ -42,6 +46,20 @@ export function browserCodeToPhysicalKey(
  * IME composition / OS shortcut / key repeatはapplication edgeで除外し、
  * coreへDOM event objectを渡さない。
  */
+export function canonicalInputPhysicalKeys(
+  inputs: CanonicalInputMap,
+): ReadonlySet<PhysicalKeyEvent['key']> {
+  const keys = new Set<PhysicalKeyEvent['key']>();
+  for (const alternatives of inputs.values()) {
+    for (const alternative of alternatives) {
+      for (const input of alternative.semanticInputs) {
+        for (const key of input.physicalKeys) keys.add(resolveKeyId(key));
+      }
+    }
+  }
+  return keys;
+}
+
 export function browserKeyboardEventToPhysicalKeyEvent(
   event: BrowserKeyboardEventLike,
 ): PhysicalKeyEvent | undefined {
