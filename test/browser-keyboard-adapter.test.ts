@@ -80,3 +80,16 @@ test('layout所有Tabはrepeatでもbrowser既定動作をcaptureし、domain ev
     code: 'Tab',
   }, new Set()), false);
 });
+
+
+test('layout所有Spaceはrepeatでもbrowser scrollをcaptureする', () => {
+  const owned = new Set(['thumb-r']);
+  const repeatSpace = {
+    type: 'keydown',
+    code: 'Space',
+    repeat: true,
+  } as const;
+
+  assert.equal(shouldCaptureBrowserKeyDown(repeatSpace, owned), true);
+  assert.equal(browserKeyboardEventToPhysicalKeyEvent(repeatSpace), undefined);
+});

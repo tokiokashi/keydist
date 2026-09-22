@@ -23,7 +23,7 @@ import {
 } from './typing-session-command.ts';
 
 export interface TypingSession {
-  readonly captureRef: RefObject<HTMLDivElement | null>;
+  readonly captureRef: RefObject<HTMLTextAreaElement | null>;
   readonly text: string;
   readonly pressedKeys: readonly string[];
   readonly lastRecognized: readonly RecognizedTypingInput[];
@@ -34,7 +34,7 @@ export interface TypingSession {
 }
 
 export function useTypingSession(layout: Layout): TypingSession {
-  const captureRef = useRef<HTMLDivElement>(null);
+  const captureRef = useRef<HTMLTextAreaElement>(null);
   const engine = useMemo(
     () => new TypingInputEngine(layout.canonicalInputs, {
       triggerRealizationPolicy: { useHold: true },
@@ -80,8 +80,8 @@ export function useTypingSession(layout: Layout): TypingSession {
 
       if (!isComposing && !event.ctrlKey && !event.altKey && !event.metaKey) {
         if (
-          (event.key === 'Backspace' || event.key === 'Enter')
-          && !event.repeat
+          event.key === 'Backspace'
+          || (event.key === 'Enter' && !event.repeat)
         ) {
           event.preventDefault();
           const command = executeTypingEditCommand(

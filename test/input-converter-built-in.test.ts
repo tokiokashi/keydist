@@ -103,38 +103,22 @@ test('薙刀式の未定義roll overlapは左右どちらも単打を落とさ�
 
 test('月配列のprefix triggerは非対象側の通常1打で消費され後続へ残らない', () => {
   const cases = [
-    {
-      trigger: 'k',
-      sameHand: 'h',
-      sameOutput: 'く',
-      opposite: 'f',
-      oppositeBaseOutput: 'と',
-    },
-    {
-      trigger: 'd',
-      sameHand: 'f',
-      sameOutput: 'と',
-      opposite: 'h',
-      oppositeBaseOutput: 'く',
-    },
+    { trigger: 'k', sameHand: 'h', sameOutput: 'く', opposite: 'f', oppositeBaseOutput: 'と' },
+    { trigger: 'd', sameHand: 'f', sameOutput: 'と', opposite: 'h', oppositeBaseOutput: 'く' },
   ] as const;
 
   for (const testCase of cases) {
     const engine = new TypingInputEngine(TSUKI_2_263.canonicalInputs);
     engine.handle({ type: 'down', key: testCase.trigger });
     engine.handle({ type: 'up', key: testCase.trigger });
-
     assert.deepEqual(
       engine.handle({ type: 'down', key: testCase.sameHand }).recognized.map((entry) => entry.output),
       [testCase.sameOutput],
-      `${testCase.trigger} -> ${testCase.sameHand}`,
     );
     engine.handle({ type: 'up', key: testCase.sameHand });
-
     assert.deepEqual(
       engine.handle({ type: 'down', key: testCase.opposite }).recognized.map((entry) => entry.output),
       [testCase.oppositeBaseOutput],
-      `${testCase.trigger} must be consumed before ${testCase.opposite}`,
     );
   }
 });

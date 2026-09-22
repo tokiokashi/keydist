@@ -470,8 +470,6 @@ export class TypingInputEngine {
     return [...this.#windowKeys]
       .filter((key) => {
         if (consumed.has(key) || this.#seededHoldKeys.has(key)) return false;
-        // release済みのtrigger専用keyは、次の入力を1回消費した時点で役目を終える。
-        // 単打を持つkeyだけをfallback replayし、prefix one-shotを後続入力へ持ち越さない。
         return !this.#releasedWindowKeys.has(key) || this.#hasStandaloneInput(key);
       })
       .map((key) => ({

@@ -142,25 +142,17 @@ export function InputConverterView() {
         readOnly
         rows={7}
         aria-label="自由入力テキスト"
-        placeholder="下の入力エリアを選択して打鍵すると、ここに出力される。"
-      />
-
-      <div
-        className="input-capture"
+        aria-describedby="input-capture-help"
         data-active={session.active || undefined}
         ref={session.captureRef}
-        tabIndex={0}
-        role="textbox"
-        aria-multiline="true"
-        aria-label="物理キー入力エリア"
-      >
-        <strong>{session.active ? '入力受付中' : 'クリックして入力開始'}</strong>
-        <span>
-          Backspaceで1文字削除、Enterで改行、
-          {escapeIsLayoutInput ? 'Escは配列入力として扱う。' : 'Escで入力解除。'}
-          {session.composing ? ' IME composition中は認識を停止している。' : ''}
-        </span>
-      </div>
+        placeholder="ここをクリックして、そのまま打鍵する。"
+      />
+      <p className="input-capture-hint" id="input-capture-help">
+        {session.active ? '入力受付中。' : '入力欄をクリックして入力開始。'}
+        {' '}Backspaceで1文字削除、Enterで改行、
+        {escapeIsLayoutInput ? 'Escは配列入力として扱う。' : 'Escで入力解除。'}
+        {session.composing ? ' IME composition中は認識を停止している。' : ''}
+      </p>
 
       <KeyboardPreview layout={layout} pressedKeys={session.pressedKeys} />
 
