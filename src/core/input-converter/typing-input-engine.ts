@@ -472,14 +472,13 @@ export class TypingInputEngine {
     const multiStep = this.#completedMultiStepMatch(step.signature);
     if (multiStep !== undefined) {
       const previousSegments = [...multiStep.previousSegments];
-      const baseline = previousSegments.length > 0
+      const sequenceHoldStateBefore = previousSegments.length > 0
         ? previousSegments[0].holdStateBefore
         : holdStateBefore;
-      const realized = this.#realize(
-        multiStep.candidate.alternative.baseRealizations,
-        baseline,
-      );
-      this.#holdState = realized.holdState;
+      const actions = [
+        ...previousSegments.flatMap((segment) => segment.actions),
+        ...provisional.actions,
+      ];
 
       if (previousSegments.length > 0) {
         this.#segments.splice(
@@ -494,11 +493,13 @@ export class TypingInputEngine {
       this.#segments.push({
         operationSignatures: multiStep.candidate.operationSignatures,
         visibleOutput: multiStep.candidate.output,
-        actions: realized.actions,
-        ...(baseline === undefined ? {} : { holdStateBefore: baseline }),
-        ...(realized.holdState === undefined
+        actions,
+        ...(sequenceHoldStateBefore === undefined
           ? {}
-          : { holdStateAfter: realized.holdState }),
+          : { holdStateBefore: sequenceHoldStateBefore }),
+        ...(provisional.holdState === undefined
+          ? {}
+          : { holdStateAfter: provisional.holdState }),
       });
       this.#trimSegments();
       this.#resetRecognitionWindow();
@@ -506,7 +507,7 @@ export class TypingInputEngine {
       return [{
         output: multiStep.candidate.output,
         alternative: multiStep.candidate.alternative,
-        actions: realized.actions,
+        actions,
         ...(replacePreviousText.length === 0
           ? {}
           : { replacePreviousText }),
