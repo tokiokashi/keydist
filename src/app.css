@@ -163,9 +163,12 @@ h1 {
 .input-workspace {
   display: grid;
   grid-template-columns:
-    minmax(0, var(--input-sidebar-width, 62.5%))
+    minmax(0, var(--input-sidebar-width, 50%))
     0.65rem
     minmax(0, 1fr);
+  height: calc(100dvh - 10.5rem);
+  min-height: 0;
+  max-height: calc(100dvh - 10.5rem);
   column-gap: 0.45rem;
   align-items: stretch;
 }
@@ -175,12 +178,14 @@ h1 {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
   gap: 0.85rem;
   align-self: stretch;
 }
 
 .input-sidebar {
   grid-column: 1;
+  overflow: hidden;
 }
 
 .input-main {
@@ -308,7 +313,7 @@ h1 {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.45rem 0.8rem;
-  margin: 0.65rem 0;
+  margin: 0 0 0.6rem;
   padding: 0.55rem 0.65rem;
   border: 1px solid #e0e0db;
   border-radius: 0.6rem;
@@ -604,7 +609,10 @@ h1 {
 
 .input-layer-guide {
   flex: 1 1 auto;
-  overflow: visible;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .input-layer-guide > header {
@@ -775,6 +783,9 @@ h1 {
 
   .input-workspace {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+    max-height: none;
     gap: 0.85rem;
   }
 
@@ -785,6 +796,7 @@ h1 {
   .input-main,
   .input-sidebar {
     grid-column: 1;
+    overflow: visible;
   }
 
   .input-main {
@@ -793,6 +805,10 @@ h1 {
 
   .input-sidebar {
     grid-row: 2;
+  }
+
+  .input-layer-guide {
+    overflow: visible;
   }
 
   .input-debug {
