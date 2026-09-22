@@ -24,6 +24,7 @@ export interface TypingSession {
   readonly lastRecognized: readonly RecognizedTypingInput[];
   readonly active: boolean;
   readonly composing: boolean;
+  readonly readyLayoutId: string | undefined;
   clear(): void;
 }
 
@@ -41,6 +42,7 @@ export function useTypingSession(layout: Layout): TypingSession {
   const [lastRecognized, setLastRecognized] = useState<readonly RecognizedTypingInput[]>([]);
   const [active, setActive] = useState(false);
   const [composing, setComposing] = useState(false);
+  const [readyLayoutId, setReadyLayoutId] = useState<string>();
 
   useEffect(() => {
     const target = captureRef.current;
@@ -127,6 +129,7 @@ export function useTypingSession(layout: Layout): TypingSession {
     target.addEventListener('compositionstart', onCompositionStart);
     target.addEventListener('compositionend', onCompositionEnd);
     window.addEventListener('blur', onWindowBlur);
+    setReadyLayoutId(layout.id);
 
     return () => {
       target.removeEventListener('keydown', onKeyDown);
@@ -138,7 +141,7 @@ export function useTypingSession(layout: Layout): TypingSession {
       window.removeEventListener('blur', onWindowBlur);
       engine.reset();
     };
-  }, [engine]);
+  }, [engine, layout.id]);
 
   const clear = () => {
     engine.reset();
@@ -154,6 +157,7 @@ export function useTypingSession(layout: Layout): TypingSession {
     lastRecognized,
     active,
     composing,
+    readyLayoutId,
     clear,
   };
 }

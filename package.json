@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
     "test": "node --test --experimental-strip-types test/*.test.ts",
-    "typecheck": "tsr generate && tsc --noEmit"
+    "typecheck": "tsr generate && tsc --noEmit",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.170.38",
@@ -27,6 +28,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "nitro": "^3.0.260311-beta",
     "typescript": "^5.9.3",
-    "vite": "^8.0.14"
+    "vite": "^8.0.14",
+    "@playwright/test": "^1.63.0"
   }
 }
