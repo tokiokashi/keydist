@@ -23,7 +23,7 @@ test('Input Converter keeps browser key lifecycle consistent', async ({ page }) 
   });
   expect(repeatSpacePrevented).toBe(true);
 
-  await page.getByLabel('配列').selectOption('tsuki-2-263');
+  await page.getByLabel('配列', { exact: true }).selectOption('tsuki-2-263');
   await expect(feature).toHaveAttribute('data-input-ready', 'tsuki-2-263');
   await output.click();
 
@@ -49,7 +49,7 @@ test('Input Converter keeps browser key lifecycle consistent', async ({ page }) 
   await page.keyboard.down('d');
   await expect(pressed).toHaveText('d');
 
-  await page.getByLabel('配列').focus();
+  await page.getByLabel('配列', { exact: true }).focus();
   await expect(pressed).toHaveText('—');
 
   await output.click();
@@ -62,11 +62,43 @@ test('Input Converter keeps browser key lifecycle consistent', async ({ page }) 
   await expect(pressed).toHaveText('—');
 
   await page.getByRole('button', { name: 'クリア' }).click();
-  await page.getByLabel('配列').selectOption('qwerty');
+  await page.getByLabel('配列', { exact: true }).selectOption('qwerty');
   await expect(feature).toHaveAttribute('data-input-ready', 'qwerty');
   await output.click();
   await page.keyboard.down('Shift');
   await page.keyboard.press('a');
   await page.keyboard.up('Shift');
   await expect(output).toHaveValue('A');
+});
+
+
+test('Input Converter selects preset and saved custom physical geometry', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('keydist:geometry-shapes', JSON.stringify([{
+      id: 'shape-e2e-grid',
+      name: 'E2E Grid',
+      pitchMm: 19.05,
+      rowWidths: [12, 12, 11, 10],
+      thumbs: [
+        { id: 'thumb-l', finger: 'LT', col: 3.5, y: 4 },
+        { id: 'thumb-r', finger: 'RT', col: 5.5, y: 4 },
+      ],
+    }]));
+  });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const geometry = page.getByLabel('物理配列');
+  const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
+
+  await expect(geometry).toHaveValue('row-staggered');
+  await expect(keyboard).toHaveAttribute('data-geometry-id', 'row-staggered');
+
+  await geometry.selectOption('ortholinear');
+  await expect(keyboard).toHaveAttribute('data-geometry-id', 'ortholinear');
+
+  await expect(geometry.locator('option[value="shape-e2e-grid"]')).toHaveText('自作: E2E Grid');
+  await geometry.selectOption('shape-e2e-grid');
+  await expect(keyboard).toHaveAttribute('data-geometry-id', 'shape-e2e-grid');
 });

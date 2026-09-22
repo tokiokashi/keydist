@@ -1,7 +1,25 @@
-import { useState } from 'react';
-import { QWERTY_LEGEND, SHIFT_KEY, THUMB_KEY } from '../../geometry.ts';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  PhysicalKeyboard,
+  type PhysicalKeyboardKeyView,
+} from '../../components/physical-keyboard.tsx';
+import {
+  buildGeometry,
+  DEFAULT_FINGER_ASSIGNMENT,
+  isPresetGeometryKind,
+  PHYSICAL_SHAPES,
+  THUMB_KEY,
+  type PhysicalShape,
+} from '../../geometry.ts';
+import {
+  sanitizeGeometrySettings,
+} from '../../geometry-settings.ts';
 import { LAYOUTS, LAYOUTS_JA, type Layout } from '../../layouts/index.ts';
-import { physicalKeysUsedByLayout } from '../../layout-physical-keys.ts';
+import {
+  physicalKeysUsedByLayout,
+  visibleGeometryKeys,
+} from '../../layout-physical-keys.ts';
+import { load as loadUserGeometryShapes } from '../../user-geometries.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
 const DIRECT_JA_INPUT_LAYOUTS =
@@ -12,61 +30,7 @@ const INPUT_LAYOUTS = [
   ...DIRECT_JA_INPUT_LAYOUTS,
 ];
 
-function KeyboardPreview({
-  layout,
-  pressedKeys,
-}: {
-  layout: Layout;
-  pressedKeys: readonly string[];
-}) {
-  const pressed = new Set(pressedKeys);
-  const label = (key: string) => layout.legends.get(key) ?? key;
-
-  return (
-    <div className="input-keyboard" aria-label="現在の物理キー状態">
-      {QWERTY_LEGEND.map((row, rowIndex) => (
-        <div className="input-keyboard-row" key={rowIndex}>
-          {Array.from(row).map((key) => (
-            <span
-              className="input-key"
-              data-active={pressed.has(key) || undefined}
-              key={key}
-            >
-              <span>{label(key)}</span>
-              <small>{key}</small>
-            </span>
-          ))}
-        </div>
-      ))}
-      <div className="input-keyboard-row input-keyboard-thumbs">
-        <span
-          className="input-key input-key-shift"
-          data-active={pressed.has(SHIFT_KEY.L) || undefined}
-        >
-          <span>{label(SHIFT_KEY.L)}</span>
-          <small>ShiftLeft</small>
-        </span>
-        {[THUMB_KEY.LT, THUMB_KEY.RT].map((key) => (
-          <span
-            className="input-key input-key-thumb"
-            data-active={pressed.has(key) || undefined}
-            key={key}
-          >
-            <span>{label(key)}</span>
-            <small>{key === THUMB_KEY.LT ? 'NonConvert' : 'Space / Convert'}</small>
-          </span>
-        ))}
-        <span
-          className="input-key input-key-shift"
-          data-active={pressed.has(SHIFT_KEY.R) || undefined}
-        >
-          <span>{label(SHIFT_KEY.R)}</span>
-          <small>ShiftRight</small>
-        </span>
-      </div>
-    </div>
-  );
-}
+const PRESET_GEOMETRY_SHAPES = Object.values(PHYSICAL_SHAPES);
 
 function RecognizedDetail({
   recognized,
@@ -102,7 +66,51 @@ export function InputConverterView() {
     () => DIRECT_JA_INPUT_LAYOUTS[0] ?? INPUT_LAYOUTS[0],
   );
   const session = useTypingSession(layout);
+  const [userGeometryShapes, setUserGeometryShapes] = useState<PhysicalShape[]>([]);
+  const [geometryId, setGeometryId] = useState(PHYSICAL_SHAPES['row-staggered'].id);
   const escapeIsLayoutInput = physicalKeysUsedByLayout(layout).has('escape');
+
+  useEffect(() => {
+    setUserGeometryShapes(loadUserGeometryShapes());
+  }, []);
+
+  const geometryShapes = useMemo(
+    () => [...PRESET_GEOMETRY_SHAPES, ...userGeometryShapes],
+    [userGeometryShapes],
+  );
+  const selectedShape = geometryShapes.find((shape) => shape.id === geometryId)
+    ?? PHYSICAL_SHAPES['row-staggered'];
+  const geometry = useMemo(() => {
+    if (isPresetGeometryKind(geometryId)) {
+      return buildGeometry(geometryId, DEFAULT_FINGER_ASSIGNMENT);
+    }
+    const settings = sanitizeGeometrySettings({
+      shape: selectedShape,
+      assignment: DEFAULT_FINGER_ASSIGNMENT,
+    });
+    return buildGeometry(settings.shape, settings.assignment);
+  }, [geometryId, selectedShape]);
+  const visibleKeys = useMemo(
+    () => visibleGeometryKeys(layout, geometry),
+    [geometry, layout],
+  );
+  const keyboardViews = useMemo(() => {
+    const pressed = new Set(session.pressedKeys);
+    return new Map<string, PhysicalKeyboardKeyView>(
+      visibleKeys.map((key) => [
+        key.id,
+        {
+          legend: layout.legends.get(key.id) ?? key.id,
+          secondaryLegend: key.id === THUMB_KEY.LT
+            ? 'NonConvert'
+            : key.id === THUMB_KEY.RT
+              ? 'Space / Convert'
+              : key.id,
+          pressed: pressed.has(key.id),
+        },
+      ]),
+    );
+  }, [layout, session.pressedKeys, visibleKeys]);
 
   return (
     <section
@@ -120,6 +128,7 @@ export function InputConverterView() {
         <label>
           <span>配列</span>
           <select
+            aria-label="配列"
             value={layout.id}
             onChange={(event) => {
               const next = INPUT_LAYOUTS.find((candidate) => candidate.id === event.target.value);
@@ -130,6 +139,21 @@ export function InputConverterView() {
               <option key={candidate.id} value={candidate.id}>
                 {candidate.name}
               </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>物理配列</span>
+          <select
+            aria-label="物理配列"
+            value={geometryId}
+            onChange={(event) => setGeometryId(event.target.value)}
+          >
+            {PRESET_GEOMETRY_SHAPES.map((shape) => (
+              <option key={shape.id} value={shape.id}>{shape.name}</option>
+            ))}
+            {userGeometryShapes.map((shape) => (
+              <option key={shape.id} value={shape.id}>自作: {shape.name}</option>
             ))}
           </select>
         </label>
@@ -154,7 +178,12 @@ export function InputConverterView() {
         {session.composing ? ' IME composition中は認識を停止している。' : ''}
       </p>
 
-      <KeyboardPreview layout={layout} pressedKeys={session.pressedKeys} />
+      <PhysicalKeyboard
+        ariaLabel="現在の物理キー状態"
+        geometryId={geometry.id}
+        keys={visibleKeys}
+        keyViews={keyboardViews}
+      />
 
       <div className="input-inspector">
         <section>
