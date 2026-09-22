@@ -56,7 +56,7 @@ test('窓の内側では残った場合と戻った場合の小さい方を採�
   const t = evaluate('yau', qwerty, geometry, opts({ windowSize: 3 }));
   const last = t.strokes[2];
   assert.equal(last.char, 'u');
-  assert.equal(last.presses[0].gap, 1);
+  assert.equal(last.presses[0].gap, 2);
   near(last.distance, 1, 'u');
 });
 
@@ -78,19 +78,80 @@ test('次の同指打鍵で残すと確定しない間は未使用指をホー�
 });
 
 test('窓の外では必ずホームからの距離になる', () => {
-  // y → 他指4打 → u。windowSize=3なのでg=4 > N
+  // y → 4 input units → u。uは5 units先なのでwindowSize=3の外
   const t = evaluate('yasdfu', qwerty, geometry, opts({ windowSize: 3 }));
   const last = t.strokes[5];
   assert.equal(last.char, 'u');
-  assert.equal(last.presses[0].gap, 4);
+  assert.equal(last.presses[0].gap, 5);
   const home = geometry.homes.RI;
   const u = geometry.grid[1][6];
   near(last.distance, Math.hypot(home.x - u.x, home.y - u.y), 'u');
 });
 
-test('gは全打鍵を数える（その指の打鍵だけではない）', () => {
+test('窓距離はselected logical input unitを数える', () => {
   const t = evaluate('yasu', qwerty, geometry, opts());
-  assert.equal(t.strokes[3].presses[0].gap, 2);
+  assert.equal(t.strokes[3].presses[0].gap, 3);
+});
+
+test('N=5は5 input units先まで候補比較する', () => {
+  const inside = evaluate('yasdfu', qwerty, geometry, opts({ windowSize: 5 }));
+  const outside = evaluate('yasdfu', qwerty, geometry, opts({ windowSize: 4 }));
+  const insideLast = inside.strokes[5];
+  const outsideLast = outside.strokes[5];
+
+  assert.equal(insideLast.presses[0].gap, 5);
+  near(insideLast.distance, 1, 'N=5ならyからuを残す候補が比較に入る');
+
+  const home = geometry.homes.RI;
+  const u = geometry.grid[1][6];
+  near(outsideLast.distance, Math.hypot(home.x - u.x, home.y - u.y), 'N=4なら5 units先は窓外');
+});
+
+test('複数文字見出しはselected logical input unitとして1つ数える', () => {
+  const layout = fromKana('multi-char-window', 'multi-char-window', {
+    前: [['y']],
+    きゃ: [['a']],
+    後: [['u']],
+  });
+  const trace = evaluate('前きゃ後', layout, geometry, opts({ windowSize: 2 }));
+  const last = trace.strokes.at(-1)!;
+
+  assert.equal(last.char, '後');
+  assert.equal(last.presses[0].gap, 2, '前 -> きゃ -> 後 の3 selected inputsなので距離は2');
+  near(last.distance, 1, 'きゃを2文字として数えずN=2の候補比較に入る');
+});
+
+test('trigger action分割はlogical input unit窓を変えない', () => {
+  const layout = fromFaces('action-window', 'action-window', [
+    {
+      ...faceFromEntries([], 'simultaneous', { y: '前', u: '後' }),
+      inputRole: 'layer',
+    },
+    {
+      ...faceFromEntries(['thumb-r'], 'simultaneous', { a: '中' }),
+      inputRole: 'modifier',
+      triggerPersistence: 'hold-capable',
+      triggerOrder: 'prefix',
+    },
+  ]);
+
+  const combined = evaluate('前中後', layout, geometry, opts({
+    windowSize: 2,
+    actionRealizationPolicy: { triggerActivation: 'disabled' },
+  }));
+  const separated = evaluate('前中後', layout, geometry, opts({
+    windowSize: 2,
+    actionRealizationPolicy: { triggerActivation: 'semantic' },
+  }));
+
+  assert.equal(combined.strokes.length, 3);
+  assert.equal(separated.strokes.length, 4);
+
+  const combinedLast = combined.strokes.at(-1)!;
+  const separatedLast = separated.strokes.at(-1)!;
+  assert.equal(combinedLast.presses[0].gap, 2);
+  assert.equal(separatedLast.presses[0].gap, 2);
+  near(separatedLast.distance, combinedLast.distance, 'action分割でN由来の距離を変えない');
 });
 
 test('Nを大きくすると総移動距離は単調に減少する', () => {
@@ -136,11 +197,11 @@ test('空白は右親指の打鍵として数え、移動距離は0になる', (
 });
 
 test('空白がgのカウントに入る', () => {
-  // 'y' → 空白 → 'u'。空白を落とすとg=0（同指連続）になってしまう
+  // 'y' → 空白 → 'u'。空白もselected logical input unitとして1つ進める
   const t = evaluate('y u', qwerty, geometry, opts());
   assert.equal(t.strokes.length, 3);
   assert.equal(t.strokes[2].char, 'u');
-  assert.equal(t.strokes[2].presses[0].gap, 1);
+  assert.equal(t.strokes[2].presses[0].gap, 2);
 });
 
 test('親指の連打でも距離は増えない', () => {
