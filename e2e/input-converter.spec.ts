@@ -60,9 +60,12 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
     .evaluate((element) => getComputedStyle(element).overflowY);
   expect(guideOverflowY).toBe('auto');
 
-  const viewportOverflow = await page.evaluate(() =>
-    document.documentElement.scrollHeight - window.innerHeight);
-  expect(viewportOverflow).toBeLessThanOrEqual(1);
+  const viewportMetrics = await page.evaluate(() => ({
+    body: document.body.scrollHeight - window.innerHeight,
+    document: document.documentElement.scrollHeight - window.innerHeight,
+  }));
+  expect(viewportMetrics.body).toBeLessThanOrEqual(0);
+  expect(viewportMetrics.document).toBeLessThanOrEqual(0);
 
   await splitter.focus();
   await page.keyboard.press('Home');
@@ -123,9 +126,12 @@ test('Input Converter keeps desktop Y bounded and lets cheatsheets scroll when w
   expect(dimensions.overflowY).toBe('auto');
   expect(dimensions.scrollHeight).toBeGreaterThanOrEqual(dimensions.clientHeight);
 
-  const viewportOverflow = await page.evaluate(() =>
-    document.documentElement.scrollHeight - window.innerHeight);
-  expect(viewportOverflow).toBeLessThanOrEqual(1);
+  const viewportMetrics = await page.evaluate(() => ({
+    body: document.body.scrollHeight - window.innerHeight,
+    document: document.documentElement.scrollHeight - window.innerHeight,
+  }));
+  expect(viewportMetrics.body).toBeLessThanOrEqual(0);
+  expect(viewportMetrics.document).toBeLessThanOrEqual(0);
 });
 
 test('Input Converter chooses the cheatsheet grid that maximizes readable card size', async ({ page }) => {
