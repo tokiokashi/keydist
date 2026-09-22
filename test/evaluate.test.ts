@@ -93,14 +93,18 @@ test('gは全打鍵を数える（その指の打鍵だけではない）', () =
   assert.equal(t.strokes[3].presses[0].gap, 2);
 });
 
-test('N=1は「次の1入力先まで」を意味する', () => {
-  const inside = evaluate('yu', qwerty, geometry, opts({ windowSize: 1 }));
-  const outside = evaluate('yu', qwerty, geometry, opts({ windowSize: 0 }));
+test('次のinputは距離1、N=1は1入力先までを表す', () => {
+  const next = evaluate('yu', qwerty, geometry, opts({ windowSize: 1 }));
+  assert.equal(next.strokes[1].presses[0].inputDistance, 1);
 
-  near(inside.strokes[1].distance, 1, 'N=1なら次入力のuでstay候補を比較する');
+  const inside = evaluate('yau', qwerty, geometry, opts({ windowSize: 2 }));
+  const outside = evaluate('yau', qwerty, geometry, opts({ windowSize: 1 }));
+  assert.equal(inside.strokes[2].presses[0].inputDistance, 2);
+  near(inside.strokes[2].distance, 1, 'N=2なら2入力先でstay候補を比較する');
+
   const home = geometry.homes.RI;
   const u = geometry.keys.get('u')!;
-  near(outside.strokes[1].distance, Math.hypot(home.x - u.x, home.y - u.y), 'N=0なら次入力でもhome');
+  near(outside.strokes[2].distance, Math.hypot(home.x - u.x, home.y - u.y), 'N=1では2入力先はhome');
 });
 
 test('複数文字見出しは選択された1入力単位としてNを数える', () => {
