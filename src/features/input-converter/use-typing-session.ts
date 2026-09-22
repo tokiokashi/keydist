@@ -29,6 +29,18 @@ export interface TypingSession {
   clear(): void;
 }
 
+export function physicalKeysUsedByLayout(layout: Layout): ReadonlySet<string> {
+  const keys = new Set<string>();
+  for (const alternatives of layout.canonicalInputs.values()) {
+    for (const alternative of alternatives) {
+      for (const input of alternative.semanticInputs) {
+        for (const key of input.physicalKeys) keys.add(key);
+      }
+    }
+  }
+  return keys;
+}
+
 export function useTypingSession(layout: Layout): TypingSession {
   const captureRef = useRef<HTMLDivElement>(null);
   const engine = useMemo(
@@ -37,6 +49,7 @@ export function useTypingSession(layout: Layout): TypingSession {
     }),
     [layout],
   );
+  const ownedPhysicalKeys = useMemo(() => physicalKeysUsedByLayout(layout), [layout]);
 
   const [text, setText] = useState('');
   const [pressedKeys, setPressedKeys] = useState<readonly string[]>([]);
@@ -65,7 +78,10 @@ export function useTypingSession(layout: Layout): TypingSession {
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      const physical = browserKeyboardEventToPhysicalKeyEvent(event);
+      const layoutOwnsPhysicalKey = physical !== undefined && ownedPhysicalKeys.has(physical.key);
+
+      if (event.key === 'Escape' && !layoutOwnsPhysicalKey) {
         event.preventDefault();
         target.blur();
         return;
@@ -93,8 +109,7 @@ export function useTypingSession(layout: Layout): TypingSession {
         }
       }
 
-      const physical = browserKeyboardEventToPhysicalKeyEvent(event);
-      if (physical === undefined) return;
+      if (physical === undefined || !layoutOwnsPhysicalKey) return;
 
       event.preventDefault();
       applyResult(engine.handle(physical));
@@ -102,7 +117,7 @@ export function useTypingSession(layout: Layout): TypingSession {
 
     const onKeyUp = (event: KeyboardEvent) => {
       const physical = browserKeyboardEventToPhysicalKeyEvent(event);
-      if (physical === undefined) return;
+      if (physical === undefined || !ownedPhysicalKeys.has(physical.key)) return;
 
       event.preventDefault();
       applyResult(engine.handle(physical));
@@ -144,7 +159,7 @@ export function useTypingSession(layout: Layout): TypingSession {
       window.removeEventListener('blur', onWindowBlur);
       engine.reset();
     };
-  }, [engine, layout.id]);
+  }, [engine, layout.id, ownedPhysicalKeys]);
 
   const clear = () => {
     engine.reset();
