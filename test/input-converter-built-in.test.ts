@@ -138,3 +138,43 @@ test('月配列のprefix triggerは非対象側の通常1打で消費され後�
     );
   }
 });
+
+
+test('未定義physical keyは出力せずprefix one-shotを消費する', () => {
+  const engine = new TypingInputEngine(TSUKI_2_263.canonicalInputs);
+
+  engine.handle({ type: 'down', key: 'k' });
+  engine.handle({ type: 'up', key: 'k' });
+
+  assert.deepEqual(
+    engine.handle({ type: 'down', key: '1' }).recognized,
+    [],
+  );
+  engine.handle({ type: 'up', key: '1' });
+
+  assert.deepEqual(
+    engine.handle({ type: 'down', key: 'f' }).recognized.map((entry) => entry.output),
+    ['と'],
+  );
+});
+
+test('未定義physical keyの境界でも物理保持中のhold triggerは維持する', () => {
+  const engine = new TypingInputEngine(SHIN_JIS_SIMULTANEOUS.canonicalInputs, {
+    triggerRealizationPolicy: { useHold: true },
+  });
+
+  engine.handle({ type: 'down', key: 'thumb-r' });
+  assert.deepEqual(
+    engine.handle({ type: 'down', key: 'h' }).recognized.map((entry) => entry.output),
+    ['ま'],
+  );
+  engine.handle({ type: 'up', key: 'h' });
+
+  assert.deepEqual(engine.handle({ type: 'down', key: 'escape' }).recognized, []);
+  engine.handle({ type: 'up', key: 'escape' });
+
+  assert.deepEqual(
+    engine.handle({ type: 'down', key: 'j' }).recognized.map((entry) => entry.output),
+    ['お'],
+  );
+});
