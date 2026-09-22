@@ -119,3 +119,59 @@ test('既定geometryは左右Shiftを小指のphysical keyとして持つ', () =
     assert.equal(geometry.keys.get(SHIFT_KEY.R)?.finger, 'RP', kind);
   }
 });
+
+
+test('全角！／？は半角Shift記号と同じphysical inputとして評価する', () => {
+  const geometry = buildGeometry('row-staggered');
+  const halfwidth = evaluate('!?', qwerty, geometry, DEFAULT_OPTIONS);
+  const fullwidth = evaluate('！？', qwerty, geometry, DEFAULT_OPTIONS);
+
+  assert.equal(fullwidth.skipped, 0);
+  assert.deepEqual(
+    fullwidth.strokes.map((stroke) => ({
+      keys: stroke.presses.flatMap((press) => press.keys.map((key) => key.id)),
+      triggerKeys: stroke.triggerKeys,
+    })),
+    halfwidth.strokes.map((stroke) => ({
+      keys: stroke.presses.flatMap((press) => press.keys.map((key) => key.id)),
+      triggerKeys: stroke.triggerKeys,
+    })),
+  );
+  assert.deepEqual(fullwidth.strokes.map((stroke) => stroke.inputChar), ['！', '？']);
+});
+
+test('小文字入力はShift semantic追加後も単打のまま', () => {
+  const trace = evaluate('a', qwerty, buildGeometry('row-staggered'), DEFAULT_OPTIONS);
+
+  assert.equal(trace.skipped, 0);
+  assert.equal(trace.strokes.length, 1);
+  assert.deepEqual(trace.strokes[0].triggerKeys, []);
+  assert.deepEqual(
+    trace.strokes[0].presses.flatMap((press) => press.keys.map((key) => key.id)),
+    ['a'],
+  );
+});
+
+test('while-held Capabilityだけでは既定評価をheld-triggerへ変えない', () => {
+  const trace = evaluate('AA', qwerty, buildGeometry('row-staggered'), DEFAULT_OPTIONS);
+
+  assert.equal(trace.skipped, 0);
+  assert.equal(trace.strokes.length, 2);
+  for (const stroke of trace.strokes) {
+    assert.equal(stroke.participations.some((part) => part.roles.includes('held-trigger')), false);
+    assert.equal(stroke.participations.some((part) => part.roles.includes('trigger')), true);
+    assert.equal(stroke.participations.some((part) => part.holdPhase !== undefined), false);
+  }
+});
+
+test('通常Shiftはcompositionではなくmodifier semanticとして残る', () => {
+  const alternatives = qwerty.canonicalInputs.get('A');
+  assert.ok(alternatives);
+
+  for (const alternative of alternatives) {
+    const input = alternative.semanticInputs[0];
+    assert.deepEqual(input.classifications, []);
+    assert.equal(input.roles.some((role) => role.role === 'modifier'), true);
+    assert.equal(alternative.origin, 'sequence');
+  }
+});
