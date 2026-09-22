@@ -1,5 +1,169 @@
 import { expect, test } from '@playwright/test';
 
+test('Input Converter uses a resizable wide FHD workspace without test-mode scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+
+  const settings = page.locator('.input-settings-panel');
+  const settingsSummary = settings.locator('> summary');
+  const guide = page.getByLabel('レイヤーカンペ一覧');
+  const capture = page.locator('.input-capture-panel');
+  const keyboardPanel = page.locator('.input-keyboard-panel');
+  const details = page.getByLabel('入力詳細');
+  const layerLabel = page.locator('.input-active-layer');
+  const splitter = page.getByRole('separator', { name: 'カンペと入力領域の幅を調整' });
+
+  const [settingsBox, guideBox, captureBox, keyboardBox, detailsBox] = await Promise.all([
+    settings.boundingBox(),
+    guide.boundingBox(),
+    capture.boundingBox(),
+    keyboardPanel.boundingBox(),
+    details.boundingBox(),
+  ]);
+  expect(settingsBox).not.toBeNull();
+  expect(guideBox).not.toBeNull();
+  expect(captureBox).not.toBeNull();
+  expect(keyboardBox).not.toBeNull();
+  expect(detailsBox).not.toBeNull();
+  expect(settingsBox!.x).toBeLessThan(captureBox!.x);
+  expect(guideBox!.x).toBeLessThan(keyboardBox!.x);
+  expect(guideBox!.y).toBeGreaterThan(settingsBox!.y);
+  expect(keyboardBox!.y).toBeGreaterThan(captureBox!.y);
+  expect(Math.abs(
+    (guideBox!.y + guideBox!.height) - (detailsBox!.y + detailsBox!.height),
+  )).toBeLessThanOrEqual(2);
+
+  await expect(splitter).toHaveAttribute('aria-valuenow', '50');
+  await splitter.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(splitter).toHaveAttribute('aria-valuenow', '48');
+
+  await expect(settings).toHaveJSProperty('open', true);
+  await settingsSummary.click();
+  await expect(settings).toHaveJSProperty('open', false);
+
+  const [collapsedGuideBox, collapsedDetailsBox] = await Promise.all([
+    guide.boundingBox(),
+    details.boundingBox(),
+  ]);
+  expect(collapsedGuideBox).not.toBeNull();
+  expect(collapsedDetailsBox).not.toBeNull();
+  expect(Math.abs(
+    (collapsedGuideBox!.y + collapsedGuideBox!.height)
+      - (collapsedDetailsBox!.y + collapsedDetailsBox!.height),
+  )).toBeLessThanOrEqual(2);
+
+  const guideOverflowY = await guide.locator('.input-layer-guide-grid')
+    .evaluate((element) => getComputedStyle(element).overflowY);
+  expect(guideOverflowY).toBe('auto');
+
+  const viewportOverflow = await page.evaluate(() =>
+    document.documentElement.scrollHeight - window.innerHeight);
+  expect(viewportOverflow).toBeLessThanOrEqual(1);
+
+  await splitter.focus();
+  await page.keyboard.press('Home');
+
+  const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
+  const keyboardMain = page.locator('.input-keyboard-main');
+  const [wideKeyboardBox, keyboardMainBox, wideDetailsBox] = await Promise.all([
+    keyboard.boundingBox(),
+    keyboardMain.boundingBox(),
+    details.boundingBox(),
+  ]);
+  expect(wideKeyboardBox).not.toBeNull();
+  expect(keyboardMainBox).not.toBeNull();
+  expect(wideDetailsBox).not.toBeNull();
+  expect(wideDetailsBox!.height).toBeGreaterThanOrEqual(110);
+  expect(wideKeyboardBox!.height).toBeLessThanOrEqual(keyboardMainBox!.height + 1);
+
+  const before = await layerLabel.boundingBox();
+  await page.getByLabel('自由入力テキスト').click();
+  await page.keyboard.down('j');
+  const after = await layerLabel.boundingBox();
+  expect(before).not.toBeNull();
+  expect(after).not.toBeNull();
+  expect(after!.height).toBe(before!.height);
+  await page.keyboard.up('j');
+});
+
+test('Input Converter keeps desktop Y bounded and lets cheatsheets scroll when width causes wrapping', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 768 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await page.getByLabel('配列', { exact: true }).selectOption('tsuki-2-263');
+  await expect(feature).toHaveAttribute('data-input-ready', 'tsuki-2-263');
+
+  const guide = page.getByLabel('レイヤーカンペ一覧');
+  const displaySettings = page.getByLabel('表示設定');
+  const keyboardPanel = page.locator('.input-keyboard-panel');
+  const splitter = page.getByRole('separator', { name: 'カンペと入力領域の幅を調整' });
+
+  await splitter.focus();
+  await page.keyboard.press('Home');
+
+  const [displayBox, keyboardBox] = await Promise.all([
+    displaySettings.boundingBox(),
+    keyboardPanel.boundingBox(),
+  ]);
+  expect(displayBox).not.toBeNull();
+  expect(keyboardBox).not.toBeNull();
+  expect(displayBox!.x).toBeGreaterThanOrEqual(keyboardBox!.x);
+
+  const dimensions = await guide.locator('.input-layer-guide-grid').evaluate((element) => ({
+    clientHeight: element.clientHeight,
+    scrollHeight: element.scrollHeight,
+    overflowY: getComputedStyle(element).overflowY,
+  }));
+  expect(dimensions.overflowY).toBe('auto');
+  expect(dimensions.scrollHeight).toBeGreaterThanOrEqual(dimensions.clientHeight);
+
+  const viewportOverflow = await page.evaluate(() =>
+    document.documentElement.scrollHeight - window.innerHeight);
+  expect(viewportOverflow).toBeLessThanOrEqual(1);
+});
+
+test('Input Converter chooses the cheatsheet grid that maximizes readable card size', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+
+  const settings = page.locator('.input-settings-panel');
+  const settingsSummary = settings.locator('> summary');
+  const layoutSelect = page.getByLabel('配列', { exact: true });
+  const grid = page.locator('.input-layer-guide-grid');
+  const columns = async () => grid.evaluate((element) =>
+    getComputedStyle(element).gridTemplateColumns
+      .split(' ')
+      .filter((track) => track.length > 0)
+      .length);
+  const setLayoutWithSettingsCollapsed = async (value: string) => {
+    if (!(await settings.evaluate((element) => (element as HTMLDetailsElement).open))) {
+      await settingsSummary.click();
+      await expect(settings).toHaveJSProperty('open', true);
+    }
+    await layoutSelect.selectOption(value);
+    await expect(feature).toHaveAttribute('data-input-ready', value);
+    await settingsSummary.click();
+    await expect(settings).toHaveJSProperty('open', false);
+  };
+
+  await setLayoutWithSettingsCollapsed('nicola');
+  await expect(page.locator('.input-layer-card')).toHaveCount(2);
+  await expect.poll(columns).toBe(1);
+
+  await setLayoutWithSettingsCollapsed('shingeta');
+  await expect(page.locator('.input-layer-card')).toHaveCount(4);
+  await expect.poll(columns).toBe(2);
+});
+
 test('Input Converter keeps browser key lifecycle consistent', async ({ page }) => {
   await page.goto('/input');
 
@@ -112,7 +276,7 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   const layerLabel = page.locator('.input-active-layer');
 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  await expect(layerLabel).toContainText('現在のレイヤー');
+  await expect(layerLabel).toContainText('現在');
   await expect(layerLabel).toContainText('通常');
 
   await output.click();
@@ -130,15 +294,23 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await expect(layerLabel).toContainText('通常');
 
   await expect(page.getByLabel('レイヤーカンペ一覧')).toBeVisible();
-  await page.getByLabel('レイヤーカンペ', { exact: true }).uncheck();
+  const layerGuideToggle = page.getByLabel('レイヤーカンペ', { exact: true });
+  await layerGuideToggle.focus();
+  await page.keyboard.press('Space');
+  await expect(layerGuideToggle).not.toBeChecked();
   await expect(page.locator('.input-layer-guide')).toHaveCount(0);
-  await page.getByLabel('レイヤーカンペ', { exact: true }).check();
+  await page.keyboard.press('Space');
+  await expect(layerGuideToggle).toBeChecked();
   await expect(page.locator('.input-layer-guide')).toBeVisible();
 
   await expect(keyboard.locator('[data-key-id="j"]')).toHaveAttribute('data-accent-slot', /[1-8]/);
-  await page.getByLabel('起点キー色').uncheck();
+  const triggerColorToggle = page.getByLabel('起点キー色');
+  await triggerColorToggle.focus();
+  await page.keyboard.press('Space');
+  await expect(triggerColorToggle).not.toBeChecked();
   await expect(keyboard.locator('[data-accent-slot]')).toHaveCount(0);
-  await page.getByLabel('起点キー色').check();
+  await page.keyboard.press('Space');
+  await expect(triggerColorToggle).toBeChecked();
 
   await expect(page.locator('.input-layer-card')).toHaveCount(1);
   await expect(page.locator('.input-layer-card').first()).toContainText('SandS');
@@ -148,7 +320,10 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await output.click();
   await page.keyboard.down('j');
   await expect(keyboard.locator('[data-key-id="f"]')).toHaveAttribute('data-guide', 'output');
-  await page.getByLabel('動的ガイド').uncheck();
+  const dynamicGuideToggle = page.getByLabel('動的ガイド');
+  await dynamicGuideToggle.focus();
+  await page.keyboard.press('Space');
+  await expect(dynamicGuideToggle).not.toBeChecked();
   await expect(keyboard.locator('[data-guide]')).toHaveCount(0);
   await page.keyboard.up('j');
 });
