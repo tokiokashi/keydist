@@ -6,6 +6,7 @@ import {
   isPresetGeometryKind,
   keyId,
   PHYSICAL_SHAPES,
+  resolveKeyId,
   type Finger,
   type ExtraPhysicalKeySpec,
   type FingerAssignment,
@@ -69,21 +70,21 @@ export function sanitizePhysicalShape(value: unknown, fallback: PhysicalShape): 
   const rowWidths = Array.isArray(source.rowWidths) && source.rowWidths.length === 4
     ? source.rowWidths.map((width, index) => integer(width, fallback.rowWidths[index] ?? 1, 1, 32))
     : [...fallback.rowWidths];
-  const fallbackExtraKeys = fallback.extraKeys?.map((key) => ({ ...key })) ?? [];
+  const fallbackExtraKeys = fallback.extraKeys
+    ?.filter((key) => resolveKeyId(key.id) === key.id)
+    .map((key) => ({ ...key })) ?? [];
   const fallbackExtraById = new Map(fallbackExtraKeys.map((key) => [key.id, key]));
   const seenExtraIds = new Set<string>();
   const extraKeys: ExtraPhysicalKeySpec[] = Array.isArray(source.extraKeys)
     ? source.extraKeys.slice(0, 64).flatMap((candidate) => {
       const item = record(candidate);
-      if (
-        typeof item.id !== 'string'
-        || item.id.length === 0
-        || seenExtraIds.has(item.id)
-      ) return [];
-      seenExtraIds.add(item.id);
-      const fallbackKey = fallbackExtraById.get(item.id);
+      if (typeof item.id !== 'string' || item.id.length === 0) return [];
+      const canonicalId = resolveKeyId(item.id);
+      if (canonicalId !== item.id || seenExtraIds.has(canonicalId)) return [];
+      seenExtraIds.add(canonicalId);
+      const fallbackKey = fallbackExtraById.get(canonicalId);
       return [{
-        id: item.id,
+        id: canonicalId,
         row: integer(item.row, fallbackKey?.row ?? -1, -32, 32),
         col: integer(item.col, fallbackKey?.col ?? 0, -32, 32),
         x: finite(item.x, fallbackKey?.x ?? 0, -32, 32),
@@ -112,7 +113,7 @@ export function sanitizePhysicalShape(value: unknown, fallback: PhysicalShape): 
     && thumbs.some((thumb) => thumb.finger === 'RT')
     ? thumbs
     : fallbackThumbs;
-  const reservedIds = new Set(usableThumbs.map((thumb) => thumb.id));
+  const reservedIds = new Set(usableThumbs.map((thumb) => resolveKeyId(thumb.id)));
   rowWidths.forEach((width, row) => {
     for (let col = 0; col < width; col++) reservedIds.add(keyId(row, col));
   });
