@@ -711,31 +711,42 @@ A = S / C                    [アクション/文字]
 
 現行pipelineでは1 realized Stroke = 1 analytic action（§4.1）。
 
-#220 のhold開始を分離する設定は `ActionRealizationPolicy.holdStart='separate'` へ移行した。
-layer / modifierのoutputと同一actionにrealizeされた `held-trigger/start` は、
+#339 ではtrigger activationのaction groupingをcontinuous holdから分離し、
+`ActionRealizationPolicy.triggerActivation = 'combined' | 'separate'` とする。
+
+`separate` では、同一actionにrealizeされたfresh triggerとfresh outputを、
 
 ```text
-[held trigger + fresh output]
+[fresh trigger + fresh output]
     ↓
-[held trigger / start]
-[fresh output / held trigger continue]
+[fresh trigger]
+[fresh output]
 ```
 
-としてStroke生成前に分割する。ただし `separate` はsemantic Requirementを
-保てる場合だけsplitする。
+としてStroke生成前に分割する。`TriggerRealizationPolicy.useHold` はこの分割とは別軸であり、
+`useHold=false` でも各入力のfresh triggerを分離できる。`useHold=true` では最初の
+activationだけtriggerを新規Pressし、continueでは保持中triggerを新規Pressしないため、
+trigger actionはhold区間ごとに1回だけ増える。
 
-- overlapだけ、または `order(held -> fresh)` ならsplitする
-- `order(fresh -> held)` を要求するsuffix型はcombinedを維持する
-- held / fresh groupがorder境界の両側へ跨る場合もcombinedを維持する
+`separate` はsemantic Requirementを保てる場合だけsplitする。
+
+- overlapだけ、または `order(trigger -> output)` ならsplitする
+- `order(output -> trigger)` を要求するsuffix型はcombinedを維持する
+- trigger / remaining groupがorder境界の両側へ跨る場合もcombinedを維持する
 - compositionは対象外
 - `prefix` 等ですでにtrigger-only actionが独立している場合も追加分割しない
+- trigger/outputが同じphysical Pressを兼ねる場合は分割しない
+
+配列全体の既定groupingに加えて、canonical `layerId / triggerKeys` selectorで
+trigger groupごとのoverrideを持てる。これにより、同じ配列内で先行action化したいtriggerと
+同一actionのまま扱いたいtriggerを混在させられる。
 
 Requirementはaction groupingを推測するためには使わず、変換後streamがsemanticに反しないかを
 判定するvalidity gateとしてのみ使う。
 
 したがってMetricsだけのvirtual action補正は行わない。Policy変更後は
 Chain / Transition / Metrics / Timing / Playbackがすべて同じrealized Stroke列を見る。
-既定 `holdStart='combined'` は従来の1 Stroke groupingを維持する。
+既定 `triggerActivation='combined'` は1 Stroke groupingを維持する。
 
 `C` は §11.4と同じ、入力文字数（ローマ字展開・コンボ結合の前）。ローマ字配列は
 綴りが同じなら配置に依らず同じ値になる。この軸で差が付くのはコンボとかな直接入力のみ
@@ -801,7 +812,7 @@ singleTapRate = S1 / A × 100       [%]
 simultaneousな複数キー入力、コンボ、hold継続中の `held-trigger` 依存入力も
 単打には含めない。
 
-`holdStart='separate'` では先行trigger Strokeも分母 `A` に含める。
+`triggerActivation='separate'` では先行trigger Strokeも分母 `A` に含める。
 ただしbase layerの直接出力actionではないため単打の分子には含めない。
 
 **11.5.3 1キー率**
@@ -819,7 +830,7 @@ singleKeyRate = K1 / A × 100       [%]
 1キーactionも分子へ入れる。逆に、1 actionで複数キーを同時入力する場合は、
 1本の指で複数キーを押す場合も含めて分子へ入れない。
 
-`holdStart='separate'` ではtriggerとoutputが別realized Strokeになる。
+`triggerActivation='separate'` ではtriggerとoutputが別realized Strokeになる。
 各Strokeが1物理キーだけなら、それぞれ1キーactionとして分子 `K1` に入れる。
 
 この指標は「単打」というかな入力上の意味を持たず、純粋に1 actionあたりの入力キー数を見る。
