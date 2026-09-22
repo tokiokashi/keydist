@@ -24,11 +24,13 @@ export interface Point {
 }
 
 export interface Key extends Point {
-  /** 物理キーの識別子。QWERTY刻印の範囲内なら刻印文字、それ以外は `r{row}c{col}` */
+  /** 物理キーの識別子。QWERTY刻印の範囲内なら刻印文字、それ以外は stable physical key id。 */
   id: string;
   row: number;
   col: number;
   finger: Finger;
+  /** 表示上のキー幅 [u]。通常キーは1。 */
+  width?: number;
 }
 
 export interface Geometry {
@@ -72,6 +74,9 @@ export const THUMB_KEY = { LT: 'thumb-l', RT: 'thumb-r' } as const;
 
 /** 左右Shiftのcanonical physical key id。browser adapterもこのidへ正規化する。 */
 export const SHIFT_KEY = { L: 'shift-l', R: 'shift-r' } as const;
+
+/** grid外の標準physical key id。 */
+export const EXTRA_KEY = { ESCAPE: 'escape', TAB: 'tab' } as const;
 
 /** 旧定義やlocalStorageに残る親指キーidを正式名へ解決する。 */
 export const resolveKeyId = (id: string): string => id === 'space' ? THUMB_KEY.RT : id;
@@ -152,6 +157,19 @@ export const DEFAULT_FINGER_ASSIGNMENT: FingerAssignment = columnFingerAssignmen
   { LP: 0, LR: 1, LM: 2, LI: 3, RI: 6, RM: 7, RR: 8, RP: 9 },
 );
 
+const DEFAULT_COLUMN_FINGERS: NonThumb[] = [
+  'LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP', 'RP', 'RP', 'RP',
+];
+
+/** custom physical keyに明示運指が無い時の列ベースfallback。 */
+export function defaultFingerForColumn(column: number): NonThumb {
+  const index = Math.max(
+    0,
+    Math.min(Math.round(column), DEFAULT_COLUMN_FINGERS.length - 1),
+  );
+  return DEFAULT_COLUMN_FINGERS[index] ?? 'RP';
+}
+
 export type PresetGeometryKind = 'row-staggered' | 'ortholinear' | 'column-staggered';
 export type CustomGeometryKind = `custom:${string}`;
 export type GeometryKind = PresetGeometryKind | 'custom' | CustomGeometryKind;
@@ -162,6 +180,19 @@ export const isCustomGeometryKind = (value: unknown): value is 'custom' | Custom
   value === 'custom' || (typeof value === 'string' && value.startsWith('custom:'));
 
 /** 親指キー1個の定義。物理形状（`PhysicalShape`）が個数・位置を持つ（仕様 §3.1） */
+export interface ExtraPhysicalKeySpec {
+  /** QWERTY grid外のstable physical key id。 */
+  id: string;
+  /** キー中心の絶対座標 [u]。 */
+  x: number;
+  y: number;
+  /** 表示・既定運指のための論理row/col。grid自体には追加しない。 */
+  row: number;
+  col: number;
+  /** 表示幅 [u]。省略時1。 */
+  width?: number;
+}
+
 export interface ThumbKeySpec {
   /** 物理キーid */
   id: string;
@@ -197,6 +228,8 @@ export interface PhysicalShape {
   splitGap?: number;
   /** 親指キーの定義。各手に1個以上必要 */
   thumbs: ThumbKeySpec[];
+  /** Tab / Esc等、4段grid外にある任意physical key。 */
+  extraKeys?: ExtraPhysicalKeySpec[];
   /**
    * 親指キーが手ごとに複数ある場合、ホームとなるキーidを明示する（仕様 §3.1）。
    * 1個しかない手は省略してよい（その1個が自動でホームになる）
@@ -280,11 +313,16 @@ export function buildGeometry(
 
   const grid: Key[][] = [];
   const keys = new Map<string, Key>();
+  const resolvedAssignment: FingerAssignment = {
+    ...assignment,
+    keyFinger: { ...assignment.keyFinger },
+    homeKey: { ...assignment.homeKey },
+  };
   s.rowWidths.forEach((width, row) => {
     const line: Key[] = [];
     for (let col = 0; col < width; col++) {
       const id = keyId(row, col);
-      const finger = assignment.keyFinger[id];
+      const finger = resolvedAssignment.keyFinger[id];
       if (!finger) throw new Error(`指割り当て「${assignment.id}」にキー ${id} が無い`);
       const key: Key = { id, row, col, x: xOf(row, col), y: yOf(row, col), finger };
       line.push(key);
@@ -292,6 +330,24 @@ export function buildGeometry(
     }
     grid.push(line);
   });
+
+  for (const spec of s.extraKeys ?? []) {
+    if (keys.has(spec.id) || s.thumbs.some((thumb) => thumb.id === spec.id)) {
+      throw new Error(\`形状「\${s.id}」のextra key idが既存キーと重複している: \${spec.id}\`);
+    }
+    const finger = resolvedAssignment.keyFinger[spec.id]
+      ?? defaultFingerForColumn(spec.col);
+    resolvedAssignment.keyFinger[spec.id] = finger;
+    keys.set(spec.id, {
+      id: spec.id,
+      row: spec.row,
+      col: spec.col,
+      x: spec.x,
+      y: spec.y,
+      finger,
+      ...(spec.width === undefined ? {} : { width: spec.width }),
+    });
+  }
 
   // Shiftは既存PhysicalShape永続化schemaを増やさず、bottom rowの実座標から派生する。
   // ANSI/JISの標準幅を前提に、左2.25u・右2.75u Shiftの中心を隣接キー中心から求める。
@@ -355,17 +411,26 @@ export function buildGeometry(
   // ホーム位置は指割り当てが指すキーの実座標から引く（仕様 §3。形状ごとに解決される）
   const homes = {} as Record<Finger, Point>;
   for (const finger of FINGERS) {
-    const homeKeyId = assignment.homeKey[finger];
+    const homeKeyId = resolvedAssignment.homeKey[finger];
     const homeKey = keys.get(homeKeyId);
     if (!homeKey) {
-      throw new Error(`指割り当て「${assignment.id}」の指 ${finger} のホームキー ${homeKeyId} が無い`);
+      throw new Error(`指割り当て「${resolvedAssignment.id}」の指 ${finger} のホームキー ${homeKeyId} が無い`);
     }
     homes[finger] = { x: homeKey.x, y: homeKey.y };
   }
   homes.LT = { x: thumbs.LT.x, y: thumbs.LT.y };
   homes.RT = { x: thumbs.RT.x, y: thumbs.RT.y };
 
-  return { id: s.id, name: s.name, pitchMm: s.pitchMm, keys, grid, thumbs, homes, assignment };
+  return {
+    id: s.id,
+    name: s.name,
+    pitchMm: s.pitchMm,
+    keys,
+    grid,
+    thumbs,
+    homes,
+    assignment: resolvedAssignment,
+  };
 }
 
 export const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
