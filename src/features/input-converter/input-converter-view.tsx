@@ -235,195 +235,212 @@ export function InputConverterView() {
       data-input-ready={session.readyLayoutId === layout.id ? layout.id : undefined}
       data-active-layer={activeGroupIds.length > 0 ? activeGroupIds.join('|') : 'single'}
     >
-      <p className="eyebrow">Phase B · #270</p>
-      <h1>Input Converter</h1>
-      <p>
-        選択した配列の canonical SemanticInput を使って、物理キーから文字列を直接生成する。
-        お題はなく、ここでは自由に打てる。
-      </p>
-
-      <div className="input-toolbar">
-        <label>
-          <span>配列</span>
-          <select
-            aria-label="配列"
-            value={layout.id}
-            onChange={(event) => {
-              const next = INPUT_LAYOUTS.find((candidate) => candidate.id === event.target.value);
-              if (next !== undefined) setLayout(next);
-            }}
-          >
-            {INPUT_LAYOUTS.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>物理配列</span>
-          <select
-            aria-label="物理配列"
-            value={geometryId}
-            onChange={(event) => setGeometryId(event.target.value)}
-          >
-            {PRESET_GEOMETRY_SHAPES.map((shape) => (
-              <option key={shape.id} value={shape.id}>{shape.name}</option>
-            ))}
-            {userGeometryShapes.map((shape) => (
-              <option key={shape.id} value={shape.id}>自作: {shape.name}</option>
-            ))}
-          </select>
-        </label>
-        <button type="button" onClick={session.clear}>クリア</button>
-      </div>
-
-      <div className="input-display-options" aria-label="表示設定">
-        <strong>表示</strong>
-        <label>
-          <input
-            type="checkbox"
-            checked={showDynamicGuide}
-            onChange={(event) => setShowDynamicGuide(event.target.checked)}
-          />
-          動的ガイド
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={showLayerGuide}
-            onChange={(event) => setShowLayerGuide(event.target.checked)}
-          />
-          レイヤーカンペ
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={showTriggerColors}
-            onChange={(event) => setShowTriggerColors(event.target.checked)}
-          />
-          起点キー色
-        </label>
-      </div>
-
-      <ThumbKeyBindingEditor
-        value={thumbBindings}
-        onChange={updateThumbBindings}
-      />
-
-      <textarea
-        className="input-output"
-        value={session.text}
-        readOnly
-        rows={7}
-        aria-label="自由入力テキスト"
-        aria-describedby="input-capture-help"
-        data-active={session.active || undefined}
-        ref={session.captureRef}
-        placeholder="ここをクリックして、そのまま打鍵する。"
-      />
-      <p className="input-capture-hint" id="input-capture-help">
-        {session.active ? '入力受付中。' : '入力欄をクリックして入力開始。'}
-        {' '}Backspaceで1文字削除、Enterで改行、
-        {escapeIsLayoutInput ? 'Escは配列入力として扱う。' : 'Escで入力解除。'}
-        {session.composing ? ' IME composition中は認識を停止している。' : ''}
-      </p>
-
-      <p
-        className="input-active-layer"
-        data-active={activeDefinitions.length > 0 || undefined}
-      >
-        <span>現在のレイヤー</span>
-        <strong>
-          {activeDefinitions.length > 0
-            ? activeDefinitions.map((definition) => definition.label).join(' / ')
-            : '通常'}
-        </strong>
-      </p>
-
-      <div className="input-keyboard-stage">
-        <div className="input-keyboard-main">
-          <PhysicalKeyboard
-            ariaLabel="現在の物理キー状態"
-            geometryId={geometry.id}
-            keys={visibleKeys}
-            keyViews={keyboardViews}
-          />
+      <header className="input-page-heading">
+        <div>
+          <p className="eyebrow">Phase B · #270</p>
+          <h1>Input Converter</h1>
         </div>
+        <p>
+          選択した配列の canonical SemanticInput を使って、物理キーから文字列を直接生成する。
+        </p>
+      </header>
 
-      {showLayerGuide && (guideDefinitions.length > 0 || combinationLabels.length > 0) ? (
-        <aside className="input-layer-guide" aria-label="レイヤーカンペ一覧">
-          <header>
-            <strong>レイヤーカンペ</strong>
-            <span>{guideDefinitions.length} 面</span>
-          </header>
-          {combinationLabels.length > 0 ? (
-            <div className="input-semantic-groups" aria-label="意味論的な組み合わせ">
-              {combinationLabels.map((label) => (
-                <span key={label}>{label}</span>
-              ))}
+      <div className="input-workspace">
+        <aside className="input-sidebar" aria-label="入力テスト設定とカンペ">
+          <section className="input-settings-panel">
+            <header className="input-panel-heading">
+              <strong>設定</strong>
+              <button type="button" onClick={session.clear}>クリア</button>
+            </header>
+
+            <div className="input-toolbar">
+              <label>
+                <span>配列</span>
+                <select
+                  aria-label="配列"
+                  value={layout.id}
+                  onChange={(event) => {
+                    const next = INPUT_LAYOUTS.find((candidate) => candidate.id === event.target.value);
+                    if (next !== undefined) setLayout(next);
+                  }}
+                >
+                  {INPUT_LAYOUTS.map((candidate) => (
+                    <option key={candidate.id} value={candidate.id}>
+                      {candidate.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>物理配列</span>
+                <select
+                  aria-label="物理配列"
+                  value={geometryId}
+                  onChange={(event) => setGeometryId(event.target.value)}
+                >
+                  {PRESET_GEOMETRY_SHAPES.map((shape) => (
+                    <option key={shape.id} value={shape.id}>{shape.name}</option>
+                  ))}
+                  {userGeometryShapes.map((shape) => (
+                    <option key={shape.id} value={shape.id}>自作: {shape.name}</option>
+                  ))}
+                </select>
+              </label>
             </div>
+
+            <div className="input-display-options" aria-label="表示設定">
+              <strong>表示</strong>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showDynamicGuide}
+                  onChange={(event) => setShowDynamicGuide(event.target.checked)}
+                />
+                動的ガイド
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showLayerGuide}
+                  onChange={(event) => setShowLayerGuide(event.target.checked)}
+                />
+                レイヤーカンペ
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showTriggerColors}
+                  onChange={(event) => setShowTriggerColors(event.target.checked)}
+                />
+                起点キー色
+              </label>
+            </div>
+
+            <ThumbKeyBindingEditor
+              value={thumbBindings}
+              onChange={updateThumbBindings}
+            />
+          </section>
+
+          {showLayerGuide && (guideDefinitions.length > 0 || combinationLabels.length > 0) ? (
+            <aside className="input-layer-guide" aria-label="レイヤーカンペ一覧">
+              <header>
+                <strong>レイヤーカンペ</strong>
+                <span>{guideDefinitions.length} 面</span>
+              </header>
+              {combinationLabels.length > 0 ? (
+                <div className="input-semantic-groups" aria-label="意味論的な組み合わせ">
+                  {combinationLabels.map((label) => (
+                    <span key={label}>{label}</span>
+                  ))}
+                </div>
+              ) : null}
+              <div className="input-layer-guide-grid">
+                {guideDefinitions.map((definition) => {
+                  const legends = aggregationLegendMap(layout, definition.id);
+                  const triggers = new Set(aggregationTriggerKeys(layout, definition.id));
+                  const views = new Map<string, PhysicalKeyboardKeyView>(
+                    visibleKeys.map((key) => [
+                      key.id,
+                      {
+                        legend: legends.get(key.id) ?? '',
+                        highlighted: triggers.has(key.id),
+                        trigger: triggers.has(key.id),
+                        accentSlot: presentationTriggerColorSlots(layout).get(key.id),
+                      },
+                    ]),
+                  );
+                  return (
+                    <section className="input-layer-card" key={definition.id}>
+                      <h3>
+                        {definition.label}
+                        {definition.presentationModeLabel
+                          ? <small>{definition.presentationModeLabel}</small>
+                          : null}
+                      </h3>
+                      <p>
+                        {triggers.size > 0
+                          ? `trigger: ${[...triggers].map((key) => layout.legends.get(key) ?? key).join(' + ')}`
+                          : 'trigger: —'}
+                      </p>
+                      <PhysicalKeyboard
+                        ariaLabel={`${definition.label} レイヤー`}
+                        geometryId={geometry.id}
+                        keys={visibleKeys}
+                        keyViews={views}
+                        showSecondary={false}
+                        unit={24}
+                      />
+                    </section>
+                  );
+                })}
+              </div>
+            </aside>
           ) : null}
-          <div className="input-layer-guide-grid">
-            {guideDefinitions.map((definition) => {
-              const legends = aggregationLegendMap(layout, definition.id);
-              const triggers = new Set(aggregationTriggerKeys(layout, definition.id));
-              const views = new Map<string, PhysicalKeyboardKeyView>(
-                visibleKeys.map((key) => [
-                  key.id,
-                  {
-                    legend: legends.get(key.id) ?? '',
-                    highlighted: triggers.has(key.id),
-                    trigger: triggers.has(key.id),
-                    accentSlot: presentationTriggerColorSlots(layout).get(key.id),
-                  },
-                ]),
-              );
-              return (
-                <section className="input-layer-card" key={definition.id}>
-                  <h3>
-                    {definition.label}
-                    {definition.presentationModeLabel
-                      ? <small>{definition.presentationModeLabel}</small>
-                      : null}
-                  </h3>
-                  <p>
-                    {triggers.size > 0
-                      ? `trigger: ${[...triggers].map((key) => layout.legends.get(key) ?? key).join(' + ')}`
-                      : 'trigger: —'}
-                  </p>
-                  <PhysicalKeyboard
-                    ariaLabel={`${definition.label} レイヤー`}
-                    geometryId={geometry.id}
-                    keys={visibleKeys}
-                    keyViews={views}
-                    showSecondary={false}
-                    unit={28}
-                  />
-                </section>
-              );
-            })}
-          </div>
         </aside>
-      ) : null}
-      </div>
 
-      <div className="input-inspector">
-        <section>
-          <h2>Pressed</h2>
-          <p>{session.pressedKeys.length > 0 ? session.pressedKeys.join(' + ') : '—'}</p>
-        </section>
-        <section>
-          <h2>Recognized / realized action</h2>
-          <RecognizedDetail recognized={session.lastRecognized} />
+        <section className="input-main">
+          <section className="input-capture-panel">
+            <textarea
+              className="input-output"
+              value={session.text}
+              readOnly
+              rows={3}
+              aria-label="自由入力テキスト"
+              aria-describedby="input-capture-help"
+              data-active={session.active || undefined}
+              ref={session.captureRef}
+              placeholder="ここをクリックして、そのまま打鍵する。"
+            />
+            <p className="input-capture-hint" id="input-capture-help">
+              {session.active ? '入力受付中。' : '入力欄をクリックして入力開始。'}
+              {' '}Backspaceで1文字削除、Enterで改行、
+              {escapeIsLayoutInput ? 'Escは配列入力として扱う。' : 'Escで入力解除。'}
+              {session.composing ? ' IME composition中は認識を停止している。' : ''}
+            </p>
+          </section>
+
+          <section className="input-keyboard-panel">
+            <header className="input-keyboard-heading">
+              <strong>Keyboard</strong>
+              <p
+                className="input-active-layer"
+                data-active={activeDefinitions.length > 0 || undefined}
+              >
+                <span>現在</span>
+                <strong>
+                  {activeDefinitions.length > 0
+                    ? activeDefinitions.map((definition) => definition.label).join(' / ')
+                    : '通常'}
+                </strong>
+              </p>
+            </header>
+            <div className="input-keyboard-main">
+              <PhysicalKeyboard
+                ariaLabel="現在の物理キー状態"
+                geometryId={geometry.id}
+                keys={visibleKeys}
+                keyViews={keyboardViews}
+              />
+            </div>
+            <div className="input-assist-slot" data-reserved="reverse-lookup" />
+          </section>
+
+          <details className="input-debug">
+            <summary>入力詳細</summary>
+            <div className="input-inspector">
+              <section>
+                <h2>Pressed</h2>
+                <p>{session.pressedKeys.length > 0 ? session.pressedKeys.join(' + ') : '—'}</p>
+              </section>
+              <section>
+                <h2>Recognized / realized action</h2>
+                <RecognizedDetail recognized={session.lastRecognized} />
+              </section>
+            </div>
+          </details>
         </section>
       </div>
-
-      <p className="input-note">
-        canonical SemanticInputを使い、通常Shift・単打・prefix / suffix・simultaneous・hold・
-        multi-step / composed outputまで実入力で扱う。ローマ字→かな変換や時間依存semanticは
-        別能力として必要になった段階で追加する。
-      </p>
     </section>
   );
 }
