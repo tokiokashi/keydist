@@ -1361,6 +1361,11 @@ function conditionRow(
 
     fields.append(holdLabel, actionLabel);
 
+    const actionTargetHeading = document.createElement('div');
+    actionTargetHeading.className = 'condition-trigger-subheading';
+    actionTargetHeading.textContent = '独立action化する対象';
+    fields.append(actionTargetHeading);
+
     const relevantClasses: TriggerActivationClass[] = layout
       ? [...new Set(triggerActivationGroups(layout).map((group) => group.activationClass))]
       : ['prepress-required', 'order-free'];
