@@ -29,6 +29,8 @@ export interface Key extends Point {
   row: number;
   col: number;
   finger: Finger;
+  /** 表示上のキー幅 [u]。通常キーは1。 */
+  width?: number;
 }
 
 export interface Geometry {
@@ -179,6 +181,8 @@ export interface ExtraPhysicalKeySpec {
   /** 物理座標 [u] */
   x: number;
   y: number;
+  /** 表示上のキー幅 [u]。省略時1。 */
+  width?: number;
 }
 
 /**
@@ -306,7 +310,7 @@ export function buildGeometry(
 
   // Tab / Esc等のgrid外physical key。shapeは座標、assignmentは運指だけを所有する。
   for (const spec of s.extraKeys ?? []) {
-    if (keys.has(spec.id)) {
+    if (keys.has(spec.id) || s.thumbs.some((thumb) => thumb.id === spec.id)) {
       throw new Error(`形状「${s.id}」の追加キー ${spec.id} が既存キーと重複している`);
     }
     const finger = assignment.keyFinger[spec.id];
@@ -321,6 +325,7 @@ export function buildGeometry(
       x: spec.x,
       y: spec.y,
       finger,
+      ...(spec.width === undefined ? {} : { width: spec.width }),
     });
   }
 
