@@ -38,6 +38,8 @@ export type InputClassification =
 export interface KeyRole {
   key: PhysicalKeyId;
   role: SemanticRole;
+  /** modifierとして参加するlogical semantic group。physical key固有ではなく入力path上の役割。 */
+  modifierGroupId?: string;
 }
 
 export interface FaceMembership {
@@ -50,9 +52,8 @@ export interface SemanticInput {
   physicalKeys: readonly PhysicalKeyId[];
   requirements: readonly Requirement[];
   capabilities: readonly InputCapability[];
-  layerId: string;
-  /** trigger policy用のcanonical logical group。presentation layerとは独立。 */
-  triggerGroupId?: string;
+  /** 集計・表示上の帰属先。入力成立semanticやpolicy selectorには使わない。 */
+  aggregationGroupId: string;
   /** authoring intent / analysis classification。activation identityには含めない。 */
   classifications: readonly InputClassification[];
   roles: readonly KeyRole[];
