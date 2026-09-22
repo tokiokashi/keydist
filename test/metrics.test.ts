@@ -44,7 +44,7 @@ test('Metricsは数値を算出した測定条件をスナップショットで�
       bridgeSameFinger: true,
     },
     triggerRealizationPolicy: { useHold: true },
-    actionRealizationPolicy: { triggerActivation: 'separate' },
+    actionRealizationPolicy: { triggerActivation: 'semantic', triggerActivationClassOverrides: { 'order-free': 'separate' } },
     romajiRuleId: 'qwerty',
   });
 
@@ -61,7 +61,7 @@ test('Metricsは数値を算出した測定条件をスナップショットで�
       bridgeSameFinger: true,
     },
     triggerRealizationPolicy: { useHold: true },
-    actionRealizationPolicy: { triggerActivation: 'separate' },
+    actionRealizationPolicy: { triggerActivation: 'semantic', triggerActivationClassOverrides: { 'order-free': 'separate' } },
     romajiRuleId: 'qwerty',
   });
 });
@@ -228,11 +228,11 @@ test('1キー率はActionRealizationPolicy適用後の共通Stroke streamを数�
   const asuka = LAYOUT_BY_ID.get('asuka')!;
   const combinedTrace = evaluate('あだ', asuka, geometry, opts({
     triggerRealizationPolicy: { useHold: true },
-    actionRealizationPolicy: { triggerActivation: 'combined' },
+    actionRealizationPolicy: { triggerActivation: 'disabled' },
   }));
   const separateTrace = evaluate('あだ', asuka, geometry, opts({
     triggerRealizationPolicy: { useHold: true },
-    actionRealizationPolicy: { triggerActivation: 'separate' },
+    actionRealizationPolicy: { triggerActivation: 'semantic', triggerActivationClassOverrides: { 'order-free': 'separate' } },
   }));
   const baseConditions = {
     ...DEFAULT_METRIC_CONDITIONS,
@@ -241,11 +241,11 @@ test('1キー率はActionRealizationPolicy適用後の共通Stroke streamを数�
 
   const combined = computeMetrics(combinedTrace, geometry, {
     ...baseConditions,
-    actionRealizationPolicy: { triggerActivation: 'combined' },
+    actionRealizationPolicy: { triggerActivation: 'disabled' },
   });
   const separate = computeMetrics(separateTrace, geometry, {
     ...baseConditions,
-    actionRealizationPolicy: { triggerActivation: 'separate' },
+    actionRealizationPolicy: { triggerActivation: 'semantic', triggerActivationClassOverrides: { 'order-free': 'separate' } },
   });
 
   assert.equal(combinedTrace.strokes.length, 2);
