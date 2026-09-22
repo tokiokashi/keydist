@@ -424,6 +424,23 @@ test('TK音直入力法はかなを直接表示しcomboと拗音contextを認識
   await expect(output).toHaveValue('きゃ');
 });
 
+test('打ち方逆引きは配列ごとのcanonical inputを表示する', async ({ page }) => {
+  await page.goto('/input');
+  const feature = page.locator('.input-feature');
+  const lookup = page.getByLabel('打ちたい文字');
+  const results = page.getByLabel('打ち方逆引き').locator('.input-lookup-results');
+
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await lookup.fill('ぎゃ');
+  await expect(results).toContainText('H + J + W');
+
+  await page.getByLabel('配列', { exact: true }).selectOption('oonishi-custom-combo');
+  await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom-combo');
+  await lookup.fill('です');
+  await expect(results).toContainText('M + L');
+  await expect(results).toContainText('コンボ');
+});
+
 test('かわせみ配列+の同時押しをbrowser lifecycleでも認識する', async ({ page }) => {
   await page.goto('/input');
   const feature = page.locator('.input-feature');
