@@ -568,7 +568,7 @@ function pressCost(
   if (gap <= 1) {
     const onHome = target.x === home.x && target.y === home.y;
     return {
-      distance: !options.sfbHomeCost && onHome ? 0 : dStay,
+      distance: !options.sfbHomeCost && onHome && press.sfb ? 0 : dStay,
       stay: true,
     };
   }
