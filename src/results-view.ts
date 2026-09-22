@@ -884,6 +884,8 @@ function renderLayerSvg(
   const KEY = 30;
   const PAD = 6;
   const THUMB_W = 1.9;
+  let minX = 0;
+  let minY = 0;
   let maxX = 0;
   let maxY = 0;
 
@@ -896,6 +898,8 @@ function renderLayerSvg(
     const w = widthU * KEY;
     const x = (key.x - (widthU - 1) / 2) * KEY;
     const y = key.y * KEY;
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
     maxX = Math.max(maxX, x + w);
     maxY = Math.max(maxY, y + KEY);
     const cell = labels.get(key.id);
@@ -960,13 +964,15 @@ function renderLayerSvg(
   });
 
   // 実寸を属性で持たせ、CSS側（.fig-fixed）で引き伸ばさずに置く
-  const W = maxX + PAD;
-  const H = maxY + PAD;
+  const viewX = minX - PAD / 2;
+  const viewY = minY - PAD / 2;
+  const W = maxX - minX + PAD;
+  const H = maxY - minY + PAD;
   const caption = showHeat ? `${title}・打鍵頻度` : title;
   const ariaLabel = `${caption}${values.ariaSuffix}`;
   return `<figure class="layer-diagram" style="width:${W}px">
     <figcaption>${escapeText(caption)}</figcaption>
-    <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
+    <svg viewBox="${viewX} ${viewY} ${W} ${H}" width="${W}" height="${H}" role="img"
       aria-label="${escapeAttr(ariaLabel)}">${keys.join('')}</svg>
   </figure>`;
 }
