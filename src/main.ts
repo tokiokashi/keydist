@@ -90,12 +90,19 @@ import { setLayoutGeometryOverride } from './condition-resolution.ts';
 import type { ChainPolicy } from './analysis-chain.ts';
 import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
 import {
-  classifyTriggerActivation,
   DEFAULT_TRIGGER_ACTIVATION_GROUPINGS,
-  type SemanticInput,
+  type ActionRealizationPolicy,
   type TriggerActivationClass,
   type TriggerActivationGrouping,
+  type TriggerRealizationPolicy,
 } from './core/semantic-input/index.ts';
+import {
+  sameModifierGroupSelector,
+  samePhysicalTriggerSelector,
+  triggerActivationGroups,
+  triggerActivationLogicalGroups,
+  TRIGGER_ACTIVATION_CLASS_LABELS,
+} from './trigger-activation-groups.ts';
 import {
   conditionBundleFromState,
   parseConditionBundle,
@@ -1212,138 +1219,6 @@ function conditionNumber(
   parent.append(input);
 }
 
-interface TriggerActivationGroup {
-  readonly modifierGroupIds: readonly string[];
-  readonly triggerKeys: readonly string[];
-  readonly label: string;
-  readonly activationClass: TriggerActivationClass;
-}
-
-interface TriggerActivationLogicalGroup {
-  readonly modifierGroupIds: readonly string[];
-  readonly label: string;
-  readonly activationClasses: readonly TriggerActivationClass[];
-  readonly groups: readonly TriggerActivationGroup[];
-}
-
-function canonicalTriggerKeys(keys: readonly string[]): string[] {
-  return [...new Set(keys)].sort();
-}
-
-function canonicalModifierGroupIds(groupIds: readonly string[]): string[] {
-  return [...new Set(groupIds)].sort((left, right) => left.localeCompare(right, 'ja'));
-}
-
-function modifierGroupIdsForTriggerKeys(
-  input: SemanticInput,
-  triggerKeys: readonly string[],
-): string[] {
-  const trigger = new Set(canonicalTriggerKeys(triggerKeys));
-  return canonicalModifierGroupIds(input.roles.flatMap((role) =>
-    role.role === 'modifier'
-      && role.modifierGroupId !== undefined
-      && trigger.has(role.key)
-      ? [role.modifierGroupId]
-      : []));
-}
-
-function samePhysicalTriggerSelector(
-  selector: {
-    readonly modifierGroupIds?: readonly string[];
-    readonly triggerKeys?: readonly string[];
-  },
-  group: TriggerActivationGroup,
-): boolean {
-  if (selector.triggerKeys === undefined) return false;
-  const left = canonicalTriggerKeys(selector.triggerKeys);
-  const right = canonicalTriggerKeys(group.triggerKeys);
-  if (left.length !== right.length || left.some((key, index) => key !== right[index])) return false;
-  if (selector.modifierGroupIds === undefined) return true;
-  const leftGroups = canonicalModifierGroupIds(selector.modifierGroupIds);
-  const rightGroups = canonicalModifierGroupIds(group.modifierGroupIds);
-  return leftGroups.length === rightGroups.length
-    && leftGroups.every((groupId, index) => groupId === rightGroups[index]);
-}
-
-function sameModifierGroupSelector(
-  selector: { readonly modifierGroupIds?: readonly string[]; readonly triggerKeys?: readonly string[] },
-  groupIds: readonly string[],
-): boolean {
-  if (selector.triggerKeys !== undefined || selector.modifierGroupIds === undefined) return false;
-  const left = canonicalModifierGroupIds(selector.modifierGroupIds);
-  const right = canonicalModifierGroupIds(groupIds);
-  return left.length === right.length && left.every((groupId, index) => groupId === right[index]);
-}
-
-function triggerActivationGroups(layout: Layout): TriggerActivationGroup[] {
-  const groups = new Map<string, TriggerActivationGroup>();
-  for (const alternatives of layout.canonicalInputs.values()) {
-    for (const alternative of alternatives) {
-      for (const realization of alternative.baseRealizations) {
-        if (realization.input.classifications.includes('composition')) continue;
-        const candidates = [
-          {
-            triggerKeys: realization.defaultTriggerKeys ?? [],
-            outputKeys: realization.defaultOutputKeys,
-          },
-          ...(realization.alternateParticipations?.map((view) => ({
-            triggerKeys: view.triggerKeys,
-            outputKeys: view.outputKeys,
-          })) ?? []),
-        ];
-        for (const candidate of candidates) {
-          const triggerKeys = canonicalTriggerKeys(candidate.triggerKeys);
-          if (triggerKeys.length === 0 || candidate.outputKeys.length === 0) continue;
-          const modifierGroupIds = modifierGroupIdsForTriggerKeys(realization.input, triggerKeys);
-          const activationClass = classifyTriggerActivation(
-            realization.input,
-            triggerKeys,
-            candidate.outputKeys,
-          );
-          const identity = [
-            modifierGroupIds.join('\u0000'),
-            activationClass,
-            triggerKeys.join('\u0000'),
-          ].join('\u0001');
-          if (groups.has(identity)) continue;
-          const logicalLabel = modifierGroupIds.length > 0
-            ? modifierGroupIds.join(' + ')
-            : '未分類modifier';
-          groups.set(identity, {
-            modifierGroupIds,
-            triggerKeys,
-            label: `${logicalLabel}: ${triggerKeys.join(' + ')}`,
-            activationClass,
-          });
-        }
-      }
-    }
-  }
-  return [...groups.values()].sort((left, right) => left.label.localeCompare(right.label, 'ja'));
-}
-
-function triggerActivationLogicalGroups(layout: Layout): TriggerActivationLogicalGroup[] {
-  const byLogical = new Map<string, TriggerActivationGroup[]>();
-  for (const group of triggerActivationGroups(layout)) {
-    if (group.modifierGroupIds.length === 0) continue;
-    const identity = group.modifierGroupIds.join('\u0000');
-    const values = byLogical.get(identity) ?? [];
-    values.push(group);
-    byLogical.set(identity, values);
-  }
-  return [...byLogical.values()].map((groups) => ({
-    modifierGroupIds: groups[0].modifierGroupIds,
-    label: groups[0].modifierGroupIds.join(' + '),
-    activationClasses: [...new Set(groups.map((group) => group.activationClass))],
-    groups,
-  })).sort((left, right) => left.label.localeCompare(right.label, 'ja'));
-}
-
-const TRIGGER_ACTIVATION_CLASS_LABELS: Record<TriggerActivationClass, string> = {
-  'prepress-required': '先押し必須',
-  'order-free': '押し順不問',
-  'postpress-required': '後押し必須',
-};
 
 function groupingSelect(
   current: TriggerActivationGrouping | undefined,
@@ -1461,7 +1336,7 @@ function conditionRow(
     const realization = value('triggerRealization');
     const action = value('actionRealization');
     const fields = document.createElement('div');
-    fields.className = 'condition-fields';
+    fields.className = 'condition-fields condition-trigger-fields';
 
     const holdLabel = document.createElement('label');
     const holdInput = document.createElement('input');
@@ -1485,6 +1360,11 @@ function conditionRow(
     actionLabel.append(actionInput, ' trigger押下の独立action化を有効にする');
 
     fields.append(holdLabel, actionLabel);
+
+    const actionTargetHeading = document.createElement('div');
+    actionTargetHeading.className = 'condition-trigger-subheading';
+    actionTargetHeading.textContent = '独立action化する対象';
+    fields.append(actionTargetHeading);
 
     const relevantClasses: TriggerActivationClass[] = layout
       ? [...new Set(triggerActivationGroups(layout).map((group) => group.activationClass))]
@@ -1521,7 +1401,7 @@ function conditionRow(
         details.append(summary);
 
         const logicalFields = document.createElement('div');
-        logicalFields.className = 'condition-fields';
+        logicalFields.className = 'condition-fields condition-trigger-fields';
         for (const logical of logicalGroups) {
           const label = document.createElement('label');
           label.append(`${logical.label} `);
@@ -1561,7 +1441,7 @@ function conditionRow(
         physicalSummary.textContent = '物理trigger単位の詳細';
         physicalDetails.append(physicalSummary);
         const physicalFields = document.createElement('div');
-        physicalFields.className = 'condition-fields';
+        physicalFields.className = 'condition-fields condition-trigger-fields';
         for (const group of triggerActivationGroups(layout)) {
           if (group.activationClass === 'postpress-required') continue;
           const label = document.createElement('label');
@@ -1914,6 +1794,8 @@ function playbackViewUiState(): UiStateV1 {
   const playback = layoutConditions?.playback;
   const chain = layoutConditions?.chain ?? uiState.conditions.defaults.chain;
   const arpeggioPolicy = layoutConditions?.arpeggioPolicy ?? uiState.conditions.defaults.arpeggioPolicy;
+  const triggerRealization = layoutConditions?.triggerRealization ?? uiState.conditions.defaults.triggerRealization;
+  const actionRealization = layoutConditions?.actionRealization ?? uiState.conditions.defaults.actionRealization;
   return {
     ...uiState,
     ui: {
@@ -1929,6 +1811,8 @@ function playbackViewUiState(): UiStateV1 {
         ...uiState.conditions.defaults,
         chain,
         arpeggioPolicy,
+        triggerRealization,
+        actionRealization,
       },
     },
   };
@@ -1986,6 +1870,38 @@ function updateArpeggioPolicy(policy: ArpeggioPolicy): void {
   });
 }
 
+function updateTriggerRealizationPolicy(policy: TriggerRealizationPolicy): void {
+  const layoutId = currentPlaybackLayoutId();
+  updateUiState((draft) => {
+    const hasLayoutOverride = layoutId !== undefined
+      && conditionOverrideEnabled(layoutId, draft);
+    if (hasLayoutOverride && layoutId) {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        triggerRealization: structuredClone(policy),
+      };
+    } else {
+      draft.conditions.defaults.triggerRealization = structuredClone(policy);
+    }
+  });
+}
+
+function updateActionRealizationPolicy(policy: ActionRealizationPolicy): void {
+  const layoutId = currentPlaybackLayoutId();
+  updateUiState((draft) => {
+    const hasLayoutOverride = layoutId !== undefined
+      && conditionOverrideEnabled(layoutId, draft);
+    if (hasLayoutOverride && layoutId) {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        actionRealization: structuredClone(policy),
+      };
+    } else {
+      draft.conditions.defaults.actionRealization = structuredClone(policy);
+    }
+  });
+}
+
 function setPlaybackLayoutOverride(enabled: boolean): void {
   const layoutId = currentPlaybackLayoutId();
   if (!layoutId) return;
@@ -2006,6 +1922,10 @@ playbackView = createPlaybackView({
   updateChainPolicy,
   getArpeggioPolicy: () => playbackViewUiState().conditions.defaults.arpeggioPolicy,
   updateArpeggioPolicy,
+  getTriggerRealizationPolicy: () => playbackViewUiState().conditions.defaults.triggerRealization,
+  updateTriggerRealizationPolicy,
+  getActionRealizationPolicy: () => playbackViewUiState().conditions.defaults.actionRealization,
+  updateActionRealizationPolicy,
   refreshAnalysis: render,
   openCalibration: () => calibrationDialog.open(),
   openCalibrationEdit: () => calibrationDialog.openEdit(),

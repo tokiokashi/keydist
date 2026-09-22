@@ -914,6 +914,39 @@ dialog::backdrop { background: rgb(0 0 0 / 0.38); }
 .condition-grid select { width: min(100%, 260px); padding: 3px 5px; }
 .condition-fields, .condition-delay-fields { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 12px; }
 .condition-fields label, .condition-delay-fields label { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 0.76rem; }
+.condition-trigger-fields {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 7px;
+  width: 100%;
+}
+.condition-trigger-fields > label {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.condition-trigger-fields > label > select {
+  width: 13.5em;
+  flex: 0 0 13.5em;
+}
+.condition-trigger-fields > details {
+  width: 100%;
+}
+.condition-trigger-fields > details > summary {
+  width: 100%;
+}
+.condition-trigger-subheading {
+  width: 100%;
+  margin-top: 4px;
+  padding-top: 7px;
+  border-top: 1px solid var(--line);
+  color: var(--fg);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
 .condition-fields input[type='number'], .condition-delay-fields input[type='number'] { width: 5.2em; padding: 3px 4px; font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line-strong); border-radius: 4px; }
 .condition-arpeggio-fields { align-items: flex-start; }
 .condition-arpeggio-fields details { min-width: 100%; margin-top: 3px; }
