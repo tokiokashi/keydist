@@ -25,7 +25,7 @@ export interface ActionRealizationPolicy {
    */
   readonly triggerActivation: TriggerActivationGrouping;
   /** layout内のtrigger groupごとの例外。先頭一致を採用する。 */
-  readonly triggerActivationOverrides: readonly TriggerActivationOverride[];
+  readonly triggerActivationOverrides?: readonly TriggerActivationOverride[];
 }
 
 export const DEFAULT_ACTION_REALIZATION_POLICY: ActionRealizationPolicy = {
@@ -57,9 +57,11 @@ export function sameActionRealizationPolicy(
   right: ActionRealizationPolicy,
 ): boolean {
   if (left.triggerActivation !== right.triggerActivation) return false;
-  if (left.triggerActivationOverrides.length !== right.triggerActivationOverrides.length) return false;
-  return left.triggerActivationOverrides.every((override, index) => {
-    const candidate = right.triggerActivationOverrides[index];
+  const leftOverrides = left.triggerActivationOverrides ?? [];
+  const rightOverrides = right.triggerActivationOverrides ?? [];
+  if (leftOverrides.length !== rightOverrides.length) return false;
+  return leftOverrides.every((override, index) => {
+    const candidate = rightOverrides[index];
     return candidate !== undefined
       && override.grouping === candidate.grouping
       && sameSelector(override.selector, candidate.selector);
@@ -93,7 +95,7 @@ const groupingFor = (
   action: RealizedSemanticAction,
   policy: ActionRealizationPolicy,
 ): TriggerActivationGrouping =>
-  policy.triggerActivationOverrides.find((override) => selectorMatches(override.selector, action))
+  policy.triggerActivationOverrides?.find((override) => selectorMatches(override.selector, action))
     ?.grouping
   ?? policy.triggerActivation;
 
