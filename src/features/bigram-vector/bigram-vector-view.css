@@ -168,13 +168,12 @@
 }
 
 .flow-vector-layer {
-  mix-blend-mode: screen;
+  pointer-events: none;
 }
 
 .flow-edge {
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: drop-shadow(0 0 5px currentColor);
 }
 
 .flow-edge-left {
@@ -408,7 +407,6 @@
 
 .relative-vector {
   stroke-linecap: round;
-  filter: drop-shadow(0 0 4px currentColor);
 }
 
 .relative-vector-inward {
@@ -458,8 +456,9 @@
   filter: drop-shadow(0 0 6px rgb(255 248 200 / 42%));
 }
 
-.mean-marker {
+.mean-endpoint {
   fill: #f6f3dc;
+  filter: drop-shadow(0 0 4px rgb(255 248 200 / 34%));
 }
 
 .flow-roll-legend {
