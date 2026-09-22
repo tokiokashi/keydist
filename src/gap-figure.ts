@@ -284,7 +284,7 @@ export function gapFigure(geometry: Geometry): string {
   });
 
   const boardInside = board(geometry, {
-    caption: '「meru」— 間に2打鍵。窓の内側',
+    caption: '「meru」— 3入力単位先。窓の内側',
     seq: [at(12), at(13), at(14), at(15)],
     focus: [12, 15],
     arrows: [
@@ -294,13 +294,13 @@ export function gapFigure(geometry: Geometry): string {
   });
 
   const boardOutside = board(geometry, {
-    caption: '「uwoatu」— 間に4打鍵。窓の外',
+    caption: '「uwoatu」— 5入力単位先。窓の外',
     seq: [at(6), at(7), at(8), at(9), at(10), at(11)],
     focus: [6, 11],
     arrows: [
       { fromKey: homeId, toKey: 'u', adopted: true, label: `d(${homeId},u) = ${u(at(11).distance)}` },
     ],
-    notes: [`残っていれば${u(between('u', 'u'))}だが、g=${at(11).gap}>Nなので候補にならない`],
+    notes: [`残っていれば${u(between('u', 'u'))}だが、Δ=${at(11).gap}>Nなので候補にならない`],
   });
 
   const boardSfb = board(geometry, {
@@ -340,18 +340,18 @@ export function gapFigure(geometry: Geometry): string {
         ${boardUToM}
       </li>
       <li>
-        ${para(`次のm→uはあいだに2打鍵分のキーが含まれますがN=${FIGURE_WINDOW}の範囲内であるため、${homeId}→uの距離とm→uの距離の大小を比較して短い方を移動距離とします。当然ホームからの方が近いのでそちらが採用されますが、これは他の指が動いているあいだに人差し指はホームポジションに戻れていると考えるためです。`)}
+        ${para(`次のm→uは3 selected input units先で、N=${FIGURE_WINDOW}の範囲内です。そのため${homeId}→uの距離とm→uの距離を比較して短い方を移動距離とします。当然ホームからの方が近いのでそちらが採用されますが、これは他の入力を処理しているあいだに人差し指はホームポジションに戻れていると考えるためです。`)}
         ${boardInside}
       </li>
       <li>
-        ${para(`ここで「jouho<b><i>u</i></b>woat<b><i>u</i></b>meru」の部分にも人差し指の繋がりが見つかります。2つの<b><i>u</i></b>のあいだの打鍵数は${at(11).gap}となりますが、設定している${at(11).gap}&gt;Nとなり、指を残していないと判定されてその移動距離は${homeId}→uの距離dとなります。`)}
+        ${para(`ここで「jouho<b><i>u</i></b>woat<b><i>u</i></b>meru」の部分にも人差し指の繋がりが見つかります。2つの<b><i>u</i></b>はselected input unitで${at(11).gap}先となり、${at(11).gap}&gt;Nなので、指を残していないと判定されてその移動距離は${homeId}→uの距離dとなります。`)}
         ${para(`仮にこの<b><i>u</i></b>同士のあいだに人差し指を動かさなくてよいと先読みができる（${at(11).gap}≤N）のであれば、2つ目の<b><i>u</i></b>にかかる移動距離はd=${u(between('u', 'u'))}となります。`)}
         ${boardOutside}
       </li>
     </ol>
     ${callout('note', '', [
-      'あいだに含まれる打鍵数gに対して1≤g≤Nの場合に、この比較が発生するということになります。',
-      '5打鍵先まで先読みすると設定したい場合N=4となるので注意が必要です。',
+      '前回その指を使ったselected logical input unitからの距離Δに対して2≤Δ≤Nの場合に、この比較が発生します。',
+      'Nは1始まりの先読み距離です。5入力単位先まで先読みしたい場合は、そのままN=5と設定します。',
     ])}
 
     <h3>連続打鍵でホームポジションのキーを押す場合</h3>
