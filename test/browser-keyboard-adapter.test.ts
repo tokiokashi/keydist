@@ -12,6 +12,8 @@ test('browser adapterはKeyboardEvent.codeをQWERTY物理keyへ変換する', ()
   assert.equal(browserCodeToPhysicalKey('Space'), 'thumb-r');
   assert.equal(browserCodeToPhysicalKey('Convert'), 'thumb-r');
   assert.equal(browserCodeToPhysicalKey('NonConvert'), 'thumb-l');
+  assert.equal(browserCodeToPhysicalKey('ShiftLeft'), 'shift-l');
+  assert.equal(browserCodeToPhysicalKey('ShiftRight'), 'shift-r');
   assert.equal(browserCodeToPhysicalKey('ArrowLeft'), undefined);
 });
 
