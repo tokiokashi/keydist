@@ -22,6 +22,12 @@ test('運指と物理形状をJSONへ書き出して復元できる', () => {
   settings.shape.rowStagger = [0, 0.4, 0.8, 1.1];
   settings.shape.columnStagger = [0.1, 0, 0.2];
   settings.shape.thumbs[0].col = 3.25;
+  settings.shape.extraKeys = [
+    { id: 'escape', x: -1, y: 0, row: 0, col: -1, width: 1 },
+    { id: 'tab', x: -0.25, y: 1, row: 1, col: -1, width: 1.5 },
+  ];
+  settings.assignment.keyFinger.escape = 'LP';
+  settings.assignment.keyFinger.tab = 'LP';
 
   const restored = parseGeometrySettings(serializeGeometrySettings(settings));
   assert.deepEqual(restored, settings);
@@ -80,4 +86,37 @@ test('通常の自作配列でもhomeKeysをLayoutへ保持する', () => {
   };
   const layout = toLayout(def);
   assert.deepEqual(layout.homeKeys, def.homeKeys);
+});
+
+
+test('extra physical keyはshape座標とFingerAssignmentを分離したままsanitizeされる', () => {
+  const settings = sanitizeGeometrySettings({
+    shape: {
+      ...structuredClone(DEFAULT_GEOMETRY_SETTINGS.shape),
+      id: 'shape-extra',
+      extraKeys: [
+        { id: 'escape', x: -1, y: 0, row: 0, col: -1 },
+        { id: 'tab', x: -0.25, y: 1, row: 1, col: -1, width: 1.5 },
+      ],
+    },
+    assignment: {
+      ...structuredClone(DEFAULT_GEOMETRY_SETTINGS.assignment),
+      id: 'extra-assignment',
+      keyFinger: {
+        ...DEFAULT_GEOMETRY_SETTINGS.assignment.keyFinger,
+        escape: 'LP',
+        tab: 'LR',
+      },
+    },
+  });
+
+  assert.deepEqual(settings.shape.extraKeys?.map((key) => key.id), ['escape', 'tab']);
+  assert.equal(settings.assignment.keyFinger.escape, 'LP');
+  assert.equal(settings.assignment.keyFinger.tab, 'LR');
+
+  const geometry = buildGeometry(settings.shape, settings.assignment);
+  assert.equal(geometry.keys.get('escape')?.finger, 'LP');
+  assert.equal(geometry.keys.get('tab')?.finger, 'LR');
+  assert.equal(geometry.keys.get('tab')?.width, 1.5);
+  assert.equal(geometry.grid.flat().some((key) => key.id === 'tab'), false);
 });
