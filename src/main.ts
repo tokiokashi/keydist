@@ -91,8 +91,10 @@ import type { ChainPolicy } from './analysis-chain.ts';
 import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
 import {
   DEFAULT_TRIGGER_ACTIVATION_GROUPINGS,
+  type ActionRealizationPolicy,
   type TriggerActivationClass,
   type TriggerActivationGrouping,
+  type TriggerRealizationPolicy,
 } from './core/semantic-input/index.ts';
 import {
   sameModifierGroupSelector,
@@ -1787,6 +1789,8 @@ function playbackViewUiState(): UiStateV1 {
   const playback = layoutConditions?.playback;
   const chain = layoutConditions?.chain ?? uiState.conditions.defaults.chain;
   const arpeggioPolicy = layoutConditions?.arpeggioPolicy ?? uiState.conditions.defaults.arpeggioPolicy;
+  const triggerRealization = layoutConditions?.triggerRealization ?? uiState.conditions.defaults.triggerRealization;
+  const actionRealization = layoutConditions?.actionRealization ?? uiState.conditions.defaults.actionRealization;
   return {
     ...uiState,
     ui: {
@@ -1802,6 +1806,8 @@ function playbackViewUiState(): UiStateV1 {
         ...uiState.conditions.defaults,
         chain,
         arpeggioPolicy,
+        triggerRealization,
+        actionRealization,
       },
     },
   };
@@ -1859,6 +1865,38 @@ function updateArpeggioPolicy(policy: ArpeggioPolicy): void {
   });
 }
 
+function updateTriggerRealizationPolicy(policy: TriggerRealizationPolicy): void {
+  const layoutId = currentPlaybackLayoutId();
+  updateUiState((draft) => {
+    const hasLayoutOverride = layoutId !== undefined
+      && conditionOverrideEnabled(layoutId, draft);
+    if (hasLayoutOverride && layoutId) {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        triggerRealization: structuredClone(policy),
+      };
+    } else {
+      draft.conditions.defaults.triggerRealization = structuredClone(policy);
+    }
+  });
+}
+
+function updateActionRealizationPolicy(policy: ActionRealizationPolicy): void {
+  const layoutId = currentPlaybackLayoutId();
+  updateUiState((draft) => {
+    const hasLayoutOverride = layoutId !== undefined
+      && conditionOverrideEnabled(layoutId, draft);
+    if (hasLayoutOverride && layoutId) {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        actionRealization: structuredClone(policy),
+      };
+    } else {
+      draft.conditions.defaults.actionRealization = structuredClone(policy);
+    }
+  });
+}
+
 function setPlaybackLayoutOverride(enabled: boolean): void {
   const layoutId = currentPlaybackLayoutId();
   if (!layoutId) return;
@@ -1879,6 +1917,10 @@ playbackView = createPlaybackView({
   updateChainPolicy,
   getArpeggioPolicy: () => playbackViewUiState().conditions.defaults.arpeggioPolicy,
   updateArpeggioPolicy,
+  getTriggerRealizationPolicy: () => playbackViewUiState().conditions.defaults.triggerRealization,
+  updateTriggerRealizationPolicy,
+  getActionRealizationPolicy: () => playbackViewUiState().conditions.defaults.actionRealization,
+  updateActionRealizationPolicy,
   refreshAnalysis: render,
   openCalibration: () => calibrationDialog.open(),
   openCalibrationEdit: () => calibrationDialog.openEdit(),
