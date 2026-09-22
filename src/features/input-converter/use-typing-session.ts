@@ -11,7 +11,11 @@ import {
   type TypingInputResult,
 } from '../../core/input-converter/index.ts';
 import type { Layout } from '../../layouts/index.ts';
-import { browserKeyboardEventToPhysicalKeyEvent } from './browser-keyboard-adapter.ts';
+import { physicalKeysUsedByLayout } from '../../layout-physical-keys.ts';
+import {
+  browserKeyboardEventToPhysicalKeyEvent,
+  shouldCaptureBrowserKeyDown,
+} from './browser-keyboard-adapter.ts';
 import {
   applyRecognizedTypingInputs,
   applyTypingTextEdit,
@@ -37,6 +41,7 @@ export function useTypingSession(layout: Layout): TypingSession {
     }),
     [layout],
   );
+  const ownedPhysicalKeys = useMemo(() => physicalKeysUsedByLayout(layout), [layout]);
 
   const [text, setText] = useState('');
   const [pressedKeys, setPressedKeys] = useState<readonly string[]>([]);
@@ -65,7 +70,9 @@ export function useTypingSession(layout: Layout): TypingSession {
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      const layoutOwnsPhysicalKey = shouldCaptureBrowserKeyDown(event, ownedPhysicalKeys);
+
+      if (event.key === 'Escape' && !layoutOwnsPhysicalKey) {
         event.preventDefault();
         target.blur();
         return;
@@ -93,16 +100,17 @@ export function useTypingSession(layout: Layout): TypingSession {
         }
       }
 
-      const physical = browserKeyboardEventToPhysicalKeyEvent(event);
-      if (physical === undefined) return;
+      if (!layoutOwnsPhysicalKey) return;
 
       event.preventDefault();
+      const physical = browserKeyboardEventToPhysicalKeyEvent(event);
+      if (physical === undefined) return;
       applyResult(engine.handle(physical));
     };
 
     const onKeyUp = (event: KeyboardEvent) => {
       const physical = browserKeyboardEventToPhysicalKeyEvent(event);
-      if (physical === undefined) return;
+      if (physical === undefined || !ownedPhysicalKeys.has(physical.key)) return;
 
       event.preventDefault();
       applyResult(engine.handle(physical));
@@ -144,7 +152,7 @@ export function useTypingSession(layout: Layout): TypingSession {
       window.removeEventListener('blur', onWindowBlur);
       engine.reset();
     };
-  }, [engine, layout.id]);
+  }, [engine, layout.id, ownedPhysicalKeys]);
 
   const clear = () => {
     engine.reset();

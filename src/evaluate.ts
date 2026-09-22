@@ -172,15 +172,17 @@ export function evaluate(
 
   // ローマ字配列はかなテキストを展開してから打つ。コンボの誤命中を防ぐため、
   // 展開前の単位も残しておく。かな配列はそのまま打つ。
+  const rawChars = [...text];
   const chunks = layout.romajiTable ? kanaToRomajiChunks(text, layout.romajiTable) : undefined;
-  const chars = chunks
-    ? chunks.flatMap((chunk) => [...chunk.roman.toLowerCase()])
-    : [...text.toLowerCase()];
+  const chars = (chunks
+    ? chunks.flatMap((chunk) => [...chunk.roman])
+    : rawChars)
+    .map(normalizeEvaluationChar);
   const chunkRanges: RomajiChunkRange[] = [];
   if (chunks) {
     let start = 0;
     for (const chunk of chunks) {
-      const length = [...chunk.roman.toLowerCase()].length;
+      const length = [...chunk.roman].length;
       chunkRanges.push({
         start,
         end: start + length,
@@ -232,7 +234,7 @@ export function evaluate(
         .filter((range) => range.start < inputEnd && inputStart < range.end)
         .map((range) => range.kana)
         .join('')
-      : char;
+      : rawChars.slice(inputStart, inputEnd).join('');
     const inputIndex = chunks
       ? chunkRanges.find((range) => range.start < inputEnd && inputStart < range.end)?.start ?? inputStart
       : inputStart;
@@ -462,14 +464,71 @@ function thumbVariantSignature(
  * authoring defaultを基準に、同じpathの合法なthumb variantだけを比較する。
  * non-thumb alternativeや別方式alternativeはpreferOppositeThumbでは選ばない。
  */
+function shiftVariantSignature(
+  alternative: InputAlternative,
+  shiftKeys: ReadonlySet<string>,
+): string {
+  return inputAlternativeSelectionIdentity(
+    alternative,
+    (key) => shiftKeys.has(resolveKeyId(key)) ? '<shift>' : resolveKeyId(key),
+  );
+}
+
+function oppositeHandShiftScore(
+  alternative: InputAlternative,
+  shiftKeys: ReadonlySet<string>,
+  geometry: Geometry,
+): number {
+  let value = 0;
+  for (const realization of alternative.baseRealizations) {
+    const triggerShifts = (realization.defaultTriggerKeys ?? [])
+      .map(resolveKeyId)
+      .filter((key) => shiftKeys.has(key));
+    if (triggerShifts.length === 0) continue;
+
+    const outputHands = nonThumbHands(
+      realization.defaultOutputKeys
+        .map(resolveKeyId)
+        .filter((key) => !shiftKeys.has(key)),
+      geometry,
+    );
+    if (outputHands.size !== 1) continue;
+    const outputHand = [...outputHands][0];
+
+    for (const shift of triggerShifts) {
+      const finger = geometry.keys.get(shift)?.finger;
+      if (finger === undefined) continue;
+      const shiftHand = finger.startsWith('L') ? 'left' : 'right';
+      value += shiftHand !== outputHand ? 1 : -1;
+    }
+  }
+  return value;
+}
+
 function selectInputAlternative(
   alternatives: InputAlternativeSet,
   layout: Layout,
   geometry: Geometry,
   options: Options,
 ): InputAlternative {
-  const fallback = alternatives[0];
+  let fallback = alternatives[0];
   if (!fallback) throw new Error('canonical input alternativeが空');
+
+  const shiftKeys = new Set((layout.shiftKeys ?? []).map(resolveKeyId));
+  if (shiftKeys.size >= 2) {
+    const family = shiftVariantSignature(fallback, shiftKeys);
+    let selected = fallback;
+    let bestScore = oppositeHandShiftScore(fallback, shiftKeys, geometry);
+    for (const alternative of alternatives.slice(1)) {
+      if (shiftVariantSignature(alternative, shiftKeys) !== family) continue;
+      const score = oppositeHandShiftScore(alternative, shiftKeys, geometry);
+      if (score > bestScore) {
+        selected = alternative;
+        bestScore = score;
+      }
+    }
+    fallback = selected;
+  }
 
   const thumbKeys = new Set((layout.thumbShiftKeys ?? []).map(resolveKeyId));
   if (!options.preferOppositeThumb || thumbKeys.size < 2) return fallback;
@@ -505,9 +564,9 @@ function selectInputAlternative(
 
   const fallbackSignature = thumbVariantSignature(fallback, thumbKeys);
   let selected = fallback;
-  let bestOppositeScore = 0;
+  let bestOppositeScore = score(fallback);
 
-  for (const alternative of alternatives.slice(1)) {
+  for (const alternative of alternatives) {
     if (thumbVariantSignature(alternative, thumbKeys) !== fallbackSignature) continue;
     const candidateScore = score(alternative);
     if (candidateScore > bestOppositeScore) {
@@ -555,6 +614,14 @@ function canFireYouonOnlyCombo(cursor: number, chars: string[], chunks: RomajiCh
   if (cursor === 0 || !/[bcdfghjklmnpqrstvwxyz]/.test(chars[cursor - 1])) return false;
   return chunks.some((chunk) => chunk.kanaLength > 1 && chunk.start < cursor && cursor < chunk.end);
 }
+
+const EVALUATION_CHAR_ALIASES: Readonly<Record<string, string>> = {
+  '！': '!',
+  '？': '?',
+};
+
+const normalizeEvaluationChar = (char: string): string =>
+  EVALUATION_CHAR_ALIASES[char] ?? char;
 
 interface CostDecision {
   distance: number;

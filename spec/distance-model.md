@@ -43,6 +43,13 @@
 各段のキー数（段の数を含む）も形状定義が持つ。既定形状はANSIの英数部に合わせて
 12 / 12 / 11 / 10とする。
 
+Tab / Esc等の4段grid外physical keyは `PhysicalShape.extraKeys` へstable physical key id、
+座標 `(x, y)`、表示幅を持てる。これらは通常gridへ無理に埋め込まず、評価時は他のキーと同じ
+`Geometry.keys` へ入る。**形状は位置を、`FingerAssignment` はそのキーを担当する指を持つ。**
+grid外キーの運指をshapeへ埋め込まない。extra key idはcanonical physical identityそのものを
+保存し、`resolveKeyId(id) === id` を満たす必要がある。`space` のようなlegacy aliasを
+独立したphysical keyとして保存してはならない。
+
 指 `f` のホーム位置を `H_f` と書く。
 
 ### 3.1親指
@@ -65,6 +72,7 @@
 
 - ピッチ、段ごとのxオフセット、列ごとのyオフセット、分割間隔
 - 左右の親指キーの列位置とy座標
+- grid外physical keyのstable id・座標・表示幅
 - 列単位の指割り当てと、列から外れるキー単位の上書き
 
 段ずれ・列オフセット・親指位置・分割間隔は、UIでmmとuを切り替えて入力する。内部の正準値はuであり、
@@ -90,9 +98,10 @@ Sequence = Step[]      順次打鍵。前から順に打つ
 Step     = KeyId[]     同時に押すキーの集合
 ```
 
-キーは **QWERTY刻印**で指す（`d`、`;`、`-`、および親指キーの
-`thumb-l` / `thumb-r`）。旧来の `space` は入力互換のエイリアスとして受け付け、
-canonical化時に `thumb-r` へ解決する。
+標準4段gridのキーは **QWERTY刻印**をphysical idとして指す（`d`、`;`、`-` 等）。
+親指キーは `thumb-l` / `thumb-r`、grid外キーは `tab` / `escape` 等のstable
+physical idを使う。これはlogical output名ではなく物理位置のidentityである。旧来の
+`space` は入力互換のエイリアスとして受け付け、canonical化時に `thumb-r` へ解決する。
 
 配列定義は省略可能な `homeKeys`（非親指の指から物理キーidへの写像）も持てる。
 省略時は物理形状側の既定値を使う。
@@ -197,6 +206,28 @@ authoring defaultを基準に、thumb keyだけが異なる合法variantの中�
 維持し、同じlogical outputのnon-thumb alternativeや別方式pathへこのPolicyだけで切り替えない。
 thumb variant生成時の重複判定はaction groupingだけではなくcanonical alternative全体で行い、
 Requirement / Capability / classification / role / layer / context / origin等が異なるpathを失わない。
+
+英字配列の通常Shiftも同じcanonical pipelineで扱う。大文字と、**現在モデル化しているbase
+physical key**のShift記号はbase keyに `shift-l` / `shift-r` のいずれかを重ねる2つの
+合法alternativeとしてcompileする。各alternativeはbase keyとの `overlap` Requirement、
+Shift keyの `while-held` Capability、`modifierGroupId='Shift'` のmodifier roleを持つ。
+Shiftを押しっぱなしで複数文字へ作用させるかは他のhold-capable triggerと同じ
+`TriggerRealizationPolicy` で決まる。
+
+現時点のbase physical modelにBackquote / Backslashが無いため、US配列の `~` / `|` は
+このIssueでは未対応とする。これはShift semanticの例外ではなく、base physical key自体が
+未モデル化であるためである。
+
+解析時の通常Shiftは、左右variantのうちoutput keyと反対手のShiftを既定で優先する。
+これはcanonical keyの書き換えではなくInput Alternative Selection Policyであり、両pathは
+canonical上に残る。Input Converterでは実際に押された `ShiftLeft` / `ShiftRight` を
+それぞれ `shift-l` / `shift-r` へ写像するため、ユーザーのphysical choiceをそのまま認識する。
+Shift keyのgeometryは既存PhysicalShapeの保存schemaへ混ぜず、bottom rowの実座標から標準Shiftの
+中心位置を派生させる。
+
+全角 `！` / `？` は半角 `!` / `?` と同じ物理入力として評価する。広いNFKC正規化は行わず、
+評価入力境界でこの2文字だけを明示aliasへ写像する。これにより他の全角記号・互換文字を
+意図せずASCIIへ潰さない。Strokeの `inputChar` は元入力を保持する。
 
 ### 4.1同時押しは1ステップとして数える
 

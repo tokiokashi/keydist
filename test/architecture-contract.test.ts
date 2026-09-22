@@ -292,7 +292,9 @@ test('alternative selection identityはcore helperをauthorityにする', async 
   const selectionStart = compilerSource.indexOf('export function inputAlternativeSelectionIdentity');
   const selectionEnd = compilerSource.indexOf('\n}', selectionStart);
   const thumbStart = evaluateSource.indexOf('function thumbVariantSignature');
-  const thumbEnd = evaluateSource.indexOf('function selectInputAlternative', thumbStart);
+  const thumbEnd = evaluateSource.indexOf('function shiftVariantSignature', thumbStart);
+  const shiftStart = thumbEnd;
+  const shiftEnd = evaluateSource.indexOf('function oppositeHandShiftScore', shiftStart);
 
   assert.match(
     evaluateSource,
@@ -304,19 +306,24 @@ test('alternative selection identityはcore helperをauthorityにする', async 
   const identitySource = compilerSource.slice(selectionStart, selectionEnd + 2);
   assert.match(identitySource, /includeFaceMemberships:\s*false/);
 
-  assert.notEqual(thumbStart, -1);
-  assert.notEqual(thumbEnd, -1);
-  const thumbSource = evaluateSource.slice(thumbStart, thumbEnd);
-  for (const pattern of [
-    /JSON\.stringify/,
-    /\.semanticInputs\b/,
-    /\.baseRealizations\b/,
-  ]) {
-    assert.doesNotMatch(
-      thumbSource,
-      pattern,
-      'thumb policy must only provide the physical-key projection to the core selection identity helper',
-    );
+  for (const [start, end, label] of [
+    [thumbStart, thumbEnd, 'thumb'],
+    [shiftStart, shiftEnd, 'shift'],
+  ] as const) {
+    assert.notEqual(start, -1);
+    assert.notEqual(end, -1);
+    const projectionSource = evaluateSource.slice(start, end);
+    for (const pattern of [
+      /JSON\.stringify/,
+      /\.semanticInputs\b/,
+      /\.baseRealizations\b/,
+    ]) {
+      assert.doesNotMatch(
+        projectionSource,
+        pattern,
+        `${label} variant projection must only provide the physical-key projection to the core selection identity helper`,
+      );
+    }
   }
 });
 

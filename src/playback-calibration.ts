@@ -240,9 +240,10 @@ export function calibrationEligibleKeyIds(
   geometry: Geometry,
   legends?: ReadonlyMap<string, string>,
 ): ReadonlySet<string> {
-  if (!legends) return new Set(geometry.keys.keys());
+  const gridKeyIds = new Set(geometry.grid.flat().map((key) => key.id));
+  if (!legends) return gridKeyIds;
   return new Set(
-    [...geometry.keys.keys()].filter((keyId) => {
+    [...gridKeyIds].filter((keyId) => {
       const label = legends.get(keyId);
       return label !== undefined && CALIBRATION_KEY_LABEL_PATTERN.test(label);
     }),
