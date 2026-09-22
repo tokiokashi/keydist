@@ -22,6 +22,10 @@ function Home() {
           <strong>Input</strong>
           <span>Input Converter の新しい実装境界</span>
         </Link>
+        <Link className="route-card" to="/flow">
+          <strong>Bigram Flow</strong>
+          <span>打鍵方向とロール傾向をベクトルで探索</span>
+        </Link>
       </div>
     </section>
   );
