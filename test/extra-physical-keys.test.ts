@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluate } from '../src/evaluate.ts';
+import { TypingInputEngine } from '../src/core/input-converter/index.ts';
 import {
   DEFAULT_GEOMETRY_SETTINGS,
   parseGeometrySettings,
@@ -136,4 +137,22 @@ test('extra key idはgrid・thumb・extra内で重複できない', () => {
     extraKeys: [{ id: 'thumb-l', row: 0, col: -1, x: -1, y: 0 }],
   };
   assert.throws(() => buildGeometry(duplicateThumb, assignment), /重複/);
+});
+
+
+test('browser physical keyをTypingInputEngineまで通してgrid外direct inputを認識できる', () => {
+  const layout = fromKana('extra-key-runtime', 'Extra key runtime', {
+    よ: [['tab']],
+    ろ: [['escape']],
+  });
+  const engine = new TypingInputEngine(layout.canonicalInputs);
+
+  const tabKey = browserCodeToPhysicalKey('Tab');
+  const escapeKey = browserCodeToPhysicalKey('Escape');
+  assert.equal(tabKey, 'tab');
+  assert.equal(escapeKey, 'escape');
+
+  assert.equal(engine.handle({ type: 'down', key: tabKey }).recognized[0]?.output, 'よ');
+  engine.handle({ type: 'up', key: tabKey });
+  assert.equal(engine.handle({ type: 'down', key: escapeKey }).recognized[0]?.output, 'ろ');
 });
