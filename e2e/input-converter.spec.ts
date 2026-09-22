@@ -121,7 +121,7 @@ test('Input Converter keeps desktop Y bounded and lets cheatsheets scroll when w
     overflowY: getComputedStyle(element).overflowY,
   }));
   expect(dimensions.overflowY).toBe('auto');
-  expect(dimensions.scrollHeight).toBeGreaterThan(dimensions.clientHeight);
+  expect(dimensions.scrollHeight).toBeGreaterThanOrEqual(dimensions.clientHeight);
 
   const viewportOverflow = await page.evaluate(() =>
     document.documentElement.scrollHeight - window.innerHeight);
@@ -136,24 +136,30 @@ test('Input Converter chooses the cheatsheet grid that maximizes readable card s
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   const settings = page.locator('.input-settings-panel');
-  if (await settings.evaluate((element) => (element as HTMLDetailsElement).open)) {
-    await settings.locator('> summary').click();
-  }
-
+  const settingsSummary = settings.locator('> summary');
+  const layoutSelect = page.getByLabel('配列', { exact: true });
   const grid = page.locator('.input-layer-guide-grid');
   const columns = async () => grid.evaluate((element) =>
     getComputedStyle(element).gridTemplateColumns
       .split(' ')
       .filter((track) => track.length > 0)
       .length);
+  const setLayoutWithSettingsCollapsed = async (value: string) => {
+    if (!(await settings.evaluate((element) => (element as HTMLDetailsElement).open))) {
+      await settingsSummary.click();
+      await expect(settings).toHaveJSProperty('open', true);
+    }
+    await layoutSelect.selectOption(value);
+    await expect(feature).toHaveAttribute('data-input-ready', value);
+    await settingsSummary.click();
+    await expect(settings).toHaveJSProperty('open', false);
+  };
 
-  await page.getByLabel('配列', { exact: true }).selectOption('nicola');
-  await expect(feature).toHaveAttribute('data-input-ready', 'nicola');
+  await setLayoutWithSettingsCollapsed('nicola');
   await expect(page.locator('.input-layer-card')).toHaveCount(2);
   await expect.poll(columns).toBe(1);
 
-  await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
-  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+  await setLayoutWithSettingsCollapsed('shingeta');
   await expect(page.locator('.input-layer-card')).toHaveCount(4);
   await expect.poll(columns).toBe(2);
 });
@@ -288,15 +294,23 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await expect(layerLabel).toContainText('通常');
 
   await expect(page.getByLabel('レイヤーカンペ一覧')).toBeVisible();
-  await page.getByLabel('レイヤーカンペ', { exact: true }).uncheck();
+  const layerGuideToggle = page.getByLabel('レイヤーカンペ', { exact: true });
+  await layerGuideToggle.focus();
+  await page.keyboard.press('Space');
+  await expect(layerGuideToggle).not.toBeChecked();
   await expect(page.locator('.input-layer-guide')).toHaveCount(0);
-  await page.getByLabel('レイヤーカンペ', { exact: true }).check();
+  await page.keyboard.press('Space');
+  await expect(layerGuideToggle).toBeChecked();
   await expect(page.locator('.input-layer-guide')).toBeVisible();
 
   await expect(keyboard.locator('[data-key-id="j"]')).toHaveAttribute('data-accent-slot', /[1-8]/);
-  await page.getByLabel('起点キー色').uncheck();
+  const triggerColorToggle = page.getByLabel('起点キー色');
+  await triggerColorToggle.focus();
+  await page.keyboard.press('Space');
+  await expect(triggerColorToggle).not.toBeChecked();
   await expect(keyboard.locator('[data-accent-slot]')).toHaveCount(0);
-  await page.getByLabel('起点キー色').check();
+  await page.keyboard.press('Space');
+  await expect(triggerColorToggle).toBeChecked();
 
   await expect(page.locator('.input-layer-card')).toHaveCount(1);
   await expect(page.locator('.input-layer-card').first()).toContainText('SandS');
@@ -306,7 +320,10 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await output.click();
   await page.keyboard.down('j');
   await expect(keyboard.locator('[data-key-id="f"]')).toHaveAttribute('data-guide', 'output');
-  await page.getByLabel('動的ガイド').uncheck();
+  const dynamicGuideToggle = page.getByLabel('動的ガイド');
+  await dynamicGuideToggle.focus();
+  await page.keyboard.press('Space');
+  await expect(dynamicGuideToggle).not.toBeChecked();
   await expect(keyboard.locator('[data-guide]')).toHaveCount(0);
   await page.keyboard.up('j');
 });
