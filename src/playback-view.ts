@@ -277,6 +277,7 @@ function triggerSettingsMarkup(layout: Layout): string {
         <input type="checkbox" data-playback-trigger-actions${action.triggerActivation === 'semantic' ? ' checked' : ''} />
         trigger押下の独立action化を有効にする
       </label>
+      <div class="condition-trigger-subheading">独立action化する対象</div>
       ${classRows}
     </div>
     ${details}
