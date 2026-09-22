@@ -15,17 +15,17 @@ test('配列別条件は既定値へ部分的に重なる', () => {
     sfbHomeCost: true,
     preferOppositeThumb: false,
     triggerRealizationPolicy: { useHold: false },
-    actionRealizationPolicy: { triggerActivation: 'combined', triggerActivationOverrides: [] },
+    actionRealizationPolicy: { triggerActivation: 'disabled', triggerActivationOverrides: [] },
   });
   assert.deepEqual(resolved.chainPolicy, DEFAULT_CONDITION_DEFAULTS.chain);
   assert.deepEqual(resolved.arpeggioPolicy, DEFAULT_CONDITION_DEFAULTS.arpeggioPolicy);
   assert.deepEqual(resolved.triggerRealizationPolicy, DEFAULT_CONDITION_DEFAULTS.triggerRealization);
-  assert.deepEqual(resolved.actionRealizationPolicy, { triggerActivation: 'combined', triggerActivationOverrides: [] });
+  assert.deepEqual(resolved.actionRealizationPolicy, { triggerActivation: 'disabled', triggerActivationOverrides: [] });
 });
 
 test('ActionRealizationPolicyはoverrideを含めconditionからevaluate optionsへそのまま渡す', () => {
   const actionRealization = {
-    triggerActivation: 'separate' as const,
+    triggerActivation: 'semantic' as const,
     triggerActivationOverrides: [{
       selector: {
         layerId: 'layer:SandS',
