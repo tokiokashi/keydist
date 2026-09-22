@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   aggregateBigramVectors,
   buildBigramVectors,
@@ -474,12 +474,17 @@ function FingerControls({
 }
 
 export function BigramVectorView() {
+  const [hydrated, setHydrated] = useState(false);
   const [layoutId, setLayoutId] = useState(() =>
     LAYOUTS_JA.some((layout) => layout.id === 'naginata-v18')
       ? 'naginata-v18'
       : LAYOUTS_JA[0]?.id ?? '');
   const [source, setSource] = useState<BigramSource>('actual');
   const [selectedFingers, setSelectedFingers] = useState<FingerClass[]>([]);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   const layout = LAYOUTS_JA.find((candidate) => candidate.id === layoutId) ?? LAYOUTS_JA[0];
   const geometry = useMemo(() => layoutGeometry(layout), [layout]);
@@ -512,7 +517,10 @@ export function BigramVectorView() {
   const vectorAnalysisReady = selectedFingers.length === 2;
 
   return (
-    <section className="feature-shell flow-feature">
+    <section
+      className="feature-shell flow-feature"
+      data-flow-ready={hydrated ? 'true' : undefined}
+    >
       <p className="eyebrow">Vector lab · #366</p>
       <h1>Bigram Flow</h1>
       <p>
