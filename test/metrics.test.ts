@@ -44,7 +44,7 @@ test('Metricsは数値を算出した測定条件をスナップショットで�
       bridgeSameFinger: true,
     },
     triggerRealizationPolicy: { useHold: true },
-    actionRealizationPolicy: { holdStart: 'separate' },
+    actionRealizationPolicy: { triggerActivation: 'separate' },
     romajiRuleId: 'qwerty',
   });
 
@@ -61,7 +61,7 @@ test('Metricsは数値を算出した測定条件をスナップショットで�
       bridgeSameFinger: true,
     },
     triggerRealizationPolicy: { useHold: true },
-    actionRealizationPolicy: { holdStart: 'separate' },
+    actionRealizationPolicy: { triggerActivation: 'separate' },
     romajiRuleId: 'qwerty',
   });
 });
@@ -228,11 +228,11 @@ test('1キー率はActionRealizationPolicy適用後の共通Stroke streamを数�
   const asuka = LAYOUT_BY_ID.get('asuka')!;
   const combinedTrace = evaluate('あだ', asuka, geometry, opts({
     triggerRealizationPolicy: { useHold: true },
-    actionRealizationPolicy: { holdStart: 'combined' },
+    actionRealizationPolicy: { triggerActivation: 'combined' },
   }));
   const separateTrace = evaluate('あだ', asuka, geometry, opts({
     triggerRealizationPolicy: { useHold: true },
-    actionRealizationPolicy: { holdStart: 'separate' },
+    actionRealizationPolicy: { triggerActivation: 'separate' },
   }));
   const baseConditions = {
     ...DEFAULT_METRIC_CONDITIONS,
@@ -241,11 +241,11 @@ test('1キー率はActionRealizationPolicy適用後の共通Stroke streamを数�
 
   const combined = computeMetrics(combinedTrace, geometry, {
     ...baseConditions,
-    actionRealizationPolicy: { holdStart: 'combined' },
+    actionRealizationPolicy: { triggerActivation: 'combined' },
   });
   const separate = computeMetrics(separateTrace, geometry, {
     ...baseConditions,
-    actionRealizationPolicy: { holdStart: 'separate' },
+    actionRealizationPolicy: { triggerActivation: 'separate' },
   });
 
   assert.equal(combinedTrace.strokes.length, 2);
@@ -253,7 +253,7 @@ test('1キー率はActionRealizationPolicy適用後の共通Stroke streamを数�
   assert.equal(combined.actions, 2);
   assert.equal(separate.actions, 3);
   near(combined.singleKeyRate, 50, '2 action中、hold継続の1 actionだけが1キー');
-  near(separate.singleKeyRate, 100, 'hold開始を分けると3 actionすべて1キー');
+  near(separate.singleKeyRate, 100, 'trigger押下を分けると3 actionすべて1キー');
 });
 
 test('単打率はhold継続中の1キー入力を単打に含めない', () => {

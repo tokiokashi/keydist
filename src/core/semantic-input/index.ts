@@ -41,7 +41,9 @@ export {
   DEFAULT_ACTION_REALIZATION_POLICY,
   sameActionRealizationPolicy,
   type ActionRealizationPolicy,
-  type HoldStartActionGrouping,
+  type TriggerActivationGrouping,
+  type TriggerActivationOverride,
+  type TriggerActivationSelector,
 } from './action-realization.ts';
 
 export {

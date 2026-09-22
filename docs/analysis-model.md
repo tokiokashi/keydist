@@ -153,23 +153,31 @@ active hold groupとCapability / Requirementを照合して継続可否を決め
 実際にrealizeされたStroke streamだけをRaw hand run以降へ渡し、
 Chain / Transition / Timingが独自にhold可能性を再判定しない。
 
-Trigger realizationの後に `ActionRealizationPolicy` を適用し、同じ入力事実を
-どのaction列として解析するかを決める。現在の `holdStart` は `combined | separate` を持つ。
-`separate` ではlayer / modifierのoutputと同一actionにrealizeされた `held-trigger/start` を、
-**semantic Requirementを保てる場合だけ**先行trigger actionとheld state下のfresh output actionへ分ける。
+Trigger realizationの後に `ActionRealizationPolicy` を適用し、fresh trigger activationと
+fresh outputをどのaction列として解析するかを決める。現在の
+`triggerActivation: combined | separate` はcontinuous holdとは独立した軸である。
 
-- overlapだけ、または `order(held -> fresh)` を要求する場合はsplitできる
-- `order(fresh -> held)` を要求するsuffix型は、順序を反転させずcombinedを維持する
-- held / fresh group自体がorder境界の両側へ跨る場合もcombinedを維持する
+`separate` では、同一actionにあるfresh `triggerKeys` とfresh `outputKeys` を、
+**semantic Requirementを保てる場合だけ**先行trigger actionとoutput actionへ分ける。
+`useHold=false` でも各入力のfresh triggerを分離できる。`useHold=true` の場合は最初の
+activationだけがfresh triggerであり、continueではheld triggerを再Pressしないため追加分割しない。
+
+- overlapだけ、または `order(trigger -> output)` を要求する場合はsplitできる
+- `order(output -> trigger)` を要求するsuffix型は、順序を反転させずcombinedを維持する
+- trigger / remaining group自体がorder境界の両側へ跨る場合もcombinedを維持する
 - compositionと、prefix trigger-only actionのように既に分離済みの操作は変換しない
+- trigger/outputが同じphysical pressを兼ねるactionは分離しない
 
 Requirementはdefault groupingを推測する材料には使わず、Policy変換後のstreamが
 canonical semanticに反していないことを確認するvalidity gateとしてだけ使う。
 
+Policyはlayout全体の既定 `triggerActivation` に加え、canonical `layerId / triggerKeys`
+selectorによるgroup別overrideを持てる。layout id / Face index / presentation labelは解析判定に使わない。
+
 この変換はStroke生成**前**に行うため、Metricsだけのvirtual +1は行わない。
 Chain / Transition / Metrics / Timing / Playbackはすべて同じPolicy適用後Stroke streamを見る。
-UI・保存形式・condition resolutionも `ActionRealizationPolicy.holdStart` を直接扱い、
-旧 `HoldStartActionPolicy` / `countAsSeparateStep` adapterは持たない。
+明示release eventはまだ作らないが、この境界は将来の `trigger-down / output / trigger-up`
+のStep分離へ拡張できるようhold開始固有の名前を持たない。
 
 ### Raw hand run / Analysis Chain
 

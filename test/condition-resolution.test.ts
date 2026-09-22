@@ -15,20 +15,37 @@ test('配列別条件は既定値へ部分的に重なる', () => {
     sfbHomeCost: true,
     preferOppositeThumb: false,
     triggerRealizationPolicy: { useHold: false },
-    actionRealizationPolicy: { holdStart: 'combined' },
+    actionRealizationPolicy: { triggerActivation: 'combined', triggerActivationOverrides: [] },
   });
   assert.deepEqual(resolved.chainPolicy, DEFAULT_CONDITION_DEFAULTS.chain);
   assert.deepEqual(resolved.arpeggioPolicy, DEFAULT_CONDITION_DEFAULTS.arpeggioPolicy);
   assert.deepEqual(resolved.triggerRealizationPolicy, DEFAULT_CONDITION_DEFAULTS.triggerRealization);
-  assert.deepEqual(resolved.actionRealizationPolicy, { holdStart: 'combined' });
+  assert.deepEqual(resolved.actionRealizationPolicy, { triggerActivation: 'combined', triggerActivationOverrides: [] });
 });
 
-test('ActionRealizationPolicyはconditionからevaluate optionsへそのまま渡す', () => {
-  const separated = resolveConditions(DEFAULT_CONDITION_DEFAULTS, {
-    actionRealization: { holdStart: 'separate' },
-  });
-  assert.deepEqual(separated.actionRealizationPolicy, { holdStart: 'separate' });
-  assert.deepEqual(separated.options.actionRealizationPolicy, { holdStart: 'separate' });
+test('ActionRealizationPolicyはoverrideを含めconditionからevaluate optionsへそのまま渡す', () => {
+  const actionRealization = {
+    triggerActivation: 'separate' as const,
+    triggerActivationOverrides: [{
+      selector: {
+        layerId: 'layer:SandS',
+        triggerKeys: ['thumb-r'],
+      },
+      grouping: 'separate' as const,
+    }],
+  };
+  const separated = resolveConditions(DEFAULT_CONDITION_DEFAULTS, { actionRealization });
+
+  assert.deepEqual(separated.actionRealizationPolicy, actionRealization);
+  assert.deepEqual(separated.options.actionRealizationPolicy, actionRealization);
+  assert.notEqual(
+    separated.actionRealizationPolicy.triggerActivationOverrides,
+    actionRealization.triggerActivationOverrides,
+  );
+  assert.notEqual(
+    separated.actionRealizationPolicy.triggerActivationOverrides?.[0].selector.triggerKeys,
+    actionRealization.triggerActivationOverrides[0].selector.triggerKeys,
+  );
 });
 
 test('配列別条件が空なら既定値と同じになる', () => {

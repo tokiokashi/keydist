@@ -343,8 +343,36 @@ function actionRealizationPolicy(
   fallback: ActionRealizationPolicy,
 ): ActionRealizationPolicy {
   const source = record(value);
+  const overrides = Array.isArray(source.triggerActivationOverrides)
+    ? source.triggerActivationOverrides.flatMap((value): NonNullable<ActionRealizationPolicy['triggerActivationOverrides']> => {
+      const item = record(value);
+      const selector = record(item.selector);
+      const triggerKeys = Array.isArray(selector.triggerKeys)
+        && selector.triggerKeys.every((key) => typeof key === 'string')
+        ? selector.triggerKeys as string[]
+        : undefined;
+      const layerId = typeof selector.layerId === 'string' ? selector.layerId : undefined;
+      if (triggerKeys === undefined && layerId === undefined) return [];
+      const grouping = item.grouping === 'combined' || item.grouping === 'separate'
+        ? item.grouping
+        : undefined;
+      if (grouping === undefined) return [];
+      return [{
+        selector: {
+          ...(layerId === undefined ? {} : { layerId }),
+          ...(triggerKeys === undefined ? {} : { triggerKeys }),
+        },
+        grouping,
+      }];
+    })
+    : fallback.triggerActivationOverrides;
   return {
-    holdStart: choice(source.holdStart, ['combined', 'separate'] as const, fallback.holdStart),
+    triggerActivation: choice(
+      source.triggerActivation,
+      ['combined', 'separate'] as const,
+      fallback.triggerActivation,
+    ),
+    triggerActivationOverrides: overrides ?? [],
   };
 }
 

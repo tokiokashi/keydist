@@ -26,7 +26,7 @@ import {
   type ConditionPreset,
 } from './condition-presets.ts';
 
-export const CONDITION_BUNDLE_VERSION = 2;
+export const CONDITION_BUNDLE_VERSION = 3;
 
 export interface ConditionBundle {
   version: typeof CONDITION_BUNDLE_VERSION;

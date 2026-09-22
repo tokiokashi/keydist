@@ -1205,6 +1205,57 @@ function conditionNumber(
   parent.append(input);
 }
 
+interface TriggerActivationGroup {
+  readonly layerId: string;
+  readonly triggerKeys: readonly string[];
+  readonly label: string;
+}
+
+function canonicalTriggerKeys(keys: readonly string[]): string[] {
+  return [...new Set(keys)].sort();
+}
+
+function sameTriggerActivationSelector(
+  selector: { readonly layerId?: string; readonly triggerKeys?: readonly string[] },
+  group: TriggerActivationGroup,
+): boolean {
+  if (selector.layerId !== undefined && selector.layerId !== group.layerId) return false;
+  if (selector.triggerKeys !== undefined) {
+    const left = canonicalTriggerKeys(selector.triggerKeys);
+    const right = canonicalTriggerKeys(group.triggerKeys);
+    if (left.length !== right.length || left.some((key, index) => key !== right[index])) return false;
+  }
+  return selector.layerId !== undefined || selector.triggerKeys !== undefined;
+}
+
+function triggerActivationGroups(layout: Layout): TriggerActivationGroup[] {
+  const labels = new Map(layout.layerDefinitions?.map((definition) => [definition.id, definition.label]) ?? []);
+  const groups = new Map<string, TriggerActivationGroup>();
+  for (const alternatives of layout.canonicalInputs.values()) {
+    for (const alternative of alternatives) {
+      for (const realization of alternative.baseRealizations) {
+        const candidates = [
+          realization.defaultTriggerKeys ?? [],
+          ...(realization.alternateParticipations?.map((view) => view.triggerKeys) ?? []),
+        ];
+        for (const keys of candidates) {
+          const triggerKeys = canonicalTriggerKeys(keys);
+          if (triggerKeys.length === 0) continue;
+          const identity = `${realization.input.layerId}\u0001${triggerKeys.join('\u0000')}`;
+          if (groups.has(identity)) continue;
+          const layerLabel = labels.get(realization.input.layerId) ?? realization.input.layerId;
+          groups.set(identity, {
+            layerId: realization.input.layerId,
+            triggerKeys,
+            label: `${layerLabel}: ${triggerKeys.join(' + ')}`,
+          });
+        }
+      }
+    }
+  }
+  return [...groups.values()].sort((left, right) => left.label.localeCompare(right.label, 'ja'));
+}
+
 function conditionRow(
   tab: ConditionTab,
   layout: Layout | undefined,
@@ -1311,16 +1362,50 @@ function conditionRow(
     const actionLabel = document.createElement('label');
     const actionInput = document.createElement('input');
     actionInput.type = 'checkbox';
-    actionInput.checked = action.holdStart === 'separate';
+    actionInput.checked = action.triggerActivation === 'separate';
     actionInput.disabled = !enabled;
     actionInput.addEventListener('change', () =>
       commitCondition(layout?.id, 'actionRealization', {
         ...action,
-        holdStart: actionInput.checked ? 'separate' : 'combined',
+        triggerActivation: actionInput.checked ? 'separate' : 'combined',
       }));
-    actionLabel.append(actionInput, ' hold開始を独立actionとしてrealizeする');
+    actionLabel.append(actionInput, ' trigger押下を独立actionとしてrealizeする');
 
     fields.append(holdLabel, actionLabel);
+
+    if (layout) {
+      for (const group of triggerActivationGroups(layout)) {
+        const label = document.createElement('label');
+        label.append(`${group.label} `);
+        const select = document.createElement('select');
+        select.disabled = !enabled;
+        select.append(
+          new Option('既定を使う', 'inherit'),
+          new Option('outputと同じaction', 'combined'),
+          new Option('独立action', 'separate'),
+        );
+        const current = action.triggerActivationOverrides?.find((override) =>
+          sameTriggerActivationSelector(override.selector, group));
+        select.value = current?.grouping ?? 'inherit';
+        select.addEventListener('change', () => {
+          const overrides = (action.triggerActivationOverrides ?? [])
+            .filter((override) => !sameTriggerActivationSelector(override.selector, group));
+          if (select.value === 'combined' || select.value === 'separate') {
+            overrides.push({
+              selector: { layerId: group.layerId, triggerKeys: group.triggerKeys },
+              grouping: select.value,
+            });
+          }
+          commitCondition(layout.id, 'actionRealization', {
+            ...action,
+            triggerActivationOverrides: overrides,
+          });
+        });
+        label.append(select);
+        fields.append(label);
+      }
+    }
+
     cell.append(fields);
     return row;
   }

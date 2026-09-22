@@ -10,12 +10,13 @@ import {
 
 const input = (
   classifications: SemanticInput['classifications'] = [],
+  layerId = 'layer:test',
 ): SemanticInput => ({
   output: 'x',
   physicalKeys: ['j', 'thumb-r'],
   requirements: [],
   capabilities: [{ kind: 'while-held', keys: ['thumb-r'] }],
-  layerId: 'layer:test',
+  layerId,
   classifications,
   roles: [{ key: 'thumb-r', role: 'modifier' }],
   faceMemberships: [],
@@ -28,60 +29,66 @@ const action = (
   input: input(),
   outputKeys: ['j'],
   triggerKeys: ['thumb-r'],
-  heldKeys: ['thumb-r'],
-  holdPhase: 'start',
+  heldKeys: [],
   ...extra,
 });
 
 test('ActionRealizationPolicyの既定はtrigger-realized streamをそのまま保つ', () => {
   const actions = [action()];
-  assert.deepEqual(DEFAULT_ACTION_REALIZATION_POLICY, { holdStart: 'combined' });
+  assert.deepEqual(DEFAULT_ACTION_REALIZATION_POLICY, {
+    triggerActivation: 'combined',
+    triggerActivationOverrides: [],
+  });
   assert.equal(
     applyActionRealizationPolicy(actions, DEFAULT_ACTION_REALIZATION_POLICY),
     actions,
   );
 });
 
-test('hold startをseparateにするとtrigger actionとheld下のoutput actionへ分ける', () => {
-  const [holdStart, output] = applyActionRealizationPolicy(
+test('holdなしでもfresh trigger activationをoutputから分離できる', () => {
+  const [trigger, output] = applyActionRealizationPolicy(
     [action()],
-    { holdStart: 'separate' },
+    { triggerActivation: 'separate' },
   );
 
-  assert.deepEqual(holdStart, {
-    ...action(),
-    keys: ['thumb-r'],
-    outputKeys: [],
-    triggerKeys: ['thumb-r'],
-    heldKeys: ['thumb-r'],
-    holdPhase: 'start',
-  });
-  assert.deepEqual(output, {
-    ...action(),
-    keys: ['j'],
-    outputKeys: ['j'],
-    triggerKeys: [],
-    heldKeys: ['thumb-r'],
-    holdPhase: 'continue',
-  });
+  assert.deepEqual(trigger.keys, ['thumb-r']);
+  assert.deepEqual(trigger.triggerKeys, ['thumb-r']);
+  assert.deepEqual(trigger.outputKeys, []);
+  assert.deepEqual(trigger.heldKeys, []);
+  assert.equal(trigger.holdPhase, undefined);
+
+  assert.deepEqual(output.keys, ['j']);
+  assert.deepEqual(output.outputKeys, ['j']);
+  assert.deepEqual(output.triggerKeys, []);
+  assert.deepEqual(output.heldKeys, []);
+  assert.equal(output.holdPhase, undefined);
 });
 
-test('overlapだけならhold-start -> outputへsplitする', () => {
+test('hold startでも同じtrigger activation分離を使いoutput側だけcontinueになる', () => {
+  const [trigger, output] = applyActionRealizationPolicy(
+    [action({ heldKeys: ['thumb-r'], holdPhase: 'start' })],
+    { triggerActivation: 'separate' },
+  );
+
+  assert.equal(trigger.holdPhase, 'start');
+  assert.deepEqual(trigger.heldKeys, ['thumb-r']);
+  assert.equal(output.holdPhase, 'continue');
+  assert.deepEqual(output.heldKeys, ['thumb-r']);
+});
+
+test('overlapだけならtrigger -> outputへsplitする', () => {
   const semantic: SemanticInput = {
     ...input(),
     requirements: [{ kind: 'overlap', keys: ['j', 'thumb-r'] }],
   };
-  const result = applyActionRealizationPolicy([
-    action({ input: semantic }),
-  ], { holdStart: 'separate' });
-
-  assert.deepEqual(result.map((candidate) => candidate.keys), [
-    ['thumb-r'],
-    ['j'],
-  ]);
+  const result = applyActionRealizationPolicy(
+    [action({ input: semantic })],
+    { triggerActivation: 'separate' },
+  );
+  assert.deepEqual(result.map((candidate) => candidate.keys), [['thumb-r'], ['j']]);
 });
 
-test('prefix orderならhold-start -> outputの順を維持してsplitする', () => {
+test('order(trigger -> output)を維持してsplitする', () => {
   const semantic: SemanticInput = {
     ...input(),
     requirements: [
@@ -89,17 +96,14 @@ test('prefix orderならhold-start -> outputの順を維持してsplitする', (
       { kind: 'order', before: ['thumb-r'], after: ['j'] },
     ],
   };
-  const result = applyActionRealizationPolicy([
-    action({ input: semantic }),
-  ], { holdStart: 'separate' });
-
-  assert.deepEqual(result.map((candidate) => candidate.keys), [
-    ['thumb-r'],
-    ['j'],
-  ]);
+  const result = applyActionRealizationPolicy(
+    [action({ input: semantic })],
+    { triggerActivation: 'separate' },
+  );
+  assert.deepEqual(result.map((candidate) => candidate.keys), [['thumb-r'], ['j']]);
 });
 
-test('suffix orderはheld-firstへ反転せずconservativeにcombinedを維持する', () => {
+test('order(output -> trigger)はtrigger-firstへ反転せずcombinedを維持する', () => {
   const semantic: SemanticInput = {
     ...input(),
     requirements: [
@@ -110,14 +114,13 @@ test('suffix orderはheld-firstへ反転せずconservativeにcombinedを維持�
   const original = action({ input: semantic });
   const result = applyActionRealizationPolicy(
     [original],
-    { holdStart: 'separate' },
+    { triggerActivation: 'separate' },
   );
-
   assert.equal(result.length, 1);
   assert.equal(result[0], original);
 });
 
-test('partial holdでheld/fresh groupがorder境界の両側へ跨る場合はcombinedを維持する', () => {
+test('trigger/output groupがorder境界を跨る場合はcombinedを維持する', () => {
   const semantic: SemanticInput = {
     ...input(),
     physicalKeys: ['j', 'k', 'q', 'thumb-r'],
@@ -126,7 +129,6 @@ test('partial holdでheld/fresh groupがorder境界の両側へ跨る場合はco
       before: ['j', 'thumb-r'],
       after: ['k', 'q'],
     }],
-    capabilities: [{ kind: 'while-held', keys: ['q', 'thumb-r'] }],
     roles: [
       { key: 'q', role: 'modifier' },
       { key: 'thumb-r', role: 'modifier' },
@@ -137,94 +139,134 @@ test('partial holdでheld/fresh groupがorder境界の両側へ跨る場合はco
     keys: ['q', 'thumb-r', 'j', 'k'],
     outputKeys: ['j', 'k'],
     triggerKeys: ['q', 'thumb-r'],
-    heldKeys: ['q', 'thumb-r'],
   });
   const result = applyActionRealizationPolicy(
     [original],
-    { holdStart: 'separate' },
+    { triggerActivation: 'separate' },
   );
-
   assert.equal(result.length, 1);
   assert.equal(result[0], original);
 });
 
-test('partial holdではhold groupだけを先行actionへ分け、他triggerはoutput側へ残す', () => {
-  const semantic: SemanticInput = {
-    ...input(),
-    physicalKeys: ['d', 'j', 'thumb-r'],
-    capabilities: [{ kind: 'while-held', keys: ['thumb-r'] }],
-    roles: [
-      { key: 'd', role: 'modifier' },
-      { key: 'thumb-r', role: 'modifier' },
-    ],
-  };
-  const [holdStart, output] = applyActionRealizationPolicy([action({
-    input: semantic,
+test('複数fresh triggerはhold対象かどうかに関係なくtrigger groupとして分離する', () => {
+  const [trigger, output] = applyActionRealizationPolicy([action({
     keys: ['thumb-r', 'd', 'j'],
     outputKeys: ['j'],
     triggerKeys: ['thumb-r', 'd'],
-  })], { holdStart: 'separate' });
+    heldKeys: ['thumb-r'],
+    holdPhase: 'start',
+  })], { triggerActivation: 'separate' });
 
-  assert.deepEqual(holdStart.keys, ['thumb-r']);
-  assert.deepEqual(holdStart.triggerKeys, ['thumb-r']);
-  assert.deepEqual(output.keys, ['d', 'j']);
-  assert.deepEqual(output.triggerKeys, ['d']);
+  assert.deepEqual(trigger.keys, ['thumb-r', 'd']);
+  assert.deepEqual(trigger.triggerKeys, ['thumb-r', 'd']);
+  assert.deepEqual(output.keys, ['j']);
   assert.deepEqual(output.outputKeys, ['j']);
-  assert.deepEqual(output.heldKeys, ['thumb-r']);
+  assert.deepEqual(output.triggerKeys, []);
 });
 
-test('prefix等ですでにtrigger-onlyのhold start actionは分割しない', () => {
-  const triggerOnly = action({
-    keys: ['thumb-r'],
-    outputKeys: [],
+test('同じphysical keyがtrigger/output両roleを持つactionは分離しない', () => {
+  const original = action({
+    keys: ['j'],
+    outputKeys: ['j'],
+    triggerKeys: ['j'],
   });
-  const actions = [triggerOnly];
-
   assert.deepEqual(
-    applyActionRealizationPolicy(actions, { holdStart: 'separate' }),
-    actions,
+    applyActionRealizationPolicy([original], { triggerActivation: 'separate' }),
+    [original],
   );
 });
 
-test('hold continue actionは分割しない', () => {
+test('既存trigger-only actionは二重分割しない', () => {
+  const triggerOnly = action({ keys: ['thumb-r'], outputKeys: [] });
+  assert.deepEqual(
+    applyActionRealizationPolicy([triggerOnly], { triggerActivation: 'separate' }),
+    [triggerOnly],
+  );
+});
+
+test('hold continueはfresh triggerが無いので分割しない', () => {
   const continued = action({
     keys: ['j'],
     outputKeys: ['j'],
     triggerKeys: [],
+    heldKeys: ['thumb-r'],
     holdPhase: 'continue',
   });
-  const actions = [continued];
-
   assert.deepEqual(
-    applyActionRealizationPolicy(actions, { holdStart: 'separate' }),
-    actions,
+    applyActionRealizationPolicy([continued], { triggerActivation: 'separate' }),
+    [continued],
   );
 });
 
-test('compositionのhold startはseparate指定でも1 actionのまま保つ', () => {
-  const composition = action({
-    input: input(['composition']),
+test('compositionはseparate指定でも1 actionのまま保つ', () => {
+  const composition = action({ input: input(['composition']) });
+  assert.deepEqual(
+    applyActionRealizationPolicy([composition], { triggerActivation: 'separate' }),
+    [composition],
+  );
+});
+
+test('trigger group overrideはdefaultより優先される', () => {
+  const sandS = action({ input: input([], 'layer:SandS'), triggerKeys: ['thumb-r'] });
+  const dakuten = action({
+    input: input([], 'layer:濁音'),
+    keys: ['j', 'f'],
+    outputKeys: ['f'],
+    triggerKeys: ['j'],
   });
-  const actions = [composition];
+  const policy = {
+    triggerActivation: 'combined' as const,
+    triggerActivationOverrides: [{
+      selector: { layerId: 'layer:SandS' },
+      grouping: 'separate' as const,
+    }],
+  };
 
-  assert.deepEqual(
-    applyActionRealizationPolicy(actions, { holdStart: 'separate' }),
-    actions,
-  );
+  assert.equal(applyActionRealizationPolicy([sandS], policy).length, 2);
+  assert.equal(applyActionRealizationPolicy([dakuten], policy).length, 1);
 });
 
-test('ActionRealizationPolicy比較はholdStart groupingだけを見る', () => {
+test('triggerKeys selectorはkey順に依存しない', () => {
+  const multi = action({
+    keys: ['q', 'thumb-r', 'j'],
+    outputKeys: ['j'],
+    triggerKeys: ['q', 'thumb-r'],
+  });
+  const result = applyActionRealizationPolicy([multi], {
+    triggerActivation: 'combined',
+    triggerActivationOverrides: [{
+      selector: { triggerKeys: ['thumb-r', 'q'] },
+      grouping: 'separate',
+    }],
+  });
+  assert.equal(result.length, 2);
+});
+
+test('ActionRealizationPolicy比較はdefaultとoverrideを比較する', () => {
   assert.equal(
     sameActionRealizationPolicy(
-      { holdStart: 'combined' },
-      { holdStart: 'combined' },
+      { triggerActivation: 'combined' },
+      { triggerActivation: 'combined', triggerActivationOverrides: [] },
     ),
     true,
   );
   assert.equal(
     sameActionRealizationPolicy(
-      { holdStart: 'combined' },
-      { holdStart: 'separate' },
+      { triggerActivation: 'combined' },
+      { triggerActivation: 'separate' },
+    ),
+    false,
+  );
+  assert.equal(
+    sameActionRealizationPolicy(
+      {
+        triggerActivation: 'combined',
+        triggerActivationOverrides: [{
+          selector: { layerId: 'layer:SandS' },
+          grouping: 'separate',
+        }],
+      },
+      { triggerActivation: 'combined' },
     ),
     false,
   );

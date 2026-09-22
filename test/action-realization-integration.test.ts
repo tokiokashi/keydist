@@ -2,13 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
-import { fromFaces } from '../src/layouts/index.ts';
+import { fromFaces, LAYOUT_BY_ID, type Layout } from '../src/layouts/index.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
 import { playbackTimingSchedule } from '../src/playback.ts';
+import type { ActionRealizationPolicy } from '../src/core/semantic-input/index.ts';
+
 const geometry = buildGeometry('row-staggered');
 
-const simultaneous = fromFaces('hold-action-sim', 'hold-action-sim', [{
+const simultaneous = fromFaces('action-sim', 'action-sim', [{
   trigger: ['q'],
   mode: 'simultaneous',
   rows: ['', '', ['', 'z', 'y', 'x'], ''],
@@ -16,7 +18,7 @@ const simultaneous = fromFaces('hold-action-sim', 'hold-action-sim', [{
   triggerPersistence: 'hold-capable',
 }]);
 
-const prefix = fromFaces('hold-action-prefix', 'hold-action-prefix', [{
+const prefix = fromFaces('action-prefix', 'action-prefix', [{
   trigger: ['q'],
   mode: 'prefix',
   rows: ['', '', ['', '', 'y', 'x'], ''],
@@ -24,7 +26,7 @@ const prefix = fromFaces('hold-action-prefix', 'hold-action-prefix', [{
   triggerPersistence: 'hold-capable',
 }]);
 
-const composition = fromFaces('hold-action-composition', 'hold-action-composition', [{
+const composition = fromFaces('action-composition', 'action-composition', [{
   trigger: ['q'],
   mode: 'simultaneous',
   rows: ['', '', ['', '', 'y', 'x'], ''],
@@ -34,110 +36,115 @@ const composition = fromFaces('hold-action-composition', 'hold-action-compositio
 
 const realized = (
   text: string,
-  layout = simultaneous,
-  holdStart: 'combined' | 'separate' = 'combined',
+  useHold: boolean,
+  actionRealizationPolicy: ActionRealizationPolicy,
+  layout: Layout = simultaneous,
 ) => evaluate(text, layout, geometry, {
   windowSize: 3,
   sfbHomeCost: true,
-  triggerRealizationPolicy: { useHold: true },
-  actionRealizationPolicy: { holdStart },
+  triggerRealizationPolicy: { useHold },
+  actionRealizationPolicy,
 });
 
-test('combinedではhold開始をoutputと同じrealized Strokeに保つ', () => {
-  const trace = realized('xyz');
+const grouping = (triggerActivation: 'combined' | 'separate'): ActionRealizationPolicy => ({
+  triggerActivation,
+});
+
+test('trigger action groupingとcontinuous holdの4象限を独立にrealizeする', () => {
+  const combinedNoHold = realized('xy', false, grouping('combined'));
+  const separateNoHold = realized('xy', false, grouping('separate'));
+  const combinedHold = realized('xy', true, grouping('combined'));
+  const separateHold = realized('xy', true, grouping('separate'));
+
+  assert.equal(combinedNoHold.strokes.length, 2);
+  assert.equal(separateNoHold.strokes.length, 4);
+  assert.equal(combinedHold.strokes.length, 2);
+  assert.equal(separateHold.strokes.length, 3);
+
+  assert.equal(combinedNoHold.strokes.flatMap((stroke) => stroke.presses).length, 4);
+  assert.equal(separateNoHold.strokes.flatMap((stroke) => stroke.presses).length, 4);
+  assert.equal(combinedHold.strokes.flatMap((stroke) => stroke.presses).length, 3);
+  assert.equal(separateHold.strokes.flatMap((stroke) => stroke.presses).length, 3);
+});
+
+test('holdなしseparateは各入力のfresh triggerを独立Strokeにする', () => {
+  const trace = realized('xy', false, grouping('separate'));
+  assert.deepEqual(
+    trace.strokes.map((stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id))),
+    [['q'], ['f'], ['q'], ['d']],
+  );
+  assert.equal(trace.strokes[0].participations.some((participation) =>
+    participation.roles.includes('held-trigger')), false);
+});
+
+test('holdありseparateは最初のactivationだけ分離しcontinueごとには増やさない', () => {
+  const trace = realized('xy', true, grouping('separate'));
   assert.equal(trace.strokes.length, 3);
-  assert.equal(trace.strokes[0].presses.flatMap((press) => press.keys).length, 2);
-  assert.ok(trace.strokes[0].participations.some((participation) =>
-    participation.roles.includes('held-trigger') && participation.holdPhase === 'start'));
-  assert.ok(trace.strokes[0].participations.some((participation) =>
-    participation.roles.includes('output')));
-});
 
-test('separateではhold開始とfresh outputが共通Stroke stream上で分割される', () => {
-  const trace = realized('xyz', simultaneous, 'separate');
-  assert.equal(trace.strokes.length, 4);
+  const trigger = trace.strokes[0];
+  const firstOutput = trace.strokes[1];
+  const continuedOutput = trace.strokes[2];
 
-  const holdStart = trace.strokes[0];
-  const output = trace.strokes[1];
-  assert.deepEqual(holdStart.presses.flatMap((press) => press.keys.map((key) => key.id)), ['q']);
-  assert.equal(holdStart.participations.some((participation) =>
-    participation.roles.includes('output')), false);
-  assert.ok(holdStart.participations.some((participation) =>
+  assert.deepEqual(trigger.presses.flatMap((press) => press.keys.map((key) => key.id)), ['q']);
+  assert.ok(trigger.participations.some((participation) =>
     participation.roles.includes('trigger')
     && participation.roles.includes('held-trigger')
     && participation.holdPhase === 'start'));
 
-  assert.deepEqual(output.presses.flatMap((press) => press.keys.map((key) => key.id)), ['f']);
-  assert.ok(output.participations.some((participation) =>
-    participation.roles.includes('output')));
-  assert.ok(output.participations.some((participation) =>
+  assert.ok(firstOutput.participations.some((participation) =>
+    participation.roles.includes('held-trigger') && participation.holdPhase === 'continue'));
+  assert.ok(continuedOutput.participations.some((participation) =>
     participation.roles.includes('held-trigger') && participation.holdPhase === 'continue'));
 });
 
 test('separate後はMetricsもvirtual補正せず共通Stroke streamを数える', () => {
-  const combinedTrace = realized('xyz');
-  const separateTrace = realized('xyz', simultaneous, 'separate');
+  const combinedTrace = realized('xy', false, grouping('combined'));
+  const separateTrace = realized('xy', false, grouping('separate'));
   const combined = computeMetrics(combinedTrace, geometry);
   const separate = computeMetrics(separateTrace, geometry, {
     ...combined.conditions,
-    actionRealizationPolicy: { holdStart: 'separate' },
+    actionRealizationPolicy: grouping('separate'),
   });
 
   assert.equal(combined.actions, combinedTrace.strokes.length);
   assert.equal(separate.actions, separateTrace.strokes.length);
-  assert.equal(separate.actions, combined.actions + 1);
+  assert.equal(separate.actions, combined.actions * 2);
   assert.equal(separate.presses, combined.presses);
 });
 
 test('Chain / Timing / PlaybackはActionRealizationPolicy適用後の同じStroke streamを読む', () => {
-  const combinedTrace = realized('xyz', simultaneous, 'combined');
-  const separateTrace = realized('xyz', simultaneous, 'separate');
+  const combinedTrace = realized('xy', false, grouping('combined'));
+  const separateTrace = realized('xy', false, grouping('separate'));
 
   const combinedAnalysis = analyzeStrokeStructure(
     combinedTrace.strokes,
     undefined,
     undefined,
-    { useHold: true },
-    { holdStart: 'combined' },
+    { useHold: false },
+    grouping('combined'),
   );
   const separateAnalysis = analyzeStrokeStructure(
     separateTrace.strokes,
     undefined,
     undefined,
-    { useHold: true },
-    { holdStart: 'separate' },
+    { useHold: false },
+    grouping('separate'),
   );
   const combinedSchedule = playbackTimingSchedule(combinedAnalysis, 4, false);
   const separateSchedule = playbackTimingSchedule(separateAnalysis, 4, false);
 
-  assert.equal(combinedTrace.strokes.length, 3);
-  assert.equal(separateTrace.strokes.length, 4);
-
-  // structural analysis / Chainへ渡すstrokes自体がevaluateのrealized stream。
   assert.equal(combinedAnalysis.strokes, combinedTrace.strokes);
   assert.equal(separateAnalysis.strokes, separateTrace.strokes);
   assert.equal(combinedAnalysis.aggregate.strokeCount, combinedTrace.strokes.length);
   assert.equal(separateAnalysis.aggregate.strokeCount, separateTrace.strokes.length);
   assert.deepEqual(
-    combinedAnalysis.aggregate.conditions.triggerRealizationPolicy,
-    { useHold: true },
-  );
-  assert.deepEqual(
-    separateAnalysis.aggregate.conditions.triggerRealizationPolicy,
-    { useHold: true },
-  );
-  assert.deepEqual(
     combinedAnalysis.aggregate.conditions.actionRealizationPolicy,
-    { holdStart: 'combined' },
+    grouping('combined'),
   );
   assert.deepEqual(
     separateAnalysis.aggregate.conditions.actionRealizationPolicy,
-    { holdStart: 'separate' },
+    grouping('separate'),
   );
-
-  // Timing / Playback scheduleも同じStroke index列をそのまま使う。
-  assert.equal(combinedSchedule.length, combinedTrace.strokes.length);
-  assert.equal(separateSchedule.length, separateTrace.strokes.length);
   assert.deepEqual(
     combinedSchedule.map((step) => step.strokeIndex),
     combinedTrace.strokes.map((stroke) => stroke.index),
@@ -148,30 +155,35 @@ test('Chain / Timing / PlaybackはActionRealizationPolicy適用後の同じStrok
   );
 });
 
-test('compositionのhold startはseparate指定でも分割しない', () => {
-  const combined = realized('xy', composition, 'combined');
-  const separate = realized('xy', composition, 'separate');
+test('compositionはtriggerActivation=separateでも分割しない', () => {
+  const combined = realized('xy', false, grouping('combined'), composition);
+  const separate = realized('xy', false, grouping('separate'), composition);
   assert.equal(separate.strokes.length, combined.strokes.length);
-  assert.deepEqual(
-    separate.strokes.map((stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id))),
-    combined.strokes.map((stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id))),
-  );
 });
 
 test('prefix trigger-only Strokeは既に独立しているためseparateでも増えない', () => {
-  const combined = realized('xy', prefix, 'combined');
-  const separate = realized('xy', prefix, 'separate');
+  const combined = realized('xy', false, grouping('combined'), prefix);
+  const separate = realized('xy', false, grouping('separate'), prefix);
   assert.equal(separate.strokes.length, combined.strokes.length);
   assert.equal(separate.strokes[0].participations.some((participation) =>
     participation.roles.includes('output')), false);
 });
 
-test('holdをrealizeしなければActionRealizationPolicyだけseparateでも影響しない', () => {
-  const trace = evaluate('xy', simultaneous, geometry, {
-    windowSize: 3,
-    sfbHomeCost: true,
-    triggerRealizationPolicy: { useHold: false },
-    actionRealizationPolicy: { holdStart: 'separate' },
-  });
-  assert.equal(trace.strokes.length, 2);
+test('薙刀式は同一layout内でSandSだけseparateへoverrideできる', () => {
+  const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
+  const policy: ActionRealizationPolicy = {
+    triggerActivation: 'combined',
+    triggerActivationOverrides: [{
+      selector: { layerId: 'layer:SandS' },
+      grouping: 'separate',
+    }],
+  };
+
+  const combined = realized('おが', false, grouping('combined'), naginata);
+  const mixed = realized('おが', false, policy, naginata);
+
+  assert.equal(combined.strokes.length, 2);
+  assert.equal(mixed.strokes.length, 3);
+  assert.equal(mixed.strokes.filter((stroke) => stroke.layerId === 'layer:SandS').length, 2);
+  assert.equal(mixed.strokes.filter((stroke) => stroke.layerId === 'layer:濁音').length, 1);
 });

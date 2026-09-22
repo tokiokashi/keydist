@@ -23,8 +23,8 @@ const state = () => createDefaultUiState({
   selectedLayouts: { en: ['qwerty'], ja: ['qwerty'] },
 });
 
-test('ActionRealizationPolicyへの保存schema変更でcondition bundle versionを2へ上げる', () => {
-  assert.equal(CONDITION_BUNDLE_VERSION, 2);
+test('trigger activation override対応でcondition bundle versionを3へ上げる', () => {
+  assert.equal(CONDITION_BUNDLE_VERSION, 3);
 
   const current = state();
   const bundle = conditionBundleFromState(current, [], [], { rules: [], assignments: {} }, []);
@@ -102,15 +102,33 @@ test('TriggerRealizationPolicyはglobal / per-layoutともcondition bundleで往
 
 test('ActionRealizationPolicyはglobal / per-layoutともcondition bundleで往復する', () => {
   const current = state();
-  current.conditions.defaults.actionRealization = { holdStart: 'separate' };
+  current.conditions.defaults.actionRealization = {
+    triggerActivation: 'separate',
+    triggerActivationOverrides: [{
+      selector: {
+        layerId: 'layer:SandS',
+        triggerKeys: ['thumb-r'],
+      },
+      grouping: 'separate' as const,
+    }],
+  };
   current.conditions.perLayout.qwerty = {
-    actionRealization: { holdStart: 'combined' },
+    actionRealization: {
+      triggerActivation: 'combined',
+      triggerActivationOverrides: [{
+        selector: { layerId: 'layer:濁音', triggerKeys: ['j'] },
+        grouping: 'separate',
+      }],
+    },
   };
   const bundle = conditionBundleFromState(current, [], [], { rules: [], assignments: {} }, []);
   const parsed = parseConditionBundle(serializeConditionBundle(bundle), bundle, current, choices);
 
-  assert.deepEqual(parsed.conditions.defaults.actionRealization, { holdStart: 'separate' });
-  assert.deepEqual(parsed.conditions.perLayout.qwerty.actionRealization, { holdStart: 'combined' });
+  assert.deepEqual(parsed.conditions.defaults.actionRealization, current.conditions.defaults.actionRealization);
+  assert.deepEqual(
+    parsed.conditions.perLayout.qwerty.actionRealization,
+    current.conditions.perLayout.qwerty.actionRealization,
+  );
 });
 
 test('未知の配列への個別設定は読み込み時に捨てる', () => {
