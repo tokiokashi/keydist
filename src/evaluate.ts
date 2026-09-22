@@ -23,10 +23,11 @@ import {
 } from './core/semantic-input/index.ts';
 
 export interface Options {
-  /** 窓幅N（打鍵単位）。この打鍵数までは残す候補を比較する */
+  /** 先読み窓幅N（selected logical input unit単位）。N input unit先まで残す候補を比較する */
   windowSize: number;
   /**
-   * 同指連続（g=0）で打鍵先がその指のホームキー自身のとき、移動を加算するか。
+   * 同指連続（次のlogical input unitまでに別unitを挟まない）で
+   * 打鍵先がその指のホームキー自身のとき、移動を加算するか。
    * falseにすると距離0として扱う。
   */
   sfbHomeCost: boolean;
@@ -63,7 +64,10 @@ export interface Press {
   keys: Key[];
   /** 指の目標位置。キーが複数なら重心（§4.2） */
   target: Point;
-  /** 前回この指を使ってから挟まったステップ数 */
+  /**
+   * 前回この指を使ったselected logical input unitからの距離。
+   * 同じinput unit内は0、次のinput unitは1。
+   */
   gap: number;
   /** この押下で計上された移動距離 [u] */
   distance: number;
@@ -127,9 +131,11 @@ export interface Trace {
 /**
  * 仕様 §9。テキストを打鍵ステップ列へ展開し、各押下の移動距離を求める。
  *
- * g = 0        → d_stay               （同指連続。戻る時間がない）
- * 1 ≤ g ≤ N    → min(d_stay, d_home)  （残す選択肢が比較に入る）
- * g > N        → d_home               （復帰済み）
+ * Δ <= 1      → d_stay               （同じ/次のinput unit。間に別input unitがない）
+ * 2 ≤ Δ ≤ N   → min(d_stay, d_home)  （残す選択肢が比較に入る）
+ * Δ > N        → d_home               （復帰済み）
+ *
+ * Δはselected logical input unit間の距離。trigger/outputへのaction分割では増えない。
  *
  * ホームへの復帰移動そのものは計上しない（§7 R2）。
  * 同時押しステップは1ステップとして数え、距離は各指の単純和を採る。
@@ -141,10 +147,12 @@ export function evaluate(
   options: Options = DEFAULT_OPTIONS,
 ): Trace {
   const prev = {} as Record<Finger, Point>;
-  const last = {} as Record<Finger, number>;
+  const lastStrokeIndex = {} as Record<Finger, number>;
+  const lastInputUnitIndex = {} as Record<Finger, number>;
   for (const finger of ALL_FINGERS) {
     prev[finger] = geometry.homes[finger];
-    last[finger] = Number.NEGATIVE_INFINITY;
+    lastStrokeIndex[finger] = Number.NEGATIVE_INFINITY;
+    lastInputUnitIndex[finger] = Number.NEGATIVE_INFINITY;
   }
 
   const strokes: Stroke[] = [];
@@ -163,6 +171,7 @@ export function evaluate(
   }
   let skipped = 0;
   let index = 0;
+  let inputUnitIndex = 0;
   let triggerHoldState: TriggerHoldState | undefined;
 
   // ローマ字配列はかなテキストを展開してから打つ。コンボの誤命中を防ぐため、
@@ -231,6 +240,7 @@ export function evaluate(
       ? chunkRanges.find((range) => range.start < inputEnd && inputStart < range.end)?.start ?? inputStart
       : inputStart;
     cursor += consumed;
+    const currentInputUnitIndex = inputUnitIndex++;
 
     const selectedAlternative = selectInputAlternative(
       alternatives,
@@ -280,7 +290,8 @@ export function evaluate(
 
       const presses: Press[] = [...byFinger].map(([finger, keys]) => {
         const target = centroid(keys);
-        const gap = index - last[finger] - 1;
+        const gap = currentInputUnitIndex - lastInputUnitIndex[finger];
+        const strokeGap = index - lastStrokeIndex[finger] - 1;
         const at = prev[finger];
         return {
           finger,
@@ -288,7 +299,7 @@ export function evaluate(
           target,
           gap,
           distance: 0,
-          sfb: gap === 0 && (at.x !== target.x || at.y !== target.y),
+          sfb: strokeGap === 0 && (at.x !== target.x || at.y !== target.y),
         };
       });
 
@@ -310,7 +321,7 @@ export function evaluate(
         if (decision.stay) {
           restoreStaySnapshots(
             strokes,
-            last[press.finger],
+            lastStrokeIndex[press.finger],
             index,
             press.finger,
             prev[press.finger],
@@ -320,17 +331,19 @@ export function evaluate(
       }
       for (const press of presses) {
         prev[press.finger] = press.target;
-        last[press.finger] = index;
+        lastStrokeIndex[press.finger] = index;
+        lastInputUnitIndex[press.finger] = currentInputUnitIndex;
       }
 
       const pressedFingers = new Set(presses.map((press) => press.finger));
       for (const [finger, keys] of heldKeysByFinger(action.heldKeys, geometry)) {
         if (pressedFingers.has(finger)) continue;
         prev[finger] = centroid(keys);
-        last[finger] = index;
+        lastStrokeIndex[finger] = index;
+        lastInputUnitIndex[finger] = currentInputUnitIndex;
       }
 
-      const positions = snapshot(prev, last, index, geometry);
+      const positions = snapshot(prev, lastStrokeIndex, index, geometry);
       strokes.push({
         index,
         char,
@@ -552,7 +565,7 @@ function pressCost(
   const dStay = dist(prev[finger], target);
   const dHome = dist(home, target);
 
-  if (gap === 0) {
+  if (gap <= 1) {
     const onHome = target.x === home.x && target.y === home.y;
     return {
       distance: !options.sfbHomeCost && onHome ? 0 : dStay,
