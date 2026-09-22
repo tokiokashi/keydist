@@ -176,57 +176,6 @@
   stroke-linejoin: round;
 }
 
-.flow-edge-left {
-  color: #ff8a66;
-  stroke: currentColor;
-}
-
-.flow-edge-right {
-  color: #60a9ff;
-  stroke: currentColor;
-}
-
-.flow-edge-cross {
-  color: #a5abb0;
-  stroke: currentColor;
-}
-
-.flow-edge-inward {
-  color: #7fc7a4;
-  stroke: currentColor;
-}
-
-.flow-edge-outward {
-  color: #c19de9;
-  stroke: currentColor;
-}
-
-.flow-edge-same {
-  color: #a5abb0;
-  stroke: currentColor;
-}
-
-.flow-marker-left {
-  fill: #ff8a66;
-}
-
-.flow-marker-right {
-  fill: #60a9ff;
-}
-
-.flow-marker-cross,
-.flow-marker-same {
-  fill: #a5abb0;
-}
-
-.flow-marker-inward {
-  fill: #7fc7a4;
-}
-
-.flow-marker-outward {
-  fill: #c19de9;
-}
-
 .flow-key rect {
   fill: #222627;
   stroke: #555c5f;
@@ -453,18 +402,6 @@
 .relative-vector-same {
   color: #a5abb0;
   stroke: currentColor;
-}
-
-.relative-marker-inward {
-  fill: #7fc7a4;
-}
-
-.relative-marker-outward {
-  fill: #c19de9;
-}
-
-.relative-marker-same {
-  fill: #a5abb0;
 }
 
 .rose-sector {
