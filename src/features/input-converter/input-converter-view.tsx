@@ -253,15 +253,44 @@ export function InputConverterView() {
     () => presentationTriggerColorSlots(layout),
     [layout],
   );
-  const patternResult = useMemo(
-    () => matchKeyPatterns(layout, new Set(session.presentation.selectedKeys)),
-    [layout, session.presentation.selectedKeys],
-  );
+  const patternResult = useMemo(() => {
+    const result = matchKeyPatterns(
+      layout,
+      new Set(session.presentation.selectedKeys),
+    );
+    const active = new Set(activeGroupIds);
+    if (active.size === 0) {
+      return {
+        exact: [],
+        candidates: new Map(),
+        continuations: new Map(),
+      };
+    }
+
+    const filterMap = (
+      source: typeof result.candidates,
+    ): typeof result.candidates => new Map(
+      [...source]
+        .map(([key, matches]) => [
+          key,
+          matches.filter((match) => active.has(match.aggregationGroupId)),
+        ] as const)
+        .filter(([, matches]) => matches.length > 0),
+    );
+
+    return {
+      exact: result.exact.filter((match) => active.has(match.aggregationGroupId)),
+      candidates: filterMap(result.candidates),
+      continuations: filterMap(result.continuations),
+    };
+  }, [activeGroupIds, layout, session.presentation.selectedKeys]);
   const hasOneShotLayer = session.presentation.oneShotActivations.length > 0;
   const keyboardViews = useMemo(() => {
     const pressed = new Set(session.pressedKeys);
     const selected = new Set(session.presentation.selectedKeys);
-    const hasDynamicPath = showDynamicGuide && selected.size > 0;
+    const hasDynamicPath = showDynamicGuide
+      && activeGroupIds.length > 0
+      && selected.size > 0;
     return new Map<string, PhysicalKeyboardKeyView>(
       visibleKeys.map((key) => {
         const outputs = showDynamicGuide
@@ -302,6 +331,7 @@ export function InputConverterView() {
       }),
     );
   }, [
+    activeGroupIds,
     activeTriggerKeys,
     hasOneShotLayer,
     layout,
