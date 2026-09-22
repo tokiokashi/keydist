@@ -217,7 +217,7 @@ test('保存形式はuiとconditionsに分かれ、canonical条件だけ復元�
       includeSingleRedirectTail: false,
     },
     triggerRealization: { useHold: true },
-    actionRealization: { triggerActivation: 'separate', triggerActivationOverrides: [] },
+    actionRealization: { triggerActivation: 'semantic', triggerActivationOverrides: [] },
   };
   value.conditions.perLayout = {
     oonishi: { geometry: 'ortholinear', windowSize: 7, sfbHomeCost: false, romajiRule: 'azik' },
@@ -313,7 +313,7 @@ test('ActionRealizationPolicyはglobal / per-layoutで保存・復元する', ()
   const fallback = defaults();
   const value = structuredClone(fallback);
   value.conditions.defaults.actionRealization = {
-    triggerActivation: 'separate',
+    triggerActivation: 'semantic',
     triggerActivationOverrides: [{
       selector: {
         layerId: 'layer:SandS',
@@ -324,7 +324,7 @@ test('ActionRealizationPolicyはglobal / per-layoutで保存・復元する', ()
   };
   value.conditions.perLayout.oonishi = {
     actionRealization: {
-      triggerActivation: 'combined',
+      triggerActivation: 'disabled',
       triggerActivationOverrides: [{
         selector: { triggerKeys: ['j'] },
         grouping: 'separate',
