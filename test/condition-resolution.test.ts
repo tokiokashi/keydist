@@ -23,12 +23,29 @@ test('配列別条件は既定値へ部分的に重なる', () => {
   assert.deepEqual(resolved.actionRealizationPolicy, { triggerActivation: 'combined', triggerActivationOverrides: [] });
 });
 
-test('ActionRealizationPolicyはconditionからevaluate optionsへそのまま渡す', () => {
-  const separated = resolveConditions(DEFAULT_CONDITION_DEFAULTS, {
-    actionRealization: { triggerActivation: 'separate', triggerActivationOverrides: [] },
-  });
-  assert.deepEqual(separated.actionRealizationPolicy, { triggerActivation: 'separate', triggerActivationOverrides: [] });
-  assert.deepEqual(separated.options.actionRealizationPolicy, { triggerActivation: 'separate', triggerActivationOverrides: [] });
+test('ActionRealizationPolicyはoverrideを含めconditionからevaluate optionsへそのまま渡す', () => {
+  const actionRealization = {
+    triggerActivation: 'separate' as const,
+    triggerActivationOverrides: [{
+      selector: {
+        layerId: 'layer:SandS',
+        triggerKeys: ['thumb-r'],
+      },
+      grouping: 'separate' as const,
+    }],
+  };
+  const separated = resolveConditions(DEFAULT_CONDITION_DEFAULTS, { actionRealization });
+
+  assert.deepEqual(separated.actionRealizationPolicy, actionRealization);
+  assert.deepEqual(separated.options.actionRealizationPolicy, actionRealization);
+  assert.notEqual(
+    separated.actionRealizationPolicy.triggerActivationOverrides,
+    actionRealization.triggerActivationOverrides,
+  );
+  assert.notEqual(
+    separated.actionRealizationPolicy.triggerActivationOverrides?.[0].selector.triggerKeys,
+    actionRealization.triggerActivationOverrides[0].selector.triggerKeys,
+  );
 });
 
 test('配列別条件が空なら既定値と同じになる', () => {
