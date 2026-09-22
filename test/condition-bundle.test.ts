@@ -23,8 +23,8 @@ const state = () => createDefaultUiState({
   selectedLayouts: { en: ['qwerty'], ja: ['qwerty'] },
 });
 
-test('trigger activation override対応でcondition bundle versionを3へ上げる', () => {
-  assert.equal(CONDITION_BUNDLE_VERSION, 3);
+test('semantic trigger grouping対応でcondition bundle versionを4へ上げる', () => {
+  assert.equal(CONDITION_BUNDLE_VERSION, 4);
 
   const current = state();
   const bundle = conditionBundleFromState(current, [], [], { rules: [], assignments: {} }, []);
@@ -104,6 +104,7 @@ test('ActionRealizationPolicyはglobal / per-layoutともcondition bundleで往�
   const current = state();
   current.conditions.defaults.actionRealization = {
     triggerActivation: 'semantic',
+    triggerActivationClassOverrides: { 'order-free': 'separate' },
     triggerActivationOverrides: [{
       selector: {
         layerId: 'layer:SandS',
@@ -115,6 +116,7 @@ test('ActionRealizationPolicyはglobal / per-layoutともcondition bundleで往�
   current.conditions.perLayout.qwerty = {
     actionRealization: {
       triggerActivation: 'disabled',
+      triggerActivationClassOverrides: { 'prepress-required': 'combined' },
       triggerActivationOverrides: [{
         selector: { layerId: 'layer:濁音', triggerKeys: ['j'] },
         grouping: 'separate',
