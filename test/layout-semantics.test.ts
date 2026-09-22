@@ -117,13 +117,19 @@ test('月配列prefixはtrigger-only Strokeとして正規化する', () => {
   assert.ok(trace.strokes.flatMap((s) => s.participations).every((p) => !p.roles.includes('held-trigger')));
 });
 
-test('新JISはFaceModeとTriggerPersistenceを独立して持つ', () => {
+test('新JISはFaceMode / TriggerPersistence / TriggerOrderを独立して持つ', () => {
   const prefixLayout = LAYOUT_BY_ID.get('shin-jis-prefix')!;
   const simultaneousLayout = LAYOUT_BY_ID.get('shin-jis-simultaneous')!;
   assert.ok(prefixLayout.faces?.filter((face) => face.trigger.length > 0)
-    .every((face) => face.mode === 'prefix' && face.triggerPersistence === 'single'));
+    .every((face) =>
+      face.mode === 'prefix'
+      && face.triggerPersistence === 'single'
+      && face.triggerOrder === undefined));
   assert.ok(simultaneousLayout.faces?.filter((face) => face.trigger.length > 0)
-    .every((face) => face.mode === 'simultaneous' && face.triggerPersistence === 'hold-capable'));
+    .every((face) =>
+      face.mode === 'simultaneous'
+      && face.triggerPersistence === 'hold-capable'
+      && face.triggerOrder === 'prefix'));
 
   const prefix = evaluate('お', prefixLayout, geometry, opts());
   const simultaneous = evaluate('お', simultaneousLayout, geometry, opts());
