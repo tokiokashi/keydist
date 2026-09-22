@@ -32,6 +32,14 @@ const FINGER_OPTIONS: readonly { id: FingerClass; label: string }[] = [
 ];
 const SCALE = 58;
 const PAD = 42;
+const FLOW_COLORS = {
+  left: '#ff8a66',
+  right: '#60a9ff',
+  cross: '#a5abb0',
+  inward: '#7fc7a4',
+  outward: '#c19de9',
+  same: '#a5abb0',
+} as const;
 
 interface RelativeVector {
   id: string;
@@ -69,33 +77,26 @@ function chartPoint(point: Point, minX: number, minY: number) {
 }
 
 function edgePath(vector: BigramVector, minX: number, minY: number): string {
-  const from = chartPoint(vector.from, minX, minY);
-  const to = chartPoint(vector.to, minX, minY);
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
+  const start = chartPoint(vector.from, minX, minY);
+  const end = chartPoint(vector.to, minX, minY);
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
   const length = Math.hypot(dx, dy);
 
-  if (length < 0.01) {
-    return [
-      `M ${from.x - 8} ${from.y - 15}`,
-      `C ${from.x - 28} ${from.y - 40}, ${from.x + 28} ${from.y - 40}, ${from.x + 8} ${from.y - 15}`,
-    ].join(' ');
-  }
+  if (length < 0.01) return `M ${start.x} ${start.y}`;
 
+  const mid = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
   const ux = dx / length;
   const uy = dy / length;
-  const start = { x: from.x + ux * 20, y: from.y + uy * 18 };
-  const end = { x: to.x - ux * 24, y: to.y - uy * 21 };
-  const mid = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
-  // 往復で弧の側が反転すると線が蛇行して見える。
-  // 法線を画面上側（ほぼ垂直なら右側）へ揃え、全edgeを同じ側へごく浅く曲げる。
+
+  // 往復で弧の側を反転させず、ほぼ全てを同じ側へ浅く持ち上げる。
   let nx = -uy;
   let ny = ux;
   if (ny > 0 || (Math.abs(ny) < 0.15 && nx < 0)) {
     nx *= -1;
     ny *= -1;
   }
-  const bend = Math.min(7, Math.max(3.5, length * 0.035));
+  const bend = Math.min(8, Math.max(2.5, length * 0.025));
   const control = {
     x: mid.x + nx * bend,
     y: mid.y + ny * bend,
@@ -103,11 +104,12 @@ function edgePath(vector: BigramVector, minX: number, minY: number): string {
   return `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`;
 }
 
-function edgeClass(vector: BigramVector, showRollDirection: boolean): string {
-  if (showRollDirection && vector.fingerDirection !== undefined) {
-    return `flow-edge flow-edge-${vector.fingerDirection}`;
-  }
-  return `flow-edge flow-edge-${vector.hand}`;
+function edgeKind(
+  vector: BigramVector,
+  showRollDirection: boolean,
+): keyof typeof FLOW_COLORS {
+  if (showRollDirection && vector.fingerDirection !== undefined) return vector.fingerDirection;
+  return vector.hand;
 }
 
 function weightScale(weight: number, maxWeight: number): number {
@@ -115,14 +117,50 @@ function weightScale(weight: number, maxWeight: number): number {
   return Math.log1p(weight) / Math.log1p(maxWeight);
 }
 
-function visibleKeyboardVectors(
-  vectors: readonly BigramVector[],
-  selectedFingerCount: number,
-): readonly BigramVector[] {
-  const limit = selectedFingerCount === 0 ? 32 : selectedFingerCount === 1 ? 40 : 64;
+function isStationaryVector(vector: BigramVector): boolean {
+  return vector.distance < 1e-6;
+}
+
+function keyboardFlowVectors(vectors: readonly BigramVector[]): readonly BigramVector[] {
   return [...vectors]
-    .sort((a, b) => b.weight - a.weight || a.id.localeCompare(b.id))
-    .slice(0, limit);
+    .filter((vector) => !isStationaryVector(vector))
+    // 細い線を先に、太い線を後に描いて主要connectionを前面へ残す。
+    .sort((a, b) => a.weight - b.weight || a.id.localeCompare(b.id));
+}
+
+function repeatCountsByKey(vectors: readonly BigramVector[]): ReadonlyMap<string, number> {
+  const counts = new Map<string, number>();
+  for (const vector of vectors) {
+    if (!isStationaryVector(vector)) continue;
+    const shared = vector.fromKeyIds.filter((keyId) => vector.toKeyIds.includes(keyId));
+    const keyIds = shared.length > 0 ? shared : vector.fromKeyIds;
+    for (const keyId of keyIds) {
+      counts.set(keyId, (counts.get(keyId) ?? 0) + vector.weight);
+    }
+  }
+  return counts;
+}
+
+function outgoingCounts(
+  vectors: readonly BigramVector[],
+  hoveredKeyId: string | null,
+): { readonly total: number; readonly destinations: ReadonlyMap<string, number> } {
+  const destinations = new Map<string, number>();
+  if (hoveredKeyId === null) return { total: 0, destinations };
+
+  let total = 0;
+  for (const vector of vectors) {
+    if (!vector.fromKeyIds.includes(hoveredKeyId)) continue;
+    total += vector.weight;
+    for (const keyId of vector.toKeyIds) {
+      destinations.set(keyId, (destinations.get(keyId) ?? 0) + vector.weight);
+    }
+  }
+  return { total, destinations };
+}
+
+function badgeWidth(text: string): number {
+  return Math.max(18, 8 + text.length * 6);
 }
 
 function KeyboardFlow({
@@ -139,16 +177,22 @@ function KeyboardFlow({
   const reduceMotion = useReducedMotion();
   const keys = useMemo(() => geometry.grid.flat(), [geometry]);
   const keyBounds = useMemo(() => bounds(keys), [keys]);
+  const [hoveredKeyId, setHoveredKeyId] = useState<string | null>(null);
   const width = PAD * 2 + (keyBounds.maxX - keyBounds.minX) * SCALE;
   const height = PAD * 2 + (keyBounds.maxY - keyBounds.minY) * SCALE;
+  const allFlowVectors = useMemo(() => keyboardFlowVectors(vectors), [vectors]);
+  const repeatCounts = useMemo(() => repeatCountsByKey(vectors), [vectors]);
   const displayedVectors = useMemo(
-    () => visibleKeyboardVectors(vectors, selectedFingers.length),
-    [vectors, selectedFingers.length],
+    () => hoveredKeyId === null
+      ? allFlowVectors
+      : allFlowVectors.filter((vector) => vector.fromKeyIds.includes(hoveredKeyId)),
+    [allFlowVectors, hoveredKeyId],
   );
-  const maxWeight = Math.max(1, ...displayedVectors.map((vector) => vector.weight));
-  const totalWeight = vectors.reduce((sum, vector) => sum + vector.weight, 0);
-  const displayedWeight = displayedVectors.reduce((sum, vector) => sum + vector.weight, 0);
-  const coverage = totalWeight === 0 ? 0 : displayedWeight / totalWeight;
+  const hoverCounts = useMemo(
+    () => outgoingCounts(allFlowVectors, hoveredKeyId),
+    [allFlowVectors, hoveredKeyId],
+  );
+  const maxWeight = Math.max(1, ...allFlowVectors.map((vector) => vector.weight));
   const showRollDirection = selectedFingers.length === 2;
 
   return (
@@ -176,9 +220,13 @@ function KeyboardFlow({
             return (
               <g
                 className="flow-key"
+                data-key-id={key.id}
                 data-selected={selected || undefined}
+                data-hovered={hoveredKeyId === key.id || undefined}
                 key={key.id}
                 transform={`translate(${point.x} ${point.y})`}
+                onPointerEnter={() => setHoveredKeyId(key.id)}
+                onPointerLeave={() => setHoveredKeyId((current) => current === key.id ? null : current)}
               >
                 <rect x="-21" y="-19" width="42" height="38" rx="8" />
                 <text y="1" textAnchor="middle" dominantBaseline="middle">
@@ -192,19 +240,45 @@ function KeyboardFlow({
           })}
         </g>
 
+        <defs>
+          {displayedVectors.map((vector, index) => {
+            const from = chartPoint(vector.from, keyBounds.minX, keyBounds.minY);
+            const to = chartPoint(vector.to, keyBounds.minX, keyBounds.minY);
+            const color = FLOW_COLORS[edgeKind(vector, showRollDirection)];
+            return (
+              <linearGradient
+                id={`flow-gradient-${index}`}
+                key={`gradient-${vector.id}`}
+                gradientUnits="userSpaceOnUse"
+                x1={from.x}
+                y1={from.y}
+                x2={to.x}
+                y2={to.y}
+              >
+                <stop offset="0%" stopColor={color} stopOpacity="0.16" />
+                <stop offset="100%" stopColor={color} stopOpacity="0.96" />
+              </linearGradient>
+            );
+          })}
+        </defs>
+
         <g className="flow-vector-layer">
           <AnimatePresence initial={false}>
-            {displayedVectors.map((vector) => {
+            {displayedVectors.map((vector, index) => {
               const strength = weightScale(vector.weight, maxWeight);
               return (
                 <motion.path
                   key={vector.id}
-                  className={edgeClass(vector, showRollDirection)}
+                  className="flow-edge"
+                  data-flow-edge="true"
+                  data-from-keys={vector.fromKeyIds.join('+')}
+                  data-to-keys={vector.toKeyIds.join('+')}
                   d={edgePath(vector, keyBounds.minX, keyBounds.minY)}
                   fill="none"
-                  strokeWidth={0.75 + 2.35 * strength}
+                  stroke={`url(#flow-gradient-${index})`}
+                  strokeWidth={0.45 + 4.3 * strength}
                   initial={reduceMotion ? false : { opacity: 0, pathLength: 0 }}
-                  animate={{ opacity: 0.62, pathLength: 1 }}
+                  animate={{ opacity: hoveredKeyId === null ? 0.72 : 0.96, pathLength: 1 }}
                   exit={reduceMotion ? undefined : { opacity: 0, pathLength: 0.5 }}
                   transition={reduceMotion
                     ? { duration: 0 }
@@ -217,6 +291,33 @@ function KeyboardFlow({
               );
             })}
           </AnimatePresence>
+        </g>
+
+        <g className="flow-overlay-layer" aria-hidden="true">
+          {keys.map((key) => {
+            const point = chartPoint(key, keyBounds.minX, keyBounds.minY);
+            const hoverCount = hoveredKeyId === key.id
+              ? hoverCounts.total
+              : hoverCounts.destinations.get(key.id);
+            const repeatCount = repeatCounts.get(key.id);
+            const badgeText = hoveredKeyId !== null
+              ? (hoverCount === undefined || hoverCount === 0 ? undefined : String(hoverCount))
+              : (repeatCount === undefined ? undefined : `R${repeatCount}`);
+            if (badgeText === undefined) return null;
+            const width = badgeWidth(badgeText);
+            return (
+              <g
+                className={hoveredKeyId === null ? 'flow-key-badge flow-repeat-badge' : 'flow-key-badge'}
+                key={`badge-${key.id}`}
+                transform={`translate(${point.x + 15 - width / 2} ${point.y - 18})`}
+              >
+                <rect x="0" y="-8" width={width} height="15" rx="7.5" />
+                <text x={width / 2} y="0" dominantBaseline="middle" textAnchor="middle">
+                  {badgeText}
+                </text>
+              </g>
+            );
+          })}
         </g>
       </svg>
       <div className="flow-legend" aria-hidden="true">
@@ -234,7 +335,8 @@ function KeyboardFlow({
           </>
         )}
         <span className="flow-coverage">
-          {displayedVectors.length}/{vectors.length} paths · {(coverage * 100).toFixed(0)}%
+          {allFlowVectors.length} connections · {repeatCounts.size} repeat keys
+          {hoveredKeyId === null ? ' · hover a key' : ` · ${hoverCounts.total} outgoing`}
         </span>
       </div>
     </div>
@@ -675,8 +777,8 @@ export function BigramVectorView() {
             <h2>Keyboard Flow</h2>
           </div>
           <p>
-            頻度の高い結合を優先表示し、太さを対数圧縮する。
-            線はキーの上へ重ね、2指選択時はinward / outwardを色分けする。
+            全connectionを細いものから重ね、太さで頻度を表す。始点は薄く終点を濃くして方向を示す。
+            キーhoverでそのキー始点の結合だけへ絞り、同一位置のrepeatはloopではなくbadgeへ分離する。
           </p>
         </header>
         <KeyboardFlow
