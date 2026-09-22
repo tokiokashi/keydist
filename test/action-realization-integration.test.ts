@@ -180,8 +180,8 @@ test('薙刀式はsemantic既定値だけでSandSをseparate、order-free装飾�
 
   assert.equal(combined.strokes.length, 2);
   assert.equal(mixed.strokes.length, 3);
-  assert.equal(mixed.strokes.filter((stroke) => stroke.layerId === 'layer:SandS').length, 2);
-  assert.equal(mixed.strokes.filter((stroke) => stroke.layerId === 'layer:濁音').length, 1);
+  assert.equal(mixed.strokes.filter((stroke) => stroke.aggregationGroupId === 'layer:SandS').length, 2);
+  assert.equal(mixed.strokes.filter((stroke) => stroke.aggregationGroupId === 'layer:濁音').length, 1);
 });
 
 test('薙刀式のorder-free大分類は必要なら一括でseparateへoverrideできる', () => {
@@ -192,6 +192,6 @@ test('薙刀式のorder-free大分類は必要なら一括でseparateへoverride
   };
   const trace = realized('が', false, policy, naginata);
   assert.equal(trace.strokes.length, 2);
-  assert.equal(trace.strokes[0].layerId, 'layer:濁音');
-  assert.equal(trace.strokes[1].layerId, 'layer:濁音');
+  assert.equal(trace.strokes[0].aggregationGroupId, 'layer:濁音');
+  assert.equal(trace.strokes[1].aggregationGroupId, 'layer:濁音');
 });
