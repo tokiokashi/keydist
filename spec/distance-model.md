@@ -198,11 +198,16 @@ authoring defaultを基準に、thumb keyだけが異なる合法variantの中�
 thumb variant生成時の重複判定はaction groupingだけではなくcanonical alternative全体で行い、
 Requirement / Capability / classification / role / layer / context / origin等が異なるpathを失わない。
 
-英字配列の通常Shiftも同じcanonical pipelineで扱う。大文字・Shift記号はbase keyに
-`shift-l` / `shift-r` のいずれかを重ねる2つの合法alternativeとしてcompileする。
-各alternativeはbase keyとの `overlap` Requirement、Shift keyの `while-held` Capability、
-`modifierGroupId='Shift'` のmodifier roleを持つ。Shiftを押しっぱなしで複数文字へ作用させるかは
-他のhold-capable triggerと同じ `TriggerRealizationPolicy` で決まる。
+英字配列の通常Shiftも同じcanonical pipelineで扱う。大文字と、**現在モデル化しているbase
+physical key**のShift記号はbase keyに `shift-l` / `shift-r` のいずれかを重ねる2つの
+合法alternativeとしてcompileする。各alternativeはbase keyとの `overlap` Requirement、
+Shift keyの `while-held` Capability、`modifierGroupId='Shift'` のmodifier roleを持つ。
+Shiftを押しっぱなしで複数文字へ作用させるかは他のhold-capable triggerと同じ
+`TriggerRealizationPolicy` で決まる。
+
+現時点のbase physical modelにBackquote / Backslashが無いため、US配列の `~` / `|` は
+このIssueでは未対応とする。これはShift semanticの例外ではなく、base physical key自体が
+未モデル化であるためである。
 
 解析時の通常Shiftは、左右variantのうちoutput keyと反対手のShiftを既定で優先する。
 これはcanonical keyの書き換えではなくInput Alternative Selection Policyであり、両pathは
@@ -796,82 +801,54 @@ P = 押下キー数 / C          [押下/文字]
 
 **11.5.1単打面率**
 
-打鍵可能な入力文字のうち、**単打面の1キーだけで直接出力できた文字**の割合を出す。
-分母・分子とも出力文字数ベースで数える。
+**単打面に配置されている出力文字数 / 全出力文字数**。
+
+分母・分子とも出力文字数ベースで数える。1キーで `きゃ` のような複数文字を
+直接出力する見出しは、その出力文字数ぶん分子へ入る。
 
 ```
-L1 = 単打面の1キー直接入力で出力できた文字数
-T  = 打鍵可能だった入力文字数
-singleTapLayerRate = L1 / T × 100       [%]
+Cbase = 単打面の直接入力で出力される文字数
+C     = 打鍵可能だった全出力文字数
+singleTapLayerRate = Cbase / C × 100       [%]
 ```
-
-判定は入力文字単位で行う。ローマ字展開や複数文字コンボの内部Stroke数では重み付けせず、
-元の入力文字数を数える。「単打面の1キー直接入力」は、1 Stroke・1物理キーで、
-`aggregationGroupId !== 'combo'`、`composition` classificationなし、かつtrigger / held-triggerを
-伴わない入力とする。legacy `inputRole` は判定に使わない。
-
-したがって、親指シフト・前置/後置シフト・文字キー同時押しコンボ・複数打鍵のローマ字入力は
-含めない。hold-capableなシフトを実際に保持した場合も、その対象文字を単打面へ昇格させない。
-打鍵不能文字は分母 `T` から除外する。
-
-この値は入力の難しさや優劣を直接表す指標ではなく、単打面に配置された文字が入力文字の
-どれだけを占めるかという配列構造を表す。
 
 **11.5.2単打率**
 
-かな配列で通常「単打」と呼ばれる入力に合わせ、総アクションのうち、
-**単打面（base layer）の1 physical Stroke・1物理キーだけで入力単位を直接出力し、
-trigger / held-triggerに依存しないアクション**の割合を出す。
+**単打面の文字を出力するaction数 / 全action数**。
 
-文字種によるwhite listは持たない。ひらがな・長音符・句読点・記号・複数文字出力など、
-その配列が単打面へ直接配置している出力は同じ規則で扱う。
+単打面の直接入力1件を1actionとして分子へ入れる。複数文字見出しでも1actionである。
+ローマ字展開後の `k` / `a` などは、元のかな入力単位を直接出力するactionではないため
+分子へ入れない。
 
 ```
-S1 = 単打に該当するアクション数
+S1 = 単打面の文字を直接出力するアクション数
 A  = Policy適用後の総アクション数
 singleTapRate = S1 / A × 100       [%]
 ```
 
-単打面率とは分母が異なる。単打面率は元の入力文字数を数えるのに対し、
-単打率は実際のアクション数を数える。たとえば1キーで「きゃ」を直接出す入力は、
-単打面率では2文字分、単打率では1アクション分として数える。
-
-ローマ字入力の `k` や `a` は、かな入力単位をローマ字へ展開した途中のStrokeであり、
-元の入力単位を直接出力していないため単打に含めない。prefix / suffixシフトは入力単位が
-複数Strokeにまたがるため、その一部の1キーStrokeだけを単打とは数えない。
-simultaneousな複数キー入力、コンボ、hold継続中の `held-trigger` 依存入力も
-単打には含めない。
-
-`semantic` policyでgroupingが`separate`になった場合、先行trigger Strokeも分母 `A` に含める。
-ただしbase layerの直接出力actionではないため単打の分子には含めない。
+単打面率とはauthorityは同じだが、分母・分子の単位が異なる。
+たとえば1キーで `きゃ` を直接出す入力は、単打面率では2文字分、
+単打率では1action分として数える。
 
 **11.5.3 1キー率**
 
-総アクションのうち、**outputを伴い、そのactionでfreshに押す物理キーが1つだけのアクション**の割合を出す。
-単打率と同じ総アクション数を分母にする。trigger-only actionは操作コストとして分母には残すが、
-文字出力を伴わないため分子には含めない。
+**freshに押す物理キーが1つだけのaction数 / 全action数**。
 
-held triggerはfresh pressではないため、hold継続中でもoutput action自身が1物理キーだけをfreshに押すなら
-1キーactionとして数える。base layerか、かなを直接出すか、triggerへ依存するかは問わない。
-これにより単打率とは「意味上の単打」と「物理的に1キーだけfresh pressする出力action」で役割を分ける。
+output / trigger / held-trigger / layer / modifierなどのsemanticは一切条件にしない。
+ActionRealizationPolicy適用後のrealized Stroke列だけを見て、そのStrokeで新たに押す
+physical keyの種類数が1なら分子へ入れる。
 
 ```
-K1 = 1物理キーだけを入力するアクション数
+K1 = fresh physical keyが1つだけのアクション数
 A  = Policy適用後の総アクション数
 singleKeyRate = K1 / A × 100       [%]
 ```
 
-ローマ字入力の各英字、prefix / suffixのシフト単独action、hold継続中に新規押下する
-1キーactionも分子へ入れる。逆に、1 actionで複数キーを同時入力する場合は、
-1本の指で複数キーを押す場合も含めて分子へ入れない。
+したがってprefix shiftのtrigger-only action、hold継続中にfresh keyを1つ押すaction、
+ローマ字入力の各英字actionも、fresh keyが1つなら1キーactionである。
+逆に1actionで複数キーを同時入力する場合は分子へ入らない。
 
-`semantic` policyでgroupingが`separate`になった場合、triggerとoutputが別realized Strokeになる。
-各Strokeが1物理キーだけなら、それぞれ1キーactionとして分子 `K1` に入れる。
-
-この指標は「単打」というかな入力上の意味を持たず、純粋に1 actionあたりの入力キー数を見る。
-比較表では **単打面率 → 単打率 → 1キー率** の順に並べる。単打率と1キー率は同じ
-アクション数を分母にするため、単打に該当するactionは必ず1キーactionにも該当する。
-一方、単打面率だけは文字数ベースなので、この2指標との数値の大小関係は保証されない。
+比較表では **単打面率 → 単打率 → 1キー率** の順に並べる。
 
 **11.6隣接指間距離の統計（ホーム間隔からの超過）**
 
