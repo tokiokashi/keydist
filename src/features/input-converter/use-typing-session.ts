@@ -11,6 +11,7 @@ import {
   type TypingInputResult,
 } from '../../core/input-converter/index.ts';
 import type { Layout } from '../../layouts/index.ts';
+import { physicalKeysUsedByLayout } from '../../layout-physical-keys.ts';
 import { browserKeyboardEventToPhysicalKeyEvent } from './browser-keyboard-adapter.ts';
 import {
   applyRecognizedTypingInputs,
@@ -27,18 +28,6 @@ export interface TypingSession {
   readonly composing: boolean;
   readonly readyLayoutId: string | undefined;
   clear(): void;
-}
-
-export function physicalKeysUsedByLayout(layout: Layout): ReadonlySet<string> {
-  const keys = new Set<string>();
-  for (const alternatives of layout.canonicalInputs.values()) {
-    for (const alternative of alternatives) {
-      for (const input of alternative.semanticInputs) {
-        for (const key of input.physicalKeys) keys.add(key);
-      }
-    }
-  }
-  return keys;
 }
 
 export function useTypingSession(layout: Layout): TypingSession {
