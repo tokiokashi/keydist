@@ -133,8 +133,7 @@ function repeatCountsByKey(vectors: readonly BigramVector[]): ReadonlyMap<string
   for (const vector of vectors) {
     if (!isStationaryVector(vector)) continue;
     const shared = vector.fromKeyIds.filter((keyId) => vector.toKeyIds.includes(keyId));
-    const keyIds = shared.length > 0 ? shared : vector.fromKeyIds;
-    for (const keyId of keyIds) {
+    for (const keyId of shared) {
       counts.set(keyId, (counts.get(keyId) ?? 0) + vector.weight);
     }
   }
@@ -193,6 +192,10 @@ function KeyboardFlow({
     [allFlowVectors, hoveredKeyId],
   );
   const maxWeight = Math.max(1, ...allFlowVectors.map((vector) => vector.weight));
+  const gradientIndexById = useMemo(
+    () => new Map(allFlowVectors.map((vector, index) => [vector.id, index] as const)),
+    [allFlowVectors],
+  );
   const showRollDirection = selectedFingers.length === 2;
 
   return (
@@ -241,7 +244,7 @@ function KeyboardFlow({
         </g>
 
         <defs>
-          {displayedVectors.map((vector, index) => {
+          {allFlowVectors.map((vector, index) => {
             const from = chartPoint(vector.from, keyBounds.minX, keyBounds.minY);
             const to = chartPoint(vector.to, keyBounds.minX, keyBounds.minY);
             const color = FLOW_COLORS[edgeKind(vector, showRollDirection)];
@@ -264,8 +267,9 @@ function KeyboardFlow({
 
         <g className="flow-vector-layer">
           <AnimatePresence initial={false}>
-            {displayedVectors.map((vector, index) => {
+            {displayedVectors.map((vector) => {
               const strength = weightScale(vector.weight, maxWeight);
+              const gradientIndex = gradientIndexById.get(vector.id);
               return (
                 <motion.path
                   key={vector.id}
@@ -275,7 +279,7 @@ function KeyboardFlow({
                   data-to-keys={vector.toKeyIds.join('+')}
                   d={edgePath(vector, keyBounds.minX, keyBounds.minY)}
                   fill="none"
-                  stroke={`url(#flow-gradient-${index})`}
+                  stroke={gradientIndex === undefined ? FLOW_COLORS.cross : `url(#flow-gradient-${gradientIndex})`}
                   strokeWidth={0.45 + 4.3 * strength}
                   initial={reduceMotion ? false : { opacity: 0, pathLength: 0 }}
                   animate={{ opacity: hoveredKeyId === null ? 0.72 : 0.96, pathLength: 1 }}
