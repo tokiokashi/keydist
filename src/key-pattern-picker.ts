@@ -512,8 +512,9 @@ export function allTriggerKeys(layout: Layout): ReadonlySet<string> {
 
 
 /**
- * layer presentationだけの1キー目trigger。
- * combo physical keyは含めず、canonical aggregation kind=layerをauthorityにする。
+ * 常時表示するlayer key。
+ * canonical aggregation kind=layerのうち、単キーだけで成立するtrigger variantだけを返す。
+ * 複合triggerの構成キーやcombo membershipは動的ガイドへ委ねる。
  */
 export function allLayerTriggerKeys(layout: Layout): ReadonlySet<string> {
   const kinds = new Map(
@@ -526,9 +527,13 @@ export function allLayerTriggerKeys(layout: Layout): ReadonlySet<string> {
       alternative.semanticInputs.forEach((input, index) => {
         if (kinds.get(input.aggregationGroupId) !== 'layer') return;
         const realization = alternative.baseRealizations[index];
-        for (const key of realization?.defaultTriggerKeys ?? []) keys.add(resolveKeyId(key));
+        const addVariant = (variant: readonly string[]) => {
+          const resolved = uniqueKeys(variant);
+          if (resolved.length === 1) keys.add(resolved[0]);
+        };
+        addVariant(realization?.defaultTriggerKeys ?? []);
         for (const view of realization?.alternateParticipations ?? []) {
-          for (const key of view.triggerKeys) keys.add(resolveKeyId(key));
+          addVariant(view.triggerKeys);
         }
       });
     }
