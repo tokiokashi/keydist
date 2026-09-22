@@ -257,6 +257,19 @@ test('modifierGroupsはphysical keyごとのlogical modifier semanticを保持�
   ]);
 });
 
+test('modifierGroupsを明示したFaceは全trigger keyのsemantic groupを要求する', () => {
+  assert.throws(
+    () => compileFaceSemanticInputs([
+      face(['h', 'j'], 'simultaneous', { w: 'ぎゃ' }, {
+        inputRole: 'modifier',
+        triggerPersistence: 'hold-capable',
+        modifierGroups: { h: '拗音' },
+      }),
+    ]),
+    /全trigger keyを分類する必要がある/,
+  );
+});
+
 test('prefixはorder Requirementだけを持つ', () => {
   const [input] = compileFaceSemanticInputs([
     face(['d'], 'prefix', { h: 'へ' }),
