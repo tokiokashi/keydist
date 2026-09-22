@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TypingInputEngine } from '../src/core/input-converter/index.ts';
 import {
+  applyRecognizedTypingInputs,
   applyTypingTextEdit,
   executeTypingEditCommand,
 } from '../src/features/input-converter/typing-session-command.ts';
@@ -28,8 +29,28 @@ test('Enterはpendingをflushした後にrecognitionをresetして改行する',
   prefixD(engine);
 
   const command = executeTypingEditCommand(engine, 'enter');
-  assert.equal(applyTypingTextEdit('あ', command.textEdit), 'あ\n');
+  assert.equal(
+    applyTypingTextEdit(
+      applyRecognizedTypingInputs('あ', command.recognized),
+      command.textEdit,
+    ),
+    'あ\n',
+  );
 
   const result = engine.handle({ type: 'down', key: 'h' });
   assert.deepEqual(result.recognized.map((entry) => entry.output), ['く']);
+});
+
+
+test('recognized composed outputは直前component textを置換する', () => {
+  const engine = new TypingInputEngine(TSUKI_2_263.canonicalInputs);
+
+  const source = engine.handle({ type: 'down', key: 's' }).recognized;
+  let text = applyRecognizedTypingInputs('', source);
+  assert.equal(text, 'か');
+  engine.handle({ type: 'up', key: 's' });
+
+  const composed = engine.handle({ type: 'down', key: 'l' }).recognized;
+  text = applyRecognizedTypingInputs(text, composed);
+  assert.equal(text, 'が');
 });

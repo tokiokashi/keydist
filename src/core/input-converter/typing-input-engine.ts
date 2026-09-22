@@ -5,6 +5,7 @@ import {
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   realizeTriggerActions,
   type ActionRealizationPolicy,
+  type BaseActionRealization,
   type CanonicalInputMap,
   type InputAlternative,
   type InputContextRequirement,
@@ -32,6 +33,11 @@ export interface RecognizedTypingInput {
   readonly output: string;
   readonly alternative: InputAlternative;
   readonly actions: readonly RealizedSemanticAction[];
+  /**
+   * このrecognitionが直前に確定済みの文字列を包含するmulti-step pathなら、
+   * UIはこのsuffixを削除してからoutputを挿入する。
+   */
+  readonly replacePreviousText?: string;
 }
 
 export interface TypingInputResult {
@@ -42,12 +48,37 @@ export interface TypingInputResult {
 interface Candidate {
   readonly output: string;
   readonly alternative: InputAlternative;
-  readonly input: SemanticInput;
+  readonly operationSignatures: readonly string[];
   readonly order: number;
+}
+
+interface StepCandidate {
+  readonly candidate: Candidate;
+  readonly stepIndex: number;
+  readonly input: SemanticInput;
+  readonly realization: BaseActionRealization;
+  readonly signature: string;
+  readonly continuation: boolean;
+}
+
+interface RecognitionSegment {
+  readonly operationSignatures: readonly string[];
+  readonly visibleOutput: string;
+  readonly actions: readonly RealizedSemanticAction[];
+  readonly holdStateBefore?: TriggerHoldState;
+  readonly holdStateAfter?: TriggerHoldState;
+}
+
+interface MultiStepMatch {
+  readonly candidate: Candidate;
+  readonly previousSegments: readonly RecognitionSegment[];
 }
 
 const canonicalKeys = (keys: readonly PhysicalKeyId[]): PhysicalKeyId[] =>
   [...new Set(keys.map(resolveKeyId))];
+
+const sortedCanonicalKeys = (keys: readonly PhysicalKeyId[]): PhysicalKeyId[] =>
+  canonicalKeys(keys).sort();
 
 const keySet = (keys: readonly PhysicalKeyId[]): ReadonlySet<PhysicalKeyId> =>
   new Set(canonicalKeys(keys));
@@ -62,18 +93,44 @@ const isStrictSubset = (
   superset: ReadonlySet<PhysicalKeyId>,
 ): boolean => subset.size < superset.size && isSubset(subset, superset);
 
+const requirementSignature = (input: SemanticInput): string =>
+  input.requirements.map((requirement) => {
+    if (requirement.kind === 'overlap') {
+      return 'overlap:' + sortedCanonicalKeys(requirement.keys).join('\u0000');
+    }
+    return 'order:'
+      + sortedCanonicalKeys(requirement.before).join('\u0000')
+      + '>'
+      + sortedCanonicalKeys(requirement.after).join('\u0000');
+  }).sort().join('\u0001');
+
 /**
- * #270 Input Converter向けのframework-independent最小入力engine。
+ * physical recognizerで区別できるoperation identity。
+ * output/classification/capabilityは発火条件ではないためidentityへ含めず、
+ * multi-step pathの選択はInputAlternative側で行う。
+ */
+const operationSignature = (input: SemanticInput): string => [
+  sortedCanonicalKeys(input.physicalKeys).join('\u0000'),
+  requirementSignature(input),
+].join('\u0002');
+
+const sameStrings = (
+  left: readonly string[],
+  right: readonly string[],
+): boolean => left.length === right.length
+  && left.every((value, index) => value === right[index]);
+
+/**
+ * #270 Input Converter向けframework-independent入力engine。
  *
- * 現段階では1 InputAlternative = 1 SemanticInputのpathを対象にする。
- * browser固有のevent objectやlayout authoring Faceを参照せず、CanonicalInputMapだけを読む。
- *
- * chord候補を持つ単打はkeyupまで保留し、より長いphysical pathが成立すれば
- * そちらを優先する。prefixは同一recognition window内のpress順を保持するため、
- * triggerをreleaseしてからoutput keyを押す入力も成立する。
+ * physical eventから1 SemanticInput相当のoperationを認識し、その履歴を
+ * InputAlternative.semanticInputs列へ照合する。multi-step pathが後から成立した場合は
+ * 既に確定済みのcomponent outputをreplacePreviousTextで置換するため、
+ * 単打の即時出力を遅延させずcomposed outputを扱える。
  */
 export class TypingInputEngine {
   readonly #candidates: readonly Candidate[];
+  readonly #maxSequenceLength: number;
   readonly #triggerPolicy: TriggerRealizationPolicy;
   readonly #actionPolicy: ActionRealizationPolicy;
   readonly #contextSatisfied: (
@@ -85,9 +142,10 @@ export class TypingInputEngine {
   readonly #releasedWindowKeys = new Set<PhysicalKeyId>();
   readonly #pressOrder = new Map<PhysicalKeyId, number>();
   readonly #seededHoldKeys = new Set<PhysicalKeyId>();
+  readonly #segments: RecognitionSegment[] = [];
 
   #nextOrder = 1;
-  #pending: Candidate | undefined;
+  #pending: StepCandidate | undefined;
   #holdState: TriggerHoldState | undefined;
 
   constructor(
@@ -98,18 +156,26 @@ export class TypingInputEngine {
     let order = 0;
     for (const [output, alternatives] of canonicalInputs) {
       for (const alternative of alternatives) {
-        if (alternative.semanticInputs.length !== 1) continue;
-        if (alternative.baseRealizations.length !== 1) continue;
+        if (alternative.semanticInputs.length === 0) continue;
+        if (alternative.semanticInputs.length !== alternative.baseRealizations.length) {
+          throw new Error(
+            'InputAlternativeのSemanticInput列とBaseActionRealization列の長さが一致しない',
+          );
+        }
         candidates.push({
           output,
           alternative,
-          input: alternative.semanticInputs[0],
+          operationSignatures: alternative.semanticInputs.map(operationSignature),
           order,
         });
         order += 1;
       }
     }
     this.#candidates = candidates;
+    this.#maxSequenceLength = Math.max(
+      1,
+      ...candidates.map((candidate) => candidate.operationSignatures.length),
+    );
     this.#triggerPolicy =
       options.triggerRealizationPolicy ?? DEFAULT_TRIGGER_REALIZATION_POLICY;
     this.#actionPolicy =
@@ -137,7 +203,7 @@ export class TypingInputEngine {
         this.#pending?.input.physicalKeys.map(resolveKeyId).includes(key)
         && !this.#hasPotentialExtension(this.#pending)
       ) {
-        recognized.push(this.#commit(this.#pending));
+        recognized.push(...this.#commitStep(this.#pending));
       }
 
       return this.#result(recognized);
@@ -146,7 +212,7 @@ export class TypingInputEngine {
     if (this.#pressed.has(key)) return this.#result(recognized);
 
     if (this.#pending !== undefined && !this.#canExtendPendingWith(key)) {
-      recognized.push(this.#commit(this.#pending));
+      recognized.push(...this.#commitStep(this.#pending));
     }
 
     this.#pressed.add(key);
@@ -158,7 +224,7 @@ export class TypingInputEngine {
     const match = this.#bestMatch();
     if (match !== undefined) {
       if (this.#hasPotentialExtension(match)) this.#pending = match;
-      else recognized.push(this.#commit(match));
+      else recognized.push(...this.#commitStep(match));
     }
 
     return this.#result(recognized);
@@ -167,7 +233,8 @@ export class TypingInputEngine {
   flush(): TypingInputResult {
     const recognized = this.#pending === undefined
       ? []
-      : [this.#commit(this.#pending)];
+      : this.#commitStep(this.#pending);
+    this.#segments.length = 0;
     return this.#result(recognized);
   }
 
@@ -177,6 +244,7 @@ export class TypingInputEngine {
     this.#releasedWindowKeys.clear();
     this.#pressOrder.clear();
     this.#seededHoldKeys.clear();
+    this.#segments.length = 0;
     this.#nextOrder = 1;
     this.#pending = undefined;
     this.#holdState = undefined;
@@ -189,20 +257,84 @@ export class TypingInputEngine {
     };
   }
 
+  #eligible(candidate: Candidate): boolean {
+    return this.#contextSatisfied(candidate.alternative.contextRequirements);
+  }
+
+  #segmentsMatchingSignatures(
+    signatures: readonly string[],
+  ): readonly RecognitionSegment[] | undefined {
+    if (signatures.length === 0) return [];
+
+    const selected: RecognitionSegment[] = [];
+    let remaining = signatures.length;
+    for (let index = this.#segments.length - 1; index >= 0 && remaining > 0; index -= 1) {
+      const segment = this.#segments[index];
+      if (segment.operationSignatures.length > remaining) return undefined;
+      selected.unshift(segment);
+      remaining -= segment.operationSignatures.length;
+    }
+    if (remaining !== 0) return undefined;
+
+    const flattened = selected.flatMap((segment) => segment.operationSignatures);
+    return sameStrings(flattened, signatures) ? selected : undefined;
+  }
+
+  #continuationIndex(candidate: Candidate): number | undefined {
+    for (
+      let length = candidate.operationSignatures.length - 1;
+      length >= 1;
+      length -= 1
+    ) {
+      const prefix = candidate.operationSignatures.slice(0, length);
+      if (this.#segmentsMatchingSignatures(prefix) !== undefined) return length;
+    }
+    return undefined;
+  }
+
+  #activeStepCandidates(): StepCandidate[] {
+    const steps: StepCandidate[] = [];
+
+    for (const candidate of this.#candidates) {
+      if (!this.#eligible(candidate)) continue;
+
+      const continuationIndex = this.#continuationIndex(candidate);
+      if (continuationIndex !== undefined) {
+        steps.push({
+          candidate,
+          stepIndex: continuationIndex,
+          input: candidate.alternative.semanticInputs[continuationIndex],
+          realization: candidate.alternative.baseRealizations[continuationIndex],
+          signature: candidate.operationSignatures[continuationIndex],
+          continuation: true,
+        });
+      }
+
+      steps.push({
+        candidate,
+        stepIndex: 0,
+        input: candidate.alternative.semanticInputs[0],
+        realization: candidate.alternative.baseRealizations[0],
+        signature: candidate.operationSignatures[0],
+        continuation: false,
+      });
+    }
+
+    return steps;
+  }
+
   #activeWindowPressed(): ReadonlySet<PhysicalKeyId> {
     return new Set(
       [...this.#pressed].filter((key) => this.#windowKeys.has(key)),
     );
   }
 
-  #candidateMatches(candidate: Candidate): boolean {
-    if (!this.#contextSatisfied(candidate.alternative.contextRequirements)) return false;
-
-    const physical = keySet(candidate.input.physicalKeys);
+  #stepMatches(step: StepCandidate): boolean {
+    const physical = keySet(step.input.physicalKeys);
     if (!isSubset(physical, this.#windowKeys)) return false;
     if (!isSubset(this.#activeWindowPressed(), physical)) return false;
 
-    return candidate.input.requirements.every((requirement) => {
+    return step.input.requirements.every((requirement) => {
       if (requirement.kind === 'overlap') {
         return canonicalKeys(requirement.keys).every((key) => this.#pressed.has(key));
       }
@@ -222,21 +354,20 @@ export class TypingInputEngine {
     });
   }
 
-  #bestMatch(): Candidate | undefined {
-    return this.#candidates
-      .filter((candidate) => this.#candidateMatches(candidate))
+  #bestMatch(): StepCandidate | undefined {
+    return this.#activeStepCandidates()
+      .filter((step) => this.#stepMatches(step))
       .sort((left, right) =>
         right.input.physicalKeys.length - left.input.physicalKeys.length
-        || left.order - right.order)[0];
+        || Number(right.continuation) - Number(left.continuation)
+        || left.candidate.order - right.candidate.order)[0];
   }
 
-  #candidateCanStillMatch(
-    candidate: Candidate,
+  #stepCanStillMatch(
+    step: StepCandidate,
     nextKey?: PhysicalKeyId,
   ): boolean {
-    if (!this.#contextSatisfied(candidate.alternative.contextRequirements)) return false;
-
-    const physical = keySet(candidate.input.physicalKeys);
+    const physical = keySet(step.input.physicalKeys);
     if (!isSubset(this.#windowKeys, physical)) return false;
     if (nextKey !== undefined && !physical.has(nextKey)) return false;
 
@@ -248,7 +379,7 @@ export class TypingInputEngine {
     }
     if (!isSubset(active, physical)) return false;
 
-    return candidate.input.requirements.every((requirement) => {
+    return step.input.requirements.every((requirement) => {
       if (requirement.kind === 'overlap') {
         return canonicalKeys(requirement.keys)
           .every((key) => !this.#releasedWindowKeys.has(key));
@@ -259,50 +390,188 @@ export class TypingInputEngine {
       const knownBefore = before.filter((value): value is number => value !== undefined);
       const knownAfter = after.filter((value): value is number => value !== undefined);
 
-      // after側がすでに押されているのにbefore側が未入力なら、
-      // future keydownでbefore < afterを回復することはできない。
       if (knownAfter.length > 0 && knownBefore.length !== before.length) return false;
       if (knownBefore.length === 0 || knownAfter.length === 0) return true;
       return Math.max(...knownBefore) < Math.min(...knownAfter);
     });
   }
 
-  #hasPotentialExtension(candidate: Candidate): boolean {
-    const current = keySet(candidate.input.physicalKeys);
-    return this.#candidates.some((other) => {
-      if (other === candidate) return false;
+  #hasPotentialExtension(step: StepCandidate): boolean {
+    const current = keySet(step.input.physicalKeys);
+    return this.#activeStepCandidates().some((other) => {
+      if (other === step) return false;
       return isStrictSubset(current, keySet(other.input.physicalKeys))
-        && this.#candidateCanStillMatch(other);
+        && this.#stepCanStillMatch(other);
     });
   }
 
   #canExtendPendingWith(key: PhysicalKeyId): boolean {
     if (this.#pending === undefined) return false;
     const pendingKeys = keySet(this.#pending.input.physicalKeys);
-    return this.#candidates.some((candidate) => {
-      const candidateKeys = keySet(candidate.input.physicalKeys);
+    return this.#activeStepCandidates().some((step) => {
+      const candidateKeys = keySet(step.input.physicalKeys);
       return isStrictSubset(pendingKeys, candidateKeys)
         && candidateKeys.has(key)
-        && this.#candidateCanStillMatch(candidate, key);
+        && this.#stepCanStillMatch(step, key);
     });
   }
 
-  #commit(candidate: Candidate): RecognizedTypingInput {
-    const realized = realizeTriggerActions(
-      candidate.alternative.baseRealizations,
-      this.#triggerPolicy,
-      this.#holdState,
-    );
-    const actions = applyActionRealizationPolicy(realized.actions, this.#actionPolicy);
-    this.#holdState = realized.holdState;
-    this.#pending = undefined;
-    this.#resetRecognitionWindow();
+  #singleStepCandidate(signature: string): Candidate | undefined {
+    return this.#candidates
+      .filter((candidate) =>
+        this.#eligible(candidate)
+        && candidate.operationSignatures.length === 1
+        && candidate.operationSignatures[0] === signature)
+      .sort((left, right) => left.order - right.order)[0];
+  }
 
+  #completedMultiStepMatch(signature: string): MultiStepMatch | undefined {
+    const matches: MultiStepMatch[] = [];
+
+    for (const candidate of this.#candidates) {
+      if (!this.#eligible(candidate)) continue;
+      if (candidate.operationSignatures.length <= 1) continue;
+      if (candidate.operationSignatures.at(-1) !== signature) continue;
+
+      const previousSignatures = candidate.operationSignatures.slice(0, -1);
+      const previousSegments = this.#segmentsMatchingSignatures(previousSignatures);
+      if (previousSegments === undefined) continue;
+      matches.push({ candidate, previousSegments });
+    }
+
+    return matches.sort((left, right) =>
+      right.candidate.operationSignatures.length
+        - left.candidate.operationSignatures.length
+      || left.candidate.order - right.candidate.order)[0];
+  }
+
+  #realize(
+    realizations: readonly BaseActionRealization[],
+    previous: TriggerHoldState | undefined,
+  ): {
+    readonly actions: readonly RealizedSemanticAction[];
+    readonly holdState?: TriggerHoldState;
+  } {
+    const realized = realizeTriggerActions(
+      realizations,
+      this.#triggerPolicy,
+      previous,
+    );
     return {
-      output: candidate.output,
-      alternative: candidate.alternative,
-      actions,
+      actions: applyActionRealizationPolicy(realized.actions, this.#actionPolicy),
+      ...(realized.holdState === undefined ? {} : { holdState: realized.holdState }),
     };
+  }
+
+  #commitStep(step: StepCandidate): RecognizedTypingInput[] {
+    const holdStateBefore = this.#holdState;
+    const provisional = this.#realize([step.realization], holdStateBefore);
+    this.#holdState = provisional.holdState;
+    this.#pending = undefined;
+
+    const multiStep = this.#completedMultiStepMatch(step.signature);
+    if (multiStep !== undefined) {
+      const previousSegments = [...multiStep.previousSegments];
+      const sequenceHoldStateBefore = previousSegments.length > 0
+        ? previousSegments[0].holdStateBefore
+        : holdStateBefore;
+      const actions = [
+        ...previousSegments.flatMap((segment) => segment.actions),
+        ...provisional.actions,
+      ];
+
+      if (previousSegments.length > 0) {
+        this.#segments.splice(
+          this.#segments.length - previousSegments.length,
+          previousSegments.length,
+        );
+      }
+
+      const replacePreviousText = previousSegments
+        .map((segment) => segment.visibleOutput)
+        .join('');
+      this.#segments.push({
+        operationSignatures: multiStep.candidate.operationSignatures,
+        visibleOutput: multiStep.candidate.output,
+        actions,
+        ...(sequenceHoldStateBefore === undefined
+          ? {}
+          : { holdStateBefore: sequenceHoldStateBefore }),
+        ...(provisional.holdState === undefined
+          ? {}
+          : { holdStateAfter: provisional.holdState }),
+      });
+      this.#trimSegments();
+      this.#resetRecognitionWindow();
+
+      return [{
+        output: multiStep.candidate.output,
+        alternative: multiStep.candidate.alternative,
+        actions,
+        ...(replacePreviousText.length === 0
+          ? {}
+          : { replacePreviousText }),
+      }];
+    }
+
+    const direct = this.#singleStepCandidate(step.signature);
+    if (direct !== undefined) {
+      const realized = this.#realize(
+        direct.alternative.baseRealizations,
+        holdStateBefore,
+      );
+      this.#holdState = realized.holdState;
+      this.#segments.push({
+        operationSignatures: direct.operationSignatures,
+        visibleOutput: direct.output,
+        actions: realized.actions,
+        ...(holdStateBefore === undefined
+          ? {}
+          : { holdStateBefore }),
+        ...(realized.holdState === undefined
+          ? {}
+          : { holdStateAfter: realized.holdState }),
+      });
+      this.#trimSegments();
+      this.#resetRecognitionWindow();
+
+      return [{
+        output: direct.output,
+        alternative: direct.alternative,
+        actions: realized.actions,
+      }];
+    }
+
+    this.#segments.push({
+      operationSignatures: [step.signature],
+      visibleOutput: '',
+      actions: provisional.actions,
+      ...(holdStateBefore === undefined
+        ? {}
+        : { holdStateBefore }),
+      ...(provisional.holdState === undefined
+        ? {}
+        : { holdStateAfter: provisional.holdState }),
+    });
+    this.#trimSegments();
+    this.#resetRecognitionWindow();
+    return [];
+  }
+
+  #trimSegments(): void {
+    const maxHistoryOperations = this.#maxSequenceLength - 1;
+    if (maxHistoryOperations <= 0) {
+      this.#segments.length = 0;
+      return;
+    }
+
+    const operationCount = () => this.#segments.reduce(
+      (total, segment) => total + segment.operationSignatures.length,
+      0,
+    );
+    while (this.#segments.length > 0 && operationCount() > maxHistoryOperations) {
+      this.#segments.shift();
+    }
   }
 
   #resetRecognitionWindow(): void {

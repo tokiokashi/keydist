@@ -13,6 +13,7 @@ import {
 import type { Layout } from '../../layouts/index.ts';
 import { browserKeyboardEventToPhysicalKeyEvent } from './browser-keyboard-adapter.ts';
 import {
+  applyRecognizedTypingInputs,
   applyTypingTextEdit,
   executeTypingEditCommand,
 } from './typing-session-command.ts';
@@ -55,8 +56,7 @@ export function useTypingSession(layout: Layout): TypingSession {
       if (result.recognized.length === 0) return;
 
       setLastRecognized(result.recognized);
-      setText((current) =>
-        current + result.recognized.map((entry) => entry.output).join(''));
+      setText((current) => applyRecognizedTypingInputs(current, result.recognized));
     };
 
     const resetRecognition = () => {
@@ -85,7 +85,10 @@ export function useTypingSession(layout: Layout): TypingSession {
           if (command.recognized.length > 0) {
             setLastRecognized(command.recognized);
           }
-          setText((current) => applyTypingTextEdit(current, command.textEdit));
+          setText((current) => applyTypingTextEdit(
+            applyRecognizedTypingInputs(current, command.recognized),
+            command.textEdit,
+          ));
           return;
         }
       }
