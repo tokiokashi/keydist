@@ -59,7 +59,7 @@ export const NAGINATA_V18_FACES: Face[] = [
   }),
 
   // 小書き
-  face(['q'], { j: 'ぁ', k: 'ぃ', l: 'ぅ', o: 'ぇ', n: 'ぉ', h: 'ゃ', p: 'ゅ', i: 'ょ', '.': 'ゎ' }, { role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['q'], { j: 'ぁ', k: 'ぃ', l: 'ぅ', o: 'ぇ', n: 'ぉ', h: 'ゃ', p: 'ゅ', i: 'ょ', '.': 'ゎ' }, { layer: '小書き', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
 
   // 濁音（右手側のトリガー）
   face(['j'], {
@@ -75,34 +75,34 @@ export const NAGINATA_V18_FACES: Face[] = [
   face(['v'], { p: 'ぺ', ';': 'ぷ' }, { layer: '半濁音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
 
   // 拗音の母音面
-  face(['h'], { w: 'きゃ', r: 'しゃ', g: 'ちゃ', d: 'にゃ', x: 'ひゃ', s: 'みゃ', e: 'りゃ' }, { role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
-  face(['p'], { w: 'きゅ', r: 'しゅ', g: 'ちゅ', d: 'にゅ', x: 'ひゅ', s: 'みゅ', e: 'りゅ' }, { role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
-  face(['i'], { w: 'きょ', r: 'しょ', g: 'ちょ', d: 'にょ', x: 'ひょ', s: 'みょ', e: 'りょ' }, { role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['h'], { w: 'きゃ', r: 'しゃ', g: 'ちゃ', d: 'にゃ', x: 'ひゃ', s: 'みゃ', e: 'りゃ' }, { layer: '拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['p'], { w: 'きゅ', r: 'しゅ', g: 'ちゅ', d: 'にゅ', x: 'ひゅ', s: 'みゅ', e: 'りゅ' }, { layer: '拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['i'], { w: 'きょ', r: 'しょ', g: 'ちょ', d: 'にょ', x: 'ひょ', s: 'みょ', e: 'りょ' }, { layer: '拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
 
-  // 外来音・濁音拗音。triggerは残りのキーをまとめて1面にする。
-  face(['o', 'v'], { k: 'いぇ', l: 'うぇ', h: 'くぇ', ';': 'ふぇ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['k', 'v'], { l: 'うぃ', h: 'くぃ', ';': 'ふぃ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['n', 'v'], { l: 'うぉ', h: 'くぉ', ';': 'ふぉ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['h', 'j'], { w: 'ぎゃ', r: 'じゃ', g: 'ぢゃ', x: 'びゃ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['j', 'p'], { w: 'ぎゅ', r: 'じゅ', g: 'ぢゅ', e: 'でゅ', x: 'びゅ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['i', 'j'], { w: 'ぎょ', r: 'じょ', g: 'ぢょ', x: 'びょ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['j', 'v'], { h: 'くぁ', l: 'つぁ', ';': 'ふぁ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['k', 'm'], { e: 'てぃ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['m', 'p'], { e: 'てゅ', x: 'ぴゅ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['j', 'k'], { e: 'でぃ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['l', 'm'], { d: 'とぅ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['j', 'l'], { d: 'どぅ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['h', 'm'], { x: 'ぴゃ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['i', 'm'], { x: 'ぴょ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['j', 'o'], { r: 'じぇ', g: 'ぢぇ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['m', 'o'], { r: 'しぇ', g: 'ちぇ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['f', 'j'], { h: 'ぐぁ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['f', 'k'], { h: 'ぐぃ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['f', 'o'], { h: 'ぐぇ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['f', 'n'], { h: 'ぐぉ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['.', 'f'], { h: 'ぐゎ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['.', 'v'], { h: 'くゎ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
-  face(['p', 'v'], { ';': 'ふゅ' }, { inputRole: 'composition', triggerPersistence: 'hold-capable' }),
+  // 外来音・濁音拗音。既存装飾へ追加modifier条件を重ねる。
+  face(['o', 'v'], { k: 'いぇ', l: 'うぇ', h: 'くぇ', ';': 'ふぇ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['k', 'v'], { l: 'うぃ', h: 'くぃ', ';': 'ふぃ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['n', 'v'], { l: 'うぉ', h: 'くぉ', ';': 'ふぉ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['h', 'j'], { w: 'ぎゃ', r: 'じゃ', g: 'ぢゃ', x: 'びゃ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['j', 'p'], { w: 'ぎゅ', r: 'じゅ', g: 'ぢゅ', e: 'でゅ', x: 'びゅ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['i', 'j'], { w: 'ぎょ', r: 'じょ', g: 'ぢょ', x: 'びょ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['j', 'v'], { h: 'くぁ', l: 'つぁ', ';': 'ふぁ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['k', 'm'], { e: 'てぃ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['m', 'p'], { e: 'てゅ', x: 'ぴゅ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['j', 'k'], { e: 'でぃ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['l', 'm'], { d: 'とぅ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['j', 'l'], { d: 'どぅ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['h', 'm'], { x: 'ぴゃ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['i', 'm'], { x: 'ぴょ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['j', 'o'], { r: 'じぇ', g: 'ぢぇ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['m', 'o'], { r: 'しぇ', g: 'ちぇ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['f', 'j'], { h: 'ぐぁ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['f', 'k'], { h: 'ぐぃ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['f', 'o'], { h: 'ぐぇ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['f', 'n'], { h: 'ぐぉ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['.', 'f'], { h: 'ぐゎ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['.', 'v'], { h: 'くゎ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
+  face(['p', 'v'], { ';': 'ふゅ' }, { layer: '外来音・濁音拗音', role: 'modifier', inputRole: 'modifier', triggerPersistence: 'hold-capable' }),
 ];
 
 export const NAGINATA_V18: Layout = withThumbShiftAlternatives(
