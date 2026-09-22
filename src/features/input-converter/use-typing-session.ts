@@ -23,6 +23,10 @@ import {
   shouldCaptureBrowserKeyDown,
 } from './browser-keyboard-adapter.ts';
 import {
+  EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
+  type BrowserKeyBindingOverrides,
+} from './browser-keyboard-bindings.ts';
+import {
   applyRecognizedTypingInputs,
   applyTypingTextEdit,
   executeTypingEditCommand,
@@ -41,7 +45,10 @@ export interface TypingSession {
   clear(): void;
 }
 
-export function useTypingSession(layout: Layout): TypingSession {
+export function useTypingSession(
+  layout: Layout,
+  browserBindings: BrowserKeyBindingOverrides = EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
+): TypingSession {
   const captureRef = useRef<HTMLTextAreaElement>(null);
   const engine = useMemo(
     () => new TypingInputEngine(layout.canonicalInputs, {
@@ -90,7 +97,11 @@ export function useTypingSession(layout: Layout): TypingSession {
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
-      const capturesPhysicalKey = shouldCaptureBrowserKeyDown(event, ownedPhysicalKeys);
+      const capturesPhysicalKey = shouldCaptureBrowserKeyDown(
+        event,
+        ownedPhysicalKeys,
+        browserBindings,
+      );
 
       if (event.key === 'Escape' && !capturesPhysicalKey) {
         event.preventDefault();
@@ -125,13 +136,13 @@ export function useTypingSession(layout: Layout): TypingSession {
       if (!capturesPhysicalKey) return;
 
       event.preventDefault();
-      const physical = browserKeyboardEventToPhysicalKeyEvent(event);
+      const physical = browserKeyboardEventToPhysicalKeyEvent(event, browserBindings);
       if (physical === undefined) return;
       applyResult(engine.handle(physical), physical);
     };
 
     const onKeyUp = (event: KeyboardEvent) => {
-      const physical = browserKeyboardEventToPhysicalKeyEvent(event);
+      const physical = browserKeyboardEventToPhysicalKeyEvent(event, browserBindings);
       if (physical === undefined) return;
       if (
         !ownedPhysicalKeys.has(physical.key)
@@ -178,7 +189,7 @@ export function useTypingSession(layout: Layout): TypingSession {
       window.removeEventListener('blur', onWindowBlur);
       engine.reset();
     };
-  }, [engine, layout.id, ownedPhysicalKeys]);
+  }, [browserBindings, engine, layout, ownedPhysicalKeys]);
 
   const clear = () => {
     engine.reset();

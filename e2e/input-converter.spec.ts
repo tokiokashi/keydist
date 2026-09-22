@@ -239,3 +239,37 @@ test('月配列は未定義の標準文字keyをQWERTYとして貫通させな�
   await page.keyboard.press('f');
   await expect(output).toHaveValue('と');
 });
+
+
+test('親指physical keyを任意browser codeへ再割当して永続化できる', async ({ page }) => {
+  await page.goto('/input');
+  const feature = page.locator('.input-feature');
+  const output = page.getByLabel('自由入力テキスト');
+
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await page.getByLabel('配列', { exact: true }).selectOption('nicola');
+  await expect(feature).toHaveAttribute('data-input-ready', 'nicola');
+
+  await output.click();
+  await page.keyboard.down('Space');
+  await page.keyboard.press('s');
+  await page.keyboard.up('Space');
+  await expect(output).toHaveValue('じ');
+
+  await page.getByRole('button', { name: 'クリア' }).click();
+
+  await page.getByRole('button', { name: '左親指にキーを追加' }).click();
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('button', { name: '左親指からSpaceを削除' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '右親指からSpaceを削除' })).toHaveCount(0);
+
+  await output.click();
+  await page.keyboard.down('Space');
+  await page.keyboard.press('s');
+  await page.keyboard.up('Space');
+  await expect(output).toHaveValue('あ');
+
+  await page.reload();
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await expect(page.getByRole('button', { name: '左親指からSpaceを削除' })).toBeVisible();
+});
