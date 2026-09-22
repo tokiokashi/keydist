@@ -24,6 +24,7 @@ export interface BigramVector {
   readonly dx: number;
   readonly dy: number;
   readonly distance: number;
+  readonly angle: number;
   /** raw vectorは1。aggregate後は同一vectorの出現回数。 */
   readonly weight: number;
 }
@@ -142,6 +143,7 @@ function vectorsBetween(
         dx,
         dy,
         distance: Math.hypot(dx, dy),
+        angle: Math.atan2(dy, dx),
         weight: 1,
       }));
     });
@@ -322,7 +324,7 @@ export function directionBins(
     if (vector.hand !== hand || vector.distance === 0) continue;
     const index = Math.min(
       binCount - 1,
-      Math.floor(normalizedAngle(vector.angle ?? Math.atan2(vector.dy, vector.dx)) / binWidth),
+      Math.floor(normalizedAngle(vector.angle) / binWidth),
     );
     weights[index] += vector.weight;
   }
