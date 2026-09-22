@@ -171,6 +171,26 @@ test('prefix trigger-only Strokeは既に独立しているためseparateでも�
     participation.roles.includes('output')), false);
 });
 
+test('新JIS通常シフトはsemantic既定値でprepress-requiredとして分離する', () => {
+  const layout = LAYOUT_BY_ID.get('shin-jis-simultaneous')!;
+  const disabledTrace = realized('お', false, { triggerActivation: 'disabled' }, layout);
+  const semanticTrace = realized('お', false, { triggerActivation: 'semantic' }, layout);
+
+  assert.equal(disabledTrace.strokes.length, 1);
+  assert.equal(semanticTrace.strokes.length, 2);
+  assert.ok(semanticTrace.strokes[0].participations.some((p) => p.roles.includes('trigger')));
+  assert.ok(semanticTrace.strokes[1].participations.some((p) => p.roles.includes('output')));
+});
+
+test('新JIS逐次シフトは元からtrigger-only/outputなのでsemantic groupingで二重分割しない', () => {
+  const layout = LAYOUT_BY_ID.get('shin-jis-prefix')!;
+  const disabledTrace = realized('お', false, { triggerActivation: 'disabled' }, layout);
+  const semanticTrace = realized('お', false, { triggerActivation: 'semantic' }, layout);
+
+  assert.equal(disabledTrace.strokes.length, 2);
+  assert.equal(semanticTrace.strokes.length, 2);
+});
+
 test('薙刀式はsemantic既定値だけでSandSをseparate、order-free装飾をcombinedにする', () => {
   const naginata = LAYOUT_BY_ID.get('naginata-v18')!;
   const semanticPolicy: ActionRealizationPolicy = { triggerActivation: 'semantic' };
