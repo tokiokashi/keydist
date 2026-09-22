@@ -12,6 +12,10 @@ import {
 } from '../../core/input-converter/index.ts';
 import type { Layout } from '../../layouts/index.ts';
 import { browserKeyboardEventToPhysicalKeyEvent } from './browser-keyboard-adapter.ts';
+import {
+  applyTypingTextEdit,
+  executeTypingEditCommand,
+} from './typing-session-command.ts';
 
 export interface TypingSession {
   readonly captureRef: RefObject<HTMLDivElement | null>;
@@ -22,12 +26,6 @@ export interface TypingSession {
   readonly composing: boolean;
   clear(): void;
 }
-
-const withoutLastCodePoint = (value: string): string => {
-  const codePoints = Array.from(value);
-  codePoints.pop();
-  return codePoints.join('');
-};
 
 export function useTypingSession(layout: Layout): TypingSession {
   const captureRef = useRef<HTMLDivElement>(null);
@@ -72,16 +70,20 @@ export function useTypingSession(layout: Layout): TypingSession {
       }
 
       if (!isComposing && !event.ctrlKey && !event.altKey && !event.metaKey) {
-        if (event.key === 'Backspace' && !event.repeat) {
+        if (
+          (event.key === 'Backspace' || event.key === 'Enter')
+          && !event.repeat
+        ) {
           event.preventDefault();
-          setText(withoutLastCodePoint);
-          return;
-        }
-
-        if (event.key === 'Enter' && !event.repeat) {
-          event.preventDefault();
-          applyResult(engine.flush());
-          setText((current) => current + '\n');
+          const command = executeTypingEditCommand(
+            engine,
+            event.key === 'Backspace' ? 'backspace' : 'enter',
+          );
+          setPressedKeys([]);
+          if (command.recognized.length > 0) {
+            setLastRecognized(command.recognized);
+          }
+          setText((current) => applyTypingTextEdit(current, command.textEdit));
           return;
         }
       }
