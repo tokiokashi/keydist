@@ -351,27 +351,51 @@ function actionRealizationPolicy(
         && selector.triggerKeys.every((key) => typeof key === 'string')
         ? selector.triggerKeys as string[]
         : undefined;
-      const layerId = typeof selector.layerId === 'string' ? selector.layerId : undefined;
-      if (triggerKeys === undefined && layerId === undefined) return [];
+      const modifierGroupIds = Array.isArray(selector.modifierGroupIds)
+        && selector.modifierGroupIds.every((groupId) => typeof groupId === 'string')
+        ? selector.modifierGroupIds as string[]
+        : undefined;
+      if (triggerKeys === undefined && modifierGroupIds === undefined) return [];
       const grouping = item.grouping === 'combined' || item.grouping === 'separate'
         ? item.grouping
         : undefined;
       if (grouping === undefined) return [];
       return [{
         selector: {
-          ...(layerId === undefined ? {} : { layerId }),
+          ...(modifierGroupIds === undefined ? {} : { modifierGroupIds }),
           ...(triggerKeys === undefined ? {} : { triggerKeys }),
         },
         grouping,
       }];
     })
     : fallback.triggerActivationOverrides;
+
+  const classSource = record(source.triggerActivationClassOverrides);
+  const fallbackClasses = fallback.triggerActivationClassOverrides ?? {};
+  const classOverride = (key: 'prepress-required' | 'order-free' | 'postpress-required') => {
+    const candidate = classSource[key];
+    if (candidate === 'combined' || candidate === 'separate') return candidate;
+    return fallbackClasses[key];
+  };
+  const triggerActivationClassOverrides = {
+    ...((classOverride('prepress-required') === undefined)
+      ? {}
+      : { 'prepress-required': classOverride('prepress-required') }),
+    ...((classOverride('order-free') === undefined)
+      ? {}
+      : { 'order-free': classOverride('order-free') }),
+    ...((classOverride('postpress-required') === undefined)
+      ? {}
+      : { 'postpress-required': classOverride('postpress-required') }),
+  };
+
   return {
     triggerActivation: choice(
       source.triggerActivation,
-      ['combined', 'separate'] as const,
+      ['disabled', 'semantic'] as const,
       fallback.triggerActivation,
     ),
+    triggerActivationClassOverrides,
     triggerActivationOverrides: overrides ?? [],
   };
 }

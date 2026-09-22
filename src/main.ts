@@ -90,6 +90,20 @@ import { setLayoutGeometryOverride } from './condition-resolution.ts';
 import type { ChainPolicy } from './analysis-chain.ts';
 import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
 import {
+  DEFAULT_TRIGGER_ACTIVATION_GROUPINGS,
+  type ActionRealizationPolicy,
+  type TriggerActivationClass,
+  type TriggerActivationGrouping,
+  type TriggerRealizationPolicy,
+} from './core/semantic-input/index.ts';
+import {
+  sameModifierGroupSelector,
+  samePhysicalTriggerSelector,
+  triggerActivationGroups,
+  triggerActivationLogicalGroups,
+  TRIGGER_ACTIVATION_CLASS_LABELS,
+} from './trigger-activation-groups.ts';
+import {
   conditionBundleFromState,
   parseConditionBundle,
   serializeConditionBundle,
@@ -1107,6 +1121,19 @@ const CONDITION_TABS: readonly [ConditionTab, string][] = [
 ];
 
 let conditionTab: ConditionTab = 'model';
+const conditionDetailsOpen = new Map<string, boolean>();
+
+function bindConditionDetails(
+  details: HTMLDetailsElement,
+  key: string,
+  defaultOpen = false,
+): void {
+  details.dataset.conditionDetailsKey = key;
+  details.open = conditionDetailsOpen.get(key) ?? defaultOpen;
+  details.addEventListener('toggle', () => {
+    conditionDetailsOpen.set(key, details.open);
+  });
+}
 
 function currentConditionPresetId(): string {
   return allConditionPresets(conditionPresets).find((preset) =>
@@ -1205,55 +1232,29 @@ function conditionNumber(
   parent.append(input);
 }
 
-interface TriggerActivationGroup {
-  readonly layerId: string;
-  readonly triggerKeys: readonly string[];
-  readonly label: string;
-}
 
-function canonicalTriggerKeys(keys: readonly string[]): string[] {
-  return [...new Set(keys)].sort();
-}
-
-function sameTriggerActivationSelector(
-  selector: { readonly layerId?: string; readonly triggerKeys?: readonly string[] },
-  group: TriggerActivationGroup,
-): boolean {
-  if (selector.layerId !== undefined && selector.layerId !== group.layerId) return false;
-  if (selector.triggerKeys !== undefined) {
-    const left = canonicalTriggerKeys(selector.triggerKeys);
-    const right = canonicalTriggerKeys(group.triggerKeys);
-    if (left.length !== right.length || left.some((key, index) => key !== right[index])) return false;
-  }
-  return selector.layerId !== undefined || selector.triggerKeys !== undefined;
-}
-
-function triggerActivationGroups(layout: Layout): TriggerActivationGroup[] {
-  const labels = new Map(layout.layerDefinitions?.map((definition) => [definition.id, definition.label]) ?? []);
-  const groups = new Map<string, TriggerActivationGroup>();
-  for (const alternatives of layout.canonicalInputs.values()) {
-    for (const alternative of alternatives) {
-      for (const realization of alternative.baseRealizations) {
-        const candidates = [
-          realization.defaultTriggerKeys ?? [],
-          ...(realization.alternateParticipations?.map((view) => view.triggerKeys) ?? []),
-        ];
-        for (const keys of candidates) {
-          const triggerKeys = canonicalTriggerKeys(keys);
-          if (triggerKeys.length === 0) continue;
-          const identity = `${realization.input.layerId}\u0001${triggerKeys.join('\u0000')}`;
-          if (groups.has(identity)) continue;
-          const layerLabel = labels.get(realization.input.layerId) ?? realization.input.layerId;
-          groups.set(identity, {
-            layerId: realization.input.layerId,
-            triggerKeys,
-            label: `${layerLabel}: ${triggerKeys.join(' + ')}`,
-          });
-        }
-      }
-    }
-  }
-  return [...groups.values()].sort((left, right) => left.label.localeCompare(right.label, 'ja'));
+function groupingSelect(
+  current: TriggerActivationGrouping | undefined,
+  semanticDefault: TriggerActivationGrouping,
+  disabled: boolean,
+  onChange: (value: TriggerActivationGrouping | undefined) => void,
+): HTMLSelectElement {
+  const select = document.createElement('select');
+  select.disabled = disabled;
+  select.append(
+    new Option(
+      `既定（${semanticDefault === 'separate' ? '独立action' : 'outputと同じaction'}）`,
+      'inherit',
+    ),
+    new Option('outputと同じaction', 'combined'),
+    new Option('独立action', 'separate'),
+  );
+  select.value = current ?? 'inherit';
+  select.addEventListener('change', () =>
+    onChange(select.value === 'combined' || select.value === 'separate'
+      ? select.value
+      : undefined));
+  return select;
 }
 
 function conditionRow(
@@ -1345,10 +1346,11 @@ function conditionRow(
   }
 
   if (tab === 'trigger') {
+    const detailsScope = layout?.id ?? 'defaults';
     const realization = value('triggerRealization');
     const action = value('actionRealization');
     const fields = document.createElement('div');
-    fields.className = 'condition-fields';
+    fields.className = 'condition-fields condition-trigger-fields';
 
     const holdLabel = document.createElement('label');
     const holdInput = document.createElement('input');
@@ -1362,47 +1364,141 @@ function conditionRow(
     const actionLabel = document.createElement('label');
     const actionInput = document.createElement('input');
     actionInput.type = 'checkbox';
-    actionInput.checked = action.triggerActivation === 'separate';
+    actionInput.checked = action.triggerActivation === 'semantic';
     actionInput.disabled = !enabled;
     actionInput.addEventListener('change', () =>
       commitCondition(layout?.id, 'actionRealization', {
         ...action,
-        triggerActivation: actionInput.checked ? 'separate' : 'combined',
+        triggerActivation: actionInput.checked ? 'semantic' : 'disabled',
       }));
-    actionLabel.append(actionInput, ' trigger押下を独立actionとしてrealizeする');
+    actionLabel.append(actionInput, ' trigger押下の独立action化を有効にする');
 
     fields.append(holdLabel, actionLabel);
 
-    if (layout) {
-      for (const group of triggerActivationGroups(layout)) {
-        const label = document.createElement('label');
-        label.append(`${group.label} `);
-        const select = document.createElement('select');
-        select.disabled = !enabled;
-        select.append(
-          new Option('既定を使う', 'inherit'),
-          new Option('outputと同じaction', 'combined'),
-          new Option('独立action', 'separate'),
-        );
-        const current = action.triggerActivationOverrides?.find((override) =>
-          sameTriggerActivationSelector(override.selector, group));
-        select.value = current?.grouping ?? 'inherit';
-        select.addEventListener('change', () => {
-          const overrides = (action.triggerActivationOverrides ?? [])
-            .filter((override) => !sameTriggerActivationSelector(override.selector, group));
-          if (select.value === 'combined' || select.value === 'separate') {
-            overrides.push({
-              selector: { layerId: group.layerId, triggerKeys: group.triggerKeys },
-              grouping: select.value,
-            });
-          }
-          commitCondition(layout.id, 'actionRealization', {
+    const actionTargetHeading = document.createElement('div');
+    actionTargetHeading.className = 'condition-trigger-subheading';
+    actionTargetHeading.textContent = '独立action化する対象';
+    fields.append(actionTargetHeading);
+
+    const relevantClasses: TriggerActivationClass[] = layout
+      ? [...new Set(triggerActivationGroups(layout).map((group) => group.activationClass))]
+      : ['prepress-required', 'order-free'];
+    for (const activationClass of relevantClasses) {
+      if (activationClass === 'postpress-required') continue;
+      const row = document.createElement('label');
+      row.append(`${TRIGGER_ACTIVATION_CLASS_LABELS[activationClass]} `);
+      const current = action.triggerActivationClassOverrides?.[activationClass];
+      row.append(groupingSelect(
+        current,
+        DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[activationClass],
+        !enabled || action.triggerActivation !== 'semantic',
+        (grouping) => {
+          const next = { ...(action.triggerActivationClassOverrides ?? {}) };
+          if (grouping === undefined) delete next[activationClass];
+          else next[activationClass] = grouping;
+          commitCondition(layout?.id, 'actionRealization', {
             ...action,
-            triggerActivationOverrides: overrides,
+            triggerActivationClassOverrides: next,
           });
-        });
-        label.append(select);
-        fields.append(label);
+        },
+      ));
+      fields.append(row);
+    }
+
+    if (layout) {
+      const logicalGroups = triggerActivationLogicalGroups(layout)
+        .filter((group) => !group.activationClasses.includes('postpress-required'));
+      if (logicalGroups.length > 0) {
+        const details = document.createElement('details');
+        bindConditionDetails(details, `${detailsScope}:trigger-individual`);
+        const summary = document.createElement('summary');
+        summary.textContent = '個別設定';
+        details.append(summary);
+
+        const logicalFields = document.createElement('div');
+        logicalFields.className = 'condition-fields condition-trigger-fields';
+        for (const logical of logicalGroups) {
+          const label = document.createElement('label');
+          label.append(`${logical.label} `);
+          const existing = action.triggerActivationOverrides?.find((override) =>
+            sameModifierGroupSelector(override.selector, logical.modifierGroupIds));
+          const semanticDefaults = logical.activationClasses.map((kind) =>
+            action.triggerActivationClassOverrides?.[kind]
+              ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[kind]);
+          const semanticDefault = semanticDefaults.every((value) => value === 'separate')
+            ? 'separate'
+            : 'combined';
+          label.append(groupingSelect(
+            existing?.grouping,
+            semanticDefault,
+            !enabled || action.triggerActivation !== 'semantic',
+            (grouping) => {
+              const overrides = (action.triggerActivationOverrides ?? [])
+                .filter((override) =>
+                  !sameModifierGroupSelector(override.selector, logical.modifierGroupIds));
+              if (grouping !== undefined) {
+                overrides.push({
+                  selector: { modifierGroupIds: logical.modifierGroupIds },
+                  grouping,
+                });
+              }
+              commitCondition(layout.id, 'actionRealization', {
+                ...action,
+                triggerActivationOverrides: overrides,
+              });
+            },
+          ));
+          logicalFields.append(label);
+        }
+
+        const physicalDetails = document.createElement('details');
+        bindConditionDetails(physicalDetails, `${detailsScope}:trigger-physical`);
+        const physicalSummary = document.createElement('summary');
+        physicalSummary.textContent = '物理trigger単位の詳細';
+        physicalDetails.append(physicalSummary);
+        const physicalFields = document.createElement('div');
+        physicalFields.className = 'condition-fields condition-trigger-fields';
+        for (const group of triggerActivationGroups(layout)) {
+          if (group.activationClass === 'postpress-required') continue;
+          const label = document.createElement('label');
+          label.append(`${group.label} `);
+          const existing = action.triggerActivationOverrides?.find((override) =>
+            samePhysicalTriggerSelector(override.selector, group));
+          const logicalOverride = action.triggerActivationOverrides?.find((override) =>
+            sameModifierGroupSelector(override.selector, group.modifierGroupIds));
+          const semanticDefault = logicalOverride?.grouping
+            ?? action.triggerActivationClassOverrides?.[group.activationClass]
+            ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[group.activationClass];
+          label.append(groupingSelect(
+            existing?.grouping,
+            semanticDefault,
+            !enabled || action.triggerActivation !== 'semantic',
+            (grouping) => {
+              const overrides = (action.triggerActivationOverrides ?? [])
+                .filter((override) => !samePhysicalTriggerSelector(override.selector, group));
+              if (grouping !== undefined) {
+                overrides.push({
+                  selector: {
+                    ...(group.modifierGroupIds.length === 0
+                      ? {}
+                      : { modifierGroupIds: group.modifierGroupIds }),
+                    triggerKeys: group.triggerKeys,
+                  },
+                  grouping,
+                });
+              }
+              commitCondition(layout.id, 'actionRealization', {
+                ...action,
+                triggerActivationOverrides: overrides,
+              });
+            },
+          ));
+          physicalFields.append(label);
+        }
+        physicalDetails.append(physicalFields);
+        logicalFields.append(physicalDetails);
+        details.append(logicalFields);
+        fields.append(details);
       }
     }
 
@@ -1570,7 +1666,23 @@ function appendConditionSummary(parent: DocumentFragment | HTMLElement): void {
   summary.append(overrides); parent.append(summary);
 }
 
-function renderConditionDescription(selectedPresetId?: string): void {
+function renderConditionDescription(
+  selectedPresetId?: string,
+  preserveScroll = true,
+): void {
+  const dialogScrollTop = preserveScroll && el.conditionsDialog.open
+    ? el.conditionsDialog.scrollTop
+    : undefined;
+  const previousTableWrap = preserveScroll
+    ? el.conditionDescription.querySelector<HTMLElement>('.condition-table-wrap')
+    : null;
+  const tableScroll = previousTableWrap === null
+    ? undefined
+    : {
+      top: previousTableWrap.scrollTop,
+      left: previousTableWrap.scrollLeft,
+    };
+
   const root = document.createDocumentFragment();
   const toolbar = document.createElement('div'); toolbar.className = 'condition-toolbar';
   const presetLabel = document.createElement('label'); presetLabel.append('プリセット ');
@@ -1637,7 +1749,11 @@ function renderConditionDescription(selectedPresetId?: string): void {
   for (const [id, labelText] of CONDITION_TABS) {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'ghost'; button.textContent = labelText;
     button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(conditionTab === id));
-    button.addEventListener('click', () => { conditionTab = id; renderConditionDescription(); }); tabs.append(button);
+    button.addEventListener('click', () => {
+      conditionTab = id;
+      renderConditionDescription(undefined, false);
+      el.conditionsDialog.scrollTop = 0;
+    }); tabs.append(button);
   }
   root.append(tabs);
   if (conditionTab === 'delay') {
@@ -1650,13 +1766,25 @@ function renderConditionDescription(selectedPresetId?: string): void {
   }
   appendConditionSummary(root);
   el.conditionDescription.replaceChildren(root);
+
+  if (dialogScrollTop !== undefined) {
+    el.conditionsDialog.scrollTop = dialogScrollTop;
+  }
+  if (tableScroll !== undefined) {
+    const nextTableWrap = el.conditionDescription.querySelector<HTMLElement>('.condition-table-wrap');
+    if (nextTableWrap) {
+      nextTableWrap.scrollTop = tableScroll.top;
+      nextTableWrap.scrollLeft = tableScroll.left;
+    }
+  }
 }
 
 /** シミュレーション条件の編集モーダル。条件は開く直前に再生成する。 */
 function setupConditionDialog() {
   const open = () => {
-    renderConditionDescription();
+    renderConditionDescription(undefined, false);
     el.conditionsDialog.showModal();
+    el.conditionsDialog.scrollTop = 0;
   };
   el.conditionsOpen.addEventListener('click', open);
   el.conditionsOpenSidebar.addEventListener('click', open);
@@ -1714,6 +1842,8 @@ function playbackViewUiState(): UiStateV1 {
   const playback = layoutConditions?.playback;
   const chain = layoutConditions?.chain ?? uiState.conditions.defaults.chain;
   const arpeggioPolicy = layoutConditions?.arpeggioPolicy ?? uiState.conditions.defaults.arpeggioPolicy;
+  const triggerRealization = layoutConditions?.triggerRealization ?? uiState.conditions.defaults.triggerRealization;
+  const actionRealization = layoutConditions?.actionRealization ?? uiState.conditions.defaults.actionRealization;
   return {
     ...uiState,
     ui: {
@@ -1729,6 +1859,8 @@ function playbackViewUiState(): UiStateV1 {
         ...uiState.conditions.defaults,
         chain,
         arpeggioPolicy,
+        triggerRealization,
+        actionRealization,
       },
     },
   };
@@ -1786,6 +1918,38 @@ function updateArpeggioPolicy(policy: ArpeggioPolicy): void {
   });
 }
 
+function updateTriggerRealizationPolicy(policy: TriggerRealizationPolicy): void {
+  const layoutId = currentPlaybackLayoutId();
+  updateUiState((draft) => {
+    const hasLayoutOverride = layoutId !== undefined
+      && conditionOverrideEnabled(layoutId, draft);
+    if (hasLayoutOverride && layoutId) {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        triggerRealization: structuredClone(policy),
+      };
+    } else {
+      draft.conditions.defaults.triggerRealization = structuredClone(policy);
+    }
+  });
+}
+
+function updateActionRealizationPolicy(policy: ActionRealizationPolicy): void {
+  const layoutId = currentPlaybackLayoutId();
+  updateUiState((draft) => {
+    const hasLayoutOverride = layoutId !== undefined
+      && conditionOverrideEnabled(layoutId, draft);
+    if (hasLayoutOverride && layoutId) {
+      draft.conditions.perLayout[layoutId] = {
+        ...draft.conditions.perLayout[layoutId],
+        actionRealization: structuredClone(policy),
+      };
+    } else {
+      draft.conditions.defaults.actionRealization = structuredClone(policy);
+    }
+  });
+}
+
 function setPlaybackLayoutOverride(enabled: boolean): void {
   const layoutId = currentPlaybackLayoutId();
   if (!layoutId) return;
@@ -1806,6 +1970,10 @@ playbackView = createPlaybackView({
   updateChainPolicy,
   getArpeggioPolicy: () => playbackViewUiState().conditions.defaults.arpeggioPolicy,
   updateArpeggioPolicy,
+  getTriggerRealizationPolicy: () => playbackViewUiState().conditions.defaults.triggerRealization,
+  updateTriggerRealizationPolicy,
+  getActionRealizationPolicy: () => playbackViewUiState().conditions.defaults.actionRealization,
+  updateActionRealizationPolicy,
   refreshAnalysis: render,
   openCalibration: () => calibrationDialog.open(),
   openCalibrationEdit: () => calibrationDialog.openEdit(),

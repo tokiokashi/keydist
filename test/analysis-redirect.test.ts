@@ -49,7 +49,7 @@ const stroke = (index: number, presses: Press[]): Stroke => ({
   char: String(index),
   inputChar: String(index),
   inputIndex: index,
-  layerId: 'single',
+  aggregationGroupId: 'single',
   classifications: [],
   triggerKeys: [],
   pairedTriggerKeys: [],

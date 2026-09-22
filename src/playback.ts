@@ -357,10 +357,10 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
   }
   const groups = classifyPresentationFaces(layout);
   const triggerKeys = new Set(stroke.triggerKeys.map(resolveKeyId));
-  const layerFaces = stroke.layerId === COMBO_LAYER_ID
+  const layerFaces = stroke.aggregationGroupId === COMBO_LAYER_ID
     ? [...groups.combos]
     : [...groups.layers, ...groups.modifiers]
-      .find((layer) => layer.id === stroke.layerId)?.faces ?? [];
+      .find((layer) => layer.id === stroke.aggregationGroupId)?.faces ?? [];
   const triggeredFaces = triggerKeys.size === 0
     ? layerFaces
     : layerFaces.filter((face) => matchesDisplayTriggerAlternative(face, triggerKeys));
@@ -374,7 +374,7 @@ export function playbackStrokeDisplay(layout: Layout, stroke: Stroke): PlaybackS
   const faces = outputFaces.length > 0 ? outputFaces : triggeredFaces;
   // 通常layerは同じaggregation帰属のFaceをまとめて表示する。
   // comboは従来どおり、実際に発火した個別Faceだけを表示する。
-  const displayFaces = stroke.layerId === COMBO_LAYER_ID ? faces : layerFaces;
+  const displayFaces = stroke.aggregationGroupId === COMBO_LAYER_ID ? faces : layerFaces;
   const keyLabels = new Map<string, string>();
 
   // 面に空欄として定義されたキーは、基底面の刻印へ戻さず空欄にする。

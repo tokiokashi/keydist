@@ -241,12 +241,12 @@ export function computeMetrics(
       for (const key of press.keys) {
         keyCounts.set(key.id, (keyCounts.get(key.id) ?? 0) + 1);
         keyDistance.set(key.id, (keyDistance.get(key.id) ?? 0) + share);
-        if (stroke.layerId === COMBO_LAYER_ID) {
+        if (stroke.aggregationGroupId === COMBO_LAYER_ID) {
           comboPresses++;
           comboKeyCounts.set(key.id, (comboKeyCounts.get(key.id) ?? 0) + 1);
           comboKeyDistance.set(key.id, (comboKeyDistance.get(key.id) ?? 0) + share);
         } else {
-          const layer = ensureLayer(stroke.layerId);
+          const layer = ensureLayer(stroke.aggregationGroupId);
           layer.presses++;
           layer.keyCounts.set(key.id, (layer.keyCounts.get(key.id) ?? 0) + 1);
           layer.keyDistance.set(key.id, (layer.keyDistance.get(key.id) ?? 0) + share);
@@ -350,7 +350,7 @@ function singleTapLayerRate(trace: Trace): number {
     const hasTriggerParticipation = stroke.participations.some((participation) =>
       participation.roles.includes('trigger') || participation.roles.includes('held-trigger'));
 
-    if (stroke.layerId !== COMBO_LAYER_ID
+    if (stroke.aggregationGroupId !== COMBO_LAYER_ID
       && !stroke.classifications.includes('composition')
       && stroke.triggerKeys.length === 0
       && !hasTriggerParticipation
@@ -388,7 +388,7 @@ function singleTapRate(trace: Trace, actions: number): number {
     if (strokes.length !== 1) continue;
 
     const stroke = strokes[0];
-    if (stroke.layerId !== SINGLE_LAYER_ID) continue;
+    if (stroke.aggregationGroupId !== SINGLE_LAYER_ID) continue;
     if (stroke.char !== stroke.inputChar) continue;
 
     const keyCount = stroke.presses.reduce((sum, press) => sum + press.keys.length, 0);

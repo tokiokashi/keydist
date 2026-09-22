@@ -131,7 +131,7 @@ export function faceDisplayCells(face: Face): Map<string, string> {
 /**
  * compiled Layoutのpresentation Faceをaggregation mappingで分類する。
  * authoring semantic metadataは再解釈せず、
- * faceLayerIdsを帰属authority、layerDefinitionsをkind authorityとして使う。
+ * presentationではfaceLayerIdsを帰属authority、layerDefinitionsをkind authorityとして使う。semantic/analysis authorityには使わない。
  */
 export function classifyPresentationFaces(
   layout: Pick<Layout, 'faces' | 'faceLayerIds' | 'layerDefinitions'>,

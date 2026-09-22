@@ -31,7 +31,7 @@ const stroke = (
   presses,
   positions: {},
   distance: 0,
-  layerId: 'single',
+  aggregationGroupId: 'single',
 }) as unknown as Stroke;
 
 test('Raw hand runは参加factを保持し、trigger/thumb/逆手同時から境界を決めない', () => {

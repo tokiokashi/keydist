@@ -151,13 +151,13 @@ physicalKeys
 requirements
 capabilities
 roles
-layerId
+aggregationGroupId
 classifications
 faceMemberships
 ```
 
 `modifier` はkey単位のSemanticRole。`composition` はroleではなくclassificationであり、
-`layerId='combo'` から再推測しない。語彙拡張等もauthorが明示しないと失われるため、
+`aggregationGroupId='combo'` から再推測しない。語彙拡張等もauthorが明示しないと失われるため、
 stable classification IDとしてcanonicalへ保持する。一方、left/right hand、distance、
 currently-held、preferred alternativeのようにgeometry/runtimeから導出できるfactは重複保存しない。
 
@@ -168,7 +168,7 @@ physical activationとは別に、そのpathがruntime context上成立する条
 
 さらに、top-level authoring provenanceを `origin` として保持する。
 `sequence / face / combo / composed` は「どのauthoring経路がこのpathを生成したか」を表し、
-classificationやlayerIdとは別軸である。コンボ命中集計はselected pathの
+classificationやaggregationGroupIdとは別軸である。コンボ命中集計はselected pathの
 `origin='combo'` を基準にし、同outputに別のcomposition pathが存在しても誤算入しない。
 
 評価時は次の順で処理する。
@@ -440,7 +440,7 @@ type TriggerRealizationPolicy = {
 - 明示release専用Stroke / Press / Release eventは初期実装では導入しない
 
 旧 `StepSemantic / associatedTriggerKeys / associatedTriggerPersistence` は削除済みで、
-Trigger realizationはcanonical factだけを入力にする。layerIdやclassificationからhold可能性を推測しない。
+Trigger realizationはcanonical factだけを入力にする。aggregationGroupIdやclassificationからhold可能性を推測しない。
 
 後段のChain / Transition / Roll / Timingはrealized Stroke streamだけを読み、
 独自にhold可能性を再判定しない。
@@ -711,10 +711,20 @@ A = S / C                    [アクション/文字]
 
 現行pipelineでは1 realized Stroke = 1 analytic action（§4.1）。
 
-#339 ではtrigger activationのaction groupingをcontinuous holdから分離し、
-`ActionRealizationPolicy.triggerActivation = 'combined' | 'separate'` とする。
+#339 でtrigger activationのaction groupingをcontinuous holdから分離し、#342で
+`ActionRealizationPolicy.triggerActivation = 'disabled' | 'semantic'` へ整理する。
 
-`separate` では、同一actionにrealizeされたfresh triggerとfresh outputを、
+`disabled` はfresh triggerとoutputのbase groupingを変更しない。`semantic` はcanonical
+Requirementからtrigger activationを次の大分類へ分ける。
+
+- `prepress-required`: triggerがoutputより先である必要がある → 既定 `separate`
+- `order-free`: overlap等は必要でも押し順制約はない → 既定 `combined`
+- `postpress-required`: outputがtriggerより先である必要がある → 既定 `combined`
+
+ここでの `postpress-required` は将来の「後段分離」を意味しない。将来の後段分離は
+`trigger down / output / trigger up` の **release側** を独立event/actionへ分ける拡張を指す。
+
+groupingが `separate` になった場合、同一actionにrealizeされたfresh triggerとfresh outputを、
 
 ```text
 [fresh trigger + fresh output]
@@ -724,29 +734,26 @@ A = S / C                    [アクション/文字]
 ```
 
 としてStroke生成前に分割する。`TriggerRealizationPolicy.useHold` はこの分割とは別軸であり、
-`useHold=false` でも各入力のfresh triggerを分離できる。`useHold=true` では最初の
-activationだけtriggerを新規Pressし、continueでは保持中triggerを新規Pressしないため、
-trigger actionはhold区間ごとに1回だけ増える。
+`useHold=false` でもfresh triggerを分離できる。`useHold=true` では最初のactivationだけ
+triggerを新規Pressし、continueでは保持中triggerを新規Pressしないため、trigger actionは
+hold区間ごとに1回だけ増える。
 
-`separate` はsemantic Requirementを保てる場合だけsplitする。
+splitはsemantic Requirementを保てる場合だけ行う。trigger / remaining groupがorder境界の
+両側へ跨る場合、composition、既にtrigger-only actionが独立しているprefix入力、
+trigger/outputが同じphysical Pressを兼ねる場合は追加分割しない。
 
-- overlapだけ、または `order(trigger -> output)` ならsplitする
-- `order(output -> trigger)` を要求するsuffix型はcombinedを維持する
-- trigger / remaining groupがorder境界の両側へ跨る場合もcombinedを維持する
-- compositionは対象外
-- `prefix` 等ですでにtrigger-only actionが独立している場合も追加分割しない
-- trigger/outputが同じphysical Pressを兼ねる場合は分割しない
+大分類の既定値はclass overrideで変更でき、さらにcanonical selectorで個別overrideできる。
 
-配列全体の既定groupingに加えて、canonical `layerId / triggerKeys` selectorで
-trigger groupごとのoverrideを持てる。これにより、同じ配列内で先行action化したいtriggerと
-同一actionのまま扱いたいtriggerを混在させられる。
+- `modifierGroupIds`: fresh trigger群が担うlogical modifier group集合
+- `triggerKeys`: physical trigger集合
 
-Requirementはaction groupingを推測するためには使わず、変換後streamがsemanticに反しないかを
-判定するvalidity gateとしてのみ使う。
+aggregationの `aggregationGroupId` はpolicy selectorへ使わない。優先度は
+physical trigger selector > modifier group集合 > activation class > semantic default。
+薙刀式ではSandSは `prepress-required`、濁音・半濁音・拗音・外来音等は
+`order-free` なので、独立action化を有効にした既定状態ではSandSだけが分離される。
 
 したがってMetricsだけのvirtual action補正は行わない。Policy変更後は
 Chain / Transition / Metrics / Timing / Playbackがすべて同じrealized Stroke列を見る。
-既定 `triggerActivation='combined'` は1 Stroke groupingを維持する。
 
 `C` は §11.4と同じ、入力文字数（ローマ字展開・コンボ結合の前）。ローマ字配列は
 綴りが同じなら配置に依らず同じ値になる。この軸で差が付くのはコンボとかな直接入力のみ
@@ -777,7 +784,7 @@ singleTapLayerRate = L1 / T × 100       [%]
 
 判定は入力文字単位で行う。ローマ字展開や複数文字コンボの内部Stroke数では重み付けせず、
 元の入力文字数を数える。「単打面の1キー直接入力」は、1 Stroke・1物理キーで、
-`layerId !== 'combo'`、`composition` classificationなし、かつtrigger / held-triggerを
+`aggregationGroupId !== 'combo'`、`composition` classificationなし、かつtrigger / held-triggerを
 伴わない入力とする。legacy `inputRole` は判定に使わない。
 
 したがって、親指シフト・前置/後置シフト・文字キー同時押しコンボ・複数打鍵のローマ字入力は
@@ -812,7 +819,7 @@ singleTapRate = S1 / A × 100       [%]
 simultaneousな複数キー入力、コンボ、hold継続中の `held-trigger` 依存入力も
 単打には含めない。
 
-`triggerActivation='separate'` では先行trigger Strokeも分母 `A` に含める。
+`semantic` policyでgroupingが`separate`になった場合、先行trigger Strokeも分母 `A` に含める。
 ただしbase layerの直接出力actionではないため単打の分子には含めない。
 
 **11.5.3 1キー率**
@@ -830,7 +837,7 @@ singleKeyRate = K1 / A × 100       [%]
 1キーactionも分子へ入れる。逆に、1 actionで複数キーを同時入力する場合は、
 1本の指で複数キーを押す場合も含めて分子へ入れない。
 
-`triggerActivation='separate'` ではtriggerとoutputが別realized Strokeになる。
+`semantic` policyでgroupingが`separate`になった場合、triggerとoutputが別realized Strokeになる。
 各Strokeが1物理キーだけなら、それぞれ1キーactionとして分子 `K1` に入れる。
 
 この指標は「単打」というかな入力上の意味を持たず、純粋に1 actionあたりの入力キー数を見る。
