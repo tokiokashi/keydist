@@ -116,14 +116,13 @@ export interface Metrics {
    */
   singleTapLayerRate: number;
   /**
-   * 総アクションのうち、単打面（base layer）の1 physical Stroke・1物理キーだけで
-   * 入力単位を直接出力し、trigger / held-triggerに依存しない「単打」アクションの割合 [%]
-   * （仕様 §11.5.2）。
+   * 総アクションのうち、単打面の文字を直接出力するアクションの割合 [%]（仕様 §11.5.2）。
+   * ローマ字展開後の途中Strokeは含めない。複数文字見出しでも1actionとして数える。
    */
   singleTapRate: number;
   /**
-   * 総アクションのうち、1物理キーだけを入力するアクションの割合 [%]（仕様 §11.5.3）。
-   * 入力意味は問わず、ローマ字・シフト操作・hold継続中の出力も打鍵形態だけで判定する。
+   * 総アクションのうち、そのactionでfreshに押す物理キーが1つだけの割合 [%]（仕様 §11.5.3）。
+   * semanticは問わず、realized Strokeの新規押下キー数だけで判定する。
    */
   singleKeyRate: number;
   /** 隣接指間距離の統計。ホーム間隔からの超過で持つ（仕様 §11.6） */
