@@ -77,7 +77,7 @@ presentation互換として先頭pathだけを保持してよいが、canonical 
 
 physical activation以外の成立条件は `InputAlternative.contextRequirements` に保持する。
 また、pathを生成したtop-level authoring provenanceは `InputAlternative.origin` に保持する。
-現在は `sequence / face / combo / composed` を持ち、classificationやlayerIdから逆推測しない。
+現在は `sequence / face / combo / composed` を持ち、classificationやaggregationGroupIdから逆推測しない。
 `comboHits` は実際にselectedされた `origin='combo'` pathだけを数える。
 現在は `{ kind: 'youon-only' }` を持ち、logical output全体ではなくそのpathだけへ適用する。
 runtimeではまずcontext requirementを満たすalternativeだけをeligibleに絞り、1つも無ければ
@@ -106,12 +106,12 @@ canonical semanticでは異なる軸を混ぜない。
 - `requirements`: physical activation上のoverlap / order成立条件。
 - `contextRequirements`: path単位のruntime context成立条件。
 - `capabilities`: while-held等のrealization能力。
-- `layerId`: aggregation上の帰属先。
+- `aggregationGroupId`: aggregation上の帰属先。入力成立semanticやpolicy selectorには使わない。
 - `classifications`: 他のfactから再構成できないauthor intent。
 - `InputAlternative.origin`: path生成元のtop-level authoring provenance。
 - `faceMemberships`: presentation provenance。
 
-`composition` はkey roleではなくclassificationであり、`layerId='combo'` から逆推測しない。
+`composition` はkey roleではなくclassificationであり、`aggregationGroupId='combo'` から逆推測しない。
 語彙拡張・拗音拡張・撥音拡張・入声拡張・二重母音拡張もpresentation labelだけに落とさず、
 stable classification IDとしてcanonical inputへ保持する。geometry、左右hand、距離、
 currently-held、preferred alternative等の導出可能factはcanonicalへ重複保存しない。
@@ -173,12 +173,13 @@ actionへ分ける。`useHold=false` でもfresh triggerは分離できる。`us
 - compositionと、prefix trigger-only actionのように既に分離済みの操作は変換しない
 - trigger/outputが同じphysical pressを兼ねるactionは分離しない
 
-Policyはactivation classごとのoverrideに加え、canonical `triggerGroupId / layerId / triggerKeys`
-selectorによる個別overrideを持てる。優先度はphysical trigger selector > logical trigger group >
-layer > activation class > semantic default。layout id / Face index / presentation labelは解析判定に使わない。
+Policyはactivation classごとのoverrideに加え、canonical `modifierGroupIds / triggerKeys`
+selectorによる個別overrideを持てる。aggregation/presentation groupはselectorに使わない。
+優先度はphysical trigger selector > modifier group集合 > activation class > semantic default。
 
-`triggerGroupId` はpresentation layerとは別のcanonical metadataで、薙刀式の「拗音」
-「外来音・濁音拗音」のように、同じ運動規則を共有するmodifier群をまとめるために使う。
+modifier semanticはkey単位の `KeyRole.modifierGroupId` として保持する。同一入力で複数groupを
+同時に要求できるため、薙刀式の濁音拗音は `濁音 + 拗音`、外来音は
+`半濁音 + 外来音` 等の組合せをcanonical factとして失わない。
 
 この変換はStroke生成**前**に行うため、Metricsだけのvirtual +1は行わない。
 Chain / Transition / Metrics / Timing / Playbackはすべて同じPolicy適用後Stroke streamを見る。
