@@ -23,6 +23,7 @@ interface MutableSemanticInput {
   requirements: Requirement[];
   capabilities: InputCapability[];
   layerId: string;
+  triggerGroupId?: string;
   classifications: InputClassification[];
   roles: KeyRole[];
   faceMemberships: FaceMembership[];
@@ -426,6 +427,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
       const classifications = faceClassifications(face);
       const roles = faceRoles(face, triggerKeys);
       const layerId = normalizedLayerId(face, faceIndex, triggerKeys);
+      const triggerGroupId = face.triggerGroup;
       const physicalSignature = physicalKeys.join('\u0000');
 
       const candidate: MutableSemanticInput = {
@@ -434,6 +436,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
         requirements,
         capabilities,
         layerId,
+        ...(triggerGroupId === undefined ? {} : { triggerGroupId }),
         classifications,
         roles,
         faceMemberships: [{ faceIndex, cellKey: cell.key }],
@@ -474,6 +477,11 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
       if (existing.layerId !== layerId) {
         throw new Error(
           `同一SemanticInputが異なるlayerIdへ属している: ${existing.layerId} / ${layerId}`,
+        );
+      }
+      if (existing.triggerGroupId !== triggerGroupId) {
+        throw new Error(
+          `同一SemanticInputが異なるtriggerGroupIdへ属している: ${existing.triggerGroupId ?? ''} / ${triggerGroupId ?? ''}`,
         );
       }
       existing.capabilities = normalizeCapabilities([
@@ -532,6 +540,7 @@ export function compileFaceSemanticInputs(faces: readonly Face[]): readonly Sema
       requirements: normalizeRequirements(input.requirements),
       capabilities: normalizeCapabilities(input.capabilities),
       layerId: input.layerId,
+      ...(input.triggerGroupId === undefined ? {} : { triggerGroupId: input.triggerGroupId }),
       classifications: normalizeClassifications(input.classifications),
       roles: normalizeRoles(input.roles),
       faceMemberships: normalizeMemberships(input.faceMemberships),
