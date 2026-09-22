@@ -429,6 +429,7 @@
   fill: #9bd5ff;
   stroke: #dff2ff;
   stroke-width: 0.65;
+  pointer-events: all;
 }
 
 .actual-vector-layer {
