@@ -28,6 +28,8 @@ const CODE_TO_KEY: Readonly<Record<string, PhysicalKeyEvent['key']>> = {
   Space: 'thumb-r',
   Convert: 'thumb-r',
   NonConvert: 'thumb-l',
+  ShiftLeft: 'shift-l',
+  ShiftRight: 'shift-r',
 };
 
 export function browserCodeToPhysicalKey(

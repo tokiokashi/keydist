@@ -72,6 +72,9 @@ export const keyId = (row: number, col: number): string => {
 /** 親指キーのid（既定形状のもの） */
 export const THUMB_KEY = { LT: 'thumb-l', RT: 'thumb-r' } as const;
 
+/** 左右Shiftのcanonical physical key id。browser adapterもこのidへ正規化する。 */
+export const SHIFT_KEY = { L: 'shift-l', R: 'shift-r' } as const;
+
 /** 旧定義やlocalStorageに残る親指キーidを正式名へ解決する。 */
 export const resolveKeyId = (id: string): string => id === 'space' ? THUMB_KEY.RT : id;
 
@@ -318,6 +321,8 @@ export function buildGeometry(
     }
     if (
       keys.has(canonicalId)
+      || canonicalId === SHIFT_KEY.L
+      || canonicalId === SHIFT_KEY.R
       || s.thumbs.some((thumb) => resolveKeyId(thumb.id) === canonicalId)
     ) {
       throw new Error(`形状「${s.id}」の追加キー ${spec.id} が既存キーと重複している`);
@@ -335,6 +340,33 @@ export function buildGeometry(
       y: spec.y,
       finger,
       ...(spec.width === undefined ? {} : { width: spec.width }),
+    });
+  }
+
+  // Shiftは既存PhysicalShape永続化schemaを増やさず、bottom rowの実座標から派生する。
+  // ANSI/JISの標準幅を前提に、左2.25u・右2.75u Shiftの中心を隣接キー中心から求める。
+  // custom shapeでもbottom rowの位置へ追随し、標準Shiftを使わない特殊形状は別semanticで扱う。
+  const bottomRow = grid[3] ?? grid.at(-1);
+  const firstBottomKey = bottomRow?.[0];
+  const lastBottomKey = bottomRow?.at(-1);
+  if (firstBottomKey !== undefined && lastBottomKey !== undefined) {
+    keys.set(SHIFT_KEY.L, {
+      id: SHIFT_KEY.L,
+      row: firstBottomKey.row,
+      col: -1,
+      x: firstBottomKey.x - 1.625,
+      y: firstBottomKey.y,
+      finger: 'LP',
+      width: 2.25,
+    });
+    keys.set(SHIFT_KEY.R, {
+      id: SHIFT_KEY.R,
+      row: lastBottomKey.row,
+      col: lastBottomKey.col + 1,
+      x: lastBottomKey.x + 1.875,
+      y: lastBottomKey.y,
+      finger: 'RP',
+      width: 2.75,
     });
   }
 

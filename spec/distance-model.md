@@ -207,6 +207,28 @@ authoring defaultを基準に、thumb keyだけが異なる合法variantの中�
 thumb variant生成時の重複判定はaction groupingだけではなくcanonical alternative全体で行い、
 Requirement / Capability / classification / role / layer / context / origin等が異なるpathを失わない。
 
+英字配列の通常Shiftも同じcanonical pipelineで扱う。大文字と、**現在モデル化しているbase
+physical key**のShift記号はbase keyに `shift-l` / `shift-r` のいずれかを重ねる2つの
+合法alternativeとしてcompileする。各alternativeはbase keyとの `overlap` Requirement、
+Shift keyの `while-held` Capability、`modifierGroupId='Shift'` のmodifier roleを持つ。
+Shiftを押しっぱなしで複数文字へ作用させるかは他のhold-capable triggerと同じ
+`TriggerRealizationPolicy` で決まる。
+
+現時点のbase physical modelにBackquote / Backslashが無いため、US配列の `~` / `|` は
+このIssueでは未対応とする。これはShift semanticの例外ではなく、base physical key自体が
+未モデル化であるためである。
+
+解析時の通常Shiftは、左右variantのうちoutput keyと反対手のShiftを既定で優先する。
+これはcanonical keyの書き換えではなくInput Alternative Selection Policyであり、両pathは
+canonical上に残る。Input Converterでは実際に押された `ShiftLeft` / `ShiftRight` を
+それぞれ `shift-l` / `shift-r` へ写像するため、ユーザーのphysical choiceをそのまま認識する。
+Shift keyのgeometryは既存PhysicalShapeの保存schemaへ混ぜず、bottom rowの実座標から標準Shiftの
+中心位置を派生させる。
+
+全角 `！` / `？` は半角 `!` / `?` と同じ物理入力として評価する。広いNFKC正規化は行わず、
+評価入力境界でこの2文字だけを明示aliasへ写像する。これにより他の全角記号・互換文字を
+意図せずASCIIへ潰さない。Strokeの `inputChar` は元入力を保持する。
+
 ### 4.1同時押しは1ステップとして数える
 
 `g` はステップ単位で数える。同時押しの中では時間が経過しないため。

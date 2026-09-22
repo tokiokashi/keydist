@@ -1,10 +1,16 @@
 import { useState } from 'react';
-import { QWERTY_LEGEND, THUMB_KEY } from '../../geometry.ts';
-import { LAYOUTS_JA, type Layout } from '../../layouts/index.ts';
+import { QWERTY_LEGEND, SHIFT_KEY, THUMB_KEY } from '../../geometry.ts';
+import { LAYOUTS, LAYOUTS_JA, type Layout } from '../../layouts/index.ts';
 import { physicalKeysUsedByLayout } from '../../layout-physical-keys.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
-const INPUT_LAYOUTS = LAYOUTS_JA.filter((layout) => layout.romajiTable === undefined);
+const DIRECT_JA_INPUT_LAYOUTS =
+  LAYOUTS_JA.filter((layout) => layout.romajiTable === undefined);
+
+const INPUT_LAYOUTS = [
+  ...LAYOUTS,
+  ...DIRECT_JA_INPUT_LAYOUTS,
+];
 
 function KeyboardPreview({
   layout,
@@ -33,6 +39,13 @@ function KeyboardPreview({
         </div>
       ))}
       <div className="input-keyboard-row input-keyboard-thumbs">
+        <span
+          className="input-key input-key-shift"
+          data-active={pressed.has(SHIFT_KEY.L) || undefined}
+        >
+          <span>{label(SHIFT_KEY.L)}</span>
+          <small>ShiftLeft</small>
+        </span>
         {[THUMB_KEY.LT, THUMB_KEY.RT].map((key) => (
           <span
             className="input-key input-key-thumb"
@@ -43,6 +56,13 @@ function KeyboardPreview({
             <small>{key === THUMB_KEY.LT ? 'NonConvert' : 'Space / Convert'}</small>
           </span>
         ))}
+        <span
+          className="input-key input-key-shift"
+          data-active={pressed.has(SHIFT_KEY.R) || undefined}
+        >
+          <span>{label(SHIFT_KEY.R)}</span>
+          <small>ShiftRight</small>
+        </span>
       </div>
     </div>
   );
@@ -78,7 +98,9 @@ function RecognizedDetail({
 }
 
 export function InputConverterView() {
-  const [layout, setLayout] = useState<Layout>(() => INPUT_LAYOUTS[0] ?? LAYOUTS_JA[0]);
+  const [layout, setLayout] = useState<Layout>(
+    () => DIRECT_JA_INPUT_LAYOUTS[0] ?? INPUT_LAYOUTS[0],
+  );
   const session = useTypingSession(layout);
   const escapeIsLayoutInput = physicalKeysUsedByLayout(layout).has('escape');
 
@@ -90,13 +112,13 @@ export function InputConverterView() {
       <p className="eyebrow">Phase B · #270</p>
       <h1>Input Converter</h1>
       <p>
-        選択した配列の canonical SemanticInput を使って、物理キーから日本語を直接生成する。
+        選択した配列の canonical SemanticInput を使って、物理キーから文字列を直接生成する。
         お題はなく、ここでは自由に打てる。
       </p>
 
       <div className="input-toolbar">
         <label>
-          <span>かな配列</span>
+          <span>配列</span>
           <select
             value={layout.id}
             onChange={(event) => {
@@ -154,7 +176,7 @@ export function InputConverterView() {
       </div>
 
       <p className="input-note">
-        canonical SemanticInputを使い、単打・prefix / suffix・simultaneous・hold・
+        canonical SemanticInputを使い、通常Shift・単打・prefix / suffix・simultaneous・hold・
         multi-step / composed outputまで実入力で扱う。ローマ字→かな変換や時間依存semanticは
         別能力として必要になった段階で追加する。
       </p>

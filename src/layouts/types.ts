@@ -11,7 +11,7 @@ import {
   type InputContextRequirement,
   type SemanticInput,
 } from '../core/semantic-input/index.ts';
-import { keyId, QWERTY_LEGEND, resolveKeyId, THUMB_KEY, type NonThumb } from '../geometry.ts';
+import { keyId, QWERTY_LEGEND, resolveKeyId, SHIFT_KEY, THUMB_KEY, type NonThumb } from '../geometry.ts';
 import { validateFaceAuthoring } from './face-authoring-validation.ts';
 
 /** 1ステップで同時に押すキーの集合。キーはQWERTY刻印で指す（`thumb-r` `thumb-l` は親指キー）。`space` も入力互換で受け付ける */
@@ -183,6 +183,8 @@ export interface Layout {
   thumbShiftKey?: string;
   /** 同じshift semanticを成立させられる合法な親指キー集合。 */
   thumbShiftKeys?: readonly string[];
+  /** 通常Shift semanticを成立させられる左右physical key集合。 */
+  shiftKeys?: readonly string[];
   /** この配列が前提とする非親指のホームキー。省略時は物理形状側の既定値を使う。 */
   homeKeys?: Partial<Record<NonThumb, string>>;
   /**
@@ -740,6 +742,127 @@ export function withComposedOutputs(
     ...layout,
     map,
     canonicalInputs,
+  };
+}
+
+
+const SHIFT_LAYER_ID = 'layer:Shift';
+const SHIFT_MODIFIER_GROUP_ID = 'Shift';
+const SHIFTED_ASCII: Readonly<Record<string, string>> = {
+  '1': '!', '2': '@', '3': '#', '4': '$', '5': '%',
+  '6': '^', '7': '&', '8': '*', '9': '(', '0': ')',
+  '-': '_', '=': '+', '[': '{', ']': '}',
+  ';': ':', "'": '"', ',': '<', '.': '>', '/': '?',
+};
+
+const shiftedOutputFor = (output: string): string | undefined => {
+  if (/^[a-z]$/.test(output)) return output.toUpperCase();
+  return SHIFTED_ASCII[output];
+};
+
+/**
+ * 単打alpha layoutへ通常Shift面をcanonical semanticとして追加する。
+ *
+ * 左右Shiftは別physical alternativeとして保持し、どちらを使うかはruntime/evaluatorが
+ * geometryを見て選べるようauthoring段階では潰さない。
+ */
+export function withShiftedOutputs(
+  layout: Layout,
+  shiftKeys: readonly string[] = [SHIFT_KEY.L, SHIFT_KEY.R],
+): Layout {
+  const canonicalShiftKeys = [...new Set(shiftKeys.map(resolveKeyId))];
+  if (canonicalShiftKeys.length === 0) {
+    throw new Error('shiftKeysは1キー以上必要');
+  }
+
+  const map = new Map(layout.map);
+  const canonicalInputs = cloneCanonicalInputs(layout.canonicalInputs);
+  const layerDefinitions = [...(layout.layerDefinitions ?? [])];
+
+  for (const [baseOutput, alternatives] of layout.canonicalInputs) {
+    const shiftedOutput = shiftedOutputFor(baseOutput);
+    if (shiftedOutput === undefined) continue;
+
+    for (const alternative of alternatives) {
+      if (
+        alternative.semanticInputs.length !== 1
+        || alternative.baseRealizations.length !== 1
+      ) continue;
+
+      const sourceInput = alternative.semanticInputs[0];
+      const sourceRealization = alternative.baseRealizations[0];
+      if (
+        sourceInput.physicalKeys.length !== 1
+        || sourceRealization.actions.length !== 1
+        || sourceRealization.actions[0].length !== 1
+        || sourceRealization.defaultOutputKeys.length !== 1
+        || (sourceRealization.defaultTriggerKeys?.length ?? 0) > 0
+      ) continue;
+
+      const outputKey = resolveKeyId(sourceRealization.defaultOutputKeys[0]);
+
+      for (const shiftKey of canonicalShiftKeys) {
+        const physicalKeys = [outputKey, shiftKey].sort();
+        const input: SemanticInput = {
+          output: shiftedOutput,
+          physicalKeys,
+          requirements: [{ kind: 'overlap', keys: physicalKeys }],
+          capabilities: [{ kind: 'while-held', keys: [shiftKey] }],
+          aggregationGroupId: SHIFT_LAYER_ID,
+          classifications: [],
+          roles: [{
+            key: shiftKey,
+            role: 'modifier',
+            modifierGroupId: SHIFT_MODIFIER_GROUP_ID,
+          }],
+          faceMemberships: [],
+        };
+        const shiftedAlternative: InputAlternative = {
+          semanticInputs: [input],
+          baseRealizations: [{
+            input,
+            actions: [[shiftKey, outputKey]],
+            defaultOutputKeys: [outputKey],
+            defaultTriggerKeys: [shiftKey],
+            defaultHoldKeys: [shiftKey],
+          }],
+          contextRequirements: [...alternative.contextRequirements],
+          origin: 'sequence',
+        };
+
+        const current = canonicalInputs.get(shiftedOutput) ?? [];
+        if (!current.some((candidate) => sameCanonicalAlternative(candidate, shiftedAlternative))) {
+          canonicalInputs.set(shiftedOutput, [...current, shiftedAlternative]);
+        }
+      }
+
+      if (!map.has(shiftedOutput)) {
+        map.set(shiftedOutput, [[canonicalShiftKeys[0], outputKey]]);
+      }
+    }
+  }
+
+  if (!layerDefinitions.some((definition) => definition.id === SHIFT_LAYER_ID)) {
+    layerDefinitions.push({
+      id: SHIFT_LAYER_ID,
+      kind: 'layer',
+      label: 'Shift',
+      presentationRole: 'modifier',
+      presentationModeLabel: '同時',
+    });
+  }
+
+  validateCanonicalInputMap(canonicalInputs);
+  const legends = new Map(layout.legends);
+  for (const shiftKey of canonicalShiftKeys) legends.set(shiftKey, 'Shift');
+
+  return {
+    ...layout,
+    map,
+    canonicalInputs,
+    legends,
+    layerDefinitions,
+    shiftKeys: canonicalShiftKeys,
   };
 }
 

@@ -7,6 +7,7 @@ import {
   keyId,
   PHYSICAL_SHAPES,
   resolveKeyId,
+  SHIFT_KEY,
   type Finger,
   type ExtraPhysicalKeySpec,
   type FingerAssignment,
@@ -113,7 +114,11 @@ export function sanitizePhysicalShape(value: unknown, fallback: PhysicalShape): 
     && thumbs.some((thumb) => thumb.finger === 'RT')
     ? thumbs
     : fallbackThumbs;
-  const reservedIds = new Set(usableThumbs.map((thumb) => resolveKeyId(thumb.id)));
+  const reservedIds = new Set([
+    ...usableThumbs.map((thumb) => resolveKeyId(thumb.id)),
+    SHIFT_KEY.L,
+    SHIFT_KEY.R,
+  ]);
   rowWidths.forEach((width, row) => {
     for (let col = 0; col < width; col++) reservedIds.add(keyId(row, col));
   });
