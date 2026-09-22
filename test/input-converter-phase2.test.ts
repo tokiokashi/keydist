@@ -5,7 +5,7 @@ import { browserKeyboardEventToPhysicalKeyEvent } from '../src/features/input-co
 import { NAGINATA_V18 } from '../src/layouts/naginata.ts';
 import { SHINGETA } from '../src/layouts/shingeta.ts';
 import { SHIN_JIS_SIMULTANEOUS } from '../src/layouts/shin-jis.ts';
-import { faceFromEntries, fromFaces, fromKana, type Face } from '../src/layouts/index.ts';
+import { faceFromEntries, fromFaces, fromKana, withCombos, type Face } from '../src/layouts/index.ts';
 import { TSUKI_2_263 } from '../src/layouts/tsuki-2-263.ts';
 
 const browserPhysical = (
@@ -319,4 +319,84 @@ test('multi-step final actionsは途中のhold release/restart境界を保持す
       holdPhase: 'start',
     },
   ]);
+});
+
+
+test('built-in薙刀式のreciprocal濁音はactive hold側をtriggerとして継続する', () => {
+  const cases = [
+    {
+      holdCode: 'KeyJ',
+      startCode: 'KeyC',
+      startOutput: 'ば',
+      reciprocalCode: 'KeyF',
+      heldKey: 'j',
+      freshOutputKey: 'f',
+    },
+    {
+      holdCode: 'KeyF',
+      startCode: 'KeyU',
+      startOutput: 'ざ',
+      reciprocalCode: 'KeyJ',
+      heldKey: 'f',
+      freshOutputKey: 'j',
+    },
+  ] as const;
+
+  for (const testCase of cases) {
+    const engine = new TypingInputEngine(NAGINATA_V18.canonicalInputs, {
+      triggerRealizationPolicy: { useHold: true },
+    });
+
+    engine.handle(browserPhysical('keydown', testCase.holdCode));
+    const start = engine.handle(browserPhysical('keydown', testCase.startCode)).recognized[0];
+    assert.equal(start.output, testCase.startOutput);
+    assert.equal(start.actions[0].holdPhase, 'start');
+    assert.deepEqual(start.actions[0].heldKeys, [testCase.heldKey]);
+
+    engine.handle(browserPhysical('keyup', testCase.startCode));
+    assert.deepEqual(
+      engine.handle(browserPhysical('keydown', testCase.reciprocalCode)).recognized,
+      [],
+    );
+    const reciprocal =
+      engine.handle(browserPhysical('keyup', testCase.reciprocalCode)).recognized[0];
+
+    assert.equal(reciprocal.output, 'が');
+    assert.deepEqual(reciprocal.actions.map((action) => ({
+      keys: action.keys,
+      outputKeys: action.outputKeys,
+      heldKeys: action.heldKeys,
+      holdPhase: action.holdPhase,
+    })), [
+      {
+        keys: [testCase.freshOutputKey],
+        outputKeys: [testCase.freshOutputKey],
+        heldKeys: [testCase.heldKey],
+        holdPhase: 'continue',
+      },
+    ]);
+  }
+});
+
+test('withCombos由来の3-key comboをoriginごとInput Converterで認識する', () => {
+  const base = fromKana('converter-combo-base', 'converter-combo-base', {
+    A: [['f']],
+    B: [['j']],
+    C: [['k']],
+  });
+  const layout = withCombos(
+    'converter-combo',
+    'converter-combo',
+    base,
+    [['X', ['A', 'B', 'C']]],
+  );
+  const engine = new TypingInputEngine(layout.canonicalInputs);
+
+  assert.deepEqual(engine.handle({ type: 'down', key: 'f' }).recognized, []);
+  assert.deepEqual(engine.handle({ type: 'down', key: 'j' }).recognized, []);
+  const result = engine.handle({ type: 'down', key: 'k' }).recognized[0];
+
+  assert.equal(result.output, 'X');
+  assert.equal(result.alternative.origin, 'combo');
+  assert.deepEqual(result.actions.map((action) => action.keys), [['f', 'j', 'k']]);
 });
