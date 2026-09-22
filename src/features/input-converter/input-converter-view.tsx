@@ -160,7 +160,11 @@ function RecognizedDetail({
   recognized: ReturnType<typeof useTypingSession>['lastRecognized'];
 }) {
   if (recognized.length === 0) {
-    return <p className="input-muted">まだ入力は確定していない。</p>;
+    return (
+      <p className="input-muted input-recognized-empty">
+        まだ入力は確定していない。
+      </p>
+    );
   }
 
   return (

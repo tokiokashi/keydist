@@ -854,6 +854,18 @@ h1 {
   gap: 0.45rem;
 }
 
+.input-recognized-empty,
+.input-recognized {
+  min-height: 1.5rem;
+}
+
+.input-recognized-empty {
+  display: flex;
+  align-items: center;
+  font-size: 1.05rem;
+  line-height: 1.5rem;
+}
+
 .input-recognized {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -864,6 +876,7 @@ h1 {
 .input-recognized strong {
   min-width: 2.5rem;
   font-size: 1.05rem;
+  line-height: 1.5rem;
   white-space: nowrap;
 }
 
