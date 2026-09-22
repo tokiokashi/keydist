@@ -102,15 +102,15 @@ test('TriggerRealizationPolicyはglobal / per-layoutともcondition bundleで往
 
 test('ActionRealizationPolicyはglobal / per-layoutともcondition bundleで往復する', () => {
   const current = state();
-  current.conditions.defaults.actionRealization = { holdStart: 'separate' };
+  current.conditions.defaults.actionRealization = { triggerActivation: 'separate' };
   current.conditions.perLayout.qwerty = {
-    actionRealization: { holdStart: 'combined' },
+    actionRealization: { triggerActivation: 'combined' },
   };
   const bundle = conditionBundleFromState(current, [], [], { rules: [], assignments: {} }, []);
   const parsed = parseConditionBundle(serializeConditionBundle(bundle), bundle, current, choices);
 
-  assert.deepEqual(parsed.conditions.defaults.actionRealization, { holdStart: 'separate' });
-  assert.deepEqual(parsed.conditions.perLayout.qwerty.actionRealization, { holdStart: 'combined' });
+  assert.deepEqual(parsed.conditions.defaults.actionRealization, { triggerActivation: 'separate' });
+  assert.deepEqual(parsed.conditions.perLayout.qwerty.actionRealization, { triggerActivation: 'combined' });
 });
 
 test('未知の配列への個別設定は読み込み時に捨てる', () => {
