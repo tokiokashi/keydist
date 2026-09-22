@@ -14,6 +14,7 @@ import type { Layout } from '../../layouts/index.ts';
 import { physicalKeysUsedByLayout } from '../../layout-physical-keys.ts';
 import {
   browserKeyboardEventToPhysicalKeyEvent,
+  isBrowserTextInputCode,
   shouldCaptureBrowserKeyDown,
 } from './browser-keyboard-adapter.ts';
 import {
@@ -70,9 +71,9 @@ export function useTypingSession(layout: Layout): TypingSession {
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
-      const layoutOwnsPhysicalKey = shouldCaptureBrowserKeyDown(event, ownedPhysicalKeys);
+      const capturesPhysicalKey = shouldCaptureBrowserKeyDown(event, ownedPhysicalKeys);
 
-      if (event.key === 'Escape' && !layoutOwnsPhysicalKey) {
+      if (event.key === 'Escape' && !capturesPhysicalKey) {
         event.preventDefault();
         target.blur();
         return;
@@ -100,7 +101,7 @@ export function useTypingSession(layout: Layout): TypingSession {
         }
       }
 
-      if (!layoutOwnsPhysicalKey) return;
+      if (!capturesPhysicalKey) return;
 
       event.preventDefault();
       const physical = browserKeyboardEventToPhysicalKeyEvent(event);
@@ -110,7 +111,11 @@ export function useTypingSession(layout: Layout): TypingSession {
 
     const onKeyUp = (event: KeyboardEvent) => {
       const physical = browserKeyboardEventToPhysicalKeyEvent(event);
-      if (physical === undefined || !ownedPhysicalKeys.has(physical.key)) return;
+      if (physical === undefined) return;
+      if (
+        !ownedPhysicalKeys.has(physical.key)
+        && !isBrowserTextInputCode(event.code)
+      ) return;
 
       event.preventDefault();
       applyResult(engine.handle(physical));
