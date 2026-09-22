@@ -312,14 +312,32 @@ test('TriggerRealizationPolicyはglobal / per-layoutで保存・復元する', (
 test('ActionRealizationPolicyはglobal / per-layoutで保存・復元する', () => {
   const fallback = defaults();
   const value = structuredClone(fallback);
-  value.conditions.defaults.actionRealization = { triggerActivation: 'separate', triggerActivationOverrides: [] };
+  value.conditions.defaults.actionRealization = {
+    triggerActivation: 'separate',
+    triggerActivationOverrides: [{
+      selector: {
+        layerId: 'layer:SandS',
+        triggerKeys: ['thumb-r'],
+      },
+      grouping: 'separate' as const,
+    }],
+  };
   value.conditions.perLayout.oonishi = {
-    actionRealization: { triggerActivation: 'combined', triggerActivationOverrides: [] },
+    actionRealization: {
+      triggerActivation: 'combined',
+      triggerActivationOverrides: [{
+        selector: { triggerKeys: ['j'] },
+        grouping: 'separate',
+      }],
+    },
   };
 
   const state = sanitizeUiState(value, fallback, choices);
-  assert.deepEqual(state.conditions.defaults.actionRealization, { triggerActivation: 'separate', triggerActivationOverrides: [] });
-  assert.deepEqual(state.conditions.perLayout.oonishi.actionRealization, { triggerActivation: 'combined', triggerActivationOverrides: [] });
+  assert.deepEqual(state.conditions.defaults.actionRealization, value.conditions.defaults.actionRealization);
+  assert.deepEqual(
+    state.conditions.perLayout.oonishi.actionRealization,
+    value.conditions.perLayout.oonishi.actionRealization,
+  );
 });
 
 test('旧ArpeggioConditionsはincludeThumbだけ新Policyへ移し幾何条件を破棄する', () => {
