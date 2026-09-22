@@ -3,9 +3,12 @@ import { QWERTY_LEGEND, SHIFT_KEY, THUMB_KEY } from '../../geometry.ts';
 import { LAYOUTS, LAYOUTS_JA, type Layout } from '../../layouts/index.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
+const DIRECT_JA_INPUT_LAYOUTS =
+  LAYOUTS_JA.filter((layout) => layout.romajiTable === undefined);
+
 const INPUT_LAYOUTS = [
   ...LAYOUTS,
-  ...LAYOUTS_JA.filter((layout) => layout.romajiTable === undefined),
+  ...DIRECT_JA_INPUT_LAYOUTS,
 ];
 
 function KeyboardPreview({
@@ -94,7 +97,9 @@ function RecognizedDetail({
 }
 
 export function InputConverterView() {
-  const [layout, setLayout] = useState<Layout>(() => INPUT_LAYOUTS[0] ?? LAYOUTS_JA[0]);
+  const [layout, setLayout] = useState<Layout>(
+    () => DIRECT_JA_INPUT_LAYOUTS[0] ?? INPUT_LAYOUTS[0],
+  );
   const session = useTypingSession(layout);
 
   return (
