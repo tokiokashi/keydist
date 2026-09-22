@@ -172,10 +172,11 @@ export function evaluate(
 
   // ローマ字配列はかなテキストを展開してから打つ。コンボの誤命中を防ぐため、
   // 展開前の単位も残しておく。かな配列はそのまま打つ。
+  const rawChars = [...text];
   const chunks = layout.romajiTable ? kanaToRomajiChunks(text, layout.romajiTable) : undefined;
   const chars = (chunks
     ? chunks.flatMap((chunk) => [...chunk.roman])
-    : [...text])
+    : rawChars)
     .map(normalizeEvaluationChar);
   const chunkRanges: RomajiChunkRange[] = [];
   if (chunks) {
@@ -233,7 +234,7 @@ export function evaluate(
         .filter((range) => range.start < inputEnd && inputStart < range.end)
         .map((range) => range.kana)
         .join('')
-      : char;
+      : rawChars.slice(inputStart, inputEnd).join('');
     const inputIndex = chunks
       ? chunkRanges.find((range) => range.start < inputEnd && inputStart < range.end)?.start ?? inputStart
       : inputStart;
