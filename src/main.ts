@@ -92,6 +92,7 @@ import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
 import {
   classifyTriggerActivation,
   DEFAULT_TRIGGER_ACTIVATION_GROUPINGS,
+  type SemanticInput,
   type TriggerActivationClass,
   type TriggerActivationGrouping,
 } from './core/semantic-input/index.ts';
@@ -1234,13 +1235,7 @@ function canonicalModifierGroupIds(groupIds: readonly string[]): string[] {
 }
 
 function modifierGroupIdsForTriggerKeys(
-  input: Layout['canonicalInputs'] extends ReadonlyMap<string, infer Alternatives>
-    ? Alternatives extends readonly (infer Alternative)[]
-      ? Alternative extends { semanticInputs: readonly (infer Semantic)[] }
-        ? Semantic
-        : never
-      : never
-    : never,
+  input: SemanticInput,
   triggerKeys: readonly string[],
 ): string[] {
   const trigger = new Set(canonicalTriggerKeys(triggerKeys));
