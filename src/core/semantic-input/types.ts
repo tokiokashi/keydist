@@ -51,6 +51,8 @@ export interface SemanticInput {
   requirements: readonly Requirement[];
   capabilities: readonly InputCapability[];
   layerId: string;
+  /** trigger policy用のcanonical logical group。presentation layerとは独立。 */
+  triggerGroupId?: string;
   /** authoring intent / analysis classification。activation identityには含めない。 */
   classifications: readonly InputClassification[];
   roles: readonly KeyRole[];
