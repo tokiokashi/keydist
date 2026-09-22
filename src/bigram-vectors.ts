@@ -37,6 +37,14 @@ export interface DirectionBin {
   readonly weight: number;
 }
 
+export interface DirectionProfilePoint {
+  readonly angle: number;
+  readonly weight: number;
+  readonly inwardWeight: number;
+  readonly outwardWeight: number;
+  readonly sameWeight: number;
+}
+
 export interface DirectionSummary {
   readonly x: number;
   readonly y: number;
@@ -252,6 +260,49 @@ export function aggregateBigramVectors(
   }
 
   return Object.freeze([...byKey.values()]);
+}
+
+export function directionProfile(
+  vectors: readonly BigramVector[],
+  hand: 'left' | 'right',
+  precisionRadians = 1e-6,
+): readonly DirectionProfilePoint[] {
+  if (!Number.isFinite(precisionRadians) || precisionRadians <= 0) {
+    throw new RangeError('precisionRadiansは0より大きい有限値で指定する');
+  }
+
+  const grouped = new Map<number, {
+    weight: number;
+    inwardWeight: number;
+    outwardWeight: number;
+    sameWeight: number;
+  }>();
+
+  for (const vector of vectors) {
+    if (vector.hand !== hand || vector.distance === 0) continue;
+    const normalized = normalizedAngle(vector.angle);
+    const bucket = Math.round(normalized / precisionRadians);
+    const current = grouped.get(bucket) ?? {
+      weight: 0,
+      inwardWeight: 0,
+      outwardWeight: 0,
+      sameWeight: 0,
+    };
+    current.weight += vector.weight;
+    if (vector.fingerDirection === 'inward') current.inwardWeight += vector.weight;
+    else if (vector.fingerDirection === 'outward') current.outwardWeight += vector.weight;
+    else if (vector.fingerDirection === 'same') current.sameWeight += vector.weight;
+    grouped.set(bucket, current);
+  }
+
+  return Object.freeze(
+    [...grouped.entries()]
+      .map(([bucket, value]) => Object.freeze({
+        angle: normalizedAngle(bucket * precisionRadians),
+        ...value,
+      }))
+      .sort((a, b) => a.angle - b.angle),
+  );
 }
 
 export function directionSummary(
