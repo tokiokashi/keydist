@@ -1,17 +1,14 @@
 import { isThumb, type Key } from '../geometry.ts';
 
-export type PhysicalKeyboardKeyRole =
-  | 'normal'
-  | 'modifier'
-  | 'trigger'
-  | 'combo';
-
 export interface PhysicalKeyboardKeyView {
   readonly legend?: string;
   readonly secondaryLegend?: string;
   readonly pressed?: boolean;
   readonly highlighted?: boolean;
-  readonly role?: PhysicalKeyboardKeyRole;
+  readonly trigger?: boolean;
+  readonly combo?: boolean;
+  readonly accentSlot?: number;
+  readonly guide?: 'continuation' | 'output';
 }
 
 export interface PhysicalKeyboardProps {
@@ -19,11 +16,13 @@ export interface PhysicalKeyboardProps {
   readonly keyViews?: ReadonlyMap<string, PhysicalKeyboardKeyView>;
   readonly ariaLabel?: string;
   readonly geometryId?: string;
+  readonly unit?: number;
+  readonly showSecondary?: boolean;
 }
 
-const UNIT = 54;
-const GAP = 4;
-const PAD = 8;
+const DEFAULT_UNIT = 54;
+const GAP_RATIO = 4 / DEFAULT_UNIT;
+const PAD_RATIO = 8 / DEFAULT_UNIT;
 const THUMB_WIDTH = 1.9;
 
 export function PhysicalKeyboard({
@@ -31,13 +30,17 @@ export function PhysicalKeyboard({
   keyViews = new Map(),
   ariaLabel = '物理キーボード',
   geometryId,
+  unit = DEFAULT_UNIT,
+  showSecondary = true,
 }: PhysicalKeyboardProps) {
+  const gap = unit * GAP_RATIO;
+  const pad = unit * PAD_RATIO;
   const positioned = keys.map((key) => {
     const widthU = key.width ?? (isThumb(key.finger) ? THUMB_WIDTH : 1);
-    const width = Math.max(UNIT * widthU - GAP, UNIT / 4);
-    const height = UNIT - GAP;
-    const x = (key.x - (widthU - 1) / 2) * UNIT;
-    const y = key.y * UNIT;
+    const width = Math.max(unit * widthU - gap, unit / 4);
+    const height = unit - gap;
+    const x = (key.x - (widthU - 1) / 2) * unit;
+    const y = key.y * unit;
     return { key, width, height, x, y };
   });
 
@@ -49,10 +52,10 @@ export function PhysicalKeyboard({
   const minY = Math.min(...positioned.map(({ y }) => y));
   const maxX = Math.max(...positioned.map(({ x, width }) => x + width));
   const maxY = Math.max(...positioned.map(({ y, height }) => y + height));
-  const viewX = minX - PAD;
-  const viewY = minY - PAD;
-  const width = maxX - minX + PAD * 2;
-  const height = maxY - minY + PAD * 2;
+  const viewX = minX - pad;
+  const viewY = minY - pad;
+  const width = maxX - minX + pad * 2;
+  const height = maxY - minY + pad * 2;
 
   return (
     <div className="physical-keyboard">
@@ -67,15 +70,18 @@ export function PhysicalKeyboard({
         {positioned.map(({ key, width: keyWidth, height: keyHeight, x, y }) => {
           const view = keyViews.get(key.id);
           const legend = view?.legend ?? key.id;
-          const secondary = view?.secondaryLegend;
+          const secondary = showSecondary ? view?.secondaryLegend : undefined;
 
           return (
             <g
               className="physical-keyboard-key"
+              data-accent-slot={view?.accentSlot}
+              data-combo={view?.combo || undefined}
+              data-guide={view?.guide}
               data-highlighted={view?.highlighted || undefined}
               data-key-id={key.id}
               data-pressed={view?.pressed || undefined}
-              data-role={view?.role}
+              data-trigger={view?.trigger || undefined}
               key={key.id}
             >
               <rect
@@ -87,6 +93,7 @@ export function PhysicalKeyboard({
               />
               <text
                 className="physical-keyboard-legend"
+                style={{ fontSize: Math.max(7, unit * 0.24) }}
                 textAnchor="middle"
                 x={x + keyWidth / 2}
                 y={y + keyHeight / 2 + (secondary ? -1 : 4)}
@@ -96,6 +103,7 @@ export function PhysicalKeyboard({
               {secondary && secondary !== legend ? (
                 <text
                   className="physical-keyboard-secondary"
+                  style={{ fontSize: Math.max(6, unit * 0.15) }}
                   textAnchor="middle"
                   x={x + keyWidth / 2}
                   y={y + keyHeight - 7}

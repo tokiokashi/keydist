@@ -229,3 +229,18 @@ test('定義済み2-key chordは単打fallbackへ二重展開しない', () => {
 
   assert.deepEqual(outputs, ['AB']);
 });
+
+
+test('recognitionKeysはprefix trigger release後も次の入力まで保持される', () => {
+  const layout = fromFaces('converter-recognition-keys', 'converter-recognition-keys', [
+    face([], 'simultaneous', { h: 'H' }),
+    face(['d'], 'prefix', { h: 'X' }, { layer: 'shift' }),
+  ]);
+  const engine = new TypingInputEngine(layout.canonicalInputs);
+
+  assert.deepEqual(engine.handle({ type: 'down', key: 'd' }).recognitionKeys, ['d']);
+  assert.deepEqual(engine.handle({ type: 'up', key: 'd' }).recognitionKeys, ['d']);
+  const completed = engine.handle({ type: 'down', key: 'h' });
+  assert.deepEqual(completed.recognized.map((entry) => entry.output), ['X']);
+  assert.deepEqual(completed.recognitionKeys, []);
+});
