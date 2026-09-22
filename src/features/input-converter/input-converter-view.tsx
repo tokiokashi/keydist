@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   PhysicalKeyboard,
   type PhysicalKeyboardKeyView,
@@ -60,6 +60,88 @@ function clampSplitPercent(value: number): number {
   return Math.min(MAX_SPLIT_PERCENT, Math.max(MIN_SPLIT_PERCENT, value));
 }
 
+type GuideGridLayout = {
+  columns: number;
+  cardMaxWidthPx: number | null;
+};
+
+function px(value: string): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function chooseGuideGridLayout(
+  grid: HTMLDivElement,
+  itemCount: number,
+): GuideGridLayout {
+  if (itemCount <= 0) return { columns: 1, cardMaxWidthPx: null };
+
+  const style = getComputedStyle(grid);
+  const availableWidth = Math.max(
+    0,
+    grid.clientWidth - px(style.paddingLeft) - px(style.paddingRight),
+  );
+  const availableHeight = Math.max(
+    0,
+    grid.clientHeight - px(style.paddingTop) - px(style.paddingBottom),
+  );
+  if (availableWidth <= 0 || availableHeight <= 0) {
+    return { columns: 1, cardMaxWidthPx: null };
+  }
+
+  const columnGap = px(style.columnGap);
+  const rowGap = px(style.rowGap);
+  const firstCard = grid.querySelector<HTMLElement>('.input-layer-card');
+  const svg = firstCard?.querySelector<SVGSVGElement>('svg');
+
+  // The keyboard scales linearly while each card's heading/padding is nearly fixed.
+  // Measure those fixed parts from a real card so the packing decision follows the
+  // currently selected geometry instead of relying on a hard-coded aspect ratio.
+  const cardRect = firstCard?.getBoundingClientRect();
+  const svgRect = svg?.getBoundingClientRect();
+  const viewBox = svg?.viewBox.baseVal;
+  const svgAspect = viewBox !== undefined && viewBox.height > 0
+    ? viewBox.width / viewBox.height
+    : 2;
+  const horizontalChrome = cardRect !== undefined && svgRect !== undefined
+    ? Math.max(0, cardRect.width - svgRect.width)
+    : 24;
+  const verticalChrome = cardRect !== undefined && svgRect !== undefined
+    ? Math.max(0, cardRect.height - svgRect.height)
+    : 52;
+
+  let best: GuideGridLayout = { columns: 1, cardMaxWidthPx: availableWidth };
+  let bestWidth = -1;
+
+  for (let columns = 1; columns <= itemCount; columns += 1) {
+    const rows = Math.ceil(itemCount / columns);
+    const cellWidth = (
+      availableWidth - columnGap * Math.max(0, columns - 1)
+    ) / columns;
+    const cellHeight = (
+      availableHeight - rowGap * Math.max(0, rows - 1)
+    ) / rows;
+    if (cellWidth <= 0 || cellHeight <= verticalChrome) continue;
+
+    const maxWidthFromHeight = horizontalChrome
+      + (cellHeight - verticalChrome) * svgAspect;
+    const cardWidth = Math.min(cellWidth, maxWidthFromHeight);
+
+    if (
+      cardWidth > bestWidth + 0.5
+      || (Math.abs(cardWidth - bestWidth) <= 0.5 && columns < best.columns)
+    ) {
+      bestWidth = cardWidth;
+      best = {
+        columns,
+        cardMaxWidthPx: Math.max(horizontalChrome, Math.floor(cardWidth)),
+      };
+    }
+  }
+
+  return best;
+}
+
 function RecognizedDetail({
   recognized,
 }: {
@@ -109,6 +191,11 @@ export function InputConverterView() {
   const [showTriggerColors, setShowTriggerColors] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [splitPercent, setSplitPercent] = useState(DEFAULT_SPLIT_PERCENT);
+  const guideGridRef = useRef<HTMLDivElement>(null);
+  const [guideGridLayout, setGuideGridLayout] = useState<GuideGridLayout>({
+    columns: 1,
+    cardMaxWidthPx: null,
+  });
   const escapeIsLayoutInput = physicalKeysUsedByLayout(layout).has('escape');
 
   const updateSplitFromClientX = (clientX: number, splitter: HTMLElement) => {
@@ -123,6 +210,26 @@ export function InputConverterView() {
     setUserGeometryShapes(loadUserGeometryShapes());
     setThumbBindings(loadThumbKeyBindings(window.localStorage));
   }, []);
+
+  useEffect(() => {
+    const grid = guideGridRef.current;
+    if (grid === null || guideDefinitions.length === 0) return;
+
+    const update = () => {
+      const next = chooseGuideGridLayout(grid, guideDefinitions.length);
+      setGuideGridLayout((current) => (
+        current.columns === next.columns
+        && current.cardMaxWidthPx === next.cardMaxWidthPx
+          ? current
+          : next
+      ));
+    };
+
+    const observer = new ResizeObserver(update);
+    observer.observe(grid);
+    update();
+    return () => observer.disconnect();
+  }, [geometry.id, guideDefinitions.length, layout.id, settingsOpen]);
 
   const updateThumbBindings = (next: ThumbKeyBindings) => {
     setThumbBindings(next);
@@ -333,7 +440,16 @@ export function InputConverterView() {
                   ))}
                 </div>
               ) : null}
-              <div className="input-layer-guide-grid">
+              <div
+                className="input-layer-guide-grid"
+                ref={guideGridRef}
+                style={{
+                  '--guide-columns': guideGridLayout.columns,
+                  '--guide-card-max-width': guideGridLayout.cardMaxWidthPx === null
+                    ? '100%'
+                    : `${guideGridLayout.cardMaxWidthPx}px`,
+                } as CSSProperties}
+              >
                 {guideDefinitions.map((definition) => {
                   const legends = aggregationLegendMap(layout, definition.id);
                   const triggers = new Set(aggregationTriggerKeys(layout, definition.id));
