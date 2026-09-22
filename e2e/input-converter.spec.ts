@@ -387,6 +387,43 @@ test('新JIS通常シフトと薙刀式装飾keyはrelease後に前置シフト�
   await expect(output).toHaveValue('あか');
 });
 
+test('TK音直入力法はかなを直接表示しcomboと拗音contextを認識する', async ({ page }) => {
+  await page.goto('/input');
+  const feature = page.locator('.input-feature');
+  const output = page.getByLabel('自由入力テキスト');
+
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await page.getByLabel('配列', { exact: true }).selectOption('oonishi-custom-combo');
+  await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom-combo');
+  await output.click();
+
+  // TK音直のlogical k -> aを通常打鍵して「か」。
+  await page.keyboard.press('h');
+  await page.keyboard.press('d');
+  await expect(output).toHaveValue('か');
+
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await output.click();
+
+  // logical d+s combo -> "desu" をliveかな表示で「です」へ戻す。
+  await page.keyboard.down('m');
+  await page.keyboard.down('l');
+  await page.keyboard.up('l');
+  await page.keyboard.up('m');
+  await expect(output).toHaveValue('です');
+
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await output.click();
+
+  // k の後だけyouon-onlyの logical i+a combo ("ya") を許可し、kya -> きゃ。
+  await page.keyboard.press('h');
+  await page.keyboard.down('s');
+  await page.keyboard.down('d');
+  await page.keyboard.up('d');
+  await page.keyboard.up('s');
+  await expect(output).toHaveValue('きゃ');
+});
+
 test('かわせみ配列+の同時押しをbrowser lifecycleでも認識する', async ({ page }) => {
   await page.goto('/input');
   const feature = page.locator('.input-feature');
