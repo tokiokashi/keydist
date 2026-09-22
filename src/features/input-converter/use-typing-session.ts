@@ -12,7 +12,10 @@ import {
 } from '../../core/input-converter/index.ts';
 import type { Layout } from '../../layouts/index.ts';
 import { physicalKeysUsedByLayout } from '../../layout-physical-keys.ts';
-import { browserKeyboardEventToPhysicalKeyEvent } from './browser-keyboard-adapter.ts';
+import {
+  browserKeyboardEventToPhysicalKeyEvent,
+  shouldCaptureBrowserKeyDown,
+} from './browser-keyboard-adapter.ts';
 import {
   applyRecognizedTypingInputs,
   applyTypingTextEdit,
@@ -67,8 +70,7 @@ export function useTypingSession(layout: Layout): TypingSession {
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
-      const physical = browserKeyboardEventToPhysicalKeyEvent(event);
-      const layoutOwnsPhysicalKey = physical !== undefined && ownedPhysicalKeys.has(physical.key);
+      const layoutOwnsPhysicalKey = shouldCaptureBrowserKeyDown(event, ownedPhysicalKeys);
 
       if (event.key === 'Escape' && !layoutOwnsPhysicalKey) {
         event.preventDefault();
@@ -98,9 +100,11 @@ export function useTypingSession(layout: Layout): TypingSession {
         }
       }
 
-      if (physical === undefined || !layoutOwnsPhysicalKey) return;
+      if (!layoutOwnsPhysicalKey) return;
 
       event.preventDefault();
+      const physical = browserKeyboardEventToPhysicalKeyEvent(event);
+      if (physical === undefined) return;
       applyResult(engine.handle(physical));
     };
 
