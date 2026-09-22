@@ -3,6 +3,8 @@ import { expect, test } from '@playwright/test';
 test('Bigram Flow filters finger pairs and unlocks vector analysis', async ({ page }) => {
   await page.goto('/flow');
 
+  const feature = page.locator('.flow-feature');
+  await expect(feature).toHaveAttribute('data-flow-ready', 'true');
   await expect(page.getByRole('heading', { name: 'Bigram Flow' })).toBeVisible();
   await expect(page.getByRole('img', { name: 'キーボード上のbigramベクトル' })).toBeVisible();
   await expect(page.getByText('指を2本選ぶと解放')).toBeVisible();
