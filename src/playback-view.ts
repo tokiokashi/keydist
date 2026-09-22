@@ -1,4 +1,4 @@
-import { buildGeometry, THUMB_ROW, type Finger } from './geometry.ts';
+import { buildGeometry, SHIFT_KEY, THUMB_ROW, type Finger } from './geometry.ts';
 import { type Options, type Stroke, type Trace } from './evaluate.ts';
 import {
   advancePlayback, clampPlaybackCursor, createPlaybackState,
@@ -770,7 +770,11 @@ function updatePlaybackView() {
 function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeometry>): string {
   let maxX = 0;
   let maxY = 0;
-  const keys = [...geometry.keys.values()].map((key) => {
+  const shiftKeys = new Set(layout.shiftKeys ?? []);
+  const keys = [...geometry.keys.values()]
+    .filter((key) =>
+      (key.id !== SHIFT_KEY.L && key.id !== SHIFT_KEY.R) || shiftKeys.has(key.id))
+    .map((key) => {
     const thumb = key.row === THUMB_ROW;
     const width = (thumb ? PLAYBACK_THUMB_WIDTH : 1) * PLAYBACK_KEY;
     const x = (key.x - (thumb ? (PLAYBACK_THUMB_WIDTH - 1) / 2 : 0)) * PLAYBACK_KEY;
