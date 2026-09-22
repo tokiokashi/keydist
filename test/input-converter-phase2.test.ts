@@ -85,20 +85,32 @@ test('built-in薙刀式はmulti-key trigger groupを保持して次のtargetへ�
   ]);
 });
 
-test('built-in薙刀式のthumb shift alternativeは左右どちらのphysical keyでも成立する', () => {
-  for (const thumbCode of ['Space', 'NonConvert']) {
+test('built-in薙刀式のthumb shift alternativeは左右physical identityを保持する', () => {
+  for (const { thumbCode, thumbKey } of [
+    { thumbCode: 'Space', thumbKey: 'thumb-r' },
+    { thumbCode: 'NonConvert', thumbKey: 'thumb-l' },
+  ]) {
     const engine = new TypingInputEngine(NAGINATA_V18.canonicalInputs, {
       triggerRealizationPolicy: { useHold: true },
     });
 
     engine.handle(browserPhysical('keydown', thumbCode));
-    const result = engine.handle(browserPhysical('keydown', 'KeyF'));
+    const recognized = engine.handle(browserPhysical('keydown', 'KeyF')).recognized[0];
 
-    assert.deepEqual(
-      result.recognized.map((entry) => entry.output),
-      ['ま'],
-      thumbCode,
-    );
+    assert.equal(recognized.output, 'ま', thumbCode);
+    assert.deepEqual(recognized.actions.map((action) => ({
+      keys: action.keys,
+      triggerKeys: action.triggerKeys,
+      heldKeys: action.heldKeys,
+      holdPhase: action.holdPhase,
+    })), [
+      {
+        keys: [thumbKey, 'f'],
+        triggerKeys: [thumbKey],
+        heldKeys: [thumbKey],
+        holdPhase: 'start',
+      },
+    ], thumbCode);
   }
 });
 
@@ -129,16 +141,20 @@ test('同じphysical pairのprefix / suffix alternativeを押下順で選択で�
   const prefix = new TypingInputEngine(layout.canonicalInputs);
   prefix.handle({ type: 'down', key: 'd' });
   prefix.handle({ type: 'up', key: 'd' });
+  const prefixResult = prefix.handle({ type: 'down', key: 'h' }).recognized[0];
+  assert.equal(prefixResult.output, 'X');
   assert.deepEqual(
-    prefix.handle({ type: 'down', key: 'h' }).recognized.map((entry) => entry.output),
-    ['X'],
+    prefixResult.actions.map((action) => action.keys),
+    [['d'], ['h']],
   );
 
   const suffix = new TypingInputEngine(layout.canonicalInputs);
   suffix.handle({ type: 'down', key: 'h' });
   suffix.handle({ type: 'up', key: 'h' });
+  const suffixResult = suffix.handle({ type: 'down', key: 'd' }).recognized[0];
+  assert.equal(suffixResult.output, 'X');
   assert.deepEqual(
-    suffix.handle({ type: 'down', key: 'd' }).recognized.map((entry) => entry.output),
-    ['X'],
+    suffixResult.actions.map((action) => action.keys),
+    [['h'], ['d']],
   );
 });
