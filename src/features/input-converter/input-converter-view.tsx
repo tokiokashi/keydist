@@ -14,6 +14,18 @@ import {
 import {
   sanitizeGeometrySettings,
 } from '../../geometry-settings.ts';
+import {
+  aggregationLegendMap,
+  aggregationTriggerKeys,
+  compactLayerGuideDefinitions,
+  presentationTriggerColorSlots,
+  semanticCombinationLabels,
+} from '../../layers.ts';
+import {
+  allLayerTriggerKeys,
+  matchKeyPatterns,
+  summarizeCandidateMatches,
+} from '../../key-pattern-picker.ts';
 import { LAYOUTS, LAYOUTS_JA, type Layout } from '../../layouts/index.ts';
 import {
   physicalKeysUsedByLayout,
@@ -68,6 +80,9 @@ export function InputConverterView() {
   const session = useTypingSession(layout);
   const [userGeometryShapes, setUserGeometryShapes] = useState<PhysicalShape[]>([]);
   const [geometryId, setGeometryId] = useState(PHYSICAL_SHAPES['row-staggered'].id);
+  const [showDynamicGuide, setShowDynamicGuide] = useState(true);
+  const [showLayerGuide, setShowLayerGuide] = useState(true);
+  const [showTriggerColors, setShowTriggerColors] = useState(true);
   const escapeIsLayoutInput = physicalKeysUsedByLayout(layout).has('escape');
 
   useEffect(() => {
@@ -94,28 +109,107 @@ export function InputConverterView() {
     () => visibleGeometryKeys(layout, geometry),
     [geometry, layout],
   );
+  const activeGroupIds = session.presentation.activeAggregationGroupIds;
+  const activeDefinitions = useMemo(() => {
+    const byId = new Map((layout.layerDefinitions ?? []).map((definition) => [definition.id, definition] as const));
+    return activeGroupIds.flatMap((id) => {
+      const definition = byId.get(id);
+      return definition === undefined ? [] : [definition];
+    });
+  }, [activeGroupIds, layout]);
+  const activeTriggerKeys = useMemo(
+    () => new Set(activeGroupIds.flatMap((id) => aggregationTriggerKeys(layout, id))),
+    [activeGroupIds, layout],
+  );
+  const triggerKeys = useMemo(() => allLayerTriggerKeys(layout), [layout]);
+  const triggerColorSlots = useMemo(
+    () => presentationTriggerColorSlots(layout),
+    [layout],
+  );
+  const comboKeys = useMemo(
+    () => new Set(
+      (layout.resolvedComboDefinitions ?? []).flatMap((combo) =>
+        (combo.keyVariants ?? [combo.keys]).flatMap((keys) => keys)),
+    ),
+    [layout],
+  );
+  const patternResult = useMemo(
+    () => matchKeyPatterns(layout, new Set(session.presentation.selectedKeys)),
+    [layout, session.presentation.selectedKeys],
+  );
+  const hasOneShotLayer = session.presentation.oneShotActivations.length > 0;
   const keyboardViews = useMemo(() => {
     const pressed = new Set(session.pressedKeys);
+    const selected = new Set(session.presentation.selectedKeys);
+    const hasDynamicPath = showDynamicGuide && selected.size > 0;
     return new Map<string, PhysicalKeyboardKeyView>(
-      visibleKeys.map((key) => [
-        key.id,
-        {
-          legend: layout.legends.get(key.id) ?? key.id,
-          secondaryLegend: key.id === THUMB_KEY.LT
-            ? 'NonConvert'
-            : key.id === THUMB_KEY.RT
-              ? 'Space / Convert'
-              : key.id,
-          pressed: pressed.has(key.id),
-        },
-      ]),
+      visibleKeys.map((key) => {
+        const outputs = showDynamicGuide
+          ? patternResult.candidates.get(key.id)
+          : undefined;
+        const canContinue = showDynamicGuide
+          && patternResult.continuations.has(key.id);
+        const guide = outputs !== undefined
+          ? 'output' as const
+          : canContinue
+            ? 'continuation' as const
+            : undefined;
+        const guideLegend = outputs === undefined
+          ? undefined
+          : summarizeCandidateMatches(outputs);
+
+        return [
+          key.id,
+          {
+            legend: guideLegend
+              ?? (hasDynamicPath
+                ? selected.has(key.id) || hasOneShotLayer
+                  ? layout.legends.get(key.id) ?? ''
+                  : ''
+                : layout.legends.get(key.id) ?? ''),
+            secondaryLegend: key.id === THUMB_KEY.LT
+              ? 'NonConvert'
+              : key.id === THUMB_KEY.RT
+                ? 'Space / Convert'
+                : key.id,
+            pressed: pressed.has(key.id),
+            highlighted: showDynamicGuide && activeTriggerKeys.has(key.id),
+            trigger: showTriggerColors && triggerKeys.has(key.id),
+            combo: showTriggerColors && comboKeys.has(key.id),
+            accentSlot: showTriggerColors ? triggerColorSlots.get(key.id) : undefined,
+            guide,
+          },
+        ] as const;
+      }),
     );
-  }, [layout, session.pressedKeys, visibleKeys]);
+  }, [
+    activeTriggerKeys,
+    comboKeys,
+    hasOneShotLayer,
+    layout,
+    patternResult,
+    session.pressedKeys,
+    showDynamicGuide,
+    showTriggerColors,
+    triggerColorSlots,
+    triggerKeys,
+    visibleKeys,
+  ]);
+  const guideDefinitions = useMemo(
+    () => compactLayerGuideDefinitions(layout),
+    [layout],
+  );
+  const combinationLabels = useMemo(() => {
+    const layerLabels = new Set(guideDefinitions.map((definition) => definition.label));
+    return semanticCombinationLabels(layout)
+      .filter((label) => !layerLabels.has(label));
+  }, [guideDefinitions, layout]);
 
   return (
     <section
       className="feature-shell input-feature"
       data-input-ready={session.readyLayoutId === layout.id ? layout.id : undefined}
+      data-active-layer={activeGroupIds.length > 0 ? activeGroupIds.join('|') : 'single'}
     >
       <p className="eyebrow">Phase B · #270</p>
       <h1>Input Converter</h1>
@@ -160,6 +254,34 @@ export function InputConverterView() {
         <button type="button" onClick={session.clear}>クリア</button>
       </div>
 
+      <div className="input-display-options" aria-label="表示設定">
+        <strong>表示</strong>
+        <label>
+          <input
+            type="checkbox"
+            checked={showDynamicGuide}
+            onChange={(event) => setShowDynamicGuide(event.target.checked)}
+          />
+          動的ガイド
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={showLayerGuide}
+            onChange={(event) => setShowLayerGuide(event.target.checked)}
+          />
+          レイヤーカンペ
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={showTriggerColors}
+            onChange={(event) => setShowTriggerColors(event.target.checked)}
+          />
+          起点キー色
+        </label>
+      </div>
+
       <textarea
         className="input-output"
         value={session.text}
@@ -178,12 +300,84 @@ export function InputConverterView() {
         {session.composing ? ' IME composition中は認識を停止している。' : ''}
       </p>
 
-      <PhysicalKeyboard
-        ariaLabel="現在の物理キー状態"
-        geometryId={geometry.id}
-        keys={visibleKeys}
-        keyViews={keyboardViews}
-      />
+      <p
+        className="input-active-layer"
+        data-active={activeDefinitions.length > 0 || undefined}
+      >
+        <span>現在のレイヤー</span>
+        <strong>
+          {activeDefinitions.length > 0
+            ? activeDefinitions.map((definition) => definition.label).join(' / ')
+            : '通常'}
+        </strong>
+      </p>
+
+      <div className="input-keyboard-stage">
+        <div className="input-keyboard-main">
+          <PhysicalKeyboard
+            ariaLabel="現在の物理キー状態"
+            geometryId={geometry.id}
+            keys={visibleKeys}
+            keyViews={keyboardViews}
+          />
+        </div>
+
+      {showLayerGuide && (guideDefinitions.length > 0 || combinationLabels.length > 0) ? (
+        <aside className="input-layer-guide" aria-label="レイヤーカンペ一覧">
+          <header>
+            <strong>レイヤーカンペ</strong>
+            <span>{guideDefinitions.length} 面</span>
+          </header>
+          {combinationLabels.length > 0 ? (
+            <div className="input-semantic-groups" aria-label="意味論的な組み合わせ">
+              {combinationLabels.map((label) => (
+                <span key={label}>{label}</span>
+              ))}
+            </div>
+          ) : null}
+          <div className="input-layer-guide-grid">
+            {guideDefinitions.map((definition) => {
+              const legends = aggregationLegendMap(layout, definition.id);
+              const triggers = new Set(aggregationTriggerKeys(layout, definition.id));
+              const views = new Map<string, PhysicalKeyboardKeyView>(
+                visibleKeys.map((key) => [
+                  key.id,
+                  {
+                    legend: legends.get(key.id) ?? '',
+                    highlighted: triggers.has(key.id),
+                    trigger: triggers.has(key.id),
+                    accentSlot: presentationTriggerColorSlots(layout).get(key.id),
+                  },
+                ]),
+              );
+              return (
+                <section className="input-layer-card" key={definition.id}>
+                  <h3>
+                    {definition.label}
+                    {definition.presentationModeLabel
+                      ? <small>{definition.presentationModeLabel}</small>
+                      : null}
+                  </h3>
+                  <p>
+                    {triggers.size > 0
+                      ? `trigger: ${[...triggers].map((key) => layout.legends.get(key) ?? key).join(' + ')}`
+                      : 'trigger: —'}
+                  </p>
+                  <PhysicalKeyboard
+                    ariaLabel={`${definition.label} レイヤー`}
+                    geometryId={geometry.id}
+                    keys={visibleKeys}
+                    keyViews={views}
+                    showSecondary={false}
+                    unit={28}
+                  />
+                </section>
+              );
+            })}
+          </div>
+        </aside>
+      ) : null}
+      </div>
 
       <div className="input-inspector">
         <section>

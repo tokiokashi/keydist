@@ -43,6 +43,11 @@ export interface RecognizedTypingInput {
 export interface TypingInputResult {
   readonly recognized: readonly RecognizedTypingInput[];
   readonly pressedKeys: readonly PhysicalKeyId[];
+  /**
+   * 現在のrecognition windowに残っているphysical key。
+   * prefix release後やhold seedも含み、presentationがactive modifier stateを表示するために使える。
+   */
+  readonly recognitionKeys: readonly PhysicalKeyId[];
 }
 
 interface Candidate {
@@ -230,9 +235,6 @@ export class TypingInputEngine {
     this.#pressed.add(key);
 
     if (!this.#knownPhysicalKeys.has(key)) {
-      // canonicalに一度も現れないphysical keyは出力なしのgesture boundaryとして扱う。
-      // one-shot/chord待ちは終了するが、#resetRecognitionWindow() は物理的に保持中の
-      // hold triggerだけseedし直すため、while-held状態は維持される。
       this.#resetRecognitionWindow();
       return this.#result(recognized);
     }
@@ -275,6 +277,7 @@ export class TypingInputEngine {
     return {
       recognized,
       pressedKeys: [...this.#pressed],
+      recognitionKeys: [...this.#windowKeys],
     };
   }
 
@@ -485,8 +488,6 @@ export class TypingInputEngine {
     return [...this.#windowKeys]
       .filter((key) => {
         if (consumed.has(key) || this.#seededHoldKeys.has(key)) return false;
-        // release済みのtrigger専用keyは、次の入力を1回消費した時点で役目を終える。
-        // 単打を持つkeyだけをfallback replayし、prefix one-shotを後続入力へ持ち越さない。
         return !this.#releasedWindowKeys.has(key) || this.#hasStandaloneInput(key);
       })
       .map((key) => ({

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TypingInputEngine } from '../src/core/input-converter/index.ts';
 import { browserKeyboardEventToPhysicalKeyEvent } from '../src/features/input-converter/browser-keyboard-adapter.ts';
+import { KAWASEMI_PLUS } from '../src/layouts/kawasemi-plus.ts';
 import { NAGINATA_V18 } from '../src/layouts/naginata.ts';
 import { SHIN_JIS_SIMULTANEOUS } from '../src/layouts/shin-jis.ts';
 import { TSUKI_2_263 } from '../src/layouts/tsuki-2-263.ts';
@@ -101,40 +102,63 @@ test('薙刀式の未定義roll overlapは左右どちらも単打を落とさ�
 });
 
 
-test('月配列のprefix triggerは非対象側の通常1打で消費され後続へ残らない', () => {
+test('かわせみ配列+の同時押し拡張を実canonical inputで認識する', () => {
   const cases = [
     {
-      trigger: 'k',
-      sameHand: 'h',
-      sameOutput: 'く',
-      opposite: 'f',
-      oppositeBaseOutput: 'と',
+      events: [
+        { type: 'down', key: 'd' },
+        { type: 'down', key: 's' },
+      ] as const,
+      output: 'こと',
     },
     {
-      trigger: 'd',
-      sameHand: 'f',
-      sameOutput: 'と',
-      opposite: 'h',
-      oppositeBaseOutput: 'く',
+      events: [
+        { type: 'down', key: 'thumb-l' },
+        { type: 'down', key: 'v' },
+      ] as const,
+      output: 'てつ',
     },
+    {
+      events: [
+        { type: 'down', key: 'thumb-r' },
+        { type: 'down', key: 'd' },
+        { type: 'down', key: 'j' },
+      ] as const,
+      output: 'そく',
+    },
+  ];
+
+  for (const testCase of cases) {
+    const engine = new TypingInputEngine(KAWASEMI_PLUS.canonicalInputs, {
+      triggerRealizationPolicy: { useHold: true },
+    });
+    const outputs: string[] = [];
+    for (const event of testCase.events) {
+      outputs.push(...engine.handle(event).recognized.map((entry) => entry.output));
+    }
+    assert.deepEqual(outputs, [testCase.output], testCase.output);
+  }
+});
+
+
+test('月配列のprefix triggerは非対象側の通常1打で消費され後続へ残らない', () => {
+  const cases = [
+    { trigger: 'k', sameHand: 'h', sameOutput: 'く', opposite: 'f', oppositeBaseOutput: 'と' },
+    { trigger: 'd', sameHand: 'f', sameOutput: 'と', opposite: 'h', oppositeBaseOutput: 'く' },
   ] as const;
 
   for (const testCase of cases) {
     const engine = new TypingInputEngine(TSUKI_2_263.canonicalInputs);
     engine.handle({ type: 'down', key: testCase.trigger });
     engine.handle({ type: 'up', key: testCase.trigger });
-
     assert.deepEqual(
       engine.handle({ type: 'down', key: testCase.sameHand }).recognized.map((entry) => entry.output),
       [testCase.sameOutput],
-      `${testCase.trigger} -> ${testCase.sameHand}`,
     );
     engine.handle({ type: 'up', key: testCase.sameHand });
-
     assert.deepEqual(
       engine.handle({ type: 'down', key: testCase.opposite }).recognized.map((entry) => entry.output),
       [testCase.oppositeBaseOutput],
-      `${testCase.trigger} must be consumed before ${testCase.opposite}`,
     );
   }
 });
@@ -142,16 +166,10 @@ test('月配列のprefix triggerは非対象側の通常1打で消費され後�
 
 test('未定義physical keyは出力せずprefix one-shotを消費する', () => {
   const engine = new TypingInputEngine(TSUKI_2_263.canonicalInputs);
-
   engine.handle({ type: 'down', key: 'k' });
   engine.handle({ type: 'up', key: 'k' });
-
-  assert.deepEqual(
-    engine.handle({ type: 'down', key: '1' }).recognized,
-    [],
-  );
+  assert.deepEqual(engine.handle({ type: 'down', key: '1' }).recognized, []);
   engine.handle({ type: 'up', key: '1' });
-
   assert.deepEqual(
     engine.handle({ type: 'down', key: 'f' }).recognized.map((entry) => entry.output),
     ['と'],
@@ -162,17 +180,14 @@ test('未定義physical keyの境界でも物理保持中のhold triggerは維�
   const engine = new TypingInputEngine(SHIN_JIS_SIMULTANEOUS.canonicalInputs, {
     triggerRealizationPolicy: { useHold: true },
   });
-
   engine.handle({ type: 'down', key: 'thumb-r' });
   assert.deepEqual(
     engine.handle({ type: 'down', key: 'h' }).recognized.map((entry) => entry.output),
     ['ま'],
   );
   engine.handle({ type: 'up', key: 'h' });
-
   assert.deepEqual(engine.handle({ type: 'down', key: 'escape' }).recognized, []);
   engine.handle({ type: 'up', key: 'escape' });
-
   assert.deepEqual(
     engine.handle({ type: 'down', key: 'j' }).recognized.map((entry) => entry.output),
     ['お'],

@@ -4,7 +4,13 @@ import {
   handOfKey,
   type Hand,
 } from './layouts/face-geometry.ts';
-import type { Face, LayerPresentationRole, Layout } from './layouts/types.ts';
+import {
+  SINGLE_LAYER_ID,
+  type Face,
+  type LayerDefinition,
+  type LayerPresentationRole,
+  type Layout,
+} from './layouts/types.ts';
 
 export { faceCells, handOfKey };
 export type { Hand };
@@ -201,3 +207,255 @@ export function orderedPresentationLayers(
     .sort((first, second) => first.order - second.order);
 }
 
+
+
+/**
+ * recognition window内のmodifier roleから、現在成立可能なpresentation aggregationを返す。
+ * UIがFaceやlayout idを解釈せず、canonical semanticのroles / aggregationGroupIdをauthorityにする。
+ * 複合modifierが揃った場合は、より多くのmodifier keyを要求するgroupを優先する。
+ */
+export function activeModifierAggregationGroupIds(
+  layout: Pick<Layout, 'canonicalInputs'>,
+  recognitionKeys: readonly string[],
+): readonly string[] {
+  const active = new Set(recognitionKeys.map(resolveKeyId));
+  if (active.size === 0) return [];
+
+  const matches: { id: string; modifierCount: number }[] = [];
+  for (const alternatives of layout.canonicalInputs.values()) {
+    for (const alternative of alternatives) {
+      for (const input of alternative.semanticInputs) {
+        const physical = new Set(input.physicalKeys.map(resolveKeyId));
+        if (![...active].every((key) => physical.has(key))) continue;
+
+        const modifierKeys = [...new Set(
+          input.roles
+            .filter((role) => role.role === 'modifier')
+            .map((role) => resolveKeyId(role.key)),
+        )];
+        if (modifierKeys.length === 0) continue;
+        if (!modifierKeys.every((key) => active.has(key))) continue;
+
+        matches.push({
+          id: input.aggregationGroupId,
+          modifierCount: modifierKeys.length,
+        });
+      }
+    }
+  }
+
+  const maxModifierCount = Math.max(0, ...matches.map((match) => match.modifierCount));
+  return [...new Set(
+    matches
+      .filter((match) => match.modifierCount === maxModifierCount)
+      .map((match) => match.id),
+  )];
+}
+
+/** canonical aggregationに属するoutput key -> legend。 */
+export function aggregationLegendMap(
+  layout: Pick<Layout, 'canonicalInputs'>,
+  aggregationGroupId: string,
+): ReadonlyMap<string, string> {
+  const legends = new Map<string, string>();
+
+  const add = (key: string, output: string) => {
+    const canonical = resolveKeyId(key);
+    const previous = legends.get(canonical);
+    if (previous === undefined) legends.set(canonical, output);
+    else if (!previous.split(' / ').includes(output)) {
+      legends.set(canonical, `${previous} / ${output}`);
+    }
+  };
+
+  for (const [logicalOutput, alternatives] of layout.canonicalInputs) {
+    for (const alternative of alternatives) {
+      alternative.semanticInputs.forEach((input, index) => {
+        if (input.aggregationGroupId !== aggregationGroupId) return;
+        const realization = alternative.baseRealizations[index];
+        const output = input.output || (
+          alternative.semanticInputs.length === 1 ? logicalOutput : ''
+        );
+        if (output === '') return;
+        for (const key of realization?.defaultOutputKeys ?? []) add(key, output);
+        for (const view of realization?.alternateParticipations ?? []) {
+          for (const key of view.outputKeys) add(key, output);
+        }
+      });
+    }
+  }
+
+  return legends;
+}
+
+/** canonical aggregationのauthoring realizationがtriggerとして扱うphysical key。 */
+export function aggregationTriggerKeys(
+  layout: Pick<Layout, 'canonicalInputs'>,
+  aggregationGroupId: string,
+): readonly string[] {
+  const keys = new Set<string>();
+  for (const alternatives of layout.canonicalInputs.values()) {
+    for (const alternative of alternatives) {
+      alternative.semanticInputs.forEach((input, index) => {
+        if (input.aggregationGroupId !== aggregationGroupId) return;
+        const realization = alternative.baseRealizations[index];
+        for (const key of realization?.defaultTriggerKeys ?? []) {
+          keys.add(resolveKeyId(key));
+        }
+        for (const view of realization?.alternateParticipations ?? []) {
+          for (const key of view.triggerKeys) keys.add(resolveKeyId(key));
+        }
+      });
+    }
+  }
+  return [...keys];
+}
+
+
+/**
+ * canonical semantic上でmodifier roleを持つphysical key。
+ * analysis互換用。Input Converterの表示trigger判定はauthoring realizationを使う。
+ */
+export function modifierPhysicalKeys(
+  layout: Pick<Layout, 'canonicalInputs'>,
+): ReadonlySet<string> {
+  const keys = new Set<string>();
+  for (const alternatives of layout.canonicalInputs.values()) {
+    for (const alternative of alternatives) {
+      for (const input of alternative.semanticInputs) {
+        for (const role of input.roles) {
+          if (role.role === 'modifier') keys.add(resolveKeyId(role.key));
+        }
+      }
+    }
+  }
+  return keys;
+}
+
+
+export interface PresentationTriggerGuideStyle {
+  readonly kind: 'layer' | 'combo';
+  readonly colorSlot?: number;
+}
+
+/**
+ * legacy key-pattern pickerと同じ規則で、gestureの起点になり得るphysical keyへ
+ * presentation色を割り当てる。layerはlayerShiftStylesのseries slotを再利用し、
+ * composition/comboは専用色として扱う。
+ */
+export function presentationTriggerGuideStyles(
+  layout: Layout,
+): ReadonlyMap<string, PresentationTriggerGuideStyle> {
+  const groups = classifyPresentationFaces(layout);
+  const ordered = orderedPresentationLayers(groups);
+  const faceStyles = layerShiftStyles(ordered);
+  const styles = new Map<string, PresentationTriggerGuideStyle>();
+
+  for (const layer of ordered) {
+    for (const face of layer.faces) {
+      const colorSlot = faceStyles.get(face)?.colorSlot;
+      for (const rawKey of displayTriggerKeys(face)) {
+        const key = resolveKeyId(rawKey);
+        if (styles.has(key)) continue;
+        styles.set(key, {
+          kind: 'layer',
+          ...(colorSlot === undefined ? {} : { colorSlot }),
+        });
+      }
+    }
+  }
+
+  for (const face of groups.combos) {
+    for (const rawKey of displayTriggerKeys(face)) {
+      const key = resolveKeyId(rawKey);
+      if (!styles.has(key)) styles.set(key, { kind: 'combo' });
+    }
+  }
+
+  for (const combo of layout.resolvedComboDefinitions ?? []) {
+    for (const variant of combo.keyVariants ?? [combo.keys]) {
+      for (const rawKey of variant) {
+        const key = resolveKeyId(rawKey);
+        if (!styles.has(key)) styles.set(key, { kind: 'combo' });
+      }
+    }
+  }
+
+  return styles;
+}
+
+/**
+ * 個々のchordをカンペへ列挙せず、authoring済みsemantic groupだけを短いラベルとして返す。
+ */
+export function semanticCombinationLabels(
+  layout: Pick<Layout, 'canonicalInputs' | 'resolvedComboDefinitions'>,
+): readonly string[] {
+  const labels = new Set<string>();
+
+  for (const alternatives of layout.canonicalInputs.values()) {
+    for (const alternative of alternatives) {
+      for (const input of alternative.semanticInputs) {
+        for (const role of input.roles) {
+          if (role.role === 'modifier' && role.modifierGroupId !== undefined) {
+            labels.add(role.modifierGroupId);
+          }
+        }
+      }
+    }
+  }
+
+  for (const combo of layout.resolvedComboDefinitions ?? []) {
+    if (combo.group !== undefined && combo.group.trim() !== '') labels.add(combo.group);
+  }
+
+  return [...labels];
+}
+
+
+/**
+ * Input/Analyzerで小型カンペへ出すsemantic layer。
+ * layoutがcompact presentation policyを持つ場合は、そのkeepLayerIdsだけをauthorityにする。
+ * base(single)はmain keyboardが担うためカンペから除外する。
+ */
+export function compactLayerGuideDefinitions(
+  layout: Pick<Layout, 'layerDefinitions' | 'layerViewPresentation'>,
+): readonly LayerDefinition[] {
+  const definitions = (layout.layerDefinitions ?? [])
+    .filter((definition) => definition.kind === 'layer');
+
+  const compact = layout.layerViewPresentation?.compact;
+  if (compact === undefined) {
+    return definitions.filter((definition) => definition.id !== SINGLE_LAYER_ID);
+  }
+
+  const keep = new Set(compact.keepLayerIds);
+  return compact.keepLayerIds.flatMap((id) => {
+    if (id === SINGLE_LAYER_ID) return [];
+    const definition = definitions.find((candidate) => candidate.id === id);
+    return definition === undefined || !keep.has(id) ? [] : [definition];
+  });
+}
+
+/**
+ * legacy layer diagramと同じseries color slotを、1キー目のpresentation triggerへ割り当てる。
+ * 同一physical keyが複数layerの起点ならauthoring順で先に現れるlayerの色を採用する。
+ */
+export function presentationTriggerColorSlots(layout: Layout): ReadonlyMap<string, number> {
+  const groups = classifyPresentationFaces(layout);
+  const layers = orderedPresentationLayers(groups);
+  const styles = layerShiftStyles(layers);
+  const result = new Map<string, number>();
+
+  for (const layer of layers) {
+    for (const face of layer.faces) {
+      const slot = styles.get(face)?.colorSlot;
+      if (slot === undefined) continue;
+      for (const trigger of displayTriggerKeys(face)) {
+        const key = resolveKeyId(trigger);
+        if (!result.has(key)) result.set(key, slot);
+      }
+    }
+  }
+
+  return result;
+}

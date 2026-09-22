@@ -12,7 +12,8 @@
     "start": "node .output/server/index.mjs",
     "test": "node --test --experimental-strip-types test/*.test.ts",
     "typecheck": "tsr generate && tsc --noEmit",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "test:browser:legacy": "playwright test --config playwright.legacy.config.ts"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.170.38",
