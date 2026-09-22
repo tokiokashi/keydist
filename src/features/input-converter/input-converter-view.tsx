@@ -211,26 +211,6 @@ export function InputConverterView() {
     setThumbBindings(loadThumbKeyBindings(window.localStorage));
   }, []);
 
-  useEffect(() => {
-    const grid = guideGridRef.current;
-    if (grid === null || guideDefinitions.length === 0) return;
-
-    const update = () => {
-      const next = chooseGuideGridLayout(grid, guideDefinitions.length);
-      setGuideGridLayout((current) => (
-        current.columns === next.columns
-        && current.cardMaxWidthPx === next.cardMaxWidthPx
-          ? current
-          : next
-      ));
-    };
-
-    const observer = new ResizeObserver(update);
-    observer.observe(grid);
-    update();
-    return () => observer.disconnect();
-  }, [geometry.id, guideDefinitions.length, layout.id, settingsOpen]);
-
   const updateThumbBindings = (next: ThumbKeyBindings) => {
     setThumbBindings(next);
     saveThumbKeyBindings(next, window.localStorage);
@@ -352,6 +332,26 @@ export function InputConverterView() {
     return semanticCombinationLabels(layout)
       .filter((label) => !layerLabels.has(label));
   }, [guideDefinitions, layout]);
+
+  useEffect(() => {
+    const grid = guideGridRef.current;
+    if (grid === null || guideDefinitions.length === 0) return;
+
+    const update = () => {
+      const next = chooseGuideGridLayout(grid, guideDefinitions.length);
+      setGuideGridLayout((current) => (
+        current.columns === next.columns
+        && current.cardMaxWidthPx === next.cardMaxWidthPx
+          ? current
+          : next
+      ));
+    };
+
+    const observer = new ResizeObserver(update);
+    observer.observe(grid);
+    update();
+    return () => observer.disconnect();
+  }, [geometry.id, guideDefinitions.length, layout.id, settingsOpen]);
 
   return (
     <section
