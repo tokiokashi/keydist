@@ -492,8 +492,8 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-settings-panel[hidden] { display: none; }
 .playback-dialog-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 18px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
   margin-top: 16px;
 }
 .playback-dialog-grid > .playback-finger-toggle,
@@ -503,12 +503,83 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-dialog-grid > .playback-scale-setting {
   min-height: 2.2em;
 }
-.playback-settings-content .playback-arpeggio-details {
+.playback-settings-group {
   margin-top: 18px;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--panel-2) 72%, transparent);
+  color: var(--muted);
+  font-size: 0.76rem;
 }
-.playback-settings-content .playback-arpeggio-details label {
+.playback-settings-group > summary {
+  padding: 9px 11px;
+  color: var(--fg);
+  font-weight: 600;
+  cursor: pointer;
+}
+.playback-settings-group[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+.playback-settings-group-body {
+  padding: 10px 12px 12px;
+}
+.playback-setting-row {
+  min-height: 2.2em;
+}
+.playback-trigger-action-group {
+  margin-top: 10px;
+  padding: 10px 10px 10px 13px;
+  border-left: 3px solid color-mix(in oklab, var(--accent) 70%, var(--line));
+  border-radius: 0 6px 6px 0;
+  background: color-mix(in oklab, var(--accent) 6%, var(--panel));
+}
+.playback-trigger-action-group .condition-trigger-subheading {
+  margin-top: 8px;
+  padding-top: 8px;
+}
+.playback-trigger-option-list {
+  margin-top: 8px;
+}
+.playback-trigger-option-list > .playback-range-setting {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(11em, auto);
+  align-items: center;
+  gap: 12px;
+  min-height: 2.2em;
+}
+.playback-trigger-option-list > .playback-range-setting select {
+  justify-self: end;
+  width: min(100%, 15em);
+}
+.playback-settings-tree {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+.playback-settings-tree > summary {
+  padding: 6px 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.playback-settings-tree[open] > summary {
+  color: var(--fg);
+}
+.playback-settings-tree-level-2 {
+  margin-left: 8px;
+  padding-left: 10px;
+  border-left: 2px solid color-mix(in oklab, var(--accent) 42%, var(--line));
+}
+.playback-settings-tree-level-3 {
+  margin-left: 12px;
+  padding-left: 10px;
+  border-left: 2px solid var(--line-strong);
+}
+.playback-settings-tree .playback-dialog-grid {
+  margin-top: 4px;
+}
+.playback-settings-group > label,
+.playback-settings-group-body > label,
+.playback-settings-tree label {
   margin: 8px 0 0;
 }
 .playback-arpeggio-delay-setting { white-space: nowrap; }
@@ -914,6 +985,39 @@ dialog::backdrop { background: rgb(0 0 0 / 0.38); }
 .condition-grid select { width: min(100%, 260px); padding: 3px 5px; }
 .condition-fields, .condition-delay-fields { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 12px; }
 .condition-fields label, .condition-delay-fields label { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 0.76rem; }
+.condition-trigger-fields {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 7px;
+  width: 100%;
+}
+.condition-trigger-fields > label {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.condition-trigger-fields > label > select {
+  width: 13.5em;
+  flex: 0 0 13.5em;
+}
+.condition-trigger-fields > details {
+  width: 100%;
+}
+.condition-trigger-fields > details > summary {
+  width: 100%;
+}
+.condition-trigger-subheading {
+  width: 100%;
+  margin-top: 4px;
+  padding-top: 7px;
+  border-top: 1px solid var(--line);
+  color: var(--fg);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
 .condition-fields input[type='number'], .condition-delay-fields input[type='number'] { width: 5.2em; padding: 3px 4px; font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line-strong); border-radius: 4px; }
 .condition-arpeggio-fields { align-items: flex-start; }
 .condition-arpeggio-fields details { min-width: 100%; margin-top: 3px; }

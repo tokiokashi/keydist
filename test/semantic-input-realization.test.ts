@@ -19,7 +19,7 @@ const semanticInput = (
   physicalKeys,
   requirements,
   capabilities: [],
-  layerId: 'single',
+  aggregationGroupId: 'single',
   classifications: [],
   roles: [],
   faceMemberships: [],

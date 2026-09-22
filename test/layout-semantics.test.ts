@@ -82,10 +82,10 @@ test('薙刀式はsimultaneousとhold-capableを独立して持ち、Spaceだけ
   assert.deepEqual(small.classifications, []);
   assert.ok(small.participations.some((p) => p.roles.includes('trigger')));
 
-  const composition = evaluate('いぇ', layout, geometry, opts()).strokes[0];
-  assert.ok(composition.classifications.includes('composition'));
-  assert.ok(composition.participations.some((p) => p.roles.includes('trigger')));
-  assert.ok(composition.participations.every((p) => !p.roles.includes('held-trigger')));
+  const extension = evaluate('いぇ', layout, geometry, opts()).strokes[0];
+  assert.equal(extension.classifications.includes('composition'), false);
+  assert.ok(extension.participations.some((p) => p.roles.includes('trigger')));
+  assert.ok(extension.participations.every((p) => !p.roles.includes('held-trigger')));
 });
 
 test('NICOLA / 新下駄の同期Faceは通常triggerとしてrealizeする', () => {

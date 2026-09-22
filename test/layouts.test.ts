@@ -46,7 +46,7 @@ test('面の展開後も各ステップの層帰属を保持する（#87）', ()
   ]);
   const trace = evaluate('あかさた', layout, buildGeometry('row-staggered'), DEFAULT_OPTIONS);
 
-  assert.deepEqual(trace.strokes.map((stroke) => stroke.layerId), [
+  assert.deepEqual(trace.strokes.map((stroke) => stroke.aggregationGroupId), [
     'single', 'layer:中指', 'layer:中指', 'layer:人差指', 'layer:人差指', 'combo',
   ]);
   const metrics = computeMetrics(trace, buildGeometry('row-staggered'));
@@ -137,7 +137,7 @@ test('triggerless compositionはcanonicalとpresentationの両方でcomboへ帰�
 
   const input = layout.canonicalInputs.get('きゃ')?.[0]?.semanticInputs[0];
   assert.ok(input);
-  assert.equal(input.layerId, 'combo');
+  assert.equal(input.aggregationGroupId, 'combo');
   assert.ok(input.classifications.includes('composition'));
   assert.equal(layout.faceLayerIds?.get(face), 'combo');
   assert.deepEqual(
@@ -401,7 +401,7 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
     [7, 5, 0, 0],
     [3, 2, 0, 0],
     [3, 3, 0, 0],
-    [33, 2, 6, 23],
+    [33, 2, 29, 0],
   ]);
 
   assert.deepEqual(
@@ -420,10 +420,13 @@ test('宣言された面だけを逆手の条件でレイヤーへ集約する',
     classifyPresentationFaces(naginata).layers.map((layer) => layer.faces.map((face) => face.trigger)),
     [[[]], [['space']]],
   );
+  const naginataGroups = classifyPresentationFaces(naginata);
   assert.deepEqual(
-    classifyPresentationFaces(naginata).modifiers.map((layer) => layer.faces.map((face) => face.trigger)),
+    naginataGroups.modifiers.slice(0, 6).map((layer) => layer.faces.map((face) => face.trigger)),
     [[['q']], [['j'], ['f']], [['m'], ['v']], [['h']], [['p']], [['i']]],
   );
+  assert.equal(naginataGroups.modifiers.length, 29);
+  assert.equal(naginataGroups.combos.length, 0);
 
   assert.equal(handOfKey('space'), 'right');
 
@@ -493,6 +496,34 @@ test('薙刀式v18は面から生成され、全定義を1ステップで保持�
   for (const sequence of layout.map.values()) assert.equal(sequence.length, 1);
   assert.deepEqual(layout.map.get('きゃ'), [['h', 'w']]);
   assert.deepEqual(layout.map.get('ぐゎ'), [['.', 'f', 'h']]);
+});
+
+test('薙刀式の装飾triggerはcanonical logical groupを保持する', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18')!;
+
+  const sandS = layout.canonicalInputs.get('お')?.[0]?.semanticInputs[0];
+  const youon = layout.canonicalInputs.get('きゃ')?.[0]?.semanticInputs[0];
+  const extension = layout.canonicalInputs.get('ぐゎ')?.[0]?.semanticInputs[0];
+  assert.ok(sandS);
+  assert.ok(youon);
+  assert.ok(extension);
+
+  assert.deepEqual(
+    sandS.roles.filter((role) => role.role === 'modifier'),
+    [{ key: 'thumb-r', role: 'modifier', modifierGroupId: 'SandS' }],
+  );
+  assert.deepEqual(
+    youon.roles.filter((role) => role.role === 'modifier'),
+    [{ key: 'h', role: 'modifier', modifierGroupId: '拗音' }],
+  );
+  assert.equal(extension.classifications.includes('composition'), false);
+  assert.deepEqual(
+    extension.roles
+      .filter((role) => role.role === 'modifier')
+      .map((role) => [role.key, role.modifierGroupId])
+      .sort(),
+    [['.', '外来音'], ['f', '濁音']],
+  );
 });
 
 test('薙刀式のSandS presentationをFace authoringで明示する', () => {
