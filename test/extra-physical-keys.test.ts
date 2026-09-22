@@ -20,14 +20,15 @@ import {
 } from '../src/features/input-converter/browser-keyboard-adapter.ts';
 import {
   physicalKeysUsedByLayout,
-} from '../src/features/input-converter/use-typing-session.ts';
+  visibleGeometryKeys,
+} from '../src/layout-physical-keys.ts';
 
 const shape: PhysicalShape = {
   ...structuredClone(PHYSICAL_SHAPES['row-staggered']),
   id: 'extra-keys',
   name: 'grid外キーfixture',
   extraKeys: [
-    { id: 'tab', row: 1, col: -1, x: -1, y: 1 },
+    { id: 'tab', row: 1, col: -1, x: -1, y: 1, width: 1.5 },
     { id: 'escape', row: 0, col: -1, x: -1, y: 0 },
   ],
 };
@@ -48,7 +49,7 @@ test('grid外physical keyはshape座標とFingerAssignmentを分離したままg
 
   assert.deepEqual(
     geometry.keys.get('tab'),
-    { id: 'tab', row: 1, col: -1, x: -1, y: 1, finger: 'LP' },
+    { id: 'tab', row: 1, col: -1, x: -1, y: 1, finger: 'LP', width: 1.5 },
   );
   assert.deepEqual(
     geometry.keys.get('escape'),
@@ -107,4 +108,32 @@ test('layout ownershipはcanonical inputに実際に含まれるphysical keyか�
   assert.equal(physicalKeysUsedByLayout(regular).has('escape'), false);
   assert.equal(physicalKeysUsedByLayout(extra).has('tab'), true);
   assert.equal(physicalKeysUsedByLayout(extra).has('escape'), true);
+});
+
+
+test('grid外physical keyは使うlayoutだけheatmap/playback表示対象になる', () => {
+  const geometry = buildGeometry(shape, assignment);
+  const regular = LAYOUT_BY_ID.get('qwerty')!;
+  const extra = fromKana('extra-key-visibility', 'Extra key visibility', {
+    よ: [['tab']],
+  });
+
+  assert.equal(visibleGeometryKeys(regular, geometry).some((key) => key.id === 'tab'), false);
+  assert.equal(visibleGeometryKeys(regular, geometry).some((key) => key.id === 'escape'), false);
+  assert.equal(visibleGeometryKeys(extra, geometry).some((key) => key.id === 'tab'), true);
+  assert.equal(visibleGeometryKeys(extra, geometry).some((key) => key.id === 'escape'), false);
+});
+
+test('extra key idはgrid・thumb・extra内で重複できない', () => {
+  const duplicateGrid: PhysicalShape = {
+    ...shape,
+    extraKeys: [{ id: 'q', row: 0, col: -1, x: -1, y: 0 }],
+  };
+  assert.throws(() => buildGeometry(duplicateGrid, assignment), /重複/);
+
+  const duplicateThumb: PhysicalShape = {
+    ...shape,
+    extraKeys: [{ id: 'thumb-l', row: 0, col: -1, x: -1, y: 0 }],
+  };
+  assert.throws(() => buildGeometry(duplicateThumb, assignment), /重複/);
 });
