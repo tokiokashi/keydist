@@ -540,6 +540,16 @@ test('dynamic guide: 複数キー同時押しはpartial key集合から次キー
 });
 
 
+test('allLayerTriggerKeysは複合layer triggerの構成キーを常時表示へ混ぜない', () => {
+  const single = faceFromEntries(['j'], 'simultaneous', { r: 'じ' });
+  const compound = faceFromEntries(['o', 'v'], 'simultaneous', { k: 'いぇ' });
+  const layout = compiledFaces(single, compound);
+  const keys = allLayerTriggerKeys(layout);
+  assert.equal(keys.has('j'), true);
+  assert.equal(keys.has('o'), false);
+  assert.equal(keys.has('v'), false);
+});
+
 test('allLayerTriggerKeysはcombo membershipをlayer triggerへ混ぜない', () => {
   const base = fromRows('combo-trigger-separation', 'combo-trigger-separation', [
     '',
