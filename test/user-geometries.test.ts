@@ -43,3 +43,23 @@ test('保存データの無効な形状idは除外する', () => {
 
   assert.deepEqual(load(storage).map((shape) => shape.id), ['shape-valid']);
 });
+
+
+test('名前付きカスタム形状のextraKeysを保存・復元できる', () => {
+  const storage = fakeStorage();
+  const custom = {
+    ...structuredClone(PHYSICAL_SHAPES['row-staggered']),
+    id: 'shape-extra-keys',
+    name: '周辺キー付き',
+    extraKeys: [
+      { id: 'tab', row: 1, col: -1, x: -1, y: 1, width: 1.5 },
+      { id: 'escape', row: 0, col: -1, x: -1, y: 0 },
+    ],
+  };
+
+  save([custom], storage);
+  const restored = load(storage);
+
+  assert.equal(restored.length, 1);
+  assert.deepEqual(restored[0]?.extraKeys, custom.extraKeys);
+});

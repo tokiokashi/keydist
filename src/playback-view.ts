@@ -1,4 +1,5 @@
-import { buildGeometry, SHIFT_KEY, THUMB_ROW, type Finger } from './geometry.ts';
+import { buildGeometry, THUMB_ROW, type Finger } from './geometry.ts';
+import { visibleGeometryKeys } from './layout-physical-keys.ts';
 import { type Options, type Stroke, type Trace } from './evaluate.ts';
 import {
   advancePlayback, clampPlaybackCursor, createPlaybackState,
@@ -768,17 +769,18 @@ function updatePlaybackView() {
 }
 
 function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeometry>): string {
+  let minX = 0;
+  let minY = 0;
   let maxX = 0;
   let maxY = 0;
-  const shiftKeys = new Set(layout.shiftKeys ?? []);
-  const keys = [...geometry.keys.values()]
-    .filter((key) =>
-      (key.id !== SHIFT_KEY.L && key.id !== SHIFT_KEY.R) || shiftKeys.has(key.id))
-    .map((key) => {
+  const keys = visibleGeometryKeys(layout, geometry).map((key) => {
     const thumb = key.row === THUMB_ROW;
-    const width = (thumb ? PLAYBACK_THUMB_WIDTH : 1) * PLAYBACK_KEY;
-    const x = (key.x - (thumb ? (PLAYBACK_THUMB_WIDTH - 1) / 2 : 0)) * PLAYBACK_KEY;
+    const widthU = thumb ? PLAYBACK_THUMB_WIDTH : (key.width ?? 1);
+    const width = widthU * PLAYBACK_KEY;
+    const x = (key.x - (widthU - 1) / 2) * PLAYBACK_KEY;
     const y = key.y * PLAYBACK_KEY;
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
     maxX = Math.max(maxX, x + width);
     maxY = Math.max(maxY, y + PLAYBACK_KEY);
     const label = layout.legends.get(key.id) ?? '';
@@ -794,9 +796,11 @@ function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeom
       <text class="playback-key-label" data-playback-label x="${x + width / 2}" y="${y + PLAYBACK_KEY / 2 + 4}" text-anchor="middle" font-size="${fontSize}" fill="var(--fg)" pointer-events="none">${escapeText(label)}</text>
     </g>`;
   });
-  const W = maxX + PLAYBACK_PAD;
-  const H = maxY + PLAYBACK_PAD;
-  return `<svg viewBox="0 0 ${W} ${H}" width="${W * ctx.getUiState().ui.playback.scale}" height="${H * ctx.getUiState().ui.playback.scale}" role="img"
+  const viewX = minX - PLAYBACK_PAD / 2;
+  const viewY = minY - PLAYBACK_PAD / 2;
+  const W = maxX - minX + PLAYBACK_PAD;
+  const H = maxY - minY + PLAYBACK_PAD;
+  return `<svg viewBox="${viewX} ${viewY} ${W} ${H}" width="${W * ctx.getUiState().ui.playback.scale}" height="${H * ctx.getUiState().ui.playback.scale}" role="img"
     aria-label="${escapeAttr(`${layout.name}の打鍵再生`)}">${keys.join('')}<g data-playback-motion-layer aria-hidden="true"></g></svg>`;
 }
 

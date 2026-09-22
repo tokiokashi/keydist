@@ -6,7 +6,10 @@ import {
   isPresetGeometryKind,
   keyId,
   PHYSICAL_SHAPES,
+  resolveKeyId,
+  SHIFT_KEY,
   type Finger,
+  type ExtraPhysicalKeySpec,
   type FingerAssignment,
   type PhysicalShape,
   type PresetGeometryKind,
@@ -68,6 +71,31 @@ export function sanitizePhysicalShape(value: unknown, fallback: PhysicalShape): 
   const rowWidths = Array.isArray(source.rowWidths) && source.rowWidths.length === 4
     ? source.rowWidths.map((width, index) => integer(width, fallback.rowWidths[index] ?? 1, 1, 32))
     : [...fallback.rowWidths];
+  const fallbackExtraKeys = fallback.extraKeys
+    ?.filter((key) => resolveKeyId(key.id) === key.id)
+    .map((key) => ({ ...key })) ?? [];
+  const fallbackExtraById = new Map(fallbackExtraKeys.map((key) => [key.id, key]));
+  const seenExtraIds = new Set<string>();
+  const extraKeys: ExtraPhysicalKeySpec[] = Array.isArray(source.extraKeys)
+    ? source.extraKeys.slice(0, 64).flatMap((candidate) => {
+      const item = record(candidate);
+      if (typeof item.id !== 'string' || item.id.length === 0) return [];
+      const canonicalId = resolveKeyId(item.id);
+      if (canonicalId !== item.id || seenExtraIds.has(canonicalId)) return [];
+      seenExtraIds.add(canonicalId);
+      const fallbackKey = fallbackExtraById.get(canonicalId);
+      return [{
+        id: canonicalId,
+        row: integer(item.row, fallbackKey?.row ?? -1, -32, 32),
+        col: integer(item.col, fallbackKey?.col ?? 0, -32, 32),
+        x: finite(item.x, fallbackKey?.x ?? 0, -32, 32),
+        y: finite(item.y, fallbackKey?.y ?? 0, -32, 32),
+        ...(item.width === undefined
+          ? (fallbackKey?.width === undefined ? {} : { width: fallbackKey.width })
+          : { width: finite(item.width, fallbackKey?.width ?? 1, 0.25, 16) }),
+      }];
+    })
+    : fallbackExtraKeys;
   const fallbackThumbs = fallback.thumbs.map((thumb) => ({ ...thumb }));
   const thumbs: ThumbKeySpec[] = Array.isArray(source.thumbs)
     ? source.thumbs.flatMap((candidate, index) => {
@@ -86,6 +114,15 @@ export function sanitizePhysicalShape(value: unknown, fallback: PhysicalShape): 
     && thumbs.some((thumb) => thumb.finger === 'RT')
     ? thumbs
     : fallbackThumbs;
+  const reservedIds = new Set([
+    ...usableThumbs.map((thumb) => resolveKeyId(thumb.id)),
+    SHIFT_KEY.L,
+    SHIFT_KEY.R,
+  ]);
+  rowWidths.forEach((width, row) => {
+    for (let col = 0; col < width; col++) reservedIds.add(keyId(row, col));
+  });
+  const usableExtraKeys = extraKeys.filter((key) => !reservedIds.has(key.id));
   const thumbHomeSource = record(source.thumbHome);
   const thumbHome: Partial<Record<'LT' | 'RT', string>> = {};
   for (const finger of ['LT', 'RT'] as const) {
@@ -101,6 +138,7 @@ export function sanitizePhysicalShape(value: unknown, fallback: PhysicalShape): 
     name: typeof source.name === 'string' && source.name.length > 0 ? source.name : fallback.name,
     pitchMm: finite(source.pitchMm, fallback.pitchMm, 1, 100),
     rowWidths,
+    ...(usableExtraKeys.length === 0 ? {} : { extraKeys: usableExtraKeys }),
     thumbs: usableThumbs,
     ...(rowNumbers(source.rowStagger, fallback.rowStagger, -32, 32) === undefined
       ? {}
@@ -138,6 +176,12 @@ function sanitizeAssignment(value: unknown, fallback: FingerAssignment, shape: P
       keyFinger[id] = isNonThumb(candidate) ? candidate : fallbackKeyFinger(col);
     }
   });
+  for (const key of shape.extraKeys ?? []) {
+    const candidate = sourceKeyFinger[key.id] ?? fallbackKeyFingerMap[key.id];
+    keyFinger[key.id] = isNonThumb(candidate)
+      ? candidate
+      : fallbackKeyFinger(Math.max(0, Math.round(key.x)));
+  }
 
   const sourceHomeKey = record(source.homeKey);
   const fallbackHomeKey = record(fallback.homeKey);

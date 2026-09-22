@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { QWERTY_LEGEND, SHIFT_KEY, THUMB_KEY } from '../../geometry.ts';
 import { LAYOUTS, LAYOUTS_JA, type Layout } from '../../layouts/index.ts';
+import { physicalKeysUsedByLayout } from '../../layout-physical-keys.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
 const DIRECT_JA_INPUT_LAYOUTS =
@@ -101,6 +102,7 @@ export function InputConverterView() {
     () => DIRECT_JA_INPUT_LAYOUTS[0] ?? INPUT_LAYOUTS[0],
   );
   const session = useTypingSession(layout);
+  const escapeIsLayoutInput = physicalKeysUsedByLayout(layout).has('escape');
 
   return (
     <section
@@ -154,7 +156,8 @@ export function InputConverterView() {
       >
         <strong>{session.active ? '入力受付中' : 'クリックして入力開始'}</strong>
         <span>
-          Backspaceで1文字削除、Enterで改行、Escで入力解除。
+          Backspaceで1文字削除、Enterで改行、
+          {escapeIsLayoutInput ? 'Escは配列入力として扱う。' : 'Escで入力解除。'}
           {session.composing ? ' IME composition中は認識を停止している。' : ''}
         </span>
       </div>

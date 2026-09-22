@@ -9,7 +9,7 @@ keydist の PR をレビューする。**差分を読んで感想を言うだけ
 
 ## 最初に読む
 
-`AGENTS.md` → `CLAUDE.md` → `CONTRIBUTING.md` → `spec/distance-model.md`。
+`AGENTS.md` → `CONTRIBUTING.md` → `spec/distance-model.md`。
 PR が仕様に触っているなら、触った節の**前後の節も**読む。節番号の繰り上げ漏れはここでしか見つからない。
 
 ## 検証の3本柱
