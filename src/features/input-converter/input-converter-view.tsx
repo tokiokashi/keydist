@@ -497,8 +497,10 @@ export function InputConverterView() {
             <div className="input-assist-slot" data-reserved="reverse-lookup" />
           </section>
 
-          <details className="input-debug">
-            <summary>入力詳細</summary>
+          <section className="input-debug" aria-label="入力詳細">
+            <header className="input-debug-heading">
+              <strong>入力詳細</strong>
+            </header>
             <div className="input-inspector">
               <section>
                 <h2>Pressed</h2>
@@ -509,7 +511,7 @@ export function InputConverterView() {
                 <RecognizedDetail recognized={session.lastRecognized} />
               </section>
             </div>
-          </details>
+          </section>
         </section>
       </div>
     </section>
