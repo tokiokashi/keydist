@@ -284,7 +284,7 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await expect(feature).toHaveAttribute('data-active-layer', 'layer:濁音');
   await expect(layerLabel).toContainText('濁音');
   await expect(keyboard.locator('[data-key-id="f"] .physical-keyboard-legend')).toHaveText('が');
-  await expect(keyboard.locator('[data-key-id="h"]')).toHaveAttribute('data-guide', 'continuation');
+  await expect(keyboard.locator('[data-key-id="h"]')).not.toHaveAttribute('data-guide', 'continuation');
 
   await page.keyboard.down('h');
   await expect(keyboard.locator('[data-key-id="w"]')).toHaveAttribute('data-guide', 'output');
