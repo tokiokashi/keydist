@@ -451,12 +451,29 @@ export class TypingInputEngine {
       || left.candidate.order - right.candidate.order)[0];
   }
 
+  #hasStandaloneInput(key: PhysicalKeyId): boolean {
+    return this.#candidates.some((candidate) => {
+      if (!this.#eligible(candidate)) return false;
+      if (
+        candidate.operationSignatures.length !== 1
+        || candidate.alternative.semanticInputs.length !== 1
+      ) return false;
+      const keys = canonicalKeys(candidate.alternative.semanticInputs[0].physicalKeys);
+      return keys.length === 1 && keys[0] === key;
+    });
+  }
+
   #unconsumedWindowKeys(
     consumedKeys: readonly PhysicalKeyId[],
   ): ReplayWindowKey[] {
     const consumed = keySet(consumedKeys);
     return [...this.#windowKeys]
-      .filter((key) => !consumed.has(key) && !this.#seededHoldKeys.has(key))
+      .filter((key) => {
+        if (consumed.has(key) || this.#seededHoldKeys.has(key)) return false;
+        // release済みのtrigger専用keyは、次の入力を1回消費した時点で役目を終える。
+        // 単打を持つkeyだけをfallback replayし、prefix one-shotを後続入力へ持ち越さない。
+        return !this.#releasedWindowKeys.has(key) || this.#hasStandaloneInput(key);
+      })
       .map((key) => ({
         key,
         released: this.#releasedWindowKeys.has(key),
