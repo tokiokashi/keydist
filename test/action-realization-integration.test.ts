@@ -35,7 +35,7 @@ const composition = fromFaces('hold-action-composition', 'hold-action-compositio
 const realized = (
   text: string,
   layout = simultaneous,
-  holdStart: 'combined' | 'separate' = 'combined',
+  triggerActivation: 'combined' | 'separate' = 'combined',
 ) => evaluate(text, layout, geometry, {
   windowSize: 3,
   sfbHomeCost: true,
@@ -80,7 +80,7 @@ test('separate後はMetricsもvirtual補正せず共通Stroke streamを数える
   const combined = computeMetrics(combinedTrace, geometry);
   const separate = computeMetrics(separateTrace, geometry, {
     ...combined.conditions,
-    actionRealizationPolicy: { holdStart: 'separate' },
+    actionRealizationPolicy: { triggerActivation: 'separate' },
   });
 
   assert.equal(combined.actions, combinedTrace.strokes.length);
@@ -98,14 +98,14 @@ test('Chain / Timing / PlaybackはActionRealizationPolicy適用後の同じStrok
     undefined,
     undefined,
     { useHold: true },
-    { holdStart: 'combined' },
+    { triggerActivation: 'combined' },
   );
   const separateAnalysis = analyzeStrokeStructure(
     separateTrace.strokes,
     undefined,
     undefined,
     { useHold: true },
-    { holdStart: 'separate' },
+    { triggerActivation: 'separate' },
   );
   const combinedSchedule = playbackTimingSchedule(combinedAnalysis, 4, false);
   const separateSchedule = playbackTimingSchedule(separateAnalysis, 4, false);
@@ -128,11 +128,11 @@ test('Chain / Timing / PlaybackはActionRealizationPolicy適用後の同じStrok
   );
   assert.deepEqual(
     combinedAnalysis.aggregate.conditions.actionRealizationPolicy,
-    { holdStart: 'combined' },
+    { triggerActivation: 'combined' },
   );
   assert.deepEqual(
     separateAnalysis.aggregate.conditions.actionRealizationPolicy,
-    { holdStart: 'separate' },
+    { triggerActivation: 'separate' },
   );
 
   // Timing / Playback scheduleも同じStroke index列をそのまま使う。
@@ -171,7 +171,7 @@ test('holdをrealizeしなければActionRealizationPolicyだけseparateでも�
     windowSize: 3,
     sfbHomeCost: true,
     triggerRealizationPolicy: { useHold: false },
-    actionRealizationPolicy: { holdStart: 'separate' },
+    actionRealizationPolicy: { triggerActivation: 'separate' },
   });
   assert.equal(trace.strokes.length, 2);
 });
