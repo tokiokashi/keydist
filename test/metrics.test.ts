@@ -253,7 +253,7 @@ test('1キー率はActionRealizationPolicy適用後の共通Stroke streamを数�
   assert.equal(combined.actions, 2);
   assert.equal(separate.actions, 3);
   near(combined.singleKeyRate, 50, '2 action中、hold継続の1 actionだけが1キー');
-  near(separate.singleKeyRate, 100, 'hold開始を分けると3 actionすべて1キー');
+  near(separate.singleKeyRate, 100, 'trigger押下を分けると3 actionすべて1キー');
 });
 
 test('単打率はhold継続中の1キー入力を単打に含めない', () => {
