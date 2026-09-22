@@ -122,15 +122,11 @@ test('複数文字見出しは選択された1入力単位としてNを数える
 test('trigger action分離でNの入力距離は変わらない', () => {
   const layout = fromFaces('lookahead-trigger-split', 'lookahead-trigger-split', [
     {
-      trigger: [],
-      mode: 'simultaneous',
-      rows: ['', ['y', '', '', '', '', 'u'], '', ''],
+      ...faceFromEntries([], 'simultaneous', { y: 'y', u: 'u' }),
       inputRole: 'layer',
     },
     {
-      trigger: ['thumb-r'],
-      mode: 'simultaneous',
-      rows: ['', '', ['', '', '', 'x'], ''],
+      ...faceFromEntries(['thumb-r'], 'simultaneous', { f: 'x' }),
       inputRole: 'modifier',
       triggerPersistence: 'hold-capable',
       triggerOrder: 'prefix',
