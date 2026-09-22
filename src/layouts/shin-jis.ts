@@ -18,6 +18,9 @@ import {
  *
  * 規格が定めるのはシフト面への切り替えで、シフト機構自体は実装依存のため、
  * 同じ配置を逐次シフト（prefix）と通常シフト（simultaneous）の2定義として持つ。
+ * ここで通常シフトは、jisx6004.client.jp が「普通のシフト」として説明する
+ * 「シフトを押しながらキーを押す」方式に合わせ、simultaneous + triggerOrder='prefix'
+ * として表す。NICOLA型の押し順不問な同時打鍵とは区別する。
  * シフトの物理キーは両定義とも右親指を基準にする。
  * preferOppositeThumb による左右振り替えは simultaneous / prefix の両方で有効。
  */
@@ -27,13 +30,19 @@ const face = (
   mode: FaceMode,
   entries: Record<string, string>,
   triggerPersistence?: Face['triggerPersistence'],
+  triggerOrder?: Face['triggerOrder'],
 ): Face => ({
   ...faceFromEntries(trigger, mode, entries),
   inputRole: trigger.length > 0 ? 'modifier' : 'layer',
   ...(trigger.length > 0 && triggerPersistence !== undefined ? { triggerPersistence } : {}),
+  ...(trigger.length > 0 && triggerOrder !== undefined ? { triggerOrder } : {}),
 });
 
-function shinJisFaces(mode: FaceMode, triggerPersistence: NonNullable<Face['triggerPersistence']>): Face[] {
+function shinJisFaces(
+  mode: FaceMode,
+  triggerPersistence: NonNullable<Face['triggerPersistence']>,
+  triggerOrder?: Face['triggerOrder'],
+): Face[] {
   return [
     face([], mode, {
       q: 'そ', w: 'け', e: 'せ', r: 'て', t: 'ょ', y: 'つ', u: 'ん', i: 'の', o: 'を', p: 'り', '[': 'ち',
@@ -44,7 +53,7 @@ function shinJisFaces(mode: FaceMode, triggerPersistence: NonNullable<Face['trig
       q: 'ぁ', w: '゜', e: 'ほ', r: 'ふ', t: 'め', y: 'ひ', u: 'え', i: 'み', o: 'や', p: 'ぬ', '[': '「',
       a: 'ぃ', s: 'へ', d: 'ら', f: 'ゅ', g: 'よ', h: 'ま', j: 'お', k: 'も', l: 'わ', ';': 'ゆ', "'": '」',
       z: 'ぅ', x: 'ぇ', c: 'ぉ', v: 'ね', b: 'ゃ', n: 'む', m: 'ろ', ',': '・', '.': 'ー',
-    }, triggerPersistence),
+    }, triggerPersistence, triggerOrder),
   ];
 }
 
@@ -69,7 +78,7 @@ function makeLayout(
   const layout = withThumbShiftAlternatives(
     withComposedOutputs(
       withComposedOutputs(
-        fromFaces(id, name, shinJisFaces(mode, triggerPersistence)),
+        fromFaces(id, name, shinJisFaces(mode, triggerPersistence, mode === 'simultaneous' ? 'prefix' : undefined)),
         VOICED,
         '゛',
         '新JIS',
