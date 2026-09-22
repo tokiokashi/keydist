@@ -56,7 +56,8 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
       - (collapsedDetailsBox!.y + collapsedDetailsBox!.height),
   )).toBeLessThanOrEqual(2);
 
-  const guideOverflowY = await guide.evaluate((element) => getComputedStyle(element).overflowY);
+  const guideOverflowY = await guide.locator('.input-layer-guide-grid')
+    .evaluate((element) => getComputedStyle(element).overflowY);
   expect(guideOverflowY).toBe('auto');
 
   const viewportOverflow = await page.evaluate(() =>
@@ -114,7 +115,7 @@ test('Input Converter keeps desktop Y bounded and lets cheatsheets scroll when w
   expect(keyboardBox).not.toBeNull();
   expect(displayBox!.x).toBeGreaterThanOrEqual(keyboardBox!.x);
 
-  const dimensions = await guide.evaluate((element) => ({
+  const dimensions = await guide.locator('.input-layer-guide-grid').evaluate((element) => ({
     clientHeight: element.clientHeight,
     scrollHeight: element.scrollHeight,
     overflowY: getComputedStyle(element).overflowY,
@@ -125,6 +126,36 @@ test('Input Converter keeps desktop Y bounded and lets cheatsheets scroll when w
   const viewportOverflow = await page.evaluate(() =>
     document.documentElement.scrollHeight - window.innerHeight);
   expect(viewportOverflow).toBeLessThanOrEqual(1);
+});
+
+test('Input Converter chooses the cheatsheet grid that maximizes readable card size', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+
+  const settings = page.locator('.input-settings-panel');
+  if (await settings.evaluate((element) => (element as HTMLDetailsElement).open)) {
+    await settings.locator('> summary').click();
+  }
+
+  const grid = page.locator('.input-layer-guide-grid');
+  const columns = async () => grid.evaluate((element) =>
+    getComputedStyle(element).gridTemplateColumns
+      .split(' ')
+      .filter((track) => track.length > 0)
+      .length);
+
+  await page.getByLabel('配列', { exact: true }).selectOption('nicola');
+  await expect(feature).toHaveAttribute('data-input-ready', 'nicola');
+  await expect(page.locator('.input-layer-card')).toHaveCount(2);
+  await expect.poll(columns).toBe(1);
+
+  await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+  await expect(page.locator('.input-layer-card')).toHaveCount(4);
+  await expect.poll(columns).toBe(2);
 });
 
 test('Input Converter keeps browser key lifecycle consistent', async ({ page }) => {
