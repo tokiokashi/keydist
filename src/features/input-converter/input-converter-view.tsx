@@ -151,9 +151,9 @@ export function InputConverterView() {
       </div>
 
       <p className="input-note">
-        Phase 1では直接かなを出力する配列を対象に、単打・基本prefix・simultaneous・
-        hold-capableの既存core経路を使う。ローマ字→かな変換とmulti-step / suffix /
-        combo等の追加coverageは、必要なsemanticを分けて後続で広げる。
+        canonical SemanticInputを使い、単打・prefix / suffix・simultaneous・hold・
+        multi-step / composed outputまで実入力で扱う。ローマ字→かな変換や時間依存semanticは
+        別能力として必要になった段階で追加する。
       </p>
     </section>
   );

@@ -20,9 +20,24 @@ const withoutLastCodePoint = (value: string): string => {
   return codePoints.join('');
 };
 
+export function applyRecognizedTypingInputs(
+  current: string,
+  recognized: readonly RecognizedTypingInput[],
+): string {
+  let next = current;
+  for (const entry of recognized) {
+    const replaced = entry.replacePreviousText;
+    if (replaced !== undefined && replaced.length > 0 && next.endsWith(replaced)) {
+      next = next.slice(0, next.length - replaced.length);
+    }
+    next += entry.output;
+  }
+  return next;
+}
+
 /**
- * 編集commandは文字列だけでなく未確定recognition stateの境界でもある。
- * Phase 1では物理hold継続を先回りせず、command後はengine全体をresetする。
+ * 編集commandは文字列だけでなくrecognition stateの境界でもある。
+ * Backspaceはhistoryを破棄し、Enterはpending physical operationをflushしてからresetする。
  */
 export function executeTypingEditCommand(
   engine: TypingInputEngine,
@@ -42,7 +57,7 @@ export function executeTypingEditCommand(
     recognized: flushed.recognized,
     textEdit: {
       kind: 'append',
-      value: flushed.recognized.map((entry) => entry.output).join('') + '\n',
+      value: '\n',
     },
   };
 }

@@ -4,7 +4,8 @@ import { TypingInputEngine } from '../src/core/input-converter/index.ts';
 import { browserKeyboardEventToPhysicalKeyEvent } from '../src/features/input-converter/browser-keyboard-adapter.ts';
 import { NAGINATA_V18 } from '../src/layouts/naginata.ts';
 import { SHINGETA } from '../src/layouts/shingeta.ts';
-import { faceFromEntries, fromFaces, type Face } from '../src/layouts/index.ts';
+import { faceFromEntries, fromFaces, fromKana, type Face } from '../src/layouts/index.ts';
+import { TSUKI_2_263 } from '../src/layouts/tsuki-2-263.ts';
 
 const browserPhysical = (
   type: 'keydown' | 'keyup',
@@ -157,4 +158,54 @@ test('同じphysical pairのprefix / suffix alternativeを押下順で選択で�
     suffixResult.actions.map((action) => action.keys),
     [['h'], ['d']],
   );
+});
+
+
+test('multi-step sequenceはintermediate outputがなくても最後まで認識する', () => {
+  const layout = fromKana('converter-multi-step', 'converter-multi-step', {
+    X: [['f'], ['j']],
+  });
+  const engine = new TypingInputEngine(layout.canonicalInputs);
+
+  assert.deepEqual(engine.handle({ type: 'down', key: 'f' }).recognized, []);
+  engine.handle({ type: 'up', key: 'f' });
+  const result = engine.handle({ type: 'down', key: 'j' });
+
+  assert.equal(result.recognized[0].output, 'X');
+  assert.equal(result.recognized[0].replacePreviousText, undefined);
+  assert.deepEqual(
+    result.recognized[0].actions.map((action) => action.keys),
+    [['f'], ['j']],
+  );
+});
+
+test('built-in月配列の濁音は清音即時出力を後続markで置換する', () => {
+  const engine = new TypingInputEngine(TSUKI_2_263.canonicalInputs);
+
+  const source = engine.handle(browserPhysical('keydown', 'KeyS')).recognized[0];
+  assert.equal(source.output, 'か');
+  assert.equal(source.replacePreviousText, undefined);
+  engine.handle(browserPhysical('keyup', 'KeyS'));
+
+  const composed = engine.handle(browserPhysical('keydown', 'KeyL')).recognized[0];
+  assert.equal(composed.output, 'が');
+  assert.equal(composed.replacePreviousText, 'か');
+  assert.deepEqual(
+    composed.actions.map((action) => action.keys),
+    [['s'], ['l']],
+  );
+});
+
+test('composed prefixと無関係な次入力は通常の即時出力を維持する', () => {
+  const engine = new TypingInputEngine(TSUKI_2_263.canonicalInputs);
+
+  assert.equal(
+    engine.handle(browserPhysical('keydown', 'KeyS')).recognized[0].output,
+    'か',
+  );
+  engine.handle(browserPhysical('keyup', 'KeyS'));
+
+  const next = engine.handle(browserPhysical('keydown', 'KeyH')).recognized[0];
+  assert.equal(next.output, 'く');
+  assert.equal(next.replacePreviousText, undefined);
 });

@@ -18,6 +18,13 @@ test('Input Converter keeps browser key lifecycle consistent', async ({ page }) 
   await page.keyboard.press('h');
   await expect(output).toHaveValue('く');
 
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await capture.click();
+  await page.keyboard.press('s');
+  await expect(output).toHaveValue('か');
+  await page.keyboard.press('l');
+  await expect(output).toHaveValue('が');
+
   await page.keyboard.down('d');
   await expect(pressed).toHaveText('d');
 
