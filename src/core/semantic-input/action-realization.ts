@@ -192,6 +192,11 @@ export function applyActionRealizationPolicy(
   actions: readonly RealizedSemanticAction[],
   policy: ActionRealizationPolicy = DEFAULT_ACTION_REALIZATION_POLICY,
 ): readonly RealizedSemanticAction[] {
+  const overrides = policy.triggerActivationOverrides ?? [];
+  if (policy.triggerActivation === 'combined'
+    && overrides.every((override) => override.grouping === 'combined')) {
+    return actions;
+  }
   return actions.flatMap((action) =>
     groupingFor(action, policy) === 'separate'
       ? separateTriggerActivation(action)
