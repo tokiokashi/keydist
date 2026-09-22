@@ -13,16 +13,17 @@ import {
 
 const input = (
   classifications: SemanticInput['classifications'] = [],
-  layerId = 'layer:test',
+  aggregationGroupId = 'layer:test',
   requirements: SemanticInput['requirements'] = [],
+  modifierGroupId = 'test',
 ): SemanticInput => ({
   output: 'x',
   physicalKeys: ['j', 'thumb-r'],
   requirements,
   capabilities: [{ kind: 'while-held', keys: ['thumb-r'] }],
-  layerId,
+  aggregationGroupId,
   classifications,
-  roles: [{ key: 'thumb-r', role: 'modifier' }],
+  roles: [{ key: 'thumb-r', role: 'modifier', modifierGroupId }],
   faceMemberships: [],
 });
 
@@ -216,10 +217,10 @@ test('concrete overrideはclass defaultより優先される', () => {
   const sandS = action({
     input: input([], 'layer:SandS', [
       { kind: 'order', before: ['thumb-r'], after: ['j'] },
-    ]),
+    ], 'SandS'),
   });
   const dakuten = action({
-    input: input([], 'layer:濁音'),
+    input: input([], 'layer:濁音', [], '濁音'),
     keys: ['j', 'f'],
     outputKeys: ['f'],
     triggerKeys: ['j'],
@@ -227,10 +228,10 @@ test('concrete overrideはclass defaultより優先される', () => {
   const policy = semantic(
     { 'prepress-required': 'combined', 'order-free': 'separate' },
     [{
-      selector: { layerId: 'layer:SandS' },
+      selector: { modifierGroupIds: ['SandS'] },
       grouping: 'separate',
     }, {
-      selector: { layerId: 'layer:濁音' },
+      selector: { modifierGroupIds: ['濁音'] },
       grouping: 'combined',
     }],
   );
@@ -241,16 +242,16 @@ test('concrete overrideはclass defaultより優先される', () => {
 
 test('physical selectorはlayer selectorより優先されkey順に依存しない', () => {
   const multi = action({
-    input: input([], 'layer:X'),
+    input: input([], 'layer:X', [], 'X'),
     keys: ['q', 'thumb-r', 'j'],
     outputKeys: ['j'],
     triggerKeys: ['q', 'thumb-r'],
   });
   const result = applyActionRealizationPolicy([multi], semantic({}, [{
-    selector: { layerId: 'layer:X' },
+    selector: { modifierGroupIds: ['X'] },
     grouping: 'combined',
   }, {
-    selector: { layerId: 'layer:X', triggerKeys: ['thumb-r', 'q'] },
+    selector: { modifierGroupIds: ['X'], triggerKeys: ['thumb-r', 'q'] },
     grouping: 'separate',
   }]));
   assert.equal(result.length, 2);
@@ -263,7 +264,7 @@ test('disabledでは保存済みoverrideがあってもstreamを変更しない'
       triggerActivation: 'disabled',
       triggerActivationClassOverrides: { 'order-free': 'separate' },
       triggerActivationOverrides: [{
-        selector: { layerId: 'layer:test' },
+        selector: { modifierGroupIds: ['test'] },
         grouping: 'separate',
       }],
     })[0],
@@ -305,7 +306,7 @@ test('ActionRealizationPolicy比較はmode・class override・concrete override�
       {
         triggerActivation: 'semantic',
         triggerActivationOverrides: [{
-          selector: { layerId: 'layer:SandS' },
+          selector: { modifierGroupIds: ['SandS'] },
           grouping: 'separate',
         }],
       },
