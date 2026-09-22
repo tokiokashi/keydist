@@ -188,7 +188,7 @@ export function InputConverterView() {
   const [geometryId, setGeometryId] = useState(PHYSICAL_SHAPES['row-staggered'].id);
   const [showDynamicGuide, setShowDynamicGuide] = useState(true);
   const [showLayerGuide, setShowLayerGuide] = useState(true);
-  const [showTriggerColors, setShowTriggerColors] = useState(true);
+  const [showLayerKeys, setShowLayerKeys] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [splitPercent, setSplitPercent] = useState(DEFAULT_SPLIT_PERCENT);
   const guideGridRef = useRef<HTMLDivElement>(null);
@@ -248,16 +248,9 @@ export function InputConverterView() {
     () => new Set(activeGroupIds.flatMap((id) => aggregationTriggerKeys(layout, id))),
     [activeGroupIds, layout],
   );
-  const triggerKeys = useMemo(() => allLayerTriggerKeys(layout), [layout]);
-  const triggerColorSlots = useMemo(
+  const layerKeys = useMemo(() => allLayerTriggerKeys(layout), [layout]);
+  const layerKeyColorSlots = useMemo(
     () => presentationTriggerColorSlots(layout),
-    [layout],
-  );
-  const comboKeys = useMemo(
-    () => new Set(
-      (layout.resolvedComboDefinitions ?? []).flatMap((combo) =>
-        (combo.keyVariants ?? [combo.keys]).flatMap((keys) => keys)),
-    ),
     [layout],
   );
   const patternResult = useMemo(
@@ -301,9 +294,8 @@ export function InputConverterView() {
                 : key.id,
             pressed: pressed.has(key.id),
             highlighted: showDynamicGuide && activeTriggerKeys.has(key.id),
-            trigger: showTriggerColors && triggerKeys.has(key.id),
-            combo: showTriggerColors && comboKeys.has(key.id),
-            accentSlot: showTriggerColors ? triggerColorSlots.get(key.id) : undefined,
+            trigger: showLayerKeys && layerKeys.has(key.id),
+            accentSlot: showLayerKeys ? layerKeyColorSlots.get(key.id) : undefined,
             guide,
           },
         ] as const;
@@ -311,16 +303,15 @@ export function InputConverterView() {
     );
   }, [
     activeTriggerKeys,
-    comboKeys,
     hasOneShotLayer,
     layout,
     patternResult,
     session.pressedKeys,
     showDynamicGuide,
-    showTriggerColors,
+    showLayerKeys,
     thumbBindings,
-    triggerColorSlots,
-    triggerKeys,
+    layerKeyColorSlots,
+    layerKeys,
     visibleKeys,
   ]);
   const guideDefinitions = useMemo(
@@ -581,10 +572,10 @@ export function InputConverterView() {
               <label>
                 <input
                   type="checkbox"
-                  checked={showTriggerColors}
-                  onChange={(event) => setShowTriggerColors(event.target.checked)}
+                  checked={showLayerKeys}
+                  onChange={(event) => setShowLayerKeys(event.target.checked)}
                 />
-                起点キー色
+                レイヤーキー
               </label>
             </div>
             <header className="input-keyboard-heading">
