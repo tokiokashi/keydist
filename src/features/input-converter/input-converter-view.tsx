@@ -52,7 +52,7 @@ const INPUT_LAYOUTS = [
 ];
 
 const PRESET_GEOMETRY_SHAPES = Object.values(PHYSICAL_SHAPES);
-const DEFAULT_SPLIT_PERCENT = 62.5;
+const DEFAULT_SPLIT_PERCENT = 50;
 const MIN_SPLIT_PERCENT = 25;
 const MAX_SPLIT_PERCENT = 75;
 
@@ -313,34 +313,6 @@ export function InputConverterView() {
               </label>
             </div>
 
-            <div className="input-display-options" aria-label="表示設定">
-              <strong>表示</strong>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={showDynamicGuide}
-                  onChange={(event) => setShowDynamicGuide(event.target.checked)}
-                />
-                動的ガイド
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={showLayerGuide}
-                  onChange={(event) => setShowLayerGuide(event.target.checked)}
-                />
-                レイヤーカンペ
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={showTriggerColors}
-                  onChange={(event) => setShowTriggerColors(event.target.checked)}
-                />
-                起点キー色
-              </label>
-            </div>
-
             <ThumbKeyBindingEditor
               value={thumbBindings}
               onChange={updateThumbBindings}
@@ -443,7 +415,7 @@ export function InputConverterView() {
           }}
           role="separator"
           tabIndex={0}
-          title="ドラッグで幅を調整。ダブルクリックで5:3に戻す。"
+          title="ドラッグで幅を調整。ダブルクリックで1:1に戻す。"
         />
 
         <section className="input-main">
@@ -472,6 +444,33 @@ export function InputConverterView() {
           </section>
 
           <section className="input-keyboard-panel">
+            <div className="input-display-options" aria-label="表示設定">
+              <strong>表示</strong>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showDynamicGuide}
+                  onChange={(event) => setShowDynamicGuide(event.target.checked)}
+                />
+                動的ガイド
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showLayerGuide}
+                  onChange={(event) => setShowLayerGuide(event.target.checked)}
+                />
+                レイヤーカンペ
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showTriggerColors}
+                  onChange={(event) => setShowTriggerColors(event.target.checked)}
+                />
+                起点キー色
+              </label>
+            </div>
             <header className="input-keyboard-heading">
               <strong>Keyboard</strong>
               <p
