@@ -411,15 +411,13 @@ function MovementProfilePlot({
   const cx = 120;
   const cy = 112;
   const radius = 82;
-  const profileBaseRadius = 14;
   const plotScale = radius / maxDistance;
   const profilePoints = profile.map((point) => ({
     ...point,
     ...polarPoint(
       cx,
       cy,
-      profileBaseRadius
-        + (radius - profileBaseRadius) * (point.weight / Math.max(1, maxDirectionWeight)),
+      radius * (point.weight / Math.max(1, maxDirectionWeight)),
       point.angle,
     ),
   }));
