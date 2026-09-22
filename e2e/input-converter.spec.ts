@@ -359,6 +359,34 @@ test('月配列one-shotは未定義側へQWERTYを貫通せず1打で必ず消�
   await expect(output).toHaveValue('くと');
 });
 
+test('新JIS通常シフトと薙刀式装飾keyはrelease後に前置シフト化しない', async ({ page }) => {
+  await page.goto('/input');
+  const feature = page.locator('.input-feature');
+  const output = page.getByLabel('自由入力テキスト');
+  const layerLabel = page.locator('.input-active-layer');
+
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await page.getByLabel('配列', { exact: true }).selectOption('shin-jis-simultaneous');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shin-jis-simultaneous');
+  await output.click();
+
+  await page.keyboard.down('Space');
+  await expect(layerLabel).toContainText('シフト');
+  await page.keyboard.up('Space');
+  await expect(layerLabel).toContainText('通常');
+  await page.keyboard.press('h');
+  await expect(output).toHaveValue('く');
+
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await page.getByLabel('配列', { exact: true }).selectOption('naginata-v18');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await output.click();
+  await page.keyboard.press('j');
+  await expect(layerLabel).toContainText('通常');
+  await page.keyboard.press('f');
+  await expect(output).toHaveValue('あか');
+});
+
 test('かわせみ配列+の同時押しをbrowser lifecycleでも認識する', async ({ page }) => {
   await page.goto('/input');
   const feature = page.locator('.input-feature');
