@@ -5,7 +5,7 @@ test('Input Converter keeps browser key lifecycle consistent', async ({ page }) 
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', /.+/);
-  await page.getByLabel('かな配列').selectOption('tsuki-2-263');
+  await page.getByLabel('配列').selectOption('tsuki-2-263');
   await expect(feature).toHaveAttribute('data-input-ready', 'tsuki-2-263');
 
   const capture = page.getByRole('textbox', { name: '物理キー入力エリア' });
@@ -28,7 +28,7 @@ test('Input Converter keeps browser key lifecycle consistent', async ({ page }) 
   await page.keyboard.down('d');
   await expect(pressed).toHaveText('d');
 
-  await page.getByLabel('かな配列').focus();
+  await page.getByLabel('配列').focus();
   await expect(pressed).toHaveText('—');
 
   await capture.click();
@@ -39,4 +39,13 @@ test('Input Converter keeps browser key lifecycle consistent', async ({ page }) 
   await page.keyboard.up('h');
   await page.keyboard.up('Control');
   await expect(pressed).toHaveText('—');
+
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await page.getByLabel('配列').selectOption('qwerty');
+  await expect(feature).toHaveAttribute('data-input-ready', 'qwerty');
+  await capture.click();
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('a');
+  await page.keyboard.up('Shift');
+  await expect(output).toHaveValue('A');
 });
