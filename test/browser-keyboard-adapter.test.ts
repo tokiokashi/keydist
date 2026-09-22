@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   browserCodeToPhysicalKey,
   browserKeyboardEventToPhysicalKeyEvent,
+  isBrowserTextInputCode,
   shouldCaptureBrowserKeyDown,
 } from '../src/features/input-converter/browser-keyboard-adapter.ts';
 
@@ -79,4 +80,44 @@ test('layout所有Tabはrepeatでもbrowser既定動作をcaptureし、domain ev
     type: 'keydown',
     code: 'Tab',
   }, new Set()), false);
+});
+
+
+test('layout所有Spaceはrepeatでもbrowser scrollをcaptureする', () => {
+  const owned = new Set(['thumb-r']);
+  const repeatSpace = {
+    type: 'keydown',
+    code: 'Space',
+    repeat: true,
+  } as const;
+
+  assert.equal(shouldCaptureBrowserKeyDown(repeatSpace, owned), true);
+  assert.equal(browserKeyboardEventToPhysicalKeyEvent(repeatSpace), undefined);
+});
+
+
+test('未所有の標準文字keyはbrowser文字入力をcaptureし、navigation keyは残す', () => {
+  const owned = new Set<string>();
+
+  for (const code of ['KeyQ', 'Digit1', 'Minus', 'Backquote', 'Backslash']) {
+    assert.equal(isBrowserTextInputCode(code), true, code);
+    assert.equal(shouldCaptureBrowserKeyDown({
+      type: 'keydown',
+      code,
+    }, owned), true, code);
+  }
+
+  for (const code of ['Tab', 'Escape', 'CapsLock', 'Space']) {
+    assert.equal(isBrowserTextInputCode(code), false, code);
+    assert.equal(shouldCaptureBrowserKeyDown({
+      type: 'keydown',
+      code,
+    }, owned), false, code);
+  }
+
+  assert.equal(shouldCaptureBrowserKeyDown({
+    type: 'keydown',
+    code: 'KeyQ',
+    ctrlKey: true,
+  }, owned), false);
 });
