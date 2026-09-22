@@ -52,11 +52,13 @@ function formatTriggerRealizationPolicy(value: TriggerRealizationPolicy): string
 }
 
 function formatActionRealizationPolicy(value: ActionRealizationPolicy): string {
-  const base = value.triggerActivation === 'separate'
-    ? 'trigger押下を独立actionとしてrealizeする'
-    : 'trigger押下をoutputと同じactionでrealizeする';
-  const count = value.triggerActivationOverrides?.length ?? 0;
-  return count === 0 ? base : `${base}（trigger group別 override ${count}件）`;
+  const base = value.triggerActivation === 'semantic'
+    ? 'trigger押下の独立action化をsemantic既定値で有効化'
+    : 'trigger押下の独立action化を無効化';
+  const classCount = Object.keys(value.triggerActivationClassOverrides ?? {}).length;
+  const groupCount = value.triggerActivationOverrides?.length ?? 0;
+  const overrides = classCount + groupCount;
+  return overrides === 0 ? base : `${base}（override ${overrides}件）`;
 }
 
 export const CONDITION_DESCRIPTORS = {
@@ -77,7 +79,7 @@ export const CONDITION_DESCRIPTORS = {
   },
   actionRealization: {
     label: 'Action realization',
-    effect: 'fresh trigger押下をoutputと同じactionに含めるか、独立actionへ分けるかを決めます。continuous holdとは独立した条件で、trigger groupごとのoverrideも持てます。prefix等の既存trigger-only actionは二重分割しません。',
+    effect: 'fresh trigger押下の独立action化を制御します。有効時は先押し必須を既定で分離し、押し順不問はcombinedのまま扱います。continuous holdとは独立し、大分類・layer・physical trigger単位でoverrideできます。release側の将来分離とは別概念です。',
     format: (value) => formatActionRealizationPolicy(value as ActionRealizationPolicy),
   },
   geometry: {
