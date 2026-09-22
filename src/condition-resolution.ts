@@ -25,6 +25,9 @@ export function resolveConditions(
   const values = { ...defaults, ...override };
   const actionRealizationPolicy: ActionRealizationPolicy = {
     triggerActivation: values.actionRealization.triggerActivation,
+    triggerActivationClassOverrides: {
+      ...(values.actionRealization.triggerActivationClassOverrides ?? {}),
+    },
     triggerActivationOverrides: (values.actionRealization.triggerActivationOverrides ?? []).map((item) => ({
       selector: {
         ...(item.selector.layerId === undefined ? {} : { layerId: item.selector.layerId }),
