@@ -116,7 +116,7 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   await page.keyboard.up('j');
 });
 
-test('レイヤーカンペはtop layerで移動・リサイズしながら入力を継続できる', async ({ page }) => {
+test('レイヤーカンペはWorkspace overlayで移動・リサイズしながら入力を継続できる', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/input');
 
@@ -126,9 +126,6 @@ test('レイヤーカンペはtop layerで移動・リサイズしながら入�
 
   await page.getByLabel('レイヤーカンペを小窓表示').click();
   await expect(guide).toHaveAttribute('data-floating', 'true');
-  await expect.poll(() =>
-    guide.evaluate((element) => element.matches(':popover-open'))).toBe(true);
-
   const moveHandle = page.getByLabel('レイヤーカンペを移動');
   const beforeMove = await guide.boundingBox();
   const moveBox = await moveHandle.boundingBox();
@@ -161,7 +158,7 @@ test('レイヤーカンペはtop layerで移動・リサイズしながら入�
   expect(afterResize!.width).toBeGreaterThan(beforeResize!.width + 60);
   expect(afterResize!.height).toBeGreaterThan(beforeResize!.height + 40);
 
-  // Popoverは非モーダルなので、前面表示したまま入力テストを続けられる。
+  // Portal overlayは非モーダルなので、前面表示したまま入力テストを続けられる。
   const output = page.getByLabel('自由入力テキスト');
   await output.click();
   await page.keyboard.press('f');
@@ -170,8 +167,6 @@ test('レイヤーカンペはtop layerで移動・リサイズしながら入�
 
   await page.getByRole('button', { name: 'レイヤーカンペを元に戻す' }).click();
   await expect(guide).not.toHaveAttribute('data-floating');
-  await expect.poll(() =>
-    guide.evaluate((element) => element.matches(':popover-open'))).toBe(false);
   await expect(guide).toBeVisible();
 });
 
