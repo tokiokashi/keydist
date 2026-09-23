@@ -29,10 +29,10 @@ function fixtureRoute(
       output,
       actions,
       actionKeyAlternatives: actions.map((action) => [action]),
-      actionParticipationAlternatives: actions.map((action) => [[{
+      actionParticipationAlternatives: actions.map((action) => [{
         outputKeys: action,
         triggerKeys: [],
-      }]]),
+      }]),
       origin,
       aggregationGroupIds: [],
       acceptedAlternativeSelectionIdentities: [],
@@ -90,8 +90,8 @@ test('reverseLookupRouteLabelはchordとsequenceを区別して表示する', ()
       aggregationGroupIds: ['layer:test'],
       actionKeyAlternatives: [[['thumb-r']], [['h', 'j']]],
       actionParticipationAlternatives: [
-        [[{ outputKeys: [], triggerKeys: ['thumb-r'] }]],
-        [[{ outputKeys: ['h', 'j'], triggerKeys: [] }]],
+        [{ outputKeys: [], triggerKeys: ['thumb-r'] }],
+        [{ outputKeys: ['h', 'j'], triggerKeys: [] }],
       ],
       acceptedAlternativeSelectionIdentities: ['test-alternative'],
     }],
@@ -109,8 +109,8 @@ test('reverseLookupStepLabelは1入力単位のaction順を表示する', () => 
     aggregationGroupIds: ['layer:test'],
     actionKeyAlternatives: [[['thumb-r']], [['h', 'j']]],
     actionParticipationAlternatives: [
-      [[{ outputKeys: [], triggerKeys: ['thumb-r'] }]],
-      [[{ outputKeys: ['h', 'j'], triggerKeys: [] }]],
+      [{ outputKeys: [], triggerKeys: ['thumb-r'] }],
+      [{ outputKeys: ['h', 'j'], triggerKeys: [] }],
     ],
     acceptedAlternativeSelectionIdentities: ['test-alternative'],
   }), '右親指 → H + J');
