@@ -1,6 +1,7 @@
-import type {
-  InputAlternative,
-  InputContextRequirement,
+import {
+  inputAlternativeSelectionIdentity,
+  type InputAlternative,
+  type InputContextRequirement,
 } from '../../core/semantic-input/index.ts';
 import type { Layout } from '../../layouts/index.ts';
 import { kanaToRomaji } from '../../romaji/kunrei.ts';
@@ -10,6 +11,7 @@ export interface ReverseLookupStep {
   readonly actions: readonly (readonly string[])[];
   readonly origin: InputAlternative['origin'];
   readonly aggregationGroupIds: readonly string[];
+  readonly alternativeSelectionIdentity: string;
 }
 
 export interface ReverseLookupRoute {
@@ -35,6 +37,7 @@ function routeSignature(route: ReverseLookupRoute): string {
     .map((step) => [
       step.output,
       step.origin,
+      step.alternativeSelectionIdentity,
       step.actions.map((action) => action.join('+')).join('>'),
     ].join('\u0001'))
     .join('\u0002');
@@ -61,6 +64,7 @@ function stepFromAlternative(
     aggregationGroupIds: [...new Set(
       alternative.semanticInputs.map((input) => input.aggregationGroupId),
     )],
+    alternativeSelectionIdentity: inputAlternativeSelectionIdentity(alternative),
   };
 }
 
@@ -145,6 +149,15 @@ export function physicalKeyDisplayLabel(key: string): string {
   if (key === 'shift-l') return '左Shift';
   if (key === 'shift-r') return '右Shift';
   return key;
+}
+
+export function reverseLookupStepMatchesRecognition(
+  step: ReverseLookupStep,
+  recognition: { readonly output: string; readonly alternative: InputAlternative },
+): boolean {
+  return recognition.output === step.output
+    && inputAlternativeSelectionIdentity(recognition.alternative)
+      === step.alternativeSelectionIdentity;
 }
 
 export function reverseLookupStepLabel(step: ReverseLookupStep): string {
