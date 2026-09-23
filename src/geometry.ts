@@ -271,7 +271,7 @@ const DEFAULT_THUMBS: ThumbKeySpec[] = [
 export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
   'row-staggered': {
     id: 'row-staggered',
-    name: '段ずれ（ANSI）',
+    name: 'ロウスタッガード（ANSI）',
     pitchMm: 19.05,
     rowWidths: ROW_WIDTH,
     rowStagger: ROW_STAGGER,
@@ -279,7 +279,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
   },
   'jis-row-staggered': {
     id: 'jis-row-staggered',
-    name: '段ずれ（JIS 109）',
+    name: 'ロウスタッガード（JIS 109）',
     pitchMm: 19.05,
     rowWidths: [...JIS_ROW_WIDTH],
     rowStagger: ROW_STAGGER,
@@ -287,21 +287,21 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
   },
   ortholinear: {
     id: 'ortholinear',
-    name: '格子（ANSI）',
+    name: 'オーソ（ANSI）',
     pitchMm: 19.05,
     rowWidths: ROW_WIDTH,
     thumbs: DEFAULT_THUMBS,
   },
   'jis-ortholinear': {
     id: 'jis-ortholinear',
-    name: '格子（JIS 109）',
+    name: 'オーソ（JIS 109）',
     pitchMm: 19.05,
     rowWidths: [...JIS_ROW_WIDTH],
     thumbs: DEFAULT_THUMBS,
   },
   'column-staggered': {
     id: 'column-staggered',
-    name: '列ずれ（ANSI・分割想定）',
+    name: 'カラム（ANSI・分割想定）',
     pitchMm: 18,
     rowWidths: ROW_WIDTH,
     columnStagger: COLUMN_STAGGER,
@@ -314,7 +314,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
   },
   'jis-column-staggered': {
     id: 'jis-column-staggered',
-    name: '列ずれ（JIS 109・分割想定）',
+    name: 'カラム（JIS 109・分割想定）',
     pitchMm: 18,
     rowWidths: [...JIS_ROW_WIDTH],
     columnStagger: COLUMN_STAGGER,
