@@ -55,8 +55,8 @@ import {
   reverseLookupGuideActionLabel,
   reverseLookupGuideActionMatchesKeys,
   reverseLookupGuideActions,
+  reverseLookupGuideIndexForText,
   reverseLookupRouteLabel,
-  reverseLookupStepMatchesRecognition,
 } from './reverse-lookup.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
@@ -272,7 +272,6 @@ export function InputConverterView() {
   const [lookupStepIndex, setLookupStepIndex] = useState(0);
   const [randomPracticeMode, setRandomPracticeMode] =
     useState<RandomPracticeMode | null>(null);
-  const lastLookupRecognitionRef = useRef(session.lastRecognized);
   const guideGridRef = useRef<HTMLDivElement>(null);
   const layerGuideRef = useRef<HTMLElement>(null);
   const layerGuidePointerRef = useRef<FloatingGuidePointerOperation | undefined>(undefined);
@@ -708,28 +707,6 @@ export function InputConverterView() {
   }, [layout.id, lookupQuery]);
 
   useEffect(() => {
-    if (session.lastRecognized === lastLookupRecognitionRef.current) return;
-    lastLookupRecognitionRef.current = session.lastRecognized;
-    if (
-      session.lastRecognized.length === 0
-      || activeLookupStep === undefined
-      || activeLookupAction === undefined
-      || !activeLookupAction.finalInRouteStep
-    ) return;
-
-    if (session.lastRecognized.some((recognized) =>
-      reverseLookupStepMatchesRecognition(activeLookupStep, recognized))) {
-      setLookupStepIndex((current) =>
-        Math.min(activeLookupGuideActions.length, current + 1));
-    }
-  }, [
-    activeLookupAction,
-    activeLookupGuideActions.length,
-    activeLookupStep,
-    session.lastRecognized,
-  ]);
-
-  useEffect(() => {
     if (
       activeLookupAction === undefined
       || activeLookupAction.finalInRouteStep
@@ -737,32 +714,20 @@ export function InputConverterView() {
     ) return;
     if (reverseLookupGuideActionMatchesKeys(activeLookupAction, session.recognitionKeys)) {
       setLookupStepIndex((current) =>
-        Math.min(activeLookupGuideActions.length, current + 1));
+        Math.min(activeLookupGuideActions.length - 1, current + 1));
     }
   }, [activeLookupAction, activeLookupGuideActions.length, session.recognitionKeys]);
 
-  const lastLookupBackspaceRef = useRef(session.backspaceRevision);
   useEffect(() => {
-    if (session.backspaceRevision === lastLookupBackspaceRef.current) return;
-    lastLookupBackspaceRef.current = session.backspaceRevision;
-    if (activeLookupGuideActions.length === 0 || activeLookupRoute === undefined) return;
-
-    setLookupStepIndex((current) => {
-      if (current <= 0) return 0;
-      const currentAction = current >= activeLookupGuideActions.length
-        ? undefined
-        : activeLookupGuideActions[current];
-      const targetRouteStepIndex = currentAction === undefined
-        ? activeLookupRoute.steps.length - 1
-        : Math.max(0, currentAction.routeStepIndex - 1);
-      return activeLookupGuideActions.findIndex(
-        (action) => action.routeStepIndex === targetRouteStepIndex,
-      );
-    });
+    if (activeLookupRoute === undefined || activeLookupGuideActions.length === 0) return;
+    setLookupStepIndex(
+      reverseLookupGuideIndexForText(layout, activeLookupRoute, session.text),
+    );
   }, [
-    activeLookupGuideActions,
+    activeLookupGuideActions.length,
     activeLookupRoute,
-    session.backspaceRevision,
+    layout,
+    session.text,
   ]);
 
   useEffect(() => {

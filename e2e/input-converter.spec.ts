@@ -915,12 +915,31 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await expect(guide).toContainText('な');
   await expect(keyboard.locator('[data-key-id="m"]')).toHaveAttribute('data-lookup', 'true');
 
-  // Backspaceで直前に確定した文字の先頭guide actionへ戻る。
+  // 誤タイプはguideを進めず、その誤字だけをBSで消してもguide位置を維持する。
+  await page.keyboard.press('s');
+  await expect(output).toHaveValue('かけ');
+  await expect(guide).toContainText('2 / 2');
+  await expect(guide).toContainText('な');
+
+  await page.keyboard.press('Backspace');
+  await expect(output).toHaveValue('か');
+  await expect(guide).toContainText('2 / 2');
+  await expect(guide).toContainText('な');
+
+  // 正しく一致していた文字を消した時だけ、その出力stepへ戻る。
   await page.keyboard.press('Backspace');
   await expect(output).toHaveValue('');
   await expect(guide).toContainText('1 / 2');
   await expect(guide).toContainText('か');
   await expect(keyboard.locator('[data-key-id="f"]')).toHaveAttribute('data-lookup', 'true');
+
+  // 空入力でBSを連打してもguideは動かない。
+  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Backspace');
+  await expect(output).toHaveValue('');
+  await expect(guide).toContainText('1 / 2');
+  await expect(guide).toContainText('か');
 
   await lookup.fill('せ');
   await expect(guide).toContainText('せ');
