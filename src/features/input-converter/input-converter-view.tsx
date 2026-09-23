@@ -1528,7 +1528,6 @@ export function InputConverterView() {
                     <ol>
                       <li data-active>
                         <code>{reverseLookupRouteLabel(layout, activeLookupRoute)}</code>
-                        <small>ガイド中</small>
                         {activeLookupRoute.steps.some((step) => step.origin === 'combo')
                           ? <small>コンボ</small>
                           : null}
