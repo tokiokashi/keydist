@@ -5,6 +5,7 @@ import {
   APP_STATE_STORAGE_KEY,
   decodeAppStateDocument,
   loadOrMigrateAppStateSlice,
+  patchAppState,
   patchAppStateSlice,
 } from '../src/persistence/app-state-storage.ts';
 import type { KeyValueStorage } from '../src/persistence/storage.ts';
@@ -73,4 +74,39 @@ test('slice migration writes AppState before removing the legacy key', () => {
     JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!).workspace,
     workspace,
   );
+});
+
+
+test('patchAppState updates multiple slices atomically while preserving unrelated slices', () => {
+  const storage = new MemoryStorage();
+  const workspace = { version: 1 as const, panels: {}, zOrder: [] };
+  storage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify({
+    version: APP_STATE_VERSION,
+    workspace,
+  }));
+
+  assert.equal(patchAppState(storage, {
+    analyzer: {
+      theme: 'dark',
+      input: { mode: 'en', geometry: 'row-staggered', selectedSampleByMode: { en: 'default', ja: 'legacy' } },
+      layouts: { selectedByMode: { en: [], ja: [] }, detailByMode: {} },
+      comparison: {
+        baselineByMode: {},
+        chartColumn: 1,
+        sort: null,
+        matrixSorts: { press: null, finger: null, adjacentMean: null, adjacentStdDev: null },
+      },
+      sensitivity: { scale: 'relative' },
+      layers: { view: 'auto', activeTab: 0, colorScale: 'linear', showLayerDetails: false, keyPatternGuide: true },
+      panels: {
+        addLayout: false, text: true, sensitivity: false, playback: false,
+        playbackRateChart: false, layerStats: false, modifierList: false, comboTable: false,
+      },
+    },
+    conditions: undefined,
+  }), true);
+
+  const saved = JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!);
+  assert.deepEqual(saved.workspace, workspace);
+  assert.equal(saved.analyzer.theme, 'dark');
 });

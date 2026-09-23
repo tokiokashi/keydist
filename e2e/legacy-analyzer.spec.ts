@@ -29,8 +29,8 @@ test('legacy Analyzer stays operational when shared layer/picker helpers change'
   await text.fill('custom analyzer input');
   await text.blur();
   await expect.poll(async () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:ui-state');
-    return raw ? JSON.parse(raw).ui.input.customText : null;
+    const raw = localStorage.getItem('keydist:app-state');
+    return raw ? JSON.parse(raw).analyzer?.input?.customText ?? null : null;
   })).toBe('custom analyzer input');
 
   await mode.selectOption('en');
