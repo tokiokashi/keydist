@@ -1534,7 +1534,6 @@ test('Practice Textは最長候補を1件だけ表示し、他の打ち方はhov
   await expect(guide).toContainText('1 / 1');
   await expect(page.getByRole('button', { name: '前の入力単位' })).toBeDisabled();
   await expect(page.getByRole('button', { name: '次の入力単位' })).toBeDisabled();
-  await expect(items.first()).toContainText('ガイド中');
 
   // 打ち方が1通りしかない文字ではaffordance自体が出ない。
   await lookup.fill('か');
@@ -1835,7 +1834,7 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
 
   await lookup.fill('ぎゃ');
   await expect(results).toContainText('H + J + W');
-  await expect(results.locator('li').first()).toContainText('ガイド中');
+  await expect(results).not.toContainText('ガイド中');
   for (const key of ['h', 'j', 'w']) {
     await expect(keyboard.locator(`[data-key-id="${key}"]`))
       .toHaveAttribute('data-lookup', 'true');
