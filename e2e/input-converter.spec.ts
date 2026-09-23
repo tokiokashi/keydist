@@ -1947,9 +1947,8 @@ test('盤面クリックで任意browser codeをphysical keyへ再割当して�
   await page.keyboard.press('q');
   await expect(output).toHaveValue('け');
 
+  // #413 phase6: 配列選択もpreferencesとして永続化されるため、reload後もnicolaのまま。
   await page.reload();
-  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  await page.getByLabel('配列', { exact: true }).selectOption('nicola');
   await expect(feature).toHaveAttribute('data-input-ready', 'nicola');
   await output.click();
   await page.keyboard.down('Space');
