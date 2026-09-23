@@ -22,7 +22,7 @@ interface PointerOperation {
 
 export interface WorkspacePanelControls {
   mode: WorkspacePanelState['mode'];
-  float: () => void;
+  float: (rect?: PanelRect) => void;
   dock: () => void;
   activate: () => void;
 }
@@ -94,7 +94,16 @@ export function WorkspacePanel({
     { minWidth, minHeight },
   );
 
-  const float = () => {
+  const float = (requestedRect?: PanelRect) => {
+    if (requestedRect !== undefined) {
+      dispatch({
+        type: 'float',
+        id,
+        rect: clamp(requestedRect),
+      });
+      return;
+    }
+
     const bounds = panelRef.current?.getBoundingClientRect();
     const width = Math.max(minWidth, bounds?.width ?? defaultFloatingWidth);
     const height = Math.max(minHeight, bounds?.height ?? defaultFloatingHeight);
