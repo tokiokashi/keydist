@@ -122,6 +122,7 @@ const FLOATING_GUIDE_VIEWPORT_GAP = 12;
 const INPUT_SETTINGS_PANEL_ID = 'input.settings';
 const INPUT_TYPING_PANEL_ID = 'input.typing';
 const INPUT_KEYBOARD_PANEL_ID = 'input.keyboard';
+const INPUT_LOOKUP_PANEL_ID = 'input.lookup';
 const INPUT_LAYER_GUIDE_PANEL_ID = 'input.layer-guide';
 
 function layerGuideCardPanelId(layerId: string): string {
@@ -294,6 +295,13 @@ export function InputConverterView() {
         defaultDockSlot: 'input.main.keyboard',
         minWidth: 480,
         minHeight: 360,
+      },
+      {
+        id: INPUT_LOOKUP_PANEL_ID,
+        title: '打ち方逆引き',
+        defaultDockSlot: 'input.keyboard.lookup',
+        minWidth: 420,
+        minHeight: 180,
       },
       {
         id: INPUT_LAYER_GUIDE_PANEL_ID,
@@ -1278,48 +1286,72 @@ export function InputConverterView() {
                 }}
               />
                 </div>
-                <section
+                <WorkspacePanel
+                  ariaLabel="打ち方逆引き"
                   className="input-assist-slot"
-                  aria-label="打ち方逆引き"
-                  data-random-practice-mode={randomPracticeMode ?? undefined}
+                  defaultFloatingHeight={240}
+                  defaultFloatingWidth={720}
+                  dockedHeaderAriaLabel="打ち方逆引きパネルをクリックまたはドラッグして小窓表示"
+                  floatOnHeaderClick
+                  floatingHeaderAriaLabel="打ち方逆引きパネルを移動"
+                  headerClassName="input-lookup-field-heading"
+                  id={INPUT_LOOKUP_PANEL_ID}
+                  minHeight={180}
+                  minWidth={420}
+                  resizeAriaLabel="打ち方逆引きパネルのサイズを変更"
+                  renderHeader={({ mode, dock }) => (
+                    <>
+                      <span>打ち方を調べる</span>
+                      <span className="input-random-samples">
+                        <span>ランダム</span>
+                        <button
+                          aria-label="ランダムな単語"
+                          aria-pressed={randomPracticeMode === 'word'}
+                          data-active={randomPracticeMode === 'word' || undefined}
+                          disabled={playableRandomSamples.words.length === 0}
+                          onClick={() => startOrAdvanceRandomPractice('word')}
+                          type="button"
+                        >
+                          単語
+                        </button>
+                        <button
+                          aria-label="ランダムな文章"
+                          aria-pressed={randomPracticeMode === 'phrase'}
+                          data-active={randomPracticeMode === 'phrase' || undefined}
+                          disabled={playableRandomSamples.phrases.length === 0}
+                          onClick={() => startOrAdvanceRandomPractice('phrase')}
+                          type="button"
+                        >
+                          文章
+                        </button>
+                        {randomPracticeMode !== null ? (
+                          <button
+                            aria-label="ランダム練習を停止"
+                            className="input-random-stop"
+                            onClick={stopRandomPractice}
+                            type="button"
+                          >
+                            停止
+                          </button>
+                        ) : null}
+                      </span>
+                      {mode === 'floating' ? (
+                        <button
+                          aria-label="打ち方逆引きパネルを元に戻す"
+                          className="input-panel-dock"
+                          onClick={dock}
+                          type="button"
+                        >
+                          戻す
+                        </button>
+                      ) : null}
+                    </>
+                  )}
                 >
-              <div className="input-lookup-field">
-                <div className="input-lookup-field-heading">
-                  <span>打ち方を調べる</span>
-                  <span className="input-random-samples">
-                    <span>ランダム</span>
-                    <button
-                      aria-label="ランダムな単語"
-                      aria-pressed={randomPracticeMode === 'word'}
-                      data-active={randomPracticeMode === 'word' || undefined}
-                      disabled={playableRandomSamples.words.length === 0}
-                      onClick={() => startOrAdvanceRandomPractice('word')}
-                      type="button"
-                    >
-                      単語
-                    </button>
-                    <button
-                      aria-label="ランダムな文章"
-                      aria-pressed={randomPracticeMode === 'phrase'}
-                      data-active={randomPracticeMode === 'phrase' || undefined}
-                      disabled={playableRandomSamples.phrases.length === 0}
-                      onClick={() => startOrAdvanceRandomPractice('phrase')}
-                      type="button"
-                    >
-                      文章
-                    </button>
-                    {randomPracticeMode !== null ? (
-                      <button
-                        aria-label="ランダム練習を停止"
-                        className="input-random-stop"
-                        onClick={stopRandomPractice}
-                        type="button"
-                      >
-                        停止
-                      </button>
-                    ) : null}
-                  </span>
-                </div>
+              <div
+                className="input-lookup-field input-lookup-field-body"
+                data-random-practice-mode={randomPracticeMode ?? undefined}
+              >
                 <input
                   aria-label="打ちたい文字"
                   type="text"
@@ -1387,7 +1419,7 @@ export function InputConverterView() {
                   </>
                 )}
                   </div>
-                </section>
+                </WorkspacePanel>
               </div>
 
               <section className="input-debug" aria-label="入力詳細">

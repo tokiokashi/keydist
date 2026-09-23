@@ -1063,12 +1063,34 @@ h1 {
 .input-assist-slot {
   display: grid;
   grid-template-columns: minmax(17rem, 0.7fr) minmax(0, 1.3fr);
-  gap: 0.65rem;
+  grid-template-rows: auto auto;
+  column-gap: 0.65rem;
+  row-gap: 0.25rem;
   align-items: center;
   min-height: 3.4rem;
   margin-top: 0.35rem;
   padding-top: 0.55rem;
   border-top: 1px solid #e2e2dd;
+}
+
+.input-assist-slot > .input-lookup-field-heading {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.input-lookup-field-body {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.input-assist-slot > .input-lookup-results {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+.input-lookup-field-heading > .input-panel-dock {
+  margin-left: 0;
 }
 
 .input-lookup-field {
@@ -1468,6 +1490,24 @@ h1 {
 
   .input-assist-slot {
     grid-template-columns: 1fr;
+  }
+
+  .input-assist-slot > .input-lookup-field-heading,
+  .input-lookup-field-body,
+  .input-assist-slot > .input-lookup-results {
+    grid-column: 1;
+  }
+
+  .input-assist-slot > .input-lookup-field-heading {
+    grid-row: 1;
+  }
+
+  .input-lookup-field-body {
+    grid-row: 2;
+  }
+
+  .input-assist-slot > .input-lookup-results {
+    grid-row: 3;
   }
 }
 

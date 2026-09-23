@@ -115,6 +115,36 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   await page.keyboard.up('j');
 });
 
+test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化できる', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const panel = page.getByLabel('打ち方逆引き', { exact: true });
+  const lookup = page.getByLabel('打ちたい文字');
+
+  // Header内buttonは通常操作のまま。
+  await panel.getByRole('button', { name: 'ランダムな単語' }).click();
+  await expect(panel).not.toHaveAttribute('data-floating');
+  await expect(lookup).not.toHaveValue('');
+
+  await lookup.fill('かな');
+  await expect(panel.locator('.input-lookup-results')).not.toContainText(
+    '文字を入力するとcanonical inputから逆引きします。',
+  );
+
+  await page
+    .getByLabel('打ち方逆引きパネルをクリックまたはドラッグして小窓表示')
+    .getByText('打ち方を調べる', { exact: true })
+    .click();
+  await expect(panel).toHaveAttribute('data-floating', 'true');
+  await expect(lookup).toHaveValue('かな');
+
+  await panel.getByRole('button', { name: '打ち方逆引きパネルを元に戻す' }).click();
+  await expect(panel).not.toHaveAttribute('data-floating');
+});
+
 test('設定panelは開閉controlを誤detachせず小窓化できる', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/input');
@@ -921,7 +951,8 @@ test('ランダム練習はモードを保持し別停止ボタンで終了で�
   await wordButton.click();
   await expect(wordButton).toHaveAttribute('aria-pressed', 'true');
   await expect(wordButton).toHaveAttribute('data-active', 'true');
-  await expect(assist).toHaveAttribute('data-random-practice-mode', 'word');
+  await expect(assist.locator('.input-lookup-field-body'))
+    .toHaveAttribute('data-random-practice-mode', 'word');
   await expect(lookup).toHaveValue('あさ');
   await expect(page.getByRole('button', { name: 'ランダム練習を停止' })).toBeVisible();
 
@@ -944,7 +975,8 @@ test('ランダム練習はモードを保持し別停止ボタンで終了で�
   await expect(wordButton).toHaveAttribute('aria-pressed', 'true');
 
   await page.getByRole('button', { name: 'ランダム練習を停止' }).click();
-  await expect(assist).not.toHaveAttribute('data-random-practice-mode');
+  await expect(assist.locator('.input-lookup-field-body'))
+    .not.toHaveAttribute('data-random-practice-mode');
   await expect(wordButton).toHaveAttribute('aria-pressed', 'false');
   await expect(lookup).toHaveValue('まど');
   await expect(page.getByRole('button', { name: 'ランダム練習を停止' })).toHaveCount(0);
@@ -995,10 +1027,9 @@ test('ランダム練習は完全一致後も結果を残しEnterで次題へ進
   await page.keyboard.press('Enter');
   await expect(output).toHaveValue('');
   await expect(lookup).toHaveValue('まど');
-  await expect(page.getByLabel('打ち方逆引き')).toHaveAttribute(
-    'data-random-practice-mode',
-    'word',
-  );
+  await expect(
+    page.getByLabel('打ち方逆引き').locator('.input-lookup-field-body'),
+  ).toHaveAttribute('data-random-practice-mode', 'word');
   await expect(status).not.toHaveAttribute('data-complete');
   await expect(output).toBeFocused();
 });
