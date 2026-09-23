@@ -267,14 +267,6 @@ h1 {
   flex: 0 0 auto;
 }
 
-.input-settings-panel > summary {
-  list-style: none;
-}
-
-.input-settings-panel > summary::-webkit-details-marker {
-  display: none;
-}
-
 .input-settings-body {
   padding: 0.65rem 0.75rem 0.75rem;
 }
@@ -296,7 +288,7 @@ h1 {
   user-select: none;
 }
 
-.input-settings-panel[open] > .input-panel-heading {
+.input-settings-panel-open > .input-panel-heading {
   border-bottom: 1px solid #e2e2dd;
 }
 
@@ -304,6 +296,22 @@ h1 {
   color: #686862;
   font-size: 0.72rem;
   font-weight: 650;
+}
+
+.input-settings-toggle {
+  margin-left: auto;
+  padding: 0.2rem 0.25rem;
+  border: 0;
+  background: transparent;
+  color: #686862;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.input-panel-heading .input-panel-dock {
+  margin-left: 0;
 }
 
 .input-toolbar {

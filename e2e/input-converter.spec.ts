@@ -8,7 +8,6 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   const settings = page.locator('.input-settings-panel');
-  const settingsSummary = settings.locator('> summary');
   const guide = page.getByLabel('レイヤーカンペ一覧');
   const capture = page.locator('.input-capture-panel');
   const keyboardPanel = page.locator('.input-keyboard-panel');
@@ -41,9 +40,9 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   await page.keyboard.press('ArrowLeft');
   await expect(splitter).toHaveAttribute('aria-valuenow', '48');
 
-  await expect(settings).toHaveJSProperty('open', true);
-  await settingsSummary.click();
-  await expect(settings).toHaveJSProperty('open', false);
+  await expect(settings.locator('.input-settings-body')).toBeVisible();
+  await settings.getByRole('button', { name: '設定を閉じる' }).click();
+  await expect(settings.locator('.input-settings-body')).toHaveCount(0);
 
   const [collapsedGuideBox, collapsedKeyboardBox] = await Promise.all([
     guide.boundingBox(),
@@ -114,6 +113,29 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   expect(after).not.toBeNull();
   expect(after!.height).toBe(before!.height);
   await page.keyboard.up('j');
+});
+
+test('設定panelは開閉controlを誤detachせず小窓化できる', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const panel = page.locator('.input-settings-panel');
+
+  await panel.getByRole('button', { name: '設定を閉じる' }).click();
+  await expect(panel).not.toHaveAttribute('data-floating');
+  await expect(panel.locator('.input-settings-body')).toHaveCount(0);
+  await panel.getByRole('button', { name: '設定を開く' }).click();
+
+  await page.getByLabel('設定パネルをクリックまたはドラッグして小窓表示')
+    .getByText('設定', { exact: true })
+    .click();
+  await expect(panel).toHaveAttribute('data-floating', 'true');
+  await expect(page.getByLabel('配列', { exact: true })).toBeVisible();
+
+  await panel.getByRole('button', { name: '設定パネルを元に戻す' }).click();
+  await expect(panel).not.toHaveAttribute('data-floating');
 });
 
 test('入力panelは小窓化してもtyping sessionとcontrolsを維持する', async ({ page }) => {
@@ -529,7 +551,6 @@ test('Input Converter chooses the cheatsheet grid that maximizes readable card s
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   const settings = page.locator('.input-settings-panel');
-  const settingsSummary = settings.locator('> summary');
   const layoutSelect = page.getByLabel('配列', { exact: true });
   const grid = page.locator('.input-layer-guide-grid');
   const columns = async () => grid.evaluate((element) =>
@@ -538,14 +559,14 @@ test('Input Converter chooses the cheatsheet grid that maximizes readable card s
       .filter((track) => track.length > 0)
       .length);
   const setLayoutWithSettingsCollapsed = async (value: string) => {
-    if (!(await settings.evaluate((element) => (element as HTMLDetailsElement).open))) {
-      await settingsSummary.click();
-      await expect(settings).toHaveJSProperty('open', true);
+    if (await settings.locator('.input-settings-body').count() === 0) {
+      await settings.getByRole('button', { name: '設定を開く' }).click();
+      await expect(settings.locator('.input-settings-body')).toBeVisible();
     }
     await layoutSelect.selectOption(value);
     await expect(feature).toHaveAttribute('data-input-ready', value);
-    await settingsSummary.click();
-    await expect(settings).toHaveJSProperty('open', false);
+    await settings.getByRole('button', { name: '設定を閉じる' }).click();
+    await expect(settings.locator('.input-settings-body')).toHaveCount(0);
   };
 
   await setLayoutWithSettingsCollapsed('nicola');
