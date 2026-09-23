@@ -1077,62 +1077,42 @@ h1 {
 }
 
 .input-assist-slot {
-  display: grid;
-  grid-template-columns: minmax(17rem, 0.7fr) minmax(0, 1.3fr);
-  grid-template-rows: auto auto;
-  column-gap: 0.65rem;
-  row-gap: 0.25rem;
-  align-items: center;
-  min-height: 3.4rem;
-  margin-top: 0.35rem;
-  padding-top: 0.55rem;
-  border-top: 1px solid #e2e2dd;
-}
-
-.input-assist-slot[data-floating] {
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
   min-height: 0;
-  padding: 0.65rem;
+  flex: 0 0 auto;
+  flex-direction: column;
+  margin-top: 0.35rem;
   overflow: hidden;
   border: 1px solid #d6d6d1;
   border-radius: 0.75rem;
   background: #fff;
-}
-
-.input-assist-slot[data-floating] > .input-lookup-field-heading {
-  grid-column: 1 / -1;
-  grid-row: 1;
-  padding-bottom: 0.45rem;
-  border-bottom: 1px solid #e2e2dd;
-}
-
-.input-assist-slot[data-floating] > .input-lookup-field-body {
-  grid-column: 1;
-  grid-row: 2;
-  align-self: start;
-}
-
-.input-assist-slot[data-floating] > .input-lookup-results {
-  grid-column: 2;
-  grid-row: 2;
-  min-height: 0;
-  align-self: stretch;
-  overflow: auto;
+  container: input-lookup-panel / inline-size;
 }
 
 .input-assist-slot > .input-lookup-field-heading {
-  grid-column: 1;
-  grid-row: 1;
+  flex: 0 0 auto;
+  padding: 0.42rem 0.6rem;
+}
+
+.input-lookup-content {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(14rem, 0.7fr) minmax(0, 1.3fr);
+  gap: 0.55rem 0.65rem;
+  align-items: center;
+  padding: 0.55rem 0.65rem 0.65rem;
+  overflow: auto;
 }
 
 .input-lookup-field-body {
-  grid-column: 1;
-  grid-row: 2;
+  min-width: 0;
 }
 
-.input-assist-slot > .input-lookup-results {
-  grid-column: 2;
-  grid-row: 1 / span 2;
+.input-assist-slot .input-lookup-results {
+  min-width: 0;
+  min-height: 0;
   align-self: center;
 }
 
@@ -1142,6 +1122,17 @@ h1 {
 
 .input-lookup-field-heading[data-floating] > .input-panel-dock {
   margin-left: auto;
+}
+
+@container input-lookup-panel (max-width: 31rem) {
+  .input-lookup-content {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .input-assist-slot .input-lookup-results {
+    align-self: stretch;
+  }
 }
 
 .input-lookup-field {
@@ -1229,6 +1220,7 @@ h1 {
 }
 
 .input-lookup-field input {
+  box-sizing: border-box;
   width: 100%;
   min-width: 0;
   min-height: 2rem;
@@ -1344,6 +1336,12 @@ h1 {
   min-width: 0;
 }
 
+.input-debug-body {
+  min-width: 0;
+  min-height: 0;
+  container: key-info-body / size;
+}
+
 .input-keyboard-content > .input-debug {
   min-height: 6rem;
   max-height: 8.5rem;
@@ -1352,25 +1350,23 @@ h1 {
 
 .input-inspector {
   display: grid;
+  width: 100%;
+  height: 100%;
   min-width: 0;
   min-height: 0;
   grid-template-columns: minmax(0, 1fr);
-  gap: 0.65rem;
-  padding: 0.65rem;
+  gap: 0.5rem;
+  padding: 0.5rem;
   overflow: auto;
 }
 
-.input-keyboard-content .input-inspector {
-  grid-template-columns: minmax(8rem, 0.7fr) minmax(14rem, 1.3fr);
-  gap: 0.45rem;
-  padding: 0.4rem;
+@container key-info-body (orientation: landscape) and (min-width: 20rem) {
+  .input-inspector {
+    grid-template-columns: minmax(7rem, 0.7fr) minmax(10rem, 1.3fr);
+  }
 }
 
-.input-keyboard-content .input-inspector section {
-  padding: 0.45rem 0.55rem;
-}
-
-@container input-keyboard-panel (min-width: 50rem) {
+@container input-keyboard-panel (min-width: 34rem) {
   .input-keyboard-content {
     grid-template-columns: minmax(0, 1fr) minmax(7rem, 8rem);
     grid-template-rows: minmax(0, 1fr);
@@ -1381,15 +1377,6 @@ h1 {
     max-height: none;
   }
 
-  .input-keyboard-content .input-inspector {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.65rem;
-    padding: 0.65rem;
-  }
-
-  .input-keyboard-content .input-inspector section {
-    padding: 0.65rem;
-  }
 }
 
 .input-inspector section {
@@ -1554,8 +1541,7 @@ h1 {
     overflow-x: auto;
   }
 
-  .input-toolbar,
-  .input-inspector {
+  .input-toolbar {
     grid-template-columns: 1fr;
   }
 
@@ -1565,28 +1551,6 @@ h1 {
 
   .input-layer-guide-grid {
     grid-template-columns: 1fr;
-  }
-
-  .input-assist-slot {
-    grid-template-columns: 1fr;
-  }
-
-  .input-assist-slot > .input-lookup-field-heading,
-  .input-lookup-field-body,
-  .input-assist-slot > .input-lookup-results {
-    grid-column: 1;
-  }
-
-  .input-assist-slot > .input-lookup-field-heading {
-    grid-row: 1;
-  }
-
-  .input-lookup-field-body {
-    grid-row: 2;
-  }
-
-  .input-assist-slot > .input-lookup-results {
-    grid-row: 3;
   }
 }
 

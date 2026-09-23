@@ -300,13 +300,13 @@ export function InputConverterView() {
         title: '試し打ち文字列',
         defaultDockSlot: 'input.keyboard.lookup',
         minWidth: 420,
-        minHeight: 180,
+        minHeight: 103,
       },
       {
         id: INPUT_DETAILS_PANEL_ID,
         title: 'Key info.',
         defaultDockSlot: 'input.keyboard.details',
-        minWidth: 280,
+        minWidth: 200,
         minHeight: 160,
       },
       {
@@ -1296,7 +1296,7 @@ export function InputConverterView() {
                   floatingHeaderAriaLabel="試し打ち文字列パネルを移動"
                   headerClassName="input-lookup-field-heading"
                   id={INPUT_LOOKUP_PANEL_ID}
-                  minHeight={180}
+                  minHeight={103}
                   minWidth={420}
                   resizeAriaLabel="試し打ち文字列パネルのサイズを変更"
                   renderHeader={({ mode, dock }) => (
@@ -1348,6 +1348,7 @@ export function InputConverterView() {
                     </>
                   )}
                 >
+                  <div className="input-lookup-content">
               <div
                 className="input-lookup-field input-lookup-field-body"
                 data-random-practice-mode={randomPracticeMode ?? undefined}
@@ -1419,6 +1420,7 @@ export function InputConverterView() {
                   </>
                 )}
                   </div>
+                  </div>
                 </WorkspacePanel>
               </div>
 
@@ -1433,7 +1435,7 @@ export function InputConverterView() {
                 headerClassName="input-debug-heading"
                 id={INPUT_DETAILS_PANEL_ID}
                 minHeight={160}
-                minWidth={280}
+                minWidth={200}
                 resizeAriaLabel="Key info.パネルのサイズを変更"
                 renderHeader={({ mode, dock }) => (
                   <>
@@ -1451,15 +1453,17 @@ export function InputConverterView() {
                   </>
                 )}
               >
-                <div className="input-inspector">
-                  <section>
-                    <h2>Pressed</h2>
-                    <p>{session.pressedKeys.length > 0 ? session.pressedKeys.join(' + ') : '—'}</p>
-                  </section>
-                  <section>
-                    <h2>Recognized</h2>
-                    <RecognizedDetail recognized={session.lastRecognized} />
-                  </section>
+                <div className="input-debug-body">
+                  <div className="input-inspector">
+                    <section>
+                      <h2>Pressed</h2>
+                      <p>{session.pressedKeys.length > 0 ? session.pressedKeys.join(' + ') : '—'}</p>
+                    </section>
+                    <section>
+                      <h2>Recognized</h2>
+                      <RecognizedDetail recognized={session.lastRecognized} />
+                    </section>
+                  </div>
                 </div>
               </WorkspacePanel>
             </div>
