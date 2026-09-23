@@ -165,8 +165,8 @@ test('workspace state reconciles dynamic definitions without losing surviving pa
   const reconciled = reconcileWorkspaceState(state, [...nextRegistry.values()]);
 
   assert.deepEqual(reconciled.panels['input.keyboard'], state.panels['input.keyboard']);
-  // definitionsから外れたパネルは削除せずdormantとして残す（#413 phase5）。
-  assert.deepEqual(reconciled.panels['input.details'], state.panels['input.details']);
+  // 廃止済み/未知の静的panelはdormant化せずpruneする。
+  assert.equal(reconciled.panels['input.details'], undefined);
   assert.deepEqual(reconciled.panels['input.layer:new'], {
     visible: true,
     mode: 'docked',
@@ -202,23 +202,24 @@ test('workspace state restores dormant floating rect when a definition reappears
   assert.equal(afterA.zOrder.includes('input.layer:thumb-l'), true);
 });
 
-test('workspace state re-applies canHide invariant when a dormant panel reappears', () => {
-  let state = createWorkspaceState(definitions);
+test('workspace state re-applies canHide invariant when a dormant dynamic panel reappears', () => {
+  const hideableRegistry = createWorkspacePanelRegistry([
+    definitionInputs[0]!,
+    { ...definitionInputs[2]!, canHide: true },
+  ]);
+  let state = createWorkspaceState([...hideableRegistry.values()]);
   state = workspaceReducer(state, {
     type: 'set-visible',
-    id: 'input.keyboard',
+    id: 'input.layer:thumb-l',
     visible: false,
   });
 
-  const layoutBRegistry = createWorkspacePanelRegistry([
-    definitionInputs[1]!,
-    definitionInputs[2]!,
-  ]);
-  const afterB = reconcileWorkspaceState(state, [...layoutBRegistry.values()]);
-  assert.equal(afterB.panels['input.keyboard']?.visible, false);
+  const withoutLayer = createWorkspacePanelRegistry([definitionInputs[0]!]);
+  const dormant = reconcileWorkspaceState(state, [...withoutLayer.values()]);
+  assert.equal(dormant.panels['input.layer:thumb-l']?.visible, false);
 
-  const afterA = reconcileWorkspaceState(afterB, definitions);
-  assert.equal(afterA.panels['input.keyboard']?.visible, true);
+  const afterA = reconcileWorkspaceState(dormant, definitions);
+  assert.equal(afterA.panels['input.layer:thumb-l']?.visible, true);
 });
 
 test('workspace state reconciliation is referentially stable when definitions are unchanged', () => {
