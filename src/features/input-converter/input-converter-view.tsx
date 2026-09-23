@@ -699,7 +699,9 @@ export function InputConverterView() {
                         legend: legends.get(key.id) ?? '',
                         highlighted: triggers.has(key.id),
                         trigger: triggers.has(key.id),
-                        accentSlot: presentationTriggerColorSlots(layout).get(key.id),
+                        accentSlot: triggers.has(key.id)
+                          ? layerKeyColorSlots.get(key.id)
+                          : undefined,
                         home: HOME_POSITION_KEYS.has(key.id),
                       },
                     ]),
