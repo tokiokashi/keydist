@@ -63,6 +63,10 @@ import {
   reverseLookupGuideIndexForText,
   reverseLookupRouteLabel,
 } from './reverse-lookup.ts';
+import {
+  loadTesterSelection,
+  saveTesterSelection,
+} from './tester-selection-persistence.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
 const DIRECT_JA_INPUT_LAYOUTS =
@@ -254,6 +258,7 @@ export function InputConverterView() {
   const bindingCaptureCodeRef = useRef<string | undefined>(undefined);
   const [userGeometryShapes, setUserGeometryShapes] = useState<PhysicalShape[]>([]);
   const [geometryId, setGeometryId] = useState(PHYSICAL_SHAPES['row-staggered'].id);
+  const [selectionRestored, setSelectionRestored] = useState(false);
   const browserBindings = useMemo(() => ({
     ...(isPresetGeometryKind(geometryId)
       && presetGeometryStandard(geometryId) === 'jis'
@@ -368,9 +373,37 @@ export function InputConverterView() {
   };
 
   useEffect(() => {
-    setUserGeometryShapes(loadUserGeometryShapes());
+    const nextUserGeometryShapes = loadUserGeometryShapes();
+    const savedSelection = loadTesterSelection(window.localStorage);
+
+    setUserGeometryShapes(nextUserGeometryShapes);
     setBindingOverrides(loadBrowserKeyBindingOverrides(window.localStorage));
+
+    const restoredLayout = savedSelection.layoutId === undefined
+      ? undefined
+      : INPUT_LAYOUTS.find((candidate) => candidate.id === savedSelection.layoutId);
+    if (restoredLayout !== undefined) setLayout(restoredLayout);
+
+    const validGeometryIds = new Set(
+      [...PRESET_GEOMETRY_SHAPES, ...nextUserGeometryShapes].map((shape) => shape.id),
+    );
+    if (
+      savedSelection.geometryId !== undefined
+      && validGeometryIds.has(savedSelection.geometryId)
+    ) {
+      setGeometryId(savedSelection.geometryId);
+    }
+
+    setSelectionRestored(true);
   }, []);
+
+  useEffect(() => {
+    if (!selectionRestored) return;
+    saveTesterSelection({
+      layoutId: layout.id,
+      geometryId,
+    }, window.localStorage);
+  }, [geometryId, layout.id, selectionRestored]);
 
   const updateBindingOverrides = (next: BrowserKeyBindingOverrides) => {
     setBindingOverrides(next);

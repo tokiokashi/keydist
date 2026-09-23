@@ -1,5 +1,34 @@
 import { expect, test } from '@playwright/test';
 
+test('Tester restores selected layout and physical geometry after reload', async ({ page }) => {
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  const layoutSelect = page.getByLabel('配列', { exact: true });
+  const geometrySelect = page.getByLabel('物理配列');
+
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await layoutSelect.selectOption('tsuki-2-263');
+  await geometrySelect.selectOption('column-staggered');
+  await expect(feature).toHaveAttribute('data-input-ready', 'tsuki-2-263');
+  await expect(layoutSelect).toHaveValue('tsuki-2-263');
+  await expect(geometrySelect).toHaveValue('column-staggered');
+
+  await expect.poll(async () => page.evaluate(() => {
+    const raw = window.localStorage.getItem('keydist:input-tester-selection');
+    return raw === null ? null : JSON.parse(raw);
+  })).toEqual({
+    layoutId: 'tsuki-2-263',
+    geometryId: 'column-staggered',
+  });
+
+  await page.reload();
+
+  await expect(feature).toHaveAttribute('data-input-ready', 'tsuki-2-263');
+  await expect(layoutSelect).toHaveValue('tsuki-2-263');
+  await expect(geometrySelect).toHaveValue('column-staggered');
+});
+
 const STORAGE_KEY = 'keydist:workspace-state';
 
 /** dragging解除後のscale springが収まるのを待つ（既存e2eの慣例に合わせる） */
