@@ -123,6 +123,7 @@ const INPUT_SETTINGS_PANEL_ID = 'input.settings';
 const INPUT_TYPING_PANEL_ID = 'input.typing';
 const INPUT_KEYBOARD_PANEL_ID = 'input.keyboard';
 const INPUT_LOOKUP_PANEL_ID = 'input.lookup';
+const INPUT_DETAILS_PANEL_ID = 'input.details';
 const INPUT_LAYER_GUIDE_PANEL_ID = 'input.layer-guide';
 
 function layerGuideCardPanelId(layerId: string): string {
@@ -302,6 +303,13 @@ export function InputConverterView() {
         defaultDockSlot: 'input.keyboard.lookup',
         minWidth: 420,
         minHeight: 180,
+      },
+      {
+        id: INPUT_DETAILS_PANEL_ID,
+        title: '入力詳細',
+        defaultDockSlot: 'input.keyboard.details',
+        minWidth: 280,
+        minHeight: 160,
       },
       {
         id: INPUT_LAYER_GUIDE_PANEL_ID,
@@ -1422,7 +1430,35 @@ export function InputConverterView() {
                 </WorkspacePanel>
               </div>
 
-              <section className="input-debug" aria-label="入力詳細">
+              <WorkspacePanel
+                ariaLabel="入力詳細"
+                className="input-debug"
+                defaultFloatingHeight={260}
+                defaultFloatingWidth={380}
+                dockedHeaderAriaLabel="入力詳細パネルをクリックまたはドラッグして小窓表示"
+                floatOnHeaderClick
+                floatingHeaderAriaLabel="入力詳細パネルを移動"
+                headerClassName="input-debug-heading"
+                id={INPUT_DETAILS_PANEL_ID}
+                minHeight={160}
+                minWidth={280}
+                resizeAriaLabel="入力詳細パネルのサイズを変更"
+                renderHeader={({ mode, dock }) => (
+                  <>
+                    <strong>入力詳細</strong>
+                    {mode === 'floating' ? (
+                      <button
+                        aria-label="入力詳細パネルを元に戻す"
+                        className="input-panel-dock"
+                        onClick={dock}
+                        type="button"
+                      >
+                        戻す
+                      </button>
+                    ) : null}
+                  </>
+                )}
+              >
                 <div className="input-inspector">
                   <section>
                     <h2>Pressed</h2>
@@ -1433,7 +1469,7 @@ export function InputConverterView() {
                     <RecognizedDetail recognized={session.lastRecognized} />
                   </section>
                 </div>
-              </section>
+              </WorkspacePanel>
             </div>
           </WorkspacePanel>
         </section>
