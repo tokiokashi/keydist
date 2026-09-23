@@ -1409,6 +1409,17 @@ export function InputConverterView() {
                     <>
                       <span>Practice Text</span>
                       <span className="input-random-samples">
+                        <button
+                          aria-label={showPracticeAssist
+                            ? '入力アシストを非表示'
+                            : '入力アシストを表示'}
+                          aria-pressed={showPracticeAssist}
+                          data-active={showPracticeAssist || undefined}
+                          onClick={() => setShowPracticeAssist((current) => !current)}
+                          type="button"
+                        >
+                          アシスト
+                        </button>
                         <span>ランダム</span>
                         <button
                           aria-label="ランダムな単語"
@@ -1440,17 +1451,6 @@ export function InputConverterView() {
                             停止
                           </button>
                         ) : null}
-                        <button
-                          aria-label={showPracticeAssist
-                            ? '入力アシストを非表示'
-                            : '入力アシストを表示'}
-                          aria-pressed={showPracticeAssist}
-                          data-active={showPracticeAssist || undefined}
-                          onClick={() => setShowPracticeAssist((current) => !current)}
-                          type="button"
-                        >
-                          アシスト
-                        </button>
                       </span>
                     </>
                   )}
