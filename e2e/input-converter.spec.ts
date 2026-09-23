@@ -332,6 +332,8 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   const layerLabel = page.locator('.input-active-layer');
 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await expect(keyboard.locator('[data-key-id="f"]')).toHaveAttribute('data-home', 'true');
+  await expect(keyboard.locator('[data-key-id="j"]')).toHaveAttribute('data-home', 'true');
   await expect(layerLabel).toContainText('現在');
   await expect(layerLabel).toContainText('通常');
 
@@ -377,6 +379,8 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await expect(sandSCard).toContainText('SandS');
   await expect(sandSCard.locator('[data-key-id="thumb-r"]')).toHaveAttribute('data-accent-slot', /[1-8]/);
   await expect(sandSCard.locator('[data-key-id="j"]')).not.toHaveAttribute('data-accent-slot', /[1-8]/);
+  await expect(sandSCard.locator('[data-key-id="f"]')).toHaveAttribute('data-home', 'true');
+  await expect(sandSCard.locator('[data-key-id="j"]')).toHaveAttribute('data-home', 'true');
   await expect(page.getByLabel('意味論的な組み合わせ')).toContainText('濁音');
   await expect(page.getByLabel('意味論的な組み合わせ')).toContainText('拗音');
 
@@ -518,15 +522,31 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   const results = page.getByLabel('打ち方逆引き').locator('.input-lookup-results');
 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
+
+  await lookup.fill('かな');
+  const guide = page.getByLabel('入力順ガイド');
+  await expect(guide).toContainText('1 / 2');
+  await expect(guide).toContainText('か');
+  await expect(keyboard.locator('[data-key-id="f"]')).toHaveAttribute('data-lookup', 'true');
+  await expect(keyboard.locator('[data-key-id="m"]')).not.toHaveAttribute('data-lookup', 'true');
+
+  await page.getByRole('button', { name: '次の入力単位' }).click();
+  await expect(guide).toContainText('2 / 2');
+  await expect(guide).toContainText('な');
+  await expect(keyboard.locator('[data-key-id="f"]')).not.toHaveAttribute('data-lookup', 'true');
+  await expect(keyboard.locator('[data-key-id="m"]')).toHaveAttribute('data-lookup', 'true');
+
+  await page.getByRole('button', { name: '前の入力単位' }).click();
+  await expect(guide).toContainText('1 / 2');
+
   await lookup.fill('ぎゃ');
   await expect(results).toContainText('H + J + W');
-  await expect(results.locator('li').first()).toContainText('点灯中');
-  const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
+  await expect(results.locator('li').first()).toContainText('ガイド中');
   for (const key of ['h', 'j', 'w']) {
     await expect(keyboard.locator(`[data-key-id="${key}"]`))
       .toHaveAttribute('data-lookup', 'true');
   }
-  await expect(keyboard.locator('[data-key-id="f"]')).not.toHaveAttribute('data-lookup', 'true');
 
   await page.getByLabel('配列', { exact: true }).selectOption('oonishi-custom-combo');
   await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom-combo');
