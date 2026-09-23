@@ -6,8 +6,10 @@ import {
   type ReactNode,
   useEffect,
   useRef,
+  useState,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { motion } from 'motion/react';
 import type { PanelId } from './panel-registry.ts';
 import type { PanelRect, WorkspacePanelState } from './workspace-state.ts';
 import { clampPanelRectToViewport } from './viewport-clamp.ts';
@@ -102,6 +104,7 @@ export function WorkspacePanel({
   const operationRef = useRef<PointerOperation | undefined>(undefined);
   const detachOperationRef = useRef<DetachPointerOperation | undefined>(undefined);
   const detachCleanupRef = useRef<(() => void) | undefined>(undefined);
+  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     const clearPointerState = () => {
@@ -109,6 +112,7 @@ export function WorkspacePanel({
       detachCleanupRef.current?.();
       detachCleanupRef.current = undefined;
       detachOperationRef.current = undefined;
+      setDragging(false);
     };
     window.addEventListener('blur', clearPointerState);
     return () => {
@@ -121,6 +125,7 @@ export function WorkspacePanel({
 
   const mode = panel.mode;
   const zIndex = Math.max(0, state.zOrder.indexOf(id));
+  const active = state.zOrder.at(-1) === id;
   const activate = () => dispatch({ type: 'activate', id });
   const clamp = (rect: PanelRect) => clampPanelRectToViewport(
     rect,
@@ -165,6 +170,7 @@ export function WorkspacePanel({
   const dock = () => {
     operationRef.current = undefined;
     clearDetachOperation();
+    setDragging(false);
     dispatch({ type: 'dock', id });
   };
 
@@ -208,6 +214,7 @@ export function WorkspacePanel({
           y: current.sourceRect.y + dy,
         });
         current.detached = true;
+        setDragging(true);
         current.dragStartX = pointerEvent.clientX;
         current.dragStartY = pointerEvent.clientY;
         current.dragStartRect = detachedRect;
@@ -230,6 +237,7 @@ export function WorkspacePanel({
         && current !== undefined
         && current.pointerId !== pointerEvent.pointerId
       ) return;
+      if (current?.detached) setDragging(false);
       clearDetachOperation();
     };
     const onPointerUp = (pointerEvent: PointerEvent) => finish(pointerEvent);
@@ -253,6 +261,7 @@ export function WorkspacePanel({
     const rect = panel.rect;
     if (rect === undefined) return;
     activate();
+    setDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
     operationRef.current = {
       kind,
@@ -293,10 +302,12 @@ export function WorkspacePanel({
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     operationRef.current = undefined;
+    setDragging(false);
   };
   const losePointerOperation = (event: ReactPointerEvent<HTMLElement>) => {
     if (operationRef.current?.pointerId === event.pointerId) {
       operationRef.current = undefined;
+      setDragging(false);
     }
   };
   const onDockedHeaderKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
@@ -321,12 +332,40 @@ export function WorkspacePanel({
     : undefined;
 
   const content = (
-    <section
+    <motion.section
       aria-label={ariaLabel}
+      animate={{
+        scale: mode === 'floating'
+          ? dragging
+            ? 1.012
+            : active
+              ? 1.003
+              : 1
+          : 1,
+      }}
       className={shellClassName}
+      data-active={mode === 'floating' && active || undefined}
+      data-dragging={dragging || undefined}
       data-floating={mode === 'floating' || undefined}
+      layout={dragging ? false : true}
+      layoutId={`workspace-panel:${id}`}
+      layoutRoot={mode === 'floating'}
       ref={panelRef}
       style={shellStyle}
+      transition={{
+        layout: {
+          type: 'spring',
+          stiffness: 520,
+          damping: 42,
+          mass: 0.7,
+        },
+        scale: {
+          type: 'spring',
+          stiffness: 620,
+          damping: 38,
+          mass: 0.55,
+        },
+      }}
       onClickCapture={mode === 'floating' ? activate : undefined}
       onFocusCapture={mode === 'floating' ? activate : undefined}
       onPointerDownCapture={mode === 'floating' ? activate : undefined}
@@ -365,7 +404,7 @@ export function WorkspacePanel({
           role="separator"
         />
       ) : null}
-    </section>
+    </motion.section>
   );
 
   if (mode === 'docked') return content;
