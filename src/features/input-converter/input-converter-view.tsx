@@ -89,6 +89,8 @@ const HOME_POSITION_KEYS = new Set(['f', 'j']);
 const DEFAULT_SPLIT_PERCENT = 50;
 const MIN_SPLIT_PERCENT = 25;
 const MAX_SPLIT_PERCENT = 75;
+/** 左:右が4:5を越えて右優勢になったら、詳細をキーボード右へ出す。 */
+const DETAIL_SIDE_MAX_SPLIT_PERCENT = (4 / 9) * 100;
 
 function clampSplitPercent(value: number): number {
   return Math.min(MAX_SPLIT_PERCENT, Math.max(MIN_SPLIT_PERCENT, value));
@@ -829,7 +831,12 @@ export function InputConverterView() {
                 </strong>
               </p>
             </header>
-            <div className="input-keyboard-content">
+            <div
+              className="input-keyboard-content"
+              data-detail-layout={
+                splitPercent <= DETAIL_SIDE_MAX_SPLIT_PERCENT ? 'side' : 'stacked'
+              }
+            >
               <div className="input-keyboard-stage">
                 <div className="input-keyboard-main">
               <PhysicalKeyboard
@@ -916,9 +923,6 @@ export function InputConverterView() {
               </div>
 
               <section className="input-debug" aria-label="入力詳細">
-                <header className="input-debug-heading">
-                  <strong>入力詳細</strong>
-                </header>
                 <div className="input-inspector">
                   <section>
                     <h2>Pressed</h2>
