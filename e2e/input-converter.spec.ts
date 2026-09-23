@@ -482,6 +482,53 @@ test('レイヤーカンペはWorkspace overlayで移動・リサイズしなが
   await expect(guide).toBeVisible();
 });
 
+test('floating panel dragはpointer中のrectを永続stateへ連打せず終了時にcommitする', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const guide = page.getByLabel('レイヤーカンペ一覧');
+  await page.getByLabel('レイヤーカンペを小窓表示').click();
+  await expect(guide).toHaveAttribute('data-floating', 'true');
+
+  const persistedRect = async () => page.evaluate(() => {
+    const raw = localStorage.getItem('keydist:workspace-state');
+    if (raw === null) return null;
+    const state = JSON.parse(raw) as {
+      panels?: Record<string, { rect?: { x: number; y: number; width: number; height: number } }>;
+    };
+    return state.panels?.['input.layer-guide']?.rect ?? null;
+  });
+
+  await expect.poll(persistedRect).not.toBeNull();
+  const beforePersisted = await persistedRect();
+  const beforeVisual = await guide.boundingBox();
+  expect(beforePersisted).not.toBeNull();
+  expect(beforeVisual).not.toBeNull();
+
+  const moveHandle = page.getByLabel('レイヤーカンペを移動');
+  const moveBox = await moveHandle.boundingBox();
+  expect(moveBox).not.toBeNull();
+  await page.mouse.move(moveBox!.x + 80, moveBox!.y + moveBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(moveBox!.x + 200, moveBox!.y + 40, { steps: 20 });
+
+  // 見た目はpointerへ追従するが、drag中のWorkspace stateはまだcommitしない。
+  const duringVisual = await guide.boundingBox();
+  expect(duringVisual).not.toBeNull();
+  expect(duringVisual!.x).toBeGreaterThan(beforeVisual!.x + 80);
+  await page.waitForTimeout(500);
+  const duringPersisted = await persistedRect();
+  expect(duringPersisted?.x).toBe(beforePersisted?.x);
+  expect(duringPersisted?.y).toBe(beforePersisted?.y);
+
+  await page.mouse.up();
+
+  await expect.poll(async () => (await persistedRect())?.x ?? -1)
+    .toBeGreaterThan((beforePersisted?.x ?? 0) + 80);
+});
+
 test('Workspace animationはreduced-motionを尊重する', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1440, height: 900 });

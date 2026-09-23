@@ -21,6 +21,7 @@ interface PointerOperation {
   startX: number;
   startY: number;
   startRect: PanelRect;
+  latestRect: PanelRect;
 }
 
 interface DetachPointerOperation {
@@ -32,6 +33,7 @@ interface DetachPointerOperation {
   dragStartX: number;
   dragStartY: number;
   dragStartRect: PanelRect;
+  latestRect: PanelRect;
 }
 
 export const WORKSPACE_DETACH_THRESHOLD_PX = 8;
@@ -145,6 +147,19 @@ export function WorkspacePanel({
     { minWidth, minHeight },
   );
 
+  // pointermoveのhot pathではWorkspace stateを更新しない。
+  // fixed panelのstyleへ直接反映し、pointer終了時だけstateへcommitすることで、
+  // Context consumer全体の再renderとMotion layout measurementを毎event発生させない。
+  const applyTransientRect = (rect: PanelRect): boolean => {
+    const element = panelRef.current;
+    if (element === null) return false;
+    element.style.left = `${rect.x}px`;
+    element.style.top = `${rect.y}px`;
+    element.style.width = `${rect.width}px`;
+    element.style.height = `${rect.height}px`;
+    return true;
+  };
+
   const float = (requestedRect?: PanelRect) => {
     if (requestedRect !== undefined) {
       dispatch({
@@ -205,6 +220,7 @@ export function WorkspacePanel({
       dragStartX: event.clientX,
       dragStartY: event.clientY,
       dragStartRect: sourceRect,
+      latestRect: sourceRect,
     };
     detachOperationRef.current = operation;
 
@@ -227,6 +243,7 @@ export function WorkspacePanel({
         current.dragStartX = pointerEvent.clientX;
         current.dragStartY = pointerEvent.clientY;
         current.dragStartRect = detachedRect;
+        current.latestRect = detachedRect;
         dispatch({ type: 'float', id, rect: detachedRect });
         return;
       }
@@ -237,7 +254,10 @@ export function WorkspacePanel({
         x: current.dragStartRect.x + pointerEvent.clientX - current.dragStartX,
         y: current.dragStartRect.y + pointerEvent.clientY - current.dragStartY,
       });
-      dispatch({ type: 'move', id, x: next.x, y: next.y });
+      current.latestRect = next;
+      // detach直後のReact commit前だけrefがまだdocked要素を指す可能性があるため、
+      // その場合は次のpointermoveまで待つ。最終rectはfinishで必ずcommitする。
+      if (current.detached) applyTransientRect(next);
     };
     const finish = (pointerEvent?: PointerEvent) => {
       const current = detachOperationRef.current;
@@ -246,8 +266,12 @@ export function WorkspacePanel({
         && current !== undefined
         && current.pointerId !== pointerEvent.pointerId
       ) return;
+      const finalRect = current?.detached ? current.latestRect : undefined;
       if (current?.detached) setDragging(false);
       clearDetachOperation();
+      if (finalRect !== undefined) {
+        dispatch({ type: 'move', id, x: finalRect.x, y: finalRect.y });
+      }
     };
     const onPointerUp = (pointerEvent: PointerEvent) => finish(pointerEvent);
     const onPointerCancel = (pointerEvent: PointerEvent) => finish(pointerEvent);
@@ -278,6 +302,7 @@ export function WorkspacePanel({
       startX: event.clientX,
       startY: event.clientY,
       startRect: rect,
+      latestRect: rect,
     };
   };
   const movePointerOperation = (event: ReactPointerEvent<HTMLElement>) => {
@@ -296,27 +321,36 @@ export function WorkspacePanel({
           width: operation.startRect.width + dx,
           height: operation.startRect.height + dy,
         });
+    operation.latestRect = next;
+    applyTransientRect(next);
+  };
+  const commitPointerOperation = (operation: PointerOperation) => {
+    const finalRect = operation.latestRect;
     if (operation.kind === 'move') {
-      dispatch({ type: 'move', id, x: next.x, y: next.y });
-    } else {
-      dispatch({ type: 'resize', id, width: next.width, height: next.height });
-      if (next.x !== operation.startRect.x || next.y !== operation.startRect.y) {
-        dispatch({ type: 'move', id, x: next.x, y: next.y });
-      }
+      dispatch({ type: 'move', id, x: finalRect.x, y: finalRect.y });
+      return;
+    }
+    dispatch({ type: 'resize', id, width: finalRect.width, height: finalRect.height });
+    if (finalRect.x !== operation.startRect.x || finalRect.y !== operation.startRect.y) {
+      dispatch({ type: 'move', id, x: finalRect.x, y: finalRect.y });
     }
   };
   const endPointerOperation = (event: ReactPointerEvent<HTMLElement>) => {
-    if (operationRef.current?.pointerId !== event.pointerId) return;
+    const operation = operationRef.current;
+    if (operation?.pointerId !== event.pointerId) return;
+    operationRef.current = undefined;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    operationRef.current = undefined;
     setDragging(false);
+    commitPointerOperation(operation);
   };
   const losePointerOperation = (event: ReactPointerEvent<HTMLElement>) => {
-    if (operationRef.current?.pointerId === event.pointerId) {
+    const operation = operationRef.current;
+    if (operation?.pointerId === event.pointerId) {
       operationRef.current = undefined;
       setDragging(false);
+      commitPointerOperation(operation);
     }
   };
   const onDockedHeaderKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
@@ -351,6 +385,9 @@ export function WorkspacePanel({
       data-floating={mode === 'floating' || undefined}
       data-restoring={restoring || undefined}
       layout={dragging || restoring ? false : true}
+      // Motionは既定ではReact renderごとにlayoutを計測する。
+      // dock/floating切替だけを依存値にして、typing等のcontent renderでは計測しない。
+      layoutDependency={mode}
       layoutId={`workspace-panel:${id}`}
       layoutRoot={mode === 'floating'}
       ref={panelRef}
