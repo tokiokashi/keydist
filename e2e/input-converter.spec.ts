@@ -116,6 +116,65 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   await page.keyboard.up('j');
 });
 
+test('レイヤーカンペはtop layerで移動・リサイズしながら入力を継続できる', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const guide = page.getByLabel('レイヤーカンペ一覧');
+
+  await page.getByLabel('レイヤーカンペを浮かす').click();
+  await expect(guide).toHaveAttribute('data-floating', 'true');
+  await expect.poll(() =>
+    guide.evaluate((element) => element.matches(':popover-open'))).toBe(true);
+
+  const moveHandle = page.getByLabel('レイヤーカンペを移動');
+  const beforeMove = await guide.boundingBox();
+  const moveBox = await moveHandle.boundingBox();
+  expect(beforeMove).not.toBeNull();
+  expect(moveBox).not.toBeNull();
+  await page.mouse.move(moveBox!.x + 80, moveBox!.y + moveBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(moveBox!.x + 150, moveBox!.y + 55);
+  await page.mouse.up();
+  const afterMove = await guide.boundingBox();
+  expect(afterMove).not.toBeNull();
+  // Yはviewport下端でclampされ得る。少なくとも自由なX移動が反映されることを確認する。
+  expect(afterMove!.x).toBeGreaterThan(beforeMove!.x + 40);
+  expect(afterMove!.y).toBeGreaterThanOrEqual(12);
+
+  const resizeHandle = page.getByLabel('レイヤーカンペのサイズを変更');
+  const beforeResize = await guide.boundingBox();
+  const resizeBox = await resizeHandle.boundingBox();
+  expect(beforeResize).not.toBeNull();
+  expect(resizeBox).not.toBeNull();
+  await page.mouse.move(
+    resizeBox!.x + resizeBox!.width / 2,
+    resizeBox!.y + resizeBox!.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(resizeBox!.x + 120, resizeBox!.y + 90);
+  await page.mouse.up();
+  const afterResize = await guide.boundingBox();
+  expect(afterResize).not.toBeNull();
+  expect(afterResize!.width).toBeGreaterThan(beforeResize!.width + 60);
+  expect(afterResize!.height).toBeGreaterThan(beforeResize!.height + 40);
+
+  // Popoverは非モーダルなので、前面表示したまま入力テストを続けられる。
+  const output = page.getByLabel('自由入力テキスト');
+  await output.click();
+  await page.keyboard.press('f');
+  await expect(output).toHaveValue('か');
+  await expect(guide).toHaveAttribute('data-floating', 'true');
+
+  await page.getByRole('button', { name: 'レイヤーカンペを元に戻す' }).click();
+  await expect(guide).not.toHaveAttribute('data-floating');
+  await expect.poll(() =>
+    guide.evaluate((element) => element.matches(':popover-open'))).toBe(false);
+  await expect(guide).toBeVisible();
+});
+
 test('Recognized detail stays one row when one event realizes multiple inputs', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/input');
