@@ -116,6 +116,79 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   await page.keyboard.up('j');
 });
 
+test('docked panel headerは閾値drag・cancel・keyboardを区別する', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const guide = page.getByLabel('レイヤーカンペ一覧');
+  const dockedHeader = page.getByLabel('レイヤーカンペを小窓表示');
+  const headerBox = await dockedHeader.boundingBox();
+  expect(headerBox).not.toBeNull();
+  expect(await dockedHeader.evaluate((element) => getComputedStyle(element).touchAction))
+    .toBe('none');
+
+  const startX = headerBox!.x + Math.min(100, headerBox!.width / 2);
+  const startY = headerBox!.y + headerBox!.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX + 4, startY + 2);
+  await expect(guide).not.toHaveAttribute('data-floating');
+
+  // 8px thresholdを越えた時点でpointerを離さなくてもdetachし、そのままdragを継続する。
+  await page.mouse.move(startX + 20, startY + 2);
+  await expect(guide).toHaveAttribute('data-floating', 'true');
+  const afterDetach = await guide.boundingBox();
+  expect(afterDetach).not.toBeNull();
+  await page.mouse.move(startX + 90, startY + 2);
+  const afterContinuation = await guide.boundingBox();
+  expect(afterContinuation).not.toBeNull();
+  expect(afterContinuation!.x).toBeGreaterThan(afterDetach!.x + 40);
+  await page.mouse.up();
+
+  await page.getByRole('button', { name: 'レイヤーカンペを元に戻す' }).click();
+  await expect(guide).not.toHaveAttribute('data-floating');
+
+  // Keyboard fallback.
+  await dockedHeader.focus();
+  await page.keyboard.press('Enter');
+  await expect(guide).toHaveAttribute('data-floating', 'true');
+  await page.getByRole('button', { name: 'レイヤーカンペを元に戻す' }).click();
+
+  // blurでclick candidateを破棄し、後続moveがdetachを再開しない。
+  const resetBox = await dockedHeader.boundingBox();
+  expect(resetBox).not.toBeNull();
+  const resetX = resetBox!.x + Math.min(100, resetBox!.width / 2);
+  const resetY = resetBox!.y + resetBox!.height / 2;
+  await page.mouse.move(resetX, resetY);
+  await page.mouse.down();
+  await page.mouse.move(resetX + 3, resetY + 2);
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await page.mouse.move(resetX + 50, resetY + 2);
+  await expect(guide).not.toHaveAttribute('data-floating');
+  await page.mouse.up();
+
+  // Header内の明示buttonはdrag detach surfaceにしない。
+  if (await guide.getAttribute('data-floating') === 'true') {
+    await page.getByRole('button', { name: 'レイヤーカンペを元に戻す' }).click();
+  }
+  await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+  const cardFloatButton = guide.locator('.input-layer-card-float').first();
+  await expect(cardFloatButton).toBeVisible();
+  const buttonBox = await cardFloatButton.boundingBox();
+  expect(buttonBox).not.toBeNull();
+  await page.mouse.move(
+    buttonBox!.x + buttonBox!.width / 2,
+    buttonBox!.y + buttonBox!.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(buttonBox!.x + buttonBox!.width / 2 + 30, buttonBox!.y);
+  await expect(page.locator('.input-layer-card-floating')).toHaveCount(0);
+  await page.mouse.up();
+});
+
 test('レイヤーカンペはWorkspace overlayで移動・リサイズしながら入力を継続できる', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/input');
