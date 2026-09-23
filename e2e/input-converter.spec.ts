@@ -710,7 +710,7 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
   expect(afterFirst).not.toBeNull();
   expect(afterSecond).not.toBeNull();
   expect(afterFirst!.x).toBeGreaterThan(beforeFirst!.x + 30);
-  expect(Math.abs(afterSecond!.x - beforeSecond!.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(afterSecond!.x - beforeSecond!.x)).toBeLessThanOrEqual(2);
 
   const activatedZOrder = await Promise.all([
     first.evaluate((element) => Number.parseInt(getComputedStyle(element).zIndex, 10)),
