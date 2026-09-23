@@ -11,9 +11,9 @@ test('reverseLookupは薙刀式の複合かなをcanonical actionから逆引き
   assert.ok(layout);
   const routes = reverseLookup(layout, 'ぎゃ');
   assert.ok(routes.length > 0);
-  assert.ok(routes.some((route) =>
-    route.steps.some((step) => step.output === 'ぎゃ')
-    && /H|J|W/.test(reverseLookupRouteLabel(route))));
+  assert.equal(routes[0]?.steps.length, 1);
+  assert.equal(routes[0]?.steps[0]?.output, 'ぎゃ');
+  assert.match(reverseLookupRouteLabel(routes[0]!), /H|J|W/);
 });
 
 test('reverseLookupはTK音直の語彙comboを通常打鍵より優先する', () => {
