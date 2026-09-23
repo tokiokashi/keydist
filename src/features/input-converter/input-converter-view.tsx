@@ -50,6 +50,7 @@ import {
   reverseLookup,
   reverseLookupRouteLabel,
   reverseLookupStepLabel,
+  reverseLookupStepMatchesRecognition,
 } from './reverse-lookup.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
@@ -238,6 +239,7 @@ export function InputConverterView() {
   const [splitPercent, setSplitPercent] = useState(DEFAULT_SPLIT_PERCENT);
   const [lookupQuery, setLookupQuery] = useState('');
   const [lookupStepIndex, setLookupStepIndex] = useState(0);
+  const lastLookupRecognitionRef = useRef(session.lastRecognized);
   const guideGridRef = useRef<HTMLDivElement>(null);
   const [guideGridLayout, setGuideGridLayout] = useState<GuideGridLayout>({
     columns: 1,
@@ -478,6 +480,22 @@ export function InputConverterView() {
   useEffect(() => {
     setLookupStepIndex(0);
   }, [layout.id, lookupQuery]);
+
+  useEffect(() => {
+    if (session.lastRecognized === lastLookupRecognitionRef.current) return;
+    lastLookupRecognitionRef.current = session.lastRecognized;
+    if (session.lastRecognized.length === 0 || activeLookupRoute === undefined) return;
+
+    setLookupStepIndex((current) => {
+      const step = activeLookupRoute.steps[current];
+      if (
+        step === undefined
+        || !session.lastRecognized.some((recognized) =>
+          reverseLookupStepMatchesRecognition(step, recognized))
+      ) return current;
+      return Math.min(activeLookupRoute.steps.length - 1, current + 1);
+    });
+  }, [activeLookupRoute, session.lastRecognized]);
 
   useEffect(() => {
     const grid = guideGridRef.current;
