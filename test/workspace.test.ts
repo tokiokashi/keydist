@@ -1,0 +1,124 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+  createWorkspacePanelRegistry,
+  type WorkspacePanelDefinitionInput,
+} from '../src/workspace/panel-registry.ts';
+import {
+  createWorkspaceState,
+} from '../src/workspace/workspace-state.ts';
+import {
+  workspaceReducer,
+} from '../src/workspace/workspace-reducer.ts';
+import {
+  clampPanelRectToViewport,
+} from '../src/workspace/viewport-clamp.ts';
+
+const definitionInputs: WorkspacePanelDefinitionInput[] = [
+  { id: 'input.keyboard', title: 'Keyboard', defaultDockSlot: 'main', minWidth: 240 },
+  { id: 'input.details', title: 'Details', defaultDockSlot: 'side', canHide: true },
+  { id: 'input.layer:thumb-l', title: 'Layer', defaultDockSlot: 'guide', canFloat: false },
+];
+
+const registry = createWorkspacePanelRegistry(definitionInputs);
+const definitions = [...registry.values()];
+
+test('workspace registry rejects invalid ids and normalizes capabilities', () => {
+  assert.throws(
+    () => createWorkspacePanelRegistry([{ ...definitionInputs[0]!, id: '' }]),
+    /must not be empty/,
+  );
+  assert.throws(
+    () => createWorkspacePanelRegistry([definitionInputs[0]!, definitionInputs[0]!]),
+    /Duplicate workspace panel id/,
+  );
+
+  assert.equal(registry.get('input.keyboard')?.canFloat, true);
+  assert.equal(registry.get('input.keyboard')?.canHide, false);
+  assert.equal(registry.get('input.details')?.canHide, true);
+  assert.equal(registry.get('input.layer:thumb-l')?.canFloat, false);
+});
+
+test('workspace state starts docked and keeps bottom-to-top registration order', () => {
+  const state = createWorkspaceState(definitions);
+
+  assert.equal(state.version, 1);
+  assert.deepEqual(state.zOrder, definitions.map(({ id }) => id));
+  assert.deepEqual(state.panels['input.keyboard'], {
+    visible: true,
+    mode: 'docked',
+    dockSlot: 'main',
+  });
+  assert.equal(state.panels['missing'], undefined);
+});
+
+test('workspace reducer handles float, move, resize, activate, visibility and dock', () => {
+  let state = createWorkspaceState(definitions);
+
+  state = workspaceReducer(state, {
+    type: 'float',
+    id: 'input.keyboard',
+    rect: { x: 10, y: 20, width: 400, height: 300 },
+  });
+  assert.equal(state.panels['input.keyboard']?.mode, 'floating');
+  assert.equal(state.zOrder.at(-1), 'input.keyboard');
+
+  state = workspaceReducer(state, { type: 'move', id: 'input.keyboard', x: 30, y: 40 });
+  state = workspaceReducer(state, { type: 'resize', id: 'input.keyboard', width: 480, height: 320 });
+  assert.deepEqual(state.panels['input.keyboard']?.rect, {
+    x: 30,
+    y: 40,
+    width: 480,
+    height: 320,
+  });
+
+  state = workspaceReducer(state, { type: 'activate', id: 'input.details' });
+  assert.deepEqual(state.zOrder, [
+    'input.layer:thumb-l',
+    'input.keyboard',
+    'input.details',
+  ]);
+
+  state = workspaceReducer(state, { type: 'set-visible', id: 'input.details', visible: false });
+  assert.equal(state.panels['input.details']?.visible, false);
+
+  state = workspaceReducer(state, { type: 'dock', id: 'input.keyboard' });
+  assert.equal(state.panels['input.keyboard']?.mode, 'docked');
+  assert.deepEqual(state.panels['input.keyboard']?.rect, {
+    x: 30,
+    y: 40,
+    width: 480,
+    height: 320,
+  });
+});
+
+test('workspace reducer ignores unknown panel ids', () => {
+  const state = createWorkspaceState(definitions);
+  assert.equal(workspaceReducer(state, { type: 'activate', id: 'missing' }), state);
+  assert.equal(
+    workspaceReducer(state, { type: 'set-visible', id: 'missing', visible: false }),
+    state,
+  );
+});
+
+test('viewport clamp restores a panel fully inside the current viewport', () => {
+  assert.deepEqual(
+    clampPanelRectToViewport(
+      { x: 1800, y: 1000, width: 700, height: 500 },
+      { width: 1280, height: 720 },
+      { minWidth: 320, minHeight: 180 },
+    ),
+    { x: 580, y: 220, width: 700, height: 500 },
+  );
+});
+
+test('viewport clamp respects minimum size but never exceeds the viewport', () => {
+  assert.deepEqual(
+    clampPanelRectToViewport(
+      { x: -20, y: Number.NaN, width: 10, height: 10 },
+      { width: 200, height: 100 },
+      { minWidth: 320, minHeight: 180 },
+    ),
+    { x: 0, y: 0, width: 200, height: 100 },
+  );
+});
