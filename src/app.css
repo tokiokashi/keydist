@@ -856,9 +856,39 @@ h1 {
   min-width: 0;
 }
 
-.input-lookup-field > span {
+.input-lookup-field-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.input-lookup-field-heading > span:first-child {
+  flex: 0 0 auto;
   font-size: 0.7rem;
   font-weight: 700;
+}
+
+.input-random-samples {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.25rem;
+  color: #686862;
+  font-size: 0.64rem;
+  white-space: nowrap;
+}
+
+.input-random-samples button {
+  min-height: 1.45rem;
+  padding: 0 0.38rem;
+  border: 1px solid #c9c9c3;
+  border-radius: 0.35rem;
+  background: #fff;
+  font: inherit;
+  color: #171717;
+  cursor: pointer;
 }
 
 .input-lookup-field input {
