@@ -283,14 +283,14 @@ export function InputConverterView() {
       },
       {
         id: INPUT_TYPING_PANEL_ID,
-        title: '入力',
+        title: 'テキストを入力',
         defaultDockSlot: 'input.main.typing',
         minWidth: 320,
         minHeight: 160,
       },
       {
         id: INPUT_KEYBOARD_PANEL_ID,
-        title: 'Keyboard',
+        title: 'キー入力表示',
         defaultDockSlot: 'input.main.keyboard',
         minWidth: 480,
         minHeight: 360,
@@ -304,7 +304,7 @@ export function InputConverterView() {
       },
       {
         id: INPUT_DETAILS_PANEL_ID,
-        title: '入力詳細',
+        title: 'Key info.',
         defaultDockSlot: 'input.keyboard.details',
         minWidth: 280,
         minHeight: 160,
@@ -1023,21 +1023,21 @@ export function InputConverterView() {
 
         <section className="input-main">
           <WorkspacePanel
-            ariaLabel="入力"
+            ariaLabel="テキストを入力"
             className="input-capture-panel"
             defaultFloatingHeight={180}
             defaultFloatingWidth={520}
-            dockedHeaderAriaLabel="入力パネルをクリックまたはドラッグして小窓表示"
+            dockedHeaderAriaLabel="テキストを入力パネルをクリックまたはドラッグして小窓表示"
             floatOnHeaderClick
-            floatingHeaderAriaLabel="入力パネルを移動"
+            floatingHeaderAriaLabel="テキストを入力パネルを移動"
             headerClassName="input-capture-heading"
             id={INPUT_TYPING_PANEL_ID}
             minHeight={160}
             minWidth={320}
-            resizeAriaLabel="入力パネルのサイズを変更"
+            resizeAriaLabel="テキストを入力パネルのサイズを変更"
             renderHeader={({ mode, dock }) => (
               <>
-                <strong>入力</strong>
+                <strong>テキストを入力</strong>
                 {randomPracticeMode !== null ? (
                   <span
                     className="input-random-practice-status"
@@ -1052,7 +1052,7 @@ export function InputConverterView() {
                 <button type="button" onClick={session.clear}>クリア</button>
                 {mode === 'floating' ? (
                   <button
-                    aria-label="入力パネルを元に戻す"
+                    aria-label="テキストを入力パネルを元に戻す"
                     onClick={dock}
                     type="button"
                   >
@@ -1125,69 +1125,24 @@ export function InputConverterView() {
           </WorkspacePanel>
 
           <WorkspacePanel
-            ariaLabel="Keyboard"
+            ariaLabel="キー入力表示"
             className="input-keyboard-panel"
             defaultFloatingHeight={560}
             defaultFloatingWidth={760}
-            dockedHeaderAriaLabel="表示設定"
+            dockedHeaderAriaLabel="キー入力表示パネルをクリックまたはドラッグして小窓表示"
             floatOnHeaderClick
-            floatingHeaderAriaLabel="Keyboardパネルを移動"
-            headerClassName="input-display-options"
+            floatingHeaderAriaLabel="キー入力表示パネルを移動"
+            headerClassName="input-keyboard-panel-heading"
             id={INPUT_KEYBOARD_PANEL_ID}
             minHeight={360}
             minWidth={480}
-            resizeAriaLabel="Keyboardパネルのサイズを変更"
+            resizeAriaLabel="キー入力表示パネルのサイズを変更"
             renderHeader={({ mode, dock }) => (
               <>
-                <strong>表示</strong>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={showDynamicGuide}
-                    onChange={(event) => setShowDynamicGuide(event.target.checked)}
-                  />
-                  動的ガイド
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={showLayerGuide}
-                    onChange={(event) => {
-                      if (!event.target.checked) {
-                        workspace.dispatch({ type: 'dock', id: INPUT_LAYER_GUIDE_PANEL_ID });
-                        for (const definition of guideDefinitions) {
-                          workspace.dispatch({
-                            type: 'dock',
-                            id: layerGuideCardPanelId(definition.id),
-                          });
-                        }
-                      }
-                      setShowLayerGuide(event.target.checked);
-                    }}
-                  />
-                  レイヤーカンペ
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={showLayerKeys}
-                    onChange={(event) => setShowLayerKeys(event.target.checked)}
-                  />
-                  レイヤーキー
-                </label>
-                {hasShiftKeys ? (
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={showShiftKeys}
-                      onChange={(event) => setShowShiftKeys(event.target.checked)}
-                    />
-                    Shiftキー
-                  </label>
-                ) : null}
+                <strong>キー入力表示</strong>
                 {mode === 'floating' ? (
                   <button
-                    aria-label="Keyboardパネルを元に戻す"
+                    aria-label="キー入力表示パネルを元に戻す"
                     className="input-panel-dock"
                     onClick={dock}
                     type="button"
@@ -1198,8 +1153,55 @@ export function InputConverterView() {
               </>
             )}
           >
+            <div className="input-display-options" aria-label="表示設定">
+              <strong>表示</strong>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showDynamicGuide}
+                  onChange={(event) => setShowDynamicGuide(event.target.checked)}
+                />
+                動的ガイド
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showLayerGuide}
+                  onChange={(event) => {
+                    if (!event.target.checked) {
+                      workspace.dispatch({ type: 'dock', id: INPUT_LAYER_GUIDE_PANEL_ID });
+                      for (const definition of guideDefinitions) {
+                        workspace.dispatch({
+                          type: 'dock',
+                          id: layerGuideCardPanelId(definition.id),
+                        });
+                      }
+                    }
+                    setShowLayerGuide(event.target.checked);
+                  }}
+                />
+                レイヤーカンペ
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showLayerKeys}
+                  onChange={(event) => setShowLayerKeys(event.target.checked)}
+                />
+                レイヤーキー
+              </label>
+              {hasShiftKeys ? (
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={showShiftKeys}
+                    onChange={(event) => setShowShiftKeys(event.target.checked)}
+                  />
+                  Shiftキー
+                </label>
+              ) : null}
+            </div>
             <header className="input-keyboard-heading">
-              <strong>Keyboard</strong>
               {bindingTargetKey === undefined ? (
                 <span className="input-keyboard-help">
                   入力と違う位置になる場合、キーをクリックすることで次に押した実キーをその位置へ割り当てられます。
@@ -1421,24 +1423,24 @@ export function InputConverterView() {
               </div>
 
               <WorkspacePanel
-                ariaLabel="入力詳細"
+                ariaLabel="Key info."
                 className="input-debug"
                 defaultFloatingHeight={260}
                 defaultFloatingWidth={380}
-                dockedHeaderAriaLabel="入力詳細パネルをクリックまたはドラッグして小窓表示"
+                dockedHeaderAriaLabel="Key info.パネルをクリックまたはドラッグして小窓表示"
                 floatOnHeaderClick
-                floatingHeaderAriaLabel="入力詳細パネルを移動"
+                floatingHeaderAriaLabel="Key info.パネルを移動"
                 headerClassName="input-debug-heading"
                 id={INPUT_DETAILS_PANEL_ID}
                 minHeight={160}
                 minWidth={280}
-                resizeAriaLabel="入力詳細パネルのサイズを変更"
+                resizeAriaLabel="Key info.パネルのサイズを変更"
                 renderHeader={({ mode, dock }) => (
                   <>
-                    <strong>入力詳細</strong>
+                    <strong>Key info.</strong>
                     {mode === 'floating' ? (
                       <button
-                        aria-label="入力詳細パネルを元に戻す"
+                        aria-label="Key info.パネルを元に戻す"
                         className="input-panel-dock"
                         onClick={dock}
                         type="button"

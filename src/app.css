@@ -262,6 +262,17 @@ h1 {
   background: #fff;
 }
 
+.workspace-panel-header {
+  box-sizing: border-box;
+  border-bottom: 1px solid #d2d2cc;
+  background: #efefec;
+  box-shadow: inset 0 1px rgb(255 255 255 / 65%);
+}
+
+.workspace-panel-header[data-floating] {
+  background: #e9e9e6;
+}
+
 .input-settings-panel {
   overflow: hidden;
   flex: 0 0 auto;
@@ -283,8 +294,9 @@ h1 {
 }
 
 .input-debug-heading {
-  min-height: 1.55rem;
-  margin-bottom: 0.35rem;
+  min-height: 2rem;
+  margin: 0;
+  padding: 0.4rem 0.6rem;
 }
 
 .input-debug-heading > strong {
@@ -296,10 +308,6 @@ h1 {
   padding: 0.55rem 0.75rem;
   cursor: pointer;
   user-select: none;
-}
-
-.input-settings-panel-open > .input-panel-heading {
-  border-bottom: 1px solid #e2e2dd;
 }
 
 .input-panel-heading > span {
@@ -360,9 +368,9 @@ h1 {
   align-items: center;
   gap: 0.45rem 0.8rem;
   margin: 0 0 0.6rem;
-  padding: 0.55rem 0.65rem;
+  padding: 0.5rem 0.6rem;
   border: 1px solid #e0e0db;
-  border-radius: 0.6rem;
+  border-radius: 0.55rem;
   background: #fafaf8;
   font-size: 0.76rem;
 }
@@ -489,12 +497,14 @@ h1 {
 
 .input-capture-panel {
   flex: 0 0 auto;
-  padding: 0.7rem;
+  padding: 0 0.7rem 0.7rem;
+  overflow: hidden;
 }
 
 .input-capture-heading {
-  min-height: 1.9rem;
-  margin-bottom: 0.45rem;
+  min-height: 2.25rem;
+  margin: 0 -0.7rem 0.55rem;
+  padding: 0.45rem 0.65rem;
 }
 
 .input-capture-heading > strong {
@@ -586,19 +596,18 @@ h1 {
   flex-direction: column;
   min-height: 10rem;
   overflow: hidden;
-  padding: 0.7rem 0.85rem 0.8rem;
+  padding: 0 0.85rem 0.8rem;
   container: input-keyboard-panel / inline-size;
+}
+
+.input-keyboard-panel-heading {
+  min-height: 2.35rem;
+  margin: 0 -0.85rem 0.55rem;
+  padding: 0.45rem 0.7rem;
 }
 
 .input-keyboard-heading {
   min-height: 2.1rem;
-}
-
-.input-keyboard-heading > strong {
-  flex: 0 0 auto;
-  font-size: 0.8rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .input-keyboard-help {
@@ -842,7 +851,6 @@ h1 {
 
 .input-layer-guide > header {
   padding: 0.65rem 0.75rem;
-  border-bottom: 1px solid #e2e2dd;
 }
 
 .input-layer-guide > header span {
@@ -937,7 +945,9 @@ h1 {
 .input-layer-card > header {
   display: flex;
   gap: 0.4rem;
-  align-items: baseline;
+  align-items: center;
+  margin: -0.65rem -0.65rem 0.55rem;
+  padding: 0.42rem 0.55rem;
 }
 
 .input-layer-card h3 {
@@ -1332,7 +1342,6 @@ h1 {
 
 .input-debug-heading {
   min-width: 0;
-  padding: 0.45rem 0.65rem 0;
 }
 
 .input-keyboard-content > .input-debug {

@@ -11,7 +11,7 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   const guide = page.getByLabel('レイヤーカンペ一覧');
   const capture = page.locator('.input-capture-panel');
   const keyboardPanel = page.locator('.input-keyboard-panel');
-  const details = page.getByLabel('入力詳細', { exact: true });
+  const details = page.getByLabel('Key info.', { exact: true });
   const layerLabel = page.locator('.input-active-layer');
   const splitter = page.getByRole('separator', { name: 'カンペと入力領域の幅を調整' });
 
@@ -199,9 +199,9 @@ test('入力詳細panelはヘッダーから独立小窓化し元へ戻せる', 
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const panel = page.getByLabel('入力詳細', { exact: true });
+  const panel = page.getByLabel('Key info.', { exact: true });
   const dockedHeader = page.getByLabel(
-    '入力詳細パネルをクリックまたはドラッグして小窓表示',
+    'Key info.パネルをクリックまたはドラッグして小窓表示',
   );
 
   // header内にはtitleのみ（controlは無い）。titleクリックで小窓化する。
@@ -211,7 +211,7 @@ test('入力詳細panelはヘッダーから独立小窓化し元へ戻せる', 
 
   // 小窓表示領域（floating root）へportalされている。
   await expect(
-    page.locator('#workspace-floating-root').getByLabel('入力詳細', { exact: true }),
+    page.locator('#workspace-floating-root').getByLabel('Key info.', { exact: true }),
   ).toHaveCount(1);
 
   // 小窓化してもRecognized detailの内容は保たれる。
@@ -219,7 +219,7 @@ test('入力詳細panelはヘッダーから独立小窓化し元へ戻せる', 
 
   // 最小サイズまで縮めてbodyをスクロールしても、headerと「戻す」buttonは
   // panelの表示範囲内に留まる（.input-inspectorだけがscrollし、headerはscrollしない）。
-  const resizeHandle = page.getByLabel('入力詳細パネルのサイズを変更');
+  const resizeHandle = page.getByLabel('Key info.パネルのサイズを変更');
   const resizeBox = await resizeHandle.boundingBox();
   expect(resizeBox).not.toBeNull();
   await page.mouse.move(resizeBox!.x + resizeBox!.width / 2, resizeBox!.y + resizeBox!.height / 2);
@@ -232,7 +232,7 @@ test('入力詳細panelはヘッダーから独立小窓化し元へ戻せる', 
     return box === null ? -1 : Math.round(box.height);
   }).toBeLessThanOrEqual(165);
 
-  const backButton = panel.getByRole('button', { name: '入力詳細パネルを元に戻す' });
+  const backButton = panel.getByRole('button', { name: 'Key info.パネルを元に戻す' });
   await panel.locator('.input-inspector').evaluate((element) => {
     element.scrollTop = element.scrollHeight;
   });
@@ -253,10 +253,10 @@ test('入力詳細panelはヘッダーから独立小窓化し元へ戻せる', 
     .toBeLessThanOrEqual(panelBox!.y + panelBox!.height + 0.5);
   await expect(backButton).toBeVisible();
 
-  await panel.getByRole('button', { name: '入力詳細パネルを元に戻す' }).click();
+  await panel.getByRole('button', { name: 'Key info.パネルを元に戻す' }).click();
   await expect(panel).not.toHaveAttribute('data-floating');
   await expect(
-    page.locator('#workspace-floating-root').getByLabel('入力詳細', { exact: true }),
+    page.locator('#workspace-floating-root').getByLabel('Key info.', { exact: true }),
   ).toHaveCount(0);
 });
 
@@ -307,7 +307,7 @@ test('入力panelは小窓化してもtyping sessionとcontrolsを維持する',
   const panel = page.locator('.input-capture-panel');
   const output = page.getByLabel('自由入力テキスト');
 
-  await page.getByLabel('入力パネルをクリックまたはドラッグして小窓表示').click();
+  await page.getByLabel('テキストを入力パネルをクリックまたはドラッグして小窓表示').click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await output.click();
   await page.keyboard.press('f');
@@ -315,7 +315,7 @@ test('入力panelは小窓化してもtyping sessionとcontrolsを維持する',
 
   await panel.getByRole('button', { name: 'クリア' }).click();
   await expect(output).toHaveValue('');
-  await panel.getByRole('button', { name: '入力パネルを元に戻す' }).click();
+  await panel.getByRole('button', { name: 'テキストを入力パネルを元に戻す' }).click();
   await expect(panel).not.toHaveAttribute('data-floating');
 });
 
@@ -328,7 +328,7 @@ test('floating Keyboardのresponsiveは外側splitではなく小窓自身の幅
   const splitter = page.getByRole('separator', { name: 'カンペと入力領域の幅を調整' });
   const panel = page.locator('.input-keyboard-panel');
   const keyboardMain = panel.locator('.input-keyboard-main');
-  const details = panel.getByLabel('入力詳細', { exact: true });
+  const details = panel.getByLabel('Key info.', { exact: true });
 
   const placement = async () => {
     const [mainBox, detailBox] = await Promise.all([
@@ -360,7 +360,7 @@ test('floating Keyboardのresponsiveは外側splitではなく小窓自身の幅
   await expect.poll(placement).toBe('side');
 
   // 小窓自身を狭めた時だけstackedへ切り替わる。
-  const resizeHandle = page.getByLabel('Keyboardパネルのサイズを変更');
+  const resizeHandle = page.getByLabel('キー入力表示パネルのサイズを変更');
   const resizeBox = await resizeHandle.boundingBox();
   expect(resizeBox).not.toBeNull();
   await page.mouse.move(
@@ -380,11 +380,11 @@ test('入力panelのresize handleはtextareaより前面で操作できる', asy
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   const panel = page.locator('.input-capture-panel');
-  await page.getByLabel('入力パネルをクリックまたはドラッグして小窓表示').click();
+  await page.getByLabel('テキストを入力パネルをクリックまたはドラッグして小窓表示').click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
 
   const before = await panel.boundingBox();
-  const handle = page.getByLabel('入力パネルのサイズを変更');
+  const handle = page.getByLabel('テキストを入力パネルのサイズを変更');
   const handleBox = await handle.boundingBox();
   expect(before).not.toBeNull();
   expect(handleBox).not.toBeNull();
@@ -409,6 +409,7 @@ test('Keyboard panelは表示controlsを保ったまま小窓化できる', asyn
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   const panel = page.locator('.input-keyboard-panel');
   const displayHeader = page.getByLabel('表示設定');
+  const keyboardHeader = page.getByLabel('キー入力表示パネルをクリックまたはドラッグして小窓表示');
   const dynamicGuide = page.getByLabel('動的ガイド');
 
   // Header内のcheckbox操作はdetachしない。
@@ -416,7 +417,7 @@ test('Keyboard panelは表示controlsを保ったまま小窓化できる', asyn
   await expect(panel).not.toHaveAttribute('data-floating');
   await dynamicGuide.click();
 
-  await displayHeader.getByText('表示', { exact: true }).click();
+  await keyboardHeader.getByText('キー入力表示', { exact: true }).click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect(page.getByRole('img', { name: '現在の物理キー状態' })).toBeVisible();
 
@@ -425,7 +426,7 @@ test('Keyboard panelは表示controlsを保ったまま小窓化できる', asyn
   await page.keyboard.press('f');
   await expect(output).toHaveValue('か');
 
-  await panel.getByRole('button', { name: 'Keyboardパネルを元に戻す' }).click();
+  await panel.getByRole('button', { name: 'キー入力表示パネルを元に戻す' }).click();
   await expect(panel).not.toHaveAttribute('data-floating');
 });
 
@@ -851,6 +852,7 @@ test('#regression Keyboardパネルのdocked headerはcheckbox Spaceを飲み込
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   const panel = page.locator('.input-keyboard-panel');
   const displayHeader = page.getByLabel('表示設定');
+  const keyboardHeader = page.getByLabel('キー入力表示パネルをクリックまたはドラッグして小窓表示');
   const layerGuideCheckbox = displayHeader.getByLabel('レイヤーカンペ', { exact: true });
 
   // checkboxへフォーカスしたSpaceは、headerのkeydown guardに飲まれず
@@ -867,7 +869,7 @@ test('#regression Keyboardパネルのdocked headerはcheckbox Spaceを飲み込
   await expect(panel).not.toHaveAttribute('data-floating');
 
   // header自身へのEnterはガード対象外なので小窓化する。
-  await displayHeader.focus();
+  await keyboardHeader.focus();
   await page.keyboard.press('Enter');
   await expect(panel).toHaveAttribute('data-floating', 'true');
 });
@@ -880,7 +882,7 @@ test('Recognized detail stays one row when one event realizes multiple inputs', 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   const output = page.getByLabel('自由入力テキスト');
-  const recognizedSection = page.getByLabel('入力詳細', { exact: true })
+  const recognizedSection = page.getByLabel('Key info.', { exact: true })
     .locator('.input-inspector > section')
     .nth(1);
 
@@ -910,7 +912,7 @@ test('Recognized detail stays one row for the reported k/j re-press sequence', a
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   const output = page.getByLabel('自由入力テキスト');
-  const recognizedRows = page.getByLabel('入力詳細', { exact: true })
+  const recognizedRows = page.getByLabel('Key info.', { exact: true })
     .locator('.input-recognized');
 
   await output.click();
@@ -938,7 +940,7 @@ test('Recognized detail keeps the same typography and height before and after in
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
-  const recognizedSection = page.getByLabel('入力詳細', { exact: true })
+  const recognizedSection = page.getByLabel('Key info.', { exact: true })
     .locator('.input-inspector > section')
     .nth(1);
   const empty = recognizedSection.locator('.input-recognized-empty');
