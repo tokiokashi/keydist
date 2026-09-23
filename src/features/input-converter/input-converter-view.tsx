@@ -115,41 +115,15 @@ type GuideGridLayout = {
   cardMaxWidthPx: number | null;
 };
 
-type FloatingGuideRect = {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-};
-
-type FloatingGuidePointerOperation = {
-  kind: 'move' | 'resize';
-  pointerId: number;
-  startX: number;
-  startY: number;
-  startRect: FloatingGuideRect;
-};
-
-type FloatingLayerCardPointerOperation = FloatingGuidePointerOperation & {
-  layerId: string;
-};
-
 const MIN_FLOATING_GUIDE_WIDTH = 320;
 const MIN_FLOATING_GUIDE_HEIGHT = 240;
 const FLOATING_GUIDE_VIEWPORT_GAP = 12;
 
 const INPUT_LAYER_GUIDE_PANEL_ID = 'input.layer-guide';
-const INPUT_WORKSPACE_PANEL_DEFINITIONS = [
-  ...createWorkspacePanelRegistry([
-    {
-      id: INPUT_LAYER_GUIDE_PANEL_ID,
-      title: 'レイヤーカンペ',
-      defaultDockSlot: 'input.sidebar.guide',
-      minWidth: MIN_FLOATING_GUIDE_WIDTH,
-      minHeight: MIN_FLOATING_GUIDE_HEIGHT,
-    },
-  ]).values(),
-];
+
+function layerGuideCardPanelId(layerId: string): string {
+  return `input.layer:${layerId}`;
+}
 
 function px(value: string): number {
   const parsed = Number.parseFloat(value);
@@ -291,12 +265,30 @@ export function InputConverterView() {
   const [randomPracticeMode, setRandomPracticeMode] =
     useState<RandomPracticeMode | null>(null);
   const guideGridRef = useRef<HTMLDivElement>(null);
-  const floatingLayerCardRefs = useRef(new Map<string, HTMLElement>());
-  const floatingLayerCardPointerRef =
-    useRef<FloatingLayerCardPointerOperation | undefined>(undefined);
-  const [floatingLayerCards, setFloatingLayerCards] =
-    useState<Record<string, FloatingGuideRect>>({});
-  const workspace = useWorkspace(INPUT_WORKSPACE_PANEL_DEFINITIONS);
+  const guideDefinitions = useMemo(
+    () => compactLayerGuideDefinitions(layout),
+    [layout],
+  );
+  const workspacePanelDefinitions = useMemo(
+    () => [...createWorkspacePanelRegistry([
+      {
+        id: INPUT_LAYER_GUIDE_PANEL_ID,
+        title: 'レイヤーカンペ',
+        defaultDockSlot: 'input.sidebar.guide',
+        minWidth: MIN_FLOATING_GUIDE_WIDTH,
+        minHeight: MIN_FLOATING_GUIDE_HEIGHT,
+      },
+      ...guideDefinitions.map((definition) => ({
+        id: layerGuideCardPanelId(definition.id),
+        title: definition.label,
+        defaultDockSlot: 'input.sidebar.guide',
+        minWidth: MIN_FLOATING_GUIDE_WIDTH,
+        minHeight: MIN_FLOATING_GUIDE_HEIGHT,
+      })),
+    ]).values()],
+    [guideDefinitions],
+  );
+  const workspace = useWorkspace(workspacePanelDefinitions);
   const [guideGridLayout, setGuideGridLayout] = useState<GuideGridLayout>({
     columns: 1,
     cardMaxWidthPx: null,
@@ -317,93 +309,35 @@ export function InputConverterView() {
     setSplitPercent(clampSplitPercent(((clientX - bounds.left) / bounds.width) * 100));
   };
 
-  const clampFloatingGuideRect = (rect: FloatingGuideRect): FloatingGuideRect => {
-    const maxWidth = Math.max(
-      MIN_FLOATING_GUIDE_WIDTH,
-      window.innerWidth - FLOATING_GUIDE_VIEWPORT_GAP * 2,
-    );
-    const maxHeight = Math.max(
-      MIN_FLOATING_GUIDE_HEIGHT,
-      window.innerHeight - FLOATING_GUIDE_VIEWPORT_GAP * 2,
-    );
-    const width = Math.min(maxWidth, Math.max(MIN_FLOATING_GUIDE_WIDTH, rect.width));
-    const height = Math.min(maxHeight, Math.max(MIN_FLOATING_GUIDE_HEIGHT, rect.height));
-    const left = Math.min(
-      Math.max(FLOATING_GUIDE_VIEWPORT_GAP, rect.left),
-      Math.max(FLOATING_GUIDE_VIEWPORT_GAP, window.innerWidth - width - FLOATING_GUIDE_VIEWPORT_GAP),
-    );
-    const top = Math.min(
-      Math.max(FLOATING_GUIDE_VIEWPORT_GAP, rect.top),
-      Math.max(FLOATING_GUIDE_VIEWPORT_GAP, window.innerHeight - height - FLOATING_GUIDE_VIEWPORT_GAP),
-    );
-    return { left, top, width, height };
-  };
-
-  const floatLayerCard = (layerId: string, source: HTMLElement) => {
+  const initialLayerCardRect = (source: HTMLElement) => {
     const bounds = source.closest<HTMLElement>('.input-layer-card')?.getBoundingClientRect();
-    setFloatingLayerCards((current) => {
-      const width = Math.max(420, bounds?.width ?? 420);
-      const height = Math.max(280, bounds?.height ?? 280);
-      const slot = Object.keys(current).length;
-      const gap = 16;
-      const columns = Math.max(
-        1,
-        Math.floor(
-          (window.innerWidth - FLOATING_GUIDE_VIEWPORT_GAP * 2 + gap)
-          / (width + gap),
-        ),
-      );
-      const column = slot % columns;
-      const row = Math.floor(slot / columns);
-
-      return {
-        ...current,
-        [layerId]: clampFloatingGuideRect({
-          left: (bounds?.left ?? FLOATING_GUIDE_VIEWPORT_GAP)
-            + column * (width + gap),
-          top: (bounds?.top ?? FLOATING_GUIDE_VIEWPORT_GAP) + row * 48,
-          width,
-          height,
-        }),
-      };
-    });
-  };
-
-  const dockLayerCard = (layerId: string) => {
-    const card = floatingLayerCardRefs.current.get(layerId);
-    if (card?.matches(':popover-open')) card.hidePopover();
-    floatingLayerCardRefs.current.delete(layerId);
-    if (floatingLayerCardPointerRef.current?.layerId === layerId) {
-      floatingLayerCardPointerRef.current = undefined;
-    }
-    setFloatingLayerCards((current) => {
-      const next = { ...current };
-      delete next[layerId];
-      return next;
-    });
-  };
-
-  const moveFloatingLayerCard = (clientX: number, clientY: number) => {
-    const operation = floatingLayerCardPointerRef.current;
-    if (operation === undefined) return;
-    const dx = clientX - operation.startX;
-    const dy = clientY - operation.startY;
-    setFloatingLayerCards((current) => ({
-      ...current,
-      [operation.layerId]: clampFloatingGuideRect(
-        operation.kind === 'move'
-          ? {
-              ...operation.startRect,
-              left: operation.startRect.left + dx,
-              top: operation.startRect.top + dy,
-            }
-          : {
-              ...operation.startRect,
-              width: operation.startRect.width + dx,
-              height: operation.startRect.height + dy,
-            },
+    const width = Math.max(420, bounds?.width ?? 420);
+    const height = Math.max(280, bounds?.height ?? 280);
+    const slot = guideDefinitions.reduce(
+      (count, definition) => (
+        workspace.state.panels[layerGuideCardPanelId(definition.id)]?.mode === 'floating'
+          ? count + 1
+          : count
       ),
-    }));
+      0,
+    );
+    const gap = 16;
+    const columns = Math.max(
+      1,
+      Math.floor(
+        (window.innerWidth - FLOATING_GUIDE_VIEWPORT_GAP * 2 + gap)
+        / (width + gap),
+      ),
+    );
+    const column = slot % columns;
+    const row = Math.floor(slot / columns);
+
+    return {
+      x: (bounds?.left ?? FLOATING_GUIDE_VIEWPORT_GAP) + column * (width + gap),
+      y: (bounds?.top ?? FLOATING_GUIDE_VIEWPORT_GAP) + row * 48,
+      width,
+      height,
+    };
   };
 
   useEffect(() => {
@@ -495,10 +429,6 @@ export function InputConverterView() {
   const layerKeys = useMemo(() => allLayerTriggerKeys(layout), [layout]);
   const layerKeyColorSlots = useMemo(
     () => presentationTriggerColorSlots(layout),
-    [layout],
-  );
-  const guideDefinitions = useMemo(
-    () => compactLayerGuideDefinitions(layout),
     [layout],
   );
   const playableRandomSamples = useMemo(() => ({
@@ -717,18 +647,6 @@ export function InputConverterView() {
   ]);
 
   useEffect(() => {
-    for (const layerId of Object.keys(floatingLayerCards)) {
-      const card = floatingLayerCardRefs.current.get(layerId);
-      if (card !== undefined && !card.matches(':popover-open')) card.showPopover();
-    }
-  }, [floatingLayerCards]);
-
-  useEffect(() => {
-    setFloatingLayerCards({});
-    floatingLayerCardPointerRef.current = undefined;
-  }, [layout.id]);
-
-  useEffect(() => {
     const grid = guideGridRef.current;
     if (grid === null || guideDefinitions.length === 0) return;
 
@@ -910,41 +828,67 @@ export function InputConverterView() {
                       },
                     ]),
                   );
-                  const floating = floatingLayerCards[definition.id] !== undefined;
-                  if (floating) {
-                    return (
-                      <section className="input-layer-card-placeholder" key={definition.id}>
-                        <strong>{definition.label}</strong>
-                        <span>小窓表示中</span>
-                        <button
-                          aria-label={`${definition.label}を元に戻す`}
-                          onClick={() => dockLayerCard(definition.id)}
-                          type="button"
-                        >
-                          戻す
-                        </button>
-                      </section>
-                    );
-                  }
+                  const panelId = layerGuideCardPanelId(definition.id);
+                  const floating = workspace.state.panels[panelId]?.mode === 'floating';
 
                   return (
-                    <section className="input-layer-card" key={definition.id}>
-                      <h3>
-                        <span>
-                          {definition.label}
-                          {definition.presentationModeLabel
-                            ? <small>{definition.presentationModeLabel}</small>
-                            : null}
-                        </span>
-                        <button
-                          aria-label={`${definition.label}を小窓表示`}
-                          className="input-layer-card-float"
-                          onClick={(event) => floatLayerCard(definition.id, event.currentTarget)}
-                          type="button"
-                        >
-                          小窓表示
-                        </button>
-                      </h3>
+                    <WorkspacePanel
+                      ariaLabel={`${definition.label} 個別カンペ`}
+                      className={floating
+                        ? 'input-layer-card input-layer-card-floating'
+                        : 'input-layer-card'}
+                      defaultFloatingHeight={280}
+                      defaultFloatingWidth={420}
+                      floatingHeaderAriaLabel={`${definition.label}カンペを移動`}
+                      id={panelId}
+                      key={definition.id}
+                      minHeight={MIN_FLOATING_GUIDE_HEIGHT}
+                      minWidth={MIN_FLOATING_GUIDE_WIDTH}
+                      resizeAriaLabel={`${definition.label}カンペのサイズを変更`}
+                      renderHeader={({ mode, float, dock }) => (
+                        <>
+                          <h3>
+                            <span>
+                              {definition.label}
+                              {definition.presentationModeLabel
+                                ? <small>{definition.presentationModeLabel}</small>
+                                : null}
+                            </span>
+                          </h3>
+                          {mode === 'floating' ? (
+                            <button
+                              aria-label={`${definition.label}を元に戻す`}
+                              onClick={dock}
+                              type="button"
+                            >
+                              戻す
+                            </button>
+                          ) : (
+                            <button
+                              aria-label={`${definition.label}を小窓表示`}
+                              className="input-layer-card-float"
+                              onClick={(event) => float(initialLayerCardRect(event.currentTarget))}
+                              type="button"
+                            >
+                              小窓表示
+                            </button>
+                          )}
+                        </>
+                      )}
+                      renderPlaceholder={({ dock }) => (
+                        <section className="input-layer-card-placeholder">
+                          <strong>{definition.label}</strong>
+                          <span>小窓表示中</span>
+                          <button
+                            aria-label={`${definition.label}を元に戻す`}
+                            onClick={dock}
+                            type="button"
+                          >
+                            戻す
+                          </button>
+                        </section>
+                      )}
+                    >
                       <p>
                         {triggers.size > 0
                           ? `trigger: ${aggregationTriggerDisplayText(layout, definition.id)}`
@@ -958,132 +902,13 @@ export function InputConverterView() {
                         showSecondary={false}
                         unit={24}
                       />
-                    </section>
+                    </WorkspacePanel>
                   );
                 })}
               </div>
             </WorkspacePanel>
           ) : null}
 
-          {showLayerGuide ? guideDefinitions.flatMap((definition) => {
-            const rect = floatingLayerCards[definition.id];
-            if (rect === undefined) return [];
-
-            const legends = aggregationLegendMap(layout, definition.id);
-            const triggers = new Set(aggregationTriggerKeys(layout, definition.id));
-            const views = new Map<string, PhysicalKeyboardKeyView>(
-              visibleKeys.map((key) => [
-                key.id,
-                {
-                  legend: legends.get(key.id) ?? '',
-                  highlighted: triggers.has(key.id),
-                  trigger: triggers.has(key.id),
-                  accentSlot: triggers.has(key.id)
-                    ? layerKeyColorSlots.get(key.id)
-                    : undefined,
-                  home: HOME_POSITION_KEYS.has(key.id),
-                },
-              ]),
-            );
-
-            return [(
-              <section
-                aria-label={`${definition.label} 個別カンペ`}
-                className="input-layer-card input-layer-card-floating"
-                key={definition.id}
-                popover="manual"
-                ref={(element) => {
-                  if (element === null) floatingLayerCardRefs.current.delete(definition.id);
-                  else floatingLayerCardRefs.current.set(definition.id, element);
-                }}
-                style={{
-                  left: rect.left,
-                  top: rect.top,
-                  width: rect.width,
-                  height: rect.height,
-                }}
-              >
-                <header
-                  aria-label={`${definition.label}カンペを移動`}
-                  onPointerDown={(event) => {
-                    if ((event.target as HTMLElement).closest('button') !== null) return;
-                    event.currentTarget.setPointerCapture(event.pointerId);
-                    floatingLayerCardPointerRef.current = {
-                      layerId: definition.id,
-                      kind: 'move',
-                      pointerId: event.pointerId,
-                      startX: event.clientX,
-                      startY: event.clientY,
-                      startRect: rect,
-                    };
-                  }}
-                  onPointerMove={(event) => {
-                    if (floatingLayerCardPointerRef.current?.pointerId !== event.pointerId) return;
-                    moveFloatingLayerCard(event.clientX, event.clientY);
-                  }}
-                  onPointerUp={(event) => {
-                    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-                      event.currentTarget.releasePointerCapture(event.pointerId);
-                    }
-                    floatingLayerCardPointerRef.current = undefined;
-                  }}
-                >
-                  <h3>
-                    {definition.label}
-                    {definition.presentationModeLabel
-                      ? <small>{definition.presentationModeLabel}</small>
-                      : null}
-                  </h3>
-                  <button
-                    aria-label={`${definition.label}を元に戻す`}
-                    onClick={() => dockLayerCard(definition.id)}
-                    type="button"
-                  >
-                    戻す
-                  </button>
-                </header>
-                <p>
-                  {triggers.size > 0
-                    ? `trigger: ${aggregationTriggerDisplayText(layout, definition.id)}`
-                    : 'trigger: —'}
-                </p>
-                <PhysicalKeyboard
-                  ariaLabel={`${definition.label} 個別レイヤー`}
-                  geometryId={geometry.id}
-                  keys={visibleKeys}
-                  keyViews={views}
-                  showSecondary={false}
-                  unit={24}
-                />
-                <div
-                  aria-label={`${definition.label}カンペのサイズを変更`}
-                  className="input-layer-card-resize"
-                  onPointerDown={(event) => {
-                    event.currentTarget.setPointerCapture(event.pointerId);
-                    floatingLayerCardPointerRef.current = {
-                      layerId: definition.id,
-                      kind: 'resize',
-                      pointerId: event.pointerId,
-                      startX: event.clientX,
-                      startY: event.clientY,
-                      startRect: rect,
-                    };
-                  }}
-                  onPointerMove={(event) => {
-                    if (floatingLayerCardPointerRef.current?.pointerId !== event.pointerId) return;
-                    moveFloatingLayerCard(event.clientX, event.clientY);
-                  }}
-                  onPointerUp={(event) => {
-                    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-                      event.currentTarget.releasePointerCapture(event.pointerId);
-                    }
-                    floatingLayerCardPointerRef.current = undefined;
-                  }}
-                  role="separator"
-                />
-              </section>
-            )];
-          }) : null}
         </aside>
 
         <div
@@ -1224,8 +1049,11 @@ export function InputConverterView() {
                   onChange={(event) => {
                     if (!event.target.checked) {
                       workspace.dispatch({ type: 'dock', id: INPUT_LAYER_GUIDE_PANEL_ID });
-                      for (const layerId of Object.keys(floatingLayerCards)) {
-                        dockLayerCard(layerId);
+                      for (const definition of guideDefinitions) {
+                        workspace.dispatch({
+                          type: 'dock',
+                          id: layerGuideCardPanelId(definition.id),
+                        });
                       }
                     }
                     setShowLayerGuide(event.target.checked);
