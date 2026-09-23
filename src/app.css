@@ -1465,6 +1465,16 @@ h1 {
   max-width: none;
   max-height: none;
   pointer-events: auto;
+  box-shadow: 0 0.65rem 2rem rgb(0 0 0 / 14%);
+  transition: box-shadow 140ms ease;
+}
+
+.workspace-panel[data-floating][data-active] {
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 22%);
+}
+
+.workspace-panel[data-dragging] .workspace-panel-header {
+  cursor: grabbing;
 }
 
 .workspace-panel-header[data-floating] {
@@ -1498,4 +1508,10 @@ h1 {
   border-right: 2px solid #85857f;
   border-bottom: 2px solid #85857f;
   content: '';
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-panel[data-floating] {
+    transition: none;
+  }
 }

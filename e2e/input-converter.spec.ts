@@ -139,13 +139,15 @@ test('docked panel headerは閾値drag・cancel・keyboardを区別する', asyn
   // 8px thresholdを越えた時点でpointerを離さなくてもdetachし、そのままdragを継続する。
   await page.mouse.move(startX + 20, startY + 2);
   await expect(guide).toHaveAttribute('data-floating', 'true');
+  await expect(guide).toHaveAttribute('data-dragging', 'true');
   const afterDetach = await guide.boundingBox();
   expect(afterDetach).not.toBeNull();
   await page.mouse.move(startX + 90, startY + 2);
   const afterContinuation = await guide.boundingBox();
   expect(afterContinuation).not.toBeNull();
-  expect(afterContinuation!.x).toBeGreaterThan(afterDetach!.x + 40);
+  expect(afterContinuation!.x).toBeGreaterThan(afterDetach!.x + 55);
   await page.mouse.up();
+  await expect(guide).not.toHaveAttribute('data-dragging');
 
   await page.getByRole('button', { name: 'レイヤーカンペを元に戻す' }).click();
   await expect(guide).not.toHaveAttribute('data-floating');
@@ -243,6 +245,27 @@ test('レイヤーカンペはWorkspace overlayで移動・リサイズしなが
   await expect(guide).toBeVisible();
 });
 
+test('Workspace animationはreduced-motionを尊重する', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const guide = page.getByLabel('レイヤーカンペ一覧');
+  await page.getByLabel('レイヤーカンペを小窓表示').click();
+  await expect(guide).toHaveAttribute('data-floating', 'true');
+
+  const motionState = await guide.evaluate((element) => ({
+    reduced: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    transform: getComputedStyle(element).transform,
+    transitionDuration: getComputedStyle(element).transitionDuration,
+  }));
+  expect(motionState.reduced).toBe(true);
+  expect(motionState.transitionDuration).toBe('0s');
+  expect(['none', 'matrix(1, 0, 0, 1, 0, 0)']).toContain(motionState.transform);
+});
+
 test('レイヤーカンペは盤面ごとに独立して複数小窓表示できる', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/input');
@@ -267,6 +290,14 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
   await expect(guide.locator('.input-layer-card-placeholder')).toHaveCount(2);
   const first = floatingCards.first();
   const second = floatingCards.nth(1);
+  await expect(first).not.toHaveAttribute('data-active');
+  await expect(second).toHaveAttribute('data-active', 'true');
+  const initialShadows = await Promise.all([
+    first.evaluate((element) => getComputedStyle(element).boxShadow),
+    second.evaluate((element) => getComputedStyle(element).boxShadow),
+  ]);
+  expect(initialShadows[1]).not.toBe(initialShadows[0]);
+
   const initialZOrder = await Promise.all([
     first.evaluate((element) => Number.parseInt(getComputedStyle(element).zIndex, 10)),
     second.evaluate((element) => Number.parseInt(getComputedStyle(element).zIndex, 10)),
@@ -298,6 +329,8 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
     second.evaluate((element) => Number.parseInt(getComputedStyle(element).zIndex, 10)),
   ]);
   expect(activatedZOrder[0]).toBeGreaterThan(activatedZOrder[1]);
+  await expect(first).toHaveAttribute('data-active', 'true');
+  await expect(second).not.toHaveAttribute('data-active');
 
   await first.getByRole('button', { name: /を元に戻す$/ }).click();
   await expect(page.locator('.input-layer-card-floating')).toHaveCount(1);
