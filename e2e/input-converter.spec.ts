@@ -563,6 +563,26 @@ test('TK音直入力法はかなを直接表示しcomboと拗音contextを認識
   const output = page.getByLabel('自由入力テキスト');
 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  // 月配列のprefixは文字単位ではなくaction単位でguideする。
+  await page.getByLabel('配列', { exact: true }).selectOption('tsuki-2-263');
+  await expect(feature).toHaveAttribute('data-input-ready', 'tsuki-2-263');
+  await lookup.fill('よ');
+  await expect(guide).toContainText('1 / 2');
+  await expect(guide).toContainText('K');
+  await expect(keyboard.locator('[data-key-id="k"]')).toHaveAttribute('data-lookup', 'true');
+  await expect(keyboard.locator('[data-key-id="g"]')).not.toHaveAttribute('data-lookup', 'true');
+  await output.click();
+  await page.keyboard.press('k');
+  await expect(guide).toContainText('2 / 2');
+  await expect(guide).toContainText('G');
+  await expect(keyboard.locator('[data-key-id="g"]')).toHaveAttribute('data-lookup', 'true');
+
+  // 薙刀式の左右Space alternativeは1 routeへ畳む。
+  await page.getByLabel('配列', { exact: true }).selectOption('naginata-v18');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await lookup.fill('ま');
+  await expect(results.locator('li')).toHaveCount(1);
+
   await page.getByLabel('配列', { exact: true }).selectOption('oonishi-custom-combo');
   await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom-combo');
   await output.click();
@@ -665,6 +685,13 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await expect(guide).toContainText('2 / 2');
   await expect(guide).toContainText('な');
   await expect(keyboard.locator('[data-key-id="m"]')).toHaveAttribute('data-lookup', 'true');
+
+  // Backspaceで直前に確定した文字の先頭guide actionへ戻る。
+  await page.keyboard.press('Backspace');
+  await expect(output).toHaveValue('');
+  await expect(guide).toContainText('1 / 2');
+  await expect(guide).toContainText('か');
+  await expect(keyboard.locator('[data-key-id="f"]')).toHaveAttribute('data-lookup', 'true');
 
   await lookup.fill('せ');
   await expect(guide).toContainText('せ');
