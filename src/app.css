@@ -1326,7 +1326,7 @@ h1 {
   padding: 0.45rem 0.55rem;
 }
 
-@container input-keyboard-panel (min-width: 52rem) {
+@container input-keyboard-panel (min-width: 50rem) {
   .input-keyboard-content {
     grid-template-columns: minmax(0, 1fr) minmax(7rem, 8rem);
     grid-template-rows: minmax(0, 1fr);
