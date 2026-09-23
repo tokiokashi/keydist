@@ -184,7 +184,7 @@ function RecognizedDetail({
   if (recognized.length === 0) {
     return (
       <p className="input-muted input-recognized-empty">
-        まだ入力は確定していません。
+        -
       </p>
     );
   }
@@ -905,7 +905,7 @@ export function InputConverterView() {
                     <p>{session.pressedKeys.length > 0 ? session.pressedKeys.join(' + ') : '—'}</p>
                   </section>
                   <section>
-                    <h2>Recognized / realized action</h2>
+                    <h2>Recognized</h2>
                     <RecognizedDetail recognized={session.lastRecognized} />
                   </section>
                 </div>
