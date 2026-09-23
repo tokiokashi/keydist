@@ -1292,9 +1292,11 @@ h1 {
 }
 
 .input-debug {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .input-debug-heading {
@@ -1309,9 +1311,11 @@ h1 {
 .input-inspector {
   display: grid;
   min-width: 0;
+  min-height: 0;
   grid-template-columns: minmax(0, 1fr);
   gap: 0.65rem;
   padding: 0.65rem;
+  overflow: auto;
 }
 
 .input-keyboard-content[data-detail-layout="stacked"] > .input-debug {
