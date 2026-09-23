@@ -470,7 +470,16 @@ h1 {
   font-size: 0.78rem;
 }
 
+.input-output-shell {
+  position: relative;
+  min-height: 5.5rem;
+  border-radius: 0.6rem;
+  background: #fff;
+}
+
 .input-output {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
   min-height: 5.5rem;
@@ -482,6 +491,46 @@ h1 {
   background: #fff;
   line-height: 1.5;
   cursor: text;
+}
+
+.input-output-shell[data-has-target] .input-output {
+  background: transparent;
+  color: transparent;
+  caret-color: #171717;
+}
+
+.input-output-visual {
+  position: absolute;
+  z-index: 2;
+  inset: 1px;
+  overflow: hidden;
+  padding: 0.75rem;
+  border-radius: calc(0.6rem - 1px);
+  color: #171717;
+  font: inherit;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  white-space: pre-wrap;
+}
+
+.input-output-char-correct {
+  color: #171717;
+}
+
+.input-output-char-pending {
+  color: #aaa9a3;
+}
+
+.input-output-char-error {
+  padding: 0 0.06em;
+  border-radius: 0.18em;
+  background: color-mix(in srgb, #b54a4a 9%, transparent);
+  color: #a13e3e;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, #b54a4a 55%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.12em;
 }
 
 .input-output[data-active] {

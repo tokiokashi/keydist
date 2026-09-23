@@ -702,6 +702,18 @@ export function InputConverterView() {
     && session.text === lookupQuery
     && session.pressedKeys.length === 0;
 
+  const typingTargetPresentation = useMemo(() => {
+    const target = Array.from(lookupQuery);
+    const typed = Array.from(session.text);
+    return {
+      typed: typed.map((char, index) => ({
+        char,
+        correct: target[index] === char,
+      })),
+      remaining: target.slice(typed.length),
+    };
+  }, [lookupQuery, session.text]);
+
   useEffect(() => {
     setLookupStepIndex(0);
   }, [layout.id, lookupQuery]);
@@ -1222,24 +1234,57 @@ export function InputConverterView() {
               ) : null}
               <button type="button" onClick={session.clear}>クリア</button>
             </header>
-            <textarea
-              className="input-output"
-              value={session.text}
-              readOnly
-              rows={3}
-              aria-label="自由入力テキスト"
-              aria-describedby="input-capture-help"
-              data-active={session.active || undefined}
-              ref={session.captureRef}
-              onKeyDownCapture={(event) => {
-                if (randomPracticeMode === null || event.key !== 'Enter') return;
-                event.preventDefault();
-                event.stopPropagation();
-                if (!randomPracticeComplete) return;
-                advanceRandomPractice(randomPracticeMode);
-              }}
-              placeholder="ここをクリックして、そのまま打鍵してください。"
-            />
+            <div
+              className="input-output-shell"
+              data-has-target={lookupQuery.length > 0 || undefined}
+            >
+              {lookupQuery.length > 0 ? (
+                <div
+                  aria-hidden="true"
+                  className="input-output-visual"
+                  data-testid="typing-target"
+                >
+                  {typingTargetPresentation.typed.map((item, index) => (
+                    <span
+                      className={item.correct
+                        ? 'input-output-char-correct'
+                        : 'input-output-char-error'}
+                      key={`typed-${index}`}
+                    >
+                      {item.char}
+                    </span>
+                  ))}
+                  {typingTargetPresentation.remaining.map((char, index) => (
+                    <span
+                      className="input-output-char-pending"
+                      key={`pending-${index}`}
+                    >
+                      {char}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              <textarea
+                className="input-output"
+                value={session.text}
+                readOnly
+                rows={3}
+                aria-label="自由入力テキスト"
+                aria-describedby="input-capture-help"
+                data-active={session.active || undefined}
+                ref={session.captureRef}
+                onKeyDownCapture={(event) => {
+                  if (randomPracticeMode === null || event.key !== 'Enter') return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (!randomPracticeComplete) return;
+                  advanceRandomPractice(randomPracticeMode);
+                }}
+                placeholder={lookupQuery.length === 0
+                  ? 'ここをクリックして、そのまま打鍵してください。'
+                  : undefined}
+              />
+            </div>
             <p className="input-capture-hint" id="input-capture-help">
               {session.active ? '入力を受け付けています。' : '入力欄をクリックすると入力を開始します。'}
               {' '}Backspaceで1文字削除します。
