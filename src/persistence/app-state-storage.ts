@@ -85,7 +85,11 @@ export function loadOrMigrateAppStateSlice<K extends AppStateSliceKey>(
 ): NonNullable<AppStateV2[K]> {
   const current = loadAppStateDocument(storage);
   const stored = current[key];
-  if (stored !== undefined) return options.decode(stored);
+  if (stored !== undefined) {
+    const decoded = options.decode(stored);
+    removeStorageKeys(storage, options.legacyKeys);
+    return decoded;
+  }
 
   const migrated = options.loadLegacy();
   if (patchAppStateSlice(storage, key, migrated)) {
