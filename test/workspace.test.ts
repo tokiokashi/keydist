@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   createWorkspacePanelRegistry,
+  resolvePanelLayout,
   type WorkspacePanelDefinitionInput,
 } from '../src/workspace/panel-registry.ts';
 import {
@@ -38,6 +39,30 @@ test('workspace registry rejects invalid ids and normalizes capabilities', () =>
   assert.equal(registry.get('input.keyboard')?.canHide, false);
   assert.equal(registry.get('input.details')?.canHide, true);
   assert.equal(registry.get('input.layer:thumb-l')?.canFloat, false);
+});
+
+test('resolvePanelLayout makes the registry the authority for capability and size (#413)', () => {
+  // input.keyboardはminWidthのみ明示。他はregistry既定値へ倒れる。
+  assert.deepEqual(resolvePanelLayout(registry.get('input.keyboard')), {
+    canFloat: true,
+    minWidth: 240,
+    minHeight: 240,
+    defaultFloatingWidth: 560,
+    defaultFloatingHeight: 480,
+  });
+
+  // canFloat: false のパネルはWorkspacePanel側のfloat/detach/keyboard floatを
+  // 呼び出し元によらず一括で無効化するための唯一の判定材料になる。
+  assert.equal(resolvePanelLayout(registry.get('input.layer:thumb-l')).canFloat, false);
+
+  // 未登録パネル（防御的な呼び出し）は既定値のみで解決する
+  assert.deepEqual(resolvePanelLayout(undefined), {
+    canFloat: true,
+    minWidth: 320,
+    minHeight: 240,
+    defaultFloatingWidth: 560,
+    defaultFloatingHeight: 480,
+  });
 });
 
 test('workspace state starts docked and keeps bottom-to-top registration order', () => {

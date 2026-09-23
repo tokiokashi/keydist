@@ -40,6 +40,11 @@ export interface WorkspaceRuntime {
    * docked既定値 → 復元後floatingへの見た目上の「飛行」を防ぐ。
    */
   restoring: boolean;
+  /**
+   * capability / min size / floating既定サイズのauthority（#413 Panel model）。
+   * WorkspacePanel はこれを通してのみ registry の値を読む。
+   */
+  registry: WorkspacePanelRegistry;
 }
 
 const WorkspaceContext = createContext<WorkspaceRuntime | null>(null);
@@ -146,7 +151,10 @@ export function useWorkspace(
     };
   }, [getScheduler]);
 
-  return useMemo(() => ({ state, dispatch, restoring }), [dispatch, state, restoring]);
+  return useMemo(
+    () => ({ state, dispatch, restoring, registry }),
+    [dispatch, state, restoring, registry],
+  );
 }
 
 export function WorkspaceProvider({
