@@ -1,27 +1,27 @@
 import {
-  createDebouncedPersistenceScheduler,
-  type DebouncedPersistenceScheduler,
-} from '../../persistence/debounced-scheduler.ts';
+  createAppStateSliceScheduler,
+  loadOrMigrateAppStateSlice,
+  patchAppStateSlice,
+  type AppStateSliceScheduler,
+} from '../../persistence/app-state-storage.ts';
 import type { KeyValueStorage } from '../../persistence/storage.ts';
 import { decodeVersionedState } from '../../persistence/versioned-state.ts';
 
 /*
- * 入力コンバータには既に localStorage を使う永続化がある（このモジュールとは別の系統）。
- * 統合はしない（#413 Phase 8で legacy UiStateV1 と合わせて検討する）。
+ * Tester preferenceは#413 Phase 8でAppStateV2へ統合済み。
+ * keydist:input-converter-preferences はread-once migration sourceとしてのみ残す。
  *
+ * 次のstorageはUI preferenceではなくdomain/user assetなのでAppStateへ吸収しない。
  * - keydist:input-key-bindings（レガシーキー: keydist:input-thumb-key-bindings）
- *   物理キーコード → 論理キーの対応。browser-keyboard-bindings.ts が持つ
  * - keydist:geometry-shapes
- *   自作した物理配列の形状そのもの。user-geometries.ts が持つ
  *
- * このファイルは既存の keydist:input-converter-preferences 1本だけを使う。
  * 現在選択中の配列と物理配列はTester全体の状態として保存し、
  * 練習環境は配列ごとに保存する。
  */
 
 export const INPUT_CONVERTER_PREFERENCES_VERSION = 2;
 
-/** localStorageのキー。バージョンは InputConverterPreferencesV2.version 側で管理する */
+/** AppStateV2移行元。Phase 8以降はこのkeyへ書かない。 */
 export const INPUT_CONVERTER_PREFERENCES_STORAGE_KEY = 'keydist:input-converter-preferences';
 
 export type InputConverterRandomPracticeMode = 'word' | 'phrase';
@@ -250,31 +250,34 @@ export function loadInputConverterPreferences(
   catalogs: InputConverterPreferencesCatalogs,
   defaults: InputConverterPreferencesDefaults,
 ): InputConverterPreferencesV2 {
-  let raw: string | null;
-  try {
-    raw = storage.getItem(INPUT_CONVERTER_PREFERENCES_STORAGE_KEY);
-  } catch {
-    raw = null;
-  }
-  return decodeInputConverterPreferences(raw, catalogs, defaults);
+  return loadOrMigrateAppStateSlice(storage, 'inputConverter', {
+    decode: (value) => decodeInputConverterPreferences(
+      JSON.stringify(value),
+      catalogs,
+      defaults,
+    ),
+    loadLegacy: () => {
+      let raw: string | null;
+      try {
+        raw = storage.getItem(INPUT_CONVERTER_PREFERENCES_STORAGE_KEY);
+      } catch {
+        raw = null;
+      }
+      return decodeInputConverterPreferences(raw, catalogs, defaults);
+    },
+    legacyKeys: [INPUT_CONVERTER_PREFERENCES_STORAGE_KEY],
+  });
 }
 
 export function saveInputConverterPreferences(
   storage: KeyValueStorage,
   prefs: InputConverterPreferencesV2,
 ): void {
-  try {
-    storage.setItem(
-      INPUT_CONVERTER_PREFERENCES_STORAGE_KEY,
-      serializeInputConverterPreferences(prefs),
-    );
-  } catch {
-    // 保存できなくてもその場の画面は成立する
-  }
+  patchAppStateSlice(storage, 'inputConverter', prefs);
 }
 
 export type InputConverterPreferencesScheduler =
-  DebouncedPersistenceScheduler<InputConverterPreferencesV2>;
+  AppStateSliceScheduler<InputConverterPreferencesV2>;
 
 export interface InputConverterPreferencesSchedulerOptions {
   storage: KeyValueStorage;
@@ -290,11 +293,10 @@ export interface InputConverterPreferencesSchedulerOptions {
 export function createInputConverterPreferencesScheduler(
   options: InputConverterPreferencesSchedulerOptions,
 ): InputConverterPreferencesScheduler {
-  return createDebouncedPersistenceScheduler<InputConverterPreferencesV2>({
-    write: (prefs) => saveInputConverterPreferences(options.storage, prefs),
-    serialize: serializeInputConverterPreferences,
-    debounceMs: options.debounceMs,
-    setTimeoutFn: options.setTimeoutFn,
-    clearTimeoutFn: options.clearTimeoutFn,
-  });
+  return createAppStateSliceScheduler(
+    options.storage,
+    'inputConverter',
+    serializeInputConverterPreferences,
+    options.debounceMs,
+  );
 }

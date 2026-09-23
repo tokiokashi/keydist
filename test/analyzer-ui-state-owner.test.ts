@@ -3,8 +3,10 @@ import test from 'node:test';
 import {
   createAnalyzerUiStateOwner,
 } from '../src/analyzer-ui-state-owner.ts';
+import { APP_STATE_STORAGE_KEY } from '../src/persistence/app-state-storage.ts';
 import {
   createDefaultUiState,
+  UI_STATE_STORAGE_KEY,
   type UiStateChoices,
   type UiStateStorage,
 } from '../src/ui-state.ts';
@@ -38,6 +40,10 @@ function defaults() {
   });
 }
 
+function appState(storage: MemoryStorage) {
+  return JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!);
+}
+
 test('AnalyzerUiStateOwner owns updates and notifies subscribers', () => {
   const storage = new MemoryStorage();
   const owner = createAnalyzerUiStateOwner(storage, defaults(), choices);
@@ -49,6 +55,7 @@ test('AnalyzerUiStateOwner owns updates and notifies subscribers', () => {
   });
 
   assert.equal(owner.getSnapshot().ui.input.mode, 'en');
+  assert.equal(appState(storage).analyzer.input.mode, 'en');
   assert.equal(notifications, 1);
 
   unsubscribe();
@@ -58,9 +65,10 @@ test('AnalyzerUiStateOwner owns updates and notifies subscribers', () => {
   assert.equal(notifications, 1);
 });
 
-test('AnalyzerUiStateOwner debounces writes and flush commits the latest snapshot', () => {
+test('AnalyzerUiStateOwner debounces AppState writes and flush commits latest snapshot', () => {
   const storage = new MemoryStorage();
   const owner = createAnalyzerUiStateOwner(storage, defaults(), choices, 60_000);
+  const before = storage.getItem(APP_STATE_STORAGE_KEY);
 
   owner.update((draft) => {
     draft.ui.input.customText = 'first';
@@ -69,12 +77,43 @@ test('AnalyzerUiStateOwner debounces writes and flush commits the latest snapsho
     draft.ui.input.customText = 'latest';
   }, true);
 
-  assert.equal(storage.data.size, 0);
+  assert.equal(storage.getItem(APP_STATE_STORAGE_KEY), before);
   owner.flush();
 
-  const saved = [...storage.data.values()].map((value) => JSON.parse(value));
-  assert.equal(saved.length, 1);
-  assert.equal(saved[0].ui.input.customText, 'latest');
+  assert.equal(appState(storage).analyzer.input.customText, 'latest');
+});
+
+test('AnalyzerUiStateOwner migrates UiStateV1 into AppState and removes legacy writer key', () => {
+  const storage = new MemoryStorage();
+  const legacy = defaults();
+  legacy.ui.input.customText = 'legacy analyzer text';
+  legacy.conditions.defaults.windowSize = 7;
+  storage.setItem(UI_STATE_STORAGE_KEY, JSON.stringify(legacy));
+
+  const owner = createAnalyzerUiStateOwner(storage, defaults(), choices);
+
+  assert.equal(owner.getSnapshot().ui.input.customText, 'legacy analyzer text');
+  assert.equal(storage.getItem(UI_STATE_STORAGE_KEY), null);
+  assert.equal(appState(storage).analyzer.input.customText, 'legacy analyzer text');
+  assert.equal(appState(storage).conditions.defaults.windowSize, 7);
+  assert.ok(appState(storage).playback);
+});
+
+test('Analyzer AppState patches preserve unrelated Workspace state', () => {
+  const storage = new MemoryStorage();
+  const workspace = { version: 1, panels: {}, zOrder: [] };
+  storage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify({
+    version: 2,
+    workspace,
+  }));
+
+  const owner = createAnalyzerUiStateOwner(storage, defaults(), choices);
+  owner.update((draft) => {
+    draft.ui.input.mode = 'en';
+  });
+
+  assert.deepEqual(appState(storage).workspace, workspace);
+  assert.equal(appState(storage).analyzer.input.mode, 'en');
 });
 
 test('AnalyzerUiStateOwner exposes legacy migration metadata', () => {

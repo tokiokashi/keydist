@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { APP_STATE_STORAGE_KEY } from '../src/persistence/app-state-storage.ts';
 import type { KeyValueStorage } from '../src/persistence/storage.ts';
 import {
   createDefaultInputConverterPreferences,
@@ -256,15 +257,25 @@ test('loadInputConverterPreferences falls back to defaults when storage.getItem 
   assert.deepEqual(result, createDefaultInputConverterPreferences(defaults));
 });
 
-test('saveInputConverterPreferences writes under the existing storage key and round-trips via load', () => {
+test('saveInputConverterPreferences writes the Tester slice under AppState and round-trips', () => {
   const storage = memoryStorage();
   const prefs = samplePreferences();
   saveInputConverterPreferences(storage, prefs);
-  assert.equal(
-    storage.getItem(INPUT_CONVERTER_PREFERENCES_STORAGE_KEY),
-    serializeInputConverterPreferences(prefs),
+  assert.deepEqual(
+    JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!).inputConverter,
+    prefs,
   );
+  assert.equal(storage.getItem(INPUT_CONVERTER_PREFERENCES_STORAGE_KEY), null);
   assert.deepEqual(loadInputConverterPreferences(storage, catalogs, defaults), prefs);
+});
+
+test('loadInputConverterPreferences migrates and removes the legacy preference key', () => {
+  const storage = memoryStorage();
+  const prefs = samplePreferences();
+  storage.setItem(INPUT_CONVERTER_PREFERENCES_STORAGE_KEY, serializeInputConverterPreferences(prefs));
+  assert.deepEqual(loadInputConverterPreferences(storage, catalogs, defaults), prefs);
+  assert.equal(storage.getItem(INPUT_CONVERTER_PREFERENCES_STORAGE_KEY), null);
+  assert.deepEqual(JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!).inputConverter, prefs);
 });
 
 test('saveInputConverterPreferences swallows a storage.setItem failure', () => {
@@ -360,9 +371,9 @@ test('write coalescing: rapid notify() calls debounce into a single write', (t) 
 
   t.mock.timers.tick(300);
   assert.equal(writes, 1);
-  assert.equal(
-    storage.getItem(INPUT_CONVERTER_PREFERENCES_STORAGE_KEY),
-    serializeInputConverterPreferences(prefs),
+  assert.deepEqual(
+    JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!).inputConverter,
+    prefs,
   );
 });
 

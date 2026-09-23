@@ -149,14 +149,17 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
 
   const panelBox = await panel.boundingBox();
   const backButton = panel.getByRole('button', { name: 'Practice Textを元に戻す' });
-  const [floatingTitleBox, floatingRandomBox] = await Promise.all([
+  const [floatingTitleBox, floatingAssistBox, floatingRandomBox] = await Promise.all([
     title.boundingBox(),
+    assist.boundingBox(),
     randomWord.boundingBox(),
   ]);
   expect(floatingTitleBox).not.toBeNull();
+  expect(floatingAssistBox).not.toBeNull();
   expect(floatingRandomBox).not.toBeNull();
-  expect(floatingRandomBox!.x - (floatingTitleBox!.x + floatingTitleBox!.width))
+  expect(floatingAssistBox!.x - (floatingTitleBox!.x + floatingTitleBox!.width))
     .toBeLessThanOrEqual(56);
+  expect(floatingAssistBox!.x).toBeLessThan(floatingRandomBox!.x);
   const backBox = await backButton.boundingBox();
   expect(panelBox).not.toBeNull();
   expect(backBox).not.toBeNull();
@@ -560,12 +563,12 @@ test('floating panel dragはpointer中のrectを永続stateへ連打せず終了
   await expect(guide).toHaveAttribute('data-floating', 'true');
 
   const persistedRect = async () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:workspace-state');
+    const raw = localStorage.getItem('keydist:app-state');
     if (raw === null) return null;
-    const state = JSON.parse(raw) as {
+    const state = JSON.parse(raw).workspace as {
       panels?: Record<string, { rect?: { x: number; y: number; width: number; height: number } }>;
-    };
-    return state.panels?.['input.layer-guide']?.rect ?? null;
+    } | undefined;
+    return state?.panels?.['input.layer-guide']?.rect ?? null;
   });
 
   await expect.poll(persistedRect).not.toBeNull();
@@ -1708,6 +1711,36 @@ test('逆引き強調はレイヤーキーの枠色を保持する', async ({ pa
   const outputKey = keyboard.locator('[data-key-id="t"]');
   await expect(outputKey).toHaveAttribute('data-lookup', 'true');
   await expect(outputKey).not.toHaveAttribute('data-trigger');
+});
+
+test('Practice Text強調はtrigger-onlyキーの主レジェンドだけを隠す', async ({ page }) => {
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+
+  const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
+  const lookup = page.getByLabel('打ちたい文字');
+
+  // 拗音2の O はこのaggregationではtrigger-only。
+  const triggerOnlyKey = keyboard.locator('[data-key-id="o"]');
+  await expect(triggerOnlyKey.locator('.physical-keyboard-legend')).toHaveText('が');
+
+  await lookup.fill('にゅ');
+  await expect(triggerOnlyKey).toHaveAttribute('data-lookup', 'true');
+  await expect(triggerOnlyKey).toHaveAttribute('data-trigger', 'true');
+  await expect(triggerOnlyKey.locator('.physical-keyboard-legend')).toHaveText('');
+
+  // 中指相互シフトの D/K はtriggerでもoutputでもあるので、レジェンドを残す。
+  await lookup.fill('れ');
+  const leftMiddle = keyboard.locator('[data-key-id="d"]');
+  const rightMiddle = keyboard.locator('[data-key-id="k"]');
+  await expect(leftMiddle).toHaveAttribute('data-lookup', 'true');
+  await expect(rightMiddle).toHaveAttribute('data-lookup', 'true');
+  await expect(leftMiddle.locator('.physical-keyboard-legend')).toHaveText('れ');
+  await expect(rightMiddle.locator('.physical-keyboard-legend')).toHaveText('れ');
 });
 
 test('打ち方逆引きは配列ごとのcanonical inputを表示する', async ({ page }) => {

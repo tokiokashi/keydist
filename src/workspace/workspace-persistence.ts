@@ -1,7 +1,9 @@
 import {
-  createDebouncedPersistenceScheduler,
-  type DebouncedPersistenceScheduler,
-} from '../persistence/debounced-scheduler.ts';
+  createAppStateSliceScheduler,
+  loadOrMigrateAppStateSlice,
+  patchAppStateSlice,
+  type AppStateSliceScheduler,
+} from '../persistence/app-state-storage.ts';
 import type { KeyValueStorage } from '../persistence/storage.ts';
 import { decodeVersionedState } from '../persistence/versioned-state.ts';
 import type {
@@ -11,6 +13,7 @@ import type {
 } from './panel-registry.ts';
 import { clampPanelRectToViewport, type ViewportSize } from './viewport-clamp.ts';
 import {
+  compactWorkspacePanels,
   createWorkspaceState,
   WORKSPACE_STATE_VERSION,
   type PanelMode,
@@ -20,7 +23,7 @@ import {
   type WorkspaceStateV1,
 } from './workspace-state.ts';
 
-/** localStorageのキー。バージョンは WorkspaceStateV1.version 側で管理する */
+/** AppStateV2移行元。Phase 8以降はこのkeyへ書かない。 */
 export const WORKSPACE_STORAGE_KEY = 'keydist:workspace-state';
 
 function isPanelRect(value: unknown): value is PanelRect {
@@ -91,8 +94,9 @@ function normalizeAgainstRegistry(
  * 保存済みJSONをデコードする。バージョン不一致・壊れたJSON・構造不一致は
  * すべて例外を投げず、現在のdefinitionsから作った既定値へ落ちる。
  *
- * definitionsに無いid（動的パネルの休眠世代）もpanelsには残す。
- * zOrderには現在のdefinitionsにあるidだけを載せ、足りないものは既定順で補う。
+ * definitionsに無いidのうち input.layer:* だけをbounded dormant stateとして残す。
+ * 未知/廃止済み静的idはpruneする。zOrderには現在のdefinitionsにあるidだけを載せ、
+ * 足りないものは既定順で補う。
  */
 export function decodeWorkspaceState(
   raw: string | null,
@@ -130,7 +134,11 @@ export function decodeWorkspaceState(
     }
   }
 
-  return { version: WORKSPACE_STATE_VERSION, panels, zOrder };
+  return {
+    version: WORKSPACE_STATE_VERSION,
+    panels: compactWorkspacePanels(panels, definitionIds),
+    zOrder,
+  };
 }
 
 export function serializeWorkspaceState(state: WorkspaceStateV1): string {
@@ -144,21 +152,23 @@ export function loadWorkspaceState(
   registry: WorkspacePanelRegistry,
   viewport: ViewportSize,
 ): WorkspaceStateV1 {
-  let raw: string | null;
-  try {
-    raw = storage.getItem(WORKSPACE_STORAGE_KEY);
-  } catch {
-    raw = null;
-  }
-  return decodeWorkspaceState(raw, definitions, registry, viewport);
+  return loadOrMigrateAppStateSlice(storage, 'workspace', {
+    decode: (value) => decodeWorkspaceState(JSON.stringify(value), definitions, registry, viewport),
+    loadLegacy: () => {
+      let raw: string | null;
+      try {
+        raw = storage.getItem(WORKSPACE_STORAGE_KEY);
+      } catch {
+        raw = null;
+      }
+      return decodeWorkspaceState(raw, definitions, registry, viewport);
+    },
+    legacyKeys: [WORKSPACE_STORAGE_KEY],
+  });
 }
 
 export function saveWorkspaceState(storage: KeyValueStorage, state: WorkspaceStateV1): void {
-  try {
-    storage.setItem(WORKSPACE_STORAGE_KEY, serializeWorkspaceState(state));
-  } catch {
-    // 保存できなくてもその場のワークスペースは成立する
-  }
+  patchAppStateSlice(storage, 'workspace', state);
 }
 
 /**
@@ -193,7 +203,7 @@ export function clampAllFloatingPanels(
   return changed ? { ...state, panels } : state;
 }
 
-export type WorkspacePersistenceScheduler = DebouncedPersistenceScheduler<WorkspaceStateV1>;
+export type WorkspacePersistenceScheduler = AppStateSliceScheduler<WorkspaceStateV1>;
 
 export interface WorkspacePersistenceSchedulerOptions {
   storage: KeyValueStorage;
@@ -210,11 +220,10 @@ export interface WorkspacePersistenceSchedulerOptions {
 export function createWorkspacePersistenceScheduler(
   options: WorkspacePersistenceSchedulerOptions,
 ): WorkspacePersistenceScheduler {
-  return createDebouncedPersistenceScheduler<WorkspaceStateV1>({
-    write: (state) => saveWorkspaceState(options.storage, state),
-    serialize: serializeWorkspaceState,
-    debounceMs: options.debounceMs,
-    setTimeoutFn: options.setTimeoutFn,
-    clearTimeoutFn: options.clearTimeoutFn,
-  });
+  return createAppStateSliceScheduler(
+    options.storage,
+    'workspace',
+    serializeWorkspaceState,
+    options.debounceMs,
+  );
 }

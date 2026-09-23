@@ -687,6 +687,18 @@ export function InputConverterView() {
     }
     return legends;
   }, [activeLookupStep, guideDefinitions, layout, showPracticeAssist]);
+
+  const lookupTriggerOnlyKeys = useMemo(() => {
+    if (activeLookupStep === undefined) return new Set<string>();
+    const guideIds = new Set(guideDefinitions.map((definition) => definition.id));
+    const outputKeys = new Set(lookupLegendMap.keys());
+    return new Set(
+      activeLookupStep.aggregationGroupIds
+        .filter((id) => guideIds.has(id))
+        .flatMap((id) => aggregationTriggerKeys(layout, id))
+        .filter((key) => !outputKeys.has(key)),
+    );
+  }, [activeLookupStep, guideDefinitions, layout, lookupLegendMap]);
   const patternResult = useMemo(() => {
     const result = matchKeyPatterns(
       layout,
@@ -735,10 +747,12 @@ export function InputConverterView() {
         return [
           key.id,
           {
-            legend: lookupLegendMap.get(key.id)
-              ?? guideLegend
-              ?? layout.legends.get(key.id)
-              ?? '',
+            legend: lookupKeys.has(key.id) && lookupTriggerOnlyKeys.has(key.id)
+              ? ''
+              : lookupLegendMap.get(key.id)
+                ?? guideLegend
+                ?? layout.legends.get(key.id)
+                ?? '',
             secondaryLegend: key.id === THUMB_KEY.LT || key.id === THUMB_KEY.RT
               ? browserCodesForPhysicalKey(key.id, browserBindings).join(' / ') || '未割当'
               : key.id,
@@ -766,6 +780,7 @@ export function InputConverterView() {
     layerKeys,
     lookupKeys,
     lookupLegendMap,
+    lookupTriggerOnlyKeys,
     visibleKeys,
   ]);
   const combinationLabels = useMemo(() => {
