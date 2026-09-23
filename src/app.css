@@ -750,7 +750,7 @@ h1 {
 }
 
 .physical-keyboard-key[data-lookup] rect {
-  fill: color-mix(in srgb, var(--picker-selected) 12%, #fff);
+  fill: color-mix(in srgb, var(--picker-selected) 20%, #fff);
   stroke-width: 3;
 }
 
