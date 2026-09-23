@@ -48,15 +48,14 @@ import { layoutVisibleInFilter, resolveSelection, type LayoutTypeFilter, type Mo
 import {
   createDefaultUiState,
   DEFAULT_CONDITION_DEFAULTS,
-  loadUiState,
   MAX_SAVED_TEXT_LENGTH,
-  saveUiState,
   type UiPlaybackState,
   type UiStateConditionsDefaults,
   type UiStateStorage,
   type UiStateLayoutConditions,
   type UiStateV1,
 } from './ui-state.ts';
+import { createAnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import { el, SERIES } from './app-dom.ts';
 import { createRomajiEditor } from './romaji-editor.ts';
@@ -218,36 +217,22 @@ function removeLayoutChoice(layoutId: string): void {
   }
 }
 
-const loadedUiState = loadUiState(uiStorage, uiStateDefaults, uiStateChoices);
-let uiState = loadedUiState.state;
+const uiStateOwner = createAnalyzerUiStateOwner(uiStorage, uiStateDefaults, uiStateChoices);
+let uiState = uiStateOwner.getSnapshot();
 conditionState = uiState;
-if (loadedUiState.migratedArpeggioModel) {
+uiStateOwner.subscribe(() => {
+  uiState = uiStateOwner.getSnapshot();
+  conditionState = uiState;
+});
+if (uiStateOwner.loadResult.migratedArpeggioModel) {
   queueMicrotask(() => window.alert(
     'Arpeggio構造判定を刷新し、旧幾何条件と旧Arpeggio Timingモードを廃止しました。',
   ));
 }
-let uiStateSaveTimer: number | undefined;
 
-function flushUiState(): void {
-  if (uiStateSaveTimer !== undefined) window.clearTimeout(uiStateSaveTimer);
-  uiStateSaveTimer = undefined;
-  saveUiState(uiStorage, uiState);
-}
-
-/** 永続化する画面状態は必ずこの関数を通して更新する。 */
+/** 永続化する画面状態は必ずAnalyzer state ownerを通して更新する。 */
 function updateUiState(change: (draft: UiStateV1) => void, debounce = false): void {
-  const next = structuredClone(uiState);
-  change(next);
-  uiState = next;
-  conditionState = uiState;
-  if (uiStateSaveTimer !== undefined) window.clearTimeout(uiStateSaveTimer);
-  if (debounce) {
-    uiStateSaveTimer = window.setTimeout(() => {
-      flushUiState();
-    }, 300);
-  } else {
-    flushUiState();
-  }
+  uiStateOwner.update(change, debounce);
 }
 
 /** 旧形式の単一custom設定を、名前付き形状の先頭要素へ移行する。 */
@@ -285,7 +270,7 @@ function migrateCurrentGeometryShape(): void {
 
 migrateCurrentGeometryShape();
 
-window.addEventListener('pagehide', flushUiState);
+window.addEventListener('pagehide', uiStateOwner.flush);
 
 if (!playbackCalibration && uiState.ui.playback.useCalibration) {
   updateUiState((draft) => { draft.ui.playback.useCalibration = false; });
