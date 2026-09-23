@@ -117,6 +117,16 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
     .getByLabel('Practice Textをクリックまたはドラッグして小窓表示')
     .getByText('Practice Text', { exact: true })
     .click();
+  const title = panel.getByText('Practice Text', { exact: true });
+  const randomWord = panel.getByLabel('ランダムな単語');
+  const [titleBox, randomBox] = await Promise.all([
+    title.boundingBox(),
+    randomWord.boundingBox(),
+  ]);
+  expect(titleBox).not.toBeNull();
+  expect(randomBox).not.toBeNull();
+  expect(randomBox!.x - (titleBox!.x + titleBox!.width)).toBeLessThanOrEqual(56);
+
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect(lookup).toHaveValue('かな');
 
@@ -135,6 +145,14 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
 
   const panelBox = await panel.boundingBox();
   const backButton = panel.getByRole('button', { name: 'Practice Textを元に戻す' });
+  const [floatingTitleBox, floatingRandomBox] = await Promise.all([
+    title.boundingBox(),
+    randomWord.boundingBox(),
+  ]);
+  expect(floatingTitleBox).not.toBeNull();
+  expect(floatingRandomBox).not.toBeNull();
+  expect(floatingRandomBox!.x - (floatingTitleBox!.x + floatingTitleBox!.width))
+    .toBeLessThanOrEqual(56);
   const backBox = await backButton.boundingBox();
   expect(panelBox).not.toBeNull();
   expect(backBox).not.toBeNull();
@@ -1393,6 +1411,37 @@ test('TK音直入力法はかなを直接表示しcomboと拗音contextを認識
   await page.keyboard.press('o');
   await page.keyboard.press('d');
   await expect(output).toHaveValue('おんや');
+});
+
+test('Practice Text keeps two candidate rows visible at the balanced split', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const splitter = page.getByRole('separator', { name: 'カンペと入力領域の幅を調整' });
+  await expect(splitter).toHaveAttribute('aria-valuenow', '50');
+
+  const panel = page.getByLabel('Practice Text', { exact: true });
+  const lookup = page.getByLabel('打ちたい文字');
+  await lookup.fill('かな');
+
+  const items = panel.locator('.input-lookup-results li');
+  await expect.poll(() => items.count()).toBeGreaterThanOrEqual(2);
+
+  const [panelBox, contentBox, firstBox, secondBox] = await Promise.all([
+    panel.boundingBox(),
+    panel.locator('.input-lookup-content').boundingBox(),
+    items.nth(0).boundingBox(),
+    items.nth(1).boundingBox(),
+  ]);
+  expect(panelBox).not.toBeNull();
+  expect(contentBox).not.toBeNull();
+  expect(firstBox).not.toBeNull();
+  expect(secondBox).not.toBeNull();
+  expect(panelBox!.height).toBeGreaterThanOrEqual(103);
+  expect(secondBox!.y + secondBox!.height)
+    .toBeLessThanOrEqual(contentBox!.y + contentBox!.height + 1);
 });
 
 test('ランダム練習はモードを保持し別停止ボタンで終了できる', async ({ page }) => {

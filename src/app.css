@@ -1230,7 +1230,7 @@ h1 {
 
 .input-assist-slot {
   display: flex;
-  min-height: 0;
+  min-height: 103px;
   flex: 0 0 auto;
   flex-direction: column;
   margin-top: 0.35rem;
@@ -1243,7 +1243,7 @@ h1 {
 
 .input-assist-slot > .input-lookup-field-heading {
   flex: 0 0 auto;
-  padding: 0.42rem 0.6rem;
+  padding: 0.3rem 0.5rem;
 }
 
 .input-lookup-content {
@@ -1252,9 +1252,9 @@ h1 {
   min-height: 0;
   flex: 1 1 auto;
   grid-template-columns: minmax(14rem, 0.7fr) minmax(0, 1.3fr);
-  gap: 0.55rem 0.65rem;
+  gap: 0.35rem 0.5rem;
   align-items: center;
-  padding: 0.55rem 0.65rem 0.65rem;
+  padding: 0.35rem 0.5rem 0.45rem;
   overflow: auto;
 }
 
@@ -1266,10 +1266,6 @@ h1 {
   min-width: 0;
   min-height: 0;
   align-self: center;
-}
-
-.input-lookup-field-heading[data-floating] > .input-random-samples {
-  margin-left: 0;
 }
 
 .input-lookup-field-heading[data-floating] > .input-panel-dock {
@@ -1297,7 +1293,7 @@ h1 {
   display: flex;
   min-width: 0;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.35rem;
   white-space: nowrap;
 }
@@ -1314,7 +1310,7 @@ h1 {
   flex: 0 0 auto;
   align-items: center;
   gap: 0.18rem;
-  margin-left: auto;
+  margin-left: 0;
   color: #686862;
   font-size: 0.6rem;
   white-space: nowrap;
@@ -1446,7 +1442,7 @@ h1 {
 
 .input-lookup-results ol {
   display: grid;
-  gap: 0.22rem;
+  gap: 0.1rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1455,8 +1451,9 @@ h1 {
 .input-lookup-results li {
   display: flex;
   min-width: 0;
+  min-height: 1rem;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.35rem;
 }
 
 .input-lookup-results code {
