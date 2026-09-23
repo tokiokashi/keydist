@@ -297,6 +297,7 @@ test('Input Converter selects preset and saved custom physical geometry', async 
 
   await expect(geometry).toHaveValue('row-staggered');
   await expect(keyboard).toHaveAttribute('data-geometry-id', 'row-staggered');
+  await expect(keyboard).toHaveAttribute('preserveAspectRatio', 'xMinYMid meet');
 
   for (const id of [
     'row-staggered',
