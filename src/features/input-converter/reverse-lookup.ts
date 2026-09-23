@@ -143,9 +143,14 @@ export function physicalKeyDisplayLabel(key: string): string {
   return key;
 }
 
+export function reverseLookupStepLabel(step: ReverseLookupStep): string {
+  return step.actions
+    .map((action) => action.map(physicalKeyDisplayLabel).join(' + '))
+    .join(' → ');
+}
+
 export function reverseLookupRouteLabel(route: ReverseLookupRoute): string {
   return route.steps
-    .flatMap((step) => step.actions)
-    .map((action) => action.map(physicalKeyDisplayLabel).join(' + '))
+    .map(reverseLookupStepLabel)
     .join(' → ');
 }
