@@ -298,10 +298,21 @@ test('Input Converter selects preset and saved custom physical geometry', async 
   await expect(geometry).toHaveValue('row-staggered');
   await expect(keyboard).toHaveAttribute('data-geometry-id', 'row-staggered');
 
-  await geometry.selectOption('ortholinear');
-  await expect(keyboard).toHaveAttribute('data-geometry-id', 'ortholinear');
+  for (const id of [
+    'row-staggered',
+    'column-staggered',
+    'ortholinear',
+    'jis-row-staggered',
+    'jis-column-staggered',
+    'jis-ortholinear',
+  ]) {
+    await geometry.selectOption(id);
+    await expect(keyboard).toHaveAttribute('data-geometry-id', id);
+  }
 
-  await expect(geometry.locator('option[value="shape-e2e-grid"]')).toHaveText('自作: E2E Grid');
+  await expect(geometry.locator('optgroup[label="US / ANSI"] option')).toHaveCount(3);
+  await expect(geometry.locator('optgroup[label="JIS 109"] option')).toHaveCount(3);
+  await expect(geometry.locator('option[value="shape-e2e-grid"]')).toHaveText('E2E Grid');
   await geometry.selectOption('shape-e2e-grid');
   await expect(keyboard).toHaveAttribute('data-geometry-id', 'shape-e2e-grid');
 });
@@ -597,9 +608,10 @@ test('#387 Esc全削除・hold中Backspace・JISかな・仮想Shift表示を扱
   await expect(output).toHaveValue('');
   await expect(output).toBeFocused();
 
+  await page.getByLabel('物理配列').selectOption('column-staggered');
   await page.getByLabel('配列', { exact: true }).selectOption('jis-kana');
   await expect(feature).toHaveAttribute('data-input-ready', 'jis-kana');
-  await expect(page.getByLabel('物理配列')).toHaveValue('jis-row-staggered');
+  await expect(page.getByLabel('物理配列')).toHaveValue('jis-column-staggered');
   await output.click();
 
   await page.keyboard.press('q');
@@ -647,10 +659,12 @@ test('#387 Esc全削除・hold中Backspace・JISかな・仮想Shift表示を扱
   expect(Math.abs(shiftWidth - regularWidth)).toBeLessThanOrEqual(0.1);
 });
 
-test('親指physical keyを任意browser codeへ再割当して永続化できる', async ({ page }) => {
+test('盤面クリックで任意browser codeをphysical keyへ再割当して永続化できる', async ({ page }) => {
   await page.goto('/input');
   const feature = page.locator('.input-feature');
   const output = page.getByLabel('自由入力テキスト');
+  const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
+  const bindingBar = page.getByLabel('物理キー割当');
 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   await page.getByLabel('配列', { exact: true }).selectOption('nicola');
@@ -664,10 +678,10 @@ test('親指physical keyを任意browser codeへ再割当して永続化でき�
 
   await page.getByRole('button', { name: 'クリア' }).click();
 
-  await page.getByRole('button', { name: '左親指にキーを追加' }).click();
+  await keyboard.locator('[data-key-id="thumb-l"]').click();
+  await expect(bindingBar).toContainText('実キーを押す');
   await page.keyboard.press('Space');
-  await expect(page.getByRole('button', { name: '左親指からSpaceを削除' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '右親指からSpaceを削除' })).toHaveCount(0);
+  await expect(bindingBar.getByRole('button', { name: 'thumb-lからSpaceを削除' })).toBeVisible();
 
   await output.click();
   await page.keyboard.down('Space');
@@ -675,7 +689,21 @@ test('親指physical keyを任意browser codeへ再割当して永続化でき�
   await page.keyboard.up('Space');
   await expect(output).toHaveValue('あ');
 
+  // 親指に限らず通常キーも同じUIで再割当できる。
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await keyboard.locator('[data-key-id="f"]').click();
+  await page.keyboard.press('q');
+  await output.click();
+  await page.keyboard.press('q');
+  await expect(output).toHaveValue('か');
+
   await page.reload();
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  await expect(page.getByRole('button', { name: '左親指からSpaceを削除' })).toBeVisible();
+  await page.getByLabel('配列', { exact: true }).selectOption('nicola');
+  await expect(feature).toHaveAttribute('data-input-ready', 'nicola');
+  await output.click();
+  await page.keyboard.down('Space');
+  await page.keyboard.press('s');
+  await page.keyboard.up('Space');
+  await expect(output).toHaveValue('あ');
 });

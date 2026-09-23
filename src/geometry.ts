@@ -163,11 +163,19 @@ export const JIS_FINGER_ASSIGNMENT: FingerAssignment = columnFingerAssignment(
   [...JIS_ROW_WIDTH],
 );
 
+export type PhysicalKeyboardStandard = 'ansi' | 'jis';
+export type PhysicalTopology =
+  | 'row-staggered'
+  | 'ortholinear'
+  | 'column-staggered';
+
 export type PresetGeometryKind =
   | 'row-staggered'
   | 'jis-row-staggered'
   | 'ortholinear'
-  | 'column-staggered';
+  | 'jis-ortholinear'
+  | 'column-staggered'
+  | 'jis-column-staggered';
 export type CustomGeometryKind = `custom:${string}`;
 export type GeometryKind = PresetGeometryKind | 'custom' | CustomGeometryKind;
 
@@ -279,16 +287,36 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
   },
   ortholinear: {
     id: 'ortholinear',
-    name: '格子',
+    name: '格子（ANSI）',
     pitchMm: 19.05,
     rowWidths: ROW_WIDTH,
     thumbs: DEFAULT_THUMBS,
   },
+  'jis-ortholinear': {
+    id: 'jis-ortholinear',
+    name: '格子（JIS 109）',
+    pitchMm: 19.05,
+    rowWidths: [...JIS_ROW_WIDTH],
+    thumbs: DEFAULT_THUMBS,
+  },
   'column-staggered': {
     id: 'column-staggered',
-    name: '列ずれ（分割想定）',
+    name: '列ずれ（ANSI・分割想定）',
     pitchMm: 18,
     rowWidths: ROW_WIDTH,
+    columnStagger: COLUMN_STAGGER,
+    splitAt: SPLIT_AT,
+    splitGap: SPLIT_GAP,
+    thumbs: [
+      { id: THUMB_KEY.LT, finger: 'LT', col: 3.5, y: THUMB_ROW + 0.35 },
+      { id: THUMB_KEY.RT, finger: 'RT', col: 5.5, y: THUMB_ROW + 0.35 },
+    ],
+  },
+  'jis-column-staggered': {
+    id: 'jis-column-staggered',
+    name: '列ずれ（JIS 109・分割想定）',
+    pitchMm: 18,
+    rowWidths: [...JIS_ROW_WIDTH],
     columnStagger: COLUMN_STAGGER,
     splitAt: SPLIT_AT,
     splitGap: SPLIT_GAP,
@@ -303,7 +331,30 @@ export const isPresetGeometryKind = (value: unknown): value is PresetGeometryKin
   value === 'row-staggered'
   || value === 'jis-row-staggered'
   || value === 'ortholinear'
-  || value === 'column-staggered';
+  || value === 'jis-ortholinear'
+  || value === 'column-staggered'
+  || value === 'jis-column-staggered';
+
+export const presetGeometryStandard = (
+  kind: PresetGeometryKind,
+): PhysicalKeyboardStandard => kind.startsWith('jis-') ? 'jis' : 'ansi';
+
+export const presetGeometryTopology = (
+  kind: PresetGeometryKind,
+): PhysicalTopology => {
+  if (kind.endsWith('column-staggered')) return 'column-staggered';
+  if (kind.endsWith('ortholinear')) return 'ortholinear';
+  return 'row-staggered';
+};
+
+export const presetGeometryKind = (
+  standard: PhysicalKeyboardStandard,
+  topology: PhysicalTopology,
+): PresetGeometryKind => standard === 'jis'
+  ? topology === 'row-staggered'
+    ? 'jis-row-staggered'
+    : `jis-${topology}`
+  : topology;
 
 export function buildGeometry(
   shape: PhysicalShape | PresetGeometryKind,

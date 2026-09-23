@@ -7,6 +7,9 @@ import {
   JIS_FINGER_ASSIGNMENT,
   keyId,
   PHYSICAL_SHAPES,
+  presetGeometryKind,
+  presetGeometryStandard,
+  presetGeometryTopology,
   type Finger,
   type NonThumb,
   type PhysicalShape,
@@ -146,6 +149,28 @@ test('GeometryKind文字列はPHYSICAL_SHAPESから解決される。直接渡�
   assert.equal(byKind.id, byShape.id);
   near(byKind.keys.get('a')!.x, byShape.keys.get('a')!.x);
   near(byKind.homes.RT.x, byShape.homes.RT.x);
+});
+
+test('US/JIS × row/column/orthoの6 presetを相互変換できる', () => {
+  const topologies = [
+    'row-staggered',
+    'column-staggered',
+    'ortholinear',
+  ] as const;
+
+  for (const topology of topologies) {
+    const ansi = presetGeometryKind('ansi', topology);
+    const jis = presetGeometryKind('jis', topology);
+    assert.equal(presetGeometryStandard(ansi), 'ansi');
+    assert.equal(presetGeometryStandard(jis), 'jis');
+    assert.equal(presetGeometryTopology(ansi), topology);
+    assert.equal(presetGeometryTopology(jis), topology);
+
+    const ansiGeometry = buildGeometry(ansi, DEFAULT_FINGER_ASSIGNMENT);
+    const jisGeometry = buildGeometry(jis, JIS_FINGER_ASSIGNMENT);
+    assert.deepEqual(ansiGeometry.grid.map((row) => row.length), [12, 12, 11, 10]);
+    assert.deepEqual(jisGeometry.grid.map((row) => row.length), [13, 12, 12, 11]);
+  }
 });
 
 test('JIS 109 presetはANSI外の3キー位置を持つ', () => {

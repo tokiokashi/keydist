@@ -16,7 +16,8 @@ export const DEFAULT_THUMB_KEY_BINDINGS: ThumbKeyBindings = {
 
 export const EMPTY_BROWSER_KEY_BINDING_OVERRIDES: BrowserKeyBindingOverrides = {};
 
-const STORAGE_KEY = 'keydist:input-thumb-key-bindings';
+const LEGACY_THUMB_STORAGE_KEY = 'keydist:input-thumb-key-bindings';
+const STORAGE_KEY = 'keydist:input-key-bindings';
 const DEFAULT_THUMB_CODES = ['NonConvert', 'Space', 'Convert'] as const;
 const MAX_CODES_PER_THUMB = 8;
 
@@ -118,7 +119,7 @@ export function loadThumbKeyBindings(
     };
   }
   try {
-    const raw = storage.getItem(STORAGE_KEY);
+    const raw = storage.getItem(LEGACY_THUMB_STORAGE_KEY);
     if (raw === null) return sanitizeThumbKeyBindings(DEFAULT_THUMB_KEY_BINDINGS);
     return sanitizeThumbKeyBindings(JSON.parse(raw));
   } catch {
@@ -131,5 +132,82 @@ export function saveThumbKeyBindings(
   storage?: Pick<Storage, 'setItem'>,
 ): void {
   if (storage === undefined) return;
-  storage.setItem(STORAGE_KEY, JSON.stringify(sanitizeThumbKeyBindings(bindings)));
+  storage.setItem(
+    LEGACY_THUMB_STORAGE_KEY,
+    JSON.stringify(sanitizeThumbKeyBindings(bindings)),
+  );
+}
+
+
+const sanitizeBindingValue = (
+  value: unknown,
+): PhysicalKeyEvent['key'] | null | undefined =>
+  value === null
+    ? null
+    : typeof value === 'string' && value.trim().length > 0
+      ? value.trim()
+      : undefined;
+
+export function sanitizeBrowserKeyBindingOverrides(
+  value: unknown,
+): BrowserKeyBindingOverrides {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return {};
+  const result: Record<string, PhysicalKeyEvent['key'] | null> = {};
+  for (const [rawCode, rawKey] of Object.entries(value as Record<string, unknown>)) {
+    const code = rawCode.trim();
+    const key = sanitizeBindingValue(rawKey);
+    if (code.length === 0 || key === undefined) continue;
+    result[code] = key;
+  }
+  return result;
+}
+
+export function assignBrowserKeyCode(
+  overrides: BrowserKeyBindingOverrides,
+  key: PhysicalKeyEvent['key'],
+  code: string,
+): BrowserKeyBindingOverrides {
+  const canonical = code.trim();
+  if (canonical.length === 0) return overrides;
+  return { ...overrides, [canonical]: key };
+}
+
+export function unassignBrowserKeyCode(
+  overrides: BrowserKeyBindingOverrides,
+  code: string,
+): BrowserKeyBindingOverrides {
+  const canonical = code.trim();
+  if (canonical.length === 0) return overrides;
+  return { ...overrides, [canonical]: null };
+}
+
+export function loadBrowserKeyBindingOverrides(
+  storage?: Pick<Storage, 'getItem'>,
+): BrowserKeyBindingOverrides {
+  if (storage === undefined) return {};
+  try {
+    const raw = storage.getItem(STORAGE_KEY);
+    if (raw !== null) {
+      return sanitizeBrowserKeyBindingOverrides(JSON.parse(raw));
+    }
+
+    const legacyRaw = storage.getItem(LEGACY_THUMB_STORAGE_KEY);
+    if (legacyRaw === null) return {};
+    return thumbKeyBindingsToOverrides(
+      sanitizeThumbKeyBindings(JSON.parse(legacyRaw)),
+    );
+  } catch {
+    return {};
+  }
+}
+
+export function saveBrowserKeyBindingOverrides(
+  overrides: BrowserKeyBindingOverrides,
+  storage?: Pick<Storage, 'setItem'>,
+): void {
+  if (storage === undefined) return;
+  storage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(sanitizeBrowserKeyBindingOverrides(overrides)),
+  );
 }

@@ -9,6 +9,9 @@ import {
   JIS_FINGER_ASSIGNMENT,
   isPresetGeometryKind,
   PHYSICAL_SHAPES,
+  presetGeometryKind,
+  presetGeometryStandard,
+  presetGeometryTopology,
   SHIFT_KEY,
   THUMB_KEY,
   type PhysicalShape,
@@ -36,14 +39,13 @@ import {
 } from '../../layout-physical-keys.ts';
 import { load as loadUserGeometryShapes } from '../../user-geometries.ts';
 import {
-  DEFAULT_THUMB_KEY_BINDINGS,
-  loadThumbKeyBindings,
-  saveThumbKeyBindings,
-  thumbBindingLabel,
-  thumbKeyBindingsToOverrides,
-  type ThumbKeyBindings,
+  assignBrowserKeyCode,
+  loadBrowserKeyBindingOverrides,
+  saveBrowserKeyBindingOverrides,
+  unassignBrowserKeyCode,
+  type BrowserKeyBindingOverrides,
 } from './browser-keyboard-bindings.ts';
-import { ThumbKeyBindingEditor } from './thumb-key-binding-editor.tsx';
+import { browserCodesForPhysicalKey } from './browser-keyboard-adapter.ts';
 import {
   reverseLookup,
   reverseLookupRouteLabel,
@@ -63,7 +65,25 @@ const INPUT_LAYOUTS = [
   JIS_KANA,
 ];
 
-const PRESET_GEOMETRY_SHAPES = Object.values(PHYSICAL_SHAPES);
+const ANSI_GEOMETRY_SHAPES = [
+  PHYSICAL_SHAPES['row-staggered'],
+  PHYSICAL_SHAPES['column-staggered'],
+  PHYSICAL_SHAPES.ortholinear,
+] as const;
+const JIS_GEOMETRY_SHAPES = [
+  PHYSICAL_SHAPES['jis-row-staggered'],
+  PHYSICAL_SHAPES['jis-column-staggered'],
+  PHYSICAL_SHAPES['jis-ortholinear'],
+] as const;
+const PRESET_GEOMETRY_SHAPES = [
+  ...ANSI_GEOMETRY_SHAPES,
+  ...JIS_GEOMETRY_SHAPES,
+];
+const JIS_BROWSER_BINDINGS: BrowserKeyBindingOverrides = {
+  Backslash: 'r2c11',
+  IntlYen: 'r0c12',
+  IntlRo: 'r3c10',
+};
 const DEFAULT_SPLIT_PERCENT = 50;
 const MIN_SPLIT_PERCENT = 25;
 const MAX_SPLIT_PERCENT = 75;
@@ -191,23 +211,21 @@ export function InputConverterView() {
   const [layout, setLayout] = useState<Layout>(
     () => DIRECT_JA_INPUT_LAYOUTS[0] ?? INPUT_LAYOUTS[0],
   );
-  const [thumbBindings, setThumbBindings] = useState<ThumbKeyBindings>(() => ({
-    leftCodes: [...DEFAULT_THUMB_KEY_BINDINGS.leftCodes],
-    rightCodes: [...DEFAULT_THUMB_KEY_BINDINGS.rightCodes],
-  }));
-  const browserBindings = useMemo(() => ({
-    ...(layout.id === 'jis-kana'
-      ? {
-        Backslash: 'r2c11',
-        IntlYen: 'r0c12',
-        IntlRo: 'r3c10',
-      }
-      : {}),
-    ...thumbKeyBindingsToOverrides(thumbBindings),
-  }), [layout.id, thumbBindings]);
-  const session = useTypingSession(layout, browserBindings);
+  const [bindingOverrides, setBindingOverrides] =
+    useState<BrowserKeyBindingOverrides>({});
+  const [bindingTargetKey, setBindingTargetKey] = useState<string>();
+  const [bindingCapturing, setBindingCapturing] = useState(false);
+  const bindingCaptureCodeRef = useRef<string | undefined>(undefined);
   const [userGeometryShapes, setUserGeometryShapes] = useState<PhysicalShape[]>([]);
   const [geometryId, setGeometryId] = useState(PHYSICAL_SHAPES['row-staggered'].id);
+  const browserBindings = useMemo(() => ({
+    ...(isPresetGeometryKind(geometryId)
+      && presetGeometryStandard(geometryId) === 'jis'
+      ? JIS_BROWSER_BINDINGS
+      : {}),
+    ...bindingOverrides,
+  }), [bindingOverrides, geometryId]);
+  const session = useTypingSession(layout, browserBindings);
   const [showDynamicGuide, setShowDynamicGuide] = useState(true);
   const [showLayerGuide, setShowLayerGuide] = useState(true);
   const [showLayerKeys, setShowLayerKeys] = useState(true);
@@ -238,13 +256,45 @@ export function InputConverterView() {
 
   useEffect(() => {
     setUserGeometryShapes(loadUserGeometryShapes());
-    setThumbBindings(loadThumbKeyBindings(window.localStorage));
+    setBindingOverrides(loadBrowserKeyBindingOverrides(window.localStorage));
   }, []);
 
-  const updateThumbBindings = (next: ThumbKeyBindings) => {
-    setThumbBindings(next);
-    saveThumbKeyBindings(next, window.localStorage);
+  const updateBindingOverrides = (next: BrowserKeyBindingOverrides) => {
+    setBindingOverrides(next);
+    saveBrowserKeyBindingOverrides(next, window.localStorage);
   };
+
+  useEffect(() => {
+    if (!bindingCapturing || bindingTargetKey === undefined) {
+      bindingCaptureCodeRef.current = undefined;
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.repeat || bindingCaptureCodeRef.current !== undefined) return;
+
+      bindingCaptureCodeRef.current = event.code;
+      updateBindingOverrides(
+        assignBrowserKeyCode(bindingOverrides, bindingTargetKey, event.code),
+      );
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (bindingCaptureCodeRef.current !== event.code) return;
+      event.preventDefault();
+      event.stopPropagation();
+      bindingCaptureCodeRef.current = undefined;
+      setBindingCapturing(false);
+    };
+
+    window.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('keyup', onKeyUp, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('keyup', onKeyUp, true);
+    };
+  }, [bindingCapturing, bindingOverrides, bindingTargetKey]);
 
   const geometryShapes = useMemo(
     () => [...PRESET_GEOMETRY_SHAPES, ...userGeometryShapes],
@@ -256,7 +306,7 @@ export function InputConverterView() {
     if (isPresetGeometryKind(geometryId)) {
       return buildGeometry(
         geometryId,
-        geometryId === 'jis-row-staggered'
+        presetGeometryStandard(geometryId) === 'jis'
           ? JIS_FINGER_ASSIGNMENT
           : DEFAULT_FINGER_ASSIGNMENT,
       );
@@ -344,11 +394,9 @@ export function InputConverterView() {
           key.id,
           {
             legend: guideLegend ?? layout.legends.get(key.id) ?? '',
-            secondaryLegend: key.id === THUMB_KEY.LT
-              ? thumbBindingLabel(thumbBindings, 'left')
-              : key.id === THUMB_KEY.RT
-                ? thumbBindingLabel(thumbBindings, 'right')
-                : key.id,
+            secondaryLegend: key.id === THUMB_KEY.LT || key.id === THUMB_KEY.RT
+              ? browserCodesForPhysicalKey(key.id, browserBindings).join(' / ') || '未割当'
+              : key.id,
             pressed: pressed.has(key.id),
             highlighted: showDynamicGuide && activeTriggerKeys.has(key.id),
             trigger: showLayerKeys && layerKeys.has(key.id),
@@ -366,7 +414,7 @@ export function InputConverterView() {
     session.pressedKeys,
     showDynamicGuide,
     showLayerKeys,
-    thumbBindings,
+    browserBindings,
     layerKeyColorSlots,
     layerKeys,
     visibleKeys,
@@ -384,6 +432,13 @@ export function InputConverterView() {
     return semanticCombinationLabels(layout)
       .filter((label) => !layerLabels.has(label));
   }, [guideDefinitions, layout]);
+
+  const selectedBindingCodes = useMemo(
+    () => bindingTargetKey === undefined
+      ? []
+      : browserCodesForPhysicalKey(bindingTargetKey, browserBindings),
+    [bindingTargetKey, browserBindings],
+  );
 
   useEffect(() => {
     const grid = guideGridRef.current;
@@ -447,12 +502,13 @@ export function InputConverterView() {
                     const next = INPUT_LAYOUTS.find((candidate) => candidate.id === event.target.value);
                     if (next === undefined) return;
                     if (next.id === 'jis-kana') {
-                      setGeometryId('jis-row-staggered');
-                    } else if (
-                      layout.id === 'jis-kana'
-                      && geometryId === 'jis-row-staggered'
-                    ) {
-                      setGeometryId('row-staggered');
+                      setGeometryId((current) =>
+                        isPresetGeometryKind(current)
+                          ? presetGeometryKind(
+                            'jis',
+                            presetGeometryTopology(current),
+                          )
+                          : 'jis-row-staggered');
                     }
                     setLayout(next);
                   }}
@@ -471,20 +527,27 @@ export function InputConverterView() {
                   value={geometryId}
                   onChange={(event) => setGeometryId(event.target.value)}
                 >
-                  {PRESET_GEOMETRY_SHAPES.map((shape) => (
-                    <option key={shape.id} value={shape.id}>{shape.name}</option>
-                  ))}
-                  {userGeometryShapes.map((shape) => (
-                    <option key={shape.id} value={shape.id}>自作: {shape.name}</option>
-                  ))}
+                  <optgroup label="US / ANSI">
+                    {ANSI_GEOMETRY_SHAPES.map((shape) => (
+                      <option key={shape.id} value={shape.id}>{shape.name}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="JIS 109">
+                    {JIS_GEOMETRY_SHAPES.map((shape) => (
+                      <option key={shape.id} value={shape.id}>{shape.name}</option>
+                    ))}
+                  </optgroup>
+                  {userGeometryShapes.length > 0 ? (
+                    <optgroup label="自作">
+                      {userGeometryShapes.map((shape) => (
+                        <option key={shape.id} value={shape.id}>{shape.name}</option>
+                      ))}
+                    </optgroup>
+                  ) : null}
                 </select>
               </label>
             </div>
 
-            <ThumbKeyBindingEditor
-              value={thumbBindings}
-              onChange={updateThumbBindings}
-            />
             </div>
           </details>
 
@@ -672,12 +735,75 @@ export function InputConverterView() {
                 </strong>
               </p>
             </header>
+            <div className="input-key-binding-bar" aria-label="物理キー割当">
+              {bindingTargetKey === undefined ? (
+                <span className="input-muted">
+                  キーをクリックすると、次に押した実キーをその位置へ割り当てる。
+                </span>
+              ) : (
+                <>
+                  <strong>{bindingTargetKey}</strong>
+                  <span aria-hidden="true">←</span>
+                  <div className="input-key-binding-codes">
+                    {selectedBindingCodes.length === 0
+                      ? <span className="input-muted">未割当</span>
+                      : selectedBindingCodes.map((code) => (
+                        <button
+                          aria-label={`${bindingTargetKey}から${code}を削除`}
+                          className="input-binding-chip"
+                          key={code}
+                          onClick={() => updateBindingOverrides(
+                            unassignBrowserKeyCode(bindingOverrides, code),
+                          )}
+                          type="button"
+                        >
+                          <code>{code}</code>
+                          <span aria-hidden="true">×</span>
+                        </button>
+                      ))}
+                  </div>
+                  <button
+                    className="input-binding-add"
+                    data-capturing={bindingCapturing || undefined}
+                    onClick={() => setBindingCapturing((current) => !current)}
+                    type="button"
+                  >
+                    {bindingCapturing ? '実キーを押す…' : 'キーを追加'}
+                  </button>
+                  <button
+                    className="input-binding-reset"
+                    onClick={() => {
+                      updateBindingOverrides({});
+                      setBindingCapturing(false);
+                    }}
+                    type="button"
+                  >
+                    全て既定に戻す
+                  </button>
+                  <button
+                    className="input-binding-close"
+                    onClick={() => {
+                      setBindingTargetKey(undefined);
+                      setBindingCapturing(false);
+                    }}
+                    type="button"
+                  >
+                    閉じる
+                  </button>
+                </>
+              )}
+            </div>
             <div className="input-keyboard-main">
               <PhysicalKeyboard
                 ariaLabel="現在の物理キー状態"
                 geometryId={geometry.id}
                 keys={visibleKeys}
                 keyViews={keyboardViews}
+                selectedKeyId={bindingTargetKey}
+                onKeyClick={(key) => {
+                  setBindingTargetKey(key.id);
+                  setBindingCapturing(true);
+                }}
               />
             </div>
             <section className="input-assist-slot" aria-label="打ち方逆引き">

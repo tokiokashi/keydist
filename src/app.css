@@ -558,6 +558,55 @@ h1 {
   max-width: none;
 }
 
+.input-key-binding-bar {
+  display: flex;
+  min-width: 0;
+  min-height: 2.25rem;
+  max-height: 2.25rem;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.25rem 0 0;
+  padding: 0.25rem 0.35rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-top: 1px solid #e2e2dd;
+  border-bottom: 1px solid #e2e2dd;
+  white-space: nowrap;
+  font-size: 0.7rem;
+}
+
+.input-key-binding-bar > strong {
+  flex: 0 0 auto;
+  min-width: 2rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.input-key-binding-codes {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.input-key-binding-bar .input-binding-chip,
+.input-key-binding-bar .input-binding-add,
+.input-key-binding-reset,
+.input-binding-close {
+  flex: 0 0 auto;
+  min-height: 1.55rem;
+  padding: 0 0.4rem;
+  border: 1px solid #c9c9c3;
+  border-radius: 0.4rem;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.input-key-binding-bar .input-binding-add[data-capturing] {
+  border-color: #4a3aa7;
+  box-shadow: 0 0 0 1px #4a3aa7;
+}
+
 .input-keyboard-main {
   display: flex;
   flex: 1 1 auto;
@@ -632,6 +681,15 @@ h1 {
 
 .physical-keyboard-key[data-highlighted] rect {
   stroke-width: 3;
+}
+
+.physical-keyboard-key[data-interactive] {
+  cursor: pointer;
+}
+
+.physical-keyboard-key[data-binding-target] rect {
+  stroke: #171717;
+  stroke-width: 4;
 }
 
 .physical-keyboard-legend {

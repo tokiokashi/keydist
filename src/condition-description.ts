@@ -25,8 +25,10 @@ interface ConditionDescriptor {
 const GEOMETRY_LABEL: Record<PresetGeometryKind | 'custom', string> = {
   'row-staggered': 'ロウスタッガード（ANSI）',
   'jis-row-staggered': 'ロウスタッガード（JIS 109）',
-  ortholinear: 'オーソリニア',
-  'column-staggered': 'カラムスタッガード',
+  ortholinear: 'オーソリニア（ANSI）',
+  'jis-ortholinear': 'オーソリニア（JIS 109）',
+  'column-staggered': 'カラムスタッガード（ANSI）',
+  'jis-column-staggered': 'カラムスタッガード（JIS 109）',
   custom: 'カスタム形状',
 };
 

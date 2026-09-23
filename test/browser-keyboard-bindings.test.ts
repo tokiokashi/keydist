@@ -2,12 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DEFAULT_THUMB_KEY_BINDINGS,
+  assignBrowserKeyCode,
   assignThumbKeyCode,
+  loadBrowserKeyBindingOverrides,
   loadThumbKeyBindings,
   removeThumbKeyCode,
+  saveBrowserKeyBindingOverrides,
   saveThumbKeyBindings,
+  sanitizeBrowserKeyBindingOverrides,
   sanitizeThumbKeyBindings,
   thumbKeyBindingsToOverrides,
+  unassignBrowserKeyCode,
 } from '../src/features/input-converter/browser-keyboard-bindings.ts';
 
 function fakeStorage() {
@@ -65,4 +70,41 @@ test('thumb bindingはstorageへround-tripする', () => {
 
   saveThumbKeyBindings(settings, storage);
   assert.deepEqual(loadThumbKeyBindings(storage), settings);
+});
+
+
+test('general browser bindingは任意physical keyへcodeを移動し解除できる', () => {
+  const assigned = assignBrowserKeyCode({}, 'f', 'KeyQ');
+  assert.equal(assigned.KeyQ, 'f');
+
+  const moved = assignBrowserKeyCode(assigned, 'thumb-l', 'Space');
+  assert.equal(moved.Space, 'thumb-l');
+
+  const removed = unassignBrowserKeyCode(moved, 'Space');
+  assert.equal(removed.Space, null);
+});
+
+test('general browser bindingはstorageへround-tripしlegacy thumb設定も移行する', () => {
+  const storage = fakeStorage();
+  const custom = sanitizeBrowserKeyBindingOverrides({
+    KeyQ: 'f',
+    Space: 'thumb-l',
+    Invalid: 123,
+  });
+  saveBrowserKeyBindingOverrides(custom, storage);
+  assert.deepEqual(loadBrowserKeyBindingOverrides(storage), {
+    KeyQ: 'f',
+    Space: 'thumb-l',
+  });
+
+  const legacy = fakeStorage();
+  saveThumbKeyBindings({
+    leftCodes: ['Space'],
+    rightCodes: ['Convert'],
+  }, legacy);
+  assert.deepEqual(loadBrowserKeyBindingOverrides(legacy), {
+    NonConvert: null,
+    Space: 'thumb-l',
+    Convert: 'thumb-r',
+  });
 });

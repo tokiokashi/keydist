@@ -18,6 +18,8 @@ export interface PhysicalKeyboardProps {
   readonly geometryId?: string;
   readonly unit?: number;
   readonly showSecondary?: boolean;
+  readonly selectedKeyId?: string;
+  readonly onKeyClick?: (key: Key) => void;
 }
 
 const DEFAULT_UNIT = 54;
@@ -32,6 +34,8 @@ export function PhysicalKeyboard({
   geometryId,
   unit = DEFAULT_UNIT,
   showSecondary = true,
+  selectedKeyId,
+  onKeyClick,
 }: PhysicalKeyboardProps) {
   const gap = unit * GAP_RATIO;
   const pad = unit * PAD_RATIO;
@@ -82,7 +86,10 @@ export function PhysicalKeyboard({
               data-key-id={key.id}
               data-pressed={view?.pressed || undefined}
               data-trigger={view?.trigger || undefined}
+              data-binding-target={selectedKeyId === key.id || undefined}
+              data-interactive={onKeyClick === undefined ? undefined : true}
               key={key.id}
+              onClick={onKeyClick === undefined ? undefined : () => onKeyClick(key)}
             >
               <rect
                 height={keyHeight}

@@ -36,6 +36,31 @@ const CODE_TO_KEY: Readonly<Record<string, PhysicalKeyEvent['key']>> = {
   ShiftRight: 'shift-r',
 };
 
+
+const LETTER_CODES = Array.from({ length: 26 }, (_, index) =>
+  `Key${String.fromCharCode(65 + index)}`);
+const DIGIT_CODES = Array.from({ length: 10 }, (_, index) => `Digit${index}`);
+const KNOWN_BROWSER_CODES = [
+  ...LETTER_CODES,
+  ...DIGIT_CODES,
+  ...Object.keys(CODE_TO_KEY),
+  'IntlYen',
+  'IntlRo',
+] as const;
+
+export function browserCodesForPhysicalKey(
+  key: PhysicalKeyEvent['key'],
+  overrides: BrowserKeyBindingOverrides = EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
+): readonly string[] {
+  const codes = new Set<string>([
+    ...KNOWN_BROWSER_CODES,
+    ...Object.keys(overrides),
+  ]);
+  return [...codes]
+    .filter((code) => browserCodeToPhysicalKey(code, overrides) === key)
+    .sort();
+}
+
 export function isBrowserTextInputCode(code: string): boolean {
   return /^Key[A-Z]$/.test(code)
     || /^Digit[0-9]$/.test(code)
