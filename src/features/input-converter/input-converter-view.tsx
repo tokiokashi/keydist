@@ -1140,6 +1140,9 @@ export function InputConverterView() {
             renderHeader={({ mode, dock }) => (
               <>
                 <strong>Keyboard View</strong>
+                <span className="input-keyboard-help">
+                  キーをクリックすると実キーの割り当てを変更できます。
+                </span>
                 {mode === 'floating' ? (
                   <button
                     aria-label="Keyboard Viewを元に戻す"
@@ -1153,60 +1156,68 @@ export function InputConverterView() {
               </>
             )}
           >
-            <div className="input-display-options" aria-label="表示設定">
-              <strong>表示</strong>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={showDynamicGuide}
-                  onChange={(event) => setShowDynamicGuide(event.target.checked)}
-                />
-                動的ガイド
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={showLayerGuide}
-                  onChange={(event) => {
-                    if (!event.target.checked) {
-                      workspace.dispatch({ type: 'dock', id: INPUT_LAYER_GUIDE_PANEL_ID });
-                      for (const definition of guideDefinitions) {
-                        workspace.dispatch({
-                          type: 'dock',
-                          id: layerGuideCardPanelId(definition.id),
-                        });
-                      }
-                    }
-                    setShowLayerGuide(event.target.checked);
-                  }}
-                />
-                レイヤーカンペ
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={showLayerKeys}
-                  onChange={(event) => setShowLayerKeys(event.target.checked)}
-                />
-                レイヤーキー
-              </label>
-              {hasShiftKeys ? (
+            <div className="input-keyboard-toolbar">
+              <div className="input-display-options" aria-label="表示設定">
                 <label>
                   <input
                     type="checkbox"
-                    checked={showShiftKeys}
-                    onChange={(event) => setShowShiftKeys(event.target.checked)}
+                    checked={showDynamicGuide}
+                    onChange={(event) => setShowDynamicGuide(event.target.checked)}
                   />
-                  Shiftキー
+                  動的ガイド
                 </label>
-              ) : null}
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={showLayerGuide}
+                    onChange={(event) => {
+                      if (!event.target.checked) {
+                        workspace.dispatch({ type: 'dock', id: INPUT_LAYER_GUIDE_PANEL_ID });
+                        for (const definition of guideDefinitions) {
+                          workspace.dispatch({
+                            type: 'dock',
+                            id: layerGuideCardPanelId(definition.id),
+                          });
+                        }
+                      }
+                      setShowLayerGuide(event.target.checked);
+                    }}
+                  />
+                  レイヤーカンペ
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={showLayerKeys}
+                    onChange={(event) => setShowLayerKeys(event.target.checked)}
+                  />
+                  レイヤーキー
+                </label>
+                {hasShiftKeys ? (
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={showShiftKeys}
+                      onChange={(event) => setShowShiftKeys(event.target.checked)}
+                    />
+                    Shiftキー
+                  </label>
+                ) : null}
+              </div>
+              <p
+                className="input-active-layer"
+                data-active={activeDefinitions.length > 0 || undefined}
+              >
+                <span>現在</span>
+                <strong>
+                  {activeDefinitions.length > 0
+                    ? activeDefinitions.map((definition) => definition.label).join(' / ')
+                    : '通常'}
+                </strong>
+              </p>
             </div>
-            <header className="input-keyboard-heading">
-              {bindingTargetKey === undefined ? (
-                <span className="input-keyboard-help">
-                  入力と違う位置になる場合、キーをクリックすることで次に押した実キーをその位置へ割り当てられます。
-                </span>
-              ) : (
+            {bindingTargetKey !== undefined ? (
+              <div className="input-keyboard-heading">
                 <div className="input-key-binding-inline" aria-label="物理キー割当">
                   <strong>{bindingTargetKey}</strong>
                   <span aria-hidden="true">←</span>
@@ -1257,19 +1268,8 @@ export function InputConverterView() {
                     閉じる
                   </button>
                 </div>
-              )}
-              <p
-                className="input-active-layer"
-                data-active={activeDefinitions.length > 0 || undefined}
-              >
-                <span>現在</span>
-                <strong>
-                  {activeDefinitions.length > 0
-                    ? activeDefinitions.map((definition) => definition.label).join(' / ')
-                    : '通常'}
-                </strong>
-              </p>
-            </header>
+              </div>
+            ) : null}
             <div className="input-keyboard-content">
               <div className="input-keyboard-stage">
                 <div className="input-keyboard-main">
