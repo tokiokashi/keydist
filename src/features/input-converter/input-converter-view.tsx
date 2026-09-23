@@ -1027,14 +1027,14 @@ export function InputConverterView() {
             className="input-capture-panel"
             defaultFloatingHeight={180}
             defaultFloatingWidth={520}
-            dockedHeaderAriaLabel="テキストを入力パネルをクリックまたはドラッグして小窓表示"
+            dockedHeaderAriaLabel="テキスト入力パネルをクリックまたはドラッグして小窓表示"
             floatOnHeaderClick
-            floatingHeaderAriaLabel="テキストを入力パネルを移動"
+            floatingHeaderAriaLabel="テキスト入力パネルを移動"
             headerClassName="input-capture-heading"
             id={INPUT_TYPING_PANEL_ID}
             minHeight={160}
             minWidth={320}
-            resizeAriaLabel="テキストを入力パネルのサイズを変更"
+            resizeAriaLabel="テキスト入力パネルのサイズを変更"
             renderHeader={({ mode, dock }) => (
               <>
                 <strong>テキストを入力</strong>
@@ -1052,7 +1052,7 @@ export function InputConverterView() {
                 <button type="button" onClick={session.clear}>クリア</button>
                 {mode === 'floating' ? (
                   <button
-                    aria-label="テキストを入力パネルを元に戻す"
+                    aria-label="テキスト入力パネルを元に戻す"
                     onClick={dock}
                     type="button"
                   >
