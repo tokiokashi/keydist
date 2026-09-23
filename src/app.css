@@ -1121,7 +1121,7 @@ h1 {
 
 .input-layer-card-float,
 .input-layer-card-placeholder button,
-.input-layer-card-floating > header button {
+.input-layer-card[data-floating] > header button {
   flex: 0 0 auto;
   margin-left: auto;
   padding: 0.16rem 0.38rem;
@@ -1157,7 +1157,7 @@ h1 {
   font-size: 0.68rem;
 }
 
-.input-layer-card-floating {
+.input-layer-card[data-floating] {
   position: fixed;
   inset: auto;
   box-sizing: border-box;
@@ -1173,7 +1173,7 @@ h1 {
   background: #fff;
   box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
 }
-.input-layer-card-floating > header {
+.input-layer-card[data-floating] > header {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
@@ -1185,16 +1185,16 @@ h1 {
   user-select: none;
 }
 
-.input-layer-card-floating > header h3 {
+.input-layer-card[data-floating] > header h3 {
   min-width: 0;
   flex: 1 1 auto;
 }
 
-.input-layer-card-floating > p {
+.input-layer-card[data-floating] > p {
   flex: 0 0 auto;
 }
 
-.input-layer-card-floating .physical-keyboard {
+.input-layer-card[data-floating] .physical-keyboard {
   display: flex;
   flex: 1 1 auto;
   min-height: 0;
@@ -1202,7 +1202,7 @@ h1 {
   padding-top: 0.45rem;
 }
 
-.input-layer-card-floating .physical-keyboard svg {
+.input-layer-card[data-floating] .physical-keyboard svg {
   width: 100%;
   height: 100%;
   max-height: 100%;
@@ -1266,10 +1266,6 @@ h1 {
   min-width: 0;
   min-height: 0;
   align-self: center;
-}
-
-.input-lookup-field-heading[data-floating] > .input-panel-dock {
-  margin-left: auto;
 }
 
 @container input-lookup-panel (max-width: 31rem) {

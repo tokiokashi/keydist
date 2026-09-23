@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import type { PanelId } from './panel-registry.ts';
+import { resolvePanelLayout, type PanelId } from './panel-registry.ts';
 import type { PanelRect, WorkspacePanelState } from './workspace-state.ts';
 import { clampPanelRectToViewport } from './viewport-clamp.ts';
 import { useWorkspaceRuntime } from './workspace-runtime.tsx';
@@ -51,13 +51,21 @@ export interface WorkspacePanelProps {
   className?: string;
   headerClassName?: string;
   children: ReactNode;
+  /**
+   * title + feature固有control専用。mode分岐（floatingなら戻すbutton、等）はここに書かない
+   * （#413 Panel model: float/dockの操作UIはWorkspacePanel側の責務）。
+   */
   renderHeader: (controls: WorkspacePanelControls) => ReactNode;
   renderPlaceholder?: (controls: WorkspacePanelControls) => ReactNode;
-  floatOnHeaderClick?: boolean;
-  defaultFloatingWidth?: number;
-  defaultFloatingHeight?: number;
-  minWidth?: number;
-  minHeight?: number;
+  /**
+   * docked時だけheaderへ追加するfeature固有control（例: 個別カンペの明示float button）。
+   * WorkspacePanel側がmodeを見て呼ぶかどうかを決めるので、feature側はmodeを読まずに済む。
+   */
+  renderDockedActions?: (controls: WorkspacePanelControls) => ReactNode;
+  /** floating時にWorkspacePanelが描く「戻す」buttonのaria-label。省略時は `${ariaLabel}を元に戻す` */
+  dockAriaLabel?: string;
+  /** floating時にWorkspacePanelが描く「戻す」buttonへ足すclassName（既存の見た目維持用） */
+  dockClassName?: string;
   resizeAriaLabel?: string;
   dockedHeaderAriaLabel?: string;
   floatingHeaderAriaLabel?: string;
@@ -93,17 +101,24 @@ export function WorkspacePanel({
   children,
   renderHeader,
   renderPlaceholder,
-  floatOnHeaderClick = false,
-  defaultFloatingWidth = 560,
-  defaultFloatingHeight = 480,
-  minWidth = 320,
-  minHeight = 240,
+  renderDockedActions,
+  dockAriaLabel,
+  dockClassName,
   resizeAriaLabel = 'サイズを変更',
   dockedHeaderAriaLabel,
   floatingHeaderAriaLabel,
 }: WorkspacePanelProps) {
-  const { state, dispatch, restoring } = useWorkspaceRuntime();
+  const { state, dispatch, restoring, registry } = useWorkspaceRuntime();
   const panel = state.panels[id];
+  // registryをcapability / min size / floating既定サイズのauthorityにする（#413 Panel model）。
+  // consumer側propsで同じ値を重複指定しない。
+  const {
+    canFloat,
+    minWidth,
+    minHeight,
+    defaultFloatingWidth,
+    defaultFloatingHeight,
+  } = resolvePanelLayout(registry.get(id));
   const panelRef = useRef<HTMLElement>(null);
   const operationRef = useRef<PointerOperation | undefined>(undefined);
   // setPointerCaptureを呼んだ要素そのもの（header or resize handle）。
@@ -162,6 +177,9 @@ export function WorkspacePanel({
   };
 
   const float = (requestedRect?: PanelRect) => {
+    // canFloat: false は呼び出し元（header click/drag/keyboard、feature側の明示button）
+    // を問わずここで一括して無効化する（#413 Panel model: registryがcapabilityのauthority）。
+    if (!canFloat) return;
     if (requestedRect !== undefined) {
       dispatch({
         type: 'float',
@@ -202,7 +220,7 @@ export function WorkspacePanel({
 
   const controls: WorkspacePanelControls = { mode, float, dock, activate };
   const startDockedDetach = (event: ReactPointerEvent<HTMLElement>) => {
-    if (!floatOnHeaderClick || isInteractiveTarget(event.target, event.currentTarget)) return;
+    if (!canFloat || isInteractiveTarget(event.target, event.currentTarget)) return;
 
     const bounds = panelRef.current?.getBoundingClientRect();
     if (bounds === undefined) return;
@@ -381,13 +399,13 @@ export function WorkspacePanel({
     }
   };
   const onDockedHeaderKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
-    if (!floatOnHeaderClick || (event.key !== 'Enter' && event.key !== ' ')) return;
+    if (!canFloat || (event.key !== 'Enter' && event.key !== ' ')) return;
     if (isInteractiveTarget(event.target, event.currentTarget)) return;
     event.preventDefault();
     float();
   };
   const onDockedHeaderClick = (event: ReactMouseEvent<HTMLElement>) => {
-    if (!floatOnHeaderClick || isInteractiveTarget(event.target, event.currentTarget)) return;
+    if (!canFloat || isInteractiveTarget(event.target, event.currentTarget)) return;
     float();
   };
 
@@ -445,18 +463,29 @@ export function WorkspacePanel({
         onKeyDown={mode === 'docked' ? onDockedHeaderKeyDown : undefined}
         onPointerDown={mode === 'floating'
           ? (event) => startPointerOperation('move', event)
-          : floatOnHeaderClick
+          : canFloat
             ? startDockedDetach
             : undefined}
         onPointerMove={mode === 'floating' ? movePointerOperation : undefined}
         onPointerUp={mode === 'floating' ? endPointerOperation : undefined}
         onPointerCancel={mode === 'floating' ? endPointerOperation : undefined}
         onLostPointerCapture={mode === 'floating' ? losePointerOperation : undefined}
-        data-detachable={mode === 'docked' && floatOnHeaderClick || undefined}
-        role={mode === 'docked' && floatOnHeaderClick ? 'button' : undefined}
-        tabIndex={mode === 'docked' && floatOnHeaderClick ? 0 : undefined}
+        data-detachable={mode === 'docked' && canFloat || undefined}
+        role={mode === 'docked' && canFloat ? 'button' : undefined}
+        tabIndex={mode === 'docked' && canFloat ? 0 : undefined}
       >
         {renderHeader(controls)}
+        {mode === 'docked' ? renderDockedActions?.(controls) : null}
+        {mode === 'floating' ? (
+          <button
+            aria-label={dockAriaLabel ?? `${ariaLabel}を元に戻す`}
+            className={dockClassName}
+            onClick={dock}
+            type="button"
+          >
+            戻す
+          </button>
+        ) : null}
       </header>
       {children}
       {mode === 'floating' ? (
