@@ -1,3 +1,7 @@
+import {
+  createDebouncedPersistenceScheduler,
+  type DebouncedPersistenceScheduler,
+} from '../persistence/debounced-scheduler.ts';
 import type { KeyValueStorage } from '../persistence/storage.ts';
 import { decodeVersionedState } from '../persistence/versioned-state.ts';
 import type {
@@ -179,14 +183,7 @@ export function clampAllFloatingPanels(
   return changed ? { ...state, panels } : state;
 }
 
-export interface WorkspacePersistenceScheduler {
-  /** state変化を通知する。実際の書き込みはdebounce後にまとめて行う（drag/resize中の連打を吸収） */
-  notify(state: WorkspaceStateV1): void;
-  /** pagehide / visibilitychange(hidden) 用の即時書き込み */
-  flush(): void;
-  /** アンマウント時の後始末。保留中の書き込みは破棄する */
-  cancel(): void;
-}
+export type WorkspacePersistenceScheduler = DebouncedPersistenceScheduler<WorkspaceStateV1>;
 
 export interface WorkspacePersistenceSchedulerOptions {
   storage: KeyValueStorage;
@@ -195,56 +192,19 @@ export interface WorkspacePersistenceSchedulerOptions {
   clearTimeoutFn?: typeof clearTimeout;
 }
 
-const DEFAULT_DEBOUNCE_MS = 400;
-
 /**
  * pointermoveのたびにlocalStorageへ書かないための書き込みコアレッシング。
  * 直列化した値が前回と同じなら書かない（drag終了後の同一位置への再通知等）。
+ * debounce本体は汎用スケジューラ（src/persistence/debounced-scheduler.ts）に括り出してある。
  */
 export function createWorkspacePersistenceScheduler(
   options: WorkspacePersistenceSchedulerOptions,
 ): WorkspacePersistenceScheduler {
-  const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS;
-  const setTimeoutFn = options.setTimeoutFn ?? setTimeout;
-  const clearTimeoutFn = options.clearTimeoutFn ?? clearTimeout;
-
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let pending: WorkspaceStateV1 | undefined;
-  let lastSerialized: string | undefined;
-
-  const writeNow = (state: WorkspaceStateV1) => {
-    const serialized = serializeWorkspaceState(state);
-    if (serialized === lastSerialized) return;
-    lastSerialized = serialized;
-    saveWorkspaceState(options.storage, state);
-  };
-
-  return {
-    notify(state) {
-      pending = state;
-      if (timer !== undefined) clearTimeoutFn(timer);
-      timer = setTimeoutFn(() => {
-        timer = undefined;
-        const next = pending;
-        pending = undefined;
-        if (next !== undefined) writeNow(next);
-      }, debounceMs);
-    },
-    flush() {
-      if (timer !== undefined) {
-        clearTimeoutFn(timer);
-        timer = undefined;
-      }
-      const next = pending;
-      pending = undefined;
-      if (next !== undefined) writeNow(next);
-    },
-    cancel() {
-      if (timer !== undefined) {
-        clearTimeoutFn(timer);
-        timer = undefined;
-      }
-      pending = undefined;
-    },
-  };
+  return createDebouncedPersistenceScheduler<WorkspaceStateV1>({
+    write: (state) => saveWorkspaceState(options.storage, state),
+    serialize: serializeWorkspaceState,
+    debounceMs: options.debounceMs,
+    setTimeoutFn: options.setTimeoutFn,
+    clearTimeoutFn: options.clearTimeoutFn,
+  });
 }
