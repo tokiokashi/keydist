@@ -8,7 +8,7 @@ test('Tester uses a resizable wide FHD workspace without test-mode scrolling', a
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   const settings = page.locator('.input-settings-panel');
-  const guide = page.getByLabel('Layer Guide');
+  const guide = page.getByLabel('Layer Guide', { exact: true });
   const capture = page.locator('.input-capture-panel');
   const keyboardPanel = page.locator('.input-keyboard-panel');
   const details = page.getByLabel('Key info.', { exact: true });
@@ -387,7 +387,7 @@ test('設定panelは開閉controlを誤detachせず小窓化できる', async ({
   await panel.getByRole('button', { name: '設定を開く' }).click();
 
   await page.getByLabel('Settingsをクリックまたはドラッグして小窓表示')
-    .getByText('設定', { exact: true })
+    .getByText('Settings', { exact: true })
     .click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect(page.getByLabel('配列', { exact: true })).toBeVisible();
@@ -551,7 +551,7 @@ test('docked panel headerは閾値drag・cancel・keyboardを区別する', asyn
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const guide = page.getByLabel('Layer Guide');
+  const guide = page.getByLabel('Layer Guide', { exact: true });
   const dockedHeader = page.getByLabel('Layer Guideを小窓表示');
   const headerBox = await dockedHeader.boundingBox();
   expect(headerBox).not.toBeNull();
@@ -626,7 +626,7 @@ test('レイヤーカンペはWorkspace overlayで移動・リサイズしなが
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const guide = page.getByLabel('Layer Guide');
+  const guide = page.getByLabel('Layer Guide', { exact: true });
 
   await page.getByLabel('Layer Guideを小窓表示').click();
   await expect(guide).toHaveAttribute('data-floating', 'true');
@@ -680,7 +680,7 @@ test('floating panel dragはpointer中のrectを永続stateへ連打せず終了
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const guide = page.getByLabel('Layer Guide');
+  const guide = page.getByLabel('Layer Guide', { exact: true });
   await page.getByLabel('Layer Guideを小窓表示').click();
   await expect(guide).toHaveAttribute('data-floating', 'true');
 
@@ -728,7 +728,7 @@ test('Workspace animationはreduced-motionを尊重する', async ({ page }) => 
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const guide = page.getByLabel('Layer Guide');
+  const guide = page.getByLabel('Layer Guide', { exact: true });
   await page.getByLabel('Layer Guideを小窓表示').click();
   await expect(guide).toHaveAttribute('data-floating', 'true');
 
@@ -750,7 +750,7 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
   await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
-  const guide = page.getByLabel('Layer Guide');
+  const guide = page.getByLabel('Layer Guide', { exact: true });
   const floatButtons = guide.locator('.input-layer-card-float');
   await expect.poll(() => floatButtons.count()).toBeGreaterThan(1);
 
@@ -853,7 +853,7 @@ test('#regression レイヤーカンペ本体を浮かせた状態でも入れ�
   // レイヤーカンペ本体を小窓化してから、その子である個別カンペカード2枚(A, B)も
   // それぞれ独立小窓化する。カードはガイドのReact子要素だがfloating-rootへ
   // portalされるため、クリックイベントはReactツリーを経由してガイドまで伝播する。
-  const guide = page.getByLabel('Layer Guide');
+  const guide = page.getByLabel('Layer Guide', { exact: true });
   await page.getByLabel('Layer Guideを小窓表示').click();
   await expect(guide).toHaveAttribute('data-floating', 'true');
 
@@ -1092,7 +1092,7 @@ test('Tester keeps desktop Y bounded and lets cheatsheets scroll when width caus
   await page.getByLabel('配列', { exact: true }).selectOption('tsuki-2-263');
   await expect(feature).toHaveAttribute('data-input-ready', 'tsuki-2-263');
 
-  const guide = page.getByLabel('Layer Guide');
+  const guide = page.getByLabel('Layer Guide', { exact: true });
   const displaySettings = page.getByLabel('表示設定');
   const keyboardPanel = page.locator('.input-keyboard-panel');
   const splitter = page.getByRole('separator', { name: 'カンペと入力領域の幅を調整' });
@@ -1179,7 +1179,7 @@ test('レイヤーカンペ全体を小窓化して戻してもdocked gridの詰
   await settings.getByRole('button', { name: '設定を閉じる' }).click();
   await expect(settings.locator('.input-settings-body')).toHaveCount(0);
 
-  const guide = page.getByLabel('Layer Guide');
+  const guide = page.getByLabel('Layer Guide', { exact: true });
   const grid = guide.locator('.input-layer-guide-grid');
   const columns = async () => grid.evaluate((element) =>
     getComputedStyle(element).gridTemplateColumns
@@ -1367,7 +1367,7 @@ test('Tester shows stable active layer, dynamic next-key guide and display toggl
   await page.keyboard.up('j');
   await expect(layerLabel).toContainText('通常');
 
-  await expect(page.getByLabel('Layer Guide')).toBeVisible();
+  await expect(page.getByLabel('Layer Guide', { exact: true })).toBeVisible();
   const layerGuideToggle = page.getByLabel('レイヤーカンペ', { exact: true });
   await layerGuideToggle.focus();
   await page.keyboard.press('Space');
