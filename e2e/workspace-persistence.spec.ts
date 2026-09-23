@@ -15,8 +15,8 @@ test('Tester restores selected layout and physical geometry after reload', async
   await expect(geometrySelect).toHaveValue('column-staggered');
 
   await expect.poll(async () => page.evaluate(() => {
-    const raw = window.localStorage.getItem('keydist:input-converter-preferences');
-    return raw === null ? null : JSON.parse(raw);
+    const raw = window.localStorage.getItem('keydist:app-state');
+    return raw === null ? null : JSON.parse(raw).inputConverter;
   })).toMatchObject({
     version: 2,
     layoutId: 'tsuki-2-263',
@@ -41,7 +41,7 @@ test('Tester restores selected layout and physical geometry after reload', async
   await expect(geometrySelect).toHaveValue('column-staggered');
 });
 
-const STORAGE_KEY = 'keydist:workspace-state';
+const STORAGE_KEY = 'keydist:app-state';
 
 /** dragging解除後のscale springが収まるのを待つ（既存e2eの慣例に合わせる） */
 async function waitForSpringSettle(page: import('@playwright/test').Page) {
@@ -182,7 +182,7 @@ test('a window blur mid-drag commits the in-flight move so the next drag does no
       async () => {
         const raw = await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY);
         if (raw === null) return null;
-        const parsed = JSON.parse(raw) as {
+        const parsed = JSON.parse(raw).workspace as {
           panels: Record<string, { rect?: { x: number; y: number; width: number; height: number } }>;
         };
         const rect = parsed.panels['input.lookup']?.rect;

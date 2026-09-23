@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const STORAGE_KEY = 'keydist:input-converter-preferences';
+const STORAGE_KEY = 'keydist:app-state';
 
 /** dragging解除後のscale springが収まるのを待つ（workspace-persistence.spec.tsの慣例に合わせる） */
 async function waitForSpringSettle(page: import('@playwright/test').Page) {
@@ -92,17 +92,20 @@ test('random practice mode restores the same current challenge per layout and re
     if (localStorage.getItem(key) !== null) return;
     localStorage.setItem(key, JSON.stringify({
       version: 2,
-      layoutId: 'shingeta',
-      geometryId: 'row-staggered',
-      layouts: {
-        shingeta: {
-          showDynamicGuide: true,
-          showLayerGuide: true,
-          showLayerKeys: true,
-          showShiftKeys: false,
-          inputText: '',
-          practiceText: '',
-          randomPracticeMode: null,
+      inputConverter: {
+        version: 2,
+        layoutId: 'shingeta',
+        geometryId: 'row-staggered',
+        layouts: {
+          shingeta: {
+            showDynamicGuide: true,
+            showLayerGuide: true,
+            showLayerKeys: true,
+            showShiftKeys: false,
+            inputText: '',
+            practiceText: '',
+            randomPracticeMode: null,
+          },
         },
       },
     }));
@@ -132,8 +135,8 @@ test('random practice mode restores the same current challenge per layout and re
   await expect.poll(async () => page.evaluate((key) => {
     const raw = localStorage.getItem(key);
     if (raw === null) return null;
-    const value = JSON.parse(raw);
-    const layout = value.layouts?.shingeta;
+    const value = JSON.parse(raw).inputConverter;
+    const layout = value?.layouts?.shingeta;
     return layout === undefined
       ? null
       : {
