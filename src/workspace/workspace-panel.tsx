@@ -47,6 +47,7 @@ export interface WorkspacePanelProps {
   id: PanelId;
   ariaLabel: string;
   className?: string;
+  headerClassName?: string;
   children: ReactNode;
   renderHeader: (controls: WorkspacePanelControls) => ReactNode;
   renderPlaceholder?: (controls: WorkspacePanelControls) => ReactNode;
@@ -86,6 +87,7 @@ export function WorkspacePanel({
   id,
   ariaLabel,
   className,
+  headerClassName,
   children,
   renderHeader,
   renderPlaceholder,
@@ -367,7 +369,7 @@ export function WorkspacePanel({
     >
       <header
         aria-label={mode === 'floating' ? floatingHeaderAriaLabel : dockedHeaderAriaLabel}
-        className="workspace-panel-header"
+        className={['workspace-panel-header', headerClassName].filter(Boolean).join(' ')}
         data-floating={mode === 'floating' || undefined}
         onClick={mode === 'docked' ? onDockedHeaderClick : undefined}
         onKeyDown={mode === 'docked' ? onDockedHeaderKeyDown : undefined}
