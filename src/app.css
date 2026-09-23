@@ -274,11 +274,21 @@ h1 {
 .input-panel-heading,
 .input-capture-heading,
 .input-keyboard-heading,
+.input-debug-heading,
 .input-layer-guide > header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.input-debug-heading {
+  min-height: 1.55rem;
+  margin-bottom: 0.35rem;
+}
+
+.input-debug-heading > strong {
+  font-size: 0.72rem;
 }
 
 .input-panel-heading {
@@ -1287,20 +1297,26 @@ h1 {
   overflow: auto;
 }
 
+.input-debug-heading {
+  min-width: 0;
+  padding: 0.45rem 0.65rem 0;
+}
+
 .input-keyboard-content > .input-debug {
   align-self: stretch;
 }
 
 .input-inspector {
   display: grid;
+  min-width: 0;
   grid-template-columns: minmax(0, 1fr);
   gap: 0.65rem;
   padding: 0.65rem;
 }
 
 .input-keyboard-content[data-detail-layout="stacked"] > .input-debug {
-  min-height: 4.5rem;
-  max-height: 6.5rem;
+  min-height: 6rem;
+  max-height: 8.5rem;
 }
 
 .input-keyboard-content[data-detail-layout="stacked"] .input-inspector {
