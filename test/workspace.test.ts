@@ -177,6 +177,25 @@ test('workspace state restores dormant floating rect when a definition reappears
   assert.equal(afterA.zOrder.includes('input.layer:thumb-l'), true);
 });
 
+test('workspace state re-applies canHide invariant when a dormant panel reappears', () => {
+  let state = createWorkspaceState(definitions);
+  state = workspaceReducer(state, {
+    type: 'set-visible',
+    id: 'input.keyboard',
+    visible: false,
+  });
+
+  const layoutBRegistry = createWorkspacePanelRegistry([
+    definitionInputs[1]!,
+    definitionInputs[2]!,
+  ]);
+  const afterB = reconcileWorkspaceState(state, [...layoutBRegistry.values()]);
+  assert.equal(afterB.panels['input.keyboard']?.visible, false);
+
+  const afterA = reconcileWorkspaceState(afterB, definitions);
+  assert.equal(afterA.panels['input.keyboard']?.visible, true);
+});
+
 test('workspace state reconciliation is referentially stable when definitions are unchanged', () => {
   const state = createWorkspaceState(definitions);
   assert.equal(reconcileWorkspaceState(state, definitions), state);

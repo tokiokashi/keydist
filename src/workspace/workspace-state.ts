@@ -79,8 +79,13 @@ export function reconcileWorkspaceState(
       throw new Error(`Duplicate workspace panel id: ${definition.id}`);
     }
     definitionIds.add(definition.id);
-    if (nextPanels[definition.id] === undefined) {
+    const current = nextPanels[definition.id];
+    if (current === undefined) {
       nextPanels[definition.id] = createWorkspacePanelState(definition);
+    } else if (!definition.canHide && !current.visible) {
+      // dormant中はdefinition不在のためcapabilityを検証できない。
+      // 同じidが再登場した時点で、現在のdefinition invariantを必ず掛け直す。
+      nextPanels[definition.id] = { ...current, visible: true };
     }
   }
 
