@@ -771,6 +771,78 @@ h1 {
   font-size: 0.72rem;
 }
 
+.input-layer-guide > header[role="button"] {
+  cursor: pointer;
+}
+
+.input-layer-guide > header small {
+  margin-left: auto;
+  color: #85857f;
+  font-size: 0.65rem;
+  font-weight: 500;
+}
+
+.input-layer-guide[data-floating] {
+  position: fixed;
+  inset: auto;
+  box-sizing: border-box;
+  flex: none;
+  min-width: 320px;
+  min-height: 240px;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #c9c9c3;
+  border-radius: 0.7rem;
+  background: #fff;
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
+}
+
+.input-layer-guide[data-floating]::backdrop {
+  background: transparent;
+}
+
+.input-layer-guide[data-floating] > header {
+  flex: 0 0 auto;
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+}
+
+.input-layer-guide-dock {
+  margin-left: auto;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid #c9c9c3;
+  border-radius: 0.35rem;
+  background: #fff;
+  font: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.input-layer-guide-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.input-layer-guide-resize::after {
+  position: absolute;
+  right: 0.25rem;
+  bottom: 0.25rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid #85857f;
+  border-bottom: 2px solid #85857f;
+  content: "";
+}
+
 .input-semantic-groups {
   display: flex;
   flex-wrap: wrap;
