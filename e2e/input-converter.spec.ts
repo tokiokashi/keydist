@@ -97,6 +97,12 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   expect(narrowDetailsBox!.y).toBeGreaterThan(
     narrowKeyboardBox!.y + narrowKeyboardBox!.height,
   );
+  const narrowDetailSections = details.locator('.input-inspector > section');
+  const narrowSectionBoxes = await narrowDetailSections.evaluateAll((elements) =>
+    elements.map((element) => element.getBoundingClientRect()));
+  expect(narrowSectionBoxes).toHaveLength(2);
+  expect(Math.abs(narrowSectionBoxes[0]!.top - narrowSectionBoxes[1]!.top))
+    .toBeLessThanOrEqual(1);
 
   await splitter.focus();
   await page.keyboard.press('Home');
@@ -640,6 +646,11 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
 
   await page.getByRole('button', { name: '前の入力単位' }).click();
   await expect(guide).toContainText('1 / 2');
+
+  await lookup.fill('せ');
+  await expect(guide).toContainText('せ');
+  await expect(keyboard.locator('[data-key-id="a"] .physical-keyboard-legend'))
+    .toHaveText('せ');
 
   await lookup.fill('ぎゃ');
   await expect(results).toContainText('H + J + W');
