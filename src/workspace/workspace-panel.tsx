@@ -132,6 +132,10 @@ export function WorkspacePanel({
   const zIndex = Math.max(0, state.zOrder.indexOf(id));
   const active = state.zOrder.at(-1) === id;
   const activate = () => dispatch({ type: 'activate', id });
+  // Portal events propagate through the React tree; ignore those from nested floating panels.
+  const activateFromOwnTree = (event: { currentTarget: Element; target: EventTarget }) => {
+    if (event.target instanceof Node && event.currentTarget.contains(event.target)) activate();
+  };
   const clamp = (rect: PanelRect) => clampPanelRectToViewport(
     rect,
     {
@@ -363,9 +367,9 @@ export function WorkspacePanel({
           mass: 0.55,
         },
       }}
-      onClickCapture={mode === 'floating' ? activate : undefined}
-      onFocusCapture={mode === 'floating' ? activate : undefined}
-      onPointerDownCapture={mode === 'floating' ? activate : undefined}
+      onClickCapture={mode === 'floating' ? activateFromOwnTree : undefined}
+      onFocusCapture={mode === 'floating' ? activateFromOwnTree : undefined}
+      onPointerDownCapture={mode === 'floating' ? activateFromOwnTree : undefined}
     >
       <header
         aria-label={mode === 'floating' ? floatingHeaderAriaLabel : dockedHeaderAriaLabel}
