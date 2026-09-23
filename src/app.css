@@ -1001,12 +1001,6 @@ h1 {
   }
 }
 
-@container input-keyboard-panel (max-width: 36rem) {
-  .input-inspector {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 .input-inspector section {
   min-width: 0;
   padding: 0.65rem;
