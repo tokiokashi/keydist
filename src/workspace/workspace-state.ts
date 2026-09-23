@@ -23,6 +23,25 @@ export interface WorkspacePanelState {
 
 export type WorkspacePanels = Partial<Record<PanelId, WorkspacePanelState>>;
 
+export const DORMANT_DYNAMIC_PANEL_PREFIX = 'input.layer:';
+export const MAX_DORMANT_DYNAMIC_PANELS = 128;
+
+function compactWorkspacePanels(
+  panels: WorkspacePanels,
+  currentIds: ReadonlySet<PanelId>,
+): WorkspacePanels {
+  const entries = Object.entries(panels) as Array<[PanelId, WorkspacePanelState]>;
+  const dormantDynamicIds = entries
+    .filter(([id]) => !currentIds.has(id) && id.startsWith(DORMANT_DYNAMIC_PANEL_PREFIX))
+    .map(([id]) => id);
+  const keepDormant = new Set(
+    dormantDynamicIds.slice(-MAX_DORMANT_DYNAMIC_PANELS),
+  );
+
+  return Object.fromEntries(entries.filter(([id]) =>
+    currentIds.has(id) || keepDormant.has(id))) as WorkspacePanels;
+}
+
 export interface WorkspaceStateV1 {
   version: typeof WORKSPACE_STATE_VERSION;
   panels: WorkspacePanels;
@@ -62,10 +81,10 @@ export function createWorkspaceState(
 }
 
 /**
- * 現在のdefinitionsに無いパネルは削除せずdormant（休眠）として state.panels に残す。
- * 動的パネル（レイヤーカンペ等）は配列切替でidが行き来するため、消すと
- * A→B→A で浮動位置が失われる。zOrderとレンダリングからは除外し、
- * 同じidが再登場した時にそのまま状態を復元する。世代のGCはこの版では行わない。
+ * 現在のdefinitionsに無い動的レイヤーカンペだけをdormantとして保持する。
+ * A→B→Aの復元に必要だが、無制限に保持すると自作layout/layerの履歴で増え続けるため
+ * first-seen順の末尾128件へ上限を設ける。未知/廃止済みの静的panel IDはpruneする。
+ * zOrderには現行definitionsだけを残す。
  */
 export function reconcileWorkspaceState(
   state: WorkspaceStateV1,
@@ -94,17 +113,18 @@ export function reconcileWorkspaceState(
     if (!nextOrder.includes(definition.id)) nextOrder.push(definition.id);
   }
 
+  const compactedPanels = compactWorkspacePanels(nextPanels, definitionIds);
   const stateKeys = Object.keys(state.panels);
-  const nextKeys = Object.keys(nextPanels);
+  const nextKeys = Object.keys(compactedPanels);
   const samePanels = stateKeys.length === nextKeys.length
-    && nextKeys.every((id) => state.panels[id as PanelId] === nextPanels[id as PanelId]);
+    && nextKeys.every((id) => state.panels[id as PanelId] === compactedPanels[id as PanelId]);
   const sameOrder = nextOrder.length === state.zOrder.length
     && nextOrder.every((id, index) => id === state.zOrder[index]);
 
   if (samePanels && sameOrder) return state;
   return {
     ...state,
-    panels: nextPanels,
+    panels: compactedPanels,
     zOrder: nextOrder,
   };
 }
