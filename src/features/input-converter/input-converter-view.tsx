@@ -52,8 +52,10 @@ import {
 } from './random-samples.ts';
 import {
   reverseLookup,
+  reverseLookupGuideActionLabel,
+  reverseLookupGuideActionMatchesKeys,
+  reverseLookupGuideActions,
   reverseLookupRouteLabel,
-  reverseLookupStepLabel,
   reverseLookupStepMatchesRecognition,
 } from './reverse-lookup.ts';
 import { useTypingSession } from './use-typing-session.ts';
@@ -365,12 +367,22 @@ export function InputConverterView() {
     [layout, lookupQuery],
   );
   const activeLookupRoute = lookupRoutes[0];
-  const activeLookupStep = activeLookupRoute?.steps[
-    Math.min(lookupStepIndex, Math.max(0, activeLookupRoute.steps.length - 1))
-  ];
-  const lookupKeys = useMemo(() => new Set(
-    activeLookupStep?.actions.flatMap((action) => action) ?? [],
-  ), [activeLookupStep]);
+  const activeLookupGuideActions = useMemo(
+    () => activeLookupRoute === undefined ? [] : reverseLookupGuideActions(activeLookupRoute),
+    [activeLookupRoute],
+  );
+  const activeLookupGuideIndex = Math.min(
+    lookupStepIndex,
+    Math.max(0, activeLookupGuideActions.length - 1),
+  );
+  const activeLookupAction = activeLookupGuideActions[activeLookupGuideIndex];
+  const activeLookupStep = activeLookupAction === undefined
+    ? undefined
+    : activeLookupRoute?.steps[activeLookupAction.routeStepIndex];
+  const lookupKeys = useMemo(
+    () => new Set(activeLookupAction?.keys ?? []),
+    [activeLookupAction],
+  );
   const lookupLegendMap = useMemo(() => {
     if (activeLookupStep === undefined) return new Map<string, string>();
     const guideIds = new Set(guideDefinitions.map((definition) => definition.id));
@@ -488,18 +500,60 @@ export function InputConverterView() {
   useEffect(() => {
     if (session.lastRecognized === lastLookupRecognitionRef.current) return;
     lastLookupRecognitionRef.current = session.lastRecognized;
-    if (session.lastRecognized.length === 0 || activeLookupRoute === undefined) return;
+    if (
+      session.lastRecognized.length === 0
+      || activeLookupStep === undefined
+      || activeLookupAction === undefined
+      || !activeLookupAction.finalInRouteStep
+    ) return;
+
+    if (session.lastRecognized.some((recognized) =>
+      reverseLookupStepMatchesRecognition(activeLookupStep, recognized))) {
+      setLookupStepIndex((current) =>
+        Math.min(activeLookupGuideActions.length, current + 1));
+    }
+  }, [
+    activeLookupAction,
+    activeLookupGuideActions.length,
+    activeLookupStep,
+    session.lastRecognized,
+  ]);
+
+  useEffect(() => {
+    if (
+      activeLookupAction === undefined
+      || activeLookupAction.finalInRouteStep
+      || session.recognitionKeys.length === 0
+    ) return;
+    if (reverseLookupGuideActionMatchesKeys(activeLookupAction, session.recognitionKeys)) {
+      setLookupStepIndex((current) =>
+        Math.min(activeLookupGuideActions.length, current + 1));
+    }
+  }, [activeLookupAction, activeLookupGuideActions.length, session.recognitionKeys]);
+
+  const lastLookupBackspaceRef = useRef(session.backspaceRevision);
+  useEffect(() => {
+    if (session.backspaceRevision === lastLookupBackspaceRef.current) return;
+    lastLookupBackspaceRef.current = session.backspaceRevision;
+    if (activeLookupGuideActions.length === 0 || activeLookupRoute === undefined) return;
 
     setLookupStepIndex((current) => {
-      const step = activeLookupRoute.steps[current];
-      if (
-        step === undefined
-        || !session.lastRecognized.some((recognized) =>
-          reverseLookupStepMatchesRecognition(step, recognized))
-      ) return current;
-      return Math.min(activeLookupRoute.steps.length - 1, current + 1);
+      if (current <= 0) return 0;
+      const currentAction = current >= activeLookupGuideActions.length
+        ? undefined
+        : activeLookupGuideActions[current];
+      const targetRouteStepIndex = currentAction === undefined
+        ? activeLookupRoute.steps.length - 1
+        : Math.max(0, currentAction.routeStepIndex - 1);
+      return activeLookupGuideActions.findIndex(
+        (action) => action.routeStepIndex === targetRouteStepIndex,
+      );
     });
-  }, [activeLookupRoute, session.lastRecognized]);
+  }, [
+    activeLookupGuideActions,
+    activeLookupRoute,
+    session.backspaceRevision,
+  ]);
 
   useEffect(() => {
     const grid = guideGridRef.current;
@@ -915,7 +969,9 @@ export function InputConverterView() {
               <div className="input-lookup-results" aria-live="polite">
                 {lookupQuery.length === 0 ? (
                   <span className="input-muted">文字を入力するとcanonical inputから逆引きします。</span>
-                ) : activeLookupRoute === undefined || activeLookupStep === undefined ? (
+                ) : activeLookupRoute === undefined
+                  || activeLookupStep === undefined
+                  || activeLookupAction === undefined ? (
                   <span className="input-muted">この配列では打ち方が見つかりません。</span>
                 ) : (
                   <>
@@ -931,21 +987,21 @@ export function InputConverterView() {
                         </button>
                         <button
                           aria-label="次の入力単位"
-                          disabled={lookupStepIndex >= activeLookupRoute.steps.length - 1}
+                          disabled={activeLookupGuideIndex >= activeLookupGuideActions.length - 1}
                           onClick={() => setLookupStepIndex((current) =>
-                            Math.min(activeLookupRoute.steps.length - 1, current + 1))}
+                            Math.min(activeLookupGuideActions.length - 1, current + 1))}
                           type="button"
                         >
                           →
                         </button>
                       </span>
                       <span className="input-lookup-progress">
-                        {Math.min(lookupStepIndex + 1, activeLookupRoute.steps.length)}
+                        {Math.min(activeLookupGuideIndex + 1, activeLookupGuideActions.length)}
                         {' / '}
-                        {activeLookupRoute.steps.length}
+                        {activeLookupGuideActions.length}
                       </span>
-                      <strong>{activeLookupStep.output}</strong>
-                      <code>{reverseLookupStepLabel(activeLookupStep)}</code>
+                      <strong>{activeLookupAction.output}</strong>
+                      <code>{reverseLookupGuideActionLabel(activeLookupAction)}</code>
                     </div>
                     <ol>
                       {lookupRoutes.map((route, index) => (

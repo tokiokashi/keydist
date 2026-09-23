@@ -44,6 +44,8 @@ export interface TypingSession {
   readonly recognitionKeys: readonly string[];
   readonly presentation: KeyPatternPresentationState;
   readonly lastRecognized: readonly RecognizedTypingInput[];
+  /** Backspace command sequence number. Guide consumers can react without inferring text diffs. */
+  readonly backspaceRevision: number;
   readonly active: boolean;
   readonly composing: boolean;
   readonly readyLayoutId: string | undefined;
@@ -78,6 +80,7 @@ export function useTypingSession(
     EMPTY_KEY_PATTERN_PRESENTATION_STATE,
   );
   const [lastRecognized, setLastRecognized] = useState<readonly RecognizedTypingInput[]>([]);
+  const [backspaceRevision, setBackspaceRevision] = useState(0);
   const [active, setActive] = useState(false);
   const [composing, setComposing] = useState(false);
   const [readyLayoutId, setReadyLayoutId] = useState<string>();
@@ -200,6 +203,7 @@ export function useTypingSession(
           );
           if (event.key === 'Backspace') {
             reseedRecognition(preservingKeys);
+            setBackspaceRevision((current) => current + 1);
           } else {
             pressedKeysRef.current = [];
             recognitionKeysRef.current = [];
@@ -308,6 +312,7 @@ export function useTypingSession(
     recognitionKeys,
     presentation,
     lastRecognized,
+    backspaceRevision,
     active,
     composing,
     readyLayoutId,
