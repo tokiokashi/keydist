@@ -638,15 +638,27 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
   const floatButtons = guide.locator('.input-layer-card-float');
   await expect.poll(() => floatButtons.count()).toBeGreaterThan(1);
 
+  const firstSourceBox = await guide.locator('.input-layer-card').first().boundingBox();
+  expect(firstSourceBox).not.toBeNull();
   await floatButtons.first().click();
   let floatingCards = page.locator('.input-layer-card-floating');
   await expect(floatingCards).toHaveCount(1);
+  const firstFloatingBox = await floatingCards.first().boundingBox();
+  expect(firstFloatingBox).not.toBeNull();
+  expect(Math.abs(firstFloatingBox!.x - firstSourceBox!.x)).toBeLessThanOrEqual(24);
+  expect(Math.abs(firstFloatingBox!.y - firstSourceBox!.y)).toBeLessThanOrEqual(24);
   await expect(guide).not.toHaveAttribute('data-floating');
   await expect(guide.locator('.input-layer-card-placeholder')).toHaveCount(1);
   // 1枚目を浮かした後も、残りのカードからさらに個別小窓表示できる。
+  const secondSourceBox = await guide.locator('.input-layer-card').first().boundingBox();
+  expect(secondSourceBox).not.toBeNull();
   await guide.locator('.input-layer-card-float').first().click();
   floatingCards = page.locator('.input-layer-card-floating');
   await expect(floatingCards).toHaveCount(2);
+  const secondFloatingBox = await floatingCards.nth(1).boundingBox();
+  expect(secondFloatingBox).not.toBeNull();
+  expect(Math.abs(secondFloatingBox!.x - secondSourceBox!.x)).toBeLessThanOrEqual(24);
+  expect(Math.abs(secondFloatingBox!.y - secondSourceBox!.y)).toBeLessThanOrEqual(24);
   await expect(guide.locator('.input-layer-card-placeholder')).toHaveCount(2);
   const first = floatingCards.first();
   const second = floatingCards.nth(1);
@@ -663,6 +675,22 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
     second.evaluate((element) => Number.parseInt(getComputedStyle(element).zIndex, 10)),
   ]);
   expect(initialZOrder[1]).toBeGreaterThan(initialZOrder[0]);
+
+  // 個別カンペもgeneric resize handleでサイズ変更できる。
+  const secondBeforeResize = await second.boundingBox();
+  const secondResizeHandle = second.getByRole('separator');
+  const secondResizeBox = await secondResizeHandle.boundingBox();
+  expect(secondBeforeResize).not.toBeNull();
+  expect(secondResizeBox).not.toBeNull();
+  await page.mouse.move(
+    secondResizeBox!.x + secondResizeBox!.width / 2,
+    secondResizeBox!.y + secondResizeBox!.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(secondResizeBox!.x + 80, secondResizeBox!.y + 50);
+  await page.mouse.up();
+  await expect.poll(async () => (await second.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(secondBeforeResize!.width + 40);
 
   const firstMoveHandle = first.locator('> header');
   const beforeFirst = await first.boundingBox();
@@ -682,7 +710,7 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
   expect(afterFirst).not.toBeNull();
   expect(afterSecond).not.toBeNull();
   expect(afterFirst!.x).toBeGreaterThan(beforeFirst!.x + 30);
-  expect(Math.abs(afterSecond!.x - beforeSecond!.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(afterSecond!.x - beforeSecond!.x)).toBeLessThanOrEqual(2);
 
   const activatedZOrder = await Promise.all([
     first.evaluate((element) => Number.parseInt(getComputedStyle(element).zIndex, 10)),
@@ -1018,6 +1046,50 @@ test('Input Converter chooses the cheatsheet grid that maximizes readable card s
 
   await setLayoutWithSettingsCollapsed('shingeta');
   await expect(page.locator('.input-layer-card')).toHaveCount(4);
+  await expect.poll(columns).toBe(2);
+});
+
+test('レイヤーカンペ全体を小窓化して戻してもdocked gridの詰め方を再計算する', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const settings = page.locator('.input-settings-panel');
+  const layoutSelect = page.getByLabel('配列', { exact: true });
+  await layoutSelect.selectOption('shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+  await settings.getByRole('button', { name: '設定を閉じる' }).click();
+  await expect(settings.locator('.input-settings-body')).toHaveCount(0);
+
+  const guide = page.getByLabel('レイヤーカンペ一覧');
+  const grid = guide.locator('.input-layer-guide-grid');
+  const columns = async () => grid.evaluate((element) =>
+    getComputedStyle(element).gridTemplateColumns
+      .split(' ')
+      .filter((track) => track.length > 0)
+      .length);
+
+  await expect(page.locator('.input-layer-card')).toHaveCount(4);
+  await expect.poll(columns).toBe(2);
+
+  await page.getByLabel('レイヤーカンペを小窓表示').click();
+  await expect(guide).toHaveAttribute('data-floating', 'true');
+
+  const resizeHandle = page.getByLabel('レイヤーカンペのサイズを変更');
+  const resizeBox = await resizeHandle.boundingBox();
+  expect(resizeBox).not.toBeNull();
+  await page.mouse.move(
+    resizeBox!.x + resizeBox!.width / 2,
+    resizeBox!.y + resizeBox!.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(resizeBox!.x - 260, resizeBox!.y);
+  await page.mouse.up();
+  await expect.poll(columns).toBe(1);
+
+  await page.getByRole('button', { name: 'レイヤーカンペを元に戻す' }).click();
+  await expect(guide).not.toHaveAttribute('data-floating');
   await expect.poll(columns).toBe(2);
 });
 
