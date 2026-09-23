@@ -809,7 +809,9 @@ export function InputConverterView() {
                 </strong>
               </p>
             </header>
-            <div className="input-keyboard-main">
+            <div className="input-keyboard-content">
+              <div className="input-keyboard-stage">
+                <div className="input-keyboard-main">
               <PhysicalKeyboard
                 ariaLabel="現在の物理キー状態"
                 geometryId={geometry.id}
@@ -822,8 +824,8 @@ export function InputConverterView() {
                   setBindingCapturing(true);
                 }}
               />
-            </div>
-            <section className="input-assist-slot" aria-label="打ち方逆引き">
+                </div>
+                <section className="input-assist-slot" aria-label="打ち方逆引き">
               <label className="input-lookup-field">
                 <span>打ち方を調べる</span>
                 <input
@@ -889,22 +891,24 @@ export function InputConverterView() {
                     </ol>
                   </>
                 )}
+                  </div>
+                </section>
               </div>
-            </section>
-          </section>
 
-          <section className="input-debug" aria-label="入力詳細">
-            <header className="input-debug-heading">
-              <strong>入力詳細</strong>
-            </header>
-            <div className="input-inspector">
-              <section>
-                <h2>Pressed</h2>
-                <p>{session.pressedKeys.length > 0 ? session.pressedKeys.join(' + ') : '—'}</p>
-              </section>
-              <section>
-                <h2>Recognized / realized action</h2>
-                <RecognizedDetail recognized={session.lastRecognized} />
+              <section className="input-debug" aria-label="入力詳細">
+                <header className="input-debug-heading">
+                  <strong>入力詳細</strong>
+                </header>
+                <div className="input-inspector">
+                  <section>
+                    <h2>Pressed</h2>
+                    <p>{session.pressedKeys.length > 0 ? session.pressedKeys.join(' + ') : '—'}</p>
+                  </section>
+                  <section>
+                    <h2>Recognized / realized action</h2>
+                    <RecognizedDetail recognized={session.lastRecognized} />
+                  </section>
+                </div>
               </section>
             </div>
           </section>
