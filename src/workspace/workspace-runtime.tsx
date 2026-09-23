@@ -8,6 +8,7 @@ import {
   type Dispatch,
   type ReactNode,
 } from 'react';
+import { LayoutGroup, MotionConfig } from 'motion/react';
 import type {
   WorkspacePanelDefinition,
 } from './panel-registry.ts';
@@ -54,9 +55,13 @@ export function WorkspaceProvider({
   children: ReactNode;
 }) {
   return (
-    <WorkspaceContext.Provider value={runtime}>
-      {children}
-    </WorkspaceContext.Provider>
+    <MotionConfig reducedMotion="user">
+      <LayoutGroup id="workspace">
+        <WorkspaceContext.Provider value={runtime}>
+          {children}
+        </WorkspaceContext.Provider>
+      </LayoutGroup>
+    </MotionConfig>
   );
 }
 
