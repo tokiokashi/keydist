@@ -687,8 +687,8 @@ h1 {
 .input-key-status {
   display: flex;
   min-width: 0;
-  max-width: 32rem;
-  flex: 0 1 28rem;
+  max-width: 20rem;
+  flex: 0 1 18rem;
   align-items: center;
   gap: 0.25rem;
   margin-left: 0;
@@ -713,7 +713,9 @@ h1 {
 }
 
 .input-key-status section:last-child {
-  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 12rem;
+  flex: 0 1 12rem;
 }
 
 .input-key-status h2 {
@@ -767,7 +769,7 @@ h1 {
   font-size: 0.58rem;
 }
 
-@container input-keyboard-panel (max-width: 52rem) {
+@container input-keyboard-panel (max-width: 40rem) {
   .input-key-status {
     max-width: none;
     flex-basis: 100%;
