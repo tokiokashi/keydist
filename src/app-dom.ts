@@ -4,7 +4,6 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 
 export const el = {
   app: $<HTMLDivElement>('app'),
-  mode: $<HTMLSelectElement>('mode'),
   geometry: $<HTMLSelectElement>('geometry'),
   geometryEdit: $<HTMLButtonElement>('geometry-edit'),
   geometryCurrent: $<HTMLParagraphElement>('geometry-current'),
