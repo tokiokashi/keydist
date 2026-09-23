@@ -8,15 +8,13 @@ import type { KeyValueStorage } from '../../persistence/storage.ts';
 import { decodeVersionedState } from '../../persistence/versioned-state.ts';
 
 /*
- * 入力コンバータには既に localStorage を使う永続化がある（このモジュールとは別の系統）。
- * 統合はしない（#413 Phase 8で legacy UiStateV1 と合わせて検討する）。
+ * Tester preferenceは#413 Phase 8でAppStateV2へ統合済み。
+ * keydist:input-converter-preferences はread-once migration sourceとしてのみ残す。
  *
+ * 次のstorageはUI preferenceではなくdomain/user assetなのでAppStateへ吸収しない。
  * - keydist:input-key-bindings（レガシーキー: keydist:input-thumb-key-bindings）
- *   物理キーコード → 論理キーの対応。browser-keyboard-bindings.ts が持つ
  * - keydist:geometry-shapes
- *   自作した物理配列の形状そのもの。user-geometries.ts が持つ
  *
- * このファイルは既存の keydist:input-converter-preferences 1本だけを使う。
  * 現在選択中の配列と物理配列はTester全体の状態として保存し、
  * 練習環境は配列ごとに保存する。
  */
