@@ -69,9 +69,17 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
   const keyboardMain = page.locator('.input-keyboard-main');
   const keyboardContent = page.locator('.input-keyboard-content');
+  const detailPlacement = async () => {
+    const [mainBox, detailBox] = await Promise.all([
+      keyboardMain.boundingBox(),
+      details.boundingBox(),
+    ]);
+    if (mainBox === null || detailBox === null) return 'missing';
+    return detailBox.x >= mainBox.x + mainBox.width - 2 ? 'side' : 'stacked';
+  };
 
-  // 1:1では縦積み。見出し行の下に2要素を横並びにする。
-  await expect(keyboardContent).toHaveAttribute('data-detail-layout', 'stacked');
+  // 1:1付近では縦積み。見出し行の下に2要素を横並びにする。
+  await expect.poll(detailPlacement).toBe('stacked');
   await expect(details.locator('.input-debug-heading')).toBeVisible();
   const stackedSections = details.locator('.input-inspector > section');
   const stackedBoxes = await stackedSections.evaluateAll((elements) =>
@@ -80,16 +88,16 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   expect(Math.abs(stackedBoxes[0]!.top - stackedBoxes[1]!.top))
     .toBeLessThanOrEqual(1);
 
-  // 左:右=46:54付近までは縦積み。
+  // 46:54付近まではpanel自身の横幅が狭く、縦積み。
   await splitter.focus();
   await page.keyboard.press('ArrowLeft');
   await expect(splitter).toHaveAttribute('aria-valuenow', '46');
-  await expect(keyboardContent).toHaveAttribute('data-detail-layout', 'stacked');
+  await expect.poll(detailPlacement).toBe('stacked');
 
-  // 44:56で4:5より右側が大きくなったら、詳細をキーボード右へ移す。
+  // panel自身が十分広くなったら、詳細をキーボード右へ移す。
   await page.keyboard.press('ArrowLeft');
   await expect(splitter).toHaveAttribute('aria-valuenow', '44');
-  await expect(keyboardContent).toHaveAttribute('data-detail-layout', 'side');
+  await expect.poll(detailPlacement).toBe('side');
 
   // 入力詳細panelはWorkspacePanel化によりlayoutアニメーションを持つため、
   // spring transitionが収まってから幅を計測する。
@@ -261,6 +269,60 @@ test('入力panelは小窓化してもtyping sessionとcontrolsを維持する',
   await expect(output).toHaveValue('');
   await panel.getByRole('button', { name: '入力パネルを元に戻す' }).click();
   await expect(panel).not.toHaveAttribute('data-floating');
+});
+
+test('floating Keyboardのresponsiveは外側splitではなく小窓自身の幅だけを見る', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const splitter = page.getByRole('separator', { name: 'カンペと入力領域の幅を調整' });
+  const panel = page.locator('.input-keyboard-panel');
+  const keyboardMain = panel.locator('.input-keyboard-main');
+  const details = panel.getByLabel('入力詳細', { exact: true });
+
+  const placement = async () => {
+    const [mainBox, detailBox] = await Promise.all([
+      keyboardMain.boundingBox(),
+      details.boundingBox(),
+    ]);
+    if (mainBox === null || detailBox === null) return 'missing';
+    return detailBox.x >= mainBox.x + mainBox.width - 2 ? 'side' : 'stacked';
+  };
+
+  // docked panelを十分広くしてside配置にする。
+  await splitter.focus();
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await expect(splitter).toHaveAttribute('aria-valuenow', '44');
+  await expect.poll(placement).toBe('side');
+
+  await page.getByLabel('表示設定').getByText('表示', { exact: true }).click();
+  await expect(panel).toHaveAttribute('data-floating', 'true');
+  await expect.poll(placement).toBe('side');
+
+  // 外側splitだけを狭めても、floating panel自身の幅は変わらないのでsideのまま。
+  await splitter.focus();
+  await page.keyboard.press('Home');
+  await expect(splitter).toHaveAttribute('aria-valuenow', '25');
+  await page.keyboard.press('End');
+  await expect(splitter).toHaveAttribute('aria-valuenow', '75');
+  await expect.poll(placement).toBe('side');
+
+  // 小窓自身を狭めた時だけstackedへ切り替わる。
+  const resizeHandle = page.getByLabel('Keyboardパネルのサイズを変更');
+  const resizeBox = await resizeHandle.boundingBox();
+  expect(resizeBox).not.toBeNull();
+  await page.mouse.move(
+    resizeBox!.x + resizeBox!.width / 2,
+    resizeBox!.y + resizeBox!.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(resizeBox!.x - 260, resizeBox!.y);
+  await page.mouse.up();
+  await expect.poll(placement).toBe('stacked');
 });
 
 test('Keyboard panelは表示controlsを保ったまま小窓化できる', async ({ page }) => {
