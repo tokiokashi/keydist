@@ -43,17 +43,24 @@ function shinJisFaces(
   triggerPersistence: NonNullable<Face['triggerPersistence']>,
   triggerOrder?: Face['triggerOrder'],
 ): Face[] {
+  const shifted = face([THUMB_KEY.RT], mode, {
+    q: 'ぁ', w: '゜', e: 'ほ', r: 'ふ', t: 'め', y: 'ひ', u: 'え', i: 'み', o: 'や', p: 'ぬ', '[': '「',
+    a: 'ぃ', s: 'へ', d: 'ら', f: 'ゅ', g: 'よ', h: 'ま', j: 'お', k: 'も', l: 'わ', ';': 'ゆ', "'": '」',
+    z: 'ぅ', x: 'ぇ', c: 'ぉ', v: 'ね', b: 'ゃ', n: 'む', m: 'ろ', ',': '・', '.': 'ー',
+  }, triggerPersistence, triggerOrder);
+
   return [
     face([], mode, {
       q: 'そ', w: 'け', e: 'せ', r: 'て', t: 'ょ', y: 'つ', u: 'ん', i: 'の', o: 'を', p: 'り', '[': 'ち',
       a: 'は', s: 'か', d: 'し', f: 'と', g: 'た', h: 'く', j: 'う', k: 'い', l: '゛', ';': 'き', "'": 'な',
       z: 'す', x: 'こ', c: 'に', v: 'さ', b: 'あ', n: 'っ', m: 'る', ',': '、', '.': '。', '/': 'れ',
     }),
-    face([THUMB_KEY.RT], mode, {
-      q: 'ぁ', w: '゜', e: 'ほ', r: 'ふ', t: 'め', y: 'ひ', u: 'え', i: 'み', o: 'や', p: 'ぬ', '[': '「',
-      a: 'ぃ', s: 'へ', d: 'ら', f: 'ゅ', g: 'よ', h: 'ま', j: 'お', k: 'も', l: 'わ', ';': 'ゆ', "'": '」',
-      z: 'ぅ', x: 'ぇ', c: 'ぉ', v: 'ね', b: 'ゃ', n: 'む', m: 'ろ', ',': '・', '.': 'ー',
-    }, triggerPersistence, triggerOrder),
+    {
+      ...shifted,
+      presentationTriggerAlternatives: [[THUMB_KEY.LT], [THUMB_KEY.RT]],
+      presentationTriggerText: 'Space',
+      presentationLabel: 'Shift',
+    },
   ];
 }
 
@@ -90,8 +97,8 @@ function makeLayout(
     THUMB_KEY.RT,
     [THUMB_KEY.RT, THUMB_KEY.LT],
   );
-  layout.legends.set(THUMB_KEY.LT, 'シフト');
-  layout.legends.set(THUMB_KEY.RT, 'シフト');
+  layout.legends.set(THUMB_KEY.LT, 'Space');
+  layout.legends.set(THUMB_KEY.RT, 'Space');
   return layout;
 }
 

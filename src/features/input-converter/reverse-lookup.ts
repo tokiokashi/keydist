@@ -3,6 +3,7 @@ import {
   type InputAlternative,
   type InputContextRequirement,
 } from '../../core/semantic-input/index.ts';
+import { resolveKeyId } from '../../geometry.ts';
 import type { Layout } from '../../layouts/index.ts';
 import { kanaToRomaji } from '../../romaji/kunrei.ts';
 import { romajiToKana } from './live-romaji.ts';
@@ -272,6 +273,27 @@ export function reverseLookupGuideActionMatchesKeys(
   return action.keyAlternatives.some((variant) => sameKeys(variant, keys));
 }
 
+/**
+ * OR alternativeに共通するphysical keyだけをguide強調する。
+ * 左右どちらでもよい親指shiftのような差分keyは、どちらか一方を推奨しない。
+ */
+export function reverseLookupGuideActionHighlightKeys(
+  action: ReverseLookupGuideAction,
+): readonly string[] {
+  const variants = action.keyAlternatives;
+  if (variants.length === 0) return action.keys;
+  const common = new Set(variants[0].map(resolveKeyId));
+  for (const variant of variants.slice(1)) {
+    const current = new Set(variant.map(resolveKeyId));
+    for (const key of [...common]) {
+      if (!current.has(key)) common.delete(key);
+    }
+  }
+  return action.keys
+    .map(resolveKeyId)
+    .filter((key, index, keys) => common.has(key) && keys.indexOf(key) === index);
+}
+
 export function reverseLookupGuideIndexForText(
   layout: Layout,
   route: ReverseLookupRoute,
@@ -302,18 +324,60 @@ export function reverseLookupGuideIndexForText(
   return nextActionIndex < 0 ? 0 : nextActionIndex;
 }
 
-export function reverseLookupGuideActionLabel(action: ReverseLookupGuideAction): string {
-  return action.keys.map(physicalKeyDisplayLabel).join(' + ');
+function equivalentThumbShiftLabel(layout: Layout): string | undefined {
+  const keys = [...new Set((layout.thumbShiftKeys ?? []).map(resolveKeyId))];
+  if (keys.length < 2) return undefined;
+  const labels = [...new Set(
+    keys
+      .map((key) => layout.legends.get(key))
+      .filter((label): label is string => label !== undefined && label.trim() !== ''),
+  )];
+  return labels.length === 1 ? labels[0] : undefined;
 }
 
-export function reverseLookupStepLabel(step: ReverseLookupStep): string {
+function guideActionLabels(
+  layout: Layout,
+  keys: readonly string[],
+  alternatives: readonly (readonly string[])[],
+): readonly string[] {
+  const equivalentThumbs = new Set((layout.thumbShiftKeys ?? []).map(resolveKeyId));
+  const thumbLabel = equivalentThumbShiftLabel(layout);
+  if (thumbLabel === undefined || equivalentThumbs.size < 2 || alternatives.length < 2) {
+    return keys.map(physicalKeyDisplayLabel);
+  }
+
+  const normalize = (variant: readonly string[]) =>
+    variant.map((key) =>
+      equivalentThumbs.has(resolveKeyId(key)) ? '__thumb-shift__' : resolveKeyId(key));
+  const signatures = alternatives.map((variant) =>
+    [...normalize(variant)].sort().join('\u0000'));
+  if (!signatures.every((signature) => signature === signatures[0])) {
+    return keys.map(physicalKeyDisplayLabel);
+  }
+
+  return normalize(keys).map((key) =>
+    key === '__thumb-shift__' ? thumbLabel : physicalKeyDisplayLabel(key));
+}
+
+export function reverseLookupGuideActionLabel(
+  layout: Layout,
+  action: ReverseLookupGuideAction,
+): string {
+  return guideActionLabels(layout, action.keys, action.keyAlternatives).join(' + ');
+}
+
+export function reverseLookupStepLabel(layout: Layout, step: ReverseLookupStep): string {
   return step.actions
-    .map((action) => action.map(physicalKeyDisplayLabel).join(' + '))
+    .map((action, actionIndex) => guideActionLabels(
+      layout,
+      action,
+      step.actionKeyAlternatives[actionIndex] ?? [action],
+    ).join(' + '))
     .join(' → ');
 }
 
-export function reverseLookupRouteLabel(route: ReverseLookupRoute): string {
+export function reverseLookupRouteLabel(layout: Layout, route: ReverseLookupRoute): string {
   return route.steps
-    .map(reverseLookupStepLabel)
+    .map((step) => reverseLookupStepLabel(layout, step))
     .join(' → ');
 }

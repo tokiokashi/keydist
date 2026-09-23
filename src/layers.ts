@@ -311,6 +311,38 @@ export function aggregationTriggerKeys(
   return [...keys];
 }
 
+/** compiled aggregationのtriggerを、人間向けのside-neutralな表示へ畳む。 */
+export function aggregationTriggerDisplayText(
+  layout: Pick<
+    Layout,
+    'canonicalInputs' | 'faces' | 'faceLayerIds' | 'thumbShiftKeys' | 'legends'
+  >,
+  aggregationGroupId: string,
+): string {
+  const authoredTexts = [...new Set(
+    (layout.faces ?? [])
+      .filter((face) => layout.faceLayerIds?.get(face) === aggregationGroupId)
+      .map((face) => face.presentationTriggerText)
+      .filter((text): text is string => text !== undefined && text.trim() !== ''),
+  )];
+  if (authoredTexts.length === 1) return authoredTexts[0];
+
+  const keys = aggregationTriggerKeys(layout, aggregationGroupId);
+  if (keys.length === 0) return '—';
+
+  const equivalentThumbs = new Set((layout.thumbShiftKeys ?? []).map(resolveKeyId));
+  if (equivalentThumbs.size > 1 && keys.every((key) => equivalentThumbs.has(resolveKeyId(key)))) {
+    const labels = [...new Set(
+      keys.map((key) => layout.legends.get(resolveKeyId(key)) ?? resolveKeyId(key)),
+    )];
+    if (labels.length === 1) return labels[0];
+  }
+
+  return keys
+    .map((key) => layout.legends.get(resolveKeyId(key)) ?? resolveKeyId(key))
+    .join(' + ');
+}
+
 
 /**
  * canonical semantic上でmodifier roleを持つphysical key。

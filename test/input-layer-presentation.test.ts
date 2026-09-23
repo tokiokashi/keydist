@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   activeModifierAggregationGroupIds,
   aggregationLegendMap,
+  aggregationTriggerDisplayText,
   aggregationTriggerKeys,
   compactLayerGuideDefinitions,
   modifierPhysicalKeys,
@@ -17,6 +18,7 @@ import {
   type Face,
 } from '../src/layouts/index.ts';
 import { NAGINATA_V18 } from '../src/layouts/naginata.ts';
+import { SHIN_JIS_PREFIX, SHIN_JIS_SIMULTANEOUS } from '../src/layouts/shin-jis.ts';
 import { TSUKI_2_263 } from '../src/layouts/tsuki-2-263.ts';
 
 test('active modifier aggregationはcanonical rolesを使い複合modifierを優先する', () => {
@@ -97,6 +99,19 @@ test('月配列の起点triggerは同じsemantic layer色を共有する', () =>
   assert.notEqual(colors.get('d'), undefined);
 });
 
+
+test('左右等価な親指shiftは同じ色とside-neutralなtrigger文言を使う', () => {
+  for (const layout of [NAGINATA_V18, SHIN_JIS_PREFIX, SHIN_JIS_SIMULTANEOUS]) {
+    const colors = presentationTriggerColorSlots(layout);
+    assert.equal(colors.get('thumb-l'), colors.get('thumb-r'), layout.id);
+    assert.equal(typeof colors.get('thumb-l'), 'number', layout.id);
+
+    const definition = layout.layerDefinitions?.find((candidate) =>
+      candidate.id !== 'single' && candidate.kind === 'layer');
+    assert.ok(definition, layout.id);
+    assert.equal(aggregationTriggerDisplayText(layout, definition.id), 'Space');
+  }
+});
 
 test('薙刀式のレイヤーキー色は実レイヤーのSandSだけに限定する', () => {
   const colors = presentationTriggerColorSlots(NAGINATA_V18);

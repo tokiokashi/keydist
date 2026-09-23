@@ -4,6 +4,8 @@ import { inputAlternativeSelectionIdentity } from '../src/core/semantic-input/in
 import { LAYOUT_BY_ID } from '../src/layouts/index.ts';
 import {
   reverseLookup,
+  reverseLookupGuideActionHighlightKeys,
+  reverseLookupGuideActionLabel,
   reverseLookupGuideActionMatchesKeys,
   reverseLookupGuideActions,
   reverseLookupGuideIndexForText,
@@ -19,7 +21,7 @@ test('reverseLookupは薙刀式の複合かなをcanonical actionから逆引き
   assert.ok(routes.length > 0);
   assert.equal(routes[0]?.steps.length, 1);
   assert.equal(routes[0]?.steps[0]?.output, 'ぎゃ');
-  assert.match(reverseLookupRouteLabel(routes[0]!), /H|J|W/);
+  assert.match(reverseLookupRouteLabel(layout, routes[0]!), /H|J|W/);
 });
 
 test('reverseLookupはTK音直の語彙comboを通常打鍵より優先する', () => {
@@ -48,7 +50,9 @@ test('reverseLookupはTK音直のyouon-only comboを前置子音がある場合�
 });
 
 test('reverseLookupRouteLabelはchordとsequenceを区別して表示する', () => {
-  assert.equal(reverseLookupRouteLabel({
+  const layout = LAYOUT_BY_ID.get('naginata-v18');
+  assert.ok(layout);
+  assert.equal(reverseLookupRouteLabel(layout, {
     actionCount: 2,
     keyCount: 3,
     steps: [{
@@ -64,7 +68,9 @@ test('reverseLookupRouteLabelはchordとsequenceを区別して表示する', ()
 
 
 test('reverseLookupStepLabelは1入力単位のaction順を表示する', () => {
-  assert.equal(reverseLookupStepLabel({
+  const layout = LAYOUT_BY_ID.get('naginata-v18');
+  assert.ok(layout);
+  assert.equal(reverseLookupStepLabel(layout, {
     output: 'x',
     origin: 'face',
     actions: [['thumb-r'], ['h', 'j']],
@@ -132,6 +138,10 @@ test('reverseLookupは明示された親指shift alternativeだけを同じ表�
   assert.ok(thumbAction);
   assert.equal(reverseLookupGuideActionMatchesKeys(thumbAction, ['thumb-r', 'f']), true);
   assert.equal(reverseLookupGuideActionMatchesKeys(thumbAction, ['thumb-l', 'f']), true);
+  assert.equal(reverseLookupGuideActionLabel(layout, thumbAction), 'Space + F');
+  assert.deepEqual(reverseLookupGuideActionHighlightKeys(thumbAction), ['f']);
+  assert.equal(reverseLookupRouteLabel(layout, shifted).includes('右親指'), false);
+  assert.equal(reverseLookupRouteLabel(layout, shifted).includes('左親指'), false);
 });
 
 
