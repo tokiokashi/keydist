@@ -59,6 +59,7 @@ import {
   ANALYZER_INITIAL_LAYOUTS,
   createAnalyzerUiStateBootstrap,
 } from './analyzer-ui-state-bootstrap.ts';
+import { mountAnalyzerReactShell } from './analyzer-react-shell.tsx';
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import { el, SERIES } from './app-dom.ts';
 import { createRomajiEditor } from './romaji-editor.ts';
@@ -263,13 +264,14 @@ function migrateCurrentGeometryShape(): void {
 
 migrateCurrentGeometryShape();
 
-window.addEventListener('pagehide', uiStateOwner.flush);
+window.addEventListener('pagehide', () => {
+  uiStateOwner.flush();
+});
 
 if (!playbackCalibration && uiState.ui.playback.useCalibration) {
   updateUiState((draft) => { draft.ui.playback.useCalibration = false; });
 }
 
-el.mode.value = uiState.ui.input.mode;
 el.geometry.value = uiState.conditions.defaults.geometry;
 el.window.value = String(uiState.conditions.defaults.windowSize);
 el.sfbHome.checked = uiState.conditions.defaults.sfbHomeCost;
@@ -295,7 +297,7 @@ function saveSelectedLayouts(): void {
 
 const pickerFilter: LayoutTypeFilter = { romaji: true, kana: true };
 
-const currentModeId = () => el.mode.value as ModeId;
+const currentModeId = () => uiState.ui.input.mode;
 const currentMode = () => MODES[currentModeId()];
 const currentSample = () => SAMPLES[currentModeId()][uiState.ui.input.selectedSampleByMode[currentModeId()]]
   ?? currentMode().sample;
@@ -1987,14 +1989,24 @@ function render(): void {
 }
 
 function onModeChange() {
-  updateUiState((draft) => { draft.ui.input.mode = currentModeId(); });
   fillSampleOptions();
   syncSampleText();
   fillPicker();
   fillDetailOptions();
   render();
 }
-el.mode.addEventListener('change', onModeChange);
+
+const analyzerReactShellRoot = document.getElementById('analyzer-react-shell');
+const analyzerModeControlSlot = document.getElementById('analyzer-mode-control');
+if (!analyzerReactShellRoot || !analyzerModeControlSlot) {
+  throw new Error('Analyzer React shell mount point is missing');
+}
+const analyzerReactShell = mountAnalyzerReactShell({
+  root: analyzerReactShellRoot,
+  modeSlot: analyzerModeControlSlot,
+  stateOwner: uiStateOwner,
+  onModeChange,
+});
 el.sample.addEventListener('change', () => {
   updateUiState((draft) => {
     draft.ui.input.selectedSampleByMode[currentModeId()] = el.sample.value;
