@@ -334,6 +334,14 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   await expect(keyboard.locator('[data-key-id="f"]')).toHaveAttribute('data-home', 'true');
   await expect(keyboard.locator('[data-key-id="j"]')).toHaveAttribute('data-home', 'true');
+  const homeLegend = keyboard.locator('[data-key-id="f"] .physical-keyboard-legend');
+  const homeMark = keyboard.locator('[data-key-id="f"] .physical-keyboard-home-mark');
+  await expect(homeMark).toBeVisible();
+  const [homeLegendY, homeMarkY] = await Promise.all([
+    homeLegend.evaluate((element) => Number(element.getAttribute('y'))),
+    homeMark.evaluate((element) => Number(element.getAttribute('y1'))),
+  ]);
+  expect(homeMarkY - homeLegendY).toBeGreaterThanOrEqual(3);
   await expect(layerLabel).toContainText('現在');
   await expect(layerLabel).toContainText('通常');
 
