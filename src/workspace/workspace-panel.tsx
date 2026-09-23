@@ -4,6 +4,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
+  useEffect,
   useRef,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -19,6 +20,19 @@ interface PointerOperation {
   startY: number;
   startRect: PanelRect;
 }
+
+interface DetachPointerOperation {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  sourceRect: PanelRect;
+  detached: boolean;
+  dragStartX: number;
+  dragStartY: number;
+  dragStartRect: PanelRect;
+}
+
+export const WORKSPACE_DETACH_THRESHOLD_PX = 8;
 
 export interface WorkspacePanelControls {
   mode: WorkspacePanelState['mode'];
@@ -86,6 +100,23 @@ export function WorkspacePanel({
   const panel = state.panels[id];
   const panelRef = useRef<HTMLElement>(null);
   const operationRef = useRef<PointerOperation | undefined>(undefined);
+  const detachOperationRef = useRef<DetachPointerOperation | undefined>(undefined);
+  const detachCleanupRef = useRef<(() => void) | undefined>(undefined);
+
+  useEffect(() => {
+    const clearPointerState = () => {
+      operationRef.current = undefined;
+      detachCleanupRef.current?.();
+      detachCleanupRef.current = undefined;
+      detachOperationRef.current = undefined;
+    };
+    window.addEventListener('blur', clearPointerState);
+    return () => {
+      window.removeEventListener('blur', clearPointerState);
+      clearPointerState();
+    };
+  }, []);
+
   if (panel === undefined || !panel.visible) return null;
 
   const mode = panel.mode;
@@ -125,12 +156,95 @@ export function WorkspacePanel({
     });
   };
 
+  const clearDetachOperation = () => {
+    detachCleanupRef.current?.();
+    detachCleanupRef.current = undefined;
+    detachOperationRef.current = undefined;
+  };
+
   const dock = () => {
     operationRef.current = undefined;
+    clearDetachOperation();
     dispatch({ type: 'dock', id });
   };
 
+
   const controls: WorkspacePanelControls = { mode, float, dock, activate };
+  const startDockedDetach = (event: ReactPointerEvent<HTMLElement>) => {
+    if (!floatOnHeaderClick || isInteractiveTarget(event.target, event.currentTarget)) return;
+
+    const bounds = panelRef.current?.getBoundingClientRect();
+    if (bounds === undefined) return;
+    const sourceRect = clamp({
+      x: bounds.left,
+      y: bounds.top,
+      width: Math.max(minWidth, bounds.width || defaultFloatingWidth),
+      height: Math.max(minHeight, bounds.height || defaultFloatingHeight),
+    });
+    const operation: DetachPointerOperation = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      sourceRect,
+      detached: false,
+      dragStartX: event.clientX,
+      dragStartY: event.clientY,
+      dragStartRect: sourceRect,
+    };
+    detachOperationRef.current = operation;
+
+    const onPointerMove = (pointerEvent: PointerEvent) => {
+      const current = detachOperationRef.current;
+      if (current?.pointerId !== pointerEvent.pointerId) return;
+
+      const dx = pointerEvent.clientX - current.startX;
+      const dy = pointerEvent.clientY - current.startY;
+      if (!current.detached) {
+        if (Math.hypot(dx, dy) < WORKSPACE_DETACH_THRESHOLD_PX) return;
+        pointerEvent.preventDefault();
+        const detachedRect = clamp({
+          ...current.sourceRect,
+          x: current.sourceRect.x + dx,
+          y: current.sourceRect.y + dy,
+        });
+        current.detached = true;
+        current.dragStartX = pointerEvent.clientX;
+        current.dragStartY = pointerEvent.clientY;
+        current.dragStartRect = detachedRect;
+        dispatch({ type: 'float', id, rect: detachedRect });
+        return;
+      }
+
+      pointerEvent.preventDefault();
+      const next = clamp({
+        ...current.dragStartRect,
+        x: current.dragStartRect.x + pointerEvent.clientX - current.dragStartX,
+        y: current.dragStartRect.y + pointerEvent.clientY - current.dragStartY,
+      });
+      dispatch({ type: 'move', id, x: next.x, y: next.y });
+    };
+    const finish = (pointerEvent?: PointerEvent) => {
+      const current = detachOperationRef.current;
+      if (
+        pointerEvent !== undefined
+        && current !== undefined
+        && current.pointerId !== pointerEvent.pointerId
+      ) return;
+      clearDetachOperation();
+    };
+    const onPointerUp = (pointerEvent: PointerEvent) => finish(pointerEvent);
+    const onPointerCancel = (pointerEvent: PointerEvent) => finish(pointerEvent);
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerCancel);
+    detachCleanupRef.current = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
+    };
+  };
+
   const startPointerOperation = (
     kind: PointerOperation['kind'],
     event: ReactPointerEvent<HTMLElement>,
@@ -180,6 +294,11 @@ export function WorkspacePanel({
     }
     operationRef.current = undefined;
   };
+  const losePointerOperation = (event: ReactPointerEvent<HTMLElement>) => {
+    if (operationRef.current?.pointerId === event.pointerId) {
+      operationRef.current = undefined;
+    }
+  };
   const onDockedHeaderKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (!floatOnHeaderClick || (event.key !== 'Enter' && event.key !== ' ')) return;
     event.preventDefault();
@@ -220,10 +339,14 @@ export function WorkspacePanel({
         onKeyDown={mode === 'docked' ? onDockedHeaderKeyDown : undefined}
         onPointerDown={mode === 'floating'
           ? (event) => startPointerOperation('move', event)
-          : undefined}
+          : floatOnHeaderClick
+            ? startDockedDetach
+            : undefined}
         onPointerMove={mode === 'floating' ? movePointerOperation : undefined}
         onPointerUp={mode === 'floating' ? endPointerOperation : undefined}
         onPointerCancel={mode === 'floating' ? endPointerOperation : undefined}
+        onLostPointerCapture={mode === 'floating' ? losePointerOperation : undefined}
+        data-detachable={mode === 'docked' && floatOnHeaderClick || undefined}
         role={mode === 'docked' && floatOnHeaderClick ? 'button' : undefined}
         tabIndex={mode === 'docked' && floatOnHeaderClick ? 0 : undefined}
       >
@@ -238,6 +361,7 @@ export function WorkspacePanel({
           onPointerMove={movePointerOperation}
           onPointerUp={endPointerOperation}
           onPointerCancel={endPointerOperation}
+          onLostPointerCapture={losePointerOperation}
           role="separator"
         />
       ) : null}
