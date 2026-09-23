@@ -348,6 +348,10 @@ export function InputConverterView() {
     () => presentationTriggerColorSlots(layout),
     [layout],
   );
+  const guideDefinitions = useMemo(
+    () => compactLayerGuideDefinitions(layout),
+    [layout],
+  );
   const lookupRoutes = useMemo(
     () => reverseLookup(layout, lookupQuery, 3),
     [layout, lookupQuery],
@@ -359,6 +363,22 @@ export function InputConverterView() {
   const lookupKeys = useMemo(() => new Set(
     activeLookupStep?.actions.flatMap((action) => action) ?? [],
   ), [activeLookupStep]);
+  const lookupLegendMap = useMemo(() => {
+    if (activeLookupStep === undefined) return new Map<string, string>();
+    const guideIds = new Set(guideDefinitions.map((definition) => definition.id));
+    const legends = new Map<string, string>();
+    for (const id of activeLookupStep.aggregationGroupIds) {
+      if (!guideIds.has(id)) continue;
+      for (const [key, label] of aggregationLegendMap(layout, id)) {
+        const current = legends.get(key);
+        if (current === undefined) legends.set(key, label);
+        else if (!current.split(' / ').includes(label)) {
+          legends.set(key, `${current} / ${label}`);
+        }
+      }
+    }
+    return legends;
+  }, [activeLookupStep, guideDefinitions, layout]);
   const patternResult = useMemo(() => {
     const result = matchKeyPatterns(
       layout,
@@ -407,7 +427,10 @@ export function InputConverterView() {
         return [
           key.id,
           {
-            legend: guideLegend ?? layout.legends.get(key.id) ?? '',
+            legend: lookupLegendMap.get(key.id)
+              ?? guideLegend
+              ?? layout.legends.get(key.id)
+              ?? '',
             secondaryLegend: key.id === THUMB_KEY.LT || key.id === THUMB_KEY.RT
               ? browserCodesForPhysicalKey(key.id, browserBindings).join(' / ') || '未割当'
               : key.id,
@@ -434,12 +457,9 @@ export function InputConverterView() {
     layerKeyColorSlots,
     layerKeys,
     lookupKeys,
+    lookupLegendMap,
     visibleKeys,
   ]);
-  const guideDefinitions = useMemo(
-    () => compactLayerGuideDefinitions(layout),
-    [layout],
-  );
   const combinationLabels = useMemo(() => {
     const layerLabels = new Set(guideDefinitions.map((definition) => definition.label));
     return semanticCombinationLabels(layout)
