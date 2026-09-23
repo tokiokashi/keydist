@@ -1041,7 +1041,7 @@ export function InputConverterView() {
                 aria-label="自由入力テキスト"
                 aria-describedby="input-capture-help"
                 data-active={session.active || undefined}
-                ref={session.captureRef}
+                ref={session.captureRefCallback}
                 onKeyDownCapture={(event) => {
                   if (randomPracticeMode === null || event.key !== 'Enter') return;
                   event.preventDefault();
