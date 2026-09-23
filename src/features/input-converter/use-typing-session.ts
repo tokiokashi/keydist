@@ -50,6 +50,7 @@ export interface TypingSession {
   readonly active: boolean;
   readonly composing: boolean;
   readonly readyLayoutId: string | undefined;
+  replaceText(text: string): void;
   clear(): void;
 }
 
@@ -296,18 +297,20 @@ export function useTypingSession(
     };
   }, [browserBindings, captureTarget, engine, layout, ownedPhysicalKeys]);
 
-  const clear = () => {
+  const replaceText = (nextText: string) => {
     engine.reset();
-    rawTextRef.current = '';
+    rawTextRef.current = rawFromDisplay(nextText);
     pressedKeysRef.current = [];
     recognitionKeysRef.current = [];
     presentationRef.current = EMPTY_KEY_PATTERN_PRESENTATION_STATE;
-    setText('');
+    setText(nextText);
     setPressedKeys([]);
     setRecognitionKeys([]);
     setPresentation(EMPTY_KEY_PATTERN_PRESENTATION_STATE);
     setLastRecognized([]);
   };
+
+  const clear = () => replaceText('');
 
   return {
     captureRef,
@@ -320,6 +323,7 @@ export function useTypingSession(
     active,
     composing,
     readyLayoutId,
+    replaceText,
     clear,
   };
 }
