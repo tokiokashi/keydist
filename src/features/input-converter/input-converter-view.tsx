@@ -726,7 +726,7 @@ export function InputConverterView() {
             className={settingsOpen
               ? 'input-settings-panel input-settings-panel-open'
               : 'input-settings-panel'}
-            defaultFloatingHeight={240}
+            defaultFloatingHeight={150}
             defaultFloatingWidth={520}
             dockedHeaderAriaLabel="Settingsをクリックまたはドラッグして小窓表示"
             floatOnHeaderClick
