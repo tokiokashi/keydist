@@ -22,6 +22,7 @@ import {
 import {
   aggregationLegendMap,
   aggregationTriggerDisplayText,
+  aggregationTriggerKeys,
   compactLayerGuideDefinitions,
   presentationTriggerColorSlots,
   semanticCombinationLabels,
