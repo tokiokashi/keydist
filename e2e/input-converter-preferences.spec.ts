@@ -124,6 +124,24 @@ test('random practice mode restores the same current challenge per layout and re
   await expect(practice).toHaveValue(challenge);
   await expect(randomWord).toHaveAttribute('aria-pressed', 'true');
 
+  // preference書き込みは既存schedulerの400ms debounceを使うため、
+  // reload検証の前に現在のお題とmodeがstorageへ到達したことを確認する。
+  await expect.poll(async () => page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return null;
+    const value = JSON.parse(raw);
+    const layout = value.layouts?.shingeta;
+    return layout === undefined
+      ? null
+      : {
+          practiceText: layout.practiceText,
+          randomPracticeMode: layout.randomPracticeMode,
+        };
+  }, STORAGE_KEY)).toEqual({
+    practiceText: challenge,
+    randomPracticeMode: 'word',
+  });
+
   await page.reload();
   await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
   await expect(practice).toHaveValue(challenge);
