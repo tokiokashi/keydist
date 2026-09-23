@@ -1413,7 +1413,7 @@ test('TK音直入力法はかなを直接表示しcomboと拗音contextを認識
   await expect(output).toHaveValue('おんや');
 });
 
-test('Practice Text keeps two candidate rows visible at the balanced split', async ({ page }) => {
+test('Practice Textはdocked既定の50:50 splitで候補rowとguideがcontent内に収まる', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/input');
 
@@ -1426,22 +1426,78 @@ test('Practice Text keeps two candidate rows visible at the balanced split', asy
   const lookup = page.getByLabel('打ちたい文字');
   await lookup.fill('かな');
 
-  const items = panel.locator('.input-lookup-results li');
-  await expect.poll(() => items.count()).toBeGreaterThanOrEqual(2);
+  // 表示される候補行は常に1つ（最長候補）。popover内のliは数えない。
+  const items = panel.locator('.input-lookup-results').locator(':scope > ol > li');
+  await expect.poll(() => items.count()).toBe(1);
 
-  const [panelBox, contentBox, firstBox, secondBox] = await Promise.all([
+  const [panelBox, contentBox, guideBox, itemBox] = await Promise.all([
     panel.boundingBox(),
     panel.locator('.input-lookup-content').boundingBox(),
-    items.nth(0).boundingBox(),
-    items.nth(1).boundingBox(),
+    panel.locator('.input-lookup-guide').boundingBox(),
+    items.first().boundingBox(),
   ]);
   expect(panelBox).not.toBeNull();
   expect(contentBox).not.toBeNull();
-  expect(firstBox).not.toBeNull();
-  expect(secondBox).not.toBeNull();
+  expect(guideBox).not.toBeNull();
+  expect(itemBox).not.toBeNull();
   expect(panelBox!.height).toBeGreaterThanOrEqual(103);
-  expect(secondBox!.y + secondBox!.height)
+  expect(guideBox!.y).toBeGreaterThanOrEqual(contentBox!.y - 1);
+  expect(itemBox!.y + itemBox!.height)
     .toBeLessThanOrEqual(contentBox!.y + contentBox!.height + 1);
+});
+
+test('Practice Textは最長候補を1件だけ表示し、他の打ち方はhover/focusで開く', async ({ page }) => {
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+
+  const panel = page.getByLabel('Practice Text', { exact: true });
+  const lookup = page.getByLabel('打ちたい文字');
+  const results = panel.locator('.input-lookup-results');
+  // popover内のalternative liを含めないよう、直下のol > liだけを候補行として数える。
+  const items = results.locator(':scope > ol > li');
+
+  // 「にゅ」は「にゅ」1stepの経路（物理key表示: P + D）と、
+  // 「に→ゅ」2stepの経路（物理key表示: Space + D → Q + P）を持つ。
+  // 表示される行は最長（1step）の方だけで、guideもそれに揃う。
+  await lookup.fill('にゅ');
+  await expect.poll(() => items.count()).toBe(1);
+  await expect(items.first()).toContainText('P + D');
+  const guide = page.getByLabel('入力順ガイド');
+  await expect(guide).toContainText('にゅ');
+
+  const toggle = results.getByRole('button', { name: /他の打ち方/ });
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveText('+1');
+  // altの中身はpopoverが閉じている間は見えない（DOM上は存在するがvisibleではない）。
+  const popover = results.locator('.input-lookup-alt-popover');
+  await expect(popover).toBeHidden();
+
+  await toggle.hover();
+  await expect(popover).toBeVisible();
+  await expect(popover).toContainText('Space + D → Q + P');
+
+  // hoverを外すと閉じる。
+  await lookup.hover();
+  await expect(popover).toBeHidden();
+
+  // keyboard focusでも同じpopoverが開く（アクセシビリティ）。
+  await toggle.focus();
+  await expect(popover).toBeVisible();
+  await lookup.focus();
+  await expect(popover).toBeHidden();
+
+  // guideの進捗・←/→・ガイド中markerは1行表示でも従来通り動く。
+  await expect(guide).toContainText('1 / 1');
+  await expect(page.getByRole('button', { name: '前の入力単位' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '次の入力単位' })).toBeDisabled();
+  await expect(items.first()).toContainText('ガイド中');
+
+  // 打ち方が1通りしかない文字ではaffordance自体が出ない。
+  await lookup.fill('か');
+  await expect.poll(() => items.count()).toBe(1);
+  await expect(results.getByRole('button', { name: /他の打ち方/ })).toHaveCount(0);
 });
 
 test('ランダム練習はモードを保持し別停止ボタンで終了できる', async ({ page }) => {

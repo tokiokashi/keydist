@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { inputAlternativeSelectionIdentity } from '../src/core/semantic-input/index.ts';
+import type { InputAlternativeOrigin } from '../src/core/semantic-input/types.ts';
 import { LAYOUT_BY_ID } from '../src/layouts/index.ts';
 import {
+  longestReverseLookupRoute,
   reverseLookup,
   reverseLookupGuideActionHighlightKeys,
   reverseLookupGuideActionLabel,
@@ -12,7 +14,28 @@ import {
   reverseLookupRouteLabel,
   reverseLookupStepLabel,
   reverseLookupStepMatchesRecognition,
+  type ReverseLookupRoute,
 } from '../src/features/input-converter/reverse-lookup.ts';
+
+/** テスト用に最小限のReverseLookupRouteを組み立てる。1step・1actionだけを持つ単純な経路。 */
+function fixtureRoute(
+  output: string,
+  actions: readonly (readonly string[])[],
+  origin: InputAlternativeOrigin = 'sequence',
+): ReverseLookupRoute {
+  return {
+    steps: [{
+      output,
+      actions,
+      actionKeyAlternatives: actions.map((action) => [action]),
+      origin,
+      aggregationGroupIds: [],
+      acceptedAlternativeSelectionIdentities: [],
+    }],
+    actionCount: actions.length,
+    keyCount: actions.reduce((total, action) => total + action.length, 0),
+  };
+}
 
 test('reverseLookupは薙刀式の複合かなをcanonical actionから逆引きする', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18');
@@ -177,4 +200,43 @@ test('reverseLookupGuideIndexForTextはromaji配列でも表示かなをlogical�
   assert.ok(indexAfterKa < actions.length);
   assert.equal(reverseLookupGuideIndexForText(layout, route, 'かの'), indexAfterKa);
   assert.equal(reverseLookupGuideIndexForText(layout, route, 'かな'), actions.length - 1);
+});
+
+test('longestReverseLookupRouteは薙刀式で「にゅ」を1stepでまとめて打つ経路を選ぶ', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18');
+  assert.ok(layout);
+  const routes = reverseLookup(layout, 'にゅ', 5);
+  assert.ok(routes.length >= 2, 'この検証は「にゅ」が複数経路を持つことが前提');
+
+  const longest = longestReverseLookupRoute(routes);
+  assert.ok(longest);
+  assert.equal(longest.steps.length, 1);
+  assert.equal(longest.steps[0]?.output, 'にゅ');
+  // reverseLookupが返す並び順の先頭とも一致する（並び順への暗黙依存を避けつつ選択結果は揃う）。
+  assert.equal(longest, routes[0]);
+});
+
+test('longestReverseLookupRouteはstep数が同じなら少ないaction数を優先する', () => {
+  const twoActions = fixtureRoute('ab', [['x'], ['y']]);
+  const oneAction = fixtureRoute('ab', [['z']]);
+  assert.equal(longestReverseLookupRoute([twoActions, oneAction]), oneAction);
+  // 引数の並び順を入れ替えても結果は変わらない。
+  assert.equal(longestReverseLookupRoute([oneAction, twoActions]), oneAction);
+});
+
+test('longestReverseLookupRouteはstep数・action数・key数すべて同点ならcompareRoutesと同じ既存の並び順で決める', () => {
+  // reverseLookupが最終的に返す並びと同じtie-break（routeSignatureの辞書順）を使うため、
+  // 呼び出し側が渡す配列の順序には依存しない。
+  const first = fixtureRoute('あ', [['a']]);
+  const second = fixtureRoute('い', [['i']]);
+  assert.deepEqual(first.steps.length, second.steps.length);
+  assert.deepEqual(first.actionCount, second.actionCount);
+  assert.deepEqual(first.keyCount, second.keyCount);
+
+  assert.equal(longestReverseLookupRoute([first, second]), first);
+  assert.equal(longestReverseLookupRoute([second, first]), first);
+});
+
+test('longestReverseLookupRouteは空配列でundefinedを返す', () => {
+  assert.equal(longestReverseLookupRoute([]), undefined);
 });

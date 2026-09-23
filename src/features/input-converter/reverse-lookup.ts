@@ -233,6 +233,25 @@ export function reverseLookup(
   return mergeEquivalentRoutes(layout, candidates).slice(0, limit);
 }
 
+/**
+ * 候補routeの中から、最初のstepでより多くのかなをまとめて打つものを選ぶ。
+ *
+ * 「最長」の定義: route全体のstep数が少ないほど、平均して1stepあたりで
+ * まとめて打っているかなが多いと言えるため、step数の少なさを最優先の基準にする
+ * （「にゅ」を1stepで打つ経路と「に→ゅ」の2step経路なら前者）。
+ * 以降の基準（action数・key数・最後はroute全体の表示signature）はcompareRoutesと揃え、
+ * reverseLookupが返す一覧の並び順と選択結果が食い違わないようにする。
+ * 同点の場合のtie-breakもcompareRoutes任せなので、渡す配列の順序には依存しない。
+ */
+export function longestReverseLookupRoute(
+  routes: readonly ReverseLookupRoute[],
+): ReverseLookupRoute | undefined {
+  return routes.reduce<ReverseLookupRoute | undefined>(
+    (best, route) => (best === undefined || compareRoutes(route, best) < 0 ? route : best),
+    undefined,
+  );
+}
+
 export function physicalKeyDisplayLabel(key: string): string {
   if (key.length === 1) return key.toUpperCase();
   if (key === 'thumb-l') return '左親指';
