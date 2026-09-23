@@ -122,6 +122,7 @@ const DEFAULT_LAYOUT_PREFERENCES: InputConverterLayoutPreferencesV2 = {
   showLayerGuide: true,
   showLayerKeys: true,
   showShiftKeys: false,
+  showPracticeAssist: true,
   inputText: '',
   practiceText: '',
   randomPracticeMode: null,
@@ -289,6 +290,7 @@ export function InputConverterView() {
   const [showLayerGuide, setShowLayerGuide] = useState(true);
   const [showLayerKeys, setShowLayerKeys] = useState(true);
   const [showShiftKeys, setShowShiftKeys] = useState(false);
+  const [showPracticeAssist, setShowPracticeAssist] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [splitPercent, setSplitPercent] = useState(DEFAULT_SPLIT_PERCENT);
   const [lookupQuery, setLookupQuery] = useState('');
@@ -409,6 +411,7 @@ export function InputConverterView() {
     showLayerGuide,
     showLayerKeys,
     showShiftKeys,
+    showPracticeAssist,
     inputText: session.text,
     practiceText: lookupQuery,
     randomPracticeMode,
@@ -419,6 +422,7 @@ export function InputConverterView() {
     setShowLayerGuide(next.showLayerGuide);
     setShowLayerKeys(next.showLayerKeys);
     setShowShiftKeys(next.showShiftKeys);
+    setShowPracticeAssist(next.showPracticeAssist);
     session.replaceText(next.inputText);
     setLookupQuery(next.practiceText);
     setLookupStepIndex(0);
@@ -492,6 +496,7 @@ export function InputConverterView() {
     showLayerGuide,
     showLayerKeys,
     showShiftKeys,
+    showPracticeAssist,
     session.text,
     lookupQuery,
     randomPracticeMode,
@@ -665,7 +670,9 @@ export function InputConverterView() {
     [activeLookupAction],
   );
   const lookupLegendMap = useMemo(() => {
-    if (activeLookupStep === undefined) return new Map<string, string>();
+    if (!showPracticeAssist || activeLookupStep === undefined) {
+      return new Map<string, string>();
+    }
     const guideIds = new Set(guideDefinitions.map((definition) => definition.id));
     const legends = new Map<string, string>();
     for (const id of activeLookupStep.aggregationGroupIds) {
@@ -679,7 +686,7 @@ export function InputConverterView() {
       }
     }
     return legends;
-  }, [activeLookupStep, guideDefinitions, layout]);
+  }, [activeLookupStep, guideDefinitions, layout, showPracticeAssist]);
   const patternResult = useMemo(() => {
     const result = matchKeyPatterns(
       layout,
@@ -1402,6 +1409,17 @@ export function InputConverterView() {
                     <>
                       <span>Practice Text</span>
                       <span className="input-random-samples">
+                        <button
+                          aria-label={showPracticeAssist
+                            ? '入力アシストを非表示'
+                            : '入力アシストを表示'}
+                          aria-pressed={showPracticeAssist}
+                          data-active={showPracticeAssist || undefined}
+                          onClick={() => setShowPracticeAssist((current) => !current)}
+                          type="button"
+                        >
+                          アシスト
+                        </button>
                         <span>ランダム</span>
                         <button
                           aria-label="ランダムな単語"
