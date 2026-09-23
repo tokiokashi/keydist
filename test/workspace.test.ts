@@ -6,6 +6,7 @@ import {
 } from '../src/workspace/panel-registry.ts';
 import {
   createWorkspaceState,
+  reconcileWorkspaceState,
 } from '../src/workspace/workspace-state.ts';
 import {
   workspaceReducer,
@@ -121,4 +122,34 @@ test('viewport clamp respects minimum size but never exceeds the viewport', () =
     ),
     { x: 0, y: 0, width: 200, height: 100 },
   );
+});
+
+test('workspace state reconciles dynamic definitions without losing surviving panel state', () => {
+  let state = createWorkspaceState(definitions);
+  state = workspaceReducer(state, {
+    type: 'float',
+    id: 'input.keyboard',
+    rect: { x: 10, y: 20, width: 400, height: 300 },
+  });
+  state = workspaceReducer(state, { type: 'activate', id: 'input.details' });
+
+  const nextRegistry = createWorkspacePanelRegistry([
+    definitionInputs[0]!,
+    { id: 'input.layer:new', title: 'New layer', defaultDockSlot: 'guide' },
+  ]);
+  const reconciled = reconcileWorkspaceState(state, [...nextRegistry.values()]);
+
+  assert.deepEqual(reconciled.panels['input.keyboard'], state.panels['input.keyboard']);
+  assert.equal(reconciled.panels['input.details'], undefined);
+  assert.deepEqual(reconciled.panels['input.layer:new'], {
+    visible: true,
+    mode: 'docked',
+    dockSlot: 'guide',
+  });
+  assert.deepEqual(reconciled.zOrder, ['input.keyboard', 'input.layer:new']);
+});
+
+test('workspace state reconciliation is referentially stable when definitions are unchanged', () => {
+  const state = createWorkspaceState(definitions);
+  assert.equal(reconcileWorkspaceState(state, definitions), state);
 });
