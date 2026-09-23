@@ -331,6 +331,8 @@ export function InputConverterView() {
     [workspaceRegistry],
   );
   const workspace = useWorkspace(workspacePanelDefinitions, workspaceRegistry);
+  const layerGuideMode =
+    workspace.state.panels[INPUT_LAYER_GUIDE_PANEL_ID]?.mode ?? 'docked';
   const [guideGridLayout, setGuideGridLayout] = useState<GuideGridLayout>({
     columns: 1,
     cardMaxWidthPx: null,
@@ -355,28 +357,13 @@ export function InputConverterView() {
     const bounds = source.closest<HTMLElement>('.input-layer-card')?.getBoundingClientRect();
     const width = Math.max(420, bounds?.width ?? 420);
     const height = Math.max(280, bounds?.height ?? 280);
-    const slot = guideDefinitions.reduce(
-      (count, definition) => (
-        workspace.state.panels[layerGuideCardPanelId(definition.id)]?.mode === 'floating'
-          ? count + 1
-          : count
-      ),
-      0,
-    );
-    const gap = 16;
-    const columns = Math.max(
-      1,
-      Math.floor(
-        (window.innerWidth - FLOATING_GUIDE_VIEWPORT_GAP * 2 + gap)
-        / (width + gap),
-      ),
-    );
-    const column = slot % columns;
-    const row = Math.floor(slot / columns);
 
+    // 個別カンペは「何枚目か」で画面端へ並べるのではなく、
+    // そのカードが元々あった場所を初期位置のauthorityにする。
+    // 複数枚を浮かせても各カードが元の位置の近くから出る。
     return {
-      x: (bounds?.left ?? FLOATING_GUIDE_VIEWPORT_GAP) + column * (width + gap),
-      y: (bounds?.top ?? FLOATING_GUIDE_VIEWPORT_GAP) + row * 48,
+      x: bounds?.left ?? FLOATING_GUIDE_VIEWPORT_GAP,
+      y: bounds?.top ?? FLOATING_GUIDE_VIEWPORT_GAP,
       width,
       height,
     };
@@ -706,7 +693,13 @@ export function InputConverterView() {
     observer.observe(grid);
     update();
     return () => observer.disconnect();
-  }, [geometry.id, guideDefinitions.length, layout.id, settingsOpen]);
+  }, [
+    geometry.id,
+    guideDefinitions.length,
+    layerGuideMode,
+    layout.id,
+    settingsOpen,
+  ]);
 
   return (
     <WorkspaceProvider runtime={workspace}>
