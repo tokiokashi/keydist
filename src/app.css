@@ -1009,10 +1009,9 @@ h1 {
   align-items: center;
 }
 
-.input-recognized + .input-recognized::before {
-  align-self: center;
-  color: #b2b2ac;
-  content: "·";
+.input-recognized + .input-recognized {
+  padding-left: 0.75rem;
+  border-left: 1px solid #d6d6d1;
 }
 
 .input-recognized strong {
