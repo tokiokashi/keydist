@@ -78,21 +78,16 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
     return detailBox.x >= mainBox.x + mainBox.width - 2 ? 'side' : 'stacked';
   };
 
-  // 1:1付近では縦積み。見出し行の下に2要素を横並びにする。
-  await expect.poll(detailPlacement).toBe('stacked');
+  // 1:1付近では縦方向を圧迫しないようKeyboardとKey info.を横並びにする。
+  await expect.poll(detailPlacement).toBe('side');
   await expect(details.locator('.input-debug-heading')).toBeVisible();
-  const stackedSections = details.locator('.input-inspector > section');
-  const stackedBoxes = await stackedSections.evaluateAll((elements) =>
-    elements.map((element) => element.getBoundingClientRect()));
-  expect(stackedBoxes).toHaveLength(2);
-  expect(Math.abs(stackedBoxes[0]!.top - stackedBoxes[1]!.top))
-    .toBeLessThanOrEqual(1);
+  await expect(details.locator('.input-inspector > section')).toHaveCount(2);
 
-  // 46:54付近まではpanel自身の横幅が狭く、縦積み。
+  // 46:54でも横並びを維持し、縦方向のKeyboard領域を確保する。
   await splitter.focus();
   await page.keyboard.press('ArrowLeft');
   await expect(splitter).toHaveAttribute('aria-valuenow', '46');
-  await expect.poll(detailPlacement).toBe('stacked');
+  await expect.poll(detailPlacement).toBe('side');
 
   // panel自身が十分広くなったら、詳細をキーボード右へ移す。
   await page.keyboard.press('ArrowLeft');
@@ -189,11 +184,125 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
   await expect.poll(async () => (await panel.boundingBox())?.width ?? 0)
     .toBeGreaterThan(beforeResize!.width + 50);
 
+  const shrinkHandleBox = await resizeHandle.boundingBox();
+  expect(shrinkHandleBox).not.toBeNull();
+  await page.mouse.move(
+    shrinkHandleBox!.x + shrinkHandleBox!.width / 2,
+    shrinkHandleBox!.y + shrinkHandleBox!.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(shrinkHandleBox!.x, shrinkHandleBox!.y - 500);
+  await page.mouse.up();
+  await expect.poll(async () => Math.round((await panel.boundingBox())?.height ?? -1))
+    .toBeGreaterThanOrEqual(103);
+
   await backButton.click();
   await expect(panel).not.toHaveAttribute('data-floating');
 });
 
-test('入力詳細panelはヘッダーから独立小窓化し元へ戻せる', async ({ page }) => {
+test('試し打ち文字列はdocked/floating共通でpanel自身の横幅に応じてstackする', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const panel = page.getByLabel('試し打ち文字列', { exact: true });
+  const field = panel.locator('.input-lookup-field-body');
+  const results = panel.locator('.input-lookup-results');
+  const placement = async () => {
+    const [fieldBox, resultBox] = await Promise.all([field.boundingBox(), results.boundingBox()]);
+    if (fieldBox === null || resultBox === null) return 'missing';
+    return resultBox.y >= fieldBox.y + fieldBox.height - 2 ? 'stacked' : 'side';
+  };
+
+  await expect.poll(placement).toBe('side');
+
+  await page
+    .getByLabel('試し打ち文字列パネルをクリックまたはドラッグして小窓表示')
+    .getByText('試し打ち文字列', { exact: true })
+    .click();
+  await expect(panel).toHaveAttribute('data-floating', 'true');
+
+  const resizeTo = async (width: number, height: number) => {
+    const [panelBox, handleBox] = await Promise.all([
+      panel.boundingBox(),
+      page.getByLabel('試し打ち文字列パネルのサイズを変更').boundingBox(),
+    ]);
+    expect(panelBox).not.toBeNull();
+    expect(handleBox).not.toBeNull();
+    await page.mouse.move(
+      handleBox!.x + handleBox!.width / 2,
+      handleBox!.y + handleBox!.height / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      handleBox!.x + width - panelBox!.width,
+      handleBox!.y + height - panelBox!.height,
+    );
+    await page.mouse.up();
+  };
+
+  await resizeTo(720, 220);
+  await expect.poll(placement).toBe('side');
+
+  await resizeTo(480, 220);
+  await expect.poll(placement).toBe('stacked');
+
+  await panel.getByRole('button', { name: '試し打ち文字列パネルを元に戻す' }).click();
+  await expect(panel).not.toHaveAttribute('data-floating');
+  await expect.poll(placement).toBe('side');
+});
+
+test('Key info.はpanel自身の縦横比と横幅でPressed/Recognizedのstack方向を変える', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const panel = page.getByLabel('Key info.', { exact: true });
+  const sections = panel.locator('.input-inspector > section');
+  const placement = async () => {
+    const [first, second] = await Promise.all([
+      sections.nth(0).boundingBox(),
+      sections.nth(1).boundingBox(),
+    ]);
+    if (first === null || second === null) return 'missing';
+    return second.y >= first.y + first.height - 2 ? 'stacked' : 'side';
+  };
+
+  await page
+    .getByLabel('Key info.パネルをクリックまたはドラッグして小窓表示')
+    .getByText('Key info.', { exact: true })
+    .click();
+  await expect(panel).toHaveAttribute('data-floating', 'true');
+
+  const resizeTo = async (width: number, height: number) => {
+    const [panelBox, handleBox] = await Promise.all([
+      panel.boundingBox(),
+      page.getByLabel('Key info.パネルのサイズを変更').boundingBox(),
+    ]);
+    expect(panelBox).not.toBeNull();
+    expect(handleBox).not.toBeNull();
+    await page.mouse.move(
+      handleBox!.x + handleBox!.width / 2,
+      handleBox!.y + handleBox!.height / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      handleBox!.x + width - panelBox!.width,
+      handleBox!.y + height - panelBox!.height,
+    );
+    await page.mouse.up();
+  };
+
+  await resizeTo(420, 200);
+  await expect.poll(placement).toBe('side');
+
+  await resizeTo(220, 360);
+  await expect.poll(placement).toBe('stacked');
+});
+
+test('Key info. panelはヘッダーから独立小窓化し元へ戻せる', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/input');
 
@@ -231,6 +340,10 @@ test('入力詳細panelはヘッダーから独立小窓化し元へ戻せる', 
     const box = await panel.boundingBox();
     return box === null ? -1 : Math.round(box.height);
   }).toBeLessThanOrEqual(165);
+  await expect.poll(async () => {
+    const box = await panel.boundingBox();
+    return box === null ? -1 : Math.round(box.width);
+  }).toBeLessThanOrEqual(205);
 
   const backButton = panel.getByRole('button', { name: 'Key info.パネルを元に戻す' });
   await panel.locator('.input-inspector').evaluate((element) => {
@@ -1883,6 +1996,7 @@ test('#387 Esc全削除・hold中Backspace・JISかな・仮想Shift表示を扱
 });
 
 test('盤面クリックで任意browser codeをphysical keyへ再割当して永続化できる', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/input');
   const feature = page.locator('.input-feature');
   const output = page.getByLabel('自由入力テキスト');
