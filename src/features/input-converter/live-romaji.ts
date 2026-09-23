@@ -1,4 +1,5 @@
 import type { InputContextRequirement } from '../../core/semantic-input/index.ts';
+import { kanaToRomaji, kanaToRomajiChunks } from '../../romaji/kunrei.ts';
 
 interface RomanKanaEntry {
   readonly kana: string;
@@ -57,6 +58,35 @@ export function romajiToKana(
     cursor += [...matched.roman].length;
   }
   return result;
+}
+
+/**
+ * ローマ字入力の表示文字ごとに、Practice Textへ向かう正しい入力prefixかを返す。
+ *
+ * live入力では未完成の "k" / "ky" 等を romajiToKana() がそのまま表示へ残すため、
+ * かな文字との単純な位置比較では正しい子音まで誤入力扱いになる。
+ * 既存romaji tableをauthorityにしてraw roman列へ戻し、chunk単位で比較する。
+ */
+export function romajiTypingCorrectness(
+  typedDisplay: string,
+  target: string,
+  table: Map<string, string>,
+): boolean[] {
+  const targetRoman = [...kanaToRomaji(target, table)];
+  const typedChunks = kanaToRomajiChunks(typedDisplay, table);
+  const correctness: boolean[] = [];
+  let romanOffset = 0;
+
+  for (const chunk of typedChunks) {
+    const roman = [...chunk.roman];
+    const matches = roman.every(
+      (char, offset) => targetRoman[romanOffset + offset] === char,
+    );
+    for (const _ of chunk.kana) correctness.push(matches);
+    romanOffset += roman.length;
+  }
+
+  return correctness;
 }
 
 /**

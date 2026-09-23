@@ -75,6 +75,7 @@ import {
   reverseLookupGuideIndexForText,
   reverseLookupRouteLabel,
 } from './reverse-lookup.ts';
+import { romajiTypingCorrectness } from './live-romaji.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
 const DIRECT_JA_INPUT_LAYOUTS =
@@ -808,14 +809,18 @@ export function InputConverterView() {
   const typingTargetPresentation = useMemo(() => {
     const target = Array.from(lookupQuery);
     const typed = Array.from(session.text);
+    const romajiCorrectness = layout.romajiTable === undefined
+      ? undefined
+      : romajiTypingCorrectness(session.text, lookupQuery, layout.romajiTable);
+
     return {
       typed: typed.map((char, index) => ({
         char,
-        correct: target[index] === char,
+        correct: romajiCorrectness?.[index] ?? target[index] === char,
       })),
       remaining: target.slice(typed.length),
     };
-  }, [lookupQuery, session.text]);
+  }, [layout.romajiTable, lookupQuery, session.text]);
 
   useEffect(() => {
     setLookupStepIndex(0);

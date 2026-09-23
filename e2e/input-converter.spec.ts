@@ -1413,6 +1413,41 @@ test('TK音直入力法はかなを直接表示しcomboと拗音contextを認識
   await expect(output).toHaveValue('おんや');
 });
 
+test('ローマ字入力の正しい未確定子音はお題上で誤入力表示にしない', async ({ page }) => {
+  await page.goto('/input');
+  const feature = page.locator('.input-feature');
+  const layoutSelect = page.getByLabel('配列', { exact: true });
+  const lookup = page.getByLabel('打ちたい文字');
+  const output = page.getByLabel('自由入力テキスト');
+  const target = page.getByTestId('typing-target');
+
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await layoutSelect.selectOption('oonishi-custom-combo');
+  await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom-combo');
+
+  await lookup.fill('かな');
+  await output.click();
+
+  // TK音直のphysical h -> logical k。「か」の正しい未確定prefixなので赤くしない。
+  await page.keyboard.press('h');
+  await expect(output).toHaveValue('k');
+  await expect(target.locator('.input-output-char-correct')).toHaveText('k');
+  await expect(target.locator('.input-output-char-error')).toHaveCount(0);
+
+  // logical aまで入れば従来どおり「か」へ確定して正解表示になる。
+  await page.keyboard.press('d');
+  await expect(output).toHaveValue('か');
+  await expect(target.locator('.input-output-char-correct')).toHaveText('か');
+  await expect(target.locator('.input-output-char-error')).toHaveCount(0);
+
+  // 間違った子音は引き続き誤入力として表示する。
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await output.click();
+  await page.keyboard.press('l'); // physical l -> logical s
+  await expect(output).toHaveValue('s');
+  await expect(target.locator('.input-output-char-error')).toHaveText('s');
+});
+
 test('Practice Textはdocked既定の50:50 splitで候補rowとguideがcontent内に収まる', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/input');
