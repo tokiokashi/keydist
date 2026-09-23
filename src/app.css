@@ -516,9 +516,20 @@ h1 {
 }
 
 .input-keyboard-heading > strong {
+  flex: 0 0 auto;
   font-size: 0.8rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.input-keyboard-help {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  color: #686862;
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .input-active-layer {
