@@ -616,6 +616,17 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
 
+  await page.getByRole('button', { name: 'ランダムな単語' }).click();
+  const randomWord = await lookup.inputValue();
+  expect([...randomWord].length).toBeGreaterThanOrEqual(2);
+  expect([...randomWord].length).toBeLessThanOrEqual(10);
+  expect(randomWord).not.toMatch(/[。、！？!?，,\s]/u);
+
+  await page.getByRole('button', { name: 'ランダムな文章' }).click();
+  const randomPhrase = await lookup.inputValue();
+  expect([...randomPhrase].length).toBeGreaterThanOrEqual(5);
+  expect([...randomPhrase].length).toBeLessThanOrEqual(15);
+
   await lookup.fill('かな');
   const guide = page.getByLabel('入力順ガイド');
   await expect(guide).toContainText('1 / 2');

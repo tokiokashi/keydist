@@ -47,6 +47,10 @@ import {
 } from './browser-keyboard-bindings.ts';
 import { browserCodesForPhysicalKey } from './browser-keyboard-adapter.ts';
 import {
+  JAPANESE_INPUT_SAMPLE_POOLS,
+  pickRandomSample,
+} from './random-samples.ts';
+import {
   reverseLookup,
   reverseLookupRouteLabel,
   reverseLookupStepLabel,
@@ -871,8 +875,31 @@ export function InputConverterView() {
               />
                 </div>
                 <section className="input-assist-slot" aria-label="打ち方逆引き">
-              <label className="input-lookup-field">
-                <span>打ち方を調べる</span>
+              <div className="input-lookup-field">
+                <div className="input-lookup-field-heading">
+                  <span>打ち方を調べる</span>
+                  <span className="input-random-samples">
+                    <span>ランダム</span>
+                    <button
+                      aria-label="ランダムな単語"
+                      onClick={() => setLookupQuery(
+                        pickRandomSample(JAPANESE_INPUT_SAMPLE_POOLS.words, lookupQuery),
+                      )}
+                      type="button"
+                    >
+                      単語
+                    </button>
+                    <button
+                      aria-label="ランダムな文章"
+                      onClick={() => setLookupQuery(
+                        pickRandomSample(JAPANESE_INPUT_SAMPLE_POOLS.phrases, lookupQuery),
+                      )}
+                      type="button"
+                    >
+                      文章
+                    </button>
+                  </span>
+                </div>
                 <input
                   aria-label="打ちたい文字"
                   type="text"
@@ -884,7 +911,7 @@ export function InputConverterView() {
                   placeholder="例: ぎゃ"
                   autoComplete="off"
                 />
-              </label>
+              </div>
               <div className="input-lookup-results" aria-live="polite">
                 {lookupQuery.length === 0 ? (
                   <span className="input-muted">文字を入力するとcanonical inputから逆引きします。</span>
