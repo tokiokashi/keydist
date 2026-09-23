@@ -44,6 +44,7 @@ type AdjacentMatrixKind = 'adjacentMean' | 'adjacentStdDev';
 
 export interface ResultsViewContext {
   el: AppElements;
+  getText: () => string;
   getUiState: () => UiStateV1;
   updateUiState: (change: (draft: UiStateV1) => void) => void;
   currentModeId: () => ModeId;
@@ -111,7 +112,7 @@ function render() {
     geometryCache.set(cacheKey, geometry);
     return geometry;
   };
-  const text = elements.text.value;
+  const text = ctx.getText();
   elements.windowOut.value = String(ctx.getUiState().conditions.defaults.windowSize);
 
   const set = ctx.selected[ctx.currentModeId()];

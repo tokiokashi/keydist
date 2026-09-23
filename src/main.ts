@@ -14,8 +14,6 @@ import {
   type PhysicalShape,
 } from './geometry.ts';
 import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from './layouts/index.ts';
-import { SAMPLE_TEXT } from './sample-text.ts';
-import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from './sample-text-ja.ts';
 import { bindTips, hideTip, showTip } from './chart.ts';
 import { setupTheme } from './theme.ts';
 import { gapFigure } from './gap-figure.ts';
@@ -46,17 +44,22 @@ import {
 } from './layout-import.ts';
 import { layoutVisibleInFilter, resolveSelection, type LayoutTypeFilter, type ModeId } from './layout-selection.ts';
 import {
-  createDefaultUiState,
   DEFAULT_CONDITION_DEFAULTS,
-  loadUiState,
-  MAX_SAVED_TEXT_LENGTH,
-  saveUiState,
   type UiPlaybackState,
   type UiStateConditionsDefaults,
   type UiStateStorage,
   type UiStateLayoutConditions,
   type UiStateV1,
 } from './ui-state.ts';
+import { createAnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
+import {
+  ANALYZER_INITIAL_LAYOUTS,
+  createAnalyzerUiStateBootstrap,
+} from './analyzer-ui-state-bootstrap.ts';
+import {
+  mountAnalyzerReactShell,
+  type AnalyzerReactShellController,
+} from './analyzer-react-shell.tsx';
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import { el, SERIES } from './app-dom.ts';
 import { createRomajiEditor } from './romaji-editor.ts';
@@ -109,27 +112,6 @@ import {
   serializeConditionBundle,
 } from './condition-bundle.ts';
 
-type SampleId = string;
-
-const SAMPLES: Record<ModeId, Record<SampleId, string>> = {
-  en: { default: SAMPLE_TEXT.replace(/\s+/g, ' ').trim() },
-  ja: {
-    modern: SAMPLE_TEXT_JA.replace(/\s+/g, ''),
-    legacy: SAMPLE_TEXT_JA_LEGACY.replace(/\s+/g, ''),
-  },
-};
-
-const SAMPLE_NAMES: Record<ModeId, Record<SampleId, string>> = {
-  en: { default: '英文（既定）' },
-  ja: { modern: '現代文', legacy: '旧文「吾輩は猫である」（既定）' },
-};
-
-/** 既定で表示する配列 */
-const INITIAL = {
-  en: ['qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi'],
-  ja: ['qwerty', 'colemak-dh', 'oonishi', 'oonishi-custom-combo', 'naginata-v18'],
-} as const;
-
 let userLayouts: UserLayout[] = loadUserLayouts();
 let userGeometryShapes: PhysicalShape[] = loadUserGeometryShapes();
 let romajiSettings = loadRomajiSettings();
@@ -176,8 +158,8 @@ function romajiRuleIdForLayout(layout: Layout): string | null {
 }
 
 const MODES = {
-  en: { get layouts() { return layoutsOf('en'); }, sample: SAMPLES.en.default },
-  ja: { get layouts() { return layoutsOf('ja'); }, sample: SAMPLES.ja.modern },
+  en: { get layouts() { return layoutsOf('en'); } },
+  ja: { get layouts() { return layoutsOf('ja'); } },
 };
 
 function browserStorage(): UiStateStorage | undefined {
@@ -190,21 +172,17 @@ function browserStorage(): UiStateStorage | undefined {
 
 const uiStorage = browserStorage();
 let playbackCalibration = loadPlaybackCalibration(uiStorage);
-const uiStateDefaults = createDefaultUiState({
+const uiStateBootstrap = createAnalyzerUiStateBootstrap({
+  builtInLayoutIds: {
+    en: LAYOUTS.map((layout) => layout.id),
+    ja: LAYOUTS_JA.map((layout) => layout.id),
+  },
+  userLayoutIds: userLayouts.map((layout) => layout.id),
   textPanelOpen: !window.matchMedia('(max-width: 900px)').matches,
   usePlaybackCalibration: playbackCalibration !== undefined,
-  selectedLayouts: INITIAL,
 });
-const uiStateChoices = {
-  layouts: {
-    en: layoutsOf('en').map((layout) => layout.id),
-    ja: layoutsOf('ja').map((layout) => layout.id),
-  },
-  samples: {
-    en: Object.keys(SAMPLES.en),
-    ja: Object.keys(SAMPLES.ja),
-  },
-};
+const uiStateDefaults = uiStateBootstrap.defaults;
+const uiStateChoices = uiStateBootstrap.choices;
 
 function addLayoutChoices(layoutIds: readonly string[]): void {
   for (const mode of ['en', 'ja'] as const) {
@@ -218,36 +196,22 @@ function removeLayoutChoice(layoutId: string): void {
   }
 }
 
-const loadedUiState = loadUiState(uiStorage, uiStateDefaults, uiStateChoices);
-let uiState = loadedUiState.state;
+const uiStateOwner = createAnalyzerUiStateOwner(uiStorage, uiStateDefaults, uiStateChoices);
+let uiState = uiStateOwner.getSnapshot();
 conditionState = uiState;
-if (loadedUiState.migratedArpeggioModel) {
+uiStateOwner.subscribe(() => {
+  uiState = uiStateOwner.getSnapshot();
+  conditionState = uiState;
+});
+if (uiStateOwner.loadResult.migratedArpeggioModel) {
   queueMicrotask(() => window.alert(
     'Arpeggio構造判定を刷新し、旧幾何条件と旧Arpeggio Timingモードを廃止しました。',
   ));
 }
-let uiStateSaveTimer: number | undefined;
 
-function flushUiState(): void {
-  if (uiStateSaveTimer !== undefined) window.clearTimeout(uiStateSaveTimer);
-  uiStateSaveTimer = undefined;
-  saveUiState(uiStorage, uiState);
-}
-
-/** 永続化する画面状態は必ずこの関数を通して更新する。 */
+/** 永続化する画面状態は必ずAnalyzer state ownerを通して更新する。 */
 function updateUiState(change: (draft: UiStateV1) => void, debounce = false): void {
-  const next = structuredClone(uiState);
-  change(next);
-  uiState = next;
-  conditionState = uiState;
-  if (uiStateSaveTimer !== undefined) window.clearTimeout(uiStateSaveTimer);
-  if (debounce) {
-    uiStateSaveTimer = window.setTimeout(() => {
-      flushUiState();
-    }, 300);
-  } else {
-    flushUiState();
-  }
+  uiStateOwner.update(change, debounce);
 }
 
 /** 旧形式の単一custom設定を、名前付き形状の先頭要素へ移行する。 */
@@ -285,13 +249,14 @@ function migrateCurrentGeometryShape(): void {
 
 migrateCurrentGeometryShape();
 
-window.addEventListener('pagehide', flushUiState);
+window.addEventListener('pagehide', () => {
+  uiStateOwner.flush();
+});
 
 if (!playbackCalibration && uiState.ui.playback.useCalibration) {
   updateUiState((draft) => { draft.ui.playback.useCalibration = false; });
 }
 
-el.mode.value = uiState.ui.input.mode;
 el.geometry.value = uiState.conditions.defaults.geometry;
 el.window.value = String(uiState.conditions.defaults.windowSize);
 el.sfbHome.checked = uiState.conditions.defaults.sfbHomeCost;
@@ -302,8 +267,8 @@ el.sensitivityPanel.open = uiState.ui.panels.sensitivity;
 
 /** 表示する配列のid。モードごとに覚える。保存値があればそれを使い、無ければ既定値 */
 const selected: Record<ModeId, Set<string>> = {
-  en: resolveSelection(uiState.ui.layouts.selectedByMode.en, INITIAL.en),
-  ja: resolveSelection(uiState.ui.layouts.selectedByMode.ja, INITIAL.ja),
+  en: resolveSelection(uiState.ui.layouts.selectedByMode.en, ANALYZER_INITIAL_LAYOUTS.en),
+  ja: resolveSelection(uiState.ui.layouts.selectedByMode.ja, ANALYZER_INITIAL_LAYOUTS.ja),
 };
 
 function saveSelectedLayouts(): void {
@@ -317,28 +282,14 @@ function saveSelectedLayouts(): void {
 
 const pickerFilter: LayoutTypeFilter = { romaji: true, kana: true };
 
-const currentModeId = () => el.mode.value as ModeId;
+const currentModeId = () => uiState.ui.input.mode;
 const currentMode = () => MODES[currentModeId()];
-const currentSample = () => SAMPLES[currentModeId()][uiState.ui.input.selectedSampleByMode[currentModeId()]]
-  ?? currentMode().sample;
 
 /** 選択されている配列。色のスロットは選択順ではなく一覧順に固定する */
 function activeLayouts(): Layout[] {
   const set = selected[currentModeId()];
   return currentMode().layouts.filter((l) => set.has(l.id));
 }
-
-function fillSampleOptions() {
-  const mode = currentModeId();
-  el.sample.replaceChildren();
-  for (const [id, name] of Object.entries(SAMPLE_NAMES[mode])) {
-    el.sample.append(new Option(name, id));
-  }
-  el.sample.value = uiState.ui.input.selectedSampleByMode[mode];
-}
-
-fillSampleOptions();
-el.text.value = uiState.ui.input.customText ?? currentSample();
 
 /** 配列を追加する欄。段ごとに1行、数字段は任意 */
 function setupAddForm() {
@@ -615,25 +566,6 @@ function fillDetailOptions() {
   }
   el.detailLayout.value = layouts.some((l) => l.id === keep) ? keep : layouts[0].id;
   fillDetailGeometryOptions(el.detailLayout.value);
-}
-
-function syncSampleText() {
-  const untouched = Object.values(SAMPLES).some((samples) => Object.values(samples).includes(el.text.value));
-  if (untouched) el.text.value = currentSample();
-}
-
-function syncTextState(debounce = true): void {
-  const text = el.text.value;
-  const isSample = Object.values(SAMPLES).some((samples) => Object.values(samples).includes(text));
-  const tooLong = text.length > MAX_SAVED_TEXT_LENGTH;
-  el.textSaveStatus.textContent = tooLong
-    ? `本文が ${MAX_SAVED_TEXT_LENGTH.toLocaleString()} 文字を超えたため、この本文は保存しません。`
-    : '';
-  el.textSaveStatus.hidden = !tooLong;
-  updateUiState((draft) => {
-    if (isSample || tooLong) delete draft.ui.input.customText;
-    else draft.ui.input.customText = text;
-  }, debounce);
 }
 
 const FINGER_NAMES: Record<Finger, string> = {
@@ -1991,8 +1923,11 @@ calibrationDialog = createCalibrationDialog({
   setCalibration: (calibration) => { playbackCalibration = calibration; },
   setPlaybackCalibration: (calibration) => playbackView.setCalibration(calibration),
 });
+let analyzerReactShell: AnalyzerReactShellController | undefined;
+
 resultsView = createResultsView({
   el,
+  getText: () => analyzerReactShell?.getText() ?? '',
   getUiState: () => uiState,
   updateUiState,
   currentModeId,
@@ -2009,27 +1944,25 @@ function render(): void {
 }
 
 function onModeChange() {
-  updateUiState((draft) => { draft.ui.input.mode = currentModeId(); });
-  fillSampleOptions();
-  syncSampleText();
   fillPicker();
   fillDetailOptions();
   render();
 }
-el.mode.addEventListener('change', onModeChange);
-el.sample.addEventListener('change', () => {
-  updateUiState((draft) => {
-    draft.ui.input.selectedSampleByMode[currentModeId()] = el.sample.value;
-    delete draft.ui.input.customText;
-  });
-  el.text.value = currentSample();
-  render();
-});
-el.sampleReset.addEventListener('click', () => {
-  el.text.value = currentSample();
-  updateUiState((draft) => { delete draft.ui.input.customText; });
-  el.textSaveStatus.hidden = true;
-  render();
+
+const analyzerReactShellRoot = document.getElementById('analyzer-react-shell');
+const analyzerModeControlSlot = document.getElementById('analyzer-mode-control');
+const analyzerTextControlSlot = document.getElementById('analyzer-text-controls');
+if (!analyzerReactShellRoot || !analyzerModeControlSlot || !analyzerTextControlSlot) {
+  throw new Error('Analyzer React shell mount point is missing');
+}
+analyzerReactShell = mountAnalyzerReactShell({
+  root: analyzerReactShellRoot,
+  modeSlot: analyzerModeControlSlot,
+  textSlot: analyzerTextControlSlot,
+  stateOwner: uiStateOwner,
+  onModeChange,
+  onTextInput: scheduleTextRender,
+  onTextCommit: flushTextRender,
 });
 el.compareChartMetric.addEventListener('change', () => {
   updateUiState((draft) => { draft.ui.comparison.chartColumn = Number(el.compareChartMetric.value); });
@@ -2123,14 +2056,6 @@ function flushTextRender(): void {
   render();
 }
 
-el.text.addEventListener('input', () => {
-  syncTextState();
-  scheduleTextRender();
-});
-el.text.addEventListener('change', () => {
-  syncTextState(false);
-  flushTextRender();
-});
 el.detailLayout.addEventListener('change', () => {
   updateUiState((draft) => { draft.ui.layouts.detailByMode[currentModeId()] = el.detailLayout.value; });
   fillDetailGeometryOptions(el.detailLayout.value);
