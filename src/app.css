@@ -867,6 +867,12 @@ h1 {
   margin-bottom: 0.22rem;
 }
 
+.input-lookup-nav {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 0.2rem;
+}
+
 .input-lookup-guide button {
   flex: 0 0 auto;
   width: 1.55rem;

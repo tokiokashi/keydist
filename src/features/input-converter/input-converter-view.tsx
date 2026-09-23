@@ -846,14 +846,25 @@ export function InputConverterView() {
                 ) : (
                   <>
                     <div className="input-lookup-guide" aria-label="入力順ガイド">
-                      <button
-                        aria-label="前の入力単位"
-                        disabled={lookupStepIndex <= 0}
-                        onClick={() => setLookupStepIndex((current) => Math.max(0, current - 1))}
-                        type="button"
-                      >
-                        ←
-                      </button>
+                      <span className="input-lookup-nav">
+                        <button
+                          aria-label="前の入力単位"
+                          disabled={lookupStepIndex <= 0}
+                          onClick={() => setLookupStepIndex((current) => Math.max(0, current - 1))}
+                          type="button"
+                        >
+                          ←
+                        </button>
+                        <button
+                          aria-label="次の入力単位"
+                          disabled={lookupStepIndex >= activeLookupRoute.steps.length - 1}
+                          onClick={() => setLookupStepIndex((current) =>
+                            Math.min(activeLookupRoute.steps.length - 1, current + 1))}
+                          type="button"
+                        >
+                          →
+                        </button>
+                      </span>
                       <span className="input-lookup-progress">
                         {Math.min(lookupStepIndex + 1, activeLookupRoute.steps.length)}
                         {' / '}
@@ -861,15 +872,6 @@ export function InputConverterView() {
                       </span>
                       <strong>{activeLookupStep.output}</strong>
                       <code>{reverseLookupStepLabel(activeLookupStep)}</code>
-                      <button
-                        aria-label="次の入力単位"
-                        disabled={lookupStepIndex >= activeLookupRoute.steps.length - 1}
-                        onClick={() => setLookupStepIndex((current) =>
-                          Math.min(activeLookupRoute.steps.length - 1, current + 1))}
-                        type="button"
-                      >
-                        →
-                      </button>
                     </div>
                     <ol>
                       {lookupRoutes.map((route, index) => (

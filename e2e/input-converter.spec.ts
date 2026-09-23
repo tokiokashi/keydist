@@ -595,6 +595,20 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   const guide = page.getByLabel('入力順ガイド');
   await expect(guide).toContainText('1 / 2');
   await expect(guide).toContainText('か');
+  const previousButton = page.getByRole('button', { name: '前の入力単位' });
+  const nextButton = page.getByRole('button', { name: '次の入力単位' });
+  const progress = guide.locator('.input-lookup-progress');
+  const [previousBox, nextBox, progressBox] = await Promise.all([
+    previousButton.boundingBox(),
+    nextButton.boundingBox(),
+    progress.boundingBox(),
+  ]);
+  expect(previousBox).not.toBeNull();
+  expect(nextBox).not.toBeNull();
+  expect(progressBox).not.toBeNull();
+  expect(previousBox!.x).toBeLessThan(nextBox!.x);
+  expect(nextBox!.x + nextBox!.width).toBeLessThan(progressBox!.x);
+  expect(nextBox!.x - (previousBox!.x + previousBox!.width)).toBeLessThanOrEqual(6);
   await expect(keyboard.locator('[data-key-id="f"]')).toHaveAttribute('data-lookup', 'true');
   await expect(keyboard.locator('[data-key-id="m"]')).not.toHaveAttribute('data-lookup', 'true');
 
