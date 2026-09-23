@@ -1350,7 +1350,7 @@ test('ランダム練習はモードを保持し別停止ボタンで終了で�
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const assist = page.getByLabel('打ち方逆引き');
+  const assist = page.getByLabel('試し打ち文字列');
   const lookup = page.getByLabel('打ちたい文字');
   const wordButton = page.getByRole('button', { name: 'ランダムな単語' });
 
@@ -1434,7 +1434,7 @@ test('ランダム練習は完全一致後も結果を残しEnterで次題へ進
   await expect(output).toHaveValue('');
   await expect(lookup).toHaveValue('まど');
   await expect(
-    page.getByLabel('打ち方逆引き').locator('.input-lookup-field-body'),
+    page.getByLabel('試し打ち文字列').locator('.input-lookup-field-body'),
   ).toHaveAttribute('data-random-practice-mode', 'word');
   await expect(status).not.toHaveAttribute('data-complete');
   await expect(output).toBeFocused();
