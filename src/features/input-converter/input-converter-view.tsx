@@ -120,6 +120,7 @@ const MIN_FLOATING_GUIDE_HEIGHT = 240;
 const FLOATING_GUIDE_VIEWPORT_GAP = 12;
 
 const INPUT_TYPING_PANEL_ID = 'input.typing';
+const INPUT_KEYBOARD_PANEL_ID = 'input.keyboard';
 const INPUT_LAYER_GUIDE_PANEL_ID = 'input.layer-guide';
 
 function layerGuideCardPanelId(layerId: string): string {
@@ -278,6 +279,13 @@ export function InputConverterView() {
         defaultDockSlot: 'input.main.typing',
         minWidth: 320,
         minHeight: 160,
+      },
+      {
+        id: INPUT_KEYBOARD_PANEL_ID,
+        title: 'Keyboard',
+        defaultDockSlot: 'input.main.keyboard',
+        minWidth: 480,
+        minHeight: 360,
       },
       {
         id: INPUT_LAYER_GUIDE_PANEL_ID,
@@ -1065,55 +1073,79 @@ export function InputConverterView() {
             </p>
           </WorkspacePanel>
 
-          <section className="input-keyboard-panel">
-            <div className="input-display-options" aria-label="表示設定">
-              <strong>表示</strong>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={showDynamicGuide}
-                  onChange={(event) => setShowDynamicGuide(event.target.checked)}
-                />
-                動的ガイド
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={showLayerGuide}
-                  onChange={(event) => {
-                    if (!event.target.checked) {
-                      workspace.dispatch({ type: 'dock', id: INPUT_LAYER_GUIDE_PANEL_ID });
-                      for (const definition of guideDefinitions) {
-                        workspace.dispatch({
-                          type: 'dock',
-                          id: layerGuideCardPanelId(definition.id),
-                        });
-                      }
-                    }
-                    setShowLayerGuide(event.target.checked);
-                  }}
-                />
-                レイヤーカンペ
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={showLayerKeys}
-                  onChange={(event) => setShowLayerKeys(event.target.checked)}
-                />
-                レイヤーキー
-              </label>
-              {hasShiftKeys ? (
+          <WorkspacePanel
+            ariaLabel="Keyboard"
+            className="input-keyboard-panel"
+            defaultFloatingHeight={560}
+            defaultFloatingWidth={760}
+            dockedHeaderAriaLabel="表示設定"
+            floatOnHeaderClick
+            floatingHeaderAriaLabel="Keyboardパネルを移動"
+            headerClassName="input-display-options"
+            id={INPUT_KEYBOARD_PANEL_ID}
+            minHeight={360}
+            minWidth={480}
+            resizeAriaLabel="Keyboardパネルのサイズを変更"
+            renderHeader={({ mode, dock }) => (
+              <>
+                <strong>表示</strong>
                 <label>
                   <input
                     type="checkbox"
-                    checked={showShiftKeys}
-                    onChange={(event) => setShowShiftKeys(event.target.checked)}
+                    checked={showDynamicGuide}
+                    onChange={(event) => setShowDynamicGuide(event.target.checked)}
                   />
-                  Shiftキー
+                  動的ガイド
                 </label>
-              ) : null}
-            </div>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={showLayerGuide}
+                    onChange={(event) => {
+                      if (!event.target.checked) {
+                        workspace.dispatch({ type: 'dock', id: INPUT_LAYER_GUIDE_PANEL_ID });
+                        for (const definition of guideDefinitions) {
+                          workspace.dispatch({
+                            type: 'dock',
+                            id: layerGuideCardPanelId(definition.id),
+                          });
+                        }
+                      }
+                      setShowLayerGuide(event.target.checked);
+                    }}
+                  />
+                  レイヤーカンペ
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={showLayerKeys}
+                    onChange={(event) => setShowLayerKeys(event.target.checked)}
+                  />
+                  レイヤーキー
+                </label>
+                {hasShiftKeys ? (
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={showShiftKeys}
+                      onChange={(event) => setShowShiftKeys(event.target.checked)}
+                    />
+                    Shiftキー
+                  </label>
+                ) : null}
+                {mode === 'floating' ? (
+                  <button
+                    aria-label="Keyboardパネルを元に戻す"
+                    className="input-panel-dock"
+                    onClick={dock}
+                    type="button"
+                  >
+                    戻す
+                  </button>
+                ) : null}
+              </>
+            )}
             <header className="input-keyboard-heading">
               <strong>Keyboard</strong>
               {bindingTargetKey === undefined ? (
@@ -1330,7 +1362,7 @@ export function InputConverterView() {
                 </div>
               </section>
             </div>
-          </section>
+          </WorkspacePanel>
         </section>
       </div>
     </section>
