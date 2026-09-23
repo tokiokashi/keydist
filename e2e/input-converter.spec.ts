@@ -93,6 +93,39 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   await page.keyboard.up('j');
 });
 
+test('Recognized detail keeps the same typography and height before and after input', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+
+  const recognizedSection = page.getByLabel('入力詳細')
+    .locator('.input-inspector > section')
+    .nth(1);
+  const empty = recognizedSection.locator('.input-recognized-empty');
+
+  const beforeBox = await recognizedSection.boundingBox();
+  const emptyFontSize = await empty.evaluate(
+    (element) => getComputedStyle(element).fontSize,
+  );
+  expect(beforeBox).not.toBeNull();
+
+  const output = page.getByLabel('自由入力テキスト');
+  await output.click();
+  await page.keyboard.press('f');
+  await expect(output).toHaveValue('か');
+
+  const recognized = recognizedSection.locator('.input-recognized strong');
+  const afterBox = await recognizedSection.boundingBox();
+  const recognizedFontSize = await recognized.evaluate(
+    (element) => getComputedStyle(element).fontSize,
+  );
+  expect(afterBox).not.toBeNull();
+  expect(recognizedFontSize).toBe(emptyFontSize);
+  expect(afterBox!.height).toBe(beforeBox!.height);
+});
+
 test('Input Converter keeps desktop Y bounded and lets cheatsheets scroll when width causes wrapping', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 768 });
   await page.goto('/input');
