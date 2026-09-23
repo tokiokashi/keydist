@@ -182,7 +182,7 @@ function RecognizedDetail({
   if (recognized.length === 0) {
     return (
       <p className="input-muted input-recognized-empty">
-        まだ入力は確定していない。
+        まだ入力は確定していません。
       </p>
     );
   }
@@ -472,7 +472,7 @@ export function InputConverterView() {
           <h1>Input Converter</h1>
         </div>
         <p>
-          選択した配列の canonical SemanticInput を使って、物理キーから文字列を直接生成する。
+          選択した配列の canonical SemanticInput を使って、物理キーから文字列を直接生成します。
         </p>
       </header>
 
@@ -655,7 +655,7 @@ export function InputConverterView() {
           }}
           role="separator"
           tabIndex={0}
-          title="ドラッグで幅を調整。ダブルクリックで1:1に戻す。"
+          title="ドラッグで幅を調整できます。ダブルクリックで1:1に戻します。"
         />
 
         <section className="input-main">
@@ -673,13 +673,13 @@ export function InputConverterView() {
               aria-describedby="input-capture-help"
               data-active={session.active || undefined}
               ref={session.captureRef}
-              placeholder="ここをクリックして、そのまま打鍵する。"
+              placeholder="ここをクリックして、そのまま打鍵してください。"
             />
             <p className="input-capture-hint" id="input-capture-help">
-              {session.active ? '入力受付中。' : '入力欄をクリックして入力開始。'}
-              {' '}Backspaceで1文字削除、Enterで改行、
-              {escapeIsLayoutInput ? 'Escは配列入力として扱う。' : 'Escで全削除。'}
-              {session.composing ? ' IME composition中は認識を停止している。' : ''}
+              {session.active ? '入力を受け付けています。' : '入力欄をクリックすると入力を開始します。'}
+              {' '}Backspaceで1文字削除し、Enterで改行します。
+              {escapeIsLayoutInput ? ' Escは配列入力として扱います。' : ' Escで全削除します。'}
+              {session.composing ? ' IME composition中は認識を停止しています。' : ''}
             </p>
           </section>
 
@@ -723,6 +723,9 @@ export function InputConverterView() {
             </div>
             <header className="input-keyboard-heading">
               <strong>Keyboard</strong>
+              <span className="input-keyboard-help">
+                キーをクリックすると、次に押した実キーをその位置へ割り当てます。
+              </span>
               <p
                 className="input-active-layer"
                 data-active={activeDefinitions.length > 0 || undefined}
@@ -735,14 +738,9 @@ export function InputConverterView() {
                 </strong>
               </p>
             </header>
-            <div className="input-key-binding-bar" aria-label="物理キー割当">
-              {bindingTargetKey === undefined ? (
-                <span className="input-muted">
-                  キーをクリックすると、次に押した実キーをその位置へ割り当てる。
-                </span>
-              ) : (
-                <>
-                  <strong>{bindingTargetKey}</strong>
+            {bindingTargetKey !== undefined ? (
+              <div className="input-key-binding-bar" aria-label="物理キー割当">
+                <strong>{bindingTargetKey}</strong>
                   <span aria-hidden="true">←</span>
                   <div className="input-key-binding-codes">
                     {selectedBindingCodes.length === 0
@@ -768,7 +766,7 @@ export function InputConverterView() {
                     onClick={() => setBindingCapturing((current) => !current)}
                     type="button"
                   >
-                    {bindingCapturing ? '実キーを押す…' : 'キーを追加'}
+                    {bindingCapturing ? '実キーを押してください…' : 'キーを追加'}
                   </button>
                   <button
                     className="input-binding-reset"
@@ -790,9 +788,8 @@ export function InputConverterView() {
                   >
                     閉じる
                   </button>
-                </>
-              )}
-            </div>
+              </div>
+            ) : null}
             <div className="input-keyboard-main">
               <PhysicalKeyboard
                 ariaLabel="現在の物理キー状態"
@@ -821,9 +818,9 @@ export function InputConverterView() {
               </label>
               <div className="input-lookup-results" aria-live="polite">
                 {lookupQuery.length === 0 ? (
-                  <span className="input-muted">文字を入れるとcanonical inputから逆引きする。</span>
+                  <span className="input-muted">文字を入力するとcanonical inputから逆引きします。</span>
                 ) : lookupRoutes.length === 0 ? (
-                  <span className="input-muted">この配列では打ち方を見つけられない。</span>
+                  <span className="input-muted">この配列では打ち方が見つかりません。</span>
                 ) : (
                   <ol>
                     {lookupRoutes.map((route, index) => (
