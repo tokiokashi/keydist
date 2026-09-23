@@ -673,6 +673,103 @@ test('TK音直入力法はかなを直接表示しcomboと拗音contextを認識
   await expect(output).toHaveValue('おんや');
 });
 
+test('ランダム練習はモードを保持し別停止ボタンで終了できる', async ({ page }) => {
+  await page.addInitScript(() => {
+    Math.random = () => 0;
+  });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const assist = page.getByLabel('打ち方逆引き');
+  const lookup = page.getByLabel('打ちたい文字');
+  const wordButton = page.getByRole('button', { name: 'ランダムな単語' });
+
+  await wordButton.click();
+  await expect(wordButton).toHaveAttribute('aria-pressed', 'true');
+  await expect(wordButton).toHaveAttribute('data-active', 'true');
+  await expect(assist).toHaveAttribute('data-random-practice-mode', 'word');
+  await expect(lookup).toHaveValue('あさ');
+  await expect(page.getByRole('button', { name: 'ランダム練習を停止' })).toBeVisible();
+
+  const lookupHeading = assist.locator('.input-lookup-field-heading');
+  const lookupTitle = lookupHeading.locator('> span').first();
+  const randomControls = lookupHeading.locator('.input-random-samples');
+  const [lookupTitleBox, randomControlsBox] = await Promise.all([
+    lookupTitle.boundingBox(),
+    randomControls.boundingBox(),
+  ]);
+  expect(lookupTitleBox).not.toBeNull();
+  expect(randomControlsBox).not.toBeNull();
+  const lookupTitleCenterY = lookupTitleBox!.y + lookupTitleBox!.height / 2;
+  const randomControlsCenterY = randomControlsBox!.y + randomControlsBox!.height / 2;
+  expect(Math.abs(lookupTitleCenterY - randomControlsCenterY)).toBeLessThanOrEqual(1);
+
+  // 選択中の同じボタンは停止ではなく、次のお題へ送る。
+  await wordButton.click();
+  await expect(lookup).toHaveValue('まど');
+  await expect(wordButton).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByRole('button', { name: 'ランダム練習を停止' }).click();
+  await expect(assist).not.toHaveAttribute('data-random-practice-mode');
+  await expect(wordButton).toHaveAttribute('aria-pressed', 'false');
+  await expect(lookup).toHaveValue('まど');
+  await expect(page.getByRole('button', { name: 'ランダム練習を停止' })).toHaveCount(0);
+
+  // 手動のお題編集でも連続モードだけ解除する。
+  await wordButton.click();
+  await expect(lookup).toHaveValue('あさ');
+  await lookup.fill('かな');
+  await expect(wordButton).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('button', { name: 'ランダム練習を停止' })).toHaveCount(0);
+});
+
+test('ランダム練習は完全一致後も結果を残しEnterで次題へ進む', async ({ page }) => {
+  await page.addInitScript(() => {
+    Math.random = () => 0;
+  });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const lookup = page.getByLabel('打ちたい文字');
+  const output = page.getByLabel('自由入力テキスト');
+  const status = page.getByRole('status');
+
+  await page.getByRole('button', { name: 'ランダムな単語' }).click();
+  await expect(lookup).toHaveValue('あさ');
+  await expect(status).toContainText('打ち切ったら Enterで次へ');
+  await expect(output).toBeFocused();
+
+  await page.keyboard.press('j');
+  await expect(output).toHaveValue('あ');
+  await expect(lookup).toHaveValue('あさ');
+
+  // 未完了ではEnterを予約するだけで、改行も次題送りもしない。
+  await page.keyboard.press('Enter');
+  await expect(output).toHaveValue('あ');
+  await expect(lookup).toHaveValue('あさ');
+
+  // 「さ」はSandS。完全一致後も結果を残して振り返れる。
+  await page.keyboard.down('Space');
+  await page.keyboard.press('u');
+  await page.keyboard.up('Space');
+  await expect(output).toHaveValue('あさ');
+  await expect(lookup).toHaveValue('あさ');
+  await expect(status).toHaveAttribute('data-complete', 'true');
+  await expect(status).toContainText('完成！ Enterで次へ');
+
+  await page.keyboard.press('Enter');
+  await expect(output).toHaveValue('');
+  await expect(lookup).toHaveValue('まど');
+  await expect(page.getByLabel('打ち方逆引き')).toHaveAttribute(
+    'data-random-practice-mode',
+    'word',
+  );
+  await expect(status).not.toHaveAttribute('data-complete');
+  await expect(output).toBeFocused();
+});
+
 test('打ち方逆引きは配列ごとのcanonical inputを表示する', async ({ page }) => {
   await page.goto('/input');
   const feature = page.locator('.input-feature');
