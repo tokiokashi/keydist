@@ -907,8 +907,16 @@ h1 {
   border-radius: 0.55rem;
 }
 
+.input-layer-card > header {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+}
+
 .input-layer-card h3 {
   display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
   gap: 0.4rem;
   align-items: baseline;
   margin: 0;
@@ -976,11 +984,6 @@ h1 {
   background: #fff;
   box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
 }
-
-.input-layer-card-floating::backdrop {
-  background: transparent;
-}
-
 .input-layer-card-floating > header {
   display: flex;
   flex: 0 0 auto;
@@ -1015,28 +1018,6 @@ h1 {
   height: 100%;
   max-height: 100%;
 }
-
-.input-layer-card-resize {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 1.1rem;
-  height: 1.1rem;
-  cursor: nwse-resize;
-  touch-action: none;
-}
-
-.input-layer-card-resize::after {
-  position: absolute;
-  right: 0.25rem;
-  bottom: 0.25rem;
-  width: 0.45rem;
-  height: 0.45rem;
-  border-right: 2px solid #85857f;
-  border-bottom: 2px solid #85857f;
-  content: "";
-}
-
 .input-layer-card h3 small,
 .input-layer-card p {
   color: #686862;
