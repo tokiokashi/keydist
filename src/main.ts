@@ -2001,7 +2001,7 @@ const analyzerModeControlSlot = document.getElementById('analyzer-mode-control')
 if (!analyzerReactShellRoot || !analyzerModeControlSlot) {
   throw new Error('Analyzer React shell mount point is missing');
 }
-const analyzerReactShell = mountAnalyzerReactShell({
+mountAnalyzerReactShell({
   root: analyzerReactShellRoot,
   modeSlot: analyzerModeControlSlot,
   stateOwner: uiStateOwner,
