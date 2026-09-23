@@ -5,6 +5,7 @@ import {
 } from '../../core/semantic-input/index.ts';
 import type { Layout } from '../../layouts/index.ts';
 import { kanaToRomaji } from '../../romaji/kunrei.ts';
+import { romajiToKana } from './live-romaji.ts';
 
 export interface ReverseLookupStep {
   readonly output: string;
@@ -269,6 +270,36 @@ export function reverseLookupGuideActionMatchesKeys(
   keys: readonly string[],
 ): boolean {
   return action.keyAlternatives.some((variant) => sameKeys(variant, keys));
+}
+
+export function reverseLookupGuideIndexForText(
+  layout: Layout,
+  route: ReverseLookupRoute,
+  text: string,
+): number {
+  const actions = reverseLookupGuideActions(route);
+  if (actions.length === 0) return 0;
+
+  let logicalPrefix = '';
+  let completedRouteSteps = 0;
+  for (const [stepIndex, step] of route.steps.entries()) {
+    logicalPrefix += step.output;
+    const displayPrefix = layout.romajiTable === undefined
+      ? logicalPrefix
+      : romajiToKana(logicalPrefix, layout.romajiTable);
+    if (text.startsWith(displayPrefix)) {
+      completedRouteSteps = stepIndex + 1;
+    }
+  }
+
+  if (completedRouteSteps >= route.steps.length) {
+    return actions.length - 1;
+  }
+
+  const nextActionIndex = actions.findIndex(
+    (action) => action.routeStepIndex === completedRouteSteps,
+  );
+  return nextActionIndex < 0 ? 0 : nextActionIndex;
 }
 
 export function reverseLookupGuideActionLabel(action: ReverseLookupGuideAction): string {

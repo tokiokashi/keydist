@@ -6,6 +6,7 @@ import {
   reverseLookup,
   reverseLookupGuideActionMatchesKeys,
   reverseLookupGuideActions,
+  reverseLookupGuideIndexForText,
   reverseLookupRouteLabel,
   reverseLookupStepLabel,
   reverseLookupStepMatchesRecognition,
@@ -131,4 +132,36 @@ test('reverseLookupは明示された親指shift alternativeだけを同じ表�
   assert.ok(thumbAction);
   assert.equal(reverseLookupGuideActionMatchesKeys(thumbAction, ['thumb-r', 'f']), true);
   assert.equal(reverseLookupGuideActionMatchesKeys(thumbAction, ['thumb-l', 'f']), true);
+});
+
+
+test('reverseLookupGuideIndexForTextは正しいprefixだけをguide進捗として数える', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18');
+  assert.ok(layout);
+  const route = reverseLookup(layout, 'かな')[0];
+  assert.ok(route);
+  const actions = reverseLookupGuideActions(route);
+  const secondStepIndex = actions.findIndex((action) => action.routeStepIndex === 1);
+  assert.ok(secondStepIndex > 0);
+
+  assert.equal(reverseLookupGuideIndexForText(layout, route, ''), 0);
+  assert.equal(reverseLookupGuideIndexForText(layout, route, 'か'), secondStepIndex);
+  assert.equal(reverseLookupGuideIndexForText(layout, route, 'かけ'), secondStepIndex);
+  assert.equal(reverseLookupGuideIndexForText(layout, route, 'け'), 0);
+  assert.equal(reverseLookupGuideIndexForText(layout, route, 'かな'), actions.length - 1);
+});
+
+test('reverseLookupGuideIndexForTextはromaji配列でも表示かなをlogical入力へ変換する', () => {
+  const layout = LAYOUT_BY_ID.get('dvorak');
+  assert.ok(layout);
+  assert.ok(layout.romajiTable);
+  const route = reverseLookup(layout, 'かな')[0];
+  assert.ok(route);
+  const actions = reverseLookupGuideActions(route);
+
+  const indexAfterKa = reverseLookupGuideIndexForText(layout, route, 'か');
+  assert.ok(indexAfterKa > 0);
+  assert.ok(indexAfterKa < actions.length);
+  assert.equal(reverseLookupGuideIndexForText(layout, route, 'かの'), indexAfterKa);
+  assert.equal(reverseLookupGuideIndexForText(layout, route, 'かな'), actions.length - 1);
 });
