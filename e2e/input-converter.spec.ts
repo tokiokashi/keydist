@@ -630,7 +630,7 @@ test('レイヤーカンペはWorkspace overlayで移動・リサイズしなが
 
   await page.getByLabel('Layer Guideを小窓表示').click();
   await expect(guide).toHaveAttribute('data-floating', 'true');
-  const moveHandle = page.getByLabel('レイヤーカンペを移動');
+  const moveHandle = page.getByLabel('Layer Guideを移動');
   const beforeMove = await guide.boundingBox();
   const moveBox = await moveHandle.boundingBox();
   expect(beforeMove).not.toBeNull();
@@ -699,7 +699,7 @@ test('floating panel dragはpointer中のrectを永続stateへ連打せず終了
   expect(beforePersisted).not.toBeNull();
   expect(beforeVisual).not.toBeNull();
 
-  const moveHandle = page.getByLabel('レイヤーカンペを移動');
+  const moveHandle = page.getByLabel('Layer Guideを移動');
   const moveBox = await moveHandle.boundingBox();
   expect(moveBox).not.toBeNull();
   await page.mouse.move(moveBox!.x + 80, moveBox!.y + moveBox!.height / 2);
