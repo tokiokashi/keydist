@@ -851,11 +851,6 @@ h1 {
   background: #fff;
   box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
 }
-
-.input-layer-guide[data-floating]::backdrop {
-  background: transparent;
-}
-
 .input-layer-guide[data-floating] > header {
   flex: 0 0 auto;
   cursor: move;
@@ -873,28 +868,6 @@ h1 {
   font-size: 0.68rem;
   cursor: pointer;
 }
-
-.input-layer-guide-resize {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 1.1rem;
-  height: 1.1rem;
-  cursor: nwse-resize;
-  touch-action: none;
-}
-
-.input-layer-guide-resize::after {
-  position: absolute;
-  right: 0.25rem;
-  bottom: 0.25rem;
-  width: 0.45rem;
-  height: 0.45rem;
-  border-right: 2px solid #85857f;
-  border-bottom: 2px solid #85857f;
-  content: "";
-}
-
 .input-semantic-groups {
   display: flex;
   flex-wrap: wrap;
