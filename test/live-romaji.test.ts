@@ -38,7 +38,7 @@ test('youon-only live contextは直前子音がある時だけ成立する', () 
 test('romajiTypingCorrectnessは正しい未確定子音を誤入力扱いしない', () => {
   assert.deepEqual(romajiTypingCorrectness('k', 'か', table), [true]);
   assert.deepEqual(romajiTypingCorrectness('ky', 'きゃ', table), [true, true]);
-  assert.deepEqual(romajiTypingCorrectness('かk', 'かな', table), [true, true]);
+  assert.deepEqual(romajiTypingCorrectness('かn', 'かな', table), [true, true]);
 });
 
 test('romajiTypingCorrectnessは一致したprefixだけを正解扱いする', () => {
