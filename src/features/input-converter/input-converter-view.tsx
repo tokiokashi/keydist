@@ -723,26 +723,15 @@ export function InputConverterView() {
             </div>
             <header className="input-keyboard-heading">
               <strong>Keyboard</strong>
-              <span className="input-keyboard-help">
-                キーをクリックすると、次に押した実キーをその位置へ割り当てます。
-              </span>
-              <p
-                className="input-active-layer"
-                data-active={activeDefinitions.length > 0 || undefined}
-              >
-                <span>現在</span>
-                <strong>
-                  {activeDefinitions.length > 0
-                    ? activeDefinitions.map((definition) => definition.label).join(' / ')
-                    : '通常'}
-                </strong>
-              </p>
-            </header>
-            {bindingTargetKey !== undefined ? (
-              <div className="input-key-binding-bar" aria-label="物理キー割当">
-                <strong>{bindingTargetKey}</strong>
-                <span aria-hidden="true">←</span>
-                <div className="input-key-binding-codes">
+              {bindingTargetKey === undefined ? (
+                <span className="input-keyboard-help">
+                  入力と違う位置になる場合、キーをクリックすることで次に押した実キーをその位置へ割り当てられます。
+                </span>
+              ) : (
+                <div className="input-key-binding-inline" aria-label="物理キー割当">
+                  <strong>{bindingTargetKey}</strong>
+                  <span aria-hidden="true">←</span>
+                  <div className="input-key-binding-codes">
                     {selectedBindingCodes.length === 0
                       ? <span className="input-muted">未割当</span>
                       : selectedBindingCodes.map((code) => (
@@ -759,8 +748,8 @@ export function InputConverterView() {
                           <span aria-hidden="true">×</span>
                         </button>
                       ))}
-                </div>
-                <button
+                  </div>
+                  <button
                     className="input-binding-add"
                     data-capturing={bindingCapturing || undefined}
                     onClick={() => setBindingCapturing((current) => !current)}
@@ -768,18 +757,18 @@ export function InputConverterView() {
                   >
                     {bindingCapturing ? '実キーを押してください…' : 'キーを追加'}
                   </button>
-                <button
-                  className="input-binding-reset"
+                  <button
+                    className="input-binding-reset"
                     onClick={() => {
                       updateBindingOverrides({});
                       setBindingCapturing(false);
                     }}
                     type="button"
                   >
-                    全て既定に戻す
+                    すべて既定に戻す
                   </button>
-                <button
-                  className="input-binding-close"
+                  <button
+                    className="input-binding-close"
                     onClick={() => {
                       setBindingTargetKey(undefined);
                       setBindingCapturing(false);
@@ -788,8 +777,20 @@ export function InputConverterView() {
                   >
                     閉じる
                   </button>
-              </div>
-            ) : null}
+                </div>
+              )}
+              <p
+                className="input-active-layer"
+                data-active={activeDefinitions.length > 0 || undefined}
+              >
+                <span>現在</span>
+                <strong>
+                  {activeDefinitions.length > 0
+                    ? activeDefinitions.map((definition) => definition.label).join(' / ')
+                    : '通常'}
+                </strong>
+              </p>
+            </header>
             <div className="input-keyboard-main">
               <PhysicalKeyboard
                 ariaLabel="現在の物理キー状態"
