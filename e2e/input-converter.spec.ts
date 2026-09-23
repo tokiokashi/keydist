@@ -532,9 +532,28 @@ test('Keyboard panelは表示controlsを保ったまま小窓化できる', asyn
   await expect(panel).not.toHaveAttribute('data-floating');
   await dynamicGuide.click();
 
+  const headerHelp = keyboardHeader.locator('.input-keyboard-help');
+  await expect(headerHelp).toContainText('実キーの割り当て');
+
+  const [displayBox, layerBox] = await Promise.all([
+    displayHeader.boundingBox(),
+    panel.locator('.input-active-layer').boundingBox(),
+  ]);
+  expect(displayBox).not.toBeNull();
+  expect(layerBox).not.toBeNull();
+  expect(Math.abs(displayBox!.y - layerBox!.y)).toBeLessThanOrEqual(6);
+
   await keyboardHeader.getByText('Keyboard View', { exact: true }).click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect(page.getByRole('img', { name: '現在の物理キー状態' })).toBeVisible();
+
+  const floatingBox = await panel.boundingBox();
+  const backButton = panel.getByRole('button', { name: 'Keyboard Viewを元に戻す' });
+  const backBox = await backButton.boundingBox();
+  expect(floatingBox).not.toBeNull();
+  expect(backBox).not.toBeNull();
+  expect(floatingBox!.x + floatingBox!.width - (backBox!.x + backBox!.width))
+    .toBeLessThanOrEqual(20);
 
   const output = page.getByLabel('自由入力テキスト');
   await output.click();
@@ -1305,9 +1324,9 @@ test('Tester selects preset and saved custom physical geometry', async ({ page }
   await expect(geometry).toHaveValue('row-staggered');
   await expect(keyboard).toHaveAttribute('data-geometry-id', 'row-staggered');
   await expect(keyboard).toHaveAttribute('preserveAspectRatio', 'xMinYMid meet');
-  const keyboardHeading = page.locator('.input-keyboard-heading');
+  const keyboardHeading = page.locator('.input-keyboard-panel-heading');
   await expect(keyboardHeading).toContainText(
-    '入力と違う位置になる場合、キーをクリックすることで次に押した実キーをその位置へ割り当てられます。',
+    'キーをクリックすると実キーの割り当てを変更できます。',
   );
   await expect(page.getByLabel('物理キー割当')).toHaveCount(0);
 

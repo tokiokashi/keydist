@@ -362,32 +362,54 @@ h1 {
   background: #fff;
 }
 
-.input-display-options {
+.input-keyboard-toolbar {
   display: flex;
+  min-width: 0;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.45rem 0.8rem;
-  margin: 0 0 0.6rem;
-  padding: 0.5rem 0.6rem;
-  border: 1px solid #e0e0db;
-  border-radius: 0.55rem;
-  background: #fafaf8;
-  font-size: 0.76rem;
+  gap: 0.3rem 0.45rem;
+  margin: 0 0 0.35rem;
 }
 
-.input-display-options > strong {
-  margin-right: 0.1rem;
+.input-display-options {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 0.68rem;
 }
 
 .input-display-options label {
   display: inline-flex;
+  min-height: 1.5rem;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.24rem;
+  padding: 0.12rem 0.38rem;
+  border: 1px solid #deded8;
+  border-radius: 999px;
+  background: #fafaf8;
+  color: #555550;
+  white-space: nowrap;
   cursor: pointer;
 }
 
+.input-display-options label:has(input:checked) {
+  border-color: #c8c3df;
+  background: color-mix(in srgb, #4a3aa7 6%, #fff);
+  color: #342879;
+}
+
 .input-display-options input {
+  width: 0.78rem;
+  height: 0.78rem;
   margin: 0;
+  accent-color: #4a3aa7;
 }
 
 .input-panel-dock {
@@ -601,36 +623,51 @@ h1 {
 }
 
 .input-keyboard-panel-heading {
-  min-height: 2.35rem;
-  margin: 0 -0.85rem 0.55rem;
-  padding: 0.45rem 0.7rem;
+  display: flex;
+  min-height: 2.2rem;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0 -0.85rem 0.4rem;
+  padding: 0.38rem 0.7rem;
+}
+
+.input-keyboard-panel-heading > strong {
+  flex: 0 0 auto;
+}
+
+.input-keyboard-panel-heading > .input-panel-dock {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .input-keyboard-heading {
-  min-height: 2.1rem;
+  min-height: 1.7rem;
+  margin-bottom: 0.3rem;
 }
 
 .input-keyboard-help {
   min-width: 0;
   flex: 1 1 auto;
   overflow: hidden;
-  color: #686862;
-  font-size: 0.7rem;
+  color: #777772;
+  font-size: 0.64rem;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .input-active-layer {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: baseline;
-  gap: 0.45rem;
-  min-height: 1.8rem;
-  margin: 0;
-  padding: 0.25rem 0.55rem;
+  gap: 0.35rem;
+  min-height: 1.5rem;
+  margin: 0 0 0 auto;
+  padding: 0.12rem 0.42rem;
   border: 1px solid #d6d6d1;
   border-radius: 999px;
   background: #fff;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
 }
 
 .input-active-layer span {
@@ -638,8 +675,8 @@ h1 {
 }
 
 .input-active-layer strong {
-  min-width: 3em;
-  font-size: 0.82rem;
+  min-width: 2.6em;
+  font-size: 0.74rem;
 }
 
 .input-active-layer[data-active] {
