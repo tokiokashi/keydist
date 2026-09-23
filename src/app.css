@@ -890,6 +890,128 @@ h1 {
   font-size: 0.82rem;
 }
 
+.input-layer-card h3 > span {
+  display: inline-flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.input-layer-card-float,
+.input-layer-card-placeholder button,
+.input-layer-card-floating > header button {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0.16rem 0.38rem;
+  border: 1px solid #c9c9c3;
+  border-radius: 0.35rem;
+  background: #fff;
+  color: #454540;
+  font: inherit;
+  font-size: 0.64rem;
+  cursor: pointer;
+}
+
+.input-layer-card-placeholder {
+  display: flex;
+  width: min(100%, var(--guide-card-max-width, 100%));
+  min-height: 3.1rem;
+  align-items: center;
+  justify-self: center;
+  align-self: start;
+  gap: 0.4rem;
+  padding: 0.65rem;
+  border: 1px dashed #c9c9c3;
+  border-radius: 0.55rem;
+  background: #f7f7f4;
+}
+
+.input-layer-card-placeholder strong {
+  font-size: 0.78rem;
+}
+
+.input-layer-card-placeholder span {
+  color: #686862;
+  font-size: 0.68rem;
+}
+
+.input-layer-card-floating {
+  position: fixed;
+  inset: auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-width: 320px;
+  min-height: 240px;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  overflow: hidden;
+  border-color: #c9c9c3;
+  background: #fff;
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
+}
+
+.input-layer-card-floating::backdrop {
+  background: transparent;
+}
+
+.input-layer-card-floating > header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid #e2e2dd;
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+}
+
+.input-layer-card-floating > header h3 {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.input-layer-card-floating > p {
+  flex: 0 0 auto;
+}
+
+.input-layer-card-floating .physical-keyboard {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: center;
+  padding-top: 0.45rem;
+}
+
+.input-layer-card-floating .physical-keyboard svg {
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+}
+
+.input-layer-card-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.input-layer-card-resize::after {
+  position: absolute;
+  right: 0.25rem;
+  bottom: 0.25rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid #85857f;
+  border-bottom: 2px solid #85857f;
+  content: "";
+}
+
 .input-layer-card h3 small,
 .input-layer-card p {
   color: #686862;
