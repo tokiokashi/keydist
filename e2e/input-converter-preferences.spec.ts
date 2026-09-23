@@ -84,6 +84,56 @@ test('practice environment persists per layout while physical geometry stays glo
   expect(hydrationWarnings).toEqual([]);
 });
 
+test('Practice Text assist can be hidden without clearing the practice text and persists per layout', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  const layoutSelect = page.getByLabel('配列', { exact: true });
+  const practice = page.getByLabel('打ちたい文字');
+  const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
+  const assistToggle = page.getByRole('button', { name: '入力アシストを非表示' });
+
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await layoutSelect.selectOption('shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+
+  await practice.fill('にゅ');
+  await expect(keyboard.locator('[data-key-id="o"]')).toHaveAttribute('data-lookup', 'true');
+  await expect(assistToggle).toHaveAttribute('aria-pressed', 'true');
+
+  await assistToggle.click();
+  await expect(page.getByRole('button', { name: '入力アシストを表示' }))
+    .toHaveAttribute('aria-pressed', 'false');
+  await expect(practice).toHaveValue('にゅ');
+  await expect(keyboard.locator('[data-lookup="true"]')).toHaveCount(0);
+  await expect(page.getByLabel('入力順ガイド')).toBeVisible();
+
+  // 配列ごとの練習環境なので、別配列では既定ON。
+  await layoutSelect.selectOption('naginata-v18');
+  await expect(page.getByRole('button', { name: '入力アシストを非表示' }))
+    .toHaveAttribute('aria-pressed', 'true');
+
+  await layoutSelect.selectOption('shingeta');
+  await expect(page.getByRole('button', { name: '入力アシストを表示' }))
+    .toHaveAttribute('aria-pressed', 'false');
+  await expect(practice).toHaveValue('にゅ');
+  await expect(keyboard.locator('[data-lookup="true"]')).toHaveCount(0);
+
+  await expect.poll(async () => page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return null;
+    return JSON.parse(raw).layouts?.shingeta?.showPracticeAssist ?? null;
+  }, STORAGE_KEY)).toBe(false);
+
+  await page.reload();
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+  await expect(page.getByRole('button', { name: '入力アシストを表示' }))
+    .toHaveAttribute('aria-pressed', 'false');
+  await expect(practice).toHaveValue('にゅ');
+  await expect(keyboard.locator('[data-lookup="true"]')).toHaveCount(0);
+});
+
 test('random practice mode restores the same current challenge per layout and reload', async ({ page }) => {
   // 初回mountのrestoreとユーザー操作を競合させず、このテストはrandom stateの往復だけを見る。
   await page.addInitScript((key) => {
