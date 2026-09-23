@@ -55,9 +55,15 @@ function floatingRoot(): HTMLElement | null {
   return root;
 }
 
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement
-    && target.closest('button, input, select, textarea, a, [role="button"]') !== null;
+function isInteractiveTarget(
+  target: EventTarget | null,
+  surface: HTMLElement,
+): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const interactive = target.closest<HTMLElement>(
+    'button, input, select, textarea, a, [role="button"]',
+  );
+  return interactive !== null && interactive !== surface;
 }
 
 export function WorkspacePanel({
@@ -120,7 +126,7 @@ export function WorkspacePanel({
     kind: PointerOperation['kind'],
     event: ReactPointerEvent<HTMLElement>,
   ) => {
-    if (kind === 'move' && isInteractiveTarget(event.target)) return;
+    if (kind === 'move' && isInteractiveTarget(event.target, event.currentTarget)) return;
     const rect = panel.rect;
     if (rect === undefined) return;
     activate();
@@ -171,7 +177,7 @@ export function WorkspacePanel({
     float();
   };
   const onDockedHeaderClick = (event: ReactMouseEvent<HTMLElement>) => {
-    if (!floatOnHeaderClick || isInteractiveTarget(event.target)) return;
+    if (!floatOnHeaderClick || isInteractiveTarget(event.target, event.currentTarget)) return;
     float();
   };
 
