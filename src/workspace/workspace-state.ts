@@ -60,3 +60,37 @@ export function createWorkspaceState(
     zOrder,
   };
 }
+
+export function reconcileWorkspaceState(
+  state: WorkspaceStateV1,
+  definitions: readonly WorkspacePanelDefinition[],
+): WorkspaceStateV1 {
+  const nextPanels: WorkspacePanels = {};
+  const definitionIds = new Set<PanelId>();
+
+  for (const definition of definitions) {
+    if (definitionIds.has(definition.id)) {
+      throw new Error(`Duplicate workspace panel id: ${definition.id}`);
+    }
+    definitionIds.add(definition.id);
+    nextPanels[definition.id] = state.panels[definition.id]
+      ?? createWorkspacePanelState(definition);
+  }
+
+  const nextOrder = state.zOrder.filter((id) => definitionIds.has(id));
+  for (const definition of definitions) {
+    if (!nextOrder.includes(definition.id)) nextOrder.push(definition.id);
+  }
+
+  const samePanels = Object.keys(state.panels).length === definitions.length
+    && definitions.every(({ id }) => state.panels[id] === nextPanels[id]);
+  const sameOrder = nextOrder.length === state.zOrder.length
+    && nextOrder.every((id, index) => id === state.zOrder[index]);
+
+  if (samePanels && sameOrder) return state;
+  return {
+    ...state,
+    panels: nextPanels,
+    zOrder: nextOrder,
+  };
+}
