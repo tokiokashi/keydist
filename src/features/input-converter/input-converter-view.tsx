@@ -54,7 +54,12 @@ import {
   type BrowserKeyBindingOverrides,
 } from './browser-keyboard-bindings.ts';
 import { browserCodesForPhysicalKey } from './browser-keyboard-adapter.ts';
-import { INPUT_CONVERTER_PREFERENCES_VERSION } from './input-converter-preferences.ts';
+import {
+  INPUT_CONVERTER_PREFERENCES_VERSION,
+  inputConverterLayoutPreferences,
+  type InputConverterLayoutPreferencesV2,
+  type InputConverterPreferencesV2,
+} from './input-converter-preferences.ts';
 import { useInputConverterPreferences } from './use-input-converter-preferences.ts';
 import {
   JAPANESE_INPUT_SAMPLE_POOLS,
@@ -110,6 +115,16 @@ const MIN_SPLIT_PERCENT = 25;
 const MAX_SPLIT_PERCENT = 75;
 
 type RandomPracticeMode = 'word' | 'phrase';
+
+const DEFAULT_LAYOUT_PREFERENCES: InputConverterLayoutPreferencesV2 = {
+  showDynamicGuide: true,
+  showLayerGuide: true,
+  showLayerKeys: true,
+  showShiftKeys: false,
+  inputText: '',
+  practiceText: '',
+  randomPracticeMode: null,
+};
 
 function clampSplitPercent(value: number): number {
   return Math.min(MAX_SPLIT_PERCENT, Math.max(MIN_SPLIT_PERCENT, value));
@@ -280,6 +295,7 @@ export function InputConverterView() {
   const [randomPracticeMode, setRandomPracticeMode] =
     useState<RandomPracticeMode | null>(null);
   const preferences = useInputConverterPreferences();
+  const persistedPreferencesRef = useRef<InputConverterPreferencesV2 | null>(null);
   const guideDefinitions = useMemo(
     () => compactLayerGuideDefinitions(layout),
     [layout],
@@ -387,6 +403,27 @@ export function InputConverterView() {
     };
   };
 
+  const currentLayoutPreferences = (): InputConverterLayoutPreferencesV2 => ({
+    showDynamicGuide,
+    showLayerGuide,
+    showLayerKeys,
+    showShiftKeys,
+    inputText: session.text,
+    practiceText: lookupQuery,
+    randomPracticeMode,
+  });
+
+  const applyLayoutPreferences = (next: InputConverterLayoutPreferencesV2) => {
+    setShowDynamicGuide(next.showDynamicGuide);
+    setShowLayerGuide(next.showLayerGuide);
+    setShowLayerKeys(next.showLayerKeys);
+    setShowShiftKeys(next.showShiftKeys);
+    session.replaceText(next.inputText);
+    setLookupQuery(next.practiceText);
+    setLookupStepIndex(0);
+    setRandomPracticeMode(next.randomPracticeMode);
+  };
+
   useEffect(() => {
     const shapes = loadUserGeometryShapes();
     setUserGeometryShapes(shapes);
@@ -406,39 +443,47 @@ export function InputConverterView() {
       {
         layoutId: layout.id,
         geometryId,
-        showDynamicGuide,
-        showLayerGuide,
-        showLayerKeys,
-        showShiftKeys,
+        layout: DEFAULT_LAYOUT_PREFERENCES,
       },
     );
+    persistedPreferencesRef.current = restored;
+
     const restoredLayout = INPUT_LAYOUTS.find((candidate) => candidate.id === restored.layoutId);
     if (restoredLayout !== undefined) setLayout(restoredLayout);
     setGeometryId(restored.geometryId);
-    setShowDynamicGuide(restored.showDynamicGuide);
-    setShowLayerGuide(restored.showLayerGuide);
-    setShowLayerKeys(restored.showLayerKeys);
-    setShowShiftKeys(restored.showShiftKeys);
+    applyLayoutPreferences(
+      inputConverterLayoutPreferences(
+        restored,
+        restored.layoutId,
+        DEFAULT_LAYOUT_PREFERENCES,
+      ),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount後に一度だけ復元する
   }, []);
 
-  // 書き込みのcoalescingはpreferences側が持つ。ここでは復元前(mountの初回コミット)を
-  // 除いた変化だけを伝える。復元前に書くとdefault値でsaved値を上書きしてしまうため。
+  // 書き込みのcoalescingはpreferences側が持つ。復元済みのV2全体へ現在配列の
+  // 練習環境だけをmergeし、他配列の環境を落とさない。物理配列はglobalのまま。
   const skippedInitialPreferencesWriteRef = useRef(false);
   useEffect(() => {
     if (!skippedInitialPreferencesWriteRef.current) {
       skippedInitialPreferencesWriteRef.current = true;
       return;
     }
-    preferences.save({
+    const current = persistedPreferencesRef.current;
+    if (current === null) return;
+
+    const next: InputConverterPreferencesV2 = {
+      ...current,
       version: INPUT_CONVERTER_PREFERENCES_VERSION,
       layoutId: layout.id,
       geometryId,
-      showDynamicGuide,
-      showLayerGuide,
-      showLayerKeys,
-      showShiftKeys,
-    });
+      layouts: {
+        ...current.layouts,
+        [layout.id]: currentLayoutPreferences(),
+      },
+    };
+    persistedPreferencesRef.current = next;
+    preferences.save(next);
   }, [
     layout.id,
     geometryId,
@@ -446,8 +491,48 @@ export function InputConverterView() {
     showLayerGuide,
     showLayerKeys,
     showShiftKeys,
+    session.text,
+    lookupQuery,
+    randomPracticeMode,
     preferences,
   ]);
+
+  const switchLayout = (nextLayout: Layout) => {
+    let nextGeometryId = geometryId;
+    if (nextLayout.id === 'jis-kana') {
+      nextGeometryId = isPresetGeometryKind(geometryId)
+        ? presetGeometryKind('jis', presetGeometryTopology(geometryId))
+        : 'jis-row-staggered';
+    }
+
+    const current = persistedPreferencesRef.current;
+    if (current !== null) {
+      const nextStored: InputConverterPreferencesV2 = {
+        ...current,
+        version: INPUT_CONVERTER_PREFERENCES_VERSION,
+        layoutId: nextLayout.id,
+        geometryId: nextGeometryId,
+        layouts: {
+          ...current.layouts,
+          [layout.id]: currentLayoutPreferences(),
+        },
+      };
+      persistedPreferencesRef.current = nextStored;
+      preferences.save(nextStored);
+      applyLayoutPreferences(
+        inputConverterLayoutPreferences(
+          nextStored,
+          nextLayout.id,
+          DEFAULT_LAYOUT_PREFERENCES,
+        ),
+      );
+    } else {
+      applyLayoutPreferences(DEFAULT_LAYOUT_PREFERENCES);
+    }
+
+    setGeometryId(nextGeometryId);
+    setLayout(nextLayout);
+  };
 
   const updateBindingOverrides = (next: BrowserKeyBindingOverrides) => {
     setBindingOverrides(next);
@@ -848,17 +933,7 @@ export function InputConverterView() {
                   onChange={(event) => {
                     const next = INPUT_LAYOUTS.find((candidate) => candidate.id === event.target.value);
                     if (next === undefined) return;
-                    if (next.id === 'jis-kana') {
-                      setGeometryId((current) =>
-                        isPresetGeometryKind(current)
-                          ? presetGeometryKind(
-                            'jis',
-                            presetGeometryTopology(current),
-                          )
-                          : 'jis-row-staggered');
-                    }
-                    setRandomPracticeMode(null);
-                    setLayout(next);
+                    switchLayout(next);
                   }}
                 >
                   {INPUT_LAYOUTS.map((candidate) => (
