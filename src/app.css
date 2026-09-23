@@ -702,8 +702,11 @@ h1 {
 
 .physical-keyboard-key[data-lookup] rect {
   fill: color-mix(in srgb, var(--picker-selected) 12%, #fff);
-  stroke: var(--picker-selected);
   stroke-width: 3;
+}
+
+.physical-keyboard-key[data-lookup]:not([data-trigger]) rect {
+  stroke: var(--picker-selected);
 }
 
 .physical-keyboard-home-mark {
