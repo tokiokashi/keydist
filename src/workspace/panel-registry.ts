@@ -6,14 +6,22 @@ export interface WorkspacePanelDefinition {
   readonly defaultDockSlot: string;
   readonly minWidth?: number;
   readonly minHeight?: number;
+  readonly canFloat: boolean;
+  readonly canHide: boolean;
+}
+
+export type WorkspacePanelDefinitionInput = Omit<
+  WorkspacePanelDefinition,
+  'canFloat' | 'canHide'
+> & {
   readonly canFloat?: boolean;
   readonly canHide?: boolean;
-}
+};
 
 export type WorkspacePanelRegistry = ReadonlyMap<PanelId, WorkspacePanelDefinition>;
 
 export function createWorkspacePanelRegistry(
-  definitions: readonly WorkspacePanelDefinition[],
+  definitions: readonly WorkspacePanelDefinitionInput[],
 ): WorkspacePanelRegistry {
   const registry = new Map<PanelId, WorkspacePanelDefinition>();
 
@@ -25,7 +33,11 @@ export function createWorkspacePanelRegistry(
       throw new Error(`Duplicate workspace panel id: ${definition.id}`);
     }
 
-    registry.set(definition.id, { ...definition });
+    registry.set(definition.id, {
+      ...definition,
+      canFloat: definition.canFloat ?? true,
+      canHide: definition.canHide ?? false,
+    });
   }
 
   return registry;
