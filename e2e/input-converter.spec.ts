@@ -298,6 +298,11 @@ test('Input Converter selects preset and saved custom physical geometry', async 
   await expect(geometry).toHaveValue('row-staggered');
   await expect(keyboard).toHaveAttribute('data-geometry-id', 'row-staggered');
   await expect(keyboard).toHaveAttribute('preserveAspectRatio', 'xMinYMid meet');
+  const keyboardHeading = page.locator('.input-keyboard-heading');
+  await expect(keyboardHeading).toContainText(
+    'キーをクリックすると、次に押した実キーをその位置へ割り当てます。',
+  );
+  await expect(page.getByLabel('物理キー割当')).toHaveCount(0);
 
   for (const id of [
     'row-staggered',
