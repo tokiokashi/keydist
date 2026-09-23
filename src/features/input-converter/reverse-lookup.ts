@@ -274,14 +274,31 @@ export function reverseLookupGuideActionMatchesKeys(
 }
 
 /**
- * OR alternativeに共通するphysical keyだけをguide強調する。
- * 左右どちらでもよい親指shiftのような差分keyは、どちらか一方を推奨しない。
+ * OR alternativeのguide強調keyを返す。
+ * 左右等価な親指shiftだけが差分なら両方を候補として強調し、
+ * それ以外のalternativeでは共通keyだけを強調する。
  */
 export function reverseLookupGuideActionHighlightKeys(
+  layout: Layout,
   action: ReverseLookupGuideAction,
 ): readonly string[] {
   const variants = action.keyAlternatives;
-  if (variants.length === 0) return action.keys;
+  if (variants.length === 0) return action.keys.map(resolveKeyId);
+
+  const equivalentThumbs = new Set((layout.thumbShiftKeys ?? []).map(resolveKeyId));
+  if (equivalentThumbs.size > 1 && variants.length > 1) {
+    const normalize = (variant: readonly string[]) =>
+      [...new Set(variant.map((key) => {
+        const resolved = resolveKeyId(key);
+        return equivalentThumbs.has(resolved) ? '__thumb-shift__' : resolved;
+      }))].sort();
+
+    const signatures = variants.map((variant) => normalize(variant).join('\u0000'));
+    if (signatures.every((signature) => signature === signatures[0])) {
+      return [...new Set(variants.flatMap((variant) => variant.map(resolveKeyId)))];
+    }
+  }
+
   const common = new Set(variants[0].map(resolveKeyId));
   for (const variant of variants.slice(1)) {
     const current = new Set(variant.map(resolveKeyId));

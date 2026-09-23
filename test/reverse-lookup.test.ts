@@ -139,7 +139,10 @@ test('reverseLookupは明示された親指shift alternativeだけを同じ表�
   assert.equal(reverseLookupGuideActionMatchesKeys(thumbAction, ['thumb-r', 'f']), true);
   assert.equal(reverseLookupGuideActionMatchesKeys(thumbAction, ['thumb-l', 'f']), true);
   assert.equal(reverseLookupGuideActionLabel(layout, thumbAction), 'Space + F');
-  assert.deepEqual(reverseLookupGuideActionHighlightKeys(thumbAction), ['f']);
+  assert.deepEqual(
+    new Set(reverseLookupGuideActionHighlightKeys(layout, thumbAction)),
+    new Set(['thumb-r', 'thumb-l', 'f']),
+  );
   assert.equal(reverseLookupRouteLabel(layout, shifted).includes('右親指'), false);
   assert.equal(reverseLookupRouteLabel(layout, shifted).includes('左親指'), false);
 });

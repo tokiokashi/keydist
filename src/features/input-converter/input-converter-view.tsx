@@ -562,7 +562,7 @@ export function InputConverterView() {
     () => new Set(
       activeLookupAction === undefined
         ? []
-        : reverseLookupGuideActionHighlightKeys(activeLookupAction),
+        : reverseLookupGuideActionHighlightKeys(layout, activeLookupAction),
     ),
     [activeLookupAction],
   );
@@ -1011,7 +1011,7 @@ export function InputConverterView() {
                           onClick={(event) => floatLayerCard(definition.id, event.currentTarget)}
                           type="button"
                         >
-                          フロート
+                          小窓表示
                         </button>
                       </h3>
                       <p>

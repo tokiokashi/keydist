@@ -1021,8 +1021,8 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await expect(guide).not.toContainText('右親指');
   await expect(guide).not.toContainText('左親指');
   await expect(keyboard.locator('[data-key-id="f"]')).toHaveAttribute('data-lookup', 'true');
-  await expect(keyboard.locator('[data-key-id="thumb-l"]')).not.toHaveAttribute('data-lookup');
-  await expect(keyboard.locator('[data-key-id="thumb-r"]')).not.toHaveAttribute('data-lookup');
+  await expect(keyboard.locator('[data-key-id="thumb-l"]')).toHaveAttribute('data-lookup', 'true');
+  await expect(keyboard.locator('[data-key-id="thumb-r"]')).toHaveAttribute('data-lookup', 'true');
   const naginataLeftSlot = await keyboard.locator('[data-key-id="thumb-l"]')
     .getAttribute('data-accent-slot');
   const naginataRightSlot = await keyboard.locator('[data-key-id="thumb-r"]')
@@ -1039,8 +1039,8 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await expect(guide).not.toContainText('右親指');
   await expect(guide).not.toContainText('左親指');
   await expect(keyboard.locator('[data-key-id="j"]')).toHaveAttribute('data-lookup', 'true');
-  await expect(keyboard.locator('[data-key-id="thumb-l"]')).not.toHaveAttribute('data-lookup');
-  await expect(keyboard.locator('[data-key-id="thumb-r"]')).not.toHaveAttribute('data-lookup');
+  await expect(keyboard.locator('[data-key-id="thumb-l"]')).toHaveAttribute('data-lookup', 'true');
+  await expect(keyboard.locator('[data-key-id="thumb-r"]')).toHaveAttribute('data-lookup', 'true');
   const shinJisLeftSlot = await keyboard.locator('[data-key-id="thumb-l"]')
     .getAttribute('data-accent-slot');
   const shinJisRightSlot = await keyboard.locator('[data-key-id="thumb-r"]')
