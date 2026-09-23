@@ -83,6 +83,7 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   expect(wideDetailsBox!.x).toBeGreaterThan(
     keyboardMainBox!.x + keyboardMainBox!.width,
   );
+  expect(wideDetailsBox!.width).toBeLessThanOrEqual(140);
   expect(wideKeyboardBox!.height).toBeLessThanOrEqual(keyboardMainBox!.height + 1);
 
   await splitter.focus();
@@ -180,6 +181,8 @@ test('Recognized detail keeps the same typography and height before and after in
     .locator('.input-inspector > section')
     .nth(1);
   const empty = recognizedSection.locator('.input-recognized-empty');
+  await expect(empty).toHaveText('-');
+  await expect(recognizedSection.getByRole('heading', { name: 'Recognized' })).toBeVisible();
 
   const beforeBox = await recognizedSection.boundingBox();
   const emptyFontSize = await empty.evaluate(
