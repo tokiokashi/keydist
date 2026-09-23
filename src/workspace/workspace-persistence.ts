@@ -13,6 +13,7 @@ import type {
 } from './panel-registry.ts';
 import { clampPanelRectToViewport, type ViewportSize } from './viewport-clamp.ts';
 import {
+  compactWorkspacePanels,
   createWorkspaceState,
   WORKSPACE_STATE_VERSION,
   type PanelMode,
@@ -132,7 +133,11 @@ export function decodeWorkspaceState(
     }
   }
 
-  return { version: WORKSPACE_STATE_VERSION, panels, zOrder };
+  return {
+    version: WORKSPACE_STATE_VERSION,
+    panels: compactWorkspacePanels(panels, definitionIds),
+    zOrder,
+  };
 }
 
 export function serializeWorkspaceState(state: WorkspaceStateV1): string {
