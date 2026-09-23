@@ -279,6 +279,21 @@ test('設定panelは開閉controlを誤detachせず小窓化できる', async ({
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect(page.getByLabel('配列', { exact: true })).toBeVisible();
 
+  const beforeResize = await panel.boundingBox();
+  const resizeHandle = page.getByLabel('設定パネルのサイズを変更');
+  const resizeBox = await resizeHandle.boundingBox();
+  expect(beforeResize).not.toBeNull();
+  expect(resizeBox).not.toBeNull();
+  await page.mouse.move(
+    resizeBox!.x + resizeBox!.width / 2,
+    resizeBox!.y + resizeBox!.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(resizeBox!.x + 80, resizeBox!.y + 50);
+  await page.mouse.up();
+  await expect.poll(async () => (await panel.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(beforeResize!.width + 40);
+
   await panel.getByRole('button', { name: '設定パネルを元に戻す' }).click();
   await expect(panel).not.toHaveAttribute('data-floating');
 });
