@@ -1146,6 +1146,7 @@ export function InputConverterView() {
                 ) : null}
               </>
             )}
+          >
             <header className="input-keyboard-heading">
               <strong>Keyboard</strong>
               {bindingTargetKey === undefined ? (
