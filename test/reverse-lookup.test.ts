@@ -4,6 +4,7 @@ import { LAYOUT_BY_ID } from '../src/layouts/index.ts';
 import {
   reverseLookup,
   reverseLookupRouteLabel,
+  reverseLookupStepLabel,
 } from '../src/features/input-converter/reverse-lookup.ts';
 
 test('reverseLookupは薙刀式の複合かなをcanonical actionから逆引きする', () => {
@@ -50,5 +51,14 @@ test('reverseLookupRouteLabelはchordとsequenceを区別して表示する', ()
       origin: 'face',
       actions: [['thumb-r'], ['h', 'j']],
     }],
+  }), '右親指 → H + J');
+});
+
+
+test('reverseLookupStepLabelは1入力単位のaction順を表示する', () => {
+  assert.equal(reverseLookupStepLabel({
+    output: 'x',
+    origin: 'face',
+    actions: [['thumb-r'], ['h', 'j']],
   }), '右親指 → H + J');
 });
