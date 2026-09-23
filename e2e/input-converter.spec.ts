@@ -116,6 +116,27 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   await page.keyboard.up('j');
 });
 
+test('入力panelは小窓化してもtyping sessionとcontrolsを維持する', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const panel = page.locator('.input-capture-panel');
+  const output = page.getByLabel('自由入力テキスト');
+
+  await page.getByLabel('入力パネルをクリックまたはドラッグして小窓表示').click();
+  await expect(panel).toHaveAttribute('data-floating', 'true');
+  await output.click();
+  await page.keyboard.press('f');
+  await expect(output).toHaveValue('か');
+
+  await panel.getByRole('button', { name: 'クリア' }).click();
+  await expect(output).toHaveValue('');
+  await panel.getByRole('button', { name: '入力パネルを元に戻す' }).click();
+  await expect(panel).not.toHaveAttribute('data-floating');
+});
+
 test('docked panel headerは閾値drag・cancel・keyboardを区別する', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/input');
