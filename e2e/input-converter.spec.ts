@@ -141,13 +141,15 @@ test('Recognized detail stays one row for the reported k/j re-press sequence', a
   await page.keyboard.down('k');
   await page.keyboard.up('k');
 
+  // この時点ではなく、最後に保持中の j を離した瞬間に
+  // pending/replay がまとめて確定して複数recognizedになる。
+  await page.keyboard.up('j');
+
   await expect.poll(async () => recognizedRows.count()).toBeGreaterThan(1);
 
   const boxes = await recognizedRows.evaluateAll((elements) =>
     elements.map((element) => element.getBoundingClientRect()));
   expect(new Set(boxes.map((box) => Math.round(box.top))).size).toBe(1);
-
-  await page.keyboard.up('j');
 });
 
 test('Recognized detail keeps the same typography and height before and after input', async ({ page }) => {
