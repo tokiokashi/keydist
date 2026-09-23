@@ -345,6 +345,10 @@ export function InputConverterView() {
     () => presentationTriggerColorSlots(layout),
     [layout],
   );
+  const lookupKeys = useMemo(() => new Set(
+    lookupRoutes[0]?.steps.flatMap((step) =>
+      step.actions.flatMap((action) => action)) ?? [],
+  ), [lookupRoutes]);
   const patternResult = useMemo(() => {
     const result = matchKeyPatterns(
       layout,
@@ -402,6 +406,7 @@ export function InputConverterView() {
             trigger: showLayerKeys && layerKeys.has(key.id),
             accentSlot: showLayerKeys ? layerKeyColorSlots.get(key.id) : undefined,
             guide,
+            lookup: lookupKeys.has(key.id),
           },
         ] as const;
       }),
@@ -417,6 +422,7 @@ export function InputConverterView() {
     browserBindings,
     layerKeyColorSlots,
     layerKeys,
+    lookupKeys,
     visibleKeys,
   ]);
   const lookupRoutes = useMemo(
@@ -825,8 +831,12 @@ export function InputConverterView() {
                 ) : (
                   <ol>
                     {lookupRoutes.map((route, index) => (
-                      <li key={`${reverseLookupRouteLabel(route)}:${index}`}>
+                      <li
+                        data-active={index === 0 || undefined}
+                        key={`${reverseLookupRouteLabel(route)}:${index}`}
+                      >
                         <code>{reverseLookupRouteLabel(route)}</code>
+                        {index === 0 ? <small>点灯中</small> : null}
                         {route.steps.some((step) => step.origin === 'combo')
                           ? <small>コンボ</small>
                           : null}
