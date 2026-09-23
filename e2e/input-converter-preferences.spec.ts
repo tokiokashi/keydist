@@ -11,7 +11,7 @@ function isRealConsoleError(text: string): boolean {
   return !/Failed to load resource/.test(text);
 }
 
-test('layout, geometry and display toggles persist across a reload (#413 phase6)', async ({ page }) => {
+test('practice environment persists per layout while physical geometry stays global', async ({ page }) => {
   const consoleMessages: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'error' || message.type() === 'warning') {
@@ -22,34 +22,94 @@ test('layout, geometry and display toggles persist across a reload (#413 phase6)
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/input');
   const feature = page.locator('.input-feature');
-  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-
   const layoutSelect = page.getByLabel('配列', { exact: true });
   const geometrySelect = page.getByLabel('物理配列', { exact: true });
+  const output = page.getByLabel('自由入力テキスト');
+  const practice = page.getByLabel('打ちたい文字');
   const dynamicGuideToggle = page.getByLabel('動的ガイド', { exact: true });
   const layerKeysToggle = page.getByLabel('レイヤーキー', { exact: true });
 
-  await expect(dynamicGuideToggle).toBeChecked();
-  await expect(layerKeysToggle).toBeChecked();
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
+  // 物理配列はTester全体で共有する。
+  await geometrySelect.selectOption('column-staggered');
+
+  // 配列Aの練習環境。
+  await dynamicGuideToggle.uncheck();
+  await practice.fill('かな');
+  await output.click();
+  await page.keyboard.press('f');
+  await expect(output).toHaveValue('か');
+
+  // 配列Bは初期状態から始まり、geometryだけAから引き継ぐ。
   await layoutSelect.selectOption('shingeta');
   await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
-  await geometrySelect.selectOption('column-staggered');
-  await dynamicGuideToggle.uncheck();
+  await expect(geometrySelect).toHaveValue('column-staggered');
+  await expect(dynamicGuideToggle).toBeChecked();
+  await expect(layerKeysToggle).toBeChecked();
+  await expect(practice).toHaveValue('');
+  await expect(output).toHaveValue('');
+
   await layerKeysToggle.uncheck();
+  await practice.fill('ことば');
 
-  consoleMessages.length = 0; // reload以降のログだけを見る
+  // Aへ戻るとAのKeyboard View / Input Text / Practice Textが復元される。
+  await layoutSelect.selectOption('naginata-v18');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await expect(geometrySelect).toHaveValue('column-staggered');
+  await expect(dynamicGuideToggle).not.toBeChecked();
+  await expect(layerKeysToggle).toBeChecked();
+  await expect(practice).toHaveValue('かな');
+  await expect(output).toHaveValue('か');
+
+  consoleMessages.length = 0;
   await page.reload();
-  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await expect(geometrySelect).toHaveValue('column-staggered');
+  await expect(dynamicGuideToggle).not.toBeChecked();
+  await expect(practice).toHaveValue('かな');
+  await expect(output).toHaveValue('か');
 
-  await expect(page.getByLabel('配列', { exact: true })).toHaveValue('shingeta');
-  await expect(page.getByLabel('物理配列', { exact: true })).toHaveValue('column-staggered');
-  await expect(page.getByLabel('動的ガイド', { exact: true })).not.toBeChecked();
-  await expect(page.getByLabel('レイヤーキー', { exact: true })).not.toBeChecked();
+  // reload後もBの環境は独立して残る。
+  await layoutSelect.selectOption('shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+  await expect(geometrySelect).toHaveValue('column-staggered');
+  await expect(dynamicGuideToggle).toBeChecked();
+  await expect(layerKeysToggle).not.toBeChecked();
+  await expect(practice).toHaveValue('ことば');
+  await expect(output).toHaveValue('');
 
   await page.waitForTimeout(150);
   const hydrationWarnings = consoleMessages.filter((text) => /hydrat/i.test(text));
   expect(hydrationWarnings).toEqual([]);
+});
+
+test('random practice mode restores the same current challenge per layout and reload', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+  const feature = page.locator('.input-feature');
+  const layoutSelect = page.getByLabel('配列', { exact: true });
+  const practice = page.getByLabel('打ちたい文字');
+  const randomWord = page.getByRole('button', { name: 'ランダムな単語' });
+
+  await layoutSelect.selectOption('shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+
+  await randomWord.click();
+  const challenge = await practice.inputValue();
+  expect(challenge.length).toBeGreaterThan(0);
+  await expect(randomWord).toHaveAttribute('aria-pressed', 'true');
+
+  await layoutSelect.selectOption('naginata-v18');
+  await expect(practice).toHaveValue('');
+  await layoutSelect.selectOption('shingeta');
+  await expect(practice).toHaveValue(challenge);
+  await expect(randomWord).toHaveAttribute('aria-pressed', 'true');
+
+  await page.reload();
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+  await expect(practice).toHaveValue(challenge);
+  await expect(randomWord).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('a corrupt localStorage value falls back to defaults with no console error', async ({ page }) => {
@@ -71,6 +131,8 @@ test('a corrupt localStorage value falls back to defaults with no console error'
   await expect(page.getByLabel('物理配列', { exact: true })).toHaveValue('row-staggered');
   await expect(page.getByLabel('動的ガイド', { exact: true })).toBeChecked();
   await expect(page.getByLabel('レイヤーキー', { exact: true })).toBeChecked();
+  await expect(page.getByLabel('自由入力テキスト')).toHaveValue('');
+  await expect(page.getByLabel('打ちたい文字')).toHaveValue('');
 
   expect(errors).toEqual([]);
 });
