@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   PhysicalKeyboard,
   type PhysicalKeyboardKeyView,
@@ -275,7 +275,6 @@ export function InputConverterView() {
   const [randomPracticeMode, setRandomPracticeMode] =
     useState<RandomPracticeMode | null>(null);
   const preferences = useInputConverterPreferences();
-  const guideGridRef = useRef<HTMLDivElement>(null);
   const guideDefinitions = useMemo(
     () => compactLayerGuideDefinitions(layout),
     [layout],
@@ -288,6 +287,8 @@ export function InputConverterView() {
         defaultDockSlot: 'input.sidebar.settings',
         minWidth: 320,
         minHeight: 80,
+        defaultFloatingWidth: 520,
+        defaultFloatingHeight: 150,
       },
       {
         id: INPUT_TYPING_PANEL_ID,
@@ -295,6 +296,8 @@ export function InputConverterView() {
         defaultDockSlot: 'input.main.typing',
         minWidth: 320,
         minHeight: 160,
+        defaultFloatingWidth: 520,
+        defaultFloatingHeight: 180,
       },
       {
         id: INPUT_KEYBOARD_PANEL_ID,
@@ -302,6 +305,8 @@ export function InputConverterView() {
         defaultDockSlot: 'input.main.keyboard',
         minWidth: 480,
         minHeight: 360,
+        defaultFloatingWidth: 760,
+        defaultFloatingHeight: 560,
       },
       {
         id: INPUT_LOOKUP_PANEL_ID,
@@ -309,6 +314,8 @@ export function InputConverterView() {
         defaultDockSlot: 'input.keyboard.lookup',
         minWidth: 420,
         minHeight: 103,
+        defaultFloatingWidth: 720,
+        defaultFloatingHeight: 240,
       },
       {
         id: INPUT_LAYER_GUIDE_PANEL_ID,
@@ -316,6 +323,8 @@ export function InputConverterView() {
         defaultDockSlot: 'input.sidebar.guide',
         minWidth: MIN_FLOATING_GUIDE_WIDTH,
         minHeight: MIN_FLOATING_GUIDE_HEIGHT,
+        defaultFloatingWidth: 560,
+        defaultFloatingHeight: 480,
       },
       ...guideDefinitions.map((definition) => ({
         id: layerGuideCardPanelId(definition.id),
@@ -323,6 +332,8 @@ export function InputConverterView() {
         defaultDockSlot: 'input.sidebar.guide',
         minWidth: MIN_FLOATING_GUIDE_WIDTH,
         minHeight: MIN_FLOATING_GUIDE_HEIGHT,
+        defaultFloatingWidth: 420,
+        defaultFloatingHeight: 280,
       })),
     ]),
     [guideDefinitions],
@@ -332,8 +343,6 @@ export function InputConverterView() {
     [workspaceRegistry],
   );
   const workspace = useWorkspace(workspacePanelDefinitions, workspaceRegistry);
-  const layerGuideMode =
-    workspace.state.panels[INPUT_LAYER_GUIDE_PANEL_ID]?.mode ?? 'docked';
   const [guideGridLayout, setGuideGridLayout] = useState<GuideGridLayout>({
     columns: 1,
     cardMaxWidthPx: null,
@@ -733,8 +742,12 @@ export function InputConverterView() {
     session.text,
   ]);
 
-  useEffect(() => {
-    const grid = guideGridRef.current;
+  // layer guide panelはWorkspacePanelがdocked/floating切替時に丸ごとunmount/remountする
+  // （portal化のため）。そのDOM再生成を検知してResizeObserverを張り直すのに、
+  // 以前はpanel modeをeffectの依存配列へ入れていた（#441）。callback ref化すると、
+  // node自体の付け替え（=mode切替によるremount含む）でReactが自動的にこの関数を
+  // 呼び直してくれるため、featureがpanel modeを読まずに同じ張り直しを実現できる。
+  const attachGuideGridRef = useCallback((grid: HTMLDivElement | null) => {
     if (grid === null || guideDefinitions.length === 0) return;
 
     const update = () => {
@@ -754,7 +767,6 @@ export function InputConverterView() {
   }, [
     geometry.id,
     guideDefinitions.length,
-    layerGuideMode,
     layout.id,
     settingsOpen,
   ]);
@@ -786,17 +798,13 @@ export function InputConverterView() {
             className={settingsOpen
               ? 'input-settings-panel input-settings-panel-open'
               : 'input-settings-panel'}
-            defaultFloatingHeight={150}
-            defaultFloatingWidth={520}
+            dockClassName="input-panel-dock"
             dockedHeaderAriaLabel="Settingsをクリックまたはドラッグして小窓表示"
-            floatOnHeaderClick
             floatingHeaderAriaLabel="Settingsを移動"
             headerClassName="input-panel-heading"
             id={INPUT_SETTINGS_PANEL_ID}
-            minHeight={80}
-            minWidth={320}
             resizeAriaLabel="Settingsのサイズを変更"
-            renderHeader={({ mode, dock }) => (
+            renderHeader={() => (
               <>
                 <strong>Settings</strong>
                 <button
@@ -808,16 +816,6 @@ export function InputConverterView() {
                 >
                   {settingsOpen ? '閉じる' : '開く'}
                 </button>
-                {mode === 'floating' ? (
-                  <button
-                    aria-label="Settingsを元に戻す"
-                    className="input-panel-dock"
-                    onClick={dock}
-                    type="button"
-                  >
-                    戻す
-                  </button>
-                ) : null}
               </>
             )}
           >
@@ -889,35 +887,17 @@ export function InputConverterView() {
               id={INPUT_LAYER_GUIDE_PANEL_ID}
               ariaLabel="Layer Guide"
               className="input-layer-guide"
-              defaultFloatingWidth={560}
-              defaultFloatingHeight={480}
-              minWidth={MIN_FLOATING_GUIDE_WIDTH}
-              minHeight={MIN_FLOATING_GUIDE_HEIGHT}
-              floatOnHeaderClick
+              dockClassName="input-layer-guide-dock"
               dockedHeaderAriaLabel="Layer Guideを小窓表示"
               floatingHeaderAriaLabel="Layer Guideを移動"
               resizeAriaLabel="Layer Guideのサイズを変更"
-              renderHeader={({ mode, dock }) => (
+              renderHeader={() => (
                 <>
                   <strong>Layer Guide</strong>
                   <span>{guideDefinitions.length} 面</span>
-                  {mode === 'floating' ? (
-                    <button
-                      aria-label="Layer Guideを元に戻す"
-                      className="input-layer-guide-dock"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        dock();
-                      }}
-                      type="button"
-                    >
-                      戻す
-                    </button>
-                  ) : (
-                    <small>クリックで小窓表示</small>
-                  )}
                 </>
               )}
+              renderDockedActions={() => <small>クリックで小窓表示</small>}
             >
               {combinationLabels.length > 0 ? (
                 <div className="input-semantic-groups" aria-label="意味論的な組み合わせ">
@@ -928,7 +908,7 @@ export function InputConverterView() {
               ) : null}
               <div
                 className="input-layer-guide-grid"
-                ref={guideGridRef}
+                ref={attachGuideGridRef}
                 style={{
                   '--guide-columns': guideGridLayout.columns,
                   '--guide-card-max-width': guideGridLayout.cardMaxWidthPx === null
@@ -954,53 +934,36 @@ export function InputConverterView() {
                     ]),
                   );
                   const panelId = layerGuideCardPanelId(definition.id);
-                  const floating = workspace.state.panels[panelId]?.mode === 'floating';
 
                   return (
                     <WorkspacePanel
                       ariaLabel={`${definition.label} 個別カンペ`}
-                      className={floating
-                        ? 'input-layer-card input-layer-card-floating'
-                        : 'input-layer-card'}
-                      defaultFloatingHeight={280}
-                      defaultFloatingWidth={420}
+                      className="input-layer-card"
+                      dockAriaLabel={`${definition.label}を元に戻す`}
                       dockedHeaderAriaLabel={`${definition.label}カンペをクリックまたはドラッグして小窓表示`}
-                      floatOnHeaderClick
                       floatingHeaderAriaLabel={`${definition.label}カンペを移動`}
                       id={panelId}
                       key={definition.id}
-                      minHeight={MIN_FLOATING_GUIDE_HEIGHT}
-                      minWidth={MIN_FLOATING_GUIDE_WIDTH}
                       resizeAriaLabel={`${definition.label}カンペのサイズを変更`}
-                      renderHeader={({ mode, float, dock }) => (
-                        <>
-                          <h3>
-                            <span>
-                              {definition.label}
-                              {definition.presentationModeLabel
-                                ? <small>{definition.presentationModeLabel}</small>
-                                : null}
-                            </span>
-                          </h3>
-                          {mode === 'floating' ? (
-                            <button
-                              aria-label={`${definition.label}を元に戻す`}
-                              onClick={dock}
-                              type="button"
-                            >
-                              戻す
-                            </button>
-                          ) : (
-                            <button
-                              aria-label={`${definition.label}を小窓表示`}
-                              className="input-layer-card-float"
-                              onClick={(event) => float(initialLayerCardRect(event.currentTarget))}
-                              type="button"
-                            >
-                              小窓表示
-                            </button>
-                          )}
-                        </>
+                      renderHeader={() => (
+                        <h3>
+                          <span>
+                            {definition.label}
+                            {definition.presentationModeLabel
+                              ? <small>{definition.presentationModeLabel}</small>
+                              : null}
+                          </span>
+                        </h3>
+                      )}
+                      renderDockedActions={({ float }) => (
+                        <button
+                          aria-label={`${definition.label}を小窓表示`}
+                          className="input-layer-card-float"
+                          onClick={(event) => float(initialLayerCardRect(event.currentTarget))}
+                          type="button"
+                        >
+                          小窓表示
+                        </button>
                       )}
                       renderPlaceholder={({ dock }) => (
                         <section className="input-layer-card-placeholder">
@@ -1083,17 +1046,12 @@ export function InputConverterView() {
           <WorkspacePanel
             ariaLabel="Text Input"
             className="input-capture-panel"
-            defaultFloatingHeight={180}
-            defaultFloatingWidth={520}
             dockedHeaderAriaLabel="Text Inputをクリックまたはドラッグして小窓表示"
-            floatOnHeaderClick
             floatingHeaderAriaLabel="Text Inputを移動"
             headerClassName="input-capture-heading"
             id={INPUT_TYPING_PANEL_ID}
-            minHeight={160}
-            minWidth={320}
             resizeAriaLabel="Text Inputのサイズを変更"
-            renderHeader={({ mode, dock }) => (
+            renderHeader={() => (
               <>
                 <strong>Text Input</strong>
                 {randomPracticeMode !== null ? (
@@ -1108,15 +1066,6 @@ export function InputConverterView() {
                   </span>
                 ) : null}
                 <button type="button" onClick={session.clear}>クリア</button>
-                {mode === 'floating' ? (
-                  <button
-                    aria-label="Text Inputを元に戻す"
-                    onClick={dock}
-                    type="button"
-                  >
-                    戻す
-                  </button>
-                ) : null}
               </>
             )}
           >
@@ -1185,32 +1134,18 @@ export function InputConverterView() {
           <WorkspacePanel
             ariaLabel="Keyboard View"
             className="input-keyboard-panel"
-            defaultFloatingHeight={560}
-            defaultFloatingWidth={760}
+            dockClassName="input-panel-dock"
             dockedHeaderAriaLabel="Keyboard Viewをクリックまたはドラッグして小窓表示"
-            floatOnHeaderClick
             floatingHeaderAriaLabel="Keyboard Viewを移動"
             headerClassName="input-keyboard-panel-heading"
             id={INPUT_KEYBOARD_PANEL_ID}
-            minHeight={360}
-            minWidth={480}
             resizeAriaLabel="Keyboard Viewのサイズを変更"
-            renderHeader={({ mode, dock }) => (
+            renderHeader={() => (
               <>
                 <strong>Keyboard View</strong>
                 <span className="input-keyboard-help">
                   キーをクリックすると実キーの割り当てを変更できます。
                 </span>
-                {mode === 'floating' ? (
-                  <button
-                    aria-label="Keyboard Viewを元に戻す"
-                    className="input-panel-dock"
-                    onClick={dock}
-                    type="button"
-                  >
-                    戻す
-                  </button>
-                ) : null}
               </>
             )}
           >
@@ -1357,17 +1292,13 @@ export function InputConverterView() {
                 <WorkspacePanel
                   ariaLabel="Practice Text"
                   className="input-assist-slot"
-                  defaultFloatingHeight={240}
-                  defaultFloatingWidth={720}
+                  dockClassName="input-panel-dock"
                   dockedHeaderAriaLabel="Practice Textをクリックまたはドラッグして小窓表示"
-                  floatOnHeaderClick
                   floatingHeaderAriaLabel="Practice Textを移動"
                   headerClassName="input-lookup-field-heading"
                   id={INPUT_LOOKUP_PANEL_ID}
-                  minHeight={103}
-                  minWidth={420}
                   resizeAriaLabel="Practice Textのサイズを変更"
-                  renderHeader={({ mode, dock }) => (
+                  renderHeader={() => (
                     <>
                       <span>Practice Text</span>
                       <span className="input-random-samples">
@@ -1403,16 +1334,6 @@ export function InputConverterView() {
                           </button>
                         ) : null}
                       </span>
-                      {mode === 'floating' ? (
-                        <button
-                          aria-label="Practice Textを元に戻す"
-                          className="input-panel-dock"
-                          onClick={dock}
-                          type="button"
-                        >
-                          戻す
-                        </button>
-                      ) : null}
                     </>
                   )}
                 >

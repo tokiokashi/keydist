@@ -487,7 +487,7 @@ test('docked panel headerは閾値drag・cancel・keyboardを区別する', asyn
   );
   await page.mouse.down();
   await page.mouse.move(buttonBox!.x + buttonBox!.width / 2 + 30, buttonBox!.y);
-  await expect(page.locator('.input-layer-card-floating')).toHaveCount(0);
+  await expect(page.locator('.input-layer-card[data-floating]')).toHaveCount(0);
   await page.mouse.up();
 });
 
@@ -628,7 +628,7 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
   const firstSourceBox = await guide.locator('.input-layer-card').first().boundingBox();
   expect(firstSourceBox).not.toBeNull();
   await floatButtons.first().click();
-  let floatingCards = page.locator('.input-layer-card-floating');
+  let floatingCards = page.locator('.input-layer-card[data-floating]');
   await expect(floatingCards).toHaveCount(1);
   const firstFloatingBox = await floatingCards.first().boundingBox();
   expect(firstFloatingBox).not.toBeNull();
@@ -640,7 +640,7 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
   const secondSourceBox = await guide.locator('.input-layer-card').first().boundingBox();
   expect(secondSourceBox).not.toBeNull();
   await guide.locator('.input-layer-card-float').first().click();
-  floatingCards = page.locator('.input-layer-card-floating');
+  floatingCards = page.locator('.input-layer-card[data-floating]');
   await expect(floatingCards).toHaveCount(2);
   const secondFloatingBox = await floatingCards.nth(1).boundingBox();
   expect(secondFloatingBox).not.toBeNull();
@@ -708,7 +708,7 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
   await expect(second).not.toHaveAttribute('data-active');
 
   await first.getByRole('button', { name: /を元に戻す$/ }).click();
-  await expect(page.locator('.input-layer-card-floating')).toHaveCount(1);
+  await expect(page.locator('.input-layer-card[data-floating]')).toHaveCount(1);
   await expect(guide.locator('.input-layer-card-placeholder')).toHaveCount(1);
 });
 
@@ -734,7 +734,7 @@ test('#regression レイヤーカンペ本体を浮かせた状態でも入れ�
   // ボタンがfloating cardに覆われて素のclick()が届かないことがあるため、
   // evaluateで直接クリックする(過去に必要だった回避策)。
   await floatButtons.first().evaluate((element) => (element as HTMLElement).click());
-  const cardA = page.locator('.input-layer-card-floating').first();
+  const cardA = page.locator('.input-layer-card[data-floating]').first();
   await expect(cardA).toHaveCount(1);
 
   // 浮かせた直後の初期位置はガイド本体の矩形と重なる。ここでガイドが前面化するのは
@@ -754,7 +754,7 @@ test('#regression レイヤーカンペ本体を浮かせた状態でも入れ�
 
   await guide.locator('.input-layer-card-float').first()
     .evaluate((element) => (element as HTMLElement).click());
-  const floatingCards = page.locator('.input-layer-card-floating');
+  const floatingCards = page.locator('.input-layer-card[data-floating]');
   await expect(floatingCards).toHaveCount(2);
   const cardB = floatingCards.nth(1);
   await expect(cardB).toHaveAttribute('data-active', 'true');
