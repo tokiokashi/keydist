@@ -345,6 +345,10 @@ export function InputConverterView() {
     () => presentationTriggerColorSlots(layout),
     [layout],
   );
+  const lookupRoutes = useMemo(
+    () => reverseLookup(layout, lookupQuery, 3),
+    [layout, lookupQuery],
+  );
   const lookupKeys = useMemo(() => new Set(
     lookupRoutes[0]?.steps.flatMap((step) =>
       step.actions.flatMap((action) => action)) ?? [],
@@ -425,10 +429,6 @@ export function InputConverterView() {
     lookupKeys,
     visibleKeys,
   ]);
-  const lookupRoutes = useMemo(
-    () => reverseLookup(layout, lookupQuery, 3),
-    [layout, lookupQuery],
-  );
   const guideDefinitions = useMemo(
     () => compactLayerGuideDefinitions(layout),
     [layout],
