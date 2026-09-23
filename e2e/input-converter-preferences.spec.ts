@@ -87,6 +87,9 @@ test('practice environment persists per layout while physical geometry stays glo
 test('random practice mode restores the same current challenge per layout and reload', async ({ page }) => {
   // 初回mountのrestoreとユーザー操作を競合させず、このテストはrandom stateの往復だけを見る。
   await page.addInitScript((key) => {
+    // addInitScriptはreload時にも再実行されるため、初回だけseedする。
+    // 無条件setItemするとreload直前に保存したchallengeをテスト自身が消してしまう。
+    if (localStorage.getItem(key) !== null) return;
     localStorage.setItem(key, JSON.stringify({
       version: 2,
       layoutId: 'shingeta',
