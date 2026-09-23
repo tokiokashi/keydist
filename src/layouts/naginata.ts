@@ -55,7 +55,7 @@ export const NAGINATA_V18_FACES: Face[] = [
     triggerPersistence: 'hold-capable',
     triggerOrder: 'prefix',
     presentationTriggerAlternatives: [[THUMB_KEY.LT], [THUMB_KEY.RT]],
-    presentationTriggerText: '左右のSpace',
+    presentationTriggerText: 'Space',
     presentationLabel: 'SandS',
   }),
 
@@ -123,4 +123,5 @@ export const NAGINATA_V18: Layout = withThumbShiftAlternatives(
   THUMB_KEY.RT,
   [THUMB_KEY.RT, THUMB_KEY.LT],
 );
+NAGINATA_V18.legends.set(THUMB_KEY.LT, 'Space');
 NAGINATA_V18.legends.set(THUMB_KEY.RT, 'Space');

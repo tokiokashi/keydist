@@ -1007,11 +1007,42 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await expect(guide).toContainText('G');
   await expect(keyboard.locator('[data-key-id="g"]')).toHaveAttribute('data-lookup', 'true');
 
-  // 薙刀式の左右Space alternativeは1 routeへ畳む。
+  // 左右どちらでもよいSpaceはrouteを畳み、guideでも特定の親指を推奨しない。
   await page.getByLabel('配列', { exact: true }).selectOption('naginata-v18');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   await lookup.fill('ま');
   await expect(results.locator('li')).toHaveCount(1);
+  await expect(guide).toContainText('Space + F');
+  await expect(guide).not.toContainText('右親指');
+  await expect(guide).not.toContainText('左親指');
+  await expect(keyboard.locator('[data-key-id="f"]')).toHaveAttribute('data-lookup', 'true');
+  await expect(keyboard.locator('[data-key-id="thumb-l"]')).not.toHaveAttribute('data-lookup');
+  await expect(keyboard.locator('[data-key-id="thumb-r"]')).not.toHaveAttribute('data-lookup');
+  const naginataLeftSlot = await keyboard.locator('[data-key-id="thumb-l"]')
+    .getAttribute('data-accent-slot');
+  const naginataRightSlot = await keyboard.locator('[data-key-id="thumb-r"]')
+    .getAttribute('data-accent-slot');
+  expect(naginataLeftSlot).not.toBeNull();
+  expect(naginataLeftSlot).toBe(naginataRightSlot);
+  await expect(page.locator('.input-layer-card').first()).toContainText('trigger: Space');
+
+  // 新JISも左右Spaceを同一presentation layerとして扱う。
+  await page.getByLabel('配列', { exact: true }).selectOption('shin-jis-simultaneous');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shin-jis-simultaneous');
+  await lookup.fill('お');
+  await expect(guide).toContainText('Space + J');
+  await expect(guide).not.toContainText('右親指');
+  await expect(guide).not.toContainText('左親指');
+  await expect(keyboard.locator('[data-key-id="j"]')).toHaveAttribute('data-lookup', 'true');
+  await expect(keyboard.locator('[data-key-id="thumb-l"]')).not.toHaveAttribute('data-lookup');
+  await expect(keyboard.locator('[data-key-id="thumb-r"]')).not.toHaveAttribute('data-lookup');
+  const shinJisLeftSlot = await keyboard.locator('[data-key-id="thumb-l"]')
+    .getAttribute('data-accent-slot');
+  const shinJisRightSlot = await keyboard.locator('[data-key-id="thumb-r"]')
+    .getAttribute('data-accent-slot');
+  expect(shinJisLeftSlot).not.toBeNull();
+  expect(shinJisLeftSlot).toBe(shinJisRightSlot);
+  await expect(page.locator('.input-layer-card').first()).toContainText('trigger: Space');
 
   await page.getByLabel('配列', { exact: true }).selectOption('oonishi-custom-combo');
   await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom-combo');

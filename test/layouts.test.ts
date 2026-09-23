@@ -505,7 +505,7 @@ test('薙刀式v18は面から生成され、全定義を1ステップで保持�
 
   assert.equal(layout.map.size, 150);
   assert.equal(layout.map.has(' '), false);
-  assert.equal(layout.legends.get('thumb-l'), '親指');
+  assert.equal(layout.legends.get('thumb-l'), 'Space');
   assert.equal(layout.legends.get('thumb-r'), 'Space');
   assert.equal(layout.legends.has('space'), false);
   for (const sequence of layout.map.values()) assert.equal(sequence.length, 1);
@@ -547,7 +547,7 @@ test('薙刀式のSandS presentationをFace authoringで明示する', () => {
 
   assert.deepEqual(centerShift.trigger, ['space']);
   assert.deepEqual(centerShift.presentationTriggerAlternatives, [['thumb-l'], ['thumb-r']]);
-  assert.equal(centerShift.presentationTriggerText, '左右のSpace');
+  assert.equal(centerShift.presentationTriggerText, 'Space');
   assert.equal(centerShift.presentationLabel, 'SandS');
   assert.deepEqual(displayTriggerKeys(centerShift), ['thumb-l', 'thumb-r']);
   assert.equal(layout.faceLayerIds?.get(centerShift), 'layer:SandS');
@@ -560,6 +560,22 @@ test('薙刀式のSandS presentationをFace authoringで明示する', () => {
     detailLabel: '全レイヤー詳細',
   });
   assert.deepEqual(layout.map.get('の'), [['space', 'j']]);
+});
+
+test('新JISの親指shift presentationは左右を同じSpaceとして扱う', () => {
+  for (const id of ['shin-jis-prefix', 'shin-jis-simultaneous']) {
+    const layout = LAYOUT_BY_ID.get(id)!;
+    const shifted = classifyPresentationFaces(layout).layers[1]?.faces[0];
+    assert.ok(shifted);
+    assert.deepEqual(
+      shifted.presentationTriggerAlternatives,
+      [['thumb-l'], ['thumb-r']],
+    );
+    assert.equal(shifted.presentationTriggerText, 'Space');
+    assert.equal(shifted.presentationLabel, 'Shift');
+    assert.equal(layout.legends.get('thumb-l'), 'Space');
+    assert.equal(layout.legends.get('thumb-r'), 'Space');
+  }
 });
 
 test('trigger presentationは明示alternativeとchordを区別して正規化する', () => {
@@ -901,8 +917,8 @@ test('新JISは同じかな配置を逐次シフトと通常シフトで共有�
   assert.deepEqual(prefix.thumbShiftKeys, ['thumb-r', 'thumb-l']);
   assert.deepEqual(simultaneous.thumbShiftKeys, ['thumb-r', 'thumb-l']);
   for (const layout of [prefix, simultaneous]) {
-    assert.equal(layout.legends.get('thumb-l'), 'シフト');
-    assert.equal(layout.legends.get('thumb-r'), 'シフト');
+    assert.equal(layout.legends.get('thumb-l'), 'Space');
+    assert.equal(layout.legends.get('thumb-r'), 'Space');
   }
 });
 

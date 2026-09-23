@@ -21,6 +21,7 @@ import {
 } from '../../geometry-settings.ts';
 import {
   aggregationLegendMap,
+  aggregationTriggerDisplayText,
   aggregationTriggerKeys,
   compactLayerGuideDefinitions,
   presentationTriggerColorSlots,
@@ -52,6 +53,7 @@ import {
 } from './random-samples.ts';
 import {
   reverseLookup,
+  reverseLookupGuideActionHighlightKeys,
   reverseLookupGuideActionLabel,
   reverseLookupGuideActionMatchesKeys,
   reverseLookupGuideActions,
@@ -557,7 +559,11 @@ export function InputConverterView() {
     ? undefined
     : activeLookupRoute?.steps[activeLookupAction.routeStepIndex];
   const lookupKeys = useMemo(
-    () => new Set(activeLookupAction?.keys ?? []),
+    () => new Set(
+      activeLookupAction === undefined
+        ? []
+        : reverseLookupGuideActionHighlightKeys(activeLookupAction),
+    ),
     [activeLookupAction],
   );
   const lookupLegendMap = useMemo(() => {
@@ -1010,7 +1016,7 @@ export function InputConverterView() {
                       </h3>
                       <p>
                         {triggers.size > 0
-                          ? `trigger: ${[...triggers].map((key) => layout.legends.get(key) ?? key).join(' + ')}`
+                          ? `trigger: ${aggregationTriggerDisplayText(layout, definition.id)}`
                           : 'trigger: —'}
                       </p>
                       <PhysicalKeyboard
@@ -1134,7 +1140,7 @@ export function InputConverterView() {
                 </header>
                 <p>
                   {triggers.size > 0
-                    ? `trigger: ${[...triggers].map((key) => layout.legends.get(key) ?? key).join(' + ')}`
+                    ? `trigger: ${aggregationTriggerDisplayText(layout, definition.id)}`
                     : 'trigger: —'}
                 </p>
                 <PhysicalKeyboard
@@ -1521,15 +1527,15 @@ export function InputConverterView() {
                         {activeLookupGuideActions.length}
                       </span>
                       <strong>{activeLookupAction.output}</strong>
-                      <code>{reverseLookupGuideActionLabel(activeLookupAction)}</code>
+                      <code>{reverseLookupGuideActionLabel(layout, activeLookupAction)}</code>
                     </div>
                     <ol>
                       {lookupRoutes.map((route, index) => (
                         <li
                           data-active={index === 0 || undefined}
-                          key={`${reverseLookupRouteLabel(route)}:${index}`}
+                          key={`${reverseLookupRouteLabel(layout, route)}:${index}`}
                         >
-                          <code>{reverseLookupRouteLabel(route)}</code>
+                          <code>{reverseLookupRouteLabel(layout, route)}</code>
                           {index === 0 ? <small>ガイド中</small> : null}
                           {route.steps.some((step) => step.origin === 'combo')
                             ? <small>コンボ</small>
