@@ -78,16 +78,20 @@ export function useWorkspace(
   const [restoring, setRestoring] = useState(true);
   const restoredRef = useRef(false);
   useEffect(() => {
-    if (restoredRef.current) return;
-    // 未整地（空）のレジストリに対して復元を試みない。definitionsが揃ってから走る。
-    if (definitions.length === 0) return;
-    restoredRef.current = true;
-    const storage = resolveStorage();
-    const viewport = { width: window.innerWidth, height: window.innerHeight };
-    const saved = loadWorkspaceState(storage, definitions, registry, viewport);
-    setState(saved);
-    // 復元を適用したコミットの直後の1フレームまでアニメーションを止め、
-    // それを過ぎたら通常のlayoutアニメーションへ戻す。
+    // 未整地（空）のレジストリに対して復元を試みない。definitionsが揃うまで待ち、
+    // 揃った回のeffectで復元する。
+    if (!restoredRef.current && definitions.length > 0) {
+      restoredRef.current = true;
+      const storage = resolveStorage();
+      const viewport = { width: window.innerWidth, height: window.innerHeight };
+      const saved = loadWorkspaceState(storage, definitions, registry, viewport);
+      setState(saved);
+    }
+    if (!restoredRef.current) return;
+    // 復元を適用したコミットの直後の1フレームまでアニメーションを止め、それを過ぎたら
+    // 通常のlayoutアニメーションへ戻す。開発時のeffect二重実行（cleanup→再実行）でも
+    // rAFの予約自体は毎回やり直す（実際の復元処理は上のrestoredRefで一度きりに保つ）ため、
+    // 最後に生き残った実行のrAFが確実に発火してrestoringを解除する。
     const frame = requestAnimationFrame(() => setRestoring(false));
     return () => cancelAnimationFrame(frame);
   }, [definitions, registry, resolveStorage]);

@@ -1541,6 +1541,10 @@ h1 {
   box-sizing: border-box;
   max-width: none;
   max-height: none;
+  /* dockedレイアウト用class（.input-assist-slot等）のmarginをfloating時は打ち消す。
+     残ると position:fixed の top/left から実際の描画位置がmargin分ずれ、
+     viewportクランプの計算と食い違う（#413 phase5）。 */
+  margin: 0;
   pointer-events: auto;
   box-shadow: 0 0.65rem 2rem rgb(0 0 0 / 14%);
   transition: box-shadow 140ms ease;
