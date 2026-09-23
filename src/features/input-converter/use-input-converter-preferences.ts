@@ -6,7 +6,7 @@ import {
   type InputConverterPreferencesCatalogs,
   type InputConverterPreferencesDefaults,
   type InputConverterPreferencesScheduler,
-  type InputConverterPreferencesV1,
+  type InputConverterPreferencesV2,
 } from './input-converter-preferences.ts';
 
 export interface UseInputConverterPreferencesOptions {
@@ -22,16 +22,16 @@ export interface InputConverterPreferencesHook {
   restoreOnce(
     catalogs: InputConverterPreferencesCatalogs,
     defaults: InputConverterPreferencesDefaults,
-  ): InputConverterPreferencesV1;
+  ): InputConverterPreferencesV2;
   /**
    * 復元後の状態変化をdebounceでまとめて書く。呼び出し側は restoreOnce が返した値を
    * 適用する前にこれを呼ばないこと（復元前のdefault値で上書きしてしまうため）。
    */
-  save(prefs: InputConverterPreferencesV1): void;
+  save(prefs: InputConverterPreferencesV2): void;
 }
 
 /**
- * 入力コンバータの設定（配列・物理配列・表示トグル）の永続化バウンダリ。
+ * 入力コンバータの設定（配列・物理配列・配列ごとの練習環境）の永続化バウンダリ。
  * feature側のコンポーネントはこのフック経由でだけ storage に触れ、直接
  * localStorage / KeyValueStorage を読み書きしない。
  *
@@ -48,11 +48,11 @@ export function useInputConverterPreferences(
     [storageOverride],
   );
 
-  const restoredRef = useRef<InputConverterPreferencesV1 | null>(null);
+  const restoredRef = useRef<InputConverterPreferencesV2 | null>(null);
   const restoreOnce = useCallback((
     catalogs: InputConverterPreferencesCatalogs,
     defaults: InputConverterPreferencesDefaults,
-  ): InputConverterPreferencesV1 => {
+  ): InputConverterPreferencesV2 => {
     if (restoredRef.current !== null) return restoredRef.current;
     const restored = loadInputConverterPreferences(resolveStorage(), catalogs, defaults);
     restoredRef.current = restored;
@@ -69,7 +69,7 @@ export function useInputConverterPreferences(
     return schedulerRef.current;
   }, [resolveStorage]);
 
-  const save = useCallback((prefs: InputConverterPreferencesV1) => {
+  const save = useCallback((prefs: InputConverterPreferencesV2) => {
     getScheduler().notify(prefs);
   }, [getScheduler]);
 

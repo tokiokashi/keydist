@@ -2003,9 +2003,13 @@ test('盤面クリックで任意browser codeをphysical keyへ再割当して�
   await page.keyboard.press('q');
   await expect(output).toHaveValue('け');
 
-  // #413 phase6: 配列選択もpreferencesとして永続化されるため、reload後もnicolaのまま。
+  // 配列・キー割当だけでなくInput Textも練習環境として復元される。
   await page.reload();
   await expect(feature).toHaveAttribute('data-input-ready', 'nicola');
+  await expect(output).toHaveValue('け');
+
+  // 復元済みtextを明示的にクリアしてから、キー割当の永続化を検証する。
+  await page.getByRole('button', { name: 'クリア' }).click();
   await output.click();
   await page.keyboard.down('Space');
   await page.keyboard.press('s');

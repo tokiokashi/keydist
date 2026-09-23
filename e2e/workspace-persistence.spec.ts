@@ -17,14 +17,21 @@ test('Tester restores selected layout and physical geometry after reload', async
   await expect.poll(async () => page.evaluate(() => {
     const raw = window.localStorage.getItem('keydist:input-converter-preferences');
     return raw === null ? null : JSON.parse(raw);
-  })).toEqual({
-    version: 1,
+  })).toMatchObject({
+    version: 2,
     layoutId: 'tsuki-2-263',
     geometryId: 'column-staggered',
-    showDynamicGuide: true,
-    showLayerGuide: true,
-    showLayerKeys: true,
-    showShiftKeys: false,
+    layouts: {
+      'tsuki-2-263': {
+        showDynamicGuide: true,
+        showLayerGuide: true,
+        showLayerKeys: true,
+        showShiftKeys: false,
+        inputText: '',
+        practiceText: '',
+        randomPracticeMode: null,
+      },
+    },
   });
 
   await page.reload();
