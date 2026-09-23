@@ -8,11 +8,24 @@ import type { Layout } from '../../layouts/index.ts';
 import { kanaToRomaji } from '../../romaji/kunrei.ts';
 import { romajiToKana } from './live-romaji.ts';
 
+export interface ReverseLookupActionParticipation {
+  /** このactionでoutput側として参加するphysical key。 */
+  readonly outputKeys: readonly string[];
+  /** このactionでtrigger側として参加するphysical key。outputKeysとの重複を許す。 */
+  readonly triggerKeys: readonly string[];
+}
+
 export interface ReverseLookupStep {
   readonly output: string;
   readonly actions: readonly (readonly string[])[];
   /** 表示actionごとに受理するphysical key variant。表示代表と入力受理を分離する。 */
   readonly actionKeyAlternatives: readonly (readonly (readonly string[])[])[];
+  /**
+   * 選択済みcanonical alternativeのauthoring participation。
+   * aggregationから再推定せず、対象semanticに対応するrealizationをそのままguideへ流す。
+   */
+  readonly actionParticipationAlternatives:
+    readonly (readonly ReverseLookupActionParticipation[])[];
   readonly origin: InputAlternative['origin'];
   readonly aggregationGroupIds: readonly string[];
   /** physical alternativeだけ異なる等価経路をまとめても全canonical identityを受理する。 */
@@ -25,6 +38,7 @@ export interface ReverseLookupGuideAction {
   readonly actionIndex: number;
   readonly keys: readonly string[];
   readonly keyAlternatives: readonly (readonly string[])[];
+  readonly participationAlternatives: readonly ReverseLookupActionParticipation[];
   readonly finalInRouteStep: boolean;
 }
 
@@ -66,6 +80,56 @@ function compareRoutes(left: ReverseLookupRoute, right: ReverseLookupRoute): num
     || routeSignature(left).localeCompare(routeSignature(right));
 }
 
+function normalizedParticipation(
+  action: readonly string[],
+  outputKeys: readonly string[],
+  triggerKeys: readonly string[],
+): ReverseLookupActionParticipation {
+  const actionKeys = new Set(action.map(resolveKeyId));
+  const normalize = (keys: readonly string[]) => [...new Set(
+    keys.map(resolveKeyId).filter((key) => actionKeys.has(key)),
+  )];
+  return {
+    outputKeys: normalize(outputKeys),
+    triggerKeys: normalize(triggerKeys),
+  };
+}
+
+function sameParticipation(
+  left: ReverseLookupActionParticipation,
+  right: ReverseLookupActionParticipation,
+): boolean {
+  return sameKeys(left.outputKeys, right.outputKeys)
+    && sameKeys(left.triggerKeys, right.triggerKeys);
+}
+
+function realizationActionParticipations(
+  realization: InputAlternative['baseRealizations'][number],
+): readonly (readonly ReverseLookupActionParticipation[])[] {
+  const views = [
+    {
+      outputKeys: realization.defaultOutputKeys,
+      triggerKeys: realization.defaultTriggerKeys ?? [],
+    },
+    ...(realization.alternateParticipations ?? []),
+  ];
+
+  return realization.actions.map((action) => {
+    const participations: ReverseLookupActionParticipation[] = [];
+    for (const view of views) {
+      const participation = normalizedParticipation(
+        action,
+        view.outputKeys,
+        view.triggerKeys,
+      );
+      if (!participations.some((candidate) => sameParticipation(candidate, participation))) {
+        participations.push(participation);
+      }
+    }
+    return participations;
+  });
+}
+
 function stepFromAlternative(
   output: string,
   alternative: InputAlternative,
@@ -80,6 +144,9 @@ function stepFromAlternative(
     )],
     actionKeyAlternatives: alternative.baseRealizations.flatMap((realization) =>
       realization.actions.map((action) => [[...action]])),
+    actionParticipationAlternatives: alternative.baseRealizations.flatMap(
+      realizationActionParticipations,
+    ),
     acceptedAlternativeSelectionIdentities: [
       inputAlternativeSelectionIdentity(alternative),
     ],
@@ -150,6 +217,20 @@ function mergeEquivalentRoutes(
             }
             return merged;
           }),
+          actionParticipationAlternatives: step.actionParticipationAlternatives.map(
+            (participations, actionIndex) => {
+              const nextParticipations =
+                incoming.actionParticipationAlternatives[actionIndex] ?? [];
+              const merged = [...participations];
+              for (const participation of nextParticipations) {
+                if (!merged.some((candidate) =>
+                  sameParticipation(candidate, participation))) {
+                  merged.push(participation);
+                }
+              }
+              return merged;
+            },
+          ),
         };
       }),
     });
@@ -281,6 +362,8 @@ export function reverseLookupGuideActions(
       actionIndex,
       keys,
       keyAlternatives: step.actionKeyAlternatives[actionIndex] ?? [keys],
+      participationAlternatives:
+        step.actionParticipationAlternatives[actionIndex] ?? [],
       finalInRouteStep: actionIndex === step.actions.length - 1,
     })));
 }
@@ -290,6 +373,24 @@ export function reverseLookupGuideActionMatchesKeys(
   keys: readonly string[],
 ): boolean {
   return action.keyAlternatives.some((variant) => sameKeys(variant, keys));
+}
+
+/**
+ * 現在guideしているcanonical alternativeのparticipationだけからtrigger-onlyを求める。
+ * 等価alternativeのどれかでoutputにもなるkeyは消さない。
+ */
+export function reverseLookupGuideActionTriggerOnlyKeys(
+  action: ReverseLookupGuideAction,
+): readonly string[] {
+  const outputKeys = new Set(
+    action.participationAlternatives.flatMap((participation) =>
+      participation.outputKeys.map(resolveKeyId)),
+  );
+  const triggerKeys = new Set(
+    action.participationAlternatives.flatMap((participation) =>
+      participation.triggerKeys.map(resolveKeyId)),
+  );
+  return [...triggerKeys].filter((key) => !outputKeys.has(key));
 }
 
 /**
