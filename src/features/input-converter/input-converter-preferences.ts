@@ -35,6 +35,8 @@ export interface InputConverterLayoutPreferencesV2 {
   showLayerKeys: boolean;
   /** Shiftキーの表示（レイアウトがShiftキーを持つ場合のみ画面に出る） */
   showShiftKeys: boolean;
+  /** Practice Text のKeyboard View入力アシスト表示 */
+  showPracticeAssist: boolean;
   /** Text Input に入力済みの文字列 */
   inputText: string;
   /** Practice Text の現在値。ランダム練習中は現在のお題そのもの */
@@ -130,6 +132,10 @@ function sanitizeLayoutPreferences(
     showLayerGuide: sanitizeBoolean(value.showLayerGuide, fallback.showLayerGuide),
     showLayerKeys: sanitizeBoolean(value.showLayerKeys, fallback.showLayerKeys),
     showShiftKeys: sanitizeBoolean(value.showShiftKeys, fallback.showShiftKeys),
+    showPracticeAssist: sanitizeBoolean(
+      value.showPracticeAssist,
+      fallback.showPracticeAssist,
+    ),
     inputText: sanitizeText(value.inputText, fallback.inputText),
     practiceText: sanitizeText(value.practiceText, fallback.practiceText),
     randomPracticeMode: sanitizeRandomPracticeMode(
