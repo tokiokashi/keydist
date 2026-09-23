@@ -679,7 +679,7 @@ test('盤面クリックで任意browser codeをphysical keyへ再割当して�
 
   await page.getByRole('button', { name: 'クリア' }).click();
 
-  await keyboard.locator('[data-key-id="thumb-l"]').click();
+  await keyboard.locator('[data-key-id="thumb-l"] rect').click();
   await expect(bindingBar).toContainText('実キーを押す');
   await page.keyboard.press('Space');
   await expect(bindingBar.getByRole('button', { name: 'thumb-lからSpaceを削除' })).toBeVisible();
@@ -692,7 +692,7 @@ test('盤面クリックで任意browser codeをphysical keyへ再割当して�
 
   // 親指に限らず通常キーも同じUIで再割当できる。
   await page.getByRole('button', { name: 'クリア' }).click();
-  await keyboard.locator('[data-key-id="f"]').click();
+  await keyboard.locator('[data-key-id="f"] rect').click();
   await page.keyboard.press('q');
   await output.click();
   await page.keyboard.press('q');
