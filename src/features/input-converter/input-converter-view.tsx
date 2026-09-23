@@ -119,6 +119,7 @@ const MIN_FLOATING_GUIDE_WIDTH = 320;
 const MIN_FLOATING_GUIDE_HEIGHT = 240;
 const FLOATING_GUIDE_VIEWPORT_GAP = 12;
 
+const INPUT_TYPING_PANEL_ID = 'input.typing';
 const INPUT_LAYER_GUIDE_PANEL_ID = 'input.layer-guide';
 
 function layerGuideCardPanelId(layerId: string): string {
@@ -271,6 +272,13 @@ export function InputConverterView() {
   );
   const workspacePanelDefinitions = useMemo(
     () => [...createWorkspacePanelRegistry([
+      {
+        id: INPUT_TYPING_PANEL_ID,
+        title: '入力',
+        defaultDockSlot: 'input.main.typing',
+        minWidth: 320,
+        minHeight: 160,
+      },
       {
         id: INPUT_LAYER_GUIDE_PANEL_ID,
         title: 'レイヤーカンペ',
@@ -955,22 +963,46 @@ export function InputConverterView() {
         />
 
         <section className="input-main">
-          <section className="input-capture-panel">
-            <header className="input-capture-heading">
-              <strong>入力</strong>
-              {randomPracticeMode !== null ? (
-                <span
-                  className="input-random-practice-status"
-                  data-complete={randomPracticeComplete || undefined}
-                  role="status"
-                >
-                  {randomPracticeComplete
-                    ? `${randomPracticeMode === 'word' ? '単語' : '文章'}モード · 完成！ Enterで次へ`
-                    : `${randomPracticeMode === 'word' ? '単語' : '文章'}モード · 打ち切ったら Enterで次へ`}
-                </span>
-              ) : null}
-              <button type="button" onClick={session.clear}>クリア</button>
-            </header>
+          <WorkspacePanel
+            ariaLabel="入力"
+            className="input-capture-panel"
+            defaultFloatingHeight={180}
+            defaultFloatingWidth={520}
+            dockedHeaderAriaLabel="入力パネルをクリックまたはドラッグして小窓表示"
+            floatOnHeaderClick
+            floatingHeaderAriaLabel="入力パネルを移動"
+            headerClassName="input-capture-heading"
+            id={INPUT_TYPING_PANEL_ID}
+            minHeight={160}
+            minWidth={320}
+            resizeAriaLabel="入力パネルのサイズを変更"
+            renderHeader={({ mode, dock }) => (
+              <>
+                <strong>入力</strong>
+                {randomPracticeMode !== null ? (
+                  <span
+                    className="input-random-practice-status"
+                    data-complete={randomPracticeComplete || undefined}
+                    role="status"
+                  >
+                    {randomPracticeComplete
+                      ? `${randomPracticeMode === 'word' ? '単語' : '文章'}モード · 完成！ Enterで次へ`
+                      : `${randomPracticeMode === 'word' ? '単語' : '文章'}モード · 打ち切ったら Enterで次へ`}
+                  </span>
+                ) : null}
+                <button type="button" onClick={session.clear}>クリア</button>
+                {mode === 'floating' ? (
+                  <button
+                    aria-label="入力パネルを元に戻す"
+                    onClick={dock}
+                    type="button"
+                  >
+                    戻す
+                  </button>
+                ) : null}
+              </>
+            )}
+          >
             <div
               className="input-output-shell"
               data-has-target={lookupQuery.length > 0 || undefined}
@@ -1031,7 +1063,7 @@ export function InputConverterView() {
               {escapeIsLayoutInput ? ' Escは配列入力として扱います。' : ' Escで全削除します。'}
               {session.composing ? ' IME composition中は認識を停止しています。' : ''}
             </p>
-          </section>
+          </WorkspacePanel>
 
           <section className="input-keyboard-panel">
             <div className="input-display-options" aria-label="表示設定">
