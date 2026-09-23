@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { inputAlternativeSelectionIdentity } from '../src/core/semantic-input/index.ts';
 import { LAYOUT_BY_ID } from '../src/layouts/index.ts';
 import {
   reverseLookup,
@@ -75,21 +76,11 @@ test('reverseLookupStepMatchesRecognitionは同じcanonical alternativeだけを
   assert.ok(route);
   const step = route.steps[0];
   assert.ok(step);
-  const matching = layout.canonicalInputs.get(step.output)?.find((alternative) =>
-    step.alternativeSelectionIdentity.includes(alternative.origin)
-      ? false
-      : true);
-  // route生成元と同じselection identityのalternativeを直接探す。
-  const exact = layout.canonicalInputs.get(step.output)?.find((alternative) => {
-    const candidate = reverseLookup(layout, step.output)
-      .flatMap((candidateRoute) => candidateRoute.steps)
-      .find((candidateStep) =>
-        candidateStep.alternativeSelectionIdentity === step.alternativeSelectionIdentity);
-    return candidate !== undefined
-      && candidate.alternativeSelectionIdentity === step.alternativeSelectionIdentity
-      && alternative.semanticInputs.length > 0;
-  });
+
+  const exact = layout.canonicalInputs.get(step.output)?.find((alternative) =>
+    inputAlternativeSelectionIdentity(alternative) === step.alternativeSelectionIdentity);
   assert.ok(exact);
+
   assert.equal(reverseLookupStepMatchesRecognition(step, {
     output: step.output,
     alternative: exact,
