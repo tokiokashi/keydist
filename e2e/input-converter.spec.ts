@@ -124,7 +124,7 @@ test('レイヤーカンペはtop layerで移動・リサイズしながら入�
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   const guide = page.getByLabel('レイヤーカンペ一覧');
 
-  await page.getByLabel('レイヤーカンペを浮かす').click();
+  await page.getByLabel('レイヤーカンペを小窓表示').click();
   await expect(guide).toHaveAttribute('data-floating', 'true');
   await expect.poll(() =>
     guide.evaluate((element) => element.matches(':popover-open'))).toBe(true);
@@ -173,6 +173,62 @@ test('レイヤーカンペはtop layerで移動・リサイズしながら入�
   await expect.poll(() =>
     guide.evaluate((element) => element.matches(':popover-open'))).toBe(false);
   await expect(guide).toBeVisible();
+});
+
+test('レイヤーカンペは盤面ごとに独立して複数小窓表示できる', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+  const guide = page.getByLabel('レイヤーカンペ一覧');
+  const floatButtons = guide.locator('.input-layer-card-float');
+  await expect.poll(() => floatButtons.count()).toBeGreaterThan(1);
+
+  await floatButtons.first().click();
+  let floatingCards = page.locator('.input-layer-card-floating');
+  await expect(floatingCards).toHaveCount(1);
+  await expect(guide).not.toHaveAttribute('data-floating');
+  await expect(guide.locator('.input-layer-card-placeholder')).toHaveCount(1);
+  await expect.poll(() =>
+    floatingCards.first().evaluate((element) => element.matches(':popover-open'))).toBe(true);
+
+  // 1枚目を浮かした後も、残りのカードからさらに個別小窓表示できる。
+  await guide.locator('.input-layer-card-float').first().click();
+  floatingCards = page.locator('.input-layer-card-floating');
+  await expect(floatingCards).toHaveCount(2);
+  await expect(guide.locator('.input-layer-card-placeholder')).toHaveCount(2);
+  await expect.poll(() =>
+    floatingCards.evaluateAll((elements) =>
+      elements.every((element) => element.matches(':popover-open')))).toBe(true);
+
+  const first = floatingCards.first();
+  const second = floatingCards.nth(1);
+  const firstMoveHandle = first.locator('> header');
+  const beforeFirst = await first.boundingBox();
+  const beforeSecond = await second.boundingBox();
+  const moveBox = await firstMoveHandle.boundingBox();
+  expect(beforeFirst).not.toBeNull();
+  expect(beforeSecond).not.toBeNull();
+  expect(moveBox).not.toBeNull();
+
+  await page.mouse.move(moveBox!.x + 60, moveBox!.y + moveBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(moveBox!.x + 120, moveBox!.y + moveBox!.height / 2);
+  await page.mouse.up();
+
+  const afterFirst = await first.boundingBox();
+  const afterSecond = await second.boundingBox();
+  expect(afterFirst).not.toBeNull();
+  expect(afterSecond).not.toBeNull();
+  expect(afterFirst!.x).toBeGreaterThan(beforeFirst!.x + 30);
+  expect(Math.abs(afterSecond!.x - beforeSecond!.x)).toBeLessThanOrEqual(1);
+
+  await first.getByRole('button', { name: /を元に戻す$/ }).click();
+  await expect(page.locator('.input-layer-card-floating')).toHaveCount(1);
+  await expect(guide.locator('.input-layer-card-placeholder')).toHaveCount(1);
 });
 
 test('Recognized detail stays one row when one event realizes multiple inputs', async ({ page }) => {
