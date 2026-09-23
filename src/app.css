@@ -684,6 +684,97 @@ h1 {
   background: color-mix(in srgb, #4a3aa7 5%, #fff);
 }
 
+.input-key-status {
+  display: flex;
+  min-width: 0;
+  max-width: 32rem;
+  flex: 0 1 28rem;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0;
+  white-space: nowrap;
+}
+
+.input-key-status section {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 1.5rem;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.12rem 0.38rem;
+  border: 1px solid #deded8;
+  border-radius: 999px;
+  background: #fafaf8;
+  overflow: hidden;
+}
+
+.input-key-status section:first-child {
+  flex: 0 1 auto;
+}
+
+.input-key-status section:last-child {
+  flex: 1 1 12rem;
+}
+
+.input-key-status h2 {
+  flex: 0 0 auto;
+  margin: 0;
+  color: #686862;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.input-key-status p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.input-key-status .input-recognized-list {
+  min-width: 0;
+  min-height: 1rem;
+  flex: 1 1 auto;
+  gap: 0.3rem;
+  overflow: hidden;
+}
+
+.input-key-status .input-recognized-empty,
+.input-key-status .input-recognized {
+  min-height: 1rem;
+}
+
+.input-key-status .input-recognized-empty,
+.input-key-status .input-recognized strong {
+  font-size: 0.7rem;
+  line-height: 1rem;
+}
+
+.input-key-status .input-recognized {
+  gap: 0.22rem;
+}
+
+.input-key-status .input-recognized + .input-recognized {
+  padding-left: 0.3rem;
+}
+
+.input-key-status .input-recognized code {
+  padding: 0.06rem 0.18rem;
+  font-size: 0.58rem;
+}
+
+@container input-keyboard-panel (max-width: 52rem) {
+  .input-key-status {
+    max-width: none;
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+}
+
 .physical-keyboard {
   overflow-x: auto;
   padding: 0.5rem 0;
@@ -1401,19 +1492,6 @@ h1 {
   .input-inspector {
     grid-template-columns: minmax(7rem, 0.7fr) minmax(10rem, 1.3fr);
   }
-}
-
-@container input-keyboard-panel (min-width: 34rem) {
-  .input-keyboard-content {
-    grid-template-columns: minmax(0, 1fr) minmax(7rem, 8rem);
-    grid-template-rows: minmax(0, 1fr);
-  }
-
-  .input-keyboard-content > .input-debug {
-    min-height: 0;
-    max-height: none;
-  }
-
 }
 
 .input-inspector section {
