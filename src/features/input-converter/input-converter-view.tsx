@@ -101,8 +101,6 @@ const HOME_POSITION_KEYS = new Set(['f', 'j']);
 const DEFAULT_SPLIT_PERCENT = 50;
 const MIN_SPLIT_PERCENT = 25;
 const MAX_SPLIT_PERCENT = 75;
-/** 左:右が4:5を越えて右優勢になったら、詳細をキーボード右へ出す。 */
-const DETAIL_SIDE_MAX_SPLIT_PERCENT = (4 / 9) * 100;
 
 type RandomPracticeMode = 'word' | 'phrase';
 
@@ -1277,12 +1275,7 @@ export function InputConverterView() {
                 </strong>
               </p>
             </header>
-            <div
-              className="input-keyboard-content"
-              data-detail-layout={
-                splitPercent <= DETAIL_SIDE_MAX_SPLIT_PERCENT ? 'side' : 'stacked'
-              }
-            >
+            <div className="input-keyboard-content">
               <div className="input-keyboard-stage">
                 <div className="input-keyboard-main">
               <PhysicalKeyboard
