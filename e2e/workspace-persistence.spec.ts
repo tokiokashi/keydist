@@ -26,13 +26,13 @@ test('reload restores floating rect, mode and z-order (#413 phase5)', async ({ p
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   // input.lookup を小窓化して動かす
-  const lookupPanel = page.getByLabel('打ち方逆引き', { exact: true });
+  const lookupPanel = page.getByLabel('試し打ち文字列', { exact: true });
   await page
-    .getByLabel('打ち方逆引きパネルをクリックまたはドラッグして小窓表示')
-    .getByText('打ち方を調べる', { exact: true })
+    .getByLabel('試し打ち文字列パネルをクリックまたはドラッグして小窓表示')
+    .getByText('試し打ち文字列', { exact: true })
     .click();
   await expect(lookupPanel).toHaveAttribute('data-floating', 'true');
-  const lookupMove = page.getByLabel('打ち方逆引きパネルを移動');
+  const lookupMove = page.getByLabel('試し打ち文字列パネルを移動');
   let box = await lookupMove.boundingBox();
   expect(box).not.toBeNull();
   await page.mouse.move(box!.x + 60, box!.y + box!.height / 2);
@@ -99,12 +99,12 @@ test('restoring into a smaller viewport clamps the floating rect back into view'
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
-  const lookupPanel = page.getByLabel('打ち方逆引き', { exact: true });
+  const lookupPanel = page.getByLabel('試し打ち文字列', { exact: true });
   await page
-    .getByLabel('打ち方逆引きパネルをクリックまたはドラッグして小窓表示')
-    .getByText('打ち方を調べる', { exact: true })
+    .getByLabel('試し打ち文字列パネルをクリックまたはドラッグして小窓表示')
+    .getByText('試し打ち文字列', { exact: true })
     .click();
-  const lookupMove = page.getByLabel('打ち方逆引きパネルを移動');
+  const lookupMove = page.getByLabel('試し打ち文字列パネルを移動');
   const box = await lookupMove.boundingBox();
   expect(box).not.toBeNull();
   await page.mouse.move(box!.x + 60, box!.y + box!.height / 2);
@@ -147,7 +147,7 @@ test('a corrupt localStorage value falls back to defaults with no console error'
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   // 既定はすべてdocked
-  await expect(page.getByLabel('打ち方逆引き', { exact: true })).not.toHaveAttribute('data-floating');
+  await expect(page.getByLabel('試し打ち文字列', { exact: true })).not.toHaveAttribute('data-floating');
   await expect(page.getByLabel('入力詳細', { exact: true })).not.toHaveAttribute('data-floating');
 
   expect(errors).toEqual([]);
@@ -168,7 +168,7 @@ test('an unsupported version value also falls back to defaults with no console e
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  await expect(page.getByLabel('打ち方逆引き', { exact: true })).not.toHaveAttribute('data-floating');
+  await expect(page.getByLabel('試し打ち文字列', { exact: true })).not.toHaveAttribute('data-floating');
   expect(errors).toEqual([]);
 });
 
@@ -178,12 +178,12 @@ test('no in-progress layout animation right after a restoring reload', async ({ 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
-  const lookupPanel = page.getByLabel('打ち方逆引き', { exact: true });
+  const lookupPanel = page.getByLabel('試し打ち文字列', { exact: true });
   await page
-    .getByLabel('打ち方逆引きパネルをクリックまたはドラッグして小窓表示')
-    .getByText('打ち方を調べる', { exact: true })
+    .getByLabel('試し打ち文字列パネルをクリックまたはドラッグして小窓表示')
+    .getByText('試し打ち文字列', { exact: true })
     .click();
-  const lookupMove = page.getByLabel('打ち方逆引きパネルを移動');
+  const lookupMove = page.getByLabel('試し打ち文字列パネルを移動');
   const box = await lookupMove.boundingBox();
   expect(box).not.toBeNull();
   await page.mouse.move(box!.x + 60, box!.y + box!.height / 2);
