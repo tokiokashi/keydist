@@ -107,17 +107,20 @@ export function WorkspacePanel({
   const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
-    const clearPointerState = () => {
+    const clearPointerRefs = () => {
       operationRef.current = undefined;
       detachCleanupRef.current?.();
       detachCleanupRef.current = undefined;
       detachOperationRef.current = undefined;
+    };
+    const onBlur = () => {
+      clearPointerRefs();
       setDragging(false);
     };
-    window.addEventListener('blur', clearPointerState);
+    window.addEventListener('blur', onBlur);
     return () => {
-      window.removeEventListener('blur', clearPointerState);
-      clearPointerState();
+      window.removeEventListener('blur', onBlur);
+      clearPointerRefs();
     };
   }, []);
 
@@ -334,15 +337,7 @@ export function WorkspacePanel({
   const content = (
     <motion.section
       aria-label={ariaLabel}
-      animate={{
-        scale: mode === 'floating'
-          ? dragging
-            ? 1.012
-            : active
-              ? 1.003
-              : 1
-          : 1,
-      }}
+      animate={{ scale: mode === 'floating' && dragging ? 1.012 : 1 }}
       className={shellClassName}
       data-active={mode === 'floating' && active || undefined}
       data-dragging={dragging || undefined}
