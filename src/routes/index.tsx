@@ -19,8 +19,8 @@ function Home() {
           <span>既存の解析UIを開く</span>
         </Link>
         <Link className="route-card" to="/input">
-          <strong>Input</strong>
-          <span>Input Converter の新しい実装境界</span>
+          <strong>Tester</strong>
+          <span>Alternative Keyboard Layout Tester を開く</span>
         </Link>
       </div>
     </section>

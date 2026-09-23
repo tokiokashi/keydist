@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('Input Converter uses a resizable wide FHD workspace without test-mode scrolling', async ({ page }) => {
+test('Tester uses a resizable wide FHD workspace without test-mode scrolling', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/input');
 
@@ -8,7 +8,7 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   const settings = page.locator('.input-settings-panel');
-  const guide = page.getByLabel('レイヤーカンペ一覧');
+  const guide = page.getByLabel('Layer Guide');
   const capture = page.locator('.input-capture-panel');
   const keyboardPanel = page.locator('.input-keyboard-panel');
   const details = page.getByLabel('Key info.', { exact: true });
@@ -131,7 +131,7 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const panel = page.getByLabel('試し打ち文字列', { exact: true });
+  const panel = page.getByLabel('Practice Text', { exact: true });
   const lookup = page.getByLabel('打ちたい文字');
 
   // Header内buttonは通常操作のまま。
@@ -145,8 +145,8 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
   );
 
   await page
-    .getByLabel('試し打ち文字列パネルをクリックまたはドラッグして小窓表示')
-    .getByText('試し打ち文字列', { exact: true })
+    .getByLabel('Practice Textをクリックまたはドラッグして小窓表示')
+    .getByText('Practice Text', { exact: true })
     .click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect(lookup).toHaveValue('かな');
@@ -165,14 +165,14 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
   expect(Number.parseFloat(chrome.borderRadius)).toBeGreaterThan(0);
 
   const panelBox = await panel.boundingBox();
-  const backButton = panel.getByRole('button', { name: '試し打ち文字列パネルを元に戻す' });
+  const backButton = panel.getByRole('button', { name: 'Practice Textを元に戻す' });
   const backBox = await backButton.boundingBox();
   expect(panelBox).not.toBeNull();
   expect(backBox).not.toBeNull();
   expect(panelBox!.x + panelBox!.width - (backBox!.x + backBox!.width))
     .toBeLessThanOrEqual(20);
 
-  const resizeHandle = page.getByLabel('試し打ち文字列パネルのサイズを変更');
+  const resizeHandle = page.getByLabel('Practice Textのサイズを変更');
   const beforeResize = await panel.boundingBox();
   const resizeBox = await resizeHandle.boundingBox();
   expect(beforeResize).not.toBeNull();
@@ -200,13 +200,13 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
   await expect(panel).not.toHaveAttribute('data-floating');
 });
 
-test('試し打ち文字列はdocked/floating共通でpanel自身の横幅に応じてstackする', async ({ page }) => {
+test('Practice Textはdocked/floating共通でpanel自身の横幅に応じてstackする', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/input');
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const panel = page.getByLabel('試し打ち文字列', { exact: true });
+  const panel = page.getByLabel('Practice Text', { exact: true });
   const field = panel.locator('.input-lookup-field-body');
   const results = panel.locator('.input-lookup-results');
   const placement = async () => {
@@ -218,15 +218,15 @@ test('試し打ち文字列はdocked/floating共通でpanel自身の横幅に応
   await expect.poll(placement).toBe('side');
 
   await page
-    .getByLabel('試し打ち文字列パネルをクリックまたはドラッグして小窓表示')
-    .getByText('試し打ち文字列', { exact: true })
+    .getByLabel('Practice Textをクリックまたはドラッグして小窓表示')
+    .getByText('Practice Text', { exact: true })
     .click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
 
   const resizeTo = async (width: number, height: number) => {
     const [panelBox, handleBox] = await Promise.all([
       panel.boundingBox(),
-      page.getByLabel('試し打ち文字列パネルのサイズを変更').boundingBox(),
+      page.getByLabel('Practice Textのサイズを変更').boundingBox(),
     ]);
     expect(panelBox).not.toBeNull();
     expect(handleBox).not.toBeNull();
@@ -248,7 +248,7 @@ test('試し打ち文字列はdocked/floating共通でpanel自身の横幅に応
   await resizeTo(480, 220);
   await expect.poll(placement).toBe('stacked');
 
-  await panel.getByRole('button', { name: '試し打ち文字列パネルを元に戻す' }).click();
+  await panel.getByRole('button', { name: 'Practice Textを元に戻す' }).click();
   await expect(panel).not.toHaveAttribute('data-floating');
   await expect.poll(placement).toBe('side');
 });
@@ -386,14 +386,14 @@ test('設定panelは開閉controlを誤detachせず小窓化できる', async ({
   await expect(panel.locator('.input-settings-body')).toHaveCount(0);
   await panel.getByRole('button', { name: '設定を開く' }).click();
 
-  await page.getByLabel('設定パネルをクリックまたはドラッグして小窓表示')
+  await page.getByLabel('Settingsをクリックまたはドラッグして小窓表示')
     .getByText('設定', { exact: true })
     .click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect(page.getByLabel('配列', { exact: true })).toBeVisible();
 
   const beforeResize = await panel.boundingBox();
-  const resizeHandle = page.getByLabel('設定パネルのサイズを変更');
+  const resizeHandle = page.getByLabel('Settingsのサイズを変更');
   const resizeBox = await resizeHandle.boundingBox();
   expect(beforeResize).not.toBeNull();
   expect(resizeBox).not.toBeNull();
@@ -407,7 +407,7 @@ test('設定panelは開閉controlを誤detachせず小窓化できる', async ({
   await expect.poll(async () => (await panel.boundingBox())?.width ?? 0)
     .toBeGreaterThan(beforeResize!.width + 40);
 
-  await panel.getByRole('button', { name: '設定パネルを元に戻す' }).click();
+  await panel.getByRole('button', { name: 'Settingsを元に戻す' }).click();
   await expect(panel).not.toHaveAttribute('data-floating');
 });
 
@@ -420,7 +420,7 @@ test('入力panelは小窓化してもtyping sessionとcontrolsを維持する',
   const panel = page.locator('.input-capture-panel');
   const output = page.getByLabel('自由入力テキスト');
 
-  await page.getByLabel('テキスト入力パネルをクリックまたはドラッグして小窓表示').click();
+  await page.getByLabel('Text Inputをクリックまたはドラッグして小窓表示').click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await output.click();
   await page.keyboard.press('f');
@@ -428,7 +428,7 @@ test('入力panelは小窓化してもtyping sessionとcontrolsを維持する',
 
   await panel.getByRole('button', { name: 'クリア' }).click();
   await expect(output).toHaveValue('');
-  await panel.getByRole('button', { name: 'テキスト入力パネルを元に戻す' }).click();
+  await panel.getByRole('button', { name: 'Text Inputを元に戻す' }).click();
   await expect(panel).not.toHaveAttribute('data-floating');
 });
 
@@ -460,8 +460,8 @@ test('floating Keyboardのresponsiveは外側splitではなく小窓自身の幅
   await expect(splitter).toHaveAttribute('aria-valuenow', '44');
   await expect.poll(placement).toBe('side');
 
-  await page.getByLabel('キー入力表示パネルをクリックまたはドラッグして小窓表示')
-    .getByText('キー入力表示', { exact: true })
+  await page.getByLabel('Keyboard Viewをクリックまたはドラッグして小窓表示')
+    .getByText('Keyboard View', { exact: true })
     .click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect.poll(placement).toBe('side');
@@ -475,7 +475,7 @@ test('floating Keyboardのresponsiveは外側splitではなく小窓自身の幅
   await expect.poll(placement).toBe('side');
 
   // 小窓自身を狭めた時だけstackedへ切り替わる。
-  const resizeHandle = page.getByLabel('キー入力表示パネルのサイズを変更');
+  const resizeHandle = page.getByLabel('Keyboard Viewのサイズを変更');
   const resizeBox = await resizeHandle.boundingBox();
   expect(resizeBox).not.toBeNull();
   await page.mouse.move(
@@ -495,11 +495,11 @@ test('入力panelのresize handleはtextareaより前面で操作できる', asy
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   const panel = page.locator('.input-capture-panel');
-  await page.getByLabel('テキスト入力パネルをクリックまたはドラッグして小窓表示').click();
+  await page.getByLabel('Text Inputをクリックまたはドラッグして小窓表示').click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
 
   const before = await panel.boundingBox();
-  const handle = page.getByLabel('テキスト入力パネルのサイズを変更');
+  const handle = page.getByLabel('Text Inputのサイズを変更');
   const handleBox = await handle.boundingBox();
   expect(before).not.toBeNull();
   expect(handleBox).not.toBeNull();
@@ -524,7 +524,7 @@ test('Keyboard panelは表示controlsを保ったまま小窓化できる', asyn
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   const panel = page.locator('.input-keyboard-panel');
   const displayHeader = page.getByLabel('表示設定');
-  const keyboardHeader = page.getByLabel('キー入力表示パネルをクリックまたはドラッグして小窓表示');
+  const keyboardHeader = page.getByLabel('Keyboard Viewをクリックまたはドラッグして小窓表示');
   const dynamicGuide = page.getByLabel('動的ガイド');
 
   // Header内のcheckbox操作はdetachしない。
@@ -532,7 +532,7 @@ test('Keyboard panelは表示controlsを保ったまま小窓化できる', asyn
   await expect(panel).not.toHaveAttribute('data-floating');
   await dynamicGuide.click();
 
-  await keyboardHeader.getByText('キー入力表示', { exact: true }).click();
+  await keyboardHeader.getByText('Keyboard View', { exact: true }).click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect(page.getByRole('img', { name: '現在の物理キー状態' })).toBeVisible();
 
@@ -541,7 +541,7 @@ test('Keyboard panelは表示controlsを保ったまま小窓化できる', asyn
   await page.keyboard.press('f');
   await expect(output).toHaveValue('か');
 
-  await panel.getByRole('button', { name: 'キー入力表示パネルを元に戻す' }).click();
+  await panel.getByRole('button', { name: 'Keyboard Viewを元に戻す' }).click();
   await expect(panel).not.toHaveAttribute('data-floating');
 });
 
@@ -551,8 +551,8 @@ test('docked panel headerは閾値drag・cancel・keyboardを区別する', asyn
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const guide = page.getByLabel('レイヤーカンペ一覧');
-  const dockedHeader = page.getByLabel('レイヤーカンペを小窓表示');
+  const guide = page.getByLabel('Layer Guide');
+  const dockedHeader = page.getByLabel('Layer Guideを小窓表示');
   const headerBox = await dockedHeader.boundingBox();
   expect(headerBox).not.toBeNull();
   expect(await dockedHeader.evaluate((element) => getComputedStyle(element).touchAction))
@@ -578,14 +578,14 @@ test('docked panel headerは閾値drag・cancel・keyboardを区別する', asyn
   await page.mouse.up();
   await expect(guide).not.toHaveAttribute('data-dragging');
 
-  await page.getByRole('button', { name: 'レイヤーカンペを元に戻す' }).click();
+  await page.getByRole('button', { name: 'Layer Guideを元に戻す' }).click();
   await expect(guide).not.toHaveAttribute('data-floating');
 
   // Keyboard fallback.
   await dockedHeader.focus();
   await page.keyboard.press('Enter');
   await expect(guide).toHaveAttribute('data-floating', 'true');
-  await page.getByRole('button', { name: 'レイヤーカンペを元に戻す' }).click();
+  await page.getByRole('button', { name: 'Layer Guideを元に戻す' }).click();
 
   // blurでclick candidateを破棄し、後続moveがdetachを再開しない。
   const resetBox = await dockedHeader.boundingBox();
@@ -602,7 +602,7 @@ test('docked panel headerは閾値drag・cancel・keyboardを区別する', asyn
 
   // Header内の明示buttonはdrag detach surfaceにしない。
   if (await guide.getAttribute('data-floating') === 'true') {
-    await page.getByRole('button', { name: 'レイヤーカンペを元に戻す' }).click();
+    await page.getByRole('button', { name: 'Layer Guideを元に戻す' }).click();
   }
   await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
   await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
@@ -626,9 +626,9 @@ test('レイヤーカンペはWorkspace overlayで移動・リサイズしなが
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const guide = page.getByLabel('レイヤーカンペ一覧');
+  const guide = page.getByLabel('Layer Guide');
 
-  await page.getByLabel('レイヤーカンペを小窓表示').click();
+  await page.getByLabel('Layer Guideを小窓表示').click();
   await expect(guide).toHaveAttribute('data-floating', 'true');
   const moveHandle = page.getByLabel('レイヤーカンペを移動');
   const beforeMove = await guide.boundingBox();
@@ -645,7 +645,7 @@ test('レイヤーカンペはWorkspace overlayで移動・リサイズしなが
   expect(afterMove!.x).toBeGreaterThan(beforeMove!.x + 40);
   expect(afterMove!.y).toBeGreaterThanOrEqual(12);
 
-  const resizeHandle = page.getByLabel('レイヤーカンペのサイズを変更');
+  const resizeHandle = page.getByLabel('Layer Guideのサイズを変更');
   const beforeResize = await guide.boundingBox();
   const resizeBox = await resizeHandle.boundingBox();
   expect(beforeResize).not.toBeNull();
@@ -669,7 +669,7 @@ test('レイヤーカンペはWorkspace overlayで移動・リサイズしなが
   await expect(output).toHaveValue('か');
   await expect(guide).toHaveAttribute('data-floating', 'true');
 
-  await page.getByRole('button', { name: 'レイヤーカンペを元に戻す' }).click();
+  await page.getByRole('button', { name: 'Layer Guideを元に戻す' }).click();
   await expect(guide).not.toHaveAttribute('data-floating');
   await expect(guide).toBeVisible();
 });
@@ -680,8 +680,8 @@ test('floating panel dragはpointer中のrectを永続stateへ連打せず終了
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const guide = page.getByLabel('レイヤーカンペ一覧');
-  await page.getByLabel('レイヤーカンペを小窓表示').click();
+  const guide = page.getByLabel('Layer Guide');
+  await page.getByLabel('Layer Guideを小窓表示').click();
   await expect(guide).toHaveAttribute('data-floating', 'true');
 
   const persistedRect = async () => page.evaluate(() => {
@@ -728,8 +728,8 @@ test('Workspace animationはreduced-motionを尊重する', async ({ page }) => 
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const guide = page.getByLabel('レイヤーカンペ一覧');
-  await page.getByLabel('レイヤーカンペを小窓表示').click();
+  const guide = page.getByLabel('Layer Guide');
+  await page.getByLabel('Layer Guideを小窓表示').click();
   await expect(guide).toHaveAttribute('data-floating', 'true');
 
   const motionState = await guide.evaluate((element) => ({
@@ -750,7 +750,7 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
   await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
-  const guide = page.getByLabel('レイヤーカンペ一覧');
+  const guide = page.getByLabel('Layer Guide');
   const floatButtons = guide.locator('.input-layer-card-float');
   await expect.poll(() => floatButtons.count()).toBeGreaterThan(1);
 
@@ -853,8 +853,8 @@ test('#regression レイヤーカンペ本体を浮かせた状態でも入れ�
   // レイヤーカンペ本体を小窓化してから、その子である個別カンペカード2枚(A, B)も
   // それぞれ独立小窓化する。カードはガイドのReact子要素だがfloating-rootへ
   // portalされるため、クリックイベントはReactツリーを経由してガイドまで伝播する。
-  const guide = page.getByLabel('レイヤーカンペ一覧');
-  await page.getByLabel('レイヤーカンペを小窓表示').click();
+  const guide = page.getByLabel('Layer Guide');
+  await page.getByLabel('Layer Guideを小窓表示').click();
   await expect(guide).toHaveAttribute('data-floating', 'true');
 
   const floatButtons = guide.locator('.input-layer-card-float');
@@ -967,7 +967,7 @@ test('#regression Keyboardパネルのdocked headerはcheckbox Spaceを飲み込
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   const panel = page.locator('.input-keyboard-panel');
   const displayHeader = page.getByLabel('表示設定');
-  const keyboardHeader = page.getByLabel('キー入力表示パネルをクリックまたはドラッグして小窓表示');
+  const keyboardHeader = page.getByLabel('Keyboard Viewをクリックまたはドラッグして小窓表示');
   const layerGuideCheckbox = displayHeader.getByLabel('レイヤーカンペ', { exact: true });
 
   // checkboxへフォーカスしたSpaceは、headerのkeydown guardに飲まれず
@@ -1083,7 +1083,7 @@ test('Recognized detail keeps the same typography and height before and after in
   expect(afterBox!.height).toBe(beforeBox!.height);
 });
 
-test('Input Converter keeps desktop Y bounded and lets cheatsheets scroll when width causes wrapping', async ({ page }) => {
+test('Tester keeps desktop Y bounded and lets cheatsheets scroll when width causes wrapping', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 768 });
   await page.goto('/input');
 
@@ -1092,7 +1092,7 @@ test('Input Converter keeps desktop Y bounded and lets cheatsheets scroll when w
   await page.getByLabel('配列', { exact: true }).selectOption('tsuki-2-263');
   await expect(feature).toHaveAttribute('data-input-ready', 'tsuki-2-263');
 
-  const guide = page.getByLabel('レイヤーカンペ一覧');
+  const guide = page.getByLabel('Layer Guide');
   const displaySettings = page.getByLabel('表示設定');
   const keyboardPanel = page.locator('.input-keyboard-panel');
   const splitter = page.getByRole('separator', { name: 'カンペと入力領域の幅を調整' });
@@ -1124,7 +1124,7 @@ test('Input Converter keeps desktop Y bounded and lets cheatsheets scroll when w
   expect(viewportMetrics.document).toBeLessThanOrEqual(0);
 });
 
-test('Input Converter chooses the cheatsheet grid that maximizes readable card size', async ({ page }) => {
+test('Tester chooses the cheatsheet grid that maximizes readable card size', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/input');
 
@@ -1179,7 +1179,7 @@ test('レイヤーカンペ全体を小窓化して戻してもdocked gridの詰
   await settings.getByRole('button', { name: '設定を閉じる' }).click();
   await expect(settings.locator('.input-settings-body')).toHaveCount(0);
 
-  const guide = page.getByLabel('レイヤーカンペ一覧');
+  const guide = page.getByLabel('Layer Guide');
   const grid = guide.locator('.input-layer-guide-grid');
   const columns = async () => grid.evaluate((element) =>
     getComputedStyle(element).gridTemplateColumns
@@ -1190,10 +1190,10 @@ test('レイヤーカンペ全体を小窓化して戻してもdocked gridの詰
   await expect(page.locator('.input-layer-card')).toHaveCount(4);
   await expect.poll(columns).toBe(2);
 
-  await page.getByLabel('レイヤーカンペを小窓表示').click();
+  await page.getByLabel('Layer Guideを小窓表示').click();
   await expect(guide).toHaveAttribute('data-floating', 'true');
 
-  const resizeHandle = page.getByLabel('レイヤーカンペのサイズを変更');
+  const resizeHandle = page.getByLabel('Layer Guideのサイズを変更');
   const resizeBox = await resizeHandle.boundingBox();
   expect(resizeBox).not.toBeNull();
   await page.mouse.move(
@@ -1205,12 +1205,12 @@ test('レイヤーカンペ全体を小窓化して戻してもdocked gridの詰
   await page.mouse.up();
   await expect.poll(columns).toBe(1);
 
-  await page.getByRole('button', { name: 'レイヤーカンペを元に戻す' }).click();
+  await page.getByRole('button', { name: 'Layer Guideを元に戻す' }).click();
   await expect(guide).not.toHaveAttribute('data-floating');
   await expect.poll(columns).toBe(2);
 });
 
-test('Input Converter keeps browser key lifecycle consistent', async ({ page }) => {
+test('Tester keeps browser key lifecycle consistent', async ({ page }) => {
   await page.goto('/input');
 
   const feature = page.locator('.input-feature');
@@ -1282,7 +1282,7 @@ test('Input Converter keeps browser key lifecycle consistent', async ({ page }) 
 });
 
 
-test('Input Converter selects preset and saved custom physical geometry', async ({ page }) => {
+test('Tester selects preset and saved custom physical geometry', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('keydist:geometry-shapes', JSON.stringify([{
       id: 'shape-e2e-grid',
@@ -1331,7 +1331,7 @@ test('Input Converter selects preset and saved custom physical geometry', async 
 });
 
 
-test('Input Converter shows stable active layer, dynamic next-key guide and display toggles', async ({ page }) => {
+test('Tester shows stable active layer, dynamic next-key guide and display toggles', async ({ page }) => {
   await page.goto('/input');
   const feature = page.locator('.input-feature');
   const output = page.getByLabel('自由入力テキスト');
@@ -1367,7 +1367,7 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await page.keyboard.up('j');
   await expect(layerLabel).toContainText('通常');
 
-  await expect(page.getByLabel('レイヤーカンペ一覧')).toBeVisible();
+  await expect(page.getByLabel('Layer Guide')).toBeVisible();
   const layerGuideToggle = page.getByLabel('レイヤーカンペ', { exact: true });
   await layerGuideToggle.focus();
   await page.keyboard.press('Space');
@@ -1539,7 +1539,7 @@ test('ランダム練習はモードを保持し別停止ボタンで終了で�
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const assist = page.getByLabel('試し打ち文字列');
+  const assist = page.getByLabel('Practice Text');
   const lookup = page.getByLabel('打ちたい文字');
   const wordButton = page.getByRole('button', { name: 'ランダムな単語' });
 
@@ -1623,7 +1623,7 @@ test('ランダム練習は完全一致後も結果を残しEnterで次題へ進
   await expect(output).toHaveValue('');
   await expect(lookup).toHaveValue('まど');
   await expect(
-    page.getByLabel('試し打ち文字列').locator('.input-lookup-field-body'),
+    page.getByLabel('Practice Text').locator('.input-lookup-field-body'),
   ).toHaveAttribute('data-random-practice-mode', 'word');
   await expect(status).not.toHaveAttribute('data-complete');
   await expect(output).toBeFocused();
@@ -1706,7 +1706,7 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await page.goto('/input');
   const feature = page.locator('.input-feature');
   const lookup = page.getByLabel('打ちたい文字');
-  const results = page.getByLabel('試し打ち文字列').locator('.input-lookup-results');
+  const results = page.getByLabel('Practice Text').locator('.input-lookup-results');
 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });

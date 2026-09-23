@@ -276,28 +276,28 @@ export function InputConverterView() {
     () => createWorkspacePanelRegistry([
       {
         id: INPUT_SETTINGS_PANEL_ID,
-        title: '設定',
+        title: 'Settings',
         defaultDockSlot: 'input.sidebar.settings',
         minWidth: 320,
         minHeight: 80,
       },
       {
         id: INPUT_TYPING_PANEL_ID,
-        title: 'テキストを入力',
+        title: 'Text Input',
         defaultDockSlot: 'input.main.typing',
         minWidth: 320,
         minHeight: 160,
       },
       {
         id: INPUT_KEYBOARD_PANEL_ID,
-        title: 'キー入力表示',
+        title: 'Keyboard View',
         defaultDockSlot: 'input.main.keyboard',
         minWidth: 480,
         minHeight: 360,
       },
       {
         id: INPUT_LOOKUP_PANEL_ID,
-        title: '試し打ち文字列',
+        title: 'Practice Text',
         defaultDockSlot: 'input.keyboard.lookup',
         minWidth: 420,
         minHeight: 103,
@@ -311,7 +311,7 @@ export function InputConverterView() {
       },
       {
         id: INPUT_LAYER_GUIDE_PANEL_ID,
-        title: 'レイヤーカンペ',
+        title: 'Layer Guide',
         defaultDockSlot: 'input.sidebar.guide',
         minWidth: MIN_FLOATING_GUIDE_WIDTH,
         minHeight: MIN_FLOATING_GUIDE_HEIGHT,
@@ -711,7 +711,7 @@ export function InputConverterView() {
       <header className="input-page-heading">
         <div>
           <p className="eyebrow">Phase B · #270</p>
-          <h1>Input Converter</h1>
+          <h1>Alternative Keyboard Layout Tester</h1>
         </div>
         <p>
           選択した配列の canonical SemanticInput を使って、物理キーから文字列を直接生成します。
@@ -724,23 +724,23 @@ export function InputConverterView() {
       >
         <aside className="input-sidebar" aria-label="入力テスト設定とカンペ">
           <WorkspacePanel
-            ariaLabel="設定"
+            ariaLabel="Settings"
             className={settingsOpen
               ? 'input-settings-panel input-settings-panel-open'
               : 'input-settings-panel'}
             defaultFloatingHeight={240}
             defaultFloatingWidth={520}
-            dockedHeaderAriaLabel="設定パネルをクリックまたはドラッグして小窓表示"
+            dockedHeaderAriaLabel="Settingsをクリックまたはドラッグして小窓表示"
             floatOnHeaderClick
-            floatingHeaderAriaLabel="設定パネルを移動"
+            floatingHeaderAriaLabel="Settingsを移動"
             headerClassName="input-panel-heading"
             id={INPUT_SETTINGS_PANEL_ID}
             minHeight={80}
             minWidth={320}
-            resizeAriaLabel="設定パネルのサイズを変更"
+            resizeAriaLabel="Settingsのサイズを変更"
             renderHeader={({ mode, dock }) => (
               <>
-                <strong>設定</strong>
+                <strong>Settings</strong>
                 <button
                   aria-expanded={settingsOpen}
                   aria-label={settingsOpen ? '設定を閉じる' : '設定を開く'}
@@ -752,7 +752,7 @@ export function InputConverterView() {
                 </button>
                 {mode === 'floating' ? (
                   <button
-                    aria-label="設定パネルを元に戻す"
+                    aria-label="Settingsを元に戻す"
                     className="input-panel-dock"
                     onClick={dock}
                     type="button"
@@ -829,23 +829,23 @@ export function InputConverterView() {
           {showLayerGuide && (guideDefinitions.length > 0 || combinationLabels.length > 0) ? (
             <WorkspacePanel
               id={INPUT_LAYER_GUIDE_PANEL_ID}
-              ariaLabel="レイヤーカンペ一覧"
+              ariaLabel="Layer Guide"
               className="input-layer-guide"
               defaultFloatingWidth={560}
               defaultFloatingHeight={480}
               minWidth={MIN_FLOATING_GUIDE_WIDTH}
               minHeight={MIN_FLOATING_GUIDE_HEIGHT}
               floatOnHeaderClick
-              dockedHeaderAriaLabel="レイヤーカンペを小窓表示"
-              floatingHeaderAriaLabel="レイヤーカンペを移動"
-              resizeAriaLabel="レイヤーカンペのサイズを変更"
+              dockedHeaderAriaLabel="Layer Guideを小窓表示"
+              floatingHeaderAriaLabel="Layer Guideを移動"
+              resizeAriaLabel="Layer Guideのサイズを変更"
               renderHeader={({ mode, dock }) => (
                 <>
-                  <strong>レイヤーカンペ</strong>
+                  <strong>Layer Guide</strong>
                   <span>{guideDefinitions.length} 面</span>
                   {mode === 'floating' ? (
                     <button
-                      aria-label="レイヤーカンペを元に戻す"
+                      aria-label="Layer Guideを元に戻す"
                       className="input-layer-guide-dock"
                       onClick={(event) => {
                         event.stopPropagation();
@@ -1023,21 +1023,21 @@ export function InputConverterView() {
 
         <section className="input-main">
           <WorkspacePanel
-            ariaLabel="テキストを入力"
+            ariaLabel="Text Input"
             className="input-capture-panel"
             defaultFloatingHeight={180}
             defaultFloatingWidth={520}
-            dockedHeaderAriaLabel="テキスト入力パネルをクリックまたはドラッグして小窓表示"
+            dockedHeaderAriaLabel="Text Inputをクリックまたはドラッグして小窓表示"
             floatOnHeaderClick
-            floatingHeaderAriaLabel="テキスト入力パネルを移動"
+            floatingHeaderAriaLabel="Text Inputを移動"
             headerClassName="input-capture-heading"
             id={INPUT_TYPING_PANEL_ID}
             minHeight={160}
             minWidth={320}
-            resizeAriaLabel="テキスト入力パネルのサイズを変更"
+            resizeAriaLabel="Text Inputのサイズを変更"
             renderHeader={({ mode, dock }) => (
               <>
-                <strong>テキストを入力</strong>
+                <strong>Text Input</strong>
                 {randomPracticeMode !== null ? (
                   <span
                     className="input-random-practice-status"
@@ -1052,7 +1052,7 @@ export function InputConverterView() {
                 <button type="button" onClick={session.clear}>クリア</button>
                 {mode === 'floating' ? (
                   <button
-                    aria-label="テキスト入力パネルを元に戻す"
+                    aria-label="Text Inputを元に戻す"
                     onClick={dock}
                     type="button"
                   >
@@ -1125,24 +1125,24 @@ export function InputConverterView() {
           </WorkspacePanel>
 
           <WorkspacePanel
-            ariaLabel="キー入力表示"
+            ariaLabel="Keyboard View"
             className="input-keyboard-panel"
             defaultFloatingHeight={560}
             defaultFloatingWidth={760}
-            dockedHeaderAriaLabel="キー入力表示パネルをクリックまたはドラッグして小窓表示"
+            dockedHeaderAriaLabel="Keyboard Viewをクリックまたはドラッグして小窓表示"
             floatOnHeaderClick
-            floatingHeaderAriaLabel="キー入力表示パネルを移動"
+            floatingHeaderAriaLabel="Keyboard Viewを移動"
             headerClassName="input-keyboard-panel-heading"
             id={INPUT_KEYBOARD_PANEL_ID}
             minHeight={360}
             minWidth={480}
-            resizeAriaLabel="キー入力表示パネルのサイズを変更"
+            resizeAriaLabel="Keyboard Viewのサイズを変更"
             renderHeader={({ mode, dock }) => (
               <>
-                <strong>キー入力表示</strong>
+                <strong>Keyboard View</strong>
                 {mode === 'floating' ? (
                   <button
-                    aria-label="キー入力表示パネルを元に戻す"
+                    aria-label="Keyboard Viewを元に戻す"
                     className="input-panel-dock"
                     onClick={dock}
                     type="button"
@@ -1287,21 +1287,21 @@ export function InputConverterView() {
               />
                 </div>
                 <WorkspacePanel
-                  ariaLabel="試し打ち文字列"
+                  ariaLabel="Practice Text"
                   className="input-assist-slot"
                   defaultFloatingHeight={240}
                   defaultFloatingWidth={720}
-                  dockedHeaderAriaLabel="試し打ち文字列パネルをクリックまたはドラッグして小窓表示"
+                  dockedHeaderAriaLabel="Practice Textをクリックまたはドラッグして小窓表示"
                   floatOnHeaderClick
-                  floatingHeaderAriaLabel="試し打ち文字列パネルを移動"
+                  floatingHeaderAriaLabel="Practice Textを移動"
                   headerClassName="input-lookup-field-heading"
                   id={INPUT_LOOKUP_PANEL_ID}
                   minHeight={103}
                   minWidth={420}
-                  resizeAriaLabel="試し打ち文字列パネルのサイズを変更"
+                  resizeAriaLabel="Practice Textのサイズを変更"
                   renderHeader={({ mode, dock }) => (
                     <>
-                      <span>試し打ち文字列</span>
+                      <span>Practice Text</span>
                       <span className="input-random-samples">
                         <span>ランダム</span>
                         <button
@@ -1337,7 +1337,7 @@ export function InputConverterView() {
                       </span>
                       {mode === 'floating' ? (
                         <button
-                          aria-label="試し打ち文字列パネルを元に戻す"
+                          aria-label="Practice Textを元に戻す"
                           className="input-panel-dock"
                           onClick={dock}
                           type="button"
