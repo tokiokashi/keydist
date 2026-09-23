@@ -913,7 +913,7 @@ h1 {
 
 .input-assist-slot {
   display: grid;
-  grid-template-columns: minmax(9rem, 0.55fr) minmax(0, 1.45fr);
+  grid-template-columns: minmax(17rem, 0.7fr) minmax(0, 1.3fr);
   gap: 0.65rem;
   align-items: center;
   min-height: 3.4rem;
@@ -933,7 +933,8 @@ h1 {
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.35rem;
+  white-space: nowrap;
 }
 
 .input-lookup-field-heading > span:first-child {
@@ -945,22 +946,64 @@ h1 {
 .input-random-samples {
   display: inline-flex;
   min-width: 0;
+  flex: 0 0 auto;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.18rem;
+  margin-left: auto;
   color: #686862;
-  font-size: 0.64rem;
+  font-size: 0.6rem;
   white-space: nowrap;
 }
 
 .input-random-samples button {
-  min-height: 1.45rem;
-  padding: 0 0.38rem;
+  min-height: 1.35rem;
+  padding: 0 0.28rem;
   border: 1px solid #c9c9c3;
   border-radius: 0.35rem;
   background: #fff;
   font: inherit;
   color: #171717;
   cursor: pointer;
+}
+
+.input-random-samples button[data-active] {
+  border-color: #4a3aa7;
+  background: #4a3aa7;
+  color: #fff;
+}
+
+.input-random-samples button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.input-random-samples .input-random-stop {
+  border-color: #aaa9a3;
+  background: #f3f3f0;
+  color: #454540;
+}
+
+.input-capture-heading > .input-random-practice-status {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid #d6d6d1;
+  border-radius: 999px;
+  background: #f7f7f4;
+  color: #5c5c57;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.input-capture-heading > .input-random-practice-status[data-complete] {
+  border-color: #4a3aa7;
+  background: color-mix(in srgb, #4a3aa7 10%, #fff);
+  color: #342879;
+  box-shadow: 0 0 0 1px color-mix(in srgb, #4a3aa7 22%, transparent);
 }
 
 .input-lookup-field input {

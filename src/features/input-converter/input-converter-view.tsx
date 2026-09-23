@@ -99,6 +99,8 @@ const MAX_SPLIT_PERCENT = 75;
 /** 左:右が4:5を越えて右優勢になったら、詳細をキーボード右へ出す。 */
 const DETAIL_SIDE_MAX_SPLIT_PERCENT = (4 / 9) * 100;
 
+type RandomPracticeMode = 'word' | 'phrase';
+
 function clampSplitPercent(value: number): number {
   return Math.min(MAX_SPLIT_PERCENT, Math.max(MIN_SPLIT_PERCENT, value));
 }
@@ -264,6 +266,8 @@ export function InputConverterView() {
   const [splitPercent, setSplitPercent] = useState(DEFAULT_SPLIT_PERCENT);
   const [lookupQuery, setLookupQuery] = useState('');
   const [lookupStepIndex, setLookupStepIndex] = useState(0);
+  const [randomPracticeMode, setRandomPracticeMode] =
+    useState<RandomPracticeMode | null>(null);
   const lastLookupRecognitionRef = useRef(session.lastRecognized);
   const guideGridRef = useRef<HTMLDivElement>(null);
   const layerGuideRef = useRef<HTMLElement>(null);
@@ -452,6 +456,14 @@ export function InputConverterView() {
     () => compactLayerGuideDefinitions(layout),
     [layout],
   );
+  const playableRandomSamples = useMemo(() => ({
+    words: JAPANESE_INPUT_SAMPLE_POOLS.words.filter(
+      (sample) => reverseLookup(layout, sample, 1).length > 0,
+    ),
+    phrases: JAPANESE_INPUT_SAMPLE_POOLS.phrases.filter(
+      (sample) => reverseLookup(layout, sample, 1).length > 0,
+    ),
+  }), [layout]);
   const lookupRoutes = useMemo(
     () => reverseLookup(layout, lookupQuery, 3),
     [layout, lookupQuery],
@@ -582,6 +594,38 @@ export function InputConverterView() {
       : browserCodesForPhysicalKey(bindingTargetKey, browserBindings),
     [bindingTargetKey, browserBindings],
   );
+
+  const randomPoolForMode = (mode: RandomPracticeMode): readonly string[] =>
+    mode === 'word' ? playableRandomSamples.words : playableRandomSamples.phrases;
+
+  const focusCapture = () => {
+    requestAnimationFrame(() => session.captureRef.current?.focus());
+  };
+
+  const advanceRandomPractice = (mode: RandomPracticeMode) => {
+    const next = pickRandomSample(randomPoolForMode(mode), lookupQuery);
+    if (next.length === 0) return false;
+    session.clear();
+    setLookupQuery(next);
+    setLookupStepIndex(0);
+    focusCapture();
+    return true;
+  };
+
+  const startOrAdvanceRandomPractice = (mode: RandomPracticeMode) => {
+    if (!advanceRandomPractice(mode)) return;
+    setRandomPracticeMode(mode);
+  };
+
+  const stopRandomPractice = () => {
+    setRandomPracticeMode(null);
+    focusCapture();
+  };
+
+  const randomPracticeComplete = randomPracticeMode !== null
+    && lookupQuery.length > 0
+    && session.text === lookupQuery
+    && session.pressedKeys.length === 0;
 
   useEffect(() => {
     setLookupStepIndex(0);
@@ -724,6 +768,7 @@ export function InputConverterView() {
                           )
                           : 'jis-row-staggered');
                     }
+                    setRandomPracticeMode(null);
                     setLayout(next);
                   }}
                 >
@@ -964,6 +1009,17 @@ export function InputConverterView() {
           <section className="input-capture-panel">
             <header className="input-capture-heading">
               <strong>入力</strong>
+              {randomPracticeMode !== null ? (
+                <span
+                  className="input-random-practice-status"
+                  data-complete={randomPracticeComplete || undefined}
+                  role="status"
+                >
+                  {randomPracticeComplete
+                    ? `${randomPracticeMode === 'word' ? '単語' : '文章'}モード · 完成！ Enterで次へ`
+                    : `${randomPracticeMode === 'word' ? '単語' : '文章'}モード · 打ち切ったら Enterで次へ`}
+                </span>
+              ) : null}
               <button type="button" onClick={session.clear}>クリア</button>
             </header>
             <textarea
@@ -975,11 +1031,21 @@ export function InputConverterView() {
               aria-describedby="input-capture-help"
               data-active={session.active || undefined}
               ref={session.captureRef}
+              onKeyDownCapture={(event) => {
+                if (randomPracticeMode === null || event.key !== 'Enter') return;
+                event.preventDefault();
+                event.stopPropagation();
+                if (!randomPracticeComplete) return;
+                advanceRandomPractice(randomPracticeMode);
+              }}
               placeholder="ここをクリックして、そのまま打鍵してください。"
             />
             <p className="input-capture-hint" id="input-capture-help">
               {session.active ? '入力を受け付けています。' : '入力欄をクリックすると入力を開始します。'}
-              {' '}Backspaceで1文字削除し、Enterで改行します。
+              {' '}Backspaceで1文字削除します。
+              {randomPracticeMode === null
+                ? ' Enterで改行します。'
+                : ' ランダム練習中は完成後Enterで次のお題へ進みます。'}
               {escapeIsLayoutInput ? ' Escは配列入力として扱います。' : ' Escで全削除します。'}
               {session.composing ? ' IME composition中は認識を停止しています。' : ''}
             </p>
@@ -1117,7 +1183,11 @@ export function InputConverterView() {
                 }}
               />
                 </div>
-                <section className="input-assist-slot" aria-label="打ち方逆引き">
+                <section
+                  className="input-assist-slot"
+                  aria-label="打ち方逆引き"
+                  data-random-practice-mode={randomPracticeMode ?? undefined}
+                >
               <div className="input-lookup-field">
                 <div className="input-lookup-field-heading">
                   <span>打ち方を調べる</span>
@@ -1125,22 +1195,34 @@ export function InputConverterView() {
                     <span>ランダム</span>
                     <button
                       aria-label="ランダムな単語"
-                      onClick={() => setLookupQuery(
-                        pickRandomSample(JAPANESE_INPUT_SAMPLE_POOLS.words, lookupQuery),
-                      )}
+                      aria-pressed={randomPracticeMode === 'word'}
+                      data-active={randomPracticeMode === 'word' || undefined}
+                      disabled={playableRandomSamples.words.length === 0}
+                      onClick={() => startOrAdvanceRandomPractice('word')}
                       type="button"
                     >
                       単語
                     </button>
                     <button
                       aria-label="ランダムな文章"
-                      onClick={() => setLookupQuery(
-                        pickRandomSample(JAPANESE_INPUT_SAMPLE_POOLS.phrases, lookupQuery),
-                      )}
+                      aria-pressed={randomPracticeMode === 'phrase'}
+                      data-active={randomPracticeMode === 'phrase' || undefined}
+                      disabled={playableRandomSamples.phrases.length === 0}
+                      onClick={() => startOrAdvanceRandomPractice('phrase')}
                       type="button"
                     >
                       文章
                     </button>
+                    {randomPracticeMode !== null ? (
+                      <button
+                        aria-label="ランダム練習を停止"
+                        className="input-random-stop"
+                        onClick={stopRandomPractice}
+                        type="button"
+                      >
+                        停止
+                      </button>
+                    ) : null}
                   </span>
                 </div>
                 <input
@@ -1148,6 +1230,7 @@ export function InputConverterView() {
                   type="text"
                   value={lookupQuery}
                   onChange={(event) => {
+                    setRandomPracticeMode(null);
                     setLookupQuery(event.target.value);
                     setLookupStepIndex(0);
                   }}
