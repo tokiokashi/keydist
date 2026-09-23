@@ -14,6 +14,13 @@ test('legacy Analyzer stays operational when shared layer/picker helpers change'
   await page.waitForTimeout(250);
   expect(pageErrors, 'legacy startup must not throw before controls initialize').toEqual([]);
 
+  await expect(page.locator('#analyzer-react-shell')).toHaveAttribute('data-analyzer-react-shell', 'mounted');
+  const mode = page.locator('#mode');
+  await expect(mode).toHaveValue('ja');
+  await mode.selectOption('en');
+  await expect(mode).toHaveValue('en');
+  await mode.selectOption('ja');
+
   const layout = page.locator('#detail-layout');
   await expect(layout).toBeVisible();
   await expect(layout.locator('option[value="naginata-v18"]')).toHaveCount(1);
