@@ -67,11 +67,31 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   expect(viewportMetrics.body).toBeLessThanOrEqual(0);
   expect(viewportMetrics.document).toBeLessThanOrEqual(0);
 
-  await splitter.focus();
-  await page.keyboard.press('Home');
-
   const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
   const keyboardMain = page.locator('.input-keyboard-main');
+  const keyboardContent = page.locator('.input-keyboard-content');
+
+  // 1:1では縦積み。入力詳細の見出し行は持たず、2要素だけを横並びにする。
+  await expect(keyboardContent).toHaveAttribute('data-detail-layout', 'stacked');
+  await expect(details.locator('.input-debug-heading')).toHaveCount(0);
+  const stackedSections = details.locator('.input-inspector > section');
+  const stackedBoxes = await stackedSections.evaluateAll((elements) =>
+    elements.map((element) => element.getBoundingClientRect()));
+  expect(stackedBoxes).toHaveLength(2);
+  expect(Math.abs(stackedBoxes[0]!.top - stackedBoxes[1]!.top))
+    .toBeLessThanOrEqual(1);
+
+  // 左:右=46:54付近までは縦積み。
+  await splitter.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(splitter).toHaveAttribute('aria-valuenow', '46');
+  await expect(keyboardContent).toHaveAttribute('data-detail-layout', 'stacked');
+
+  // 44:56で4:5より右側が大きくなったら、詳細をキーボード右へ移す。
+  await page.keyboard.press('ArrowLeft');
+  await expect(splitter).toHaveAttribute('aria-valuenow', '44');
+  await expect(keyboardContent).toHaveAttribute('data-detail-layout', 'side');
+
   const [wideKeyboardBox, keyboardMainBox, wideDetailsBox] = await Promise.all([
     keyboard.boundingBox(),
     keyboardMain.boundingBox(),
@@ -80,7 +100,10 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   expect(wideKeyboardBox).not.toBeNull();
   expect(keyboardMainBox).not.toBeNull();
   expect(wideDetailsBox).not.toBeNull();
-  expect(wideDetailsBox!.height).toBeGreaterThanOrEqual(110);
+  expect(wideDetailsBox!.x).toBeGreaterThan(
+    keyboardMainBox!.x + keyboardMainBox!.width,
+  );
+  expect(wideDetailsBox!.width).toBeLessThanOrEqual(140);
   expect(wideKeyboardBox!.height).toBeLessThanOrEqual(keyboardMainBox!.height + 1);
 
   const before = await layerLabel.boundingBox();
@@ -163,6 +186,8 @@ test('Recognized detail keeps the same typography and height before and after in
     .locator('.input-inspector > section')
     .nth(1);
   const empty = recognizedSection.locator('.input-recognized-empty');
+  await expect(empty).toHaveText('-');
+  await expect(recognizedSection.getByRole('heading', { name: 'Recognized' })).toBeVisible();
 
   const beforeBox = await recognizedSection.boundingBox();
   const emptyFontSize = await empty.evaluate(
@@ -595,6 +620,20 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   const guide = page.getByLabel('入力順ガイド');
   await expect(guide).toContainText('1 / 2');
   await expect(guide).toContainText('か');
+  const previousButton = page.getByRole('button', { name: '前の入力単位' });
+  const nextButton = page.getByRole('button', { name: '次の入力単位' });
+  const progress = guide.locator('.input-lookup-progress');
+  const [previousBox, nextBox, progressBox] = await Promise.all([
+    previousButton.boundingBox(),
+    nextButton.boundingBox(),
+    progress.boundingBox(),
+  ]);
+  expect(previousBox).not.toBeNull();
+  expect(nextBox).not.toBeNull();
+  expect(progressBox).not.toBeNull();
+  expect(previousBox!.x).toBeLessThan(nextBox!.x);
+  expect(nextBox!.x + nextBox!.width).toBeLessThan(progressBox!.x);
+  expect(nextBox!.x - (previousBox!.x + previousBox!.width)).toBeLessThanOrEqual(6);
   await expect(keyboard.locator('[data-key-id="f"]')).toHaveAttribute('data-lookup', 'true');
   await expect(keyboard.locator('[data-key-id="m"]')).not.toHaveAttribute('data-lookup', 'true');
 
@@ -606,6 +645,11 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
 
   await page.getByRole('button', { name: '前の入力単位' }).click();
   await expect(guide).toContainText('1 / 2');
+
+  await lookup.fill('せ');
+  await expect(guide).toContainText('せ');
+  await expect(keyboard.locator('[data-key-id="a"] .physical-keyboard-legend'))
+    .toHaveText('せ');
 
   await lookup.fill('ぎゃ');
   await expect(results).toContainText('H + J + W');

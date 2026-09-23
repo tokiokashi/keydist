@@ -50,6 +50,7 @@ test('reverseLookupRouteLabelはchordとsequenceを区別して表示する', ()
       output: 'x',
       origin: 'face',
       actions: [['thumb-r'], ['h', 'j']],
+      aggregationGroupIds: ['layer:test'],
     }],
   }), '右親指 → H + J');
 });
@@ -60,5 +61,6 @@ test('reverseLookupStepLabelは1入力単位のaction順を表示する', () => 
     output: 'x',
     origin: 'face',
     actions: [['thumb-r'], ['h', 'j']],
+    aggregationGroupIds: ['layer:test'],
   }), '右親指 → H + J');
 });

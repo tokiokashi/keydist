@@ -9,6 +9,7 @@ export interface ReverseLookupStep {
   readonly output: string;
   readonly actions: readonly (readonly string[])[];
   readonly origin: InputAlternative['origin'];
+  readonly aggregationGroupIds: readonly string[];
 }
 
 export interface ReverseLookupRoute {
@@ -57,6 +58,9 @@ function stepFromAlternative(
     origin: alternative.origin,
     actions: alternative.baseRealizations.flatMap((realization) =>
       realization.actions.map((action) => [...action])),
+    aggregationGroupIds: [...new Set(
+      alternative.semanticInputs.map((input) => input.aggregationGroupId),
+    )],
   };
 }
 

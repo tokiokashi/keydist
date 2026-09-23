@@ -282,7 +282,6 @@ h1 {
 .input-panel-heading,
 .input-capture-heading,
 .input-keyboard-heading,
-.input-debug-heading,
 .input-layer-guide > header {
   display: flex;
   align-items: center;
@@ -467,8 +466,7 @@ h1 {
   margin-bottom: 0.45rem;
 }
 
-.input-capture-heading > strong,
-.input-debug-heading > strong {
+.input-capture-heading > strong {
   font-size: 0.78rem;
 }
 
@@ -611,6 +609,28 @@ h1 {
 .input-key-binding-inline .input-binding-add[data-capturing] {
   border-color: #4a3aa7;
   box-shadow: 0 0 0 1px #4a3aa7;
+}
+
+.input-keyboard-content {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  min-width: 0;
+  min-height: 0;
+}
+
+.input-keyboard-content[data-detail-layout="side"] {
+  grid-template-columns: minmax(0, 1fr) minmax(7rem, 8rem);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.input-keyboard-stage {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
 }
 
 .input-keyboard-main {
@@ -867,6 +887,12 @@ h1 {
   margin-bottom: 0.22rem;
 }
 
+.input-lookup-nav {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 0.2rem;
+}
+
 .input-lookup-guide button {
   flex: 0 0 auto;
   width: 1.55rem;
@@ -940,23 +966,35 @@ h1 {
 }
 
 .input-debug {
-  flex: 0 0 auto;
-  min-height: 7rem;
-  max-height: 9rem;
+  min-width: 0;
+  min-height: 0;
   overflow: auto;
 }
 
-.input-debug-heading {
-  min-height: 2.35rem;
-  padding: 0.55rem 0.7rem;
-  border-bottom: 1px solid #e2e2dd;
+.input-keyboard-content > .input-debug {
+  align-self: stretch;
 }
 
 .input-inspector {
   display: grid;
-  grid-template-columns: minmax(8rem, 0.7fr) minmax(14rem, 1.3fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.65rem;
   padding: 0.65rem;
+}
+
+.input-keyboard-content[data-detail-layout="stacked"] > .input-debug {
+  min-height: 4.5rem;
+  max-height: 6.5rem;
+}
+
+.input-keyboard-content[data-detail-layout="stacked"] .input-inspector {
+  grid-template-columns: minmax(8rem, 0.7fr) minmax(14rem, 1.3fr);
+  gap: 0.45rem;
+  padding: 0.4rem;
+}
+
+.input-keyboard-content[data-detail-layout="stacked"] .input-inspector section {
+  padding: 0.45rem 0.55rem;
 }
 
 .input-inspector section {

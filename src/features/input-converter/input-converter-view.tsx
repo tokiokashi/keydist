@@ -89,6 +89,8 @@ const HOME_POSITION_KEYS = new Set(['f', 'j']);
 const DEFAULT_SPLIT_PERCENT = 50;
 const MIN_SPLIT_PERCENT = 25;
 const MAX_SPLIT_PERCENT = 75;
+/** 左:右が4:5を越えて右優勢になったら、詳細をキーボード右へ出す。 */
+const DETAIL_SIDE_MAX_SPLIT_PERCENT = (4 / 9) * 100;
 
 function clampSplitPercent(value: number): number {
   return Math.min(MAX_SPLIT_PERCENT, Math.max(MIN_SPLIT_PERCENT, value));
@@ -184,7 +186,7 @@ function RecognizedDetail({
   if (recognized.length === 0) {
     return (
       <p className="input-muted input-recognized-empty">
-        まだ入力は確定していません。
+        -
       </p>
     );
   }
@@ -348,6 +350,10 @@ export function InputConverterView() {
     () => presentationTriggerColorSlots(layout),
     [layout],
   );
+  const guideDefinitions = useMemo(
+    () => compactLayerGuideDefinitions(layout),
+    [layout],
+  );
   const lookupRoutes = useMemo(
     () => reverseLookup(layout, lookupQuery, 3),
     [layout, lookupQuery],
@@ -359,6 +365,22 @@ export function InputConverterView() {
   const lookupKeys = useMemo(() => new Set(
     activeLookupStep?.actions.flatMap((action) => action) ?? [],
   ), [activeLookupStep]);
+  const lookupLegendMap = useMemo(() => {
+    if (activeLookupStep === undefined) return new Map<string, string>();
+    const guideIds = new Set(guideDefinitions.map((definition) => definition.id));
+    const legends = new Map<string, string>();
+    for (const id of activeLookupStep.aggregationGroupIds) {
+      if (!guideIds.has(id)) continue;
+      for (const [key, label] of aggregationLegendMap(layout, id)) {
+        const current = legends.get(key);
+        if (current === undefined) legends.set(key, label);
+        else if (!current.split(' / ').includes(label)) {
+          legends.set(key, `${current} / ${label}`);
+        }
+      }
+    }
+    return legends;
+  }, [activeLookupStep, guideDefinitions, layout]);
   const patternResult = useMemo(() => {
     const result = matchKeyPatterns(
       layout,
@@ -407,7 +429,10 @@ export function InputConverterView() {
         return [
           key.id,
           {
-            legend: guideLegend ?? layout.legends.get(key.id) ?? '',
+            legend: lookupLegendMap.get(key.id)
+              ?? guideLegend
+              ?? layout.legends.get(key.id)
+              ?? '',
             secondaryLegend: key.id === THUMB_KEY.LT || key.id === THUMB_KEY.RT
               ? browserCodesForPhysicalKey(key.id, browserBindings).join(' / ') || '未割当'
               : key.id,
@@ -434,12 +459,9 @@ export function InputConverterView() {
     layerKeyColorSlots,
     layerKeys,
     lookupKeys,
+    lookupLegendMap,
     visibleKeys,
   ]);
-  const guideDefinitions = useMemo(
-    () => compactLayerGuideDefinitions(layout),
-    [layout],
-  );
   const combinationLabels = useMemo(() => {
     const layerLabels = new Set(guideDefinitions.map((definition) => definition.label));
     return semanticCombinationLabels(layout)
@@ -809,7 +831,14 @@ export function InputConverterView() {
                 </strong>
               </p>
             </header>
-            <div className="input-keyboard-main">
+            <div
+              className="input-keyboard-content"
+              data-detail-layout={
+                splitPercent <= DETAIL_SIDE_MAX_SPLIT_PERCENT ? 'side' : 'stacked'
+              }
+            >
+              <div className="input-keyboard-stage">
+                <div className="input-keyboard-main">
               <PhysicalKeyboard
                 ariaLabel="現在の物理キー状態"
                 geometryId={geometry.id}
@@ -822,8 +851,8 @@ export function InputConverterView() {
                   setBindingCapturing(true);
                 }}
               />
-            </div>
-            <section className="input-assist-slot" aria-label="打ち方逆引き">
+                </div>
+                <section className="input-assist-slot" aria-label="打ち方逆引き">
               <label className="input-lookup-field">
                 <span>打ち方を調べる</span>
                 <input
@@ -846,14 +875,25 @@ export function InputConverterView() {
                 ) : (
                   <>
                     <div className="input-lookup-guide" aria-label="入力順ガイド">
-                      <button
-                        aria-label="前の入力単位"
-                        disabled={lookupStepIndex <= 0}
-                        onClick={() => setLookupStepIndex((current) => Math.max(0, current - 1))}
-                        type="button"
-                      >
-                        ←
-                      </button>
+                      <span className="input-lookup-nav">
+                        <button
+                          aria-label="前の入力単位"
+                          disabled={lookupStepIndex <= 0}
+                          onClick={() => setLookupStepIndex((current) => Math.max(0, current - 1))}
+                          type="button"
+                        >
+                          ←
+                        </button>
+                        <button
+                          aria-label="次の入力単位"
+                          disabled={lookupStepIndex >= activeLookupRoute.steps.length - 1}
+                          onClick={() => setLookupStepIndex((current) =>
+                            Math.min(activeLookupRoute.steps.length - 1, current + 1))}
+                          type="button"
+                        >
+                          →
+                        </button>
+                      </span>
                       <span className="input-lookup-progress">
                         {Math.min(lookupStepIndex + 1, activeLookupRoute.steps.length)}
                         {' / '}
@@ -861,15 +901,6 @@ export function InputConverterView() {
                       </span>
                       <strong>{activeLookupStep.output}</strong>
                       <code>{reverseLookupStepLabel(activeLookupStep)}</code>
-                      <button
-                        aria-label="次の入力単位"
-                        disabled={lookupStepIndex >= activeLookupRoute.steps.length - 1}
-                        onClick={() => setLookupStepIndex((current) =>
-                          Math.min(activeLookupRoute.steps.length - 1, current + 1))}
-                        type="button"
-                      >
-                        →
-                      </button>
                     </div>
                     <ol>
                       {lookupRoutes.map((route, index) => (
@@ -887,22 +918,21 @@ export function InputConverterView() {
                     </ol>
                   </>
                 )}
+                  </div>
+                </section>
               </div>
-            </section>
-          </section>
 
-          <section className="input-debug" aria-label="入力詳細">
-            <header className="input-debug-heading">
-              <strong>入力詳細</strong>
-            </header>
-            <div className="input-inspector">
-              <section>
-                <h2>Pressed</h2>
-                <p>{session.pressedKeys.length > 0 ? session.pressedKeys.join(' + ') : '—'}</p>
-              </section>
-              <section>
-                <h2>Recognized / realized action</h2>
-                <RecognizedDetail recognized={session.lastRecognized} />
+              <section className="input-debug" aria-label="入力詳細">
+                <div className="input-inspector">
+                  <section>
+                    <h2>Pressed</h2>
+                    <p>{session.pressedKeys.length > 0 ? session.pressedKeys.join(' + ') : '—'}</p>
+                  </section>
+                  <section>
+                    <h2>Recognized</h2>
+                    <RecognizedDetail recognized={session.lastRecognized} />
+                  </section>
+                </div>
               </section>
             </div>
           </section>
