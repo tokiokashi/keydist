@@ -2,22 +2,15 @@ import { readFile } from 'node:fs/promises';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
 import { nitro } from 'nitro/vite';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin, type ViteDevServer } from 'vite';
 
 const base = process.env.KEYDIST_BASE_PATH ?? '/';
 
-function legacyAnalyzerDevEntry() {
+function legacyAnalyzerDevEntry(): Plugin {
   return {
     name: 'keydist-legacy-analyzer-dev-entry',
     enforce: 'pre' as const,
-    configureServer(server: {
-      middlewares: { use: (handler: (req: { url?: string }, res: {
-        statusCode: number;
-        setHeader: (name: string, value: string) => void;
-        end: (body: string) => void;
-      }, next: (error?: unknown) => void) => void };
-      transformIndexHtml: (url: string, html: string) => Promise<string>;
-    }) {
+    configureServer(server: ViteDevServer) {{
       server.middlewares.use(async (req, res, next) => {
         const url = req.url?.split('?')[0];
         if (url !== '/legacy.html') {
@@ -25,7 +18,7 @@ function legacyAnalyzerDevEntry() {
           return;
         }
         try {
-          const source = await readFile(new URL('../legacy.html', import.meta.url), 'utf8');
+          const source = await readFile(new URL('./legacy.html', import.meta.url), 'utf8');
           const html = await server.transformIndexHtml(req.url ?? '/legacy.html', source);
           res.statusCode = 200;
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
