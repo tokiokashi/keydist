@@ -38,7 +38,7 @@ function RootDocument({ children }: { children: ReactNode }) {
               Analyzer
             </Link>
             <Link to="/input" activeProps={{ 'aria-current': 'page' }}>
-              Input
+              Tester
             </Link>
           </nav>
         </header>
