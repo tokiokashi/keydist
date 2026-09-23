@@ -686,6 +686,12 @@ h1 {
   stroke-width: 3;
 }
 
+.physical-keyboard-key[data-home] .physical-keyboard-legend {
+  text-decoration: underline;
+  text-decoration-thickness: 0.12em;
+  text-underline-offset: 0.14em;
+}
+
 .input-lookup-results li[data-active] code {
   font-weight: 800;
 }
@@ -850,6 +856,54 @@ h1 {
   min-width: 0;
   overflow: hidden;
   font-size: 0.72rem;
+}
+
+.input-lookup-guide {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.22rem;
+}
+
+.input-lookup-guide button {
+  flex: 0 0 auto;
+  width: 1.55rem;
+  height: 1.55rem;
+  padding: 0;
+  border: 1px solid #c9c9c3;
+  border-radius: 0.35rem;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.input-lookup-guide button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.input-lookup-progress {
+  flex: 0 0 auto;
+  min-width: 2.5rem;
+  color: #686862;
+  font-variant-numeric: tabular-nums;
+}
+
+.input-lookup-guide > strong {
+  flex: 0 0 auto;
+  min-width: 1.8rem;
+  font-size: 0.78rem;
+}
+
+.input-lookup-guide > code {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 800;
 }
 
 .input-lookup-results ol {
