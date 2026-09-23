@@ -279,7 +279,14 @@ test('Input Converter chooses the cheatsheet grid that maximizes readable card s
   };
 
   await setLayoutWithSettingsCollapsed('nicola');
-  await expect(page.locator('.input-layer-card')).toHaveCount(2);
+  const nicolaCards = page.locator('.input-layer-card');
+  await expect(nicolaCards).toHaveCount(2);
+  await expect(nicolaCards.nth(0).locator('[data-accent-slot]')).toHaveCount(1);
+  await expect(nicolaCards.nth(0).locator('[data-key-id="thumb-l"]')).toHaveAttribute('data-accent-slot', /[1-8]/);
+  await expect(nicolaCards.nth(0).locator('[data-key-id="thumb-r"]')).not.toHaveAttribute('data-accent-slot', /[1-8]/);
+  await expect(nicolaCards.nth(1).locator('[data-accent-slot]')).toHaveCount(1);
+  await expect(nicolaCards.nth(1).locator('[data-key-id="thumb-r"]')).toHaveAttribute('data-accent-slot', /[1-8]/);
+  await expect(nicolaCards.nth(1).locator('[data-key-id="thumb-l"]')).not.toHaveAttribute('data-accent-slot', /[1-8]/);
   await expect.poll(columns).toBe(1);
 
   await setLayoutWithSettingsCollapsed('shingeta');
