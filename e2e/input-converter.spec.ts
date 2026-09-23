@@ -80,8 +80,25 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   expect(wideKeyboardBox).not.toBeNull();
   expect(keyboardMainBox).not.toBeNull();
   expect(wideDetailsBox).not.toBeNull();
-  expect(wideDetailsBox!.height).toBeGreaterThanOrEqual(110);
+  expect(wideDetailsBox!.x).toBeGreaterThan(
+    keyboardMainBox!.x + keyboardMainBox!.width,
+  );
   expect(wideKeyboardBox!.height).toBeLessThanOrEqual(keyboardMainBox!.height + 1);
+
+  await splitter.focus();
+  await page.keyboard.press('End');
+  const [narrowKeyboardBox, narrowDetailsBox] = await Promise.all([
+    keyboardMain.boundingBox(),
+    details.boundingBox(),
+  ]);
+  expect(narrowKeyboardBox).not.toBeNull();
+  expect(narrowDetailsBox).not.toBeNull();
+  expect(narrowDetailsBox!.y).toBeGreaterThan(
+    narrowKeyboardBox!.y + narrowKeyboardBox!.height,
+  );
+
+  await splitter.focus();
+  await page.keyboard.press('Home');
 
   const before = await layerLabel.boundingBox();
   await page.getByLabel('自由入力テキスト').click();
