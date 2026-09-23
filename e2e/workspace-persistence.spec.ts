@@ -15,11 +15,16 @@ test('Tester restores selected layout and physical geometry after reload', async
   await expect(geometrySelect).toHaveValue('column-staggered');
 
   await expect.poll(async () => page.evaluate(() => {
-    const raw = window.localStorage.getItem('keydist:input-tester-selection');
+    const raw = window.localStorage.getItem('keydist:input-converter-preferences');
     return raw === null ? null : JSON.parse(raw);
   })).toEqual({
+    version: 1,
     layoutId: 'tsuki-2-263',
     geometryId: 'column-staggered',
+    showDynamicGuide: true,
+    showLayerGuide: true,
+    showLayerKeys: true,
+    showShiftKeys: false,
   });
 
   await page.reload();

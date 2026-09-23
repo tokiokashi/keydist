@@ -50,6 +50,8 @@ import {
   type BrowserKeyBindingOverrides,
 } from './browser-keyboard-bindings.ts';
 import { browserCodesForPhysicalKey } from './browser-keyboard-adapter.ts';
+import { INPUT_CONVERTER_PREFERENCES_VERSION } from './input-converter-preferences.ts';
+import { useInputConverterPreferences } from './use-input-converter-preferences.ts';
 import {
   JAPANESE_INPUT_SAMPLE_POOLS,
   pickRandomSample,
@@ -63,10 +65,6 @@ import {
   reverseLookupGuideIndexForText,
   reverseLookupRouteLabel,
 } from './reverse-lookup.ts';
-import {
-  loadTesterSelection,
-  saveTesterSelection,
-} from './tester-selection-persistence.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
 const DIRECT_JA_INPUT_LAYOUTS =
@@ -258,7 +256,6 @@ export function InputConverterView() {
   const bindingCaptureCodeRef = useRef<string | undefined>(undefined);
   const [userGeometryShapes, setUserGeometryShapes] = useState<PhysicalShape[]>([]);
   const [geometryId, setGeometryId] = useState(PHYSICAL_SHAPES['row-staggered'].id);
-  const [selectionRestored, setSelectionRestored] = useState(false);
   const browserBindings = useMemo(() => ({
     ...(isPresetGeometryKind(geometryId)
       && presetGeometryStandard(geometryId) === 'jis'
@@ -277,6 +274,7 @@ export function InputConverterView() {
   const [lookupStepIndex, setLookupStepIndex] = useState(0);
   const [randomPracticeMode, setRandomPracticeMode] =
     useState<RandomPracticeMode | null>(null);
+  const preferences = useInputConverterPreferences();
   const guideGridRef = useRef<HTMLDivElement>(null);
   const guideDefinitions = useMemo(
     () => compactLayerGuideDefinitions(layout),
@@ -373,37 +371,66 @@ export function InputConverterView() {
   };
 
   useEffect(() => {
-    const nextUserGeometryShapes = loadUserGeometryShapes();
-    const savedSelection = loadTesterSelection(window.localStorage);
-
-    setUserGeometryShapes(nextUserGeometryShapes);
+    const shapes = loadUserGeometryShapes();
+    setUserGeometryShapes(shapes);
     setBindingOverrides(loadBrowserKeyBindingOverrides(window.localStorage));
 
-    const restoredLayout = savedSelection.layoutId === undefined
-      ? undefined
-      : INPUT_LAYOUTS.find((candidate) => candidate.id === savedSelection.layoutId);
-    if (restoredLayout !== undefined) setLayout(restoredLayout);
-
-    const validGeometryIds = new Set(
-      [...PRESET_GEOMETRY_SHAPES, ...nextUserGeometryShapes].map((shape) => shape.id),
+    // geometryIdのカタログはuser-geometriesの内容込みで判定する必要があるため、
+    // useState経由の(まだこのeffect内では反映されていない)userGeometryShapesではなく、
+    // 直前に読んだshapesをそのまま使う。
+    const restored = preferences.restoreOnce(
+      {
+        layoutIds: INPUT_LAYOUTS.map((candidate) => candidate.id),
+        geometryIds: [
+          ...PRESET_GEOMETRY_SHAPES.map((shape) => shape.id),
+          ...shapes.map((shape) => shape.id),
+        ],
+      },
+      {
+        layoutId: layout.id,
+        geometryId,
+        showDynamicGuide,
+        showLayerGuide,
+        showLayerKeys,
+        showShiftKeys,
+      },
     );
-    if (
-      savedSelection.geometryId !== undefined
-      && validGeometryIds.has(savedSelection.geometryId)
-    ) {
-      setGeometryId(savedSelection.geometryId);
-    }
-
-    setSelectionRestored(true);
+    const restoredLayout = INPUT_LAYOUTS.find((candidate) => candidate.id === restored.layoutId);
+    if (restoredLayout !== undefined) setLayout(restoredLayout);
+    setGeometryId(restored.geometryId);
+    setShowDynamicGuide(restored.showDynamicGuide);
+    setShowLayerGuide(restored.showLayerGuide);
+    setShowLayerKeys(restored.showLayerKeys);
+    setShowShiftKeys(restored.showShiftKeys);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount後に一度だけ復元する
   }, []);
 
+  // 書き込みのcoalescingはpreferences側が持つ。ここでは復元前(mountの初回コミット)を
+  // 除いた変化だけを伝える。復元前に書くとdefault値でsaved値を上書きしてしまうため。
+  const skippedInitialPreferencesWriteRef = useRef(false);
   useEffect(() => {
-    if (!selectionRestored) return;
-    saveTesterSelection({
+    if (!skippedInitialPreferencesWriteRef.current) {
+      skippedInitialPreferencesWriteRef.current = true;
+      return;
+    }
+    preferences.save({
+      version: INPUT_CONVERTER_PREFERENCES_VERSION,
       layoutId: layout.id,
       geometryId,
-    }, window.localStorage);
-  }, [geometryId, layout.id, selectionRestored]);
+      showDynamicGuide,
+      showLayerGuide,
+      showLayerKeys,
+      showShiftKeys,
+    });
+  }, [
+    layout.id,
+    geometryId,
+    showDynamicGuide,
+    showLayerGuide,
+    showLayerKeys,
+    showShiftKeys,
+    preferences,
+  ]);
 
   const updateBindingOverrides = (next: BrowserKeyBindingOverrides) => {
     setBindingOverrides(next);
