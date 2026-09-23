@@ -300,7 +300,7 @@ test('Input Converter selects preset and saved custom physical geometry', async 
   await expect(keyboard).toHaveAttribute('preserveAspectRatio', 'xMinYMid meet');
   const keyboardHeading = page.locator('.input-keyboard-heading');
   await expect(keyboardHeading).toContainText(
-    'キーをクリックすると、次に押した実キーをその位置へ割り当てます。',
+    '入力と違う位置になる場合、キーをクリックすることで次に押した実キーをその位置へ割り当てられます。',
   );
   await expect(page.getByLabel('物理キー割当')).toHaveCount(0);
 
@@ -520,6 +520,13 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   await lookup.fill('ぎゃ');
   await expect(results).toContainText('H + J + W');
+  await expect(results.locator('li').first()).toContainText('点灯中');
+  const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
+  for (const key of ['h', 'j', 'w']) {
+    await expect(keyboard.locator(`[data-key-id="${key}"]`))
+      .toHaveAttribute('data-lookup', 'true');
+  }
+  await expect(keyboard.locator('[data-key-id="f"]')).not.toHaveAttribute('data-lookup', 'true');
 
   await page.getByLabel('配列', { exact: true }).selectOption('oonishi-custom-combo');
   await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom-combo');
@@ -685,7 +692,7 @@ test('盤面クリックで任意browser codeをphysical keyへ再割当して�
   await page.getByRole('button', { name: 'クリア' }).click();
 
   await keyboard.locator('[data-key-id="thumb-l"] rect').click();
-  await expect(bindingBar).toContainText('実キーを押す');
+  await expect(bindingBar).toContainText('実キーを押してください');
   await page.keyboard.press('Space');
   await expect(bindingBar.getByRole('button', { name: 'thumb-lからSpaceを削除' })).toBeVisible();
 
