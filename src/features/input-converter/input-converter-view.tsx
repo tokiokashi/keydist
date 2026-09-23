@@ -297,7 +297,7 @@ export function InputConverterView() {
       },
       {
         id: INPUT_LOOKUP_PANEL_ID,
-        title: '打ち方逆引き',
+        title: '試し打ち文字列',
         defaultDockSlot: 'input.keyboard.lookup',
         minWidth: 420,
         minHeight: 180,
@@ -1292,21 +1292,21 @@ export function InputConverterView() {
               />
                 </div>
                 <WorkspacePanel
-                  ariaLabel="打ち方逆引き"
+                  ariaLabel="試し打ち文字列"
                   className="input-assist-slot"
                   defaultFloatingHeight={240}
                   defaultFloatingWidth={720}
-                  dockedHeaderAriaLabel="打ち方逆引きパネルをクリックまたはドラッグして小窓表示"
+                  dockedHeaderAriaLabel="試し打ち文字列パネルをクリックまたはドラッグして小窓表示"
                   floatOnHeaderClick
-                  floatingHeaderAriaLabel="打ち方逆引きパネルを移動"
+                  floatingHeaderAriaLabel="試し打ち文字列パネルを移動"
                   headerClassName="input-lookup-field-heading"
                   id={INPUT_LOOKUP_PANEL_ID}
                   minHeight={180}
                   minWidth={420}
-                  resizeAriaLabel="打ち方逆引きパネルのサイズを変更"
+                  resizeAriaLabel="試し打ち文字列パネルのサイズを変更"
                   renderHeader={({ mode, dock }) => (
                     <>
-                      <span>打ち方を調べる</span>
+                      <span>試し打ち文字列</span>
                       <span className="input-random-samples">
                         <span>ランダム</span>
                         <button
@@ -1342,7 +1342,7 @@ export function InputConverterView() {
                       </span>
                       {mode === 'floating' ? (
                         <button
-                          aria-label="打ち方逆引きパネルを元に戻す"
+                          aria-label="試し打ち文字列パネルを元に戻す"
                           className="input-panel-dock"
                           onClick={dock}
                           type="button"

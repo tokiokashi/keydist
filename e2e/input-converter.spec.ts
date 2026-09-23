@@ -136,7 +136,7 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const panel = page.getByLabel('打ち方逆引き', { exact: true });
+  const panel = page.getByLabel('試し打ち文字列', { exact: true });
   const lookup = page.getByLabel('打ちたい文字');
 
   // Header内buttonは通常操作のまま。
@@ -150,13 +150,46 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
   );
 
   await page
-    .getByLabel('打ち方逆引きパネルをクリックまたはドラッグして小窓表示')
-    .getByText('打ち方を調べる', { exact: true })
+    .getByLabel('試し打ち文字列パネルをクリックまたはドラッグして小窓表示')
+    .getByText('試し打ち文字列', { exact: true })
     .click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect(lookup).toHaveValue('かな');
 
-  await panel.getByRole('button', { name: '打ち方逆引きパネルを元に戻す' }).click();
+  // 他のWorkspace小窓と同じchromeを持ち、戻すbuttonはpanel右端に揃える。
+  const chrome = await panel.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      backgroundColor: style.backgroundColor,
+      borderTopStyle: style.borderTopStyle,
+      borderRadius: style.borderRadius,
+    };
+  });
+  expect(chrome.backgroundColor).toBe('rgb(255, 255, 255)');
+  expect(chrome.borderTopStyle).toBe('solid');
+  expect(Number.parseFloat(chrome.borderRadius)).toBeGreaterThan(0);
+
+  const panelBox = await panel.boundingBox();
+  const backButton = panel.getByRole('button', { name: '試し打ち文字列パネルを元に戻す' });
+  const backBox = await backButton.boundingBox();
+  expect(panelBox).not.toBeNull();
+  expect(backBox).not.toBeNull();
+  expect(panelBox!.x + panelBox!.width - (backBox!.x + backBox!.width))
+    .toBeLessThanOrEqual(20);
+
+  const resizeHandle = page.getByLabel('試し打ち文字列パネルのサイズを変更');
+  const beforeResize = await panel.boundingBox();
+  const resizeBox = await resizeHandle.boundingBox();
+  expect(beforeResize).not.toBeNull();
+  expect(resizeBox).not.toBeNull();
+  await page.mouse.move(resizeBox!.x + resizeBox!.width / 2, resizeBox!.y + resizeBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(resizeBox!.x + 100, resizeBox!.y + 60);
+  await page.mouse.up();
+  await expect.poll(async () => (await panel.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(beforeResize!.width + 50);
+
+  await backButton.click();
   await expect(panel).not.toHaveAttribute('data-floating');
 });
 
@@ -246,6 +279,21 @@ test('設定panelは開閉controlを誤detachせず小窓化できる', async ({
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect(page.getByLabel('配列', { exact: true })).toBeVisible();
 
+  const beforeResize = await panel.boundingBox();
+  const resizeHandle = page.getByLabel('設定パネルのサイズを変更');
+  const resizeBox = await resizeHandle.boundingBox();
+  expect(beforeResize).not.toBeNull();
+  expect(resizeBox).not.toBeNull();
+  await page.mouse.move(
+    resizeBox!.x + resizeBox!.width / 2,
+    resizeBox!.y + resizeBox!.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(resizeBox!.x + 80, resizeBox!.y + 50);
+  await page.mouse.up();
+  await expect.poll(async () => (await panel.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(beforeResize!.width + 40);
+
   await panel.getByRole('button', { name: '設定パネルを元に戻す' }).click();
   await expect(panel).not.toHaveAttribute('data-floating');
 });
@@ -323,6 +371,34 @@ test('floating Keyboardのresponsiveは外側splitではなく小窓自身の幅
   await page.mouse.move(resizeBox!.x - 260, resizeBox!.y);
   await page.mouse.up();
   await expect.poll(placement).toBe('stacked');
+});
+
+test('入力panelのresize handleはtextareaより前面で操作できる', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const panel = page.locator('.input-capture-panel');
+  await page.getByLabel('入力パネルをクリックまたはドラッグして小窓表示').click();
+  await expect(panel).toHaveAttribute('data-floating', 'true');
+
+  const before = await panel.boundingBox();
+  const handle = page.getByLabel('入力パネルのサイズを変更');
+  const handleBox = await handle.boundingBox();
+  expect(before).not.toBeNull();
+  expect(handleBox).not.toBeNull();
+
+  await page.mouse.move(
+    handleBox!.x + handleBox!.width / 2,
+    handleBox!.y + handleBox!.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(handleBox!.x + 90, handleBox!.y + 50);
+  await page.mouse.up();
+
+  await expect.poll(async () => (await panel.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(before!.width + 40);
 });
 
 test('Keyboard panelは表示controlsを保ったまま小窓化できる', async ({ page }) => {
@@ -1274,7 +1350,7 @@ test('ランダム練習はモードを保持し別停止ボタンで終了で�
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const assist = page.getByLabel('打ち方逆引き');
+  const assist = page.getByLabel('試し打ち文字列');
   const lookup = page.getByLabel('打ちたい文字');
   const wordButton = page.getByRole('button', { name: 'ランダムな単語' });
 
@@ -1358,7 +1434,7 @@ test('ランダム練習は完全一致後も結果を残しEnterで次題へ進
   await expect(output).toHaveValue('');
   await expect(lookup).toHaveValue('まど');
   await expect(
-    page.getByLabel('打ち方逆引き').locator('.input-lookup-field-body'),
+    page.getByLabel('試し打ち文字列').locator('.input-lookup-field-body'),
   ).toHaveAttribute('data-random-practice-mode', 'word');
   await expect(status).not.toHaveAttribute('data-complete');
   await expect(output).toBeFocused();
@@ -1441,7 +1517,7 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await page.goto('/input');
   const feature = page.locator('.input-feature');
   const lookup = page.getByLabel('打ちたい文字');
-  const results = page.getByLabel('打ち方逆引き').locator('.input-lookup-results');
+  const results = page.getByLabel('試し打ち文字列').locator('.input-lookup-results');
 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
