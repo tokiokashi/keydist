@@ -2,7 +2,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type Dispatch,
@@ -35,9 +34,11 @@ export function useWorkspace(
     () => createWorkspaceState(definitions),
   );
 
-  useEffect(() => {
+  const [reconciledDefinitions, setReconciledDefinitions] = useState(definitions);
+  if (reconciledDefinitions !== definitions) {
+    setReconciledDefinitions(definitions);
     setState((current) => reconcileWorkspaceState(current, definitions));
-  }, [definitions]);
+  }
 
   const dispatch = useCallback<Dispatch<WorkspaceAction>>((action) => {
     setState((current) => workspaceReducer(current, action));
