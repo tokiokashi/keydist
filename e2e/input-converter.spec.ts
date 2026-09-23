@@ -118,14 +118,18 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
     .getByText('Practice Text', { exact: true })
     .click();
   const title = panel.getByText('Practice Text', { exact: true });
+  const assist = panel.getByRole('button', { name: /入力アシストを/ });
   const randomWord = panel.getByLabel('ランダムな単語');
-  const [titleBox, randomBox] = await Promise.all([
+  const [titleBox, assistBox, randomBox] = await Promise.all([
     title.boundingBox(),
+    assist.boundingBox(),
     randomWord.boundingBox(),
   ]);
   expect(titleBox).not.toBeNull();
+  expect(assistBox).not.toBeNull();
   expect(randomBox).not.toBeNull();
-  expect(randomBox!.x - (titleBox!.x + titleBox!.width)).toBeLessThanOrEqual(56);
+  expect(assistBox!.x - (titleBox!.x + titleBox!.width)).toBeLessThanOrEqual(56);
+  expect(assistBox!.x).toBeLessThan(randomBox!.x);
 
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect(lookup).toHaveValue('かな');
@@ -145,14 +149,17 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
 
   const panelBox = await panel.boundingBox();
   const backButton = panel.getByRole('button', { name: 'Practice Textを元に戻す' });
-  const [floatingTitleBox, floatingRandomBox] = await Promise.all([
+  const [floatingTitleBox, floatingAssistBox, floatingRandomBox] = await Promise.all([
     title.boundingBox(),
+    assist.boundingBox(),
     randomWord.boundingBox(),
   ]);
   expect(floatingTitleBox).not.toBeNull();
+  expect(floatingAssistBox).not.toBeNull();
   expect(floatingRandomBox).not.toBeNull();
-  expect(floatingRandomBox!.x - (floatingTitleBox!.x + floatingTitleBox!.width))
+  expect(floatingAssistBox!.x - (floatingTitleBox!.x + floatingTitleBox!.width))
     .toBeLessThanOrEqual(56);
+  expect(floatingAssistBox!.x).toBeLessThan(floatingRandomBox!.x);
   const backBox = await backButton.boundingBox();
   expect(panelBox).not.toBeNull();
   expect(backBox).not.toBeNull();
