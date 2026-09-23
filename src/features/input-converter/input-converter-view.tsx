@@ -839,6 +839,8 @@ export function InputConverterView() {
                         : 'input-layer-card'}
                       defaultFloatingHeight={280}
                       defaultFloatingWidth={420}
+                      dockedHeaderAriaLabel={`${definition.label}カンペをクリックまたはドラッグして小窓表示`}
+                      floatOnHeaderClick
                       floatingHeaderAriaLabel={`${definition.label}カンペを移動`}
                       id={panelId}
                       key={definition.id}
