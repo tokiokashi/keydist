@@ -10,6 +10,7 @@ export interface PhysicalKeyboardKeyView {
   readonly accentSlot?: number;
   readonly guide?: 'continuation' | 'output';
   readonly lookup?: boolean;
+  readonly home?: boolean;
 }
 
 export interface PhysicalKeyboardProps {
@@ -87,6 +88,7 @@ export function PhysicalKeyboard({
               data-combo={view?.combo || undefined}
               data-guide={view?.guide}
               data-highlighted={view?.highlighted || undefined}
+              data-home={view?.home || undefined}
               data-key-id={key.id}
               data-lookup={view?.lookup || undefined}
               data-pressed={view?.pressed || undefined}
