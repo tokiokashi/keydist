@@ -148,7 +148,6 @@ test('a corrupt localStorage value falls back to defaults with no console error'
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   // 既定はすべてdocked
   await expect(page.getByLabel('Practice Text', { exact: true })).not.toHaveAttribute('data-floating');
-  await expect(page.getByLabel('Key info.', { exact: true })).not.toHaveAttribute('data-floating');
 
   expect(errors).toEqual([]);
 });

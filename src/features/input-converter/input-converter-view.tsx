@@ -121,7 +121,6 @@ const INPUT_SETTINGS_PANEL_ID = 'input.settings';
 const INPUT_TYPING_PANEL_ID = 'input.typing';
 const INPUT_KEYBOARD_PANEL_ID = 'input.keyboard';
 const INPUT_LOOKUP_PANEL_ID = 'input.lookup';
-const INPUT_DETAILS_PANEL_ID = 'input.details';
 const INPUT_LAYER_GUIDE_PANEL_ID = 'input.layer-guide';
 
 function layerGuideCardPanelId(layerId: string): string {
@@ -222,15 +221,21 @@ function RecognizedDetail({
     <div className="input-recognized-list">
       {recognized.map((entry, entryIndex) => (
         <div className="input-recognized" key={entryIndex}>
-          <strong>{entry.output}</strong>
+          <strong title={entry.output}>{entry.output}</strong>
           <div>
-            {entry.actions.map((action, actionIndex) => (
-              <code key={actionIndex}>
-                {action.keys.join(' + ')}
-                {action.heldKeys.length > 0 ? ` [hold: ${action.heldKeys.join(' + ')}]` : ''}
-                {action.holdPhase ? ` ${action.holdPhase}` : ''}
-              </code>
-            ))}
+            {entry.actions.map((action, actionIndex) => {
+              const actionLabel = [
+                action.keys.join(' + '),
+                action.heldKeys.length > 0 ? `[hold: ${action.heldKeys.join(' + ')}]` : '',
+                action.holdPhase ?? '',
+              ].filter(Boolean).join(' ');
+
+              return (
+                <code key={actionIndex} title={actionLabel}>
+                  {actionLabel}
+                </code>
+              );
+            })}
           </div>
         </div>
       ))}
@@ -301,13 +306,6 @@ export function InputConverterView() {
         defaultDockSlot: 'input.keyboard.lookup',
         minWidth: 420,
         minHeight: 103,
-      },
-      {
-        id: INPUT_DETAILS_PANEL_ID,
-        title: 'Key info.',
-        defaultDockSlot: 'input.keyboard.details',
-        minWidth: 200,
-        minHeight: 160,
       },
       {
         id: INPUT_LAYER_GUIDE_PANEL_ID,
@@ -1215,6 +1213,16 @@ export function InputConverterView() {
                     : '通常'}
                 </strong>
               </p>
+              <div className="input-key-status" aria-label="Key status">
+                <section>
+                  <h2>Pressed</h2>
+                  <p>{session.pressedKeys.length > 0 ? session.pressedKeys.join(' + ') : '—'}</p>
+                </section>
+                <section>
+                  <h2>Recognized</h2>
+                  <RecognizedDetail recognized={session.lastRecognized} />
+                </section>
+              </div>
             </div>
             {bindingTargetKey !== undefined ? (
               <div className="input-keyboard-heading">
@@ -1424,48 +1432,7 @@ export function InputConverterView() {
                 </WorkspacePanel>
               </div>
 
-              <WorkspacePanel
-                ariaLabel="Key info."
-                className="input-debug"
-                defaultFloatingHeight={260}
-                defaultFloatingWidth={380}
-                dockedHeaderAriaLabel="Key info.パネルをクリックまたはドラッグして小窓表示"
-                floatOnHeaderClick
-                floatingHeaderAriaLabel="Key info.パネルを移動"
-                headerClassName="input-debug-heading"
-                id={INPUT_DETAILS_PANEL_ID}
-                minHeight={160}
-                minWidth={200}
-                resizeAriaLabel="Key info.パネルのサイズを変更"
-                renderHeader={({ mode, dock }) => (
-                  <>
-                    <strong>Key info.</strong>
-                    {mode === 'floating' ? (
-                      <button
-                        aria-label="Key info.パネルを元に戻す"
-                        className="input-panel-dock"
-                        onClick={dock}
-                        type="button"
-                      >
-                        戻す
-                      </button>
-                    ) : null}
-                  </>
-                )}
-              >
-                <div className="input-debug-body">
-                  <div className="input-inspector">
-                    <section>
-                      <h2>Pressed</h2>
-                      <p>{session.pressedKeys.length > 0 ? session.pressedKeys.join(' + ') : '—'}</p>
-                    </section>
-                    <section>
-                      <h2>Recognized</h2>
-                      <RecognizedDetail recognized={session.lastRecognized} />
-                    </section>
-                  </div>
-                </div>
-              </WorkspacePanel>
+
             </div>
           </WorkspacePanel>
         </section>
