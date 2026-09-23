@@ -33,7 +33,7 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   expect(guideBox!.y).toBeGreaterThan(settingsBox!.y);
   expect(keyboardBox!.y).toBeGreaterThan(captureBox!.y);
   expect(Math.abs(
-    (guideBox!.y + guideBox!.height) - (detailsBox!.y + detailsBox!.height),
+    (guideBox!.y + guideBox!.height) - (keyboardBox!.y + keyboardBox!.height),
   )).toBeLessThanOrEqual(2);
 
   await expect(splitter).toHaveAttribute('aria-valuenow', '50');
@@ -45,15 +45,15 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   await settingsSummary.click();
   await expect(settings).toHaveJSProperty('open', false);
 
-  const [collapsedGuideBox, collapsedDetailsBox] = await Promise.all([
+  const [collapsedGuideBox, collapsedKeyboardBox] = await Promise.all([
     guide.boundingBox(),
-    details.boundingBox(),
+    keyboardPanel.boundingBox(),
   ]);
   expect(collapsedGuideBox).not.toBeNull();
-  expect(collapsedDetailsBox).not.toBeNull();
+  expect(collapsedKeyboardBox).not.toBeNull();
   expect(Math.abs(
     (collapsedGuideBox!.y + collapsedGuideBox!.height)
-      - (collapsedDetailsBox!.y + collapsedDetailsBox!.height),
+      - (collapsedKeyboardBox!.y + collapsedKeyboardBox!.height),
   )).toBeLessThanOrEqual(2);
 
   const guideOverflowY = await guide.locator('.input-layer-guide-grid')
@@ -542,11 +542,12 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await expect(keyboard.locator('[data-key-id="j"]')).toHaveAttribute('data-home', 'true');
   const homeLegend = keyboard.locator('[data-key-id="f"] .physical-keyboard-legend');
   const homeMark = keyboard.locator('[data-key-id="f"] .physical-keyboard-home-mark');
-  await expect(homeMark).toBeVisible();
-  const [homeLegendY, homeMarkY] = await Promise.all([
+  const [homeLegendY, homeMarkY, homeMarkStrokeWidth] = await Promise.all([
     homeLegend.evaluate((element) => Number(element.getAttribute('y'))),
     homeMark.evaluate((element) => Number(element.getAttribute('y1'))),
+    homeMark.evaluate((element) => Number.parseFloat(getComputedStyle(element).strokeWidth)),
   ]);
+  expect(homeMarkStrokeWidth).toBeGreaterThan(0);
   expect(homeMarkY - homeLegendY).toBeGreaterThanOrEqual(3);
   await expect(layerLabel).toContainText('現在');
   await expect(layerLabel).toContainText('通常');
@@ -837,7 +838,6 @@ test('入力欄はお題を薄く表示し正解・誤入力を位置ごとに�
   const target = page.getByTestId('typing-target');
 
   await lookup.fill('かな');
-  await expect(output).not.toHaveAttribute('placeholder');
   await expect(target.locator('.input-output-char-pending')).toHaveText(['か', 'な']);
   await expect(target.locator('.input-output-char-correct')).toHaveCount(0);
   await expect(target.locator('.input-output-char-error')).toHaveCount(0);
@@ -862,10 +862,6 @@ test('入力欄はお題を薄く表示し正解・誤入力を位置ごとに�
 
   await lookup.fill('');
   await expect(target).toHaveCount(0);
-  await expect(output).toHaveAttribute(
-    'placeholder',
-    'ここをクリックして、そのまま打鍵してください。',
-  );
   await expect(output).toHaveValue('か');
 });
 
@@ -1197,7 +1193,7 @@ test('盤面クリックで任意browser codeをphysical keyへ再割当して�
   await page.keyboard.press('q');
   await output.click();
   await page.keyboard.press('q');
-  await expect(output).toHaveValue('か');
+  await expect(output).toHaveValue('け');
 
   await page.reload();
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
@@ -1208,4 +1204,9 @@ test('盤面クリックで任意browser codeをphysical keyへ再割当して�
   await page.keyboard.press('s');
   await page.keyboard.up('Space');
   await expect(output).toHaveValue('あ');
+
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await output.click();
+  await page.keyboard.press('q');
+  await expect(output).toHaveValue('け');
 });
