@@ -1469,6 +1469,81 @@ h1 {
   font-size: 0.62rem;
 }
 
+/*
+ * 「+N 他の打ち方」affordance。hoverまたはkeyboard focus（:focus-within）で
+ * popoverを開く。中身は読み上げ用のstatic textのみなのでrole="tooltip"で持たせる。
+ */
+.input-lookup-alt {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.input-lookup-alt-toggle {
+  min-height: 1.1rem;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid #c9c9c3;
+  border-radius: 999px;
+  background: #f7f7f4;
+  color: #454540;
+  font: inherit;
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.input-lookup-alt-toggle:hover,
+.input-lookup-alt-toggle:focus-visible {
+  border-color: #4a3aa7;
+  color: #342879;
+}
+
+.input-lookup-alt-popover {
+  position: absolute;
+  z-index: 5;
+  top: 100%;
+  left: 0;
+  display: none;
+  min-width: 10rem;
+  max-width: 18rem;
+  margin-top: 0.25rem;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid #d6d6d1;
+  border-radius: 0.5rem;
+  background: #fff;
+  box-shadow: 0 0.4rem 1rem rgb(0 0 0 / 14%);
+}
+
+.input-lookup-alt:hover .input-lookup-alt-popover,
+.input-lookup-alt:focus-within .input-lookup-alt-popover {
+  display: block;
+}
+
+.input-lookup-alt-heading {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: #686862;
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.input-lookup-alt-popover ol {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.input-lookup-alt-popover li {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.input-lookup-alt-popover code {
+  font-size: 0.7rem;
+}
+
 .input-debug {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);

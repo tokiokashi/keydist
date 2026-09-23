@@ -61,6 +61,7 @@ import {
   pickRandomSample,
 } from './random-samples.ts';
 import {
+  longestReverseLookupRoute,
   reverseLookup,
   reverseLookupGuideActionHighlightKeys,
   reverseLookupGuideActionLabel,
@@ -546,7 +547,17 @@ export function InputConverterView() {
     () => reverseLookup(layout, lookupQuery, 3),
     [layout, lookupQuery],
   );
-  const activeLookupRoute = lookupRoutes[0];
+  // 表示・ガイドとも「最長候補」（＝最初のstepでより多くのかなをまとめて打つ経路）に揃える。
+  // reverseLookupの並び順は既にこの基準で先頭がそれになるが、選択自体は
+  // longestReverseLookupRouteへ委ね、並び順への暗黙の依存を避ける。
+  const activeLookupRoute = useMemo(
+    () => longestReverseLookupRoute(lookupRoutes),
+    [lookupRoutes],
+  );
+  const otherLookupRoutes = useMemo(
+    () => lookupRoutes.filter((route) => route !== activeLookupRoute),
+    [lookupRoutes, activeLookupRoute],
+  );
   const activeLookupGuideActions = useMemo(
     () => activeLookupRoute === undefined ? [] : reverseLookupGuideActions(activeLookupRoute),
     [activeLookupRoute],
@@ -1402,18 +1413,47 @@ export function InputConverterView() {
                       <code>{reverseLookupGuideActionLabel(layout, activeLookupAction)}</code>
                     </div>
                     <ol>
-                      {lookupRoutes.map((route, index) => (
-                        <li
-                          data-active={index === 0 || undefined}
-                          key={`${reverseLookupRouteLabel(layout, route)}:${index}`}
-                        >
-                          <code>{reverseLookupRouteLabel(layout, route)}</code>
-                          {index === 0 ? <small>ガイド中</small> : null}
-                          {route.steps.some((step) => step.origin === 'combo')
-                            ? <small>コンボ</small>
-                            : null}
-                        </li>
-                      ))}
+                      <li data-active>
+                        <code>{reverseLookupRouteLabel(layout, activeLookupRoute)}</code>
+                        <small>ガイド中</small>
+                        {activeLookupRoute.steps.some((step) => step.origin === 'combo')
+                          ? <small>コンボ</small>
+                          : null}
+                        {otherLookupRoutes.length > 0 ? (
+                          <span className="input-lookup-alt">
+                            <button
+                              aria-describedby="input-lookup-alt-popover"
+                              aria-label={`他の打ち方 ${otherLookupRoutes.length}件`}
+                              className="input-lookup-alt-toggle"
+                              type="button"
+                            >
+                              {`+${otherLookupRoutes.length}`}
+                            </button>
+                            {/*
+                              hoverだけでなくkeyboard focusでも開くよう、buttonのfocusを
+                              :focus-withinで拾う。中身は読み上げ用のstatic textだけなので
+                              tooltipとして扱ってよい。
+                            */}
+                            <div
+                              className="input-lookup-alt-popover"
+                              id="input-lookup-alt-popover"
+                              role="tooltip"
+                            >
+                              <span className="input-lookup-alt-heading">他の打ち方</span>
+                              <ol>
+                                {otherLookupRoutes.map((route, index) => (
+                                  <li key={`${reverseLookupRouteLabel(layout, route)}:${index}`}>
+                                    <code>{reverseLookupRouteLabel(layout, route)}</code>
+                                    {route.steps.some((step) => step.origin === 'combo')
+                                      ? <small>コンボ</small>
+                                      : null}
+                                  </li>
+                                ))}
+                              </ol>
+                            </div>
+                          </span>
+                        ) : null}
+                      </li>
                     </ol>
                   </>
                 )}
