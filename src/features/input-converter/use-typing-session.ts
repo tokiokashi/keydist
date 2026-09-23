@@ -1,8 +1,10 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+  type RefCallback,
   type RefObject,
 } from 'react';
 import {
@@ -39,6 +41,7 @@ import {
 
 export interface TypingSession {
   readonly captureRef: RefObject<HTMLTextAreaElement | null>;
+  readonly captureRefCallback: RefCallback<HTMLTextAreaElement>;
   readonly text: string;
   readonly pressedKeys: readonly string[];
   readonly recognitionKeys: readonly string[];
@@ -55,6 +58,11 @@ export function useTypingSession(
   browserBindings: BrowserKeyBindingOverrides = EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
 ): TypingSession {
   const captureRef = useRef<HTMLTextAreaElement>(null);
+  const [captureTarget, setCaptureTarget] = useState<HTMLTextAreaElement | null>(null);
+  const captureRefCallback = useCallback<RefCallback<HTMLTextAreaElement>>((element) => {
+    captureRef.current = element;
+    setCaptureTarget(element);
+  }, []);
   const rawTextRef = useRef('');
   const pressedKeysRef = useRef<readonly string[]>([]);
   const recognitionKeysRef = useRef<readonly string[]>([]);
@@ -97,7 +105,7 @@ export function useTypingSession(
   }, [layout, text]);
 
   useEffect(() => {
-    const target = captureRef.current;
+    const target = captureTarget;
     if (target === null) return;
 
     let isComposing = false;
@@ -286,7 +294,7 @@ export function useTypingSession(
       window.removeEventListener('blur', onWindowBlur);
       engine.reset();
     };
-  }, [browserBindings, engine, layout, ownedPhysicalKeys]);
+  }, [browserBindings, captureTarget, engine, layout, ownedPhysicalKeys]);
 
   const clear = () => {
     engine.reset();
@@ -303,6 +311,7 @@ export function useTypingSession(
 
   return {
     captureRef,
+    captureRefCallback,
     text,
     pressedKeys,
     recognitionKeys,
