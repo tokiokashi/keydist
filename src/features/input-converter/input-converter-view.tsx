@@ -797,6 +797,7 @@ export function InputConverterView() {
               <PhysicalKeyboard
                 ariaLabel="現在の物理キー状態"
                 geometryId={geometry.id}
+                horizontalAlign="left"
                 keys={visibleKeys}
                 keyViews={keyboardViews}
                 selectedKeyId={bindingTargetKey}
