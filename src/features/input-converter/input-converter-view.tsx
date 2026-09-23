@@ -49,6 +49,7 @@ import { browserCodesForPhysicalKey } from './browser-keyboard-adapter.ts';
 import {
   reverseLookup,
   reverseLookupRouteLabel,
+  reverseLookupStepLabel,
 } from './reverse-lookup.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
@@ -84,6 +85,7 @@ const JIS_BROWSER_BINDINGS: BrowserKeyBindingOverrides = {
   IntlYen: 'r0c12',
   IntlRo: 'r3c10',
 };
+const HOME_POSITION_KEYS = new Set(['f', 'j']);
 const DEFAULT_SPLIT_PERCENT = 50;
 const MIN_SPLIT_PERCENT = 25;
 const MAX_SPLIT_PERCENT = 75;
@@ -233,6 +235,7 @@ export function InputConverterView() {
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [splitPercent, setSplitPercent] = useState(DEFAULT_SPLIT_PERCENT);
   const [lookupQuery, setLookupQuery] = useState('');
+  const [lookupStepIndex, setLookupStepIndex] = useState(0);
   const guideGridRef = useRef<HTMLDivElement>(null);
   const [guideGridLayout, setGuideGridLayout] = useState<GuideGridLayout>({
     columns: 1,
@@ -349,10 +352,13 @@ export function InputConverterView() {
     () => reverseLookup(layout, lookupQuery, 3),
     [layout, lookupQuery],
   );
+  const activeLookupRoute = lookupRoutes[0];
+  const activeLookupStep = activeLookupRoute?.steps[
+    Math.min(lookupStepIndex, Math.max(0, activeLookupRoute.steps.length - 1))
+  ];
   const lookupKeys = useMemo(() => new Set(
-    lookupRoutes[0]?.steps.flatMap((step) =>
-      step.actions.flatMap((action) => action)) ?? [],
-  ), [lookupRoutes]);
+    activeLookupStep?.actions.flatMap((action) => action) ?? [],
+  ), [activeLookupStep]);
   const patternResult = useMemo(() => {
     const result = matchKeyPatterns(
       layout,
@@ -411,6 +417,7 @@ export function InputConverterView() {
             accentSlot: showLayerKeys ? layerKeyColorSlots.get(key.id) : undefined,
             guide,
             lookup: lookupKeys.has(key.id),
+            home: HOME_POSITION_KEYS.has(key.id),
           },
         ] as const;
       }),
@@ -445,6 +452,10 @@ export function InputConverterView() {
       : browserCodesForPhysicalKey(bindingTargetKey, browserBindings),
     [bindingTargetKey, browserBindings],
   );
+
+  useEffect(() => {
+    setLookupStepIndex(0);
+  }, [layout.id, lookupQuery]);
 
   useEffect(() => {
     const grid = guideGridRef.current;
@@ -591,6 +602,7 @@ export function InputConverterView() {
                         highlighted: triggers.has(key.id),
                         trigger: triggers.has(key.id),
                         accentSlot: presentationTriggerColorSlots(layout).get(key.id),
+                        home: HOME_POSITION_KEYS.has(key.id),
                       },
                     ]),
                   );
@@ -818,7 +830,10 @@ export function InputConverterView() {
                   aria-label="打ちたい文字"
                   type="text"
                   value={lookupQuery}
-                  onChange={(event) => setLookupQuery(event.target.value)}
+                  onChange={(event) => {
+                    setLookupQuery(event.target.value);
+                    setLookupStepIndex(0);
+                  }}
                   placeholder="例: ぎゃ"
                   autoComplete="off"
                 />
@@ -826,23 +841,51 @@ export function InputConverterView() {
               <div className="input-lookup-results" aria-live="polite">
                 {lookupQuery.length === 0 ? (
                   <span className="input-muted">文字を入力するとcanonical inputから逆引きします。</span>
-                ) : lookupRoutes.length === 0 ? (
+                ) : activeLookupRoute === undefined || activeLookupStep === undefined ? (
                   <span className="input-muted">この配列では打ち方が見つかりません。</span>
                 ) : (
-                  <ol>
-                    {lookupRoutes.map((route, index) => (
-                      <li
-                        data-active={index === 0 || undefined}
-                        key={`${reverseLookupRouteLabel(route)}:${index}`}
+                  <>
+                    <div className="input-lookup-guide" aria-label="入力順ガイド">
+                      <button
+                        aria-label="前の入力単位"
+                        disabled={lookupStepIndex <= 0}
+                        onClick={() => setLookupStepIndex((current) => Math.max(0, current - 1))}
+                        type="button"
                       >
-                        <code>{reverseLookupRouteLabel(route)}</code>
-                        {index === 0 ? <small>点灯中</small> : null}
-                        {route.steps.some((step) => step.origin === 'combo')
-                          ? <small>コンボ</small>
-                          : null}
-                      </li>
-                    ))}
-                  </ol>
+                        ←
+                      </button>
+                      <span className="input-lookup-progress">
+                        {Math.min(lookupStepIndex + 1, activeLookupRoute.steps.length)}
+                        {' / '}
+                        {activeLookupRoute.steps.length}
+                      </span>
+                      <strong>{activeLookupStep.output}</strong>
+                      <code>{reverseLookupStepLabel(activeLookupStep)}</code>
+                      <button
+                        aria-label="次の入力単位"
+                        disabled={lookupStepIndex >= activeLookupRoute.steps.length - 1}
+                        onClick={() => setLookupStepIndex((current) =>
+                          Math.min(activeLookupRoute.steps.length - 1, current + 1))}
+                        type="button"
+                      >
+                        →
+                      </button>
+                    </div>
+                    <ol>
+                      {lookupRoutes.map((route, index) => (
+                        <li
+                          data-active={index === 0 || undefined}
+                          key={`${reverseLookupRouteLabel(route)}:${index}`}
+                        >
+                          <code>{reverseLookupRouteLabel(route)}</code>
+                          {index === 0 ? <small>ガイド中</small> : null}
+                          {route.steps.some((step) => step.origin === 'combo')
+                            ? <small>コンボ</small>
+                            : null}
+                        </li>
+                      ))}
+                    </ol>
+                  </>
                 )}
               </div>
             </section>
