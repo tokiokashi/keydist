@@ -10,7 +10,7 @@ function legacyAnalyzerDevEntry(): Plugin {
   return {
     name: 'keydist-legacy-analyzer-dev-entry',
     enforce: 'pre' as const,
-    configureServer(server: ViteDevServer) {{
+    configureServer(server: ViteDevServer) {
       server.middlewares.use(async (req, res, next) => {
         const url = req.url?.split('?')[0];
         if (url !== '/legacy.html') {
