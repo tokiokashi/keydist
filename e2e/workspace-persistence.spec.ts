@@ -1,3 +1,5 @@
+import { expect, test } from '@playwright/test';
+
 test('Tester restores selected layout and physical geometry after reload', async ({ page }) => {
   await page.goto('/input');
 
@@ -12,14 +14,20 @@ test('Tester restores selected layout and physical geometry after reload', async
   await expect(layoutSelect).toHaveValue('tsuki-2-263');
   await expect(geometrySelect).toHaveValue('column-staggered');
 
+  await expect.poll(async () => page.evaluate(() => {
+    const raw = window.localStorage.getItem('keydist:input-tester-selection');
+    return raw === null ? null : JSON.parse(raw);
+  })).toEqual({
+    layoutId: 'tsuki-2-263',
+    geometryId: 'column-staggered',
+  });
+
   await page.reload();
 
   await expect(feature).toHaveAttribute('data-input-ready', 'tsuki-2-263');
   await expect(layoutSelect).toHaveValue('tsuki-2-263');
   await expect(geometrySelect).toHaveValue('column-staggered');
 });
-
-import { expect, test } from '@playwright/test';
 
 const STORAGE_KEY = 'keydist:workspace-state';
 
