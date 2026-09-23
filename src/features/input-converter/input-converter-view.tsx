@@ -741,8 +741,8 @@ export function InputConverterView() {
             {bindingTargetKey !== undefined ? (
               <div className="input-key-binding-bar" aria-label="物理キー割当">
                 <strong>{bindingTargetKey}</strong>
-                  <span aria-hidden="true">←</span>
-                  <div className="input-key-binding-codes">
+                <span aria-hidden="true">←</span>
+                <div className="input-key-binding-codes">
                     {selectedBindingCodes.length === 0
                       ? <span className="input-muted">未割当</span>
                       : selectedBindingCodes.map((code) => (
@@ -759,8 +759,8 @@ export function InputConverterView() {
                           <span aria-hidden="true">×</span>
                         </button>
                       ))}
-                  </div>
-                  <button
+                </div>
+                <button
                     className="input-binding-add"
                     data-capturing={bindingCapturing || undefined}
                     onClick={() => setBindingCapturing((current) => !current)}
@@ -768,8 +768,8 @@ export function InputConverterView() {
                   >
                     {bindingCapturing ? '実キーを押してください…' : 'キーを追加'}
                   </button>
-                  <button
-                    className="input-binding-reset"
+                <button
+                  className="input-binding-reset"
                     onClick={() => {
                       updateBindingOverrides({});
                       setBindingCapturing(false);
@@ -778,8 +778,8 @@ export function InputConverterView() {
                   >
                     全て既定に戻す
                   </button>
-                  <button
-                    className="input-binding-close"
+                <button
+                  className="input-binding-close"
                     onClick={() => {
                       setBindingTargetKey(undefined);
                       setBindingCapturing(false);
