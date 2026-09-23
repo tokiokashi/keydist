@@ -1,13 +1,13 @@
 export type PanelId = string;
 
 export interface WorkspacePanelDefinition {
-  id: PanelId;
-  title: string;
-  defaultDockSlot: string;
-  minWidth?: number;
-  minHeight?: number;
-  canFloat?: boolean;
-  canHide?: boolean;
+  readonly id: PanelId;
+  readonly title: string;
+  readonly defaultDockSlot: string;
+  readonly minWidth?: number;
+  readonly minHeight?: number;
+  readonly canFloat?: boolean;
+  readonly canHide?: boolean;
 }
 
 export type WorkspacePanelRegistry = ReadonlyMap<PanelId, WorkspacePanelDefinition>;
