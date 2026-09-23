@@ -592,8 +592,8 @@ function fillPicker() {
 function fillDetailGeometryOptions(layoutId: string | undefined): void {
   el.detailGeometry.replaceChildren(
     new Option('ロウスタッガード', 'row-staggered'),
-    new Option('オーソリニア', 'ortholinear'),
-    new Option('カラムスタッガード', 'column-staggered'),
+    new Option('オーソ', 'ortholinear'),
+    new Option('カラム', 'column-staggered'),
     ...userGeometryShapes.map((shape) => new Option(`自作: ${shape.name}`, customGeometryKind(shape.id))),
   );
   const override = layoutId ? uiState.conditions.perLayout[layoutId] : undefined;
