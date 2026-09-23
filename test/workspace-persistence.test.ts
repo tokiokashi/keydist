@@ -11,6 +11,7 @@ import {
   serializeWorkspaceState,
   WORKSPACE_STORAGE_KEY,
 } from '../src/workspace/workspace-persistence.ts';
+import { APP_STATE_STORAGE_KEY } from '../src/persistence/app-state-storage.ts';
 import type { KeyValueStorage } from '../src/persistence/storage.ts';
 
 const registry = createWorkspacePanelRegistry([
@@ -178,12 +179,23 @@ test('loadWorkspaceState falls back to default when storage.getItem throws', () 
   assert.deepEqual(result, createWorkspaceState(definitions));
 });
 
-test('saveWorkspaceState writes under the documented storage key and round-trips via load', () => {
+test('saveWorkspaceState writes the workspace slice under AppState and round-trips via load', () => {
   const storage = memoryStorage();
   const state: WorkspaceStateV1 = createWorkspaceState(definitions);
   saveWorkspaceState(storage, state);
-  assert.equal(storage.getItem(WORKSPACE_STORAGE_KEY), serializeWorkspaceState(state));
+  const appState = JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!);
+  assert.deepEqual(appState.workspace, state);
+  assert.equal(storage.getItem(WORKSPACE_STORAGE_KEY), null);
   assert.deepEqual(loadWorkspaceState(storage, definitions, registry, viewport), state);
+});
+
+test('loadWorkspaceState migrates and removes the legacy workspace key', () => {
+  const storage = memoryStorage();
+  const state: WorkspaceStateV1 = createWorkspaceState(definitions);
+  storage.setItem(WORKSPACE_STORAGE_KEY, serializeWorkspaceState(state));
+  assert.deepEqual(loadWorkspaceState(storage, definitions, registry, viewport), state);
+  assert.equal(storage.getItem(WORKSPACE_STORAGE_KEY), null);
+  assert.deepEqual(JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!).workspace, state);
 });
 
 test('saveWorkspaceState swallows a storage.setItem failure', () => {
@@ -240,7 +252,7 @@ test('write coalescing: rapid notify() calls debounce into a single write', (t) 
 
   t.mock.timers.tick(300);
   assert.equal(writes, 1);
-  assert.equal(storage.getItem(WORKSPACE_STORAGE_KEY), serializeWorkspaceState(state));
+  assert.deepEqual(JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!).workspace, state);
 });
 
 test('write coalescing: identical serialized state is not written twice', (t) => {
