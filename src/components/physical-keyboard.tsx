@@ -80,6 +80,11 @@ export function PhysicalKeyboard({
           const view = keyViews.get(key.id);
           const legend = view?.legend ?? key.id;
           const secondary = showSecondary ? view?.secondaryLegend : undefined;
+          const legendFontSize = Math.max(7, unit * 0.24);
+          const legendX = x + keyWidth / 2;
+          const legendY = y + keyHeight / 2 + (secondary ? -1 : 4);
+          const homeMarkHalfWidth = Math.max(3, unit * 0.1);
+          const homeMarkY = legendY + Math.max(3, unit * 0.11);
 
           return (
             <g
@@ -107,13 +112,22 @@ export function PhysicalKeyboard({
               />
               <text
                 className="physical-keyboard-legend"
-                style={{ fontSize: Math.max(7, unit * 0.24) }}
+                style={{ fontSize: legendFontSize }}
                 textAnchor="middle"
-                x={x + keyWidth / 2}
-                y={y + keyHeight / 2 + (secondary ? -1 : 4)}
+                x={legendX}
+                y={legendY}
               >
                 {legend}
               </text>
+              {view?.home ? (
+                <line
+                  className="physical-keyboard-home-mark"
+                  x1={legendX - homeMarkHalfWidth}
+                  x2={legendX + homeMarkHalfWidth}
+                  y1={homeMarkY}
+                  y2={homeMarkY}
+                />
+              ) : null}
               {secondary && secondary !== legend ? (
                 <text
                   className="physical-keyboard-secondary"
