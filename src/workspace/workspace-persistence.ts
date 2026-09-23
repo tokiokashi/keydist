@@ -113,11 +113,21 @@ export function decodeWorkspaceState(
     panels[id as PanelId] = normalizeAgainstRegistry(sanitized, registry.get(id), viewport);
   }
 
-  const zOrder = decoded.value.zOrder.filter(
-    (id): id is PanelId => typeof id === 'string' && definitionIds.has(id),
-  );
+  // 保存されたzOrderは同じidが複数回入る場合がある（旧バージョンの書き込み不具合等）。
+  // indexOfでz-indexを引くため、重複が残ると先頭以降のidが無視されてしまう。
+  // 初出だけを残して順序は保つ。
+  const zOrder: PanelId[] = [];
+  const seenIds = new Set<PanelId>();
+  for (const id of decoded.value.zOrder) {
+    if (typeof id !== 'string' || !definitionIds.has(id) || seenIds.has(id)) continue;
+    seenIds.add(id);
+    zOrder.push(id);
+  }
   for (const id of fallback.zOrder) {
-    if (!zOrder.includes(id)) zOrder.push(id);
+    if (!seenIds.has(id)) {
+      seenIds.add(id);
+      zOrder.push(id);
+    }
   }
 
   return { version: WORKSPACE_STATE_VERSION, panels, zOrder };

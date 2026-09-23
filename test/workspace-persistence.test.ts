@@ -141,6 +141,16 @@ test('decode: ids not in current definitions are kept dormant but excluded from 
   assert.deepEqual(new Set(result.zOrder), new Set(['a', 'b', 'c']));
 });
 
+test('decode: duplicate ids in saved zOrder are deduped, keeping the first occurrence', () => {
+  const raw = JSON.stringify({
+    version: 1,
+    panels: {},
+    zOrder: ['a', 'a', 'b', 'a', 'c'],
+  });
+  const result = decodeWorkspaceState(raw, definitions, registry, viewport);
+  assert.deepEqual(result.zOrder, ['a', 'b', 'c']);
+});
+
 test('serialize/decode round trip preserves an already-valid state', () => {
   let state: WorkspaceStateV1 = createWorkspaceState(definitions);
   state = {
