@@ -11,7 +11,7 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   const guide = page.getByLabel('レイヤーカンペ一覧');
   const capture = page.locator('.input-capture-panel');
   const keyboardPanel = page.locator('.input-keyboard-panel');
-  const details = page.getByLabel('入力詳細');
+  const details = page.getByLabel('入力詳細', { exact: true });
   const layerLabel = page.locator('.input-active-layer');
   const splitter = page.getByRole('separator', { name: 'カンペと入力領域の幅を調整' });
 
@@ -70,9 +70,9 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   const keyboardMain = page.locator('.input-keyboard-main');
   const keyboardContent = page.locator('.input-keyboard-content');
 
-  // 1:1では縦積み。入力詳細の見出し行は持たず、2要素だけを横並びにする。
+  // 1:1では縦積み。見出し行の下に2要素を横並びにする。
   await expect(keyboardContent).toHaveAttribute('data-detail-layout', 'stacked');
-  await expect(details.locator('.input-debug-heading')).toHaveCount(0);
+  await expect(details.locator('.input-debug-heading')).toBeVisible();
   const stackedSections = details.locator('.input-inspector > section');
   const stackedBoxes = await stackedSections.evaluateAll((elements) =>
     elements.map((element) => element.getBoundingClientRect()));
@@ -90,6 +90,13 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   await page.keyboard.press('ArrowLeft');
   await expect(splitter).toHaveAttribute('aria-valuenow', '44');
   await expect(keyboardContent).toHaveAttribute('data-detail-layout', 'side');
+
+  // 入力詳細panelはWorkspacePanel化によりlayoutアニメーションを持つため、
+  // spring transitionが収まってから幅を計測する。
+  await expect.poll(async () => {
+    const box = await details.boundingBox();
+    return box === null ? -1 : Math.round(box.width);
+  }).toBeLessThanOrEqual(140);
 
   const [wideKeyboardBox, keyboardMainBox, wideDetailsBox] = await Promise.all([
     keyboard.boundingBox(),
@@ -143,6 +150,73 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
 
   await panel.getByRole('button', { name: '打ち方逆引きパネルを元に戻す' }).click();
   await expect(panel).not.toHaveAttribute('data-floating');
+});
+
+test('入力詳細panelはヘッダーから独立小窓化し元へ戻せる', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const panel = page.getByLabel('入力詳細', { exact: true });
+  const dockedHeader = page.getByLabel(
+    '入力詳細パネルをクリックまたはドラッグして小窓表示',
+  );
+
+  // header内にはtitleのみ（controlは無い）。titleクリックで小窓化する。
+  await expect(panel).not.toHaveAttribute('data-floating');
+  await dockedHeader.getByText('入力詳細', { exact: true }).click();
+  await expect(panel).toHaveAttribute('data-floating', 'true');
+
+  // 小窓表示領域（floating root）へportalされている。
+  await expect(
+    page.locator('#workspace-floating-root').getByLabel('入力詳細', { exact: true }),
+  ).toHaveCount(1);
+
+  // 小窓化してもRecognized detailの内容は保たれる。
+  await expect(panel.getByRole('heading', { name: 'Recognized' })).toBeVisible();
+
+  // 最小サイズまで縮めてbodyをスクロールしても、headerと「戻す」buttonは
+  // panelの表示範囲内に留まる（.input-inspectorだけがscrollし、headerはscrollしない）。
+  const resizeHandle = page.getByLabel('入力詳細パネルのサイズを変更');
+  const resizeBox = await resizeHandle.boundingBox();
+  expect(resizeBox).not.toBeNull();
+  await page.mouse.move(resizeBox!.x + resizeBox!.width / 2, resizeBox!.y + resizeBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(resizeBox!.x - 400, resizeBox!.y - 400);
+  await page.mouse.up();
+
+  await expect.poll(async () => {
+    const box = await panel.boundingBox();
+    return box === null ? -1 : Math.round(box.height);
+  }).toBeLessThanOrEqual(165);
+
+  const backButton = panel.getByRole('button', { name: '入力詳細パネルを元に戻す' });
+  await panel.locator('.input-inspector').evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+
+  const panelBox = await panel.boundingBox();
+  const headerBox = await panel.locator('.input-debug-heading').boundingBox();
+  const backButtonBox = await backButton.boundingBox();
+  expect(panelBox).not.toBeNull();
+  expect(headerBox).not.toBeNull();
+  expect(backButtonBox).not.toBeNull();
+
+  // boundingBoxがpanel内に収まっているかを比較する（toBeVisibleだけでは
+  // scroll containerの外にはみ出た要素も「visible」判定されてしまうため不十分）。
+  expect(headerBox!.y).toBeGreaterThanOrEqual(panelBox!.y - 0.5);
+  expect(headerBox!.y + headerBox!.height).toBeLessThanOrEqual(panelBox!.y + panelBox!.height + 0.5);
+  expect(backButtonBox!.y).toBeGreaterThanOrEqual(panelBox!.y - 0.5);
+  expect(backButtonBox!.y + backButtonBox!.height)
+    .toBeLessThanOrEqual(panelBox!.y + panelBox!.height + 0.5);
+  await expect(backButton).toBeVisible();
+
+  await panel.getByRole('button', { name: '入力詳細パネルを元に戻す' }).click();
+  await expect(panel).not.toHaveAttribute('data-floating');
+  await expect(
+    page.locator('#workspace-floating-root').getByLabel('入力詳細', { exact: true }),
+  ).toHaveCount(0);
 });
 
 test('設定panelは開閉controlを誤detachせず小窓化できる', async ({ page }) => {
@@ -446,7 +520,7 @@ test('Recognized detail stays one row when one event realizes multiple inputs', 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   const output = page.getByLabel('自由入力テキスト');
-  const recognizedSection = page.getByLabel('入力詳細')
+  const recognizedSection = page.getByLabel('入力詳細', { exact: true })
     .locator('.input-inspector > section')
     .nth(1);
 
@@ -476,7 +550,7 @@ test('Recognized detail stays one row for the reported k/j re-press sequence', a
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   const output = page.getByLabel('自由入力テキスト');
-  const recognizedRows = page.getByLabel('入力詳細')
+  const recognizedRows = page.getByLabel('入力詳細', { exact: true })
     .locator('.input-recognized');
 
   await output.click();
@@ -504,7 +578,7 @@ test('Recognized detail keeps the same typography and height before and after in
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
-  const recognizedSection = page.getByLabel('入力詳細')
+  const recognizedSection = page.getByLabel('入力詳細', { exact: true })
     .locator('.input-inspector > section')
     .nth(1);
   const empty = recognizedSection.locator('.input-recognized-empty');
