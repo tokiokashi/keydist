@@ -26,7 +26,7 @@ export type WorkspacePanels = Partial<Record<PanelId, WorkspacePanelState>>;
 export const DORMANT_DYNAMIC_PANEL_PREFIX = 'input.layer:';
 export const MAX_DORMANT_DYNAMIC_PANELS = 128;
 
-function compactWorkspacePanels(
+export function compactWorkspacePanels(
   panels: WorkspacePanels,
   currentIds: ReadonlySet<PanelId>,
 ): WorkspacePanels {
