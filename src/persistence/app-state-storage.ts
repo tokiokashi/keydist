@@ -48,17 +48,24 @@ export function saveAppStateDocument(storage: KeyValueStorage, state: AppStateV2
   }
 }
 
+export function patchAppState(
+  storage: KeyValueStorage,
+  patch: Partial<Omit<AppStateV2, 'version'>>,
+): boolean {
+  const current = loadAppStateDocument(storage);
+  return saveAppStateDocument(storage, {
+    ...current,
+    ...structuredClone(patch),
+    version: APP_STATE_VERSION,
+  });
+}
+
 export function patchAppStateSlice<K extends AppStateSliceKey>(
   storage: KeyValueStorage,
   key: K,
   value: NonNullable<AppStateV2[K]>,
 ): boolean {
-  const current = loadAppStateDocument(storage);
-  return saveAppStateDocument(storage, {
-    ...current,
-    version: APP_STATE_VERSION,
-    [key]: structuredClone(value),
-  });
+  return patchAppState(storage, { [key]: value } as Partial<Omit<AppStateV2, 'version'>>);
 }
 
 export function removeStorageKeys(
