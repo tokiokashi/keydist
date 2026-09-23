@@ -274,8 +274,8 @@ export function InputConverterView() {
     () => compactLayerGuideDefinitions(layout),
     [layout],
   );
-  const workspacePanelDefinitions = useMemo(
-    () => [...createWorkspacePanelRegistry([
+  const workspaceRegistry = useMemo(
+    () => createWorkspacePanelRegistry([
       {
         id: INPUT_SETTINGS_PANEL_ID,
         title: '設定',
@@ -325,10 +325,14 @@ export function InputConverterView() {
         minWidth: MIN_FLOATING_GUIDE_WIDTH,
         minHeight: MIN_FLOATING_GUIDE_HEIGHT,
       })),
-    ]).values()],
+    ]),
     [guideDefinitions],
   );
-  const workspace = useWorkspace(workspacePanelDefinitions);
+  const workspacePanelDefinitions = useMemo(
+    () => [...workspaceRegistry.values()],
+    [workspaceRegistry],
+  );
+  const workspace = useWorkspace(workspacePanelDefinitions, workspaceRegistry);
   const [guideGridLayout, setGuideGridLayout] = useState<GuideGridLayout>({
     columns: 1,
     cardMaxWidthPx: null,

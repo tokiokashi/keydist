@@ -100,7 +100,7 @@ export function WorkspacePanel({
   dockedHeaderAriaLabel,
   floatingHeaderAriaLabel,
 }: WorkspacePanelProps) {
-  const { state, dispatch } = useWorkspaceRuntime();
+  const { state, dispatch, restoring } = useWorkspaceRuntime();
   const panel = state.panels[id];
   const panelRef = useRef<HTMLElement>(null);
   const operationRef = useRef<PointerOperation | undefined>(undefined);
@@ -349,7 +349,8 @@ export function WorkspacePanel({
       data-active={mode === 'floating' && active || undefined}
       data-dragging={dragging || undefined}
       data-floating={mode === 'floating' || undefined}
-      layout={dragging ? false : true}
+      data-restoring={restoring || undefined}
+      layout={dragging || restoring ? false : true}
       layoutId={`workspace-panel:${id}`}
       layoutRoot={mode === 'floating'}
       ref={panelRef}
