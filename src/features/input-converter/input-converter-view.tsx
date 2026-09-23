@@ -39,7 +39,11 @@ import {
   visibleGeometryKeys,
 } from '../../layout-physical-keys.ts';
 import { load as loadUserGeometryShapes } from '../../user-geometries.ts';
-import { createWorkspacePanelRegistry } from '../../workspace/panel-registry.ts';
+import {
+  createWorkspacePanelRegistry,
+  resolvePanelLayout,
+  type PanelId,
+} from '../../workspace/panel-registry.ts';
 import { WorkspacePanel } from '../../workspace/workspace-panel.tsx';
 import { WorkspaceProvider, useWorkspace } from '../../workspace/workspace-runtime.tsx';
 import {
@@ -363,10 +367,13 @@ export function InputConverterView() {
     setSplitPercent(clampSplitPercent(((clientX - bounds.left) / bounds.width) * 100));
   };
 
-  const initialLayerCardRect = (source: HTMLElement) => {
+  const initialLayerCardRect = (source: HTMLElement, panelId: PanelId) => {
     const bounds = source.closest<HTMLElement>('.input-layer-card')?.getBoundingClientRect();
-    const width = Math.max(420, bounds?.width ?? 420);
-    const height = Math.max(280, bounds?.height ?? 280);
+    const { defaultFloatingWidth, defaultFloatingHeight } = resolvePanelLayout(
+      workspaceRegistry.get(panelId),
+    );
+    const width = Math.max(defaultFloatingWidth, bounds?.width ?? defaultFloatingWidth);
+    const height = Math.max(defaultFloatingHeight, bounds?.height ?? defaultFloatingHeight);
 
     // 個別カンペは「何枚目か」で画面端へ並べるのではなく、
     // そのカードが元々あった場所を初期位置のauthorityにする。
@@ -959,7 +966,9 @@ export function InputConverterView() {
                         <button
                           aria-label={`${definition.label}を小窓表示`}
                           className="input-layer-card-float"
-                          onClick={(event) => float(initialLayerCardRect(event.currentTarget))}
+                          onClick={(event) => float(
+                            initialLayerCardRect(event.currentTarget, panelId),
+                          )}
                           type="button"
                         >
                           小窓表示
