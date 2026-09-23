@@ -364,6 +364,19 @@ h1 {
   margin: 0;
 }
 
+.input-panel-dock {
+  flex: 0 0 auto;
+  min-height: 1.55rem;
+  margin-left: auto;
+  padding: 0 0.45rem;
+  border: 1px solid #c9c9c3;
+  border-radius: 0.4rem;
+  background: #fff;
+  font: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
 .input-thumb-bindings {
   display: grid;
   gap: 0.5rem;

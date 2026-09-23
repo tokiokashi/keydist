@@ -137,6 +137,34 @@ test('入力panelは小窓化してもtyping sessionとcontrolsを維持する',
   await expect(panel).not.toHaveAttribute('data-floating');
 });
 
+test('Keyboard panelは表示controlsを保ったまま小窓化できる', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const panel = page.locator('.input-keyboard-panel');
+  const displayHeader = page.getByLabel('表示設定');
+  const dynamicGuide = page.getByLabel('動的ガイド');
+
+  // Header内のcheckbox操作はdetachしない。
+  await dynamicGuide.click();
+  await expect(panel).not.toHaveAttribute('data-floating');
+  await dynamicGuide.click();
+
+  await displayHeader.getByText('表示', { exact: true }).click();
+  await expect(panel).toHaveAttribute('data-floating', 'true');
+  await expect(page.getByRole('img', { name: '現在の物理キー状態' })).toBeVisible();
+
+  const output = page.getByLabel('自由入力テキスト');
+  await output.click();
+  await page.keyboard.press('f');
+  await expect(output).toHaveValue('か');
+
+  await panel.getByRole('button', { name: 'Keyboardパネルを元に戻す' }).click();
+  await expect(panel).not.toHaveAttribute('data-floating');
+});
+
 test('docked panel headerは閾値drag・cancel・keyboardを区別する', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/input');

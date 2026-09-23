@@ -321,6 +321,7 @@ export function WorkspacePanel({
   };
   const onDockedHeaderKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (!floatOnHeaderClick || (event.key !== 'Enter' && event.key !== ' ')) return;
+    if (isInteractiveTarget(event.target, event.currentTarget)) return;
     event.preventDefault();
     float();
   };
