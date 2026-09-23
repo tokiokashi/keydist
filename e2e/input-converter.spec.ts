@@ -93,6 +93,36 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   await page.keyboard.up('j');
 });
 
+test('Recognized detail stays one row when one event realizes multiple inputs', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+
+  const output = page.getByLabel('自由入力テキスト');
+  const recognizedSection = page.getByLabel('入力詳細')
+    .locator('.input-inspector > section')
+    .nth(1);
+
+  await output.click();
+  await page.keyboard.down('r');
+  await page.keyboard.down(',');
+  await expect(output).toHaveValue('しん');
+
+  const recognizedRows = recognizedSection.locator('.input-recognized');
+  await expect(recognizedRows).toHaveCount(2);
+  await expect(recognizedRows.nth(0)).toContainText('し');
+  await expect(recognizedRows.nth(1)).toContainText('ん');
+
+  const boxes = await recognizedRows.evaluateAll((elements) =>
+    elements.map((element) => element.getBoundingClientRect()));
+  expect(Math.abs(boxes[0]!.top - boxes[1]!.top)).toBeLessThanOrEqual(1);
+
+  await page.keyboard.up(',');
+  await page.keyboard.up('r');
+});
+
 test('Recognized detail keeps the same typography and height before and after input', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/input');
