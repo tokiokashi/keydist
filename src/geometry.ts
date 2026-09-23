@@ -287,21 +287,21 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
   },
   ortholinear: {
     id: 'ortholinear',
-    name: 'オーソ（ANSI）',
+    name: 'オーソリニア（ANSI）',
     pitchMm: 19.05,
     rowWidths: ROW_WIDTH,
     thumbs: DEFAULT_THUMBS,
   },
   'jis-ortholinear': {
     id: 'jis-ortholinear',
-    name: 'オーソ（JIS 109）',
+    name: 'オーソリニア（JIS 109）',
     pitchMm: 19.05,
     rowWidths: [...JIS_ROW_WIDTH],
     thumbs: DEFAULT_THUMBS,
   },
   'column-staggered': {
     id: 'column-staggered',
-    name: 'カラム（ANSI・分割想定）',
+    name: 'カラムスタッガード（ANSI・分割想定）',
     pitchMm: 18,
     rowWidths: ROW_WIDTH,
     columnStagger: COLUMN_STAGGER,
@@ -314,7 +314,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
   },
   'jis-column-staggered': {
     id: 'jis-column-staggered',
-    name: 'カラム（JIS 109・分割想定）',
+    name: 'カラムスタッガード（JIS 109・分割想定）',
     pitchMm: 18,
     rowWidths: [...JIS_ROW_WIDTH],
     columnStagger: COLUMN_STAGGER,
