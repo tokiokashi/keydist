@@ -140,13 +140,41 @@ test('workspace state reconciles dynamic definitions without losing surviving pa
   const reconciled = reconcileWorkspaceState(state, [...nextRegistry.values()]);
 
   assert.deepEqual(reconciled.panels['input.keyboard'], state.panels['input.keyboard']);
-  assert.equal(reconciled.panels['input.details'], undefined);
+  // definitionsから外れたパネルは削除せずdormantとして残す（#413 phase5）。
+  assert.deepEqual(reconciled.panels['input.details'], state.panels['input.details']);
   assert.deepEqual(reconciled.panels['input.layer:new'], {
     visible: true,
     mode: 'docked',
     dockSlot: 'guide',
   });
+  // dormantなパネルはzOrderには出てこない
   assert.deepEqual(reconciled.zOrder, ['input.keyboard', 'input.layer:new']);
+  assert.equal(reconciled.zOrder.includes('input.details'), false);
+});
+
+test('workspace state restores dormant floating rect when a definition reappears (A -> B -> A)', () => {
+  let state = createWorkspaceState(definitions);
+  state = workspaceReducer(state, {
+    type: 'float',
+    id: 'input.layer:thumb-l',
+    rect: { x: 50, y: 60, width: 420, height: 280 },
+  });
+  const floatedLayerCard = state.panels['input.layer:thumb-l'];
+
+  // layout B: レイヤーカンペのdefinitionが消える
+  const layoutBRegistry = createWorkspacePanelRegistry([
+    definitionInputs[0]!,
+    definitionInputs[1]!,
+  ]);
+  const afterB = reconcileWorkspaceState(state, [...layoutBRegistry.values()]);
+  assert.equal(afterB.zOrder.includes('input.layer:thumb-l'), false);
+  // dormant状態でも内部には残っている（レンダリングされないだけ）
+  assert.deepEqual(afterB.panels['input.layer:thumb-l'], floatedLayerCard);
+
+  // layout A: 同じidのdefinitionが再登場
+  const afterA = reconcileWorkspaceState(afterB, definitions);
+  assert.deepEqual(afterA.panels['input.layer:thumb-l'], floatedLayerCard);
+  assert.equal(afterA.zOrder.includes('input.layer:thumb-l'), true);
 });
 
 test('workspace state reconciliation is referentially stable when definitions are unchanged', () => {

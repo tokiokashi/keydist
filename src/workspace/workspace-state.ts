@@ -61,20 +61,27 @@ export function createWorkspaceState(
   };
 }
 
+/**
+ * 現在のdefinitionsに無いパネルは削除せずdormant（休眠）として state.panels に残す。
+ * 動的パネル（レイヤーカンペ等）は配列切替でidが行き来するため、消すと
+ * A→B→A で浮動位置が失われる。zOrderとレンダリングからは除外し、
+ * 同じidが再登場した時にそのまま状態を復元する。世代のGCはこの版では行わない。
+ */
 export function reconcileWorkspaceState(
   state: WorkspaceStateV1,
   definitions: readonly WorkspacePanelDefinition[],
 ): WorkspaceStateV1 {
-  const nextPanels: WorkspacePanels = {};
   const definitionIds = new Set<PanelId>();
+  const nextPanels: WorkspacePanels = { ...state.panels };
 
   for (const definition of definitions) {
     if (definitionIds.has(definition.id)) {
       throw new Error(`Duplicate workspace panel id: ${definition.id}`);
     }
     definitionIds.add(definition.id);
-    nextPanels[definition.id] = state.panels[definition.id]
-      ?? createWorkspacePanelState(definition);
+    if (nextPanels[definition.id] === undefined) {
+      nextPanels[definition.id] = createWorkspacePanelState(definition);
+    }
   }
 
   const nextOrder = state.zOrder.filter((id) => definitionIds.has(id));
@@ -82,8 +89,10 @@ export function reconcileWorkspaceState(
     if (!nextOrder.includes(definition.id)) nextOrder.push(definition.id);
   }
 
-  const samePanels = Object.keys(state.panels).length === definitions.length
-    && definitions.every(({ id }) => state.panels[id] === nextPanels[id]);
+  const stateKeys = Object.keys(state.panels);
+  const nextKeys = Object.keys(nextPanels);
+  const samePanels = stateKeys.length === nextKeys.length
+    && nextKeys.every((id) => state.panels[id as PanelId] === nextPanels[id as PanelId]);
   const sameOrder = nextOrder.length === state.zOrder.length
     && nextOrder.every((id, index) => id === state.zOrder[index]);
 
