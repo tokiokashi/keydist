@@ -206,7 +206,7 @@ test('入力詳細panelはヘッダーから独立小窓化し元へ戻せる', 
 
   // header内にはtitleのみ（controlは無い）。titleクリックで小窓化する。
   await expect(panel).not.toHaveAttribute('data-floating');
-  await dockedHeader.getByText('入力詳細', { exact: true }).click();
+  await dockedHeader.getByText('Key info.', { exact: true }).click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
 
   // 小窓表示領域（floating root）へportalされている。
