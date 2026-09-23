@@ -307,7 +307,7 @@ test('入力panelは小窓化してもtyping sessionとcontrolsを維持する',
   const panel = page.locator('.input-capture-panel');
   const output = page.getByLabel('自由入力テキスト');
 
-  await page.getByLabel('テキストを入力パネルをクリックまたはドラッグして小窓表示').click();
+  await page.getByLabel('テキスト入力パネルをクリックまたはドラッグして小窓表示').click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await output.click();
   await page.keyboard.press('f');
@@ -315,7 +315,7 @@ test('入力panelは小窓化してもtyping sessionとcontrolsを維持する',
 
   await panel.getByRole('button', { name: 'クリア' }).click();
   await expect(output).toHaveValue('');
-  await panel.getByRole('button', { name: 'テキストを入力パネルを元に戻す' }).click();
+  await panel.getByRole('button', { name: 'テキスト入力パネルを元に戻す' }).click();
   await expect(panel).not.toHaveAttribute('data-floating');
 });
 
@@ -347,7 +347,9 @@ test('floating Keyboardのresponsiveは外側splitではなく小窓自身の幅
   await expect(splitter).toHaveAttribute('aria-valuenow', '44');
   await expect.poll(placement).toBe('side');
 
-  await page.getByLabel('表示設定').getByText('表示', { exact: true }).click();
+  await page.getByLabel('キー入力表示パネルをクリックまたはドラッグして小窓表示')
+    .getByText('キー入力表示', { exact: true })
+    .click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect.poll(placement).toBe('side');
 
@@ -380,11 +382,11 @@ test('入力panelのresize handleはtextareaより前面で操作できる', asy
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   const panel = page.locator('.input-capture-panel');
-  await page.getByLabel('テキストを入力パネルをクリックまたはドラッグして小窓表示').click();
+  await page.getByLabel('テキスト入力パネルをクリックまたはドラッグして小窓表示').click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
 
   const before = await panel.boundingBox();
-  const handle = page.getByLabel('テキストを入力パネルのサイズを変更');
+  const handle = page.getByLabel('テキスト入力パネルのサイズを変更');
   const handleBox = await handle.boundingBox();
   expect(before).not.toBeNull();
   expect(handleBox).not.toBeNull();
