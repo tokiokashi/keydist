@@ -9,6 +9,9 @@ import {
   JIS_FINGER_ASSIGNMENT,
   isPresetGeometryKind,
   PHYSICAL_SHAPES,
+  presetGeometryKind,
+  presetGeometryStandard,
+  presetGeometryTopology,
   SHIFT_KEY,
   THUMB_KEY,
   type PhysicalShape,
@@ -36,17 +39,17 @@ import {
 } from '../../layout-physical-keys.ts';
 import { load as loadUserGeometryShapes } from '../../user-geometries.ts';
 import {
-  DEFAULT_THUMB_KEY_BINDINGS,
-  loadThumbKeyBindings,
-  saveThumbKeyBindings,
-  thumbBindingLabel,
-  thumbKeyBindingsToOverrides,
-  type ThumbKeyBindings,
+  assignBrowserKeyCode,
+  loadBrowserKeyBindingOverrides,
+  saveBrowserKeyBindingOverrides,
+  unassignBrowserKeyCode,
+  type BrowserKeyBindingOverrides,
 } from './browser-keyboard-bindings.ts';
-import { ThumbKeyBindingEditor } from './thumb-key-binding-editor.tsx';
+import { browserCodesForPhysicalKey } from './browser-keyboard-adapter.ts';
 import {
   reverseLookup,
   reverseLookupRouteLabel,
+  reverseLookupStepLabel,
 } from './reverse-lookup.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
@@ -63,7 +66,26 @@ const INPUT_LAYOUTS = [
   JIS_KANA,
 ];
 
-const PRESET_GEOMETRY_SHAPES = Object.values(PHYSICAL_SHAPES);
+const ANSI_GEOMETRY_SHAPES = [
+  PHYSICAL_SHAPES['row-staggered'],
+  PHYSICAL_SHAPES['column-staggered'],
+  PHYSICAL_SHAPES.ortholinear,
+] as const;
+const JIS_GEOMETRY_SHAPES = [
+  PHYSICAL_SHAPES['jis-row-staggered'],
+  PHYSICAL_SHAPES['jis-column-staggered'],
+  PHYSICAL_SHAPES['jis-ortholinear'],
+] as const;
+const PRESET_GEOMETRY_SHAPES = [
+  ...ANSI_GEOMETRY_SHAPES,
+  ...JIS_GEOMETRY_SHAPES,
+];
+const JIS_BROWSER_BINDINGS: BrowserKeyBindingOverrides = {
+  Backslash: 'r2c11',
+  IntlYen: 'r0c12',
+  IntlRo: 'r3c10',
+};
+const HOME_POSITION_KEYS = new Set(['f', 'j']);
 const DEFAULT_SPLIT_PERCENT = 50;
 const MIN_SPLIT_PERCENT = 25;
 const MAX_SPLIT_PERCENT = 75;
@@ -162,7 +184,7 @@ function RecognizedDetail({
   if (recognized.length === 0) {
     return (
       <p className="input-muted input-recognized-empty">
-        まだ入力は確定していない。
+        まだ入力は確定していません。
       </p>
     );
   }
@@ -191,23 +213,21 @@ export function InputConverterView() {
   const [layout, setLayout] = useState<Layout>(
     () => DIRECT_JA_INPUT_LAYOUTS[0] ?? INPUT_LAYOUTS[0],
   );
-  const [thumbBindings, setThumbBindings] = useState<ThumbKeyBindings>(() => ({
-    leftCodes: [...DEFAULT_THUMB_KEY_BINDINGS.leftCodes],
-    rightCodes: [...DEFAULT_THUMB_KEY_BINDINGS.rightCodes],
-  }));
-  const browserBindings = useMemo(() => ({
-    ...(layout.id === 'jis-kana'
-      ? {
-        Backslash: 'r2c11',
-        IntlYen: 'r0c12',
-        IntlRo: 'r3c10',
-      }
-      : {}),
-    ...thumbKeyBindingsToOverrides(thumbBindings),
-  }), [layout.id, thumbBindings]);
-  const session = useTypingSession(layout, browserBindings);
+  const [bindingOverrides, setBindingOverrides] =
+    useState<BrowserKeyBindingOverrides>({});
+  const [bindingTargetKey, setBindingTargetKey] = useState<string>();
+  const [bindingCapturing, setBindingCapturing] = useState(false);
+  const bindingCaptureCodeRef = useRef<string | undefined>(undefined);
   const [userGeometryShapes, setUserGeometryShapes] = useState<PhysicalShape[]>([]);
   const [geometryId, setGeometryId] = useState(PHYSICAL_SHAPES['row-staggered'].id);
+  const browserBindings = useMemo(() => ({
+    ...(isPresetGeometryKind(geometryId)
+      && presetGeometryStandard(geometryId) === 'jis'
+      ? JIS_BROWSER_BINDINGS
+      : {}),
+    ...bindingOverrides,
+  }), [bindingOverrides, geometryId]);
+  const session = useTypingSession(layout, browserBindings);
   const [showDynamicGuide, setShowDynamicGuide] = useState(true);
   const [showLayerGuide, setShowLayerGuide] = useState(true);
   const [showLayerKeys, setShowLayerKeys] = useState(true);
@@ -215,6 +235,7 @@ export function InputConverterView() {
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [splitPercent, setSplitPercent] = useState(DEFAULT_SPLIT_PERCENT);
   const [lookupQuery, setLookupQuery] = useState('');
+  const [lookupStepIndex, setLookupStepIndex] = useState(0);
   const guideGridRef = useRef<HTMLDivElement>(null);
   const [guideGridLayout, setGuideGridLayout] = useState<GuideGridLayout>({
     columns: 1,
@@ -238,13 +259,45 @@ export function InputConverterView() {
 
   useEffect(() => {
     setUserGeometryShapes(loadUserGeometryShapes());
-    setThumbBindings(loadThumbKeyBindings(window.localStorage));
+    setBindingOverrides(loadBrowserKeyBindingOverrides(window.localStorage));
   }, []);
 
-  const updateThumbBindings = (next: ThumbKeyBindings) => {
-    setThumbBindings(next);
-    saveThumbKeyBindings(next, window.localStorage);
+  const updateBindingOverrides = (next: BrowserKeyBindingOverrides) => {
+    setBindingOverrides(next);
+    saveBrowserKeyBindingOverrides(next, window.localStorage);
   };
+
+  useEffect(() => {
+    if (!bindingCapturing || bindingTargetKey === undefined) {
+      bindingCaptureCodeRef.current = undefined;
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.repeat || bindingCaptureCodeRef.current !== undefined) return;
+
+      bindingCaptureCodeRef.current = event.code;
+      updateBindingOverrides(
+        assignBrowserKeyCode(bindingOverrides, bindingTargetKey, event.code),
+      );
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (bindingCaptureCodeRef.current !== event.code) return;
+      event.preventDefault();
+      event.stopPropagation();
+      bindingCaptureCodeRef.current = undefined;
+      setBindingCapturing(false);
+    };
+
+    window.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('keyup', onKeyUp, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('keyup', onKeyUp, true);
+    };
+  }, [bindingCapturing, bindingOverrides, bindingTargetKey]);
 
   const geometryShapes = useMemo(
     () => [...PRESET_GEOMETRY_SHAPES, ...userGeometryShapes],
@@ -256,7 +309,7 @@ export function InputConverterView() {
     if (isPresetGeometryKind(geometryId)) {
       return buildGeometry(
         geometryId,
-        geometryId === 'jis-row-staggered'
+        presetGeometryStandard(geometryId) === 'jis'
           ? JIS_FINGER_ASSIGNMENT
           : DEFAULT_FINGER_ASSIGNMENT,
       );
@@ -295,6 +348,17 @@ export function InputConverterView() {
     () => presentationTriggerColorSlots(layout),
     [layout],
   );
+  const lookupRoutes = useMemo(
+    () => reverseLookup(layout, lookupQuery, 3),
+    [layout, lookupQuery],
+  );
+  const activeLookupRoute = lookupRoutes[0];
+  const activeLookupStep = activeLookupRoute?.steps[
+    Math.min(lookupStepIndex, Math.max(0, activeLookupRoute.steps.length - 1))
+  ];
+  const lookupKeys = useMemo(() => new Set(
+    activeLookupStep?.actions.flatMap((action) => action) ?? [],
+  ), [activeLookupStep]);
   const patternResult = useMemo(() => {
     const result = matchKeyPatterns(
       layout,
@@ -344,16 +408,16 @@ export function InputConverterView() {
           key.id,
           {
             legend: guideLegend ?? layout.legends.get(key.id) ?? '',
-            secondaryLegend: key.id === THUMB_KEY.LT
-              ? thumbBindingLabel(thumbBindings, 'left')
-              : key.id === THUMB_KEY.RT
-                ? thumbBindingLabel(thumbBindings, 'right')
-                : key.id,
+            secondaryLegend: key.id === THUMB_KEY.LT || key.id === THUMB_KEY.RT
+              ? browserCodesForPhysicalKey(key.id, browserBindings).join(' / ') || '未割当'
+              : key.id,
             pressed: pressed.has(key.id),
             highlighted: showDynamicGuide && activeTriggerKeys.has(key.id),
             trigger: showLayerKeys && layerKeys.has(key.id),
             accentSlot: showLayerKeys ? layerKeyColorSlots.get(key.id) : undefined,
             guide,
+            lookup: lookupKeys.has(key.id),
+            home: HOME_POSITION_KEYS.has(key.id),
           },
         ] as const;
       }),
@@ -366,15 +430,12 @@ export function InputConverterView() {
     session.pressedKeys,
     showDynamicGuide,
     showLayerKeys,
-    thumbBindings,
+    browserBindings,
     layerKeyColorSlots,
     layerKeys,
+    lookupKeys,
     visibleKeys,
   ]);
-  const lookupRoutes = useMemo(
-    () => reverseLookup(layout, lookupQuery, 3),
-    [layout, lookupQuery],
-  );
   const guideDefinitions = useMemo(
     () => compactLayerGuideDefinitions(layout),
     [layout],
@@ -384,6 +445,17 @@ export function InputConverterView() {
     return semanticCombinationLabels(layout)
       .filter((label) => !layerLabels.has(label));
   }, [guideDefinitions, layout]);
+
+  const selectedBindingCodes = useMemo(
+    () => bindingTargetKey === undefined
+      ? []
+      : browserCodesForPhysicalKey(bindingTargetKey, browserBindings),
+    [bindingTargetKey, browserBindings],
+  );
+
+  useEffect(() => {
+    setLookupStepIndex(0);
+  }, [layout.id, lookupQuery]);
 
   useEffect(() => {
     const grid = guideGridRef.current;
@@ -417,7 +489,7 @@ export function InputConverterView() {
           <h1>Input Converter</h1>
         </div>
         <p>
-          選択した配列の canonical SemanticInput を使って、物理キーから文字列を直接生成する。
+          選択した配列の canonical SemanticInput を使って、物理キーから文字列を直接生成します。
         </p>
       </header>
 
@@ -447,12 +519,13 @@ export function InputConverterView() {
                     const next = INPUT_LAYOUTS.find((candidate) => candidate.id === event.target.value);
                     if (next === undefined) return;
                     if (next.id === 'jis-kana') {
-                      setGeometryId('jis-row-staggered');
-                    } else if (
-                      layout.id === 'jis-kana'
-                      && geometryId === 'jis-row-staggered'
-                    ) {
-                      setGeometryId('row-staggered');
+                      setGeometryId((current) =>
+                        isPresetGeometryKind(current)
+                          ? presetGeometryKind(
+                            'jis',
+                            presetGeometryTopology(current),
+                          )
+                          : 'jis-row-staggered');
                     }
                     setLayout(next);
                   }}
@@ -471,20 +544,27 @@ export function InputConverterView() {
                   value={geometryId}
                   onChange={(event) => setGeometryId(event.target.value)}
                 >
-                  {PRESET_GEOMETRY_SHAPES.map((shape) => (
-                    <option key={shape.id} value={shape.id}>{shape.name}</option>
-                  ))}
-                  {userGeometryShapes.map((shape) => (
-                    <option key={shape.id} value={shape.id}>自作: {shape.name}</option>
-                  ))}
+                  <optgroup label="US / ANSI">
+                    {ANSI_GEOMETRY_SHAPES.map((shape) => (
+                      <option key={shape.id} value={shape.id}>{shape.name}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="JIS 109">
+                    {JIS_GEOMETRY_SHAPES.map((shape) => (
+                      <option key={shape.id} value={shape.id}>{shape.name}</option>
+                    ))}
+                  </optgroup>
+                  {userGeometryShapes.length > 0 ? (
+                    <optgroup label="自作">
+                      {userGeometryShapes.map((shape) => (
+                        <option key={shape.id} value={shape.id}>{shape.name}</option>
+                      ))}
+                    </optgroup>
+                  ) : null}
                 </select>
               </label>
             </div>
 
-            <ThumbKeyBindingEditor
-              value={thumbBindings}
-              onChange={updateThumbBindings}
-            />
             </div>
           </details>
 
@@ -522,6 +602,7 @@ export function InputConverterView() {
                         highlighted: triggers.has(key.id),
                         trigger: triggers.has(key.id),
                         accentSlot: presentationTriggerColorSlots(layout).get(key.id),
+                        home: HOME_POSITION_KEYS.has(key.id),
                       },
                     ]),
                   );
@@ -592,7 +673,7 @@ export function InputConverterView() {
           }}
           role="separator"
           tabIndex={0}
-          title="ドラッグで幅を調整。ダブルクリックで1:1に戻す。"
+          title="ドラッグで幅を調整できます。ダブルクリックで1:1に戻します。"
         />
 
         <section className="input-main">
@@ -610,13 +691,13 @@ export function InputConverterView() {
               aria-describedby="input-capture-help"
               data-active={session.active || undefined}
               ref={session.captureRef}
-              placeholder="ここをクリックして、そのまま打鍵する。"
+              placeholder="ここをクリックして、そのまま打鍵してください。"
             />
             <p className="input-capture-hint" id="input-capture-help">
-              {session.active ? '入力受付中。' : '入力欄をクリックして入力開始。'}
-              {' '}Backspaceで1文字削除、Enterで改行、
-              {escapeIsLayoutInput ? 'Escは配列入力として扱う。' : 'Escで全削除。'}
-              {session.composing ? ' IME composition中は認識を停止している。' : ''}
+              {session.active ? '入力を受け付けています。' : '入力欄をクリックすると入力を開始します。'}
+              {' '}Backspaceで1文字削除し、Enterで改行します。
+              {escapeIsLayoutInput ? ' Escは配列入力として扱います。' : ' Escで全削除します。'}
+              {session.composing ? ' IME composition中は認識を停止しています。' : ''}
             </p>
           </section>
 
@@ -660,6 +741,62 @@ export function InputConverterView() {
             </div>
             <header className="input-keyboard-heading">
               <strong>Keyboard</strong>
+              {bindingTargetKey === undefined ? (
+                <span className="input-keyboard-help">
+                  入力と違う位置になる場合、キーをクリックすることで次に押した実キーをその位置へ割り当てられます。
+                </span>
+              ) : (
+                <div className="input-key-binding-inline" aria-label="物理キー割当">
+                  <strong>{bindingTargetKey}</strong>
+                  <span aria-hidden="true">←</span>
+                  <div className="input-key-binding-codes">
+                    {selectedBindingCodes.length === 0
+                      ? <span className="input-muted">未割当</span>
+                      : selectedBindingCodes.map((code) => (
+                        <button
+                          aria-label={`${bindingTargetKey}から${code}を削除`}
+                          className="input-binding-chip"
+                          key={code}
+                          onClick={() => updateBindingOverrides(
+                            unassignBrowserKeyCode(bindingOverrides, code),
+                          )}
+                          type="button"
+                        >
+                          <code>{code}</code>
+                          <span aria-hidden="true">×</span>
+                        </button>
+                      ))}
+                  </div>
+                  <button
+                    className="input-binding-add"
+                    data-capturing={bindingCapturing || undefined}
+                    onClick={() => setBindingCapturing((current) => !current)}
+                    type="button"
+                  >
+                    {bindingCapturing ? '実キーを押してください…' : 'キーを追加'}
+                  </button>
+                  <button
+                    className="input-binding-reset"
+                    onClick={() => {
+                      updateBindingOverrides({});
+                      setBindingCapturing(false);
+                    }}
+                    type="button"
+                  >
+                    すべて既定に戻す
+                  </button>
+                  <button
+                    className="input-binding-close"
+                    onClick={() => {
+                      setBindingTargetKey(undefined);
+                      setBindingCapturing(false);
+                    }}
+                    type="button"
+                  >
+                    閉じる
+                  </button>
+                </div>
+              )}
               <p
                 className="input-active-layer"
                 data-active={activeDefinitions.length > 0 || undefined}
@@ -676,8 +813,14 @@ export function InputConverterView() {
               <PhysicalKeyboard
                 ariaLabel="現在の物理キー状態"
                 geometryId={geometry.id}
+                horizontalAlign="left"
                 keys={visibleKeys}
                 keyViews={keyboardViews}
+                selectedKeyId={bindingTargetKey}
+                onKeyClick={(key) => {
+                  setBindingTargetKey(key.id);
+                  setBindingCapturing(true);
+                }}
               />
             </div>
             <section className="input-assist-slot" aria-label="打ち方逆引き">
@@ -687,27 +830,62 @@ export function InputConverterView() {
                   aria-label="打ちたい文字"
                   type="text"
                   value={lookupQuery}
-                  onChange={(event) => setLookupQuery(event.target.value)}
+                  onChange={(event) => {
+                    setLookupQuery(event.target.value);
+                    setLookupStepIndex(0);
+                  }}
                   placeholder="例: ぎゃ"
                   autoComplete="off"
                 />
               </label>
               <div className="input-lookup-results" aria-live="polite">
                 {lookupQuery.length === 0 ? (
-                  <span className="input-muted">文字を入れるとcanonical inputから逆引きする。</span>
-                ) : lookupRoutes.length === 0 ? (
-                  <span className="input-muted">この配列では打ち方を見つけられない。</span>
+                  <span className="input-muted">文字を入力するとcanonical inputから逆引きします。</span>
+                ) : activeLookupRoute === undefined || activeLookupStep === undefined ? (
+                  <span className="input-muted">この配列では打ち方が見つかりません。</span>
                 ) : (
-                  <ol>
-                    {lookupRoutes.map((route, index) => (
-                      <li key={`${reverseLookupRouteLabel(route)}:${index}`}>
-                        <code>{reverseLookupRouteLabel(route)}</code>
-                        {route.steps.some((step) => step.origin === 'combo')
-                          ? <small>コンボ</small>
-                          : null}
-                      </li>
-                    ))}
-                  </ol>
+                  <>
+                    <div className="input-lookup-guide" aria-label="入力順ガイド">
+                      <button
+                        aria-label="前の入力単位"
+                        disabled={lookupStepIndex <= 0}
+                        onClick={() => setLookupStepIndex((current) => Math.max(0, current - 1))}
+                        type="button"
+                      >
+                        ←
+                      </button>
+                      <span className="input-lookup-progress">
+                        {Math.min(lookupStepIndex + 1, activeLookupRoute.steps.length)}
+                        {' / '}
+                        {activeLookupRoute.steps.length}
+                      </span>
+                      <strong>{activeLookupStep.output}</strong>
+                      <code>{reverseLookupStepLabel(activeLookupStep)}</code>
+                      <button
+                        aria-label="次の入力単位"
+                        disabled={lookupStepIndex >= activeLookupRoute.steps.length - 1}
+                        onClick={() => setLookupStepIndex((current) =>
+                          Math.min(activeLookupRoute.steps.length - 1, current + 1))}
+                        type="button"
+                      >
+                        →
+                      </button>
+                    </div>
+                    <ol>
+                      {lookupRoutes.map((route, index) => (
+                        <li
+                          data-active={index === 0 || undefined}
+                          key={`${reverseLookupRouteLabel(route)}:${index}`}
+                        >
+                          <code>{reverseLookupRouteLabel(route)}</code>
+                          {index === 0 ? <small>ガイド中</small> : null}
+                          {route.steps.some((step) => step.origin === 'combo')
+                            ? <small>コンボ</small>
+                            : null}
+                        </li>
+                      ))}
+                    </ol>
+                  </>
                 )}
               </div>
             </section>

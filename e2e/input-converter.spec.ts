@@ -93,6 +93,65 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   await page.keyboard.up('j');
 });
 
+test('Recognized detail stays one row when one event realizes multiple inputs', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+
+  const output = page.getByLabel('自由入力テキスト');
+  const recognizedSection = page.getByLabel('入力詳細')
+    .locator('.input-inspector > section')
+    .nth(1);
+
+  await output.click();
+  await page.keyboard.down('r');
+  await page.keyboard.down(',');
+  await expect(output).toHaveValue('しん');
+
+  const recognizedRows = recognizedSection.locator('.input-recognized');
+  await expect(recognizedRows).toHaveCount(2);
+  await expect(recognizedRows.nth(0)).toContainText('し');
+  await expect(recognizedRows.nth(1)).toContainText('ん');
+
+  const boxes = await recognizedRows.evaluateAll((elements) =>
+    elements.map((element) => element.getBoundingClientRect()));
+  expect(Math.abs(boxes[0]!.top - boxes[1]!.top)).toBeLessThanOrEqual(1);
+
+  await page.keyboard.up(',');
+  await page.keyboard.up('r');
+});
+
+test('Recognized detail stays one row for the reported k/j re-press sequence', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+
+  const output = page.getByLabel('自由入力テキスト');
+  const recognizedRows = page.getByLabel('入力詳細')
+    .locator('.input-recognized');
+
+  await output.click();
+  await page.keyboard.down('k');
+  await page.keyboard.down('j');
+  await page.keyboard.up('k');
+  await page.keyboard.down('k');
+  await page.keyboard.up('k');
+
+  // この時点ではなく、最後に保持中の j を離した瞬間に
+  // pending/replay がまとめて確定して複数recognizedになる。
+  await page.keyboard.up('j');
+
+  await expect.poll(async () => recognizedRows.count()).toBeGreaterThan(1);
+
+  const boxes = await recognizedRows.evaluateAll((elements) =>
+    elements.map((element) => element.getBoundingClientRect()));
+  expect(new Set(boxes.map((box) => Math.round(box.top))).size).toBe(1);
+});
+
 test('Recognized detail keeps the same typography and height before and after input', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/input');
@@ -297,11 +356,28 @@ test('Input Converter selects preset and saved custom physical geometry', async 
 
   await expect(geometry).toHaveValue('row-staggered');
   await expect(keyboard).toHaveAttribute('data-geometry-id', 'row-staggered');
+  await expect(keyboard).toHaveAttribute('preserveAspectRatio', 'xMinYMid meet');
+  const keyboardHeading = page.locator('.input-keyboard-heading');
+  await expect(keyboardHeading).toContainText(
+    '入力と違う位置になる場合、キーをクリックすることで次に押した実キーをその位置へ割り当てられます。',
+  );
+  await expect(page.getByLabel('物理キー割当')).toHaveCount(0);
 
-  await geometry.selectOption('ortholinear');
-  await expect(keyboard).toHaveAttribute('data-geometry-id', 'ortholinear');
+  for (const id of [
+    'row-staggered',
+    'column-staggered',
+    'ortholinear',
+    'jis-row-staggered',
+    'jis-column-staggered',
+    'jis-ortholinear',
+  ]) {
+    await geometry.selectOption(id);
+    await expect(keyboard).toHaveAttribute('data-geometry-id', id);
+  }
 
-  await expect(geometry.locator('option[value="shape-e2e-grid"]')).toHaveText('自作: E2E Grid');
+  await expect(geometry.locator('optgroup[label="US / ANSI"] option')).toHaveCount(3);
+  await expect(geometry.locator('optgroup[label="JIS 109"] option')).toHaveCount(3);
+  await expect(geometry.locator('option[value="shape-e2e-grid"]')).toHaveText('E2E Grid');
   await geometry.selectOption('shape-e2e-grid');
   await expect(keyboard).toHaveAttribute('data-geometry-id', 'shape-e2e-grid');
 });
@@ -315,6 +391,16 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   const layerLabel = page.locator('.input-active-layer');
 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await expect(keyboard.locator('[data-key-id="f"]')).toHaveAttribute('data-home', 'true');
+  await expect(keyboard.locator('[data-key-id="j"]')).toHaveAttribute('data-home', 'true');
+  const homeLegend = keyboard.locator('[data-key-id="f"] .physical-keyboard-legend');
+  const homeMark = keyboard.locator('[data-key-id="f"] .physical-keyboard-home-mark');
+  await expect(homeMark).toBeVisible();
+  const [homeLegendY, homeMarkY] = await Promise.all([
+    homeLegend.evaluate((element) => Number(element.getAttribute('y'))),
+    homeMark.evaluate((element) => Number(element.getAttribute('y1'))),
+  ]);
+  expect(homeMarkY - homeLegendY).toBeGreaterThanOrEqual(3);
   await expect(layerLabel).toContainText('現在');
   await expect(layerLabel).toContainText('通常');
 
@@ -360,6 +446,8 @@ test('Input Converter shows stable active layer, dynamic next-key guide and disp
   await expect(sandSCard).toContainText('SandS');
   await expect(sandSCard.locator('[data-key-id="thumb-r"]')).toHaveAttribute('data-accent-slot', /[1-8]/);
   await expect(sandSCard.locator('[data-key-id="j"]')).not.toHaveAttribute('data-accent-slot', /[1-8]/);
+  await expect(sandSCard.locator('[data-key-id="f"]')).toHaveAttribute('data-home', 'true');
+  await expect(sandSCard.locator('[data-key-id="j"]')).toHaveAttribute('data-home', 'true');
   await expect(page.getByLabel('意味論的な組み合わせ')).toContainText('濁音');
   await expect(page.getByLabel('意味論的な組み合わせ')).toContainText('拗音');
 
@@ -501,8 +589,31 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   const results = page.getByLabel('打ち方逆引き').locator('.input-lookup-results');
 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
+
+  await lookup.fill('かな');
+  const guide = page.getByLabel('入力順ガイド');
+  await expect(guide).toContainText('1 / 2');
+  await expect(guide).toContainText('か');
+  await expect(keyboard.locator('[data-key-id="f"]')).toHaveAttribute('data-lookup', 'true');
+  await expect(keyboard.locator('[data-key-id="m"]')).not.toHaveAttribute('data-lookup', 'true');
+
+  await page.getByRole('button', { name: '次の入力単位' }).click();
+  await expect(guide).toContainText('2 / 2');
+  await expect(guide).toContainText('な');
+  await expect(keyboard.locator('[data-key-id="f"]')).not.toHaveAttribute('data-lookup', 'true');
+  await expect(keyboard.locator('[data-key-id="m"]')).toHaveAttribute('data-lookup', 'true');
+
+  await page.getByRole('button', { name: '前の入力単位' }).click();
+  await expect(guide).toContainText('1 / 2');
+
   await lookup.fill('ぎゃ');
   await expect(results).toContainText('H + J + W');
+  await expect(results.locator('li').first()).toContainText('ガイド中');
+  for (const key of ['h', 'j', 'w']) {
+    await expect(keyboard.locator(`[data-key-id="${key}"]`))
+      .toHaveAttribute('data-lookup', 'true');
+  }
 
   await page.getByLabel('配列', { exact: true }).selectOption('oonishi-custom-combo');
   await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom-combo');
@@ -597,9 +708,10 @@ test('#387 Esc全削除・hold中Backspace・JISかな・仮想Shift表示を扱
   await expect(output).toHaveValue('');
   await expect(output).toBeFocused();
 
+  await page.getByLabel('物理配列').selectOption('column-staggered');
   await page.getByLabel('配列', { exact: true }).selectOption('jis-kana');
   await expect(feature).toHaveAttribute('data-input-ready', 'jis-kana');
-  await expect(page.getByLabel('物理配列')).toHaveValue('jis-row-staggered');
+  await expect(page.getByLabel('物理配列')).toHaveValue('jis-column-staggered');
   await output.click();
 
   await page.keyboard.press('q');
@@ -647,10 +759,12 @@ test('#387 Esc全削除・hold中Backspace・JISかな・仮想Shift表示を扱
   expect(Math.abs(shiftWidth - regularWidth)).toBeLessThanOrEqual(0.1);
 });
 
-test('親指physical keyを任意browser codeへ再割当して永続化できる', async ({ page }) => {
+test('盤面クリックで任意browser codeをphysical keyへ再割当して永続化できる', async ({ page }) => {
   await page.goto('/input');
   const feature = page.locator('.input-feature');
   const output = page.getByLabel('自由入力テキスト');
+  const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
+  const bindingBar = page.getByLabel('物理キー割当');
 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   await page.getByLabel('配列', { exact: true }).selectOption('nicola');
@@ -664,10 +778,10 @@ test('親指physical keyを任意browser codeへ再割当して永続化でき�
 
   await page.getByRole('button', { name: 'クリア' }).click();
 
-  await page.getByRole('button', { name: '左親指にキーを追加' }).click();
+  await keyboard.locator('[data-key-id="thumb-l"] rect').click();
+  await expect(bindingBar).toContainText('実キーを押してください');
   await page.keyboard.press('Space');
-  await expect(page.getByRole('button', { name: '左親指からSpaceを削除' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '右親指からSpaceを削除' })).toHaveCount(0);
+  await expect(bindingBar.getByRole('button', { name: 'thumb-lからSpaceを削除' })).toBeVisible();
 
   await output.click();
   await page.keyboard.down('Space');
@@ -675,7 +789,21 @@ test('親指physical keyを任意browser codeへ再割当して永続化でき�
   await page.keyboard.up('Space');
   await expect(output).toHaveValue('あ');
 
+  // 親指に限らず通常キーも同じUIで再割当できる。
+  await page.getByRole('button', { name: 'クリア' }).click();
+  await keyboard.locator('[data-key-id="f"] rect').click();
+  await page.keyboard.press('q');
+  await output.click();
+  await page.keyboard.press('q');
+  await expect(output).toHaveValue('か');
+
   await page.reload();
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  await expect(page.getByRole('button', { name: '左親指からSpaceを削除' })).toBeVisible();
+  await page.getByLabel('配列', { exact: true }).selectOption('nicola');
+  await expect(feature).toHaveAttribute('data-input-ready', 'nicola');
+  await output.click();
+  await page.keyboard.down('Space');
+  await page.keyboard.press('s');
+  await page.keyboard.up('Space');
+  await expect(output).toHaveValue('あ');
 });

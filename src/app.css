@@ -516,9 +516,20 @@ h1 {
 }
 
 .input-keyboard-heading > strong {
+  flex: 0 0 auto;
   font-size: 0.8rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.input-keyboard-help {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  color: #686862;
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .input-active-layer {
@@ -556,6 +567,50 @@ h1 {
 .physical-keyboard svg {
   display: block;
   max-width: none;
+}
+
+.input-key-binding-inline {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.3rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  font-size: 0.68rem;
+}
+
+.input-key-binding-inline > strong {
+  flex: 0 0 auto;
+  min-width: 1.6rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.input-key-binding-codes {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.input-key-binding-inline .input-binding-chip,
+.input-key-binding-inline .input-binding-add,
+.input-key-binding-reset,
+.input-binding-close {
+  flex: 0 0 auto;
+  min-height: 1.55rem;
+  padding: 0 0.4rem;
+  border: 1px solid #c9c9c3;
+  border-radius: 0.4rem;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.input-key-binding-inline .input-binding-add[data-capturing] {
+  border-color: #4a3aa7;
+  box-shadow: 0 0 0 1px #4a3aa7;
 }
 
 .input-keyboard-main {
@@ -625,6 +680,23 @@ h1 {
   font-weight: 800;
 }
 
+.physical-keyboard-key[data-lookup] rect {
+  fill: color-mix(in srgb, var(--picker-selected) 12%, #fff);
+  stroke: var(--picker-selected);
+  stroke-width: 3;
+}
+
+.physical-keyboard-home-mark {
+  stroke: #171717;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.input-lookup-results li[data-active] code {
+  font-weight: 800;
+}
+
 .physical-keyboard-key[data-pressed] rect {
   fill: #deded8;
   stroke-width: 3;
@@ -632,6 +704,15 @@ h1 {
 
 .physical-keyboard-key[data-highlighted] rect {
   stroke-width: 3;
+}
+
+.physical-keyboard-key[data-interactive] {
+  cursor: pointer;
+}
+
+.physical-keyboard-key[data-binding-target] rect {
+  stroke: #171717;
+  stroke-width: 4;
 }
 
 .physical-keyboard-legend {
@@ -778,6 +859,54 @@ h1 {
   font-size: 0.72rem;
 }
 
+.input-lookup-guide {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.22rem;
+}
+
+.input-lookup-guide button {
+  flex: 0 0 auto;
+  width: 1.55rem;
+  height: 1.55rem;
+  padding: 0;
+  border: 1px solid #c9c9c3;
+  border-radius: 0.35rem;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.input-lookup-guide button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.input-lookup-progress {
+  flex: 0 0 auto;
+  min-width: 2.5rem;
+  color: #686862;
+  font-variant-numeric: tabular-nums;
+}
+
+.input-lookup-guide > strong {
+  flex: 0 0 auto;
+  min-width: 1.8rem;
+  font-size: 0.78rem;
+}
+
+.input-lookup-guide > code {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
 .input-lookup-results ol {
   display: grid;
   gap: 0.22rem;
@@ -850,8 +979,14 @@ h1 {
 }
 
 .input-recognized-list {
-  display: grid;
-  gap: 0.45rem;
+  display: flex;
+  min-width: 0;
+  min-height: 1.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
 }
 
 .input-recognized-empty,
@@ -867,10 +1002,16 @@ h1 {
 }
 
 .input-recognized {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
+  display: inline-grid;
+  flex: 0 0 auto;
+  grid-template-columns: max-content max-content;
   gap: 0.5rem;
-  align-items: start;
+  align-items: center;
+}
+
+.input-recognized + .input-recognized {
+  padding-left: 0.75rem;
+  border-left: 1px solid #d6d6d1;
 }
 
 .input-recognized strong {

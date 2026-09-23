@@ -40,9 +40,11 @@ function routeSignature(route: ReverseLookupRoute): string {
 }
 
 function compareRoutes(left: ReverseLookupRoute, right: ReverseLookupRoute): number {
-  return left.actionCount - right.actionCount
+  // まずcanonical outputをできるだけ長くまとめて一致させる。
+  // 同じ文字列を複数stepへ細分化する経路より、長いoutputを一度に出す経路を優先する。
+  return left.steps.length - right.steps.length
+    || left.actionCount - right.actionCount
     || left.keyCount - right.keyCount
-    || left.steps.length - right.steps.length
     || routeSignature(left).localeCompare(routeSignature(right));
 }
 
@@ -141,9 +143,14 @@ export function physicalKeyDisplayLabel(key: string): string {
   return key;
 }
 
+export function reverseLookupStepLabel(step: ReverseLookupStep): string {
+  return step.actions
+    .map((action) => action.map(physicalKeyDisplayLabel).join(' + '))
+    .join(' → ');
+}
+
 export function reverseLookupRouteLabel(route: ReverseLookupRoute): string {
   return route.steps
-    .flatMap((step) => step.actions)
-    .map((action) => action.map(physicalKeyDisplayLabel).join(' + '))
+    .map(reverseLookupStepLabel)
     .join(' → ');
 }
