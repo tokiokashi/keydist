@@ -85,6 +85,25 @@ test('practice environment persists per layout while physical geometry stays glo
 });
 
 test('random practice mode restores the same current challenge per layout and reload', async ({ page }) => {
+  // 初回mountのrestoreとユーザー操作を競合させず、このテストはrandom stateの往復だけを見る。
+  await page.addInitScript((key) => {
+    localStorage.setItem(key, JSON.stringify({
+      version: 2,
+      layoutId: 'shingeta',
+      geometryId: 'row-staggered',
+      layouts: {
+        shingeta: {
+          showDynamicGuide: true,
+          showLayerGuide: true,
+          showLayerKeys: true,
+          showShiftKeys: false,
+          inputText: '',
+          practiceText: '',
+          randomPracticeMode: null,
+        },
+      },
+    }));
+  }, STORAGE_KEY);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/input');
   const feature = page.locator('.input-feature');
@@ -92,7 +111,6 @@ test('random practice mode restores the same current challenge per layout and re
   const practice = page.getByLabel('打ちたい文字');
   const randomWord = page.getByRole('button', { name: 'ランダムな単語' });
 
-  await layoutSelect.selectOption('shingeta');
   await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
 
   await randomWord.click();
