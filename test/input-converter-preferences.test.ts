@@ -25,6 +25,7 @@ const defaultLayout: InputConverterLayoutPreferencesV2 = {
   showLayerGuide: true,
   showLayerKeys: true,
   showShiftKeys: false,
+  showPracticeAssist: true,
   inputText: '',
   practiceText: '',
   randomPracticeMode: null,
@@ -60,6 +61,7 @@ function samplePreferences(): InputConverterPreferencesV2 {
         showLayerGuide: true,
         showLayerKeys: false,
         showShiftKeys: false,
+        showPracticeAssist: true,
         inputText: 'かな',
         practiceText: 'ことば',
         randomPracticeMode: null,
@@ -69,6 +71,7 @@ function samplePreferences(): InputConverterPreferencesV2 {
         showLayerGuide: false,
         showLayerKeys: true,
         showShiftKeys: true,
+        showPracticeAssist: false,
         inputText: 'しんげた',
         practiceText: '文章です',
         randomPracticeMode: 'phrase',
@@ -133,6 +136,27 @@ test('decode: V1 migrates its global display state into the selected layout whil
   });
 });
 
+test('decode: older V2 without showPracticeAssist keeps assist enabled by default', () => {
+  const raw = JSON.stringify({
+    version: 2,
+    layoutId: 'shingeta',
+    geometryId: 'row-staggered',
+    layouts: {
+      shingeta: {
+        showDynamicGuide: true,
+        showLayerGuide: true,
+        showLayerKeys: true,
+        showShiftKeys: false,
+        inputText: '',
+        practiceText: 'かな',
+        randomPracticeMode: null,
+      },
+    },
+  });
+  const result = decodeInputConverterPreferences(raw, catalogs, defaults);
+  assert.equal(result.layouts.shingeta.showPracticeAssist, true);
+});
+
 test('decode: a custom global geometryId in the catalog is accepted', () => {
   const raw = JSON.stringify({
     ...samplePreferences(),
@@ -164,6 +188,7 @@ test('decode: malformed per-layout fields fall back per field and other fields s
         showLayerGuide: false,
         showLayerKeys: 1,
         showShiftKeys: true,
+        showPracticeAssist: 'yes',
         inputText: 42,
         practiceText: '残す',
         randomPracticeMode: 'invalid',
@@ -176,6 +201,7 @@ test('decode: malformed per-layout fields fall back per field and other fields s
     showLayerGuide: false,
     showLayerKeys: defaultLayout.showLayerKeys,
     showShiftKeys: true,
+    showPracticeAssist: defaultLayout.showPracticeAssist,
     inputText: defaultLayout.inputText,
     practiceText: '残す',
     randomPracticeMode: defaultLayout.randomPracticeMode,
@@ -214,6 +240,8 @@ test('per-layout practice environments stay independent while geometry is a sing
   assert.equal(prefs.layouts.shingeta.inputText, 'しんげた');
   assert.equal(prefs.layouts['naginata-v18'].showLayerKeys, false);
   assert.equal(prefs.layouts.shingeta.showLayerKeys, true);
+  assert.equal(prefs.layouts['naginata-v18'].showPracticeAssist, true);
+  assert.equal(prefs.layouts.shingeta.showPracticeAssist, false);
 });
 
 test('loadInputConverterPreferences falls back to defaults when storage.getItem throws', () => {
@@ -269,6 +297,7 @@ test('contract: only durable practice state is serialized; interaction transient
     'showLayerGuide',
     'showLayerKeys',
     'showShiftKeys',
+    'showPracticeAssist',
     'inputText',
     'practiceText',
     'randomPracticeMode',
