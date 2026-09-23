@@ -106,25 +106,26 @@ export function WorkspacePanel({
   const panel = state.panels[id];
   const panelRef = useRef<HTMLElement>(null);
   const operationRef = useRef<PointerOperation | undefined>(undefined);
+  // setPointerCaptureを呼んだ要素そのもの（header or resize handle）。
+  // blur/unmount commit時にreleasePointerCaptureへ渡すため、event.currentTargetを控えておく。
+  const captureElementRef = useRef<HTMLElement | undefined>(undefined);
   const detachOperationRef = useRef<DetachPointerOperation | undefined>(undefined);
   const detachCleanupRef = useRef<(() => void) | undefined>(undefined);
   const [dragging, setDragging] = useState(false);
+  // blur/unmount時にin-flightのpointer操作をcommitする処理は、commitPointerOperation等
+  // render本体側の関数を使うためrenderのたびに更新する。useEffectの依存配列を空にしたまま
+  // 常に最新のcommit処理を呼べるよう、refへ差し替える形にしている。
+  const commitInFlightRef = useRef<() => void>(() => {});
 
   useEffect(() => {
-    const clearPointerRefs = () => {
-      operationRef.current = undefined;
-      detachCleanupRef.current?.();
-      detachCleanupRef.current = undefined;
-      detachOperationRef.current = undefined;
-    };
     const onBlur = () => {
-      clearPointerRefs();
+      commitInFlightRef.current();
       setDragging(false);
     };
     window.addEventListener('blur', onBlur);
     return () => {
       window.removeEventListener('blur', onBlur);
-      clearPointerRefs();
+      commitInFlightRef.current();
     };
   }, []);
 
@@ -296,6 +297,7 @@ export function WorkspacePanel({
     activate();
     setDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
+    captureElementRef.current = event.currentTarget;
     operationRef.current = {
       kind,
       pointerId: event.pointerId,
@@ -335,10 +337,34 @@ export function WorkspacePanel({
       dispatch({ type: 'move', id, x: finalRect.x, y: finalRect.y });
     }
   };
+  // blur/unmount時、pointercancelと同じ経路でin-flightの操作をstateへcommitする。
+  // 未commitのままrefだけ消すと、transient styleで見えている位置とstate/localStorageの
+  // rectが食い違い、次のdragが古いrectから再開して見た目が飛ぶ（drag中のblur・unmount共通）。
+  commitInFlightRef.current = () => {
+    const operation = operationRef.current;
+    if (operation !== undefined) {
+      operationRef.current = undefined;
+      // pointerupを経ずに終わる経路（blur/unmount）では、setPointerCaptureした要素に
+      // 捕捉が残ったままになる。他要素がpointer eventを受け取れなくなるのを防ぐため、
+      // pointerupと同じくここで明示的に解放する。
+      const captureElement = captureElementRef.current;
+      if (captureElement?.hasPointerCapture(operation.pointerId) === true) {
+        captureElement.releasePointerCapture(operation.pointerId);
+      }
+      captureElementRef.current = undefined;
+      commitPointerOperation(operation);
+    }
+    const detachOperation = detachOperationRef.current;
+    if (detachOperation?.detached) {
+      dispatch({ type: 'move', id, x: detachOperation.latestRect.x, y: detachOperation.latestRect.y });
+    }
+    clearDetachOperation();
+  };
   const endPointerOperation = (event: ReactPointerEvent<HTMLElement>) => {
     const operation = operationRef.current;
     if (operation?.pointerId !== event.pointerId) return;
     operationRef.current = undefined;
+    captureElementRef.current = undefined;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -349,6 +375,7 @@ export function WorkspacePanel({
     const operation = operationRef.current;
     if (operation?.pointerId === event.pointerId) {
       operationRef.current = undefined;
+      captureElementRef.current = undefined;
       setDragging(false);
       commitPointerOperation(operation);
     }

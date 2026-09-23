@@ -127,6 +127,84 @@ test('reload restores floating rect, mode and z-order (#413 phase5)', async ({ p
   expect(hydrationWarnings).toEqual([]);
 });
 
+test('a window blur mid-drag commits the in-flight move so the next drag does not jump', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+
+  const lookupPanel = page.getByLabel('Practice Text', { exact: true });
+  await page
+    .getByLabel('Practice Textをクリックまたはドラッグして小窓表示')
+    .getByText('Practice Text', { exact: true })
+    .click();
+  await expect(lookupPanel).toHaveAttribute('data-floating', 'true');
+  await waitForSpringSettle(page);
+
+  const lookupMove = page.getByLabel('Practice Textを移動');
+  const box = await lookupMove.boundingBox();
+  expect(box).not.toBeNull();
+
+  // dragを開始し、~160px動かした状態でwindow blurを発火する（pointerupより前）。
+  // transient DOM styleはこの時点で動いているが、state/localStorageはまだ更新されていない。
+  // floatした直後のPractice Textは画面の右下寄りに位置するため、余白のある左上方向へ動かす。
+  await page.mouse.move(box!.x + 60, box!.y + box!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box!.x + 60 - 90, box!.y + box!.height / 2 - 40);
+  await page.mouse.move(box!.x + 60 - 160, box!.y + box!.height / 2 - 80);
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+
+  // blur時点（pointerupより前）でpointer captureが解放されていることを確認する。
+  // 解放し忘れると、マウスボタンを離さないまま他panelへ移動してもそちらが
+  // pointer eventを受け取れなくなる。
+  const hasPointerCaptureAfterBlur = await lookupMove.evaluate(
+    (el) => (el as HTMLElement).hasPointerCapture(1),
+  );
+  expect(hasPointerCaptureAfterBlur).toBe(false);
+
+  await page.mouse.up();
+  await waitForSpringSettle(page);
+
+  const visibleRectAfterBlur = await lookupPanel.boundingBox();
+  expect(visibleRectAfterBlur).not.toBeNull();
+
+  // debounced persistence writeが終わるのを待ち、localStorageのrectが
+  // blur直後に見えている位置と一致することを確認する（stateが取り残されていない）。
+  await expect
+    .poll(
+      async () => {
+        const raw = await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY);
+        if (raw === null) return null;
+        const parsed = JSON.parse(raw) as {
+          panels: Record<string, { rect?: { x: number; y: number; width: number; height: number } }>;
+        };
+        const rect = parsed.panels['input.lookup']?.rect;
+        return rect === undefined ? null : { x: Math.round(rect.x), y: Math.round(rect.y) };
+      },
+      { timeout: 2000 },
+    )
+    .toEqual({
+      x: Math.round(visibleRectAfterBlur!.x),
+      y: Math.round(visibleRectAfterBlur!.y),
+    });
+
+  // 次の小さなdragが「見えている位置」からの相対移動になっている（stateへ取り残された
+  // 古いrectへ飛び直さない）ことを確認する。
+  const beforeSecondDrag = await lookupPanel.boundingBox();
+  const move2 = page.getByLabel('Practice Textを移動');
+  const box2 = await move2.boundingBox();
+  expect(box2).not.toBeNull();
+  await page.mouse.move(box2!.x + 60, box2!.y + box2!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box2!.x + 60 - 40, box2!.y + box2!.height / 2 - 20);
+  await page.mouse.up();
+  await waitForSpringSettle(page);
+  const afterSecondDrag = await lookupPanel.boundingBox();
+  expect(afterSecondDrag).not.toBeNull();
+  expect(Math.round(afterSecondDrag!.x - beforeSecondDrag!.x)).toBe(-40);
+  expect(Math.round(afterSecondDrag!.y - beforeSecondDrag!.y)).toBe(-20);
+});
+
 test('restoring into a smaller viewport clamps the floating rect back into view', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/input');
