@@ -1496,3 +1496,46 @@ h1 {
   }
 }
 
+
+
+#workspace-floating-root {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  pointer-events: none;
+}
+
+.workspace-panel[data-floating] {
+  position: fixed;
+  box-sizing: border-box;
+  max-width: none;
+  max-height: none;
+  pointer-events: auto;
+}
+
+.workspace-panel-header[data-floating] {
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+}
+
+.workspace-panel-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.workspace-panel-resize::after {
+  position: absolute;
+  right: 0.25rem;
+  bottom: 0.25rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid #85857f;
+  border-bottom: 2px solid #85857f;
+  content: '';
+}
