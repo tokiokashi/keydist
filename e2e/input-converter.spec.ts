@@ -118,14 +118,18 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
     .getByText('Practice Text', { exact: true })
     .click();
   const title = panel.getByText('Practice Text', { exact: true });
+  const assist = panel.getByRole('button', { name: /入力アシストを/ });
   const randomWord = panel.getByLabel('ランダムな単語');
-  const [titleBox, randomBox] = await Promise.all([
+  const [titleBox, assistBox, randomBox] = await Promise.all([
     title.boundingBox(),
+    assist.boundingBox(),
     randomWord.boundingBox(),
   ]);
   expect(titleBox).not.toBeNull();
+  expect(assistBox).not.toBeNull();
   expect(randomBox).not.toBeNull();
-  expect(randomBox!.x - (titleBox!.x + titleBox!.width)).toBeLessThanOrEqual(56);
+  expect(assistBox!.x - (titleBox!.x + titleBox!.width)).toBeLessThanOrEqual(56);
+  expect(assistBox!.x).toBeLessThan(randomBox!.x);
 
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect(lookup).toHaveValue('かな');
