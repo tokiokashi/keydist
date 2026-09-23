@@ -1,6 +1,7 @@
 import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
   useRef,
@@ -78,7 +79,7 @@ export function WorkspacePanel({
   const { state, dispatch } = useWorkspaceRuntime();
   const panel = state.panels[id];
   const panelRef = useRef<HTMLElement>(null);
-  const operationRef = useRef<PointerOperation>();
+  const operationRef = useRef<PointerOperation | undefined>(undefined);
   if (panel === undefined || !panel.visible) return null;
 
   const mode = panel.mode;
@@ -169,7 +170,7 @@ export function WorkspacePanel({
     event.preventDefault();
     float();
   };
-  const onDockedHeaderClick = (event: React.MouseEvent<HTMLElement>) => {
+  const onDockedHeaderClick = (event: ReactMouseEvent<HTMLElement>) => {
     if (!floatOnHeaderClick || isInteractiveTarget(event.target)) return;
     float();
   };
