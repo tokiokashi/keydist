@@ -13,6 +13,7 @@ import type {
 } from './panel-registry.ts';
 import { clampPanelRectToViewport, type ViewportSize } from './viewport-clamp.ts';
 import {
+  compactWorkspacePanels,
   createWorkspaceState,
   WORKSPACE_STATE_VERSION,
   type PanelMode,
@@ -93,8 +94,9 @@ function normalizeAgainstRegistry(
  * 保存済みJSONをデコードする。バージョン不一致・壊れたJSON・構造不一致は
  * すべて例外を投げず、現在のdefinitionsから作った既定値へ落ちる。
  *
- * definitionsに無いid（動的パネルの休眠世代）もpanelsには残す。
- * zOrderには現在のdefinitionsにあるidだけを載せ、足りないものは既定順で補う。
+ * definitionsに無いidのうち input.layer:* だけをbounded dormant stateとして残す。
+ * 未知/廃止済み静的idはpruneする。zOrderには現在のdefinitionsにあるidだけを載せ、
+ * 足りないものは既定順で補う。
  */
 export function decodeWorkspaceState(
   raw: string | null,
@@ -132,7 +134,11 @@ export function decodeWorkspaceState(
     }
   }
 
-  return { version: WORKSPACE_STATE_VERSION, panels, zOrder };
+  return {
+    version: WORKSPACE_STATE_VERSION,
+    panels: compactWorkspacePanels(panels, definitionIds),
+    zOrder,
+  };
 }
 
 export function serializeWorkspaceState(state: WorkspaceStateV1): string {

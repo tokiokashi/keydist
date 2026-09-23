@@ -141,3 +141,23 @@ test('未知の配列への個別設定は読み込み時に捨てる', () => {
   const parsed = parseConditionBundle(JSON.stringify(source), bundle, current, choices);
   assert.equal(parsed.conditions.perLayout.removed, undefined);
 });
+
+
+test('Condition Bundle remains domain-scoped and does not export AppState UI slices', () => {
+  const current = state();
+  const serialized = JSON.parse(serializeConditionBundle(
+    conditionBundleFromState(current, [], [], { rules: [], assignments: {} }, []),
+  )) as Record<string, unknown>;
+
+  assert.deepEqual(Object.keys(serialized).sort(), [
+    'conditions',
+    'geometryShapes',
+    'layouts',
+    'presets',
+    'romajiSettings',
+    'version',
+  ]);
+  for (const key of ['workspace', 'inputConverter', 'analyzer', 'playback']) {
+    assert.equal(key in serialized, false);
+  }
+});

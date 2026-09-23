@@ -28,6 +28,10 @@ import {
 
 export const CONDITION_BUNDLE_VERSION = 4;
 
+/**
+ * 解析条件と関連domain dataの交換形式。
+ * Workspace/Tester/Analyzer表示設定などAppStateのUI preferenceは意図的に含めない。
+ */
 export interface ConditionBundle {
   version: typeof CONDITION_BUNDLE_VERSION;
   conditions: UiStateV1['conditions'];

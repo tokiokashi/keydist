@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createWorkspacePanelRegistry } from '../src/workspace/panel-registry.ts';
-import { createWorkspaceState, type WorkspaceStateV1 } from '../src/workspace/workspace-state.ts';
+import {
+  createWorkspaceState,
+  MAX_DORMANT_DYNAMIC_PANELS,
+  type WorkspaceStateV1,
+} from '../src/workspace/workspace-state.ts';
 import {
   clampAllFloatingPanels,
   createWorkspacePersistenceScheduler,
@@ -123,23 +127,50 @@ test('decode: floating rect is clamped to viewport using the panel\'s min size',
   assert.ok(rect.y + rect.height <= 600);
 });
 
-test('decode: ids not in current definitions are kept dormant but excluded from zOrder', () => {
+test('decode: dynamic layer panels stay dormant while retired static ids are pruned', () => {
   const raw = JSON.stringify({
     version: 1,
     panels: {
       a: { visible: true, mode: 'docked', dockSlot: 'main' },
-      dormant: { visible: true, mode: 'floating', rect: { x: 10, y: 20, width: 300, height: 200 } },
+      'input.layer:dormant': {
+        visible: true,
+        mode: 'floating',
+        rect: { x: 10, y: 20, width: 300, height: 200 },
+      },
+      'input.details': { visible: true, mode: 'docked', dockSlot: 'side' },
     },
-    zOrder: ['a', 'dormant', 'b', 'c'],
+    zOrder: ['a', 'input.layer:dormant', 'input.details', 'b', 'c'],
   });
   const result = decodeWorkspaceState(raw, definitions, registry, viewport);
-  assert.deepEqual(result.panels.dormant, {
+  assert.deepEqual(result.panels['input.layer:dormant'], {
     visible: true,
     mode: 'floating',
     rect: { x: 10, y: 20, width: 300, height: 200 },
   });
-  assert.equal(result.zOrder.includes('dormant'), false);
+  assert.equal(result.panels['input.details'], undefined);
+  assert.equal(result.zOrder.includes('input.layer:dormant'), false);
   assert.deepEqual(new Set(result.zOrder), new Set(['a', 'b', 'c']));
+});
+
+test('decode: dormant dynamic panels are bounded to the newest first-seen entries', () => {
+  const dormant = Object.fromEntries(
+    Array.from({ length: MAX_DORMANT_DYNAMIC_PANELS + 2 }, (_, index) => [
+      `input.layer:${index}`,
+      { visible: true, mode: 'docked', dockSlot: 'guide' },
+    ]),
+  );
+  const result = decodeWorkspaceState(
+    JSON.stringify({ version: 1, panels: dormant, zOrder: [] }),
+    definitions,
+    registry,
+    viewport,
+  );
+
+  const dormantIds = Object.keys(result.panels).filter((id) => id.startsWith('input.layer:'));
+  assert.equal(dormantIds.length, MAX_DORMANT_DYNAMIC_PANELS);
+  assert.equal(result.panels['input.layer:0'], undefined);
+  assert.equal(result.panels['input.layer:1'], undefined);
+  assert.ok(result.panels['input.layer:2']);
 });
 
 test('decode: duplicate ids in saved zOrder are deduped, keeping the first occurrence', () => {
