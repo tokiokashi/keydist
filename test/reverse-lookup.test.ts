@@ -5,6 +5,7 @@ import {
   reverseLookup,
   reverseLookupRouteLabel,
   reverseLookupStepLabel,
+  reverseLookupStepMatchesRecognition,
 } from '../src/features/input-converter/reverse-lookup.ts';
 
 test('reverseLookupは薙刀式の複合かなをcanonical actionから逆引きする', () => {
@@ -51,6 +52,7 @@ test('reverseLookupRouteLabelはchordとsequenceを区別して表示する', ()
       origin: 'face',
       actions: [['thumb-r'], ['h', 'j']],
       aggregationGroupIds: ['layer:test'],
+      alternativeSelectionIdentity: 'test-alternative',
     }],
   }), '右親指 → H + J');
 });
@@ -62,5 +64,38 @@ test('reverseLookupStepLabelは1入力単位のaction順を表示する', () => 
     origin: 'face',
     actions: [['thumb-r'], ['h', 'j']],
     aggregationGroupIds: ['layer:test'],
+    alternativeSelectionIdentity: 'test-alternative',
   }), '右親指 → H + J');
+});
+
+test('reverseLookupStepMatchesRecognitionは同じcanonical alternativeだけを一致扱いする', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18');
+  assert.ok(layout);
+  const route = reverseLookup(layout, 'かな')[0];
+  assert.ok(route);
+  const step = route.steps[0];
+  assert.ok(step);
+  const matching = layout.canonicalInputs.get(step.output)?.find((alternative) =>
+    step.alternativeSelectionIdentity.includes(alternative.origin)
+      ? false
+      : true);
+  // route生成元と同じselection identityのalternativeを直接探す。
+  const exact = layout.canonicalInputs.get(step.output)?.find((alternative) => {
+    const candidate = reverseLookup(layout, step.output)
+      .flatMap((candidateRoute) => candidateRoute.steps)
+      .find((candidateStep) =>
+        candidateStep.alternativeSelectionIdentity === step.alternativeSelectionIdentity);
+    return candidate !== undefined
+      && candidate.alternativeSelectionIdentity === step.alternativeSelectionIdentity
+      && alternative.semanticInputs.length > 0;
+  });
+  assert.ok(exact);
+  assert.equal(reverseLookupStepMatchesRecognition(step, {
+    output: step.output,
+    alternative: exact,
+  }), true);
+  assert.equal(reverseLookupStepMatchesRecognition(step, {
+    output: '別',
+    alternative: exact,
+  }), false);
 });
