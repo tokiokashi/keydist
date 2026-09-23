@@ -119,6 +119,7 @@ const MIN_FLOATING_GUIDE_WIDTH = 320;
 const MIN_FLOATING_GUIDE_HEIGHT = 240;
 const FLOATING_GUIDE_VIEWPORT_GAP = 12;
 
+const INPUT_SETTINGS_PANEL_ID = 'input.settings';
 const INPUT_TYPING_PANEL_ID = 'input.typing';
 const INPUT_KEYBOARD_PANEL_ID = 'input.keyboard';
 const INPUT_LAYER_GUIDE_PANEL_ID = 'input.layer-guide';
@@ -273,6 +274,13 @@ export function InputConverterView() {
   );
   const workspacePanelDefinitions = useMemo(
     () => [...createWorkspacePanelRegistry([
+      {
+        id: INPUT_SETTINGS_PANEL_ID,
+        title: '設定',
+        defaultDockSlot: 'input.sidebar.settings',
+        minWidth: 320,
+        minHeight: 80,
+      },
       {
         id: INPUT_TYPING_PANEL_ID,
         title: '入力',
@@ -704,16 +712,47 @@ export function InputConverterView() {
         style={{ '--input-sidebar-width': `${splitPercent}%` } as CSSProperties}
       >
         <aside className="input-sidebar" aria-label="入力テスト設定とカンペ">
-          <details
-            className="input-settings-panel"
-            open={settingsOpen}
-            onToggle={(event) => setSettingsOpen(event.currentTarget.open)}
+          <WorkspacePanel
+            ariaLabel="設定"
+            className={settingsOpen
+              ? 'input-settings-panel input-settings-panel-open'
+              : 'input-settings-panel'}
+            defaultFloatingHeight={240}
+            defaultFloatingWidth={520}
+            dockedHeaderAriaLabel="設定パネルをクリックまたはドラッグして小窓表示"
+            floatOnHeaderClick
+            floatingHeaderAriaLabel="設定パネルを移動"
+            headerClassName="input-panel-heading"
+            id={INPUT_SETTINGS_PANEL_ID}
+            minHeight={80}
+            minWidth={320}
+            resizeAriaLabel="設定パネルのサイズを変更"
+            renderHeader={({ mode, dock }) => (
+              <>
+                <strong>設定</strong>
+                <button
+                  aria-expanded={settingsOpen}
+                  aria-label={settingsOpen ? '設定を閉じる' : '設定を開く'}
+                  className="input-settings-toggle"
+                  onClick={() => setSettingsOpen((current) => !current)}
+                  type="button"
+                >
+                  {settingsOpen ? '閉じる' : '開く'}
+                </button>
+                {mode === 'floating' ? (
+                  <button
+                    aria-label="設定パネルを元に戻す"
+                    className="input-panel-dock"
+                    onClick={dock}
+                    type="button"
+                  >
+                    戻す
+                  </button>
+                ) : null}
+              </>
+            )}
           >
-            <summary className="input-panel-heading">
-              <strong>設定</strong>
-              <span>{settingsOpen ? '閉じる' : '開く'}</span>
-            </summary>
-
+            {settingsOpen ? (
             <div className="input-settings-body">
             <div className="input-toolbar">
               <label>
@@ -773,7 +812,8 @@ export function InputConverterView() {
             </div>
 
             </div>
-          </details>
+            ) : null}
+          </WorkspacePanel>
 
           {showLayerGuide && (guideDefinitions.length > 0 || combinationLabels.length > 0) ? (
             <WorkspacePanel
