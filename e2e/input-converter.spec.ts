@@ -826,6 +826,36 @@ test('ランダム練習は完全一致後も結果を残しEnterで次題へ進
   await expect(output).toBeFocused();
 });
 
+test('逆引き強調はレイヤーキーの枠色を保持する', async ({ page }) => {
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+
+  const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
+  const layerKey = keyboard.locator('[data-key-id="o"]');
+  await expect(layerKey).toHaveAttribute('data-trigger', 'true');
+  await expect(layerKey).toHaveAttribute('data-accent-slot', /[1-8]/);
+
+  const strokeBefore = await layerKey.locator('rect').evaluate(
+    (element) => getComputedStyle(element).stroke,
+  );
+
+  await page.getByLabel('打ちたい文字').fill('にゅ');
+  await expect(layerKey).toHaveAttribute('data-lookup', 'true');
+
+  const strokeDuringLookup = await layerKey.locator('rect').evaluate(
+    (element) => getComputedStyle(element).stroke,
+  );
+  expect(strokeDuringLookup).toBe(strokeBefore);
+
+  const outputKey = keyboard.locator('[data-key-id="t"]');
+  await expect(outputKey).toHaveAttribute('data-lookup', 'true');
+  await expect(outputKey).not.toHaveAttribute('data-trigger');
+});
+
 test('打ち方逆引きは配列ごとのcanonical inputを表示する', async ({ page }) => {
   await page.goto('/input');
   const feature = page.locator('.input-feature');
