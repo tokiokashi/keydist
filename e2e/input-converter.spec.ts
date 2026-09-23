@@ -123,6 +123,33 @@ test('Recognized detail stays one row when one event realizes multiple inputs', 
   await page.keyboard.up('r');
 });
 
+test('Recognized detail stays one row for the reported k/j re-press sequence', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+
+  const output = page.getByLabel('自由入力テキスト');
+  const recognizedRows = page.getByLabel('入力詳細')
+    .locator('.input-recognized');
+
+  await output.click();
+  await page.keyboard.down('k');
+  await page.keyboard.down('j');
+  await page.keyboard.up('k');
+  await page.keyboard.down('k');
+  await page.keyboard.up('k');
+
+  await expect.poll(async () => recognizedRows.count()).toBeGreaterThan(1);
+
+  const boxes = await recognizedRows.evaluateAll((elements) =>
+    elements.map((element) => element.getBoundingClientRect()));
+  expect(new Set(boxes.map((box) => Math.round(box.top))).size).toBe(1);
+
+  await page.keyboard.up('j');
+});
+
 test('Recognized detail keeps the same typography and height before and after input', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/input');
