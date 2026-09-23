@@ -29,13 +29,7 @@
         <div class="panel">
           <h2>入力</h2>
 
-          <label class="ctl">
-            <span>入力方式</span>
-            <select id="mode">
-              <option value="ja" selected>日本語（かな → 訓令式ローマ字）</option>
-              <option value="en">英文（英字配列そのまま）</option>
-            </select>
-          </label>
+          <div id="analyzer-mode-control"></div>
 
           <label class="ctl">
             <span>配列</span>
@@ -431,6 +425,7 @@
       </form>
     </dialog>
 
+    <div id="analyzer-react-shell" hidden></div>
     <div class="tooltip" id="tooltip" hidden></div>
     <footer><a href="https://github.com/tokiokashi/keydist">GitHub</a></footer>
 
