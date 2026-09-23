@@ -121,7 +121,7 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
 
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  const panel = page.getByLabel('打ち方逆引き');
+  const panel = page.getByLabel('打ち方逆引き', { exact: true });
   const lookup = page.getByLabel('打ちたい文字');
 
   // Header内buttonは通常操作のまま。
