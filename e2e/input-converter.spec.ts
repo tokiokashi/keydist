@@ -556,12 +556,12 @@ test('floating panel dragはpointer中のrectを永続stateへ連打せず終了
   await expect(guide).toHaveAttribute('data-floating', 'true');
 
   const persistedRect = async () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:workspace-state');
+    const raw = localStorage.getItem('keydist:app-state');
     if (raw === null) return null;
-    const state = JSON.parse(raw) as {
+    const state = JSON.parse(raw).workspace as {
       panels?: Record<string, { rect?: { x: number; y: number; width: number; height: number } }>;
-    };
-    return state.panels?.['input.layer-guide']?.rect ?? null;
+    } | undefined;
+    return state?.panels?.['input.layer-guide']?.rect ?? null;
   });
 
   await expect.poll(persistedRect).not.toBeNull();
