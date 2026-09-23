@@ -646,6 +646,15 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   await page.getByRole('button', { name: '前の入力単位' }).click();
   await expect(guide).toContainText('1 / 2');
 
+  // ガイド通りに実際に打鍵できたら、次の入力単位へ自動で進む。
+  const output = page.getByLabel('自由入力テキスト');
+  await output.click();
+  await page.keyboard.press('f');
+  await expect(output).toHaveValue('か');
+  await expect(guide).toContainText('2 / 2');
+  await expect(guide).toContainText('な');
+  await expect(keyboard.locator('[data-key-id="m"]')).toHaveAttribute('data-lookup', 'true');
+
   await lookup.fill('せ');
   await expect(guide).toContainText('せ');
   await expect(keyboard.locator('[data-key-id="a"] .physical-keyboard-legend'))

@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { inputAlternativeSelectionIdentity } from '../src/core/semantic-input/index.ts';
 import { LAYOUT_BY_ID } from '../src/layouts/index.ts';
 import {
   reverseLookup,
   reverseLookupRouteLabel,
   reverseLookupStepLabel,
+  reverseLookupStepMatchesRecognition,
 } from '../src/features/input-converter/reverse-lookup.ts';
 
 test('reverseLookupは薙刀式の複合かなをcanonical actionから逆引きする', () => {
@@ -51,6 +53,7 @@ test('reverseLookupRouteLabelはchordとsequenceを区別して表示する', ()
       origin: 'face',
       actions: [['thumb-r'], ['h', 'j']],
       aggregationGroupIds: ['layer:test'],
+      alternativeSelectionIdentity: 'test-alternative',
     }],
   }), '右親指 → H + J');
 });
@@ -62,5 +65,28 @@ test('reverseLookupStepLabelは1入力単位のaction順を表示する', () => 
     origin: 'face',
     actions: [['thumb-r'], ['h', 'j']],
     aggregationGroupIds: ['layer:test'],
+    alternativeSelectionIdentity: 'test-alternative',
   }), '右親指 → H + J');
+});
+
+test('reverseLookupStepMatchesRecognitionは同じcanonical alternativeだけを一致扱いする', () => {
+  const layout = LAYOUT_BY_ID.get('naginata-v18');
+  assert.ok(layout);
+  const route = reverseLookup(layout, 'かな')[0];
+  assert.ok(route);
+  const step = route.steps[0];
+  assert.ok(step);
+
+  const exact = layout.canonicalInputs.get(step.output)?.find((alternative) =>
+    inputAlternativeSelectionIdentity(alternative) === step.alternativeSelectionIdentity);
+  assert.ok(exact);
+
+  assert.equal(reverseLookupStepMatchesRecognition(step, {
+    output: step.output,
+    alternative: exact,
+  }), true);
+  assert.equal(reverseLookupStepMatchesRecognition(step, {
+    output: '別',
+    alternative: exact,
+  }), false);
 });
