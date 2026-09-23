@@ -96,16 +96,18 @@ export function useWorkspace(
     return () => cancelAnimationFrame(frame);
   }, [definitions, registry, resolveStorage]);
 
-  // window resizeで全floatingパネルをviewport内へ再クランプする。
+  // registry変更時（dormant panelの再登場を含む）とwindow resize時に、
+  // 現在のdefinitionのmin sizeで全floatingパネルを再クランプする。
   useEffect(() => {
-    const onResize = () => {
+    const clampToViewport = () => {
       setState((current) => clampAllFloatingPanels(current, registry, {
         width: window.innerWidth,
         height: window.innerHeight,
       }));
     };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    clampToViewport();
+    window.addEventListener('resize', clampToViewport);
+    return () => window.removeEventListener('resize', clampToViewport);
   }, [registry]);
 
   // 書き込みのcoalescing。pointermove連打やstateの細かな変化をdebounceでまとめる。
