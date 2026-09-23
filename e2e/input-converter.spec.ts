@@ -187,20 +187,19 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
   await expect(floatingCards).toHaveCount(1);
   await expect(guide).not.toHaveAttribute('data-floating');
   await expect(guide.locator('.input-layer-card-placeholder')).toHaveCount(1);
-  await expect.poll(() =>
-    floatingCards.first().evaluate((element) => element.matches(':popover-open'))).toBe(true);
-
   // 1枚目を浮かした後も、残りのカードからさらに個別小窓表示できる。
   await guide.locator('.input-layer-card-float').first().click();
   floatingCards = page.locator('.input-layer-card-floating');
   await expect(floatingCards).toHaveCount(2);
   await expect(guide.locator('.input-layer-card-placeholder')).toHaveCount(2);
-  await expect.poll(() =>
-    floatingCards.evaluateAll((elements) =>
-      elements.every((element) => element.matches(':popover-open')))).toBe(true);
-
   const first = floatingCards.first();
   const second = floatingCards.nth(1);
+  const initialZOrder = await Promise.all([
+    first.evaluate((element) => Number.parseInt(getComputedStyle(element).zIndex, 10)),
+    second.evaluate((element) => Number.parseInt(getComputedStyle(element).zIndex, 10)),
+  ]);
+  expect(initialZOrder[1]).toBeGreaterThan(initialZOrder[0]);
+
   const firstMoveHandle = first.locator('> header');
   const beforeFirst = await first.boundingBox();
   const beforeSecond = await second.boundingBox();
@@ -220,6 +219,12 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
   expect(afterSecond).not.toBeNull();
   expect(afterFirst!.x).toBeGreaterThan(beforeFirst!.x + 30);
   expect(Math.abs(afterSecond!.x - beforeSecond!.x)).toBeLessThanOrEqual(1);
+
+  const activatedZOrder = await Promise.all([
+    first.evaluate((element) => Number.parseInt(getComputedStyle(element).zIndex, 10)),
+    second.evaluate((element) => Number.parseInt(getComputedStyle(element).zIndex, 10)),
+  ]);
+  expect(activatedZOrder[0]).toBeGreaterThan(activatedZOrder[1]);
 
   await first.getByRole('button', { name: /を元に戻す$/ }).click();
   await expect(page.locator('.input-layer-card-floating')).toHaveCount(1);
