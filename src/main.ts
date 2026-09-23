@@ -46,7 +46,6 @@ import {
 } from './layout-import.ts';
 import { layoutVisibleInFilter, resolveSelection, type LayoutTypeFilter, type ModeId } from './layout-selection.ts';
 import {
-  createDefaultUiState,
   DEFAULT_CONDITION_DEFAULTS,
   MAX_SAVED_TEXT_LENGTH,
   type UiPlaybackState,
@@ -56,6 +55,10 @@ import {
   type UiStateV1,
 } from './ui-state.ts';
 import { createAnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
+import {
+  ANALYZER_INITIAL_LAYOUTS,
+  createAnalyzerUiStateBootstrap,
+} from './analyzer-ui-state-bootstrap.ts';
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import { el, SERIES } from './app-dom.ts';
 import { createRomajiEditor } from './romaji-editor.ts';
@@ -123,12 +126,6 @@ const SAMPLE_NAMES: Record<ModeId, Record<SampleId, string>> = {
   ja: { modern: '現代文', legacy: '旧文「吾輩は猫である」（既定）' },
 };
 
-/** 既定で表示する配列 */
-const INITIAL = {
-  en: ['qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi'],
-  ja: ['qwerty', 'colemak-dh', 'oonishi', 'oonishi-custom-combo', 'naginata-v18'],
-} as const;
-
 let userLayouts: UserLayout[] = loadUserLayouts();
 let userGeometryShapes: PhysicalShape[] = loadUserGeometryShapes();
 let romajiSettings = loadRomajiSettings();
@@ -189,21 +186,17 @@ function browserStorage(): UiStateStorage | undefined {
 
 const uiStorage = browserStorage();
 let playbackCalibration = loadPlaybackCalibration(uiStorage);
-const uiStateDefaults = createDefaultUiState({
+const uiStateBootstrap = createAnalyzerUiStateBootstrap({
+  builtInLayoutIds: {
+    en: LAYOUTS.map((layout) => layout.id),
+    ja: LAYOUTS_JA.map((layout) => layout.id),
+  },
+  userLayoutIds: userLayouts.map((layout) => layout.id),
   textPanelOpen: !window.matchMedia('(max-width: 900px)').matches,
   usePlaybackCalibration: playbackCalibration !== undefined,
-  selectedLayouts: INITIAL,
 });
-const uiStateChoices = {
-  layouts: {
-    en: layoutsOf('en').map((layout) => layout.id),
-    ja: layoutsOf('ja').map((layout) => layout.id),
-  },
-  samples: {
-    en: Object.keys(SAMPLES.en),
-    ja: Object.keys(SAMPLES.ja),
-  },
-};
+const uiStateDefaults = uiStateBootstrap.defaults;
+const uiStateChoices = uiStateBootstrap.choices;
 
 function addLayoutChoices(layoutIds: readonly string[]): void {
   for (const mode of ['en', 'ja'] as const) {
@@ -287,8 +280,8 @@ el.sensitivityPanel.open = uiState.ui.panels.sensitivity;
 
 /** 表示する配列のid。モードごとに覚える。保存値があればそれを使い、無ければ既定値 */
 const selected: Record<ModeId, Set<string>> = {
-  en: resolveSelection(uiState.ui.layouts.selectedByMode.en, INITIAL.en),
-  ja: resolveSelection(uiState.ui.layouts.selectedByMode.ja, INITIAL.ja),
+  en: resolveSelection(uiState.ui.layouts.selectedByMode.en, ANALYZER_INITIAL_LAYOUTS.en),
+  ja: resolveSelection(uiState.ui.layouts.selectedByMode.ja, ANALYZER_INITIAL_LAYOUTS.ja),
 };
 
 function saveSelectedLayouts(): void {
