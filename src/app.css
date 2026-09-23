@@ -757,7 +757,24 @@ h1 {
 }
 
 .input-key-status .input-recognized {
+  min-width: 0;
   gap: 0.22rem;
+  overflow: hidden;
+}
+
+.input-key-status .input-recognized > strong {
+  flex: 0 0 auto;
+  max-width: 3.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.input-key-status .input-recognized > div {
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .input-key-status .input-recognized + .input-recognized {
@@ -765,8 +782,13 @@ h1 {
 }
 
 .input-key-status .input-recognized code {
+  min-width: 0;
+  max-width: 8.5rem;
   padding: 0.06rem 0.18rem;
+  overflow: hidden;
   font-size: 0.58rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @container input-keyboard-panel (max-width: 40rem) {

@@ -896,6 +896,22 @@ test('Recognized detail stays one row for the reported k/j re-press sequence', a
   const boxes = await recognizedRows.evaluateAll((elements) =>
     elements.map((element) => element.getBoundingClientRect()));
   expect(new Set(boxes.map((box) => Math.round(box.top))).size).toBe(1);
+
+  const actionCode = recognizedRows.first().locator('code').first();
+  await expect(actionCode).toHaveAttribute('title', /.+/);
+  const compactStyles = await actionCode.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      overflow: style.overflow,
+      textOverflow: style.textOverflow,
+      whiteSpace: style.whiteSpace,
+    };
+  });
+  expect(compactStyles).toEqual({
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  });
 });
 
 test('Recognized detail keeps the same typography and height before and after input', async ({ page }) => {

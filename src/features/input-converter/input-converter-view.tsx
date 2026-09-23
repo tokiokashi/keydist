@@ -221,15 +221,21 @@ function RecognizedDetail({
     <div className="input-recognized-list">
       {recognized.map((entry, entryIndex) => (
         <div className="input-recognized" key={entryIndex}>
-          <strong>{entry.output}</strong>
+          <strong title={entry.output}>{entry.output}</strong>
           <div>
-            {entry.actions.map((action, actionIndex) => (
-              <code key={actionIndex}>
-                {action.keys.join(' + ')}
-                {action.heldKeys.length > 0 ? ` [hold: ${action.heldKeys.join(' + ')}]` : ''}
-                {action.holdPhase ? ` ${action.holdPhase}` : ''}
-              </code>
-            ))}
+            {entry.actions.map((action, actionIndex) => {
+              const actionLabel = [
+                action.keys.join(' + '),
+                action.heldKeys.length > 0 ? `[hold: ${action.heldKeys.join(' + ')}]` : '',
+                action.holdPhase ?? '',
+              ].filter(Boolean).join(' ');
+
+              return (
+                <code key={actionIndex} title={actionLabel}>
+                  {actionLabel}
+                </code>
+              );
+            })}
           </div>
         </div>
       ))}
