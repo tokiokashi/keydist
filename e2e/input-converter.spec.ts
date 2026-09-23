@@ -512,6 +512,153 @@ test('レイヤーカンペは盤面ごとに独立して複数小窓表示で�
   await expect(guide.locator('.input-layer-card-placeholder')).toHaveCount(1);
 });
 
+test('#regression レイヤーカンペ本体を浮かせた状態でも入れ子portalのMRU z-orderが壊れない', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+
+  // レイヤーカンペ本体を小窓化してから、その子である個別カンペカード2枚(A, B)も
+  // それぞれ独立小窓化する。カードはガイドのReact子要素だがfloating-rootへ
+  // portalされるため、クリックイベントはReactツリーを経由してガイドまで伝播する。
+  const guide = page.getByLabel('レイヤーカンペ一覧');
+  await page.getByLabel('レイヤーカンペを小窓表示').click();
+  await expect(guide).toHaveAttribute('data-floating', 'true');
+
+  const floatButtons = guide.locator('.input-layer-card-float');
+  await expect.poll(() => floatButtons.count()).toBeGreaterThan(1);
+
+  // ボタンがfloating cardに覆われて素のclick()が届かないことがあるため、
+  // evaluateで直接クリックする(過去に必要だった回避策)。
+  await floatButtons.first().evaluate((element) => (element as HTMLElement).click());
+  const cardA = page.locator('.input-layer-card-floating').first();
+  await expect(cardA).toHaveCount(1);
+
+  // 浮かせた直後の初期位置はガイド本体の矩形と重なる。ここでガイドが前面化するのは
+  // ドッキング中のボタンをクリックした結果として正しい挙動(このボタンはまだガイドの
+  // 実DOM配下にある)。だがそのままだとガイドがAの上に重なり続けてしまうので、
+  // 浮いた直後(=Aがまだガイドより前面にいる)のうちにヘッダーをドラッグしてガイドの
+  // 矩形の外へ退避させる。これで後段のクリックがガイドに遮られなくなる。
+  const dragBy = async (handle: ReturnType<typeof cardA.locator>, dx: number, dy: number) => {
+    const box = await handle.boundingBox();
+    expect(box).not.toBeNull();
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + Math.min(20, box!.height / 2));
+    await page.mouse.down();
+    await page.mouse.move(box!.x + box!.width / 2 + dx, box!.y + Math.min(20, box!.height / 2) + dy);
+    await page.mouse.up();
+  };
+  await dragBy(cardA.locator('> header'), 700, 0);
+
+  await guide.locator('.input-layer-card-float').first()
+    .evaluate((element) => (element as HTMLElement).click());
+  const floatingCards = page.locator('.input-layer-card-floating');
+  await expect(floatingCards).toHaveCount(2);
+  const cardB = floatingCards.nth(1);
+  await expect(cardB).toHaveAttribute('data-active', 'true');
+  // Bも同様に、浮いた直後(=Bがまだガイドより前面にいる)のうちに退避させる。
+  await dragBy(cardB.locator('> header'), -700, 400);
+
+  const zIndexOf = (locator: typeof cardA) => locator.evaluate(
+    (element) => Number.parseInt(getComputedStyle(element).zIndex, 10),
+  );
+
+  // Aのbody(ボタンでない場所)をpointerdown + clickして前面化する。
+  const cardABody = cardA.locator('p');
+  const cardABox = await cardABody.boundingBox();
+  expect(cardABox).not.toBeNull();
+  await page.mouse.move(cardABox!.x + cardABox!.width / 2, cardABox!.y + cardABox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.up();
+
+  const [guideZAfterClick, aZAfterClick, bZAfterClick] = await Promise.all([
+    zIndexOf(guide),
+    zIndexOf(cardA),
+    zIndexOf(cardB),
+  ]);
+  // 修正前はここでガイドがAより上に来た(guide=3, A=4, B=2 の実測あり)。
+  expect(guideZAfterClick).toBeLessThan(bZAfterClick);
+  expect(bZAfterClick).toBeLessThan(aZAfterClick);
+  await expect(cardA).toHaveAttribute('data-active', 'true');
+
+  // Bの内部要素へフォーカスするとBが前面化する。
+  await cardB.getByRole('button', { name: /を元に戻す$/ }).focus();
+
+  const [guideZAfterFocus, aZAfterFocus, bZAfterFocus] = await Promise.all([
+    zIndexOf(guide),
+    zIndexOf(cardA),
+    zIndexOf(cardB),
+  ]);
+  expect(guideZAfterFocus).toBeLessThan(aZAfterFocus);
+  expect(aZAfterFocus).toBeLessThan(bZAfterFocus);
+  await expect(cardB).toHaveAttribute('data-active', 'true');
+});
+
+test('#regression レイアウト切替でlayer cardが1フレームも消えない', async ({ page }) => {
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await expect(page.locator('.input-layer-card')).toHaveCount(1);
+
+  // useEffectでのreconcileはコミット後1フレーム、新配列のpanel stateが
+  // 無いまま古いWorkspacePanelがnullを返す瞬間があった。DOM全体を監視して
+  // 切替中に記録された最小カード数を後から読む。
+  await page.evaluate(() => {
+    const w = window as unknown as { __minLayerCardCount: number; __layerCardObserver?: MutationObserver };
+    w.__minLayerCardCount = document.querySelectorAll('.input-layer-card').length;
+    const observer = new MutationObserver(() => {
+      const count = document.querySelectorAll('.input-layer-card').length;
+      if (count < w.__minLayerCardCount) w.__minLayerCardCount = count;
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    w.__layerCardObserver = observer;
+  });
+
+  await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+  await expect(page.locator('.input-layer-card')).toHaveCount(4);
+
+  const minCount = await page.evaluate(() => {
+    const w = window as unknown as { __minLayerCardCount: number; __layerCardObserver?: MutationObserver };
+    w.__layerCardObserver?.disconnect();
+    return w.__minLayerCardCount;
+  });
+  // 修正前(useEffect reconcile)は切替中に0まで落ちた。
+  expect(minCount).toBeGreaterThan(0);
+});
+
+test('#regression Keyboardパネルのdocked headerはcheckbox Spaceを飲み込まずheader Enterだけ小窓化する', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  const panel = page.locator('.input-keyboard-panel');
+  const displayHeader = page.getByLabel('表示設定');
+  const layerGuideCheckbox = displayHeader.getByLabel('レイヤーカンペ', { exact: true });
+
+  // checkboxへフォーカスしたSpaceは、headerのkeydown guardに飲まれず
+  // checkbox自身のtoggleとして届き、panelは小窓化しない。
+  await expect(layerGuideCheckbox).toBeChecked();
+  await layerGuideCheckbox.focus();
+  await page.keyboard.press('Space');
+  await expect(layerGuideCheckbox).not.toBeChecked();
+  await expect(panel).not.toHaveAttribute('data-floating');
+
+  await layerGuideCheckbox.focus();
+  await page.keyboard.press('Space');
+  await expect(layerGuideCheckbox).toBeChecked();
+  await expect(panel).not.toHaveAttribute('data-floating');
+
+  // header自身へのEnterはガード対象外なので小窓化する。
+  await displayHeader.focus();
+  await page.keyboard.press('Enter');
+  await expect(panel).toHaveAttribute('data-floating', 'true');
+});
+
 test('Recognized detail stays one row when one event realizes multiple inputs', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/input');
