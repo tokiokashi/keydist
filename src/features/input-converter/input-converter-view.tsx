@@ -1286,7 +1286,9 @@ export function InputConverterView() {
                   if (!randomPracticeComplete) return;
                   advanceRandomPractice(randomPracticeMode);
                 }}
-                placeholder="ここをクリックして、そのまま打鍵してください。"
+                placeholder={lookupQuery.length === 0
+                  ? 'ここをクリックして、そのまま打鍵してください。'
+                  : undefined}
               />
             </div>
             <p className="input-capture-hint" id="input-capture-help">
