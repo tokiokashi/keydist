@@ -18,6 +18,7 @@ export interface PhysicalKeyboardProps {
   readonly geometryId?: string;
   readonly unit?: number;
   readonly showSecondary?: boolean;
+  readonly horizontalAlign?: 'left' | 'center';
   readonly selectedKeyId?: string;
   readonly onKeyClick?: (key: Key) => void;
 }
@@ -34,6 +35,7 @@ export function PhysicalKeyboard({
   geometryId,
   unit = DEFAULT_UNIT,
   showSecondary = true,
+  horizontalAlign = 'center',
   selectedKeyId,
   onKeyClick,
 }: PhysicalKeyboardProps) {
@@ -68,6 +70,7 @@ export function PhysicalKeyboard({
         data-geometry-id={geometryId}
         height={height}
         role="img"
+        preserveAspectRatio={horizontalAlign === 'left' ? 'xMinYMid meet' : 'xMidYMid meet'}
         viewBox={`${viewX} ${viewY} ${width} ${height}`}
         width={width}
       >
