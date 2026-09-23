@@ -838,6 +838,7 @@ test('入力欄はお題を薄く表示し正解・誤入力を位置ごとに�
   const target = page.getByTestId('typing-target');
 
   await lookup.fill('かな');
+  await expect(output).not.toHaveAttribute('placeholder');
   await expect(target.locator('.input-output-char-pending')).toHaveText(['か', 'な']);
   await expect(target.locator('.input-output-char-correct')).toHaveCount(0);
   await expect(target.locator('.input-output-char-error')).toHaveCount(0);
@@ -862,6 +863,10 @@ test('入力欄はお題を薄く表示し正解・誤入力を位置ごとに�
 
   await lookup.fill('');
   await expect(target).toHaveCount(0);
+  await expect(output).toHaveAttribute(
+    'placeholder',
+    'ここをクリックして、そのまま打鍵してください。',
+  );
   await expect(output).toHaveValue('か');
 });
 
