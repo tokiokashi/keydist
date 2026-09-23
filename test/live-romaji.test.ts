@@ -4,6 +4,7 @@ import { kunrei } from '../src/romaji/kunrei.ts';
 import {
   liveRomajiContextSatisfied,
   romajiToKana,
+  romajiTypingCorrectness,
 } from '../src/features/input-converter/live-romaji.ts';
 
 const table = kunrei();
@@ -31,4 +32,17 @@ test('youon-only live contextは直前子音がある時だけ成立する', () 
   assert.equal(liveRomajiContextSatisfied(requirement, 'onn'), false);
   assert.equal(liveRomajiContextSatisfied(requirement, ''), false);
   assert.equal(liveRomajiContextSatisfied(requirement, 'ki'), false);
+});
+
+
+test('romajiTypingCorrectnessは正しい未確定子音を誤入力扱いしない', () => {
+  assert.deepEqual(romajiTypingCorrectness('k', 'か', table), [true]);
+  assert.deepEqual(romajiTypingCorrectness('ky', 'きゃ', table), [true, true]);
+  assert.deepEqual(romajiTypingCorrectness('かk', 'かな', table), [true, true]);
+});
+
+test('romajiTypingCorrectnessは一致したprefixだけを正解扱いする', () => {
+  assert.deepEqual(romajiTypingCorrectness('s', 'か', table), [false]);
+  assert.deepEqual(romajiTypingCorrectness('かs', 'かな', table), [true, false]);
+  assert.deepEqual(romajiTypingCorrectness('け', 'か', table), [false]);
 });
