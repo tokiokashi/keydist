@@ -67,11 +67,31 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   expect(viewportMetrics.body).toBeLessThanOrEqual(0);
   expect(viewportMetrics.document).toBeLessThanOrEqual(0);
 
-  await splitter.focus();
-  await page.keyboard.press('Home');
-
   const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
   const keyboardMain = page.locator('.input-keyboard-main');
+  const keyboardContent = page.locator('.input-keyboard-content');
+
+  // 1:1では縦積み。入力詳細の見出し行は持たず、2要素だけを横並びにする。
+  await expect(keyboardContent).toHaveAttribute('data-detail-layout', 'stacked');
+  await expect(details.locator('.input-debug-heading')).toHaveCount(0);
+  const stackedSections = details.locator('.input-inspector > section');
+  const stackedBoxes = await stackedSections.evaluateAll((elements) =>
+    elements.map((element) => element.getBoundingClientRect()));
+  expect(stackedBoxes).toHaveLength(2);
+  expect(Math.abs(stackedBoxes[0]!.top - stackedBoxes[1]!.top))
+    .toBeLessThanOrEqual(1);
+
+  // 左:右=46:54付近までは縦積み。
+  await splitter.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(splitter).toHaveAttribute('aria-valuenow', '46');
+  await expect(keyboardContent).toHaveAttribute('data-detail-layout', 'stacked');
+
+  // 44:56で4:5より右側が大きくなったら、詳細をキーボード右へ移す。
+  await page.keyboard.press('ArrowLeft');
+  await expect(splitter).toHaveAttribute('aria-valuenow', '44');
+  await expect(keyboardContent).toHaveAttribute('data-detail-layout', 'side');
+
   const [wideKeyboardBox, keyboardMainBox, wideDetailsBox] = await Promise.all([
     keyboard.boundingBox(),
     keyboardMain.boundingBox(),
@@ -85,27 +105,6 @@ test('Input Converter uses a resizable wide FHD workspace without test-mode scro
   );
   expect(wideDetailsBox!.width).toBeLessThanOrEqual(140);
   expect(wideKeyboardBox!.height).toBeLessThanOrEqual(keyboardMainBox!.height + 1);
-
-  await splitter.focus();
-  await page.keyboard.press('End');
-  const [narrowKeyboardBox, narrowDetailsBox] = await Promise.all([
-    keyboardMain.boundingBox(),
-    details.boundingBox(),
-  ]);
-  expect(narrowKeyboardBox).not.toBeNull();
-  expect(narrowDetailsBox).not.toBeNull();
-  expect(narrowDetailsBox!.y).toBeGreaterThan(
-    narrowKeyboardBox!.y + narrowKeyboardBox!.height,
-  );
-  const narrowDetailSections = details.locator('.input-inspector > section');
-  const narrowSectionBoxes = await narrowDetailSections.evaluateAll((elements) =>
-    elements.map((element) => element.getBoundingClientRect()));
-  expect(narrowSectionBoxes).toHaveLength(2);
-  expect(Math.abs(narrowSectionBoxes[0]!.top - narrowSectionBoxes[1]!.top))
-    .toBeLessThanOrEqual(1);
-
-  await splitter.focus();
-  await page.keyboard.press('Home');
 
   const before = await layerLabel.boundingBox();
   await page.getByLabel('自由入力テキスト').click();
