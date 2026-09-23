@@ -1530,7 +1530,7 @@ test('Practice Textは最長候補を1件だけ表示し、他の打ち方はhov
   await lookup.focus();
   await expect(popover).toBeHidden();
 
-  // guideの進捗・←/→・ガイド中markerは1行表示でも従来通り動く。
+  // guideの進捗・←/→は1行表示でも従来通り動く。
   await expect(guide).toContainText('1 / 1');
   await expect(page.getByRole('button', { name: '前の入力単位' })).toBeDisabled();
   await expect(page.getByRole('button', { name: '次の入力単位' })).toBeDisabled();
