@@ -151,7 +151,7 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
 
   await page
     .getByLabel('試し打ち文字列パネルをクリックまたはドラッグして小窓表示')
-    .getByText('打ち方を調べる', { exact: true })
+    .getByText('試し打ち文字列', { exact: true })
     .click();
   await expect(panel).toHaveAttribute('data-floating', 'true');
   await expect(lookup).toHaveValue('かな');
