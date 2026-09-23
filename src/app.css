@@ -1079,6 +1079,37 @@ h1 {
   border-top: 1px solid #e2e2dd;
 }
 
+.input-assist-slot[data-floating] {
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  padding: 0.65rem;
+  overflow: hidden;
+  border: 1px solid #d6d6d1;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.input-assist-slot[data-floating] > .input-lookup-field-heading {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid #e2e2dd;
+}
+
+.input-assist-slot[data-floating] > .input-lookup-field-body {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: start;
+}
+
+.input-assist-slot[data-floating] > .input-lookup-results {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 0;
+  align-self: stretch;
+  overflow: auto;
+}
+
 .input-assist-slot > .input-lookup-field-heading {
   grid-column: 1;
   grid-row: 1;
@@ -1095,8 +1126,12 @@ h1 {
   align-self: center;
 }
 
-.input-lookup-field-heading > .input-panel-dock {
+.input-lookup-field-heading[data-floating] > .input-random-samples {
   margin-left: 0;
+}
+
+.input-lookup-field-heading[data-floating] > .input-panel-dock {
+  margin-left: auto;
 }
 
 .input-lookup-field {
@@ -1591,6 +1626,7 @@ h1 {
 
 .workspace-panel-resize {
   position: absolute;
+  z-index: 3;
   right: 0;
   bottom: 0;
   width: 1.1rem;
