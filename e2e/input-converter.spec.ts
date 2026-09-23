@@ -176,6 +176,42 @@ test('入力詳細panelはヘッダーから独立小窓化し元へ戻せる', 
   // 小窓化してもRecognized detailの内容は保たれる。
   await expect(panel.getByRole('heading', { name: 'Recognized' })).toBeVisible();
 
+  // 最小サイズまで縮めてbodyをスクロールしても、headerと「戻す」buttonは
+  // panelの表示範囲内に留まる（.input-inspectorだけがscrollし、headerはscrollしない）。
+  const resizeHandle = page.getByLabel('入力詳細パネルのサイズを変更');
+  const resizeBox = await resizeHandle.boundingBox();
+  expect(resizeBox).not.toBeNull();
+  await page.mouse.move(resizeBox!.x + resizeBox!.width / 2, resizeBox!.y + resizeBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(resizeBox!.x - 400, resizeBox!.y - 400);
+  await page.mouse.up();
+
+  await expect.poll(async () => {
+    const box = await panel.boundingBox();
+    return box === null ? -1 : Math.round(box.height);
+  }).toBeLessThanOrEqual(165);
+
+  const backButton = panel.getByRole('button', { name: '入力詳細パネルを元に戻す' });
+  await panel.locator('.input-inspector').evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+
+  const panelBox = await panel.boundingBox();
+  const headerBox = await panel.locator('.input-debug-heading').boundingBox();
+  const backButtonBox = await backButton.boundingBox();
+  expect(panelBox).not.toBeNull();
+  expect(headerBox).not.toBeNull();
+  expect(backButtonBox).not.toBeNull();
+
+  // boundingBoxがpanel内に収まっているかを比較する（toBeVisibleだけでは
+  // scroll containerの外にはみ出た要素も「visible」判定されてしまうため不十分）。
+  expect(headerBox!.y).toBeGreaterThanOrEqual(panelBox!.y - 0.5);
+  expect(headerBox!.y + headerBox!.height).toBeLessThanOrEqual(panelBox!.y + panelBox!.height + 0.5);
+  expect(backButtonBox!.y).toBeGreaterThanOrEqual(panelBox!.y - 0.5);
+  expect(backButtonBox!.y + backButtonBox!.height)
+    .toBeLessThanOrEqual(panelBox!.y + panelBox!.height + 0.5);
+  await expect(backButton).toBeVisible();
+
   await panel.getByRole('button', { name: '入力詳細パネルを元に戻す' }).click();
   await expect(panel).not.toHaveAttribute('data-floating');
   await expect(
