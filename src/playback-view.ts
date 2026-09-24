@@ -25,28 +25,20 @@ import type { PlaybackCalibration } from './playback-calibration.ts';
 import type {
   PlaybackKeyFeedbackStyle,
   UiPlaybackState,
-  UiStateStorage,
   UiStateV1,
 } from './ui-state.ts';
 import type { AggregatedAnalysisResult } from './analysis-aggregate.ts';
 import type { ChainPolicy } from './analysis-chain.ts';
 import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
-import {
-  DEFAULT_TRIGGER_ACTIVATION_GROUPINGS,
-  type ActionRealizationPolicy,
-  type TriggerActivationClass,
-  type TriggerActivationGrouping,
-  type TriggerRealizationPolicy,
+import type {
+  ActionRealizationPolicy,
+  TriggerRealizationPolicy,
 } from './core/semantic-input/index.ts';
-import {
-  sameModifierGroupSelector,
-  samePhysicalTriggerSelector,
-  triggerActivationGroups,
-  triggerActivationLogicalGroups,
-  TRIGGER_ACTIVATION_CLASS_LABELS,
-} from './trigger-activation-groups.ts';
 import type { AnalyzerPlaybackSurfaceModel } from './analyzer-playback-surface-model.ts';
-import type { AnalyzerPlaybackSettingsModel } from './analyzer-playback-settings-model.ts';
+import type {
+  AnalyzerPlaybackSettingsActions,
+  AnalyzerPlaybackSettingsModel,
+} from './analyzer-playback-settings-model.ts';
 import {
   playbackAnalysisArpeggioMotions,
   playbackAnalysisArpeggioOrders,
@@ -59,7 +51,6 @@ import {
 
 export interface PlaybackViewContext {
   el: AppElements;
-  storage: UiStateStorage | undefined;
   getUiState: () => UiStateV1;
   getPlaybackSettings: () => UiPlaybackState;
   updatePlaybackSetting: <K extends keyof UiPlaybackState>(key: K, value: UiPlaybackState[K]) => void;
@@ -100,7 +91,7 @@ export interface PlaybackViewController {
   getGeometry: () => ReturnType<typeof buildGeometry> | undefined;
   getLayout: () => Layout | undefined;
   commitSurface: () => void;
-  commitSettings: () => void;
+  settingsActions: AnalyzerPlaybackSettingsActions;
 }
 
 export function createPlaybackView(ctx: PlaybackViewContext): PlaybackViewController {
@@ -113,17 +104,6 @@ const PLAYBACK_SCALE_MIN = 0.5;
 const PLAYBACK_SCALE_MAX = 4;
 
 type PlaybackDynamicDisplay = 'none' | 'chain' | 'arpeggio' | 'both';
-
-const CHAIN_POLICY_KEYS: Record<keyof ChainPolicy, true> = {
-  breakOnSameFinger: true,
-  breakOnTriggerOnly: true,
-  breakOnThumbOnly: true,
-  breakOnOppositeHandSimultaneous: true,
-};
-
-function isChainPolicyKey(value: string | undefined): value is keyof ChainPolicy {
-  return value !== undefined && Object.prototype.hasOwnProperty.call(CHAIN_POLICY_KEYS, value);
-}
 
 function dynamicPlaybackDisplay(settings: UiPlaybackState): PlaybackDynamicDisplay {
   if (settings.showChainOnRateChart && settings.showArpeggioOnRateChart) return 'both';
@@ -160,19 +140,8 @@ let playbackMotionCursor = -1;
 let playbackFeedbackPending = false;
 let playbackRateChartSignature: string | undefined;
 let playbackTiming: readonly PlaybackTimingStep[] = [];
-type PlaybackSettingsTab = 'display' | 'graph' | 'conditions';
-
 let playbackSettingsOpen = false;
-let playbackSettingsTab: PlaybackSettingsTab = 'display';
-const playbackSettingsDetailsOpen = new Map<string, boolean>();
 let preserveStateOnNextRender: PlaybackPreserveMode | undefined;
-
-function playbackDetailsOpenAttribute(
-  key: string,
-  defaultOpen = false,
-): string {
-  return (playbackSettingsDetailsOpen.get(key) ?? defaultOpen) ? ' open' : '';
-}
 
 function refreshPlaybackTiming(): void {
   const settings = ctx.getPlaybackSettings();
@@ -199,197 +168,6 @@ function setPlaybackSettingsOpen(open: boolean): void {
   elements.playbackSettingsPanel.toggleAttribute('inert', !open);
   const trigger = elements.playback.querySelector<HTMLButtonElement>('[data-playback-settings-open]');
   trigger?.setAttribute('aria-expanded', String(open));
-}
-
-function triggerGroupingOptions(
-  current: TriggerActivationGrouping | undefined,
-  semanticDefault: TriggerActivationGrouping,
-): string {
-  const inherited = `既定（${semanticDefault === 'separate' ? '独立action' : 'outputと同じaction'}）`;
-  return [
-    ['inherit', inherited],
-    ['combined', 'outputと同じaction'],
-    ['separate', '独立action'],
-  ].map(([value, label]) =>
-    `<option value="${value}"${(current ?? 'inherit') === value ? ' selected' : ''}>${escapeText(label)}</option>`
-  ).join('');
-}
-
-function triggerSettingsMarkup(layout: Layout): string {
-  const realization = ctx.getTriggerRealizationPolicy();
-  const action = ctx.getActionRealizationPolicy();
-  const groups = triggerActivationGroups(layout);
-  const relevantClasses = [...new Set(groups.map((group) => group.activationClass))]
-    .filter((kind): kind is Exclude<TriggerActivationClass, 'postpress-required'> =>
-      kind !== 'postpress-required');
-  const classRows = relevantClasses.map((kind) => {
-    const current = action.triggerActivationClassOverrides?.[kind];
-    return `<label class="playback-range-setting"><span>${escapeText(TRIGGER_ACTIVATION_CLASS_LABELS[kind])}</span>
-      <select data-playback-trigger-class="${kind}"${action.triggerActivation === 'semantic' ? '' : ' disabled'}>
-        ${triggerGroupingOptions(current, DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[kind])}
-      </select>
-    </label>`;
-  }).join('');
-
-  const logicalRows = triggerActivationLogicalGroups(layout)
-    .filter((group) => !group.activationClasses.includes('postpress-required'))
-    .map((logical) => {
-      const existing = action.triggerActivationOverrides?.find((override) =>
-        sameModifierGroupSelector(override.selector, logical.modifierGroupIds));
-      const defaults = logical.activationClasses.map((kind) =>
-        action.triggerActivationClassOverrides?.[kind]
-          ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[kind]);
-      const semanticDefault = defaults.every((value) => value === 'separate')
-        ? 'separate'
-        : 'combined';
-      return `<label class="playback-range-setting"><span>${escapeText(logical.label)}</span>
-        <select data-playback-trigger-modifier-groups="${escapeAttr(JSON.stringify(logical.modifierGroupIds))}"${action.triggerActivation === 'semantic' ? '' : ' disabled'}>
-          ${triggerGroupingOptions(existing?.grouping, semanticDefault)}
-        </select>
-      </label>`;
-    }).join('');
-
-  const physicalRows = groups
-    .filter((group) => group.activationClass !== 'postpress-required')
-    .map((group) => {
-      const existing = action.triggerActivationOverrides?.find((override) =>
-        samePhysicalTriggerSelector(override.selector, group));
-      const logicalOverride = action.triggerActivationOverrides?.find((override) =>
-        sameModifierGroupSelector(override.selector, group.modifierGroupIds));
-      const semanticDefault = logicalOverride?.grouping
-        ?? action.triggerActivationClassOverrides?.[group.activationClass]
-        ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[group.activationClass];
-      const selector = {
-        modifierGroupIds: group.modifierGroupIds,
-        triggerKeys: group.triggerKeys,
-      };
-      return `<label class="playback-range-setting"><span>${escapeText(group.label)}</span>
-        <select data-playback-trigger-physical="${escapeAttr(JSON.stringify(selector))}"${action.triggerActivation === 'semantic' ? '' : ' disabled'}>
-          ${triggerGroupingOptions(existing?.grouping, semanticDefault)}
-        </select>
-      </label>`;
-    }).join('');
-
-  const details = logicalRows.length === 0 && physicalRows.length === 0
-    ? ''
-    : `<details class="playback-settings-tree playback-settings-tree-level-2" data-playback-details="trigger-individual"${playbackDetailsOpenAttribute('trigger-individual')}>
-        <summary>個別設定</summary>
-        <div class="playback-dialog-grid playback-trigger-option-list">${logicalRows}</div>
-        ${physicalRows.length === 0 ? '' : `<details class="playback-settings-tree playback-settings-tree-level-3" data-playback-details="trigger-physical"${playbackDetailsOpenAttribute('trigger-physical')}>
-          <summary>物理trigger単位の詳細</summary>
-          <div class="playback-dialog-grid playback-trigger-option-list">${physicalRows}</div>
-        </details>`}
-      </details>`;
-
-  return `<details class="playback-settings-group playback-trigger-settings" data-playback-details="trigger-realization"${playbackDetailsOpenAttribute('trigger-realization')}>
-    <summary>Trigger realization</summary>
-    <div class="playback-settings-group-body">
-      <label class="playback-finger-toggle playback-setting-row">
-        <input type="checkbox" data-playback-trigger-hold${realization.useHold ? ' checked' : ''} />
-        hold-capable triggerを連続保持する
-      </label>
-      <div class="playback-trigger-action-group">
-        <label class="playback-finger-toggle playback-setting-row playback-trigger-action-toggle">
-          <input type="checkbox" data-playback-trigger-actions${action.triggerActivation === 'semantic' ? ' checked' : ''} />
-          trigger押下の独立action化を有効にする
-        </label>
-        <div class="condition-trigger-subheading">独立action化する対象</div>
-        <div class="playback-dialog-grid playback-trigger-option-list">
-          ${classRows}
-        </div>
-        ${details}
-      </div>
-    </div>
-  </details>`;
-
-}
-
-function playbackSettingsMarkup(layout: Layout, options: Options): string {
-  const activeTab = playbackSettingsTab;
-  const chainPolicy = ctx.getChainPolicy();
-  const arpeggioPolicy = ctx.getArpeggioPolicy();
-  const triggerSettings = triggerSettingsMarkup(layout);
-  return `<div class="playback-settings-content">
-    <div class="dialog-head">
-      <h2>打鍵再生の設定</h2>
-      <button type="button" class="ghost close" data-playback-settings-close>閉じる</button>
-    </div>
-    <div class="playback-settings-scope">
-      <span>適用先: <strong data-playback-settings-scope>${ctx.isPlaybackLayoutOverride() ? `${escapeText(layout.name)}専用` : '共通設定'}</strong></span>
-      <button type="button" class="ghost" data-playback-layout-override="${ctx.isPlaybackLayoutOverride() ? 'disable' : 'enable'}">${ctx.isPlaybackLayoutOverride() ? '共通設定に戻す' : 'この配列専用にする'}</button>
-      <small>配列固有にすると、この配列を表示したときだけ設定を使います。</small>
-    </div>
-    <div class="playback-settings-tabs" role="tablist" aria-label="打鍵再生設定の分類">
-      <button type="button" class="playback-settings-tab" role="tab" aria-selected="${activeTab === 'display'}" aria-controls="playback-settings-display" data-playback-settings-tab="display">表示設定</button>
-      <button type="button" class="playback-settings-tab" role="tab" aria-selected="${activeTab === 'graph'}" aria-controls="playback-settings-graph" data-playback-settings-tab="graph">グラフ設定</button>
-      <button type="button" class="playback-settings-tab" role="tab" aria-selected="${activeTab === 'conditions'}" aria-controls="playback-settings-conditions" data-playback-settings-tab="conditions">シミュレーション条件</button>
-    </div>
-    <section id="playback-settings-display" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="display"${activeTab === 'display' ? '' : ' hidden'}>
-      <p class="note">キーボード画面に重ねる情報を設定します。変更はすぐに反映されます。</p>
-      <div class="playback-dialog-grid">
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-fingers${ctx.getUiState().ui.playback.showFingers ? ' checked' : ''} />指の位置を色で表示</label>
-        <label class="playback-range-setting"><span>押下フィードバック</span>
-          <select data-playback-key-feedback aria-label="キー押下のフィードバック">
-            <option value="off"${ctx.getUiState().ui.playback.keyFeedbackStyle === 'off' ? ' selected' : ''}>オフ</option>
-            <option value="fade"${ctx.getUiState().ui.playback.keyFeedbackStyle === 'fade' ? ' selected' : ''}>フェード</option>
-            <option value="pulse"${ctx.getUiState().ui.playback.keyFeedbackStyle === 'pulse' ? ' selected' : ''}>パルス</option>
-            <option value="bounce"${ctx.getUiState().ui.playback.keyFeedbackStyle === 'bounce' ? ' selected' : ''}>バウンス</option>
-          </select>
-        </label>
-        <label class="playback-range-setting" title="次の実Pressへ向け、指位置表示を打鍵時刻より先に到着させる時間。0なら従来どおり"><span>準備時間</span> <input type="number" data-playback-finger-preparation min="0" step="0.05" value="${ctx.getUiState().ui.playback.fingerPreparationSeconds}" aria-label="指位置表示の準備時間（秒）" /> 秒</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-romaji-plan${ctx.getUiState().ui.playback.showRomajiPlan ? ' checked' : ''} />予定ローマ字の盤面表示</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-plan-keys${ctx.getUiState().ui.playback.showPlanKeys ? ' checked' : ''} />押下予定キーを表示</label>
-        <div class="playback-window-setting" title="選択中の配列に適用される先読みN">N <output data-playback-window>${options.windowSize}</output> 入力先</div>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-trail${ctx.getUiState().ui.playback.showTrail ? ' checked' : ''} />押下履歴を残す</label>
-        <label class="playback-range-setting" title="押下履歴を残すステップ数">τ <input type="number" data-playback-trail-tau min="1" max="20" step="1" value="${ctx.getUiState().ui.playback.trailTau}" aria-label="押下履歴のステップ数" /> ステップ</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-order-labels${ctx.getUiState().ui.playback.showOrderLabels ? ' checked' : ''} />順番ラベルを表示</label>
-        <label class="playback-scale-setting" title="0.5〜4倍。上下キーは1倍刻みで、数値を直接入力できます">配列図 <input type="number" data-playback-scale min="${PLAYBACK_SCALE_MIN}" max="${PLAYBACK_SCALE_MAX}" step="1" value="${ctx.getUiState().ui.playback.scale}" aria-label="配列図の表示倍率" /> 倍</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chain${ctx.getUiState().ui.playback.showChain ? ' checked' : ''} />Analysis Chainの動的表示</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-arpeggio${ctx.getUiState().ui.playback.showArpeggio ? ' checked' : ''} />ArpeggioSpanの動的表示</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-same-finger-motion${ctx.getUiState().ui.playback.showSameFingerMotion ? ' checked' : ''} />同指移動の動的表示</label>
-      </div>
-    </section>
-    <section id="playback-settings-graph" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="graph"${activeTab === 'graph' ? '' : ' hidden'}>
-      <p class="note">かな/秒・アクション/秒の平均と、グラフ上に重ねる構造区間を設定します。平均条件は全配列共通です。</p>
-      <div class="playback-dialog-grid">
-        <label class="playback-range-setting"><span>平均方式</span>
-          <select data-playback-rate-average aria-label="速度グラフの平均方式">
-            <option value="sma"${ctx.getUiState().conditions.defaults.playbackRateAverage === 'sma' ? ' selected' : ''}>SMA（単純移動平均）</option>
-            <option value="ewma"${ctx.getUiState().conditions.defaults.playbackRateAverage === 'ewma' ? ' selected' : ''}>EWMA（指数移動平均）</option>
-          </select>
-        </label>
-        <label class="playback-range-setting"><span>SMA窓幅</span> <input type="number" data-playback-rate-window min="${PLAYBACK_RATE_WINDOW_MIN}" max="${PLAYBACK_RATE_WINDOW_MAX}" step="1" value="${ctx.getUiState().conditions.defaults.playbackRateWindow}" aria-label="SMAの窓幅" /> 打鍵</label>
-        <label class="playback-range-setting"><span>EWMA半減期</span> <input type="number" data-playback-rate-half-life min="${PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN}" max="${PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX}" step="0.1" value="${ctx.getUiState().conditions.defaults.playbackRateHalfLifeSeconds}" aria-label="EWMAの半減期（秒）" /> 秒</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chart-chain${ctx.getUiState().ui.playback.showChainOnRateChart ? ' checked' : ''} />Chain区間をグラフに表示</label>
-        <label class="playback-finger-toggle"><input type="checkbox" data-playback-chart-arpeggio${ctx.getUiState().ui.playback.showArpeggioOnRateChart ? ' checked' : ''} />Arpeggio区間をグラフに表示</label>
-      </div>
-    </section>
-    <section id="playback-settings-conditions" class="playback-settings-panel" role="tabpanel" data-playback-settings-panel="conditions"${activeTab === 'conditions' ? '' : ' hidden'}>
-      <p class="note">再生時間はTransition Calibration、構造表示はAnalysis Chain / ArpeggioPolicyを使用します。</p>
-      <div class="playback-dialog-grid">
-        <label class="playback-speed"><span>標準速度</span><input type="number" data-playback-rate min="${PLAYBACK_STEPS_PER_SECOND_MIN}" max="${PLAYBACK_STEPS_PER_SECOND_MAX}" step="any" value="${playbackState.stepsPerSecond}" aria-label="再生の標準速度（ステップ毎秒）" /> <span>ステップ/秒</span></label>
-        <label class="playback-finger-toggle" title="同じ指の連続打鍵に指の移動速度を反映。個人速度が無ければ距離に比例した簡易換算で代用"><input type="checkbox" data-playback-sfb-delay${playbackState.sameFingerDelay ? ' checked' : ''} />指の移動速度を考慮</label>
-        <label class="playback-finger-toggle" title="全指について次のPressまでの物理移動時間を確認し、base Timingに間に合わないStrokeだけ必要量を延長"><input type="checkbox" data-playback-all-finger-delay${ctx.getUiState().ui.playback.allFingerMovementDelay ? ' checked' : ''} />全指の移動時間で律速</label>
-        <label class="playback-finger-toggle" title="キャリブレーションした通常速度・Transition方向別速度・指移動速度を再生へ反映"><input type="checkbox" data-playback-calibration${ctx.getUiState().ui.playback.useCalibration ? ' checked' : ''}${ctx.getCalibration() ? '' : ' disabled'} />個人速度を適用</label>
-        <button type="button" class="ghost" data-playback-action="calibration-edit">${ctx.getCalibration() ? '保存値を確認・編集' : '個人速度を測定'}</button>
-      </div>
-      ${triggerSettings}
-      <details class="playback-settings-group" data-playback-details="chain-policy"${playbackDetailsOpenAttribute('chain-policy', true)}>
-        <summary>Analysis Chain境界</summary>
-        <label><input type="checkbox" data-playback-chain-policy="breakOnSameFinger"${chainPolicy.breakOnSameFinger ? ' checked' : ''} />非親指SFB Strokeで区切る</label>
-        <label><input type="checkbox" data-playback-chain-policy="breakOnTriggerOnly"${chainPolicy.breakOnTriggerOnly ? ' checked' : ''} />trigger-only Strokeで区切る</label>
-        <label><input type="checkbox" data-playback-chain-policy="breakOnThumbOnly"${chainPolicy.breakOnThumbOnly ? ' checked' : ''} />親指only Strokeで区切る</label>
-        <label><input type="checkbox" data-playback-chain-policy="breakOnOppositeHandSimultaneous"${chainPolicy.breakOnOppositeHandSimultaneous ? ' checked' : ''} />逆手同時outputで区切る</label>
-      </details>
-      <details class="playback-settings-group" data-playback-details="arpeggio-policy"${playbackDetailsOpenAttribute('arpeggio-policy', true)}>
-        <summary>ArpeggioPolicy</summary>
-        <label><input type="checkbox" data-playback-arpeggio-policy="includeThumb"${arpeggioPolicy.includeThumb ? ' checked' : ''} />output親指をcoreに含める</label>
-        <label><input type="checkbox" data-playback-arpeggio-policy="bridgeSameFinger"${arpeggioPolicy.bridgeSameFinger ? ' checked' : ''} />same Transitionを中立bridgeとしてSpanを拡張</label>
-        <label><input type="checkbox" data-playback-arpeggio-policy="includeSingleRedirectTail"${arpeggioPolicy.includeSingleRedirectTail ? ' checked' : ''} />末尾直後の逆方向1 Transitionを含める</label>
-      </details>
-      <label class="playback-speed playback-speed-final"><span>再生倍率</span><input type="number" data-playback-multiplier min="${PLAYBACK_SPEED_MULTIPLIER_MIN}" max="${PLAYBACK_SPEED_MULTIPLIER_MAX}" step="0.1" value="${playbackState.speedMultiplier}" aria-label="再生速度の倍率" /> <span>倍</span></label>
-    </section>
-  </div>`;
 }
 
 function cancelPlaybackAnimation() {
