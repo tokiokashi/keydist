@@ -4,8 +4,13 @@ test('remaining Analyzer controls are React-owned and detail selection restores 
   await page.goto('/legacy.html');
 
   const sidebar = page.locator('[data-react-feature="sidebar-controls"]');
+  const geometryPanel = page.locator('#geometry-panel');
   const geometry = page.locator('[data-react-feature="geometry-controls"]');
   await expect(sidebar).toBeVisible();
+
+  if (!(await geometryPanel.getAttribute('open'))) {
+    await geometryPanel.locator(':scope > summary').click();
+  }
   await expect(geometry).toBeVisible();
 
   const detail = sidebar.locator('#detail-layout');
