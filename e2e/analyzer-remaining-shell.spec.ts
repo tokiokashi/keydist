@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('remaining Analyzer controls are React-owned and detail selection restores from AppState', async ({ page }) => {
-  await page.goto('/legacy.html');
+  await page.goto('/analyzer');
 
   const sidebar = page.locator('[data-react-feature="sidebar-controls"]');
   const geometryPanel = page.locator('#geometry-panel');
@@ -31,7 +31,7 @@ test('remaining Analyzer controls are React-owned and detail selection restores 
 });
 
 test('How and Conditions dialog shells are React-owned', async ({ page }) => {
-  await page.goto('/legacy.html');
+  await page.goto('/analyzer');
 
   await page.locator('#how-open').click();
   await expect(page.locator('#how-dialog')).toHaveAttribute('open', '');
@@ -46,7 +46,7 @@ test('How and Conditions dialog shells are React-owned', async ({ page }) => {
 });
 
 test('legacy panel open state is coordinated by React and restores through AppState', async ({ page }) => {
-  await page.goto('/legacy.html');
+  await page.goto('/analyzer');
 
   const textPanel = page.locator('#text-panel');
   await expect(textPanel).toHaveAttribute('data-react-feature', 'panel-text');
@@ -65,7 +65,7 @@ test('legacy panel open state is coordinated by React and restores through AppSt
 });
 
 test('layout selection persists and drives analysis across reloads', async ({ page }) => {
-  await page.goto('/legacy.html');
+  await page.goto('/analyzer');
 
   const sidebar = page.locator('[data-react-feature="sidebar-controls"]');
   await expect(sidebar).toBeVisible();
@@ -128,7 +128,7 @@ test('layout selection persists and drives analysis across reloads', async ({ pa
 
 
 test('theme controls are React-owned and restore through AppState', async ({ page }) => {
-  await page.goto('/legacy.html');
+  await page.goto('/analyzer');
 
   const controls = page.locator('[data-react-feature="theme-controls"]');
   await expect(controls).toBeVisible();
