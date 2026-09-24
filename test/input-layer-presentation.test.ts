@@ -88,6 +88,11 @@ test('Faceを持たない通常Shiftもcanonical aggregationからlegendを表�
   assert.deepEqual(activeModifierAggregationGroupIds(layout, ['shift-l']), ['layer:Shift']);
   assert.equal(aggregationLegendMap(layout, 'layer:Shift').get('a'), 'A');
   assert.deepEqual(aggregationTriggerKeys(layout, 'layer:Shift'), ['shift-l', 'shift-r']);
+
+  const guide = presentationLayerGuide(layout, 'layer:Shift');
+  assert.ok(guide);
+  assert.equal(guide.legends.get('a'), 'A');
+  assert.deepEqual(guide.triggerKeys, ['shift-l', 'shift-r']);
 });
 
 
