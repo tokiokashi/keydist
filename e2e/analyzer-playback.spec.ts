@@ -26,3 +26,32 @@ test('Playback surface is React-hosted and panel state restores from AppState', 
   await expect(page.locator('[data-react-feature="playback"] .playback-panel'))
     .toHaveAttribute('open', '');
 });
+
+test('Playback settings are React-hosted and restore through the AppState playback slice', async ({ page }) => {
+  await page.goto('/legacy.html');
+
+  const surface = page.locator('[data-react-feature="playback"]');
+  await expect(surface).toBeVisible();
+
+  const panel = surface.locator('.playback-panel');
+  if (!(await panel.getAttribute('open'))) {
+    await panel.locator(':scope > summary').click();
+  }
+  await surface.locator('[data-playback-settings-open]').click();
+  const settings = page.locator('[data-react-feature="playback-settings"]');
+  await expect(settings).toBeVisible();
+
+  const trail = settings.locator('input[data-playback-trail]');
+  const next = !(await trail.isChecked());
+  await trail.setChecked(next);
+
+  await expect.poll(async () => page.evaluate(() => {
+    const raw = localStorage.getItem('keydist:app-state');
+    return raw ? JSON.parse(raw).playback?.showTrail ?? null : null;
+  })).toBe(next);
+
+  await page.reload();
+  await page.locator('[data-react-feature="playback"] [data-playback-settings-open]').click();
+  await expect(page.locator('[data-react-feature="playback-settings"] input[data-playback-trail]'))
+    .toBeChecked({ checked: next });
+});

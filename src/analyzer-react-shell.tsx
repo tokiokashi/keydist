@@ -10,6 +10,7 @@ import type { ModeId } from './layout-selection.ts';
 import type { AnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
 import type { AnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 import type { AnalyzerPlaybackSurfaceModel } from './analyzer-playback-surface-model.ts';
+import type { AnalyzerPlaybackSettingsModel } from './analyzer-playback-settings-model.ts';
 import { MAX_SAVED_TEXT_LENGTH } from './ui-state.ts';
 
 export interface AnalyzerReactShellOptions {
@@ -19,14 +20,17 @@ export interface AnalyzerReactShellOptions {
   comparisonSlot: HTMLElement;
   sensitivitySlot: HTMLElement;
   playbackSlot: HTMLElement;
+  playbackSettingsSlot: HTMLElement;
   stateOwner: AnalyzerUiStateOwner;
   comparisonModel: AnalyzerComparisonModel;
   playbackSurfaceModel: AnalyzerPlaybackSurfaceModel;
+  playbackSettingsModel: AnalyzerPlaybackSettingsModel;
   onModeChange: () => void;
   onTextInput: () => void;
   onTextCommit: () => void;
   onMetricsChange: () => void;
   onPlaybackSurfaceCommit: () => void;
+  onPlaybackSettingsCommit: () => void;
 }
 
 export interface AnalyzerReactShellController {
@@ -63,21 +67,49 @@ function AnalyzerPlaybackSurface({
   );
 }
 
+function AnalyzerPlaybackSettings({
+  model,
+  onCommit,
+}: {
+  model: AnalyzerPlaybackSettingsModel;
+  onCommit: () => void;
+}) {
+  const snapshot = useSyncExternalStore(
+    model.subscribe,
+    model.getSnapshot,
+    model.getSnapshot,
+  );
+
+  useLayoutEffect(() => {
+    if (snapshot.html) onCommit();
+  }, [snapshot.revision, snapshot.html, onCommit]);
+
+  return (
+    <div
+      data-react-feature="playback-settings"
+      dangerouslySetInnerHTML={{ __html: snapshot.html }}
+    />
+  );
+}
+
 function AnalyzerReactShell({
   modeSlot,
   textSlot,
   comparisonSlot,
   sensitivitySlot,
   playbackSlot,
+  playbackSettingsSlot,
   stateOwner,
   comparisonModel,
   playbackSurfaceModel,
+  playbackSettingsModel,
   textModel,
   onModeChange,
   onTextInput,
   onTextCommit,
   onMetricsChange,
   onPlaybackSurfaceCommit,
+  onPlaybackSettingsCommit,
 }: Omit<AnalyzerReactShellOptions, 'root'> & { textModel: AnalyzerTextModel }) {
   const state = useSyncExternalStore(
     stateOwner.subscribe,
@@ -284,6 +316,13 @@ function AnalyzerReactShell({
         />,
         playbackSlot,
       )}
+      {createPortal(
+        <AnalyzerPlaybackSettings
+          model={playbackSettingsModel}
+          onCommit={onPlaybackSettingsCommit}
+        />,
+        playbackSettingsSlot,
+      )}
     </>
   );
 }
@@ -306,15 +345,18 @@ export function mountAnalyzerReactShell(
       comparisonSlot={options.comparisonSlot}
       sensitivitySlot={options.sensitivitySlot}
       playbackSlot={options.playbackSlot}
+      playbackSettingsSlot={options.playbackSettingsSlot}
       stateOwner={options.stateOwner}
       comparisonModel={options.comparisonModel}
       playbackSurfaceModel={options.playbackSurfaceModel}
+      playbackSettingsModel={options.playbackSettingsModel}
       textModel={textModel}
       onModeChange={options.onModeChange}
       onTextInput={options.onTextInput}
       onTextCommit={options.onTextCommit}
       onMetricsChange={options.onMetricsChange}
       onPlaybackSurfaceCommit={options.onPlaybackSurfaceCommit}
+      onPlaybackSettingsCommit={options.onPlaybackSettingsCommit}
     />,
   );
   return {
