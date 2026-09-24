@@ -223,13 +223,33 @@ export interface PresentationLayerGuide {
 export function presentationLayerGuide(
   layout: Pick<
     Layout,
-    'faces' | 'faceLayerIds' | 'layerDefinitions' | 'thumbShiftKeys' | 'legends'
+    | 'canonicalInputs'
+    | 'faces'
+    | 'faceLayerIds'
+    | 'layerDefinitions'
+    | 'thumbShiftKeys'
+    | 'legends'
   >,
   layerId: string,
 ): PresentationLayerGuide | undefined {
   const layer = orderedPresentationLayers(classifyPresentationFaces(layout))
     .find((candidate) => candidate.id === layerId);
-  if (layer === undefined) return undefined;
+
+  // Face authoringがあるlayerではpresentation Faceをauthorityにする。
+  // Faceを持たない生成layer（通常Shift等）だけcanonical aggregationへfallbackする。
+  if (layer === undefined) {
+    const definition = (layout.layerDefinitions ?? []).find(
+      (candidate) => candidate.id === layerId && candidate.kind === 'layer',
+    );
+    if (definition === undefined) return undefined;
+    const legends = aggregationLegendMap(layout, layerId);
+    const triggerKeys = aggregationTriggerKeys(layout, layerId);
+    return {
+      legends,
+      triggerKeys,
+      triggerDisplayText: aggregationTriggerDisplayText(layout, layerId),
+    };
+  }
 
   const legends = new Map<string, string>();
   for (const face of layer.faces) {
