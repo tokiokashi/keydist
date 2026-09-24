@@ -1,22 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { AnalyzerPage } from '../analyzer-page.tsx';
+import analyzerCss from '../style.css?url';
 
 export const Route = createFileRoute('/analyzer')({
-  component: AnalyzerBridge,
+  component: AnalyzerPage,
+  head: () => ({
+    meta: [
+      { title: 'keydist — キーボード配列指移動距離' },
+      {
+        name: 'description',
+        content: 'キーボード論理配列を指の総移動距離で評価する',
+      },
+    ],
+    links: [{ rel: 'stylesheet', href: analyzerCss }],
+  }),
 });
-
-function AnalyzerBridge() {
-  const legacyUrl = `${import.meta.env.BASE_URL}legacy.html`;
-
-  useEffect(() => {
-    window.location.replace(legacyUrl);
-  }, [legacyUrl]);
-
-  return (
-    <section className="route-status">
-      <h1>Analyzer</h1>
-      <p>既存Analyzerへ移動している。</p>
-      <a href={legacyUrl}>移動しない場合はこちら</a>
-    </section>
-  );
-}
