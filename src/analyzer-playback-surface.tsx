@@ -501,15 +501,15 @@ export function AnalyzerPlaybackSurface({
   if (!data) return null;
 
   return (
-    <details
-      className="playback-panel"
-      open={data.panelOpen}
-      onToggle={(event) => {
-        const open = event.currentTarget.open;
-        if (open !== data.panelOpen) actions.setPanelOpen(open);
-      }}
-      data-react-feature="playback"
-    >
+    <div data-react-feature="playback">
+      <details
+        className="playback-panel"
+        open={data.panelOpen}
+        onToggle={(event) => {
+          const open = event.currentTarget.open;
+          if (open !== data.panelOpen) actions.setPanelOpen(open);
+        }}
+      >
       <summary>
         <span>打鍵再生</span>
         <span className="playback-summary-hint">クリックして開く</span>
@@ -651,6 +651,7 @@ export function AnalyzerPlaybackSurface({
           <PlaybackKeyboard data={data} />
         </div>
       </div>
-    </details>
+      </details>
+    </div>
   );
 }
