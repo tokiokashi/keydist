@@ -1,24 +1,21 @@
 import {
-  ADJACENT_PAIRS, ALL_FINGERS, FINGERS, resolveKeyId, THUMB_KEY, THUMB_ROW,
+  resolveKeyId, THUMB_KEY, THUMB_ROW,
   assignmentWithHomeKeys, type GeometryKind,
 } from './geometry.ts';
 import { evaluate, type Options, type Trace } from './evaluate.ts';
-import { sameChainPolicy } from './analysis-chain.ts';
-import { sameArpeggioPolicy } from './analysis-arpeggio.ts';
 import {
   analyzeStrokeStructure,
   type AggregatedAnalysisResult,
 } from './analysis-aggregate.ts';
 import { computeMetrics, type LayerStat, type Metrics } from './metrics.ts';
 import { normalizedLayerColors } from './layer-heatmap.ts';
-import { nSensitivity } from './sensitivity.ts';
 import { escapeAttr, escapeText } from './chart.ts';
-import { FINGER_LABEL, SHORT_FINGER, SERIES, type AppElements } from './app-dom.ts';
+import type { AppElements } from './app-dom.ts';
 import type { AnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 import type { AnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
 import type { AnalyzerMetricsModel } from './analyzer-metrics-model.ts';
 import {
-  type LayerColorScale, type LayerView, type MatrixKind, type UiStateV1,
+  type LayerColorScale, type LayerView, type UiStateV1,
 } from './ui-state.ts';
 import type { GeometrySettings } from './geometry-settings.ts';
 import { resolveConditions } from './condition-resolution.ts';
@@ -41,7 +38,6 @@ export interface Result {
   slot: number;
 }
 
-type AdjacentMatrixKind = 'adjacentMean' | 'adjacentStdDev';
 
 export interface ResultsViewContext {
   el: AppElements;
