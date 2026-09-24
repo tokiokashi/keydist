@@ -170,6 +170,30 @@ function setPlaybackSettingsOpen(open: boolean): void {
   trigger?.setAttribute('aria-expanded', String(open));
 }
 
+function publishPlaybackSettings(): void {
+  if (!playbackLayout || !playbackOptions) {
+    ctx.settingsModel.clear();
+    return;
+  }
+  const state = ctx.getUiState();
+  ctx.settingsModel.setData({
+    layout: playbackLayout,
+    options: playbackOptions,
+    playback: structuredClone(state.ui.playback),
+    rate: {
+      playbackRateAverage: state.conditions.defaults.playbackRateAverage,
+      playbackRateWindow: state.conditions.defaults.playbackRateWindow,
+      playbackRateHalfLifeSeconds: state.conditions.defaults.playbackRateHalfLifeSeconds,
+    },
+    chainPolicy: structuredClone(ctx.getChainPolicy()),
+    arpeggioPolicy: structuredClone(ctx.getArpeggioPolicy()),
+    triggerRealization: structuredClone(ctx.getTriggerRealizationPolicy()),
+    actionRealization: structuredClone(ctx.getActionRealizationPolicy()),
+    layoutOverride: ctx.isPlaybackLayoutOverride(),
+    calibrationAvailable: ctx.getCalibration() !== undefined,
+  });
+}
+
 function cancelPlaybackAnimation() {
   if (playbackAnimationFrame !== undefined) cancelAnimationFrame(playbackAnimationFrame);
   playbackAnimationFrame = undefined;
@@ -853,7 +877,7 @@ function renderPlayback(
       <div class="fig-fixed playback-figure">${renderPlaybackSvg(layout, geometry)}</div>
     </div>
   </details>`);
-  ctx.settingsModel.setHtml(playbackSettingsMarkup(layout, options));
+  publishPlaybackSettings();
   setPlaybackSettingsOpen(playbackSettingsOpen);
   if (preserveState && playbackState.playing) {
     playbackAnimationFrame = requestAnimationFrame((timestamp) => playbackFrame(timestamp));
@@ -943,6 +967,123 @@ function refreshInputRealizationAnalysis(): void {
   ctx.refreshAnalysis();
 }
 
+const settingsActions: AnalyzerPlaybackSettingsActions = {
+  close() {
+    setPlaybackSettingsOpen(false);
+  },
+  setLayoutOverride(enabled) {
+    ctx.setPlaybackLayoutOverride(enabled);
+  },
+  setPlayback(key, value) {
+    ctx.updatePlaybackSetting(key, value);
+
+    switch (key) {
+      case 'sameFingerDelay':
+        playbackState = setPlaybackSameFingerDelay(playbackState, Boolean(value));
+        playbackMotionCursor = -1;
+        refreshPlaybackTiming();
+        break;
+      case 'allFingerMovementDelay':
+        playbackState = { ...playbackState, elapsedMs: 0 };
+        playbackMotionCursor = -1;
+        refreshPlaybackTiming();
+        break;
+      case 'useCalibration':
+        playbackState = setPlaybackCalibration(
+          playbackState,
+          value ? ctx.getCalibration() : undefined,
+        );
+        refreshPlaybackTiming();
+        break;
+      case 'stepsPerSecond':
+        playbackState = setPlaybackStepsPerSecond(
+          playbackState,
+          Number(value) as PlaybackStepsPerSecond,
+        );
+        refreshPlaybackTiming();
+        break;
+      case 'speedMultiplier':
+        playbackState = setPlaybackSpeedMultiplier(playbackState, Number(value));
+        refreshPlaybackTiming();
+        break;
+      case 'showChain':
+      case 'showArpeggio':
+      case 'showSameFingerMotion':
+        playbackMotionCursor = -1;
+        break;
+      case 'showChainOnRateChart':
+      case 'showArpeggioOnRateChart':
+        playbackRateChartSignature = undefined;
+        break;
+      case 'scale':
+        rerenderPlaybackFigure();
+        break;
+      default:
+        break;
+    }
+
+    updatePlaybackView();
+    publishPlaybackSettings();
+  },
+  setRateAverage(value) {
+    ctx.updateUiState((draft) => {
+      draft.conditions.defaults.playbackRateAverage = value;
+    });
+    playbackRateChartSignature = undefined;
+    updatePlaybackView();
+    publishPlaybackSettings();
+  },
+  setRateWindow(value) {
+    if (
+      !Number.isInteger(value)
+      || value < PLAYBACK_RATE_WINDOW_MIN
+      || value > PLAYBACK_RATE_WINDOW_MAX
+    ) return;
+    ctx.updateUiState((draft) => {
+      draft.conditions.defaults.playbackRateWindow = value;
+    });
+    playbackRateChartSignature = undefined;
+    updatePlaybackView();
+    publishPlaybackSettings();
+  },
+  setRateHalfLife(value) {
+    if (
+      !Number.isFinite(value)
+      || value < PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN
+      || value > PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX
+    ) return;
+    ctx.updateUiState((draft) => {
+      draft.conditions.defaults.playbackRateHalfLifeSeconds = value;
+    });
+    playbackRateChartSignature = undefined;
+    updatePlaybackView();
+    publishPlaybackSettings();
+  },
+  setChainPolicy(policy) {
+    ctx.updateChainPolicy(policy);
+    publishPlaybackSettings();
+    refreshStructuralAnalysis();
+  },
+  setArpeggioPolicy(policy) {
+    ctx.updateArpeggioPolicy(policy);
+    publishPlaybackSettings();
+    refreshStructuralAnalysis();
+  },
+  setTriggerRealization(policy) {
+    ctx.updateTriggerRealizationPolicy(policy);
+    publishPlaybackSettings();
+    refreshInputRealizationAnalysis();
+  },
+  setActionRealization(policy) {
+    ctx.updateActionRealizationPolicy(policy);
+    publishPlaybackSettings();
+    refreshInputRealizationAnalysis();
+  },
+  openCalibration() {
+    if (ctx.getCalibration()) ctx.openCalibrationEdit();
+    else ctx.openCalibration();
+  },
+};
 
   function setup(): void {
     elements.playback.addEventListener('toggle', (e) => {
@@ -996,43 +1137,6 @@ function refreshInputRealizationAnalysis(): void {
         }
       }
     });
-    elements.playbackSettingsPanel.addEventListener('toggle', (e) => {
-      const details = e.target as HTMLDetailsElement;
-      if (!(details instanceof HTMLDetailsElement)) return;
-      const key = details.dataset.playbackDetails;
-      if (key) playbackSettingsDetailsOpen.set(key, details.open);
-    }, true);
-    elements.playbackSettingsPanel.addEventListener('click', (e) => {
-      const targetElement = e.target as Element;
-      const close = targetElement.closest<HTMLButtonElement>('[data-playback-settings-close]');
-      if (close) {
-        setPlaybackSettingsOpen(false);
-        return;
-      }
-      const settingsTab = targetElement.closest<HTMLButtonElement>('[data-playback-settings-tab]');
-      if (settingsTab?.dataset.playbackSettingsTab) {
-        const tabId = settingsTab.dataset.playbackSettingsTab;
-        if (tabId !== 'display' && tabId !== 'graph' && tabId !== 'conditions') return;
-        playbackSettingsTab = tabId;
-        for (const tab of elements.playbackSettingsPanel.querySelectorAll<HTMLButtonElement>('[data-playback-settings-tab]')) {
-          tab.setAttribute('aria-selected', String(tab === settingsTab));
-        }
-        for (const panel of elements.playbackSettingsPanel.querySelectorAll<HTMLElement>('[data-playback-settings-panel]')) {
-          panel.hidden = panel.dataset.playbackSettingsPanel !== tabId;
-        }
-        return;
-      }
-      const layoutOverride = targetElement.closest<HTMLButtonElement>('[data-playback-layout-override]');
-      if (layoutOverride) {
-        ctx.setPlaybackLayoutOverride(layoutOverride.dataset.playbackLayoutOverride === 'enable');
-        return;
-      }
-      const action = targetElement.closest<HTMLButtonElement>('button[data-playback-action]');
-      if (action?.dataset.playbackAction === 'calibration-edit') {
-        if (ctx.getCalibration()) ctx.openCalibrationEdit();
-        else ctx.openCalibration();
-      }
-    });
     elements.app.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && playbackSettingsOpen) {
         e.preventDefault();
@@ -1049,270 +1153,6 @@ function refreshInputRealizationAnalysis(): void {
     });
     elements.playback.addEventListener('pointerup', (e) => {
       if ((e.target as Element).closest('input[data-playback-seek]')) finishPlaybackSeek();
-    });
-    elements.app.addEventListener('change', (e) => {
-      const target = e.target as Element;
-      const sameFingerDelay = target.closest<HTMLInputElement>('[data-playback-sfb-delay]');
-      if (sameFingerDelay) {
-        playbackState = setPlaybackSameFingerDelay(playbackState, sameFingerDelay.checked);
-        refreshPlaybackTiming();
-        ctx.updatePlaybackSetting('sameFingerDelay', sameFingerDelay.checked);
-        playbackMotionCursor = -1; updatePlaybackView(); return;
-      }
-      const allFingerDelay = target.closest<HTMLInputElement>('[data-playback-all-finger-delay]');
-      if (allFingerDelay) {
-        ctx.updatePlaybackSetting('allFingerMovementDelay', allFingerDelay.checked);
-        playbackState = { ...playbackState, elapsedMs: 0 };
-        refreshPlaybackTiming();
-        playbackMotionCursor = -1;
-        updatePlaybackView();
-        return;
-      }
-      const sameFingerMotion = target.closest<HTMLInputElement>('[data-playback-same-finger-motion]');
-      if (sameFingerMotion) {
-        ctx.updatePlaybackSetting('showSameFingerMotion', sameFingerMotion.checked);
-        playbackMotionCursor = -1; updatePlaybackView(); return;
-      }
-      const chain = target.closest<HTMLInputElement>('[data-playback-chain]');
-      if (chain) {
-        ctx.updatePlaybackSetting('showChain', chain.checked);
-        playbackMotionCursor = -1;
-        updatePlaybackView();
-        return;
-      }
-      const showArpeggio = target.closest<HTMLInputElement>('[data-playback-arpeggio]');
-      if (showArpeggio) {
-        ctx.updatePlaybackSetting('showArpeggio', showArpeggio.checked);
-        playbackMotionCursor = -1;
-        updatePlaybackView();
-        return;
-      }
-      const chartChain = target.closest<HTMLInputElement>('[data-playback-chart-chain]');
-      if (chartChain) {
-        ctx.updatePlaybackSetting('showChainOnRateChart', chartChain.checked);
-        playbackRateChartSignature = undefined;
-        updatePlaybackView();
-        return;
-      }
-      const chartArpeggio = target.closest<HTMLInputElement>('[data-playback-chart-arpeggio]');
-      if (chartArpeggio) {
-        ctx.updatePlaybackSetting('showArpeggioOnRateChart', chartArpeggio.checked);
-        playbackRateChartSignature = undefined;
-        updatePlaybackView();
-        return;
-      }
-      const rateAverage = target.closest<HTMLSelectElement>('select[data-playback-rate-average]');
-      if (rateAverage) {
-        const value = rateAverage.value;
-        if (value === 'sma' || value === 'ewma') {
-          ctx.updateUiState((draft) => { draft.conditions.defaults.playbackRateAverage = value; });
-          playbackRateChartSignature = undefined;
-          updatePlaybackView();
-        }
-        return;
-      }
-      const rateWindow = target.closest<HTMLInputElement>('input[data-playback-rate-window]');
-      if (rateWindow) {
-        const value = Number(rateWindow.value);
-        if (Number.isInteger(value) && value >= PLAYBACK_RATE_WINDOW_MIN && value <= PLAYBACK_RATE_WINDOW_MAX) {
-          ctx.updateUiState((draft) => { draft.conditions.defaults.playbackRateWindow = value; });
-          playbackRateChartSignature = undefined;
-          updatePlaybackView();
-        }
-        return;
-      }
-      const rateHalfLife = target.closest<HTMLInputElement>('input[data-playback-rate-half-life]');
-      if (rateHalfLife) {
-        const value = Number(rateHalfLife.value);
-        if (Number.isFinite(value) && value >= PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN && value <= PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX) {
-          ctx.updateUiState((draft) => { draft.conditions.defaults.playbackRateHalfLifeSeconds = value; });
-          playbackRateChartSignature = undefined;
-          updatePlaybackView();
-        }
-        return;
-      }
-      const triggerHold = target.closest<HTMLInputElement>('[data-playback-trigger-hold]');
-      if (triggerHold) {
-        ctx.updateTriggerRealizationPolicy({
-          ...ctx.getTriggerRealizationPolicy(),
-          useHold: triggerHold.checked,
-        });
-        refreshInputRealizationAnalysis();
-        return;
-      }
-      const triggerActions = target.closest<HTMLInputElement>('[data-playback-trigger-actions]');
-      if (triggerActions) {
-        ctx.updateActionRealizationPolicy({
-          ...ctx.getActionRealizationPolicy(),
-          triggerActivation: triggerActions.checked ? 'semantic' : 'disabled',
-        });
-        refreshInputRealizationAnalysis();
-        return;
-      }
-      const triggerClass = target.closest<HTMLSelectElement>('select[data-playback-trigger-class]');
-      if (triggerClass) {
-        const kind = triggerClass.dataset.playbackTriggerClass;
-        if (kind === 'prepress-required' || kind === 'order-free' || kind === 'postpress-required') {
-          const action = ctx.getActionRealizationPolicy();
-          const overrides = { ...(action.triggerActivationClassOverrides ?? {}) };
-          if (triggerClass.value === 'combined' || triggerClass.value === 'separate') {
-            overrides[kind] = triggerClass.value;
-          } else {
-            delete overrides[kind];
-          }
-          ctx.updateActionRealizationPolicy({
-            ...action,
-            triggerActivationClassOverrides: overrides,
-          });
-          refreshInputRealizationAnalysis();
-        }
-        return;
-      }
-      const triggerModifierGroups = target.closest<HTMLSelectElement>('select[data-playback-trigger-modifier-groups]');
-      if (triggerModifierGroups) {
-        const encoded = triggerModifierGroups.dataset.playbackTriggerModifierGroups;
-        if (encoded) {
-          const modifierGroupIds = JSON.parse(encoded) as string[];
-          const action = ctx.getActionRealizationPolicy();
-          const overrides = (action.triggerActivationOverrides ?? [])
-            .filter((override) =>
-              !sameModifierGroupSelector(override.selector, modifierGroupIds));
-          if (triggerModifierGroups.value === 'combined' || triggerModifierGroups.value === 'separate') {
-            overrides.push({
-              selector: { modifierGroupIds },
-              grouping: triggerModifierGroups.value,
-            });
-          }
-          ctx.updateActionRealizationPolicy({
-            ...action,
-            triggerActivationOverrides: overrides,
-          });
-          refreshInputRealizationAnalysis();
-        }
-        return;
-      }
-      const triggerPhysical = target.closest<HTMLSelectElement>('select[data-playback-trigger-physical]');
-      if (triggerPhysical) {
-        const encoded = triggerPhysical.dataset.playbackTriggerPhysical;
-        if (encoded) {
-          const selector = JSON.parse(encoded) as {
-            modifierGroupIds: string[];
-            triggerKeys: string[];
-          };
-          const action = ctx.getActionRealizationPolicy();
-          const group = {
-            modifierGroupIds: selector.modifierGroupIds,
-            triggerKeys: selector.triggerKeys,
-            label: '',
-            activationClass: 'order-free' as const,
-          };
-          const overrides = (action.triggerActivationOverrides ?? [])
-            .filter((override) =>
-              !samePhysicalTriggerSelector(override.selector, group));
-          if (triggerPhysical.value === 'combined' || triggerPhysical.value === 'separate') {
-            overrides.push({
-              selector,
-              grouping: triggerPhysical.value,
-            });
-          }
-          ctx.updateActionRealizationPolicy({
-            ...action,
-            triggerActivationOverrides: overrides,
-          });
-          refreshInputRealizationAnalysis();
-        }
-        return;
-      }
-      const chainPolicyInput = target.closest<HTMLInputElement>('[data-playback-chain-policy]');
-      if (chainPolicyInput) {
-        const key = chainPolicyInput.dataset.playbackChainPolicy;
-        if (isChainPolicyKey(key)) {
-          ctx.updateChainPolicy({ ...ctx.getChainPolicy(), [key]: chainPolicyInput.checked });
-          refreshStructuralAnalysis();
-        }
-        return;
-      }
-      const arpeggioPolicyInput = target.closest<HTMLInputElement>('[data-playback-arpeggio-policy]');
-      if (arpeggioPolicyInput) {
-        const key = arpeggioPolicyInput.dataset.playbackArpeggioPolicy;
-        if (key === 'includeThumb' || key === 'bridgeSameFinger' || key === 'includeSingleRedirectTail') {
-          ctx.updateArpeggioPolicy({ ...ctx.getArpeggioPolicy(), [key]: arpeggioPolicyInput.checked });
-          refreshStructuralAnalysis();
-        }
-        return;
-      }
-      const calibration = target.closest<HTMLInputElement>('[data-playback-calibration]');
-      if (calibration) {
-        ctx.updatePlaybackSetting('useCalibration', calibration.checked);
-        playbackState = setPlaybackCalibration(playbackState, ctx.getUiState().ui.playback.useCalibration ? ctx.getCalibration() : undefined);
-        refreshPlaybackTiming();
-        updatePlaybackView(); return;
-      }
-      const rate = target.closest<HTMLInputElement>('input[data-playback-rate]');
-      if (rate) {
-        const value = Number(rate.value);
-        if (Number.isFinite(value) && value >= PLAYBACK_STEPS_PER_SECOND_MIN && value <= PLAYBACK_STEPS_PER_SECOND_MAX) {
-          playbackState = setPlaybackStepsPerSecond(playbackState, value as PlaybackStepsPerSecond);
-          refreshPlaybackTiming();
-          ctx.updatePlaybackSetting('stepsPerSecond', value);
-        }
-        updatePlaybackView(); return;
-      }
-      const multiplier = target.closest<HTMLInputElement>('input[data-playback-multiplier]');
-      if (multiplier) {
-        const value = Number(multiplier.value);
-        if (Number.isFinite(value) && value >= PLAYBACK_SPEED_MULTIPLIER_MIN && value <= PLAYBACK_SPEED_MULTIPLIER_MAX) {
-          playbackState = setPlaybackSpeedMultiplier(playbackState, value);
-          refreshPlaybackTiming();
-          ctx.updatePlaybackSetting('speedMultiplier', value);
-        }
-        updatePlaybackView(); return;
-      }
-      const fingers = target.closest<HTMLInputElement>('input[data-playback-fingers]');
-      if (fingers) { ctx.updatePlaybackSetting('showFingers', fingers.checked); updatePlaybackView(); return; }
-      const keyFeedback = target.closest<HTMLSelectElement>('select[data-playback-key-feedback]');
-      if (keyFeedback) {
-        const value = keyFeedback.value;
-        if (value === 'off' || value === 'fade' || value === 'pulse' || value === 'bounce') {
-          ctx.updatePlaybackSetting('keyFeedbackStyle', value);
-        }
-        return;
-      }
-      const fingerPreparation = target.closest<HTMLInputElement>('input[data-playback-finger-preparation]');
-      if (fingerPreparation) {
-        const value = Number(fingerPreparation.value);
-        if (Number.isFinite(value) && value >= 0) {
-          ctx.updatePlaybackSetting('fingerPreparationSeconds', value);
-        }
-        updatePlaybackView(); return;
-      }
-      const romajiPlan = target.closest<HTMLInputElement>('input[data-playback-romaji-plan]');
-      if (romajiPlan) { ctx.updatePlaybackSetting('showRomajiPlan', romajiPlan.checked); updatePlaybackView(); return; }
-      const planKeys = target.closest<HTMLInputElement>('input[data-playback-plan-keys]');
-      if (planKeys) { ctx.updatePlaybackSetting('showPlanKeys', planKeys.checked); updatePlaybackView(); return; }
-      const trail = target.closest<HTMLInputElement>('input[data-playback-trail]');
-      if (trail) { ctx.updatePlaybackSetting('showTrail', trail.checked); updatePlaybackView(); return; }
-      const trailTau = target.closest<HTMLInputElement>('input[data-playback-trail-tau]');
-      if (trailTau) {
-        const value = Number(trailTau.value);
-        if (Number.isInteger(value) && value >= 1 && value <= 20) ctx.updatePlaybackSetting('trailTau', value);
-        updatePlaybackView(); return;
-      }
-      const orderLabels = target.closest<HTMLInputElement>('input[data-playback-order-labels]');
-      if (orderLabels) { ctx.updatePlaybackSetting('showOrderLabels', orderLabels.checked); updatePlaybackView(); return; }
-      const scale = target.closest<HTMLInputElement>('input[data-playback-scale]');
-      if (scale) {
-        const value = Number(scale.value);
-        if (Number.isFinite(value) && value >= PLAYBACK_SCALE_MIN && value <= PLAYBACK_SCALE_MAX) {
-          ctx.updatePlaybackSetting('scale', value); rerenderPlaybackFigure(); updatePlaybackView();
-        }
-        return;
-      }
-      const seek = target.closest<HTMLInputElement>('input[data-playback-seek]');
-      if (seek) {
-        seekPlayback(seek.value, playbackState.playing);
-        if (playbackSeekWasPlaying !== undefined) finishPlaybackSeek();
-      }
     });
   }
 
@@ -1342,9 +1182,6 @@ function refreshInputRealizationAnalysis(): void {
       setPlaybackSettingsOpen(playbackSettingsOpen);
       updatePlaybackView();
     },
-    commitSettings: () => {
-      setPlaybackSettingsOpen(playbackSettingsOpen);
-      updatePlaybackView();
-    },
+    settingsActions,
   };
 }
