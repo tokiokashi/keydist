@@ -58,6 +58,7 @@ import { resolveAnalyzerGeometryDialogElements } from './analyzer-geometry-dialo
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import { el, SERIES } from './app-dom.ts';
 import { createRomajiEditor } from './romaji-editor.ts';
+import { resolveAnalyzerRomajiDialogElements } from './analyzer-romaji-dialog.tsx';
 import { createCalibrationDialog, resolveCalibrationDialogElements, type CalibrationDialogController } from './calibration-dialog.ts';
 import { createPlaybackView, type PlaybackViewController } from './playback-view.ts';
 import { createResultsView, type ResultsViewController } from './results-view.ts';
@@ -303,7 +304,7 @@ function addUserLayout(definition: UserLayout): void {
 }
 
 const romajiEditor = createRomajiEditor({
-  el,
+  getElements: () => resolveAnalyzerRomajiDialogElements(el.romajiDialog, el.romajiSettings),
   getUserLayouts: () => userLayouts,
   setUserLayouts: (layouts) => { userLayouts = layouts; },
   getRomajiSettings: () => romajiSettings,
@@ -1864,6 +1865,7 @@ analyzerReactShell = mountAnalyzerReactShell({
   layoutEditorSlot: analyzerLayoutEditorSlot,
   calibrationDialogSlot: el.calibrationDialog,
   geometryDialogSlot: el.geometryDialog,
+  romajiDialogSlot: el.romajiDialog,
   bigramFlowSlot: analyzerBigramFlowSlot,
   stateOwner: uiStateOwner,
   comparisonModel,
@@ -1881,6 +1883,7 @@ analyzerReactShell = mountAnalyzerReactShell({
   onAddLayout: addUserLayout,
   onCalibrationMount: initializeCalibrationDialog,
   onGeometryMount: setupGeometryEditor,
+  onRomajiMount: () => romajiEditor.setup(),
   onConditionsSurfaceCommit: (snapshot) => {
     if (snapshot.dialogScrollTop !== undefined) {
       el.conditionsDialog.scrollTop = snapshot.dialogScrollTop;
@@ -2004,7 +2007,6 @@ el.detailGeometry.addEventListener('change', () => {
   playbackView.preserveNextRender('cursor');
   render();
 });
-romajiEditor.setup();
 setupPanelState();
 setupConditionDialog();
 playbackView.setup();

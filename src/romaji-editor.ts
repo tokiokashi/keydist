@@ -1,4 +1,4 @@
-import type { AppElements } from './app-dom.ts';
+import type { AnalyzerRomajiDialogElements } from './analyzer-romaji-dialog.tsx';
 import { LAYOUTS_JA } from './layouts/index.ts';
 import { SAMPLE_TEXT_JA } from './sample-text-ja.ts';
 import { kanaToRomaji } from './romaji/kunrei.ts';
@@ -45,7 +45,7 @@ const ROMAJI_VARIANTS: RomajiVariant[] = [
 ];
 
 export interface RomajiEditorContext {
-  el: AppElements;
+  getElements: () => AnalyzerRomajiDialogElements;
   getUserLayouts: () => UserLayout[];
   setUserLayouts: (layouts: UserLayout[]) => void;
   getRomajiSettings: () => RomajiSettings;
@@ -61,7 +61,7 @@ export interface RomajiEditorController {
 }
 
 export function createRomajiEditor(ctx: RomajiEditorContext): RomajiEditorController {
-  const { el: elements } = ctx;
+  let elements: AnalyzerRomajiDialogElements;
 
   function romajiEditorRule(id: string): UserRomajiRule | undefined {
     return ctx.getRomajiSettings().rules.find((rule) => rule.id === id);
@@ -69,12 +69,12 @@ export function createRomajiEditor(ctx: RomajiEditorContext): RomajiEditorContro
 
   function loadRomajiEditor(id: string): void {
     if (!id) {
-      elements.romajiEdit.value = '';
-      elements.romajiName.value = '';
-      elements.romajiBase.value = 'kunrei';
-      elements.romajiSokuon.checked = true;
-      elements.romajiOverrides.value = '';
-      elements.romajiError.hidden = true;
+      elements.edit.value = '';
+      elements.name.value = '';
+      elements.base.value = 'kunrei';
+      elements.sokuon.checked = true;
+      elements.overrides.value = '';
+      elements.error.hidden = true;
       fillRomajiVariants();
       return;
     }
@@ -83,37 +83,37 @@ export function createRomajiEditor(ctx: RomajiEditorContext): RomajiEditorContro
       ? ROMAJI_RULES[id as BuiltinRomajiRuleId]
       : undefined;
     if (!custom && !builtin) return;
-    elements.romajiEdit.value = id;
-    elements.romajiName.value = custom?.name ?? builtin?.name ?? '';
+    elements.edit.value = id;
+    elements.name.value = custom?.name ?? builtin?.name ?? '';
     const base = custom?.base ?? builtin?.base ?? 'kunrei';
-    elements.romajiBase.value = base;
-    elements.romajiSokuon.checked = base === 'azik'
+    elements.base.value = base;
+    elements.sokuon.checked = base === 'azik'
       ? false
       : custom?.generateSokuon ?? builtin?.generateSokuon ?? true;
-    elements.romajiOverrides.value = formatOverrides(custom?.overrides ?? builtin?.overrides ?? {});
-    elements.romajiError.hidden = true;
+    elements.overrides.value = formatOverrides(custom?.overrides ?? builtin?.overrides ?? {});
+    elements.error.hidden = true;
     fillRomajiVariants();
   }
 
-  function fillRomajiEditorRules(selectedId = elements.romajiEdit.value || 'kunrei'): void {
-    elements.romajiEdit.replaceChildren(new Option('新しい綴り', ''));
+  function fillRomajiEditorRules(selectedId = elements.edit.value || 'kunrei'): void {
+    elements.edit.replaceChildren(new Option('新しい綴り', ''));
     const settings = ctx.getRomajiSettings();
-    for (const rule of allRomajiRules(settings.rules)) elements.romajiEdit.append(new Option(rule.name, rule.id));
+    for (const rule of allRomajiRules(settings.rules)) elements.edit.append(new Option(rule.name, rule.id));
     const id = allRomajiRules(settings.rules).some((rule) => rule.id === selectedId) ? selectedId : 'kunrei';
     loadRomajiEditor(id);
   }
 
   function editorBaseTable(): Map<string, string> {
-    const id = elements.romajiEdit.value;
+    const id = elements.edit.value;
     const custom = romajiEditorRule(id);
     const builtin = !custom && id in ROMAJI_RULES ? ROMAJI_RULES[id as BuiltinRomajiRuleId] : undefined;
-    const base = custom?.base ?? builtin?.base ?? elements.romajiBase.value as BuiltinRomajiRuleId;
+    const base = custom?.base ?? builtin?.base ?? elements.base.value as BuiltinRomajiRuleId;
     return tableForRule(base, ctx.getRomajiSettings().rules);
   }
 
   function editorTable(): Map<string, string> {
     const table = editorBaseTable();
-    const parsed = parseOverrides(elements.romajiOverrides.value);
+    const parsed = parseOverrides(elements.overrides.value);
     for (const [kana, roman] of Object.entries(parsed.overrides)) table.set(kana, roman);
     return table;
   }
@@ -130,7 +130,7 @@ export function createRomajiEditor(ctx: RomajiEditorContext): RomajiEditorContro
 
   function setVariantOverride(kana: string, value: string): void {
     const roman = value.trim().toLowerCase();
-    const lines = elements.romajiOverrides.value.split(/\r?\n/);
+    const lines = elements.overrides.value.split(/\r?\n/);
     const index = lines.findIndex((line) => {
       const equal = line.indexOf('=');
       return equal > 0 && line.slice(0, equal).trim() === kana;
@@ -140,7 +140,7 @@ export function createRomajiEditor(ctx: RomajiEditorContext): RomajiEditorContro
     } else if (index >= 0) lines[index] = `${kana} = ${roman}`;
     else if (lines.length === 1 && lines[0].trim() === '') lines[0] = `${kana} = ${roman}`;
     else lines.push(`${kana} = ${roman}`);
-    elements.romajiOverrides.value = lines.join('\n');
+    elements.overrides.value = lines.join('\n');
   }
 
   function fillRomajiVariants(): void {
@@ -151,12 +151,12 @@ export function createRomajiEditor(ctx: RomajiEditorContext): RomajiEditorContro
       const effect = (variant.alternatives[0].length - current.length) * count;
       return { variant, current, count, effect, index };
     }).sort((a, b) => Math.abs(b.effect) - Math.abs(a.effect) || a.index - b.index);
-    elements.romajiVariants.replaceChildren();
+    elements.variants.replaceChildren();
     const listId = 'romaji-variant-options';
     const datalist = document.createElement('datalist');
     datalist.id = listId;
     for (const option of [...new Set(ROMAJI_VARIANTS.flatMap((variant) => variant.alternatives))]) datalist.append(new Option(option));
-    elements.romajiVariants.append(datalist);
+    elements.variants.append(datalist);
     for (const { variant, current, count, effect } of rows) {
       const row = document.createElement('div');
       row.className = 'romaji-variant';
@@ -178,16 +178,16 @@ export function createRomajiEditor(ctx: RomajiEditorContext): RomajiEditorContro
         input.addEventListener('input', () => { note.hidden = input.value.trim().toLowerCase() !== 'n'; });
       }
       input.addEventListener('input', () => setVariantOverride(variant.kana, input.value));
-      elements.romajiVariants.append(row);
+      elements.variants.append(row);
     }
   }
 
   function fillRomajiAssignments(): void {
-    elements.romajiAssignments.replaceChildren();
+    elements.assignments.replaceChildren();
     const settings = ctx.getRomajiSettings();
     const rules = allRomajiRules(settings.rules);
     const addHeader = (text: string) => {
-      const heading = document.createElement('h4'); heading.textContent = text; elements.romajiAssignments.append(heading);
+      const heading = document.createElement('h4'); heading.textContent = text; elements.assignments.append(heading);
     };
     const addAssignment = (nameText: string, layoutId: string, assigned: RomajiRuleId, save: (id: RomajiRuleId) => void) => {
       const label = document.createElement('label'); label.className = 'romaji-assignment';
@@ -196,7 +196,7 @@ export function createRomajiEditor(ctx: RomajiEditorContext): RomajiEditorContro
       for (const rule of rules) select.append(new Option(rule.name, rule.id));
       select.value = rules.some((rule) => rule.id === assigned) ? assigned : defaultRomajiRuleId(layoutId);
       select.addEventListener('change', () => { save(select.value); ctx.fillPicker(); ctx.fillDetailOptions(); ctx.render(); });
-      label.append(name, select); elements.romajiAssignments.append(label);
+      label.append(name, select); elements.assignments.append(label);
     };
     addHeader('組み込み配列');
     for (const layout of LAYOUTS_JA.filter((candidate) => candidate.romajiTable)) {
@@ -217,35 +217,36 @@ export function createRomajiEditor(ctx: RomajiEditorContext): RomajiEditorContro
   }
 
   function setup(): void {
-    elements.romajiBase.replaceChildren(
+    elements = ctx.getElements();
+    elements.base.replaceChildren(
       new Option('標準（j / sh / ch）', 'qwerty'), new Option('訓令式', 'kunrei'),
       new Option('大西式', 'oonishi'), new Option('AZIK', 'azik'),
     );
     fillRomajiEditorRules();
     fillRomajiAssignments();
-    elements.romajiSettings.addEventListener('click', () => {
-      fillRomajiEditorRules(); fillRomajiAssignments(); elements.romajiDialog.showModal();
+    elements.openButton.addEventListener('click', () => {
+      fillRomajiEditorRules(); fillRomajiAssignments(); elements.dialog.showModal();
     });
-    elements.romajiEdit.addEventListener('change', () => loadRomajiEditor(elements.romajiEdit.value));
-    elements.romajiBase.addEventListener('change', () => {
-      if (elements.romajiBase.value === 'azik') elements.romajiSokuon.checked = false;
+    elements.edit.addEventListener('change', () => loadRomajiEditor(elements.edit.value));
+    elements.base.addEventListener('change', () => {
+      if (elements.base.value === 'azik') elements.sokuon.checked = false;
     });
-    elements.romajiNew.addEventListener('click', () => { loadRomajiEditor(''); elements.romajiName.focus(); });
-    elements.romajiForm.addEventListener('submit', (event) => {
+    elements.createNew.addEventListener('click', () => { loadRomajiEditor(''); elements.name.focus(); });
+    elements.form.addEventListener('submit', (event) => {
       if ((event.submitter as HTMLButtonElement | null)?.value === 'cancel') return;
       event.preventDefault();
-      const name = elements.romajiName.value.trim();
-      const parsed = parseOverrides(elements.romajiOverrides.value);
+      const name = elements.name.value.trim();
+      const parsed = parseOverrides(elements.overrides.value);
       const errors = name ? parsed.errors : ['名前を入力する'];
-      elements.romajiError.textContent = errors.join(' / '); elements.romajiError.hidden = errors.length === 0;
+      elements.error.textContent = errors.join(' / '); elements.error.hidden = errors.length === 0;
       if (errors.length) return;
       const current = ctx.getRomajiSettings();
-      const id = elements.romajiEdit.value && !(elements.romajiEdit.value in ROMAJI_RULES)
-        ? elements.romajiEdit.value : `custom-${Date.now().toString(36)}`;
+      const id = elements.edit.value && !(elements.edit.value in ROMAJI_RULES)
+        ? elements.edit.value : `custom-${Date.now().toString(36)}`;
       const rule: UserRomajiRule = {
-        id, name, base: elements.romajiBase.value as BuiltinRomajiRuleId,
+        id, name, base: elements.base.value as BuiltinRomajiRuleId,
         overrides: parsed.overrides,
-        generateSokuon: elements.romajiBase.value === 'azik' ? false : elements.romajiSokuon.checked,
+        generateSokuon: elements.base.value === 'azik' ? false : elements.sokuon.checked,
       };
       const rules = current.rules.some((candidate) => candidate.id === id)
         ? current.rules.map((candidate) => candidate.id === id ? rule : candidate)
