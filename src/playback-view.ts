@@ -100,8 +100,6 @@ export function createPlaybackView(ctx: PlaybackViewContext): PlaybackViewContro
 const PLAYBACK_KEY = 30;
 const PLAYBACK_PAD = 6;
 const PLAYBACK_THUMB_WIDTH = 1.9;
-const PLAYBACK_SCALE_MIN = 0.5;
-const PLAYBACK_SCALE_MAX = 4;
 
 type PlaybackDynamicDisplay = 'none' | 'chain' | 'arpeggio' | 'both';
 
