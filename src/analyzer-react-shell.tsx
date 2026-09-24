@@ -13,6 +13,7 @@ import type { AnalyzerPlaybackSurfaceModel } from './analyzer-playback-surface-m
 import type { AnalyzerPlaybackSettingsModel } from './analyzer-playback-settings-model.ts';
 import type { AnalyzerConditionsSurfaceModel, AnalyzerConditionsSurfaceSnapshot } from './analyzer-conditions-surface-model.ts';
 import { AnalyzerLayoutEditor } from './analyzer-layout-editor.tsx';
+import { AnalyzerCalibrationDialog } from './analyzer-calibration-dialog.tsx';
 import type { AnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 import type { UserLayout } from './user-layouts.ts';
 import { MAX_SAVED_TEXT_LENGTH } from './ui-state.ts';
@@ -27,6 +28,7 @@ export interface AnalyzerReactShellOptions {
   playbackSettingsSlot: HTMLElement;
   conditionsSlot: HTMLElement;
   layoutEditorSlot: HTMLElement;
+  calibrationDialogSlot: HTMLDialogElement;
   stateOwner: AnalyzerUiStateOwner;
   comparisonModel: AnalyzerComparisonModel;
   playbackSurfaceModel: AnalyzerPlaybackSurfaceModel;
@@ -41,6 +43,7 @@ export interface AnalyzerReactShellOptions {
   onPlaybackSettingsCommit: () => void;
   onConditionsSurfaceCommit: (snapshot: AnalyzerConditionsSurfaceSnapshot) => void;
   onAddLayout: (definition: UserLayout) => void;
+  onCalibrationMount: () => void;
 }
 
 export interface AnalyzerReactShellController {
@@ -134,6 +137,7 @@ function AnalyzerReactShell({
   playbackSettingsSlot,
   conditionsSlot,
   layoutEditorSlot,
+  calibrationDialogSlot,
   stateOwner,
   comparisonModel,
   playbackSurfaceModel,
@@ -149,6 +153,7 @@ function AnalyzerReactShell({
   onPlaybackSettingsCommit,
   onConditionsSurfaceCommit,
   onAddLayout,
+  onCalibrationMount,
 }: Omit<AnalyzerReactShellOptions, 'root'> & { textModel: AnalyzerTextModel }) {
   const state = useSyncExternalStore(
     stateOwner.subscribe,
@@ -376,6 +381,10 @@ function AnalyzerReactShell({
         />,
         layoutEditorSlot,
       )}
+      {createPortal(
+        <AnalyzerCalibrationDialog onMount={onCalibrationMount} />,
+        calibrationDialogSlot,
+      )}
     </>
   );
 }
@@ -401,6 +410,7 @@ export function mountAnalyzerReactShell(
       playbackSettingsSlot={options.playbackSettingsSlot}
       conditionsSlot={options.conditionsSlot}
       layoutEditorSlot={options.layoutEditorSlot}
+      calibrationDialogSlot={options.calibrationDialogSlot}
       stateOwner={options.stateOwner}
       comparisonModel={options.comparisonModel}
       playbackSurfaceModel={options.playbackSurfaceModel}
@@ -416,6 +426,7 @@ export function mountAnalyzerReactShell(
       onPlaybackSettingsCommit={options.onPlaybackSettingsCommit}
       onConditionsSurfaceCommit={options.onConditionsSurfaceCommit}
       onAddLayout={options.onAddLayout}
+      onCalibrationMount={options.onCalibrationMount}
     />,
   );
   return {

@@ -56,7 +56,7 @@ import { createAnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import { el, SERIES } from './app-dom.ts';
 import { createRomajiEditor } from './romaji-editor.ts';
-import { createCalibrationDialog, type CalibrationDialogController } from './calibration-dialog.ts';
+import { createCalibrationDialog, resolveCalibrationDialogElements, type CalibrationDialogController } from './calibration-dialog.ts';
 import { createPlaybackView, type PlaybackViewController } from './playback-view.ts';
 import { createResultsView, type ResultsViewController } from './results-view.ts';
 import {
@@ -1606,7 +1606,7 @@ function setupPanelState() {
 }
 
 let playbackView: PlaybackViewController;
-let calibrationDialog: CalibrationDialogController;
+let calibrationDialog: CalibrationDialogController | undefined;
 let resultsView: ResultsViewController;
 const playbackSurfaceModel = createAnalyzerPlaybackSurfaceModel();
 const playbackSettingsModel = createAnalyzerPlaybackSettingsModel();
@@ -1779,24 +1779,28 @@ playbackView = createPlaybackView({
   getActionRealizationPolicy: () => playbackViewUiState().conditions.defaults.actionRealization,
   updateActionRealizationPolicy,
   refreshAnalysis: render,
-  openCalibration: () => calibrationDialog.open(),
-  openCalibrationEdit: () => calibrationDialog.openEdit(),
+  openCalibration: () => calibrationDialog?.open(),
+  openCalibrationEdit: () => calibrationDialog?.openEdit(),
   surfaceModel: playbackSurfaceModel,
   settingsModel: playbackSettingsModel,
 });
-calibrationDialog = createCalibrationDialog({
-  el,
-  storage: uiStorage,
-  getUiState: playbackViewUiState,
-  updateUiState,
-  updatePlaybackSetting,
-  getPlaybackGeometry: () => playbackView.getGeometry(),
-  getGeometrySettings: () => uiState.conditions.geometrySettings,
-  getPlaybackLayout: () => playbackView.getLayout(),
-  getCalibration: () => playbackCalibration,
-  setCalibration: (calibration) => { playbackCalibration = calibration; },
-  setPlaybackCalibration: (calibration) => playbackView.setCalibration(calibration),
-});
+function initializeCalibrationDialog(): void {
+  if (calibrationDialog) return;
+  calibrationDialog = createCalibrationDialog({
+    getElements: () => resolveCalibrationDialogElements(el.calibrationDialog),
+    storage: uiStorage,
+    getUiState: playbackViewUiState,
+    updateUiState,
+    updatePlaybackSetting,
+    getPlaybackGeometry: () => playbackView.getGeometry(),
+    getGeometrySettings: () => uiState.conditions.geometrySettings,
+    getPlaybackLayout: () => playbackView.getLayout(),
+    getCalibration: () => playbackCalibration,
+    setCalibration: (calibration) => { playbackCalibration = calibration; },
+    setPlaybackCalibration: (calibration) => playbackView.setCalibration(calibration),
+  });
+  calibrationDialog.setup();
+}
 let analyzerReactShell: AnalyzerReactShellController | undefined;
 const comparisonModel = createAnalyzerComparisonModel();
 
@@ -1851,6 +1855,7 @@ analyzerReactShell = mountAnalyzerReactShell({
   playbackSettingsSlot: el.playbackSettingsPanel,
   conditionsSlot: el.conditionDescription,
   layoutEditorSlot: analyzerLayoutEditorSlot,
+  calibrationDialogSlot: el.calibrationDialog,
   stateOwner: uiStateOwner,
   comparisonModel,
   playbackSurfaceModel,
@@ -1864,6 +1869,7 @@ analyzerReactShell = mountAnalyzerReactShell({
   onPlaybackSurfaceCommit: () => playbackView.commitSurface(),
   onPlaybackSettingsCommit: () => playbackView.commitSettings(),
   onAddLayout: addUserLayout,
+  onCalibrationMount: initializeCalibrationDialog,
   onConditionsSurfaceCommit: (snapshot) => {
     if (snapshot.dialogScrollTop !== undefined) {
       el.conditionsDialog.scrollTop = snapshot.dialogScrollTop;
@@ -1991,7 +1997,6 @@ setupGeometryEditor();
 romajiEditor.setup();
 setupPanelState();
 setupConditionDialog();
-calibrationDialog.setup();
 playbackView.setup();
 resultsView.setup();
 fillPicker();

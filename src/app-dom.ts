@@ -65,21 +65,6 @@ export const el = {
   romajiVariants: $<HTMLDivElement>('romaji-variants'),
   romajiNew: $<HTMLButtonElement>('romaji-new'),
   calibrationDialog: $<HTMLDialogElement>('playback-calibration-dialog'),
-  calibrationStart: $<HTMLButtonElement>('playback-calibration-start'),
-  calibrationArpeggioStart: $<HTMLButtonElement>('playback-calibration-arpeggio-start'),
-  calibrationSave: $<HTMLButtonElement>('playback-calibration-save'),
-  calibrationDiscard: $<HTMLButtonElement>('playback-calibration-discard'),
-  calibrationInstruction: $<HTMLParagraphElement>('playback-calibration-instruction'),
-  calibrationProgress: $<HTMLOutputElement>('playback-calibration-progress'),
-  calibrationError: $<HTMLParagraphElement>('playback-calibration-error'),
-  calibrationResult: $<HTMLDivElement>('playback-calibration-result'),
-  calibrationActions: $<HTMLInputElement>('playback-calibration-actions'),
-  calibrationDirections: $<HTMLDivElement>('playback-calibration-directions'),
-  calibrationSameHand: $<HTMLInputElement>('playback-calibration-same-hand'),
-  calibrationSameHandPairs: $<HTMLDivElement>('playback-calibration-same-hand-pairs'),
-  calibrationDirectedPairs: $<HTMLDivElement>('playback-calibration-directed-pairs'),
-  calibrationFingerSpeed: $<HTMLInputElement>('playback-calibration-finger-speed'),
-  calibrationFingerInputs: $<HTMLDivElement>('playback-calibration-finger-inputs'),
 };
 
 export type AppElements = typeof el;
