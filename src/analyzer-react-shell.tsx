@@ -14,6 +14,7 @@ import type { AnalyzerPlaybackSettingsModel } from './analyzer-playback-settings
 import type { AnalyzerConditionsSurfaceModel, AnalyzerConditionsSurfaceSnapshot } from './analyzer-conditions-surface-model.ts';
 import { AnalyzerLayoutEditor } from './analyzer-layout-editor.tsx';
 import { AnalyzerCalibrationDialog } from './analyzer-calibration-dialog.tsx';
+import { AnalyzerGeometryDialog } from './analyzer-geometry-dialog.tsx';
 import { AnalyzerBigramFlow } from './features/bigram-vector/analyzer-bigram-flow.tsx';
 import type { AnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 import type { AnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
@@ -31,6 +32,7 @@ export interface AnalyzerReactShellOptions {
   conditionsSlot: HTMLElement;
   layoutEditorSlot: HTMLElement;
   calibrationDialogSlot: HTMLDialogElement;
+  geometryDialogSlot: HTMLDialogElement;
   bigramFlowSlot: HTMLElement;
   stateOwner: AnalyzerUiStateOwner;
   comparisonModel: AnalyzerComparisonModel;
@@ -48,6 +50,7 @@ export interface AnalyzerReactShellOptions {
   onConditionsSurfaceCommit: (snapshot: AnalyzerConditionsSurfaceSnapshot) => void;
   onAddLayout: (definition: UserLayout) => void;
   onCalibrationMount: () => void;
+  onGeometryMount: () => void;
 }
 
 export interface AnalyzerReactShellController {
@@ -142,6 +145,7 @@ function AnalyzerReactShell({
   conditionsSlot,
   layoutEditorSlot,
   calibrationDialogSlot,
+  geometryDialogSlot,
   bigramFlowSlot,
   stateOwner,
   comparisonModel,
@@ -160,6 +164,7 @@ function AnalyzerReactShell({
   onConditionsSurfaceCommit,
   onAddLayout,
   onCalibrationMount,
+  onGeometryMount,
 }: Omit<AnalyzerReactShellOptions, 'root'> & { textModel: AnalyzerTextModel }) {
   const state = useSyncExternalStore(
     stateOwner.subscribe,
@@ -392,6 +397,10 @@ function AnalyzerReactShell({
         calibrationDialogSlot,
       )}
       {createPortal(
+        <AnalyzerGeometryDialog onMount={onGeometryMount} />,
+        geometryDialogSlot,
+      )}
+      {createPortal(
         <AnalyzerBigramFlow model={bigramFlowModel} />,
         bigramFlowSlot,
       )}
@@ -421,6 +430,7 @@ export function mountAnalyzerReactShell(
       conditionsSlot={options.conditionsSlot}
       layoutEditorSlot={options.layoutEditorSlot}
       calibrationDialogSlot={options.calibrationDialogSlot}
+      geometryDialogSlot={options.geometryDialogSlot}
       bigramFlowSlot={options.bigramFlowSlot}
       stateOwner={options.stateOwner}
       comparisonModel={options.comparisonModel}
@@ -439,6 +449,7 @@ export function mountAnalyzerReactShell(
       onConditionsSurfaceCommit={options.onConditionsSurfaceCommit}
       onAddLayout={options.onAddLayout}
       onCalibrationMount={options.onCalibrationMount}
+      onGeometryMount={options.onGeometryMount}
     />,
   );
   return {
