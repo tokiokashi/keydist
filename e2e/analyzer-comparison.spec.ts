@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('comparison and sensitivity controls are React-owned and restore from AppState', async ({ page }) => {
-  await page.goto('/legacy.html');
+  await page.goto('/analyzer');
 
   const comparison = page.locator('[data-react-feature="comparison-metrics"]');
   await expect(comparison).toBeVisible();
