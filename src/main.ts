@@ -1091,7 +1091,7 @@ let calibrationDialog: CalibrationDialogController | undefined;
 let resultsView: ResultsViewController;
 
 const geometryEditorModel = createAnalyzerGeometryEditorModel({
-  stateOwner,
+  stateOwner: uiStateOwner,
   getUserGeometryShapes: () => userGeometryShapes,
   commitUserGeometryShapes: (shapes) => {
     userGeometryShapes = shapes;
