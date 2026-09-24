@@ -460,9 +460,13 @@ function PlaybackKeyboard({ data }: { data: AnalyzerPlaybackSurfaceData }) {
 export function AnalyzerPlaybackSurface({
   model,
   actions,
+  appElement,
+  settingsPanelElement,
 }: {
   model: AnalyzerPlaybackSurfaceModel;
   actions: AnalyzerPlaybackSurfaceActions;
+  appElement: HTMLElement;
+  settingsPanelElement: HTMLElement;
 }) {
   const snapshot = useSyncExternalStore(
     model.subscribe,
@@ -470,6 +474,30 @@ export function AnalyzerPlaybackSurface({
     model.getSnapshot,
   );
   const data = snapshot.data;
+  const settingsOpen = data?.settingsOpen ?? false;
+
+  useEffect(() => {
+    appElement.classList.toggle('playback-settings-open', settingsOpen);
+    settingsPanelElement.setAttribute('aria-hidden', String(!settingsOpen));
+    settingsPanelElement.toggleAttribute('inert', !settingsOpen);
+    return () => {
+      appElement.classList.remove('playback-settings-open');
+      settingsPanelElement.setAttribute('aria-hidden', 'true');
+      settingsPanelElement.setAttribute('inert', '');
+    };
+  }, [appElement, settingsOpen, settingsPanelElement]);
+
+  useEffect(() => {
+    if (!settingsOpen) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      actions.setSettingsOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [actions, settingsOpen]);
+
   if (!data) return null;
 
   return (
