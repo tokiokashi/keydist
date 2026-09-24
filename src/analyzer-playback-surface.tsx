@@ -45,16 +45,17 @@ function rateTooltip(point: PlaybackRateChartPoint): string {
     + `<span style="color:${ACTION_COLOR}">アクション/秒</span> <b>${formatRate(point.actionsPerSecond)}</b>`;
 }
 
-function PlaybackRateChart({
-  data,
+export function AnalyzerPlaybackRateChart({
+  points,
+  display,
   cursor,
   onSeek,
 }: {
-  data: AnalyzerPlaybackSurfaceData;
+  points: readonly PlaybackRateChartPoint[];
+  display: AnalyzerPlaybackSurfaceData['rateChartDisplay'];
   cursor: number;
   onSeek(cursor: number): void;
 }) {
-  const points = data.rateChartPoints;
   const total = points.at(-1)?.cursor ?? 0;
   if (total === 0) {
     return <p className="playback-rate-chart-empty">打鍵データがありません。</p>;
@@ -118,10 +119,10 @@ function PlaybackRateChart({
       })}
 
       {points.map((point) => {
-        const showChain = data.rateChartDisplay === 'chain'
-          || data.rateChartDisplay === 'both';
-        const showArpeggio = data.rateChartDisplay === 'arpeggio'
-          || data.rateChartDisplay === 'both';
+        const showChain = display === 'chain'
+          || display === 'both';
+        const showArpeggio = display === 'arpeggio'
+          || display === 'both';
         const start = Math.max(0, point.cursor - 1);
         const x = xOf(start);
         const width = xOf(point.cursor) - x;
@@ -639,8 +640,9 @@ export function AnalyzerPlaybackSurface({
         >
           <summary>かな/秒・アクション/秒の平均推移</summary>
           <div className="playback-rate-chart" data-playback-rate-chart>
-            <PlaybackRateChart
-              data={data}
+            <AnalyzerPlaybackRateChart
+              points={data.rateChartPoints}
+              display={data.rateChartDisplay}
               cursor={data.cursor}
               onSeek={(cursor) => actions.seek(cursor)}
             />
