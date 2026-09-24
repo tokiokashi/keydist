@@ -2,12 +2,10 @@ import {
   buildGeometry,
   customGeometryKind,
   FINGERS,
-  HOME_ROW,
   isCustomGeometryKind,
   isPresetGeometryKind,
   keyId,
   PHYSICAL_SHAPES,
-  QWERTY_LEGEND,
   type Finger,
   type GeometryKind,
   type NonThumb,
@@ -18,12 +16,9 @@ import { bindTips, hideTip, showTip } from './chart.ts';
 import { setupTheme } from './theme.ts';
 import { gapFigure } from './gap-figure.ts';
 import {
-  ROW_LABELS,
   load as loadUserLayouts,
-  newId as newLayoutId,
   save as saveUserLayouts,
   toLayout,
-  validate,
   type RomajiRuleId,
   type UserLayout,
 } from './user-layouts.ts';
@@ -35,13 +30,6 @@ import {
   saveRomajiSettings,
 } from './romaji/rules.ts';
 import { loadPlaybackCalibration } from './playback-calibration.ts';
-import {
-  decodeLayoutFile,
-  formatForFileName,
-  importBenizara,
-  importDvorakJ,
-  importVial,
-} from './layout-import.ts';
 import { layoutVisibleInFilter, resolveSelection, type LayoutTypeFilter, type ModeId } from './layout-selection.ts';
 import {
   DEFAULT_CONDITION_DEFAULTS,
@@ -64,6 +52,7 @@ import { createAnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 import { createAnalyzerPlaybackSurfaceModel } from './analyzer-playback-surface-model.ts';
 import { createAnalyzerPlaybackSettingsModel } from './analyzer-playback-settings-model.ts';
 import { createAnalyzerConditionsSurfaceModel } from './analyzer-conditions-surface-model.ts';
+import { createAnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import { el, SERIES } from './app-dom.ts';
 import { createRomajiEditor } from './romaji-editor.ts';
@@ -120,6 +109,7 @@ let userLayouts: UserLayout[] = loadUserLayouts();
 let userGeometryShapes: PhysicalShape[] = loadUserGeometryShapes();
 let romajiSettings = loadRomajiSettings();
 let conditionPresets: ConditionPreset[] = loadConditionPresets();
+const layoutEditorModel = createAnalyzerLayoutEditorModel(allRomajiRules(romajiSettings.rules));
 const ROMAJI_TABLE_CACHE = new Map<string, Map<string, string>>();
 let conditionState: UiStateV1 | undefined;
 
@@ -295,140 +285,18 @@ function activeLayouts(): Layout[] {
   return currentMode().layouts.filter((l) => set.has(l.id));
 }
 
-/** 配列を追加する欄。段ごとに1行、数字段は任意 */
-function setupAddForm() {
-  const inputs: HTMLInputElement[] = ROW_LABELS.map((label, i) => {
-    const row = document.createElement('label');
-    const span = document.createElement('span');
-    span.textContent = label;
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.spellcheck = false;
-    input.placeholder = QWERTY_LEGEND[i];
-    if (i === 0) input.dataset.optional = 'true';
-    row.append(span, input);
-    el.newRows.append(row);
-    return input;
-  });
+function addUserLayout(definition: UserLayout): void {
+  userLayouts = [...userLayouts, definition];
+  saveUserLayouts(userLayouts);
+  addLayoutChoices([definition.id]);
 
-  const homeKeySelects = new Map<NonThumb, HTMLSelectElement>();
-  const homeHeading = document.createElement('h4');
-  homeHeading.textContent = '配列側のホームキー（任意）';
-  el.newHomeKeys.append(homeHeading);
-  const homeNote = document.createElement('p');
-  homeNote.className = 'note';
-  homeNote.textContent = '未指定なら物理形状側の既定ホームキーを使います。';
-  el.newHomeKeys.append(homeNote);
-  for (const finger of FINGERS) {
-    const label = document.createElement('label');
-    label.className = 'geometry-number';
-    const span = document.createElement('span');
-    span.textContent = FINGER_NAMES[finger];
-    const select = document.createElement('select');
-    select.dataset.homeFinger = finger;
-    homeKeySelects.set(finger, select);
-    label.append(span, select);
-    el.newHomeKeys.append(label);
-  }
+  selected.en.add(definition.id);
+  selected.ja.add(definition.id);
+  saveSelectedLayouts();
 
-  function refreshHomeKeyOptions(): void {
-    const row = [...(inputs[HOME_ROW]?.value ?? '')];
-    for (const select of homeKeySelects.values()) {
-      const selected = select.value;
-      select.replaceChildren(new Option('形状の既定', ''));
-      row.forEach((_, col) => {
-        const id = keyId(HOME_ROW, col);
-        select.append(new Option(id, id));
-      });
-      select.value = row.some((_, col) => keyId(HOME_ROW, col) === selected) ? selected : '';
-    }
-  }
-  inputs.forEach((input) => input.addEventListener('input', refreshHomeKeyOptions));
-  refreshHomeKeyOptions();
-
-  romajiEditor.fillRomajiSelect(el.newRomaji);
-
-  el.addLayout.addEventListener('click', () => {
-    const rows = inputs.map((i) => i.value.trim());
-    const errors = validate(rows);
-    el.newError.textContent = errors.join(' / ');
-    el.newError.hidden = errors.length === 0;
-    if (errors.length) return;
-
-    const def: UserLayout = {
-      id: newLayoutId(),
-      name: el.newName.value.trim() || '自作配列',
-      rows: [rows[0], rows[1], rows[2], rows[3]],
-      romaji: el.newRomaji.value as RomajiRuleId,
-      homeKeys: Object.fromEntries(
-        [...homeKeySelects.entries()]
-          .filter(([, select]) => select.value !== '')
-          .map(([finger, select]) => [finger, select.value]),
-      ),
-    };
-    userLayouts = [...userLayouts, def];
-    saveUserLayouts(userLayouts);
-    addLayoutChoices([def.id]);
-
-    // 追加したものは自動で表示に入れる
-    selected.en.add(def.id);
-    selected.ja.add(def.id);
-    saveSelectedLayouts();
-
-    for (const input of inputs) input.value = '';
-    for (const select of homeKeySelects.values()) select.value = '';
-    refreshHomeKeyOptions();
-    el.newName.value = '';
-    fillPicker();
-    fillDetailOptions();
-    render();
-  });
-
-  el.importLayout.addEventListener('change', async () => {
-    const file = el.importLayout.files?.[0];
-    if (!file) return;
-    try {
-      const format = formatForFileName(file.name);
-      if (!format) throw new Error('DvorakJの .txt、Vialの .vil、紅皿の .bnz / .iniを選ぶ');
-      const bytes = await file.arrayBuffer();
-      const source = decodeLayoutFile(bytes, format);
-      const name = file.name.replace(/\.[^.]+$/, '');
-      const imported = format === 'vial'
-        ? importVial(source, name)
-        : format === 'benizara'
-          ? importBenizara(source, name)
-          : importDvorakJ(source, name);
-      const def: UserLayout = {
-        id: newLayoutId(),
-        name: imported.name,
-        rows: imported.rows,
-        romaji: 'kunrei',
-        legends: imported.legends,
-        sequences: imported.sequences,
-        direct: imported.direct,
-      };
-      userLayouts = [...userLayouts, def];
-      saveUserLayouts(userLayouts);
-      addLayoutChoices([def.id]);
-      selected.en.add(def.id);
-      selected.ja.add(def.id);
-      saveSelectedLayouts();
-      el.importError.hidden = true;
-      el.importWarning.textContent = imported.warnings.length > 0
-        ? `注意: ${imported.warnings.join(' / ')}`
-        : '';
-      el.importWarning.hidden = imported.warnings.length === 0;
-      fillPicker();
-      fillDetailOptions();
-      render();
-    } catch (error) {
-      el.importError.textContent = error instanceof Error ? error.message : '定義ファイルを取り込めない';
-      el.importError.hidden = false;
-      el.importWarning.hidden = true;
-    } finally {
-      el.importLayout.value = '';
-    }
-  });
+  fillPicker();
+  fillDetailOptions();
+  render();
 }
 
 const romajiEditor = createRomajiEditor({
@@ -436,7 +304,10 @@ const romajiEditor = createRomajiEditor({
   getUserLayouts: () => userLayouts,
   setUserLayouts: (layouts) => { userLayouts = layouts; },
   getRomajiSettings: () => romajiSettings,
-  setRomajiSettings: (settings) => { romajiSettings = settings; },
+  setRomajiSettings: (settings) => {
+    romajiSettings = settings;
+    layoutEditorModel.setRomajiRules(allRomajiRules(settings.rules));
+  },
   clearTableCache: () => ROMAJI_TABLE_CACHE.clear(),
   fillPicker,
   fillDetailOptions,
@@ -1670,11 +1541,12 @@ function renderConditionDescription(
       for (const shape of bundle.geometryShapes) mergedShapes.set(shape.id, shape);
       userGeometryShapes = [...mergedShapes.values()]; saveUserGeometryShapes(userGeometryShapes);
       romajiSettings = bundle.romajiSettings; saveRomajiSettings(romajiSettings); ROMAJI_TABLE_CACHE.clear();
+      layoutEditorModel.setRomajiRules(allRomajiRules(romajiSettings.rules));
       conditionPresets = bundle.presets; saveConditionPresets(conditionPresets);
       addLayoutChoices(userLayouts.map((layout) => layout.id));
       updateUiState((draft) => { draft.conditions = bundle.conditions; });
       syncGlobalConditionControls(); fillGeometryOptions(); fillDetailOptions();
-      fillPicker(); romajiEditor.fillRomajiSelect(el.newRomaji); renderConditionDescription(); render();
+      fillPicker(); renderConditionDescription(); render();
       status.textContent = '条件と配列を読み込んだ';
     } catch (error) {
       status.textContent = error instanceof Error ? error.message : '条件ファイルを読み込めない';
@@ -1958,12 +1830,14 @@ const analyzerModeControlSlot = document.getElementById('analyzer-mode-control')
 const analyzerTextControlSlot = document.getElementById('analyzer-text-controls');
 const analyzerComparisonControlSlot = document.getElementById('analyzer-comparison-controls');
 const analyzerSensitivityControlSlot = document.getElementById('analyzer-sensitivity-controls');
+const analyzerLayoutEditorSlot = document.getElementById('analyzer-layout-editor');
 if (
   !analyzerReactShellRoot
   || !analyzerModeControlSlot
   || !analyzerTextControlSlot
   || !analyzerComparisonControlSlot
   || !analyzerSensitivityControlSlot
+  || !analyzerLayoutEditorSlot
 ) {
   throw new Error('Analyzer React shell mount point is missing');
 }
@@ -1976,17 +1850,20 @@ analyzerReactShell = mountAnalyzerReactShell({
   playbackSlot: el.playback,
   playbackSettingsSlot: el.playbackSettingsPanel,
   conditionsSlot: el.conditionDescription,
+  layoutEditorSlot: analyzerLayoutEditorSlot,
   stateOwner: uiStateOwner,
   comparisonModel,
   playbackSurfaceModel,
   playbackSettingsModel,
   conditionsSurfaceModel,
+  layoutEditorModel,
   onModeChange,
   onTextInput: scheduleTextRender,
   onTextCommit: flushTextRender,
   onMetricsChange: render,
   onPlaybackSurfaceCommit: () => playbackView.commitSurface(),
   onPlaybackSettingsCommit: () => playbackView.commitSettings(),
+  onAddLayout: addUserLayout,
   onConditionsSurfaceCommit: (snapshot) => {
     if (snapshot.dialogScrollTop !== undefined) {
       el.conditionsDialog.scrollTop = snapshot.dialogScrollTop;
@@ -2110,7 +1987,6 @@ el.detailGeometry.addEventListener('change', () => {
   playbackView.preserveNextRender('cursor');
   render();
 });
-setupAddForm();
 setupGeometryEditor();
 romajiEditor.setup();
 setupPanelState();

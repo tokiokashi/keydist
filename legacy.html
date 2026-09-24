@@ -91,30 +91,7 @@
 
         <details class="panel" id="add-panel">
           <summary>配列を追加</summary>
-
-          <label class="ctl">
-            <span>名前</span>
-            <input type="text" id="new-name" placeholder="自作配列" />
-          </label>
-
-          <div class="rows" id="new-rows"></div>
-
-          <div id="new-home-keys"></div>
-
-          <label class="ctl">
-            <span>ローマ字の綴り</span>
-            <select id="new-romaji"></select>
-          </label>
-
-          <p class="error" id="new-error" hidden></p>
-          <button type="button" id="add-layout">追加する</button>
-          <label class="ctl import-file">
-            <span>定義ファイルから取り込む</span>
-            <input type="file" id="import-layout" accept=".vil,.txt,.bnz,.ini,application/json,text/plain"
-              title="DvorakJ .txt、Vial .vil、紅皿 .bnz / .iniに対応する" />
-          </label>
-          <p class="error" id="import-error" hidden></p>
-          <p class="note" id="import-warning" hidden></p>
+          <div id="analyzer-layout-editor"></div>
           <p class="note">
             数字段が空ならQWERTYを使う。重複した文字は先に書いたキーで打つ。<br />
             追加した配列はこのブラウザに保存する。

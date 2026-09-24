@@ -58,20 +58,10 @@ export interface RomajiEditorContext {
 
 export interface RomajiEditorController {
   setup: () => void;
-  fillRomajiSelect: (select: HTMLSelectElement, selectedId?: string) => void;
 }
 
 export function createRomajiEditor(ctx: RomajiEditorContext): RomajiEditorController {
   const { el: elements } = ctx;
-
-  function fillRomajiSelect(select: HTMLSelectElement, selectedId = select.value): void {
-    select.replaceChildren();
-    const settings = ctx.getRomajiSettings();
-    for (const rule of allRomajiRules(settings.rules)) select.append(new Option(rule.name, rule.id));
-    if (selectedId && allRomajiRules(settings.rules).some((rule) => rule.id === selectedId)) {
-      select.value = selectedId;
-    }
-  }
 
   function romajiEditorRule(id: string): UserRomajiRule | undefined {
     return ctx.getRomajiSettings().rules.find((rule) => rule.id === id);
@@ -262,10 +252,10 @@ export function createRomajiEditor(ctx: RomajiEditorContext): RomajiEditorContro
         : [...current.rules, rule];
       const next = { ...current, rules };
       ctx.setRomajiSettings(next); ctx.clearTableCache(); saveRomajiSettings(next);
-      fillRomajiEditorRules(id); fillRomajiAssignments(); fillRomajiSelect(elements.newRomaji, elements.newRomaji.value);
+      fillRomajiEditorRules(id); fillRomajiAssignments();
       ctx.fillPicker(); ctx.fillDetailOptions(); ctx.render();
     });
   }
 
-  return { setup, fillRomajiSelect };
+  return { setup };
 }
