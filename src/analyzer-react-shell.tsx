@@ -26,6 +26,7 @@ import { AnalyzerBigramFlow } from './features/bigram-vector/analyzer-bigram-flo
 import type { AnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 import type { AnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
 import type { AnalyzerMetricsModel } from './analyzer-metrics-model.ts';
+import { AnalyzerHeatmap } from './analyzer-heatmap-content.tsx';
 import {
   AnalyzerAdjacentChart,
   AnalyzerComparisonChart,
@@ -59,6 +60,7 @@ export interface AnalyzerReactShellOptions {
   compareChartSlot: HTMLElement;
   compareTableSlot: HTMLTableElement;
   detailConditionsSlot: HTMLElement;
+  heatmapSlot: HTMLElement;
   fingerChartSlot: HTMLElement;
   adjacentChartSlot: HTMLElement;
   pressMatrixSlot: HTMLElement;
@@ -183,6 +185,7 @@ function AnalyzerReactShell({
   compareChartSlot,
   compareTableSlot,
   detailConditionsSlot,
+  heatmapSlot,
   fingerChartSlot,
   adjacentChartSlot,
   pressMatrixSlot,
@@ -443,6 +446,10 @@ function AnalyzerReactShell({
         detailConditionsSlot,
       )}
       {createPortal(
+        <AnalyzerHeatmap model={metricsModel} stateOwner={stateOwner} />,
+        heatmapSlot,
+      )}
+      {createPortal(
         <AnalyzerFingerChart model={metricsModel} />,
         fingerChartSlot,
       )}
@@ -651,6 +658,7 @@ export function mountAnalyzerReactShell(
       compareChartSlot={options.compareChartSlot}
       compareTableSlot={options.compareTableSlot}
       detailConditionsSlot={options.detailConditionsSlot}
+      heatmapSlot={options.heatmapSlot}
       fingerChartSlot={options.fingerChartSlot}
       adjacentChartSlot={options.adjacentChartSlot}
       pressMatrixSlot={options.pressMatrixSlot}
