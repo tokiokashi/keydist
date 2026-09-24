@@ -8,16 +8,21 @@ import {
 } from './analyzer-samples.ts';
 import type { ModeId } from './layout-selection.ts';
 import type { AnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
+import type { AnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 import { MAX_SAVED_TEXT_LENGTH } from './ui-state.ts';
 
 export interface AnalyzerReactShellOptions {
   root: HTMLElement;
   modeSlot: HTMLElement;
   textSlot: HTMLElement;
+  comparisonSlot: HTMLElement;
+  sensitivitySlot: HTMLElement;
   stateOwner: AnalyzerUiStateOwner;
+  comparisonModel: AnalyzerComparisonModel;
   onModeChange: () => void;
   onTextInput: () => void;
   onTextCommit: () => void;
+  onMetricsChange: () => void;
 }
 
 export interface AnalyzerReactShellController {
@@ -32,16 +37,25 @@ interface AnalyzerTextModel {
 function AnalyzerReactShell({
   modeSlot,
   textSlot,
+  comparisonSlot,
+  sensitivitySlot,
   stateOwner,
+  comparisonModel,
   textModel,
   onModeChange,
   onTextInput,
   onTextCommit,
+  onMetricsChange,
 }: Omit<AnalyzerReactShellOptions, 'root'> & { textModel: AnalyzerTextModel }) {
   const state = useSyncExternalStore(
     stateOwner.subscribe,
     stateOwner.getSnapshot,
     stateOwner.getSnapshot,
+  );
+  const comparison = useSyncExternalStore(
+    comparisonModel.subscribe,
+    comparisonModel.getSnapshot,
+    comparisonModel.getSnapshot,
   );
   const mode = state.ui.input.mode;
   const [text, setTextState] = useState(textModel.value);
@@ -106,6 +120,28 @@ function AnalyzerReactShell({
 
   const tooLong = text.length > MAX_SAVED_TEXT_LENGTH;
 
+  const setBaseline = (value: string) => {
+    stateOwner.update((draft) => {
+      if (value) draft.ui.comparison.baselineByMode[mode] = value;
+      else delete draft.ui.comparison.baselineByMode[mode];
+    });
+    onMetricsChange();
+  };
+
+  const setChartMetric = (value: string) => {
+    stateOwner.update((draft) => {
+      draft.ui.comparison.chartColumn = Number(value);
+    });
+    onMetricsChange();
+  };
+
+  const setSensitivityScale = (scale: 'relative' | 'absolute') => {
+    stateOwner.update((draft) => {
+      draft.ui.sensitivity.scale = scale;
+    });
+    onMetricsChange();
+  };
+
   return (
     <>
       {createPortal(
@@ -157,6 +193,58 @@ function AnalyzerReactShell({
         </>,
         textSlot,
       )}
+      {createPortal(
+        <div data-react-feature="comparison-metrics">
+          <label className="ctl">
+            <span>比較元</span>
+            <select
+              id="compare-baseline"
+              title="選ぶと比較元を100%とした比率を表示する。比較できない項目は — と表示する。"
+              value={state.ui.comparison.baselineByMode[mode] ?? ''}
+              onChange={(event) => setBaseline(event.currentTarget.value)}
+            >
+              {comparison.baselineOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="ctl">
+            <span>棒グラフの項目</span>
+            <select
+              id="compare-chart-metric"
+              title="棒グラフの項目を選ぶ。表を並び替えるとその列に追従する。"
+              value={String(state.ui.comparison.chartColumn)}
+              onChange={(event) => setChartMetric(event.currentTarget.value)}
+            >
+              {comparison.chartMetricOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+        </div>,
+        comparisonSlot,
+      )}
+      {createPortal(
+        <div
+          className="seg"
+          role="group"
+          aria-label="N感度の縦軸"
+          data-react-feature="sensitivity-scale"
+        >
+          {(['relative', 'absolute'] as const).map((scale) => (
+            <button
+              key={scale}
+              type="button"
+              data-scale={scale}
+              aria-pressed={state.ui.sensitivity.scale === scale}
+              onClick={() => setSensitivityScale(scale)}
+            >
+              {scale === 'relative' ? '相対 [%]' : '絶対 [u]'}
+            </button>
+          ))}
+        </div>,
+        sensitivitySlot,
+      )}
     </>
   );
 }
@@ -176,11 +264,15 @@ export function mountAnalyzerReactShell(
     <AnalyzerReactShell
       modeSlot={options.modeSlot}
       textSlot={options.textSlot}
+      comparisonSlot={options.comparisonSlot}
+      sensitivitySlot={options.sensitivitySlot}
       stateOwner={options.stateOwner}
+      comparisonModel={options.comparisonModel}
       textModel={textModel}
       onModeChange={options.onModeChange}
       onTextInput={options.onTextInput}
       onTextCommit={options.onTextCommit}
+      onMetricsChange={options.onMetricsChange}
     />,
   );
   return {

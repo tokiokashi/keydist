@@ -60,6 +60,7 @@ import {
   mountAnalyzerReactShell,
   type AnalyzerReactShellController,
 } from './analyzer-react-shell.tsx';
+import { createAnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import { el, SERIES } from './app-dom.ts';
 import { createRomajiEditor } from './romaji-editor.ts';
@@ -1924,6 +1925,7 @@ calibrationDialog = createCalibrationDialog({
   setPlaybackCalibration: (calibration) => playbackView.setCalibration(calibration),
 });
 let analyzerReactShell: AnalyzerReactShellController | undefined;
+const comparisonModel = createAnalyzerComparisonModel();
 
 resultsView = createResultsView({
   el,
@@ -1936,6 +1938,7 @@ resultsView = createResultsView({
   romajiRuleIdForLayout,
   getGeometrySettingsForKind: geometrySettingsForKind,
   playback: playbackView,
+  comparisonModel,
 });
 
 function render(): void {
@@ -1952,21 +1955,29 @@ function onModeChange() {
 const analyzerReactShellRoot = document.getElementById('analyzer-react-shell');
 const analyzerModeControlSlot = document.getElementById('analyzer-mode-control');
 const analyzerTextControlSlot = document.getElementById('analyzer-text-controls');
-if (!analyzerReactShellRoot || !analyzerModeControlSlot || !analyzerTextControlSlot) {
+const analyzerComparisonControlSlot = document.getElementById('analyzer-comparison-controls');
+const analyzerSensitivityControlSlot = document.getElementById('analyzer-sensitivity-controls');
+if (
+  !analyzerReactShellRoot
+  || !analyzerModeControlSlot
+  || !analyzerTextControlSlot
+  || !analyzerComparisonControlSlot
+  || !analyzerSensitivityControlSlot
+) {
   throw new Error('Analyzer React shell mount point is missing');
 }
 analyzerReactShell = mountAnalyzerReactShell({
   root: analyzerReactShellRoot,
   modeSlot: analyzerModeControlSlot,
   textSlot: analyzerTextControlSlot,
+  comparisonSlot: analyzerComparisonControlSlot,
+  sensitivitySlot: analyzerSensitivityControlSlot,
   stateOwner: uiStateOwner,
+  comparisonModel,
   onModeChange,
   onTextInput: scheduleTextRender,
   onTextCommit: flushTextRender,
-});
-el.compareChartMetric.addEventListener('change', () => {
-  updateUiState((draft) => { draft.ui.comparison.chartColumn = Number(el.compareChartMetric.value); });
-  render();
+  onMetricsChange: render,
 });
 el.geometry.addEventListener('change', () => {
   const geometry = el.geometry.value as GeometryKind;
@@ -2076,14 +2087,6 @@ el.detailGeometry.addEventListener('change', () => {
   });
   fillDetailGeometryOptions(layoutId);
   playbackView.preserveNextRender('cursor');
-  render();
-});
-el.compareBaseline.addEventListener('change', () => {
-  updateUiState((draft) => {
-    const mode = currentModeId();
-    if (el.compareBaseline.value) draft.ui.comparison.baselineByMode[mode] = el.compareBaseline.value;
-    else delete draft.ui.comparison.baselineByMode[mode];
-  });
   render();
 });
 setupAddForm();

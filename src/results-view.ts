@@ -16,8 +16,9 @@ import {
   columnChart, escapeAttr, escapeText, lineChart, barChart, matrixChart, type MatrixSort,
 } from './chart.ts';
 import { FINGER_LABEL, SHORT_FINGER, SERIES, type AppElements } from './app-dom.ts';
+import type { AnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 import {
-  type LayerColorScale, type LayerView, type MatrixKind, type SensitivityScale, type UiStateV1,
+  type LayerColorScale, type LayerView, type MatrixKind, type UiStateV1,
 } from './ui-state.ts';
 import type { GeometrySettings } from './geometry-settings.ts';
 import { resolveConditions } from './condition-resolution.ts';
@@ -53,12 +54,12 @@ export interface ResultsViewContext {
   romajiRuleIdForLayout: (layout: Layout) => string | null;
   getGeometrySettingsForKind: (kind: GeometryKind) => GeometrySettings;
   playback: PlaybackViewController;
+  comparisonModel: AnalyzerComparisonModel;
 }
 
 export interface ResultsViewController {
   setup: () => void;
   render: () => void;
-  syncSensitivityScaleButtons: () => void;
 }
 
 export function createResultsView(ctx: ResultsViewContext): ResultsViewController {
@@ -158,8 +159,7 @@ function render() {
     ctx.playback.clear();
     elements.textMeta.textContent = '配列を1つ以上選ぶ';
     elements.compareChart.innerHTML = '';
-    syncCompareBaselineOptions([]);
-    syncCompareChartOptions(false);
+    syncCompareOptions([], false);
     elements.compare.innerHTML = '';
     showSensitivityPlaceholder('配列を1つ以上選ぶ');
     elements.heatmap.innerHTML = '';
@@ -310,9 +310,9 @@ function compareCell(
 }
 
 function renderCompare(results: Result[]) {
-  syncCompareBaselineOptions(results);
   const best = Math.min(...results.map((r) => r.metrics.totalUnits));
-  const baseline = results.find((r) => r.layout.id === elements.compareBaseline.value);
+  const baselineId = ctx.getUiState().ui.comparison.baselineByMode[ctx.currentModeId()] ?? '';
+  const baseline = results.find((r) => r.layout.id === baselineId);
   const baselineValues = baseline ? compareMetricValues(baseline.metrics) : null;
 
   const compareRows = results.map((r) => {
@@ -326,7 +326,7 @@ function renderCompare(results: Result[]) {
   });
 
   const sortedRows = sortMatrixRows(compareRows, ctx.getUiState().ui.comparison.sort);
-  syncCompareChartOptions(baseline !== undefined);
+  syncCompareOptions(results, baseline !== undefined);
   const chartColumn = ctx.getUiState().ui.comparison.chartColumn;
   const chartBest = Math.min(...sortedRows.map((row) => row.cells[chartColumn].value));
   const chartRelative = baseline !== undefined;
@@ -366,33 +366,24 @@ function renderCompare(results: Result[]) {
     </tr></thead><tbody>${rows}</tbody>`;
 }
 
-function syncCompareBaselineOptions(results: Result[]) {
-  const current = ctx.getUiState().ui.comparison.baselineByMode[ctx.currentModeId()]
-    || elements.compareBaseline.value
-    || '';
-  elements.compareBaseline.replaceChildren(new Option('比較なし', ''));
-  for (const result of results) {
-    elements.compareBaseline.add(new Option(result.layout.name, result.layout.id));
-  }
-  elements.compareBaseline.value = results.some((r) => r.layout.id === current) ? current : '';
-}
-
 function compareLabel(label: string, relative: boolean, column: number): string {
   return relative ? COMPARE_RELATIVE_HEADERS[column] : label;
 }
 
-function syncCompareChartOptions(relative: boolean) {
+function syncCompareOptions(results: Result[], relative: boolean) {
   if (ctx.getUiState().ui.comparison.chartColumn < 0 || ctx.getUiState().ui.comparison.chartColumn >= COMPARE_HEADERS.length) {
     ctx.updateUiState((draft) => { draft.ui.comparison.chartColumn = 1; });
   }
-  elements.compareChartMetric.replaceChildren();
-  for (let column = 0; column < COMPARE_HEADERS.length; column++) {
-    elements.compareChartMetric.add(new Option(
-      compareLabel(COMPARE_HEADERS[column], relative, column),
-      String(column),
-    ));
-  }
-  elements.compareChartMetric.value = String(ctx.getUiState().ui.comparison.chartColumn);
+  ctx.comparisonModel.setOptions(
+    [
+      { value: '', label: '比較なし' },
+      ...results.map((result) => ({ value: result.layout.id, label: result.layout.name })),
+    ],
+    COMPARE_HEADERS.map((label, column) => ({
+      value: String(column),
+      label: compareLabel(label, relative, column),
+    })),
+  );
 }
 
 /** 列ごとの補足。単位と定義だけを書き、良し悪しの解釈は書かない。 */
@@ -1421,17 +1412,6 @@ function renderHeatmap(
     renderComboTable(metrics, groups.combos, layout, geometry, pickerBase);
 }
 
-function syncSensitivityScaleButtons(): void {
-  for (const button of elements.sensitivityScale.querySelectorAll('button')) {
-    button.setAttribute('aria-pressed', String(button.dataset.scale === ctx.getUiState().ui.sensitivity.scale));
-  }
-}
-
-function setSensitivityScale(scale: SensitivityScale) {
-  ctx.updateUiState((draft) => { draft.ui.sensitivity.scale = scale; });
-  syncSensitivityScaleButtons();
-  render();
-}
   function setup(): void {
     elements.sensitivityPanel.addEventListener('toggle', () => {
       ctx.updateUiState((draft) => { draft.ui.panels.sensitivity = elements.sensitivityPanel.open; });
@@ -1440,12 +1420,6 @@ function setSensitivityScale(scale: SensitivityScale) {
         return;
       }
       if (sensitivityDirty) render();
-    });
-    elements.sensitivityScale.addEventListener('click', (e) => {
-      const button = (e.target as Element).closest<HTMLButtonElement>('button[data-scale]');
-      if (!button) return;
-      e.preventDefault();
-      setSensitivityScale(button.dataset.scale as SensitivityScale);
     });
     elements.heatmap.addEventListener('change', (e) => {
       const guideCheckbox = (e.target as Element).closest<HTMLInputElement>('input[data-picker-guide]');
@@ -1525,7 +1499,6 @@ function setSensitivityScale(scale: SensitivityScale) {
     bindMatrixSort(elements.adjacentMeanMatrix, 'adjacentMean');
     bindMatrixSort(elements.adjacentStdDevMatrix, 'adjacentStdDev');
     bindCompareSort(elements.compare);
-    syncSensitivityScaleButtons();
     // 配列図（キーボードSVG）以外のどこかをクリックしたら、今表示中の配列の選択を解く。
     document.addEventListener('click', (e) => {
       if ((e.target as Element).closest('.layer-diagram')) return;
@@ -1538,5 +1511,5 @@ function setSensitivityScale(scale: SensitivityScale) {
     });
   }
 
-  return { setup, render, syncSensitivityScaleButtons };
+  return { setup, render };
 }

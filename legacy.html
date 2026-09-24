@@ -154,18 +154,7 @@
 
         <section class="panel compare-panel">
           <h2>総移動距離<button type="button" class="info" data-tip="全指の移動距離の合計。ホームポジションからどれだけ移動したかの指標。" aria-label="全指の移動距離の合計。ホームポジションからどれだけ移動したかの指標。">i</button></h2>
-          <label class="ctl">
-            <span>比較元</span>
-            <select id="compare-baseline" title="選ぶと比較元を100%とした比率を表示する。比較できない項目は — と表示する。">
-              <option value="">比較なし</option>
-            </select>
-          </label>
-          <label class="ctl">
-            <span>棒グラフの項目</span>
-            <select id="compare-chart-metric" title="棒グラフの項目を選ぶ。表を並び替えるとその列に追従する。">
-              <option value="1">距離 [u]</option>
-            </select>
-          </label>
+          <div id="analyzer-comparison-controls"></div>
           <div id="compare-chart"></div>
           <div class="scroll-x"><table id="compare"></table></div>
           <p class="note">
@@ -202,10 +191,7 @@
         <details class="panel" id="sensitivity-panel">
           <summary class="panel-head">
             <h2>N感度<button type="button" class="info" data-tip="Nを0〜10で振った時の総移動距離。ホームポジションから離れたキーを多用する場合傾きが大きくなる傾向がある。" aria-label="Nを0〜10で振った時の総移動距離。ホームポジションから離れたキーを多用する場合傾きが大きくなる傾向がある。">i</button></h2>
-            <div class="seg" id="sensitivity-scale" role="group" aria-label="N感度の縦軸">
-              <button type="button" data-scale="relative" aria-pressed="true">相対 [%]</button>
-              <button type="button" data-scale="absolute" aria-pressed="false">絶対 [u]</button>
-            </div>
+            <div id="analyzer-sensitivity-controls"></div>
           </summary>
           <div id="sensitivity"></div>
           <p class="note">
