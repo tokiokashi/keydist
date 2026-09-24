@@ -610,18 +610,18 @@ test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityに�
 
 test('presentation consumerはLayer.orderの共通helperを使う', async () => {
   const pickerSource = await readFile(join(SRC, 'key-pattern-picker.ts'), 'utf8');
-  const resultsSource = await readFile(join(SRC, 'results-view.ts'), 'utf8');
+  const heatmapSource = await readFile(join(SRC, 'analyzer-heatmap-content.tsx'), 'utf8');
 
   assert.match(pickerSource, /orderedPresentationLayers\(groups\)/);
-  assert.match(resultsSource, /orderedPresentationLayers\(groups\)/);
+  assert.match(heatmapSource, /orderedPresentationLayers\(groups\)/);
   assert.doesNotMatch(
     pickerSource,
     /\[\.\.\.groups\.layers,\s*\.\.\.groups\.modifiers\]/,
     'picker must not give layer-role aggregations implicit priority over modifier-role aggregations',
   );
 
-  const guideStart = resultsSource.indexOf('function pickerGuideColorMap');
-  const guideEnd = resultsSource.indexOf('function heatIntensity', guideStart);
+  const guideStart = heatmapSource.indexOf('function pickerGuideColorMap');
+  const guideEnd = heatmapSource.indexOf('function heatIntensity', guideStart);
   assert.ok(guideStart >= 0 && guideEnd > guideStart, 'picker guide section must remain discoverable');
   const guideSource = resultsSource.slice(guideStart, guideEnd);
   assert.match(
@@ -632,7 +632,7 @@ test('presentation consumerはLayer.orderの共通helperを使う', async () => 
 });
 
 test('results presentationはraw Face.trigger textを再構成しない', async () => {
-  const source = await readFile(join(SRC, 'results-view.ts'), 'utf8');
+  const source = await readFile(join(SRC, 'analyzer-heatmap-content.tsx'), 'utf8');
 
   assert.doesNotMatch(
     source,
@@ -643,7 +643,7 @@ test('results presentationはraw Face.trigger textを再構成しない', async 
 });
 
 test('results picker guideは明示presentation trigger / combo variantsを使う', async () => {
-  const source = await readFile(join(SRC, 'results-view.ts'), 'utf8');
+  const source = await readFile(join(SRC, 'analyzer-heatmap-content.tsx'), 'utf8');
   const start = source.indexOf('function pickerGuideColorMap');
   const end = source.indexOf('function heatIntensity', start);
   assert.ok(start >= 0 && end > start, 'picker guide section must remain discoverable');
@@ -739,7 +739,7 @@ test('SandS trigger presentationはlayout IDへ依存しない', async () => {
     'layers presentation helper must use explicit Face metadata instead of layout ID',
   );
 
-  const resultsSource = await readFile(join(SRC, 'results-view.ts'), 'utf8');
+  const resultsSource = await readFile(join(SRC, 'analyzer-heatmap-content.tsx'), 'utf8');
   const start = resultsSource.indexOf('function displayTriggerText');
   const end = resultsSource.indexOf('interface LayerCell');
   assert.ok(start >= 0 && end > start, 'SandS presentation section must remain discoverable');
