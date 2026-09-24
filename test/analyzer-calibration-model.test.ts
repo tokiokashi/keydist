@@ -32,7 +32,7 @@ test('calibration model edits, saves, and discards without DOM ownership', () =>
     fallbackFingerSpeedUnitsPerSecond: 7,
     measuredAt: 1,
   };
-  let playbackCalibration = calibration;
+  let playbackCalibration: PlaybackCalibration | undefined = calibration;
   let useCalibration = false;
 
   const model = createAnalyzerCalibrationModel({
