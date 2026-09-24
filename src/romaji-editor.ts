@@ -58,6 +58,7 @@ export interface RomajiEditorContext {
 
 export interface RomajiEditorController {
   setup: () => void;
+  open: () => void;
 }
 
 export function createRomajiEditor(ctx: RomajiEditorContext): RomajiEditorController {
@@ -224,9 +225,6 @@ export function createRomajiEditor(ctx: RomajiEditorContext): RomajiEditorContro
     );
     fillRomajiEditorRules();
     fillRomajiAssignments();
-    elements.openButton.addEventListener('click', () => {
-      fillRomajiEditorRules(); fillRomajiAssignments(); elements.dialog.showModal();
-    });
     elements.edit.addEventListener('change', () => loadRomajiEditor(elements.edit.value));
     elements.base.addEventListener('change', () => {
       if (elements.base.value === 'azik') elements.sokuon.checked = false;
@@ -258,5 +256,11 @@ export function createRomajiEditor(ctx: RomajiEditorContext): RomajiEditorContro
     });
   }
 
-  return { setup };
+  function open(): void {
+    fillRomajiEditorRules();
+    fillRomajiAssignments();
+    elements.dialog.showModal();
+  }
+
+  return { setup, open };
 }

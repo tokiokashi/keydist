@@ -12,12 +12,10 @@ export interface AnalyzerRomajiDialogElements {
   assignments: HTMLDivElement;
   variants: HTMLDivElement;
   createNew: HTMLButtonElement;
-  openButton: HTMLButtonElement;
 }
 
 export function resolveAnalyzerRomajiDialogElements(
   dialog: HTMLDialogElement,
-  openButton: HTMLButtonElement,
 ): AnalyzerRomajiDialogElements {
   const find = <T extends HTMLElement>(id: string): T => {
     const element = dialog.querySelector<T>(`#${id}`);
@@ -36,7 +34,6 @@ export function resolveAnalyzerRomajiDialogElements(
     assignments: find('romaji-assignments'),
     variants: find('romaji-variants'),
     createNew: find('romaji-new'),
-    openButton,
   };
 }
 

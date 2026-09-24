@@ -13,8 +13,7 @@
       <h1>keydist</h1>
       <p class="lede">
         論理配列を打った時の指の総移動距離で評価する
-        <button type="button" class="how-open" id="how-open">計算方法</button>
-        <button type="button" class="how-open" id="conditions-open">シミュレーション条件</button>
+        <span id="analyzer-dialog-actions"></span>
       </p>
       <div class="spacer"></div>
       <div class="theme-toggle" role="group" aria-label="表示テーマ">
@@ -31,62 +30,12 @@
 
           <div id="analyzer-mode-control"></div>
 
-          <label class="ctl">
-            <span>配列</span>
-            <select id="detail-layout"></select>
-          </label>
-          <label class="ctl">
-            <span>この配列の物理形状</span>
-            <select id="detail-geometry"></select>
-          </label>
-
-          <label class="ctl">
-            <span>先読みN <small>指を残す判断をする入力単位数</small></span>
-            <span class="range-row">
-              <input type="range" id="window" min="0" max="12" step="1" value="3" />
-              <output id="window-out">3</output>
-            </span>
-          </label>
-
-          <label class="ctl checkbox">
-            <input type="checkbox" id="sfb-home" checked />
-            <span>同指連続でホームキーを打つ時も移動を加算する</span>
-          </label>
-
-          <label class="ctl checkbox">
-            <input type="checkbox" id="prefer-opposite-thumb" />
-            <span>スペースによるシフトで逆側の親指を優先<small>左手のキーは右親指、右手のキーは左親指</small></span>
-          </label>
-
-          <div class="ctl">
-            <span>比べる配列</span>
-            <div class="picker" id="layout-picker"></div>
-            <button type="button" class="secondary" id="conditions-open-sidebar">配列ごとの条件を設定</button>
-            <button type="button" class="secondary" id="romaji-settings">ローマ字の綴りを設定</button>
-          </div>
+          <div id="analyzer-sidebar-controls"></div>
         </div>
 
         <details class="panel" id="geometry-panel">
           <summary>打ち手と機材</summary>
-          <p class="note">
-            形状と運指は設定モーダルで編集できます。ホームキーは配列ごとに指定し、未指定なら物理形状の既定値を使います。
-            形状と運指を変えると距離の絶対値と同指連続数が変わるため、結果には設定名を併記します。
-          </p>
-          <label class="ctl">
-            <span>物理形状</span>
-            <select id="geometry">
-            </select>
-          </label>
-          <p class="note" id="geometry-current"></p>
-          <button type="button" class="secondary" id="geometry-edit">形状と運指を編集</button>
-          <div class="geometry-file-actions">
-            <button type="button" class="secondary" id="geometry-export">設定を書き出す</button>
-            <label class="secondary file-button">
-              設定を読み込む
-              <input type="file" id="geometry-import" accept="application/json,.json" />
-            </label>
-          </div>
-          <p class="note" id="geometry-status" hidden></p>
+          <div id="analyzer-geometry-controls"></div>
         </details>
 
         <details class="panel" id="add-panel">
@@ -182,68 +131,9 @@
       <aside id="playback-settings-panel" class="playback-settings-aside" aria-label="打鍵再生設定"></aside>
     </div>
 
-    <dialog id="how-dialog">
-      <div class="dialog-body">
-        <div class="dialog-head">
-          <h2>移動距離の計算方法</h2>
-          <button type="button" class="ghost close" id="how-close">閉じる</button>
-        </div>
-        <p class="note">
-          keydist が出した数値と、改変版や他のツールが出した数値は、そのまま比較できるものではありません。<br />
-          ここで出る数値は、選択した条件のもとでの結果にすぎません。<br />
-          他の方が作った配列やツールについて論じる際は、条件も一緒に示してください。<br />
-          こちらから提示するのは数値だけで、配列の優劣は判定しません。<br />
-          数値からどういった結論に至るかはご自身の判断であり、それを誘導することもしません。
-        </p>
-        <div id="gap-figure"></div>
-        <details class="calculation-limits">
-          <summary>落とした次元を見る</summary>
-          <ul>
-            <li>出てきた数字を絶対値として評価することは難しいと考えています。現在自分が使っている配列の数字と相対比較して他の配列の特性をイメージするといった用途に向いていると考えています。</li>
-            <li>タイピングという2次元的な動きを距離という1次元に圧縮しています。</li>
-            <li>全ての計算は指がホームポジションにあるのが良いということを前提としています。配列追加時にホームキーを指定でき、未指定なら物理形状の既定値を使います。</li>
-            <li>指の長さや手の動きなどの個人差のある部分は意図的にモデルから排除しています。あくまで配列の押すキーの解析情報と捉えてください。</li>
-            <li>同じ理由で「指の疲れ」等を導出することはありません。指の特性や係数など全ての項目をフィッティングすることは困難と考えるためです。疲労を考えたい人は移動距離や指間距離などの数値の傾向から相対的に判断してください。</li>
-            <li>任意の指を自動探索する運指最適化はありません。キーと指の対応は設定モーダルから明示的に指定します。</li>
-            <li>連続打鍵以外のホームへ戻る移動は距離に含んでいません。指が自然にホームに戻っていることを期待しているからです。</li>
-            <li>物理配列と論理配列は結びついているので、物理配列を入れ替えてみて同数字が動くのかを考えてみてください。</li>
-          </ul>
-        </details>
-        <hr />
-        <p class="note">
-          以上が距離計算のルールです。細かい定義を参照したい方は下記リンクよりリポジトリ内のドキュメントを参照ください。
-        </p>
-        <p>
-          <a href="https://github.com/tokiokashi/keydist/blob/main/spec/distance-model.md"
-            target="_blank" rel="noopener">仕様の全文を読む</a>
-        </p>
-      </div>
-    </dialog>
+    <dialog id="how-dialog"></dialog>
 
-    <dialog id="conditions-dialog">
-      <div class="dialog-body">
-        <div class="dialog-head">
-          <h2>シミュレーション条件</h2>
-          <button type="button" class="ghost close" id="conditions-close">閉じる</button>
-        </div>
-        <p class="note">
-          既定値の行を変えると全配列へ反映します。配列の個別設定をオンにすると、その配列だけ好きな条件を持てます。
-        </p>
-        <div id="condition-description"></div>
-        <hr />
-        <p class="note">条件の定義は仕様書を参照してください。</p>
-        <p>
-          <a href="https://github.com/tokiokashi/keydist/blob/main/spec/playback-timing.md"
-            target="_blank" rel="noopener">打鍵再生時間モデルの仕様</a>
-          <br />
-          <a href="https://github.com/tokiokashi/keydist/blob/main/spec/distance-model.md"
-            target="_blank" rel="noopener">移動距離モデルの仕様</a>
-          <br />
-          <a href="https://github.com/tokiokashi/keydist/blob/main/docs/analysis-model.md"
-            target="_blank" rel="noopener">構造解析モデルと用語</a>
-        </p>
-      </div>
-    </dialog>
+    <dialog id="conditions-dialog"></dialog>
 
     <dialog id="geometry-dialog"></dialog>
 

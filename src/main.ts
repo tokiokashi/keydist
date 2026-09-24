@@ -14,7 +14,6 @@ import {
 import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from './layouts/index.ts';
 import { bindTips, hideTip, showTip } from './chart.ts';
 import { setupTheme } from './theme.ts';
-import { gapFigure } from './gap-figure.ts';
 import {
   load as loadUserLayouts,
   save as saveUserLayouts,
@@ -30,7 +29,7 @@ import {
   saveRomajiSettings,
 } from './romaji/rules.ts';
 import { loadPlaybackCalibration } from './playback-calibration.ts';
-import { layoutVisibleInFilter, resolveSelection, type LayoutTypeFilter, type ModeId } from './layout-selection.ts';
+import { resolveSelection, type ModeId } from './layout-selection.ts';
 import {
   DEFAULT_CONDITION_DEFAULTS,
   type UiPlaybackState,
@@ -54,9 +53,10 @@ import { createAnalyzerPlaybackSettingsModel } from './analyzer-playback-setting
 import { createAnalyzerConditionsSurfaceModel } from './analyzer-conditions-surface-model.ts';
 import { createAnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 import { createAnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
+import { createAnalyzerControlsModel } from './analyzer-controls-model.ts';
 import { resolveAnalyzerGeometryDialogElements } from './analyzer-geometry-dialog.tsx';
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
-import { el, SERIES } from './app-dom.ts';
+import { el } from './app-dom.ts';
 import { createRomajiEditor } from './romaji-editor.ts';
 import { resolveAnalyzerRomajiDialogElements } from './analyzer-romaji-dialog.tsx';
 import { createCalibrationDialog, resolveCalibrationDialogElements, type CalibrationDialogController } from './calibration-dialog.ts';
@@ -114,6 +114,7 @@ let romajiSettings = loadRomajiSettings();
 let conditionPresets: ConditionPreset[] = loadConditionPresets();
 const layoutEditorModel = createAnalyzerLayoutEditorModel(allRomajiRules(romajiSettings.rules));
 const bigramFlowModel = createAnalyzerBigramFlowModel();
+const controlsModel = createAnalyzerControlsModel();
 const ROMAJI_TABLE_CACHE = new Map<string, Map<string, string>>();
 let conditionState: UiStateV1 | undefined;
 
@@ -255,13 +256,6 @@ if (!playbackCalibration && uiState.ui.playback.useCalibration) {
   updateUiState((draft) => { draft.ui.playback.useCalibration = false; });
 }
 
-el.geometry.value = uiState.conditions.defaults.geometry;
-el.window.value = String(uiState.conditions.defaults.windowSize);
-el.sfbHome.checked = uiState.conditions.defaults.sfbHomeCost;
-el.preferOppositeThumb.checked = uiState.conditions.defaults.preferOppositeThumb;
-el.addPanel.open = uiState.ui.panels.addLayout;
-el.textPanel.open = uiState.ui.panels.text;
-el.sensitivityPanel.open = uiState.ui.panels.sensitivity;
 
 /** 表示する配列のid。モードごとに覚える。保存値があればそれを使い、無ければ既定値 */
 const selected: Record<ModeId, Set<string>> = {
@@ -277,8 +271,6 @@ function saveSelectedLayouts(): void {
     };
   });
 }
-
-const pickerFilter: LayoutTypeFilter = { romaji: true, kana: true };
 
 const currentModeId = () => uiState.ui.input.mode;
 const currentMode = () => MODES[currentModeId()];
@@ -304,7 +296,7 @@ function addUserLayout(definition: UserLayout): void {
 }
 
 const romajiEditor = createRomajiEditor({
-  getElements: () => resolveAnalyzerRomajiDialogElements(el.romajiDialog, el.romajiSettings),
+  getElements: () => resolveAnalyzerRomajiDialogElements(el.romajiDialog),
   getUserLayouts: () => userLayouts,
   setUserLayouts: (layouts) => { userLayouts = layouts; },
   getRomajiSettings: () => romajiSettings,
@@ -340,111 +332,61 @@ function removeUserLayout(id: string) {
   render();
 }
 
-/** 配列の選択欄。色は一覧での位置に固定するので、外しても他の色は動かない */
-function fillPicker() {
-  const set = selected[currentModeId()];
-  el.picker.replaceChildren();
-  if (currentModeId() === 'ja') {
-    const filters = document.createElement('div');
-    filters.className = 'picker-filters';
-    filters.setAttribute('role', 'group');
-    filters.setAttribute('aria-label', '配列の種類で絞り込む');
-    const filterButton = (key: 'romaji' | 'kana', labelText: string): HTMLButtonElement => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'ghost';
-      button.textContent = labelText;
-      button.setAttribute('aria-pressed', String(pickerFilter[key]));
-      button.addEventListener('click', () => {
-        pickerFilter[key] = !pickerFilter[key];
-        fillPicker();
-      });
-      return button;
-    };
-    filters.append(
-      document.createTextNode('表示: '),
-      filterButton('romaji', 'ローマ字配列'),
-      filterButton('kana', 'かな・直接入力'),
-    );
-    el.picker.append(filters);
-  }
-  let visible = 0;
-  currentMode().layouts.forEach((layout, i) => {
-    const isRomaji = layout.romajiTable !== undefined;
-    if (currentModeId() === 'ja' && !layoutVisibleInFilter(isRomaji, pickerFilter)) return;
-    visible++;
-    const on = set.has(layout.id);
-    const label = document.createElement('label');
-    label.className = on ? '' : 'off';
-
-    const box = document.createElement('input');
-    box.type = 'checkbox';
-    box.checked = on;
-    box.addEventListener('change', () => {
-      if (box.checked) set.add(layout.id);
-      else set.delete(layout.id);
-      saveSelectedLayouts();
-      label.className = box.checked ? '' : 'off';
-      playbackView?.preserveNextRender('input-position');
-      fillDetailOptions();
-      render();
-    });
-
-    const swatch = document.createElement('span');
-    swatch.className = 'swatch';
-    swatch.style.background = SERIES(i);
-
-    label.append(box, swatch, document.createTextNode(layout.name));
-
-    if (userLayouts.some((u) => u.id === layout.id)) {
-      const remove = document.createElement('button');
-      remove.type = 'button';
-      remove.className = 'ghost remove';
-      remove.textContent = '削除';
-      remove.title = `${layout.name} を削除する`;
-      remove.addEventListener('click', (e) => {
-        e.preventDefault();
-        removeUserLayout(layout.id);
-      });
-      label.append(remove);
-    }
-
-    el.picker.append(label);
-  });
-  if (visible === 0) {
-    const empty = document.createElement('p');
-    empty.className = 'note picker-empty';
-    empty.textContent = '表示する配列がありません。上の絞り込みをオンにしてください。';
-    el.picker.append(empty);
-  }
-}
-
-function fillDetailGeometryOptions(layoutId: string | undefined): void {
-  el.detailGeometry.replaceChildren(
-    new Option('ロウスタッガード', 'row-staggered'),
-    new Option('オーソリニア', 'ortholinear'),
-    new Option('カラムスタッガード', 'column-staggered'),
-    ...userGeometryShapes.map((shape) => new Option(`自作: ${shape.name}`, customGeometryKind(shape.id))),
-  );
-  const override = layoutId ? uiState.conditions.perLayout[layoutId] : undefined;
-  el.detailGeometry.value = override?.geometry ?? uiState.conditions.defaults.geometry;
-  if (el.detailGeometry.value === '') el.detailGeometry.value = 'row-staggered';
-}
-
-/** 詳細セレクタはモードで配列の顔ぶれが変わるので作り直す */
-function fillDetailOptions() {
-  const keep = uiState.ui.layouts.detailByMode[currentModeId()] || el.detailLayout.value;
+/** React sidebarが参照する、現在の詳細表示対象をDOMに依存せず解決する。 */
+function currentDetailLayoutId(): string | undefined {
   const layouts = activeLayouts();
-  el.detailLayout.replaceChildren();
-  for (const layout of layouts) {
-    el.detailLayout.append(new Option(layout.name, layout.id));
-  }
-  if (layouts.length === 0) {
-    fillDetailGeometryOptions(undefined);
-    return;
-  }
-  el.detailLayout.value = layouts.some((l) => l.id === keep) ? keep : layouts[0].id;
-  fillDetailGeometryOptions(el.detailLayout.value);
+  const requested = uiState.ui.layouts.detailByMode[currentModeId()];
+  return requested && layouts.some((layout) => layout.id === requested)
+    ? requested
+    : layouts[0]?.id;
+}
+
+function refreshAnalyzerControlsCatalog(): void {
+  const layoutsByMode = Object.fromEntries(
+    (['en', 'ja'] as const).map((mode) => [
+      mode,
+      layoutsOf(mode).map((layout, slot) => ({
+        id: layout.id,
+        name: layout.name,
+        isRomaji: layout.romajiTable !== undefined,
+        isUser: userLayouts.some((definition) => definition.id === layout.id),
+        slot,
+      })),
+    ]),
+  ) as Record<ModeId, {
+    id: string;
+    name: string;
+    isRomaji: boolean;
+    isUser: boolean;
+    slot: number;
+  }[]>;
+
+  controlsModel.setCatalog(
+    layoutsByMode,
+    [
+      { value: 'row-staggered', label: 'ロウスタッガード' },
+      { value: 'ortholinear', label: 'オーソリニア' },
+      { value: 'column-staggered', label: 'カラムスタッガード' },
+      ...userGeometryShapes.map((shape) => ({
+        value: customGeometryKind(shape.id),
+        label: `自作: ${shape.name}`,
+      })),
+    ],
+    `現在: ${uiState.conditions.geometrySettings.shape.name} / ${uiState.conditions.geometrySettings.assignment.name}`,
+  );
+}
+
+/** 移行中の既存call siteはcatalog refreshへ集約する。 */
+function fillPicker(): void {
+  refreshAnalyzerControlsCatalog();
+}
+
+function fillDetailGeometryOptions(_layoutId: string | undefined): void {
+  refreshAnalyzerControlsCatalog();
+}
+
+function fillDetailOptions(): void {
+  refreshAnalyzerControlsCatalog();
 }
 
 const FINGER_NAMES: Record<Finger, string> = {
@@ -490,7 +432,7 @@ function updateGeometrySettings(
       draft.ui.input.geometry = geometryKind;
     }
   });
-  el.geometry.value = uiState.conditions.defaults.geometry;
+  refreshAnalyzerControlsCatalog();
   if (renderResults) render();
 }
 
@@ -501,22 +443,18 @@ function markCustomAssignment(settings: GeometrySettings): void {
 
 function fillGeometryOptions(): void {
   const current = uiState.conditions.defaults.geometry;
-  el.geometry.replaceChildren(
-    new Option('ロウスタッガード', 'row-staggered'),
-    new Option('オーソリニア', 'ortholinear'),
-    new Option('カラムスタッガード', 'column-staggered'),
-    ...userGeometryShapes.map((shape) => new Option(`自作: ${shape.name}`, customGeometryKind(shape.id))),
-  );
-  el.geometry.value = current;
-  if (el.geometry.value !== current) {
+  const valid = isPresetGeometryKind(current)
+    || (isCustomGeometryKind(current)
+      && userGeometryShapes.some((shape) => customGeometryKind(shape.id) === current));
+  if (!valid) {
     const fallback: GeometryKind = 'row-staggered';
     updateUiState((draft) => {
       draft.conditions.defaults.geometry = fallback;
       draft.ui.input.geometry = fallback;
       draft.conditions.geometrySettings.shape = clonePhysicalShape(PHYSICAL_SHAPES[fallback]);
     });
-    el.geometry.value = fallback;
   }
+  refreshAnalyzerControlsCatalog();
 }
 
 function selectedShapeForKind(kind: GeometryKind): PhysicalShape | undefined {
@@ -539,7 +477,15 @@ function geometrySettingsForKind(kind: GeometryKind): GeometrySettings {
 }
 
 /** 運指と形状を編集するモーダル。 */
-let refreshGeometryEditor = (): void => undefined;
+interface GeometryEditorController {
+  refresh(): void;
+  open(): void;
+  exportSettings(): void;
+  importSettings(file: File): Promise<void>;
+}
+
+let geometryEditorController: GeometryEditorController | undefined;
+let refreshGeometryEditor = (): void => geometryEditorController?.refresh();
 
 function setupGeometryEditor(): void {
   const modal = resolveAnalyzerGeometryDialogElements(el.geometryDialog);
@@ -776,7 +722,7 @@ function setupGeometryEditor(): void {
     homeNote.className = 'note';
     homeNote.textContent = 'ホームキーは配列側に紐づきます。配列追加時に指定しない場合は物理形状の既定値を使います。';
     assignmentFields.append(homeNote);
-    el.geometryCurrent.textContent = `現在: ${shape.name} / ${assignment.name}`;
+    refreshAnalyzerControlsCatalog();
     if (el.geometryDialog.open) renderShapeEditor();
   }
 
@@ -823,12 +769,11 @@ function setupGeometryEditor(): void {
       : userGeometryShapes.map((candidate, i) => i === index ? shape : candidate);
     saveUserGeometryShapes(userGeometryShapes);
     applyShape(shape, customGeometryKind(shape.id));
-    el.geometryStatus.textContent = `${shape.name}を保存した`;
-    el.geometryStatus.hidden = false;
+    controlsModel.setGeometryStatus(`${shape.name}を保存した`);
     el.geometryDialog.close();
   }
 
-  el.geometryEdit.addEventListener('click', () => {
+  const openEditor = () => {
     shapeDraft = clonePhysicalShape(uiState.conditions.geometrySettings.shape);
     shapeUnit = 'mm';
     modal.name.value = shapeDraft.name;
@@ -838,7 +783,7 @@ function setupGeometryEditor(): void {
     renderEditor();
     renderShapeEditor();
     el.geometryDialog.showModal();
-  });
+  };
   modal.unit.addEventListener('change', () => {
     shapeUnit = modal.unit.value as GeometryUnit;
     renderShapeEditor();
@@ -855,7 +800,7 @@ function setupGeometryEditor(): void {
     el.geometryDialog.close();
   });
 
-  el.geometryExport.addEventListener('click', () => {
+  const exportSettings = () => {
     const blob = new Blob([serializeGeometrySettings(uiState.conditions.geometrySettings)], {
       type: 'application/json',
     });
@@ -865,12 +810,10 @@ function setupGeometryEditor(): void {
     anchor.download = 'keydist-geometry-settings.json';
     anchor.click();
     URL.revokeObjectURL(url);
-    el.geometryStatus.textContent = '打ち手と機材の設定を書き出した';
-    el.geometryStatus.hidden = false;
-  });
-  el.geometryImport.addEventListener('change', async () => {
-    const file = el.geometryImport.files?.[0];
-    if (!file) return;
+    controlsModel.setGeometryStatus('打ち手と機材の設定を書き出した');
+  };
+
+  const importSettings = async (file: File) => {
     try {
       const settings = parseGeometrySettings(
         await file.text(),
@@ -892,32 +835,22 @@ function setupGeometryEditor(): void {
       renderEditor();
       playbackView?.preserveNextRender('cursor');
       render();
-      el.geometryStatus.textContent = '打ち手と機材の設定を読み込んだ';
-      el.geometryStatus.hidden = false;
+      controlsModel.setGeometryStatus('打ち手と機材の設定を読み込んだ');
     } catch (error) {
-      el.geometryStatus.textContent = error instanceof Error ? error.message : '設定ファイルを読み込めない';
-      el.geometryStatus.hidden = false;
-    } finally {
-      el.geometryImport.value = '';
+      controlsModel.setGeometryStatus(
+        error instanceof Error ? error.message : '設定ファイルを読み込めない',
+      );
     }
-  });
-  refreshGeometryEditor = renderEditor;
+  };
+
+  geometryEditorController = {
+    refresh: renderEditor,
+    open: openEditor,
+    exportSettings,
+    importSettings,
+  };
   fillGeometryOptions();
   renderEditor();
-}
-
-/**
- * 計算方法の図解をモーダルで開く。ヘッダーの仕様リンクを置き換えたボタンから呼ぶ。
- * 閉じる口は3つ: 閉じるボタン・背景クリック・Esc（dialog既定）。
- * 背景クリックを拾うためdialog自身のpaddingは0にし、余白は .dialog-bodyが持つ。
- */
-function setupHowDialog() {
-  el.howOpen.addEventListener('click', () => el.howDialog.showModal());
-  el.howClose.addEventListener('click', () => el.howDialog.close());
-  el.howDialog.addEventListener('click', (event) => {
-    // 背景そのものを押した時だけ閉じる。中身の上ならtargetは子要素になる
-    if (event.target === el.howDialog) el.howDialog.close();
-  });
 }
 
 const conditionsSurfaceModel = createAnalyzerConditionsSurfaceModel();
@@ -985,10 +918,9 @@ function commitCondition(
     Object.assign(target, { [key]: structuredClone(value) });
     draft.conditions.perLayout[layoutId] = target;
   });
-  syncGlobalConditionControls();
-  if (key === 'geometry') {
+    if (key === 'geometry') {
     fillGeometryOptions();
-    fillDetailGeometryOptions(el.detailLayout.value);
+    fillDetailGeometryOptions(currentDetailLayoutId());
   }
   if (key === 'romajiRule') playbackView?.preserveNextRender('input-position');
   else if (key === 'geometry' || key === 'chain' || key === 'arpeggioPolicy') {
@@ -1003,8 +935,7 @@ function toggleConditionOverride(layoutId: string, enabled: boolean): void {
     if (enabled) draft.conditions.perLayout[layoutId] ??= {};
     else delete draft.conditions.perLayout[layoutId];
   });
-  syncGlobalConditionControls();
-  playbackView?.preserveNextRender('input-position');
+    playbackView?.preserveNextRender('input-position');
   renderConditionDescription();
   render();
 }
@@ -1016,13 +947,6 @@ function geometryOptions(select: HTMLSelectElement): void {
     new Option('カラムスタッガード', 'column-staggered'),
     ...userGeometryShapes.map((shape) => new Option(`自作: ${shape.name}`, customGeometryKind(shape.id))),
   );
-}
-
-function syncGlobalConditionControls(): void {
-  el.geometry.value = uiState.conditions.defaults.geometry;
-  el.window.value = String(uiState.conditions.defaults.windowSize);
-  el.sfbHome.checked = uiState.conditions.defaults.sfbHomeCost;
-  el.preferOppositeThumb.checked = uiState.conditions.defaults.preferOppositeThumb;
 }
 
 function conditionNumber(
@@ -1488,7 +1412,9 @@ function renderConditionDescription(
     ? el.conditionsDialog.scrollTop
     : undefined;
   const previousTableWrap = preserveScroll
-    ? el.conditionDescription.querySelector<HTMLElement>('.condition-table-wrap')
+    ? el.conditionsDialog.querySelector<HTMLElement>(
+      '[data-react-feature="conditions"] .condition-table-wrap',
+    )
     : null;
   const tableScroll = previousTableWrap === null
     ? undefined
@@ -1508,7 +1434,7 @@ function renderConditionDescription(
     const preset = allConditionPresets(conditionPresets).find((candidate) => candidate.id === presetSelect.value);
     if (!preset) return;
     updateUiState((draft) => { draft.conditions.defaults = structuredClone(preset.conditions); });
-    syncGlobalConditionControls(); fillGeometryOptions(); fillDetailGeometryOptions(el.detailLayout.value);
+    fillGeometryOptions(); fillDetailGeometryOptions(currentDetailLayoutId());
     renderConditionDescription(preset.id); render();
   }); presetLabel.append(presetSelect);
   const savePreset = document.createElement('button'); savePreset.type = 'button'; savePreset.className = 'secondary'; savePreset.textContent = '現在値を保存';
@@ -1550,7 +1476,7 @@ function renderConditionDescription(
       conditionPresets = bundle.presets; saveConditionPresets(conditionPresets);
       addLayoutChoices(userLayouts.map((layout) => layout.id));
       updateUiState((draft) => { draft.conditions = bundle.conditions; });
-      syncGlobalConditionControls(); fillGeometryOptions(); fillDetailOptions();
+      fillGeometryOptions(); fillDetailOptions();
       fillPicker(); renderConditionDescription(); render();
       status.textContent = '条件と配列を読み込んだ';
     } catch (error) {
@@ -1586,28 +1512,10 @@ function renderConditionDescription(
   });
 }
 
-/** シミュレーション条件の編集モーダル。条件は開く直前に再生成する。 */
-function setupConditionDialog() {
-  const open = () => {
-    renderConditionDescription(undefined, false);
-    el.conditionsDialog.showModal();
-    el.conditionsDialog.scrollTop = 0;
-  };
-  el.conditionsOpen.addEventListener('click', open);
-  el.conditionsOpenSidebar.addEventListener('click', open);
-  el.conditionsClose.addEventListener('click', () => el.conditionsDialog.close());
-  el.conditionsDialog.addEventListener('click', (event) => {
-    if (event.target === el.conditionsDialog) el.conditionsDialog.close();
-  });
-}
-
-function setupPanelState() {
-  el.addPanel.addEventListener('toggle', () => {
-    updateUiState((draft) => { draft.ui.panels.addLayout = el.addPanel.open; });
-  });
-  el.textPanel.addEventListener('toggle', () => {
-    updateUiState((draft) => { draft.ui.panels.text = el.textPanel.open; });
-  });
+function openConditionsDialog(): void {
+  renderConditionDescription(undefined, false);
+  el.conditionsDialog.showModal();
+  el.conditionsDialog.scrollTop = 0;
 }
 
 let playbackView: PlaybackViewController;
@@ -1621,22 +1529,7 @@ function currentPlaybackLayoutId(): string | undefined {
 }
 
 function currentConditionLayoutId(): string | undefined {
-  return el.detailLayout.value || currentPlaybackLayoutId();
-}
-
-function currentEffectiveConditions(): UiStateConditionsDefaults {
-  const layoutId = currentConditionLayoutId();
-  const override = layoutId ? uiState.conditions.perLayout[layoutId] : undefined;
-  return { ...uiState.conditions.defaults, ...(override ?? {}) };
-}
-
-function syncEffectiveConditionControls(): void {
-  const conditions = currentEffectiveConditions();
-  el.geometry.value = conditions.geometry;
-  el.window.value = String(conditions.windowSize);
-  el.windowOut.value = String(conditions.windowSize);
-  el.sfbHome.checked = conditions.sfbHomeCost;
-  el.preferOppositeThumb.checked = conditions.preferOppositeThumb;
+  return currentDetailLayoutId() || currentPlaybackLayoutId();
 }
 
 function isPlaybackLayoutOverride(): boolean {
@@ -1822,11 +1715,11 @@ resultsView = createResultsView({
   playback: playbackView,
   comparisonModel,
   bigramFlowModel,
+  getDetailLayoutId: currentDetailLayoutId,
 });
 
 function render(): void {
   resultsView.render();
-  syncEffectiveConditionControls();
 }
 
 function onModeChange() {
@@ -1835,6 +1728,8 @@ function onModeChange() {
   render();
 }
 
+refreshAnalyzerControlsCatalog();
+
 const analyzerReactShellRoot = document.getElementById('analyzer-react-shell');
 const analyzerModeControlSlot = document.getElementById('analyzer-mode-control');
 const analyzerTextControlSlot = document.getElementById('analyzer-text-controls');
@@ -1842,6 +1737,9 @@ const analyzerComparisonControlSlot = document.getElementById('analyzer-comparis
 const analyzerSensitivityControlSlot = document.getElementById('analyzer-sensitivity-controls');
 const analyzerLayoutEditorSlot = document.getElementById('analyzer-layout-editor');
 const analyzerBigramFlowSlot = document.getElementById('analyzer-bigram-flow');
+const analyzerDialogActionsSlot = document.getElementById('analyzer-dialog-actions');
+const analyzerSidebarControlsSlot = document.getElementById('analyzer-sidebar-controls');
+const analyzerGeometryControlsSlot = document.getElementById('analyzer-geometry-controls');
 if (
   !analyzerReactShellRoot
   || !analyzerModeControlSlot
@@ -1850,9 +1748,13 @@ if (
   || !analyzerSensitivityControlSlot
   || !analyzerLayoutEditorSlot
   || !analyzerBigramFlowSlot
+  || !analyzerDialogActionsSlot
+  || !analyzerSidebarControlsSlot
+  || !analyzerGeometryControlsSlot
 ) {
   throw new Error('Analyzer React shell mount point is missing');
 }
+
 analyzerReactShell = mountAnalyzerReactShell({
   root: analyzerReactShellRoot,
   modeSlot: analyzerModeControlSlot,
@@ -1861,12 +1763,19 @@ analyzerReactShell = mountAnalyzerReactShell({
   sensitivitySlot: analyzerSensitivityControlSlot,
   playbackSlot: el.playback,
   playbackSettingsSlot: el.playbackSettingsPanel,
-  conditionsSlot: el.conditionDescription,
   layoutEditorSlot: analyzerLayoutEditorSlot,
   calibrationDialogSlot: el.calibrationDialog,
   geometryDialogSlot: el.geometryDialog,
   romajiDialogSlot: el.romajiDialog,
   bigramFlowSlot: analyzerBigramFlowSlot,
+  dialogActionsSlot: analyzerDialogActionsSlot,
+  sidebarControlsSlot: analyzerSidebarControlsSlot,
+  geometryControlsSlot: analyzerGeometryControlsSlot,
+  howDialogSlot: el.howDialog,
+  conditionsDialogSlot: el.conditionsDialog,
+  addPanel: el.addPanel,
+  textPanel: el.textPanel,
+  sensitivityPanel: el.sensitivityPanel,
   stateOwner: uiStateOwner,
   comparisonModel,
   playbackSurfaceModel,
@@ -1874,6 +1783,7 @@ analyzerReactShell = mountAnalyzerReactShell({
   conditionsSurfaceModel,
   layoutEditorModel,
   bigramFlowModel,
+  controlsModel,
   onModeChange,
   onTextInput: scheduleTextRender,
   onTextCommit: flushTextRender,
@@ -1884,12 +1794,118 @@ analyzerReactShell = mountAnalyzerReactShell({
   onCalibrationMount: initializeCalibrationDialog,
   onGeometryMount: setupGeometryEditor,
   onRomajiMount: () => romajiEditor.setup(),
-  onConditionsSurfaceCommit: (snapshot) => {
+  onToggleLayout: (layoutId, enabled) => {
+    const set = selected[currentModeId()];
+    if (enabled) set.add(layoutId);
+    else set.delete(layoutId);
+    saveSelectedLayouts();
+    playbackView.preserveNextRender('input-position');
+    render();
+  },
+  onRemoveLayout: removeUserLayout,
+  onDetailLayoutChange: (layoutId) => {
+    updateUiState((draft) => {
+      draft.ui.layouts.detailByMode[currentModeId()] = layoutId;
+    });
+    playbackView.preserveNextRender('input-position');
+    render();
+  },
+  onDetailGeometryChange: (layoutId, geometry) => {
+    updateUiState((draft) => {
+      setLayoutGeometryOverride(
+        draft.conditions.perLayout,
+        layoutId,
+        geometry,
+        draft.conditions.defaults.geometry,
+      );
+    });
+    playbackView.preserveNextRender('cursor');
+    render();
+  },
+  onWindowSizeChange: (windowSize) => {
+    const layoutId = currentConditionLayoutId();
+    const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
+    updateUiState((draft) => {
+      const conditions = layoutId ? draft.conditions.perLayout[layoutId] : undefined;
+      if (layoutId && useLayoutOverride) {
+        draft.conditions.perLayout[layoutId] = { ...conditions, windowSize };
+      } else {
+        draft.conditions.defaults.windowSize = windowSize;
+      }
+    });
+    render();
+  },
+  onSfbHomeChange: (sfbHomeCost) => {
+    const layoutId = currentConditionLayoutId();
+    const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
+    updateUiState((draft) => {
+      if (layoutId && useLayoutOverride) {
+        draft.conditions.perLayout[layoutId] = {
+          ...draft.conditions.perLayout[layoutId],
+          sfbHomeCost,
+        };
+      } else {
+        draft.conditions.defaults.sfbHomeCost = sfbHomeCost;
+      }
+    });
+    render();
+  },
+  onPreferOppositeThumbChange: (preferOppositeThumb) => {
+    const layoutId = currentConditionLayoutId();
+    const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
+    updateUiState((draft) => {
+      if (layoutId && useLayoutOverride) {
+        draft.conditions.perLayout[layoutId] = {
+          ...draft.conditions.perLayout[layoutId],
+          preferOppositeThumb,
+        };
+      } else {
+        draft.conditions.defaults.preferOppositeThumb = preferOppositeThumb;
+      }
+    });
+    render();
+  },
+  onDefaultGeometryChange: (geometry) => {
+    const layoutId = currentConditionLayoutId();
+    const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
+    if (layoutId && useLayoutOverride) {
+      updateUiState((draft) => {
+        draft.conditions.perLayout[layoutId] = {
+          ...draft.conditions.perLayout[layoutId],
+          geometry,
+        };
+      });
+      playbackView.preserveNextRender('cursor');
+      render();
+      return;
+    }
+    const shape = selectedShapeForKind(geometry);
+    if (!shape) return;
+    updateUiState((draft) => {
+      draft.ui.input.geometry = geometry;
+      draft.conditions.defaults.geometry = geometry;
+      draft.conditions.geometrySettings.shape = shape;
+    });
+    fillGeometryOptions();
+    refreshGeometryEditor();
+    playbackView.preserveNextRender('cursor');
+    render();
+  },
+  onGeometryEdit: () => geometryEditorController?.open(),
+  onGeometryExport: () => geometryEditorController?.exportSettings(),
+  onGeometryImport: async (file) => {
+    await geometryEditorController?.importSettings(file);
+  },
+  onOpenHow: () => el.howDialog.showModal(),
+  onOpenConditions: openConditionsDialog,
+  onOpenRomaji: () => romajiEditor.open(),
+  onSensitivityToggle: () => render(),
+  onConditionsSurfaceCommit: (snapshot, root) => {
     if (snapshot.dialogScrollTop !== undefined) {
       el.conditionsDialog.scrollTop = snapshot.dialogScrollTop;
     }
     if (snapshot.tableScroll !== undefined) {
-      const tableWrap = el.conditionDescription.querySelector<HTMLElement>('.condition-table-wrap');
+      const tableWrap = root.querySelector<HTMLElement>('.condition-table-wrap');
       if (tableWrap) {
         tableWrap.scrollTop = snapshot.tableScroll.top;
         tableWrap.scrollLeft = snapshot.tableScroll.left;
@@ -1897,77 +1913,9 @@ analyzerReactShell = mountAnalyzerReactShell({
     }
   },
 });
-el.geometry.addEventListener('change', () => {
-  const geometry = el.geometry.value as GeometryKind;
-  const layoutId = currentConditionLayoutId();
-  const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
-  if (layoutId && useLayoutOverride) {
-    updateUiState((draft) => {
-      draft.conditions.perLayout[layoutId] = {
-        ...draft.conditions.perLayout[layoutId],
-        geometry,
-      };
-    });
-    playbackView.preserveNextRender('cursor');
-    render();
-    return;
-  }
-  const shape = selectedShapeForKind(geometry);
-  if (!shape) return;
-  updateUiState((draft) => {
-    draft.ui.input.geometry = geometry;
-    draft.conditions.defaults.geometry = geometry;
-    draft.conditions.geometrySettings.shape = shape;
-  });
-  fillGeometryOptions();
-  refreshGeometryEditor();
-  playbackView.preserveNextRender('cursor');
-  render();
-});
-el.window.addEventListener('input', (event) => {
-  const windowSize = Number((event.currentTarget as HTMLInputElement).value);
-  const layoutId = currentConditionLayoutId();
-  const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
-  updateUiState((draft) => {
-    const conditions = layoutId ? draft.conditions.perLayout[layoutId] : undefined;
-    if (layoutId && useLayoutOverride) {
-      draft.conditions.perLayout[layoutId] = { ...conditions, windowSize };
-    } else {
-      draft.conditions.defaults.windowSize = windowSize;
-    }
-  });
-  render();
-});
-el.sfbHome.addEventListener('change', () => {
-  const layoutId = currentConditionLayoutId();
-  const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
-  updateUiState((draft) => {
-    if (layoutId && useLayoutOverride) {
-      draft.conditions.perLayout[layoutId] = {
-        ...draft.conditions.perLayout[layoutId],
-        sfbHomeCost: el.sfbHome.checked,
-      };
-    } else {
-      draft.conditions.defaults.sfbHomeCost = el.sfbHome.checked;
-    }
-  });
-  render();
-});
-el.preferOppositeThumb.addEventListener('change', () => {
-  const layoutId = currentConditionLayoutId();
-  const useLayoutOverride = layoutId !== undefined && conditionOverrideEnabled(layoutId);
-  updateUiState((draft) => {
-    if (layoutId && useLayoutOverride) {
-      draft.conditions.perLayout[layoutId] = {
-        ...draft.conditions.perLayout[layoutId],
-        preferOppositeThumb: el.preferOppositeThumb.checked,
-      };
-    } else {
-      draft.conditions.defaults.preferOppositeThumb = el.preferOppositeThumb.checked;
-    }
-  });
-  render();
-});
+
+playbackView.setup();
+resultsView.setup();
 const TEXT_RENDER_DEBOUNCE_MS = 250;
 let textRenderTimer: number | undefined;
 
@@ -1985,37 +1933,6 @@ function flushTextRender(): void {
   render();
 }
 
-el.detailLayout.addEventListener('change', () => {
-  updateUiState((draft) => { draft.ui.layouts.detailByMode[currentModeId()] = el.detailLayout.value; });
-  fillDetailGeometryOptions(el.detailLayout.value);
-  playbackView.preserveNextRender('input-position');
-  render();
-});
-el.detailGeometry.addEventListener('change', () => {
-  const layoutId = el.detailLayout.value;
-  if (!layoutId) return;
-  const geometry = el.detailGeometry.value as GeometryKind;
-  updateUiState((draft) => {
-    setLayoutGeometryOverride(
-      draft.conditions.perLayout,
-      layoutId,
-      geometry,
-      draft.conditions.defaults.geometry,
-    );
-  });
-  fillDetailGeometryOptions(layoutId);
-  playbackView.preserveNextRender('cursor');
-  render();
-});
-setupPanelState();
-setupConditionDialog();
-playbackView.setup();
-resultsView.setup();
-fillPicker();
-fillDetailOptions();
-// 図解は固定例（§7〜§9）。画面の選択に連動させず、起動時に1度だけ描く
-el.gapFigure.innerHTML = gapFigure(buildGeometry('row-staggered'));
-setupHowDialog();
 bindTips(document.body);
 // 補足ボタン: summaryの中に置くとdetailsが開閉してしまうので握りつぶす。
 // キーボードでも読めるようfocusでも出す
