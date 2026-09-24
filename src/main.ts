@@ -796,7 +796,6 @@ function setPlaybackLayoutOverride(enabled: boolean): void {
 }
 
 playbackView = createPlaybackView({
-  el,
   getUiState: playbackViewUiState,
   getPlaybackSettings: () => playbackViewUiState().ui.playback,
   updatePlaybackSetting,
@@ -888,6 +887,7 @@ if (
 
 analyzerReactShell = mountAnalyzerReactShell({
   root: analyzerReactShellRoot,
+  appElement: el.app,
   themeControlsSlot: analyzerThemeControlsSlot,
   modeSlot: analyzerModeControlSlot,
   textPanelSlot: analyzerTextPanelSlot,
