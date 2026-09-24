@@ -11,9 +11,8 @@ import {
   playbackStrokeAt, playbackStepDurationMs, playbackTimingSchedule, playbackTimingStepDurationMs, playbackCursorForEquivalentInputPosition, reconcilePlaybackStateAfterAnalysisRefresh, setPlaybackSameFingerDelay,
   setPlaybackStepsPerSecond, stepPlayback, playbackTrailKeys, playbackTrailOrders,
   playbackStrokeDisplay, setPlaybackCalibration, setPlaybackSpeedMultiplier,
-  type PlaybackStepsPerSecond, type PlaybackState, type PlaybackTimingStep, PLAYBACK_SPEED_MULTIPLIER_MAX,
-  PLAYBACK_SPEED_MULTIPLIER_MIN, PLAYBACK_STEPS_PER_SECOND_MAX,
-  PLAYBACK_STEPS_PER_SECOND_MIN, PLAYBACK_RATE_WINDOW_MIN,
+  type PlaybackStepsPerSecond, type PlaybackState, type PlaybackTimingStep,
+  PLAYBACK_RATE_WINDOW_MIN,
   PLAYBACK_RATE_WINDOW_MAX, PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN,
   PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX,
 } from './playback.ts';
