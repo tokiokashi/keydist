@@ -29,7 +29,7 @@ import {
   saveRomajiSettings,
 } from './romaji/rules.ts';
 import { loadPlaybackCalibration } from './playback-calibration.ts';
-import { resolveSelection, type ModeId } from './layout-selection.ts';
+import type { ModeId } from './layout-selection.ts';
 import {
   DEFAULT_CONDITION_DEFAULTS,
   type UiPlaybackState,
@@ -39,10 +39,7 @@ import {
   type UiStateV1,
 } from './ui-state.ts';
 import { createAnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
-import {
-  ANALYZER_INITIAL_LAYOUTS,
-  createAnalyzerUiStateBootstrap,
-} from './analyzer-ui-state-bootstrap.ts';
+import { createAnalyzerUiStateBootstrap } from './analyzer-ui-state-bootstrap.ts';
 import {
   mountAnalyzerReactShell,
   type AnalyzerReactShellController,
@@ -257,19 +254,20 @@ if (!playbackCalibration && uiState.ui.playback.useCalibration) {
 }
 
 
-/** 表示する配列のid。モードごとに覚える。保存値があればそれを使い、無ければ既定値 */
-const selected: Record<ModeId, Set<string>> = {
-  en: resolveSelection(uiState.ui.layouts.selectedByMode.en, ANALYZER_INITIAL_LAYOUTS.en),
-  ja: resolveSelection(uiState.ui.layouts.selectedByMode.ja, ANALYZER_INITIAL_LAYOUTS.ja),
-};
+/** 表示する配列のidは、正規化済みAppStateから都度導出する。 */
+function selectedLayoutIds(mode: ModeId): ReadonlySet<string> {
+  return new Set(uiState.ui.layouts.selectedByMode[mode]);
+}
 
-function saveSelectedLayouts(): void {
-  updateUiState((draft) => {
-    draft.ui.layouts.selectedByMode = {
-      en: [...selected.en],
-      ja: [...selected.ja],
-    };
-  });
+/** 選択集合の更新経路を集約し、配列への変換もここだけで行う。 */
+function updateSelectedLayouts(
+  draft: UiStateV1,
+  mode: ModeId,
+  change: (selected: Set<string>) => void,
+): void {
+  const selected = new Set(draft.ui.layouts.selectedByMode[mode]);
+  change(selected);
+  draft.ui.layouts.selectedByMode[mode] = [...selected];
 }
 
 const currentModeId = () => uiState.ui.input.mode;
@@ -277,8 +275,8 @@ const currentMode = () => MODES[currentModeId()];
 
 /** 選択されている配列。色のスロットは選択順ではなく一覧順に固定する */
 function activeLayouts(): Layout[] {
-  const set = selected[currentModeId()];
-  return currentMode().layouts.filter((l) => set.has(l.id));
+  const selected = selectedLayoutIds(currentModeId());
+  return currentMode().layouts.filter((layout) => selected.has(layout.id));
 }
 
 function addUserLayout(definition: UserLayout): void {
@@ -286,9 +284,13 @@ function addUserLayout(definition: UserLayout): void {
   saveUserLayouts(userLayouts);
   addLayoutChoices([definition.id]);
 
-  selected.en.add(definition.id);
-  selected.ja.add(definition.id);
-  saveSelectedLayouts();
+  updateUiState((draft) => {
+    for (const mode of ['en', 'ja'] as const) {
+      updateSelectedLayouts(draft, mode, (selected) => {
+        selected.add(definition.id);
+      });
+    }
+  });
 
   fillPicker();
   fillDetailOptions();
@@ -314,13 +316,12 @@ function removeUserLayout(id: string) {
   userLayouts = userLayouts.filter((l) => l.id !== id);
   saveUserLayouts(userLayouts);
   removeLayoutChoice(id);
-  selected.en.delete(id);
-  selected.ja.delete(id);
   updateUiState((draft) => {
-    draft.ui.layouts.selectedByMode = {
-      en: [...selected.en],
-      ja: [...selected.ja],
-    };
+    for (const mode of ['en', 'ja'] as const) {
+      updateSelectedLayouts(draft, mode, (selected) => {
+        selected.delete(id);
+      });
+    }
     if (draft.ui.layouts.detailByMode.en === id) delete draft.ui.layouts.detailByMode.en;
     if (draft.ui.layouts.detailByMode.ja === id) delete draft.ui.layouts.detailByMode.ja;
     if (draft.ui.comparison.baselineByMode.en === id) delete draft.ui.comparison.baselineByMode.en;
@@ -1709,7 +1710,7 @@ resultsView = createResultsView({
   updateUiState,
   currentModeId,
   currentMode,
-  selected,
+  getSelectedLayoutIds: selectedLayoutIds,
   romajiRuleIdForLayout,
   getGeometrySettingsForKind: geometrySettingsForKind,
   playback: playbackView,
@@ -1795,10 +1796,13 @@ analyzerReactShell = mountAnalyzerReactShell({
   onGeometryMount: setupGeometryEditor,
   onRomajiMount: () => romajiEditor.setup(),
   onToggleLayout: (layoutId, enabled) => {
-    const set = selected[currentModeId()];
-    if (enabled) set.add(layoutId);
-    else set.delete(layoutId);
-    saveSelectedLayouts();
+    const mode = currentModeId();
+    updateUiState((draft) => {
+      updateSelectedLayouts(draft, mode, (selected) => {
+        if (enabled) selected.add(layoutId);
+        else selected.delete(layoutId);
+      });
+    });
     playbackView.preserveNextRender('input-position');
     render();
   },

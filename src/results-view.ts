@@ -51,7 +51,7 @@ export interface ResultsViewContext {
   updateUiState: (change: (draft: UiStateV1) => void) => void;
   currentModeId: () => ModeId;
   currentMode: () => { layouts: Layout[] };
-  selected: Record<ModeId, Set<string>>;
+  getSelectedLayoutIds: (mode: ModeId) => ReadonlySet<string>;
   romajiRuleIdForLayout: (layout: Layout) => string | null;
   getGeometrySettingsForKind: (kind: GeometryKind) => GeometrySettings;
   playback: PlaybackViewController;
@@ -116,10 +116,10 @@ function render() {
     return geometry;
   };
   const text = ctx.getText();
-  const set = ctx.selected[ctx.currentModeId()];
+  const selected = ctx.getSelectedLayoutIds(ctx.currentModeId());
   const results: Result[] = ctx.currentMode().layouts
     .map((layout, slot) => ({ layout, slot }))
-    .filter((r) => set.has(r.layout.id))
+    .filter((r) => selected.has(r.layout.id))
     .map(({ layout, slot }) => {
       const conditions = resolveConditions(
         ctx.getUiState().conditions.defaults,
