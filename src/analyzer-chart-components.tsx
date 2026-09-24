@@ -65,7 +65,7 @@ export function AnalyzerBarChart({
               y={y + rowH / 2 + 4}
               fontSize={12}
               fill="var(--muted)"
-              fontVariantNumeric="tabular-nums"
+              style={{ fontVariantNumeric: 'tabular-nums' }}
             >
               {valueLabel}
             </text>
@@ -135,7 +135,7 @@ export function AnalyzerLineChart({
               textAnchor="end"
               fontSize={11}
               fill="var(--muted)"
-              fontVariantNumeric="tabular-nums"
+              style={{ fontVariantNumeric: 'tabular-nums' }}
             >
               {format(value)}
             </text>
@@ -182,7 +182,7 @@ export function AnalyzerLineChart({
           textAnchor="middle"
           fontSize={11}
           fill="var(--muted)"
-          fontVariantNumeric="tabular-nums"
+          style={{ fontVariantNumeric: 'tabular-nums' }}
         >
           {tick}
         </text>
@@ -297,7 +297,7 @@ export function AnalyzerColumnChart({
               textAnchor="middle"
               fontSize={11}
               fill="var(--muted)"
-              fontVariantNumeric="tabular-nums"
+              style={{ fontVariantNumeric: 'tabular-nums' }}
             >
               {format(datum.value)}
             </text>
@@ -466,7 +466,7 @@ export function AnalyzerMatrixChart({
                 y={y + rowH / 2 + 4}
                 textAnchor="middle"
                 fontSize={11}
-                fontVariantNumeric="tabular-nums"
+                style={{ fontVariantNumeric: 'tabular-nums' }}
                 fill={intensity > 0.5 ? 'var(--on-heat)' : 'var(--fg)'}
               >
                 {format(cell.value)}
