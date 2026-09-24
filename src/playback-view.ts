@@ -10,13 +10,11 @@ import {
   playbackStrokeAt, playbackStepDurationMs, playbackTimingSchedule, playbackTimingStepDurationMs, playbackCursorForEquivalentInputPosition, reconcilePlaybackStateAfterAnalysisRefresh, setPlaybackSameFingerDelay,
   setPlaybackStepsPerSecond, stepPlayback, playbackTrailKeys, playbackTrailOrders,
   playbackStrokeDisplay, setPlaybackCalibration, setPlaybackSpeedMultiplier,
-  type PlaybackStepsPerSecond, type PlaybackState, type PlaybackTimingStep, PLAYBACK_SPEED_MULTIPLIER_MAX,
-  PLAYBACK_SPEED_MULTIPLIER_MIN, PLAYBACK_STEPS_PER_SECOND_MAX,
-  PLAYBACK_STEPS_PER_SECOND_MIN, PLAYBACK_RATE_WINDOW_MIN,
+  type PlaybackStepsPerSecond, type PlaybackState, type PlaybackTimingStep,
+  PLAYBACK_RATE_WINDOW_MIN,
   PLAYBACK_RATE_WINDOW_MAX, PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN,
   PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX,
 } from './playback.ts';
-import type { AppElements } from './app-dom.ts';
 import type { Layout } from './layouts/index.ts';
 import type { PlaybackCalibration } from './playback-calibration.ts';
 import type {
@@ -50,7 +48,6 @@ import {
 } from './playback-analysis-display.ts';
 
 export interface PlaybackViewContext {
-  el: AppElements;
   getUiState: () => UiStateV1;
   getPlaybackSettings: () => UiPlaybackState;
   updatePlaybackSetting: <K extends keyof UiPlaybackState>(key: K, value: UiPlaybackState[K]) => void;
@@ -95,8 +92,6 @@ export interface PlaybackViewController {
 }
 
 export function createPlaybackView(ctx: PlaybackViewContext): PlaybackViewController {
-  const elements = ctx.el;
-
 type PlaybackDynamicDisplay = 'none' | 'chain' | 'arpeggio' | 'both';
 
 function dynamicPlaybackDisplay(settings: UiPlaybackState): PlaybackDynamicDisplay {
@@ -160,9 +155,6 @@ function refreshPlaybackTiming(): void {
 
 function setPlaybackSettingsOpen(open: boolean): void {
   playbackSettingsOpen = open;
-  elements.app.classList.toggle('playback-settings-open', open);
-  elements.playbackSettingsPanel.setAttribute('aria-hidden', String(!open));
-  elements.playbackSettingsPanel.toggleAttribute('inert', !open);
 }
 
 function publishPlaybackSettings(): void {
