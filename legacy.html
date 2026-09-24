@@ -245,36 +245,7 @@
       </div>
     </dialog>
 
-    <dialog id="geometry-dialog">
-      <form method="dialog" id="geometry-form">
-        <div class="dialog-head">
-          <h2>形状と運指の設定</h2>
-          <button type="submit" value="cancel" class="ghost close">閉じる</button>
-        </div>
-        <p class="note">
-          物理形状は内部ではキーピッチ単位 [u] で保存します。段ずれ・列オフセット・親指位置・分割間隔は、現在のピッチを使ってmm表示にも切り替えられます。
-        </p>
-        <label class="ctl">
-          <span>形状名</span>
-          <input type="text" id="geometry-modal-name" />
-        </label>
-        <label class="ctl">
-          <span>数値の表示単位</span>
-          <select id="geometry-modal-unit">
-            <option value="mm">mm（実測値）</option>
-            <option value="u">u（キーピッチ単位）</option>
-          </select>
-        </label>
-        <div id="geometry-modal-editor"></div>
-        <p class="error" id="geometry-modal-error" hidden></p>
-        <div class="dialog-actions">
-          <button type="button" class="ghost" id="geometry-modal-delete">このカスタム形状を削除</button>
-          <span class="spacer"></span>
-          <button type="button" class="secondary" id="geometry-modal-save-as">名前を付けて保存</button>
-          <button type="button" id="geometry-modal-save">上書き保存</button>
-        </div>
-      </form>
-    </dialog>
+    <dialog id="geometry-dialog"></dialog>
 
     <dialog id="romaji-dialog">
       <form method="dialog" id="romaji-form">

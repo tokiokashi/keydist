@@ -54,6 +54,7 @@ import { createAnalyzerPlaybackSettingsModel } from './analyzer-playback-setting
 import { createAnalyzerConditionsSurfaceModel } from './analyzer-conditions-surface-model.ts';
 import { createAnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 import { createAnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
+import { resolveAnalyzerGeometryDialogElements } from './analyzer-geometry-dialog.tsx';
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import { el, SERIES } from './app-dom.ts';
 import { createRomajiEditor } from './romaji-editor.ts';
@@ -540,6 +541,7 @@ function geometrySettingsForKind(kind: GeometryKind): GeometrySettings {
 let refreshGeometryEditor = (): void => undefined;
 
 function setupGeometryEditor(): void {
+  const modal = resolveAnalyzerGeometryDialogElements(el.geometryDialog);
   const assignmentFields = document.createElement('div');
   assignmentFields.className = 'assignment-fields';
   const assignmentActions = document.createElement('div');
@@ -577,7 +579,7 @@ function setupGeometryEditor(): void {
   function renderShapeEditor(): void {
     const shape = shapeDraft;
     if (!shape) return;
-    const root = el.geometryModalEditor;
+    const root = modal.editor;
     const shapeFields = document.createElement('div');
     shapeFields.className = 'geometry-fields';
     const unitLabel = shapeUnit === 'mm' ? 'mm' : 'u';
@@ -688,8 +690,8 @@ function setupGeometryEditor(): void {
   function updateModalButtons(): void {
     const currentId = uiState.conditions.geometrySettings.shape.id;
     const editable = userGeometryShapes.some((shape) => shape.id === currentId);
-    el.geometryModalSave.disabled = !editable;
-    el.geometryModalDelete.disabled = !editable;
+    modal.save.disabled = !editable;
+    modal.delete.disabled = !editable;
   }
 
   function renderEditor(): void {
@@ -803,10 +805,10 @@ function setupGeometryEditor(): void {
 
   function persistShape(asNew: boolean): void {
     if (!shapeDraft) return;
-    const name = el.geometryModalName.value.trim();
+    const name = modal.name.value.trim();
     if (!name) {
-      el.geometryModalError.textContent = '形状名を入力する';
-      el.geometryModalError.hidden = false;
+      modal.error.textContent = '形状名を入力する';
+      modal.error.hidden = false;
       return;
     }
     const shape = clonePhysicalShape(shapeDraft);
@@ -828,21 +830,21 @@ function setupGeometryEditor(): void {
   el.geometryEdit.addEventListener('click', () => {
     shapeDraft = clonePhysicalShape(uiState.conditions.geometrySettings.shape);
     shapeUnit = 'mm';
-    el.geometryModalName.value = shapeDraft.name;
-    el.geometryModalUnit.value = shapeUnit;
-    el.geometryModalError.hidden = true;
+    modal.name.value = shapeDraft.name;
+    modal.unit.value = shapeUnit;
+    modal.error.hidden = true;
     updateModalButtons();
     renderEditor();
     renderShapeEditor();
     el.geometryDialog.showModal();
   });
-  el.geometryModalUnit.addEventListener('change', () => {
-    shapeUnit = el.geometryModalUnit.value as GeometryUnit;
+  modal.unit.addEventListener('change', () => {
+    shapeUnit = modal.unit.value as GeometryUnit;
     renderShapeEditor();
   });
-  el.geometryModalSave.addEventListener('click', () => persistShape(false));
-  el.geometryModalSaveAs.addEventListener('click', () => persistShape(true));
-  el.geometryModalDelete.addEventListener('click', () => {
+  modal.save.addEventListener('click', () => persistShape(false));
+  modal.saveAs.addEventListener('click', () => persistShape(true));
+  modal.delete.addEventListener('click', () => {
     const id = uiState.conditions.geometrySettings.shape.id;
     if (!userGeometryShapes.some((shape) => shape.id === id)) return;
     userGeometryShapes = userGeometryShapes.filter((shape) => shape.id !== id);
@@ -1861,6 +1863,7 @@ analyzerReactShell = mountAnalyzerReactShell({
   conditionsSlot: el.conditionDescription,
   layoutEditorSlot: analyzerLayoutEditorSlot,
   calibrationDialogSlot: el.calibrationDialog,
+  geometryDialogSlot: el.geometryDialog,
   bigramFlowSlot: analyzerBigramFlowSlot,
   stateOwner: uiStateOwner,
   comparisonModel,
@@ -1877,6 +1880,7 @@ analyzerReactShell = mountAnalyzerReactShell({
   onPlaybackSettingsCommit: () => playbackView.commitSettings(),
   onAddLayout: addUserLayout,
   onCalibrationMount: initializeCalibrationDialog,
+  onGeometryMount: setupGeometryEditor,
   onConditionsSurfaceCommit: (snapshot) => {
     if (snapshot.dialogScrollTop !== undefined) {
       el.conditionsDialog.scrollTop = snapshot.dialogScrollTop;
@@ -2000,7 +2004,6 @@ el.detailGeometry.addEventListener('change', () => {
   playbackView.preserveNextRender('cursor');
   render();
 });
-setupGeometryEditor();
 romajiEditor.setup();
 setupPanelState();
 setupConditionDialog();
