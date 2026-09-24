@@ -741,7 +741,7 @@ test('SandS trigger presentationはlayout IDへ依存しない', async () => {
 
   const resultsSource = await readFile(join(SRC, 'analyzer-heatmap-content.tsx'), 'utf8');
   const start = resultsSource.indexOf('function displayTriggerText');
-  const end = resultsSource.indexOf('interface LayerCell');
+  const end = resultsSource.indexOf('function layerDefinitionForId', start);
   assert.ok(start >= 0 && end > start, 'SandS presentation section must remain discoverable');
   const presentationSection = resultsSource.slice(start, end);
   assert.doesNotMatch(
