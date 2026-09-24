@@ -25,7 +25,6 @@ import {
 import { loadPlaybackCalibration } from './playback-calibration.ts';
 import type { ModeId } from './layout-selection.ts';
 import {
-  DEFAULT_CONDITION_DEFAULTS,
   type UiPlaybackState,
   type UiStateConditionsDefaults,
   type UiStateStorage,
