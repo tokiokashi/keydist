@@ -45,6 +45,7 @@ import {
   triggerActivationLogicalGroups,
   TRIGGER_ACTIVATION_CLASS_LABELS,
 } from './trigger-activation-groups.ts';
+import type { AnalyzerPlaybackSurfaceModel } from './analyzer-playback-surface-model.ts';
 import {
   playbackAnalysisArpeggioMotions,
   playbackAnalysisArpeggioOrders,
@@ -76,6 +77,7 @@ export interface PlaybackViewContext {
   refreshAnalysis: () => void;
   openCalibration: () => void;
   openCalibrationEdit: () => void;
+  surfaceModel: AnalyzerPlaybackSurfaceModel;
 }
 
 export type PlaybackPreserveMode = 'cursor' | 'input-position';
@@ -95,6 +97,7 @@ export interface PlaybackViewController {
   setCalibration: (calibration: PlaybackCalibration | undefined) => void;
   getGeometry: () => ReturnType<typeof buildGeometry> | undefined;
   getLayout: () => Layout | undefined;
+  commitSurface: () => void;
 }
 
 export function createPlaybackView(ctx: PlaybackViewContext): PlaybackViewController {
@@ -1033,7 +1036,7 @@ function renderPlayback(
   const rateInitialLabel = rateAverage === 'ewma'
     ? `EWMA(${rateHalfLife}秒)`
     : `直近${rateWindow}打鍵`;
-  elements.playback.innerHTML = `<details class="playback-panel"${ctx.getUiState().ui.panels.playback ? ' open' : ''}>
+  ctx.surfaceModel.setHtml(`<details class="playback-panel"${ctx.getUiState().ui.panels.playback ? ' open' : ''}>
     <summary><span>打鍵再生</span><span class="playback-summary-hint">クリックして開く</span></summary>
     <div class="playback-body">
       <div class="playback-head">
@@ -1068,10 +1071,9 @@ function renderPlayback(
       </details>
       <div class="fig-fixed playback-figure">${renderPlaybackSvg(layout, geometry)}</div>
     </div>
-  </details>`;
+  </details>`);
   elements.playbackSettingsPanel.innerHTML = playbackSettingsMarkup(layout, options);
   setPlaybackSettingsOpen(playbackSettingsOpen);
-  updatePlaybackView();
   if (preserveState && playbackState.playing) {
     playbackAnimationFrame = requestAnimationFrame((timestamp) => playbackFrame(timestamp));
   }
@@ -1544,7 +1546,7 @@ function refreshInputRealizationAnalysis(): void {
       preserveStateOnNextRender = undefined;
           setPlaybackSettingsOpen(false);
       elements.playbackSettingsPanel.innerHTML = '';
-      elements.playback.innerHTML = '';
+      ctx.surfaceModel.clear();
     },
     update: updatePlaybackView,
     preserveNextRender: (mode) => { preserveStateOnNextRender = mode; },
@@ -1555,5 +1557,9 @@ function refreshInputRealizationAnalysis(): void {
     },
     getGeometry: () => playbackGeometry,
     getLayout: () => playbackLayout,
+    commitSurface: () => {
+      setPlaybackSettingsOpen(playbackSettingsOpen);
+      updatePlaybackView();
+    },
   };
 }
