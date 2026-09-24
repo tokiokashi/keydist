@@ -53,8 +53,7 @@ import { createAnalyzerControlsModel } from './analyzer-controls-model.ts';
 import { resolveAnalyzerGeometryDialogElements } from './analyzer-geometry-dialog.tsx';
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import { el } from './app-dom.ts';
-import { createRomajiEditor } from './romaji-editor.ts';
-import { resolveAnalyzerRomajiDialogElements } from './analyzer-romaji-dialog.tsx';
+import { createAnalyzerRomajiDialogModel } from './analyzer-romaji-dialog-model.ts';
 import { createCalibrationDialog, resolveCalibrationDialogElements, type CalibrationDialogController } from './calibration-dialog.ts';
 import { createPlaybackView, type PlaybackViewController } from './playback-view.ts';
 import { createResultsView, type ResultsViewController } from './results-view.ts';
@@ -296,19 +295,27 @@ function addUserLayout(definition: UserLayout): void {
   render();
 }
 
-const romajiEditor = createRomajiEditor({
-  getElements: () => resolveAnalyzerRomajiDialogElements(el.romajiDialog),
-  getUserLayouts: () => userLayouts,
-  setUserLayouts: (layouts) => { userLayouts = layouts; },
+const romajiDialogModel = createAnalyzerRomajiDialogModel({
   getRomajiSettings: () => romajiSettings,
-  setRomajiSettings: (settings) => {
+  getUserLayouts: () => userLayouts,
+  commitRomajiSettings: (settings, rulesChanged) => {
     romajiSettings = settings;
-    layoutEditorModel.setRomajiRules(allRomajiRules(settings.rules));
+    saveRomajiSettings(settings);
+    if (rulesChanged) {
+      ROMAJI_TABLE_CACHE.clear();
+      layoutEditorModel.setRomajiRules(allRomajiRules(settings.rules));
+    }
   },
-  clearTableCache: () => ROMAJI_TABLE_CACHE.clear(),
-  fillPicker,
-  fillDetailOptions,
-  render,
+  commitUserLayouts: (layouts) => {
+    userLayouts = layouts;
+    saveUserLayouts(layouts);
+    ROMAJI_TABLE_CACHE.clear();
+  },
+  onApplied: () => {
+    fillPicker();
+    fillDetailOptions();
+    render();
+  },
 });
 
 function removeUserLayout(id: string) {
@@ -1784,6 +1791,7 @@ analyzerReactShell = mountAnalyzerReactShell({
   layoutEditorModel,
   bigramFlowModel,
   controlsModel,
+  romajiDialogModel,
   onModeChange,
   onTextInput: scheduleTextRender,
   onTextCommit: flushTextRender,
@@ -1793,7 +1801,6 @@ analyzerReactShell = mountAnalyzerReactShell({
   onAddLayout: addUserLayout,
   onCalibrationMount: initializeCalibrationDialog,
   onGeometryMount: setupGeometryEditor,
-  onRomajiMount: () => romajiEditor.setup(),
   onToggleLayout: (layoutId, enabled) => {
     const mode = currentModeId();
     updateUiState((draft) => {
@@ -1901,7 +1908,10 @@ analyzerReactShell = mountAnalyzerReactShell({
   },
   onOpenHow: () => el.howDialog.showModal(),
   onOpenConditions: openConditionsDialog,
-  onOpenRomaji: () => romajiEditor.open(),
+  onOpenRomaji: () => {
+    romajiDialogModel.refresh();
+    el.romajiDialog.showModal();
+  },
   onSensitivityToggle: () => render(),
   onThemeApplied: render,
   onConditionsSurfaceCommit: (snapshot, root) => {
