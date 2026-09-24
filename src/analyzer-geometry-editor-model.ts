@@ -1,6 +1,7 @@
 import {
   customGeometryKind,
   PHYSICAL_SHAPES,
+  type Finger,
   type NonThumb,
   type PhysicalShape,
 } from './geometry.ts';
@@ -54,7 +55,7 @@ function ensureRowStagger(shape: PhysicalShape): void {
 
 function markCustomAssignment(
   stateOwner: AnalyzerUiStateOwner,
-  change: (keyFinger: Record<string, NonThumb>) => void,
+  change: (keyFinger: Record<string, Finger>) => void,
 ): void {
   stateOwner.update((draft) => {
     draft.conditions.geometrySettings.assignment.id = 'custom';
