@@ -16,11 +16,7 @@
         <span id="analyzer-dialog-actions"></span>
       </p>
       <div class="spacer"></div>
-      <div class="theme-toggle" role="group" aria-label="表示テーマ">
-        <button type="button" data-theme-set="light">ライト</button>
-        <button type="button" data-theme-set="system">自動</button>
-        <button type="button" data-theme-set="dark">ダーク</button>
-      </div>
+      <div id="analyzer-theme-controls" class="theme-toggle-slot"></div>
     </header>
 
     <div class="app" id="app">
@@ -33,32 +29,12 @@
           <div id="analyzer-sidebar-controls"></div>
         </div>
 
-        <details class="panel" id="geometry-panel">
-          <summary>打ち手と機材</summary>
-          <div id="analyzer-geometry-controls"></div>
-        </details>
-
-        <details class="panel" id="add-panel">
-          <summary>配列を追加</summary>
-          <div id="analyzer-layout-editor"></div>
-          <p class="note">
-            数字段が空ならQWERTYを使う。重複した文字は先に書いたキーで打つ。<br />
-            追加した配列はこのブラウザに保存する。
-          </p>
-        </details>
+        <div id="analyzer-geometry-panel"></div>
+        <div id="analyzer-add-panel"></div>
       </aside>
 
       <div class="stack">
-        <details class="panel text-panel" id="text-panel" open>
-          <summary>
-            <span class="text-title">評価テキスト</span>
-            <span class="text-status">
-              <span class="meta" id="text-meta"></span>
-              <span class="error" id="errors" hidden></span>
-            </span>
-          </summary>
-          <div id="analyzer-text-controls"></div>
-        </details>
+        <div id="analyzer-text-panel"></div>
 
         <section class="panel">
           <h2>配列の詳細</h2>
@@ -115,18 +91,7 @@
           </p>
         </section>
 
-        <details class="panel" id="sensitivity-panel">
-          <summary class="panel-head">
-            <h2>N感度<button type="button" class="info" data-tip="Nを0〜10で振った時の総移動距離。ホームポジションから離れたキーを多用する場合傾きが大きくなる傾向がある。" aria-label="Nを0〜10で振った時の総移動距離。ホームポジションから離れたキーを多用する場合傾きが大きくなる傾向がある。">i</button></h2>
-            <div id="analyzer-sensitivity-controls"></div>
-          </summary>
-          <div id="sensitivity"></div>
-          <p class="note">
-            Nを増やすと距離は減るか変わらない。見るべきは傾きの差。<br />
-            傾きが大きいほど、ホームから離れた連続打鍵が多い。<br />
-            配列ごとの現在条件を使い、Nだけを0〜10で変化させる。
-          </p>
-        </details>
+        <div id="analyzer-sensitivity-panel"></div>
       </div>
       <aside id="playback-settings-panel" class="playback-settings-aside" aria-label="打鍵再生設定"></aside>
     </div>
