@@ -7,9 +7,10 @@ import {
 import type { AnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
 import type { AnalyzerControlsModel } from './analyzer-controls-model.ts';
 import type {
-  AnalyzerConditionsSurfaceModel,
-  AnalyzerConditionsSurfaceSnapshot,
-} from './analyzer-conditions-surface-model.ts';
+  AnalyzerConditionsActions,
+  AnalyzerConditionsModel,
+} from './analyzer-conditions-model.ts';
+import { AnalyzerConditionsContent } from './analyzer-conditions-content.tsx';
 import type { GeometryKind } from './geometry.ts';
 import { buildGeometry } from './geometry.ts';
 import { gapFigure } from './gap-figure.ts';
@@ -380,37 +381,16 @@ export function AnalyzerHowDialog({ dialog }: { dialog: HTMLDialogElement }) {
   );
 }
 
-function AnalyzerConditionsSurface({
-  model,
-  onCommit,
-}: {
-  model: AnalyzerConditionsSurfaceModel;
-  onCommit(snapshot: AnalyzerConditionsSurfaceSnapshot, root: HTMLElement): void;
-}) {
-  const snapshot = useSyncExternalStore(
-    model.subscribe,
-    model.getSnapshot,
-    model.getSnapshot,
-  );
-  const [root, setRoot] = useState<HTMLDivElement | null>(null);
-
-  useLayoutEffect(() => {
-    if (!snapshot.content || !root) return;
-    root.replaceChildren(snapshot.content);
-    onCommit(snapshot, root);
-  }, [snapshot.revision, snapshot.content, root, onCommit]);
-
-  return <div ref={setRoot} data-react-feature="conditions" />;
-}
-
 export function AnalyzerConditionsDialog({
   dialog,
+  stateOwner,
   model,
-  onCommit,
+  actions,
 }: {
   dialog: HTMLDialogElement;
-  model: AnalyzerConditionsSurfaceModel;
-  onCommit(snapshot: AnalyzerConditionsSurfaceSnapshot, root: HTMLElement): void;
+  stateOwner: AnalyzerUiStateOwner;
+  model: AnalyzerConditionsModel;
+  actions: AnalyzerConditionsActions;
 }) {
   useDialogBackdropClose(dialog);
   return (
@@ -429,7 +409,12 @@ export function AnalyzerConditionsDialog({
       <p className="note">
         既定値の行を変えると全配列へ反映します。配列の個別設定をオンにすると、その配列だけ好きな条件を持てます。
       </p>
-      <AnalyzerConditionsSurface model={model} onCommit={onCommit} />
+      <AnalyzerConditionsContent
+        dialog={dialog}
+        stateOwner={stateOwner}
+        model={model}
+        actions={actions}
+      />
       <hr />
       <p className="note">条件の定義は仕様書を参照してください。</p>
       <p>
