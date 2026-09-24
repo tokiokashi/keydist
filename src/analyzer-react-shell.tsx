@@ -10,7 +10,11 @@ import type { ModeId } from './layout-selection.ts';
 import type { AnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
 import type { AnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 import type { AnalyzerPlaybackSurfaceModel } from './analyzer-playback-surface-model.ts';
-import type { AnalyzerPlaybackSettingsModel } from './analyzer-playback-settings-model.ts';
+import type {
+  AnalyzerPlaybackSettingsActions,
+  AnalyzerPlaybackSettingsModel,
+} from './analyzer-playback-settings-model.ts';
+import { AnalyzerPlaybackSettings } from './analyzer-playback-settings.tsx';
 import type {
   AnalyzerConditionsActions,
   AnalyzerConditionsModel,
@@ -84,6 +88,7 @@ export interface AnalyzerReactShellOptions {
   comparisonModel: AnalyzerComparisonModel;
   playbackSurfaceModel: AnalyzerPlaybackSurfaceModel;
   playbackSettingsModel: AnalyzerPlaybackSettingsModel;
+  playbackSettingsActions: AnalyzerPlaybackSettingsActions;
   conditionsModel: AnalyzerConditionsModel;
   conditionsActions: AnalyzerConditionsActions;
   layoutEditorModel: AnalyzerLayoutEditorModel;
@@ -98,7 +103,6 @@ export interface AnalyzerReactShellOptions {
   onTextCommit: () => void;
   onMetricsChange: () => void;
   onPlaybackSurfaceCommit: () => void;
-  onPlaybackSettingsCommit: () => void;
   onAddLayout: (definition: UserLayout) => void;
   onToggleLayout: (layoutId: string, enabled: boolean) => void;
   onRemoveLayout: (layoutId: string) => void;
@@ -152,31 +156,6 @@ function AnalyzerPlaybackSurface({
   );
 }
 
-function AnalyzerPlaybackSettings({
-  model,
-  onCommit,
-}: {
-  model: AnalyzerPlaybackSettingsModel;
-  onCommit: () => void;
-}) {
-  const snapshot = useSyncExternalStore(
-    model.subscribe,
-    model.getSnapshot,
-    model.getSnapshot,
-  );
-
-  useLayoutEffect(() => {
-    if (snapshot.html) onCommit();
-  }, [snapshot.revision, snapshot.html, onCommit]);
-
-  return (
-    <div
-      data-react-feature="playback-settings"
-      dangerouslySetInnerHTML={{ __html: snapshot.html }}
-    />
-  );
-}
-
 function AnalyzerReactShell({
   themeControlsSlot,
   modeSlot,
@@ -209,6 +188,7 @@ function AnalyzerReactShell({
   comparisonModel,
   playbackSurfaceModel,
   playbackSettingsModel,
+  playbackSettingsActions,
   conditionsModel,
   conditionsActions,
   layoutEditorModel,
@@ -224,7 +204,6 @@ function AnalyzerReactShell({
   onTextCommit,
   onMetricsChange,
   onPlaybackSurfaceCommit,
-  onPlaybackSettingsCommit,
   onAddLayout,
   onToggleLayout,
   onRemoveLayout,
@@ -534,7 +513,7 @@ function AnalyzerReactShell({
       {createPortal(
         <AnalyzerPlaybackSettings
           model={playbackSettingsModel}
-          onCommit={onPlaybackSettingsCommit}
+          actions={playbackSettingsActions}
         />,
         playbackSettingsSlot,
       )}
@@ -682,6 +661,7 @@ export function mountAnalyzerReactShell(
       comparisonModel={options.comparisonModel}
       playbackSurfaceModel={options.playbackSurfaceModel}
       playbackSettingsModel={options.playbackSettingsModel}
+      playbackSettingsActions={options.playbackSettingsActions}
       conditionsModel={options.conditionsModel}
       conditionsActions={options.conditionsActions}
       layoutEditorModel={options.layoutEditorModel}
@@ -697,7 +677,6 @@ export function mountAnalyzerReactShell(
       onTextCommit={options.onTextCommit}
       onMetricsChange={options.onMetricsChange}
       onPlaybackSurfaceCommit={options.onPlaybackSurfaceCommit}
-      onPlaybackSettingsCommit={options.onPlaybackSettingsCommit}
       onAddLayout={options.onAddLayout}
       onToggleLayout={options.onToggleLayout}
       onRemoveLayout={options.onRemoveLayout}
