@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('Romaji editor dialog is React-owned and preserves editor interactions', async ({ page }) => {
-  await page.goto('/legacy.html');
+  await page.goto('/analyzer');
 
   await page.locator('#romaji-settings').click();
 
