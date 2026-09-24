@@ -47,16 +47,6 @@ export const el = {
   conditionsClose: $<HTMLButtonElement>('conditions-close'),
   conditionDescription: $<HTMLDivElement>('condition-description'),
   romajiDialog: $<HTMLDialogElement>('romaji-dialog'),
-  romajiForm: $<HTMLFormElement>('romaji-form'),
-  romajiEdit: $<HTMLSelectElement>('romaji-edit'),
-  romajiName: $<HTMLInputElement>('romaji-name'),
-  romajiBase: $<HTMLSelectElement>('romaji-base'),
-  romajiSokuon: $<HTMLInputElement>('romaji-sokuon'),
-  romajiOverrides: $<HTMLTextAreaElement>('romaji-overrides'),
-  romajiError: $<HTMLParagraphElement>('romaji-error'),
-  romajiAssignments: $<HTMLDivElement>('romaji-assignments'),
-  romajiVariants: $<HTMLDivElement>('romaji-variants'),
-  romajiNew: $<HTMLButtonElement>('romaji-new'),
   calibrationDialog: $<HTMLDialogElement>('playback-calibration-dialog'),
 };
 
