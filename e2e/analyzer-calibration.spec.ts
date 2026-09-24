@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('Calibration dialog is React-owned and opens through Playback settings', async ({ page }) => {
-  await page.goto('/legacy.html');
+  await page.goto('/analyzer');
 
   const calibration = page.locator('[data-react-feature="calibration"]');
   await expect(calibration).toHaveCount(1);
