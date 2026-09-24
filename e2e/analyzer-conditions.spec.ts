@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const analyzerUrl = '/legacy.html';
+const analyzerUrl = '/analyzer';
 
 test('Conditions content is React-hosted and restores defaults from AppState', async ({ page }) => {
   await page.goto(analyzerUrl);
