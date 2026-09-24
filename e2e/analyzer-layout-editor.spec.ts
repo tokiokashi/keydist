@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('Layout editor is React-owned and new layout selection restores through AppState', async ({ page }) => {
-  await page.goto('/legacy.html');
+  await page.goto('/analyzer');
 
   const panel = page.locator('#add-panel');
   if (!(await panel.getAttribute('open'))) await panel.locator('summary').click();
