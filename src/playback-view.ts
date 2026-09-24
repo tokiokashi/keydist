@@ -344,7 +344,6 @@ function updatePlaybackView() {
     playbackFeedbackPending = false;
   }
 
-  const settingsRoot = elements.playbackSettingsPanel;
   const position = elements.playback.querySelector<HTMLElement>('[data-playback-position]');
   const current = elements.playback.querySelector<HTMLElement>('[data-playback-current]');
   const romaji = elements.playback.querySelector<HTMLElement>('[data-playback-romaji]');
@@ -361,30 +360,8 @@ function updatePlaybackView() {
   const stop = elements.playback.querySelector<HTMLButtonElement>('[data-playback-action="stop"]');
   const back = elements.playback.querySelector<HTMLButtonElement>('[data-playback-action="back"]');
   const forward = elements.playback.querySelector<HTMLButtonElement>('[data-playback-action="forward"]');
-  const fingers = settingsRoot.querySelector<HTMLInputElement>('[data-playback-fingers]');
-  const keyFeedback = settingsRoot.querySelector<HTMLSelectElement>('[data-playback-key-feedback]');
-  const fingerPreparation = settingsRoot.querySelector<HTMLInputElement>('[data-playback-finger-preparation]');
-  const planKeys = settingsRoot.querySelector<HTMLInputElement>('[data-playback-plan-keys]');
-  const trail = settingsRoot.querySelector<HTMLInputElement>('[data-playback-trail]');
-  const trailTau = settingsRoot.querySelector<HTMLInputElement>('[data-playback-trail-tau]');
-  const orderLabels = settingsRoot.querySelector<HTMLInputElement>('[data-playback-order-labels]');
-  const sameFingerMotion = settingsRoot.querySelector<HTMLInputElement>('[data-playback-same-finger-motion]');
-  const scale = settingsRoot.querySelector<HTMLInputElement>('input[data-playback-scale]');
-  const sameFingerDelay = settingsRoot.querySelector<HTMLInputElement>('[data-playback-sfb-delay]');
-  const allFingerMovementDelay = settingsRoot.querySelector<HTMLInputElement>('[data-playback-all-finger-delay]');
-  const chain = settingsRoot.querySelector<HTMLInputElement>('[data-playback-chain]');
-  const calibration = settingsRoot.querySelector<HTMLInputElement>('[data-playback-calibration]');
-  const showArpeggio = settingsRoot.querySelector<HTMLInputElement>('[data-playback-arpeggio]');
-  const chartChain = settingsRoot.querySelector<HTMLInputElement>('[data-playback-chart-chain]');
-  const chartArpeggio = settingsRoot.querySelector<HTMLInputElement>('[data-playback-chart-arpeggio]');
-  const rateAverageControl = settingsRoot.querySelector<HTMLSelectElement>('[data-playback-rate-average]');
-  const rateWindowControl = settingsRoot.querySelector<HTMLInputElement>('[data-playback-rate-window]');
-  const rateHalfLifeControl = settingsRoot.querySelector<HTMLInputElement>('[data-playback-rate-half-life]');
-  const rate = settingsRoot.querySelector<HTMLInputElement>('input[data-playback-rate]');
-  const multiplier = settingsRoot.querySelector<HTMLInputElement>('input[data-playback-multiplier]');
   const effectiveKanaRate = elements.playback.querySelector<HTMLElement>('[data-playback-effective-kana-rate]');
   const effectiveRate = elements.playback.querySelector<HTMLElement>('[data-playback-effective-rate]');
-  const playbackWindow = settingsRoot.querySelector<HTMLOutputElement>('[data-playback-window]');
   const settingsSummary = elements.playback.querySelector<HTMLElement>('[data-playback-settings-summary]');
   if (position) position.textContent = `${cursor} / ${total} ステップ`;
   const inputPreview = playbackInputPreview(
@@ -475,67 +452,8 @@ function updatePlaybackView() {
   if (stop) stop.disabled = cursor === 0 && !playbackState.playing;
   if (back) back.disabled = playbackState.playing || cursor === 0;
   if (forward) forward.disabled = playbackState.playing || cursor >= total;
-  if (fingers) fingers.checked = ctx.getUiState().ui.playback.showFingers;
-  if (keyFeedback) keyFeedback.value = ctx.getUiState().ui.playback.keyFeedbackStyle;
-  if (fingerPreparation) fingerPreparation.value = String(ctx.getUiState().ui.playback.fingerPreparationSeconds);
-  const romajiPlan = settingsRoot.querySelector<HTMLInputElement>('[data-playback-romaji-plan]');
-  if (romajiPlan) {
-    romajiPlan.checked = ctx.getUiState().ui.playback.showRomajiPlan;
-    romajiPlan.disabled = !isRomaji;
-  }
-  if (planKeys) {
-    planKeys.checked = ctx.getUiState().ui.playback.showPlanKeys;
-    planKeys.disabled = false;
-  }
-  if (trail) trail.checked = ctx.getUiState().ui.playback.showTrail;
-  if (trailTau) trailTau.value = String(ctx.getUiState().ui.playback.trailTau);
-  if (orderLabels) orderLabels.checked = ctx.getUiState().ui.playback.showOrderLabels;
-  if (sameFingerMotion) sameFingerMotion.checked = ctx.getUiState().ui.playback.showSameFingerMotion;
-  if (scale) scale.value = String(ctx.getUiState().ui.playback.scale);
-  if (sameFingerDelay) sameFingerDelay.checked = playbackState.sameFingerDelay;
-  if (allFingerMovementDelay) {
-    allFingerMovementDelay.checked = ctx.getUiState().ui.playback.allFingerMovementDelay;
-  }
-  if (chain) chain.checked = ctx.getUiState().ui.playback.showChain;
-  if (showArpeggio) showArpeggio.checked = ctx.getUiState().ui.playback.showArpeggio;
-  if (chartChain) chartChain.checked = ctx.getUiState().ui.playback.showChainOnRateChart;
-  if (chartArpeggio) chartArpeggio.checked = ctx.getUiState().ui.playback.showArpeggioOnRateChart;
-  if (rateAverageControl) rateAverageControl.value = rateAverage;
-  if (rateWindowControl) rateWindowControl.value = String(rateWindow);
-  if (rateHalfLifeControl) rateHalfLifeControl.value = String(rateHalfLife);
-  if (calibration) {
-    calibration.checked = ctx.getUiState().ui.playback.useCalibration;
-    calibration.disabled = ctx.getCalibration() === undefined;
-  }
-  const calibrationEditButton = settingsRoot.querySelector<HTMLButtonElement>('[data-playback-action="calibration-edit"]');
-  if (calibrationEditButton) {
-    calibrationEditButton.disabled = false;
-    calibrationEditButton.textContent = ctx.getCalibration() ? '保存値を確認・編集' : '個人速度を測定';
-  }
-  if (rate) rate.value = String(playbackState.stepsPerSecond);
-  if (multiplier) multiplier.value = String(playbackState.speedMultiplier);
-  const chainPolicy = ctx.getChainPolicy();
-  for (const input of settingsRoot.querySelectorAll<HTMLInputElement>('[data-playback-chain-policy]')) {
-    const key = input.dataset.playbackChainPolicy;
-    if (isChainPolicyKey(key)) input.checked = chainPolicy[key];
-  }
-  const arpeggioPolicy = ctx.getArpeggioPolicy();
-  for (const input of settingsRoot.querySelectorAll<HTMLInputElement>('[data-playback-arpeggio-policy]')) {
-    const key = input.dataset.playbackArpeggioPolicy;
-    if (key === 'includeThumb' || key === 'bridgeSameFinger' || key === 'includeSingleRedirectTail') {
-      input.checked = arpeggioPolicy[key];
-    }
-  }
   if (settingsSummary) {
     settingsSummary.textContent = `${playbackState.stepsPerSecond}ステップ/秒・${playbackState.speedMultiplier}倍`;
-  }
-  const scope = settingsRoot.querySelector<HTMLElement>('[data-playback-settings-scope]');
-  if (scope) scope.textContent = ctx.isPlaybackLayoutOverride() ? `${playbackLayout?.name ?? 'この配列'}専用` : '共通設定';
-  const scopeButton = settingsRoot.querySelector<HTMLButtonElement>('[data-playback-layout-override]');
-  if (scopeButton) {
-    const override = ctx.isPlaybackLayoutOverride();
-    scopeButton.dataset.playbackLayoutOverride = override ? 'disable' : 'enable';
-    scopeButton.textContent = override ? '共通設定に戻す' : 'この配列専用にする';
   }
   if (effectiveKanaRate) {
     const value = playbackRecentKanaPerSecond(
@@ -573,7 +491,6 @@ function updatePlaybackView() {
       ? `${rateLabel} — アクション/秒`
       : `${rateLabel} ${value.toFixed(2)} アクション/秒`;
   }
-  if (playbackWindow) playbackWindow.textContent = String(windowSize);
 }
 
 function renderPlaybackSvg(layout: Layout, geometry: ReturnType<typeof buildGeometry>): string {
@@ -1175,6 +1092,7 @@ const settingsActions: AnalyzerPlaybackSettingsActions = {
       playbackState = setPlaybackCalibration(playbackState, calibration);
       refreshPlaybackTiming();
       updatePlaybackView();
+      publishPlaybackSettings();
     },
     getGeometry: () => playbackGeometry,
     getLayout: () => playbackLayout,
