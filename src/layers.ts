@@ -208,6 +208,92 @@ export function orderedPresentationLayers(
 }
 
 
+export interface PresentationLayerGuide {
+  readonly legends: ReadonlyMap<string, string>;
+  readonly triggerKeys: readonly string[];
+  readonly triggerDisplayText: string;
+}
+
+/**
+ * 1つのpresentation layerを小型カンペ用viewへ畳む。
+ *
+ * semantic aggregationは入力成立・解析のauthorityであり、カンペのセル表示authorityではない。
+ * カンペはFace authoringとpresentationCellsを含むfaceDisplayCellsをそのまま使う。
+ */
+export function presentationLayerGuide(
+  layout: Pick<
+    Layout,
+    | 'canonicalInputs'
+    | 'faces'
+    | 'faceLayerIds'
+    | 'layerDefinitions'
+    | 'thumbShiftKeys'
+    | 'legends'
+  >,
+  layerId: string,
+): PresentationLayerGuide | undefined {
+  const layer = orderedPresentationLayers(classifyPresentationFaces(layout))
+    .find((candidate) => candidate.id === layerId);
+
+  // Face authoringがあるlayerではpresentation Faceをauthorityにする。
+  // Faceを持たない生成layer（通常Shift等）だけcanonical aggregationへfallbackする。
+  if (layer === undefined) {
+    const definition = (layout.layerDefinitions ?? []).find(
+      (candidate) => candidate.id === layerId && candidate.kind === 'layer',
+    );
+    if (definition === undefined) return undefined;
+    const legends = aggregationLegendMap(layout, layerId);
+    const triggerKeys = aggregationTriggerKeys(layout, layerId);
+    return {
+      legends,
+      triggerKeys,
+      triggerDisplayText: aggregationTriggerDisplayText(layout, layerId),
+    };
+  }
+
+  const legends = new Map<string, string>();
+  for (const face of layer.faces) {
+    for (const [rawKey, label] of faceDisplayCells(face)) {
+      const key = resolveKeyId(rawKey);
+      const previous = legends.get(key);
+      if (previous === undefined) legends.set(key, label);
+      else if (!previous.split(' / ').includes(label)) {
+        legends.set(key, `${previous} / ${label}`);
+      }
+    }
+  }
+
+  const triggerKeys = [...new Set(
+    layer.faces.flatMap((face) => displayTriggerKeys(face)),
+  )];
+
+  const authoredTexts = [...new Set(
+    layer.faces
+      .map((face) => face.presentationTriggerText)
+      .filter((text): text is string => text !== undefined && text.trim() !== ''),
+  )];
+
+  let triggerDisplayText: string;
+  if (authoredTexts.length === 1) {
+    triggerDisplayText = authoredTexts[0];
+  } else if (triggerKeys.length === 0) {
+    triggerDisplayText = '—';
+  } else {
+    const equivalentThumbs = new Set((layout.thumbShiftKeys ?? []).map(resolveKeyId));
+    const labels = [...new Set(
+      triggerKeys.map((key) => layout.legends.get(resolveKeyId(key)) ?? resolveKeyId(key)),
+    )];
+    triggerDisplayText = equivalentThumbs.size > 1
+      && triggerKeys.every((key) => equivalentThumbs.has(resolveKeyId(key)))
+      && labels.length === 1
+      ? labels[0]
+      : labels.join(' + ');
+  }
+
+  return { legends, triggerKeys, triggerDisplayText };
+}
+
+
 
 /**
  * recognition window内のmodifier roleから、現在成立可能なpresentation aggregationを返す。
