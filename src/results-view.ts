@@ -105,7 +105,7 @@ export function createResultsView(ctx: ResultsViewContext): ResultsViewControlle
     });
 
   if (results.length === 0) {
-    lastDetail = null;
+
     ctx.playback.clear();
     ctx.bigramFlowModel.clear();
     ctx.metricsModel.clear('配列を1つ以上選ぶ');
