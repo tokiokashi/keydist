@@ -14,7 +14,9 @@ import type { AnalyzerPlaybackSettingsModel } from './analyzer-playback-settings
 import type { AnalyzerConditionsSurfaceModel, AnalyzerConditionsSurfaceSnapshot } from './analyzer-conditions-surface-model.ts';
 import { AnalyzerLayoutEditor } from './analyzer-layout-editor.tsx';
 import { AnalyzerCalibrationDialog } from './analyzer-calibration-dialog.tsx';
+import { AnalyzerBigramFlow } from './features/bigram-vector/analyzer-bigram-flow.tsx';
 import type { AnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
+import type { AnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
 import type { UserLayout } from './user-layouts.ts';
 import { MAX_SAVED_TEXT_LENGTH } from './ui-state.ts';
 
@@ -29,12 +31,14 @@ export interface AnalyzerReactShellOptions {
   conditionsSlot: HTMLElement;
   layoutEditorSlot: HTMLElement;
   calibrationDialogSlot: HTMLDialogElement;
+  bigramFlowSlot: HTMLElement;
   stateOwner: AnalyzerUiStateOwner;
   comparisonModel: AnalyzerComparisonModel;
   playbackSurfaceModel: AnalyzerPlaybackSurfaceModel;
   playbackSettingsModel: AnalyzerPlaybackSettingsModel;
   conditionsSurfaceModel: AnalyzerConditionsSurfaceModel;
   layoutEditorModel: AnalyzerLayoutEditorModel;
+  bigramFlowModel: AnalyzerBigramFlowModel;
   onModeChange: () => void;
   onTextInput: () => void;
   onTextCommit: () => void;
@@ -138,12 +142,14 @@ function AnalyzerReactShell({
   conditionsSlot,
   layoutEditorSlot,
   calibrationDialogSlot,
+  bigramFlowSlot,
   stateOwner,
   comparisonModel,
   playbackSurfaceModel,
   playbackSettingsModel,
   conditionsSurfaceModel,
   layoutEditorModel,
+  bigramFlowModel,
   textModel,
   onModeChange,
   onTextInput,
@@ -385,6 +391,10 @@ function AnalyzerReactShell({
         <AnalyzerCalibrationDialog onMount={onCalibrationMount} />,
         calibrationDialogSlot,
       )}
+      {createPortal(
+        <AnalyzerBigramFlow model={bigramFlowModel} />,
+        bigramFlowSlot,
+      )}
     </>
   );
 }
@@ -411,12 +421,14 @@ export function mountAnalyzerReactShell(
       conditionsSlot={options.conditionsSlot}
       layoutEditorSlot={options.layoutEditorSlot}
       calibrationDialogSlot={options.calibrationDialogSlot}
+      bigramFlowSlot={options.bigramFlowSlot}
       stateOwner={options.stateOwner}
       comparisonModel={options.comparisonModel}
       playbackSurfaceModel={options.playbackSurfaceModel}
       playbackSettingsModel={options.playbackSettingsModel}
       conditionsSurfaceModel={options.conditionsSurfaceModel}
       layoutEditorModel={options.layoutEditorModel}
+      bigramFlowModel={options.bigramFlowModel}
       textModel={textModel}
       onModeChange={options.onModeChange}
       onTextInput={options.onTextInput}
