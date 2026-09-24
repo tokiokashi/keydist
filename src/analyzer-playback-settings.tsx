@@ -496,6 +496,7 @@ export function AnalyzerPlaybackSettings({
               type="checkbox"
               data-playback-romaji-plan
               checked={playback.showRomajiPlan}
+              disabled={data.layout.romajiTable === undefined}
               onChange={(event) =>
                 actions.setPlayback('showRomajiPlan', event.currentTarget.checked)}
             />
