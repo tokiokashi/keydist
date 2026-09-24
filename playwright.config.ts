@@ -4,7 +4,6 @@ const baseURL = 'http://127.0.0.1:4173';
 
 export default defineConfig({
   testDir: './e2e',
-  testIgnore: ['legacy-analyzer.spec.ts'],
   fullyParallel: true,
   workers: process.env.CI ? 4 : undefined,
   reporter: process.env.CI ? 'line' : 'list',
