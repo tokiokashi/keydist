@@ -9,6 +9,7 @@ import {
   reverseLookupGuideActionHighlightKeys,
   reverseLookupGuideActionLabel,
   reverseLookupGuideActionMatchesKeys,
+  reverseLookupGuideActionTriggerOnlyKeys,
   reverseLookupGuideActions,
   reverseLookupGuideIndexForText,
   reverseLookupRouteLabel,
@@ -28,6 +29,10 @@ function fixtureRoute(
       output,
       actions,
       actionKeyAlternatives: actions.map((action) => [action]),
+      actionParticipationAlternatives: actions.map((action) => [{
+        outputKeys: action,
+        triggerKeys: [],
+      }]),
       origin,
       aggregationGroupIds: [],
       acceptedAlternativeSelectionIdentities: [],
@@ -84,6 +89,10 @@ test('reverseLookupRouteLabelはchordとsequenceを区別して表示する', ()
       actions: [['thumb-r'], ['h', 'j']],
       aggregationGroupIds: ['layer:test'],
       actionKeyAlternatives: [[['thumb-r']], [['h', 'j']]],
+      actionParticipationAlternatives: [
+        [{ outputKeys: [], triggerKeys: ['thumb-r'] }],
+        [{ outputKeys: ['h', 'j'], triggerKeys: [] }],
+      ],
       acceptedAlternativeSelectionIdentities: ['test-alternative'],
     }],
   }), '右親指 → H + J');
@@ -99,6 +108,10 @@ test('reverseLookupStepLabelは1入力単位のaction順を表示する', () => 
     actions: [['thumb-r'], ['h', 'j']],
     aggregationGroupIds: ['layer:test'],
     actionKeyAlternatives: [[['thumb-r']], [['h', 'j']]],
+    actionParticipationAlternatives: [
+      [{ outputKeys: [], triggerKeys: ['thumb-r'] }],
+      [{ outputKeys: ['h', 'j'], triggerKeys: [] }],
+    ],
     acceptedAlternativeSelectionIdentities: ['test-alternative'],
   }), '右親指 → H + J');
 });
@@ -141,6 +154,25 @@ test('reverseLookupGuideActionsは逐次入力をaction単位へ展開する', (
   assert.equal(actions.at(-1)?.finalInRouteStep, true);
 });
 
+test('guide participationは対象semanticだけを見てtrigger-onlyを判定する', () => {
+  const layout = LAYOUT_BY_ID.get('shingeta');
+  assert.ok(layout);
+
+  // Kは中指シフト全体では「れ」のoutputにもなるが、「ご」ではtrigger専用。
+  const go = reverseLookup(layout, 'ご')[0];
+  assert.ok(go);
+  const goAction = reverseLookupGuideActions(go)[0];
+  assert.ok(goAction);
+  assert.deepEqual(reverseLookupGuideActionTriggerOnlyKeys(goAction), ['k']);
+
+  // 相互シフト「れ」は同じsemantic内でD/Kの両方がtrigger兼output。
+  const re = reverseLookup(layout, 'れ')[0];
+  assert.ok(re);
+  const reAction = reverseLookupGuideActions(re)[0];
+  assert.ok(reAction);
+  assert.deepEqual(reverseLookupGuideActionTriggerOnlyKeys(reAction), []);
+});
+
 test('reverseLookupは明示された親指shift alternativeだけを同じ表示routeへ畳む', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18');
   assert.ok(layout);
@@ -165,6 +197,10 @@ test('reverseLookupは明示された親指shift alternativeだけを同じ表�
   assert.deepEqual(
     new Set(reverseLookupGuideActionHighlightKeys(layout, thumbAction)),
     new Set(['thumb-r', 'thumb-l', 'f']),
+  );
+  assert.deepEqual(
+    new Set(reverseLookupGuideActionTriggerOnlyKeys(thumbAction)),
+    new Set(['thumb-r', 'thumb-l']),
   );
   assert.equal(reverseLookupRouteLabel(layout, shifted).includes('右親指'), false);
   assert.equal(reverseLookupRouteLabel(layout, shifted).includes('左親指'), false);

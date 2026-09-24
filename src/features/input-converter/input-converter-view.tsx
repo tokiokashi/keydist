@@ -71,6 +71,7 @@ import {
   reverseLookupGuideActionHighlightKeys,
   reverseLookupGuideActionLabel,
   reverseLookupGuideActionMatchesKeys,
+  reverseLookupGuideActionTriggerOnlyKeys,
   reverseLookupGuideActions,
   reverseLookupGuideIndexForText,
   reverseLookupRouteLabel,
@@ -688,17 +689,14 @@ export function InputConverterView() {
     return legends;
   }, [activeLookupStep, guideDefinitions, layout, showPracticeAssist]);
 
-  const lookupTriggerOnlyKeys = useMemo(() => {
-    if (activeLookupStep === undefined) return new Set<string>();
-    const guideIds = new Set(guideDefinitions.map((definition) => definition.id));
-    const outputKeys = new Set(lookupLegendMap.keys());
-    return new Set(
-      activeLookupStep.aggregationGroupIds
-        .filter((id) => guideIds.has(id))
-        .flatMap((id) => aggregationTriggerKeys(layout, id))
-        .filter((key) => !outputKeys.has(key)),
-    );
-  }, [activeLookupStep, guideDefinitions, layout, lookupLegendMap]);
+  const lookupTriggerOnlyKeys = useMemo(
+    () => new Set(
+      !showPracticeAssist || activeLookupAction === undefined
+        ? []
+        : reverseLookupGuideActionTriggerOnlyKeys(activeLookupAction),
+    ),
+    [activeLookupAction, showPracticeAssist],
+  );
   const patternResult = useMemo(() => {
     const result = matchKeyPatterns(
       layout,

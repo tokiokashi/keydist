@@ -1723,7 +1723,7 @@ test('Practice Text強調はtrigger-onlyキーの主レジェンドだけを隠�
   const keyboard = page.getByRole('img', { name: '現在の物理キー状態' });
   const lookup = page.getByLabel('打ちたい文字');
 
-  // 拗音2の O はこのaggregationではtrigger-only。
+  // 拗音2の O は対象semantic「にゅ」ではtrigger-only。
   const triggerOnlyKey = keyboard.locator('[data-key-id="o"]');
   await expect(triggerOnlyKey.locator('.physical-keyboard-legend')).toHaveText('が');
 
@@ -1732,7 +1732,15 @@ test('Practice Text強調はtrigger-onlyキーの主レジェンドだけを隠�
   await expect(triggerOnlyKey).toHaveAttribute('data-trigger', 'true');
   await expect(triggerOnlyKey.locator('.physical-keyboard-legend')).toHaveText('');
 
-  // 中指相互シフトの D/K はtriggerでもoutputでもあるので、レジェンドを残す。
+  // Kは中指シフト全体では「れ」のoutputにもなるが、対象semantic「ご」ではtrigger-only。
+  // aggregation全体を見て判定するとここを誤って残してしまう。
+  const semanticTriggerOnlyKey = keyboard.locator('[data-key-id="k"]');
+  await lookup.fill('ご');
+  await expect(semanticTriggerOnlyKey).toHaveAttribute('data-lookup', 'true');
+  await expect(semanticTriggerOnlyKey).toHaveAttribute('data-trigger', 'true');
+  await expect(semanticTriggerOnlyKey.locator('.physical-keyboard-legend')).toHaveText('');
+
+  // 中指相互シフトの D/K は同じ対象semantic「れ」の中でtriggerでもoutputでもあるので残す。
   await lookup.fill('れ');
   const leftMiddle = keyboard.locator('[data-key-id="d"]');
   const rightMiddle = keyboard.locator('[data-key-id="k"]');
