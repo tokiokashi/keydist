@@ -61,6 +61,7 @@ import { MAX_SAVED_TEXT_LENGTH } from './ui-state.ts';
 
 export interface AnalyzerReactShellOptions {
   root: HTMLElement;
+  appElement: HTMLElement;
   themeControlsSlot: HTMLElement;
   modeSlot: HTMLElement;
   textPanelSlot: HTMLElement;
@@ -136,6 +137,7 @@ interface AnalyzerTextModel {
 }
 
 function AnalyzerReactShell({
+  appElement,
   themeControlsSlot,
   modeSlot,
   textPanelSlot,
@@ -486,6 +488,8 @@ function AnalyzerReactShell({
         <AnalyzerPlaybackSurface
           model={playbackSurfaceModel}
           actions={playbackSurfaceActions}
+          appElement={appElement}
+          settingsPanelElement={playbackSettingsSlot}
         />,
         playbackSlot,
       )}
@@ -609,6 +613,7 @@ export function mountAnalyzerReactShell(
   options.root.dataset.analyzerReactShell = 'mounted';
   root.render(
     <AnalyzerReactShell
+      appElement={options.appElement}
       themeControlsSlot={options.themeControlsSlot}
       modeSlot={options.modeSlot}
       textPanelSlot={options.textPanelSlot}
