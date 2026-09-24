@@ -46,6 +46,7 @@ import {
   TRIGGER_ACTIVATION_CLASS_LABELS,
 } from './trigger-activation-groups.ts';
 import type { AnalyzerPlaybackSurfaceModel } from './analyzer-playback-surface-model.ts';
+import type { AnalyzerPlaybackSettingsModel } from './analyzer-playback-settings-model.ts';
 import {
   playbackAnalysisArpeggioMotions,
   playbackAnalysisArpeggioOrders,
@@ -78,6 +79,7 @@ export interface PlaybackViewContext {
   openCalibration: () => void;
   openCalibrationEdit: () => void;
   surfaceModel: AnalyzerPlaybackSurfaceModel;
+  settingsModel: AnalyzerPlaybackSettingsModel;
 }
 
 export type PlaybackPreserveMode = 'cursor' | 'input-position';
@@ -98,6 +100,7 @@ export interface PlaybackViewController {
   getGeometry: () => ReturnType<typeof buildGeometry> | undefined;
   getLayout: () => Layout | undefined;
   commitSurface: () => void;
+  commitSettings: () => void;
 }
 
 export function createPlaybackView(ctx: PlaybackViewContext): PlaybackViewController {
@@ -1072,7 +1075,7 @@ function renderPlayback(
       <div class="fig-fixed playback-figure">${renderPlaybackSvg(layout, geometry)}</div>
     </div>
   </details>`);
-  elements.playbackSettingsPanel.innerHTML = playbackSettingsMarkup(layout, options);
+  ctx.settingsModel.setHtml(playbackSettingsMarkup(layout, options));
   setPlaybackSettingsOpen(playbackSettingsOpen);
   if (preserveState && playbackState.playing) {
     playbackAnimationFrame = requestAnimationFrame((timestamp) => playbackFrame(timestamp));
@@ -1545,7 +1548,7 @@ function refreshInputRealizationAnalysis(): void {
       playbackFeedbackPending = false;
       preserveStateOnNextRender = undefined;
           setPlaybackSettingsOpen(false);
-      elements.playbackSettingsPanel.innerHTML = '';
+      ctx.settingsModel.clear();
       ctx.surfaceModel.clear();
     },
     update: updatePlaybackView,
@@ -1558,6 +1561,10 @@ function refreshInputRealizationAnalysis(): void {
     getGeometry: () => playbackGeometry,
     getLayout: () => playbackLayout,
     commitSurface: () => {
+      setPlaybackSettingsOpen(playbackSettingsOpen);
+      updatePlaybackView();
+    },
+    commitSettings: () => {
       setPlaybackSettingsOpen(playbackSettingsOpen);
       updatePlaybackView();
     },

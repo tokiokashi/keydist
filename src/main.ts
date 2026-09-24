@@ -62,6 +62,7 @@ import {
 } from './analyzer-react-shell.tsx';
 import { createAnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 import { createAnalyzerPlaybackSurfaceModel } from './analyzer-playback-surface-model.ts';
+import { createAnalyzerPlaybackSettingsModel } from './analyzer-playback-settings-model.ts';
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import { el, SERIES } from './app-dom.ts';
 import { createRomajiEditor } from './romaji-editor.ts';
@@ -1741,6 +1742,7 @@ let playbackView: PlaybackViewController;
 let calibrationDialog: CalibrationDialogController;
 let resultsView: ResultsViewController;
 const playbackSurfaceModel = createAnalyzerPlaybackSurfaceModel();
+const playbackSettingsModel = createAnalyzerPlaybackSettingsModel();
 
 function currentPlaybackLayoutId(): string | undefined {
   return playbackView?.getLayout()?.id;
@@ -1913,6 +1915,7 @@ playbackView = createPlaybackView({
   openCalibration: () => calibrationDialog.open(),
   openCalibrationEdit: () => calibrationDialog.openEdit(),
   surfaceModel: playbackSurfaceModel,
+  settingsModel: playbackSettingsModel,
 });
 calibrationDialog = createCalibrationDialog({
   el,
@@ -1976,14 +1979,17 @@ analyzerReactShell = mountAnalyzerReactShell({
   comparisonSlot: analyzerComparisonControlSlot,
   sensitivitySlot: analyzerSensitivityControlSlot,
   playbackSlot: el.playback,
+  playbackSettingsSlot: el.playbackSettingsPanel,
   stateOwner: uiStateOwner,
   comparisonModel,
   playbackSurfaceModel,
+  playbackSettingsModel,
   onModeChange,
   onTextInput: scheduleTextRender,
   onTextCommit: flushTextRender,
   onMetricsChange: render,
   onPlaybackSurfaceCommit: () => playbackView.commitSurface(),
+  onPlaybackSettingsCommit: () => playbackView.commitSettings(),
 });
 el.geometry.addEventListener('change', () => {
   const geometry = el.geometry.value as GeometryKind;
