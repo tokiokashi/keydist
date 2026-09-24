@@ -1,5 +1,6 @@
-import type {
-  BarDatum,
+import {
+  escapeText,
+  type BarDatum,
   BarOptions,
   ColumnDatum,
   ColumnOptions,
@@ -41,7 +42,7 @@ export function AnalyzerBarChart({
         const barWidth = Math.max(0, (datum.value / max) * plotW);
         const fill = datum.color ?? 'var(--heat-1)';
         const valueLabel = datum.valueLabel ?? format(datum.value);
-        const tip = datum.tip ?? `${datum.label}<br><b>${valueLabel}</b>`;
+        const tip = datum.tip ?? `${escapeText(datum.label)}<br><b>${valueLabel}</b>`;
         return (
           <g data-tip={tip} key={`${datum.label}-${index}`}>
             <rect x={0} y={y} width={width} height={rowH} fill="transparent" />
@@ -196,7 +197,7 @@ export function AnalyzerLineChart({
           const raw = point.raw === undefined
             ? ''
             : ` <span style="color:var(--muted)">(${point.raw.toFixed(0)} u)</span>`;
-          return `<span style="color:${item.color}">■</span> ${item.name} <b>${format(point.y)}</b>${raw}`;
+          return `<span style="color:${item.color}">■</span> ${escapeText(item.name)} <b>${format(point.y)}</b>${raw}`;
         }).join('<br>');
         return (
           <g data-tip={`N = ${tick}<br>${rows}`} key={`band-${tick}`}>
@@ -274,7 +275,7 @@ export function AnalyzerColumnChart({
         const barHeight = Math.abs(valueY - baselineY);
         const y = Math.min(valueY, baselineY);
         const fill = datum.color ?? 'var(--heat-1)';
-        const tip = datum.tip ?? `${datum.label}<br><b>${format(datum.value)}</b>`;
+        const tip = datum.tip ?? `${escapeText(datum.label)}<br><b>${format(datum.value)}</b>`;
         const valueLabelY = datum.value < 0 ? y + barHeight + 14 : y - 5;
         return (
           <g data-tip={tip} key={`${datum.label}-${index}`}>
@@ -449,7 +450,7 @@ export function AnalyzerMatrixChart({
           const x = colX(columnIndex);
           const intensity = Math.min(1, Math.max(0, (cell.value - low) / span));
           const tip = cell.tip
-            ?? `${row.label} / ${columns[columnIndex]}<br><b>${format(cell.value)}</b>`;
+            ?? `${escapeText(row.label)} / ${escapeText(columns[columnIndex] ?? '')}<br><b>${format(cell.value)}</b>`;
           result.push(
             <g data-tip={tip} key={`${row.label}-${columnIndex}`}>
               <rect
