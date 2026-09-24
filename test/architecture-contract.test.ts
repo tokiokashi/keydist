@@ -623,7 +623,7 @@ test('presentation consumerはLayer.orderの共通helperを使う', async () => 
   const guideStart = heatmapSource.indexOf('function pickerGuideColorMap');
   const guideEnd = heatmapSource.indexOf('function heatIntensity', guideStart);
   assert.ok(guideStart >= 0 && guideEnd > guideStart, 'picker guide section must remain discoverable');
-  const guideSource = resultsSource.slice(guideStart, guideEnd);
+  const guideSource = heatmapSource.slice(guideStart, guideEnd);
   assert.match(
     guideSource,
     /if \(!colors\.has\(key\)\) colors\.set\(key, stroke\)/,
