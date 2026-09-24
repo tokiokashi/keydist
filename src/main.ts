@@ -49,7 +49,7 @@ import { createAnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
 import { createAnalyzerMetricsModel } from './analyzer-metrics-model.ts';
 import { createAnalyzerControlsModel } from './analyzer-controls-model.ts';
 import { createAnalyzerGeometryEditorModel } from './analyzer-geometry-editor-model.ts';
-import { el } from './app-dom.ts';
+import { resolveAppElements } from './app-dom.ts';
 import { createAnalyzerRomajiDialogModel } from './analyzer-romaji-dialog-model.ts';
 import { createAnalyzerCalibrationModel } from './analyzer-calibration-model.ts';
 import { createPlaybackView, type PlaybackViewController } from './playback-view.ts';
@@ -85,6 +85,8 @@ import {
 } from './condition-bundle.ts';
 import { downloadText } from './browser-download.ts';
 
+export function mountAnalyzerRuntime(): () => void {
+  const el = resolveAppElements();
 let userLayouts: UserLayout[] = loadUserLayouts();
 let userGeometryShapes: PhysicalShape[] = loadUserGeometryShapes();
 let romajiSettings = loadRomajiSettings();
@@ -175,7 +177,7 @@ function removeLayoutChoice(layoutId: string): void {
 const uiStateOwner = createAnalyzerUiStateOwner(uiStorage, uiStateDefaults, uiStateChoices);
 let uiState = uiStateOwner.getSnapshot();
 conditionState = uiState;
-uiStateOwner.subscribe(() => {
+const unsubscribeUiState = uiStateOwner.subscribe(() => {
   uiState = uiStateOwner.getSnapshot();
   conditionState = uiState;
 });
@@ -225,9 +227,10 @@ function migrateCurrentGeometryShape(): void {
 
 migrateCurrentGeometryShape();
 
-window.addEventListener('pagehide', () => {
+const onPageHide = () => {
   uiStateOwner.flush();
-});
+};
+window.addEventListener('pagehide', onPageHide);
 
 if (!playbackCalibration && uiState.ui.playback.useCalibration) {
   updateUiState((draft) => { draft.ui.playback.useCalibration = false; });
@@ -1071,15 +1074,15 @@ function flushTextRender(): void {
   render();
 }
 
-bindTips(document.body);
+const disposeTips = bindTips(document.body);
 // 補足ボタン: summaryの中に置くとdetailsが開閉してしまうので握りつぶす。
 // キーボードでも読めるようfocusでも出す
-document.body.addEventListener('click', (e) => {
-  const info = (e.target as Element).closest('.info');
-  if (info) e.preventDefault();
-});
-document.body.addEventListener('focusin', (e) => {
-  const info = (e.target as Element).closest('.info');
+const onInfoClick = (event: MouseEvent) => {
+  const info = (event.target as Element).closest('.info');
+  if (info) event.preventDefault();
+};
+const onInfoFocusIn = (event: FocusEvent) => {
+  const info = (event.target as Element).closest('.info');
   if (!info) return;
   const box = info.getBoundingClientRect();
   showTip(
@@ -1087,7 +1090,26 @@ document.body.addEventListener('focusin', (e) => {
     { clientX: box.right, clientY: box.bottom + 24 } as MouseEvent,
     true,
   );
-});
-document.body.addEventListener('focusout', (e) => {
-  if ((e.target as Element).closest('.info')) hideTip();
-});
+};
+const onInfoFocusOut = (event: FocusEvent) => {
+  if ((event.target as Element).closest('.info')) hideTip();
+};
+document.body.addEventListener('click', onInfoClick);
+document.body.addEventListener('focusin', onInfoFocusIn);
+document.body.addEventListener('focusout', onInfoFocusOut);
+
+return () => {
+  if (textRenderTimer !== undefined) window.clearTimeout(textRenderTimer);
+  textRenderTimer = undefined;
+  playbackView.clear();
+  analyzerReactShell?.unmount();
+  analyzerReactShell = undefined;
+  unsubscribeUiState();
+  uiStateOwner.flush();
+  window.removeEventListener('pagehide', onPageHide);
+  document.body.removeEventListener('click', onInfoClick);
+  document.body.removeEventListener('focusin', onInfoFocusIn);
+  document.body.removeEventListener('focusout', onInfoFocusOut);
+  disposeTips();
+};
+}
