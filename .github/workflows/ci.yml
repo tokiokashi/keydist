@@ -71,6 +71,7 @@ jobs:
             .output/public/index.html
             .output/public/analyzer/index.html
             .output/public/input/index.html
+            .output/public/flow/index.html
             .output/public/legacy.html
           )
 

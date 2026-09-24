@@ -1,0 +1,552 @@
+.flow-feature {
+  max-width: 70rem;
+}
+
+.flow-feature h2 {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.5vw, 1.8rem);
+  letter-spacing: -0.025em;
+}
+
+.flow-controls {
+  display: grid;
+  grid-template-columns: minmax(13rem, 1.2fr) 1fr 1fr;
+  gap: 0.9rem;
+  margin: 2rem 0 0.75rem;
+  padding: 1rem;
+  border: 1px solid #d6d6d1;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 12px 30px rgb(20 20 18 / 5%);
+}
+
+.flow-layout-select,
+.flow-control-group {
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+}
+
+.flow-layout-select > span,
+.flow-control-group > span {
+  color: #66665f;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.flow-layout-select select {
+  width: 100%;
+  min-height: 2.65rem;
+  padding: 0 0.75rem;
+  border: 1px solid #c9c9c3;
+  border-radius: 0.7rem;
+  background: #fafaf8;
+  color: #181816;
+  font: inherit;
+}
+
+.flow-segmented,
+.flow-finger-buttons {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 0.35rem;
+}
+
+.flow-segmented button,
+.flow-finger-buttons button {
+  min-height: 2.65rem;
+  border: 1px solid #d0d0ca;
+  border-radius: 0.7rem;
+  background: #fafaf8;
+  color: #62625c;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.flow-segmented button[data-active],
+.flow-finger-buttons button[data-active] {
+  border-color: #171715;
+  background: #171715;
+  color: #fff;
+  box-shadow: 0 5px 14px rgb(17 17 15 / 16%);
+}
+
+.flow-finger-buttons button {
+  font-size: 1rem;
+}
+
+.flow-finger-buttons button:disabled {
+  cursor: not-allowed;
+  opacity: 0.34;
+}
+
+.flow-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 1.5rem;
+}
+
+.flow-status span {
+  padding: 0.3rem 0.55rem;
+  border: 1px solid #ddddda;
+  border-radius: 999px;
+  background: #f0f0ec;
+  color: #60605b;
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.flow-block {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #d7d7d2;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 16px 38px rgb(24 24 20 / 5%);
+}
+
+.flow-block-header,
+.flow-analysis-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 0.25rem 0.25rem 1rem;
+}
+
+.flow-block-header .eyebrow,
+.flow-analysis-heading .eyebrow {
+  margin-bottom: 0.25rem;
+}
+
+.flow-block-header > p,
+.flow-analysis-heading > p {
+  max-width: 31rem;
+  margin: 0;
+  color: #6b6b65;
+  font-size: 0.83rem;
+  line-height: 1.55;
+}
+
+.flow-stage,
+.flow-mini-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #292d30;
+  border-radius: 0.9rem;
+  background:
+    radial-gradient(circle at 50% -20%, rgb(70 85 96 / 28%), transparent 45%),
+    linear-gradient(145deg, #151819, #0d0f10);
+  color: #f7f7f3;
+}
+
+.flow-stage::before,
+.flow-mini-panel::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 2.5%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 2.5%) 1px, transparent 1px);
+  background-size: 28px 28px;
+  content: "";
+  mask-image: linear-gradient(to bottom, black, transparent 90%);
+}
+
+.flow-keyboard-svg {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-width: 46rem;
+  padding: 0.4rem;
+}
+
+.flow-vector-layer {
+  pointer-events: none;
+}
+
+.flow-edge {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.flow-key rect {
+  fill: #222627;
+  stroke: #555c5f;
+  stroke-width: 1;
+}
+
+.flow-key text {
+  fill: #f2f3ef;
+  font-size: 10px;
+  font-weight: 750;
+  paint-order: stroke;
+  stroke: #151819;
+  stroke-width: 2px;
+}
+
+.flow-key .flow-key-id {
+  fill: #8e989b;
+  font-size: 5.5px;
+  font-weight: 600;
+  stroke-width: 1.5px;
+}
+
+.flow-key[data-selected] rect {
+  fill: #343a3d;
+  stroke: #f1f2ed;
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 8px rgb(255 255 255 / 18%));
+}
+
+.flow-key[data-hovered] rect {
+  fill: #3b4144;
+  stroke: #fff;
+  stroke-width: 1.8;
+  filter: drop-shadow(0 0 10px rgb(255 255 255 / 28%));
+}
+
+.flow-overlay-layer {
+  pointer-events: none;
+}
+
+.flow-key-badge rect {
+  fill: rgb(9 11 12 / 92%);
+  stroke: rgb(255 255 255 / 28%);
+  stroke-width: 0.6;
+}
+
+.flow-key-badge text {
+  fill: #f4f5ef;
+  font: 700 6.2px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.flow-repeat-badge rect {
+  fill: rgb(53 57 59 / 88%);
+  stroke: rgb(190 196 198 / 30%);
+}
+
+.flow-repeat-badge text {
+  fill: #b7bec0;
+}
+
+.flow-legend {
+  position: absolute;
+  right: 0.8rem;
+  bottom: 0.65rem;
+  z-index: 2;
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 999px;
+  background: rgb(8 10 11 / 72%);
+  color: #c4c8c9;
+  font-size: 0.64rem;
+  backdrop-filter: blur(8px);
+}
+
+.flow-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.flow-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+}
+
+.flow-dot-left {
+  background: #ff8a66;
+}
+
+.flow-dot-right {
+  background: #60a9ff;
+}
+
+.flow-dot-cross {
+  background: #a5abb0;
+}
+
+.flow-dot-inward {
+  background: #7fc7a4;
+}
+
+.flow-dot-outward {
+  background: #c19de9;
+}
+
+.flow-dot-profile {
+  background: #82cbff;
+}
+
+.flow-coverage {
+  padding-left: 0.65rem;
+  border-left: 1px solid rgb(255 255 255 / 12%);
+  color: #8d9699;
+}
+
+.flow-analysis {
+  margin-top: 1.5rem;
+}
+
+.flow-analysis-heading {
+  padding: 0 0.25rem 0.25rem;
+}
+
+.flow-analysis-heading h2 {
+  font-size: clamp(1.8rem, 5vw, 3.2rem);
+}
+
+.flow-analysis-locked {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px dashed #c9c9c2;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #f2f2ee, #fafaf7);
+  color: #696963;
+}
+
+.flow-analysis-locked span {
+  font: 650 0.7rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.flow-analysis-locked strong {
+  color: #242421;
+  font-size: 1.05rem;
+}
+
+.flow-analysis-locked p {
+  margin: 0.1rem 0 0;
+  font-size: 0.82rem;
+}
+
+.flow-two-up {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+}
+
+.flow-mini-panel {
+  min-height: 18rem;
+}
+
+.flow-mini-panel header {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.8rem;
+  left: 0.8rem;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.flow-mini-panel header strong {
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.flow-mini-panel header span {
+  color: #899194;
+  font: 600 0.64rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.flow-mini-panel svg {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.flow-axis {
+  stroke: rgb(255 255 255 / 11%);
+  stroke-width: 0.8;
+}
+
+.flow-axis-ring {
+  fill: none;
+  stroke: rgb(255 255 255 / 9%);
+  stroke-dasharray: 2 4;
+  stroke-width: 0.7;
+}
+
+.flow-origin {
+  fill: #f5f5ee;
+  filter: drop-shadow(0 0 5px rgb(255 255 255 / 35%));
+}
+
+.relative-vector {
+  stroke-linecap: round;
+}
+
+.relative-vector-inward {
+  color: #7fc7a4;
+  stroke: currentColor;
+}
+
+.relative-vector-outward {
+  color: #c19de9;
+  stroke: currentColor;
+}
+
+.relative-vector-same {
+  color: #a5abb0;
+  stroke: currentColor;
+}
+
+.direction-profile-layer {
+  pointer-events: none;
+}
+
+.direction-profile-spoke {
+  stroke: rgb(133 202 255 / 13%);
+  stroke-width: 0.65;
+}
+
+.direction-profile-polygon {
+  fill: rgb(96 169 255 / 10%);
+  stroke: rgb(130 203 255 / 76%);
+  stroke-width: 1.35;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 7px rgb(76 172 255 / 18%));
+}
+
+.direction-profile-point {
+  fill: #9bd5ff;
+  stroke: #dff2ff;
+  stroke-width: 0.65;
+  pointer-events: all;
+}
+
+.actual-vector-layer {
+  pointer-events: none;
+}
+
+.mean-resultant {
+  stroke: #f6f3dc;
+  stroke-width: 3;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px rgb(255 248 200 / 42%));
+}
+
+.mean-endpoint {
+  fill: #f6f3dc;
+  filter: drop-shadow(0 0 4px rgb(255 248 200 / 34%));
+}
+
+.flow-roll-legend {
+  position: absolute;
+  top: 2.2rem;
+  right: 0.8rem;
+  z-index: 2;
+  display: flex;
+  gap: 0.65rem;
+  color: #aeb5b7;
+  font: 600 0.61rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.flow-roll-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.flow-profile-legend {
+  top: 2.2rem;
+  right: 0.8rem;
+  left: auto;
+  bottom: auto;
+}
+
+.roll-summary {
+  position: absolute;
+  right: 0.85rem;
+  bottom: 0.75rem;
+  left: 0.85rem;
+  z-index: 2;
+}
+
+.roll-bar {
+  display: flex;
+  height: 0.32rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 7%);
+}
+
+.roll-bar span {
+  display: block;
+  height: 100%;
+}
+
+.roll-inward {
+  background: #7fc7a4;
+}
+
+.roll-outward {
+  background: #c19de9;
+}
+
+.roll-summary > div:last-child {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.35rem;
+  color: #9da5a7;
+  font: 600 0.62rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.flow-footnote {
+  margin: 0.85rem 0 0;
+  color: #72726c;
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 800px) {
+  .flow-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .flow-two-up {
+    grid-template-columns: 1fr;
+  }
+
+  .flow-block-header,
+  .flow-analysis-heading {
+    align-items: start;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .flow-legend {
+    position: static;
+    margin: 0 0.65rem 0.65rem;
+    width: max-content;
+  }
+
+  .flow-stage {
+    overflow-x: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-feature *,
+  .flow-feature *::before,
+  .flow-feature *::after {
+    scroll-behavior: auto !important;
+  }
+}
