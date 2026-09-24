@@ -906,13 +906,6 @@ export function AnalyzerHeatmap({
     Math.max(0, entries.length - 1),
   );
 
-  useEffect(() => {
-    if (state.ui.layers.activeTab === activeTab) return;
-    stateOwner.update((draft) => {
-      draft.ui.layers.activeTab = activeTab;
-    });
-  }, [activeTab, state.ui.layers.activeTab, stateOwner]);
-
   const titles = entries.map((entry) => entry.title);
   const allLayerFaces = layers.flatMap((layer) => layer.faces);
   const faceShiftStyles = layerShiftStyles(entries.map((entry) => entry.layer));
