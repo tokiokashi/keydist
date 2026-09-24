@@ -62,3 +62,65 @@ test('legacy panel open state is coordinated by React and restores through AppSt
   await page.reload();
   await expect(page.locator('#text-panel')).not.toHaveAttribute('open', '');
 });
+
+test('layout selection is AppState-authoritative for analysis and reload', async ({ page }) => {
+  await page.goto('/legacy.html');
+
+  const sidebar = page.locator('[data-react-feature="sidebar-controls"]');
+  await expect(sidebar).toBeVisible();
+
+  const detail = sidebar.locator('#detail-layout');
+  const initialCount = await detail.locator('option').count();
+  expect(initialCount).toBeGreaterThan(1);
+  await expect(page.locator('#compare tbody tr')).toHaveCount(initialCount);
+
+  const targetOption = detail.locator('option').first();
+  const targetId = await targetOption.getAttribute('value');
+  const targetName = (await targetOption.textContent())?.trim();
+  expect(targetId).toBeTruthy();
+  expect(targetName).toBeTruthy();
+
+  const targetToggle = sidebar
+    .locator('#layout-picker label')
+    .filter({ hasText: targetName! })
+    .first()
+    .locator('input[type="checkbox"]');
+  await expect(targetToggle).toBeChecked();
+
+  await targetToggle.uncheck();
+  await expect(detail.locator('option')).toHaveCount(initialCount - 1);
+  await expect(page.locator('#compare tbody tr')).toHaveCount(initialCount - 1);
+  await expect.poll(async () => page.evaluate((layoutId) => {
+    const raw = localStorage.getItem('keydist:app-state');
+    if (!raw) return null;
+    return JSON.parse(raw).analyzer?.layouts?.selectedByMode?.ja?.includes(layoutId) ?? null;
+  }, targetId)).toBe(false);
+
+  await page.reload();
+
+  const reloadedSidebar = page.locator('[data-react-feature="sidebar-controls"]');
+  const reloadedToggle = reloadedSidebar
+    .locator('#layout-picker label')
+    .filter({ hasText: targetName! })
+    .first()
+    .locator('input[type="checkbox"]');
+  await expect(reloadedToggle).not.toBeChecked();
+  await expect(page.locator('#compare tbody tr')).toHaveCount(initialCount - 1);
+
+  await reloadedToggle.check();
+  await expect(page.locator('#compare tbody tr')).toHaveCount(initialCount);
+  await expect.poll(async () => page.evaluate((layoutId) => {
+    const raw = localStorage.getItem('keydist:app-state');
+    if (!raw) return null;
+    return JSON.parse(raw).analyzer?.layouts?.selectedByMode?.ja?.includes(layoutId) ?? null;
+  }, targetId)).toBe(true);
+
+  await page.reload();
+  await expect(
+    page.locator('[data-react-feature="sidebar-controls"] #layout-picker label')
+      .filter({ hasText: targetName! })
+      .first()
+      .locator('input[type="checkbox"]'),
+  ).toBeChecked();
+  await expect(page.locator('#compare tbody tr')).toHaveCount(initialCount);
+});

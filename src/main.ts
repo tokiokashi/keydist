@@ -257,19 +257,12 @@ if (!playbackCalibration && uiState.ui.playback.useCalibration) {
 }
 
 
-/** 表示する配列のid。モードごとに覚える。保存値があればそれを使い、無ければ既定値 */
-const selected: Record<ModeId, Set<string>> = {
-  en: resolveSelection(uiState.ui.layouts.selectedByMode.en, ANALYZER_INITIAL_LAYOUTS.en),
-  ja: resolveSelection(uiState.ui.layouts.selectedByMode.ja, ANALYZER_INITIAL_LAYOUTS.ja),
-};
-
-function saveSelectedLayouts(): void {
-  updateUiState((draft) => {
-    draft.ui.layouts.selectedByMode = {
-      en: [...selected.en],
-      ja: [...selected.ja],
-    };
-  });
+/** 表示する配列のidはAppStateを唯一のauthorityとして都度導出する。 */
+function selectedLayoutIds(mode: ModeId): ReadonlySet<string> {
+  return resolveSelection(
+    uiState.ui.layouts.selectedByMode[mode],
+    ANALYZER_INITIAL_LAYOUTS[mode],
+  );
 }
 
 const currentModeId = () => uiState.ui.input.mode;
@@ -277,8 +270,8 @@ const currentMode = () => MODES[currentModeId()];
 
 /** 選択されている配列。色のスロットは選択順ではなく一覧順に固定する */
 function activeLayouts(): Layout[] {
-  const set = selected[currentModeId()];
-  return currentMode().layouts.filter((l) => set.has(l.id));
+  const selected = selectedLayoutIds(currentModeId());
+  return currentMode().layouts.filter((layout) => selected.has(layout.id));
 }
 
 function addUserLayout(definition: UserLayout): void {
@@ -286,9 +279,16 @@ function addUserLayout(definition: UserLayout): void {
   saveUserLayouts(userLayouts);
   addLayoutChoices([definition.id]);
 
-  selected.en.add(definition.id);
-  selected.ja.add(definition.id);
-  saveSelectedLayouts();
+  updateUiState((draft) => {
+    for (const mode of ['en', 'ja'] as const) {
+      const selected = resolveSelection(
+        draft.ui.layouts.selectedByMode[mode],
+        ANALYZER_INITIAL_LAYOUTS[mode],
+      );
+      selected.add(definition.id);
+      draft.ui.layouts.selectedByMode[mode] = [...selected];
+    }
+  });
 
   fillPicker();
   fillDetailOptions();
@@ -314,13 +314,15 @@ function removeUserLayout(id: string) {
   userLayouts = userLayouts.filter((l) => l.id !== id);
   saveUserLayouts(userLayouts);
   removeLayoutChoice(id);
-  selected.en.delete(id);
-  selected.ja.delete(id);
   updateUiState((draft) => {
-    draft.ui.layouts.selectedByMode = {
-      en: [...selected.en],
-      ja: [...selected.ja],
-    };
+    for (const mode of ['en', 'ja'] as const) {
+      const selected = resolveSelection(
+        draft.ui.layouts.selectedByMode[mode],
+        ANALYZER_INITIAL_LAYOUTS[mode],
+      );
+      selected.delete(id);
+      draft.ui.layouts.selectedByMode[mode] = [...selected];
+    }
     if (draft.ui.layouts.detailByMode.en === id) delete draft.ui.layouts.detailByMode.en;
     if (draft.ui.layouts.detailByMode.ja === id) delete draft.ui.layouts.detailByMode.ja;
     if (draft.ui.comparison.baselineByMode.en === id) delete draft.ui.comparison.baselineByMode.en;
@@ -1709,7 +1711,7 @@ resultsView = createResultsView({
   updateUiState,
   currentModeId,
   currentMode,
-  selected,
+  getSelectedLayoutIds: selectedLayoutIds,
   romajiRuleIdForLayout,
   getGeometrySettingsForKind: geometrySettingsForKind,
   playback: playbackView,
@@ -1795,10 +1797,16 @@ analyzerReactShell = mountAnalyzerReactShell({
   onGeometryMount: setupGeometryEditor,
   onRomajiMount: () => romajiEditor.setup(),
   onToggleLayout: (layoutId, enabled) => {
-    const set = selected[currentModeId()];
-    if (enabled) set.add(layoutId);
-    else set.delete(layoutId);
-    saveSelectedLayouts();
+    const mode = currentModeId();
+    updateUiState((draft) => {
+      const selected = resolveSelection(
+        draft.ui.layouts.selectedByMode[mode],
+        ANALYZER_INITIAL_LAYOUTS[mode],
+      );
+      if (enabled) selected.add(layoutId);
+      else selected.delete(layoutId);
+      draft.ui.layouts.selectedByMode[mode] = [...selected];
+    });
     playbackView.preserveNextRender('input-position');
     render();
   },
