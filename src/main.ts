@@ -1,14 +1,9 @@
 import {
-  buildGeometry,
   customGeometryKind,
-  FINGERS,
   isCustomGeometryKind,
   isPresetGeometryKind,
-  keyId,
   PHYSICAL_SHAPES,
-  type Finger,
   type GeometryKind,
-  type NonThumb,
   type PhysicalShape,
 } from './geometry.ts';
 import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from './layouts/index.ts';
@@ -50,7 +45,7 @@ import { createAnalyzerConditionsSurfaceModel } from './analyzer-conditions-surf
 import { createAnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 import { createAnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
 import { createAnalyzerControlsModel } from './analyzer-controls-model.ts';
-import { resolveAnalyzerGeometryDialogElements } from './analyzer-geometry-dialog.tsx';
+import { createAnalyzerGeometryEditorModel } from './analyzer-geometry-editor-model.ts';
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import { el } from './app-dom.ts';
 import { createAnalyzerRomajiDialogModel } from './analyzer-romaji-dialog-model.ts';
@@ -58,15 +53,10 @@ import { createCalibrationDialog, resolveCalibrationDialogElements, type Calibra
 import { createPlaybackView, type PlaybackViewController } from './playback-view.ts';
 import { createResultsView, type ResultsViewController } from './results-view.ts';
 import {
-  DEFAULT_GEOMETRY_SETTINGS,
-  cloneGeometrySettings,
   clonePhysicalShape,
   geometrySettingsForPreset,
-  parseGeometrySettings,
-  serializeGeometrySettings,
   type GeometrySettings,
 } from './geometry-settings.ts';
-import { fromDisplayUnits, toDisplayUnits, type GeometryUnit } from './geometry-units.ts';
 import {
   load as loadUserGeometryShapes,
   newId as newGeometryId,
@@ -396,58 +386,6 @@ function fillDetailOptions(): void {
   refreshAnalyzerControlsCatalog();
 }
 
-const FINGER_NAMES: Record<Finger, string> = {
-  LP: '左小指', LR: '左薬指', LM: '左中指', LI: '左人差指', LT: '左親指',
-  RT: '右親指', RI: '右人差指', RM: '右中指', RR: '右薬指', RP: '右小指',
-};
-
-const ROW_NAMES = ['数字段', '上段', 'ホーム段', '下段'];
-
-function settingNumber(
-  labelText: string,
-  value: number | undefined,
-  onInput: (value: string) => void,
-  options: { step?: string; min?: string; max?: string } = {},
-  onChange?: () => void,
-): HTMLLabelElement {
-  const label = document.createElement('label');
-  label.className = 'geometry-number';
-  const text = document.createElement('span');
-  text.textContent = labelText;
-  const input = document.createElement('input');
-  input.type = 'number';
-  input.value = value === undefined ? '' : String(value);
-  input.step = options.step ?? '0.01';
-  if (options.min !== undefined) input.min = options.min;
-  if (options.max !== undefined) input.max = options.max;
-  input.addEventListener('input', () => onInput(input.value));
-  if (onChange) input.addEventListener('change', onChange);
-  label.append(text, input);
-  return label;
-}
-
-function updateGeometrySettings(
-  change: (settings: GeometrySettings) => void,
-  renderResults = true,
-  geometryKind?: GeometryKind,
-): void {
-  updateUiState((draft) => {
-    const settings = draft.conditions.geometrySettings;
-    change(settings);
-    if (geometryKind !== undefined) {
-      draft.conditions.defaults.geometry = geometryKind;
-      draft.ui.input.geometry = geometryKind;
-    }
-  });
-  refreshAnalyzerControlsCatalog();
-  if (renderResults) render();
-}
-
-function markCustomAssignment(settings: GeometrySettings): void {
-  settings.assignment.id = 'custom';
-  settings.assignment.name = 'カスタム運指';
-}
-
 function fillGeometryOptions(): void {
   const current = uiState.conditions.defaults.geometry;
   const valid = isPresetGeometryKind(current)
@@ -481,383 +419,6 @@ function geometrySettingsForKind(kind: GeometryKind): GeometrySettings {
     assignment: current.assignment,
     shape: selectedShapeForKind(kind) ?? current.shape,
   };
-}
-
-/** 運指と形状を編集するモーダル。 */
-interface GeometryEditorController {
-  refresh(): void;
-  open(): void;
-  exportSettings(): void;
-  importSettings(file: File): Promise<void>;
-}
-
-let geometryEditorController: GeometryEditorController | undefined;
-let refreshGeometryEditor = (): void => geometryEditorController?.refresh();
-
-function setupGeometryEditor(): void {
-  const modal = resolveAnalyzerGeometryDialogElements(el.geometryDialog);
-  const assignmentFields = document.createElement('div');
-  assignmentFields.className = 'assignment-fields';
-  const assignmentActions = document.createElement('div');
-  assignmentActions.className = 'geometry-actions';
-  const resetAssignment = document.createElement('button');
-  resetAssignment.type = 'button';
-  resetAssignment.className = 'ghost';
-  resetAssignment.textContent = '運指を既定に戻す';
-  resetAssignment.addEventListener('click', () => {
-    updateGeometrySettings((settings) => {
-      settings.assignment = cloneGeometrySettings(DEFAULT_GEOMETRY_SETTINGS).assignment;
-    });
-    renderEditor();
-  });
-  assignmentActions.append(resetAssignment);
-
-  let shapeDraft: PhysicalShape | undefined;
-  let shapeUnit: GeometryUnit = 'mm';
-
-  function fieldValue(value: string, fallback: number): number | undefined {
-    if (value.trim() === '') return undefined;
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-  }
-
-  function displayValue(value: number, pitchMm: number): number {
-    return toDisplayUnits(value, pitchMm, shapeUnit);
-  }
-
-  function shapeValue(value: string, fallback: number, pitchMm: number): number | undefined {
-    const parsed = fieldValue(value, displayValue(fallback, pitchMm));
-    return parsed === undefined ? undefined : fromDisplayUnits(parsed, pitchMm, shapeUnit);
-  }
-
-  function renderShapeEditor(): void {
-    const shape = shapeDraft;
-    if (!shape) return;
-    const root = modal.editor;
-    const shapeFields = document.createElement('div');
-    shapeFields.className = 'geometry-fields';
-    const unitLabel = shapeUnit === 'mm' ? 'mm' : 'u';
-    const numberOptions = shapeUnit === 'mm'
-      ? { min: '-600', max: '600' }
-      : { min: '-32', max: '32' };
-    root.replaceChildren(shapeFields, assignmentFields, assignmentActions);
-    const shapeHeading = document.createElement('h3');
-    shapeHeading.textContent = '物理形状の数値';
-    shapeFields.append(shapeHeading);
-
-    shapeFields.append(settingNumber('ピッチ [mm]', shape.pitchMm, (value) => {
-      const parsed = fieldValue(value, shape.pitchMm);
-      if (parsed !== undefined && parsed >= 1 && parsed <= 100) shape.pitchMm = parsed;
-    }, { min: '1', max: '100' }, renderShapeEditor));
-
-    const rowHeading = document.createElement('h4');
-    rowHeading.textContent = `段ずれ量 [${unitLabel}]`;
-    shapeFields.append(rowHeading);
-    const rowGrid = document.createElement('div');
-    rowGrid.className = 'geometry-number-grid';
-    const rowStagger = shape.rowStagger ?? ROW_NAMES.map(() => 0);
-    ROW_NAMES.forEach((name, index) => rowGrid.append(settingNumber(
-      name,
-      displayValue(rowStagger[index] ?? 0, shape.pitchMm),
-      (value) => {
-        const parsed = shapeValue(value, rowStagger[index] ?? 0, shape.pitchMm);
-        if (parsed !== undefined) {
-          shape.rowStagger = [...(shape.rowStagger ?? ROW_NAMES.map(() => 0))];
-          shape.rowStagger[index] = parsed;
-        }
-      },
-      numberOptions,
-    )));
-    shapeFields.append(rowGrid);
-
-    const columnHeading = document.createElement('h4');
-    columnHeading.textContent = `列オフセット [${unitLabel}]`;
-    shapeFields.append(columnHeading);
-    const columnGrid = document.createElement('div');
-    columnGrid.className = 'geometry-number-grid geometry-column-grid';
-    const columnStagger = shape.columnStagger ?? shape.rowWidths.map(() => 0);
-    const columnCount = Math.max(...shape.rowWidths, columnStagger.length);
-    for (let column = 0; column < columnCount; column++) {
-      columnGrid.append(settingNumber(
-        `列${column + 1}`,
-        displayValue(columnStagger[column] ?? 0, shape.pitchMm),
-        (value) => {
-          const parsed = shapeValue(value, columnStagger[column] ?? 0, shape.pitchMm);
-          if (parsed !== undefined) {
-            shape.columnStagger = [...(shape.columnStagger ?? Array.from({ length: columnCount }, () => 0))];
-            while (shape.columnStagger.length < columnCount) shape.columnStagger.push(0);
-            shape.columnStagger[column] = parsed;
-          }
-        },
-        numberOptions,
-      ));
-    }
-    shapeFields.append(columnGrid);
-
-    const thumbHeading = document.createElement('h4');
-    thumbHeading.textContent = `親指キーの位置 [${unitLabel}]`;
-    shapeFields.append(thumbHeading);
-    const thumbGrid = document.createElement('div');
-    thumbGrid.className = 'geometry-thumb-grid';
-    for (const finger of ['LT', 'RT'] as const) {
-      const thumb = shape.thumbs.find((candidate) => candidate.finger === finger);
-      if (!thumb) continue;
-      const row = document.createElement('div');
-      row.className = 'geometry-thumb-row';
-      const label = document.createElement('span');
-      label.textContent = FINGER_NAMES[finger];
-      row.append(label);
-      row.append(settingNumber('列', displayValue(thumb.col, shape.pitchMm), (value) => {
-        const parsed = shapeValue(value, thumb.col, shape.pitchMm);
-        if (parsed !== undefined) {
-          const target = shape.thumbs.find((candidate) => candidate.finger === finger);
-          if (target) target.col = parsed;
-        }
-      }, numberOptions));
-      row.append(settingNumber('段', displayValue(thumb.y, shape.pitchMm), (value) => {
-        const parsed = shapeValue(value, thumb.y, shape.pitchMm);
-        if (parsed !== undefined) {
-          const target = shape.thumbs.find((candidate) => candidate.finger === finger);
-          if (target) target.y = parsed;
-        }
-      }, numberOptions));
-      thumbGrid.append(row);
-    }
-    shapeFields.append(thumbGrid);
-
-    const splitHeading = document.createElement('h4');
-    splitHeading.textContent = '分割間隔（任意）';
-    shapeFields.append(splitHeading);
-    const splitGrid = document.createElement('div');
-    splitGrid.className = 'geometry-number-grid';
-    splitGrid.append(settingNumber('開始列', shape.splitAt, (value) => {
-      shape.splitAt = fieldValue(value, 0);
-    }, { min: '0', max: '32', step: '1' }));
-    splitGrid.append(settingNumber(`間隔 [${unitLabel}]`, shape.splitGap === undefined
-      ? undefined
-      : displayValue(shape.splitGap, shape.pitchMm), (value) => {
-      shape.splitGap = shapeValue(value, shape.splitGap ?? 0, shape.pitchMm);
-    }, numberOptions));
-    shapeFields.append(splitGrid);
-  }
-
-  function updateModalButtons(): void {
-    const currentId = uiState.conditions.geometrySettings.shape.id;
-    const editable = userGeometryShapes.some((shape) => shape.id === currentId);
-    modal.save.disabled = !editable;
-    modal.delete.disabled = !editable;
-  }
-
-  function renderEditor(): void {
-    const settings = uiState.conditions.geometrySettings;
-    const shape = settings.shape;
-    const assignment = settings.assignment;
-    assignmentFields.replaceChildren();
-    const assignmentHeading = document.createElement('h3');
-    assignmentHeading.textContent = '指の割り当て';
-    assignmentFields.append(assignmentHeading);
-
-    const paintLabel = document.createElement('label');
-    paintLabel.className = 'ctl';
-    const paintText = document.createElement('span');
-    paintText.textContent = 'キー単位の上書き';
-    const paintSelect = document.createElement('select');
-    for (const finger of FINGERS) paintSelect.append(new Option(FINGER_NAMES[finger], finger));
-    paintLabel.append(paintText, paintSelect);
-    assignmentFields.append(paintLabel);
-
-    const columnsHeading = document.createElement('h4');
-    columnsHeading.textContent = '列単位の一括指定';
-    assignmentFields.append(columnsHeading);
-    const columnAssignments = document.createElement('div');
-    columnAssignments.className = 'assignment-columns';
-    const maxColumns = Math.max(...shape.rowWidths);
-    for (let column = 0; column < maxColumns; column++) {
-      const ids = shape.rowWidths
-        .map((width, row) => width > column ? keyIdForEditor(row, column) : undefined)
-        .filter((id): id is string => id !== undefined);
-      if (ids.length === 0) continue;
-      const values = ids.map((id) => assignment.keyFinger[id]);
-      const select = document.createElement('select');
-      select.title = `列${column + 1}を一括指定`;
-      select.append(new Option(`列${column + 1}`, ''));
-      for (const finger of FINGERS) select.append(new Option(FINGER_NAMES[finger], finger));
-      const first = values[0];
-      select.value = values.every((value) => value === first) ? first : '';
-      select.addEventListener('change', () => {
-        if (!isNonThumbFinger(select.value)) return;
-        updateGeometrySettings((current) => {
-          markCustomAssignment(current);
-          for (const id of ids) current.assignment.keyFinger[id] = select.value as NonThumb;
-        });
-        renderEditor();
-      });
-      columnAssignments.append(select);
-    }
-    assignmentFields.append(columnAssignments);
-
-    const keyboardHeading = document.createElement('h4');
-    keyboardHeading.textContent = 'キー単位（クリックしたキーを選択中の指へ割り当て）';
-    assignmentFields.append(keyboardHeading);
-    const keyboard = document.createElement('div');
-    keyboard.className = 'assignment-keyboard';
-    const geometry = buildGeometry(shape, assignment);
-    for (const row of geometry.grid) {
-      const line = document.createElement('div');
-      line.className = 'assignment-keyboard-row';
-      for (const key of row) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'assignment-key';
-        button.dataset.finger = key.finger;
-        button.title = `${key.id}: ${FINGER_NAMES[key.finger]}`;
-        button.textContent = `${key.id} · ${shortFinger(key.finger)}`;
-        button.addEventListener('click', () => {
-          updateGeometrySettings((current) => {
-            markCustomAssignment(current);
-            current.assignment.keyFinger[key.id] = paintSelect.value as NonThumb;
-          });
-          renderEditor();
-        });
-        line.append(button);
-      }
-      keyboard.append(line);
-    }
-    assignmentFields.append(keyboard);
-
-    const homeNote = document.createElement('p');
-    homeNote.className = 'note';
-    homeNote.textContent = 'ホームキーは配列側に紐づきます。配列追加時に指定しない場合は物理形状の既定値を使います。';
-    assignmentFields.append(homeNote);
-    refreshAnalyzerControlsCatalog();
-    if (el.geometryDialog.open) renderShapeEditor();
-  }
-
-  function keyIdForEditor(row: number, column: number): string {
-    return keyId(row, column);
-  }
-
-  function isNonThumbFinger(value: string): value is NonThumb {
-    return FINGERS.includes(value as NonThumb);
-  }
-
-  function shortFinger(finger: Finger): string {
-    return FINGER_NAMES[finger].replace(/^右|^左/, '').slice(0, 1);
-  }
-
-  function applyShape(shape: PhysicalShape, kind: GeometryKind): void {
-    updateUiState((draft) => {
-      draft.conditions.geometrySettings.shape = clonePhysicalShape(shape);
-      draft.conditions.defaults.geometry = kind;
-      draft.ui.input.geometry = kind;
-    });
-    fillGeometryOptions();
-    renderEditor();
-    playbackView?.preserveNextRender('cursor');
-    render();
-  }
-
-  function persistShape(asNew: boolean): void {
-    if (!shapeDraft) return;
-    const name = modal.name.value.trim();
-    if (!name) {
-      modal.error.textContent = '形状名を入力する';
-      modal.error.hidden = false;
-      return;
-    }
-    const shape = clonePhysicalShape(shapeDraft);
-    if (!shape.rowStagger) shape.rowStagger = ROW_NAMES.map(() => 0);
-    const currentId = uiState.conditions.geometrySettings.shape.id;
-    if (asNew || !userGeometryShapes.some((candidate) => candidate.id === currentId)) shape.id = newGeometryId();
-    shape.name = name;
-    const index = userGeometryShapes.findIndex((candidate) => candidate.id === shape.id);
-    userGeometryShapes = index < 0
-      ? [...userGeometryShapes, shape]
-      : userGeometryShapes.map((candidate, i) => i === index ? shape : candidate);
-    saveUserGeometryShapes(userGeometryShapes);
-    applyShape(shape, customGeometryKind(shape.id));
-    controlsModel.setGeometryStatus(`${shape.name}を保存した`);
-    el.geometryDialog.close();
-  }
-
-  const openEditor = () => {
-    shapeDraft = clonePhysicalShape(uiState.conditions.geometrySettings.shape);
-    shapeUnit = 'mm';
-    modal.name.value = shapeDraft.name;
-    modal.unit.value = shapeUnit;
-    modal.error.hidden = true;
-    updateModalButtons();
-    renderEditor();
-    renderShapeEditor();
-    el.geometryDialog.showModal();
-  };
-  modal.unit.addEventListener('change', () => {
-    shapeUnit = modal.unit.value as GeometryUnit;
-    renderShapeEditor();
-  });
-  modal.save.addEventListener('click', () => persistShape(false));
-  modal.saveAs.addEventListener('click', () => persistShape(true));
-  modal.delete.addEventListener('click', () => {
-    const id = uiState.conditions.geometrySettings.shape.id;
-    if (!userGeometryShapes.some((shape) => shape.id === id)) return;
-    userGeometryShapes = userGeometryShapes.filter((shape) => shape.id !== id);
-    saveUserGeometryShapes(userGeometryShapes);
-    const fallback = clonePhysicalShape(PHYSICAL_SHAPES['row-staggered']);
-    applyShape(fallback, 'row-staggered');
-    el.geometryDialog.close();
-  });
-
-  const exportSettings = () => {
-    const blob = new Blob([serializeGeometrySettings(uiState.conditions.geometrySettings)], {
-      type: 'application/json',
-    });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = 'keydist-geometry-settings.json';
-    anchor.click();
-    URL.revokeObjectURL(url);
-    controlsModel.setGeometryStatus('打ち手と機材の設定を書き出した');
-  };
-
-  const importSettings = async (file: File) => {
-    try {
-      const settings = parseGeometrySettings(
-        await file.text(),
-        uiState.conditions.geometrySettings,
-      );
-      const shape = clonePhysicalShape(settings.shape);
-      shape.id = newGeometryId();
-      if (!shape.rowStagger) shape.rowStagger = ROW_NAMES.map(() => 0);
-      if (shape.name === 'カスタム形状') shape.name = '読み込んだ形状';
-      userGeometryShapes = [...userGeometryShapes, shape];
-      saveUserGeometryShapes(userGeometryShapes);
-      updateUiState((current) => {
-        current.conditions.geometrySettings.assignment = settings.assignment;
-        current.conditions.geometrySettings.shape = shape;
-        current.conditions.defaults.geometry = customGeometryKind(shape.id);
-        current.ui.input.geometry = customGeometryKind(shape.id);
-      });
-      fillGeometryOptions();
-      renderEditor();
-      playbackView?.preserveNextRender('cursor');
-      render();
-      controlsModel.setGeometryStatus('打ち手と機材の設定を読み込んだ');
-    } catch (error) {
-      controlsModel.setGeometryStatus(
-        error instanceof Error ? error.message : '設定ファイルを読み込めない',
-      );
-    }
-  };
-
-  geometryEditorController = {
-    refresh: renderEditor,
-    open: openEditor,
-    exportSettings,
-    importSettings,
-  };
-  fillGeometryOptions();
-  renderEditor();
 }
 
 const conditionsSurfaceModel = createAnalyzerConditionsSurfaceModel();
@@ -1528,6 +1089,30 @@ function openConditionsDialog(): void {
 let playbackView: PlaybackViewController;
 let calibrationDialog: CalibrationDialogController | undefined;
 let resultsView: ResultsViewController;
+
+const geometryEditorModel = createAnalyzerGeometryEditorModel({
+  stateOwner,
+  getUserGeometryShapes: () => userGeometryShapes,
+  commitUserGeometryShapes: (shapes) => {
+    userGeometryShapes = shapes;
+    saveUserGeometryShapes(shapes);
+  },
+  onGeometryChanged: (preservePlaybackCursor) => {
+    fillGeometryOptions();
+    if (preservePlaybackCursor) playbackView?.preserveNextRender('cursor');
+    render();
+  },
+  setStatus: (status) => controlsModel.setGeometryStatus(status),
+  download: (filename, content, type) => {
+    const url = URL.createObjectURL(new Blob([content], { type }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  },
+});
+
 const playbackSurfaceModel = createAnalyzerPlaybackSurfaceModel();
 const playbackSettingsModel = createAnalyzerPlaybackSettingsModel();
 
@@ -1791,6 +1376,7 @@ analyzerReactShell = mountAnalyzerReactShell({
   layoutEditorModel,
   bigramFlowModel,
   controlsModel,
+  geometryEditorModel,
   romajiDialogModel,
   onModeChange,
   onTextInput: scheduleTextRender,
@@ -1800,7 +1386,6 @@ analyzerReactShell = mountAnalyzerReactShell({
   onPlaybackSettingsCommit: () => playbackView.commitSettings(),
   onAddLayout: addUserLayout,
   onCalibrationMount: initializeCalibrationDialog,
-  onGeometryMount: setupGeometryEditor,
   onToggleLayout: (layoutId, enabled) => {
     const mode = currentModeId();
     updateUiState((draft) => {
@@ -1897,14 +1482,16 @@ analyzerReactShell = mountAnalyzerReactShell({
       draft.conditions.geometrySettings.shape = shape;
     });
     fillGeometryOptions();
-    refreshGeometryEditor();
     playbackView.preserveNextRender('cursor');
     render();
   },
-  onGeometryEdit: () => geometryEditorController?.open(),
-  onGeometryExport: () => geometryEditorController?.exportSettings(),
+  onGeometryEdit: () => {
+    geometryEditorModel.refresh();
+    el.geometryDialog.showModal();
+  },
+  onGeometryExport: () => geometryEditorModel.exportSettings(),
   onGeometryImport: async (file) => {
-    await geometryEditorController?.importSettings(file);
+    await geometryEditorModel.importSettings(file);
   },
   onOpenHow: () => el.howDialog.showModal(),
   onOpenConditions: openConditionsDialog,
