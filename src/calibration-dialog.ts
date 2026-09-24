@@ -14,13 +14,60 @@ import {
   type CalibrationKeyPair, type FingerSpeedSample, type PlaybackCalibration,
 } from './playback-calibration.ts';
 import type { Layout } from './layouts/index.ts';
-import { FINGER_LABEL, type AppElements } from './app-dom.ts';
+import { FINGER_LABEL } from './app-dom.ts';
 import type { UiPlaybackState, UiStateStorage, UiStateV1 } from './ui-state.ts';
 import { savePlaybackCalibration } from './playback-calibration.ts';
 import type { GeometrySettings } from './geometry-settings.ts';
 
+export interface CalibrationDialogElements {
+  calibrationDialog: HTMLDialogElement;
+  calibrationStart: HTMLButtonElement;
+  calibrationArpeggioStart: HTMLButtonElement;
+  calibrationSave: HTMLButtonElement;
+  calibrationDiscard: HTMLButtonElement;
+  calibrationInstruction: HTMLParagraphElement;
+  calibrationProgress: HTMLOutputElement;
+  calibrationError: HTMLParagraphElement;
+  calibrationResult: HTMLDivElement;
+  calibrationActions: HTMLInputElement;
+  calibrationDirections: HTMLDivElement;
+  calibrationSameHand: HTMLInputElement;
+  calibrationSameHandPairs: HTMLDivElement;
+  calibrationDirectedPairs: HTMLDivElement;
+  calibrationFingerSpeed: HTMLInputElement;
+  calibrationFingerInputs: HTMLDivElement;
+}
+
+export function resolveCalibrationDialogElements(
+  dialog: HTMLDialogElement,
+): CalibrationDialogElements {
+  const find = <T extends HTMLElement>(id: string): T => {
+    const element = dialog.querySelector<T>(`#${id}`);
+    if (!element) throw new Error(`Calibration element is missing: #${id}`);
+    return element;
+  };
+  return {
+    calibrationDialog: dialog,
+    calibrationStart: find('playback-calibration-start'),
+    calibrationArpeggioStart: find('playback-calibration-arpeggio-start'),
+    calibrationSave: find('playback-calibration-save'),
+    calibrationDiscard: find('playback-calibration-discard'),
+    calibrationInstruction: find('playback-calibration-instruction'),
+    calibrationProgress: find('playback-calibration-progress'),
+    calibrationError: find('playback-calibration-error'),
+    calibrationResult: find('playback-calibration-result'),
+    calibrationActions: find('playback-calibration-actions'),
+    calibrationDirections: find('playback-calibration-directions'),
+    calibrationSameHand: find('playback-calibration-same-hand'),
+    calibrationSameHandPairs: find('playback-calibration-same-hand-pairs'),
+    calibrationDirectedPairs: find('playback-calibration-directed-pairs'),
+    calibrationFingerSpeed: find('playback-calibration-finger-speed'),
+    calibrationFingerInputs: find('playback-calibration-finger-inputs'),
+  };
+}
+
 export interface CalibrationDialogContext {
-  el: AppElements;
+  getElements: () => CalibrationDialogElements;
   storage: UiStateStorage | undefined;
   getUiState: () => UiStateV1;
   updateUiState: (change: (draft: UiStateV1) => void) => void;
@@ -40,7 +87,7 @@ export interface CalibrationDialogController {
 }
 
 export function createCalibrationDialog(ctx: CalibrationDialogContext): CalibrationDialogController {
-  const elements = ctx.el;
+  const elements = ctx.getElements();
 
 type CalibrationPhase = 'actions' | 'finger' | 'same-hand' | 'arpeggio' | 'result';
 type CalibrationMode = 'normal' | 'arpeggio';
