@@ -620,6 +620,34 @@ test('Workspace animationはreduced-motionを尊重する', async ({ page }) => 
   expect(['none', 'matrix(1, 0, 0, 1, 0, 0)']).toContain(motionState.transform);
 });
 
+test('新下駄レイヤーカンペはpresentation-only交点を表示する', async ({ page }) => {
+  await page.goto('/input');
+
+  const feature = page.locator('.input-feature');
+  await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
+  await page.getByLabel('配列', { exact: true }).selectOption('shingeta');
+  await expect(feature).toHaveAttribute('data-input-ready', 'shingeta');
+
+  const middle = page.getByLabel('中指シフト 個別カンペ');
+  const ring = page.getByLabel('薬指シフト 個別カンペ');
+
+  // semantic所属は別レイヤーでも、authoringでpresentationCellsとして明示した交点を表示する。
+  await expect(
+    middle.locator('[data-key-id="l"] .physical-keyboard-legend'),
+  ).toHaveText('お');
+  await expect(
+    ring.locator('[data-key-id="k"] .physical-keyboard-legend'),
+  ).toHaveText('じ');
+
+  // reciprocal faceの通常セルも同じpresentation viewに残る。
+  await expect(
+    middle.locator('[data-key-id="d"] .physical-keyboard-legend'),
+  ).toHaveText('れ');
+  await expect(
+    middle.locator('[data-key-id="k"] .physical-keyboard-legend'),
+  ).toHaveText('れ');
+});
+
 test('レイヤーカンペは盤面ごとに独立して複数小窓表示できる', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/input');
