@@ -32,8 +32,8 @@ export function hideTip() {
 }
 
 /** 図全体にツールチップの挙動を付ける。data-tipを持つ要素に反応する */
-export function bindTips(root: HTMLElement) {
-  root.addEventListener('mousemove', (e) => {
+export function bindTips(root: HTMLElement): () => void {
+  const onMouseMove = (e: MouseEvent) => {
     const target = (e.target as Element).closest('[data-tip]');
     if (!target) {
       hideTip();
@@ -44,8 +44,14 @@ export function bindTips(root: HTMLElement) {
     // 配列図はホバーのたびにマウス追従だと目で追いにくいので、その図の右に固定表示する
     const diagram = target.closest('.layer-diagram') ?? undefined;
     showTip(target.getAttribute('data-tip')!, e, wrap, diagram);
-  });
+  };
+  root.addEventListener('mousemove', onMouseMove);
   root.addEventListener('mouseleave', hideTip);
+  return () => {
+    root.removeEventListener('mousemove', onMouseMove);
+    root.removeEventListener('mouseleave', hideTip);
+    hideTip();
+  };
 }
 
 /**
