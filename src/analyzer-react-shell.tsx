@@ -25,6 +25,17 @@ import type { AnalyzerRomajiDialogModel } from './analyzer-romaji-dialog-model.t
 import { AnalyzerBigramFlow } from './features/bigram-vector/analyzer-bigram-flow.tsx';
 import type { AnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 import type { AnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
+import type { AnalyzerMetricsModel } from './analyzer-metrics-model.ts';
+import {
+  AnalyzerAdjacentChart,
+  AnalyzerComparisonChart,
+  AnalyzerComparisonTable,
+  AnalyzerDetailConditions,
+  AnalyzerFingerChart,
+  AnalyzerMatrixResult,
+  AnalyzerSensitivityResults,
+  AnalyzerTextMetricsStatus,
+} from './analyzer-metrics-content.tsx';
 import type { AnalyzerControlsModel } from './analyzer-controls-model.ts';
 import {
   AnalyzerConditionsDialog,
@@ -45,6 +56,15 @@ export interface AnalyzerReactShellOptions {
   modeSlot: HTMLElement;
   textPanelSlot: HTMLElement;
   comparisonSlot: HTMLElement;
+  compareChartSlot: HTMLElement;
+  compareTableSlot: HTMLTableElement;
+  detailConditionsSlot: HTMLElement;
+  fingerChartSlot: HTMLElement;
+  adjacentChartSlot: HTMLElement;
+  pressMatrixSlot: HTMLElement;
+  fingerMatrixSlot: HTMLElement;
+  adjacentMeanMatrixSlot: HTMLElement;
+  adjacentStdDevMatrixSlot: HTMLElement;
   sensitivityPanelSlot: HTMLElement;
   playbackSlot: HTMLElement;
   playbackSettingsSlot: HTMLElement;
@@ -66,6 +86,7 @@ export interface AnalyzerReactShellOptions {
   conditionsActions: AnalyzerConditionsActions;
   layoutEditorModel: AnalyzerLayoutEditorModel;
   bigramFlowModel: AnalyzerBigramFlowModel;
+  metricsModel: AnalyzerMetricsModel;
   controlsModel: AnalyzerControlsModel;
   calibrationModel: AnalyzerCalibrationModel;
   geometryEditorModel: AnalyzerGeometryEditorModel;
@@ -159,6 +180,15 @@ function AnalyzerReactShell({
   modeSlot,
   textPanelSlot,
   comparisonSlot,
+  compareChartSlot,
+  compareTableSlot,
+  detailConditionsSlot,
+  fingerChartSlot,
+  adjacentChartSlot,
+  pressMatrixSlot,
+  fingerMatrixSlot,
+  adjacentMeanMatrixSlot,
+  adjacentStdDevMatrixSlot,
   sensitivityPanelSlot,
   playbackSlot,
   playbackSettingsSlot,
@@ -180,6 +210,7 @@ function AnalyzerReactShell({
   conditionsActions,
   layoutEditorModel,
   bigramFlowModel,
+  metricsModel,
   controlsModel,
   calibrationModel,
   geometryEditorModel,
@@ -330,8 +361,7 @@ function AnalyzerReactShell({
             <>
               <span className="text-title">評価テキスト</span>
               <span className="text-status">
-                <span className="meta" id="text-meta" />
-                <span className="error" id="errors" />
+                <AnalyzerTextMetricsStatus model={metricsModel} />
               </span>
             </>
           )}
@@ -401,6 +431,42 @@ function AnalyzerReactShell({
         comparisonSlot,
       )}
       {createPortal(
+        <AnalyzerComparisonChart model={metricsModel} stateOwner={stateOwner} />,
+        compareChartSlot,
+      )}
+      {createPortal(
+        <AnalyzerComparisonTable model={metricsModel} stateOwner={stateOwner} />,
+        compareTableSlot,
+      )}
+      {createPortal(
+        <AnalyzerDetailConditions model={metricsModel} stateOwner={stateOwner} />,
+        detailConditionsSlot,
+      )}
+      {createPortal(
+        <AnalyzerFingerChart model={metricsModel} />,
+        fingerChartSlot,
+      )}
+      {createPortal(
+        <AnalyzerAdjacentChart model={metricsModel} />,
+        adjacentChartSlot,
+      )}
+      {createPortal(
+        <AnalyzerMatrixResult model={metricsModel} stateOwner={stateOwner} kind="press" />,
+        pressMatrixSlot,
+      )}
+      {createPortal(
+        <AnalyzerMatrixResult model={metricsModel} stateOwner={stateOwner} kind="finger" />,
+        fingerMatrixSlot,
+      )}
+      {createPortal(
+        <AnalyzerMatrixResult model={metricsModel} stateOwner={stateOwner} kind="adjacentMean" />,
+        adjacentMeanMatrixSlot,
+      )}
+      {createPortal(
+        <AnalyzerMatrixResult model={metricsModel} stateOwner={stateOwner} kind="adjacentStdDev" />,
+        adjacentStdDevMatrixSlot,
+      )}
+      {createPortal(
         <AnalyzerStatefulPanel
           stateOwner={stateOwner}
           panel="sensitivity"
@@ -442,7 +508,7 @@ function AnalyzerReactShell({
             </>
           )}
         >
-          <div id="sensitivity" data-imperative-output="sensitivity" />
+          <AnalyzerSensitivityResults model={metricsModel} stateOwner={stateOwner} />
           <p className="note">
             Nを増やすと距離は減るか変わらない。見るべきは傾きの差。<br />
             傾きが大きいほど、ホームから離れた連続打鍵が多い。<br />
@@ -582,6 +648,15 @@ export function mountAnalyzerReactShell(
       modeSlot={options.modeSlot}
       textPanelSlot={options.textPanelSlot}
       comparisonSlot={options.comparisonSlot}
+      compareChartSlot={options.compareChartSlot}
+      compareTableSlot={options.compareTableSlot}
+      detailConditionsSlot={options.detailConditionsSlot}
+      fingerChartSlot={options.fingerChartSlot}
+      adjacentChartSlot={options.adjacentChartSlot}
+      pressMatrixSlot={options.pressMatrixSlot}
+      fingerMatrixSlot={options.fingerMatrixSlot}
+      adjacentMeanMatrixSlot={options.adjacentMeanMatrixSlot}
+      adjacentStdDevMatrixSlot={options.adjacentStdDevMatrixSlot}
       sensitivityPanelSlot={options.sensitivityPanelSlot}
       playbackSlot={options.playbackSlot}
       playbackSettingsSlot={options.playbackSettingsSlot}
@@ -603,6 +678,7 @@ export function mountAnalyzerReactShell(
       conditionsActions={options.conditionsActions}
       layoutEditorModel={options.layoutEditorModel}
       bigramFlowModel={options.bigramFlowModel}
+      metricsModel={options.metricsModel}
       controlsModel={options.controlsModel}
       calibrationModel={options.calibrationModel}
       geometryEditorModel={options.geometryEditorModel}
