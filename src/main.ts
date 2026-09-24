@@ -918,6 +918,7 @@ analyzerReactShell = mountAnalyzerReactShell({
   stateOwner: uiStateOwner,
   comparisonModel,
   playbackSurfaceModel,
+  playbackSurfaceActions: playbackView.surfaceActions,
   playbackSettingsModel,
   playbackSettingsActions: playbackView.settingsActions,
   conditionsModel,
@@ -933,7 +934,6 @@ analyzerReactShell = mountAnalyzerReactShell({
   onTextInput: scheduleTextRender,
   onTextCommit: flushTextRender,
   onMetricsChange: render,
-  onPlaybackSurfaceCommit: () => playbackView.commitSurface(),
   onAddLayout: addUserLayout,
   onToggleLayout: (layoutId, enabled) => {
     const mode = currentModeId();
