@@ -24,6 +24,7 @@ import {
   aggregationTriggerDisplayText,
   aggregationTriggerKeys,
   compactLayerGuideDefinitions,
+  presentationLayerGuide,
   presentationTriggerColorSlots,
   semanticCombinationLabels,
 } from '../../layers.ts';
@@ -1035,8 +1036,9 @@ export function InputConverterView() {
                 } as CSSProperties}
               >
                 {guideDefinitions.map((definition) => {
-                  const legends = aggregationLegendMap(layout, definition.id);
-                  const triggers = new Set(aggregationTriggerKeys(layout, definition.id));
+                  const guide = presentationLayerGuide(layout, definition.id);
+                  const legends = guide?.legends ?? new Map<string, string>();
+                  const triggers = new Set(guide?.triggerKeys ?? []);
                   const views = new Map<string, PhysicalKeyboardKeyView>(
                     visibleKeys.map((key) => [
                       key.id,
@@ -1101,7 +1103,7 @@ export function InputConverterView() {
                     >
                       <p>
                         {triggers.size > 0
-                          ? `trigger: ${aggregationTriggerDisplayText(layout, definition.id)}`
+                          ? `trigger: ${guide?.triggerDisplayText ?? '—'}`
                           : 'trigger: —'}
                       </p>
                       <PhysicalKeyboard
