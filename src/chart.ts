@@ -1,5 +1,5 @@
 /** ツールチップ。SVGの外に置いた1つの要素を使い回す */
-const tip = () => document.getElementById('tooltip') as HTMLDivElement;
+const tip = () => document.getElementById('tooltip') as HTMLDivElement | null;
 
 /**
  * anchorを渡すと、マウス座標ではなくその要素の右側に固定表示する。
@@ -8,6 +8,7 @@ const tip = () => document.getElementById('tooltip') as HTMLDivElement;
  */
 export function showTip(html: string, event: MouseEvent, wrap = false, anchor?: Element) {
   const el = tip();
+  if (!el) return;
   el.innerHTML = html;
   el.classList.toggle('wrap', wrap);
   el.hidden = false;
@@ -28,7 +29,8 @@ export function showTip(html: string, event: MouseEvent, wrap = false, anchor?: 
 }
 
 export function hideTip() {
-  tip().hidden = true;
+  const el = tip();
+  if (el) el.hidden = true;
 }
 
 /** 図全体にツールチップの挙動を付ける。data-tipを持つ要素に反応する */
