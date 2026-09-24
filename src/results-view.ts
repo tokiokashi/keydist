@@ -17,6 +17,7 @@ import {
 } from './chart.ts';
 import { FINGER_LABEL, SHORT_FINGER, SERIES, type AppElements } from './app-dom.ts';
 import type { AnalyzerComparisonModel } from './analyzer-comparison-model.ts';
+import type { AnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
 import {
   type LayerColorScale, type LayerView, type MatrixKind, type UiStateV1,
 } from './ui-state.ts';
@@ -55,6 +56,7 @@ export interface ResultsViewContext {
   getGeometrySettingsForKind: (kind: GeometryKind) => GeometrySettings;
   playback: PlaybackViewController;
   comparisonModel: AnalyzerComparisonModel;
+  bigramFlowModel: AnalyzerBigramFlowModel;
 }
 
 export interface ResultsViewController {
@@ -157,6 +159,7 @@ function render() {
   if (results.length === 0) {
     lastDetail = null;
     ctx.playback.clear();
+    ctx.bigramFlowModel.clear();
     elements.textMeta.textContent = '配列を1つ以上選ぶ';
     elements.compareChart.innerHTML = '';
     syncCompareOptions([], false);
@@ -654,6 +657,7 @@ function renderDetail(results: Result[]) {
   elements.detailConditions.textContent = metricConditionText(metrics, layout);
 
   ctx.playback.render(found.trace, layout, geometry, options, found.analysis);
+  ctx.bigramFlowModel.setData({ layout, trace: found.trace, geometry });
   renderHeatmap(metrics, layout, geometry);
 
   const total = metrics.totalUnits || 1;

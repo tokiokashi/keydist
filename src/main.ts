@@ -53,6 +53,7 @@ import { createAnalyzerPlaybackSurfaceModel } from './analyzer-playback-surface-
 import { createAnalyzerPlaybackSettingsModel } from './analyzer-playback-settings-model.ts';
 import { createAnalyzerConditionsSurfaceModel } from './analyzer-conditions-surface-model.ts';
 import { createAnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
+import { createAnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import { el, SERIES } from './app-dom.ts';
 import { createRomajiEditor } from './romaji-editor.ts';
@@ -110,6 +111,7 @@ let userGeometryShapes: PhysicalShape[] = loadUserGeometryShapes();
 let romajiSettings = loadRomajiSettings();
 let conditionPresets: ConditionPreset[] = loadConditionPresets();
 const layoutEditorModel = createAnalyzerLayoutEditorModel(allRomajiRules(romajiSettings.rules));
+const bigramFlowModel = createAnalyzerBigramFlowModel();
 const ROMAJI_TABLE_CACHE = new Map<string, Map<string, string>>();
 let conditionState: UiStateV1 | undefined;
 
@@ -1816,6 +1818,7 @@ resultsView = createResultsView({
   getGeometrySettingsForKind: geometrySettingsForKind,
   playback: playbackView,
   comparisonModel,
+  bigramFlowModel,
 });
 
 function render(): void {
@@ -1835,6 +1838,7 @@ const analyzerTextControlSlot = document.getElementById('analyzer-text-controls'
 const analyzerComparisonControlSlot = document.getElementById('analyzer-comparison-controls');
 const analyzerSensitivityControlSlot = document.getElementById('analyzer-sensitivity-controls');
 const analyzerLayoutEditorSlot = document.getElementById('analyzer-layout-editor');
+const analyzerBigramFlowSlot = document.getElementById('analyzer-bigram-flow');
 if (
   !analyzerReactShellRoot
   || !analyzerModeControlSlot
@@ -1842,6 +1846,7 @@ if (
   || !analyzerComparisonControlSlot
   || !analyzerSensitivityControlSlot
   || !analyzerLayoutEditorSlot
+  || !analyzerBigramFlowSlot
 ) {
   throw new Error('Analyzer React shell mount point is missing');
 }
@@ -1856,12 +1861,14 @@ analyzerReactShell = mountAnalyzerReactShell({
   conditionsSlot: el.conditionDescription,
   layoutEditorSlot: analyzerLayoutEditorSlot,
   calibrationDialogSlot: el.calibrationDialog,
+  bigramFlowSlot: analyzerBigramFlowSlot,
   stateOwner: uiStateOwner,
   comparisonModel,
   playbackSurfaceModel,
   playbackSettingsModel,
   conditionsSurfaceModel,
   layoutEditorModel,
+  bigramFlowModel,
   onModeChange,
   onTextInput: scheduleTextRender,
   onTextCommit: flushTextRender,
