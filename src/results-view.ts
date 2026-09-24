@@ -57,6 +57,7 @@ export interface ResultsViewContext {
   playback: PlaybackViewController;
   comparisonModel: AnalyzerComparisonModel;
   bigramFlowModel: AnalyzerBigramFlowModel;
+  getDetailLayoutId: () => string | undefined;
 }
 
 export interface ResultsViewController {
@@ -66,7 +67,6 @@ export interface ResultsViewController {
 
 export function createResultsView(ctx: ResultsViewContext): ResultsViewController {
   const elements = ctx.el;
-  let sensitivityDirty = true;
   const comboDiagramSelection = new Map<string, number>();
   /** 配列図でクリック選択中のトリガー候補キー（物理キーid）。配列ごとに独立して覚える。 */
   const keyPatternPickerSelection = new Map<string, Set<string>>();
@@ -116,8 +116,6 @@ function render() {
     return geometry;
   };
   const text = ctx.getText();
-  elements.windowOut.value = String(ctx.getUiState().conditions.defaults.windowSize);
-
   const set = ctx.selected[ctx.currentModeId()];
   const results: Result[] = ctx.currentMode().layouts
     .map((layout, slot) => ({ layout, slot }))
@@ -588,7 +586,6 @@ function bindCompareSort(root: HTMLElement) {
  */
 function showSensitivityPlaceholder(message = 'N感度はパネルを開くと計算します') {
   elements.sensitivity.innerHTML = `<p class="note">${message}</p>`;
-  sensitivityDirty = true;
 }
 
 function renderSensitivity(text: string, results: readonly Result[]) {
@@ -622,7 +619,6 @@ function renderSensitivity(text: string, results: readonly Result[]) {
   elements.sensitivity.innerHTML = relative
     ? lineChart(series, range, (v) => `${v.toFixed(0)}%`, { yMax: 100 })
     : lineChart(series, range, (v) => `${v.toFixed(0)} u`);
-  sensitivityDirty = false;
 }
 
 function sensitivityLabel(
@@ -650,7 +646,7 @@ function sensitivityLabel(
 }
 
 function renderDetail(results: Result[]) {
-  const found = results.find((r) => r.layout.id === elements.detailLayout.value) ?? results[0];
+  const found = results.find((r) => r.layout.id === ctx.getDetailLayoutId()) ?? results[0];
   const { metrics, layout, geometry, options } = found;
   lastDetail = { metrics, layout, geometry };
 
@@ -1417,14 +1413,6 @@ function renderHeatmap(
 }
 
   function setup(): void {
-    elements.sensitivityPanel.addEventListener('toggle', () => {
-      ctx.updateUiState((draft) => { draft.ui.panels.sensitivity = elements.sensitivityPanel.open; });
-      if (!elements.sensitivityPanel.open) {
-        showSensitivityPlaceholder();
-        return;
-      }
-      if (sensitivityDirty) render();
-    });
     elements.heatmap.addEventListener('change', (e) => {
       const guideCheckbox = (e.target as Element).closest<HTMLInputElement>('input[data-picker-guide]');
       if (guideCheckbox) {
@@ -1506,7 +1494,8 @@ function renderHeatmap(
     // 配列図（キーボードSVG）以外のどこかをクリックしたら、今表示中の配列の選択を解く。
     document.addEventListener('click', (e) => {
       if ((e.target as Element).closest('.layer-diagram')) return;
-      const layoutId = elements.detailLayout.value;
+      const layoutId = ctx.getDetailLayoutId();
+      if (!layoutId) return;
       const selection = keyPatternPickerSelection.get(layoutId);
       if (selection && selection.size > 0) {
         selection.clear();

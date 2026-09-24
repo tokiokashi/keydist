@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useLayoutEffect, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import {
@@ -19,6 +19,16 @@ import { AnalyzerRomajiDialog } from './analyzer-romaji-dialog.tsx';
 import { AnalyzerBigramFlow } from './features/bigram-vector/analyzer-bigram-flow.tsx';
 import type { AnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 import type { AnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
+import type { AnalyzerControlsModel } from './analyzer-controls-model.ts';
+import {
+  AnalyzerConditionsDialog,
+  AnalyzerDialogActions,
+  AnalyzerGeometryControls,
+  AnalyzerHowDialog,
+  AnalyzerPanelStateBridge,
+  AnalyzerSidebarControls,
+} from './analyzer-remaining-ui.tsx';
+import type { GeometryKind } from './geometry.ts';
 import type { UserLayout } from './user-layouts.ts';
 import { MAX_SAVED_TEXT_LENGTH } from './ui-state.ts';
 
@@ -30,12 +40,19 @@ export interface AnalyzerReactShellOptions {
   sensitivitySlot: HTMLElement;
   playbackSlot: HTMLElement;
   playbackSettingsSlot: HTMLElement;
-  conditionsSlot: HTMLElement;
   layoutEditorSlot: HTMLElement;
   calibrationDialogSlot: HTMLDialogElement;
   geometryDialogSlot: HTMLDialogElement;
   romajiDialogSlot: HTMLDialogElement;
   bigramFlowSlot: HTMLElement;
+  dialogActionsSlot: HTMLElement;
+  sidebarControlsSlot: HTMLElement;
+  geometryControlsSlot: HTMLElement;
+  howDialogSlot: HTMLDialogElement;
+  conditionsDialogSlot: HTMLDialogElement;
+  addPanel: HTMLDetailsElement;
+  textPanel: HTMLDetailsElement;
+  sensitivityPanel: HTMLDetailsElement;
   stateOwner: AnalyzerUiStateOwner;
   comparisonModel: AnalyzerComparisonModel;
   playbackSurfaceModel: AnalyzerPlaybackSurfaceModel;
@@ -43,17 +60,36 @@ export interface AnalyzerReactShellOptions {
   conditionsSurfaceModel: AnalyzerConditionsSurfaceModel;
   layoutEditorModel: AnalyzerLayoutEditorModel;
   bigramFlowModel: AnalyzerBigramFlowModel;
+  controlsModel: AnalyzerControlsModel;
   onModeChange: () => void;
   onTextInput: () => void;
   onTextCommit: () => void;
   onMetricsChange: () => void;
   onPlaybackSurfaceCommit: () => void;
   onPlaybackSettingsCommit: () => void;
-  onConditionsSurfaceCommit: (snapshot: AnalyzerConditionsSurfaceSnapshot) => void;
+  onConditionsSurfaceCommit: (
+    snapshot: AnalyzerConditionsSurfaceSnapshot,
+    root: HTMLElement,
+  ) => void;
   onAddLayout: (definition: UserLayout) => void;
   onCalibrationMount: () => void;
   onGeometryMount: () => void;
   onRomajiMount: () => void;
+  onToggleLayout: (layoutId: string, enabled: boolean) => void;
+  onRemoveLayout: (layoutId: string) => void;
+  onDetailLayoutChange: (layoutId: string) => void;
+  onDetailGeometryChange: (layoutId: string, geometry: GeometryKind) => void;
+  onWindowSizeChange: (value: number) => void;
+  onSfbHomeChange: (value: boolean) => void;
+  onPreferOppositeThumbChange: (value: boolean) => void;
+  onDefaultGeometryChange: (geometry: GeometryKind) => void;
+  onGeometryEdit: () => void;
+  onGeometryExport: () => void;
+  onGeometryImport: (file: File) => void | Promise<void>;
+  onOpenHow: () => void;
+  onOpenConditions: () => void;
+  onOpenRomaji: () => void;
+  onSensitivityToggle: (open: boolean) => void;
 }
 
 export interface AnalyzerReactShellController {
@@ -115,29 +151,6 @@ function AnalyzerPlaybackSettings({
   );
 }
 
-function AnalyzerConditionsSurface({
-  model,
-  onCommit,
-}: {
-  model: AnalyzerConditionsSurfaceModel;
-  onCommit: (snapshot: AnalyzerConditionsSurfaceSnapshot) => void;
-}) {
-  const snapshot = useSyncExternalStore(
-    model.subscribe,
-    model.getSnapshot,
-    model.getSnapshot,
-  );
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    if (!snapshot.content || !rootRef.current) return;
-    rootRef.current.replaceChildren(snapshot.content);
-    onCommit(snapshot);
-  }, [snapshot.revision, snapshot.content, onCommit]);
-
-  return <div ref={rootRef} data-react-feature="conditions" />;
-}
-
 function AnalyzerReactShell({
   modeSlot,
   textSlot,
@@ -145,12 +158,19 @@ function AnalyzerReactShell({
   sensitivitySlot,
   playbackSlot,
   playbackSettingsSlot,
-  conditionsSlot,
   layoutEditorSlot,
   calibrationDialogSlot,
   geometryDialogSlot,
   romajiDialogSlot,
   bigramFlowSlot,
+  dialogActionsSlot,
+  sidebarControlsSlot,
+  geometryControlsSlot,
+  howDialogSlot,
+  conditionsDialogSlot,
+  addPanel,
+  textPanel,
+  sensitivityPanel,
   stateOwner,
   comparisonModel,
   playbackSurfaceModel,
@@ -158,6 +178,7 @@ function AnalyzerReactShell({
   conditionsSurfaceModel,
   layoutEditorModel,
   bigramFlowModel,
+  controlsModel,
   textModel,
   onModeChange,
   onTextInput,
@@ -170,6 +191,21 @@ function AnalyzerReactShell({
   onCalibrationMount,
   onGeometryMount,
   onRomajiMount,
+  onToggleLayout,
+  onRemoveLayout,
+  onDetailLayoutChange,
+  onDetailGeometryChange,
+  onWindowSizeChange,
+  onSfbHomeChange,
+  onPreferOppositeThumbChange,
+  onDefaultGeometryChange,
+  onGeometryEdit,
+  onGeometryExport,
+  onGeometryImport,
+  onOpenHow,
+  onOpenConditions,
+  onOpenRomaji,
+  onSensitivityToggle,
 }: Omit<AnalyzerReactShellOptions, 'root'> & { textModel: AnalyzerTextModel }) {
   const state = useSyncExternalStore(
     stateOwner.subscribe,
@@ -384,12 +420,58 @@ function AnalyzerReactShell({
         playbackSettingsSlot,
       )}
       {createPortal(
-        <AnalyzerConditionsSurface
+        <AnalyzerDialogActions
+          onOpenHow={onOpenHow}
+          onOpenConditions={onOpenConditions}
+        />,
+        dialogActionsSlot,
+      )}
+      {createPortal(
+        <AnalyzerSidebarControls
+          stateOwner={stateOwner}
+          model={controlsModel}
+          onToggleLayout={onToggleLayout}
+          onRemoveLayout={onRemoveLayout}
+          onDetailLayoutChange={onDetailLayoutChange}
+          onDetailGeometryChange={onDetailGeometryChange}
+          onWindowSizeChange={onWindowSizeChange}
+          onSfbHomeChange={onSfbHomeChange}
+          onPreferOppositeThumbChange={onPreferOppositeThumbChange}
+          onOpenConditions={onOpenConditions}
+          onOpenRomaji={onOpenRomaji}
+        />,
+        sidebarControlsSlot,
+      )}
+      {createPortal(
+        <AnalyzerGeometryControls
+          stateOwner={stateOwner}
+          model={controlsModel}
+          onGeometryChange={onDefaultGeometryChange}
+          onEdit={onGeometryEdit}
+          onExport={onGeometryExport}
+          onImport={onGeometryImport}
+        />,
+        geometryControlsSlot,
+      )}
+      {createPortal(
+        <AnalyzerHowDialog dialog={howDialogSlot} />,
+        howDialogSlot,
+      )}
+      {createPortal(
+        <AnalyzerConditionsDialog
+          dialog={conditionsDialogSlot}
           model={conditionsSurfaceModel}
           onCommit={onConditionsSurfaceCommit}
         />,
-        conditionsSlot,
+        conditionsDialogSlot,
       )}
+      <AnalyzerPanelStateBridge
+        stateOwner={stateOwner}
+        addPanel={addPanel}
+        textPanel={textPanel}
+        sensitivityPanel={sensitivityPanel}
+        onSensitivityToggle={onSensitivityToggle}
+      />
       {createPortal(
         <AnalyzerLayoutEditor
           model={layoutEditorModel}
@@ -436,12 +518,19 @@ export function mountAnalyzerReactShell(
       sensitivitySlot={options.sensitivitySlot}
       playbackSlot={options.playbackSlot}
       playbackSettingsSlot={options.playbackSettingsSlot}
-      conditionsSlot={options.conditionsSlot}
       layoutEditorSlot={options.layoutEditorSlot}
       calibrationDialogSlot={options.calibrationDialogSlot}
       geometryDialogSlot={options.geometryDialogSlot}
       romajiDialogSlot={options.romajiDialogSlot}
       bigramFlowSlot={options.bigramFlowSlot}
+      dialogActionsSlot={options.dialogActionsSlot}
+      sidebarControlsSlot={options.sidebarControlsSlot}
+      geometryControlsSlot={options.geometryControlsSlot}
+      howDialogSlot={options.howDialogSlot}
+      conditionsDialogSlot={options.conditionsDialogSlot}
+      addPanel={options.addPanel}
+      textPanel={options.textPanel}
+      sensitivityPanel={options.sensitivityPanel}
       stateOwner={options.stateOwner}
       comparisonModel={options.comparisonModel}
       playbackSurfaceModel={options.playbackSurfaceModel}
@@ -449,6 +538,7 @@ export function mountAnalyzerReactShell(
       conditionsSurfaceModel={options.conditionsSurfaceModel}
       layoutEditorModel={options.layoutEditorModel}
       bigramFlowModel={options.bigramFlowModel}
+      controlsModel={options.controlsModel}
       textModel={textModel}
       onModeChange={options.onModeChange}
       onTextInput={options.onTextInput}
@@ -461,6 +551,21 @@ export function mountAnalyzerReactShell(
       onCalibrationMount={options.onCalibrationMount}
       onGeometryMount={options.onGeometryMount}
       onRomajiMount={options.onRomajiMount}
+      onToggleLayout={options.onToggleLayout}
+      onRemoveLayout={options.onRemoveLayout}
+      onDetailLayoutChange={options.onDetailLayoutChange}
+      onDetailGeometryChange={options.onDetailGeometryChange}
+      onWindowSizeChange={options.onWindowSizeChange}
+      onSfbHomeChange={options.onSfbHomeChange}
+      onPreferOppositeThumbChange={options.onPreferOppositeThumbChange}
+      onDefaultGeometryChange={options.onDefaultGeometryChange}
+      onGeometryEdit={options.onGeometryEdit}
+      onGeometryExport={options.onGeometryExport}
+      onGeometryImport={options.onGeometryImport}
+      onOpenHow={options.onOpenHow}
+      onOpenConditions={options.onOpenConditions}
+      onOpenRomaji={options.onOpenRomaji}
+      onSensitivityToggle={options.onSensitivityToggle}
     />,
   );
   return {
