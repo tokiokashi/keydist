@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useState,
   useSyncExternalStore,
 } from 'react';
@@ -49,10 +50,10 @@ function NumberSetting({
 }) {
   const [draft, setDraft] = useState(String(value));
   const current = String(value);
-  if (draft !== current && document.activeElement?.getAttribute('aria-label') !== ariaLabel) {
-    // 外部更新で値が変わった場合、非編集中ならsnapshotへ追従する。
+
+  useEffect(() => {
     setDraft(current);
-  }
+  }, [current]);
 
   return (
     <input
