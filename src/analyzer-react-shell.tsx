@@ -12,6 +12,9 @@ import type { AnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 import type { AnalyzerPlaybackSurfaceModel } from './analyzer-playback-surface-model.ts';
 import type { AnalyzerPlaybackSettingsModel } from './analyzer-playback-settings-model.ts';
 import type { AnalyzerConditionsSurfaceModel, AnalyzerConditionsSurfaceSnapshot } from './analyzer-conditions-surface-model.ts';
+import { AnalyzerLayoutEditor } from './analyzer-layout-editor.tsx';
+import type { AnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
+import type { UserLayout } from './user-layouts.ts';
 import { MAX_SAVED_TEXT_LENGTH } from './ui-state.ts';
 
 export interface AnalyzerReactShellOptions {
@@ -23,11 +26,13 @@ export interface AnalyzerReactShellOptions {
   playbackSlot: HTMLElement;
   playbackSettingsSlot: HTMLElement;
   conditionsSlot: HTMLElement;
+  layoutEditorSlot: HTMLElement;
   stateOwner: AnalyzerUiStateOwner;
   comparisonModel: AnalyzerComparisonModel;
   playbackSurfaceModel: AnalyzerPlaybackSurfaceModel;
   playbackSettingsModel: AnalyzerPlaybackSettingsModel;
   conditionsSurfaceModel: AnalyzerConditionsSurfaceModel;
+  layoutEditorModel: AnalyzerLayoutEditorModel;
   onModeChange: () => void;
   onTextInput: () => void;
   onTextCommit: () => void;
@@ -35,6 +40,7 @@ export interface AnalyzerReactShellOptions {
   onPlaybackSurfaceCommit: () => void;
   onPlaybackSettingsCommit: () => void;
   onConditionsSurfaceCommit: (snapshot: AnalyzerConditionsSurfaceSnapshot) => void;
+  onAddLayout: (definition: UserLayout) => void;
 }
 
 export interface AnalyzerReactShellController {
@@ -127,11 +133,13 @@ function AnalyzerReactShell({
   playbackSlot,
   playbackSettingsSlot,
   conditionsSlot,
+  layoutEditorSlot,
   stateOwner,
   comparisonModel,
   playbackSurfaceModel,
   playbackSettingsModel,
   conditionsSurfaceModel,
+  layoutEditorModel,
   textModel,
   onModeChange,
   onTextInput,
@@ -140,6 +148,7 @@ function AnalyzerReactShell({
   onPlaybackSurfaceCommit,
   onPlaybackSettingsCommit,
   onConditionsSurfaceCommit,
+  onAddLayout,
 }: Omit<AnalyzerReactShellOptions, 'root'> & { textModel: AnalyzerTextModel }) {
   const state = useSyncExternalStore(
     stateOwner.subscribe,
@@ -360,6 +369,13 @@ function AnalyzerReactShell({
         />,
         conditionsSlot,
       )}
+      {createPortal(
+        <AnalyzerLayoutEditor
+          model={layoutEditorModel}
+          onAddLayout={onAddLayout}
+        />,
+        layoutEditorSlot,
+      )}
     </>
   );
 }
@@ -384,11 +400,13 @@ export function mountAnalyzerReactShell(
       playbackSlot={options.playbackSlot}
       playbackSettingsSlot={options.playbackSettingsSlot}
       conditionsSlot={options.conditionsSlot}
+      layoutEditorSlot={options.layoutEditorSlot}
       stateOwner={options.stateOwner}
       comparisonModel={options.comparisonModel}
       playbackSurfaceModel={options.playbackSurfaceModel}
       playbackSettingsModel={options.playbackSettingsModel}
       conditionsSurfaceModel={options.conditionsSurfaceModel}
+      layoutEditorModel={options.layoutEditorModel}
       textModel={textModel}
       onModeChange={options.onModeChange}
       onTextInput={options.onTextInput}
@@ -397,6 +415,7 @@ export function mountAnalyzerReactShell(
       onPlaybackSurfaceCommit={options.onPlaybackSurfaceCommit}
       onPlaybackSettingsCommit={options.onPlaybackSettingsCommit}
       onConditionsSurfaceCommit={options.onConditionsSurfaceCommit}
+      onAddLayout={options.onAddLayout}
     />,
   );
   return {
