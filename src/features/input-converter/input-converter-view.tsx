@@ -21,7 +21,6 @@ import {
 } from '../../geometry-settings.ts';
 import {
   aggregationLegendMap,
-  aggregationTriggerDisplayText,
   aggregationTriggerKeys,
   compactLayerGuideDefinitions,
   presentationLayerGuide,
