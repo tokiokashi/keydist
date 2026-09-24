@@ -7,6 +7,7 @@ import {
   aggregationTriggerKeys,
   compactLayerGuideDefinitions,
   modifierPhysicalKeys,
+  presentationLayerGuide,
   presentationTriggerColorSlots,
   semanticCombinationLabels,
 } from '../src/layers.ts';
@@ -14,6 +15,7 @@ import {
   faceFromEntries,
   fromFaces,
   fromRows,
+  LAYOUT_BY_ID,
   withShiftedOutputs,
   type Face,
 } from '../src/layouts/index.ts';
@@ -49,6 +51,29 @@ test('active modifier aggregationはcanonical rolesを使い複合modifierを優
   assert.deepEqual([...aggregationTriggerKeys(layout, 'layer:compound-shift')].sort(), ['d', 'f']);
   assert.equal(modifierPhysicalKeys(layout).has('d'), true);
   assert.equal(modifierPhysicalKeys(layout).has('f'), true);
+});
+
+test('presentation layer guideはFaceのpresentationCellsを含む表示面をauthorityにする', () => {
+  const layout = LAYOUT_BY_ID.get('shingeta');
+  assert.ok(layout);
+
+  // 「お」はsemantic上は薬指シフト所属だが、中指シフト面にもpresentation-onlyで表示する。
+  assert.equal(aggregationLegendMap(layout, 'layer:中指シフト').has('l'), false);
+  const middle = presentationLayerGuide(layout, 'layer:中指シフト');
+  assert.ok(middle);
+  assert.equal(middle.legends.get('l'), 'お');
+  assert.equal(middle.legends.get('d'), 'れ');
+  assert.equal(middle.legends.get('k'), 'れ');
+  assert.deepEqual([...middle.triggerKeys].sort(), ['d', 'k']);
+
+  // 「じ」も同様に薬指シフト面のpresentation-only交点を保持する。
+  assert.equal(aggregationLegendMap(layout, 'layer:薬指シフト').has('k'), false);
+  const ring = presentationLayerGuide(layout, 'layer:薬指シフト');
+  assert.ok(ring);
+  assert.equal(ring.legends.get('k'), 'じ');
+  assert.equal(ring.legends.get('s'), 'さ');
+  assert.equal(ring.legends.get('l'), 'さ');
+  assert.deepEqual([...ring.triggerKeys].sort(), ['l', 's']);
 });
 
 test('Faceを持たない通常Shiftもcanonical aggregationからlegendを表示できる', () => {
