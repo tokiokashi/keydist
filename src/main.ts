@@ -63,6 +63,7 @@ import {
 import { createAnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 import { createAnalyzerPlaybackSurfaceModel } from './analyzer-playback-surface-model.ts';
 import { createAnalyzerPlaybackSettingsModel } from './analyzer-playback-settings-model.ts';
+import { createAnalyzerConditionsSurfaceModel } from './analyzer-conditions-surface-model.ts';
 import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import { el, SERIES } from './app-dom.ts';
 import { createRomajiEditor } from './romaji-editor.ts';
@@ -1043,6 +1044,8 @@ function setupHowDialog() {
   });
 }
 
+const conditionsSurfaceModel = createAnalyzerConditionsSurfaceModel();
+
 type ConditionTab = 'romaji' | 'physical' | 'model' | 'trigger' | 'chain' | 'arpeggio' | 'delay';
 
 const CONDITION_TABS: readonly [ConditionTab, string][] = [
@@ -1700,18 +1703,10 @@ function renderConditionDescription(
     const tableWrap = document.createElement('div'); tableWrap.className = 'scroll-x condition-table-wrap'; tableWrap.append(renderConditionTable(conditionTab)); root.append(tableWrap);
   }
   appendConditionSummary(root);
-  el.conditionDescription.replaceChildren(root);
-
-  if (dialogScrollTop !== undefined) {
-    el.conditionsDialog.scrollTop = dialogScrollTop;
-  }
-  if (tableScroll !== undefined) {
-    const nextTableWrap = el.conditionDescription.querySelector<HTMLElement>('.condition-table-wrap');
-    if (nextTableWrap) {
-      nextTableWrap.scrollTop = tableScroll.top;
-      nextTableWrap.scrollLeft = tableScroll.left;
-    }
-  }
+  conditionsSurfaceModel.setContent(root, {
+    dialogScrollTop,
+    tableScroll,
+  });
 }
 
 /** シミュレーション条件の編集モーダル。条件は開く直前に再生成する。 */
@@ -1980,16 +1975,30 @@ analyzerReactShell = mountAnalyzerReactShell({
   sensitivitySlot: analyzerSensitivityControlSlot,
   playbackSlot: el.playback,
   playbackSettingsSlot: el.playbackSettingsPanel,
+  conditionsSlot: el.conditionDescription,
   stateOwner: uiStateOwner,
   comparisonModel,
   playbackSurfaceModel,
   playbackSettingsModel,
+  conditionsSurfaceModel,
   onModeChange,
   onTextInput: scheduleTextRender,
   onTextCommit: flushTextRender,
   onMetricsChange: render,
   onPlaybackSurfaceCommit: () => playbackView.commitSurface(),
   onPlaybackSettingsCommit: () => playbackView.commitSettings(),
+  onConditionsSurfaceCommit: (snapshot) => {
+    if (snapshot.dialogScrollTop !== undefined) {
+      el.conditionsDialog.scrollTop = snapshot.dialogScrollTop;
+    }
+    if (snapshot.tableScroll !== undefined) {
+      const tableWrap = el.conditionDescription.querySelector<HTMLElement>('.condition-table-wrap');
+      if (tableWrap) {
+        tableWrap.scrollTop = snapshot.tableScroll.top;
+        tableWrap.scrollLeft = snapshot.tableScroll.left;
+      }
+    }
+  },
 });
 el.geometry.addEventListener('change', () => {
   const geometry = el.geometry.value as GeometryKind;

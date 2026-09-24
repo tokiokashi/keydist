@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState, useSyncExternalStore } from 'react';
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import {
@@ -11,6 +11,7 @@ import type { AnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
 import type { AnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 import type { AnalyzerPlaybackSurfaceModel } from './analyzer-playback-surface-model.ts';
 import type { AnalyzerPlaybackSettingsModel } from './analyzer-playback-settings-model.ts';
+import type { AnalyzerConditionsSurfaceModel, AnalyzerConditionsSurfaceSnapshot } from './analyzer-conditions-surface-model.ts';
 import { MAX_SAVED_TEXT_LENGTH } from './ui-state.ts';
 
 export interface AnalyzerReactShellOptions {
@@ -21,16 +22,19 @@ export interface AnalyzerReactShellOptions {
   sensitivitySlot: HTMLElement;
   playbackSlot: HTMLElement;
   playbackSettingsSlot: HTMLElement;
+  conditionsSlot: HTMLElement;
   stateOwner: AnalyzerUiStateOwner;
   comparisonModel: AnalyzerComparisonModel;
   playbackSurfaceModel: AnalyzerPlaybackSurfaceModel;
   playbackSettingsModel: AnalyzerPlaybackSettingsModel;
+  conditionsSurfaceModel: AnalyzerConditionsSurfaceModel;
   onModeChange: () => void;
   onTextInput: () => void;
   onTextCommit: () => void;
   onMetricsChange: () => void;
   onPlaybackSurfaceCommit: () => void;
   onPlaybackSettingsCommit: () => void;
+  onConditionsSurfaceCommit: (snapshot: AnalyzerConditionsSurfaceSnapshot) => void;
 }
 
 export interface AnalyzerReactShellController {
@@ -92,6 +96,29 @@ function AnalyzerPlaybackSettings({
   );
 }
 
+function AnalyzerConditionsSurface({
+  model,
+  onCommit,
+}: {
+  model: AnalyzerConditionsSurfaceModel;
+  onCommit: (snapshot: AnalyzerConditionsSurfaceSnapshot) => void;
+}) {
+  const snapshot = useSyncExternalStore(
+    model.subscribe,
+    model.getSnapshot,
+    model.getSnapshot,
+  );
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!snapshot.content || !rootRef.current) return;
+    rootRef.current.replaceChildren(snapshot.content);
+    onCommit(snapshot);
+  }, [snapshot.revision, snapshot.content, onCommit]);
+
+  return <div ref={rootRef} data-react-feature="conditions" />;
+}
+
 function AnalyzerReactShell({
   modeSlot,
   textSlot,
@@ -99,10 +126,12 @@ function AnalyzerReactShell({
   sensitivitySlot,
   playbackSlot,
   playbackSettingsSlot,
+  conditionsSlot,
   stateOwner,
   comparisonModel,
   playbackSurfaceModel,
   playbackSettingsModel,
+  conditionsSurfaceModel,
   textModel,
   onModeChange,
   onTextInput,
@@ -110,6 +139,7 @@ function AnalyzerReactShell({
   onMetricsChange,
   onPlaybackSurfaceCommit,
   onPlaybackSettingsCommit,
+  onConditionsSurfaceCommit,
 }: Omit<AnalyzerReactShellOptions, 'root'> & { textModel: AnalyzerTextModel }) {
   const state = useSyncExternalStore(
     stateOwner.subscribe,
@@ -323,6 +353,13 @@ function AnalyzerReactShell({
         />,
         playbackSettingsSlot,
       )}
+      {createPortal(
+        <AnalyzerConditionsSurface
+          model={conditionsSurfaceModel}
+          onCommit={onConditionsSurfaceCommit}
+        />,
+        conditionsSlot,
+      )}
     </>
   );
 }
@@ -346,10 +383,12 @@ export function mountAnalyzerReactShell(
       sensitivitySlot={options.sensitivitySlot}
       playbackSlot={options.playbackSlot}
       playbackSettingsSlot={options.playbackSettingsSlot}
+      conditionsSlot={options.conditionsSlot}
       stateOwner={options.stateOwner}
       comparisonModel={options.comparisonModel}
       playbackSurfaceModel={options.playbackSurfaceModel}
       playbackSettingsModel={options.playbackSettingsModel}
+      conditionsSurfaceModel={options.conditionsSurfaceModel}
       textModel={textModel}
       onModeChange={options.onModeChange}
       onTextInput={options.onTextInput}
@@ -357,6 +396,7 @@ export function mountAnalyzerReactShell(
       onMetricsChange={options.onMetricsChange}
       onPlaybackSurfaceCommit={options.onPlaybackSurfaceCommit}
       onPlaybackSettingsCommit={options.onPlaybackSettingsCommit}
+      onConditionsSurfaceCommit={options.onConditionsSurfaceCommit}
     />,
   );
   return {
