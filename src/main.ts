@@ -29,7 +29,7 @@ import {
   saveRomajiSettings,
 } from './romaji/rules.ts';
 import { loadPlaybackCalibration } from './playback-calibration.ts';
-import { resolveSelection, type ModeId } from './layout-selection.ts';
+import type { ModeId } from './layout-selection.ts';
 import {
   DEFAULT_CONDITION_DEFAULTS,
   type UiPlaybackState,
@@ -39,10 +39,7 @@ import {
   type UiStateV1,
 } from './ui-state.ts';
 import { createAnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
-import {
-  ANALYZER_INITIAL_LAYOUTS,
-  createAnalyzerUiStateBootstrap,
-} from './analyzer-ui-state-bootstrap.ts';
+import { createAnalyzerUiStateBootstrap } from './analyzer-ui-state-bootstrap.ts';
 import {
   mountAnalyzerReactShell,
   type AnalyzerReactShellController,
@@ -257,12 +254,20 @@ if (!playbackCalibration && uiState.ui.playback.useCalibration) {
 }
 
 
-/** 表示する配列のidはAppStateを唯一のauthorityとして都度導出する。 */
+/** 表示する配列のidは、正規化済みAppStateから都度導出する。 */
 function selectedLayoutIds(mode: ModeId): ReadonlySet<string> {
-  return resolveSelection(
-    uiState.ui.layouts.selectedByMode[mode],
-    ANALYZER_INITIAL_LAYOUTS[mode],
-  );
+  return new Set(uiState.ui.layouts.selectedByMode[mode]);
+}
+
+/** 選択集合の更新経路を集約し、配列への変換もここだけで行う。 */
+function updateSelectedLayouts(
+  draft: UiStateV1,
+  mode: ModeId,
+  change: (selected: Set<string>) => void,
+): void {
+  const selected = new Set(draft.ui.layouts.selectedByMode[mode]);
+  change(selected);
+  draft.ui.layouts.selectedByMode[mode] = [...selected];
 }
 
 const currentModeId = () => uiState.ui.input.mode;
@@ -281,12 +286,9 @@ function addUserLayout(definition: UserLayout): void {
 
   updateUiState((draft) => {
     for (const mode of ['en', 'ja'] as const) {
-      const selected = resolveSelection(
-        draft.ui.layouts.selectedByMode[mode],
-        ANALYZER_INITIAL_LAYOUTS[mode],
-      );
-      selected.add(definition.id);
-      draft.ui.layouts.selectedByMode[mode] = [...selected];
+      updateSelectedLayouts(draft, mode, (selected) => {
+        selected.add(definition.id);
+      });
     }
   });
 
@@ -316,12 +318,9 @@ function removeUserLayout(id: string) {
   removeLayoutChoice(id);
   updateUiState((draft) => {
     for (const mode of ['en', 'ja'] as const) {
-      const selected = resolveSelection(
-        draft.ui.layouts.selectedByMode[mode],
-        ANALYZER_INITIAL_LAYOUTS[mode],
-      );
-      selected.delete(id);
-      draft.ui.layouts.selectedByMode[mode] = [...selected];
+      updateSelectedLayouts(draft, mode, (selected) => {
+        selected.delete(id);
+      });
     }
     if (draft.ui.layouts.detailByMode.en === id) delete draft.ui.layouts.detailByMode.en;
     if (draft.ui.layouts.detailByMode.ja === id) delete draft.ui.layouts.detailByMode.ja;
@@ -1799,13 +1798,10 @@ analyzerReactShell = mountAnalyzerReactShell({
   onToggleLayout: (layoutId, enabled) => {
     const mode = currentModeId();
     updateUiState((draft) => {
-      const selected = resolveSelection(
-        draft.ui.layouts.selectedByMode[mode],
-        ANALYZER_INITIAL_LAYOUTS[mode],
-      );
-      if (enabled) selected.add(layoutId);
-      else selected.delete(layoutId);
-      draft.ui.layouts.selectedByMode[mode] = [...selected];
+      updateSelectedLayouts(draft, mode, (selected) => {
+        if (enabled) selected.add(layoutId);
+        else selected.delete(layoutId);
+      });
     });
     playbackView.preserveNextRender('input-position');
     render();

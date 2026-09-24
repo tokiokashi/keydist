@@ -63,7 +63,7 @@ test('legacy panel open state is coordinated by React and restores through AppSt
   await expect(page.locator('#text-panel')).not.toHaveAttribute('open', '');
 });
 
-test('layout selection is AppState-authoritative for analysis and reload', async ({ page }) => {
+test('layout selection persists and drives analysis across reloads', async ({ page }) => {
   await page.goto('/legacy.html');
 
   const sidebar = page.locator('[data-react-feature="sidebar-controls"]');
