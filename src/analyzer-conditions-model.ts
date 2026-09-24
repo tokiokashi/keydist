@@ -13,6 +13,7 @@ export interface AnalyzerConditionsCatalog {
   allLayouts: readonly Layout[];
   geometryOptions: readonly AnalyzerConditionsOption[];
   romajiRules: readonly AnalyzerConditionsOption[];
+  romajiRuleIds: Readonly<Record<string, string | null>>;
   presets: readonly ConditionPreset[];
   playbackDefaults: UiPlaybackState;
   calibrationAvailable: boolean;
@@ -83,6 +84,7 @@ export function createAnalyzerConditionsModel(
     allLayouts: [...initial.allLayouts],
     geometryOptions: [...initial.geometryOptions],
     romajiRules: [...initial.romajiRules],
+    romajiRuleIds: { ...initial.romajiRuleIds },
     presets: [...initial.presets],
     playbackDefaults: structuredClone(initial.playbackDefaults),
     revision: 0,
@@ -101,6 +103,7 @@ export function createAnalyzerConditionsModel(
         && sameLayouts(snapshot.allLayouts, catalog.allLayouts)
         && sameOptions(snapshot.geometryOptions, catalog.geometryOptions)
         && sameOptions(snapshot.romajiRules, catalog.romajiRules)
+        && JSON.stringify(snapshot.romajiRuleIds) === JSON.stringify(catalog.romajiRuleIds)
         && samePresets(snapshot.presets, catalog.presets)
         && snapshot.calibrationAvailable === catalog.calibrationAvailable
         && JSON.stringify(snapshot.playbackDefaults) === JSON.stringify(catalog.playbackDefaults)
@@ -112,6 +115,7 @@ export function createAnalyzerConditionsModel(
         allLayouts: [...catalog.allLayouts],
         geometryOptions: [...catalog.geometryOptions],
         romajiRules: [...catalog.romajiRules],
+        romajiRuleIds: { ...catalog.romajiRuleIds },
         presets: [...catalog.presets],
         playbackDefaults: structuredClone(catalog.playbackDefaults),
         revision: snapshot.revision + 1,
