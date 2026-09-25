@@ -288,7 +288,7 @@ function duplicateInLayout(
   const children = node.children.map((child) => {
     if (changed) return child;
     const nextNode = duplicateInLayout(child.node, sourceId, newId);
-    if (nextNode === child.node) return child;
+    if (!nextNode || nextNode === child.node) return child;
     changed = true;
     return { ...child, node: nextNode };
   });
