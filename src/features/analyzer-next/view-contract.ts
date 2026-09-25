@@ -47,7 +47,11 @@ export interface AnalysisViewInstance {
 export interface AnalysisViewConfigCodec<Config> {
   version: number;
   defaults: Config;
-  decode(raw: unknown): Config;
+  /**
+   * Decode or migrate config saved at savedVersion into the current version.
+   * decodeViewInstance rejects future versions before calling this function.
+   */
+  decode(raw: unknown, savedVersion: number): Config;
 }
 
 export interface AnalysisViewDefinition<Config = unknown> {
@@ -151,11 +155,21 @@ export function decodeViewInstance(
   const binding = decodeViewBinding(source.binding);
   if (!binding || !isBindingAllowed(definition.cardinality, binding)) return undefined;
 
+  const savedConfigVersion = source.configVersion;
+  if (
+    typeof savedConfigVersion !== 'number'
+    || !Number.isInteger(savedConfigVersion)
+    || savedConfigVersion < 1
+    || savedConfigVersion > definition.configCodec.version
+  ) {
+    return undefined;
+  }
+
   return {
     id: source.id,
     type: definition.type,
     binding,
-    config: definition.configCodec.decode(source.config),
+    config: definition.configCodec.decode(source.config, savedConfigVersion),
     configVersion: definition.configCodec.version,
   };
 }
