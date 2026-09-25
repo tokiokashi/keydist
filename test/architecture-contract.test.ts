@@ -873,3 +873,34 @@ test('廃止済み#200 legacy symbol / production helperをsrcへ再導入しな
   assert.equal(sourcePaths.includes('playback-arpeggio.ts'), false);
   assert.equal(sourcePaths.includes('hold-start-action.ts'), false);
 });
+
+
+test('Playback surfaceの描画・interaction authorityをimperative側へ戻さない', async () => {
+  const playbackView = await readFile(join(SRC, 'playback-view.ts'), 'utf8');
+  const forbidden = [
+    'querySelector',
+    'addEventListener',
+    'innerHTML',
+    'replaceChildren',
+    'document.createElement',
+    'createElementNS',
+    'cloneNode',
+    'surfaceModel.setHtml',
+    'commitSurface',
+  ] as const;
+
+  for (const token of forbidden) {
+    assert.equal(
+      playbackView.includes(token),
+      false,
+      `playback-view.ts must not regain DOM authority via ${token}`,
+    );
+  }
+
+  const shell = await readFile(join(SRC, 'analyzer-react-shell.tsx'), 'utf8');
+  assert.equal(
+    shell.includes('dangerouslySetInnerHTML'),
+    false,
+    'Analyzer React shell must not host Playback through raw HTML',
+  );
+});
