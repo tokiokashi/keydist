@@ -797,7 +797,6 @@ function setPlaybackLayoutOverride(enabled: boolean): void {
 
 playbackView = createPlaybackView({
   el,
-  storage: uiStorage,
   getUiState: playbackViewUiState,
   getPlaybackSettings: () => playbackViewUiState().ui.playback,
   updatePlaybackSetting,
@@ -920,6 +919,7 @@ analyzerReactShell = mountAnalyzerReactShell({
   comparisonModel,
   playbackSurfaceModel,
   playbackSettingsModel,
+  playbackSettingsActions: playbackView.settingsActions,
   conditionsModel,
   conditionsActions,
   layoutEditorModel,
@@ -934,7 +934,6 @@ analyzerReactShell = mountAnalyzerReactShell({
   onTextCommit: flushTextRender,
   onMetricsChange: render,
   onPlaybackSurfaceCommit: () => playbackView.commitSurface(),
-  onPlaybackSettingsCommit: () => playbackView.commitSettings(),
   onAddLayout: addUserLayout,
   onToggleLayout: (layoutId, enabled) => {
     const mode = currentModeId();
