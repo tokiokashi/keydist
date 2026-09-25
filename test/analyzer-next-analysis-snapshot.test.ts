@@ -9,7 +9,7 @@ import { LAYOUTS } from '../src/layouts/index.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import {
   computeAnalysisSnapshot,
-} from '../src/features/analyzer-next/analysis-snapshot.ts';
+} from '../src/features/analyzer-next/snapshot-computation.ts';
 import {
   createResolvedAnalysisInputResolver,
 } from '../src/features/analyzer-next/resolved-input.ts';
