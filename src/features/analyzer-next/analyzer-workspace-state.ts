@@ -1,4 +1,8 @@
-import type { AnalysisViewDefinition, AnalysisViewInstance, AnalysisViewType } from './view-contract.ts';
+import type {
+  AnalysisViewDefinition,
+  AnalysisViewInstance,
+  AnalysisViewType,
+} from './view-contract.ts';
 import { decodeViewInstance } from './view-contract.ts';
 
 export const ANALYZER_WORKSPACE_VERSION = 1;
@@ -25,6 +29,11 @@ export type AnalyzerWorkspaceLayoutNode =
 export interface AnalyzerWorkspaceLayoutV1 {
   version: typeof ANALYZER_WORKSPACE_LAYOUT_VERSION;
   root?: AnalyzerWorkspaceLayoutNode;
+  /**
+   * Globally focused pane. Instance ids are unique across the tree, so this also identifies
+   * the active tab group without persisting a renderer-specific group id.
+   */
+  activeInstanceId?: string;
 }
 
 export interface AnalyzerWorkspaceStateV1 {
@@ -68,21 +77,31 @@ function normalizeWeightedChildren(
 function decodeLayoutNode(
   raw: unknown,
   validIds: ReadonlySet<string>,
+  seenIds: Set<string>,
 ): AnalyzerWorkspaceLayoutNode | undefined {
   const source = record(raw);
   if (!source) return undefined;
 
   if (source.kind === 'tabs' && Array.isArray(source.instanceIds)) {
-    const instanceIds = [...new Set(
-      source.instanceIds.filter(
-        (value): value is string => typeof value === 'string' && validIds.has(value),
-      ),
-    )];
+    const instanceIds: string[] = [];
+    for (const value of source.instanceIds) {
+      if (
+        typeof value !== 'string'
+        || !validIds.has(value)
+        || seenIds.has(value)
+        || instanceIds.includes(value)
+      ) {
+        continue;
+      }
+      seenIds.add(value);
+      instanceIds.push(value);
+    }
     if (instanceIds.length === 0) return undefined;
 
     const hiddenInstanceIds = Array.isArray(source.hiddenInstanceIds)
       ? [...new Set(source.hiddenInstanceIds.filter(
-          (value): value is string => typeof value === 'string' && instanceIds.includes(value),
+          (value): value is string =>
+            typeof value === 'string' && instanceIds.includes(value),
         ))]
       : [];
     const visibleIds = instanceIds.filter((id) => !hiddenInstanceIds.includes(id));
@@ -111,7 +130,7 @@ function decodeLayoutNode(
       .map((rawChild) => {
         const wrapped = record(rawChild);
         const rawNode = wrapped && 'node' in wrapped ? wrapped.node : rawChild;
-        const node = decodeLayoutNode(rawNode, validIds);
+        const node = decodeLayoutNode(rawNode, validIds, seenIds);
         if (!node) return undefined;
         return {
           weight: positiveWeight(wrapped?.weight),
@@ -130,6 +149,60 @@ function decodeLayoutNode(
   }
 
   return undefined;
+}
+
+function tabsNode(instanceIds: readonly string[]): AnalyzerWorkspaceLayoutNode {
+  return {
+    kind: 'tabs',
+    instanceIds: [...instanceIds],
+    activeInstanceId: instanceIds[0],
+  };
+}
+
+function appendOrphans(
+  root: AnalyzerWorkspaceLayoutNode | undefined,
+  orphanIds: readonly string[],
+): AnalyzerWorkspaceLayoutNode | undefined {
+  if (orphanIds.length === 0) return root;
+  if (!root) return tabsNode(orphanIds);
+  if (root.kind === 'tabs') {
+    return {
+      ...root,
+      instanceIds: [...root.instanceIds, ...orphanIds],
+    };
+  }
+  return {
+    ...root,
+    children: normalizeWeightedChildren([
+      ...root.children,
+      { weight: 1, node: tabsNode(orphanIds) },
+    ]),
+  };
+}
+
+function visibleInstanceIds(node: AnalyzerWorkspaceLayoutNode | undefined): string[] {
+  if (!node) return [];
+  if (node.kind === 'tabs') {
+    const hidden = new Set(node.hiddenInstanceIds ?? []);
+    return node.instanceIds.filter((id) => !hidden.has(id));
+  }
+  return node.children.flatMap((child) => visibleInstanceIds(child.node));
+}
+
+function allInstanceIds(node: AnalyzerWorkspaceLayoutNode | undefined): string[] {
+  if (!node) return [];
+  return node.kind === 'tabs'
+    ? [...node.instanceIds]
+    : node.children.flatMap((child) => allInstanceIds(child.node));
+}
+
+function normalizeGlobalActive(
+  root: AnalyzerWorkspaceLayoutNode | undefined,
+  requested: unknown,
+): string | undefined {
+  const visible = visibleInstanceIds(root);
+  if (typeof requested === 'string' && visible.includes(requested)) return requested;
+  return visible[0];
 }
 
 export function decodeAnalyzerWorkspace(
@@ -156,9 +229,17 @@ export function decodeAnalyzerWorkspace(
   }
 
   const rawLayout = record(source.layout);
-  const root = rawLayout?.version === ANALYZER_WORKSPACE_LAYOUT_VERSION
-    ? decodeLayoutNode(rawLayout.root, ids)
+  const seenIds = new Set<string>();
+  let root = rawLayout?.version === ANALYZER_WORKSPACE_LAYOUT_VERSION
+    ? decodeLayoutNode(rawLayout.root, ids, seenIds)
     : undefined;
+
+  const orphanIds = uniqueInstances
+    .map((instance) => instance.id)
+    .filter((id) => !seenIds.has(id));
+  root = appendOrphans(root, orphanIds);
+
+  const activeInstanceId = normalizeGlobalActive(root, rawLayout?.activeInstanceId);
 
   return {
     version: ANALYZER_WORKSPACE_VERSION,
@@ -166,6 +247,7 @@ export function decodeAnalyzerWorkspace(
     layout: {
       version: ANALYZER_WORKSPACE_LAYOUT_VERSION,
       ...(root === undefined ? {} : { root }),
+      ...(activeInstanceId === undefined ? {} : { activeInstanceId }),
     },
   };
 }
@@ -237,6 +319,7 @@ export function duplicateWorkspaceInstance(
     layout: {
       ...state.layout,
       ...(nextRoot === undefined ? {} : { root: nextRoot }),
+      activeInstanceId: newId,
     },
   };
 }
@@ -247,9 +330,8 @@ export function setWorkspaceInstanceVisibility(
   visible: boolean,
 ): AnalyzerWorkspaceStateV1 {
   const update = (
-    node: AnalyzerWorkspaceLayoutNode | undefined,
-  ): AnalyzerWorkspaceLayoutNode | undefined => {
-    if (!node) return undefined;
+    node: AnalyzerWorkspaceLayoutNode,
+  ): AnalyzerWorkspaceLayoutNode => {
     if (node.kind === 'tabs') {
       if (!node.instanceIds.includes(instanceId)) return node;
       const hidden = new Set(node.hiddenInstanceIds ?? []);
@@ -262,26 +344,42 @@ export function setWorkspaceInstanceVisibility(
         activeInstanceId: visibleIds.includes(node.activeInstanceId ?? '')
           ? node.activeInstanceId
           : visibleIds[0] ?? node.instanceIds[0],
-        ...(hiddenInstanceIds.length === 0 ? { hiddenInstanceIds: undefined } : { hiddenInstanceIds }),
+        ...(hiddenInstanceIds.length === 0
+          ? { hiddenInstanceIds: undefined }
+          : { hiddenInstanceIds }),
       };
     }
     return {
       ...node,
-      children: node.children.map((child) => {
-        const nextNode = update(child.node);
-        return {
-          ...child,
-          node: nextNode ?? child.node,
-        };
-      }),
+      children: node.children.map((child) => ({
+        ...child,
+        node: update(child.node),
+      })),
     };
   };
+
+  if (!state.layout.root) return state;
+  const root = update(state.layout.root);
+  const visibleIds = visibleInstanceIds(root);
+  const activeInstanceId = visibleIds.includes(state.layout.activeInstanceId ?? '')
+    ? state.layout.activeInstanceId
+    : visibleIds[0];
 
   return {
     ...state,
     layout: {
       ...state.layout,
-      ...(state.layout.root === undefined ? {} : { root: update(state.layout.root) }),
+      root,
+      ...(activeInstanceId === undefined
+        ? { activeInstanceId: undefined }
+        : { activeInstanceId }),
     },
   };
+}
+
+/** Exposed for adapter/invariant tests. */
+export function workspaceLayoutInstanceIds(
+  state: AnalyzerWorkspaceStateV1,
+): readonly string[] {
+  return allInstanceIds(state.layout.root);
 }
