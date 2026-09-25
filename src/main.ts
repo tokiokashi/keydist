@@ -796,7 +796,6 @@ function setPlaybackLayoutOverride(enabled: boolean): void {
 }
 
 playbackView = createPlaybackView({
-  el,
   getUiState: playbackViewUiState,
   getPlaybackSettings: () => playbackViewUiState().ui.playback,
   updatePlaybackSetting,
@@ -888,6 +887,7 @@ if (
 
 analyzerReactShell = mountAnalyzerReactShell({
   root: analyzerReactShellRoot,
+  appElement: el.app,
   themeControlsSlot: analyzerThemeControlsSlot,
   modeSlot: analyzerModeControlSlot,
   textPanelSlot: analyzerTextPanelSlot,
@@ -918,6 +918,7 @@ analyzerReactShell = mountAnalyzerReactShell({
   stateOwner: uiStateOwner,
   comparisonModel,
   playbackSurfaceModel,
+  playbackSurfaceActions: playbackView.surfaceActions,
   playbackSettingsModel,
   playbackSettingsActions: playbackView.settingsActions,
   conditionsModel,
@@ -933,7 +934,6 @@ analyzerReactShell = mountAnalyzerReactShell({
   onTextInput: scheduleTextRender,
   onTextCommit: flushTextRender,
   onMetricsChange: render,
-  onPlaybackSurfaceCommit: () => playbackView.commitSurface(),
   onAddLayout: addUserLayout,
   onToggleLayout: (layoutId, enabled) => {
     const mode = currentModeId();

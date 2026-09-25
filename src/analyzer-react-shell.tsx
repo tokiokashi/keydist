@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState, useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import {
@@ -9,7 +9,11 @@ import {
 import type { ModeId } from './layout-selection.ts';
 import type { AnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
 import type { AnalyzerComparisonModel } from './analyzer-comparison-model.ts';
-import type { AnalyzerPlaybackSurfaceModel } from './analyzer-playback-surface-model.ts';
+import type {
+  AnalyzerPlaybackSurfaceActions,
+  AnalyzerPlaybackSurfaceModel,
+} from './analyzer-playback-surface-model.ts';
+import { AnalyzerPlaybackSurface } from './analyzer-playback-surface.tsx';
 import type {
   AnalyzerPlaybackSettingsActions,
   AnalyzerPlaybackSettingsModel,
@@ -57,6 +61,7 @@ import { MAX_SAVED_TEXT_LENGTH } from './ui-state.ts';
 
 export interface AnalyzerReactShellOptions {
   root: HTMLElement;
+  appElement: HTMLElement;
   themeControlsSlot: HTMLElement;
   modeSlot: HTMLElement;
   textPanelSlot: HTMLElement;
@@ -87,6 +92,7 @@ export interface AnalyzerReactShellOptions {
   stateOwner: AnalyzerUiStateOwner;
   comparisonModel: AnalyzerComparisonModel;
   playbackSurfaceModel: AnalyzerPlaybackSurfaceModel;
+  playbackSurfaceActions: AnalyzerPlaybackSurfaceActions;
   playbackSettingsModel: AnalyzerPlaybackSettingsModel;
   playbackSettingsActions: AnalyzerPlaybackSettingsActions;
   conditionsModel: AnalyzerConditionsModel;
@@ -102,7 +108,6 @@ export interface AnalyzerReactShellOptions {
   onTextInput: () => void;
   onTextCommit: () => void;
   onMetricsChange: () => void;
-  onPlaybackSurfaceCommit: () => void;
   onAddLayout: (definition: UserLayout) => void;
   onToggleLayout: (layoutId: string, enabled: boolean) => void;
   onRemoveLayout: (layoutId: string) => void;
@@ -131,32 +136,8 @@ interface AnalyzerTextModel {
   value: string;
 }
 
-function AnalyzerPlaybackSurface({
-  model,
-  onCommit,
-}: {
-  model: AnalyzerPlaybackSurfaceModel;
-  onCommit: () => void;
-}) {
-  const snapshot = useSyncExternalStore(
-    model.subscribe,
-    model.getSnapshot,
-    model.getSnapshot,
-  );
-
-  useLayoutEffect(() => {
-    if (snapshot.html) onCommit();
-  }, [snapshot.revision, snapshot.html, onCommit]);
-
-  return (
-    <div
-      data-react-feature="playback"
-      dangerouslySetInnerHTML={{ __html: snapshot.html }}
-    />
-  );
-}
-
 function AnalyzerReactShell({
+  appElement,
   themeControlsSlot,
   modeSlot,
   textPanelSlot,
@@ -187,6 +168,7 @@ function AnalyzerReactShell({
   stateOwner,
   comparisonModel,
   playbackSurfaceModel,
+  playbackSurfaceActions,
   playbackSettingsModel,
   playbackSettingsActions,
   conditionsModel,
@@ -203,7 +185,6 @@ function AnalyzerReactShell({
   onTextInput,
   onTextCommit,
   onMetricsChange,
-  onPlaybackSurfaceCommit,
   onAddLayout,
   onToggleLayout,
   onRemoveLayout,
@@ -506,7 +487,9 @@ function AnalyzerReactShell({
       {createPortal(
         <AnalyzerPlaybackSurface
           model={playbackSurfaceModel}
-          onCommit={onPlaybackSurfaceCommit}
+          actions={playbackSurfaceActions}
+          appElement={appElement}
+          settingsPanelElement={playbackSettingsSlot}
         />,
         playbackSlot,
       )}
@@ -630,6 +613,7 @@ export function mountAnalyzerReactShell(
   options.root.dataset.analyzerReactShell = 'mounted';
   root.render(
     <AnalyzerReactShell
+      appElement={options.appElement}
       themeControlsSlot={options.themeControlsSlot}
       modeSlot={options.modeSlot}
       textPanelSlot={options.textPanelSlot}
@@ -660,6 +644,7 @@ export function mountAnalyzerReactShell(
       stateOwner={options.stateOwner}
       comparisonModel={options.comparisonModel}
       playbackSurfaceModel={options.playbackSurfaceModel}
+      playbackSurfaceActions={options.playbackSurfaceActions}
       playbackSettingsModel={options.playbackSettingsModel}
       playbackSettingsActions={options.playbackSettingsActions}
       conditionsModel={options.conditionsModel}
@@ -676,7 +661,6 @@ export function mountAnalyzerReactShell(
       onTextInput={options.onTextInput}
       onTextCommit={options.onTextCommit}
       onMetricsChange={options.onMetricsChange}
-      onPlaybackSurfaceCommit={options.onPlaybackSurfaceCommit}
       onAddLayout={options.onAddLayout}
       onToggleLayout={options.onToggleLayout}
       onRemoveLayout={options.onRemoveLayout}

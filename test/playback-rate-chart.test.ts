@@ -1,30 +1,42 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { renderPlaybackRateChart } from '../src/playback-rate-chart.ts';
+import test from 'node:test';
+import {
+  playbackRateBandVisibility,
+  playbackRateTooltip,
+} from '../src/analyzer-playback-rate-chart-model.ts';
 
-test('速度グラフはカーソルごとのクリック領域と集計内容を持つ', () => {
-  const svg = renderPlaybackRateChart([
-    { cursor: 0, inputText: '' },
-    { cursor: 1, inputText: '<あ>', kanaPerSecond: 1.2, actionsPerSecond: 1 },
-  ]);
-  assert.match(svg, /data-playback-rate-cursor="1"/);
-  assert.match(svg, /集計入力: <code>&lt;あ&gt;<\/code>/);
-  assert.match(svg, /かな\/秒/);
-  assert.match(svg, /アクション\/秒/);
+test('速度グラフtooltipはカーソル・集計入力・速度を表示する', () => {
+  const tooltip = playbackRateTooltip({
+    cursor: 1,
+    inputText: '<あ>',
+    kanaPerSecond: 1.2,
+    actionsPerSecond: 1,
+  });
+
+  assert.match(tooltip, /ステップ 1/);
+  assert.match(tooltip, /集計入力: <code>&lt;あ&gt;<\/code>/);
+  assert.match(tooltip, /かな\/秒<\/span> <b>1\.20<\/b>/);
+  assert.match(tooltip, /アクション\/秒<\/span> <b>1\.00<\/b>/);
 });
 
-
 test('Chain / Arpeggio の背景帯は表示選択だけで切り替わる', () => {
-  const points = [
-    { cursor: 0, inputText: '' },
-    { cursor: 1, inputText: 'あ', kanaPerSecond: 2, actionsPerSecond: 3, chain: true },
-    { cursor: 2, inputText: 'い', kanaPerSecond: 2, actionsPerSecond: 3, arpeggio: true },
-  ];
+  const chain = { cursor: 1, inputText: 'あ', chain: true };
+  const arpeggio = { cursor: 2, inputText: 'い', arpeggio: true };
 
-  const both = renderPlaybackRateChart(points, 'both');
-  assert.match(both, /fill="var\(--series-2\)" opacity="0\.10"/);
-  assert.match(both, /fill="var\(--series-3\)" opacity="0\.10"/);
-
-  const none = renderPlaybackRateChart(points, 'none');
-  assert.doesNotMatch(none, /opacity="0\.10"/);
+  assert.deepEqual(playbackRateBandVisibility('both', chain), {
+    chain: true,
+    arpeggio: false,
+  });
+  assert.deepEqual(playbackRateBandVisibility('both', arpeggio), {
+    chain: false,
+    arpeggio: true,
+  });
+  assert.deepEqual(playbackRateBandVisibility('none', chain), {
+    chain: false,
+    arpeggio: false,
+  });
+  assert.deepEqual(playbackRateBandVisibility('arpeggio', chain), {
+    chain: false,
+    arpeggio: false,
+  });
 });
