@@ -96,6 +96,10 @@ export function resolveViewBinding(
     if (session.selectedLayoutIds.length === 0) {
       return { status: 'unavailable', reason: 'empty-selection' };
     }
+    const available = session.availableLayoutIdsByMode[session.mode];
+    if (session.selectedLayoutIds.some((id) => !available.includes(id))) {
+      return { status: 'unavailable', reason: 'deleted' };
+    }
     return {
       status: 'ok',
       mode: session.mode,
@@ -110,6 +114,9 @@ export function resolveViewBinding(
     );
     if (focus === undefined) {
       return { status: 'unavailable', reason: 'empty-selection' };
+    }
+    if (!session.availableLayoutIdsByMode[session.mode].includes(focus)) {
+      return { status: 'unavailable', reason: 'deleted' };
     }
     return {
       status: 'ok',
