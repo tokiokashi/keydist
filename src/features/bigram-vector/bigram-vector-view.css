@@ -85,6 +85,20 @@
   opacity: 0.34;
 }
 
+.flow-checkbox-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.flow-checkbox-row > span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .flow-status {
   display: flex;
   flex-wrap: wrap;

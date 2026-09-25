@@ -13,8 +13,11 @@ import type { Geometry, Key, Point } from '../../geometry.ts';
 import type { AnalyzerBigramFlowModel } from '../../analyzer-bigram-flow-model.ts';
 import type { Layout } from '../../layouts/types.ts';
 import {
+  computeOutgoingMaxWeight,
   orderKeyboardFlowVectors,
+  resolveKeyboardFlowMaxWeight,
   scaleKeyboardFlowWeight,
+  type KeyboardFlowHoverScale,
   type KeyboardFlowLayerOrder,
   type KeyboardFlowWeightScale,
 } from './bigram-flow-view-config.ts';
@@ -151,6 +154,7 @@ function KeyboardFlow({
   selectedFingers,
   lineScale,
   layerOrder,
+  hoverScale,
 }: {
   geometry: Geometry;
   layout: Layout;
@@ -158,6 +162,7 @@ function KeyboardFlow({
   selectedFingers: readonly FingerClass[];
   lineScale: KeyboardFlowWeightScale;
   layerOrder: KeyboardFlowLayerOrder;
+  hoverScale: KeyboardFlowHoverScale;
 }) {
   const reduceMotion = useReducedMotion();
   const keys = useMemo(() => geometry.grid.flat(), [geometry]);
@@ -175,6 +180,10 @@ function KeyboardFlow({
     [allFlowVectors, hoveredKeyId],
   );
   const maxWeight = Math.max(1, ...allFlowVectors.map((vector) => vector.weight));
+  const keyMaxWeight = useMemo(
+    () => computeOutgoingMaxWeight(allFlowVectors, hoveredKeyId),
+    [allFlowVectors, hoveredKeyId],
+  );
   const gradientIndexById = useMemo(
     () => new Map(allFlowVectors.map((vector, index) => [vector.id, index] as const)),
     [allFlowVectors],
@@ -251,7 +260,14 @@ function KeyboardFlow({
         <g className="flow-vector-layer">
           <AnimatePresence initial={false}>
             {allFlowVectors.map((vector) => {
-              const strength = scaleKeyboardFlowWeight(vector.weight, maxWeight, lineScale);
+              const effectiveMaxWeight = resolveKeyboardFlowMaxWeight(
+                vector,
+                maxWeight,
+                keyMaxWeight,
+                hoverScale,
+                hoveredKeyId,
+              );
+              const strength = scaleKeyboardFlowWeight(vector.weight, effectiveMaxWeight, lineScale);
               const gradientIndex = gradientIndexById.get(vector.id);
               const hoverVisible = hoveredKeyId === null || vector.fromKeyIds.includes(hoveredKeyId);
               return (
@@ -558,6 +574,7 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
   const [selectedFingers, setSelectedFingers] = useState<FingerClass[]>([]);
   const [lineScale, setLineScale] = useState<KeyboardFlowWeightScale>('linear');
   const [layerOrder, setLayerOrder] = useState<KeyboardFlowLayerOrder>('weight');
+  const [hoverScale, setHoverScale] = useState<KeyboardFlowHoverScale>('key');
   const data = snapshot.data;
 
   const vectors = useMemo(
@@ -598,7 +615,6 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
 
   const { layout, geometry, trace } = data;
   const rawCount = filtered.reduce((sum, vector) => sum + vector.weight, 0);
-  const vectorAnalysisReady = selectedFingers.length >= 1;
   const relative = [
     ...relativeVectors(analysisVectors, 'left'),
     ...relativeVectors(analysisVectors, 'right'),
@@ -617,6 +633,7 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
       data-geometry-id={geometry.id}
       data-line-scale={lineScale}
       data-layer-order={layerOrder}
+      data-hover-scale={hoverScale}
     >
       <div className="flow-analysis-heading">
         <div>
@@ -677,6 +694,15 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
             <option value="cross-hand-top">逆手を上</option>
           </select>
         </label>
+
+        <label className="flow-control-group flow-checkbox-row">
+          <input
+            type="checkbox"
+            checked={hoverScale === 'key'}
+            onChange={(event) => setHoverScale(event.currentTarget.checked ? 'key' : 'global')}
+          />
+          <span>ホバー中はそのキーの線だけで太さを決める</span>
+        </label>
       </section>
 
       <div className="flow-status">
@@ -705,79 +731,71 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
           selectedFingers={selectedFingers}
           lineScale={lineScale}
           layerOrder={layerOrder}
+          hoverScale={hoverScale}
         />
       </section>
 
       <AnimatePresence initial={false}>
-        {vectorAnalysisReady ? (
-          <motion.section
-            className="flow-analysis"
-            key={selectedFingers.slice().sort().join('-')}
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            transition={{ type: 'spring', stiffness: 180, damping: 24 }}
-          >
-            <div className="flow-analysis-heading">
-              <div>
-                <p className="eyebrow">Vector analysis</p>
-                <h2>
-                  {selectedFingers.map((selected) =>
+        <motion.section
+          className="flow-analysis"
+          key={selectedFingers.length === 0 ? 'all' : selectedFingers.slice().sort().join('-')}
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          transition={{ type: 'spring', stiffness: 180, damping: 24 }}
+        >
+          <div className="flow-analysis-heading">
+            <div>
+              <p className="eyebrow">Vector analysis</p>
+              <h2>
+                {selectedFingers.length === 0
+                  ? '全指'
+                  : selectedFingers.map((selected) =>
                     FINGER_OPTIONS.find((finger) => finger.id === selected)?.label
                   ).join(' + ')}
-                </h2>
-              </div>
-              <p>
-                {selectedFingers.length === 1
+              </h2>
+            </div>
+            <p>
+              {selectedFingers.length === 0
+                ? '同じ指の移動と、指をまたいだ打鍵位置の移動をまとめて表示する。大半は後者なので、手の中で打鍵位置がどう流れるかを見る図になる。'
+                : selectedFingers.length === 1
                   ? '1指選択では、その指自身のキー間移動だけを表示する。'
                   : '2指選択では押し順を固定せず、両方向の指間移動を表示する。'}
-              </p>
-            </div>
+            </p>
+          </div>
 
-            <section className="flow-block">
-              <header className="flow-block-header">
-                <div>
-                  <p className="eyebrow">Movement profile</p>
-                  <h2>Relative vectors</h2>
-                </div>
-                <p>
-                  線の向きは移動方向、長さは物理距離、太さと濃さはfrequency。
-                  白線はfrequency-weighted mean resultantで、長さは方向の集中度を表す。
-                </p>
-              </header>
-              <div className="flow-two-up">
-                <MovementProfilePlot
-                  vectors={analysisVectors}
-                  hand="left"
-                  maxDistance={relativeMaxDistance}
-                  maxVectorWeight={relativeMaxWeight}
-                />
-                <MovementProfilePlot
-                  vectors={analysisVectors}
-                  hand="right"
-                  maxDistance={relativeMaxDistance}
-                  maxVectorWeight={relativeMaxWeight}
-                />
+          <section className="flow-block">
+            <header className="flow-block-header">
+              <div>
+                <p className="eyebrow">Movement profile</p>
+                <h2>Relative vectors</h2>
               </div>
-              {source === 'actual' && analysisVectors.some((vector) => vector.hand === 'cross') ? (
-                <p className="flow-footnote">
-                  Cross-hand bigramはKeyboard Flowには残すが、左右のmovement profileからは除外する。
-                </p>
-              ) : null}
-            </section>
-          </motion.section>
-        ) : (
-          <motion.div
-            className="flow-analysis-locked"
-            key="locked"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <span>Vector Analysis</span>
-            <strong>指を1〜2本選ぶと表示</strong>
-            <p>未選択時はKeyboard Flowで全体の結合を観察できる。</p>
-          </motion.div>
-        )}
+              <p>
+                線の向きは移動方向、長さは物理距離、太さと濃さはfrequency。
+                白線はfrequency-weighted mean resultantで、長さは方向の集中度を表す。
+              </p>
+            </header>
+            <div className="flow-two-up">
+              <MovementProfilePlot
+                vectors={analysisVectors}
+                hand="left"
+                maxDistance={relativeMaxDistance}
+                maxVectorWeight={relativeMaxWeight}
+              />
+              <MovementProfilePlot
+                vectors={analysisVectors}
+                hand="right"
+                maxDistance={relativeMaxDistance}
+                maxVectorWeight={relativeMaxWeight}
+              />
+            </div>
+            {source === 'actual' && analysisVectors.some((vector) => vector.hand === 'cross') ? (
+              <p className="flow-footnote">
+                Cross-hand bigramはKeyboard Flowには残すが、左右のmovement profileからは除外する。
+              </p>
+            ) : null}
+          </section>
+        </motion.section>
       </AnimatePresence>
 
       <p className="flow-footnote">

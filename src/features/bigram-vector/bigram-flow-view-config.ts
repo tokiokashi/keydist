@@ -1,11 +1,51 @@
 export type KeyboardFlowWeightScale = 'linear' | 'sqrt' | 'log';
 export type KeyboardFlowLayerOrder = 'weight' | 'same-hand-top' | 'cross-hand-top';
+export type KeyboardFlowHoverScale = 'key' | 'global';
 
 export interface KeyboardFlowVectorLike {
   readonly id: string;
   readonly weight: number;
   readonly distance: number;
   readonly hand: 'left' | 'right' | 'cross';
+}
+
+export interface KeyboardFlowOutgoingVectorLike {
+  readonly weight: number;
+  readonly fromKeyIds: readonly string[];
+}
+
+/**
+ * hoveredKeyId始点のedgeに限定した最大weightを求める。
+ * ホバー中の太さ基準を「そのキーだけ」にする時の分母になる。
+ */
+export function computeOutgoingMaxWeight(
+  vectors: readonly KeyboardFlowOutgoingVectorLike[],
+  hoveredKeyId: string | null,
+): number {
+  if (hoveredKeyId === null) return 0;
+  let max = 0;
+  for (const vector of vectors) {
+    if (!vector.fromKeyIds.includes(hoveredKeyId)) continue;
+    if (vector.weight > max) max = vector.weight;
+  }
+  return max;
+}
+
+/**
+ * strokeWidthの計算に使う最大weightを、ホバー状態と設定から決める。
+ * 「そのキーだけ」設定でも、hoveredKeyIdが始点でないedge（=非表示側で減光中）は
+ * 全体基準のまま揺れないようにする。
+ */
+export function resolveKeyboardFlowMaxWeight(
+  vector: KeyboardFlowOutgoingVectorLike,
+  globalMaxWeight: number,
+  keyMaxWeight: number,
+  hoverScale: KeyboardFlowHoverScale,
+  hoveredKeyId: string | null,
+): number {
+  if (hoverScale !== 'key' || hoveredKeyId === null) return globalMaxWeight;
+  if (!vector.fromKeyIds.includes(hoveredKeyId)) return globalMaxWeight;
+  return keyMaxWeight;
 }
 
 export function scaleKeyboardFlowWeight(
@@ -31,8 +71,8 @@ function layerRank(
 
 /**
  * SVGは後から描いたpathが前面になる。
- * group priority -> weight -> stable id の順で並べ、各group内は従来どおり
- * 細い線から太い線へ描画する。
+ * group priority -> weight降順 -> stable id の順で並べ、各group内は太い線を先に描き、
+ * 細い線を最後（最前面）に描く。太いedgeが細いedgeを覆い隠さないようにするため。
  */
 export function orderKeyboardFlowVectors<T extends KeyboardFlowVectorLike>(
   vectors: readonly T[],
@@ -42,6 +82,6 @@ export function orderKeyboardFlowVectors<T extends KeyboardFlowVectorLike>(
     .filter((vector) => vector.distance >= 1e-6)
     .sort((a, b) =>
       layerRank(a.hand, order) - layerRank(b.hand, order)
-      || a.weight - b.weight
+      || b.weight - a.weight
       || a.id.localeCompare(b.id));
 }
