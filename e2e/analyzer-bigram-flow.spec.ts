@@ -60,6 +60,59 @@ test('Bigram Flow view controls switch line scale and layer order locally', asyn
   await expect(flow).toHaveAttribute('data-layer-order', 'cross-hand-top');
 });
 
+test('per-key hover scale widens the local max-weight outgoing edge to the global max width', async ({ page }) => {
+  await gotoAnalyzer(page);
+
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible();
+
+  const hoverScaleToggle = flow.locator('.flow-checkbox-row input[type="checkbox"]');
+  await expect(hoverScaleToggle).toBeChecked();
+  await expect(flow).toHaveAttribute('data-hover-scale', 'key');
+
+  const edges = flow.locator('.flow-vector-layer [data-flow-edge]');
+  const edgeData = await edges.evaluateAll((els) =>
+    els.map((el) => ({
+      fromKeys: (el.getAttribute('data-from-keys') ?? '').split('+').filter(Boolean),
+      weight: Number(el.getAttribute('data-flow-weight')),
+    })));
+
+  const globalMax = Math.max(...edgeData.map((edge) => edge.weight));
+  const keyIds = [...new Set(edgeData.flatMap((edge) => edge.fromKeys))];
+
+  let chosenKey: string | undefined;
+  let chosenWeight = -1;
+  let chosenIndex = -1;
+  for (const keyId of keyIds) {
+    const outgoing = edgeData
+      .map((edge, index) => ({ ...edge, index }))
+      .filter((edge) => edge.fromKeys.includes(keyId));
+    if (outgoing.length < 2) continue;
+    if (new Set(outgoing.map((edge) => edge.weight)).size < 2) continue;
+    const localMax = Math.max(...outgoing.map((edge) => edge.weight));
+    if (localMax >= globalMax) continue;
+    chosenKey = keyId;
+    chosenWeight = localMax;
+    chosenIndex = outgoing.find((edge) => edge.weight === localMax)!.index;
+    break;
+  }
+
+  // 前提: ≥2本の出力edge・異なるweight・局所最大 < 全体最大を満たすキーが実在すること。
+  expect(chosenKey, 'no key satisfies the precondition for this scenario').toBeDefined();
+  expect(chosenWeight).toBeLessThan(globalMax);
+
+  const key = flow.locator(`.flow-key[data-key-id="${chosenKey}"]`);
+  const maxEdgeWidth = () => edges.nth(chosenIndex).getAttribute('stroke-width').then(Number);
+
+  await key.hover();
+  await expect.poll(maxEdgeWidth).toBeCloseTo(6.55, 5);
+
+  await hoverScaleToggle.uncheck();
+  await expect(flow).toHaveAttribute('data-hover-scale', 'global');
+  await key.hover();
+  await expect.poll(maxEdgeWidth).toBeLessThan(6.55);
+});
+
 async function edgeHandOrder(flow: import('@playwright/test').Locator): Promise<string[]> {
   return flow.locator('.flow-vector-layer [data-flow-edge]').evaluateAll(
     (els) => els.map((el) => el.getAttribute('data-flow-hand') ?? ''),
