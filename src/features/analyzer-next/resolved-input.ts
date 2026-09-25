@@ -19,6 +19,7 @@ export interface AnalysisLayoutCatalogEntry {
   layout: Layout;
   revisionKey: string;
   romajiRuleId: string | null;
+  resolveRomajiRule?: (ruleId: string) => AnalysisLayoutCatalogEntry | undefined;
 }
 
 export interface AnalysisGeometryResolution {
@@ -74,7 +75,12 @@ export function createResolvedAnalysisInputResolver(
     if (!catalogEntry) return undefined;
 
     const distanceOverride = session.distance.perLayout[layoutId] ?? {};
-    const { romajiRule: _romajiRule, ...distanceOnlyOverride } = distanceOverride;
+    const { romajiRule, ...distanceOnlyOverride } = distanceOverride;
+    const effectiveCatalogEntry = romajiRule === undefined
+      ? catalogEntry
+      : catalogEntry.resolveRomajiRule?.(romajiRule);
+    if (!effectiveCatalogEntry) return undefined;
+
     const resolvedConditions = resolveConditions(
       legacyCompatibleConditionDefaults(session.distance.defaults, session),
       distanceOnlyOverride,
@@ -82,7 +88,7 @@ export function createResolvedAnalysisInputResolver(
     const geometryResolution = options.geometryForKind(resolvedConditions.geometry);
     const assignment = assignmentWithHomeKeys(
       geometryResolution.settings.assignment,
-      catalogEntry.layout.homeKeys,
+      effectiveCatalogEntry.layout.homeKeys,
     );
     const geometry = buildGeometry(geometryResolution.settings.shape, assignment);
 
@@ -90,11 +96,11 @@ export function createResolvedAnalysisInputResolver(
       mode: session.mode,
       text: session.text,
       layoutId,
-      layoutRevision: catalogEntry.revisionKey,
+      layoutRevision: effectiveCatalogEntry.revisionKey,
       geometryRevision: geometryResolution.revisionKey,
-      homeKeys: catalogEntry.layout.homeKeys,
+      homeKeys: effectiveCatalogEntry.layout.homeKeys,
       resolvedConditions,
-      romajiRuleId: catalogEntry.romajiRuleId,
+      romajiRuleId: effectiveCatalogEntry.romajiRuleId,
     });
 
     return {
@@ -102,10 +108,10 @@ export function createResolvedAnalysisInputResolver(
       input: {
         mode: session.mode,
         text: session.text,
-        layout: catalogEntry.layout,
+        layout: effectiveCatalogEntry.layout,
         geometry,
         conditions: resolvedConditions,
-        romajiRuleId: catalogEntry.romajiRuleId,
+        romajiRuleId: effectiveCatalogEntry.romajiRuleId,
       },
     };
   };
