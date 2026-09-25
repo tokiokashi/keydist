@@ -71,8 +71,8 @@ function layerRank(
 
 /**
  * SVGは後から描いたpathが前面になる。
- * group priority -> weight -> stable id の順で並べ、各group内は従来どおり
- * 細い線から太い線へ描画する。
+ * group priority -> weight降順 -> stable id の順で並べ、各group内は太い線を先に描き、
+ * 細い線を最後（最前面）に描く。太いedgeが細いedgeを覆い隠さないようにするため。
  */
 export function orderKeyboardFlowVectors<T extends KeyboardFlowVectorLike>(
   vectors: readonly T[],
@@ -82,6 +82,6 @@ export function orderKeyboardFlowVectors<T extends KeyboardFlowVectorLike>(
     .filter((vector) => vector.distance >= 1e-6)
     .sort((a, b) =>
       layerRank(a.hand, order) - layerRank(b.hand, order)
-      || a.weight - b.weight
+      || b.weight - a.weight
       || a.id.localeCompare(b.id));
 }

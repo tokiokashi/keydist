@@ -24,21 +24,21 @@ test('keyboard flow weight scale keeps linear as the default shape and expands l
   assert.equal(scaleKeyboardFlowWeight(16, 16, 'log'), 1);
 });
 
-test('weight order preserves the current thin-to-thick drawing order', () => {
+test('weight order draws thick edges first so thin edges land on top', () => {
   assert.deepEqual(
     orderKeyboardFlowVectors(vectors, 'weight').map((vector) => vector.id),
-    ['cross-light', 'same-light', 'cross-heavy', 'same-heavy'],
+    ['same-heavy', 'cross-heavy', 'same-light', 'cross-light'],
   );
 });
 
 test('same-hand and cross-hand priorities only change group z-order', () => {
   assert.deepEqual(
     orderKeyboardFlowVectors(vectors, 'same-hand-top').map((vector) => vector.id),
-    ['cross-light', 'cross-heavy', 'same-light', 'same-heavy'],
+    ['cross-heavy', 'cross-light', 'same-heavy', 'same-light'],
   );
   assert.deepEqual(
     orderKeyboardFlowVectors(vectors, 'cross-hand-top').map((vector) => vector.id),
-    ['same-light', 'same-heavy', 'cross-light', 'cross-heavy'],
+    ['same-heavy', 'same-light', 'cross-heavy', 'cross-light'],
   );
 });
 
