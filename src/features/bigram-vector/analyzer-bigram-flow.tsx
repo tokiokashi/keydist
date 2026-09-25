@@ -12,6 +12,12 @@ import {
 import type { Geometry, Key, Point } from '../../geometry.ts';
 import type { AnalyzerBigramFlowModel } from '../../analyzer-bigram-flow-model.ts';
 import type { Layout } from '../../layouts/types.ts';
+import {
+  orderKeyboardFlowVectors,
+  scaleKeyboardFlowWeight,
+  type KeyboardFlowLayerOrder,
+  type KeyboardFlowWeightScale,
+} from './bigram-flow-view-config.ts';
 import './bigram-vector-view.css';
 
 const FINGER_OPTIONS: readonly { id: FingerClass; label: string }[] = [
@@ -23,12 +29,12 @@ const FINGER_OPTIONS: readonly { id: FingerClass; label: string }[] = [
 const SCALE = 58;
 const PAD = 42;
 const FLOW_COLORS = {
-  left: '#ff8a66',
-  right: '#60a9ff',
-  cross: '#a5abb0',
-  inward: '#7fc7a4',
-  outward: '#c19de9',
-  same: '#a5abb0',
+  left: 'var(--viz-flow-left)',
+  right: 'var(--viz-flow-right)',
+  cross: 'var(--viz-flow-cross)',
+  inward: 'var(--viz-flow-inward)',
+  outward: 'var(--viz-flow-outward)',
+  same: 'var(--viz-flow-cross)',
 } as const;
 
 interface RelativeVector {
@@ -104,13 +110,6 @@ function isStationaryVector(vector: BigramVector): boolean {
   return vector.distance < 1e-6;
 }
 
-function keyboardFlowVectors(vectors: readonly BigramVector[]): readonly BigramVector[] {
-  return [...vectors]
-    .filter((vector) => !isStationaryVector(vector))
-    // 細い線を先に、太い線を後に描いて主要connectionを前面へ残す。
-    .sort((a, b) => a.weight - b.weight || a.id.localeCompare(b.id));
-}
-
 function repeatCountsByKey(vectors: readonly BigramVector[]): ReadonlyMap<string, number> {
   const counts = new Map<string, number>();
   for (const vector of vectors) {
@@ -150,11 +149,15 @@ function KeyboardFlow({
   layout,
   vectors,
   selectedFingers,
+  lineScale,
+  layerOrder,
 }: {
   geometry: Geometry;
   layout: Layout;
   vectors: readonly BigramVector[];
   selectedFingers: readonly FingerClass[];
+  lineScale: KeyboardFlowWeightScale;
+  layerOrder: KeyboardFlowLayerOrder;
 }) {
   const reduceMotion = useReducedMotion();
   const keys = useMemo(() => geometry.grid.flat(), [geometry]);
@@ -162,7 +165,10 @@ function KeyboardFlow({
   const [hoveredKeyId, setHoveredKeyId] = useState<string | null>(null);
   const width = PAD * 2 + (keyBounds.maxX - keyBounds.minX) * SCALE;
   const height = PAD * 2 + (keyBounds.maxY - keyBounds.minY) * SCALE;
-  const allFlowVectors = useMemo(() => keyboardFlowVectors(vectors), [vectors]);
+  const allFlowVectors = useMemo(
+    () => orderKeyboardFlowVectors(vectors, layerOrder),
+    [vectors, layerOrder],
+  );
   const repeatCounts = useMemo(() => repeatCountsByKey(vectors), [vectors]);
   const hoverCounts = useMemo(
     () => outgoingCounts(allFlowVectors, hoveredKeyId),
@@ -245,7 +251,7 @@ function KeyboardFlow({
         <g className="flow-vector-layer">
           <AnimatePresence initial={false}>
             {allFlowVectors.map((vector) => {
-              const strength = maxWeight <= 0 ? 0 : vector.weight / maxWeight;
+              const strength = scaleKeyboardFlowWeight(vector.weight, maxWeight, lineScale);
               const gradientIndex = gradientIndexById.get(vector.id);
               const hoverVisible = hoveredKeyId === null || vector.fromKeyIds.includes(hoveredKeyId);
               return (
@@ -253,6 +259,8 @@ function KeyboardFlow({
                   key={vector.id}
                   className="flow-edge"
                   data-flow-edge="true"
+                  data-flow-hand={vector.hand}
+                  data-flow-weight={vector.weight}
                   data-from-keys={vector.fromKeyIds.join('+')}
                   data-to-keys={vector.toKeyIds.join('+')}
                   d={edgePath(vector, keyBounds.minX, keyBounds.minY)}
@@ -548,6 +556,8 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
   );
   const [source, setSource] = useState<BigramSource>('actual');
   const [selectedFingers, setSelectedFingers] = useState<FingerClass[]>([]);
+  const [lineScale, setLineScale] = useState<KeyboardFlowWeightScale>('linear');
+  const [layerOrder, setLayerOrder] = useState<KeyboardFlowLayerOrder>('weight');
   const data = snapshot.data;
 
   const vectors = useMemo(
@@ -605,6 +615,8 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
       data-react-feature="bigram-flow"
       data-layout-id={layout.id}
       data-geometry-id={geometry.id}
+      data-line-scale={lineScale}
+      data-layer-order={layerOrder}
     >
       <div className="flow-analysis-heading">
         <div>
@@ -639,6 +651,32 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
           <span>Fingers</span>
           <FingerControls selected={selectedFingers} onToggle={toggleFinger} />
         </div>
+
+        <label className="flow-control-group">
+          <span>紐の太さ</span>
+          <select
+            aria-label="紐の太さのスケール"
+            value={lineScale}
+            onChange={(event) => setLineScale(event.currentTarget.value as KeyboardFlowWeightScale)}
+          >
+            <option value="linear">線形</option>
+            <option value="sqrt">平方根</option>
+            <option value="log">対数</option>
+          </select>
+        </label>
+
+        <label className="flow-control-group">
+          <span>重ね順</span>
+          <select
+            aria-label="紐の重ね順"
+            value={layerOrder}
+            onChange={(event) => setLayerOrder(event.currentTarget.value as KeyboardFlowLayerOrder)}
+          >
+            <option value="weight">重みの順</option>
+            <option value="same-hand-top">同手を上</option>
+            <option value="cross-hand-top">逆手を上</option>
+          </select>
+        </label>
       </section>
 
       <div className="flow-status">
@@ -665,6 +703,8 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
           layout={layout}
           vectors={aggregated}
           selectedFingers={selectedFingers}
+          lineScale={lineScale}
+          layerOrder={layerOrder}
         />
       </section>
 
