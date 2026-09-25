@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { gotoAnalyzer } from './analyzer-helper.ts';
 
 test('Bigram Flow is React-owned and follows the current Analyzer detail result', async ({ page }) => {
-  await page.goto('/analyzer');
+  await gotoAnalyzer(page);
 
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible();
@@ -24,7 +25,7 @@ test('Bigram Flow is React-owned and follows the current Analyzer detail result'
 });
 
 test('Bigram Flow hover keeps connection DOM mounted', async ({ page }) => {
-  await page.goto('/analyzer');
+  await gotoAnalyzer(page);
 
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible();
