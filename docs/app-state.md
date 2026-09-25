@@ -9,7 +9,8 @@ Issue #413 Phase 8で、UI/runtime preferenceの永続化authorityを
 
 - `workspace`: `WorkspaceStateV1`
 - `inputConverter`: `InputConverterPreferencesV2`
-- `analyzer`: AnalyzerのUI preference（旧 `UiStateV1.ui` から playback を除いたもの）
+- `appearance`: App-level appearance preference（現在は `theme: light | dark | system`）
+- `analyzer`: AnalyzerのUI preference（旧 `UiStateV1.ui` から playback / theme を除いたもの）
 - `conditions`: Analyzerの解析条件
 - `playback`: Analyzerの再生設定
 
@@ -24,8 +25,9 @@ Analyzer runtimeはPhase 9まで互換のため `UiStateV1` を再構成して�
 | --- | --- |
 | `keydist:workspace-state` | `workspace` |
 | `keydist:input-converter-preferences` | `inputConverter` |
-| `keydist:ui-state` | `analyzer` / `conditions` / `playback` |
-| `keydist:theme` | Analyzer migration source |
+| `AppStateV2.analyzer.theme` | `appearance.theme` |
+| `keydist:ui-state` | `appearance` / `analyzer` / `conditions` / `playback` |
+| `keydist:theme` | `appearance.theme` |
 | `keydist:selected-layouts` | Analyzer migration source |
 | `keydist:text-collapsed` | Analyzer migration source |
 
@@ -48,7 +50,7 @@ Workspace / Tester / Analyzerのpersistent writerはすべて
 
 各featureはslice単位でpatchし、保存直前に最新rootを読み直す。
 これにより別entrypoint/featureのsliceを古いsnapshotで上書きしない。
-Analyzerの3sliceは1回のroot patchでまとめて保存する。
+Analyzerの3sliceは1回のroot patchでまとめて保存する。themeはAnalyzer writerから除外し、App Shellの`appearance` writerだけが更新する。
 
 ## Condition import/export and share
 
