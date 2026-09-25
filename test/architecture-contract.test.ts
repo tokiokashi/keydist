@@ -873,3 +873,74 @@ test('廃止済み#200 legacy symbol / production helperをsrcへ再導入しな
   assert.equal(sourcePaths.includes('playback-arpeggio.ts'), false);
   assert.equal(sourcePaths.includes('hold-start-action.ts'), false);
 });
+
+
+test('Playback surfaceの描画・interaction authorityをimperative側へ戻さない', async () => {
+  const playbackView = await readFile(join(SRC, 'playback-view.ts'), 'utf8');
+  const forbidden = [
+    'querySelector',
+    'addEventListener',
+    'innerHTML',
+    'replaceChildren',
+    'document.createElement',
+    'createElementNS',
+    'cloneNode',
+    'surfaceModel.setHtml',
+    'commitSurface',
+  ] as const;
+
+  for (const token of forbidden) {
+    assert.equal(
+      playbackView.includes(token),
+      false,
+      `playback-view.ts must not regain DOM authority via ${token}`,
+    );
+  }
+
+  const shell = await readFile(join(SRC, 'analyzer-react-shell.tsx'), 'utf8');
+  assert.equal(
+    shell.includes('dangerouslySetInnerHTML'),
+    false,
+    'Analyzer React shell must not host Playback through raw HTML',
+  );
+});
+
+
+test('Analyzer legacy entryをUI本体として復活させない', async () => {
+  const rootEntries = await readdir(ROOT);
+  for (const path of [
+    'legacy.html',
+    'vite.legacy.config.ts',
+    'playwright.legacy.config.ts',
+  ]) {
+    assert.equal(
+      rootEntries.includes(path),
+      false,
+      `${path} must remain retired after the /analyzer route migration`,
+    );
+  }
+
+  const route = await readFile(join(SRC, 'routes', 'analyzer.tsx'), 'utf8');
+  assert.match(route, /AnalyzerPage/);
+  assert.doesNotMatch(route, /window\.location\.replace|legacyUrl/);
+
+  const page = await readFile(join(SRC, 'analyzer-page.tsx'), 'utf8');
+  assert.match(page, /useEffect/);
+  assert.match(page, /import\('\.\/main\.ts'\)/);
+
+  const main = await readFile(join(SRC, 'main.ts'), 'utf8');
+  const mountIndex = main.indexOf('export function mountAnalyzerRuntime');
+  assert.notEqual(mountIndex, -1);
+  const modulePrelude = main.slice(0, mountIndex);
+  assert.doesNotMatch(
+    modulePrelude,
+    /\b(?:window|document|localStorage|sessionStorage)\b/,
+    'Analyzer module import must stay SSR-safe; browser state starts at mount',
+  );
+
+  const pkg = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8')) as {
+    scripts?: Record<string, string>;
+  };
+  assert.equal(pkg.scripts?.['test:browser:legacy'], undefined);
+  assert.doesNotMatch(pkg.scripts?.build ?? '', /vite\.legacy\.config/);
+});
