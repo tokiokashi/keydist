@@ -233,3 +233,20 @@ test('View config version distinguishes migration from current corruption and re
     undefined,
   );
 });
+
+
+test('binding resolver never exposes a selected/focused layout absent from the current mode catalog', () => {
+  const invalid = session({
+    mode: 'en',
+    selectedLayoutIds: ['shingeta'],
+    focusLayoutId: 'shingeta',
+  });
+  assert.deepEqual(
+    resolveViewBinding(invalid, 'single', { kind: 'focused-layout' }),
+    { status: 'unavailable', reason: 'deleted' },
+  );
+  assert.deepEqual(
+    resolveViewBinding(invalid, 'set', { kind: 'session' }),
+    { status: 'unavailable', reason: 'deleted' },
+  );
+});
