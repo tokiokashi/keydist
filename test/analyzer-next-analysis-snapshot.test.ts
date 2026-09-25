@@ -159,7 +159,11 @@ test('per-layout romaji override re-resolves the effective Layout and calculatio
     }),
   });
 
-  store.setMode('ja');
+  store.setTarget({
+    mode: 'ja',
+    selectedLayoutIds: ['qwerty'],
+    focusLayoutId: 'qwerty',
+  });
   const before = resolver('qwerty')!;
   assert.equal(before.input.romajiRuleId, 'hepburn');
   assert.equal(before.input.layout, baseLayout);
@@ -170,7 +174,11 @@ test('per-layout romaji override re-resolves the effective Layout and calculatio
   assert.equal(after.input.layout, kunreiLayout);
   assert.notEqual(after.key, before.key);
 
-  store.setMode('en');
+  store.setTarget({
+    mode: 'en',
+    selectedLayoutIds: ['qwerty'],
+    focusLayoutId: 'qwerty',
+  });
   const en = resolver('qwerty')!;
   assert.equal(en.input.romajiRuleId, 'kunrei');
   assert.match(en.key, /en:qwerty:romaji:kunrei/);
