@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { gotoAnalyzer, waitForAnalyzerRuntime } from './analyzer-helper.ts';
 
 test('Analyzer route stays operational when shared layer/picker helpers change', async ({ page }) => {
   const pageErrors: string[] = [];
@@ -10,7 +11,7 @@ test('Analyzer route stays operational when shared layer/picker helpers change',
     if (message.type() === 'error') console.error('[analyzer console]', message.text());
   });
 
-  await page.goto('/analyzer');
+  await gotoAnalyzer(page);
   await page.waitForTimeout(250);
   expect(pageErrors, 'Analyzer startup must not throw before controls initialize').toEqual([]);
 
@@ -65,10 +66,7 @@ test('Analyzer route stays operational when shared layer/picker helpers change',
 test('legacy Analyzer URL redirects to the React Analyzer route', async ({ page }) => {
   await page.goto('/legacy.html');
   await expect(page).toHaveURL(/\/analyzer\/?$/);
-  await expect(page.locator('#analyzer-react-shell')).toHaveAttribute(
-    'data-analyzer-react-shell',
-    'mounted',
-  );
+  await waitForAnalyzerRuntime(page);
 });
 
 
@@ -76,10 +74,7 @@ test('Analyzer runtime remounts after SPA navigation away and back', async ({ pa
   await page.goto('/input');
   await page.getByRole('link', { name: 'Analyzer' }).click();
   await expect(page).toHaveURL(/\/analyzer\/?$/);
-  await expect(page.locator('#analyzer-react-shell')).toHaveAttribute(
-    'data-analyzer-react-shell',
-    'mounted',
-  );
+  await waitForAnalyzerRuntime(page);
   await expect(page.locator('#mode')).toHaveValue('ja');
 
   await page.goBack();
@@ -88,10 +83,7 @@ test('Analyzer runtime remounts after SPA navigation away and back', async ({ pa
 
   await page.goForward();
   await expect(page).toHaveURL(/\/analyzer\/?$/);
-  await expect(page.locator('#analyzer-react-shell')).toHaveAttribute(
-    'data-analyzer-react-shell',
-    'mounted',
-  );
+  await waitForAnalyzerRuntime(page);
   await expect(page.locator('#mode')).toHaveValue('ja');
   await expect(page.locator('#heatmap svg').first()).toBeVisible();
 });
