@@ -1,15 +1,21 @@
 import type { InputConverterPreferencesV2 } from './features/input-converter/input-converter-preferences.ts';
 import type { UiPlaybackState, UiStateV1 } from './ui-state.ts';
+import type { ThemeChoice } from './theme.ts';
 import type { WorkspaceStateV1 } from './workspace/workspace-state.ts';
 
 export const APP_STATE_VERSION = 2;
 
-export type AnalyzerPreferencesV2 = Omit<UiStateV1['ui'], 'playback'>;
+export interface AppearancePreferencesV1 {
+  theme: ThemeChoice;
+}
+
+export type AnalyzerPreferencesV2 = Omit<UiStateV1['ui'], 'playback' | 'theme'>;
 
 export interface AppStateV2 {
   version: typeof APP_STATE_VERSION;
   workspace?: WorkspaceStateV1;
   inputConverter?: InputConverterPreferencesV2;
+  appearance?: AppearancePreferencesV1;
   analyzer?: AnalyzerPreferencesV2;
   conditions?: UiStateV1['conditions'];
   playback?: UiPlaybackState;
@@ -21,7 +27,7 @@ export function analyzerSlicesFromUiState(state: UiStateV1): Pick<
   AppStateV2,
   'analyzer' | 'conditions' | 'playback'
 > {
-  const { playback, ...analyzer } = state.ui;
+  const { playback, theme: _theme, ...analyzer } = state.ui;
   return {
     analyzer: structuredClone(analyzer),
     conditions: structuredClone(state.conditions),
@@ -36,10 +42,12 @@ export function uiStateFromAppState(
   const state = structuredClone(fallback);
   if (appState.analyzer !== undefined) {
     state.ui = {
+      ...state.ui,
       ...structuredClone(appState.analyzer),
       playback: state.ui.playback,
     };
   }
+  if (appState.appearance !== undefined) state.ui.theme = appState.appearance.theme;
   if (appState.playback !== undefined) state.ui.playback = structuredClone(appState.playback);
   if (appState.conditions !== undefined) state.conditions = structuredClone(appState.conditions);
   return state;
