@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test';
-
-const analyzerUrl = '/analyzer';
+import { gotoAnalyzer } from './analyzer-helper.ts';
 
 test('Conditions content is React-hosted and restores defaults from AppState', async ({ page }) => {
-  await page.goto(analyzerUrl);
+  await gotoAnalyzer(page);
 
   await page.locator('#conditions-open').click();
   const conditions = page.locator('[data-react-feature="conditions"]');
