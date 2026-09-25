@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useLayoutEffect,
   useState,
   useSyncExternalStore,
@@ -497,9 +498,11 @@ export function AnalyzerStatefulPanel({
 }
 
 export function AnalyzerThemeControls() {
-  const [choice, setChoice] = useState(
-    () => loadAppearancePreference(window.localStorage).theme,
-  );
+  const [choice, setChoice] = useState<'light' | 'dark' | 'system'>('system');
+
+  useEffect(() => {
+    setChoice(loadAppearancePreference(window.localStorage).theme);
+  }, []);
 
   return (
     <div
