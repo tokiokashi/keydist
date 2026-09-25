@@ -1,6 +1,35 @@
 import { useEffect } from 'react';
 import { mountAnalyzerRuntime } from './main.ts';
 
+interface RetainedAnalyzerRuntime {
+  dispose: () => void;
+  releasePending: boolean;
+}
+
+let retainedRuntime: RetainedAnalyzerRuntime | undefined;
+
+/**
+ * React Strict Effectsの setup -> cleanup -> setup では同じruntimeを再利用する。
+ * 本当のroute離脱だけmicrotask終端でdisposeし、nested React rootの二重mountを防ぐ。
+ */
+function acquireAnalyzerRuntime(): () => void {
+  const runtime = retainedRuntime ?? {
+    dispose: mountAnalyzerRuntime(),
+    releasePending: false,
+  };
+  retainedRuntime = runtime;
+  runtime.releasePending = false;
+
+  return () => {
+    runtime.releasePending = true;
+    queueMicrotask(() => {
+      if (!runtime.releasePending || retainedRuntime !== runtime) return;
+      retainedRuntime = undefined;
+      runtime.dispose();
+    });
+  };
+}
+
 function InfoButton({ tip }: { tip: string }) {
   return (
     <button
@@ -15,7 +44,7 @@ function InfoButton({ tip }: { tip: string }) {
 }
 
 export function AnalyzerPage() {
-  useEffect(() => mountAnalyzerRuntime(), []);
+  useEffect(() => acquireAnalyzerRuntime(), []);
 
   return (
     <div className="analyzer-feature">
