@@ -926,7 +926,8 @@ test('Analyzer legacy entryをUI本体として復活させない', async () => 
 
   const page = await readFile(join(SRC, 'analyzer-page.tsx'), 'utf8');
   assert.match(page, /useEffect/);
-  assert.match(page, /import\('\.\/main\.ts'\)/);
+  assert.match(page, /import \{ mountAnalyzerRuntime \} from '\.\/main\.ts'/);
+  assert.doesNotMatch(page, /import\('\.\/main\.ts'\)/);
 
   const main = await readFile(join(SRC, 'main.ts'), 'utf8');
   const mountIndex = main.indexOf('export function mountAnalyzerRuntime');
