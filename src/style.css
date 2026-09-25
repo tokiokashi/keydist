@@ -1,92 +1,15 @@
-/* ---- トークン ---------------------------------------------------------- */
+/* ---- 旧Analyzer互換token aliases --------------------------------------- */
+/*
+ * Theme authorityはapp.css -> theme.css。
+ * #505で旧Analyzerを置き換えるまで、既存selectorが使う名前だけsemantic tokenへaliasする。
+ */
 :root {
-  --bg: #f7f6f3;
-  --panel: #ffffff;
-  --panel-2: #fbfaf8;
-  --fg: #1a1917;
-  --muted: #67655e;
-  --line: #e2dfd8;
-  --line-strong: #cfcbc2;
-  --accent: #2a78d6;
-  /* sequential（打鍵頻度）: 単一色相・明度単調 */
-  --heat-0: #eef2f6;
-  --heat-1: #1c5cab;
-  --on-heat: #ffffff;
-
-  /* categorical: 検証済みパレット 8 スロット（隣接ペアで CVD ΔE 9.1 / 通常視 19.6） */
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --series-3: #1baf7a;
-  --series-4: #eda100;
-  --series-5: #e87ba4;
-  --series-6: #008300;
-  --series-7: #4a3aa7;
-  --series-8: #e34948;
-
-  /* コンボピッカー専用色。series-1〜8はレイヤーの色分けに使うため、
-     選択中・候補はレイヤー色と混同しないよう別枠で持つ */
-  --picker-selected: #c81cad;
-  --picker-candidate: #0e8a9e;
-
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #131312;
-    --panel: #1c1c1a;
-    --panel-2: #222220;
-    --fg: #f0eee9;
-    --muted: #9c998f;
-    --line: #32312c;
-    --line-strong: #45443d;
-    --accent: #3987e5;
-    --heat-0: #1f2225;
-    --heat-1: #3987e5;
-    --on-heat: #0b1220;
-
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --series-4: #c98500;
-    --series-5: #d55181;
-    --series-6: #008300;
-    --series-7: #9085e9;
-    --series-8: #e66767;
-
-    --picker-selected: #e879f9;
-    --picker-candidate: #22d3ee;
-
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme='dark'] {
-  --bg: #131312;
-  --panel: #1c1c1a;
-  --panel-2: #222220;
-  --fg: #f0eee9;
-  --muted: #9c998f;
-  --line: #32312c;
-  --line-strong: #45443d;
-  --accent: #3987e5;
-  --heat-0: #1f2225;
-  --heat-1: #3987e5;
-  --on-heat: #0b1220;
-
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
-  --series-4: #c98500;
-  --series-5: #d55181;
-  --series-6: #008300;
-  --series-7: #9085e9;
-  --series-8: #e66767;
-
-  --picker-selected: #e879f9;
-  --picker-candidate: #22d3ee;
-
-  color-scheme: dark;
+  --panel: var(--surface);
+  --panel-2: var(--surface-subtle);
+  --fg: var(--text);
+  --muted: var(--text-muted);
+  --line: var(--border);
+  --line-strong: var(--border-strong);
 }
 
 * { box-sizing: border-box; }
@@ -155,7 +78,7 @@ a { color: var(--accent); }
 .seg button[aria-pressed='true'] {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast);
 }
 
 /* ---- レイアウト -------------------------------------------------------- */
@@ -750,7 +673,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-order-arpeggio { fill: var(--series-3); font-size: 9px; font-weight: 700; }
 .playback-figure [data-playback-motion-kind='sameFinger'] rect { fill: var(--series-7); stroke: var(--series-7); }
 .playback-figure [data-playback-motion-kind='chain'] rect { fill: var(--series-8); stroke: var(--series-8); }
-.playback-figure [data-playback-motion-key] text { fill: #fff; }
+.playback-figure [data-playback-motion-key] text { fill: var(--viz-on-strong); }
 /* 打鍵中・trail・plan の塗り指定は子孫セレクタなので、キーの <g> 配下の rect を
    すべて拾う。押下フィードバック用のオーバーレイまで同じ色に塗られ、重ねても画が
    変わらなくなる（presentation attribute の fill は CSS に負ける）。
@@ -761,7 +684,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   stroke: none;
 }
 .playback-figure [data-playback-active='true'] rect { fill: var(--accent); stroke: var(--accent); }
-.playback-figure [data-playback-active='true'] text { fill: #fff; }
+.playback-figure [data-playback-active='true'] text { fill: var(--viz-on-strong); }
 .playback-figure [data-playback-trigger='true'] rect { stroke: var(--series-4); stroke-width: 3; }
 .playback-figure [data-playback-finger-position='LP'] rect,
 .playback-figure [data-playback-finger-position='RP'] rect { stroke: var(--series-1); stroke-width: 3.5; }
@@ -939,7 +862,7 @@ button {
   border: 1px solid var(--accent);
   border-radius: 6px;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast);
   cursor: pointer;
 }
 button.ghost {

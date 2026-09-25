@@ -1,0 +1,163 @@
+/*
+ * App-wide semantic theme tokens.
+ *
+ * Components consume semantic roles only. Analyzer-specific legacy aliases live
+ * in style.css while the old Analyzer exists; #505 can consume these tokens
+ * directly without inheriting that compatibility layer.
+ */
+:root {
+  color-scheme: light;
+
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-subtle: #fbfaf8;
+  --surface-muted: #efefec;
+  --surface-highlight: rgb(255 255 255 / 65%);
+  --text: #1a1917;
+  --text-muted: #67655e;
+  --border: #e2dfd8;
+  --border-strong: #cfcbc2;
+  --accent: #2a78d6;
+  --accent-strong: #1c5cab;
+  --accent-contrast: #ffffff;
+  --danger: #a13e3e;
+  --danger-surface: #f8e9e7;
+  --focus: #2a78d6;
+
+  --heat-0: #eef2f6;
+  --heat-1: #1c5cab;
+  --on-heat: #ffffff;
+
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+
+  --picker-selected: #c81cad;
+  --picker-candidate: #0e8a9e;
+
+  /* Visualization roles. Bigram Flow and future workspace views use these. */
+  --viz-canvas: #151819;
+  --viz-canvas-deep: #0d0f10;
+  --viz-canvas-border: #292d30;
+  --viz-grid: rgb(255 255 255 / 2.5%);
+  --viz-key-surface: #222627;
+  --viz-key-surface-active: #343a3d;
+  --viz-key-surface-hover: #3b4144;
+  --viz-key-border: #555c5f;
+  --viz-key-text: #f2f3ef;
+  --viz-key-muted: #8e989b;
+  --viz-overlay: rgb(8 10 11 / 72%);
+  --viz-overlay-strong: rgb(9 11 12 / 92%);
+  --viz-overlay-muted: #aeb5b7;
+  --viz-flow-left: #ff8a66;
+  --viz-flow-right: #60a9ff;
+  --viz-flow-cross: #a5abb0;
+  --viz-flow-inward: #7fc7a4;
+  --viz-flow-outward: #c19de9;
+  --viz-resultant: #f6f3dc;
+  --viz-on-strong: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --bg: #131312;
+    --surface: #1c1c1a;
+    --surface-raised: #242421;
+    --surface-subtle: #222220;
+    --surface-muted: #2a2a27;
+    --surface-highlight: rgb(255 255 255 / 12%);
+    --text: #f0eee9;
+    --text-muted: #9c998f;
+    --border: #32312c;
+    --border-strong: #45443d;
+    --accent: #3987e5;
+    --accent-strong: #7bb7f3;
+    --accent-contrast: #ffffff;
+    --danger: #ef8f86;
+    --danger-surface: #3a2220;
+    --focus: #3987e5;
+
+    --heat-0: #1f2225;
+    --heat-1: #3987e5;
+    --on-heat: #0b1220;
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
+    --series-8: #e66767;
+
+    --picker-selected: #e879f9;
+    --picker-candidate: #22d3ee;
+
+    --viz-canvas: #111415;
+    --viz-canvas-deep: #090b0c;
+    --viz-canvas-border: #3a4042;
+    --viz-key-surface: #202526;
+    --viz-key-surface-active: #353c3e;
+    --viz-key-surface-hover: #41494c;
+    --viz-key-border: #657074;
+    --viz-key-text: #f4f5f1;
+    --viz-key-muted: #a5afb2;
+    --viz-overlay-muted: #bdc4c6;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #131312;
+  --surface: #1c1c1a;
+  --surface-raised: #242421;
+  --surface-subtle: #222220;
+  --surface-muted: #2a2a27;
+  --surface-highlight: rgb(255 255 255 / 12%);
+  --text: #f0eee9;
+  --text-muted: #9c998f;
+  --border: #32312c;
+  --border-strong: #45443d;
+  --accent: #3987e5;
+  --accent-strong: #7bb7f3;
+  --accent-contrast: #ffffff;
+  --danger: #ef8f86;
+  --danger-surface: #3a2220;
+  --focus: #3987e5;
+
+  --heat-0: #1f2225;
+  --heat-1: #3987e5;
+  --on-heat: #0b1220;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+
+  --picker-selected: #e879f9;
+  --picker-candidate: #22d3ee;
+
+  --viz-canvas: #111415;
+  --viz-canvas-deep: #090b0c;
+  --viz-canvas-border: #3a4042;
+  --viz-key-surface: #202526;
+  --viz-key-surface-active: #353c3e;
+  --viz-key-surface-hover: #41494c;
+  --viz-key-border: #657074;
+  --viz-key-text: #f4f5f1;
+  --viz-key-muted: #a5afb2;
+  --viz-overlay-muted: #bdc4c6;
+}

@@ -1,20 +1,12 @@
+@import './theme.css';
+
 :root {
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
-  color: #171717;
-  background: #f7f7f5;
+  color: var(--text);
+  background: var(--bg);
   font-synthesis: none;
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --series-3: #1baf7a;
-  --series-4: #eda100;
-  --series-5: #e87ba4;
-  --series-6: #008300;
-  --series-7: #4a3aa7;
-  --series-8: #e34948;
-  --picker-selected: #c81cad;
-  --picker-candidate: #0e8a9e;
 }
 
 * {
@@ -24,6 +16,8 @@
 body {
   margin: 0;
   min-width: 320px;
+  background: var(--bg);
+  color: var(--text);
 }
 
 a {
@@ -38,8 +32,8 @@ a {
   align-items: center;
   gap: 2rem;
   padding: 0.9rem max(1rem, calc((100vw - 70rem) / 2));
-  border-bottom: 1px solid #d8d8d4;
-  background: color-mix(in srgb, #f7f7f5 92%, transparent);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(12px);
 }
 
@@ -55,12 +49,12 @@ a {
 }
 
 .app-header nav a {
-  color: #5b5b57;
+  color: var(--text-muted);
   text-decoration: none;
 }
 
 .app-header nav a[aria-current="page"] {
-  color: #111;
+  color: var(--text);
   font-weight: 650;
 }
 
@@ -84,7 +78,7 @@ a {
 
 .eyebrow {
   margin: 0 0 0.5rem;
-  color: #666;
+  color: var(--text-muted);
   font: 600 0.75rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -98,7 +92,7 @@ h1 {
 
 .hero > p:not(.eyebrow),
 .feature-shell > p:not(.eyebrow) {
-  color: #52524e;
+  color: var(--text-muted);
   font-size: 1.1rem;
   line-height: 1.7;
 }
@@ -113,9 +107,9 @@ h1 {
 .route-card,
 .feature-placeholder {
   padding: 1.25rem;
-  border: 1px solid #d6d6d1;
+  border: 1px solid var(--border);
   border-radius: 0.8rem;
-  background: #fff;
+  background: var(--surface);
 }
 
 .route-card {
@@ -126,7 +120,7 @@ h1 {
 
 .route-card span,
 .feature-placeholder {
-  color: #666;
+  color: var(--text-muted);
 }
 
 
@@ -160,7 +154,7 @@ h1 {
 .input-page-heading > p {
   max-width: 42rem;
   margin: 0;
-  color: #686862;
+  color: var(--text-muted);
   font-size: 0.86rem;
   line-height: 1.45;
   text-align: right;
@@ -245,7 +239,7 @@ h1 {
   left: 50%;
   width: 2px;
   border-radius: 999px;
-  background: #d2d2cc;
+  background: var(--border);
   content: "";
   transform: translateX(-50%);
   transition: width 120ms ease, background 120ms ease;
@@ -254,7 +248,7 @@ h1 {
 .input-splitter:hover::before,
 .input-splitter:focus-visible::before {
   width: 4px;
-  background: #77776f;
+  background: var(--border-strong);
 }
 
 .input-settings-panel,
@@ -263,20 +257,20 @@ h1 {
 .input-layer-guide,
 .input-debug {
   min-width: 0;
-  border: 1px solid #d6d6d1;
+  border: 1px solid var(--border);
   border-radius: 0.75rem;
-  background: #fff;
+  background: var(--surface);
 }
 
 .workspace-panel-header {
   box-sizing: border-box;
-  border-bottom: 1px solid #d2d2cc;
-  background: #efefec;
-  box-shadow: inset 0 1px rgb(255 255 255 / 65%);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+  box-shadow: inset 0 1px var(--surface-highlight);
 }
 
 .workspace-panel-header[data-floating] {
-  background: #e9e9e6;
+  background: var(--surface-muted);
 }
 
 .input-settings-panel {
@@ -317,7 +311,7 @@ h1 {
 }
 
 .input-panel-heading > span {
-  color: #686862;
+  color: var(--text-muted);
   font-size: 0.72rem;
   font-weight: 650;
 }
@@ -327,7 +321,7 @@ h1 {
   padding: 0.2rem 0.25rem;
   border: 0;
   background: transparent;
-  color: #686862;
+  color: var(--text-muted);
   font: inherit;
   font-size: 0.72rem;
   font-weight: 650;
@@ -363,9 +357,9 @@ h1 {
   min-width: 0;
   min-height: 2.35rem;
   padding: 0 0.65rem;
-  border: 1px solid #c9c9c3;
+  border: 1px solid var(--border-strong);
   border-radius: 0.5rem;
-  background: #fff;
+  background: var(--surface);
 }
 
 .input-keyboard-toolbar {
@@ -397,25 +391,25 @@ h1 {
   align-items: center;
   gap: 0.24rem;
   padding: 0.12rem 0.38rem;
-  border: 1px solid #deded8;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: #fafaf8;
-  color: #555550;
+  background: var(--surface-subtle);
+  color: var(--text-muted);
   white-space: nowrap;
   cursor: pointer;
 }
 
 .input-display-options label:has(input:checked) {
-  border-color: #c8c3df;
-  background: color-mix(in srgb, #4a3aa7 6%, #fff);
-  color: #342879;
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  color: var(--accent-strong);
 }
 
 .input-display-options input {
   width: 0.78rem;
   height: 0.78rem;
   margin: 0;
-  accent-color: #4a3aa7;
+  accent-color: var(--accent);
 }
 
 .input-panel-dock {
@@ -423,9 +417,9 @@ h1 {
   min-height: 1.55rem;
   margin-left: auto;
   padding: 0 0.45rem;
-  border: 1px solid #c9c9c3;
+  border: 1px solid var(--border-strong);
   border-radius: 0.4rem;
-  background: #fff;
+  background: var(--surface);
   font: inherit;
   font-size: 0.68rem;
   cursor: pointer;
@@ -436,9 +430,9 @@ h1 {
   gap: 0.5rem;
   margin: 0;
   padding: 0.65rem;
-  border: 1px solid #e0e0db;
+  border: 1px solid var(--border);
   border-radius: 0.6rem;
-  background: #fafaf8;
+  background: var(--surface-subtle);
 }
 
 .input-thumb-bindings > header {
@@ -454,7 +448,7 @@ h1 {
 }
 
 .input-thumb-bindings > header span {
-  color: #686862;
+  color: var(--text-muted);
   font-size: 0.7rem;
 }
 
@@ -463,9 +457,9 @@ h1 {
 .input-binding-add,
 .input-capture-heading > button {
   min-height: 1.8rem;
-  border: 1px solid #c9c9c3;
+  border: 1px solid var(--border-strong);
   border-radius: 0.45rem;
-  background: #fff;
+  background: var(--surface);
   font: inherit;
   font-size: 0.75rem;
   cursor: pointer;
@@ -502,7 +496,7 @@ h1 {
 }
 
 .input-binding-chip span {
-  color: #686862;
+  color: var(--text-muted);
 }
 
 .input-binding-add {
@@ -512,13 +506,13 @@ h1 {
 
 .input-binding-add[data-capturing] {
   border-style: solid;
-  border-color: #4a3aa7;
-  box-shadow: 0 0 0 1px #4a3aa7;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .input-binding-capture {
   margin: 0;
-  color: #4a3aa7;
+  color: var(--accent);
   font-size: 0.75rem;
   font-weight: 650;
 }
@@ -543,7 +537,7 @@ h1 {
   position: relative;
   min-height: 5.5rem;
   border-radius: 0.6rem;
-  background: #fff;
+  background: var(--surface);
 }
 
 .input-output {
@@ -554,10 +548,10 @@ h1 {
   min-height: 5.5rem;
   resize: none;
   padding: 0.75rem;
-  border: 1px solid #cfcfc9;
+  border: 1px solid var(--border-strong);
   border-radius: 0.6rem;
   outline: none;
-  background: #fff;
+  background: var(--surface);
   line-height: 1.5;
   cursor: text;
 }
@@ -565,7 +559,7 @@ h1 {
 .input-output-shell[data-has-target] .input-output {
   background: transparent;
   color: transparent;
-  caret-color: #171717;
+  caret-color: var(--text);
 }
 
 .input-output-visual {
@@ -575,7 +569,7 @@ h1 {
   overflow: hidden;
   padding: 0.75rem;
   border-radius: calc(0.6rem - 1px);
-  color: #171717;
+  color: var(--text);
   font: inherit;
   line-height: 1.5;
   overflow-wrap: anywhere;
@@ -584,32 +578,32 @@ h1 {
 }
 
 .input-output-char-correct {
-  color: #171717;
+  color: var(--text);
 }
 
 .input-output-char-pending {
-  color: #aaa9a3;
+  color: var(--text-muted);
 }
 
 .input-output-char-error {
   padding: 0 0.06em;
   border-radius: 0.18em;
-  background: color-mix(in srgb, #b54a4a 9%, transparent);
-  color: #a13e3e;
+  background: color-mix(in srgb, var(--danger) 9%, transparent);
+  color: var(--danger);
   text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, #b54a4a 55%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--danger) 55%, transparent);
   text-decoration-thickness: 1px;
   text-underline-offset: 0.12em;
 }
 
 .input-output[data-active] {
-  border-color: #363633;
-  box-shadow: 0 0 0 1px #363633;
+  border-color: var(--text);
+  box-shadow: 0 0 0 1px var(--text);
 }
 
 .input-capture-hint,
 .input-muted {
-  color: #686862;
+  color: var(--text-muted);
 }
 
 .input-capture-hint {
@@ -655,7 +649,7 @@ h1 {
   min-width: 0;
   flex: 1 1 auto;
   overflow: hidden;
-  color: #777772;
+  color: var(--text-muted);
   font-size: 0.64rem;
   font-weight: 500;
   text-overflow: ellipsis;
@@ -670,14 +664,14 @@ h1 {
   min-height: 1.5rem;
   margin: 0 0 0 auto;
   padding: 0.12rem 0.42rem;
-  border: 1px solid #d6d6d1;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   font-size: 0.66rem;
 }
 
 .input-active-layer span {
-  color: #686862;
+  color: var(--text-muted);
 }
 
 .input-active-layer strong {
@@ -686,8 +680,8 @@ h1 {
 }
 
 .input-active-layer[data-active] {
-  border-color: #4a3aa7;
-  background: color-mix(in srgb, #4a3aa7 5%, #fff);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
 }
 
 .input-key-status {
@@ -708,9 +702,9 @@ h1 {
   align-items: center;
   gap: 0.28rem;
   padding: 0.12rem 0.38rem;
-  border: 1px solid #deded8;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: #fafaf8;
+  background: var(--surface-subtle);
   overflow: hidden;
 }
 
@@ -727,7 +721,7 @@ h1 {
 .input-key-status h2 {
   flex: 0 0 auto;
   margin: 0;
-  color: #686862;
+  color: var(--text-muted);
   font-size: 0.56rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -847,16 +841,16 @@ h1 {
   flex: 0 0 auto;
   min-height: 1.55rem;
   padding: 0 0.4rem;
-  border: 1px solid #c9c9c3;
+  border: 1px solid var(--border-strong);
   border-radius: 0.4rem;
-  background: #fff;
+  background: var(--surface);
   font: inherit;
   cursor: pointer;
 }
 
 .input-key-binding-inline .input-binding-add[data-capturing] {
-  border-color: #4a3aa7;
-  box-shadow: 0 0 0 1px #4a3aa7;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .input-keyboard-content {
@@ -904,8 +898,8 @@ h1 {
 }
 
 .physical-keyboard-key rect {
-  fill: #fff;
-  stroke: #d2d2cc;
+  fill: var(--surface);
+  stroke: var(--border);
   stroke-width: 1;
 }
 
@@ -934,7 +928,7 @@ h1 {
 }
 
 .physical-keyboard-key[data-guide="output"] rect {
-  fill: color-mix(in srgb, var(--picker-candidate) 16%, #fff);
+  fill: color-mix(in srgb, var(--picker-candidate) 16%, var(--surface));
   stroke: var(--picker-candidate);
   stroke-width: 3;
 }
@@ -944,7 +938,7 @@ h1 {
 }
 
 .physical-keyboard-key[data-lookup] rect {
-  fill: color-mix(in srgb, var(--picker-selected) 20%, #fff);
+  fill: color-mix(in srgb, var(--picker-selected) 20%, var(--surface));
   stroke-width: 3;
 }
 
@@ -953,7 +947,7 @@ h1 {
 }
 
 .physical-keyboard-home-mark {
-  stroke: #171717;
+  stroke: var(--text);
   stroke-width: 1.25;
   stroke-linecap: round;
   pointer-events: none;
@@ -964,7 +958,7 @@ h1 {
 }
 
 .physical-keyboard-key[data-pressed] rect {
-  fill: #deded8;
+  fill: color-mix(in srgb, var(--text) 12%, var(--surface));
   stroke-width: 3;
 }
 
@@ -977,25 +971,25 @@ h1 {
 }
 
 .physical-keyboard-key[data-binding-target] rect {
-  stroke: #171717;
+  stroke: var(--text);
   stroke-width: 4;
 }
 
 .physical-keyboard-legend {
-  fill: #171717;
+  fill: var(--text);
   font-size: 13px;
   font-weight: 700;
   pointer-events: none;
 }
 
 .physical-keyboard-secondary {
-  fill: #85857f;
+  fill: var(--text-muted);
   font-size: 8px;
   pointer-events: none;
 }
 
 .physical-keyboard-empty {
-  color: #686862;
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
@@ -1012,7 +1006,7 @@ h1 {
 }
 
 .input-layer-guide > header span {
-  color: #686862;
+  color: var(--text-muted);
   font-size: 0.72rem;
 }
 
@@ -1022,7 +1016,7 @@ h1 {
 
 .input-layer-guide > header small {
   margin-left: auto;
-  color: #85857f;
+  color: var(--text-muted);
   font-size: 0.65rem;
   font-weight: 500;
 }
@@ -1039,9 +1033,9 @@ h1 {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  border: 1px solid #c9c9c3;
+  border: 1px solid var(--border-strong);
   border-radius: 0.7rem;
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
 }
 .input-layer-guide[data-floating] > header {
@@ -1054,9 +1048,9 @@ h1 {
 .input-layer-guide-dock {
   margin-left: auto;
   padding: 0.2rem 0.45rem;
-  border: 1px solid #c9c9c3;
+  border: 1px solid var(--border-strong);
   border-radius: 0.35rem;
-  background: #fff;
+  background: var(--surface);
   font: inherit;
   font-size: 0.68rem;
   cursor: pointer;
@@ -1070,9 +1064,9 @@ h1 {
 
 .input-semantic-groups span {
   padding: 0.15rem 0.4rem;
-  border: 1px solid #d6d6d1;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: #f7f7f5;
+  background: var(--bg);
   font-size: 0.68rem;
   font-weight: 650;
 }
@@ -1096,7 +1090,7 @@ h1 {
   justify-self: center;
   align-self: start;
   padding: 0.65rem;
-  border: 1px solid #e0e0db;
+  border: 1px solid var(--border);
   border-radius: 0.55rem;
 }
 
@@ -1131,10 +1125,10 @@ h1 {
   flex: 0 0 auto;
   margin-left: auto;
   padding: 0.16rem 0.38rem;
-  border: 1px solid #c9c9c3;
+  border: 1px solid var(--border-strong);
   border-radius: 0.35rem;
-  background: #fff;
-  color: #454540;
+  background: var(--surface);
+  color: var(--text-muted);
   font: inherit;
   font-size: 0.64rem;
   cursor: pointer;
@@ -1149,9 +1143,9 @@ h1 {
   align-self: start;
   gap: 0.4rem;
   padding: 0.65rem;
-  border: 1px dashed #c9c9c3;
+  border: 1px dashed var(--border-strong);
   border-radius: 0.55rem;
-  background: #f7f7f4;
+  background: var(--surface-subtle);
 }
 
 .input-layer-card-placeholder strong {
@@ -1159,7 +1153,7 @@ h1 {
 }
 
 .input-layer-card-placeholder span {
-  color: #686862;
+  color: var(--text-muted);
   font-size: 0.68rem;
 }
 
@@ -1175,8 +1169,8 @@ h1 {
   max-height: none;
   margin: 0;
   overflow: hidden;
-  border-color: #c9c9c3;
-  background: #fff;
+  border-color: var(--border-strong);
+  background: var(--surface);
   box-shadow: 0 1rem 3rem rgb(0 0 0 / 20%);
 }
 .input-layer-card[data-floating] > header {
@@ -1185,7 +1179,7 @@ h1 {
   align-items: center;
   gap: 0.5rem;
   padding-bottom: 0.45rem;
-  border-bottom: 1px solid #e2e2dd;
+  border-bottom: 1px solid var(--border);
   cursor: move;
   touch-action: none;
   user-select: none;
@@ -1215,7 +1209,7 @@ h1 {
 }
 .input-layer-card h3 small,
 .input-layer-card p {
-  color: #686862;
+  color: var(--text-muted);
   font-size: 0.68rem;
 }
 
@@ -1241,9 +1235,9 @@ h1 {
   flex-direction: column;
   margin-top: 0.35rem;
   overflow: hidden;
-  border: 1px solid #d6d6d1;
+  border: 1px solid var(--border);
   border-radius: 0.75rem;
-  background: #fff;
+  background: var(--surface);
   container: input-lookup-panel / inline-size;
 }
 
@@ -1313,7 +1307,7 @@ h1 {
   align-items: center;
   gap: 0.18rem;
   margin-left: 0;
-  color: #686862;
+  color: var(--text-muted);
   font-size: 0.6rem;
   white-space: nowrap;
 }
@@ -1321,18 +1315,18 @@ h1 {
 .input-random-samples button {
   min-height: 1.35rem;
   padding: 0 0.28rem;
-  border: 1px solid #c9c9c3;
+  border: 1px solid var(--border-strong);
   border-radius: 0.35rem;
-  background: #fff;
+  background: var(--surface);
   font: inherit;
-  color: #171717;
+  color: var(--text);
   cursor: pointer;
 }
 
 .input-random-samples button[data-active] {
-  border-color: #4a3aa7;
-  background: #4a3aa7;
-  color: #fff;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
 }
 
 .input-random-samples button:disabled {
@@ -1341,9 +1335,9 @@ h1 {
 }
 
 .input-random-samples .input-random-stop {
-  border-color: #aaa9a3;
-  background: #f3f3f0;
-  color: #454540;
+  border-color: var(--text-muted);
+  background: var(--surface-muted);
+  color: var(--text-muted);
 }
 
 .input-capture-heading > .input-random-practice-status {
@@ -1351,10 +1345,10 @@ h1 {
   flex: 1 1 auto;
   overflow: hidden;
   padding: 0.2rem 0.45rem;
-  border: 1px solid #d6d6d1;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: #f7f7f4;
-  color: #5c5c57;
+  background: var(--surface-subtle);
+  color: var(--text-muted);
   font-size: 0.68rem;
   font-weight: 700;
   text-align: center;
@@ -1363,10 +1357,10 @@ h1 {
 }
 
 .input-capture-heading > .input-random-practice-status[data-complete] {
-  border-color: #4a3aa7;
-  background: color-mix(in srgb, #4a3aa7 10%, #fff);
-  color: #342879;
-  box-shadow: 0 0 0 1px color-mix(in srgb, #4a3aa7 22%, transparent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent-strong);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .input-lookup-field input {
@@ -1375,9 +1369,9 @@ h1 {
   min-width: 0;
   min-height: 2rem;
   padding: 0 0.55rem;
-  border: 1px solid #c9c9c3;
+  border: 1px solid var(--border-strong);
   border-radius: 0.45rem;
-  background: #fff;
+  background: var(--surface);
   font: inherit;
   font-size: 0.78rem;
 }
@@ -1407,9 +1401,9 @@ h1 {
   width: 1.55rem;
   height: 1.55rem;
   padding: 0;
-  border: 1px solid #c9c9c3;
+  border: 1px solid var(--border-strong);
   border-radius: 0.35rem;
-  background: #fff;
+  background: var(--surface);
   font: inherit;
   cursor: pointer;
 }
@@ -1422,7 +1416,7 @@ h1 {
 .input-lookup-progress {
   flex: 0 0 auto;
   min-width: 2.5rem;
-  color: #686862;
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1469,9 +1463,9 @@ h1 {
 .input-lookup-results small {
   flex: 0 0 auto;
   padding: 0.1rem 0.3rem;
-  border: 1px solid #d6d6d1;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  color: #686862;
+  color: var(--text-muted);
   font-size: 0.62rem;
 }
 
@@ -1487,10 +1481,10 @@ h1 {
 .input-lookup-alt-toggle {
   min-height: 1.1rem;
   padding: 0.05rem 0.3rem;
-  border: 1px solid #c9c9c3;
+  border: 1px solid var(--border-strong);
   border-radius: 999px;
-  background: #f7f7f4;
-  color: #454540;
+  background: var(--surface-subtle);
+  color: var(--text-muted);
   font: inherit;
   font-size: 0.62rem;
   font-variant-numeric: tabular-nums;
@@ -1499,8 +1493,8 @@ h1 {
 
 .input-lookup-alt-toggle:hover,
 .input-lookup-alt-toggle:focus-visible {
-  border-color: #4a3aa7;
-  color: #342879;
+  border-color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .input-lookup-alt-popover {
@@ -1513,9 +1507,9 @@ h1 {
   max-width: 18rem;
   margin-top: 0.25rem;
   padding: 0.35rem 0.45rem;
-  border: 1px solid #d6d6d1;
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 0.4rem 1rem rgb(0 0 0 / 14%);
 }
 
@@ -1527,7 +1521,7 @@ h1 {
 .input-lookup-alt-heading {
   display: block;
   margin-bottom: 0.2rem;
-  color: #686862;
+  color: var(--text-muted);
   font-size: 0.6rem;
   font-weight: 700;
 }
@@ -1595,9 +1589,9 @@ h1 {
 .input-inspector section {
   min-width: 0;
   padding: 0.65rem;
-  border: 1px solid #e0e0db;
+  border: 1px solid var(--border);
   border-radius: 0.55rem;
-  background: #fafaf8;
+  background: var(--surface-subtle);
 }
 
 .input-inspector h2 {
@@ -1644,7 +1638,7 @@ h1 {
 
 .input-recognized + .input-recognized {
   padding-left: 0.75rem;
-  border-left: 1px solid #d6d6d1;
+  border-left: 1px solid var(--border);
 }
 
 .input-recognized strong {
@@ -1663,7 +1657,7 @@ h1 {
 .input-recognized code {
   padding: 0.15rem 0.3rem;
   border-radius: 0.3rem;
-  background: #efefeb;
+  background: var(--surface-muted);
   font-size: 0.68rem;
 }
 
@@ -1827,8 +1821,8 @@ h1 {
   bottom: 0.25rem;
   width: 0.45rem;
   height: 0.45rem;
-  border-right: 2px solid #85857f;
-  border-bottom: 2px solid #85857f;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
   content: '';
 }
 
