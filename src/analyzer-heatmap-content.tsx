@@ -726,7 +726,8 @@ function ComboSection({
     <section className="combo-section">
       <h3>コンボ（{combos.length + resolvedCombos.length}）</h3>
       {items.length > 0 ? (
-        <>
+        <details className="combo-diagram-details collapsible-list">
+          <summary>コンボ配列図</summary>
           <div className="combo-diagram-controls">
             <label>
               配列図{' '}
@@ -774,7 +775,7 @@ function ComboSection({
               />
             ))}
           </div>
-        </>
+        </details>
       ) : null}
       <details
         className="combo-table collapsible-list"
