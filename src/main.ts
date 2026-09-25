@@ -13,7 +13,6 @@ import {
 } from './geometry.ts';
 import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from './layouts/index.ts';
 import { bindTips, hideTip, showTip } from './chart.ts';
-import { setupTheme } from './theme.ts';
 import {
   load as loadUserLayouts,
   save as saveUserLayouts,
@@ -1732,51 +1731,51 @@ function onModeChange() {
 refreshAnalyzerControlsCatalog();
 
 const analyzerReactShellRoot = document.getElementById('analyzer-react-shell');
+const analyzerThemeControlsSlot = document.getElementById('analyzer-theme-controls');
 const analyzerModeControlSlot = document.getElementById('analyzer-mode-control');
-const analyzerTextControlSlot = document.getElementById('analyzer-text-controls');
+const analyzerTextPanelSlot = document.getElementById('analyzer-text-panel');
 const analyzerComparisonControlSlot = document.getElementById('analyzer-comparison-controls');
-const analyzerSensitivityControlSlot = document.getElementById('analyzer-sensitivity-controls');
-const analyzerLayoutEditorSlot = document.getElementById('analyzer-layout-editor');
+const analyzerSensitivityPanelSlot = document.getElementById('analyzer-sensitivity-panel');
+const analyzerAddPanelSlot = document.getElementById('analyzer-add-panel');
+const analyzerGeometryPanelSlot = document.getElementById('analyzer-geometry-panel');
 const analyzerBigramFlowSlot = document.getElementById('analyzer-bigram-flow');
 const analyzerDialogActionsSlot = document.getElementById('analyzer-dialog-actions');
 const analyzerSidebarControlsSlot = document.getElementById('analyzer-sidebar-controls');
-const analyzerGeometryControlsSlot = document.getElementById('analyzer-geometry-controls');
 if (
   !analyzerReactShellRoot
+  || !analyzerThemeControlsSlot
   || !analyzerModeControlSlot
-  || !analyzerTextControlSlot
+  || !analyzerTextPanelSlot
   || !analyzerComparisonControlSlot
-  || !analyzerSensitivityControlSlot
-  || !analyzerLayoutEditorSlot
+  || !analyzerSensitivityPanelSlot
+  || !analyzerAddPanelSlot
+  || !analyzerGeometryPanelSlot
   || !analyzerBigramFlowSlot
   || !analyzerDialogActionsSlot
   || !analyzerSidebarControlsSlot
-  || !analyzerGeometryControlsSlot
 ) {
   throw new Error('Analyzer React shell mount point is missing');
 }
 
 analyzerReactShell = mountAnalyzerReactShell({
   root: analyzerReactShellRoot,
+  themeControlsSlot: analyzerThemeControlsSlot,
   modeSlot: analyzerModeControlSlot,
-  textSlot: analyzerTextControlSlot,
+  textPanelSlot: analyzerTextPanelSlot,
   comparisonSlot: analyzerComparisonControlSlot,
-  sensitivitySlot: analyzerSensitivityControlSlot,
+  sensitivityPanelSlot: analyzerSensitivityPanelSlot,
   playbackSlot: el.playback,
   playbackSettingsSlot: el.playbackSettingsPanel,
-  layoutEditorSlot: analyzerLayoutEditorSlot,
+  addPanelSlot: analyzerAddPanelSlot,
+  geometryPanelSlot: analyzerGeometryPanelSlot,
   calibrationDialogSlot: el.calibrationDialog,
   geometryDialogSlot: el.geometryDialog,
   romajiDialogSlot: el.romajiDialog,
   bigramFlowSlot: analyzerBigramFlowSlot,
   dialogActionsSlot: analyzerDialogActionsSlot,
   sidebarControlsSlot: analyzerSidebarControlsSlot,
-  geometryControlsSlot: analyzerGeometryControlsSlot,
   howDialogSlot: el.howDialog,
   conditionsDialogSlot: el.conditionsDialog,
-  addPanel: el.addPanel,
-  textPanel: el.textPanel,
-  sensitivityPanel: el.sensitivityPanel,
   stateOwner: uiStateOwner,
   comparisonModel,
   playbackSurfaceModel,
@@ -1904,6 +1903,7 @@ analyzerReactShell = mountAnalyzerReactShell({
   onOpenConditions: openConditionsDialog,
   onOpenRomaji: () => romajiEditor.open(),
   onSensitivityToggle: () => render(),
+  onThemeApplied: render,
   onConditionsSurfaceCommit: (snapshot, root) => {
     if (snapshot.dialogScrollTop !== undefined) {
       el.conditionsDialog.scrollTop = snapshot.dialogScrollTop;
@@ -1956,8 +1956,4 @@ document.body.addEventListener('focusin', (e) => {
 });
 document.body.addEventListener('focusout', (e) => {
   if ((e.target as Element).closest('.info')) hideTip();
-});
-setupTheme(uiState.ui.theme, (choice) => {
-  if (choice !== uiState.ui.theme) updateUiState((draft) => { draft.ui.theme = choice; });
-  render();
 });

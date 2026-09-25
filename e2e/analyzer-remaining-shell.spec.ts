@@ -49,6 +49,7 @@ test('legacy panel open state is coordinated by React and restores through AppSt
   await page.goto('/legacy.html');
 
   const textPanel = page.locator('#text-panel');
+  await expect(textPanel).toHaveAttribute('data-react-feature', 'panel-text');
   await expect(textPanel).toHaveAttribute('open', '');
 
   await textPanel.locator('summary').click();
@@ -123,4 +124,22 @@ test('layout selection persists and drives analysis across reloads', async ({ pa
       .locator('input[type="checkbox"]'),
   ).toBeChecked();
   await expect(page.locator('#compare tbody tr')).toHaveCount(initialCount);
+});
+
+
+test('theme controls are React-owned and restore through AppState', async ({ page }) => {
+  await page.goto('/legacy.html');
+
+  const controls = page.locator('[data-react-feature="theme-controls"]');
+  await expect(controls).toBeVisible();
+  await controls.locator('[data-theme-set="dark"]').click();
+
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(controls.locator('[data-theme-set="dark"]')).toHaveAttribute('aria-pressed', 'true');
+
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(
+    page.locator('[data-react-feature="theme-controls"] [data-theme-set="dark"]'),
+  ).toHaveAttribute('aria-pressed', 'true');
 });

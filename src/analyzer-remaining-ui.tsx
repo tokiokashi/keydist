@@ -2,6 +2,7 @@ import {
   useLayoutEffect,
   useState,
   useSyncExternalStore,
+  type ReactNode,
 } from 'react';
 import type { AnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
 import type { AnalyzerControlsModel } from './analyzer-controls-model.ts';
@@ -12,6 +13,7 @@ import type {
 import type { GeometryKind } from './geometry.ts';
 import { buildGeometry } from './geometry.ts';
 import { gapFigure } from './gap-figure.ts';
+import { applyTheme } from './theme.ts';
 
 export interface AnalyzerSidebarControlsProps {
   stateOwner: AnalyzerUiStateOwner;
@@ -459,58 +461,109 @@ export function AnalyzerConditionsDialog({
   );
 }
 
-export function AnalyzerPanelStateBridge({
+type AnalyzerStatefulPanelKey = 'addLayout' | 'text' | 'sensitivity';
+
+export function AnalyzerStatefulPanel({
   stateOwner,
-  addPanel,
-  textPanel,
-  sensitivityPanel,
-  onSensitivityToggle,
+  panel,
+  id,
+  className,
+  summaryClassName,
+  summary,
+  children,
+  onOpenChange,
 }: {
   stateOwner: AnalyzerUiStateOwner;
-  addPanel: HTMLDetailsElement;
-  textPanel: HTMLDetailsElement;
-  sensitivityPanel: HTMLDetailsElement;
-  onSensitivityToggle(open: boolean): void;
+  panel: AnalyzerStatefulPanelKey;
+  id: string;
+  className: string;
+  summaryClassName?: string;
+  summary: ReactNode;
+  children: ReactNode;
+  onOpenChange?(open: boolean): void;
 }) {
   const state = useSyncExternalStore(
     stateOwner.subscribe,
     stateOwner.getSnapshot,
     stateOwner.getSnapshot,
   );
+  const open = state.ui.panels[panel];
+
+  return (
+    <details
+      id={id}
+      className={className}
+      open={open}
+      data-react-feature={`panel-${panel === 'addLayout' ? 'add-layout' : panel}`}
+      onToggle={(event) => {
+        const nextOpen = event.currentTarget.open;
+        if (stateOwner.getSnapshot().ui.panels[panel] === nextOpen) return;
+        stateOwner.update((draft) => {
+          draft.ui.panels[panel] = nextOpen;
+        });
+        onOpenChange?.(nextOpen);
+      }}
+    >
+      <summary className={summaryClassName}>{summary}</summary>
+      {children}
+    </details>
+  );
+}
+
+export function AnalyzerThemeControls({
+  stateOwner,
+  onThemeApplied,
+}: {
+  stateOwner: AnalyzerUiStateOwner;
+  onThemeApplied(): void;
+}) {
+  const state = useSyncExternalStore(
+    stateOwner.subscribe,
+    stateOwner.getSnapshot,
+    stateOwner.getSnapshot,
+  );
+  const choice = state.ui.theme;
 
   useLayoutEffect(() => {
-    addPanel.open = state.ui.panels.addLayout;
-    textPanel.open = state.ui.panels.text;
-    sensitivityPanel.open = state.ui.panels.sensitivity;
-  }, [
-    addPanel,
-    textPanel,
-    sensitivityPanel,
-    state.ui.panels.addLayout,
-    state.ui.panels.text,
-    state.ui.panels.sensitivity,
-  ]);
+    applyTheme(choice);
+    onThemeApplied();
+  }, [choice, onThemeApplied]);
 
   useLayoutEffect(() => {
-    const onAdd = () => {
-      stateOwner.update((draft) => { draft.ui.panels.addLayout = addPanel.open; });
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const onSystemThemeChange = () => {
+      if (stateOwner.getSnapshot().ui.theme === 'system') onThemeApplied();
     };
-    const onText = () => {
-      stateOwner.update((draft) => { draft.ui.panels.text = textPanel.open; });
-    };
-    const onSensitivity = () => {
-      stateOwner.update((draft) => { draft.ui.panels.sensitivity = sensitivityPanel.open; });
-      onSensitivityToggle(sensitivityPanel.open);
-    };
-    addPanel.addEventListener('toggle', onAdd);
-    textPanel.addEventListener('toggle', onText);
-    sensitivityPanel.addEventListener('toggle', onSensitivity);
-    return () => {
-      addPanel.removeEventListener('toggle', onAdd);
-      textPanel.removeEventListener('toggle', onText);
-      sensitivityPanel.removeEventListener('toggle', onSensitivity);
-    };
-  }, [stateOwner, addPanel, textPanel, sensitivityPanel, onSensitivityToggle]);
+    media.addEventListener('change', onSystemThemeChange);
+    return () => media.removeEventListener('change', onSystemThemeChange);
+  }, [stateOwner, onThemeApplied]);
 
-  return null;
+  return (
+    <div
+      className="theme-toggle"
+      role="group"
+      aria-label="表示テーマ"
+      data-react-feature="theme-controls"
+    >
+      {([
+        ['light', 'ライト'],
+        ['system', '自動'],
+        ['dark', 'ダーク'],
+      ] as const).map(([value, label]) => (
+        <button
+          key={value}
+          type="button"
+          data-theme-set={value}
+          aria-pressed={choice === value}
+          onClick={() => {
+            stateOwner.update((draft) => {
+              draft.ui.theme = value;
+            });
+          }}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
 }

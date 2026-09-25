@@ -25,7 +25,8 @@ import {
   AnalyzerDialogActions,
   AnalyzerGeometryControls,
   AnalyzerHowDialog,
-  AnalyzerPanelStateBridge,
+  AnalyzerStatefulPanel,
+  AnalyzerThemeControls,
   AnalyzerSidebarControls,
 } from './analyzer-remaining-ui.tsx';
 import type { GeometryKind } from './geometry.ts';
@@ -34,25 +35,23 @@ import { MAX_SAVED_TEXT_LENGTH } from './ui-state.ts';
 
 export interface AnalyzerReactShellOptions {
   root: HTMLElement;
+  themeControlsSlot: HTMLElement;
   modeSlot: HTMLElement;
-  textSlot: HTMLElement;
+  textPanelSlot: HTMLElement;
   comparisonSlot: HTMLElement;
-  sensitivitySlot: HTMLElement;
+  sensitivityPanelSlot: HTMLElement;
   playbackSlot: HTMLElement;
   playbackSettingsSlot: HTMLElement;
-  layoutEditorSlot: HTMLElement;
+  addPanelSlot: HTMLElement;
+  geometryPanelSlot: HTMLElement;
   calibrationDialogSlot: HTMLDialogElement;
   geometryDialogSlot: HTMLDialogElement;
   romajiDialogSlot: HTMLDialogElement;
   bigramFlowSlot: HTMLElement;
   dialogActionsSlot: HTMLElement;
   sidebarControlsSlot: HTMLElement;
-  geometryControlsSlot: HTMLElement;
   howDialogSlot: HTMLDialogElement;
   conditionsDialogSlot: HTMLDialogElement;
-  addPanel: HTMLDetailsElement;
-  textPanel: HTMLDetailsElement;
-  sensitivityPanel: HTMLDetailsElement;
   stateOwner: AnalyzerUiStateOwner;
   comparisonModel: AnalyzerComparisonModel;
   playbackSurfaceModel: AnalyzerPlaybackSurfaceModel;
@@ -90,6 +89,7 @@ export interface AnalyzerReactShellOptions {
   onOpenConditions: () => void;
   onOpenRomaji: () => void;
   onSensitivityToggle: (open: boolean) => void;
+  onThemeApplied: () => void;
 }
 
 export interface AnalyzerReactShellController {
@@ -152,25 +152,23 @@ function AnalyzerPlaybackSettings({
 }
 
 function AnalyzerReactShell({
+  themeControlsSlot,
   modeSlot,
-  textSlot,
+  textPanelSlot,
   comparisonSlot,
-  sensitivitySlot,
+  sensitivityPanelSlot,
   playbackSlot,
   playbackSettingsSlot,
-  layoutEditorSlot,
+  addPanelSlot,
+  geometryPanelSlot,
   calibrationDialogSlot,
   geometryDialogSlot,
   romajiDialogSlot,
   bigramFlowSlot,
   dialogActionsSlot,
   sidebarControlsSlot,
-  geometryControlsSlot,
   howDialogSlot,
   conditionsDialogSlot,
-  addPanel,
-  textPanel,
-  sensitivityPanel,
   stateOwner,
   comparisonModel,
   playbackSurfaceModel,
@@ -206,6 +204,7 @@ function AnalyzerReactShell({
   onOpenConditions,
   onOpenRomaji,
   onSensitivityToggle,
+  onThemeApplied,
 }: Omit<AnalyzerReactShellOptions, 'root'> & { textModel: AnalyzerTextModel }) {
   const state = useSyncExternalStore(
     stateOwner.subscribe,
@@ -319,7 +318,21 @@ function AnalyzerReactShell({
         modeSlot,
       )}
       {createPortal(
-        <>
+        <AnalyzerStatefulPanel
+          stateOwner={stateOwner}
+          panel="text"
+          id="text-panel"
+          className="panel text-panel"
+          summary={(
+            <>
+              <span className="text-title">評価テキスト</span>
+              <span className="text-status">
+                <span className="meta" id="text-meta" />
+                <span className="error" id="errors" />
+              </span>
+            </>
+          )}
+        >
           <label className="ctl">
             <span>サンプル</span>
             <span className="sample-controls">
@@ -350,8 +363,8 @@ function AnalyzerReactShell({
               ? `本文が ${MAX_SAVED_TEXT_LENGTH.toLocaleString()} 文字を超えたため、この本文は保存しません。`
               : ''}
           </p>
-        </>,
-        textSlot,
+        </AnalyzerStatefulPanel>,
+        textPanelSlot,
       )}
       {createPortal(
         <div data-react-feature="comparison-metrics">
@@ -385,25 +398,55 @@ function AnalyzerReactShell({
         comparisonSlot,
       )}
       {createPortal(
-        <div
-          className="seg"
-          role="group"
-          aria-label="N感度の縦軸"
-          data-react-feature="sensitivity-scale"
+        <AnalyzerStatefulPanel
+          stateOwner={stateOwner}
+          panel="sensitivity"
+          id="sensitivity-panel"
+          className="panel"
+          summaryClassName="panel-head"
+          onOpenChange={onSensitivityToggle}
+          summary={(
+            <>
+              <h2>
+                N感度
+                <button
+                  type="button"
+                  className="info"
+                  data-tip="Nを0〜10で振った時の総移動距離。ホームポジションから離れたキーを多用する場合傾きが大きくなる傾向がある。"
+                  aria-label="Nを0〜10で振った時の総移動距離。ホームポジションから離れたキーを多用する場合傾きが大きくなる傾向がある。"
+                >
+                  i
+                </button>
+              </h2>
+              <div
+                className="seg"
+                role="group"
+                aria-label="N感度の縦軸"
+                data-react-feature="sensitivity-scale"
+              >
+                {(['relative', 'absolute'] as const).map((scale) => (
+                  <button
+                    key={scale}
+                    type="button"
+                    data-scale={scale}
+                    aria-pressed={state.ui.sensitivity.scale === scale}
+                    onClick={() => setSensitivityScale(scale)}
+                  >
+                    {scale === 'relative' ? '相対 [%]' : '絶対 [u]'}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         >
-          {(['relative', 'absolute'] as const).map((scale) => (
-            <button
-              key={scale}
-              type="button"
-              data-scale={scale}
-              aria-pressed={state.ui.sensitivity.scale === scale}
-              onClick={() => setSensitivityScale(scale)}
-            >
-              {scale === 'relative' ? '相対 [%]' : '絶対 [u]'}
-            </button>
-          ))}
-        </div>,
-        sensitivitySlot,
+          <div id="sensitivity" data-imperative-output="sensitivity" />
+          <p className="note">
+            Nを増やすと距離は減るか変わらない。見るべきは傾きの差。<br />
+            傾きが大きいほど、ホームから離れた連続打鍵が多い。<br />
+            配列ごとの現在条件を使い、Nだけを0〜10で変化させる。
+          </p>
+        </AnalyzerStatefulPanel>,
+        sensitivityPanelSlot,
       )}
       {createPortal(
         <AnalyzerPlaybackSurface
@@ -418,6 +461,10 @@ function AnalyzerReactShell({
           onCommit={onPlaybackSettingsCommit}
         />,
         playbackSettingsSlot,
+      )}
+      {createPortal(
+        <AnalyzerThemeControls stateOwner={stateOwner} onThemeApplied={onThemeApplied} />,
+        themeControlsSlot,
       )}
       {createPortal(
         <AnalyzerDialogActions
@@ -443,15 +490,18 @@ function AnalyzerReactShell({
         sidebarControlsSlot,
       )}
       {createPortal(
-        <AnalyzerGeometryControls
-          stateOwner={stateOwner}
-          model={controlsModel}
-          onGeometryChange={onDefaultGeometryChange}
-          onEdit={onGeometryEdit}
-          onExport={onGeometryExport}
-          onImport={onGeometryImport}
-        />,
-        geometryControlsSlot,
+        <details className="panel" id="geometry-panel" data-react-feature="panel-geometry">
+          <summary>打ち手と機材</summary>
+          <AnalyzerGeometryControls
+            stateOwner={stateOwner}
+            model={controlsModel}
+            onGeometryChange={onDefaultGeometryChange}
+            onEdit={onGeometryEdit}
+            onExport={onGeometryExport}
+            onImport={onGeometryImport}
+          />
+        </details>,
+        geometryPanelSlot,
       )}
       {createPortal(
         <AnalyzerHowDialog dialog={howDialogSlot} />,
@@ -465,19 +515,24 @@ function AnalyzerReactShell({
         />,
         conditionsDialogSlot,
       )}
-      <AnalyzerPanelStateBridge
-        stateOwner={stateOwner}
-        addPanel={addPanel}
-        textPanel={textPanel}
-        sensitivityPanel={sensitivityPanel}
-        onSensitivityToggle={onSensitivityToggle}
-      />
       {createPortal(
-        <AnalyzerLayoutEditor
-          model={layoutEditorModel}
-          onAddLayout={onAddLayout}
-        />,
-        layoutEditorSlot,
+        <AnalyzerStatefulPanel
+          stateOwner={stateOwner}
+          panel="addLayout"
+          id="add-panel"
+          className="panel"
+          summary="配列を追加"
+        >
+          <AnalyzerLayoutEditor
+            model={layoutEditorModel}
+            onAddLayout={onAddLayout}
+          />
+          <p className="note">
+            数字段が空ならQWERTYを使う。重複した文字は先に書いたキーで打つ。<br />
+            追加した配列はこのブラウザに保存する。
+          </p>
+        </AnalyzerStatefulPanel>,
+        addPanelSlot,
       )}
       {createPortal(
         <AnalyzerCalibrationDialog onMount={onCalibrationMount} />,
@@ -512,25 +567,23 @@ export function mountAnalyzerReactShell(
   options.root.dataset.analyzerReactShell = 'mounted';
   root.render(
     <AnalyzerReactShell
+      themeControlsSlot={options.themeControlsSlot}
       modeSlot={options.modeSlot}
-      textSlot={options.textSlot}
+      textPanelSlot={options.textPanelSlot}
       comparisonSlot={options.comparisonSlot}
-      sensitivitySlot={options.sensitivitySlot}
+      sensitivityPanelSlot={options.sensitivityPanelSlot}
       playbackSlot={options.playbackSlot}
       playbackSettingsSlot={options.playbackSettingsSlot}
-      layoutEditorSlot={options.layoutEditorSlot}
+      addPanelSlot={options.addPanelSlot}
+      geometryPanelSlot={options.geometryPanelSlot}
       calibrationDialogSlot={options.calibrationDialogSlot}
       geometryDialogSlot={options.geometryDialogSlot}
       romajiDialogSlot={options.romajiDialogSlot}
       bigramFlowSlot={options.bigramFlowSlot}
       dialogActionsSlot={options.dialogActionsSlot}
       sidebarControlsSlot={options.sidebarControlsSlot}
-      geometryControlsSlot={options.geometryControlsSlot}
       howDialogSlot={options.howDialogSlot}
       conditionsDialogSlot={options.conditionsDialogSlot}
-      addPanel={options.addPanel}
-      textPanel={options.textPanel}
-      sensitivityPanel={options.sensitivityPanel}
       stateOwner={options.stateOwner}
       comparisonModel={options.comparisonModel}
       playbackSurfaceModel={options.playbackSurfaceModel}
@@ -566,6 +619,7 @@ export function mountAnalyzerReactShell(
       onOpenConditions={options.onOpenConditions}
       onOpenRomaji={options.onOpenRomaji}
       onSensitivityToggle={options.onSensitivityToggle}
+      onThemeApplied={options.onThemeApplied}
     />,
   );
   return {

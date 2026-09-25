@@ -131,6 +131,7 @@ body {
 .how-open:hover { background: color-mix(in oklab, var(--accent) 18%, var(--panel)); }
 a { color: var(--accent); }
 
+.theme-toggle-slot { align-self: center; }
 .theme-toggle { display: flex; gap: 2px; align-self: center; }
 /* 図の見せ方を切り替える小さなセグメント。トップバーのテーマ切り替えと同じ形 */
 .seg { display: flex; gap: 2px; }
@@ -223,7 +224,7 @@ a { color: var(--accent); }
 .text-panel .text-title { font-size: 0.82rem; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
 .text-status { display: flex; flex-wrap: wrap; gap: 4px 12px; min-width: 0; }
 .text-status .meta, .text-status .error { margin: 0; }
-.stack > .text-panel > summary {
+.stack > #analyzer-text-panel > .text-panel > summary {
   position: sticky;
   top: 68px;
   z-index: 4;
@@ -235,7 +236,7 @@ a { color: var(--accent); }
   .app { grid-template-columns: minmax(0, 1fr); }
   .app.playback-settings-open { grid-template-columns: minmax(0, 1fr); }
   .sidebar { position: static; max-height: none; overflow: visible; }
-  .stack > .text-panel > summary { position: static; }
+  .stack > #analyzer-text-panel > .text-panel > summary { position: static; }
   .playback-settings-aside {
     position: fixed;
     top: 68px;
