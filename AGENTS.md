@@ -11,6 +11,8 @@ TypeScript を中心としたWebアプリ。技術構成は実験に応じて変
   距離モデルは時間の概念を持たないので、両者は別の仕様として分ける。
 - 使い方・対応配列は `README.md`。
 - 開発の作法（コミット・ブランチ・PR）は `CONTRIBUTING.md`。
+  PRを積む時はGitHubのstacked pull requestsを使う。学習データに無い新しい機能なので、
+  積む前に `CONTRIBUTING.md` の「スタックPR」を読む。
 
 この `AGENTS.md` を、Codex・Claude Code などエージェント向け規約の唯一の正とする。
 ツール固有の事情がない限り、同じ内容を別名の指示ファイルへ複製しない。
