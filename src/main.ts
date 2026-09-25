@@ -46,6 +46,7 @@ import {
 } from './analyzer-conditions-model.ts';
 import { createAnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 import { createAnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
+import { createAnalyzerMetricsModel } from './analyzer-metrics-model.ts';
 import { createAnalyzerControlsModel } from './analyzer-controls-model.ts';
 import { createAnalyzerGeometryEditorModel } from './analyzer-geometry-editor-model.ts';
 import { el } from './app-dom.ts';
@@ -828,6 +829,7 @@ playbackView = createPlaybackView({
 });
 let analyzerReactShell: AnalyzerReactShellController | undefined;
 const comparisonModel = createAnalyzerComparisonModel();
+const metricsModel = createAnalyzerMetricsModel();
 
 resultsView = createResultsView({
   el,
@@ -842,6 +844,7 @@ resultsView = createResultsView({
   playback: playbackView,
   comparisonModel,
   bigramFlowModel,
+  metricsModel,
   getDetailLayoutId: currentDetailLayoutId,
 });
 
@@ -891,6 +894,15 @@ analyzerReactShell = mountAnalyzerReactShell({
   modeSlot: analyzerModeControlSlot,
   textPanelSlot: analyzerTextPanelSlot,
   comparisonSlot: analyzerComparisonControlSlot,
+  compareChartSlot: el.compareChart,
+  compareTableSlot: el.compare,
+  detailConditionsSlot: el.detailConditions,
+  fingerChartSlot: el.fingerChart,
+  adjacentChartSlot: el.adjacentChart,
+  pressMatrixSlot: el.pressMatrix,
+  fingerMatrixSlot: el.fingerMatrix,
+  adjacentMeanMatrixSlot: el.adjacentMeanMatrix,
+  adjacentStdDevMatrixSlot: el.adjacentStdDevMatrix,
   sensitivityPanelSlot: analyzerSensitivityPanelSlot,
   playbackSlot: el.playback,
   playbackSettingsSlot: el.playbackSettingsPanel,
@@ -912,6 +924,7 @@ analyzerReactShell = mountAnalyzerReactShell({
   conditionsActions,
   layoutEditorModel,
   bigramFlowModel,
+  metricsModel,
   controlsModel,
   calibrationModel,
   geometryEditorModel,

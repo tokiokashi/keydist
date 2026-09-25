@@ -1,25 +1,21 @@
 import {
-  ADJACENT_PAIRS, ALL_FINGERS, FINGERS, resolveKeyId, THUMB_KEY, THUMB_ROW,
+  resolveKeyId, THUMB_KEY, THUMB_ROW,
   assignmentWithHomeKeys, type GeometryKind,
 } from './geometry.ts';
 import { evaluate, type Options, type Trace } from './evaluate.ts';
-import { sameChainPolicy } from './analysis-chain.ts';
-import { sameArpeggioPolicy } from './analysis-arpeggio.ts';
 import {
   analyzeStrokeStructure,
   type AggregatedAnalysisResult,
 } from './analysis-aggregate.ts';
 import { computeMetrics, type LayerStat, type Metrics } from './metrics.ts';
 import { normalizedLayerColors } from './layer-heatmap.ts';
-import { nSensitivity } from './sensitivity.ts';
-import {
-  columnChart, escapeAttr, escapeText, lineChart, barChart, matrixChart, type MatrixSort,
-} from './chart.ts';
-import { FINGER_LABEL, SHORT_FINGER, SERIES, type AppElements } from './app-dom.ts';
+import { escapeAttr, escapeText } from './chart.ts';
+import type { AppElements } from './app-dom.ts';
 import type { AnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 import type { AnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
+import type { AnalyzerMetricsModel } from './analyzer-metrics-model.ts';
 import {
-  type LayerColorScale, type LayerView, type MatrixKind, type UiStateV1,
+  type LayerColorScale, type LayerView, type UiStateV1,
 } from './ui-state.ts';
 import type { GeometrySettings } from './geometry-settings.ts';
 import { resolveConditions } from './condition-resolution.ts';
@@ -42,7 +38,6 @@ export interface Result {
   slot: number;
 }
 
-type AdjacentMatrixKind = 'adjacentMean' | 'adjacentStdDev';
 
 export interface ResultsViewContext {
   el: AppElements;
@@ -57,6 +52,7 @@ export interface ResultsViewContext {
   playback: PlaybackViewController;
   comparisonModel: AnalyzerComparisonModel;
   bigramFlowModel: AnalyzerBigramFlowModel;
+  metricsModel: AnalyzerMetricsModel;
   getDetailLayoutId: () => string | undefined;
 }
 
@@ -91,17 +87,6 @@ export function createResultsView(ctx: ResultsViewContext): ResultsViewControlle
   function refreshPickerDisplay(): void {
     if (lastDetail) renderHeatmap(lastDetail.metrics, lastDetail.layout, lastDetail.geometry);
   }
-
-function sortMatrixRows<T extends { cells: { value: number }[] }>(rows: T[], sort: MatrixSort | null): T[] {
-  if (!sort) return rows;
-  return rows
-    .map((row, index) => ({ row, index }))
-    .sort((a, b) => {
-      const delta = a.row.cells[sort.column].value - b.row.cells[sort.column].value;
-      return (sort.direction === 'asc' ? delta : -delta) || a.index - b.index;
-    })
-    .map(({ row }) => row);
-}
 
 function render() {
   const geometryCache = new Map<string, ReturnType<typeof buildGeometry>>();
@@ -158,19 +143,9 @@ function render() {
     lastDetail = null;
     ctx.playback.clear();
     ctx.bigramFlowModel.clear();
-    elements.textMeta.textContent = '配列を1つ以上選ぶ';
-    elements.compareChart.innerHTML = '';
+    ctx.metricsModel.clear('配列を1つ以上選ぶ');
     syncCompareOptions([], false);
-    elements.compare.innerHTML = '';
-    showSensitivityPlaceholder('配列を1つ以上選ぶ');
     elements.heatmap.innerHTML = '';
-    elements.fingerChart.innerHTML = '';
-    elements.adjacentChart.innerHTML = '';
-    elements.fingerMatrix.innerHTML = '';
-    elements.pressMatrix.innerHTML = '';
-    elements.adjacentMeanMatrix.innerHTML = '';
-    elements.adjacentStdDevMatrix.innerHTML = '';
-    elements.errors.hidden = true;
     return;
   }
 
@@ -181,20 +156,17 @@ function render() {
     const worst = Math.max(...skipped.map((r) => r.trace.skipped));
     parts.push(`${skipped.length} 配列で最大 ${worst} 文字が打てない`);
   }
-  elements.textMeta.textContent = parts.join(' / ');
-
   const errors = results.flatMap((r) => r.trace.errors);
-  elements.errors.textContent = errors.length ? `配列定義の不備: ${errors.join(' / ')}` : '';
-  elements.errors.hidden = errors.length === 0;
-
-  renderCompare(results);
-  renderMatrices(results);
-  if (elements.sensitivityPanel.open) {
-    renderSensitivity(text, results);
-  } else {
-    showSensitivityPlaceholder();
-  }
-  renderDetail(results);
+  const baselineId = ctx.getUiState().ui.comparison.baselineByMode[ctx.currentModeId()] ?? '';
+  syncCompareOptions(results, results.some((result) => result.layout.id === baselineId));
+  const detail = renderDetail(results);
+  ctx.metricsModel.setResults({
+    results,
+    text,
+    textMeta: parts.join(' / '),
+    errors,
+    detailLayoutId: detail.layout.id,
+  });
 }
 
 const COMPARE_HEADERS = [
@@ -211,7 +183,7 @@ const COMPARE_HEADERS = [
   '同指率',
   '指間mean',
   '指間σ',
-];
+] as const;
 
 const COMPARE_RELATIVE_HEADERS = [
   '動作数比',
@@ -227,158 +199,28 @@ const COMPARE_RELATIVE_HEADERS = [
   '同指率比',
   '指間mean比',
   '指間σ比',
-];
-
-const COMPARE_FORMATS: Array<(value: number) => string> = [
-  (value) => `${value}`,
-  (value) => value.toFixed(0),
-  (value) => value.toFixed(3),
-  (value) => value.toFixed(3),
-  (value) => value.toFixed(3),
-  (value) => value.toFixed(3),
-  (value) => `${value.toFixed(1)}%`,
-  (value) => `${value.toFixed(1)}%`,
-  (value) => `${value.toFixed(1)}%`,
-  (value) => `${value}`,
-  (value) => `${value.toFixed(1)}%`,
-  (value) => value.toFixed(3),
-  (value) => value.toFixed(3),
-];
-
-interface CompareCell {
-  value: number;
-  display: string;
-}
-
-function compareMetricValues(metrics: Metrics): number[] {
-  const adjacentMean = metrics.adjacent.reduce((a, b) => a + b.meanExcess, 0) / metrics.adjacent.length;
-  const adjacentStdDev = metrics.adjacent.reduce((a, b) => a + b.stdDev, 0) / metrics.adjacent.length;
-  return [
-    metrics.actions,
-    metrics.totalUnits,
-    metrics.meanPerStroke,
-    metrics.perCharUnits,
-    metrics.perCharSteps,
-    metrics.perCharPresses,
-    metrics.singleTapLayerRate,
-    metrics.singleTapRate,
-    metrics.singleKeyRate,
-    metrics.sameFinger,
-    (metrics.sameFinger / Math.max(1, metrics.strokes)) * 100,
-    adjacentMean,
-    adjacentStdDev,
-  ];
-}
-
-function metricConditionText(metrics: Metrics, layout: Layout): string {
-  const hasLayoutHomeKeys = layout.homeKeys !== undefined && Object.keys(layout.homeKeys).length > 0;
-  const defaults = ctx.getUiState().conditions.defaults;
-  const override = ctx.getUiState().conditions.perLayout[layout.id];
-  const defaultGeometryId = ctx.getGeometrySettingsForKind(defaults.geometry).shape.id;
-  const differences = [
-    metrics.geometryId !== defaultGeometryId ? `形状: ${metrics.geometryName}` : '',
-    metrics.fingerAssignmentId !== 'default' ? `運指: ${metrics.fingerAssignmentName}` : '',
-    hasLayoutHomeKeys ? 'ホーム: 配列指定' : '',
-    metrics.conditions.windowSize !== defaults.windowSize ? `N=${metrics.conditions.windowSize}` : '',
-    metrics.conditions.sfbHomeCost !== defaults.sfbHomeCost ? 'SFBホーム設定変更' : '',
-    metrics.conditions.preferOppositeThumb !== defaults.preferOppositeThumb ? '逆側親指設定変更' : '',
-    !sameChainPolicy(metrics.conditions.chainPolicy, defaults.chain) ? 'Chain境界設定変更' : '',
-    !sameArpeggioPolicy(metrics.conditions.arpeggioPolicy, defaults.arpeggioPolicy)
-      ? 'Arpeggio構造Policy変更'
-      : '',
-    override?.romajiRule !== undefined ? `ローマ字: ${override.romajiRule}` : '',
-  ].filter(Boolean);
-  return `形状: ${metrics.geometryName} / 運指: ${metrics.fingerAssignmentName}`
-    + ` / ホーム: ${hasLayoutHomeKeys ? '配列指定' : '形状既定'}`
-    + (differences.length > 0 ? ` / 条件差分: ${differences.join('、')}` : ' / 既定条件');
-}
-
-function relativePercent(value: number, baseline: number): number | null {
-  if (baseline === 0) return value === 0 ? 100 : null;
-  return (value / baseline) * 100;
-}
-
-function compareCell(
-  value: number,
-  baseline: number | null,
-  format: (value: number) => string,
-): CompareCell {
-  if (baseline === null) return { value, display: format(value) };
-  const ratio = relativePercent(value, baseline);
-  return ratio === null
-    ? { value: 0, display: '—' }
-    : { value: ratio, display: `${ratio.toFixed(1)}%` };
-}
-
-function renderCompare(results: Result[]) {
-  const best = Math.min(...results.map((r) => r.metrics.totalUnits));
-  const baselineId = ctx.getUiState().ui.comparison.baselineByMode[ctx.currentModeId()] ?? '';
-  const baseline = results.find((r) => r.layout.id === baselineId);
-  const baselineValues = baseline ? compareMetricValues(baseline.metrics) : null;
-
-  const compareRows = results.map((r) => {
-    const values = compareMetricValues(r.metrics);
-    const cells = values.map((value, column) => compareCell(
-      value,
-      baselineValues ? baselineValues[column] : null,
-      COMPARE_FORMATS[column],
-    ));
-    return { result: r, cells };
-  });
-
-  const sortedRows = sortMatrixRows(compareRows, ctx.getUiState().ui.comparison.sort);
-  syncCompareOptions(results, baseline !== undefined);
-  const chartColumn = ctx.getUiState().ui.comparison.chartColumn;
-  const chartBest = Math.min(...sortedRows.map((row) => row.cells[chartColumn].value));
-  const chartRelative = baseline !== undefined;
-  const chartLabel = compareLabel(
-    COMPARE_HEADERS[ctx.getUiState().ui.comparison.chartColumn],
-    chartRelative,
-    ctx.getUiState().ui.comparison.chartColumn,
-  );
-  elements.compareChart.innerHTML = barChart(
-    sortedRows.map(({ result: r, cells }) => ({
-      label: r.layout.name,
-      value: cells[ctx.getUiState().ui.comparison.chartColumn].value,
-      valueLabel: cells[ctx.getUiState().ui.comparison.chartColumn].display,
-      color: SERIES(r.slot),
-      emphasise: chartColumn !== 6 && chartColumn !== 7 && chartColumn !== 8
-        && cells[chartColumn].value === chartBest,
-      tip: `${escapeText(r.layout.name)}<br>${escapeText(chartLabel)} <b>${cells[ctx.getUiState().ui.comparison.chartColumn].display}</b>`,
-    })),
-    {
-      format: chartRelative
-        ? (value) => `${value.toFixed(1)}%`
-        : COMPARE_FORMATS[ctx.getUiState().ui.comparison.chartColumn],
-      labelWidth: 150,
-    },
-  );
-
-  const rows = sortedRows
-    .map(({ result: r, cells }) => `<tr${r.metrics.totalUnits === best ? ' class="best"' : ''}>
-      <td><span class="swatch" style="background:${SERIES(r.slot)}"></span>${escapeText(r.layout.name)}<small class="metric-conditions">${escapeText(metricConditionText(r.metrics, r.layout))}</small></td>
-      ${cells.map((cell) => `<td class="num">${cell.display}</td>`).join('')}
-    </tr>`)
-    .join('');
-
-  elements.compare.innerHTML = `
-    <thead><tr>
-      <th>配列</th>${COMPARE_HEADERS.map((label, column) => compareHeader(label, column, baseline !== undefined)).join('')}
-    </tr></thead><tbody>${rows}</tbody>`;
-}
+] as const;
 
 function compareLabel(label: string, relative: boolean, column: number): string {
-  return relative ? COMPARE_RELATIVE_HEADERS[column] : label;
+  return relative ? COMPARE_RELATIVE_HEADERS[column] ?? label : label;
 }
 
-function syncCompareOptions(results: Result[], relative: boolean) {
-  if (ctx.getUiState().ui.comparison.chartColumn < 0 || ctx.getUiState().ui.comparison.chartColumn >= COMPARE_HEADERS.length) {
-    ctx.updateUiState((draft) => { draft.ui.comparison.chartColumn = 1; });
+function syncCompareOptions(results: Result[], relative: boolean): void {
+  if (
+    ctx.getUiState().ui.comparison.chartColumn < 0
+    || ctx.getUiState().ui.comparison.chartColumn >= COMPARE_HEADERS.length
+  ) {
+    ctx.updateUiState((draft) => {
+      draft.ui.comparison.chartColumn = 1;
+    });
   }
   ctx.comparisonModel.setOptions(
     [
       { value: '', label: '比較なし' },
-      ...results.map((result) => ({ value: result.layout.id, label: result.layout.name })),
+      ...results.map((result) => ({
+        value: result.layout.id,
+        label: result.layout.name,
+      })),
     ],
     COMPARE_HEADERS.map((label, column) => ({
       value: String(column),
@@ -387,302 +229,16 @@ function syncCompareOptions(results: Result[], relative: boolean) {
   );
 }
 
-/** 列ごとの補足。単位と定義だけを書き、良し悪しの解釈は書かない。 */
-const COMPARE_HEADER_TIPS: Record<number, string> = {
-  0: 'Policy適用後の総アクション数',
-  1: '全指の総移動距離 (u)',
-  2: '1打鍵あたりの平均移動距離 (u/打鍵)',
-  3: '入力1文字あたりの総移動距離 (u/文字)',
-  4: '入力1文字あたりのアクション数 (1/文字)',
-  5: '入力1文字あたりの物理キー押下数 (押下/文字)',
-  6: '単打面に配置されている出力文字数 / 全出力文字数 (%)',
-  7: '単打面の文字を出力するアクション数 / 全アクション数 (%)',
-  8: 'freshに押す物理キーが1つだけのアクション数 / 全アクション数 (%)',
-  9: '同じ指で違うキーを続けて打った回数',
-  10: '同指連続回数をphysical Stroke数で割った割合 (%)',
-  11: '隣接指間距離のホーム間隔からの平均超過を6ペアで平均した値 (u)',
-  12: '隣接指間距離の標準偏差を6ペアで平均した値 (u)',
-};
-
-function compareHeader(label: string, column: number, relative: boolean): string {
-  const sort = ctx.getUiState().ui.comparison.sort;
-  const active = sort?.column === column
-    ? sort.direction
-    : undefined;
-  const marker = active === 'asc' ? ' ↑' : active === 'desc' ? ' ↓' : '';
-  const ariaSort = active === 'asc' ? 'ascending' : active === 'desc' ? 'descending' : 'none';
-  const shownLabel = compareLabel(label, relative, column);
-  const metricTip = COMPARE_HEADER_TIPS[column];
-  const tip = relative
-    ? `比較元を100%とした比率。表示単位: %。元指標: ${metricTip}`
-    : metricTip;
-  const title = `${tip} クリックごとに昇順・降順・選択順へ切り替える。`;
-  return `<th><span class="table-sort" data-compare-sort="${column}" role="button" tabindex="0"
-    aria-label="${escapeAttr(`${shownLabel}。 ${title}`)}" aria-sort="${ariaSort}"
-    title="${escapeAttr(title)}">${escapeText(shownLabel)}${marker}</span></th>`;
-}
-
-/**
- * 配列 × 指の粒度でマトリックスに並べる。行は総移動距離の表と同じ選択順
- * （色のスロットが他の図と揃うことを優先し、総距離順の並べ替えはしない）。
- *
- * 指ごとの移動距離は入力文字数で正規化する（u/文字）。生のuは評価テキストの
- * 長さに引きずられるため、テキストを変えても配列間の比較が揺れないようにする。
- * 隣接指の統計はもともと打鍵ごとの値なので文字数に依存しない。選択中の指標を
- * そのまま表示し、詳細チャートと同じ指標を使う。
- */
-function renderMatrices(results: Result[]) {
-  const fingerRows = sortMatrixRows(results.map((r) => ({
-    label: r.layout.name,
-    color: SERIES(r.slot),
-    cells: FINGERS.map((f) => {
-      const perChar = r.metrics.perFinger[f] / Math.max(1, r.metrics.inputChars);
-      const share = (r.metrics.perFinger[f] / Math.max(1e-9, r.metrics.totalUnits)) * 100;
-      return {
-        value: perChar,
-        tip:
-          `${escapeText(r.layout.name)} / ${FINGER_LABEL[f]}<br>` +
-          `<b>${perChar.toFixed(3)} u/文字</b> (全体の ${share.toFixed(1)}%)`,
-      };
-    }),
-  })), ctx.getUiState().ui.comparison.matrixSorts.finger);
-
-  elements.fingerMatrix.innerHTML = matrixChart(
-    fingerRows,
-    FINGERS.map((f) => SHORT_FINGER[f]),
-    {
-      format: (v) => v.toFixed(3),
-      labelWidth: 190,
-      columnSplit: 4,
-      columnGroupLabels: ['左手', '右手'],
-      sort: ctx.getUiState().ui.comparison.matrixSorts.finger ?? undefined,
-    },
-  );
-
-  // 押下数は親指も含めた10本で出す。親指の移動距離は定義上0なので距離の面からは
-  // 省いてあるが、押下は現に起きている（薙刀式の右親指など）。距離の面だけを見て
-  // 「この指を使っていない」と読まれるのを防ぐため、ここは0の列も含めて全部並べる。
-  const pressRows = sortMatrixRows(results.map((r) => ({
-    label: r.layout.name,
-    color: SERIES(r.slot),
-    cells: ALL_FINGERS.map((f) => {
-      const perChar = r.metrics.perFingerPresses[f] / Math.max(1, r.metrics.inputChars);
-      return {
-        value: perChar,
-        tip:
-          `${escapeText(r.layout.name)} / ${FINGER_LABEL[f]}<br>` +
-          `<b>${perChar.toFixed(3)} 押下/文字</b><br>` +
-          `押下 <b>${r.metrics.perFingerPresses[f]}</b> 回`,
-      };
-    }),
-  })), ctx.getUiState().ui.comparison.matrixSorts.press);
-
-  elements.pressMatrix.innerHTML = matrixChart(
-    pressRows,
-    ALL_FINGERS.map((f) => SHORT_FINGER[f]),
-    {
-      format: (v) => v.toFixed(3),
-      labelWidth: 190,
-      columnSplit: 5,
-      columnGroupLabels: ['左手', '右手'],
-      sort: ctx.getUiState().ui.comparison.matrixSorts.press ?? undefined,
-    },
-  );
-
-  const adjacentColumns = ADJACENT_PAIRS.map((p) => `${SHORT_FINGER[p[0]]}–${SHORT_FINGER[p[1]]}`);
-  const adjacentChartOptions = {
-    format: (v: number) => v.toFixed(3),
-    labelWidth: 190,
-    columnSplit: 3,
-    columnGroupLabels: ['左手', '右手'] as [string, string],
-    // 隣接指の指標は0.02〜0.6の狭い帯に固まる。0起点だと全セルが薄くなって差が読めない
-    colorBase: 'min' as const,
-  };
-  elements.adjacentMeanMatrix.innerHTML = matrixChart(
-    adjacentRows(results, 'adjacentMean'),
-    adjacentColumns,
-    { ...adjacentChartOptions, sort: ctx.getUiState().ui.comparison.matrixSorts.adjacentMean ?? undefined },
-  );
-  elements.adjacentStdDevMatrix.innerHTML = matrixChart(
-    adjacentRows(results, 'adjacentStdDev'),
-    adjacentColumns,
-    { ...adjacentChartOptions, sort: ctx.getUiState().ui.comparison.matrixSorts.adjacentStdDev ?? undefined },
-  );
-}
-
-function adjacentRows(results: Result[], kind: AdjacentMatrixKind) {
-  return sortMatrixRows(results.map((r) => ({
-    label: r.layout.name,
-    color: SERIES(r.slot),
-    cells: r.metrics.adjacent.map((s) => ({
-      value: kind === 'adjacentStdDev' ? s.stdDev : s.meanExcess,
-      tip:
-        `${escapeText(r.layout.name)} / ${FINGER_LABEL[s.pair[0]]}–${FINGER_LABEL[s.pair[1]]}<br>` +
-        `超過の平均 <b>${s.meanExcess.toFixed(3)} u</b><br>` +
-        `超過の実測最大 <b>${s.maxExcess.toFixed(3)} u</b><br>` +
-        `標準偏差 <b>${s.stdDev.toFixed(3)} u</b>`,
-    })),
-  })), ctx.getUiState().ui.comparison.matrixSorts[kind]);
-}
-
-function cycleMatrixSort(kind: MatrixKind, column: number) {
-  ctx.updateUiState((draft) => {
-    const current = draft.ui.comparison.matrixSorts[kind];
-    draft.ui.comparison.matrixSorts[kind] =
-      !current || current.column !== column
-        ? { column, direction: 'asc' }
-        : current.direction === 'asc'
-          ? { column, direction: 'desc' }
-          : null;
-  });
-  render();
-}
-
-function bindMatrixSort(root: HTMLElement, kind: MatrixKind) {
-  root.addEventListener('click', (e) => {
-    const target = (e.target as Element).closest('[data-matrix-sort]');
-    if (target) cycleMatrixSort(kind, Number(target.getAttribute('data-matrix-sort')));
-  });
-  root.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    const target = (e.target as Element).closest('[data-matrix-sort]');
-    if (!target) return;
-    e.preventDefault();
-    cycleMatrixSort(kind, Number(target.getAttribute('data-matrix-sort')));
-  });
-}
-
-function cycleCompareSort(column: number) {
-  ctx.updateUiState((draft) => {
-    draft.ui.comparison.chartColumn = column;
-    const current = draft.ui.comparison.sort;
-    draft.ui.comparison.sort =
-      !current || current.column !== column
-        ? { column, direction: 'asc' }
-        : current.direction === 'asc'
-          ? { column, direction: 'desc' }
-          : null;
-  });
-  render();
-}
-
-function bindCompareSort(root: HTMLElement) {
-  root.addEventListener('click', (e) => {
-    const target = (e.target as Element).closest('[data-compare-sort]');
-    if (target) cycleCompareSort(Number(target.getAttribute('data-compare-sort')));
-  });
-  root.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    const target = (e.target as Element).closest('[data-compare-sort]');
-    if (!target) return;
-    e.preventDefault();
-    cycleCompareSort(Number(target.getAttribute('data-compare-sort')));
-  });
-}
-
-/**
- * 相対はN=0を100%とした減り方、絶対はそのままの総移動距離。
- * 相対は傾きの比較に、絶対は配列間の差の比較に効く。
- */
-function showSensitivityPlaceholder(message = 'N感度はパネルを開くと計算します') {
-  elements.sensitivity.innerHTML = `<p class="note">${message}</p>`;
-}
-
-function renderSensitivity(text: string, results: readonly Result[]) {
-  const range = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  const relative = ctx.getUiState().ui.sensitivity.scale === 'relative';
-  const series = results.map(({ layout, slot, geometry, options, analysis }) => {
-    const points = nSensitivity(
-      text,
-      layout,
-      geometry,
-      options,
-      range,
-      ctx.romajiRuleIdForLayout(layout),
-      analysis.chainPolicy,
-      analysis.arpeggioPolicy,
-    );
-    const base = points[0].totalUnits || 1;
-    return {
-      name: sensitivityLabel(layout, options, geometry),
-      color: SERIES(slot),
-      points: points.map((p) => ({
-        x: p.windowSize,
-        y: relative ? (p.totalUnits / base) * 100 : p.totalUnits,
-        // 絶対表示ではy自身が生値なので併記しない
-        raw: relative ? p.totalUnits : undefined,
-      })),
-    };
-  });
-  // Nを増やしても候補集合が広がるだけで距離は減る一方なので、相対値は100%を超えない。
-  // 上端を100%に固定して、自動調整で105%のような目盛りが出るのを防ぐ
-  elements.sensitivity.innerHTML = relative
-    ? lineChart(series, range, (v) => `${v.toFixed(0)}%`, { yMax: 100 })
-    : lineChart(series, range, (v) => `${v.toFixed(0)} u`);
-}
-
-function sensitivityLabel(
-  layout: Layout,
-  options: Options,
-  geometry: ReturnType<typeof buildGeometry>,
-): string {
-  const defaults = ctx.getUiState().conditions.defaults;
-  const override = ctx.getUiState().conditions.perLayout[layout.id];
-  const differences = [
-    geometry.id !== ctx.getGeometrySettingsForKind(defaults.geometry).shape.id ? `形状=${geometry.name}` : '',
-    options.windowSize !== defaults.windowSize ? `N=${options.windowSize}` : '',
-    options.sfbHomeCost !== defaults.sfbHomeCost ? 'SFBホーム設定変更' : '',
-    options.preferOppositeThumb !== defaults.preferOppositeThumb ? '逆側親指設定変更' : '',
-    override?.romajiRule !== undefined ? 'ローマ字個別設定' : '',
-    override?.chain !== undefined && !sameChainPolicy(override.chain, defaults.chain)
-      ? 'Chain境界個別設定'
-      : '',
-    override?.arpeggioPolicy !== undefined
-      && !sameArpeggioPolicy(override.arpeggioPolicy, defaults.arpeggioPolicy)
-      ? 'ArpeggioPolicy個別設定'
-      : '',
-  ].filter(Boolean);
-  return differences.length === 0 ? layout.name : `${layout.name}（${differences.join('・')}）`;
-}
-
-function renderDetail(results: Result[]) {
-  const found = results.find((r) => r.layout.id === ctx.getDetailLayoutId()) ?? results[0];
+function renderDetail(results: Result[]): Result {
+  const found = results.find((result) => result.layout.id === ctx.getDetailLayoutId())
+    ?? results[0]!;
   const { metrics, layout, geometry, options } = found;
   lastDetail = { metrics, layout, geometry };
-
-  elements.detailConditions.textContent = metricConditionText(metrics, layout);
 
   ctx.playback.render(found.trace, layout, geometry, options, found.analysis);
   ctx.bigramFlowModel.setData({ layout, trace: found.trace, geometry });
   renderHeatmap(metrics, layout, geometry);
-
-  const total = metrics.totalUnits || 1;
-  // 並び順が手の左右と一致するよう、左小指から右小指へ横に並べる
-  elements.fingerChart.innerHTML = columnChart(
-    FINGERS.map((f) => ({
-      label: SHORT_FINGER[f],
-      group: f[0] === 'L' ? '左手' : '右手',
-      value: metrics.perFinger[f],
-      tip: `${FINGER_LABEL[f]}<br>移動 <b>${metrics.perFinger[f].toFixed(1)} u</b>` +
-        ` (全体の ${((metrics.perFinger[f] / total) * 100).toFixed(1)}%)<br>` +
-        `押下 <b>${metrics.perFingerPresses[f]}</b> 回` +
-        ` (${((metrics.perFingerPresses[f] / Math.max(1, metrics.presses)) * 100).toFixed(1)}%)`,
-    })),
-    { format: (v) => v.toFixed(0) },
-  );
-
-  elements.adjacentChart.innerHTML = columnChart(
-    metrics.adjacent.map((s) => ({
-      label: `${SHORT_FINGER[s.pair[0]]}–${SHORT_FINGER[s.pair[1]]}`,
-      group: s.pair[0][0] === 'L' ? '左手' : '右手',
-      value: s.stdDev,
-      tip: `${FINGER_LABEL[s.pair[0]]}–${FINGER_LABEL[s.pair[1]]}<br>` +
-        `超過の平均 <b>${s.meanExcess.toFixed(3)} u</b><br>` +
-        `超過の実測最大 <b>${s.maxExcess.toFixed(3)} u</b><br>` +
-        `標準偏差 <b>${s.stdDev.toFixed(3)} u</b>`,
-    })),
-    { format: (v) => v.toFixed(3) },
-  );
+  return found;
 }
 
 function triggerKeyText(key: string, legends: Map<string, string>): string {
@@ -1486,11 +1042,6 @@ function renderHeatmap(
         ctx.updateUiState((draft) => { draft.ui.panels.comboTable = details.open; });
       }
     }, true);
-    bindMatrixSort(elements.pressMatrix, 'press');
-    bindMatrixSort(elements.fingerMatrix, 'finger');
-    bindMatrixSort(elements.adjacentMeanMatrix, 'adjacentMean');
-    bindMatrixSort(elements.adjacentStdDevMatrix, 'adjacentStdDev');
-    bindCompareSort(elements.compare);
     // 配列図（キーボードSVG）以外のどこかをクリックしたら、今表示中の配列の選択を解く。
     document.addEventListener('click', (e) => {
       if ((e.target as Element).closest('.layer-diagram')) return;
