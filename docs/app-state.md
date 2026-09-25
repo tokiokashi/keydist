@@ -7,7 +7,8 @@ Issue #413 Phase 8で、UI/runtime preferenceの永続化authorityを
 
 `AppStateV2` は次のsliceを持つ。
 
-- `workspace`: `WorkspaceStateV1`
+- `workspace`: Testerの`WorkspaceStateV1`
+- `analyzerWorkspace`: Analyzer NextのView instance + renderer-independent pane/tab layout
 - `inputConverter`: `InputConverterPreferencesV2`
 - `appearance`: App-level appearance preference（現在は `theme: light | dark | system`）
 - `analyzer`: AnalyzerのUI preference（旧 `UiStateV1.ui` から playback / theme を除いたもの）
@@ -88,3 +89,10 @@ Condition Bundleに含めるもの:
 - 追加のLRU timestampはschemaへ持ち込まず、first-seen順で古いものから落とす
 
 これで動的panel復元を維持しつつ、保存stateが無制限に増えるのを防ぐ。
+
+
+## Analyzer Workspace
+
+Analyzer NextはTesterのfloating Workspaceとは別sliceの `analyzerWorkspace` を使う。
+保存するのはversionedなView instanceとrenderer-independentなsplit/tab treeで、Dockview等のlibrary serialized objectをAppState schemaとして直接固定しない。
+AnalysisSession（text / selected layouts / conditions / focus）はこのsliceへ混ぜない。
