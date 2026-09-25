@@ -1056,6 +1056,7 @@ analyzerReactShell = mountAnalyzerReactShell({
 
 playbackView.setup();
 resultsView.setup();
+render();
 const TEXT_RENDER_DEBOUNCE_MS = 250;
 let textRenderTimer: number | undefined;
 
