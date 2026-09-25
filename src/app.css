@@ -248,7 +248,8 @@ h1 {
 .input-splitter:hover::before,
 .input-splitter:focus-visible::before {
   width: 4px;
-  background: var(--border-strong);
+  /* --border-strong はlight modeでhoverがほぼ見えないため、視認性を優先しtext-mutedを使う */
+  background: var(--text-muted);
 }
 
 .input-settings-panel,
