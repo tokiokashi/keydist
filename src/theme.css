@@ -18,12 +18,12 @@
   --text-muted: #67655e;
   --border: #e2dfd8;
   --border-strong: #cfcbc2;
-  --accent: #4a3aa7;
-  --accent-strong: #342879;
+  --accent: #2a78d6;
+  --accent-strong: #1c5cab;
   --accent-contrast: #ffffff;
   --danger: #a13e3e;
   --danger-surface: #f8e9e7;
-  --focus: #4a3aa7;
+  --focus: #2a78d6;
 
   --heat-0: #eef2f6;
   --heat-1: #1c5cab;
@@ -74,26 +74,26 @@
     --surface-muted: #2a2a27;
     --surface-highlight: rgb(255 255 255 / 12%);
     --text: #f0eee9;
-    --text-muted: #a9a69d;
+    --text-muted: #9c998f;
     --border: #32312c;
-    --border-strong: #4a4941;
-    --accent: #9085e9;
-    --accent-strong: #bbb3f4;
-    --accent-contrast: #11110f;
+    --border-strong: #45443d;
+    --accent: #3987e5;
+    --accent-strong: #7bb7f3;
+    --accent-contrast: #ffffff;
     --danger: #ef8f86;
     --danger-surface: #3a2220;
-    --focus: #9d93ee;
+    --focus: #3987e5;
 
     --heat-0: #1f2225;
     --heat-1: #3987e5;
     --on-heat: #0b1220;
 
     --series-1: #3987e5;
-    --series-2: #e56b3c;
-    --series-3: #2ab887;
-    --series-4: #dda62b;
-    --series-5: #e16b98;
-    --series-6: #4aae63;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
     --series-7: #9085e9;
     --series-8: #e66767;
 
@@ -123,26 +123,26 @@
   --surface-muted: #2a2a27;
   --surface-highlight: rgb(255 255 255 / 12%);
   --text: #f0eee9;
-  --text-muted: #a9a69d;
+  --text-muted: #9c998f;
   --border: #32312c;
-  --border-strong: #4a4941;
-  --accent: #9085e9;
-  --accent-strong: #bbb3f4;
-  --accent-contrast: #11110f;
+  --border-strong: #45443d;
+  --accent: #3987e5;
+  --accent-strong: #7bb7f3;
+  --accent-contrast: #ffffff;
   --danger: #ef8f86;
   --danger-surface: #3a2220;
-  --focus: #9d93ee;
+  --focus: #3987e5;
 
   --heat-0: #1f2225;
   --heat-1: #3987e5;
   --on-heat: #0b1220;
 
   --series-1: #3987e5;
-  --series-2: #e56b3c;
-  --series-3: #2ab887;
-  --series-4: #dda62b;
-  --series-5: #e16b98;
-  --series-6: #4aae63;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
   --series-7: #9085e9;
   --series-8: #e66767;
 
