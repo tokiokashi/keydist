@@ -7,7 +7,7 @@ import {
   useRouterState,
 } from '@tanstack/react-router';
 import { useEffect, type ReactNode } from 'react';
-import { loadAppearancePreference } from '../appearance.ts';
+import { getAppearanceSnapshot } from '../appearance.ts';
 import { applyTheme, THEME_BOOTSTRAP_SCRIPT } from '../theme.ts';
 import appCss from '../app.css?url';
 
@@ -29,8 +29,10 @@ export const Route = createRootRoute({
 
 function AppearanceAuthority() {
   useEffect(() => {
-    const appearance = loadAppearancePreference(window.localStorage);
-    applyTheme(appearance.theme);
+    // getAppearanceSnapshotがstore初期化（loadAppearancePreferenceによるmigration含む）を担う。
+    // 他のtheme控件（AnalyzerThemeControls等）と同じstoreを共有するため、ここでも
+    // 個別にstorageを読まずstore経由で取得する。
+    applyTheme(getAppearanceSnapshot());
   }, []);
   return null;
 }
