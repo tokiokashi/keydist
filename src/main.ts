@@ -25,7 +25,6 @@ import {
 import { loadPlaybackCalibration } from './playback-calibration.ts';
 import type { ModeId } from './layout-selection.ts';
 import {
-  DEFAULT_CONDITION_DEFAULTS,
   type UiPlaybackState,
   type UiStateConditionsDefaults,
   type UiStateStorage,
@@ -41,12 +40,14 @@ import {
 import { createAnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 import { createAnalyzerPlaybackSurfaceModel } from './analyzer-playback-surface-model.ts';
 import { createAnalyzerPlaybackSettingsModel } from './analyzer-playback-settings-model.ts';
-import { createAnalyzerConditionsSurfaceModel } from './analyzer-conditions-surface-model.ts';
+import {
+  createAnalyzerConditionsModel,
+  type AnalyzerConditionsActions,
+} from './analyzer-conditions-model.ts';
 import { createAnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 import { createAnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
 import { createAnalyzerControlsModel } from './analyzer-controls-model.ts';
 import { createAnalyzerGeometryEditorModel } from './analyzer-geometry-editor-model.ts';
-import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 import { el } from './app-dom.ts';
 import { createAnalyzerRomajiDialogModel } from './analyzer-romaji-dialog-model.ts';
 import { createAnalyzerCalibrationModel } from './analyzer-calibration-model.ts';
@@ -67,31 +68,21 @@ import {
   loadConditionPresets,
   newConditionPresetId,
   saveConditionPresets,
-  sameConditionDefaults,
   type ConditionPreset,
 } from './condition-presets.ts';
 import { setLayoutGeometryOverride } from './condition-resolution.ts';
 import type { ChainPolicy } from './analysis-chain.ts';
 import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
 import {
-  DEFAULT_TRIGGER_ACTIVATION_GROUPINGS,
   type ActionRealizationPolicy,
-  type TriggerActivationClass,
-  type TriggerActivationGrouping,
   type TriggerRealizationPolicy,
 } from './core/semantic-input/index.ts';
-import {
-  sameModifierGroupSelector,
-  samePhysicalTriggerSelector,
-  triggerActivationGroups,
-  triggerActivationLogicalGroups,
-  TRIGGER_ACTIVATION_CLASS_LABELS,
-} from './trigger-activation-groups.ts';
 import {
   conditionBundleFromState,
   parseConditionBundle,
   serializeConditionBundle,
 } from './condition-bundle.ts';
+import { downloadText } from './browser-download.ts';
 
 let userLayouts: UserLayout[] = loadUserLayouts();
 let userGeometryShapes: PhysicalShape[] = loadUserGeometryShapes();
@@ -421,59 +412,14 @@ function geometrySettingsForKind(kind: GeometryKind): GeometrySettings {
   };
 }
 
-const conditionsSurfaceModel = createAnalyzerConditionsSurfaceModel();
-
-type ConditionTab = 'romaji' | 'physical' | 'model' | 'trigger' | 'chain' | 'arpeggio' | 'delay';
-
-const CONDITION_TABS: readonly [ConditionTab, string][] = [
-  ['romaji', 'ローマ字'],
-  ['physical', '物理形状'],
-  ['model', 'モデル'],
-  ['trigger', 'Trigger'],
-  ['chain', 'Chain'],
-  ['arpeggio', 'Arpeggio'],
-  ['delay', '再生'],
-];
-
-let conditionTab: ConditionTab = 'model';
-const conditionDetailsOpen = new Map<string, boolean>();
-
-function bindConditionDetails(
-  details: HTMLDetailsElement,
-  key: string,
-  defaultOpen = false,
-): void {
-  details.dataset.conditionDetailsKey = key;
-  details.open = conditionDetailsOpen.get(key) ?? defaultOpen;
-  details.addEventListener('toggle', () => {
-    conditionDetailsOpen.set(key, details.open);
-  });
-}
-
-function currentConditionPresetId(): string {
-  return allConditionPresets(conditionPresets).find((preset) =>
-    sameConditionDefaults(preset.conditions, uiState.conditions.defaults))?.id ?? '';
-}
-
 function conditionOverrideEnabled(layoutId: string, state: UiStateV1 = uiState): boolean {
   return Object.prototype.hasOwnProperty.call(state.conditions.perLayout, layoutId);
 }
 
-function commitCondition<K extends keyof UiStateConditionsDefaults>(
-  layoutId: string | undefined,
-  key: K,
-  value: UiStateConditionsDefaults[K],
-): void;
-function commitCondition(
-  layoutId: string,
-  key: 'romajiRule',
-  value: string,
-): void;
 function commitCondition(
   layoutId: string | undefined,
   key: keyof UiStateConditionsDefaults | keyof UiStateLayoutConditions,
-  value: UiStateConditionsDefaults[keyof UiStateConditionsDefaults]
-    | UiStateLayoutConditions[keyof UiStateLayoutConditions],
+  value: unknown,
 ): void {
   updateUiState((draft) => {
     if (layoutId === undefined) {
@@ -486,7 +432,7 @@ function commitCondition(
     Object.assign(target, { [key]: structuredClone(value) });
     draft.conditions.perLayout[layoutId] = target;
   });
-    if (key === 'geometry') {
+  if (key === 'geometry') {
     fillGeometryOptions();
     fillDetailGeometryOptions(currentDetailLayoutId());
   }
@@ -494,7 +440,6 @@ function commitCondition(
   else if (key === 'geometry' || key === 'chain' || key === 'arpeggioPolicy') {
     playbackView?.preserveNextRender('cursor');
   }
-  renderConditionDescription();
   render();
 }
 
@@ -503,585 +448,172 @@ function toggleConditionOverride(layoutId: string, enabled: boolean): void {
     if (enabled) draft.conditions.perLayout[layoutId] ??= {};
     else delete draft.conditions.perLayout[layoutId];
   });
-    playbackView?.preserveNextRender('input-position');
-  renderConditionDescription();
+  playbackView?.preserveNextRender('input-position');
   render();
 }
 
-function geometryOptions(select: HTMLSelectElement): void {
-  select.replaceChildren(
-    new Option('ロウスタッガード', 'row-staggered'),
-    new Option('オーソリニア', 'ortholinear'),
-    new Option('カラムスタッガード', 'column-staggered'),
-    ...userGeometryShapes.map((shape) => new Option(`自作: ${shape.name}`, customGeometryKind(shape.id))),
-  );
-}
-
-function conditionNumber(
-  parent: HTMLElement,
-  value: number,
-  disabled: boolean,
-  onCommit: (value: number) => void,
-  options: { min: string; max: string; step: string },
-): void {
-  const input = document.createElement('input');
-  input.type = 'number';
-  input.value = String(value);
-  input.min = options.min;
-  input.max = options.max;
-  input.step = options.step;
-  input.disabled = disabled;
-  input.addEventListener('change', () => {
-    const next = Number(input.value);
-    if (Number.isFinite(next) && next >= Number(options.min) && next <= Number(options.max)) onCommit(next);
-  });
-  parent.append(input);
-}
-
-
-function groupingSelect(
-  current: TriggerActivationGrouping | undefined,
-  semanticDefault: TriggerActivationGrouping,
-  disabled: boolean,
-  onChange: (value: TriggerActivationGrouping | undefined) => void,
-): HTMLSelectElement {
-  const select = document.createElement('select');
-  select.disabled = disabled;
-  select.append(
-    new Option(
-      `既定（${semanticDefault === 'separate' ? '独立action' : 'outputと同じaction'}）`,
-      'inherit',
+function conditionsCatalog() {
+  const allLayouts = [...layoutsOf('en'), ...layoutsOf('ja')];
+  return {
+    layouts: currentMode().layouts,
+    allLayouts,
+    geometryOptions: [
+      { value: 'row-staggered', label: 'ロウスタッガード' },
+      { value: 'ortholinear', label: 'オーソリニア' },
+      { value: 'column-staggered', label: 'カラムスタッガード' },
+      ...userGeometryShapes.map((shape) => ({
+        value: customGeometryKind(shape.id),
+        label: `自作: ${shape.name}`,
+      })),
+    ],
+    romajiRules: allRomajiRules(romajiSettings.rules).map((rule) => ({
+      value: rule.id,
+      label: rule.name,
+    })),
+    romajiRuleIds: Object.fromEntries(
+      allLayouts.map((layout) => [layout.id, romajiRuleIdForLayout(layout)]),
     ),
-    new Option('outputと同じaction', 'combined'),
-    new Option('独立action', 'separate'),
-  );
-  select.value = current ?? 'inherit';
-  select.addEventListener('change', () =>
-    onChange(select.value === 'combined' || select.value === 'separate'
-      ? select.value
-      : undefined));
-  return select;
-}
-
-function conditionRow(
-  tab: ConditionTab,
-  layout: Layout | undefined,
-): HTMLTableRowElement {
-  const row = document.createElement('tr');
-  const heading = document.createElement('th');
-  heading.scope = 'row';
-  heading.textContent = layout?.name ?? '既定値（全配列）';
-  row.append(heading);
-
-  const overrideCell = document.createElement('td');
-  if (layout) {
-    const enabled = conditionOverrideEnabled(layout.id);
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = enabled;
-    checkbox.title = `${layout.name}だけ個別設定する`;
-    checkbox.setAttribute('aria-label', `${layout.name}を個別設定する`);
-    checkbox.addEventListener('change', () => toggleConditionOverride(layout.id, checkbox.checked));
-    overrideCell.append(checkbox);
-  } else {
-    overrideCell.textContent = '全体';
-  }
-  row.append(overrideCell);
-  const cell = document.createElement('td');
-  row.append(cell);
-
-  const override = layout ? uiState.conditions.perLayout[layout.id] : undefined;
-  const enabled = layout === undefined || conditionOverrideEnabled(layout.id);
-  const defaults = uiState.conditions.defaults;
-  const value = <K extends keyof typeof defaults>(key: K): typeof defaults[K] => {
-    if (key === 'playbackRateWindow') return defaults[key];
-    const layoutValue = override?.[key as keyof UiStateLayoutConditions];
-    return (layoutValue ?? defaults[key]) as typeof defaults[K];
+    presets: allConditionPresets(conditionPresets),
+    playbackDefaults: uiStateDefaults.ui.playback,
+    calibrationAvailable: playbackCalibration !== undefined,
   };
+}
 
-  if (tab === 'romaji') {
-    if (layout && !layout.romajiTable) {
-      cell.textContent = 'かな入力の設定は不要';
-      return row;
-    }
-    if (!layout) {
-      cell.textContent = '各かな配列の既定値を使用';
-      return row;
-    }
-    const select = document.createElement('select');
-    for (const rule of allRomajiRules(romajiSettings.rules)) select.append(new Option(rule.name, rule.id));
-    const current = override?.romajiRule ?? romajiRuleIdForLayout(layout) ?? defaultRomajiRuleId(layout.id);
-    select.value = current;
-    select.disabled = !enabled;
-    select.addEventListener('change', () => commitCondition(layout.id, 'romajiRule', select.value));
-    cell.append(select);
-    return row;
-  }
+const conditionsModel = createAnalyzerConditionsModel(conditionsCatalog());
 
-  if (tab === 'physical') {
-    const select = document.createElement('select');
-    geometryOptions(select);
-    select.value = value('geometry');
-    select.disabled = !enabled;
-    select.addEventListener('change', () => commitCondition(layout?.id, 'geometry', select.value as GeometryKind));
-    cell.append(select);
-    return row;
-  }
+function refreshConditionsCatalog(): void {
+  conditionsModel.setCatalog(conditionsCatalog());
+}
 
-  if (tab === 'model') {
-    const fields = document.createElement('div');
-    fields.className = 'condition-fields';
-    const windowLabel = document.createElement('label');
-    windowLabel.append('先読みN ');
-    conditionNumber(windowLabel, value('windowSize'), !enabled, (next) => commitCondition(layout?.id, 'windowSize', next), {
-      min: '0', max: '12', step: '1',
-    });
-    const sfbLabel = document.createElement('label');
-    const sfb = document.createElement('input');
-    sfb.type = 'checkbox'; sfb.checked = value('sfbHomeCost'); sfb.disabled = !enabled;
-    sfbLabel.append(sfb, ' SFBホーム');
-    sfb.addEventListener('change', () => commitCondition(layout?.id, 'sfbHomeCost', sfb.checked));
-    const thumbLabel = document.createElement('label');
-    const thumb = document.createElement('input');
-    thumb.type = 'checkbox'; thumb.checked = value('preferOppositeThumb'); thumb.disabled = !enabled;
-    thumbLabel.append(thumb, ' 逆側親指');
-    thumb.addEventListener('change', () => commitCondition(layout?.id, 'preferOppositeThumb', thumb.checked));
-    fields.append(windowLabel, sfbLabel, thumbLabel);
-    cell.append(fields);
-    return row;
-  }
-
-  if (tab === 'trigger') {
-    const detailsScope = layout?.id ?? 'defaults';
-    const realization = value('triggerRealization');
-    const action = value('actionRealization');
-    const fields = document.createElement('div');
-    fields.className = 'condition-fields condition-trigger-fields';
-
-    const holdLabel = document.createElement('label');
-    const holdInput = document.createElement('input');
-    holdInput.type = 'checkbox';
-    holdInput.checked = realization.useHold;
-    holdInput.disabled = !enabled;
-    holdInput.addEventListener('change', () =>
-      commitCondition(layout?.id, 'triggerRealization', { ...realization, useHold: holdInput.checked }));
-    holdLabel.append(holdInput, ' hold-capable triggerを連続保持する');
-
-    const actionLabel = document.createElement('label');
-    const actionInput = document.createElement('input');
-    actionInput.type = 'checkbox';
-    actionInput.checked = action.triggerActivation === 'semantic';
-    actionInput.disabled = !enabled;
-    actionInput.addEventListener('change', () =>
-      commitCondition(layout?.id, 'actionRealization', {
-        ...action,
-        triggerActivation: actionInput.checked ? 'semantic' : 'disabled',
-      }));
-    actionLabel.append(actionInput, ' trigger押下の独立action化を有効にする');
-
-    fields.append(holdLabel, actionLabel);
-
-    const actionTargetHeading = document.createElement('div');
-    actionTargetHeading.className = 'condition-trigger-subheading';
-    actionTargetHeading.textContent = '独立action化する対象';
-    fields.append(actionTargetHeading);
-
-    const relevantClasses: TriggerActivationClass[] = layout
-      ? [...new Set(triggerActivationGroups(layout).map((group) => group.activationClass))]
-      : ['prepress-required', 'order-free'];
-    for (const activationClass of relevantClasses) {
-      if (activationClass === 'postpress-required') continue;
-      const row = document.createElement('label');
-      row.append(`${TRIGGER_ACTIVATION_CLASS_LABELS[activationClass]} `);
-      const current = action.triggerActivationClassOverrides?.[activationClass];
-      row.append(groupingSelect(
-        current,
-        DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[activationClass],
-        !enabled || action.triggerActivation !== 'semantic',
-        (grouping) => {
-          const next = { ...(action.triggerActivationClassOverrides ?? {}) };
-          if (grouping === undefined) delete next[activationClass];
-          else next[activationClass] = grouping;
-          commitCondition(layout?.id, 'actionRealization', {
-            ...action,
-            triggerActivationClassOverrides: next,
-          });
-        },
-      ));
-      fields.append(row);
-    }
-
-    if (layout) {
-      const logicalGroups = triggerActivationLogicalGroups(layout)
-        .filter((group) => !group.activationClasses.includes('postpress-required'));
-      if (logicalGroups.length > 0) {
-        const details = document.createElement('details');
-        bindConditionDetails(details, `${detailsScope}:trigger-individual`);
-        const summary = document.createElement('summary');
-        summary.textContent = '個別設定';
-        details.append(summary);
-
-        const logicalFields = document.createElement('div');
-        logicalFields.className = 'condition-fields condition-trigger-fields';
-        for (const logical of logicalGroups) {
-          const label = document.createElement('label');
-          label.append(`${logical.label} `);
-          const existing = action.triggerActivationOverrides?.find((override) =>
-            sameModifierGroupSelector(override.selector, logical.modifierGroupIds));
-          const semanticDefaults = logical.activationClasses.map((kind) =>
-            action.triggerActivationClassOverrides?.[kind]
-              ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[kind]);
-          const semanticDefault = semanticDefaults.every((value) => value === 'separate')
-            ? 'separate'
-            : 'combined';
-          label.append(groupingSelect(
-            existing?.grouping,
-            semanticDefault,
-            !enabled || action.triggerActivation !== 'semantic',
-            (grouping) => {
-              const overrides = (action.triggerActivationOverrides ?? [])
-                .filter((override) =>
-                  !sameModifierGroupSelector(override.selector, logical.modifierGroupIds));
-              if (grouping !== undefined) {
-                overrides.push({
-                  selector: { modifierGroupIds: logical.modifierGroupIds },
-                  grouping,
-                });
-              }
-              commitCondition(layout.id, 'actionRealization', {
-                ...action,
-                triggerActivationOverrides: overrides,
-              });
-            },
-          ));
-          logicalFields.append(label);
-        }
-
-        const physicalDetails = document.createElement('details');
-        bindConditionDetails(physicalDetails, `${detailsScope}:trigger-physical`);
-        const physicalSummary = document.createElement('summary');
-        physicalSummary.textContent = '物理trigger単位の詳細';
-        physicalDetails.append(physicalSummary);
-        const physicalFields = document.createElement('div');
-        physicalFields.className = 'condition-fields condition-trigger-fields';
-        for (const group of triggerActivationGroups(layout)) {
-          if (group.activationClass === 'postpress-required') continue;
-          const label = document.createElement('label');
-          label.append(`${group.label} `);
-          const existing = action.triggerActivationOverrides?.find((override) =>
-            samePhysicalTriggerSelector(override.selector, group));
-          const logicalOverride = action.triggerActivationOverrides?.find((override) =>
-            sameModifierGroupSelector(override.selector, group.modifierGroupIds));
-          const semanticDefault = logicalOverride?.grouping
-            ?? action.triggerActivationClassOverrides?.[group.activationClass]
-            ?? DEFAULT_TRIGGER_ACTIVATION_GROUPINGS[group.activationClass];
-          label.append(groupingSelect(
-            existing?.grouping,
-            semanticDefault,
-            !enabled || action.triggerActivation !== 'semantic',
-            (grouping) => {
-              const overrides = (action.triggerActivationOverrides ?? [])
-                .filter((override) => !samePhysicalTriggerSelector(override.selector, group));
-              if (grouping !== undefined) {
-                overrides.push({
-                  selector: {
-                    ...(group.modifierGroupIds.length === 0
-                      ? {}
-                      : { modifierGroupIds: group.modifierGroupIds }),
-                    triggerKeys: group.triggerKeys,
-                  },
-                  grouping,
-                });
-              }
-              commitCondition(layout.id, 'actionRealization', {
-                ...action,
-                triggerActivationOverrides: overrides,
-              });
-            },
-          ));
-          physicalFields.append(label);
-        }
-        physicalDetails.append(physicalFields);
-        logicalFields.append(physicalDetails);
-        details.append(logicalFields);
-        fields.append(details);
-      }
-    }
-
-    cell.append(fields);
-    return row;
-  }
-
-  if (tab === 'chain') {
-    const policy = value('chain');
-    const fields = document.createElement('div');
-    fields.className = 'condition-fields condition-chain-fields';
-    const checkbox = (key: keyof ChainPolicy, labelText: string): HTMLLabelElement => {
-      const label = document.createElement('label');
-      const input = document.createElement('input');
-      input.type = 'checkbox';
-      input.checked = policy[key];
-      input.disabled = !enabled;
-      input.addEventListener('change', () =>
-        commitCondition(layout?.id, 'chain', { ...policy, [key]: input.checked }));
-      label.append(input, ` ${labelText}`);
-      return label;
-    };
-    fields.append(
-      checkbox('breakOnSameFinger', '非親指SFB Strokeで区切る'),
-      checkbox('breakOnTriggerOnly', 'trigger-only Strokeで区切る'),
-      checkbox('breakOnThumbOnly', '親指only Strokeで区切る'),
-      checkbox('breakOnOppositeHandSimultaneous', '逆手同時outputで区切る'),
+const conditionsActions: AnalyzerConditionsActions = {
+  commitCondition(layoutId, key, value) {
+    commitCondition(
+      layoutId,
+      key as keyof UiStateConditionsDefaults | keyof UiStateLayoutConditions,
+      value,
     );
-    cell.append(fields);
-    return row;
-  }
-
-  if (tab === 'arpeggio') {
-    const policy = value('arpeggioPolicy');
-    const fields = document.createElement('div');
-    fields.className = 'condition-fields condition-arpeggio-fields';
-    const checkbox = (key: keyof ArpeggioPolicy, labelText: string): HTMLLabelElement => {
-      const label = document.createElement('label');
-      const input = document.createElement('input');
-      input.type = 'checkbox';
-      input.checked = policy[key];
-      input.disabled = !enabled;
-      input.addEventListener('change', () =>
-        commitCondition(layout?.id, 'arpeggioPolicy', { ...policy, [key]: input.checked }));
-      label.append(input, ` ${labelText}`);
-      return label;
-    };
-    fields.append(
-      checkbox('includeThumb', 'output親指をcoreに含める'),
-      checkbox('bridgeSameFinger', 'same Transitionを中立bridgeにする'),
-      checkbox('includeSingleRedirectTail', '末尾直後の逆方向1 Transitionを含める'),
-    );
-    cell.append(fields);
-    return row;
-  }
-
-  cell.textContent = 'この項目は全体設定です。配列ごとの上書きはできません。';
-  return row;
-}
-
-function renderConditionTable(tab: ConditionTab): HTMLTableElement {
-  const table = document.createElement('table');
-  table.className = 'condition-grid';
-  const head = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  for (const label of ['配列', '個別設定', tab === 'romaji' ? '設定値' : '条件']) {
-    const th = document.createElement('th'); th.textContent = label; headerRow.append(th);
-  }
-  head.append(headerRow); table.append(head);
-  const body = document.createElement('tbody');
-  body.append(conditionRow(tab, undefined));
-  for (const layout of currentMode().layouts) body.append(conditionRow(tab, layout));
-  table.append(body);
-  return table;
-}
-
-function renderGlobalDelayControls(parent: HTMLElement): void {
-  const playback = uiState.ui.playback;
-  const fields = document.createElement('div'); fields.className = 'condition-delay-fields';
-  const speed = document.createElement('label'); speed.append('基準速度 ');
-  conditionNumber(speed, playback.stepsPerSecond, false, (value) => {
-    updateUiState((draft) => { draft.ui.playback.stepsPerSecond = value; }); renderConditionDescription(); render();
-  }, { min: '0.1', max: '20', step: 'any' }); speed.append(' ステップ/秒');
-  const multiplier = document.createElement('label'); multiplier.append('再生倍率 ');
-  conditionNumber(multiplier, playback.speedMultiplier, false, (value) => {
-    updateUiState((draft) => { draft.ui.playback.speedMultiplier = value; }); renderConditionDescription(); render();
-  }, { min: '0.1', max: '8', step: '0.1' }); multiplier.append(' 倍');
-  const rateAverage = document.createElement('label'); rateAverage.append('速度平均 ');
-  const rateAverageSelect = document.createElement('select');
-  rateAverageSelect.append(new Option('SMA（単純移動平均）', 'sma'), new Option('EWMA（指数移動平均）', 'ewma'));
-  rateAverageSelect.value = uiState.conditions.defaults.playbackRateAverage;
-  rateAverageSelect.addEventListener('change', () => {
-    const average = rateAverageSelect.value;
-    if (average !== 'sma' && average !== 'ewma') return;
-    updateUiState((draft) => { draft.conditions.defaults.playbackRateAverage = average; });
-    renderConditionDescription(); playbackView?.update();
-  });
-  rateAverage.append(rateAverageSelect);
-  const rateWindow = document.createElement('label'); rateWindow.append('SMA窓幅 ');
-  conditionNumber(rateWindow, uiState.conditions.defaults.playbackRateWindow, false, (value) => {
-    if (!Number.isInteger(value)) return;
-    updateUiState((draft) => { draft.conditions.defaults.playbackRateWindow = value; }); renderConditionDescription(); playbackView?.update();
-  }, { min: '1', max: '50', step: '1' }); rateWindow.append(' 打鍵');
-  const rateHalfLife = document.createElement('label'); rateHalfLife.append('EWMA半減期 ');
-  conditionNumber(rateHalfLife, uiState.conditions.defaults.playbackRateHalfLifeSeconds, false, (value) => {
-    updateUiState((draft) => { draft.conditions.defaults.playbackRateHalfLifeSeconds = value; }); renderConditionDescription(); playbackView?.update();
-  }, { min: '0.1', max: '10', step: '0.1' }); rateHalfLife.append(' 秒');
-  const sameFinger = document.createElement('label'); const sameFingerInput = document.createElement('input');
-  sameFingerInput.type = 'checkbox'; sameFingerInput.checked = playback.sameFingerDelay;
-  sameFingerInput.addEventListener('change', () => {
-    updateUiState((draft) => { draft.ui.playback.sameFingerDelay = sameFingerInput.checked; }); renderConditionDescription(); render();
-  }); sameFinger.append(sameFingerInput, ' 指の移動速度を考慮');
-  const allFinger = document.createElement('label'); const allFingerInput = document.createElement('input');
-  allFingerInput.type = 'checkbox'; allFingerInput.checked = playback.allFingerMovementDelay;
-  allFingerInput.addEventListener('change', () => {
-    updateUiState((draft) => { draft.ui.playback.allFingerMovementDelay = allFingerInput.checked; }); renderConditionDescription(); render();
-  }); allFinger.append(allFingerInput, ' 全指の移動時間で律速');
-  const calibration = document.createElement('label'); const calibrationInput = document.createElement('input');
-  calibrationInput.type = 'checkbox'; calibrationInput.checked = playback.useCalibration; calibrationInput.disabled = !playbackCalibration;
-  calibrationInput.addEventListener('change', () => {
-    updateUiState((draft) => { draft.ui.playback.useCalibration = calibrationInput.checked; }); renderConditionDescription(); render();
-  }); calibration.append(calibrationInput, ' 個人速度を使う');
-  fields.append(speed, multiplier, rateAverage, rateWindow, rateHalfLife, sameFinger, allFinger, calibration);
-  parent.append(fields);
-}
-
-function appendConditionSummary(parent: DocumentFragment | HTMLElement): void {
-  const summary = document.createElement('details'); summary.className = 'condition-summary';
-  const title = document.createElement('summary'); title.textContent = '現在値と既定値の差分を見る'; summary.append(title);
-  const layoutNames = Object.fromEntries(
-    [...layoutsOf('en'), ...layoutsOf('ja')].map((layout) => [layout.id, layout.name]),
-  );
-  const description = describeConditions({
-    defaults: DEFAULT_CONDITION_DEFAULTS,
-    current: uiState.conditions.defaults,
-    perLayout: uiState.conditions.perLayout,
-    layoutNames,
-  });
-  const playbackDescription = describePlaybackConditions({
-    defaults: uiStateDefaults.ui.playback,
-    current: uiState.ui.playback,
-  });
-  const addList = (headingText: string, conditions: readonly { label: string; value: string; defaultValue: string; differsFromDefault: boolean; effect: string }[]) => {
-    const heading = document.createElement('h3'); heading.textContent = headingText;
-    const list = document.createElement('dl'); list.className = 'condition-list';
-    for (const condition of conditions) {
-      const term = document.createElement('dt'); term.textContent = condition.label;
-      const detail = document.createElement('dd');
-      const value = document.createElement('strong'); value.textContent = `現在: ${condition.value}`;
-      const difference = document.createElement('span');
-      difference.className = condition.differsFromDefault ? 'condition-changed' : 'condition-default';
-      difference.textContent = condition.differsFromDefault ? `（既定: ${condition.defaultValue}）` : '（既定どおり）';
-      const effect = document.createElement('p'); effect.textContent = condition.effect;
-      detail.append(value, ' ', difference, effect); list.append(term, detail);
-    }
-    summary.append(heading, list);
-  };
-  addList('解析・集計条件', description.conditions);
-  addList('打鍵再生条件', playbackDescription);
-  const overrides = document.createElement('p');
-  overrides.className = 'note';
-  overrides.textContent = description.overrides.length === 0
-    ? '配列ごとの上書きはありません。'
-    : `配列ごとの上書き: ${description.overrides.map((item) => item.layoutName).join('、')}`;
-  summary.append(overrides); parent.append(summary);
-}
-
-function renderConditionDescription(
-  selectedPresetId?: string,
-  preserveScroll = true,
-): void {
-  const dialogScrollTop = preserveScroll && el.conditionsDialog.open
-    ? el.conditionsDialog.scrollTop
-    : undefined;
-  const previousTableWrap = preserveScroll
-    ? el.conditionsDialog.querySelector<HTMLElement>(
-      '[data-react-feature="conditions"] .condition-table-wrap',
-    )
-    : null;
-  const tableScroll = previousTableWrap === null
-    ? undefined
-    : {
-      top: previousTableWrap.scrollTop,
-      left: previousTableWrap.scrollLeft,
-    };
-
-  const root = document.createDocumentFragment();
-  const toolbar = document.createElement('div'); toolbar.className = 'condition-toolbar';
-  const presetLabel = document.createElement('label'); presetLabel.append('プリセット ');
-  const presetSelect = document.createElement('select');
-  presetSelect.append(new Option('選ばない', ''));
-  for (const preset of allConditionPresets(conditionPresets)) presetSelect.append(new Option(preset.name, preset.id));
-  presetSelect.value = selectedPresetId ?? currentConditionPresetId();
-  presetSelect.addEventListener('change', () => {
-    const preset = allConditionPresets(conditionPresets).find((candidate) => candidate.id === presetSelect.value);
+  },
+  toggleOverride: toggleConditionOverride,
+  applyPreset(id) {
+    const preset = allConditionPresets(conditionPresets)
+      .find((candidate) => candidate.id === id);
     if (!preset) return;
-    updateUiState((draft) => { draft.conditions.defaults = structuredClone(preset.conditions); });
-    fillGeometryOptions(); fillDetailGeometryOptions(currentDetailLayoutId());
-    renderConditionDescription(preset.id); render();
-  }); presetLabel.append(presetSelect);
-  const savePreset = document.createElement('button'); savePreset.type = 'button'; savePreset.className = 'secondary'; savePreset.textContent = '現在値を保存';
-  savePreset.addEventListener('click', () => {
-    const name = window.prompt('プリセット名');
-    if (!name?.trim()) return;
-    const preset: ConditionPreset = { id: newConditionPresetId(), name: name.trim(), conditions: structuredClone(uiState.conditions.defaults) };
-    conditionPresets = [...conditionPresets, preset]; saveConditionPresets(conditionPresets); renderConditionDescription(preset.id);
-  });
-  const deletePreset = document.createElement('button'); deletePreset.type = 'button'; deletePreset.className = 'ghost'; deletePreset.textContent = '保存したプリセットを削除';
-  deletePreset.addEventListener('click', () => {
-    const id = presetSelect.value;
+    updateUiState((draft) => {
+      draft.conditions.defaults = structuredClone(preset.conditions);
+    });
+    fillGeometryOptions();
+    fillDetailGeometryOptions(currentDetailLayoutId());
+    render();
+  },
+  savePreset(name) {
+    const preset: ConditionPreset = {
+      id: newConditionPresetId(),
+      name,
+      conditions: structuredClone(uiState.conditions.defaults),
+    };
+    conditionPresets = [...conditionPresets, preset];
+    saveConditionPresets(conditionPresets);
+    refreshConditionsCatalog();
+  },
+  deletePreset(id) {
     if (!id.startsWith('custom-')) return;
-    conditionPresets = conditionPresets.filter((preset) => preset.id !== id); saveConditionPresets(conditionPresets); renderConditionDescription();
-  });
-  const exportButton = document.createElement('button'); exportButton.type = 'button'; exportButton.className = 'secondary'; exportButton.textContent = '条件と配列を書き出す';
-  exportButton.addEventListener('click', () => {
-    const bundle = conditionBundleFromState(uiState, userLayouts, userGeometryShapes, romajiSettings, conditionPresets);
-    const url = URL.createObjectURL(new Blob([serializeConditionBundle(bundle)], { type: 'application/json' }));
-    const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'keydist-conditions.json'; anchor.click(); URL.revokeObjectURL(url);
-  });
-  const importLabel = document.createElement('label'); importLabel.className = 'secondary file-button'; importLabel.textContent = '条件と配列を読み込む';
-  const importInput = document.createElement('input'); importInput.type = 'file'; importInput.accept = 'application/json,.json'; importLabel.append(importInput);
-  const status = document.createElement('span'); status.className = 'note condition-import-status';
-  importInput.addEventListener('change', async () => {
-    const file = importInput.files?.[0]; if (!file) return;
+    conditionPresets = conditionPresets.filter((preset) => preset.id !== id);
+    saveConditionPresets(conditionPresets);
+    refreshConditionsCatalog();
+  },
+  exportBundle() {
+    const bundle = conditionBundleFromState(
+      uiState,
+      userLayouts,
+      userGeometryShapes,
+      romajiSettings,
+      conditionPresets,
+    );
+    downloadText(
+      'keydist-conditions.json',
+      serializeConditionBundle(bundle),
+      'application/json',
+    );
+  },
+  async importBundle(file) {
     try {
-      const fallback = conditionBundleFromState(uiState, userLayouts, userGeometryShapes, romajiSettings, conditionPresets);
-      const bundle = parseConditionBundle(await file.text(), fallback, uiStateDefaults, uiStateChoices);
+      const fallback = conditionBundleFromState(
+        uiState,
+        userLayouts,
+        userGeometryShapes,
+        romajiSettings,
+        conditionPresets,
+      );
+      const bundle = parseConditionBundle(
+        await file.text(),
+        fallback,
+        uiStateDefaults,
+        uiStateChoices,
+      );
       const builtIds = new Set([...LAYOUTS, ...LAYOUTS_JA].map((layout) => layout.id));
       const mergedLayouts = new Map(userLayouts.map((layout) => [layout.id, layout]));
-      for (const layout of bundle.layouts) if (!builtIds.has(layout.id)) mergedLayouts.set(layout.id, layout);
-      userLayouts = [...mergedLayouts.values()]; saveUserLayouts(userLayouts);
+      for (const layout of bundle.layouts) {
+        if (!builtIds.has(layout.id)) mergedLayouts.set(layout.id, layout);
+      }
+      userLayouts = [...mergedLayouts.values()];
+      saveUserLayouts(userLayouts);
+
       const mergedShapes = new Map(userGeometryShapes.map((shape) => [shape.id, shape]));
       for (const shape of bundle.geometryShapes) mergedShapes.set(shape.id, shape);
-      userGeometryShapes = [...mergedShapes.values()]; saveUserGeometryShapes(userGeometryShapes);
-      romajiSettings = bundle.romajiSettings; saveRomajiSettings(romajiSettings); ROMAJI_TABLE_CACHE.clear();
+      userGeometryShapes = [...mergedShapes.values()];
+      saveUserGeometryShapes(userGeometryShapes);
+
+      romajiSettings = bundle.romajiSettings;
+      saveRomajiSettings(romajiSettings);
+      ROMAJI_TABLE_CACHE.clear();
       layoutEditorModel.setRomajiRules(allRomajiRules(romajiSettings.rules));
-      conditionPresets = bundle.presets; saveConditionPresets(conditionPresets);
+
+      conditionPresets = bundle.presets;
+      saveConditionPresets(conditionPresets);
       addLayoutChoices(userLayouts.map((layout) => layout.id));
-      updateUiState((draft) => { draft.conditions = bundle.conditions; });
-      fillGeometryOptions(); fillDetailOptions();
-      fillPicker(); renderConditionDescription(); render();
-      status.textContent = '条件と配列を読み込んだ';
+      updateUiState((draft) => {
+        draft.conditions = bundle.conditions;
+      });
+      fillGeometryOptions();
+      fillDetailOptions();
+      fillPicker();
+      render();
+      return '条件と配列を読み込んだ';
     } catch (error) {
-      status.textContent = error instanceof Error ? error.message : '条件ファイルを読み込めない';
-    } finally { importInput.value = ''; }
-  });
-  toolbar.append(presetLabel, savePreset, deletePreset, exportButton, importLabel, status);
-  root.append(toolbar);
-  const note = document.createElement('p'); note.className = 'note'; note.textContent = '行は配列、列は条件です。個別設定をオフにすると既定値を使い、選択した項目だけ既定値から差し替えます。プリセットは全体の既定値だけを置き換え、配列ごとの個別設定は保持します。'; root.append(note);
-  const tabs = document.createElement('div'); tabs.className = 'condition-tabs'; tabs.setAttribute('role', 'tablist');
-  for (const [id, labelText] of CONDITION_TABS) {
-    const button = document.createElement('button'); button.type = 'button'; button.className = 'ghost'; button.textContent = labelText;
-    button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(conditionTab === id));
-    button.addEventListener('click', () => {
-      conditionTab = id;
-      renderConditionDescription(undefined, false);
-      el.conditionsDialog.scrollTop = 0;
-    }); tabs.append(button);
-  }
-  root.append(tabs);
-  if (conditionTab === 'delay') {
-    const global = document.createElement('section'); global.className = 'condition-global';
-    const heading = document.createElement('h3'); heading.textContent = '全体の再生設定'; global.append(heading);
-    renderGlobalDelayControls(global);
-    const note = document.createElement('p'); note.className = 'note'; note.textContent = '再生速度と個人速度は構造解析条件とは分離して扱います。'; global.append(note); root.append(global);
-  } else {
-    const tableWrap = document.createElement('div'); tableWrap.className = 'scroll-x condition-table-wrap'; tableWrap.append(renderConditionTable(conditionTab)); root.append(tableWrap);
-  }
-  appendConditionSummary(root);
-  conditionsSurfaceModel.setContent(root, {
-    dialogScrollTop,
-    tableScroll,
-  });
-}
+      return error instanceof Error ? error.message : '条件ファイルを読み込めない';
+    }
+  },
+  setPlaybackUi(key, value) {
+    updateUiState((draft) => {
+      Object.assign(draft.ui.playback, { [key]: value });
+    });
+    render();
+  },
+  setPlaybackCondition(key, value) {
+    if (key === 'playbackRateAverage') {
+      if (value !== 'sma' && value !== 'ewma') return;
+      updateUiState((draft) => {
+        draft.conditions.defaults.playbackRateAverage = value;
+      });
+    } else if (key === 'playbackRateWindow') {
+      if (typeof value !== 'number' || !Number.isInteger(value)) return;
+      updateUiState((draft) => {
+        draft.conditions.defaults.playbackRateWindow = value;
+      });
+    } else if (key === 'playbackRateHalfLifeSeconds') {
+      if (typeof value !== 'number') return;
+      updateUiState((draft) => {
+        draft.conditions.defaults.playbackRateHalfLifeSeconds = value;
+      });
+    } else {
+      return;
+    }
+    playbackView?.update();
+  },
+};
 
 function openConditionsDialog(): void {
-  renderConditionDescription(undefined, false);
+  refreshConditionsCatalog();
   el.conditionsDialog.showModal();
   el.conditionsDialog.scrollTop = 0;
 }
@@ -1314,6 +846,7 @@ resultsView = createResultsView({
 });
 
 function render(): void {
+  refreshConditionsCatalog();
   resultsView.render();
 }
 
@@ -1375,7 +908,8 @@ analyzerReactShell = mountAnalyzerReactShell({
   comparisonModel,
   playbackSurfaceModel,
   playbackSettingsModel,
-  conditionsSurfaceModel,
+  conditionsModel,
+  conditionsActions,
   layoutEditorModel,
   bigramFlowModel,
   controlsModel,
@@ -1504,18 +1038,6 @@ analyzerReactShell = mountAnalyzerReactShell({
   },
   onSensitivityToggle: () => render(),
   onThemeApplied: render,
-  onConditionsSurfaceCommit: (snapshot, root) => {
-    if (snapshot.dialogScrollTop !== undefined) {
-      el.conditionsDialog.scrollTop = snapshot.dialogScrollTop;
-    }
-    if (snapshot.tableScroll !== undefined) {
-      const tableWrap = root.querySelector<HTMLElement>('.condition-table-wrap');
-      if (tableWrap) {
-        tableWrap.scrollTop = snapshot.tableScroll.top;
-        tableWrap.scrollLeft = snapshot.tableScroll.left;
-      }
-    }
-  },
 });
 
 playbackView.setup();

@@ -11,7 +11,10 @@ import type { AnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
 import type { AnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 import type { AnalyzerPlaybackSurfaceModel } from './analyzer-playback-surface-model.ts';
 import type { AnalyzerPlaybackSettingsModel } from './analyzer-playback-settings-model.ts';
-import type { AnalyzerConditionsSurfaceModel, AnalyzerConditionsSurfaceSnapshot } from './analyzer-conditions-surface-model.ts';
+import type {
+  AnalyzerConditionsActions,
+  AnalyzerConditionsModel,
+} from './analyzer-conditions-model.ts';
 import { AnalyzerLayoutEditor } from './analyzer-layout-editor.tsx';
 import { AnalyzerCalibrationDialog } from './analyzer-calibration-dialog.tsx';
 import type { AnalyzerCalibrationModel } from './analyzer-calibration-model.ts';
@@ -59,7 +62,8 @@ export interface AnalyzerReactShellOptions {
   comparisonModel: AnalyzerComparisonModel;
   playbackSurfaceModel: AnalyzerPlaybackSurfaceModel;
   playbackSettingsModel: AnalyzerPlaybackSettingsModel;
-  conditionsSurfaceModel: AnalyzerConditionsSurfaceModel;
+  conditionsModel: AnalyzerConditionsModel;
+  conditionsActions: AnalyzerConditionsActions;
   layoutEditorModel: AnalyzerLayoutEditorModel;
   bigramFlowModel: AnalyzerBigramFlowModel;
   controlsModel: AnalyzerControlsModel;
@@ -72,10 +76,6 @@ export interface AnalyzerReactShellOptions {
   onMetricsChange: () => void;
   onPlaybackSurfaceCommit: () => void;
   onPlaybackSettingsCommit: () => void;
-  onConditionsSurfaceCommit: (
-    snapshot: AnalyzerConditionsSurfaceSnapshot,
-    root: HTMLElement,
-  ) => void;
   onAddLayout: (definition: UserLayout) => void;
   onToggleLayout: (layoutId: string, enabled: boolean) => void;
   onRemoveLayout: (layoutId: string) => void;
@@ -176,7 +176,8 @@ function AnalyzerReactShell({
   comparisonModel,
   playbackSurfaceModel,
   playbackSettingsModel,
-  conditionsSurfaceModel,
+  conditionsModel,
+  conditionsActions,
   layoutEditorModel,
   bigramFlowModel,
   controlsModel,
@@ -190,7 +191,6 @@ function AnalyzerReactShell({
   onMetricsChange,
   onPlaybackSurfaceCommit,
   onPlaybackSettingsCommit,
-  onConditionsSurfaceCommit,
   onAddLayout,
   onToggleLayout,
   onRemoveLayout,
@@ -513,8 +513,9 @@ function AnalyzerReactShell({
       {createPortal(
         <AnalyzerConditionsDialog
           dialog={conditionsDialogSlot}
-          model={conditionsSurfaceModel}
-          onCommit={onConditionsSurfaceCommit}
+          stateOwner={stateOwner}
+          model={conditionsModel}
+          actions={conditionsActions}
         />,
         conditionsDialogSlot,
       )}
@@ -598,7 +599,8 @@ export function mountAnalyzerReactShell(
       comparisonModel={options.comparisonModel}
       playbackSurfaceModel={options.playbackSurfaceModel}
       playbackSettingsModel={options.playbackSettingsModel}
-      conditionsSurfaceModel={options.conditionsSurfaceModel}
+      conditionsModel={options.conditionsModel}
+      conditionsActions={options.conditionsActions}
       layoutEditorModel={options.layoutEditorModel}
       bigramFlowModel={options.bigramFlowModel}
       controlsModel={options.controlsModel}
@@ -612,7 +614,6 @@ export function mountAnalyzerReactShell(
       onMetricsChange={options.onMetricsChange}
       onPlaybackSurfaceCommit={options.onPlaybackSurfaceCommit}
       onPlaybackSettingsCommit={options.onPlaybackSettingsCommit}
-      onConditionsSurfaceCommit={options.onConditionsSurfaceCommit}
       onAddLayout={options.onAddLayout}
       onToggleLayout={options.onToggleLayout}
       onRemoveLayout={options.onRemoveLayout}
