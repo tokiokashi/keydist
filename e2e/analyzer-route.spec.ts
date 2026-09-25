@@ -70,3 +70,28 @@ test('legacy Analyzer URL redirects to the React Analyzer route', async ({ page 
     'mounted',
   );
 });
+
+
+test('Analyzer runtime remounts after SPA navigation away and back', async ({ page }) => {
+  await page.goto('/input');
+  await page.getByRole('link', { name: 'Analyzer' }).click();
+  await expect(page).toHaveURL(/\/analyzer\/?$/);
+  await expect(page.locator('#analyzer-react-shell')).toHaveAttribute(
+    'data-analyzer-react-shell',
+    'mounted',
+  );
+  await expect(page.locator('#mode')).toHaveValue('ja');
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/input\/?$/);
+  await expect(page.locator('.input-feature')).toBeVisible();
+
+  await page.goForward();
+  await expect(page).toHaveURL(/\/analyzer\/?$/);
+  await expect(page.locator('#analyzer-react-shell')).toHaveAttribute(
+    'data-analyzer-react-shell',
+    'mounted',
+  );
+  await expect(page.locator('#mode')).toHaveValue('ja');
+  await expect(page.locator('#heatmap svg').first()).toBeVisible();
+});
