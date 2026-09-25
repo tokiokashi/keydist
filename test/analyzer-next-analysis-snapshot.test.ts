@@ -3,15 +3,21 @@ import test from 'node:test';
 import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
 import { resolveConditions } from '../src/condition-resolution.ts';
 import { evaluate } from '../src/evaluate.ts';
-import { buildGeometry } from '../src/geometry.ts';
-import { DEFAULT_GEOMETRY_SETTINGS } from '../src/geometry-settings.ts';
-import { LAYOUTS } from '../src/layouts/index.ts';
+import { assignmentWithHomeKeys, buildGeometry } from '../src/geometry.ts';
+import {
+  DEFAULT_GEOMETRY_SETTINGS,
+  geometrySettingsForPreset,
+} from '../src/geometry-settings.ts';
+import { LAYOUTS, withRomaji } from '../src/layouts/index.ts';
+import type { Layout } from '../src/layouts/types.ts';
 import { computeMetrics } from '../src/metrics.ts';
+import { tableForRule } from '../src/romaji/rules.ts';
 import {
   computeAnalysisSnapshot,
 } from '../src/features/analyzer-next/snapshot-computation.ts';
 import {
   createResolvedAnalysisInputResolver,
+  type AnalysisLayoutCatalogEntry,
 } from '../src/features/analyzer-next/resolved-input.ts';
 import {
   createAnalysisSessionStore,
@@ -50,6 +56,32 @@ function sessionStore() {
       perLayout: {},
     },
   });
+}
+
+function romajiEntry(
+  layout: Layout,
+  mode: 'en' | 'ja',
+  defaultRule = 'kunrei',
+): AnalysisLayoutCatalogEntry {
+  if (mode === 'en') {
+    return {
+      layout,
+      revisionKey: 'en:qwerty',
+      romajiRuleId: null,
+      romajiCapable: false,
+    };
+  }
+  const resolve = (ruleId: string): AnalysisLayoutCatalogEntry => ({
+    layout: withRomaji(layout, tableForRule(ruleId)),
+    revisionKey: `ja:qwerty:romaji:${ruleId}`,
+    romajiRuleId: ruleId,
+    romajiCapable: true,
+    resolveRomajiRule: resolve,
+  });
+  return {
+    ...resolve(defaultRule),
+    revisionKey: `ja:qwerty:default:${defaultRule}`,
+  };
 }
 
 test('new Snapshot pipeline matches the legacy evaluate/analyze/metrics sequence', () => {
@@ -100,6 +132,7 @@ test('resolved calculation key ignores timing changes but reacts to distance and
       layout,
       revisionKey: catalogRevision,
       romajiRuleId: null,
+      romajiCapable: false,
     }],
     geometryForKind: () => ({
       settings: DEFAULT_GEOMETRY_SETTINGS,
@@ -109,16 +142,14 @@ test('resolved calculation key ignores timing changes but reacts to distance and
 
   const first = resolver('qwerty')!;
   store.setTimingDefault('speedMultiplier', 1.5);
-  const afterTiming = resolver('qwerty')!;
-  assert.equal(afterTiming.key, first.key);
+  assert.equal(resolver('qwerty')!.key, first.key);
 
   store.setDistanceDefault('windowSize', 5);
   const afterDistance = resolver('qwerty')!;
   assert.notEqual(afterDistance.key, first.key);
 
   catalogRevision = 'layout:2';
-  const afterCatalog = resolver('qwerty')!;
-  assert.notEqual(afterCatalog.key, afterDistance.key);
+  assert.notEqual(resolver('qwerty')!.key, afterDistance.key);
 });
 
 test('resolver refuses to expand Snapshot scope for an unselected layout', () => {
@@ -127,7 +158,12 @@ test('resolver refuses to expand Snapshot scope for an unselected layout', () =>
   store.setSelectedLayouts([]);
   const resolver = createResolvedAnalysisInputResolver({
     getSession: store.getSnapshot,
-    layoutsForMode: () => [{ layout, revisionKey: 'layout:1', romajiRuleId: null }],
+    layoutsForMode: () => [{
+      layout,
+      revisionKey: 'layout:1',
+      romajiRuleId: null,
+      romajiCapable: false,
+    }],
     geometryForKind: () => ({
       settings: DEFAULT_GEOMETRY_SETTINGS,
       revisionKey: 'geometry:1',
@@ -136,65 +172,57 @@ test('resolver refuses to expand Snapshot scope for an unselected layout', () =>
   assert.equal(resolver('qwerty'), undefined);
 });
 
-
-test('per-layout romaji override re-resolves the effective Layout and calculation key', () => {
+test('romaji override is effective only for romaji-capable mode and survives ja -> en -> ja', () => {
   const baseLayout = LAYOUTS.find((candidate) => candidate.id === 'qwerty')!;
   const store = sessionStore();
-  const kunreiLayout = { ...baseLayout, name: 'QWERTY / kunrei' };
   const resolver = createResolvedAnalysisInputResolver({
     getSession: store.getSnapshot,
-    layoutsForMode: (mode) => [{
-      layout: baseLayout,
-      revisionKey: `${mode}:qwerty:default`,
-      romajiRuleId: mode === 'ja' ? 'hepburn' : null,
-      resolveRomajiRule: (ruleId) => ({
-        layout: kunreiLayout,
-        revisionKey: `${mode}:qwerty:romaji:${ruleId}`,
-        romajiRuleId: ruleId,
-      }),
-    }],
+    layoutsForMode: (mode) => [romajiEntry(baseLayout, mode)],
     geometryForKind: () => ({
       settings: DEFAULT_GEOMETRY_SETTINGS,
       revisionKey: 'geometry:1',
     }),
   });
 
-  store.setTarget({
-    mode: 'ja',
-    selectedLayoutIds: ['qwerty'],
-    focusLayoutId: 'qwerty',
-  });
-  const before = resolver('qwerty')!;
-  assert.equal(before.input.romajiRuleId, 'hepburn');
-  assert.equal(before.input.layout, baseLayout);
+  store.setTarget({ mode: 'ja', selectedLayoutIds: ['qwerty'], focusLayoutId: 'qwerty' });
+  store.setDistanceOverride('qwerty', 'romajiRule', 'removed-custom-rule');
+  const ja = resolver('qwerty')!;
+  assert.equal(ja.input.romajiRuleId, 'removed-custom-rule');
+  assert.equal(
+    ja.input.layout.romajiTable?.get('し'),
+    tableForRule('removed-custom-rule').get('し'),
+    'removed rule keeps legacy tableForRule fallback semantics',
+  );
 
-  store.setDistanceOverride('qwerty', 'romajiRule', 'kunrei');
-  const after = resolver('qwerty')!;
-  assert.equal(after.input.romajiRuleId, 'kunrei');
-  assert.equal(after.input.layout, kunreiLayout);
-  assert.notEqual(after.key, before.key);
-
-  store.setTarget({
-    mode: 'en',
-    selectedLayoutIds: ['qwerty'],
-    focusLayoutId: 'qwerty',
-  });
+  store.setTarget({ mode: 'en', selectedLayoutIds: ['qwerty'], focusLayoutId: 'qwerty' });
   const en = resolver('qwerty')!;
-  assert.equal(en.input.romajiRuleId, 'kunrei');
-  assert.match(en.key, /en:qwerty:romaji:kunrei/);
-  assert.notEqual(en.key, after.key);
+  assert.equal(en.input.romajiRuleId, null);
+  assert.equal(en.input.layout.romajiTable, undefined);
+
+  store.setTarget({ mode: 'ja', selectedLayoutIds: ['qwerty'], focusLayoutId: 'qwerty' });
+  const jaAgain = resolver('qwerty')!;
+  assert.equal(jaAgain.input.romajiRuleId, 'removed-custom-rule');
+  assert.equal(jaAgain.key, ja.key);
 });
 
-test('unknown per-layout romaji rule makes the resolved input unavailable instead of using stale layout data', () => {
-  const layout = LAYOUTS.find((candidate) => candidate.id === 'qwerty')!;
+test('direct/non-romaji layout ignores a persisted romaji override', () => {
+  const base = LAYOUTS.find((candidate) => candidate.id === 'qwerty')!;
+  const direct: Layout = { ...base, id: 'direct-custom', name: 'Direct custom' };
   const store = sessionStore();
+  store.setTarget({
+    mode: 'ja',
+    selectedLayoutIds: ['direct-custom'],
+    focusLayoutId: 'direct-custom',
+  });
+  store.setDistanceOverride('direct-custom', 'romajiRule', 'kunrei');
+
   const resolver = createResolvedAnalysisInputResolver({
     getSession: store.getSnapshot,
     layoutsForMode: () => [{
-      layout,
-      revisionKey: 'qwerty:default',
+      layout: direct,
+      revisionKey: 'direct:1',
       romajiRuleId: null,
-      resolveRomajiRule: () => undefined,
+      romajiCapable: false,
     }],
     geometryForKind: () => ({
       settings: DEFAULT_GEOMETRY_SETTINGS,
@@ -202,6 +230,69 @@ test('unknown per-layout romaji rule makes the resolved input unavailable instea
     }),
   });
 
-  store.setDistanceOverride('qwerty', 'romajiRule', 'removed-rule');
-  assert.equal(resolver('qwerty'), undefined);
+  const resolved = resolver('direct-custom')!;
+  assert.equal(resolved.input.layout, direct);
+  assert.equal(resolved.input.romajiRuleId, null);
+});
+
+test('representative ja romaji + per-layout geometry/policy resolves to legacy-equivalent Metrics', () => {
+  const base = LAYOUTS.find((candidate) => candidate.id === 'qwerty')!;
+  const legacyLayout = withRomaji(base, tableForRule('kunrei'));
+  const override = {
+    geometry: 'ortholinear' as const,
+    windowSize: 5,
+    chain: {
+      ...DEFAULT_CONDITION_DEFAULTS.chain,
+      breakOnSameFinger: !DEFAULT_CONDITION_DEFAULTS.chain.breakOnSameFinger,
+    },
+  };
+  const legacyConditions = resolveConditions(DEFAULT_CONDITION_DEFAULTS, override);
+  const legacyGeometrySettings = geometrySettingsForPreset('ortholinear');
+  const legacyGeometry = buildGeometry(
+    legacyGeometrySettings.shape,
+    assignmentWithHomeKeys(legacyGeometrySettings.assignment, legacyLayout.homeKeys),
+  );
+  const legacyTrace = evaluate('しん', legacyLayout, legacyGeometry, legacyConditions.options);
+  const legacyAnalysis = analyzeStrokeStructure(
+    legacyTrace.strokes,
+    legacyConditions.chainPolicy,
+    legacyConditions.arpeggioPolicy,
+    legacyConditions.triggerRealizationPolicy,
+    legacyConditions.actionRealizationPolicy,
+  );
+  const legacyMetrics = computeMetrics(legacyTrace, legacyGeometry, {
+    windowSize: legacyConditions.options.windowSize,
+    sfbHomeCost: legacyConditions.options.sfbHomeCost,
+    preferOppositeThumb: legacyConditions.options.preferOppositeThumb ?? false,
+    chainPolicy: legacyConditions.chainPolicy,
+    arpeggioPolicy: legacyConditions.arpeggioPolicy,
+    triggerRealizationPolicy: legacyConditions.triggerRealizationPolicy,
+    actionRealizationPolicy: legacyConditions.actionRealizationPolicy,
+    romajiRuleId: 'kunrei',
+  });
+
+  const store = sessionStore();
+  store.setTarget({ mode: 'ja', selectedLayoutIds: ['qwerty'], focusLayoutId: 'qwerty' });
+  store.setText('しん');
+  store.setDistanceOverride('qwerty', 'romajiRule', 'kunrei');
+  store.setDistanceOverride('qwerty', 'geometry', 'ortholinear');
+  store.setDistanceOverride('qwerty', 'windowSize', 5);
+  store.setDistanceOverride('qwerty', 'chain', override.chain);
+
+  const resolver = createResolvedAnalysisInputResolver({
+    getSession: store.getSnapshot,
+    layoutsForMode: () => [romajiEntry(base, 'ja')],
+    geometryForKind: (kind) => ({
+      settings: kind === 'ortholinear'
+        ? geometrySettingsForPreset('ortholinear')
+        : geometrySettingsForPreset('row-staggered'),
+      revisionKey: `geometry:${kind}`,
+    }),
+  });
+  const resolved = resolver('qwerty')!;
+  const next = computeAnalysisSnapshot(resolved.input);
+
+  assert.deepEqual(next.trace, legacyTrace);
+  assert.deepEqual(next.analysis, legacyAnalysis);
+  assert.deepEqual(next.metrics, legacyMetrics);
 });
