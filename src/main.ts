@@ -832,7 +832,6 @@ const comparisonModel = createAnalyzerComparisonModel();
 const metricsModel = createAnalyzerMetricsModel();
 
 resultsView = createResultsView({
-  el,
   getText: () => analyzerReactShell?.getText() ?? '',
   getUiState: () => uiState,
   updateUiState,
@@ -897,6 +896,7 @@ analyzerReactShell = mountAnalyzerReactShell({
   compareChartSlot: el.compareChart,
   compareTableSlot: el.compare,
   detailConditionsSlot: el.detailConditions,
+  heatmapSlot: el.heatmap,
   fingerChartSlot: el.fingerChart,
   adjacentChartSlot: el.adjacentChart,
   pressMatrixSlot: el.pressMatrix,
