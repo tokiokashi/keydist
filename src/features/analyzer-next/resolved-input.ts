@@ -13,7 +13,7 @@ import type {
   AnalysisSessionState,
 } from './session-store.ts';
 import type { SnapshotResolution } from './snapshot-service.ts';
-import type { ResolvedAnalysisInput } from './analysis-snapshot.ts';
+import type { ResolvedAnalysisInput } from './snapshot-computation.ts';
 
 export interface AnalysisLayoutCatalogEntry {
   layout: Layout;
