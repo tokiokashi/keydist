@@ -29,6 +29,15 @@ function legacyAnalyzerRedirect(): Plugin {
 
 export default defineConfig({
   base,
+  server: {
+    warmup: {
+      clientFiles: [
+        './src/analyzer-page.tsx',
+        './src/main.ts',
+        './src/analyzer-react-shell.tsx',
+      ],
+    },
+  },
   plugins: [
     legacyAnalyzerRedirect(),
     tanstackStart({
