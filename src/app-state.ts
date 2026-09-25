@@ -27,7 +27,8 @@ export function analyzerSlicesFromUiState(state: UiStateV1): Pick<
   AppStateV2,
   'analyzer' | 'conditions' | 'playback'
 > {
-  const { playback, theme: _theme, ...analyzer } = state.ui;
+  const { playback, theme, ...analyzer } = state.ui;
+  void theme;
   return {
     analyzer: structuredClone(analyzer),
     conditions: structuredClone(state.conditions),
