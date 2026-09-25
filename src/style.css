@@ -673,7 +673,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
 .playback-order-arpeggio { fill: var(--series-3); font-size: 9px; font-weight: 700; }
 .playback-figure [data-playback-motion-kind='sameFinger'] rect { fill: var(--series-7); stroke: var(--series-7); }
 .playback-figure [data-playback-motion-kind='chain'] rect { fill: var(--series-8); stroke: var(--series-8); }
-.playback-figure [data-playback-motion-key] text { fill: #fff; }
+.playback-figure [data-playback-motion-key] text { fill: var(--viz-on-strong); }
 /* 打鍵中・trail・plan の塗り指定は子孫セレクタなので、キーの <g> 配下の rect を
    すべて拾う。押下フィードバック用のオーバーレイまで同じ色に塗られ、重ねても画が
    変わらなくなる（presentation attribute の fill は CSS に負ける）。
@@ -684,7 +684,7 @@ svg { display: block; width: 100%; height: auto; overflow: visible; }
   stroke: none;
 }
 .playback-figure [data-playback-active='true'] rect { fill: var(--accent); stroke: var(--accent); }
-.playback-figure [data-playback-active='true'] text { fill: #fff; }
+.playback-figure [data-playback-active='true'] text { fill: var(--viz-on-strong); }
 .playback-figure [data-playback-trigger='true'] rect { stroke: var(--series-4); stroke-width: 3; }
 .playback-figure [data-playback-finger-position='LP'] rect,
 .playback-figure [data-playback-finger-position='RP'] rect { stroke: var(--series-1); stroke-width: 3.5; }
