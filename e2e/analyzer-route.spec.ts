@@ -1,18 +1,19 @@
 import { expect, test } from '@playwright/test';
+import { gotoAnalyzer, waitForAnalyzerRuntime } from './analyzer-helper.ts';
 
-test('legacy Analyzer stays operational when shared layer/picker helpers change', async ({ page }) => {
+test('Analyzer route stays operational when shared layer/picker helpers change', async ({ page }) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => {
     pageErrors.push(error.message);
-    console.error('[legacy pageerror]', error.stack ?? error.message);
+    console.error('[analyzer pageerror]', error.stack ?? error.message);
   });
   page.on('console', (message) => {
-    if (message.type() === 'error') console.error('[legacy console]', message.text());
+    if (message.type() === 'error') console.error('[analyzer console]', message.text());
   });
 
-  await page.goto('legacy.html');
+  await gotoAnalyzer(page);
   await page.waitForTimeout(250);
-  expect(pageErrors, 'legacy startup must not throw before controls initialize').toEqual([]);
+  expect(pageErrors, 'Analyzer startup must not throw before controls initialize').toEqual([]);
 
   await expect(page.locator('#analyzer-react-shell')).toHaveAttribute('data-analyzer-react-shell', 'mounted');
   const mode = page.locator('#mode');
@@ -59,4 +60,30 @@ test('legacy Analyzer stays operational when shared layer/picker helpers change'
   await expect(page.locator('#heatmap svg').first()).toBeVisible();
 
   expect(pageErrors).toEqual([]);
+});
+
+
+test('legacy Analyzer URL redirects to the React Analyzer route', async ({ page }) => {
+  await page.goto('/legacy.html');
+  await expect(page).toHaveURL(/\/analyzer\/?$/);
+  await waitForAnalyzerRuntime(page);
+});
+
+
+test('Analyzer runtime remounts after SPA navigation away and back', async ({ page }) => {
+  await page.goto('/input');
+  await page.getByRole('link', { name: 'Analyzer' }).click();
+  await expect(page).toHaveURL(/\/analyzer\/?$/);
+  await waitForAnalyzerRuntime(page);
+  await expect(page.locator('#mode')).toHaveValue('ja');
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/input\/?$/);
+  await expect(page.locator('.input-feature')).toBeVisible();
+
+  await page.goForward();
+  await expect(page).toHaveURL(/\/analyzer\/?$/);
+  await waitForAnalyzerRuntime(page);
+  await expect(page.locator('#mode')).toHaveValue('ja');
+  await expect(page.locator('#heatmap svg').first()).toBeVisible();
 });

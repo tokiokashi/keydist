@@ -398,7 +398,7 @@ export function AnalyzerMatrixChart({
         return (
           <g
             data-tip="クリックごとに昇順・降順・選択順へ切り替える"
-            key={column}
+            key={`${column}-${index}`}
           >
             <text
               x={colX(index) + cellW / 2}

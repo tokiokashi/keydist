@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { gotoAnalyzer } from './analyzer-helper.ts';
 
 test('Geometry editor dialog is React-owned and keeps existing editor behavior', async ({ page }) => {
-  await page.goto('/legacy.html');
+  await gotoAnalyzer(page);
 
   const panel = page.locator('#geometry-panel');
   if (!(await panel.getAttribute('open'))) {

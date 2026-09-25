@@ -1,35 +1,45 @@
 import type { Finger } from './geometry.ts';
 
-const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-
-export const el = {
-  app: $<HTMLDivElement>('app'),
-  geometryDialog: $<HTMLDialogElement>('geometry-dialog'),
-  get textPanel() { return $<HTMLDetailsElement>('text-panel'); },
-  get addPanel() { return $<HTMLDetailsElement>('add-panel'); },
-  get sensitivityPanel() { return $<HTMLDetailsElement>('sensitivity-panel'); },
-  get textMeta() { return $<HTMLSpanElement>('text-meta'); },
-  get errors() { return $<HTMLSpanElement>('errors'); },
-  compareChart: $<HTMLDivElement>('compare-chart'),
-  compare: $<HTMLTableElement>('compare'),
-  get sensitivity() { return $<HTMLDivElement>('sensitivity'); },
-  detailConditions: $<HTMLParagraphElement>('detail-conditions'),
-  playback: $<HTMLDivElement>('playback'),
-  playbackSettingsPanel: $<HTMLDivElement>('playback-settings-panel'),
-  heatmap: $<HTMLDivElement>('heatmap'),
-  fingerChart: $<HTMLDivElement>('finger-chart'),
-  adjacentChart: $<HTMLDivElement>('adjacent-chart'),
-  fingerMatrix: $<HTMLDivElement>('finger-matrix'),
-  pressMatrix: $<HTMLDivElement>('press-matrix'),
-  adjacentMeanMatrix: $<HTMLDivElement>('adjacent-mean-matrix'),
-  adjacentStdDevMatrix: $<HTMLDivElement>('adjacent-stddev-matrix'),
-  howDialog: $<HTMLDialogElement>('how-dialog'),
-  conditionsDialog: $<HTMLDialogElement>('conditions-dialog'),
-  romajiDialog: $<HTMLDialogElement>('romaji-dialog'),
-  calibrationDialog: $<HTMLDialogElement>('playback-calibration-dialog'),
+const $ = <T extends HTMLElement>(id: string) => {
+  const element = document.getElementById(id);
+  if (!element) throw new Error(`Analyzer element #${id} is missing`);
+  return element as T;
 };
 
-export type AppElements = typeof el;
+/**
+ * Analyzer routeのmountごとに、その時点のDOMを解決する。
+ * SPA再入場時に前回mountの要素参照を保持しない。
+ */
+export function resolveAppElements() {
+  return {
+    app: $<HTMLDivElement>('app'),
+    geometryDialog: $<HTMLDialogElement>('geometry-dialog'),
+    get textPanel() { return $<HTMLDetailsElement>('text-panel'); },
+    get addPanel() { return $<HTMLDetailsElement>('add-panel'); },
+    get sensitivityPanel() { return $<HTMLDetailsElement>('sensitivity-panel'); },
+    get textMeta() { return $<HTMLSpanElement>('text-meta'); },
+    get errors() { return $<HTMLSpanElement>('errors'); },
+    compareChart: $<HTMLDivElement>('compare-chart'),
+    compare: $<HTMLTableElement>('compare'),
+    get sensitivity() { return $<HTMLDivElement>('sensitivity'); },
+    detailConditions: $<HTMLParagraphElement>('detail-conditions'),
+    playback: $<HTMLDivElement>('playback'),
+    playbackSettingsPanel: $<HTMLDivElement>('playback-settings-panel'),
+    heatmap: $<HTMLDivElement>('heatmap'),
+    fingerChart: $<HTMLDivElement>('finger-chart'),
+    adjacentChart: $<HTMLDivElement>('adjacent-chart'),
+    fingerMatrix: $<HTMLDivElement>('finger-matrix'),
+    pressMatrix: $<HTMLDivElement>('press-matrix'),
+    adjacentMeanMatrix: $<HTMLDivElement>('adjacent-mean-matrix'),
+    adjacentStdDevMatrix: $<HTMLDivElement>('adjacent-stddev-matrix'),
+    howDialog: $<HTMLDialogElement>('how-dialog'),
+    conditionsDialog: $<HTMLDialogElement>('conditions-dialog'),
+    romajiDialog: $<HTMLDialogElement>('romaji-dialog'),
+    calibrationDialog: $<HTMLDialogElement>('playback-calibration-dialog'),
+  };
+}
+
+export type AppElements = ReturnType<typeof resolveAppElements>;
 
 export const FINGER_LABEL: Record<Finger, string> = {
   LP: '左小指', LR: '左薬指', LM: '左中指', LI: '左人差指', LT: '左親指',

@@ -5,15 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --config vite.legacy.config.ts",
+    "build": "vite build && node --experimental-strip-types scripts/write-legacy-analyzer-redirect.ts",
     "check:sample": "node --experimental-strip-types scripts/check-sample-text.ts",
     "generate:kana-fixtures": "node --experimental-strip-types scripts/generate-kana-fixtures.ts",
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
     "test": "node --test --experimental-strip-types test/*.test.ts",
     "typecheck": "tsr generate && tsc --noEmit",
-    "test:browser": "playwright test",
-    "test:browser:legacy": "playwright test --config playwright.legacy.config.ts"
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.170.38",

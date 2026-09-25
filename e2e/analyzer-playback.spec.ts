@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { gotoAnalyzer } from './analyzer-helper.ts';
 
 test('Playback surface is React-hosted and panel state restores from AppState', async ({ page }) => {
-  await page.goto('/legacy.html');
+  await gotoAnalyzer(page);
 
   const surface = page.locator('[data-react-feature="playback"]');
   await expect(surface).toBeVisible();
@@ -28,7 +29,7 @@ test('Playback surface is React-hosted and panel state restores from AppState', 
 });
 
 test('Playback settings are React-hosted and restore through the AppState playback slice', async ({ page }) => {
-  await page.goto('/legacy.html');
+  await gotoAnalyzer(page);
 
   const surface = page.locator('[data-react-feature="playback"]');
   await expect(surface).toBeVisible();

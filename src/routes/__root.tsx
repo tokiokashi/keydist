@@ -4,6 +4,7 @@ import {
   Link,
   Scripts,
   createRootRoute,
+  useRouterState,
 } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import appCss from '../app.css?url';
@@ -25,24 +26,32 @@ export const Route = createRootRoute({
 });
 
 function RootDocument({ children }: { children: ReactNode }) {
+  const analyzerRoute = useRouterState({
+    select: (state) => state.location.pathname.endsWith('/analyzer'),
+  });
+
   return (
     <html lang="ja">
       <head>
         <HeadContent />
       </head>
       <body>
-        <header className="app-header">
-          <Link className="brand" to="/">keydist</Link>
-          <nav aria-label="主要ナビゲーション">
-            <Link to="/analyzer" activeProps={{ 'aria-current': 'page' }}>
-              Analyzer
-            </Link>
-            <Link to="/input" activeProps={{ 'aria-current': 'page' }}>
-              Tester
-            </Link>
-          </nav>
-        </header>
-        <main className="app-shell">{children}</main>
+        {analyzerRoute ? null : (
+          <header className="app-header">
+            <Link className="brand" to="/">keydist</Link>
+            <nav aria-label="主要ナビゲーション">
+              <Link to="/analyzer" activeProps={{ 'aria-current': 'page' }}>
+                Analyzer
+              </Link>
+              <Link to="/input" activeProps={{ 'aria-current': 'page' }}>
+                Tester
+              </Link>
+            </nav>
+          </header>
+        )}
+        <main className={analyzerRoute ? 'app-shell analyzer-route-shell' : 'app-shell'}>
+          {children}
+        </main>
         <Scripts />
       </body>
     </html>

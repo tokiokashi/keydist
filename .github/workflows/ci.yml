@@ -93,31 +93,6 @@ jobs:
             fi
           done
 
-      - name: Install Chromium
-        id: playwright-install
-        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/feat/371-layer-guide'
-        shell: bash
-        run: |
-          set -o pipefail
-          npx playwright install --with-deps --only-shell chromium 2>&1 | tee "$RUNNER_TEMP/playwright-install.log"
-
-      - name: Legacy browser smoke
-        id: legacy-browser-smoke
-        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/feat/371-layer-guide'
-        shell: bash
-        run: |
-          set -o pipefail
-          npm run test:browser:legacy 2>&1 | tee "$RUNNER_TEMP/legacy-browser-smoke.log"
-
-      - name: Upload legacy browser failure trace
-        if: failure() && steps.legacy-browser-smoke.outcome == 'failure'
-        uses: actions/upload-artifact@v7
-        with:
-          name: legacy-browser-smoke-trace
-          path: test-results/
-          if-no-files-found: ignore
-          retention-days: 7
-
       - name: Write CI summary
         if: always()
         shell: bash
@@ -127,8 +102,6 @@ jobs:
           INSTALL_OUTCOME: ${{ steps.install.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
           TEST_OUTCOME: ${{ steps.test.outcome }}
-          PLAYWRIGHT_INSTALL_OUTCOME: ${{ steps.playwright-install.outcome }}
-          LEGACY_BROWSER_SMOKE_OUTCOME: ${{ steps.legacy-browser-smoke.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           PAGES_SMOKE_OUTCOME: ${{ steps.pages-smoke.outcome }}
         run: |
@@ -154,8 +127,6 @@ jobs:
             printf '| Test | %s %s |\n' "$(icon "$TEST_OUTCOME")" "$TEST_OUTCOME"
             printf '| Build | %s %s |\n' "$(icon "$BUILD_OUTCOME")" "$BUILD_OUTCOME"
             printf '| Pages artifact smoke | %s %s |\n' "$(icon "$PAGES_SMOKE_OUTCOME")" "$PAGES_SMOKE_OUTCOME"
-            printf '| Playwright Chromium install | %s %s |\n' "$(icon "$PLAYWRIGHT_INSTALL_OUTCOME")" "$PLAYWRIGHT_INSTALL_OUTCOME"
-            printf '| Legacy browser smoke | %s %s |\n' "$(icon "$LEGACY_BROWSER_SMOKE_OUTCOME")" "$LEGACY_BROWSER_SMOKE_OUTCOME"
             echo
             echo "[Open full run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -185,8 +156,6 @@ jobs:
           append_failure_log "Typecheck" "$TYPECHECK_OUTCOME" "$RUNNER_TEMP/typecheck.log"
           append_failure_log "Test" "$TEST_OUTCOME" "$RUNNER_TEMP/test.log"
           append_failure_log "Build" "$BUILD_OUTCOME" "$RUNNER_TEMP/build.log"
-          append_failure_log "Playwright Chromium install" "$PLAYWRIGHT_INSTALL_OUTCOME" "$RUNNER_TEMP/playwright-install.log"
-          append_failure_log "Legacy browser smoke" "$LEGACY_BROWSER_SMOKE_OUTCOME" "$RUNNER_TEMP/legacy-browser-smoke.log"
 
   browser-e2e:
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/feat/371-layer-guide'
