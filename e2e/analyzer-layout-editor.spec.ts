@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { gotoAnalyzer } from './analyzer-helper.ts';
 
 test('Layout editor is React-owned and new layout selection restores through AppState', async ({ page }) => {
-  await page.goto('/analyzer');
+  await gotoAnalyzer(page);
 
   const panel = page.locator('#add-panel');
   if (!(await panel.getAttribute('open'))) await panel.locator('summary').click();
