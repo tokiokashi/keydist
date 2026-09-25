@@ -2,7 +2,7 @@ import {
   analyzerSlicesFromUiState,
   uiStateFromAppState,
 } from './app-state.ts';
-import { loadAppearancePreference } from './appearance.ts';
+import { DEFAULT_APPEARANCE, loadAppearancePreference } from './appearance.ts';
 import {
   loadAppStateDocument,
   patchAppState,
@@ -50,7 +50,7 @@ function loadAnalyzerState(
     };
   }
 
-  loadAppearancePreference(storage, defaults.ui.theme);
+  loadAppearancePreference(storage, DEFAULT_APPEARANCE.theme);
   const appState = loadAppStateDocument(storage);
   const hasAllSlices = appState.analyzer !== undefined
     && appState.conditions !== undefined

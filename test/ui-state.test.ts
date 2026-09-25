@@ -61,7 +61,6 @@ const defaults = () => createDefaultUiState({
 test('画面状態を単一キーで保存・復元する', () => {
   const storage = new MemoryStorage();
   const state = defaults();
-  state.ui.theme = 'dark';
   state.ui.input.mode = 'en';
   state.ui.input.customText = 'edited';
   state.ui.layouts.selectedByMode.ja = [];
@@ -688,7 +687,6 @@ test('旧Chain UI fieldだけのmigrationではArpeggio刷新通知を出さな�
 test('旧Arpeggio保存値は初回だけmigration通知対象になりcanonical stateへ再保存する', () => {
   const storage = new MemoryStorage();
   const legacy = structuredClone(defaults()) as unknown as Record<string, any>;
-  legacy.ui.theme = 'dark';
   legacy.ui.panels.playback = true;
   legacy.ui.playback.arpeggioEnabled = true;
   legacy.ui.playback.arpeggioDelayMode = 'distributed';
@@ -712,7 +710,6 @@ test('旧Arpeggio保存値は初回だけmigration通知対象になりcanonical
 
   const first = loadUiState(storage, defaults(), choices);
   assert.equal(first.migratedArpeggioModel, true);
-  assert.equal(first.state.ui.theme, 'dark');
   assert.equal(first.state.ui.panels.playback, true);
   assert.equal('arpeggioEnabled' in first.state.ui.playback, false);
   assert.equal('arpeggioDelayMode' in first.state.ui.playback, false);
@@ -746,7 +743,6 @@ test('旧キーを初回読み込み時に移行して削除する', () => {
   const loaded = loadUiState(storage, defaults(), choices);
 
   assert.equal(loaded.migratedLegacy, true);
-  assert.equal(loaded.state.ui.theme, 'dark');
   assert.equal(loaded.state.ui.panels.text, false);
   assert.deepEqual(loaded.state.ui.layouts.selectedByMode, { en: [], ja: ['oonishi'] });
   assert.ok(storage.data.has(UI_STATE_STORAGE_KEY));
@@ -762,7 +758,6 @@ test('新形式を保存できなければ旧キーを削除しない', () => {
 
   const loaded = loadUiState(storage, defaults(), choices);
 
-  assert.equal(loaded.state.ui.theme, 'dark');
   assert.equal(loaded.migratedLegacy, false);
   assert.equal(storage.data.get(LEGACY_THEME_KEY), 'dark');
 });
@@ -774,7 +769,6 @@ test('旧キーの削除に失敗しても移行済みの状態を使う', () =>
 
   const loaded = loadUiState(storage, defaults(), choices);
 
-  assert.equal(loaded.state.ui.theme, 'dark');
   assert.equal(loaded.migratedLegacy, true);
   assert.ok(storage.data.has(UI_STATE_STORAGE_KEY));
 });
@@ -792,12 +786,10 @@ test('localStorageの読み書きが失敗しても既定状態で動く', () =>
 test('上限を超える本文だけを破棄し、他の設定は復元する', () => {
   const fallback = defaults();
   const value = structuredClone(fallback);
-  value.ui.theme = 'dark';
   value.ui.input.customText = 'あ'.repeat(MAX_SAVED_TEXT_LENGTH + 1);
 
   const state = sanitizeUiState(value, fallback, choices);
   assert.equal(state.ui.input.customText, undefined);
-  assert.equal(state.ui.theme, 'dark');
 
   const storage = new MemoryStorage();
   assert.equal(saveUiState(storage, value), true);
