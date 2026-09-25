@@ -267,10 +267,13 @@ export function setWorkspaceInstanceVisibility(
     }
     return {
       ...node,
-      children: node.children.map((child) => ({
-        ...child,
-        node: update(child.node) ?? child.node,
-      })),
+      children: node.children.map((child) => {
+        const nextNode = update(child.node);
+        return {
+          ...child,
+          node: nextNode ?? child.node,
+        };
+      }),
     };
   };
 
