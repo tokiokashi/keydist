@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { gotoAnalyzer } from './analyzer-helper.ts';
 
 test('Calibration dialog is React-owned and opens through Playback settings', async ({ page }) => {
-  await page.goto('/analyzer');
+  await gotoAnalyzer(page);
 
   const calibration = page.locator('[data-react-feature="calibration"]');
   await expect(calibration).toHaveCount(1);
