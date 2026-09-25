@@ -6,7 +6,9 @@ import {
   createRootRoute,
   useRouterState,
 } from '@tanstack/react-router';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { loadAppearancePreference } from '../appearance.ts';
+import { applyTheme, THEME_BOOTSTRAP_SCRIPT } from '../theme.ts';
 import appCss from '../app.css?url';
 
 export const Route = createRootRoute({
@@ -25,17 +27,27 @@ export const Route = createRootRoute({
   shellComponent: RootDocument,
 });
 
+function AppearanceAuthority() {
+  useEffect(() => {
+    const appearance = loadAppearancePreference(window.localStorage);
+    applyTheme(appearance.theme);
+  }, []);
+  return null;
+}
+
 function RootDocument({ children }: { children: ReactNode }) {
   const analyzerRoute = useRouterState({
     select: (state) => state.location.pathname.endsWith('/analyzer'),
   });
 
   return (
-    <html lang="ja">
+    <html lang="ja" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
+        <AppearanceAuthority />
         {analyzerRoute ? null : (
           <header className="app-header">
             <Link className="brand" to="/">keydist</Link>

@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useLayoutEffect,
   useState,
   useSyncExternalStore,
@@ -14,6 +15,7 @@ import { AnalyzerConditionsContent } from './analyzer-conditions-content.tsx';
 import type { GeometryKind } from './geometry.ts';
 import { buildGeometry } from './geometry.ts';
 import { gapFigure } from './gap-figure.ts';
+import { loadAppearancePreference, saveAppearancePreference } from './appearance.ts';
 import { applyTheme } from './theme.ts';
 
 export interface AnalyzerSidebarControlsProps {
@@ -495,33 +497,12 @@ export function AnalyzerStatefulPanel({
   );
 }
 
-export function AnalyzerThemeControls({
-  stateOwner,
-  onThemeApplied,
-}: {
-  stateOwner: AnalyzerUiStateOwner;
-  onThemeApplied(): void;
-}) {
-  const state = useSyncExternalStore(
-    stateOwner.subscribe,
-    stateOwner.getSnapshot,
-    stateOwner.getSnapshot,
-  );
-  const choice = state.ui.theme;
+export function AnalyzerThemeControls() {
+  const [choice, setChoice] = useState<'light' | 'dark' | 'system'>('system');
 
-  useLayoutEffect(() => {
-    applyTheme(choice);
-    onThemeApplied();
-  }, [choice, onThemeApplied]);
-
-  useLayoutEffect(() => {
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    const onSystemThemeChange = () => {
-      if (stateOwner.getSnapshot().ui.theme === 'system') onThemeApplied();
-    };
-    media.addEventListener('change', onSystemThemeChange);
-    return () => media.removeEventListener('change', onSystemThemeChange);
-  }, [stateOwner, onThemeApplied]);
+  useEffect(() => {
+    setChoice(loadAppearancePreference(window.localStorage).theme);
+  }, []);
 
   return (
     <div
@@ -541,9 +522,9 @@ export function AnalyzerThemeControls({
           data-theme-set={value}
           aria-pressed={choice === value}
           onClick={() => {
-            stateOwner.update((draft) => {
-              draft.ui.theme = value;
-            });
+            setChoice(value);
+            applyTheme(value);
+            saveAppearancePreference(window.localStorage, value);
           }}
         >
           {label}
