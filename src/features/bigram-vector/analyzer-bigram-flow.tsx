@@ -13,8 +13,11 @@ import type { Geometry, Key, Point } from '../../geometry.ts';
 import type { AnalyzerBigramFlowModel } from '../../analyzer-bigram-flow-model.ts';
 import type { Layout } from '../../layouts/types.ts';
 import {
+  computeOutgoingMaxWeight,
   orderKeyboardFlowVectors,
+  resolveKeyboardFlowMaxWeight,
   scaleKeyboardFlowWeight,
+  type KeyboardFlowHoverScale,
   type KeyboardFlowLayerOrder,
   type KeyboardFlowWeightScale,
 } from './bigram-flow-view-config.ts';
@@ -151,6 +154,7 @@ function KeyboardFlow({
   selectedFingers,
   lineScale,
   layerOrder,
+  hoverScale,
 }: {
   geometry: Geometry;
   layout: Layout;
@@ -158,6 +162,7 @@ function KeyboardFlow({
   selectedFingers: readonly FingerClass[];
   lineScale: KeyboardFlowWeightScale;
   layerOrder: KeyboardFlowLayerOrder;
+  hoverScale: KeyboardFlowHoverScale;
 }) {
   const reduceMotion = useReducedMotion();
   const keys = useMemo(() => geometry.grid.flat(), [geometry]);
@@ -175,6 +180,10 @@ function KeyboardFlow({
     [allFlowVectors, hoveredKeyId],
   );
   const maxWeight = Math.max(1, ...allFlowVectors.map((vector) => vector.weight));
+  const keyMaxWeight = useMemo(
+    () => computeOutgoingMaxWeight(allFlowVectors, hoveredKeyId),
+    [allFlowVectors, hoveredKeyId],
+  );
   const gradientIndexById = useMemo(
     () => new Map(allFlowVectors.map((vector, index) => [vector.id, index] as const)),
     [allFlowVectors],
@@ -251,7 +260,14 @@ function KeyboardFlow({
         <g className="flow-vector-layer">
           <AnimatePresence initial={false}>
             {allFlowVectors.map((vector) => {
-              const strength = scaleKeyboardFlowWeight(vector.weight, maxWeight, lineScale);
+              const effectiveMaxWeight = resolveKeyboardFlowMaxWeight(
+                vector,
+                maxWeight,
+                keyMaxWeight,
+                hoverScale,
+                hoveredKeyId,
+              );
+              const strength = scaleKeyboardFlowWeight(vector.weight, effectiveMaxWeight, lineScale);
               const gradientIndex = gradientIndexById.get(vector.id);
               const hoverVisible = hoveredKeyId === null || vector.fromKeyIds.includes(hoveredKeyId);
               return (
@@ -558,6 +574,7 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
   const [selectedFingers, setSelectedFingers] = useState<FingerClass[]>([]);
   const [lineScale, setLineScale] = useState<KeyboardFlowWeightScale>('linear');
   const [layerOrder, setLayerOrder] = useState<KeyboardFlowLayerOrder>('weight');
+  const [hoverScale, setHoverScale] = useState<KeyboardFlowHoverScale>('key');
   const data = snapshot.data;
 
   const vectors = useMemo(
@@ -617,6 +634,7 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
       data-geometry-id={geometry.id}
       data-line-scale={lineScale}
       data-layer-order={layerOrder}
+      data-hover-scale={hoverScale}
     >
       <div className="flow-analysis-heading">
         <div>
@@ -677,6 +695,15 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
             <option value="cross-hand-top">逆手を上</option>
           </select>
         </label>
+
+        <label className="flow-control-group flow-checkbox-row">
+          <input
+            type="checkbox"
+            checked={hoverScale === 'key'}
+            onChange={(event) => setHoverScale(event.currentTarget.checked ? 'key' : 'global')}
+          />
+          <span>ホバー中はそのキーの線だけで太さを決める</span>
+        </label>
       </section>
 
       <div className="flow-status">
@@ -705,6 +732,7 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
           selectedFingers={selectedFingers}
           lineScale={lineScale}
           layerOrder={layerOrder}
+          hoverScale={hoverScale}
         />
       </section>
 

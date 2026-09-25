@@ -1,11 +1,51 @@
 export type KeyboardFlowWeightScale = 'linear' | 'sqrt' | 'log';
 export type KeyboardFlowLayerOrder = 'weight' | 'same-hand-top' | 'cross-hand-top';
+export type KeyboardFlowHoverScale = 'key' | 'global';
 
 export interface KeyboardFlowVectorLike {
   readonly id: string;
   readonly weight: number;
   readonly distance: number;
   readonly hand: 'left' | 'right' | 'cross';
+}
+
+export interface KeyboardFlowOutgoingVectorLike {
+  readonly weight: number;
+  readonly fromKeyIds: readonly string[];
+}
+
+/**
+ * hoveredKeyId始点のedgeに限定した最大weightを求める。
+ * ホバー中の太さ基準を「そのキーだけ」にする時の分母になる。
+ */
+export function computeOutgoingMaxWeight(
+  vectors: readonly KeyboardFlowOutgoingVectorLike[],
+  hoveredKeyId: string | null,
+): number {
+  if (hoveredKeyId === null) return 0;
+  let max = 0;
+  for (const vector of vectors) {
+    if (!vector.fromKeyIds.includes(hoveredKeyId)) continue;
+    if (vector.weight > max) max = vector.weight;
+  }
+  return max;
+}
+
+/**
+ * strokeWidthの計算に使う最大weightを、ホバー状態と設定から決める。
+ * 「そのキーだけ」設定でも、hoveredKeyIdが始点でないedge（=非表示側で減光中）は
+ * 全体基準のまま揺れないようにする。
+ */
+export function resolveKeyboardFlowMaxWeight(
+  vector: KeyboardFlowOutgoingVectorLike,
+  globalMaxWeight: number,
+  keyMaxWeight: number,
+  hoverScale: KeyboardFlowHoverScale,
+  hoveredKeyId: string | null,
+): number {
+  if (hoverScale !== 'key' || hoveredKeyId === null) return globalMaxWeight;
+  if (!vector.fromKeyIds.includes(hoveredKeyId)) return globalMaxWeight;
+  return keyMaxWeight;
 }
 
 export function scaleKeyboardFlowWeight(
