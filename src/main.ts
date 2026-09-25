@@ -1052,6 +1052,7 @@ analyzerReactShell = mountAnalyzerReactShell({
     el.romajiDialog.showModal();
   },
   onSensitivityToggle: () => render(),
+  onInitialRenderReady: render,
 });
 
 playbackView.setup();
