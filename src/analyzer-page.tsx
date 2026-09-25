@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { mountAnalyzerRuntime } from './main.ts';
 
 function InfoButton({ tip }: { tip: string }) {
   return (
@@ -14,20 +15,7 @@ function InfoButton({ tip }: { tip: string }) {
 }
 
 export function AnalyzerPage() {
-  useEffect(() => {
-    let disposed = false;
-    let unmountRuntime: (() => void) | undefined;
-
-    void import('./main.ts').then(({ mountAnalyzerRuntime }) => {
-      if (disposed) return;
-      unmountRuntime = mountAnalyzerRuntime();
-    });
-
-    return () => {
-      disposed = true;
-      unmountRuntime?.();
-    };
-  }, []);
+  useEffect(() => mountAnalyzerRuntime(), []);
 
   return (
     <div className="analyzer-feature">
