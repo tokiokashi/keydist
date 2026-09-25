@@ -757,7 +757,7 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
             </div>
             <p>
               {selectedFingers.length === 0
-                ? '未選択時は同指内の移動（その指自身の動き）と異指間の遷移（前の打鍵からの相対位置）が混ざり、後者が支配的なため、実質的に手ごとの打鍵位置の流れを表す。'
+                ? '同じ指の移動と、指をまたいだ打鍵位置の移動をまとめて表示する。大半は後者なので、手の中で打鍵位置がどう流れるかを見る図になる。'
                 : selectedFingers.length === 1
                   ? '1指選択では、その指自身のキー間移動だけを表示する。'
                   : '2指選択では押し順を固定せず、両方向の指間移動を表示する。'}
