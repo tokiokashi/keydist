@@ -11,6 +11,10 @@ import {
 import { visibleGeometryKeys } from './layout-physical-keys.ts';
 import { FINGER_LABEL } from './app-dom.ts';
 import { escapeText } from './chart.ts';
+import {
+  playbackRateBandVisibility,
+  playbackRateTooltip,
+} from './analyzer-playback-rate-chart-model.ts';
 import type {
   AnalyzerPlaybackSurfaceActions,
   AnalyzerPlaybackSurfaceData,
@@ -32,17 +36,6 @@ interface PositionedKey {
   x: number;
   y: number;
   width: number;
-}
-
-function formatRate(value: number | undefined): string {
-  return value === undefined ? '—' : value.toFixed(2);
-}
-
-function rateTooltip(point: PlaybackRateChartPoint): string {
-  const input = point.inputText === '' ? '—' : escapeText(point.inputText);
-  return `ステップ ${point.cursor}<br>集計入力: <code>${input}</code><br>`
-    + `<span style="color:${KANA_COLOR}">かな/秒</span> <b>${formatRate(point.kanaPerSecond)}</b><br>`
-    + `<span style="color:${ACTION_COLOR}">アクション/秒</span> <b>${formatRate(point.actionsPerSecond)}</b>`;
 }
 
 export function AnalyzerPlaybackRateChart({
@@ -119,19 +112,16 @@ export function AnalyzerPlaybackRateChart({
       })}
 
       {points.map((point) => {
-        const showChain = display === 'chain'
-          || display === 'both';
-        const showArpeggio = display === 'arpeggio'
-          || display === 'both';
+        const bands = playbackRateBandVisibility(display, point);
         const start = Math.max(0, point.cursor - 1);
         const x = xOf(start);
         const width = xOf(point.cursor) - x;
         return (
           <g key={`band-${point.cursor}`}>
-            {showChain && point.chain ? (
+            {bands.chain ? (
               <rect x={x} y={RATE_MARGIN.top} width={width} height={plotHeight} fill="var(--series-2)" opacity={0.10} pointerEvents="none" />
             ) : null}
-            {showArpeggio && point.arpeggio ? (
+            {bands.arpeggio ? (
               <rect x={x} y={RATE_MARGIN.top} width={width} height={plotHeight} fill="var(--series-3)" opacity={0.10} pointerEvents="none" />
             ) : null}
           </g>
@@ -209,7 +199,7 @@ export function AnalyzerPlaybackRateChart({
             key={`hit-${point.cursor}`}
             data-playback-rate-cursor={point.cursor}
             data-playback-rate-current={point.cursor === cursor ? 'true' : undefined}
-            data-tip={rateTooltip(point)}
+            data-tip={playbackRateTooltip(point)}
             x={left}
             y={RATE_MARGIN.top}
             width={width}
