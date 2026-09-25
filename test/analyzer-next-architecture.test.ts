@@ -12,6 +12,12 @@ const FORBIDDEN_APP_MODULES = new Set([
   join(SRC, 'condition-resolution.ts'),
   join(SRC, 'analyzer-ui-state-owner.ts'),
 ]);
+const HOST_ONLY_ANALYZER_MODULES = new Set([
+  join(SRC, 'features', 'analyzer-next', 'session-store.ts'),
+  join(SRC, 'features', 'analyzer-next', 'snapshot-service.ts'),
+  join(SRC, 'features', 'analyzer-next', 'resolved-input.ts'),
+  join(SRC, 'features', 'analyzer-next', 'snapshot-computation.ts'),
+]);
 const FORBIDDEN_PACKAGE_MODULES = new Set([
   '@tanstack/react-router',
   'dockview-react',
@@ -56,6 +62,10 @@ function forbiddenReason(importer: string, specifier: string): string | undefine
   const target = resolvesTo(importer, specifier);
   if (!target) return undefined;
   if (FORBIDDEN_APP_MODULES.has(target)) return relative(ROOT, target);
+  const isContractTypeModule = importer === join(VIEW_DIR, 'view-contract.ts');
+  if (!isContractTypeModule && HOST_ONLY_ANALYZER_MODULES.has(target)) {
+    return relative(ROOT, target);
+  }
   if (target.includes(`${join('src', 'persistence')}${String.raw`/`}`)
     || target.includes(`${join('src', 'persistence')}\\`)) {
     return 'src/persistence';
