@@ -128,8 +128,14 @@ test('persisted View instance uses definition codec and rejects unknown types', 
     configCodec: {
       version: 2,
       defaults: { source: 'actual' },
-      decode(raw) {
-        if (typeof raw === 'object' && raw !== null && (raw as Record<string, unknown>).source === 'within-hand') {
+      decode(raw, savedVersion) {
+        const source = typeof raw === 'object' && raw !== null
+          ? raw as Record<string, unknown>
+          : {};
+        if (savedVersion === 1 && source.legacySource === 'within-hand') {
+          return { source: 'within-hand' };
+        }
+        if (savedVersion === 2 && source.source === 'within-hand') {
           return { source: 'within-hand' };
         }
         return { source: 'actual' };
@@ -145,7 +151,7 @@ test('persisted View instance uses definition codec and rejects unknown types', 
       id: 'opaque-1',
       type: 'bigram-flow',
       binding: { kind: 'layout', mode: 'ja', id: 'shingeta' },
-      config: { source: 'within-hand' },
+      config: { legacySource: 'within-hand' },
       configVersion: 1,
     }, definitions),
     {
@@ -164,6 +170,65 @@ test('persisted View instance uses definition codec and rejects unknown types', 
       binding: { kind: 'focused-layout' },
       config: {},
       configVersion: 1,
+    }, definitions),
+    undefined,
+  );
+});
+
+
+test('View config version distinguishes migration from current corruption and rejects future versions', () => {
+  const definition: AnalysisViewDefinition<{ value: string }> = {
+    type: 'heatmap',
+    title: 'Heatmap',
+    cardinality: 'single',
+    canDuplicate: true,
+    configCodec: {
+      version: 2,
+      defaults: { value: 'default' },
+      decode(raw, savedVersion) {
+        const source = typeof raw === 'object' && raw !== null
+          ? raw as Record<string, unknown>
+          : {};
+        if (savedVersion === 1 && typeof source.oldValue === 'string') {
+          return { value: source.oldValue };
+        }
+        if (savedVersion === 2 && typeof source.value === 'string') {
+          return { value: source.value };
+        }
+        return { value: 'default' };
+      },
+    },
+  };
+  const definitions = new Map<AnalysisViewType, AnalysisViewDefinition>([
+    ['heatmap', definition as AnalysisViewDefinition],
+  ]);
+  const base = {
+    id: 'heat-1',
+    type: 'heatmap',
+    binding: { kind: 'focused-layout' },
+  };
+
+  assert.equal(
+    (decodeViewInstance({
+      ...base,
+      config: { oldValue: 'migrated' },
+      configVersion: 1,
+    }, definitions)?.config as { value: string }).value,
+    'migrated',
+  );
+  assert.equal(
+    (decodeViewInstance({
+      ...base,
+      config: { oldValue: 'must-not-be-v2-migration' },
+      configVersion: 2,
+    }, definitions)?.config as { value: string }).value,
+    'default',
+  );
+  assert.equal(
+    decodeViewInstance({
+      ...base,
+      config: { value: 'future' },
+      configVersion: 3,
     }, definitions),
     undefined,
   );
