@@ -8,53 +8,57 @@
 :root {
   color-scheme: light;
 
-  --bg: #f7f6f3;
-  --surface: #ffffff;
-  --surface-raised: #ffffff;
-  --surface-subtle: #fbfaf8;
-  --surface-muted: #efefec;
-  --surface-highlight: rgb(255 255 255 / 65%);
-  --text: #1a1917;
-  --text-muted: #67655e;
-  --border: #e2dfd8;
-  --border-strong: #cfcbc2;
-  --accent: #2a78d6;
-  --accent-strong: #1c5cab;
+  /* light-dark()は使われた要素のcolor-schemeで解決される。
+     themeの切替は末尾のcolor-schemeだけで行い、色の値はここに一度だけ書く。 */
+  --bg: light-dark(#f7f6f3, #131312);
+  --surface: light-dark(#ffffff, #1c1c1a);
+  --surface-raised: light-dark(#ffffff, #242421);
+  --surface-subtle: light-dark(#fbfaf8, #222220);
+  --surface-muted: light-dark(#efefec, #2a2a27);
+  --surface-highlight: light-dark(rgb(255 255 255 / 65%), rgb(255 255 255 / 12%));
+  --text: light-dark(#1a1917, #f0eee9);
+  --text-muted: light-dark(#67655e, #9c998f);
+  --border: light-dark(#e2dfd8, #32312c);
+  --border-strong: light-dark(#cfcbc2, #45443d);
+  --accent: light-dark(#2a78d6, #3987e5);
+  --accent-strong: light-dark(#1c5cab, #7bb7f3);
   --accent-contrast: #ffffff;
-  --danger: #a13e3e;
-  --danger-surface: #f8e9e7;
-  --focus: #2a78d6;
+  --danger: light-dark(#a13e3e, #ef8f86);
+  --danger-surface: light-dark(#f8e9e7, #3a2220);
+  --focus: light-dark(#2a78d6, #3987e5);
 
-  --heat-0: #eef2f6;
-  --heat-1: #1c5cab;
-  --on-heat: #ffffff;
+  --heat-0: light-dark(#eef2f6, #1f2225);
+  --heat-1: light-dark(#1c5cab, #3987e5);
+  --on-heat: light-dark(#ffffff, #0b1220);
 
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --series-3: #1baf7a;
-  --series-4: #eda100;
-  --series-5: #e87ba4;
+  --series-1: light-dark(#2a78d6, #3987e5);
+  --series-2: light-dark(#eb6834, #d95926);
+  --series-3: light-dark(#1baf7a, #199e70);
+  --series-4: light-dark(#eda100, #c98500);
+  --series-5: light-dark(#e87ba4, #d55181);
   --series-6: #008300;
-  --series-7: #4a3aa7;
-  --series-8: #e34948;
+  --series-7: light-dark(#4a3aa7, #9085e9);
+  --series-8: light-dark(#e34948, #e66767);
 
-  --picker-selected: #c81cad;
-  --picker-candidate: #0e8a9e;
+  --picker-selected: light-dark(#c81cad, #e879f9);
+  --picker-candidate: light-dark(#0e8a9e, #22d3ee);
 
-  /* Visualization roles. Bigram Flow and future workspace views use these. */
-  --viz-canvas: #151819;
-  --viz-canvas-deep: #0d0f10;
-  --viz-canvas-border: #292d30;
+  /* Visualization roles. Bigram Flow and future workspace views use these.
+     キャンバスはどちらのthemeでもダーク基調で、dark側は少し沈めた値にする。
+     両themeで同じ値のtokenは単一値で書く。 */
+  --viz-canvas: light-dark(#151819, #111415);
+  --viz-canvas-deep: light-dark(#0d0f10, #090b0c);
+  --viz-canvas-border: light-dark(#292d30, #3a4042);
   --viz-grid: rgb(255 255 255 / 2.5%);
-  --viz-key-surface: #222627;
-  --viz-key-surface-active: #343a3d;
-  --viz-key-surface-hover: #3b4144;
-  --viz-key-border: #555c5f;
-  --viz-key-text: #f2f3ef;
-  --viz-key-muted: #8e989b;
+  --viz-key-surface: light-dark(#222627, #202526);
+  --viz-key-surface-active: light-dark(#343a3d, #353c3e);
+  --viz-key-surface-hover: light-dark(#3b4144, #41494c);
+  --viz-key-border: light-dark(#555c5f, #657074);
+  --viz-key-text: light-dark(#f2f3ef, #f4f5f1);
+  --viz-key-muted: light-dark(#8e989b, #a5afb2);
   --viz-overlay: rgb(8 10 11 / 72%);
   --viz-overlay-strong: rgb(9 11 12 / 92%);
-  --viz-overlay-muted: #aeb5b7;
+  --viz-overlay-muted: light-dark(#aeb5b7, #bdc4c6);
   --viz-flow-left: #ff8a66;
   --viz-flow-right: #60a9ff;
   --viz-flow-cross: #a5abb0;
@@ -67,97 +71,9 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-
-    --bg: #131312;
-    --surface: #1c1c1a;
-    --surface-raised: #242421;
-    --surface-subtle: #222220;
-    --surface-muted: #2a2a27;
-    --surface-highlight: rgb(255 255 255 / 12%);
-    --text: #f0eee9;
-    --text-muted: #9c998f;
-    --border: #32312c;
-    --border-strong: #45443d;
-    --accent: #3987e5;
-    --accent-strong: #7bb7f3;
-    --accent-contrast: #ffffff;
-    --danger: #ef8f86;
-    --danger-surface: #3a2220;
-    --focus: #3987e5;
-
-    --heat-0: #1f2225;
-    --heat-1: #3987e5;
-    --on-heat: #0b1220;
-
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --series-4: #c98500;
-    --series-5: #d55181;
-    --series-6: #008300;
-    --series-7: #9085e9;
-    --series-8: #e66767;
-
-    --picker-selected: #e879f9;
-    --picker-candidate: #22d3ee;
-
-    --viz-canvas: #111415;
-    --viz-canvas-deep: #090b0c;
-    --viz-canvas-border: #3a4042;
-    --viz-key-surface: #202526;
-    --viz-key-surface-active: #353c3e;
-    --viz-key-surface-hover: #41494c;
-    --viz-key-border: #657074;
-    --viz-key-text: #f4f5f1;
-    --viz-key-muted: #a5afb2;
-    --viz-overlay-muted: #bdc4c6;
   }
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-
-  --bg: #131312;
-  --surface: #1c1c1a;
-  --surface-raised: #242421;
-  --surface-subtle: #222220;
-  --surface-muted: #2a2a27;
-  --surface-highlight: rgb(255 255 255 / 12%);
-  --text: #f0eee9;
-  --text-muted: #9c998f;
-  --border: #32312c;
-  --border-strong: #45443d;
-  --accent: #3987e5;
-  --accent-strong: #7bb7f3;
-  --accent-contrast: #ffffff;
-  --danger: #ef8f86;
-  --danger-surface: #3a2220;
-  --focus: #3987e5;
-
-  --heat-0: #1f2225;
-  --heat-1: #3987e5;
-  --on-heat: #0b1220;
-
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
-  --series-4: #c98500;
-  --series-5: #d55181;
-  --series-6: #008300;
-  --series-7: #9085e9;
-  --series-8: #e66767;
-
-  --picker-selected: #e879f9;
-  --picker-candidate: #22d3ee;
-
-  --viz-canvas: #111415;
-  --viz-canvas-deep: #090b0c;
-  --viz-canvas-border: #3a4042;
-  --viz-key-surface: #202526;
-  --viz-key-surface-active: #353c3e;
-  --viz-key-surface-hover: #41494c;
-  --viz-key-border: #657074;
-  --viz-key-text: #f4f5f1;
-  --viz-key-muted: #a5afb2;
-  --viz-overlay-muted: #bdc4c6;
 }

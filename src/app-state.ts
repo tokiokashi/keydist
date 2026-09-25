@@ -9,7 +9,7 @@ export interface AppearancePreferencesV1 {
   theme: ThemeChoice;
 }
 
-export type AnalyzerPreferencesV2 = Omit<UiStateV1['ui'], 'playback' | 'theme'>;
+export type AnalyzerPreferencesV2 = Omit<UiStateV1['ui'], 'playback'>;
 
 export interface AppStateV2 {
   version: typeof APP_STATE_VERSION;
@@ -27,8 +27,7 @@ export function analyzerSlicesFromUiState(state: UiStateV1): Pick<
   AppStateV2,
   'analyzer' | 'conditions' | 'playback'
 > {
-  const { playback, theme, ...analyzer } = state.ui;
-  void theme;
+  const { playback, ...analyzer } = state.ui;
   return {
     analyzer: structuredClone(analyzer),
     conditions: structuredClone(state.conditions),
@@ -48,7 +47,6 @@ export function uiStateFromAppState(
       playback: state.ui.playback,
     };
   }
-  if (appState.appearance !== undefined) state.ui.theme = appState.appearance.theme;
   if (appState.playback !== undefined) state.ui.playback = structuredClone(appState.playback);
   if (appState.conditions !== undefined) state.conditions = structuredClone(appState.conditions);
   return state;

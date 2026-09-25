@@ -2,8 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { APP_STATE_VERSION } from '../src/app-state.ts';
 import {
+  getAppearanceSnapshot,
+  getServerAppearanceSnapshot,
   loadAppearancePreference,
   saveAppearancePreference,
+  subscribeAppearance,
 } from '../src/appearance.ts';
 import { APP_STATE_STORAGE_KEY } from '../src/persistence/app-state-storage.ts';
 import type { UiStateStorage } from '../src/ui-state.ts';
@@ -45,6 +48,19 @@ test('appearance can migrate UiStateV1 theme without consuming the analyzer migr
   assert.deepEqual(loadAppearancePreference(storage), { theme: 'light' });
   assert.equal(appState(storage).appearance.theme, 'light');
   assert.notEqual(storage.getItem('keydist:ui-state'), null);
+});
+
+test('server snapshot never touches storage and always returns the default theme', () => {
+  assert.equal(getServerAppearanceSnapshot(), 'system');
+});
+
+test('the appearance store is a no-op outside a browser (window undefined)', () => {
+  // node --testにDOMは無いため、windowを触る初期化はここでは走らない前提を確認する。
+  // window有無で分岐する実装が壊れていれば、この呼び出し自体が例外を投げる。
+  assert.equal(getAppearanceSnapshot(), 'system');
+  const unsubscribe = subscribeAppearance(() => {});
+  assert.equal(typeof unsubscribe, 'function');
+  unsubscribe();
 });
 
 test('appearance writer updates only its AppState slice', () => {

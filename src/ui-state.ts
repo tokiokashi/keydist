@@ -31,7 +31,6 @@ import {
   PLAYBACK_STEPS_PER_SECOND_MAX,
   PLAYBACK_STEPS_PER_SECOND_MIN,
 } from './playback.ts';
-import type { ThemeChoice } from './theme.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
@@ -129,7 +128,6 @@ export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
 export interface UiStateV1 {
   version: typeof UI_STATE_VERSION;
   ui: {
-    theme: ThemeChoice;
     input: {
       mode: ModeId;
       geometry: GeometryKind;
@@ -203,7 +201,6 @@ export function createDefaultUiState(options: UiStateDefaultsOptions): UiStateV1
   return {
     version: UI_STATE_VERSION,
     ui: {
-      theme: 'system',
       input: {
         mode: 'ja',
         geometry: 'row-staggered',
@@ -710,7 +707,6 @@ export function sanitizeUiState(
   return {
     version: UI_STATE_VERSION,
     ui: {
-      theme: choice(ui.theme, ['light', 'dark', 'system'], defaults.ui.theme),
       input: {
         mode: choice(input.mode, ['en', 'ja'], defaults.ui.input.mode),
         geometry: geometryChoice(
@@ -798,11 +794,9 @@ function legacyState(storage: UiStateStorage, defaults: UiStateV1): UiStateV1 | 
   let found = false;
   const state = structuredClone(defaults);
 
-  const theme = storage.getItem(LEGACY_THEME_KEY);
-  if (theme !== null) {
-    found = true;
-    state.ui.theme = choice(theme, ['light', 'dark', 'system'], state.ui.theme);
-  }
+  // keydist:themeの実値はappearance migration（loadAppearancePreference）が先に読む。
+  // ここではlegacy migration一式の「foundされた」判定にだけ使い、UiStateV1側へは書き戻さない。
+  if (storage.getItem(LEGACY_THEME_KEY) !== null) found = true;
 
   const collapsed = storage.getItem(LEGACY_TEXT_COLLAPSED_KEY);
   if (collapsed !== null) {

@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  computeOutgoingMaxWeight,
   orderKeyboardFlowVectors,
+  resolveKeyboardFlowMaxWeight,
   scaleKeyboardFlowWeight,
 } from '../src/features/bigram-vector/bigram-flow-view-config.ts';
 
@@ -22,20 +24,47 @@ test('keyboard flow weight scale keeps linear as the default shape and expands l
   assert.equal(scaleKeyboardFlowWeight(16, 16, 'log'), 1);
 });
 
-test('weight order preserves the current thin-to-thick drawing order', () => {
+test('weight order draws thick edges first so thin edges land on top', () => {
   assert.deepEqual(
     orderKeyboardFlowVectors(vectors, 'weight').map((vector) => vector.id),
-    ['cross-light', 'same-light', 'cross-heavy', 'same-heavy'],
+    ['same-heavy', 'cross-heavy', 'same-light', 'cross-light'],
   );
 });
 
 test('same-hand and cross-hand priorities only change group z-order', () => {
   assert.deepEqual(
     orderKeyboardFlowVectors(vectors, 'same-hand-top').map((vector) => vector.id),
-    ['cross-light', 'cross-heavy', 'same-light', 'same-heavy'],
+    ['cross-heavy', 'cross-light', 'same-heavy', 'same-light'],
   );
   assert.deepEqual(
     orderKeyboardFlowVectors(vectors, 'cross-hand-top').map((vector) => vector.id),
-    ['same-light', 'same-heavy', 'cross-light', 'cross-heavy'],
+    ['same-heavy', 'same-light', 'cross-heavy', 'cross-light'],
   );
+});
+
+const outgoingVectors = [
+  { weight: 3, fromKeyIds: ['A'] },
+  { weight: 9, fromKeyIds: ['A', 'B'] },
+  { weight: 20, fromKeyIds: ['B'] },
+];
+
+test('computeOutgoingMaxWeight limits the max weight to edges starting at the hovered key', () => {
+  assert.equal(computeOutgoingMaxWeight(outgoingVectors, 'A'), 9);
+  assert.equal(computeOutgoingMaxWeight(outgoingVectors, 'B'), 20);
+  assert.equal(computeOutgoingMaxWeight(outgoingVectors, 'C'), 0);
+  assert.equal(computeOutgoingMaxWeight(outgoingVectors, null), 0);
+});
+
+test('resolveKeyboardFlowMaxWeight uses the key-local max only for the hovered key\'s outgoing edges under "key" scale', () => {
+  const outgoing = { weight: 9, fromKeyIds: ['A', 'B'] };
+  const notOutgoing = { weight: 20, fromKeyIds: ['B'] };
+
+  // "key"設定 + ホバー中 + 始点一致 -> key-local max
+  assert.equal(resolveKeyboardFlowMaxWeight(outgoing, 100, 9, 'key', 'A'), 9);
+  // "key"設定 + ホバー中だが始点不一致 -> global max のまま
+  assert.equal(resolveKeyboardFlowMaxWeight(notOutgoing, 100, 9, 'key', 'A'), 100);
+  // "global"設定 -> 常にglobal max
+  assert.equal(resolveKeyboardFlowMaxWeight(outgoing, 100, 9, 'global', 'A'), 100);
+  // ホバーなし -> 常にglobal max
+  assert.equal(resolveKeyboardFlowMaxWeight(outgoing, 100, 9, 'key', null), 100);
 });

@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useLayoutEffect,
   useState,
   useSyncExternalStore,
@@ -15,8 +14,12 @@ import { AnalyzerConditionsContent } from './analyzer-conditions-content.tsx';
 import type { GeometryKind } from './geometry.ts';
 import { buildGeometry } from './geometry.ts';
 import { gapFigure } from './gap-figure.ts';
-import { loadAppearancePreference, saveAppearancePreference } from './appearance.ts';
-import { applyTheme } from './theme.ts';
+import {
+  getAppearanceSnapshot,
+  getServerAppearanceSnapshot,
+  setAppearanceTheme,
+  subscribeAppearance,
+} from './appearance.ts';
 
 export interface AnalyzerSidebarControlsProps {
   stateOwner: AnalyzerUiStateOwner;
@@ -498,11 +501,13 @@ export function AnalyzerStatefulPanel({
 }
 
 export function AnalyzerThemeControls() {
-  const [choice, setChoice] = useState<'light' | 'dark' | 'system'>('system');
-
-  useEffect(() => {
-    setChoice(loadAppearancePreference(window.localStorage).theme);
-  }, []);
+  // localStateへ一度読み込んでから反映すると、初期値('system')が一瞬押下表示されてから
+  // 実際の保存値に切り替わるflickerが起きる。useSyncExternalStoreで外部storeへ直接購読する。
+  const choice = useSyncExternalStore(
+    subscribeAppearance,
+    getAppearanceSnapshot,
+    getServerAppearanceSnapshot,
+  );
 
   return (
     <div
@@ -521,11 +526,7 @@ export function AnalyzerThemeControls() {
           type="button"
           data-theme-set={value}
           aria-pressed={choice === value}
-          onClick={() => {
-            setChoice(value);
-            applyTheme(value);
-            saveAppearancePreference(window.localStorage, value);
-          }}
+          onClick={() => setAppearanceTheme(value)}
         >
           {label}
         </button>

@@ -46,7 +46,13 @@ test('explicit light overrides a dark OS preference and system follows it', asyn
   await expect(page.locator('html')).not.toHaveAttribute('data-theme');
   await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).colorScheme))
     .toBe('dark');
-  await expect.poll(() => page.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue('--surface').trim(),
-  )).toBe('#1c1c1a');
+  // light-dark()を含むtokenはgetPropertyValueでは未解決の文字列が返るため、要素に当てて解決値を見る。
+  await expect.poll(() => page.evaluate(() => {
+    const probe = document.createElement('div');
+    document.body.appendChild(probe);
+    probe.style.color = 'var(--surface)';
+    const resolved = getComputedStyle(probe).color;
+    probe.remove();
+    return resolved;
+  })).toBe('rgb(28, 28, 26)');
 });
