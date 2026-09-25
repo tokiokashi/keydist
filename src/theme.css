@@ -13,6 +13,7 @@
   --surface-raised: #ffffff;
   --surface-subtle: #fbfaf8;
   --surface-muted: #efefec;
+  --surface-highlight: rgb(255 255 255 / 65%);
   --text: #1a1917;
   --text-muted: #67655e;
   --border: #e2dfd8;
@@ -71,6 +72,7 @@
     --surface-raised: #242421;
     --surface-subtle: #222220;
     --surface-muted: #2a2a27;
+    --surface-highlight: rgb(255 255 255 / 12%);
     --text: #f0eee9;
     --text-muted: #a9a69d;
     --border: #32312c;
@@ -119,6 +121,7 @@
   --surface-raised: #242421;
   --surface-subtle: #222220;
   --surface-muted: #2a2a27;
+  --surface-highlight: rgb(255 255 255 / 12%);
   --text: #f0eee9;
   --text-muted: #a9a69d;
   --border: #32312c;
