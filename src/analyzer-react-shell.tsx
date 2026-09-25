@@ -16,6 +16,7 @@ import { AnalyzerLayoutEditor } from './analyzer-layout-editor.tsx';
 import { AnalyzerCalibrationDialog } from './analyzer-calibration-dialog.tsx';
 import { AnalyzerGeometryDialog } from './analyzer-geometry-dialog.tsx';
 import { AnalyzerRomajiDialog } from './analyzer-romaji-dialog.tsx';
+import type { AnalyzerRomajiDialogModel } from './analyzer-romaji-dialog-model.ts';
 import { AnalyzerBigramFlow } from './features/bigram-vector/analyzer-bigram-flow.tsx';
 import type { AnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 import type { AnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
@@ -60,6 +61,7 @@ export interface AnalyzerReactShellOptions {
   layoutEditorModel: AnalyzerLayoutEditorModel;
   bigramFlowModel: AnalyzerBigramFlowModel;
   controlsModel: AnalyzerControlsModel;
+  romajiDialogModel: AnalyzerRomajiDialogModel;
   onModeChange: () => void;
   onTextInput: () => void;
   onTextCommit: () => void;
@@ -73,7 +75,6 @@ export interface AnalyzerReactShellOptions {
   onAddLayout: (definition: UserLayout) => void;
   onCalibrationMount: () => void;
   onGeometryMount: () => void;
-  onRomajiMount: () => void;
   onToggleLayout: (layoutId: string, enabled: boolean) => void;
   onRemoveLayout: (layoutId: string) => void;
   onDetailLayoutChange: (layoutId: string) => void;
@@ -177,6 +178,7 @@ function AnalyzerReactShell({
   layoutEditorModel,
   bigramFlowModel,
   controlsModel,
+  romajiDialogModel,
   textModel,
   onModeChange,
   onTextInput,
@@ -188,7 +190,6 @@ function AnalyzerReactShell({
   onAddLayout,
   onCalibrationMount,
   onGeometryMount,
-  onRomajiMount,
   onToggleLayout,
   onRemoveLayout,
   onDetailLayoutChange,
@@ -543,7 +544,7 @@ function AnalyzerReactShell({
         geometryDialogSlot,
       )}
       {createPortal(
-        <AnalyzerRomajiDialog onMount={onRomajiMount} />,
+        <AnalyzerRomajiDialog model={romajiDialogModel} />,
         romajiDialogSlot,
       )}
       {createPortal(
@@ -592,6 +593,7 @@ export function mountAnalyzerReactShell(
       layoutEditorModel={options.layoutEditorModel}
       bigramFlowModel={options.bigramFlowModel}
       controlsModel={options.controlsModel}
+      romajiDialogModel={options.romajiDialogModel}
       textModel={textModel}
       onModeChange={options.onModeChange}
       onTextInput={options.onTextInput}
@@ -603,7 +605,6 @@ export function mountAnalyzerReactShell(
       onAddLayout={options.onAddLayout}
       onCalibrationMount={options.onCalibrationMount}
       onGeometryMount={options.onGeometryMount}
-      onRomajiMount={options.onRomajiMount}
       onToggleLayout={options.onToggleLayout}
       onRemoveLayout={options.onRemoveLayout}
       onDetailLayoutChange={options.onDetailLayoutChange}
