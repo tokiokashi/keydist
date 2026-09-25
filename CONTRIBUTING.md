@@ -109,6 +109,19 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 - push前に `npm test` と `npm run build` を通す
 - `main` へのmergeでGitHub Pagesに配信されるため、**`main` は常に動く状態を保つ**
 
+### スタックPR
+
+依存する変更を分けて出す時は、GitHubのstacked pull requests（2026年7月からpublic preview）を使う。
+各PRのbaseを1つ下のPRのブランチにして積み、まとめてマージする。
+
+- 作る: `gh stack init` → `gh stack add` → `gh stack submit`。baseを連鎖させて作った既存PRは `gh stack link` でスタックにまとめる
+- マージは**一番上のPRで行う**。下のPRも一緒に `main` へ入る。途中のPRでマージすると一番下からそこまでが入り、上のPRは自動で `main` へ付け替わる
+- **上のPRを単独で下のブランチへマージしない。** 下のPRに混ざって一緒にsquashされ、`main` の履歴で見分けられなくなる
+- 各PRに承認とCIの通過が要る。スタックは線形（上のブランチが下のブランチを含む）でないとマージできない
+- 下のPRを直したら、上のPRはPR画面のrebaseか `gh stack rebase` で追従させる。下の変更をcherry-pickで上に写す「sync」コミットは作らない（線形でなくなる）
+- auto-mergeは使えない。APIからのマージは非同期のマージAPIが要るため、エージェントはスタックをマージしない。マージは人がPR画面か `gh stack merge` で行う
+- 同じリポジトリ内のブランチだけで組む（forkをまたげない）
+
 ## テスト
 
 `node --test` を使う。テストは `test/*.test.ts`。
