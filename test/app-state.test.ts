@@ -30,8 +30,8 @@ test('patchAppStateSlice preserves unrelated slices', () => {
   const storage = new MemoryStorage();
   const initial: AppStateV2 = {
     version: APP_STATE_VERSION,
+    appearance: { theme: 'system' },
     analyzer: {
-      theme: 'system',
       input: { mode: 'ja', geometry: 'row-staggered', selectedSampleByMode: { en: 'default', ja: 'legacy' } },
       layouts: { selectedByMode: { en: [], ja: [] }, detailByMode: {} },
       comparison: {
@@ -86,8 +86,8 @@ test('patchAppState updates multiple slices atomically while preserving unrelate
   }));
 
   assert.equal(patchAppState(storage, {
+    appearance: { theme: 'dark' },
     analyzer: {
-      theme: 'dark',
       input: { mode: 'en', geometry: 'row-staggered', selectedSampleByMode: { en: 'default', ja: 'legacy' } },
       layouts: { selectedByMode: { en: [], ja: [] }, detailByMode: {} },
       comparison: {
@@ -108,5 +108,6 @@ test('patchAppState updates multiple slices atomically while preserving unrelate
 
   const saved = JSON.parse(storage.getItem(APP_STATE_STORAGE_KEY)!);
   assert.deepEqual(saved.workspace, workspace);
-  assert.equal(saved.analyzer.theme, 'dark');
+  assert.equal(saved.appearance.theme, 'dark');
+  assert.equal('theme' in saved.analyzer, false);
 });
