@@ -87,3 +87,12 @@ test('Analyzer runtime remounts after SPA navigation away and back', async ({ pa
   await expect(page.locator('#mode')).toHaveValue('ja');
   await expect(page.locator('#heatmap svg').first()).toBeVisible();
 });
+
+test('Analyzer topbar title returns to the app root', async ({ page }) => {
+  await gotoAnalyzer(page);
+  await expect(page.locator('.app-header')).toHaveCount(0);
+
+  await page.locator('.topbar').getByRole('link', { name: 'keydist', exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('.app-header')).toBeVisible();
+});

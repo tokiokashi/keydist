@@ -37,6 +37,9 @@ body {
   z-index: 10;
 }
 .topbar h1 { margin: 0; font-size: 1.15rem; letter-spacing: 0.03em; }
+.topbar-home { color: inherit; text-decoration: none; }
+.topbar-home:hover,
+.topbar-home:focus-visible { text-decoration: underline; }
 .topbar .lede { margin: 0; color: var(--muted); font-size: 0.82rem; }
 .topbar .spacer { margin-left: auto; }
 /* 仕様への外部リンクを置き換えたボタン。図をその場で開く */
