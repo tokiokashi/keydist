@@ -124,7 +124,6 @@ export interface AnalyzerReactShellOptions {
   onOpenConditions: () => void;
   onOpenRomaji: () => void;
   onSensitivityToggle: (open: boolean) => void;
-  onThemeApplied: () => void;
 }
 
 export interface AnalyzerReactShellController {
@@ -201,7 +200,6 @@ function AnalyzerReactShell({
   onOpenConditions,
   onOpenRomaji,
   onSensitivityToggle,
-  onThemeApplied,
 }: Omit<AnalyzerReactShellOptions, 'root'> & { textModel: AnalyzerTextModel }) {
   const state = useSyncExternalStore(
     stateOwner.subscribe,
@@ -501,7 +499,7 @@ function AnalyzerReactShell({
         playbackSettingsSlot,
       )}
       {createPortal(
-        <AnalyzerThemeControls stateOwner={stateOwner} onThemeApplied={onThemeApplied} />,
+        <AnalyzerThemeControls />,
         themeControlsSlot,
       )}
       {createPortal(
@@ -677,7 +675,6 @@ export function mountAnalyzerReactShell(
       onOpenConditions={options.onOpenConditions}
       onOpenRomaji={options.onOpenRomaji}
       onSensitivityToggle={options.onSensitivityToggle}
-      onThemeApplied={options.onThemeApplied}
     />,
   );
   return {
