@@ -6,7 +6,7 @@ import {
   createRootRoute,
   useRouterState,
 } from '@tanstack/react-router';
-import { useEffect, type ReactNode } from 'react';
+import { useLayoutEffect, type ReactNode } from 'react';
 import { getAppearanceSnapshot } from '../appearance.ts';
 import { applyTheme, THEME_BOOTSTRAP_SCRIPT } from '../theme.ts';
 import appCss from '../app.css?url';
@@ -28,7 +28,9 @@ export const Route = createRootRoute({
 });
 
 function AppearanceAuthority() {
-  useEffect(() => {
+  // hydrationが失敗してReactが<html>を作り直すと、bootstrapが付けたdata-themeが消える。
+  // paint前に付け直すためuseLayoutEffectで適用する。
+  useLayoutEffect(() => {
     // getAppearanceSnapshotがstore初期化（loadAppearancePreferenceによるmigration含む）を担う。
     // 他のtheme控件（AnalyzerThemeControls等）と同じstoreを共有するため、ここでも
     // 個別にstorageを読まずstore経由で取得する。
@@ -38,8 +40,10 @@ function AppearanceAuthority() {
 }
 
 function RootDocument({ children }: { children: ReactNode }) {
+  // pathnameの文字列比較だと、GitHub Pagesが付ける末尾スラッシュ（/analyzer/）で外れ、
+  // prerender済みHTMLとの不一致でhydrationが失敗する。matchしたrouteで判定する。
   const analyzerRoute = useRouterState({
-    select: (state) => state.location.pathname.endsWith('/analyzer'),
+    select: (state) => state.matches.some((match) => match.routeId === '/analyzer'),
   });
 
   return (
