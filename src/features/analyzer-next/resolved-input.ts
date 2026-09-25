@@ -19,7 +19,13 @@ export interface AnalysisLayoutCatalogEntry {
   layout: Layout;
   revisionKey: string;
   romajiRuleId: string | null;
-  resolveRomajiRule?: (ruleId: string) => AnalysisLayoutCatalogEntry | undefined;
+  /** Only true when this mode/layout actually evaluates through a romaji table. */
+  romajiCapable: boolean;
+  /**
+   * Resolve a saved rule id into the effective Layout. The adapter owns legacy fallback
+   * semantics for removed/unknown rule ids (tableForRule currently falls back to kunrei).
+   */
+  resolveRomajiRule?: (ruleId: string) => AnalysisLayoutCatalogEntry;
 }
 
 export interface AnalysisGeometryResolution {
@@ -76,10 +82,14 @@ export function createResolvedAnalysisInputResolver(
 
     const distanceOverride = session.distance.perLayout[layoutId] ?? {};
     const { romajiRule, ...distanceOnlyOverride } = distanceOverride;
-    const effectiveCatalogEntry = romajiRule === undefined
-      ? catalogEntry
-      : catalogEntry.resolveRomajiRule?.(romajiRule);
-    if (!effectiveCatalogEntry) return undefined;
+    const effectiveCatalogEntry = romajiRule !== undefined && catalogEntry.romajiCapable
+      ? catalogEntry.resolveRomajiRule?.(romajiRule)
+      : catalogEntry;
+    if (!effectiveCatalogEntry) {
+      throw new Error(
+        `Romaji-capable catalog entry ${session.mode}/${layoutId} must provide resolveRomajiRule`,
+      );
+    }
 
     const resolvedConditions = resolveConditions(
       legacyCompatibleConditionDefaults(session.distance.defaults, session),
