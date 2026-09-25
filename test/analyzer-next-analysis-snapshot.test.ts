@@ -135,3 +135,65 @@ test('resolver refuses to expand Snapshot scope for an unselected layout', () =>
   });
   assert.equal(resolver('qwerty'), undefined);
 });
+
+
+test('per-layout romaji override re-resolves the effective Layout and calculation key', () => {
+  const baseLayout = LAYOUTS.find((candidate) => candidate.id === 'qwerty')!;
+  const store = sessionStore();
+  const kunreiLayout = { ...baseLayout, name: 'QWERTY / kunrei' };
+  const resolver = createResolvedAnalysisInputResolver({
+    getSession: store.getSnapshot,
+    layoutsForMode: (mode) => [{
+      layout: baseLayout,
+      revisionKey: `${mode}:qwerty:default`,
+      romajiRuleId: mode === 'ja' ? 'hepburn' : null,
+      resolveRomajiRule: (ruleId) => ({
+        layout: kunreiLayout,
+        revisionKey: `${mode}:qwerty:romaji:${ruleId}`,
+        romajiRuleId: ruleId,
+      }),
+    }],
+    geometryForKind: () => ({
+      settings: DEFAULT_GEOMETRY_SETTINGS,
+      revisionKey: 'geometry:1',
+    }),
+  });
+
+  store.setMode('ja');
+  const before = resolver('qwerty')!;
+  assert.equal(before.input.romajiRuleId, 'hepburn');
+  assert.equal(before.input.layout, baseLayout);
+
+  store.setDistanceOverride('qwerty', 'romajiRule', 'kunrei');
+  const after = resolver('qwerty')!;
+  assert.equal(after.input.romajiRuleId, 'kunrei');
+  assert.equal(after.input.layout, kunreiLayout);
+  assert.notEqual(after.key, before.key);
+
+  store.setMode('en');
+  const en = resolver('qwerty')!;
+  assert.equal(en.input.romajiRuleId, 'kunrei');
+  assert.match(en.key, /en:qwerty:romaji:kunrei/);
+  assert.notEqual(en.key, after.key);
+});
+
+test('unknown per-layout romaji rule makes the resolved input unavailable instead of using stale layout data', () => {
+  const layout = LAYOUTS.find((candidate) => candidate.id === 'qwerty')!;
+  const store = sessionStore();
+  const resolver = createResolvedAnalysisInputResolver({
+    getSession: store.getSnapshot,
+    layoutsForMode: () => [{
+      layout,
+      revisionKey: 'qwerty:default',
+      romajiRuleId: null,
+      resolveRomajiRule: () => undefined,
+    }],
+    geometryForKind: () => ({
+      settings: DEFAULT_GEOMETRY_SETTINGS,
+      revisionKey: 'geometry:1',
+    }),
+  });
+
+  store.setDistanceOverride('qwerty', 'romajiRule', 'removed-rule');
+  assert.equal(resolver('qwerty'), undefined);
+});
