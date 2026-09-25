@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useLayoutEffect, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import {
@@ -124,6 +124,7 @@ export interface AnalyzerReactShellOptions {
   onOpenConditions: () => void;
   onOpenRomaji: () => void;
   onSensitivityToggle: (open: boolean) => void;
+  onInitialRenderReady: () => void;
 }
 
 export interface AnalyzerReactShellController {
@@ -200,6 +201,7 @@ function AnalyzerReactShell({
   onOpenConditions,
   onOpenRomaji,
   onSensitivityToggle,
+  onInitialRenderReady,
 }: Omit<AnalyzerReactShellOptions, 'root'> & { textModel: AnalyzerTextModel }) {
   const state = useSyncExternalStore(
     stateOwner.subscribe,
@@ -213,6 +215,10 @@ function AnalyzerReactShell({
   );
   const mode = state.ui.input.mode;
   const [text, setTextState] = useState(textModel.value);
+
+  useLayoutEffect(() => {
+    onInitialRenderReady();
+  }, [onInitialRenderReady]);
 
   const setText = (value: string) => {
     textModel.value = value;
@@ -675,6 +681,7 @@ export function mountAnalyzerReactShell(
       onOpenConditions={options.onOpenConditions}
       onOpenRomaji={options.onOpenRomaji}
       onSensitivityToggle={options.onSensitivityToggle}
+      onInitialRenderReady={options.onInitialRenderReady}
     />,
   );
   return {
