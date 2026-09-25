@@ -8,18 +8,21 @@ import { dirname } from 'node:path';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const VIEW_DIR = join(ROOT, 'src', 'features', 'analyzer-next', 'views');
 
-async function viewFiles(): Promise<string[]> {
-  try {
-    return (await readdir(VIEW_DIR))
-      .filter((name) => /\.tsx?$/.test(name))
-      .map((name) => join(VIEW_DIR, name));
-  } catch {
-    return [];
-  }
+async function viewFiles(dir = VIEW_DIR): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const nested = await Promise.all(entries.map(async (entry) => {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) return viewFiles(path);
+    return entry.isFile() && /\.tsx?$/.test(entry.name) ? [path] : [];
+  }));
+  return nested.flat();
 }
 
 test('Analyzer Next View components do not own storage, routing, Dockview or evaluation', async () => {
-  for (const path of await viewFiles()) {
+  const paths = await viewFiles();
+  assert.ok(paths.length > 0, 'Analyzer Next views boundary must contain inspectable source files');
+
+  for (const path of paths) {
     const source = await readFile(path, 'utf8');
     for (const forbidden of [
       'localStorage',
