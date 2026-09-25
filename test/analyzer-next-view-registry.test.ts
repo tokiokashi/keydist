@@ -48,10 +48,12 @@ test('Heatmap active tab is represented by layer id instead of shared numeric in
     activeLayerId: 'shift:left',
     panels: { layerStats: true, modifierList: true, comboTable: true },
   }, 1), {
+    view: 'tabs',
     colorScale: 'log',
     showLayerDetails: true,
     keyPatternGuide: false,
     activeLayerId: 'shift:left',
+    panels: { layerStats: true, modifierList: true, comboTable: true },
   });
 });
 
