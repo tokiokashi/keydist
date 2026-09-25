@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { mountAnalyzerRuntime } from './main.ts';
 
@@ -49,7 +50,7 @@ export function AnalyzerPage() {
   return (
     <div className="analyzer-feature">
       <header className="topbar">
-        <h1>keydist</h1>
+        <h1><Link className="topbar-home" to="/">keydist</Link></h1>
         <p className="lede">
           論理配列を打った時の指の総移動距離で評価する
           <span id="analyzer-dialog-actions" />
