@@ -61,6 +61,7 @@
   --viz-flow-inward: #7fc7a4;
   --viz-flow-outward: #c19de9;
   --viz-resultant: #f6f3dc;
+  --viz-on-strong: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
