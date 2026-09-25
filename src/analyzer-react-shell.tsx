@@ -14,6 +14,7 @@ import type { AnalyzerPlaybackSettingsModel } from './analyzer-playback-settings
 import type { AnalyzerConditionsSurfaceModel, AnalyzerConditionsSurfaceSnapshot } from './analyzer-conditions-surface-model.ts';
 import { AnalyzerLayoutEditor } from './analyzer-layout-editor.tsx';
 import { AnalyzerCalibrationDialog } from './analyzer-calibration-dialog.tsx';
+import type { AnalyzerCalibrationModel } from './analyzer-calibration-model.ts';
 import { AnalyzerGeometryDialog } from './analyzer-geometry-dialog.tsx';
 import type { AnalyzerGeometryEditorModel } from './analyzer-geometry-editor-model.ts';
 import { AnalyzerRomajiDialog } from './analyzer-romaji-dialog.tsx';
@@ -62,6 +63,7 @@ export interface AnalyzerReactShellOptions {
   layoutEditorModel: AnalyzerLayoutEditorModel;
   bigramFlowModel: AnalyzerBigramFlowModel;
   controlsModel: AnalyzerControlsModel;
+  calibrationModel: AnalyzerCalibrationModel;
   geometryEditorModel: AnalyzerGeometryEditorModel;
   romajiDialogModel: AnalyzerRomajiDialogModel;
   onModeChange: () => void;
@@ -75,7 +77,6 @@ export interface AnalyzerReactShellOptions {
     root: HTMLElement,
   ) => void;
   onAddLayout: (definition: UserLayout) => void;
-  onCalibrationMount: () => void;
   onToggleLayout: (layoutId: string, enabled: boolean) => void;
   onRemoveLayout: (layoutId: string) => void;
   onDetailLayoutChange: (layoutId: string) => void;
@@ -179,6 +180,7 @@ function AnalyzerReactShell({
   layoutEditorModel,
   bigramFlowModel,
   controlsModel,
+  calibrationModel,
   geometryEditorModel,
   romajiDialogModel,
   textModel,
@@ -190,7 +192,6 @@ function AnalyzerReactShell({
   onPlaybackSettingsCommit,
   onConditionsSurfaceCommit,
   onAddLayout,
-  onCalibrationMount,
   onToggleLayout,
   onRemoveLayout,
   onDetailLayoutChange,
@@ -537,7 +538,10 @@ function AnalyzerReactShell({
         addPanelSlot,
       )}
       {createPortal(
-        <AnalyzerCalibrationDialog onMount={onCalibrationMount} />,
+        <AnalyzerCalibrationDialog
+          dialog={calibrationDialogSlot}
+          model={calibrationModel}
+        />,
         calibrationDialogSlot,
       )}
       {createPortal(
@@ -598,6 +602,7 @@ export function mountAnalyzerReactShell(
       layoutEditorModel={options.layoutEditorModel}
       bigramFlowModel={options.bigramFlowModel}
       controlsModel={options.controlsModel}
+      calibrationModel={options.calibrationModel}
       geometryEditorModel={options.geometryEditorModel}
       romajiDialogModel={options.romajiDialogModel}
       textModel={textModel}
@@ -609,7 +614,6 @@ export function mountAnalyzerReactShell(
       onPlaybackSettingsCommit={options.onPlaybackSettingsCommit}
       onConditionsSurfaceCommit={options.onConditionsSurfaceCommit}
       onAddLayout={options.onAddLayout}
-      onCalibrationMount={options.onCalibrationMount}
       onToggleLayout={options.onToggleLayout}
       onRemoveLayout={options.onRemoveLayout}
       onDetailLayoutChange={options.onDetailLayoutChange}
