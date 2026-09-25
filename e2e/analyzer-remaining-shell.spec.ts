@@ -137,6 +137,10 @@ test('theme controls are React-owned and restore through AppState', async ({ pag
 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(controls.locator('[data-theme-set="dark"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(async () => page.evaluate(() => {
+    const raw = localStorage.getItem('keydist:app-state');
+    return raw ? JSON.parse(raw).appearance?.theme ?? null : null;
+  })).toBe('dark');
 
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
