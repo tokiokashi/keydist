@@ -11,6 +11,10 @@ type DistanceOnlyDefaults = Omit<
   'playbackRateAverage' | 'playbackRateWindow' | 'playbackRateHalfLifeSeconds'
 >;
 
+export type AnalysisDistanceOverrideConditions =
+  & DistanceOnlyDefaults
+  & Pick<UiStateLayoutConditions, 'romajiRule'>;
+
 export interface AnalysisTimingGlobalConditions {
   playbackRateAverage: UiStateConditionsDefaults['playbackRateAverage'];
   playbackRateWindow: UiStateConditionsDefaults['playbackRateWindow'];
@@ -41,7 +45,7 @@ export interface AnalysisSessionState extends AnalysisSessionTarget {
     defaults: DistanceOnlyDefaults;
     perLayout: Readonly<Record<
       string,
-      Partial<DistanceOnlyDefaults> & Pick<UiStateLayoutConditions, 'romajiRule'>
+      Partial<AnalysisDistanceOverrideConditions>
     >>;
   };
   timing: {
@@ -69,14 +73,10 @@ export interface AnalysisSessionStore {
     key: K,
     value: DistanceOnlyDefaults[K],
   ): void;
-  setDistanceOverride<K extends keyof (
-    DistanceOnlyDefaults & Pick<UiStateLayoutConditions, 'romajiRule'>
-  )>(
+  setDistanceOverride<K extends keyof AnalysisDistanceOverrideConditions>(
     layoutId: string,
     key: K,
-    value: (
-      DistanceOnlyDefaults & Pick<UiStateLayoutConditions, 'romajiRule'>
-    )[K] | undefined,
+    value: AnalysisDistanceOverrideConditions[K] | undefined,
   ): void;
   setTimingDefault<K extends keyof AnalysisTimingConditions>(
     key: K,
