@@ -1102,8 +1102,9 @@ return () => {
   if (textRenderTimer !== undefined) window.clearTimeout(textRenderTimer);
   textRenderTimer = undefined;
   playbackView.clear();
-  analyzerReactShell?.unmount();
+  const shell = analyzerReactShell;
   analyzerReactShell = undefined;
+  if (shell) queueMicrotask(() => shell.unmount());
   unsubscribeUiState();
   uiStateOwner.flush();
   window.removeEventListener('pagehide', onPageHide);
