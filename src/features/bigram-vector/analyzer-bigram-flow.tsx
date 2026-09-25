@@ -615,7 +615,6 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
 
   const { layout, geometry, trace } = data;
   const rawCount = filtered.reduce((sum, vector) => sum + vector.weight, 0);
-  const vectorAnalysisReady = selectedFingers.length >= 1;
   const relative = [
     ...relativeVectors(analysisVectors, 'left'),
     ...relativeVectors(analysisVectors, 'right'),
@@ -737,75 +736,66 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
       </section>
 
       <AnimatePresence initial={false}>
-        {vectorAnalysisReady ? (
-          <motion.section
-            className="flow-analysis"
-            key={selectedFingers.slice().sort().join('-')}
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            transition={{ type: 'spring', stiffness: 180, damping: 24 }}
-          >
-            <div className="flow-analysis-heading">
-              <div>
-                <p className="eyebrow">Vector analysis</p>
-                <h2>
-                  {selectedFingers.map((selected) =>
+        <motion.section
+          className="flow-analysis"
+          key={selectedFingers.length === 0 ? 'all' : selectedFingers.slice().sort().join('-')}
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          transition={{ type: 'spring', stiffness: 180, damping: 24 }}
+        >
+          <div className="flow-analysis-heading">
+            <div>
+              <p className="eyebrow">Vector analysis</p>
+              <h2>
+                {selectedFingers.length === 0
+                  ? '全指'
+                  : selectedFingers.map((selected) =>
                     FINGER_OPTIONS.find((finger) => finger.id === selected)?.label
                   ).join(' + ')}
-                </h2>
-              </div>
-              <p>
-                {selectedFingers.length === 1
+              </h2>
+            </div>
+            <p>
+              {selectedFingers.length === 0
+                ? '未選択時は同指内の移動（その指自身の動き）と異指間の遷移（前の打鍵からの相対位置）が混ざり、後者が支配的なため、実質的に手ごとの打鍵位置の流れを表す。'
+                : selectedFingers.length === 1
                   ? '1指選択では、その指自身のキー間移動だけを表示する。'
                   : '2指選択では押し順を固定せず、両方向の指間移動を表示する。'}
-              </p>
-            </div>
+            </p>
+          </div>
 
-            <section className="flow-block">
-              <header className="flow-block-header">
-                <div>
-                  <p className="eyebrow">Movement profile</p>
-                  <h2>Relative vectors</h2>
-                </div>
-                <p>
-                  線の向きは移動方向、長さは物理距離、太さと濃さはfrequency。
-                  白線はfrequency-weighted mean resultantで、長さは方向の集中度を表す。
-                </p>
-              </header>
-              <div className="flow-two-up">
-                <MovementProfilePlot
-                  vectors={analysisVectors}
-                  hand="left"
-                  maxDistance={relativeMaxDistance}
-                  maxVectorWeight={relativeMaxWeight}
-                />
-                <MovementProfilePlot
-                  vectors={analysisVectors}
-                  hand="right"
-                  maxDistance={relativeMaxDistance}
-                  maxVectorWeight={relativeMaxWeight}
-                />
+          <section className="flow-block">
+            <header className="flow-block-header">
+              <div>
+                <p className="eyebrow">Movement profile</p>
+                <h2>Relative vectors</h2>
               </div>
-              {source === 'actual' && analysisVectors.some((vector) => vector.hand === 'cross') ? (
-                <p className="flow-footnote">
-                  Cross-hand bigramはKeyboard Flowには残すが、左右のmovement profileからは除外する。
-                </p>
-              ) : null}
-            </section>
-          </motion.section>
-        ) : (
-          <motion.div
-            className="flow-analysis-locked"
-            key="locked"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <span>Vector Analysis</span>
-            <strong>指を1〜2本選ぶと表示</strong>
-            <p>未選択時はKeyboard Flowで全体の結合を観察できる。</p>
-          </motion.div>
-        )}
+              <p>
+                線の向きは移動方向、長さは物理距離、太さと濃さはfrequency。
+                白線はfrequency-weighted mean resultantで、長さは方向の集中度を表す。
+              </p>
+            </header>
+            <div className="flow-two-up">
+              <MovementProfilePlot
+                vectors={analysisVectors}
+                hand="left"
+                maxDistance={relativeMaxDistance}
+                maxVectorWeight={relativeMaxWeight}
+              />
+              <MovementProfilePlot
+                vectors={analysisVectors}
+                hand="right"
+                maxDistance={relativeMaxDistance}
+                maxVectorWeight={relativeMaxWeight}
+              />
+            </div>
+            {source === 'actual' && analysisVectors.some((vector) => vector.hand === 'cross') ? (
+              <p className="flow-footnote">
+                Cross-hand bigramはKeyboard Flowには残すが、左右のmovement profileからは除外する。
+              </p>
+            ) : null}
+          </section>
+        </motion.section>
       </AnimatePresence>
 
       <p className="flow-footnote">

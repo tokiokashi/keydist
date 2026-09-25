@@ -113,6 +113,26 @@ test('per-key hover scale widens the local max-weight outgoing edge to the globa
   await expect.poll(maxEdgeWidth).toBeLessThan(6.55);
 });
 
+test('Relative vectors show all vectors when no finger is selected', async ({ page }) => {
+  await gotoAnalyzer(page);
+
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible();
+
+  // 前提: 指は未選択のまま（起動直後の既定状態）。
+  const fingerButtons = flow.locator('.flow-finger-buttons button[aria-pressed="true"]');
+  expect(await fingerButtons.count()).toBe(0);
+
+  await expect(flow.getByText('全指')).toBeVisible();
+
+  const plots = flow.locator('.flow-profile-panel svg');
+  await expect(plots).toHaveCount(2);
+  for (const index of [0, 1]) {
+    const lines = plots.nth(index).locator('.relative-vector');
+    await expect.poll(() => lines.count()).toBeGreaterThan(0);
+  }
+});
+
 async function edgeHandOrder(flow: import('@playwright/test').Locator): Promise<string[]> {
   return flow.locator('.flow-vector-layer [data-flow-edge]').evaluateAll(
     (els) => els.map((el) => el.getAttribute('data-flow-hand') ?? ''),
