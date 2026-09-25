@@ -13,7 +13,7 @@ test('theme authority survives SPA route transitions and reload', async ({ page 
   await expect(page).toHaveURL(/\/$/);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
-  await page.getByRole('link', { name: 'Tester' }).click();
+  await page.getByRole('link', { name: 'Tester', exact: true }).click();
   await expect(page).toHaveURL(/\/input$/);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
