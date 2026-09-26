@@ -497,7 +497,7 @@ test('layouts barrelはlegacy Face authoring classifierを公開しない', asyn
 });
 
 test('results viewはFace semantic authoring metadataへ依存しない', async () => {
-  const source = await readFile(join(SRC, 'results-view.ts'), 'utf8');
+  const source = await readFile(join(SRC, 'legacy', 'results-view.ts'), 'utf8');
 
   assert.doesNotMatch(
     source,
@@ -610,7 +610,7 @@ test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityに�
 
 test('presentation consumerはLayer.orderの共通helperを使う', async () => {
   const pickerSource = await readFile(join(SRC, 'key-pattern-picker.ts'), 'utf8');
-  const heatmapSource = await readFile(join(SRC, 'analyzer-heatmap-content.tsx'), 'utf8');
+  const heatmapSource = await readFile(join(SRC, 'legacy', 'analyzer-heatmap-content.tsx'), 'utf8');
 
   assert.match(pickerSource, /orderedPresentationLayers\(groups\)/);
   assert.match(heatmapSource, /orderedPresentationLayers\(groups\)/);
@@ -632,7 +632,7 @@ test('presentation consumerはLayer.orderの共通helperを使う', async () => 
 });
 
 test('results presentationはraw Face.trigger textを再構成しない', async () => {
-  const source = await readFile(join(SRC, 'analyzer-heatmap-content.tsx'), 'utf8');
+  const source = await readFile(join(SRC, 'legacy', 'analyzer-heatmap-content.tsx'), 'utf8');
 
   assert.doesNotMatch(
     source,
@@ -643,7 +643,7 @@ test('results presentationはraw Face.trigger textを再構成しない', async 
 });
 
 test('results picker guideは明示presentation trigger / combo variantsを使う', async () => {
-  const source = await readFile(join(SRC, 'analyzer-heatmap-content.tsx'), 'utf8');
+  const source = await readFile(join(SRC, 'legacy', 'analyzer-heatmap-content.tsx'), 'utf8');
   const start = source.indexOf('function pickerGuideColorMap');
   const end = source.indexOf('function heatIntensity', start);
   assert.ok(start >= 0 && end > start, 'picker guide section must remain discoverable');
@@ -739,7 +739,7 @@ test('SandS trigger presentationはlayout IDへ依存しない', async () => {
     'layers presentation helper must use explicit Face metadata instead of layout ID',
   );
 
-  const resultsSource = await readFile(join(SRC, 'analyzer-heatmap-content.tsx'), 'utf8');
+  const resultsSource = await readFile(join(SRC, 'legacy', 'analyzer-heatmap-content.tsx'), 'utf8');
   const start = resultsSource.indexOf('function displayTriggerText');
   const end = resultsSource.indexOf('function layerDefinitionForId', start);
   assert.ok(start >= 0 && end > start, 'SandS presentation section must remain discoverable');
@@ -836,7 +836,7 @@ test('廃止済み#200 legacy symbol / production helperをsrcへ再導入しな
       );
     }
 
-    if (relativePath !== 'ui-state.ts') {
+    if (relativePath !== 'legacy/ui-state.ts') {
       for (const symbol of migrationOnly) {
         assert.equal(
           source.includes(symbol),
@@ -847,7 +847,7 @@ test('廃止済み#200 legacy symbol / production helperをsrcへ再導入しな
     }
   }
 
-  const uiState = await readFile(join(SRC, 'ui-state.ts'), 'utf8');
+  const uiState = await readFile(join(SRC, 'legacy', 'ui-state.ts'), 'utf8');
   for (const symbol of migrationOnly) {
     const occurrencePattern = new RegExp(symbol, 'g');
     const detectionPattern = new RegExp(
@@ -864,7 +864,7 @@ test('廃止済み#200 legacy symbol / production helperをsrcへ再導入しな
       assert.equal(
         allowedRanges.some((range) => range.start <= index && index < range.end),
         true,
-        `ui-state.ts may reference ${symbol} only as legacy state detection`,
+        `legacy/ui-state.ts may reference ${symbol} only as legacy state detection`,
       );
     }
   }
@@ -876,7 +876,7 @@ test('廃止済み#200 legacy symbol / production helperをsrcへ再導入しな
 
 
 test('Playback surfaceの描画・interaction authorityをimperative側へ戻さない', async () => {
-  const playbackView = await readFile(join(SRC, 'playback-view.ts'), 'utf8');
+  const playbackView = await readFile(join(SRC, 'legacy', 'playback-view.ts'), 'utf8');
   const forbidden = [
     'querySelector',
     'addEventListener',
@@ -897,7 +897,7 @@ test('Playback surfaceの描画・interaction authorityをimperative側へ戻さ
     );
   }
 
-  const shell = await readFile(join(SRC, 'analyzer-react-shell.tsx'), 'utf8');
+  const shell = await readFile(join(SRC, 'legacy', 'analyzer-react-shell.tsx'), 'utf8');
   assert.equal(
     shell.includes('dangerouslySetInnerHTML'),
     false,
@@ -924,12 +924,12 @@ test('Analyzer legacy entryをUI本体として復活させない', async () => 
   assert.match(route, /AnalyzerPage/);
   assert.doesNotMatch(route, /window\.location\.replace|legacyUrl/);
 
-  const page = await readFile(join(SRC, 'analyzer-page.tsx'), 'utf8');
+  const page = await readFile(join(SRC, 'legacy', 'analyzer-page.tsx'), 'utf8');
   assert.match(page, /useEffect/);
   assert.match(page, /import \{ mountAnalyzerRuntime \} from '\.\/main\.ts'/);
   assert.doesNotMatch(page, /import\('\.\/main\.ts'\)/);
 
-  const main = await readFile(join(SRC, 'main.ts'), 'utf8');
+  const main = await readFile(join(SRC, 'legacy', 'main.ts'), 'utf8');
   const mountIndex = main.indexOf('export function mountAnalyzerRuntime');
   assert.notEqual(mountIndex, -1);
   const modulePrelude = main.slice(0, mountIndex);
