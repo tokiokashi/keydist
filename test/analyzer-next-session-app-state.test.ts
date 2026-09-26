@@ -3,7 +3,7 @@ import test from 'node:test';
 import {
   analyzerSlicesFromUiState,
   type AppStateV2,
-} from '../src/app-state.ts';
+} from '#app/state/app-state.ts';
 import { analyzerSampleText } from '#legacy/analyzer-samples.ts';
 import { analysisSessionSeedFromAppState } from '../src/features/analyzer-next/session-app-state.ts';
 import { createDefaultUiState } from '#legacy/ui-state.ts';
