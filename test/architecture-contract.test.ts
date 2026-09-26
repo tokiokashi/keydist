@@ -30,12 +30,36 @@ function moduleSpecifiers(source: string): readonly string[] {
   return [...specs];
 }
 
-async function structuralAnalysisSources() {
-  const paths = await tsFiles(join(SRC, 'interpretation', 'structure'));
+async function sourcesIn(...segments: string[]) {
+  const paths = await tsFiles(join(SRC, ...segments));
   return Promise.all(paths.map(async (path) => ({
     path,
     source: await readFile(path, 'utf8'),
   })));
+}
+
+// 以下3つは architecture-layers.test.ts の層の表より細かい、層の中の制限。
+// 層の表は input 内・interpretation 内の import を全部許すので、ここで別に絞る。
+
+function isAllowedInputConverterCoreModule(specifier: string): boolean {
+  return /^\.\/[^/]+\.ts$/.test(specifier)
+    || specifier === '#input/semantics/index.ts'
+    || specifier === '#input/shapes/geometry.ts';
+}
+
+function isAllowedStructuralAnalysisModule(specifier: string): boolean {
+  return /^\.\/[^/]+\.ts$/.test(specifier)
+    || specifier.startsWith('#input/semantics/')
+    || specifier.startsWith('#input/shapes/')
+    || specifier.startsWith('#trace/')
+    || specifier.startsWith('#interpretation/structure/');
+}
+
+function isAllowedSemanticCoreModule(specifier: string): boolean {
+  return /^\.\/[^/]+\.ts$/.test(specifier)
+    || specifier === '../shapes/geometry.ts'
+    || specifier === '../layouts/types.ts'
+    || specifier === '../layouts/index.ts';
 }
 
 const LEGACY_TRIGGER_REALIZATION_MODULE = join(SRC, 'trigger-realization.ts');
@@ -63,9 +87,32 @@ function isForbiddenRealizationConsumerImport(
     || REALIZATION_INTERNAL_MODULES.has(target);
 }
 
+test('semantic coreのimport先をshapes / layout型へ限定する', async () => {
+  assert.equal(isAllowedSemanticCoreModule('../../results-view.ts'), false);
+  assert.equal(isAllowedSemanticCoreModule('./../../results-view.ts'), false);
 
+  for (const { path, source } of await sourcesIn('input', 'semantics')) {
+    for (const specifier of moduleSpecifiers(source)) {
+      assert.equal(
+        isAllowedSemanticCoreModule(specifier),
+        true,
+        `${relative(ROOT, path)} imports outside the allowed semantic-core dependency layer: ${specifier}`,
+      );
+    }
+  }
+});
 
-
+test('structural analysisのimport先をsemantic / structural layerへ限定する', async () => {
+  for (const { path, source } of await sourcesIn('interpretation', 'structure')) {
+    for (const specifier of moduleSpecifiers(source)) {
+      assert.equal(
+        isAllowedStructuralAnalysisModule(specifier),
+        true,
+        `${relative(ROOT, path)} imports outside the allowed analysis dependency layer: ${specifier}`,
+      );
+    }
+  }
+});
 
 test('realization policy consumerはsemantic core public entryをauthorityにする', async () => {
   const rootFiles = await readdir(SRC);
@@ -107,6 +154,18 @@ test('realization policy consumerはsemantic core public entryをauthorityにす
 });
 
 test('Input Converter coreはSemanticInput public APIを再利用する', async () => {
+  const sources = await sourcesIn('tester', 'engine');
+  assert.ok(sources.length > 0, 'input converter core source must exist');
+  for (const { path, source } of sources) {
+    for (const specifier of moduleSpecifiers(source)) {
+      assert.equal(
+        isAllowedInputConverterCoreModule(specifier),
+        true,
+        `${relative(ROOT, path)} imports outside input-converter core boundary: ${specifier}`,
+      );
+    }
+  }
+
   const engineSource = await readFile(
     join(SRC, 'tester', 'engine', 'typing-input-engine.ts'),
     'utf8',
@@ -625,7 +684,7 @@ test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async 
       .flatMap((layout) => [layout.id, layout.name]),
   );
 
-  for (const { path, source } of await structuralAnalysisSources()) {
+  for (const { path, source } of await sourcesIn('interpretation', 'structure')) {
     for (const specifier of moduleSpecifiers(source)) {
       assert.equal(
         specifier.startsWith('./layouts/'),
