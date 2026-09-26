@@ -47,10 +47,6 @@ function overrideItems(
   });
 }
 
-function policyValue(effective: unknown, fallback: unknown): string {
-  return sameValue(effective, fallback) ? 'default' : 'custom';
-}
-
 /**
  * Project the model conditions that produced the current Snapshot into host-owned pane chrome.
  * The View itself stays unaware of Session defaults/overrides.
@@ -80,28 +76,19 @@ export function projectAnalysisConditionChrome(
       },
       {
         label: 'chain',
-        value: policyValue(conditions.chainPolicy, session.distance.defaults.chain),
+        value: formatValue(conditions.chainPolicy),
       },
       {
         label: 'arpeggio',
-        value: policyValue(
-          conditions.arpeggioPolicy,
-          session.distance.defaults.arpeggioPolicy,
-        ),
+        value: formatValue(conditions.arpeggioPolicy),
       },
       {
         label: 'trigger',
-        value: policyValue(
-          conditions.triggerRealizationPolicy,
-          session.distance.defaults.triggerRealization,
-        ),
+        value: formatValue(conditions.triggerRealizationPolicy),
       },
       {
         label: 'action',
-        value: policyValue(
-          conditions.actionRealizationPolicy,
-          session.distance.defaults.actionRealization,
-        ),
+        value: formatValue(conditions.actionRealizationPolicy),
       },
     ];
     if (read.snapshot.romajiRuleId !== null) {
