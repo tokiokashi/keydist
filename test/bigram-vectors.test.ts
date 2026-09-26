@@ -5,7 +5,7 @@ import type { Press, Stroke, StrokeParticipation } from '../src/evaluate.ts';
 import {
   aggregateBigramVectors,
   buildBigramVectors,
-  directionResponse,
+  directionDensity,
   directionDistribution,
   directionSummary,
   filterBigramVectors,
@@ -275,9 +275,14 @@ test('direction distributionは対向2方向集中と一様分布を区別でき
 });
 
 
-test('direction responseは実角度を中心にpeakを作る', () => {
+function circularIntegral(samples: readonly { density: number }[]): number {
+  return samples.reduce((sum, sample) => sum + sample.density, 0)
+    * (Math.PI * 2 / samples.length);
+}
+
+test('direction densityは実角度を中心にpeakを作る', () => {
   const angle = 17 * Math.PI / 180;
-  const response = directionResponse([
+  const density = directionDensity([
     vector({
       id: 'seventeen-deg',
       dx: Math.cos(angle),
@@ -286,38 +291,101 @@ test('direction responseは実角度を中心にpeakを作る', () => {
       angle,
       weight: 4,
     }),
-  ], 'left', 12, 360);
+  ], 'left', 12, 720);
 
-  const peak = response.samples.reduce((best, sample) =>
-    sample.response > best.response ? sample : best
+  const peak = density.samples.reduce((best, sample) =>
+    sample.density > best.density ? sample : best
   );
   assert.ok(Math.abs(peak.angle - angle) < Math.PI / 180 + 1e-12);
-  assert.ok(peak.response > 0.99);
 });
 
-test('direction responseはbandwidthを広げると近接方向の谷が浅くなる', () => {
-  const a = -12 * Math.PI / 180;
-  const b = 12 * Math.PI / 180;
+test('direction densityはbandwidthによらず円周積分が1になる', () => {
   const vectors = [
-    vector({ id: 'a', dx: Math.cos(a), dy: Math.sin(a), distance: 1, angle: a }),
-    vector({ id: 'b', dx: Math.cos(b), dy: Math.sin(b), distance: 1, angle: b }),
+    vector({ id: 'east', angle: 0, dx: 1, dy: 0, distance: 1, weight: 3 }),
+    vector({
+      id: 'north',
+      angle: Math.PI / 2,
+      dx: 0,
+      dy: 1,
+      distance: 1,
+      weight: 1,
+    }),
   ];
-  const narrow = directionResponse(vectors, 'left', 5, 360);
-  const wide = directionResponse(vectors, 'left', 20, 360);
 
-  assert.ok(wide.samples[0].response > narrow.samples[0].response);
+  for (const bandwidth of [5, 15, 35]) {
+    const density = directionDensity(vectors, 'left', bandwidth, 1440);
+    assert.ok(Math.abs(circularIntegral(density.samples) - 1) < 2e-4);
+  }
 });
 
-test('direction responseは対向2方向を別peakとして保持する', () => {
-  const response = directionResponse([
+test('direction densityのbandwidthはHWHMとして定義される', () => {
+  const bandwidth = 20;
+  const density = directionDensity([
+    vector({ id: 'east', angle: 0, dx: 1, dy: 0, distance: 1 }),
+  ], 'left', bandwidth, 3600);
+
+  const stepDegrees = 360 / density.samples.length;
+  const center = density.samples[0].density;
+  const halfWidthIndex = Math.round(bandwidth / stepDegrees);
+  const atHalfWidth = density.samples[halfWidthIndex].density;
+
+  assert.ok(Math.abs(atHalfWidth / center - 0.5) < 2e-3);
+});
+
+test('direction densityはbandwidthを広げても面積を保存しpeakだけ低く広くなる', () => {
+  const vectors = [
+    vector({ id: 'east', angle: 0, dx: 1, dy: 0, distance: 1 }),
+  ];
+  const narrow = directionDensity(vectors, 'left', 6, 1440);
+  const wide = directionDensity(vectors, 'left', 30, 1440);
+
+  assert.ok(narrow.samples[0].density > wide.samples[0].density);
+  assert.ok(Math.abs(circularIntegral(narrow.samples) - 1) < 2e-4);
+  assert.ok(Math.abs(circularIntegral(wide.samples) - 1) < 2e-4);
+  const quarterTurn = narrow.samples.length / 4;
+  assert.ok(wide.samples[quarterTurn].density > narrow.samples[quarterTurn].density);
+});
+
+test('direction densityは対向2方向を別peakとして保持する', () => {
+  const vectors = [
     vector({ id: 'east', dx: 1, dy: 0, distance: 1, angle: 0, weight: 8 }),
     vector({ id: 'west', dx: -1, dy: 0, distance: 1, angle: Math.PI, weight: 8 }),
-  ], 'left', 10, 72);
+  ];
+  const density = directionDensity(vectors, 'left', 10, 720);
+  const summary = directionSummary(vectors, 'left');
+  const mean = meanDisplacement(vectors, 'left');
 
-  const east = response.samples[0].response;
-  const north = response.samples[18].response;
-  const west = response.samples[36].response;
-  assert.ok(east > 0.49);
-  assert.ok(west > 0.49);
-  assert.ok(north < east * 0.1);
+  const east = density.samples[0].density;
+  const north = density.samples[180].density;
+  const west = density.samples[360].density;
+
+  assert.ok(east > north * 10);
+  assert.ok(west > north * 10);
+  assert.ok(summary.magnitude < 1e-12);
+  assert.ok(mean.distance < 1e-12);
+  assert.ok(Math.abs(circularIntegral(density.samples) - 1) < 2e-4);
+});
+
+test('direction densityはLeft / Rightをそれぞれ総weightで正規化し個別max正規化しない', () => {
+  const vectors = [
+    vector({ id: 'left-east', hand: 'left', angle: 0, dx: 1, dy: 0, distance: 1, weight: 1 }),
+    vector({
+      id: 'right-east',
+      hand: 'right',
+      fromFinger: 'RP',
+      toFinger: 'RI',
+      angle: 0,
+      dx: 1,
+      dy: 0,
+      distance: 1,
+      weight: 100,
+    }),
+  ];
+
+  const left = directionDensity(vectors, 'left', 15, 720);
+  const right = directionDensity(vectors, 'right', 15, 720);
+
+  assert.ok(Math.abs(circularIntegral(left.samples) - 1) < 2e-4);
+  assert.ok(Math.abs(circularIntegral(right.samples) - 1) < 2e-4);
+  assert.ok(Math.abs(left.samples[0].density - right.samples[0].density) < 1e-12);
 });
