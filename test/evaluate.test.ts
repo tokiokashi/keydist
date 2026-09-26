@@ -5,7 +5,7 @@ import { evaluate, type Options } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { compileSequenceInputAlternative } from '../src/core/semantic-input/index.ts';
 import { faceFromEntries, fromFaces, fromKana, LAYOUT_BY_ID, type Layout, withCombos, withRomaji, withThumbShiftAlternatives } from '../src/layouts/index.ts';
-import { kunrei } from '../src/romaji/kunrei.ts';
+import { kunrei } from '#input/romaji/kunrei.ts';
 
 const geometry = buildGeometry('row-staggered');
 const qwerty = LAYOUT_BY_ID.get('qwerty')!;
