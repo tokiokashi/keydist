@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { APP_STATE_VERSION, analyzerSlicesFromUiState } from '../src/app-state.ts';
+import { APP_STATE_VERSION, analyzerSlicesFromUiState } from '#app/state/app-state.ts';
 import { ANALYZER_INITIAL_LAYOUTS } from '#legacy/analyzer-ui-state-bootstrap.ts';
 import type { ModeId } from '#legacy/layout-selection.ts';
 import {

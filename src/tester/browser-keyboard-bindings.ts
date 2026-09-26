@@ -1,4 +1,4 @@
-import type { PhysicalKeyEvent } from '../../core/input-converter/index.ts';
+import type { PhysicalKeyEvent } from './engine/index.ts';
 
 export type BrowserKeyBindingOverrides = Readonly<
   Record<string, PhysicalKeyEvent['key'] | null>

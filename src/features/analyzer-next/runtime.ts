@@ -2,12 +2,12 @@ import {
   analyzerSlicesFromUiState,
   uiStateFromAppState,
   type AppStateV2,
-} from '../../app-state.ts';
+} from '#app/state/app-state.ts';
 import { ANALYZER_INITIAL_LAYOUTS } from '#legacy/analyzer-ui-state-bootstrap.ts';
 import { ANALYZER_SAMPLES } from '#legacy/analyzer-samples.ts';
 import type { PhysicalShape } from '#input/shapes/geometry.ts';
 import { LAYOUTS, LAYOUTS_JA } from '#input/layouts/index.ts';
-import { loadAppStateDocument } from '../../persistence/app-state-storage.ts';
+import { loadAppStateDocument } from '#app/state/app-state-storage.ts';
 import type { RomajiSettings } from '#input/romaji/rules.ts';
 import { loadRomajiSettings } from '#platform/assets/romaji-settings-storage.ts';
 import {

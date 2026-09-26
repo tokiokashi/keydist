@@ -1,7 +1,7 @@
 import {
   TypingInputEngine,
   type RecognizedTypingInput,
-} from '../../core/input-converter/index.ts';
+} from './engine/index.ts';
 
 export type TypingEditCommand = 'backspace' | 'enter';
 

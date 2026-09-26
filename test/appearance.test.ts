@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { APP_STATE_VERSION } from '../src/app-state.ts';
+import { APP_STATE_VERSION } from '#app/state/app-state.ts';
 import {
   getAppearanceSnapshot,
   getServerAppearanceSnapshot,
   loadAppearancePreference,
   saveAppearancePreference,
   subscribeAppearance,
-} from '../src/appearance.ts';
-import { APP_STATE_STORAGE_KEY } from '../src/persistence/app-state-storage.ts';
+} from '#app/theme/appearance.ts';
+import { APP_STATE_STORAGE_KEY } from '#app/state/app-state-storage.ts';
 import type { UiStateStorage } from '#legacy/ui-state.ts';
 
 class MemoryStorage implements UiStateStorage {

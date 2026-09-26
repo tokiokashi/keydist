@@ -1,4 +1,4 @@
-import type { AppStateV2 } from '../../app-state.ts';
+import type { AppStateV2 } from '#app/state/app-state.ts';
 import { ANALYZER_INITIAL_LAYOUTS } from '#legacy/analyzer-ui-state-bootstrap.ts';
 import { analyzerSampleText } from '#legacy/analyzer-samples.ts';
 import {

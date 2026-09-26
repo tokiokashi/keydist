@@ -1,9 +1,9 @@
 import {
   subscribeKeydistStorageChanges,
-} from '../../browser-storage-events.ts';
+} from '#platform/browser-storage-events.ts';
 import {
   APP_STATE_STORAGE_KEY,
-} from '../../persistence/app-state-storage.ts';
+} from '#app/state/app-state-storage.ts';
 import {
   ROMAJI_SETTINGS_STORAGE_KEY,
 } from '#platform/assets/romaji-settings-storage.ts';

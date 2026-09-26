@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { APP_STATE_STORAGE_KEY } from '../src/persistence/app-state-storage.ts';
-import type { KeyValueStorage } from '../src/persistence/storage.ts';
+import { APP_STATE_STORAGE_KEY } from '#app/state/app-state-storage.ts';
+import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import {
   createDefaultInputConverterPreferences,
   createInputConverterPreferencesScheduler,
@@ -14,7 +14,7 @@ import {
   serializeInputConverterPreferences,
   type InputConverterLayoutPreferencesV2,
   type InputConverterPreferencesV2,
-} from '../src/features/input-converter/input-converter-preferences.ts';
+} from '#tester/input-converter-preferences.ts';
 
 const catalogs = {
   layoutIds: ['naginata-v18', 'shingeta', 'jis-kana'],

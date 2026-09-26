@@ -11,7 +11,7 @@ import {
   withShiftedOutputs,
 } from '#input/layouts/index.ts';
 import type { Face, Layout } from '#input/layouts/index.ts';
-import { TypingInputEngine } from '../src/core/input-converter/index.ts';
+import { TypingInputEngine } from '#tester/engine/index.ts';
 import { compileSequenceInputAlternative } from '#input/semantics/index.ts';
 import {
   advanceKeyPatternPresentation,

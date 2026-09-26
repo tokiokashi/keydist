@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { LayoutGroup, MotionConfig } from 'motion/react';
-import type { KeyValueStorage } from '../persistence/storage.ts';
+import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import type {
   WorkspacePanelDefinition,
   WorkspacePanelRegistry,

@@ -1,4 +1,4 @@
-import type { PhysicalKeyEvent } from '../../core/input-converter/index.ts';
+import type { PhysicalKeyEvent } from './engine/index.ts';
 import {
   EMPTY_BROWSER_KEY_BINDING_OVERRIDES,
   type BrowserKeyBindingOverrides,

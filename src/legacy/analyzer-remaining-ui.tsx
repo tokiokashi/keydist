@@ -19,7 +19,7 @@ import {
   getServerAppearanceSnapshot,
   setAppearanceTheme,
   subscribeAppearance,
-} from '../appearance.ts';
+} from '#app/theme/appearance.ts';
 
 export interface AnalyzerSidebarControlsProps {
   stateOwner: AnalyzerUiStateOwner;

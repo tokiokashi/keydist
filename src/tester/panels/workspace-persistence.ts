@@ -3,9 +3,9 @@ import {
   loadOrMigrateAppStateSlice,
   patchAppStateSlice,
   type AppStateSliceScheduler,
-} from '../persistence/app-state-storage.ts';
-import type { KeyValueStorage } from '../persistence/storage.ts';
-import { decodeVersionedState } from '../persistence/versioned-state.ts';
+} from '#app/state/app-state-storage.ts';
+import type { KeyValueStorage } from '#platform/persistence/storage.ts';
+import { decodeVersionedState } from '#platform/persistence/versioned-state.ts';
 import type {
   PanelId,
   WorkspacePanelDefinition,

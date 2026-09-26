@@ -7,9 +7,9 @@ import {
   useRouterState,
 } from '@tanstack/react-router';
 import { useLayoutEffect, type ReactNode } from 'react';
-import { getAppearanceSnapshot } from '../appearance.ts';
-import { applyTheme, THEME_BOOTSTRAP_SCRIPT } from '../theme.ts';
-import appCss from '../app.css?url';
+import { getAppearanceSnapshot } from '#app/theme/appearance.ts';
+import { applyTheme, THEME_BOOTSTRAP_SCRIPT } from '#app/theme/theme.ts';
+import appCss from '#app/app.css?url';
 
 export const Route = createRootRoute({
   head: () => ({

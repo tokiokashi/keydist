@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TypingInputEngine } from '../src/core/input-converter/index.ts';
+import { TypingInputEngine } from '#tester/engine/index.ts';
 import {
   applyRecognizedTypingInputs,
-} from '../src/features/input-converter/typing-session-command.ts';
+} from '#tester/typing-session-command.ts';
 import {
   faceFromEntries,
   fromFaces,

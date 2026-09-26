@@ -2,13 +2,13 @@ import {
   APP_STATE_VERSION,
   type AppStateSliceKey,
   type AppStateV2,
-} from '../app-state.ts';
-import { notifyKeydistStorageChange } from '../browser-storage-events.ts';
+} from './app-state.ts';
+import { notifyKeydistStorageChange } from '#platform/browser-storage-events.ts';
 import {
   createDebouncedPersistenceScheduler,
   type DebouncedPersistenceScheduler,
-} from './debounced-scheduler.ts';
-import type { KeyValueStorage } from './storage.ts';
+} from '#platform/persistence/debounced-scheduler.ts';
+import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 
 export const APP_STATE_STORAGE_KEY = 'keydist:app-state';
 

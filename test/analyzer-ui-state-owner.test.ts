@@ -3,7 +3,7 @@ import test from 'node:test';
 import {
   createAnalyzerUiStateOwner,
 } from '#legacy/analyzer-ui-state-owner.ts';
-import { APP_STATE_STORAGE_KEY } from '../src/persistence/app-state-storage.ts';
+import { APP_STATE_STORAGE_KEY } from '#app/state/app-state-storage.ts';
 import {
   createDefaultUiState,
   UI_STATE_STORAGE_KEY,
