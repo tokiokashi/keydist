@@ -18,6 +18,7 @@ test('standalone Bigram Flow connects the Gate 1 vertical slice and keeps ViewCo
 
   const conditions = host.locator('[data-analysis-context="conditions"]');
   const viewConfig = host.locator('[data-analysis-context="view-config"]');
+  await expect(conditions).toContainText('scope=default');
   await expect(conditions).toContainText('geometry=row-staggered');
   await expect(conditions).toContainText('override=none');
   await expect(viewConfig).toContainText('source=actual');
