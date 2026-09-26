@@ -1,6 +1,7 @@
 import * as v from 'valibot';
 import { decodeDroppingInvalid, defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic } from '#input/codec/index.ts';
-import { decodeCascadeOverrides, encodeCascadeOverrides, type ItemSchemaMap } from '#input/settings/index.ts';
+import { decodeCascadeOverrides, encodeCascadeOverrides, type CascadeOverrides, type ItemSchemaMap } from '#input/settings/index.ts';
+import { dropSetupOverrides } from './overrides.ts';
 import type { Setup } from './types.ts';
 import type { SetupLibrary } from './collection.ts';
 
@@ -53,6 +54,32 @@ function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]
   return setups;
 }
 
+/**
+ * decodeSetups側で捨てた（壊れていた・idが重複していた）、あるいは元々setups配列に
+ * 存在しないSetup idの`overrides.setup[id]`は孤児になる（`resolveSetup`から二度と
+ * 参照されない上書き）。`deleteSetup`（collection.ts）が生きているSetupを消す時に
+ * `dropSetupOverrides`で一緒に消しているのと同じ理由で、decode時にも同じ整合を取る
+ * （#544 §4の判断: Setup固有の上書きはカスケードのsetupレベルに置くので、Setup本体と
+ * 上書きの対応が取れていないと`resolveSetup`後の解決やUIの一覧表示が食い違う）。
+ * 捨てる時は必ず診断を積む（「捨てた値には必ず診断」）。
+ */
+function dropOrphanSetupOverrides<V>(
+  overrides: CascadeOverrides<V>,
+  survivingSetupIds: ReadonlySet<string>,
+  diagnostics: CodecDiagnostic[],
+): CascadeOverrides<V> {
+  let result = overrides;
+  for (const setupId of Object.keys(overrides.setup ?? {})) {
+    if (survivingSetupIds.has(setupId)) continue;
+    diagnostics.push({
+      path: `overrides.setup.${setupId}`,
+      message: `Setup「${setupId}」の手持ちが無いため、対応する上書きを孤児として捨てた`,
+    });
+    result = dropSetupOverrides(result, setupId);
+  }
+  return result;
+}
+
 export function setupLibraryCodec<V>(
   itemSchemas: ItemSchemaMap<V>,
   currentVersion: number,
@@ -61,9 +88,12 @@ export function setupLibraryCodec<V>(
     currentVersion,
     decodePayload: (payload, diagnostics) => {
       if (!isRecord(payload)) return undefined;
+      const setups = decodeSetups(payload.setups, 'setups', diagnostics);
+      const overrides = decodeCascadeOverrides(itemSchemas, payload.overrides, 'overrides', diagnostics);
+      const survivingSetupIds = new Set(setups.map((setup) => setup.id));
       return {
-        setups: decodeSetups(payload.setups, 'setups', diagnostics),
-        overrides: decodeCascadeOverrides(itemSchemas, payload.overrides, 'overrides', diagnostics),
+        setups,
+        overrides: dropOrphanSetupOverrides(overrides, survivingSetupIds, diagnostics),
       };
     },
     encodePayload: (value) => ({

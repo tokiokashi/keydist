@@ -89,6 +89,38 @@ test('decode: idが重複するSetupは後のものを捨てて診断を積む',
   }
 });
 
+test('decode: 存在しないSetup idのoverrides.setupは孤児として診断付きで捨てる', () => {
+  const result = codec.decode({
+    version: 1,
+    setups: [setupA],
+    overrides: { setup: { 's-1': { windowSize: 4 }, 'ghost-id': { windowSize: 9 } } },
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.deepEqual(result.value.overrides, { setup: { 's-1': { windowSize: 4 } } });
+    assert.equal(result.diagnostics.length, 1);
+    assert.match(result.diagnostics[0].message, /孤児として捨てた/);
+    assert.equal(result.diagnostics[0].path, 'overrides.setup.ghost-id');
+  }
+});
+
+test('decode: Setup要素が壊れて捨てられた場合も、そのidのoverrides.setupを孤児として捨てる', () => {
+  const broken = { id: 's-3', layoutId: 'qwerty' }; // shapeId が無いため要素ごと捨てられる
+  const result = codec.decode({
+    version: 1,
+    setups: [setupA, broken],
+    overrides: { setup: { 's-1': { windowSize: 4 }, 's-3': { windowSize: 9 } } },
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.deepEqual(result.value.setups, [setupA]);
+    assert.deepEqual(result.value.overrides, { setup: { 's-1': { windowSize: 4 } } });
+    // 診断は「Setup要素を捨てた」旨と「孤児のoverridesを捨てた」旨の2件になる。
+    assert.equal(result.diagnostics.length, 2);
+    assert.ok(result.diagnostics.some((d) => d.message.includes('孤児として捨てた') && d.path === 'overrides.setup.s-3'));
+  }
+});
+
 test('encode→decode: 往復で同じ手持ちに戻る（roundtrip）', () => {
   const library: SetupLibrary<TestValueMap> = {
     setups: [setupA, setupB],
