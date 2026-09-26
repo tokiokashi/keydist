@@ -37,13 +37,22 @@ test('createSetup: 新しいSetupが追加され、上書きは変わらない',
   idCounter = 0;
   const library = createSetup(emptyLibrary(), 'qwerty', 'row-staggered', nextId);
   assert.equal(library.setups.length, 1);
-  assert.deepEqual(library.setups[0], { id: 'setup-1', layoutId: 'qwerty', shapeId: 'row-staggered' });
+  assert.deepEqual(library.setups[0], { id: 'setup-1', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 });
 });
 
 test('createSetup: ラベル付きで作れる', () => {
   idCounter = 0;
   const library = createSetup(emptyLibrary(), 'qwerty', 'row-staggered', nextId, '実験用');
   assert.equal(library.setups[0].label, '実験用');
+});
+
+test('createSetup: 追加するたびに、その時点で最も使われていない色を割り当てる', () => {
+  idCounter = 0;
+  let library = emptyLibrary();
+  library = createSetup(library, 'qwerty', 'row-staggered', nextId);
+  library = createSetup(library, 'dvorak', 'row-staggered', nextId);
+  library = createSetup(library, 'colemak', 'row-staggered', nextId);
+  assert.deepEqual(library.setups.map((s) => s.colorIndex), [0, 1, 2]); // 手持ちが空から増えるので0番から順
 });
 
 test('duplicateSetup: 配列・形状・上書きをコピーした独立のSetupができる', () => {
@@ -72,6 +81,17 @@ test('duplicateSetup: 配列・形状・上書きをコピーした独立のSetu
   const overrides = rewritten.overrides as Overrides;
   assert.equal(overrides.setup?.[sourceId]?.windowSize, 7); // 元は変わらない
   assert.equal(overrides.setup?.[copyId]?.windowSize, 9);
+});
+
+test('duplicateSetup: 複製元と別の色になる（同じ配列・形状の2つを色でも区別できる）', () => {
+  idCounter = 0;
+  let library = createSetup(emptyLibrary(), 'qwerty', 'row-staggered', nextId);
+  const sourceId = library.setups[0].id;
+  const sourceColorIndex = library.setups[0].colorIndex;
+
+  library = duplicateSetup(library, sourceId, nextId);
+  const copyColorIndex = library.setups[1].colorIndex;
+  assert.notEqual(copyColorIndex, sourceColorIndex);
 });
 
 test('duplicateSetup: 存在しないidの複製は何もしない（例外にしない）', () => {

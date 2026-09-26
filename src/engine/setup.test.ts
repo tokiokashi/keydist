@@ -43,8 +43,8 @@ function catalogFor(layout: Layout, shapeId: PresetGeometryKind = 'row-staggered
 const asuka = findLayout(LAYOUTS_JA, 'asuka');
 
 test('カスケードの追従: 上書きの無いSetupはグローバルの変更に追従し、Setupレベルで上書きしたSetupは追従しない', () => {
-  const followingSetup: Setup = { id: 'setup-follow', layoutId: asuka.id, shapeId: 'row-staggered' };
-  const overridingSetup: Setup = { id: 'setup-override', layoutId: asuka.id, shapeId: 'row-staggered' };
+  const followingSetup: Setup = { id: 'setup-follow', layoutId: asuka.id, shapeId: 'row-staggered', colorIndex: 0 };
+  const overridingSetup: Setup = { id: 'setup-override', layoutId: asuka.id, shapeId: 'row-staggered', colorIndex: 1 };
   const catalog = catalogFor(asuka);
 
   // まずグローバルにwindowSizeを書く。
@@ -83,8 +83,8 @@ test('カスケードの追従: 上書きの無いSetupはグローバルの変�
 
 test('配列・形状が同じ2つのSetupはポリシーだけ変えて比較できる', () => {
   const catalog = catalogFor(asuka);
-  const setupA: Setup = { id: 'setup-a', layoutId: asuka.id, shapeId: 'row-staggered' };
-  const setupB: Setup = { id: 'setup-b', layoutId: asuka.id, shapeId: 'row-staggered' };
+  const setupA: Setup = { id: 'setup-a', layoutId: asuka.id, shapeId: 'row-staggered', colorIndex: 0 };
+  const setupB: Setup = { id: 'setup-b', layoutId: asuka.id, shapeId: 'row-staggered', colorIndex: 1 };
 
   const written = setSettingsOverride(
     EMPTY_SETTINGS_OVERRIDES,
@@ -110,7 +110,7 @@ test('配列・形状が同じ2つのSetupはポリシーだけ変えて比較�
 });
 
 test('resolveSetup: 配列が削除されたSetupは値としてエラーを返し、例外にしない', () => {
-  const setup: Setup = { id: 'setup-x', layoutId: 'deleted-layout', shapeId: 'row-staggered' };
+  const setup: Setup = { id: 'setup-x', layoutId: 'deleted-layout', shapeId: 'row-staggered', colorIndex: 0 };
   const result = resolveSetup(setup, catalogFor(asuka), 'kana-direct');
   assert.equal(result.ok, false);
   if (result.ok) return;
@@ -160,7 +160,7 @@ test('initialSetups() を実カタログで解決すると、fixtureの既定条
       `initialSetups() に ${scenario.id} の配列(${layout.id})が含まれていない`,
     );
 
-    const setup: Setup = { id: `fixture-${scenario.id}`, layoutId: layout.id, shapeId: scenario.conditions.geometryShapeId };
+    const setup: Setup = { id: `fixture-${scenario.id}`, layoutId: layout.id, shapeId: scenario.conditions.geometryShapeId, colorIndex: 0 };
     const catalog = catalogFor(layout, scenario.conditions.geometryShapeId as PresetGeometryKind);
     const inputMethod: InputMethod = scenario.conditions.romajiRuleId !== null ? 'romaji' : 'direct';
 

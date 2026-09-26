@@ -1,5 +1,6 @@
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import type { Setup, SetupIdGenerator } from './types.ts';
+import { leastUsedColorIndex } from './color.ts';
 
 /**
  * 初期Setupで使う既定の物理形状。3形状（`PHYSICAL_SHAPES`）のうち最初から選ばれている
@@ -26,10 +27,15 @@ const INITIAL_SETUP_SHAPE_ID = 'row-staggered';
  * - 形状ごとに1セット（配列は固定でQWERTYのみ等） — このツールの主眼は配列の比較
  *   （AGENTS.md冒頭）なので、まず配列を横に並べられる初期値のほうが最初の一覧として役立つ
  */
+/**
+ * 色は `leastUsedColorIndex` を手持ちが空の状態から1件ずつ呼んで決める。他のSetupが1つも
+ * 無い状態から作るので、結果はパレットを0番から順番に使う割り当てになる（color.ts参照）。
+ */
 export function initialSetups(generateId: SetupIdGenerator): readonly Setup[] {
-  return [...LAYOUT_BY_ID.keys()].map((layoutId) => ({
-    id: generateId(),
-    layoutId,
-    shapeId: INITIAL_SETUP_SHAPE_ID,
-  }));
+  const setups: Setup[] = [];
+  for (const layoutId of LAYOUT_BY_ID.keys()) {
+    const colorIndex = leastUsedColorIndex(setups.map((setup) => setup.colorIndex));
+    setups.push({ id: generateId(), layoutId, shapeId: INITIAL_SETUP_SHAPE_ID, colorIndex });
+  }
+  return setups;
 }

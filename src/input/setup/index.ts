@@ -5,7 +5,7 @@ export {
   type NamedSetup,
   type SetupNameSource,
 } from './naming.ts';
-export { setupColor, setupColorIndex, SETUP_COLOR_PALETTE_SIZE } from './color.ts';
+export { setupColor, leastUsedColorIndex, SETUP_COLOR_PALETTE_SIZE } from './color.ts';
 export { copySetupOverrides, dropSetupOverrides } from './overrides.ts';
 export {
   resolveSetup,

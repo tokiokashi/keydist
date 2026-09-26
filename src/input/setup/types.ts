@@ -17,10 +17,20 @@ export interface Setup {
   readonly layoutId: string;
   readonly shapeId: string;
   /**
-   * ユーザーが付けたラベル。名前と色は「配列名 + 形状名」から自動で付け、
+   * ユーザーが付けたラベル。名前は「配列名 + 形状名」から自動で付け、
    * 同名になる時だけユーザーがラベルを付ける（#544 §4）。表示名の決め方は naming.ts。
    */
   readonly label?: string;
+  /**
+   * 色（パレットのindex）。作成・複製の時点で自動的に決め、以後はSetupに固定する
+   * （色そのものはcolor.tsの `setupColor` で引く）。
+   *
+   * ユーザーが選ぶ値ではないので#544 §4の保存対象3つ（配列・形状・Setup固有の上書き）には
+   * 入らないが、それでも保存する。毎回その場で計算する方式だと、他のSetupの追加・削除の
+   * たびに全Setupの色が動いてしまい、「同じSetupは見るたびに同じ色」という安定性が保てない
+   * ため（詳しい理由はcolor.tsの先頭コメント）。
+   */
+  readonly colorIndex: number;
 }
 
 /**

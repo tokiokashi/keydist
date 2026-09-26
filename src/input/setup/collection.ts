@@ -1,6 +1,7 @@
 import type { CascadeOverrides } from '#input/settings/index.ts';
 import type { Setup, SetupIdGenerator } from './types.ts';
 import { copySetupOverrides, dropSetupOverrides } from './overrides.ts';
+import { leastUsedColorIndex } from './color.ts';
 
 /**
  * Setupの手持ち（資産の集合）とカスケードの上書きをセットで扱う。Setup固有の上書きは
@@ -13,6 +14,10 @@ export interface SetupLibrary<V> {
   readonly overrides: CascadeOverrides<V>;
 }
 
+function colorIndexesOf(setups: readonly Setup[]): number[] {
+  return setups.map((setup) => setup.colorIndex);
+}
+
 export function createSetup<V>(
   library: SetupLibrary<V>,
   layoutId: string,
@@ -20,16 +25,19 @@ export function createSetup<V>(
   generateId: SetupIdGenerator,
   label?: string,
 ): SetupLibrary<V> {
+  const colorIndex = leastUsedColorIndex(colorIndexesOf(library.setups));
   const setup: Setup = label === undefined
-    ? { id: generateId(), layoutId, shapeId }
-    : { id: generateId(), layoutId, shapeId, label };
+    ? { id: generateId(), layoutId, shapeId, colorIndex }
+    : { id: generateId(), layoutId, shapeId, colorIndex, label };
   return { setups: [...library.setups, setup], overrides: library.overrides };
 }
 
 /**
  * Setupを複製する。「配列も形状も同じSetupを2つ作れる」（#544 §4）のと同じく、
  * 複製直後は元と同じ配列・形状・上書きを持つ独立したSetupになる
- * （以後どちらかを変えても他方には影響しない）。
+ * （以後どちらかを変えても他方には影響しない）。色だけは複製元と別にする
+ * （同じ配列・形状のSetupをポリシー違いで比べる用途で、色が同じでは区別できないため。
+ * color.ts の `leastUsedColorIndex` 参照）。
  * 複製元が存在しないidなら何もしない（値として無視する。#544 §8-5と同じ「例外にしない」方針）。
  */
 export function duplicateSetup<V>(
@@ -42,9 +50,10 @@ export function duplicateSetup<V>(
   if (source === undefined) return library;
 
   const id = generateId();
+  const colorIndex = leastUsedColorIndex(colorIndexesOf(library.setups), source.colorIndex);
   const duplicated: Setup = label === undefined
-    ? { id, layoutId: source.layoutId, shapeId: source.shapeId }
-    : { id, layoutId: source.layoutId, shapeId: source.shapeId, label };
+    ? { id, layoutId: source.layoutId, shapeId: source.shapeId, colorIndex }
+    : { id, layoutId: source.layoutId, shapeId: source.shapeId, colorIndex, label };
 
   return {
     setups: [...library.setups, duplicated],

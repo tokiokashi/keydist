@@ -14,7 +14,7 @@ const CATALOG: SetupCatalog = {
 };
 
 function setup(overrides: Partial<Setup> = {}): Setup {
-  return { id: 'setup-1', layoutId: qwerty.id, shapeId: rowStaggered.id, ...overrides };
+  return { id: 'setup-1', layoutId: qwerty.id, shapeId: rowStaggered.id, colorIndex: 0, ...overrides };
 }
 
 test('resolveSetup: 配列・形状ともカタログにあれば解決できる', () => {
