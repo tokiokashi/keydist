@@ -1,6 +1,6 @@
 import type { ModeId } from './layout-selection.ts';
-import { SAMPLE_TEXT } from './sample-text.ts';
-import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from './sample-text-ja.ts';
+import { SAMPLE_TEXT } from '../sample-text.ts';
+import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '../sample-text-ja.ts';
 
 export const ANALYZER_SAMPLES: Record<ModeId, Record<string, string>> = {
   en: { default: SAMPLE_TEXT.replace(/\s+/g, ' ').trim() },

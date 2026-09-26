@@ -1,7 +1,7 @@
-import { resolveKeyId, type Finger } from './geometry.ts';
-import type { Stroke } from './evaluate.ts';
-import type { AggregatedAnalysisResult } from './analysis-aggregate.ts';
-import type { PlaybackKeyMotion } from './playback.ts';
+import { resolveKeyId, type Finger } from '../geometry.ts';
+import type { Stroke } from '../evaluate.ts';
+import type { AggregatedAnalysisResult } from '../analysis-aggregate.ts';
+import type { PlaybackKeyMotion } from '../playback.ts';
 
 type Hand = 'left' | 'right';
 

@@ -2,20 +2,20 @@ import {
   assignmentWithHomeKeys,
   buildGeometry,
   type GeometryKind,
-} from './geometry.ts';
-import { evaluate, type Options, type Trace } from './evaluate.ts';
+} from '../geometry.ts';
+import { evaluate, type Options, type Trace } from '../evaluate.ts';
 import {
   analyzeStrokeStructure,
   type AggregatedAnalysisResult,
-} from './analysis-aggregate.ts';
-import { computeMetrics, type Metrics } from './metrics.ts';
+} from '../analysis-aggregate.ts';
+import { computeMetrics, type Metrics } from '../metrics.ts';
 import type { AnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 import type { AnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
 import type { AnalyzerMetricsModel } from './analyzer-metrics-model.ts';
 import type { UiStateV1 } from './ui-state.ts';
-import type { GeometrySettings } from './geometry-settings.ts';
-import { resolveConditions } from './condition-resolution.ts';
-import type { Layout } from './layouts/types.ts';
+import type { GeometrySettings } from '../geometry-settings.ts';
+import { resolveConditions } from '../condition-resolution.ts';
+import type { Layout } from '../layouts/types.ts';
 import type { ModeId } from './layout-selection.ts';
 import type { PlaybackViewController } from './playback-view.ts';
 

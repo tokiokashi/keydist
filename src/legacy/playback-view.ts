@@ -1,5 +1,5 @@
-import { buildGeometry, type Finger } from './geometry.ts';
-import { type Options, type Stroke, type Trace } from './evaluate.ts';
+import { buildGeometry, type Finger } from '../geometry.ts';
+import { type Options, type Stroke, type Trace } from '../evaluate.ts';
 import {
   advancePlayback, clampPlaybackCursor, createPlaybackState,
   playbackPreparedFingerPositionKeys, playbackInputPreview, playbackPlannedKeys,
@@ -14,20 +14,20 @@ import {
   PLAYBACK_RATE_WINDOW_MIN,
   PLAYBACK_RATE_WINDOW_MAX, PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN,
   PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX,
-} from './playback.ts';
-import type { Layout } from './layouts/index.ts';
-import type { PlaybackCalibration } from './playback-calibration.ts';
+} from '../playback.ts';
+import type { Layout } from '../layouts/index.ts';
+import type { PlaybackCalibration } from '../playback-calibration.ts';
 import type {
   UiPlaybackState,
   UiStateV1,
 } from './ui-state.ts';
-import type { AggregatedAnalysisResult } from './analysis-aggregate.ts';
-import type { ChainPolicy } from './analysis-chain.ts';
-import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
+import type { AggregatedAnalysisResult } from '../analysis-aggregate.ts';
+import type { ChainPolicy } from '../analysis-chain.ts';
+import type { ArpeggioPolicy } from '../analysis-arpeggio.ts';
 import type {
   ActionRealizationPolicy,
   TriggerRealizationPolicy,
-} from './core/semantic-input/index.ts';
+} from '../core/semantic-input/index.ts';
 import type {
   AnalyzerPlaybackSurfaceActions,
   AnalyzerPlaybackMotion,

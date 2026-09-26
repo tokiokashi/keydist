@@ -5,8 +5,8 @@ import {
   PHYSICAL_SHAPES,
   type GeometryKind,
   type PhysicalShape,
-} from './geometry.ts';
-import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from './layouts/index.ts';
+} from '../geometry.ts';
+import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from '../layouts/index.ts';
 import { bindTips, hideTip, showTip } from './chart.ts';
 import {
   load as loadUserLayouts,
@@ -15,7 +15,7 @@ import {
   toLayout,
   type RomajiRuleId,
   type UserLayout,
-} from './user-layouts.ts';
+} from '../user-layouts.ts';
 import {
   defaultRomajiRuleId,
   loadRomajiSettings,
@@ -23,8 +23,8 @@ import {
   allRomajiRules,
   saveRomajiSettings,
   ROMAJI_SETTINGS_STORAGE_KEY,
-} from './romaji/rules.ts';
-import { loadPlaybackCalibration } from './playback-calibration.ts';
+} from '../romaji/rules.ts';
+import { loadPlaybackCalibration } from '../playback-calibration.ts';
 import type { ModeId } from './layout-selection.ts';
 import {
   type UiPlaybackState,
@@ -60,13 +60,13 @@ import {
   clonePhysicalShape,
   geometrySettingsForPreset,
   type GeometrySettings,
-} from './geometry-settings.ts';
+} from '../geometry-settings.ts';
 import {
   load as loadUserGeometryShapes,
   newId as newGeometryId,
   save as saveUserGeometryShapes,
   USER_GEOMETRIES_STORAGE_KEY,
-} from './user-geometries.ts';
+} from '../user-geometries.ts';
 import {
   allConditionPresets,
   loadConditionPresets,
@@ -74,20 +74,20 @@ import {
   saveConditionPresets,
   type ConditionPreset,
 } from './condition-presets.ts';
-import { setLayoutGeometryOverride } from './condition-resolution.ts';
-import type { ChainPolicy } from './analysis-chain.ts';
-import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
+import { setLayoutGeometryOverride } from '../condition-resolution.ts';
+import type { ChainPolicy } from '../analysis-chain.ts';
+import type { ArpeggioPolicy } from '../analysis-arpeggio.ts';
 import {
   type ActionRealizationPolicy,
   type TriggerRealizationPolicy,
-} from './core/semantic-input/index.ts';
+} from '../core/semantic-input/index.ts';
 import {
   conditionBundleFromState,
   parseConditionBundle,
   serializeConditionBundle,
 } from './condition-bundle.ts';
-import { downloadText } from './browser-download.ts';
-import { notifyKeydistStorageChange } from './browser-storage-events.ts';
+import { downloadText } from '../browser-download.ts';
+import { notifyKeydistStorageChange } from '../browser-storage-events.ts';
 
 export function mountAnalyzerRuntime(): () => void {
   const el = resolveAppElements();
