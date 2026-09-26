@@ -1,7 +1,8 @@
 import { PHYSICAL_SHAPES, type PhysicalShape } from './geometry.ts';
 import { sanitizePhysicalShape } from './geometry-settings.ts';
+import { notifyKeydistStorageChange } from './browser-storage-events.ts';
 
-const STORAGE_KEY = 'keydist:geometry-shapes';
+export const USER_GEOMETRIES_USER_GEOMETRIES_STORAGE_KEY = 'keydist:geometry-shapes';
 
 export interface GeometryShapeStorage {
   getItem(key: string): string | null;
@@ -44,7 +45,7 @@ function isStoredShape(value: unknown): value is PhysicalShape {
 export function load(storage = storageOrUndefined()): PhysicalShape[] {
   if (!storage) return [];
   try {
-    const parsed = JSON.parse(storage.getItem(STORAGE_KEY) ?? '[]') as unknown;
+    const parsed = JSON.parse(storage.getItem(USER_GEOMETRIES_STORAGE_KEY) ?? '[]') as unknown;
     if (!Array.isArray(parsed)) return [];
     return parsed
       .filter(isStoredShape)
@@ -57,7 +58,8 @@ export function load(storage = storageOrUndefined()): PhysicalShape[] {
 export function save(shapes: readonly PhysicalShape[], storage = storageOrUndefined()): void {
   if (!storage) return;
   try {
-    storage.setItem(STORAGE_KEY, JSON.stringify(shapes));
+    storage.setItem(USER_GEOMETRIES_STORAGE_KEY, JSON.stringify(shapes));
+    notifyKeydistStorageChange(USER_GEOMETRIES_STORAGE_KEY);
   } catch {
     // 保存できなくても、その場の編集と評価は成立する。
   }
