@@ -173,12 +173,13 @@ function integer(
     : fallback;
 }
 
-function matrixSort(raw: unknown): MatrixSort | null {
+function matrixSort(raw: unknown, maxColumn: number): MatrixSort | null {
   const source = record(raw);
   if (
     typeof source.column !== 'number'
     || !Number.isInteger(source.column)
     || source.column < 0
+    || source.column > maxColumn
     || (source.direction !== 'asc' && source.direction !== 'desc')
   ) {
     return null;
@@ -281,10 +282,10 @@ export const ANALYSIS_VIEW_DEFINITIONS = new Map<
         const sorts = record(record(raw).sorts);
         return {
           sorts: {
-            press: matrixSort(sorts.press),
-            finger: matrixSort(sorts.finger),
-            adjacentMean: matrixSort(sorts.adjacentMean),
-            adjacentStdDev: matrixSort(sorts.adjacentStdDev),
+            press: matrixSort(sorts.press, 9),
+            finger: matrixSort(sorts.finger, 9),
+            adjacentMean: matrixSort(sorts.adjacentMean, 5),
+            adjacentStdDev: matrixSort(sorts.adjacentStdDev, 5),
           },
         };
       },
@@ -305,7 +306,7 @@ export const ANALYSIS_VIEW_DEFINITIONS = new Map<
             ? { baselineLayoutId: source.baselineLayoutId }
             : {}),
           chartColumn: integer(source.chartColumn, COMPARISON_DEFAULTS.chartColumn, 0, 12),
-          sort: matrixSort(source.sort),
+          sort: matrixSort(source.sort, 12),
         };
       },
     },
@@ -340,7 +341,7 @@ export const ANALYSIS_VIEW_DEFINITIONS = new Map<
           showRomajiPlan: bool(source.showRomajiPlan, PLAYBACK_DEFAULTS.showRomajiPlan),
           showPlanKeys: bool(source.showPlanKeys, PLAYBACK_DEFAULTS.showPlanKeys),
           showTrail: bool(source.showTrail, PLAYBACK_DEFAULTS.showTrail),
-          trailTau: finite(source.trailTau, PLAYBACK_DEFAULTS.trailTau, 1, 20),
+          trailTau: integer(source.trailTau, PLAYBACK_DEFAULTS.trailTau, 1, 20),
           showOrderLabels: bool(source.showOrderLabels, PLAYBACK_DEFAULTS.showOrderLabels),
           showSameFingerMotion: bool(
             source.showSameFingerMotion,
