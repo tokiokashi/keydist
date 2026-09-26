@@ -31,3 +31,8 @@ export {
   type ResolvedItem,
   type ResolvedOrigin,
 } from './resolve.ts';
+export {
+  decodeCascadeOverrides,
+  encodeCascadeOverrides,
+  type ItemSchemaMap,
+} from './codec.ts';
