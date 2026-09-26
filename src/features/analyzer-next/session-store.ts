@@ -10,6 +10,12 @@ type DistanceOnlyDefaults = Omit<
   UiStateConditionsDefaults,
   'playbackRateAverage' | 'playbackRateWindow' | 'playbackRateHalfLifeSeconds'
 >;
+type DeepReadonly<T> =
+  T extends (...args: never[]) => unknown ? T
+    : T extends readonly (infer Item)[] ? readonly DeepReadonly<Item>[]
+      : T extends object ? { readonly [Key in keyof T]: DeepReadonly<T[Key]> }
+        : T;
+
 
 export type AnalysisDistanceOverrideConditions =
   & DistanceOnlyDefaults
@@ -34,30 +40,33 @@ export type AnalysisTimingConditions =
   & AnalysisTimingOverrideConditions;
 
 export interface AnalysisSessionTarget {
-  mode: ModeId;
-  selectedLayoutIds: readonly string[];
-  focusLayoutId?: string;
+  readonly mode: ModeId;
+  readonly selectedLayoutIds: readonly string[];
+  readonly focusLayoutId?: string;
 }
 
 export interface AnalysisSessionState extends AnalysisSessionTarget {
-  text: string;
-  distance: {
-    defaults: DistanceOnlyDefaults;
-    perLayout: Readonly<Record<
+  readonly text: string;
+  readonly distance: {
+    readonly defaults: DeepReadonly<DistanceOnlyDefaults>;
+    readonly perLayout: Readonly<Record<
       string,
-      Partial<AnalysisDistanceOverrideConditions>
+      DeepReadonly<Partial<AnalysisDistanceOverrideConditions>>
     >>;
   };
-  timing: {
-    defaults: AnalysisTimingConditions;
-    perLayout: Readonly<Record<string, Partial<AnalysisTimingOverrideConditions>>>;
+  readonly timing: {
+    readonly defaults: DeepReadonly<AnalysisTimingConditions>;
+    readonly perLayout: Readonly<Record<
+      string,
+      DeepReadonly<Partial<AnalysisTimingOverrideConditions>>
+    >>;
   };
-  revisions: {
+  readonly revisions: Readonly<{
     target: number;
     distance: number;
     timing: number;
     focus: number;
-  };
+  }>;
 }
 
 export type AnalysisSessionListener = () => void;
@@ -93,8 +102,16 @@ function unique(values: readonly string[]): string[] {
   return [...new Set(values.filter((value) => value.length > 0))];
 }
 
+function deepFreeze<T>(value: T): T {
+  if (typeof value !== 'object' || value === null || Object.isFrozen(value)) return value;
+  for (const nested of Object.values(value as Record<string, unknown>)) {
+    deepFreeze(nested);
+  }
+  return Object.freeze(value) as T;
+}
+
 function cloneState(state: AnalysisSessionState): AnalysisSessionState {
-  return structuredClone(state);
+  return deepFreeze(structuredClone(state));
 }
 
 function sameIds(left: readonly string[], right: readonly string[]): boolean {
@@ -126,7 +143,7 @@ export function createAnalysisSessionStore(
     for (const listener of listeners) listener();
   };
   const replace = (next: AnalysisSessionState) => {
-    state = next;
+    state = deepFreeze(next);
     emit();
   };
   const setTarget = (target: AnalysisSessionTarget): void => {
