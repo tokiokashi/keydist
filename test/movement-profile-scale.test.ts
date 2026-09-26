@@ -1,11 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  MAX_POLAR_DISPLAY_DENSITY,
-  MAX_POLAR_DISPLAY_GAIN,
+  movementPlotExtent,
   movementPlotScale,
-  polarDisplayDensity,
-  polarDisplayRadius,
 } from '../src/features/bigram-vector/movement-profile-scale.ts';
 
 test('Auto fitは最大距離に合わせつつ左右共通range内でplot radiusを一定にする', () => {
@@ -27,7 +24,6 @@ test('Fixed u scaleは解析対象が変わっても1uの描画長を固定す�
   assert.ok(fourUnits.viewSize > twoUnits.viewSize);
 });
 
-
 test('movement plot scaleはdisplay gainから独立する', () => {
   const scale = movementPlotScale(3, 'fixed');
 
@@ -38,45 +34,29 @@ test('movement plot scaleはdisplay gainから独立する', () => {
   assert.equal(scale.polarAmplitude, 16);
 });
 
-
-test('最小bandwidthの理論peakでも最大gain時に確保済み外周領域を超えない', () => {
+test('polar extentは実densityとdisplay gainに応じてcanvasだけを拡張する', () => {
   const scale = movementPlotScale(3, 'fixed');
-  const radius = polarDisplayRadius(
-    scale.polarBaseRadius,
-    scale.polarAmplitude,
-    MAX_POLAR_DISPLAY_DENSITY,
-    MAX_POLAR_DISPLAY_GAIN,
+  const normal = movementPlotExtent(scale, 1.8, 1);
+  const narrowHighPeak = movementPlotExtent(scale, 6.7, 3);
+
+  assert.equal(scale.unitsPerSvgUnit, 24);
+  assert.equal(scale.plotRadius, 72);
+  assert.equal(scale.polarBaseRadius, 81);
+  assert.ok(narrowHighPeak > normal);
+  assert.ok(
+    Math.abs(
+      narrowHighPeak - (scale.polarBaseRadius + 6.7 * scale.polarAmplitude * 3 + 13),
+    ) < 1e-12,
   );
-  const maxExpected = scale.polarBaseRadius
-    + scale.polarAmplitude * MAX_POLAR_DISPLAY_GAIN;
-
-  assert.ok(Math.abs(radius - maxExpected) < 1e-12);
-  assert.ok(radius < scale.halfSize);
 });
 
-test('display scaleはdensity値そのものを変更せず固定基準で写像する', () => {
-  const density = MAX_POLAR_DISPLAY_DENSITY / 2;
-  const displayDensity = polarDisplayDensity(density);
-
-  assert.equal(density, MAX_POLAR_DISPLAY_DENSITY / 2);
-  assert.ok(Math.abs(displayDensity - 0.5) < 1e-12);
-});
-
-test('同じdensityはLeft / Rightに依存せず同じ描画長へ写像される', () => {
+test('同じdensityとgainならLeft / Rightに依存せず同じextentになる', () => {
   const scale = movementPlotScale(4, 'fit');
-  const density = MAX_POLAR_DISPLAY_DENSITY * 0.4;
-  const leftRadius = polarDisplayRadius(
-    scale.polarBaseRadius,
-    scale.polarAmplitude,
-    density,
-    1.75,
-  );
-  const rightRadius = polarDisplayRadius(
-    scale.polarBaseRadius,
-    scale.polarAmplitude,
-    density,
-    1.75,
-  );
+  const density = 1.75;
+  const gain = 1.4;
 
-  assert.equal(leftRadius, rightRadius);
+  assert.equal(
+    movementPlotExtent(scale, density, gain),
+    movementPlotExtent(scale, density, gain),
+  );
 });
