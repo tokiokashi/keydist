@@ -6,7 +6,7 @@ import {
   applyTypingTextEdit,
   executeTypingEditCommand,
 } from '../src/features/input-converter/typing-session-command.ts';
-import { TSUKI_2_263 } from '../src/layouts/tsuki-2-263.ts';
+import { TSUKI_2_263 } from '#input/layouts/tsuki-2-263.ts';
 
 const prefixD = (engine: TypingInputEngine) => {
   engine.handle({ type: 'down', key: 'd' });

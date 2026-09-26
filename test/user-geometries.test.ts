@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { PHYSICAL_SHAPES } from '../src/geometry.ts';
+import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
 import { load, save } from '#platform/assets/user-geometries-storage.ts';
 
 function fakeStorage(): Storage {

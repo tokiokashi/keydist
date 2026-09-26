@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TypingInputEngine } from '../src/core/input-converter/index.ts';
-import { DEFAULT_OPTIONS, evaluate } from '../src/evaluate.ts';
-import { buildGeometry, SHIFT_KEY } from '../src/geometry.ts';
-import { LAYOUTS } from '../src/layouts/index.ts';
-import { computeMetrics } from '../src/metrics.ts';
+import { DEFAULT_OPTIONS, evaluate } from '#trace/evaluate.ts';
+import { buildGeometry, SHIFT_KEY } from '#input/shapes/geometry.ts';
+import { LAYOUTS } from '#input/layouts/index.ts';
+import { computeMetrics } from '#interpretation/metrics.ts';
 
 const qwerty = LAYOUTS.find((layout) => layout.id === 'qwerty')!;
 
