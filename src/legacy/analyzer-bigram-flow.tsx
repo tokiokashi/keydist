@@ -1,10 +1,10 @@
 import { useState, useSyncExternalStore } from 'react';
-import type { AnalyzerBigramFlowModel } from '../../analyzer-bigram-flow-model.ts';
+import type { AnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
 import {
   DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG,
   type BigramFlowDisplayConfig,
-} from './bigram-flow-view-config.ts';
-import { BigramFlowView } from './bigram-flow-view.tsx';
+} from '../features/bigram-vector/bigram-flow-view-config.ts';
+import { BigramFlowView } from '../features/bigram-vector/bigram-flow-view.tsx';
 
 function initialConfig(): BigramFlowDisplayConfig {
   return {
