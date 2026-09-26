@@ -11,15 +11,15 @@ import {
   type Finger,
   type NonThumb,
   type PhysicalShape,
-} from './geometry.ts';
+} from '../geometry.ts';
 import type { AnalyzerGeometryEditorModel } from './analyzer-geometry-editor-model.ts';
 import type { AnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
-import { clonePhysicalShape } from './geometry-settings.ts';
+import { clonePhysicalShape } from '../geometry-settings.ts';
 import {
   fromDisplayUnits,
   toDisplayUnits,
   type GeometryUnit,
-} from './geometry-units.ts';
+} from '../geometry-units.ts';
 
 const FINGER_NAMES: Record<Finger, string> = {
   LP: '左小指', LR: '左薬指', LM: '左中指', LI: '左人差指', LT: '左親指',

@@ -8,10 +8,10 @@ import {
   THUMB_KEY,
   THUMB_ROW,
   type Geometry,
-} from './geometry.ts';
+} from '../geometry.ts';
 import type { AnalyzerMetricsModel } from './analyzer-metrics-model.ts';
 import type { AnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
-import { normalizedLayerColors } from './layer-heatmap.ts';
+import { normalizedLayerColors } from '../layer-heatmap.ts';
 import {
   classifyPresentationFaces,
   displayTriggerAlternatives,
@@ -24,25 +24,25 @@ import {
   orderedPresentationLayers,
   type Layer,
   type LayerShiftStyle,
-} from './layers.ts';
+} from '../layers.ts';
 import {
   COMBO_LAYER_ID,
   SINGLE_LAYER_ID,
   faceFromEntries,
   type Face,
   type Layout,
-} from './layouts/types.ts';
+} from '../layouts/types.ts';
 import {
   findActiveLayerFace,
   matchKeyPatterns,
   summarizeCandidateMatches,
-} from './key-pattern-picker.ts';
-import type { LayerStat, Metrics } from './metrics.ts';
+} from '../key-pattern-picker.ts';
+import type { LayerStat, Metrics } from '../metrics.ts';
 import type {
   LayerColorScale,
   LayerView,
 } from './ui-state.ts';
-import { visibleGeometryKeys } from './layout-physical-keys.ts';
+import { visibleGeometryKeys } from '../layout-physical-keys.ts';
 import { escapeText } from './chart.ts';
 
 interface LayerCell {

@@ -5,21 +5,21 @@ import {
   keyId,
   QWERTY_LEGEND,
   type NonThumb,
-} from './geometry.ts';
+} from '../geometry.ts';
 import {
   ROW_LABELS,
   newId as newLayoutId,
   validate,
   type RomajiRuleId,
   type UserLayout,
-} from './user-layouts.ts';
+} from '../user-layouts.ts';
 import {
   decodeLayoutFile,
   formatForFileName,
   importBenizara,
   importDvorakJ,
   importVial,
-} from './layout-import.ts';
+} from '../layout-import.ts';
 import type { AnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 
 const FINGER_NAMES: Record<NonThumb, string> = {

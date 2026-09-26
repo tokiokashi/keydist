@@ -4,16 +4,16 @@ import {
   type Finger,
   type NonThumb,
   type PhysicalShape,
-} from './geometry.ts';
+} from '../geometry.ts';
 import {
   DEFAULT_GEOMETRY_SETTINGS,
   cloneGeometrySettings,
   clonePhysicalShape,
   parseGeometrySettings,
   serializeGeometrySettings,
-} from './geometry-settings.ts';
+} from '../geometry-settings.ts';
 import type { AnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
-import { newId as newGeometryId } from './user-geometries.ts';
+import { newId as newGeometryId } from '../user-geometries.ts';
 
 export interface AnalyzerGeometryEditorSnapshot {
   userShapes: readonly PhysicalShape[];
