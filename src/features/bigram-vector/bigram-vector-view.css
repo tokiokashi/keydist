@@ -391,9 +391,30 @@
 
 .flow-axis-ring {
   fill: none;
-  stroke: color-mix(in srgb, var(--viz-key-text) 9%, transparent);
+  stroke: color-mix(in srgb, var(--viz-key-text) 12%, transparent);
   stroke-dasharray: 2 4;
   stroke-width: 0.7;
+}
+
+.flow-axis-ring-label {
+  fill: var(--viz-key-muted);
+  font: 600 6px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  pointer-events: none;
+}
+
+.direction-polar-baseline {
+  fill: none;
+  stroke: color-mix(in srgb, var(--viz-resultant) 18%, transparent);
+  stroke-width: 0.8;
+  stroke-dasharray: 1.5 3;
+}
+
+.direction-polar-shape {
+  fill: color-mix(in srgb, var(--viz-resultant) 9%, transparent);
+  stroke: color-mix(in srgb, var(--viz-resultant) 62%, transparent);
+  stroke-width: 1.15;
+  stroke-linejoin: round;
+  pointer-events: none;
 }
 
 .flow-origin {
@@ -424,7 +445,7 @@
   pointer-events: none;
 }
 
-.mean-resultant {
+.mean-displacement {
   stroke: var(--viz-resultant);
   stroke-width: 3;
   stroke-linecap: round;
