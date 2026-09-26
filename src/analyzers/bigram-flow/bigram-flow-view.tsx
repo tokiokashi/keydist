@@ -9,10 +9,10 @@ import {
   meanDisplacement,
   type BigramVector,
   type FingerClass,
-} from '../../bigram-vectors.ts';
-import type { Geometry, Key, Point } from '../../geometry.ts';
-import type { Trace } from '../../evaluate.ts';
-import type { Layout } from '../../layouts/types.ts';
+} from './bigram-vectors.ts';
+import type { Geometry, Key, Point } from '#input/shapes/geometry.ts';
+import type { Trace } from '#trace/evaluate.ts';
+import type { Layout } from '#input/layouts/types.ts';
 import {
   MIN_POLAR_BANDWIDTH_DEGREES,
   movementPlotExtent,
@@ -28,8 +28,8 @@ import {
   type KeyboardFlowHoverScale,
   type KeyboardFlowLayerOrder,
   type KeyboardFlowWeightScale,
-} from './bigram-flow-view-config.ts';
-import './bigram-vector-view.css';
+} from './options.ts';
+import '../../features/bigram-vector/bigram-vector-view.css';
 
 const FINGER_OPTIONS: readonly { id: FingerClass; label: string }[] = [
   { id: 'index', label: '人' },

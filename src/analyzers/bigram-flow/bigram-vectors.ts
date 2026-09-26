@@ -1,6 +1,6 @@
-import { fingerRelation, type FingerDirection } from './analysis-transition.ts';
-import { isThumb, type Finger, type Point } from './geometry.ts';
-import type { Press, Stroke } from './evaluate.ts';
+import { fingerRelation, type FingerDirection } from '#interpretation/structure/transition.ts';
+import { isThumb, type Finger, type Point } from '#input/shapes/geometry.ts';
+import type { Press, Stroke } from '#trace/evaluate.ts';
 
 export type BigramSource = 'actual' | 'within-hand';
 export type VectorHand = 'left' | 'right' | 'cross';

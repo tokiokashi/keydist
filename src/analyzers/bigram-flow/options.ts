@@ -1,4 +1,4 @@
-import type { BigramSource, FingerClass } from '../../bigram-vectors.ts';
+import type { BigramSource, FingerClass } from './bigram-vectors.ts';
 import type { MovementScaleMode } from './movement-profile-scale.ts';
 
 export type KeyboardFlowWeightScale = 'linear' | 'sqrt' | 'log';
