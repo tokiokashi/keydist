@@ -9,7 +9,7 @@ import {
   geometrySettingsForPreset,
   type GeometrySettings,
 } from '../../geometry-settings.ts';
-import type { ModeId } from '../../layout-selection.ts';
+import type { ModeId } from '#legacy/layout-selection.ts';
 import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from '../../layouts/index.ts';
 import {
   defaultRomajiRuleId,
