@@ -90,3 +90,19 @@ test('shared cache key is kept until the last layout reference is invalidated', 
   service.invalidateLayout('b');
   assert.equal(service.cacheSize(), 0);
 });
+
+
+test('selected layout becoming unavailable releases its cached Snapshot', () => {
+  let available = true;
+  const service = createAnalysisSnapshotService({
+    resolve: () => available ? { key: 'qwerty:1', input: 1 } : undefined,
+    evaluate: (input: number) => input,
+  });
+
+  assert.equal(service.get('qwerty'), 1);
+  assert.equal(service.cacheSize(), 1);
+
+  available = false;
+  assert.equal(service.get('qwerty'), undefined);
+  assert.equal(service.cacheSize(), 0);
+});
