@@ -1,7 +1,7 @@
 import type { ModeId } from '#legacy/layout-selection.ts';
 import type { Layout } from '../../layouts/types.ts';
 import type { Geometry } from '../../geometry.ts';
-import type { ResolvedConditions } from '../../condition-resolution.ts';
+import type { ResolvedConditions } from '#engine/condition-resolution.ts';
 import { evaluate, type Trace } from '../../evaluate.ts';
 import {
   analyzeStrokeStructure,
