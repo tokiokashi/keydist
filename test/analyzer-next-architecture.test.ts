@@ -23,6 +23,27 @@ const FORBIDDEN_PACKAGE_MODULES = new Set([
   'dockview-react',
 ]);
 
+const ANALYZER_APPLICATION_CORE = [
+  join(SRC, 'features', 'analyzer-next', 'session-store.ts'),
+  join(SRC, 'features', 'analyzer-next', 'resolved-input.ts'),
+  join(SRC, 'features', 'analyzer-next', 'snapshot-service.ts'),
+  join(SRC, 'features', 'analyzer-next', 'snapshot-computation.ts'),
+  join(SRC, 'features', 'analyzer-next', 'snapshot-reader.ts'),
+] as const;
+
+const APPLICATION_FORBIDDEN_IMPORT_PATTERNS = [
+  /^react(?:\/|$)/,
+  /^react-dom(?:\/|$)/,
+  /^@tanstack\/react-router(?:\/|$)/,
+  /^dockview-react(?:\/|$)/,
+  /(?:^|\/)persistence(?:\/|$)/,
+] as const;
+
+const APPLICATION_PLATFORM_GLOBAL_PATTERNS = [
+  /\b(?:window|document|navigator|localStorage|sessionStorage)\b/,
+  /\b(?:Window|Document|Navigator|HTMLElement|KeyboardEvent|MutationObserver|ResizeObserver)\b/,
+] as const;
+
 async function viewFiles(dir = VIEW_DIR): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
   const nested = await Promise.all(entries.map(async (entry) => {
@@ -100,5 +121,28 @@ test('Analyzer Next View components do not own storage, routing, Dockview or eva
       /\b(?:resolveConditions|evaluate)\s*\(/,
       `${relative(ROOT, path)} must consume host-resolved snapshots`,
     );
+  }
+});
+
+
+test('Analyzer Next application core stays framework, router, storage and browser independent', async () => {
+  for (const path of ANALYZER_APPLICATION_CORE) {
+    const source = await readFile(path, 'utf8');
+
+    for (const specifier of moduleSpecifiers(source)) {
+      assert.equal(
+        APPLICATION_FORBIDDEN_IMPORT_PATTERNS.some((pattern) => pattern.test(specifier)),
+        false,
+        `${relative(ROOT, path)} imports application/platform module: ${specifier}`,
+      );
+    }
+
+    for (const pattern of APPLICATION_PLATFORM_GLOBAL_PATTERNS) {
+      assert.doesNotMatch(
+        source,
+        pattern,
+        `${relative(ROOT, path)} must stay independent from browser/storage globals`,
+      );
+    }
   }
 });
