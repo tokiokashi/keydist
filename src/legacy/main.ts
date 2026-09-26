@@ -9,21 +9,25 @@ import {
 import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from '../layouts/index.ts';
 import { bindTips, hideTip, showTip } from './chart.ts';
 import {
-  load as loadUserLayouts,
-  save as saveUserLayouts,
-  USER_LAYOUTS_STORAGE_KEY,
   toLayout,
   type RomajiRuleId,
   type UserLayout,
-} from '../user-layouts.ts';
+} from '#input/layouts/user-layouts.ts';
+import {
+  load as loadUserLayouts,
+  save as saveUserLayouts,
+  USER_LAYOUTS_STORAGE_KEY,
+} from '#platform/assets/user-layouts-storage.ts';
 import {
   defaultRomajiRuleId,
-  loadRomajiSettings,
   tableForRule,
   allRomajiRules,
+} from '#input/romaji/rules.ts';
+import {
+  loadRomajiSettings,
   saveRomajiSettings,
   ROMAJI_SETTINGS_STORAGE_KEY,
-} from '../romaji/rules.ts';
+} from '#platform/assets/romaji-settings-storage.ts';
 import { loadPlaybackCalibration } from '../playback-calibration.ts';
 import type { ModeId } from './layout-selection.ts';
 import {
@@ -61,12 +65,12 @@ import {
   geometrySettingsForPreset,
   type GeometrySettings,
 } from '../geometry-settings.ts';
+import { newId as newGeometryId } from '#input/shapes/user-geometries.ts';
 import {
   load as loadUserGeometryShapes,
-  newId as newGeometryId,
   save as saveUserGeometryShapes,
   USER_GEOMETRIES_STORAGE_KEY,
-} from '../user-geometries.ts';
+} from '#platform/assets/user-geometries-storage.ts';
 import {
   allConditionPresets,
   loadConditionPresets,

@@ -8,7 +8,7 @@ import { escapeAttr, escapeText } from './chart.ts';
 import { evaluate } from '../evaluate.ts';
 import { buildGeometry, dist, HOME_ROW, THUMB_ROW, type Finger, type Geometry, type Point } from '../geometry.ts';
 import { LAYOUT_BY_ID, withRomaji } from '../layouts/index.ts';
-import { ROMAJI_RULES } from '../romaji/rules.ts';
+import { ROMAJI_RULES } from '#input/romaji/rules.ts';
 
 /** 図の条件。仕様とずれないよう、脇に必ず出す */
 export const FIGURE_TEXT = 'じょうほうをあつめる';

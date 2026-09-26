@@ -12,7 +12,7 @@ import {
   validate,
   type RomajiRuleId,
   type UserLayout,
-} from '../user-layouts.ts';
+} from '#input/layouts/user-layouts.ts';
 import {
   decodeLayoutFile,
   formatForFileName,

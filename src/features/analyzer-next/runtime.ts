@@ -8,22 +8,16 @@ import { ANALYZER_SAMPLES } from '#legacy/analyzer-samples.ts';
 import type { PhysicalShape } from '../../geometry.ts';
 import { LAYOUTS, LAYOUTS_JA } from '../../layouts/index.ts';
 import { loadAppStateDocument } from '../../persistence/app-state-storage.ts';
-import {
-  loadRomajiSettings,
-  type RomajiSettings,
-} from '../../romaji/rules.ts';
+import type { RomajiSettings } from '#input/romaji/rules.ts';
+import { loadRomajiSettings } from '#platform/assets/romaji-settings-storage.ts';
 import {
   createDefaultUiState,
   sanitizeUiState,
   type UiStateChoices,
 } from '#legacy/ui-state.ts';
-import {
-  load as loadUserGeometryShapes,
-} from '../../user-geometries.ts';
-import {
-  load as loadUserLayouts,
-  type UserLayout,
-} from '../../user-layouts.ts';
+import { load as loadUserGeometryShapes } from '#platform/assets/user-geometries-storage.ts';
+import type { UserLayout } from '#input/layouts/user-layouts.ts';
+import { load as loadUserLayouts } from '#platform/assets/user-layouts-storage.ts';
 import {
   createMutableAnalysisDomainCatalog,
   type AnalysisDomainCatalogSource,

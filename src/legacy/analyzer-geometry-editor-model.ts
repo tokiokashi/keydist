@@ -13,7 +13,7 @@ import {
   serializeGeometrySettings,
 } from '../geometry-settings.ts';
 import type { AnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
-import { newId as newGeometryId } from '../user-geometries.ts';
+import { newId as newGeometryId } from '#input/shapes/user-geometries.ts';
 
 export interface AnalyzerGeometryEditorSnapshot {
   userShapes: readonly PhysicalShape[];

@@ -7,7 +7,7 @@ import {
 import type { AnalyzerRomajiDialogModel } from './analyzer-romaji-dialog-model.ts';
 import { LAYOUTS_JA } from '../layouts/index.ts';
 import { SAMPLE_TEXT_JA } from '../sample-text-ja.ts';
-import { kanaToRomaji } from '../romaji/kunrei.ts';
+import { kanaToRomaji } from '#input/romaji/kunrei.ts';
 import {
   allRomajiRules,
   defaultRomajiRuleId,
@@ -18,7 +18,7 @@ import {
   type BuiltinRomajiRuleId,
   type RomajiSettings,
   type UserRomajiRule,
-} from '../romaji/rules.ts';
+} from '#input/romaji/rules.ts';
 
 interface RomajiVariant {
   kana: string;

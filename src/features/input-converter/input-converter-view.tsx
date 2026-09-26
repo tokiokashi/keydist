@@ -38,7 +38,7 @@ import {
   physicalKeysUsedByLayout,
   visibleGeometryKeys,
 } from '../../layout-physical-keys.ts';
-import { load as loadUserGeometryShapes } from '../../user-geometries.ts';
+import { load as loadUserGeometryShapes } from '#platform/assets/user-geometries-storage.ts';
 import {
   createWorkspacePanelRegistry,
   resolvePanelLayout,

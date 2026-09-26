@@ -6,13 +6,13 @@ import {
 } from '../../persistence/app-state-storage.ts';
 import {
   ROMAJI_SETTINGS_STORAGE_KEY,
-} from '../../romaji/rules.ts';
+} from '#platform/assets/romaji-settings-storage.ts';
 import {
   USER_GEOMETRIES_STORAGE_KEY,
-} from '../../user-geometries.ts';
+} from '#platform/assets/user-geometries-storage.ts';
 import {
   USER_LAYOUTS_STORAGE_KEY,
-} from '../../user-layouts.ts';
+} from '#platform/assets/user-layouts-storage.ts';
 import {
   analysisDomainCatalogSourceFromRuntimeSource,
   createBrowserAnalysisRuntime,
