@@ -69,7 +69,7 @@ Analyzer再設計（#544）のPhase 1で既存ファイルの配置は完了し�
 | `src/input/shapes/` | 物理形状・座標系・指の割り当て |
 | `src/input/semantics/` | trigger / action realization |
 | `src/input/romaji/` | かな → ローマ字テーブル |
-| `src/trace/evaluate.ts` | Trace生成（評価器）。仕様 §7〜§10の実装 |
+| `src/trace/generate.ts` | Trace生成（`generateTrace`）。仕様 §7〜§10の実装 |
 | `src/interpretation/` | 構造解析・時間モデル・共通指標 |
 | `src/analyzers/` | Analyzerごとの抽出・設定・可視化 |
 | `src/engine/` | 条件解決・実行とキャッシュ |

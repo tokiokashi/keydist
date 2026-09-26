@@ -11,7 +11,7 @@ Issue #505 の新Analyzerで使うstate ownershipとView bindingの契約。旧A
 | AnalysisSession distance conditions | distance model defaults + per-layout field overrides | AppState conditions | affected snapshots |
 | AnalysisSession timing conditions | playback timing model inputs | Analyzer session timing slice | timing derivation only |
 | AnalysisSession focus | current detail layout | AppState analyzer session | no snapshot recompute |
-| AnalysisSnapshot | evaluate + structural analysis + metrics per selected layout | no | keyed by resolved analysis inputs |
+| AnalysisSnapshot | generateTrace + structural analysis + metrics per selected layout | no | keyed by resolved analysis inputs |
 | ViewConfig | projection / filtering / ordering / visualization choices | host-owned | view derivation/render only |
 | Ephemeral | hover / selection / playback cursor | no | local render only |
 | App preference | theme | app-level appearance | visual only |
@@ -101,7 +101,7 @@ Session commands that mutate a model condition always identify either the defaul
 - Workspace layout never owns analysis conditions.
 - View components never write storage directly.
 - View components do not import Router or Dockview.
-- View components do not call `resolveConditions` or `evaluate`.
+- View components do not call `resolveConditions` or `generateTrace`.
 - Storage / route / Dockview integration belongs to hosts.
 - ViewConfig changes are returned through `onConfigChange`.
 - Session changes are commands with explicit default/per-layout scope.
