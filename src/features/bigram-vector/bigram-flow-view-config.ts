@@ -1,6 +1,22 @@
+import type { BigramSource, FingerClass } from '../../bigram-vectors.ts';
+
 export type KeyboardFlowWeightScale = 'linear' | 'sqrt' | 'log';
 export type KeyboardFlowLayerOrder = 'weight' | 'same-hand-top' | 'cross-hand-top';
 export type KeyboardFlowHoverScale = 'key' | 'global';
+
+export interface BigramFlowDisplayConfig {
+  source: BigramSource;
+  selectedFingers: readonly FingerClass[];
+  lineScale: KeyboardFlowWeightScale;
+  layerOrder: KeyboardFlowLayerOrder;
+}
+
+export const DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG: BigramFlowDisplayConfig = {
+  source: 'actual',
+  selectedFingers: [],
+  lineScale: 'linear',
+  layerOrder: 'weight',
+};
 
 export interface KeyboardFlowVectorLike {
   readonly id: string;
