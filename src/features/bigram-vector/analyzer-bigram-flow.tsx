@@ -424,6 +424,7 @@ function MovementProfilePlot({
   scaleMode,
   bandwidthDegrees,
   polarGain,
+  sharedHalfSize,
 }: {
   vectors: readonly BigramVector[];
   hand: 'left' | 'right';
@@ -432,6 +433,7 @@ function MovementProfilePlot({
   scaleMode: MovementScaleMode;
   bandwidthDegrees: number;
   polarGain: number;
+  sharedHalfSize: number;
 }) {
   const reduceMotion = useReducedMotion();
   const relative = useMemo(() => relativeVectors(vectors, hand), [vectors, hand]);
@@ -449,11 +451,7 @@ function MovementProfilePlot({
     polarBaseRadius,
     polarAmplitude,
   } = scale;
-  const maxDensity = density.samples.reduce(
-    (max, sample) => Math.max(max, sample.density),
-    0,
-  );
-  const halfSize = movementPlotExtent(scale, maxDensity, polarGain);
+  const halfSize = sharedHalfSize;
   const viewSize = halfSize * 2;
   const cx = halfSize;
   const cy = halfSize;
@@ -479,7 +477,13 @@ function MovementProfilePlot({
       <header>
         <strong>{hand === 'left' ? 'Left' : 'Right'}</strong>
         <span>
-          {relative.length} vectors · mean {mean.distance.toFixed(2)}u · |R| {summary.magnitude.toFixed(2)}
+          {relative.length}件 · 平均移動 {mean.distance.toFixed(2)}u ·{' '}
+          <span
+            className="flow-direction-cohesion"
+            title="0に近いほど方向が分散し、1に近いほど同じ方向へ集中します"
+          >
+            方向のまとまり {summary.magnitude.toFixed(2)}
+          </span>
         </span>
       </header>
       <svg
@@ -590,9 +594,11 @@ function MovementProfilePlot({
       </svg>
 
       <div className="flow-roll-legend flow-profile-legend" aria-hidden="true">
-        <span><i className="flow-dot flow-dot-inward" /> inward</span>
-        <span><i className="flow-dot flow-dot-outward" /> outward</span>
-        <span>{scaleMode === 'fit' ? 'Auto fit' : 'Fixed'} · {scaleMax}u range · polar = smoothed direction response</span>
+        <span><i className="flow-dot flow-dot-inward" /> 内向き</span>
+        <span><i className="flow-dot flow-dot-outward" /> 外向き</span>
+        <span className="flow-profile-scale-summary">
+          {scaleMode === 'fit' ? '自動調整' : '1uを固定'} · 最大{scaleMax}u · ±{bandwidthDegrees}°
+        </span>
       </div>
 
       <div className="roll-summary">
@@ -628,13 +634,13 @@ function MovementProfilePlot({
         <div>
           {hand === 'left' ? (
             <>
-              <span>outward {(outwardRate * 100).toFixed(1)}%</span>
-              <span>inward {(inwardRate * 100).toFixed(1)}%</span>
+              <span>外向き {(outwardRate * 100).toFixed(1)}%</span>
+              <span>内向き {(inwardRate * 100).toFixed(1)}%</span>
             </>
           ) : (
             <>
-              <span>inward {(inwardRate * 100).toFixed(1)}%</span>
-              <span>outward {(outwardRate * 100).toFixed(1)}%</span>
+              <span>内向き {(inwardRate * 100).toFixed(1)}%</span>
+              <span>外向き {(outwardRate * 100).toFixed(1)}%</span>
             </>
           )}
         </div>
@@ -686,7 +692,7 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
   const [layerOrder, setLayerOrder] = useState<KeyboardFlowLayerOrder>('weight');
   const [hoverScale, setHoverScale] = useState<KeyboardFlowHoverScale>('key');
   const [movementScaleMode, setMovementScaleMode] = useState<MovementScaleMode>('fit');
-  const [polarBandwidth, setPolarBandwidth] = useState(15);
+  const [polarBandwidth, setPolarBandwidth] = useState(5);
   const [polarGain, setPolarGain] = useState(1);
   const data = snapshot.data;
 
@@ -737,6 +743,19 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
     ...relative.map((vector) => Math.hypot(vector.dx, vector.dy)),
   ));
   const relativeMaxWeight = Math.max(1, ...relative.map((vector) => vector.weight));
+  const movementScale = movementPlotScale(relativeMaxDistance, movementScaleMode);
+  const leftDensity = directionDensity(analysisVectors, 'left', polarBandwidth, 96);
+  const rightDensity = directionDensity(analysisVectors, 'right', polarBandwidth, 96);
+  const sharedMaxDensity = Math.max(
+    0,
+    ...leftDensity.samples.map((sample) => sample.density),
+    ...rightDensity.samples.map((sample) => sample.density),
+  );
+  const sharedMovementHalfSize = movementPlotExtent(
+    movementScale,
+    sharedMaxDensity,
+    polarGain,
+  );
 
   return (
     <section
@@ -887,23 +906,26 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
                 <h2>Relative vectors</h2>
               </div>
               <p>
-                線の向きと長さは実移動 [u]、太さと濃さはfrequency。
-                Auto fitは左右共通maxで表示領域を使い、Fixedは条件をまたいで1uの描画長を固定する。
-                白線はmean displacement [u]。外周shapeは実vector角度へ円周kernelを重ねた方向密度。
-                「方向の広がり」はピークから±指定角度で強度が半分になる幅、|R|は方向集中度の要約値。
+                打鍵ごとの移動方向と距離を表示します。
+                外周は移動方向の分布、白線は平均的な移動を表します。
               </p>
             </header>
             <div className="flow-profile-controls" aria-label="Movement profile controls">
               <label>
-                <span>Scale</span>
+                <span>距離表示</span>
                 <select
-                  aria-label="Movement profile scale"
+                  aria-label="距離表示"
                   value={movementScaleMode}
                   onChange={(event) => setMovementScaleMode(event.currentTarget.value as MovementScaleMode)}
                 >
-                  <option value="fit">Auto fit</option>
-                  <option value="fixed">Fixed u scale</option>
+                  <option value="fit">自動調整</option>
+                  <option value="fixed">1uを固定</option>
                 </select>
+                <small>
+                  {movementScaleMode === 'fit'
+                    ? '現在のデータを見やすい大きさに調整'
+                    : '条件を変えても1uを同じ長さで表示'}
+                </small>
               </label>
               <label>
                 <span>方向の広がり <output>±{polarBandwidth}°</output></span>
@@ -934,7 +956,7 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
                 className="flow-profile-reset"
                 onClick={() => {
                   setMovementScaleMode('fit');
-                  setPolarBandwidth(15);
+                  setPolarBandwidth(5);
                   setPolarGain(1);
                 }}
               >
@@ -950,6 +972,7 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
                 scaleMode={movementScaleMode}
                 bandwidthDegrees={polarBandwidth}
                 polarGain={polarGain}
+                sharedHalfSize={sharedMovementHalfSize}
               />
               <MovementProfilePlot
                 vectors={analysisVectors}
@@ -959,6 +982,7 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
                 scaleMode={movementScaleMode}
                 bandwidthDegrees={polarBandwidth}
                 polarGain={polarGain}
+                sharedHalfSize={sharedMovementHalfSize}
               />
             </div>
             {source === 'actual' && analysisVectors.some((vector) => vector.hand === 'cross') ? (
