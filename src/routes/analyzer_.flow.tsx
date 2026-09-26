@@ -72,6 +72,7 @@ function AnalyzerFlowRoute() {
       config={config}
       onConfigChange={(next) => {
         void navigate({
+          replace: true,
           search: (previous) => ({
             ...previous,
             ...bigramFlowConfigSearchPatch(next),
