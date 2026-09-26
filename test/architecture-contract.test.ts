@@ -56,8 +56,7 @@ function moduleSpecifiers(source: string): readonly string[] {
 }
 
 async function structuralAnalysisSources() {
-  const paths = (await tsFiles(SRC))
-    .filter((path) => /^analysis-.*\.ts$/.test(path.split(/[\\/]/).at(-1) ?? ''));
+  const paths = await tsFiles(join(SRC, 'interpretation', 'structure'));
   return Promise.all(paths.map(async (path) => ({
     path,
     source: await readFile(path, 'utf8'),
@@ -74,27 +73,28 @@ async function inputConverterCoreSources() {
 
 function isAllowedInputConverterCoreModule(specifier: string): boolean {
   return /^\.\/[^/]+\.ts$/.test(specifier)
-    || specifier === '../semantic-input/index.ts'
-    || specifier === '../../geometry.ts';
+    || specifier === '#input/semantics/index.ts'
+    || specifier === '#input/shapes/geometry.ts';
 }
 
 function isAllowedStructuralAnalysisModule(specifier: string): boolean {
-  return specifier === './geometry.ts'
-    || specifier === './evaluate.ts'
-    || specifier === './core/semantic-input/index.ts'
-    || /^\.\/analysis-[^/]+\.ts$/.test(specifier);
+  return /^\.\/[^/]+\.ts$/.test(specifier)
+    || specifier.startsWith('#input/semantics/')
+    || specifier.startsWith('#input/shapes/')
+    || specifier.startsWith('#trace/')
+    || specifier.startsWith('#interpretation/structure/');
 }
 
 function isAllowedSemanticCoreModule(specifier: string): boolean {
   return /^\.\/[^/]+\.ts$/.test(specifier)
-    || specifier === '../../geometry.ts'
-    || specifier === '../../layouts/types.ts';
+    || specifier === '../shapes/geometry.ts'
+    || specifier === '../layouts/types.ts';
 }
 
 const LEGACY_TRIGGER_REALIZATION_MODULE = join(SRC, 'trigger-realization.ts');
 const REALIZATION_INTERNAL_MODULES = new Set([
-  join(SRC, 'core', 'semantic-input', 'trigger-realization.ts'),
-  join(SRC, 'core', 'semantic-input', 'action-realization.ts'),
+  join(SRC, 'input', 'semantics', 'trigger-realization.ts'),
+  join(SRC, 'input', 'semantics', 'action-realization.ts'),
 ]);
 
 function resolveRelativeModule(importerPath: string, specifier: string): string | undefined {
@@ -159,7 +159,7 @@ test('realization policy consumerはsemantic core public entryをauthorityにす
   assert.equal(
     isForbiddenRealizationConsumerImport(
       nestedConsumer,
-      '../core/semantic-input/action-realization.ts',
+      '#input/semantics/action-realization.ts',
     ),
     true,
     'nested consumer must not bypass the semantic core public entry',
@@ -167,7 +167,7 @@ test('realization policy consumerはsemantic core public entryをauthorityにす
   assert.equal(
     isForbiddenRealizationConsumerImport(
       nestedConsumer,
-      '../core/semantic-input/trigger-realization.ts',
+      '#input/semantics/trigger-realization.ts',
     ),
     true,
     'nested consumer must not import trigger realization internals directly',
@@ -180,7 +180,7 @@ test('realization policy consumerはsemantic core public entryをauthorityにす
       assert.equal(
         isForbiddenRealizationConsumerImport(path, specifier),
         false,
-        `${relative(ROOT, path)} must use src/core/semantic-input/index.ts for realization policy APIs: ${specifier}`,
+        `${relative(ROOT, path)} must use src/input/semantics/index.ts for realization policy APIs: ${specifier}`,
       );
     }
   }
@@ -213,7 +213,7 @@ test('Input Converter coreはSemanticInput public APIを再利用しframework / 
   );
   assert.match(
     engineSource,
-    /from ['"]\.\.\/semantic-input\/index\.ts['"]/,
+    /from ['"]#input\/semantics\/index\.ts['"]/,
     'Input Converter must reuse the SemanticInput / realization public entry',
   );
   assert.doesNotMatch(
@@ -224,7 +224,7 @@ test('Input Converter coreはSemanticInput public APIを再利用しframework / 
 });
 
 test('canonical semantic / structural analysis coreはframework / platform APIへ依存しない', async () => {
-  const semanticCorePaths = await tsFiles(join(SRC, 'core', 'semantic-input'));
+  const semanticCorePaths = await tsFiles(join(SRC, 'input', 'semantics'));
   const semanticSources = await Promise.all(semanticCorePaths.map(async (path) => ({
     path,
     source: await readFile(path, 'utf8'),
@@ -266,8 +266,8 @@ test('canonical semantic / structural analysis coreはframework / platform API�
 });
 
 test('Face semanticをpresentation roleやtrigger数から推測しない', async () => {
-  const layoutTypes = await readFile(join(SRC, 'layouts', 'types.ts'), 'utf8');
-  const layers = await readFile(join(SRC, 'layers.ts'), 'utf8');
+  const layoutTypes = await readFile(join(SRC, 'input', 'layouts', 'types.ts'), 'utf8');
+  const layers = await readFile(join(SRC, 'input', 'layouts', 'layers.ts'), 'utf8');
 
   assert.doesNotMatch(
     layoutTypes,
@@ -287,8 +287,8 @@ test('Face semanticをpresentation roleやtrigger数から推測しない', asyn
 });
 
 test('alternative selection identityはcore helperをauthorityにする', async () => {
-  const evaluateSource = await readFile(join(SRC, 'evaluate.ts'), 'utf8');
-  const compilerSource = await readFile(join(SRC, 'core/semantic-input/compiler.ts'), 'utf8');
+  const evaluateSource = await readFile(join(SRC, 'trace', 'evaluate.ts'), 'utf8');
+  const compilerSource = await readFile(join(SRC, 'input/semantics/compiler.ts'), 'utf8');
   const selectionStart = compilerSource.indexOf('export function inputAlternativeSelectionIdentity');
   const selectionEnd = compilerSource.indexOf('\n}', selectionStart);
   const thumbStart = evaluateSource.indexOf('function thumbVariantSignature');
@@ -343,8 +343,8 @@ test('user layout alternative dedupeはcore canonical identityをauthorityにす
 });
 
 test('legacy comboConditionsをsemantic/runtime authorityへ戻さない', async () => {
-  const layoutTypesSource = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
-  const evaluateSource = await readFile(join(SRC, 'evaluate.ts'), 'utf8');
+  const layoutTypesSource = await readFile(join(SRC, 'input/layouts/types.ts'), 'utf8');
+  const evaluateSource = await readFile(join(SRC, 'trace', 'evaluate.ts'), 'utf8');
 
   assert.doesNotMatch(layoutTypesSource, /\bcomboConditions\b/);
   assert.doesNotMatch(evaluateSource, /\bcomboConditions\b/);
@@ -356,7 +356,7 @@ test('legacy comboConditionsをsemantic/runtime authorityへ戻さない', async
 });
 
 test('combo fold presentation provenanceはcanonicalInputsをauthorityにする', async () => {
-  const source = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
+  const source = await readFile(join(SRC, 'input/layouts/types.ts'), 'utf8');
   const start = source.indexOf('export function withCombos');
   const end = source.indexOf('\n}', start);
 
@@ -373,7 +373,7 @@ test('combo fold presentation provenanceはcanonicalInputsをauthorityにする'
 });
 
 test('composed outputのsemantic availabilityはcanonicalInputsをauthorityにする', async () => {
-  const source = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
+  const source = await readFile(join(SRC, 'input/layouts/types.ts'), 'utf8');
   const start = source.indexOf('export function withComposedOutputs');
   const end = source.indexOf('/** ローマ字テーブルを付ける。', start);
 
@@ -396,7 +396,7 @@ test('composed outputのsemantic availabilityはcanonicalInputsをauthorityに�
 });
 
 test('CanonicalInputMap validationはempty alternative setを許可しない', async () => {
-  const source = await readFile(join(SRC, 'core/semantic-input/compiler.ts'), 'utf8');
+  const source = await readFile(join(SRC, 'input/semantics/compiler.ts'), 'utf8');
   const start = source.indexOf('export function validateCanonicalInputMap');
   const end = source.indexOf('\n}\n\n\ntype AlternativeIdentityProjection', start);
 
@@ -408,8 +408,8 @@ test('CanonicalInputMap validationはempty alternative setを許可しない', a
 });
 
 test('logical output matching lengthはcanonicalInputsをauthorityにする', async () => {
-  const evaluateSource = await readFile(join(SRC, 'evaluate.ts'), 'utf8');
-  const layoutTypesSource = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
+  const evaluateSource = await readFile(join(SRC, 'trace', 'evaluate.ts'), 'utf8');
+  const layoutTypesSource = await readFile(join(SRC, 'input/layouts/types.ts'), 'utf8');
   const userLayoutsSource = await readFile(join(SRC, 'input', 'layouts', 'user-layouts.ts'), 'utf8');
 
   assert.doesNotMatch(layoutTypesSource, /\bmaxCharLength\b/);
@@ -427,7 +427,7 @@ test('logical output matching lengthはcanonicalInputsをauthorityにする', as
 });
 
 test('evaluate realized factはFace authoring metadataへ依存しない', async () => {
-  const source = await readFile(join(SRC, 'evaluate.ts'), 'utf8');
+  const source = await readFile(join(SRC, 'trace', 'evaluate.ts'), 'utf8');
 
   assert.doesNotMatch(
     source,
@@ -442,8 +442,8 @@ test('evaluate realized factはFace authoring metadataへ依存しない', async
 });
 
 test('Face authoring validationはruntime presentation moduleへ依存しない', async () => {
-  const validationSource = await readFile(join(SRC, 'layouts/face-authoring-validation.ts'), 'utf8');
-  const geometrySource = await readFile(join(SRC, 'layouts/face-geometry.ts'), 'utf8');
+  const validationSource = await readFile(join(SRC, 'input/layouts/face-authoring-validation.ts'), 'utf8');
+  const geometrySource = await readFile(join(SRC, 'input/layouts/face-geometry.ts'), 'utf8');
 
   assert.doesNotMatch(
     validationSource,
@@ -459,7 +459,7 @@ test('Face authoring validationはruntime presentation moduleへ依存しない'
 });
 
 test('runtime layers moduleはFace authoring semanticを解釈しない', async () => {
-  const source = await readFile(join(SRC, 'layers.ts'), 'utf8');
+  const source = await readFile(join(SRC, 'input', 'layouts', 'layers.ts'), 'utf8');
 
   for (const pattern of [
     /\binputRole\b/,
@@ -485,7 +485,7 @@ test('runtime layers moduleはFace authoring semanticを解釈しない', async 
 });
 
 test('layouts barrelはlegacy Face authoring classifierを公開しない', async () => {
-  const source = await readFile(join(SRC, 'layouts/index.ts'), 'utf8');
+  const source = await readFile(join(SRC, 'input/layouts/index.ts'), 'utf8');
 
   for (const symbol of ['canFoldFaces', 'classifyFaces', 'groupFacesIntoLayers']) {
     assert.equal(
@@ -547,8 +547,8 @@ test('results viewはFace semantic authoring metadataへ依存しない', async 
 });
 
 test('presentation trigger authoringはnested alternative schemaを使う', async () => {
-  const typesSource = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
-  const layersSource = await readFile(join(SRC, 'layers.ts'), 'utf8');
+  const typesSource = await readFile(join(SRC, 'input/layouts/types.ts'), 'utf8');
+  const layersSource = await readFile(join(SRC, 'input', 'layouts', 'layers.ts'), 'utf8');
 
   assert.doesNotMatch(typesSource, /presentationTriggerKeys/);
   assert.doesNotMatch(layersSource, /presentationTriggerKeys/);
@@ -568,7 +568,7 @@ test('presentation trigger authoringはnested alternative schemaを使う', asyn
 });
 
 test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityにする', async () => {
-  const source = await readFile(join(SRC, 'key-pattern-picker.ts'), 'utf8');
+  const source = await readFile(join(SRC, 'input/layouts/key-pattern-picker.ts'), 'utf8');
 
   const matrixStart = source.indexOf('export function buildKeyPatternMatrix');
   const matrixEnd = source.indexOf('function exactAllowedByOrder', matrixStart);
@@ -609,7 +609,7 @@ test('key pattern pickerの入力成立判定はcanonicalInputsをauthorityに�
 });
 
 test('presentation consumerはLayer.orderの共通helperを使う', async () => {
-  const pickerSource = await readFile(join(SRC, 'key-pattern-picker.ts'), 'utf8');
+  const pickerSource = await readFile(join(SRC, 'input/layouts/key-pattern-picker.ts'), 'utf8');
   const heatmapSource = await readFile(join(SRC, 'legacy', 'analyzer-heatmap-content.tsx'), 'utf8');
 
   assert.match(pickerSource, /orderedPresentationLayers\(groups\)/);
@@ -659,7 +659,7 @@ test('results picker guideは明示presentation trigger / combo variantsを使�
 });
 
 test('key pattern pickerはlayouts registryをruntime importしない', async () => {
-  const source = await readFile(join(SRC, 'key-pattern-picker.ts'), 'utf8');
+  const source = await readFile(join(SRC, 'input/layouts/key-pattern-picker.ts'), 'utf8');
 
   assert.doesNotMatch(
     source,
@@ -669,7 +669,7 @@ test('key pattern pickerはlayouts registryをruntime importしない', async ()
 });
 
 test('playbackはFace classificationからpresentation layer帰属を再構成しない', async () => {
-  const source = await readFile(join(SRC, 'playback.ts'), 'utf8');
+  const source = await readFile(join(SRC, 'interpretation/timing/playback.ts'), 'utf8');
 
   assert.doesNotMatch(
     source,
@@ -699,7 +699,7 @@ test('playbackはFace classificationからpresentation layer帰属を再構成�
 });
 
 test('Strokeはlegacy Face semanticを再投影しない', async () => {
-  const path = join(SRC, 'evaluate.ts');
+  const path = join(SRC, 'trace', 'evaluate.ts');
   const source = await readFile(path, 'utf8');
 
   for (const symbol of ['InputRole', 'inputRole', 'TriggerPersistence', 'triggerPersistence']) {
@@ -712,7 +712,7 @@ test('Strokeはlegacy Face semanticを再投影しない', async () => {
 });
 
 test('Metricsはlegacy inputRoleへ依存しない', async () => {
-  const path = join(SRC, 'metrics.ts');
+  const path = join(SRC, 'interpretation/metrics.ts');
   const source = await readFile(path, 'utf8');
 
   assert.doesNotMatch(
@@ -723,7 +723,7 @@ test('Metricsはlegacy inputRoleへ依存しない', async () => {
 });
 
 test('PlaybackCalibrationはstructural analysisへ依存しない', async () => {
-  const path = join(SRC, 'playback-calibration.ts');
+  const path = join(SRC, 'interpretation/timing/calibration.ts');
   const source = await readFile(path, 'utf8');
   const structuralImports = moduleSpecifiers(source)
     .filter((specifier) => /(?:^|\/)analysis-/.test(specifier));
@@ -732,7 +732,7 @@ test('PlaybackCalibrationはstructural analysisへ依存しない', async () => 
 });
 
 test('SandS trigger presentationはlayout IDへ依存しない', async () => {
-  const layersSource = await readFile(join(SRC, 'layers.ts'), 'utf8');
+  const layersSource = await readFile(join(SRC, 'input', 'layouts', 'layers.ts'), 'utf8');
   assert.doesNotMatch(
     layersSource,
     /layout\.id\s*===/,
