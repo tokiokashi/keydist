@@ -5,7 +5,7 @@
  * モデルを直せば図もそのまま追従する。
  */
 import { escapeAttr, escapeText } from './chart.ts';
-import { evaluate } from '#trace/evaluate.ts';
+import { evaluate } from '#trace/generate.ts';
 import { buildGeometry, dist, HOME_ROW, THUMB_ROW, type Finger, type Geometry, type Point } from '#input/shapes/geometry.ts';
 import { LAYOUT_BY_ID, withRomaji } from '#input/layouts/index.ts';
 import { ROMAJI_RULES } from '#input/romaji/rules.ts';

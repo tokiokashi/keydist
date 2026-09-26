@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../shapes/geometry.ts';
-import { evaluate } from '#trace/evaluate.ts';
+import { evaluate } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { fromFaces } from '../layouts/index.ts';
 import { DEFAULT_TRIGGER_REALIZATION_POLICY } from './index.ts';

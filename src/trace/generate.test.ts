@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '#input/shapes/geometry.ts';
-import { evaluate, type Options } from './evaluate.ts';
+import { evaluate, type Options } from './generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { compileSequenceInputAlternative } from '#input/semantics/index.ts';
 import { faceFromEntries, fromFaces, fromKana, LAYOUT_BY_ID, type Layout, withCombos, withRomaji, withThumbShiftAlternatives } from '#input/layouts/index.ts';

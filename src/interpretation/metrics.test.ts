@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, ALL_FINGERS } from '#input/shapes/geometry.ts';
-import { evaluate, type Options } from '#trace/evaluate.ts';
+import { evaluate, type Options } from '#trace/generate.ts';
 import { computeMetrics, DEFAULT_METRIC_CONDITIONS, homeSpacing } from './metrics.ts';
 import { faceFromEntries, fromFaces, fromKana, LAYOUTS_JA, LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { dist } from '#input/shapes/geometry.ts';

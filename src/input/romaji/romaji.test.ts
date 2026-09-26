@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, QWERTY_LEGEND } from '../shapes/geometry.ts';
-import { evaluate } from '#trace/evaluate.ts';
+import { evaluate } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { LAYOUTS, LAYOUTS_JA, withRomaji } from '../layouts/index.ts';
 import { kanaToRomaji, kanaToRomajiChunks, kunrei } from './kunrei.ts';

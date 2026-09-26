@@ -5,7 +5,7 @@ import {
   faceDisplayCells,
   matchesDisplayTriggerAlternative,
 } from '#input/layouts/layers.ts';
-import type { Stroke } from '#trace/evaluate.ts';
+import type { Stroke } from '#trace/generate.ts';
 import { COMBO_LAYER_ID, type Layout } from '#input/layouts/types.ts';
 import {
   handDirection,

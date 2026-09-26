@@ -6,7 +6,7 @@ import type {
   Press,
   Stroke,
   StrokeParticipation,
-} from '#trace/evaluate.ts';
+} from '#trace/generate.ts';
 import {
   analyzeStrokeRolls,
   isRollEligibleStroke,

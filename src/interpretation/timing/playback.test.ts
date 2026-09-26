@@ -31,7 +31,7 @@ import {
   stepPlayback,
 } from './playback.ts';
 import { buildGeometry } from '#input/shapes/geometry.ts';
-import { evaluate } from '#trace/evaluate.ts';
+import { evaluate } from '#trace/generate.ts';
 import {
   faceFromEntries,
   fromFaces,

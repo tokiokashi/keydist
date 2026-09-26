@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Finger, Key, Point } from '#input/shapes/geometry.ts';
-import type { Press, Stroke, StrokeParticipation } from '#trace/evaluate.ts';
+import type { Press, Stroke, StrokeParticipation } from '#trace/generate.ts';
 import {
   analyzeStrokeTransitions,
   fingerRelation,

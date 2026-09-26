@@ -3,7 +3,7 @@ import {
   buildGeometry,
   type GeometryKind,
 } from '#input/shapes/geometry.ts';
-import { evaluate, type Options, type Trace } from '#trace/evaluate.ts';
+import { evaluate, type Options, type Trace } from '#trace/generate.ts';
 import {
   analyzeStrokeStructure,
   type AggregatedAnalysisResult,

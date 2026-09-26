@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../shapes/geometry.ts';
-import { DEFAULT_OPTIONS, evaluate } from '#trace/evaluate.ts';
+import { DEFAULT_OPTIONS, evaluate } from '#trace/generate.ts';
 import { analyzeChains, DEFAULT_CHAIN_POLICY } from '#interpretation/structure/chain.ts';
 import { COMBO_LAYER_ID, LAYOUT_BY_ID } from './index.ts';
 import { classifyPresentationFaces } from './layers.ts';

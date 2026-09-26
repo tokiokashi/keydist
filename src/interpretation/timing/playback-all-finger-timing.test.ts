@@ -7,7 +7,7 @@ import {
   type Key,
   type Point,
 } from '#input/shapes/geometry.ts';
-import type { Press, Stroke, StrokeParticipation } from '#trace/evaluate.ts';
+import type { Press, Stroke, StrokeParticipation } from '#trace/generate.ts';
 import { analyzeStrokeStructure } from '../structure/aggregate.ts';
 import {
   advancePlayback,

@@ -14,7 +14,7 @@ import {
   type NonThumb,
   type PhysicalShape,
 } from './geometry.ts';
-import { evaluate } from '#trace/evaluate.ts';
+import { evaluate } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { fromKana, LAYOUT_BY_ID } from '../layouts/index.ts';
 

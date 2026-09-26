@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluate } from '#trace/evaluate.ts';
+import { evaluate } from '#trace/generate.ts';
 import { TypingInputEngine } from '#tester/engine/index.ts';
 import {
   DEFAULT_GEOMETRY_SETTINGS,

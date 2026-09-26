@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
 import { resolveConditions } from '#engine/condition-resolution.ts';
-import { evaluate } from '#trace/evaluate.ts';
+import { evaluate } from '#trace/generate.ts';
 import { assignmentWithHomeKeys, buildGeometry } from '#input/shapes/geometry.ts';
 import {
   DEFAULT_GEOMETRY_SETTINGS,

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../shapes/geometry.ts';
 import { mapInputAlternativePhysicalKeys } from '../semantics/index.ts';
-import { DEFAULT_OPTIONS, evaluate } from '#trace/evaluate.ts';
+import { DEFAULT_OPTIONS, evaluate } from '#trace/generate.ts';
 import { faceFromEntries, fromFaces, fromRows, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA, withCombos, type Face } from './index.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../text/sample-ja.ts';

@@ -1,7 +1,7 @@
 import type { GeometryKind } from '#input/shapes/geometry.ts';
 import type { ChainPolicy } from '#interpretation/structure/chain.ts';
 import type { ArpeggioPolicy } from '#interpretation/structure/arpeggio.ts';
-import type { Options } from '#trace/evaluate.ts';
+import type { Options } from '#trace/generate.ts';
 import type {
   ActionRealizationPolicy,
   TriggerRealizationPolicy,

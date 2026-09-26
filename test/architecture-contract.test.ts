@@ -204,7 +204,7 @@ test('Face semanticをpresentation roleやtrigger数から推測しない', asyn
 });
 
 test('alternative selection identityはcore helperをauthorityにする', async () => {
-  const evaluateSource = await readFile(join(SRC, 'trace', 'evaluate.ts'), 'utf8');
+  const evaluateSource = await readFile(join(SRC, 'trace', 'generate.ts'), 'utf8');
   const compilerSource = await readFile(join(SRC, 'input/semantics/compiler.ts'), 'utf8');
   const selectionStart = compilerSource.indexOf('export function inputAlternativeSelectionIdentity');
   const selectionEnd = compilerSource.indexOf('\n}', selectionStart);
@@ -261,7 +261,7 @@ test('user layout alternative dedupeはcore canonical identityをauthorityにす
 
 test('legacy comboConditionsをsemantic/runtime authorityへ戻さない', async () => {
   const layoutTypesSource = await readFile(join(SRC, 'input/layouts/types.ts'), 'utf8');
-  const evaluateSource = await readFile(join(SRC, 'trace', 'evaluate.ts'), 'utf8');
+  const evaluateSource = await readFile(join(SRC, 'trace', 'generate.ts'), 'utf8');
 
   assert.doesNotMatch(layoutTypesSource, /\bcomboConditions\b/);
   assert.doesNotMatch(evaluateSource, /\bcomboConditions\b/);
@@ -325,7 +325,7 @@ test('CanonicalInputMap validationはempty alternative setを許可しない', a
 });
 
 test('logical output matching lengthはcanonicalInputsをauthorityにする', async () => {
-  const evaluateSource = await readFile(join(SRC, 'trace', 'evaluate.ts'), 'utf8');
+  const evaluateSource = await readFile(join(SRC, 'trace', 'generate.ts'), 'utf8');
   const layoutTypesSource = await readFile(join(SRC, 'input/layouts/types.ts'), 'utf8');
   const userLayoutsSource = await readFile(join(SRC, 'input', 'layouts', 'user-layouts.ts'), 'utf8');
 
@@ -344,17 +344,17 @@ test('logical output matching lengthはcanonicalInputsをauthorityにする', as
 });
 
 test('evaluate realized factはFace authoring metadataへ依存しない', async () => {
-  const source = await readFile(join(SRC, 'trace', 'evaluate.ts'), 'utf8');
+  const source = await readFile(join(SRC, 'trace', 'generate.ts'), 'utf8');
 
   assert.doesNotMatch(
     source,
     /layout\.faces\b/,
-    'evaluate.ts must not derive realized facts from Layout.faces',
+    'generate.ts must not derive realized facts from Layout.faces',
   );
   assert.doesNotMatch(
     source,
     /\bfaceLayerIds\b/,
-    'evaluate.ts must not derive realized facts from presentation faceLayerIds',
+    'generate.ts must not derive realized facts from presentation faceLayerIds',
   );
 });
 
@@ -616,14 +616,14 @@ test('playbackはFace classificationからpresentation layer帰属を再構成�
 });
 
 test('Strokeはlegacy Face semanticを再投影しない', async () => {
-  const path = join(SRC, 'trace', 'evaluate.ts');
+  const path = join(SRC, 'trace', 'generate.ts');
   const source = await readFile(path, 'utf8');
 
   for (const symbol of ['InputRole', 'inputRole', 'TriggerPersistence', 'triggerPersistence']) {
     assert.equal(
       source.includes(symbol),
       false,
-      `evaluate.ts must not project legacy Face semantic onto Stroke: ${symbol}`,
+      `generate.ts must not project legacy Face semantic onto Stroke: ${symbol}`,
     );
   }
 });

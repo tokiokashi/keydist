@@ -1,5 +1,5 @@
 import { resolveKeyId, type Finger } from '#input/shapes/geometry.ts';
-import type { Stroke } from '#trace/evaluate.ts';
+import type { Stroke } from '#trace/generate.ts';
 import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
 import type { PlaybackKeyMotion } from '#interpretation/timing/playback.ts';
 

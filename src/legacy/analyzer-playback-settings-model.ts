@@ -1,4 +1,4 @@
-import type { Options } from '#trace/evaluate.ts';
+import type { Options } from '#trace/generate.ts';
 import type { Layout } from '#input/layouts/index.ts';
 import type { ChainPolicy } from '#interpretation/structure/chain.ts';
 import type { ArpeggioPolicy } from '#interpretation/structure/arpeggio.ts';

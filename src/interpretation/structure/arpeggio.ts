@@ -1,5 +1,5 @@
 import { isThumb } from '#input/shapes/geometry.ts';
-import type { Stroke } from '#trace/evaluate.ts';
+import type { Stroke } from '#trace/generate.ts';
 import type { ChainPolicy, Hand } from './chain.ts';
 import type { HandTransition } from './transition.ts';
 import type { RedirectEvent } from './redirect.ts';

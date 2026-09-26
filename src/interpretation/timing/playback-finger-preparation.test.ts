@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '#input/shapes/geometry.ts';
-import { evaluate } from '#trace/evaluate.ts';
+import { evaluate } from '#trace/generate.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { analyzeStrokeStructure } from '../structure/aggregate.ts';
 import {

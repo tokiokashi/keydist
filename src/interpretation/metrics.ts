@@ -1,5 +1,5 @@
 import { ADJACENT_PAIRS, ALL_FINGERS, dist, type Finger, type Geometry } from '#input/shapes/geometry.ts';
-import type { Stroke, Trace } from '#trace/evaluate.ts';
+import type { Stroke, Trace } from '#trace/generate.ts';
 import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from './structure/chain.ts';
 import { DEFAULT_ARPEGGIO_POLICY, type ArpeggioPolicy } from './structure/arpeggio.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID } from '#input/layouts/types.ts';

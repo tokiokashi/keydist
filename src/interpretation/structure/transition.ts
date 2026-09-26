@@ -1,5 +1,5 @@
 import type { Finger, Key } from '#input/shapes/geometry.ts';
-import type { Stroke } from '#trace/evaluate.ts';
+import type { Stroke } from '#trace/generate.ts';
 import {
   analyzeChains,
   type ChainAnalysisResult,

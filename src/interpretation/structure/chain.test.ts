@@ -5,7 +5,7 @@ import {
   analyzeChains,
   buildRawHandRuns,
 } from './chain.ts';
-import type { Stroke, StrokeParticipation } from '#trace/evaluate.ts';
+import type { Stroke, StrokeParticipation } from '#trace/generate.ts';
 
 const participation = (
   hand: 'left' | 'right',

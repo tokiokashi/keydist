@@ -1,4 +1,4 @@
-import { evaluate, type Options } from '#trace/evaluate.ts';
+import { evaluate, type Options } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/index.ts';

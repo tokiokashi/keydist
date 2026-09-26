@@ -1,5 +1,5 @@
 import { buildGeometry, type Finger } from '#input/shapes/geometry.ts';
-import { type Options, type Stroke, type Trace } from '#trace/evaluate.ts';
+import { type Options, type Stroke, type Trace } from '#trace/generate.ts';
 import {
   advancePlayback, clampPlaybackCursor, createPlaybackState,
   playbackPreparedFingerPositionKeys, playbackInputPreview, playbackPlannedKeys,

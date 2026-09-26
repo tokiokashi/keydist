@@ -5,7 +5,7 @@ import {
   type FingerTransition,
   type TransitionAnalysisResult,
 } from './transition.ts';
-import type { Stroke } from '#trace/evaluate.ts';
+import type { Stroke } from '#trace/generate.ts';
 import type { ChainPolicy } from './chain.ts';
 
 export interface RedirectCandidate {

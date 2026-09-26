@@ -1,5 +1,5 @@
 import type { Finger } from '#input/shapes/geometry.ts';
-import type { Stroke, StrokeParticipation } from '#trace/evaluate.ts';
+import type { Stroke, StrokeParticipation } from '#trace/generate.ts';
 import {
   analyzeStrokeRedirects,
   type RedirectAnalysisResult,
