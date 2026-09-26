@@ -1,9 +1,9 @@
-import type { ModeId } from '../../layout-selection.ts';
+import type { ModeId } from '#legacy/layout-selection.ts';
 import type {
   UiPlaybackState,
   UiStateConditionsDefaults,
   UiStateLayoutConditions,
-} from '../../ui-state.ts';
+} from '#legacy/ui-state.ts';
 import { normalizeSessionFocus } from './view-contract.ts';
 
 type DistanceOnlyDefaults = Omit<

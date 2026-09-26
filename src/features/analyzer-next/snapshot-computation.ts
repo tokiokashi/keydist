@@ -1,4 +1,4 @@
-import type { ModeId } from '../../layout-selection.ts';
+import type { ModeId } from '#legacy/layout-selection.ts';
 import type { Layout } from '../../layouts/types.ts';
 import type { Geometry } from '../../geometry.ts';
 import type { ResolvedConditions } from '../../condition-resolution.ts';

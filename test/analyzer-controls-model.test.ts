@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createAnalyzerControlsModel } from '../src/analyzer-controls-model.ts';
+import { createAnalyzerControlsModel } from '#legacy/analyzer-controls-model.ts';
 
 test('remaining controls model keeps catalog/status ephemeral and deduplicates catalog writes', () => {
   const model = createAnalyzerControlsModel();

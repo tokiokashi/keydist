@@ -31,5 +31,19 @@
     "typescript": "^5.9.3",
     "vite": "^8.0.14",
     "@playwright/test": "^1.63.0"
+  },
+  "imports": {
+    "#input/*": "./src/input/*",
+    "#trace/*": "./src/trace/*",
+    "#interpretation/*": "./src/interpretation/*",
+    "#engine/*": "./src/engine/*",
+    "#analyzers/*": "./src/analyzers/*",
+    "#hosts/*": "./src/hosts/*",
+    "#editors/*": "./src/editors/*",
+    "#tester/*": "./src/tester/*",
+    "#ui/*": "./src/ui/*",
+    "#platform/*": "./src/platform/*",
+    "#app/*": "./src/app/*",
+    "#legacy/*": "./src/legacy/*"
   }
 }

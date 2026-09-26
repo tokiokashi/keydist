@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { APP_STATE_VERSION, analyzerSlicesFromUiState } from '../src/app-state.ts';
-import { ANALYZER_INITIAL_LAYOUTS } from '../src/analyzer-ui-state-bootstrap.ts';
-import type { ModeId } from '../src/layout-selection.ts';
+import { ANALYZER_INITIAL_LAYOUTS } from '#legacy/analyzer-ui-state-bootstrap.ts';
+import type { ModeId } from '#legacy/layout-selection.ts';
 import {
   analysisDomainCatalogSourceFromRuntimeSource,
   createAnalysisRuntime,
   type AnalysisRuntimeSource,
 } from '../src/features/analyzer-next/runtime.ts';
-import { createDefaultUiState } from '../src/ui-state.ts';
+import { createDefaultUiState } from '#legacy/ui-state.ts';
 
 function source(): AnalysisRuntimeSource {
   const ui = createDefaultUiState({

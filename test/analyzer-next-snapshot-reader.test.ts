@@ -7,7 +7,7 @@ import { createAnalysisSessionStore } from '../src/features/analyzer-next/sessio
 import { computeAnalysisSnapshot } from '../src/features/analyzer-next/snapshot-computation.ts';
 import { createAnalysisSnapshotReader } from '../src/features/analyzer-next/snapshot-reader.ts';
 import { createAnalysisSnapshotService } from '../src/features/analyzer-next/snapshot-service.ts';
-import { DEFAULT_CONDITION_DEFAULTS, createDefaultUiState } from '../src/ui-state.ts';
+import { DEFAULT_CONDITION_DEFAULTS, createDefaultUiState } from '#legacy/ui-state.ts';
 
 function session() {
   const defaults = createDefaultUiState({

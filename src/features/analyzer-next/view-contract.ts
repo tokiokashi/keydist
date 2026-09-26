@@ -1,4 +1,4 @@
-import type { ModeId } from '../../layout-selection.ts';
+import type { ModeId } from '#legacy/layout-selection.ts';
 
 export const ANALYSIS_VIEW_TYPES = [
   'bigram-flow',

@@ -1,12 +1,12 @@
 import type { FingerClass } from '../../bigram-vectors.ts';
-import type { MatrixSort } from '../../chart.ts';
+import type { MatrixSort } from '#legacy/chart.ts';
 import type {
   LayerColorScale,
   LayerView,
   MatrixKind,
   PlaybackKeyFeedbackStyle,
   SensitivityScale,
-} from '../../ui-state.ts';
+} from '#legacy/ui-state.ts';
 import {
   DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG,
   type BigramFlowDisplayConfig,

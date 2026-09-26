@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { barChart, columnChart, lineChart, matrixChart } from '../src/chart.ts';
+import { barChart, columnChart, lineChart, matrixChart } from '#legacy/chart.ts';
 
 const SERIES = [
   { name: 'A', color: '#f00', points: [{ x: 0, y: 100 }, { x: 1, y: 96 }, { x: 2, y: 91.4 }] },

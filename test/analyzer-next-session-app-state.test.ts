@@ -4,9 +4,9 @@ import {
   analyzerSlicesFromUiState,
   type AppStateV2,
 } from '../src/app-state.ts';
-import { analyzerSampleText } from '../src/analyzer-samples.ts';
+import { analyzerSampleText } from '#legacy/analyzer-samples.ts';
 import { analysisSessionSeedFromAppState } from '../src/features/analyzer-next/session-app-state.ts';
-import { createDefaultUiState } from '../src/ui-state.ts';
+import { createDefaultUiState } from '#legacy/ui-state.ts';
 
 function appState(): AppStateV2 {
   const ui = createDefaultUiState({

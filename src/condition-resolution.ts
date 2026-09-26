@@ -6,7 +6,7 @@ import type {
   ActionRealizationPolicy,
   TriggerRealizationPolicy,
 } from './core/semantic-input/index.ts';
-import type { UiStateConditionsDefaults, UiStateLayoutConditions } from './ui-state.ts';
+import type { UiStateConditionsDefaults, UiStateLayoutConditions } from '#legacy/ui-state.ts';
 
 export interface ResolvedConditions {
   geometry: GeometryKind;

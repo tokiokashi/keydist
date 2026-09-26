@@ -9,7 +9,7 @@ import {
   subscribeAppearance,
 } from '../src/appearance.ts';
 import { APP_STATE_STORAGE_KEY } from '../src/persistence/app-state-storage.ts';
-import type { UiStateStorage } from '../src/ui-state.ts';
+import type { UiStateStorage } from '#legacy/ui-state.ts';
 
 class MemoryStorage implements UiStateStorage {
   readonly data = new Map<string, string>();

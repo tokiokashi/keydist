@@ -22,7 +22,7 @@ import {
 import {
   createAnalysisSessionStore,
 } from '../src/features/analyzer-next/session-store.ts';
-import { DEFAULT_CONDITION_DEFAULTS, createDefaultUiState } from '../src/ui-state.ts';
+import { DEFAULT_CONDITION_DEFAULTS, createDefaultUiState } from '#legacy/ui-state.ts';
 
 function sessionStore() {
   const ui = createDefaultUiState({

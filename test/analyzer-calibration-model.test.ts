@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   createAnalyzerCalibrationModel,
-} from '../src/analyzer-calibration-model.ts';
+} from '#legacy/analyzer-calibration-model.ts';
 import {
   PLAYBACK_CALIBRATION_STORAGE_KEY,
   type PlaybackCalibration,

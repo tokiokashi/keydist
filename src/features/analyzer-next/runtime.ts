@@ -3,8 +3,8 @@ import {
   uiStateFromAppState,
   type AppStateV2,
 } from '../../app-state.ts';
-import { ANALYZER_INITIAL_LAYOUTS } from '../../analyzer-ui-state-bootstrap.ts';
-import { ANALYZER_SAMPLES } from '../../analyzer-samples.ts';
+import { ANALYZER_INITIAL_LAYOUTS } from '#legacy/analyzer-ui-state-bootstrap.ts';
+import { ANALYZER_SAMPLES } from '#legacy/analyzer-samples.ts';
 import type { PhysicalShape } from '../../geometry.ts';
 import { LAYOUTS, LAYOUTS_JA } from '../../layouts/index.ts';
 import { loadAppStateDocument } from '../../persistence/app-state-storage.ts';
@@ -16,7 +16,7 @@ import {
   createDefaultUiState,
   sanitizeUiState,
   type UiStateChoices,
-} from '../../ui-state.ts';
+} from '#legacy/ui-state.ts';
 import {
   load as loadUserGeometryShapes,
 } from '../../user-geometries.ts';

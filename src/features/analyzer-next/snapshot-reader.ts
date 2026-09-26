@@ -1,4 +1,4 @@
-import type { ModeId } from '../../layout-selection.ts';
+import type { ModeId } from '#legacy/layout-selection.ts';
 import type {
   AnalysisGeometryResolution,
   AnalysisLayoutCatalogEntry,
