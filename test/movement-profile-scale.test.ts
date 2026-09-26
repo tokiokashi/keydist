@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { movementPlotScale } from '../src/features/bigram-vector/movement-profile-scale.ts';
+import {
+  MAX_POLAR_DISPLAY_DENSITY,
+  MAX_POLAR_DISPLAY_GAIN,
+  movementPlotScale,
+  polarDisplayDensity,
+  polarDisplayRadius,
+} from '../src/features/bigram-vector/movement-profile-scale.ts';
 
 test('Auto fitは最大距離に合わせつつ左右共通range内でplot radiusを一定にする', () => {
   const twoUnits = movementPlotScale(2, 'fit');
@@ -30,4 +36,47 @@ test('movement plot scaleはdisplay gainから独立する', () => {
   assert.equal(scale.plotRadius, 72);
   assert.equal(scale.polarBaseRadius, 81);
   assert.equal(scale.polarAmplitude, 16);
+});
+
+
+test('最小bandwidthの理論peakでも最大gain時に確保済み外周領域を超えない', () => {
+  const scale = movementPlotScale(3, 'fixed');
+  const radius = polarDisplayRadius(
+    scale.polarBaseRadius,
+    scale.polarAmplitude,
+    MAX_POLAR_DISPLAY_DENSITY,
+    MAX_POLAR_DISPLAY_GAIN,
+  );
+  const maxExpected = scale.polarBaseRadius
+    + scale.polarAmplitude * MAX_POLAR_DISPLAY_GAIN;
+
+  assert.ok(Math.abs(radius - maxExpected) < 1e-12);
+  assert.ok(radius < scale.halfSize);
+});
+
+test('display scaleはdensity値そのものを変更せず固定基準で写像する', () => {
+  const density = MAX_POLAR_DISPLAY_DENSITY / 2;
+  const displayDensity = polarDisplayDensity(density);
+
+  assert.equal(density, MAX_POLAR_DISPLAY_DENSITY / 2);
+  assert.ok(Math.abs(displayDensity - 0.5) < 1e-12);
+});
+
+test('同じdensityはLeft / Rightに依存せず同じ描画長へ写像される', () => {
+  const scale = movementPlotScale(4, 'fit');
+  const density = MAX_POLAR_DISPLAY_DENSITY * 0.4;
+  const leftRadius = polarDisplayRadius(
+    scale.polarBaseRadius,
+    scale.polarAmplitude,
+    density,
+    1.75,
+  );
+  const rightRadius = polarDisplayRadius(
+    scale.polarBaseRadius,
+    scale.polarAmplitude,
+    density,
+    1.75,
+  );
+
+  assert.equal(leftRadius, rightRadius);
 });
