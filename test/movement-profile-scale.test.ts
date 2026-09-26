@@ -22,12 +22,12 @@ test('Fixed u scaleは解析対象が変わっても1uの描画長を固定す�
 });
 
 
-test('polar gainはu scaleを変えず外周表示領域だけを拡張する', () => {
-  const normal = movementPlotScale(3, 'fixed', 1);
-  const boosted = movementPlotScale(3, 'fixed', 2);
+test('movement plot scaleはdisplay gainから独立する', () => {
+  const scale = movementPlotScale(3, 'fixed');
 
-  assert.equal(normal.unitsPerSvgUnit, boosted.unitsPerSvgUnit);
-  assert.equal(normal.plotRadius, boosted.plotRadius);
-  assert.equal(boosted.polarAmplitude, normal.polarAmplitude * 2);
-  assert.ok(boosted.viewSize > normal.viewSize);
+  assert.equal(scale.scaleMax, 3);
+  assert.equal(scale.unitsPerSvgUnit, 24);
+  assert.equal(scale.plotRadius, 72);
+  assert.equal(scale.polarBaseRadius, 81);
+  assert.equal(scale.polarAmplitude, 16);
 });
