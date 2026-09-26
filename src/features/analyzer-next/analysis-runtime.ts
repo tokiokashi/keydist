@@ -135,12 +135,40 @@ function setDistanceDefaultCommand<K extends keyof AnalysisDistanceConditions>(
   session.setDistanceDefault(command.key, command.value);
 }
 
-function setDistanceOverrideCommand<K extends keyof AnalysisDistanceOverrideConditions>(
+function setDistanceOverrideCommand(
   session: AnalysisSessionStore,
   layoutId: string,
-  command: { key: K; value: AnalysisDistanceOverrideConditions[K] | undefined },
+  command: DistanceOverrideCommand,
 ): void {
-  session.setDistanceOverride(layoutId, command.key, command.value);
+  switch (command.key) {
+    case 'geometry':
+      session.setDistanceOverride(layoutId, 'geometry', command.value);
+      return;
+    case 'windowSize':
+      session.setDistanceOverride(layoutId, 'windowSize', command.value);
+      return;
+    case 'sfbHomeCost':
+      session.setDistanceOverride(layoutId, 'sfbHomeCost', command.value);
+      return;
+    case 'preferOppositeThumb':
+      session.setDistanceOverride(layoutId, 'preferOppositeThumb', command.value);
+      return;
+    case 'chain':
+      session.setDistanceOverride(layoutId, 'chain', command.value);
+      return;
+    case 'arpeggioPolicy':
+      session.setDistanceOverride(layoutId, 'arpeggioPolicy', command.value);
+      return;
+    case 'triggerRealization':
+      session.setDistanceOverride(layoutId, 'triggerRealization', command.value);
+      return;
+    case 'actionRealization':
+      session.setDistanceOverride(layoutId, 'actionRealization', command.value);
+      return;
+    case 'romajiRule':
+      session.setDistanceOverride(layoutId, 'romajiRule', command.value);
+      return;
+  }
 }
 
 function setTimingDefaultCommand<K extends keyof AnalysisTimingConditions>(
