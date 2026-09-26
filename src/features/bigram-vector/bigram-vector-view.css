@@ -390,9 +390,17 @@
 
 .flow-profile-svg {
   display: block;
+  margin: 0 auto;
+}
+
+.flow-profile-svg[data-scale-mode="fit"] {
+  width: 100% !important;
+  height: auto;
+}
+
+.flow-profile-svg[data-scale-mode="fixed"] {
   width: auto !important;
   max-width: none;
-  margin: 0 auto;
 }
 
 .flow-axis {
