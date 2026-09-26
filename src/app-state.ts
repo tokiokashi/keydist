@@ -2,6 +2,7 @@ import type { InputConverterPreferencesV2 } from './features/input-converter/inp
 import type { UiPlaybackState, UiStateV1 } from './ui-state.ts';
 import type { ThemeChoice } from './theme.ts';
 import type { WorkspaceStateV1 } from './workspace/workspace-state.ts';
+import type { AnalyzerWorkspaceStateV1 } from './features/analyzer-next/analyzer-workspace-state.ts';
 
 export const APP_STATE_VERSION = 2;
 
@@ -14,6 +15,7 @@ export type AnalyzerPreferencesV2 = Omit<UiStateV1['ui'], 'playback'>;
 export interface AppStateV2 {
   version: typeof APP_STATE_VERSION;
   workspace?: WorkspaceStateV1;
+  analyzerWorkspace?: AnalyzerWorkspaceStateV1;
   inputConverter?: InputConverterPreferencesV2;
   appearance?: AppearancePreferencesV1;
   analyzer?: AnalyzerPreferencesV2;
