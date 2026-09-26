@@ -5,7 +5,7 @@
  * モデルを直せば図もそのまま追従する。
  */
 import { escapeAttr, escapeText } from './chart.ts';
-import { evaluate } from '#trace/generate.ts';
+import { generateTrace } from '#trace/generate.ts';
 import { buildGeometry, dist, HOME_ROW, THUMB_ROW, type Finger, type Geometry, type Point } from '#input/shapes/geometry.ts';
 import { LAYOUT_BY_ID, withRomaji } from '#input/layouts/index.ts';
 import { ROMAJI_RULES } from '#input/romaji/rules.ts';
@@ -40,7 +40,7 @@ export interface FigurePress {
 /** 固定例を評価して、押下を1列に並べる */
 export function figurePresses(geometry: Geometry, text: string = FIGURE_TEXT): FigurePress[] {
   const layout = withRomaji(LAYOUT_BY_ID.get(FIGURE_LAYOUT_ID)!, ROMAJI_RULES.qwerty.table());
-  const trace = evaluate(text, layout, geometry, {
+  const trace = generateTrace(text, layout, geometry, {
     windowSize: FIGURE_WINDOW,
     sfbHomeCost: true,
   });

@@ -3,7 +3,7 @@ import type { Stroke } from '#trace/generate.ts';
 import {
   analyzeChains,
   type ChainAnalysisResult,
-  type ChainPolicy,
+  type ChainInterpretation,
   type Hand,
 } from './chain.ts';
 
@@ -227,7 +227,7 @@ export function analyzeTransitions(
 /** 呼び出し側向けの合成入口。 */
 export function analyzeStrokeTransitions(
   strokes: readonly Stroke[],
-  policy?: ChainPolicy,
+  policy?: ChainInterpretation,
 ): TransitionAnalysisResult {
   return analyzeTransitions(analyzeChains(strokes, policy));
 }

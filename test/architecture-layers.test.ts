@@ -443,7 +443,7 @@ test('依存規則の判定そのもの', () => {
   assert.ok(layerViolation('tester/engine/engine.ts', 'ui/primitives/button.tsx'));
   assert.equal(layerViolation('tester/view.tsx', 'platform/storage.ts'), undefined);
   // 未配置のファイルは移行中なので判定しない。
-  assert.equal(layerViolation('evaluate.ts', 'geometry.ts'), undefined);
+  assert.equal(layerViolation('generate.ts', 'geometry.ts'), undefined);
 
   assert.ok(packageViolation('trace/generate.ts', 'react'));
   assert.ok(packageViolation('analyzers/bigram-flow/extract.ts', 'react'));

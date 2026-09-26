@@ -1,7 +1,7 @@
 import type { GeometryKind } from '#input/shapes/geometry.ts';
-import type { ChainPolicy } from '#interpretation/structure/chain.ts';
-import type { ArpeggioPolicy } from '#interpretation/structure/arpeggio.ts';
-import type { Options } from '#trace/generate.ts';
+import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
+import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
+import type { TracePolicy } from '#trace/generate.ts';
 import type {
   ActionRealizationPolicy,
   TriggerRealizationPolicy,
@@ -10,9 +10,9 @@ import type { ConditionDefaults, LayoutConditionOverrides } from './conditions.t
 
 export interface ResolvedConditions {
   geometry: GeometryKind;
-  options: Options;
-  chainPolicy: ChainPolicy;
-  arpeggioPolicy: ArpeggioPolicy;
+  options: TracePolicy;
+  chainPolicy: ChainInterpretation;
+  arpeggioPolicy: ArpeggioInterpretation;
   triggerRealizationPolicy: TriggerRealizationPolicy;
   actionRealizationPolicy: ActionRealizationPolicy;
 }

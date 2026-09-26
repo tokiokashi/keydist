@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../shapes/geometry.ts';
-import { evaluate } from '#trace/generate.ts';
+import { generateTrace } from '#trace/generate.ts';
 import { fromFaces, LAYOUT_BY_ID, type Layout } from '../layouts/index.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
@@ -39,7 +39,7 @@ const realized = (
   useHold: boolean,
   actionRealizationPolicy: ActionRealizationPolicy,
   layout: Layout = simultaneous,
-) => evaluate(text, layout, geometry, {
+) => generateTrace(text, layout, geometry, {
   windowSize: 3,
   sfbHomeCost: true,
   triggerRealizationPolicy: { useHold },

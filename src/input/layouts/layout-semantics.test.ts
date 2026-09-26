@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, resolveKeyId } from '../shapes/geometry.ts';
-import { evaluate, type Options } from '#trace/generate.ts';
+import { generateTrace, type TracePolicy } from '#trace/generate.ts';
 import { LAYOUT_BY_ID } from './index.ts';
 
 const geometry = buildGeometry('row-staggered');
-const opts = (o: Partial<Options> = {}): Options => ({
+const opts = (o: Partial<TracePolicy> = {}): TracePolicy => ({
   windowSize: 3,
   sfbHomeCost: true,
   ...o,
@@ -39,7 +39,7 @@ test('semantic migrationで物理Sequenceは変えない', () => {
   for (const id of BUILTIN_KANA_IDS) {
     const layout = LAYOUT_BY_ID.get(id)!;
     for (const [output, sequence] of layout.map) {
-      const trace = evaluate(output, layout, geometry, opts());
+      const trace = generateTrace(output, layout, geometry, opts());
       assert.equal(trace.skipped, 0, `${id}: ${output}`);
       assert.equal(trace.strokes.length, sequence.length, `${id}: ${output}`);
       for (const [index, step] of sequence.entries()) {
@@ -68,21 +68,21 @@ test('薙刀式はsimultaneousとhold-capableを独立して持ち、Spaceだけ
     if (face !== centerFace) assert.equal(face.triggerOrder, undefined);
   }
 
-  const center = evaluate('え', layout, geometry, opts()).strokes[0];
+  const center = generateTrace('え', layout, geometry, opts()).strokes[0];
   assert.deepEqual(center.classifications, []);
   assert.ok(center.participations.some((p) => p.roles.includes('trigger')));
   assert.ok(center.participations.every((p) => !p.roles.includes('held-trigger')));
 
-  const voiced = evaluate('が', layout, geometry, opts()).strokes[0];
+  const voiced = generateTrace('が', layout, geometry, opts()).strokes[0];
   assert.deepEqual(voiced.classifications, []);
   assert.ok(voiced.participations.some((p) => p.roles.includes('trigger')));
   assert.ok(voiced.participations.every((p) => !p.roles.includes('held-trigger')));
 
-  const small = evaluate('ぁ', layout, geometry, opts()).strokes[0];
+  const small = generateTrace('ぁ', layout, geometry, opts()).strokes[0];
   assert.deepEqual(small.classifications, []);
   assert.ok(small.participations.some((p) => p.roles.includes('trigger')));
 
-  const extension = evaluate('いぇ', layout, geometry, opts()).strokes[0];
+  const extension = generateTrace('いぇ', layout, geometry, opts()).strokes[0];
   assert.equal(extension.classifications.includes('composition'), false);
   assert.ok(extension.participations.some((p) => p.roles.includes('trigger')));
   assert.ok(extension.participations.every((p) => !p.roles.includes('held-trigger')));
@@ -96,13 +96,13 @@ test('NICOLA / 新下駄の同期Faceは通常triggerとしてrealizeする', ()
   assert.ok(shingetaLayout.faces?.filter((face) => face.trigger.length > 0)
     .every((face) => face.triggerPersistence === 'single'));
 
-  const nicola = evaluate('え', nicolaLayout, geometry, opts()).strokes[0];
+  const nicola = generateTrace('え', nicolaLayout, geometry, opts()).strokes[0];
   assert.ok(nicola.participations.some((p) => p.roles.includes('trigger')));
 
-  const shingetaModifier = evaluate('ご', shingetaLayout, geometry, opts()).strokes[0];
+  const shingetaModifier = generateTrace('ご', shingetaLayout, geometry, opts()).strokes[0];
   assert.ok(shingetaModifier.participations.some((p) => p.roles.includes('trigger')));
 
-  const shingetaYouon = evaluate('きゃ', shingetaLayout, geometry, opts()).strokes[0];
+  const shingetaYouon = generateTrace('きゃ', shingetaLayout, geometry, opts()).strokes[0];
   assert.ok(shingetaYouon.participations.some((p) => p.roles.includes('trigger')));
 });
 
@@ -110,7 +110,7 @@ test('月配列prefixはtrigger-only Strokeとして正規化する', () => {
   const layout = LAYOUT_BY_ID.get('tsuki-2-263')!;
   assert.ok(layout.faces?.filter((face) => face.trigger.length > 0)
     .every((face) => face.triggerPersistence === 'single'));
-  const trace = evaluate('ぬ', layout, geometry, opts());
+  const trace = generateTrace('ぬ', layout, geometry, opts());
   assert.equal(trace.strokes.length, 2);
   assert.deepEqual(trace.strokes[0].participations[0].roles, ['trigger']);
   assert.deepEqual(trace.strokes[1].participations[0].roles, ['output']);
@@ -131,8 +131,8 @@ test('新JISはFaceMode / TriggerPersistence / TriggerOrderを独立して持つ
       && face.triggerPersistence === 'hold-capable'
       && face.triggerOrder === 'prefix'));
 
-  const prefix = evaluate('お', prefixLayout, geometry, opts());
-  const simultaneous = evaluate('お', simultaneousLayout, geometry, opts());
+  const prefix = generateTrace('お', prefixLayout, geometry, opts());
+  const simultaneous = generateTrace('お', simultaneousLayout, geometry, opts());
 
   assert.equal(prefix.strokes.length, 2);
   assert.equal(simultaneous.strokes.length, 1);
@@ -148,7 +148,7 @@ test('新JISはFaceMode / TriggerPersistence / TriggerOrderを独立して持つ
 
 test('新JIS prefixの親指remap後もsemantic keyが一致する', () => {
   const layout = LAYOUT_BY_ID.get('shin-jis-prefix')!;
-  const trace = evaluate('お', layout, geometry, opts({ preferOppositeThumb: true }));
+  const trace = generateTrace('お', layout, geometry, opts({ preferOppositeThumb: true }));
 
   assert.equal(trace.strokes[0].presses[0].keys[0].id, 'thumb-l');
   assert.deepEqual(trace.strokes[0].triggerKeys, ['thumb-l']);

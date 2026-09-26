@@ -22,7 +22,7 @@ import {
   type TriggerRealizationPolicy,
 } from '#input/semantics/index.ts';
 
-export interface Options {
+export interface TracePolicy {
   /** 先読みN入力。選択されたcanonical inputでN入力先まで残す候補を比較する */
   windowSize: number;
   /**
@@ -38,7 +38,7 @@ export interface Options {
   actionRealizationPolicy?: ActionRealizationPolicy;
 }
 
-export const DEFAULT_OPTIONS: Options = {
+export const DEFAULT_TRACE_POLICY: TracePolicy = {
   windowSize: 3,
   sfbHomeCost: true,
   preferOppositeThumb: false,
@@ -65,7 +65,7 @@ export interface Press {
   target: Point;
   /** 前回この指を使ってから挟まったrealized Stroke数。SFB判定用。 */
   gap: number;
-  /** 前回この指が参加したselected inputから何入力先か。N判定用。evaluate生成時は必ず入る。 */
+  /** 前回この指が参加したselected inputから何入力先か。N判定用。generateTrace生成時は必ず入る。 */
   inputDistance?: number;
   /** この押下で計上された移動距離 [u] */
   distance: number;
@@ -136,11 +136,11 @@ export interface Trace {
  * ホームへの復帰移動そのものは計上しない（§7 R2）。
  * 同時押しステップは1ステップとして数え、距離は各指の単純和を採る。
  */
-export function evaluate(
+export function generateTrace(
   text: string,
   layout: Layout,
   geometry: Geometry,
-  options: Options = DEFAULT_OPTIONS,
+  options: TracePolicy = DEFAULT_TRACE_POLICY,
 ): Trace {
   const prev = {} as Record<Finger, Point>;
   const last = {} as Record<Finger, number>;
@@ -509,7 +509,7 @@ function selectInputAlternative(
   alternatives: InputAlternativeSet,
   layout: Layout,
   geometry: Geometry,
-  options: Options,
+  options: TracePolicy,
 ): InputAlternative {
   let fallback = alternatives[0];
   if (!fallback) throw new Error('canonical input alternativeが空');
@@ -634,7 +634,7 @@ function pressCost(
   inputDistance: number,
   prev: Record<Finger, Point>,
   geometry: Geometry,
-  options: Options,
+  options: TracePolicy,
 ): CostDecision {
   const { finger, target, gap } = press;
   const home = geometry.homes[finger];

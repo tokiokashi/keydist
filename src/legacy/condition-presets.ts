@@ -1,5 +1,5 @@
-import { sameChainPolicy } from '#interpretation/structure/chain.ts';
-import { sameArpeggioPolicy } from '#interpretation/structure/arpeggio.ts';
+import { sameChainInterpretation } from '#interpretation/structure/chain.ts';
+import { sameArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 import {
   sameActionRealizationPolicy,
   sameTriggerRealizationPolicy,
@@ -99,8 +99,8 @@ export function sameConditionDefaults(
     && left.playbackRateHalfLifeSeconds === right.playbackRateHalfLifeSeconds
     && left.sfbHomeCost === right.sfbHomeCost
     && left.preferOppositeThumb === right.preferOppositeThumb
-    && sameChainPolicy(left.chain, right.chain)
-    && sameArpeggioPolicy(left.arpeggioPolicy, right.arpeggioPolicy)
+    && sameChainInterpretation(left.chain, right.chain)
+    && sameArpeggioInterpretation(left.arpeggioPolicy, right.arpeggioPolicy)
     && sameTriggerRealizationPolicy(left.triggerRealization, right.triggerRealization)
     && sameActionRealizationPolicy(left.actionRealization, right.actionRealization);
 }

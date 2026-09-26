@@ -126,7 +126,7 @@ test('Analyzer Next View components do not own storage, routing, Dockview or eva
 
     assert.doesNotMatch(
       source,
-      /\b(?:resolveConditions|evaluate)\s*\(/,
+      /\b(?:resolveConditions|generateTrace)\s*\(/,
       `${relative(ROOT, path)} must consume host-resolved snapshots`,
     );
   }

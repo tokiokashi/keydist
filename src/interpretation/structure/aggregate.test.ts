@@ -6,9 +6,9 @@ import {
   analyzeStrokeStructure,
 } from './aggregate.ts';
 import {
-  DEFAULT_ARPEGGIO_POLICY,
+  DEFAULT_ARPEGGIO_INTERPRETATION,
 } from './arpeggio.ts';
-import { DEFAULT_CHAIN_POLICY } from './chain.ts';
+import { DEFAULT_CHAIN_INTERPRETATION } from './chain.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
@@ -60,7 +60,7 @@ const stroke = (index: number, p: Press): Stroke => ({
 });
 
 const keepSameFinger = {
-  ...DEFAULT_CHAIN_POLICY,
+  ...DEFAULT_CHAIN_INTERPRETATION,
   breakOnSameFinger: false,
 };
 
@@ -71,7 +71,7 @@ test('overlapするArpeggioSpanはraw countを保ちcoverageだけunionする', 
     stroke(2, press('LR', [key('w', 'LR', 2, 1)], undefined, true)),
     stroke(3, press('LP', [key('q', 'LP', 1, 1)])),
   ], keepSameFinger, {
-    ...DEFAULT_ARPEGGIO_POLICY,
+    ...DEFAULT_ARPEGGIO_INTERPRETATION,
     bridgeSameFinger: true,
   });
 
@@ -140,7 +140,7 @@ test('bridgeSameFinger後もinSfbを残して非排他的annotationにする', (
     stroke(2, press('LR', [key('w', 'LR', 2, 1)], undefined, true)),
     stroke(3, press('LM', [key('d', 'LM', 3, 2)])),
   ], keepSameFinger, {
-    ...DEFAULT_ARPEGGIO_POLICY,
+    ...DEFAULT_ARPEGGIO_INTERPRETATION,
     bridgeSameFinger: true,
   });
 
@@ -226,13 +226,13 @@ test('directional pair統計はcandidate数ではなくHandTransitionを基準�
   });
 });
 
-test('集計結果は解決済みChainPolicy / ArpeggioPolicyをsnapshotで保持する', () => {
-  const chainPolicy = {
-    ...DEFAULT_CHAIN_POLICY,
+test('集計結果は解決済みChainInterpretation / ArpeggioInterpretationをsnapshotで保持する', () => {
+  const chainInterpretation = {
+    ...DEFAULT_CHAIN_INTERPRETATION,
     breakOnOppositeHandSimultaneous: true,
   };
-  const arpeggioPolicy = {
-    ...DEFAULT_ARPEGGIO_POLICY,
+  const arpeggioInterpretation = {
+    ...DEFAULT_ARPEGGIO_INTERPRETATION,
     bridgeSameFinger: true,
     includeSingleRedirectTail: true,
   };
@@ -240,16 +240,16 @@ test('集計結果は解決済みChainPolicy / ArpeggioPolicyをsnapshotで保�
   const result = analyzeStrokeStructure([
     stroke(0, press('LP', [key('a', 'LP', 1, 2)])),
     stroke(1, press('LR', [key('s', 'LR', 2, 2)])),
-  ], chainPolicy, arpeggioPolicy);
+  ], chainInterpretation, arpeggioInterpretation);
 
   assert.deepEqual(result.aggregate.conditions, {
-    chainPolicy,
-    arpeggioPolicy,
+    chainInterpretation,
+    arpeggioInterpretation,
     triggerRealizationPolicy: DEFAULT_TRIGGER_REALIZATION_POLICY,
     actionRealizationPolicy: DEFAULT_ACTION_REALIZATION_POLICY,
   });
-  assert.notEqual(result.aggregate.conditions.chainPolicy, chainPolicy);
-  assert.notEqual(result.aggregate.conditions.arpeggioPolicy, arpeggioPolicy);
+  assert.notEqual(result.aggregate.conditions.chainInterpretation, chainInterpretation);
+  assert.notEqual(result.aggregate.conditions.arpeggioInterpretation, arpeggioInterpretation);
   assert.notEqual(
     result.aggregate.conditions.triggerRealizationPolicy,
     DEFAULT_TRIGGER_REALIZATION_POLICY,
@@ -259,8 +259,8 @@ test('集計結果は解決済みChainPolicy / ArpeggioPolicyをsnapshotで保�
     DEFAULT_ACTION_REALIZATION_POLICY,
   );
   assert.equal(Object.isFrozen(result.aggregate.conditions), true);
-  assert.equal(Object.isFrozen(result.aggregate.conditions.chainPolicy), true);
-  assert.equal(Object.isFrozen(result.aggregate.conditions.arpeggioPolicy), true);
+  assert.equal(Object.isFrozen(result.aggregate.conditions.chainInterpretation), true);
+  assert.equal(Object.isFrozen(result.aggregate.conditions.arpeggioInterpretation), true);
   assert.equal(Object.isFrozen(result.aggregate.conditions.triggerRealizationPolicy), true);
   assert.equal(Object.isFrozen(result.aggregate.conditions.actionRealizationPolicy), true);
 });

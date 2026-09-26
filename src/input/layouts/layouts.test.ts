@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../shapes/geometry.ts';
 import { mapInputAlternativePhysicalKeys } from '../semantics/index.ts';
-import { DEFAULT_OPTIONS, evaluate } from '#trace/generate.ts';
+import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { faceFromEntries, fromFaces, fromRows, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA, withCombos, type Face } from './index.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../text/sample-ja.ts';
@@ -45,7 +45,7 @@ test('面の展開後も各ステップの層帰属を保持する（#87）', ()
     { trigger: ['j'], mode: 'prefix', rows: faceAtF('さ'), layer: '人差指', inputRole: 'modifier', triggerPersistence: 'single' },
     { trigger: ['k', 'l'], mode: 'simultaneous', rows: faceAtF('た'), inputRole: 'composition', triggerPersistence: 'single' },
   ]);
-  const trace = evaluate('あかさた', layout, buildGeometry('row-staggered'), DEFAULT_OPTIONS);
+  const trace = generateTrace('あかさた', layout, buildGeometry('row-staggered'), DEFAULT_TRACE_POLICY);
 
   assert.deepEqual(trace.strokes.map((stroke) => stroke.aggregationGroupId), [
     'single', 'layer:中指', 'layer:中指', 'layer:人差指', 'layer:人差指', 'combo',
@@ -983,7 +983,7 @@ test('薙刀式v18の面移行で入力可能範囲とphysical action数を維�
   const geometry = buildGeometry('row-staggered');
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
-  const trace = evaluate(text, layout, geometry, DEFAULT_OPTIONS);
+  const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
   const metrics = computeMetrics(trace, geometry);
 
   assert.equal(trace.skipped, 0);

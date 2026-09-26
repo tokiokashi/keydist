@@ -2,7 +2,7 @@ import type { ModeId } from '#legacy/layout-selection.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { ResolvedConditions } from '#engine/condition-resolution.ts';
-import { evaluate, type Trace } from '#trace/generate.ts';
+import { generateTrace, type Trace } from '#trace/generate.ts';
 import {
   analyzeStrokeStructure,
   type AggregatedAnalysisResult,
@@ -32,7 +32,7 @@ export interface AnalysisSnapshot {
 export function computeAnalysisSnapshot(
   input: ResolvedAnalysisInput,
 ): AnalysisSnapshot {
-  const trace = evaluate(
+  const trace = generateTrace(
     input.text,
     input.layout,
     input.geometry,
@@ -49,8 +49,8 @@ export function computeAnalysisSnapshot(
     windowSize: input.conditions.options.windowSize,
     sfbHomeCost: input.conditions.options.sfbHomeCost,
     preferOppositeThumb: input.conditions.options.preferOppositeThumb ?? false,
-    chainPolicy: input.conditions.chainPolicy,
-    arpeggioPolicy: input.conditions.arpeggioPolicy,
+    chainInterpretation: input.conditions.chainPolicy,
+    arpeggioInterpretation: input.conditions.arpeggioPolicy,
     triggerRealizationPolicy: input.conditions.triggerRealizationPolicy,
     actionRealizationPolicy: input.conditions.actionRealizationPolicy,
     romajiRuleId: input.romajiRuleId,

@@ -1,13 +1,13 @@
 import type { MatrixSort } from './chart.ts';
 import type { ConditionDefaults, LayoutConditionOverrides } from '#engine/conditions.ts';
 import {
-  DEFAULT_CHAIN_POLICY,
-  type ChainPolicy,
+  DEFAULT_CHAIN_INTERPRETATION,
+  type ChainInterpretation,
 } from '#interpretation/structure/chain.ts';
 import { chainPolicyFromLegacyUi } from './chain-ui-settings.ts';
 import {
-  DEFAULT_ARPEGGIO_POLICY,
-  type ArpeggioPolicy,
+  DEFAULT_ARPEGGIO_INTERPRETATION,
+  type ArpeggioInterpretation,
 } from '#interpretation/structure/arpeggio.ts';
 import { isCustomGeometryKind, isPresetGeometryKind, type GeometryKind } from '#input/shapes/geometry.ts';
 import {
@@ -101,8 +101,8 @@ export const DEFAULT_CONDITION_DEFAULTS: UiStateConditionsDefaults = {
   playbackRateHalfLifeSeconds: DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
   sfbHomeCost: true,
   preferOppositeThumb: false,
-  chain: { ...DEFAULT_CHAIN_POLICY },
-  arpeggioPolicy: { ...DEFAULT_ARPEGGIO_POLICY },
+  chain: { ...DEFAULT_CHAIN_INTERPRETATION },
+  arpeggioPolicy: { ...DEFAULT_ARPEGGIO_INTERPRETATION },
   triggerRealization: { ...DEFAULT_TRIGGER_REALIZATION_POLICY },
   actionRealization: { ...DEFAULT_ACTION_REALIZATION_POLICY },
 };
@@ -282,7 +282,7 @@ function integerInRange(value: unknown, min: number, max: number, fallback: numb
     : fallback;
 }
 
-function chainPolicy(value: unknown, fallback: ChainPolicy): ChainPolicy {
+function chainPolicy(value: unknown, fallback: ChainInterpretation): ChainInterpretation {
   const source = record(value);
   return {
     breakOnSameFinger: boolean(source.breakOnSameFinger, fallback.breakOnSameFinger),
@@ -295,7 +295,7 @@ function chainPolicy(value: unknown, fallback: ChainPolicy): ChainPolicy {
   };
 }
 
-function arpeggioPolicy(value: unknown, fallback: ArpeggioPolicy): ArpeggioPolicy {
+function arpeggioPolicy(value: unknown, fallback: ArpeggioInterpretation): ArpeggioInterpretation {
   const source = record(value);
   return {
     includeThumb: boolean(source.includeThumb, fallback.includeThumb),
@@ -437,10 +437,10 @@ function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults
     result.preferOppositeThumb = source.preferOppositeThumb;
   }
   if (isRecord(source.chain)) {
-    result.chain = chainPolicy(source.chain, DEFAULT_CHAIN_POLICY);
+    result.chain = chainPolicy(source.chain, DEFAULT_CHAIN_INTERPRETATION);
   }
   if (isRecord(source.arpeggioPolicy)) {
-    result.arpeggioPolicy = arpeggioPolicy(source.arpeggioPolicy, DEFAULT_ARPEGGIO_POLICY);
+    result.arpeggioPolicy = arpeggioPolicy(source.arpeggioPolicy, DEFAULT_ARPEGGIO_INTERPRETATION);
   }
   if (isRecord(source.triggerRealization)) {
     result.triggerRealization = triggerRealizationPolicy(
@@ -458,7 +458,7 @@ function validConditionValues(value: unknown): Partial<UiStateConditionsDefaults
   // geometry閾値 / breakOnOppositeHandは新structural Policyへ推測変換しない。
   if (isRecord(source.arpeggio) && typeof source.arpeggio.includeThumb === 'boolean') {
     result.arpeggioPolicy = {
-      ...(result.arpeggioPolicy ?? DEFAULT_ARPEGGIO_POLICY),
+      ...(result.arpeggioPolicy ?? DEFAULT_ARPEGGIO_INTERPRETATION),
       includeThumb: source.arpeggio.includeThumb,
     };
   }
@@ -595,7 +595,7 @@ function sanitizePlaybackOverrides(
 export function sanitizeConditionOverrides(
   value: unknown,
   playbackFallback: UiPlaybackState,
-  chainFallback: ChainPolicy = DEFAULT_CHAIN_POLICY,
+  chainFallback: ChainInterpretation = DEFAULT_CHAIN_INTERPRETATION,
 ): UiStateConditionOverride {
   const source = record(value);
   const result: UiStateConditionOverride = validLayoutConditionValues(value);

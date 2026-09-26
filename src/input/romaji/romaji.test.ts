@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, QWERTY_LEGEND } from '../shapes/geometry.ts';
-import { evaluate } from '#trace/generate.ts';
+import { generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { LAYOUTS, LAYOUTS_JA, withRomaji } from '../layouts/index.ts';
 import { kanaToRomaji, kanaToRomajiChunks, kunrei } from './kunrei.ts';
@@ -37,13 +37,13 @@ test('母音で始まるかなには促音形を作らない', () => {
 });
 
 test('合成した配列は1かなを複数ステップへ展開する', () => {
-  const t = evaluate('し', ja, geometry, opts);
+  const t = generateTrace('し', ja, geometry, opts);
   assert.equal(t.strokes.length, 2);
   assert.deepEqual(t.strokes.map((s) => s.presses[0].keys[0].id), ['s', 'i']);
 });
 
 test('ローマ字の各打鍵は展開前のかな単位を保持する', () => {
-  const t = evaluate('かし', ja, geometry, opts);
+  const t = generateTrace('かし', ja, geometry, opts);
   assert.deepEqual(t.strokes.map((s) => [s.inputChar, s.char]), [
     ['か', 'k'], ['か', 'a'], ['し', 's'], ['し', 'i'],
   ]);
@@ -69,13 +69,13 @@ test('かな → ローマ字の展開単位を保持する', () => {
 });
 
 test('長音「ー」は数字段の - キーになる', () => {
-  const t = evaluate('ー', ja, geometry, opts);
+  const t = generateTrace('ー', ja, geometry, opts);
   assert.equal(t.strokes[0].presses[0].keys[0].id, '-');
 });
 
 test('日本語サンプルは全文字が打鍵列に入る', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
-  const t = evaluate(text, ja, geometry, opts);
+  const t = generateTrace(text, ja, geometry, opts);
   assert.equal(t.skipped, 0);
   assert.equal(t.errors.length, 0);
   assert.ok(t.strokes.length > [...text].length, 'ローマ字展開で打鍵数が増える');
@@ -84,7 +84,7 @@ test('日本語サンプルは全文字が打鍵列に入る', () => {
 test('同じテーブルを使う英字配列はステップ数が揃う', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   const counts = LAYOUTS.map(
-    (base) => computeMetrics(evaluate(text, withRomaji(base, table), geometry, opts), geometry).strokes,
+    (base) => computeMetrics(generateTrace(text, withRomaji(base, table), geometry, opts), geometry).strokes,
   );
   assert.equal(new Set(counts).size, 1, `ステップ数が配列で異なる: ${counts}`);
 });
@@ -92,7 +92,7 @@ test('同じテーブルを使う英字配列はステップ数が揃う', () =>
 test('日本語の全配列が評価でき、未対応の文字を残さない', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   for (const layout of LAYOUTS_JA) {
-    const t = evaluate(text, layout, geometry, opts);
+    const t = generateTrace(text, layout, geometry, opts);
     assert.equal(t.errors.length, 0, `${layout.name}: ${t.errors.join(' / ')}`);
     assert.equal(t.skipped, 0, `${layout.name} で ${t.skipped} 文字が打てない`);
   }
@@ -155,14 +155,14 @@ test('AZIKはQWERTY刻印に無い文字を使わない', () => {
 
 test('AZIKは日本語サンプルを全文字打てる', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
-  const t = evaluate(text, azikJa, geometry, opts);
+  const t = generateTrace(text, azikJa, geometry, opts);
   assert.equal(t.skipped, 0);
   assert.equal(t.errors.length, 0);
 });
 
 test('AZIKは訓令式よりステップ数が少ない（2かな以上への短縮が効いているはず）', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
-  const kunreiSteps = evaluate(text, ja, geometry, opts).strokes.length;
-  const azikSteps = evaluate(text, azikJa, geometry, opts).strokes.length;
+  const kunreiSteps = generateTrace(text, ja, geometry, opts).strokes.length;
+  const azikSteps = generateTrace(text, azikJa, geometry, opts).strokes.length;
   assert.ok(azikSteps < kunreiSteps, `AZIK: ${azikSteps} 訓令式: ${kunreiSteps}`);
 });

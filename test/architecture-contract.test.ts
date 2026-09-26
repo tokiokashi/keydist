@@ -204,19 +204,19 @@ test('Face semanticをpresentation roleやtrigger数から推測しない', asyn
 });
 
 test('alternative selection identityはcore helperをauthorityにする', async () => {
-  const evaluateSource = await readFile(join(SRC, 'trace', 'generate.ts'), 'utf8');
+  const traceSource = await readFile(join(SRC, 'trace', 'generate.ts'), 'utf8');
   const compilerSource = await readFile(join(SRC, 'input/semantics/compiler.ts'), 'utf8');
   const selectionStart = compilerSource.indexOf('export function inputAlternativeSelectionIdentity');
   const selectionEnd = compilerSource.indexOf('\n}', selectionStart);
-  const thumbStart = evaluateSource.indexOf('function thumbVariantSignature');
-  const thumbEnd = evaluateSource.indexOf('function shiftVariantSignature', thumbStart);
+  const thumbStart = traceSource.indexOf('function thumbVariantSignature');
+  const thumbEnd = traceSource.indexOf('function shiftVariantSignature', thumbStart);
   const shiftStart = thumbEnd;
-  const shiftEnd = evaluateSource.indexOf('function oppositeHandShiftScore', shiftStart);
+  const shiftEnd = traceSource.indexOf('function oppositeHandShiftScore', shiftStart);
 
   assert.match(
-    evaluateSource,
+    traceSource,
     /inputAlternativeSelectionIdentity\(/,
-    'evaluate must use the canonical selection identity helper instead of reserializing alternatives',
+    'generateTrace must use the canonical selection identity helper instead of reserializing alternatives',
   );
   assert.notEqual(selectionStart, -1);
   assert.notEqual(selectionEnd, -1);
@@ -229,7 +229,7 @@ test('alternative selection identityはcore helperをauthorityにする', async 
   ] as const) {
     assert.notEqual(start, -1);
     assert.notEqual(end, -1);
-    const projectionSource = evaluateSource.slice(start, end);
+    const projectionSource = traceSource.slice(start, end);
     for (const pattern of [
       /JSON\.stringify/,
       /\.semanticInputs\b/,
@@ -261,12 +261,12 @@ test('user layout alternative dedupeはcore canonical identityをauthorityにす
 
 test('legacy comboConditionsをsemantic/runtime authorityへ戻さない', async () => {
   const layoutTypesSource = await readFile(join(SRC, 'input/layouts/types.ts'), 'utf8');
-  const evaluateSource = await readFile(join(SRC, 'trace', 'generate.ts'), 'utf8');
+  const traceSource = await readFile(join(SRC, 'trace', 'generate.ts'), 'utf8');
 
   assert.doesNotMatch(layoutTypesSource, /\bcomboConditions\b/);
-  assert.doesNotMatch(evaluateSource, /\bcomboConditions\b/);
+  assert.doesNotMatch(traceSource, /\bcomboConditions\b/);
   assert.match(
-    evaluateSource,
+    traceSource,
     /const comboDefinitions = resolvedComboDefinitions\.length/,
     'resolved combo definitions must be the combo definition-count authority',
   );
@@ -325,25 +325,25 @@ test('CanonicalInputMap validationはempty alternative setを許可しない', a
 });
 
 test('logical output matching lengthはcanonicalInputsをauthorityにする', async () => {
-  const evaluateSource = await readFile(join(SRC, 'trace', 'generate.ts'), 'utf8');
+  const traceSource = await readFile(join(SRC, 'trace', 'generate.ts'), 'utf8');
   const layoutTypesSource = await readFile(join(SRC, 'input/layouts/types.ts'), 'utf8');
   const userLayoutsSource = await readFile(join(SRC, 'input', 'layouts', 'user-layouts.ts'), 'utf8');
 
   assert.doesNotMatch(layoutTypesSource, /\bmaxCharLength\b/);
   assert.doesNotMatch(userLayoutsSource, /\bmaxCharLength\b/);
   assert.doesNotMatch(
-    evaluateSource,
+    traceSource,
     /layout\.maxCharLength\b/,
-    'evaluate must derive the longest-match bound from canonicalInputs',
+    'generateTrace must derive the longest-match bound from canonicalInputs',
   );
   assert.match(
-    evaluateSource,
+    traceSource,
     /layout\.canonicalInputs\.keys\(\)/,
     'canonicalInputs must be the authority for logical output match length',
   );
 });
 
-test('evaluate realized factはFace authoring metadataへ依存しない', async () => {
+test('generateTrace realized factはFace authoring metadataへ依存しない', async () => {
   const source = await readFile(join(SRC, 'trace', 'generate.ts'), 'utf8');
 
   assert.doesNotMatch(

@@ -1,5 +1,5 @@
 import { buildGeometry, type Finger } from '#input/shapes/geometry.ts';
-import { type Options, type Stroke, type Trace } from '#trace/generate.ts';
+import { type TracePolicy, type Stroke, type Trace } from '#trace/generate.ts';
 import {
   advancePlayback, clampPlaybackCursor, createPlaybackState,
   playbackPreparedFingerPositionKeys, playbackInputPreview, playbackPlannedKeys,
@@ -22,8 +22,8 @@ import type {
   UiStateV1,
 } from './ui-state.ts';
 import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
-import type { ChainPolicy } from '#interpretation/structure/chain.ts';
-import type { ArpeggioPolicy } from '#interpretation/structure/arpeggio.ts';
+import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
+import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 import type {
   ActionRealizationPolicy,
   TriggerRealizationPolicy,
@@ -55,10 +55,10 @@ export interface PlaybackViewContext {
   setPlaybackLayoutOverride: (enabled: boolean) => void;
   updateUiState: (change: (draft: UiStateV1) => void) => void;
   getCalibration: () => PlaybackCalibration | undefined;
-  getChainPolicy: () => ChainPolicy;
-  updateChainPolicy: (policy: ChainPolicy) => void;
-  getArpeggioPolicy: () => ArpeggioPolicy;
-  updateArpeggioPolicy: (policy: ArpeggioPolicy) => void;
+  getChainPolicy: () => ChainInterpretation;
+  updateChainPolicy: (policy: ChainInterpretation) => void;
+  getArpeggioPolicy: () => ArpeggioInterpretation;
+  updateArpeggioPolicy: (policy: ArpeggioInterpretation) => void;
   getTriggerRealizationPolicy: () => TriggerRealizationPolicy;
   updateTriggerRealizationPolicy: (policy: TriggerRealizationPolicy) => void;
   getActionRealizationPolicy: () => ActionRealizationPolicy;
@@ -78,7 +78,7 @@ export interface PlaybackViewController {
     trace: Trace,
     layout: Layout,
     geometry: ReturnType<typeof buildGeometry>,
-    options: Options,
+    options: TracePolicy,
     analysis: AggregatedAnalysisResult,
   ) => void;
   clear: () => void;
@@ -121,7 +121,7 @@ let playbackTrace: Trace | undefined;
 let playbackAnalysis: AggregatedAnalysisResult | undefined;
 let playbackGeometry: ReturnType<typeof buildGeometry> | undefined;
 let playbackLayout: Layout | undefined;
-let playbackOptions: Options | undefined;
+let playbackOptions: TracePolicy | undefined;
 let playbackAnimationFrame: number | undefined;
 let playbackLastTimestamp: number | undefined;
 let playbackSeekWasPlaying: boolean | undefined;
@@ -460,7 +460,7 @@ function renderPlayback(
   trace: Trace,
   layout: Layout,
   geometry: ReturnType<typeof buildGeometry>,
-  options: Options,
+  options: TracePolicy,
   analysis: AggregatedAnalysisResult,
 ) {
   const previousAnalysis = playbackAnalysis;

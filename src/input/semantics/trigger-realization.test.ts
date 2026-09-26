@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../shapes/geometry.ts';
-import { evaluate } from '#trace/generate.ts';
+import { generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { fromFaces } from '../layouts/index.ts';
 import { DEFAULT_TRIGGER_REALIZATION_POLICY } from './index.ts';
@@ -18,7 +18,7 @@ const holdLayout = (persistence: 'single' | 'hold-capable' = 'hold-capable') =>
   }]);
 
 test('既定Policyはhold-capableをrealizeせずbase normalizationと互換', () => {
-  const trace = evaluate('xy', holdLayout(), geometry);
+  const trace = generateTrace('xy', holdLayout(), geometry);
   assert.equal(trace.strokes.length, 2);
   assert.deepEqual(trace.strokes.map((stroke) => stroke.triggerKeys), [['q'], ['q']]);
   assert.ok(trace.strokes.every((stroke) =>
@@ -27,8 +27,8 @@ test('既定Policyはhold-capableをrealizeせずbase normalizationと互換', (
 
 test('hold利用時は同一trigger集合をstart/continueへrealizeして再押下を除く', () => {
   const layout = holdLayout();
-  const off = evaluate('xy', layout, geometry);
-  const on = evaluate('xy', layout, geometry, {
+  const off = generateTrace('xy', layout, geometry);
+  const on = generateTrace('xy', layout, geometry, {
     windowSize: 3,
     sfbHomeCost: true,
     triggerRealizationPolicy: { useHold: true },
@@ -59,7 +59,7 @@ test('hold利用時は同一trigger集合をstart/continueへrealizeして再押
 });
 
 test('single triggerはhold利用ONでもheld-triggerへ昇格しない', () => {
-  const trace = evaluate('xy', holdLayout('single'), geometry, {
+  const trace = generateTrace('xy', holdLayout('single'), geometry, {
     windowSize: 3,
     sfbHomeCost: true,
     triggerRealizationPolicy: { useHold: true },
@@ -90,7 +90,7 @@ test('suffix hold-capableは次対象の別triggerを直前holdから誤伝播�
       triggerPersistence: 'hold-capable',
     },
   ]);
-  const trace = evaluate('xy', layout, geometry, {
+  const trace = generateTrace('xy', layout, geometry, {
     windowSize: 3,
     sfbHomeCost: true,
     triggerRealizationPolicy: { useHold: true },
@@ -134,7 +134,7 @@ test('suffix singleは同じtriggerでもactive holdを継承しない', () => {
       triggerPersistence: 'single',
     },
   ]);
-  const trace = evaluate('xy', layout, geometry, {
+  const trace = generateTrace('xy', layout, geometry, {
     windowSize: 3,
     sfbHomeCost: true,
     triggerRealizationPolicy: { useHold: true },
@@ -163,7 +163,7 @@ test('suffix hold-capableは同じtriggerでも次対象へhold continuationせ�
     inputRole: 'modifier',
     triggerPersistence: 'hold-capable',
   }]);
-  const trace = evaluate('xx', layout, geometry, {
+  const trace = generateTrace('xx', layout, geometry, {
     windowSize: 3,
     sfbHomeCost: true,
     triggerRealizationPolicy: { useHold: true },
@@ -191,7 +191,7 @@ test('held triggerがoutputでもある場合はcontinueせずrelease/restartす
     inputRole: 'modifier',
     triggerPersistence: 'hold-capable',
   }]);
-  const trace = evaluate('xx', layout, geometry, {
+  const trace = generateTrace('xx', layout, geometry, {
     windowSize: 3,
     sfbHomeCost: true,
     triggerRealizationPolicy: { useHold: true },

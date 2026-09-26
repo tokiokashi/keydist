@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DEFAULT_CHAIN_POLICY,
+  DEFAULT_CHAIN_INTERPRETATION,
   analyzeChains,
   buildRawHandRuns,
 } from './chain.ts';
@@ -66,7 +66,7 @@ test('Raw hand runは参加factを保持し、trigger/thumb/逆手同時から�
   );
 
   const keepThumb = analyzeChains(strokes, {
-    ...DEFAULT_CHAIN_POLICY,
+    ...DEFAULT_CHAIN_INTERPRETATION,
     breakOnThumbOnly: false,
   });
   assert.deepEqual(
@@ -77,7 +77,7 @@ test('Raw hand runは参加factを保持し、trigger/thumb/逆手同時から�
   );
 });
 
-test('ChainPolicyはsame-finger / trigger-only / 逆手同時を独立に分割する', () => {
+test('ChainInterpretationはsame-finger / trigger-only / 逆手同時を独立に分割する', () => {
   const strokes = [
     stroke(0, [participation('left', 'LI', ['output'])]),
     stroke(1, [participation('left', 'LM', ['trigger'])]),
@@ -90,7 +90,7 @@ test('ChainPolicyはsame-finger / trigger-only / 逆手同時を独立に分割�
   ];
 
   const triggerPolicy = {
-    ...DEFAULT_CHAIN_POLICY,
+    ...DEFAULT_CHAIN_INTERPRETATION,
     breakOnSameFinger: false,
     breakOnTriggerOnly: true,
   };
@@ -102,7 +102,7 @@ test('ChainPolicyはsame-finger / trigger-only / 逆手同時を独立に分割�
   );
 
   const oppositePolicy = {
-    ...DEFAULT_CHAIN_POLICY,
+    ...DEFAULT_CHAIN_INTERPRETATION,
     breakOnSameFinger: false,
     breakOnOppositeHandSimultaneous: true,
   };
@@ -114,7 +114,7 @@ test('ChainPolicyはsame-finger / trigger-only / 逆手同時を独立に分割�
   );
 
   assert.deepEqual(
-    analyzeChains(strokes, DEFAULT_CHAIN_POLICY).chains
+    analyzeChains(strokes, DEFAULT_CHAIN_INTERPRETATION).chains
       .filter((chain) => chain.hand === 'left')
       .map((chain) => [chain.startStrokeIndex, chain.endStrokeIndex]),
     [[0, 3], [4, 5]],
@@ -130,7 +130,7 @@ test('breakOnTriggerOnlyはcanonical composition classificationをshift扱いで
     ], [], ['composition']),
   ];
   const policy = {
-    ...DEFAULT_CHAIN_POLICY,
+    ...DEFAULT_CHAIN_INTERPRETATION,
     breakOnSameFinger: false,
     breakOnTriggerOnly: true,
   };
@@ -161,7 +161,7 @@ test('composition classificationなしのtrigger-onlyは通常のChain境界に�
     ]),
   ];
   const policy = {
-    ...DEFAULT_CHAIN_POLICY,
+    ...DEFAULT_CHAIN_INTERPRETATION,
     breakOnSameFinger: false,
     breakOnTriggerOnly: true,
     breakOnThumbOnly: false,
@@ -194,7 +194,7 @@ test('親指only境界とtrigger-only境界は独立に適用する', () => {
   ];
 
   const thumbOnly = {
-    ...DEFAULT_CHAIN_POLICY,
+    ...DEFAULT_CHAIN_INTERPRETATION,
     breakOnSameFinger: false,
     breakOnTriggerOnly: false,
     breakOnThumbOnly: true,
@@ -208,7 +208,7 @@ test('親指only境界とtrigger-only境界は独立に適用する', () => {
   );
 
   const triggerOnly = {
-    ...DEFAULT_CHAIN_POLICY,
+    ...DEFAULT_CHAIN_INTERPRETATION,
     breakOnSameFinger: false,
     breakOnTriggerOnly: true,
     breakOnThumbOnly: false,

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
 import { resolveConditions } from '#engine/condition-resolution.ts';
-import { evaluate } from '#trace/generate.ts';
+import { generateTrace } from '#trace/generate.ts';
 import { assignmentWithHomeKeys, buildGeometry } from '#input/shapes/geometry.ts';
 import {
   DEFAULT_GEOMETRY_SETTINGS,
@@ -89,7 +89,7 @@ test('new Snapshot pipeline matches the legacy evaluate/analyze/metrics sequence
   const conditions = resolveConditions(DEFAULT_CONDITION_DEFAULTS, undefined);
   const geometry = buildGeometry('row-staggered');
 
-  const legacyTrace = evaluate('asdf jkl;', layout, geometry, conditions.options);
+  const legacyTrace = generateTrace('asdf jkl;', layout, geometry, conditions.options);
   const legacyAnalysis = analyzeStrokeStructure(
     legacyTrace.strokes,
     conditions.chainPolicy,
@@ -101,8 +101,8 @@ test('new Snapshot pipeline matches the legacy evaluate/analyze/metrics sequence
     windowSize: conditions.options.windowSize,
     sfbHomeCost: conditions.options.sfbHomeCost,
     preferOppositeThumb: conditions.options.preferOppositeThumb ?? false,
-    chainPolicy: conditions.chainPolicy,
-    arpeggioPolicy: conditions.arpeggioPolicy,
+    chainInterpretation: conditions.chainPolicy,
+    arpeggioInterpretation: conditions.arpeggioPolicy,
     triggerRealizationPolicy: conditions.triggerRealizationPolicy,
     actionRealizationPolicy: conditions.actionRealizationPolicy,
     romajiRuleId: null,
@@ -252,7 +252,7 @@ test('representative ja romaji + per-layout geometry/policy resolves to legacy-e
     legacyGeometrySettings.shape,
     assignmentWithHomeKeys(legacyGeometrySettings.assignment, legacyLayout.homeKeys),
   );
-  const legacyTrace = evaluate('しん', legacyLayout, legacyGeometry, legacyConditions.options);
+  const legacyTrace = generateTrace('しん', legacyLayout, legacyGeometry, legacyConditions.options);
   const legacyAnalysis = analyzeStrokeStructure(
     legacyTrace.strokes,
     legacyConditions.chainPolicy,
@@ -264,8 +264,8 @@ test('representative ja romaji + per-layout geometry/policy resolves to legacy-e
     windowSize: legacyConditions.options.windowSize,
     sfbHomeCost: legacyConditions.options.sfbHomeCost,
     preferOppositeThumb: legacyConditions.options.preferOppositeThumb ?? false,
-    chainPolicy: legacyConditions.chainPolicy,
-    arpeggioPolicy: legacyConditions.arpeggioPolicy,
+    chainInterpretation: legacyConditions.chainPolicy,
+    arpeggioInterpretation: legacyConditions.arpeggioPolicy,
     triggerRealizationPolicy: legacyConditions.triggerRealizationPolicy,
     actionRealizationPolicy: legacyConditions.actionRealizationPolicy,
     romajiRuleId: 'kunrei',

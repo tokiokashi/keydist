@@ -14,7 +14,7 @@ import {
   type NonThumb,
   type PhysicalShape,
 } from './geometry.ts';
-import { evaluate } from '#trace/generate.ts';
+import { generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { fromKana, LAYOUT_BY_ID } from '../layouts/index.ts';
 
@@ -47,7 +47,7 @@ test('geometry.assignmentに既定の割り当てが記録される', () => {
 
 test('metricsの出力に使用した指割り当てが併記される（仕様 §4.2）', () => {
   const geometry = buildGeometry('row-staggered');
-  const m = computeMetrics(evaluate('asdf', qwerty, geometry, opts), geometry);
+  const m = computeMetrics(generateTrace('asdf', qwerty, geometry, opts), geometry);
   assert.equal(m.fingerAssignmentId, 'default');
   assert.equal(m.fingerAssignmentName, geometry.assignment.name);
 });
@@ -107,8 +107,8 @@ test('割り当てを変えると同指連続の数が変わりうる（測定�
   const defaultGeometry = buildGeometry('row-staggered');
   const noPinkyGeometry = buildGeometry('row-staggered', noPinkyAssignment());
 
-  const defaultMetrics = computeMetrics(evaluate('as', qwerty, defaultGeometry, opts), defaultGeometry);
-  const noPinkyMetrics = computeMetrics(evaluate('as', qwerty, noPinkyGeometry, opts), noPinkyGeometry);
+  const defaultMetrics = computeMetrics(generateTrace('as', qwerty, defaultGeometry, opts), defaultGeometry);
+  const noPinkyMetrics = computeMetrics(generateTrace('as', qwerty, noPinkyGeometry, opts), noPinkyGeometry);
 
   assert.equal(defaultMetrics.sameFinger, 0);
   assert.equal(noPinkyMetrics.sameFinger, 1);
@@ -138,7 +138,7 @@ test('ホームキーが存在しない割り当ては例外になる', () => {
 
 test('metricsの出力に使用した物理形状が併記される（仕様 §3）', () => {
   const geometry = buildGeometry('column-staggered');
-  const m = computeMetrics(evaluate('asdf', qwerty, geometry, opts), geometry);
+  const m = computeMetrics(generateTrace('asdf', qwerty, geometry, opts), geometry);
   assert.equal(m.geometryId, 'column-staggered');
   assert.equal(m.geometryName, geometry.name);
 });
@@ -190,7 +190,7 @@ test('ピッチ（pitch_mm）は形状ごとにカスタムできる', () => {
   const shape: PhysicalShape = { ...PHYSICAL_SHAPES.ortholinear, id: 'custom-pitch', pitchMm: 17 };
   const geometry = buildGeometry(shape);
   assert.equal(geometry.pitchMm, 17);
-  const m = computeMetrics(evaluate('h', qwerty, geometry, opts), geometry);
+  const m = computeMetrics(generateTrace('h', qwerty, geometry, opts), geometry);
   near(m.totalMm, m.totalUnits * 17, 'totalMm');
 });
 
@@ -279,7 +279,7 @@ test('thumbHomeを指定すると複数の親指キーを持つ形状を構築�
 test('複数ある親指キーの間の移動は他の指と同じ規則で距離が計上される（仕様 §3.1）', () => {
   const geometry = buildGeometry(dualThumbShape({ RT: 'space' }));
   const l = fromKana('t', 't', { x: [['thumb-r2']] });
-  const t = evaluate('x', l, geometry, opts);
+  const t = generateTrace('x', l, geometry, opts);
   // ホーム（space）からthumb-r2（1u右）までの初回移動
   near(t.strokes[0].distance, 1, 'thumb-r2まで1u');
 });

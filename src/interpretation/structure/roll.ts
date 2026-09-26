@@ -9,7 +9,7 @@ import type {
   FingerTransition,
   HandTransition,
 } from './transition.ts';
-import type { ChainPolicy, Hand } from './chain.ts';
+import type { ChainInterpretation, Hand } from './chain.ts';
 
 export type RollDirection = Exclude<FingerDirection, 'same'>;
 
@@ -267,7 +267,7 @@ export function analyzeRolls(
 /** 呼び出し側向けの合成入口。 */
 export function analyzeStrokeRolls(
   strokes: readonly Stroke[],
-  policy?: ChainPolicy,
+  policy?: ChainInterpretation,
 ): RollAnalysisResult {
   return analyzeRolls(analyzeStrokeRedirects(strokes, policy));
 }

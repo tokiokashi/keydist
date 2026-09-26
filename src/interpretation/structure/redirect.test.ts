@@ -12,7 +12,7 @@ import {
   type HandTransition,
   type TransitionAnalysisResult,
 } from './transition.ts';
-import { DEFAULT_CHAIN_POLICY } from './chain.ts';
+import { DEFAULT_CHAIN_INTERPRETATION } from './chain.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({
   id,
@@ -60,7 +60,7 @@ const stroke = (index: number, presses: Press[]): Stroke => ({
 });
 
 const keepSameFinger = {
-  ...DEFAULT_CHAIN_POLICY,
+  ...DEFAULT_CHAIN_INTERPRETATION,
   breakOnSameFinger: false,
 };
 

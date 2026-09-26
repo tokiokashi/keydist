@@ -1,7 +1,7 @@
 import { ADJACENT_PAIRS, ALL_FINGERS, dist, type Finger, type Geometry } from '#input/shapes/geometry.ts';
 import type { Stroke, Trace } from '#trace/generate.ts';
-import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from './structure/chain.ts';
-import { DEFAULT_ARPEGGIO_POLICY, type ArpeggioPolicy } from './structure/arpeggio.ts';
+import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from './structure/chain.ts';
+import { DEFAULT_ARPEGGIO_INTERPRETATION, type ArpeggioInterpretation } from './structure/arpeggio.ts';
 import { COMBO_LAYER_ID, SINGLE_LAYER_ID } from '#input/layouts/types.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
@@ -152,10 +152,10 @@ export interface MetricConditions {
   sfbHomeCost: boolean;
   /** 親指シフトを出力キーと反対側の親指へ振り替えたか */
   preferOppositeThumb: boolean;
-  /** Analysis Chainを作ったChainPolicy。 */
-  chainPolicy: ChainPolicy;
-  /** ArpeggioSpanを派生したArpeggioPolicy。 */
-  arpeggioPolicy: ArpeggioPolicy;
+  /** Analysis Chainを作ったChainInterpretation。 */
+  chainInterpretation: ChainInterpretation;
+  /** ArpeggioSpanを派生したArpeggioInterpretation。 */
+  arpeggioInterpretation: ArpeggioInterpretation;
   /** hold-capable triggerをrealizeしたPolicy。 */
   triggerRealizationPolicy: TriggerRealizationPolicy;
   /** Trigger realization後のaction groupingへ適用したPolicy。 */
@@ -168,8 +168,8 @@ export const DEFAULT_METRIC_CONDITIONS: MetricConditions = {
   windowSize: 3,
   sfbHomeCost: true,
   preferOppositeThumb: false,
-  chainPolicy: { ...DEFAULT_CHAIN_POLICY },
-  arpeggioPolicy: { ...DEFAULT_ARPEGGIO_POLICY },
+  chainInterpretation: { ...DEFAULT_CHAIN_INTERPRETATION },
+  arpeggioInterpretation: { ...DEFAULT_ARPEGGIO_INTERPRETATION },
   triggerRealizationPolicy: { ...DEFAULT_TRIGGER_REALIZATION_POLICY },
   actionRealizationPolicy: { ...DEFAULT_ACTION_REALIZATION_POLICY },
   romajiRuleId: null,
@@ -279,7 +279,7 @@ export function computeMetrics(
   };
 
   const strokes = trace.strokes.length;
-  // ActionRealizationPolicyはevaluateでStroke生成前に適用済み。
+  // ActionRealizationPolicyはgenerateTraceでStroke生成前に適用済み。
   // Metrics側ではvirtual actionを足さず、共通realized streamをそのまま数える。
   const actions = strokes;
   const { inputChars } = trace;
@@ -290,8 +290,8 @@ export function computeMetrics(
     fingerAssignmentName: geometry.assignment.name,
     conditions: {
       ...conditions,
-      chainPolicy: { ...conditions.chainPolicy },
-      arpeggioPolicy: { ...conditions.arpeggioPolicy },
+      chainInterpretation: { ...conditions.chainInterpretation },
+      arpeggioInterpretation: { ...conditions.arpeggioInterpretation },
       triggerRealizationPolicy: { ...conditions.triggerRealizationPolicy },
       actionRealizationPolicy: { ...conditions.actionRealizationPolicy },
     },

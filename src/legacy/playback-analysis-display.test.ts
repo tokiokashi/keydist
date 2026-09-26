@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import type { Finger, Key } from '#input/shapes/geometry.ts';
 import type { Press, Stroke, StrokeParticipation } from '#trace/generate.ts';
 import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
-import { DEFAULT_CHAIN_POLICY } from '#interpretation/structure/chain.ts';
-import { DEFAULT_ARPEGGIO_POLICY } from '#interpretation/structure/arpeggio.ts';
+import { DEFAULT_CHAIN_INTERPRETATION } from '#interpretation/structure/chain.ts';
+import { DEFAULT_ARPEGGIO_INTERPRETATION } from '#interpretation/structure/arpeggio.ts';
 import {
   playbackAnalysisArpeggioMotions,
   playbackAnalysisArpeggioOrders,
@@ -45,7 +45,7 @@ const stroke = (index: number, p: Press): Stroke => ({
   distance: 0,
   positions: {} as Stroke['positions'],
 });
-const keepSameFinger = { ...DEFAULT_CHAIN_POLICY, breakOnSameFinger: false };
+const keepSameFinger = { ...DEFAULT_CHAIN_INTERPRETATION, breakOnSameFinger: false };
 
 const simultaneousThumbShiftStroke = (
   index: number,
@@ -113,7 +113,7 @@ test('overlapするArpeggioSpanは表示projectionでも別sourceのまま保持
     stroke(2, press('LR', 'w', 2, true)),
     stroke(3, press('LP', 'q', 1)),
   ], keepSameFinger, {
-    ...DEFAULT_ARPEGGIO_POLICY,
+    ...DEFAULT_ARPEGGIO_INTERPRETATION,
     bridgeSameFinger: true,
   });
 

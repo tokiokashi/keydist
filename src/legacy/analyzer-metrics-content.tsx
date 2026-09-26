@@ -6,8 +6,8 @@ import {
   PHYSICAL_SHAPES,
   isPresetGeometryKind,
 } from '#input/shapes/geometry.ts';
-import { sameArpeggioPolicy } from '#interpretation/structure/arpeggio.ts';
-import { sameChainPolicy } from '#interpretation/structure/chain.ts';
+import { sameArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
+import { sameChainInterpretation } from '#interpretation/structure/chain.ts';
 import { nSensitivity } from '#analyzers/n-sensitivity/sensitivity.ts';
 import {
   escapeText,
@@ -200,10 +200,10 @@ function metricConditionText(
     metrics.conditions.preferOppositeThumb !== defaults.preferOppositeThumb
       ? '逆側親指設定変更'
       : '',
-    !sameChainPolicy(metrics.conditions.chainPolicy, defaults.chain)
+    !sameChainInterpretation(metrics.conditions.chainInterpretation, defaults.chain)
       ? 'Chain境界設定変更'
       : '',
-    !sameArpeggioPolicy(metrics.conditions.arpeggioPolicy, defaults.arpeggioPolicy)
+    !sameArpeggioInterpretation(metrics.conditions.arpeggioInterpretation, defaults.arpeggioPolicy)
       ? 'Arpeggio構造Policy変更'
       : '',
     override?.romajiRule !== undefined ? `ローマ字: ${override.romajiRule}` : '',
@@ -622,11 +622,11 @@ function sensitivityLabel(
       ? '逆側親指設定変更'
       : '',
     override?.romajiRule !== undefined ? 'ローマ字個別設定' : '',
-    override?.chain !== undefined && !sameChainPolicy(override.chain, defaults.chain)
+    override?.chain !== undefined && !sameChainInterpretation(override.chain, defaults.chain)
       ? 'Chain境界個別設定'
       : '',
     override?.arpeggioPolicy !== undefined
-      && !sameArpeggioPolicy(override.arpeggioPolicy, defaults.arpeggioPolicy)
+      && !sameArpeggioInterpretation(override.arpeggioPolicy, defaults.arpeggioPolicy)
       ? 'ArpeggioPolicy個別設定'
       : '',
   ].filter(Boolean);
@@ -660,8 +660,8 @@ export function AnalyzerSensitivityResults({
       result.options,
       range,
       result.metrics.conditions.romajiRuleId,
-      result.analysis.chainPolicy,
-      result.analysis.arpeggioPolicy,
+      result.analysis.chainInterpretation,
+      result.analysis.arpeggioInterpretation,
     );
     const base = points[0]?.totalUnits || 1;
     return {

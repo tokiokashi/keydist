@@ -214,7 +214,7 @@ function withinHandVectors(strokes: readonly Stroke[]): BigramVector[] {
 
 /**
  * 実Stroke bigram、または反対手だけを飛ばした手内bigramをvector factへ変換する。
- * Roll / Arpeggioの成立判定やChainPolicyは参照しない。
+ * Roll / Arpeggioの成立判定やChainInterpretationは参照しない。
  */
 export function buildBigramVectors(
   strokes: readonly Stroke[],

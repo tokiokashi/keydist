@@ -1,6 +1,6 @@
 import {
-  DEFAULT_CHAIN_POLICY,
-  type ChainPolicy,
+  DEFAULT_CHAIN_INTERPRETATION,
+  type ChainInterpretation,
 } from '#interpretation/structure/chain.ts';
 
 export interface LegacyChainUiSettings {
@@ -16,8 +16,8 @@ export interface LegacyChainUiSettings {
  */
 export function chainPolicyFromLegacyUi(
   legacy: LegacyChainUiSettings,
-  base: ChainPolicy = DEFAULT_CHAIN_POLICY,
-): ChainPolicy {
+  base: ChainInterpretation = DEFAULT_CHAIN_INTERPRETATION,
+): ChainInterpretation {
   return {
     ...base,
     breakOnSameFinger: !legacy.chainIncludeSameFinger,
@@ -26,7 +26,7 @@ export function chainPolicyFromLegacyUi(
 }
 
 /** 旧UIへ表示するための逆変換。Policyのうち旧UIが表現できる項目だけを返す。 */
-export function legacyUiFromChainPolicy(policy: ChainPolicy): LegacyChainUiSettings {
+export function legacyUiFromChainPolicy(policy: ChainInterpretation): LegacyChainUiSettings {
   return {
     chainIncludeSameFinger: !policy.breakOnSameFinger,
     chainIncludeLayerKeys: !policy.breakOnTriggerOnly,

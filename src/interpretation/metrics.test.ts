@@ -1,19 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, ALL_FINGERS } from '#input/shapes/geometry.ts';
-import { evaluate, type Options } from '#trace/generate.ts';
+import { generateTrace, type TracePolicy } from '#trace/generate.ts';
 import { computeMetrics, DEFAULT_METRIC_CONDITIONS, homeSpacing } from './metrics.ts';
 import { faceFromEntries, fromFaces, fromKana, LAYOUTS_JA, LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { dist } from '#input/shapes/geometry.ts';
 import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '#input/text/sample-ja.ts';
-import { DEFAULT_CHAIN_POLICY } from './structure/chain.ts';
-import { DEFAULT_ARPEGGIO_POLICY } from './structure/arpeggio.ts';
+import { DEFAULT_CHAIN_INTERPRETATION } from './structure/chain.ts';
+import { DEFAULT_ARPEGGIO_INTERPRETATION } from './structure/arpeggio.ts';
 
 const geometry = buildGeometry('row-staggered');
 // LAYOUT_BY_IDの 'qwerty' はローマ字テーブル付きのJA版で上書きされる。
 // ローマ字表に無いasciiはそのまま通るので、英字のテストにもそのまま使える。
 const qwerty = LAYOUT_BY_ID.get('qwerty')!;
-const opts = (o: Partial<Options> = {}): Options => ({
+const opts = (o: Partial<TracePolicy> = {}): TracePolicy => ({
   windowSize: 3,
   sfbHomeCost: true,
   ...o,
@@ -24,23 +24,23 @@ const near = (a: number, b: number, msg?: string) =>
 
 test('入力文字数はローマ字展開前の文字数になる', () => {
   // 「し」はsiに展開されて2打鍵になるが、入力文字数は展開前の1
-  const t = evaluate('し', qwerty, geometry, opts());
+  const t = generateTrace('し', qwerty, geometry, opts());
   assert.equal(t.strokes.length, 2);
   assert.equal(t.inputChars, 1);
 });
 
 test('Metricsは数値を算出した測定条件をスナップショットで保持する', () => {
-  const trace = evaluate('し', qwerty, geometry, opts({ windowSize: 7, sfbHomeCost: false }));
+  const trace = generateTrace('し', qwerty, geometry, opts({ windowSize: 7, sfbHomeCost: false }));
   const metrics = computeMetrics(trace, geometry, {
     windowSize: 7,
     sfbHomeCost: false,
     preferOppositeThumb: true,
-    chainPolicy: {
-      ...DEFAULT_CHAIN_POLICY,
+    chainInterpretation: {
+      ...DEFAULT_CHAIN_INTERPRETATION,
       breakOnOppositeHandSimultaneous: true,
     },
-    arpeggioPolicy: {
-      ...DEFAULT_ARPEGGIO_POLICY,
+    arpeggioInterpretation: {
+      ...DEFAULT_ARPEGGIO_INTERPRETATION,
       bridgeSameFinger: true,
     },
     triggerRealizationPolicy: { useHold: true },
@@ -52,12 +52,12 @@ test('Metricsは数値を算出した測定条件をスナップショットで�
     windowSize: 7,
     sfbHomeCost: false,
     preferOppositeThumb: true,
-    chainPolicy: {
-      ...DEFAULT_CHAIN_POLICY,
+    chainInterpretation: {
+      ...DEFAULT_CHAIN_INTERPRETATION,
       breakOnOppositeHandSimultaneous: true,
     },
-    arpeggioPolicy: {
-      ...DEFAULT_ARPEGGIO_POLICY,
+    arpeggioInterpretation: {
+      ...DEFAULT_ARPEGGIO_INTERPRETATION,
       bridgeSameFinger: true,
     },
     triggerRealizationPolicy: { useHold: true },
@@ -73,14 +73,14 @@ test('旧日本語サンプルは過去の測定用に290文字で残る', () =>
 test('スキップされた文字も入力文字数に数える', () => {
   // 分母を「打てた文字数」にすると配列ごとに分母が動いてしまうため、
   // 展開前の原文の文字数で固定する（skipの有無に関わらない）
-  const t = evaluate('a漢b', qwerty, geometry, opts());
+  const t = generateTrace('a漢b', qwerty, geometry, opts());
   assert.equal(t.skipped, 1);
   assert.equal(t.inputChars, 3);
 });
 
 test('1文字あたりの距離は打鍵数ではなく入力文字数を分母にする', () => {
   // 「し」→ si（2打鍵、入力文字数は1）
-  const m = computeMetrics(evaluate('し', qwerty, geometry, opts()), geometry);
+  const m = computeMetrics(generateTrace('し', qwerty, geometry, opts()), geometry);
   assert.equal(m.strokes, 2);
   assert.equal(m.inputChars, 1);
   near(m.perCharUnits, m.totalUnits, '1文字あたり = 総距離 / 1');
@@ -96,7 +96,7 @@ test('コンボ相当（複数文字を1見出しで打つ）でも入力文字�
     ゃ: [['k']],
     きゃ: [['f']],
   });
-  const combo = computeMetrics(evaluate('きゃ', l, geometry, opts()), geometry);
+  const combo = computeMetrics(generateTrace('きゃ', l, geometry, opts()), geometry);
   assert.equal(combo.strokes, 1);
   assert.equal(combo.inputChars, 2);
 
@@ -105,7 +105,7 @@ test('コンボ相当（複数文字を1見出しで打つ）でも入力文字�
     ゃ: [['k']],
   });
   const split = computeMetrics(
-    evaluate('きゃ', splitLayout, geometry, opts()),
+    generateTrace('きゃ', splitLayout, geometry, opts()),
     geometry,
   );
   assert.equal(split.strokes, 2);
@@ -117,7 +117,7 @@ test('コンボ相当（複数文字を1見出しで打つ）でも入力文字�
 
 test('1文字あたりのアクション数はステップ数を入力文字数で割った値になる', () => {
   // 「し」→ si（2打鍵、入力文字数は1）
-  const m = computeMetrics(evaluate('し', qwerty, geometry, opts()), geometry);
+  const m = computeMetrics(generateTrace('し', qwerty, geometry, opts()), geometry);
   assert.equal(m.strokes, 2);
   assert.equal(m.inputChars, 1);
   near(m.perCharSteps, 2, 'アクション/文字 = ステップ数 / 入力文字数');
@@ -125,21 +125,21 @@ test('1文字あたりのアクション数はステップ数を入力文字数�
 
 test('1文字あたりの押下キー数は押下数を入力文字数で割った値になる', () => {
   // 「し」→ si（同時押しを含まないので押下数もステップ数と同じ2）
-  const m = computeMetrics(evaluate('し', qwerty, geometry, opts()), geometry);
+  const m = computeMetrics(generateTrace('し', qwerty, geometry, opts()), geometry);
   assert.equal(m.presses, 2);
   near(m.perCharPresses, 2, '押下/文字 = 押下数 / 入力文字数');
 });
 
 test('単打面率は単打面の1キー直接出力だけを文字数ベースで数える', () => {
   const asuka = LAYOUT_BY_ID.get('asuka')!;
-  const asukaMetrics = computeMetrics(evaluate('はあ', asuka, geometry, opts()), geometry);
+  const asukaMetrics = computeMetrics(generateTrace('はあ', asuka, geometry, opts()), geometry);
   near(asukaMetrics.singleTapLayerRate, 50, '飛鳥: 単打面「は」だけを数える');
 
   const shingeta = LAYOUT_BY_ID.get('shingeta')!;
-  const shingetaMetrics = computeMetrics(evaluate('のきゃ', shingeta, geometry, opts()), geometry);
+  const shingetaMetrics = computeMetrics(generateTrace('のきゃ', shingeta, geometry, opts()), geometry);
   near(shingetaMetrics.singleTapLayerRate, 100 / 3, '新下駄: 2文字コンボ「きゃ」は単打面率へ含めない');
 
-  const romajiMetrics = computeMetrics(evaluate('あか', qwerty, geometry, opts()), geometry);
+  const romajiMetrics = computeMetrics(generateTrace('あか', qwerty, geometry, opts()), geometry);
   near(romajiMetrics.singleTapLayerRate, 0, 'ローマ字展開後の英字キーはカナ配列の単打面配置として数えない');
 });
 
@@ -147,7 +147,7 @@ test('単打面率はlegacy inputRoleではなくcanonical classificationをauth
   const layout = fromKana('tap-authority', 'tap-authority', {
     あ: [['f']],
   });
-  const trace = evaluate('あ', layout, geometry, opts());
+  const trace = generateTrace('あ', layout, geometry, opts());
 
   const legacyCompositionOnly = {
     ...trace,
@@ -183,7 +183,7 @@ test('単打面率は文字数、単打率・1キー率はaction数を分母に�
     きゃ: [['f']],
     あ: [['d'], ['k']],
   });
-  const metrics = computeMetrics(evaluate('きゃあ', layout, geometry, opts()), geometry);
+  const metrics = computeMetrics(generateTrace('きゃあ', layout, geometry, opts()), geometry);
 
   assert.equal(metrics.inputChars, 3);
   assert.equal(metrics.actions, 3);
@@ -200,7 +200,7 @@ test('単打率は文字種ではなくbase layerの直接出力で判定する�
     '☆': [['k']],
     きゃ: [['l']],
   });
-  const metrics = computeMetrics(evaluate('ー、☆きゃ', layout, geometry, opts()), geometry);
+  const metrics = computeMetrics(generateTrace('ー、☆きゃ', layout, geometry, opts()), geometry);
 
   assert.equal(metrics.actions, 4);
   near(metrics.singleTapLayerRate, 100, 'base layerの全出力を単打面として数える');
@@ -209,28 +209,28 @@ test('単打率は文字種ではなくbase layerの直接出力で判定する�
 });
 
 test('単打率はかなを1キーで直接出す独立actionだけを数える', () => {
-  const romajiMetrics = computeMetrics(evaluate('あか', qwerty, geometry, opts()), geometry);
+  const romajiMetrics = computeMetrics(generateTrace('あか', qwerty, geometry, opts()), geometry);
   near(romajiMetrics.singleTapRate, 0, 'ローマ字のa / k / aをかな配列の単打とは数えない');
   near(romajiMetrics.singleKeyRate, 100, 'ローマ字の各actionは1キー入力として数える');
 
   const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
-  const prefixMetrics = computeMetrics(evaluate('あ', tsuki, geometry, opts()), geometry);
+  const prefixMetrics = computeMetrics(generateTrace('あ', tsuki, geometry, opts()), geometry);
   near(prefixMetrics.singleTapRate, 0, '月配列: 前置シフトを含む入力は単打には含めない');
   near(prefixMetrics.singleKeyRate, 100, '月配列: 前置シフトも出力も各actionは1キー');
 
   const shingeta = LAYOUT_BY_ID.get('shingeta')!;
-  const comboMetrics = computeMetrics(evaluate('きゃ', shingeta, geometry, opts()), geometry);
+  const comboMetrics = computeMetrics(generateTrace('きゃ', shingeta, geometry, opts()), geometry);
   near(comboMetrics.singleTapRate, 0, '新下駄: 多キー同時押しは単打に含めない');
   near(comboMetrics.singleKeyRate, 0, '新下駄: 多キー同時押しは1キー打鍵でもない');
 });
 
 test('1キー率はActionRealizationPolicy適用後の共通Stroke streamを数える', () => {
   const asuka = LAYOUT_BY_ID.get('asuka')!;
-  const combinedTrace = evaluate('あだ', asuka, geometry, opts({
+  const combinedTrace = generateTrace('あだ', asuka, geometry, opts({
     triggerRealizationPolicy: { useHold: true },
     actionRealizationPolicy: { triggerActivation: 'disabled' },
   }));
-  const separateTrace = evaluate('あだ', asuka, geometry, opts({
+  const separateTrace = generateTrace('あだ', asuka, geometry, opts({
     triggerRealizationPolicy: { useHold: true },
     actionRealizationPolicy: { triggerActivation: 'semantic', triggerActivationClassOverrides: { 'order-free': 'separate' } },
   }));
@@ -258,7 +258,7 @@ test('1キー率はActionRealizationPolicy適用後の共通Stroke streamを数�
 
 test('1キー率はsemanticを見ずrealized Strokeのfresh key数だけ数える', () => {
   const asuka = LAYOUT_BY_ID.get('asuka')!;
-  const trace = evaluate('あだ', asuka, geometry, opts({
+  const trace = generateTrace('あだ', asuka, geometry, opts({
     triggerRealizationPolicy: { useHold: true },
     actionRealizationPolicy: {
       triggerActivation: 'semantic',
@@ -280,7 +280,7 @@ test('1キー率はsemanticを見ずrealized Strokeのfresh key数だけ数え�
 test('月配列2-263は全actionが1キーならサンプルでも1キー率100%', () => {
   const tsuki = LAYOUT_BY_ID.get('tsuki-2-263')!;
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
-  const metrics = computeMetrics(evaluate(text, tsuki, geometry, opts()), geometry);
+  const metrics = computeMetrics(generateTrace(text, tsuki, geometry, opts()), geometry);
   near(metrics.singleKeyRate, 100);
 });
 
@@ -289,7 +289,7 @@ test('複数文字の単打見出しは単打面率では文字数、単打率�
     きゃ: [['f']],
     あ: [['d'], ['k']],
   });
-  const metrics = computeMetrics(evaluate('きゃあ', layout, geometry, opts()), geometry);
+  const metrics = computeMetrics(generateTrace('きゃあ', layout, geometry, opts()), geometry);
 
   near(metrics.singleTapLayerRate, 200 / 3);
   near(metrics.singleTapRate, 100 / 3);
@@ -298,7 +298,7 @@ test('複数文字の単打見出しは単打面率では文字数、単打率�
 
 test('単打率はhold継続中の1キー入力を単打に含めない', () => {
   const asuka = LAYOUT_BY_ID.get('asuka')!;
-  const trace = evaluate('あだ', asuka, geometry, opts({
+  const trace = generateTrace('あだ', asuka, geometry, opts({
     triggerRealizationPolicy: { useHold: true },
   }));
   const metrics = computeMetrics(trace, geometry);
@@ -311,7 +311,7 @@ test('単打率はhold継続中の1キー入力を単打に含めない', () => 
 
 test('単打面率はhold継続中のシフト文字を単打面扱いしない', () => {
   const asuka = LAYOUT_BY_ID.get('asuka')!;
-  const trace = evaluate('あだ', asuka, geometry, opts({
+  const trace = generateTrace('あだ', asuka, geometry, opts({
     triggerRealizationPolicy: { useHold: true },
   }));
   const metrics = computeMetrics(trace, geometry);
@@ -331,8 +331,8 @@ test('コンボはアクション/文字を下げるが、押下/文字は下げ
     ゃ: [['k', 'l']],
   });
 
-  const comboMetrics = computeMetrics(evaluate('きゃ', combo, geometry, opts()), geometry);
-  const splitMetrics = computeMetrics(evaluate('きゃ', split, geometry, opts()), geometry);
+  const comboMetrics = computeMetrics(generateTrace('きゃ', combo, geometry, opts()), geometry);
+  const splitMetrics = computeMetrics(generateTrace('きゃ', split, geometry, opts()), geometry);
 
   assert.equal(comboMetrics.strokes, 1);
   assert.equal(splitMetrics.strokes, 2);
@@ -344,7 +344,7 @@ test('コンボはアクション/文字を下げるが、押下/文字は下げ
 
 test('コンボの定義数・命中定義数・延べ命中回数を分けて数える（#36）', () => {
   const combo = LAYOUT_BY_ID.get('oonishi-custom-combo')!;
-  const trace = evaluate('やくやまにゅうりょくきゃ', combo, geometry, opts());
+  const trace = generateTrace('やくやまにゅうりょくきゃ', combo, geometry, opts());
   const m = computeMetrics(trace, geometry);
 
   assert.deepEqual(trace.comboHits, ['aku', 'yuu', 'yoku', 'ya']);
@@ -354,7 +354,7 @@ test('コンボの定義数・命中定義数・延べ命中回数を分けて�
 test('層別集計と統合ヒートマップのキー押下数は保存則を満たす（#87）', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   for (const layout of LAYOUTS_JA) {
-    const m = computeMetrics(evaluate(text, layout, geometry, opts()), geometry);
+    const m = computeMetrics(generateTrace(text, layout, geometry, opts()), geometry);
     const layerPresses = m.layers.reduce((sum, layer) => sum + layer.presses, 0);
     assert.equal(layerPresses + m.comboPresses, m.presses, `${layout.id} の層別押下数`);
 
@@ -378,7 +378,7 @@ test('層操作キーと出力キーを同時押しの中で分離する', () =>
   ];
   for (const { layoutId, text, trigger, output } of cases) {
     const layout = LAYOUTS_JA.find((entry) => entry.id === layoutId)!;
-    const trace = evaluate(text, layout, geometry, opts());
+    const trace = generateTrace(text, layout, geometry, opts());
     const metrics = computeMetrics(trace, geometry);
     const layer = metrics.layers.find((stat) => stat.presses > 0)!;
 
@@ -386,7 +386,7 @@ test('層操作キーと出力キーを同時押しの中で分離する', () =>
     assert.deepEqual(trace.strokes[0].pairedTriggerKeys, [trigger], `${layoutId} の対向トリガー`);
 
     const withoutFaceMetadata = { ...layout, faces: undefined, faceLayerIds: undefined };
-    const canonicalOnlyTrace = evaluate(text, withoutFaceMetadata, geometry, opts());
+    const canonicalOnlyTrace = generateTrace(text, withoutFaceMetadata, geometry, opts());
     assert.deepEqual(
       canonicalOnlyTrace.strokes[0].pairedTriggerKeys,
       [trigger],
@@ -409,7 +409,7 @@ test('2-key explicit modifierはcanonical roleからpaired triggerとして扱�
   }]);
 
   const withoutFaceMetadata = { ...layout, faces: undefined, faceLayerIds: undefined };
-  const trace = evaluate('x', withoutFaceMetadata, geometry, opts());
+  const trace = generateTrace('x', withoutFaceMetadata, geometry, opts());
 
   assert.equal(trace.strokes.length, 1);
   assert.deepEqual(trace.strokes[0].triggerKeys, ['d', 'k']);
@@ -423,7 +423,7 @@ test('層トリガー1個の同時打鍵は対向トリガー扱いしない', (
   ];
   for (const { layoutId, text, trigger, output } of cases) {
     const layout = LAYOUTS_JA.find((entry) => entry.id === layoutId)!;
-    const trace = evaluate(text, layout, geometry, opts());
+    const trace = generateTrace(text, layout, geometry, opts());
     const metrics = computeMetrics(trace, geometry);
     const layer = metrics.layers.find((stat) => stat.presses > 0)!;
 
@@ -438,9 +438,9 @@ test('指ごとの押下数はサンプル文の実測値と一致する', () =>
   const qwerty = LAYOUTS_JA.find((l) => l.id === 'qwerty')!;
   const oonishi = LAYOUTS_JA.find((l) => l.id === 'oonishi')!;
   const naginata = LAYOUTS_JA.find((l) => l.id === 'naginata-v18')!;
-  const qwertyMetrics = computeMetrics(evaluate(text, qwerty, geometry, opts()), geometry);
-  const oonishiMetrics = computeMetrics(evaluate(text, oonishi, geometry, opts()), geometry);
-  const naginataMetrics = computeMetrics(evaluate(text, naginata, geometry, opts()), geometry);
+  const qwertyMetrics = computeMetrics(generateTrace(text, qwerty, geometry, opts()), geometry);
+  const oonishiMetrics = computeMetrics(generateTrace(text, oonishi, geometry, opts()), geometry);
+  const naginataMetrics = computeMetrics(generateTrace(text, naginata, geometry, opts()), geometry);
 
   assert.equal(text.length, 1676);
   assert.equal(qwertyMetrics.perFingerPresses.LP, 443);
@@ -453,7 +453,7 @@ test('指ごとの押下数の合計は総押下数と一致する', () => {
   // 親指のように移動距離が0の指を列から落とすと、この和が崩れる
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   for (const layout of LAYOUTS_JA) {
-    const m = computeMetrics(evaluate(text, layout, geometry, opts()), geometry);
+    const m = computeMetrics(generateTrace(text, layout, geometry, opts()), geometry);
     const sum = ALL_FINGERS.reduce((a, f) => a + m.perFingerPresses[f], 0);
     assert.equal(sum, m.presses, `${layout.id} の指ごとの押下数の合計`);
   }
@@ -461,7 +461,7 @@ test('指ごとの押下数の合計は総押下数と一致する', () => {
 
 test('全打鍵で指の相対位置が変わらなければ隣接指の標準偏差は0になる', () => {
   // 'j' は右人差し指のホームキー。連打では他の指は一切動かない
-  const m = computeMetrics(evaluate('jjjj', qwerty, geometry, opts()), geometry);
+  const m = computeMetrics(generateTrace('jjjj', qwerty, geometry, opts()), geometry);
   for (const stat of m.adjacent) {
     near(stat.stdDev, 0, stat.pair.join('-'));
     near(stat.maxExcess, stat.meanExcess, `${stat.pair.join('-')} max`);
@@ -475,7 +475,7 @@ test('どの物理形状でもホーム段だけを打てば隣接指の超過�
   // ホームに居る状態がちょうど0になる（仕様 §11.6）
   for (const shape of ['row-staggered', 'ortholinear', 'column-staggered'] as const) {
     const g = buildGeometry(shape);
-    const m = computeMetrics(evaluate('asdf jkl;', qwerty, g, opts()), g);
+    const m = computeMetrics(generateTrace('asdf jkl;', qwerty, g, opts()), g);
     for (const stat of m.adjacent) {
       near(stat.meanExcess, 0, `${shape} ${stat.pair.join('-')} mean`);
       near(stat.maxExcess, 0, `${shape} ${stat.pair.join('-')} max`);
@@ -485,7 +485,7 @@ test('どの物理形状でもホーム段だけを打てば隣接指の超過�
 
 test('隣接指の標準偏差は打鍵ごとのスナップショットから求めた分散の平方根と一致する', () => {
   const text = 'asdf jkl; yhn';
-  const trace = evaluate(text, qwerty, geometry, opts());
+  const trace = generateTrace(text, qwerty, geometry, opts());
   const m = computeMetrics(trace, geometry);
 
   for (const stat of m.adjacent) {
