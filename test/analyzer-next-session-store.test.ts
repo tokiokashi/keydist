@@ -108,3 +108,21 @@ test('global-only playback rate fields cannot be written as per-layout timing ov
   value.setTimingOverride('qwerty', 'speedMultiplier', 1.2);
   assert.equal(value.getSnapshot().timing.perLayout.qwerty?.speedMultiplier, 1.2);
 });
+
+
+test('public store methods remain valid when passed as bare callbacks', () => {
+  const value = store();
+  const { setSelectedLayouts, setTarget } = value;
+
+  setSelectedLayouts(['naginata-v18']);
+  assert.deepEqual(value.getSnapshot().selectedLayoutIds, ['naginata-v18']);
+  assert.equal(value.getSnapshot().focusLayoutId, 'naginata-v18');
+
+  setTarget({
+    mode: 'en',
+    selectedLayoutIds: ['qwerty'],
+    focusLayoutId: 'qwerty',
+  });
+  assert.equal(value.getSnapshot().mode, 'en');
+  assert.deepEqual(value.getSnapshot().selectedLayoutIds, ['qwerty']);
+});
