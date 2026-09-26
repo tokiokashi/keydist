@@ -13,7 +13,7 @@ import {
   sanitizeThumbKeyBindings,
   thumbKeyBindingsToOverrides,
   unassignBrowserKeyCode,
-} from '../src/features/input-converter/browser-keyboard-bindings.ts';
+} from '#tester/browser-keyboard-bindings.ts';
 
 function fakeStorage() {
   const values = new Map<string, string>();
