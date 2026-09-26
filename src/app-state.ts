@@ -1,5 +1,5 @@
 import type { InputConverterPreferencesV2 } from './features/input-converter/input-converter-preferences.ts';
-import type { UiPlaybackState, UiStateV1 } from './ui-state.ts';
+import type { UiPlaybackState, UiStateV1 } from '#legacy/ui-state.ts';
 import type { ThemeChoice } from './theme.ts';
 import type { WorkspaceStateV1 } from './workspace/workspace-state.ts';
 import type { AnalyzerWorkspaceStateV1 } from './features/analyzer-next/analyzer-workspace-state.ts';
