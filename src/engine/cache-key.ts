@@ -16,6 +16,11 @@
  * `Map` / `Set` は `JSON.stringify` では消える（`{}` になる）ため、先に配列へ変換する。
  * `Map` のキーがオブジェクト（`Layout.faceLayerIds: ReadonlyMap<Face, string>`）の場合も、
  * そのキー自体を再帰的に正規化してから正規化後の文字列で並べ替える。
+ *
+ * 注意: `NaN` は `JSON.stringify` を通すと `null` と同じ文字列になる（`number`型のまま
+ * `canonicalize` を通過するため）。異なる`NaN`由来の値が同じキーへ潰れても、この関数では
+ * 検出も救済もしない。有限値であることは呼び出し側（`resolveEngineInput`等の上流）が
+ * 保証している前提とする（PR #567 レビューでの申し送り）。
  */
 
 type Canonical = null | string | number | boolean | Canonical[] | { readonly [key: string]: Canonical };
