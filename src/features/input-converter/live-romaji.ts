@@ -1,5 +1,5 @@
 import type { InputContextRequirement } from '../../core/semantic-input/index.ts';
-import { kanaToRomaji, kanaToRomajiChunks } from '../../romaji/kunrei.ts';
+import { kanaToRomaji, kanaToRomajiChunks } from '#input/romaji/kunrei.ts';
 
 interface RomanKanaEntry {
   readonly kana: string;
