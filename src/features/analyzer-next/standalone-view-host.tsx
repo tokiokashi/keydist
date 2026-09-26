@@ -181,6 +181,11 @@ export function StandaloneAnalysisViewHost<Config>({
           >
             <strong>Conditions · {row.layoutId}</strong>
             <div className="analysis-context-items">
+              <span>
+                scope={row.overrides.length === 0
+                  ? 'default'
+                  : `default+layout:${row.layoutId}`}
+              </span>
               {row.effective.map((item) => (
                 <span key={item.label}>
                   {item.label}={item.value}
