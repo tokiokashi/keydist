@@ -39,6 +39,7 @@ const FINGER_OPTIONS: readonly { id: FingerClass; label: string }[] = [
 ];
 const SCALE = 58;
 const PAD = 42;
+const POLAR_SAMPLE_COUNT = 192;
 const FLOW_COLORS = {
   left: 'var(--viz-flow-left)',
   right: 'var(--viz-flow-right)',
@@ -440,7 +441,7 @@ function MovementProfilePlot({
   const summary = useMemo(() => directionSummary(vectors, hand), [vectors, hand]);
   const mean = useMemo(() => meanDisplacement(vectors, hand), [vectors, hand]);
   const density = useMemo(
-    () => directionDensity(vectors, hand, bandwidthDegrees, 96),
+    () => directionDensity(vectors, hand, bandwidthDegrees, POLAR_SAMPLE_COUNT),
     [vectors, hand, bandwidthDegrees],
   );
   const scale = movementPlotScale(maxDistance, scaleMode);
@@ -753,8 +754,8 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
   ));
   const relativeMaxWeight = Math.max(1, ...relative.map((vector) => vector.weight));
   const movementScale = movementPlotScale(relativeMaxDistance, movementScaleMode);
-  const leftDensity = directionDensity(analysisVectors, 'left', polarBandwidth, 96);
-  const rightDensity = directionDensity(analysisVectors, 'right', polarBandwidth, 96);
+  const leftDensity = directionDensity(analysisVectors, 'left', polarBandwidth, POLAR_SAMPLE_COUNT);
+  const rightDensity = directionDensity(analysisVectors, 'right', polarBandwidth, POLAR_SAMPLE_COUNT);
   const sharedMaxDensity = Math.max(
     0,
     ...leftDensity.samples.map((sample) => sample.density),
