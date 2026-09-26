@@ -12,18 +12,18 @@ import {
   PLAYBACK_SPEED_MULTIPLIER_MIN,
   PLAYBACK_STEPS_PER_SECOND_MAX,
   PLAYBACK_STEPS_PER_SECOND_MIN,
-} from './playback.ts';
+} from '../playback.ts';
 import {
   DEFAULT_TRIGGER_ACTIVATION_GROUPINGS,
   type TriggerActivationGrouping,
-} from './core/semantic-input/index.ts';
+} from '../core/semantic-input/index.ts';
 import {
   sameModifierGroupSelector,
   samePhysicalTriggerSelector,
   triggerActivationGroups,
   triggerActivationLogicalGroups,
   TRIGGER_ACTIVATION_CLASS_LABELS,
-} from './trigger-activation-groups.ts';
+} from '../trigger-activation-groups.ts';
 import type {
   AnalyzerPlaybackSettingsActions,
   AnalyzerPlaybackSettingsModel,

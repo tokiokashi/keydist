@@ -1,11 +1,11 @@
-import type { Options } from './evaluate.ts';
-import type { Layout } from './layouts/index.ts';
-import type { ChainPolicy } from './analysis-chain.ts';
-import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
+import type { Options } from '../evaluate.ts';
+import type { Layout } from '../layouts/index.ts';
+import type { ChainPolicy } from '../analysis-chain.ts';
+import type { ArpeggioPolicy } from '../analysis-arpeggio.ts';
 import type {
   ActionRealizationPolicy,
   TriggerRealizationPolicy,
-} from './core/semantic-input/index.ts';
+} from '../core/semantic-input/index.ts';
 import type {
   UiPlaybackState,
   UiStateConditionsDefaults,

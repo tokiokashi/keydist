@@ -11,15 +11,15 @@ import type {
   AnalyzerConditionsModel,
 } from './analyzer-conditions-model.ts';
 import { AnalyzerConditionsContent } from './analyzer-conditions-content.tsx';
-import type { GeometryKind } from './geometry.ts';
-import { buildGeometry } from './geometry.ts';
+import type { GeometryKind } from '../geometry.ts';
+import { buildGeometry } from '../geometry.ts';
 import { gapFigure } from './gap-figure.ts';
 import {
   getAppearanceSnapshot,
   getServerAppearanceSnapshot,
   setAppearanceTheme,
   subscribeAppearance,
-} from './appearance.ts';
+} from '../appearance.ts';
 
 export interface AnalyzerSidebarControlsProps {
   stateOwner: AnalyzerUiStateOwner;

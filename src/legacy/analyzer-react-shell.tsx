@@ -30,7 +30,7 @@ import { AnalyzerGeometryDialog } from './analyzer-geometry-dialog.tsx';
 import type { AnalyzerGeometryEditorModel } from './analyzer-geometry-editor-model.ts';
 import { AnalyzerRomajiDialog } from './analyzer-romaji-dialog.tsx';
 import type { AnalyzerRomajiDialogModel } from './analyzer-romaji-dialog-model.ts';
-import { AnalyzerBigramFlow } from './features/bigram-vector/analyzer-bigram-flow.tsx';
+import { AnalyzerBigramFlow } from './analyzer-bigram-flow.tsx';
 import type { AnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 import type { AnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
 import type { AnalyzerMetricsModel } from './analyzer-metrics-model.ts';
@@ -55,8 +55,8 @@ import {
   AnalyzerThemeControls,
   AnalyzerSidebarControls,
 } from './analyzer-remaining-ui.tsx';
-import type { GeometryKind } from './geometry.ts';
-import type { UserLayout } from './user-layouts.ts';
+import type { GeometryKind } from '../geometry.ts';
+import type { UserLayout } from '../user-layouts.ts';
 import { MAX_SAVED_TEXT_LENGTH } from './ui-state.ts';
 
 export interface AnalyzerReactShellOptions {
