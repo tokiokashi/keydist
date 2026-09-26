@@ -1,12 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const baseURL = 'http://127.0.0.1:4173';
+const isCI = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
-  workers: process.env.CI ? 4 : undefined,
-  reporter: process.env.CI ? 'line' : 'list',
+  workers: isCI ? 4 : undefined,
+  reporter: isCI ? 'line' : 'list',
   use: {
     baseURL,
     trace: 'retain-on-failure',
@@ -18,8 +19,11 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 4173',
+    command: isCI
+      ? 'npm run build && npm run preview -- --host 127.0.0.1 --port 4173 --strictPort --outDir .output/public'
+      : 'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort',
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !isCI,
+    timeout: isCI ? 120_000 : 60_000,
   },
 });
