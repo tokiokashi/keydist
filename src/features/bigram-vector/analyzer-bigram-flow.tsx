@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import {
   aggregateBigramVectors,
   buildBigramVectors,
@@ -455,7 +455,6 @@ function MovementProfilePlot({
   // data座標・u scale・KDE値は丸めない。
   const halfSize = Math.ceil(sharedHalfSize);
   const viewSize = halfSize * 2;
-  const viewportRef = useRef<HTMLDivElement>(null);
   const originX = 0;
   const originY = 0;
   const meanEnd = {
@@ -471,16 +470,6 @@ function MovementProfilePlot({
     )
   );
   const polarPath = smoothClosedPath(polarPoints);
-  useLayoutEffect(() => {
-    const viewport = viewportRef.current;
-    if (viewport === null) return;
-
-    // canvasがviewportより大きい場合も、原点が見た目上の中央に来る位置を
-    // paint前に同期して、extent変更中の斜め移動やガタつきを防ぐ。
-    viewport.scrollLeft = Math.max(0, (viewport.scrollWidth - viewport.clientWidth) / 2);
-    viewport.scrollTop = Math.max(0, (viewport.scrollHeight - viewport.clientHeight) / 2);
-  }, [viewSize]);
-
   const rollTotal = summary.inwardWeight + summary.outwardWeight;
   const inwardRate = rollTotal === 0 ? 0 : summary.inwardWeight / rollTotal;
   const outwardRate = rollTotal === 0 ? 0 : summary.outwardWeight / rollTotal;
@@ -499,7 +488,7 @@ function MovementProfilePlot({
           </span>
         </span>
       </header>
-      <div className="flow-profile-viewport" ref={viewportRef}>
+      <div className="flow-profile-viewport">
         <div
           className="flow-profile-stage"
           style={{ width: viewSize, height: viewSize }}
