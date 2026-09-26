@@ -58,6 +58,17 @@ export interface DirectionDistribution {
   readonly directionalWeight: number;
 }
 
+export interface DirectionDensitySample {
+  readonly angle: number;
+  readonly density: number;
+}
+
+export interface DirectionDensity {
+  readonly samples: readonly DirectionDensitySample[];
+  readonly directionalWeight: number;
+  readonly bandwidthDegrees: number;
+}
+
 export function fingerClass(finger: Finger): FingerClass | undefined {
   switch (finger[1]) {
     case 'P': return 'pinky';
@@ -386,5 +397,58 @@ export function directionDistribution(
   return {
     bins: Object.freeze(bins),
     directionalWeight,
+  };
+}
+
+
+/**
+ * 実vector角度へvon Mises相当の円周kernelを重ね、連続的な方向密度をsampleする。
+ * bandwidthDegreesはkernel強度がpeakの1/2になる半値角。
+ * densityは各vectorのweight比で平均するため0..1の共通尺度を保つ。
+ */
+export function directionDensity(
+  vectors: readonly BigramVector[],
+  hand: 'left' | 'right',
+  bandwidthDegrees = 15,
+  sampleCount = 96,
+): DirectionDensity {
+  if (!(bandwidthDegrees > 0 && bandwidthDegrees < 180)) {
+    throw new RangeError('bandwidthDegrees must be > 0 and < 180');
+  }
+  if (!Number.isInteger(sampleCount) || sampleCount < 16) {
+    throw new RangeError('sampleCount must be an integer >= 16');
+  }
+
+  const directional = vectors.filter(
+    (vector) => vector.hand === hand && vector.distance >= 1e-12,
+  );
+  const directionalWeight = directional.reduce((sum, vector) => sum + vector.weight, 0);
+  const tau = Math.PI * 2;
+  const halfWidth = bandwidthDegrees * Math.PI / 180;
+  const kappa = Math.log(2) / (1 - Math.cos(halfWidth));
+
+  const samples = Array.from({ length: sampleCount }, (_, index) => {
+    const angle = index * tau / sampleCount;
+    if (directionalWeight === 0) {
+      return Object.freeze({ angle, density: 0 });
+    }
+
+    let weightedDensity = 0;
+    for (const vector of directional) {
+      const delta = angle - vector.angle;
+      const kernel = Math.exp(kappa * (Math.cos(delta) - 1));
+      weightedDensity += vector.weight * kernel;
+    }
+
+    return Object.freeze({
+      angle,
+      density: weightedDensity / directionalWeight,
+    });
+  });
+
+  return {
+    samples: Object.freeze(samples),
+    directionalWeight,
+    bandwidthDegrees,
   };
 }
