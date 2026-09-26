@@ -5,7 +5,7 @@ import type { Press, Stroke, StrokeParticipation } from '../src/evaluate.ts';
 import {
   aggregateBigramVectors,
   buildBigramVectors,
-  directionDensity,
+  directionResponse,
   directionDistribution,
   directionSummary,
   filterBigramVectors,
@@ -275,9 +275,9 @@ test('direction distributionは対向2方向集中と一様分布を区別でき
 });
 
 
-test('direction densityは実角度を中心にpeakを作る', () => {
+test('direction responseは実角度を中心にpeakを作る', () => {
   const angle = 17 * Math.PI / 180;
-  const density = directionDensity([
+  const response = directionResponse([
     vector({
       id: 'seventeen-deg',
       dx: Math.cos(angle),
@@ -288,35 +288,35 @@ test('direction densityは実角度を中心にpeakを作る', () => {
     }),
   ], 'left', 12, 360);
 
-  const peak = density.samples.reduce((best, sample) =>
-    sample.density > best.density ? sample : best
+  const peak = response.samples.reduce((best, sample) =>
+    sample.response > best.response ? sample : best
   );
   assert.ok(Math.abs(peak.angle - angle) < Math.PI / 180 + 1e-12);
-  assert.ok(peak.density > 0.99);
+  assert.ok(peak.response > 0.99);
 });
 
-test('direction densityはbandwidthを広げると近接方向の谷が浅くなる', () => {
+test('direction responseはbandwidthを広げると近接方向の谷が浅くなる', () => {
   const a = -12 * Math.PI / 180;
   const b = 12 * Math.PI / 180;
   const vectors = [
     vector({ id: 'a', dx: Math.cos(a), dy: Math.sin(a), distance: 1, angle: a }),
     vector({ id: 'b', dx: Math.cos(b), dy: Math.sin(b), distance: 1, angle: b }),
   ];
-  const narrow = directionDensity(vectors, 'left', 5, 360);
-  const wide = directionDensity(vectors, 'left', 20, 360);
+  const narrow = directionResponse(vectors, 'left', 5, 360);
+  const wide = directionResponse(vectors, 'left', 20, 360);
 
-  assert.ok(wide.samples[0].density > narrow.samples[0].density);
+  assert.ok(wide.samples[0].response > narrow.samples[0].response);
 });
 
-test('direction densityは対向2方向を別peakとして保持する', () => {
-  const density = directionDensity([
+test('direction responseは対向2方向を別peakとして保持する', () => {
+  const response = directionResponse([
     vector({ id: 'east', dx: 1, dy: 0, distance: 1, angle: 0, weight: 8 }),
     vector({ id: 'west', dx: -1, dy: 0, distance: 1, angle: Math.PI, weight: 8 }),
   ], 'left', 10, 72);
 
-  const east = density.samples[0].density;
-  const north = density.samples[18].density;
-  const west = density.samples[36].density;
+  const east = response.samples[0].response;
+  const north = response.samples[18].response;
+  const west = response.samples[36].response;
   assert.ok(east > 0.49);
   assert.ok(west > 0.49);
   assert.ok(north < east * 0.1);
