@@ -3,8 +3,10 @@ import { useMemo, useState, useSyncExternalStore } from 'react';
 import {
   aggregateBigramVectors,
   buildBigramVectors,
+  directionDistribution,
   directionSummary,
   filterBigramVectors,
+  meanDisplacement,
   type BigramSource,
   type BigramVector,
   type FingerClass,
@@ -384,6 +386,30 @@ function polarPoint(cx: number, cy: number, radius: number, angle: number) {
   };
 }
 
+function smoothClosedPath(points: readonly Point[]): string {
+  if (points.length < 3) return '';
+  const count = points.length;
+  const point = (index: number) => points[(index + count) % count];
+  let path = `M ${points[0].x} ${points[0].y}`;
+
+  for (let index = 0; index < count; index++) {
+    const p0 = point(index - 1);
+    const p1 = point(index);
+    const p2 = point(index + 1);
+    const p3 = point(index + 2);
+    const c1 = {
+      x: p1.x + (p2.x - p0.x) / 6,
+      y: p1.y + (p2.y - p0.y) / 6,
+    };
+    const c2 = {
+      x: p2.x - (p3.x - p1.x) / 6,
+      y: p2.y - (p3.y - p1.y) / 6,
+    };
+    path += ` C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${p2.x} ${p2.y}`;
+  }
+  return `${path} Z`;
+}
+
 function MovementProfilePlot({
   vectors,
   hand,
@@ -398,14 +424,31 @@ function MovementProfilePlot({
   const reduceMotion = useReducedMotion();
   const relative = useMemo(() => relativeVectors(vectors, hand), [vectors, hand]);
   const summary = useMemo(() => directionSummary(vectors, hand), [vectors, hand]);
+  const mean = useMemo(() => meanDisplacement(vectors, hand), [vectors, hand]);
+  const distribution = useMemo(
+    () => directionDistribution(vectors, hand, 16),
+    [vectors, hand],
+  );
   const cx = 120;
   const cy = 112;
   const radius = 82;
-  const plotScale = radius / maxDistance;
-  const meanRadius = summary.magnitude * radius;
-  const meanEnd = summary.angle === undefined
-    ? { x: cx, y: cy }
-    : polarPoint(cx, cy, meanRadius, summary.angle);
+  const scaleMax = Math.max(1, Math.ceil(maxDistance));
+  const plotScale = radius / scaleMax;
+  const meanEnd = {
+    x: cx + mean.x * plotScale,
+    y: cy + mean.y * plotScale,
+  };
+  const polarBaseRadius = 91;
+  const polarAmplitude = 22;
+  const polarPoints = distribution.bins.map((bin) =>
+    polarPoint(
+      cx,
+      cy,
+      polarBaseRadius + bin.proportion * polarAmplitude,
+      bin.angle,
+    )
+  );
+  const polarPath = smoothClosedPath(polarPoints);
   const rollTotal = summary.inwardWeight + summary.outwardWeight;
   const inwardRate = rollTotal === 0 ? 0 : summary.inwardWeight / rollTotal;
   const outwardRate = rollTotal === 0 ? 0 : summary.outwardWeight / rollTotal;
@@ -414,12 +457,34 @@ function MovementProfilePlot({
     <div className="flow-mini-panel flow-profile-panel">
       <header>
         <strong>{hand === 'left' ? 'Left' : 'Right'}</strong>
-        <span>{relative.length} vectors · 集中度 {summary.magnitude.toFixed(2)}</span>
+        <span>
+          {relative.length} vectors · mean {mean.distance.toFixed(2)}u · |R| {summary.magnitude.toFixed(2)}
+        </span>
       </header>
       <svg viewBox="0 0 240 236" role="img" aria-label={`${hand} hand movement profile`}>
-        {[radius / 3, radius * 2 / 3, radius].map((ringRadius) => (
-          <circle className="flow-axis-ring" cx={cx} cy={cy} r={ringRadius} key={ringRadius} />
-        ))}
+        <circle
+          className="direction-polar-baseline"
+          cx={cx}
+          cy={cy}
+          r={polarBaseRadius}
+        />
+        {polarPath ? <path className="direction-polar-shape" d={polarPath} /> : null}
+
+        {Array.from({ length: scaleMax }, (_, index) => index + 1).map((unit) => {
+          const ringRadius = unit * plotScale;
+          return (
+            <g key={unit}>
+              <circle className="flow-axis-ring" cx={cx} cy={cy} r={ringRadius} />
+              <text
+                className="flow-axis-ring-label"
+                x={cx + 4}
+                y={cy - ringRadius + 11}
+              >
+                {unit}u
+              </text>
+            </g>
+          );
+        })}
         <line className="flow-axis" x1="22" y1={cy} x2="218" y2={cy} />
         <line className="flow-axis" x1={cx} y1="14" x2={cx} y2="210" />
 
@@ -456,10 +521,14 @@ function MovementProfilePlot({
         </g>
 
         <motion.line
-          className="mean-resultant"
+          className="mean-displacement"
           x1={cx}
           y1={cy}
-          animate={{ x2: meanEnd.x, y2: meanEnd.y, opacity: summary.angle === undefined ? 0 : 1 }}
+          animate={{
+            x2: meanEnd.x,
+            y2: meanEnd.y,
+            opacity: mean.totalWeight === 0 ? 0 : 1,
+          }}
           transition={reduceMotion
             ? { duration: 0 }
             : { type: 'spring', stiffness: 170, damping: 22 }}
@@ -470,7 +539,7 @@ function MovementProfilePlot({
           animate={{
             cx: meanEnd.x,
             cy: meanEnd.y,
-            opacity: summary.angle === undefined ? 0 : 1,
+            opacity: mean.totalWeight === 0 ? 0 : 1,
           }}
           transition={reduceMotion
             ? { duration: 0 }
@@ -482,7 +551,7 @@ function MovementProfilePlot({
       <div className="flow-roll-legend flow-profile-legend" aria-hidden="true">
         <span><i className="flow-dot flow-dot-inward" /> inward</span>
         <span><i className="flow-dot flow-dot-outward" /> outward</span>
-        <span>{maxDistance.toFixed(1)}u scale</span>
+        <span>{scaleMax}u range · polar = direction share</span>
       </div>
 
       <div className="roll-summary">
@@ -619,10 +688,10 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
     ...relativeVectors(analysisVectors, 'left'),
     ...relativeVectors(analysisVectors, 'right'),
   ];
-  const relativeMaxDistance = Math.max(
+  const relativeMaxDistance = Math.ceil(Math.max(
     1,
     ...relative.map((vector) => Math.hypot(vector.dx, vector.dy)),
-  );
+  ));
   const relativeMaxWeight = Math.max(1, ...relative.map((vector) => vector.weight));
 
   return (
@@ -771,8 +840,8 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
                 <h2>Relative vectors</h2>
               </div>
               <p>
-                線の向きは移動方向、長さは物理距離、太さと濃さはfrequency。
-                白線はfrequency-weighted mean resultantで、長さは方向の集中度を表す。
+                線の向きと長さは実移動 [u]、太さと濃さはfrequency。
+                白線はmean displacement [u]。外周shapeは16方向の構成比、|R|は方向集中度の要約値。
               </p>
             </header>
             <div className="flow-two-up">
