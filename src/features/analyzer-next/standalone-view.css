@@ -62,3 +62,55 @@
     justify-self: start;
   }
 }
+
+
+.analysis-context {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.analysis-context-row {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) 1fr;
+  align-items: start;
+  gap: 0.6rem 1rem;
+}
+
+.analysis-context-row > strong {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.7;
+}
+
+.analysis-context-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.analysis-context-items > span {
+  padding: 0.2rem 0.4rem;
+  border-radius: 5px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font: 600 0.68rem/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.analysis-context-items > .analysis-context-override {
+  border: 1px solid var(--accent);
+  color: var(--text);
+}
+
+.analysis-context-items > .analysis-context-default {
+  opacity: 0.72;
+}
+
+@media (max-width: 700px) {
+  .analysis-context-row {
+    grid-template-columns: 1fr;
+  }
+}
