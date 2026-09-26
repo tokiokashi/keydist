@@ -1,32 +1,23 @@
 import type { ModeId } from './layout-selection.ts';
-import { SAMPLE_TEXT } from '#input/text/sample-en.ts';
-import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '#input/text/sample-ja.ts';
+import {
+  isSampleText,
+  sampleText,
+  SAMPLE_TEXT_NAMES,
+  SAMPLE_TEXTS,
+} from '#input/text/samples.ts';
 
-export const ANALYZER_SAMPLES: Record<ModeId, Record<string, string>> = {
-  en: { default: SAMPLE_TEXT.replace(/\s+/g, ' ').trim() },
-  ja: {
-    modern: SAMPLE_TEXT_JA.replace(/\s+/g, ''),
-    legacy: SAMPLE_TEXT_JA_LEGACY.replace(/\s+/g, ''),
-  },
-};
+// 本体は #input/text/samples.ts へ移した（#544 Phase 2）。
+// standalone/Workspaceどちらのhostからも同じサンプルが要るための移動で、
+// legacyはModeIdキーの旧名で薄く再輸出するだけにする。
+// ModeId と TextLanguage は値集合が同じ（'en' | 'ja'）なのでキーはそのまま流用できる。
 
-export const ANALYZER_SAMPLE_NAMES: Record<ModeId, Record<string, string>> = {
-  en: { default: '英文（既定）' },
-  ja: { modern: '現代文', legacy: '旧文「吾輩は猫である」（既定）' },
-};
-
-const FALLBACK_SAMPLE_ID: Record<ModeId, string> = {
-  en: 'default',
-  ja: 'modern',
-};
+export const ANALYZER_SAMPLES: Record<ModeId, Record<string, string>> = SAMPLE_TEXTS;
+export const ANALYZER_SAMPLE_NAMES: Record<ModeId, Record<string, string>> = SAMPLE_TEXT_NAMES;
 
 export function analyzerSampleText(mode: ModeId, sampleId: string): string {
-  return ANALYZER_SAMPLES[mode][sampleId]
-    ?? ANALYZER_SAMPLES[mode][FALLBACK_SAMPLE_ID[mode]]
-    ?? '';
+  return sampleText(mode, sampleId);
 }
 
 export function isAnalyzerSampleText(text: string): boolean {
-  return Object.values(ANALYZER_SAMPLES)
-    .some((samples) => Object.values(samples).includes(text));
+  return isSampleText(text);
 }

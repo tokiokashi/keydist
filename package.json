@@ -8,6 +8,7 @@
     "build": "vite build && node --experimental-strip-types scripts/write-legacy-analyzer-redirect.ts",
     "check:sample": "node --experimental-strip-types scripts/check-sample-text.ts",
     "generate:kana-fixtures": "node --experimental-strip-types scripts/generate-kana-fixtures.ts",
+    "generate:analyzer-regression-fixture": "node --experimental-strip-types scripts/gen-analyzer-regression-fixture.ts",
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
     "test": "node --test --experimental-strip-types \"src/**/*.test.ts\" \"test/*.test.ts\"",
