@@ -5,10 +5,10 @@ import {
   FINGERS,
   PHYSICAL_SHAPES,
   isPresetGeometryKind,
-} from '../geometry.ts';
-import { sameArpeggioPolicy } from '../analysis-arpeggio.ts';
-import { sameChainPolicy } from '../analysis-chain.ts';
-import { nSensitivity } from '../sensitivity.ts';
+} from '#input/shapes/geometry.ts';
+import { sameArpeggioPolicy } from '#interpretation/structure/arpeggio.ts';
+import { sameChainPolicy } from '#interpretation/structure/chain.ts';
+import { nSensitivity } from '#analyzers/n-sensitivity/sensitivity.ts';
 import {
   escapeText,
   type MatrixRow,

@@ -7,8 +7,8 @@ import {
 import {
   THUMB_ROW,
   type Key,
-} from '../geometry.ts';
-import { visibleGeometryKeys } from '../layout-physical-keys.ts';
+} from '#input/shapes/geometry.ts';
+import { visibleGeometryKeys } from '#input/layouts/physical-keys.ts';
 import { FINGER_LABEL } from './app-dom.ts';
 import { escapeText } from './chart.ts';
 import {
@@ -20,7 +20,7 @@ import type {
   AnalyzerPlaybackSurfaceData,
   AnalyzerPlaybackSurfaceModel,
 } from './analyzer-playback-surface-model.ts';
-import type { PlaybackRateChartPoint } from '../playback.ts';
+import type { PlaybackRateChartPoint } from '#interpretation/timing/playback.ts';
 
 const PLAYBACK_KEY = 30;
 const PLAYBACK_PAD = 6;

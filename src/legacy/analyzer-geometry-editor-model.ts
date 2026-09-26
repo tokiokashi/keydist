@@ -4,14 +4,14 @@ import {
   type Finger,
   type NonThumb,
   type PhysicalShape,
-} from '../geometry.ts';
+} from '#input/shapes/geometry.ts';
 import {
   DEFAULT_GEOMETRY_SETTINGS,
   cloneGeometrySettings,
   clonePhysicalShape,
   parseGeometrySettings,
   serializeGeometrySettings,
-} from '../geometry-settings.ts';
+} from '#input/shapes/settings.ts';
 import type { AnalyzerUiStateOwner } from './analyzer-ui-state-owner.ts';
 import { newId as newGeometryId } from '#input/shapes/user-geometries.ts';
 
