@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createAnalyzerBigramFlowModel } from '../src/analyzer-bigram-flow-model.ts';
-import type { AnalyzerBigramFlowData } from '../src/analyzer-bigram-flow-model.ts';
+import { createAnalyzerBigramFlowModel } from '#legacy/analyzer-bigram-flow-model.ts';
+import type { AnalyzerBigramFlowData } from '#legacy/analyzer-bigram-flow-model.ts';
 
 test('Bigram Flow model publishes Analyzer detail data without persistence', () => {
   const model = createAnalyzerBigramFlowModel();
