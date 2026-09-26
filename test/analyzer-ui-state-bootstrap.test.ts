@@ -3,7 +3,7 @@ import test from 'node:test';
 import {
   ANALYZER_INITIAL_LAYOUTS,
   createAnalyzerUiStateBootstrap,
-} from '../src/analyzer-ui-state-bootstrap.ts';
+} from '#legacy/analyzer-ui-state-bootstrap.ts';
 
 test('Analyzer bootstrap shares defaults and choices without DOM/storage', () => {
   const bootstrap = createAnalyzerUiStateBootstrap({
