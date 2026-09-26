@@ -76,7 +76,7 @@ The three playback-rate averaging fields are intentionally absent from the per-l
 
 | View | Fields |
 | --- | --- |
-| Bigram Flow | `source`, `selectedFingers`, `lineScale`, `layerOrder` |
+| Bigram Flow | `source`, `selectedFingers`, `lineScale`, `layerOrder`, `hoverScale`, `movementScaleMode`, `polarBandwidth`, `polarGain` |
 | Heatmap | `view`, `colorScale`, `showLayerDetails`, `keyPatternGuide`, `activeLayerId`, `panels.layerStats`, `panels.modifierList`, `panels.comboTable` |
 | Comparison | `baselineLayoutId`, `chartColumn`, `sort` |
 | Matrices | per-matrix sorts |
@@ -89,7 +89,7 @@ Playback timing parameters are never ViewConfig. Saved per-layout display settin
 
 - Analyzer shell preference: text/add-layout panel openness.
 - Ephemeral: Bigram hover, Heatmap key/combo selection, Playback cursor/running/elapsed/settings-dialog openness.
-- Domain catalog: user layouts, geometry shapes, romaji rules/assignments, condition presets and playback calibration.
+- Domain catalog: user layouts, geometry shapes, romaji rules/assignments, condition presets and playback calibration. Long-lived browser hosts keep the AnalysisSession stable and replace the catalog source explicitly when those independent storages change.
 - Theme is app-level appearance and never Analyzer state.
 
 ### Command scope

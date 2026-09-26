@@ -3,7 +3,11 @@ import test from 'node:test';
 import { APP_STATE_VERSION, analyzerSlicesFromUiState } from '../src/app-state.ts';
 import { ANALYZER_INITIAL_LAYOUTS } from '../src/analyzer-ui-state-bootstrap.ts';
 import type { ModeId } from '../src/layout-selection.ts';
-import { createAnalysisRuntime, type AnalysisRuntimeSource } from '../src/features/analyzer-next/runtime.ts';
+import {
+  analysisDomainCatalogSourceFromRuntimeSource,
+  createAnalysisRuntime,
+  type AnalysisRuntimeSource,
+} from '../src/features/analyzer-next/runtime.ts';
 import { createDefaultUiState } from '../src/ui-state.ts';
 
 function source(): AnalysisRuntimeSource {
@@ -68,4 +72,55 @@ test('runtime sanitizes corrupt persisted Analyzer slices before creating the Se
   assert.deepEqual(state.selectedLayoutIds, ANALYZER_INITIAL_LAYOUTS.ja);
   assert.notEqual(state.distance.defaults.windowSize, 999);
   assert.notEqual(state.timing.defaults.speedMultiplier, -10);
+});
+
+
+test('runtime replaces Domain catalog source without resetting Session and produces a new Snapshot key', () => {
+  const initialSource = source();
+  const runtime = createAnalysisRuntime(initialSource);
+  const initialSession = runtime.session.getSnapshot();
+  const layoutId = 'qwerty';
+  const before = runtime.createReader(initialSession).get(layoutId);
+
+  assert.ok(before);
+  runtime.session.setText('Session survives domain refresh');
+  const sessionBeforeRefresh = runtime.session.getSnapshot();
+  const revisionBefore = runtime.catalog.getRevision();
+
+  const nextSource: AnalysisRuntimeSource = {
+    ...initialSource,
+    romajiSettings: {
+      rules: [],
+      assignments: { qwerty: 'azik' },
+    },
+  };
+  assert.equal(
+    runtime.catalog.replaceSource(analysisDomainCatalogSourceFromRuntimeSource(nextSource)),
+    true,
+  );
+
+  const sessionAfterRefresh = runtime.session.getSnapshot();
+  const after = runtime.createReader(sessionAfterRefresh).get(layoutId);
+
+  assert.equal(sessionAfterRefresh.text, 'Session survives domain refresh');
+  assert.equal(sessionAfterRefresh.revisions.target, sessionBeforeRefresh.revisions.target);
+  assert.equal(sessionAfterRefresh.revisions.distance, sessionBeforeRefresh.revisions.distance);
+  assert.equal(runtime.catalog.getRevision(), revisionBefore + 1);
+  assert.ok(after);
+  assert.notEqual(after.calculationKey, before.calculationKey);
+  assert.equal(after.snapshot.romajiRuleId, 'azik');
+});
+
+test('replacing Domain catalog with equivalent source is a no-op', () => {
+  const initialSource = source();
+  const runtime = createAnalysisRuntime(initialSource);
+  let notifications = 0;
+  runtime.catalog.subscribe(() => { notifications += 1; });
+
+  assert.equal(
+    runtime.catalog.replaceSource(analysisDomainCatalogSourceFromRuntimeSource(initialSource)),
+    false,
+  );
+  assert.equal(runtime.catalog.getRevision(), 0);
+  assert.equal(notifications, 0);
 });

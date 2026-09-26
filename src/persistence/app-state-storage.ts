@@ -3,6 +3,7 @@ import {
   type AppStateSliceKey,
   type AppStateV2,
 } from '../app-state.ts';
+import { notifyKeydistStorageChange } from '../browser-storage-events.ts';
 import {
   createDebouncedPersistenceScheduler,
   type DebouncedPersistenceScheduler,
@@ -42,6 +43,7 @@ export function saveAppStateDocument(storage: KeyValueStorage, state: AppStateV2
       ...state,
       version: APP_STATE_VERSION,
     }));
+    notifyKeydistStorageChange(APP_STATE_STORAGE_KEY);
     return true;
   } catch {
     return false;
