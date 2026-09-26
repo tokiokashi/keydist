@@ -39,6 +39,24 @@ test('setCascadeOverrideCommand: globalレベルへ書き込み、undo/redoで�
   assert.equal(redone.assets.setupLibrary.overrides.global?.windowSize, 5);
 });
 
+test('setCascadeOverrideCommand: 既に同じ値が入っているレベルへ同じ値を書いてもno-op（履歴が伸びない）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const first = applyCommand(assets, history, setCascadeOverrideCommand({ kind: 'global' }, 'windowSize', 5));
+  assert.equal(first.outcome.kind, 'applied');
+  assert.equal(first.history.undoStack.length, 1);
+
+  const second = applyCommand(
+    first.assets,
+    first.history,
+    setCascadeOverrideCommand({ kind: 'global' }, 'windowSize', 5),
+  );
+  assert.equal(second.outcome.kind, 'no-op');
+  assert.equal(second.history.undoStack.length, 1, '2回目の同じ値の書き込みは履歴に積まれない');
+  assert.equal(second.assets, first.assets);
+});
+
 test('setCascadeOverrideCommand: 許可されていないレベルへの書き込みはrejectedになり、履歴に積まない', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();

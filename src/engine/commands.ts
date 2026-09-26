@@ -29,6 +29,14 @@ import {
  * 複雑にする。`SetupLibrary` は元からこの2つを1つの値として扱う型なので、資産の粒度も
  * それに合わせるのが素直。Workspaceなど将来の資産は、この資産とは独立に読み書きできる
  * ものが増えた時点で新しいキーとして足す（先回りして今は足さない）。
+ *
+ * この粒度の帰結: `applyExternalChange`（タブ間追従）は資産キー単位でしか履歴を絞れない
+ * ため、他タブが`setupLibrary`に何か1つでも書き込むと、このタブのUndo/Redo履歴は
+ * （カスケードの上書き・Setupの作成/削除のどちらであっても）全部消える。単一ユーザー向けの
+ * ツールで複数タブを同時に編集する場面は稀という前提でこれを許容する。細かくしたくなったら、
+ * 資産をさらに分ける（例: `setups`と`overrides`を分離する）か、資産単位ではなく項目単位
+ * （どのSetup・どのレベル・どの項目に触れたか）で履歴の破棄範囲を判定する仕組みへ広げる、
+ * の2方向がある。
  */
 export interface KeydistAssets {
   readonly setupLibrary: SetupLibrary<SettingsValueMap>;
@@ -66,6 +74,11 @@ export function setCascadeOverrideCommand<K extends SettingsItemId>(
   return setupLibraryCommand(`設定を変更する: ${itemId}`, (library) => {
     const result = setSettingsOverride(library.overrides, level, itemId, value);
     if (!result.ok) return { ok: false, reason: result.error };
+    // `setSettingsOverride`は既に同じ値が入っていれば同じ`overrides`参照を返す
+    // （`input/settings/write.ts`の規約）。ここでも`resetCascadeItemCommand`と同じ理由で、
+    // 変化が無い時は`library`自体を据え置く（毎回新しいオブジェクトを作ると、
+    // 中身が同じでも「変わった」と誤判定されてしまう）。
+    if (result.overrides === library.overrides) return { ok: true, library };
     return { ok: true, library: { ...library, overrides: result.overrides } };
   });
 }
@@ -119,27 +132,20 @@ export function duplicateSetupCommand(
 }
 
 /**
- * Setupを削除する。存在しないidの削除は何もしない扱いにする。`deleteSetup` 自身は
- * 存在しないidでも（該当なしの）新しい配列参照を返してしまう（`Array.prototype.filter`は
- * 何も落とさなくても新しい配列を作るため）ので、ここで「該当のSetupがあるか」を先に見て
- * no-opを自分で判定する（`duplicateSetup`のように呼び出し先が同一参照を返す形に揃っていない
- * ため、コマンド側で吸収する）。
+ * Setupを削除する。存在しないidの削除は何もしない（`deleteSetup`自身が、対象が無ければ
+ * 同一のlibrary参照を返す規約になっている。`input/setup/collection.ts`参照）。
  */
 export function deleteSetupCommand(setupId: string): Command<KeydistAssets> {
-  return setupLibraryCommand('Setupを削除する', (library) => {
-    if (!library.setups.some((setup) => setup.id === setupId)) return { ok: true, library };
-    return { ok: true, library: deleteSetup(library, setupId) };
-  });
+  return setupLibraryCommand('Setupを削除する', (library) => ({ ok: true, library: deleteSetup(library, setupId) }));
 }
 
 /**
  * Setupのラベルを付け直す。対象が存在しない、または既に同じラベルなら何もしない
- * （`relabelSetup`も`deleteSetup`と同じ理由でno-opを自分で返さないので、ここで判定する）。
+ * （`relabelSetup`自身の規約。`input/setup/collection.ts`参照）。
  */
 export function relabelSetupCommand(setupId: string, label: string | undefined): Command<KeydistAssets> {
-  return setupLibraryCommand('Setupのラベルを変更する', (library) => {
-    const target = library.setups.find((setup) => setup.id === setupId);
-    if (target === undefined || target.label === label) return { ok: true, library };
-    return { ok: true, library: relabelSetup(library, setupId, label) };
-  });
+  return setupLibraryCommand('Setupのラベルを変更する', (library) => ({
+    ok: true,
+    library: relabelSetup(library, setupId, label),
+  }));
 }
