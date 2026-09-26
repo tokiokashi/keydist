@@ -10,7 +10,7 @@
     "generate:kana-fixtures": "node --experimental-strip-types scripts/generate-kana-fixtures.ts",
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
-    "test": "node --test --experimental-strip-types test/*.test.ts",
+    "test": "node --test --experimental-strip-types \"src/**/*.test.ts\" \"test/*.test.ts\"",
     "typecheck": "tsr generate && tsc --noEmit",
     "test:browser": "playwright test"
   },

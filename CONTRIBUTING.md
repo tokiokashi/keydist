@@ -44,13 +44,13 @@
 
 | scope | 対応 |
 |---|---|
-| `model` | `spec/distance-model.md` と `src/evaluate.ts` |
-| `metrics` | `src/metrics.ts` |
-| `geometry` | `src/geometry.ts` |
-| `sensitivity` | `src/sensitivity.ts` |
-| `layouts` | `src/layouts/` |
-| `romaji` | `src/romaji/` |
-| `ui` | `src/main.ts` `src/chart.ts` `src/theme.ts` `src/style.css` `index.html` |
+| `model` | `spec/distance-model.md` と `src/trace/evaluate.ts` |
+| `metrics` | `src/interpretation/metrics.ts` |
+| `geometry` | `src/input/shapes/` |
+| `sensitivity` | `src/analyzers/n-sensitivity/` |
+| `layouts` | `src/input/layouts/` |
+| `romaji` | `src/input/romaji/` |
+| `ui` | `src/ui/` `src/app/` `src/routes/` `src/legacy/` |
 | `deps` | 依存関係の更新 |
 
 ### body / footer
@@ -125,7 +125,7 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 
 ## テスト
 
-`node --test` を使う。テストは `test/*.test.ts`。
+`node --test` を使う。unit test は主対象のソース隣へ `src/**/*.test.ts` として置く。`test/*.test.ts` には architecture・commit-msg などリポジトリ横断の検査だけを置き、fixture は `test/fixtures/` に置く。
 
 - モデルの分岐（仕様 §9の `g` による場合分け）を変えたら、対応するテストを足す
 - 配列を追加したら「全かなが打てる」ことを検証する既存テストに乗せる

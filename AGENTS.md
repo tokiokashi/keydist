@@ -72,21 +72,25 @@ UI・配列定義の追加など、モデルに触らない変更は仕様の更
 分け方・依存の向き・用語は `docs/architecture.md` が正。依存の規則は `test/architecture-layers.test.ts` が検査する。
 新しいファイルは必ずその構造の中に置く（src直下などへ増やすとテストが落ちる）。
 
-Analyzer再設計（#544）のPhase 1で既存ファイルを移している最中なので、下の旧配置のファイルがまだ残っている。
+Analyzer再設計（#544）のPhase 1で既存ファイルの配置は完了している。移行中なのは `features/analyzer-next/` だけで、置き換え完了時に削除する。
 
 | パス | 中身 |
 |---|---|
-| `src/evaluate.ts` | Trace生成（評価器）。仕様 §7〜§10の実装 |
-| `src/metrics.ts` | 出力指標（仕様 §11） |
-| `src/geometry.ts` | 座標系・キー位置・指の割り当て（仕様 §3） |
-| `src/sensitivity.ts` | N感度曲線 |
-| `src/layouts/` | 配列定義。`types.ts` が記法の型。かな配列は `fromFaces` で面（trigger + mode）から書く |
-| `src/romaji/` | かな → ローマ字テーブル |
-| `src/user-layouts.ts` | 自作配列のlocalStorage永続化 |
-| `src/playback.ts` | 打鍵再生。表示時間は再生時間モデル仕様 §3 の実装 |
-| `src/playback-calibration.ts` | 個人速度の測定（再生時間モデル仕様 §6） |
-| `src/main.ts` `src/chart.ts` `src/theme.ts` | 旧Analyzerの画面 |
-| `test/` | `node --test` のテスト |
+| `src/input/layouts/` | 配列定義・型・層・配列import |
+| `src/input/shapes/` | 物理形状・座標系・指の割り当て |
+| `src/input/semantics/` | trigger / action realization |
+| `src/input/romaji/` | かな → ローマ字テーブル |
+| `src/trace/evaluate.ts` | Trace生成（評価器）。仕様 §7〜§10の実装 |
+| `src/interpretation/` | 構造解析・時間モデル・共通指標 |
+| `src/analyzers/` | Analyzerごとの抽出・設定・可視化 |
+| `src/engine/` | 条件解決・実行とキャッシュ |
+| `src/tester/` | Tester。 `engine/` は純粋層 |
+| `src/platform/` | storage・ブラウザAPI |
+| `src/app/` `src/ui/` `src/routes/` | アプリ組み立て・共通UI・ルーティング |
+| `src/legacy/` | 旧Analyzer。切り替え時にディレクトリごと削除 |
+| `src/features/analyzer-next/` | Analyzer Next移行中実装。新構造へ置き換え後に削除 |
+| `src/**/*.test.ts` | ソースの隣に置くunit test |
+| `test/` | architecture・commit-msg等の横断テストとfixture |
 | `spec/` | モデル仕様（距離モデル・再生時間モデル） |
 
 ## 開発コマンド
@@ -115,11 +119,11 @@ npm run build      # 型検査 + ビルド
 
 ## モデルに触る変更をした時
 
-`spec/distance-model.md` の該当節・`README.md` の「何を測るか」・`test/` の3点が
+`spec/distance-model.md` の該当節・`README.md` の「何を測るか」・該当ソース隣接のunit testの3点が
 揃っているか確認する。数値が変わる変更なら、issue #1に載っている測定表のように
 変更前後の値をPRに書く。
 
-再生の時間の決め方を変えた時は `spec/playback-timing.md` の該当節と `test/` の2点。
+再生の時間の決め方を変えた時は `spec/playback-timing.md` の該当節と `src/interpretation/timing/` のunit testの2点。
 **適用範囲（§7）に挙げた制約を外す変更なら、§7 の該当項目も消すか書き換える。**
 距離モデルの数値は動かないので、測定表は要らない。
 

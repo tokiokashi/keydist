@@ -8,37 +8,12 @@ import { LAYOUTS, LAYOUTS_JA } from '#input/layouts/index.ts';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');
 
-const PLATFORM_GLOBAL_PATTERNS = [
-  /\b(?:window|document|navigator|localStorage|sessionStorage)\s*\./,
-  /\btypeof\s+(?:window|document|navigator)\b/,
-  /\b(?:Window|Document|Navigator|HTMLElement|KeyboardEvent|MutationObserver|ResizeObserver)\b/,
-  /\b(?:D1Database|KVNamespace|R2Bucket|DurableObject)\b/,
-] as const;
-
-const FRAMEWORK_MODULE_PATTERNS = [
-  /^react(?:\/|$)/,
-  /^react-dom(?:\/|$)/,
-  /^@tanstack\//,
-  /^@cloudflare\//,
-  /^cloudflare:/,
-] as const;
-
 async function tsFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
   const nested = await Promise.all(entries.map(async (entry) => {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) return tsFiles(path);
-    return entry.isFile() && entry.name.endsWith('.ts') ? [path] : [];
-  }));
-  return nested.flat();
-}
-
-async function tsOrTsxFiles(dir: string): Promise<string[]> {
-  const entries = await readdir(dir, { withFileTypes: true });
-  const nested = await Promise.all(entries.map(async (entry) => {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) return tsOrTsxFiles(path);
-    return entry.isFile() && /\.tsx?$/.test(entry.name) ? [path] : [];
+    return entry.isFile() && entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts') ? [path] : [];
   }));
   return nested.flat();
 }
@@ -55,21 +30,16 @@ function moduleSpecifiers(source: string): readonly string[] {
   return [...specs];
 }
 
-async function structuralAnalysisSources() {
-  const paths = await tsFiles(join(SRC, 'interpretation', 'structure'));
+async function sourcesIn(...segments: string[]) {
+  const paths = await tsFiles(join(SRC, ...segments));
   return Promise.all(paths.map(async (path) => ({
     path,
     source: await readFile(path, 'utf8'),
   })));
 }
 
-async function inputConverterCoreSources() {
-  const paths = await tsFiles(join(SRC, 'tester', 'engine'));
-  return Promise.all(paths.map(async (path) => ({
-    path,
-    source: await readFile(path, 'utf8'),
-  })));
-}
+// 以下3つは architecture-layers.test.ts の層の表より細かい、層の中の制限。
+// 層の表は input 内・interpretation 内の import を全部許すので、ここで別に絞る。
 
 function isAllowedInputConverterCoreModule(specifier: string): boolean {
   return /^\.\/[^/]+\.ts$/.test(specifier)
@@ -117,34 +87,23 @@ function isForbiddenRealizationConsumerImport(
     || REALIZATION_INTERNAL_MODULES.has(target);
 }
 
-test('core全体はframework / browser / Cloudflare platformへ依存しない', async () => {
-  const corePaths = [
-    ...await tsOrTsxFiles(join(SRC, 'input', 'semantics')),
-    ...await tsOrTsxFiles(join(SRC, 'tester', 'engine')),
-  ];
-  assert.ok(corePaths.length > 0, 'core source must exist');
+test('semantic coreのimport先をshapes / layout型へ限定する', async () => {
+  assert.equal(isAllowedSemanticCoreModule('../../results-view.ts'), false);
+  assert.equal(isAllowedSemanticCoreModule('./../../results-view.ts'), false);
 
-  for (const path of corePaths) {
-    const source = await readFile(path, 'utf8');
+  for (const { path, source } of await sourcesIn('input', 'semantics')) {
     for (const specifier of moduleSpecifiers(source)) {
       assert.equal(
-        FRAMEWORK_MODULE_PATTERNS.some((pattern) => pattern.test(specifier)),
-        false,
-        `${relative(ROOT, path)} imports app/framework/platform module: ${specifier}`,
-      );
-    }
-    for (const pattern of PLATFORM_GLOBAL_PATTERNS) {
-      assert.doesNotMatch(
-        source,
-        pattern,
-        `${relative(ROOT, path)} must stay independent from browser / Cloudflare platform globals`,
+        isAllowedSemanticCoreModule(specifier),
+        true,
+        `${relative(ROOT, path)} imports outside the allowed semantic-core dependency layer: ${specifier}`,
       );
     }
   }
 });
 
 test('structural analysisのimport先をsemantic / structural layerへ限定する', async () => {
-  for (const { path, source } of await structuralAnalysisSources()) {
+  for (const { path, source } of await sourcesIn('interpretation', 'structure')) {
     for (const specifier of moduleSpecifiers(source)) {
       assert.equal(
         isAllowedStructuralAnalysisModule(specifier),
@@ -194,9 +153,8 @@ test('realization policy consumerはsemantic core public entryをauthorityにす
   }
 });
 
-test('Input Converter coreはSemanticInput public APIを再利用しframework / DOMへ依存しない', async () => {
-  const sources = await inputConverterCoreSources();
-
+test('Input Converter coreはSemanticInput public APIを再利用する', async () => {
+  const sources = await sourcesIn('tester', 'engine');
   assert.ok(sources.length > 0, 'input converter core source must exist');
   for (const { path, source } of sources) {
     for (const specifier of moduleSpecifiers(source)) {
@@ -204,13 +162,6 @@ test('Input Converter coreはSemanticInput public APIを再利用しframework / 
         isAllowedInputConverterCoreModule(specifier),
         true,
         `${relative(ROOT, path)} imports outside input-converter core boundary: ${specifier}`,
-      );
-    }
-    for (const pattern of PLATFORM_GLOBAL_PATTERNS) {
-      assert.doesNotMatch(
-        source,
-        pattern,
-        `${relative(ROOT, path)} must stay independent from browser / Cloudflare platform globals`,
       );
     }
   }
@@ -229,48 +180,6 @@ test('Input Converter coreはSemanticInput public APIを再利用しframework / 
     /layouts\//,
     'Input Converter core must not reinterpret Layout Face authoring metadata',
   );
-});
-
-test('canonical semantic / structural analysis coreはframework / platform APIへ依存しない', async () => {
-  const semanticCorePaths = await tsFiles(join(SRC, 'input', 'semantics'));
-  const semanticSources = await Promise.all(semanticCorePaths.map(async (path) => ({
-    path,
-    source: await readFile(path, 'utf8'),
-  })));
-  const analysisSources = await structuralAnalysisSources();
-
-  assert.equal(isAllowedSemanticCoreModule('../../results-view.ts'), false);
-  assert.equal(isAllowedSemanticCoreModule('./../../results-view.ts'), false);
-
-  for (const { path, source } of semanticSources) {
-    for (const specifier of moduleSpecifiers(source)) {
-      assert.equal(
-        isAllowedSemanticCoreModule(specifier),
-        true,
-        `${relative(ROOT, path)} imports outside the allowed semantic-core dependency layer: ${specifier}`,
-      );
-    }
-  }
-  for (const { path, source } of analysisSources) {
-    for (const specifier of moduleSpecifiers(source)) {
-      assert.equal(
-        isAllowedStructuralAnalysisModule(specifier),
-        true,
-        `${relative(ROOT, path)} imports outside the allowed analysis dependency layer: ${specifier}`,
-      );
-    }
-  }
-
-
-  for (const { path, source } of [...semanticSources, ...analysisSources]) {
-    for (const pattern of PLATFORM_GLOBAL_PATTERNS) {
-      assert.doesNotMatch(
-        source,
-        pattern,
-        `${relative(ROOT, path)} must stay independent from browser / Cloudflare platform globals`,
-      );
-    }
-  }
 });
 
 test('Face semanticをpresentation roleやtrigger数から推測しない', async () => {
@@ -775,7 +684,7 @@ test('structural analysisはbuilt-in layoutのID/nameへ依存しない', async 
       .flatMap((layout) => [layout.id, layout.name]),
   );
 
-  for (const { path, source } of await structuralAnalysisSources()) {
+  for (const { path, source } of await sourcesIn('interpretation', 'structure')) {
     for (const specifier of moduleSpecifiers(source)) {
       assert.equal(
         specifier.startsWith('./layouts/'),
