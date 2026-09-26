@@ -161,6 +161,15 @@ export function isUserRomajiRule(value: unknown): value is UserRomajiRule {
     ) && typeof value.generateSokuon === 'boolean';
 }
 
+export function sanitizeStoredRomajiSettings(value: unknown): RomajiSettings {
+  if (!isRecord(value)) return { rules: [], assignments: {} };
+  const rules = Array.isArray(value.rules) ? value.rules.filter(isUserRomajiRule) : [];
+  const assignments = isRecord(value.assignments)
+    ? Object.fromEntries(Object.entries(value.assignments).filter(([, id]) => typeof id === 'string'))
+    : {};
+  return { rules, assignments };
+}
+
 export function sanitizeRomajiSettings(value: unknown): RomajiSettings {
   if (!isRecord(value)) return { rules: [], assignments: {} };
   const rules = Array.isArray(value.rules) ? value.rules.filter(isUserRomajiRule) : [];

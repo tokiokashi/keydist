@@ -1,5 +1,5 @@
 import {
-  sanitizeRomajiSettings,
+  sanitizeStoredRomajiSettings,
   type RomajiSettings,
 } from '#input/romaji/rules.ts';
 
@@ -9,7 +9,7 @@ export function loadRomajiSettings(): RomajiSettings {
   try {
     const raw = localStorage.getItem(ROMAJI_SETTINGS_STORAGE_KEY);
     if (!raw) return { rules: [], assignments: {} };
-    return sanitizeRomajiSettings(JSON.parse(raw));
+    return sanitizeStoredRomajiSettings(JSON.parse(raw));
   } catch {
     return { rules: [], assignments: {} };
   }

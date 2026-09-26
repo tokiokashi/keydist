@@ -1,6 +1,17 @@
 import { PHYSICAL_SHAPES, type PhysicalShape } from '../../geometry.ts';
 import { sanitizePhysicalShape } from '../../geometry-settings.ts';
 
+const defaultShape = PHYSICAL_SHAPES['row-staggered'];
+const storageFallback: PhysicalShape = {
+  ...defaultShape,
+  rowStagger: undefined,
+  columnStagger: undefined,
+  splitAt: undefined,
+  splitGap: undefined,
+  thumbHome: undefined,
+  extraKeys: undefined,
+};
+
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
