@@ -1,6 +1,31 @@
+import type { BigramSource, FingerClass } from '../../bigram-vectors.ts';
+import type { MovementScaleMode } from './movement-profile-scale.ts';
+
 export type KeyboardFlowWeightScale = 'linear' | 'sqrt' | 'log';
 export type KeyboardFlowLayerOrder = 'weight' | 'same-hand-top' | 'cross-hand-top';
 export type KeyboardFlowHoverScale = 'key' | 'global';
+
+export interface BigramFlowDisplayConfig {
+  source: BigramSource;
+  selectedFingers: readonly FingerClass[];
+  lineScale: KeyboardFlowWeightScale;
+  layerOrder: KeyboardFlowLayerOrder;
+  hoverScale: KeyboardFlowHoverScale;
+  movementScaleMode: MovementScaleMode;
+  polarBandwidth: number;
+  polarGain: number;
+}
+
+export const DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG: BigramFlowDisplayConfig = {
+  source: 'actual',
+  selectedFingers: [],
+  lineScale: 'linear',
+  layerOrder: 'weight',
+  hoverScale: 'key',
+  movementScaleMode: 'fit',
+  polarBandwidth: 5,
+  polarGain: 1,
+};
 
 export interface KeyboardFlowVectorLike {
   readonly id: string;
