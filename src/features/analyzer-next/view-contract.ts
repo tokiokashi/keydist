@@ -54,11 +54,17 @@ export interface AnalysisViewConfigCodec<Config> {
   decode(raw: unknown, savedVersion: number): Config;
 }
 
+export interface AnalysisViewConfigSummaryItem {
+  label: string;
+  value: string;
+}
+
 export interface AnalysisViewDefinition<Config = unknown> {
   type: AnalysisViewType;
   title: string;
   cardinality: AnalysisViewCardinality;
   configCodec: AnalysisViewConfigCodec<Config>;
+  describeConfig?(config: Config): readonly AnalysisViewConfigSummaryItem[];
   canDuplicate: boolean;
   minWidth?: number;
   minHeight?: number;
