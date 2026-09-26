@@ -13,8 +13,8 @@ import {
   UI_STATE_STORAGE_KEY,
   type UiStateChoices,
   type UiStateStorage,
-} from '#legacy/ui-state.ts';
-import { describeConditions, describePlaybackConditions } from '#legacy/condition-description.ts';
+} from './ui-state.ts';
+import { describeConditions, describePlaybackConditions } from './condition-description.ts';
 
 class MemoryStorage implements UiStateStorage {
   readonly data = new Map<string, string>();

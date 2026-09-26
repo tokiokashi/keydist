@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { decodeVersionedState } from '#platform/persistence/versioned-state.ts';
+import { decodeVersionedState } from './versioned-state.ts';
 
 interface ExampleState {
   version: 1;

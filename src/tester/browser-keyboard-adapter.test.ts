@@ -5,7 +5,7 @@ import {
   browserKeyboardEventToPhysicalKeyEvent,
   isBrowserTextInputCode,
   shouldCaptureBrowserKeyDown,
-} from '#tester/browser-keyboard-adapter.ts';
+} from './browser-keyboard-adapter.ts';
 
 test('browser adapterはKeyboardEvent.codeをQWERTY物理keyへ変換する', () => {
   assert.equal(browserCodeToPhysicalKey('KeyA'), 'a');

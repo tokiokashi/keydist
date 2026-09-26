@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createDebouncedPersistenceScheduler } from '#platform/persistence/debounced-scheduler.ts';
+import { createDebouncedPersistenceScheduler } from './debounced-scheduler.ts';
 
 /**
  * Phase 5のワークスペース永続化とPhase 6の入力コンバータ設定永続化、両方が使う

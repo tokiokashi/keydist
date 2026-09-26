@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TypingInputEngine } from '#tester/engine/index.ts';
+import { TypingInputEngine } from './index.ts';
 import { faceFromEntries, fromFaces, fromKana, type Face, type FaceMode } from '#input/layouts/index.ts';
 
 const face = (

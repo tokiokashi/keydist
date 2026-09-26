@@ -4,7 +4,7 @@ import {
   ANALYZER_SAMPLE_NAMES,
   analyzerSampleText,
   isAnalyzerSampleText,
-} from '#legacy/analyzer-samples.ts';
+} from './analyzer-samples.ts';
 
 test('Analyzer sample catalog resolves mode samples and fallback', () => {
   assert.deepEqual(Object.keys(ANALYZER_SAMPLE_NAMES.en), ['default']);

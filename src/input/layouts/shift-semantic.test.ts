@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TypingInputEngine } from '#tester/engine/index.ts';
 import { DEFAULT_OPTIONS, evaluate } from '#trace/evaluate.ts';
-import { buildGeometry, SHIFT_KEY } from '#input/shapes/geometry.ts';
-import { LAYOUTS } from '#input/layouts/index.ts';
+import { buildGeometry, SHIFT_KEY } from '../shapes/geometry.ts';
+import { LAYOUTS } from './index.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 
 const qwerty = LAYOUTS.find((layout) => layout.id === 'qwerty')!;

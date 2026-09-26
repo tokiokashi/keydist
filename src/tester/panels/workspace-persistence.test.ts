@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createWorkspacePanelRegistry } from '#tester/panels/panel-registry.ts';
+import { createWorkspacePanelRegistry } from './panel-registry.ts';
 import {
   createWorkspaceState,
   MAX_DORMANT_DYNAMIC_PANELS,
   type WorkspaceStateV1,
-} from '#tester/panels/workspace-state.ts';
+} from './workspace-state.ts';
 import {
   clampAllFloatingPanels,
   createWorkspacePersistenceScheduler,
@@ -14,7 +14,7 @@ import {
   saveWorkspaceState,
   serializeWorkspaceState,
   WORKSPACE_STORAGE_KEY,
-} from '#tester/panels/workspace-persistence.ts';
+} from './workspace-persistence.ts';
 import { APP_STATE_STORAGE_KEY } from '#app/state/app-state-storage.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 

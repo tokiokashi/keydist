@@ -11,7 +11,7 @@ import {
   filterBigramVectors,
   meanDisplacement,
   type BigramVector,
-} from '#analyzers/bigram-flow/bigram-vectors.ts';
+} from './bigram-vectors.ts';
 
 const key = (id: string, finger: Finger, x: number, y = 2): Key => ({
   id,

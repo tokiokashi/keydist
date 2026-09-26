@@ -7,23 +7,23 @@ import {
   parseGeometrySettings,
   sanitizePhysicalShape,
   serializeGeometrySettings,
-} from '#input/shapes/settings.ts';
+} from '../shapes/settings.ts';
 import {
   DEFAULT_FINGER_ASSIGNMENT,
   PHYSICAL_SHAPES,
   buildGeometry,
   type FingerAssignment,
   type PhysicalShape,
-} from '#input/shapes/geometry.ts';
+} from '../shapes/geometry.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
-import { fromKana, LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { fromKana, LAYOUT_BY_ID } from './index.ts';
 import {
   browserCodeToPhysicalKey,
 } from '#tester/browser-keyboard-adapter.ts';
 import {
   physicalKeysUsedByLayout,
   visibleGeometryKeys,
-} from '#input/layouts/physical-keys.ts';
+} from './physical-keys.ts';
 
 const shape: PhysicalShape = {
   ...structuredClone(PHYSICAL_SHAPES['row-staggered']),

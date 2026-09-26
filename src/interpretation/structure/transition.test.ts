@@ -5,8 +5,8 @@ import type { Press, Stroke, StrokeParticipation } from '#trace/evaluate.ts';
 import {
   analyzeStrokeTransitions,
   fingerRelation,
-} from '#interpretation/structure/transition.ts';
-import { DEFAULT_CHAIN_POLICY } from '#interpretation/structure/chain.ts';
+} from './transition.ts';
+import { DEFAULT_CHAIN_POLICY } from './chain.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({
   id,

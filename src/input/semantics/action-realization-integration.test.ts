@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry } from '#input/shapes/geometry.ts';
+import { buildGeometry } from '../shapes/geometry.ts';
 import { evaluate } from '#trace/evaluate.ts';
-import { fromFaces, LAYOUT_BY_ID, type Layout } from '#input/layouts/index.ts';
+import { fromFaces, LAYOUT_BY_ID, type Layout } from '../layouts/index.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
 import { playbackTimingSchedule } from '#interpretation/timing/playback.ts';
-import type { ActionRealizationPolicy } from '#input/semantics/index.ts';
+import type { ActionRealizationPolicy } from './index.ts';
 
 const geometry = buildGeometry('row-staggered');
 

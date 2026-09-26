@@ -4,17 +4,17 @@ import {
   createWorkspacePanelRegistry,
   resolvePanelLayout,
   type WorkspacePanelDefinitionInput,
-} from '#tester/panels/panel-registry.ts';
+} from './panel-registry.ts';
 import {
   createWorkspaceState,
   reconcileWorkspaceState,
-} from '#tester/panels/workspace-state.ts';
+} from './workspace-state.ts';
 import {
   workspaceReducer,
-} from '#tester/panels/workspace-reducer.ts';
+} from './workspace-reducer.ts';
 import {
   clampPanelRectToViewport,
-} from '#tester/panels/viewport-clamp.ts';
+} from './viewport-clamp.ts';
 
 const definitionInputs: WorkspacePanelDefinitionInput[] = [
   { id: 'input.keyboard', title: 'Keyboard', defaultDockSlot: 'main', minWidth: 240 },

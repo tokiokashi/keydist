@@ -6,8 +6,8 @@ import {
   analyzeStrokeArpeggios,
   DEFAULT_ARPEGGIO_POLICY,
   sameArpeggioPolicy,
-} from '#interpretation/structure/arpeggio.ts';
-import { DEFAULT_CHAIN_POLICY } from '#interpretation/structure/chain.ts';
+} from './arpeggio.ts';
+import { DEFAULT_CHAIN_POLICY } from './chain.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({
   id,

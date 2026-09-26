@@ -10,7 +10,7 @@ import {
   presentationLayerGuide,
   presentationTriggerColorSlots,
   semanticCombinationLabels,
-} from '#input/layouts/layers.ts';
+} from './layers.ts';
 import {
   faceFromEntries,
   fromFaces,
@@ -18,10 +18,10 @@ import {
   LAYOUT_BY_ID,
   withShiftedOutputs,
   type Face,
-} from '#input/layouts/index.ts';
-import { NAGINATA_V18 } from '#input/layouts/naginata.ts';
-import { SHIN_JIS_PREFIX, SHIN_JIS_SIMULTANEOUS } from '#input/layouts/shin-jis.ts';
-import { TSUKI_2_263 } from '#input/layouts/tsuki-2-263.ts';
+} from './index.ts';
+import { NAGINATA_V18 } from './naginata.ts';
+import { SHIN_JIS_PREFIX, SHIN_JIS_SIMULTANEOUS } from './shin-jis.ts';
+import { TSUKI_2_263 } from './tsuki-2-263.ts';
 
 test('active modifier aggregationはcanonical rolesを使い複合modifierを優先する', () => {
   const base: Face = {

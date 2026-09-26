@@ -16,7 +16,7 @@ import {
   reverseLookupStepLabel,
   reverseLookupStepMatchesRecognition,
   type ReverseLookupRoute,
-} from '#tester/reverse-lookup.ts';
+} from './reverse-lookup.ts';
 
 /** テスト用に最小限のReverseLookupRouteを組み立てる。1step・1actionだけを持つ単純な経路。 */
 function fixtureRoute(

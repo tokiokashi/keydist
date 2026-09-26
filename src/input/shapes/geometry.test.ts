@@ -13,10 +13,10 @@ import {
   type Finger,
   type NonThumb,
   type PhysicalShape,
-} from '#input/shapes/geometry.ts';
+} from './geometry.ts';
 import { evaluate } from '#trace/evaluate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
-import { fromKana, LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { fromKana, LAYOUT_BY_ID } from '../layouts/index.ts';
 
 const near = (a: number, b: number, msg?: string) =>
   assert.ok(Math.abs(a - b) < 1e-9, `${msg ?? ''} expected ${b}, got ${a}`);

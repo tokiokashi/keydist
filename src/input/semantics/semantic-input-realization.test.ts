@@ -7,9 +7,9 @@ import {
   type BaseActionRealization,
   type BaseActionRealizationSequence,
   type SemanticInput,
-} from '#input/semantics/index.ts';
-import { resolveKeyId } from '#input/shapes/geometry.ts';
-import { fromFaces, LAYOUT_BY_ID, type Face } from '#input/layouts/index.ts';
+} from './index.ts';
+import { resolveKeyId } from '../shapes/geometry.ts';
+import { fromFaces, LAYOUT_BY_ID, type Face } from '../layouts/index.ts';
 
 const semanticInput = (
   physicalKeys: readonly string[],

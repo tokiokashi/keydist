@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   createAnalyzerUiStateOwner,
-} from '#legacy/analyzer-ui-state-owner.ts';
+} from './analyzer-ui-state-owner.ts';
 import { APP_STATE_STORAGE_KEY } from '#app/state/app-state-storage.ts';
 import {
   createDefaultUiState,
   UI_STATE_STORAGE_KEY,
   type UiStateChoices,
   type UiStateStorage,
-} from '#legacy/ui-state.ts';
+} from './ui-state.ts';
 
 class MemoryStorage implements UiStateStorage {
   readonly data = new Map<string, string>();

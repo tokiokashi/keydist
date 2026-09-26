@@ -14,7 +14,7 @@ import {
   serializeInputConverterPreferences,
   type InputConverterLayoutPreferencesV2,
   type InputConverterPreferencesV2,
-} from '#tester/input-converter-preferences.ts';
+} from './input-converter-preferences.ts';
 
 const catalogs = {
   layoutIds: ['naginata-v18', 'shingeta', 'jis-kana'],

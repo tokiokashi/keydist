@@ -5,7 +5,7 @@ import {
   orderKeyboardFlowVectors,
   resolveKeyboardFlowMaxWeight,
   scaleKeyboardFlowWeight,
-} from '#analyzers/bigram-flow/options.ts';
+} from './options.ts';
 
 const vectors = [
   { id: 'same-heavy', hand: 'left' as const, weight: 9, distance: 1 },

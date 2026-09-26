@@ -4,14 +4,14 @@ import type { Finger, Key, Point } from '#input/shapes/geometry.ts';
 import type { Press, Stroke, StrokeParticipation } from '#trace/evaluate.ts';
 import {
   playbackStepDurationMs,
-} from '#interpretation/timing/playback.ts';
-import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
+} from './playback.ts';
+import { analyzeStrokeStructure } from '../structure/aggregate.ts';
 import {
   DEFAULT_CHAIN_POLICY,
-} from '#interpretation/structure/chain.ts';
+} from '../structure/chain.ts';
 import {
   DEFAULT_ARPEGGIO_POLICY,
-} from '#interpretation/structure/arpeggio.ts';
+} from '../structure/arpeggio.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({
   id,

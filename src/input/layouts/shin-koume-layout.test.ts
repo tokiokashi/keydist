@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry } from '#input/shapes/geometry.ts';
+import { buildGeometry } from '../shapes/geometry.ts';
 import { DEFAULT_OPTIONS, evaluate } from '#trace/evaluate.ts';
 import { analyzeChains, DEFAULT_CHAIN_POLICY } from '#interpretation/structure/chain.ts';
-import { COMBO_LAYER_ID, LAYOUT_BY_ID } from '#input/layouts/index.ts';
-import { classifyPresentationFaces } from '#input/layouts/layers.ts';
+import { COMBO_LAYER_ID, LAYOUT_BY_ID } from './index.ts';
+import { classifyPresentationFaces } from './layers.ts';
 import { assertKanaLayout } from '../../../test/kana-layout-helpers.ts';
 
 const layout = LAYOUT_BY_ID.get('shin-koume')!;

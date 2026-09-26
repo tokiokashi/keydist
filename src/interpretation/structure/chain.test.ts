@@ -5,7 +5,7 @@ import {
   analyzeChains,
   buildRawHandRuns,
   chainPolicyFromLegacyUi,
-} from '#interpretation/structure/chain.ts';
+} from './chain.ts';
 import type { Stroke, StrokeParticipation } from '#trace/evaluate.ts';
 
 const participation = (

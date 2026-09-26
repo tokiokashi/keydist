@@ -8,7 +8,7 @@ import {
   compileSequenceSemanticInputs,
   validateCanonicalInputMap,
   type SemanticInput,
-} from '#input/semantics/index.ts';
+} from './index.ts';
 import {
   LAYOUTS,
   LAYOUTS_JA,
@@ -18,8 +18,8 @@ import {
   withCombos,
   withComposedOutputs,
   withThumbShiftAlternatives,
-} from '#input/layouts/index.ts';
-import { faceFromEntries, type Face, type FaceMode } from '#input/layouts/types.ts';
+} from '../layouts/index.ts';
+import { faceFromEntries, type Face, type FaceMode } from '../layouts/types.ts';
 
 const face = (
   trigger: string[],

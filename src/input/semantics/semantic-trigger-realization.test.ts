@@ -4,8 +4,8 @@ import {
   realizeTriggerActions,
   type BaseActionRealization,
   type SemanticInput,
-} from '#input/semantics/index.ts';
-import { faceFromEntries, fromFaces, type FaceMode } from '#input/layouts/index.ts';
+} from './index.ts';
+import { faceFromEntries, fromFaces, type FaceMode } from '../layouts/index.ts';
 
 const holdFaceLayout = (
   mode: FaceMode,

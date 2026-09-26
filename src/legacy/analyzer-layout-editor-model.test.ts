@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createAnalyzerLayoutEditorModel } from '#legacy/analyzer-layout-editor-model.ts';
+import { createAnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 
 test('Layout editor model publishes romaji rules only when they change', () => {
   const model = createAnalyzerLayoutEditorModel([{ id: 'kunrei', name: '訓令式' }]);

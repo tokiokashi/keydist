@@ -2,12 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, ALL_FINGERS } from '#input/shapes/geometry.ts';
 import { evaluate, type Options } from '#trace/evaluate.ts';
-import { computeMetrics, DEFAULT_METRIC_CONDITIONS, homeSpacing } from '#interpretation/metrics.ts';
+import { computeMetrics, DEFAULT_METRIC_CONDITIONS, homeSpacing } from './metrics.ts';
 import { faceFromEntries, fromFaces, fromKana, LAYOUTS_JA, LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { dist } from '#input/shapes/geometry.ts';
 import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '#input/text/sample-ja.ts';
-import { DEFAULT_CHAIN_POLICY } from '#interpretation/structure/chain.ts';
-import { DEFAULT_ARPEGGIO_POLICY } from '#interpretation/structure/arpeggio.ts';
+import { DEFAULT_CHAIN_POLICY } from './structure/chain.ts';
+import { DEFAULT_ARPEGGIO_POLICY } from './structure/arpeggio.ts';
 
 const geometry = buildGeometry('row-staggered');
 // LAYOUT_BY_IDの 'qwerty' はローマ字テーブル付きのJA版で上書きされる。

@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TypingInputEngine } from '#tester/engine/index.ts';
+import { TypingInputEngine } from './engine/index.ts';
 import {
   applyRecognizedTypingInputs,
   applyTypingTextEdit,
   executeTypingEditCommand,
-} from '#tester/typing-session-command.ts';
+} from './typing-session-command.ts';
 import { TSUKI_2_263 } from '#input/layouts/tsuki-2-263.ts';
 
 const prefixD = (engine: TypingInputEngine) => {

@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry } from '#input/shapes/geometry.ts';
+import { buildGeometry } from '../shapes/geometry.ts';
 import { DEFAULT_OPTIONS, evaluate } from '#trace/evaluate.ts';
-import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { LAYOUT_BY_ID } from './index.ts';
 import { assertKanaLayout } from '../../../test/kana-layout-helpers.ts';
 
 const layout = LAYOUT_BY_ID.get('asuka')!;

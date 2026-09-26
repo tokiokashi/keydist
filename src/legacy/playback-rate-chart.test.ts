@@ -3,7 +3,7 @@ import test from 'node:test';
 import {
   playbackRateBandVisibility,
   playbackRateTooltip,
-} from '#legacy/analyzer-playback-rate-chart-model.ts';
+} from './analyzer-playback-rate-chart-model.ts';
 
 test('速度グラフtooltipはカーソル・集計入力・速度を表示する', () => {
   const tooltip = playbackRateTooltip({

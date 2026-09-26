@@ -9,7 +9,7 @@ import {
   fromFaces,
   fromKana,
   type Face,
-} from '#input/layouts/index.ts';
+} from '../layouts/index.ts';
 
 const orderedFace = (
   trigger: string[],

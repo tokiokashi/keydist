@@ -9,7 +9,7 @@ import {
   type ActionRealizationPolicy,
   type RealizedSemanticAction,
   type SemanticInput,
-} from '#input/semantics/index.ts';
+} from './index.ts';
 
 const input = (
   classifications: SemanticInput['classifications'] = [],

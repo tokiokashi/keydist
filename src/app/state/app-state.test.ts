@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { APP_STATE_VERSION, type AppStateV2 } from '#app/state/app-state.ts';
+import { APP_STATE_VERSION, type AppStateV2 } from './app-state.ts';
 import {
   APP_STATE_STORAGE_KEY,
   decodeAppStateDocument,
   loadOrMigrateAppStateSlice,
   patchAppState,
   patchAppStateSlice,
-} from '#app/state/app-state-storage.ts';
+} from './app-state-storage.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 
 class MemoryStorage implements KeyValueStorage {

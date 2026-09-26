@@ -6,13 +6,13 @@ import {
   analyzeStrokeRedirects,
   buildRedirectEvents,
   redirectGeometryQualities,
-} from '#interpretation/structure/redirect.ts';
+} from './redirect.ts';
 import {
   type FingerTransition,
   type HandTransition,
   type TransitionAnalysisResult,
-} from '#interpretation/structure/transition.ts';
-import { DEFAULT_CHAIN_POLICY } from '#interpretation/structure/chain.ts';
+} from './transition.ts';
+import { DEFAULT_CHAIN_POLICY } from './chain.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({
   id,

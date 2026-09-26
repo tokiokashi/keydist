@@ -4,11 +4,11 @@ import type { Finger, Key, Point } from '#input/shapes/geometry.ts';
 import type { Press, Stroke, StrokeParticipation } from '#trace/evaluate.ts';
 import {
   analyzeStrokeStructure,
-} from '#interpretation/structure/aggregate.ts';
+} from './aggregate.ts';
 import {
   DEFAULT_ARPEGGIO_POLICY,
-} from '#interpretation/structure/arpeggio.ts';
-import { DEFAULT_CHAIN_POLICY } from '#interpretation/structure/chain.ts';
+} from './arpeggio.ts';
+import { DEFAULT_CHAIN_POLICY } from './chain.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,

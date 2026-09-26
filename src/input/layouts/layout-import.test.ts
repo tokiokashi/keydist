@@ -6,9 +6,9 @@ import {
   importBenizara,
   importDvorakJ,
   importVial,
-} from '#input/layouts/import.ts';
-import { CUSTOM_COMBOS } from '#input/layouts/combos-custom.ts';
-import { toLayout, type UserLayout } from '#input/layouts/user-layouts.ts';
+} from './import.ts';
+import { CUSTOM_COMBOS } from './combos-custom.ts';
+import { toLayout, type UserLayout } from './user-layouts.ts';
 
 const vialKeyCode = (key: string): string => {
   if (key === '-') return 'KC_MINS';

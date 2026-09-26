@@ -5,7 +5,7 @@ import {
   liveRomajiContextSatisfied,
   romajiToKana,
   romajiTypingCorrectness,
-} from '#tester/live-romaji.ts';
+} from './live-romaji.ts';
 
 const table = kunrei();
 

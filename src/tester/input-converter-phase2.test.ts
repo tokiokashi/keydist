@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TypingInputEngine } from '#tester/engine/index.ts';
-import { browserKeyboardEventToPhysicalKeyEvent } from '#tester/browser-keyboard-adapter.ts';
+import { TypingInputEngine } from './engine/index.ts';
+import { browserKeyboardEventToPhysicalKeyEvent } from './browser-keyboard-adapter.ts';
 import { NAGINATA_V18 } from '#input/layouts/naginata.ts';
 import { SHINGETA } from '#input/layouts/shingeta.ts';
 import { SHIN_JIS_SIMULTANEOUS } from '#input/layouts/shin-jis.ts';

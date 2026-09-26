@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { layoutVisibleInFilter, resolveSelection } from '#legacy/layout-selection.ts';
+import { layoutVisibleInFilter, resolveSelection } from './layout-selection.ts';
 
 test('保存値が無ければ既定値を使う（初回訪問）', () => {
   const set = resolveSelection(undefined, ['qwerty', 'dvorak']);

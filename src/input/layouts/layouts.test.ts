@@ -1,13 +1,13 @@
-import { JIS_KANA } from '#input/layouts/jis-kana.ts';
+import { JIS_KANA } from './jis-kana.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry } from '#input/shapes/geometry.ts';
-import { mapInputAlternativePhysicalKeys } from '#input/semantics/index.ts';
+import { buildGeometry } from '../shapes/geometry.ts';
+import { mapInputAlternativePhysicalKeys } from '../semantics/index.ts';
 import { DEFAULT_OPTIONS, evaluate } from '#trace/evaluate.ts';
-import { faceFromEntries, fromFaces, fromRows, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA, withCombos, type Face } from '#input/layouts/index.ts';
+import { faceFromEntries, fromFaces, fromRows, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA, withCombos, type Face } from './index.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
-import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
-import { toLayout } from '#input/layouts/user-layouts.ts';
+import { SAMPLE_TEXT_JA } from '../text/sample-ja.ts';
+import { toLayout } from './user-layouts.ts';
 import { assertKanaLayout, assertKanaLayoutFixture } from '../../../test/kana-layout-helpers.ts';
 import {
   classifyPresentationFaces,
@@ -19,7 +19,7 @@ import {
   faceDisplayCells,
   handOfKey,
   layerShiftStyles,
-} from '#input/layouts/layers.ts';
+} from './layers.ts';
 import { normalizedLayerColors } from '#analyzers/heatmap/layer-heatmap.ts';
 
 const faceAtF = (output: string) => ['', '', ['', '', '', output], ''];

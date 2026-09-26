@@ -7,13 +7,13 @@ import {
   parseOverrides,
   tableForRule,
   type UserRomajiRule,
-} from '#input/romaji/rules.ts';
-import { kanaToRomaji } from '#input/romaji/kunrei.ts';
-import { buildGeometry } from '#input/shapes/geometry.ts';
+} from './rules.ts';
+import { kanaToRomaji } from './kunrei.ts';
+import { buildGeometry } from '../shapes/geometry.ts';
 import { evaluate } from '#trace/evaluate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
-import { LAYOUTS_JA, withRomaji } from '#input/layouts/index.ts';
-import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
+import { LAYOUTS_JA, withRomaji } from '../layouts/index.ts';
+import { SAMPLE_TEXT_JA } from '../text/sample-ja.ts';
 
 const geometry = buildGeometry('row-staggered');
 const options = { windowSize: 3, sfbHomeCost: true };

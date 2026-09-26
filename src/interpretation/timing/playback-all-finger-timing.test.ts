@@ -8,13 +8,13 @@ import {
   type Point,
 } from '#input/shapes/geometry.ts';
 import type { Press, Stroke, StrokeParticipation } from '#trace/evaluate.ts';
-import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
+import { analyzeStrokeStructure } from '../structure/aggregate.ts';
 import {
   advancePlayback,
   createPlaybackState,
   playbackRecentActionsPerSecond,
   playbackTimingSchedule,
-} from '#interpretation/timing/playback.ts';
+} from './playback.ts';
 
 const geometry = buildGeometry('row-staggered');
 

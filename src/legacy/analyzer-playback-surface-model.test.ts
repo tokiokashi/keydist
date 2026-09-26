@@ -3,7 +3,7 @@ import test from 'node:test';
 import {
   createAnalyzerPlaybackSurfaceModel,
   type AnalyzerPlaybackSurfaceData,
-} from '#legacy/analyzer-playback-surface-model.ts';
+} from './analyzer-playback-surface-model.ts';
 
 test('Playback surface model publishes only ephemeral derived data', () => {
   const model = createAnalyzerPlaybackSurfaceModel();

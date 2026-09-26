@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { faceFromEntries, type Face } from '#input/layouts/index.ts';
-import { validateFaceAuthoring } from '#input/layouts/face-authoring-validation.ts';
-import { fromFaces } from '#input/layouts/types.ts';
+import { faceFromEntries, type Face } from './index.ts';
+import { validateFaceAuthoring } from './face-authoring-validation.ts';
+import { fromFaces } from './types.ts';
 
 const face = (
   trigger: readonly string[],

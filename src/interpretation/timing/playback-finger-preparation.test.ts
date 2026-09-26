@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { buildGeometry } from '#input/shapes/geometry.ts';
 import { evaluate } from '#trace/evaluate.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
-import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
+import { analyzeStrokeStructure } from '../structure/aggregate.ts';
 import {
   playbackFingerPositionKeys,
   playbackPreparedFingerPositionKeys,
   playbackTimingSchedule,
-} from '#interpretation/timing/playback.ts';
+} from './playback.ts';
 
 const geometry = buildGeometry('row-staggered');
 const layout = LAYOUT_BY_ID.get('qwerty')!;

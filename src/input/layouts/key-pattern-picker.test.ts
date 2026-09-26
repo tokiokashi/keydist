@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveKeyId } from '#input/shapes/geometry.ts';
+import { resolveKeyId } from '../shapes/geometry.ts';
 import {
   COMBO_LAYER_ID,
   faceFromEntries,
@@ -9,10 +9,10 @@ import {
   LAYOUT_BY_ID,
   withCombos,
   withShiftedOutputs,
-} from '#input/layouts/index.ts';
-import type { Face, Layout } from '#input/layouts/index.ts';
+} from './index.ts';
+import type { Face, Layout } from './index.ts';
 import { TypingInputEngine } from '#tester/engine/index.ts';
-import { compileSequenceInputAlternative } from '#input/semantics/index.ts';
+import { compileSequenceInputAlternative } from '../semantics/index.ts';
 import {
   advanceKeyPatternPresentation,
   allLayerTriggerKeys,
@@ -22,7 +22,7 @@ import {
   findActiveLayerFace,
   matchKeyPatterns,
   summarizeCandidateMatches,
-} from '#input/layouts/key-pattern-picker.ts';
+} from './key-pattern-picker.ts';
 
 function stubLayout(overrides: Partial<Layout>): Layout {
   return {

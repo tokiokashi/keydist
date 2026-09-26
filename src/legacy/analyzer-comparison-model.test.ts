@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createAnalyzerComparisonModel } from '#legacy/analyzer-comparison-model.ts';
+import { createAnalyzerComparisonModel } from './analyzer-comparison-model.ts';
 
 test('comparison model only notifies when option content changes', () => {
   const model = createAnalyzerComparisonModel();

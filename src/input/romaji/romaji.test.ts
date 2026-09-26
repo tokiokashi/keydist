@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry, QWERTY_LEGEND } from '#input/shapes/geometry.ts';
+import { buildGeometry, QWERTY_LEGEND } from '../shapes/geometry.ts';
 import { evaluate } from '#trace/evaluate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
-import { LAYOUTS, LAYOUTS_JA, withRomaji } from '#input/layouts/index.ts';
-import { kanaToRomaji, kanaToRomajiChunks, kunrei } from '#input/romaji/kunrei.ts';
-import { azik } from '#input/romaji/azik.ts';
-import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
+import { LAYOUTS, LAYOUTS_JA, withRomaji } from '../layouts/index.ts';
+import { kanaToRomaji, kanaToRomajiChunks, kunrei } from './kunrei.ts';
+import { azik } from './azik.ts';
+import { SAMPLE_TEXT_JA } from '../text/sample-ja.ts';
 
 const geometry = buildGeometry('row-staggered');
 const qwerty = LAYOUTS[0];
