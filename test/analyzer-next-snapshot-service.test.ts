@@ -106,3 +106,20 @@ test('selected layout becoming unavailable releases its cached Snapshot', () => 
   assert.equal(service.get('qwerty'), undefined);
   assert.equal(service.cacheSize(), 0);
 });
+
+
+test('getResolved honors an explicitly captured resolution instead of live resolver state', () => {
+  let live = { key: 'live:2', input: 2 };
+  const service = createAnalysisSnapshotService({
+    resolve: () => live,
+    evaluate: (input: number) => input * 10,
+  });
+
+  assert.equal(
+    service.getResolved('qwerty', { key: 'captured:1', input: 1 }),
+    10,
+  );
+  assert.equal(service.get('qwerty'), 20);
+  live = { key: 'live:3', input: 3 };
+  assert.equal(service.get('qwerty'), 30);
+});
