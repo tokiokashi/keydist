@@ -205,6 +205,23 @@ export const ANALYSIS_VIEW_DEFINITIONS = new Map<
     canDuplicate: true,
     minWidth: 520,
     minHeight: 360,
+    describeConfig(config: BigramFlowViewConfig) {
+      return [
+        { label: 'source', value: config.source },
+        {
+          label: 'fingers',
+          value: config.selectedFingers.length === 0
+            ? 'all'
+            : config.selectedFingers.join('+'),
+        },
+        { label: 'line', value: config.lineScale },
+        { label: 'layer', value: config.layerOrder },
+        { label: 'hover', value: config.hoverScale },
+        { label: 'movement', value: config.movementScaleMode },
+        { label: 'bandwidth', value: `±${config.polarBandwidth}°` },
+        { label: 'gain', value: `${config.polarGain}×` },
+      ];
+    },
     configCodec: {
       version: 1,
       defaults: BIGRAM_DEFAULTS,
