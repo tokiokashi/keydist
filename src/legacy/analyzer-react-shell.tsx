@@ -56,7 +56,7 @@ import {
   AnalyzerSidebarControls,
 } from './analyzer-remaining-ui.tsx';
 import type { GeometryKind } from '../geometry.ts';
-import type { UserLayout } from '../user-layouts.ts';
+import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import { MAX_SAVED_TEXT_LENGTH } from './ui-state.ts';
 
 export interface AnalyzerReactShellOptions {

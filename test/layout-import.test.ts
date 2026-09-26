@@ -8,7 +8,7 @@ import {
   importVial,
 } from '../src/layout-import.ts';
 import { CUSTOM_COMBOS } from '../src/layouts/combos-custom.ts';
-import { toLayout, type UserLayout } from '../src/user-layouts.ts';
+import { toLayout, type UserLayout } from '#input/layouts/user-layouts.ts';
 
 const vialKeyCode = (key: string): string => {
   if (key === '-') return 'KC_MINS';

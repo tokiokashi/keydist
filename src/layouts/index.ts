@@ -1,5 +1,5 @@
-import { kunrei } from '../romaji/kunrei.ts';
-import { oonishiRomaji } from '../romaji/oonishi.ts';
+import { kunrei } from '#input/romaji/kunrei.ts';
+import { oonishiRomaji } from '#input/romaji/oonishi.ts';
 import { NAGINATA_V18 } from './naginata.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
 import { fromRows, withCombos, withRomaji, withShiftedOutputs, type Layout } from './types.ts';

@@ -7,8 +7,8 @@ import {
   parseOverrides,
   tableForRule,
   type UserRomajiRule,
-} from '../src/romaji/rules.ts';
-import { kanaToRomaji } from '../src/romaji/kunrei.ts';
+} from '#input/romaji/rules.ts';
+import { kanaToRomaji } from '#input/romaji/kunrei.ts';
 import { buildGeometry } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';

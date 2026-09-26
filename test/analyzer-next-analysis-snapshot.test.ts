@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
-import { resolveConditions } from '../src/condition-resolution.ts';
+import { resolveConditions } from '#engine/condition-resolution.ts';
 import { evaluate } from '../src/evaluate.ts';
 import { assignmentWithHomeKeys, buildGeometry } from '../src/geometry.ts';
 import {
@@ -11,7 +11,7 @@ import {
 import { LAYOUTS, withRomaji } from '../src/layouts/index.ts';
 import type { Layout } from '../src/layouts/types.ts';
 import { computeMetrics } from '../src/metrics.ts';
-import { tableForRule } from '../src/romaji/rules.ts';
+import { tableForRule } from '#input/romaji/rules.ts';
 import {
   computeAnalysisSnapshot,
 } from '../src/features/analyzer-next/snapshot-computation.ts';

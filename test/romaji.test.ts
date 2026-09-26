@@ -4,8 +4,8 @@ import { buildGeometry, QWERTY_LEGEND } from '../src/geometry.ts';
 import { evaluate } from '../src/evaluate.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { LAYOUTS, LAYOUTS_JA, withRomaji } from '../src/layouts/index.ts';
-import { kanaToRomaji, kanaToRomajiChunks, kunrei } from '../src/romaji/kunrei.ts';
-import { azik } from '../src/romaji/azik.ts';
+import { kanaToRomaji, kanaToRomajiChunks, kunrei } from '#input/romaji/kunrei.ts';
+import { azik } from '#input/romaji/azik.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
 
 const geometry = buildGeometry('row-staggered');

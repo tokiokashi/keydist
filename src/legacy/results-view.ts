@@ -14,7 +14,7 @@ import type { AnalyzerBigramFlowModel } from './analyzer-bigram-flow-model.ts';
 import type { AnalyzerMetricsModel } from './analyzer-metrics-model.ts';
 import type { UiStateV1 } from './ui-state.ts';
 import type { GeometrySettings } from '../geometry-settings.ts';
-import { resolveConditions } from '../condition-resolution.ts';
+import { resolveConditions } from '#engine/condition-resolution.ts';
 import type { Layout } from '../layouts/types.ts';
 import type { ModeId } from './layout-selection.ts';
 import type { PlaybackViewController } from './playback-view.ts';

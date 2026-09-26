@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createAnalyzerRomajiDialogModel } from '#legacy/analyzer-romaji-dialog-model.ts';
-import type { RomajiSettings } from '../src/romaji/rules.ts';
-import type { UserLayout } from '../src/user-layouts.ts';
+import type { RomajiSettings } from '#input/romaji/rules.ts';
+import type { UserLayout } from '#input/layouts/user-layouts.ts';
 
 test('romaji dialog model commits rules and assignments without owning DOM state', () => {
   let settings: RomajiSettings = { rules: [], assignments: {} };

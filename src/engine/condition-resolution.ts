@@ -1,12 +1,12 @@
-import type { GeometryKind } from './geometry.ts';
-import type { ChainPolicy } from './analysis-chain.ts';
-import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
-import type { Options } from './evaluate.ts';
+import type { GeometryKind } from '../geometry.ts';
+import type { ChainPolicy } from '../analysis-chain.ts';
+import type { ArpeggioPolicy } from '../analysis-arpeggio.ts';
+import type { Options } from '../evaluate.ts';
 import type {
   ActionRealizationPolicy,
   TriggerRealizationPolicy,
-} from './core/semantic-input/index.ts';
-import type { UiStateConditionsDefaults, UiStateLayoutConditions } from '#legacy/ui-state.ts';
+} from '../core/semantic-input/index.ts';
+import type { ConditionDefaults, LayoutConditionOverrides } from './conditions.ts';
 
 export interface ResolvedConditions {
   geometry: GeometryKind;
@@ -19,8 +19,8 @@ export interface ResolvedConditions {
 
 /** 全体の既定値へ配列ごとの差分を重ね、評価へ渡す条件を一つに決める。 */
 export function resolveConditions(
-  defaults: UiStateConditionsDefaults,
-  override: Partial<UiStateConditionsDefaults> | undefined,
+  defaults: ConditionDefaults,
+  override: LayoutConditionOverrides | undefined,
 ): ResolvedConditions {
   const values = { ...defaults, ...override };
   const actionRealizationPolicy: ActionRealizationPolicy = {
@@ -56,7 +56,7 @@ export function resolveConditions(
 
 /** 詳細画面の形状変更。既存の配列別条件は geometry 以外も含めて保持する。 */
 export function setLayoutGeometryOverride(
-  perLayout: Record<string, UiStateLayoutConditions>,
+  perLayout: Record<string, LayoutConditionOverrides>,
   layoutId: string,
   geometry: GeometryKind,
   defaultGeometry: GeometryKind,

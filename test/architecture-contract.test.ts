@@ -328,7 +328,7 @@ test('alternative selection identityはcore helperをauthorityにする', async 
 });
 
 test('user layout alternative dedupeはcore canonical identityをauthorityにする', async () => {
-  const source = await readFile(join(SRC, 'user-layouts.ts'), 'utf8');
+  const source = await readFile(join(SRC, 'input', 'layouts', 'user-layouts.ts'), 'utf8');
 
   assert.match(
     source,
@@ -410,7 +410,7 @@ test('CanonicalInputMap validationはempty alternative setを許可しない', a
 test('logical output matching lengthはcanonicalInputsをauthorityにする', async () => {
   const evaluateSource = await readFile(join(SRC, 'evaluate.ts'), 'utf8');
   const layoutTypesSource = await readFile(join(SRC, 'layouts/types.ts'), 'utf8');
-  const userLayoutsSource = await readFile(join(SRC, 'user-layouts.ts'), 'utf8');
+  const userLayoutsSource = await readFile(join(SRC, 'input', 'layouts', 'user-layouts.ts'), 'utf8');
 
   assert.doesNotMatch(layoutTypesSource, /\bmaxCharLength\b/);
   assert.doesNotMatch(userLayoutsSource, /\bmaxCharLength\b/);

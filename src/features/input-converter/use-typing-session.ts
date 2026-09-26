@@ -13,7 +13,7 @@ import {
   type TypingInputResult,
 } from '../../core/input-converter/index.ts';
 import type { Layout } from '../../layouts/index.ts';
-import { kanaToRomaji } from '../../romaji/kunrei.ts';
+import { kanaToRomaji } from '#input/romaji/kunrei.ts';
 import { physicalKeysUsedByLayout } from '../../layout-physical-keys.ts';
 import {
   advanceKeyPatternPresentation,

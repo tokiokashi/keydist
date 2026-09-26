@@ -6,8 +6,8 @@ import {
 import type { GeometrySettings } from '../../geometry-settings.ts';
 import type { ModeId } from '#legacy/layout-selection.ts';
 import type { Layout } from '../../layouts/types.ts';
-import { resolveConditions } from '../../condition-resolution.ts';
-import type { UiStateConditionsDefaults } from '#legacy/ui-state.ts';
+import { resolveConditions } from '#engine/condition-resolution.ts';
+import type { ConditionDefaults } from '#engine/conditions.ts';
 import type {
   AnalysisDistanceConditions,
   AnalysisSessionState,
@@ -42,7 +42,7 @@ export interface ResolvedAnalysisInputResolverOptions {
 function legacyCompatibleConditionDefaults(
   distance: AnalysisDistanceConditions,
   session: AnalysisSessionState,
-): UiStateConditionsDefaults {
+): ConditionDefaults {
   return {
     ...distance,
     playbackRateAverage: session.timing.defaults.playbackRateAverage,

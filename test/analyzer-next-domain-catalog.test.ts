@@ -6,7 +6,7 @@ import {
 } from '../src/geometry.ts';
 import { DEFAULT_GEOMETRY_SETTINGS } from '../src/geometry-settings.ts';
 import { createAnalysisDomainCatalog } from '../src/features/analyzer-next/domain-catalog.ts';
-import type { UserLayout } from '../src/user-layouts.ts';
+import type { UserLayout } from '#input/layouts/user-layouts.ts';
 
 const userLayout: UserLayout = {
   id: 'user-test',

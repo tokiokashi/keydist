@@ -16,11 +16,11 @@ import {
 import {
   sanitizeUserLayouts,
   type UserLayout,
-} from '../user-layouts.ts';
+} from '#input/layouts/user-layouts.ts';
 import {
   sanitizeRomajiSettings,
   type RomajiSettings,
-} from '../romaji/rules.ts';
+} from '#input/romaji/rules.ts';
 import {
   sanitizeConditionPresets,
   type ConditionPreset,

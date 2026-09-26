@@ -6,7 +6,7 @@ import {
   type LayerDefinition,
   type Layout,
 } from './layouts/types.ts';
-import { kanaToRomajiChunks } from './romaji/kunrei.ts';
+import { kanaToRomajiChunks } from '#input/romaji/kunrei.ts';
 import {
   applyActionRealizationPolicy,
   DEFAULT_ACTION_REALIZATION_POLICY,

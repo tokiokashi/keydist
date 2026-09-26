@@ -5,7 +5,7 @@ import {
 } from '../../core/semantic-input/index.ts';
 import { resolveKeyId } from '../../geometry.ts';
 import type { Layout } from '../../layouts/index.ts';
-import { kanaToRomaji } from '../../romaji/kunrei.ts';
+import { kanaToRomaji } from '#input/romaji/kunrei.ts';
 import { romajiToKana } from './live-romaji.ts';
 
 export interface ReverseLookupActionParticipation {

@@ -2,8 +2,8 @@ import type {
   RomajiRuleId,
   RomajiSettings,
   UserRomajiRule,
-} from '../romaji/rules.ts';
-import type { UserLayout } from '../user-layouts.ts';
+} from '#input/romaji/rules.ts';
+import type { UserLayout } from '#input/layouts/user-layouts.ts';
 
 export interface AnalyzerRomajiDialogSnapshot {
   settings: RomajiSettings;
