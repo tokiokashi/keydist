@@ -39,7 +39,7 @@ import {
   withRomaji,
   withThumbShiftAlternatives,
 } from '../src/layouts/index.ts';
-import { kunrei } from '../src/romaji/kunrei.ts';
+import { kunrei } from '#input/romaji/kunrei.ts';
 import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
 import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from '../src/analysis-chain.ts';
 import {
