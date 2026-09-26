@@ -58,6 +58,17 @@ export interface DirectionDistribution {
   readonly directionalWeight: number;
 }
 
+export interface DirectionDensitySample {
+  readonly angle: number;
+  readonly density: number;
+}
+
+export interface DirectionDensity {
+  readonly samples: readonly DirectionDensitySample[];
+  readonly directionalWeight: number;
+  readonly bandwidthDegrees: number;
+}
+
 export function fingerClass(finger: Finger): FingerClass | undefined {
   switch (finger[1]) {
     case 'P': return 'pinky';
@@ -388,3 +399,98 @@ export function directionDistribution(
     directionalWeight,
   };
 }
+
+
+/**
+ * 実vector角度をfrequency-weighted empirical distributionとして扱い、
+ * 円周上で積分1となるvon Mises kernelで平滑化したcircular KDEをsampleする。
+ * bandwidthDegreesはkernelがpeakの1/2になる半値半幅 (HWHM)。
+ */
+export function directionDensity(
+  vectors: readonly BigramVector[],
+  hand: 'left' | 'right',
+  bandwidthDegrees = 15,
+  sampleCount = 96,
+): DirectionDensity {
+  if (!(bandwidthDegrees > 0 && bandwidthDegrees < 180)) {
+    throw new RangeError('bandwidthDegrees must be > 0 and < 180');
+  }
+  if (!Number.isInteger(sampleCount) || sampleCount < 16) {
+    throw new RangeError('sampleCount must be an integer >= 16');
+  }
+
+  const directional = vectors.filter(
+    (vector) => vector.hand === hand && vector.distance >= 1e-12,
+  );
+  const directionalWeight = directional.reduce((sum, vector) => sum + vector.weight, 0);
+  const tau = Math.PI * 2;
+  const halfWidth = bandwidthDegrees * Math.PI / 180;
+  const kappa = Math.log(2) / (1 - Math.cos(halfWidth));
+  const normalization = tau * scaledModifiedBesselI0(kappa);
+
+  const samples = Array.from({ length: sampleCount }, (_, index) => {
+    const angle = index * tau / sampleCount;
+    if (directionalWeight === 0) {
+      return Object.freeze({ angle, density: 0 });
+    }
+
+    let weightedDensity = 0;
+    for (const vector of directional) {
+      const delta = angle - vector.angle;
+      // exp(kappa * (cos(delta) - 1)) / (2π I0e(kappa))
+      // として計算し、大きなkappaでもexp(kappa)のoverflowを避ける。
+      const kernel = Math.exp(kappa * (Math.cos(delta) - 1)) / normalization;
+      weightedDensity += vector.weight * kernel;
+    }
+
+    return Object.freeze({
+      angle,
+      density: weightedDensity / directionalWeight,
+    });
+  });
+
+  return {
+    samples: Object.freeze(samples),
+    directionalWeight,
+    bandwidthDegrees,
+  };
+}
+
+function scaledModifiedBesselI0(x: number): number {
+  const ax = Math.abs(x);
+  if (ax < 3.75) {
+    const y = (ax / 3.75) ** 2;
+    const i0 = 1 + y * (
+      3.5156229 + y * (
+        3.0899424 + y * (
+          1.2067492 + y * (
+            0.2659732 + y * (
+              0.0360768 + y * 0.0045813
+            )
+          )
+        )
+      )
+    );
+    return i0 * Math.exp(-ax);
+  }
+
+  const y = 3.75 / ax;
+  return (
+    0.39894228 + y * (
+      0.01328592 + y * (
+        0.00225319 + y * (
+          -0.00157565 + y * (
+            0.00916281 + y * (
+              -0.02057706 + y * (
+                0.02635537 + y * (
+                  -0.01647633 + y * 0.00392377
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ) / Math.sqrt(ax);
+}
+
