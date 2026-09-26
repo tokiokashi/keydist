@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PHYSICAL_SHAPES } from '../src/geometry.ts';
-import { load, save } from '../src/user-geometries.ts';
+import { load, save } from '#input/shapes/user-geometries.ts';
 
 function fakeStorage(): Storage {
   const values = new Map<string, string>();

@@ -7,7 +7,7 @@ import { DEFAULT_OPTIONS, evaluate } from '../src/evaluate.ts';
 import { faceFromEntries, fromFaces, fromRows, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA, withCombos, type Face } from '../src/layouts/index.ts';
 import { computeMetrics } from '../src/metrics.ts';
 import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
-import { toLayout } from '../src/user-layouts.ts';
+import { toLayout } from '#input/layouts/user-layouts.ts';
 import { assertKanaLayout, assertKanaLayoutFixture } from './kana-layout-helpers.ts';
 import {
   classifyPresentationFaces,

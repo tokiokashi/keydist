@@ -10,7 +10,7 @@ import {
   createDefaultUiState,
   type UiStateChoices,
 } from '#legacy/ui-state.ts';
-import type { UserLayout } from '../src/user-layouts.ts';
+import type { UserLayout } from '#input/layouts/user-layouts.ts';
 
 const choices: UiStateChoices = {
   layouts: { en: ['qwerty'], ja: ['qwerty'] },
