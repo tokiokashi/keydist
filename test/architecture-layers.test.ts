@@ -34,8 +34,7 @@ interface Placement {
   unit?: string;
 }
 
-// 長い接頭辞を先に書く。
-const PREFIXES: readonly [string, Layer][] = [
+const PREFIX_TABLE: readonly [string, Layer][] = [
   ['features/analyzer-next/', 'transitional'],
   ['ui/primitives/', 'ui-base'],
   ['ui/theme/', 'ui-base'],
@@ -55,6 +54,9 @@ const PREFIXES: readonly [string, Layer][] = [
   ['router.tsx', 'routes'],
   ['legacy/', 'legacy'],
 ];
+
+// 重なる接頭辞（`ui/` と `ui/keyboard/` 等）を足した時に、書く順序で結果が変わらないようにする。
+const PREFIXES = [...PREFIX_TABLE].sort(([a], [b]) => b.length - a.length);
 
 /** React・DOM・storage・ブラウザAPIを使わない層。Nodeから直接実行でき、Workerへそのまま移せる。 */
 const PURE_LAYERS = new Set<Layer>(['input', 'trace', 'interpretation', 'engine']);
@@ -86,6 +88,9 @@ const ALLOWED: Readonly<Record<Layer, ReadonlySet<Layer>>> = {
 
 /** legacy / transitional をimportしてよい層。それ以外の新しいコードは旧実装に依存させない。 */
 const MAY_IMPORT_OLD = new Set<Layer>(['app', 'routes', 'legacy', 'transitional']);
+
+/** storage を直接触ってよい層。保存は app が組み立て、アダプタとして注入する。Testerは当面の例外。 */
+const STORAGE_LAYERS = new Set<Layer>(['platform', 'app', 'legacy', 'transitional', 'tester']);
 
 /**
  * 移行中に解消できない既知の違反。`importer -> target` の相対パス（src基準）で書き、理由を添える。
@@ -256,11 +261,25 @@ const FRAMEWORK_MODULE_PATTERNS = [
   /^dockview/,
 ] as const;
 
+/** コメントを除いた本文に当てる。 */
 const PLATFORM_GLOBAL_PATTERNS = [
-  /\b(?:window|document|navigator|localStorage|sessionStorage|indexedDB)\s*\./,
-  /\btypeof\s+(?:window|document|navigator|localStorage)\b/,
-  /\b(?:HTMLElement|KeyboardEvent|MutationObserver|ResizeObserver)\b/,
+  /\b(?:window|document|navigator|globalThis|self)\s*\./,
+  /\btypeof\s+(?:window|document|navigator|self)\b/,
+  /\b(?:localStorage|sessionStorage|indexedDB)\b/,
+  /\blocation\s*\.\s*(?:href|search|hash|pathname|origin|reload|assign|replace)\b/,
+  /\bhistory\s*\.\s*(?:pushState|replaceState|back|forward|go)\s*\(/,
+  /\b(?:fetch|requestAnimationFrame|cancelAnimationFrame|matchMedia|requestIdleCallback)\s*\(/,
+  /\b(?:HTMLElement|SVGElement|KeyboardEvent|PointerEvent|MouseEvent|TouchEvent|MutationObserver|ResizeObserver|IntersectionObserver)\b/,
 ] as const;
+
+const STORAGE_PATTERN = /\b(?:localStorage|sessionStorage|indexedDB)\b/;
+
+/** 行コメントとブロックコメントを除く。URLの `://` は残す。文字列中の `//` は近似で扱う。 */
+function stripComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
+}
 
 function toPosix(path: string): string {
   return path.split(sep).join('/');
@@ -292,6 +311,16 @@ function isPureAnalyzerFile(srcPath: string): boolean {
 
 function isTesterEngineFile(srcPath: string): boolean {
   return srcPath.startsWith('tester/engine/');
+}
+
+/**
+ * React・DOM・storage・ブラウザAPIを使わないファイル。Nodeから直接実行でき、Workerへそのまま移せる。
+ * 純粋さは推移的に守る: 純粋なファイルは純粋なファイルしか import できない。
+ */
+export function isPureFile(srcPath: string): boolean {
+  const placement = placementOf(srcPath);
+  if (!placement) return false;
+  return PURE_LAYERS.has(placement.layer) || isPureAnalyzerFile(srcPath) || isTesterEngineFile(srcPath);
 }
 
 async function sourceFiles(dir: string): Promise<string[]> {
@@ -346,7 +375,9 @@ export function resolveToSrc(importerPath: string, specifier: string): string | 
   if (bare.startsWith('.')) {
     absolute = resolve(dirname(importerPath), bare);
   } else if (bare.startsWith('#')) {
-    for (const [key, target] of SUBPATH_IMPORTS) {
+    // Nodeと同じく最長一致のキーを使う。
+    const keys = [...SUBPATH_IMPORTS].sort(([a], [b]) => b.length - a.length);
+    for (const [key, target] of keys) {
       if (key.endsWith('*') && target.endsWith('*') && bare.startsWith(key.slice(0, -1))) {
         absolute = resolve(ROOT, target.slice(0, -1) + bare.slice(key.length - 1));
         break;
@@ -359,7 +390,11 @@ export function resolveToSrc(importerPath: string, specifier: string): string | 
     assert.ok(absolute, `${srcRelative(importerPath)}: package.json#imports に ${specifier} が無い`);
   }
   if (absolute === undefined) return undefined;
-  if (existsSync(absolute) && statSync(absolute).isDirectory()) return undefined;
+  // ディレクトリimport（index.ts の暗黙解決）は Node の strip-types で動かず、検査もすり抜けるので書かない。
+  assert.ok(
+    !(existsSync(absolute) && statSync(absolute).isDirectory()),
+    `${srcRelative(importerPath)}: ディレクトリを import しない（ファイルを拡張子付きで書く）: ${specifier}`,
+  );
   const rel = relative(SRC, absolute);
   if (rel.startsWith('..')) return undefined;
   return toPosix(rel);
@@ -380,6 +415,9 @@ export function layerViolation(
   if (!from || !to) return undefined;
   const key = `${importer} -> ${target}`;
 
+  if (isPureFile(importer) && !isPureFile(target)) {
+    return { key, message: `${key}: 純粋なファイルは純粋なファイルしか import しない` };
+  }
   if ((to.layer === 'legacy' || to.layer === 'transitional') && !MAY_IMPORT_OLD.has(from.layer)) {
     return { key, message: `${key}: 新しいコードから ${to.layer} へ依存しない` };
   }
@@ -409,8 +447,7 @@ function packageViolation(importer: string, specifier: string): Violation | unde
   const from = placementOf(importer);
   if (!from) return undefined;
   const key = `${importer} -> ${specifier}`;
-  const pure = PURE_LAYERS.has(from.layer) || isPureAnalyzerFile(importer) || isTesterEngineFile(importer);
-  if (pure && FRAMEWORK_MODULE_PATTERNS.some((pattern) => pattern.test(specifier))) {
+  if (isPureFile(importer) && FRAMEWORK_MODULE_PATTERNS.some((pattern) => pattern.test(specifier))) {
     return { key, message: `${key}: 純粋な層は React / Router / Dockview / 描画ライブラリを使わない` };
   }
   for (const restricted of RESTRICTED_PACKAGES) {
@@ -453,18 +490,32 @@ test('依存の向きが docs/architecture.md の表に従う', async () => {
 });
 
 test('純粋な層は React・DOM・storage・ブラウザAPIを使わない', async () => {
+  const problems: string[] = [];
+  for (const path of (await sourceFiles(SRC)).filter(isCode)) {
+    const file = srcRelative(path);
+    if (!isPureFile(file)) continue;
+    if (file.endsWith('.tsx')) problems.push(`${file}: 純粋な層に .tsx を置かない`);
+    const source = stripComments(await readFile(path, 'utf8'));
+    for (const pattern of PLATFORM_GLOBAL_PATTERNS) {
+      const match = source.match(pattern);
+      if (match) problems.push(`${file}: ブラウザAPIを使わない（${match[0]}）`);
+    }
+  }
+  // 純粋さの違反には KNOWN_VIOLATIONS のような逃げ道を作らない。一度入ると消えにくいため。
+  assert.deepEqual(problems, []);
+});
+
+test('storage を直接触るのは platform と app だけ', async () => {
+  const problems: string[] = [];
   for (const path of (await sourceFiles(SRC)).filter(isCode)) {
     const file = srcRelative(path);
     const placement = placementOf(file);
-    if (!placement) continue;
-    const pure = PURE_LAYERS.has(placement.layer) || isPureAnalyzerFile(file) || isTesterEngineFile(file);
-    if (!pure) continue;
-    assert.ok(!file.endsWith('.tsx'), `${file}: 純粋な層に .tsx を置かない`);
-    const source = await readFile(path, 'utf8');
-    for (const pattern of PLATFORM_GLOBAL_PATTERNS) {
-      assert.doesNotMatch(source, pattern, `${file}: ブラウザAPIを使わない`);
+    if (!placement || STORAGE_LAYERS.has(placement.layer)) continue;
+    if (STORAGE_PATTERN.test(stripComments(await readFile(path, 'utf8')))) {
+      problems.push(`${file}: 保存は app が組み立ててアダプタとして注入する`);
     }
   }
+  assert.deepEqual(problems, []);
 });
 
 test('新しいファイルは新しい構造の中に置く（src直下などへ増やさない）', async () => {
@@ -474,6 +525,10 @@ test('新しいファイルは新しい構造の中に置く（src直下など�
     .filter((file) => placementOf(file) === undefined)
     // tsr が生成するファイルは対象外。
     .filter((file) => file !== 'routeTree.gen.ts');
+  const hostsRoot = (await sourceFiles(SRC))
+    .map(srcRelative)
+    .filter((file) => /^hosts\/[^/]+$/.test(file));
+  assert.deepEqual(hostsRoot, [], 'hosts/ 直下にファイルを置かない（共有物は hosts/shared へ）');
   const baseline = new Set(UNPLACED_BASELINE);
   assert.deepEqual(
     unplaced.filter((file) => !baseline.has(file)).sort(),
@@ -503,6 +558,14 @@ test('依存規則の判定そのもの', () => {
   assert.ok(layerViolation('input/layouts/types.ts', 'legacy/ui-state.ts'));
   assert.equal(layerViolation('app/app-state.ts', 'legacy/ui-state.ts'), undefined);
   assert.ok(layerViolation('platform/storage.ts', 'app/app-state.ts'));
+  // 純粋さは推移的に守る。
+  assert.ok(layerViolation('analyzers/heatmap/extract.ts', 'ui/charts/bar.tsx'));
+  assert.ok(layerViolation('analyzers/heatmap/extract.ts', 'analyzers/heatmap/view.tsx'));
+  assert.equal(layerViolation('analyzers/heatmap/view.tsx', 'analyzers/heatmap/extract.ts'), undefined);
+  assert.equal(layerViolation('analyzers/heatmap/view.tsx', 'ui/charts/bar.tsx'), undefined);
+  assert.ok(layerViolation('tester/engine/engine.ts', 'platform/storage.ts'));
+  assert.ok(layerViolation('tester/engine/engine.ts', 'ui/primitives/button.tsx'));
+  assert.equal(layerViolation('tester/view.tsx', 'platform/storage.ts'), undefined);
   // 未配置のファイルは移行中なので判定しない。
   assert.equal(layerViolation('evaluate.ts', 'geometry.ts'), undefined);
 
@@ -514,4 +577,14 @@ test('依存規則の判定そのもの', () => {
   assert.equal(packageViolation('hosts/workspace/renderer.tsx', 'dockview-react'), undefined);
   assert.ok(packageViolation('hosts/workspace/renderer.tsx', '@tanstack/react-router'));
   assert.equal(packageViolation('hosts/standalone/page.tsx', '@tanstack/react-router'), undefined);
+});
+
+test('import の解決', () => {
+  const importer = join(SRC, 'app', 'root.tsx');
+  assert.equal(resolveToSrc(importer, './app.css?url'), 'app/app.css');
+  assert.equal(resolveToSrc(importer, '../trace/evaluate.ts'), 'trace/evaluate.ts');
+  assert.equal(resolveToSrc(importer, 'react'), undefined);
+  assert.equal(resolveToSrc(importer, '../../package.json'), undefined);
+  assert.throws(() => resolveToSrc(importer, '../routes'), /ディレクトリを import しない/);
+  assert.throws(() => resolveToSrc(importer, '#no-such-alias/x.ts'), /imports に/);
 });

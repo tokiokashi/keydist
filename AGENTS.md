@@ -68,9 +68,13 @@ Analyzer再設計（#544）のPhase 1で既存ファイルを移している最�
 | `src/evaluate.ts` | Trace生成（評価器）。仕様 §7〜§10の実装 |
 | `src/metrics.ts` | 出力指標（仕様 §11） |
 | `src/geometry.ts` | 座標系・キー位置・指の割り当て（仕様 §3） |
+| `src/sensitivity.ts` | N感度曲線 |
 | `src/layouts/` | 配列定義。`types.ts` が記法の型。かな配列は `fromFaces` で面（trigger + mode）から書く |
 | `src/romaji/` | かな → ローマ字テーブル |
-| `src/playback.ts` | 打鍵再生の時間モデル（再生時間モデル仕様 §3） |
+| `src/user-layouts.ts` | 自作配列のlocalStorage永続化 |
+| `src/playback.ts` | 打鍵再生。表示時間は再生時間モデル仕様 §3 の実装 |
+| `src/playback-calibration.ts` | 個人速度の測定（再生時間モデル仕様 §6） |
+| `src/main.ts` `src/chart.ts` `src/theme.ts` | 旧Analyzerの画面 |
 | `test/` | `node --test` のテスト |
 | `spec/` | モデル仕様（距離モデル・再生時間モデル） |
 

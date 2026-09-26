@@ -65,8 +65,8 @@ src/
   trace/             Trace生成
   interpretation/    構造（chain・arpeggio…）、時間モデル、複数のAnalyzerが使う指標
   analyzers/
-    contract.ts      Analyzerの契約と、Traceを依頼する窓口の型
-    <name>/          .ts が抽出と設定（純粋）、.tsx が可視化
+    contract.ts      Analyzerの契約のうち純粋な部分（抽出・解析設定・Traceを依頼する窓口の型）
+    <name>/          .ts が抽出と設定（純粋）、.tsx が可視化と definition.tsx（可視化との結び付け）
   engine/            実行とキャッシュ
   hosts/
     shared/          ペインの枠
@@ -88,36 +88,47 @@ src/
 
 ## 依存の規則
 
+どの層も自分の層の中は import してよい。表はそれ以外の行き先。
+
 | from | import してよい先 |
 |---|---|
-| `input` | input |
+| `input` | — |
 | `trace` | input |
 | `interpretation` | input, trace |
-| `analyzers/<name>` | input, trace, interpretation, `analyzers/` 直下（契約）, ui。他のAnalyzerは不可 |
-| `analyzers/` 直下 | 上と同じ。個別のAnalyzerは不可 |
+| `analyzers/<name>` の `.ts` | input, trace, interpretation, `analyzers/` 直下（契約）, 自分の `.ts` |
+| `analyzers/<name>` の `.tsx` | 上に加えて、自分の `.tsx`, ui |
+| `analyzers/` 直下 | input, trace, interpretation。個別のAnalyzerは不可 |
 | `engine` | input, trace, interpretation, `analyzers/` 直下（契約） |
 | `hosts/<name>` | engine, analyzers, ui, input, trace, interpretation, `hosts/shared`。他のhostは不可 |
 | `editors` | input, ui |
 | `tester` | input, ui, platform（当面の例外） |
-| `ui/primitives` `ui/theme` | ui/primitives, ui/theme |
-| `ui/keyboard` `ui/charts` | ui, input |
+| `ui/primitives` `ui/theme` | — |
+| `ui/keyboard` `ui/charts` | ui/primitives, ui/theme, input |
 | `platform` | input |
 | `app` `routes` | すべて |
 | `legacy` | すべて |
 
+- Analyzer同士は import しない。個別のAnalyzerから別のAnalyzerへも、契約から個別のAnalyzerへも向かない
+- host同士は import しない。共有物は `hosts/shared/` に置く。`hosts/` 直下にはファイルを置かない
+
 - `legacy` と移行中の `features/analyzer-next` を import してよいのは app・routes・legacy・`features/analyzer-next` だけ
-- **純粋な層**（input / trace / interpretation / engine、`analyzers/**/*.ts`、`tester/engine/`）は React・描画ライブラリ・Router・Dockview・DOM・storage・ブラウザAPIを使わない
+- **純粋な層**（input / trace / interpretation / engine、`analyzers/**/*.ts`、`tester/engine/`）は React・描画ライブラリ・Router・Dockview・DOM・storage・ブラウザAPIを使わない。`import type` も含めて使わない
+  - **純粋さは推移的に守る。** 純粋なファイルは純粋なファイルしか import できない。抽出が表示用の型を借りたくなったら、その型を input か interpretation に置く
   - unit testの `node --experimental-strip-types` は `.tsx` を読めない。計算がReactのファイルを1つでもimportするとテストできなくなる
   - 重い計算をWeb Workerへそのまま移せる
   - キャッシュが描画のタイミングに縛られない
 - **可視化は計算しない。** engineが抽出を実行し、hostが結果をcomponentへ渡す
-- 外部ライブラリ: Dockview は `hosts/workspace/` だけ、TanStack Router / Start は routes・app・`hosts/standalone/` だけ
+- **Analyzerの契約は純粋な部分だけを `analyzers/contract.ts` に置く。** 可視化のcomponentとの結び付けは各Analyzerの `definition.tsx` で行う。engineは純粋な部分しか知らないので、engineの型にReactが現れず、Workerへそのまま移せる
+- **storageを直接触るのは platform と app だけ。** 保存が要る層（hosts・editors等）は、appが組み立てたアダプタを注入して使う。Testerは当面の例外
+- **import の書き方。** 別のトップディレクトリへは `#<dir>/...`（`package.json` の `imports`）、同じトップディレクトリの中は相対パス。ディレクトリを import しない（`index.ts` の暗黙解決はNodeのstrip-typesで動かない）。拡張子を付けて書く
+- 外部ライブラリ: Dockview は `hosts/workspace/` だけ、TanStack Router / Start は routes・app・`hosts/standalone/` だけ（legacy と `features/analyzer-next/` は旧実装なので除く）。描画ライブラリ（motion等）は純粋な層以外で使ってよい
 - 部品は最初は使う場所に置き、2つ目の使い手が現れた時に ui へ下ろす。Analyzer同士で共有したくなったら ui か interpretation へ下ろす
 
 ## 移行中の扱い
 
 Phase 1（#544）で既存のファイルをこの構造へ移す。その間は次のように扱う。
 
-- まだ移していないファイルは `test/architecture-layers.test.ts` の `UNPLACED_BASELINE` に載っている。依存の規則は検査しない。移したらリストから消す（残っているとテストが落ちる）。リストに無い場所へ新しいファイルを置くとテストが落ちる
+- まだ移していないファイルは `test/architecture-layers.test.ts` の `UNPLACED_BASELINE` に載っている。未配置のファイルが絡むimportは、どちら向きでも依存の規則を検査しない。移したらリストから消す（残っているとテストが落ちる）。リストに無い場所へ新しいファイルを置くとテストが落ちる
 - `features/analyzer-next/` は #505 の実装で、engine・Setup・Analyzer契約ができた時点で置き換えて消す（#544 のPhase 0コメント）。それまで旧実装と同じく何をimportしてもよく、新しいコードからはimportしない。`docs/analyzer-next-state-contract.md` も同時に消す
 - 規則に反するが今は直せないimportは `KNOWN_VIOLATIONS` に理由付きで載せる。解消したら消す（残っているとテストが落ちる）
+- 純粋さの違反（ブラウザAPIの使用）には逃げ道を作らない。移行で当たる箇所は、指示書で先に扱いを決めておく
