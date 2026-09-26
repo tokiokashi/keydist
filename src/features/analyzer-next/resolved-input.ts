@@ -4,10 +4,10 @@ import {
   type GeometryKind,
 } from '../../geometry.ts';
 import type { GeometrySettings } from '../../geometry-settings.ts';
-import type { ModeId } from '../../layout-selection.ts';
+import type { ModeId } from '#legacy/layout-selection.ts';
 import type { Layout } from '../../layouts/types.ts';
 import { resolveConditions } from '../../condition-resolution.ts';
-import type { UiStateConditionsDefaults } from '../../ui-state.ts';
+import type { UiStateConditionsDefaults } from '#legacy/ui-state.ts';
 import type {
   AnalysisDistanceConditions,
   AnalysisSessionState,
