@@ -40,6 +40,24 @@ export interface DirectionSummary {
   readonly sameWeight: number;
 }
 
+export interface MeanDisplacement {
+  readonly x: number;
+  readonly y: number;
+  readonly distance: number;
+  readonly angle: number | undefined;
+  readonly totalWeight: number;
+}
+
+export interface DirectionDistributionBin {
+  readonly angle: number;
+  readonly proportion: number;
+}
+
+export interface DirectionDistribution {
+  readonly bins: readonly DirectionDistributionBin[];
+  readonly directionalWeight: number;
+}
+
 export function fingerClass(finger: Finger): FingerClass | undefined {
   switch (finger[1]) {
     case 'P': return 'pinky';
@@ -292,5 +310,81 @@ export function directionSummary(
     inwardWeight,
     outwardWeight,
     sameWeight,
+  };
+}
+
+
+/** frequency-weighted mean displacement。距離を保持するため単位はgeometryのu。 */
+export function meanDisplacement(
+  vectors: readonly BigramVector[],
+  hand: 'left' | 'right',
+): MeanDisplacement {
+  let x = 0;
+  let y = 0;
+  let totalWeight = 0;
+
+  for (const vector of vectors) {
+    if (vector.hand !== hand) continue;
+    x += vector.dx * vector.weight;
+    y += vector.dy * vector.weight;
+    totalWeight += vector.weight;
+  }
+
+  if (totalWeight === 0) {
+    return { x: 0, y: 0, distance: 0, angle: undefined, totalWeight: 0 };
+  }
+
+  x /= totalWeight;
+  y /= totalWeight;
+  const distance = Math.hypot(x, y);
+  return {
+    x,
+    y,
+    distance,
+    angle: distance < 1e-12 ? undefined : Math.atan2(y, x),
+    totalWeight,
+  };
+}
+
+/**
+ * 方向頻度を円周上の構成比へ変換する。
+ * 各vectorは隣接するbinへ線形補間して、離散geometry由来の角度を一点binに固定しない。
+ */
+export function directionDistribution(
+  vectors: readonly BigramVector[],
+  hand: 'left' | 'right',
+  binCount = 16,
+): DirectionDistribution {
+  if (!Number.isInteger(binCount) || binCount < 4) {
+    throw new RangeError('binCount must be an integer >= 4');
+  }
+
+  const weights = Array.from({ length: binCount }, () => 0);
+  let directionalWeight = 0;
+  const tau = Math.PI * 2;
+  const binWidth = tau / binCount;
+
+  for (const vector of vectors) {
+    if (vector.hand !== hand || vector.distance < 1e-12) continue;
+
+    const angle = ((vector.angle % tau) + tau) % tau;
+    const position = angle / binWidth;
+    const lower = Math.floor(position) % binCount;
+    const fraction = position - Math.floor(position);
+    const upper = (lower + 1) % binCount;
+
+    weights[lower] += vector.weight * (1 - fraction);
+    weights[upper] += vector.weight * fraction;
+    directionalWeight += vector.weight;
+  }
+
+  const bins = weights.map((weight, index) => Object.freeze({
+    angle: index * binWidth,
+    proportion: directionalWeight === 0 ? 0 : weight / directionalWeight,
+  }));
+
+  return {
+    bins: Object.freeze(bins),
+    directionalWeight,
   };
 }
