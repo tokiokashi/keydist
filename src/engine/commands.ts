@@ -1,5 +1,12 @@
 import type { Command } from '#input/commands/index.ts';
 import type { CascadeLevel } from '#input/settings/index.ts';
+import { DEFAULT_FINGER_ASSIGNMENT, type FingerAssignment } from '#input/shapes/geometry.ts';
+import {
+  createUserFingerAssignment,
+  deleteUserFingerAssignment,
+  duplicateUserFingerAssignment,
+  renameUserFingerAssignment,
+} from '#input/shapes/user-finger-assignments.ts';
 import {
   createSetup,
   deleteSetup,
@@ -37,9 +44,22 @@ import {
  * 資産をさらに分ける（例: `setups`と`overrides`を分離する）か、資産単位ではなく項目単位
  * （どのSetup・どのレベル・どの項目に触れたか）で履歴の破棄範囲を判定する仕組みへ広げる、
  * の2方向がある。
+ *
+ * `fingerAssignments`（自作の指割り当ての手持ち、#544 Phase 2「自作の指割当を資産として
+ * engine に入れる」）は独立した2つ目のキーとして足す。`setupLibrary`に同居させなかった
+ * 理由: `setupLibrary`を1資産にまとめたのは「Setup本体とそのSetup固有の上書き
+ * （`overrides.setup[id]`）が**同じidで結ばれた1対の状態**で、片方だけ書き換えると
+ * 整合が壊れる」からだった（`input/setup/overrides.ts`参照）。自作の指割り当ての手持ちと
+ * カスケードの`fingerAssignmentId`はそういう対にならない: 後者はどのレベルにも置ける
+ * ただの文字列値で、前者を指しているとは限らない（組み込みidのこともある）し、前者を
+ * 削除しても後者を道連れで書き換える必要が無い（`resolveFingerAssignment`が解決の
+ * たびに検査し、無ければ診断付きでfallbackする。`input/shapes/user-finger-assignments.ts`の
+ * `deleteUserFingerAssignment`コメント参照）。原子的に2箇所を書き換える理由が無いので、
+ * 「独立に読み書きできるものは新しいキーとして足す」という元のコメント通りの扱いにする。
  */
 export interface KeydistAssets {
   readonly setupLibrary: SetupLibrary<SettingsValueMap>;
+  readonly fingerAssignments: readonly FingerAssignment[];
 }
 
 type SetupLibraryComputation =
@@ -147,5 +167,67 @@ export function relabelSetupCommand(setupId: string, label: string | undefined):
   return setupLibraryCommand('Setupのラベルを変更する', (library) => ({
     ok: true,
     library: relabelSetup(library, setupId, label),
+  }));
+}
+
+type FingerAssignmentsComputation =
+  | { readonly ok: true; readonly assignments: readonly FingerAssignment[] }
+  | { readonly ok: false; readonly reason: unknown };
+
+/** `fingerAssignments`だけに触れるコマンドの共通の骨組み。`setupLibraryCommand`と同じ形。 */
+function fingerAssignmentsCommand(
+  label: string,
+  compute: (assignments: readonly FingerAssignment[]) => FingerAssignmentsComputation,
+): Command<KeydistAssets> {
+  return (current) => {
+    const result = compute(current.fingerAssignments);
+    if (!result.ok) return { kind: 'rejected', reason: result.reason };
+    if (result.assignments === current.fingerAssignments) return { kind: 'no-op' };
+    return { kind: 'applied', label, changes: { fingerAssignments: result.assignments } };
+  };
+}
+
+/** 自作の指割り当てを新規作成する。`base`省略時は組み込みの既定（列固定）から始める。 */
+export function createFingerAssignmentCommand(
+  generateId: () => string,
+  base: FingerAssignment = DEFAULT_FINGER_ASSIGNMENT,
+  name?: string,
+): Command<KeydistAssets> {
+  return fingerAssignmentsCommand('指割り当てを作成する', (assignments) => ({
+    ok: true,
+    assignments: createUserFingerAssignment(assignments, generateId, base, name),
+  }));
+}
+
+/** 自作の指割り当てを複製する。複製元が存在しない場合は何もしない（`duplicateUserFingerAssignment`自身の方針）。 */
+export function duplicateFingerAssignmentCommand(
+  sourceId: string,
+  generateId: () => string,
+  name?: string,
+): Command<KeydistAssets> {
+  return fingerAssignmentsCommand('指割り当てを複製する', (assignments) => ({
+    ok: true,
+    assignments: duplicateUserFingerAssignment(assignments, sourceId, generateId, name),
+  }));
+}
+
+/**
+ * 自作の指割り当てを削除する。存在しないidの削除は何もしない。
+ * これを参照しているカスケードの`fingerAssignmentId`上書きはここでは触らない
+ * （理由は`input/shapes/user-finger-assignments.ts`の`deleteUserFingerAssignment`コメント、
+ * および`KeydistAssets`のコメント参照）。
+ */
+export function deleteFingerAssignmentCommand(id: string): Command<KeydistAssets> {
+  return fingerAssignmentsCommand('指割り当てを削除する', (assignments) => ({
+    ok: true,
+    assignments: deleteUserFingerAssignment(assignments, id),
+  }));
+}
+
+/** 自作の指割り当ての名前を変更する。対象が存在しない、または既に同じ名前なら何もしない。 */
+export function renameFingerAssignmentCommand(id: string, name: string): Command<KeydistAssets> {
+  return fingerAssignmentsCommand('指割り当ての名前を変更する', (assignments) => ({
+    ok: true,
+    assignments: renameUserFingerAssignment(assignments, id, name),
   }));
 }
