@@ -5,11 +5,11 @@ import {
   conditionBundleFromState,
   parseConditionBundle,
   serializeConditionBundle,
-} from '../src/condition-bundle.ts';
+} from '#legacy/condition-bundle.ts';
 import {
   createDefaultUiState,
   type UiStateChoices,
-} from '../src/ui-state.ts';
+} from '#legacy/ui-state.ts';
 import type { UserLayout } from '../src/user-layouts.ts';
 
 const choices: UiStateChoices = {
