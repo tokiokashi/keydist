@@ -61,8 +61,8 @@ export function createAnalysisSnapshotReader(
   return Object.freeze({
     revision,
     get,
-    getMany(layoutIds) {
-      return layoutIds.flatMap((layoutId) => {
+    getMany(layoutIds: readonly string[]) {
+      return layoutIds.flatMap((layoutId: string) => {
         const read = get(layoutId);
         return read === undefined ? [] : [read];
       });
