@@ -64,7 +64,7 @@ async function structuralAnalysisSources() {
 }
 
 async function inputConverterCoreSources() {
-  const paths = await tsFiles(join(SRC, 'core', 'input-converter'));
+  const paths = await tsFiles(join(SRC, 'tester', 'engine'));
   return Promise.all(paths.map(async (path) => ({
     path,
     source: await readFile(path, 'utf8'),
@@ -118,7 +118,10 @@ function isForbiddenRealizationConsumerImport(
 }
 
 test('core全体はframework / browser / Cloudflare platformへ依存しない', async () => {
-  const corePaths = await tsOrTsxFiles(join(SRC, 'core'));
+  const corePaths = [
+    ...await tsOrTsxFiles(join(SRC, 'input', 'semantics')),
+    ...await tsOrTsxFiles(join(SRC, 'tester', 'engine')),
+  ];
   assert.ok(corePaths.length > 0, 'core source must exist');
 
   for (const path of corePaths) {
@@ -213,7 +216,7 @@ test('Input Converter coreはSemanticInput public APIを再利用しframework / 
   }
 
   const engineSource = await readFile(
-    join(SRC, 'core', 'input-converter', 'typing-input-engine.ts'),
+    join(SRC, 'tester', 'engine', 'typing-input-engine.ts'),
     'utf8',
   );
   assert.match(
