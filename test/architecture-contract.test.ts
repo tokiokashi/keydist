@@ -13,7 +13,7 @@ async function tsFiles(dir: string): Promise<string[]> {
   const nested = await Promise.all(entries.map(async (entry) => {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) return tsFiles(path);
-    return entry.isFile() && entry.name.endsWith('.ts') ? [path] : [];
+    return entry.isFile() && entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts') ? [path] : [];
   }));
   return nested.flat();
 }
