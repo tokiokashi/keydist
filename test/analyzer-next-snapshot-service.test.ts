@@ -58,3 +58,51 @@ test('per-layout key change recomputes only that layout', () => {
   service.get('naginata');
   assert.equal(evaluationCount, 4);
 });
+
+
+test('repeated text/condition key changes do not retain stale Snapshots', () => {
+  let revision = 0;
+  const service = createAnalysisSnapshotService({
+    resolve: (layoutId: string) => ({
+      key: `${layoutId}:${revision}`,
+      input: revision,
+    }),
+    evaluate: (input: number) => input,
+  });
+
+  for (revision = 0; revision < 100; revision += 1) {
+    service.get('qwerty');
+    assert.equal(service.cacheSize(), 1);
+  }
+});
+
+test('shared cache key is kept until the last layout reference is invalidated', () => {
+  const service = createAnalysisSnapshotService({
+    resolve: () => ({ key: 'shared', input: 1 }),
+    evaluate: (input: number) => input,
+  });
+
+  service.get('a');
+  service.get('b');
+  assert.equal(service.cacheSize(), 1);
+  service.invalidateLayout('a');
+  assert.equal(service.cacheSize(), 1);
+  service.invalidateLayout('b');
+  assert.equal(service.cacheSize(), 0);
+});
+
+
+test('selected layout becoming unavailable releases its cached Snapshot', () => {
+  let available = true;
+  const service = createAnalysisSnapshotService({
+    resolve: () => available ? { key: 'qwerty:1', input: 1 } : undefined,
+    evaluate: (input: number) => input,
+  });
+
+  assert.equal(service.get('qwerty'), 1);
+  assert.equal(service.cacheSize(), 1);
+
+  available = false;
+  assert.equal(service.get('qwerty'), undefined);
+  assert.equal(service.cacheSize(), 0);
+});

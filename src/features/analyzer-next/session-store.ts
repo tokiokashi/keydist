@@ -11,10 +11,17 @@ type DistanceOnlyDefaults = Omit<
   'playbackRateAverage' | 'playbackRateWindow' | 'playbackRateHalfLifeSeconds'
 >;
 
-export interface AnalysisTimingConditions {
+export type AnalysisDistanceOverrideConditions =
+  & DistanceOnlyDefaults
+  & Pick<UiStateLayoutConditions, 'romajiRule'>;
+
+export interface AnalysisTimingGlobalConditions {
   playbackRateAverage: UiStateConditionsDefaults['playbackRateAverage'];
   playbackRateWindow: UiStateConditionsDefaults['playbackRateWindow'];
   playbackRateHalfLifeSeconds: UiStateConditionsDefaults['playbackRateHalfLifeSeconds'];
+}
+
+export interface AnalysisTimingOverrideConditions {
   stepsPerSecond: UiPlaybackState['stepsPerSecond'];
   speedMultiplier: UiPlaybackState['speedMultiplier'];
   sameFingerDelay: UiPlaybackState['sameFingerDelay'];
@@ -22,18 +29,28 @@ export interface AnalysisTimingConditions {
   useCalibration: UiPlaybackState['useCalibration'];
 }
 
-export interface AnalysisSessionState {
+export type AnalysisTimingConditions =
+  & AnalysisTimingGlobalConditions
+  & AnalysisTimingOverrideConditions;
+
+export interface AnalysisSessionTarget {
   mode: ModeId;
-  text: string;
   selectedLayoutIds: readonly string[];
   focusLayoutId?: string;
+}
+
+export interface AnalysisSessionState extends AnalysisSessionTarget {
+  text: string;
   distance: {
     defaults: DistanceOnlyDefaults;
-    perLayout: Readonly<Record<string, Partial<DistanceOnlyDefaults> & Pick<UiStateLayoutConditions, 'romajiRule'>>>;
+    perLayout: Readonly<Record<
+      string,
+      Partial<AnalysisDistanceOverrideConditions>
+    >>;
   };
   timing: {
     defaults: AnalysisTimingConditions;
-    perLayout: Readonly<Record<string, Partial<AnalysisTimingConditions>>>;
+    perLayout: Readonly<Record<string, Partial<AnalysisTimingOverrideConditions>>>;
   };
   revisions: {
     target: number;
@@ -48,7 +65,7 @@ export type AnalysisSessionListener = () => void;
 export interface AnalysisSessionStore {
   getSnapshot(): AnalysisSessionState;
   subscribe(listener: AnalysisSessionListener): () => void;
-  setMode(mode: ModeId): void;
+  setTarget(target: AnalysisSessionTarget): void;
   setText(text: string): void;
   setSelectedLayouts(layoutIds: readonly string[]): void;
   setFocus(layoutId: string | undefined): void;
@@ -56,19 +73,19 @@ export interface AnalysisSessionStore {
     key: K,
     value: DistanceOnlyDefaults[K],
   ): void;
-  setDistanceOverride<K extends keyof (DistanceOnlyDefaults & Pick<UiStateLayoutConditions, 'romajiRule'>)>(
+  setDistanceOverride<K extends keyof AnalysisDistanceOverrideConditions>(
     layoutId: string,
     key: K,
-    value: (DistanceOnlyDefaults & Pick<UiStateLayoutConditions, 'romajiRule'>)[K] | undefined,
+    value: AnalysisDistanceOverrideConditions[K] | undefined,
   ): void;
   setTimingDefault<K extends keyof AnalysisTimingConditions>(
     key: K,
     value: AnalysisTimingConditions[K],
   ): void;
-  setTimingOverride<K extends keyof AnalysisTimingConditions>(
+  setTimingOverride<K extends keyof AnalysisTimingOverrideConditions>(
     layoutId: string,
     key: K,
-    value: AnalysisTimingConditions[K] | undefined,
+    value: AnalysisTimingOverrideConditions[K] | undefined,
   ): void;
 }
 
@@ -80,20 +97,29 @@ function cloneState(state: AnalysisSessionState): AnalysisSessionState {
   return structuredClone(state);
 }
 
+function sameIds(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length
+    && left.every((id, index) => id === right[index]);
+}
+
+function normalizeTarget(target: AnalysisSessionTarget): AnalysisSessionTarget {
+  const selectedLayoutIds = unique(target.selectedLayoutIds);
+  return {
+    mode: target.mode,
+    selectedLayoutIds,
+    focusLayoutId: normalizeSessionFocus(selectedLayoutIds, target.focusLayoutId),
+  };
+}
+
 export function createAnalysisSessionStore(
   initial: Omit<AnalysisSessionState, 'revisions'>,
 ): AnalysisSessionStore {
-  let state: AnalysisSessionState = {
-    ...cloneState({
-      ...initial,
-      revisions: { target: 0, distance: 0, timing: 0, focus: 0 },
-    }),
-    selectedLayoutIds: unique(initial.selectedLayoutIds),
-  };
-  state = {
-    ...state,
-    focusLayoutId: normalizeSessionFocus(state.selectedLayoutIds, state.focusLayoutId),
-  };
+  const normalizedTarget = normalizeTarget(initial);
+  let state: AnalysisSessionState = cloneState({
+    ...initial,
+    ...normalizedTarget,
+    revisions: { target: 0, distance: 0, timing: 0, focus: 0 },
+  });
 
   const listeners = new Set<AnalysisSessionListener>();
   const emit = () => {
@@ -103,6 +129,23 @@ export function createAnalysisSessionStore(
     state = next;
     emit();
   };
+  const setTarget = (target: AnalysisSessionTarget): void => {
+    const normalized = normalizeTarget(target);
+    const targetChanged = normalized.mode !== state.mode
+      || !sameIds(normalized.selectedLayoutIds, state.selectedLayoutIds);
+    const focusChanged = normalized.focusLayoutId !== state.focusLayoutId;
+    if (!targetChanged && !focusChanged) return;
+
+    replace({
+      ...state,
+      ...normalized,
+      revisions: {
+        ...state.revisions,
+        target: state.revisions.target + (targetChanged ? 1 : 0),
+        focus: state.revisions.focus + (focusChanged ? 1 : 0),
+      },
+    });
+  };
 
   return {
     getSnapshot: () => state,
@@ -110,14 +153,7 @@ export function createAnalysisSessionStore(
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    setMode(mode) {
-      if (state.mode === mode) return;
-      replace({
-        ...state,
-        mode,
-        revisions: { ...state.revisions, target: state.revisions.target + 1 },
-      });
-    },
+    setTarget,
     setText(text) {
       if (state.text === text) return;
       replace({
@@ -127,23 +163,10 @@ export function createAnalysisSessionStore(
       });
     },
     setSelectedLayouts(layoutIds) {
-      const selectedLayoutIds = unique(layoutIds);
-      if (
-        selectedLayoutIds.length === state.selectedLayoutIds.length
-        && selectedLayoutIds.every((id, index) => id === state.selectedLayoutIds[index])
-      ) return;
-      const focusLayoutId = normalizeSessionFocus(selectedLayoutIds, state.focusLayoutId);
-      replace({
-        ...state,
-        selectedLayoutIds,
-        focusLayoutId,
-        revisions: {
-          ...state.revisions,
-          target: state.revisions.target + 1,
-          ...(focusLayoutId === state.focusLayoutId
-            ? {}
-            : { focus: state.revisions.focus + 1 }),
-        },
+      setTarget({
+        mode: state.mode,
+        selectedLayoutIds: layoutIds,
+        focusLayoutId: state.focusLayoutId,
       });
     },
     setFocus(layoutId) {

@@ -60,6 +60,21 @@ test('target, distance, timing and focus revisions are independent', () => {
   });
 });
 
+test('target change is atomic across mode, selection and focus', () => {
+  const value = store();
+  value.setTarget({
+    mode: 'en',
+    selectedLayoutIds: ['qwerty'],
+    focusLayoutId: 'qwerty',
+  });
+  const snapshot = value.getSnapshot();
+  assert.equal(snapshot.mode, 'en');
+  assert.deepEqual(snapshot.selectedLayoutIds, ['qwerty']);
+  assert.equal(snapshot.focusLayoutId, 'qwerty');
+  assert.equal(snapshot.revisions.target, 1);
+  assert.equal(snapshot.revisions.focus, 0);
+});
+
 test('selection change normalizes focus but pinned state is not stored in Session', () => {
   const value = store();
   value.setSelectedLayouts(['naginata-v18']);
@@ -77,4 +92,37 @@ test('per-layout override commands change only their explicit scope', () => {
   assert.equal(snapshot.distance.perLayout['naginata-v18'], undefined);
   assert.equal(snapshot.timing.perLayout['naginata-v18']?.speedMultiplier, 1.5);
   assert.equal(snapshot.timing.perLayout.qwerty, undefined);
+});
+
+
+test('global-only playback rate fields cannot be written as per-layout timing overrides', () => {
+  const value = store();
+  if (false) {
+    // @ts-expect-error playbackRateAverage is global-only by contract
+    value.setTimingOverride('qwerty', 'playbackRateAverage', 'ewma');
+    // @ts-expect-error playbackRateWindow is global-only by contract
+    value.setTimingOverride('qwerty', 'playbackRateWindow', 5);
+    // @ts-expect-error playbackRateHalfLifeSeconds is global-only by contract
+    value.setTimingOverride('qwerty', 'playbackRateHalfLifeSeconds', 2);
+  }
+  value.setTimingOverride('qwerty', 'speedMultiplier', 1.2);
+  assert.equal(value.getSnapshot().timing.perLayout.qwerty?.speedMultiplier, 1.2);
+});
+
+
+test('public store methods remain valid when passed as bare callbacks', () => {
+  const value = store();
+  const { setSelectedLayouts, setTarget } = value;
+
+  setSelectedLayouts(['naginata-v18']);
+  assert.deepEqual(value.getSnapshot().selectedLayoutIds, ['naginata-v18']);
+  assert.equal(value.getSnapshot().focusLayoutId, 'naginata-v18');
+
+  setTarget({
+    mode: 'en',
+    selectedLayoutIds: ['qwerty'],
+    focusLayoutId: 'qwerty',
+  });
+  assert.equal(value.getSnapshot().mode, 'en');
+  assert.deepEqual(value.getSnapshot().selectedLayoutIds, ['qwerty']);
 });

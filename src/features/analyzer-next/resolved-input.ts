@@ -13,12 +13,19 @@ import type {
   AnalysisSessionState,
 } from './session-store.ts';
 import type { SnapshotResolution } from './snapshot-service.ts';
-import type { ResolvedAnalysisInput } from './analysis-snapshot.ts';
+import type { ResolvedAnalysisInput } from './snapshot-computation.ts';
 
 export interface AnalysisLayoutCatalogEntry {
   layout: Layout;
   revisionKey: string;
   romajiRuleId: string | null;
+  /** Only true when this mode/layout actually evaluates through a romaji table. */
+  romajiCapable: boolean;
+  /**
+   * Resolve a saved rule id into the effective Layout. The adapter owns legacy fallback
+   * semantics for removed/unknown rule ids (tableForRule currently falls back to kunrei).
+   */
+  resolveRomajiRule?: (ruleId: string) => AnalysisLayoutCatalogEntry;
 }
 
 export interface AnalysisGeometryResolution {
@@ -74,7 +81,16 @@ export function createResolvedAnalysisInputResolver(
     if (!catalogEntry) return undefined;
 
     const distanceOverride = session.distance.perLayout[layoutId] ?? {};
-    const { romajiRule: _romajiRule, ...distanceOnlyOverride } = distanceOverride;
+    const { romajiRule, ...distanceOnlyOverride } = distanceOverride;
+    const effectiveCatalogEntry = romajiRule !== undefined && catalogEntry.romajiCapable
+      ? catalogEntry.resolveRomajiRule?.(romajiRule)
+      : catalogEntry;
+    if (!effectiveCatalogEntry) {
+      throw new Error(
+        `Romaji-capable catalog entry ${session.mode}/${layoutId} must provide resolveRomajiRule`,
+      );
+    }
+
     const resolvedConditions = resolveConditions(
       legacyCompatibleConditionDefaults(session.distance.defaults, session),
       distanceOnlyOverride,
@@ -82,7 +98,7 @@ export function createResolvedAnalysisInputResolver(
     const geometryResolution = options.geometryForKind(resolvedConditions.geometry);
     const assignment = assignmentWithHomeKeys(
       geometryResolution.settings.assignment,
-      catalogEntry.layout.homeKeys,
+      effectiveCatalogEntry.layout.homeKeys,
     );
     const geometry = buildGeometry(geometryResolution.settings.shape, assignment);
 
@@ -90,11 +106,11 @@ export function createResolvedAnalysisInputResolver(
       mode: session.mode,
       text: session.text,
       layoutId,
-      layoutRevision: catalogEntry.revisionKey,
+      layoutRevision: effectiveCatalogEntry.revisionKey,
       geometryRevision: geometryResolution.revisionKey,
-      homeKeys: catalogEntry.layout.homeKeys,
+      homeKeys: effectiveCatalogEntry.layout.homeKeys,
       resolvedConditions,
-      romajiRuleId: catalogEntry.romajiRuleId,
+      romajiRuleId: effectiveCatalogEntry.romajiRuleId,
     });
 
     return {
@@ -102,10 +118,10 @@ export function createResolvedAnalysisInputResolver(
       input: {
         mode: session.mode,
         text: session.text,
-        layout: catalogEntry.layout,
+        layout: effectiveCatalogEntry.layout,
         geometry,
         conditions: resolvedConditions,
-        romajiRuleId: catalogEntry.romajiRuleId,
+        romajiRuleId: effectiveCatalogEntry.romajiRuleId,
       },
     };
   };

@@ -47,7 +47,11 @@ export interface AnalysisViewInstance {
 export interface AnalysisViewConfigCodec<Config> {
   version: number;
   defaults: Config;
-  decode(raw: unknown): Config;
+  /**
+   * Decode or migrate config saved at savedVersion into the current version.
+   * decodeViewInstance rejects future versions before calling this function.
+   */
+  decode(raw: unknown, savedVersion: number): Config;
 }
 
 export interface AnalysisViewDefinition<Config = unknown> {
@@ -92,6 +96,10 @@ export function resolveViewBinding(
     if (session.selectedLayoutIds.length === 0) {
       return { status: 'unavailable', reason: 'empty-selection' };
     }
+    const available = session.availableLayoutIdsByMode[session.mode];
+    if (session.selectedLayoutIds.some((id) => !available.includes(id))) {
+      return { status: 'unavailable', reason: 'deleted' };
+    }
     return {
       status: 'ok',
       mode: session.mode,
@@ -106,6 +114,9 @@ export function resolveViewBinding(
     );
     if (focus === undefined) {
       return { status: 'unavailable', reason: 'empty-selection' };
+    }
+    if (!session.availableLayoutIdsByMode[session.mode].includes(focus)) {
+      return { status: 'unavailable', reason: 'deleted' };
     }
     return {
       status: 'ok',
@@ -151,11 +162,21 @@ export function decodeViewInstance(
   const binding = decodeViewBinding(source.binding);
   if (!binding || !isBindingAllowed(definition.cardinality, binding)) return undefined;
 
+  const savedConfigVersion = source.configVersion;
+  if (
+    typeof savedConfigVersion !== 'number'
+    || !Number.isInteger(savedConfigVersion)
+    || savedConfigVersion < 1
+    || savedConfigVersion > definition.configCodec.version
+  ) {
+    return undefined;
+  }
+
   return {
     id: source.id,
     type: definition.type,
     binding,
-    config: definition.configCodec.decode(source.config),
+    config: definition.configCodec.decode(source.config, savedConfigVersion),
     configVersion: definition.configCodec.version,
   };
 }

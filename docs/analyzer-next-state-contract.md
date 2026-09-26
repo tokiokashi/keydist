@@ -25,6 +25,77 @@ ViewConfig selects or presents already-defined model output. A ViewConfig may ch
 
 Focus is shared Session state but is not a calculation key.
 
+
+## Field-level classification
+
+This table is the implementation authority for #505 §1.4 / §1.5. New code should not need the Issue text to decide ownership.
+
+### Session target / focus
+
+| Legacy field | New owner | Notes |
+| --- | --- | --- |
+| `ui.input.mode` | Session target | Mode changes are atomic with the selected set / focus via `setTarget`. |
+| `ui.input.selectedSampleByMode` / `customText` | Session target text | Text changes invalidate distance snapshots. |
+| `ui.layouts.selectedByMode` | Session target | Only selected layouts are evaluated. |
+| `ui.layouts.detailByMode` | Session focus | Focus is normalized into the selected set and is not a calculation key. |
+| `ui.input.geometry` | removed | Migration fallback only; conditions are authoritative. |
+
+### Distance-model Session fields
+
+| Field | Scope |
+| --- | --- |
+| `geometry` | default + per-layout sparse override |
+| `windowSize` | default + per-layout sparse override |
+| `sfbHomeCost` | default + per-layout sparse override |
+| `preferOppositeThumb` | default + per-layout sparse override |
+| `chain` | default + per-layout sparse override |
+| `arpeggioPolicy` | default + per-layout sparse override |
+| `triggerRealization` | default + per-layout sparse override |
+| `actionRealization` | default + per-layout sparse override |
+| `romajiRule` | per-layout sparse override; effective only for a romaji-capable layout in the current mode |
+| geometry shape / assignment | Session distance input resolved through the Domain catalog |
+
+Per-layout overrides are field-level. An empty legacy per-layout object has no semantic effect and is discarded during migration.
+
+### Timing-model Session fields
+
+| Field | Scope |
+| --- | --- |
+| `playbackRateAverage` | global-only |
+| `playbackRateWindow` | global-only |
+| `playbackRateHalfLifeSeconds` | global-only |
+| `stepsPerSecond` | default + per-layout sparse override |
+| `speedMultiplier` | default + per-layout sparse override |
+| `sameFingerDelay` | default + per-layout sparse override |
+| `allFingerMovementDelay` | default + per-layout sparse override |
+| `useCalibration` | default + per-layout sparse override |
+
+The three playback-rate averaging fields are intentionally absent from the per-layout override type/API.
+
+### ViewConfig
+
+| View | Fields |
+| --- | --- |
+| Bigram Flow | `source`, `selectedFingers`, `lineScale`, `layerOrder` |
+| Heatmap | `view`, `colorScale`, `showLayerDetails`, `keyPatternGuide`, `activeLayerId`, `panels.layerStats`, `panels.modifierList`, `panels.comboTable` |
+| Comparison | `baselineLayoutId`, `chartColumn`, `sort` |
+| Matrices | per-matrix sorts |
+| Sensitivity | `scale` |
+| Playback | `showFingers`, `showRomajiPlan`, `showPlanKeys`, `showTrail`, `trailTau`, `showOrderLabels`, `showSameFingerMotion`, `keyFeedbackStyle`, `fingerPreparationSeconds`, `showChain`, `showArpeggio`, rate-chart chain/arpeggio visibility, `scale`, playback/rate-chart open state |
+
+Playback timing parameters are never ViewConfig. Saved per-layout display settings from the legacy `perLayout[id].playback` are discarded at cutover.
+
+### Shell / Ephemeral / Domain catalog
+
+- Analyzer shell preference: text/add-layout panel openness.
+- Ephemeral: Bigram hover, Heatmap key/combo selection, Playback cursor/running/elapsed/settings-dialog openness.
+- Domain catalog: user layouts, geometry shapes, romaji rules/assignments, condition presets and playback calibration.
+- Theme is app-level appearance and never Analyzer state.
+
+### Command scope
+
+Session commands that mutate a model condition always identify either the default scope or one layout id. Mode changes must use one atomic target command carrying `mode + selectedLayoutIds + focusLayoutId`; a mode-only state transition is not valid.
+
 ## View invariants
 
 - Workspace layout never owns analysis conditions.
@@ -68,7 +139,7 @@ Focus follows the current selected set. If its previous id is removed, the Sessi
 
 Instance ids are opaque and never encode the type or layout id. Binding is mutable instance data.
 
-Unknown/removed View types or invalid persisted bindings are rejected during decode. View-specific codecs own config migration and fall back to their defaults.
+Unknown/removed View types or invalid persisted bindings are rejected during decode. View-specific codecs receive the saved config version, own migration from older versions, and reject future versions at the instance decoder boundary.
 
 ## Route ownership
 

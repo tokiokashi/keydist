@@ -24,13 +24,13 @@ test('Bigram Flow codec sanitizes config without changing Session state', () => 
     selectedFingers: ['index', 'index', 'ring', 'invalid'],
     lineScale: 'log',
     layerOrder: 'cross-hand-top',
-  }), {
+  }, 1), {
     source: 'within-hand',
     selectedFingers: ['index', 'ring'],
     lineScale: 'log',
     layerOrder: 'cross-hand-top',
   });
-  assert.deepEqual(definition.configCodec.decode({ source: 'bad' }), {
+  assert.deepEqual(definition.configCodec.decode({ source: 'bad' }, 1), {
     source: 'actual',
     selectedFingers: [],
     lineScale: 'linear',
@@ -41,15 +41,19 @@ test('Bigram Flow codec sanitizes config without changing Session state', () => 
 test('Heatmap active tab is represented by layer id instead of shared numeric index', () => {
   const definition = ANALYSIS_VIEW_DEFINITIONS.get('heatmap')!;
   assert.deepEqual(definition.configCodec.decode({
+    view: 'tabs',
     colorScale: 'log',
     showLayerDetails: true,
     keyPatternGuide: false,
     activeLayerId: 'shift:left',
-  }), {
+    panels: { layerStats: true, modifierList: true, comboTable: true },
+  }, 1), {
+    view: 'tabs',
     colorScale: 'log',
     showLayerDetails: true,
     keyPatternGuide: false,
     activeLayerId: 'shift:left',
+    panels: { layerStats: true, modifierList: true, comboTable: true },
   });
 });
 
@@ -82,5 +86,89 @@ test('route binding round-trips pin mode and layout id', () => {
   assert.deepEqual(
     standaloneBindingFromSearch('single', searchFromStandaloneBinding(binding)),
     binding,
+  );
+});
+
+
+test('Comparison / Matrices / Playback codecs preserve the §1.4 classified ViewConfig fields', () => {
+  const comparison = ANALYSIS_VIEW_DEFINITIONS.get('comparison')!;
+  assert.deepEqual(comparison.configCodec.decode({
+    baselineLayoutId: 'qwerty',
+    chartColumn: 4,
+    sort: { column: 2, direction: 'desc' },
+  }, 1), {
+    baselineLayoutId: 'qwerty',
+    chartColumn: 4,
+    sort: { column: 2, direction: 'desc' },
+  });
+
+  const matrices = ANALYSIS_VIEW_DEFINITIONS.get('matrices')!;
+  assert.deepEqual(matrices.configCodec.decode({
+    sorts: {
+      press: { column: 1, direction: 'asc' },
+      finger: null,
+      adjacentMean: { column: 3, direction: 'desc' },
+      adjacentStdDev: null,
+    },
+  }, 1), {
+    sorts: {
+      press: { column: 1, direction: 'asc' },
+      finger: null,
+      adjacentMean: { column: 3, direction: 'desc' },
+      adjacentStdDev: null,
+    },
+  });
+
+  const playback = ANALYSIS_VIEW_DEFINITIONS.get('playback')!;
+  const decoded = playback.configCodec.decode({
+    showFingers: true,
+    fingerPreparationSeconds: 0.2,
+    playbackOpen: true,
+    playbackRateChartOpen: true,
+  }, 1) as Record<string, unknown>;
+  assert.equal(decoded.showFingers, true);
+  assert.equal(decoded.fingerPreparationSeconds, 0.2);
+  assert.equal(decoded.playbackOpen, true);
+  assert.equal(decoded.playbackRateChartOpen, true);
+  assert.equal('stepsPerSecond' in decoded, false);
+  assert.equal('speedMultiplier' in decoded, false);
+});
+
+
+test('ViewConfig codec preserves legacy MatrixSort bounds and integer trailTau', () => {
+  const comparison = ANALYSIS_VIEW_DEFINITIONS.get('comparison')!;
+  assert.equal(
+    (comparison.configCodec.decode({
+      sort: { column: 13, direction: 'asc' },
+    }, 1) as { sort: unknown }).sort,
+    null,
+  );
+
+  const matrices = ANALYSIS_VIEW_DEFINITIONS.get('matrices')!;
+  assert.deepEqual(
+    (matrices.configCodec.decode({
+      sorts: {
+        press: { column: 10, direction: 'asc' },
+        finger: { column: 9, direction: 'desc' },
+        adjacentMean: { column: 6, direction: 'asc' },
+        adjacentStdDev: { column: 5, direction: 'desc' },
+      },
+    }, 1) as { sorts: Record<string, unknown> }).sorts,
+    {
+      press: null,
+      finger: { column: 9, direction: 'desc' },
+      adjacentMean: null,
+      adjacentStdDev: { column: 5, direction: 'desc' },
+    },
+  );
+
+  const playback = ANALYSIS_VIEW_DEFINITIONS.get('playback')!;
+  assert.equal(
+    (playback.configCodec.decode({ trailTau: 2.5 }, 1) as { trailTau: number }).trailTau,
+    5,
+  );
+  assert.equal(
+    (playback.configCodec.decode({ trailTau: 20 }, 1) as { trailTau: number }).trailTau,
+    20,
   );
 });
