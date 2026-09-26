@@ -10,10 +10,11 @@ keydist のコードの分け方と依存の向き。設計の経緯と未実装
 | 用語 | コード | 意味 |
 |---|---|---|
 | 配列 | `Layout` | 論理的な配列定義（面・trigger・コンボ等） |
-| 物理形状 | `Shape` | キーの物理的な位置・指の割当 |
+| 物理形状 | `Shape` | キーの物理的な位置（と規格。ANSI/JIS） |
+| 指の割当 | `FingerAssignment` | 各キーを担当する指。物理形状の属性ではなく**カスケードの項目**（`fingerAssignmentId`）として持つ。既定は物理形状の規格から決まり、物理形状・配列・Setupのレベルで上書きできる（#544。`engine/finger-assignment.ts`） |
 | ポリシー | `TracePolicy` | **Traceを作る**条件（trigger / action realization、SandSの手、反対側の親指、N、ローマ字規則等） |
-| Setup | `Setup` | **計算の単位**。配列 × 物理形状 × ポリシー |
-| カスケード | settings cascade | ポリシー・解釈の値を グローバル → 物理形状 → 打ち方 → 配列 → Setup の順に上書きして実効値を求める仕組み |
+| Setup | `Setup` | **計算の単位**。配列 × 物理形状 × 指の割当 × ポリシー |
+| カスケード | settings cascade | ポリシー・指の割当・解釈の値を グローバル → 物理形状 → 打ち方 → 配列 → Setup の順に上書きして実効値を求める仕組み |
 | テキスト | Text | 打つ文章。言語を属性に持つ |
 | 打ち方 | input method | テキストの言語 × 配列の種類から導く（かな直接 / ローマ字 / 直接） |
 | Trace | `Trace` | Setupでテキストを打った記録（打鍵列・指の移動・押し方）。`generateTrace` が作る |
@@ -30,7 +31,7 @@ keydist のコードの分け方と依存の向き。設計の経緯と未実装
 ## 流れ
 
 ```text
-Setup（配列 × 物理形状 × ポリシー）+ テキスト
+Setup（配列 × 物理形状 × 指の割当 × ポリシー）+ テキスト
   ↓ Trace生成
 Trace
   ↓ 解釈（構造・時間モデル・複数のAnalyzerが使う指標）
@@ -47,6 +48,11 @@ host（単体ページ / Workspace）
 | ポリシー | Traceの中身 | カスケード |
 | 解釈 | Traceは同じまま、数値の定義 | カスケード（当面グローバルのみ） |
 | 解析設定 | どの数値をどう見せるか | Analyzerのインスタンス |
+
+指の割当（`FingerAssignment`）もこの分類では**ポリシー**と同じ扱いになる
+（Traceの中身を変え、持ち主はカスケード）。ただし型は`TracePolicy`ではなく独立した
+`FingerAssignment`で、`generateTrace`へは物理形状と合成した`Geometry`として渡る
+（`engine/resolved-input.ts`）。
 
 ## ディレクトリ
 
