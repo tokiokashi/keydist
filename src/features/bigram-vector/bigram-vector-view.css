@@ -384,6 +384,17 @@
   width: 100%;
 }
 
+.flow-profile-panel {
+  overflow: auto;
+}
+
+.flow-profile-svg {
+  display: block;
+  width: auto !important;
+  max-width: none;
+  margin: 0 auto;
+}
+
 .flow-axis {
   stroke: color-mix(in srgb, var(--viz-key-text) 11%, transparent);
   stroke-width: 0.8;
