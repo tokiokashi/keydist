@@ -3,7 +3,7 @@ import { useMemo, useState, useSyncExternalStore } from 'react';
 import {
   aggregateBigramVectors,
   buildBigramVectors,
-  directionResponse,
+  directionDensity,
   directionSummary,
   filterBigramVectors,
   meanDisplacement,
@@ -436,10 +436,10 @@ function MovementProfilePlot({
   const summary = useMemo(() => directionSummary(vectors, hand), [vectors, hand]);
   const mean = useMemo(() => meanDisplacement(vectors, hand), [vectors, hand]);
   const response = useMemo(
-    () => directionResponse(vectors, hand, bandwidthDegrees, 96),
+    () => directionDensity(vectors, hand, bandwidthDegrees, 96),
     [vectors, hand, bandwidthDegrees],
   );
-  const scale = movementPlotScale(maxDistance, scaleMode, polarGain);
+  const scale = movementPlotScale(maxDistance, scaleMode);
   const {
     scaleMax,
     unitsPerSvgUnit,
@@ -455,11 +455,11 @@ function MovementProfilePlot({
     x: cx + mean.x * unitsPerSvgUnit,
     y: cy + mean.y * unitsPerSvgUnit,
   };
-  const polarPoints = response.samples.map((sample) =>
+  const polarPoints = density.samples.map((sample) =>
     polarPoint(
       cx,
       cy,
-      polarBaseRadius + sample.response * polarAmplitude,
+      polarBaseRadius + sample.density * polarAmplitude * polarGain,
       sample.angle,
     )
   );
@@ -883,7 +883,7 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
               <p>
                 線の向きと長さは実移動 [u]、太さと濃さはfrequency。
                 Auto fitは左右共通maxで表示領域を使い、Fixedは条件をまたいで1uの描画長を固定する。
-                白線はmean displacement [u]。外周shapeは実vector角度へ円周kernelを重ねた方向応答。
+                白線はmean displacement [u]。外周shapeは実vector角度へ円周kernelを重ねた方向密度。
                 「方向の広がり」はピークから±指定角度で強度が半分になる幅、|R|は方向集中度の要約値。
               </p>
             </header>
@@ -912,14 +912,14 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
                 />
               </label>
               <label>
-                <span>Peak gain <output>{polarGain.toFixed(1)}×</output></span>
+                <span>Polar display gain <output>{polarGain.toFixed(1)}×</output></span>
                 <input
                   type="range"
                   min="0.25"
                   max="3"
                   step="0.05"
                   value={polarGain}
-                  aria-label="Polar peak gain"
+                  aria-label="Polar display gain"
                   onChange={(event) => setPolarGain(Number(event.currentTarget.value))}
                 />
               </label>
