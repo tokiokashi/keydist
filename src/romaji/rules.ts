@@ -2,7 +2,6 @@ import { azik } from './azik.ts';
 import { kunrei, addSokuonForms } from './kunrei.ts';
 import { OONISHI_OVERRIDES, oonishiRomaji } from './oonishi.ts';
 import { QWERTY_LEGEND } from '../geometry.ts';
-import { notifyKeydistStorageChange } from '../browser-storage-events.ts';
 
 export type BuiltinRomajiRuleId = 'kunrei' | 'oonishi' | 'azik' | 'qwerty';
 export type RomajiRuleId = string;
@@ -131,7 +130,6 @@ export function loadRomajiSettings(): RomajiSettings {
 export function saveRomajiSettings(settings: RomajiSettings) {
   try {
     localStorage.setItem(ROMAJI_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-    notifyKeydistStorageChange(ROMAJI_SETTINGS_STORAGE_KEY);
   } catch {
     // 保存できなくても、その場の評価と編集は成立する
   }
