@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluate } from '#trace/evaluate.ts';
-import { TypingInputEngine } from '../src/core/input-converter/index.ts';
+import { TypingInputEngine } from '#tester/engine/index.ts';
 import {
   DEFAULT_GEOMETRY_SETTINGS,
   parseGeometrySettings,
@@ -19,7 +19,7 @@ import { computeMetrics } from '#interpretation/metrics.ts';
 import { fromKana, LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import {
   browserCodeToPhysicalKey,
-} from '../src/features/input-converter/browser-keyboard-adapter.ts';
+} from '#tester/browser-keyboard-adapter.ts';
 import {
   physicalKeysUsedByLayout,
   visibleGeometryKeys,
