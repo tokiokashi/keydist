@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '#input/shapes/geometry.ts';
-import { evaluate } from '#trace/evaluate.ts';
+import { generateTrace } from '#trace/generate.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { analyzeStrokeStructure } from '../structure/aggregate.ts';
 import {
@@ -14,7 +14,7 @@ const geometry = buildGeometry('row-staggered');
 const layout = LAYOUT_BY_ID.get('qwerty')!;
 
 test('準備時間0では従来の指位置表示と一致する', () => {
-  const trace = evaluate('fjg', layout, geometry);
+  const trace = generateTrace('fjg', layout, geometry);
   const analysis = analyzeStrokeStructure(trace.strokes);
   const current = playbackFingerPositionKeys(trace.strokes[1], geometry);
   const schedule = playbackTimingSchedule(analysis, 1, true);
@@ -32,7 +32,7 @@ test('準備時間0では従来の指位置表示と一致する', () => {
 });
 
 test('空き時間があれば次の実Press位置へ打鍵前に到着する', () => {
-  const trace = evaluate('fjg', layout, geometry);
+  const trace = generateTrace('fjg', layout, geometry);
   const analysis = analyzeStrokeStructure(trace.strokes);
   const schedule = playbackTimingSchedule(analysis, 1, true);
 
@@ -55,7 +55,7 @@ test('空き時間があれば次の実Press位置へ打鍵前に到着する', 
 });
 
 test('held-trigger継続だけのparticipationは次のPressとして扱わない', () => {
-  const trace = evaluate('fjg', layout, geometry);
+  const trace = generateTrace('fjg', layout, geometry);
   const strokes = trace.strokes.map((stroke) => ({
     ...stroke,
     participations: stroke.participations.map((participation) => ({ ...participation })),
@@ -86,7 +86,7 @@ test('held-trigger継続だけのparticipationは次のPressとして扱わな�
 
 
 test('held-trigger継続中は前動作が空いたとみなさず、間に合わなければPress時刻まで保持する', () => {
-  const trace = evaluate('fjg', layout, geometry);
+  const trace = generateTrace('fjg', layout, geometry);
   const strokes = trace.strokes.map((stroke) => ({
     ...stroke,
     positions: { ...stroke.positions },

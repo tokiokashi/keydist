@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluate } from '#trace/evaluate.ts';
+import { generateTrace } from '#trace/generate.ts';
 import { TypingInputEngine } from '#tester/engine/index.ts';
 import {
   DEFAULT_GEOMETRY_SETTINGS,
@@ -60,14 +60,14 @@ test('grid外physical keyはshape座標とFingerAssignmentを分離したままg
   assert.equal(geometry.grid.flat().some((key) => key.id === 'tab'), false);
 });
 
-test('grid外physical keyを使うdirect inputはevaluateとmetricsへ流れる', () => {
+test('grid外physical keyを使うdirect inputはgenerateTraceとmetricsへ流れる', () => {
   const geometry = buildGeometry(shape, assignment);
   const layout = fromKana('extra-key-layout', 'Extra key fixture', {
     よ: [['tab']],
     ろ: [['escape']],
   });
 
-  const trace = evaluate('よろ', layout, geometry, { windowSize: 3, sfbHomeCost: true });
+  const trace = generateTrace('よろ', layout, geometry, { windowSize: 3, sfbHomeCost: true });
   assert.equal(trace.skipped, 0);
   assert.deepEqual(
     trace.strokes.flatMap((stroke) => stroke.presses.flatMap((press) => press.keys.map((key) => key.id))),

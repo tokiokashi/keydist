@@ -801,7 +801,7 @@ export function AnalyzerPlaybackSettings({
           openByKey={detailsOpen}
           setOpen={setDetailsOpen}
           className="playback-settings-group"
-          summary="ArpeggioPolicy"
+          summary="ArpeggioInterpretation"
         >
           <label>
             <input

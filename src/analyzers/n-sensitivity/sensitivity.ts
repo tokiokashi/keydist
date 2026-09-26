@@ -1,9 +1,9 @@
-import { evaluate, type Options } from '#trace/evaluate.ts';
+import { generateTrace, type TracePolicy } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/index.ts';
-import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from '#interpretation/structure/chain.ts';
-import { DEFAULT_ARPEGGIO_POLICY, type ArpeggioPolicy } from '#interpretation/structure/arpeggio.ts';
+import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from '#interpretation/structure/chain.ts';
+import { DEFAULT_ARPEGGIO_INTERPRETATION, type ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
@@ -23,20 +23,20 @@ export function nSensitivity(
   text: string,
   layout: Layout,
   geometry: Geometry,
-  options: Options,
+  options: TracePolicy,
   range: number[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   romajiRuleId: string | null = null,
-  chainPolicy: Readonly<ChainPolicy> = DEFAULT_CHAIN_POLICY,
-  arpeggioPolicy: Readonly<ArpeggioPolicy> = DEFAULT_ARPEGGIO_POLICY,
+  chainInterpretation: Readonly<ChainInterpretation> = DEFAULT_CHAIN_INTERPRETATION,
+  arpeggioInterpretation: Readonly<ArpeggioInterpretation> = DEFAULT_ARPEGGIO_INTERPRETATION,
 ): SensitivityPoint[] {
   return range.map((windowSize) => {
-    const trace = evaluate(text, layout, geometry, { ...options, windowSize });
+    const trace = generateTrace(text, layout, geometry, { ...options, windowSize });
     const m = computeMetrics(trace, geometry, {
       windowSize,
       sfbHomeCost: options.sfbHomeCost,
       preferOppositeThumb: options.preferOppositeThumb ?? false,
-      chainPolicy: { ...chainPolicy },
-      arpeggioPolicy: { ...arpeggioPolicy },
+      chainInterpretation: { ...chainInterpretation },
+      arpeggioInterpretation: { ...arpeggioInterpretation },
       triggerRealizationPolicy: {
         ...(options.triggerRealizationPolicy ?? DEFAULT_TRIGGER_REALIZATION_POLICY),
       },

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TypingInputEngine } from '#tester/engine/index.ts';
-import { DEFAULT_OPTIONS, evaluate } from '#trace/evaluate.ts';
+import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { buildGeometry, SHIFT_KEY } from '../shapes/geometry.ts';
 import { LAYOUTS } from './index.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
@@ -55,9 +55,9 @@ test('Shift記号もbase outputと同じphysical keyへcompileする', () => {
     alternative.semanticInputs[0].physicalKeys.includes('/')));
 });
 
-test('evaluateは通常Shiftで出力キーと反対手のShift alternativeを選ぶ', () => {
+test('generateTraceは通常Shiftで出力キーと反対手のShift alternativeを選ぶ', () => {
   const geometry = buildGeometry('row-staggered');
-  const trace = evaluate('A?', qwerty, geometry, DEFAULT_OPTIONS);
+  const trace = generateTrace('A?', qwerty, geometry, DEFAULT_TRACE_POLICY);
 
   assert.equal(trace.skipped, 0);
   assert.deepEqual(
@@ -144,8 +144,8 @@ test('row-staggeredのShift座標をbottom row基準で固定する', () => {
 
 test('全角！／？は半角Shift記号と同じphysical inputとして評価する', () => {
   const geometry = buildGeometry('row-staggered');
-  const halfwidth = evaluate('!?', qwerty, geometry, DEFAULT_OPTIONS);
-  const fullwidth = evaluate('！？', qwerty, geometry, DEFAULT_OPTIONS);
+  const halfwidth = generateTrace('!?', qwerty, geometry, DEFAULT_TRACE_POLICY);
+  const fullwidth = generateTrace('！？', qwerty, geometry, DEFAULT_TRACE_POLICY);
 
   assert.equal(fullwidth.skipped, 0);
   assert.deepEqual(
@@ -162,7 +162,7 @@ test('全角！／？は半角Shift記号と同じphysical inputとして評価�
 });
 
 test('小文字入力はShift semantic追加後も単打のまま', () => {
-  const trace = evaluate('a', qwerty, buildGeometry('row-staggered'), DEFAULT_OPTIONS);
+  const trace = generateTrace('a', qwerty, buildGeometry('row-staggered'), DEFAULT_TRACE_POLICY);
 
   assert.equal(trace.skipped, 0);
   assert.equal(trace.strokes.length, 1);
@@ -174,7 +174,7 @@ test('小文字入力はShift semantic追加後も単打のまま', () => {
 });
 
 test('while-held Capabilityだけでは既定評価をheld-triggerへ変えない', () => {
-  const trace = evaluate('AA', qwerty, buildGeometry('row-staggered'), DEFAULT_OPTIONS);
+  const trace = generateTrace('AA', qwerty, buildGeometry('row-staggered'), DEFAULT_TRACE_POLICY);
 
   assert.equal(trace.skipped, 0);
   assert.equal(trace.strokes.length, 2);
@@ -200,8 +200,8 @@ test('通常Shiftはcompositionではなくmodifier semanticとして残る', ()
 
 test('Shift pressは通常のmetrics pipelineへそのまま計上される', () => {
   const geometry = buildGeometry('row-staggered');
-  const lower = computeMetrics(evaluate('a', qwerty, geometry, DEFAULT_OPTIONS), geometry);
-  const upper = computeMetrics(evaluate('A', qwerty, geometry, DEFAULT_OPTIONS), geometry);
+  const lower = computeMetrics(generateTrace('a', qwerty, geometry, DEFAULT_TRACE_POLICY), geometry);
+  const upper = computeMetrics(generateTrace('A', qwerty, geometry, DEFAULT_TRACE_POLICY), geometry);
 
   assert.equal(lower.presses, 1);
   assert.equal(upper.presses, 2);

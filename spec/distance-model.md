@@ -196,7 +196,7 @@ logical output matching
 
 `stepLayers / stepTriggerKeys / stepSemantics / StepSemantic` はcanonical cutover後に削除済み。
 legacy `Layout.map` だけをauthoring default / presentation互換として残すが、
-evaluateのsemantic authorityではない。
+generateTraceのsemantic authorityではない。
 
 左右どちらの親指でも同じshift semanticを成立させられる配列は、
 `thumbShiftKeys` に合法な親指physical keyを持ち、authoring時に左右両pathをcanonical
@@ -331,7 +331,7 @@ compile時にcombo alternativeへ `{ kind: 'youon-only' }` context requirement�
 
 **R3. Nはselected canonical input単位で数える。**
 
-evaluateが最長一致・context filter・alternative selection後に選んだlogical inputを1単位とし、
+generateTraceが最長一致・context filter・alternative selection後に選んだlogical inputを1単位とし、
 そのordinalを `inputOrdinal` とする。現在inputと、指 `f` が最後に参加したinputとの差を
 
 ```
@@ -492,7 +492,7 @@ Metrics / structural aggregationのcondition snapshotにも実効値を保存す
 **Raw hand run** として作る。この段階で保持するのは参加factだけで、同指・trigger・親指・
 逆手同時入力を理由に区切る判断はしない。
 
-Raw hand runへ **ChainPolicy** を適用した結果が **Analysis Chain** である。
+Raw hand runへ **ChainInterpretation** を適用した結果が **Analysis Chain** である。
 現時点でPolicyが持つ境界条件は次の3つ。
 
 - `breakOnSameFinger`: 同指移動Strokeを境界にする。既定 `true`（従来の
@@ -512,10 +512,10 @@ Analysis結果はStrokeを複製せず、1回の結果内で安定する `Stroke
 `chainIndex` で参照する。永続的なstable IDは作らない。後段のRoll / Redirect /
 Arpeggio等の構造要素はAnalysis Chain境界を越えてはならない。
 
-ChainPolicyは測定条件の一部として `conditions.defaults` / `conditions.perLayout` で
+ChainInterpretationは測定条件の一部として `conditions.defaults` / `conditions.perLayout` で
 配列ごとに解決し、`Metrics.conditions` のsnapshotにも保存する（§12.3）。
 旧 `ui.playback.chainIncludeSameFinger` / `chainIncludeLayerKeys` は移行期間の互換入口として
-残すが、意味が一意に対応する項目だけをadapterでChainPolicyへ変換する。
+残すが、意味が一意に対応する項目だけをadapterでChainInterpretationへ変換する。
 
 ### 10.2 Transition facts
 
@@ -592,7 +592,7 @@ Transition / Redirect factsからpure roll構造を作る時は、LongRollとTwo
 - output親指も構造候補として扱う
 - opposite-handの新規 `trigger` activationが同一Strokeにある場合はpure rollから除外
 - opposite-hand `held-trigger` だけでは除外しない
-- trigger-only Strokeの境界はChainPolicyへ従う
+- trigger-only Strokeの境界はChainInterpretationへ従う
 
 対象handの複数Press Strokeは、Transition候補から都合のよい1本を選んでpure rollへ
 通してはいけない。Redirectはexistential eventなので同じStrokeがpivotになれる場合があるが、
@@ -616,10 +616,10 @@ AnyRoll = LongRoll ∪ TwoRoll
 Stroke spanから対応Transitionを得る変換は共通helperへ集約し、後段が個別に
 off-by-one変換を実装しない。
 
-### 10.5 ArpeggioPolicy / ArpeggioSpan
+### 10.5 ArpeggioInterpretation / ArpeggioSpan
 
 ArpeggioはLongRoll / standalone TwoRollというstructural factそのものではなく、
-それらへ **ArpeggioPolicy** を適用して得るkeydist固有の派生Spanとする。
+それらへ **ArpeggioInterpretation** を適用して得るkeydist固有の派生Spanとする。
 
 初期Policyは次の3項目だけを持つ。
 
@@ -693,7 +693,7 @@ type StrokeAnnotation = {
 - SFB: raw Transition event数 / unique関与Stroke coverage
 
 重複Spanや重複Eventはraw countでは保持し、coverageではStroke indexのunionとして1回だけ数える。
-集計結果には解決済み `TriggerRealizationPolicy` / `ActionRealizationPolicy` / `ChainPolicy` / `ArpeggioPolicy` のimmutable snapshotを持たせ、
+集計結果には解決済み `TriggerRealizationPolicy` / `ActionRealizationPolicy` / `ChainInterpretation` / `ArpeggioInterpretation` のimmutable snapshotを持たせ、
 後からUI stateが変わっても算出条件を追跡できるようにする。
 
 ## 11. 出力指標

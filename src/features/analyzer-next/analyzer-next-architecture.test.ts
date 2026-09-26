@@ -8,7 +8,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const SRC = join(ROOT, 'src');
 const VIEW_DIR = join(SRC, 'features', 'analyzer-next', 'views');
 const FORBIDDEN_APP_MODULES = new Set([
-  join(SRC, 'trace', 'evaluate.ts'),
+  join(SRC, 'trace', 'generate.ts'),
   join(SRC, 'engine', 'condition-resolution.ts'),
   join(SRC, 'legacy', 'analyzer-ui-state-owner.ts'),
 ]);
@@ -74,7 +74,7 @@ function resolvesTo(importer: string, specifier: string): string | undefined {
 function forbiddenReason(importer: string, specifier: string): string | undefined {
   if (FORBIDDEN_PACKAGE_MODULES.has(specifier)) return specifier;
   if (
-    specifier === '#trace/evaluate.ts'
+    specifier === '#trace/generate.ts'
     || specifier === '#engine/condition-resolution.ts'
     || specifier === '#legacy/analyzer-ui-state-owner.ts'
   ) return specifier;
@@ -126,7 +126,7 @@ test('Analyzer Next View components do not own storage, routing, Dockview or eva
 
     assert.doesNotMatch(
       source,
-      /\b(?:resolveConditions|evaluate)\s*\(/,
+      /\b(?:resolveConditions|generateTrace)\s*\(/,
       `${relative(ROOT, path)} must consume host-resolved snapshots`,
     );
   }

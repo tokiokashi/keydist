@@ -12,13 +12,13 @@ Layout definition
 Stroke semantic normalization
   ↓
 Raw hand run
-  ↓ ChainPolicy
+  ↓ ChainInterpretation
 Analysis Chain
   ↓
 Transition facts
   ↓
 LongRoll / TwoRoll / Redirect / SFB
-  ↓ ArpeggioPolicy
+  ↓ ArpeggioInterpretation
 ArpeggioSpan
   ↓
 Structural result
@@ -138,10 +138,10 @@ Timing は Arpeggio を独自に再判定しない。#200 の structural analysi
 Transition / LongRoll / TwoRoll / Redirect / SFB / ArpeggioSpan を入力として使う。
 
 keydist における Arpeggio は、幾何条件そのものではなく、LongRoll と standalone TwoRoll を
-core とし、`ArpeggioPolicy` を適用して得る派生区間である。
+core とし、`ArpeggioInterpretation` を適用して得る派生区間である。
 
 ```ts
-type ArpeggioPolicy = {
+type ArpeggioInterpretation = {
   includeThumb: boolean;                // default false
   bridgeSameFinger: boolean;            // default false
   includeSingleRedirectTail: boolean;   // default false

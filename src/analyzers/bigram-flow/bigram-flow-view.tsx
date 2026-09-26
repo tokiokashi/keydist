@@ -11,7 +11,7 @@ import {
   type FingerClass,
 } from './bigram-vectors.ts';
 import type { Geometry, Key, Point } from '#input/shapes/geometry.ts';
-import type { Trace } from '#trace/evaluate.ts';
+import type { Trace } from '#trace/generate.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import {
   MIN_POLAR_BANDWIDTH_DEGREES,

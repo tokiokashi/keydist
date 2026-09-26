@@ -11,13 +11,13 @@ keydist のコードの分け方と依存の向き。設計の経緯と未実装
 |---|---|---|
 | 配列 | `Layout` | 論理的な配列定義（面・trigger・コンボ等） |
 | 物理形状 | `Shape` | キーの物理的な位置・指の割当 |
-| ポリシー | Policy | **Traceを作る**条件（trigger / action realization、SandSの手、反対側の親指、N、ローマ字規則等） |
+| ポリシー | `TracePolicy` | **Traceを作る**条件（trigger / action realization、SandSの手、反対側の親指、N、ローマ字規則等） |
 | Setup | `Setup` | **計算の単位**。配列 × 物理形状 × ポリシー |
 | カスケード | settings cascade | ポリシー・解釈の値を グローバル → 物理形状 → 打ち方 → 配列 → Setup の順に上書きして実効値を求める仕組み |
 | テキスト | Text | 打つ文章。言語を属性に持つ |
 | 打ち方 | input method | テキストの言語 × 配列の種類から導く（かな直接 / ローマ字 / 直接） |
-| Trace | `Trace` | Setupでテキストを打った記録（打鍵列・指の移動・押し方） |
-| 解釈 | Interpretation | **Traceの読み方**。Traceを変えずに数値の定義を変える（chain・arpeggio等の数え方、時間モデル） |
+| Trace | `Trace` | Setupでテキストを打った記録（打鍵列・指の移動・押し方）。`generateTrace` が作る |
+| 解釈 | `…Interpretation`（`ChainInterpretation` 等） | **Traceの読み方**。Traceを変えずに数値の定義を変える（chain・arpeggio等の数え方、時間モデル） |
 | Analyzer | `AnalyzerDefinition` | **機能の単位**。抽出 + 可視化 + 解析設定 |
 | 抽出 | extract | Trace（と解釈の結果）からAnalyzerが使うデータを取り出す純関数 |
 | 可視化 | visualization | 抽出したデータを表示するcomponent。計算しない |
@@ -25,7 +25,7 @@ keydist のコードの分け方と依存の向き。設計の経緯と未実装
 | engine | engine | 解決・Trace生成・解釈・抽出の実行とキャッシュ |
 | 単体ページ / Workspace | host | Analyzerを載せる器 |
 
-使わない語: mode（en / ja）、段の名前としての「評価」、View、`AnalysisSession` / `AnalysisSnapshot`。
+使わない語: mode（en / ja）、段の名前としての「評価」（`evaluate`）、View、`AnalysisSession` / `AnalysisSnapshot`、解釈を指す「ポリシー」（`ChainPolicy` / `ArpeggioPolicy`）。
 
 ## 流れ
 

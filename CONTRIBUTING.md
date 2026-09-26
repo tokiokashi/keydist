@@ -44,7 +44,7 @@
 
 | scope | 対応 |
 |---|---|
-| `model` | `spec/distance-model.md` と `src/trace/evaluate.ts` |
+| `model` | `spec/distance-model.md` と `src/trace/generate.ts` |
 | `metrics` | `src/interpretation/metrics.ts` |
 | `geometry` | `src/input/shapes/` |
 | `sensitivity` | `src/analyzers/n-sensitivity/` |

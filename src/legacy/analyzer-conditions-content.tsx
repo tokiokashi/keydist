@@ -3,8 +3,8 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import type { ArpeggioPolicy } from '#interpretation/structure/arpeggio.ts';
-import type { ChainPolicy } from '#interpretation/structure/chain.ts';
+import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
+import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
 import type {
   AnalyzerConditionsActions,
   AnalyzerConditionsModel,
@@ -426,8 +426,8 @@ function ConditionRow({
       </div>
     );
   } else if (tab === 'chain') {
-    const policy = value('chain') as ChainPolicy;
-    const checkbox = (key: keyof ChainPolicy, label: string) => (
+    const policy = value('chain') as ChainInterpretation;
+    const checkbox = (key: keyof ChainInterpretation, label: string) => (
       <label key={key}>
         <input
           type="checkbox"
@@ -450,8 +450,8 @@ function ConditionRow({
       </div>
     );
   } else if (tab === 'arpeggio') {
-    const policy = value('arpeggioPolicy') as ArpeggioPolicy;
-    const checkbox = (key: keyof ArpeggioPolicy, label: string) => (
+    const policy = value('arpeggioPolicy') as ArpeggioInterpretation;
+    const checkbox = (key: keyof ArpeggioInterpretation, label: string) => (
       <label key={key}>
         <input
           type="checkbox"

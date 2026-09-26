@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../shapes/geometry.ts';
-import { DEFAULT_OPTIONS, evaluate } from '#trace/evaluate.ts';
-import { analyzeChains, DEFAULT_CHAIN_POLICY } from '#interpretation/structure/chain.ts';
+import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
+import { analyzeChains, DEFAULT_CHAIN_INTERPRETATION } from '#interpretation/structure/chain.ts';
 import { COMBO_LAYER_ID, LAYOUT_BY_ID } from './index.ts';
 import { classifyPresentationFaces } from './layers.ts';
 import { assertKanaLayout } from '../../../test/kana-layout-helpers.ts';
@@ -36,11 +36,11 @@ test('親指shiftはlayer + single、文字キーcomboはcomposition + singleと
     assert.equal(face.triggerPersistence, 'single');
   }
 
-  const thumb = evaluate('ば', layout, geometry, DEFAULT_OPTIONS).strokes[0];
+  const thumb = generateTrace('ば', layout, geometry, DEFAULT_TRACE_POLICY).strokes[0];
   assert.deepEqual(thumb.classifications, []);
   assert.ok(thumb.participations.some((p) => p.roles.includes('trigger')));
 
-  const composition = evaluate('ぱ', layout, geometry, DEFAULT_OPTIONS).strokes[0];
+  const composition = generateTrace('ぱ', layout, geometry, DEFAULT_TRACE_POLICY).strokes[0];
   assert.ok(composition.classifications.includes('composition'));
   assert.ok(composition.participations.some((p) => p.roles.includes('trigger')));
   assert.ok(composition.participations.every((p) => !p.roles.includes('held-trigger')));
@@ -59,9 +59,9 @@ test('文字compositionは表示・集計でも通常layerではなくcomboへ�
 });
 
 test('breakOnTriggerOnly=trueでも文字compositionをshift扱いでChainから除外しない', () => {
-  const trace = evaluate('ぱ', layout, geometry, DEFAULT_OPTIONS);
+  const trace = generateTrace('ぱ', layout, geometry, DEFAULT_TRACE_POLICY);
   const analysis = analyzeChains(trace.strokes, {
-    ...DEFAULT_CHAIN_POLICY,
+    ...DEFAULT_CHAIN_INTERPRETATION,
     breakOnSameFinger: false,
     breakOnTriggerOnly: true,
   });
@@ -77,8 +77,8 @@ test('breakOnTriggerOnly=trueでも文字compositionをshift扱いでChainから
 });
 
 test('文字compositionはhold利用ONでもheld-triggerへ昇格しない', () => {
-  const trace = evaluate('ぱぱ', layout, geometry, {
-    ...DEFAULT_OPTIONS,
+  const trace = generateTrace('ぱぱ', layout, geometry, {
+    ...DEFAULT_TRACE_POLICY,
     triggerRealizationPolicy: { useHold: true },
   });
 

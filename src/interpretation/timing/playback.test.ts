@@ -31,7 +31,7 @@ import {
   stepPlayback,
 } from './playback.ts';
 import { buildGeometry } from '#input/shapes/geometry.ts';
-import { evaluate } from '#trace/evaluate.ts';
+import { generateTrace } from '#trace/generate.ts';
 import {
   faceFromEntries,
   fromFaces,
@@ -41,7 +41,7 @@ import {
 } from '#input/layouts/index.ts';
 import { kunrei } from '#input/romaji/kunrei.ts';
 import { analyzeStrokeStructure } from '../structure/aggregate.ts';
-import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from '../structure/chain.ts';
+import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from '../structure/chain.ts';
 import {
   actionsPerSecondFromIntervals,
   clearPlaybackCalibration,
@@ -69,7 +69,7 @@ const playing = (cursor = 0) => ({
 const emptyStrokes = (length: number) => Array.from({ length }, () => ({ presses: [] })) as never[];
 const timingAnalysis = (
   strokes: readonly any[],
-  chainPolicy?: ChainPolicy,
+  chainInterpretation?: ChainInterpretation,
 ) => {
   const normalized = strokes.map((source, index) => {
     const presses = (source.presses ?? []).map((raw: any) => {
@@ -114,7 +114,7 @@ const timingAnalysis = (
       positions: source.positions ?? {},
     };
   });
-  return analyzeStrokeStructure(normalized as never[], chainPolicy);
+  return analyzeStrokeStructure(normalized as never[], chainInterpretation);
 };
 
 const advancePlayback = (
@@ -487,7 +487,7 @@ test('速度グラフのChain帯はAnalysis Chain所属を直接使う', () => {
     { presses: [{ finger: 'LP', sfb: true, keys: [{ id: 'q', x: 1, y: 1, row: 1 }] }] },
     { presses: [{ finger: 'LR', keys: [{ id: 's', x: 2, y: 2, row: 2 }] }] },
   ] as never[];
-  const policy = { ...DEFAULT_CHAIN_POLICY, breakOnSameFinger: false };
+  const policy = { ...DEFAULT_CHAIN_INTERPRETATION, breakOnSameFinger: false };
   const analysis = timingAnalysis(strokes, policy);
   const points = playbackRateChartDataAnalysis(analysis, 2);
 
@@ -499,7 +499,7 @@ test('速度グラフのChain帯はAnalysis Chain所属を直接使う', () => {
   );
 });
 
-test('速度グラフは適用済みChainPolicyのAnalysis Chain所属に従う', () => {
+test('速度グラフは適用済みChainInterpretationのAnalysis Chain所属に従う', () => {
   const strokes = [
     { presses: [{ finger: 'LP', keys: [{ id: 'a', x: 1, y: 2, row: 2 }] }] },
     { presses: [{ finger: 'LP', sfb: true, keys: [{ id: 'q', x: 1, y: 1, row: 1 }] }] },
@@ -507,7 +507,7 @@ test('速度グラフは適用済みChainPolicyのAnalysis Chain所属に従う'
   ] as never[];
 
   const analysis = timingAnalysis(strokes, {
-    ...DEFAULT_CHAIN_POLICY,
+    ...DEFAULT_CHAIN_INTERPRETATION,
     breakOnSameFinger: false,
   });
   assert.equal(
@@ -779,14 +779,14 @@ test('入力履歴は現在の入力単位を除き、複数ステップを一�
 
 test('ローマ字の入力履歴はかなごとの複数打鍵を重複させない', () => {
   const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
-  const trace = evaluate('なまえは', layout, buildGeometry('row-staggered'));
+  const trace = generateTrace('なまえは', layout, buildGeometry('row-staggered'));
 
   assert.deepEqual(playbackCompletedInputs(trace.strokes, trace.strokes.length), ['な', 'ま', 'え']);
 });
 
 test('TK音直入力法のコンボは入力単位全体を現在文字と履歴に表示する', () => {
   const layout = withRomaji(LAYOUT_BY_ID.get('oonishi-custom-combo')!, kunrei());
-  const trace = evaluate('わがはいねこ', layout, buildGeometry('row-staggered'));
+  const trace = generateTrace('わがはいねこ', layout, buildGeometry('row-staggered'));
 
   assert.equal(trace.strokes[4].inputChar, 'は');
   assert.equal(trace.strokes[5].inputChar, 'はい');
@@ -809,7 +809,7 @@ test('TK音直入力法のコンボは入力単位全体を現在文字と履歴
 
 test('入力プレビューは現在の入力を下線対象にし、先読みを後ろへ追加する', () => {
   const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
-  const trace = evaluate('きょうあ', layout, buildGeometry('row-staggered'));
+  const trace = generateTrace('きょうあ', layout, buildGeometry('row-staggered'));
 
   assert.deepEqual(playbackInputPreview(trace.strokes, 2, 1), [
     { text: 'きょ', kind: 'current' },
@@ -827,14 +827,14 @@ test('入力プレビューは現在の入力を下線対象にし、先読み�
 
 test('ローマ字の現在入力単位に予定綴りと打鍵済み接頭辞を表示できる', () => {
   const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
-  const trace = evaluate('きょ', layout, buildGeometry('row-staggered'));
+  const trace = generateTrace('きょ', layout, buildGeometry('row-staggered'));
 
   assert.deepEqual(playbackRomajiPlan(trace.strokes, 2), { planned: 'kyo', typed: 'ky' });
 });
 
 test('予定ローマ字は未入力キーを順番付きの予定キーとして返す', () => {
   const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
-  const trace = evaluate('け', layout, buildGeometry('row-staggered'));
+  const trace = generateTrace('け', layout, buildGeometry('row-staggered'));
 
   assert.equal(playbackRomajiPlannedKeys(trace.strokes, 1).get('e'), 1);
   assert.equal(playbackRomajiPlannedOrders(trace.strokes, 1).get('e'), 1);
@@ -844,7 +844,7 @@ test('予定ローマ字は未入力キーを順番付きの予定キーとし�
 
 test('予定キーは先読み範囲の近いキーほど緑を濃く表示する', () => {
   const layout = withRomaji(LAYOUT_BY_ID.get('qwerty')!, kunrei());
-  const trace = evaluate('きょう', layout, buildGeometry('row-staggered'));
+  const trace = generateTrace('きょう', layout, buildGeometry('row-staggered'));
   const planned = playbackPlannedKeys(trace.strokes, 0, 3);
 
   assert.equal(planned.get('k'), 1);
@@ -882,7 +882,7 @@ test('押下履歴はtauステップ内で新しいほど濃くなる', () => {
 test('指位置表示はホームと押下キーを指ごとのキー枠に割り当てる', () => {
   const layout = LAYOUT_BY_ID.get('qwerty')!;
   const geometry = buildGeometry('row-staggered');
-  const stroke = evaluate('a', layout, geometry).strokes[0];
+  const stroke = generateTrace('a', layout, geometry).strokes[0];
   const positions = playbackFingerPositionKeys(stroke, geometry);
 
   assert.equal(positions.get('a'), 'LP');
@@ -893,7 +893,7 @@ test('指位置表示はホームと押下キーを指ごとのキー枠に割�
 
 test('レイヤー再生はシフトと出力キーの刻印を現在の面から引く', () => {
   const layout = LAYOUT_BY_ID.get('tsuki-2-263')!;
-  const trace = evaluate('ぬ', layout, buildGeometry('row-staggered'));
+  const trace = generateTrace('ぬ', layout, buildGeometry('row-staggered'));
   const shift = playbackStrokeDisplay(layout, trace.strokes[0]);
   const output = playbackStrokeDisplay(layout, trace.strokes[1]);
 
@@ -909,7 +909,7 @@ test('レイヤー再生はシフトと出力キーの刻印を現在の面か�
 
 test('左右の同一レイヤーを畳み、明示presentation membershipの刻印も表示する', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
-  const stroke = evaluate('あ', layout, buildGeometry('row-staggered')).strokes[0];
+  const stroke = generateTrace('あ', layout, buildGeometry('row-staggered')).strokes[0];
   const display = playbackStrokeDisplay(layout, stroke);
 
   assert.equal(display.keyLabels.get('d'), '⇧');
@@ -942,7 +942,7 @@ test('再生layer groupingはinputRoleではなくfaceLayerIdsをauthorityにす
       [copiedDFace, layerId],
     ]),
   };
-  const stroke = evaluate('あ', layout, buildGeometry('row-staggered')).strokes[0];
+  const stroke = generateTrace('あ', layout, buildGeometry('row-staggered')).strokes[0];
   const display = playbackStrokeDisplay(presentationLayout, stroke);
 
   assert.equal(display.keyLabels.get('a'), 'ほ');
@@ -951,7 +951,7 @@ test('再生layer groupingはinputRoleではなくfaceLayerIdsをauthorityにす
 
 test('Face再生でaggregation mappingが欠落していればerrorにする', () => {
   const layout = LAYOUT_BY_ID.get('shingeta')!;
-  const stroke = evaluate('あ', layout, buildGeometry('row-staggered')).strokes[0];
+  const stroke = generateTrace('あ', layout, buildGeometry('row-staggered')).strokes[0];
   assert.throws(
     () => playbackStrokeDisplay({ ...layout, faceLayerIds: undefined }, stroke),
     /faceLayerIdsの明示が必要/,
@@ -970,7 +970,7 @@ test('combo再生はpresentation trigger alternativeで選択済み親指pathを
     'thumb-r',
     ['thumb-r', 'thumb-l'],
   );
-  const trace = evaluate(
+  const trace = generateTrace(
     'あ',
     layout,
     buildGeometry('row-staggered'),
@@ -989,7 +989,7 @@ test('combo再生はpresentation trigger alternativeで選択済み親指pathを
 
 test('薙刀式の濁音はシフトと出力かなを同じステップで表示する', () => {
   const layout = LAYOUT_BY_ID.get('naginata-v18')!;
-  const stroke = evaluate('が', layout, buildGeometry('row-staggered')).strokes[0];
+  const stroke = generateTrace('が', layout, buildGeometry('row-staggered')).strokes[0];
   const display = playbackStrokeDisplay(layout, stroke);
 
   assert.equal(display.character, 'が');

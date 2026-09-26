@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Finger, Key, Point } from '#input/shapes/geometry.ts';
-import type { Press, Stroke, StrokeParticipation } from '#trace/evaluate.ts';
+import type { Press, Stroke, StrokeParticipation } from '#trace/generate.ts';
 import {
   playbackStepDurationMs,
 } from './playback.ts';
 import { analyzeStrokeStructure } from '../structure/aggregate.ts';
 import {
-  DEFAULT_CHAIN_POLICY,
+  DEFAULT_CHAIN_INTERPRETATION,
 } from '../structure/chain.ts';
 import {
-  DEFAULT_ARPEGGIO_POLICY,
+  DEFAULT_ARPEGGIO_INTERPRETATION,
 } from '../structure/arpeggio.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({
@@ -75,7 +75,7 @@ const multiStroke = (index: number, presses: Press[]): Stroke => ({
 });
 
 const keepSameFinger = {
-  ...DEFAULT_CHAIN_POLICY,
+  ...DEFAULT_CHAIN_INTERPRETATION,
   breakOnSameFinger: false,
 };
 
@@ -160,7 +160,7 @@ test('overlapするArpeggioSpanがあっても同じTransition時間を二重加
     stroke(2, press('LR', [key('w', 'LR', 2, 1)], undefined, true)),
     stroke(3, press('LP', [key('q', 'LP', 1, 1)])),
   ], keepSameFinger, {
-    ...DEFAULT_ARPEGGIO_POLICY,
+    ...DEFAULT_ARPEGGIO_INTERPRETATION,
     bridgeSameFinger: true,
   });
 
@@ -234,7 +234,7 @@ test('Chain境界でHandTransitionが無い場合は元StrokeのTiming fallback�
   const analysis = analyzeStrokeStructure([
     stroke(0, press('LI', [key('f', 'LI', 4, 2)])),
     stroke(1, press('LI', [key('r', 'LI', 3.5, 1)], undefined, true, 3)),
-  ], DEFAULT_CHAIN_POLICY);
+  ], DEFAULT_CHAIN_INTERPRETATION);
 
   assert.equal(
     analysis.transitions.some((transition) => transition.toStrokeIndex === 1),

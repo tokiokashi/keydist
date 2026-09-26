@@ -6,13 +6,13 @@ import type {
   Press,
   Stroke,
   StrokeParticipation,
-} from '#trace/evaluate.ts';
+} from '#trace/generate.ts';
 import {
   analyzeStrokeRolls,
   isRollEligibleStroke,
   transitionsForStrokeSpan,
 } from './roll.ts';
-import { DEFAULT_CHAIN_POLICY } from './chain.ts';
+import { DEFAULT_CHAIN_INTERPRETATION } from './chain.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({
   id,
@@ -66,7 +66,7 @@ const stroke = (index: number, entries: PressSemantic[]): Stroke => ({
 
 const output = (p: Press): PressSemantic => ({ press: p, roles: ['output'] });
 const keepSameFinger = {
-  ...DEFAULT_CHAIN_POLICY,
+  ...DEFAULT_CHAIN_INTERPRETATION,
   breakOnSameFinger: false,
   breakOnThumbOnly: false,
 };

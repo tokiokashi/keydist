@@ -1,9 +1,9 @@
-import type { Stroke } from '#trace/evaluate.ts';
-import type { ChainPolicy } from './chain.ts';
+import type { Stroke } from '#trace/generate.ts';
+import type { ChainInterpretation } from './chain.ts';
 import {
   analyzeStrokeArpeggios,
   type ArpeggioAnalysisResult,
-  type ArpeggioPolicy,
+  type ArpeggioInterpretation,
 } from './arpeggio.ts';
 import type { FingerDirection, HandTransition } from './transition.ts';
 import {
@@ -64,8 +64,8 @@ export interface SfbAggregate {
 }
 
 export interface StructuralConditionSnapshot {
-  readonly chainPolicy: Readonly<ChainPolicy>;
-  readonly arpeggioPolicy: Readonly<ArpeggioPolicy>;
+  readonly chainInterpretation: Readonly<ChainInterpretation>;
+  readonly arpeggioInterpretation: Readonly<ArpeggioInterpretation>;
   readonly triggerRealizationPolicy: Readonly<TriggerRealizationPolicy>;
   readonly actionRealizationPolicy: Readonly<ActionRealizationPolicy>;
 }
@@ -251,8 +251,8 @@ export function aggregateStructuralAnalysis(
       involvedStrokes: coverage(annotations, (annotation) => annotation.inSfb),
     }),
     conditions: Object.freeze({
-      chainPolicy: Object.freeze({ ...analysis.chainPolicy }),
-      arpeggioPolicy: Object.freeze({ ...analysis.arpeggioPolicy }),
+      chainInterpretation: Object.freeze({ ...analysis.chainInterpretation }),
+      arpeggioInterpretation: Object.freeze({ ...analysis.arpeggioInterpretation }),
       triggerRealizationPolicy: Object.freeze({ ...triggerRealizationPolicy }),
       actionRealizationPolicy: Object.freeze({ ...actionRealizationPolicy }),
     }),
@@ -280,13 +280,13 @@ export function aggregateAnalysis(
 
 export function analyzeStrokeStructure(
   strokes: readonly Stroke[],
-  chainPolicy?: ChainPolicy,
-  arpeggioPolicy?: ArpeggioPolicy,
+  chainInterpretation?: ChainInterpretation,
+  arpeggioInterpretation?: ArpeggioInterpretation,
   triggerRealizationPolicy: TriggerRealizationPolicy = DEFAULT_TRIGGER_REALIZATION_POLICY,
   actionRealizationPolicy: ActionRealizationPolicy = DEFAULT_ACTION_REALIZATION_POLICY,
 ): AggregatedAnalysisResult {
   return aggregateAnalysis(
-    analyzeStrokeArpeggios(strokes, chainPolicy, arpeggioPolicy),
+    analyzeStrokeArpeggios(strokes, chainInterpretation, arpeggioInterpretation),
     triggerRealizationPolicy,
     actionRealizationPolicy,
   );

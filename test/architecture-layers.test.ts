@@ -420,8 +420,8 @@ test('新しいファイルは新しい構造の中に置く（src直下など�
 });
 
 test('依存規則の判定そのもの', () => {
-  assert.equal(layerViolation('trace/evaluate.ts', 'input/shapes/geometry.ts'), undefined);
-  assert.ok(layerViolation('input/shapes/geometry.ts', 'trace/evaluate.ts'));
+  assert.equal(layerViolation('trace/generate.ts', 'input/shapes/geometry.ts'), undefined);
+  assert.ok(layerViolation('input/shapes/geometry.ts', 'trace/generate.ts'));
   assert.ok(layerViolation('analyzers/heatmap/extract.ts', 'analyzers/bigram-flow/extract.ts'));
   assert.equal(layerViolation('analyzers/heatmap/extract.ts', 'analyzers/contract.ts'), undefined);
   assert.ok(layerViolation('analyzers/contract.ts', 'analyzers/heatmap/extract.ts'));
@@ -443,9 +443,9 @@ test('依存規則の判定そのもの', () => {
   assert.ok(layerViolation('tester/engine/engine.ts', 'ui/primitives/button.tsx'));
   assert.equal(layerViolation('tester/view.tsx', 'platform/storage.ts'), undefined);
   // 未配置のファイルは移行中なので判定しない。
-  assert.equal(layerViolation('evaluate.ts', 'geometry.ts'), undefined);
+  assert.equal(layerViolation('generate.ts', 'geometry.ts'), undefined);
 
-  assert.ok(packageViolation('trace/evaluate.ts', 'react'));
+  assert.ok(packageViolation('trace/generate.ts', 'react'));
   assert.ok(packageViolation('analyzers/bigram-flow/extract.ts', 'react'));
   assert.equal(packageViolation('analyzers/bigram-flow/bigram-flow-view.tsx', 'react'), undefined);
   assert.ok(packageViolation('analyzers/bigram-flow/bigram-flow-view.tsx', 'dockview-react'));
@@ -458,7 +458,7 @@ test('依存規則の判定そのもの', () => {
 test('import の解決', () => {
   const importer = join(SRC, 'app', 'root.tsx');
   assert.equal(resolveToSrc(importer, './app.css?url'), 'app/app.css');
-  assert.equal(resolveToSrc(importer, '../trace/evaluate.ts'), 'trace/evaluate.ts');
+  assert.equal(resolveToSrc(importer, '../trace/generate.ts'), 'trace/generate.ts');
   assert.equal(resolveToSrc(importer, 'react'), undefined);
   assert.equal(resolveToSrc(importer, '../../package.json'), undefined);
   assert.throws(() => resolveToSrc(importer, '../routes'), /ディレクトリを import しない/);

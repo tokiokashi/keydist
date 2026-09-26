@@ -1,6 +1,6 @@
 import type { GeometryKind } from '#input/shapes/geometry.ts';
-import type { ChainPolicy } from '#interpretation/structure/chain.ts';
-import type { ArpeggioPolicy } from '#interpretation/structure/arpeggio.ts';
+import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
+import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 import type {
   ActionRealizationPolicy,
   TriggerRealizationPolicy,
@@ -17,8 +17,8 @@ export interface ConditionDefaults {
   playbackRateHalfLifeSeconds: number;
   sfbHomeCost: boolean;
   preferOppositeThumb: boolean;
-  chain: ChainPolicy;
-  arpeggioPolicy: ArpeggioPolicy;
+  chain: ChainInterpretation;
+  arpeggioPolicy: ArpeggioInterpretation;
   triggerRealization: TriggerRealizationPolicy;
   actionRealization: ActionRealizationPolicy;
 }

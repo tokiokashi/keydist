@@ -1,4 +1,4 @@
-import type { Trace } from '#trace/evaluate.ts';
+import type { Trace } from '#trace/generate.ts';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 

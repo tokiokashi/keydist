@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry } from '../shapes/geometry.ts';
-import { DEFAULT_OPTIONS, evaluate } from '#trace/evaluate.ts';
+import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import { LAYOUT_BY_ID } from './index.ts';
 import { assertKanaLayout } from '../../../test/kana-layout-helpers.ts';
 
@@ -30,16 +30,16 @@ test('飛鳥の親指面はsimultaneous + layer + hold-capableを明示する', 
     assert.equal(face.triggerPersistence, 'hold-capable');
   }
 
-  const base = evaluate('あ', layout, geometry, DEFAULT_OPTIONS).strokes[0];
+  const base = generateTrace('あ', layout, geometry, DEFAULT_TRACE_POLICY).strokes[0];
   assert.deepEqual(base.classifications, []);
   assert.ok(base.participations.some((p) => p.roles.includes('trigger')));
   assert.ok(base.participations.every((p) => !p.roles.includes('held-trigger')));
 });
 
 test('飛鳥はhold利用ON/OFFで同じ親指triggerの連続保持を比較できる', () => {
-  const off = evaluate('あだ', layout, geometry, DEFAULT_OPTIONS);
-  const on = evaluate('あだ', layout, geometry, {
-    ...DEFAULT_OPTIONS,
+  const off = generateTrace('あだ', layout, geometry, DEFAULT_TRACE_POLICY);
+  const on = generateTrace('あだ', layout, geometry, {
+    ...DEFAULT_TRACE_POLICY,
     triggerRealizationPolicy: { useHold: true },
   });
 

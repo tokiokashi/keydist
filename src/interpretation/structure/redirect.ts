@@ -5,8 +5,8 @@ import {
   type FingerTransition,
   type TransitionAnalysisResult,
 } from './transition.ts';
-import type { Stroke } from '#trace/evaluate.ts';
-import type { ChainPolicy } from './chain.ts';
+import type { Stroke } from '#trace/generate.ts';
+import type { ChainInterpretation } from './chain.ts';
 
 export interface RedirectCandidate {
   readonly candidateIndex: number;
@@ -212,7 +212,7 @@ export function analyzeRedirects(
 /** 呼び出し側向けの合成入口。 */
 export function analyzeStrokeRedirects(
   strokes: readonly Stroke[],
-  policy?: ChainPolicy,
+  policy?: ChainInterpretation,
 ): RedirectAnalysisResult {
   return analyzeRedirects(analyzeStrokeTransitions(strokes, policy));
 }

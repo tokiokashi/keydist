@@ -1,10 +1,10 @@
 import type { Finger } from '#input/shapes/geometry.ts';
-import type { Stroke } from '#trace/evaluate.ts';
+import type { Stroke } from '#trace/generate.ts';
 
 export type Hand = 'left' | 'right';
 
 /** Chain境界を決めるPolicy。各条件は独立して適用する。 */
-export interface ChainPolicy {
+export interface ChainInterpretation {
   breakOnSameFinger: boolean;
   breakOnTriggerOnly: boolean;
   /** 対象手の参加指がすべて親指のStrokeを境界にする。 */
@@ -18,44 +18,14 @@ export interface ChainPolicy {
  *   chainIncludeLayerKeys = true
  * と同じ意味になるPolicy。
  */
-export const DEFAULT_CHAIN_POLICY: ChainPolicy = {
+export const DEFAULT_CHAIN_INTERPRETATION: ChainInterpretation = {
   breakOnSameFinger: true,
   breakOnTriggerOnly: false,
   breakOnThumbOnly: true,
   breakOnOppositeHandSimultaneous: false,
 };
 
-export interface LegacyChainUiSettings {
-  chainIncludeSameFinger: boolean;
-  chainIncludeLayerKeys: boolean;
-}
-
-/**
- * #227 の移行期間用adapter。
- *
- * 旧include...設定から意味が一意に対応する2項目だけをChainPolicyへ写す。
- * 親指only等、旧設定から意味を一意に復元できない条件は推測しない。
- */
-export function chainPolicyFromLegacyUi(
-  legacy: LegacyChainUiSettings,
-  base: ChainPolicy = DEFAULT_CHAIN_POLICY,
-): ChainPolicy {
-  return {
-    ...base,
-    breakOnSameFinger: !legacy.chainIncludeSameFinger,
-    breakOnTriggerOnly: !legacy.chainIncludeLayerKeys,
-  };
-}
-
-/** 旧UIへ表示するための逆変換。Policyのうち旧UIが表現できる項目だけを返す。 */
-export function legacyUiFromChainPolicy(policy: ChainPolicy): LegacyChainUiSettings {
-  return {
-    chainIncludeSameFinger: !policy.breakOnSameFinger,
-    chainIncludeLayerKeys: !policy.breakOnTriggerOnly,
-  };
-}
-
-export function sameChainPolicy(left: ChainPolicy, right: ChainPolicy): boolean {
+export function sameChainInterpretation(left: ChainInterpretation, right: ChainInterpretation): boolean {
   return left.breakOnSameFinger === right.breakOnSameFinger
     && left.breakOnTriggerOnly === right.breakOnTriggerOnly
     && left.breakOnThumbOnly === right.breakOnThumbOnly
@@ -117,7 +87,7 @@ export interface ChainAnalysisResult {
   readonly strokes: readonly Stroke[];
   readonly rawHandRuns: readonly RawHandRun[];
   readonly chains: readonly AnalysisChain[];
-  readonly chainPolicy: Readonly<ChainPolicy>;
+  readonly chainInterpretation: Readonly<ChainInterpretation>;
 }
 
 function handOf(finger: Finger): Hand {
@@ -205,7 +175,7 @@ export function buildRawHandRuns(strokes: readonly Stroke[]): readonly RawHandRu
   return Object.freeze(runs);
 }
 
-function breaksChain(step: RawHandStep, policy: ChainPolicy): boolean {
+function breaksChain(step: RawHandStep, policy: ChainInterpretation): boolean {
   // same-fingerは旧UI互換のため非親指だけを対象にし、親指onlyは独立Policyで扱う。
   return (policy.breakOnSameFinger && step.nonThumbSameFinger)
     || (policy.breakOnTriggerOnly && step.triggerOnly && !step.isComposition)
@@ -220,7 +190,7 @@ function breaksChain(step: RawHandStep, policy: ChainPolicy): boolean {
  */
 export function buildAnalysisChains(
   rawHandRuns: readonly RawHandRun[],
-  policy: ChainPolicy = DEFAULT_CHAIN_POLICY,
+  policy: ChainInterpretation = DEFAULT_CHAIN_INTERPRETATION,
 ): readonly AnalysisChain[] {
   const chains: AnalysisChain[] = [];
 
@@ -260,15 +230,15 @@ export function buildAnalysisChains(
  */
 export function analyzeChains(
   strokes: readonly Stroke[],
-  policy: ChainPolicy = DEFAULT_CHAIN_POLICY,
+  policy: ChainInterpretation = DEFAULT_CHAIN_INTERPRETATION,
 ): ChainAnalysisResult {
   const rawHandRuns = buildRawHandRuns(strokes);
-  const chainPolicy = Object.freeze({ ...policy });
-  const chains = buildAnalysisChains(rawHandRuns, chainPolicy);
+  const chainInterpretation = Object.freeze({ ...policy });
+  const chains = buildAnalysisChains(rawHandRuns, chainInterpretation);
   return Object.freeze({
     strokes,
     rawHandRuns,
     chains,
-    chainPolicy,
+    chainInterpretation,
   });
 }

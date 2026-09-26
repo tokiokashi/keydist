@@ -3,7 +3,7 @@ import {
   buildGeometry,
   type GeometryKind,
 } from '#input/shapes/geometry.ts';
-import { evaluate, type Options, type Trace } from '#trace/evaluate.ts';
+import { generateTrace, type TracePolicy, type Trace } from '#trace/generate.ts';
 import {
   analyzeStrokeStructure,
   type AggregatedAnalysisResult,
@@ -25,7 +25,7 @@ export interface Result {
   analysis: AggregatedAnalysisResult;
   metrics: Metrics;
   geometry: ReturnType<typeof buildGeometry>;
-  options: Options;
+  options: TracePolicy;
   /** 一覧での位置。色はこれで決まるので、選択を外しても他の色は動かない */
   slot: number;
 }
@@ -76,7 +76,7 @@ export function createResultsView(ctx: ResultsViewContext): ResultsViewControlle
         ctx.getUiState().conditions.perLayout[layout.id],
       );
       const geometry = geometryFor(conditions.geometry, layout);
-      const trace = evaluate(text, layout, geometry, conditions.options);
+      const trace = generateTrace(text, layout, geometry, conditions.options);
       const analysis = analyzeStrokeStructure(
         trace.strokes,
         conditions.chainPolicy,
@@ -92,8 +92,8 @@ export function createResultsView(ctx: ResultsViewContext): ResultsViewControlle
           windowSize: conditions.options.windowSize,
           sfbHomeCost: conditions.options.sfbHomeCost,
           preferOppositeThumb: conditions.options.preferOppositeThumb ?? false,
-          chainPolicy: conditions.chainPolicy,
-          arpeggioPolicy: conditions.arpeggioPolicy,
+          chainInterpretation: conditions.chainPolicy,
+          arpeggioInterpretation: conditions.arpeggioPolicy,
           triggerRealizationPolicy: conditions.triggerRealizationPolicy,
           actionRealizationPolicy: conditions.actionRealizationPolicy,
           romajiRuleId: ctx.romajiRuleIdForLayout(layout),

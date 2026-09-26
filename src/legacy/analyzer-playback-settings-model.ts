@@ -1,7 +1,7 @@
-import type { Options } from '#trace/evaluate.ts';
+import type { TracePolicy } from '#trace/generate.ts';
 import type { Layout } from '#input/layouts/index.ts';
-import type { ChainPolicy } from '#interpretation/structure/chain.ts';
-import type { ArpeggioPolicy } from '#interpretation/structure/arpeggio.ts';
+import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
+import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 import type {
   ActionRealizationPolicy,
   TriggerRealizationPolicy,
@@ -13,14 +13,14 @@ import type {
 
 export interface AnalyzerPlaybackSettingsData {
   layout: Layout;
-  options: Options;
+  options: TracePolicy;
   playback: UiPlaybackState;
   rate: Pick<
     UiStateConditionsDefaults,
     'playbackRateAverage' | 'playbackRateWindow' | 'playbackRateHalfLifeSeconds'
   >;
-  chainPolicy: ChainPolicy;
-  arpeggioPolicy: ArpeggioPolicy;
+  chainPolicy: ChainInterpretation;
+  arpeggioPolicy: ArpeggioInterpretation;
   triggerRealization: TriggerRealizationPolicy;
   actionRealization: ActionRealizationPolicy;
   layoutOverride: boolean;
@@ -51,8 +51,8 @@ export interface AnalyzerPlaybackSettingsActions {
   setRateAverage(value: 'sma' | 'ewma'): void;
   setRateWindow(value: number): void;
   setRateHalfLife(value: number): void;
-  setChainPolicy(policy: ChainPolicy): void;
-  setArpeggioPolicy(policy: ArpeggioPolicy): void;
+  setChainPolicy(policy: ChainInterpretation): void;
+  setArpeggioPolicy(policy: ArpeggioInterpretation): void;
   setTriggerRealization(policy: TriggerRealizationPolicy): void;
   setActionRealization(policy: ActionRealizationPolicy): void;
   openCalibration(): void;

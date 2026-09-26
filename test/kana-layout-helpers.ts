@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildGeometry } from '#input/shapes/geometry.ts';
-import { DEFAULT_OPTIONS, evaluate } from '#trace/evaluate.ts';
+import { DEFAULT_TRACE_POLICY, generateTrace } from '#trace/generate.ts';
 import type { Layout } from '#input/layouts/index.ts';
 import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '#input/text/sample-ja.ts';
 
@@ -73,7 +73,7 @@ export function assertKanaLayout(layout: Layout, missing: readonly string[] = []
     ['旧文', SAMPLE_TEXT_JA_LEGACY],
   ] as const) {
     const text = source.replace(/\s+/g, '');
-    const trace = evaluate(text, layout, geometry, DEFAULT_OPTIONS);
+    const trace = generateTrace(text, layout, geometry, DEFAULT_TRACE_POLICY);
     assert.equal(trace.skipped, 0, `${layout.id} の ${name} で未定義文字がある`);
     assert.deepEqual(trace.errors, [], `${layout.id} の ${name} でキー解決エラーがある`);
   }

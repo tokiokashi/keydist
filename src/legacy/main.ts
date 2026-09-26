@@ -79,8 +79,8 @@ import {
   type ConditionPreset,
 } from './condition-presets.ts';
 import { setLayoutGeometryOverride } from '#engine/condition-resolution.ts';
-import type { ChainPolicy } from '#interpretation/structure/chain.ts';
-import type { ArpeggioPolicy } from '#interpretation/structure/arpeggio.ts';
+import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
+import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 import {
   type ActionRealizationPolicy,
   type TriggerRealizationPolicy,
@@ -751,7 +751,7 @@ function updatePlaybackSetting<K extends keyof UiPlaybackState>(
   });
 }
 
-function updateChainPolicy(policy: ChainPolicy): void {
+function updateChainPolicy(policy: ChainInterpretation): void {
   const layoutId = currentPlaybackLayoutId();
   updateUiState((draft) => {
     const hasLayoutOverride = layoutId !== undefined
@@ -767,7 +767,7 @@ function updateChainPolicy(policy: ChainPolicy): void {
   });
 }
 
-function updateArpeggioPolicy(policy: ArpeggioPolicy): void {
+function updateArpeggioPolicy(policy: ArpeggioInterpretation): void {
   const layoutId = currentPlaybackLayoutId();
   updateUiState((draft) => {
     const hasLayoutOverride = layoutId !== undefined

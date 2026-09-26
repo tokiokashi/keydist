@@ -1,6 +1,6 @@
 import { isThumb } from '#input/shapes/geometry.ts';
-import type { Stroke } from '#trace/evaluate.ts';
-import type { ChainPolicy, Hand } from './chain.ts';
+import type { Stroke } from '#trace/generate.ts';
+import type { ChainInterpretation, Hand } from './chain.ts';
 import type { HandTransition } from './transition.ts';
 import type { RedirectEvent } from './redirect.ts';
 import {
@@ -11,21 +11,21 @@ import {
   type RollDirection,
 } from './roll.ts';
 
-export interface ArpeggioPolicy {
+export interface ArpeggioInterpretation {
   readonly includeThumb: boolean;
   readonly bridgeSameFinger: boolean;
   readonly includeSingleRedirectTail: boolean;
 }
 
-export const DEFAULT_ARPEGGIO_POLICY: ArpeggioPolicy = {
+export const DEFAULT_ARPEGGIO_INTERPRETATION: ArpeggioInterpretation = {
   includeThumb: false,
   bridgeSameFinger: false,
   includeSingleRedirectTail: false,
 };
 
-export function sameArpeggioPolicy(
-  left: ArpeggioPolicy,
-  right: ArpeggioPolicy,
+export function sameArpeggioInterpretation(
+  left: ArpeggioInterpretation,
+  right: ArpeggioInterpretation,
 ): boolean {
   return left.includeThumb === right.includeThumb
     && left.bridgeSameFinger === right.bridgeSameFinger
@@ -46,7 +46,7 @@ export interface ArpeggioSpan {
 }
 
 export interface ArpeggioAnalysisResult extends RollAnalysisResult {
-  readonly arpeggioPolicy: Readonly<ArpeggioPolicy>;
+  readonly arpeggioInterpretation: Readonly<ArpeggioInterpretation>;
   readonly arpeggioSpans: readonly ArpeggioSpan[];
 }
 
@@ -81,7 +81,7 @@ function spanHasThumb(
 
 function coreSeeds(
   analysis: RollAnalysisResult,
-  policy: ArpeggioPolicy,
+  policy: ArpeggioInterpretation,
 ): readonly SpanSeed[] {
   const seeds: SpanSeed[] = [];
 
@@ -133,7 +133,7 @@ function coreSeeds(
 function bridgeTransitionDirection(
   analysis: RollAnalysisResult,
   transition: HandTransition,
-  policy: ArpeggioPolicy,
+  policy: ArpeggioInterpretation,
 ): 'same' | RollDirection | undefined {
   const fromStroke = analysis.strokes[transition.fromStrokeIndex];
   const toStroke = analysis.strokes[transition.toStrokeIndex];
@@ -174,7 +174,7 @@ function transitionStartingAt(
 function expandSeedForBridge(
   analysis: RollAnalysisResult,
   seed: SpanSeed,
-  policy: ArpeggioPolicy,
+  policy: ArpeggioInterpretation,
 ): SpanSeed {
   let startStrokeIndex = seed.startStrokeIndex;
   let endStrokeIndex = seed.endStrokeIndex;
@@ -289,7 +289,7 @@ function normalizeBridgedSeeds(
 function applySameFingerBridge(
   analysis: RollAnalysisResult,
   seeds: readonly SpanSeed[],
-  policy: ArpeggioPolicy,
+  policy: ArpeggioInterpretation,
 ): readonly SpanSeed[] {
   if (!policy.bridgeSameFinger) return Object.freeze([...seeds]);
   return normalizeBridgedSeeds(
@@ -398,7 +398,7 @@ function dedupeFinalSpans(
 
 export function buildArpeggioSpans(
   analysis: RollAnalysisResult,
-  policy: ArpeggioPolicy = DEFAULT_ARPEGGIO_POLICY,
+  policy: ArpeggioInterpretation = DEFAULT_ARPEGGIO_INTERPRETATION,
 ): readonly ArpeggioSpan[] {
   const seeds = coreSeeds(analysis, policy);
   const bridged = applySameFingerBridge(analysis, seeds, policy);
@@ -412,24 +412,24 @@ export function buildArpeggioSpans(
 
 export function analyzeArpeggios(
   rollAnalysis: RollAnalysisResult,
-  policy: ArpeggioPolicy = DEFAULT_ARPEGGIO_POLICY,
+  policy: ArpeggioInterpretation = DEFAULT_ARPEGGIO_INTERPRETATION,
 ): ArpeggioAnalysisResult {
-  const arpeggioPolicy = Object.freeze({ ...policy });
-  const arpeggioSpans = buildArpeggioSpans(rollAnalysis, arpeggioPolicy);
+  const arpeggioInterpretation = Object.freeze({ ...policy });
+  const arpeggioSpans = buildArpeggioSpans(rollAnalysis, arpeggioInterpretation);
   return Object.freeze({
     ...rollAnalysis,
-    arpeggioPolicy,
+    arpeggioInterpretation,
     arpeggioSpans,
   });
 }
 
 export function analyzeStrokeArpeggios(
   strokes: readonly Stroke[],
-  chainPolicy?: ChainPolicy,
-  arpeggioPolicy: ArpeggioPolicy = DEFAULT_ARPEGGIO_POLICY,
+  chainInterpretation?: ChainInterpretation,
+  arpeggioInterpretation: ArpeggioInterpretation = DEFAULT_ARPEGGIO_INTERPRETATION,
 ): ArpeggioAnalysisResult {
   return analyzeArpeggios(
-    analyzeStrokeRolls(strokes, chainPolicy),
-    arpeggioPolicy,
+    analyzeStrokeRolls(strokes, chainInterpretation),
+    arpeggioInterpretation,
   );
 }

@@ -10,7 +10,7 @@ import {
 } from './rules.ts';
 import { kanaToRomaji } from './kunrei.ts';
 import { buildGeometry } from '../shapes/geometry.ts';
-import { evaluate } from '#trace/evaluate.ts';
+import { generateTrace } from '#trace/generate.ts';
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { LAYOUTS_JA, withRomaji } from '../layouts/index.ts';
 import { SAMPLE_TEXT_JA } from '../text/sample-ja.ts';
@@ -74,8 +74,8 @@ test('既定のローマ字割り当ては組み込み配列の入力列と一�
   for (const id of ['qwerty', 'oonishi']) {
     const layout = LAYOUTS_JA.find((candidate) => candidate.id === id)!;
     const assigned = withRomaji(layout, tableForRule(defaultRomajiRuleId(id)));
-    const builtInTrace = evaluate(text, layout, geometry, options);
-    const assignedTrace = evaluate(text, assigned, geometry, options);
+    const builtInTrace = generateTrace(text, layout, geometry, options);
+    const assignedTrace = generateTrace(text, assigned, geometry, options);
 
     assert.equal(assignedTrace.skipped, builtInTrace.skipped, id);
     assert.equal(assignedTrace.strokes.length, builtInTrace.strokes.length, id);
@@ -90,9 +90,9 @@ test('既定のローマ字割り当ては組み込み配列の入力列と一�
 test('QWERTYにAZIKを割り当てると短縮綴りが打鍵数へ反映される', () => {
   const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
   const qwerty = LAYOUTS_JA.find((layout) => layout.id === 'qwerty')!;
-  const normal = computeMetrics(evaluate(text, qwerty, geometry, options), geometry);
+  const normal = computeMetrics(generateTrace(text, qwerty, geometry, options), geometry);
   const azik = computeMetrics(
-    evaluate(text, withRomaji(qwerty, tableForRule('azik')), geometry, options),
+    generateTrace(text, withRomaji(qwerty, tableForRule('azik')), geometry, options),
     geometry,
   );
   assert.ok(azik.strokes < normal.strokes, `AZIK: ${azik.strokes} 通常: ${normal.strokes}`);

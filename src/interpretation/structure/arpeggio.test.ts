@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Finger, Key, Point } from '#input/shapes/geometry.ts';
-import type { Press, Stroke, StrokeParticipation } from '#trace/evaluate.ts';
+import type { Press, Stroke, StrokeParticipation } from '#trace/generate.ts';
 import {
   analyzeStrokeArpeggios,
-  DEFAULT_ARPEGGIO_POLICY,
-  sameArpeggioPolicy,
+  DEFAULT_ARPEGGIO_INTERPRETATION,
+  sameArpeggioInterpretation,
 } from './arpeggio.ts';
-import { DEFAULT_CHAIN_POLICY } from './chain.ts';
+import { DEFAULT_CHAIN_INTERPRETATION } from './chain.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({
   id,
@@ -55,7 +55,7 @@ const stroke = (index: number, p: Press): Stroke => ({
 });
 
 const keepSameFinger = {
-  ...DEFAULT_CHAIN_POLICY,
+  ...DEFAULT_CHAIN_INTERPRETATION,
   breakOnSameFinger: false,
   breakOnThumbOnly: false,
 };
@@ -87,13 +87,13 @@ test('includeThumb=falseはstructural Rollを消さずArpeggio core採用だけ�
   const withoutThumb = analyzeStrokeArpeggios(
     strokes,
     keepSameFinger,
-    DEFAULT_ARPEGGIO_POLICY,
+    DEFAULT_ARPEGGIO_INTERPRETATION,
   );
   assert.equal(withoutThumb.longRolls.length, 1);
   assert.deepEqual(withoutThumb.arpeggioSpans, []);
 
   const withThumb = analyzeStrokeArpeggios(strokes, keepSameFinger, {
-    ...DEFAULT_ARPEGGIO_POLICY,
+    ...DEFAULT_ARPEGGIO_INTERPRETATION,
     includeThumb: true,
   });
   assert.deepEqual(withThumb.longRolls, withoutThumb.longRolls);
@@ -116,7 +116,7 @@ test('A → B → B → C はbridge有効時に1つのmaximal Spanへ正規化�
   ]), [[0, 2], [2, 4]]);
 
   const bridged = analyzeStrokeArpeggios(strokes, keepSameFinger, {
-    ...DEFAULT_ARPEGGIO_POLICY,
+    ...DEFAULT_ARPEGGIO_INTERPRETATION,
     bridgeSameFinger: true,
   });
   assert.deepEqual(bridged.arpeggioSpans, [{
@@ -137,7 +137,7 @@ test('sameをbridgeしてLongRollを拡張してもcoreKindはrollのまま', ()
     stroke(2, press('LM', [key('d', 'LM', 3, 2)])),
     stroke(3, press('LI', [key('f', 'LI', 4, 2)])),
   ], keepSameFinger, {
-    ...DEFAULT_ARPEGGIO_POLICY,
+    ...DEFAULT_ARPEGGIO_INTERPRETATION,
     bridgeSameFinger: true,
   });
 
@@ -164,7 +164,7 @@ test('→ same ← はbridge有効でも単一Spanへ結合しない', () => {
     stroke(2, press('LR', [key('w', 'LR', 2, 1)], undefined, true)),
     stroke(3, press('LP', [key('q', 'LP', 1, 1)])),
   ], keepSameFinger, {
-    ...DEFAULT_ARPEGGIO_POLICY,
+    ...DEFAULT_ARPEGGIO_INTERPRETATION,
     bridgeSameFinger: true,
   });
 
@@ -192,7 +192,7 @@ test('includeSingleRedirectTailは末尾直後の逆方向1 Transitionだけを�
     stroke(3, press('LR', [key('w', 'LR', 2, 1)])),
     stroke(4, press('LI', [key('f', 'LI', 4, 2)])),
   ], keepSameFinger, {
-    ...DEFAULT_ARPEGGIO_POLICY,
+    ...DEFAULT_ARPEGGIO_INTERPRETATION,
     includeSingleRedirectTail: true,
   });
 
@@ -267,7 +267,7 @@ test('→ same → same → はbridge有効時にsame個数上限なしで1つ�
     stroke(3, press('LR', [key('x', 'LR', 2.2, 3)], undefined, true)),
     stroke(4, press('LM', [key('d', 'LM', 3, 2)])),
   ], keepSameFinger, {
-    ...DEFAULT_ARPEGGIO_POLICY,
+    ...DEFAULT_ARPEGGIO_INTERPRETATION,
     bridgeSameFinger: true,
   });
 
@@ -311,7 +311,7 @@ test('includeSingleRedirectTailはleading redirectを吸収しない', () => {
     stroke(2, press('LR', [key('s', 'LR', 2, 2)])),
     stroke(3, press('LM', [key('e', 'LM', 3, 1)])),
   ], keepSameFinger, {
-    ...DEFAULT_ARPEGGIO_POLICY,
+    ...DEFAULT_ARPEGGIO_INTERPRETATION,
     includeSingleRedirectTail: true,
   });
 
@@ -330,14 +330,14 @@ test('includeSingleRedirectTailはleading redirectを吸収しない', () => {
   );
 });
 
-test('ArpeggioPolicy比較はobject identityではなく3項目の意味で比較する', () => {
-  assert.equal(sameArpeggioPolicy(
-    DEFAULT_ARPEGGIO_POLICY,
-    { ...DEFAULT_ARPEGGIO_POLICY },
+test('ArpeggioInterpretation比較はobject identityではなく3項目の意味で比較する', () => {
+  assert.equal(sameArpeggioInterpretation(
+    DEFAULT_ARPEGGIO_INTERPRETATION,
+    { ...DEFAULT_ARPEGGIO_INTERPRETATION },
   ), true);
-  assert.equal(sameArpeggioPolicy(
-    DEFAULT_ARPEGGIO_POLICY,
-    { ...DEFAULT_ARPEGGIO_POLICY, bridgeSameFinger: true },
+  assert.equal(sameArpeggioInterpretation(
+    DEFAULT_ARPEGGIO_INTERPRETATION,
+    { ...DEFAULT_ARPEGGIO_INTERPRETATION, bridgeSameFinger: true },
   ), false);
 });
 
@@ -348,7 +348,7 @@ test('Arpeggio result / Policy / Spanはimmutable', () => {
   ], keepSameFinger);
 
   assert.equal(Object.isFrozen(result), true);
-  assert.equal(Object.isFrozen(result.arpeggioPolicy), true);
+  assert.equal(Object.isFrozen(result.arpeggioInterpretation), true);
   assert.equal(Object.isFrozen(result.arpeggioSpans), true);
   assert.equal(Object.isFrozen(result.arpeggioSpans[0]), true);
   assert.equal(Object.isFrozen(result.arpeggioSpans[0].extensions), true);

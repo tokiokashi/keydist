@@ -1,6 +1,6 @@
 import { fingerRelation, type FingerDirection } from '#interpretation/structure/transition.ts';
 import { isThumb, type Finger, type Point } from '#input/shapes/geometry.ts';
-import type { Press, Stroke } from '#trace/evaluate.ts';
+import type { Press, Stroke } from '#trace/generate.ts';
 
 export type BigramSource = 'actual' | 'within-hand';
 export type VectorHand = 'left' | 'right' | 'cross';
@@ -214,7 +214,7 @@ function withinHandVectors(strokes: readonly Stroke[]): BigramVector[] {
 
 /**
  * 実Stroke bigram、または反対手だけを飛ばした手内bigramをvector factへ変換する。
- * Roll / Arpeggioの成立判定やChainPolicyは参照しない。
+ * Roll / Arpeggioの成立判定やChainInterpretationは参照しない。
  */
 export function buildBigramVectors(
   strokes: readonly Stroke[],
