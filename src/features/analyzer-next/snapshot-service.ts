@@ -8,8 +8,13 @@ export interface AnalysisSnapshotServiceOptions<Input, Snapshot> {
   evaluate(input: Input): Snapshot;
 }
 
-export interface AnalysisSnapshotService<Snapshot> {
+export interface AnalysisSnapshotService<Input, Snapshot> {
   get(layoutId: string): Snapshot | undefined;
+  /**
+   * Read using a resolution captured by the caller. This is used by View readers that must stay
+   * coherent with one Session revision even if the live store advances during a concurrent render.
+   */
+  getResolved(layoutId: string, resolved: SnapshotResolution<Input>): Snapshot;
   invalidateLayout(layoutId: string): void;
   clear(): void;
   cacheSize(): number;
@@ -33,35 +38,46 @@ function removeUnreferenced(
  */
 export function createAnalysisSnapshotService<Input, Snapshot>(
   options: AnalysisSnapshotServiceOptions<Input, Snapshot>,
-): AnalysisSnapshotService<Snapshot> {
+): AnalysisSnapshotService<Input, Snapshot> {
   const cache = new Map<string, Snapshot>();
   const layoutKeys = new Map<string, string>();
+
+  const releaseLayout = (layoutId: string): void => {
+    const previousKey = layoutKeys.get(layoutId);
+    layoutKeys.delete(layoutId);
+    if (previousKey !== undefined) {
+      removeUnreferenced(cache as Map<string, unknown>, layoutKeys, previousKey);
+    }
+  };
+
+  const getResolved = (
+    layoutId: string,
+    resolved: SnapshotResolution<Input>,
+  ): Snapshot => {
+    const previousKey = layoutKeys.get(layoutId);
+    if (previousKey !== resolved.key) {
+      layoutKeys.set(layoutId, resolved.key);
+      if (previousKey !== undefined) {
+        removeUnreferenced(cache as Map<string, unknown>, layoutKeys, previousKey);
+      }
+    }
+
+    if (cache.has(resolved.key)) return cache.get(resolved.key)!;
+    const value = options.evaluate(resolved.input);
+    cache.set(resolved.key, value);
+    return value;
+  };
 
   return {
     get(layoutId) {
       const resolved = options.resolve(layoutId);
       if (!resolved) {
-        const previousKey = layoutKeys.get(layoutId);
-        layoutKeys.delete(layoutId);
-        if (previousKey !== undefined) {
-          removeUnreferenced(cache as Map<string, unknown>, layoutKeys, previousKey);
-        }
+        releaseLayout(layoutId);
         return undefined;
       }
-
-      const previousKey = layoutKeys.get(layoutId);
-      if (previousKey !== resolved.key) {
-        layoutKeys.set(layoutId, resolved.key);
-        if (previousKey !== undefined) {
-          removeUnreferenced(cache as Map<string, unknown>, layoutKeys, previousKey);
-        }
-      }
-
-      if (cache.has(resolved.key)) return cache.get(resolved.key);
-      const value = options.evaluate(resolved.input);
-      cache.set(resolved.key, value);
-      return value;
+      return getResolved(layoutId, resolved);
     },
+    getResolved,
     invalidateLayout(layoutId) {
       const key = layoutKeys.get(layoutId);
       layoutKeys.delete(layoutId);
