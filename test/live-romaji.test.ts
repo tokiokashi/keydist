@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { kunrei } from '../src/romaji/kunrei.ts';
+import { kunrei } from '#input/romaji/kunrei.ts';
 import {
   liveRomajiContextSatisfied,
   romajiToKana,
