@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { AnalyzerPage } from '../analyzer-page.tsx';
+import { AnalyzerPage } from '#legacy/analyzer-page.tsx';
 import analyzerCss from '../style.css?url';
 
 export const Route = createFileRoute('/analyzer')({
