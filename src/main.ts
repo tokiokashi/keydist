@@ -11,6 +11,7 @@ import { bindTips, hideTip, showTip } from './chart.ts';
 import {
   load as loadUserLayouts,
   save as saveUserLayouts,
+  USER_LAYOUTS_STORAGE_KEY,
   toLayout,
   type RomajiRuleId,
   type UserLayout,
@@ -21,6 +22,7 @@ import {
   tableForRule,
   allRomajiRules,
   saveRomajiSettings,
+  ROMAJI_SETTINGS_STORAGE_KEY,
 } from './romaji/rules.ts';
 import { loadPlaybackCalibration } from './playback-calibration.ts';
 import type { ModeId } from './layout-selection.ts';
@@ -63,6 +65,7 @@ import {
   load as loadUserGeometryShapes,
   newId as newGeometryId,
   save as saveUserGeometryShapes,
+  USER_GEOMETRIES_STORAGE_KEY,
 } from './user-geometries.ts';
 import {
   allConditionPresets,
@@ -84,6 +87,7 @@ import {
   serializeConditionBundle,
 } from './condition-bundle.ts';
 import { downloadText } from './browser-download.ts';
+import { notifyKeydistStorageChange } from './browser-storage-events.ts';
 
 export function mountAnalyzerRuntime(): () => void {
   const el = resolveAppElements();
@@ -91,6 +95,21 @@ let userLayouts: UserLayout[] = loadUserLayouts();
 let userGeometryShapes: PhysicalShape[] = loadUserGeometryShapes();
 let romajiSettings = loadRomajiSettings();
 let conditionPresets: ConditionPreset[] = loadConditionPresets();
+
+function persistUserLayouts(layouts: UserLayout[]): void {
+  saveUserLayouts(layouts);
+  notifyKeydistStorageChange(USER_LAYOUTS_STORAGE_KEY);
+}
+
+function persistUserGeometryShapes(shapes: readonly PhysicalShape[]): void {
+  saveUserGeometryShapes(shapes);
+  notifyKeydistStorageChange(USER_GEOMETRIES_STORAGE_KEY);
+}
+
+function persistRomajiSettings(settings: typeof romajiSettings): void {
+  saveRomajiSettings(settings);
+  notifyKeydistStorageChange(ROMAJI_SETTINGS_STORAGE_KEY);
+}
 const layoutEditorModel = createAnalyzerLayoutEditorModel(allRomajiRules(romajiSettings.rules));
 const bigramFlowModel = createAnalyzerBigramFlowModel();
 const controlsModel = createAnalyzerControlsModel();
@@ -211,7 +230,7 @@ function migrateCurrentGeometryShape(): void {
     migrated.id = current.id.startsWith('shape-') ? current.id : newGeometryId();
     if (migrated.name === 'カスタム形状') migrated.name = 'カスタム形状 1';
     userGeometryShapes = [...userGeometryShapes, migrated];
-    saveUserGeometryShapes(userGeometryShapes);
+    persistUserGeometryShapes(userGeometryShapes);
     updateUiState((draft) => {
       draft.conditions.geometrySettings.shape = clonePhysicalShape(migrated);
       draft.conditions.defaults.geometry = customGeometryKind(migrated.id);
@@ -264,7 +283,7 @@ function activeLayouts(): Layout[] {
 
 function addUserLayout(definition: UserLayout): void {
   userLayouts = [...userLayouts, definition];
-  saveUserLayouts(userLayouts);
+  persistUserLayouts(userLayouts);
   addLayoutChoices([definition.id]);
 
   updateUiState((draft) => {
@@ -285,7 +304,7 @@ const romajiDialogModel = createAnalyzerRomajiDialogModel({
   getUserLayouts: () => userLayouts,
   commitRomajiSettings: (settings, rulesChanged) => {
     romajiSettings = settings;
-    saveRomajiSettings(settings);
+    persistRomajiSettings(settings);
     if (rulesChanged) {
       ROMAJI_TABLE_CACHE.clear();
       layoutEditorModel.setRomajiRules(allRomajiRules(settings.rules));
@@ -293,7 +312,7 @@ const romajiDialogModel = createAnalyzerRomajiDialogModel({
   },
   commitUserLayouts: (layouts) => {
     userLayouts = layouts;
-    saveUserLayouts(layouts);
+    persistUserLayouts(layouts);
     ROMAJI_TABLE_CACHE.clear();
   },
   onApplied: () => {
@@ -305,7 +324,7 @@ const romajiDialogModel = createAnalyzerRomajiDialogModel({
 
 function removeUserLayout(id: string) {
   userLayouts = userLayouts.filter((l) => l.id !== id);
-  saveUserLayouts(userLayouts);
+  persistUserLayouts(userLayouts);
   removeLayoutChoice(id);
   updateUiState((draft) => {
     for (const mode of ['en', 'ja'] as const) {
@@ -560,15 +579,15 @@ const conditionsActions: AnalyzerConditionsActions = {
         if (!builtIds.has(layout.id)) mergedLayouts.set(layout.id, layout);
       }
       userLayouts = [...mergedLayouts.values()];
-      saveUserLayouts(userLayouts);
+      persistUserLayouts(userLayouts);
 
       const mergedShapes = new Map(userGeometryShapes.map((shape) => [shape.id, shape]));
       for (const shape of bundle.geometryShapes) mergedShapes.set(shape.id, shape);
       userGeometryShapes = [...mergedShapes.values()];
-      saveUserGeometryShapes(userGeometryShapes);
+      persistUserGeometryShapes(userGeometryShapes);
 
       romajiSettings = bundle.romajiSettings;
-      saveRomajiSettings(romajiSettings);
+      persistRomajiSettings(romajiSettings);
       ROMAJI_TABLE_CACHE.clear();
       layoutEditorModel.setRomajiRules(allRomajiRules(romajiSettings.rules));
 
@@ -630,7 +649,7 @@ const geometryEditorModel = createAnalyzerGeometryEditorModel({
   getUserGeometryShapes: () => userGeometryShapes,
   commitUserGeometryShapes: (shapes) => {
     userGeometryShapes = shapes;
-    saveUserGeometryShapes(shapes);
+    persistUserGeometryShapes(shapes);
   },
   onGeometryChanged: (preservePlaybackCursor) => {
     fillGeometryOptions();

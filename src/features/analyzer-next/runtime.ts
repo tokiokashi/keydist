@@ -24,7 +24,11 @@ import {
   load as loadUserLayouts,
   type UserLayout,
 } from '../../user-layouts.ts';
-import { createAnalysisDomainCatalog, type AnalysisDomainCatalog } from './domain-catalog.ts';
+import {
+  createMutableAnalysisDomainCatalog,
+  type AnalysisDomainCatalogSource,
+  type MutableAnalysisDomainCatalog,
+} from './domain-catalog.ts';
 import { createResolvedAnalysisInputResolver } from './resolved-input.ts';
 import { analysisSessionSeedFromAppState } from './session-app-state.ts';
 import {
@@ -53,7 +57,7 @@ export interface AnalysisRuntimeSource {
 
 export interface AnalysisRuntime {
   session: AnalysisSessionStore;
-  catalog: AnalysisDomainCatalog;
+  catalog: MutableAnalysisDomainCatalog;
   snapshots: AnalysisSnapshotService<ResolvedAnalysisInput, AnalysisSnapshot>;
   commands: AnalysisSessionCommands;
   createReader(session: AnalysisSessionState): AnalysisSnapshotReader;
@@ -76,7 +80,7 @@ function choicesFor(userLayouts: readonly UserLayout[]): UiStateChoices {
   };
 }
 
-function normalizeAppState(source: AnalysisRuntimeSource): {
+export function normalizeAnalysisRuntimeSource(source: AnalysisRuntimeSource): {
   appState: AppStateV2;
   geometrySettings: ReturnType<typeof createDefaultUiState>['conditions']['geometrySettings'];
 } {
@@ -188,7 +192,7 @@ function setTimingOverrideCommand<K extends keyof AnalysisTimingOverrideConditio
 
 function createCommands(
   session: AnalysisSessionStore,
-  catalog: AnalysisDomainCatalog,
+  catalog: MutableAnalysisDomainCatalog,
 ): AnalysisSessionCommands {
   return {
     setFocus(layoutId) {
@@ -233,11 +237,11 @@ function createCommands(
  * Snapshot cache stay explicit and are shared by standalone routes and the future Workspace.
  */
 export function createAnalysisRuntime(source: AnalysisRuntimeSource): AnalysisRuntime {
-  const normalized = normalizeAppState(source);
+  const normalized = normalizeAnalysisRuntimeSource(source);
   const session = createAnalysisSessionStore(
     analysisSessionSeedFromAppState(normalized.appState),
   );
-  const catalog = createAnalysisDomainCatalog({
+  const catalog = createMutableAnalysisDomainCatalog({
     userLayouts: source.userLayouts,
     userGeometryShapes: source.userGeometryShapes,
     romajiSettings: source.romajiSettings,
@@ -269,17 +273,36 @@ export function createAnalysisRuntime(source: AnalysisRuntimeSource): AnalysisRu
   };
 }
 
+export function analysisDomainCatalogSourceFromRuntimeSource(
+  source: AnalysisRuntimeSource,
+): AnalysisDomainCatalogSource {
+  const normalized = normalizeAnalysisRuntimeSource(source);
+  return {
+    userLayouts: source.userLayouts,
+    userGeometryShapes: source.userGeometryShapes,
+    romajiSettings: source.romajiSettings,
+    geometrySettings: normalized.geometrySettings,
+  };
+}
+
 /**
- * Browser-only composition root. Call after mount so SSR/prerender never reads localStorage.
+ * Browser-only source reader. Storage is kept at the platform composition boundary.
  */
-export function createBrowserAnalysisRuntime(): AnalysisRuntime {
+export function loadBrowserAnalysisRuntimeSource(): AnalysisRuntimeSource {
   if (typeof window === 'undefined') {
-    throw new Error('createBrowserAnalysisRuntime must run in a browser');
+    throw new Error('loadBrowserAnalysisRuntimeSource must run in a browser');
   }
-  return createAnalysisRuntime({
+  return {
     appState: loadAppStateDocument(window.localStorage),
     userLayouts: loadUserLayouts(),
     userGeometryShapes: loadUserGeometryShapes(window.localStorage),
     romajiSettings: loadRomajiSettings(),
-  });
+  };
+}
+
+/**
+ * Browser-only composition root. Call after mount so SSR/prerender never reads localStorage.
+ */
+export function createBrowserAnalysisRuntime(): AnalysisRuntime {
+  return createAnalysisRuntime(loadBrowserAnalysisRuntimeSource());
 }

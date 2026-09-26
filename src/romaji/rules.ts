@@ -63,7 +63,7 @@ export const ROMAJI_RULES: Record<BuiltinRomajiRuleId, RomajiRuleSpec & {
   },
 };
 
-const STORAGE_KEY = 'keydist:romaji-rules';
+export const ROMAJI_SETTINGS_STORAGE_KEY = 'keydist:romaji-rules';
 const QWERTY_KEYS = new Set([...QWERTY_LEGEND.join('')]);
 
 /** 既定配列に最初から割り当てるルール。保存設定が無ければこれを使う。 */
@@ -114,7 +114,7 @@ export function allRomajiRules(customRules: UserRomajiRule[] = []) {
 
 export function loadRomajiSettings(): RomajiSettings {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(ROMAJI_SETTINGS_STORAGE_KEY);
     if (!raw) return { rules: [], assignments: {} };
     const parsed = JSON.parse(raw) as Partial<RomajiSettings>;
     const rules = Array.isArray(parsed.rules) ? parsed.rules.filter(isUserRomajiRule) : [];
@@ -129,7 +129,7 @@ export function loadRomajiSettings(): RomajiSettings {
 
 export function saveRomajiSettings(settings: RomajiSettings) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    localStorage.setItem(ROMAJI_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
   } catch {
     // 保存できなくても、その場の評価と編集は成立する
   }
