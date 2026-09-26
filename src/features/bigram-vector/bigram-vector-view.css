@@ -449,27 +449,32 @@
 }
 
 .flow-profile-panel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  height: 22rem;
   min-height: 22rem;
+  overflow: hidden;
+}
+
+.flow-profile-viewport {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 22rem;
   overflow: auto;
+  scrollbar-gutter: stable both-edges;
 }
 
 .flow-profile-stage {
-  position: relative;
-  z-index: 1;
   display: grid;
   place-items: center;
-  flex: 0 0 auto;
   min-width: 100%;
-  min-height: 22rem;
+  min-height: 100%;
 }
 
 .flow-profile-svg {
   display: block;
-  margin: 0;
   flex: 0 0 auto;
+  margin: 0;
 }
 
 .flow-profile-svg[data-scale-mode="fit"],
