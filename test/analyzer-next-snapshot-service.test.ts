@@ -5,7 +5,7 @@ import { createAnalysisDomainCatalog } from '../src/features/analyzer-next/domai
 import { createResolvedAnalysisInputResolver } from '../src/features/analyzer-next/resolved-input.ts';
 import { createAnalysisSessionStore } from '../src/features/analyzer-next/session-store.ts';
 import { createAnalysisSnapshotService } from '../src/features/analyzer-next/snapshot-service.ts';
-import { DEFAULT_CONDITION_DEFAULTS, createDefaultUiState } from '../src/ui-state.ts';
+import { DEFAULT_CONDITION_DEFAULTS, createDefaultUiState } from '#legacy/ui-state.ts';
 
 test('same resolved calculation key reuses Snapshot', () => {
   let evaluationCount = 0;
