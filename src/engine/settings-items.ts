@@ -151,13 +151,22 @@ export const SETTINGS_ITEMS = {
    *
    * 打ち方（ローマ字入力）レベルでの上書きを想定して inputMethod/layout/setup を許可し、
    * globalは持たない（ローマ字を使わない打ち方には意味が無い値のため）。
-   * かな直接配列・英字配列（ローマ字表を持たない）では `isApplicable` がfalseになる。
+   *
+   * `isApplicable` は `context.inputMethod === 'romaji'` だけで判定する（`layout.romajiTable`
+   * の有無は見ない）。mode（en/ja）を廃止したことで、`qwerty` 等の組み込み配列は英語を
+   * そのまま打つ（打ち方 direct）用にも、ローマ字経由で日本語を打つ（打ち方 romaji）用にも
+   * 同じ `Layout` オブジェクトが使われるようになった（`LAYOUTS` と `LAYOUTS_JA` は
+   * 同じidの配列を共有しており、`LAYOUT_BY_ID` は後者＝ `romajiTable` 付きの実体を残す。
+   * #544レビュー: 「一つのLayoutが打ち方によって適用可否が変わる」）。そのため
+   * `layout.romajiTable !== undefined` を見ると、実際には direct/kana-direct で使われている
+   * 場面でも「ローマ字規則が効く」と誤って報告してしまう。打ち方そのもの（`inputMethod`）で
+   * 判定すれば、同じ配列でもどちらの打ち方で使われているかに正しく従う。
    */
   romajiRuleId: defineItem<string>({
     id: 'romajiRuleId',
     allowedLevels: INPUT_METHOD_LAYOUT_SETUP,
     defaultValue: (context) => defaultRomajiRuleId(context.layoutId),
-    isApplicable: (context) => context.layout.romajiTable !== undefined,
+    isApplicable: (context) => context.inputMethod === 'romaji',
   }),
 } as const satisfies ItemRegistry;
 
