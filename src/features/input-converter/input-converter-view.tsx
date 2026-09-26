@@ -15,10 +15,10 @@ import {
   SHIFT_KEY,
   THUMB_KEY,
   type PhysicalShape,
-} from '../../geometry.ts';
+} from '#input/shapes/geometry.ts';
 import {
   sanitizeGeometrySettings,
-} from '../../geometry-settings.ts';
+} from '#input/shapes/settings.ts';
 import {
   aggregationLegendMap,
   aggregationTriggerKeys,
@@ -26,18 +26,18 @@ import {
   presentationLayerGuide,
   presentationTriggerColorSlots,
   semanticCombinationLabels,
-} from '../../layers.ts';
+} from '#input/layouts/layers.ts';
 import {
   allLayerTriggerKeys,
   matchKeyPatterns,
   summarizeCandidateMatches,
-} from '../../key-pattern-picker.ts';
-import { JIS_KANA } from '../../layouts/jis-kana.ts';
-import { LAYOUTS, LAYOUTS_JA, type Layout } from '../../layouts/index.ts';
+} from '#input/layouts/key-pattern-picker.ts';
+import { JIS_KANA } from '#input/layouts/jis-kana.ts';
+import { LAYOUTS, LAYOUTS_JA, type Layout } from '#input/layouts/index.ts';
 import {
   physicalKeysUsedByLayout,
   visibleGeometryKeys,
-} from '../../layout-physical-keys.ts';
+} from '#input/layouts/physical-keys.ts';
 import { load as loadUserGeometryShapes } from '#platform/assets/user-geometries-storage.ts';
 import {
   createWorkspacePanelRegistry,

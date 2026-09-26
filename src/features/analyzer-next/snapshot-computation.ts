@@ -1,13 +1,13 @@
 import type { ModeId } from '#legacy/layout-selection.ts';
-import type { Layout } from '../../layouts/types.ts';
-import type { Geometry } from '../../geometry.ts';
+import type { Layout } from '#input/layouts/types.ts';
+import type { Geometry } from '#input/shapes/geometry.ts';
 import type { ResolvedConditions } from '#engine/condition-resolution.ts';
-import { evaluate, type Trace } from '../../evaluate.ts';
+import { evaluate, type Trace } from '#trace/evaluate.ts';
 import {
   analyzeStrokeStructure,
   type AggregatedAnalysisResult,
-} from '../../analysis-aggregate.ts';
-import { computeMetrics, type Metrics } from '../../metrics.ts';
+} from '#interpretation/structure/aggregate.ts';
+import { computeMetrics, type Metrics } from '#interpretation/metrics.ts';
 
 export interface ResolvedAnalysisInput {
   mode: ModeId;

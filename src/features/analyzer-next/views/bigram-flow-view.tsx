@@ -1,4 +1,4 @@
-import { BigramFlowView } from '../../bigram-vector/bigram-flow-view.tsx';
+import { BigramFlowView } from '#analyzers/bigram-flow/bigram-flow-view.tsx';
 import type { BigramFlowViewConfig } from '../view-registry.ts';
 import type { AnalysisViewProps } from './view-contract.ts';
 

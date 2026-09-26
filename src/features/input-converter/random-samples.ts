@@ -1,4 +1,4 @@
-import { SAMPLE_TEXT_JA } from '../../sample-text-ja.ts';
+import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
 
 const PHRASE_MIN_LENGTH = 5;
 const PHRASE_MAX_LENGTH = 15;

@@ -1,4 +1,4 @@
-import type { InputClassification } from '../core/semantic-input/index.ts';
+import type { InputClassification } from '../semantics/index.ts';
 import type { ComboCondition, ComboDefinition, ComboPresentation } from './types.ts';
 
 /**

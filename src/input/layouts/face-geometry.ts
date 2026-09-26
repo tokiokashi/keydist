@@ -4,7 +4,7 @@ import {
   resolveKeyId,
   THUMB_KEY,
   type Finger,
-} from '../geometry.ts';
+} from '../shapes/geometry.ts';
 import type { Face } from './types.ts';
 
 export type Hand = 'left' | 'right';
