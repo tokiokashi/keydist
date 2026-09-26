@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TypingInputEngine } from '../src/core/input-converter/index.ts';
+import { TypingInputEngine } from '#tester/engine/index.ts';
 import { DEFAULT_OPTIONS, evaluate } from '#trace/evaluate.ts';
 import { buildGeometry, SHIFT_KEY } from '#input/shapes/geometry.ts';
 import { LAYOUTS } from '#input/layouts/index.ts';
