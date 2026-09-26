@@ -1,13 +1,13 @@
 import {
   analyzerSlicesFromUiState,
   uiStateFromAppState,
-} from '../app-state.ts';
-import { DEFAULT_APPEARANCE, loadAppearancePreference } from '../appearance.ts';
+} from '#app/state/app-state.ts';
+import { DEFAULT_APPEARANCE, loadAppearancePreference } from '#app/theme/appearance.ts';
 import {
   loadAppStateDocument,
   patchAppState,
   removeStorageKeys,
-} from '../persistence/app-state-storage.ts';
+} from '#app/state/app-state-storage.ts';
 import {
   LEGACY_SELECTION_KEY,
   LEGACY_TEXT_COLLAPSED_KEY,
