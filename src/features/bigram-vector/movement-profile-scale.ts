@@ -14,7 +14,13 @@ const FIT_PLOT_RADIUS = 82;
 const FIXED_SVG_UNITS_PER_U = 24;
 const POLAR_GAP = 9;
 const POLAR_AMPLITUDE = 16;
-const MAX_POLAR_DISPLAY_GAIN = 3;
+export const MIN_POLAR_BANDWIDTH_DEGREES = 4;
+export const MAX_POLAR_DISPLAY_GAIN = 3;
+/**
+ * UI最小HWHM (4°) の単峰von Mises KDEが取る理論peak [rad^-1]。
+ * density自体は正規化確率密度のまま保持し、描画時だけこの固定基準で0..1相当に写像する。
+ */
+export const MAX_POLAR_DISPLAY_DENSITY = 6.726629634118925;
 const OUTER_MARGIN = 13;
 
 export function movementPlotScale(
@@ -41,4 +47,20 @@ export function movementPlotScale(
     halfSize,
     viewSize: halfSize * 2,
   };
+}
+
+
+/** 正規化density [rad^-1] を、手やdatasetに依存しない固定display scaleへ写像する。 */
+export function polarDisplayDensity(density: number): number {
+  return Math.max(0, density) / MAX_POLAR_DISPLAY_DENSITY;
+}
+
+export function polarDisplayRadius(
+  baseRadius: number,
+  amplitude: number,
+  density: number,
+  gain: number,
+): number {
+  return baseRadius
+    + polarDisplayDensity(density) * amplitude * Math.max(0, gain);
 }
