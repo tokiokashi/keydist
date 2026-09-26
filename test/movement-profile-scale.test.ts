@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   movementPlotExtent,
   movementPlotScale,
-} from '../src/features/bigram-vector/movement-profile-scale.ts';
+} from '#analyzers/bigram-flow/movement-profile-scale.ts';
 
 test('Auto fitは最大距離に合わせつつ左右共通range内でplot radiusを一定にする', () => {
   const twoUnits = movementPlotScale(2, 'fit');

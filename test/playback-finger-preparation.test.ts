@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry } from '../src/geometry.ts';
-import { evaluate } from '../src/evaluate.ts';
-import { LAYOUT_BY_ID } from '../src/layouts/index.ts';
-import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
+import { buildGeometry } from '#input/shapes/geometry.ts';
+import { evaluate } from '#trace/evaluate.ts';
+import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
 import {
   playbackFingerPositionKeys,
   playbackPreparedFingerPositionKeys,
   playbackTimingSchedule,
-} from '../src/playback.ts';
+} from '#interpretation/timing/playback.ts';
 
 const geometry = buildGeometry('row-staggered');
 const layout = LAYOUT_BY_ID.get('qwerty')!;

@@ -29,19 +29,19 @@ import {
   setPlaybackSpeedMultiplier,
   setPlaybackStepsPerSecond,
   stepPlayback,
-} from '../src/playback.ts';
-import { buildGeometry } from '../src/geometry.ts';
-import { evaluate } from '../src/evaluate.ts';
+} from '#interpretation/timing/playback.ts';
+import { buildGeometry } from '#input/shapes/geometry.ts';
+import { evaluate } from '#trace/evaluate.ts';
 import {
   faceFromEntries,
   fromFaces,
   LAYOUT_BY_ID,
   withRomaji,
   withThumbShiftAlternatives,
-} from '../src/layouts/index.ts';
+} from '#input/layouts/index.ts';
 import { kunrei } from '#input/romaji/kunrei.ts';
-import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
-import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from '../src/analysis-chain.ts';
+import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
+import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from '#interpretation/structure/chain.ts';
 import {
   actionsPerSecondFromIntervals,
   clearPlaybackCalibration,
@@ -59,7 +59,7 @@ import {
   savePlaybackCalibration,
   sameHandDirectedFingerPairKey,
   sameHandFingerPairKey,
-} from '../src/playback-calibration.ts';
+} from '#interpretation/timing/calibration.ts';
 
 const playing = (cursor = 0) => ({
   ...createPlaybackState(),
