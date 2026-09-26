@@ -101,28 +101,28 @@ function normalizeAppState(source: AnalysisRuntimeSource): {
 }
 
 type DistanceDefaultCommand = {
-  [K in keyof AnalysisDistanceConditions]: {
+  [K in keyof AnalysisDistanceConditions]-?: {
     key: K;
     value: AnalysisDistanceConditions[K];
   }
 }[keyof AnalysisDistanceConditions];
 
 type DistanceOverrideCommand = {
-  [K in keyof AnalysisDistanceOverrideConditions]: {
+  [K in keyof AnalysisDistanceOverrideConditions]-?: {
     key: K;
     value: AnalysisDistanceOverrideConditions[K] | undefined;
   }
 }[keyof AnalysisDistanceOverrideConditions];
 
 type TimingDefaultCommand = {
-  [K in keyof AnalysisTimingConditions]: {
+  [K in keyof AnalysisTimingConditions]-?: {
     key: K;
     value: AnalysisTimingConditions[K];
   }
 }[keyof AnalysisTimingConditions];
 
 type TimingOverrideCommand = {
-  [K in keyof AnalysisTimingOverrideConditions]: {
+  [K in keyof AnalysisTimingOverrideConditions]-?: {
     key: K;
     value: AnalysisTimingOverrideConditions[K] | undefined;
   }
