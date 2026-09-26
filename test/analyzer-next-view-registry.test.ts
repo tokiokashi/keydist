@@ -24,17 +24,29 @@ test('Bigram Flow codec sanitizes config without changing Session state', () => 
     selectedFingers: ['index', 'index', 'ring', 'invalid'],
     lineScale: 'log',
     layerOrder: 'cross-hand-top',
+    hoverScale: 'global',
+    movementScaleMode: 'fixed',
+    polarBandwidth: 12,
+    polarGain: 2.5,
   }, 1), {
     source: 'within-hand',
     selectedFingers: ['index', 'ring'],
     lineScale: 'log',
     layerOrder: 'cross-hand-top',
+    hoverScale: 'global',
+    movementScaleMode: 'fixed',
+    polarBandwidth: 12,
+    polarGain: 2.5,
   });
   assert.deepEqual(definition.configCodec.decode({ source: 'bad' }, 1), {
     source: 'actual',
     selectedFingers: [],
     lineScale: 'linear',
     layerOrder: 'weight',
+    hoverScale: 'key',
+    movementScaleMode: 'fit',
+    polarBandwidth: 5,
+    polarGain: 1,
   });
 });
 
