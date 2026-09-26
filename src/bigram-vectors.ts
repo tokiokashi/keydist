@@ -402,7 +402,7 @@ export function directionDistribution(
 
 
 /**
- * 実vector角度へvon Mises相当の円周kernelを重ね、連続的な方向密度をsampleする。
+ * 実vector角度へvon Mises相当の円周kernelを重ね、連続的な方向応答をsampleする。
  * bandwidthDegreesはkernel強度がpeakの1/2になる半値角。
  * responseは各vectorのweight比で平均するため0..1の共通尺度を保つ。
  */
