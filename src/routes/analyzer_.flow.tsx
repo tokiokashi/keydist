@@ -24,8 +24,8 @@ import {
 import type { AnalysisRuntime } from '../features/analyzer-next/runtime.ts';
 import '../features/analyzer-next/standalone-view.css';
 
-const BIGRAM_FLOW_DEFINITION = analysisViewDefinition('bigram-flow')
-  as AnalysisViewDefinition<BigramFlowViewConfig>;
+const BIGRAM_FLOW_DEFINITION = analysisViewDefinition('bigram-flow') as
+  AnalysisViewDefinition<BigramFlowViewConfig>;
 
 export const Route = createFileRoute('/analyzer/flow')({
   validateSearch: validateBigramFlowSearch,
