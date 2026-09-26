@@ -1,11 +1,11 @@
-import { ALL_FINGERS, dist, resolveKeyId, type Finger, type Geometry, type Key, type Point } from './geometry.ts';
+import { ALL_FINGERS, dist, resolveKeyId, type Finger, type Geometry, type Key, type Point } from '#input/shapes/geometry.ts';
 import {
   COMBO_LAYER_ID,
   SINGLE_LAYER_ID,
   type HoldPhase,
   type LayerDefinition,
   type Layout,
-} from './layouts/types.ts';
+} from '#input/layouts/types.ts';
 import { kanaToRomajiChunks } from '#input/romaji/kunrei.ts';
 import {
   applyActionRealizationPolicy,
@@ -20,7 +20,7 @@ import {
   type InputContextRequirement,
   type TriggerHoldState,
   type TriggerRealizationPolicy,
-} from './core/semantic-input/index.ts';
+} from '#input/semantics/index.ts';
 
 export interface Options {
   /** 先読みN入力。選択されたcanonical inputでN入力先まで残す候補を比較する */

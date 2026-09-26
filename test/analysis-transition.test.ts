@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import type { Finger, Key, Point } from '../src/geometry.ts';
-import type { Press, Stroke, StrokeParticipation } from '../src/evaluate.ts';
+import type { Finger, Key, Point } from '#input/shapes/geometry.ts';
+import type { Press, Stroke, StrokeParticipation } from '#trace/evaluate.ts';
 import {
   analyzeStrokeTransitions,
   fingerRelation,
-} from '../src/analysis-transition.ts';
-import { DEFAULT_CHAIN_POLICY } from '../src/analysis-chain.ts';
+} from '#interpretation/structure/transition.ts';
+import { DEFAULT_CHAIN_POLICY } from '#interpretation/structure/chain.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({
   id,
