@@ -4,12 +4,14 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LAYOUTS, LAYOUTS_JA, type Layout } from '#input/layouts/index.ts';
+import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from '#input/layouts/index.ts';
 import {
   assignmentWithHomeKeys,
   buildGeometry,
   DEFAULT_FINGER_ASSIGNMENT,
+  JIS_FINGER_ASSIGNMENT,
   PHYSICAL_SHAPES,
+  type FingerAssignment,
   type PresetGeometryKind,
 } from '#input/shapes/geometry.ts';
 import { generateTrace, type TracePolicy } from '#trace/generate.ts';
@@ -21,7 +23,23 @@ import type {
   ActionRealizationPolicy,
   TriggerRealizationPolicy,
 } from '#input/semantics/index.ts';
+import { tableForRule } from '#input/romaji/rules.ts';
 import { sampleText, type TextLanguage } from '#input/text/samples.ts';
+
+/**
+ * 組み込みの指割り当て。fixtureに記録した fingerAssignmentId から実体を引き直す
+ * （コーディネーターレビュー指摘: 指割り当てをハードコードせず記録した値から再構築する）。
+ */
+const FINGER_ASSIGNMENTS: Record<string, FingerAssignment> = {
+  [DEFAULT_FINGER_ASSIGNMENT.id]: DEFAULT_FINGER_ASSIGNMENT,
+  [JIS_FINGER_ASSIGNMENT.id]: JIS_FINGER_ASSIGNMENT,
+};
+
+function findFingerAssignment(id: string): FingerAssignment {
+  const assignment = FINGER_ASSIGNMENTS[id];
+  assert.ok(assignment, `未知のfingerAssignmentId: ${id}`);
+  return assignment;
+}
 
 // Epic #544 Phase 2 のfixture回帰テスト。
 //
@@ -43,6 +61,7 @@ interface ConditionsSnapshot {
   sfbHomeCost: boolean;
   preferOppositeThumb: boolean;
   geometryShapeId: string;
+  fingerAssignmentId: string;
   chainInterpretation: ChainInterpretation;
   arpeggioInterpretation: ArpeggioInterpretation;
   triggerRealizationPolicy: TriggerRealizationPolicy;
@@ -93,9 +112,14 @@ function findLayout(language: TextLanguage, layoutId: string): Layout {
  * コード側の DEFAULT_* には一切フォールバックしない
  * （windowSize・sfbHomeCost・preferOppositeThumb・triggerRealizationPolicy・
  * actionRealizationPolicy・chainInterpretation・arpeggioInterpretation・romajiRuleId・
- * geometryShapeId は全てfixture.conditionsから取る）。
+ * geometryShapeId・fingerAssignmentId は全てfixture.conditionsから取る）。
  * src/legacy/results-view.ts の render() と同じ並び
  * （generateTrace → analyzeStrokeStructure → computeMetrics）で呼ぶ。
+ *
+ * romajiTableは配列定義に静的に焼き込まれたものをそのまま使わない。
+ * src/legacy/main.ts の layoutsOf() が毎回 tableForRule(ruleId, ...) で組み直してから
+ * 差し替えているのと同じく、ここも recorded romajiRuleId から input層の tableForRule で
+ * 組み直す（コーディネーターレビュー指摘: layout.romajiTableの静的値に頼らない）。
  */
 function recompute(fixtureCase: FixtureCase) {
   const layout = findLayout(fixtureCase.language, fixtureCase.layoutId);
@@ -111,10 +135,15 @@ function recompute(fixtureCase: FixtureCase) {
     `${fixtureCase.id}: サンプルテキストの文字数がfixture生成時と違う`,
   );
 
+  const resolvedLayout = fixtureCase.conditions.romajiRuleId !== null
+    ? withRomaji(layout, tableForRule(fixtureCase.conditions.romajiRuleId))
+    : layout;
+
   const shapeId = fixtureCase.conditions.geometryShapeId as PresetGeometryKind;
+  const fingerAssignment = findFingerAssignment(fixtureCase.conditions.fingerAssignmentId);
   const geometry = buildGeometry(
     PHYSICAL_SHAPES[shapeId],
-    assignmentWithHomeKeys(DEFAULT_FINGER_ASSIGNMENT, layout.homeKeys),
+    assignmentWithHomeKeys(fingerAssignment, layout.homeKeys),
   );
   const options: TracePolicy = {
     windowSize: fixtureCase.conditions.windowSize,
@@ -124,7 +153,7 @@ function recompute(fixtureCase: FixtureCase) {
     actionRealizationPolicy: fixtureCase.conditions.actionRealizationPolicy,
   };
 
-  const trace = generateTrace(text, layout, geometry, options);
+  const trace = generateTrace(text, resolvedLayout, geometry, options);
   const analysis = analyzeStrokeStructure(
     trace.strokes,
     fixtureCase.conditions.chainInterpretation,
@@ -212,10 +241,14 @@ for (const fixtureCase of fixture.cases) {
       const { nSensitivity } = await import('#analyzers/n-sensitivity/sensitivity.ts');
       const layout = findLayout(fixtureCase.language, fixtureCase.layoutId);
       const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
+      const resolvedLayout = fixtureCase.conditions.romajiRuleId !== null
+        ? withRomaji(layout, tableForRule(fixtureCase.conditions.romajiRuleId))
+        : layout;
       const shapeId = fixtureCase.conditions.geometryShapeId as PresetGeometryKind;
+      const fingerAssignment = findFingerAssignment(fixtureCase.conditions.fingerAssignmentId);
       const geometry = buildGeometry(
         PHYSICAL_SHAPES[shapeId],
-        assignmentWithHomeKeys(DEFAULT_FINGER_ASSIGNMENT, layout.homeKeys),
+        assignmentWithHomeKeys(fingerAssignment, layout.homeKeys),
       );
       const options: TracePolicy = {
         windowSize: fixtureCase.conditions.windowSize,
@@ -226,7 +259,7 @@ for (const fixtureCase of fixture.cases) {
       };
       const points = nSensitivity(
         text,
-        layout,
+        resolvedLayout,
         geometry,
         options,
         fixtureCase.nSensitivity!.map((p) => p.windowSize),

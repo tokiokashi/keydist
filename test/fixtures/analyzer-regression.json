@@ -65,6 +65,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -265,6 +266,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -465,6 +467,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -665,6 +668,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -865,6 +869,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -1065,6 +1070,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -1292,6 +1298,209 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "jis-default",
+        "geometryShapeId": "row-staggered",
+        "preferOppositeThumb": false,
+        "romajiRuleId": null,
+        "sfbHomeCost": true,
+        "triggerRealizationPolicy": {
+          "useHold": false
+        },
+        "windowSize": 3
+      },
+      "id": "en:qwerty:default:fingerAssignment=jis-default（既定の列固定割り当てと違う指割り当て。同指連続の判定が変わる分岐）",
+      "language": "en",
+      "layoutId": "qwerty",
+      "metrics": {
+        "actions": 1003,
+        "adjacent": [
+          {
+            "maxExcess": 0.8027756377319948,
+            "meanExcess": 0.005387394513549558,
+            "pair": [
+              "LP",
+              "LR"
+            ],
+            "stdDev": 0.044388787107257306
+          },
+          {
+            "maxExcess": 0.8027756377319948,
+            "meanExcess": 0.05311282702339105,
+            "pair": [
+              "LR",
+              "LM"
+            ],
+            "stdDev": 0.1429682270214783
+          },
+          {
+            "maxExcess": 1.6925824035672523,
+            "meanExcess": 0.2534586158066289,
+            "pair": [
+              "LM",
+              "LI"
+            ],
+            "stdDev": 0.4024359066715754
+          },
+          {
+            "maxExcess": 1.462214450449026,
+            "meanExcess": 0.1751497822890621,
+            "pair": [
+              "RI",
+              "RM"
+            ],
+            "stdDev": 0.3476061966502923
+          },
+          {
+            "maxExcess": 0.8027756377319948,
+            "meanExcess": 0.06458114125479265,
+            "pair": [
+              "RM",
+              "RR"
+            ],
+            "stdDev": 0.17317484253619098
+          },
+          {
+            "maxExcess": 0.6007810593582121,
+            "meanExcess": 0.04299801274130911,
+            "pair": [
+              "RR",
+              "RP"
+            ],
+            "stdDev": 0.14983078143271955
+          }
+        ],
+        "comboPresses": 0,
+        "combos": {
+          "definitions": 0,
+          "hits": 0,
+          "matched": 0
+        },
+        "fingerAssignmentId": "jis-default",
+        "fingerAssignmentName": "JIS既定（列固定）",
+        "geometryId": "row-staggered",
+        "geometryName": "ロウスタッガード（ANSI）",
+        "inputChars": 1003,
+        "layers": [
+          {
+            "id": "single",
+            "label": "単打",
+            "presses": 1003
+          },
+          {
+            "id": "layer:Shift",
+            "label": "Shift",
+            "presses": 0
+          }
+        ],
+        "meanPerStroke": 0.6364079449024159,
+        "perCharPresses": 1,
+        "perCharSteps": 1,
+        "perCharUnits": 0.6364079449024159,
+        "perFinger": {
+          "LI": 184.88621046215223,
+          "LM": 116.54287771131085,
+          "LP": 1.0307764064044151,
+          "LR": 18.64123289762495,
+          "LT": 0,
+          "RI": 180.5427825378261,
+          "RM": 60.81580797786043,
+          "RP": 10.307764064044152,
+          "RR": 65.54971667989645,
+          "RT": 0
+        },
+        "perFingerPresses": {
+          "LI": 203,
+          "LM": 145,
+          "LP": 56,
+          "LR": 67,
+          "LT": 0,
+          "RI": 168,
+          "RM": 66,
+          "RP": 12,
+          "RR": 103,
+          "RT": 183
+        },
+        "presses": 1003,
+        "sameFinger": 38,
+        "singleKeyRate": 100,
+        "singleTapLayerRate": 100,
+        "singleTapRate": 100,
+        "skipped": 0,
+        "strokes": 1003,
+        "totalMm": 12159.942064442197,
+        "totalUnits": 638.3171687371232
+      },
+      "note": "fingerAssignment=jis-default（既定の列固定割り当てと違う指割り当て。同指連続の判定が変わる分岐）",
+      "sampleId": "default",
+      "textLength": 1003,
+      "textSha256": "a2b941518b5a8114218229e15a734f3c15ca7a1b159e0383cad9c74b5f310189"
+    },
+    {
+      "analysis": {
+        "arpeggio": {
+          "coverage": {
+            "rate": 0.3300099700897308,
+            "strokes": 331
+          },
+          "meanSpanLength": 2.0552147239263805,
+          "spans": 163
+        },
+        "directionalTransitions": {
+          "empty": 0,
+          "inward": 122,
+          "mixed": 0,
+          "outward": 96,
+          "same": 18,
+          "total": 236
+        },
+        "redirect": {
+          "events": 52,
+          "pivots": {
+            "rate": 0.0518444666001994,
+            "strokes": 52
+          }
+        },
+        "roll": {
+          "anyRoll": {
+            "rate": 0.3300099700897308,
+            "strokes": 331
+          },
+          "longRoll": {
+            "rate": 0.026919242273180457,
+            "strokes": 27
+          },
+          "twoRoll": {
+            "rate": 0.3070787637088734,
+            "strokes": 308
+          }
+        },
+        "sfb": {
+          "events": 18,
+          "involvedStrokes": {
+            "rate": 0.03589232303090728,
+            "strokes": 36
+          }
+        },
+        "strokeCount": 1003
+      },
+      "conditions": {
+        "actionRealizationPolicy": {
+          "triggerActivation": "disabled",
+          "triggerActivationClassOverrides": {},
+          "triggerActivationOverrides": []
+        },
+        "arpeggioInterpretation": {
+          "bridgeSameFinger": false,
+          "includeSingleRedirectTail": false,
+          "includeThumb": false
+        },
+        "chainInterpretation": {
+          "breakOnOppositeHandSimultaneous": false,
+          "breakOnSameFinger": true,
+          "breakOnThumbOnly": true,
+          "breakOnTriggerOnly": false
+        },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "ortholinear",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -1493,6 +1702,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -1693,6 +1903,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -1898,6 +2109,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -2103,6 +2315,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -2309,6 +2522,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -2515,6 +2729,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
@@ -2715,6 +2930,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
@@ -2915,6 +3131,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
@@ -3115,6 +3332,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
@@ -3315,6 +3533,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
@@ -3515,6 +3734,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
@@ -3715,6 +3935,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -3910,6 +4131,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -4105,6 +4327,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -4310,6 +4533,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -4515,6 +4739,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -4860,6 +5085,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -5232,6 +5458,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": true,
         "romajiRuleId": null,
@@ -5578,6 +5805,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -5924,6 +6152,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -6270,6 +6499,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -6616,6 +6846,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -6821,6 +7052,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -7026,6 +7258,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
@@ -7226,6 +7459,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
@@ -7426,6 +7660,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
@@ -7627,6 +7862,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": "oonishi",
@@ -7827,6 +8063,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": "oonishi",
@@ -8027,6 +8264,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
@@ -8227,6 +8465,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
@@ -8427,6 +8666,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -8627,6 +8867,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -8827,6 +9068,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -9027,6 +9269,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -9227,6 +9470,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -9432,6 +9676,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -9637,6 +9882,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -9852,6 +10098,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -10067,6 +10314,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -10267,6 +10515,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": null,
@@ -10467,6 +10716,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
@@ -10667,6 +10917,7 @@
           "breakOnThumbOnly": true,
           "breakOnTriggerOnly": false
         },
+        "fingerAssignmentId": "default",
         "geometryShapeId": "row-staggered",
         "preferOppositeThumb": false,
         "romajiRuleId": "kunrei",
@@ -10803,6 +11054,6 @@
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     }
   ],
-  "sourceCommit": "ed4c394a5bac5ccaadee085a4acbc7e0a3e6ba9f",
+  "sourceCommit": "d34c37ef51cdc8364ac6ab92e7042b2a5439f8a4",
   "version": 1
 }

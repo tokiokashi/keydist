@@ -3,12 +3,14 @@ import { createHash } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LAYOUTS, LAYOUTS_JA, type Layout } from '#input/layouts/index.ts';
+import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from '#input/layouts/index.ts';
 import {
   assignmentWithHomeKeys,
   buildGeometry,
   DEFAULT_FINGER_ASSIGNMENT,
+  JIS_FINGER_ASSIGNMENT,
   PHYSICAL_SHAPES,
+  type FingerAssignment,
   type Geometry,
   type PresetGeometryKind,
 } from '#input/shapes/geometry.ts';
@@ -36,7 +38,7 @@ import {
   type ActionRealizationPolicy,
   type TriggerRealizationPolicy,
 } from '#input/semantics/index.ts';
-import { defaultRomajiRuleId } from '#input/romaji/rules.ts';
+import { defaultRomajiRuleId, tableForRule } from '#input/romaji/rules.ts';
 import { nSensitivity } from '#analyzers/n-sensitivity/sensitivity.ts';
 import { sampleText, SAMPLE_TEXTS, type TextLanguage } from '#input/text/samples.ts';
 
@@ -57,6 +59,7 @@ interface ConditionsSnapshot {
   sfbHomeCost: boolean;
   preferOppositeThumb: boolean;
   geometryShapeId: string;
+  fingerAssignmentId: string;
   chainInterpretation: ChainInterpretation;
   arpeggioInterpretation: ArpeggioInterpretation;
   triggerRealizationPolicy: TriggerRealizationPolicy;
@@ -181,6 +184,7 @@ interface RunOptions {
   sfbHomeCost?: boolean;
   preferOppositeThumb?: boolean;
   shapeId?: PresetGeometryKind;
+  fingerAssignment?: FingerAssignment;
   chainInterpretation?: ChainInterpretation;
   arpeggioInterpretation?: ArpeggioInterpretation;
   triggerRealizationPolicy?: TriggerRealizationPolicy;
@@ -201,9 +205,10 @@ function runCase(
 ): FixtureCase {
   const text = sampleText(language, sampleId);
   const shapeId = opts.shapeId ?? 'row-staggered';
+  const fingerAssignment = opts.fingerAssignment ?? DEFAULT_FINGER_ASSIGNMENT;
   const geometry: Geometry = buildGeometry(
     PHYSICAL_SHAPES[shapeId],
-    assignmentWithHomeKeys(DEFAULT_FINGER_ASSIGNMENT, layout.homeKeys),
+    assignmentWithHomeKeys(fingerAssignment, layout.homeKeys),
   );
   const triggerRealizationPolicy = opts.triggerRealizationPolicy
     ?? { ...DEFAULT_TRIGGER_REALIZATION_POLICY };
@@ -220,8 +225,12 @@ function runCase(
     actionRealizationPolicy,
   };
   const romajiRuleId = layout.romajiTable ? defaultRomajiRuleId(layout.id) : null;
+  // src/legacy/main.ts の layoutsOf() は、romajiTableを持つ配列に対して毎回
+  // tableForRule(ruleId, ...) で表を組み直してから差し替える（静的に焼き込まれた
+  // テーブルをそのまま使わない）。ここも同じ経路をinput層の関数だけで再現する。
+  const resolvedLayout = romajiRuleId !== null ? withRomaji(layout, tableForRule(romajiRuleId)) : layout;
 
-  const trace = generateTrace(text, layout, geometry, options);
+  const trace = generateTrace(text, resolvedLayout, geometry, options);
   const analysis = analyzeStrokeStructure(
     trace.strokes,
     chainInterpretation,
@@ -253,6 +262,7 @@ function runCase(
       sfbHomeCost: options.sfbHomeCost,
       preferOppositeThumb: options.preferOppositeThumb ?? false,
       geometryShapeId: shapeId,
+      fingerAssignmentId: fingerAssignment.id,
       chainInterpretation,
       arpeggioInterpretation,
       triggerRealizationPolicy,
@@ -263,9 +273,11 @@ function runCase(
     analysis: analysisSummary(analysis),
     ...(opts.withNSensitivity
       ? {
+        // app側（src/legacy/analyzer-metrics-content.tsx）はresult.layout（既にromaji表が
+        // 差し替わったlayout）を渡す。ここも同じくresolvedLayoutを渡す。
         nSensitivity: nSensitivity(
           text,
-          layout,
+          resolvedLayout,
           geometry,
           options,
           [1, 2, 3, 5, 7],
@@ -346,6 +358,10 @@ function generate(): Fixture {
   cases.push(runCase('ja', asuka, 'modern', {
     arpeggioInterpretation: { ...DEFAULT_ARPEGGIO_INTERPRETATION, includeThumb: true },
     note: 'arpeggioInterpretation.includeThumb=true（ArpeggioSpanに親指を含める分岐）',
+  }));
+  cases.push(runCase('en', qwertyEn, 'default', {
+    fingerAssignment: JIS_FINGER_ASSIGNMENT,
+    note: 'fingerAssignment=jis-default（既定の列固定割り当てと違う指割り当て。同指連続の判定が変わる分岐）',
   }));
 
   cases.sort((a, b) => a.id.localeCompare(b.id));
