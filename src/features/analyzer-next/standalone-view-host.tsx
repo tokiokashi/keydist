@@ -4,6 +4,7 @@ import {
   type ComponentType,
 } from 'react';
 import type { AnalysisRuntime } from './runtime.ts';
+import { projectAnalysisConditionChrome } from './analysis-view-chrome.ts';
 import {
   standaloneBindingFromSearch,
   type StandaloneViewSearch,
@@ -90,6 +91,11 @@ export function StandaloneAnalysisViewHost<Config>({
     runtime.session.getSnapshot,
     runtime.session.getSnapshot,
   );
+  const catalogRevision = useSyncExternalStore(
+    runtime.catalog.subscribe,
+    runtime.catalog.getRevision,
+    runtime.catalog.getRevision,
+  );
   const binding = standaloneBindingFromSearch(definition.cardinality, search);
   const resolved = resolveViewBinding({
     mode: session.mode,
@@ -102,7 +108,7 @@ export function StandaloneAnalysisViewHost<Config>({
   // Session changes get a fresh reader that is coherent for that captured revision.
   const reader = useMemo(
     () => runtime.createReader(session),
-    [runtime, session],
+    [runtime, session, catalogRevision],
   );
 
   if (resolved.status === 'unavailable') {
@@ -142,6 +148,8 @@ export function StandaloneAnalysisViewHost<Config>({
   const targetLabel = target.kind === 'single'
     ? target.layoutId
     : `${target.layoutIds.length} layouts`;
+  const conditionRows = projectAnalysisConditionChrome(session, target, reader);
+  const configSummary = definition.describeConfig?.(config) ?? [];
 
   return (
     <section
@@ -162,6 +170,45 @@ export function StandaloneAnalysisViewHost<Config>({
           {' · '}{target.mode}{' · '}{targetLabel}
         </span>
       </header>
+
+      <div className="analysis-context" aria-label="Analysis context">
+        {conditionRows.map((row) => (
+          <div
+            className="analysis-context-row"
+            data-analysis-context="conditions"
+            data-layout-id={row.layoutId}
+            key={row.layoutId}
+          >
+            <strong>Conditions · {row.layoutId}</strong>
+            <div className="analysis-context-items">
+              {row.effective.map((item) => (
+                <span key={item.label}>
+                  {item.label}={item.value}
+                </span>
+              ))}
+              {row.overrides.length === 0 ? (
+                <span className="analysis-context-default">override=none</span>
+              ) : row.overrides.map((item) => (
+                <span
+                  className="analysis-context-override"
+                  key={item.label}
+                  title="layout override"
+                >
+                  override:{item.label}={item.value}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+        <div className="analysis-context-row" data-analysis-context="view-config">
+          <strong>ViewConfig</strong>
+          <div className="analysis-context-items">
+            {configSummary.map((item) => (
+              <span key={item.label}>{item.label}={item.value}</span>
+            ))}
+          </div>
+        </div>
+      </div>
 
       <View
         target={target}
