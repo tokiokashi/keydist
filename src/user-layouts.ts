@@ -10,7 +10,7 @@ import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } fr
 import type { Sequence } from './layouts/types.ts';
 import { notifyKeydistStorageChange } from './browser-storage-events.ts';
 
-export const USER_LAYOUTS_USER_LAYOUTS_STORAGE_KEY = 'keydist:layouts';
+export const USER_LAYOUTS_STORAGE_KEY = 'keydist:layouts';
 
 /** 選べるローマ字の綴り */
 export { ROMAJI_RULES };
