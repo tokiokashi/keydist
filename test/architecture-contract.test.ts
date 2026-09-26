@@ -179,7 +179,7 @@ test('realization policy consumerはsemantic core public entryをauthorityにす
   );
 
   for (const path of await tsFiles(SRC)) {
-    if (path.includes(join('core', 'semantic-input'))) continue;
+    if (path.includes(join('input', 'semantics'))) continue;
     const source = await readFile(path, 'utf8');
     for (const specifier of moduleSpecifiers(source)) {
       assert.equal(
