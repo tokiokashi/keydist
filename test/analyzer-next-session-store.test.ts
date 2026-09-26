@@ -126,3 +126,71 @@ test('public store methods remain valid when passed as bare callbacks', () => {
   assert.equal(value.getSnapshot().mode, 'en');
   assert.deepEqual(value.getSnapshot().selectedLayoutIds, ['qwerty']);
 });
+
+
+test('Session snapshots are deeply immutable and cannot bypass revisions or subscriptions', () => {
+  const value = store();
+  const snapshot = value.getSnapshot();
+  let notifications = 0;
+  const unsubscribe = value.subscribe(() => {
+    notifications += 1;
+  });
+
+  if (false) {
+    // @ts-expect-error Session snapshots are readonly outside the store.
+    snapshot.text = 'tampered';
+    // @ts-expect-error nested defaults are readonly outside the store.
+    snapshot.distance.defaults.windowSize = 999;
+    // @ts-expect-error policy fields are deeply readonly outside the store.
+    snapshot.distance.defaults.chain.breakOnSameFinger = false;
+    // @ts-expect-error policy collections are deeply readonly outside the store.
+    snapshot.distance.defaults.actionRealization.triggerActivationOverrides?.push({
+      selector: { triggerKeys: ['KeyA'] },
+      grouping: 'combined',
+    });
+    // @ts-expect-error selected layout ids are readonly outside the store.
+    snapshot.selectedLayoutIds.push('dvorak');
+  }
+
+  assert.equal(Object.isFrozen(snapshot), true);
+  assert.equal(Object.isFrozen(snapshot.distance), true);
+  assert.equal(Object.isFrozen(snapshot.distance.defaults), true);
+  assert.equal(Object.isFrozen(snapshot.selectedLayoutIds), true);
+
+  assert.throws(() => {
+    (snapshot as unknown as { text: string }).text = 'tampered';
+  }, TypeError);
+  assert.throws(() => {
+    (snapshot.distance.defaults as { windowSize: number }).windowSize = 999;
+  }, TypeError);
+  assert.throws(() => {
+    (
+      snapshot.distance.defaults.chain as { breakOnSameFinger: boolean }
+    ).breakOnSameFinger = false;
+  }, TypeError);
+  assert.throws(() => {
+    (snapshot.distance.defaults.actionRealization.triggerActivationOverrides as unknown as Array<{
+      selector: { triggerKeys: string[] };
+      grouping: 'combined';
+    }>).push({
+      selector: { triggerKeys: ['KeyA'] },
+      grouping: 'combined',
+    });
+  }, TypeError);
+  assert.throws(() => {
+    (snapshot.selectedLayoutIds as string[]).push('dvorak');
+  }, TypeError);
+
+  assert.equal(value.getSnapshot().text, 'かな');
+  assert.notEqual(value.getSnapshot().distance.defaults.windowSize, 999);
+  assert.deepEqual(value.getSnapshot().selectedLayoutIds, ['qwerty', 'naginata-v18']);
+  assert.deepEqual(value.getSnapshot().revisions, {
+    target: 0,
+    distance: 0,
+    timing: 0,
+    focus: 0,
+  });
+  assert.equal(notifications, 0);
+
+  unsubscribe();
+});
