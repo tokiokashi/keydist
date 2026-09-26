@@ -1,11 +1,11 @@
 import type { AppStateV2 } from '../../app-state.ts';
-import { ANALYZER_INITIAL_LAYOUTS } from '../../analyzer-ui-state-bootstrap.ts';
-import { analyzerSampleText } from '../../analyzer-samples.ts';
+import { ANALYZER_INITIAL_LAYOUTS } from '#legacy/analyzer-ui-state-bootstrap.ts';
+import { analyzerSampleText } from '#legacy/analyzer-samples.ts';
 import {
   createDefaultUiState,
   type UiPlaybackState,
   type UiStateLayoutConditions,
-} from '../../ui-state.ts';
+} from '#legacy/ui-state.ts';
 import type {
   AnalysisDistanceOverrideConditions,
   AnalysisSessionState,
