@@ -1,4 +1,4 @@
-import { SHIFT_KEY } from '../geometry.ts';
+import { SHIFT_KEY } from '../shapes/geometry.ts';
 import {
   fromFaces,
   withComposedOutputs,

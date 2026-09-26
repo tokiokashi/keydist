@@ -1,5 +1,5 @@
-import { QWERTY_LEGEND } from './geometry.ts';
-import type { Sequence } from './layouts/types.ts';
+import { QWERTY_LEGEND } from '../shapes/geometry.ts';
+import type { Sequence } from './types.ts';
 
 export type ImportFormat = 'dvorakj' | 'vial' | 'benizara';
 

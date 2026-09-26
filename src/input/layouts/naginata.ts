@@ -1,4 +1,4 @@
-import { THUMB_KEY } from '../geometry.ts';
+import { THUMB_KEY } from '../shapes/geometry.ts';
 import { SINGLE_LAYER_ID, fromFaces, withThumbShiftAlternatives, type Face, type Layout } from './types.ts';
 
 /**

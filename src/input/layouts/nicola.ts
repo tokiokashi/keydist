@@ -1,4 +1,4 @@
-import { THUMB_KEY } from '../geometry.ts';
+import { THUMB_KEY } from '../shapes/geometry.ts';
 import { faceFromEntries, fromFaces, type Face, type Layout } from './types.ts';
 
 const face = (

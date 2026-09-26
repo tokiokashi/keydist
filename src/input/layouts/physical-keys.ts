@@ -1,5 +1,5 @@
-import { resolveKeyId, type Geometry, type Key } from './geometry.ts';
-import type { Layout } from './layouts/types.ts';
+import { resolveKeyId, type Geometry, type Key } from '../shapes/geometry.ts';
+import type { Layout } from './types.ts';
 
 /** canonical input pathに実際に現れるphysical key集合。layout idやpresentation metadataには依存しない。 */
 export function physicalKeysUsedByLayout(

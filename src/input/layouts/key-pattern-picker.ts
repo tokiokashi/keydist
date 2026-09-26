@@ -1,11 +1,11 @@
-import { resolveKeyId } from './geometry.ts';
+import { resolveKeyId } from '../shapes/geometry.ts';
 import {
   classifyPresentationFaces,
   matchesDisplayTriggerAlternative,
   orderedPresentationLayers,
 } from './layers.ts';
-import type { Requirement } from './core/semantic-input/types.ts';
-import type { Face, Layout } from './layouts/types.ts';
+import type { Requirement } from '../semantics/types.ts';
+import type { Face, Layout } from './types.ts';
 
 type OrderRequirement = Extract<Requirement, { kind: 'order' }>;
 

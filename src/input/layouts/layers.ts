@@ -1,16 +1,16 @@
-import { resolveKeyId } from './geometry.ts';
+import { resolveKeyId } from '../shapes/geometry.ts';
 import {
   faceCells,
   handOfKey,
   type Hand,
-} from './layouts/face-geometry.ts';
+} from './face-geometry.ts';
 import {
   SINGLE_LAYER_ID,
   type Face,
   type LayerDefinition,
   type LayerPresentationRole,
   type Layout,
-} from './layouts/types.ts';
+} from './types.ts';
 
 export { faceCells, handOfKey };
 export type { Hand };
