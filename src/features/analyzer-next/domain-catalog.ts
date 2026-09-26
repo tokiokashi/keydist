@@ -40,6 +40,12 @@ export interface AnalysisDomainCatalog {
   availableLayoutIdsByMode(): Readonly<Record<ModeId, readonly string[]>>;
 }
 
+export interface MutableAnalysisDomainCatalog extends AnalysisDomainCatalog {
+  getRevision(): number;
+  subscribe(listener: () => void): () => void;
+  replaceSource(source: AnalysisDomainCatalogSource): boolean;
+}
+
 function ruleRevision(
   id: RomajiRuleId,
   customRules: readonly UserRomajiRule[],
@@ -168,5 +174,45 @@ export function createAnalysisDomainCatalog(
       en: en.map((entry) => entry.layout.id),
       ja: ja.map((entry) => entry.layout.id),
     }),
+  };
+}
+
+
+function domainSourceRevisionKey(source: AnalysisDomainCatalogSource): string {
+  return JSON.stringify(source);
+}
+
+/**
+ * Stable catalog facade for a long-lived AnalysisSession.
+ *
+ * Browser/platform code can inject a new domain source without recreating Session state.
+ * Readers observe the current delegate; revision subscribers are presentation invalidation only.
+ */
+export function createMutableAnalysisDomainCatalog(
+  initialSource: AnalysisDomainCatalogSource,
+): MutableAnalysisDomainCatalog {
+  let current = createAnalysisDomainCatalog(initialSource);
+  let sourceKey = domainSourceRevisionKey(initialSource);
+  let revision = 0;
+  const listeners = new Set<() => void>();
+
+  return {
+    layoutsForMode: (mode) => current.layoutsForMode(mode),
+    geometryForKind: (kind) => current.geometryForKind(kind),
+    availableLayoutIdsByMode: () => current.availableLayoutIdsByMode(),
+    getRevision: () => revision,
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    replaceSource(source) {
+      const nextKey = domainSourceRevisionKey(source);
+      if (nextKey === sourceKey) return false;
+      current = createAnalysisDomainCatalog(source);
+      sourceKey = nextKey;
+      revision += 1;
+      for (const listener of listeners) listener();
+      return true;
+    },
   };
 }
