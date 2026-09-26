@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { resolveConditions, setLayoutGeometryOverride } from '../src/condition-resolution.ts';
-import { DEFAULT_CONDITION_DEFAULTS } from '../src/ui-state.ts';
+import { DEFAULT_CONDITION_DEFAULTS } from '#legacy/ui-state.ts';
 
 test('配列別条件は既定値へ部分的に重なる', () => {
   const resolved = resolveConditions(DEFAULT_CONDITION_DEFAULTS, {
