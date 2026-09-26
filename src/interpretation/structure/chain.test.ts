@@ -4,7 +4,6 @@ import {
   DEFAULT_CHAIN_POLICY,
   analyzeChains,
   buildRawHandRuns,
-  chainPolicyFromLegacyUi,
 } from './chain.ts';
 import type { Stroke, StrokeParticipation } from '#trace/evaluate.ts';
 
@@ -182,28 +181,6 @@ test('composition classificationなしのtrigger-onlyは通常のChain境界に�
     [
       ['left', 0, 1],
     ],
-  );
-});
-
-test('旧include設定は意味が対応するChainPolicyへだけ変換する', () => {
-  assert.deepEqual(
-    chainPolicyFromLegacyUi({
-      chainIncludeSameFinger: false,
-      chainIncludeLayerKeys: true,
-    }),
-    DEFAULT_CHAIN_POLICY,
-  );
-  assert.deepEqual(
-    chainPolicyFromLegacyUi({
-      chainIncludeSameFinger: true,
-      chainIncludeLayerKeys: false,
-    }),
-    {
-      breakOnSameFinger: false,
-      breakOnTriggerOnly: true,
-      breakOnThumbOnly: true,
-      breakOnOppositeHandSimultaneous: false,
-    },
   );
 });
 

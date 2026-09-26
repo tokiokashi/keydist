@@ -2,9 +2,9 @@ import type { MatrixSort } from './chart.ts';
 import type { ConditionDefaults, LayoutConditionOverrides } from '#engine/conditions.ts';
 import {
   DEFAULT_CHAIN_POLICY,
-  chainPolicyFromLegacyUi,
   type ChainPolicy,
 } from '#interpretation/structure/chain.ts';
+import { chainPolicyFromLegacyUi } from './chain-ui-settings.ts';
 import {
   DEFAULT_ARPEGGIO_POLICY,
   type ArpeggioPolicy,
