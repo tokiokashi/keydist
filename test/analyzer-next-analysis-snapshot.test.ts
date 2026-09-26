@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
+import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
 import { resolveConditions } from '#engine/condition-resolution.ts';
-import { evaluate } from '../src/evaluate.ts';
-import { assignmentWithHomeKeys, buildGeometry } from '../src/geometry.ts';
+import { evaluate } from '#trace/evaluate.ts';
+import { assignmentWithHomeKeys, buildGeometry } from '#input/shapes/geometry.ts';
 import {
   DEFAULT_GEOMETRY_SETTINGS,
   geometrySettingsForPreset,
-} from '../src/geometry-settings.ts';
-import { LAYOUTS, withRomaji } from '../src/layouts/index.ts';
-import type { Layout } from '../src/layouts/types.ts';
-import { computeMetrics } from '../src/metrics.ts';
+} from '#input/shapes/settings.ts';
+import { LAYOUTS, withRomaji } from '#input/layouts/index.ts';
+import type { Layout } from '#input/layouts/types.ts';
+import { computeMetrics } from '#interpretation/metrics.ts';
 import { tableForRule } from '#input/romaji/rules.ts';
 import {
   computeAnalysisSnapshot,

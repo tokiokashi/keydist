@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { DEFAULT_GEOMETRY_SETTINGS } from '../src/geometry-settings.ts';
+import { DEFAULT_GEOMETRY_SETTINGS } from '#input/shapes/settings.ts';
 import { createAnalysisDomainCatalog } from '../src/features/analyzer-next/domain-catalog.ts';
 import { createResolvedAnalysisInputResolver } from '../src/features/analyzer-next/resolved-input.ts';
 import { createAnalysisSessionStore } from '../src/features/analyzer-next/session-store.ts';

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LAYOUTS, LAYOUTS_JA } from '../src/layouts/index.ts';
+import { LAYOUTS, LAYOUTS_JA } from '#input/layouts/index.ts';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');

@@ -1,29 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluate } from '../src/evaluate.ts';
+import { evaluate } from '#trace/evaluate.ts';
 import { TypingInputEngine } from '../src/core/input-converter/index.ts';
 import {
   DEFAULT_GEOMETRY_SETTINGS,
   parseGeometrySettings,
   sanitizePhysicalShape,
   serializeGeometrySettings,
-} from '../src/geometry-settings.ts';
+} from '#input/shapes/settings.ts';
 import {
   DEFAULT_FINGER_ASSIGNMENT,
   PHYSICAL_SHAPES,
   buildGeometry,
   type FingerAssignment,
   type PhysicalShape,
-} from '../src/geometry.ts';
-import { computeMetrics } from '../src/metrics.ts';
-import { fromKana, LAYOUT_BY_ID } from '../src/layouts/index.ts';
+} from '#input/shapes/geometry.ts';
+import { computeMetrics } from '#interpretation/metrics.ts';
+import { fromKana, LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import {
   browserCodeToPhysicalKey,
 } from '../src/features/input-converter/browser-keyboard-adapter.ts';
 import {
   physicalKeysUsedByLayout,
   visibleGeometryKeys,
-} from '../src/layout-physical-keys.ts';
+} from '#input/layouts/physical-keys.ts';
 
 const shape: PhysicalShape = {
   ...structuredClone(PHYSICAL_SHAPES['row-staggered']),
