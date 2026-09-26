@@ -2,7 +2,7 @@ import { PHYSICAL_SHAPES, type PhysicalShape } from './geometry.ts';
 import { sanitizePhysicalShape } from './geometry-settings.ts';
 import { notifyKeydistStorageChange } from './browser-storage-events.ts';
 
-export const USER_GEOMETRIES_USER_GEOMETRIES_STORAGE_KEY = 'keydist:geometry-shapes';
+export const USER_GEOMETRIES_STORAGE_KEY = 'keydist:geometry-shapes';
 
 export interface GeometryShapeStorage {
   getItem(key: string): string | null;
