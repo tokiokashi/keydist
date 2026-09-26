@@ -2,14 +2,14 @@ import type {
   AnalyzerPreferencesV2,
   AppearancePreferencesV1,
   AppStateV2,
-} from './app-state.ts';
+} from '../state/app-state.ts';
 import {
   APP_STATE_STORAGE_KEY,
   loadAppStateDocument,
   patchAppState,
   removeStorageKeys,
   saveAppStateDocument,
-} from './persistence/app-state-storage.ts';
+} from '../state/app-state-storage.ts';
 import {
   LEGACY_THEME_KEY,
   UI_STATE_STORAGE_KEY,
