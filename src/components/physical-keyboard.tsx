@@ -1,4 +1,4 @@
-import { isThumb, type Key } from '../geometry.ts';
+import { isThumb, type Key } from '#input/shapes/geometry.ts';
 
 export interface PhysicalKeyboardKeyView {
   readonly legend?: string;

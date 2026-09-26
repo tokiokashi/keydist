@@ -1,13 +1,13 @@
-import { evaluate, type Options } from './evaluate.ts';
-import { computeMetrics } from './metrics.ts';
-import type { Geometry } from './geometry.ts';
-import type { Layout } from './layouts/index.ts';
-import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from './analysis-chain.ts';
-import { DEFAULT_ARPEGGIO_POLICY, type ArpeggioPolicy } from './analysis-arpeggio.ts';
+import { evaluate, type Options } from '#trace/evaluate.ts';
+import { computeMetrics } from '#interpretation/metrics.ts';
+import type { Geometry } from '#input/shapes/geometry.ts';
+import type { Layout } from '#input/layouts/index.ts';
+import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from '#interpretation/structure/chain.ts';
+import { DEFAULT_ARPEGGIO_POLICY, type ArpeggioPolicy } from '#interpretation/structure/arpeggio.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
-} from './core/semantic-input/index.ts';
+} from '#input/semantics/index.ts';
 
 export interface SensitivityPoint {
   windowSize: number;

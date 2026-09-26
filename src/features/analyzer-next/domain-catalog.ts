@@ -3,14 +3,14 @@ import {
   isPresetGeometryKind,
   type GeometryKind,
   type PhysicalShape,
-} from '../../geometry.ts';
+} from '#input/shapes/geometry.ts';
 import {
   clonePhysicalShape,
   geometrySettingsForPreset,
   type GeometrySettings,
-} from '../../geometry-settings.ts';
+} from '#input/shapes/settings.ts';
 import type { ModeId } from '#legacy/layout-selection.ts';
-import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from '../../layouts/index.ts';
+import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from '#input/layouts/index.ts';
 import {
   defaultRomajiRuleId,
   tableForRule,

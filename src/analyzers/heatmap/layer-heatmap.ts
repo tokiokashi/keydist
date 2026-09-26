@@ -1,4 +1,4 @@
-import type { Layer } from './layers.ts';
+import type { Layer } from '#input/layouts/layers.ts';
 
 export interface LayerColorData {
   /** ツールチップにも使う実際のキー押下数 */
