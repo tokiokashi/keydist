@@ -3,18 +3,18 @@ import {
   DEFAULT_CHAIN_POLICY,
   chainPolicyFromLegacyUi,
   type ChainPolicy,
-} from './analysis-chain.ts';
+} from '../analysis-chain.ts';
 import {
   DEFAULT_ARPEGGIO_POLICY,
   type ArpeggioPolicy,
-} from './analysis-arpeggio.ts';
-import { isCustomGeometryKind, isPresetGeometryKind, type GeometryKind } from './geometry.ts';
+} from '../analysis-arpeggio.ts';
+import { isCustomGeometryKind, isPresetGeometryKind, type GeometryKind } from '../geometry.ts';
 import {
   DEFAULT_GEOMETRY_SETTINGS,
   cloneGeometrySettings,
   sanitizeGeometrySettings,
   type GeometrySettings,
-} from './geometry-settings.ts';
+} from '../geometry-settings.ts';
 import type { ModeId } from './layout-selection.ts';
 import {
   DEFAULT_PLAYBACK_RATE_AVERAGE,
@@ -30,13 +30,13 @@ import {
   PLAYBACK_RATE_WINDOW_MIN,
   PLAYBACK_STEPS_PER_SECOND_MAX,
   PLAYBACK_STEPS_PER_SECOND_MIN,
-} from './playback.ts';
+} from '../playback.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   type ActionRealizationPolicy,
   type TriggerRealizationPolicy,
-} from './core/semantic-input/index.ts';
+} from '../core/semantic-input/index.ts';
 
 export const UI_STATE_STORAGE_KEY = 'keydist:ui-state';
 export const UI_STATE_VERSION = 1;

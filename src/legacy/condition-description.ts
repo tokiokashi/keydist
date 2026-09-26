@@ -3,15 +3,15 @@ import {
   type UiStateConditionsDefaults,
   type UiStateV1,
 } from './ui-state.ts';
-import { isCustomGeometryKind, type PresetGeometryKind } from './geometry.ts';
-import { sameChainPolicy, type ChainPolicy } from './analysis-chain.ts';
-import { sameArpeggioPolicy, type ArpeggioPolicy } from './analysis-arpeggio.ts';
+import { isCustomGeometryKind, type PresetGeometryKind } from '../geometry.ts';
+import { sameChainPolicy, type ChainPolicy } from '../analysis-chain.ts';
+import { sameArpeggioPolicy, type ArpeggioPolicy } from '../analysis-arpeggio.ts';
 import {
   sameActionRealizationPolicy,
   sameTriggerRealizationPolicy,
   type ActionRealizationPolicy,
   type TriggerRealizationPolicy,
-} from './core/semantic-input/index.ts';
+} from '../core/semantic-input/index.ts';
 
 export type ConditionKey = keyof UiStateConditionsDefaults;
 

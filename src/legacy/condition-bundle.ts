@@ -1,11 +1,11 @@
 import {
   PHYSICAL_SHAPES,
   type PhysicalShape,
-} from './geometry.ts';
+} from '../geometry.ts';
 import {
   sanitizeGeometrySettings,
   sanitizePhysicalShape,
-} from './geometry-settings.ts';
+} from '../geometry-settings.ts';
 import {
   sanitizeConditionDefaults,
   sanitizeConditionOverrides,
@@ -16,11 +16,11 @@ import {
 import {
   sanitizeUserLayouts,
   type UserLayout,
-} from './user-layouts.ts';
+} from '../user-layouts.ts';
 import {
   sanitizeRomajiSettings,
   type RomajiSettings,
-} from './romaji/rules.ts';
+} from '../romaji/rules.ts';
 import {
   sanitizeConditionPresets,
   type ConditionPreset,
