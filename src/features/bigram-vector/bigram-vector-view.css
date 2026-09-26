@@ -159,8 +159,7 @@
   color: var(--viz-key-text);
 }
 
-.flow-stage::before,
-.flow-mini-panel::before {
+.flow-stage::before {
   position: absolute;
   inset: 0;
   pointer-events: none;
