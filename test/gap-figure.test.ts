@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGeometry, dist } from '../src/geometry.ts';
-import { figurePresses, gapFigure, SFB_TEXT } from '../src/gap-figure.ts';
+import { figurePresses, gapFigure, SFB_TEXT } from '#legacy/gap-figure.ts';
 
 const geometry = buildGeometry('row-staggered');
 const svg = gapFigure(geometry);
