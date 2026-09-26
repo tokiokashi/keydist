@@ -149,6 +149,56 @@ test('打ち切り: 連続した依頼のうち最後の結果だけが届く', 
   assert.deepEqual(readyStates[0], { status: 'ready', value: 'computed:c' });
 });
 
+test('再入: listener内でrequest()を呼んでも取り消しの管理が壊れない', () => {
+  const scheduler = createManualScheduler();
+  const states: EngineRequestState<string>[] = [];
+  let reentered = false;
+  const channel = createEngineRequest<string>((input) => `computed:${tagOf(input)}`, (s) => {
+    states.push(s);
+    // 'b'向けの依頼がstaleを出した瞬間、listenerの中からさらに'c'への依頼を出す
+    // （テキストがさらに変わった、のような状況を模す）。
+    if (!reentered && s.status === 'stale') {
+      reentered = true;
+      channel.request(okResolution('c'));
+    }
+  }, { scheduler });
+
+  channel.request(okResolution('a'));
+  scheduler.flush();
+  assert.deepEqual(states.at(-1), { status: 'ready', value: 'computed:a' });
+
+  channel.request(okResolution('b'));
+  // 'b'向けのタスクは再入した'c'向けの依頼によって正しく打ち切られ、
+  // スケジュール待ちは'c'向けの1件だけになっているはず（2件たまってはいけない）。
+  assert.equal(scheduler.pendingCount(), 1, '再入後もスケジュール待ちは1件のまま');
+
+  scheduler.flush();
+  const readyStates = states.filter((s) => s.status === 'ready');
+  assert.deepEqual(readyStates.at(-1), { status: 'ready', value: 'computed:c' });
+  assert.ok(
+    readyStates.every((s) => s.status !== 'ready' || s.value !== 'computed:b'),
+    '打ち切られた依頼（b）の結果はreadyとして届かない',
+  );
+});
+
+test('再入: listener内でunsubscribe()を呼んだら、直後に積んだタスクも取り消されている', () => {
+  const scheduler = createManualScheduler();
+  const states: EngineRequestState<string>[] = [];
+  const channel = createEngineRequest<string>((input) => `computed:${tagOf(input)}`, (s) => {
+    states.push(s);
+    if (s.status === 'computing') {
+      channel.unsubscribe();
+    }
+  }, { scheduler });
+
+  channel.request(okResolution('a'));
+  // listener内のunsubscribe()が、この呼び出しがちょうど積んだタスクも取り消しているはず。
+  assert.equal(scheduler.pendingCount(), 0, 'unsubscribe後にスケジュール待ちが残ってはいけない');
+
+  scheduler.flush();
+  assert.ok(states.every((s) => s.status !== 'ready'), 'unsubscribe後はreadyが届かない');
+});
+
 test('古い結果は後から届かない（schedulerがキャンセルに協力しなくても、revisionチェックで守られる）', () => {
   const scheduler = createManualScheduler({ cancellable: false });
   const states: EngineRequestState<string>[] = [];

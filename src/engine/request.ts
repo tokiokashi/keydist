@@ -47,6 +47,12 @@ export interface EngineRequestChannel {
    * 新しい依頼を出す。呼ぶたびに前回までの依頼を打ち切る:
    * まだ計算が終わっていなければその結果は`listener`に届かず、`stale`に切り替わった
    * 直前の`ready`値だけが（あれば）保持される。
+   *
+   * 同じ内容の`resolution`を続けて渡しても、ここでは「同じだから無視する」判断はしない。
+   * 呼ぶたびに`computing`/`stale`を経て再計算する（キー自体が同じなら`EngineCache`側の
+   * 計算は共有されるので無駄な再計算にはならないが、状態は一度揺れる）。同じキーへの
+   * 依頼を弾くかどうかはペイン側の関心事（例:「テキストが変わっていなければ
+   * request()を呼ばない」）として、呼び出し側に委ねる。
    */
   request(resolution: ResolvedInputResult): void;
   /** 購読を止める。進行中の計算があっても、以降`listener`は呼ばれない。 */
@@ -96,16 +102,21 @@ export function createEngineRequest<T>(
     // クロージャ内でも型が絞られたままになるよう、ここで一度取り出しておく。
     const input = resolution.input;
 
-    emit(
-      hasLastReadyValue
-        ? { status: 'stale', value: lastReadyValue as T }
-        : { status: 'computing' },
-    );
-
+    // 先にscheduleしてからemitする（再入対策）。emitはlistenerを同期に呼ぶので、
+    // listenerがその場でさらに`request()`や`unsubscribe()`を呼ぶ（再入）ことがある。
+    // この行より後に`cancelScheduled`へ書き込む処理を置かなければ、再入した側が
+    // 積んだ新しいスケジュール（またはキャンセル済みのundefined）を、この呼び出しが
+    // 後から上書きして見失う事故が起きない。emitを先にしていた旧実装では、
+    // 「listener内のrequest()が積んだタスクを、外側のrequest()が戻った後の
+    // scheduleで上書きしてしまい取り消せなくなる」「listener内のunsubscribe()の後も
+    // 外側がscheduleを続けてしまう」の2つの再入バグがあった。
     cancelScheduled = scheduler.schedule(() => {
       cancelScheduled = undefined;
-      // 打ち切り: 実行時にはもう新しい依頼が来ているか、購読が止まっている。
-      // 計算そのものを省略し、結果も届けない。
+      // 打ち切り・再入への安全網。scheduleをemitより先に行う順序を守っていれば
+      // 本来ここに来る前に取り消されているはずだが、`EngineScheduler`の実装が
+      // キャンセルに協力しない場合（例: Web Workerで送信済みのメッセージは
+      // 取り消せない。#544 §8-1「重くなったらWorkerへ移せるように」）の最後の砦として、
+      // 実行時に「自分がまだ最新の依頼か」を再チェックしてから結果を届ける。
       if (unsubscribed || myRevision !== revision) return;
       try {
         const value = compute(input);
@@ -116,6 +127,12 @@ export function createEngineRequest<T>(
         emit({ status: 'failed', error: { kind: 'exception', error } });
       }
     });
+
+    emit(
+      hasLastReadyValue
+        ? { status: 'stale', value: lastReadyValue as T }
+        : { status: 'computing' },
+    );
   }
 
   function unsubscribe(): void {
