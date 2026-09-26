@@ -16,8 +16,8 @@ import type { AnalyzerBigramFlowModel } from '../../analyzer-bigram-flow-model.t
 import type { Layout } from '../../layouts/types.ts';
 import {
   MIN_POLAR_BANDWIDTH_DEGREES,
+  movementPlotExtent,
   movementPlotScale,
-  polarDisplayRadius,
   type MovementScaleMode,
 } from './movement-profile-scale.ts';
 import {
@@ -448,9 +448,13 @@ function MovementProfilePlot({
     plotRadius,
     polarBaseRadius,
     polarAmplitude,
-    halfSize,
-    viewSize,
   } = scale;
+  const maxDensity = density.samples.reduce(
+    (max, sample) => Math.max(max, sample.density),
+    0,
+  );
+  const halfSize = movementPlotExtent(scale, maxDensity, polarGain);
+  const viewSize = halfSize * 2;
   const cx = halfSize;
   const cy = halfSize;
   const meanEnd = {
@@ -461,12 +465,7 @@ function MovementProfilePlot({
     polarPoint(
       cx,
       cy,
-      polarDisplayRadius(
-        polarBaseRadius,
-        polarAmplitude,
-        sample.density,
-        polarGain,
-      ),
+      polarBaseRadius + sample.density * polarAmplitude * polarGain,
       sample.angle,
     )
   );
@@ -919,17 +918,28 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
                 />
               </label>
               <label>
-                <span>Polar display gain <output>{polarGain.toFixed(1)}×</output></span>
+                <span>方向分布の表示倍率 <output>{polarGain.toFixed(1)}×</output></span>
                 <input
                   type="range"
                   min="0.25"
                   max="3"
                   step="0.05"
                   value={polarGain}
-                  aria-label="Polar display gain"
+                  aria-label="方向分布の表示倍率"
                   onChange={(event) => setPolarGain(Number(event.currentTarget.value))}
                 />
               </label>
+              <button
+                type="button"
+                className="flow-profile-reset"
+                onClick={() => {
+                  setMovementScaleMode('fit');
+                  setPolarBandwidth(15);
+                  setPolarGain(1);
+                }}
+              >
+                標準に戻す
+              </button>
             </div>
             <div className="flow-two-up">
               <MovementProfilePlot
