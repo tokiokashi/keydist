@@ -133,3 +133,42 @@ test('Comparison / Matrices / Playback codecs preserve the §1.4 classified View
   assert.equal('stepsPerSecond' in decoded, false);
   assert.equal('speedMultiplier' in decoded, false);
 });
+
+
+test('ViewConfig codec preserves legacy MatrixSort bounds and integer trailTau', () => {
+  const comparison = ANALYSIS_VIEW_DEFINITIONS.get('comparison')!;
+  assert.equal(
+    (comparison.configCodec.decode({
+      sort: { column: 13, direction: 'asc' },
+    }, 1) as { sort: unknown }).sort,
+    null,
+  );
+
+  const matrices = ANALYSIS_VIEW_DEFINITIONS.get('matrices')!;
+  assert.deepEqual(
+    (matrices.configCodec.decode({
+      sorts: {
+        press: { column: 10, direction: 'asc' },
+        finger: { column: 9, direction: 'desc' },
+        adjacentMean: { column: 6, direction: 'asc' },
+        adjacentStdDev: { column: 5, direction: 'desc' },
+      },
+    }, 1) as { sorts: Record<string, unknown> }).sorts,
+    {
+      press: null,
+      finger: { column: 9, direction: 'desc' },
+      adjacentMean: null,
+      adjacentStdDev: { column: 5, direction: 'desc' },
+    },
+  );
+
+  const playback = ANALYSIS_VIEW_DEFINITIONS.get('playback')!;
+  assert.equal(
+    (playback.configCodec.decode({ trailTau: 2.5 }, 1) as { trailTau: number }).trailTau,
+    5,
+  );
+  assert.equal(
+    (playback.configCodec.decode({ trailTau: 20 }, 1) as { trailTau: number }).trailTau,
+    20,
+  );
+});
