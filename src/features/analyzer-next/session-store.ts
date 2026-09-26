@@ -129,6 +129,23 @@ export function createAnalysisSessionStore(
     state = next;
     emit();
   };
+  const setTarget = (target: AnalysisSessionTarget): void => {
+    const normalized = normalizeTarget(target);
+    const targetChanged = normalized.mode !== state.mode
+      || !sameIds(normalized.selectedLayoutIds, state.selectedLayoutIds);
+    const focusChanged = normalized.focusLayoutId !== state.focusLayoutId;
+    if (!targetChanged && !focusChanged) return;
+
+    replace({
+      ...state,
+      ...normalized,
+      revisions: {
+        ...state.revisions,
+        target: state.revisions.target + (targetChanged ? 1 : 0),
+        focus: state.revisions.focus + (focusChanged ? 1 : 0),
+      },
+    });
+  };
 
   return {
     getSnapshot: () => state,
@@ -136,23 +153,7 @@ export function createAnalysisSessionStore(
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    setTarget(target) {
-      const normalized = normalizeTarget(target);
-      const targetChanged = normalized.mode !== state.mode
-        || !sameIds(normalized.selectedLayoutIds, state.selectedLayoutIds);
-      const focusChanged = normalized.focusLayoutId !== state.focusLayoutId;
-      if (!targetChanged && !focusChanged) return;
-
-      replace({
-        ...state,
-        ...normalized,
-        revisions: {
-          ...state.revisions,
-          target: state.revisions.target + (targetChanged ? 1 : 0),
-          focus: state.revisions.focus + (focusChanged ? 1 : 0),
-        },
-      });
-    },
+    setTarget,
     setText(text) {
       if (state.text === text) return;
       replace({
@@ -162,7 +163,7 @@ export function createAnalysisSessionStore(
       });
     },
     setSelectedLayouts(layoutIds) {
-      this.setTarget({
+      setTarget({
         mode: state.mode,
         selectedLayoutIds: layoutIds,
         focusLayoutId: state.focusLayoutId,
