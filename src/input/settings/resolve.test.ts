@@ -1,18 +1,18 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { LAYOUTS, LAYOUTS_JA, type Layout } from '#input/layouts/index.ts';
+import { LAYOUTS_JA, type Layout } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PresetGeometryKind } from '#input/shapes/geometry.ts';
+import { defineItem, type ItemRegistry } from './items.ts';
 import { resolveCascade } from './resolve.ts';
 import { setOverride } from './write.ts';
 import { resetItem, resetLevel } from './reset.ts';
-import { EMPTY_CASCADE_OVERRIDES, type CascadeOverrides } from './overrides.ts';
+import { emptyCascadeOverrides, type CascadeOverrides } from './overrides.ts';
 import type { CascadeContext } from './context.ts';
 import type { InputMethod } from './levels.ts';
 
-const ROOT = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
+// このファイルはカスケードの「仕組み」（レベル・優先順位・妥当性・適用可否・リセット）だけを
+// 検証する。具体の項目（TracePolicy・ChainInterpretation等）とfixture回帰テストは
+// src/engine/settings-items.test.ts にある（#544レビュー: 型・既定値をinput層へ複製しない）。
 
 function findLayout(list: readonly Layout[], id: string): Layout {
   const layout = list.find((l) => l.id === id);
@@ -20,11 +20,8 @@ function findLayout(list: readonly Layout[], id: string): Layout {
   return layout;
 }
 
-const naginata = findLayout(LAYOUTS_JA, 'naginata-v18'); // SandS(交代打鍵)を持つ配列
+const naginata = findLayout(LAYOUTS_JA, 'naginata-v18'); // SandS(交代打鍵)を持つ配列。contextの材料に使うだけ
 const asuka = findLayout(LAYOUTS_JA, 'asuka'); // SandSを持たない配列
-const nicola = findLayout(LAYOUTS_JA, 'nicola'); // かな直接（ローマ字表を持たない）
-const qwertyJa = findLayout(LAYOUTS_JA, 'qwerty'); // ローマ字入力（既定でkunreiが焼き込み済み）
-const colemakEn = findLayout(LAYOUTS, 'colemak'); // 英字配列（ローマ字表を持たない）
 
 function contextFor(
   layout: Layout,
@@ -41,28 +38,79 @@ function contextFor(
   };
 }
 
+const ANY_LEVEL = new Set<'global' | 'shape' | 'inputMethod' | 'layout' | 'setup'>([
+  'global', 'shape', 'inputMethod', 'layout', 'setup',
+]);
+
+/** 仕組みだけを見るための小さなテスト用レジストリ。実項目の代わり。 */
+const TEST_ITEMS = {
+  anyLevelNumber: defineItem<number>({
+    id: 'anyLevelNumber',
+    allowedLevels: ANY_LEVEL,
+    defaultValue: 3,
+  }),
+  globalOnlyFlag: defineItem<boolean>({
+    id: 'globalOnlyFlag',
+    allowedLevels: new Set(['global']),
+    defaultValue: true,
+  }),
+  // preferOppositeThumb相当: SandSが無い配列では効かず、反対側の親指キーが無い形状では実現できない。
+  thumbRequiring: defineItem<boolean>({
+    id: 'thumbRequiring',
+    allowedLevels: ANY_LEVEL,
+    defaultValue: false,
+    isApplicable: (context) =>
+      context.layout.thumbShiftKeys !== undefined && context.layout.thumbShiftKeys.length > 0,
+    validate: (value, context) => {
+      if (!value) return { ok: true };
+      const hasBothThumbs = context.shape.thumbs.some((t) => t.finger === 'LT')
+        && context.shape.thumbs.some((t) => t.finger === 'RT');
+      return hasBothThumbs ? { ok: true } : { ok: false, fallback: false, reason: '反対側の親指キーが無い' };
+    },
+  }),
+  // romajiRuleId相当: 既定値がcontext（配列id）に依存する。
+  layoutDerived: defineItem<string>({
+    id: 'layoutDerived',
+    allowedLevels: new Set(['inputMethod', 'layout', 'setup']),
+    defaultValue: (context) => `default-for-${context.layoutId}`,
+  }),
+} as const satisfies ItemRegistry;
+
+type TestOverrides = CascadeOverrides<{
+  anyLevelNumber: number;
+  globalOnlyFlag: boolean;
+  thumbRequiring: boolean;
+  layoutDerived: string;
+}>;
+
+const EMPTY: TestOverrides = emptyCascadeOverrides();
+
 test('上書きが無ければ全項目が既定値・出どころdefaultで解決する', () => {
-  const resolved = resolveCascade(EMPTY_CASCADE_OVERRIDES, contextFor(asuka));
-  assert.equal(resolved.windowSize.value, 3);
-  assert.equal(resolved.windowSize.origin.kind, 'default');
-  assert.equal(resolved.sfbHomeCost.value, true);
-  assert.equal(resolved.preferOppositeThumb.value, false);
+  const resolved = resolveCascade(TEST_ITEMS, EMPTY, contextFor(asuka));
+  assert.equal(resolved.anyLevelNumber.value, 3);
+  assert.equal(resolved.anyLevelNumber.origin.kind, 'default');
+  assert.equal(resolved.globalOnlyFlag.value, true);
+});
+
+test('既定値がcontextの関数の項目は、contextに応じた値になる（ローマ字規則id相当）', () => {
+  const resolved = resolveCascade(TEST_ITEMS, EMPTY, contextFor(asuka));
+  assert.equal(resolved.layoutDerived.value, `default-for-${asuka.id}`);
+  assert.equal(resolved.layoutDerived.origin.kind, 'default');
 });
 
 test('疎な上書き: 1項目だけ書いても他項目は既定値のまま', () => {
-  let overrides = EMPTY_CASCADE_OVERRIDES;
-  const written = setOverride(overrides, { kind: 'layout', layoutId: asuka.id }, 'windowSize', 6);
+  const written = setOverride(TEST_ITEMS, EMPTY, { kind: 'layout', layoutId: asuka.id }, 'anyLevelNumber', 6);
   assert.ok(written.ok);
-  overrides = written.overrides;
+  const overrides = written.overrides;
 
-  const resolved = resolveCascade(overrides, contextFor(asuka));
-  assert.equal(resolved.windowSize.value, 6);
-  assert.equal(resolved.sfbHomeCost.value, true); // 上書きしていない項目は既定のまま
-  assert.deepEqual(resolved.windowSize.origin, { kind: 'layout', layoutId: asuka.id });
+  const resolved = resolveCascade(TEST_ITEMS, overrides, contextFor(asuka));
+  assert.equal(resolved.anyLevelNumber.value, 6);
+  assert.equal(resolved.globalOnlyFlag.value, true); // 上書きしていない項目は既定のまま
+  assert.deepEqual(resolved.anyLevelNumber.origin, { kind: 'layout', layoutId: asuka.id });
 });
 
 test('優先順位: global < shape < inputMethod < layout < setupの順で強い方が勝つ', () => {
-  let overrides = EMPTY_CASCADE_OVERRIDES;
+  let overrides = EMPTY;
   const layoutId = asuka.id;
   const shapeId: PresetGeometryKind = 'row-staggered';
   const inputMethod: InputMethod = 'kana-direct';
@@ -74,58 +122,53 @@ test('優先順位: global < shape < inputMethod < layout < setupの順で強い
     [{ kind: 'inputMethod' as const, inputMethod }, 3],
     [{ kind: 'layout' as const, layoutId }, 4],
   ] as const) {
-    const written = setOverride(overrides, level, 'windowSize', value);
+    const written = setOverride(TEST_ITEMS, overrides, level, 'anyLevelNumber', value);
     assert.ok(written.ok);
     overrides = written.overrides;
   }
 
   // layoutまでしか書いていない段階ではlayoutの値（4）が勝つ
-  let resolved = resolveCascade(overrides, contextFor(asuka, { shapeId, inputMethod }));
-  assert.equal(resolved.windowSize.value, 4);
-  assert.deepEqual(resolved.windowSize.origin, { kind: 'layout', layoutId });
+  let resolved = resolveCascade(TEST_ITEMS, overrides, contextFor(asuka, { shapeId, inputMethod }));
+  assert.equal(resolved.anyLevelNumber.value, 4);
+  assert.deepEqual(resolved.anyLevelNumber.origin, { kind: 'layout', layoutId });
 
   // setupへ書くとそちらが勝つ（setupIdをcontextへ渡した時だけ見る）
-  const writtenSetup = setOverride(overrides, { kind: 'setup', setupId }, 'windowSize', 5);
+  const writtenSetup = setOverride(TEST_ITEMS, overrides, { kind: 'setup', setupId }, 'anyLevelNumber', 5);
   assert.ok(writtenSetup.ok);
   overrides = writtenSetup.overrides;
-  resolved = resolveCascade(overrides, contextFor(asuka, { shapeId, inputMethod, setupId }));
-  assert.equal(resolved.windowSize.value, 5);
-  assert.deepEqual(resolved.windowSize.origin, { kind: 'setup', setupId });
+  resolved = resolveCascade(TEST_ITEMS, overrides, contextFor(asuka, { shapeId, inputMethod, setupId }));
+  assert.equal(resolved.anyLevelNumber.value, 5);
+  assert.deepEqual(resolved.anyLevelNumber.origin, { kind: 'setup', setupId });
 
   // setupIdを渡さない解決（Setup未確定のプレビュー等）ではsetupレベルを見ないのでlayoutの値のまま
-  resolved = resolveCascade(overrides, contextFor(asuka, { shapeId, inputMethod }));
-  assert.equal(resolved.windowSize.value, 4);
+  resolved = resolveCascade(TEST_ITEMS, overrides, contextFor(asuka, { shapeId, inputMethod }));
+  assert.equal(resolved.anyLevelNumber.value, 4);
 });
 
 test('許可されていないレベルへの書き込みは拒否される（例外ではなく値で返す）', () => {
-  // chainInterpretationはグローバルのみ許可
-  const result = setOverride(
-    EMPTY_CASCADE_OVERRIDES,
-    { kind: 'layout', layoutId: asuka.id },
-    'chainInterpretation',
-    { breakOnSameFinger: false, breakOnTriggerOnly: false, breakOnThumbOnly: false, breakOnOppositeHandSimultaneous: false },
-  );
+  // globalOnlyFlagはグローバルのみ許可
+  const result = setOverride(TEST_ITEMS, EMPTY, { kind: 'layout', layoutId: asuka.id }, 'globalOnlyFlag', false);
   assert.equal(result.ok, false);
   if (!result.ok) {
     assert.equal(result.error.kind, 'disallowed-level');
-    assert.equal(result.error.itemId, 'chainInterpretation');
+    assert.equal(result.error.itemId, 'globalOnlyFlag');
   }
 });
 
 test('許可されていないレベルに残っている古い値は解決時に無視され診断が付く', () => {
   // 直接ストアへ不正な形で値を仕込む（インポートした旧データを想定）。
   // setOverrideを経由しないので拒否されない = 「すでにストアに入っている」状態を再現する。
-  const overrides: CascadeOverrides = {
-    layout: { [asuka.id]: { chainInterpretation: { breakOnSameFinger: false, breakOnTriggerOnly: false, breakOnThumbOnly: false, breakOnOppositeHandSimultaneous: false } } },
+  const overrides: TestOverrides = {
+    layout: { [asuka.id]: { globalOnlyFlag: false } },
   };
-  const resolved = resolveCascade(overrides, contextFor(asuka));
+  const resolved = resolveCascade(TEST_ITEMS, overrides, contextFor(asuka));
   // 既定値のまま（layoutの値は無視した）
-  assert.equal(resolved.chainInterpretation.value.breakOnSameFinger, true);
-  assert.equal(resolved.chainInterpretation.origin.kind, 'default');
-  assert.ok(resolved.chainInterpretation.diagnostics.some((d) => d.kind === 'ignored-disallowed-level'));
+  assert.equal(resolved.globalOnlyFlag.value, true);
+  assert.equal(resolved.globalOnlyFlag.origin.kind, 'default');
+  assert.ok(resolved.globalOnlyFlag.diagnostics.some((d) => d.kind === 'ignored-disallowed-level'));
 });
 
-test('妥当性: 反対側の親指キーが無い形状ではpreferOppositeThumbが実現できずfallback+警告になる', () => {
+test('妥当性: 反対側の親指キーが無い形状では実現できずfallback+警告になる', () => {
   const shapeNoRightThumb = {
     ...PHYSICAL_SHAPES['row-staggered'],
     thumbs: PHYSICAL_SHAPES['row-staggered'].thumbs.filter((thumb) => thumb.finger !== 'RT'),
@@ -137,116 +180,54 @@ test('妥当性: 反対側の親指キーが無い形状ではpreferOppositeThum
     layoutId: naginata.id,
     layout: naginata,
   };
-  const written = setOverride(EMPTY_CASCADE_OVERRIDES, { kind: 'global' }, 'preferOppositeThumb', true);
+  const written = setOverride(TEST_ITEMS, EMPTY, { kind: 'global' }, 'thumbRequiring', true);
   assert.ok(written.ok);
 
-  const resolved = resolveCascade(written.overrides, context);
-  assert.equal(resolved.preferOppositeThumb.value, false); // 実現できる値へ戻る
-  assert.deepEqual(resolved.preferOppositeThumb.origin, { kind: 'global' }); // 出どころ自体は書き込まれた場所のまま
-  assert.ok(resolved.preferOppositeThumb.diagnostics.some((d) => d.kind === 'invalid-fallback'));
+  const resolved = resolveCascade(TEST_ITEMS, written.overrides, context);
+  assert.equal(resolved.thumbRequiring.value, false); // 実現できる値へ戻る
+  assert.deepEqual(resolved.thumbRequiring.origin, { kind: 'global' }); // 出どころ自体は書き込まれた場所のまま
+  assert.ok(resolved.thumbRequiring.diagnostics.some((d) => d.kind === 'invalid-fallback'));
 
   // 両方の親指キーがある形状では同じ上書きがそのまま実現できる
-  const resolvedOk = resolveCascade(written.overrides, contextFor(naginata, { inputMethod: 'kana-direct' }));
-  assert.equal(resolvedOk.preferOppositeThumb.value, true);
-  assert.equal(resolvedOk.preferOppositeThumb.diagnostics.length, 0);
+  const resolvedOk = resolveCascade(
+    TEST_ITEMS,
+    written.overrides,
+    contextFor(naginata, { inputMethod: 'kana-direct' }),
+  );
+  assert.equal(resolvedOk.thumbRequiring.value, true);
+  assert.equal(resolvedOk.thumbRequiring.diagnostics.length, 0);
 });
 
-test('適用可否: SandSを持たない配列ではpreferOppositeThumbがnot-applicableと報告される', () => {
-  const resolvedAsuka = resolveCascade(EMPTY_CASCADE_OVERRIDES, contextFor(asuka));
-  assert.equal(resolvedAsuka.preferOppositeThumb.applicable, false);
-  assert.ok(resolvedAsuka.preferOppositeThumb.diagnostics.some((d) => d.kind === 'not-applicable'));
+test('適用可否: その機能を持たない配列ではnot-applicableと報告される（値自体は解決する）', () => {
+  const resolvedAsuka = resolveCascade(TEST_ITEMS, EMPTY, contextFor(asuka));
+  assert.equal(resolvedAsuka.thumbRequiring.applicable, false);
+  assert.ok(resolvedAsuka.thumbRequiring.diagnostics.some((d) => d.kind === 'not-applicable'));
 
-  const resolvedNaginata = resolveCascade(EMPTY_CASCADE_OVERRIDES, contextFor(naginata));
-  assert.equal(resolvedNaginata.preferOppositeThumb.applicable, true);
-});
-
-test('適用可否: ローマ字表を持たない配列（かな直接・英字）ではromajiRuleIdがnot-applicable', () => {
-  const resolvedNicola = resolveCascade(EMPTY_CASCADE_OVERRIDES, contextFor(nicola));
-  assert.equal(resolvedNicola.romajiRuleId.applicable, false);
-
-  const resolvedEn = resolveCascade(EMPTY_CASCADE_OVERRIDES, contextFor(colemakEn));
-  assert.equal(resolvedEn.romajiRuleId.applicable, false);
-
-  const resolvedQwertyJa = resolveCascade(EMPTY_CASCADE_OVERRIDES, contextFor(qwertyJa, { inputMethod: 'romaji' }));
-  assert.equal(resolvedQwertyJa.romajiRuleId.applicable, true);
+  const resolvedNaginata = resolveCascade(TEST_ITEMS, EMPTY, contextFor(naginata));
+  assert.equal(resolvedNaginata.thumbRequiring.applicable, true);
 });
 
 test('リセット: 項目単位でそのレベルの1項目だけ消える', () => {
-  let overrides = EMPTY_CASCADE_OVERRIDES;
   const level = { kind: 'layout' as const, layoutId: asuka.id };
-  overrides = (setOverride(overrides, level, 'windowSize', 6) as { ok: true; overrides: CascadeOverrides }).overrides;
-  overrides = (setOverride(overrides, level, 'sfbHomeCost', false) as { ok: true; overrides: CascadeOverrides }).overrides;
+  let overrides = EMPTY;
+  overrides = (setOverride(TEST_ITEMS, overrides, level, 'anyLevelNumber', 6) as { ok: true; overrides: TestOverrides }).overrides;
+  overrides = (setOverride(TEST_ITEMS, overrides, level, 'thumbRequiring', true) as { ok: true; overrides: TestOverrides }).overrides;
 
-  overrides = resetItem(overrides, level, 'windowSize');
-  const resolved = resolveCascade(overrides, contextFor(asuka));
-  assert.equal(resolved.windowSize.value, 3); // 消えて既定に戻る
-  assert.equal(resolved.sfbHomeCost.value, false); // 別項目は残る
+  overrides = resetItem(overrides, level, 'anyLevelNumber');
+  const resolved = resolveCascade(TEST_ITEMS, overrides, contextFor(asuka));
+  assert.equal(resolved.anyLevelNumber.value, 3); // 消えて既定に戻る
+  assert.equal(resolved.thumbRequiring.value, true); // 別項目は残る
 });
 
 test('リセット: レベル単位でそのレベルの上書きが全部消える', () => {
-  let overrides = EMPTY_CASCADE_OVERRIDES;
   const level = { kind: 'layout' as const, layoutId: asuka.id };
-  overrides = (setOverride(overrides, level, 'windowSize', 6) as { ok: true; overrides: CascadeOverrides }).overrides;
-  overrides = (setOverride(overrides, level, 'sfbHomeCost', false) as { ok: true; overrides: CascadeOverrides }).overrides;
+  let overrides = EMPTY;
+  overrides = (setOverride(TEST_ITEMS, overrides, level, 'anyLevelNumber', 6) as { ok: true; overrides: TestOverrides }).overrides;
+  overrides = (setOverride(TEST_ITEMS, overrides, level, 'thumbRequiring', true) as { ok: true; overrides: TestOverrides }).overrides;
 
   overrides = resetLevel(overrides, level);
-  assert.deepEqual(overrides, EMPTY_CASCADE_OVERRIDES);
-  const resolved = resolveCascade(overrides, contextFor(asuka));
-  assert.equal(resolved.windowSize.value, 3);
-  assert.equal(resolved.sfbHomeCost.value, true);
-});
-
-// #544 Phase 2完了条件: 「同じ入力で旧実装と同じ数値が出ることがfixtureで確認されている」を
-// カスケードの既定値についても満たす。test/fixtures/analyzer-regression.json の
-// 上書き無しシナリオ（id末尾が default/legacy/modern で、それ以外の分岐名を含まないもの）は
-// 全て「アプリの現在の既定値」を記録しているので、上書き無しの解決結果と一致するはずである。
-test('上書き無しの解決結果は、全組み込み配列でfixtureに記録された既定条件と一致する', () => {
-  const fixturePath = join(ROOT, 'test', 'fixtures', 'analyzer-regression.json');
-  const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as {
-    cases: Array<{
-      id: string;
-      language: 'en' | 'ja';
-      layoutId: string;
-      conditions: {
-        windowSize: number;
-        sfbHomeCost: boolean;
-        preferOppositeThumb: boolean;
-        triggerRealizationPolicy: unknown;
-        actionRealizationPolicy: unknown;
-        chainInterpretation: unknown;
-        arpeggioInterpretation: unknown;
-        geometryShapeId: string;
-      };
-    }>;
-  };
-
-  const defaultScenarios = fixture.cases.filter((c) => c.id.split(':').length === 3);
-  assert.ok(defaultScenarios.length > 0);
-
-  for (const scenario of defaultScenarios) {
-    const list = scenario.language === 'en' ? LAYOUTS : LAYOUTS_JA;
-    const layout = findLayout(list, scenario.layoutId);
-    const context = contextFor(layout, { shapeId: scenario.conditions.geometryShapeId as PresetGeometryKind });
-    const resolved = resolveCascade(EMPTY_CASCADE_OVERRIDES, context);
-
-    assert.equal(resolved.windowSize.value, scenario.conditions.windowSize, scenario.id);
-    assert.equal(resolved.sfbHomeCost.value, scenario.conditions.sfbHomeCost, scenario.id);
-    assert.equal(resolved.preferOppositeThumb.value, scenario.conditions.preferOppositeThumb, scenario.id);
-    assert.deepEqual(
-      resolved.triggerRealizationPolicy.value,
-      scenario.conditions.triggerRealizationPolicy,
-      scenario.id,
-    );
-    assert.deepEqual(
-      resolved.actionRealizationPolicy.value,
-      scenario.conditions.actionRealizationPolicy,
-      scenario.id,
-    );
-    assert.deepEqual(resolved.chainInterpretation.value, scenario.conditions.chainInterpretation, scenario.id);
-    assert.deepEqual(
-      resolved.arpeggioInterpretation.value,
-      scenario.conditions.arpeggioInterpretation,
-      scenario.id,
-    );
-  }
+  assert.deepEqual(overrides, EMPTY);
+  const resolved = resolveCascade(TEST_ITEMS, overrides, contextFor(asuka));
+  assert.equal(resolved.anyLevelNumber.value, 3);
+  assert.equal(resolved.thumbRequiring.value, false);
 });

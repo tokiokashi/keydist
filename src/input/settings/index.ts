@@ -8,18 +8,15 @@ export {
 } from './levels.ts';
 export type { CascadeContext } from './context.ts';
 export {
-  SETTINGS_ITEMS,
-  SETTINGS_ITEM_IDS,
-  type ArpeggioInterpretationValue,
-  type ChainInterpretationValue,
-  type ItemValueMap,
-  type PlaybackRateAverageValue,
+  defineItem,
+  resolveDefaultValue,
+  type ItemRegistry,
+  type RegistryValueMap,
   type SettingItem,
-  type SettingsItemId,
   type ValidateResult,
 } from './items.ts';
 export {
-  EMPTY_CASCADE_OVERRIDES,
+  emptyCascadeOverrides,
   levelOverrides,
   withLevelOverrides,
   type CascadeOverrides,

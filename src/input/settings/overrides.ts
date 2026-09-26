@@ -1,26 +1,32 @@
 import type { InputMethod, CascadeLevel } from './levels.ts';
-import type { ItemValueMap, SettingsItemId } from './items.ts';
 
-/** 1レベル分の疎な上書き。上書きした項目だけを持つ。 */
-export type LevelOverrides = { readonly [K in SettingsItemId]?: ItemValueMap[K] };
+/** 1レベル分の疎な上書き。値の型の写像 `V`（`RegistryValueMap<R>`）の部分集合。 */
+export type LevelOverrides<V> = { readonly [K in keyof V]?: V[K] };
 
 /**
  * カスケード全体の保存形式。プレーンなJSONとして持つ（Map等は使わない）。
  * 後続のvalibot codec（Phase 2の別項目）がそのままdecodeできる形を意図している。
  * globalは単一、それ以外は「そのレベルのインスタンスid → 上書き」の辞書。
+ * `V` はレジストリから決まる値の写像（`RegistryValueMap<R>`）で、呼び出し側が指定する。
  */
-export interface CascadeOverrides {
-  readonly global?: LevelOverrides;
-  readonly shape?: Readonly<Record<string, LevelOverrides>>;
-  readonly inputMethod?: Readonly<Partial<Record<InputMethod, LevelOverrides>>>;
-  readonly layout?: Readonly<Record<string, LevelOverrides>>;
-  readonly setup?: Readonly<Record<string, LevelOverrides>>;
+export interface CascadeOverrides<V> {
+  readonly global?: LevelOverrides<V>;
+  readonly shape?: Readonly<Record<string, LevelOverrides<V>>>;
+  readonly inputMethod?: Readonly<Partial<Record<InputMethod, LevelOverrides<V>>>>;
+  readonly layout?: Readonly<Record<string, LevelOverrides<V>>>;
+  readonly setup?: Readonly<Record<string, LevelOverrides<V>>>;
 }
 
-export const EMPTY_CASCADE_OVERRIDES: CascadeOverrides = {};
+/** 上書きが1つも無い状態。`{}` はどの `V` に対しても妥当なので、呼び出し側の型で使える。 */
+export function emptyCascadeOverrides<V>(): CascadeOverrides<V> {
+  return {};
+}
 
 /** 指定レベルに保存されている上書き（無ければundefined）。 */
-export function levelOverrides(overrides: CascadeOverrides, level: CascadeLevel): LevelOverrides | undefined {
+export function levelOverrides<V>(
+  overrides: CascadeOverrides<V>,
+  level: CascadeLevel,
+): LevelOverrides<V> | undefined {
   switch (level.kind) {
     case 'global': return overrides.global;
     case 'shape': return overrides.shape?.[level.shapeId];
@@ -34,11 +40,11 @@ export function levelOverrides(overrides: CascadeOverrides, level: CascadeLevel)
  * 指定レベルの上書きを丸ごと置き換えた新しいCascadeOverridesを返す（イミュータブル）。
  * `next` が `undefined` ならそのレベルのエントリごと消す（空オブジェクトを残さない）。
  */
-export function withLevelOverrides(
-  overrides: CascadeOverrides,
+export function withLevelOverrides<V>(
+  overrides: CascadeOverrides<V>,
   level: CascadeLevel,
-  next: LevelOverrides | undefined,
-): CascadeOverrides {
+  next: LevelOverrides<V> | undefined,
+): CascadeOverrides<V> {
   if (level.kind === 'global') {
     if (next === undefined) {
       const { global: _drop, ...rest } = overrides;
@@ -48,7 +54,7 @@ export function withLevelOverrides(
   }
 
   const bucketKey = level.kind;
-  const bucket = { ...(overrides[bucketKey] as Record<string, LevelOverrides> | undefined) };
+  const bucket = { ...(overrides[bucketKey] as Record<string, LevelOverrides<V>> | undefined) };
   const instanceKey = level.kind === 'shape'
     ? level.shapeId
     : level.kind === 'inputMethod'

@@ -1,17 +1,17 @@
-import { SETTINGS_ITEMS, type ItemValueMap, type SettingsItemId } from './items.ts';
+import type { ItemRegistry, RegistryValueMap } from './items.ts';
 import type { CascadeLevel } from './levels.ts';
 import type { CascadeOverrides, LevelOverrides } from './overrides.ts';
 import { levelOverrides, withLevelOverrides } from './overrides.ts';
 
 export interface DisallowedLevelError {
   readonly kind: 'disallowed-level';
-  readonly itemId: SettingsItemId;
+  readonly itemId: string;
   readonly level: CascadeLevel;
   readonly message: string;
 }
 
-export type WriteResult =
-  | { readonly ok: true; readonly overrides: CascadeOverrides }
+export type WriteResult<V> =
+  | { readonly ok: true; readonly overrides: CascadeOverrides<V> }
   | { readonly ok: false; readonly error: DisallowedLevelError };
 
 /**
@@ -19,13 +19,14 @@ export type WriteResult =
  * （書き込むレベルを必ず指定する、という#544 §8-2の要件をここで満たす）。
  * 許可されていないレベルへの書き込みは例外ではなく値として拒否する。
  */
-export function setOverride<K extends SettingsItemId>(
-  overrides: CascadeOverrides,
+export function setOverride<R extends ItemRegistry, K extends keyof R & string>(
+  registry: R,
+  overrides: CascadeOverrides<RegistryValueMap<R>>,
   level: CascadeLevel,
   itemId: K,
-  value: ItemValueMap[K],
-): WriteResult {
-  const item = SETTINGS_ITEMS[itemId];
+  value: RegistryValueMap<R>[K],
+): WriteResult<RegistryValueMap<R>> {
+  const item = registry[itemId];
   if (!item.allowedLevels.has(level.kind)) {
     return {
       ok: false,
@@ -38,6 +39,6 @@ export function setOverride<K extends SettingsItemId>(
     };
   }
   const current = levelOverrides(overrides, level) ?? {};
-  const next: LevelOverrides = { ...current, [itemId]: value };
+  const next = { ...current, [itemId]: value } as LevelOverrides<RegistryValueMap<R>>;
   return { ok: true, overrides: withLevelOverrides(overrides, level, next) };
 }

@@ -1,9 +1,8 @@
 import {
-  SETTINGS_ITEMS,
-  SETTINGS_ITEM_IDS,
-  type ItemValueMap,
+  resolveDefaultValue,
+  type ItemRegistry,
+  type RegistryValueMap,
   type SettingItem,
-  type SettingsItemId,
 } from './items.ts';
 import type { CascadeLevel, CascadeLevelKind } from './levels.ts';
 import { CASCADE_LEVEL_ORDER } from './levels.ts';
@@ -28,7 +27,7 @@ export interface ResolvedItem<T> {
   readonly diagnostics: readonly Diagnostic[];
 }
 
-export type ResolvedCascade = { readonly [K in SettingsItemId]: ResolvedItem<ItemValueMap[K]> };
+export type ResolvedCascade<V> = { readonly [K in keyof V]: ResolvedItem<V[K]> };
 
 /** そのContextで意味を持つレベルを弱い順に並べる。setupIdが無ければsetupレベルは見ない。 */
 function levelsForContext(context: CascadeContext): readonly CascadeLevel[] {
@@ -52,28 +51,22 @@ function levelFor(kind: CascadeLevelKind, context: CascadeContext): CascadeLevel
   }
 }
 
-/**
- * 1項目を解決する。項目ごとに値の型が違う（`ItemValueMap[K]`）ので、辞書を組み立てる
- * `resolveCascade` 側では `SettingsItemId` の共用体を1つずつ扱えず型が壊れる
- * （TypeScriptの既知の制約）。ここでは `unknown` で型消去して計算し、
- * `resolveCascade` が項目ごとの正しい型へ戻す。
- */
 function resolveItem(
-  itemId: SettingsItemId,
-  overrides: CascadeOverrides,
+  itemId: string,
+  item: SettingItem<unknown>,
+  overrides: CascadeOverrides<unknown>,
   levels: readonly CascadeLevel[],
   context: CascadeContext,
 ): ResolvedItem<unknown> {
-  const item = SETTINGS_ITEMS[itemId] as SettingItem<unknown>;
   const diagnostics: Diagnostic[] = [];
 
-  let value = item.defaultValue;
+  let value = resolveDefaultValue(item, context);
   let origin: ResolvedOrigin = { kind: 'default' };
 
   // 弱い順に重ねる。許可されていないレベルの値は解決に使わず、診断だけ残す
   // （インポートした旧データ等、許可外レベルに値が残っているケースを想定）。
   for (const level of levels) {
-    const stored = levelOverrides(overrides, level);
+    const stored = levelOverrides(overrides, level) as Record<string, unknown> | undefined;
     if (stored === undefined || !(itemId in stored)) continue;
     if (!item.allowedLevels.has(level.kind)) {
       diagnostics.push({
@@ -109,13 +102,24 @@ function resolveItem(
 
 /**
  * カスケードを解決し、項目ごとの実効値・出どころ・診断を返す。
- * 純関数（overrides・contextだけを見る）。engine/UIはこれを呼ぶだけでよい。
+ * 純関数（registry・overrides・contextだけを見る）。項目の定義（具体の11個）は
+ * `src/engine/settings-items.ts` が持ち、ここは仕組みだけを提供する。
  */
-export function resolveCascade(overrides: CascadeOverrides, context: CascadeContext): ResolvedCascade {
+export function resolveCascade<R extends ItemRegistry>(
+  registry: R,
+  overrides: CascadeOverrides<RegistryValueMap<R>>,
+  context: CascadeContext,
+): ResolvedCascade<RegistryValueMap<R>> {
   const levels = levelsForContext(context);
   const result: Record<string, ResolvedItem<unknown>> = {};
-  for (const itemId of SETTINGS_ITEM_IDS) {
-    result[itemId] = resolveItem(itemId, overrides, levels, context);
+  for (const itemId of Object.keys(registry)) {
+    result[itemId] = resolveItem(
+      itemId,
+      registry[itemId],
+      overrides as CascadeOverrides<unknown>,
+      levels,
+      context,
+    );
   }
-  return result as ResolvedCascade;
+  return result as ResolvedCascade<RegistryValueMap<R>>;
 }
