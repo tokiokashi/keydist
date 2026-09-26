@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import {
   PhysicalKeyboard,
   type PhysicalKeyboardKeyView,
-} from '../../components/physical-keyboard.tsx';
+} from '#ui/keyboard/physical-keyboard.tsx';
 import {
   buildGeometry,
   DEFAULT_FINGER_ASSIGNMENT,
@@ -43,9 +43,9 @@ import {
   createWorkspacePanelRegistry,
   resolvePanelLayout,
   type PanelId,
-} from '../../workspace/panel-registry.ts';
-import { WorkspacePanel } from '../../workspace/workspace-panel.tsx';
-import { WorkspaceProvider, useWorkspace } from '../../workspace/workspace-runtime.tsx';
+} from './panels/panel-registry.ts';
+import { WorkspacePanel } from './panels/workspace-panel.tsx';
+import { WorkspaceProvider, useWorkspace } from './panels/workspace-runtime.tsx';
 import {
   assignBrowserKeyCode,
   loadBrowserKeyBindingOverrides,
