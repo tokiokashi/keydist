@@ -883,8 +883,8 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
               <p>
                 線の向きと長さは実移動 [u]、太さと濃さはfrequency。
                 Auto fitは左右共通maxで表示領域を使い、Fixedは条件をまたいで1uの描画長を固定する。
-                白線はmean displacement [u]。外周shapeは実vector角度へ円周kernelを重ねた方向密度、
-                |R|は方向集中度の要約値。
+                白線はmean displacement [u]。外周shapeは実vector角度へ円周kernelを重ねた方向密度。
+                「方向の広がり」はピークから±指定角度で強度が半分になる幅、|R|は方向集中度の要約値。
               </p>
             </header>
             <div className="flow-profile-controls" aria-label="Movement profile controls">
@@ -900,14 +900,14 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
                 </select>
               </label>
               <label>
-                <span>Bandwidth <output>{polarBandwidth}°</output></span>
+                <span>方向の広がり <output>±{polarBandwidth}°</output></span>
                 <input
                   type="range"
                   min="4"
                   max="45"
                   step="1"
                   value={polarBandwidth}
-                  aria-label="Polar bandwidth"
+                  aria-label="方向の広がり"
                   onChange={(event) => setPolarBandwidth(Number(event.currentTarget.value))}
                 />
               </label>
