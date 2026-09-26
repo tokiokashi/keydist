@@ -8,8 +8,9 @@ import { QWERTY_LEGEND, resolveKeyId, type NonThumb } from './geometry.ts';
 import { fromRows, SINGLE_LAYER_ID, withRomaji, type Layout } from './layouts/index.ts';
 import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from './romaji/rules.ts';
 import type { Sequence } from './layouts/types.ts';
+import { notifyKeydistStorageChange } from './browser-storage-events.ts';
 
-const STORAGE_KEY = 'keydist:layouts';
+export const USER_LAYOUTS_USER_LAYOUTS_STORAGE_KEY = 'keydist:layouts';
 
 /** 選べるローマ字の綴り */
 export { ROMAJI_RULES };
@@ -37,7 +38,7 @@ export const ROW_LABELS = ['数字段', '上段', 'ホーム段', '下段'];
 
 export function load(): UserLayout[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(USER_LAYOUTS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as UserLayout[];
     return sanitizeUserLayouts(parsed);
@@ -48,7 +49,8 @@ export function load(): UserLayout[] {
 
 export function save(layouts: UserLayout[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
+    localStorage.setItem(USER_LAYOUTS_STORAGE_KEY, JSON.stringify(layouts));
+    notifyKeydistStorageChange(USER_LAYOUTS_STORAGE_KEY);
   } catch {
     // 保存できなくてもその場の評価は成立する
   }
