@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import type { Finger, Key, Point } from '../src/geometry.ts';
-import type { Press, Stroke, StrokeParticipation } from '../src/evaluate.ts';
+import type { Finger, Key, Point } from '#input/shapes/geometry.ts';
+import type { Press, Stroke, StrokeParticipation } from '#trace/evaluate.ts';
 import {
   aggregateBigramVectors,
   buildBigramVectors,
@@ -11,7 +11,7 @@ import {
   filterBigramVectors,
   meanDisplacement,
   type BigramVector,
-} from '../src/bigram-vectors.ts';
+} from '#analyzers/bigram-flow/bigram-vectors.ts';
 
 const key = (id: string, finger: Finger, x: number, y = 2): Key => ({
   id,

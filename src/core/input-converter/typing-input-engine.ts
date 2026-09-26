@@ -1,4 +1,4 @@
-import { resolveKeyId } from '../../geometry.ts';
+import { resolveKeyId } from '#input/shapes/geometry.ts';
 import {
   applyActionRealizationPolicy,
   DEFAULT_ACTION_REALIZATION_POLICY,
@@ -14,7 +14,7 @@ import {
   type SemanticInput,
   type TriggerHoldState,
   type TriggerRealizationPolicy,
-} from '../semantic-input/index.ts';
+} from '#input/semantics/index.ts';
 
 export interface PhysicalKeyEvent {
   readonly type: 'down' | 'up';

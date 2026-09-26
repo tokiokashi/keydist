@@ -1,11 +1,11 @@
-import type { GeometryKind } from '../geometry.ts';
-import type { ChainPolicy } from '../analysis-chain.ts';
-import type { ArpeggioPolicy } from '../analysis-arpeggio.ts';
-import type { Options } from '../evaluate.ts';
+import type { GeometryKind } from '#input/shapes/geometry.ts';
+import type { ChainPolicy } from '#interpretation/structure/chain.ts';
+import type { ArpeggioPolicy } from '#interpretation/structure/arpeggio.ts';
+import type { Options } from '#trace/evaluate.ts';
 import type {
   ActionRealizationPolicy,
   TriggerRealizationPolicy,
-} from '../core/semantic-input/index.ts';
+} from '#input/semantics/index.ts';
 import type { ConditionDefaults, LayoutConditionOverrides } from './conditions.ts';
 
 export interface ResolvedConditions {

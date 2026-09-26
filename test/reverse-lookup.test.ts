@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { inputAlternativeSelectionIdentity } from '../src/core/semantic-input/index.ts';
-import type { InputAlternativeOrigin } from '../src/core/semantic-input/types.ts';
-import { LAYOUT_BY_ID } from '../src/layouts/index.ts';
+import { inputAlternativeSelectionIdentity } from '#input/semantics/index.ts';
+import type { InputAlternativeOrigin } from '#input/semantics/types.ts';
+import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import {
   longestReverseLookupRoute,
   reverseLookup,

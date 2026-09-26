@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { SAMPLE_TEXT_JA } from '../src/sample-text-ja.ts';
+import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
 
 const text = SAMPLE_TEXT_JA.replace(/\s+/g, '');
 const count = (pattern: RegExp) => text.match(pattern)?.length ?? 0;

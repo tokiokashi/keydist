@@ -1,9 +1,9 @@
-import type { Finger, Geometry } from '../geometry.ts';
-import type { Layout } from '../layouts/index.ts';
+import type { Finger, Geometry } from '#input/shapes/geometry.ts';
+import type { Layout } from '#input/layouts/index.ts';
 import type {
   PlaybackInputPreviewSegment,
   PlaybackRateChartPoint,
-} from '../playback.ts';
+} from '#interpretation/timing/playback.ts';
 import type { PlaybackKeyFeedbackStyle } from './ui-state.ts';
 
 export type AnalyzerPlaybackDynamicDisplay = 'none' | 'chain' | 'arpeggio' | 'both';

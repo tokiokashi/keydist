@@ -2,9 +2,9 @@ import {
   inputAlternativeSelectionIdentity,
   type InputAlternative,
   type InputContextRequirement,
-} from '../../core/semantic-input/index.ts';
-import { resolveKeyId } from '../../geometry.ts';
-import type { Layout } from '../../layouts/index.ts';
+} from '#input/semantics/index.ts';
+import { resolveKeyId } from '#input/shapes/geometry.ts';
+import type { Layout } from '#input/layouts/index.ts';
 import { kanaToRomaji } from '#input/romaji/kunrei.ts';
 import { romajiToKana } from './live-romaji.ts';
 

@@ -6,7 +6,7 @@ import {
 import {
   PLAYBACK_CALIBRATION_STORAGE_KEY,
   type PlaybackCalibration,
-} from '../src/playback-calibration.ts';
+} from '#interpretation/timing/calibration.ts';
 
 test('calibration model edits, saves, and discards without DOM ownership', () => {
   const stored = new Map<string, string>();

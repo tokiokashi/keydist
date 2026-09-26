@@ -5,8 +5,8 @@ import {
   analyzeChains,
   buildRawHandRuns,
   chainPolicyFromLegacyUi,
-} from '../src/analysis-chain.ts';
-import type { Stroke, StrokeParticipation } from '../src/evaluate.ts';
+} from '#interpretation/structure/chain.ts';
+import type { Stroke, StrokeParticipation } from '#trace/evaluate.ts';
 
 const participation = (
   hand: 'left' | 'right',

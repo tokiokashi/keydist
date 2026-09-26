@@ -1,4 +1,4 @@
-import type { Finger } from '../geometry.ts';
+import type { Finger } from '#input/shapes/geometry.ts';
 
 const $ = <T extends HTMLElement>(id: string) => {
   const element = document.getElementById(id);

@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import type { Finger, Key } from '../src/geometry.ts';
-import type { Press, Stroke, StrokeParticipation } from '../src/evaluate.ts';
-import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
-import { DEFAULT_CHAIN_POLICY } from '../src/analysis-chain.ts';
-import { DEFAULT_ARPEGGIO_POLICY } from '../src/analysis-arpeggio.ts';
+import type { Finger, Key } from '#input/shapes/geometry.ts';
+import type { Press, Stroke, StrokeParticipation } from '#trace/evaluate.ts';
+import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
+import { DEFAULT_CHAIN_POLICY } from '#interpretation/structure/chain.ts';
+import { DEFAULT_ARPEGGIO_POLICY } from '#interpretation/structure/arpeggio.ts';
 import {
   playbackAnalysisArpeggioMotions,
   playbackAnalysisArpeggioOrders,

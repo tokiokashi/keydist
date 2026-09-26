@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry } from '../src/geometry.ts';
-import { evaluate } from '../src/evaluate.ts';
-import { computeMetrics } from '../src/metrics.ts';
-import { fromFaces } from '../src/layouts/index.ts';
-import { DEFAULT_TRIGGER_REALIZATION_POLICY } from '../src/core/semantic-input/index.ts';
+import { buildGeometry } from '#input/shapes/geometry.ts';
+import { evaluate } from '#trace/evaluate.ts';
+import { computeMetrics } from '#interpretation/metrics.ts';
+import { fromFaces } from '#input/layouts/index.ts';
+import { DEFAULT_TRIGGER_REALIZATION_POLICY } from '#input/semantics/index.ts';
 
 const geometry = buildGeometry('row-staggered');
 

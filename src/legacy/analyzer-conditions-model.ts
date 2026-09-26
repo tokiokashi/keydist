@@ -1,5 +1,5 @@
-import type { GeometryKind } from '../geometry.ts';
-import type { Layout } from '../layouts/index.ts';
+import type { GeometryKind } from '#input/shapes/geometry.ts';
+import type { Layout } from '#input/layouts/index.ts';
 import type { UiPlaybackState } from './ui-state.ts';
 import type { ConditionPreset } from './condition-presets.ts';
 

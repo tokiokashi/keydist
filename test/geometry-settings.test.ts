@@ -5,9 +5,9 @@ import {
   parseGeometrySettings,
   sanitizeGeometrySettings,
   serializeGeometrySettings,
-} from '../src/geometry-settings.ts';
-import { assignmentWithHomeKeys, buildGeometry } from '../src/geometry.ts';
-import { fromDisplayUnits, toDisplayUnits } from '../src/geometry-units.ts';
+} from '#input/shapes/settings.ts';
+import { assignmentWithHomeKeys, buildGeometry } from '#input/shapes/geometry.ts';
+import { fromDisplayUnits, toDisplayUnits } from '#input/shapes/units.ts';
 import { toLayout, type UserLayout } from '#input/layouts/user-layouts.ts';
 
 test('運指と物理形状をJSONへ書き出して復元できる', () => {

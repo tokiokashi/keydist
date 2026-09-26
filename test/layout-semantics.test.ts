@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry, resolveKeyId } from '../src/geometry.ts';
-import { evaluate, type Options } from '../src/evaluate.ts';
-import { LAYOUT_BY_ID } from '../src/layouts/index.ts';
+import { buildGeometry, resolveKeyId } from '#input/shapes/geometry.ts';
+import { evaluate, type Options } from '#trace/evaluate.ts';
+import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 
 const geometry = buildGeometry('row-staggered');
 const opts = (o: Partial<Options> = {}): Options => ({

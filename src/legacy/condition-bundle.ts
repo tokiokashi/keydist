@@ -1,11 +1,11 @@
 import {
   PHYSICAL_SHAPES,
   type PhysicalShape,
-} from '../geometry.ts';
+} from '#input/shapes/geometry.ts';
 import {
   sanitizeGeometrySettings,
   sanitizePhysicalShape,
-} from '../geometry-settings.ts';
+} from '#input/shapes/settings.ts';
 import {
   sanitizeConditionDefaults,
   sanitizeConditionOverrides,

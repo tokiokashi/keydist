@@ -12,14 +12,14 @@ import {
   type RecognizedTypingInput,
   type TypingInputResult,
 } from '../../core/input-converter/index.ts';
-import type { Layout } from '../../layouts/index.ts';
+import type { Layout } from '#input/layouts/index.ts';
 import { kanaToRomaji } from '#input/romaji/kunrei.ts';
-import { physicalKeysUsedByLayout } from '../../layout-physical-keys.ts';
+import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
 import {
   advanceKeyPatternPresentation,
   EMPTY_KEY_PATTERN_PRESENTATION_STATE,
   type KeyPatternPresentationState,
-} from '../../key-pattern-picker.ts';
+} from '#input/layouts/key-pattern-picker.ts';
 import {
   browserKeyboardEventToPhysicalKeyEvent,
   isBrowserTextInputCode,

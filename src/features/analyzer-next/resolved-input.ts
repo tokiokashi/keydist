@@ -2,10 +2,10 @@ import {
   assignmentWithHomeKeys,
   buildGeometry,
   type GeometryKind,
-} from '../../geometry.ts';
-import type { GeometrySettings } from '../../geometry-settings.ts';
+} from '#input/shapes/geometry.ts';
+import type { GeometrySettings } from '#input/shapes/settings.ts';
 import type { ModeId } from '#legacy/layout-selection.ts';
-import type { Layout } from '../../layouts/types.ts';
+import type { Layout } from '#input/layouts/types.ts';
 import { resolveConditions } from '#engine/condition-resolution.ts';
 import type { ConditionDefaults } from '#engine/conditions.ts';
 import type {

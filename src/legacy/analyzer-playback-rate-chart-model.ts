@@ -1,6 +1,6 @@
 import { escapeText } from './chart.ts';
 import type { AnalyzerPlaybackDynamicDisplay } from './analyzer-playback-surface-model.ts';
-import type { PlaybackRateChartPoint } from '../playback.ts';
+import type { PlaybackRateChartPoint } from '#interpretation/timing/playback.ts';
 
 const KANA_COLOR = 'var(--series-2)';
 const ACTION_COLOR = 'var(--accent)';

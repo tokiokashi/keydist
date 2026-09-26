@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGeometry } from '../src/geometry.ts';
-import { evaluate, type Options } from '../src/evaluate.ts';
-import { computeMetrics } from '../src/metrics.ts';
-import { compileSequenceInputAlternative } from '../src/core/semantic-input/index.ts';
-import { faceFromEntries, fromFaces, fromKana, LAYOUT_BY_ID, type Layout, withCombos, withRomaji, withThumbShiftAlternatives } from '../src/layouts/index.ts';
+import { buildGeometry } from '#input/shapes/geometry.ts';
+import { evaluate, type Options } from '#trace/evaluate.ts';
+import { computeMetrics } from '#interpretation/metrics.ts';
+import { compileSequenceInputAlternative } from '#input/semantics/index.ts';
+import { faceFromEntries, fromFaces, fromKana, LAYOUT_BY_ID, type Layout, withCombos, withRomaji, withThumbShiftAlternatives } from '#input/layouts/index.ts';
 import { kunrei } from '#input/romaji/kunrei.ts';
 
 const geometry = buildGeometry('row-staggered');

@@ -6,8 +6,8 @@ import {
   importBenizara,
   importDvorakJ,
   importVial,
-} from '../src/layout-import.ts';
-import { CUSTOM_COMBOS } from '../src/layouts/combos-custom.ts';
+} from '#input/layouts/import.ts';
+import { CUSTOM_COMBOS } from '#input/layouts/combos-custom.ts';
 import { toLayout, type UserLayout } from '#input/layouts/user-layouts.ts';
 
 const vialKeyCode = (key: string): string => {

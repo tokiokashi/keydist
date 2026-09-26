@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TypingInputEngine } from '../src/core/input-converter/index.ts';
-import { faceFromEntries, fromFaces, fromKana, type Face, type FaceMode } from '../src/layouts/index.ts';
+import { faceFromEntries, fromFaces, fromKana, type Face, type FaceMode } from '#input/layouts/index.ts';
 
 const face = (
   trigger: readonly string[],

@@ -1,4 +1,4 @@
-import type { FingerClass } from '../../bigram-vectors.ts';
+import type { FingerClass } from '#analyzers/bigram-flow/bigram-vectors.ts';
 import type { MatrixSort } from '#legacy/chart.ts';
 import type {
   LayerColorScale,
@@ -10,7 +10,7 @@ import type {
 import {
   DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG,
   type BigramFlowDisplayConfig,
-} from '../bigram-vector/bigram-flow-view-config.ts';
+} from '#analyzers/bigram-flow/options.ts';
 import type {
   AnalysisViewDefinition,
   AnalysisViewType,

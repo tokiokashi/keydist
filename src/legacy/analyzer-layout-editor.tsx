@@ -5,7 +5,7 @@ import {
   keyId,
   QWERTY_LEGEND,
   type NonThumb,
-} from '../geometry.ts';
+} from '#input/shapes/geometry.ts';
 import {
   ROW_LABELS,
   newId as newLayoutId,
@@ -19,7 +19,7 @@ import {
   importBenizara,
   importDvorakJ,
   importVial,
-} from '../layout-import.ts';
+} from '#input/layouts/import.ts';
 import type { AnalyzerLayoutEditorModel } from './analyzer-layout-editor-model.ts';
 
 const FINGER_NAMES: Record<NonThumb, string> = {

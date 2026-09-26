@@ -1,12 +1,12 @@
-import type { FingerClass } from '../../bigram-vectors.ts';
+import type { FingerClass } from '#analyzers/bigram-flow/bigram-vectors.ts';
 import {
   DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG,
   type BigramFlowDisplayConfig,
   type KeyboardFlowHoverScale,
   type KeyboardFlowLayerOrder,
   type KeyboardFlowWeightScale,
-} from '../bigram-vector/bigram-flow-view-config.ts';
-import type { MovementScaleMode } from '../bigram-vector/movement-profile-scale.ts';
+} from '#analyzers/bigram-flow/options.ts';
+import type { MovementScaleMode } from '#analyzers/bigram-flow/movement-profile-scale.ts';
 import {
   validateStandaloneViewSearch,
   type StandaloneViewSearch,

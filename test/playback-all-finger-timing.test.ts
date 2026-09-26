@@ -6,15 +6,15 @@ import {
   type Finger,
   type Key,
   type Point,
-} from '../src/geometry.ts';
-import type { Press, Stroke, StrokeParticipation } from '../src/evaluate.ts';
-import { analyzeStrokeStructure } from '../src/analysis-aggregate.ts';
+} from '#input/shapes/geometry.ts';
+import type { Press, Stroke, StrokeParticipation } from '#trace/evaluate.ts';
+import { analyzeStrokeStructure } from '#interpretation/structure/aggregate.ts';
 import {
   advancePlayback,
   createPlaybackState,
   playbackRecentActionsPerSecond,
   playbackTimingSchedule,
-} from '../src/playback.ts';
+} from '#interpretation/timing/playback.ts';
 
 const geometry = buildGeometry('row-staggered');
 

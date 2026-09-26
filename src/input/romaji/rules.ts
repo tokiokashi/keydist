@@ -1,7 +1,7 @@
 import { azik } from './azik.ts';
 import { kunrei, addSokuonForms } from './kunrei.ts';
 import { OONISHI_OVERRIDES, oonishiRomaji } from './oonishi.ts';
-import { QWERTY_LEGEND } from '../../geometry.ts';
+import { QWERTY_LEGEND } from '../shapes/geometry.ts';
 
 export type BuiltinRomajiRuleId = 'kunrei' | 'oonishi' | 'azik' | 'qwerty';
 export type RomajiRuleId = string;

@@ -1,18 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import type { Finger, Key, Point } from '../src/geometry.ts';
-import type { Press, Stroke, StrokeParticipation } from '../src/evaluate.ts';
+import type { Finger, Key, Point } from '#input/shapes/geometry.ts';
+import type { Press, Stroke, StrokeParticipation } from '#trace/evaluate.ts';
 import {
   analyzeStrokeStructure,
-} from '../src/analysis-aggregate.ts';
+} from '#interpretation/structure/aggregate.ts';
 import {
   DEFAULT_ARPEGGIO_POLICY,
-} from '../src/analysis-arpeggio.ts';
-import { DEFAULT_CHAIN_POLICY } from '../src/analysis-chain.ts';
+} from '#interpretation/structure/arpeggio.ts';
+import { DEFAULT_CHAIN_POLICY } from '#interpretation/structure/chain.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
-} from '../src/core/semantic-input/index.ts';
+} from '#input/semantics/index.ts';
 
 const key = (id: string, finger: Finger, x: number, y: number, row = 2): Key => ({
   id,

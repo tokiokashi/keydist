@@ -5,8 +5,8 @@ import {
   PHYSICAL_SHAPES,
   type GeometryKind,
   type PhysicalShape,
-} from '../geometry.ts';
-import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from '../layouts/index.ts';
+} from '#input/shapes/geometry.ts';
+import { LAYOUTS, LAYOUTS_JA, withRomaji, type Layout } from '#input/layouts/index.ts';
 import { bindTips, hideTip, showTip } from './chart.ts';
 import {
   toLayout,
@@ -28,7 +28,7 @@ import {
   saveRomajiSettings,
   ROMAJI_SETTINGS_STORAGE_KEY,
 } from '#platform/assets/romaji-settings-storage.ts';
-import { loadPlaybackCalibration } from '../playback-calibration.ts';
+import { loadPlaybackCalibration } from '#interpretation/timing/calibration.ts';
 import type { ModeId } from './layout-selection.ts';
 import {
   type UiPlaybackState,
@@ -64,7 +64,7 @@ import {
   clonePhysicalShape,
   geometrySettingsForPreset,
   type GeometrySettings,
-} from '../geometry-settings.ts';
+} from '#input/shapes/settings.ts';
 import { newId as newGeometryId } from '#input/shapes/user-geometries.ts';
 import {
   load as loadUserGeometryShapes,
@@ -79,12 +79,12 @@ import {
   type ConditionPreset,
 } from './condition-presets.ts';
 import { setLayoutGeometryOverride } from '#engine/condition-resolution.ts';
-import type { ChainPolicy } from '../analysis-chain.ts';
-import type { ArpeggioPolicy } from '../analysis-arpeggio.ts';
+import type { ChainPolicy } from '#interpretation/structure/chain.ts';
+import type { ArpeggioPolicy } from '#interpretation/structure/arpeggio.ts';
 import {
   type ActionRealizationPolicy,
   type TriggerRealizationPolicy,
-} from '../core/semantic-input/index.ts';
+} from '#input/semantics/index.ts';
 import {
   conditionBundleFromState,
   parseConditionBundle,

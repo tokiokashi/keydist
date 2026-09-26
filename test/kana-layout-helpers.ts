@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buildGeometry } from '../src/geometry.ts';
-import { DEFAULT_OPTIONS, evaluate } from '../src/evaluate.ts';
-import type { Layout } from '../src/layouts/index.ts';
-import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '../src/sample-text-ja.ts';
+import { buildGeometry } from '#input/shapes/geometry.ts';
+import { DEFAULT_OPTIONS, evaluate } from '#trace/evaluate.ts';
+import type { Layout } from '#input/layouts/index.ts';
+import { SAMPLE_TEXT_JA, SAMPLE_TEXT_JA_LEGACY } from '#input/text/sample-ja.ts';
 
 type FixtureFace = {
   trigger: string[];

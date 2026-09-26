@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TypingInputEngine } from '../src/core/input-converter/index.ts';
 import { browserKeyboardEventToPhysicalKeyEvent } from '../src/features/input-converter/browser-keyboard-adapter.ts';
-import { NAGINATA_V18 } from '../src/layouts/naginata.ts';
-import { SHINGETA } from '../src/layouts/shingeta.ts';
-import { SHIN_JIS_SIMULTANEOUS } from '../src/layouts/shin-jis.ts';
-import { faceFromEntries, fromFaces, fromKana, withCombos, type Face } from '../src/layouts/index.ts';
-import { TSUKI_2_263 } from '../src/layouts/tsuki-2-263.ts';
+import { NAGINATA_V18 } from '#input/layouts/naginata.ts';
+import { SHINGETA } from '#input/layouts/shingeta.ts';
+import { SHIN_JIS_SIMULTANEOUS } from '#input/layouts/shin-jis.ts';
+import { faceFromEntries, fromFaces, fromKana, withCombos, type Face } from '#input/layouts/index.ts';
+import { TSUKI_2_263 } from '#input/layouts/tsuki-2-263.ts';
 
 const browserPhysical = (
   type: 'keydown' | 'keyup',
