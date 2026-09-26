@@ -486,15 +486,16 @@ function MovementProfilePlot({
           </span>
         </span>
       </header>
-      <svg
-        className="flow-profile-svg"
-        data-scale-mode={scaleMode}
-        width={viewSize}
-        height={viewSize}
-        viewBox={`0 0 ${viewSize} ${viewSize}`}
-        role="img"
-        aria-label={`${hand} hand movement profile`}
-      >
+      <div className="flow-profile-stage">
+        <svg
+          className="flow-profile-svg"
+          data-scale-mode={scaleMode}
+          width={viewSize}
+          height={viewSize}
+          viewBox={`0 0 ${viewSize} ${viewSize}`}
+          role="img"
+          aria-label={`${hand} hand movement profile`}
+        >
         <circle
           className="direction-polar-baseline"
           cx={cx}
@@ -590,8 +591,9 @@ function MovementProfilePlot({
             ? { duration: 0 }
             : { type: 'spring', stiffness: 170, damping: 22 }}
         />
-        <circle className="flow-origin" cx={cx} cy={cy} r="4" />
-      </svg>
+          <circle className="flow-origin" cx={cx} cy={cy} r="4" />
+        </svg>
+      </div>
 
       <div className="flow-roll-legend flow-profile-legend" aria-hidden="true">
         <span><i className="flow-dot flow-dot-inward" /> 内向き</span>
