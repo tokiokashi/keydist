@@ -4,7 +4,7 @@ import {
   type ComponentType,
 } from 'react';
 import type { AnalysisRuntime } from './runtime.ts';
-import { projectAnalysisConditionChrome } from './analysis-view-chrome.ts';
+import { projectAnalysisConditionChrome } from './view-context-chrome.ts';
 import {
   standaloneBindingFromSearch,
   type StandaloneViewSearch,
