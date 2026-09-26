@@ -14,7 +14,7 @@ import {
   LEGACY_THEME_KEY,
   UI_STATE_STORAGE_KEY,
   type UiStateStorage,
-} from './ui-state.ts';
+} from '#legacy/ui-state.ts';
 import { applyTheme, isThemeChoice, type ThemeChoice } from './theme.ts';
 
 export const DEFAULT_APPEARANCE: AppearancePreferencesV1 = { theme: 'system' };
