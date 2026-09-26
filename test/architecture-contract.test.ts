@@ -88,7 +88,8 @@ function isAllowedStructuralAnalysisModule(specifier: string): boolean {
 function isAllowedSemanticCoreModule(specifier: string): boolean {
   return /^\.\/[^/]+\.ts$/.test(specifier)
     || specifier === '../shapes/geometry.ts'
-    || specifier === '../layouts/types.ts';
+    || specifier === '../layouts/types.ts'
+    || specifier === '../layouts/index.ts';
 }
 
 const LEGACY_TRIGGER_REALIZATION_MODULE = join(SRC, 'trigger-realization.ts');
@@ -106,6 +107,10 @@ function isForbiddenRealizationConsumerImport(
   importerPath: string,
   specifier: string,
 ): boolean {
+  if (
+    specifier === '#input/semantics/action-realization.ts'
+    || specifier === '#input/semantics/trigger-realization.ts'
+  ) return true;
   const target = resolveRelativeModule(importerPath, specifier);
   if (target === undefined) return false;
   return target === LEGACY_TRIGGER_REALIZATION_MODULE
