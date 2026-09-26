@@ -16,11 +16,6 @@ const POLAR_GAP = 9;
 const POLAR_AMPLITUDE = 16;
 export const MIN_POLAR_BANDWIDTH_DEGREES = 4;
 export const MAX_POLAR_DISPLAY_GAIN = 3;
-/**
- * UI最小HWHM (4°) の単峰von Mises KDEが取る理論peak [rad^-1]。
- * density自体は正規化確率密度のまま保持し、描画時だけこの固定基準で0..1相当に写像する。
- */
-export const MAX_POLAR_DISPLAY_DENSITY = 6.726629634118925;
 const OUTER_MARGIN = 13;
 
 export function movementPlotScale(
@@ -34,9 +29,7 @@ export function movementPlotScale(
   const plotRadius = scaleMax * unitsPerSvgUnit;
   const polarBaseRadius = plotRadius + POLAR_GAP;
   const polarAmplitude = POLAR_AMPLITUDE;
-  const halfSize = polarBaseRadius
-    + polarAmplitude * MAX_POLAR_DISPLAY_GAIN
-    + OUTER_MARGIN;
+  const halfSize = polarBaseRadius + OUTER_MARGIN;
 
   return {
     scaleMax,
@@ -50,17 +43,16 @@ export function movementPlotScale(
 }
 
 
-/** 正規化density [rad^-1] を、手やdatasetに依存しない固定display scaleへ写像する。 */
-export function polarDisplayDensity(density: number): number {
-  return Math.max(0, density) / MAX_POLAR_DISPLAY_DENSITY;
-}
-
-export function polarDisplayRadius(
-  baseRadius: number,
-  amplitude: number,
-  density: number,
-  gain: number,
+/**
+ * KDE densityとdisplay gainから必要なpolar外周extentを計算する。
+ * density自体は変更せず、canvas/viewBoxの確保量だけを増やす。
+ */
+export function movementPlotExtent(
+  scale: MovementPlotScale,
+  maxDensity: number,
+  displayGain: number,
 ): number {
-  return baseRadius
-    + polarDisplayDensity(density) * amplitude * Math.max(0, gain);
+  const polarRadius = scale.polarBaseRadius
+    + Math.max(0, maxDensity) * scale.polarAmplitude * Math.max(0, displayGain);
+  return Math.max(scale.halfSize, polarRadius + OUTER_MARGIN);
 }
