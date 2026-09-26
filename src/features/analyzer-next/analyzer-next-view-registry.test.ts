@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ANALYSIS_VIEW_DEFINITIONS } from '../src/features/analyzer-next/view-registry.ts';
+import { ANALYSIS_VIEW_DEFINITIONS } from './view-registry.ts';
 import {
   searchFromStandaloneBinding,
   standaloneBindingFromSearch,
   validateStandaloneViewSearch,
-} from '../src/features/analyzer-next/route-state.ts';
+} from './route-state.ts';
 
 test('registry fixes cardinality for all stable View types', () => {
   assert.equal(ANALYSIS_VIEW_DEFINITIONS.get('bigram-flow')?.cardinality, 'single');

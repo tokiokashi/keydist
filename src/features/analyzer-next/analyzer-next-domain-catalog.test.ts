@@ -5,7 +5,7 @@ import {
   PHYSICAL_SHAPES,
 } from '#input/shapes/geometry.ts';
 import { DEFAULT_GEOMETRY_SETTINGS } from '#input/shapes/settings.ts';
-import { createAnalysisDomainCatalog } from '../src/features/analyzer-next/domain-catalog.ts';
+import { createAnalysisDomainCatalog } from './domain-catalog.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 
 const userLayout: UserLayout = {

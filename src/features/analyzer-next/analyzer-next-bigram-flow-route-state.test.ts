@@ -4,7 +4,7 @@ import {
   bigramFlowConfigFromSearch,
   bigramFlowConfigSearchPatch,
   validateBigramFlowSearch,
-} from '../src/features/analyzer-next/bigram-flow-route-state.ts';
+} from './bigram-flow-route-state.ts';
 
 test('Bigram Flow route search validates binding and the current ViewConfig surface', () => {
   assert.deepEqual(validateBigramFlowSearch({

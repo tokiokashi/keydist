@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DEFAULT_GEOMETRY_SETTINGS } from '#input/shapes/settings.ts';
-import { createAnalysisDomainCatalog } from '../src/features/analyzer-next/domain-catalog.ts';
-import { createResolvedAnalysisInputResolver } from '../src/features/analyzer-next/resolved-input.ts';
-import { createAnalysisSessionStore } from '../src/features/analyzer-next/session-store.ts';
-import { computeAnalysisSnapshot } from '../src/features/analyzer-next/snapshot-computation.ts';
-import { createAnalysisSnapshotReader } from '../src/features/analyzer-next/snapshot-reader.ts';
-import { createAnalysisSnapshotService } from '../src/features/analyzer-next/snapshot-service.ts';
+import { createAnalysisDomainCatalog } from './domain-catalog.ts';
+import { createResolvedAnalysisInputResolver } from './resolved-input.ts';
+import { createAnalysisSessionStore } from './session-store.ts';
+import { computeAnalysisSnapshot } from './snapshot-computation.ts';
+import { createAnalysisSnapshotReader } from './snapshot-reader.ts';
+import { createAnalysisSnapshotService } from './snapshot-service.ts';
 import { DEFAULT_CONDITION_DEFAULTS, createDefaultUiState } from '#legacy/ui-state.ts';
 
 function session() {

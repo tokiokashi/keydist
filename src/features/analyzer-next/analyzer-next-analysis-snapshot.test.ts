@@ -14,14 +14,14 @@ import { computeMetrics } from '#interpretation/metrics.ts';
 import { tableForRule } from '#input/romaji/rules.ts';
 import {
   computeAnalysisSnapshot,
-} from '../src/features/analyzer-next/snapshot-computation.ts';
+} from './snapshot-computation.ts';
 import {
   createResolvedAnalysisInputResolver,
   type AnalysisLayoutCatalogEntry,
-} from '../src/features/analyzer-next/resolved-input.ts';
+} from './resolved-input.ts';
 import {
   createAnalysisSessionStore,
-} from '../src/features/analyzer-next/session-store.ts';
+} from './session-store.ts';
 import { DEFAULT_CONDITION_DEFAULTS, createDefaultUiState } from '#legacy/ui-state.ts';
 
 function sessionStore() {

@@ -5,7 +5,7 @@ import {
   type AppStateV2,
 } from '#app/state/app-state.ts';
 import { analyzerSampleText } from '#legacy/analyzer-samples.ts';
-import { analysisSessionSeedFromAppState } from '../src/features/analyzer-next/session-app-state.ts';
+import { analysisSessionSeedFromAppState } from './session-app-state.ts';
 import { createDefaultUiState } from '#legacy/ui-state.ts';
 
 function appState(): AppStateV2 {

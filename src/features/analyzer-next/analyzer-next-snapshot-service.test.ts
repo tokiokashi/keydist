@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DEFAULT_GEOMETRY_SETTINGS } from '#input/shapes/settings.ts';
-import { createAnalysisDomainCatalog } from '../src/features/analyzer-next/domain-catalog.ts';
-import { createResolvedAnalysisInputResolver } from '../src/features/analyzer-next/resolved-input.ts';
-import { createAnalysisSessionStore } from '../src/features/analyzer-next/session-store.ts';
-import { createAnalysisSnapshotService } from '../src/features/analyzer-next/snapshot-service.ts';
+import { createAnalysisDomainCatalog } from './domain-catalog.ts';
+import { createResolvedAnalysisInputResolver } from './resolved-input.ts';
+import { createAnalysisSessionStore } from './session-store.ts';
+import { createAnalysisSnapshotService } from './snapshot-service.ts';
 import { DEFAULT_CONDITION_DEFAULTS, createDefaultUiState } from '#legacy/ui-state.ts';
 
 test('same resolved calculation key reuses Snapshot', () => {

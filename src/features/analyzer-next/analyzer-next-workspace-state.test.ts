@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ANALYSIS_VIEW_DEFINITIONS } from '../src/features/analyzer-next/view-registry.ts';
+import { ANALYSIS_VIEW_DEFINITIONS } from './view-registry.ts';
 import {
   decodeAnalyzerWorkspace,
   duplicateWorkspaceInstance,
   removeWorkspaceInstance,
   setWorkspaceInstanceVisibility,
   workspaceLayoutInstanceIds,
-} from '../src/features/analyzer-next/analyzer-workspace-state.ts';
+} from './analyzer-workspace-state.ts';
 
 const saved = {
   version: 1,

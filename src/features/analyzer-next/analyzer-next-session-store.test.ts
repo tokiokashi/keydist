@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DEFAULT_CONDITION_DEFAULTS, createDefaultUiState } from '#legacy/ui-state.ts';
-import { createAnalysisSessionStore } from '../src/features/analyzer-next/session-store.ts';
+import { createAnalysisSessionStore } from './session-store.ts';
 
 function store() {
   const ui = createDefaultUiState({

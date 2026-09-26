@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { APP_STATE_VERSION, analyzerSlicesFromUiState } from '#app/state/app-state.ts';
 import { ANALYZER_INITIAL_LAYOUTS } from '#legacy/analyzer-ui-state-bootstrap.ts';
-import { projectAnalysisConditionChrome } from '../src/features/analyzer-next/view-context-chrome.ts';
+import { projectAnalysisConditionChrome } from './view-context-chrome.ts';
 import {
   createAnalysisRuntime,
   type AnalysisRuntimeSource,
-} from '../src/features/analyzer-next/runtime.ts';
+} from './runtime.ts';
 import { createDefaultUiState } from '#legacy/ui-state.ts';
 
 function source(): AnalysisRuntimeSource {

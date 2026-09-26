@@ -7,7 +7,7 @@ import {
   type AnalysisBindingSession,
   type AnalysisViewDefinition,
   type AnalysisViewType,
-} from '../src/features/analyzer-next/view-contract.ts';
+} from './view-contract.ts';
 
 const session = (overrides: Partial<AnalysisBindingSession> = {}): AnalysisBindingSession => ({
   mode: 'ja',

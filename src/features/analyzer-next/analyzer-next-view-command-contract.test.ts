@@ -2,7 +2,7 @@ import test from 'node:test';
 import type {
   AnalysisDistanceCommand,
   AnalysisTimingCommand,
-} from '../src/features/analyzer-next/views/view-contract.ts';
+} from './views/view-contract.ts';
 
 test('condition command types keep key/value correlation', () => {
   const distance: AnalysisDistanceCommand = {

@@ -7,7 +7,7 @@ import {
   analysisDomainCatalogSourceFromRuntimeSource,
   createAnalysisRuntime,
   type AnalysisRuntimeSource,
-} from '../src/features/analyzer-next/runtime.ts';
+} from './runtime.ts';
 import { createDefaultUiState } from '#legacy/ui-state.ts';
 
 function source(): AnalysisRuntimeSource {
