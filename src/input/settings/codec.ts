@@ -34,6 +34,19 @@ import type { CascadeOverrides, LevelOverrides } from './overrides.ts';
  */
 export type ItemSchemaMap<V> = { readonly [K in keyof V]: BaseSchema<unknown, V[K], BaseIssue<unknown>> };
 
+/**
+ * `__proto__` / `constructor` / `prototype` はJSでは素のオブジェクトの
+ * bracketアクセスが「ふつうのプロパティ」ではなく`Object.prototype`の継承accessor
+ * （`__proto__`）や継承プロパティ（`constructor` / `prototype`）を踏んでしまう
+ * 既知の落とし穴。`JSON.parse('{"__proto__":{...}}')`はリテラルな own property
+ * "__proto__" を作れてしまう（代入のexotic setterを経由しないため）ので、
+ * 外部由来の資産（共有リンク・importファイル）のkeyとして実際に出現しうる。
+ * decodeCascadeOverridesのinstanceKey（配列id・形状id・Setup id等の任意文字列）は
+ * ここを通るので、書き込む前に予約名として弾く（診断付きで丸ごと捨てる。
+ * 「捨てた値には必ず診断」の原則を守る）。
+ */
+const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 function decodeLevelOverrides<V>(
   itemSchemas: ItemSchemaMap<V>,
   raw: unknown,
@@ -44,13 +57,26 @@ function decodeLevelOverrides<V>(
   const schemas = itemSchemas as Record<string, BaseSchema<unknown, unknown, BaseIssue<unknown>>>;
   const result: Record<string, unknown> = {};
   for (const [itemId, itemValue] of Object.entries(raw)) {
-    const schema = schemas[itemId];
-    if (schema === undefined) {
+    // `schemas[itemId]`は素のオブジェクトへのbracketアクセスなので、itemIdが
+    // "__proto__"だと（schemasがそれをown propertyとして持たない限り）
+    // Object.prototypeの継承accessorを踏んでschemas自身のprototypeを返してしまい
+    // （`undefined`にならない）、その後valibotへ渡して`schema.~run is not a
+    // function`のTypeErrorになる（decodeは例外を投げない原則に反する。#544 §8-5）。
+    // `Object.hasOwn`で「登録済みの項目idか」を先に確認すれば、"__proto__"や
+    // "constructor"は実在しない項目id同様に自然と「未知の項目」経路へ落ちる
+    // （UNSAFE_OBJECT_KEYSのような別の予約リストを二重に持つ必要が無い）。
+    if (!Object.hasOwn(schemas, itemId)) {
       diagnostics.push({ path: `${path}.${itemId}`, message: `未知の項目「${itemId}」の上書きを捨てた` });
       continue;
     }
+    const schema = schemas[itemId];
     const decoded = decodeDroppingInvalid(schema, itemValue, `${path}.${itemId}`, diagnostics);
-    if (decoded !== undefined) result[itemId] = decoded;
+    if (decoded !== undefined) {
+      // ここまで来たitemIdは`Object.hasOwn(schemas, itemId)`を満たす、つまり
+      // このアプリが実際に登録した項目id（"__proto__"等の予約名ではあり得ない）
+      // であることが保証されているので、素のbracket代入で安全。
+      result[itemId] = decoded;
+    }
   }
   return Object.keys(result).length === 0 ? undefined : (result as LevelOverrides<V>);
 }
@@ -77,6 +103,19 @@ export function decodeCascadeOverrides<V>(
     if (!isRecord(bucketRaw)) continue;
     const bucket: Record<string, LevelOverrides<V>> = {};
     for (const [instanceKey, levelRaw] of Object.entries(bucketRaw)) {
+      if (UNSAFE_OBJECT_KEYS.has(instanceKey)) {
+        // `bucket[instanceKey] = ...`という素のbracket代入は、instanceKeyが
+        // "__proto__"だとObject.prototypeの継承setterを踏み、エントリを追加する
+        // 代わりにbucket自身のprototypeを差し替えてしまう（値が診断なしで消える。
+        // Object.keys(bucket)にも現れない）。instanceKeyは配列id・形状id・Setup id
+        // など外部由来の任意文字列なので、書き込む前に予約名として弾き、
+        // 「捨てた値には必ず診断」を守る。
+        diagnostics.push({
+          path: `${path}.${bucketKey}.${instanceKey}`,
+          message: `予約された名前「${instanceKey}」のため、このidの上書きを丸ごと捨てた`,
+        });
+        continue;
+      }
       const decoded = decodeLevelOverrides(itemSchemas, levelRaw, `${path}.${bucketKey}.${instanceKey}`, diagnostics);
       if (decoded !== undefined) bucket[instanceKey] = decoded;
     }
