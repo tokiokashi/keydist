@@ -5,7 +5,7 @@ import {
   buildJapaneseInputSamplePools,
   COMMON_WORD_SAMPLES_JA,
   pickRandomSample,
-} from '../src/features/input-converter/random-samples.ts';
+} from '#tester/random-samples.ts';
 
 const codePointLength = (value: string): number => [...value].length;
 
