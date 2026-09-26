@@ -78,8 +78,12 @@ export function createAssetTabSync<T>(options: AssetTabSyncOptions<T>): AssetTab
   const subscribe = options.subscribe ?? subscribeKeydistStorageChanges;
   const notify = options.notify ?? notifyKeydistStorageChange;
 
-  // 自分が最後に書き込んだ直列化結果（JSON文字列）。同タブの反響通知が来た時、storageの
-  // 中身がこれと一致していれば「自分がさっき書いた値がそのまま返ってきただけ」と判定できる。
+  // 「storageの現在値として、このインスタンスが最後に知っているraw」。
+  // 自分の書き込み（save）でも、他タブの書き込みを外部変更として取り込んだ時
+  // （decode成功時）でも更新する。反響判定は「この値と一致するか」で行うので、
+  // ここを自分の書き込みだけに限ると、他タブが書いた値をここで覚えないまま
+  // 3手目（自分がA→他がB→他がAに戻す）でstorageの中身がsave時のAと再び一致し、
+  // 外部からの書き戻しを反響と誤判定してしまう（レビューで指摘された穴）。
   let lastWrittenRaw: string | undefined;
 
   function readRaw(): string | null {
@@ -135,9 +139,20 @@ export function createAssetTabSync<T>(options: AssetTabSyncOptions<T>): AssetTab
 
     const result = decode(raw);
     if (!result.ok) {
+      // 壊れたrawは記録しない。「最後に自分が知っているstorageの中身」という
+      // `lastWrittenRaw`の意味に、decodeできなかった値まで含めると、次に別の
+      // タブが正しい値を書き戻した時に比較対象が無意味になる。同じ壊れたrawが
+      // 続けて届いた場合はその都度`onLoadFailure`を報告し続ける（黙って
+      // 一度だけ報告して以後無視する、という特別扱いはしない。失敗は毎回
+      // 値として報告する、という#544 §8-5の方針に揃える）。
       options.onLoadFailure?.(result.reason);
       return;
     }
+    // 「storageの現在値として最後に自分が知っているraw」に更新する。これが無いと、
+    // 自タブでsave→他タブがB→他タブがAに戻す、という3手目でstorageの中身が
+    // save時のrawと一致してしまい、外部からの書き戻しなのに反響と誤判定してしまう
+    // （lastWrittenRawを「自分が書いた値」のままにしていた時の穴）。
+    lastWrittenRaw = raw;
     options.onExternalChange(result.value, result.diagnostics);
   });
 

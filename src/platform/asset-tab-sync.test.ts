@@ -128,6 +128,34 @@ test('自分がsaveした後でも、他タブが別の値を書き込めば外�
   sync.stop();
 });
 
+test('自分がA→他タブがB→他タブがAに戻す、の3手目も外部変更として届く（反響の誤判定をしない）', () => {
+  const storage = createFakeStorage();
+  const bus = createFakeBus();
+  const changes: Counter[] = [];
+  const sync = createAssetTabSync({
+    storageKey: 'test:counter',
+    codec: COUNTER_CODEC,
+    storage,
+    subscribe: bus.subscribe,
+    notify: bus.notify,
+    onExternalChange: (value) => { changes.push(value); },
+  });
+
+  sync.save({ count: 1 }); // 1手目: 自分がAを書く（反響は無視される。ここではonExternalChangeは呼ばれない）
+  const rawA = storage.getItem('test:counter');
+
+  storage.setItem('test:counter', JSON.stringify(COUNTER_CODEC.encode({ count: 2 }))); // 2手目: 他タブがBを書く
+  bus.notify('test:counter');
+
+  storage.setItem('test:counter', rawA!); // 3手目: 他タブがAに戻す（storageの中身はsave時のrawと再び一致する）
+  bus.notify('test:counter');
+
+  // lastWrittenRawを外部変更の取り込み時にも更新していれば、3手目は「自分の反響」ではなく
+  // 「他タブが書いた値と一致した」と正しく判定され、onExternalChangeが呼ばれる。
+  assert.deepEqual(changes, [{ count: 2 }, { count: 1 }]);
+  sync.stop();
+});
+
 test('無効なJSONの通知はonExternalChangeを呼ばず、onLoadFailureへinvalid-jsonを渡す', () => {
   const storage = createFakeStorage();
   const bus = createFakeBus();
@@ -147,6 +175,28 @@ test('無効なJSONの通知はonExternalChangeを呼ばず、onLoadFailureへin
 
   assert.equal(failures.length, 1);
   assert.deepEqual(failures[0], { kind: 'invalid-json' });
+  sync.stop();
+});
+
+test('同じ壊れたrawの通知が2回続けば、onLoadFailureも2回呼ばれる（壊れたrawは覚えて黙らない）', () => {
+  const storage = createFakeStorage();
+  const bus = createFakeBus();
+  const failures: unknown[] = [];
+  const sync = createAssetTabSync({
+    storageKey: 'test:counter',
+    codec: COUNTER_CODEC,
+    storage,
+    subscribe: bus.subscribe,
+    notify: bus.notify,
+    onExternalChange: () => assert.fail('decode失敗時は呼ばれない'),
+    onLoadFailure: (reason) => { failures.push(reason); },
+  });
+
+  storage.setItem('test:counter', '{not json');
+  bus.notify('test:counter');
+  bus.notify('test:counter'); // 同じ壊れたrawのまま、もう一度通知が来る
+
+  assert.equal(failures.length, 2, '壊れたrawを覚えて2回目を黙って無視したりしない');
   sync.stop();
 });
 
