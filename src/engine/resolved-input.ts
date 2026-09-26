@@ -1,6 +1,7 @@
 import {
   assignmentWithHomeKeys,
   buildGeometry,
+  type FingerAssignment,
   type Geometry,
 } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
@@ -17,7 +18,7 @@ import { tableForRule, type UserRomajiRule } from '#input/romaji/rules.ts';
 import type { TracePolicy } from '#trace/generate.ts';
 import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
 import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
-import { resolveFingerAssignment } from './finger-assignment.ts';
+import { defaultFingerAssignmentId, resolveFingerAssignment } from './finger-assignment.ts';
 import {
   resolveSettings,
   type ResolvedSettingsCascade,
@@ -63,6 +64,12 @@ export interface ResolveEngineInputOptions {
   readonly catalog: SetupCatalog;
   readonly userLayouts: ReadonlyMap<string, UserLayout>;
   readonly customRomajiRules?: readonly UserRomajiRule[];
+  /**
+   * 自作の指割り当ての手持ち（`input/shapes/user-finger-assignments.ts`）。id →実体。
+   * `customRomajiRules`と同じ理由（SetupCatalogのような固定カタログを持たず、
+   * 呼び出し側がその時点の手持ちを都度渡す）で省略可能にし、既定は空。
+   */
+  readonly customFingerAssignments?: ReadonlyMap<string, FingerAssignment>;
   readonly overrides: SettingsCascadeOverrides;
   readonly text: string;
   readonly language: TextLanguage;
@@ -111,7 +118,29 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
     ? withRomaji(baseLayout, tableForRule(romajiRuleId, options.customRomajiRules ? [...options.customRomajiRules] : undefined))
     : baseLayout;
 
-  const assignment = resolveFingerAssignment(cascade.fingerAssignmentId.value);
+  // 未知のidが渡ってきた時のfallback先は「その形状の既定」（defaultFingerAssignmentId）に揃える。
+  // 上書きが無い時の既定値（settings-items.tsのdefaultValue）と同じ規則にすることで、
+  // 「壊れた上書きを消したら何が起きるか」が「最初から上書きが無かった状態」と一致する。
+  const fallbackAssignment = resolveFingerAssignment(defaultFingerAssignmentId(textResolution.shape)).assignment;
+  const { assignment, diagnostic: assignmentDiagnostic } = resolveFingerAssignment(
+    cascade.fingerAssignmentId.value,
+    options.customFingerAssignments,
+    fallbackAssignment,
+  );
+  // カスケードの実効値・診断へ合流させる（resolve.tsの`invalid-fallback`と同じ形）。
+  // customFingerAssignmentsはcontext非依存の別カタログなので、resolveCascade自体には
+  // 組み込めない（validateはCascadeContextしか見られない）。ここで後から合成する。
+  const resolvedCascade = assignmentDiagnostic === undefined
+    ? cascade
+    : {
+      ...cascade,
+      fingerAssignmentId: {
+        ...cascade.fingerAssignmentId,
+        value: assignment.id,
+        diagnostics: [...cascade.fingerAssignmentId.diagnostics, assignmentDiagnostic],
+      },
+    };
+
   let geometry: Geometry;
   try {
     geometry = buildGeometry(textResolution.shape, assignmentWithHomeKeys(assignment, layout.homeKeys));
@@ -138,7 +167,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
       chainInterpretation: cascade.chainInterpretation.value,
       arpeggioInterpretation: cascade.arpeggioInterpretation.value,
       romajiRuleId,
-      cascade,
+      cascade: resolvedCascade,
     },
   };
 }
