@@ -3,7 +3,7 @@ import test from 'node:test';
 import {
   createAnalyzerPlaybackSettingsModel,
   type AnalyzerPlaybackSettingsData,
-} from '../src/analyzer-playback-settings-model.ts';
+} from '#legacy/analyzer-playback-settings-model.ts';
 
 test('Playback settings model keeps only ephemeral resolved data', () => {
   const model = createAnalyzerPlaybackSettingsModel();
