@@ -49,7 +49,7 @@ test('target, distance, timing and focus revisions are independent', () => {
     target: 0, distance: 0, timing: 1, focus: 1,
   });
 
-  value.setDistanceDefault('windowSize', 3);
+  value.setDistanceDefault('windowSize', 5);
   assert.deepEqual(value.getSnapshot().revisions, {
     target: 0, distance: 1, timing: 1, focus: 1,
   });
