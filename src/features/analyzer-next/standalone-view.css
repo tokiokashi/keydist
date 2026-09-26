@@ -1,0 +1,64 @@
+.analysis-standalone {
+  display: grid;
+  min-width: 0;
+  gap: 1.25rem;
+}
+
+.analysis-standalone-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.analysis-standalone-heading h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  line-height: 1;
+}
+
+.analysis-binding-badge {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font: 600 0.72rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.analysis-binding-placeholder {
+  display: grid;
+  justify-items: start;
+  gap: 0.7rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.analysis-binding-placeholder p,
+.analysis-standalone-loading {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.analysis-binding-placeholder button {
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--text);
+  cursor: pointer;
+}
+
+@media (max-width: 700px) {
+  .analysis-standalone-heading {
+    display: grid;
+    align-items: start;
+  }
+
+  .analysis-binding-badge {
+    justify-self: start;
+  }
+}
