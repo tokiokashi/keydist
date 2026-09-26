@@ -3,7 +3,7 @@ import { useMemo, useState, useSyncExternalStore } from 'react';
 import {
   aggregateBigramVectors,
   buildBigramVectors,
-  directionDensity,
+  directionResponse,
   directionSummary,
   filterBigramVectors,
   meanDisplacement,
@@ -435,8 +435,8 @@ function MovementProfilePlot({
   const relative = useMemo(() => relativeVectors(vectors, hand), [vectors, hand]);
   const summary = useMemo(() => directionSummary(vectors, hand), [vectors, hand]);
   const mean = useMemo(() => meanDisplacement(vectors, hand), [vectors, hand]);
-  const density = useMemo(
-    () => directionDensity(vectors, hand, bandwidthDegrees, 96),
+  const response = useMemo(
+    () => directionResponse(vectors, hand, bandwidthDegrees, 96),
     [vectors, hand, bandwidthDegrees],
   );
   const scale = movementPlotScale(maxDistance, scaleMode, polarGain);
@@ -455,11 +455,11 @@ function MovementProfilePlot({
     x: cx + mean.x * unitsPerSvgUnit,
     y: cy + mean.y * unitsPerSvgUnit,
   };
-  const polarPoints = density.samples.map((sample) =>
+  const polarPoints = response.samples.map((sample) =>
     polarPoint(
       cx,
       cy,
-      polarBaseRadius + sample.density * polarAmplitude,
+      polarBaseRadius + sample.response * polarAmplitude,
       sample.angle,
     )
   );
@@ -586,7 +586,7 @@ function MovementProfilePlot({
       <div className="flow-roll-legend flow-profile-legend" aria-hidden="true">
         <span><i className="flow-dot flow-dot-inward" /> inward</span>
         <span><i className="flow-dot flow-dot-outward" /> outward</span>
-        <span>{scaleMode === 'fit' ? 'Auto fit' : 'Fixed'} · {scaleMax}u range · polar = angular KDE</span>
+        <span>{scaleMode === 'fit' ? 'Auto fit' : 'Fixed'} · {scaleMax}u range · polar = smoothed direction response</span>
       </div>
 
       <div className="roll-summary">
@@ -883,7 +883,7 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
               <p>
                 線の向きと長さは実移動 [u]、太さと濃さはfrequency。
                 Auto fitは左右共通maxで表示領域を使い、Fixedは条件をまたいで1uの描画長を固定する。
-                白線はmean displacement [u]。外周shapeは実vector角度へ円周kernelを重ねた方向密度。
+                白線はmean displacement [u]。外周shapeは実vector角度へ円周kernelを重ねた方向応答。
                 「方向の広がり」はピークから±指定角度で強度が半分になる幅、|R|は方向集中度の要約値。
               </p>
             </header>
