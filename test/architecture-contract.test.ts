@@ -30,6 +30,14 @@ function moduleSpecifiers(source: string): readonly string[] {
   return [...specs];
 }
 
+async function structuralAnalysisSources() {
+  const paths = await tsFiles(join(SRC, 'interpretation', 'structure'));
+  return Promise.all(paths.map(async (path) => ({
+    path,
+    source: await readFile(path, 'utf8'),
+  })));
+}
+
 const LEGACY_TRIGGER_REALIZATION_MODULE = join(SRC, 'trigger-realization.ts');
 const REALIZATION_INTERNAL_MODULES = new Set([
   join(SRC, 'input', 'semantics', 'trigger-realization.ts'),
