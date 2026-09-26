@@ -58,13 +58,13 @@ export interface DirectionDistribution {
   readonly directionalWeight: number;
 }
 
-export interface DirectionDensitySample {
+export interface DirectionResponseSample {
   readonly angle: number;
-  readonly density: number;
+  readonly response: number;
 }
 
-export interface DirectionDensity {
-  readonly samples: readonly DirectionDensitySample[];
+export interface DirectionResponse {
+  readonly samples: readonly DirectionResponseSample[];
   readonly directionalWeight: number;
   readonly bandwidthDegrees: number;
 }
@@ -404,14 +404,14 @@ export function directionDistribution(
 /**
  * 実vector角度へvon Mises相当の円周kernelを重ね、連続的な方向密度をsampleする。
  * bandwidthDegreesはkernel強度がpeakの1/2になる半値角。
- * densityは各vectorのweight比で平均するため0..1の共通尺度を保つ。
+ * responseは各vectorのweight比で平均するため0..1の共通尺度を保つ。
  */
-export function directionDensity(
+export function directionResponse(
   vectors: readonly BigramVector[],
   hand: 'left' | 'right',
   bandwidthDegrees = 15,
   sampleCount = 96,
-): DirectionDensity {
+): DirectionResponse {
   if (!(bandwidthDegrees > 0 && bandwidthDegrees < 180)) {
     throw new RangeError('bandwidthDegrees must be > 0 and < 180');
   }
@@ -430,19 +430,19 @@ export function directionDensity(
   const samples = Array.from({ length: sampleCount }, (_, index) => {
     const angle = index * tau / sampleCount;
     if (directionalWeight === 0) {
-      return Object.freeze({ angle, density: 0 });
+      return Object.freeze({ angle, response: 0 });
     }
 
-    let weightedDensity = 0;
+    let weightedResponse = 0;
     for (const vector of directional) {
       const delta = angle - vector.angle;
       const kernel = Math.exp(kappa * (Math.cos(delta) - 1));
-      weightedDensity += vector.weight * kernel;
+      weightedResponse += vector.weight * kernel;
     }
 
     return Object.freeze({
       angle,
-      density: weightedDensity / directionalWeight,
+      response: weightedResponse / directionalWeight,
     });
   });
 
