@@ -37,33 +37,25 @@ export type AnalysisConditionScope =
   | { kind: 'default' }
   | { kind: 'layout'; layoutId: string };
 
+type KeyedCommand<T> = {
+  [K in keyof T]: { key: K; value: T[K] }
+}[keyof T];
+
+type KeyedOverrideCommand<T> = {
+  [K in keyof T]: { key: K; value: T[K] | undefined }
+}[keyof T];
+
 export type AnalysisDistanceCommand =
-  | {
-      scope: { kind: 'default' };
-      key: keyof AnalysisDistanceConditions;
-      value: AnalysisDistanceConditions[keyof AnalysisDistanceConditions];
-    }
-  | {
+  | ({ scope: { kind: 'default' } } & KeyedCommand<AnalysisDistanceConditions>)
+  | ({
       scope: { kind: 'layout'; layoutId: string };
-      key: keyof AnalysisDistanceOverrideConditions;
-      value:
-        | AnalysisDistanceOverrideConditions[keyof AnalysisDistanceOverrideConditions]
-        | undefined;
-    };
+    } & KeyedOverrideCommand<AnalysisDistanceOverrideConditions>);
 
 export type AnalysisTimingCommand =
-  | {
-      scope: { kind: 'default' };
-      key: keyof AnalysisTimingConditions;
-      value: AnalysisTimingConditions[keyof AnalysisTimingConditions];
-    }
-  | {
+  | ({ scope: { kind: 'default' } } & KeyedCommand<AnalysisTimingConditions>)
+  | ({
       scope: { kind: 'layout'; layoutId: string };
-      key: keyof AnalysisTimingOverrideConditions;
-      value:
-        | AnalysisTimingOverrideConditions[keyof AnalysisTimingOverrideConditions]
-        | undefined;
-    };
+    } & KeyedOverrideCommand<AnalysisTimingOverrideConditions>);
 
 export interface AnalysisSessionCommands {
   setFocus(layoutId: string | undefined): void;
