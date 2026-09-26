@@ -8,7 +8,7 @@ import { faceFromEntries, fromFaces, fromRows, LAYOUT_BY_ID, LAYOUTS, LAYOUTS_JA
 import { computeMetrics } from '#interpretation/metrics.ts';
 import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
 import { toLayout } from '#input/layouts/user-layouts.ts';
-import { assertKanaLayout, assertKanaLayoutFixture } from './kana-layout-helpers.ts';
+import { assertKanaLayout, assertKanaLayoutFixture } from '../../../test/kana-layout-helpers.ts';
 import {
   classifyPresentationFaces,
   displayTriggerAlternatives,

@@ -4,7 +4,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const SRC = join(ROOT, 'src');
 const VIEW_DIR = join(SRC, 'features', 'analyzer-next', 'views');
 const FORBIDDEN_APP_MODULES = new Set([

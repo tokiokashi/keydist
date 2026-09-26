@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import {
   type SourceManifest,
   validateSourceManifest,
-} from '../scripts/generate-kana-fixtures.ts';
+} from '../../../scripts/generate-kana-fixtures.ts';
 
 const SOURCE_ROW_WIDTHS = [13, 12, 12, 11] as const;
 
@@ -41,7 +41,7 @@ function setSourceCell(
 }
 
 test('現在のかな source manifest は omission 完全性検証を通る（#201）', () => {
-  const sourceDir = new URL('./fixtures/sources/', import.meta.url);
+  const sourceDir = new URL('../../../test/fixtures/sources/', import.meta.url);
   const fileNames = readdirSync(sourceDir)
     .filter((name) => name.endsWith('.json'))
     .sort();
