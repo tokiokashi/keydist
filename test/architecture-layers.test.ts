@@ -116,7 +116,6 @@ const UNPLACED_BASELINE: readonly string[] = [
   'browser-download.ts',
   'browser-storage-events.ts',
   'components/physical-keyboard.tsx',
-  'condition-resolution.ts',
   'core/input-converter/index.ts',
   'core/input-converter/typing-input-engine.ts',
   'core/semantic-input/action-realization.ts',

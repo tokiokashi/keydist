@@ -1,4 +1,5 @@
 import type { MatrixSort } from './chart.ts';
+import type { ConditionDefaults, LayoutConditionOverrides } from '#engine/conditions.ts';
 import {
   DEFAULT_CHAIN_POLICY,
   chainPolicyFromLegacyUi,
@@ -52,22 +53,7 @@ export type LayerColorScale = 'linear' | 'log';
 export type SensitivityScale = 'relative' | 'absolute';
 export type PlaybackKeyFeedbackStyle = 'off' | 'fade' | 'pulse' | 'bounce';
 
-export interface UiStateConditionsDefaults {
-  geometry: GeometryKind;
-  windowSize: number;
-  /** 速度平均の方式。全配列共通。 */
-  playbackRateAverage: 'sma' | 'ewma';
-  /** SMAで使う直近Stroke数。全配列共通。 */
-  playbackRateWindow: number;
-  /** EWMAで過去寄与が半分になる時間 [秒]。全配列共通。 */
-  playbackRateHalfLifeSeconds: number;
-  sfbHomeCost: boolean;
-  preferOppositeThumb: boolean;
-  chain: ChainPolicy;
-  arpeggioPolicy: ArpeggioPolicy;
-  triggerRealization: TriggerRealizationPolicy;
-  actionRealization: ActionRealizationPolicy;
-}
+export type UiStateConditionsDefaults = ConditionDefaults;
 
 export interface UiPlaybackState {
   showFingers: boolean;
@@ -99,11 +85,7 @@ export interface UiPlaybackState {
 }
 
 /** 配列ごとに既定値から上書きする差分。空のplaybackは個別設定の有効化を表す。 */
-export type UiStateLayoutConditions = Partial<Omit<
-  UiStateConditionsDefaults,
-  'playbackRateAverage' | 'playbackRateWindow' | 'playbackRateHalfLifeSeconds'
->> & {
-  romajiRule?: string;
+export type UiStateLayoutConditions = LayoutConditionOverrides & {
   playback?: Partial<UiPlaybackState>;
 };
 

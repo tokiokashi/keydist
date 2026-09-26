@@ -74,7 +74,7 @@ import {
   saveConditionPresets,
   type ConditionPreset,
 } from './condition-presets.ts';
-import { setLayoutGeometryOverride } from '../condition-resolution.ts';
+import { setLayoutGeometryOverride } from '#engine/condition-resolution.ts';
 import type { ChainPolicy } from '../analysis-chain.ts';
 import type { ArpeggioPolicy } from '../analysis-arpeggio.ts';
 import {
