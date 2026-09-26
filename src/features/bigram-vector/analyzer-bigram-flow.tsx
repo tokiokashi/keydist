@@ -435,7 +435,7 @@ function MovementProfilePlot({
   const relative = useMemo(() => relativeVectors(vectors, hand), [vectors, hand]);
   const summary = useMemo(() => directionSummary(vectors, hand), [vectors, hand]);
   const mean = useMemo(() => meanDisplacement(vectors, hand), [vectors, hand]);
-  const response = useMemo(
+  const density = useMemo(
     () => directionDensity(vectors, hand, bandwidthDegrees, 96),
     [vectors, hand, bandwidthDegrees],
   );
