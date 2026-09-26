@@ -90,8 +90,8 @@ import {
   parseConditionBundle,
   serializeConditionBundle,
 } from './condition-bundle.ts';
-import { downloadText } from '../browser-download.ts';
-import { notifyKeydistStorageChange } from '../browser-storage-events.ts';
+import { downloadText } from '#platform/browser-download.ts';
+import { notifyKeydistStorageChange } from '#platform/browser-storage-events.ts';
 
 export function mountAnalyzerRuntime(): () => void {
   const el = resolveAppElements();
