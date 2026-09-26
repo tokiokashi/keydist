@@ -40,7 +40,14 @@ export function createAnalysisSnapshotService<Input, Snapshot>(
   return {
     get(layoutId) {
       const resolved = options.resolve(layoutId);
-      if (!resolved) return undefined;
+      if (!resolved) {
+        const previousKey = layoutKeys.get(layoutId);
+        layoutKeys.delete(layoutId);
+        if (previousKey !== undefined) {
+          removeUnreferenced(cache as Map<string, unknown>, layoutKeys, previousKey);
+        }
+        return undefined;
+      }
 
       const previousKey = layoutKeys.get(layoutId);
       if (previousKey !== resolved.key) {
