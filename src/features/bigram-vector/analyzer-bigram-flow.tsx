@@ -607,7 +607,7 @@ function MovementProfilePlot({
         <span><i className="flow-dot flow-dot-inward" /> 内向き</span>
         <span><i className="flow-dot flow-dot-outward" /> 外向き</span>
         <span className="flow-profile-scale-summary">
-          {scaleMode === 'fit' ? '自動調整' : '1uを固定'} · 最大{scaleMax}u · ±{bandwidthDegrees}°
+          {scaleMode === 'fit' ? '自動調整' : '固定スケール'} · 最大{scaleMax}u · ±{bandwidthDegrees}°
         </span>
       </div>
 
@@ -929,12 +929,12 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
                   onChange={(event) => setMovementScaleMode(event.currentTarget.value as MovementScaleMode)}
                 >
                   <option value="fit">自動調整</option>
-                  <option value="fixed">1uを固定</option>
+                  <option value="fixed">固定スケール</option>
                 </select>
                 <small>
                   {movementScaleMode === 'fit'
                     ? '現在のデータを見やすい大きさに調整'
-                    : '条件を変えても1uを同じ長さで表示'}
+                    : '解析対象を変えても同じ距離を同じ長さで表示'}
                 </small>
               </label>
               <label>
