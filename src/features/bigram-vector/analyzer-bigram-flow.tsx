@@ -453,16 +453,16 @@ function MovementProfilePlot({
   } = scale;
   const halfSize = sharedHalfSize;
   const viewSize = halfSize * 2;
-  const cx = halfSize;
-  const cy = halfSize;
+  const originX = 0;
+  const originY = 0;
   const meanEnd = {
-    x: cx + mean.x * unitsPerSvgUnit,
-    y: cy + mean.y * unitsPerSvgUnit,
+    x: mean.x * unitsPerSvgUnit,
+    y: mean.y * unitsPerSvgUnit,
   };
   const polarPoints = density.samples.map((sample) =>
     polarPoint(
-      cx,
-      cy,
+      originX,
+      originY,
       polarBaseRadius + sample.density * polarAmplitude * polarGain,
       sample.angle,
     )
@@ -492,14 +492,14 @@ function MovementProfilePlot({
           data-scale-mode={scaleMode}
           width={viewSize}
           height={viewSize}
-          viewBox={`0 0 ${viewSize} ${viewSize}`}
+          viewBox={`${-halfSize} ${-halfSize} ${viewSize} ${viewSize}`}
           role="img"
           aria-label={`${hand} hand movement profile`}
         >
         <circle
           className="direction-polar-baseline"
-          cx={cx}
-          cy={cy}
+          cx={originX}
+          cy={originY}
           r={polarBaseRadius}
         />
         {polarPath ? <path className="direction-polar-shape" d={polarPath} /> : null}
@@ -508,11 +508,11 @@ function MovementProfilePlot({
           const ringRadius = unit * unitsPerSvgUnit;
           return (
             <g key={unit}>
-              <circle className="flow-axis-ring" cx={cx} cy={cy} r={ringRadius} />
+              <circle className="flow-axis-ring" cx={originX} cy={originY} r={ringRadius} />
               <text
                 className="flow-axis-ring-label"
-                x={cx + 4}
-                y={cy - ringRadius + 11}
+                x={originX + 4}
+                y={originY - ringRadius + 11}
               >
                 {unit}u
               </text>
@@ -521,17 +521,17 @@ function MovementProfilePlot({
         })}
         <line
           className="flow-axis"
-          x1={cx - plotRadius - 12}
-          y1={cy}
-          x2={cx + plotRadius + 12}
-          y2={cy}
+          x1={originX - plotRadius - 12}
+          y1={originY}
+          x2={originX + plotRadius + 12}
+          y2={originY}
         />
         <line
           className="flow-axis"
-          x1={cx}
-          y1={cy - plotRadius - 12}
-          x2={cx}
-          y2={cy + plotRadius + 12}
+          x1={originX}
+          y1={originY - plotRadius - 12}
+          x2={originX}
+          y2={originY + plotRadius + 12}
         />
 
         <g className="actual-vector-layer">
@@ -543,12 +543,12 @@ function MovementProfilePlot({
                 <motion.line
                   key={vector.id}
                   className={`relative-vector relative-vector-${direction}`}
-                  x1={cx}
-                  y1={cy}
-                  initial={reduceMotion ? false : { x2: cx, y2: cy, opacity: 0 }}
+                  x1={originX}
+                  y1={originY}
+                  initial={reduceMotion ? false : { x2: originX, y2: originY, opacity: 0 }}
                   animate={{
-                    x2: cx + vector.dx * unitsPerSvgUnit,
-                    y2: cy + vector.dy * unitsPerSvgUnit,
+                    x2: vector.dx * unitsPerSvgUnit,
+                    y2: vector.dy * unitsPerSvgUnit,
                     opacity: 0.24 + 0.7 * strength,
                   }}
                   exit={reduceMotion ? undefined : { opacity: 0 }}
@@ -568,8 +568,8 @@ function MovementProfilePlot({
 
         <motion.line
           className="mean-displacement"
-          x1={cx}
-          y1={cy}
+          x1={originX}
+          y1={originY}
           animate={{
             x2: meanEnd.x,
             y2: meanEnd.y,
@@ -591,7 +591,7 @@ function MovementProfilePlot({
             ? { duration: 0 }
             : { type: 'spring', stiffness: 170, damping: 22 }}
         />
-          <circle className="flow-origin" cx={cx} cy={cy} r="4" />
+          <circle className="flow-origin" cx={originX} cy={originY} r="4" />
         </svg>
       </div>
 
