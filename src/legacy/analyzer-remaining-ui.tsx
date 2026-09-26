@@ -11,8 +11,8 @@ import type {
   AnalyzerConditionsModel,
 } from './analyzer-conditions-model.ts';
 import { AnalyzerConditionsContent } from './analyzer-conditions-content.tsx';
-import type { GeometryKind } from '../geometry.ts';
-import { buildGeometry } from '../geometry.ts';
+import type { GeometryKind } from '#input/shapes/geometry.ts';
+import { buildGeometry } from '#input/shapes/geometry.ts';
 import { gapFigure } from './gap-figure.ts';
 import {
   getAppearanceSnapshot,

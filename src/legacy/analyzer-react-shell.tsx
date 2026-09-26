@@ -55,7 +55,7 @@ import {
   AnalyzerThemeControls,
   AnalyzerSidebarControls,
 } from './analyzer-remaining-ui.tsx';
-import type { GeometryKind } from '../geometry.ts';
+import type { GeometryKind } from '#input/shapes/geometry.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import { MAX_SAVED_TEXT_LENGTH } from './ui-state.ts';
 

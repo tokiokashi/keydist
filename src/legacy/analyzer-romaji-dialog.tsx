@@ -5,8 +5,8 @@ import {
   useSyncExternalStore,
 } from 'react';
 import type { AnalyzerRomajiDialogModel } from './analyzer-romaji-dialog-model.ts';
-import { LAYOUTS_JA } from '../layouts/index.ts';
-import { SAMPLE_TEXT_JA } from '../sample-text-ja.ts';
+import { LAYOUTS_JA } from '#input/layouts/index.ts';
+import { SAMPLE_TEXT_JA } from '#input/text/sample-ja.ts';
 import { kanaToRomaji } from '#input/romaji/kunrei.ts';
 import {
   allRomajiRules,
