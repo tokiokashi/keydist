@@ -58,9 +58,14 @@ UI・配列定義の追加など、モデルに触らない変更は仕様の更
 
 ## ディレクトリ構成
 
+分け方・依存の向き・用語は `docs/architecture.md` が正。依存の規則は `test/architecture-layers.test.ts` が検査する。
+新しいファイルは必ずその構造の中に置く（src直下などへ増やすとテストが落ちる）。
+
+Analyzer再設計（#544）のPhase 1で既存ファイルを移している最中なので、下の旧配置のファイルがまだ残っている。
+
 | パス | 中身 |
 |---|---|
-| `src/evaluate.ts` | 評価器の本体。仕様 §7〜§10の実装 |
+| `src/evaluate.ts` | Trace生成（評価器）。仕様 §7〜§10の実装 |
 | `src/metrics.ts` | 出力指標（仕様 §11） |
 | `src/geometry.ts` | 座標系・キー位置・指の割り当て（仕様 §3） |
 | `src/sensitivity.ts` | N感度曲線 |
@@ -69,7 +74,7 @@ UI・配列定義の追加など、モデルに触らない変更は仕様の更
 | `src/user-layouts.ts` | 自作配列のlocalStorage永続化 |
 | `src/playback.ts` | 打鍵再生。表示時間は再生時間モデル仕様 §3 の実装 |
 | `src/playback-calibration.ts` | 個人速度の測定（再生時間モデル仕様 §6） |
-| `src/main.ts` `src/chart.ts` `src/theme.ts` | 画面 |
+| `src/main.ts` `src/chart.ts` `src/theme.ts` | 旧Analyzerの画面 |
 | `test/` | `node --test` のテスト |
 | `spec/` | モデル仕様（距離モデル・再生時間モデル） |
 
@@ -93,7 +98,7 @@ npm run build      # 型検査 + ビルド
 - テスト基盤は現状の仕組みを既定として使うが、要件に合わなくなった場合は変更してよい。
   「既存だから」だけを理由に別のテストランナーやブラウザテスト基盤を禁止しない
 - `tsconfig.json` は `strict` + `noUnusedLocals` + `noUnusedParameters`。緩めない
-- 計算部（`evaluate` / `metrics` / `geometry` / `sensitivity`）はDOMに依存させない。
+- 計算部（`docs/architecture.md` の「純粋な層」）は React・DOM・storage・ブラウザAPIに依存させない。
   テストから直接呼べる状態を保つ
 - コードコメントは日本語。「なぜそうしたか」を書く。「何をしているか」はコードで読ませる
 
