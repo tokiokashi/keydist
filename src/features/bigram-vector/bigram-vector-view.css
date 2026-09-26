@@ -364,6 +364,13 @@
   font-size: 0.72rem;
 }
 
+.flow-profile-controls small {
+  min-height: 1.1em;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  line-height: 1.35;
+}
+
 .flow-profile-controls label > span {
   display: flex;
   align-items: baseline;
@@ -425,6 +432,14 @@
 .flow-mini-panel header span {
   color: var(--viz-key-muted);
   font: 600 0.64rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.flow-mini-panel header > span {
+  text-align: right;
+}
+
+.flow-direction-cohesion {
+  cursor: help;
 }
 
 .flow-mini-panel svg {
@@ -541,8 +556,16 @@
 .flow-profile-legend {
   top: 2.2rem;
   right: 0.8rem;
-  left: auto;
+  left: 0.8rem;
   bottom: auto;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.flow-profile-scale-summary {
+  justify-self: end;
+  text-align: right;
 }
 
 .roll-summary {
