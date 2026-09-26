@@ -33,6 +33,8 @@ const FINGER_OPTIONS: readonly { id: FingerClass; label: string }[] = [
 ];
 const SCALE = 58;
 const PAD = 42;
+const MOVEMENT_U_SCALE = 24;
+const MOVEMENT_PLOT_MARGIN = 30;
 const FLOW_COLORS = {
   left: 'var(--viz-flow-left)',
   right: 'var(--viz-flow-right)',
@@ -429,17 +431,18 @@ function MovementProfilePlot({
     () => directionDistribution(vectors, hand, 16),
     [vectors, hand],
   );
-  const cx = 120;
-  const cy = 112;
-  const radius = 82;
   const scaleMax = Math.max(1, Math.ceil(maxDistance));
-  const plotScale = radius / scaleMax;
+  const plotRadius = scaleMax * MOVEMENT_U_SCALE;
+  const polarBaseRadius = plotRadius + 9;
+  const polarAmplitude = 16;
+  const halfSize = polarBaseRadius + polarAmplitude + MOVEMENT_PLOT_MARGIN;
+  const viewSize = halfSize * 2;
+  const cx = halfSize;
+  const cy = halfSize;
   const meanEnd = {
-    x: cx + mean.x * plotScale,
-    y: cy + mean.y * plotScale,
+    x: cx + mean.x * MOVEMENT_U_SCALE,
+    y: cy + mean.y * MOVEMENT_U_SCALE,
   };
-  const polarBaseRadius = 91;
-  const polarAmplitude = 22;
   const polarPoints = distribution.bins.map((bin) =>
     polarPoint(
       cx,
@@ -461,7 +464,14 @@ function MovementProfilePlot({
           {relative.length} vectors · mean {mean.distance.toFixed(2)}u · |R| {summary.magnitude.toFixed(2)}
         </span>
       </header>
-      <svg viewBox="0 0 240 236" role="img" aria-label={`${hand} hand movement profile`}>
+      <svg
+        className="flow-profile-svg"
+        width={viewSize}
+        height={viewSize}
+        viewBox={`0 0 ${viewSize} ${viewSize}`}
+        role="img"
+        aria-label={`${hand} hand movement profile`}
+      >
         <circle
           className="direction-polar-baseline"
           cx={cx}
@@ -471,7 +481,7 @@ function MovementProfilePlot({
         {polarPath ? <path className="direction-polar-shape" d={polarPath} /> : null}
 
         {Array.from({ length: scaleMax }, (_, index) => index + 1).map((unit) => {
-          const ringRadius = unit * plotScale;
+          const ringRadius = unit * MOVEMENT_U_SCALE;
           return (
             <g key={unit}>
               <circle className="flow-axis-ring" cx={cx} cy={cy} r={ringRadius} />
@@ -485,8 +495,20 @@ function MovementProfilePlot({
             </g>
           );
         })}
-        <line className="flow-axis" x1="22" y1={cy} x2="218" y2={cy} />
-        <line className="flow-axis" x1={cx} y1="14" x2={cx} y2="210" />
+        <line
+          className="flow-axis"
+          x1={cx - plotRadius - 12}
+          y1={cy}
+          x2={cx + plotRadius + 12}
+          y2={cy}
+        />
+        <line
+          className="flow-axis"
+          x1={cx}
+          y1={cy - plotRadius - 12}
+          x2={cx}
+          y2={cy + plotRadius + 12}
+        />
 
         <g className="actual-vector-layer">
           <AnimatePresence initial={false}>
@@ -501,8 +523,8 @@ function MovementProfilePlot({
                   y1={cy}
                   initial={reduceMotion ? false : { x2: cx, y2: cy, opacity: 0 }}
                   animate={{
-                    x2: cx + vector.dx * plotScale,
-                    y2: cy + vector.dy * plotScale,
+                    x2: cx + vector.dx * MOVEMENT_U_SCALE,
+                    y2: cy + vector.dy * MOVEMENT_U_SCALE,
                     opacity: 0.24 + 0.7 * strength,
                   }}
                   exit={reduceMotion ? undefined : { opacity: 0 }}
