@@ -20,9 +20,9 @@ const widgetSchema = v.strictObject({
   count: v.pipe(v.number(), v.integer(), v.minValue(0)),
 });
 
-function widgetCodec(migrations?: readonly MigrationStep[]) {
+function widgetCodec(migrations?: readonly MigrationStep[], currentVersion = 2) {
   return defineAssetCodec<Widget>({
-    currentVersion: 2,
+    currentVersion,
     migrations,
     decodePayload: (payload, diagnostics) => {
       const result = v.safeParse(widgetSchema, payload);
@@ -43,11 +43,20 @@ test('decode: トップレベルがオブジェクトでなければ失敗する
   }
 });
 
-test('decode: versionが数値でなければ失敗する', () => {
+test('decode: versionフィールドが無ければmissing-versionで失敗する', () => {
   const codec = widgetCodec();
   const result = codec.decode({ name: 'a', count: 1 });
   assert.equal(result.ok, false);
   if (!result.ok) assert.equal(result.reason.kind, 'missing-version');
+});
+
+test('decode: versionが1以上の整数でなければinvalid-versionで失敗する（unmigratable-versionと混同しない）', () => {
+  const codec = widgetCodec();
+  for (const version of [-1, 0, 1.5, 'x', null, NaN]) {
+    const result = codec.decode({ version, name: 'a', count: 1 });
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.deepEqual(result.reason, { kind: 'invalid-version', version });
+  }
 });
 
 test('decode: 未来のバージョンは黙って切り捨てず失敗理由として報告する', () => {
@@ -66,26 +75,27 @@ test('decode: payloadがschemaを満たさなければ資産全体を失敗と�
   if (!result.ok) assert.equal(result.reason.kind, 'invalid-shape');
 });
 
-test('migrateチェーン: v0→v1→v2と1段ずつ引き上げる（fakeなstep）', () => {
-  // v0は`count`が無く`amount`という名前だった、というfakeな旧形式を仮定する。
+test('migrateチェーン: v1→v2→v3と1段ずつ引き上げる（fakeなstep）', () => {
+  // versionは1始まり（invalid-versionのテスト参照）なので、最初期のfakeな旧形式もv1とする。
+  // v1は`count`が無く`amount`という名前だった、というfakeな旧形式を仮定する。
   const migrations: MigrationStep[] = [
     {
-      fromVersion: 0,
-      toVersion: 1,
+      fromVersion: 1,
+      toVersion: 2,
       migrate: (payload) => {
         const { amount, ...rest } = payload;
         return { ...rest, count: amount };
       },
     },
     {
-      fromVersion: 1,
-      toVersion: 2,
-      // v1→v2は無変更（nameの意味は変わらない）。チェーンが複数段を順に適用することの確認。
+      fromVersion: 2,
+      toVersion: 3,
+      // v2→v3は無変更（nameの意味は変わらない）。チェーンが複数段を順に適用することの確認。
       migrate: (payload) => ({ ...payload }),
     },
   ];
-  const codec = widgetCodec(migrations);
-  const result = codec.decode({ version: 0, name: 'legacy', amount: 3 });
+  const codec = widgetCodec(migrations, 3);
+  const result = codec.decode({ version: 1, name: 'legacy', amount: 3 });
   assert.equal(result.ok, true);
   if (result.ok) {
     assert.deepEqual(result.value, { name: 'legacy', count: 3 });
@@ -95,13 +105,13 @@ test('migrateチェーン: v0→v1→v2と1段ずつ引き上げる（fakeなste
 
 test('migrateチェーン: 対応するstepが無いバージョンはunmigratable-versionで失敗する', () => {
   const migrations: MigrationStep[] = [
-    { fromVersion: 0, toVersion: 1, migrate: (payload) => payload },
-    // 1→2のstepを欠かす
+    { fromVersion: 1, toVersion: 2, migrate: (payload) => payload },
+    // 2→3のstepを欠かす
   ];
-  const codec = widgetCodec(migrations);
-  const result = codec.decode({ version: 0, name: 'a', count: 1 });
+  const codec = widgetCodec(migrations, 3);
+  const result = codec.decode({ version: 1, name: 'a', count: 1 });
   assert.equal(result.ok, false);
-  if (!result.ok) assert.deepEqual(result.reason, { kind: 'unmigratable-version', version: 1 });
+  if (!result.ok) assert.deepEqual(result.reason, { kind: 'unmigratable-version', version: 2 });
 });
 
 test('encode→decode: 往復で同じ値に戻る（roundtrip）', () => {

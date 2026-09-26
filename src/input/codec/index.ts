@@ -30,6 +30,8 @@ export interface CodecDiagnostic {
 export type DecodeFailure =
   | { readonly kind: 'not-an-object' }
   | { readonly kind: 'missing-version' }
+  /** versionフィールドはあるが、非負整数（版番号として妥当な値）ではない。 */
+  | { readonly kind: 'invalid-version'; readonly version: unknown }
   | { readonly kind: 'future-version'; readonly version: number; readonly currentVersion: number }
   | { readonly kind: 'unmigratable-version'; readonly version: number }
   | { readonly kind: 'invalid-shape'; readonly message: string };
@@ -81,8 +83,15 @@ export function defineAssetCodec<T>(options: AssetCodecOptions<T>): AssetCodec<T
       if (!isRecord(input)) return { ok: false, reason: { kind: 'not-an-object' } };
 
       const rawVersion = input.version;
-      if (typeof rawVersion !== 'number' || !Number.isInteger(rawVersion)) {
+      if (rawVersion === undefined) {
         return { ok: false, reason: { kind: 'missing-version' } };
+      }
+      // versionは1始まりの非負整数（実際には1以上）という約束（settings-codec.ts /
+      // setup-codec.tsの`currentVersion: 1`と揃える）。0や負の値・小数・文字列等は
+      // 「対応するmigrate stepが無い」（unmigratable-version）とは別の問題
+      // （そもそも版番号として成立していない）なので、区別できる失敗理由にする。
+      if (typeof rawVersion !== 'number' || !Number.isInteger(rawVersion) || rawVersion < 1) {
+        return { ok: false, reason: { kind: 'invalid-version', version: rawVersion } };
       }
       // 将来のバージョン（このアプリより新しい版で保存された資産）は黙って切り捨てず、
       // 専用の失敗理由として報告する（#544 §8-3）。migrateは常に「古い→新しい」の
