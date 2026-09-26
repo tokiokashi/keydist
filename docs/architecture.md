@@ -9,9 +9,9 @@ keydist のコードの分け方と依存の向き。設計の経緯と未実装
 
 | 用語 | コード | 意味 |
 |---|---|---|
-| 配列 | `Layout` | 論理的な配列定義（面・trigger・コンボ等） |
+| 配列 | `Layout` | 論理的な配列定義（面・trigger・コンボ等）。組み込みと自作がある |
 | 物理形状 | `Shape` | キーの物理的な位置（と規格。ANSI/JIS） |
-| 指の割当 | `FingerAssignment` | 各キーを担当する指。物理形状の属性ではなく**カスケードの項目**（`fingerAssignmentId`）として持つ。既定は物理形状の規格から決まり、物理形状・配列・Setupのレベルで上書きできる（#544。`engine/finger-assignment.ts`） |
+| 指の割当 | `FingerAssignment` | 各キーを担当する指。物理形状の属性ではなく**カスケードの項目**（`fingerAssignmentId`）として持つ。既定は物理形状の規格から決まり、物理形状・配列・Setupのレベルで上書きできる（#544。`engine/finger-assignment.ts`）。組み込み（既定・JIS）と自作がある |
 | ポリシー | `TracePolicy` | **Traceを作る**条件（trigger / action realization、SandSの手、反対側の親指、N、ローマ字規則等） |
 | Setup | `Setup` | **計算の単位**。配列 × 物理形状 × 指の割当 × ポリシー |
 | カスケード | settings cascade | ポリシー・指の割当・解釈の値を グローバル → 物理形状 → 打ち方 → 配列 → Setup の順に上書きして実効値を求める仕組み |
@@ -25,6 +25,7 @@ keydist のコードの分け方と依存の向き。設計の経緯と未実装
 | 解析設定 | `AnalyzerOptions` | どの数値を・どの切り口で・どう見せるか |
 | engine | engine | 解決・Trace生成・解釈・抽出の実行とキャッシュ |
 | 単体ページ / Workspace | host | Analyzerを載せる器 |
+| 資産 | assets | ユーザーが作って保存するもの（自作配列・形状・指の割当・ローマ字規則・Setup・カスケードの値・Workspace・個人速度・テキスト） |
 
 使わない語: mode（en / ja）、段の名前としての「評価」（`evaluate`）、View、`AnalysisSession` / `AnalysisSnapshot`、解釈を指す「ポリシー」（`ChainPolicy` / `ArpeggioPolicy`）。
 
