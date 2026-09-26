@@ -1,10 +1,10 @@
-import type { Layout } from './layouts/index.ts';
+import type { Layout } from '../layouts/index.ts';
 import {
   classifyTriggerActivation,
   type SemanticInput,
   type TriggerActivationClass,
   type TriggerActivationSelector,
-} from './core/semantic-input/index.ts';
+} from './index.ts';
 
 export interface TriggerActivationGroup {
   readonly modifierGroupIds: readonly string[];

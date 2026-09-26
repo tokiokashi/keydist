@@ -1,17 +1,17 @@
-import type { Stroke } from './evaluate.ts';
-import type { ChainPolicy } from './analysis-chain.ts';
+import type { Stroke } from '#trace/evaluate.ts';
+import type { ChainPolicy } from './chain.ts';
 import {
   analyzeStrokeArpeggios,
   type ArpeggioAnalysisResult,
   type ArpeggioPolicy,
-} from './analysis-arpeggio.ts';
-import type { FingerDirection, HandTransition } from './analysis-transition.ts';
+} from './arpeggio.ts';
+import type { FingerDirection, HandTransition } from './transition.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   type ActionRealizationPolicy,
   type TriggerRealizationPolicy,
-} from './core/semantic-input/index.ts';
+} from '#input/semantics/index.ts';
 
 export interface StrokeAnnotation {
   readonly inLongRoll: boolean;

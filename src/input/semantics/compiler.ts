@@ -1,6 +1,6 @@
-import { keyId, resolveKeyId } from '../../geometry.ts';
+import { keyId, resolveKeyId } from '../shapes/geometry.ts';
 import { validateBaseActionRealizations } from './realization.ts';
-import type { Face } from '../../layouts/types.ts';
+import type { Face } from '../layouts/types.ts';
 import type {
   BaseActionRealizationSequence,
   CanonicalInputMap,

@@ -10,8 +10,8 @@ import {
   type InputClassification,
   type InputContextRequirement,
   type SemanticInput,
-} from '../core/semantic-input/index.ts';
-import { keyId, QWERTY_LEGEND, resolveKeyId, SHIFT_KEY, THUMB_KEY, type NonThumb } from '../geometry.ts';
+} from '../semantics/index.ts';
+import { keyId, QWERTY_LEGEND, resolveKeyId, SHIFT_KEY, THUMB_KEY, type NonThumb } from '../shapes/geometry.ts';
 import { validateFaceAuthoring } from './face-authoring-validation.ts';
 
 /** 1ステップで同時に押すキーの集合。キーはQWERTY刻印で指す（`thumb-r` `thumb-l` は親指キー）。`space` も入力互換で受け付ける */

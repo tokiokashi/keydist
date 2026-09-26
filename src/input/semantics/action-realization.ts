@@ -1,4 +1,4 @@
-import { resolveKeyId } from '../../geometry.ts';
+import { resolveKeyId } from '../shapes/geometry.ts';
 import type { PhysicalKeyId, SemanticInput } from './types.ts';
 import type { RealizedSemanticAction } from './trigger-realization.ts';
 

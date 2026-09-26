@@ -3,11 +3,11 @@ import {
   compileSequenceInputAlternative,
   validateCanonicalInputMap,
   type InputAlternative,
-} from '../../core/semantic-input/index.ts';
-import { QWERTY_LEGEND, resolveKeyId, type NonThumb } from '../../geometry.ts';
-import { fromRows, SINGLE_LAYER_ID, withRomaji, type Layout } from '../../layouts/index.ts';
+} from '../semantics/index.ts';
+import { QWERTY_LEGEND, resolveKeyId, type NonThumb } from '../shapes/geometry.ts';
+import { fromRows, SINGLE_LAYER_ID, withRomaji, type Layout } from './index.ts';
 import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from '../romaji/rules.ts';
-import type { Sequence } from '../../layouts/types.ts';
+import type { Sequence } from './types.ts';
 
 /** 選べるローマ字の綴り */
 export { ROMAJI_RULES };

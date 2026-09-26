@@ -1,4 +1,4 @@
-import { resolveKeyId } from '../../geometry.ts';
+import { resolveKeyId } from '../shapes/geometry.ts';
 import type {
   BaseActionRealization,
   BaseActionRealizationSequence,

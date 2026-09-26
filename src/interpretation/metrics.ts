@@ -1,14 +1,14 @@
-import { ADJACENT_PAIRS, ALL_FINGERS, dist, type Finger, type Geometry } from './geometry.ts';
-import type { Stroke, Trace } from './evaluate.ts';
-import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from './analysis-chain.ts';
-import { DEFAULT_ARPEGGIO_POLICY, type ArpeggioPolicy } from './analysis-arpeggio.ts';
-import { COMBO_LAYER_ID, SINGLE_LAYER_ID } from './layouts/types.ts';
+import { ADJACENT_PAIRS, ALL_FINGERS, dist, type Finger, type Geometry } from '#input/shapes/geometry.ts';
+import type { Stroke, Trace } from '#trace/evaluate.ts';
+import { DEFAULT_CHAIN_POLICY, type ChainPolicy } from './structure/chain.ts';
+import { DEFAULT_ARPEGGIO_POLICY, type ArpeggioPolicy } from './structure/arpeggio.ts';
+import { COMBO_LAYER_ID, SINGLE_LAYER_ID } from '#input/layouts/types.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_REALIZATION_POLICY,
   type ActionRealizationPolicy,
   type TriggerRealizationPolicy,
-} from './core/semantic-input/index.ts';
+} from '#input/semantics/index.ts';
 
 /**
  * 隣接ペアのホーム間隔 [u]（仕様 §11.6で引く基準）。
