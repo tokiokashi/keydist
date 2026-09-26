@@ -2,13 +2,13 @@ import {
   useEffect,
   useSyncExternalStore,
 } from 'react';
-import { ALL_FINGERS, type Finger } from './geometry.ts';
+import { ALL_FINGERS, type Finger } from '../geometry.ts';
 import {
   CALIBRATION_ACTIONS_PER_SECOND_MAX,
   CALIBRATION_ACTIONS_PER_SECOND_MIN,
   CALIBRATION_FINGER_SPEED_MAX,
   CALIBRATION_FINGER_SPEED_MIN,
-} from './playback-calibration.ts';
+} from '../playback-calibration.ts';
 import type {
   AnalyzerCalibrationModel,
   CalibrationDirection,

@@ -3,8 +3,8 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import type { ArpeggioPolicy } from './analysis-arpeggio.ts';
-import type { ChainPolicy } from './analysis-chain.ts';
+import type { ArpeggioPolicy } from '../analysis-arpeggio.ts';
+import type { ChainPolicy } from '../analysis-chain.ts';
 import type {
   AnalyzerConditionsActions,
   AnalyzerConditionsModel,
@@ -15,8 +15,8 @@ import {
   describePlaybackConditions,
 } from './condition-description.ts';
 import { sameConditionDefaults } from './condition-presets.ts';
-import type { GeometryKind } from './geometry.ts';
-import type { Layout } from './layouts/index.ts';
+import type { GeometryKind } from '../geometry.ts';
+import type { Layout } from '../layouts/index.ts';
 import {
   DEFAULT_CONDITION_DEFAULTS,
   type UiStateConditionsDefaults,
@@ -28,14 +28,14 @@ import {
   type TriggerActivationClass,
   type TriggerActivationGrouping,
   type TriggerRealizationPolicy,
-} from './core/semantic-input/index.ts';
+} from '../core/semantic-input/index.ts';
 import {
   sameModifierGroupSelector,
   samePhysicalTriggerSelector,
   triggerActivationGroups,
   triggerActivationLogicalGroups,
   TRIGGER_ACTIVATION_CLASS_LABELS,
-} from './trigger-activation-groups.ts';
+} from '../trigger-activation-groups.ts';
 
 export type ConditionTab =
   | 'romaji'

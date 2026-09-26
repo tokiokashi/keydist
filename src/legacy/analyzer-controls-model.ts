@@ -1,5 +1,5 @@
 import type { ModeId } from './layout-selection.ts';
-import type { GeometryKind } from './geometry.ts';
+import type { GeometryKind } from '../geometry.ts';
 
 export interface AnalyzerLayoutControlOption {
   id: string;
