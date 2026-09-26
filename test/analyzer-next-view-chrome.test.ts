@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { APP_STATE_VERSION, analyzerSlicesFromUiState } from '../src/app-state.ts';
 import { ANALYZER_INITIAL_LAYOUTS } from '../src/analyzer-ui-state-bootstrap.ts';
-import { projectAnalysisConditionChrome } from '../src/features/analyzer-next/analysis-view-chrome.ts';
+import { projectAnalysisConditionChrome } from '../src/features/analyzer-next/view-context-chrome.ts';
 import {
   createAnalysisRuntime,
   type AnalysisRuntimeSource,
