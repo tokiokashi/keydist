@@ -25,22 +25,22 @@ test('condition command types keep key/value correlation', () => {
   void resetTiming;
 
   if (false) {
-    // @ts-expect-error windowSize requires a number, not a ChainPolicy-like object.
     const wrongDistance: AnalysisDistanceCommand = {
       scope: { kind: 'default' },
       key: 'windowSize',
+      // @ts-expect-error windowSize requires a number, not a ChainPolicy-like object.
       value: { breakOnSameFinger: true },
     };
-    // @ts-expect-error speedMultiplier requires a number.
     const wrongTiming: AnalysisTimingCommand = {
       scope: { kind: 'layout', layoutId: 'qwerty' },
       key: 'speedMultiplier',
+      // @ts-expect-error speedMultiplier requires a number.
       value: true,
     };
-    // @ts-expect-error default scope cannot reset to undefined.
     const wrongDefaultReset: AnalysisTimingCommand = {
       scope: { kind: 'default' },
       key: 'speedMultiplier',
+      // @ts-expect-error default scope cannot reset to undefined.
       value: undefined,
     };
     void wrongDistance;
