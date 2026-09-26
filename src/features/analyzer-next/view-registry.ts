@@ -1,4 +1,4 @@
-import type { BigramSource, FingerClass } from '../../bigram-vectors.ts';
+import type { FingerClass } from '../../bigram-vectors.ts';
 import type { MatrixSort } from '../../chart.ts';
 import type {
   LayerColorScale,
@@ -7,21 +7,16 @@ import type {
   PlaybackKeyFeedbackStyle,
   SensitivityScale,
 } from '../../ui-state.ts';
-import type {
-  KeyboardFlowLayerOrder,
-  KeyboardFlowWeightScale,
+import {
+  DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG,
+  type BigramFlowDisplayConfig,
 } from '../bigram-vector/bigram-flow-view-config.ts';
 import type {
   AnalysisViewDefinition,
   AnalysisViewType,
 } from './view-contract.ts';
 
-export interface BigramFlowViewConfig {
-  source: BigramSource;
-  selectedFingers: readonly FingerClass[];
-  lineScale: KeyboardFlowWeightScale;
-  layerOrder: KeyboardFlowLayerOrder;
-}
+export type BigramFlowViewConfig = BigramFlowDisplayConfig;
 
 export interface HeatmapViewConfig {
   view: LayerView;
@@ -69,12 +64,7 @@ export interface PlaybackViewConfig {
   playbackRateChartOpen: boolean;
 }
 
-const BIGRAM_DEFAULTS: BigramFlowViewConfig = {
-  source: 'actual',
-  selectedFingers: [],
-  lineScale: 'linear',
-  layerOrder: 'weight',
-};
+const BIGRAM_DEFAULTS: BigramFlowViewConfig = DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG;
 
 const HEATMAP_DEFAULTS: HeatmapViewConfig = {
   view: 'auto',
@@ -234,6 +224,28 @@ export const ANALYSIS_VIEW_DEFINITIONS = new Map<
             source.layerOrder,
             ['weight', 'same-hand-top', 'cross-hand-top'],
             BIGRAM_DEFAULTS.layerOrder,
+          ),
+          hoverScale: choice(
+            source.hoverScale,
+            ['key', 'global'],
+            BIGRAM_DEFAULTS.hoverScale,
+          ),
+          movementScaleMode: choice(
+            source.movementScaleMode,
+            ['fit', 'fixed'],
+            BIGRAM_DEFAULTS.movementScaleMode,
+          ),
+          polarBandwidth: integer(
+            source.polarBandwidth,
+            BIGRAM_DEFAULTS.polarBandwidth,
+            4,
+            45,
+          ),
+          polarGain: finite(
+            source.polarGain,
+            BIGRAM_DEFAULTS.polarGain,
+            0.25,
+            3,
           ),
         };
       },
