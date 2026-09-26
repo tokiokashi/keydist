@@ -14,12 +14,12 @@ const FIT_PLOT_RADIUS = 82;
 const FIXED_SVG_UNITS_PER_U = 24;
 const POLAR_GAP = 9;
 const POLAR_AMPLITUDE = 16;
+const MAX_POLAR_DISPLAY_GAIN = 3;
 const OUTER_MARGIN = 13;
 
 export function movementPlotScale(
   maxDistance: number,
   mode: MovementScaleMode,
-  polarGain = 1,
 ): MovementPlotScale {
   const scaleMax = Math.max(1, Math.ceil(maxDistance));
   const unitsPerSvgUnit = mode === 'fit'
@@ -27,8 +27,10 @@ export function movementPlotScale(
     : FIXED_SVG_UNITS_PER_U;
   const plotRadius = scaleMax * unitsPerSvgUnit;
   const polarBaseRadius = plotRadius + POLAR_GAP;
-  const polarAmplitude = POLAR_AMPLITUDE * Math.max(0, polarGain);
-  const halfSize = polarBaseRadius + polarAmplitude + OUTER_MARGIN;
+  const polarAmplitude = POLAR_AMPLITUDE;
+  const halfSize = polarBaseRadius
+    + polarAmplitude * MAX_POLAR_DISPLAY_GAIN
+    + OUTER_MARGIN;
 
   return {
     scaleMax,
