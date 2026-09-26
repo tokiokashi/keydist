@@ -15,7 +15,9 @@ import type { Geometry, Key, Point } from '../../geometry.ts';
 import type { AnalyzerBigramFlowModel } from '../../analyzer-bigram-flow-model.ts';
 import type { Layout } from '../../layouts/types.ts';
 import {
+  MIN_POLAR_BANDWIDTH_DEGREES,
   movementPlotScale,
+  polarDisplayRadius,
   type MovementScaleMode,
 } from './movement-profile-scale.ts';
 import {
@@ -459,7 +461,12 @@ function MovementProfilePlot({
     polarPoint(
       cx,
       cy,
-      polarBaseRadius + sample.density * polarAmplitude * polarGain,
+      polarDisplayRadius(
+        polarBaseRadius,
+        polarAmplitude,
+        sample.density,
+        polarGain,
+      ),
       sample.angle,
     )
   );
@@ -903,7 +910,7 @@ export function AnalyzerBigramFlow({ model }: { model: AnalyzerBigramFlowModel }
                 <span>方向の広がり <output>±{polarBandwidth}°</output></span>
                 <input
                   type="range"
-                  min="4"
+                  min={MIN_POLAR_BANDWIDTH_DEGREES}
                   max="45"
                   step="1"
                   value={polarBandwidth}
