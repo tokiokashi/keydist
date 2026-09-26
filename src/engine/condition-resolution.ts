@@ -20,7 +20,7 @@ export interface ResolvedConditions {
 /** 全体の既定値へ配列ごとの差分を重ね、評価へ渡す条件を一つに決める。 */
 export function resolveConditions(
   defaults: ConditionDefaults,
-  override: Partial<ConditionDefaults> | undefined,
+  override: LayoutConditionOverrides | undefined,
 ): ResolvedConditions {
   const values = { ...defaults, ...override };
   const actionRealizationPolicy: ActionRealizationPolicy = {

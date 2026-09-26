@@ -3,17 +3,15 @@ import {
   compileSequenceInputAlternative,
   validateCanonicalInputMap,
   type InputAlternative,
-} from './core/semantic-input/index.ts';
-import { QWERTY_LEGEND, resolveKeyId, type NonThumb } from './geometry.ts';
-import { fromRows, SINGLE_LAYER_ID, withRomaji, type Layout } from './layouts/index.ts';
-import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from './romaji/rules.ts';
-import type { Sequence } from './layouts/types.ts';
-
-export const USER_LAYOUTS_STORAGE_KEY = 'keydist:layouts';
+} from '../../core/semantic-input/index.ts';
+import { QWERTY_LEGEND, resolveKeyId, type NonThumb } from '../../geometry.ts';
+import { fromRows, SINGLE_LAYER_ID, withRomaji, type Layout } from '../../layouts/index.ts';
+import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from '../romaji/rules.ts';
+import type { Sequence } from '../../layouts/types.ts';
 
 /** 選べるローマ字の綴り */
 export { ROMAJI_RULES };
-export type { RomajiRuleId } from './romaji/rules.ts';
+export type { RomajiRuleId } from '../romaji/rules.ts';
 
 export interface UserLayout {
   id: string;
@@ -35,24 +33,6 @@ export interface UserLayout {
 export const ROW_LIMITS = QWERTY_LEGEND.map((row) => row.length);
 export const ROW_LABELS = ['数字段', '上段', 'ホーム段', '下段'];
 
-export function load(): UserLayout[] {
-  try {
-    const raw = localStorage.getItem(USER_LAYOUTS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as UserLayout[];
-    return sanitizeUserLayouts(parsed);
-  } catch {
-    return [];
-  }
-}
-
-export function save(layouts: UserLayout[]) {
-  try {
-    localStorage.setItem(USER_LAYOUTS_STORAGE_KEY, JSON.stringify(layouts));
-  } catch {
-    // 保存できなくてもその場の評価は成立する
-  }
-}
 
 const isSequenceEntry = (entry: unknown): entry is [string, Sequence] =>
   Array.isArray(entry) &&
