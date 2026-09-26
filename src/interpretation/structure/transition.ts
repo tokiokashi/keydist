@@ -1,11 +1,11 @@
-import type { Finger, Key } from './geometry.ts';
-import type { Stroke } from './evaluate.ts';
+import type { Finger, Key } from '#input/shapes/geometry.ts';
+import type { Stroke } from '#trace/evaluate.ts';
 import {
   analyzeChains,
   type ChainAnalysisResult,
   type ChainPolicy,
   type Hand,
-} from './analysis-chain.ts';
+} from './chain.ts';
 
 export type FingerDirection = 'inward' | 'outward' | 'same';
 

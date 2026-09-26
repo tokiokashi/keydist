@@ -1,15 +1,15 @@
-import type { Finger } from './geometry.ts';
-import type { Stroke, StrokeParticipation } from './evaluate.ts';
+import type { Finger } from '#input/shapes/geometry.ts';
+import type { Stroke, StrokeParticipation } from '#trace/evaluate.ts';
 import {
   analyzeStrokeRedirects,
   type RedirectAnalysisResult,
-} from './analysis-redirect.ts';
+} from './redirect.ts';
 import type {
   FingerDirection,
   FingerTransition,
   HandTransition,
-} from './analysis-transition.ts';
-import type { ChainPolicy, Hand } from './analysis-chain.ts';
+} from './transition.ts';
+import type { ChainPolicy, Hand } from './chain.ts';
 
 export type RollDirection = Exclude<FingerDirection, 'same'>;
 

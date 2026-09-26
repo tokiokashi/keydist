@@ -1,6 +1,6 @@
-import type { Trace } from '../evaluate.ts';
-import type { Geometry } from '../geometry.ts';
-import type { Layout } from '../layouts/types.ts';
+import type { Trace } from '#trace/evaluate.ts';
+import type { Geometry } from '#input/shapes/geometry.ts';
+import type { Layout } from '#input/layouts/types.ts';
 
 export interface AnalyzerBigramFlowData {
   layout: Layout;

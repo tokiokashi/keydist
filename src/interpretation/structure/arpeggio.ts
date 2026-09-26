@@ -1,15 +1,15 @@
-import { isThumb } from './geometry.ts';
-import type { Stroke } from './evaluate.ts';
-import type { ChainPolicy, Hand } from './analysis-chain.ts';
-import type { HandTransition } from './analysis-transition.ts';
-import type { RedirectEvent } from './analysis-redirect.ts';
+import { isThumb } from '#input/shapes/geometry.ts';
+import type { Stroke } from '#trace/evaluate.ts';
+import type { ChainPolicy, Hand } from './chain.ts';
+import type { HandTransition } from './transition.ts';
+import type { RedirectEvent } from './redirect.ts';
 import {
   analyzeStrokeRolls,
   isRollEligibleStroke,
   transitionsForStrokeSpan,
   type RollAnalysisResult,
   type RollDirection,
-} from './analysis-roll.ts';
+} from './roll.ts';
 
 export interface ArpeggioPolicy {
   readonly includeThumb: boolean;

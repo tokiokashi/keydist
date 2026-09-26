@@ -5,9 +5,9 @@ import {
   isPresetGeometryKind,
   resolveKeyId,
   type Finger,
-} from '../geometry.ts';
-import type { GeometrySettings } from '../geometry-settings.ts';
-import type { Layout } from '../layouts/index.ts';
+} from '#input/shapes/geometry.ts';
+import type { GeometrySettings } from '#input/shapes/settings.ts';
+import type { Layout } from '#input/layouts/index.ts';
 import {
   actionsPerSecondFromIntervals,
   calibrationActionPair,
@@ -33,7 +33,7 @@ import {
   type CalibrationKeyPair,
   type FingerSpeedSample,
   type PlaybackCalibration,
-} from '../playback-calibration.ts';
+} from '#interpretation/timing/calibration.ts';
 import type { UiPlaybackState, UiStateStorage, UiStateV1 } from './ui-state.ts';
 
 export type CalibrationDirection = 'L→R' | 'R→L';

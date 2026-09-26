@@ -6,7 +6,7 @@ import {
   type Finger,
   type Geometry,
   type Key,
-} from './geometry.ts';
+} from '#input/shapes/geometry.ts';
 
 /** 再生へ反映する個人の打鍵・指移動速度。 */
 export interface PlaybackCalibration {
@@ -330,7 +330,7 @@ export function calibrationDirectedSameHandPairs(
   return pairs;
 }
 
-export function calibrationKeyMatches(event: KeyboardEvent, keyId: string, keyLabel = keyId): boolean {
+export function calibrationKeyMatches(event: { readonly key: string; readonly code: string }, keyId: string, keyLabel = keyId): boolean {
   const eventKey = event.key.toLowerCase();
   if (eventKey === keyId.toLowerCase() || eventKey === keyLabel.toLowerCase()) return true;
 

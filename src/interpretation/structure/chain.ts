@@ -1,5 +1,5 @@
-import type { Finger } from './geometry.ts';
-import type { Stroke } from './evaluate.ts';
+import type { Finger } from '#input/shapes/geometry.ts';
+import type { Stroke } from '#trace/evaluate.ts';
 
 export type Hand = 'left' | 'right';
 

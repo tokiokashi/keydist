@@ -1,12 +1,12 @@
-import type { Finger } from './geometry.ts';
-import type { Hand } from './analysis-chain.ts';
+import type { Finger } from '#input/shapes/geometry.ts';
+import type { Hand } from './chain.ts';
 import {
   analyzeStrokeTransitions,
   type FingerTransition,
   type TransitionAnalysisResult,
-} from './analysis-transition.ts';
-import type { Stroke } from './evaluate.ts';
-import type { ChainPolicy } from './analysis-chain.ts';
+} from './transition.ts';
+import type { Stroke } from '#trace/evaluate.ts';
+import type { ChainPolicy } from './chain.ts';
 
 export interface RedirectCandidate {
   readonly candidateIndex: number;
