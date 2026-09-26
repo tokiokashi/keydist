@@ -11,7 +11,7 @@ import {
   TypingInputEngine,
   type RecognizedTypingInput,
   type TypingInputResult,
-} from '../../core/input-converter/index.ts';
+} from './engine/index.ts';
 import type { Layout } from '#input/layouts/index.ts';
 import { kanaToRomaji } from '#input/romaji/kunrei.ts';
 import { physicalKeysUsedByLayout } from '#input/layouts/physical-keys.ts';
