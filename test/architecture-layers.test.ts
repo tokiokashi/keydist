@@ -96,45 +96,18 @@ const STORAGE_LAYERS = new Set<Layer>(['platform', 'app', 'legacy', 'transitiona
  * 移行中に解消できない既知の違反。`importer -> target` の相対パス（src基準）で書き、理由を添える。
  * 解消したら消す。実在しない行が残っているとテストが落ちる（一方向にしか減らないようにするため）。
  */
-const KNOWN_VIOLATIONS: Readonly<Record<string, string>> = {};
+const KNOWN_VIOLATIONS: Readonly<Record<string, string>> = {
+  'tester/input-converter-preferences.ts -> app/state/app-state-storage.ts':
+    'AppStateV2の集約を経由している。#544 Phase 2の資産codecで分解する',
+  'tester/panels/workspace-persistence.ts -> app/state/app-state-storage.ts':
+    'AppStateV2の集約を経由している。#544 Phase 2の資産codecで分解する',
+};
 
 /**
  * 新しい構造へまだ移していないファイル（src基準）。Phase 1で移すたびにここから消す。
  * ここに無い未配置ファイルを足すとテストが落ちる。src直下へ新しいファイルを増やさないため。
  */
-const UNPLACED_BASELINE: readonly string[] = [
-  'app-state.ts',
-  'app.css',
-  'appearance.ts',
-  'browser-download.ts',
-  'browser-storage-events.ts',
-  'components/physical-keyboard.tsx',
-  'core/input-converter/index.ts',
-  'core/input-converter/typing-input-engine.ts',
-  'features/input-converter/browser-keyboard-adapter.ts',
-  'features/input-converter/browser-keyboard-bindings.ts',
-  'features/input-converter/input-converter-preferences.ts',
-  'features/input-converter/input-converter-view.tsx',
-  'features/input-converter/live-romaji.ts',
-  'features/input-converter/random-samples.ts',
-  'features/input-converter/reverse-lookup.ts',
-  'features/input-converter/typing-session-command.ts',
-  'features/input-converter/use-input-converter-preferences.ts',
-  'features/input-converter/use-typing-session.ts',
-  'persistence/app-state-storage.ts',
-  'persistence/debounced-scheduler.ts',
-  'persistence/storage.ts',
-  'persistence/versioned-state.ts',
-  'theme.css',
-  'theme.ts',
-  'workspace/panel-registry.ts',
-  'workspace/viewport-clamp.ts',
-  'workspace/workspace-panel.tsx',
-  'workspace/workspace-persistence.ts',
-  'workspace/workspace-reducer.ts',
-  'workspace/workspace-runtime.tsx',
-  'workspace/workspace-state.ts',
-];
+const UNPLACED_BASELINE: readonly string[] = [];
 
 /** 使ってよい場所が決まっている外部ライブラリ。ここに無いライブラリは純粋な層以外で自由に使える。 */
 const RESTRICTED_PACKAGES: readonly { pattern: RegExp; name: string; allowed: ReadonlySet<Layer> }[] = [
