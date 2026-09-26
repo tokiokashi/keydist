@@ -5,7 +5,6 @@ import {
   buildBigramVectors,
   directionSummary,
   filterBigramVectors,
-  type BigramSource,
   type BigramVector,
   type FingerClass,
 } from '../../bigram-vectors.ts';
