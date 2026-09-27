@@ -44,7 +44,12 @@ export function useAnalyzerPane<Options, Extracted>(
       onExtraction: setExtraction,
       onTrace: setTrace,
     });
-  });
+    // 依存配列を省略すると毎レンダー後に実行され、request()が呼ぶsetState（listener）が
+    // 再レンダーを呼び戻して無限ループになる（Playwrightで実測: クリックがハングした）。
+    // cache/definitionは安定参照、options/resolutionは呼び出し側が値が変わった時だけ
+    // 新しい参照を作る前提（`analyzer-channels.ts`のコメント参照）なので、この4つを
+    // 依存にすれば「値が変わった時だけ同期する」が実現する。
+  }, [cache, definition, options, resolution]);
 
   // アンマウント時だけ購読を止める（cacheが変わることはこの単体ページでは無いが、
   // 念のため依存に含める）。
