@@ -1,0 +1,145 @@
+import type { CodecDiagnostic } from '#input/codec/index.ts';
+import type { Geometry } from '#input/shapes/geometry.ts';
+import type { Layout } from '#input/layouts/types.ts';
+import type { Trace, TracePolicy } from '#trace/generate.ts';
+import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
+import type { Metrics } from '#interpretation/metrics.ts';
+
+/**
+ * Analyzerの契約のうち純粋な部分（#544 §7・§9、docs/architecture.md）。
+ *
+ * ここに置くのは「抽出（extract）・解析設定（Options）・Traceを依頼する窓口の型」だけ。
+ * 可視化のcomponentとの結び付けは各Analyzerの `definition.tsx` が行う（このファイルは
+ * Reactを一切知らない。`import type` も含めて禁止 — 純粋さは推移的に守る。
+ * docs/architecture.md「純粋さは推移的に守る」）。
+ *
+ * engineはこの契約（`analyzers/` 直下）だけを知り、個別のAnalyzer（`analyzers/<name>/`）を
+ * importしない（依存の規則）。逆にこのファイルも個別のAnalyzerへは向かない。
+ */
+
+// ---------------------------------------------------------------------------
+// 抽出の入力
+// ---------------------------------------------------------------------------
+
+/**
+ * Traceを依頼する引数。`engine/resolved-input.ts` の `ResolvedInput` を丸ごと渡さない。
+ * `ResolvedInput` は engine 層の型で、analyzers はengineをimportできない（依存の規則）ため、
+ * Trace生成に実際に要る4フィールドだけをここで複製する（`engine/keys.ts` の `traceKeyOf` が
+ * キーに使うフィールドと同じ）。
+ */
+export interface TraceRequestInput {
+  readonly text: string;
+  readonly layout: Layout;
+  readonly geometry: Geometry;
+  readonly tracePolicy: TracePolicy;
+}
+
+/**
+ * 「Traceを依頼する窓口」（#544 §1 の例外・§7「集合対象とN感度」向け）。
+ *
+ * N感度のように、1つの抽出がNを振った複数本のTraceを必要とする場合、抽出は
+ * このAPIを通じて追加のTraceを依頼する。実装（キャッシュ経由で共有する・
+ * 同期で返す）はengine側が持つ（`engine/trace-requester.ts`）。契約はここでは
+ * 「同期でTraceが返る窓口」という形だけを決める。
+ *
+ * 依存の向きは一方向のまま: 抽出がengineを呼び返すのではなく、engineが抽出へ
+ * この窓口を渡す（依存性の注入）。
+ */
+export interface TraceRequester {
+  requestTrace(input: TraceRequestInput): Trace;
+}
+
+/** 単一Setup対象の抽出に渡す値（#544 §7「単一対象の extract は Trace結果 + 解釈結果 + 抽出に効くoptions」）。 */
+export interface SingleAnalyzerExtractContext<Options> {
+  readonly trace: Trace;
+  readonly analysis: AggregatedAnalysisResult;
+  readonly metrics: Metrics;
+  readonly options: Options;
+  /** N感度など、追加のTraceが要る抽出だけが使う。多くの抽出は無視してよい。 */
+  readonly requestTrace: TraceRequester;
+}
+
+/** 集合対象の抽出が受け取る、集合の1メンバー分のTrace結果・解釈結果。 */
+export interface AnalyzerSetMember {
+  readonly setupId: string;
+  readonly trace: Trace;
+  readonly analysis: AggregatedAnalysisResult;
+  readonly metrics: Metrics;
+}
+
+/** 集合対象の抽出に渡す値。 */
+export interface SetAnalyzerExtractContext<Options> {
+  readonly members: readonly AnalyzerSetMember[];
+  readonly options: Options;
+  readonly requestTrace: TraceRequester;
+}
+
+// ---------------------------------------------------------------------------
+// AnalyzerDefinition
+// ---------------------------------------------------------------------------
+
+/**
+ * `AnalyzerDefinition` を対象の種類で2つに分ける（#544 用語集「Analyzerの対象はSetup 1つか
+ * Setupの集合」）。1つの型に両方の形を詰め込むと、`cardinality` によって `extract` の引数の
+ * 形が変わることをTypeScriptの型で表現しづらくなる（呼び出し側で毎回絞り込みが要る）ため、
+ * 判別可能なUnionの片側ずつを別の型として定義し、`AnalyzerDefinition` はその合併にする。
+ */
+export interface SingleAnalyzerDefinition<Options = unknown, Extracted = unknown> {
+  readonly id: string;
+  readonly cardinality: 'single';
+  readonly defaultOptions: Options;
+  /**
+   * 保存された解析設定をdecodeする（`#input/codec` の `decodeField` 等と同じ作法。
+   * 未知・壊れた値は診断を積んで既定値へ戻す。例外を投げない）。
+   */
+  decodeOptions(raw: unknown, diagnostics: CodecDiagnostic[]): Options;
+  /**
+   * 解析設定のうち抽出に効く部分だけを取り出す（#544 §7「解析設定は『抽出に効くもの』と
+   * 『見た目だけのもの』をAnalyzerごとに宣言する」）。ここで返した値がそのまま抽出の
+   * キャッシュキーへ畳み込まれる（`engine/keys.ts` の `analyzerExtractionKeyOf`）ので、
+   * 見た目だけの項目（色・並び順の表示切替等）はここで返り値から外す。
+   * それだけで「見た目だけの設定変更では抽出を走らせない」が実現する
+   * （engine側で二重に判定しない）。
+   */
+  extractKeyOf(options: Options): unknown;
+  /** 抽出の純関数。Trace・解釈・options以外の外部状態を参照しない。 */
+  extract(context: SingleAnalyzerExtractContext<Options>): Extracted;
+}
+
+export interface SetAnalyzerDefinition<Options = unknown, Extracted = unknown> {
+  readonly id: string;
+  readonly cardinality: 'set';
+  readonly defaultOptions: Options;
+  decodeOptions(raw: unknown, diagnostics: CodecDiagnostic[]): Options;
+  extractKeyOf(options: Options): unknown;
+  extract(context: SetAnalyzerExtractContext<Options>): Extracted;
+}
+
+export type AnalyzerDefinition<Options = unknown, Extracted = unknown> =
+  | SingleAnalyzerDefinition<Options, Extracted>
+  | SetAnalyzerDefinition<Options, Extracted>;
+
+// ---------------------------------------------------------------------------
+// AnalyzerInstance
+// ---------------------------------------------------------------------------
+
+/**
+ * ペインに置かれた1個のAnalyzerが見る対象（#544 用語集）。
+ *
+ * 今回は最小形: Setup idを1つ持つか、Setup idの集合を直接持つかだけを表す。
+ * Workspace（#544 §6）の「Workspaceに従う / 固定」はまだここに無い
+ * （host/Workspace未着手のため、この作業単位の対象外）。
+ * 将来足す時は `kind` を増やす形を想定する（例: `{ kind: 'follows-workspace' }`）。
+ * PR本文に決めきれなかった点として残す。
+ */
+export type AnalyzerTarget =
+  | { readonly kind: 'setup'; readonly setupId: string }
+  | { readonly kind: 'setups'; readonly setupIds: readonly string[] };
+
+/** ペインに置かれた1個のAnalyzer（#544 用語集の「Analyzerインスタンス」）。 */
+export interface AnalyzerInstance<Options = unknown> {
+  readonly id: string;
+  readonly definitionId: string;
+  readonly options: Options;
+  readonly target: AnalyzerTarget;
+}
