@@ -47,7 +47,27 @@ export function useDebouncedCommit<T>(
     });
   }
 
-  useEffect(() => () => schedulerRef.current?.cancel(), []);
+  useEffect(() => {
+    // debounce待ち中の値を取りこぼさないよう、アンマウント・ページ離脱・タブの非表示化の
+    // いずれでも`flush()`する（レビュー指摘: アンマウントで`cancel()`していたため、
+    // debounce完了前に画面遷移・リロードすると直前の変更が消えていた。
+    // `pagehide`はリロード・別ページへの遷移・タブを閉じる操作を、
+    // `visibilitychange`（`hidden`）はタブ切り替え・OSのスリープ等、`pagehide`が
+    // 発火しない離脱もまとめて拾うための保険。どちらも同じ`flush()`を呼ぶだけで、
+    // 2重に書き込まれても`createDebouncedPersistenceScheduler`の`serialize`比較が
+    // 同一値の再書き込みを防ぐ）。
+    const flush = () => schedulerRef.current?.flush();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      flush();
+    };
+  }, []);
 
   return useMemo(() => (value: T) => schedulerRef.current!.notify(value), []);
 }
