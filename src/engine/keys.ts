@@ -46,3 +46,26 @@ export function interpretationKeyOf(input: ResolvedInput, traceKey: string): str
     arpeggioInterpretation: input.arpeggioInterpretation,
   });
 }
+
+/**
+ * 抽出のキー = 解釈のキー + Analyzer id + 抽出に効くoptions（#544 §7）。
+ *
+ * 「抽出に効くoptions」の判定は`AnalyzerDefinition.extractKeyOf(options)`（`analyzers/contract.ts`）
+ * がすでに行っている。見た目だけの項目はそこで返り値から外れているので、ここでは
+ * その返り値をそのままキーへ畳み込むだけでよい（同じ判断を2箇所で持たない）。
+ *
+ * modelVersionを明示的には混ぜない: `interpretationKey`の中の`traceKey`がすでに
+ * `MODEL_VERSION`を含む（`traceKeyOf`参照）ので、モデルの版が上がれば`interpretationKey`
+ * ごと変わり、この抽出キーも自然に別物になる。
+ */
+export function analyzerExtractionKeyOf(
+  interpretationKey: string,
+  definitionId: string,
+  extractionRelevantOptions: unknown,
+): string {
+  return stableStringify({
+    interpretationKey,
+    definitionId,
+    options: extractionRelevantOptions,
+  });
+}

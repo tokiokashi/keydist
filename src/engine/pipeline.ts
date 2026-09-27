@@ -1,6 +1,7 @@
 import { generateTrace, type Trace } from '#trace/generate.ts';
 import { analyzeStrokeStructure, type AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
 import { computeMetrics, type Metrics } from '#interpretation/metrics.ts';
+import type { SingleAnalyzerDefinition, TraceRequester } from '#analyzers/contract.ts';
 import { MODEL_VERSION } from './model-version.ts';
 import type { ResolvedInput } from './resolved-input.ts';
 
@@ -55,4 +56,36 @@ export function interpretEngineTrace(
     romajiRuleId: input.romajiRuleId,
   });
   return { modelVersion: MODEL_VERSION, analysis, metrics };
+}
+
+export interface EngineExtractionResult<Extracted> {
+  readonly modelVersion: number;
+  readonly extracted: Extracted;
+}
+
+/**
+ * 抽出段（単一Setup対象のAnalyzerのみ。#544 §7）。
+ *
+ * Trace・解釈はすでに計算済みのものを受け取るだけで、ここでは計算し直さない
+ * （`EngineCache.getExtraction`が「無ければ計算する」判断を持ち、この関数は
+ * 「渡された結果からAnalyzerのextractを1回呼ぶ」ことだけを担う純関数）。
+ * `definition.extract`が例外を投げた場合、ここでは捕まえない
+ * （`request.ts`の`createEngineRequest`がcompute呼び出し全体を包んでいるので、
+ * そこで`failed`という値に変換される。#544 §8-5「エラーは値」）。
+ */
+export function extractSingle<Options, Extracted>(
+  definition: SingleAnalyzerDefinition<Options, Extracted>,
+  options: Options,
+  traceResult: EngineTraceResult,
+  interpretationResult: EngineInterpretationResult,
+  requestTrace: TraceRequester,
+): EngineExtractionResult<Extracted> {
+  const extracted = definition.extract({
+    trace: traceResult.trace,
+    analysis: interpretationResult.analysis,
+    metrics: interpretationResult.metrics,
+    options,
+    requestTrace,
+  });
+  return { modelVersion: MODEL_VERSION, extracted };
 }
