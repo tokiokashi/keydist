@@ -3,6 +3,7 @@ import {
   decodeDroppingInvalid,
   defineAssetCodec,
   isRecord,
+  UNSAFE_OBJECT_KEYS,
   type AssetCodec,
   type CodecDiagnostic,
 } from '#input/codec/index.ts';
@@ -58,6 +59,15 @@ function decodeUserFingerAssignments(
   const seen = new Set<string>();
   const assignments: FingerAssignment[] = [];
   raw.forEach((candidate, index) => {
+    // valibotの`record`は予約名のkeyを黙って落とす。落ちた事実を診断に残す
+    // （`input/settings/codec.ts`の上書き読み取りと同じ扱い）。
+    if (isRecord(candidate) && isRecord(candidate.keyFinger)) {
+      for (const key of Object.keys(candidate.keyFinger)) {
+        if (UNSAFE_OBJECT_KEYS.has(key)) {
+          diagnostics.push({ path: `${path}[${index}].keyFinger.${key}`, message: `予約名のキー「${key}」を捨てた` });
+        }
+      }
+    }
     const decoded = decodeDroppingInvalid(userFingerAssignmentSchema, candidate, `${path}[${index}]`, diagnostics);
     if (decoded === undefined) return;
     if (seen.has(decoded.id)) {

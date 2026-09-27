@@ -72,6 +72,24 @@ test('codec: id重複は後発を捨てて診断を積む', () => {
   }
 });
 
+test('codec: keyFingerの予約名キー（JSON由来の__proto__等）は捨てて診断を積む', () => {
+  // JSON.parseはリテラルなown property "__proto__"を作れる。valibotのrecordは黙って落とすので、
+  // 落ちた事実が診断に出ることを確かめる
+  const raw = JSON.parse(
+    `{"version":1,"assignments":[${JSON.stringify(CUSTOM).replace('"keyFinger":{', '"keyFinger":{"__proto__":"LP","constructor":"LP",')}]}`,
+  );
+  const result = USER_FINGER_ASSIGNMENTS_CODEC.decode(raw);
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.deepEqual(result.value, [CUSTOM]);
+    assert.deepEqual(
+      result.diagnostics.map((d) => d.path).sort(),
+      ['assignments[0].keyFinger.__proto__', 'assignments[0].keyFinger.constructor'],
+    );
+    assert.equal(Object.getPrototypeOf(result.value[0]!.keyFinger), Object.prototype);
+  }
+});
+
 test('createUserFingerAssignment: baseの中身を引き継ぎ、idだけ発行し直す', () => {
   const created = createUserFingerAssignment([], () => 'finger-new', DEFAULT_FINGER_ASSIGNMENT, 'マイ運指');
   assert.equal(created.length, 1);
