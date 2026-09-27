@@ -4,11 +4,12 @@ import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { sampleText } from '#input/text/samples.ts';
+import type { SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import { resolveEngineInput } from './resolved-input.ts';
 import { createEngineCache } from './cache.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from './settings-items.ts';
-import { createInterpretationRequest, createTraceRequest } from './engine-requests.ts';
-import type { InterpretationRequestState } from './engine-requests.ts';
+import { createExtractRequest, createInterpretationRequest, createTraceRequest } from './engine-requests.ts';
+import type { ExtractionRequestState, InterpretationRequestState } from './engine-requests.ts';
 
 // 実際の`EngineCache` + `resolveEngineInput`を使った、依頼と購読APIの結線テスト。
 // 個々の状態遷移の網羅は`request.test.ts`側が担う。ここでは「本物のcompute関数を
@@ -86,4 +87,59 @@ test('2つの依頼窓口が同じ中身のSetupを依頼すると、EngineCache
 
   channelA.unsubscribe();
   channelB.unsubscribe();
+});
+
+function createFailingDefinition(): SingleAnalyzerDefinition<undefined, never> {
+  return {
+    id: 'failing-analyzer',
+    cardinality: 'single',
+    defaultOptions: undefined,
+    decodeOptions: () => undefined,
+    extractKeyOf: () => undefined,
+    extract() {
+      throw new Error('抽出が失敗した');
+    },
+  };
+}
+
+test('createExtractRequest: 実物のEngineCacheを通してreadyまで届く', async () => {
+  const cache = createEngineCache();
+  const definition: SingleAnalyzerDefinition<undefined, number> = {
+    id: 'total-units',
+    cardinality: 'single',
+    defaultOptions: undefined,
+    decodeOptions: () => undefined,
+    extractKeyOf: () => undefined,
+    extract: (context) => context.metrics.totalUnits,
+  };
+  const states: ExtractionRequestState<number>[] = [];
+  const channel = createExtractRequest(cache, definition, undefined, (s) => states.push(s));
+
+  channel.request(resolveFor('a', sampleText('en', 'default')));
+  await Promise.resolve();
+  await Promise.resolve();
+
+  const last = states.at(-1);
+  assert.ok(last?.status === 'ready');
+  if (last?.status === 'ready') {
+    assert.ok(last.value.extracted >= 0);
+  }
+  channel.unsubscribe();
+});
+
+test('createExtractRequest: extractが例外を投げたらfailed（kind: exception）になる', async () => {
+  const cache = createEngineCache();
+  const states: ExtractionRequestState<never>[] = [];
+  const channel = createExtractRequest(cache, createFailingDefinition(), undefined, (s) => states.push(s));
+
+  channel.request(resolveFor('a', sampleText('en', 'default')));
+  await Promise.resolve();
+  await Promise.resolve();
+
+  const last = states.at(-1);
+  assert.ok(last?.status === 'failed');
+  if (last?.status === 'failed') {
+    assert.equal(last.error.kind, 'exception');
+  }
+  channel.unsubscribe();
 });

@@ -1,11 +1,15 @@
-import { interpretationKeyOf, traceKeyOf } from './keys.ts';
+import type { SingleAnalyzerDefinition } from '#analyzers/contract.ts';
+import { analyzerExtractionKeyOf, interpretationKeyOf, traceKeyOf } from './keys.ts';
 import {
+  extractSingle,
   generateEngineTrace,
   interpretEngineTrace,
+  type EngineExtractionResult,
   type EngineInterpretationResult,
   type EngineTraceResult,
 } from './pipeline.ts';
 import type { ResolvedInput } from './resolved-input.ts';
+import { createTraceRequesterFor } from './trace-requester.ts';
 
 /**
  * 表示中のSetupだけを計算する前提なので大きくしなくてよい（#544 §7）。
@@ -57,6 +61,8 @@ export interface EngineCacheOptions {
   readonly maxTraceEntries?: number;
   /** 解釈キャッシュの最大保持件数。省略時は`DEFAULT_MAX_ENTRIES`。 */
   readonly maxInterpretationEntries?: number;
+  /** 抽出キャッシュの最大保持件数。省略時は`DEFAULT_MAX_ENTRIES`。 */
+  readonly maxExtractionEntries?: number;
 }
 
 export interface EngineCache {
@@ -67,9 +73,25 @@ export interface EngineCache {
    * 解釈だけが違う（chain/arpeggio解釈の変更）2つの呼び出しはTraceを再利用する。
    */
   getInterpretation(input: ResolvedInput): EngineInterpretationResult;
+  /**
+   * 単一Setup対象のAnalyzerの抽出を、抽出のキー（解釈のキー + Analyzer id +
+   * 抽出に効くoptions）で引く。無ければ解釈（さらにその中でTrace）まで遡って計算し、
+   * 積む。同じ抽出のキーを要求する2つのAnalyzerインスタンスは1回しか`extract`を
+   * 呼ばない（#544 §7「複数のAnalyzerが同じ抽出を使う場合も1回で済む」の、
+   * 同一Analyzer内の複数インスタンス版）。
+   *
+   * `Options`/`Extracted`はAnalyzerごとに異なるため、キャッシュの値自体は`unknown`で
+   * 保持する（呼び出し側は自分が渡した`definition`の型を知っているので、戻り値の型は
+   * 呼び出し時のジェネリックでそのまま絞り込める）。
+   */
+  getExtraction<Options, Extracted>(
+    input: ResolvedInput,
+    definition: SingleAnalyzerDefinition<Options, Extracted>,
+    options: Options,
+  ): EngineExtractionResult<Extracted>;
   /** 計算結果は永続化しない（#544 §7）。明示的に空にする時だけ使う。 */
   clear(): void;
-  readonly size: { readonly trace: number; readonly interpretation: number };
+  readonly size: { readonly trace: number; readonly interpretation: number; readonly extraction: number };
 }
 
 /**
@@ -87,6 +109,11 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
   const traceCache = new LruCache<string, EngineTraceResult>(options.maxTraceEntries ?? DEFAULT_MAX_ENTRIES);
   const interpretationCache = new LruCache<string, EngineInterpretationResult>(
     options.maxInterpretationEntries ?? DEFAULT_MAX_ENTRIES,
+  );
+  // 値の型はAnalyzerごとに違うので`unknown`で持ち、`getExtraction`の呼び出し側の
+  // ジェネリックで絞り込む（このファイル内では中身の型を知らないまま扱う）。
+  const extractionCache = new LruCache<string, EngineExtractionResult<unknown>>(
+    options.maxExtractionEntries ?? DEFAULT_MAX_ENTRIES,
   );
 
   function getTrace(input: ResolvedInput): EngineTraceResult {
@@ -108,15 +135,34 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
     return result;
   }
 
+  function getExtraction<Options, Extracted>(
+    input: ResolvedInput,
+    definition: SingleAnalyzerDefinition<Options, Extracted>,
+    options: Options,
+  ): EngineExtractionResult<Extracted> {
+    const interpretationResult = getInterpretation(input);
+    const interpretationKey = interpretationKeyOf(input, traceKeyOf(input));
+    const key = analyzerExtractionKeyOf(interpretationKey, definition.id, definition.extractKeyOf(options));
+    const cached = extractionCache.get(key);
+    if (cached) return cached as EngineExtractionResult<Extracted>;
+    const traceResult = getTrace(input);
+    const requester = createTraceRequesterFor({ getTrace }, input);
+    const result = extractSingle(definition, options, traceResult, interpretationResult, requester);
+    extractionCache.set(key, result as EngineExtractionResult<unknown>);
+    return result;
+  }
+
   return {
     getTrace,
     getInterpretation,
+    getExtraction,
     clear() {
       traceCache.clear();
       interpretationCache.clear();
+      extractionCache.clear();
     },
     get size() {
-      return { trace: traceCache.size, interpretation: interpretationCache.size };
+      return { trace: traceCache.size, interpretation: interpretationCache.size, extraction: extractionCache.size };
     },
   };
 }

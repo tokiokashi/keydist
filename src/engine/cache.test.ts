@@ -3,9 +3,37 @@ import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
+import type { SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from './settings-items.ts';
 import { resolveEngineInput, type ResolvedInput } from './resolved-input.ts';
 import { createEngineCache } from './cache.ts';
+
+interface FixtureOptions {
+  readonly scale: number;
+  readonly highlightColor: string;
+}
+
+let fixtureCalls = 0;
+
+/** `getExtraction`のテスト専用フィクスチャ。呼び出し回数を数えて共有・再計算を検証する。 */
+function createFixtureDefinition(): SingleAnalyzerDefinition<FixtureOptions, number> {
+  return {
+    id: 'fixture-analyzer',
+    cardinality: 'single',
+    defaultOptions: { scale: 1, highlightColor: 'red' },
+    decodeOptions(raw) {
+      return raw as FixtureOptions;
+    },
+    // highlightColorは見た目だけなので抽出キーに含めない。
+    extractKeyOf(options) {
+      return { scale: options.scale };
+    },
+    extract(context) {
+      fixtureCalls += 1;
+      return context.metrics.totalUnits * context.options.scale;
+    },
+  };
+}
 
 const CATALOG = {
   layouts: LAYOUT_BY_ID,
@@ -101,5 +129,69 @@ test('clear()は永続化していないメモリキャッシュを空にする'
   cache.getInterpretation(resolve(setup));
   assert.ok(cache.size.trace > 0);
   cache.clear();
-  assert.deepEqual(cache.size, { trace: 0, interpretation: 0 });
+  assert.deepEqual(cache.size, { trace: 0, interpretation: 0, extraction: 0 });
+});
+
+test('getExtraction: 同じ抽出キーの2インスタンスはextractを1回しか呼ばない', () => {
+  fixtureCalls = 0;
+  const cache = createEngineCache();
+  const definition = createFixtureDefinition();
+  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const input = resolve(setup);
+
+  const a = cache.getExtraction(input, definition, { scale: 1, highlightColor: 'red' });
+  const b = cache.getExtraction(input, definition, { scale: 1, highlightColor: 'red' });
+  assert.equal(a, b);
+  assert.equal(fixtureCalls, 1);
+  assert.equal(cache.size.extraction, 1);
+});
+
+test('getExtraction: 見た目だけのoptions変更（highlightColor）ではextractを走らせない', () => {
+  fixtureCalls = 0;
+  const cache = createEngineCache();
+  const definition = createFixtureDefinition();
+  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const input = resolve(setup);
+
+  cache.getExtraction(input, definition, { scale: 1, highlightColor: 'red' });
+  cache.getExtraction(input, definition, { scale: 1, highlightColor: 'blue' });
+  assert.equal(fixtureCalls, 1, '抽出に効かないoptionsの変更では再計算しない');
+  assert.equal(cache.size.extraction, 1);
+});
+
+test('getExtraction: 抽出に効くoptions（scale）が変われば計算し直す', () => {
+  fixtureCalls = 0;
+  const cache = createEngineCache();
+  const definition = createFixtureDefinition();
+  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const input = resolve(setup);
+
+  const a = cache.getExtraction(input, definition, { scale: 1, highlightColor: 'red' });
+  const b = cache.getExtraction(input, definition, { scale: 2, highlightColor: 'red' });
+  assert.notEqual(a, b);
+  assert.equal(fixtureCalls, 2);
+  assert.equal(cache.size.extraction, 2);
+  assert.equal(b.extracted, a.extracted * 2);
+});
+
+test('getExtraction: 解釈だけ変えてもTraceは作り直さない', () => {
+  const cache = createEngineCache();
+  const definition = createFixtureDefinition();
+  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const baseInput = resolve(setup);
+
+  cache.getExtraction(baseInput, definition, { scale: 1, highlightColor: 'red' });
+  assert.equal(cache.size.trace, 1);
+
+  const write = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'chainInterpretation', {
+    ...baseInput.chainInterpretation,
+    breakOnSameFinger: !baseInput.chainInterpretation.breakOnSameFinger,
+  });
+  assert.ok(write.ok);
+  if (!write.ok) return;
+  const changedInput = resolve(setup, write.overrides);
+
+  cache.getExtraction(changedInput, definition, { scale: 1, highlightColor: 'red' });
+  assert.equal(cache.size.trace, 1, 'chain解釈の変更はTraceに影響しないので再利用する');
+  assert.equal(cache.size.extraction, 2, '解釈が違うので抽出キーは別物になり計算し直す');
 });

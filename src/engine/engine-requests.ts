@@ -1,5 +1,6 @@
+import type { SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import type { EngineCache } from './cache.ts';
-import type { EngineInterpretationResult, EngineTraceResult } from './pipeline.ts';
+import type { EngineExtractionResult, EngineInterpretationResult, EngineTraceResult } from './pipeline.ts';
 import { createEngineRequest, type EngineRequestChannel, type EngineRequestOptions, type EngineRequestState } from './request.ts';
 
 /**
@@ -29,4 +30,29 @@ export function createInterpretationRequest(
   options?: EngineRequestOptions,
 ): EngineRequestChannel {
   return createEngineRequest((input) => cache.getInterpretation(input), listener, options);
+}
+
+export type ExtractionRequestState<Extracted> = EngineRequestState<EngineExtractionResult<Extracted>>;
+
+/**
+ * 単一Setup対象のAnalyzerインスタンス1個分の抽出の依頼。`definition`と`analyzerOptions`は
+ * 呼び出し側（ペイン）が固定して持ち、`request()`のたびに解決済み入力だけを渡す
+ * （`createTraceRequest` / `createInterpretationRequest`と同じ形。異なるのは、
+ * ここでは`compute`が2引数追加で必要な分だけクロージャで固定している点）。
+ *
+ * `definition.extract`が例外を投げた場合、この関数自体ではなく`createEngineRequest`の
+ * try/catchが`failed`（`kind: 'exception'`）へ変換する（#544 §8-5）。
+ */
+export function createExtractRequest<Options, Extracted>(
+  cache: EngineCache,
+  definition: SingleAnalyzerDefinition<Options, Extracted>,
+  analyzerOptions: Options,
+  listener: (state: ExtractionRequestState<Extracted>) => void,
+  options?: EngineRequestOptions,
+): EngineRequestChannel {
+  return createEngineRequest(
+    (input) => cache.getExtraction(input, definition, analyzerOptions),
+    listener,
+    options,
+  );
 }
