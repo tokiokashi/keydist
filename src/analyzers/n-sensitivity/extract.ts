@@ -20,17 +20,26 @@ import {
  *
  * 仕様 §11.9。旧実装（`src/analyzers/n-sensitivity/sensitivity.ts`の`nSensitivity`・
  * `src/legacy/analyzer-metrics-content.tsx`の`AnalyzerSensitivityResults`）と同じ範囲
- * （N=0..10）・同じ量（`totalUnits`[u] / `totalMm`[mm]）を、メンバー（Setup）ごとに求める。
+ * （N=0..10）で`totalUnits`[u]を求める。
  *
  * **`computeMetrics`を呼び直さない。** `totalUnits`は`computeMetrics`の中身を読むと
  * `trace.strokes`の`distance`を単純合計したものそのもの（Geometry・Nは`generateTrace`の
  * 時点で既にstrokeへ焼き込まれている。`interpretation/metrics.ts`の`computeMetrics`参照）で、
  * Metrics固有の他の計算（同指率・指間統計等）はどれもGeometryの実体（`AnalyzerSetMember`には
- * 無い）を要求するがN感度には要らない。`totalMm`は`totalUnits × geometry.pitchMm`だが、
- * `pitchMm`はNによらないメンバー固有の定数なので、メンバー自身の`metrics`（N=既定の時点の
- * `totalMm / totalUnits`）から一度だけ逆算する。この2点により、
- * `AnalyzerSetMember`にGeometry・`computeMetrics`の入力一式を追加で持たせずに済む
- * （契約を膨らませない。#544指示書「小さくきれいな形を選ぶ」）。
+ * 無い）を要求するがN感度には要らない。この1点により、`AnalyzerSetMember`にGeometry・
+ * `computeMetrics`の入力一式を追加で持たせずに済む（契約を膨らませない。
+ * #544指示書「小さくきれいな形を選ぶ」）。
+ *
+ * **`totalMm`は持たない。** 当初`totalUnits × (member.metrics.totalMm / member.metrics.totalUnits)`
+ * で`pitchMm`を逆算する案を試したが、`totalMm`は`computeMetrics`側で
+ * `totalUnits × geometry.pitchMm`という掛け算1回で計算されるのに対し、逆算は割り算を
+ * 挟むため浮動小数点の丸めが往復で一致しない（実測: 1840メンバー条件・20,240点の
+ * レビュー計測で約1.5%が旧`nSensitivity()`の`totalMm`とビット一致しなかった。
+ * 例: ja.modern配列・colemak-dh形状・row-staggered・グローバルwindowSize=7・N=0で
+ * 新22691.038468072355 vs 旧22691.03846807235）。ビット一致を主張できない値は
+ * 出さない方がよい（AGENTS.md「数値は必ず実行して出す」の裏側）。View側も`totalMm`を
+ * 表示していないので、`pitchMm`を契約へ足す（`AnalyzerSetMember`にGeometryを持たせる等）
+ * ことはせず、`totalUnits`だけを持つ。
  */
 
 const N_RANGE = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
@@ -39,7 +48,6 @@ export { N_RANGE as N_SENSITIVITY_RANGE };
 export interface NSensitivityPoint {
   readonly windowSize: number;
   readonly totalUnits: number;
-  readonly totalMm: number;
 }
 
 export interface NSensitivitySeriesOk {
@@ -68,14 +76,10 @@ function totalUnitsOf(trace: Trace): number {
 
 /** メンバー1件ぶんの、N=0..10の系列を求める。 */
 export function computeMemberSeries(member: AnalyzerSetMember): NSensitivitySeriesOk {
-  const { totalUnits: baseUnits, totalMm: baseMm } = member.metrics;
-  // pitchMmはGeometry由来の定数（Nによらない）。メンバー自身の既定Nの結果から逆算する
-  // （上のファイルコメント参照）。totalUnitsが0（空テキスト等）ならmm換算も0のまま。
-  const pitchMm = baseUnits === 0 ? 0 : baseMm / baseUnits;
   const points = N_RANGE.map((windowSize) => {
     const trace = member.requestTrace.requestTrace({ tracePolicy: { windowSize } });
     const totalUnits = totalUnitsOf(trace);
-    return { windowSize, totalUnits, totalMm: totalUnits * pitchMm };
+    return { windowSize, totalUnits };
   });
   return { kind: 'ok', setupId: member.setupId, points };
 }

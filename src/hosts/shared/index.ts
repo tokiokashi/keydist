@@ -2,6 +2,8 @@ export {
   conditionHeaderInfo,
   conditionHeaderInfoFromResolvedInput,
   formatOrigin,
+  nonDefaultConditionRows,
+  summarizeNonDefaultConditions,
   traceConditionSummary,
   type ConditionHeaderInfo,
   type ConditionSummaryRow,

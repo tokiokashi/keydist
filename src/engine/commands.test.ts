@@ -16,9 +16,9 @@ import {
   renameFingerAssignmentCommand,
   resetCascadeItemCommand,
   resetCascadeLevelCommand,
+  setAnalyzerSetSelectionBaselineCommand,
+  setAnalyzerSetSelectionSetupIdsCommand,
   setCascadeOverrideCommand,
-  setComparisonBaselineSetupIdCommand,
-  setComparisonSetupIdsCommand,
   setStandaloneAnalyzerOptionsCommand,
   setStandaloneTextCommand,
   setStandaloneTextLanguageOverrideCommand,
@@ -38,7 +38,6 @@ function emptyAssets(): KeydistAssets {
     fingerAssignments: [],
     standaloneText: initialStandaloneText(),
     standaloneAnalyzerOptions: {},
-    comparisonSelection: { setupIds: [], baselineSetupId: undefined },
     analyzerSetSelections: {},
   };
 }
@@ -421,38 +420,87 @@ test('setStandaloneAnalyzerOptionsCommand: 別のAnalyzer idの設定は道連�
   });
 });
 
-test('setComparisonSetupIdsCommand: 対象の集合・並び順を書き込み、undo/redoで往復できる', () => {
+test('setAnalyzerSetSelectionSetupIdsCommand: 対象の集合・並び順を書き込み、undo/redoで往復できる', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const step = applyCommand(assets, history, setComparisonSetupIdsCommand(['a', 'b']));
+  const step = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
   assert.equal(step.outcome.kind, 'applied');
-  assert.deepEqual(step.assets.comparisonSelection.setupIds, ['a', 'b']);
+  assert.deepEqual(step.assets.analyzerSetSelections.comparison?.setupIds, ['a', 'b']);
 
   const back = undo(step.assets, step.history);
-  assert.deepEqual(back.assets.comparisonSelection.setupIds, []);
+  assert.equal(back.assets.analyzerSetSelections.comparison, undefined);
 
   const redone = redo(back.assets, back.history);
-  assert.deepEqual(redone.assets.comparisonSelection.setupIds, ['a', 'b']);
+  assert.deepEqual(redone.assets.analyzerSetSelections.comparison?.setupIds, ['a', 'b']);
 });
 
-test('setComparisonSetupIdsCommand: 同じ並びの書き込みはno-op', () => {
+test('setAnalyzerSetSelectionSetupIdsCommand: 同じ並びの書き込みはno-op', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const step = applyCommand(assets, history, setComparisonSetupIdsCommand(['a', 'b']));
-  const again = applyCommand(step.assets, step.history, setComparisonSetupIdsCommand(['a', 'b']));
+  const step = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
+  const again = applyCommand(step.assets, step.history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
   assert.equal(again.outcome.kind, 'no-op');
   assert.equal(again.assets, step.assets);
 });
 
-test('setComparisonBaselineSetupIdCommand: 基準の設定・解除を書き込める', () => {
+test('setAnalyzerSetSelectionSetupIdsCommand: 重複したSetup idは1つに畳む', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const withBaseline = applyCommand(assets, history, setComparisonBaselineSetupIdCommand('a'));
-  assert.equal(withBaseline.assets.comparisonSelection.baselineSetupId, 'a');
+  const step = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b', 'a']));
+  assert.deepEqual(step.assets.analyzerSetSelections.comparison?.setupIds, ['a', 'b']);
+});
 
-  const cleared = applyCommand(withBaseline.assets, withBaseline.history, setComparisonBaselineSetupIdCommand(undefined));
-  assert.equal(cleared.assets.comparisonSelection.baselineSetupId, undefined);
+test('setAnalyzerSetSelectionBaselineCommand: 基準の設定・解除を書き込める（選択に含まれるSetupだけ）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const withSelection = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
+  const withBaseline = applyCommand(
+    withSelection.assets,
+    withSelection.history,
+    setAnalyzerSetSelectionBaselineCommand('comparison', 'a'),
+  );
+  assert.equal(withBaseline.assets.analyzerSetSelections.comparison?.baselineSetupId, 'a');
+
+  const cleared = applyCommand(
+    withBaseline.assets,
+    withBaseline.history,
+    setAnalyzerSetSelectionBaselineCommand('comparison', undefined),
+  );
+  assert.equal(cleared.assets.analyzerSetSelections.comparison?.baselineSetupId, undefined);
+});
+
+test('setAnalyzerSetSelectionBaselineCommand: 選択に含まれないSetupを基準にしようとするとno-op（不変条件）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const withSelection = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
+  const attempt = applyCommand(
+    withSelection.assets,
+    withSelection.history,
+    setAnalyzerSetSelectionBaselineCommand('comparison', 'not-selected'),
+  );
+  assert.equal(attempt.outcome.kind, 'no-op');
+});
+
+test('setAnalyzerSetSelectionSetupIdsCommand: 基準に選んでいたSetupが選択から外れたら、基準も一緒に外れる（不変条件）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const withSelection = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
+  const withBaseline = applyCommand(
+    withSelection.assets,
+    withSelection.history,
+    setAnalyzerSetSelectionBaselineCommand('comparison', 'a'),
+  );
+  const removed = applyCommand(
+    withBaseline.assets,
+    withBaseline.history,
+    setAnalyzerSetSelectionSetupIdsCommand('comparison', ['b']),
+  );
+  assert.deepEqual(removed.assets.analyzerSetSelections.comparison?.setupIds, ['b']);
+  assert.equal(removed.assets.analyzerSetSelections.comparison?.baselineSetupId, undefined);
 });

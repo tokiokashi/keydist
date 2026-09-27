@@ -3,8 +3,9 @@ import { expect, test } from '@playwright/test';
 /**
  * N感度単体ページ（#544 Phase 3「N感度」）のE2E。`e2e/standalone-comparison.spec.ts`と同じ形。
  *
- * 対象はSetupの**集合**（比較表と同じ）で、集合の保存先だけが違う
- * （`keydist:analyzer-set-selections`。`engine/analyzer-set-selection.ts`参照）。
+ * 対象はSetupの**集合**（比較表と同じ）で、集合の保存先も同じ汎用資産
+ * （`keydist:analyzer-set-selections`。`engine/analyzer-set-selection.ts`参照。
+ * Analyzer idごとに`{setupIds, baselineSetupId}`を`selections`の下にネストして持つ）。
  */
 
 const ANALYZER_SET_SELECTIONS_KEY = 'keydist:analyzer-set-selections';
@@ -32,8 +33,8 @@ test('Setupを2件選ぶと2本の折れ線が表示される', async ({ page })
 
   await expect(page.getByRole('heading', { name: 'N感度', exact: true })).toBeVisible();
 
-  const checkboxA = page.locator('.comparison-selection-checkbox', { hasText: 'qwerty / row-staggered' }).getByRole('checkbox');
-  const checkboxB = page.locator('.comparison-selection-checkbox', { hasText: 'colemak-dh / row-staggered' }).getByRole('checkbox');
+  const checkboxA = page.locator('.set-selection-checkbox', { hasText: 'qwerty / row-staggered' }).getByRole('checkbox');
+  const checkboxB = page.locator('.set-selection-checkbox', { hasText: 'colemak-dh / row-staggered' }).getByRole('checkbox');
   await checkboxA.check();
   await checkboxB.check();
 
@@ -55,7 +56,7 @@ test('縦軸（相対/実測値）の切り替えはリロードしても残る'
   await page.addInitScript(seedTwoSetups());
   await page.goto('/standalone/n-sensitivity');
 
-  const checkboxA = page.locator('.comparison-selection-checkbox', { hasText: 'qwerty / row-staggered' }).getByRole('checkbox');
+  const checkboxA = page.locator('.set-selection-checkbox', { hasText: 'qwerty / row-staggered' }).getByRole('checkbox');
   await checkboxA.check();
   await expect(page.locator('.n-sensitivity-svg')).toBeVisible({ timeout: 10_000 });
 
@@ -82,13 +83,13 @@ test('選択・並び順はリロードしても残り、資産の読み込み�
   await page.addInitScript(seedTwoSetups());
   await page.goto('/standalone/n-sensitivity');
 
-  const checkboxA = page.locator('.comparison-selection-checkbox', { hasText: 'qwerty / row-staggered' }).getByRole('checkbox');
-  const checkboxB = page.locator('.comparison-selection-checkbox', { hasText: 'colemak-dh / row-staggered' }).getByRole('checkbox');
+  const checkboxA = page.locator('.set-selection-checkbox', { hasText: 'qwerty / row-staggered' }).getByRole('checkbox');
+  const checkboxB = page.locator('.set-selection-checkbox', { hasText: 'colemak-dh / row-staggered' }).getByRole('checkbox');
   await checkboxA.check();
   await checkboxB.check();
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
 
-  const order = page.locator('.comparison-selection-order li');
+  const order = page.locator('.set-selection-order li');
   await expect(order).toHaveCount(2);
   await expect(order.first()).toContainText('qwerty');
   await order.nth(1).getByRole('button', { name: /上へ/ }).click();
@@ -102,7 +103,7 @@ test('選択・並び順はリロードしても残り、資産の読み込み�
   // 回帰確認: リロード直後に空の初期値へ巻き戻って2件→1件に減ったり、選択が消えたりしない。
   await page.reload();
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
-  const orderAfterReload = page.locator('.comparison-selection-order li');
+  const orderAfterReload = page.locator('.set-selection-order li');
   await expect(orderAfterReload).toHaveCount(2);
   await expect(orderAfterReload.first()).toContainText('colemak-dh');
 
@@ -110,8 +111,10 @@ test('選択・並び順はリロードしても残り、資産の読み込み�
     (key) => localStorage.getItem(key),
     ANALYZER_SET_SELECTIONS_KEY,
   );
-  const parsed = JSON.parse(storedAfterReload ?? '{}') as Record<string, string[]>;
-  expect(parsed['n-sensitivity']).toEqual(['fixed-b', 'fixed-a']);
+  const parsed = JSON.parse(storedAfterReload ?? '{}') as {
+    selections: Record<string, { setupIds: string[]; baselineSetupId?: string }>;
+  };
+  expect(parsed.selections['n-sensitivity']?.setupIds).toEqual(['fixed-b', 'fixed-a']);
 
   // setup-libraryはユーザーが足していない限り2件のまま（誤って1件へ巻き戻っていない）。
   const setupLibraryRaw = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
@@ -131,7 +134,7 @@ test('集合に存在しないSetup idが混ざっていても消えず「削除
     );
     localStorage.setItem(
       'keydist:analyzer-set-selections',
-      JSON.stringify({ version: 1, 'n-sensitivity': ['fixed-a', 'deleted-setup'] }),
+      JSON.stringify({ version: 1, selections: { 'n-sensitivity': { setupIds: ['fixed-a', 'deleted-setup'] } } }),
     );
   });
   await page.goto('/standalone/n-sensitivity');
@@ -142,5 +145,30 @@ test('集合に存在しないSetup idが混ざっていても消えず「削除
   await expect(failedRow).toHaveCount(1);
   await expect(failedRow).toContainText('削除された');
 
-  await expect(page.locator('.comparison-selection-order li')).toHaveCount(2);
+  await expect(page.locator('.set-selection-order li')).toHaveCount(2);
+});
+
+test('既定と違う条件（windowSize以外）が併記される。windowSizeは掃引軸なので出さない', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'keydist:setup-library',
+      JSON.stringify({
+        version: 1,
+        setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 }],
+        // sfbHomeCost=falseは既定(true)と違うので併記される。windowSizeは既定と違っても
+        // 掃引軸として除外され、行の条件併記には出ない。
+        overrides: { global: { sfbHomeCost: false, windowSize: 7 } },
+      }),
+    );
+    localStorage.setItem(
+      'keydist:analyzer-set-selections',
+      JSON.stringify({ version: 1, selections: { 'n-sensitivity': { setupIds: ['fixed-a'] } } }),
+    );
+  });
+  await page.goto('/standalone/n-sensitivity');
+
+  const conditionDiff = page.locator('.n-sensitivity-condition-diff');
+  await expect(conditionDiff).toBeVisible({ timeout: 10_000 });
+  await expect(conditionDiff).toContainText('同指連続のホーム復帰距離');
+  await expect(conditionDiff).not.toContainText('先読みN');
 });

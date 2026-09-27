@@ -108,3 +108,32 @@ export function conditionHeaderInfoFromResolvedInput(layout: Layout, geometry: G
 }
 
 export { formatOrigin };
+
+/**
+ * `traceConditionSummary`の結果から、既定値と違う項目だけを残す（#544 Phase 3レビュー
+ * 「集合対象ページ（比較表・N感度）は各行に効いている条件を併記する」）。
+ *
+ * 集合対象のページは1画面に複数Setupを並べるため、`PaneFrame`（単一Setup対象）のように
+ * 全項目を`<details>`で出すと行ごとに同じ既定値の羅列が並んでしまい読みにくい。
+ * 「このSetupだけ何が違うか」が知りたい場面なので、`origin.kind !== 'default'`
+ * （カスケードのどこかのレベルで上書きされている）の行だけを残す。
+ *
+ * `excludeIds`は呼び出し側が「この項目は元々全員に共通の軸として見せているので、
+ * ここでは重複して出さない」という項目を落とすためのフック（N感度の`windowSize`。
+ * Nを振ること自体がそのページの主題なので、個別の上書きと並べて出すと紛らわしい）。
+ */
+export function nonDefaultConditionRows(
+  rows: readonly ConditionSummaryRow[],
+  excludeIds: readonly SettingsItemId[] = [],
+): readonly ConditionSummaryRow[] {
+  return rows.filter((row) => row.origin.kind !== 'default' && !excludeIds.includes(row.id));
+}
+
+/**
+ * `nonDefaultConditionRows`の結果を、行の短い併記用に1行の文字列へまとめる。
+ * 空なら`undefined`（呼び出し側は「併記するものが無い」として省略する）。
+ */
+export function summarizeNonDefaultConditions(rows: readonly ConditionSummaryRow[]): string | undefined {
+  if (rows.length === 0) return undefined;
+  return rows.map((row) => `${row.label}: ${row.displayValue}`).join(' ・ ');
+}

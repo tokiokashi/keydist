@@ -77,7 +77,6 @@ function checkLayout(layoutId: string, text: string): void {
   for (let i = 0; i < legacyPoints.length; i++) {
     assert.equal(series.points[i]!.windowSize, legacyPoints[i]!.windowSize, `windowSize[${i}]`);
     assert.equal(series.points[i]!.totalUnits, legacyPoints[i]!.totalUnits, `totalUnits[${i}] (N=${legacyPoints[i]!.windowSize})`);
-    assert.equal(series.points[i]!.totalMm, legacyPoints[i]!.totalMm, `totalMm[${i}] (N=${legacyPoints[i]!.windowSize})`);
   }
 }
 
@@ -89,7 +88,7 @@ test('computeMemberSeries: colemak-dh/"hello world" で旧nSensitivityと全11N�
   checkLayout('colemak-dh', 'hello world');
 });
 
-test('computeMemberSeries: N=既定の点は、メンバー自身のMetrics（totalUnits/totalMm）と一致する', () => {
+test('computeMemberSeries: N=既定の点は、メンバー自身のMetrics（totalUnits）と一致する', () => {
   const input = resolve('qwerty', 'hello world');
   const cache = createEngineCache();
   const traceResult = cache.getTrace(input);
@@ -110,7 +109,6 @@ test('computeMemberSeries: N=既定の点は、メンバー自身のMetrics（to
   const basePoint = series.points.find((point) => point.windowSize === input.tracePolicy.windowSize);
   assert.ok(basePoint);
   assert.equal(basePoint!.totalUnits, interpretationResult.metrics.totalUnits);
-  assert.equal(basePoint!.totalMm, interpretationResult.metrics.totalMm);
 });
 
 test('computeNSensitivityExtraction: 解決できたメンバーはok系列、失敗はfailed系列になる（行を消さない）', () => {

@@ -6,7 +6,7 @@ import { defineOption, defineOptions, picklistUrlCodec } from '#analyzers/option
  *
  * `scale`は縦軸の見せ方だけを切り替える（`relative`: N=0を100%とした相対値、
  * `absolute`: 距離[u]の実測値）。どちらも抽出結果（`extract.ts`の`points`。
- * 生の`totalUnits`/`totalMm`）はそのまま計算し、縦軸への変換は可視化
+ * 生の`totalUnits`）はそのまま計算し、縦軸への変換は可視化
  * （`definition.tsx`）側で行う（AGENTS.md「表示だけが変わるなら`ui`、出力される
  * 数値が動くなら`conditions`」の帰結。抽出は変えない）ため`affects: 'view'`。
  *

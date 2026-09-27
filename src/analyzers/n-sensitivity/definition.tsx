@@ -24,6 +24,12 @@ export interface NSensitivityRowContext {
   readonly geometryName: string;
   readonly fingerAssignmentName: string;
   readonly color: string;
+  /**
+   * 既定値と違う条件の短い併記（#544 Phase 3レビュー「集合対象ページは各行に効いている
+   * 条件を併記する」。`windowSize`はこのページ自身が掃引する軸なので含まない）。
+   * 空なら省略。
+   */
+  readonly conditionSummary?: string;
 }
 
 export interface NSensitivityVisualizationProps {
@@ -246,6 +252,9 @@ export function NSensitivityVisualization({
                   ? `${context.layoutName} / ${context.geometryName} / 指の割当: ${context.fingerAssignmentName}`
                   : '—'}
               </span>
+              {context?.conditionSummary ? (
+                <span className="n-sensitivity-condition-diff">{context.conditionSummary}</span>
+              ) : null}
             </li>
           );
         })}

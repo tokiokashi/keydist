@@ -26,13 +26,12 @@ import {
   type StandaloneAnalyzerOptionsState,
 } from './standalone-analyzer-options.ts';
 import {
-  withComparisonBaselineSetupId,
-  withComparisonSetupIds,
-  type ComparisonSelectionState,
-} from './comparison-selection.ts';
-import {
+  analyzerSetSelectionFor,
   withAnalyzerSetSelection,
+  withSetSelectionBaseline,
+  withSetSelectionSetupIds,
   type AnalyzerSetSelectionState,
+  type SetSelectionState,
 } from './analyzer-set-selection.ts';
 import {
   resetSettingsItem,
@@ -95,21 +94,15 @@ export interface KeydistAssets {
    */
   readonly standaloneAnalyzerOptions: StandaloneAnalyzerOptionsState;
   /**
-   * 比較表単体ページが持つ「対象の集合」（#544 Phase 3、`hosts/standalone`の
-   * Comparison単体ページ）。`standaloneText`・`standaloneAnalyzerOptions`と同じ理由
-   * （他資産と対にならない、独立に読み書きできる値）で5つ目の資産キーとして足す。
-   * 複数の単体ページが集合を持つようになったら（比較表以外の集合対象Analyzerが
-   * 増えたら）、Analyzer idごとの集合を持つ形へ広げる想定（先回りして今は
-   * 比較表専用の1本にする。AGENTS.md「割れる人を想像できるが実例が無いものは
-   * 今は設定にしない」と同じ判断をAnalyzerの目的にも適用したもの）。
-   */
-  readonly comparisonSelection: ComparisonSelectionState;
-  /**
-   * 集合対象Analyzer全般が使う、汎用の「対象の集合」（Analyzer id → 選んだSetup id列。
-   * #544 Phase 3「N感度」）。`comparisonSelection`と同じ理由（他資産と対にならない、
-   * 独立に読み書きできる値）で6つ目の資産キーとして足す。`comparisonSelection`は移行せず
-   * 比較表専用のまま残す（`engine/analyzer-set-selection.ts`冒頭コメントの「決めきれなかった点」
-   * 参照）。
+   * 集合対象Analyzer全般（比較表・N感度等）が使う、汎用の「対象の集合」
+   * （Analyzer id → 選んだSetup id列 + 基準。#544 Phase 3）。`standaloneText`・
+   * `standaloneAnalyzerOptions`と同じ理由（他資産と対にならない、独立に読み書きできる値）で
+   * 5つ目の資産キーとして足す。
+   *
+   * 当初は比較表専用の`comparisonSelection`という別資産だったが、2つ目の集合対象Analyzer
+   * （N感度）が増えた時点でレビューにより統合した。統合前の`comparisonSelection`
+   * （旧`keydist:comparison-selection`）からの移行は行わない
+   * （AGENTS.md「利用者の保存データの互換は守らない」）。
    */
   readonly analyzerSetSelections: AnalyzerSetSelectionState;
 }
@@ -335,54 +328,55 @@ export function setStandaloneAnalyzerOptionsCommand(
   };
 }
 
-/** `comparisonSelection`だけに触れるコマンドの共通の骨組み。他の単純な資産と同じ形。 */
-function comparisonSelectionCommand(
+/**
+ * 集合対象Analyzer（Analyzer idで引く）の`analyzerSetSelections`だけに触れるコマンドの
+ * 共通の骨組み。`compute`は「そのAnalyzerの今の選択」を受け取り、次の選択を返す
+ * （不変条件の保証は`compute`側が呼ぶ`withSetSelectionSetupIds`/`withSetSelectionBaseline`が
+ * 持つ。`analyzer-set-selection.ts`のコメント参照）。
+ */
+function analyzerSetSelectionCommand(
   label: string,
-  compute: (current: ComparisonSelectionState) => ComparisonSelectionState,
+  analyzerId: string,
+  compute: (current: SetSelectionState) => SetSelectionState,
 ): Command<KeydistAssets> {
   return (current) => {
-    const next = compute(current.comparisonSelection);
-    if (next === current.comparisonSelection) return { kind: 'no-op' };
-    return { kind: 'applied', label, changes: { comparisonSelection: next } };
+    const currentSelection = analyzerSetSelectionFor(current.analyzerSetSelections, analyzerId);
+    const nextSelection = compute(currentSelection);
+    if (nextSelection === currentSelection) return { kind: 'no-op' };
+    const next = withAnalyzerSetSelection(current.analyzerSetSelections, analyzerId, nextSelection);
+    if (next === current.analyzerSetSelections) return { kind: 'no-op' };
+    return { kind: 'applied', label: `${label}: ${analyzerId}`, changes: { analyzerSetSelections: next } };
   };
 }
 
 /**
- * 比較表の対象の集合（選んだSetup・並び順）を丸ごと差し替える（#544 Phase 3）。
+ * 集合対象Analyzerの対象の集合（選んだSetup・並び順）を丸ごと差し替える（#544 Phase 3）。
  * 追加・削除・並び替えのどれもこの1本のコマンドを通す（`setupIds`の並びがそのまま
- * 表示順になる。`comparison-selection.ts`の`withComparisonSetupIds`コメント参照）。
+ * 表示順になる。`analyzer-set-selection.ts`の`withSetSelectionSetupIds`コメント参照。
+ * 選択から基準が外れたら、同じコマンドの中で基準も一緒に外す）。
  */
-export function setComparisonSetupIdsCommand(setupIds: readonly string[]): Command<KeydistAssets> {
-  return comparisonSelectionCommand(
-    '比較表の対象を変更する',
-    (current) => withComparisonSetupIds(current, setupIds),
-  );
-}
-
-/** 比較表の基準（baseline）Setupを差し替える。`undefined`で「基準なし」にする。 */
-export function setComparisonBaselineSetupIdCommand(baselineSetupId: string | undefined): Command<KeydistAssets> {
-  return comparisonSelectionCommand(
-    '比較表の基準を変更する',
-    (current) => withComparisonBaselineSetupId(current, baselineSetupId),
-  );
-}
-
-/**
- * 集合対象Analyzer（比較表を除く。N感度等）の対象の集合を丸ごと差し替える
- * （#544 Phase 3「N感度」）。`setStandaloneAnalyzerOptionsCommand`と同じ形
- * （Analyzer idで引く。追加・削除・並び替えのどれもこの1本を通す）。
- */
-export function setAnalyzerSetSelectionCommand(
+export function setAnalyzerSetSelectionSetupIdsCommand(
   analyzerId: string,
   setupIds: readonly string[],
 ): Command<KeydistAssets> {
-  return (current) => {
-    const next = withAnalyzerSetSelection(current.analyzerSetSelections, analyzerId, setupIds);
-    if (next === current.analyzerSetSelections) return { kind: 'no-op' };
-    return {
-      kind: 'applied',
-      label: `対象の集合を変更する: ${analyzerId}`,
-      changes: { analyzerSetSelections: next },
-    };
-  };
+  return analyzerSetSelectionCommand(
+    '対象の集合を変更する',
+    analyzerId,
+    (current) => withSetSelectionSetupIds(current, setupIds),
+  );
+}
+
+/**
+ * 集合対象Analyzerの基準（baseline）Setupを差し替える。`undefined`で「基準なし」にする
+ * （比較表が使う。N感度など基準の概念を持たないAnalyzerは呼ばない）。
+ */
+export function setAnalyzerSetSelectionBaselineCommand(
+  analyzerId: string,
+  baselineSetupId: string | undefined,
+): Command<KeydistAssets> {
+  return analyzerSetSelectionCommand(
+    '基準を変更する',
+    analyzerId,
+    (current) => withSetSelectionBaseline(current, baselineSetupId),
+  );
 }

@@ -1,0 +1,50 @@
+/**
+ * 集合対象Analyzerの単体ページ（比較表・N感度）が共通で使う、「Setupの集合を
+ * チェックボックスで選び、順序リストで並び替える」UI（#544 Phase 3レビュー: 旧
+ * `comparison-standalone.css`はクラス名が`comparison-*`のままだったが、比較表以外の
+ * ページ（N感度）も同じ見た目を使うようになったため、汎用名へ改める）。
+ */
+.set-selection-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.set-selection-controls fieldset {
+  display: grid;
+  gap: 0.35rem;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.set-selection-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.set-selection-order {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.set-selection-order li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.set-selection-order li span {
+  flex: 1;
+}

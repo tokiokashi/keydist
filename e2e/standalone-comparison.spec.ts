@@ -7,9 +7,13 @@ import { expect, test } from '@playwright/test';
  * 対象はSetupの**集合**（単一Setupではない）なので、選択・並び順・基準が
  * リロードをまたいで保持されること、集合の一部が壊れて（削除されて）いても
  * 行ごと消えずに表示されることを確認する。
+ *
+ * 集合の保存先は`keydist:analyzer-set-selections`（集合対象Analyzer全般が使う汎用資産。
+ * Analyzer idごとに`selections.<id>`へネストする。#544 Phase 3レビューで
+ * 比較表専用だった`keydist:comparison-selection`から統合した）。
  */
 
-const COMPARISON_SELECTION_KEY = 'keydist:comparison-selection';
+const ANALYZER_SET_SELECTIONS_KEY = 'keydist:analyzer-set-selections';
 
 function seedTwoSetups() {
   return () => {
@@ -33,8 +37,8 @@ test('Setupを2件選ぶと2行表示され、並び替え・基準選択が効�
 
   await expect(page.getByRole('heading', { name: '比較表', exact: true })).toBeVisible();
 
-  const checkboxA = page.locator('.comparison-selection-checkbox', { hasText: 'qwerty / row-staggered' }).getByRole('checkbox');
-  const checkboxB = page.locator('.comparison-selection-checkbox', { hasText: 'colemak-dh / row-staggered' }).getByRole('checkbox');
+  const checkboxA = page.locator('.set-selection-checkbox', { hasText: 'qwerty / row-staggered' }).getByRole('checkbox');
+  const checkboxB = page.locator('.set-selection-checkbox', { hasText: 'colemak-dh / row-staggered' }).getByRole('checkbox');
   await checkboxA.check();
   await checkboxB.check();
 
@@ -43,7 +47,7 @@ test('Setupを2件選ぶと2行表示され、並び替え・基準選択が効�
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
 
   // 並び替え: 2番目（colemak-dh）を上へ動かすと先頭に来る。
-  const order = page.locator('.comparison-selection-order li');
+  const order = page.locator('.set-selection-order li');
   await expect(order).toHaveCount(2);
   await expect(order.first()).toContainText('qwerty');
   await order.nth(1).getByRole('button', { name: /上へ/ }).click();
@@ -60,13 +64,13 @@ test('選択・並び順・基準はリロードしても残る（資産の読�
   await page.goto('/standalone/comparison');
 
   const table = page.locator('.comparison-table');
-  const checkboxA = page.locator('.comparison-selection-checkbox', { hasText: 'qwerty / row-staggered' }).getByRole('checkbox');
-  const checkboxB = page.locator('.comparison-selection-checkbox', { hasText: 'colemak-dh / row-staggered' }).getByRole('checkbox');
+  const checkboxA = page.locator('.set-selection-checkbox', { hasText: 'qwerty / row-staggered' }).getByRole('checkbox');
+  const checkboxB = page.locator('.set-selection-checkbox', { hasText: 'colemak-dh / row-staggered' }).getByRole('checkbox');
   await checkboxA.check();
   await checkboxB.check();
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
 
-  const order = page.locator('.comparison-selection-order li');
+  const order = page.locator('.set-selection-order li');
   await order.nth(1).getByRole('button', { name: /上へ/ }).click();
   await expect(order.first()).toContainText('colemak-dh');
 
@@ -75,23 +79,23 @@ test('選択・並び順・基準はリロードしても残る（資産の読�
 
   // debounceされた資産への反映が実際にstorageへ書き込まれるまで待ってからリロードする。
   await expect
-    .poll(async () => page.evaluate((key) => localStorage.getItem(key), COMPARISON_SELECTION_KEY))
+    .poll(async () => page.evaluate((key) => localStorage.getItem(key), ANALYZER_SET_SELECTIONS_KEY))
     .toContain('fixed-a');
   const storedBeforeReload = await page.evaluate(
     (key) => localStorage.getItem(key),
-    COMPARISON_SELECTION_KEY,
+    ANALYZER_SET_SELECTIONS_KEY,
   );
   expect(storedBeforeReload).toContain('fixed-b');
 
   // ready前に空の初期値へ巻き戻す競合が無いことの回帰（BigramFlowStandalonePage.tsxの
   // 「保存済みのSetupが2件あっても1件へ巻き戻らない」テストと同じ観点を、
-  // comparisonSelection資産にも当てる）。
+  // analyzerSetSelections資産にも当てる）。
   await page.reload();
   const tableAfterReload = page.locator('.comparison-table');
   await expect(tableAfterReload).toBeVisible({ timeout: 10_000 });
   await expect(tableAfterReload.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
 
-  const orderAfterReload = page.locator('.comparison-selection-order li');
+  const orderAfterReload = page.locator('.set-selection-order li');
   await expect(orderAfterReload).toHaveCount(2);
   await expect(orderAfterReload.first()).toContainText('colemak-dh');
   await expect(page.getByLabel('基準Setup')).toHaveValue('fixed-a');
@@ -100,11 +104,13 @@ test('選択・並び順・基準はリロードしても残る（資産の読�
   // storage側の中身も保たれている（並び順・基準とも）。
   const storedAfterReload = await page.evaluate(
     (key) => localStorage.getItem(key),
-    COMPARISON_SELECTION_KEY,
+    ANALYZER_SET_SELECTIONS_KEY,
   );
-  const parsed = JSON.parse(storedAfterReload ?? '{}') as { setupIds: string[]; baselineSetupId?: string };
-  expect(parsed.setupIds).toEqual(['fixed-b', 'fixed-a']);
-  expect(parsed.baselineSetupId).toEqual('fixed-a');
+  const parsed = JSON.parse(storedAfterReload ?? '{}') as {
+    selections: Record<string, { setupIds: string[]; baselineSetupId?: string }>;
+  };
+  expect(parsed.selections.comparison?.setupIds).toEqual(['fixed-b', 'fixed-a']);
+  expect(parsed.selections.comparison?.baselineSetupId).toEqual('fixed-a');
 });
 
 test('集合に存在しないSetup idが混ざっていても行は消えず「削除された」と表示される（部分失敗）', async ({ page }) => {
@@ -118,8 +124,8 @@ test('集合に存在しないSetup idが混ざっていても行は消えず「
       }),
     );
     localStorage.setItem(
-      'keydist:comparison-selection',
-      JSON.stringify({ version: 1, setupIds: ['fixed-a', 'deleted-setup'] }),
+      'keydist:analyzer-set-selections',
+      JSON.stringify({ version: 1, selections: { comparison: { setupIds: ['fixed-a', 'deleted-setup'] } } }),
     );
   });
   await page.goto('/standalone/comparison');
@@ -137,5 +143,27 @@ test('集合に存在しないSetup idが混ざっていても行は消えず「
   await expect(failedRow).toContainText('削除された');
 
   // 選択の並び（2件のまま）自体は保たれている。
-  await expect(page.locator('.comparison-selection-order li')).toHaveCount(2);
+  await expect(page.locator('.set-selection-order li')).toHaveCount(2);
+});
+
+test('既定と違う条件が行に併記される（#544 Phase 3レビュー: 集合対象ページ共通の条件併記）', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'keydist:setup-library',
+      JSON.stringify({
+        version: 1,
+        setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 }],
+        overrides: { global: { sfbHomeCost: false } },
+      }),
+    );
+    localStorage.setItem(
+      'keydist:analyzer-set-selections',
+      JSON.stringify({ version: 1, selections: { comparison: { setupIds: ['fixed-a'] } } }),
+    );
+  });
+  await page.goto('/standalone/comparison');
+
+  const table = page.locator('.comparison-table');
+  await expect(table).toBeVisible({ timeout: 10_000 });
+  await expect(table.locator('.comparison-condition-cell')).toContainText('同指連続のホーム復帰距離');
 });

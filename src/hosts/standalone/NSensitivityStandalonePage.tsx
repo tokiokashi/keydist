@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import { setAnalyzerSetSelectionCommand, type KeydistAssets } from '#engine/commands.ts';
+import { setAnalyzerSetSelectionSetupIdsCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineCache } from '#engine/cache.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import { analyzerSetSelectionFor } from '#engine/analyzer-set-selection.ts';
 import type { Setup, SetupIdGenerator } from '#input/setup/index.ts';
 import { setupColor } from '#input/setup/index.ts';
-import { conditionHeaderInfoFromResolvedInput } from '#hosts/shared/index.ts';
+import { conditionHeaderInfoFromResolvedInput, nonDefaultConditionRows, summarizeNonDefaultConditions, traceConditionSummary } from '#hosts/shared/index.ts';
 import { nSensitivityAnalyzer, type NSensitivityRowContext } from '#analyzers/n-sensitivity/definition.tsx';
 import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
@@ -15,20 +15,15 @@ import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
 import { useEnsureSetup } from './use-ensure-setup.ts';
 import './standalone.css';
-// `.comparison-selection-*`は名前こそ比較表由来だが、中身は「Setupの集合をチェックボックスで
-// 選び、順序リストで並び替える」という集合対象Analyzer全般に使える汎用のUIパターン
-// （`comparison-standalone.css`参照）。ここでも同じ見た目にする方が単体ページ間で一貫するため、
-// 複製せずそのままimportして使う（クラス名の再命名はこのファイルのスコープ外）。
-import './comparison-standalone.css';
+import './set-selection-controls.css';
 
 /**
  * N感度の単体ページ（#544 Phase 3「N感度」）。`ComparisonStandalonePage.tsx`と同じ形
  * （対象はSetupの**集合**。集合はこのページ自身の資産が持ち、書き込みは`dispatch`を経由する）。
  *
- * 集合の保存先は`assets.comparisonSelection`ではなく`assets.analyzerSetSelections`
- * （`engine/analyzer-set-selection.ts`。Analyzer idで引く汎用の資産）。比較表専用の
- * `comparisonSelection`をそのまま使わなかった理由は同ファイル冒頭コメント参照
- * （`baselineSetupId`という比較表だけの概念を持つため、意味的に同一ではない）。
+ * 集合の保存先は`assets.analyzerSetSelections`（`engine/analyzer-set-selection.ts`。
+ * Analyzer idで引く、集合対象Analyzer全般が使う汎用の資産）。比較表が使う`baselineSetupId`
+ * フィールドは持つが、このページは基準の概念を使わないので触らない（`undefined`のまま）。
  *
  * `useEnsureSetup`は「手持ちのSetupが1件も無ければ簡単な初期値を1つ作る」効果だけを使う
  * （`ComparisonStandalonePage`と同じ`assetsReady`待ちの規則）。それ以外にこのページが
@@ -45,11 +40,19 @@ export interface NSensitivityStandalonePageProps {
   readonly onOptionsCommit: (options: NSensitivityOptions) => void;
 }
 
+const ANALYZER_ID = nSensitivityAnalyzer.definition.id;
+
+/** Nはこのページ自身が掃引する軸なので、条件の併記からは除く（`nonDefaultConditionRows`のコメント参照）。 */
+const N_SENSITIVITY_CONDITION_EXCLUDE_IDS = ['windowSize'] as const;
+
 function buildRowContext(setup: Setup, resolution: ResolvedInputResult): NSensitivityRowContext {
   const label = setup.label ?? `${setup.layoutId} / ${setup.shapeId}`;
   const color = setupColor(setup);
   if (resolution.ok) {
     const header = conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry);
+    const conditionSummary = summarizeNonDefaultConditions(
+      nonDefaultConditionRows(traceConditionSummary(resolution.input.cascade), N_SENSITIVITY_CONDITION_EXCLUDE_IDS),
+    );
     return {
       setupId: setup.id,
       label,
@@ -57,6 +60,7 @@ function buildRowContext(setup: Setup, resolution: ResolvedInputResult): NSensit
       geometryName: header.shapeName,
       fingerAssignmentName: header.fingerAssignmentName,
       color,
+      ...(conditionSummary === undefined ? {} : { conditionSummary }),
     };
   }
   return {
@@ -68,8 +72,6 @@ function buildRowContext(setup: Setup, resolution: ResolvedInputResult): NSensit
     color,
   };
 }
-
-const ANALYZER_ID = nSensitivityAnalyzer.definition.id;
 
 export function NSensitivityStandalonePage({
   assets,
@@ -83,10 +85,11 @@ export function NSensitivityStandalonePage({
   const setups = assets.setupLibrary.setups;
   useEnsureSetup(setups, assetsReady, dispatch, generateSetupId);
 
-  const setupIds = analyzerSetSelectionFor(assets.analyzerSetSelections, ANALYZER_ID);
+  const selection = analyzerSetSelectionFor(assets.analyzerSetSelections, ANALYZER_ID);
+  const setupIds = selection.setupIds;
   const setupById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
 
-  const setSelection = (next: readonly string[]) => dispatch(setAnalyzerSetSelectionCommand(ANALYZER_ID, next));
+  const setSelection = (next: readonly string[]) => dispatch(setAnalyzerSetSelectionSetupIdsCommand(ANALYZER_ID, next));
 
   const toggleMember = (setupId: string) => {
     const next = setupIds.includes(setupId)
@@ -150,12 +153,12 @@ export function NSensitivityStandalonePage({
         <h1>N感度</h1>
       </header>
 
-      <section className="comparison-selection-controls" aria-label="対象Setupの選択">
+      <section className="set-selection-controls" aria-label="対象Setupの選択">
         <fieldset>
           <legend>N感度を見るSetup</legend>
           {setups.length === 0 ? <p aria-busy="true">Setupを準備している…</p> : null}
           {setups.map((setup) => (
-            <label key={setup.id} className="comparison-selection-checkbox">
+            <label key={setup.id} className="set-selection-checkbox">
               <input
                 type="checkbox"
                 checked={setupIds.includes(setup.id)}
@@ -167,7 +170,7 @@ export function NSensitivityStandalonePage({
         </fieldset>
 
         {setupIds.length > 0 ? (
-          <ol className="comparison-selection-order" aria-label="表示順">
+          <ol className="set-selection-order" aria-label="表示順">
             {setupIds.map((setupId, index) => (
               <li key={setupId}>
                 <span>{rowContext.get(setupId)?.label ?? setupId}</span>
