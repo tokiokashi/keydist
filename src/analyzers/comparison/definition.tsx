@@ -1,5 +1,5 @@
 import { comparisonDefinition, type ComparisonExtracted, type ComparisonFailedRow, type ComparisonRow } from './extract.ts';
-import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_LABELS, type ComparisonColumnId, type ComparisonOptions } from './options.ts';
+import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMNS, type ComparisonColumnId, type ComparisonOptions } from './options.ts';
 import './comparison-view.css';
 
 /**
@@ -42,9 +42,13 @@ export interface ComparisonVisualizationProps {
   onOptionsChange(next: ComparisonOptions): void;
 }
 
-function formatValue(value: number): string {
+/**
+ * 列ごとの表示形式（`COMPARISON_COLUMNS[column].format`）で描く。値が非有限
+ * （メンバー0件時の集計等、通常のMetricsでは起きないが念のため）なら「—」。
+ */
+function formatValue(column: ComparisonColumnId, value: number): string {
   if (!Number.isFinite(value)) return '—';
-  return Math.abs(value) >= 100 ? value.toFixed(0) : value.toFixed(2);
+  return COMPARISON_COLUMNS[column].format(value);
 }
 
 /** 基準比（%）。基準が0の時は「基準自体が0」という事実をそのまま出す（優劣の判定はしない）。 */
@@ -83,7 +87,7 @@ function ColumnPicker({
             checked={visibleColumns.includes(column)}
             onChange={() => onToggle(column)}
           />
-          {COMPARISON_COLUMN_LABELS[column]}
+          {COMPARISON_COLUMNS[column].label}
         </label>
       ))}
     </fieldset>
@@ -166,7 +170,7 @@ export function ComparisonVisualization({
               <th scope="col">Setup</th>
               <th scope="col">条件</th>
               {visibleColumns.map((column) => (
-                <th scope="col" key={column}>{COMPARISON_COLUMN_LABELS[column]}</th>
+                <th scope="col" key={column}>{COMPARISON_COLUMNS[column].label}</th>
               ))}
             </tr>
           </thead>
@@ -215,7 +219,7 @@ export function ComparisonVisualization({
                       && effectiveBaseline.setupId !== setupId;
                     return (
                       <td key={column} className="comparison-value-cell">
-                        <span className="comparison-value">{formatValue(value)}</span>
+                        <span className="comparison-value">{formatValue(column, value)}</span>
                         {showRatio ? (
                           <span className="comparison-ratio">
                             {formatRatio(value, effectiveBaseline!.values[column])}

@@ -31,20 +31,40 @@ export const COMPARISON_COLUMN_IDS = [
 
 export type ComparisonColumnId = (typeof COMPARISON_COLUMN_IDS)[number];
 
-export const COMPARISON_COLUMN_LABELS: Readonly<Record<ComparisonColumnId, string>> = {
-  actions: '動作数',
-  totalUnits: '距離 [u]',
-  meanPerStroke: 'u/打鍵',
-  perCharUnits: 'u/文字',
-  perCharSteps: '動作数/文字',
-  perCharPresses: '押下/文字',
-  singleTapLayerRate: '単打面率 [%]',
-  singleTapRate: '単打率 [%]',
-  singleKeyRate: '1キー率 [%]',
-  sameFinger: '同指',
-  sameFingerRate: '同指率 [%]',
-  adjacentMean: '指間mean [u]',
-  adjacentStdDev: '指間σ [u]',
+/**
+ * 列ごとの表示形式（レビュー対応: 一律ルールではなく列の宣言に持たせる）。
+ *
+ * 桁数・%表記は旧実装（`src/legacy/analyzer-metrics-content.tsx`の`COMPARE_FORMATS`）と
+ * 同じ丸めに揃える。ここで揃えたいのは「旧側に合わせること」自体ではなく、
+ * **率（rate）は率として読める表示にする**こと（個数・距離の列に小数第1位+%を
+ * 付けたり、率の列を整数で丸めて情報を削ったりしない）。列の値の式自体は
+ * `extract.ts`の`computeComparisonRowValues`が持ち、ここは表示の丸めだけを持つ
+ * （値そのものを変えない）。
+ */
+export interface ComparisonColumnDef {
+  readonly label: string;
+  /** 値をそのまま渡すと表示用の文字列を返す。丸め・%表記はここに閉じる。 */
+  readonly format: (value: number) => string;
+}
+
+const fixed = (digits: number) => (value: number): string => value.toFixed(digits);
+const percent = (value: number): string => `${value.toFixed(1)}%`;
+const count = (value: number): string => `${value}`;
+
+export const COMPARISON_COLUMNS: Readonly<Record<ComparisonColumnId, ComparisonColumnDef>> = {
+  actions: { label: '動作数', format: count },
+  totalUnits: { label: '距離 [u]', format: fixed(0) },
+  meanPerStroke: { label: 'u/打鍵', format: fixed(3) },
+  perCharUnits: { label: 'u/文字', format: fixed(3) },
+  perCharSteps: { label: '動作数/文字', format: fixed(3) },
+  perCharPresses: { label: '押下/文字', format: fixed(3) },
+  singleTapLayerRate: { label: '単打面率', format: percent },
+  singleTapRate: { label: '単打率', format: percent },
+  singleKeyRate: { label: '1キー率', format: percent },
+  sameFinger: { label: '同指', format: count },
+  sameFingerRate: { label: '同指率', format: percent },
+  adjacentMean: { label: '指間mean [u]', format: fixed(3) },
+  adjacentStdDev: { label: '指間σ [u]', format: fixed(3) },
 } as const;
 
 function isComparisonColumnId(value: string): value is ComparisonColumnId {
