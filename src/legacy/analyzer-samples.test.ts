@@ -10,7 +10,9 @@ test('Analyzer sample catalog resolves mode samples and fallback', () => {
   assert.deepEqual(Object.keys(ANALYZER_SAMPLE_NAMES.en), ['default']);
   assert.deepEqual(Object.keys(ANALYZER_SAMPLE_NAMES.ja), ['modern', 'legacy']);
   assert.notEqual(analyzerSampleText('ja', 'legacy'), '');
-  assert.equal(analyzerSampleText('ja', 'missing'), analyzerSampleText('ja', 'modern'));
+  // fallbackは`#input/text/samples.ts`の`FALLBACK_SAMPLE_ID`（既定サンプルの変更で
+  // `ja.legacy`になった）に従う。
+  assert.equal(analyzerSampleText('ja', 'missing'), analyzerSampleText('ja', 'legacy'));
 });
 
 test('Analyzer sample detection recognizes built-in text only', () => {

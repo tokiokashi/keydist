@@ -17,12 +17,14 @@ export interface StandaloneTextState {
 }
 
 /**
- * 初期値。サンプルの現代文かな入力を既定にする（AGENTS.md「先回りして足さない」の裏返しで、
- * 空文字列を初期値にすると単体ページを開いた瞬間に「テキストが空」というAnalyzerが
- * 扱いにくい状態から始まってしまうため、既存のサンプルテキストをそのまま使う）。
+ * 初期値。サンプルの「吾輩は猫である」（`ja.legacy`）を既定にする（AGENTS.md
+ * 「先回りして足さない」の裏返しで、空文字列を初期値にすると単体ページを開いた瞬間に
+ * 「テキストが空」というAnalyzerが扱いにくい状態から始まってしまうため、既存の
+ * サンプルテキストをそのまま使う）。`ja.modern`ではなく`ja.legacy`（前処理後290文字）
+ * にする理由は`samples.ts`の`FALLBACK_SAMPLE_ID`コメント参照（初回計算の重さ）。
  */
 export function initialStandaloneText(): StandaloneTextState {
-  const text = sampleText('ja', 'modern');
+  const text = sampleText('ja', 'legacy');
   return { text, language: detectTextLanguageSelection(text) };
 }
 
