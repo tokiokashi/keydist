@@ -186,18 +186,23 @@ function fixtureMetrics(totalUnits: number): Metrics {
   };
 }
 
+// 比較表はTraceRequesterを使わないので、フィクスチャでは「呼ばれたら気づく」スタブにする。
+const UNUSED_REQUEST_TRACE = { requestTrace: () => { throw new Error('unused'); } };
+
 const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
   {
     setupId: 'fixture-a',
     trace: FIXTURE_TRACE,
     analysis: { chains: [], arpeggios: [] } as unknown as AnalyzerSetMember['analysis'],
     metrics: fixtureMetrics(10),
+    requestTrace: UNUSED_REQUEST_TRACE,
   },
   {
     setupId: 'fixture-b',
     trace: FIXTURE_TRACE,
     analysis: { chains: [], arpeggios: [] } as unknown as AnalyzerSetMember['analysis'],
     metrics: fixtureMetrics(20),
+    requestTrace: UNUSED_REQUEST_TRACE,
   },
 ];
 

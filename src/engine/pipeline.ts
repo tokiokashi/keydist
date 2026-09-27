@@ -100,17 +100,18 @@ export function extractSingle<Options, Extracted>(
  * 抽出段（集合対象のAnalyzerのみ。#544 Phase 3「集合を対象にする最初のAnalyzer」）。
  *
  * `extractSingle`と同じく「渡された結果からAnalyzerのextractを1回呼ぶ」ことだけを担う
- * 純関数。メンバーごとのTrace・解釈はすでに計算済みのものを受け取るだけ（`EngineCache.
- * getSetExtraction`が「解決できたメンバーだけ計算し、失敗したメンバーは`failures`へ回す」
- * 判断を持つ）。
+ * 純関数。メンバーごとのTrace・解釈・`TraceRequester`はすでに計算済みのものを受け取る
+ * だけ（`EngineCache.getSetExtraction`が「解決できたメンバーだけ計算し、失敗したメンバーは
+ * `failures`へ回す」「メンバーごとに`TraceRequester`を組み立てる」判断を持つ）。
+ * 集合レベルの`requestTrace`は無い（#544 Phase 3「N感度」で撤去。`contract.ts`の
+ * `SetAnalyzerExtractContext`のコメント参照）。
  */
 export function extractSet<Options, Extracted>(
   definition: SetAnalyzerDefinition<Options, Extracted>,
   options: Options,
   members: readonly AnalyzerSetMember[],
   failures: readonly AnalyzerSetMemberFailure[],
-  requestTrace: TraceRequester,
 ): EngineExtractionResult<Extracted> {
-  const extracted = definition.extract({ members, failures, options, requestTrace });
+  const extracted = definition.extract({ members, failures, options });
   return { modelVersion: MODEL_VERSION, extracted };
 }

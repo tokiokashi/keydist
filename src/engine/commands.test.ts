@@ -39,6 +39,7 @@ function emptyAssets(): KeydistAssets {
     standaloneText: initialStandaloneText(),
     standaloneAnalyzerOptions: {},
     comparisonSelection: { setupIds: [], baselineSetupId: undefined },
+    analyzerSetSelections: {},
   };
 }
 

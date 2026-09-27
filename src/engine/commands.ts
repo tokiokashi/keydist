@@ -31,6 +31,10 @@ import {
   type ComparisonSelectionState,
 } from './comparison-selection.ts';
 import {
+  withAnalyzerSetSelection,
+  type AnalyzerSetSelectionState,
+} from './analyzer-set-selection.ts';
+import {
   resetSettingsItem,
   resetSettingsLevel,
   setSettingsOverride,
@@ -100,6 +104,14 @@ export interface KeydistAssets {
    * 今は設定にしない」と同じ判断をAnalyzerの目的にも適用したもの）。
    */
   readonly comparisonSelection: ComparisonSelectionState;
+  /**
+   * 集合対象Analyzer全般が使う、汎用の「対象の集合」（Analyzer id → 選んだSetup id列。
+   * #544 Phase 3「N感度」）。`comparisonSelection`と同じ理由（他資産と対にならない、
+   * 独立に読み書きできる値）で6つ目の資産キーとして足す。`comparisonSelection`は移行せず
+   * 比較表専用のまま残す（`engine/analyzer-set-selection.ts`冒頭コメントの「決めきれなかった点」
+   * 参照）。
+   */
+  readonly analyzerSetSelections: AnalyzerSetSelectionState;
 }
 
 type SetupLibraryComputation =
@@ -353,4 +365,24 @@ export function setComparisonBaselineSetupIdCommand(baselineSetupId: string | un
     '比較表の基準を変更する',
     (current) => withComparisonBaselineSetupId(current, baselineSetupId),
   );
+}
+
+/**
+ * 集合対象Analyzer（比較表を除く。N感度等）の対象の集合を丸ごと差し替える
+ * （#544 Phase 3「N感度」）。`setStandaloneAnalyzerOptionsCommand`と同じ形
+ * （Analyzer idで引く。追加・削除・並び替えのどれもこの1本を通す）。
+ */
+export function setAnalyzerSetSelectionCommand(
+  analyzerId: string,
+  setupIds: readonly string[],
+): Command<KeydistAssets> {
+  return (current) => {
+    const next = withAnalyzerSetSelection(current.analyzerSetSelections, analyzerId, setupIds);
+    if (next === current.analyzerSetSelections) return { kind: 'no-op' };
+    return {
+      kind: 'applied',
+      label: `対象の集合を変更する: ${analyzerId}`,
+      changes: { analyzerSetSelections: next },
+    };
+  };
 }

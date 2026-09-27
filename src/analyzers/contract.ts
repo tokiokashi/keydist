@@ -31,12 +31,19 @@ export type { OptionsRegistry } from './options.ts';
  * `ResolvedInput` は engine 層の型で、analyzers はengineをimportできない（依存の規則）ため、
  * Trace生成に実際に要る4フィールドだけをここで複製する（`engine/keys.ts` の `traceKeyOf` が
  * キーに使うフィールドと同じ）。
+ *
+ * 全フィールド省略可（`tracePolicy`の中身も省略可）: 依頼元（Analyzerの抽出）は
+ * 「その依頼元自身のTraceを生成した元の入力」を土台に、変えたいフィールドだけを渡す
+ * （実装は`engine/trace-requester.ts`の`createTraceRequesterFor`）。N感度のように
+ * `windowSize`だけを振りたい場合、`{ tracePolicy: { windowSize: n } }`だけを渡せば済み、
+ * `text`/`layout`/`geometry`や`tracePolicy`の他フィールドを自前で複製し直さずに済む
+ * （#544 Phase 3「N感度」。`AnalyzerSetMember.requestTrace`のコメント参照）。
  */
 export interface TraceRequestInput {
-  readonly text: string;
-  readonly layout: Layout;
-  readonly geometry: Geometry;
-  readonly tracePolicy: TracePolicy;
+  readonly text?: string;
+  readonly layout?: Layout;
+  readonly geometry?: Geometry;
+  readonly tracePolicy?: Partial<TracePolicy>;
 }
 
 /**
@@ -70,6 +77,17 @@ export interface AnalyzerSetMember {
   readonly trace: Trace;
   readonly analysis: AggregatedAnalysisResult;
   readonly metrics: Metrics;
+  /**
+   * このメンバー（Setup）自身の解決済み入力を土台にした`TraceRequester`（#544 Phase 3
+   * 「N感度」で`SetAnalyzerExtractContext`から昇格）。
+   *
+   * 当初は集合レベルに1つの`requestTrace`（`members`の先頭を土台にする）を置いていたが、
+   * N感度は集合の各メンバーごとに独立したNの掃引が要るため、先頭だけを土台にする窓口では
+   * 他メンバーの`text`/`layout`/`geometry`を再現できず成立しなかった。メンバーごとに
+   * 窓口を持たせることで解消する（engine側の実装は`engine/cache.ts`の`getSetExtraction`が
+   * 解決できたメンバーそれぞれに対して`createTraceRequesterFor`を呼ぶ）。
+   */
+  readonly requestTrace: TraceRequester;
 }
 
 /**
@@ -89,21 +107,20 @@ export interface AnalyzerSetMemberFailure {
   readonly message: string;
 }
 
-/** 集合対象の抽出に渡す値。 */
+/**
+ * 集合対象の抽出に渡す値。
+ *
+ * 集合レベルの`requestTrace`は持たない（#544 Phase 3「N感度」で撤去）。
+ * 追加のTraceが要る抽出（N感度等）は`members[i].requestTrace`（メンバーごとの窓口）を使う。
+ * 「集合のどのメンバーを基準にするか一意に決まらない」問題は、窓口をメンバーへ分配する
+ * ことで解消した（1つの集合レベル窓口が先頭メンバーだけを土台にしていた旧設計は、
+ * メンバーごとに異なる`text`/`layout`/`geometry`を再現できなかった）。
+ */
 export interface SetAnalyzerExtractContext<Options> {
   readonly members: readonly AnalyzerSetMember[];
   /** 解決に失敗したメンバー（#544指示書「部分失敗」）。空配列なら全メンバーが解決できている。 */
   readonly failures: readonly AnalyzerSetMemberFailure[];
   readonly options: Options;
-  /**
-   * N感度など追加のTraceが要る抽出だけが使う（`SingleAnalyzerExtractContext`と同じ役割）。
-   * 集合対象では「どのメンバーを基準にするか」が一意に決まらないため、`members`の先頭
-   * （解決できた最初のメンバー）のTrace生成条件を土台にする。メンバーが1件も解決できて
-   * いない場合はこの窓口を呼ぶと例外になる（#544 Phase 3「決めきれなかった点」として
-   * PR本文へ残す: 集合対象のTraceRequesterは当面この単純な規則に留め、メンバーごとの
-   * 個別条件が必要になったら窓口の形を見直す）。
-   */
-  readonly requestTrace: TraceRequester;
 }
 
 // ---------------------------------------------------------------------------
