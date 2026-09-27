@@ -5,11 +5,12 @@ import {
 } from '#platform/persistence/debounced-scheduler.ts';
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
+import { stableStringify } from '#engine/cache-key.ts';
 
 export interface UseDebouncedCommitOptions<T> {
   /** 値からコマンドを組み立てる。 */
   readonly commandFor: (value: T) => Command<KeydistAssets>;
-  /** 直前に書き込んだ値と同じかどうかの比較に使う。既定は`JSON.stringify`（`DebouncedPersistenceScheduler`と同じ既定）。 */
+  /** 直前に書き込んだ値と同じかどうかの比較に使う。既定は`stableStringify`（`engine/cache-key.ts`。キーの列挙順に依存しない）。 */
   readonly serialize?: (value: T) => string;
   readonly debounceMs?: number;
 }
@@ -73,5 +74,5 @@ export function useDebouncedCommit<T>(
 }
 
 function defaultSerialize<T>(value: T): string {
-  return JSON.stringify(value);
+  return stableStringify(value);
 }
