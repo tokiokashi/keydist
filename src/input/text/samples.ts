@@ -20,9 +20,14 @@ export const SAMPLE_TEXTS: Record<TextLanguage, Record<string, string>> = {
   },
 };
 
+/**
+ * ラベルの「（既定）」は`FALLBACK_SAMPLE_ID`・`initialStandaloneText`（`standalone-text.ts`）
+ * が実際に使う既定のsampleIdに付ける（レビュー指摘: 以前は`ja.legacy`に付いていたが、
+ * 実際の既定は`ja.modern`だった）。
+ */
 export const SAMPLE_TEXT_NAMES: Record<TextLanguage, Record<string, string>> = {
   en: { default: '英文（既定）' },
-  ja: { modern: '現代文', legacy: '旧文「吾輩は猫である」（既定）' },
+  ja: { modern: '現代文（既定）', legacy: '旧文「吾輩は猫である」' },
 };
 
 const FALLBACK_SAMPLE_ID: Record<TextLanguage, string> = {
