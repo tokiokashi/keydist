@@ -69,6 +69,17 @@ export interface DirectionDensity {
   readonly bandwidthDegrees: number;
 }
 
+/** 同じ相対移動（dx/dy + 指の組）へ集約したvector。可視化の相対座標プロットが使う。 */
+export interface RelativeVector {
+  readonly id: string;
+  readonly dx: number;
+  readonly dy: number;
+  readonly weight: number;
+  readonly fromFingerClass: FingerClass;
+  readonly toFingerClass: FingerClass;
+  readonly fingerDirection: BigramVector['fingerDirection'];
+}
+
 export function fingerClass(finger: Finger): FingerClass | undefined {
   switch (finger[1]) {
     case 'P': return 'pinky';
@@ -271,6 +282,60 @@ export function aggregateBigramVectors(
   }
 
   return Object.freeze([...byKey.values()]);
+}
+
+/** 同じキーへ戻る（同一キーの連続打鍵）vectorか。同指の物理移動が無いものを指す。 */
+export function isStationaryBigramVector(vector: BigramVector): boolean {
+  return vector.distance < 1e-6;
+}
+
+/**
+ * キーごとの「同一キー連続打鍵（repeat）」の出現回数。Keyboard Flowのrepeatバッジが使う。
+ * fromKeyIds/toKeyIdsが重なるキー（同時押しの一部だけ重なる場合を含む）へ加算する。
+ */
+export function repeatCountsByKey(vectors: readonly BigramVector[]): ReadonlyMap<string, number> {
+  const counts = new Map<string, number>();
+  for (const vector of vectors) {
+    if (!isStationaryBigramVector(vector)) continue;
+    const shared = vector.fromKeyIds.filter((keyId) => vector.toKeyIds.includes(keyId));
+    for (const keyId of shared) {
+      counts.set(keyId, (counts.get(keyId) ?? 0) + vector.weight);
+    }
+  }
+  return counts;
+}
+
+/**
+ * 移動量（dx/dy）と指の組が同じvectorへ集約する。絶対位置（from/to）を持たず
+ * 相対移動だけを見るMovement profileプロットが使う。
+ */
+export function relativeVectors(
+  vectors: readonly BigramVector[],
+  hand: 'left' | 'right',
+): readonly RelativeVector[] {
+  const grouped = new Map<string, RelativeVector>();
+  for (const vector of vectors) {
+    if (vector.hand !== hand || vector.distance === 0) continue;
+    const key = [
+      vector.dx.toFixed(6),
+      vector.dy.toFixed(6),
+      vector.fromFingerClass,
+      vector.toFingerClass,
+    ].join('|');
+    const current = grouped.get(key);
+    grouped.set(key, current === undefined
+      ? {
+        id: key,
+        dx: vector.dx,
+        dy: vector.dy,
+        weight: vector.weight,
+        fromFingerClass: vector.fromFingerClass,
+        toFingerClass: vector.toFingerClass,
+        fingerDirection: vector.fingerDirection,
+      }
+      : { ...current, weight: current.weight + vector.weight });
+  }
+  return [...grouped.values()];
 }
 
 export function directionSummary(
