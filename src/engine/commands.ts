@@ -98,11 +98,6 @@ export interface KeydistAssets {
    * （Analyzer id → 選んだSetup id列 + 基準。#544 Phase 3）。`standaloneText`・
    * `standaloneAnalyzerOptions`と同じ理由（他資産と対にならない、独立に読み書きできる値）で
    * 5つ目の資産キーとして足す。
-   *
-   * 当初は比較表専用の`comparisonSelection`という別資産だったが、2つ目の集合対象Analyzer
-   * （N感度）が増えた時点でレビューにより統合した。統合前の`comparisonSelection`
-   * （旧`keydist:comparison-selection`）からの移行は行わない
-   * （AGENTS.md「利用者の保存データの互換は守らない」）。
    */
   readonly analyzerSetSelections: AnalyzerSetSelectionState;
 }

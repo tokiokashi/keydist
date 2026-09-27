@@ -1,13 +1,6 @@
 /**
  * 集合対象Analyzerの単体ページが持つ、汎用の「対象の集合」（Analyzer id → 選んだSetup id列 +
- * 基準）。
- *
- * `comparisonSelection`（比較表専用の資産）を作った時点のコメントが「複数の単体ページが
- * 集合を持つようになったら、Analyzer idごとの集合を持つ形へ広げる」と書いていた条件が、
- * 2つ目の集合対象Analyzer（N感度、#544 Phase 3）でちょうど成立したため、レビューで
- * `comparisonSelection`をこちらへ統合した（AGENTS.md「利用者の保存データの互換は
- * 守らない」ため、旧`comparisonSelection`資産からの移行は行わない。単に消えて
- * 作り直される）。
+ * 基準）。集合対象Analyzerごとに別の資産を持たせると、同じ概念の正が複数になるため1つにまとめる。
  *
  * `baselineSetupId`（比較表だけが使う「基準」）も集合対象Analyzer全般が持てる値として
  * ここに含める: N感度はこれを使わない（`undefined`のまま）だけで、型としては

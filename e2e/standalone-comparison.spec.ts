@@ -9,8 +9,7 @@ import { expect, test } from '@playwright/test';
  * 行ごと消えずに表示されることを確認する。
  *
  * 集合の保存先は`keydist:analyzer-set-selections`（集合対象Analyzer全般が使う汎用資産。
- * Analyzer idごとに`selections.<id>`へネストする。#544 Phase 3レビューで
- * 比較表専用だった`keydist:comparison-selection`から統合した）。
+ * Analyzer idごとに`selections.<id>`へネストする）。
  */
 
 const ANALYZER_SET_SELECTIONS_KEY = 'keydist:analyzer-set-selections';

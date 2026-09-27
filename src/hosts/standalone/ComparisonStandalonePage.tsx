@@ -27,7 +27,7 @@ import './set-selection-controls.css';
  * 対象はSetupの**集合**（#544 §6「集合を見るAnalyzerはSetupの集合を対象にし、集合も
  * そのページ自身が持つ」）。集合（選んだSetup・並び順・基準）はこのページ自身の資産
  * （`assets.analyzerSetSelections`。Analyzer idで引く、集合対象Analyzer全般が使う汎用の
- * 資産。#544 Phase 3レビューで比較表専用の`comparisonSelection`から統合した）が持ち、
+ * 資産）が持ち、
  * 書き込みはすべて`dispatch`を経由する（`BigramFlowStandalonePage.tsx`と同じ形。
  * #544 §8-2）。テキストは単体ページ全体で共有の「最後に使ったテキスト」を使う（#544 §5）。
  *
