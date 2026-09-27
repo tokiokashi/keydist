@@ -236,6 +236,70 @@ test('「今の設定のURLをコピー」で既定値と違う項目だけを�
   expect(clipboardText).not.toContain('lineScale=');
 });
 
+test('保存済みのSetupが2件あっても、開いた時に1件へ巻き戻らない（初期Setup作成の競合の回帰）', async ({ page }) => {
+  // #544レビュー: 初期Setup作成の効果がstorage読み込み前の空状態を見て新しいSetupを
+  // 作ってしまい、保存済みのSetup（複数件）がデフォルト1件で置き換わる事故の再現。
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'keydist:setup-library',
+      JSON.stringify({
+        version: 1,
+        setups: [
+          { id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 },
+          { id: 'fixed-b', layoutId: 'colemak-dh', shapeId: 'row-staggered', colorIndex: 1 },
+        ],
+        overrides: {},
+      }),
+    );
+  });
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  const setupSelect = page.getByLabel('対象Setup');
+  const optionValues = async () => setupSelect.locator('option').evaluateAll(
+    (options) => options.map((option) => (option as HTMLOptionElement).value),
+  );
+  await expect.poll(optionValues).toEqual(['fixed-a', 'fixed-b']);
+
+  // storage側も2件のまま（idも変わらない）。
+  const stored = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
+  const parsed = JSON.parse(stored ?? '{}') as { setups: { id: string }[] };
+  expect(parsed.setups.map((setup) => setup.id)).toEqual(['fixed-a', 'fixed-b']);
+
+  // リロードしても2件・id共に保たれる。
+  await page.reload();
+  const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
+  await expect.poll(optionValues).toEqual(['fixed-a', 'fixed-b']);
+});
+
+test('保存済みのSetupが1件だけの時、リロードのたびにidが変わったりしない', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'keydist:setup-library',
+      JSON.stringify({
+        version: 1,
+        setups: [{ id: 'fixed-only', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 }],
+        overrides: {},
+      }),
+    );
+  });
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  const setupSelect = page.getByLabel('対象Setup');
+  await expect.poll(async () => setupSelect.inputValue()).toEqual('fixed-only');
+
+  for (let i = 0; i < 3; i++) {
+    await page.reload();
+    const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
+    await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
+    await expect.poll(async () => page.getByLabel('対象Setup').inputValue()).toEqual('fixed-only');
+  }
+});
+
 test('タブ間同期: 別タブでのテキスト変更が届き、複数回変えても届き続ける', async ({ context }) => {
   /**
    * タブ間同期の回帰テスト（#544レビュー: `createAssetTabSync`の購読を構築時に自動開始し、

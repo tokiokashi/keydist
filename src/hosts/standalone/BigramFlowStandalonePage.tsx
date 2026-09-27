@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import { createSetupCommand, setStandaloneAnalyzerOptionsCommand, setStandaloneTextCommand, type KeydistAssets } from '#engine/commands.ts';
+import { setStandaloneAnalyzerOptionsCommand, setStandaloneTextCommand, type KeydistAssets } from '#engine/commands.ts';
 import { sampleTextEntries } from '#input/text/samples.ts';
 import type { EngineCache } from '#engine/cache.ts';
 import type { SetupIdGenerator } from '#input/setup/index.ts';
@@ -10,9 +10,9 @@ import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import { bigramFlowOptions, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
-import { selectInitialSetupId, DEFAULT_STANDALONE_SETUP_SPEC } from './setup-selection.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { useAnalyzerPane } from './use-analyzer-pane.ts';
+import { useEnsureSetup } from './use-ensure-setup.ts';
 import './standalone.css';
 
 // Setupが用意される前の一瞬に渡す値。レンダーごとに作ると`useAnalyzerPane`の依存が毎回変わり、
@@ -60,27 +60,16 @@ export function BigramFlowStandalonePage({
   onBigramFlowOptionsCommit,
 }: BigramFlowStandalonePageProps) {
   const setups = assets.setupLibrary.setups;
-  const [selectedSetupId, setSelectedSetupId] = useState<string | undefined>(
-    () => selectInitialSetupId(setups),
+  // 手持ちが空なら初期値を1つ作る（#544指示書「空なら簡単な初期値を用意する」）。
+  // `assetsReady`を待ってから「本当に空か」を判定する配線は`hosts/standalone`の
+  // 共通hookへ1本化してある（`use-ensure-setup.ts`のコメント参照。レビュー対応:
+  // 待たずに判定すると保存済みのSetupを巻き戻す事故になる）。
+  const { selectedSetupId, setSelectedSetupId } = useEnsureSetup(
+    setups,
+    assetsReady,
+    dispatch,
+    generateSetupId,
   );
-
-  // 手持ちが空なら、簡単な初期値を1つ作る（#544指示書「空なら簡単な初期値を用意する」）。
-  // 既存のSetupを作るコマンドをそのまま使う（書き込みはコマンドを通す。#544 §8-2）。
-  useEffect(() => {
-    if (setups.length > 0) return;
-    dispatch(createSetupCommand(
-      DEFAULT_STANDALONE_SETUP_SPEC.layoutId,
-      DEFAULT_STANDALONE_SETUP_SPEC.shapeId,
-      generateSetupId,
-    ));
-    // `setups`自体を依存に含めると、作成直後（setups.length===1）でまたこの効果が走ってしまう
-    // ため、「空かどうか」という条件だけを依存にする。
-  }, [setups.length === 0, dispatch, generateSetupId]);
-
-  // 選んでいたSetupが手持ちから消えたら（削除・初回作成直後）選び直す。
-  useEffect(() => {
-    setSelectedSetupId((current) => selectInitialSetupId(setups, current));
-  }, [setups]);
 
   const selectedSetup = setups.find((setup) => setup.id === selectedSetupId);
 
