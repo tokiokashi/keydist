@@ -16,7 +16,7 @@ import {
   type RelativeVector,
 } from './bigram-vectors.ts';
 import {
-  DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG,
+  DEFAULT_BIGRAM_FLOW_OPTIONS,
   bigramFlowExtractKeyOf,
   decodeBigramFlowOptions,
   nonStationaryVectors,
@@ -149,7 +149,7 @@ export function computeBigramFlowExtraction(
 export const bigramFlowDefinition: SingleAnalyzerDefinition<BigramFlowOptions, BigramFlowExtracted> = {
   id: 'bigram-flow',
   cardinality: 'single',
-  defaultOptions: DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG,
+  defaultOptions: DEFAULT_BIGRAM_FLOW_OPTIONS,
   decodeOptions: decodeBigramFlowOptions,
   extractKeyOf: bigramFlowExtractKeyOf,
   extract(context: SingleAnalyzerExtractContext<BigramFlowOptions>): BigramFlowExtracted {

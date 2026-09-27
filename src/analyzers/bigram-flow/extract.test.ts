@@ -25,7 +25,7 @@ import {
   computeBigramFlowExtraction,
   type BigramFlowExtracted,
 } from './extract.ts';
-import { DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG, decodeBigramFlowOptions, type BigramFlowOptions } from './options.ts';
+import { DEFAULT_BIGRAM_FLOW_OPTIONS, decodeBigramFlowOptions, type BigramFlowOptions } from './options.ts';
 
 /**
  * `computeBigramFlowExtraction`（`extract.ts`）が、旧`bigram-flow-view.tsx`が
@@ -159,8 +159,8 @@ function referenceExtraction(trace: Trace, options: BigramFlowOptions): BigramFl
 
 test('computeBigramFlowExtractionは旧view実装が計算していたのと同じ値を返す（既定options）', () => {
   const trace = fixtureTrace();
-  const extracted = computeBigramFlowExtraction(trace, DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG);
-  const reference = referenceExtraction(trace, DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG);
+  const extracted = computeBigramFlowExtraction(trace, DEFAULT_BIGRAM_FLOW_OPTIONS);
+  const reference = referenceExtraction(trace, DEFAULT_BIGRAM_FLOW_OPTIONS);
 
   assert.deepEqual(extracted.keyboardFlow.vectors, reference.keyboardFlow.vectors);
   assert.deepEqual([...extracted.keyboardFlow.repeatCounts], [...reference.keyboardFlow.repeatCounts]);
@@ -177,10 +177,10 @@ test('computeBigramFlowExtractionは旧view実装が計算していたのと同�
 test('computeBigramFlowExtractionは1指選択・within-hand・bandwidth変更でも旧実装と同じ値になる', () => {
   const trace = fixtureTrace();
   const variants: BigramFlowOptions[] = [
-    { ...DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG, selectedFingers: ['index'] },
-    { ...DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG, selectedFingers: ['index', 'middle'] },
-    { ...DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG, source: 'within-hand' },
-    { ...DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG, polarBandwidth: 20 },
+    { ...DEFAULT_BIGRAM_FLOW_OPTIONS, selectedFingers: ['index'] },
+    { ...DEFAULT_BIGRAM_FLOW_OPTIONS, selectedFingers: ['index', 'middle'] },
+    { ...DEFAULT_BIGRAM_FLOW_OPTIONS, source: 'within-hand' },
+    { ...DEFAULT_BIGRAM_FLOW_OPTIONS, polarBandwidth: 20 },
   ];
 
   for (const options of variants) {
@@ -192,14 +192,14 @@ test('computeBigramFlowExtractionは1指選択・within-hand・bandwidth変更�
 
 test('repeatは同一キーへ戻るvectorだけを数え、cross-handはactual/hasCrossHandInAnalysisへ現れる', () => {
   const trace = fixtureTrace();
-  const extracted = computeBigramFlowExtraction(trace, DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG);
+  const extracted = computeBigramFlowExtraction(trace, DEFAULT_BIGRAM_FLOW_OPTIONS);
 
   assert.equal(extracted.keyboardFlow.repeatCounts.get('f'), 1);
   assert.equal(extracted.hasCrossHandInAnalysis, true);
 });
 
 test('extractKeyOf: 見た目だけの設定（lineScale等）を変えても抽出キーは変わらない', () => {
-  const base = DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG;
+  const base = DEFAULT_BIGRAM_FLOW_OPTIONS;
   const changedView: BigramFlowOptions = {
     ...base,
     lineScale: 'log',
@@ -215,7 +215,7 @@ test('extractKeyOf: 見た目だけの設定（lineScale等）を変えても抽
 });
 
 test('extractKeyOf: 抽出に効く設定（source / selectedFingers / polarBandwidth）を変えると抽出キーが変わる', () => {
-  const base = DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG;
+  const base = DEFAULT_BIGRAM_FLOW_OPTIONS;
   const changedSource: BigramFlowOptions = { ...base, source: 'within-hand' };
   const changedFingers: BigramFlowOptions = { ...base, selectedFingers: ['pinky'] };
   const changedBandwidth: BigramFlowOptions = { ...base, polarBandwidth: 30 };
@@ -226,8 +226,8 @@ test('extractKeyOf: 抽出に効く設定（source / selectedFingers / polarBand
 });
 
 test('extractKeyOf: selectedFingersは選んだ順ではなく集合として効く', () => {
-  const a: BigramFlowOptions = { ...DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG, selectedFingers: ['index', 'middle'] };
-  const b: BigramFlowOptions = { ...DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG, selectedFingers: ['middle', 'index'] };
+  const a: BigramFlowOptions = { ...DEFAULT_BIGRAM_FLOW_OPTIONS, selectedFingers: ['index', 'middle'] };
+  const b: BigramFlowOptions = { ...DEFAULT_BIGRAM_FLOW_OPTIONS, selectedFingers: ['middle', 'index'] };
   assert.deepEqual(bigramFlowDefinition.extractKeyOf(a), bigramFlowDefinition.extractKeyOf(b));
 });
 
@@ -241,19 +241,19 @@ test('decodeBigramFlowOptions: 壊れた値は既定値へ戻し診断を積む'
     polarGain: 'huge', // 型違い
   }, diagnostics);
 
-  assert.equal(decoded.source, DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.source);
+  assert.equal(decoded.source, DEFAULT_BIGRAM_FLOW_OPTIONS.source);
   assert.deepEqual(decoded.selectedFingers, ['index', 'middle']);
-  assert.equal(decoded.lineScale, DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.lineScale);
-  assert.equal(decoded.polarBandwidth, DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.polarBandwidth);
-  assert.equal(decoded.polarGain, DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.polarGain);
+  assert.equal(decoded.lineScale, DEFAULT_BIGRAM_FLOW_OPTIONS.lineScale);
+  assert.equal(decoded.polarBandwidth, DEFAULT_BIGRAM_FLOW_OPTIONS.polarBandwidth);
+  assert.equal(decoded.polarGain, DEFAULT_BIGRAM_FLOW_OPTIONS.polarGain);
   assert.ok(diagnostics.length >= 5, `診断が積まれていない: ${JSON.stringify(diagnostics)}`);
 });
 
 test('decodeBigramFlowOptions: 未知の形式（配列・null・文字列）は丸ごと既定値へ戻す', () => {
   const diagnostics: { path: string; message: string }[] = [];
-  assert.deepEqual(decodeBigramFlowOptions(null, diagnostics), DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG);
-  assert.deepEqual(decodeBigramFlowOptions(['not', 'a', 'record'], diagnostics), DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG);
-  assert.deepEqual(decodeBigramFlowOptions('nope', diagnostics), DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG);
+  assert.deepEqual(decodeBigramFlowOptions(null, diagnostics), DEFAULT_BIGRAM_FLOW_OPTIONS);
+  assert.deepEqual(decodeBigramFlowOptions(['not', 'a', 'record'], diagnostics), DEFAULT_BIGRAM_FLOW_OPTIONS);
+  assert.deepEqual(decodeBigramFlowOptions('nope', diagnostics), DEFAULT_BIGRAM_FLOW_OPTIONS);
   assert.ok(diagnostics.length >= 3);
 });
 
@@ -305,16 +305,16 @@ test('engineのgetExtraction経由でBigram Flowを回すと、同じ抽出キ�
   const definition = countingDefinition(counter);
   const input = resolve();
 
-  const a = cache.getExtraction(input, definition, DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG);
-  const b = cache.getExtraction(input, definition, DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG);
+  const a = cache.getExtraction(input, definition, DEFAULT_BIGRAM_FLOW_OPTIONS);
+  const b = cache.getExtraction(input, definition, DEFAULT_BIGRAM_FLOW_OPTIONS);
   assert.equal(a, b);
   assert.equal(counter.calls, 1);
 
   // 見た目だけの設定変更ではextractが増えない。
-  cache.getExtraction(input, definition, { ...DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG, lineScale: 'log' });
+  cache.getExtraction(input, definition, { ...DEFAULT_BIGRAM_FLOW_OPTIONS, lineScale: 'log' });
   assert.equal(counter.calls, 1, '見た目だけの設定変更でextractが走った');
 
   // 抽出に効く設定変更では増える。
-  cache.getExtraction(input, definition, { ...DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG, source: 'within-hand' });
+  cache.getExtraction(input, definition, { ...DEFAULT_BIGRAM_FLOW_OPTIONS, source: 'within-hand' });
   assert.equal(counter.calls, 2, '抽出に効く設定変更でextractが走らなかった');
 });

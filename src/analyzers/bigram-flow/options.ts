@@ -10,7 +10,11 @@ export type KeyboardFlowWeightScale = 'linear' | 'sqrt' | 'log';
 export type KeyboardFlowLayerOrder = 'weight' | 'same-hand-top' | 'cross-hand-top';
 export type KeyboardFlowHoverScale = 'key' | 'global';
 
-export interface BigramFlowDisplayConfig {
+/**
+ * Bigram Flowの解析設定（#544 §7）。抽出に効くのは`source`・`selectedFingers`・
+ * `polarBandwidth`だけで、残りは見た目だけ（`bigramFlowExtractKeyOf`参照）。
+ */
+export interface BigramFlowOptions {
   source: BigramSource;
   selectedFingers: readonly FingerClass[];
   lineScale: KeyboardFlowWeightScale;
@@ -21,7 +25,7 @@ export interface BigramFlowDisplayConfig {
   polarGain: number;
 }
 
-export const DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG: BigramFlowDisplayConfig = {
+export const DEFAULT_BIGRAM_FLOW_OPTIONS: BigramFlowOptions = {
   source: 'actual',
   selectedFingers: [],
   lineScale: 'linear',
@@ -33,13 +37,11 @@ export const DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG: BigramFlowDisplayConfig = {
 };
 
 /**
- * Analyzer契約（#544 §7、`analyzers/contract.ts`）向けの名前。中身は
- * `BigramFlowDisplayConfig`と同一の型で、`BigramFlowDisplayConfig`は
- * `src/legacy/`・`src/features/analyzer-next/`（旧実装・移行中実装、どちらも
- * 新コードからimport禁止）がすでに参照している名前なので、両方が読める型として残す
- * （AGENTS.md「消える側のコードは動き続けるのに必要な分だけ追従させる」）。
+ * 旧名。`src/legacy/`・`src/features/analyzer-next/`（どちらも切り替え時に消える）が
+ * 参照しているので、動き続けるのに必要な別名だけ残す。新コードでは使わない。
  */
-export type BigramFlowOptions = BigramFlowDisplayConfig;
+export type BigramFlowDisplayConfig = BigramFlowOptions;
+export const DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG = DEFAULT_BIGRAM_FLOW_OPTIONS;
 
 const BIGRAM_SOURCES: readonly BigramSource[] = ['actual', 'within-hand'];
 const FINGER_CLASSES: readonly FingerClass[] = ['pinky', 'ring', 'middle', 'index'];
@@ -121,23 +123,23 @@ export function decodeBigramFlowOptions(
 ): BigramFlowOptions {
   if (!isRecord(raw)) {
     if (raw !== undefined) diagnostics.push({ path: 'options', message: '未知の形式のため既定値へ戻した' });
-    return DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG;
+    return DEFAULT_BIGRAM_FLOW_OPTIONS;
   }
   return {
-    source: decodeChoice(raw.source, BIGRAM_SOURCES, DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.source, 'options.source', diagnostics),
+    source: decodeChoice(raw.source, BIGRAM_SOURCES, DEFAULT_BIGRAM_FLOW_OPTIONS.source, 'options.source', diagnostics),
     selectedFingers: decodeSelectedFingers(
       raw.selectedFingers,
-      DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.selectedFingers,
+      DEFAULT_BIGRAM_FLOW_OPTIONS.selectedFingers,
       'options.selectedFingers',
       diagnostics,
     ),
-    lineScale: decodeChoice(raw.lineScale, WEIGHT_SCALES, DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.lineScale, 'options.lineScale', diagnostics),
-    layerOrder: decodeChoice(raw.layerOrder, LAYER_ORDERS, DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.layerOrder, 'options.layerOrder', diagnostics),
-    hoverScale: decodeChoice(raw.hoverScale, HOVER_SCALES, DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.hoverScale, 'options.hoverScale', diagnostics),
+    lineScale: decodeChoice(raw.lineScale, WEIGHT_SCALES, DEFAULT_BIGRAM_FLOW_OPTIONS.lineScale, 'options.lineScale', diagnostics),
+    layerOrder: decodeChoice(raw.layerOrder, LAYER_ORDERS, DEFAULT_BIGRAM_FLOW_OPTIONS.layerOrder, 'options.layerOrder', diagnostics),
+    hoverScale: decodeChoice(raw.hoverScale, HOVER_SCALES, DEFAULT_BIGRAM_FLOW_OPTIONS.hoverScale, 'options.hoverScale', diagnostics),
     movementScaleMode: decodeChoice(
       raw.movementScaleMode,
       MOVEMENT_SCALE_MODES,
-      DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.movementScaleMode,
+      DEFAULT_BIGRAM_FLOW_OPTIONS.movementScaleMode,
       'options.movementScaleMode',
       diagnostics,
     ),
@@ -145,7 +147,7 @@ export function decodeBigramFlowOptions(
       raw.polarBandwidth,
       MIN_POLAR_BANDWIDTH_DEGREES,
       45,
-      DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.polarBandwidth,
+      DEFAULT_BIGRAM_FLOW_OPTIONS.polarBandwidth,
       'options.polarBandwidth',
       diagnostics,
     ),
@@ -153,7 +155,7 @@ export function decodeBigramFlowOptions(
       raw.polarGain,
       0.25,
       MAX_POLAR_DISPLAY_GAIN,
-      DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.polarGain,
+      DEFAULT_BIGRAM_FLOW_OPTIONS.polarGain,
       'options.polarGain',
       diagnostics,
     ),
