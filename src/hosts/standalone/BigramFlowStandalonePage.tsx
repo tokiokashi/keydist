@@ -29,6 +29,13 @@ const NO_SETUP_YET: ResolvedInputResult = { ok: false, error: { kind: 'reference
  */
 export interface BigramFlowStandalonePageProps {
   readonly assets: KeydistAssets;
+  /**
+   * `assets`が資産（storage）からの初回読み込みを終えているか（`useKeydistAssets`の
+   * `ready`。#544 Phase 3「URLでの受け取り」）。URLパラメータを既存の解析設定へ
+   * 部分マージする処理は、この読み込みより前に走ると既存の値を初期値へ巻き戻して
+   * しまうため、`ready`になるまで待つ。
+   */
+  readonly assetsReady: boolean;
   readonly dispatch: (command: Command<KeydistAssets>) => void;
   readonly cache: EngineCache;
   readonly catalog: StandalonePaneCatalog;
@@ -45,6 +52,7 @@ const TEXT_COMMIT_DEBOUNCE_MS = 400;
 
 export function BigramFlowStandalonePage({
   assets,
+  assetsReady,
   dispatch,
   cache,
   catalog,
@@ -113,18 +121,23 @@ export function BigramFlowStandalonePage({
 
   // URL経由で解析設定を受け取る（#544 Phase 3「URLでの受け取り」）。取り込む対象は
   // 解析設定だけ（配列・形状・条件をURLへ載せる共有リンクはPhase 5の範囲外）。
-  // マウント時に1回だけ読み、資産（コマンド経由）へ取り込んだらURLから該当パラメータを
-  // 消す（#544「取り込み後はローカルが正」）。取り込みは、URLで指定された項目だけを
-  // 現在の解析設定へ上書きする部分マージにする: フルスクラッチの上書きだと
-  // 「URLで指定していない項目まで既定値に戻る」事故になりやすく、共有リンクを開いただけで
-  // 自分の設定が丸ごと消える方が「一部だけ変わる」より驚きが大きいと判断した
-  // （確認ダイアログは挟まない。単体ページの解析設定はUndo対象の資産なので、
+  // 資産（`assets`）がstorageからの初回読み込みを終える（`assetsReady`）まで待ってから
+  // 読み込んだらURLから該当パラメータを消す（#544「取り込み後はローカルが正」）。
+  // `assetsReady`を待たずに`decoded.options`をベースへマージすると、読み込み前の
+  // 初期値（空）をベースにしてしまい、既存の解析設定を巻き戻す事故になる
+  // （`useKeydistAssets`の`ready`のコメント参照。#544レビューで見つかった競合）。
+  //
+  // 取り込みは、URLで指定された項目だけを現在の解析設定へ上書きする部分マージにする:
+  // フルスクラッチの上書きだと「URLで指定していない項目まで既定値に戻る」事故になりやすく、
+  // 共有リンクを開いただけで自分の設定が丸ごと消える方が「一部だけ変わる」より驚きが
+  // 大きいと判断した（確認ダイアログは挟まない。単体ページの解析設定はUndo対象の資産なので、
   // 誤って開いた場合もUndo/元のURLに戻すことで復旧できる）。
   const decodedOptionsRef = useRef(decoded.options);
   decodedOptionsRef.current = decoded.options;
   const appliedUrlOptionsRef = useRef(false);
   const [urlDiagnostics, setUrlDiagnostics] = useState<readonly CodecDiagnostic[]>([]);
   useEffect(() => {
+    if (!assetsReady) return;
     if (appliedUrlOptionsRef.current) return;
     appliedUrlOptionsRef.current = true;
     const params = new URLSearchParams(window.location.search);
@@ -144,9 +157,10 @@ export function BigramFlowStandalonePage({
     const nextQuery = nextParams.toString();
     const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
     window.history.replaceState(null, '', nextUrl);
-    // マウント時に1回だけ実行する。`analyzerId`はAnalyzer定義由来の定数、`dispatch`は
-    // `useKeydistAssets`が返す安定した参照なので、依存に含めても再実行の心配は無い。
-  }, [analyzerId, dispatch]);
+    // `assetsReady`がtrueになった最初の1回だけ実行する（`appliedUrlOptionsRef`）。
+    // `analyzerId`はAnalyzer定義由来の定数、`dispatch`は`useKeydistAssets`が返す
+    // 安定した参照なので、依存に含めても再実行の心配は無い。
+  }, [assetsReady, analyzerId, dispatch]);
 
   const [copyLinkFeedback, setCopyLinkFeedback] = useState(false);
   const copyOptionsLink = () => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
   applyCommand,
   applyExternalChange,
@@ -27,6 +27,14 @@ import { buildAssetSyncs, loadAssets, saveChangedAssets, startAssetSyncs, type A
  */
 export interface KeydistAssetsController {
   readonly assets: KeydistAssets;
+  /**
+   * storageからの初回読み込み（`loadAssets`）が終わっているか。`hosts`側がURLパラメータの
+   * 取り込みのように「今の資産の値をベースに部分マージする」処理をする時、この読み込みより
+   * 前に`assets`を読んでしまうと、既存の値を初期値へ巻き戻す事故になる（#544 Phase 3
+   * 「URLでの受け取り」のレビューで見つかった競合）。`ready`が`true`になってから
+   * `assets`を読めば、その時点の`assets`は必ず読み込み済みの値になっている。
+   */
+  readonly ready: boolean;
   dispatch(command: Command<KeydistAssets>): void;
 }
 
@@ -67,6 +75,10 @@ export function useKeydistAssets(): KeydistAssetsController {
   const assetsRef = useRef<KeydistAssets>(initialAssets());
   const historyRef = useRef<CommandHistory<KeydistAssets>>(emptyCommandHistory());
   const [, forceRender] = useReducer((count: number) => count + 1, 0);
+  // `ready`は`useState`で持つ（`assetsRef`と違い、これ自体をuseEffectの依存や
+  // 子コンポーネントへのprop変化として使いたいので、参照ではなく値の変化としてReactに
+  // 伝える必要がある）。
+  const [ready, setReady] = useState(false);
 
   const syncs = useAssetSyncs((key, value) => {
     const result = applyExternalChange(assetsRef.current, historyRef.current, key, value);
@@ -79,8 +91,10 @@ export function useKeydistAssets(): KeydistAssetsController {
     const loaded = loadAssets(syncs);
     if (Object.keys(loaded).length > 0) {
       assetsRef.current = { ...assetsRef.current, ...loaded };
-      forceRender();
     }
+    // 読み込みが空でも`ready`は必ずtrueにする（`hosts`側が「読み込み済みの`assets`」を
+    // 待てるようにするための合図。何も無かった場合の既定値もこの時点で確定した値）。
+    setReady(true);
     // 購読の開始・停止は必ずこの`useEffect`の中でペアにする（`startAssetSyncs`のコメント
     // 参照）。ReactのStrictMode（開発時のmount→cleanup→mount二重実行）でこの関数が
     // 2回呼ばれても、2回目の`startAssetSyncs`が新しく購読し直すので、最終的に
@@ -101,5 +115,5 @@ export function useKeydistAssets(): KeydistAssetsController {
     forceRender();
   }, [syncs]);
 
-  return { assets: assetsRef.current, dispatch };
+  return { assets: assetsRef.current, ready, dispatch };
 }

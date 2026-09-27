@@ -28,7 +28,7 @@ import { useDebouncedCommit } from './use-debounced-commit.ts';
 const engineCache = createEngineCache();
 
 export function StandaloneBigramFlowApp() {
-  const { assets, dispatch } = useKeydistAssets();
+  const { assets, ready, dispatch } = useKeydistAssets();
   const catalog = useMemo(() => builtinStandaloneCatalog(), []);
 
   // 解析設定の書き込みは間引いてから`dispatch`する（`use-debounced-commit.ts`参照。
@@ -40,6 +40,7 @@ export function StandaloneBigramFlowApp() {
   return (
     <BigramFlowStandalonePage
       assets={assets}
+      assetsReady={ready}
       dispatch={dispatch}
       cache={engineCache}
       catalog={catalog}
