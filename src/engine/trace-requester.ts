@@ -29,13 +29,8 @@ export interface TraceLookup {
 export function createTraceRequesterFor(lookup: TraceLookup, baseInput: ResolvedInput): TraceRequester {
   return {
     requestTrace(request: TraceRequestInput): Trace {
-      const merged: ResolvedInput = {
-        ...baseInput,
-        text: request.text,
-        layout: request.layout,
-        geometry: request.geometry,
-        tracePolicy: request.tracePolicy,
-      };
+      // フィールドを列挙せずに重ねる。`TraceRequestInput`に項目が増えても自動で差し替えに含まれる
+      const merged: ResolvedInput = { ...baseInput, ...request };
       return lookup.getTrace(merged).trace;
     },
   };
