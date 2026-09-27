@@ -13,6 +13,24 @@ import type { SetupReferenceError } from '#input/setup/index.ts';
  */
 export type PaneEngineState<T> = EngineRequestState<T>;
 
+/**
+ * 本体の値（抽出）と、描画に一緒に要る値（Trace）の2チャンネルを、ペインの状態1つに畳む。
+ * 2つは別チャンネルで解決するので、片方だけ揃った瞬間がありうる。バッジを抽出だけで決めると
+ * 「ready なのに本文は計算中」という食い違いが出るため、両方が揃うまでは揃っていない側に合わせる。
+ * 失敗はどちらのものでもそのまま出す（同じ解決済み入力なので、原因は通常同じ）。
+ */
+export function combinePaneStates<T>(
+  primary: PaneEngineState<T>,
+  companion: PaneEngineState<unknown>,
+): PaneEngineState<T> {
+  if (primary.status === 'failed') return primary;
+  if (companion.status === 'failed') return companion;
+  if (primary.status === 'idle' || primary.status === 'computing') return primary;
+  if (companion.status === 'idle' || companion.status === 'computing') return { status: 'computing' };
+  if (companion.status === 'stale') return { status: 'stale', value: primary.value };
+  return primary;
+}
+
 /** ペインの見出し脇に出す、状態そのものの短い文言。値（`ready`/`stale`）は別途描く。 */
 export function paneStatusLabel(status: PaneEngineState<unknown>['status']): string {
   switch (status) {

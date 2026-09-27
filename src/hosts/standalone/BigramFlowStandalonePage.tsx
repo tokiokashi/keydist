@@ -3,13 +3,18 @@ import type { Command } from '#input/commands/index.ts';
 import { createSetupCommand, setStandaloneTextCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineCache } from '#engine/cache.ts';
 import type { SetupIdGenerator } from '#input/setup/index.ts';
-import { conditionHeaderInfoFromResolvedInput, traceConditionSummary, PaneFrame } from '#hosts/shared/index.ts';
+import { combinePaneStates, conditionHeaderInfoFromResolvedInput, traceConditionSummary, PaneFrame } from '#hosts/shared/index.ts';
+import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import { DEFAULT_BIGRAM_FLOW_OPTIONS, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { selectInitialSetupId, DEFAULT_STANDALONE_SETUP_SPEC } from './setup-selection.ts';
 import { useAnalyzerPane } from './use-analyzer-pane.ts';
 import './standalone.css';
+
+// Setupが用意される前の一瞬に渡す値。レンダーごとに作ると`useAnalyzerPane`の依存が毎回変わり、
+// 依頼を作り直し続けるので、参照が変わらないようモジュールに1つだけ置く。
+const NO_SETUP_YET: ResolvedInputResult = { ok: false, error: { kind: 'reference', errors: [] } };
 
 /**
  * Bigram Flowの単体ページ（#544 Phase 3「最初の縦切り」）。
@@ -91,7 +96,7 @@ export function BigramFlowStandalonePage({
     cache,
     bigramFlowAnalyzer.definition,
     options,
-    resolution ?? { ok: false, error: { kind: 'reference', errors: [] } },
+    resolution ?? NO_SETUP_YET,
   );
 
   const conditionRows = resolution?.ok ? traceConditionSummary(resolution.input.cascade) : [];
@@ -151,7 +156,7 @@ export function BigramFlowStandalonePage({
           title="Bigram Flow"
           header={header}
           conditionRows={conditionRows}
-          engineState={extraction}
+          engineState={combinePaneStates(extraction, pane.trace)}
           traceErrors={traceErrors}
         >
           {(() => {

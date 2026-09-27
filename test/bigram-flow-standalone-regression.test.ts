@@ -32,22 +32,16 @@ import { computeBigramFlowExtraction } from '#analyzers/bigram-flow/extract.ts';
 
 /**
  * hosts/standalone のBigram Flow単体ページが使う経路（Setup + カスケードの上書き →
- * resolveEngineInput → EngineCache → bigramFlowDefinition.extract）と、legacyの
- * Bigram Flowページと同じ「直接」経路（generateTraceを直接呼ぶ。
- * test/analyzer-regression.test.tsのrecompute()と同じ組み立て）とで、
- * 同じfixture条件から同じBigramFlowExtractedが出ることを確認する
- * （指示書「新ページの数値が、同じSetup・テキストでlegacyのBigram Flowページと
- * 一致することを確認する方法」）。
+ * resolveEngineInput → EngineCache → bigramFlowDefinition.extract）と、Trace生成の
+ * 回帰基準（generateTraceを直接呼ぶ。test/analyzer-regression.test.tsのrecompute()と
+ * 同じ組み立て）とで、同じfixture条件から同じBigramFlowExtractedが出ることを確認する。
  *
- * legacyのBigram Flowページ自体（`src/legacy/analyzer-bigram-flow.tsx`）はUI組み立て
- * （config・snapshot store）のテストなので、ここでは「同じTraceに対して
- * computeBigramFlowExtractionを呼べば同じ結果になる」（extract.tsのコメントどおり
- * legacy/新側どちらもこの1つの関数を呼ぶ）ことと、「engine経由でも同じTraceが
- * 作られる」（fixtureのconditionsから見て）ことの両方を1本のテストで確かめる。
- * 前者はtrivialに真（同じ関数を同じ引数で呼ぶだけ）だが、後者
- * （Setup解決・カスケード解決・engineのキャッシュを経由しても同じTraceに帰着するか）が
- * このテストの実質的な確認内容になる。
- */
+ * 比べる相手は `src/legacy/` のUIページそのものではない。legacyのBigram Flowページ
+ * （`src/legacy/analyzer-bigram-flow.tsx`）は計算済みのTraceを受け取って表示するだけで、
+ * Traceを作るのは回帰基準と同じ `generateTrace` なので、その経路を基準にしている。
+ * 抽出関数はどちらの経路も同じなので、このテストの実質的な確認内容は
+ * 「Setup解決・カスケード解決・engineのキャッシュを経由しても同じTraceに帰着するか」になる。
+ * */
 
 interface ConditionsSnapshot {
   windowSize: number;
@@ -98,7 +92,7 @@ function allLayouts(language: TextLanguage): readonly Layout[] {
   return language === 'en' ? LAYOUTS : LAYOUTS_JA;
 }
 
-/** legacyと同じ「直接」経路（test/analyzer-regression.test.tsのrecompute()と同じ組み立て）。 */
+/** Trace生成の回帰基準と同じ「直接」経路（test/analyzer-regression.test.tsのrecompute()と同じ組み立て）。 */
 function directTrace(fixtureCase: FixtureCase) {
   const layout = allLayouts(fixtureCase.language).find((candidate) => candidate.id === fixtureCase.layoutId);
   assert.ok(layout);
@@ -177,7 +171,7 @@ function engineTrace(fixtureCase: FixtureCase) {
 }
 
 for (const id of CASE_IDS) {
-  test(`Bigram Flow: engine経路と直接経路（legacyと同じ組み立て）で同じ抽出結果になる: ${id}`, () => {
+  test(`Bigram Flow: engine経路と直接経路（回帰基準と同じ組み立て）で同じ抽出結果になる: ${id}`, () => {
     const fixtureCase = findFixtureCase(id);
     const direct = directTrace(fixtureCase);
     const directExtracted = computeBigramFlowExtraction(direct, DEFAULT_BIGRAM_FLOW_OPTIONS);

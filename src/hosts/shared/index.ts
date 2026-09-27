@@ -8,6 +8,7 @@ export {
   type ConditionValueFormat,
 } from './condition-summary.ts';
 export {
+  combinePaneStates,
   describeEngineRequestError,
   describeResolvedInputError,
   paneStatusLabel,
