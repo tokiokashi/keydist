@@ -1,7 +1,7 @@
 import type { SetAnalyzerDefinition } from '#analyzers/contract.ts';
 import type { EngineCache } from '#engine/cache.ts';
 import { createSetExtractRequest, type ExtractionRequestState } from '#engine/engine-requests.ts';
-import type { EngineSetMemberInput, EngineSetRequestChannel } from '#engine/request.ts';
+import type { EngineRequestOptions, EngineSetMemberInput, EngineSetRequestChannel } from '#engine/request.ts';
 
 /**
  * 集合対象のペイン1個ぶんの、engineへの依頼チャンネル（#544 Phase 3）。
@@ -25,6 +25,8 @@ export interface AnalyzerSetPaneChannelParams<Options, Extracted> {
   readonly options: Options;
   readonly members: readonly EngineSetMemberInput[];
   readonly onExtraction: (state: ExtractionRequestState<Extracted>) => void;
+  /** 既定は`microtaskScheduler`。テストで決定的に進めたい時に差し替える。 */
+  readonly requestOptions?: EngineRequestOptions;
 }
 
 /**
@@ -42,7 +44,13 @@ export function syncAnalyzerSetPaneChannels<Options, Extracted>(
   }
 
   current?.extraction.unsubscribe();
-  const extraction = createSetExtractRequest(params.cache, params.definition, params.options, params.onExtraction);
+  const extraction = createSetExtractRequest(
+    params.cache,
+    params.definition,
+    params.options,
+    params.onExtraction,
+    params.requestOptions,
+  );
   extraction.request(params.members);
   return { options: params.options, extraction };
 }
