@@ -1,7 +1,13 @@
 import { generateTrace, type Trace } from '#trace/generate.ts';
 import { analyzeStrokeStructure, type AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
 import { computeMetrics, type Metrics } from '#interpretation/metrics.ts';
-import type { SingleAnalyzerDefinition, TraceRequester } from '#analyzers/contract.ts';
+import type {
+  AnalyzerSetMember,
+  AnalyzerSetMemberFailure,
+  SetAnalyzerDefinition,
+  SingleAnalyzerDefinition,
+  TraceRequester,
+} from '#analyzers/contract.ts';
 import { MODEL_VERSION } from './model-version.ts';
 import type { ResolvedInput } from './resolved-input.ts';
 
@@ -87,5 +93,24 @@ export function extractSingle<Options, Extracted>(
     options,
     requestTrace,
   });
+  return { modelVersion: MODEL_VERSION, extracted };
+}
+
+/**
+ * 抽出段（集合対象のAnalyzerのみ。#544 Phase 3「集合を対象にする最初のAnalyzer」）。
+ *
+ * `extractSingle`と同じく「渡された結果からAnalyzerのextractを1回呼ぶ」ことだけを担う
+ * 純関数。メンバーごとのTrace・解釈はすでに計算済みのものを受け取るだけ（`EngineCache.
+ * getSetExtraction`が「解決できたメンバーだけ計算し、失敗したメンバーは`failures`へ回す」
+ * 判断を持つ）。
+ */
+export function extractSet<Options, Extracted>(
+  definition: SetAnalyzerDefinition<Options, Extracted>,
+  options: Options,
+  members: readonly AnalyzerSetMember[],
+  failures: readonly AnalyzerSetMemberFailure[],
+  requestTrace: TraceRequester,
+): EngineExtractionResult<Extracted> {
+  const extracted = definition.extract({ members, failures, options, requestTrace });
   return { modelVersion: MODEL_VERSION, extracted };
 }

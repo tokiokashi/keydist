@@ -4,10 +4,11 @@ import * as v from 'valibot';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
-import { defineSingleAnalyzer, type SingleAnalyzerDefinition } from '#analyzers/contract.ts';
+import { defineSetAnalyzer, defineSingleAnalyzer, type SetAnalyzerDefinition, type SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import { defineOption, defineOptions } from '#analyzers/options.ts';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from './settings-items.ts';
-import { resolveEngineInput, type ResolvedInput } from './resolved-input.ts';
+import { resolveEngineInput, type ResolvedInput, type ResolvedInputResult } from './resolved-input.ts';
+import type { EngineSetMemberInput } from './request.ts';
 import { createEngineCache } from './cache.ts';
 
 // `SingleAnalyzerDefinition`はブランド付きの型で、`defineSingleAnalyzer`経由でしか作れない
@@ -46,12 +47,12 @@ const CATALOG = {
   shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 
-function resolve(
+function resolveResult(
   setup: Setup,
   overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES,
   text = 'hello world',
-): ResolvedInput {
-  const result = resolveEngineInput({
+): ResolvedInputResult {
+  return resolveEngineInput({
     setup,
     catalog: CATALOG,
     userLayouts: new Map(),
@@ -59,9 +60,51 @@ function resolve(
     text,
     language: 'en',
   });
+}
+
+function resolve(
+  setup: Setup,
+  overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES,
+  text = 'hello world',
+): ResolvedInput {
+  const result = resolveResult(setup, overrides, text);
   assert.ok(result.ok, result.ok ? '' : JSON.stringify(result.error));
   if (!result.ok) throw new Error('unreachable');
   return result.input;
+}
+
+// ---------------------------------------------------------------------------
+// getSetExtraction用フィクスチャ（#544 Phase 3）
+// ---------------------------------------------------------------------------
+
+const setFixtureOptions = defineOptions({
+  scale: defineOption<number>({ schema: v.number(), default: 1, affects: 'extract' }),
+  highlightColor: defineOption<string>({ schema: v.string(), default: 'red', affects: 'view' }),
+});
+
+type SetFixtureOptions = typeof setFixtureOptions.defaultOptions;
+type SetFixtureExtracted = { readonly setupIds: readonly string[]; readonly failureSetupIds: readonly string[]; readonly total: number };
+
+let setFixtureCalls = 0;
+
+function createSetFixtureDefinition(): SetAnalyzerDefinition<SetFixtureOptions, SetFixtureExtracted> {
+  return defineSetAnalyzer({
+    id: 'fixture-set-analyzer',
+    options: setFixtureOptions,
+    extract(context) {
+      setFixtureCalls += 1;
+      return {
+        setupIds: context.members.map((member) => member.setupId),
+        failureSetupIds: context.failures.map((failure) => failure.setupId),
+        total: context.members.reduce((sum, member) => sum + member.metrics.totalUnits, 0) * context.options.scale,
+      };
+    },
+    optionsDiscipline: {
+      sample: setFixtureOptions.defaultOptions,
+      alternates: { scale: 2, highlightColor: 'blue' },
+      extractForTest: (options) => ({ setupIds: [], failureSetupIds: [], total: 100 * options.scale }),
+    },
+  });
 }
 
 test('中身が同じSetup2つは計算を共有する（idが違っても同じTrace/解釈を再利用する）', () => {
@@ -200,4 +243,113 @@ test('getExtraction: 解釈だけ変えてもTraceは作り直さない', () => 
   cache.getExtraction(changedInput, definition, { scale: 1, highlightColor: 'red' });
   assert.equal(cache.size.trace, 1, 'chain解釈の変更はTraceに影響しないので再利用する');
   assert.equal(cache.size.extraction, 2, '解釈が違うので抽出キーは別物になり計算し直す');
+});
+
+// ---------------------------------------------------------------------------
+// getSetExtraction（#544 Phase 3「集合を対象にする最初のAnalyzer」）
+// ---------------------------------------------------------------------------
+
+test('getSetExtraction: 各メンバーのTrace・解釈は単一対象と同じキャッシュを共有する', () => {
+  const cache = createEngineCache();
+  const definition = createSetFixtureDefinition();
+  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setupB: Setup = { id: 'setup-b', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 1 };
+
+  // 単一対象側で先にTraceを計算しておく。
+  const singleTrace = cache.getTrace(resolve(setupA));
+  assert.equal(cache.size.trace, 1);
+
+  const members: readonly EngineSetMemberInput[] = [
+    { setupId: setupA.id, resolution: resolveResult(setupA) },
+    { setupId: setupB.id, resolution: resolveResult(setupB) },
+  ];
+  cache.getSetExtraction(members, definition, setFixtureOptions.defaultOptions);
+
+  // setupAとsetupBは中身が同じSetup（layoutId/shapeId/text）なのでTraceは1件のまま
+  // （集合対象の計算が単一対象と同じキャッシュへ乗っていることの確認）。
+  assert.equal(cache.size.trace, 1);
+  const traceFromSet = cache.getTrace(resolve(setupA));
+  assert.equal(traceFromSet, singleTrace);
+});
+
+test('getSetExtraction: 同じ集合（順序も同じ）への2回目の呼び出しはextractを1回しか呼ばない', () => {
+  setFixtureCalls = 0;
+  const cache = createEngineCache();
+  const definition = createSetFixtureDefinition();
+  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setupB: Setup = { id: 'setup-b', layoutId: 'dvorak', shapeId: 'row-staggered', colorIndex: 1 };
+  const members: readonly EngineSetMemberInput[] = [
+    { setupId: setupA.id, resolution: resolveResult(setupA) },
+    { setupId: setupB.id, resolution: resolveResult(setupB) },
+  ];
+
+  const a = cache.getSetExtraction(members, definition, setFixtureOptions.defaultOptions);
+  const b = cache.getSetExtraction(members, definition, setFixtureOptions.defaultOptions);
+  assert.equal(a, b);
+  assert.equal(setFixtureCalls, 1);
+  assert.deepEqual(a.extracted.setupIds, [setupA.id, setupB.id]);
+});
+
+test('getSetExtraction: 同じメンバーでも並び順が変わればキャッシュは当たらない（順序込みのキー）', () => {
+  setFixtureCalls = 0;
+  const cache = createEngineCache();
+  const definition = createSetFixtureDefinition();
+  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setupB: Setup = { id: 'setup-b', layoutId: 'dvorak', shapeId: 'row-staggered', colorIndex: 1 };
+
+  const forward: readonly EngineSetMemberInput[] = [
+    { setupId: setupA.id, resolution: resolveResult(setupA) },
+    { setupId: setupB.id, resolution: resolveResult(setupB) },
+  ];
+  const reversed: readonly EngineSetMemberInput[] = [forward[1]!, forward[0]!];
+
+  const a = cache.getSetExtraction(forward, definition, setFixtureOptions.defaultOptions);
+  const b = cache.getSetExtraction(reversed, definition, setFixtureOptions.defaultOptions);
+  assert.notEqual(a, b, '並び順が違うので別の抽出結果になる');
+  assert.equal(setFixtureCalls, 2);
+  assert.deepEqual(a.extracted.setupIds, [setupA.id, setupB.id]);
+  assert.deepEqual(b.extracted.setupIds, [setupB.id, setupA.id]);
+});
+
+test('getSetExtraction: 一部メンバーの解決失敗は全体を失敗にせず、failuresへ回す', () => {
+  const cache = createEngineCache();
+  const definition = createSetFixtureDefinition();
+  const setupOk: Setup = { id: 'setup-ok', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setupMissing: Setup = { id: 'setup-missing', layoutId: 'no-such-layout', shapeId: 'row-staggered', colorIndex: 1 };
+
+  const members: readonly EngineSetMemberInput[] = [
+    { setupId: setupOk.id, resolution: resolveResult(setupOk) },
+    { setupId: setupMissing.id, resolution: resolveResult(setupMissing) },
+  ];
+  const missingResolution = members[1]!.resolution;
+  assert.equal(missingResolution.ok, false, 'テストの前提: 存在しない配列idは解決に失敗する');
+
+  const result = cache.getSetExtraction(members, definition, setFixtureOptions.defaultOptions);
+  assert.deepEqual(result.extracted.setupIds, [setupOk.id], '解決できたメンバーだけがmembersに残る');
+  assert.deepEqual(result.extracted.failureSetupIds, [setupMissing.id], '解決失敗したメンバーはfailuresへ回る');
+});
+
+test('getSetExtraction: 抽出に効くoptions（scale）が変われば計算し直す', () => {
+  setFixtureCalls = 0;
+  const cache = createEngineCache();
+  const definition = createSetFixtureDefinition();
+  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const members: readonly EngineSetMemberInput[] = [{ setupId: setupA.id, resolution: resolveResult(setupA) }];
+
+  const a = cache.getSetExtraction(members, definition, { scale: 1, highlightColor: 'red' });
+  const b = cache.getSetExtraction(members, definition, { scale: 2, highlightColor: 'red' });
+  assert.equal(setFixtureCalls, 2);
+  assert.equal(b.extracted.total, a.extracted.total * 2);
+});
+
+test('getSetExtraction: 見た目だけのoptions変更ではextractを走らせない', () => {
+  setFixtureCalls = 0;
+  const cache = createEngineCache();
+  const definition = createSetFixtureDefinition();
+  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const members: readonly EngineSetMemberInput[] = [{ setupId: setupA.id, resolution: resolveResult(setupA) }];
+
+  cache.getSetExtraction(members, definition, { scale: 1, highlightColor: 'red' });
+  cache.getSetExtraction(members, definition, { scale: 1, highlightColor: 'blue' });
+  assert.equal(setFixtureCalls, 1);
 });

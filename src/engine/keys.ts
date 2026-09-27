@@ -74,3 +74,37 @@ export function analyzerExtractionKeyOf(
     options: extractionRelevantOptions,
   });
 }
+
+/**
+ * 集合対象の抽出キー = 各メンバーの解釈キー（または失敗の印）の**列** + Analyzer id +
+ * 抽出に効くoptions（#544 §7「集合の抽出キー = 各メンバーの解釈キーの列 + Analyzer id +
+ * 抽出に効く設定」）。
+ *
+ * ## 順序を含める判断（PR「決めきれなかった点」ではなく、ここで決めて理由を残す）
+ *
+ * 集合対象のAnalyzer（比較表）は行の並び順をそのまま画面に出す（#544 §6の集合はページ
+ * 自身が持つ「集合・並び順・基準」の一部）。同じ集合でも並び順が変われば表の見た目
+ * （行の順序・基準行からの相対位置）が変わるので、**表示に意味がある**。ここでは
+ * 「意味があるなら順序込み」という指示書の基準に従い、`members`を渡された順のまま
+ * キーに畳み込む（ソートしない）。結果として、同じSetup集合でも並び替えるとキャッシュは
+ * 当たらず再計算になるが、対象は多くても数十件のSetup比較なので計算コストは小さい。
+ *
+ * 各メンバーは `{ setupId, memberKey }` の組で表す。`memberKey`は解決できたメンバーなら
+ * そのメンバーの解釈キー、解決に失敗したメンバーなら失敗の種類（`kind`）を含む印
+ * （`AnalyzerSetMemberFailure`の`kind`。`message`はUI文言でしかなく再計算の要否には
+ * 関わらないため含めない）にする。`setupId`を含めるのは、同じ中身のSetupが集合の
+ * 複数枠に並ぶ場合（同一Setupを重ねて基準比較する等）でも枠ごとに区別するため
+ * （`traceKeyOf`がSetupのidをキーから意図的に除くのとは逆に、ここでは「集合の中の
+ * どの枠か」を区別する必要がある）。
+ */
+export function setAnalyzerExtractionKeyOf(
+  members: readonly { readonly setupId: string; readonly memberKey: unknown }[],
+  definitionId: string,
+  extractionRelevantOptions: unknown,
+): string {
+  return stableStringify({
+    members,
+    definitionId,
+    options: extractionRelevantOptions,
+  });
+}

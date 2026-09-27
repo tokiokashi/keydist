@@ -72,10 +72,37 @@ export interface AnalyzerSetMember {
   readonly metrics: Metrics;
 }
 
+/**
+ * 集合の1メンバーの解決が失敗した時の値（#544 Phase 3「集合を対象にする最初のAnalyzer」）。
+ *
+ * 集合対象では、メンバーの一部が失敗（Setup参照切れ・このテキストに使えない配列・
+ * 形状を組み立てられない）しても集合全体を`failed`にしない。失敗したメンバーは
+ * `members`からは外し、代わりにこの値として`failures`へ積む（#544指示書「メンバーごとの
+ * 失敗を値で持つ形を推奨」）。`kind`は`engine/resolved-input.ts`の`ResolvedInputError.kind`と
+ * 同じ語彙にするが、`analyzers/contract.ts`（契約側）は`engine`をimportできない
+ * （依存の規則）ため、ここでは文字列リテラルとして複製する。表示用の文言
+ * （`message`）はengine側（`resolveEngineInput`を呼ぶ側）が組み立てて渡す。
+ */
+export interface AnalyzerSetMemberFailure {
+  readonly setupId: string;
+  readonly kind: 'reference' | 'incompatible-text' | 'geometry';
+  readonly message: string;
+}
+
 /** 集合対象の抽出に渡す値。 */
 export interface SetAnalyzerExtractContext<Options> {
   readonly members: readonly AnalyzerSetMember[];
+  /** 解決に失敗したメンバー（#544指示書「部分失敗」）。空配列なら全メンバーが解決できている。 */
+  readonly failures: readonly AnalyzerSetMemberFailure[];
   readonly options: Options;
+  /**
+   * N感度など追加のTraceが要る抽出だけが使う（`SingleAnalyzerExtractContext`と同じ役割）。
+   * 集合対象では「どのメンバーを基準にするか」が一意に決まらないため、`members`の先頭
+   * （解決できた最初のメンバー）のTrace生成条件を土台にする。メンバーが1件も解決できて
+   * いない場合はこの窓口を呼ぶと例外になる（#544 Phase 3「決めきれなかった点」として
+   * PR本文へ残す: 集合対象のTraceRequesterは当面この単純な規則に留め、メンバーごとの
+   * 個別条件が必要になったら窓口の形を見直す）。
+   */
   readonly requestTrace: TraceRequester;
 }
 

@@ -4,12 +4,12 @@ import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { sampleText } from '#input/text/samples.ts';
-import { defineSingleAnalyzer, type SingleAnalyzerDefinition } from '#analyzers/contract.ts';
+import { defineSetAnalyzer, defineSingleAnalyzer, type SetAnalyzerDefinition, type SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import { defineOptions } from '#analyzers/options.ts';
 import { resolveEngineInput } from './resolved-input.ts';
 import { createEngineCache } from './cache.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from './settings-items.ts';
-import { createExtractRequest, createInterpretationRequest, createTraceRequest } from './engine-requests.ts';
+import { createExtractRequest, createInterpretationRequest, createSetExtractRequest, createTraceRequest } from './engine-requests.ts';
 import type { ExtractionRequestState, InterpretationRequestState } from './engine-requests.ts';
 
 // 実際の`EngineCache` + `resolveEngineInput`を使った、依頼と購読APIの結線テスト。
@@ -157,5 +157,64 @@ test('createExtractRequest: extractが例外を投げたらfailed（kind: except
   if (last?.status === 'failed') {
     assert.equal(last.error.kind, 'exception');
   }
+  channel.unsubscribe();
+});
+
+function createSetTotalUnitsDefinition(): SetAnalyzerDefinition<typeof emptyOptions.defaultOptions, number> {
+  return defineSetAnalyzer({
+    id: 'set-total-units',
+    options: emptyOptions,
+    extract: (context) => context.members.reduce((sum, member) => sum + member.metrics.totalUnits, 0),
+    optionsDiscipline: emptyOptionsDiscipline(0),
+  });
+}
+
+test('createSetExtractRequest: 実物のEngineCacheを通してreadyまで届く', async () => {
+  const cache = createEngineCache();
+  const definition = createSetTotalUnitsDefinition();
+  const states: ExtractionRequestState<number>[] = [];
+  const channel = createSetExtractRequest(cache, definition, emptyOptions.defaultOptions, (s) => states.push(s));
+
+  channel.request([
+    { setupId: 'a', resolution: resolveFor('a', sampleText('en', 'default')) },
+    { setupId: 'b', resolution: resolveFor('b', sampleText('en', 'default')) },
+  ]);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  const last = states.at(-1);
+  assert.ok(last?.status === 'ready');
+  if (last?.status === 'ready') {
+    assert.ok(last.value.extracted >= 0);
+  }
+  channel.unsubscribe();
+});
+
+test('createSetExtractRequest: メンバー1件の解決失敗だけでは依頼全体をfailedにしない', async () => {
+  const cache = createEngineCache();
+  const definition = createSetTotalUnitsDefinition();
+  const states: ExtractionRequestState<number>[] = [];
+  const channel = createSetExtractRequest(cache, definition, emptyOptions.defaultOptions, (s) => states.push(s));
+
+  const setup = { id: 'missing', layoutId: 'no-such-layout', shapeId: 'row-staggered', colorIndex: 0 };
+  const failingResolution = resolveEngineInput({
+    setup,
+    catalog: CATALOG,
+    userLayouts: new Map(),
+    overrides: EMPTY_SETTINGS_OVERRIDES,
+    text: sampleText('en', 'default'),
+    language: 'en',
+  });
+  assert.equal(failingResolution.ok, false);
+
+  channel.request([
+    { setupId: 'a', resolution: resolveFor('a', sampleText('en', 'default')) },
+    { setupId: 'missing', resolution: failingResolution },
+  ]);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  const last = states.at(-1);
+  assert.ok(last?.status === 'ready', '1メンバーの解決失敗では全体はfailedにならない');
   channel.unsubscribe();
 });
