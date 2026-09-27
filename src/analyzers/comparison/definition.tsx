@@ -62,6 +62,7 @@ function failureLabel(kind: ComparisonFailedRow['failureKind']): string {
     case 'reference': return '配列・形状が見つからない（削除された可能性）';
     case 'incompatible-text': return 'このテキストには使えない';
     case 'geometry': return '形状を組み立てられない';
+    case 'setup-missing': return 'Setupが削除された';
   }
 }
 

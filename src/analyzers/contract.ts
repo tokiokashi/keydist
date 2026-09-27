@@ -85,7 +85,7 @@ export interface AnalyzerSetMember {
  */
 export interface AnalyzerSetMemberFailure {
   readonly setupId: string;
-  readonly kind: 'reference' | 'incompatible-text' | 'geometry';
+  readonly kind: 'reference' | 'incompatible-text' | 'geometry' | 'setup-missing';
   readonly message: string;
 }
 

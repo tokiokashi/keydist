@@ -53,7 +53,16 @@ export type ResolvedInputError =
   | { readonly kind: 'reference'; readonly errors: readonly SetupReferenceError[] }
   | { readonly kind: 'incompatible-text'; readonly layout: Layout; readonly language: TextLanguage }
   /** `buildGeometry`が投げた例外を値へ変換したもの（例: 自作形状の行数と指割り当てが噛み合わない）。 */
-  | { readonly kind: 'geometry'; readonly message: string };
+  | { readonly kind: 'geometry'; readonly message: string }
+  /**
+   * Setupの実体そのものが手持ち（`SetupLibrary.setups`）から消えている（#544 Phase 3
+   * 「Setup削除時の表示」）。`reference`（Setupは残っているが参照先の配列・形状が
+   * 無い）とは別のケース: こちらは`resolveEngineInput`を呼ぶための`Setup`自体が
+   * 手元に無いので、呼び出し側（`hosts/standalone`の集合対象ページ）がこの値を
+   * 直接組み立てて返す。`resolveEngineInput`自身はこの値を作らない（`Setup`が
+   * 引数として渡ってくる前提の関数のため）。
+   */
+  | { readonly kind: 'setup-missing'; readonly setupId: string };
 
 export type ResolvedInputResult =
   | { readonly ok: true; readonly input: ResolvedInput }
