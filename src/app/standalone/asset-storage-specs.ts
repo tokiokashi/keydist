@@ -8,6 +8,9 @@ import { SETUP_LIBRARY_CODEC } from '#engine/setup-codec.ts';
 import { SETUP_LIBRARY_STORAGE_KEY } from '#platform/assets/setup-library-storage.ts';
 import { USER_FINGER_ASSIGNMENTS_STORAGE_KEY } from '#platform/assets/user-finger-assignments-storage.ts';
 import { STANDALONE_TEXT_STORAGE_KEY } from '#platform/assets/standalone-text-storage.ts';
+import { STANDALONE_ANALYZER_OPTIONS_STORAGE_KEY } from '#platform/assets/standalone-analyzer-options-storage.ts';
+import { initialStandaloneAnalyzerOptions } from '#engine/standalone-analyzer-options.ts';
+import { STANDALONE_ANALYZER_OPTIONS_CODEC } from '#engine/standalone-analyzer-options-codec.ts';
 
 /**
  * `KeydistAssets`（`engine/commands.ts`）の各キーを、永続化に要る3点
@@ -63,6 +66,11 @@ export const ASSET_STORAGE_SPECS: { readonly [K in keyof KeydistAssets]: AssetSt
     storageKey: STANDALONE_TEXT_STORAGE_KEY,
     codec: STANDALONE_TEXT_CODEC,
     initial: initialStandaloneText,
+  },
+  standaloneAnalyzerOptions: {
+    storageKey: STANDALONE_ANALYZER_OPTIONS_STORAGE_KEY,
+    codec: STANDALONE_ANALYZER_OPTIONS_CODEC,
+    initial: initialStandaloneAnalyzerOptions,
   },
 };
 

@@ -17,6 +17,7 @@ import {
   resetCascadeItemCommand,
   resetCascadeLevelCommand,
   setCascadeOverrideCommand,
+  setStandaloneAnalyzerOptionsCommand,
   setStandaloneTextCommand,
   setStandaloneTextLanguageOverrideCommand,
   type KeydistAssets,
@@ -30,7 +31,12 @@ const generateFingerAssignmentId = () => `finger-${++nextFingerAssignmentId}`;
 
 function emptyAssets(): KeydistAssets {
   const setupLibrary: SetupLibrary<SettingsValueMap> = { setups: [], overrides: emptyCascadeOverrides() };
-  return { setupLibrary, fingerAssignments: [], standaloneText: initialStandaloneText() };
+  return {
+    setupLibrary,
+    fingerAssignments: [],
+    standaloneText: initialStandaloneText(),
+    standaloneAnalyzerOptions: {},
+  };
 }
 
 test('setCascadeOverrideCommand: globalレベルへ書き込み、undo/redoで往復できる', () => {
@@ -358,4 +364,55 @@ test('setStandaloneTextLanguageOverrideCommand: 上書き設定後、テキス�
     setStandaloneTextCommand('新しいテキスト'),
   );
   assert.equal(retyped.assets.standaloneText.language.override, undefined);
+});
+
+test('setStandaloneAnalyzerOptionsCommand: 1 Analyzerぶんの設定を書き込み、undo/redoで往復できる', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, setStandaloneAnalyzerOptionsCommand('bigram-flow', { source: 'actual' }));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.deepEqual(step.assets.standaloneAnalyzerOptions, { 'bigram-flow': { source: 'actual' } });
+  assert.equal(step.history.undoStack.length, 1);
+
+  const back = undo(step.assets, step.history);
+  assert.deepEqual(back.assets.standaloneAnalyzerOptions, {});
+
+  const redone = redo(back.assets, back.history);
+  assert.deepEqual(redone.assets.standaloneAnalyzerOptions, step.assets.standaloneAnalyzerOptions);
+});
+
+test('setStandaloneAnalyzerOptionsCommand: 構造的に同じ値の書き込みはno-op（Undo履歴を積まない）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, setStandaloneAnalyzerOptionsCommand('bigram-flow', { source: 'actual' }));
+  const again = applyCommand(
+    step.assets,
+    step.history,
+    setStandaloneAnalyzerOptionsCommand('bigram-flow', { source: 'actual' }),
+  );
+  assert.equal(again.outcome.kind, 'no-op');
+  assert.equal(again.history.undoStack.length, 1);
+  assert.equal(again.assets, step.assets);
+});
+
+test('setStandaloneAnalyzerOptionsCommand: 別のAnalyzer idの設定は道連れにしない', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const withHeatmap = applyCommand(
+    assets,
+    history,
+    setStandaloneAnalyzerOptionsCommand('heatmap', { colorScale: 'linear' }),
+  );
+  const withBoth = applyCommand(
+    withHeatmap.assets,
+    withHeatmap.history,
+    setStandaloneAnalyzerOptionsCommand('bigram-flow', { source: 'actual' }),
+  );
+  assert.deepEqual(withBoth.assets.standaloneAnalyzerOptions, {
+    heatmap: { colorScale: 'linear' },
+    'bigram-flow': { source: 'actual' },
+  });
 });

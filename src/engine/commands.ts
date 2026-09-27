@@ -22,6 +22,10 @@ import {
 } from '#input/text/standalone-text.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import {
+  withStandaloneAnalyzerOptions,
+  type StandaloneAnalyzerOptionsState,
+} from './standalone-analyzer-options.ts';
+import {
   resetSettingsItem,
   resetSettingsLevel,
   setSettingsOverride,
@@ -73,6 +77,14 @@ export interface KeydistAssets {
    * 3つ目の資産キーとして足す。
    */
   readonly standaloneText: StandaloneTextState;
+  /**
+   * 単体ページの「Analyzerごとの最後に使った解析設定」（#544指示書「解析設定の保存」）。
+   * `standaloneText`と同じ理由（`setupLibrary`とも`fingerAssignments`とも対にならない、
+   * 独立に読み書きできる値）で4つ目の資産キーとして足す。値の型は`engine`からは
+   * `unknown`のまま扱う（`standalone-analyzer-options.ts`冒頭コメント参照。engineは
+   * 個別Analyzerの`Options`型へ依存できないため）。
+   */
+  readonly standaloneAnalyzerOptions: StandaloneAnalyzerOptionsState;
 }
 
 type SetupLibraryComputation =
@@ -273,4 +285,25 @@ export function setStandaloneTextLanguageOverrideCommand(
     '言語判定を変更する',
     (current) => withStandaloneLanguageOverride(current, override),
   );
+}
+
+/**
+ * 1 Analyzerぶんの解析設定を書き換える（#544指示書「解析設定は資産として個人で保持する」）。
+ * `options`は呼び出し側（`hosts/standalone`）が対象Analyzerの`Options`型で組み立てた値を
+ * そのまま渡す（`engine`は個別Analyzerの型を知らないので`unknown`として受け取る。
+ * `standalone-analyzer-options.ts`冒頭コメント参照）。
+ */
+export function setStandaloneAnalyzerOptionsCommand(
+  analyzerId: string,
+  options: unknown,
+): Command<KeydistAssets> {
+  return (current) => {
+    const next = withStandaloneAnalyzerOptions(current.standaloneAnalyzerOptions, analyzerId, options);
+    if (next === current.standaloneAnalyzerOptions) return { kind: 'no-op' };
+    return {
+      kind: 'applied',
+      label: `解析設定を変更する: ${analyzerId}`,
+      changes: { standaloneAnalyzerOptions: next },
+    };
+  };
 }

@@ -1,8 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
+import type { KeydistAssets } from '#engine/commands.ts';
 import { ASSET_KEYS, ASSET_STORAGE_SPECS } from './asset-storage-specs.ts';
 import { buildAssetSyncs, loadAssets, saveChangedAssets, stopAssetSyncs } from './asset-syncs.ts';
+
+/**
+ * `ASSET_STORAGE_SPECS`の`initial()`をそのまま束ねるだけの、このテスト専用の最小`KeydistAssets`。
+ * 手で全キーを書き並べないのは、`KeydistAssets`にキーが増えるたびにこのテストも
+ * 書き換える必要が出るのを避けるため（`use-keydist-assets.ts`の`initialAssets`と同じ理由）。
+ */
+function baseAssets(): KeydistAssets {
+  const entries = ASSET_KEYS.map((key) => [key, ASSET_STORAGE_SPECS[key].initial()] as const);
+  return Object.fromEntries(entries) as unknown as KeydistAssets;
+}
 
 /** `asset-tab-sync.test.ts`と同じ形の偽物（`window.localStorage`相当）。 */
 function createFakeStorage(): KeyValueStorage {
@@ -39,15 +50,7 @@ test('saveChangedAssets→loadAssets: 書いたキーだけ往復する', () => 
   const storage = createFakeStorage();
   const syncsA = buildAssetSyncs({ onExternalChange: () => {}, storage });
   const nextText = { ...ASSET_STORAGE_SPECS.standaloneText.initial(), text: 'hello' };
-  saveChangedAssets(
-    syncsA,
-    {
-      setupLibrary: ASSET_STORAGE_SPECS.setupLibrary.initial(),
-      fingerAssignments: ASSET_STORAGE_SPECS.fingerAssignments.initial(),
-      standaloneText: nextText,
-    },
-    ['standaloneText'],
-  );
+  saveChangedAssets(syncsA, { ...baseAssets(), standaloneText: nextText }, ['standaloneText']);
 
   // 別インスタンス（＝別タブ相当）で読む。同じstorageを共有すればload側は独立して読める。
   const syncsB = buildAssetSyncs({ onExternalChange: () => {}, storage });
@@ -76,15 +79,7 @@ test('外部変更: 他タブの書き込みが同じキーのonExternalChange�
   });
 
   const nextText = { ...ASSET_STORAGE_SPECS.standaloneText.initial(), text: 'from tab B' };
-  saveChangedAssets(
-    syncsB,
-    {
-      setupLibrary: ASSET_STORAGE_SPECS.setupLibrary.initial(),
-      fingerAssignments: ASSET_STORAGE_SPECS.fingerAssignments.initial(),
-      standaloneText: nextText,
-    },
-    ['standaloneText'],
-  );
+  saveChangedAssets(syncsB, { ...baseAssets(), standaloneText: nextText }, ['standaloneText']);
 
   assert.deepEqual(seen, [['standaloneText', nextText]]);
   stopAssetSyncs(syncsA);

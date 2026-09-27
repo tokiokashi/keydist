@@ -7,9 +7,10 @@ import type { SetupIdGenerator } from '#input/setup/index.ts';
 import { combinePaneStates, conditionHeaderInfoFromResolvedInput, traceConditionSummary, PaneFrame } from '#hosts/shared/index.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
-import { DEFAULT_BIGRAM_FLOW_OPTIONS, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
+import type { BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { selectInitialSetupId, DEFAULT_STANDALONE_SETUP_SPEC } from './setup-selection.ts';
+import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { useAnalyzerPane } from './use-analyzer-pane.ts';
 import './standalone.css';
 
@@ -31,6 +32,12 @@ export interface BigramFlowStandalonePageProps {
   readonly cache: EngineCache;
   readonly catalog: StandalonePaneCatalog;
   readonly generateSetupId: SetupIdGenerator;
+  /**
+   * 解析設定の変更を資産へ反映する（間引き済み。`app/standalone/use-debounced-commit.ts`
+   * 参照）。`dispatch`を直接使わないのは、`hosts`が`platform`をimportできず
+   * （依存規則）debounce自体をここへ持てないため。
+   */
+  readonly onBigramFlowOptionsCommit: (options: BigramFlowOptions) => void;
 }
 
 const TEXT_COMMIT_DEBOUNCE_MS = 400;
@@ -41,6 +48,7 @@ export function BigramFlowStandalonePage({
   cache,
   catalog,
   generateSetupId,
+  onBigramFlowOptionsCommit,
 }: BigramFlowStandalonePageProps) {
   const setups = assets.setupLibrary.setups;
   const [selectedSetupId, setSelectedSetupId] = useState<string | undefined>(
@@ -84,7 +92,23 @@ export function BigramFlowStandalonePage({
     return () => clearTimeout(timer);
   }, [textDraft, dispatch, assets.standaloneText.text]);
 
-  const [options, setOptions] = useState<BigramFlowOptions>(DEFAULT_BIGRAM_FLOW_OPTIONS);
+  // 解析設定は資産（assets.standaloneAnalyzerOptions）が正で、ページはローカルには持たない
+  // （#544指示書「解析設定は資産として個人で保持する」）。`optionsDraft`はtextDraftと同じ形の
+  // UI用の一時状態: 見た目は即座に反映しつつ（controlled）、資産への書き込みは
+  // `onBigramFlowOptionsCommit`（呼び出し元がdebounceする）経由にする。
+  const analyzerId = bigramFlowAnalyzer.definition.id;
+  const storedOptionsRaw = assets.standaloneAnalyzerOptions[analyzerId];
+  const decodedOptions = useMemo(
+    () => decodeStoredAnalyzerOptions(bigramFlowAnalyzer.definition, storedOptionsRaw),
+    [storedOptionsRaw],
+  );
+  const [optionsDraft, setOptionsDraft] = useState<BigramFlowOptions>(decodedOptions);
+  useEffect(() => {
+    setOptionsDraft(decodedOptions);
+    // 資産側が変わった（初回読み込み・他タブからの反映・自分のcommitの反響）時だけ
+    // draftを揃え直す。`decodedOptions`は`storedOptionsRaw`が同じ参照なら同じ内容の
+    // オブジェクトを毎回作るだけなので、無限ループにはならない（依存はdecodedOptions自身）。
+  }, [decodedOptions]);
 
   // サンプルは選べれば十分で、言語を選ぶUIは作らない（#544指示書）。テキストが今どの
   // サンプルと一致するかを`<select>`の値に反映する（自由入力中はどれとも一致せず空になる）。
@@ -104,7 +128,7 @@ export function BigramFlowStandalonePage({
   const pane = useAnalyzerPane(
     cache,
     bigramFlowAnalyzer.definition,
-    options,
+    optionsDraft,
     resolution ?? NO_SETUP_YET,
   );
 
@@ -207,8 +231,11 @@ export function BigramFlowStandalonePage({
                 geometry={resolution.input.geometry}
                 trace={pane.trace.value.trace}
                 extracted={extraction.value.extracted}
-                options={options}
-                onOptionsChange={setOptions}
+                options={optionsDraft}
+                onOptionsChange={(next) => {
+                  setOptionsDraft(next);
+                  onBigramFlowOptionsCommit(next);
+                }}
               />
             );
           })()}
