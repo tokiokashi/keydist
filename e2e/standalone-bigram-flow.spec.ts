@@ -50,3 +50,44 @@ test('テキストを変えると条件・可視化が追従する', async ({ pa
   const pane = page.locator('.pane-frame');
   await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
 });
+
+test('サンプルを選ぶとテキストが置き換わる（言語を選ぶUIは無い）', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  const textarea = page.getByLabel('テキスト', { exact: true });
+  const before = await textarea.inputValue();
+
+  const sample = page.getByLabel('サンプル', { exact: true });
+  await sample.selectOption({ label: '英文（既定）' });
+
+  await expect(textarea).not.toHaveValue(before);
+  await expect(sample).toHaveValue('en:default');
+
+  // ペインが新しいテキストで再びreadyになる（見えている変化が実際にengineへ届いたことの確認）。
+  const pane = page.locator('.pane-frame');
+  await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+});
+
+test('解析設定はリロードしても残る（資産として保持する）', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  const withinHand = flow.getByRole('button', { name: 'Within-hand' });
+  await expect(withinHand).toHaveAttribute('aria-pressed', 'false');
+  await withinHand.click();
+  await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
+
+  // 資産への反映はdebounceされる（`use-debounced-commit.ts`、既定400ms）ので、
+  // storageに実際に書き込まれるまで待ってからリロードする。
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options')))
+    .toContain('within-hand');
+
+  await page.reload();
+  const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
+  await expect(flowAfterReload.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
+});
