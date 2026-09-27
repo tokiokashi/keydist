@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   computeOutgoingMaxWeight,
+  nonStationaryVectors,
   orderKeyboardFlowVectors,
   resolveKeyboardFlowMaxWeight,
   scaleKeyboardFlowWeight,
@@ -22,6 +23,13 @@ test('keyboard flow weight scale keeps linear as the default shape and expands l
   assert.equal(scaleKeyboardFlowWeight(16, 16, 'linear'), 1);
   assert.equal(scaleKeyboardFlowWeight(16, 16, 'sqrt'), 1);
   assert.equal(scaleKeyboardFlowWeight(16, 16, 'log'), 1);
+});
+
+test('nonStationaryVectors drops same-key repeat edges (distance below threshold) but keeps moving ones', () => {
+  assert.deepEqual(
+    nonStationaryVectors(vectors).map((vector) => vector.id),
+    ['same-heavy', 'cross-heavy', 'same-light', 'cross-light'],
+  );
 });
 
 test('weight order draws thick edges first so thin edges land on top', () => {
