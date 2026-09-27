@@ -1,38 +1,44 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import * as v from 'valibot';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
-import type { SingleAnalyzerDefinition } from '#analyzers/contract.ts';
+import { defineSingleAnalyzer, type SingleAnalyzerDefinition } from '#analyzers/contract.ts';
+import { defineOption, defineOptions } from '#analyzers/options.ts';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from './settings-items.ts';
 import { resolveEngineInput, type ResolvedInput } from './resolved-input.ts';
 import { createEngineCache } from './cache.ts';
 
-interface FixtureOptions {
-  readonly scale: number;
-  readonly highlightColor: string;
-}
+// `SingleAnalyzerDefinition`はブランド付きの型で、`defineSingleAnalyzer`経由でしか作れない
+// （#544レビュー対応A）。ここでも実物のAnalyzerと同じ作法（`defineOptions`宣言 +
+// `defineSingleAnalyzer`）でフィクスチャを組み立てる。
+const fixtureOptions = defineOptions({
+  scale: defineOption<number>({ schema: v.number(), default: 1, affects: 'extract' }),
+  // highlightColorは見た目だけなので抽出キーに含めない。
+  highlightColor: defineOption<string>({ schema: v.string(), default: 'red', affects: 'view' }),
+});
+
+type FixtureOptions = typeof fixtureOptions.defaultOptions;
 
 let fixtureCalls = 0;
 
 /** `getExtraction`のテスト専用フィクスチャ。呼び出し回数を数えて共有・再計算を検証する。 */
 function createFixtureDefinition(): SingleAnalyzerDefinition<FixtureOptions, number> {
-  return {
+  return defineSingleAnalyzer({
     id: 'fixture-analyzer',
-    cardinality: 'single',
-    defaultOptions: { scale: 1, highlightColor: 'red' },
-    decodeOptions(raw) {
-      return raw as FixtureOptions;
-    },
-    // highlightColorは見た目だけなので抽出キーに含めない。
-    extractKeyOf(options) {
-      return { scale: options.scale };
-    },
+    options: fixtureOptions,
     extract(context) {
       fixtureCalls += 1;
       return context.metrics.totalUnits * context.options.scale;
     },
-  };
+    // `optionsDiscipline`は`defineSingleAnalyzer`が必須で要求する（#544レビュー対応B）。
+    optionsDiscipline: {
+      sample: fixtureOptions.defaultOptions,
+      alternates: { scale: 2, highlightColor: 'blue' },
+      extractForTest: (options) => 100 * options.scale,
+    },
+  });
 }
 
 const CATALOG = {

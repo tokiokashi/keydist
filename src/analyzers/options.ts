@@ -284,6 +284,19 @@ export function stringSetUrlCodec<T extends string>(
 // ---------------------------------------------------------------------------
 
 /**
+ * `findOptionsKeyDisciplineViolations`/`findViewOptionsExtractionViolations`が実際に使う
+ * 部分だけを抜き出した形（`OptionsDefinition<R>`はこれを満たす）。横断テスト
+ * （`test/analyzer-options-discipline.test.ts`）はAnalyzerの宣言（`R`の具体型）を
+ * importできない場所から動的に読み込んだ`AnalyzerDefinition`を検査するため、
+ * `items`をジェネリックを消した`OptionsRegistry`のまま持ち回れるよう、この最小形を
+ * 別の型として公開する（`contract.ts`の`optionsItems`はこの形で持つ）。
+ */
+export interface ExtractKeyOfSource<R extends OptionsRegistry> {
+  readonly items: R;
+  extractKeyOf(options: OptionsValueMap<R>): unknown;
+}
+
+/**
  * `affects`の宣言が`extractKeyOf`（抽出キー）の実際の挙動と食い違っている項目のid。
  * 空配列なら「`extract`の項目を変えるとキーが変わり、`view`の項目を変えても変わらない」が
  * 全項目で成り立っている。
@@ -293,7 +306,7 @@ export function stringSetUrlCodec<T extends string>(
  * 機械的に「違う値」を作る汎用の方法は無いため、値そのものはAnalyzerごとのfixtureに委ねる）。
  */
 export function findOptionsKeyDisciplineViolations<R extends OptionsRegistry>(
-  optionsDef: OptionsDefinition<R>,
+  optionsDef: ExtractKeyOfSource<R>,
   sample: OptionsValueMap<R>,
   alternates: OptionsValueMap<R>,
 ): readonly string[] {
@@ -328,7 +341,7 @@ function serializeForComparison(value: unknown): string {
  * （呼び出し側が`context`の他のフィールド（trace・analysis・metrics等）を固定する）。
  */
 export function findViewOptionsExtractionViolations<R extends OptionsRegistry, Extracted>(
-  optionsDef: OptionsDefinition<R>,
+  optionsDef: Pick<ExtractKeyOfSource<R>, 'items'>,
   sample: OptionsValueMap<R>,
   alternates: OptionsValueMap<R>,
   extract: (options: OptionsValueMap<R>) => Extracted,
@@ -343,4 +356,48 @@ export function findViewOptionsExtractionViolations<R extends OptionsRegistry, E
     if (variantSerialized !== baseSerialized) violations.push(key);
   }
   return violations;
+}
+
+/**
+ * 入れ忘れ防止テストに要る、Analyzer 1つぶんのfixture（#544レビュー対応B）。
+ *
+ * `defineSingleAnalyzer`/`defineSetAnalyzer`（`contract.ts`）がこれを**必須**の設定として
+ * 要求するので、Analyzerを新しく作る側は「宣言（items）は書いたが入れ忘れ防止テストの
+ * 材料は用意し忘れた」という状態を型検査の時点で作れない。`sample`/`alternates`は
+ * `OptionsValueMap`の全キーが必須（`findOptionsKeyDisciplineViolations`と同じ理由）。
+ */
+export interface OptionsDisciplineFixture<Options, Extracted> {
+  /** 判別の基準点になるOptions値（通常は既定値）。 */
+  readonly sample: Options;
+  /** `sample`の各項目と異なる妥当な値の組（全キー必須）。 */
+  readonly alternates: Options;
+  /**
+   * optionsだけを受け取り抽出結果を返す関数。Trace等の他の文脈はAnalyzer側で
+   * 固定した上で部分適用して渡す（`extract`の引数の形はcardinalityで違うため、
+   * ここでは「optionsを渡すと抽出結果が返る」という形まで揃えてもらう）。
+   */
+  readonly extractForTest: (options: Options) => Extracted;
+}
+
+/**
+ * `OptionsDisciplineFixture`を使って`findOptionsKeyDisciplineViolations`と
+ * `findViewOptionsExtractionViolations`の両方を回す（横断テストが全Analyzerに対して
+ * 呼ぶ入口を1つにする）。
+ */
+export function checkOptionsDiscipline<R extends OptionsRegistry, Extracted>(
+  optionsDef: ExtractKeyOfSource<R>,
+  fixture: OptionsDisciplineFixture<OptionsValueMap<R>, Extracted>,
+): {
+  readonly keyViolations: readonly string[];
+  readonly viewExtractionViolations: readonly string[];
+} {
+  return {
+    keyViolations: findOptionsKeyDisciplineViolations(optionsDef, fixture.sample, fixture.alternates),
+    viewExtractionViolations: findViewOptionsExtractionViolations(
+      optionsDef,
+      fixture.sample,
+      fixture.alternates,
+      fixture.extractForTest,
+    ),
+  };
 }

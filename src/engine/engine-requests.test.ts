@@ -4,7 +4,8 @@ import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
 import { sampleText } from '#input/text/samples.ts';
-import type { SingleAnalyzerDefinition } from '#analyzers/contract.ts';
+import { defineSingleAnalyzer, type SingleAnalyzerDefinition } from '#analyzers/contract.ts';
+import { defineOptions } from '#analyzers/options.ts';
 import { resolveEngineInput } from './resolved-input.ts';
 import { createEngineCache } from './cache.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from './settings-items.ts';
@@ -89,31 +90,46 @@ test('2つの依頼窓口が同じ中身のSetupを依頼すると、EngineCache
   channelB.unsubscribe();
 });
 
-function createFailingDefinition(): SingleAnalyzerDefinition<undefined, never> {
+// `SingleAnalyzerDefinition`はブランド付きの型で、`defineSingleAnalyzer`経由でしか作れない
+// （#544レビュー対応A）。この2つのフィクスチャはoptionsの中身を使わないので、
+// 項目0件の宣言（`defineOptions({})`。`defaultOptions`は`{}`）で足りる。
+const emptyOptions = defineOptions({});
+
+// 項目0件の宣言なので`optionsDiscipline`の中身は自明（違反しようが無い）。実際の`extract`を
+// 再現する必要も無く、ダミー値を返すだけでよい。
+function emptyOptionsDiscipline<Extracted>(dummy: Extracted): {
+  readonly sample: typeof emptyOptions.defaultOptions;
+  readonly alternates: typeof emptyOptions.defaultOptions;
+  readonly extractForTest: (options: typeof emptyOptions.defaultOptions) => Extracted;
+} {
   return {
+    sample: emptyOptions.defaultOptions,
+    alternates: emptyOptions.defaultOptions,
+    extractForTest: () => dummy,
+  };
+}
+
+function createFailingDefinition(): SingleAnalyzerDefinition<typeof emptyOptions.defaultOptions, never> {
+  return defineSingleAnalyzer({
     id: 'failing-analyzer',
-    cardinality: 'single',
-    defaultOptions: undefined,
-    decodeOptions: () => undefined,
-    extractKeyOf: () => undefined,
+    options: emptyOptions,
     extract() {
       throw new Error('抽出が失敗した');
     },
-  };
+    optionsDiscipline: emptyOptionsDiscipline<never>(undefined as never),
+  });
 }
 
 test('createExtractRequest: 実物のEngineCacheを通してreadyまで届く', async () => {
   const cache = createEngineCache();
-  const definition: SingleAnalyzerDefinition<undefined, number> = {
+  const definition: SingleAnalyzerDefinition<typeof emptyOptions.defaultOptions, number> = defineSingleAnalyzer({
     id: 'total-units',
-    cardinality: 'single',
-    defaultOptions: undefined,
-    decodeOptions: () => undefined,
-    extractKeyOf: () => undefined,
+    options: emptyOptions,
     extract: (context) => context.metrics.totalUnits,
-  };
+    optionsDiscipline: emptyOptionsDiscipline(0),
+  });
   const states: ExtractionRequestState<number>[] = [];
-  const channel = createExtractRequest(cache, definition, undefined, (s) => states.push(s));
+  const channel = createExtractRequest(cache, definition, emptyOptions.defaultOptions, (s) => states.push(s));
 
   channel.request(resolveFor('a', sampleText('en', 'default')));
   await Promise.resolve();
@@ -130,7 +146,7 @@ test('createExtractRequest: 実物のEngineCacheを通してreadyまで届く', 
 test('createExtractRequest: extractが例外を投げたらfailed（kind: exception）になる', async () => {
   const cache = createEngineCache();
   const states: ExtractionRequestState<never>[] = [];
-  const channel = createExtractRequest(cache, createFailingDefinition(), undefined, (s) => states.push(s));
+  const channel = createExtractRequest(cache, createFailingDefinition(), emptyOptions.defaultOptions, (s) => states.push(s));
 
   channel.request(resolveFor('a', sampleText('en', 'default')));
   await Promise.resolve();

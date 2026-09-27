@@ -27,6 +27,7 @@ import {
   type BigramFlowExtracted,
 } from './extract.ts';
 import {
+  ALTERNATE_BIGRAM_FLOW_OPTIONS,
   DEFAULT_BIGRAM_FLOW_OPTIONS,
   bigramFlowOptions,
   decodeBigramFlowOptions,
@@ -317,29 +318,24 @@ test('engineのgetExtraction経由でBigram Flowを回すと、同じ抽出キ�
   assert.equal(counter.calls, 1);
 
   // 見た目だけの設定変更ではextractが増えない。
-  cache.getExtraction(input, definition, { ...DEFAULT_BIGRAM_FLOW_OPTIONS, lineScale: 'log' });
+  // `optionsDiscipline.extractForTest`が`Options`を反変位置でもう一度使うようになった影響で、
+  // ここから`Options`を推論に任せると型が広がってしまう（`lineScale`等がリテラル型では
+  // なく`string`に推論される）ため、明示的に型引数を渡して`definition`と揃える。
+  cache.getExtraction<BigramFlowOptions, BigramFlowExtracted>(
+    input, definition, { ...DEFAULT_BIGRAM_FLOW_OPTIONS, lineScale: 'log' },
+  );
   assert.equal(counter.calls, 1, '見た目だけの設定変更でextractが走った');
 
   // 抽出に効く設定変更では増える。
-  cache.getExtraction(input, definition, { ...DEFAULT_BIGRAM_FLOW_OPTIONS, source: 'within-hand' });
+  cache.getExtraction<BigramFlowOptions, BigramFlowExtracted>(
+    input, definition, { ...DEFAULT_BIGRAM_FLOW_OPTIONS, source: 'within-hand' },
+  );
   assert.equal(counter.calls, 2, '抽出に効く設定変更でextractが走らなかった');
 });
 
 // ---------------------------------------------------------------------------
 // 入れ忘れ防止: Bigram Flowの8項目全部を機械的に回す（#544指示書「入れ忘れ防止のテスト」）
 // ---------------------------------------------------------------------------
-
-/** 既定値と全項目が異なる組（`findOptionsKeyDisciplineViolations`等の`alternates`引数）。 */
-const ALTERNATE_BIGRAM_FLOW_OPTIONS: BigramFlowOptions = {
-  source: 'within-hand',
-  selectedFingers: ['index'],
-  lineScale: 'sqrt',
-  layerOrder: 'same-hand-top',
-  hoverScale: 'global',
-  movementScaleMode: 'fixed',
-  polarBandwidth: 20,
-  polarGain: 2,
-};
 
 test('入れ忘れ防止: 抽出キーはaffects:extractの項目だけで変わる（8項目全部を宣言から機械的に回す）', () => {
   const violations = findOptionsKeyDisciplineViolations(

@@ -1,5 +1,6 @@
 import { defineSingleAnalyzer, type SingleAnalyzerDefinition, type SingleAnalyzerExtractContext } from '#analyzers/contract.ts';
-import type { Trace } from '#trace/generate.ts';
+import type { Finger, Key } from '#input/shapes/geometry.ts';
+import type { Press, Stroke, StrokeParticipation, Trace } from '#trace/generate.ts';
 import {
   aggregateBigramVectors,
   buildBigramVectors,
@@ -16,6 +17,8 @@ import {
   type RelativeVector,
 } from './bigram-vectors.ts';
 import {
+  ALTERNATE_BIGRAM_FLOW_OPTIONS,
+  DEFAULT_BIGRAM_FLOW_OPTIONS,
   bigramFlowOptions,
   nonStationaryVectors,
   type BigramFlowOptions,
@@ -143,16 +146,81 @@ export function computeBigramFlowExtraction(
   };
 }
 
+// ---------------------------------------------------------------------------
+// 入れ忘れ防止テストの材料（#544レビュー対応B）
+// ---------------------------------------------------------------------------
+
+/**
+ * `optionsDiscipline.extractForTest`専用の、小さく自己完結したTrace fixture。
+ * `defineSingleAnalyzer`が`optionsDiscipline`を必須で要求するため、production側の
+ * この定義がここでTrace fixtureを1つ持つ（`extract.test.ts`の詳細なfixtureTraceとは
+ * 独立: あちらは数値の正しさそのものを検証する大掛かりなfixture、こちらは
+ * 「設定を変えると本当にキー/結果が動くか」を確認できる程度の最小限で足りる）。
+ * 実Stroke bigram・手内bigram・cross-handのどれも含むようにして、`source`
+ * `selectedFingers`等の抽出に効く項目を変えた時に実際に結果が動く形にする。
+ */
+function fixtureKey(id: string, finger: Finger, x: number, y = 2): Key {
+  return { id, finger, x, y, row: 2, col: 0 };
+}
+
+function fixturePress(finger: Finger, id: string, x: number, y = 2): Press {
+  return { finger, keys: [fixtureKey(id, finger, x, y)], target: { x, y }, gap: 1, distance: 0, sfb: false };
+}
+
+function fixtureParticipation(p: Press): StrokeParticipation {
+  return { hand: p.finger.startsWith('L') ? 'left' : 'right', finger: p.finger, keys: p.keys, roles: ['output'] };
+}
+
+function fixtureStroke(index: number, presses: Press[]): Stroke {
+  return {
+    index,
+    char: String(index),
+    inputChar: String(index),
+    inputIndex: index,
+    aggregationGroupId: 'single',
+    classifications: [],
+    triggerKeys: [],
+    pairedTriggerKeys: [],
+    participations: presses.map(fixtureParticipation),
+    presses,
+    distance: 0,
+    positions: {} as Stroke['positions'],
+  };
+}
+
+const OPTIONS_DISCIPLINE_FIXTURE_TRACE: Trace = {
+  strokes: [
+    fixtureStroke(0, [fixturePress('LI', 'f', 4)]),
+    fixtureStroke(1, [fixturePress('LM', 'd', 3)]),
+    fixtureStroke(2, [fixturePress('RI', 'j', 7)]), // cross-hand
+    fixtureStroke(3, [fixturePress('LP', 'a', 1)]),
+    fixtureStroke(4, [fixturePress('LM', 'd', 3)]),
+  ],
+  errors: [],
+  skipped: 0,
+  inputChars: 5,
+  comboHits: [],
+  comboDefinitions: 0,
+  layerDefinitions: [],
+};
+
 /**
  * engine（`engine/cache.ts`の`getExtraction`）が呼ぶ、Analyzer契約の実体。
  * `defaultOptions` / `decodeOptions` / `extractKeyOf`は宣言（`options.ts`の
  * `bigramFlowOptions`）から導く（`defineSingleAnalyzer`。#544指示書「Analyzerが
- * 手書きで上書きできる口は作らない」）。
+ * 手書きで上書きできる口は作らない」）。`optionsDiscipline`は入れ忘れ防止テストの
+ * 材料（#544レビュー対応B）で、`defineSingleAnalyzer`が必須で要求するので
+ * 省略できない。
  */
 export const bigramFlowDefinition: SingleAnalyzerDefinition<BigramFlowOptions, BigramFlowExtracted> = defineSingleAnalyzer({
   id: 'bigram-flow',
   options: bigramFlowOptions,
   extract(context: SingleAnalyzerExtractContext<BigramFlowOptions>): BigramFlowExtracted {
     return computeBigramFlowExtraction(context.trace, context.options);
+  },
+  optionsDiscipline: {
+    sample: DEFAULT_BIGRAM_FLOW_OPTIONS,
+    alternates: ALTERNATE_BIGRAM_FLOW_OPTIONS,
+    extractForTest: (options) => computeBigramFlowExtraction(OPTIONS_DISCIPLINE_FIXTURE_TRACE, options),
   },
 });

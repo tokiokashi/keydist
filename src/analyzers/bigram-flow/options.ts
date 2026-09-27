@@ -142,6 +142,23 @@ export type BigramFlowOptions = OptionsValueMap<typeof bigramFlowOptions.items>;
 export const DEFAULT_BIGRAM_FLOW_OPTIONS: BigramFlowOptions = bigramFlowOptions.defaultOptions;
 
 /**
+ * 既定値と全項目が異なる組（#544レビュー対応B「入れ忘れ防止テスト」の`alternates`）。
+ * `defineSingleAnalyzer`の`optionsDiscipline`（`extract.ts`）と、8項目全部を機械的に回す
+ * `extract.test.ts`の両方がこれを使う。値そのものはこのファイルにしか無い知識
+ * （「妥当な値」の判断）なので、決め方を二重に持たないようここに1箇所だけ置く。
+ */
+export const ALTERNATE_BIGRAM_FLOW_OPTIONS: BigramFlowOptions = {
+  source: 'within-hand',
+  selectedFingers: ['index'],
+  lineScale: 'sqrt',
+  layerOrder: 'same-hand-top',
+  hoverScale: 'global',
+  movementScaleMode: 'fixed',
+  polarBandwidth: 20,
+  polarGain: 2,
+};
+
+/**
  * 旧名。`src/legacy/`・`src/features/analyzer-next/`（どちらも切り替え時に消える）が
  * 参照しているので、動き続けるのに必要な別名だけ残す。新コードでは使わない。
  */
