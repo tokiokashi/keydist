@@ -1,5 +1,6 @@
 export {
   conditionHeaderInfo,
+  conditionHeaderInfoFromResolvedInput,
   formatOrigin,
   traceConditionSummary,
   type ConditionHeaderInfo,

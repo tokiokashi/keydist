@@ -1,8 +1,7 @@
 import type { CascadeLevel, Diagnostic, ResolvedOrigin } from '#input/settings/index.ts';
 import type { ResolvedSettingsCascade, SettingsItemId } from '#engine/settings-items.ts';
-import type { FingerAssignment } from '#input/shapes/geometry.ts';
+import type { FingerAssignment, Geometry, PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
-import type { PhysicalShape } from '#input/shapes/geometry.ts';
 
 /**
  * ペインの条件表示（#544 §3「実効値の出どころを表示する」・指示書「少なくともTraceに
@@ -96,6 +95,16 @@ export function conditionHeaderInfo(
   fingerAssignment: FingerAssignment,
 ): ConditionHeaderInfo {
   return { layoutName: layout.name, shapeName: shape.name, fingerAssignmentName: fingerAssignment.name };
+}
+
+/**
+ * `resolveEngineInput`の結果（`ResolvedInput`）から直接作る版。`Geometry`は既に
+ * 実際に使われた指の割当（`geometry.assignment`。#544 §3の実現可能性判定・fallbackを
+ * 経た後の値）を持っているので、`hosts/standalone`のように解決済み入力しか手元に無い
+ * 場面ではこちらを使う（`resolveSetup`直後のPhysicalShapeしか無い場面は上の版を使う）。
+ */
+export function conditionHeaderInfoFromResolvedInput(layout: Layout, geometry: Geometry): ConditionHeaderInfo {
+  return { layoutName: layout.name, shapeName: geometry.name, fingerAssignmentName: geometry.assignment.name };
 }
 
 export { formatOrigin };

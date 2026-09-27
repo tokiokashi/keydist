@@ -5,7 +5,8 @@ import { DEFAULT_FINGER_ASSIGNMENT, PHYSICAL_SHAPES, type PhysicalShape } from '
 import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES, resolveSettings, setSettingsOverride } from '#engine/settings-items.ts';
 import { resolveSetupForText } from '#input/setup/index.ts';
-import { conditionHeaderInfo, formatOrigin, traceConditionSummary } from './condition-summary.ts';
+import { resolveEngineInput } from '#engine/resolved-input.ts';
+import { conditionHeaderInfo, conditionHeaderInfoFromResolvedInput, formatOrigin, traceConditionSummary } from './condition-summary.ts';
 
 const CATALOG = {
   layouts: LAYOUT_BY_ID,
@@ -69,4 +70,21 @@ test('conditionHeaderInfo: 配列・形状・指割当の名前を集める', ()
   assert.equal(info.layoutName, resolution.layout.name);
   assert.equal(info.shapeName, resolution.shape.name);
   assert.equal(info.fingerAssignmentName, DEFAULT_FINGER_ASSIGNMENT.name);
+});
+
+test('conditionHeaderInfoFromResolvedInput: ResolvedInputのgeometryから名前を集める', () => {
+  const result = resolveEngineInput({
+    setup: setupFor('qwerty'),
+    catalog: CATALOG,
+    userLayouts: NO_USER_LAYOUTS,
+    overrides: EMPTY_SETTINGS_OVERRIDES,
+    text: 'hello',
+    language: 'en',
+  });
+  assert.ok(result.ok);
+  if (!result.ok) return;
+  const info = conditionHeaderInfoFromResolvedInput(result.input.layout, result.input.geometry);
+  assert.equal(info.layoutName, result.input.layout.name);
+  assert.equal(info.shapeName, result.input.geometry.name);
+  assert.equal(info.fingerAssignmentName, result.input.geometry.assignment.name);
 });
