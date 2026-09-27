@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { EngineRequestState } from '#engine/request.ts';
+import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { describeEngineRequestError, paneStatusLabel } from './pane-status.ts';
 import { formatOrigin, type ConditionHeaderInfo, type ConditionSummaryRow } from './condition-summary.ts';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
@@ -24,6 +25,13 @@ export interface PaneFrameProps {
   readonly engineState: EngineRequestState<unknown>;
   /** Trace生成段の診断（配列定義の不備等）。値として表示する（#544 §8-5）。 */
   readonly traceErrors?: readonly string[];
+  /**
+   * 解析設定（Analyzerの`Options`）を保存から読み直した時の診断（`decodeOptions`が積む、
+   * 壊れた値・未知の値を既定値へ戻したという報告）。`traceErrors`（Trace生成段）とは
+   * 出どころが違うので混ぜず、Analyzerを問わず使える汎用のpropとして別に持つ
+   * （レビュー指摘: 診断を作って捨てていたのを、ここで画面へ出す受け皿にする）。
+   */
+  readonly settingsDiagnostics?: readonly CodecDiagnostic[];
   readonly children: ReactNode;
 }
 
@@ -34,6 +42,7 @@ export function PaneFrame({
   conditionRows,
   engineState,
   traceErrors,
+  settingsDiagnostics,
   children,
 }: PaneFrameProps) {
   const statusLabel = paneStatusLabel(engineState.status);
@@ -89,6 +98,14 @@ export function PaneFrame({
         <ul className="pane-trace-errors" role="alert" data-pane-trace-errors="true">
           {traceErrors.map((message, index) => (
             <li key={index}>{message}</li>
+          ))}
+        </ul>
+      ) : null}
+
+      {settingsDiagnostics && settingsDiagnostics.length > 0 ? (
+        <ul className="pane-settings-diagnostics" role="status" data-pane-settings-diagnostics="true">
+          {settingsDiagnostics.map((diagnostic, index) => (
+            <li key={index}>{diagnostic.message}</li>
           ))}
         </ul>
       ) : null}

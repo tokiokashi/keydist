@@ -98,17 +98,17 @@ export function BigramFlowStandalonePage({
   // `onBigramFlowOptionsCommit`（呼び出し元がdebounceする）経由にする。
   const analyzerId = bigramFlowAnalyzer.definition.id;
   const storedOptionsRaw = assets.standaloneAnalyzerOptions[analyzerId];
-  const decodedOptions = useMemo(
+  const decoded = useMemo(
     () => decodeStoredAnalyzerOptions(bigramFlowAnalyzer.definition, storedOptionsRaw),
     [storedOptionsRaw],
   );
-  const [optionsDraft, setOptionsDraft] = useState<BigramFlowOptions>(decodedOptions);
+  const [optionsDraft, setOptionsDraft] = useState<BigramFlowOptions>(decoded.options);
   useEffect(() => {
-    setOptionsDraft(decodedOptions);
+    setOptionsDraft(decoded.options);
     // 資産側が変わった（初回読み込み・他タブからの反映・自分のcommitの反響）時だけ
-    // draftを揃え直す。`decodedOptions`は`storedOptionsRaw`が同じ参照なら同じ内容の
-    // オブジェクトを毎回作るだけなので、無限ループにはならない（依存はdecodedOptions自身）。
-  }, [decodedOptions]);
+    // draftを揃え直す。`decoded`は`storedOptionsRaw`が同じ参照なら同じ内容の
+    // オブジェクトを毎回作るだけなので、無限ループにはならない（依存はdecoded自身）。
+  }, [decoded]);
 
   // サンプルは選べれば十分で、言語を選ぶUIは作らない（#544指示書）。テキストが今どの
   // サンプルと一致するかを`<select>`の値に反映する（自由入力中はどれとも一致せず空になる）。
@@ -216,6 +216,7 @@ export function BigramFlowStandalonePage({
           conditionRows={conditionRows}
           engineState={combinePaneStates(extraction, pane.trace)}
           traceErrors={traceErrors}
+          settingsDiagnostics={decoded.diagnostics}
         >
           {(() => {
             // 失敗はPaneFrame自身が値として表示する（#544 §8-5）ので、ここでは何も描かない。

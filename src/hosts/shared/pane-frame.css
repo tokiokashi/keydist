@@ -87,6 +87,13 @@
   font-size: 0.85rem;
 }
 
+.pane-settings-diagnostics {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  color: #b8860b;
+}
+
 .pane-body[data-pane-stale="true"] {
   opacity: 0.6;
 }
