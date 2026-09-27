@@ -40,3 +40,27 @@ export function isSampleText(text: string): boolean {
   return Object.values(SAMPLE_TEXTS)
     .some((samples) => Object.values(samples).includes(text));
 }
+
+/** サンプル選択UI向けに1件ずつ平らにした形（`{language, sampleId}`をUIの選択値に使う）。 */
+export interface SampleTextEntry {
+  readonly language: TextLanguage;
+  readonly sampleId: string;
+  readonly name: string;
+  readonly text: string;
+}
+
+/**
+ * 組み込みサンプルを1件ずつ平らな配列にする（#544指示書「テキストはサンプルを選べれば
+ * 十分（言語を選ぶUIは作らない）」）。言語をまたいで1つの選択肢一覧に並べたいので、
+ * `SAMPLE_TEXTS`のように言語をキーにした2段のRecordのままではUIから使いづらい。
+ * ここで初めて2つを合流させ、呼び出し側（UI）は言語を意識せず選ぶだけでよい形にする。
+ */
+export function sampleTextEntries(): readonly SampleTextEntry[] {
+  return (Object.keys(SAMPLE_TEXTS) as TextLanguage[]).flatMap((language) =>
+    Object.keys(SAMPLE_TEXTS[language]).map((sampleId) => ({
+      language,
+      sampleId,
+      name: SAMPLE_TEXT_NAMES[language][sampleId] ?? sampleId,
+      text: SAMPLE_TEXTS[language][sampleId]!,
+    })));
+}

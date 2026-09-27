@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import { createSetupCommand, setStandaloneTextCommand, type KeydistAssets } from '#engine/commands.ts';
+import { sampleTextEntries } from '#input/text/samples.ts';
 import type { EngineCache } from '#engine/cache.ts';
 import type { SetupIdGenerator } from '#input/setup/index.ts';
 import { combinePaneStates, conditionHeaderInfoFromResolvedInput, traceConditionSummary, PaneFrame } from '#hosts/shared/index.ts';
@@ -85,6 +86,14 @@ export function BigramFlowStandalonePage({
 
   const [options, setOptions] = useState<BigramFlowOptions>(DEFAULT_BIGRAM_FLOW_OPTIONS);
 
+  // サンプルは選べれば十分で、言語を選ぶUIは作らない（#544指示書）。テキストが今どの
+  // サンプルと一致するかを`<select>`の値に反映する（自由入力中はどれとも一致せず空になる）。
+  const sampleEntries = useMemo(() => sampleTextEntries(), []);
+  const currentSampleKey = useMemo(() => {
+    const match = sampleEntries.find((entry) => entry.text === assets.standaloneText.text);
+    return match === undefined ? '' : `${match.language}:${match.sampleId}`;
+  }, [sampleEntries, assets.standaloneText.text]);
+
   const resolution = useMemo(
     () => selectedSetup === undefined
       ? undefined
@@ -146,6 +155,31 @@ export function BigramFlowStandalonePage({
             言語判定: {assets.standaloneText.language.override ?? assets.standaloneText.language.detected}
             {assets.standaloneText.language.override ? '（手動指定）' : '（自動）'}
           </small>
+        </label>
+
+        <label className="standalone-control">
+          <span>サンプル</span>
+          <select
+            value={currentSampleKey}
+            onChange={(event) => {
+              const key = event.currentTarget.value;
+              if (key === '') return;
+              const entry = sampleEntries.find((candidate) => `${candidate.language}:${candidate.sampleId}` === key);
+              if (entry === undefined) return;
+              // サンプルの選択は連続入力ではなく1回きりの決定なので、textareaのdebounce
+              // （TEXT_COMMIT_DEBOUNCE_MS）を待たずに即座にコマンドとして反映する。
+              setTextDraft(entry.text);
+              dispatch(setStandaloneTextCommand(entry.text));
+            }}
+            aria-label="サンプル"
+          >
+            <option value="">（自由入力）</option>
+            {sampleEntries.map((entry) => (
+              <option key={`${entry.language}:${entry.sampleId}`} value={`${entry.language}:${entry.sampleId}`}>
+                {entry.name}
+              </option>
+            ))}
+          </select>
         </label>
       </section>
 
