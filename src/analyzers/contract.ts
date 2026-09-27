@@ -4,6 +4,7 @@ import type { Layout } from '#input/layouts/types.ts';
 import type { Trace, TracePolicy } from '#trace/generate.ts';
 import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
+import type { OptionsDefinition, OptionsRegistry, OptionsValueMap } from './options.ts';
 
 /**
  * Analyzerの契約のうち純粋な部分（#544 §7・§9、docs/architecture.md）。
@@ -118,6 +119,47 @@ export interface SetAnalyzerDefinition<Options = unknown, Extracted = unknown> {
 export type AnalyzerDefinition<Options = unknown, Extracted = unknown> =
   | SingleAnalyzerDefinition<Options, Extracted>
   | SetAnalyzerDefinition<Options, Extracted>;
+
+// ---------------------------------------------------------------------------
+// 宣言（options.ts）からAnalyzerDefinitionを組み立てる
+// ---------------------------------------------------------------------------
+
+/**
+ * `defaultOptions` / `decodeOptions` / `extractKeyOf`を`OptionsDefinition`（`options.ts`。
+ * 項目ごとの宣言）から導いて`SingleAnalyzerDefinition`を組み立てる。#544指示書
+ * 「Analyzerが手書きで上書きできる口は作らない」: この3つを個別に上書きする引数は
+ * 存在しない。Analyzer実装が書くのは`id`・`options`（宣言）・`extract`だけ。
+ */
+export function defineSingleAnalyzer<R extends OptionsRegistry, Extracted>(config: {
+  readonly id: string;
+  readonly options: OptionsDefinition<R>;
+  readonly extract: (context: SingleAnalyzerExtractContext<OptionsValueMap<R>>) => Extracted;
+}): SingleAnalyzerDefinition<OptionsValueMap<R>, Extracted> {
+  return {
+    id: config.id,
+    cardinality: 'single',
+    defaultOptions: config.options.defaultOptions,
+    decodeOptions: config.options.decodeOptions,
+    extractKeyOf: config.options.extractKeyOf,
+    extract: config.extract,
+  };
+}
+
+/** `defineSingleAnalyzer`の集合対象版。 */
+export function defineSetAnalyzer<R extends OptionsRegistry, Extracted>(config: {
+  readonly id: string;
+  readonly options: OptionsDefinition<R>;
+  readonly extract: (context: SetAnalyzerExtractContext<OptionsValueMap<R>>) => Extracted;
+}): SetAnalyzerDefinition<OptionsValueMap<R>, Extracted> {
+  return {
+    id: config.id,
+    cardinality: 'set',
+    defaultOptions: config.options.defaultOptions,
+    decodeOptions: config.options.decodeOptions,
+    extractKeyOf: config.options.extractKeyOf,
+    extract: config.extract,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // AnalyzerInstance

@@ -1,4 +1,4 @@
-import type { SingleAnalyzerDefinition, SingleAnalyzerExtractContext } from '#analyzers/contract.ts';
+import { defineSingleAnalyzer, type SingleAnalyzerDefinition, type SingleAnalyzerExtractContext } from '#analyzers/contract.ts';
 import type { Trace } from '#trace/generate.ts';
 import {
   aggregateBigramVectors,
@@ -16,9 +16,7 @@ import {
   type RelativeVector,
 } from './bigram-vectors.ts';
 import {
-  DEFAULT_BIGRAM_FLOW_OPTIONS,
-  bigramFlowExtractKeyOf,
-  decodeBigramFlowOptions,
+  bigramFlowOptions,
   nonStationaryVectors,
   type BigramFlowOptions,
 } from './options.ts';
@@ -145,14 +143,16 @@ export function computeBigramFlowExtraction(
   };
 }
 
-/** engine（`engine/cache.ts`の`getExtraction`）が呼ぶ、Analyzer契約の実体。 */
-export const bigramFlowDefinition: SingleAnalyzerDefinition<BigramFlowOptions, BigramFlowExtracted> = {
+/**
+ * engine（`engine/cache.ts`の`getExtraction`）が呼ぶ、Analyzer契約の実体。
+ * `defaultOptions` / `decodeOptions` / `extractKeyOf`は宣言（`options.ts`の
+ * `bigramFlowOptions`）から導く（`defineSingleAnalyzer`。#544指示書「Analyzerが
+ * 手書きで上書きできる口は作らない」）。
+ */
+export const bigramFlowDefinition: SingleAnalyzerDefinition<BigramFlowOptions, BigramFlowExtracted> = defineSingleAnalyzer({
   id: 'bigram-flow',
-  cardinality: 'single',
-  defaultOptions: DEFAULT_BIGRAM_FLOW_OPTIONS,
-  decodeOptions: decodeBigramFlowOptions,
-  extractKeyOf: bigramFlowExtractKeyOf,
+  options: bigramFlowOptions,
   extract(context: SingleAnalyzerExtractContext<BigramFlowOptions>): BigramFlowExtracted {
     return computeBigramFlowExtraction(context.trace, context.options);
   },
-};
+});
