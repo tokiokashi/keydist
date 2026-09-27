@@ -3,7 +3,7 @@ import test from 'node:test';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import { ASSET_KEYS, ASSET_STORAGE_SPECS } from './asset-storage-specs.ts';
-import { buildAssetSyncs, loadAssets, saveChangedAssets, stopAssetSyncs } from './asset-syncs.ts';
+import { buildAssetSyncs, loadAssets, saveChangedAssets, startAssetSyncs } from './asset-syncs.ts';
 
 /**
  * `ASSET_STORAGE_SPECS`の`initial()`をそのまま束ねるだけの、このテスト専用の最小`KeydistAssets`。
@@ -60,7 +60,41 @@ test('saveChangedAssets→loadAssets: 書いたキーだけ往復する', () => 
   assert.equal(loaded.fingerAssignments, undefined);
 });
 
-test('外部変更: 他タブの書き込みが同じキーのonExternalChangeへ届く', () => {
+test('外部変更: 購読開始(startAssetSyncs)後、他タブの書き込みが同じキーのonExternalChangeへ届く', () => {
+  const storage = createFakeStorage();
+  const bus = createFakeBus();
+  const seen: unknown[] = [];
+
+  const syncsA = buildAssetSyncs({
+    onExternalChange: (key, value) => seen.push([key, value]),
+    storage,
+    subscribe: bus.subscribe,
+    notify: bus.notify,
+  });
+  const syncsB = buildAssetSyncs({
+    onExternalChange: () => {},
+    storage,
+    subscribe: bus.subscribe,
+    notify: bus.notify,
+  });
+  const stopA = startAssetSyncs(syncsA);
+  const stopB = startAssetSyncs(syncsB);
+
+  const nextText = { ...ASSET_STORAGE_SPECS.standaloneText.initial(), text: 'from tab B' };
+  saveChangedAssets(syncsB, { ...baseAssets(), standaloneText: nextText }, ['standaloneText']);
+
+  assert.deepEqual(seen, [['standaloneText', nextText]]);
+  stopA();
+  stopB();
+});
+
+/**
+ * ReactのStrictMode（開発時のmount→cleanup→mount二重実行）を模した回帰テスト
+ * （#544レビュー: `useKeydistAssets`が構築時に自動購読・`useEffect`のcleanupでだけ
+ * 停止する形だった時、二重実行後は外部タブの変更を二度と受け取れなくなっていた。
+ * 実機での再現は`e2e/standalone-bigram-flow.spec.ts`「複数タブ」テスト参照）。
+ */
+test('startAssetSyncs→stop→startAssetSyncs（StrictModeの二重実行を模す）しても、外部変更が届き続ける', () => {
   const storage = createFakeStorage();
   const bus = createFakeBus();
   const seen: unknown[] = [];
@@ -78,12 +112,16 @@ test('外部変更: 他タブの書き込みが同じキーのonExternalChange�
     notify: bus.notify,
   });
 
-  const nextText = { ...ASSET_STORAGE_SPECS.standaloneText.initial(), text: 'from tab B' };
+  const stopFirst = startAssetSyncs(syncsA); // 1回目のmount相当
+  stopFirst(); // StrictModeが模すcleanup
+  const stopSecond = startAssetSyncs(syncsA); // 2回目のmount（実際に生きる購読）
+  startAssetSyncs(syncsB);
+
+  const nextText = { ...ASSET_STORAGE_SPECS.standaloneText.initial(), text: 'from tab B after remount' };
   saveChangedAssets(syncsB, { ...baseAssets(), standaloneText: nextText }, ['standaloneText']);
 
-  assert.deepEqual(seen, [['standaloneText', nextText]]);
-  stopAssetSyncs(syncsA);
-  stopAssetSyncs(syncsB);
+  assert.deepEqual(seen, [['standaloneText', nextText]], '2回目のstart後も外部変更が届く');
+  stopSecond();
 });
 
 test('ASSET_KEYS: 表に無いキーは無い（KeydistAssetsの全キーをカバーする最小確認）', () => {

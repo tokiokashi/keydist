@@ -86,6 +86,18 @@ export function saveChangedAssets(
   for (const key of changedKeys) saveOne(syncs, assets, key);
 }
 
-export function stopAssetSyncs(syncs: AssetSyncMap): void {
-  for (const key of ASSET_KEYS) syncs[key].stop();
+/**
+ * 全資産の購読を始め、まとめて止める関数を返す（`AssetTabSync.start()`のコメント参照）。
+ * **呼び出し側は`useEffect`の中でこれを呼び、返ってきた関数をその`cleanup`で呼ぶこと。**
+ * ReactのStrictMode（開発時のmount→cleanup→mount二重実行）でcleanupが挟まっても、
+ * 次のeffect実行でまた`startAssetSyncs`を呼べば正しく購読し直される
+ * （#544レビュー: 構築時に自動購読・`useEffect`の外で1回だけ購読していた旧設計は、
+ * 二重実行後ずっと外部タブの変更を受け取れなくなっていた。再現・原因は
+ * `asset-tab-sync.test.ts`の「StrictModeの二重実行を模す」テスト参照）。
+ */
+export function startAssetSyncs(syncs: AssetSyncMap): () => void {
+  const stops = ASSET_KEYS.map((key) => syncs[key].start());
+  return () => {
+    for (const stop of stops) stop();
+  };
 }

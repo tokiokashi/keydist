@@ -8,7 +8,7 @@ import {
 } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import { ASSET_KEYS, ASSET_STORAGE_SPECS } from './asset-storage-specs.ts';
-import { buildAssetSyncs, loadAssets, saveChangedAssets, stopAssetSyncs, type AssetSyncMap } from './asset-syncs.ts';
+import { buildAssetSyncs, loadAssets, saveChangedAssets, startAssetSyncs, type AssetSyncMap } from './asset-syncs.ts';
 
 /**
  * `KeydistAssets`（#544 §8-2）の永続化・タブ間追従・コマンド履歴を1つにまとめる
@@ -39,10 +39,15 @@ function initialAssets(): KeydistAssets {
 }
 
 /**
- * `AssetSyncMap`を1回だけ組み立てる。`useRef`の遅延初期化（`current === undefined`の
- * 時だけ作る）は、Reactの厳格モードでの二重実行下でも1つの購読しか残らないようにするため
- * （`useState(() => …)`と同じ「初期化子は1回だけ」の規約を、資産ぶんまとめて作りたいので
- * refで書く）。
+ * `AssetSyncMap`（`load`/`save`と、購読を始める`start()`を持つ）を1回だけ組み立てる。
+ * `useRef`の遅延初期化（`current === undefined`の時だけ作る）は、`useState(() => …)`と
+ * 同じ「初期化子は1回だけ」の規約を、資産ぶんまとめて作りたいのでrefで書いたもの。
+ *
+ * `buildAssetSyncs`自体は購読（`window`へのイベント登録）を一切行わない
+ * （`createAssetTabSync`は構築時に自動購読しない設計にした。#544レビュー参照）ため、
+ * ここで1回だけ組み立てても問題ない。実際の購読開始・停止は`useKeydistAssets`の
+ * `useEffect`が`startAssetSyncs`/その戻り値で行う（構築とは別のライフサイクルとして
+ * Reactの二重実行に耐える形にする）。
  */
 function useAssetSyncs(onExternalChange: <K extends keyof KeydistAssets>(key: K, value: KeydistAssets[K]) => void) {
   const ref = useRef<AssetSyncMap | undefined>(undefined);
@@ -76,7 +81,13 @@ export function useKeydistAssets(): KeydistAssetsController {
       assetsRef.current = { ...assetsRef.current, ...loaded };
       forceRender();
     }
-    return () => stopAssetSyncs(syncs);
+    // 購読の開始・停止は必ずこの`useEffect`の中でペアにする（`startAssetSyncs`のコメント
+    // 参照）。ReactのStrictMode（開発時のmount→cleanup→mount二重実行）でこの関数が
+    // 2回呼ばれても、2回目の`startAssetSyncs`が新しく購読し直すので、最終的に
+    // 「購読が生きている」状態で終わる。以前は構築時に自動購読・cleanupでだけ停止する形で、
+    // 二重実行後は二度と外部タブの変更を受け取れなくなっていた（#544レビュー、
+    // 再現は`asset-tab-sync.test.ts`参照）。
+    return startAssetSyncs(syncs);
     // syncsは`useAssetSyncs`が1回だけ作る安定した参照なので、依存に含めなくてよい。
     // eslint的な警告機構はこのリポジトリに無い（AGENTS.md参照）。
   }, []);
