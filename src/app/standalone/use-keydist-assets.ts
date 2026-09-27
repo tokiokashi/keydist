@@ -6,24 +6,24 @@ import {
   type Command,
   type CommandHistory,
 } from '#input/commands/index.ts';
-import { emptyCascadeOverrides } from '#input/settings/index.ts';
-import { initialStandaloneText } from '#input/text/standalone-text.ts';
-import { STANDALONE_TEXT_CODEC } from '#input/text/standalone-text-codec.ts';
-import { USER_FINGER_ASSIGNMENTS_CODEC } from '#input/shapes/user-finger-assignments.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
-import { SETUP_LIBRARY_CODEC } from '#engine/setup-codec.ts';
-import { createAssetTabSync, type AssetTabSync } from '#platform/asset-tab-sync.ts';
-import { SETUP_LIBRARY_STORAGE_KEY } from '#platform/assets/setup-library-storage.ts';
-import { USER_FINGER_ASSIGNMENTS_STORAGE_KEY } from '#platform/assets/user-finger-assignments-storage.ts';
-import { STANDALONE_TEXT_STORAGE_KEY } from '#platform/assets/standalone-text-storage.ts';
+import { ASSET_KEYS, ASSET_STORAGE_SPECS } from './asset-storage-specs.ts';
+import { buildAssetSyncs, loadAssets, saveChangedAssets, stopAssetSyncs, type AssetSyncMap } from './asset-syncs.ts';
 
 /**
  * `KeydistAssets`（#544 §8-2）の永続化・タブ間追従・コマンド履歴を1つにまとめる
  * アプリ組み立て（`docs/architecture.md`「appが組み立てたアダプタをhostsへ注入する」）。
  *
- * storageを直接触るのは`platform`と`app`だけ（依存規則）なので、`createAssetTabSync`を
- * 3資産ぶん組み立てる仕事はここに置く。`hosts/standalone`はこのhookが返す
+ * storageを直接触るのは`platform`と`app`だけ（依存規則）なので、資産ぶんの
+ * `AssetTabSync`を組み立てる仕事はここに置く。実際の組み立ては`asset-syncs.ts`
+ * （Reactを知らない、node:testから直接検証できる層）へ切り出してあり、このhookは
+ * それをReactのライフサイクルへ配線するだけにする。`hosts/standalone`はこのhookが返す
  * `{ assets, dispatch }`だけを知り、storageもcodecも一切importしない。
+ *
+ * 資産ごとの組み立て（storageキー・codec・初期値）は`asset-storage-specs.ts`の表に
+ * 1本化した。ここは表を`ASSET_KEYS`でループするだけで、資産を1つ足す時にこのファイルを
+ * 書き換える必要が無い（コーディネーター指示: 資産を1つ足すと4〜5箇所を書き換える形を
+ * やめる）。
  */
 export interface KeydistAssetsController {
   readonly assets: KeydistAssets;
@@ -31,45 +31,24 @@ export interface KeydistAssetsController {
 }
 
 function initialAssets(): KeydistAssets {
-  return {
-    setupLibrary: { setups: [], overrides: emptyCascadeOverrides() },
-    fingerAssignments: [],
-    standaloneText: initialStandaloneText(),
-  };
+  // `ASSET_STORAGE_SPECS`がKeydistAssetsの全キーを型で強制しているので、`unknown`経由の
+  // castは「全キー分そろっている」という保証済みの前提を表す1箇所だけの変換として許容する
+  // （`Array#map`がタプルの相関をunionへ潰してしまうため。`asset-syncs.ts`の`buildOne`コメント参照）。
+  const entries = ASSET_KEYS.map((key) => [key, ASSET_STORAGE_SPECS[key].initial()] as const);
+  return Object.fromEntries(entries) as unknown as KeydistAssets;
 }
 
 /**
- * 3つの`AssetTabSync`を1回だけ組み立てる。`useRef`の遅延初期化（`current === undefined`の
+ * `AssetSyncMap`を1回だけ組み立てる。`useRef`の遅延初期化（`current === undefined`の
  * 時だけ作る）は、Reactの厳格モードでの二重実行下でも1つの購読しか残らないようにするため
- * （`useState(() => …)`と同じ「初期化子は1回だけ」の規約を、3つまとめて作りたいのでrefで書く）。
+ * （`useState(() => …)`と同じ「初期化子は1回だけ」の規約を、資産ぶんまとめて作りたいので
+ * refで書く）。
  */
 function useAssetSyncs(onExternalChange: <K extends keyof KeydistAssets>(key: K, value: KeydistAssets[K]) => void) {
-  const ref = useRef<{
-    setupLibrary: AssetTabSync<KeydistAssets['setupLibrary']>;
-    fingerAssignments: AssetTabSync<KeydistAssets['fingerAssignments']>;
-    standaloneText: AssetTabSync<KeydistAssets['standaloneText']>;
-  } | undefined>(undefined);
-
+  const ref = useRef<AssetSyncMap | undefined>(undefined);
   if (ref.current === undefined) {
-    ref.current = {
-      setupLibrary: createAssetTabSync({
-        storageKey: SETUP_LIBRARY_STORAGE_KEY,
-        codec: SETUP_LIBRARY_CODEC,
-        onExternalChange: (value) => onExternalChange('setupLibrary', value),
-      }),
-      fingerAssignments: createAssetTabSync({
-        storageKey: USER_FINGER_ASSIGNMENTS_STORAGE_KEY,
-        codec: USER_FINGER_ASSIGNMENTS_CODEC,
-        onExternalChange: (value) => onExternalChange('fingerAssignments', value),
-      }),
-      standaloneText: createAssetTabSync({
-        storageKey: STANDALONE_TEXT_STORAGE_KEY,
-        codec: STANDALONE_TEXT_CODEC,
-        onExternalChange: (value) => onExternalChange('standaloneText', value),
-      }),
-    };
+    ref.current = buildAssetSyncs({ onExternalChange });
   }
-
   return ref.current;
 }
 
@@ -92,22 +71,12 @@ export function useKeydistAssets(): KeydistAssetsController {
   });
 
   useEffect(() => {
-    const loadedSetupLibrary = syncs.setupLibrary.load();
-    const loadedFingerAssignments = syncs.fingerAssignments.load();
-    const loadedStandaloneText = syncs.standaloneText.load();
-    if (loadedSetupLibrary !== undefined || loadedFingerAssignments !== undefined || loadedStandaloneText !== undefined) {
-      assetsRef.current = {
-        setupLibrary: loadedSetupLibrary ?? assetsRef.current.setupLibrary,
-        fingerAssignments: loadedFingerAssignments ?? assetsRef.current.fingerAssignments,
-        standaloneText: loadedStandaloneText ?? assetsRef.current.standaloneText,
-      };
+    const loaded = loadAssets(syncs);
+    if (Object.keys(loaded).length > 0) {
+      assetsRef.current = { ...assetsRef.current, ...loaded };
       forceRender();
     }
-    return () => {
-      syncs.setupLibrary.stop();
-      syncs.fingerAssignments.stop();
-      syncs.standaloneText.stop();
-    };
+    return () => stopAssetSyncs(syncs);
     // syncsは`useAssetSyncs`が1回だけ作る安定した参照なので、依存に含めなくてよい。
     // eslint的な警告機構はこのリポジトリに無い（AGENTS.md参照）。
   }, []);
@@ -117,11 +86,7 @@ export function useKeydistAssets(): KeydistAssetsController {
     if (result.outcome.kind !== 'applied') return;
     assetsRef.current = result.assets;
     historyRef.current = result.history;
-    for (const key of Object.keys(result.outcome.changes) as (keyof KeydistAssets)[]) {
-      if (key === 'setupLibrary') syncs.setupLibrary.save(result.assets.setupLibrary);
-      else if (key === 'fingerAssignments') syncs.fingerAssignments.save(result.assets.fingerAssignments);
-      else if (key === 'standaloneText') syncs.standaloneText.save(result.assets.standaloneText);
-    }
+    saveChangedAssets(syncs, result.assets, Object.keys(result.outcome.changes) as (keyof KeydistAssets)[]);
     forceRender();
   }, [syncs]);
 
