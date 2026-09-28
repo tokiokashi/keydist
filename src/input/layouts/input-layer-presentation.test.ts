@@ -151,3 +151,18 @@ test('薙刀式のレイヤーキー色は実レイヤーのSandSだけに限定
     assert.equal(colors.get(key), undefined, key);
   }
 });
+
+test('どれか1つで足りるtriggerは「/」、刻印の無いキーは表示名でつなぐ', async () => {
+  const { TSUKI_2_263 } = await import('./tsuki-2-263.ts');
+  const { SHINGETA } = await import('./shingeta.ts');
+  const text = (layout: typeof TSUKI_2_263, label: string) => {
+    const definition = compactLayerGuideDefinitions(layout)
+      .find((candidate) => candidate.label === label);
+    assert.ok(definition);
+    return presentationLayerGuide(layout, definition.id)?.triggerDisplayText;
+  };
+  // 月配列のd・kはどちらか片方で前置シフトになる。同時押しではない
+  assert.equal(text(TSUKI_2_263, '中指シフト'), 'D / K');
+  assert.equal(text(SHINGETA, '中指シフト'), 'い / か');
+  assert.equal(text(SHINGETA, '薬指シフト'), 'し / と');
+});

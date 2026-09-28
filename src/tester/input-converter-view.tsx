@@ -14,6 +14,7 @@ import {
   presetGeometryTopology,
   SHIFT_KEY,
   THUMB_KEY,
+  type PhysicalKeyboardStandard,
   type PhysicalShape,
 } from '#input/shapes/geometry.ts';
 import {
@@ -53,7 +54,10 @@ import {
   unassignBrowserKeyCode,
   type BrowserKeyBindingOverrides,
 } from './browser-keyboard-bindings.ts';
-import { browserCodesForPhysicalKey } from './browser-keyboard-adapter.ts';
+import {
+  browserCodeDisplayLabel,
+  browserCodesForPhysicalKey,
+} from './browser-keyboard-adapter.ts';
 import {
   INPUT_CONVERTER_PREFERENCES_VERSION,
   inputConverterLayoutPreferences,
@@ -76,6 +80,11 @@ import {
   reverseLookupGuideIndexForText,
   reverseLookupRouteLabel,
 } from './reverse-lookup.ts';
+import {
+  keyboardStandardForGeometryId,
+  physicalKeyDisplayLabel,
+  physicalKeyEngraving,
+} from '#input/shapes/key-labels.ts';
 import { romajiTypingCorrectness } from './live-romaji.ts';
 import { useTypingSession } from './use-typing-session.ts';
 
@@ -231,11 +240,23 @@ function chooseGuideGridLayout(
   return best;
 }
 
+type RecognizedHoldPhase = NonNullable<
+  ReturnType<typeof useTypingSession>['lastRecognized'][number]['actions'][number]['holdPhase']
+>;
+
+const HOLD_PHASE_LABEL: Record<RecognizedHoldPhase, string> = {
+  start: '押し始め',
+  continue: '継続',
+};
+
 function RecognizedDetail({
   recognized,
+  standard,
 }: {
   recognized: ReturnType<typeof useTypingSession>['lastRecognized'];
+  standard: PhysicalKeyboardStandard | undefined;
 }) {
+  const label = (key: string) => physicalKeyDisplayLabel(key, standard);
   if (recognized.length === 0) {
     return (
       <p className="input-muted input-recognized-empty">
@@ -252,9 +273,11 @@ function RecognizedDetail({
           <div>
             {entry.actions.map((action, actionIndex) => {
               const actionLabel = [
-                action.keys.join(' + '),
-                action.heldKeys.length > 0 ? `[hold: ${action.heldKeys.join(' + ')}]` : '',
-                action.holdPhase ?? '',
+                action.keys.map(label).join(' + '),
+                action.heldKeys.length > 0
+                  ? `[${action.heldKeys.map(label).join(' + ')} 押したまま]`
+                  : '',
+                action.holdPhase === undefined ? '' : HOLD_PHASE_LABEL[action.holdPhase],
               ].filter(Boolean).join(' ');
 
               return (
@@ -281,6 +304,10 @@ export function InputConverterView() {
   const bindingCaptureCodeRef = useRef<string | undefined>(undefined);
   const [userGeometryShapes, setUserGeometryShapes] = useState<PhysicalShape[]>([]);
   const [geometryId, setGeometryId] = useState(PHYSICAL_SHAPES['row-staggered'].id);
+  // 刻印の表示に使う規格。自作形状は規格を持たないので未指定にする
+  const keyboardStandard = keyboardStandardForGeometryId(geometryId);
+  const keyLabel = (key: string) => physicalKeyDisplayLabel(key, keyboardStandard);
+  const codeLabel = (code: string) => browserCodeDisplayLabel(code, keyboardStandard);
   const browserBindings = useMemo(() => ({
     ...(isPresetGeometryKind(geometryId)
       && presetGeometryStandard(geometryId) === 'jis'
@@ -754,8 +781,11 @@ export function InputConverterView() {
                 ?? layout.legends.get(key.id)
                 ?? '',
             secondaryLegend: key.id === THUMB_KEY.LT || key.id === THUMB_KEY.RT
-              ? browserCodesForPhysicalKey(key.id, browserBindings).join(' / ') || '未割当'
-              : key.id,
+              ? browserCodesForPhysicalKey(key.id, browserBindings)
+                .map((code) => browserCodeDisplayLabel(code, keyboardStandard))
+                .join(' / ') || '未割当'
+              // 補助刻印はQWERTY上の位置を示す。文字キーは小文字のまま残し、Shift等だけ表示名にする
+              : physicalKeyEngraving(key.id, keyboardStandard),
             pressed: pressed.has(key.id),
             highlighted: showDynamicGuide && activeTriggerKeys.has(key.id),
             trigger: showLayerKeys && layerKeys.has(key.id),
@@ -776,6 +806,7 @@ export function InputConverterView() {
     showDynamicGuide,
     showLayerKeys,
     browserBindings,
+    keyboardStandard,
     layerKeyColorSlots,
     layerKeys,
     lookupKeys,
@@ -910,11 +941,10 @@ export function InputConverterView() {
     >
       <header className="input-page-heading">
         <div>
-          <p className="eyebrow">Phase B · #270</p>
           <h1>Alternative Keyboard Layout Tester</h1>
         </div>
         <p>
-          選択した配列の canonical SemanticInput を使って、物理キーから文字列を直接生成します。
+          配列を選び、手元のキーボードで実際に打って試せます。打ったキーがその配列で何の文字になるかを、その場で確かめられます。
         </p>
       </header>
 
@@ -1020,7 +1050,7 @@ export function InputConverterView() {
               renderDockedActions={() => <small>クリックで小窓表示</small>}
             >
               {combinationLabels.length > 0 ? (
-                <div className="input-semantic-groups" aria-label="意味論的な組み合わせ">
+                <div className="input-semantic-groups" aria-label="同時押しの組み合わせ">
                   {combinationLabels.map((label) => (
                     <span key={label}>{label}</span>
                   ))}
@@ -1104,8 +1134,8 @@ export function InputConverterView() {
                     >
                       <p>
                         {triggers.size > 0
-                          ? `trigger: ${guide?.triggerDisplayText ?? '—'}`
-                          : 'trigger: —'}
+                          ? `切り替えキー: ${guide?.triggerDisplayText ?? '—'}`
+                          : '切り替えキー: —'}
                       </p>
                       <PhysicalKeyboard
                         ariaLabel={`${definition.label} レイヤー`}
@@ -1250,7 +1280,7 @@ export function InputConverterView() {
                 ? ' Enterで改行します。'
                 : ' ランダム練習中は完成後Enterで次のお題へ進みます。'}
               {escapeIsLayoutInput ? ' Escは配列入力として扱います。' : ' Escで全削除します。'}
-              {session.composing ? ' IME composition中は認識を停止しています。' : ''}
+              {session.composing ? ' IMEで変換中のため、キーを認識していません。' : ''}
             </p>
           </WorkspacePanel>
 
@@ -1331,28 +1361,32 @@ export function InputConverterView() {
                     : '通常'}
                 </strong>
               </p>
-              <div className="input-key-status" aria-label="Key status">
+              <div className="input-key-status" aria-label="キーの状態">
                 <section>
                   <h2>Pressed</h2>
-                  <p>{session.pressedKeys.length > 0 ? session.pressedKeys.join(' + ') : '—'}</p>
+                  <p>
+                    {session.pressedKeys.length > 0
+                      ? session.pressedKeys.map(keyLabel).join(' + ')
+                      : '—'}
+                  </p>
                 </section>
                 <section>
                   <h2>Recognized</h2>
-                  <RecognizedDetail recognized={session.lastRecognized} />
+                  <RecognizedDetail recognized={session.lastRecognized} standard={keyboardStandard} />
                 </section>
               </div>
             </div>
             {bindingTargetKey !== undefined ? (
               <div className="input-keyboard-heading">
                 <div className="input-key-binding-inline" aria-label="物理キー割当">
-                  <strong>{bindingTargetKey}</strong>
+                  <strong>{keyLabel(bindingTargetKey)}</strong>
                   <span aria-hidden="true">←</span>
                   <div className="input-key-binding-codes">
                     {selectedBindingCodes.length === 0
                       ? <span className="input-muted">未割当</span>
                       : selectedBindingCodes.map((code) => (
                         <button
-                          aria-label={`${bindingTargetKey}から${code}を削除`}
+                          aria-label={`${keyLabel(bindingTargetKey)}の割り当てから実キー${codeLabel(code)}を外す`}
                           className="input-binding-chip"
                           key={code}
                           onClick={() => updateBindingOverrides(
@@ -1360,7 +1394,7 @@ export function InputConverterView() {
                           )}
                           type="button"
                         >
-                          <code>{code}</code>
+                          <code>{codeLabel(code)}</code>
                           <span aria-hidden="true">×</span>
                         </button>
                       ))}
@@ -1491,7 +1525,7 @@ export function InputConverterView() {
               </div>
               <div className="input-lookup-results" aria-live="polite">
                 {lookupQuery.length === 0 ? (
-                  <span className="input-muted">文字を入力するとcanonical inputから逆引きします。</span>
+                  <span className="input-muted">打ちたい文字を入力すると、この配列での打ち方を表示します。</span>
                 ) : activeLookupRoute === undefined
                   || activeLookupStep === undefined
                   || activeLookupAction === undefined ? (
@@ -1524,11 +1558,11 @@ export function InputConverterView() {
                         {activeLookupGuideActions.length}
                       </span>
                       <strong>{activeLookupAction.output}</strong>
-                      <code>{reverseLookupGuideActionLabel(layout, activeLookupAction)}</code>
+                      <code>{reverseLookupGuideActionLabel(layout, activeLookupAction, keyboardStandard)}</code>
                     </div>
                     <ol>
                       <li data-active>
-                        <code>{reverseLookupRouteLabel(layout, activeLookupRoute)}</code>
+                        <code>{reverseLookupRouteLabel(layout, activeLookupRoute, keyboardStandard)}</code>
                         {activeLookupRoute.steps.some((step) => step.origin === 'combo')
                           ? <small>コンボ</small>
                           : null}
@@ -1556,7 +1590,7 @@ export function InputConverterView() {
                               <ol>
                                 {otherLookupRoutes.map((route, index) => (
                                   <li key={`${reverseLookupRouteLabel(layout, route)}:${index}`}>
-                                    <code>{reverseLookupRouteLabel(layout, route)}</code>
+                                    <code>{reverseLookupRouteLabel(layout, route, keyboardStandard)}</code>
                                     {route.steps.some((step) => step.origin === 'combo')
                                       ? <small>コンボ</small>
                                       : null}
