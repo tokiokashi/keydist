@@ -74,6 +74,7 @@ import {
   reverseLookupGuideActionTriggerOnlyKeys,
   reverseLookupGuideActions,
   reverseLookupGuideIndexForText,
+  physicalKeyDisplayLabel,
   reverseLookupRouteLabel,
 } from './reverse-lookup.ts';
 import { romajiTypingCorrectness } from './live-romaji.ts';
@@ -231,6 +232,15 @@ function chooseGuideGridLayout(
   return best;
 }
 
+type RecognizedHoldPhase = NonNullable<
+  ReturnType<typeof useTypingSession>['lastRecognized'][number]['actions'][number]['holdPhase']
+>;
+
+const HOLD_PHASE_LABEL: Record<RecognizedHoldPhase, string> = {
+  start: '押し始め',
+  continue: '継続',
+};
+
 function RecognizedDetail({
   recognized,
 }: {
@@ -252,9 +262,11 @@ function RecognizedDetail({
           <div>
             {entry.actions.map((action, actionIndex) => {
               const actionLabel = [
-                action.keys.join(' + '),
-                action.heldKeys.length > 0 ? `[hold: ${action.heldKeys.join(' + ')}]` : '',
-                action.holdPhase ?? '',
+                action.keys.map(physicalKeyDisplayLabel).join(' + '),
+                action.heldKeys.length > 0
+                  ? `[${action.heldKeys.map(physicalKeyDisplayLabel).join(' + ')} 押したまま]`
+                  : '',
+                action.holdPhase === undefined ? '' : HOLD_PHASE_LABEL[action.holdPhase],
               ].filter(Boolean).join(' ');
 
               return (
@@ -755,7 +767,8 @@ export function InputConverterView() {
                 ?? '',
             secondaryLegend: key.id === THUMB_KEY.LT || key.id === THUMB_KEY.RT
               ? browserCodesForPhysicalKey(key.id, browserBindings).join(' / ') || '未割当'
-              : key.id,
+              // 補助刻印はQWERTY上の位置を示す。文字キーは小文字のまま残し、Shift等だけ表示名にする
+              : key.id.length === 1 ? key.id : physicalKeyDisplayLabel(key.id),
             pressed: pressed.has(key.id),
             highlighted: showDynamicGuide && activeTriggerKeys.has(key.id),
             trigger: showLayerKeys && layerKeys.has(key.id),
@@ -910,11 +923,10 @@ export function InputConverterView() {
     >
       <header className="input-page-heading">
         <div>
-          <p className="eyebrow">Phase B · #270</p>
           <h1>Alternative Keyboard Layout Tester</h1>
         </div>
         <p>
-          選択した配列の canonical SemanticInput を使って、物理キーから文字列を直接生成します。
+          配列を選び、手元のキーボードで実際に打って試せます。打ったキーがその配列で何の文字になるかを、その場で確かめられます。
         </p>
       </header>
 
@@ -1020,7 +1032,7 @@ export function InputConverterView() {
               renderDockedActions={() => <small>クリックで小窓表示</small>}
             >
               {combinationLabels.length > 0 ? (
-                <div className="input-semantic-groups" aria-label="意味論的な組み合わせ">
+                <div className="input-semantic-groups" aria-label="同時押しの組み合わせ">
                   {combinationLabels.map((label) => (
                     <span key={label}>{label}</span>
                   ))}
@@ -1250,7 +1262,7 @@ export function InputConverterView() {
                 ? ' Enterで改行します。'
                 : ' ランダム練習中は完成後Enterで次のお題へ進みます。'}
               {escapeIsLayoutInput ? ' Escは配列入力として扱います。' : ' Escで全削除します。'}
-              {session.composing ? ' IME composition中は認識を停止しています。' : ''}
+              {session.composing ? ' IMEで変換中のため、キーを認識していません。' : ''}
             </p>
           </WorkspacePanel>
 
@@ -1334,7 +1346,11 @@ export function InputConverterView() {
               <div className="input-key-status" aria-label="Key status">
                 <section>
                   <h2>Pressed</h2>
-                  <p>{session.pressedKeys.length > 0 ? session.pressedKeys.join(' + ') : '—'}</p>
+                  <p>
+                    {session.pressedKeys.length > 0
+                      ? session.pressedKeys.map(physicalKeyDisplayLabel).join(' + ')
+                      : '—'}
+                  </p>
                 </section>
                 <section>
                   <h2>Recognized</h2>
@@ -1345,14 +1361,14 @@ export function InputConverterView() {
             {bindingTargetKey !== undefined ? (
               <div className="input-keyboard-heading">
                 <div className="input-key-binding-inline" aria-label="物理キー割当">
-                  <strong>{bindingTargetKey}</strong>
+                  <strong>{physicalKeyDisplayLabel(bindingTargetKey)}</strong>
                   <span aria-hidden="true">←</span>
                   <div className="input-key-binding-codes">
                     {selectedBindingCodes.length === 0
                       ? <span className="input-muted">未割当</span>
                       : selectedBindingCodes.map((code) => (
                         <button
-                          aria-label={`${bindingTargetKey}から${code}を削除`}
+                          aria-label={`${physicalKeyDisplayLabel(bindingTargetKey)}から${code}を削除`}
                           className="input-binding-chip"
                           key={code}
                           onClick={() => updateBindingOverrides(
@@ -1491,7 +1507,7 @@ export function InputConverterView() {
               </div>
               <div className="input-lookup-results" aria-live="polite">
                 {lookupQuery.length === 0 ? (
-                  <span className="input-muted">文字を入力するとcanonical inputから逆引きします。</span>
+                  <span className="input-muted">打ちたい文字を入力すると、この配列での打ち方を表示します。</span>
                 ) : activeLookupRoute === undefined
                   || activeLookupStep === undefined
                   || activeLookupAction === undefined ? (

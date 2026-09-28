@@ -110,7 +110,7 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
 
   await lookup.fill('かな');
   await expect(panel.locator('.input-lookup-results')).not.toContainText(
-    '文字を入力するとcanonical inputから逆引きします。',
+    '打ちたい文字を入力すると、この配列での打ち方を表示します。',
   );
 
   await page
@@ -1174,14 +1174,14 @@ test('Tester keeps browser key lifecycle consistent', async ({ page }) => {
   await expect(output).toHaveValue('が');
 
   await page.keyboard.down('d');
-  await expect(pressed).toHaveText('d');
+  await expect(pressed).toHaveText('D');
 
   await page.getByLabel('配列', { exact: true }).focus();
   await expect(pressed).toHaveText('—');
 
   await output.click();
   await page.keyboard.down('h');
-  await expect(pressed).toHaveText('h');
+  await expect(pressed).toHaveText('H');
 
   await page.keyboard.down('Control');
   await page.keyboard.up('h');
@@ -1314,8 +1314,8 @@ test('Tester shows stable active layer, dynamic next-key guide and display toggl
   await expect(sandSCard.locator('[data-key-id="j"]')).not.toHaveAttribute('data-accent-slot', /[1-8]/);
   await expect(sandSCard.locator('[data-key-id="f"]')).toHaveAttribute('data-home', 'true');
   await expect(sandSCard.locator('[data-key-id="j"]')).toHaveAttribute('data-home', 'true');
-  await expect(page.getByLabel('意味論的な組み合わせ')).toContainText('濁音');
-  await expect(page.getByLabel('意味論的な組み合わせ')).toContainText('拗音');
+  await expect(page.getByLabel('同時押しの組み合わせ')).toContainText('濁音');
+  await expect(page.getByLabel('同時押しの組み合わせ')).toContainText('拗音');
 
   await output.click();
   await page.keyboard.down('j');
@@ -2094,7 +2094,7 @@ test('盤面クリックで任意browser codeをphysical keyへ再割当して�
   await keyboard.locator('[data-key-id="thumb-l"] rect').click();
   await expect(bindingBar).toContainText('実キーを押してください');
   await page.keyboard.press('Space');
-  await expect(bindingBar.getByRole('button', { name: 'thumb-lからSpaceを削除' })).toBeVisible();
+  await expect(bindingBar.getByRole('button', { name: '左親指からSpaceを削除' })).toBeVisible();
 
   await output.click();
   await page.keyboard.down('Space');

@@ -347,6 +347,8 @@ export function physicalKeyDisplayLabel(key: string): string {
   if (key === 'thumb-r') return '右親指';
   if (key === 'shift-l') return '左Shift';
   if (key === 'shift-r') return '右Shift';
+  if (key === 'tab') return 'Tab';
+  if (key === 'escape') return 'Esc';
   return key;
 }
 
