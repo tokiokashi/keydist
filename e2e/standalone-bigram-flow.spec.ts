@@ -24,9 +24,29 @@ test('単体ページが開き、Bigram Flowが描画される', async ({ page }
   const pane = page.locator('.pane-frame');
   await expect(pane).toHaveAttribute('data-pane-status', 'ready');
 
-  // 条件の表示（出どころ含む）。
-  await pane.locator('.pane-condition-summary summary').click();
-  await expect(pane.locator('.pane-condition-summary')).toContainText('既定値');
+  // 条件の要約: 何も変えていなければ閉じた1行は「すべて既定値」。開くと出どころが出る。
+  const conditions = pane.locator('.pane-condition-summary');
+  await expect(conditions.locator('summary')).toHaveText('条件すべて既定値');
+  await conditions.locator('summary').click();
+  await expect(conditions.locator('.pane-condition-row').first()).toContainText('（既定値）');
+});
+
+test('条件の要約: 変えた項目を閉じた1行に出し、開くと上に並べて出どころを添える', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  const pane = page.locator('.pane-frame');
+  await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+
+  await page.getByLabel('既定の物理配列').selectOption('ortholinear');
+  const conditions = pane.locator('.pane-condition-summary');
+  const summary = conditions.locator('summary');
+  await expect(summary).toContainText('既定の物理配列:');
+  await expect(summary).not.toContainText('他');
+
+  await summary.click();
+  const first = conditions.locator('.pane-condition-row').first();
+  await expect(first).toHaveAttribute('data-changed', 'true');
+  await expect(first).toContainText('既定の物理配列');
+  await expect(first).toContainText('上書き: 全体');
 });
 
 test('操作系はハイドレーション+資産読み込み完了（assetsReady）まで無効化され、直後に選んでも取りこぼさない（レビュー指摘1）', async ({ page }) => {

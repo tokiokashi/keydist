@@ -324,41 +324,125 @@ h2.pane-frame-title {
   background: color-mix(in srgb, #d6333f 15%, transparent);
 }
 
-.pane-condition-target {
-  margin: 0.5rem 0 0;
+/*
+ * 条件の要約。閉じた状態は1行に収め、入り切らない項目は省略記号で切る
+ * （「他N件」は切らない。残りがあると見えれば開く理由が分かるため）。
+ */
+.pane-condition-summary {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+  font-size: 0.84rem;
 }
 
-.pane-condition-target p {
-  margin: 0;
+.pane-condition-summary > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.38rem 0.65rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  list-style: none;
 }
 
-.pane-condition-target-name {
+.pane-condition-summary > summary::-webkit-details-marker {
+  display: none;
+}
+
+.pane-condition-caret {
+  flex: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  transition: transform 0.15s;
+}
+
+.pane-condition-summary[open] .pane-condition-caret {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pane-condition-caret {
+    transition: none;
+  }
+}
+
+.pane-condition-key {
+  flex: none;
+}
+
+.pane-condition-default {
+  flex: none;
+  color: var(--text);
   font-weight: 600;
 }
 
-.pane-condition-target-detail {
-  font-size: 0.85rem;
-  opacity: 0.75;
+.pane-condition-items {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pane-condition-more {
+  flex: none;
+  color: var(--accent-strong);
+}
+
+.pane-condition-body {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.1rem 0.65rem 0.65rem;
+}
+
+.pane-condition-target {
+  margin: 0;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .pane-condition-summary dl {
   display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.25rem 0.75rem;
-  margin: 0.5rem 0 0;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.3rem 0.9rem;
+  margin: 0;
 }
 
 .pane-condition-row {
   display: contents;
 }
 
-.pane-condition-row[data-not-applicable="true"] {
+.pane-condition-row dt {
+  color: var(--text-muted);
+}
+
+.pane-condition-row[data-changed="true"] dt {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.pane-condition-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 行は display: contents で箱を持たないので、薄くするのは dt・dd に当てる。 */
+.pane-condition-row[data-not-applicable="true"] > dt,
+.pane-condition-row[data-not-applicable="true"] > dd {
   opacity: 0.55;
 }
 
 .pane-condition-origin {
-  opacity: 0.65;
+  color: var(--text-muted);
   font-size: 0.85em;
+}
+
+.pane-condition-row[data-changed="true"] .pane-condition-origin {
+  color: var(--accent-strong);
 }
 
 .pane-condition-flag {
@@ -372,6 +456,18 @@ h2.pane-frame-title {
   padding-left: 1.1rem;
   font-size: 0.8em;
   opacity: 0.8;
+}
+
+/* 狭いペインでは項目名と値を縦に積む（項目名が長く、2列だと値の列が潰れるため）。 */
+@container pane (max-width: 26rem) {
+  .pane-condition-summary dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.05rem;
+  }
+
+  .pane-condition-row dd {
+    margin-bottom: 0.4rem;
+  }
 }
 
 .pane-trace-errors,
