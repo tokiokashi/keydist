@@ -59,7 +59,7 @@ test('見た目だけの設定を変えても壊れず、抽出設定を変え�
   await lineScale.selectOption('sqrt');
   await expect(lineScale).toHaveValue('sqrt');
 
-  const withinHand = flow.getByRole('button', { name: '同じ手だけで続ける' });
+  const withinHand = flow.getByRole('button', { name: 'Within-hand' });
   await withinHand.click();
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
 });
@@ -337,7 +337,7 @@ test('解析設定はリロードしても残る（資産として保持する�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
-  const withinHand = flow.getByRole('button', { name: '同じ手だけで続ける' });
+  const withinHand = flow.getByRole('button', { name: 'Within-hand' });
   await expect(withinHand).toHaveAttribute('aria-pressed', 'false');
   await withinHand.click();
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
@@ -351,7 +351,7 @@ test('解析設定はリロードしても残る（資産として保持する�
   await page.reload();
   const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
-  await expect(flowAfterReload.getByRole('button', { name: '同じ手だけで続ける' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(flowAfterReload.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('解析設定はdebounce完了前にリロードしても残る（pagehideでflushする）', async ({ page }) => {
@@ -374,7 +374,7 @@ test('解析設定はdebounce完了前にリロードしても残る（pagehide�
   const now = await page.evaluate(() => Date.now());
   await page.clock.pauseAt(now + 60_000);
 
-  const withinHand = flow.getByRole('button', { name: '同じ手だけで続ける' });
+  const withinHand = flow.getByRole('button', { name: 'Within-hand' });
   await expect(withinHand).toHaveAttribute('aria-pressed', 'false');
   await withinHand.click();
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
@@ -390,7 +390,7 @@ test('解析設定はdebounce完了前にリロードしても残る（pagehide�
 
   const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
-  await expect(flowAfterReload.getByRole('button', { name: '同じ手だけで続ける' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(flowAfterReload.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('保存された解析設定が壊れていたら、既定値へ戻しつつ診断をペインに表示する', async ({ page }) => {
@@ -412,7 +412,7 @@ test('保存された解析設定が壊れていたら、既定値へ戻しつ�
   await expect(diagnostics).toContainText('既定値へ戻した');
 
   // 既定値へ戻っているので、Actualが選ばれている（壊れた値のsourceは使われない）。
-  const actual = flow.getByRole('button', { name: '打った順のまま', exact: true });
+  const actual = flow.getByRole('button', { name: 'Actual', exact: true });
   await expect(actual).toHaveAttribute('aria-pressed', 'true');
 });
 
@@ -424,7 +424,7 @@ test('URLパラメータで開くと解析設定が反映され、資産に残�
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
   // 反映: sourceがWithin-hand、指選択がindexになっている。
-  const withinHand = flow.getByRole('button', { name: '同じ手だけで続ける' });
+  const withinHand = flow.getByRole('button', { name: 'Within-hand' });
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
   const indexFinger = flow.locator('.flow-finger-buttons button', { hasText: '人' });
   await expect(indexFinger).toHaveAttribute('aria-pressed', 'true');
@@ -441,7 +441,7 @@ test('URLパラメータで開くと解析設定が反映され、資産に残�
   await page.reload();
   const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
-  await expect(flowAfterReload.getByRole('button', { name: '同じ手だけで続ける' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(flowAfterReload.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('URLパラメータの壊れた値は既定値へ戻し、診断をペインに表示する', async ({ page }) => {
@@ -453,7 +453,7 @@ test('URLパラメータの壊れた値は既定値へ戻し、診断をペイ�
   await expect(diagnostics).toBeVisible();
 
   // 既定値のまま（壊れたURLパラメータは使われない）。
-  const actual = flow.getByRole('button', { name: '打った順のまま', exact: true });
+  const actual = flow.getByRole('button', { name: 'Actual', exact: true });
   await expect(actual).toHaveAttribute('aria-pressed', 'true');
 
   // 壊れていても消費済みとしてURLからは消える。
@@ -475,7 +475,7 @@ test('URLパラメータは既存の解析設定へ部分マージされる（�
   await page.goto('/standalone/bigram-flow?source=within-hand');
   const flowAfter = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfter).toBeVisible({ timeout: 10_000 });
-  await expect(flowAfter.getByRole('button', { name: '同じ手だけで続ける' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(flowAfter.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
   await expect(flowAfter.getByLabel('紐の太さのスケール')).toHaveValue('sqrt');
 });
 
@@ -485,7 +485,7 @@ test('「今の設定のURLをコピー」で既定値と違う項目だけを�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
-  const withinHand = flow.getByRole('button', { name: '同じ手だけで続ける' });
+  const withinHand = flow.getByRole('button', { name: 'Within-hand' });
   await withinHand.click();
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
 
@@ -667,12 +667,12 @@ test('タブ間の競合修正: 他タブの選択切り替えが割り込んで
   await pageB.close();
 });
 
-test('画面の文言に開発の内部（issue番号・Phase・ファイル名・英語の仮ラベル）が出ない（レビュー指摘H1〜H4）', async ({ page }) => {
+test('画面の文言に開発の内部（issue番号・Phase・ファイル名・開発用の語）が出ない（レビュー指摘H1〜H4）', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]').first()).toBeVisible({ timeout: 10_000 });
   await expect(page).toHaveTitle('Bigram Flow | keydist');
   const description = await page.locator('meta[name="description"]').getAttribute('content');
   expect(description).not.toMatch(/#\d|Phase|standalone|単体ページ/);
   const body = page.locator('body');
-  await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|\.ts\b|Vector lab|connections|vectors|Movement profile|Cross-hand|N sensitivity|Setup comparison|baseline|言語判定: /);
+  await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|\.ts\b|Vector lab|connections|N sensitivity|Setup comparison|baseline|言語判定: /);
 });

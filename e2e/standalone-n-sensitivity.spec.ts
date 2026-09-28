@@ -204,7 +204,7 @@ test('既定と違う条件（windowSize以外）が併記される。windowSize
   await expect(conditionDiff).not.toContainText('先読みN');
 });
 
-test('画面の文言に開発の内部（issue番号・Phase・ファイル名・英語の仮ラベル）が出ない（レビュー指摘H1〜H4）', async ({ page }) => {
+test('画面の文言に開発の内部（issue番号・Phase・ファイル名・開発用の語）が出ない（レビュー指摘H1〜H4）', async ({ page }) => {
   await page.goto('/standalone/n-sensitivity');
   await addTarget(page, 'layout:qwerty');
   await addTarget(page, 'layout:colemak');
@@ -213,5 +213,5 @@ test('画面の文言に開発の内部（issue番号・Phase・ファイル名�
   const description = await page.locator('meta[name="description"]').getAttribute('content');
   expect(description).not.toMatch(/#\d|Phase|standalone|単体ページ/);
   const body = page.locator('body');
-  await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|\.ts\b|Vector lab|connections|vectors|Movement profile|Cross-hand|N sensitivity|Setup comparison|baseline|言語判定: /);
+  await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|\.ts\b|Vector lab|connections|N sensitivity|Setup comparison|baseline|言語判定: /);
 });

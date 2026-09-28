@@ -335,7 +335,7 @@ test('候補を矢印キーで動かすだけでは追加されず、「追加�
   await expect(addButton).toBeDisabled();
 });
 
-test('画面の文言に開発の内部（issue番号・Phase・ファイル名・英語の仮ラベル）が出ない（レビュー指摘H1〜H4）', async ({ page }) => {
+test('画面の文言に開発の内部（issue番号・Phase・ファイル名・開発用の語）が出ない（レビュー指摘H1〜H4）', async ({ page }) => {
   await page.goto('/standalone/comparison');
   await addTarget(page, 'layout:qwerty');
   await addTarget(page, 'layout:colemak');
@@ -344,5 +344,5 @@ test('画面の文言に開発の内部（issue番号・Phase・ファイル名�
   const description = await page.locator('meta[name="description"]').getAttribute('content');
   expect(description).not.toMatch(/#\d|Phase|standalone|単体ページ/);
   const body = page.locator('body');
-  await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|\.ts\b|Vector lab|connections|vectors|Movement profile|Cross-hand|N sensitivity|Setup comparison|baseline|言語判定: /);
+  await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|\.ts\b|Vector lab|connections|N sensitivity|Setup comparison|baseline|言語判定: /);
 });

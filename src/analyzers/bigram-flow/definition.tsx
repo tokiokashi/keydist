@@ -326,15 +326,15 @@ function KeyboardFlow({
       <div className="flow-legend" aria-hidden="true">
         {showRollDirection ? (
           <>
-            <span><i className="flow-dot flow-dot-inward" /> 内向き</span>
-            <span><i className="flow-dot flow-dot-outward" /> 外向き</span>
-            <span><i className="flow-dot flow-dot-cross" /> 左右をまたぐ</span>
+            <span><i className="flow-dot flow-dot-inward" /> inward</span>
+            <span><i className="flow-dot flow-dot-outward" /> outward</span>
+            <span><i className="flow-dot flow-dot-cross" /> Cross-hand</span>
           </>
         ) : (
           <>
-            <span><i className="flow-dot flow-dot-left" /> 左手</span>
-            <span><i className="flow-dot flow-dot-right" /> 右手</span>
-            <span><i className="flow-dot flow-dot-cross" /> 左右をまたぐ</span>
+            <span><i className="flow-dot flow-dot-left" /> Left</span>
+            <span><i className="flow-dot flow-dot-right" /> Right</span>
+            <span><i className="flow-dot flow-dot-cross" /> Cross-hand</span>
           </>
         )}
         <span className="flow-coverage">
@@ -432,7 +432,7 @@ function MovementProfilePlot({
   return (
     <div className="flow-mini-panel flow-profile-panel">
       <header>
-        <strong>{hand === 'left' ? '左手' : '右手'}</strong>
+        <strong>{hand === 'left' ? 'Left' : 'Right'}</strong>
         <span>
           {relative.length}件 · 平均移動 {mean.distance.toFixed(2)}u ·{' '}
           <span
@@ -719,7 +719,7 @@ export function BigramFlowVisualization({
 
       <section className="flow-controls" aria-label="Bigram Flowの表示設定">
         <div className="flow-control-group">
-          <span>2打鍵の取り方</span>
+          <span>Bigram</span>
           <div className="flow-segmented" role="group" aria-label="2打鍵の取り方">
             {(['actual', 'within-hand'] as const).map((candidate) => (
               <button
@@ -729,14 +729,14 @@ export function BigramFlowVisualization({
                 data-active={source === candidate || undefined}
                 onClick={() => onOptionsChange({ ...options, source: candidate })}
               >
-                {candidate === 'actual' ? '打った順のまま' : '同じ手だけで続ける'}
+                {candidate === 'actual' ? 'Actual' : 'Within-hand'}
               </button>
             ))}
           </div>
         </div>
 
         <div className="flow-control-group">
-          <span>指</span>
+          <span>Fingers</span>
           <FingerControls selected={selectedFingers} onToggle={toggleFinger} />
         </div>
 
@@ -787,7 +787,8 @@ export function BigramFlowVisualization({
       <section className="flow-block">
         <header className="flow-block-header">
           <div>
-            <h2>キーボード上の流れ</h2>
+            <p className="eyebrow">Absolute</p>
+            <h2>Keyboard Flow</h2>
           </div>
           <p>
             キーからキーへの移動を線で描き、太さで回数を表す。線は始点が薄く、終点が濃い。
@@ -818,7 +819,7 @@ export function BigramFlowVisualization({
         >
           <div className="flow-analysis-heading">
             <div>
-              <p className="eyebrow">指の組み合わせ</p>
+              <p className="eyebrow">Vector analysis</p>
               <h2>
                 {selectedFingers.length === 0
                   ? '全指'
@@ -839,7 +840,8 @@ export function BigramFlowVisualization({
           <section className="flow-block">
             <header className="flow-block-header">
               <div>
-                <h2>移動の向きと距離</h2>
+                <p className="eyebrow">Movement profile</p>
+                <h2>Relative vectors</h2>
               </div>
               <p>
                 打鍵ごとの移動方向と距離を表示します。
@@ -924,7 +926,7 @@ export function BigramFlowVisualization({
             </div>
             {source === 'actual' && extracted.hasCrossHandInAnalysis ? (
               <p className="flow-footnote">
-                左右の手をまたぐ2打鍵は、キーボード上の流れには含めるが、手ごとの移動の向きと距離からは除く。
+                左右の手をまたぐ2打鍵は、Keyboard Flowには含めるが、Relative vectorsからは除く。
               </p>
             ) : null}
           </section>
