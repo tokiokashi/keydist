@@ -19,7 +19,7 @@ export const Route = createRootRoute({
       { title: 'keydist' },
       {
         name: 'description',
-        content: 'キーボード配列の分析と実入力を試す keydist',
+        content: 'キーボードの配列を、文章を打った時の指の移動距離で調べたり、実際に打って試したりできるツール',
       },
     ],
     links: [{ rel: 'stylesheet', href: appCss }],
