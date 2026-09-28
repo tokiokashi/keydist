@@ -635,6 +635,8 @@ test('タブ間の競合修正: 他タブの選択切り替えが割り込んで
   await expect(pageB.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
   const textareaB = pageB.getByLabel('テキスト', { exact: true });
+  // 周回の前提（Bはu1を表示している）を、実際に画面へ出ていることで確かめてから始める。
+  await expect(textareaB).toHaveValue('one');
   const pickerA = pageA.getByLabel('テキストを選ぶ', { exact: true });
   const pickerB = pageB.getByLabel('テキストを選ぶ', { exact: true });
 
@@ -677,4 +679,41 @@ test('画面の文言に開発の内部（issue番号・Phase・ファイル名�
   expect(description).not.toMatch(/#\d|Phase|standalone|単体ページ/);
   const body = page.locator('body');
   await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|\.ts\b|Vector lab|connections|N sensitivity|Setup comparison|baseline|言語判定: /);
+});
+
+test('読み込みで操作可能になった瞬間から、本文は保存済みのテキストを表示している（古い値へ入力が足されない）', async ({ page }) => {
+  // 以前は読み込み完了で操作可能になった後、本文の表示が1フレーム遅れて保存済みの値へ
+  // 差し替わっていた。その間に入力すると、差し替わった値の後ろへ足された。
+  // 本文の欄の「操作可能か・値」の移り変わりを記録し、操作可能な間に古い値が無いことを見る。
+  await page.addInitScript(() => {
+    localStorage.setItem('keydist:text-library', JSON.stringify({
+      version: 1,
+      texts: [{ id: 'u1', name: 'u1', text: 'one' }],
+    }));
+    localStorage.setItem(
+      'keydist:standalone-text-selection',
+      JSON.stringify({ version: 1, ref: { kind: 'user', id: 'u1' } }),
+    );
+    const states: string[] = [];
+    (window as unknown as { __textareaStates: string[] }).__textareaStates = states;
+    const record = () => {
+      const textarea = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="テキスト"]');
+      if (textarea === null) return;
+      const state = `${textarea.matches(':disabled') ? 'disabled' : 'enabled'}:${textarea.value}`;
+      if (states[states.length - 1] !== state) states.push(state);
+    };
+    new MutationObserver(record).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
+    const everyFrame = () => {
+      record();
+      requestAnimationFrame(everyFrame);
+    };
+    requestAnimationFrame(everyFrame);
+  });
+  await page.goto('/standalone/bigram-flow');
+  const textarea = page.getByLabel('テキスト', { exact: true });
+  await expect(textarea).toBeEnabled({ timeout: 10_000 });
+  await expect(textarea).toHaveValue('one');
+
+  const states = await page.evaluate(() => (window as unknown as { __textareaStates: string[] }).__textareaStates);
+  expect(states.filter((state) => state.startsWith('enabled:'))).toEqual(['enabled:one']);
 });
