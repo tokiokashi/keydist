@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import { filterTargetChoiceGroups, targetSummaryText, type TargetChoiceGroup } from './target-choices.ts';
 import './target-selection.css';
@@ -72,6 +72,30 @@ function popoverPosition(anchor: HTMLElement): Position {
   return { x, y: EDGE, maxHeight: spaceAbove };
 }
 
+const TABBABLE = 'a[href], button, input, select, textarea, [tabindex]';
+
+/**
+ * Tabで止まる要素（文書順）。ラジオは同じ組の中で選ばれている1つ（無ければ先頭）だけが止まる。
+ */
+function tabbables(root: HTMLElement): HTMLElement[] {
+  const seenRadioGroups = new Set<string>();
+  const elements = [...root.querySelectorAll<HTMLElement>(TABBABLE)].filter((element) => {
+    if (element.tabIndex < 0) return false;
+    if ((element as HTMLButtonElement).disabled || element.closest('fieldset:disabled') !== null) return false;
+    if (element.getClientRects().length === 0) return false;
+    return true;
+  });
+  return elements.filter((element) => {
+    if (!(element instanceof HTMLInputElement) || element.type !== 'radio' || element.name === '') return true;
+    if (seenRadioGroups.has(element.name)) return false;
+    const group = elements.filter((other): other is HTMLInputElement => other instanceof HTMLInputElement && other.name === element.name);
+    const chosen = group.find((radio) => radio.checked) ?? group[0];
+    if (chosen !== element) return false;
+    seenRadioGroups.add(element.name);
+    return true;
+  });
+}
+
 /** スマホ幅はシート（位置はCSSが決める）、パソコン幅はボタンの近く。 */
 function placeFor(anchor: HTMLElement): Position {
   return isSheet() ? { x: 0, y: 0 } : popoverPosition(anchor);
@@ -86,6 +110,7 @@ export function TargetSelection({ mode, groups, selected, summary, onChange, ext
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const filterRef = useRef<HTMLInputElement>(null);
+  const scrimRef = useRef<HTMLDivElement>(null);
   const summaryRef = useRef<HTMLSpanElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
   const moreRef = useRef<HTMLSpanElement>(null);
@@ -148,7 +173,9 @@ export function TargetSelection({ mode, groups, selected, summary, onChange, ext
     if (!open) return undefined;
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (panelRef.current?.contains(target) || buttonRef.current?.contains(target)) return;
+      // 暗い所（スマホ幅）は自分のクリックで閉じ、フォーカスをボタンへ戻す。ここで先に閉じると
+      // フォーカスの行き先が無くなり、ページ全体へ落ちる。
+      if (panelRef.current?.contains(target) || buttonRef.current?.contains(target) || scrimRef.current?.contains(target)) return;
       close(false);
     };
     const reposition = () => {
@@ -169,6 +196,30 @@ export function TargetSelection({ mode, groups, selected, summary, onChange, ext
       window.removeEventListener('scroll', reposition, { capture: true });
     };
   }, [open]);
+
+  /**
+   * 選択は`document.body`の末尾へ出しているので、Tabの順は画面上の位置とつながっていない。
+   * 最後から先へ進んだらボタンの次へ、最初から戻ったらボタンへ、閉じてから移す（非モーダルのポップオーバー）。
+   */
+  const leaveByTab = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const panel = panelRef.current;
+    const button = buttonRef.current;
+    if (!panel || !button) return;
+    const inside = tabbables(panel);
+    const active = document.activeElement;
+    const atStart = active === panel || active === inside[0];
+    const atEnd = active === inside[inside.length - 1];
+    if (event.shiftKey && atStart) {
+      event.preventDefault();
+      close(true);
+    } else if (!event.shiftKey && atEnd) {
+      event.preventDefault();
+      const page = tabbables(document.body).filter((element) => !panel.contains(element));
+      const next = page[page.indexOf(button) + 1];
+      close(false);
+      (next ?? button).focus();
+    }
+  };
 
   const toggle = (target: AnalysisTarget, key: string, checked: boolean) => {
     if (mode === 'single') {
@@ -211,7 +262,7 @@ export function TargetSelection({ mode, groups, selected, summary, onChange, ext
       </button>
       {open ? createPortal(
         <>
-          <div className="target-selection-scrim" aria-hidden="true" onClick={() => close(true)} />
+          <div ref={scrimRef} className="target-selection-scrim" aria-hidden="true" onClick={() => close(true)} />
           <div
             ref={panelRef}
             id={panelId}
@@ -228,8 +279,14 @@ export function TargetSelection({ mode, groups, selected, summary, onChange, ext
                 ['--target-selection-y' as string]: `${position.y}px`,
                 ...(position.maxHeight === undefined ? {} : { ['--target-selection-max-height' as string]: `${position.maxHeight}px` }),
               }}
-            onKeyDown={() => {
+            onKeyDown={(event) => {
               pointerRef.current = false;
+              if (event.key === 'Tab') leaveByTab(event);
+            }}
+            onBlur={(event) => {
+              // Tab以外でフォーカスが選択の外へ出た時（ブラウザの操作等）も、開いたまま取り残さない。
+              const next = event.relatedTarget as Node | null;
+              if (next !== null && !panelRef.current?.contains(next) && !buttonRef.current?.contains(next)) close(false);
             }}
             onPointerDown={() => {
               pointerRef.current = true;
@@ -271,7 +328,13 @@ export function TargetSelection({ mode, groups, selected, summary, onChange, ext
                             aria-hidden="true"
                           />
                         ) : null}
-                        <span className="target-selection-choice-name">{choice.name}</span>
+                        <span className="target-selection-choice-text">
+                          <span className="target-selection-choice-name">{choice.name}</span>
+                          {/* ラベル付きのSetupは、何の配列・物理配列かを2行目に出す（hoverの無いタッチでも見えるように）。 */}
+                          {choice.fullName !== undefined ? (
+                            <span className="target-selection-choice-detail">{choice.fullName}</span>
+                          ) : null}
+                        </span>
                         {choice.tag !== undefined ? <span className="target-selection-choice-tag">{choice.tag}</span> : null}
                       </label>
                     );

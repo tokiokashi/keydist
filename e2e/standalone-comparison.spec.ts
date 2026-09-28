@@ -339,6 +339,56 @@ test('絞り込み欄で候補を絞り、キーボードだけで選んで、Es
   await expect(filter).toHaveValue('');
 });
 
+test('Tabで選択の最後から先へ進むと閉じてボタンの次へ、最初から戻るとボタンへ移る', async ({ page }) => {
+  await page.goto('/standalone/comparison');
+  const button = page.getByRole('button', { name: /^対象: / });
+  const selection = page.getByRole('dialog', { name: '対象の選択' });
+
+  // 最初（絞り込み欄）からShift+Tabで戻ると、閉じて対象ボタンへ。
+  await button.click();
+  await expect(selection.getByRole('searchbox')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(selection).toHaveCount(0);
+  await expect(button).toBeFocused();
+
+  // 最後（閉じる）からTabで進むと、閉じてボタンの次（解析設定）へ。
+  await button.click();
+  await selection.getByRole('button', { name: '閉じる' }).focus();
+  await page.keyboard.press('Tab');
+  await expect(selection).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '解析設定', exact: true })).toBeFocused();
+});
+
+test('ラベル付きのSetupは、候補の2行目にフル名を出す', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('keydist:setup-library', JSON.stringify({
+      version: 1,
+      setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', label: '自宅の分割キーボード' }],
+      overrides: {},
+    }));
+  });
+  await page.goto('/standalone/comparison');
+  const selection = await openTargetSelection(page);
+  const choice = selection.locator('label:has(input[value="setup:fixed-a"])');
+  await expect(choice.locator('.target-selection-choice-name')).toHaveText('自宅の分割キーボード');
+  await expect(choice.locator('.target-selection-choice-detail')).toContainText('QWERTY');
+});
+
+test.describe('スマホ幅', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('選択は画面下からのシートで出て、暗い所を押すと閉じて対象ボタンへフォーカスが戻る', async ({ page }) => {
+    await page.goto('/standalone/comparison');
+    const button = page.getByRole('button', { name: /^対象: / });
+    const selection = await openTargetSelection(page);
+    const box = (await selection.boundingBox())!;
+    expect(Math.round(box.y + box.height)).toBe(844);
+    await page.mouse.click(195, 40);
+    await expect(selection).toHaveCount(0);
+    await expect(button).toBeFocused();
+  });
+});
+
 test('候補に当てはまる配列・Setupが無い時は、その旨を出す', async ({ page }) => {
   await page.goto('/standalone/comparison');
   const selection = await openTargetSelection(page);

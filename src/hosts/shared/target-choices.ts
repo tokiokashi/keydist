@@ -1,3 +1,4 @@
+import { builtInLayoutKind } from '#input/layouts/kind.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { PhysicalShape } from '#input/shapes/geometry.ts';
 import { analysisTargetKey, effectiveLabel, nameTargets, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
@@ -60,9 +61,9 @@ export function targetChoiceGroups({ layouts, userLayoutIds, shapes, setups, sel
     const target: AnalysisTarget = { kind: 'layout', layoutId: layout.id };
     const choice: TargetChoice = { key: analysisTargetKey(target), target, name: layout.name };
     if (userLayoutIds.has(layout.id)) user.push(choice);
-    // ローマ字のテーブルを持つ配列は英字を打つ配列（かなはローマ字へ展開して打つ）。
-    else if (layout.romajiTable !== undefined) alphabet.push(choice);
-    else kana.push(choice);
+    // 英字とかなの区分は配列の種類の対応表（`input/layouts/kind.ts`）に従う。`Layout`の形からは決まらない。
+    else if (builtInLayoutKind(layout.id) === 'kana') kana.push(choice);
+    else alphabet.push(choice);
   }
 
   // Setupのフル名は`nameTargets`のfullName（集合によらない全部を含む名前）。一覧は「取りうる全部から
