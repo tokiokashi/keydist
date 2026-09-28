@@ -460,8 +460,11 @@ export function setTextContentCommand(
       return { kind: 'applied', label: 'テキストを変更する', changes: { textLibrary: nextLibrary } };
     }
 
-    const selection = current[key];
-    if (selection.ref.kind !== 'builtin' || selection.ref.id !== ref.id) {
+    // 生の選択ではなく解決後の参照と比べる。選択が消えた自作テキストを指していて既定の
+    // 組み込みへ戻って表示されている間も、その組み込みへの編集として複製を作るため
+    // （#544 レビュー: 生の参照と比べると一致せず、打った内容が全部捨てられていた）
+    const resolvedRef = resolveTextSelection(current[key], library).ref;
+    if (resolvedRef.kind !== 'builtin' || resolvedRef.id !== ref.id) {
       return { kind: 'no-op' };
     }
     const builtin = builtinTextById(ref.id);

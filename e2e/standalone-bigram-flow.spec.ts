@@ -130,6 +130,54 @@ test('copy-on-write後にさらに打っても、コピーは増えない（同�
     .toEqual('3回目の編集');
 });
 
+test('同じ組み込みを選び直して同じ本文を打っても保存される（重複排除で捨てない）', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  const textarea = page.getByLabel('テキスト', { exact: true });
+  const picker = page.getByLabel('テキストを選ぶ', { exact: true });
+  const libraryLength = () => page.evaluate(() => {
+    const raw = localStorage.getItem('keydist:text-library');
+    return raw === null ? 0 : (JSON.parse(raw) as { texts: unknown[] }).texts.length;
+  });
+
+  const builtinValue = await picker.inputValue();
+  const edited = `${await textarea.inputValue()}X`;
+  await textarea.fill(edited);
+  await expect.poll(libraryLength).toEqual(1);
+
+  // 組み込みへ戻して、前回と同じ本文をもう一度打つ
+  await picker.selectOption(builtinValue);
+  await expect(textarea).not.toHaveValue(edited);
+  await textarea.fill(edited);
+  await expect.poll(libraryLength).toEqual(2);
+
+  await page.reload();
+  await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue(edited);
+});
+
+test('選択が存在しない自作テキストを指していても、打った内容は組み込みの複製として保存される', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('seeded') !== null) return;
+    sessionStorage.setItem('seeded', '1');
+    localStorage.setItem('keydist:text-library', JSON.stringify({ version: 1, texts: [] }));
+    localStorage.setItem('keydist:standalone-text-selection', JSON.stringify({ version: 1, ref: { kind: 'user', id: 'ghost' } }));
+  });
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+
+  const textarea = page.getByLabel('テキスト', { exact: true });
+  await textarea.fill('lost edit');
+  await expect
+    .poll(async () => page.evaluate(() => {
+      const raw = localStorage.getItem('keydist:text-library');
+      return raw === null ? [] : (JSON.parse(raw) as { texts: { text: string }[] }).texts.map((text) => text.text);
+    }))
+    .toEqual(['lost edit']);
+
+  await page.reload();
+  await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue('lost edit');
+});
+
 test('編集したテキストはリロードしても保持される', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
@@ -582,7 +630,7 @@ test('タブ間の競合修正: 他タブの選択切り替えが割り込んで
     // 次の周回のため両タブの選択をu1へ戻す。
     await pickerB.selectOption({ label: 'u1' });
     await pickerA.selectOption({ label: 'u1' });
-    await expect(pickerB).toHaveValue(/^user:/);
+    await expect(pickerB).toHaveValue('user:u1');
   }
 
   await pageA.close();

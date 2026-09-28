@@ -5,13 +5,10 @@ import {
 } from '#platform/persistence/debounced-scheduler.ts';
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
-import { stableStringify } from '#engine/cache-key.ts';
 
 export interface UseDebouncedCommitOptions<T> {
   /** 値からコマンドを組み立てる。 */
   readonly commandFor: (value: T) => Command<KeydistAssets>;
-  /** 直前に書き込んだ値と同じかどうかの比較に使う。既定は`stableStringify`（`engine/cache-key.ts`。キーの列挙順に依存しない）。 */
-  readonly serialize?: (value: T) => string;
   readonly debounceMs?: number;
 }
 
@@ -43,7 +40,9 @@ export function useDebouncedCommit<T>(
   if (schedulerRef.current === undefined) {
     schedulerRef.current = createDebouncedPersistenceScheduler<T>({
       write: (value) => dispatchRef.current(optionsRef.current.commandFor(value)),
-      serialize: (value) => (optionsRef.current.serialize ?? defaultSerialize)(value),
+      // 重複排除はしない。同じ値かどうかは、適用時点の資産と比べるコマンド側の no-op 判定に
+      // 任せる。スケジューラの「前回自分が書いた値」との比較は、他タブやUndoで資産が変わった後に
+      // 同じ値へ戻す書き込みを捨ててしまう（#544 レビュー）
       debounceMs: options.debounceMs,
     });
   }
@@ -54,9 +53,8 @@ export function useDebouncedCommit<T>(
     // debounce完了前に画面遷移・リロードすると直前の変更が消えていた。
     // `pagehide`はリロード・別ページへの遷移・タブを閉じる操作を、
     // `visibilitychange`（`hidden`）はタブ切り替え・OSのスリープ等、`pagehide`が
-    // 発火しない離脱もまとめて拾うための保険。どちらも同じ`flush()`を呼ぶだけで、
-    // 2重に書き込まれても`createDebouncedPersistenceScheduler`の`serialize`比較が
-    // 同一値の再書き込みを防ぐ）。
+    // 発火しない離脱もまとめて拾うための保険。`flush()`は保留中の値を取り出してから
+    // 書くので、両方が発火しても2回目は何もしない）。
     const flush = () => schedulerRef.current?.flush();
     const onVisibilityChange = () => {
       if (document.visibilityState === 'hidden') flush();
@@ -71,8 +69,4 @@ export function useDebouncedCommit<T>(
   }, []);
 
   return useMemo(() => (value: T) => schedulerRef.current!.notify(value), []);
-}
-
-function defaultSerialize<T>(value: T): string {
-  return stableStringify(value);
 }

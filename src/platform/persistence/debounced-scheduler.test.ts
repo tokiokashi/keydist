@@ -116,3 +116,15 @@ test('generic scheduler: notify() after flush schedules a fresh debounce window'
   t.mock.timers.tick(100);
   assert.deepEqual(values, [{ n: 1 }, { n: 2 }]);
 });
+
+test('generic scheduler: serializeを省くと同じ値でも毎回書く（保存先が他で変わった後に同じ値へ戻す書き込みを捨てない）', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { values, write } = writesRecorder();
+  const scheduler = createDebouncedPersistenceScheduler<Sample>({ write, debounceMs: 300 });
+
+  scheduler.notify({ n: 1 });
+  t.mock.timers.tick(300);
+  scheduler.notify({ n: 1 });
+  t.mock.timers.tick(300);
+  assert.deepEqual(values, [{ n: 1 }, { n: 1 }]);
+});
