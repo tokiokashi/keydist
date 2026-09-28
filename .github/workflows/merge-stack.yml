@@ -37,7 +37,7 @@ jobs:
       statuses: read
     env:
       # スタックを入れてよい base。main 以外へのスタックはこのワークフローでは入れない
-      ALLOWED_BASE: main
+      ALLOWED_BASE: scratch/merge-stack-test-base
       # 各PRの head で成功していなければならない CI のジョブ（.github/workflows/ci.yml の pull_request で走るもの）
       REQUIRED_CHECKS: verify,browser-e2e,commit-messages
       LABEL: merge-stack
