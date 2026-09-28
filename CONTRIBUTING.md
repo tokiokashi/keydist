@@ -107,7 +107,17 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 
 - `main` に直接pushしない。`<type>/<短い説明>` のブランチを切る（例: `feat/kana-layout-form`）
 - push前に `npm test` と `npm run build` を通す
-- `main` へのmergeでGitHub Pagesに配信されるため、**`main` は常に動く状態を保つ**
+- `main` はマージしても公開されない。CI（test / typecheck / build）は通る状態を保つ
+
+## 公開（GitHub Pages）
+
+公開は `main` へのマージではなく、**`v*` のタグを打った時**に行う（`.github/workflows/pages.yml`）。
+`main` を開発の合流点として動かしても、公開物は変わらない。
+
+- 公開する: 公開したいコミット（通常は `main`）に `vX.Y.Z` のタグを打ってpushする
+- 同じ内容を配信し直す: Actionsの「Deploy to GitHub Pages」を手動実行する。選んだrefがそのまま公開される
+- 旧画面（Analyzer再設計 #544 より前の最終形）は、タグ `classic-final` のコミットを
+  `/keydist/classic/` にビルドして同梱する。旧画面のソースは `main` に残さず、このタグだけで保つ
 
 ### スタックPR
 
