@@ -1,17 +1,16 @@
 name: Deploy to GitHub Pages
 
 # 公開物は常に v* タグで辿れるものに限る。任意のブランチ・コミットは公開できない。
-# 起点は3つあり、どれも「既存の v* タグ」だけを受け付ける。
+# 起点は2つで、どちらも main の上で走り、「既存の v* タグ」だけを受け付ける。
 # - release.yml からの呼び出し（workflow_call）: リリースPR（package.json の version を上げるPR）が
 #   main に入った時、release.yml がタグを打ってからここを呼ぶ。GITHUB_TOKEN で打ったタグの push は
 #   別のワークフローを起動しないので、同じ実行の中で呼ぶ
-# - v* タグの push: オーナーが手元でタグを打って push した時
 # - 手動実行（workflow_dispatch）: 過去に公開したバージョンへ戻す・配信し直す時。入力は既存の v* タグ名だけで、
 #   ブランチ名・SHA・存在しないタグは拒否する。以前 workflow_dispatch を外したのは任意の ref を公開できたから。
 #   タグ限定なら「公開物は常にタグで辿れる」を崩さない。Re-run の30日制限も受けない
+# タグの push では起動しない。タグの push はタグのコミットにあるこのファイルで走るため、検査ごと書き換えられる。
+# 同じ理由で、main 以外のブランチから手動実行した時も断る（検査の定義は常に main のもの）
 on:
-  push:
-    tags: ['v*']
   workflow_call:
     inputs:
       tag:
@@ -44,30 +43,25 @@ jobs:
       CLASSIC_REF: classic-final
       CLASSIC_BASE_PATH: /keydist/classic/
     steps:
-      # タグ名を決めて検証する。呼び出し・手動実行では入力、タグの push ではそのタグ。
-      # workflow_call では github.event_name が呼び出し側のもの（main への push）になるので、入力を先に見る。
+      # タグ名を決めて検証する。タグは呼び出し・手動実行の入力で受け取る。
+      # workflow_call では github.ref は呼び出し側のもの（release.yml なら main）になる。
       # 入力はブランチ名や SHA でもチェックアウト自体はできてしまうので、形と実在をここで確かめ、
       # 以降は refs/tags/ を付けて参照する（同名のブランチがあっても取り違えない）
       - name: Resolve tag
         id: resolve
         shell: bash
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          REF_TYPE: ${{ github.ref_type }}
-          REF_NAME: ${{ github.ref_name }}
+          RUN_REF: ${{ github.ref }}
           INPUT_TAG: ${{ inputs.tag }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if [ -n "$INPUT_TAG" ]; then
-            tag="$INPUT_TAG"
-          elif [ "$EVENT_NAME" = push ] && [ "$REF_TYPE" = tag ]; then
-            tag="$REF_NAME"
-          else
-            echo "::error::公開するタグが決まらない（event=$EVENT_NAME, ref_type=$REF_TYPE）"
+          if [ "$RUN_REF" != refs/heads/main ]; then
+            echo "::error::公開は main の上で走らせる（今は $RUN_REF）。手動実行ではブランチに main を選ぶ"
             exit 1
           fi
+          tag="$INPUT_TAG"
           if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::'$tag' は vX.Y.Z 形式のタグ名ではない。ブランチ名・SHAは公開できない"
             exit 1
@@ -258,7 +252,8 @@ jobs:
       pages: write
       id-token: write
     # workflow_call で呼ばれても効くよう、トップレベルではなくジョブに置く。
-    # 配信は同時に1つだけ。走っている配信は途中で止めず、待っている方は新しいものに置き換わる
+    # 配信は同時に1つだけ。走っている配信は途中で止めず、待っている方は新しいものに置き換わる。
+    # 2つのリリースが続けて待った時は古い方の配信が飛ばされるが、タグは両方残り、公開されるのは新しい方なので構わない
     concurrency:
       group: pages
       cancel-in-progress: false
