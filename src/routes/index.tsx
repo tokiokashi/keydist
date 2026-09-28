@@ -12,22 +12,11 @@ function Home() {
       <p>
         キーボードの配列を、文章を打った時に指がどれだけ動くかで調べるツールです。配列の良し悪しを決めるのではなく、性質を数値で眺めるために使います。
       </p>
+      {/* トップは入口だけ。個々のAnalyzerへの導線はシェルのサイドバーが持つ（docs/architecture.md「画面の構成」） */}
       <div className="route-grid">
         <Link className="route-card" to="/analyzer">
           <strong>Analyzer</strong>
           <span>配列とテキストを選び、指の移動距離などの数値と打鍵の再生を見る</span>
-        </Link>
-        <Link className="route-card" to="/standalone/bigram-flow">
-          <strong>Bigram Flow</strong>
-          <span>続けて打つ2つのキーの間で、指がどちらへ動くかをキーボードの図の上で見る</span>
-        </Link>
-        <Link className="route-card" to="/standalone/comparison">
-          <strong>比較表</strong>
-          <span>複数の配列の移動距離や同指率を、1つの表に並べて見比べる</span>
-        </Link>
-        <Link className="route-card" to="/standalone/n-sensitivity">
-          <strong>N感度</strong>
-          <span>先読みする入力の数 N を変えた時に、総移動距離がどう変わるかをグラフで見る</span>
         </Link>
         <Link className="route-card" to="/input">
           <strong>Tester</strong>
