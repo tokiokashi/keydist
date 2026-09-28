@@ -2,11 +2,12 @@ name: Deploy to GitHub Pages
 
 # 公開は main への push ではなく、タグ（v*）を打った時に行う。
 # main を開発の合流点として動かしても公開物が変わらないようにするため（#544 の切り替えを
-# main へのマージと切り離す）。手動実行（workflow_dispatch）は、選んだ ref をそのまま公開する。
+# main へのマージと切り離す）。公開の起点はタグだけにする（workflow_dispatch は置かない）。
+# 公開物が常にタグで辿れ、任意のブランチを公開できないようにするため。
+# 同じ内容の配信し直しは、そのタグの既存の実行を Actions 画面で Re-run する。
 on:
   push:
     tags: ['v*']
-  workflow_dispatch:
 
 permissions:
   contents: read
