@@ -58,9 +58,9 @@ export interface BigramFlowStandalonePageProps {
    * 参照）。`dispatch`を直接使わないのは、`hosts`が`platform`をimportできず
    * （依存規則）debounce自体をここへ持てないため。
    */
+  readonly onBigramFlowOptionsCommit: (options: BigramFlowOptions) => void;
   /** 資産のコマンド履歴（文脈バーのUndo / Redo）。`app` が組み立てる。 */
   readonly history: ContextBarHistory;
-  readonly onBigramFlowOptionsCommit: (options: BigramFlowOptions) => void;
 }
 
 export function BigramFlowStandalonePage({

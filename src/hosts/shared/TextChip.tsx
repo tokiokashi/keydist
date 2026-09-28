@@ -135,6 +135,24 @@ function TextEditor({
     setRenameDraft(resolved.name);
   }
 
+  // 名前は欄を離れた時に書く。チップの外を押して閉じると欄ごと外れてblurが来ないことがあるので、
+  // 外れる時にも書く（「元に戻す」を押した時もチップの外なので、ここで確定してから戻る）。
+  // 最新の下書きと宛先はrefで持つ（外れる時のcleanupは、最後の描画の値を読む必要がある）。
+  const renameRef = useRef({ draft: renameDraft, id: resolved.ref.id, name: resolved.name, isBuiltin: resolved.isBuiltin });
+  renameRef.current = { draft: renameDraft, id: resolved.ref.id, name: resolved.name, isBuiltin: resolved.isBuiltin };
+  const dispatchRef = useRef(dispatch);
+  dispatchRef.current = dispatch;
+  const commitRename = () => {
+    const { draft, id, name, isBuiltin } = renameRef.current;
+    if (isBuiltin || draft === name || draft.trim() === '') return;
+    // 同じ値を2度書かないよう、書いた値を手持ちの名前として覚える（blurと外れる時の両方が来る場合）。
+    renameRef.current = { ...renameRef.current, name: draft };
+    dispatchRef.current(renameTextCommand(id, draft));
+  };
+  const commitRenameRef = useRef(commitRename);
+  commitRenameRef.current = commitRename;
+  useEffect(() => () => commitRenameRef.current(), []);
+
   return (
     <div className="text-editor">
       <div className="text-editor-row">
@@ -208,10 +226,9 @@ function TextEditor({
             type="text"
             value={renameDraft}
             onChange={(event) => setRenameDraft(event.currentTarget.value)}
-            onBlur={() => {
-              if (!resolved.isBuiltin && renameDraft !== resolved.name && renameDraft.trim() !== '') {
-                dispatch(renameTextCommand(resolved.ref.id, renameDraft));
-              }
+            onBlur={commitRename}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') commitRename();
             }}
             disabled={resolved.isBuiltin}
             aria-label="テキストの名前"

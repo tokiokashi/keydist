@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { openTextChip } from './context-bar-helper.ts';
 
 /**
@@ -31,6 +31,11 @@ test('サイドバーは区分ごとのナビゲーションと、最下端の�
   await expect(page.locator('#app-sidebar').getByRole('button', { name: '暗', exact: true })).toHaveAttribute('aria-pressed', 'true');
 });
 
+/** 重ねて出したサイドバーが出切るまで待つ（滑り出しの途中の位置で判定しないため）。 */
+async function expectSidebarShown(page: Page): Promise<void> {
+  await expect.poll(async () => (await page.locator('#app-sidebar').boundingBox())?.x).toBe(0);
+}
+
 test('固定を外すとサイドバーは隠れ、ボタンで重ねて出して離れると引っ込む。固定の状態はリロード後も残る', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   const sidebar = page.locator('#app-sidebar');
@@ -40,31 +45,62 @@ test('固定を外すとサイドバーは隠れ、ボタンで重ねて出し�
   await sidebar.getByRole('button', { name: 'サイドバーを固定' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-sidebar', 'unpinned');
   await expect(sidebar).not.toBeInViewport();
+  // 隠れたサイドバーからフォーカスが落ちず、開くボタンへ移る。
+  await expect(toggle).toBeFocused();
 
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-sidebar', 'unpinned');
   await expect(sidebar).not.toBeInViewport();
 
-  // 文脈バーのボタンで重ねて出す。
+  // 文脈バーのボタンで重ねて出す。Escapeで閉じるとフォーカスはボタンへ戻る。
   await expect(page.locator('.context-bar').getByRole('button', { name: 'サイドバーを開く' })).toBeVisible();
   await toggle.click();
-  await expect(sidebar).toBeInViewport();
+  await expectSidebarShown(page);
   await page.keyboard.press('Escape');
   await expect(sidebar).not.toBeInViewport();
+  await expect(toggle).toBeFocused();
 
-  // 左端に触れると出て、離れると引っ込む。
+  // 左端に触れると出て、サイドバーの外へ離れると引っ込む。
   await page.mouse.move(2, 400);
+  await expectSidebarShown(page);
+  await page.mouse.move(100, 400, { steps: 4 });
   await expect(sidebar).toBeInViewport();
-  await page.mouse.move(100, 400);
-  await page.mouse.move(700, 400);
+  await page.mouse.move(700, 400, { steps: 8 });
+  await expect(sidebar).not.toBeInViewport();
+
+  // 滑り出しの途中で、一度もサイドバーに入らずに離れても引っ込む。
+  await page.mouse.move(2, 300);
+  await page.mouse.move(700, 300, { steps: 8 });
   await expect(sidebar).not.toBeInViewport();
 
   // 固定し直す。
+  await page.mouse.move(700, 400);
   await toggle.click();
+  await expectSidebarShown(page);
   await sidebar.getByRole('button', { name: 'サイドバーを固定' }).click();
   await expect(page.locator('html')).not.toHaveAttribute('data-sidebar');
   await expect(sidebar).toBeInViewport();
   await expect(toggle).toBeHidden();
+});
+
+test('ボタンで重ねて出している間は、Tabで本体へ抜けない', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, shell: { sidebarPinned: false } }));
+  });
+  await page.goto('/standalone/bigram-flow');
+  await page.getByRole('button', { name: 'サイドバーを開く' }).click();
+  await expectSidebarShown(page);
+  const sidebar = page.locator('#app-sidebar');
+  await expect(sidebar.getByRole('link', { name: 'Bigram Flow', exact: true })).toBeFocused();
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press('Tab');
+    const inside = await page.evaluate(() => {
+      const active = document.activeElement;
+      return active === null || active === document.body || document.getElementById('app-sidebar')!.contains(active);
+    });
+    expect(inside, `Tab ${i + 1}回目でサイドバーの外へ出た`).toBe(true);
+  }
+  await expect(sidebar).toBeInViewport();
 });
 
 test('スマホ幅ではサイドバーは引き出しで、リンクを押すと閉じる', async ({ page }) => {
@@ -108,18 +144,68 @@ test('文脈バー: テキストのチップは閉じた時1行で、開くと�
   await expect(bar.getByLabel('既定の物理配列')).toBeVisible();
 });
 
-test('Undoは待ち中の本文の変更を先に書いてから戻す', async ({ page }) => {
+test('Undoは待ち中の本文の変更を先に書いてから戻す（その前の操作は戻さない）', async ({ page }) => {
+  await page.clock.install();
   await page.goto('/standalone/bigram-flow');
+  const bar = page.locator('.context-bar');
+  const chip = bar.locator('button.text-chip');
+  await expect(chip).toBeEnabled({ timeout: 10_000 });
+
+  // 先に1手入れて履歴を作る（テキストを英文に切り替える）。
   const panel = await openTextChip(page);
+  await panel.getByLabel('テキストを選ぶ', { exact: true }).selectOption({ label: '英文（既定）' });
+  await expect(chip).toContainText('英文');
   const textarea = panel.getByLabel('テキスト', { exact: true });
-  const before = await textarea.inputValue();
+  const englishText = await textarea.inputValue();
+
+  // 時計を止めて打つ。間引きのタイマーは発火しないので、本文の書き込みは待ち中のまま。
+  const now = await page.evaluate(() => Date.now());
+  await page.clock.pauseAt(now + 60_000);
   await textarea.fill('すぐに戻す編集');
-  await page.locator('.context-bar').getByRole('button', { name: '元に戻す' }).click();
+  expect(await page.evaluate(() => localStorage.getItem('keydist:text-library')) ?? '').not.toContain('すぐに戻す編集');
+
+  // 戻すと、待ち中の本文（組み込みの書き換え＝自作のコピー）だけが戻り、英文の選択は残る。
+  await bar.getByRole('button', { name: '元に戻す' }).click();
+  await expect(chip).toContainText('英文');
   await openTextChip(page);
-  await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue(before);
-  // 戻した後に、待っていた書き込みが遅れて入ることもない。
-  await page.waitForTimeout(1200);
-  await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue(before);
+  await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue(englishText);
+  await expect(bar.getByRole('button', { name: 'やり直す' })).toBeEnabled();
+
+  // 時計を進めても、待っていた書き込みが遅れて入ることはない。
+  await page.clock.runFor(5_000);
+  await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue(englishText);
+  await expect(chip).toContainText('英文');
+});
+
+test('テキストの名前は、チップの外を押して閉じても書かれ、「元に戻す」はその変更を戻す', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  const bar = page.locator('.context-bar');
+  const chip = bar.locator('button.text-chip');
+  await expect(chip).toBeEnabled({ timeout: 10_000 });
+
+  let panel = await openTextChip(page);
+  await panel.getByRole('button', { name: '複製', exact: true }).click();
+  const name = panel.getByLabel('テキストの名前');
+  await expect(name).toBeEnabled();
+
+  // 1回目: 欄に打ってすぐチップの外（ページの見出し）を押す。
+  await name.fill('名前その1');
+  // サイドバーの何も無い所（チップの欄が被らない所）を押す。
+  await page.mouse.click(120, 600);
+  await expect(panel).toBeHidden();
+  await expect(chip).toContainText('名前その1');
+
+  // 2回目: 打ってすぐ「元に戻す」を押す。入力中の名前を確定してから戻すので、1回目の名前に戻る。
+  panel = await openTextChip(page);
+  await panel.getByLabel('テキストの名前').fill('名前その2');
+  await bar.getByRole('button', { name: '元に戻す' }).click();
+  await expect(chip).toContainText('名前その1');
+  await bar.getByRole('button', { name: 'やり直す' }).click();
+  await expect(chip).toContainText('名前その2');
+
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:text-library')))
+    .toContain('名前その2');
 });
 
 test('トップとTesterもシェルに載り、旧Analyzerは載らない', async ({ page }) => {
