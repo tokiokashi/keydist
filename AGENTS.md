@@ -52,6 +52,8 @@ Claude Code は `CLAUDE.md` が無いプロジェクトでは `AGENTS.md` を読
 
 - 実装役とレビュー役はそれぞれ**自分の git worktree**（`.claude/worktrees/`、`origin/main` から切られる）で動く。
   本体のチェックアウトを共有しない。同じファイルに触る単位は並行にしない（`CONTRIBUTING.md`「作業単位の切り方」）
+- リードは implementer / reviewer を1回起動するたびに、結果に付く使用量（`subagent_tokens`・`tool_uses`・`duration_ms`）を
+  役・モデル・effort と一緒に PR のコメントに残す。モデルの組を替えた時にコストと効果を比べる材料はこれしか無い
 - 「マージ」の条件（`CONTRIBUTING.md`）のうち、レビューの有無は機械で確かめられない。**reviewer が現在の head を承認した記録が無ければ、リードはマージしない**。
   レビューを通さずに入れた変更から退行が出た実績がある
 
