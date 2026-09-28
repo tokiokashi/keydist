@@ -28,6 +28,8 @@ const requiredFieldsSchema = v.looseObject({
   text: v.string(),
 });
 
+const KNOWN_USER_TEXT_KEYS: ReadonlySet<string> = new Set(['id', 'name', 'text', 'languageOverride']);
+
 function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): UserText[] {
   if (!Array.isArray(raw)) return [];
   const seen = new Set<string>();
@@ -41,6 +43,12 @@ function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDiagnosti
       return;
     }
     seen.add(decoded.id);
+    // `looseObject`は未知のキーを黙って通すので、捨てる前に診断を積む（「捨てた値には必ず診断」）
+    for (const extraKey of Object.keys(decoded)) {
+      if (!KNOWN_USER_TEXT_KEYS.has(extraKey)) {
+        diagnostics.push({ path: `${elementPath}.${extraKey}`, message: `未知の項目「${extraKey}」を捨てた` });
+      }
+    }
 
     const rawLanguageOverride = isRecord(candidate) ? candidate.languageOverride : undefined;
     const languageOverride = decodeField(

@@ -15,8 +15,13 @@ export interface DebouncedPersistenceScheduler<T> {
 export interface DebouncedPersistenceSchedulerOptions<T> {
   /** 実際の書き込み処理。失敗しても例外を外へ投げない実装を渡すこと */
   write: (value: T) => void;
-  /** 直前に書いた値と同じかどうかの比較に使う。同じなら書き込みを省く */
-  serialize: (value: T) => string;
+  /**
+   * 直前に書いた値と同じかどうかの比較に使う。同じなら書き込みを省く。
+   * 省略すると比較しない。書き込み先が他タブ等で変わりうる場合、「前回自分が書いた値」との
+   * 比較は現在の保存値との比較にならず、戻したい値の書き込みを捨ててしまうため
+   * （#544 レビュー: 他タブで変わった後に同じ本文を打ち直すと保存されなかった）
+   */
+  serialize?: (value: T) => string;
   debounceMs?: number;
   setTimeoutFn?: typeof setTimeout;
   clearTimeoutFn?: typeof clearTimeout;
@@ -36,9 +41,11 @@ export function createDebouncedPersistenceScheduler<T>(
   let lastSerialized: string | undefined;
 
   const writeNow = (value: T) => {
-    const serialized = options.serialize(value);
-    if (serialized === lastSerialized) return;
-    lastSerialized = serialized;
+    if (options.serialize !== undefined) {
+      const serialized = options.serialize(value);
+      if (serialized === lastSerialized) return;
+      lastSerialized = serialized;
+    }
     options.write(value);
   };
 

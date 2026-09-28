@@ -511,6 +511,21 @@ test('setTextContentCommand: 削除済みのユーザーテキストidへの書�
   assert.equal(step.outcome.kind, 'no-op');
 });
 
+test('setTextContentCommand: 選択が存在しない自作テキストを指して既定の組み込みへ戻っている間の編集は、その組み込みの複製になる', () => {
+  const assets: KeydistAssets = {
+    ...emptyAssets(),
+    standaloneTextSelection: { ref: { kind: 'user', id: 'ghost' } },
+  };
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  // 画面は解決後の参照（既定の組み込み）を渡してくる
+  const step = applyCommand(assets, history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, '書き換えた本文', generateTextId));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.equal(step.assets.textLibrary.texts.length, 1);
+  assert.equal(step.assets.textLibrary.texts[0]?.text, '書き換えた本文');
+  assert.deepEqual(step.assets.standaloneTextSelection.ref, { kind: 'user', id: step.assets.textLibrary.texts[0]?.id });
+});
+
 test('setTextLanguageOverrideCommand: 組み込み選択中は言語固定なのでno-op', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
