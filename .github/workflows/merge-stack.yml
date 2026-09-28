@@ -8,8 +8,10 @@ name: Merge stack
 # ここで機械的に確かめるのは、付けた人の権限・スタックの形・各PRの head の CI だけ。
 # レビューの有無とオーナーが決めていない選択の有無は確かめられないので、付ける側が守る。
 #
-# pull_request ではなく pull_request_target で起動する。PRのコードはチェックアウトしないので安全で、
-# 衝突していてマージ用の ref が無いPRでも起動する。ワークフローの定義は base（一番上のPRなら1つ下のブランチ）のものが使われる。
+# pull_request ではなく pull_request_target で起動する。pull_request_target は PR の base にかかわらず
+# 既定ブランチ（main）の定義で走るので、PRのブランチ側でこのワークフローを書き換えても効かない。
+# PRのコードはチェックアウトしない。衝突していてマージ用の ref が無いPRでも起動する。
+# そのため、このファイルの変更は main に入るまで効かない
 #
 # GITHUB_TOKEN でのマージは別のワークフローを起動しない（main への push で CI・release.yml が走らない）。
 # リポジトリの secret に STACK_MERGE_TOKEN（Contents と Pull requests に write を持つ fine-grained PAT）を
