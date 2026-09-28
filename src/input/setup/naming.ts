@@ -5,7 +5,7 @@
  * **表示名は常に、同じ画面に並ぶ集合に対して計算する。** 集合の中で共通な部分は落とし、
  * 違う部分だけを出す（例: 集合 `{QWERTY/row-staggered, Colemak-DH/row-staggered,
  * QWERTY/row-staggered・指割当JIS}` の表示は `QWERTY` / `Colemak-DH` / `QWERTY · 指割当JIS`）。
- * フルの名前はhoverと条件の要約に出す。
+ * フルの名前はhoverに出す。
  *
  * 旧`nameSetups`（Setupの自動生成名が衝突した時だけラベル入力を促す版）を置き換える
  * （#578コメント2026-09-28「『衝突時だけ足す』を『差分だけ残す』に広げる」）。ユーザーが
@@ -63,7 +63,7 @@ export interface NamedTarget {
   readonly key: string;
   /** 集合に対して計算した、差分だけを残す表示名。空になることはない。 */
   readonly displayName: string;
-  /** 集合によらない、常にすべてを含む名前。hoverと条件の要約に使う。 */
+  /** 集合によらない、常にすべてを含む名前。hoverに使う。 */
   readonly fullName: string;
 }
 
