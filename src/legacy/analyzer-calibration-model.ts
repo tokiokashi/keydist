@@ -281,8 +281,8 @@ export function createAnalyzerCalibrationModel(
       const geometry = ctx.getPlaybackGeometry();
       const layout = ctx.getPlaybackLayout();
       const context = geometry && layout
-        ? `${geometry.name}の形状で${layout.name}配列のキーを使ってキャリブレーションします。`
-        : '選択中の物理形状と配列のキーを使ってキャリブレーションします。';
+        ? `${geometry.name}の物理配列で${layout.name}配列のキーを使ってキャリブレーションします。`
+        : '選択中の物理配列と配列のキーを使ってキャリブレーションします。';
       const calibration = ctx.getCalibration();
       const sameHandPairCount = calibration
         ? Object.keys(calibration.sameHandDifferentFingerActionsPerSecondByPair).length

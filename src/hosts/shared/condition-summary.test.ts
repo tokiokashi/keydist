@@ -119,7 +119,7 @@ function resolveWith(
   return result.input;
 }
 
-test('nonDefaultConditionRows: 効かない行（Setup対象の既定の形状）は上書きされていても併記しない（レビュー指摘M1）', () => {
+test('nonDefaultConditionRows: 効かない行（Setup対象の既定の物理配列）は上書きされていても併記しない（レビュー指摘M1）', () => {
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;
@@ -132,7 +132,7 @@ test('nonDefaultConditionRows: 効かない行（Setup対象の既定の形状�
   }
 });
 
-test('traceConditionSummary: 既定の形状はidでなく形状名で出す', () => {
+test('traceConditionSummary: 既定の物理配列はidでなく形状名で出す', () => {
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;
@@ -142,7 +142,7 @@ test('traceConditionSummary: 既定の形状はidでなく形状名で出す', (
   assert.equal(row.originLabel, '上書き: 全体');
 });
 
-test('nonDefaultConditionRows: 既定の形状は形状名として別に出しているので、併記には含めない（レビュー指摘L-c）', () => {
+test('nonDefaultConditionRows: 既定の物理配列は形状名として別に出しているので、併記には含めない（レビュー指摘L-c）', () => {
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;
@@ -168,7 +168,7 @@ test('traceConditionSummary: 値・上書きの置き場所のidは名前へ引�
   assert.match(romaji.displayValue, /訓令式/);
   assert.equal(romaji.originLabel, `上書き: 配列「${LAYOUT_BY_ID.get('qwerty')!.name}」`);
   const finger = rows.find((row) => row.id === 'fingerAssignmentId')!;
-  assert.equal(finger.originLabel, `上書き: 形状「${PHYSICAL_SHAPES['row-staggered'].name}」`);
+  assert.equal(finger.originLabel, `上書き: 物理配列「${PHYSICAL_SHAPES['row-staggered'].name}」`);
   for (const row of rows) {
     const texts = [row.label, row.displayValue, row.originLabel, ...row.diagnostics.map((d) => conditionDiagnosticText(row, d) ?? '')];
     for (const text of texts) assert.doesNotMatch(text, /finger-deleted-custom|kunrei|row-staggered|qwerty|Realization|Policy/, text);

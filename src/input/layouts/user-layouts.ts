@@ -89,7 +89,7 @@ export function validate(rows: string[]): string[] {
   rows.forEach((row, i) => {
     const length = [...row.trim()].length;
     if (length > ROW_LIMITS[i]) {
-      errors.push(`${ROW_LABELS[i]}が ${length} 文字。この形状には ${ROW_LIMITS[i]} 個までしか置けない`);
+      errors.push(`${ROW_LABELS[i]}が ${length} 文字。この物理配列には ${ROW_LIMITS[i]} 個までしか置けない`);
     }
   });
   if (rows.slice(1).every((r) => r.trim() === '')) errors.push('英字の段が空');

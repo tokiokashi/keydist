@@ -28,7 +28,7 @@ const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly la
    * 配列を対象にした時だけ意味を持つ（`isApplicable`がSetup対象では`applicable: false`を
    * 返す。#578指摘6「defaultShapeIdの診断はfingerAssignmentIdと同じ形で出す」）。
    */
-  { id: 'defaultShapeId', label: '既定の形状' },
+  { id: 'defaultShapeId', label: '既定の物理配列' },
 ];
 
 export type ConditionValueFormat = 'primitive' | 'object';
@@ -57,13 +57,13 @@ const INPUT_METHOD_LABELS: Readonly<Record<InputMethod, string>> = {
   'kana-direct': 'かなを直接打つ配列',
 };
 
-/** 上書きの置き場所。形状・配列はidでなく名前で出す（引けなければ「この形状」等）。 */
+/** 上書きの置き場所。物理配列・配列はidでなく名前で出す（引けなければ「この物理配列」等）。 */
 function cascadeLevelLabel(level: CascadeLevel, names: ConditionValueNames | undefined): string {
   switch (level.kind) {
     case 'global': return '全体';
     case 'shape': {
       const name = names?.shapes.get(level.shapeId)?.name;
-      return name === undefined ? 'この形状' : `形状「${name}」`;
+      return name === undefined ? 'この物理配列' : `物理配列「${name}」`;
     }
     case 'inputMethod': return INPUT_METHOD_LABELS[level.inputMethod];
     case 'layout': {
@@ -90,7 +90,7 @@ function formatValue(
 ): { format: ConditionValueFormat; displayValue: string } {
   // 値がidの項目は名前へ引く。引けないid（削除済み・自作で手持ちに無い）もidのままは出さない。
   if (id === 'defaultShapeId' && typeof value === 'string') {
-    return { format: 'primitive', displayValue: names?.shapes.get(value)?.name ?? '見つからない形状' };
+    return { format: 'primitive', displayValue: names?.shapes.get(value)?.name ?? '見つからない物理配列' };
   }
   if (id === 'romajiRuleId' && typeof value === 'string') {
     const builtin = Object.hasOwn(ROMAJI_RULES, value) ? ROMAJI_RULES[value as keyof typeof ROMAJI_RULES] : undefined;
@@ -198,11 +198,11 @@ export function conditionDiagnosticText(row: ConditionSummaryRow, diagnostic: Di
  * 全項目を`<details>`で出すと行ごとに同じ既定値の羅列が並んでしまい読みにくい。
  * 「このSetupだけ何が違うか」が知りたい場面なので、`origin.kind !== 'default'`
  * （カスケードのどこかのレベルで上書きされている）の行だけを残す。
- * その対象に効かない行（`applicable: false`。Setup対象の「既定の形状」、かな配列の
+ * その対象に効かない行（`applicable: false`。Setup対象の「既定の物理配列」、かな配列の
  * ローマ字規則等）は上書きされていても落とす。効かない値を併記すると、その条件で
  * 測ったように読めてしまうため。
  *
- * 「既定の形状」は常に落とす。これが効く配列対象では、実際に使った形状の名前を名前・条件欄に
+ * 「既定の物理配列」は常に落とす。これが効く配列対象では、実際に使った形状の名前を名前・条件欄に
  * 必ず出しているので、併記すると同じ形状名が2回並ぶため（レビュー指摘L-c）。
  *
  * `excludeIds`は呼び出し側が「この項目は元々全員に共通の軸として見せているので、

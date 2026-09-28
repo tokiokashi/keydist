@@ -48,7 +48,7 @@ export type ConditionTab =
 
 const CONDITION_TABS: readonly [ConditionTab, string][] = [
   ['romaji', 'ローマ字'],
-  ['physical', '物理形状'],
+  ['physical', '物理配列'],
   ['model', 'モデル'],
   ['trigger', 'Trigger'],
   ['chain', 'Chain'],
