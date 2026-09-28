@@ -144,11 +144,12 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 - エージェントは、「マージ」の条件を満たした時に**一番上のPRへ `merge-stack` ラベルを付ける**。スタックのPRを通常のマージAPIやスタック外の手段でマージしない。
   ラベルを受けて `.github/workflows/merge-stack.yml` が次を行い、結果をPRにコメントしてラベルを外す（失敗しても外れるので、直してから付け直す）
   - 付けた人が書き込み権限を持つか、PRが `main` 向けの開いたスタックの一番上か、draft・未マージで閉じたPRが無いかを確かめる
+  - スタックが `package.json` の `version` を変えていないかを確かめる（変えていたら断る。リリースPRはスタックに入れない）
   - 全PRのheadで `verify` / `browser-e2e` / `commit-messages` が成功し、他のチェックに失敗・実行中が無いかを確かめる
   - 一番上のPRを `merge-async`（merge commit）でマージし、終わるまで待つ
   - レビューの有無と未決の選択の有無は機械では確かめない。ラベルを付けることが、それらを満たしたという宣言になる
 - `merge-stack` はリポジトリの `GITHUB_TOKEN` でマージする。`GITHUB_TOKEN` による push は別のワークフローを起動しないので、
-  このマージでは `main` のCIが走らない（各PRのheadのCIは確認済み）。走らせたい時は、オーナーがsecret `STACK_MERGE_TOKEN`
+  このマージでは `main` のCIも `release.yml` も走らない（各PRのheadのCIは確認済み。`version` を変えるスタックは上の検査で断る）。走らせたい時は、オーナーがsecret `STACK_MERGE_TOKEN`
   （Contents・Pull requestsにwriteを持つfine-grained PAT）を置く
 - 下のPRが入ると、GitHubは上のブランチをサーバー側で書き換える（rebase）。rebase・強制pushの禁止はエージェント自身の操作の話で、
   これは対象外。書き換えられたブランチで作業を続ける前に、fetchしてローカルのworktreeをリモートのブランチに合わせる。
@@ -176,6 +177,8 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 - 作り方: 最新の `main` から `chore/release-X.Y.Z` を切り、`npm version <minor|patch> --no-git-tag-version` で
   `package.json` と `package-lock.json` の `version` だけを上げ、`chore(release): X.Y.Z` でコミットする。
   PRのタイトルも `chore(release): X.Y.Z` にする（`release.yml` はこのタイトルでリリースPRを見分ける）
+- リリースPRは `main` から分かれた後の**1コミットだけ**で、`package.json` と `package-lock.json` しか変えない。
+  `release.yml` が機械的に確かめ、外れていれば公開しない
 - 公開されるのは**PRのheadのコミット**で、マージコミットではない。PRを作った時点の `main` に固定され、
   マージまでの間に `main` へ入った別の作業は含まれない。だから `main` はリリースを待たずに進めてよい
 - 開いておくリリースPRは**1つだけ**。後から入った作業も含めたくなったら、今のリリースPRを閉じ、新しい `main` から作り直す。
@@ -183,7 +186,8 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 - merge commitでマージする。`release.yml` は、マージコミットを作ったPRがリリースPRで、そのheadの `version` が
   `X.Y.Z` であることを確かめてから、headに注釈付きタグ `vX.Y.Z` を打ち、同じ実行の中で配信する
   （`GITHUB_TOKEN` で打ったタグは `pages.yml` を起動しないため、`release.yml` が `pages.yml` を呼ぶ）
-- リリースPR以外で `version` を変えたPRが入ると、`release.yml` は失敗して公開しない。`version` は下げない
+- リリースPR以外で `version` を変えたPRが入ると、`release.yml` は失敗して公開しない（エラーに原因のPRを出す）。`version` は下げない
+- PRが見つからないという失敗は、APIへの反映が遅れただけのことがある。その時は「Re-run all jobs」で直る
 - 同じ版番号のタグが別のコミットに既にあると失敗する。同じ番号で中身の違う公開は作らない
 
 ### 版番号

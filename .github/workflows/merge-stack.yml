@@ -14,6 +14,7 @@ name: Merge stack
 # そのため、このファイルの変更は main に入るまで効かない
 #
 # GITHUB_TOKEN でのマージは別のワークフローを起動しない（main への push で CI・release.yml が走らない）。
+# そのため version を変えるスタックはここで断る。
 # リポジトリの secret に STACK_MERGE_TOKEN（Contents と Pull requests に write を持つ fine-grained PAT）を
 # 置くとそちらでマージし、main の CI も走る。無ければ GITHUB_TOKEN を使う。
 on:
@@ -126,6 +127,19 @@ jobs:
               const drafts = pending.filter((p) => p.draft);
               if (drafts.length) refuse(`draft のPRがある: ${drafts.map((p) => `#${p.number}`).join(', ')}`);
               lines.push(`スタック #${stack.number}（base \`${stack.base.ref}\`）: ${pending.map((p) => `#${p.number}`).join(' → ')}`);
+
+              // スタックで version を変えない。GITHUB_TOKEN のマージは release.yml を起動しないので、
+              // ここで止めないと version だけ上がって公開されない状態が main に入る
+              const versionAt = async (ref) => {
+                const { data } = await github.rest.repos.getContent({ owner, repo, path: 'package.json', ref });
+                return JSON.parse(Buffer.from(data.content, 'base64').toString('utf8')).version;
+              };
+              const { data: cmp } = await github.rest.repos.compareCommitsWithBasehead({
+                owner, repo, basehead: `${stack.base.ref}...${top.head.sha}`, per_page: 1,
+              });
+              const [baseVersion, topVersion] = await Promise.all([versionAt(cmp.merge_base_commit.sha), versionAt(top.head.sha)]);
+              if (baseVersion !== topVersion)
+                refuse(`スタックが package.json の version を変えている（${baseVersion} → ${topVersion}）。version はリリースPR（スタックに入れない）でだけ上げる`);
 
               // 3. 各PRの head の CI
               const problems = [];
