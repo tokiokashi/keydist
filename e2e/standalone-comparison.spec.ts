@@ -65,7 +65,10 @@ test('Setupを2件選ぶと2行表示され、並び替え・基準選択が効�
   await page.addInitScript(seedTwoSetups());
   await page.goto('/standalone/comparison');
 
-  await expect(page.getByRole('heading', { name: '比較表', exact: true })).toBeVisible();
+  // ページ見出し(h1)とAnalyzer自身の見出し(h2)が同じ文字列を持つため`.first()`で絞る
+  // （`standalone-bigram-flow.spec.ts`と同じ形。#544 プリロード修正で描画が速くなり、
+  // 以前は間に合わずh1しか無かった場面でh2まで揃うようになって顕在化した）。
+  await expect(page.getByRole('heading', { name: '比較表', exact: true }).first()).toBeVisible();
 
   await addTarget(page, 'setup:fixed-a');
   await addTarget(page, 'setup:fixed-b');

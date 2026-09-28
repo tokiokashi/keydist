@@ -56,7 +56,10 @@ test('Setupを2件選ぶと2本の折れ線が表示される', async ({ page })
   await page.addInitScript(seedTwoSetups());
   await page.goto('/standalone/n-sensitivity');
 
-  await expect(page.getByRole('heading', { name: 'N感度', exact: true })).toBeVisible();
+  // ページ見出し(h1)とAnalyzer自身の見出し(h2)が同じ文字列を持つため`.first()`で絞る
+  // （`standalone-bigram-flow.spec.ts`と同じ形。#544 プリロード修正で描画が速くなり、
+  // 以前は間に合わずh1しか無かった場面でh2まで揃うようになって顕在化した）。
+  await expect(page.getByRole('heading', { name: 'N感度', exact: true }).first()).toBeVisible();
 
   await addTarget(page, 'setup:fixed-a');
   await addTarget(page, 'setup:fixed-b');
