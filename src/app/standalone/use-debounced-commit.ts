@@ -1,0 +1,78 @@
+import { useEffect, useMemo, useRef } from 'react';
+import {
+  createDebouncedPersistenceScheduler,
+  type DebouncedPersistenceScheduler,
+} from '#platform/persistence/debounced-scheduler.ts';
+import type { Command } from '#input/commands/index.ts';
+import type { KeydistAssets } from '#engine/commands.ts';
+import { stableStringify } from '#engine/cache-key.ts';
+
+export interface UseDebouncedCommitOptions<T> {
+  /** 値からコマンドを組み立てる。 */
+  readonly commandFor: (value: T) => Command<KeydistAssets>;
+  /** 直前に書き込んだ値と同じかどうかの比較に使う。既定は`stableStringify`（`engine/cache-key.ts`。キーの列挙順に依存しない）。 */
+  readonly serialize?: (value: T) => string;
+  readonly debounceMs?: number;
+}
+
+/**
+ * 値の変化をそのつど`dispatch`するのではなく、`createDebouncedPersistenceScheduler`
+ * （`platform/persistence/`）で間引いてから`dispatch`する（コーディネーター指示:
+ * 「解析設定のスライダー等でstorage書き込みが連打になるなら
+ * createDebouncedPersistenceSchedulerを使う。自前でdebounceを書かない」）。
+ *
+ * `hosts/standalone`は`platform`をimportできない（依存規則。`docs/architecture.md`の
+ * `hosts`のALLOWEDに`platform`が無い）ため、debounceの組み立てはここ（`app`）で行い、
+ * `hosts`へは「呼べば間引かれて反映される関数」だけを返す。呼び出し側（`hosts`）は
+ * 見た目の即時反映（draft state）と、この関数呼び出しによる資産への反映を分けて持つ
+ * （`BigramFlowStandalonePage.tsx`の`optionsDraft`参照。既存の`textDraft`と同じ形）。
+ */
+export function useDebouncedCommit<T>(
+  dispatch: (command: Command<KeydistAssets>) => void,
+  options: UseDebouncedCommitOptions<T>,
+): (value: T) => void {
+  // `options`（コールバック含む）はレンダーのたびに新しい参照で渡ってくるので、
+  // scheduler自体は初回だけ作り、中身の読み出しはrefで最新化する
+  // （`useAssetSyncs`のuseRef遅延初期化と同じ理由。#544 §8-2）。
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+  const dispatchRef = useRef(dispatch);
+  dispatchRef.current = dispatch;
+
+  const schedulerRef = useRef<DebouncedPersistenceScheduler<T> | undefined>(undefined);
+  if (schedulerRef.current === undefined) {
+    schedulerRef.current = createDebouncedPersistenceScheduler<T>({
+      write: (value) => dispatchRef.current(optionsRef.current.commandFor(value)),
+      serialize: (value) => (optionsRef.current.serialize ?? defaultSerialize)(value),
+      debounceMs: options.debounceMs,
+    });
+  }
+
+  useEffect(() => {
+    // debounce待ち中の値を取りこぼさないよう、アンマウント・ページ離脱・タブの非表示化の
+    // いずれでも`flush()`する（レビュー指摘: アンマウントで`cancel()`していたため、
+    // debounce完了前に画面遷移・リロードすると直前の変更が消えていた。
+    // `pagehide`はリロード・別ページへの遷移・タブを閉じる操作を、
+    // `visibilitychange`（`hidden`）はタブ切り替え・OSのスリープ等、`pagehide`が
+    // 発火しない離脱もまとめて拾うための保険。どちらも同じ`flush()`を呼ぶだけで、
+    // 2重に書き込まれても`createDebouncedPersistenceScheduler`の`serialize`比較が
+    // 同一値の再書き込みを防ぐ）。
+    const flush = () => schedulerRef.current?.flush();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      flush();
+    };
+  }, []);
+
+  return useMemo(() => (value: T) => schedulerRef.current!.notify(value), []);
+}
+
+function defaultSerialize<T>(value: T): string {
+  return stableStringify(value);
+}

@@ -1,5 +1,5 @@
 import type { BaseIssue, BaseSchema } from 'valibot';
-import { decodeDroppingInvalid, isRecord, type CodecDiagnostic } from '#input/codec/index.ts';
+import { decodeDroppingInvalid, isRecord, UNSAFE_OBJECT_KEYS, type CodecDiagnostic } from '#input/codec/index.ts';
 import type { CascadeOverrides, LevelOverrides } from './overrides.ts';
 
 /**
@@ -34,18 +34,16 @@ import type { CascadeOverrides, LevelOverrides } from './overrides.ts';
  */
 export type ItemSchemaMap<V> = { readonly [K in keyof V]: BaseSchema<unknown, V[K], BaseIssue<unknown>> };
 
-/**
- * `__proto__` / `constructor` / `prototype` はJSでは素のオブジェクトの
- * bracketアクセスが「ふつうのプロパティ」ではなく`Object.prototype`の継承accessor
- * （`__proto__`）や継承プロパティ（`constructor` / `prototype`）を踏んでしまう
- * 既知の落とし穴。`JSON.parse('{"__proto__":{...}}')`はリテラルな own property
- * "__proto__" を作れてしまう（代入のexotic setterを経由しないため）ので、
- * 外部由来の資産（共有リンク・importファイル）のkeyとして実際に出現しうる。
- * decodeCascadeOverridesのinstanceKey（配列id・形状id・Setup id等の任意文字列）は
- * ここを通るので、書き込む前に予約名として弾く（診断付きで丸ごと捨てる。
- * 「捨てた値には必ず診断」の原則を守る）。
- */
-const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+// UNSAFE_OBJECT_KEYS（`#input/codec`）で弾く理由:
+// `__proto__` / `constructor` / `prototype` はJSでは素のオブジェクトの
+// bracketアクセスが「ふつうのプロパティ」ではなく`Object.prototype`の継承accessor
+// （`__proto__`）や継承プロパティ（`constructor` / `prototype`）を踏んでしまう
+// 既知の落とし穴。`JSON.parse('{"__proto__":{...}}')`はリテラルな own property
+// "__proto__" を作れてしまう（代入のexotic setterを経由しないため）ので、
+// 外部由来の資産（共有リンク・importファイル）のkeyとして実際に出現しうる。
+// decodeCascadeOverridesのinstanceKey（配列id・形状id・Setup id等の任意文字列）は
+// ここを通るので、書き込む前に予約名として弾く（診断付きで丸ごと捨てる。
+// 「捨てた値には必ず診断」の原則を守る）。
 
 function decodeLevelOverrides<V>(
   itemSchemas: ItemSchemaMap<V>,

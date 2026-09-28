@@ -9,11 +9,12 @@ keydist のコードの分け方と依存の向き。設計の経緯と未実装
 
 | 用語 | コード | 意味 |
 |---|---|---|
-| 配列 | `Layout` | 論理的な配列定義（面・trigger・コンボ等） |
-| 物理形状 | `Shape` | キーの物理的な位置・指の割当 |
+| 配列 | `Layout` | 論理的な配列定義（面・trigger・コンボ等）。組み込みと自作がある |
+| 物理形状 | `Shape` | キーの物理的な位置（と規格。ANSI/JIS） |
+| 指の割当 | `FingerAssignment` | 各キーを担当する指。物理形状の属性ではなく**カスケードの項目**（`fingerAssignmentId`）として持つ。既定は物理形状の規格から決まり、物理形状・配列・Setupのレベルで上書きできる（#544。`engine/finger-assignment.ts`）。組み込み（既定・JIS）と自作がある |
 | ポリシー | `TracePolicy` | **Traceを作る**条件（trigger / action realization、SandSの手、反対側の親指、N、ローマ字規則等） |
-| Setup | `Setup` | **計算の単位**。配列 × 物理形状 × ポリシー |
-| カスケード | settings cascade | ポリシー・解釈の値を グローバル → 物理形状 → 打ち方 → 配列 → Setup の順に上書きして実効値を求める仕組み |
+| Setup | `Setup` | **計算の単位**。配列 × 物理形状 × 指の割当 × ポリシー |
+| カスケード | settings cascade | ポリシー・指の割当・解釈の値を グローバル → 物理形状 → 打ち方 → 配列 → Setup の順に上書きして実効値を求める仕組み |
 | テキスト | Text | 打つ文章。言語を属性に持つ |
 | 打ち方 | input method | テキストの言語 × 配列の種類から導く（かな直接 / ローマ字 / 直接） |
 | Trace | `Trace` | Setupでテキストを打った記録（打鍵列・指の移動・押し方）。`generateTrace` が作る |
@@ -24,13 +25,14 @@ keydist のコードの分け方と依存の向き。設計の経緯と未実装
 | 解析設定 | `AnalyzerOptions` | どの数値を・どの切り口で・どう見せるか |
 | engine | engine | 解決・Trace生成・解釈・抽出の実行とキャッシュ |
 | 単体ページ / Workspace | host | Analyzerを載せる器 |
+| 資産 | assets | ユーザーが作って保存するもの（自作配列・形状・指の割当・ローマ字規則・Setup・カスケードの値・Workspace・個人速度・テキスト） |
 
 使わない語: mode（en / ja）、段の名前としての「評価」（`evaluate`）、View、`AnalysisSession` / `AnalysisSnapshot`、解釈を指す「ポリシー」（`ChainPolicy` / `ArpeggioPolicy`）。
 
 ## 流れ
 
 ```text
-Setup（配列 × 物理形状 × ポリシー）+ テキスト
+Setup（配列 × 物理形状 × 指の割当 × ポリシー）+ テキスト
   ↓ Trace生成
 Trace
   ↓ 解釈（構造・時間モデル・複数のAnalyzerが使う指標）
@@ -47,6 +49,11 @@ host（単体ページ / Workspace）
 | ポリシー | Traceの中身 | カスケード |
 | 解釈 | Traceは同じまま、数値の定義 | カスケード（当面グローバルのみ） |
 | 解析設定 | どの数値をどう見せるか | Analyzerのインスタンス |
+
+指の割当（`FingerAssignment`）もこの分類では**ポリシー**と同じ扱いになる
+（Traceの中身を変え、持ち主はカスケード）。ただし型は`TracePolicy`ではなく独立した
+`FingerAssignment`で、`generateTrace`へは物理形状と合成した`Geometry`として渡る
+（`engine/resolved-input.ts`）。
 
 ## ディレクトリ
 
@@ -119,6 +126,8 @@ src/
   - キャッシュが描画のタイミングに縛られない
 - **可視化は計算しない。** engineが抽出を実行し、hostが結果をcomponentへ渡す
 - **Analyzerの契約は純粋な部分だけを `analyzers/contract.ts` に置く。** 可視化のcomponentとの結び付けは各Analyzerの `definition.tsx` で行う。engineは純粋な部分しか知らないので、engineの型にReactが現れず、Workerへそのまま移せる
+  - 抽出のキャッシュキーは「解釈のキー + Analyzer id + 抽出に効くoptions」（`AnalyzerDefinition.extractKeyOf` が返す値。`engine/keys.ts` の `analyzerExtractionKeyOf`）。見た目だけの解析設定はここで除かれるので、見た目だけの変更ではextractが走らない
+  - 集合対象とN感度の例外向けに、抽出は「Traceを依頼する窓口」（`TraceRequester`、`analyzers/contract.ts`）を受け取れる。窓口の実装（キャッシュ経由でTraceを共有する）は `engine/trace-requester.ts` が持つ
 - **storageを直接触るのは platform と app だけ。** 保存が要る層（hosts・editors等）は、appが組み立てたアダプタを注入して使う。Testerは当面の例外
 - **import の書き方。** 別のトップディレクトリへは `#<dir>/...`（`package.json` の `imports`）、同じトップディレクトリの中は相対パス。ディレクトリを import しない（`index.ts` の暗黙解決はNodeのstrip-typesで動かない）。拡張子を付けて書く
 - 外部ライブラリ: Dockview は `hosts/workspace/` だけ、TanStack Router / Start は routes・app・`hosts/standalone/` だけ（legacy と `features/analyzer-next/` は旧実装なので除く）。描画ライブラリ（motion等）は純粋な層以外で使ってよい

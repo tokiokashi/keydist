@@ -3,24 +3,43 @@ import { test } from 'node:test';
 import { applyCommand, emptyCommandHistory, redo, undo } from '#input/commands/index.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
 import type { SetupLibrary } from '#input/setup/index.ts';
+import { DEFAULT_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
+import { initialStandaloneText } from '#input/text/standalone-text.ts';
 import {
+  createFingerAssignmentCommand,
   createSetupCommand,
+  deleteFingerAssignmentCommand,
   deleteSetupCommand,
+  duplicateFingerAssignmentCommand,
   duplicateSetupCommand,
   relabelSetupCommand,
+  renameFingerAssignmentCommand,
   resetCascadeItemCommand,
   resetCascadeLevelCommand,
+  setAnalyzerSetSelectionBaselineCommand,
+  setAnalyzerSetSelectionSetupIdsCommand,
   setCascadeOverrideCommand,
+  setStandaloneAnalyzerOptionsCommand,
+  setStandaloneTextCommand,
+  setStandaloneTextLanguageOverrideCommand,
   type KeydistAssets,
 } from './commands.ts';
 import type { SettingsValueMap } from './settings-items.ts';
 
 let nextId = 0;
 const generateId = () => `setup-${++nextId}`;
+let nextFingerAssignmentId = 0;
+const generateFingerAssignmentId = () => `finger-${++nextFingerAssignmentId}`;
 
 function emptyAssets(): KeydistAssets {
   const setupLibrary: SetupLibrary<SettingsValueMap> = { setups: [], overrides: emptyCascadeOverrides() };
-  return { setupLibrary };
+  return {
+    setupLibrary,
+    fingerAssignments: [],
+    standaloneText: initialStandaloneText(),
+    standaloneAnalyzerOptions: {},
+    analyzerSetSelections: {},
+  };
 }
 
 test('setCascadeOverrideCommand: globalレベルへ書き込み、undo/redoで往復できる', () => {
@@ -195,4 +214,293 @@ test('relabelSetupCommand: 同じラベルへの付け直しはno-op', () => {
   );
   assert.equal(relabeledDifferent.outcome.kind, 'applied');
   assert.equal(relabeledDifferent.assets.setupLibrary.setups[0]!.label, '別名');
+});
+
+test('createFingerAssignmentCommand: 指割り当てを1件作成する。undoで手持ちが空に戻る', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(
+    assets,
+    history,
+    createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT, 'マイ運指'),
+  );
+  assert.equal(step.outcome.kind, 'applied');
+  assert.equal(step.assets.fingerAssignments.length, 1);
+  assert.equal(step.assets.fingerAssignments[0]!.name, 'マイ運指');
+  assert.deepEqual(step.assets.fingerAssignments[0]!.keyFinger, DEFAULT_FINGER_ASSIGNMENT.keyFinger);
+
+  const undone = undo(step.assets, step.history);
+  assert.equal(undone.assets.fingerAssignments.length, 0);
+});
+
+test('duplicateFingerAssignmentCommand: 存在しない指割り当ての複製はno-op', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, duplicateFingerAssignmentCommand('no-such-id', generateFingerAssignmentId));
+  assert.equal(step.outcome.kind, 'no-op');
+  assert.equal(step.assets, assets);
+});
+
+test('duplicateFingerAssignmentCommand: 実在する指割り当てを複製する', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const created = applyCommand(
+    assets,
+    history,
+    createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT, '元'),
+  );
+  const sourceId = created.assets.fingerAssignments[0]!.id;
+
+  const duplicated = applyCommand(
+    created.assets,
+    created.history,
+    duplicateFingerAssignmentCommand(sourceId, generateFingerAssignmentId),
+  );
+  assert.equal(duplicated.outcome.kind, 'applied');
+  assert.equal(duplicated.assets.fingerAssignments.length, 2);
+  assert.equal(duplicated.assets.fingerAssignments[1]!.name, '元のコピー');
+  assert.notEqual(duplicated.assets.fingerAssignments[1]!.id, sourceId);
+});
+
+test('deleteFingerAssignmentCommand: 存在しないidの削除はno-op', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, deleteFingerAssignmentCommand('no-such-id'));
+  assert.equal(step.outcome.kind, 'no-op');
+  assert.equal(step.assets, assets);
+  assert.equal(step.history, history);
+});
+
+test('deleteFingerAssignmentCommand: 削除後もそれを参照するカスケードの上書きはそのまま残る（解決側でfallbackする設計）', () => {
+  let assets = emptyAssets();
+  let history = emptyCommandHistory<KeydistAssets>();
+
+  const created = applyCommand(
+    assets,
+    history,
+    createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT),
+  );
+  assets = created.assets;
+  history = created.history;
+  const assignmentId = assets.fingerAssignments[0]!.id;
+
+  const overridden = applyCommand(
+    assets,
+    history,
+    setCascadeOverrideCommand({ kind: 'global' }, 'fingerAssignmentId', assignmentId),
+  );
+  assets = overridden.assets;
+  history = overridden.history;
+
+  const deleted = applyCommand(assets, history, deleteFingerAssignmentCommand(assignmentId));
+  assert.equal(deleted.outcome.kind, 'applied');
+  assert.equal(deleted.assets.fingerAssignments.length, 0);
+  // Setupの上書きと違い、削除してもoverrides側の値はそのまま残る（orphan-cleanupしない）。
+  assert.equal(deleted.assets.setupLibrary.overrides.global?.fingerAssignmentId, assignmentId);
+});
+
+test('renameFingerAssignmentCommand: 同じ名前への変更はno-op', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const created = applyCommand(
+    assets,
+    history,
+    createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT, 'マイ運指'),
+  );
+  const assignmentId = created.assets.fingerAssignments[0]!.id;
+
+  const renamedSame = applyCommand(
+    created.assets,
+    created.history,
+    renameFingerAssignmentCommand(assignmentId, 'マイ運指'),
+  );
+  assert.equal(renamedSame.outcome.kind, 'no-op');
+
+  const renamedDifferent = applyCommand(
+    created.assets,
+    created.history,
+    renameFingerAssignmentCommand(assignmentId, '別名'),
+  );
+  assert.equal(renamedDifferent.outcome.kind, 'applied');
+  assert.equal(renamedDifferent.assets.fingerAssignments[0]!.name, '別名');
+});
+
+test('setStandaloneTextCommand: テキストを変えると言語が再判定され、undo/redoで往復できる', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, setStandaloneTextCommand('hello world'));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.equal(step.assets.standaloneText.text, 'hello world');
+  assert.deepEqual(step.assets.standaloneText.language, { detected: 'en' });
+
+  const back = undo(step.assets, step.history);
+  assert.deepEqual(back.assets.standaloneText, assets.standaloneText);
+
+  const redone = redo(back.assets, back.history);
+  assert.deepEqual(redone.assets.standaloneText, step.assets.standaloneText);
+});
+
+test('setStandaloneTextCommand: 同じテキストならno-op', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const step = applyCommand(assets, history, setStandaloneTextCommand(assets.standaloneText.text));
+  assert.equal(step.outcome.kind, 'no-op');
+});
+
+test('setStandaloneTextLanguageOverrideCommand: 上書き設定後、テキストを変えると上書きは引き継がれない', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const overridden = applyCommand(assets, history, setStandaloneTextLanguageOverrideCommand('en'));
+  assert.equal(overridden.outcome.kind, 'applied');
+  assert.equal(overridden.assets.standaloneText.language.override, 'en');
+
+  const retyped = applyCommand(
+    overridden.assets,
+    overridden.history,
+    setStandaloneTextCommand('新しいテキスト'),
+  );
+  assert.equal(retyped.assets.standaloneText.language.override, undefined);
+});
+
+test('setStandaloneAnalyzerOptionsCommand: 1 Analyzerぶんの設定を書き込み、undo/redoで往復できる', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, setStandaloneAnalyzerOptionsCommand('bigram-flow', { source: 'actual' }));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.deepEqual(step.assets.standaloneAnalyzerOptions, { 'bigram-flow': { source: 'actual' } });
+  assert.equal(step.history.undoStack.length, 1);
+
+  const back = undo(step.assets, step.history);
+  assert.deepEqual(back.assets.standaloneAnalyzerOptions, {});
+
+  const redone = redo(back.assets, back.history);
+  assert.deepEqual(redone.assets.standaloneAnalyzerOptions, step.assets.standaloneAnalyzerOptions);
+});
+
+test('setStandaloneAnalyzerOptionsCommand: 構造的に同じ値の書き込みはno-op（Undo履歴を積まない）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, setStandaloneAnalyzerOptionsCommand('bigram-flow', { source: 'actual' }));
+  const again = applyCommand(
+    step.assets,
+    step.history,
+    setStandaloneAnalyzerOptionsCommand('bigram-flow', { source: 'actual' }),
+  );
+  assert.equal(again.outcome.kind, 'no-op');
+  assert.equal(again.history.undoStack.length, 1);
+  assert.equal(again.assets, step.assets);
+});
+
+test('setStandaloneAnalyzerOptionsCommand: 別のAnalyzer idの設定は道連れにしない', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const withHeatmap = applyCommand(
+    assets,
+    history,
+    setStandaloneAnalyzerOptionsCommand('heatmap', { colorScale: 'linear' }),
+  );
+  const withBoth = applyCommand(
+    withHeatmap.assets,
+    withHeatmap.history,
+    setStandaloneAnalyzerOptionsCommand('bigram-flow', { source: 'actual' }),
+  );
+  assert.deepEqual(withBoth.assets.standaloneAnalyzerOptions, {
+    heatmap: { colorScale: 'linear' },
+    'bigram-flow': { source: 'actual' },
+  });
+});
+
+test('setAnalyzerSetSelectionSetupIdsCommand: 対象の集合・並び順を書き込み、undo/redoで往復できる', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.deepEqual(step.assets.analyzerSetSelections.comparison?.setupIds, ['a', 'b']);
+
+  const back = undo(step.assets, step.history);
+  assert.equal(back.assets.analyzerSetSelections.comparison, undefined);
+
+  const redone = redo(back.assets, back.history);
+  assert.deepEqual(redone.assets.analyzerSetSelections.comparison?.setupIds, ['a', 'b']);
+});
+
+test('setAnalyzerSetSelectionSetupIdsCommand: 同じ並びの書き込みはno-op', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
+  const again = applyCommand(step.assets, step.history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
+  assert.equal(again.outcome.kind, 'no-op');
+  assert.equal(again.assets, step.assets);
+});
+
+test('setAnalyzerSetSelectionSetupIdsCommand: 重複したSetup idは1つに畳む', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b', 'a']));
+  assert.deepEqual(step.assets.analyzerSetSelections.comparison?.setupIds, ['a', 'b']);
+});
+
+test('setAnalyzerSetSelectionBaselineCommand: 基準の設定・解除を書き込める（選択に含まれるSetupだけ）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const withSelection = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
+  const withBaseline = applyCommand(
+    withSelection.assets,
+    withSelection.history,
+    setAnalyzerSetSelectionBaselineCommand('comparison', 'a'),
+  );
+  assert.equal(withBaseline.assets.analyzerSetSelections.comparison?.baselineSetupId, 'a');
+
+  const cleared = applyCommand(
+    withBaseline.assets,
+    withBaseline.history,
+    setAnalyzerSetSelectionBaselineCommand('comparison', undefined),
+  );
+  assert.equal(cleared.assets.analyzerSetSelections.comparison?.baselineSetupId, undefined);
+});
+
+test('setAnalyzerSetSelectionBaselineCommand: 選択に含まれないSetupを基準にしようとするとno-op（不変条件）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const withSelection = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
+  const attempt = applyCommand(
+    withSelection.assets,
+    withSelection.history,
+    setAnalyzerSetSelectionBaselineCommand('comparison', 'not-selected'),
+  );
+  assert.equal(attempt.outcome.kind, 'no-op');
+});
+
+test('setAnalyzerSetSelectionSetupIdsCommand: 基準に選んでいたSetupが選択から外れたら、基準も一緒に外れる（不変条件）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const withSelection = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
+  const withBaseline = applyCommand(
+    withSelection.assets,
+    withSelection.history,
+    setAnalyzerSetSelectionBaselineCommand('comparison', 'a'),
+  );
+  const removed = applyCommand(
+    withBaseline.assets,
+    withBaseline.history,
+    setAnalyzerSetSelectionSetupIdsCommand('comparison', ['b']),
+  );
+  assert.deepEqual(removed.assets.analyzerSetSelections.comparison?.setupIds, ['b']);
+  assert.equal(removed.assets.analyzerSetSelections.comparison?.baselineSetupId, undefined);
 });

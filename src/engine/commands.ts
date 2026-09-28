@@ -1,5 +1,12 @@
 import type { Command } from '#input/commands/index.ts';
 import type { CascadeLevel } from '#input/settings/index.ts';
+import { DEFAULT_FINGER_ASSIGNMENT, type FingerAssignment } from '#input/shapes/geometry.ts';
+import {
+  createUserFingerAssignment,
+  deleteUserFingerAssignment,
+  duplicateUserFingerAssignment,
+  renameUserFingerAssignment,
+} from '#input/shapes/user-finger-assignments.ts';
 import {
   createSetup,
   deleteSetup,
@@ -8,6 +15,24 @@ import {
   type SetupIdGenerator,
   type SetupLibrary,
 } from '#input/setup/index.ts';
+import {
+  withStandaloneLanguageOverride,
+  withStandaloneText,
+  type StandaloneTextState,
+} from '#input/text/standalone-text.ts';
+import type { TextLanguage } from '#input/text/language.ts';
+import {
+  withStandaloneAnalyzerOptions,
+  type StandaloneAnalyzerOptionsState,
+} from './standalone-analyzer-options.ts';
+import {
+  analyzerSetSelectionFor,
+  withAnalyzerSetSelection,
+  withSetSelectionBaseline,
+  withSetSelectionSetupIds,
+  type AnalyzerSetSelectionState,
+  type SetSelectionState,
+} from './analyzer-set-selection.ts';
 import {
   resetSettingsItem,
   resetSettingsLevel,
@@ -37,9 +62,44 @@ import {
  * 資産をさらに分ける（例: `setups`と`overrides`を分離する）か、資産単位ではなく項目単位
  * （どのSetup・どのレベル・どの項目に触れたか）で履歴の破棄範囲を判定する仕組みへ広げる、
  * の2方向がある。
+ *
+ * `fingerAssignments`（自作の指割り当ての手持ち、#544 Phase 2「自作の指割当を資産として
+ * engine に入れる」）は独立した2つ目のキーとして足す。`setupLibrary`に同居させなかった
+ * 理由: `setupLibrary`を1資産にまとめたのは「Setup本体とそのSetup固有の上書き
+ * （`overrides.setup[id]`）が**同じidで結ばれた1対の状態**で、片方だけ書き換えると
+ * 整合が壊れる」からだった（`input/setup/overrides.ts`参照）。自作の指割り当ての手持ちと
+ * カスケードの`fingerAssignmentId`はそういう対にならない: 後者はどのレベルにも置ける
+ * ただの文字列値で、前者を指しているとは限らない（組み込みidのこともある）し、前者を
+ * 削除しても後者を道連れで書き換える必要が無い（`resolveFingerAssignment`が解決の
+ * たびに検査し、無ければ診断付きでfallbackする。`input/shapes/user-finger-assignments.ts`の
+ * `deleteUserFingerAssignment`コメント参照）。原子的に2箇所を書き換える理由が無いので、
+ * 「独立に読み書きできるものは新しいキーとして足す」という元のコメント通りの扱いにする。
  */
 export interface KeydistAssets {
   readonly setupLibrary: SetupLibrary<SettingsValueMap>;
+  readonly fingerAssignments: readonly FingerAssignment[];
+  /**
+   * 単体ページ全体で共有する「最後に使ったテキスト」（#544 §5、`hosts/standalone`）。
+   * `setupLibrary`と対にならない・`fingerAssignments`とも無関係の独立した値なので、
+   * このコメント冒頭の判断（「独立に読み書きできるものは新しいキーとして足す」）どおり
+   * 3つ目の資産キーとして足す。
+   */
+  readonly standaloneText: StandaloneTextState;
+  /**
+   * 単体ページの「Analyzerごとの最後に使った解析設定」（#544指示書「解析設定の保存」）。
+   * `standaloneText`と同じ理由（`setupLibrary`とも`fingerAssignments`とも対にならない、
+   * 独立に読み書きできる値）で4つ目の資産キーとして足す。値の型は`engine`からは
+   * `unknown`のまま扱う（`standalone-analyzer-options.ts`冒頭コメント参照。engineは
+   * 個別Analyzerの`Options`型へ依存できないため）。
+   */
+  readonly standaloneAnalyzerOptions: StandaloneAnalyzerOptionsState;
+  /**
+   * 集合対象Analyzer全般（比較表・N感度等）が使う、汎用の「対象の集合」
+   * （Analyzer id → 選んだSetup id列 + 基準。#544 Phase 3）。`standaloneText`・
+   * `standaloneAnalyzerOptions`と同じ理由（他資産と対にならない、独立に読み書きできる値）で
+   * 5つ目の資産キーとして足す。
+   */
+  readonly analyzerSetSelections: AnalyzerSetSelectionState;
 }
 
 type SetupLibraryComputation =
@@ -148,4 +208,170 @@ export function relabelSetupCommand(setupId: string, label: string | undefined):
     ok: true,
     library: relabelSetup(library, setupId, label),
   }));
+}
+
+type FingerAssignmentsComputation =
+  | { readonly ok: true; readonly assignments: readonly FingerAssignment[] }
+  | { readonly ok: false; readonly reason: unknown };
+
+/** `fingerAssignments`だけに触れるコマンドの共通の骨組み。`setupLibraryCommand`と同じ形。 */
+function fingerAssignmentsCommand(
+  label: string,
+  compute: (assignments: readonly FingerAssignment[]) => FingerAssignmentsComputation,
+): Command<KeydistAssets> {
+  return (current) => {
+    const result = compute(current.fingerAssignments);
+    if (!result.ok) return { kind: 'rejected', reason: result.reason };
+    if (result.assignments === current.fingerAssignments) return { kind: 'no-op' };
+    return { kind: 'applied', label, changes: { fingerAssignments: result.assignments } };
+  };
+}
+
+/** 自作の指割り当てを新規作成する。`base`省略時は組み込みの既定（列固定）から始める。 */
+export function createFingerAssignmentCommand(
+  generateId: () => string,
+  base: FingerAssignment = DEFAULT_FINGER_ASSIGNMENT,
+  name?: string,
+): Command<KeydistAssets> {
+  return fingerAssignmentsCommand('指割り当てを作成する', (assignments) => ({
+    ok: true,
+    assignments: createUserFingerAssignment(assignments, generateId, base, name),
+  }));
+}
+
+/** 自作の指割り当てを複製する。複製元が存在しない場合は何もしない（`duplicateUserFingerAssignment`自身の方針）。 */
+export function duplicateFingerAssignmentCommand(
+  sourceId: string,
+  generateId: () => string,
+  name?: string,
+): Command<KeydistAssets> {
+  return fingerAssignmentsCommand('指割り当てを複製する', (assignments) => ({
+    ok: true,
+    assignments: duplicateUserFingerAssignment(assignments, sourceId, generateId, name),
+  }));
+}
+
+/**
+ * 自作の指割り当てを削除する。存在しないidの削除は何もしない。
+ * これを参照しているカスケードの`fingerAssignmentId`上書きはここでは触らない
+ * （理由は`input/shapes/user-finger-assignments.ts`の`deleteUserFingerAssignment`コメント、
+ * および`KeydistAssets`のコメント参照）。
+ */
+export function deleteFingerAssignmentCommand(id: string): Command<KeydistAssets> {
+  return fingerAssignmentsCommand('指割り当てを削除する', (assignments) => ({
+    ok: true,
+    assignments: deleteUserFingerAssignment(assignments, id),
+  }));
+}
+
+/** 自作の指割り当ての名前を変更する。対象が存在しない、または既に同じ名前なら何もしない。 */
+export function renameFingerAssignmentCommand(id: string, name: string): Command<KeydistAssets> {
+  return fingerAssignmentsCommand('指割り当ての名前を変更する', (assignments) => ({
+    ok: true,
+    assignments: renameUserFingerAssignment(assignments, id, name),
+  }));
+}
+
+/** `standaloneText`だけに触れるコマンドの共通の骨組み。`setupLibraryCommand`と同じ形。 */
+function standaloneTextCommand(
+  label: string,
+  compute: (current: StandaloneTextState) => StandaloneTextState,
+): Command<KeydistAssets> {
+  return (current) => {
+    const next = compute(current.standaloneText);
+    if (next === current.standaloneText) return { kind: 'no-op' };
+    return { kind: 'applied', label, changes: { standaloneText: next } };
+  };
+}
+
+/**
+ * 単体ページの「最後に使ったテキスト」を差し替える（#544 §5）。テキストを変えると
+ * 言語は自動判定へ再計算され、手動上書きは引き継がない（`withStandaloneText`のコメント参照）。
+ */
+export function setStandaloneTextCommand(text: string): Command<KeydistAssets> {
+  return standaloneTextCommand('テキストを変更する', (current) => withStandaloneText(current, text));
+}
+
+/** テキストの言語判定を手動で上書きする。`undefined`で自動判定へ戻す。 */
+export function setStandaloneTextLanguageOverrideCommand(
+  override: TextLanguage | undefined,
+): Command<KeydistAssets> {
+  return standaloneTextCommand(
+    '言語判定を変更する',
+    (current) => withStandaloneLanguageOverride(current, override),
+  );
+}
+
+/**
+ * 1 Analyzerぶんの解析設定を書き換える（#544指示書「解析設定は資産として個人で保持する」）。
+ * `options`は呼び出し側（`hosts/standalone`）が対象Analyzerの`Options`型で組み立てた値を
+ * そのまま渡す（`engine`は個別Analyzerの型を知らないので`unknown`として受け取る。
+ * `standalone-analyzer-options.ts`冒頭コメント参照）。
+ */
+export function setStandaloneAnalyzerOptionsCommand(
+  analyzerId: string,
+  options: unknown,
+): Command<KeydistAssets> {
+  return (current) => {
+    const next = withStandaloneAnalyzerOptions(current.standaloneAnalyzerOptions, analyzerId, options);
+    if (next === current.standaloneAnalyzerOptions) return { kind: 'no-op' };
+    return {
+      kind: 'applied',
+      label: `解析設定を変更する: ${analyzerId}`,
+      changes: { standaloneAnalyzerOptions: next },
+    };
+  };
+}
+
+/**
+ * 集合対象Analyzer（Analyzer idで引く）の`analyzerSetSelections`だけに触れるコマンドの
+ * 共通の骨組み。`compute`は「そのAnalyzerの今の選択」を受け取り、次の選択を返す
+ * （不変条件の保証は`compute`側が呼ぶ`withSetSelectionSetupIds`/`withSetSelectionBaseline`が
+ * 持つ。`analyzer-set-selection.ts`のコメント参照）。
+ */
+function analyzerSetSelectionCommand(
+  label: string,
+  analyzerId: string,
+  compute: (current: SetSelectionState) => SetSelectionState,
+): Command<KeydistAssets> {
+  return (current) => {
+    const currentSelection = analyzerSetSelectionFor(current.analyzerSetSelections, analyzerId);
+    const nextSelection = compute(currentSelection);
+    if (nextSelection === currentSelection) return { kind: 'no-op' };
+    const next = withAnalyzerSetSelection(current.analyzerSetSelections, analyzerId, nextSelection);
+    if (next === current.analyzerSetSelections) return { kind: 'no-op' };
+    return { kind: 'applied', label: `${label}: ${analyzerId}`, changes: { analyzerSetSelections: next } };
+  };
+}
+
+/**
+ * 集合対象Analyzerの対象の集合（選んだSetup・並び順）を丸ごと差し替える（#544 Phase 3）。
+ * 追加・削除・並び替えのどれもこの1本のコマンドを通す（`setupIds`の並びがそのまま
+ * 表示順になる。`analyzer-set-selection.ts`の`withSetSelectionSetupIds`コメント参照。
+ * 選択から基準が外れたら、同じコマンドの中で基準も一緒に外す）。
+ */
+export function setAnalyzerSetSelectionSetupIdsCommand(
+  analyzerId: string,
+  setupIds: readonly string[],
+): Command<KeydistAssets> {
+  return analyzerSetSelectionCommand(
+    '対象の集合を変更する',
+    analyzerId,
+    (current) => withSetSelectionSetupIds(current, setupIds),
+  );
+}
+
+/**
+ * 集合対象Analyzerの基準（baseline）Setupを差し替える。`undefined`で「基準なし」にする
+ * （比較表が使う。N感度など基準の概念を持たないAnalyzerは呼ばない）。
+ */
+export function setAnalyzerSetSelectionBaselineCommand(
+  analyzerId: string,
+  baselineSetupId: string | undefined,
+): Command<KeydistAssets> {
+  return analyzerSetSelectionCommand(
+    '基準を変更する',
+    analyzerId,
+    (current) => withSetSelectionBaseline(current, baselineSetupId),
+  );
 }

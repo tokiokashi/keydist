@@ -14,6 +14,12 @@ export {
   type SetupResolution,
 } from './resolve.ts';
 export {
+  deriveInputMethod,
+  resolveSetupForText,
+  type InputMethodDerivation,
+  type SetupTextResolution,
+} from './input-method.ts';
+export {
   createSetup,
   duplicateSetup,
   deleteSetup,
