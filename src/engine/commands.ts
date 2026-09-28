@@ -34,17 +34,11 @@ import {
   type StandaloneAnalyzerOptionsState,
 } from './standalone-analyzer-options.ts';
 import {
-  analyzerSetSelectionFor,
-  withAnalyzerSetSelection,
-  withSetSelectionBaseline,
-  withSetSelectionTargets,
-  type AnalyzerSetSelectionState,
-  type SetSelectionState,
-} from './analyzer-set-selection.ts';
-import {
-  withAnalyzerTargetSelection,
-  type AnalyzerTargetSelectionState,
-} from './analyzer-target-selection.ts';
+  withMultiBaseline,
+  withMultiTargets,
+  type MultiTargetSelection,
+} from './multi-target-selection.ts';
+import { withSingleTarget, type SingleTargetSelection } from './single-target-selection.ts';
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import {
   resetSettingsItem,
@@ -102,7 +96,7 @@ export interface KeydistAssets {
   readonly textLibrary: TextLibrary;
   /**
    * 単体ページ全体で共有する「今使っているテキストの選択」。`standaloneAnalyzerOptions`・
-   * `analyzerSetSelections`と同じ理由（`textLibrary`とも対にならない、独立に読み書きできる値）
+   * `multiTargetSelection`と同じ理由（`textLibrary`とも対にならない、独立に読み書きできる値）
    * で新しいキーとして足す。型（`TextSelectionState`）自体は器を知らない汎用の値にしてあるので、
    * 将来Workspaceが自分の選択を持ちたくなった時は`workspaceTextSelection`のような別キーを
    * 同じ型で足すだけで済む（今回は単体ページ用のこのキーだけ実装する）。
@@ -117,20 +111,16 @@ export interface KeydistAssets {
    */
   readonly standaloneAnalyzerOptions: StandaloneAnalyzerOptionsState;
   /**
-   * 集合対象Analyzer全般（比較表・N感度等）が使う、汎用の「対象の集合」
-   * （Analyzer id → 選んだ対象の列 + 基準。#544 Phase 3、#578指摘1）。`standaloneText`・
-   * `standaloneAnalyzerOptions`と同じ理由（他資産と対にならない、独立に読み書きできる値）で
-   * 5つ目の資産キーとして足す。
+   * 個別画面のMulti（比較表・N感度等）が共有する「対象の集合」（選んだ対象・色・基準。
+   * #663）。Analyzerごとには持たない。他資産と対にならない、独立に読み書きできる値なので
+   * 別のキーとして持つ。
    */
-  readonly analyzerSetSelections: AnalyzerSetSelectionState;
+  readonly multiTargetSelection: MultiTargetSelection;
   /**
-   * 単一対象Analyzer全般（Bigram Flow等）が汎用で持つ「今選んでいる対象」
-   * （#578指摘1）。`analyzerSetSelections`の単一対象版で、同じ理由（他資産と対にならない、
-   * 独立に読み書きできる値）で6つ目の資産キーとして足す。旧`use-ensure-setup.ts`の
-   * ローカルstate + 「手持ちが空なら作る」副作用をこの資産へ置き換えた
-   * （初期Setupの自動生成をやめる決定と対になる変更）。
+   * 個別画面のSingle（Bigram Flow等）が共有する「今選んでいる対象」（#663）。Multiとは
+   * 連動させない（まだ選んでいない時にMultiで基準を選ぶと、一度だけ埋める。`setMultiBaselineCommand`）。
    */
-  readonly analyzerTargetSelections: AnalyzerTargetSelectionState;
+  readonly singleTargetSelection: SingleTargetSelection;
 }
 
 type SetupLibraryComputation =
@@ -535,73 +525,58 @@ export function setStandaloneAnalyzerOptionsCommand(
 }
 
 /**
- * 集合対象Analyzer（Analyzer idで引く）の`analyzerSetSelections`だけに触れるコマンドの
- * 共通の骨組み。`compute`は「そのAnalyzerの今の選択」を受け取り、次の選択を返す
- * （不変条件の保証は`compute`側が呼ぶ`withSetSelectionSetupIds`/`withSetSelectionBaseline`が
- * 持つ。`analyzer-set-selection.ts`のコメント参照）。
+ * Multiの集合（`multiTargetSelection`）だけに触れるコマンドの共通の骨組み。`compute`は今の
+ * 集合を受け取り、次の集合を返す（不変条件の保証は`compute`側が呼ぶ
+ * `withMultiTargets`/`withMultiBaseline`が持つ。`multi-target-selection.ts`のコメント参照）。
  */
-function analyzerSetSelectionCommand(
+function multiTargetSelectionCommand(
   label: string,
-  analyzerId: string,
-  compute: (current: SetSelectionState) => SetSelectionState,
+  compute: (current: MultiTargetSelection) => MultiTargetSelection,
 ): Command<KeydistAssets> {
   return (current) => {
-    const currentSelection = analyzerSetSelectionFor(current.analyzerSetSelections, analyzerId);
-    const nextSelection = compute(currentSelection);
-    if (nextSelection === currentSelection) return { kind: 'no-op' };
-    const next = withAnalyzerSetSelection(current.analyzerSetSelections, analyzerId, nextSelection);
-    if (next === current.analyzerSetSelections) return { kind: 'no-op' };
-    return { kind: 'applied', label: `${label}: ${analyzerId}`, changes: { analyzerSetSelections: next } };
+    const next = compute(current.multiTargetSelection);
+    if (next === current.multiTargetSelection) return { kind: 'no-op' };
+    return { kind: 'applied', label, changes: { multiTargetSelection: next } };
   };
 }
 
 /**
- * 集合対象Analyzerの対象の集合（選んだ対象・並び順）を丸ごと差し替える（#544 Phase 3、
- * #578指摘1「選択は対象（`AnalysisTarget`）で持つ」）。追加・削除・並び替えのどれも
- * この1本のコマンドを通す（`targets`の並びがそのまま表示順になる。
- * `analyzer-set-selection.ts`の`withSetSelectionTargets`コメント参照。選択から基準が
- * 外れたら、同じコマンドの中で基準も一緒に外す）。
+ * Multiの集合の選んだ対象を丸ごと差し替える（#663）。追加・削除のどちらも
+ * この1本のコマンドを通す（`targets`は加えた順。表示の並びはホストが一覧の順に並べ直す。選択から基準が
+ * 外れたら、同じコマンドの中で基準も一緒に外す。`withMultiTargets`）。
  */
-export function setAnalyzerSetSelectionTargetsCommand(
-  analyzerId: string,
-  targets: readonly AnalysisTarget[],
-): Command<KeydistAssets> {
-  return analyzerSetSelectionCommand(
-    '対象の集合を変更する',
-    analyzerId,
-    (current) => withSetSelectionTargets(current, targets),
-  );
+export function setMultiTargetsCommand(targets: readonly AnalysisTarget[]): Command<KeydistAssets> {
+  return multiTargetSelectionCommand('対象の集合を変更する', (current) => withMultiTargets(current, targets));
 }
 
 /**
- * 集合対象Analyzerの基準（baseline）対象を差し替える。`undefined`で「基準なし」にする
- * （比較表が使う。N感度など基準の概念を持たないAnalyzerは呼ばない）。
+ * Multiの集合の基準を差し替える。`undefined`で「基準なし」にする（比較表が使う。
+ * N感度など基準の概念を持たないAnalyzerは呼ばない）。
+ *
+ * Singleの対象がまだ選ばれていなければ、同じコマンドでSingleにも基準を書く（#663の
+ * オーナー決定）。1コマンド・1履歴なので、Undoで基準とSingleが一緒に戻る。Singleに値が
+ * 入った後は基準を変えてもSingleは変わらない（連動させない）。
  */
-export function setAnalyzerSetSelectionBaselineCommand(
-  analyzerId: string,
-  baseline: AnalysisTarget | undefined,
-): Command<KeydistAssets> {
-  return analyzerSetSelectionCommand(
-    '基準を変更する',
-    analyzerId,
-    (current) => withSetSelectionBaseline(current, baseline),
-  );
-}
-
-/**
- * 単一対象Analyzerの「今選んでいる対象」を差し替える（#578指摘1）。
- */
-export function setAnalyzerTargetSelectionCommand(
-  analyzerId: string,
-  target: AnalysisTarget,
-): Command<KeydistAssets> {
+export function setMultiBaselineCommand(baseline: AnalysisTarget | undefined): Command<KeydistAssets> {
   return (current) => {
-    const next = withAnalyzerTargetSelection(current.analyzerTargetSelections, analyzerId, target);
-    if (next === current.analyzerTargetSelections) return { kind: 'no-op' };
+    const next = withMultiBaseline(current.multiTargetSelection, baseline);
+    if (next === current.multiTargetSelection) return { kind: 'no-op' };
+    const fillSingle = baseline !== undefined && current.singleTargetSelection.target === undefined;
     return {
       kind: 'applied',
-      label: `対象を選ぶ: ${analyzerId}`,
-      changes: { analyzerTargetSelections: next },
+      label: '基準を変更する',
+      changes: fillSingle
+        ? { multiTargetSelection: next, singleTargetSelection: withSingleTarget(current.singleTargetSelection, baseline) }
+        : { multiTargetSelection: next },
     };
+  };
+}
+
+/** Singleの対象を差し替える（#663）。 */
+export function setSingleTargetCommand(target: AnalysisTarget): Command<KeydistAssets> {
+  return (current) => {
+    const next = withSingleTarget(current.singleTargetSelection, target);
+    if (next === current.singleTargetSelection) return { kind: 'no-op' };
+    return { kind: 'applied', label: '対象を選ぶ', changes: { singleTargetSelection: next } };
   };
 }

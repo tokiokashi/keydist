@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { COLOR_SLOT_COUNT } from '#engine/analyzer-set-selection.ts';
+import { COLOR_SLOT_COUNT } from '#engine/multi-target-selection.ts';
 import { TARGET_PALETTE_SIZE, targetPaletteColor } from './target-colors.ts';
 
 // 背景は theme.css から読む。直書きすると theme.css を変えた時に古い値で測り続け、
@@ -72,6 +72,17 @@ test('パレット: どの色も明暗両themeの背景に対してコントラ�
       assert.ok(ratio >= 3, `${color} は ${name}(${background}) に対して ${ratio.toFixed(2)}`);
     }
   }
+});
+
+test('パレット: 1色目は、入れ替えても距離の変わらない2色目より背景とのコントラスト比が高い', () => {
+  // 1色だけの集合では1色目しか使わない。先頭2色の入れ替えは先頭k色（k≥2）の距離を変えないので、
+  // 背景とのコントラスト比の最小値が高い方を先にする。
+  const minContrast = (color: string) => Math.min(...Object.values(BACKGROUNDS).map((background) => contrast(color, background)));
+  const [first, second] = [PALETTE[0]!, PALETTE[1]!];
+  assert.ok(
+    minContrast(first) >= minContrast(second),
+    `${first} は ${minContrast(first).toFixed(2)}、${second} は ${minContrast(second).toFixed(2)}`,
+  );
 });
 
 test('パレット: どの2色もOKLabの距離で0.12以上離れている', () => {

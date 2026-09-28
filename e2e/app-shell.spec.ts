@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { openTextChip } from './context-bar-helper.ts';
+import { waitForHydration } from './hydration-helper.ts';
 
 /**
  * シェル（サイドバー・文脈バー）のE2E（docs/architecture.md「画面の構成」）。
@@ -9,6 +10,7 @@ const PACKAGE_VERSION = (JSON.parse(readFileSync(new URL('../package.json', impo
 
 test('サイドバーは区分ごとのナビゲーションと、最下端の版表示・旧版・テーマ切替を持つ', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
   const sidebar = page.locator('#app-sidebar');
   await expect(sidebar).toBeVisible();
 
@@ -38,6 +40,7 @@ async function expectSidebarShown(page: Page): Promise<void> {
 
 test('固定を外すとサイドバーは隠れ、ボタンで重ねて出して離れると引っ込む。固定の状態はリロード後も残る', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
   const sidebar = page.locator('#app-sidebar');
   const toggle = page.getByRole('button', { name: 'サイドバーを開く' });
   await expect(toggle).toBeHidden();
@@ -49,6 +52,7 @@ test('固定を外すとサイドバーは隠れ、ボタンで重ねて出し�
   await expect(toggle).toBeFocused();
 
   await page.reload();
+  await waitForHydration(page);
   await expect(page.locator('html')).toHaveAttribute('data-sidebar', 'unpinned');
   await expect(sidebar).not.toBeInViewport();
 
@@ -88,6 +92,7 @@ test('ボタンで重ねて出している間は、Tabで本体へ抜けない',
     localStorage.setItem('keydist:app-state', JSON.stringify({ version: 2, shell: { sidebarPinned: false } }));
   });
   await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
   await page.getByRole('button', { name: 'サイドバーを開く' }).click();
   await expectSidebarShown(page);
   const sidebar = page.locator('#app-sidebar');
@@ -106,6 +111,7 @@ test('ボタンで重ねて出している間は、Tabで本体へ抜けない',
 test('スマホ幅ではサイドバーは引き出しで、リンクを押すと閉じる', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
+  await waitForHydration(page);
   const sidebar = page.locator('#app-sidebar');
   await expect(sidebar).not.toBeInViewport();
   await expect(sidebar.getByRole('button', { name: 'サイドバーを固定' })).toBeHidden();

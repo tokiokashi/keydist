@@ -14,12 +14,12 @@ import { STANDALONE_TEXT_SELECTION_STORAGE_KEY } from '#platform/assets/standalo
 import { STANDALONE_ANALYZER_OPTIONS_STORAGE_KEY } from '#platform/assets/standalone-analyzer-options-storage.ts';
 import { initialStandaloneAnalyzerOptions } from '#engine/standalone-analyzer-options.ts';
 import { STANDALONE_ANALYZER_OPTIONS_CODEC } from '#engine/standalone-analyzer-options-codec.ts';
-import { initialAnalyzerSetSelections } from '#engine/analyzer-set-selection.ts';
-import { ANALYZER_SET_SELECTION_CODEC } from '#engine/analyzer-set-selection-codec.ts';
-import { ANALYZER_SET_SELECTIONS_STORAGE_KEY } from '#platform/assets/analyzer-set-selections-storage.ts';
-import { initialAnalyzerTargetSelections } from '#engine/analyzer-target-selection.ts';
-import { ANALYZER_TARGET_SELECTION_CODEC } from '#engine/analyzer-target-selection-codec.ts';
-import { ANALYZER_TARGET_SELECTIONS_STORAGE_KEY } from '#platform/assets/analyzer-target-selections-storage.ts';
+import { initialMultiTargetSelection } from '#engine/multi-target-selection.ts';
+import { MULTI_TARGET_SELECTION_CODEC } from '#engine/multi-target-selection-codec.ts';
+import { MULTI_TARGET_SELECTION_STORAGE_KEY } from '#platform/assets/multi-target-selection-storage.ts';
+import { initialSingleTargetSelection } from '#engine/single-target-selection.ts';
+import { SINGLE_TARGET_SELECTION_CODEC } from '#engine/single-target-selection-codec.ts';
+import { SINGLE_TARGET_SELECTION_STORAGE_KEY } from '#platform/assets/single-target-selection-storage.ts';
 
 /**
  * `KeydistAssets`（`engine/commands.ts`）の各キーを、永続化に要る3点
@@ -86,15 +86,15 @@ export const ASSET_STORAGE_SPECS: { readonly [K in keyof KeydistAssets]: AssetSt
     codec: STANDALONE_ANALYZER_OPTIONS_CODEC,
     initial: initialStandaloneAnalyzerOptions,
   },
-  analyzerSetSelections: {
-    storageKey: ANALYZER_SET_SELECTIONS_STORAGE_KEY,
-    codec: ANALYZER_SET_SELECTION_CODEC,
-    initial: initialAnalyzerSetSelections,
+  multiTargetSelection: {
+    storageKey: MULTI_TARGET_SELECTION_STORAGE_KEY,
+    codec: MULTI_TARGET_SELECTION_CODEC,
+    initial: initialMultiTargetSelection,
   },
-  analyzerTargetSelections: {
-    storageKey: ANALYZER_TARGET_SELECTIONS_STORAGE_KEY,
-    codec: ANALYZER_TARGET_SELECTION_CODEC,
-    initial: initialAnalyzerTargetSelections,
+  singleTargetSelection: {
+    storageKey: SINGLE_TARGET_SELECTION_STORAGE_KEY,
+    codec: SINGLE_TARGET_SELECTION_CODEC,
+    initial: initialSingleTargetSelection,
   },
 };
 

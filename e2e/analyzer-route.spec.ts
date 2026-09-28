@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { gotoAnalyzer, waitForAnalyzerRuntime } from './analyzer-helper.ts';
+import { waitForHydration } from './hydration-helper.ts';
 
 test('Analyzer route stays operational when shared layer/picker helpers change', async ({ page }) => {
   const pageErrors: string[] = [];
@@ -73,6 +74,8 @@ test('legacy Analyzer URL redirects to the React Analyzer route', async ({ page 
 test('Analyzer runtime remounts after SPA navigation away and back', async ({ page }) => {
   // 旧Analyzerへの導線はトップの入口にだけある（サイドバーは新しい画面だけを並べる）。
   await page.goto('/input');
+  // ハイドレーション前に押すとSPA遷移にならず全体の読み込みになり、確かめたい経路を通らない。
+  await waitForHydration(page);
   await page.locator('.app-sidebar').getByRole('link', { name: 'keydist', exact: true }).click();
   await page.getByRole('link', { name: /^Analyzer/ }).click();
   await expect(page).toHaveURL(/\/analyzer\/?$/);
