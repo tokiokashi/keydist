@@ -5,7 +5,7 @@ import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import type { BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { BigramFlowStandalonePage } from '#hosts/standalone/index.ts';
 import { builtinStandaloneCatalog } from './catalog.ts';
-import { generateSetupId } from './id-generator.ts';
+import { generateSetupId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
 
@@ -45,6 +45,7 @@ export function StandaloneBigramFlowApp() {
       cache={engineCache}
       catalog={catalog}
       generateSetupId={generateSetupId}
+      generateTextId={generateTextId}
       onBigramFlowOptionsCommit={commitBigramFlowOptions}
     />
   );

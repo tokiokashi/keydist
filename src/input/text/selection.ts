@@ -1,0 +1,38 @@
+import { DEFAULT_BUILTIN_TEXT_ID } from './builtin.ts';
+
+/**
+ * 「どのテキストを今使っているか」への参照（#544指示書「a second holder is trivial」）。
+ * 組み込みかユーザーテキストかをkindで区別する（idの文字列だけでは、将来ユーザーテキストの
+ * id生成規則が変わった時に組み込みのid空間と衝突しないという保証が持てないため）。
+ */
+export type TextRef =
+  | { readonly kind: 'builtin'; readonly id: string }
+  | { readonly kind: 'user'; readonly id: string };
+
+export function textRefEquals(a: TextRef, b: TextRef): boolean {
+  return a.kind === b.kind && a.id === b.id;
+}
+
+/** 既定の選択（#544指示書「Default = built-in ja.legacy」）。 */
+export const DEFAULT_TEXT_REF: TextRef = { kind: 'builtin', id: DEFAULT_BUILTIN_TEXT_ID };
+
+/**
+ * 「今使っているテキストの選択」1つぶんの状態（#544指示書「The standalone host holds ONE
+ * selection」）。この型自体はどの器（単体ページ / 将来のWorkspace）の選択かを知らない
+ * 汎用の値にしておく。器ごとの持ち先は`engine/commands.ts`の`KeydistAssets`が
+ * `standaloneTextSelection`のようなキー名で区別する（`setup/collection.ts`の
+ * `SetupLibrary`がSetupの実体を、この型が「今どれを見ているか」だけを持つのと同じ分担）。
+ */
+export interface TextSelectionState {
+  readonly ref: TextRef;
+}
+
+export function initialTextSelection(): TextSelectionState {
+  return { ref: DEFAULT_TEXT_REF };
+}
+
+/** 選択を差し替える。同じ参照なら`current`をそのまま返す（no-op判定用の規約）。 */
+export function withTextSelection(current: TextSelectionState, ref: TextRef): TextSelectionState {
+  if (textRefEquals(current.ref, ref)) return current;
+  return { ref };
+}

@@ -4,7 +4,8 @@ import { applyCommand, emptyCommandHistory, redo, undo } from '#input/commands/i
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
 import type { SetupLibrary } from '#input/setup/index.ts';
 import { DEFAULT_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
-import { initialStandaloneText } from '#input/text/standalone-text.ts';
+import { emptyTextLibrary } from '#input/text/library.ts';
+import { initialTextSelection } from '#input/text/selection.ts';
 import {
   createFingerAssignmentCommand,
   createSetupCommand,
@@ -19,9 +20,9 @@ import {
   setAnalyzerSetSelectionBaselineCommand,
   setAnalyzerSetSelectionSetupIdsCommand,
   setCascadeOverrideCommand,
+  setCurrentTextContentCommand,
+  setCurrentTextLanguageOverrideCommand,
   setStandaloneAnalyzerOptionsCommand,
-  setStandaloneTextCommand,
-  setStandaloneTextLanguageOverrideCommand,
   type KeydistAssets,
 } from './commands.ts';
 import type { SettingsValueMap } from './settings-items.ts';
@@ -36,11 +37,15 @@ function emptyAssets(): KeydistAssets {
   return {
     setupLibrary,
     fingerAssignments: [],
-    standaloneText: initialStandaloneText(),
+    textLibrary: emptyTextLibrary(),
+    standaloneTextSelection: initialTextSelection(),
     standaloneAnalyzerOptions: {},
     analyzerSetSelections: {},
   };
 }
+
+let nextTextId = 0;
+const generateTextId = () => `text-${++nextTextId}`;
 
 test('setCascadeOverrideCommand: globalレベルへ書き込み、undo/redoで往復できる', () => {
   const assets = emptyAssets();
@@ -330,43 +335,73 @@ test('renameFingerAssignmentCommand: 同じ名前への変更はno-op', () => {
   assert.equal(renamedDifferent.assets.fingerAssignments[0]!.name, '別名');
 });
 
-test('setStandaloneTextCommand: テキストを変えると言語が再判定され、undo/redoで往復できる', () => {
+test('setCurrentTextContentCommand: 組み込みを書き換えると新しいユーザーテキストになり(copy-on-write)、undo/redoで往復できる', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const step = applyCommand(assets, history, setStandaloneTextCommand('hello world'));
+  const step = applyCommand(assets, history, setCurrentTextContentCommand('hello world', generateTextId));
   assert.equal(step.outcome.kind, 'applied');
-  assert.equal(step.assets.standaloneText.text, 'hello world');
-  assert.deepEqual(step.assets.standaloneText.language, { detected: 'en' });
+  assert.equal(step.assets.textLibrary.texts.length, 1);
+  assert.equal(step.assets.textLibrary.texts[0]!.text, 'hello world');
+  assert.equal(step.assets.standaloneTextSelection.ref.kind, 'user');
+  assert.equal(step.assets.standaloneTextSelection.ref.id, step.assets.textLibrary.texts[0]!.id);
 
   const back = undo(step.assets, step.history);
-  assert.deepEqual(back.assets.standaloneText, assets.standaloneText);
+  assert.deepEqual(back.assets.textLibrary, assets.textLibrary);
+  assert.deepEqual(back.assets.standaloneTextSelection, assets.standaloneTextSelection);
 
   const redone = redo(back.assets, back.history);
-  assert.deepEqual(redone.assets.standaloneText, step.assets.standaloneText);
+  assert.deepEqual(redone.assets.textLibrary, step.assets.textLibrary);
 });
 
-test('setStandaloneTextCommand: 同じテキストならno-op', () => {
+test('setCurrentTextContentCommand: copy-on-write後の再度の変更は同じユーザーテキストをその場で編集する（コピーが増えない）', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
-  const step = applyCommand(assets, history, setStandaloneTextCommand(assets.standaloneText.text));
+
+  const first = applyCommand(assets, history, setCurrentTextContentCommand('1手目', generateTextId));
+  const second = applyCommand(first.assets, first.history, setCurrentTextContentCommand('2手目', generateTextId));
+
+  assert.equal(second.assets.textLibrary.texts.length, 1, 'コピーは1つのまま');
+  assert.equal(second.assets.textLibrary.texts[0]!.text, '2手目');
+  assert.equal(second.assets.textLibrary.texts[0]!.id, first.assets.textLibrary.texts[0]!.id);
+});
+
+test('setCurrentTextContentCommand: 同じテキストならno-op', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const initial = applyCommand(assets, history, setCurrentTextContentCommand('hello world', generateTextId));
+  const step = applyCommand(
+    initial.assets,
+    initial.history,
+    setCurrentTextContentCommand('hello world', generateTextId),
+  );
   assert.equal(step.outcome.kind, 'no-op');
 });
 
-test('setStandaloneTextLanguageOverrideCommand: 上書き設定後、テキストを変えると上書きは引き継がれない', () => {
+test('setCurrentTextLanguageOverrideCommand: 組み込み選択中は言語固定なのでno-op', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const step = applyCommand(assets, history, setCurrentTextLanguageOverrideCommand('en'));
+  assert.equal(step.outcome.kind, 'no-op');
+});
+
+test('setCurrentTextLanguageOverrideCommand: ユーザーテキストへ手動上書きを設定でき、本文を変えても上書きは引き継がれる', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const overridden = applyCommand(assets, history, setStandaloneTextLanguageOverrideCommand('en'));
+  const created = applyCommand(assets, history, setCurrentTextContentCommand('hello world', generateTextId));
+  const overridden = applyCommand(created.assets, created.history, setCurrentTextLanguageOverrideCommand('ja'));
   assert.equal(overridden.outcome.kind, 'applied');
-  assert.equal(overridden.assets.standaloneText.language.override, 'en');
+  assert.equal(overridden.assets.textLibrary.texts[0]!.languageOverride, 'ja');
 
   const retyped = applyCommand(
     overridden.assets,
     overridden.history,
-    setStandaloneTextCommand('新しいテキスト'),
+    setCurrentTextContentCommand('新しいテキスト', generateTextId),
   );
-  assert.equal(retyped.assets.standaloneText.language.override, undefined);
+  // ユーザーテキストの本文をその場で編集する場合、手動上書きはテキストに紐づいたまま残る
+  // （組み込みからのcopy-on-writeとは違い、同じユーザーテキストを編集し続けているため）。
+  assert.equal(retyped.assets.textLibrary.texts[0]!.languageOverride, 'ja');
 });
 
 test('setStandaloneAnalyzerOptionsCommand: 1 Analyzerぶんの設定を書き込み、undo/redoで往復できる', () => {

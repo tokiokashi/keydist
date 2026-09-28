@@ -10,11 +10,14 @@ import type { EngineCache } from '#engine/cache.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import type { Setup, SetupIdGenerator } from '#input/setup/index.ts';
+import type { TextIdGenerator } from '#input/text/library.ts';
+import { resolveTextSelection } from '#input/text/resolve.ts';
 import { conditionHeaderInfoFromResolvedInput, nonDefaultConditionRows, summarizeNonDefaultConditions, traceConditionSummary } from '#hosts/shared/index.ts';
 import { comparisonAnalyzer, type ComparisonRowContext } from '#analyzers/comparison/definition.tsx';
 import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
+import { TextControl } from './TextControl.tsx';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
 import { useEnsureSetup } from './use-ensure-setup.ts';
 import './standalone.css';
@@ -44,6 +47,7 @@ export interface ComparisonStandalonePageProps {
   readonly cache: EngineCache;
   readonly catalog: StandalonePaneCatalog;
   readonly generateSetupId: SetupIdGenerator;
+  readonly generateTextId: TextIdGenerator;
   readonly onComparisonOptionsCommit: (options: ComparisonOptions) => void;
 }
 
@@ -86,6 +90,7 @@ export function ComparisonStandalonePage({
   cache,
   catalog,
   generateSetupId,
+  generateTextId,
   onComparisonOptionsCommit,
 }: ComparisonStandalonePageProps) {
   const setups = assets.setupLibrary.setups;
@@ -93,6 +98,11 @@ export function ComparisonStandalonePage({
   // `BigramFlowStandalonePage`と同じ配線）。このページ自体は単一の「選択中Setup」を
   // 持たないので、戻り値の`selectedSetupId`/`setSelectedSetupId`は使わない。
   useEnsureSetup(setups, assetsReady, dispatch, generateSetupId);
+
+  const resolvedText = useMemo(
+    () => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary),
+    [assets.standaloneTextSelection, assets.textLibrary],
+  );
 
   const selection = analyzerSetSelectionFor(assets.analyzerSetSelections, ANALYZER_ID);
   const setupById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
@@ -140,10 +150,10 @@ export function ComparisonStandalonePage({
       }
       return {
         setupId,
-        resolution: resolveStandalonePaneInput(setup, catalog, assets.setupLibrary.overrides, assets.standaloneText),
+        resolution: resolveStandalonePaneInput(setup, catalog, assets.setupLibrary.overrides, resolvedText),
       };
     }),
-    [selection.setupIds, setupById, catalog, assets.setupLibrary.overrides, assets.standaloneText],
+    [selection.setupIds, setupById, catalog, assets.setupLibrary.overrides, resolvedText],
   );
 
   const rowContext = useMemo(() => {
@@ -167,6 +177,13 @@ export function ComparisonStandalonePage({
         <p className="eyebrow">単体ページ</p>
         <h1>比較表</h1>
       </header>
+
+      <TextControl
+        textLibrary={assets.textLibrary}
+        selection={assets.standaloneTextSelection}
+        dispatch={dispatch}
+        generateTextId={generateTextId}
+      />
 
       <section className="set-selection-controls" aria-label="対象Setupの選択">
         <fieldset>

@@ -51,7 +51,7 @@ test('テキストを変えると条件・可視化が追従する', async ({ pa
   await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
 });
 
-test('サンプルを選ぶとテキストが置き換わる（言語を選ぶUIは無い）', async ({ page }) => {
+test('組み込みテキストを選ぶとテキストが置き換わる', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
@@ -59,15 +59,141 @@ test('サンプルを選ぶとテキストが置き換わる（言語を選ぶUI
   const textarea = page.getByLabel('テキスト', { exact: true });
   const before = await textarea.inputValue();
 
-  const sample = page.getByLabel('サンプル', { exact: true });
-  await sample.selectOption({ label: '英文（既定）' });
+  const picker = page.getByLabel('テキストを選ぶ', { exact: true });
+  await picker.selectOption({ label: '英文（既定）' });
 
   await expect(textarea).not.toHaveValue(before);
-  await expect(sample).toHaveValue('en:default');
 
   // ペインが新しいテキストで再びreadyになる（見えている変化が実際にengineへ届いたことの確認）。
   const pane = page.locator('.pane-frame');
   await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+});
+
+/**
+ * テキストの資産化（#544 Phase 3）のE2E。組み込みを書き換えると新しいユーザーテキストが
+ * 作られる（copy-on-write）ことと、その前提の上で選択・複製・削除・タブ間同期が
+ * 正しく回ることを確認する。
+ */
+test('組み込みを編集すると新しいユーザーテキストが作られ、選択がそちらへ切り替わる（copy-on-write）', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  const textarea = page.getByLabel('テキスト', { exact: true });
+  await textarea.fill('編集したテキスト');
+
+  // debounce後、textLibraryに1件のユーザーテキストが増える。
+  await expect
+    .poll(async () => page.evaluate(() => {
+      const raw = localStorage.getItem('keydist:text-library');
+      return raw === null ? 0 : (JSON.parse(raw) as { texts: unknown[] }).texts.length;
+    }))
+    .toEqual(1);
+
+  // 選択もそのユーザーテキストへ切り替わっている（builtinではなくuser）。
+  await expect
+    .poll(async () => page.evaluate(() => {
+      const raw = localStorage.getItem('keydist:standalone-text-selection');
+      return raw === null ? undefined : (JSON.parse(raw) as { ref: { kind: string } }).ref.kind;
+    }))
+    .toEqual('user');
+
+  const picker = page.getByLabel('テキストを選ぶ', { exact: true });
+  await expect(picker.locator('optgroup[label="自作"] option')).toHaveCount(1);
+});
+
+test('copy-on-write後にさらに打っても、コピーは増えない（同じユーザーテキストをその場で編集する）', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  const textarea = page.getByLabel('テキスト', { exact: true });
+  await textarea.fill('1回目の編集');
+  await expect
+    .poll(async () => page.evaluate(() => {
+      const raw = localStorage.getItem('keydist:text-library');
+      return raw === null ? 0 : (JSON.parse(raw) as { texts: unknown[] }).texts.length;
+    }))
+    .toEqual(1);
+
+  // 続けてもう一度編集する（debounceで積まれた複数回の呼び出しを模す）。
+  await textarea.fill('2回目の編集');
+  await textarea.fill('3回目の編集');
+  await expect(textarea).toHaveValue('3回目の編集');
+
+  await expect
+    .poll(async () => page.evaluate(() => {
+      const raw = localStorage.getItem('keydist:text-library');
+      const texts = raw === null ? [] : (JSON.parse(raw) as { texts: { text: string }[] }).texts;
+      return texts.length === 1 ? texts[0]!.text : `unexpected:${texts.length}`;
+    }))
+    .toEqual('3回目の編集');
+});
+
+test('編集したテキストはリロードしても保持される', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  const textarea = page.getByLabel('テキスト', { exact: true });
+  await textarea.fill('リロードしても残るテキスト');
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:text-library')))
+    .toContain('リロードしても残るテキスト');
+
+  await page.reload();
+  const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue('リロードしても残るテキスト');
+});
+
+test('複製すると新しいユーザーテキストができ、選択がそちらに切り替わる', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  const picker = page.getByLabel('テキストを選ぶ', { exact: true });
+  await page.getByRole('button', { name: '複製', exact: true }).click();
+
+  await expect(picker.locator('optgroup[label="自作"] option')).toHaveCount(1);
+  await expect
+    .poll(async () => page.evaluate(() => {
+      const raw = localStorage.getItem('keydist:standalone-text-selection');
+      return raw === null ? undefined : (JSON.parse(raw) as { ref: { kind: string } }).ref.kind;
+    }))
+    .toEqual('user');
+
+  // 複製元（既定の組み込み）と同じ本文で始まる。
+  const textarea = page.getByLabel('テキスト', { exact: true });
+  await expect(textarea).toHaveValue(/わがはい/);
+});
+
+test('選択中のテキストを削除すると既定の組み込みへフォールバックする', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  const textarea = page.getByLabel('テキスト', { exact: true });
+  await textarea.fill('削除される予定のテキスト');
+  await expect
+    .poll(async () => page.evaluate(() => {
+      const raw = localStorage.getItem('keydist:text-library');
+      return raw === null ? 0 : (JSON.parse(raw) as { texts: unknown[] }).texts.length;
+    }))
+    .toEqual(1);
+
+  const deleteButton = page.getByRole('button', { name: '削除', exact: true });
+  await expect(deleteButton).toBeEnabled();
+  await deleteButton.click();
+
+  // 既定の組み込み（吾輩は猫である）へフォールバックする。
+  await expect(textarea).toHaveValue(/わがはい/);
+  await expect
+    .poll(async () => page.evaluate(() => {
+      const raw = localStorage.getItem('keydist:text-library');
+      return raw === null ? 0 : (JSON.parse(raw) as { texts: unknown[] }).texts.length;
+    }))
+    .toEqual(0);
 });
 
 test('解析設定はリロードしても残る（資産として保持する）', async ({ page }) => {
