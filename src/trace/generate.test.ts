@@ -442,7 +442,7 @@ test('最長一致は後続の文字を食い過ぎない', () => {
 });
 
 test('ヤ行コンボは拗音の内部だけで発火し、単独ヤ行を奪わない（#42）', () => {
-  const combo = LAYOUT_BY_ID.get('oonishi-custom-combo')!;
+  const combo = LAYOUT_BY_ID.get('oonishi-custom')!;
   const cases: [string, string[]][] = [
     ['やく', ['y', 'aku']],
     ['やま', ['y', 'a', 'm', 'a']],

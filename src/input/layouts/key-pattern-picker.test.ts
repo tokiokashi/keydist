@@ -221,7 +221,7 @@ test('buildKeyPatternMatrix: combo groupは全canonical physical variantsへ保�
 });
 
 test('matchKeyPatterns: TK音直でi選択後、eの物理キーにyeを表示できる', () => {
-  const layout = LAYOUT_BY_ID.get('oonishi-custom-combo');
+  const layout = LAYOUT_BY_ID.get('oonishi-custom');
   assert.ok(layout);
   const iKey = layout.map.get('i')?.[0]?.[0];
   const eKey = layout.map.get('e')?.[0]?.[0];

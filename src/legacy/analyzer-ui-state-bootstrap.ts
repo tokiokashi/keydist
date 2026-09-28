@@ -7,7 +7,7 @@ import {
 
 export const ANALYZER_INITIAL_LAYOUTS = {
   en: ['qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi'],
-  ja: ['qwerty', 'colemak-dh', 'oonishi', 'oonishi-custom-combo', 'naginata-v18'],
+  ja: ['qwerty', 'colemak-dh', 'oonishi', 'oonishi-custom', 'naginata-v18'],
 } as const satisfies Record<ModeId, readonly string[]>;
 
 export const ANALYZER_SAMPLE_IDS = {

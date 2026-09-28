@@ -118,12 +118,13 @@ test('既定の形状を変えた配列対象の名前に、形状名が2回並�
   }
 });
 
-test('TK音直入力法の英字配置とかな配列は、並べても名前で見分けられる（レビュー指摘M-b）', () => {
+test('TK音直入力法は言語によらず1つの配列で、並べる時は他の配列と名前だけで見分けられる（#602）', () => {
   const named = displayNames(
-    [{ kind: 'layout', layoutId: 'oonishi-custom' }, { kind: 'layout', layoutId: 'oonishi-custom-combo' }],
+    [{ kind: 'layout', layoutId: 'oonishi-custom' }, { kind: 'layout', layoutId: 'oonishi' }],
     [],
   );
+  assert.match(named[0]!.displayName, /^TK音直入力法/);
+  assert.doesNotMatch(named[0]!.displayName, /英字配置/);
   assert.notEqual(named[0]!.displayName, named[1]!.displayName);
-  // 位置や種類を添える段階上げに頼らず、名前そのもので分かれる。
   for (const n of named) assert.doesNotMatch(n.displayName, /番目|（配列）/);
 });

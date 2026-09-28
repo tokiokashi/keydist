@@ -2,7 +2,14 @@ import { kunrei } from '#input/romaji/kunrei.ts';
 import { oonishiRomaji } from '#input/romaji/oonishi.ts';
 import { NAGINATA_V18 } from './naginata.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
-import { fromRows, withCombos, withRomaji, withShiftedOutputs, type Layout } from './types.ts';
+import {
+  fromRows,
+  withCombos,
+  withoutRomajiOnlyCombos,
+  withRomaji,
+  withShiftedOutputs,
+  type Layout,
+} from './types.ts';
 import { NICOLA } from './nicola.ts';
 import { ASUKA } from './asuka.ts';
 import { SHIN_KOUME } from './shin-koume.ts';
@@ -43,6 +50,7 @@ export {
   withShiftedOutputs,
   withRomaji,
   withCombos,
+  withoutRomajiOnlyCombos,
 } from './types.ts';
 export { faceCells, handOfKey } from './face-geometry.ts';
 export type { Hand } from './face-geometry.ts';
@@ -92,19 +100,27 @@ const ALPHA: Layout[] = [
     'eiao-ktnsh',
     'zxcv;gdmjb',
   ])),
-  // 同じ名前のかな配列（oonishi-custom-combo）と並んだ時に見分けられるよう、英字配置だと名前で示す。
-  withShiftedOutputs(fromRows('oonishi-custom', 'TK音直入力法（英字配置）', [
-    '1234567890',
-    'qlu,.fwryp',
-    'eiao-ktnsh',
-    'xjcv/gdmzb',
-  ])),
+  // コンボはどれもromajiOnly（仕様 §4.3）。日本語はコンボ込み、英文は単打配置だけで打つ。
+  withCombos(
+    'oonishi-custom',
+    'TK音直入力法',
+    withShiftedOutputs(fromRows('oonishi-custom', 'TK音直入力法', [
+      '1234567890',
+      'qlu,.fwryp',
+      'eiao-ktnsh',
+      'xjcv/gdmzb',
+    ])),
+    CUSTOM_COMBOS,
+  ),
 ];
 
 const ALPHA_BY_ID = new Map(ALPHA.map((l) => [l.id, l]));
 
-/** 英文をそのまま打つ配列。TK音直入力法も英字配置として選択できる。 */
-export const LAYOUTS: Layout[] = ALPHA;
+/**
+ * 英文をそのまま打つ配列。ローマ字でしか使わないコンボは外した形で並べ、
+ * 配列図・逆引き等の表示にも出さない（評価側もgenerateTraceが同じ規則で外す）。
+ */
+export const LAYOUTS: Layout[] = ALPHA.map(withoutRomajiOnlyCombos);
 
 /**
  * 日本語のかなテキストを打つ配列。
@@ -112,22 +128,13 @@ export const LAYOUTS: Layout[] = ALPHA;
  * 最終形はどちらも打鍵ステップ列なので、同じテキストで比較できる。
  */
 export const LAYOUTS_JA: Layout[] = [
-  // TK音直入力法はコンボ込みでのみ意味を持つので、素の形では出さない。
   ...ALPHA.filter((l) => l.id.startsWith('oonishi') === false).map((l) =>
     withRomaji(l, ROMAJI),
   ),
   // 大西配列は公式が前提とする綴り（シャ行sh / じji / じゃ行j）で打つ
   withRomaji(ALPHA_BY_ID.get('oonishi')!, ROMAJI_OONISHI),
   // TK音直入力法のコンボは訓令式（sya / zya）の綴りを前提に組まれている
-  withRomaji(
-    withCombos(
-      'oonishi-custom-combo',
-      'TK音直入力法',
-      ALPHA_BY_ID.get('oonishi-custom')!,
-      CUSTOM_COMBOS,
-    ),
-    ROMAJI,
-  ),
+  withRomaji(ALPHA_BY_ID.get('oonishi-custom')!, ROMAJI),
   NAGINATA_V18,
   NICOLA,
   SHIN_KOUME,

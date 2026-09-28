@@ -785,7 +785,7 @@ test('ローマ字の入力履歴はかなごとの複数打鍵を重複させ�
 });
 
 test('TK音直入力法のコンボは入力単位全体を現在文字と履歴に表示する', () => {
-  const layout = withRomaji(LAYOUT_BY_ID.get('oonishi-custom-combo')!, kunrei());
+  const layout = withRomaji(LAYOUT_BY_ID.get('oonishi-custom')!, kunrei());
   const trace = generateTrace('わがはいねこ', layout, buildGeometry('row-staggered'));
 
   assert.equal(trace.strokes[4].inputChar, 'は');

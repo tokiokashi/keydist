@@ -81,8 +81,10 @@ import { useTypingSession } from './use-typing-session.ts';
 
 const DIRECT_JA_INPUT_LAYOUTS =
   LAYOUTS_JA.filter((layout) => layout.romajiTable === undefined);
+// TK音直入力法はコンボ込みで打つので、英文向けの実体（コンボを外した形）ではなく
+// ローマ字表付きの実体を出す。idは言語によらず同じ。
 const TK_DIRECT_JA_LAYOUT = LAYOUTS_JA.find(
-  (layout) => layout.id === 'oonishi-custom-combo',
+  (layout) => layout.id === 'oonishi-custom',
 );
 
 const INPUT_LAYOUTS = [

@@ -320,7 +320,7 @@ function generate(): Fixture {
   // 2. 既定値が踏まない分岐を突く非既定ケース（少数・理由付き）。
   const naginata = byId(LAYOUTS_JA, 'naginata-v18'); // 親指シフトの交代打鍵とhold-capable triggerを持つ
   const qwertyEn = byId(LAYOUTS, 'qwerty');
-  const oonishiCombo = byId(LAYOUTS_JA, 'oonishi-custom-combo'); // コンボを持つ数少ない組み込み配列
+  const oonishiCombo = byId(LAYOUTS_JA, 'oonishi-custom'); // コンボを持つ数少ない組み込み配列（TK音直入力法の日本語側）
   const asuka = byId(LAYOUTS_JA, 'asuka'); // hold-capable trigger + 親指シフトを持つ
 
   cases.push(runCase('ja', naginata, 'modern', {

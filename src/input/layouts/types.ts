@@ -129,6 +129,11 @@ export const COMBO_LAYER_ID = 'combo';
 export interface ComboCondition {
   /** 拗音のローマ字塊の内部だけで発火する */
   youonOnly?: boolean;
+  /**
+   * 日本語テキストをローマ字経由で打つ時だけ使う（仕様 §4.3）。
+   * 英文を打つ時は配列に無いものとして扱い、単打配置だけで打つ。
+   */
+  romajiOnly?: boolean;
 }
 
 export interface ComboPresentation {
@@ -947,8 +952,10 @@ export function withCombos(
       ...(foldTriggerKeys === undefined ? {} : { foldTriggerKeys }),
       ...(foldTargets.length === 1 ? { foldTargetKey: foldTargets[0] } : {}),
     });
-    const comboContextRequirements: readonly InputContextRequirement[] =
-      condition?.youonOnly ? [{ kind: 'youon-only' }] : [];
+    const comboContextRequirements: readonly InputContextRequirement[] = [
+      ...(condition?.youonOnly ? [{ kind: 'youon-only' as const }] : []),
+      ...(condition?.romajiOnly ? [{ kind: 'romaji-input' as const }] : []),
+    ];
     const generatedAlternatives = uniqueCombinations.map((combination) =>
       compileSequenceInputAlternative(
         output,
@@ -984,5 +991,50 @@ export function withCombos(
     canonicalInputs,
     resolvedComboDefinitions,
     layerDefinitions,
+  };
+}
+
+/**
+ * ローマ字を経ない打ち方（英文の直接入力）で見える配列にする。
+ * `romajiOnly` のコンボ（仕様 §4.3）を定義ごと外し、単打配置だけを残す。
+ *
+ * 配列は言語によらず1つだが、英文ではそのコンボは「配列に無い」扱いなので、
+ * 評価（見出し探索・定義数B）だけでなく配列図・逆引き等の表示にも出さない。
+ * 外す対象は条件付きalternativeだけで、同じ見出しに別のpathがあればそれは残る。
+ */
+export function withoutRomajiOnlyCombos(layout: Layout): Layout {
+  const scoped = (layout.resolvedComboDefinitions ?? [])
+    .filter((combo) => combo.condition?.romajiOnly === true);
+  if (scoped.length === 0) return layout;
+
+  const canonicalInputs = new Map<string, InputAlternative[]>();
+  for (const [output, alternatives] of layout.canonicalInputs) {
+    const kept = alternatives.filter((alternative) =>
+      !alternative.contextRequirements.some((requirement) => requirement.kind === 'romaji-input'));
+    if (kept.length > 0) canonicalInputs.set(output, kept);
+  }
+  // legacy mapはwithCombosが見出しを足しただけなので、canonicalから消えた見出しだけを落とす。
+  const map = new Map(layout.map);
+  for (const combo of scoped) {
+    if (!canonicalInputs.has(combo.output)) map.delete(combo.output);
+  }
+  const resolvedComboDefinitions = (layout.resolvedComboDefinitions ?? [])
+    .filter((combo) => combo.condition?.romajiOnly !== true);
+  // コンボ枠は、残るコンボ定義も面由来のコンボpathも無ければ層一覧から外す。
+  // 残すと英文の層別集計にだけ空のコンボ枠が現れ、単打配置と数値の形が変わる。
+  const comboLayerUsed = resolvedComboDefinitions.length > 0
+    || [...canonicalInputs.values()].some((alternatives) => alternatives.some((alternative) =>
+      alternative.semanticInputs.some((input) => input.aggregationGroupId === COMBO_LAYER_ID)));
+  const layerDefinitions = layout.layerDefinitions?.filter((definition) =>
+    comboLayerUsed || definition.id !== COMBO_LAYER_ID);
+
+  const { resolvedComboDefinitions: _dropped, layerDefinitions: _layers, ...rest } = layout;
+  validateCanonicalInputMap(canonicalInputs);
+  return {
+    ...rest,
+    map,
+    canonicalInputs,
+    ...(resolvedComboDefinitions.length === 0 ? {} : { resolvedComboDefinitions }),
+    ...(layerDefinitions === undefined ? {} : { layerDefinitions }),
   };
 }

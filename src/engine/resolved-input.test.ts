@@ -313,3 +313,33 @@ test('形状エラー: 指割り当てが噛み合わない自作形状は値で
   if (result.ok) return;
   assert.equal(result.error.kind, 'geometry');
 });
+
+// TK音直入力法は言語によらず同じid。LAYOUT_BY_IDはコンボ込みの実体を返すので、英文では
+// romajiOnlyのコンボ（仕様 §4.3）が外れていることを確かめる。
+test('英字直接入力: TK音直入力法 + 英語テキストはromajiOnlyのコンボを持たない', () => {
+  const resolve = (text: string, language: 'en' | 'ja') => {
+    const result = resolveEngineInput({
+      target: { kind: 'setup', setupId: setupFor('oonishi-custom').id },
+      setups: new Map([[setupFor('oonishi-custom').id, setupFor('oonishi-custom')]]),
+      catalog: CATALOG,
+      userLayouts: NO_USER_LAYOUTS,
+      overrides: EMPTY_SETTINGS_OVERRIDES,
+      text,
+      language,
+    });
+    assert.ok(result.ok, result.ok ? '' : JSON.stringify(result.error));
+    if (!result.ok) throw new Error('unreachable');
+    return result.input;
+  };
+  const en = resolve('desu kara', 'en');
+  assert.equal(en.layout.resolvedComboDefinitions, undefined);
+  assert.ok(!en.layout.canonicalInputs.has('desu'));
+  const enTrace = generateTrace(en.text, en.layout, en.geometry, en.tracePolicy);
+  assert.deepEqual(enTrace.comboHits, []);
+  assert.equal(enTrace.comboDefinitions, 0);
+
+  const ja = resolve('です', 'ja');
+  assert.equal(ja.layout.resolvedComboDefinitions?.length, 73);
+  const jaTrace = generateTrace(ja.text, ja.layout, ja.geometry, ja.tracePolicy);
+  assert.deepEqual(jaTrace.comboHits, ['desu']);
+});

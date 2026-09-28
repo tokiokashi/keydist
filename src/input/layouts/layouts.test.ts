@@ -182,12 +182,59 @@ test('JISかな配列はJIS専用列・Shift面・濁点合成を持つ', () => 
   assert.ok(layout.canonicalInputs.has('ぱ'));
 });
 
-test('TK音直入力法は英文モードでも英字配置として選べる', () => {
-  const layout = LAYOUTS.find((entry) => entry.id === 'oonishi-custom');
-  assert.ok(layout);
-  assert.equal(layout.name, 'TK音直入力法（英字配置）');
-  assert.equal(layout.romajiTable, undefined);
-  assert.equal(layout.resolvedComboDefinitions, undefined);
+test('TK音直入力法は英文でも同じidで選べ、英文ではコンボを持たない単打配置になる', () => {
+  const en = LAYOUTS.find((entry) => entry.id === 'oonishi-custom');
+  const ja = LAYOUTS_JA.find((entry) => entry.id === 'oonishi-custom');
+  assert.ok(en);
+  assert.ok(ja);
+  assert.equal(en.name, 'TK音直入力法');
+  assert.equal(ja.name, 'TK音直入力法');
+  assert.equal(en.romajiTable, undefined);
+  assert.equal(en.resolvedComboDefinitions, undefined);
+  assert.ok(!en.canonicalInputs.has('desu'));
+  assert.ok(!en.map.has('desu'));
+  assert.ok(!(en.layerDefinitions ?? []).some((definition) => definition.kind === 'combo'));
+  // 単打配置は日本語側と同じ。コンボが出す見出しだけが無い。
+  assert.deepEqual(
+    [...en.canonicalInputs.keys()],
+    [...ja.canonicalInputs.keys()].filter((output) => en.canonicalInputs.has(output)),
+  );
+  assert.ok([...en.canonicalInputs.keys()].every((output) =>
+    ja.canonicalInputs.get(output)?.length === en.canonicalInputs.get(output)?.length));
+});
+
+test('TK音直入力法のコンボは全件ローマ字入力だけに適用する（仕様 §4.3）', () => {
+  const ja = LAYOUTS_JA.find((entry) => entry.id === 'oonishi-custom');
+  assert.ok(ja?.romajiTable);
+  assert.ok((ja.resolvedComboDefinitions ?? []).every((combo) => combo.condition?.romajiOnly === true));
+  const comboAlternatives = [...ja.canonicalInputs.values()].flat()
+    .filter((alternative) => alternative.origin === 'combo');
+  assert.equal(comboAlternatives.length > 0, true);
+  assert.ok(comboAlternatives.every((alternative) =>
+    alternative.contextRequirements.some((requirement) => requirement.kind === 'romaji-input')));
+  assert.equal(
+    [...LAYOUTS, ...LAYOUTS_JA].filter((entry) => entry.name === 'TK音直入力法')
+      .every((entry) => entry.id === 'oonishi-custom'),
+    true,
+  );
+});
+
+test('romajiOnlyのコンボはローマ字表を持たない配列のTraceで使わず、定義数にも数えない', () => {
+  const ja = LAYOUTS_JA.find((entry) => entry.id === 'oonishi-custom')!;
+  const en = LAYOUTS.find((entry) => entry.id === 'oonishi-custom')!;
+  const { romajiTable: _table, ...direct } = ja;
+  const geometry = buildGeometry('row-staggered');
+  const text = 'desu kara site masu';
+  const fromCombo = generateTrace(text, direct, geometry, DEFAULT_TRACE_POLICY);
+  const fromPlain = generateTrace(text, en, geometry, DEFAULT_TRACE_POLICY);
+  assert.deepEqual(fromCombo.comboHits, []);
+  assert.equal(fromCombo.comboDefinitions, 0);
+  assert.deepEqual(fromCombo.layerDefinitions, fromPlain.layerDefinitions);
+  assert.deepEqual(fromCombo.strokes, fromPlain.strokes);
+
+  const romaji = generateTrace('です', ja, geometry, DEFAULT_TRACE_POLICY);
+  assert.deepEqual(romaji.comboHits, ['desu']);
+  assert.equal(romaji.comboDefinitions, 73);
 });
 
 test('日本語の配列一覧にDvorakを含める（#48）', () => {
@@ -198,16 +245,14 @@ test('日本語の配列一覧にDvorakを含める（#48）', () => {
   assert.ok(dvorak.romajiTable);
 });
 
-test('TK音直入力法は正式名称を表示し、内部idは維持する（#109）', () => {
+test('TK音直入力法は正式名称を表示する（#109）', () => {
   const oonishi = LAYOUT_BY_ID.get('oonishi');
-  const combo = LAYOUT_BY_ID.get('oonishi-custom-combo');
+  const combo = LAYOUT_BY_ID.get('oonishi-custom');
   const tsuki = LAYOUT_BY_ID.get('tsuki-2-263');
 
   assert.equal(oonishi?.name, '大西配列');
-  assert.equal(combo?.id, 'oonishi-custom-combo');
+  assert.equal(combo?.id, 'oonishi-custom');
   assert.equal(combo?.name, 'TK音直入力法');
-  // 英字配置の方は別の名前にして、配列を選ぶ一覧・並べた時の名前で見分けられるようにする。
-  assert.notEqual(LAYOUT_BY_ID.get('oonishi-custom')?.name, combo?.name);
   const desita = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'desita');
   assert.deepEqual(desita?.inputs, ['d', 's', 't']);
   assert.deepEqual(desita?.keys, ['m', 'l', 'j']);
@@ -235,7 +280,7 @@ test('TK音直入力法は正式名称を表示し、内部idは維持する（#
     '二重母音拡張': 10,
   });
   assert.equal(combo?.resolvedComboDefinitions?.length, 73);
-  assert.ok(LAYOUTS_JA.some((layout) => layout.id === 'oonishi-custom-combo'));
+  assert.ok(LAYOUTS_JA.some((layout) => layout.id === 'oonishi-custom'));
   assert.equal(tsuki?.name, '月配列2-263式');
   assert.ok(!oonishi?.name.includes(' '));
   assert.ok(!tsuki?.name.includes(' '));
@@ -996,7 +1041,7 @@ test('薙刀式v18の面移行で入力可能範囲とphysical action数を維�
 
 
 test('custom combo classificationはpresentation groupと独立してcanonicalへ保持する', () => {
-  const layout = LAYOUT_BY_ID.get('oonishi-custom-combo')!;
+  const layout = LAYOUT_BY_ID.get('oonishi-custom')!;
   const vocabulary = layout.canonicalInputs.get('desita')?.[0]?.semanticInputs[0];
   const youon = layout.canonicalInputs.get('yaku')?.[0]?.semanticInputs[0];
   assert.ok(vocabulary);

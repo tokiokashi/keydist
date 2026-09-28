@@ -7268,9 +7268,9 @@
         },
         "windowSize": 3
       },
-      "id": "ja:oonishi-custom-combo:legacy",
+      "id": "ja:oonishi-custom:legacy",
       "language": "ja",
-      "layoutId": "oonishi-custom-combo",
+      "layoutId": "oonishi-custom",
       "metrics": {
         "actions": 404,
         "adjacent": [
@@ -7469,9 +7469,9 @@
         },
         "windowSize": 3
       },
-      "id": "ja:oonishi-custom-combo:modern",
+      "id": "ja:oonishi-custom:modern",
       "language": "ja",
-      "layoutId": "oonishi-custom-combo",
+      "layoutId": "oonishi-custom",
       "metrics": {
         "actions": 2324,
         "adjacent": [
@@ -7670,9 +7670,9 @@
         },
         "windowSize": 3
       },
-      "id": "ja:oonishi-custom-combo:modern:triggerActivation=semantic（コンボを持つ配列でtrigger activationのgroupingが変わる分岐）",
+      "id": "ja:oonishi-custom:modern:triggerActivation=semantic（コンボを持つ配列でtrigger activationのgroupingが変わる分岐）",
       "language": "ja",
-      "layoutId": "oonishi-custom-combo",
+      "layoutId": "oonishi-custom",
       "metrics": {
         "actions": 2324,
         "adjacent": [
@@ -11054,6 +11054,6 @@
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     }
   ],
-  "sourceCommit": "d34c37ef51cdc8364ac6ab92e7042b2a5439f8a4",
+  "sourceCommit": "540911e760665d504adf20039f18d3a4caa7389f",
   "version": 1
 }

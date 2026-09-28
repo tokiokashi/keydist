@@ -19,7 +19,10 @@ export type InputCapability = {
 export type SemanticRole = 'modifier';
 
 export type InputContextRequirement =
-  | { kind: 'youon-only' };
+  | { kind: 'youon-only' }
+  // 日本語テキストをローマ字へ展開して打つ時だけ成立する（仕様 §4.3）。
+  // ローマ字綴りを出すコンボが英文の途中で誤発火しないよう、打ち方でpathを絞る。
+  | { kind: 'romaji-input' };
 
 export type InputAlternativeOrigin =
   | 'sequence'

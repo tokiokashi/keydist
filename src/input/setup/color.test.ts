@@ -159,13 +159,12 @@ test('組み込み配列: 英字配列同士は色相で60°以上離れてい�
   }
 });
 
-test('組み込み配列: 色を共有するのは決めた6組だけで、qwertyと同系統の変種は共有しない', () => {
+test('組み込み配列: 色を共有するのは決めた5組だけで、qwertyと同系統の変種は共有しない', () => {
   const allowed = new Set([
     'shingeta|workman',
     'oonishi-custom|shin-jis-prefix',
     'colemak|naginata-v18',
     'dvorak|tsuki-2-263',
-    'kawasemi-kai|oonishi-custom-combo',
     'colemak-dh|shin-jis-simultaneous',
   ]);
   const ids = [...LAYOUT_BY_ID.keys()];
@@ -176,14 +175,14 @@ test('組み込み配列: 色を共有するのは決めた6組だけで、qwert
     }
   }
   assert.deepEqual(new Set(shared), allowed);
-  // 18配列・12色なので6組は避けられない（鳩の巣原理）。それより多く共有していない。
+  // 17配列・12色なので5組は避けられない（鳩の巣原理）。それより多く共有していない。
   assert.equal(shared.length, ids.length - SETUP_COLOR_PALETTE_SIZE);
 });
 
 test('組み込み配列: 同じ系統の変種どうしは色相で60°以上離れている', () => {
   const families = [
     ['colemak', 'colemak-dh'],
-    ['oonishi', 'oonishi-custom', 'oonishi-custom-combo'],
+    ['oonishi', 'oonishi-custom'],
     ['shin-jis-prefix', 'shin-jis-simultaneous'],
     ['kawasemi-kai', 'kawasemi-plus'],
   ];

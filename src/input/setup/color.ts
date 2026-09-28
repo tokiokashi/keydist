@@ -95,8 +95,8 @@ export function leastUsedColorIndex(
  *
  * **組み込み配列は配列idをキーにした固定の表で割り当てる。** 登録順から計算する方式は、
  * 配列を1つ足すと他の配列の色が動き、並べて比べたい配列同士（colemak/colemak-dh等）が
- * 同じ色に寄ることがあった。18配列・12色なので同じ色の組は6組残る（鳩の巣原理）。
- * その6組は「一緒に並べることが少ない組」を選んで寄せる:
+ * 同じ色に寄ることがあった。17配列・12色なので同じ色の組は5組残る（鳩の巣原理）。
+ * その5組は「一緒に並べることが少ない組」を選んで寄せる:
  * - 英字配列（qwerty・dvorak・colemak・colemak-dh・workman）は互いに色相で60°以上離す
  * - qwertyはどの配列とも色を共有しない（日本語でもローマ字入力の比較の基準になるため）
  * - 同じ系統の変種（大西・新JIS・かわせみ）は互いに離す
@@ -120,7 +120,6 @@ export const BUILTIN_LAYOUT_COLOR_INDEX: ReadonlyMap<string, number> = new Map([
   ['dvorak', 6],
   ['tsuki-2-263', 6],
   ['kawasemi-kai', 7],
-  ['oonishi-custom-combo', 7],
   ['nicola', 8],
   ['colemak-dh', 9],
   ['shin-jis-simultaneous', 9],

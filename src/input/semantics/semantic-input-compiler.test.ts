@@ -695,8 +695,7 @@ test('consumer cutover後はbase layerをcanonical singleへ統一する', () =>
 });
 
 test('withCombos由来outputは1つのcombo SemanticInput + overlapになる', () => {
-  const combo = LAYOUTS_JA.find((layout) => layout.id === 'oonishi-custom-combo')
-    ?? LAYOUTS.find((layout) => layout.id === 'oonishi-custom-combo');
+  const combo = LAYOUTS_JA.find((layout) => layout.id === 'oonishi-custom');
   assert.ok(combo);
 
   const inputs = combo.canonicalInputs.get('desita')?.[0]?.semanticInputs;

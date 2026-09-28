@@ -5,7 +5,7 @@ import {
   type Geometry,
 } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
-import { withRomaji } from '#input/layouts/types.ts';
+import { withoutRomajiOnlyCombos, withRomaji } from '#input/layouts/types.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import type { AnalysisTarget, Setup, SetupCatalog, SetupReferenceError } from '#input/setup/index.ts';
@@ -125,9 +125,11 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
   const romajiItem = cascade.romajiRuleId;
   const romajiRuleId = romajiItem.applicable ? romajiItem.value : null;
   const baseLayout = withoutRomaji(textResolution.layout);
+  // ローマ字を経ない打ち方では、romajiOnlyのコンボ（仕様 §4.3）を外した配列を渡す。
+  // Trace生成も同じ規則で外すが、ResolvedInput.layoutは表示側も読むので、ここで揃えておく。
   const layout = romajiRuleId !== null
     ? withRomaji(baseLayout, tableForRule(romajiRuleId, options.customRomajiRules ? [...options.customRomajiRules] : undefined))
-    : baseLayout;
+    : withoutRomajiOnlyCombos(baseLayout);
 
   // 未知のidが渡ってきた時のfallback先は「その形状の既定」（defaultFingerAssignmentId）に揃える。
   // 上書きが無い時の既定値（settings-items.tsのdefaultValue）と同じ規則にすることで、

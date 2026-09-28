@@ -26,12 +26,18 @@ test('romajiToKanaは未完成romanを失わない', () => {
 
 test('youon-only live contextは直前子音がある時だけ成立する', () => {
   const requirement = [{ kind: 'youon-only' as const }];
-  assert.equal(liveRomajiContextSatisfied(requirement, 'k'), true);
-  assert.equal(liveRomajiContextSatisfied(requirement, 's'), true);
-  assert.equal(liveRomajiContextSatisfied(requirement, 'n'), true);
-  assert.equal(liveRomajiContextSatisfied(requirement, 'onn'), false);
-  assert.equal(liveRomajiContextSatisfied(requirement, ''), false);
-  assert.equal(liveRomajiContextSatisfied(requirement, 'ki'), false);
+  assert.equal(liveRomajiContextSatisfied(requirement, 'k', true), true);
+  assert.equal(liveRomajiContextSatisfied(requirement, 's', true), true);
+  assert.equal(liveRomajiContextSatisfied(requirement, 'n', true), true);
+  assert.equal(liveRomajiContextSatisfied(requirement, 'onn', true), false);
+  assert.equal(liveRomajiContextSatisfied(requirement, '', true), false);
+  assert.equal(liveRomajiContextSatisfied(requirement, 'ki', true), false);
+});
+
+test('romaji-input live contextはローマ字表を持つ配列で打つ時だけ成立する', () => {
+  const requirement = [{ kind: 'romaji-input' as const }];
+  assert.equal(liveRomajiContextSatisfied(requirement, 'k', true), true);
+  assert.equal(liveRomajiContextSatisfied(requirement, 'k', false), false);
 });
 
 

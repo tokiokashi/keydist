@@ -86,17 +86,17 @@ test('nameTargets: 番号の無い（手持ちから消えた）Setup同士が�
   assert.deepEqual(named.map((n) => n.displayName), ['削除されたSetup（1番目）', '削除されたSetup（2番目）']);
 });
 
-test('nameTargets: 同じ配列名を持つ別のuser layout（oonishi-custom / oonishi-custom-combo相当）も衝突を解消する', () => {
+test('nameTargets: 同じ配列名を持つ別のuser layoutも衝突を解消する', () => {
   const named = nameTargets([
-    { key: 'layout:oonishi-custom', kind: 'layout', layoutName: 'TK音直入力法', shapeName: 'ロウスタッガード' },
-    { key: 'layout:oonishi-custom-combo', kind: 'layout', layoutName: 'TK音直入力法', shapeName: 'ロウスタッガード' },
+    { key: 'layout:user-a', kind: 'layout', layoutName: '自作配列', shapeName: 'ロウスタッガード' },
+    { key: 'layout:user-b', kind: 'layout', layoutName: '自作配列', shapeName: 'ロウスタッガード' },
   ]);
-  const a = named.find((n) => n.key === 'layout:oonishi-custom')!;
-  const b = named.find((n) => n.key === 'layout:oonishi-custom-combo')!;
+  const a = named.find((n) => n.key === 'layout:user-a')!;
+  const b = named.find((n) => n.key === 'layout:user-b')!;
   assert.notEqual(a.displayName, b.displayName);
   // 種類（どちらも配列）では区別できないので位置まで使う。idは出さない。
-  assert.equal(a.displayName, 'TK音直入力法（1番目）');
-  assert.equal(b.displayName, 'TK音直入力法（2番目）');
+  assert.equal(a.displayName, '自作配列（1番目）');
+  assert.equal(b.displayName, '自作配列（2番目）');
 });
 
 test('nameTargets: ラベルが他の対象の計算済み名と衝突しても、ラベル側はそのまま・相手側だけ詳しくする', () => {
