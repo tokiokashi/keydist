@@ -33,6 +33,11 @@ export function traceKeyOf(input: ResolvedInput): string {
  * 解釈のキー = Traceのキー + 解釈の値（#544 §7）。
  * chain/arpeggio解釈は当面グローバルのみ（#544 §2）だが、将来レベルが広がっても
  * このキーの形は変わらない。
+ *
+ * 個人速度（`playbackRate*`）はまだこのキーに含めない。時間モデルをengineへ繋ぐのは
+ * Phase 3（#544 §7「解釈: Traceのキー + 解釈の値（時間スケジュールは個人速度も）」）で、
+ * 今のinterpretationは構造 + 共通指標だけを扱い時間モデルを持たないため対象外。
+ * 足す時はこの関数の引数に個人速度を増やす。
  */
 export function interpretationKeyOf(input: ResolvedInput, traceKey: string): string {
   return stableStringify({

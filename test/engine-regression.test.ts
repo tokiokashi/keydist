@@ -15,6 +15,7 @@ import {
 } from '#engine/settings-items.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
+import { createInterpretationRequest, type InterpretationRequestState } from '#engine/engine-requests.ts';
 import { sampleText, type TextLanguage } from '#input/text/samples.ts';
 
 // #544 Phase 2「engine」のfixture回帰テスト。
@@ -198,6 +199,48 @@ function computeFor(fixtureCase: FixtureCase, cache = createEngineCache()) {
   return { trace, analysis, metrics };
 }
 
+/**
+ * `computeFor`と同じfixtureケース1件を、#544 §8-1の非同期依頼API
+ * （`createInterpretationRequest`）経由で計算する。`resolveEngineInput` → `EngineCache`という
+ * 経路自体は`computeFor`と同じで、その手前に依頼・購読の層が挟まっても同じ数値が出ることを見る。
+ */
+async function computeForAsync(fixtureCase: FixtureCase, cache = createEngineCache()) {
+  const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
+  const setupId = `setup-async:${fixtureCase.id}`;
+  const setup: Setup = {
+    id: setupId,
+    layoutId: fixtureCase.layoutId,
+    shapeId: fixtureCase.conditions.geometryShapeId,
+    colorIndex: 0,
+  };
+  const overrides = overridesFor(setupId, fixtureCase.conditions);
+  const resolution = resolveEngineInput({
+    setup,
+    catalog: CATALOG,
+    userLayouts: new Map(),
+    overrides,
+    text,
+    language: fixtureCase.language,
+  });
+  assert.ok(resolution.ok, `${fixtureCase.id}: 解決に失敗した`);
+
+  const states: InterpretationRequestState[] = [];
+  const channel = createInterpretationRequest(cache, (s) => {
+    states.push(s);
+  });
+  channel.request(resolution);
+  // 依頼のスケジュールはマイクロタスク1個分。2回awaitして確実に消化する。
+  await Promise.resolve();
+  await Promise.resolve();
+  channel.unsubscribe();
+
+  const last = states.at(-1);
+  if (last?.status !== 'ready') {
+    throw new Error(`${fixtureCase.id}: 非同期経路の依頼がreadyにならなかった（status=${last?.status}）`);
+  }
+  return { analysis: last.value.analysis, metrics: last.value.metrics };
+}
+
 test('fixtureのバージョンとケース数が空でない', () => {
   assert.equal(fixture.version, 1);
   assert.ok(fixture.cases.length > 0);
@@ -221,6 +264,22 @@ test('50ケース全件がengineの経路で一致した', () => {
   assert.equal(matched, fixture.cases.length);
   assert.equal(matched, 50);
 });
+
+// 全50件を非同期経路でも回すと重複が大きいので、代表として先頭・末尾・中間の3件だけを見る。
+const ASYNC_SAMPLE_INDICES = [0, Math.floor(fixture.cases.length / 2), fixture.cases.length - 1];
+for (const index of ASYNC_SAMPLE_INDICES) {
+  const fixtureCase = fixture.cases[index];
+  if (!fixtureCase) continue;
+  test(`非同期API経由でも同じ数値になる: ${fixtureCase.id}`, async () => {
+    const { metrics, analysis } = await computeForAsync(fixtureCase);
+    assert.deepEqual(metricsSummary(metrics), fixtureCase.metrics, `${fixtureCase.id}: 非同期経路のmetricsがfixtureと食い違う`);
+    assert.deepEqual(
+      analysisSummary(analysis),
+      fixtureCase.analysis,
+      `${fixtureCase.id}: 非同期経路のanalysis集計がfixtureと食い違う`,
+    );
+  });
+}
 
 test('中身が同じ2つのSetup（配列・形状・条件が同じでidだけ違う）はTraceを共有する', () => {
   const cache = createEngineCache();
