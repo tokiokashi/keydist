@@ -139,7 +139,7 @@ function overrideAtSetup<K extends SettingsItemId>(
 /** engine経路（`hosts/standalone`が実際に呼ぶのと同じ関数の並び）。 */
 function engineTrace(fixtureCase: FixtureCase) {
   const setupId = fixtureCase.id;
-  const setup: Setup = { id: setupId, layoutId: fixtureCase.layoutId, shapeId: fixtureCase.conditions.geometryShapeId, colorIndex: 0 };
+  const setup: Setup = { id: setupId, layoutId: fixtureCase.layoutId, shapeId: fixtureCase.conditions.geometryShapeId };
 
   let overrides = EMPTY_SETTINGS_OVERRIDES;
   overrides = overrideAtSetup(overrides, setupId, 'windowSize', fixtureCase.conditions.windowSize);

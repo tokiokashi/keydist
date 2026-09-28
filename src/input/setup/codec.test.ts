@@ -16,8 +16,8 @@ const testItemSchemas: ItemSchemaMap<TestValueMap> = {
 
 const codec = setupLibraryCodec(testItemSchemas, 1);
 
-const setupA: Setup = { id: 's-1', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
-const setupB: Setup = { id: 's-2', layoutId: 'oonishi', shapeId: 'row-staggered', label: 'かな比較用', colorIndex: 3 };
+const setupA: Setup = { id: 's-1', layoutId: 'qwerty', shapeId: 'row-staggered' };
+const setupB: Setup = { id: 's-2', layoutId: 'oonishi', shapeId: 'row-staggered', label: 'かな比較用' };
 
 test('decode: トップレベルがオブジェクトでなければ資産全体をnot-an-objectで失敗させる', () => {
   for (const input of [null, 'x', 42, [], true]) {
@@ -65,16 +65,6 @@ test('decode: id/layoutId/shapeIdを欠くSetupは要素ごと捨てて診断を
     assert.deepEqual(result.value.setups, [setupA]);
     assert.equal(result.diagnostics.length, 1);
     assert.match(result.diagnostics[0].path, /^setups\[1\]/);
-  }
-});
-
-test('decode: colorIndexが壊れていてもSetup自体は残り、既定色(0)へ静かに戻る（診断なし）', () => {
-  const broken: Record<string, unknown> = { id: 's-4', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: -1 };
-  const result = codec.decode({ version: 1, setups: [broken] });
-  assert.equal(result.ok, true);
-  if (result.ok) {
-    assert.deepEqual(result.value.setups, [{ id: 's-4', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 }]);
-    assert.deepEqual(result.diagnostics, []);
   }
 });
 

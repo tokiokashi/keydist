@@ -25,7 +25,7 @@ const CATALOG = {
 };
 
 test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接呼んだ値と一致する', () => {
-  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
   const resolution = resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
     setups: new Map([[setup.id, setup]]),
@@ -78,7 +78,7 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
 });
 
 test('computeComparisonExtraction: 解決できたメンバーはok行、失敗はfailed行になる（行を消さない）', () => {
-  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
   const resolution = resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
     setups: new Map([[setup.id, setup]]),

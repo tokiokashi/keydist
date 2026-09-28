@@ -110,8 +110,8 @@ function createSetFixtureDefinition(): SetAnalyzerDefinition<SetFixtureOptions, 
 
 test('中身が同じSetup2つは計算を共有する（idが違っても同じTrace/解釈を再利用する）', () => {
   const cache = createEngineCache();
-  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
-  const setupB: Setup = { id: 'setup-b', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 1 };
+  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
+  const setupB: Setup = { id: 'setup-b', layoutId: 'qwerty', shapeId: 'row-staggered' };
 
   const traceA = cache.getTrace(resolve(setupA));
   const traceB = cache.getTrace(resolve(setupB));
@@ -126,7 +126,7 @@ test('中身が同じSetup2つは計算を共有する（idが違っても同じ
 
 test('解釈だけが違えばTraceは再利用し、解釈だけ計算し直す', () => {
   const cache = createEngineCache();
-  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
 
   const baseInput = resolve(setup);
   const baseTrace = cache.getTrace(baseInput);
@@ -151,7 +151,7 @@ test('解釈だけが違えばTraceは再利用し、解釈だけ計算し直す
 
 test('中身が違えば別のキャッシュエントリになる（テキストの違い）', () => {
   const cache = createEngineCache();
-  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
 
   cache.getTrace(resolve(setup, EMPTY_SETTINGS_OVERRIDES, 'hello'));
   cache.getTrace(resolve(setup, EMPTY_SETTINGS_OVERRIDES, 'world'));
@@ -160,7 +160,7 @@ test('中身が違えば別のキャッシュエントリになる（テキス�
 
 test('上限を超えると最も長く参照していないTraceを1件だけ捨てる（LRU）', () => {
   const cache = createEngineCache({ maxTraceEntries: 2 });
-  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
 
   const first = cache.getTrace(resolve(setup, EMPTY_SETTINGS_OVERRIDES, 'text-1'));
   cache.getTrace(resolve(setup, EMPTY_SETTINGS_OVERRIDES, 'text-2'));
@@ -175,7 +175,7 @@ test('上限を超えると最も長く参照していないTraceを1件だけ�
 
 test('clear()は永続化していないメモリキャッシュを空にする', () => {
   const cache = createEngineCache();
-  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
   cache.getInterpretation(resolve(setup));
   assert.ok(cache.size.trace > 0);
   cache.clear();
@@ -186,7 +186,7 @@ test('getExtraction: 同じ抽出キーの2インスタンスはextractを1回�
   fixtureCalls = 0;
   const cache = createEngineCache();
   const definition = createFixtureDefinition();
-  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
   const input = resolve(setup);
 
   const a = cache.getExtraction(input, definition, { scale: 1, highlightColor: 'red' });
@@ -200,7 +200,7 @@ test('getExtraction: 見た目だけのoptions変更（highlightColor）ではex
   fixtureCalls = 0;
   const cache = createEngineCache();
   const definition = createFixtureDefinition();
-  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
   const input = resolve(setup);
 
   cache.getExtraction(input, definition, { scale: 1, highlightColor: 'red' });
@@ -213,7 +213,7 @@ test('getExtraction: 抽出に効くoptions（scale）が変われば計算し�
   fixtureCalls = 0;
   const cache = createEngineCache();
   const definition = createFixtureDefinition();
-  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
   const input = resolve(setup);
 
   const a = cache.getExtraction(input, definition, { scale: 1, highlightColor: 'red' });
@@ -227,7 +227,7 @@ test('getExtraction: 抽出に効くoptions（scale）が変われば計算し�
 test('getExtraction: 解釈だけ変えてもTraceは作り直さない', () => {
   const cache = createEngineCache();
   const definition = createFixtureDefinition();
-  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
   const baseInput = resolve(setup);
 
   cache.getExtraction(baseInput, definition, { scale: 1, highlightColor: 'red' });
@@ -253,8 +253,8 @@ test('getExtraction: 解釈だけ変えてもTraceは作り直さない', () => 
 test('getSetExtraction: 各メンバーのTrace・解釈は単一対象と同じキャッシュを共有する', () => {
   const cache = createEngineCache();
   const definition = createSetFixtureDefinition();
-  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
-  const setupB: Setup = { id: 'setup-b', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 1 };
+  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
+  const setupB: Setup = { id: 'setup-b', layoutId: 'qwerty', shapeId: 'row-staggered' };
 
   // 単一対象側で先にTraceを計算しておく。
   const singleTrace = cache.getTrace(resolve(setupA));
@@ -277,8 +277,8 @@ test('getSetExtraction: 同じ集合（順序も同じ）への2回目の呼び�
   setFixtureCalls = 0;
   const cache = createEngineCache();
   const definition = createSetFixtureDefinition();
-  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
-  const setupB: Setup = { id: 'setup-b', layoutId: 'dvorak', shapeId: 'row-staggered', colorIndex: 1 };
+  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
+  const setupB: Setup = { id: 'setup-b', layoutId: 'dvorak', shapeId: 'row-staggered' };
   const members: readonly EngineSetMemberInput[] = [
     { target: { kind: 'setup', setupId: setupA.id }, resolution: resolveResult(setupA) },
     { target: { kind: 'setup', setupId: setupB.id }, resolution: resolveResult(setupB) },
@@ -295,8 +295,8 @@ test('getSetExtraction: 同じメンバーでも並び順が変わればキャ�
   setFixtureCalls = 0;
   const cache = createEngineCache();
   const definition = createSetFixtureDefinition();
-  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
-  const setupB: Setup = { id: 'setup-b', layoutId: 'dvorak', shapeId: 'row-staggered', colorIndex: 1 };
+  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
+  const setupB: Setup = { id: 'setup-b', layoutId: 'dvorak', shapeId: 'row-staggered' };
 
   const forward: readonly EngineSetMemberInput[] = [
     { target: { kind: 'setup', setupId: setupA.id }, resolution: resolveResult(setupA) },
@@ -315,8 +315,8 @@ test('getSetExtraction: 同じメンバーでも並び順が変わればキャ�
 test('getSetExtraction: 一部メンバーの解決失敗は全体を失敗にせず、failuresへ回す', () => {
   const cache = createEngineCache();
   const definition = createSetFixtureDefinition();
-  const setupOk: Setup = { id: 'setup-ok', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
-  const setupMissing: Setup = { id: 'setup-missing', layoutId: 'no-such-layout', shapeId: 'row-staggered', colorIndex: 1 };
+  const setupOk: Setup = { id: 'setup-ok', layoutId: 'qwerty', shapeId: 'row-staggered' };
+  const setupMissing: Setup = { id: 'setup-missing', layoutId: 'no-such-layout', shapeId: 'row-staggered' };
 
   const members: readonly EngineSetMemberInput[] = [
     { target: { kind: 'setup', setupId: setupOk.id }, resolution: resolveResult(setupOk) },
@@ -334,7 +334,7 @@ test('getSetExtraction: 抽出に効くoptions（scale）が変われば計算�
   setFixtureCalls = 0;
   const cache = createEngineCache();
   const definition = createSetFixtureDefinition();
-  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
   const members: readonly EngineSetMemberInput[] = [{ target: { kind: 'setup', setupId: setupA.id }, resolution: resolveResult(setupA) }];
 
   const a = cache.getSetExtraction(members, definition, { scale: 1, highlightColor: 'red' });
@@ -347,7 +347,7 @@ test('getSetExtraction: 見た目だけのoptions変更ではextractを走らせ
   setFixtureCalls = 0;
   const cache = createEngineCache();
   const definition = createSetFixtureDefinition();
-  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+  const setupA: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered' };
   const members: readonly EngineSetMemberInput[] = [{ target: { kind: 'setup', setupId: setupA.id }, resolution: resolveResult(setupA) }];
 
   cache.getSetExtraction(members, definition, { scale: 1, highlightColor: 'red' });

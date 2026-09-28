@@ -17,10 +17,22 @@ import { analysisTargetKey, sameAnalysisTarget, type AnalysisTarget } from '#inp
 export interface SetSelectionState {
   readonly targets: readonly AnalysisTarget[];
   readonly baseline: AnalysisTarget | undefined;
+  /**
+   * 各対象に配った色の番号（`targets`と同じ長さで、同じ位置の対象の番号。値は互いに異なる
+   * 非負整数）。色そのもの（番号→色）は表示側が`ui/theme`のパレットで引く。
+   *
+   * 色は対象ごとに固定せず、同じ画面に並べている集合の中で配る（#601）。見分けられる
+   * カテゴリ色は10〜12色が上限で、組み込み配列の数より少ないため、対象ごとに固定すると
+   * 必ずどこかで重なる。同じ画面に並ぶのは数個なので、集合の中で配れば重ならない。
+   *
+   * 番号は並べた順から毎回数え直さず、ここに持つ。並べた順から数えると、1つ外すと
+   * 後ろの対象の色が全部ずれ、線を追えなくなるため。配り方は`withSetSelectionTargets`。
+   */
+  readonly colorSlots: readonly number[];
 }
 
 /** 未選択時に返す既定値。`analyzerSetSelectionFor`が同じ参照を使い回す（下のコメント参照）。 */
-const EMPTY_SELECTION: SetSelectionState = { targets: [], baseline: undefined };
+const EMPTY_SELECTION: SetSelectionState = { targets: [], baseline: undefined, colorSlots: [] };
 
 export function initialSetSelection(): SetSelectionState {
   return EMPTY_SELECTION;
@@ -64,8 +76,39 @@ function dedupe(targets: readonly AnalysisTarget[]): readonly AnalysisTarget[] {
 }
 
 /**
+ * 対象の列に色の番号を配る。`known`（対象のkey → 既に持っている番号）にある対象は
+ * その番号をそのまま使い、無い対象には、まだ誰も使っていない最小の番号を列の先頭から順に配る。
+ * 外した対象の番号は空くので、次に加えた対象がそれを使う（#601「1つ消しても他の色は
+ * 動かさない。空いた色は次に追加したものが使う」）。`known`の番号が重複・不正なら、
+ * 後に出た方を持っていないものとして配り直す（codecが外部由来のデータを読む時のため）。
+ */
+export function assignColorSlots(
+  targets: readonly AnalysisTarget[],
+  known: ReadonlyMap<string, number>,
+): readonly number[] {
+  const used = new Set<number>();
+  const slots: (number | undefined)[] = targets.map((target) => {
+    const slot = known.get(analysisTargetKey(target));
+    if (slot === undefined || !Number.isInteger(slot) || slot < 0 || used.has(slot)) return undefined;
+    used.add(slot);
+    return slot;
+  });
+  let next = 0;
+  return slots.map((slot) => {
+    if (slot !== undefined) return slot;
+    while (used.has(next)) next += 1;
+    used.add(next);
+    return next;
+  });
+}
+
+function colorSlotsByKey(selection: SetSelectionState): Map<string, number> {
+  return new Map(selection.targets.map((target, index) => [analysisTargetKey(target), selection.colorSlots[index]!] as const));
+}
+
+/**
  * 選択と並び順をまとめて書き換える（追加・削除・並び替えのどれもこの1本を通す。
- * `targets`の並びがそのまま表示順になる）。
+ * `targets`の並びがそのまま表示順になる）。色の番号もここで配る（`assignColorSlots`）。
  *
  * **不変条件（基準 ∈ 選択）をここで1箇所に持つ**（レビュー指摘: 基準に選んでいた対象が
  * 選択から外れたら、基準も同時に外す。以前の比較表専用実装は「資産側では外さず、
@@ -83,7 +126,9 @@ export function withSetSelectionTargets(
   const baseline = current.baseline !== undefined && deduped.some((t) => sameAnalysisTarget(t, current.baseline!))
     ? current.baseline
     : undefined;
-  return { targets: deduped, baseline };
+  // 残った対象は色を持ち越す。並び替えでも色は対象に付いて動く（色は並べた位置ではなく、
+  // 加えた順で配ったもの）。
+  return { targets: deduped, baseline, colorSlots: assignColorSlots(deduped, colorSlotsByKey(current)) };
 }
 
 /**

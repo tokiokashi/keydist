@@ -7,7 +7,7 @@ import type { SetupLibrary } from './collection.ts';
 
 /**
  * Setupの手持ち（`SetupLibrary<V>`）のcodec（#544 §8-3・§4）。
- * `Setup`本体（id・配列id・形状id・ラベル・色index）と、カスケードの`setup`レベルを
+ * `Setup`本体（id・配列id・形状id・ラベル）と、カスケードの`setup`レベルを
  * 含む全レベルの上書きをまとめて1つの資産として運ぶ（overrides.ts「Setup固有の上書きは
  * カスケードのsetupレベルに置く」）。
  *
@@ -23,18 +23,12 @@ import type { SetupLibrary } from './collection.ts';
  *   同じ「壊れた要素だけ捨てて残りを読む」方針）
  * - label: 無くても自動命名（naming.ts）に落ちるだけなので、無効なら**フィールドだけ
  *   落として省略**（Setup自体は残す）
- * - colorIndex: ユーザーが選ぶ値ではなく表示専用（color.tsの先頭コメント）。壊れていても
- *   実害は「違う色に見える」だけなので、Setup全体を捨てるほどの重みが無い。
- *   ここだけ**素の`v.fallback`**を使う（診断は出さない）。壊れたcolorIndexのために
- *   診断を1件残しても利用者が取れるアクションが無く、Setup自体は正しく残るため
- *   （`input/codec/index.ts`先頭コメントの「診断を要らない場合」の例）
  */
 const setupSchema = v.strictObject({
   id: v.pipe(v.string(), v.minLength(1)),
   layoutId: v.pipe(v.string(), v.minLength(1)),
   shapeId: v.pipe(v.string(), v.minLength(1)),
   label: v.optional(v.pipe(v.string(), v.minLength(1))),
-  colorIndex: v.fallback(v.pipe(v.number(), v.integer(), v.minValue(0)), 0),
 });
 
 function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): Setup[] {

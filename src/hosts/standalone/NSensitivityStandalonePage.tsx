@@ -5,7 +5,8 @@ import type { EngineCache } from '#engine/cache.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import { analyzerSetSelectionFor } from '#engine/analyzer-set-selection.ts';
-import { analysisTargetKey, nameTargets, targetColor, type AnalysisTarget, type NamedTarget, type Setup } from '#input/setup/index.ts';
+import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget } from '#input/setup/index.ts';
+import { targetPaletteColor } from '#ui/theme/target-colors.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
@@ -53,11 +54,10 @@ function buildRowContext(
   target: AnalysisTarget,
   resolution: ResolvedInputResult,
   named: NamedTarget,
-  setups: ReadonlyMap<string, Setup>,
+  color: string,
   conditionNames: ConditionValueNames,
 ): NSensitivityRowContext {
   const targetKey = analysisTargetKey(target);
-  const color = targetColor(target, setups);
   if (resolution.ok) {
     const header = conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry);
     const conditionSummary = summarizeNonDefaultConditions(
@@ -151,14 +151,16 @@ export function NSensitivityStandalonePage({
   const conditionNames: ConditionValueNames = catalog.setupCatalog;
   const rowContext = useMemo(() => {
     const map = new Map<string, NSensitivityRowContext>();
-    for (const member of members) {
+    // 色は集合が配った番号から引く（`SetSelectionState.colorSlots`。`members`は`targets`と同じ並び）。
+    members.forEach((member, index) => {
       const key = analysisTargetKey(member.target);
       const named = namedByKey.get(key);
-      if (named === undefined) continue;
-      map.set(key, buildRowContext(member.target, member.resolution, named, setupsById, conditionNames));
-    }
+      if (named === undefined) return;
+      const color = targetPaletteColor(selection.colorSlots[index] ?? index);
+      map.set(key, buildRowContext(member.target, member.resolution, named, color, conditionNames));
+    });
     return map;
-  }, [members, namedByKey, setupsById, conditionNames]);
+  }, [members, namedByKey, selection.colorSlots, conditionNames]);
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
 

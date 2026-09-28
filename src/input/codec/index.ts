@@ -17,9 +17,9 @@ import type { BaseIssue, BaseSchema } from 'valibot';
  * このリポジトリの要件（#544 §8-5）は「値 + 診断」の両立なので、診断を残せない
  * `v.fallback`単体では要件を満たせない。`decodeField`はschemaでの検証自体は
  * `v.safeParse`（＝valibot）に任せ、失敗時だけ診断を積んでfallbackへ戻す。
- * これが「v.fallbackの等価物」にあたる。SetupのcolorIndexのように診断を要らない
- * （利用者が選んだ値ではなく、外れても既定色に戻るだけの表示専用の値）場合は、
- * 素の`v.fallback`をschema側で直接使ってよい（setup/codec.ts参照）。
+ * これが「v.fallbackの等価物」にあたる。診断を要らない（利用者が選んだ値ではなく、
+ * 外れても作り直すだけの表示専用の値。集合の色の番号等）場合は、素の`v.fallback`を
+ * schema側で直接使うか、診断を積まずに戻してよい（engine/analyzer-set-selection-codec.ts参照）。
  */
 
 export interface CodecDiagnostic {

@@ -24,7 +24,7 @@ const CATALOG = {
 const NO_USER_LAYOUTS = new Map();
 
 function setupFor(layoutId: string, shapeId = 'row-staggered'): Setup {
-  return { id: 'setup-1', layoutId, shapeId, colorIndex: 0 };
+  return { id: 'setup-1', layoutId, shapeId };
 }
 
 test('traceConditionSummary: 既定値のみなら全項目がdefault originになる', () => {

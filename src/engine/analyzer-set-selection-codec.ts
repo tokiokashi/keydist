@@ -1,6 +1,6 @@
 import { defineAssetCodec, isRecord, UNSAFE_OBJECT_KEYS, type AssetCodec } from '#input/codec/index.ts';
 import { analysisTargetKey, decodeAnalysisTarget, sameAnalysisTarget, type AnalysisTarget } from '#input/setup/index.ts';
-import type { AnalyzerSetSelectionState, SetSelectionState } from './analyzer-set-selection.ts';
+import { assignColorSlots, type AnalyzerSetSelectionState, type SetSelectionState } from './analyzer-set-selection.ts';
 
 /**
  * `AnalyzerSetSelectionState`のcodec（#544 §8-3、#578指摘1「選択はSetup idではなく対象
@@ -23,6 +23,9 @@ import type { AnalyzerSetSelectionState, SetSelectionState } from './analyzer-se
  * 場合だけ残す（不変条件「基準 ∈ 選択」をdecode時点でも保証する。壊れていれば
  * 静かに「基準なし」へ）。
  *
+ * - `colorSlots`（色の番号）は`targets`と同じ位置の値を読む。無い・壊れている・重複した番号は
+ *   診断を出さずに配り直す（`assignColorSlots`）。色は表示だけの値で、壊れていても利用者が
+ *   取れるアクションが無いため（`input/codec/index.ts`先頭コメントの「診断を要らない場合」）
  * - 未知のAnalyzer idは残す（`standalone-analyzer-options-codec.ts`と同じ判断。
  *   Analyzerが一時的に無効化・削除されても選択を静かに失わない）
  */
@@ -53,6 +56,8 @@ export const ANALYZER_SET_SELECTION_CODEC: AssetCodec<AnalyzerSetSelectionState>
       }
       const seen = new Set<string>();
       const targets: AnalysisTarget[] = [];
+      const rawSlots: readonly unknown[] = Array.isArray(raw.colorSlots) ? raw.colorSlots : [];
+      const knownSlots = new Map<string, number>();
       raw.targets.forEach((item, index) => {
         const decoded = decodeAnalysisTarget(item, `${path}.targets[${index}]`, diagnostics);
         if (decoded === undefined) return;
@@ -63,6 +68,8 @@ export const ANALYZER_SET_SELECTION_CODEC: AssetCodec<AnalyzerSetSelectionState>
         }
         seen.add(key);
         targets.push(decoded);
+        const slot = rawSlots[index];
+        if (typeof slot === 'number') knownSlots.set(key, slot);
       });
 
       const rawBaseline = raw.baseline;
@@ -79,7 +86,7 @@ export const ANALYZER_SET_SELECTION_CODEC: AssetCodec<AnalyzerSetSelectionState>
           baseline = decodedBaseline;
         }
       }
-      result[analyzerId] = { targets, baseline };
+      result[analyzerId] = { targets, baseline, colorSlots: assignColorSlots(targets, knownSlots) };
     }
     return result;
   },
@@ -89,6 +96,7 @@ export const ANALYZER_SET_SELECTION_CODEC: AssetCodec<AnalyzerSetSelectionState>
         analyzerId,
         {
           targets: selection.targets.map((target) => ({ ...target })),
+          colorSlots: [...selection.colorSlots],
           ...(selection.baseline === undefined ? {} : { baseline: { ...selection.baseline } }),
         },
       ]),
