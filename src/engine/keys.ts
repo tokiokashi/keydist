@@ -1,5 +1,6 @@
 import { stableStringify } from './cache-key.ts';
 import { MODEL_VERSION } from './model-version.ts';
+import type { TraceRequestInput } from '#analyzers/contract.ts';
 import type { ResolvedInput } from './resolved-input.ts';
 
 /**
@@ -18,8 +19,12 @@ import type { ResolvedInput } from './resolved-input.ts';
  * 生成側が参照するフィールドを増やした時にキーの更新を忘れる事故を防げる
  * （代わりに、数値に影響しないフィールドの編集でも再計算が走ることがある。#544 §7が
  * 「大きくしなくてよい」と明言している規模のキャッシュなので、この向きを採る）。
+ *
+ * 引数を`TraceRequestInput`（`TraceRequester`が差し替えられるフィールドの集合）に絞っている。
+ * ここでキーに足すフィールドは`TraceRequestInput`にも足さないとコンパイルが通らないので、
+ * 「キーには効くのに依頼側から差し替えられない」ずれが型で止まる。
  */
-export function traceKeyOf(input: ResolvedInput): string {
+export function traceKeyOf(input: TraceRequestInput): string {
   return stableStringify({
     modelVersion: MODEL_VERSION,
     text: input.text,
@@ -44,5 +49,28 @@ export function interpretationKeyOf(input: ResolvedInput, traceKey: string): str
     traceKey,
     chainInterpretation: input.chainInterpretation,
     arpeggioInterpretation: input.arpeggioInterpretation,
+  });
+}
+
+/**
+ * 抽出のキー = 解釈のキー + Analyzer id + 抽出に効くoptions（#544 §7）。
+ *
+ * 「抽出に効くoptions」の判定は`AnalyzerDefinition.extractKeyOf(options)`（`analyzers/contract.ts`）
+ * がすでに行っている。見た目だけの項目はそこで返り値から外れているので、ここでは
+ * その返り値をそのままキーへ畳み込むだけでよい（同じ判断を2箇所で持たない）。
+ *
+ * modelVersionを明示的には混ぜない: `interpretationKey`の中の`traceKey`がすでに
+ * `MODEL_VERSION`を含む（`traceKeyOf`参照）ので、モデルの版が上がれば`interpretationKey`
+ * ごと変わり、この抽出キーも自然に別物になる。
+ */
+export function analyzerExtractionKeyOf(
+  interpretationKey: string,
+  definitionId: string,
+  extractionRelevantOptions: unknown,
+): string {
+  return stableStringify({
+    interpretationKey,
+    definitionId,
+    options: extractionRelevantOptions,
   });
 }
