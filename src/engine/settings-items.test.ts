@@ -105,9 +105,30 @@ test('romajiRuleId: globalへは書き込めない。inputMethodレベルで「�
   assert.deepEqual(resolved.romajiRuleId.origin, { kind: 'inputMethod', inputMethod: 'romaji' });
 });
 
-test('romajiRuleId: ローマ字表を持たない配列（かな直接・英字）ではnot-applicable', () => {
+test('romajiRuleId: 打ち方がromaji以外（既定値のdirect）ではnot-applicable', () => {
   assert.equal(resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(nicola)).romajiRuleId.applicable, false);
   assert.equal(resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(colemakEn)).romajiRuleId.applicable, false);
+});
+
+// #562レビュー反映: mode（en/ja）を廃止したことで、qwerty等は英語をそのまま打つ（direct）用にも
+// ローマ字で日本語を打つ（romaji）用にも同じLayoutオブジェクト（LAYOUT_BY_IDが持つ、
+// romajiTable付きの実体）が使われる。isApplicableは配列（layout.romajiTable）ではなく
+// 打ち方（inputMethod）で決まるべき、という判断をここで固定する。
+test('romajiRuleId: 同じ配列でも打ち方がromajiでなければnot-applicable（配列ではなく打ち方で決まる）', () => {
+  // qwertyJaはromajiTableを持つ配列だが、direct/kana-directで使われている場面では効かない。
+  assert.equal(
+    resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(qwertyJa, { inputMethod: 'direct' })).romajiRuleId.applicable,
+    false,
+  );
+  assert.equal(
+    resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(qwertyJa, { inputMethod: 'kana-direct' })).romajiRuleId.applicable,
+    false,
+  );
+  // 同じLayoutオブジェクトでも、打ち方がromajiなら効く。
+  assert.equal(
+    resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(qwertyJa, { inputMethod: 'romaji' })).romajiRuleId.applicable,
+    true,
+  );
 });
 
 test('preferOppositeThumb: SandSを持たない配列ではnot-applicable、反対の親指キーが無い形状ではfallback', () => {
