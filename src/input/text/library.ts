@@ -5,8 +5,8 @@ import type { TextLanguage } from './samples.ts';
  * 用語表「テキストは…資産として複数持ち…組み込み（サンプル）と自作がある」）。
  * `Setup`（`input/setup/types.ts`）と同じ形で、実体（本文）とidだけを持つ。
  *
- * 言語は自動判定が既定で、`languageOverride`が手動指定（#544指示書「Language:
- * auto-detected per text, manual override stored on the user text」）。組み込みは
+ * 言語は自動判定が既定で、`languageOverride`が手動指定。テキストごとに手動指定を
+ * 持たせることで、同じ内容のテキストでも複製先ごとに違う言語指定を持てる。組み込みは
  * 言語が固定なのでこのフィールドを持たない（`builtin.ts`の`BuiltinText`参照）。
  */
 export interface UserText {
@@ -31,23 +31,11 @@ export function emptyTextLibrary(): TextLibrary {
 }
 
 /**
- * 新規のユーザーテキストを作る（空のテキストから始める「新規作成」ボタン用）。
- * `text`省略時は空文字列、`name`省略時は「新しいテキスト」。
- */
-export function createUserText(
-  library: TextLibrary,
-  generateId: TextIdGenerator,
-  text = '',
-  name = '新しいテキスト',
-): TextLibrary {
-  const entry: UserText = { id: generateId(), name, text };
-  return { texts: [...library.texts, entry] };
-}
-
-/**
- * 既存の内容（組み込み・ユーザーテキストのどちらでもよい）を新しいユーザーテキストとして
- * 資産へ足す。「複製」ボタンと、組み込みを書き換えた時のcopy-on-write（`engine/commands.ts`の
- * `setCurrentTextContentCommand`）の両方がこれを使う。
+ * 新しいユーザーテキストを1件、資産へ足す（複製元が有る／無い両方を1つの形で扱う）。
+ * 「新規作成」ボタン（`source.text`に空文字列を渡す）、「複製」ボタン（既存の内容を渡す）、
+ * 組み込みを書き換えた時のcopy-on-write（`engine/commands.ts`の`setTextContentCommand`。
+ * 打った本文を渡す）の3箇所がすべてこれを使う。「コピー」という名前だが、
+ * コピー元が無い（空の）テキストを足す時にも使う汎用の追加処理。
  */
 export function appendCopiedUserText(
   library: TextLibrary,
@@ -84,9 +72,9 @@ export function renameUserText(library: TextLibrary, id: string, name: string): 
 }
 
 /**
- * 本文を書き換える（既存のユーザーテキストをその場で編集する。#544指示書「Editing a
- * user text modifies it in place」）。組み込みのcopy-on-writeは呼び出し側
- * （`engine/commands.ts`）が`appendCopiedUserText`で新規作成してから、以後はこちらを使う。
+ * 本文を書き換える（既存のユーザーテキストをその場で編集する。複製は作らない）。
+ * 組み込みのcopy-on-writeは呼び出し側（`engine/commands.ts`）が`appendCopiedUserText`で
+ * 新規作成してから、以後の編集はこちらを使う。
  */
 export function editUserTextContent(library: TextLibrary, id: string, text: string): TextLibrary {
   const target = library.texts.find((entry) => entry.id === id);
@@ -111,4 +99,18 @@ export function setUserTextLanguageOverride(
 function withoutLanguageOverride(text: UserText): UserText {
   const { languageOverride: _drop, ...rest } = text;
   return rest;
+}
+
+/**
+ * 自動生成名（copy-on-write・複製・新規作成の既定名）の重複を避ける（レビュー指摘）。
+ * 手動で付けた名前は重複してもよい（識別子はidが担うので実害が無い）が、自動生成名は
+ * 「同じ名前が並んで見分けが付かない」を作り出す側なので、既に使われていれば
+ * 「名前 2」「名前 3」…と連番を振って区別できるようにする。
+ */
+export function uniqueAutoTextName(library: TextLibrary, baseName: string): string {
+  const existingNames = new Set(library.texts.map((text) => text.name));
+  if (!existingNames.has(baseName)) return baseName;
+  let suffix = 2;
+  while (existingNames.has(`${baseName} ${suffix}`)) suffix += 1;
+  return `${baseName} ${suffix}`;
 }

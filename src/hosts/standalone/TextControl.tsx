@@ -1,19 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import {
   createTextCommand,
   deleteTextCommand,
-  duplicateCurrentTextCommand,
+  duplicateTextCommand,
   renameTextCommand,
   selectTextCommand,
-  setCurrentTextContentCommand,
-  setCurrentTextLanguageOverrideCommand,
+  setTextLanguageOverrideCommand,
   type KeydistAssets,
+  type TextSelectionHolder,
 } from '#engine/commands.ts';
 import { BUILTIN_TEXTS } from '#input/text/builtin.ts';
 import type { TextIdGenerator, TextLibrary } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
-import type { TextSelectionState } from '#input/text/selection.ts';
+import type { TextLanguage } from '#input/text/language.ts';
+import type { TextRef, TextSelectionState } from '#input/text/selection.ts';
 import './standalone.css';
 
 /**
@@ -25,47 +26,65 @@ import './standalone.css';
  * （#544 シェルUI）で文脈バーへ移す前提で、レイアウトは磨き込まない
  * （`docs/architecture.md`「画面の構成」参照）。
  *
- * `assets.textLibrary` / `assets.standaloneTextSelection` を読み、`dispatch`経由で
- * コマンドだけを発行する（`BigramFlowStandalonePage`が直接持っていた配線をそのまま
- * 抽出した形。#544 §8-2「書き込みはすべてコマンドを通す」）。
+ * `assets.textLibrary` / 持ち主の選択を読み、`dispatch`経由でコマンドだけを発行する
+ * （`BigramFlowStandalonePage`が直接持っていた配線をそのまま抽出した形。#544 §8-2
+ * 「書き込みはすべてコマンドを通す」）。`holder`は`engine/commands.ts`の
+ * `TextSelectionHolder`をそのまま受け取る（レビュー指摘: 呼び出し元が「単体ページ用の
+ * 選択」であることを明示するため。今のところ`'standalone'`しか実装が無い）。
  */
 export interface TextControlProps {
+  readonly holder: TextSelectionHolder;
   readonly textLibrary: TextLibrary;
   readonly selection: TextSelectionState;
   readonly dispatch: (command: Command<KeydistAssets>) => void;
   readonly generateTextId: TextIdGenerator;
+  /**
+   * 本文の変更をdebounceしてから資産へ反映する（`app/standalone/use-debounced-commit.ts`の
+   * `useDebouncedCommit`を呼び出し元＝`app`が組み立てて渡す。`hosts`は`platform`を
+   * importできないため、debounceの仕組み自体はここへ持てない。`onBigramFlowOptionsCommit`
+   * と同じ配線）。
+   *
+   * 値は`{ ref, text }`のペアで渡す（レビュー指摘: 打鍵の瞬間にどのテキストへ向けた
+   * 変更かを`ref`としてキャプチャしておく。debounce完了時に「今の選択」を読み直すと、
+   * 待っている間に選択が切り替わった時に別のテキストへ書き込んでしまう事故になる。
+   * `engine/commands.ts`の`setTextContentCommand`コメント参照）。`text`だけを値にすると
+   * 「直前に書いた値と同じなら省く」という`useDebouncedCommit`の重複排除が、同じ本文を
+   * 違うテキストへ書く時にも誤って発動してしまうため、`ref`ごと1つの値として扱う。
+   */
+  readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
 }
-
-const TEXT_COMMIT_DEBOUNCE_MS = 400;
 
 function refKey(ref: TextSelectionState['ref']): string {
   return `${ref.kind}:${ref.id}`;
 }
 
-export function TextControl({ textLibrary, selection, dispatch, generateTextId }: TextControlProps) {
+/** 言語判定の選択肢（#544レビュー: en/ja以外を扱う予定が無いのでトグルで足りていたが、
+ * 「今どちらか」を見せつつ選ばせるにはselectの方が素直、という指摘を反映）。 */
+const LANGUAGE_OVERRIDE_OPTIONS: readonly { readonly value: 'auto' | TextLanguage; readonly label: string }[] = [
+  { value: 'auto', label: '自動' },
+  { value: 'ja', label: '日本語' },
+  { value: 'en', label: '英語' },
+];
+
+export function TextControl({
+  holder,
+  textLibrary,
+  selection,
+  dispatch,
+  generateTextId,
+  onTextContentCommit,
+}: TextControlProps) {
   const resolved = resolveTextSelection(selection, textLibrary);
 
-  // テキストは即座に見た目へ反映しつつ（controlled textarea）、コマンドへの反映は軽くdebounce
-  // する（`BigramFlowStandalonePage`が元々持っていた配線と同じ。1打鍵ごとにTrace再計算が
-  // 走らないようにするため）。copy-on-write自体は`setCurrentTextContentCommand`
-  // （`engine/commands.ts`）が適用時点の資産を見て1回だけ行うので、ここでは特別な配慮は要らない。
+  // テキストは即座に見た目へ反映しつつ（controlled textarea）、資産への反映は
+  // `onTextContentCommit`（呼び出し元がdebounceする）経由にする。`optionsDraft`と同じ形
+  // （`BigramFlowStandalonePage`の`onBigramFlowOptionsCommit`参照）。
   const [textDraft, setTextDraft] = useState(resolved.text);
-  const textDraftRef = useRef(textDraft);
-  textDraftRef.current = textDraft;
   useEffect(() => {
     setTextDraft(resolved.text);
-    // resolved.textの参照ではなく内容の変化で揃え直したいが、`resolveTextSelection`は
-    // 呼ぶたびに新しいオブジェクトを作るので依存はrefではなく実際の値にする。
+    // resolved.textは`resolveTextSelection`が呼ぶたびに新しく作る値なので、
+    // 依存は参照ではなく実際の文字列にする。
   }, [resolved.text]);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (textDraftRef.current !== resolved.text) {
-        dispatch(setCurrentTextContentCommand(textDraftRef.current, generateTextId));
-      }
-    }, TEXT_COMMIT_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-    // `resolved.text`が変わった（選択の切り替え・他タブの反映）たびにタイマーを張り直す。
-  }, [textDraft, resolved.text, dispatch, generateTextId]);
 
   const [renameDraft, setRenameDraft] = useState(resolved.name);
   useEffect(() => {
@@ -85,7 +104,7 @@ export function TextControl({ textLibrary, selection, dispatch, generateTextId }
             const separatorIndex = value.indexOf(':');
             const kind = value.slice(0, separatorIndex) as 'builtin' | 'user';
             const id = value.slice(separatorIndex + 1);
-            dispatch(selectTextCommand({ kind, id }));
+            dispatch(selectTextCommand(holder, { kind, id }));
           }}
           aria-label="テキストを選ぶ"
         >
@@ -112,28 +131,32 @@ export function TextControl({ textLibrary, selection, dispatch, generateTextId }
         <span>本文</span>
         <textarea
           value={textDraft}
-          onChange={(event) => setTextDraft(event.currentTarget.value)}
+          onChange={(event) => {
+            const text = event.currentTarget.value;
+            setTextDraft(text);
+            // 打鍵の瞬間の対象（resolved.ref）をそのまま運ぶ。この後選択が切り替わっても
+            // このdraftの宛先は変わらない（TextControlProps.onTextContentCommitコメント参照）。
+            onTextContentCommit({ ref: resolved.ref, text });
+          }}
           rows={3}
           aria-label="テキスト"
         />
         <small>
           言語判定: {resolved.language}
-          {resolved.languageOverride !== undefined ? '（手動指定）' : '（自動）'}
-          {!resolved.isBuiltin ? (
-            <>
-              {' '}
-              <button
-                type="button"
-                onClick={() => dispatch(setCurrentTextLanguageOverrideCommand(
-                  resolved.languageOverride === undefined
-                    ? (resolved.language === 'ja' ? 'en' : 'ja')
-                    : undefined,
-                ))}
-              >
-                {resolved.languageOverride === undefined ? '言語判定を手動指定へ切り替え' : '自動判定へ戻す'}
-              </button>
-            </>
-          ) : null}
+          {' '}
+          <select
+            value={resolved.languageOverride ?? 'auto'}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              dispatch(setTextLanguageOverrideCommand(holder, value === 'auto' ? undefined : value as TextLanguage));
+            }}
+            disabled={resolved.isBuiltin}
+            aria-label="言語判定"
+          >
+            {LANGUAGE_OVERRIDE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
         </small>
       </label>
 
@@ -156,11 +179,16 @@ export function TextControl({ textLibrary, selection, dispatch, generateTextId }
       <div className="standalone-control">
         <span>操作</span>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button type="button" onClick={() => dispatch(createTextCommand(generateTextId))}>新規作成</button>
-          <button type="button" onClick={() => dispatch(duplicateCurrentTextCommand(generateTextId))}>複製</button>
+          <button type="button" onClick={() => dispatch(createTextCommand(holder, generateTextId))}>新規作成</button>
+          <button type="button" onClick={() => dispatch(duplicateTextCommand(holder, generateTextId))}>複製</button>
           <button
             type="button"
-            onClick={() => dispatch(deleteTextCommand(resolved.ref.id))}
+            onClick={() => {
+              // シェルUnit（#544次段）がUndo UIを文脈バーに置くまでの暫定策。
+              // 削除は即時破壊操作でUndoの導線が今は無いため、確認を挟む。
+              if (!window.confirm(`「${resolved.name}」を削除する？`)) return;
+              dispatch(deleteTextCommand(holder, resolved.ref.id));
+            }}
             disabled={resolved.isBuiltin}
           >
             削除

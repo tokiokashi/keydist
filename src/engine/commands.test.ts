@@ -5,24 +5,29 @@ import { emptyCascadeOverrides } from '#input/settings/index.ts';
 import type { SetupLibrary } from '#input/setup/index.ts';
 import { DEFAULT_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
 import { emptyTextLibrary } from '#input/text/library.ts';
+import { DEFAULT_TEXT_REF, type TextRef } from '#input/text/selection.ts';
 import { initialTextSelection } from '#input/text/selection.ts';
 import {
   createFingerAssignmentCommand,
   createSetupCommand,
+  createTextCommand,
   deleteFingerAssignmentCommand,
   deleteSetupCommand,
+  deleteTextCommand,
   duplicateFingerAssignmentCommand,
   duplicateSetupCommand,
+  duplicateTextCommand,
   relabelSetupCommand,
   renameFingerAssignmentCommand,
   resetCascadeItemCommand,
   resetCascadeLevelCommand,
+  selectTextCommand,
   setAnalyzerSetSelectionBaselineCommand,
   setAnalyzerSetSelectionSetupIdsCommand,
   setCascadeOverrideCommand,
-  setCurrentTextContentCommand,
-  setCurrentTextLanguageOverrideCommand,
   setStandaloneAnalyzerOptionsCommand,
+  setTextContentCommand,
+  setTextLanguageOverrideCommand,
   type KeydistAssets,
 } from './commands.ts';
 import type { SettingsValueMap } from './settings-items.ts';
@@ -335,11 +340,67 @@ test('renameFingerAssignmentCommand: 同じ名前への変更はno-op', () => {
   assert.equal(renamedDifferent.assets.fingerAssignments[0]!.name, '別名');
 });
 
-test('setCurrentTextContentCommand: 組み込みを書き換えると新しいユーザーテキストになり(copy-on-write)、undo/redoで往復できる', () => {
+test('createTextCommand: 空のユーザーテキストを作り、そのまま選択する', () => {
+  nextTextId = 0;
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const step = applyCommand(assets, history, createTextCommand('standalone', generateTextId));
+  assert.equal(step.assets.textLibrary.texts.length, 1);
+  assert.deepEqual(step.assets.textLibrary.texts[0], { id: 'text-1', name: '新しいテキスト', text: '' });
+  assert.deepEqual(step.assets.standaloneTextSelection.ref, { kind: 'user', id: 'text-1' });
+});
+
+test('createTextCommand: 自動生成名が重複していれば連番を振る', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const first = applyCommand(assets, history, createTextCommand('standalone', generateTextId));
+  const second = applyCommand(first.assets, first.history, createTextCommand('standalone', generateTextId));
+  assert.equal(second.assets.textLibrary.texts[1]!.name, '新しいテキスト 2');
+});
+
+test('duplicateTextCommand: 今の選択（組み込み）を複製し、複製先を選択する', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const step = applyCommand(assets, history, duplicateTextCommand('standalone', generateTextId));
+  assert.equal(step.assets.textLibrary.texts.length, 1);
+  assert.match(step.assets.textLibrary.texts[0]!.name, /のコピー$/);
+  assert.equal(step.assets.standaloneTextSelection.ref.kind, 'user');
+});
+
+test('selectTextCommand: ユーザーテキストへ選択を切り替える。存在しないidは何もしない', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const created = applyCommand(assets, history, createTextCommand('standalone', generateTextId));
+  const targetRef: TextRef = created.assets.standaloneTextSelection.ref;
+
+  const step = applyCommand(created.assets, created.history, selectTextCommand('standalone', targetRef));
+  assert.equal(step.outcome.kind, 'no-op', '既に選択中なのでno-op');
+
+  const back = applyCommand(created.assets, created.history, selectTextCommand('standalone', DEFAULT_TEXT_REF));
+  assert.equal(back.outcome.kind, 'applied');
+  assert.deepEqual(back.assets.standaloneTextSelection.ref, DEFAULT_TEXT_REF);
+
+  const missing = applyCommand(back.assets, back.history, selectTextCommand('standalone', { kind: 'user', id: 'no-such-id' }));
+  assert.equal(missing.outcome.kind, 'no-op');
+});
+
+test('deleteTextCommand: 選択中のテキストを削除すると既定の組み込みへフォールバックする', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const created = applyCommand(assets, history, createTextCommand('standalone', generateTextId));
+  assert.equal(created.assets.standaloneTextSelection.ref.kind, 'user');
+  const createdId = created.assets.textLibrary.texts[0]!.id;
+
+  const deleted = applyCommand(created.assets, created.history, deleteTextCommand('standalone', createdId));
+  assert.equal(deleted.assets.textLibrary.texts.length, 0);
+  assert.deepEqual(deleted.assets.standaloneTextSelection.ref, DEFAULT_TEXT_REF);
+});
+
+test('setTextContentCommand: 組み込みを書き換えると新しいユーザーテキストになり(copy-on-write)、undo/redoで往復できる', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const step = applyCommand(assets, history, setCurrentTextContentCommand('hello world', generateTextId));
+  const step = applyCommand(assets, history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, 'hello world', generateTextId));
   assert.equal(step.outcome.kind, 'applied');
   assert.equal(step.assets.textLibrary.texts.length, 1);
   assert.equal(step.assets.textLibrary.texts[0]!.text, 'hello world');
@@ -354,50 +415,117 @@ test('setCurrentTextContentCommand: 組み込みを書き換えると新しい�
   assert.deepEqual(redone.assets.textLibrary, step.assets.textLibrary);
 });
 
-test('setCurrentTextContentCommand: copy-on-write後の再度の変更は同じユーザーテキストをその場で編集する（コピーが増えない）', () => {
+test('setTextContentCommand: copy-on-write後、新しいユーザーテキストのrefを渡した再編集は同じテキストをその場で編集する（コピーが増えない）', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const first = applyCommand(assets, history, setCurrentTextContentCommand('1手目', generateTextId));
-  const second = applyCommand(first.assets, first.history, setCurrentTextContentCommand('2手目', generateTextId));
+  const first = applyCommand(assets, history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, '1手目', generateTextId));
+  const createdRef = first.assets.standaloneTextSelection.ref;
+  const second = applyCommand(first.assets, first.history, setTextContentCommand('standalone', createdRef, '2手目', generateTextId));
 
   assert.equal(second.assets.textLibrary.texts.length, 1, 'コピーは1つのまま');
   assert.equal(second.assets.textLibrary.texts[0]!.text, '2手目');
   assert.equal(second.assets.textLibrary.texts[0]!.id, first.assets.textLibrary.texts[0]!.id);
 });
 
-test('setCurrentTextContentCommand: 同じテキストならno-op', () => {
+test('setTextContentCommand: 同じテキストならno-op', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
-  const initial = applyCommand(assets, history, setCurrentTextContentCommand('hello world', generateTextId));
+  const initial = applyCommand(assets, history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, 'hello world', generateTextId));
+  const createdRef = initial.assets.standaloneTextSelection.ref;
   const step = applyCommand(
     initial.assets,
     initial.history,
-    setCurrentTextContentCommand('hello world', generateTextId),
+    setTextContentCommand('standalone', createdRef, 'hello world', generateTextId),
   );
   assert.equal(step.outcome.kind, 'no-op');
 });
 
-test('setCurrentTextLanguageOverrideCommand: 組み込み選択中は言語固定なのでno-op', () => {
+test('setTextContentCommand: 選択が既にその組み込みから離れていれば、遅れて届いた書き込みは何もしない（無意味な2つ目のコピーを作らない）', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
-  const step = applyCommand(assets, history, setCurrentTextLanguageOverrideCommand('en'));
+
+  // 打った時点ではDEFAULT_TEXT_REF（組み込み）が選択されていたが、コマンドが適用される
+  // 前に選択が別のユーザーテキストへ切り替わった、という状況を再現する。
+  const created = applyCommand(assets, history, createTextCommand('standalone', generateTextId));
+  const staleWrite = applyCommand(
+    created.assets,
+    created.history,
+    setTextContentCommand('standalone', DEFAULT_TEXT_REF, '宛先を失ったdraft', generateTextId),
+  );
+  assert.equal(staleWrite.outcome.kind, 'no-op');
+  assert.equal(created.assets.textLibrary.texts.length, 1, '2つ目のコピーが作られていない');
+});
+
+/**
+ * #544レビューで見つかったクロスタブの競合の再現（unit test版）。タブA・タブBが同じ
+ * ユーザーテキスト（u1）を選択中、タブBがu1へ入力した内容のdebounce書き込みが適用される
+ * 前に、タブAがu2へ選択を切り替えた変更が（タブ間同期経由で）タブBの資産にも先に届く、
+ * という順序を模す。修正前は`setCurrentTextContentCommand`が適用時点の「今の選択」を
+ * 読み直していたため、この時点で選択はu2になっており、u1向けのdraftがu2へ書き込まれて
+ * いた。`setTextContentCommand`は打鍵時点のref（u1）を明示的に運ぶので、選択が
+ * どこにあってもu1だけを書き換える。
+ */
+test('setTextContentCommand: ユーザーテキストへの書き込みは、適用時点で選択が別のテキストへ移っていても対象のidへ届く（クロスタブ競合の修正）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const withU1 = applyCommand(assets, history, createTextCommand('standalone', generateTextId, 'u1'));
+  const u1Ref: TextRef = withU1.assets.standaloneTextSelection.ref;
+  const withU2 = applyCommand(withU1.assets, withU1.history, createTextCommand('standalone', generateTextId, 'u2'));
+  const u2Ref: TextRef = withU2.assets.standaloneTextSelection.ref;
+  // タブBはu1を選んで入力を始める（打鍵時点でref=u1をキャプチャする想定）。
+  // その後、タブAがu2へ選択を切り替えた変更がタブBの資産へ先に届く（＝ここでは
+  // `selectTextCommand`で選択をu2へ進めることで、その順序を模している）。
+  const selectedU2 = applyCommand(withU2.assets, withU2.history, selectTextCommand('standalone', u2Ref));
+  assert.deepEqual(selectedU2.assets.standaloneTextSelection.ref, u2Ref);
+
+  // タブBのdebounce書き込みが今ここで適用される。選択は既にu2だが、渡すrefはu1のまま。
+  const step = applyCommand(
+    selectedU2.assets,
+    selectedU2.history,
+    setTextContentCommand('standalone', u1Ref, 'typed-in-B-for-u1', generateTextId),
+  );
+
+  const u1 = step.assets.textLibrary.texts.find((text) => text.id === u1Ref.id)!;
+  const u2 = step.assets.textLibrary.texts.find((text) => text.id === u2Ref.id)!;
+  assert.equal(u1.text, 'typed-in-B-for-u1', 'u1が書き換わる');
+  assert.equal(u2.text, '', 'u2は無関係のまま（バグ修正前はここへB由来の内容が漏れていた）');
+  assert.deepEqual(step.assets.standaloneTextSelection.ref, u2Ref, '選択自体はA側の切り替え(u2)のまま変わらない');
+});
+
+test('setTextContentCommand: 削除済みのユーザーテキストidへの書き込みは何もしない', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const created = applyCommand(assets, history, createTextCommand('standalone', generateTextId));
+  const ref: TextRef = created.assets.standaloneTextSelection.ref;
+  const deleted = applyCommand(created.assets, created.history, deleteTextCommand('standalone', ref.id));
+
+  const step = applyCommand(deleted.assets, deleted.history, setTextContentCommand('standalone', ref, '遅れて届いた編集', generateTextId));
   assert.equal(step.outcome.kind, 'no-op');
 });
 
-test('setCurrentTextLanguageOverrideCommand: ユーザーテキストへ手動上書きを設定でき、本文を変えても上書きは引き継がれる', () => {
+test('setTextLanguageOverrideCommand: 組み込み選択中は言語固定なのでno-op', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const step = applyCommand(assets, history, setTextLanguageOverrideCommand('standalone', 'en'));
+  assert.equal(step.outcome.kind, 'no-op');
+});
+
+test('setTextLanguageOverrideCommand: ユーザーテキストへ手動上書きを設定でき、本文を変えても上書きは引き継がれる', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const created = applyCommand(assets, history, setCurrentTextContentCommand('hello world', generateTextId));
-  const overridden = applyCommand(created.assets, created.history, setCurrentTextLanguageOverrideCommand('ja'));
+  const created = applyCommand(assets, history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, 'hello world', generateTextId));
+  const createdRef = created.assets.standaloneTextSelection.ref;
+  const overridden = applyCommand(created.assets, created.history, setTextLanguageOverrideCommand('standalone', 'ja'));
   assert.equal(overridden.outcome.kind, 'applied');
   assert.equal(overridden.assets.textLibrary.texts[0]!.languageOverride, 'ja');
 
   const retyped = applyCommand(
     overridden.assets,
     overridden.history,
-    setCurrentTextContentCommand('新しいテキスト', generateTextId),
+    setTextContentCommand('standalone', createdRef, '新しいテキスト', generateTextId),
   );
   // ユーザーテキストの本文をその場で編集する場合、手動上書きはテキストに紐づいたまま残る
   // （組み込みからのcopy-on-writeとは違い、同じユーザーテキストを編集し続けているため）。

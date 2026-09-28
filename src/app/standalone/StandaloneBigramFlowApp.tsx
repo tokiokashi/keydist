@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { createEngineCache } from '#engine/cache.ts';
-import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
+import { setStandaloneAnalyzerOptionsCommand, setTextContentCommand } from '#engine/commands.ts';
+import type { TextRef } from '#input/text/selection.ts';
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import type { BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { BigramFlowStandalonePage } from '#hosts/standalone/index.ts';
@@ -37,6 +38,13 @@ export function StandaloneBigramFlowApp() {
     commandFor: (options) => setStandaloneAnalyzerOptionsCommand(bigramFlowAnalyzer.definition.id, options),
   });
 
+  // テキストの本文もdebounceしてから`dispatch`する。値は`{ ref, text }`のペアで運ぶ
+  // （`TextControl`の`onTextContentCommit`コメント参照。打鍵時点の対象を明示し、
+  // debounce完了時に「今の選択」を読み直して事故る競合を避ける）。
+  const commitTextContent = useDebouncedCommit<{ ref: TextRef; text: string }>(dispatch, {
+    commandFor: ({ ref, text }) => setTextContentCommand('standalone', ref, text, generateTextId),
+  });
+
   return (
     <BigramFlowStandalonePage
       assets={assets}
@@ -46,6 +54,7 @@ export function StandaloneBigramFlowApp() {
       catalog={catalog}
       generateSetupId={generateSetupId}
       generateTextId={generateTextId}
+      onTextContentCommit={commitTextContent}
       onBigramFlowOptionsCommit={commitBigramFlowOptions}
     />
   );

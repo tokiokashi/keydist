@@ -21,9 +21,9 @@ import {
   editUserTextContent,
   renameUserText,
   setUserTextLanguageOverride,
+  uniqueAutoTextName,
   type TextIdGenerator,
   type TextLibrary,
-  type UserText,
 } from '#input/text/library.ts';
 import { builtinTextById, deriveEditedTextName } from '#input/text/builtin.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
@@ -96,12 +96,11 @@ export interface KeydistAssets {
    */
   readonly textLibrary: TextLibrary;
   /**
-   * 単体ページ全体で共有する「今使っているテキストの選択」（#544指示書「The standalone
-   * host holds ONE selection」）。`standaloneAnalyzerOptions`・`analyzerSetSelections`と
-   * 同じ理由（`textLibrary`とも対にならない、独立に読み書きできる値）で新しいキーとして足す。
-   * 型（`TextSelectionState`）自体は器を知らない汎用の値にしてあるので、将来Workspaceが
-   * 自分の選択を持ちたくなった時は`workspaceTextSelection`のような別キーを同じ型で足すだけで済む
-   * （#544指示書「design the selection so a second holder is trivial」。今回はこのキーだけ実装する）。
+   * 単体ページ全体で共有する「今使っているテキストの選択」。`standaloneAnalyzerOptions`・
+   * `analyzerSetSelections`と同じ理由（`textLibrary`とも対にならない、独立に読み書きできる値）
+   * で新しいキーとして足す。型（`TextSelectionState`）自体は器を知らない汎用の値にしてあるので、
+   * 将来Workspaceが自分の選択を持ちたくなった時は`workspaceTextSelection`のような別キーを
+   * 同じ型で足すだけで済む（今回は単体ページ用のこのキーだけ実装する）。
    */
   readonly standaloneTextSelection: TextSelectionState;
   /**
@@ -292,26 +291,45 @@ export function renameFingerAssignmentCommand(id: string, name: string): Command
 }
 
 /**
- * `textLibrary`・`standaloneTextSelection`の両方に触れうるコマンドの共通の骨組み
+ * テキストの選択の持ち主。将来Workspaceが自分の選択を持つ時に2つ目の値が増える前提の型に
+ * しておく。今実装しているのは単体ページの1つだけだが、コマンドの名前に
+ * `standaloneTextSelection`を直接埋め込まず、引数として持ち主を渡す形にしておく
+ * （レビュー指摘: `current`止まりの名前だと、Workspace用の2つ目の持ち主を足す時に
+ * 別名の関数一式を丸ごと複製する羽目になる）。
+ */
+export type TextSelectionHolder = 'standalone';
+
+/** 持ち主から、その選択を保持する`KeydistAssets`のキーを引く。 */
+function textSelectionAssetKey(holder: TextSelectionHolder): 'standaloneTextSelection' {
+  switch (holder) {
+    case 'standalone':
+      return 'standaloneTextSelection';
+  }
+}
+
+/**
+ * `textLibrary`・持ち主の選択キーの両方に触れうるコマンドの共通の骨組み
  * （`setupLibraryCommand`と同じ形。この2資産はcopy-on-write・削除時のフォールバックで
  * 同時に書き換わることがあるペアなので、Setup本体とその上書きのように1つの`compute`へまとめる）。
  * `applyCommand`（`input/commands/history.ts`の`diffChanges`）が最終的に「実際に変わった
  * キーだけ」を履歴へ積むので、ここでは2キーとも無条件に`changes`へ含めてよい。
  */
 function currentTextCommand(
+  holder: TextSelectionHolder,
   label: string,
   compute: (current: { readonly library: TextLibrary; readonly selection: TextSelectionState }) =>
     { readonly library: TextLibrary; readonly selection: TextSelectionState },
 ): Command<KeydistAssets> {
+  const key = textSelectionAssetKey(holder);
   return (current) => {
-    const next = compute({ library: current.textLibrary, selection: current.standaloneTextSelection });
-    if (next.library === current.textLibrary && next.selection === current.standaloneTextSelection) {
+    const next = compute({ library: current.textLibrary, selection: current[key] });
+    if (next.library === current.textLibrary && next.selection === current[key]) {
       return { kind: 'no-op' };
     }
     return {
       kind: 'applied',
       label,
-      changes: { textLibrary: next.library, standaloneTextSelection: next.selection },
+      changes: { textLibrary: next.library, [key]: next.selection },
     };
   };
 }
@@ -328,30 +346,41 @@ function textLibraryCommand(
   };
 }
 
-/** 新規の空テキストを作り、そのまま選択する（#544指示書「create empty/new」）。 */
-export function createTextCommand(generateId: TextIdGenerator, name?: string): Command<KeydistAssets> {
-  return currentTextCommand('テキストを作成する', ({ library }) => {
-    const { library: nextLibrary, created } = appendCopiedUserText(
-      library,
-      generateId,
-      { text: '', name: name ?? '新しいテキスト' },
-    );
+/**
+ * 新規の空テキストを作り、そのまま選択する。
+ * 自動生成名（未指定なら「新しいテキスト」）が既に使われていれば連番を振る
+ * （`uniqueAutoTextName`、レビュー指摘: 自動生成名は見分けが付くようにする）。
+ */
+export function createTextCommand(
+  holder: TextSelectionHolder,
+  generateId: TextIdGenerator,
+  name?: string,
+): Command<KeydistAssets> {
+  return currentTextCommand(holder, 'テキストを作成する', ({ library }) => {
+    const uniqueName = uniqueAutoTextName(library, name ?? '新しいテキスト');
+    const { library: nextLibrary, created } = appendCopiedUserText(library, generateId, { text: '', name: uniqueName });
     return { library: nextLibrary, selection: { ref: { kind: 'user', id: created.id } } };
   });
 }
 
 /**
  * 今選んでいるテキスト（組み込み・ユーザーテキストのどちらでもよい）を複製し、複製先を
- * 選択する（#544指示書「provide a `duplicate` command」）。
+ * 選択する。自動生成名（「元の名前」のコピー）が既に使われていれば連番を振る
+ * （`createTextCommand`と同じ理由）。
  */
-export function duplicateCurrentTextCommand(generateId: TextIdGenerator, name?: string): Command<KeydistAssets> {
-  return currentTextCommand('テキストを複製する', ({ library, selection }) => {
+export function duplicateTextCommand(
+  holder: TextSelectionHolder,
+  generateId: TextIdGenerator,
+  name?: string,
+): Command<KeydistAssets> {
+  return currentTextCommand(holder, 'テキストを複製する', ({ library, selection }) => {
     const resolved = resolveTextSelection(selection, library);
+    const uniqueName = name ?? uniqueAutoTextName(library, `${resolved.name}のコピー`);
     const { library: nextLibrary, created } = appendCopiedUserText(
       library,
       generateId,
       { text: resolved.text, name: resolved.name, languageOverride: resolved.languageOverride },
-      name ?? `${resolved.name}のコピー`,
+      uniqueName,
     );
     return { library: nextLibrary, selection: { ref: { kind: 'user', id: created.id } } };
   });
@@ -363,11 +392,11 @@ export function renameTextCommand(id: string, name: string): Command<KeydistAsse
 }
 
 /**
- * ユーザーテキストを削除する。選択中のテキストを消した場合は既定の組み込みへフォールバック
- * する（#544指示書「deleting the selected text falls back to the default built-in」）。
+ * ユーザーテキストを削除する。指定した持ち主の選択が消したテキストを指していた場合は
+ * 既定の組み込みへフォールバックする（選択が指す実体が無くなった状態を残さないため）。
  */
-export function deleteTextCommand(id: string): Command<KeydistAssets> {
-  return currentTextCommand('テキストを削除する', ({ library, selection }) => {
+export function deleteTextCommand(holder: TextSelectionHolder, id: string): Command<KeydistAssets> {
+  return currentTextCommand(holder, 'テキストを削除する', ({ library, selection }) => {
     const nextLibrary = deleteUserText(library, id);
     if (nextLibrary === library) return { library, selection };
     const nextSelection = selection.ref.kind === 'user' && selection.ref.id === id
@@ -378,10 +407,11 @@ export function deleteTextCommand(id: string): Command<KeydistAssets> {
 }
 
 /**
- * 単体ページの選択を切り替える。存在しない参照（削除済み・不正なid）は何もしない
+ * 指定した持ち主の選択を切り替える。存在しない参照（削除済み・不正なid）は何もしない
  * （他のコマンドと同じ「存在しない対象は無視する」方針。#544 §8-5）。
  */
-export function selectTextCommand(ref: TextRef): Command<KeydistAssets> {
+export function selectTextCommand(holder: TextSelectionHolder, ref: TextRef): Command<KeydistAssets> {
+  const key = textSelectionAssetKey(holder);
   return (current) => {
     if (ref.kind === 'user' && !current.textLibrary.texts.some((text) => text.id === ref.id)) {
       return { kind: 'no-op' };
@@ -389,46 +419,77 @@ export function selectTextCommand(ref: TextRef): Command<KeydistAssets> {
     if (ref.kind === 'builtin' && builtinTextById(ref.id) === undefined) {
       return { kind: 'no-op' };
     }
-    const next = withTextSelection(current.standaloneTextSelection, ref);
-    if (next === current.standaloneTextSelection) return { kind: 'no-op' };
-    return { kind: 'applied', label: 'テキストを選ぶ', changes: { standaloneTextSelection: next } };
+    const next = withTextSelection(current[key], ref);
+    if (next === current[key]) return { kind: 'no-op' };
+    return { kind: 'applied', label: 'テキストを選ぶ', changes: { [key]: next } };
   };
 }
 
 /**
- * 今使っているテキストの本文を書き換える（#544指示書「単体ページ」のテキスト編集）。
- * 選択が組み込みを指している間は、最初の一手だけ新しいユーザーテキストを作って選択を
- * それへ切り替える（copy-on-write。#544指示書「Editing a built-in sample's content
- * creates a NEW user text」）。以後は`resolved.isBuiltin`が`false`になるので、同じ
- * コマンドを何度呼んでもそのユーザーテキストをその場で編集するだけになる
- * （#544指示書「Debounced typing must not create multiple copies」は、この分岐が
- * `current`＝適用時点の資産を読むため自然に満たされる。debounceで積まれた複数回の
- * 呼び出しのどれが最初に適用されても、2回目以降は`textLibrary`が既にコピーを含んでいる）。
+ * テキストの本文を書き換える。呼び出し側（`TextControl`）は**打鍵の瞬間の対象**（`ref`）を
+ * 渡す。「適用時点の選択」を読み直す実装ではなく、これを明示的に運ぶのが肝心
+ * （#544レビューで見つかった競合の再現: 同じユーザーテキストをタブA・Bで選択中、
+ * タブBが入力→debounce待ちの間（既定400ms）にタブAが別のテキストへ選択を切り替えると、
+ * その切り替えはタブ間同期でタブBの`assetsRef`にも先に届く。debounce完了時に「今の選択」を
+ * 読み直す実装だと、そこはもうタブAが切り替えた後の選択になっており、タブBが打っていた
+ * 内容が無関係な別テキストへ書き込まれてしまう。21回中3回この事故が再現した）。
+ *
+ * - `ref`がユーザーテキストを指す: そのidが今も手持ちにあれば、選択がどこを向いていようと
+ *   構わずそのテキストをその場で編集する（上の事故そのものへの対策）。idが手持ちから
+ *   消えていれば（他タブでの削除等）何もしない
+ * - `ref`が組み込みを指す: **指定した持ち主の選択が今もその組み込みを指している時だけ**
+ *   copy-on-writeする。選択が既に他へ移っていれば、この書き込みは宛先を失った古いdraftな
+ *   ので何もしない（ここを外すと、選択が動いた後に遅れて届いた組み込みへの書き込みが
+ *   無意味な2つ目のコピーを作ってしまう）
  */
-export function setCurrentTextContentCommand(text: string, generateId: TextIdGenerator): Command<KeydistAssets> {
-  return currentTextCommand('テキストを変更する', ({ library, selection }) => {
-    const resolved = resolveTextSelection(selection, library);
-    if (resolved.text === text) return { library, selection };
-    if (!resolved.isBuiltin) {
-      return { library: editUserTextContent(library, resolved.ref.id, text), selection };
+export function setTextContentCommand(
+  holder: TextSelectionHolder,
+  ref: TextRef,
+  text: string,
+  generateId: TextIdGenerator,
+): Command<KeydistAssets> {
+  const key = textSelectionAssetKey(holder);
+  return (current) => {
+    const library = current.textLibrary;
+
+    if (ref.kind === 'user') {
+      const target = library.texts.find((entry) => entry.id === ref.id);
+      if (target === undefined) return { kind: 'no-op' };
+      const nextLibrary = editUserTextContent(library, ref.id, text);
+      if (nextLibrary === library) return { kind: 'no-op' };
+      return { kind: 'applied', label: 'テキストを変更する', changes: { textLibrary: nextLibrary } };
     }
-    const created: UserText = { id: generateId(), name: deriveEditedTextName(resolved.name), text };
+
+    const selection = current[key];
+    if (selection.ref.kind !== 'builtin' || selection.ref.id !== ref.id) {
+      return { kind: 'no-op' };
+    }
+    const builtin = builtinTextById(ref.id);
+    if (builtin === undefined || builtin.text === text) return { kind: 'no-op' };
+
+    const name = uniqueAutoTextName(library, deriveEditedTextName(builtin.name));
+    const { library: nextLibrary, created } = appendCopiedUserText(library, generateId, { text, name });
+    const nextSelection: TextSelectionState = { ref: { kind: 'user', id: created.id } };
     return {
-      library: { texts: [...library.texts, created] },
-      selection: { ref: { kind: 'user', id: created.id } },
+      kind: 'applied',
+      label: 'テキストを変更する',
+      changes: { textLibrary: nextLibrary, [key]: nextSelection },
     };
-  });
+  };
 }
 
 /**
- * 今使っているテキストの言語判定を手動で上書きする。`undefined`で自動判定へ戻す。
- * 組み込みは言語が固定なので、選択が組み込みを指している間は何もしない
+ * 指定した持ち主が今使っているテキストの言語判定を手動で上書きする。`undefined`で
+ * 自動判定へ戻す。組み込みは言語が固定なので、選択が組み込みを指している間は何もしない
  * （`resolveTextSelection`の`isBuiltin`参照。built-inにはそもそも上書きの入れ物が無い）。
+ * ボタン操作による即時反映（debounceを挟まない）なので、`setTextContentCommand`と違い
+ * 適用時点の選択を読んでよい（打鍵からの遅延が競合を生む余地が無いため）。
  */
-export function setCurrentTextLanguageOverrideCommand(
+export function setTextLanguageOverrideCommand(
+  holder: TextSelectionHolder,
   override: TextLanguage | undefined,
 ): Command<KeydistAssets> {
-  return currentTextCommand('言語判定を変更する', ({ library, selection }) => {
+  return currentTextCommand(holder, '言語判定を変更する', ({ library, selection }) => {
     const resolved = resolveTextSelection(selection, library);
     if (resolved.isBuiltin) return { library, selection };
     return { library: setUserTextLanguageOverride(library, resolved.ref.id, override), selection };

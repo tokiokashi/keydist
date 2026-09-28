@@ -3,6 +3,7 @@ import type { Command } from '#input/commands/index.ts';
 import { setStandaloneAnalyzerOptionsCommand, type KeydistAssets } from '#engine/commands.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
+import type { TextRef } from '#input/text/selection.ts';
 import type { EngineCache } from '#engine/cache.ts';
 import type { SetupIdGenerator } from '#input/setup/index.ts';
 import { combinePaneStates, conditionHeaderInfoFromResolvedInput, traceConditionSummary, PaneFrame } from '#hosts/shared/index.ts';
@@ -43,6 +44,8 @@ export interface BigramFlowStandalonePageProps {
   readonly catalog: StandalonePaneCatalog;
   readonly generateSetupId: SetupIdGenerator;
   readonly generateTextId: TextIdGenerator;
+  /** `TextControl`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
+  readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
   /**
    * 解析設定の変更を資産へ反映する（間引き済み。`app/standalone/use-debounced-commit.ts`
    * 参照）。`dispatch`を直接使わないのは、`hosts`が`platform`をimportできず
@@ -59,6 +62,7 @@ export function BigramFlowStandalonePage({
   catalog,
   generateSetupId,
   generateTextId,
+  onTextContentCommit,
   onBigramFlowOptionsCommit,
 }: BigramFlowStandalonePageProps) {
   const setups = assets.setupLibrary.setups;
@@ -76,9 +80,9 @@ export function BigramFlowStandalonePage({
   const selectedSetup = setups.find((setup) => setup.id === selectedSetupId);
 
   // テキストは資産（textLibrary + standaloneTextSelection）が正。編集・選択・複製・削除は
-  // すべて共有部品`TextControl`（`resolve-pane-input.ts`が使う`resolveTextSelection`と
-  // 同じものをここでも呼び、実効テキストを求める）へ切り出した（#544指示書「extracting it
-  // into one shared component」）。
+  // すべて共有部品`TextControl`（比較表・N感度と3ページで同じ操作を持つため。
+  // `resolve-pane-input.ts`が使う`resolveTextSelection`と同じものをここでも呼び、
+  // 実効テキストを求める）へ切り出した。
   const resolvedText = useMemo(
     () => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary),
     [assets.standaloneTextSelection, assets.textLibrary],
@@ -216,10 +220,12 @@ export function BigramFlowStandalonePage({
       </section>
 
       <TextControl
+        holder="standalone"
         textLibrary={assets.textLibrary}
         selection={assets.standaloneTextSelection}
         dispatch={dispatch}
         generateTextId={generateTextId}
+        onTextContentCommit={onTextContentCommit}
       />
 
       {selectedSetup === undefined ? (

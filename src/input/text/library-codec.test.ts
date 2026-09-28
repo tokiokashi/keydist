@@ -51,17 +51,22 @@ test('decode: idが重複する要素は後の方を捨てて診断を積む', (
   }
 });
 
-test('decode: languageOverrideが不正な要素はそのフィールドだけ捨てて残りを読む', () => {
+test('decode: languageOverrideが不正な要素は、そのフィールドだけ落として要素は残す（レビュー指摘: 以前は要素ごと捨てていた）', () => {
   const result = TEXT_LIBRARY_CODEC.decode({
     version: 1,
     texts: [{ id: 't-3', name: 'テストC', text: 'x', languageOverride: 'fr' }],
   });
   assert.equal(result.ok, true);
   if (result.ok) {
-    // strictObjectなので不正なフィールドを持つ要素は要素ごと捨てる。
-    assert.deepEqual(result.value.texts, []);
+    assert.deepEqual(result.value.texts, [{ id: 't-3', name: 'テストC', text: 'x' }]);
     assert.equal(result.diagnostics.length, 1);
   }
+});
+
+test('decode: languageOverrideが無い要素は診断を積まない', () => {
+  const result = TEXT_LIBRARY_CODEC.decode({ version: 1, texts: [textA] });
+  assert.equal(result.ok, true);
+  if (result.ok) assert.deepEqual(result.diagnostics, []);
 });
 
 test('encode → decode: 往復して同じ値になる', () => {

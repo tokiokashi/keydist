@@ -11,6 +11,7 @@ import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import type { Setup, SetupIdGenerator } from '#input/setup/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
+import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import { conditionHeaderInfoFromResolvedInput, nonDefaultConditionRows, summarizeNonDefaultConditions, traceConditionSummary } from '#hosts/shared/index.ts';
 import { comparisonAnalyzer, type ComparisonRowContext } from '#analyzers/comparison/definition.tsx';
@@ -48,6 +49,8 @@ export interface ComparisonStandalonePageProps {
   readonly catalog: StandalonePaneCatalog;
   readonly generateSetupId: SetupIdGenerator;
   readonly generateTextId: TextIdGenerator;
+  /** `TextControl`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
+  readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
   readonly onComparisonOptionsCommit: (options: ComparisonOptions) => void;
 }
 
@@ -91,6 +94,7 @@ export function ComparisonStandalonePage({
   catalog,
   generateSetupId,
   generateTextId,
+  onTextContentCommit,
   onComparisonOptionsCommit,
 }: ComparisonStandalonePageProps) {
   const setups = assets.setupLibrary.setups;
@@ -179,10 +183,12 @@ export function ComparisonStandalonePage({
       </header>
 
       <TextControl
+        holder="standalone"
         textLibrary={assets.textLibrary}
         selection={assets.standaloneTextSelection}
         dispatch={dispatch}
         generateTextId={generateTextId}
+        onTextContentCommit={onTextContentCommit}
       />
 
       <section className="set-selection-controls" aria-label="対象Setupの選択">

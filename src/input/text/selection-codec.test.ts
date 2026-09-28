@@ -44,6 +44,15 @@ test('decode: kindが不正なら既定へ戻す', () => {
   }
 });
 
+test('decode: 存在しない組み込みidは既定へ戻し、診断を積む', () => {
+  const result = STANDALONE_TEXT_SELECTION_CODEC.decode({ version: 1, ref: { kind: 'builtin', id: 'builtin:no-such-id' } });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.deepEqual(result.value, { ref: DEFAULT_TEXT_REF });
+    assert.equal(result.diagnostics.length, 1);
+  }
+});
+
 test('encode → decode: 往復して同じ値になる', () => {
   const value = { ref: { kind: 'user' as const, id: 'text-1' } };
   const encoded = STANDALONE_TEXT_SELECTION_CODEC.encode(value);

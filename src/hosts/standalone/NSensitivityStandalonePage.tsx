@@ -8,6 +8,7 @@ import { analyzerSetSelectionFor } from '#engine/analyzer-set-selection.ts';
 import type { Setup, SetupIdGenerator } from '#input/setup/index.ts';
 import { setupColor } from '#input/setup/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
+import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import { conditionHeaderInfoFromResolvedInput, nonDefaultConditionRows, summarizeNonDefaultConditions, traceConditionSummary } from '#hosts/shared/index.ts';
 import { nSensitivityAnalyzer, type NSensitivityRowContext } from '#analyzers/n-sensitivity/definition.tsx';
@@ -41,6 +42,8 @@ export interface NSensitivityStandalonePageProps {
   readonly catalog: StandalonePaneCatalog;
   readonly generateSetupId: SetupIdGenerator;
   readonly generateTextId: TextIdGenerator;
+  /** `TextControl`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
+  readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
   readonly onOptionsCommit: (options: NSensitivityOptions) => void;
 }
 
@@ -85,6 +88,7 @@ export function NSensitivityStandalonePage({
   catalog,
   generateSetupId,
   generateTextId,
+  onTextContentCommit,
   onOptionsCommit,
 }: NSensitivityStandalonePageProps) {
   const setups = assets.setupLibrary.setups;
@@ -164,10 +168,12 @@ export function NSensitivityStandalonePage({
       </header>
 
       <TextControl
+        holder="standalone"
         textLibrary={assets.textLibrary}
         selection={assets.standaloneTextSelection}
         dispatch={dispatch}
         generateTextId={generateTextId}
+        onTextContentCommit={onTextContentCommit}
       />
 
       <section className="set-selection-controls" aria-label="対象Setupの選択">

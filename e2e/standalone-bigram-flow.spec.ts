@@ -147,6 +147,66 @@ test('編集したテキストはリロードしても保持される', async ({
   await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue('リロードしても残るテキスト');
 });
 
+/**
+ * テキストのdebounce書き込みも解析設定と同じ`useDebouncedCommit`を通す（レビュー指摘#2）ので、
+ * 「解析設定はdebounce完了前にリロードしても残る」と同じ`page.clock`パターンで、組み込み→
+ * copy-on-writeの場合とユーザーテキストの直接編集の場合の両方を確認する。
+ */
+test('打ってすぐリロードしても編集が残る（組み込みからのcopy-on-write、debounce完了前）', async ({ page }) => {
+  await page.clock.install();
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+  const now = await page.evaluate(() => Date.now());
+  await page.clock.pauseAt(now + 60_000);
+
+  const textarea = page.getByLabel('テキスト', { exact: true });
+  await textarea.fill('debounce完了前にリロードする編集(組み込み)');
+
+  // クロックを1ミリ秒も進めていないので、debounceのsetTimeoutは絶対に発火していない。
+  const rawBeforeReload = await page.evaluate(() => localStorage.getItem('keydist:text-library'));
+  expect(rawBeforeReload ?? '').not.toContain('debounce完了前にリロードする編集');
+
+  await page.reload();
+  const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue('debounce完了前にリロードする編集(組み込み)');
+});
+
+test('打ってすぐリロードしても編集が残る（既存のユーザーテキストの直接編集、debounce完了前）', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  // 先にユーザーテキストを1件作っておく（複製）。
+  await page.getByRole('button', { name: '複製', exact: true }).click();
+  await expect
+    .poll(async () => page.evaluate(() => {
+      const raw = localStorage.getItem('keydist:text-library');
+      return raw === null ? 0 : (JSON.parse(raw) as { texts: unknown[] }).texts.length;
+    }))
+    .toEqual(1);
+
+  await page.clock.install();
+  const now = await page.evaluate(() => Date.now());
+  await page.clock.pauseAt(now + 60_000);
+
+  const textarea = page.getByLabel('テキスト', { exact: true });
+  await textarea.fill('debounce完了前にリロードする編集(ユーザーテキスト)');
+
+  const rawBeforeReload = await page.evaluate(() => localStorage.getItem('keydist:text-library'));
+  expect(rawBeforeReload ?? '').not.toContain('debounce完了前にリロードする編集');
+
+  await page.reload();
+  const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue('debounce完了前にリロードする編集(ユーザーテキスト)');
+  // コピーは増えていない（1件のまま）。
+  const stored = await page.evaluate(() => localStorage.getItem('keydist:text-library'));
+  const parsed = JSON.parse(stored ?? '{"texts":[]}') as { texts: unknown[] };
+  expect(parsed.texts.length).toEqual(1);
+});
+
 test('複製すると新しいユーザーテキストができ、選択がそちらに切り替わる', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
@@ -182,6 +242,8 @@ test('選択中のテキストを削除すると既定の組み込みへフォ�
     }))
     .toEqual(1);
 
+  // 削除は確認ダイアログを挟む（レビュー指摘: シェルUnitがUndo UIを持つまでの暫定策）。
+  page.once('dialog', (dialog) => dialog.accept());
   const deleteButton = page.getByRole('button', { name: '削除', exact: true });
   await expect(deleteButton).toBeEnabled();
   await deleteButton.click();
@@ -447,6 +509,80 @@ test('タブ間同期: 別タブでのテキスト変更が届き、複数回変
   for (const text of ['1回目の変更', '2回目の変更', '3回目の変更']) {
     await textareaB.fill(text);
     await expect(textareaA).toHaveValue(text, { timeout: 10_000 });
+  }
+
+  await pageA.close();
+  await pageB.close();
+});
+
+/**
+ * #544レビューで見つかったクロスタブの競合の再現（e2e版。unit testは`commands.test.ts`の
+ * 同名テスト参照）。タブA・タブBが同じユーザーテキスト（u1）を選択中、タブBがu1へ入力した
+ * debounce書き込みが適用される前に、タブAがu2へ選択を切り替えた変更が届くと、
+ * 修正前は`setCurrentTextContentCommand`が適用時点の「今の選択」を読み直していたため
+ * Bの入力がu2へ書き込まれてしまっていた（レビュー報告: 21回中3回再現）。
+ * `setTextContentCommand`は打鍵時点のref（u1）を明示的に運ぶので、その後どちらのタブで
+ * 選択が動いてもu1だけが書き換わる。正確な再現時刻（372〜384ms）を毎回作るのではなく、
+ * 待ち時間を周回ごとに揺らしながら繰り返すことで、特定のタイミングに依存せず直っている
+ * ことを確認する。
+ */
+test('タブ間の競合修正: 他タブの選択切り替えが割り込んでも、入力中のテキストが別テキストへ漏れない（Nイテレーション）', async ({ context }, testInfo) => {
+  // 12回の周回それぞれで約380msの意図的な待ち時間を挟むため、既定の30秒では
+  // 並列実行時の負荷次第で規定のタイムアウトに達することがある（レビュー指摘: 実測で
+  // タイムアウトによる失敗を確認）。周回数に見合う時間を明示的に確保する。
+  testInfo.setTimeout(90_000);
+  const ITERATIONS = 12;
+
+  await context.addInitScript(() => {
+    localStorage.setItem('keydist:text-library', JSON.stringify({
+      version: 1,
+      texts: [
+        { id: 'u1', name: 'u1', text: 'one' },
+        { id: 'u2', name: 'u2', text: 'two' },
+      ],
+    }));
+    localStorage.setItem(
+      'keydist:standalone-text-selection',
+      JSON.stringify({ version: 1, ref: { kind: 'user', id: 'u1' } }),
+    );
+  });
+
+  const pageA = await context.newPage();
+  const pageB = await context.newPage();
+  await pageA.goto('/standalone/bigram-flow');
+  await pageB.goto('/standalone/bigram-flow');
+  await expect(pageA.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await expect(pageB.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+
+  const textareaB = pageB.getByLabel('テキスト', { exact: true });
+  const pickerA = pageA.getByLabel('テキストを選ぶ', { exact: true });
+  const pickerB = pageB.getByLabel('テキストを選ぶ', { exact: true });
+
+  const textLibraryOf = (page: typeof pageA) => page.evaluate(() => {
+    const raw = localStorage.getItem('keydist:text-library');
+    return raw === null ? [] : (JSON.parse(raw) as { texts: { id: string; text: string }[] }).texts;
+  });
+
+  for (let i = 0; i < ITERATIONS; i++) {
+    const value = `typed-in-B-for-u1-${i}`;
+    await textareaB.fill(value);
+    // レビュー報告の372〜384msに寄せつつ、周回ごとに少し揺らす
+    // （特定の一瞬だけに依存した確認にしないため）。
+    await pageA.waitForTimeout(372 + (i % 13));
+    await pickerA.selectOption({ label: 'u2' });
+
+    await expect
+      .poll(async () => (await textLibraryOf(pageB)).find((text) => text.id === 'u1')?.text, { timeout: 2000 })
+      .toEqual(value);
+
+    const texts = await textLibraryOf(pageB);
+    expect(texts.find((text) => text.id === 'u2')?.text, `iteration ${i}: u2はBの入力(${value})で汚染されていないはず`)
+      .toEqual('two');
+
+    // 次の周回のため両タブの選択をu1へ戻す。
+    await pickerB.selectOption({ label: 'u1' });
+    await pickerA.selectOption({ label: 'u1' });
+    await expect(pickerB).toHaveValue(/^user:/);
   }
 
   await pageA.close();

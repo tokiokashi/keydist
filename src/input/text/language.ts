@@ -21,24 +21,3 @@ const KANA_PATTERN = /[぀-ゟ゠-ヿｦ-ﾟ]/u;
 export function detectTextLanguage(text: string): TextLanguage {
   return KANA_PATTERN.test(text) ? 'ja' : 'en';
 }
-
-/**
- * テキストの言語は「自動判定した結果」と「利用者が手動で直した指定」を分けて持つ
- * （#544 §5・用語集「テキストは言語を属性に持つ」）。`override` が無ければ `detected` を使う。
- * 自動判定の結果そのものを上書きで潰さないのは、テキストを直した時に再判定した
- * `detected` と、利用者の意図である `override` を両方残しておくため。
- */
-export interface TextLanguageSelection {
-  readonly detected: TextLanguage;
-  readonly override?: TextLanguage;
-}
-
-/** 新しいテキストに対する既定の選択（自動判定のみ、手動指定なし）を作る。 */
-export function detectTextLanguageSelection(text: string): TextLanguageSelection {
-  return { detected: detectTextLanguage(text) };
-}
-
-/** 選択から実際に使う言語を1つに決める。手動指定があればそれを優先する。 */
-export function resolveTextLanguage(selection: TextLanguageSelection): TextLanguage {
-  return selection.override ?? selection.detected;
-}

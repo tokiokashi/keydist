@@ -12,7 +12,7 @@ export interface BuiltinText {
   readonly id: string;
   readonly name: string;
   readonly text: string;
-  /** 組み込みは言語が固定（#544指示書「built-ins have fixed language」）。上書きできない。 */
+  /** 組み込みは言語が固定で、利用者が手動で上書きできる入れ物を持たない。 */
   readonly language: TextLanguage;
 }
 
@@ -20,11 +20,6 @@ const BUILTIN_ID_PREFIX = 'builtin:';
 
 function builtinIdFor(entry: SampleTextEntry): string {
   return `${BUILTIN_ID_PREFIX}${entry.language}.${entry.sampleId}`;
-}
-
-/** `id`が組み込みテキストのidの形をしているか（`selection.ts`のTextRef判定に使う）。 */
-export function isBuiltinTextId(id: string): boolean {
-  return id.startsWith(BUILTIN_ID_PREFIX);
 }
 
 export const BUILTIN_TEXTS: readonly BuiltinText[] = sampleTextEntries().map((entry) => ({
@@ -35,7 +30,7 @@ export const BUILTIN_TEXTS: readonly BuiltinText[] = sampleTextEntries().map((en
 }));
 
 /**
- * 単体ページの既定選択（#544指示書「Default = built-in ja.legacy」）。
+ * 単体ページの既定選択は組み込みのja.legacy（「吾輩は猫である」）にする。
  * `samples.ts`の`FALLBACK_SAMPLE_ID`が既に`ja.legacy`を指しているのと同じ理由
  * （初回計算の重さ）で、この既定もそこに揃える。
  */
@@ -46,11 +41,10 @@ export function builtinTextById(id: string): BuiltinText | undefined {
 }
 
 /**
- * 組み込みを書き換えた時に作るユーザーテキストの名前（#544指示書「copy-on-write、
- * name derived e.g. 「吾輩は猫である（編集）」」）。組み込みの表示名は一覧用に
- * 「（既定）」を含む（`samples.ts`の`SAMPLE_TEXT_NAMES`）ため、そのまま末尾へ
- * 「（編集）」を足すと二重に注記が付いてしまう。「（既定）」の注記だけを落としてから
- * 「（編集）」を足す。
+ * 組み込みを書き換えた時のcopy-on-write（`engine/commands.ts`の`setTextContentCommand`）が
+ * 作るユーザーテキストの名前。組み込みの表示名は一覧用に「（既定）」を含む
+ * （`samples.ts`の`SAMPLE_TEXT_NAMES`）ため、そのまま末尾へ「（編集）」を足すと
+ * 二重に注記が付いてしまう。「（既定）」の注記だけを落としてから「（編集）」を足す。
  */
 export function deriveEditedTextName(builtinName: string): string {
   return `${builtinName.replace(/（既定）$/, '')}（編集）`;

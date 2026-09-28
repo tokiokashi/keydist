@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BUILTIN_TEXTS, builtinTextById, DEFAULT_BUILTIN_TEXT_ID, deriveEditedTextName, isBuiltinTextId } from './builtin.ts';
+import { BUILTIN_TEXTS, builtinTextById, DEFAULT_BUILTIN_TEXT_ID, deriveEditedTextName } from './builtin.ts';
 
 test('BUILTIN_TEXTS: 既存のサンプル（en.default / ja.modern / ja.legacy）が3件揃っている', () => {
   assert.equal(BUILTIN_TEXTS.length, 3);
@@ -15,11 +15,6 @@ test('DEFAULT_BUILTIN_TEXT_ID: ja.legacyを指す', () => {
 
 test('builtinTextById: 存在しないidはundefined', () => {
   assert.equal(builtinTextById('builtin:no-such-id'), undefined);
-});
-
-test('isBuiltinTextId: 組み込みのid形式だけを判定する', () => {
-  assert.equal(isBuiltinTextId('builtin:ja.legacy'), true);
-  assert.equal(isBuiltinTextId('text-abc123'), false);
 });
 
 test('deriveEditedTextName: 「（既定）」注記を落としてから「（編集）」を足す', () => {

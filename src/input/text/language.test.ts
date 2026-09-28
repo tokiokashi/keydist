@@ -1,10 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import {
-  detectTextLanguage,
-  detectTextLanguageSelection,
-  resolveTextLanguage,
-} from './language.ts';
+import { detectTextLanguage } from './language.ts';
 
 test('ひらがなを含めば日本語と判定する', () => {
   assert.equal(detectTextLanguage('あ'), 'ja');
@@ -37,16 +33,4 @@ test('漢字のみのテキストはかなを含まないので英語側にな�
 
 test('全角記号・句読点だけではかなと判定しない', () => {
   assert.equal(detectTextLanguage('、。！？　１２３'), 'en');
-});
-
-test('override があればdetectedより優先する', () => {
-  const selection = { detected: 'en' as const, override: 'ja' as const };
-  assert.equal(resolveTextLanguage(selection), 'ja');
-});
-
-test('override が無ければdetectedを使う', () => {
-  const selection = detectTextLanguageSelection('あいう');
-  assert.equal(selection.detected, 'ja');
-  assert.equal(selection.override, undefined);
-  assert.equal(resolveTextLanguage(selection), 'ja');
 });

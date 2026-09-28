@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { createEngineCache } from '#engine/cache.ts';
-import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
+import { setStandaloneAnalyzerOptionsCommand, setTextContentCommand } from '#engine/commands.ts';
+import type { TextRef } from '#input/text/selection.ts';
 import { nSensitivityAnalyzer } from '#analyzers/n-sensitivity/definition.tsx';
 import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { NSensitivityStandalonePage } from '#hosts/standalone/index.ts';
@@ -24,6 +25,10 @@ export function StandaloneNSensitivityApp() {
     commandFor: (options) => setStandaloneAnalyzerOptionsCommand(nSensitivityAnalyzer.definition.id, options),
   });
 
+  const commitTextContent = useDebouncedCommit<{ ref: TextRef; text: string }>(dispatch, {
+    commandFor: ({ ref, text }) => setTextContentCommand('standalone', ref, text, generateTextId),
+  });
+
   return (
     <NSensitivityStandalonePage
       assets={assets}
@@ -33,6 +38,7 @@ export function StandaloneNSensitivityApp() {
       catalog={catalog}
       generateSetupId={generateSetupId}
       generateTextId={generateTextId}
+      onTextContentCommit={commitTextContent}
       onOptionsCommit={commitOptions}
     />
   );

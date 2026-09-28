@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { createEngineCache } from '#engine/cache.ts';
-import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
+import { setStandaloneAnalyzerOptionsCommand, setTextContentCommand } from '#engine/commands.ts';
+import type { TextRef } from '#input/text/selection.ts';
 import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
 import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { ComparisonStandalonePage } from '#hosts/standalone/index.ts';
@@ -29,6 +30,10 @@ export function StandaloneComparisonApp() {
     commandFor: (options) => setStandaloneAnalyzerOptionsCommand(comparisonAnalyzer.definition.id, options),
   });
 
+  const commitTextContent = useDebouncedCommit<{ ref: TextRef; text: string }>(dispatch, {
+    commandFor: ({ ref, text }) => setTextContentCommand('standalone', ref, text, generateTextId),
+  });
+
   return (
     <ComparisonStandalonePage
       assets={assets}
@@ -38,6 +43,7 @@ export function StandaloneComparisonApp() {
       catalog={catalog}
       generateSetupId={generateSetupId}
       generateTextId={generateTextId}
+      onTextContentCommit={commitTextContent}
       onComparisonOptionsCommit={commitComparisonOptions}
     />
   );

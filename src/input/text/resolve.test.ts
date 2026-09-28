@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { BUILTIN_TEXTS, DEFAULT_BUILTIN_TEXT_ID } from './builtin.ts';
-import { createUserText, emptyTextLibrary, setUserTextLanguageOverride } from './library.ts';
+import { appendCopiedUserText, emptyTextLibrary, setUserTextLanguageOverride } from './library.ts';
 import { resolveTextSelection } from './resolve.ts';
 import { DEFAULT_TEXT_REF } from './selection.ts';
 
@@ -16,7 +16,7 @@ test('resolveTextSelection: 組み込みを選んでいれば、その本文と�
 });
 
 test('resolveTextSelection: ユーザーテキストを選んでいれば、その本文と自動判定言語を返す', () => {
-  let library = createUserText(emptyTextLibrary(), () => 'text-1', 'hello world', 'マイテキスト');
+  let library = appendCopiedUserText(emptyTextLibrary(), () => 'text-1', { text: 'hello world', name: 'マイテキスト' }).library;
   const resolved = resolveTextSelection({ ref: { kind: 'user', id: 'text-1' } }, library);
   assert.equal(resolved.isBuiltin, false);
   assert.equal(resolved.text, 'hello world');
