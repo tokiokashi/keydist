@@ -26,6 +26,23 @@
   margin: 0;
 }
 
+/* 図の読み方は小見出しの横のⓘに置く（段落にすると図より先に文章を読ませることになるため）。 */
+.flow-block-heading {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+/*
+ * 読み方の説明はⓘではなく小見出しの行の左端に揃える。ⓘは指の組み合わせの表示の後ろにあって
+ * 右へ寄るので、ⓘから出すと狭いペインで説明が右へはみ出すため。
+ */
+.flow-block-heading .info {
+  position: static;
+}
+
 /* 図が2つあるので、図ごとの小見出しだけを持つ（Analyzer名・説明の段落はペインの見出しが持つ）。 */
 .flow-block-title {
   margin: 0;
