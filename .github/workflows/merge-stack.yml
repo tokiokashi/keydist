@@ -15,7 +15,8 @@ name: Merge stack
 # リポジトリの secret に STACK_MERGE_TOKEN（Contents と Pull requests に write を持つ fine-grained PAT）を
 # 置くとそちらでマージし、main の CI も走る。無ければ GITHUB_TOKEN を使う。
 on:
-  pull_request_target:
+  # 検証用: pull_request_target は既定ブランチの定義しか使わないので、使い捨てブランチでは pull_request で起動する
+  pull_request:
     types: [labeled]
 
 permissions:
