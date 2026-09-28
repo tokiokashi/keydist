@@ -437,7 +437,7 @@ function MovementProfilePlot({
           {relative.length}件 · 平均移動 {mean.distance.toFixed(2)}u ·{' '}
           <span
             className="flow-direction-cohesion"
-            title="0に近いほど方向が分散し、1に近いほど同じ方向へ集中します"
+            title="0に近いほど方向が分散し、1に近いほど同じ方向へ集中する"
           >
             方向のまとまり {summary.magnitude.toFixed(2)}
           </span>
@@ -780,7 +780,7 @@ export function BigramFlowVisualization({
         <span>{layout.name}</span>
         <span>{geometry.name}</span>
         <span>{source === 'actual' ? '実際に続けて打った2打鍵' : '反対の手の打鍵を飛ばして、同じ手で続けた2打鍵'}</span>
-        <span>移動 {extracted.rawCount.toLocaleString()}回</span>
+        <span>2打鍵 {extracted.rawCount.toLocaleString()}組</span>
         {trace.skipped > 0 ? <span>打てずに飛ばした文字 {trace.skipped}</span> : null}
       </div>
 
@@ -844,8 +844,8 @@ export function BigramFlowVisualization({
                 <h2>Relative vectors</h2>
               </div>
               <p>
-                打鍵ごとの移動方向と距離を表示します。
-                外周は移動方向の分布、白線は平均的な移動を表します。
+                打鍵ごとの移動方向と距離を描く。
+                外周は移動方向の分布、白線は平均的な移動を表す。
               </p>
             </header>
             <div className="flow-profile-controls" aria-label="移動の向きと距離の表示設定">

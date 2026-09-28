@@ -20,7 +20,8 @@ const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly la
   { id: 'sfbHomeCost', label: '同指連続のホーム復帰距離' },
   { id: 'preferOppositeThumb', label: '親指シフトの振り替え' },
   { id: 'triggerRealizationPolicy', label: 'シフト系キーの押し続け' },
-  { id: 'actionRealizationPolicy', label: 'シフト系キー単独の押下の扱い' },
+  // 文字キーと一緒に押したシフト系キーを、別の動作（Stroke）として数えるか。動作数の列が変わる。
+  { id: 'actionRealizationPolicy', label: 'シフト系キーを別の動作として数える' },
   { id: 'romajiRuleId', label: 'ローマ字規則' },
   { id: 'fingerAssignmentId', label: '指の割当' },
   /**
@@ -99,16 +100,33 @@ function formatValue(
     const builtin = Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, value) ? FINGER_ASSIGNMENT_REGISTRY[value] : undefined;
     return { format: 'primitive', displayValue: builtin?.name ?? '自作の指の割当' };
   }
+  // 実現方式の2項目は、利用者が選べる主な値（する/しない）で出す。配列ごとの例外は中身を
+  // 並べず、あることだけを示す（例外は配列のキー単位の指定で、短い1行に収まらないため）。
+  if (id === 'triggerRealizationPolicy' && isRecord(value)) {
+    return { format: 'primitive', displayValue: value['useHold'] === true ? 'する' : 'しない' };
+  }
+  if (id === 'actionRealizationPolicy' && isRecord(value)) {
+    const base = value['triggerActivation'] === 'semantic' ? 'する' : 'しない';
+    const classOverrides = isRecord(value['triggerActivationClassOverrides'])
+      ? Object.keys(value['triggerActivationClassOverrides']).length
+      : 0;
+    const overrides = Array.isArray(value['triggerActivationOverrides']) ? value['triggerActivationOverrides'].length : 0;
+    return {
+      format: 'primitive',
+      displayValue: classOverrides + overrides > 0 ? `${base}（キーごとの例外あり）` : base,
+    };
+  }
   if (value === null) return { format: 'primitive', displayValue: 'なし' };
   if (typeof value === 'boolean') return { format: 'primitive', displayValue: value ? 'ON' : 'OFF' };
   if (typeof value === 'string' || typeof value === 'number') {
     return { format: 'primitive', displayValue: String(value) };
   }
-  // オブジェクト値（trigger/action実現方式）は要約せず「詳細設定」とだけ示す。
-  // 個々のフィールドを一覧化すると項目が増えるたびにこのファイルを直す必要が生じるため、
-  // 出どころ・診断の表示だけをここでは保証する（値そのものの詳細UIは編集導線と一緒に作る。
-  // #544 Phase 6「条件を編集する導線」）。
-  return { format: 'object', displayValue: '(詳細設定)' };
+  // 上で扱っていないオブジェクト値は要約せず「詳細設定」とだけ示す（今のTRACE_AFFECTING_ITEMSには無い）。
+  return { format: 'object', displayValue: '（詳細設定）' };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /** カスケードの解決結果から、Traceに効く項目だけを抜き出して表示用の行にする。 */

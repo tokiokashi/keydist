@@ -61,14 +61,14 @@ test('traceConditionSummary: setupレベルで上書きすると出どころが�
   assert.equal(formatOrigin(windowSize!.origin), '上書き: このSetup');
 });
 
-test('traceConditionSummary: オブジェクト値の項目はformatがobjectになる', () => {
+test('traceConditionSummary: シフト系キーの項目もオブジェクトのまま出さず、短い値へ要約する', () => {
   const resolution = resolveSetupForText(setupFor('qwerty'), CATALOG, NO_USER_LAYOUTS, 'en');
   assert.ok(resolution.ok);
   if (!resolution.ok) return;
   const cascade = resolveSettings(EMPTY_SETTINGS_OVERRIDES, resolution.context);
   const rows = traceConditionSummary(cascade);
   const trigger = rows.find((row) => row.id === 'triggerRealizationPolicy');
-  assert.equal(trigger?.format, 'object');
+  assert.equal(trigger?.format, 'primitive');
 });
 
 test('conditionHeaderInfo: 配列・形状・指割当の名前を集める', () => {
@@ -196,4 +196,33 @@ test('nonDefaultConditionRows: かな直接の配列ではローマ字規則の�
   const summary = traceConditionSummary(input.cascade);
   assert.equal(summary.find((row) => row.id === 'romajiRuleId')?.origin.kind, 'layout');
   assert.deepEqual(nonDefaultConditionRows(summary).map((row) => row.id), []);
+});
+
+test('traceConditionSummary: シフト系キーの2項目は「する/しない」で値を出す（「(詳細設定)」にしない）', () => {
+  const defaults = traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], EMPTY_SETTINGS_OVERRIDES, 'en').cascade, CATALOG);
+  const hold = defaults.find((row) => row.id === 'triggerRealizationPolicy')!;
+  const action = defaults.find((row) => row.id === 'actionRealizationPolicy')!;
+  assert.equal(hold.label, 'シフト系キーの押し続け');
+  assert.equal(hold.displayValue, 'しない');
+  assert.equal(action.label, 'シフト系キーを別の動作として数える');
+  assert.equal(action.displayValue, 'しない');
+
+  let overrides = EMPTY_SETTINGS_OVERRIDES;
+  for (const [id, value] of [
+    ['triggerRealizationPolicy', { useHold: true }],
+    ['actionRealizationPolicy', {
+      triggerActivation: 'semantic',
+      triggerActivationClassOverrides: { 'order-free': 'separate' },
+      triggerActivationOverrides: [],
+    }],
+  ] as const) {
+    const written = setSettingsOverride(overrides, { kind: 'global' }, id, value as never);
+    assert.ok(written.ok, id);
+    if (!written.ok) return;
+    overrides = written.overrides;
+  }
+  const rows = traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], overrides, 'en').cascade, CATALOG);
+  assert.equal(rows.find((row) => row.id === 'triggerRealizationPolicy')!.displayValue, 'する');
+  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'する（キーごとの例外あり）');
+  for (const row of rows) assert.doesNotMatch(row.displayValue, /[()]/, row.displayValue);
 });

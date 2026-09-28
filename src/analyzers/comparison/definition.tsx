@@ -55,7 +55,7 @@ function formatValue(column: ComparisonColumnId, value: number): string {
 
 /** 基準比（%）。基準が0の時は「基準自体が0」という事実をそのまま出す（優劣の判定はしない）。 */
 function formatRatio(value: number, baseline: number): string {
-  if (baseline === 0) return value === 0 ? '基準と同値(0)' : '基準が0';
+  if (baseline === 0) return value === 0 ? '基準と同値（0）' : '基準が0';
   return `${((value / baseline) * 100).toFixed(1)}%`;
 }
 
@@ -238,7 +238,7 @@ export function ComparisonVisualization({
       </div>
 
       <p className="comparison-footnote">
-        数値は観測値であり、配列の優劣を判定するスコアではない。基準行との比較は差分を示すだけで、
+        数値は観測値であり、配列の優劣を判定するスコアではない。基準行との比較は基準に対する割合を示すだけで、
         どちらが良いかはこの表では決めない。
       </p>
     </section>
