@@ -2,7 +2,8 @@ import { useRef, useState, type ReactNode } from 'react';
 import type { EngineRequestState } from '#engine/request.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { describeEngineRequestError, paneStatusLabel } from './pane-status.ts';
-import { conditionDiagnosticText, type ConditionHeaderInfo, type ConditionSummaryRow } from './condition-summary.ts';
+import type { ConditionHeaderInfo, ConditionSummaryRow } from './condition-summary.ts';
+import { ConditionSummary } from './ConditionSummary.tsx';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 import { PaneInfoButton, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
@@ -131,47 +132,7 @@ export function PaneFrame({
         {settings}
       </SettingsWindow>
 
-      {conditionRows.length > 0 ? (
-        <details className="pane-condition-summary">
-          <summary>条件（{conditionRows.length}）</summary>
-          {targetFullName !== undefined || header !== undefined ? (
-            <div className="pane-condition-target">
-              {targetFullName !== undefined ? <p className="pane-condition-target-name">{targetFullName}</p> : null}
-              {header !== undefined ? (
-                <p className="pane-condition-target-detail">
-                  {header.layoutName} / {header.shapeName} · 指の割当: {header.fingerAssignmentName}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-          <dl>
-            {conditionRows.map((row) => (
-              <div
-                key={row.id}
-                className="pane-condition-row"
-                data-not-applicable={row.applicable ? undefined : 'true'}
-              >
-                <dt>{row.label}</dt>
-                <dd>
-                  <span className="pane-condition-value">{row.displayValue}</span>
-                  <span className="pane-condition-origin">（{row.originLabel}）</span>
-                  {!row.applicable ? <span className="pane-condition-flag">この配列・Setupでは効かない</span> : null}
-                  {(() => {
-                    const texts = row.diagnostics
-                      .map((diagnostic) => conditionDiagnosticText(row, diagnostic))
-                      .filter((text): text is string => text !== undefined);
-                    return texts.length > 0 ? (
-                      <ul className="pane-condition-diagnostics">
-                        {texts.map((text, index) => <li key={index}>{text}</li>)}
-                      </ul>
-                    ) : null;
-                  })()}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </details>
-      ) : null}
+      <ConditionSummary rows={conditionRows} targetFullName={targetFullName} header={header} />
 
       {traceErrors && traceErrors.length > 0 ? (
         <ul className="pane-trace-errors" role="alert" data-pane-trace-errors="true">

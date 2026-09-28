@@ -100,21 +100,20 @@ function formatValue(
     const builtin = Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, value) ? FINGER_ASSIGNMENT_REGISTRY[value] : undefined;
     return { format: 'primitive', displayValue: builtin?.name ?? '自作の指の割当' };
   }
-  // 実現方式の2項目は、利用者が選べる主な値（する/しない）で出す。配列ごとの例外は中身を
-  // 並べず、あることだけを示す（例外は配列のキー単位の指定で、短い1行に収まらないため）。
+  // 実現方式の2項目は、利用者が選べる主な値（する/しない）で出す。例外は中身を並べず、
+  // あることだけを示す（例外は打ち方の大分類・キーごとの指定で、短い1行に収まらないため）。
   if (id === 'triggerRealizationPolicy' && isRecord(value)) {
     return { format: 'primitive', displayValue: value['useHold'] === true ? 'する' : 'しない' };
   }
   if (id === 'actionRealizationPolicy' && isRecord(value)) {
-    const base = value['triggerActivation'] === 'semantic' ? 'する' : 'しない';
+    // 「しない」の時は例外を一切読まない（`input/semantics/action-realization.ts`）ので、
+    // 例外が残っていても出さない。出すと効いていない例外で測ったように読めてしまう（#597）。
+    if (value['triggerActivation'] !== 'semantic') return { format: 'primitive', displayValue: 'しない' };
     const classOverrides = isRecord(value['triggerActivationClassOverrides'])
       ? Object.keys(value['triggerActivationClassOverrides']).length
       : 0;
     const overrides = Array.isArray(value['triggerActivationOverrides']) ? value['triggerActivationOverrides'].length : 0;
-    return {
-      format: 'primitive',
-      displayValue: classOverrides + overrides > 0 ? `${base}（キーごとの例外あり）` : base,
-    };
+    return { format: 'primitive', displayValue: classOverrides + overrides > 0 ? 'する（例外あり）' : 'する' };
   }
   if (value === null) return { format: 'primitive', displayValue: 'なし' };
   if (typeof value === 'boolean') return { format: 'primitive', displayValue: value ? 'ON' : 'OFF' };
@@ -228,4 +227,37 @@ export function nonDefaultConditionRows(
 export function summarizeNonDefaultConditions(rows: readonly ConditionSummaryRow[]): string | undefined {
   if (rows.length === 0) return undefined;
   return rows.map((row) => `${row.label}: ${row.displayValue}`).join(' ・ ');
+}
+
+/**
+ * 条件の要約で「変えた項目」とみなすか（docs/architecture.md「条件の要約」）。
+ * カスケードのどこかで上書きされていて、かつその対象に効く行だけ。効かない上書きを
+ * 変えた項目に数えると、閉じた1行がその条件で測ったように読めてしまうため。
+ */
+export function isChangedConditionRow(row: ConditionSummaryRow): boolean {
+  return row.applicable && row.origin.kind !== 'default';
+}
+
+/** 閉じた1行に名前を出す、変えた項目の件数。残りは「他N件」に畳む。 */
+const SUMMARY_LINE_ITEMS = 2;
+
+export interface ConditionSummaryLine {
+  /** 変えた項目の件数。0なら「すべて既定値」。 */
+  readonly changedCount: number;
+  /** 閉じた1行に出す項目（項目の定義順の先頭から）。 */
+  readonly shown: readonly ConditionSummaryRow[];
+  /** 「他N件」のN。 */
+  readonly restCount: number;
+}
+
+/** 閉じた1行の中身。`rows`は項目の定義順（`traceConditionSummary`の順）で渡す。 */
+export function conditionSummaryLine(rows: readonly ConditionSummaryRow[]): ConditionSummaryLine {
+  const changed = rows.filter(isChangedConditionRow);
+  const shown = changed.slice(0, SUMMARY_LINE_ITEMS);
+  return { changedCount: changed.length, shown, restCount: changed.length - shown.length };
+}
+
+/** 開いた時の並び。変えた項目を上に、それぞれの中は項目の定義順のまま。 */
+export function orderConditionRowsForDetail(rows: readonly ConditionSummaryRow[]): readonly ConditionSummaryRow[] {
+  return [...rows.filter(isChangedConditionRow), ...rows.filter((row) => !isChangedConditionRow(row))];
 }

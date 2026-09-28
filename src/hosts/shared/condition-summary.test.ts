@@ -9,6 +9,8 @@ import { resolveEngineInput } from '#engine/resolved-input.ts';
 import {
   conditionHeaderInfo,
   conditionHeaderInfoFromResolvedInput,
+  conditionSummaryLine,
+  orderConditionRowsForDetail,
   conditionDiagnosticText,
   formatOrigin,
   nonDefaultConditionRows,
@@ -223,6 +225,64 @@ test('traceConditionSummary: シフト系キーの2項目は「する/しない�
   }
   const rows = traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], overrides, 'en').cascade, CATALOG);
   assert.equal(rows.find((row) => row.id === 'triggerRealizationPolicy')!.displayValue, 'する');
-  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'する（キーごとの例外あり）');
+  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'する（例外あり）');
   for (const row of rows) assert.doesNotMatch(row.displayValue, /[()]/, row.displayValue);
+});
+
+test('traceConditionSummary: 別の動作として数えない時は、残っている例外を出さない（#597）', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'actionRealizationPolicy', {
+    triggerActivation: 'disabled',
+    triggerActivationClassOverrides: { 'order-free': 'separate' },
+    triggerActivationOverrides: [],
+  } as never);
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const rows = traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], written.overrides, 'en').cascade, CATALOG);
+  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'しない');
+});
+
+function overrideRows(entries: readonly (readonly [string, unknown])[]): readonly ConditionSummaryRow[] {
+  let overrides = EMPTY_SETTINGS_OVERRIDES;
+  for (const [id, value] of entries) {
+    const written = setSettingsOverride(overrides, { kind: 'global' }, id as never, value as never);
+    assert.ok(written.ok, id);
+    if (!written.ok) throw new Error(id);
+    overrides = written.overrides;
+  }
+  return traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], overrides, 'en').cascade, CATALOG);
+}
+
+test('conditionSummaryLine: 何も変えていなければ変えた項目は0件', () => {
+  const line = conditionSummaryLine(overrideRows([]));
+  assert.equal(line.changedCount, 0);
+  assert.deepEqual(line.shown, []);
+  assert.equal(line.restCount, 0);
+});
+
+test('conditionSummaryLine: 変えた項目の先頭2件（項目の定義順）と残りの件数', () => {
+  // 書いた順ではなく項目の定義順で先頭2件を取る。
+  const rows = overrideRows([
+    ['triggerRealizationPolicy', { useHold: true }],
+    ['sfbHomeCost', false],
+    ['windowSize', 5],
+  ]);
+  const line = conditionSummaryLine(rows);
+  assert.equal(line.changedCount, 3);
+  assert.deepEqual(line.shown.map((row) => row.id), ['windowSize', 'sfbHomeCost']);
+  assert.equal(line.restCount, 1);
+});
+
+test('conditionSummaryLine: 効かない上書きは変えた項目に数えない', () => {
+  const rows = overrideRows([['windowSize', 5]]).map((row) => (
+    row.id === 'windowSize' ? { ...row, applicable: false } : row
+  ));
+  assert.equal(conditionSummaryLine(rows).changedCount, 0);
+});
+
+test('orderConditionRowsForDetail: 変えた項目を上に、それぞれの中は定義順のまま', () => {
+  const rows = overrideRows([['triggerRealizationPolicy', { useHold: true }], ['windowSize', 5]]);
+  const ordered = orderConditionRowsForDetail(rows).map((row) => row.id);
+  assert.deepEqual(ordered.slice(0, 2), ['windowSize', 'triggerRealizationPolicy']);
+  const rest = rows.map((row) => row.id).filter((id) => id !== 'windowSize' && id !== 'triggerRealizationPolicy');
+  assert.deepEqual(ordered.slice(2), rest);
 });
