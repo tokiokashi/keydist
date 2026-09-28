@@ -139,15 +139,24 @@ h1 {
 }
 
 @media (min-width: 901px) {
+  /* Testerは画面の高さに収め、カンペの欄の中でスクロールさせる。シェルの本体の残りを使う。 */
   body:has(.input-feature) {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
     height: 100dvh;
     overflow: hidden;
   }
 
+  .shell:has(.input-feature) {
+    height: 100dvh;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .shell:has(.input-feature) .shell-body {
+    min-height: 0;
+  }
+
   .app-shell:has(> .input-feature) {
-    height: 100%;
+    flex: 1 1 auto;
     min-height: 0;
     overflow: hidden;
   }
