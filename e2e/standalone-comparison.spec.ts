@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
+import { openSettings, openTargetSelection } from './pane-helper.ts';
 
 /**
  * 比較表単体ページ（#544 Phase 3「集合を対象にする最初のAnalyzer（比較表）と、
@@ -40,6 +41,7 @@ function seedTwoSetups() {
  * actionability待ち（disabled要素には操作しない）にそのまま任せてよい。
  */
 async function addTarget(page: import('@playwright/test').Page, optionValue: string) {
+  await openTargetSelection(page);
   await page.getByLabel('追加する対象').selectOption(optionValue);
   await page.getByRole('button', { name: '追加', exact: true }).click();
 }
@@ -79,6 +81,7 @@ test('Setupを2件選ぶと2行表示され、並び替え・基準選択が効�
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
 
   // 並び替え: 2番目（colemak-dh）を上へ動かすと先頭に来る。
+  await openTargetSelection(page);
   const order = page.locator('.set-selection-order li');
   await expect(order).toHaveCount(2);
   await expect(order.first()).toContainText('QWERTY');
@@ -86,6 +89,7 @@ test('Setupを2件選ぶと2行表示され、並び替え・基準選択が効�
   await expect(order.first()).toContainText('Colemak');
 
   // 基準を選ぶと、その行に基準マークが付く。
+  await openTargetSelection(page);
   await page.getByLabel('基準', { exact: true }).selectOption('setup:fixed-a');
   await expect(table.locator('tr[data-baseline="true"]')).toHaveCount(1);
   await expect(table.locator('tr[data-baseline="true"]')).toContainText('QWERTY');
@@ -100,10 +104,12 @@ test('選択・並び順・基準はリロードしても残る（資産の読�
   await addTarget(page, 'setup:fixed-b');
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
 
+  await openTargetSelection(page);
   const order = page.locator('.set-selection-order li');
   await order.nth(1).getByRole('button', { name: /上へ/ }).click();
   await expect(order.first()).toContainText('Colemak');
 
+  await openTargetSelection(page);
   await page.getByLabel('基準', { exact: true }).selectOption('setup:fixed-a');
   await expect(table.locator('tr[data-baseline="true"]')).toHaveCount(1);
 
@@ -122,9 +128,11 @@ test('選択・並び順・基準はリロードしても残る（資産の読�
   await expect(tableAfterReload).toBeVisible({ timeout: 10_000 });
   await expect(tableAfterReload.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
 
+  await openTargetSelection(page);
   const orderAfterReload = page.locator('.set-selection-order li');
   await expect(orderAfterReload).toHaveCount(2);
   await expect(orderAfterReload.first()).toContainText('Colemak');
+  await openTargetSelection(page);
   await expect(page.getByLabel('基準', { exact: true })).toHaveValue('setup:fixed-a');
   await expect(tableAfterReload.locator('tr[data-baseline="true"]')).toHaveCount(1);
 
@@ -177,6 +185,7 @@ test('集合に存在しないSetup idが混ざっていても行は消えず「
   await expect(failedRow).toContainText('削除された');
 
   // 選択の並び（2件のまま）自体は保たれている。
+  await openTargetSelection(page);
   await expect(page.locator('.set-selection-order li')).toHaveCount(2);
 });
 
@@ -231,6 +240,7 @@ test('既定の物理配列を変えると、配列対象は追従しSetup対象
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
 
   // 配列対象・Setup対象とも最初は同じ物理配列（row-staggered、既定）なので条件欄は差分無し。
+  await openTargetSelection(page);
   await expect(page.locator('.set-selection-order li').first()).toContainText('QWERTY');
 
   await page.getByLabel('既定の物理配列').selectOption('ortholinear');
@@ -273,6 +283,7 @@ test('Setup対象だけの集合では、既定の物理配列を変えても名
     .poll(async () => page.evaluate(() => localStorage.getItem('keydist:setup-library')))
     .toContain('ortholinear');
 
+  await openTargetSelection(page);
   await expect(page.locator('.set-selection-order li > span')).toHaveText(['QWERTY', 'Colemak-DH']);
   await expect(table).not.toContainText('既定の物理配列');
   await expect(table).not.toContainText('ortholinear');
@@ -290,7 +301,9 @@ test('配列と上書きの無いSetupが同名になっても、衝突した2�
 
   const table = page.locator('.comparison-table');
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 10_000 });
+  await openTargetSelection(page);
   await expect(page.locator('.set-selection-order li > span')).toHaveText(['QWERTY（配列）', 'QWERTY（Setup 1）', 'Colemak-DH']);
+  await openTargetSelection(page);
   await expect(page.locator('.set-selection-order')).not.toContainText(/layout:|setup:|fixed-/);
   await expect(table).not.toContainText(/layout:|setup:|fixed-/);
 });
@@ -302,6 +315,7 @@ test('解決に失敗したメンバーにも意味のある名前が付く（L2
 
   const table = page.locator('.comparison-table');
   await expect(table.locator('tbody tr[data-comparison-row="failed"]')).toHaveCount(1, { timeout: 10_000 });
+  await openTargetSelection(page);
   await expect(page.locator('.set-selection-order li > span').nth(1)).toHaveText('削除されたSetup');
   const failedRow = table.locator('tbody tr[data-comparison-row="failed"]');
   await expect(failedRow).toContainText('削除されたSetup');
@@ -321,6 +335,7 @@ test('候補を矢印キーで動かすだけでは追加されず、「追加�
   await picker.focus();
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
+  await openTargetSelection(page);
   await expect(page.locator('.set-selection-order li')).toHaveCount(0);
   await expect(picker).not.toHaveValue('');
   await expect(addButton).toBeEnabled();
@@ -329,6 +344,7 @@ test('候補を矢印キーで動かすだけでは追加されず、「追加�
   await page.keyboard.press('Tab');
   await expect(addButton).toBeFocused();
   await page.keyboard.press('Enter');
+  await openTargetSelection(page);
   await expect(page.locator('.set-selection-order li')).toHaveCount(1);
   await expect(picker).toBeFocused();
   await expect(picker).toHaveValue('');
@@ -355,11 +371,36 @@ test('保存済みの表示する列は、操作可能になった瞬間から�
       storageKey: 'keydist:standalone-analyzer-options',
       storageValue: JSON.stringify({ version: 1, comparison: { visibleColumns: ['totalUnits'] } }),
     },
-    { selector: '.comparison-column-picker input[type="checkbox"]', read: 'checked' },
+    // 表示する列は解析設定の小窓にあり、小窓を開くボタンは読み込みが済むまで押せない。先頭が「動作数」。
+    { selector: '[data-settings-window="true"] input[type="checkbox"]', read: 'checked' },
   );
   await page.goto('/standalone/comparison');
-  const firstColumn = page.locator('.comparison-column-picker input[type="checkbox"]').first();
+  const firstColumn = (await openSettings(page)).getByRole('checkbox', { name: '動作数', exact: true });
   await expect(firstColumn).toBeEnabled({ timeout: 10_000 });
   await expect(firstColumn).not.toBeChecked();
   expect(await enabledValues(page)).toEqual(['false']);
+});
+
+test('基準にする対象は対象の選択の中にあり、解析設定には無い', async ({ page }) => {
+  await page.goto('/standalone/comparison');
+  await addTarget(page, 'layout:qwerty');
+  await addTarget(page, 'layout:colemak-dh');
+  await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
+
+  const selection = await openTargetSelection(page);
+  await expect(selection.getByLabel('基準', { exact: true })).toBeVisible();
+  const settings = await openSettings(page);
+  await expect(settings.getByLabel('基準', { exact: true })).toHaveCount(0);
+  await expect(settings.getByRole('checkbox', { name: '動作数', exact: true })).toBeVisible();
+
+  // 本体は見出し・説明段落・観測値の注記を持たない。
+  const body = page.locator('.pane-body');
+  await expect(body.getByRole('heading', { name: '比較表' })).toHaveCount(0);
+  await expect(body).not.toContainText('配列の優劣を判定するスコアではない');
+});
+
+test('対象が空の時はペインが案内を出し、本体は描かない', async ({ page }) => {
+  await page.goto('/standalone/comparison');
+  await expect(page.locator('[data-pane-empty="true"]')).toContainText('対象を1つ以上選ぶ');
+  await expect(page.locator('.comparison-table')).toHaveCount(0);
 });

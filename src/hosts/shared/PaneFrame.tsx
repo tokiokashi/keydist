@@ -1,73 +1,146 @@
-import type { ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import type { EngineRequestState } from '#engine/request.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { describeEngineRequestError, paneStatusLabel } from './pane-status.ts';
 import { conditionDiagnosticText, type ConditionHeaderInfo, type ConditionSummaryRow } from './condition-summary.ts';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
+import { PaneInfoButton, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
+import { SettingsWindow } from './SettingsWindow.tsx';
 import './pane-frame.css';
 
 /**
- * ペインの枠（#544 §8-1・§8-5、`docs/architecture.md`「hosts/shared: ペインの枠」）。
+ * ペインの枠（docs/architecture.md「ペイン」「Analyzerがペインに渡すもの」）。
  *
- * ここが持つのは見出し・条件の表示・状態表示・error boundaryだけ。可視化そのもの
- * （`children`）は一切計算しない。engineの依頼（`createExtractRequest`等）を購読して
- * `children`へ渡す値を用意するのは呼び出し側（`hosts/standalone`）の仕事で、
+ * 見出しは「Analyzer名 ⓘ / 対象 / 解析設定 / ⋯」。ペインが狭い時は2段に固定する
+ * （1段目: 名前・ⓘ・⋯、2段目: 対象・解析設定）。段数はペインの幅だけで決め、名前の長さでは変えない。
+ *
+ * Analyzerから受け取るのは名前・短い説明・本体・解析設定のcomponentだけで、置く場所はここが決める。
+ * engineの依頼を購読して本体へ渡す値を用意するのは呼び出し側（`hosts/<host>`）の仕事で、
  * このcomponentは「今の状態をどう見せるか」だけを担当する。
  */
 export interface PaneFrameProps {
-  readonly title: string;
-  readonly description?: ReactNode;
-  /** Setupの実体（配列・形状・指の割当）の名前。解決前（読み込み中）は省略する。 */
+  /** Analyzer名。 */
+  readonly name: string;
+  /** Analyzerの短い説明。見出しのⓘで出す。 */
+  readonly description: string;
+  /** 個別画面ではペインのAnalyzer名がページのh1になる。Workspaceでは2。 */
+  readonly headingLevel?: 1 | 2;
+  /**
+   * 読み上げ用の名前に添える対象の名前（「Bigram Flow — QWERTY」）。Workspaceでは
+   * 解析設定の小窓にも出す（どのペインの設定か分かるように）。
+   */
+  readonly targetName?: string;
+  /** 見出しの対象の欄（単一対象の選択、集合の要約とその選択）。 */
+  readonly target: ReactNode;
+  /** 解析設定のcomponent（Analyzerの`Settings`をホストが値と結んだもの）。 */
+  readonly settings: ReactNode;
+  /** Workspaceのペインでは、小窓にペイン名を出す。個別画面ではページに1枚なので出さない。 */
+  readonly showPaneNameInSettings?: boolean;
+  readonly menuItems: readonly PaneMenuItem[];
+  /** 条件の要約を開いた先頭に出す、対象のフル名。 */
+  readonly targetFullName?: string;
+  /** 対象の実体（配列・物理配列・指の割当）の名前。解決前（読み込み中）は省略する。 */
   readonly header?: ConditionHeaderInfo;
   /** Traceに効く条件の一覧（#544 §3「実効値の出どころを表示する」）。 */
   readonly conditionRows: readonly ConditionSummaryRow[];
-  /** 抽出の依頼の現在の状態。値そのもの（`value`）は`children`側で使うので、ここでは見ない。 */
+  /** 抽出の依頼の現在の状態。値そのもの（`value`）は本体側で使うので、ここでは見ない。 */
   readonly engineState: EngineRequestState<unknown>;
   /** Trace生成段の診断（配列定義の不備等）。値として表示する（#544 §8-5）。 */
   readonly traceErrors?: readonly string[];
   /**
-   * 解析設定（Analyzerの`Options`）を保存から読み直した時の診断（`decodeOptions`が積む、
-   * 壊れた値・未知の値を既定値へ戻したという報告）。`traceErrors`（Trace生成段）とは
-   * 出どころが違うので混ぜず、Analyzerを問わず使える汎用のpropとして別に持つ
-   * （レビュー指摘: 診断を作って捨てていたのを、ここで画面へ出す受け皿にする）。
+   * 解析設定を保存・URLから読み直した時の診断（壊れた値・未知の値を既定値へ戻したという報告）。
+   * `traceErrors`とは出どころが違うので混ぜない。
    */
   readonly settingsDiagnostics?: readonly CodecDiagnostic[];
-  readonly children: ReactNode;
+  /** ペイン全体で対象が空の時の案内。これがある間は本体を呼ばない。 */
+  readonly emptyMessage?: ReactNode;
+  /**
+   * 本体。描ける値がそろってから渡す。`undefined`の間（計算中で前の結果も無い）は枠が計算中と出す。
+   */
+  readonly children?: ReactNode;
 }
 
 export function PaneFrame({
-  title,
+  name,
   description,
+  headingLevel = 2,
+  targetName,
+  target,
+  settings,
+  showPaneNameInSettings = false,
+  menuItems,
+  targetFullName,
   header,
   conditionRows,
   engineState,
   traceErrors,
   settingsDiagnostics,
+  emptyMessage,
   children,
 }: PaneFrameProps) {
-  const statusLabel = paneStatusLabel(engineState.status);
-  const errorMessage = engineState.status === 'failed' ? describeEngineRequestError(engineState.error) : undefined;
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
+  const statusLabel = emptyMessage === undefined ? paneStatusLabel(engineState.status) : '';
+  const errorMessage = emptyMessage === undefined && engineState.status === 'failed'
+    ? describeEngineRequestError(engineState.error)
+    : undefined;
+  const paneName = targetName === undefined ? name : `${name} — ${targetName}`;
+  const Heading = headingLevel === 1 ? 'h1' : 'h2';
+
+  const closeSettings = () => {
+    setSettingsOpen(false);
+    settingsButtonRef.current?.focus();
+  };
 
   return (
-    <section className="pane-frame" data-pane-status={engineState.status}>
+    <section className="pane-frame" aria-label={paneName} data-pane-status={engineState.status}>
       <header className="pane-frame-header">
-        <div>
-          <h2>{title}</h2>
-          {header ? (
-            <p className="pane-frame-subtitle">
-              {header.layoutName} / {header.shapeName} · 指の割当: {header.fingerAssignmentName}
-            </p>
+        <div className="pane-frame-name">
+          <Heading className="pane-frame-title">{name}</Heading>
+          <PaneInfoButton name={name} description={description} />
+          {statusLabel ? (
+            <span className="pane-status-badge" data-status={engineState.status}>{statusLabel}</span>
           ) : null}
-          {description ? <p className="pane-frame-description">{description}</p> : null}
         </div>
-        {statusLabel ? (
-          <span className="pane-status-badge" data-status={engineState.status}>{statusLabel}</span>
-        ) : null}
+        <div className="pane-frame-target">{target}</div>
+        <button
+          ref={settingsButtonRef}
+          type="button"
+          className="pane-settings-button"
+          aria-label="解析設定"
+          aria-expanded={settingsOpen}
+          onClick={() => (settingsOpen ? closeSettings() : setSettingsOpen(true))}
+        >
+          <SettingsIcon />
+          <span className="pane-settings-button-text">解析設定</span>
+        </button>
+        <div className="pane-frame-menu">
+          <PaneMenu paneName={paneName} items={menuItems} />
+        </div>
       </header>
+
+      <SettingsWindow
+        open={settingsOpen}
+        onClose={closeSettings}
+        anchor={settingsButtonRef.current}
+        {...(showPaneNameInSettings ? { paneName } : {})}
+      >
+        {settings}
+      </SettingsWindow>
 
       {conditionRows.length > 0 ? (
         <details className="pane-condition-summary">
           <summary>条件（{conditionRows.length}）</summary>
+          {targetFullName !== undefined || header !== undefined ? (
+            <div className="pane-condition-target">
+              {targetFullName !== undefined ? <p className="pane-condition-target-name">{targetFullName}</p> : null}
+              {header !== undefined ? (
+                <p className="pane-condition-target-detail">
+                  {header.layoutName} / {header.shapeName} · 指の割当: {header.fingerAssignmentName}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <dl>
             {conditionRows.map((row) => (
               <div
@@ -115,8 +188,12 @@ export function PaneFrame({
         </p>
       ) : null}
 
-      {errorMessage ? (
+      {emptyMessage !== undefined ? (
+        <p className="pane-empty" data-pane-empty="true">{emptyMessage}</p>
+      ) : errorMessage ? (
         <p className="pane-error" role="alert" data-pane-error="true">{errorMessage}</p>
+      ) : children === undefined ? (
+        <p className="pane-busy" aria-busy="true" data-pane-busy="true">計算している…</p>
       ) : (
         <PaneErrorBoundary>
           <div className="pane-body" data-pane-stale={engineState.status === 'stale' || undefined}>

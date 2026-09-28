@@ -16,12 +16,12 @@ test('Bigram Flow is React-owned and follows the current Analyzer detail result'
     await expect(flow).toHaveAttribute('data-layout-id', nextLayout);
   }
 
-  const withinHand = flow.getByRole('button', { name: 'Within-hand' });
+  const withinHand = page.locator('.flow-legacy-settings').getByRole('button', { name: 'Within-hand' });
   await withinHand.click();
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
 
-  await flow.getByRole('button', { name: '人', exact: true }).click();
-  await expect(flow.getByText('1指選択では、その指自身のキー間移動だけを表示する。')).toBeVisible();
+  await page.locator('.flow-legacy-settings').getByRole('button', { name: '人', exact: true }).click();
+  await expect(page.locator('.flow-legacy-settings').getByText('1指選択では、その指自身のキー間移動だけを描く。')).toBeVisible();
 });
 
 test('Bigram Flow hover keeps connection DOM mounted', async ({ page }) => {
@@ -45,14 +45,14 @@ test('Bigram Flow view controls switch line scale and layer order locally', asyn
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible();
 
-  const lineScale = flow.getByLabel('紐の太さのスケール');
+  const lineScale = page.locator('.flow-legacy-settings').getByLabel('紐の太さ', { exact: true });
   await expect(lineScale).toHaveValue('linear');
   await lineScale.selectOption('sqrt');
   await expect(flow).toHaveAttribute('data-line-scale', 'sqrt');
   await lineScale.selectOption('log');
   await expect(flow).toHaveAttribute('data-line-scale', 'log');
 
-  const layerOrder = flow.getByLabel('紐の重ね順');
+  const layerOrder = page.locator('.flow-legacy-settings').getByLabel('重ね順', { exact: true });
   await expect(layerOrder).toHaveValue('weight');
   await layerOrder.selectOption('same-hand-top');
   await expect(flow).toHaveAttribute('data-layer-order', 'same-hand-top');
@@ -66,7 +66,7 @@ test('per-key hover scale widens the local max-weight outgoing edge to the globa
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible();
 
-  const hoverScaleToggle = flow.locator('.flow-checkbox-row input[type="checkbox"]');
+  const hoverScaleToggle = page.locator('.flow-legacy-settings').getByLabel('ホバー中はそのキーの線だけで太さを決める');
   await expect(hoverScaleToggle).toBeChecked();
   await expect(flow).toHaveAttribute('data-hover-scale', 'key');
 
@@ -120,7 +120,7 @@ test('Relative vectors show all vectors when no finger is selected', async ({ pa
   await expect(flow).toBeVisible();
 
   // 前提: 指は未選択のまま（起動直後の既定状態）。
-  const fingerButtons = flow.locator('.flow-finger-buttons button[aria-pressed="true"]');
+  const fingerButtons = page.locator('.flow-legacy-settings').locator('.flow-finger-buttons button[aria-pressed="true"]');
   expect(await fingerButtons.count()).toBe(0);
 
   await expect(flow.getByText('全指')).toBeVisible();
@@ -151,7 +151,7 @@ test('layer order controls where cross-hand edges land in DOM paint order', asyn
   expect(initialOrder.some(isCross)).toBe(true);
   expect(initialOrder.some((hand) => !isCross(hand))).toBe(true);
 
-  const layerOrder = flow.getByLabel('紐の重ね順');
+  const layerOrder = page.locator('.flow-legacy-settings').getByLabel('重ね順', { exact: true });
 
   await layerOrder.selectOption('cross-hand-top');
   await expect(flow).toHaveAttribute('data-layer-order', 'cross-hand-top');
@@ -193,7 +193,7 @@ test('sqrt line scale widens a below-max edge more than linear, but leaves the m
 
   const strokeWidthOf = (index: number) => edges.nth(index).getAttribute('stroke-width').then(Number);
 
-  const lineScale = flow.getByLabel('紐の太さのスケール');
+  const lineScale = page.locator('.flow-legacy-settings').getByLabel('紐の太さ', { exact: true });
   await expect(lineScale).toHaveValue('linear');
   const minLinear = await strokeWidthOf(minIndex);
   const maxLinear = await strokeWidthOf(maxIndex);

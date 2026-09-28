@@ -13,6 +13,7 @@ import {
 } from './movement-profile-scale.ts';
 import {
   computeOutgoingMaxWeight,
+  DEFAULT_BIGRAM_FLOW_OPTIONS,
   orderKeyboardFlowVectors,
   resolveKeyboardFlowMaxWeight,
   scaleKeyboardFlowWeight,
@@ -21,6 +22,17 @@ import {
   type KeyboardFlowLayerOrder,
   type KeyboardFlowWeightScale,
 } from './options.ts';
+import {
+  bindOption,
+  CheckboxOptionField,
+  OptionField,
+  OptionGroup,
+  RangeOptionField,
+  SegmentedOptionField,
+  SelectOptionField,
+  type OptionBinding,
+} from '#ui/primitives/option-fields.tsx';
+import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
 import './bigram-vector-view.css';
 
 /**
@@ -38,9 +50,8 @@ import './bigram-vector-view.css';
  * - `polarGain`によるpolar plotの表示倍率（KDE密度の値自体は変えない。
  *   `movement-profile-scale.ts`のコメント参照）
  *
- * `hosts/`（単体ページ・Workspace）がまだ無いため、`bigramFlowAnalyzer`の
- * `definition`/`View`の結び付け方は暫定。host側の実際の呼び出し形が決まったら
- * 見直す（PR本文「決めきれなかった点」）。
+ * 本体（`BigramFlowBody`）と解析設定（`BigramFlowSettings`）は置かれる場所を知らない。
+ * 見出し・説明・配列名・戻す操作・URLはホストが持つ（docs/architecture.md「Analyzerがペインに渡すもの」）。
  */
 
 const FINGER_OPTIONS: readonly { id: FingerClass; label: string }[] = [
@@ -613,59 +624,39 @@ function MovementProfilePlot({
   );
 }
 
-function FingerControls({
-  selected,
-  onToggle,
-}: {
-  selected: readonly FingerClass[];
-  onToggle: (finger: FingerClass) => void;
-}) {
-  return (
-    <div className="flow-finger-buttons" role="group" aria-label="指の組み合わせ">
-      {FINGER_OPTIONS.map((finger) => {
-        const active = selected.includes(finger.id);
-        const blocked = selected.length >= 2 && !active;
-        return (
-          <motion.button
-            type="button"
-            key={finger.id}
-            aria-pressed={active}
-            disabled={blocked}
-            data-active={active || undefined}
-            onClick={() => onToggle(finger.id)}
-            whileHover={blocked ? undefined : { y: -2 }}
-            whileTap={blocked ? undefined : { scale: 0.94 }}
-          >
-            {finger.label}
-          </motion.button>
-        );
-      })}
-    </div>
-  );
+
+const FINGER_SET_HINTS = {
+  0: '同じ指の移動と、指をまたいだ打鍵位置の移動をまとめて描く。大半は後者なので、手の中で打鍵位置がどう流れるかを見る図になる。',
+  1: '1指選択では、その指自身のキー間移動だけを描く。',
+  2: '2指選択では押し順を固定せず、両方向の指間移動を描く。',
+} as const;
+
+function fingerSetLabel(selectedFingers: readonly FingerClass[]): string {
+  if (selectedFingers.length === 0) return '全指';
+  return selectedFingers
+    .map((selected) => FINGER_OPTIONS.find((finger) => finger.id === selected)?.label)
+    .join(' + ');
 }
 
-export interface BigramFlowVisualizationProps {
-  layout: Layout;
-  geometry: Geometry;
-  trace: Trace;
-  extracted: BigramFlowExtracted;
-  options: BigramFlowOptions;
-  onOptionsChange(next: BigramFlowOptions): void;
+export interface BigramFlowBodyProps {
+  readonly layout: Layout;
+  readonly geometry: Geometry;
+  readonly trace: Trace;
+  readonly extracted: BigramFlowExtracted;
+  readonly options: BigramFlowOptions;
 }
 
 /**
- * Bigram Flowの可視化component（`docs/architecture.md`の「可視化」）。
- * `extracted`（`extract.ts`の計算結果）と見た目だけの設定を描くだけで、
- * Trace・vectorそのものからの再計算はしない。
+ * Bigram Flowの本体（図）。`extracted`（`extract.ts`の計算結果）と見た目だけの設定を描くだけで、
+ * Trace・vectorそのものからの再計算はしない。解析設定の入力部品は持たない（`BigramFlowSettings`）。
  */
-export function BigramFlowVisualization({
+export function BigramFlowBody({
   layout,
   geometry,
   trace,
   extracted,
   options,
-  onOptionsChange,
-}: BigramFlowVisualizationProps) {
+}: BigramFlowBodyProps) {
   const {
     source,
     selectedFingers,
@@ -676,16 +667,6 @@ export function BigramFlowVisualization({
     polarBandwidth,
     polarGain,
   } = options;
-
-  const toggleFinger = (finger: FingerClass) => {
-    const nextSelectedFingers = selectedFingers.includes(finger)
-      ? selectedFingers.filter((candidate) => candidate !== finger)
-      : selectedFingers.length >= 2
-        ? selectedFingers
-        : [...selectedFingers, finger];
-    if (nextSelectedFingers === selectedFingers) return;
-    onOptionsChange({ ...options, selectedFingers: nextSelectedFingers });
-  };
 
   const movementScale = movementPlotScale(extracted.relativeMaxDistance, movementScaleMode);
   const sharedMovementHalfSize = movementPlotExtent(
@@ -707,94 +688,14 @@ export function BigramFlowVisualization({
       data-polar-bandwidth={polarBandwidth}
       data-polar-gain={polarGain}
     >
-      <div className="flow-analysis-heading">
-        <div>
-          <h2>Bigram Flow</h2>
-        </div>
-        <p>
-          選んだテキストを打った時に、続けて打つ2打鍵で指がキーボード上をどう動くかを描く。
-          配列・物理配列・指の割当は上で選んだ条件のまま使う。
-        </p>
-      </div>
-
-      <section className="flow-controls" aria-label="Bigram Flowの表示設定">
-        <div className="flow-control-group">
-          <span>Bigram</span>
-          <div className="flow-segmented" role="group" aria-label="2打鍵の取り方">
-            {(['actual', 'within-hand'] as const).map((candidate) => (
-              <button
-                type="button"
-                key={candidate}
-                aria-pressed={source === candidate}
-                data-active={source === candidate || undefined}
-                onClick={() => onOptionsChange({ ...options, source: candidate })}
-              >
-                {candidate === 'actual' ? 'Actual' : 'Within-hand'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flow-control-group">
-          <span>Fingers</span>
-          <FingerControls selected={selectedFingers} onToggle={toggleFinger} />
-        </div>
-
-        <label className="flow-control-group">
-          <span>紐の太さ</span>
-          <select
-            aria-label="紐の太さのスケール"
-            value={lineScale}
-            onChange={(event) => onOptionsChange({ ...options, lineScale: event.currentTarget.value as KeyboardFlowWeightScale })}
-          >
-            <option value="linear">線形</option>
-            <option value="sqrt">平方根</option>
-            <option value="log">対数</option>
-          </select>
-        </label>
-
-        <label className="flow-control-group">
-          <span>重ね順</span>
-          <select
-            aria-label="紐の重ね順"
-            value={layerOrder}
-            onChange={(event) => onOptionsChange({ ...options, layerOrder: event.currentTarget.value as KeyboardFlowLayerOrder })}
-          >
-            <option value="weight">重みの順</option>
-            <option value="same-hand-top">同手を上</option>
-            <option value="cross-hand-top">逆手を上</option>
-          </select>
-        </label>
-
-        <label className="flow-control-group flow-checkbox-row">
-          <input
-            type="checkbox"
-            checked={hoverScale === 'key'}
-            onChange={(event) => onOptionsChange({ ...options, hoverScale: event.currentTarget.checked ? 'key' : 'global' })}
-          />
-          <span>ホバー中はそのキーの線だけで太さを決める</span>
-        </label>
-      </section>
-
-      <div className="flow-status">
-        <span>{layout.name}</span>
-        <span>{geometry.name}</span>
-        <span>{source === 'actual' ? '実際に続けて打った2打鍵' : '反対の手の打鍵を飛ばして、同じ手で続けた2打鍵'}</span>
+      {/* 表示中のデータに付く数（何組を描いたか・何を飛ばしたか）だけを置く。配列名などの条件は見出しと条件の要約が出す。 */}
+      <p className="flow-status">
         <span>2打鍵 {extracted.rawCount.toLocaleString()}組</span>
         {trace.skipped > 0 ? <span>打てずに飛ばした文字 {trace.skipped}</span> : null}
-      </div>
+      </p>
 
-      <section className="flow-block">
-        <header className="flow-block-header">
-          <div>
-            <p className="eyebrow">Absolute</p>
-            <h2>Keyboard Flow</h2>
-          </div>
-          <p>
-            キーからキーへの移動を線で描き、太さで回数を表す。線は始点が薄く、終点が濃い。
-            キーにポインタを乗せると、そのキーから出る線を強調する。
-          </p>
-        </header>
+      <section className="flow-block" aria-label="Keyboard Flow">
+        <h3 className="flow-block-title">Keyboard Flow</h3>
         <KeyboardFlow
           geometry={geometry}
           layout={layout}
@@ -810,138 +711,176 @@ export function BigramFlowVisualization({
 
       <AnimatePresence initial={false}>
         <motion.section
-          className="flow-analysis"
+          className="flow-block flow-analysis"
+          aria-label="Relative vectors"
           key={selectedFingers.length === 0 ? 'all' : selectedFingers.slice().sort().join('-')}
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 10 }}
           transition={{ type: 'spring', stiffness: 180, damping: 24 }}
         >
-          <div className="flow-analysis-heading">
-            <div>
-              <p className="eyebrow">Vector analysis</p>
-              <h2>
-                {selectedFingers.length === 0
-                  ? '全指'
-                  : selectedFingers.map((selected) =>
-                    FINGER_OPTIONS.find((finger) => finger.id === selected)?.label
-                  ).join(' + ')}
-              </h2>
-            </div>
-            <p>
-              {selectedFingers.length === 0
-                ? '同じ指の移動と、指をまたいだ打鍵位置の移動をまとめて表示する。大半は後者なので、手の中で打鍵位置がどう流れるかを見る図になる。'
-                : selectedFingers.length === 1
-                  ? '1指選択では、その指自身のキー間移動だけを表示する。'
-                  : '2指選択では押し順を固定せず、両方向の指間移動を表示する。'}
-            </p>
+          <h3 className="flow-block-title">
+            Relative vectors <span className="flow-block-subject">{fingerSetLabel(selectedFingers)}</span>
+          </h3>
+          <div className="flow-two-up">
+            <MovementProfilePlot
+              hand="left"
+              profile={extracted.hands.left}
+              maxDistance={extracted.relativeMaxDistance}
+              maxVectorWeight={extracted.relativeMaxWeight}
+              scaleMode={movementScaleMode}
+              bandwidthDegrees={polarBandwidth}
+              polarGain={polarGain}
+              sharedHalfSize={sharedMovementHalfSize}
+            />
+            <MovementProfilePlot
+              hand="right"
+              profile={extracted.hands.right}
+              maxDistance={extracted.relativeMaxDistance}
+              maxVectorWeight={extracted.relativeMaxWeight}
+              scaleMode={movementScaleMode}
+              bandwidthDegrees={polarBandwidth}
+              polarGain={polarGain}
+              sharedHalfSize={sharedMovementHalfSize}
+            />
           </div>
-
-          <section className="flow-block">
-            <header className="flow-block-header">
-              <div>
-                <p className="eyebrow">Movement profile</p>
-                <h2>Relative vectors</h2>
-              </div>
-              <p>
-                打鍵ごとの移動方向と距離を描く。
-                外周は移動方向の分布、白線は平均的な移動を表す。
-              </p>
-            </header>
-            <div className="flow-profile-controls" aria-label="移動の向きと距離の表示設定">
-              <label>
-                <span>距離表示</span>
-                <select
-                  aria-label="距離表示"
-                  value={movementScaleMode}
-                  onChange={(event) => onOptionsChange({ ...options, movementScaleMode: event.currentTarget.value as MovementScaleMode })}
-                >
-                  <option value="fit">自動調整</option>
-                  <option value="fixed">固定スケール</option>
-                </select>
-                <small>
-                  {movementScaleMode === 'fit'
-                    ? '現在のデータを見やすい大きさに調整'
-                    : '解析対象を変えても同じ距離を同じ長さで表示'}
-                </small>
-              </label>
-              <label>
-                <span>方向の広がり <output>±{polarBandwidth}°</output></span>
-                <input
-                  type="range"
-                  min={MIN_POLAR_BANDWIDTH_DEGREES}
-                  max="45"
-                  step="1"
-                  value={polarBandwidth}
-                  aria-label="方向の広がり"
-                  onChange={(event) => onOptionsChange({ ...options, polarBandwidth: Number(event.currentTarget.value) })}
-                />
-              </label>
-              <label>
-                <span>方向分布の表示倍率 <output>{polarGain.toFixed(1)}×</output></span>
-                <input
-                  type="range"
-                  min="0.25"
-                  max="3"
-                  step="0.05"
-                  value={polarGain}
-                  aria-label="方向分布の表示倍率"
-                  onChange={(event) => onOptionsChange({ ...options, polarGain: Number(event.currentTarget.value) })}
-                />
-              </label>
-              <button
-                type="button"
-                className="flow-profile-reset"
-                onClick={() => onOptionsChange({
-                  ...options,
-                  movementScaleMode: 'fit',
-                  polarBandwidth: 5,
-                  polarGain: 1,
-                })}
-              >
-                標準に戻す
-              </button>
-            </div>
-            <div className="flow-two-up">
-              <MovementProfilePlot
-                hand="left"
-                profile={extracted.hands.left}
-                maxDistance={extracted.relativeMaxDistance}
-                maxVectorWeight={extracted.relativeMaxWeight}
-                scaleMode={movementScaleMode}
-                bandwidthDegrees={polarBandwidth}
-                polarGain={polarGain}
-                sharedHalfSize={sharedMovementHalfSize}
-              />
-              <MovementProfilePlot
-                hand="right"
-                profile={extracted.hands.right}
-                maxDistance={extracted.relativeMaxDistance}
-                maxVectorWeight={extracted.relativeMaxWeight}
-                scaleMode={movementScaleMode}
-                bandwidthDegrees={polarBandwidth}
-                polarGain={polarGain}
-                sharedHalfSize={sharedMovementHalfSize}
-              />
-            </div>
-            {source === 'actual' && extracted.hasCrossHandInAnalysis ? (
-              <p className="flow-footnote">
-                左右の手をまたぐ2打鍵は、Keyboard Flowには含めるが、Relative vectorsからは除く。
-              </p>
-            ) : null}
-          </section>
+          {source === 'actual' && extracted.hasCrossHandInAnalysis ? (
+            <p className="flow-footnote">
+              左右の手をまたぐ2打鍵は、Keyboard Flowには含めるが、Relative vectorsからは除く。
+            </p>
+          ) : null}
         </motion.section>
       </AnimatePresence>
-
-      <p className="flow-footnote">
-        方向と距離は観測値であり、配列の優劣を判定するスコアではない。
-      </p>
     </section>
   );
 }
 
-/** engineの契約（純粋）と可視化componentの結び付け。将来hostsがこれを載せる想定。 */
+/** 指の組み合わせ（0〜2本）。3本目は選べないので、2本選んだら残りを押せなくする。 */
+function FingerOptionField({ binding }: { binding: OptionBinding<readonly FingerClass[]> }) {
+  const selected = binding.value;
+  const toggle = (finger: FingerClass) => {
+    if (selected.includes(finger)) {
+      binding.onChange(selected.filter((candidate) => candidate !== finger));
+    } else if (selected.length < 2) {
+      binding.onChange([...selected, finger]);
+    }
+  };
+  return (
+    <OptionField label="指の組み合わせ" binding={binding} hint={FINGER_SET_HINTS[selected.length as 0 | 1 | 2]}>
+      {(id) => (
+        <div className="option-segmented flow-finger-buttons" role="group" id={id} aria-labelledby={`${id}-label`}>
+          {FINGER_OPTIONS.map((finger) => {
+            const active = selected.includes(finger.id);
+            return (
+              <button
+                type="button"
+                key={finger.id}
+                aria-pressed={active}
+                disabled={selected.length >= 2 && !active}
+                onClick={() => toggle(finger.id)}
+              >
+                {finger.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </OptionField>
+  );
+}
+
+/** Bigram Flowの解析設定。項目の既定値は宣言（`options.ts`）から導いた`defaultOptions`。 */
+export function BigramFlowSettings({ options, onOptionsChange }: AnalyzerSettingsProps<BigramFlowOptions>) {
+  const bind = <K extends keyof BigramFlowOptions>(key: K) =>
+    bindOption(options, DEFAULT_BIGRAM_FLOW_OPTIONS, onOptionsChange, key);
+  return (
+    <div className="option-groups">
+      <OptionGroup title="描く2打鍵">
+        <SegmentedOptionField
+          label="2打鍵の取り方"
+          binding={bind('source')}
+          choices={[
+            { value: 'actual', label: 'Actual' },
+            { value: 'within-hand', label: 'Within-hand' },
+          ]}
+          hint={options.source === 'actual'
+            ? '実際に続けて打った2打鍵'
+            : '反対の手の打鍵を飛ばして、同じ手で続けた2打鍵'}
+        />
+        <FingerOptionField binding={bind('selectedFingers')} />
+      </OptionGroup>
+
+      <OptionGroup title="Keyboard Flow">
+        <SelectOptionField
+          label="紐の太さ"
+          binding={bind('lineScale')}
+          choices={[
+            { value: 'linear', label: '線形' },
+            { value: 'sqrt', label: '平方根' },
+            { value: 'log', label: '対数' },
+          ]}
+        />
+        <SelectOptionField
+          label="重ね順"
+          binding={bind('layerOrder')}
+          choices={[
+            { value: 'weight', label: '重みの順' },
+            { value: 'same-hand-top', label: '同手を上' },
+            { value: 'cross-hand-top', label: '逆手を上' },
+          ]}
+        />
+        <CheckboxOptionField
+          label="ホバー中はそのキーの線だけで太さを決める"
+          binding={{
+            value: options.hoverScale === 'key',
+            defaultValue: DEFAULT_BIGRAM_FLOW_OPTIONS.hoverScale === 'key',
+            onChange: (checked) => onOptionsChange({ ...options, hoverScale: checked ? 'key' : 'global' }),
+          }}
+        />
+      </OptionGroup>
+
+      <OptionGroup title="Relative vectors">
+        <SelectOptionField
+          label="距離表示"
+          binding={bind('movementScaleMode')}
+          choices={[
+            { value: 'fit', label: '自動調整' },
+            { value: 'fixed', label: '固定スケール' },
+          ]}
+          hint={options.movementScaleMode === 'fit'
+            ? '今のデータを見やすい大きさに調整する'
+            : '対象を変えても同じ距離を同じ長さで描く'}
+        />
+        <RangeOptionField
+          label="方向の広がり"
+          binding={bind('polarBandwidth')}
+          min={MIN_POLAR_BANDWIDTH_DEGREES}
+          max={45}
+          step={1}
+          format={(value) => `±${value}°`}
+        />
+        <RangeOptionField
+          label="方向分布の表示倍率"
+          binding={bind('polarGain')}
+          min={0.25}
+          max={3}
+          step={0.05}
+          format={(value) => `${value.toFixed(1)}×`}
+        />
+      </OptionGroup>
+    </div>
+  );
+}
+
+/**
+ * ペインに渡すもの（`analyzers/pane-parts.tsx`）。名前・短い説明はここが正で、
+ * ペインの見出し・個別画面のh1・routeの`<title>`はここから読む。
+ */
 export const bigramFlowAnalyzer = {
   definition: bigramFlowDefinition,
-  View: BigramFlowVisualization,
-};
+  name: 'Bigram Flow',
+  description: '続けて打つ2打鍵で、指がキーボード上をどう動くかを描く。キー間の流れと、手ごとの移動の向きと距離の分布を並べる。',
+  Body: BigramFlowBody,
+  Settings: BigramFlowSettings,
+  defaultOptions: DEFAULT_BIGRAM_FLOW_OPTIONS,
+} satisfies AnalyzerPaneParts<typeof bigramFlowDefinition, BigramFlowOptions, BigramFlowBodyProps>;

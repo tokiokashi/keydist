@@ -23,12 +23,12 @@ test('standalone Bigram Flow connects the Gate 1 vertical slice and keeps ViewCo
   await expect(conditions).toContainText('override=none');
   await expect(viewConfig).toContainText('source=actual');
 
-  await flow.getByRole('button', { name: 'Within-hand' }).click();
+  await page.locator('.flow-legacy-settings').getByRole('button', { name: 'Within-hand' }).click();
   await expect.poll(() => new URL(page.url()).searchParams.get('source')).toBe('within-hand');
-  await expect(flow.getByText('反対の手の打鍵を飛ばして、同じ手で続けた2打鍵')).toBeVisible();
+  await expect(page.locator('.flow-legacy-settings').getByText('反対の手の打鍵を飛ばして、同じ手で続けた2打鍵')).toBeVisible();
   await expect(viewConfig).toContainText('source=within-hand');
 
-  await flow.getByLabel('距離表示').selectOption('fixed');
+  await page.locator('.flow-legacy-settings').getByLabel('距離表示', { exact: true }).selectOption('fixed');
   await expect.poll(() => new URL(page.url()).searchParams.get('movementScale')).toBe('fixed');
 
   await expect(host).toHaveAttribute('data-session-target-revision', targetRevision!);
@@ -94,7 +94,7 @@ test('Domain asset edits refresh the shared runtime without resetting Session se
 
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toHaveAttribute('data-layout-id', 'user-live');
-  await expect(flow.getByText('Live Layout A', { exact: true })).toBeVisible();
+  await expect(page.locator('.flow-legacy-compat > .flow-status').getByText('Live Layout A', { exact: true })).toBeVisible();
 
   const targetRevision = await host.getAttribute('data-session-target-revision');
 
@@ -107,7 +107,7 @@ test('Domain asset edits refresh the shared runtime without resetting Session se
     }));
   });
 
-  await expect(flow.getByText('Live Layout B', { exact: true })).toBeVisible();
+  await expect(page.locator('.flow-legacy-compat > .flow-status').getByText('Live Layout B', { exact: true })).toBeVisible();
   await expect(host).toHaveAttribute('data-session-target-revision', targetRevision!);
   await expect(host).toHaveAttribute('data-binding-status', 'ok');
 });

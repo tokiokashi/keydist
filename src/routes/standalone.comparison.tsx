@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
 import { StandaloneComparisonApp } from '#app/standalone/StandaloneComparisonApp.tsx';
 
 /**
@@ -8,7 +9,7 @@ import { StandaloneComparisonApp } from '#app/standalone/StandaloneComparisonApp
 export const Route = createFileRoute('/standalone/comparison')({
   head: () => ({
     meta: [
-      { title: '比較表 | keydist' },
+      { title: `${comparisonAnalyzer.name} | keydist` },
       {
         name: 'description',
         content: '配列やSetupを選んで並べ、同じテキストを打った時の指の移動距離などを表で比べる。',

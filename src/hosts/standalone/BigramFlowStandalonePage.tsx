@@ -7,7 +7,14 @@ import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
 import type { EngineCache } from '#engine/cache.ts';
 import { DEFAULT_ANALYSIS_TARGET } from '#input/setup/index.ts';
-import { combinePaneStates, conditionHeaderInfoFromResolvedInput, traceConditionSummary, PaneFrame } from '#hosts/shared/index.ts';
+import {
+  combinePaneStates,
+  conditionHeaderInfoFromResolvedInput,
+  PaneFrame,
+  resetOptionsMenuItem,
+  traceConditionSummary,
+} from '#hosts/shared/index.ts';
+import { nameTargets } from '#input/setup/index.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import { bigramFlowOptions, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
@@ -16,6 +23,8 @@ import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { TextControl } from './TextControl.tsx';
 import { TargetPicker } from './TargetPicker.tsx';
 import { DefaultShapeControl } from './DefaultShapeControl.tsx';
+import { CopySettingsLinkButton, StandaloneContextBar } from './StandaloneContextBar.tsx';
+import { setupNumbersOf, targetNameSource } from './target-name-source.ts';
 import { useOptionsDraft } from './use-options-draft.ts';
 import { useAnalyzerPane } from './use-analyzer-pane.ts';
 import './standalone.css';
@@ -135,19 +144,6 @@ export function BigramFlowStandalonePage({
     // 安定した参照なので、依存に含めても再実行の心配は無い。
   }, [assetsReady, analyzerId, dispatch]);
 
-  const [copyLinkFeedback, setCopyLinkFeedback] = useState(false);
-  const copyOptionsLink = () => {
-    // 「今の設定のURLをコピー」導線（#544指示書「小さく済むなら足す」）。既定値と同じ項目は
-    // URLへ出ない（`encodeOptionsToUrl`）ので、変更した項目だけを含む短いリンクになる。
-    const params = bigramFlowOptions.encodeOptionsToUrl(optionsDraft);
-    const query = params.toString();
-    const url = `${window.location.origin}${window.location.pathname}${query ? `?${query}` : ''}`;
-    void navigator.clipboard.writeText(url).then(() => {
-      setCopyLinkFeedback(true);
-      setTimeout(() => setCopyLinkFeedback(false), 1500);
-    });
-  };
-
   const resolution = useMemo(
     () => resolveStandalonePaneInput(target, setupsById, catalog, assets.setupLibrary.overrides, resolvedText),
     [target, setupsById, catalog, assets.setupLibrary.overrides, resolvedText],
@@ -168,15 +164,25 @@ export function BigramFlowStandalonePage({
     ? pane.trace.value.trace.errors
     : [];
 
-  const View = bigramFlowAnalyzer.View;
+  // 対象の名前（読み上げ用の名前と、条件の要約の先頭に出すフル名）。単一対象なので集合は自分1つ。
+  const setupNumbers = useMemo(() => setupNumbersOf(setups), [setups]);
+  const named = useMemo(
+    () => nameTargets([targetNameSource(target, resolution, setupsById, setupNumbers, catalog.setupCatalog)])[0],
+    [target, resolution, setupsById, setupNumbers, catalog.setupCatalog],
+  );
+
+  const { Body, Settings } = bigramFlowAnalyzer;
   const extraction = pane.extraction;
+  const changeOptions = (next: BigramFlowOptions) => {
+    setOptionsDraft(next);
+    onBigramFlowOptionsCommit(next);
+  };
+
+  const hasExtraction = extraction.status === 'ready' || extraction.status === 'stale';
+  const hasTrace = pane.trace.status === 'ready' || pane.trace.status === 'stale';
 
   return (
     <div className="standalone-page">
-      <header className="standalone-page-header">
-        <h1>Bigram Flow</h1>
-      </header>
-
       {/*
        * プリレンダーされたHTMLはハイドレーション前から操作できてしまう（レビュー指摘:
        * ハイドレーション完了までの約750〜850msの間にクリック・入力すると、見た目は
@@ -190,9 +196,25 @@ export function BigramFlowStandalonePage({
         disabled={!assetsReady}
         style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
       >
-        <section className="standalone-controls" aria-label="対象と入力">
-          <label className="standalone-control">
-            <span>対象</span>
+        <StandaloneContextBar>
+          <TextControl
+            holder="standalone"
+            textLibrary={assets.textLibrary}
+            selection={assets.standaloneTextSelection}
+            dispatch={dispatch}
+            generateTextId={generateTextId}
+            onTextContentCommit={onTextContentCommit}
+          />
+          <DefaultShapeControl overrides={assets.setupLibrary.overrides} dispatch={dispatch} catalog={catalog} />
+          <CopySettingsLinkButton query={() => bigramFlowOptions.encodeOptionsToUrl(optionsDraft)} />
+        </StandaloneContextBar>
+
+        <PaneFrame
+          name={bigramFlowAnalyzer.name}
+          description={bigramFlowAnalyzer.description}
+          headingLevel={1}
+          {...(named === undefined ? {} : { targetName: named.displayName, targetFullName: named.fullName })}
+          target={(
             <TargetPicker
               aria-label="対象"
               layouts={catalog.setupCatalog.layouts}
@@ -201,57 +223,24 @@ export function BigramFlowStandalonePage({
               value={target}
               onChange={setTarget}
             />
-          </label>
-
-          <DefaultShapeControl overrides={assets.setupLibrary.overrides} dispatch={dispatch} catalog={catalog} />
-
-          <div className="standalone-control">
-            <span>解析設定</span>
-            <button type="button" onClick={copyOptionsLink}>
-              {copyLinkFeedback ? 'コピーした' : '今の設定のURLをコピー'}
-            </button>
-          </div>
-        </section>
-
-        <TextControl
-          holder="standalone"
-          textLibrary={assets.textLibrary}
-          selection={assets.standaloneTextSelection}
-          dispatch={dispatch}
-          generateTextId={generateTextId}
-          onTextContentCommit={onTextContentCommit}
-        />
-
-        <PaneFrame
-          title="Bigram Flow"
+          )}
+          settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
+          menuItems={[resetOptionsMenuItem(() => changeOptions(bigramFlowAnalyzer.defaultOptions))]}
           header={header}
           conditionRows={conditionRows}
           engineState={combinePaneStates(extraction, pane.trace)}
           traceErrors={traceErrors}
           settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}
         >
-          {(() => {
-            // 失敗はPaneFrame自身が値として表示する（#544 §8-5）ので、ここでは何も描かない。
-            if (extraction.status === 'failed') return null;
-            const hasExtraction = extraction.status === 'ready' || extraction.status === 'stale';
-            const hasTrace = pane.trace.status === 'ready' || pane.trace.status === 'stale';
-            if (!resolution.ok || !hasExtraction || !hasTrace) {
-              return <p aria-busy="true">計算している…</p>;
-            }
-            return (
-              <View
-                layout={resolution.input.layout}
-                geometry={resolution.input.geometry}
-                trace={pane.trace.value.trace}
-                extracted={extraction.value.extracted}
-                options={optionsDraft}
-                onOptionsChange={(next) => {
-                  setOptionsDraft(next);
-                  onBigramFlowOptionsCommit(next);
-                }}
-              />
-            );
-          })()}
+          {resolution.ok && hasExtraction && hasTrace ? (
+            <Body
+              layout={resolution.input.layout}
+              geometry={resolution.input.geometry}
+              trace={pane.trace.value.trace}
+              extracted={extraction.value.extracted}
+              options={optionsDraft}
+            />
+          ) : undefined}
         </PaneFrame>
       </fieldset>
     </div>

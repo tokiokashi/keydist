@@ -1,109 +1,13 @@
 .flow-feature {
-  max-width: 70rem;
-}
-
-.flow-feature h2 {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-}
-
-.flow-controls {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin: 1rem 0 0.75rem;
-  padding: 1rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-}
-
-.flow-layout-select,
-.flow-control-group {
-  display: grid;
-  align-content: start;
-  gap: 0.45rem;
-}
-
-.flow-layout-select > span,
-.flow-control-group > span {
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
-.flow-layout-select select,
-.flow-control-group select {
-  width: 100%;
-  min-height: 2rem;
-  padding: 6px 8px;
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  background: var(--surface-subtle);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.82rem;
-}
-
-.flow-segmented,
-.flow-finger-buttons {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 0.35rem;
-}
-
-.flow-segmented button,
-.flow-finger-buttons button {
-  min-height: 2rem;
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  background: var(--surface-subtle);
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.flow-segmented button[data-active],
-.flow-finger-buttons button[data-active] {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-contrast);
-}
-
-.flow-finger-buttons button {
-  font-size: 0.88rem;
-}
-
-.flow-finger-buttons button:disabled {
-  cursor: not-allowed;
-  opacity: 0.34;
-}
-
-.flow-checkbox-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-}
-
-.flow-checkbox-row > span {
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  font-weight: 600;
+  gap: 1.25rem;
 }
 
 .flow-status {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
-  margin-bottom: 1.5rem;
+  margin: 0;
 }
 
 .flow-status span {
@@ -117,34 +21,24 @@
 }
 
 .flow-block {
-  margin-top: 1rem;
-  padding: 1rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-}
-
-.flow-block-header,
-.flow-analysis-heading {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 2rem;
-  padding: 0.25rem 0.25rem 1rem;
-}
-
-.flow-block-header .eyebrow,
-.flow-analysis-heading .eyebrow {
-  margin-bottom: 0.25rem;
-}
-
-.flow-block-header > p,
-.flow-analysis-heading > p {
-  max-width: 31rem;
+  display: grid;
+  gap: 0.6rem;
   margin: 0;
+}
+
+/* 図が2つあるので、図ごとの小見出しだけを持つ（Analyzer名・説明の段落はペインの見出しが持つ）。 */
+.flow-block-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.flow-block-subject {
+  margin-left: 0.4rem;
   color: var(--text-muted);
-  font-size: 0.83rem;
-  line-height: 1.55;
+  font-weight: 600;
 }
 
 .flow-stage,
@@ -302,21 +196,6 @@
   color: var(--viz-key-muted);
 }
 
-.flow-analysis {
-  margin-top: 1.5rem;
-}
-
-.flow-analysis-heading {
-  padding: 0 0.25rem 0.25rem;
-}
-
-.flow-analysis-heading h2 {
-  color: var(--text);
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-}
-
 .flow-analysis-locked {
   display: grid;
   gap: 0.25rem;
@@ -342,62 +221,6 @@
 .flow-analysis-locked p {
   margin: 0.1rem 0 0;
   font-size: 0.82rem;
-}
-
-.flow-profile-controls {
-  display: grid;
-  grid-template-columns: minmax(10rem, 0.7fr) repeat(2, minmax(12rem, 1fr)) auto;
-  gap: 0.7rem;
-  margin: 0 0 0.8rem;
-  padding: 0.7rem 0.8rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-subtle);
-}
-
-.flow-profile-controls label {
-  display: grid;
-  gap: 0.35rem;
-  min-width: 0;
-  color: var(--text-muted);
-  font-size: 0.72rem;
-}
-
-.flow-profile-controls small {
-  min-height: 1.1em;
-  color: var(--text-muted);
-  font-size: 0.64rem;
-  line-height: 1.35;
-}
-
-.flow-profile-controls label > span {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.flow-profile-controls output {
-  color: var(--text);
-  font: 650 0.68rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-.flow-profile-controls select,
-.flow-profile-controls input[type="range"] {
-  width: 100%;
-}
-
-.flow-profile-reset {
-  align-self: end;
-  min-height: 2rem;
-  padding: 0.35rem 0.7rem;
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 0.72rem;
-  cursor: pointer;
 }
 
 .flow-two-up {
@@ -632,24 +455,13 @@
   line-height: 1.55;
 }
 
-@media (max-width: 800px) {
-  .flow-controls {
-    grid-template-columns: 1fr;
-  }
-
-  .flow-profile-controls {
-    grid-template-columns: 1fr;
-  }
-
+/*
+ * 幅の切り替えは画面ではなく置かれた領域（ホストがcontainerにする本体の領域）の幅で行う
+ * （docs/architecture.md「Analyzerがペインに渡すもの」）。
+ */
+@container (max-width: 800px) {
   .flow-two-up {
     grid-template-columns: 1fr;
-  }
-
-  .flow-block-header,
-  .flow-analysis-heading {
-    align-items: start;
-    flex-direction: column;
-    gap: 0.55rem;
   }
 
   .flow-legend {
@@ -669,4 +481,24 @@
   .flow-feature *::after {
     scroll-behavior: auto !important;
   }
+}
+
+/* 旧画面（`bigram-flow-view.tsx`）だけが使う並び。旧画面の削除とともに消す。 */
+.flow-legacy-compat {
+  display: grid;
+  gap: 1rem;
+  container-type: inline-size;
+}
+
+.flow-legacy-settings {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.flow-legacy-settings .option-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
 }

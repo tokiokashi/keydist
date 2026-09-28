@@ -10,19 +10,27 @@ import { targetPaletteColor } from '#ui/theme/target-colors.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
-import { conditionHeaderInfoFromResolvedInput, nonDefaultConditionRows, summarizeNonDefaultConditions, traceConditionSummary, type ConditionValueNames } from '#hosts/shared/index.ts';
+import {
+  conditionHeaderInfoFromResolvedInput,
+  nonDefaultConditionRows,
+  PaneFrame,
+  resetOptionsMenuItem,
+  summarizeNonDefaultConditions,
+  traceConditionSummary,
+  type ConditionValueNames,
+} from '#hosts/shared/index.ts';
 import { nSensitivityAnalyzer, type NSensitivityRowContext } from '#analyzers/n-sensitivity/definition.tsx';
 import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { TextControl } from './TextControl.tsx';
-import { AddTargetControl } from './TargetPicker.tsx';
 import { DefaultShapeControl } from './DefaultShapeControl.tsx';
+import { SetTargetSelection } from './SetTargetSelection.tsx';
+import { StandaloneContextBar } from './StandaloneContextBar.tsx';
 import { useOptionsDraft } from './use-options-draft.ts';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
 import { setupNumbersOf, targetNameSource } from './target-name-source.ts';
 import './standalone.css';
-import './set-selection-controls.css';
 
 /**
  * N感度の単体ページ（#544 Phase 3「N感度」、#578指摘1「対象を配列かSetupにする」）。
@@ -108,19 +116,6 @@ export function NSensitivityStandalonePage({
 
   const setSelection = (next: readonly AnalysisTarget[]) => dispatch(setAnalyzerSetSelectionTargetsCommand(ANALYZER_ID, next));
 
-  const addMember = (target: AnalysisTarget) => setSelection([...targets, target]);
-
-  const removeMember = (index: number) => setSelection(targets.filter((_, i) => i !== index));
-
-  const moveMember = (index: number, direction: -1 | 1) => {
-    const target = index + direction;
-    if (target < 0 || target >= targets.length) return;
-    const next = [...targets];
-    const [item] = next.splice(index, 1);
-    next.splice(target, 0, item!);
-    setSelection(next);
-  };
-
   const storedOptionsRaw = assets.standaloneAnalyzerOptions[ANALYZER_ID];
   const decoded = useMemo(
     () => decodeStoredAnalyzerOptions(nSensitivityAnalyzer.definition, storedOptionsRaw),
@@ -165,83 +160,58 @@ export function NSensitivityStandalonePage({
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
 
   const pane = useAnalyzerSetPane(cache, nSensitivityAnalyzer.definition, optionsDraft, members);
-  const View = nSensitivityAnalyzer.View;
+  const { Body, Settings } = nSensitivityAnalyzer;
   const extraction = pane.extraction;
   const extracted = extraction.status === 'ready' || extraction.status === 'stale' ? extraction.value.extracted : undefined;
+  const changeOptions = (next: NSensitivityOptions) => {
+    setOptionsDraft(next);
+    onOptionsCommit(next);
+  };
 
   return (
     <div className="standalone-page">
-      <header className="standalone-page-header">
-        <h1>N感度</h1>
-      </header>
-
       {/* プリレンダーされたページはハイドレーション完了まで操作を効かせない（レビュー指摘1）。 */}
       <fieldset
         disabled={!assetsReady}
         style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
       >
-        <TextControl
-          holder="standalone"
-          textLibrary={assets.textLibrary}
-          selection={assets.standaloneTextSelection}
-          dispatch={dispatch}
-          generateTextId={generateTextId}
-          onTextContentCommit={onTextContentCommit}
-        />
-
-        <DefaultShapeControl overrides={assets.setupLibrary.overrides} dispatch={dispatch} catalog={catalog} />
-
-        <section className="set-selection-controls" aria-label="対象の選択">
-          <AddTargetControl
-            layouts={catalog.setupCatalog.layouts}
-            shapes={catalog.setupCatalog.shapes}
-            setups={setups}
-            onAdd={addMember}
+        <StandaloneContextBar>
+          <TextControl
+            holder="standalone"
+            textLibrary={assets.textLibrary}
+            selection={assets.standaloneTextSelection}
+            dispatch={dispatch}
+            generateTextId={generateTextId}
+            onTextContentCommit={onTextContentCommit}
           />
+          <DefaultShapeControl overrides={assets.setupLibrary.overrides} dispatch={dispatch} catalog={catalog} />
+        </StandaloneContextBar>
 
-          {targets.length > 0 ? (
-            <ol className="set-selection-order" aria-label="表示順">
-              {targets.map((target, index) => {
-                const key = analysisTargetKey(target);
-                const named = namedByKey.get(key);
-                return (
-                  <li key={key}>
-                    <span title={named?.fullName}>{named?.displayName ?? key}</span>
-                    <button type="button" onClick={() => moveMember(index, -1)} disabled={index === 0} aria-label={`${index + 1}番目を上へ`}>↑</button>
-                    <button
-                      type="button"
-                      onClick={() => moveMember(index, 1)}
-                      disabled={index === targets.length - 1}
-                      aria-label={`${index + 1}番目を下へ`}
-                    >
-                      ↓
-                    </button>
-                    <button type="button" onClick={() => removeMember(index)} aria-label={`${index + 1}番目を外す`}>✕</button>
-                  </li>
-                );
-              })}
-            </ol>
-          ) : (
-            <p>対象を追加するとチャートに加わる。</p>
+        <PaneFrame
+          name={nSensitivityAnalyzer.name}
+          description={nSensitivityAnalyzer.description}
+          headingLevel={1}
+          target={(
+            <SetTargetSelection
+              targets={targets}
+              namedByKey={namedByKey}
+              layouts={catalog.setupCatalog.layouts}
+              shapes={catalog.setupCatalog.shapes}
+              setups={setups}
+              onChange={setSelection}
+            />
           )}
-        </section>
-
-        {extracted === undefined ? (
-          <p aria-busy="true">
-            {extraction.status === 'failed' ? '計算に失敗した' : '計算している…'}
-          </p>
-        ) : (
-          <View
-            extracted={extracted}
-            order={order}
-            rowContext={rowContext}
-            options={optionsDraft}
-            onOptionsChange={(next) => {
-              setOptionsDraft(next);
-              onOptionsCommit(next);
-            }}
-          />
-        )}
+          settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
+          menuItems={[resetOptionsMenuItem(() => changeOptions(nSensitivityAnalyzer.defaultOptions))]}
+          conditionRows={[]}
+          engineState={extraction}
+          settingsDiagnostics={decoded.diagnostics}
+          {...(targets.length === 0 ? { emptyMessage: '対象を1つ以上選ぶと、ここにチャートが出る。' } : {})}
+        >
+          {extracted === undefined ? undefined : (
+            <Body extracted={extracted} order={order} rowContext={rowContext} options={optionsDraft} />
+          )}
+        </PaneFrame>
       </fieldset>
     </div>
   );

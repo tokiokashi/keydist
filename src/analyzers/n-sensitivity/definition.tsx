@@ -1,5 +1,7 @@
 import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivityExtracted, type NSensitivitySeries, type NSensitivitySeriesFailed } from './extract.ts';
-import type { NSensitivityOptions } from './options.ts';
+import { DEFAULT_N_SENSITIVITY_OPTIONS, type NSensitivityOptions } from './options.ts';
+import { bindOption, RadioOptionField } from '#ui/primitives/option-fields.tsx';
+import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
 import './n-sensitivity-view.css';
 
 /**
@@ -34,13 +36,12 @@ export interface NSensitivityRowContext {
   readonly conditionSummary?: string;
 }
 
-export interface NSensitivityVisualizationProps {
-  extracted: NSensitivityExtracted;
-  /** 表示順（対象keyの列）。ページ自身が持つ集合の並び順（#544 §6）。 */
-  order: readonly string[];
-  rowContext: ReadonlyMap<string, NSensitivityRowContext>;
-  options: NSensitivityOptions;
-  onOptionsChange(next: NSensitivityOptions): void;
+export interface NSensitivityBodyProps {
+  readonly extracted: NSensitivityExtracted;
+  /** 表示順（対象keyの列）。ホストが持つ集合の並び順（#544 §6）。 */
+  readonly order: readonly string[];
+  readonly rowContext: ReadonlyMap<string, NSensitivityRowContext>;
+  readonly options: NSensitivityOptions;
 }
 
 function seriesFor(series: readonly NSensitivitySeries[], targetKey: string): NSensitivitySeries | undefined {
@@ -165,13 +166,16 @@ function NSensitivityChart({
   );
 }
 
-export function NSensitivityVisualization({
+/**
+ * N感度の本体（チャート・凡例・実測値の表）。メンバー単位の失敗は凡例の行に出す。
+ * 対象が空の時はホストが案内を出し、本体は呼ばれない。全メンバーが失敗した時は凡例の失敗行だけが残る。
+ */
+export function NSensitivityBody({
   extracted,
   order,
   rowContext,
   options,
-  onOptionsChange,
-}: NSensitivityVisualizationProps) {
+}: NSensitivityBodyProps) {
   const okRows = order
     .map((targetKey) => ({ targetKey, entry: seriesFor(extracted.series, targetKey), context: rowContext.get(targetKey) }))
     .filter((row): row is { targetKey: string; entry: NSensitivitySeries; context: NSensitivityRowContext | undefined } => row.entry !== undefined);
@@ -196,45 +200,7 @@ export function NSensitivityVisualization({
 
   return (
     <section className="n-sensitivity-feature" data-react-feature="n-sensitivity">
-      <div className="n-sensitivity-heading">
-        <div>
-          <h2>N感度</h2>
-        </div>
-        <p>
-          先読みN入力（0〜10）を振った時の総移動距離の変化。数値は観測値であり、
-          配列の優劣を判定するスコアではない。
-        </p>
-      </div>
-
-      <fieldset className="n-sensitivity-controls" aria-label="N感度の表示設定">
-        <legend>縦軸</legend>
-        <label className="n-sensitivity-control">
-          <input
-            type="radio"
-            name="n-sensitivity-scale"
-            value="relative"
-            checked={options.scale === 'relative'}
-            onChange={() => onOptionsChange({ ...options, scale: 'relative' })}
-          />
-          相対（N=0を100%）
-        </label>
-        <label className="n-sensitivity-control">
-          <input
-            type="radio"
-            name="n-sensitivity-scale"
-            value="absolute"
-            checked={options.scale === 'absolute'}
-            onChange={() => onOptionsChange({ ...options, scale: 'absolute' })}
-          />
-          実測値 [u]
-        </label>
-      </fieldset>
-
-      {plotted.length === 0 ? (
-        <p className="note">対象を1つ以上選ぶ</p>
-      ) : (
-        <NSensitivityChart series={plotted} scale={options.scale} />
-      )}
+      {plotted.length > 0 ? <NSensitivityChart series={plotted} scale={options.scale} /> : null}
 
       <ul className="n-sensitivity-legend" aria-label="凡例">
         {okRows.map(({ targetKey, entry, context }) => {
@@ -263,6 +229,7 @@ export function NSensitivityVisualization({
         })}
       </ul>
 
+      {plotted.length > 0 ? (
       <div className="n-sensitivity-table-scroll">
         <table className="n-sensitivity-table">
           <caption>各対象・各Nの実測値。相対表示中も実測値[u]をここで確認できる。</caption>
@@ -284,12 +251,33 @@ export function NSensitivityVisualization({
           </tbody>
         </table>
       </div>
+      ) : null}
     </section>
   );
 }
 
-/** engineの契約（純粋）と可視化componentの結び付け。単体ページがこれを載せる。 */
+/** N感度の解析設定（縦軸の見せ方）。 */
+export function NSensitivitySettings({ options, onOptionsChange }: AnalyzerSettingsProps<NSensitivityOptions>) {
+  return (
+    <div className="option-groups">
+      <RadioOptionField
+        label="縦軸"
+        binding={bindOption(options, DEFAULT_N_SENSITIVITY_OPTIONS, onOptionsChange, 'scale')}
+        choices={[
+          { value: 'relative', label: '相対（N=0を100%）' },
+          { value: 'absolute', label: '実測値 [u]' },
+        ]}
+      />
+    </div>
+  );
+}
+
+/** ペインに渡すもの（`analyzers/pane-parts.tsx`）。 */
 export const nSensitivityAnalyzer = {
   definition: nSensitivityDefinition,
-  View: NSensitivityVisualization,
-};
+  name: 'N感度',
+  description: '先読みする入力の数N（0〜10）を変えた時に、総移動距離がどう変わるかを対象ごとの折れ線で描く。',
+  Body: NSensitivityBody,
+  Settings: NSensitivitySettings,
+  defaultOptions: DEFAULT_N_SENSITIVITY_OPTIONS,
+} satisfies AnalyzerPaneParts<typeof nSensitivityDefinition, NSensitivityOptions, NSensitivityBodyProps>;

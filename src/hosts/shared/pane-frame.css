@@ -1,29 +1,308 @@
+/*
+ * ペインの枠。ペイン自身をcontainerにし、見出しの段組みをペインの幅で切り替える。
+ * 個別画面のペインは枠を付けない（Workspaceのペインの枠は、Workspaceができた時にそちらで付ける）。
+ */
 .pane-frame {
+  container: pane / inline-size;
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  border: 1px solid var(--pane-border, #3336);
-  border-radius: 0.75rem;
-  padding: 1rem 1.25rem;
+  min-width: 0;
 }
 
 .pane-frame-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "name target settings menu";
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.pane-frame-name {
+  grid-area: name;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
 }
 
-.pane-frame-header h2 {
+.pane-frame-title {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
-.pane-frame-subtitle,
-.pane-frame-description {
-  margin: 0.15rem 0 0;
+h2.pane-frame-title {
+  font-size: 1.05rem;
+}
+
+.pane-frame-target {
+  grid-area: target;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.pane-frame-target select {
+  min-width: 0;
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+
+.pane-settings-button {
+  grid-area: settings;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
   font-size: 0.85rem;
-  opacity: 0.75;
+  cursor: pointer;
+}
+
+.pane-settings-button[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.pane-frame-menu {
+  grid-area: menu;
+}
+
+.pane-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.pane-icon-button:hover,
+.pane-icon-button:focus-visible,
+.pane-icon-button[aria-expanded="true"] {
+  border-color: var(--border);
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.pane-info-button {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+/* 狭いペインは2段に固定する（1段目: 名前・ⓘ・⋯、2段目: 対象・解析設定）。解析設定はアイコンだけにする。 */
+@container pane (max-width: 40rem) {
+  .pane-frame-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "name menu"
+      "target settings";
+  }
+
+  .pane-settings-button {
+    width: 2rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .pane-settings-button-text {
+    display: none;
+  }
+}
+
+.pane-info {
+  position: relative;
+  display: inline-flex;
+}
+
+.pane-info-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  width: max-content;
+  max-width: min(22rem, calc(100cqw - 1rem));
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 14%);
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.pane-menu {
+  position: relative;
+}
+
+.pane-menu-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 15rem;
+  padding: 0.3rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 14%);
+}
+
+.pane-menu-item {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pane-menu-item:hover,
+.pane-menu-item:focus-visible {
+  background: var(--surface-muted);
+}
+
+.pane-menu-item-label {
+  font-size: 0.85rem;
+}
+
+.pane-menu-item-description {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+/*
+ * 解析設定の小窓。位置はドラッグで動く値（--settings-window-x/y）で決める。
+ * 中身をcontainer queryの入れ物にするので、幅は明示する（中身基準の幅のままだと0に潰れる）。
+ */
+.settings-window {
+  position: fixed;
+  top: var(--settings-window-y, 5rem);
+  left: var(--settings-window-x, auto);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  width: 21rem;
+  max-width: calc(100% - 16px);
+  max-height: calc(100dvh - 16px);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 20%);
+}
+
+.settings-window:focus {
+  outline: none;
+}
+
+.settings-window:focus-visible {
+  outline: 2px solid var(--focus);
+}
+
+.settings-window-handle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.4rem 0.4rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.settings-window-handle:active {
+  cursor: grabbing;
+}
+
+.settings-window-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.settings-window-pane {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-window-close {
+  display: inline-grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.settings-window-close:hover,
+.settings-window-close:focus-visible {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.settings-window-body {
+  container-type: inline-size;
+  overflow: auto;
+  padding: 0.8rem;
+}
+
+.settings-window-body .option-groups {
+  display: grid;
+  gap: 0.9rem;
+}
+
+/*
+ * スマホ幅の出し方は未決（#636）。決まるまでの暫定として、下端に固定したシートにする。
+ * 高さを画面の半分までに止め、上半分の図を見ながら変えられるようにする。ドラッグの位置は使わない。
+ * ここは小窓という器の置き方なので、Analyzerの中身と違い画面の幅で切り替える。
+ */
+@media (max-width: 640px) {
+  .settings-window {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-width: none;
+    max-height: 55dvh;
+    border-radius: 12px 12px 0 0;
+  }
+
+  .settings-window-handle {
+    cursor: default;
+  }
 }
 
 .pane-status-badge {
@@ -41,6 +320,23 @@
 .pane-status-badge[data-status="failed"] {
   color: #d6333f;
   background: color-mix(in srgb, #d6333f 15%, transparent);
+}
+
+.pane-condition-target {
+  margin: 0.5rem 0 0;
+}
+
+.pane-condition-target p {
+  margin: 0;
+}
+
+.pane-condition-target-name {
+  font-weight: 600;
+}
+
+.pane-condition-target-detail {
+  font-size: 0.85rem;
+  opacity: 0.75;
 }
 
 .pane-condition-summary dl {
@@ -92,6 +388,19 @@
   padding-left: 1.2rem;
   font-size: 0.85rem;
   color: #b8860b;
+}
+
+.pane-empty,
+.pane-busy {
+  margin: 0;
+  padding: 1.5rem 0;
+  color: var(--text-muted);
+}
+
+/* 本体の領域はペインいっぱいに取り、containerにする（本体は画面ではなくこの幅で描く）。 */
+.pane-body {
+  container-type: inline-size;
+  min-width: 0;
 }
 
 .pane-body[data-pane-stale="true"] {
