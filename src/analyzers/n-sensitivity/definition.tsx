@@ -1,6 +1,7 @@
 import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivityExtracted, type NSensitivitySeries, type NSensitivitySeriesFailed } from './extract.ts';
 import { DEFAULT_N_SENSITIVITY_OPTIONS, type NSensitivityOptions } from './options.ts';
 import { bindOption, RadioOptionField } from '#ui/primitives/option-fields.tsx';
+import { N_SENSITIVITY_PANE_META } from './pane-meta.ts';
 import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
 import './n-sensitivity-view.css';
 
@@ -83,18 +84,18 @@ function NSensitivityChart({
   series: readonly PlottedSeries[];
   scale: NSensitivityOptions['scale'];
 }) {
-  const innerWidth = CHART_WIDTH - MARGIN.left - MARGIN.right;
-  const innerHeight = CHART_HEIGHT - MARGIN.top - MARGIN.bottom;
+  const plotWidth = CHART_WIDTH - MARGIN.left - MARGIN.right;
+  const plotHeight = CHART_HEIGHT - MARGIN.top - MARGIN.bottom;
   const xMin = N_SENSITIVITY_RANGE[0];
   const xMax = N_SENSITIVITY_RANGE[N_SENSITIVITY_RANGE.length - 1]!;
-  const xScale = (n: number) => MARGIN.left + ((n - xMin) / (xMax - xMin)) * innerWidth;
+  const xScale = (n: number) => MARGIN.left + ((n - xMin) / (xMax - xMin)) * plotWidth;
 
   // relativeは旧実装と同じくyMax=100固定（N=0を100%とした相対値なので、実測が100を
   // 超えることは通常無い。absoluteは系列の実測最大値に合わせて自動スケールする）。
   const yMax = scale === 'relative'
     ? 100
     : Math.max(1, ...series.flatMap((s) => s.points.map((p) => p.y)));
-  const yScale = (y: number) => MARGIN.top + innerHeight - (y / yMax) * innerHeight;
+  const yScale = (y: number) => MARGIN.top + plotHeight - (y / yMax) * plotHeight;
 
   const yTicks = 5;
   const yTickValues = Array.from({ length: yTicks + 1 }, (_, i) => (yMax / yTicks) * i);
@@ -133,7 +134,7 @@ function NSensitivityChart({
       ))}
       <text
         className="n-sensitivity-axis-title"
-        x={MARGIN.left + innerWidth / 2}
+        x={MARGIN.left + plotWidth / 2}
         y={CHART_HEIGHT - 4}
         textAnchor="middle"
       >
@@ -275,8 +276,7 @@ export function NSensitivitySettings({ options, onOptionsChange }: AnalyzerSetti
 /** ペインに渡すもの（`analyzers/pane-parts.tsx`）。 */
 export const nSensitivityAnalyzer = {
   definition: nSensitivityDefinition,
-  name: 'N感度',
-  description: '先読みする入力の数N（0〜10）を変えた時に、総移動距離がどう変わるかを対象ごとの折れ線で描く。',
+  ...N_SENSITIVITY_PANE_META,
   Body: NSensitivityBody,
   Settings: NSensitivitySettings,
   defaultOptions: DEFAULT_N_SENSITIVITY_OPTIONS,

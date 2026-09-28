@@ -7,6 +7,7 @@ import {
   type ComparisonOptions,
 } from './options.ts';
 import { bindOption, CheckboxGroupOptionField, CheckboxOptionField } from '#ui/primitives/option-fields.tsx';
+import { COMPARISON_PANE_META } from './pane-meta.ts';
 import type { AnalyzerPaneParts, AnalyzerSettingsProps, AnalyzerTargetItemProps } from '../pane-parts.tsx';
 import './comparison-view.css';
 
@@ -223,8 +224,7 @@ export function ComparisonBaselineItem({ value, candidates, onChange }: Analyzer
 /** ペインに渡すもの（`analyzers/pane-parts.tsx`）。 */
 export const comparisonAnalyzer = {
   definition: comparisonDefinition,
-  name: '比較表',
-  description: '選んだ配列やSetupで同じテキストを打った時の、指の移動距離などの数値を表に並べる。基準を選ぶと、基準に対する割合も出せる。',
+  ...COMPARISON_PANE_META,
   Body: ComparisonBody,
   Settings: ComparisonSettings,
   defaultOptions: DEFAULT_COMPARISON_OPTIONS,

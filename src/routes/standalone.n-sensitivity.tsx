@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { nSensitivityAnalyzer } from '#analyzers/n-sensitivity/definition.tsx';
+import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
 import { StandaloneNSensitivityApp } from '#app/standalone/StandaloneNSensitivityApp.tsx';
 
 /**
@@ -9,7 +9,7 @@ import { StandaloneNSensitivityApp } from '#app/standalone/StandaloneNSensitivit
 export const Route = createFileRoute('/standalone/n-sensitivity')({
   head: () => ({
     meta: [
-      { title: `${nSensitivityAnalyzer.name} | keydist` },
+      { title: `${N_SENSITIVITY_PANE_META.name} | keydist` },
       {
         name: 'description',
         content: '配列やSetupを選んで、先読みする打鍵数Nを0〜10に変えた時に指の総移動距離がどう変わるかをグラフで比べる。',

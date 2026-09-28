@@ -55,6 +55,7 @@ function initialPosition(anchor: HTMLElement | null, element: HTMLElement | null
 export function SettingsWindow({ open, onClose, paneName, anchor, children }: SettingsWindowProps) {
   const windowRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<Position | undefined>(undefined);
+  const focusPendingRef = useRef(false);
   const dragRef = useRef<{ pointerId: number; offsetX: number; offsetY: number } | undefined>(undefined);
 
   // 開くたびにボタンの近くへ出し直す（前回ドラッグした位置は、閉じたら意味を失う）。
@@ -64,8 +65,16 @@ export function SettingsWindow({ open, onClose, paneName, anchor, children }: Se
       return;
     }
     setPosition(initialPosition(anchor, windowRef.current));
-    windowRef.current?.focus();
+    focusPendingRef.current = true;
   }, [open, anchor]);
+
+  // フォーカスは位置が決まって見えるようになってから移す。測る間の`visibility: hidden`の要素へは
+  // フォーカスが入らず、開いた直後のEscapeで閉じられなくなるため。
+  useEffect(() => {
+    if (position === undefined || !focusPendingRef.current) return;
+    focusPendingRef.current = false;
+    windowRef.current?.focus();
+  }, [position]);
 
   // 画面の大きさが変わっても見出しを掴める範囲に留める。
   useEffect(() => {

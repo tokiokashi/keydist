@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
+import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { StandaloneBigramFlowApp } from '#app/standalone/StandaloneBigramFlowApp.tsx';
 
 /**
@@ -18,7 +18,7 @@ import { StandaloneBigramFlowApp } from '#app/standalone/StandaloneBigramFlowApp
 export const Route = createFileRoute('/standalone/bigram-flow')({
   head: () => ({
     meta: [
-      { title: `${bigramFlowAnalyzer.name} | keydist` },
+      { title: `${BIGRAM_FLOW_PANE_META.name} | keydist` },
       {
         name: 'description',
         content: '配列やSetupを1つ選んで、続けて打つ2打鍵で指がキーボード上をどう動くかを図で見る。',

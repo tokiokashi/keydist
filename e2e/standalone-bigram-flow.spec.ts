@@ -824,3 +824,18 @@ test('観測値の注記はトップにだけ置く', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('.hero')).toContainText('数値は観測値であり、配列の優劣を判定するスコアではない。');
 });
+
+test('解析設定の小窓を開くとフォーカスが中へ入り、Escapeで閉じて解析設定ボタンへ戻る', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+
+  const button = page.getByRole('button', { name: '解析設定', exact: true });
+  await button.click();
+  const settings = page.locator('[data-settings-window="true"]');
+  await expect(settings).toBeVisible();
+  await expect(settings).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(settings).toHaveCount(0);
+  await expect(button).toBeFocused();
+});

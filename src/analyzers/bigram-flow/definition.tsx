@@ -32,6 +32,7 @@ import {
   SelectOptionField,
   type OptionBinding,
 } from '#ui/primitives/option-fields.tsx';
+import { BIGRAM_FLOW_PANE_META } from './pane-meta.ts';
 import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
 import './bigram-vector-view.css';
 
@@ -878,8 +879,7 @@ export function BigramFlowSettings({ options, onOptionsChange }: AnalyzerSetting
  */
 export const bigramFlowAnalyzer = {
   definition: bigramFlowDefinition,
-  name: 'Bigram Flow',
-  description: '続けて打つ2打鍵で、指がキーボード上をどう動くかを描く。キー間の流れと、手ごとの移動の向きと距離の分布を並べる。',
+  ...BIGRAM_FLOW_PANE_META,
   Body: BigramFlowBody,
   Settings: BigramFlowSettings,
   defaultOptions: DEFAULT_BIGRAM_FLOW_OPTIONS,

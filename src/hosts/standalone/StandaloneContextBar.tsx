@@ -9,7 +9,7 @@ import { useState, type ReactNode } from 'react';
  */
 export function StandaloneContextBar({ children }: { readonly children: ReactNode }) {
   return (
-    <section className="standalone-context-bar" aria-label="テキストと共有">
+    <section className="standalone-context-bar" aria-label="テキスト・物理配列の既定・共有">
       {children}
     </section>
   );
