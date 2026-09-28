@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { Trace } from '#trace/generate.ts';
-import { BigramFlowVisualization } from './definition.tsx';
+import { BigramFlowBody, BigramFlowSettings } from './definition.tsx';
 import { computeBigramFlowExtraction } from './extract.ts';
 import type { BigramFlowDisplayConfig } from './options.ts';
 
@@ -17,6 +17,9 @@ import type { BigramFlowDisplayConfig } from './options.ts';
  * `BigramFlowVisualization`（純粋な可視化component）へそのまま渡す。
  * legacy側のprops形（`data` / `config` / `onConfigChange`）は変えない
  * （AGENTS.md「消える側のコードは動き続けるのに必要な分だけ追従させる」）。
+ *
+ * 本体と解析設定が分かれた（#633）ので、旧画面では両方をここで縦に並べ、旧画面が本体に
+ * 頼っていた配列名の並びもここで出す。新しいペインの形（小窓・見出し）には追従させない。
  */
 
 export interface BigramFlowViewData {
@@ -54,13 +57,21 @@ export function BigramFlowView({
   }
 
   return (
-    <BigramFlowVisualization
-      layout={data.layout}
-      geometry={data.geometry}
-      trace={data.trace}
-      extracted={extracted}
-      options={config}
-      onOptionsChange={onConfigChange}
-    />
+    <div className="flow-legacy-compat">
+      <div className="flow-status">
+        <span>{data.layout.name}</span>
+        <span>{data.geometry.name}</span>
+      </div>
+      <div className="flow-legacy-settings">
+        <BigramFlowSettings options={config} onOptionsChange={onConfigChange} />
+      </div>
+      <BigramFlowBody
+        layout={data.layout}
+        geometry={data.geometry}
+        trace={data.trace}
+        extracted={extracted}
+        options={config}
+      />
+    </div>
   );
 }

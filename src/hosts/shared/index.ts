@@ -19,3 +19,6 @@ export {
 } from './pane-status.ts';
 export { PaneFrame, type PaneFrameProps } from './PaneFrame.tsx';
 export { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
+export { PaneInfoButton, PaneMenu, type PaneMenuItem } from './PaneHeaderParts.tsx';
+export { SettingsWindow, type SettingsWindowProps } from './SettingsWindow.tsx';
+export { resetOptionsMenuItem } from './pane-menu-items.ts';

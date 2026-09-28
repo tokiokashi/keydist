@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
+import { openSettings, openTargetSelection } from './pane-helper.ts';
 
 /**
  * N感度単体ページ（#544 Phase 3「N感度」、#578指摘1「対象を配列かSetupにする」）のE2E。
@@ -35,6 +36,7 @@ function seedTwoSetups() {
  * actionability待ち（disabled要素には操作しない）にそのまま任せてよい。
  */
 async function addTarget(page: import('@playwright/test').Page, optionValue: string) {
+  await openTargetSelection(page);
   await page.getByLabel('追加する対象').selectOption(optionValue);
   await page.getByRole('button', { name: '追加', exact: true }).click();
 }
@@ -107,8 +109,8 @@ test('縦軸（相対/実測値）の切り替えはリロードしても残る'
   await addTarget(page, 'setup:fixed-a');
   await expect(page.locator('.n-sensitivity-svg')).toBeVisible({ timeout: 10_000 });
 
-  const relative = page.getByRole('radio', { name: '相対（N=0を100%）' });
-  const absolute = page.getByRole('radio', { name: '実測値 [u]' });
+  const relative = (await openSettings(page)).getByRole('radio', { name: '相対（N=0を100%）' });
+  const absolute = (await openSettings(page)).getByRole('radio', { name: '実測値 [u]' });
   await expect(relative).toBeChecked();
 
   await absolute.check();
@@ -122,8 +124,8 @@ test('縦軸（相対/実測値）の切り替えはリロードしても残る'
 
   await page.reload();
   await expect(page.locator('.n-sensitivity-svg')).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByRole('radio', { name: '実測値 [u]' })).toBeChecked();
-  await expect(page.getByRole('radio', { name: '相対（N=0を100%）' })).not.toBeChecked();
+  await expect((await openSettings(page)).getByRole('radio', { name: '実測値 [u]' })).toBeChecked();
+  await expect((await openSettings(page)).getByRole('radio', { name: '相対（N=0を100%）' })).not.toBeChecked();
 });
 
 test('選択・並び順はリロードしても残り、資産の読み込み前に上書きされない', async ({ page }) => {
@@ -134,6 +136,7 @@ test('選択・並び順はリロードしても残り、資産の読み込み�
   await addTarget(page, 'setup:fixed-b');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
 
+  await openTargetSelection(page);
   const order = page.locator('.set-selection-order li');
   await expect(order).toHaveCount(2);
   await expect(order.first()).toContainText('QWERTY');
@@ -148,6 +151,7 @@ test('選択・並び順はリロードしても残り、資産の読み込み�
   // 2件→1件に減ったり、選択が消えたりしない。
   await page.reload();
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
+  await openTargetSelection(page);
   const orderAfterReload = page.locator('.set-selection-order li');
   await expect(orderAfterReload).toHaveCount(2);
   await expect(orderAfterReload.first()).toContainText('Colemak');
@@ -197,6 +201,7 @@ test('集合に存在しないSetup idが混ざっていても消えず「削除
   await expect(failedRow).toHaveCount(1);
   await expect(failedRow).toContainText('削除された');
 
+  await openTargetSelection(page);
   await expect(page.locator('.set-selection-order li')).toHaveCount(2);
 });
 
@@ -244,11 +249,32 @@ test('保存済みの縦軸は、操作可能になった瞬間から表示さ�
       storageKey: STANDALONE_ANALYZER_OPTIONS_KEY,
       storageValue: JSON.stringify({ version: 1, 'n-sensitivity': { scale: 'absolute' } }),
     },
-    { selector: 'input[name="n-sensitivity-scale"][value="absolute"]', read: 'checked' },
+    // 縦軸は解析設定の小窓にあり、小窓を開くボタンは読み込みが済むまで押せない。
+    { selector: '[data-settings-window="true"] input[type="radio"][value="absolute"]', read: 'checked' },
   );
   await page.goto('/standalone/n-sensitivity');
-  const absolute = page.getByRole('radio', { name: '実測値 [u]' });
+  const absolute = (await openSettings(page)).getByRole('radio', { name: '実測値 [u]' });
   await expect(absolute).toBeEnabled({ timeout: 10_000 });
   await expect(absolute).toBeChecked();
   expect(await enabledValues(page)).toEqual(['true']);
+});
+
+test('対象が空の時はペインが案内を出し、全メンバーが失敗した時は凡例の失敗行だけが残る', async ({ page }) => {
+  await page.goto('/standalone/n-sensitivity');
+  await expect(page.locator('[data-pane-empty="true"]')).toContainText('対象を1つ以上選ぶ');
+
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'keydist:analyzer-set-selections',
+      JSON.stringify({
+        version: 2,
+        selections: { 'n-sensitivity': { targets: [{ kind: 'setup', setupId: 'deleted-setup' }] } },
+      }),
+    );
+  });
+  await page.reload();
+  await expect(page.locator('[data-n-sensitivity-row="failed"]')).toHaveCount(1, { timeout: 10_000 });
+  await expect(page.locator('[data-pane-empty="true"]')).toHaveCount(0);
+  await expect(page.locator('.pane-body')).not.toContainText('対象を1つ以上選ぶ');
+  await expect(page.locator('.n-sensitivity-svg')).toHaveCount(0);
 });

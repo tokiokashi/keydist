@@ -7,8 +7,14 @@
   margin: 0 auto;
 }
 
-.standalone-page-header h1 {
-  margin: 0.15rem 0 0;
+/* 文脈バーができるまでの置き場（テキスト・既定の物理配列・共有）。 */
+.standalone-context-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .standalone-controls {

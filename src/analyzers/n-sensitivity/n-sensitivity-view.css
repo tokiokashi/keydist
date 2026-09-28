@@ -1,43 +1,13 @@
 .n-sensitivity-feature {
-  max-width: 70rem;
-}
-
-.n-sensitivity-feature h2 {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-}
-
-.n-sensitivity-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  display: grid;
   gap: 1rem;
-  margin: 1rem 0 0.75rem;
-  padding: 1rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-}
-
-.n-sensitivity-controls legend {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-
-.n-sensitivity-control {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.82rem;
 }
 
 .n-sensitivity-svg {
   width: 100%;
   height: auto;
-  max-width: 40rem;
+  /* 幅は置かれた領域いっぱいに取り、広い領域で縦に伸びすぎないよう高さだけ止める（描画は中央に寄る）。 */
+  max-height: 24rem;
 }
 
 .n-sensitivity-grid-line {

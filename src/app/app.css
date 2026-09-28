@@ -97,6 +97,11 @@ h1 {
   line-height: 1.7;
 }
 
+.hero > p.hero-note {
+  margin-top: 2rem;
+  font-size: 0.85rem;
+}
+
 .route-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));

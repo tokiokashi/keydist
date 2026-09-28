@@ -394,6 +394,89 @@ test('storage を直接触るのは platform と app だけ', async () => {
   assert.deepEqual(problems, []);
 });
 
+/**
+ * Analyzerの本体と解析設定は置かれる場所を知らない（docs/architecture.md「Analyzerがペインに渡すもの」）。
+ * URL・クリップボード・`window.location`・`history`はホストが持つので、`analyzers/`の`.tsx`は触らない。
+ * 値の変更は受け取った通知で返し、URLへの反映・共有の導線はホスト（文脈バーの共有）が行う。
+ */
+const ANALYZER_VIEW_FORBIDDEN_PATTERNS: readonly { pattern: RegExp; what: string }[] = [
+  { pattern: /\bURLSearchParams\b/, what: 'URLのクエリ' },
+  { pattern: /\bnew\s+URL\s*\(/, what: 'URL' },
+  { pattern: /\blocation\b/, what: 'location' },
+  { pattern: /\bhistory\s*\./, what: 'history' },
+  { pattern: /\bclipboard\b/i, what: 'クリップボード' },
+  { pattern: /\bexecCommand\s*\(/, what: 'クリップボード' },
+  { pattern: /\bdocument\s*\.\s*URL\b/, what: 'URL' },
+  // 画面の幅で描き分けない（置かれた領域の幅はcontainer queryか要素の実寸で取る）。
+  { pattern: /\binnerWidth\b/, what: '画面の幅' },
+  { pattern: /\bmatchMedia\s*\(/, what: '画面の幅' },
+];
+
+export function analyzerViewViolations(source: string): readonly string[] {
+  const stripped = stripComments(source);
+  return ANALYZER_VIEW_FORBIDDEN_PATTERNS
+    .filter(({ pattern }) => pattern.test(stripped))
+    .map(({ what, pattern }) => `${what}（${stripped.match(pattern)![0]}）`);
+}
+
+test('Analyzerの可視化（analyzers/**/*.tsx）は URL・クリップボード・location・history に触らない', async () => {
+  const problems: string[] = [];
+  for (const path of (await sourceFiles(join(SRC, 'analyzers'))).filter(isCode)) {
+    if (!path.endsWith('.tsx')) continue;
+    for (const problem of analyzerViewViolations(await readFile(path, 'utf8'))) {
+      problems.push(`${srcRelative(path)}: ${problem}はホストが持つ`);
+    }
+  }
+  assert.deepEqual(problems, []);
+});
+
+test('Analyzerの可視化の判定そのもの', () => {
+  assert.deepEqual(analyzerViewViolations('const a = 1;'), []);
+  assert.equal(analyzerViewViolations('window.location.search').length, 1);
+  assert.equal(analyzerViewViolations('window.history.replaceState(null, "", url)').length, 1);
+  assert.equal(analyzerViewViolations('void navigator.clipboard.writeText(url)').length, 1);
+  assert.equal(analyzerViewViolations('const params = new URLSearchParams(q)').length, 1);
+  assert.equal(analyzerViewViolations('const wide = window.innerWidth > 800').length, 1);
+  assert.equal(analyzerViewViolations("const narrow = matchMedia('(max-width: 800px)')").length, 1);
+  assert.equal(analyzerViewViolations('const here = document.URL').length, 1);
+  // コメントの中の語は数えない（設計の説明で「URLは持たない」と書けるように）。
+  assert.deepEqual(analyzerViewViolations('// location や history.replaceState はホストが持つ'), []);
+});
+
+/**
+ * 本体と解析設定は画面ではなく置かれた領域の幅で描く（docs/architecture.md「Analyzerがペインに渡すもの」、#634）。
+ * 幅の`@media`と`vw`はAnalyzerのCSSに書かない。幅での切り替えはcontainer queryで行う。
+ */
+export function analyzerCssWidthViolations(css: string): readonly string[] {
+  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const problems: string[] = [];
+  for (const match of stripped.matchAll(/@media[^{]*/g)) {
+    if (/\b(?:min-|max-)?(?:width|inline-size)\b/.test(match[0])) problems.push(`幅の@media（${match[0].trim()}）`);
+  }
+  for (const match of stripped.matchAll(/[-\d.]+(?:vw|vi|svw|lvw|dvw|vmin|vmax)\b/g)) problems.push(`画面幅の単位（${match[0]}）`);
+  return problems;
+}
+
+test('AnalyzerのCSSは画面の幅で切り替えない（container queryを使う）', async () => {
+  const problems: string[] = [];
+  for (const path of await sourceFiles(join(SRC, 'analyzers'))) {
+    if (!path.endsWith('.css')) continue;
+    for (const problem of analyzerCssWidthViolations(await readFile(path, 'utf8'))) {
+      problems.push(`${srcRelative(path)}: ${problem}`);
+    }
+  }
+  assert.deepEqual(problems, []);
+});
+
+test('AnalyzerのCSSの判定そのもの', () => {
+  assert.deepEqual(analyzerCssWidthViolations('@container (max-width: 800px) { .a { b: c } }'), []);
+  assert.deepEqual(analyzerCssWidthViolations('@media (prefers-reduced-motion: reduce) { .a { b: c } }'), []);
+  assert.equal(analyzerCssWidthViolations('@media (max-width: 800px) { .a { b: c } }').length, 1);
+  assert.equal(analyzerCssWidthViolations('.a { width: 50vw; }').length, 1);
+  assert.equal(analyzerCssWidthViolations('.a { height: 40vmin; }').length, 1);
+  assert.deepEqual(analyzerCssWidthViolations('/* @media (max-width: 1px) */ .a { width: 100%; }'), []);
+});
+
 test('新しいファイルは新しい構造の中に置く（src直下などへ増やさない）', async () => {
   const unplaced = (await sourceFiles(SRC))
     .filter((path) => !isTest(path))

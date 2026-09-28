@@ -1,5 +1,14 @@
 import { comparisonDefinition, type ComparisonExtracted, type ComparisonFailedRow, type ComparisonRow } from './extract.ts';
-import { COMPARISON_COLUMN_IDS, COMPARISON_COLUMNS, type ComparisonColumnId, type ComparisonOptions } from './options.ts';
+import {
+  COMPARISON_COLUMN_IDS,
+  COMPARISON_COLUMNS,
+  DEFAULT_COMPARISON_OPTIONS,
+  type ComparisonColumnId,
+  type ComparisonOptions,
+} from './options.ts';
+import { bindOption, CheckboxGroupOptionField, CheckboxOptionField } from '#ui/primitives/option-fields.tsx';
+import { COMPARISON_PANE_META } from './pane-meta.ts';
+import type { AnalyzerPaneParts, AnalyzerSettingsProps, AnalyzerTargetItemProps } from '../pane-parts.tsx';
 import './comparison-view.css';
 
 /**
@@ -28,20 +37,17 @@ export interface ComparisonRowContext {
   readonly cascadeOriginSummary?: string;
 }
 
-export interface ComparisonVisualizationProps {
-  extracted: ComparisonExtracted;
-  /** 表示順（対象keyの列）。ページ自身が持つ集合の並び順（#544 §6）。 */
-  order: readonly string[];
-  rowContext: ReadonlyMap<string, ComparisonRowContext>;
+export interface ComparisonBodyProps {
+  readonly extracted: ComparisonExtracted;
+  /** 表示順（対象keyの列）。ホストが持つ集合の並び順（#544 §6）。 */
+  readonly order: readonly string[];
+  readonly rowContext: ReadonlyMap<string, ComparisonRowContext>;
   /**
-   * 基準（baseline）にする対象key。`options.ts`のコメントの通り、これはAnalyzerの
-   * 解析設定ではなく「対象の集合」の一部としてホスト（単体ページ）が持つ値を
-   * そのまま受け取る。`undefined`は「基準なし」。
+   * 基準（baseline）にする対象key。解析設定ではなく「対象の集合」の一部としてホストが持つ値
+   * （対象の選択に差し込む`ComparisonBaselineItem`で選ぶ）を受け取る。`undefined`は「基準なし」。
    */
-  baselineTargetKey: string | undefined;
-  onBaselineTargetKeyChange(next: string | undefined): void;
-  options: ComparisonOptions;
-  onOptionsChange(next: ComparisonOptions): void;
+  readonly baselineTargetKey: string | undefined;
+  readonly options: ComparisonOptions;
 }
 
 /**
@@ -72,98 +78,25 @@ function failureLabel(kind: ComparisonFailedRow['failureKind']): string {
   }
 }
 
-function ColumnPicker({
-  visibleColumns,
-  onToggle,
-}: {
-  visibleColumns: readonly ComparisonColumnId[];
-  onToggle: (column: ComparisonColumnId) => void;
-}) {
-  return (
-    <fieldset className="comparison-column-picker">
-      <legend>表示する列</legend>
-      {COMPARISON_COLUMN_IDS.map((column) => (
-        <label key={column}>
-          <input
-            type="checkbox"
-            checked={visibleColumns.includes(column)}
-            onChange={() => onToggle(column)}
-          />
-          {COMPARISON_COLUMNS[column].label}
-        </label>
-      ))}
-    </fieldset>
-  );
-}
-
-export function ComparisonVisualization({
+/**
+ * 比較表の本体（表）。行ごとの失敗・計算中（抽出の値として届くメンバー単位の状態）は行に出す。
+ * ペイン全体の計算中・失敗・対象が空の時はホストが出し、本体は呼ばれない。
+ */
+export function ComparisonBody({
   extracted,
   order,
   rowContext,
   baselineTargetKey,
-  onBaselineTargetKeyChange,
   options,
-  onOptionsChange,
-}: ComparisonVisualizationProps) {
+}: ComparisonBodyProps) {
   const { visibleColumns, showBaselineRatio } = options;
-  // 基準に選んだSetupが集合から外れていたら（削除・選択解除）「基準なし」として扱う
-  // （#544指示書「基準に選んだSetupが集合から外れた場合の扱い」）。存在しないidを
-  // 指したままの表示にしない。
+  // 基準に選んだ対象が集合から外れていたら（削除・選択解除）「基準なし」として扱う。
+  // 存在しないidを指したままの表示にしない。
   const baselineRow = baselineTargetKey === undefined ? undefined : rowFor(extracted.rows, baselineTargetKey);
   const effectiveBaseline = baselineRow?.kind === 'ok' ? baselineRow : undefined;
 
-  const toggleColumn = (column: ComparisonColumnId) => {
-    const next = visibleColumns.includes(column)
-      ? visibleColumns.filter((candidate) => candidate !== column)
-      : [...visibleColumns, column];
-    onOptionsChange({ ...options, visibleColumns: next });
-  };
-
   return (
     <section className="comparison-feature" data-react-feature="comparison">
-      <div className="comparison-heading">
-        <div>
-          <h2>比較表</h2>
-        </div>
-        <p>
-          選んだ配列やSetupを並べて、同じテキストを打った時の指の移動距離などを横に比べる。
-          どれが良いかの判定や順位付けはしない。基準を選ぶと、基準に対する割合（%）も出せる
-          （良し悪しの色付けはしない）。
-        </p>
-      </div>
-
-      <section className="comparison-controls" aria-label="比較表の表示設定">
-        <ColumnPicker visibleColumns={visibleColumns} onToggle={toggleColumn} />
-
-        <label className="comparison-control">
-          <span>基準にする対象</span>
-          <select
-            aria-label="基準"
-            value={baselineTargetKey ?? ''}
-            onChange={(event) => onBaselineTargetKeyChange(
-              event.currentTarget.value === '' ? undefined : event.currentTarget.value,
-            )}
-          >
-            <option value="">基準なし</option>
-            {order.map((targetKey) => (
-              <option key={targetKey} value={targetKey} title={rowContext.get(targetKey)?.fullName}>
-                {rowContext.get(targetKey)?.label ?? '—'}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="comparison-control comparison-checkbox-row">
-          <input
-            type="checkbox"
-            checked={showBaselineRatio}
-            disabled={effectiveBaseline === undefined}
-            onChange={(event) => onOptionsChange({ ...options, showBaselineRatio: event.currentTarget.checked })}
-          />
-          <span>基準比（%）も表示する</span>
-        </label>
-      </section>
-
       <div className="comparison-table-scroll">
         <table className="comparison-table">
           <thead>
@@ -183,8 +116,7 @@ export function ComparisonVisualization({
               const fullName = context?.fullName ?? '';
 
               if (row === undefined) {
-                // extractedにもrowContextにも無いtargetKey（依頼の作り直し途中の一瞬）。
-                // 空行として描き、値の欠落を偽らない。
+                // extractedにまだ無いtargetKey（依頼の作り直し途中の一瞬）。値の欠落を偽らず、行の中で計算中と出す。
                 return (
                   <tr key={targetKey} data-comparison-row="pending">
                     <th scope="row" title={fullName}>{label}</th>
@@ -206,7 +138,10 @@ export function ComparisonVisualization({
 
               return (
                 <tr key={targetKey} data-comparison-row="ok" data-baseline={targetKey === baselineTargetKey || undefined}>
-                  <th scope="row" title={fullName}>{label}</th>
+                  <th scope="row" title={fullName}>
+                    {label}
+                    {targetKey === baselineTargetKey ? <span className="comparison-baseline-tag">基準</span> : null}
+                  </th>
                   <td className="comparison-condition-cell">
                     {context
                       ? `${context.layoutName} / ${context.geometryName} / 指の割当: ${context.fingerAssignmentName}${
@@ -236,17 +171,62 @@ export function ComparisonVisualization({
           </tbody>
         </table>
       </div>
-
-      <p className="comparison-footnote">
-        数値は観測値であり、配列の優劣を判定するスコアではない。基準行との比較は基準に対する割合を示すだけで、
-        どちらが良いかはこの表では決めない。
-      </p>
     </section>
   );
 }
 
-/** engineの契約（純粋）と可視化componentの結び付け。単体ページがこれを載せる。 */
+const COLUMN_CHOICES = COMPARISON_COLUMN_IDS.map((column) => ({ value: column, label: COMPARISON_COLUMNS[column].label }));
+
+/** 比較表の解析設定（列の表示・基準比の表示）。 */
+export function ComparisonSettings({ options, onOptionsChange }: AnalyzerSettingsProps<ComparisonOptions>) {
+  const bind = <K extends keyof ComparisonOptions>(key: K) =>
+    bindOption(options, DEFAULT_COMPARISON_OPTIONS, onOptionsChange, key);
+  return (
+    <div className="option-groups">
+      <CheckboxGroupOptionField<ComparisonColumnId>
+        label="表示する列"
+        binding={bind('visibleColumns')}
+        choices={COLUMN_CHOICES}
+      />
+      <CheckboxOptionField
+        label="基準比（%）も表示する"
+        binding={bind('showBaselineRatio')}
+        hint="対象の選択で基準を選んだ時に、各値の横に基準に対する割合を出す。"
+      />
+    </div>
+  );
+}
+
+/**
+ * 対象の選択に差し込む「基準にする対象」。値の持ち主は対象の集合なので、解析設定ではなく
+ * 対象の選択の中に置く（docs/architecture.md「対象の選択」）。候補の表示名はホストが集合に対して計算したもの。
+ */
+export function ComparisonBaselineItem({ value, candidates, onChange }: AnalyzerTargetItemProps<string | undefined>) {
+  return (
+    <label className="comparison-baseline-item">
+      <span>基準にする対象</span>
+      <select
+        aria-label="基準"
+        value={value ?? ''}
+        onChange={(event) => onChange(event.currentTarget.value === '' ? undefined : event.currentTarget.value)}
+      >
+        <option value="">基準なし</option>
+        {candidates.map((candidate) => (
+          <option key={candidate.key} value={candidate.key} title={candidate.fullName}>
+            {candidate.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+/** ペインに渡すもの（`analyzers/pane-parts.tsx`）。 */
 export const comparisonAnalyzer = {
   definition: comparisonDefinition,
-  View: ComparisonVisualization,
-};
+  ...COMPARISON_PANE_META,
+  Body: ComparisonBody,
+  Settings: ComparisonSettings,
+  defaultOptions: DEFAULT_COMPARISON_OPTIONS,
+  TargetItem: ComparisonBaselineItem,
+} satisfies AnalyzerPaneParts<typeof comparisonDefinition, ComparisonOptions, ComparisonBodyProps, string | undefined>;

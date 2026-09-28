@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
+import { openSettings } from './pane-helper.ts';
 
 /**
  * Bigram Flow単体ページ（#544 Phase 3「最初の縦切り」）のE2E。
@@ -58,11 +59,11 @@ test('見た目だけの設定を変えても壊れず、抽出設定を変え�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
-  const lineScale = flow.getByLabel('紐の太さのスケール');
+  const lineScale = (await openSettings(page)).getByLabel('紐の太さ', { exact: true });
   await lineScale.selectOption('sqrt');
   await expect(lineScale).toHaveValue('sqrt');
 
-  const withinHand = flow.getByRole('button', { name: 'Within-hand' });
+  const withinHand = (await openSettings(page)).getByRole('button', { name: 'Within-hand' });
   await withinHand.click();
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
 });
@@ -340,7 +341,7 @@ test('解析設定はリロードしても残る（資産として保持する�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
-  const withinHand = flow.getByRole('button', { name: 'Within-hand' });
+  const withinHand = (await openSettings(page)).getByRole('button', { name: 'Within-hand' });
   await expect(withinHand).toHaveAttribute('aria-pressed', 'false');
   await withinHand.click();
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
@@ -354,7 +355,7 @@ test('解析設定はリロードしても残る（資産として保持する�
   await page.reload();
   const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
-  await expect(flowAfterReload.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
+  await expect((await openSettings(page)).getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('解析設定はdebounce完了前にリロードしても残る（pagehideでflushする）', async ({ page }) => {
@@ -377,7 +378,7 @@ test('解析設定はdebounce完了前にリロードしても残る（pagehide�
   const now = await page.evaluate(() => Date.now());
   await page.clock.pauseAt(now + 60_000);
 
-  const withinHand = flow.getByRole('button', { name: 'Within-hand' });
+  const withinHand = (await openSettings(page)).getByRole('button', { name: 'Within-hand' });
   await expect(withinHand).toHaveAttribute('aria-pressed', 'false');
   await withinHand.click();
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
@@ -393,7 +394,7 @@ test('解析設定はdebounce完了前にリロードしても残る（pagehide�
 
   const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
-  await expect(flowAfterReload.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
+  await expect((await openSettings(page)).getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('保存された解析設定が壊れていたら、既定値へ戻しつつ診断をペインに表示する', async ({ page }) => {
@@ -415,7 +416,7 @@ test('保存された解析設定が壊れていたら、既定値へ戻しつ�
   await expect(diagnostics).toContainText('既定値へ戻した');
 
   // 既定値へ戻っているので、Actualが選ばれている（壊れた値のsourceは使われない）。
-  const actual = flow.getByRole('button', { name: 'Actual', exact: true });
+  const actual = (await openSettings(page)).getByRole('button', { name: 'Actual', exact: true });
   await expect(actual).toHaveAttribute('aria-pressed', 'true');
 });
 
@@ -427,9 +428,9 @@ test('URLパラメータで開くと解析設定が反映され、資産に残�
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
   // 反映: sourceがWithin-hand、指選択がindexになっている。
-  const withinHand = flow.getByRole('button', { name: 'Within-hand' });
+  const withinHand = (await openSettings(page)).getByRole('button', { name: 'Within-hand' });
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
-  const indexFinger = flow.locator('.flow-finger-buttons button', { hasText: '人' });
+  const indexFinger = (await openSettings(page)).getByRole('button', { name: '人', exact: true });
   await expect(indexFinger).toHaveAttribute('aria-pressed', 'true');
 
   // URLから消える（取り込み後はローカルが正）。
@@ -444,7 +445,7 @@ test('URLパラメータで開くと解析設定が反映され、資産に残�
   await page.reload();
   const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
-  await expect(flowAfterReload.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
+  await expect((await openSettings(page)).getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('URLパラメータの壊れた値は既定値へ戻し、診断をペインに表示する', async ({ page }) => {
@@ -456,7 +457,7 @@ test('URLパラメータの壊れた値は既定値へ戻し、診断をペイ�
   await expect(diagnostics).toBeVisible();
 
   // 既定値のまま（壊れたURLパラメータは使われない）。
-  const actual = flow.getByRole('button', { name: 'Actual', exact: true });
+  const actual = (await openSettings(page)).getByRole('button', { name: 'Actual', exact: true });
   await expect(actual).toHaveAttribute('aria-pressed', 'true');
 
   // 壊れていても消費済みとしてURLからは消える。
@@ -468,7 +469,7 @@ test('URLパラメータは既存の解析設定へ部分マージされる（�
   await page.goto('/standalone/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
-  const lineScale = flow.getByLabel('紐の太さのスケール');
+  const lineScale = (await openSettings(page)).getByLabel('紐の太さ', { exact: true });
   await lineScale.selectOption('sqrt');
   await expect
     .poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options')))
@@ -478,8 +479,8 @@ test('URLパラメータは既存の解析設定へ部分マージされる（�
   await page.goto('/standalone/bigram-flow?source=within-hand');
   const flowAfter = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfter).toBeVisible({ timeout: 10_000 });
-  await expect(flowAfter.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(flowAfter.getByLabel('紐の太さのスケール')).toHaveValue('sqrt');
+  await expect((await openSettings(page)).getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
+  await expect((await openSettings(page)).getByLabel('紐の太さ', { exact: true })).toHaveValue('sqrt');
 });
 
 test('「今の設定のURLをコピー」で既定値と違う項目だけを含むURLがクリップボードに入る', async ({ page, context }) => {
@@ -488,7 +489,7 @@ test('「今の設定のURLをコピー」で既定値と違う項目だけを�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
-  const withinHand = flow.getByRole('button', { name: 'Within-hand' });
+  const withinHand = (await openSettings(page)).getByRole('button', { name: 'Within-hand' });
   await withinHand.click();
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
 
@@ -726,11 +727,115 @@ test('保存済みの解析設定は、操作可能になった瞬間から表�
       storageKey: 'keydist:standalone-analyzer-options',
       storageValue: JSON.stringify({ version: 1, 'bigram-flow': { lineScale: 'sqrt' } }),
     },
-    { selector: 'select[aria-label="紐の太さのスケール"]', read: 'value' },
+    // 解析設定は小窓にあり、小窓を開くボタンは読み込みが済むまで押せない。小窓の最初のselectが紐の太さ。
+    { selector: '[data-settings-window="true"] select', read: 'value' },
   );
   await page.goto('/standalone/bigram-flow');
-  const lineScale = page.getByLabel('紐の太さのスケール');
+  const lineScale = (await openSettings(page)).getByLabel('紐の太さ', { exact: true });
   await expect(lineScale).toBeEnabled({ timeout: 10_000 });
   await expect(lineScale).toHaveValue('sqrt');
   expect(await enabledValues(page)).toEqual(['sqrt']);
+});
+
+test('見出しは「名前 ⓘ / 対象 / 解析設定 / ⋯」で、ⓘで短い説明が出る', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+
+  // 本体は見出し・説明段落・観測値の注記を持たない（ペインの見出しとトップが持つ）。
+  const body = page.locator('.pane-body');
+  await expect(body.getByRole('heading', { name: 'Bigram Flow' })).toHaveCount(0);
+  await expect(body).not.toContainText('配列の優劣を判定するスコアではない');
+
+  const info = page.getByRole('button', { name: 'Bigram Flowの説明' });
+  await info.click();
+  await expect(page.getByRole('tooltip')).toContainText('2打鍵');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+});
+
+test('解析設定の小窓は非モーダルで、開いたまま図を操作でき、見出しをドラッグで動かせる', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+
+  const settings = await openSettings(page);
+  await expect(settings).toHaveAttribute('aria-modal', 'false');
+
+  // 開いたまま、背後の対象を変えられる（背後を塞がない）。
+  await page.getByLabel('対象', { exact: true }).selectOption('layout:colemak-dh');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toHaveAttribute('data-layout-id', 'colemak-dh');
+  await expect(settings).toBeVisible();
+
+  const before = await settings.boundingBox();
+  const handle = settings.locator('.settings-window-handle');
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + 30, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x - 170, box.y + box.height / 2 + 60, { steps: 5 });
+  await page.mouse.up();
+  const after = await settings.boundingBox();
+  expect(after!.x).toBeLessThan(before!.x - 100);
+  expect(after!.y).toBeGreaterThan(before!.y + 30);
+
+  await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
+  await expect(settings).toHaveCount(0);
+});
+
+test('項目ごとの「既定値へ戻す」は既定と違う項目にだけ出て、その項目だけを戻す', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  const settings = await openSettings(page);
+
+  // 既定のままなら戻すボタンは無い。
+  await expect(settings.locator('[data-option-reset="true"]')).toHaveCount(0);
+
+  await settings.getByLabel('紐の太さ', { exact: true }).selectOption('log');
+  await settings.getByRole('button', { name: 'Within-hand' }).click();
+  await expect(settings.locator('[data-option-reset="true"]')).toHaveCount(2);
+
+  await settings.getByRole('button', { name: '紐の太さを既定値へ戻す' }).click();
+  await expect(settings.getByLabel('紐の太さ', { exact: true })).toHaveValue('linear');
+  // 他の項目はそのまま。
+  await expect(settings.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(settings.locator('[data-option-reset="true"]')).toHaveCount(1);
+  // 旧「標準に戻す」（複数項目をまとめて戻す）は無い。
+  await expect(page.getByRole('button', { name: '標準に戻す' })).toHaveCount(0);
+});
+
+test('⋯の「解析設定を初期値に戻す」は解析設定だけを既定値へ戻し、対象はそのまま', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await page.getByLabel('対象', { exact: true }).selectOption('layout:colemak-dh');
+
+  const settings = await openSettings(page);
+  await settings.getByRole('button', { name: 'Within-hand' }).click();
+  await settings.getByLabel('紐の太さ', { exact: true }).selectOption('sqrt');
+
+  await page.getByRole('button', { name: /の操作$/ }).click();
+  const item = page.getByRole('menuitem', { name: /解析設定を初期値に戻す/ });
+  await expect(item).toContainText('対象と条件は変わらない');
+  await item.click();
+
+  await expect(settings.getByRole('button', { name: 'Actual', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(settings.getByLabel('紐の太さ', { exact: true })).toHaveValue('linear');
+  await expect(page.getByLabel('対象', { exact: true })).toHaveValue('layout:colemak-dh');
+});
+
+test('観測値の注記はトップにだけ置く', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('.hero')).toContainText('数値は観測値であり、配列の優劣を判定するスコアではない。');
+});
+
+test('解析設定の小窓を開くとフォーカスが中へ入り、Escapeで閉じて解析設定ボタンへ戻る', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+
+  const button = page.getByRole('button', { name: '解析設定', exact: true });
+  await button.click();
+  const settings = page.locator('[data-settings-window="true"]');
+  await expect(settings).toBeVisible();
+  await expect(settings).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(settings).toHaveCount(0);
+  await expect(button).toBeFocused();
 });

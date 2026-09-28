@@ -162,6 +162,7 @@ Analyzerの結び付け（各Analyzerの `definition.tsx`）が渡すもの:
   - 複数の項目をまとめて戻す操作（旧Bigram Flowの「標準に戻す」）は置かない。項目ごとの操作に置き換える
 - 本体は解析設定の入力部品（選択・チェックボックス・スライダー）を持たない。図そのものへの一時的な操作（hoverでの強調等）は本体が持ってよい
 - Router・Dockview・`hosts/` をimportしない。storage・URL・クリップボードを触らない。値の変更は受け取った通知で返し、保存・Undo・URLへの反映はホストが行う
+  - URL・クリップボード・`location`・`history` に触らないこと、CSSに幅の `@media`・`vw` が無いことは `test/architecture-layers.test.ts` が検査する
 
 ホストの責任:
 
@@ -216,6 +217,7 @@ src/
   interpretation/    構造（chain・arpeggio…）、時間モデル、複数のAnalyzerが使う指標
   analyzers/
     contract.ts      Analyzerの契約のうち純粋な部分（抽出・解析設定・Traceを依頼する窓口の型）
+    pane-parts.tsx   ペインに渡すものの型（名前・短い説明・本体・解析設定・差し込む項目・既定値）。Reactの型を使うので.tsx
     <name>/          .ts が抽出と設定（純粋）、.tsx が可視化（本体・解析設定）と definition.tsx（結び付け）
   engine/            実行とキャッシュ
   hosts/
@@ -225,7 +227,7 @@ src/
   editors/           資産を編集するUI
   tester/            Tester（engine/ は純粋）
   ui/
-    primitives/      汎用部品
+    primitives/      汎用部品（解析設定の項目を描く入力部品と「既定値へ戻す」は option-fields.tsx）
     theme/           token
     keyboard/        キーボード図など、入力の型を知る部品
     charts/          グラフの部品
@@ -268,7 +270,7 @@ src/
   - 重い計算をWeb Workerへそのまま移せる
   - キャッシュが描画のタイミングに縛られない
 - **可視化は計算しない。** engineが抽出を実行し、hostが結果をcomponentへ渡す
-- **Analyzerの契約は純粋な部分だけを `analyzers/contract.ts` に置く。** 名前・短い説明・本体と解析設定のcomponentとの結び付けは各Analyzerの `definition.tsx` で行う（「Analyzerがペインに渡すもの」）。engineは純粋な部分しか知らないので、engineの型にReactが現れず、Workerへそのまま移せる
+- **Analyzerの契約は純粋な部分だけを `analyzers/contract.ts` に置く。** 名前・短い説明・本体と解析設定のcomponentとの結び付けは各Analyzerの `definition.tsx` で行う（「Analyzerがペインに渡すもの」）。結び付けは `analyzers/pane-parts.tsx` の `AnalyzerPaneParts` の形のオブジェクト（`bigramFlowAnalyzer` 等）で、ペインの見出し・個別画面のh1・routeの `<title>` はここから名前を読む。名前と短い説明はReactに依存しない `analyzers/<name>/pane-meta.ts` に置き、routeはそちらを読む（`definition.tsx` をimportすると本体のcomponentとCSSが全ページの初期読み込みに入るため）。engineは純粋な部分しか知らないので、engineの型にReactが現れず、Workerへそのまま移せる
   - 抽出のキャッシュキーは「解釈のキー + Analyzer id + 抽出に効くoptions」（`AnalyzerDefinition.extractKeyOf` が返す値。`engine/keys.ts` の `analyzerExtractionKeyOf`）。見た目だけの解析設定はここで除かれるので、見た目だけの変更ではextractが走らない
   - 集合対象とN感度の例外向けに、抽出は「Traceを依頼する窓口」（`TraceRequester`、`analyzers/contract.ts`）を受け取れる。窓口の実装（キャッシュ経由でTraceを共有する）は `engine/trace-requester.ts` が持つ
 - **storageを直接触るのは platform と app だけ。** 保存が要る層（hosts・editors等）は、appが組み立てたアダプタを注入して使う。Testerは当面の例外
