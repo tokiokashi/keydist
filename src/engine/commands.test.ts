@@ -441,7 +441,7 @@ test('setTextContentCommand: 同じテキストならno-op', () => {
   assert.equal(step.outcome.kind, 'no-op');
 });
 
-test('setTextContentCommand: 選択が既にその組み込みから離れていれば、遅れて届いた書き込みは何もしない（無意味な2つ目のコピーを作らない）', () => {
+test('setTextContentCommand: 選択が既にその組み込みから離れていれば、選択は動かさず内容だけ自作テキストとして残す', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
@@ -453,8 +453,9 @@ test('setTextContentCommand: 選択が既にその組み込みから離れてい
     created.history,
     setTextContentCommand('standalone', DEFAULT_TEXT_REF, '宛先を失ったdraft', generateTextId),
   );
-  assert.equal(staleWrite.outcome.kind, 'no-op');
-  assert.equal(created.assets.textLibrary.texts.length, 1, '2つ目のコピーが作られていない');
+  assert.equal(staleWrite.outcome.kind, 'applied');
+  assert.deepEqual(staleWrite.assets.textLibrary.texts.map((entry) => entry.text).slice(1), ['宛先を失ったdraft']);
+  assert.equal(staleWrite.assets.standaloneTextSelection, created.assets.standaloneTextSelection, '選択は動かさない');
 });
 
 /**
