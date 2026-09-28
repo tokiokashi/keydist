@@ -304,3 +304,56 @@ test('start→stop→start（StrictModeの二重実行を模す）しても、2�
   assert.deepEqual(changes, [{ count: 7 }], '2回目のstart後も外部変更が届く');
   stop2();
 });
+
+test('catchUp: 通知が届く前でも、他タブがstorageへ書いた値を取り込む', () => {
+  const storage = createFakeStorage();
+  const changes: Counter[] = [];
+  const sync = createAssetTabSync({
+    storageKey: 'test:counter',
+    codec: COUNTER_CODEC,
+    storage,
+    subscribe: createFakeBus().subscribe,
+    notify: () => {},
+    onExternalChange: (value) => { changes.push(value); },
+  });
+  sync.save({ count: 1 });
+  sync.catchUp();
+  assert.deepEqual(changes, [], '自分の書き込みのままなら何もしない');
+
+  storage.setItem('test:counter', JSON.stringify(COUNTER_CODEC.encode({ count: 2 })));
+  sync.catchUp();
+  sync.catchUp();
+  assert.deepEqual(changes, [{ count: 2 }], '同じ値を2度取り込まない');
+});
+
+test('catchUp: 読み込んだ直後の値は他タブの変更として扱わない', () => {
+  const storage = createFakeStorage();
+  storage.setItem('test:counter', JSON.stringify(COUNTER_CODEC.encode({ count: 5 })));
+  const sync = createAssetTabSync({
+    storageKey: 'test:counter',
+    codec: COUNTER_CODEC,
+    storage,
+    subscribe: createFakeBus().subscribe,
+    notify: () => {},
+    onExternalChange: () => assert.fail('読み込み済みの値で呼ばれた'),
+  });
+  assert.deepEqual(sync.load(), { count: 5 });
+  sync.catchUp();
+});
+
+test('catchUp: decodeできない値は取り込まずonLoadFailureへ渡す', () => {
+  const storage = createFakeStorage();
+  const failures: unknown[] = [];
+  const sync = createAssetTabSync({
+    storageKey: 'test:counter',
+    codec: COUNTER_CODEC,
+    storage,
+    subscribe: createFakeBus().subscribe,
+    notify: () => {},
+    onExternalChange: () => assert.fail('壊れた値を取り込んだ'),
+    onLoadFailure: (reason) => { failures.push(reason); },
+  });
+  storage.setItem('test:counter', '{not json');
+  sync.catchUp();
+  assert.deepEqual(failures, [{ kind: 'invalid-json' }]);
+});

@@ -3,7 +3,20 @@ import test from 'node:test';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import { ASSET_KEYS, ASSET_STORAGE_SPECS } from './asset-storage-specs.ts';
-import { buildAssetSyncs, loadAssets, saveChangedAssets, startAssetSyncs } from './asset-syncs.ts';
+import {
+  createSetupCommand,
+  createTextCommand,
+  selectTextCommand,
+} from '#engine/commands.ts';
+import { applyCommand, applyExternalChange, emptyCommandHistory, type Command } from '#input/commands/index.ts';
+import {
+  buildAssetSyncs,
+  commitCommand,
+  loadAssets,
+  saveChangedAssets,
+  startAssetSyncs,
+  type AssetState,
+} from './asset-syncs.ts';
 
 /**
  * `ASSET_STORAGE_SPECS`の`initial()`をそのまま束ねるだけの、このテスト専用の最小`KeydistAssets`。
@@ -126,4 +139,87 @@ test('startAssetSyncs→stop→startAssetSyncs（StrictModeの二重実行を模
 
 test('ASSET_KEYS: 表に無いキーは無い（KeydistAssetsの全キーをカバーする最小確認）', () => {
   assert.deepEqual([...ASSET_KEYS].sort(), Object.keys(ASSET_STORAGE_SPECS).sort());
+});
+
+/**
+ * 1タブぶんの手持ちと`commitCommand`を`useKeydistAssets`と同じ配線で組む。
+ * 変更通知は届けない（他タブの書き込みの通知がまだ届いていない状況を作るため）。
+ */
+function createTab(storage: KeyValueStorage) {
+  let state: AssetState = { assets: baseAssets(), history: emptyCommandHistory() };
+  const syncs = buildAssetSyncs({
+    onExternalChange: (key, value) => { state = applyExternalChange(state.assets, state.history, key, value); },
+    storage,
+    notify: () => {},
+  });
+  return {
+    get state() { return state; },
+    dispatch(command: Command<KeydistAssets>) {
+      const result = commitCommand(syncs, () => state, command);
+      if (result.outcome.kind === 'applied') state = result;
+    },
+  };
+}
+
+let nextId = 0;
+const freshId = () => `id-${++nextId}`;
+
+test('commitCommand: 通知の届いていない他タブの追加を消さずに自分の追加を書く（textLibrary）', () => {
+  const storage = createFakeStorage();
+  const tabA = createTab(storage);
+  const tabB = createTab(storage);
+
+  tabA.dispatch(createTextCommand('standalone', freshId));
+  tabB.dispatch(createTextCommand('standalone', freshId));
+
+  const stored = loadAssets(buildAssetSyncs({ onExternalChange: () => {}, storage }));
+  assert.equal(stored.textLibrary?.texts.length, 2);
+  assert.deepEqual(tabB.state.assets.textLibrary, stored.textLibrary);
+});
+
+test('commitCommand: 通知の届いていない他タブの追加を消さずに自分の追加を書く（setupLibrary）', () => {
+  const storage = createFakeStorage();
+  const tabA = createTab(storage);
+  const tabB = createTab(storage);
+
+  tabA.dispatch(createSetupCommand('qwerty', 'row-staggered', freshId));
+  tabB.dispatch(createSetupCommand('qwerty', 'row-staggered', freshId));
+
+  const stored = loadAssets(buildAssetSyncs({ onExternalChange: () => {}, storage }));
+  assert.equal(stored.setupLibrary?.setups.length, 2);
+});
+
+test('commitCommand: 他タブの変更を取り込んだ資産の履歴は捨て、自分のコマンドだけが残る', () => {
+  const storage = createFakeStorage();
+  const tabA = createTab(storage);
+  const tabB = createTab(storage);
+
+  tabB.dispatch(createTextCommand('standalone', freshId));
+  assert.equal(tabB.state.history.undoStack.length, 1);
+  tabA.dispatch(createTextCommand('standalone', freshId));
+  tabB.dispatch(createTextCommand('standalone', freshId));
+
+  assert.deepEqual(tabB.state.history.undoStack.map((entry) => entry.label), ['テキストを作成する']);
+  assert.equal(tabB.state.assets.textLibrary.texts.length, 3);
+});
+
+test('commitCommand: 単一値の資産は最後に書いたタブの値になる', () => {
+  const storage = createFakeStorage();
+  const tabA = createTab(storage);
+  const tabB = createTab(storage);
+
+  tabA.dispatch(selectTextCommand('standalone', { kind: 'builtin', id: 'builtin:ja.modern' }));
+  tabB.dispatch(selectTextCommand('standalone', { kind: 'builtin', id: 'builtin:ja.legacy' }));
+
+  const stored = loadAssets(buildAssetSyncs({ onExternalChange: () => {}, storage }));
+  assert.deepEqual(stored.standaloneTextSelection?.ref, { kind: 'builtin', id: 'builtin:ja.legacy' });
+});
+
+test('commitCommand: 何も取り込まなければapplyCommandと同じ結果になる', () => {
+  const storage = createFakeStorage();
+  const tab = createTab(storage);
+  const command = createTextCommand('standalone', () => 'fixed');
+  const expected = applyCommand(tab.state.assets, tab.state.history, command);
+  tab.dispatch(command);
+  assert.deepEqual(tab.state.assets, expected.assets);
 });

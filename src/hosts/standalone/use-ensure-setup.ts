@@ -38,7 +38,10 @@ export function useEnsureSetup(
     // 本当に空かどうか判定できない。読み込みが終わるまで何もしない。
     if (!assetsReady) return;
     if (setups.length > 0) return;
-    dispatch(createSetupCommand(spec.layoutId, spec.shapeId, generateSetupId));
+    // 適用時にもう一度空かを見る。同時に開いた他タブが先に作っていれば、適用の直前に
+    // それを取り込んでいる（`app/standalone/asset-syncs.ts`の`commitCommand`）ので作らない
+    const create = createSetupCommand(spec.layoutId, spec.shapeId, generateSetupId);
+    dispatch((current) => (current.setupLibrary.setups.length > 0 ? { kind: 'no-op' } : create(current)));
     // `setups`自体を依存に含めると、作成直後（setups.length===1）でまたこの効果が走ってしまう
     // ため、「空かどうか」という条件だけを依存にする。
   }, [assetsReady, setups.length === 0, dispatch, generateSetupId, spec.layoutId, spec.shapeId]);
