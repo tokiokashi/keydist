@@ -12,6 +12,9 @@ import {
   conditionHeaderInfoFromResolvedInput,
   PaneFrame,
   resetOptionsMenuItem,
+  setupNumbersOf,
+  targetChoiceGroups,
+  TargetSelection,
   traceConditionSummary,
 } from '#hosts/shared/index.ts';
 import { nameTargets } from '#input/setup/index.ts';
@@ -20,11 +23,10 @@ import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import { bigramFlowOptions, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
-import { TargetPicker } from './TargetPicker.tsx';
 import { ContextBar, ShareButton, UndoRedoButtons, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { TextChip } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
-import { setupNumbersOf, targetNameSource } from './target-name-source.ts';
+import { targetNameSource } from './target-name-source.ts';
 import { useOptionsDraft } from './use-options-draft.ts';
 import { useAnalyzerPane } from './use-analyzer-pane.ts';
 import './standalone.css';
@@ -174,6 +176,14 @@ export function BigramFlowStandalonePage({
     [target, resolution, setupsById, setupNumbers, catalog.setupCatalog],
   );
 
+  const choiceGroups = useMemo(() => targetChoiceGroups({
+    layouts: catalog.setupCatalog.layouts,
+    userLayoutIds: new Set(catalog.userLayouts.keys()),
+    shapes: catalog.setupCatalog.shapes,
+    setups,
+    selected: [target],
+  }), [catalog, setups, target]);
+
   const { Body, Settings } = bigramFlowAnalyzer;
   const extraction = pane.extraction;
   const changeOptions = (next: BigramFlowOptions) => {
@@ -232,13 +242,14 @@ export function BigramFlowStandalonePage({
             headingLevel={1}
             {...(named === undefined ? {} : { targetName: named.displayName, targetFullName: named.fullName })}
             target={(
-              <TargetPicker
-                aria-label="対象"
-                layouts={catalog.setupCatalog.layouts}
-                shapes={catalog.setupCatalog.shapes}
-                setups={setups}
-                value={target}
-                onChange={setTarget}
+              <TargetSelection
+                mode="single"
+                groups={choiceGroups}
+                selected={[target]}
+                summary={named === undefined ? [] : [{ key: named.key, label: named.displayName, fullName: named.fullName }]}
+                onChange={(next) => {
+                  if (next[0] !== undefined) setTarget(next[0]);
+                }}
               />
             )}
             settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
