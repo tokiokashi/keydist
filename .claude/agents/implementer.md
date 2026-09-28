@@ -3,6 +3,7 @@ name: implementer
 description: keydist の作業単位を1つ実装して PR を出せる状態にする。リードが issue か指示書を渡して起動する。レビューはしない
 model: claude-opus-5-5
 isolation: worktree
+effort: medium
 tools: Bash, Read, Edit, Write, Grep, Glob, WebFetch
 color: green
 ---
