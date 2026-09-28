@@ -184,6 +184,7 @@ currently-held、preferred alternativeのようにgeometry/runtimeから導出�
 physical activationとは別に、そのpathがruntime context上成立する条件を
 `InputAlternative.contextRequirements` に保持する。現在の
 `{ kind: 'youon-only' }` は拗音ローマ字塊の内部だけで成立するpathを表す。
+`{ kind: 'romaji-input' }` は日本語テキストをローマ字経由で打つ時だけ成立するpathを表す（§4.3）。
 これはlogical output全体の条件ではなくalternative単位のapplicabilityである。
 
 さらに、top-level authoring provenanceを `origin` として保持する。
@@ -289,6 +290,16 @@ compile時にcombo alternativeへ `{ kind: 'youon-only' }` context requirement�
 拗音の見出しのローマ字塊の途中で、直前の文字が子音になる場合だけそのalternativeがeligibleになる。
 単独の `や` `ゆ` `よ` などの `ya` `yu` `yo` ではそのalternativeを除外し、
 同じlogical outputに無条件alternativeがあればそちらを使い、無ければ短い見出しへfallbackする。
+
+コンボ定義は、どの打ち方で使えるかという適用範囲も持てる。authoring `romajiOnly` 条件を
+持つコンボは、日本語テキストをローマ字テーブル（§4.4）で展開して打つ時だけ使う。
+英文をそのまま打つ時は、そのコンボは配列に無いものとして扱い、同じ配列の単打配置だけで打つ。
+compile時にcombo alternativeへ `{ kind: 'romaji-input' }` context requirementとして保持し、
+評価時は「かなをローマ字へ展開したか」だけで成立を決める。見出しの綴りや前後の文字は見ない。
+
+TK音直入力法のコンボ73件はすべて `romajiOnly` を持つ。出力が `site` `kara` `desu` のような
+ローマ字の綴りなので、英文に当てると英単語の一部を誤ってコンボで打つことになるためである。
+配列は1つで、日本語テキストではコンボ込み、英文では単打配置だけの数値になる。
 
 ### 4.4ローマ字テーブルは配列と分けて持つ
 
@@ -926,8 +937,9 @@ H = コンボ見出しが命中した延べ回数
 ```
 
 同じ見出しが複数回当たる場合、`U` は1件、`H` は回数分だけ増える。ヤ行コンボは
-§4.3の発火条件を満たした場合だけ命中として数える。コンボを持たない配列は
-`B = U = H = 0` とする。
+§4.3の発火条件を満たした場合だけ命中として数える。`B` はその打ち方で使えるコンボだけを
+数える。英文を打つ時の `romajiOnly` のコンボ（§4.3）は `B` に入れない。
+コンボを持たない配列、およびその打ち方で使えるコンボが無い配列は `B = U = H = 0` とする。
 
 **11.9 N感度曲線**
 
