@@ -1,4 +1,5 @@
 import type { Setup } from './types.ts';
+import type { AnalysisTarget } from './target.ts';
 
 /**
  * Setupの色（#544 §4「色は自動で付ける」）。
@@ -24,13 +25,28 @@ import type { Setup } from './types.ts';
  */
 
 /**
- * 定性色12色。色相を30°刻みで回し、明度・彩度をそろえた
- * （dataviz向けの定性パレットの考え方を踏襲。ブランド等の指定は無いのでニュートラルな12色）。
+ * 定性色12色。OKLCHの色相を255°から30°刻みで一周させ、明度・彩度は「白（ライトthemeの
+ * `--surface`）と#1c1c1a（ダークthemeの`--surface`）のどちらに対してもコントラスト比が
+ * 約4:1になる」ように色相ごとに選んだ（N感度の線・凡例の色見本は両themeの`--surface`上に
+ * 描かれ、色をthemeで切り替える仕組みを持たないため、1色で両方に効く明度に揃える）。
+ * 黄〜緑の色相はこの明度で出せる彩度が低く、くすんだ色になるのは明度を揃えた代償。
+ *
+ * 色相の近さ（index差1 = 30°）で並べてある。割り当て側（`BUILTIN_LAYOUT_COLOR_INDEX`）は
+ * この並びを前提に、並べて比べる配列同士をindexで離す。
  */
 const SETUP_COLOR_PALETTE: readonly string[] = [
-  '#4C6EF5', '#F76707', '#12B886', '#E64980',
-  '#7048E8', '#F59F00', '#1098AD', '#E03131',
-  '#37B24D', '#5C7CFA', '#D6336C', '#0CA678',
+  '#277DE0', // 255° 青
+  '#796DE1', // 285° 青紫
+  '#A95EC8', // 315° 紫
+  '#C6519A', // 345° 赤紫
+  '#D54E62', //  15° 赤
+  '#D05709', //  45° 橙
+  '#A97206', //  75° 黄土
+  '#877F00', // 105° オリーブ
+  '#488D00', // 135° 緑
+  '#048F67', // 165° 青緑
+  '#038B8B', // 195° 水色
+  '#0288AC', // 225° 空色
 ];
 
 export const SETUP_COLOR_PALETTE_SIZE = SETUP_COLOR_PALETTE.length;
@@ -44,25 +60,23 @@ export function setupColor(setup: Pick<Setup, 'colorIndex'>): string {
  * 新しく割り当てる色のindexを決める。`existingColorIndexes`（今の手持ちが使っている色）の中で
  * 最も使用回数が少ないindexを返し、同数なら小さいindexを選ぶ（決定的）。
  *
- * `avoid` を渡すと、そのindexを除いた中から選ぶ（複製で複製元と別の色にするため）。
- * 除外した結果選べるindexが無くなる場合（パレットが1色しか無い等）だけ、除外を諦めて
- * 通常どおり選ぶ（「別の色にする」より「例外を起こさない」を優先する。#544 §8-5と同じ方針）。
- *
- * 新規作成（`avoid` 無し）でこの関数を手持ちが空の状態から1件ずつ呼べば、
- * 0, 1, 2, … とパレットを順番に使っていく（`initialSetups` はこれをそのまま使う）。
+ * `avoid` に挙げたindexは除いた中から選ぶ（複製で複製元と別の色にする、Setupのベースの
+ * 配列を配列対象として並べた時と別の色にする、ため）。除外した結果選べるindexが無くなる
+ * 場合だけ、除外を諦めて通常どおり選ぶ（「別の色にする」より「例外を起こさない」を優先する。
+ * #544 §8-5と同じ方針）。
  */
 export function leastUsedColorIndex(
   existingColorIndexes: readonly number[],
-  avoid?: number,
+  avoid: readonly number[] = [],
 ): number {
   const counts = new Array(SETUP_COLOR_PALETTE_SIZE).fill(0) as number[];
   for (const index of existingColorIndexes) counts[index] += 1;
 
-  const pick = (skip: number | undefined): number | undefined => {
+  const pick = (skip: readonly number[]): number | undefined => {
     let best: number | undefined;
     let bestCount = Number.POSITIVE_INFINITY;
     for (let index = 0; index < SETUP_COLOR_PALETTE_SIZE; index++) {
-      if (skip !== undefined && index === skip) continue;
+      if (skip.includes(index)) continue;
       if (counts[index] < bestCount) {
         bestCount = counts[index];
         best = index;
@@ -71,5 +85,80 @@ export function leastUsedColorIndex(
     return best;
   };
 
-  return pick(avoid) ?? pick(undefined)!;
+  return pick(avoid) ?? pick([])!;
+}
+
+/**
+ * 配列を対象にした時の色（#578指摘2の決定「色は集合によらず、対象ごとに固定する」）。
+ * Setupと違って保存された`colorIndex`を持たない（配列idそのものが対象の識別子で、
+ * 追加・複製という概念が無い）ので、配列idから決定的に求める。
+ *
+ * **組み込み配列は配列idをキーにした固定の表で割り当てる。** 登録順から計算する方式は、
+ * 配列を1つ足すと他の配列の色が動き、並べて比べたい配列同士（colemak/colemak-dh等）が
+ * 同じ色に寄ることがあった。18配列・12色なので同じ色の組は6組残る（鳩の巣原理）。
+ * その6組は「一緒に並べることが少ない組」を選んで寄せる:
+ * - 英字配列（qwerty・dvorak・colemak・colemak-dh・workman）は互いに色相で60°以上離す
+ * - qwertyはどの配列とも色を共有しない（日本語でもローマ字入力の比較の基準になるため）
+ * - 同じ系統の変種（大西・新JIS・かわせみ）は互いに離す
+ * - 色を共有するのは、qwerty以外の英字配列（主に英語の文章で比べる）とかな配列の組と、
+ *   大西の変種と別系統の配列の組だけ
+ * 組み込みを足したら、この表にも行を足す（color.test.tsが表の抜けを検出する）。
+ *
+ * 自作配列（表に無いid）は文字列ハッシュ（FNV-1aの簡易版。暗号強度は不要で、同じ入力から
+ * 同じ出力が返る決定性だけが要る）へフォールバックする。
+ */
+export const BUILTIN_LAYOUT_COLOR_INDEX: ReadonlyMap<string, number> = new Map([
+  ['qwerty', 0],
+  ['kawasemi-plus', 1],
+  ['workman', 2],
+  ['shingeta', 2],
+  ['shin-jis-prefix', 3],
+  ['oonishi-custom', 3],
+  ['colemak', 4],
+  ['naginata-v18', 4],
+  ['asuka', 5],
+  ['dvorak', 6],
+  ['tsuki-2-263', 6],
+  ['kawasemi-kai', 7],
+  ['oonishi-custom-combo', 7],
+  ['nicola', 8],
+  ['colemak-dh', 9],
+  ['shin-jis-simultaneous', 9],
+  ['oonishi', 10],
+  ['shin-koume', 11],
+]);
+
+function hashToColorIndex(id: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < id.length; i++) {
+    hash ^= id.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return Math.abs(hash) % SETUP_COLOR_PALETTE_SIZE;
+}
+
+export function layoutTargetColorIndex(layoutId: string): number {
+  return BUILTIN_LAYOUT_COLOR_INDEX.get(layoutId) ?? hashToColorIndex(layoutId);
+}
+
+/** パレットの色そのもの（テストで色相の距離を測るため、indexから引けるようにする）。 */
+export function paletteColor(index: number): string {
+  return SETUP_COLOR_PALETTE[index]!;
+}
+
+/**
+ * 対象（`AnalysisTarget`）の色。Setup対象は`setupColor`と同じ保存済み`colorIndex`を引き、
+ * 配列対象は`layoutTargetColorIndex`で決定的に求める。`setups`はkeyでSetupを引くための
+ * 手持ち（見つからなければ既定のindex 0。呼び出し側は`resolveTargetForText`等で先に
+ * 対象自体の解決失敗を扱っている前提なので、ここでのfallbackは「表示だけ壊れた色に
+ * しない」ための保険）。
+ *
+ * Setupの`colorIndex`は、作成時にベースの配列の`layoutTargetColorIndex`を避けて選ぶ
+ * （`collection.ts`）。配列とそれをベースにしたSetupを並べる（上書きの効果を見る）のは
+ * よくある比べ方で、同じ色だと線を追えないため。
+ */
+export function targetColor(target: AnalysisTarget, setups: ReadonlyMap<string, Setup>): string {
+  if (target.kind === 'layout') return SETUP_COLOR_PALETTE[layoutTargetColorIndex(target.layoutId)];
+  const setup = setups.get(target.setupId);
+  return setup === undefined ? SETUP_COLOR_PALETTE[0] : setupColor(setup);
 }

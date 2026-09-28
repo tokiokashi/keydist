@@ -154,7 +154,8 @@ function engineTrace(fixtureCase: FixtureCase) {
 
   const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
   const resolved = resolveEngineInput({
-    setup,
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides,

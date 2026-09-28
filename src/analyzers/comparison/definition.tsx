@@ -17,8 +17,10 @@ import './comparison-view.css';
 
 /** 1 Setupぶんの、行に併記する条件（配列・形状・指の割当・カスケードの出どころ）。 */
 export interface ComparisonRowContext {
-  readonly setupId: string;
+  readonly targetKey: string;
   readonly label: string;
+  /** 集合によらない完全な名前（レビュー指摘3）。hover（`title`属性）に出す。 */
+  readonly fullName: string;
   readonly layoutName: string;
   readonly geometryName: string;
   readonly fingerAssignmentName: string;
@@ -28,16 +30,16 @@ export interface ComparisonRowContext {
 
 export interface ComparisonVisualizationProps {
   extracted: ComparisonExtracted;
-  /** 表示順（Setup id列）。ページ自身が持つ集合の並び順（#544 §6）。 */
+  /** 表示順（対象keyの列）。ページ自身が持つ集合の並び順（#544 §6）。 */
   order: readonly string[];
   rowContext: ReadonlyMap<string, ComparisonRowContext>;
   /**
-   * 基準（baseline）にするSetup id。`options.ts`のコメントの通り、これはAnalyzerの
+   * 基準（baseline）にする対象key。`options.ts`のコメントの通り、これはAnalyzerの
    * 解析設定ではなく「対象の集合」の一部としてホスト（単体ページ）が持つ値を
    * そのまま受け取る。`undefined`は「基準なし」。
    */
-  baselineSetupId: string | undefined;
-  onBaselineSetupIdChange(next: string | undefined): void;
+  baselineTargetKey: string | undefined;
+  onBaselineTargetKeyChange(next: string | undefined): void;
   options: ComparisonOptions;
   onOptionsChange(next: ComparisonOptions): void;
 }
@@ -53,20 +55,20 @@ function formatValue(column: ComparisonColumnId, value: number): string {
 
 /** 基準比（%）。基準が0の時は「基準自体が0」という事実をそのまま出す（優劣の判定はしない）。 */
 function formatRatio(value: number, baseline: number): string {
-  if (baseline === 0) return value === 0 ? '基準と同値(0)' : '基準が0';
+  if (baseline === 0) return value === 0 ? '基準と同値（0）' : '基準が0';
   return `${((value / baseline) * 100).toFixed(1)}%`;
 }
 
-function rowFor(rows: readonly ComparisonRow[], setupId: string): ComparisonRow | undefined {
-  return rows.find((row) => row.setupId === setupId);
+function rowFor(rows: readonly ComparisonRow[], targetKey: string): ComparisonRow | undefined {
+  return rows.find((row) => row.targetKey === targetKey);
 }
 
 function failureLabel(kind: ComparisonFailedRow['failureKind']): string {
   switch (kind) {
-    case 'reference': return '配列・形状が見つからない（削除された可能性）';
+    case 'reference': return '配列・形状が見つからない（削除された可能性がある）';
     case 'incompatible-text': return 'このテキストには使えない';
-    case 'geometry': return '形状を組み立てられない';
-    case 'setup-missing': return 'Setupが削除された';
+    case 'geometry': return 'キーボードを組み立てられない';
+    case 'target-missing': return '削除された、または見つからない';
   }
 }
 
@@ -98,8 +100,8 @@ export function ComparisonVisualization({
   extracted,
   order,
   rowContext,
-  baselineSetupId,
-  onBaselineSetupIdChange,
+  baselineTargetKey,
+  onBaselineTargetKeyChange,
   options,
   onOptionsChange,
 }: ComparisonVisualizationProps) {
@@ -107,7 +109,7 @@ export function ComparisonVisualization({
   // 基準に選んだSetupが集合から外れていたら（削除・選択解除）「基準なし」として扱う
   // （#544指示書「基準に選んだSetupが集合から外れた場合の扱い」）。存在しないidを
   // 指したままの表示にしない。
-  const baselineRow = baselineSetupId === undefined ? undefined : rowFor(extracted.rows, baselineSetupId);
+  const baselineRow = baselineTargetKey === undefined ? undefined : rowFor(extracted.rows, baselineTargetKey);
   const effectiveBaseline = baselineRow?.kind === 'ok' ? baselineRow : undefined;
 
   const toggleColumn = (column: ComparisonColumnId) => {
@@ -121,13 +123,12 @@ export function ComparisonVisualization({
     <section className="comparison-feature" data-react-feature="comparison">
       <div className="comparison-heading">
         <div>
-          <p className="eyebrow">Setup comparison</p>
           <h2>比較表</h2>
         </div>
         <p>
-          選んだSetupを並べて、共通指標（`interpretation/metrics.ts`）を横に並べて見る。
-          優劣の判定・順位付け・合成スコアはこの表では作らない。基準行との比較は
-          差分の実測値を出すだけで、良し悪しの色付けはしない。
+          選んだ配列やSetupを並べて、同じテキストを打った時の指の移動距離などを横に比べる。
+          どれが良いかの判定や順位付けはしない。基準を選ぶと、基準に対する割合（%）も出せる
+          （良し悪しの色付けはしない）。
         </p>
       </div>
 
@@ -135,18 +136,18 @@ export function ComparisonVisualization({
         <ColumnPicker visibleColumns={visibleColumns} onToggle={toggleColumn} />
 
         <label className="comparison-control">
-          <span>基準（baseline）</span>
+          <span>基準にする対象</span>
           <select
-            aria-label="基準Setup"
-            value={baselineSetupId ?? ''}
-            onChange={(event) => onBaselineSetupIdChange(
+            aria-label="基準"
+            value={baselineTargetKey ?? ''}
+            onChange={(event) => onBaselineTargetKeyChange(
               event.currentTarget.value === '' ? undefined : event.currentTarget.value,
             )}
           >
             <option value="">基準なし</option>
-            {order.map((setupId) => (
-              <option key={setupId} value={setupId}>
-                {rowContext.get(setupId)?.label ?? setupId}
+            {order.map((targetKey) => (
+              <option key={targetKey} value={targetKey} title={rowContext.get(targetKey)?.fullName}>
+                {rowContext.get(targetKey)?.label ?? '—'}
               </option>
             ))}
           </select>
@@ -167,7 +168,7 @@ export function ComparisonVisualization({
         <table className="comparison-table">
           <thead>
             <tr>
-              <th scope="col">Setup</th>
+              <th scope="col">対象</th>
               <th scope="col">条件</th>
               {visibleColumns.map((column) => (
                 <th scope="col" key={column}>{COMPARISON_COLUMNS[column].label}</th>
@@ -175,17 +176,18 @@ export function ComparisonVisualization({
             </tr>
           </thead>
           <tbody>
-            {order.map((setupId) => {
-              const context = rowContext.get(setupId);
-              const row = rowFor(extracted.rows, setupId);
-              const label = context?.label ?? setupId;
+            {order.map((targetKey) => {
+              const context = rowContext.get(targetKey);
+              const row = rowFor(extracted.rows, targetKey);
+              const label = context?.label ?? '—';
+              const fullName = context?.fullName ?? '';
 
               if (row === undefined) {
-                // extractedにもrowContextにも無いsetupId（依頼の作り直し途中の一瞬）。
+                // extractedにもrowContextにも無いtargetKey（依頼の作り直し途中の一瞬）。
                 // 空行として描き、値の欠落を偽らない。
                 return (
-                  <tr key={setupId} data-comparison-row="pending">
-                    <th scope="row">{label}</th>
+                  <tr key={targetKey} data-comparison-row="pending">
+                    <th scope="row" title={fullName}>{label}</th>
                     <td colSpan={1 + visibleColumns.length} aria-busy="true">計算している…</td>
                   </tr>
                 );
@@ -193,18 +195,18 @@ export function ComparisonVisualization({
 
               if (row.kind === 'failed') {
                 return (
-                  <tr key={setupId} data-comparison-row="failed">
-                    <th scope="row">{label}</th>
+                  <tr key={targetKey} data-comparison-row="failed">
+                    <th scope="row" title={fullName}>{label}</th>
                     <td colSpan={1 + visibleColumns.length} role="alert">
-                      削除された、またはこの条件では解決できない: {row.message || failureLabel(row.failureKind)}
+                      {row.message || failureLabel(row.failureKind)}
                     </td>
                   </tr>
                 );
               }
 
               return (
-                <tr key={setupId} data-comparison-row="ok" data-baseline={setupId === baselineSetupId || undefined}>
-                  <th scope="row">{label}</th>
+                <tr key={targetKey} data-comparison-row="ok" data-baseline={targetKey === baselineTargetKey || undefined}>
+                  <th scope="row" title={fullName}>{label}</th>
                   <td className="comparison-condition-cell">
                     {context
                       ? `${context.layoutName} / ${context.geometryName} / 指の割当: ${context.fingerAssignmentName}${
@@ -216,7 +218,7 @@ export function ComparisonVisualization({
                     const value = row.values[column];
                     const showRatio = showBaselineRatio
                       && effectiveBaseline !== undefined
-                      && effectiveBaseline.setupId !== setupId;
+                      && effectiveBaseline.targetKey !== targetKey;
                     return (
                       <td key={column} className="comparison-value-cell">
                         <span className="comparison-value">{formatValue(column, value)}</span>
@@ -236,7 +238,7 @@ export function ComparisonVisualization({
       </div>
 
       <p className="comparison-footnote">
-        数値は観測値であり、配列の優劣を判定するスコアではない。基準行との比較は差分を示すだけで、
+        数値は観測値であり、配列の優劣を判定するスコアではない。基準行との比較は基準に対する割合を示すだけで、
         どちらが良いかはこの表では決めない。
       </p>
     </section>

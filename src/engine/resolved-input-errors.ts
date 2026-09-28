@@ -14,10 +14,12 @@ import type { SetupReferenceError } from '#input/setup/index.ts';
  * ここを re-export するだけにする（依存が逆向きにならないよう、`engine`は`hosts`を
  * 一切importしない）。
  */
+// 画面にそのまま出る文なので、配列・形状・Setupのidは含めない（利用者には意味の無い内部の値）。
+// どの対象の失敗かは、行・見出しに並ぶ対象の名前で分かる。
 function describeSetupReferenceError(error: SetupReferenceError): string {
   switch (error.kind) {
-    case 'layout-missing': return `配列「${error.layoutId}」が見つからない（削除された可能性）`;
-    case 'shape-missing': return `物理形状「${error.shapeId}」が見つからない（削除された可能性）`;
+    case 'layout-missing': return '配列が見つからない（削除された可能性がある）';
+    case 'shape-missing': return '物理形状が見つからない（削除された可能性がある）';
   }
 }
 
@@ -28,8 +30,9 @@ export function describeResolvedInputError(error: ResolvedInputError): string {
     case 'incompatible-text':
       return `このテキスト（${error.language === 'ja' ? '日本語' : '英語'}）には「${error.layout.name}」を使えない`;
     case 'geometry':
-      return `形状を組み立てられない: ${error.message}`;
-    case 'setup-missing':
-      return 'Setupが削除された';
+      // 例外の文（`error.message`）は定義の内部を指す開発者向けの文なので出さない。
+      return '物理形状と指の割当が噛み合わず、キーボードを組み立てられない';
+    case 'target-missing':
+      return error.target.kind === 'setup' ? 'Setupが削除された' : '配列が見つからない（削除された可能性がある）';
   }
 }

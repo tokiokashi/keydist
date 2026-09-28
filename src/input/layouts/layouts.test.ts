@@ -185,7 +185,7 @@ test('JISかな配列はJIS専用列・Shift面・濁点合成を持つ', () => 
 test('TK音直入力法は英文モードでも英字配置として選べる', () => {
   const layout = LAYOUTS.find((entry) => entry.id === 'oonishi-custom');
   assert.ok(layout);
-  assert.equal(layout.name, 'TK音直入力法');
+  assert.equal(layout.name, 'TK音直入力法（英字配置）');
   assert.equal(layout.romajiTable, undefined);
   assert.equal(layout.resolvedComboDefinitions, undefined);
 });
@@ -206,6 +206,8 @@ test('TK音直入力法は正式名称を表示し、内部idは維持する（#
   assert.equal(oonishi?.name, '大西配列');
   assert.equal(combo?.id, 'oonishi-custom-combo');
   assert.equal(combo?.name, 'TK音直入力法');
+  // 英字配置の方は別の名前にして、配列を選ぶ一覧・並べた時の名前で見分けられるようにする。
+  assert.notEqual(LAYOUT_BY_ID.get('oonishi-custom')?.name, combo?.name);
   const desita = combo?.resolvedComboDefinitions?.find((definition) => definition.output === 'desita');
   assert.deepEqual(desita?.inputs, ['d', 's', 't']);
   assert.deepEqual(desita?.keys, ['m', 'l', 'j']);
@@ -1086,4 +1088,9 @@ test('composition FaceのpresentationLabelはsilent ignoreせずrejectする', (
     () => fromFaces('composition-presentation-label', 'composition-presentation-label', [face]),
     /composition FaceではpresentationLabelを指定できない/,
   );
+});
+
+test('組み込み配列の名前はすべて異なる（配列を選ぶ一覧・並べた時の名前で見分けられる）', () => {
+  const names = [...LAYOUT_BY_ID.values()].map((layout) => layout.name);
+  assert.equal(new Set(names).size, names.length, names.join(', '));
 });

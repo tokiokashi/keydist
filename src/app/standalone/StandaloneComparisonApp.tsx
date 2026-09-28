@@ -6,7 +6,7 @@ import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
 import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { ComparisonStandalonePage } from '#hosts/standalone/index.ts';
 import { builtinStandaloneCatalog } from './catalog.ts';
-import { generateSetupId, generateTextId } from './id-generator.ts';
+import { generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
 
@@ -41,7 +41,6 @@ export function StandaloneComparisonApp() {
       dispatch={dispatch}
       cache={engineCache}
       catalog={catalog}
-      generateSetupId={generateSetupId}
       generateTextId={generateTextId}
       onTextContentCommit={commitTextContent}
       onComparisonOptionsCommit={commitComparisonOptions}

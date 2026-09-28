@@ -25,17 +25,25 @@ const asuka = findLayout(LAYOUTS_JA, 'asuka'); // SandSを持たない配列
 
 function contextFor(
   layout: Layout,
-  options: { shapeId?: PresetGeometryKind; inputMethod?: InputMethod; setupId?: string } = {},
+  options: {
+    shapeId?: PresetGeometryKind;
+    inputMethod?: InputMethod;
+    setupId?: string;
+    targetKind?: 'layout' | 'setup';
+  } = {},
 ): CascadeContext {
   const shapeId = options.shapeId ?? 'row-staggered';
-  return {
+  const base = {
     shapeId,
     shape: PHYSICAL_SHAPES[shapeId],
     inputMethod: options.inputMethod ?? 'direct',
     layoutId: layout.id,
     layout,
-    setupId: options.setupId,
   };
+  const targetKind = options.targetKind ?? (options.setupId === undefined ? 'layout' : 'setup');
+  return targetKind === 'layout'
+    ? { ...base, targetKind }
+    : { ...base, targetKind, setupId: options.setupId };
 }
 
 const ANY_LEVEL = new Set<'global' | 'shape' | 'inputMethod' | 'layout' | 'setup'>([
@@ -176,7 +184,8 @@ test('妥当性: 反対側の親指キーが無い形状では実現できずfal
   const context: CascadeContext = {
     shapeId: 'shape-no-right-thumb',
     shape: shapeNoRightThumb,
-    inputMethod: 'kana-direct',
+    targetKind: 'layout' as const,
+    inputMethod: 'kana-direct' as const,
     layoutId: naginata.id,
     layout: naginata,
   };

@@ -24,7 +24,8 @@ const CATALOG = {
 function resolveFor(id: string, text: string) {
   const setup: Setup = { id, layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
   return resolveEngineInput({
-    setup,
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides: EMPTY_SETTINGS_OVERRIDES,
@@ -176,8 +177,8 @@ test('createSetExtractRequest: 実物のEngineCacheを通してreadyまで届く
   const channel = createSetExtractRequest(cache, definition, emptyOptions.defaultOptions, (s) => states.push(s));
 
   channel.request([
-    { setupId: 'a', resolution: resolveFor('a', sampleText('en', 'default')) },
-    { setupId: 'b', resolution: resolveFor('b', sampleText('en', 'default')) },
+    { target: { kind: 'setup', setupId: 'a' }, resolution: resolveFor('a', sampleText('en', 'default')) },
+    { target: { kind: 'setup', setupId: 'b' }, resolution: resolveFor('b', sampleText('en', 'default')) },
   ]);
   await Promise.resolve();
   await Promise.resolve();
@@ -198,7 +199,8 @@ test('createSetExtractRequest: メンバー1件の解決失敗だけでは依頼
 
   const setup = { id: 'missing', layoutId: 'no-such-layout', shapeId: 'row-staggered', colorIndex: 0 };
   const failingResolution = resolveEngineInput({
-    setup,
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides: EMPTY_SETTINGS_OVERRIDES,
@@ -208,8 +210,8 @@ test('createSetExtractRequest: メンバー1件の解決失敗だけでは依頼
   assert.equal(failingResolution.ok, false);
 
   channel.request([
-    { setupId: 'a', resolution: resolveFor('a', sampleText('en', 'default')) },
-    { setupId: 'missing', resolution: failingResolution },
+    { target: { kind: 'setup', setupId: 'a' }, resolution: resolveFor('a', sampleText('en', 'default')) },
+    { target: { kind: 'setup', setupId: 'missing' }, resolution: failingResolution },
   ]);
   await Promise.resolve();
   await Promise.resolve();

@@ -8,10 +8,10 @@ import { StandaloneNSensitivityApp } from '#app/standalone/StandaloneNSensitivit
 export const Route = createFileRoute('/standalone/n-sensitivity')({
   head: () => ({
     meta: [
-      { title: 'N Sensitivity (standalone) | keydist' },
+      { title: 'N感度 | keydist' },
       {
         name: 'description',
-        content: '複数Setupを対象に、N感度（先読みN入力を振った時の総移動距離の変化）を単体ページとして開く（#544 Analyzer再設計 Phase 3）。',
+        content: '配列やSetupを選んで、先読みする打鍵数Nを0〜10に変えた時に指の総移動距離がどう変わるかをグラフで比べる。',
       },
     ],
   }),

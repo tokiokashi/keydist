@@ -92,7 +92,8 @@ const ALPHA: Layout[] = [
     'eiao-ktnsh',
     'zxcv;gdmjb',
   ])),
-  withShiftedOutputs(fromRows('oonishi-custom', 'TK音直入力法', [
+  // 同じ名前のかな配列（oonishi-custom-combo）と並んだ時に見分けられるよう、英字配置だと名前で示す。
+  withShiftedOutputs(fromRows('oonishi-custom', 'TK音直入力法（英字配置）', [
     '1234567890',
     'qlu,.fwryp',
     'eiao-ktnsh',

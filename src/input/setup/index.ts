@@ -1,11 +1,17 @@
 export type { Setup, SetupIdGenerator } from './types.ts';
 export {
-  deriveSetupName,
-  nameSetups,
-  type NamedSetup,
-  type SetupNameSource,
-} from './naming.ts';
-export { setupColor, leastUsedColorIndex, SETUP_COLOR_PALETTE_SIZE } from './color.ts';
+  analysisTargetKey,
+  sameAnalysisTarget,
+  DEFAULT_ANALYSIS_TARGET,
+  type AnalysisTarget,
+} from './target.ts';
+export {
+  analysisTargetSchema,
+  decodeAnalysisTarget,
+  encodeAnalysisTarget,
+} from './target-codec.ts';
+export { nameTargets, effectiveLabel, type NamedTarget, type TargetNameSource } from './naming.ts';
+export { setupColor, targetColor, leastUsedColorIndex, SETUP_COLOR_PALETTE_SIZE } from './color.ts';
 export { copySetupOverrides, dropSetupOverrides } from './overrides.ts';
 export {
   resolveSetup,
@@ -26,5 +32,4 @@ export {
   relabelSetup,
   type SetupLibrary,
 } from './collection.ts';
-export { initialSetups } from './initial.ts';
 export { setupLibraryCodec } from './codec.ts';

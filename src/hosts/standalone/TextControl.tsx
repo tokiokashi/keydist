@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import {
   createTextCommand,
@@ -59,7 +59,7 @@ function refKey(ref: TextSelectionState['ref']): string {
 /** 言語判定の選択肢（#544レビュー: en/ja以外を扱う予定が無いのでトグルで足りていたが、
  * 「今どちらか」を見せつつ選ばせるにはselectの方が素直、という指摘を反映）。 */
 const LANGUAGE_OVERRIDE_OPTIONS: readonly { readonly value: 'auto' | TextLanguage; readonly label: string }[] = [
-  { value: 'auto', label: '自動' },
+  { value: 'auto', label: '自動で判定' },
   { value: 'ja', label: '日本語' },
   { value: 'en', label: '英語' },
 ];
@@ -77,17 +77,24 @@ export function TextControl({
   // テキストは即座に見た目へ反映しつつ（controlled textarea）、資産への反映は
   // `onTextContentCommit`（呼び出し元がdebounceする）経由にする。`optionsDraft`と同じ形
   // （`BigramFlowStandalonePage`の`onBigramFlowOptionsCommit`参照）。
+  // 資産側の値が変わったら下書きを合わせる。effectでなく描画中に合わせるのは、effectだと
+  // 「新しい資産で描いたが下書きは古い値」の画面が1フレーム確定するため。読み込み完了で
+  // 操作可能になった瞬間の入力が、直後に差し替わる古い値の後ろへ足されていた
+  // （別タブ同期のe2eで「one」+入力になった）。描画中なら確定前に描き直される。
+  // resolved.textは`resolveTextSelection`が呼ぶたびに新しく作る値なので、比べるのは文字列。
   const [textDraft, setTextDraft] = useState(resolved.text);
-  useEffect(() => {
+  const [textDraftSource, setTextDraftSource] = useState(resolved.text);
+  if (textDraftSource !== resolved.text) {
+    setTextDraftSource(resolved.text);
     setTextDraft(resolved.text);
-    // resolved.textは`resolveTextSelection`が呼ぶたびに新しく作る値なので、
-    // 依存は参照ではなく実際の文字列にする。
-  }, [resolved.text]);
+  }
 
   const [renameDraft, setRenameDraft] = useState(resolved.name);
-  useEffect(() => {
+  const [renameDraftSource, setRenameDraftSource] = useState(resolved.name);
+  if (renameDraftSource !== resolved.name) {
+    setRenameDraftSource(resolved.name);
     setRenameDraft(resolved.name);
-  }, [resolved.name]);
+  }
 
   return (
     <div className="standalone-controls" aria-label="テキストの操作">
@@ -140,7 +147,7 @@ export function TextControl({
           aria-label="テキスト"
         />
         <small>
-          言語判定: {resolved.language}
+          言語: {resolved.language === 'ja' ? '日本語' : '英語'}
           {' '}
           <select
             value={resolved.languageOverride ?? 'auto'}
@@ -149,7 +156,7 @@ export function TextControl({
               dispatch(setTextLanguageOverrideCommand(holder, value === 'auto' ? undefined : value as TextLanguage));
             }}
             disabled={resolved.isBuiltin}
-            aria-label="言語判定"
+            aria-label="言語の判定"
           >
             {LANGUAGE_OVERRIDE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>

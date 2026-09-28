@@ -184,7 +184,8 @@ function computeFor(fixtureCase: FixtureCase, cache = createEngineCache()) {
   const overrides = overridesFor(setupId, fixtureCase.conditions);
 
   const resolution = resolveEngineInput({
-    setup,
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides,
@@ -215,7 +216,8 @@ async function computeForAsync(fixtureCase: FixtureCase, cache = createEngineCac
   };
   const overrides = overridesFor(setupId, fixtureCase.conditions);
   const resolution = resolveEngineInput({
-    setup,
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides,
@@ -288,4 +290,58 @@ test('中身が同じ2つのSetup（配列・形状・条件が同じでidだけ
   const clonedCase: FixtureCase = { ...base, id: `${base.id}-clone` };
   const second = computeFor(clonedCase, cache);
   assert.equal(first.trace, second.trace);
+});
+
+// ---------------------------------------------------------------------------
+// 配列を対象にした解決（#578指摘1）の回帰
+// ---------------------------------------------------------------------------
+
+/**
+ * fixtureの「上書き無しシナリオ」（id末尾が default/legacy/modern。#544 §2 Phase 2の
+ * fixture生成規約で、この3種類だけが上書きの無いケース）は、そのままAnalysisTargetの
+ * **配列対象**（`{kind:'layout', layoutId}`）でも同じ数値になるはずである
+ * （`engine/setup.test.ts`のカスケード項目レベルの確認に加えて、ここではengineの経路
+ * 全体・実fixtureの`metrics`/`analysis`と突き合わせる。レビュー指摘7
+ * 「add a layout-target pass over the analyzer-regression.json default scenarios」）。
+ */
+const DEFAULT_SCENARIOS = fixture.cases.filter((c) => c.id.split(':').length === 3);
+
+function computeForLayoutTarget(fixtureCase: FixtureCase, cache = createEngineCache()) {
+  const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
+  const resolution = resolveEngineInput({
+    target: { kind: 'layout', layoutId: fixtureCase.layoutId },
+    setups: new Map(),
+    catalog: CATALOG,
+    userLayouts: new Map(),
+    overrides: EMPTY_SETTINGS_OVERRIDES,
+    text,
+    language: fixtureCase.language,
+  });
+  assert.ok(resolution.ok, `${fixtureCase.id}: 配列対象での解決に失敗した: ${resolution.ok ? '' : JSON.stringify(resolution.error)}`);
+  if (!resolution.ok) throw new Error('unreachable');
+
+  const { analysis, metrics } = cache.getInterpretation(resolution.input);
+  return { analysis, metrics };
+}
+
+test('配列対象での既定シナリオがfixture件数どおり見つかる（前提確認）', () => {
+  assert.ok(DEFAULT_SCENARIOS.length > 0);
+});
+
+let layoutTargetMatched = 0;
+for (const fixtureCase of DEFAULT_SCENARIOS) {
+  test(`配列対象での既定条件: ${fixtureCase.id}`, () => {
+    const { metrics, analysis } = computeForLayoutTarget(fixtureCase);
+    assert.deepEqual(metricsSummary(metrics), fixtureCase.metrics, `${fixtureCase.id}: 配列対象のmetricsがfixtureと食い違う`);
+    assert.deepEqual(
+      analysisSummary(analysis),
+      fixtureCase.analysis,
+      `${fixtureCase.id}: 配列対象のanalysis集計がfixtureと食い違う`,
+    );
+    layoutTargetMatched++;
+  });
+}
+
+test('配列対象での既定シナリオが全件engineの経路で一致した', () => {
+  assert.equal(layoutTargetMatched, DEFAULT_SCENARIOS.length);
 });

@@ -1,6 +1,7 @@
 import {
   defineItem,
   emptyCascadeOverrides,
+  readOverride,
   resetItem as resetItemGeneric,
   resetLevel as resetLevelGeneric,
   resolveCascade,
@@ -38,6 +39,13 @@ import {
  * `engine` は `input` / `trace` / `interpretation` をimportしてよい層なのでここに置く
  * （docs/architecture.mdの依存規則）。
  */
+
+/**
+ * 「既定の形状」の既定値。3形状（`PHYSICAL_SHAPES`）のうち最初から選ばれている既定
+ * （`src/input/shapes/geometry.ts`の`row-staggered`）に合わせる。実体はimportせず、
+ * idの文字列だけを持つ（`initial.ts`が持っていた同名の定数の後継。#578指摘1）。
+ */
+export const DEFAULT_SHAPE_ID = 'row-staggered';
 
 const ANY_LEVEL = new Set<CascadeLevel['kind']>(['global', 'shape', 'inputMethod', 'layout', 'setup']);
 const GLOBAL_ONLY = new Set<CascadeLevel['kind']>(['global']);
@@ -183,6 +191,49 @@ export const SETTINGS_ITEMS = {
     allowedLevels: GLOBAL_SHAPE_LAYOUT_SETUP,
     defaultValue: (context) => defaultFingerAssignmentId(context.shape),
   }),
+  /**
+   * 既定の形状（#578指摘1の決定「対象を配列かSetupにする」）。**配列を対象にした時の
+   * 物理形状**を決めるグローバル専用の項目。カスケードの他の項目と違い、この値自体は
+   * `CascadeContext`（既に形状が決まっている前提の型）を組み立てる**前**に読む必要がある
+   * （`target-resolution.ts`参照）ため、`resolveCascade`は経由しない。項目としては
+   * `resolveCascade`の他の項目と同じ形（`SettingItem`）で持ち、書き込みは既存の
+   * `setSettingsOverride`をそのまま使えるようにする（読み出しだけ専用の
+   * `resolveDefaultShapeId`を使う）。
+   *
+   * `allowedLevels`はglobalのみ（#578決定「scope: global only — 他のレベルは今は許可しない」。
+   * 「先回りして足さない」の判断と同じ）。
+   *
+   * `isApplicable`: Setup対象はSetup自身の`shapeId`で物理形状が決まるので、この項目は
+   * 効かない（レビュー指摘6）。判定は`context.targetKind`で行い、`setupId`の有無は見ない
+   * （idがまだ無いSetupのプレビューもSetup対象で、既定の形状は効かないため）。
+   *
+   * `validate`: 未知・削除された形状idが指されていた場合、`target-resolution.ts`が
+   * 実際に使う形状を`DEFAULT_SHAPE_ID`へ前もってfallbackさせた上で`context.shapeId`へ
+   * 積む（配列対象の解決自体を失敗させない。レビュー指摘6「fall back to DEFAULT_SHAPE_ID
+   * with a diagnostic … instead of failing every layout target」）。ここでの`validate`は
+   * 「生の上書き値」と「実際にその後使われた形状（`context.shapeId`）」を突き合わせるだけで、
+   * 食い違っていれば診断を1件積んで`context.shapeId`へ読み替える。`preferOppositeThumb`と
+   * 同じ「実現できない値をfallbackで戻す」役割を、fallback先の決定だけ呼び出し側
+   * （`target-resolution.ts`。catalogを持っているのはそちら）に任せる形。
+   */
+  defaultShapeId: defineItem<string>({
+    id: 'defaultShapeId',
+    allowedLevels: GLOBAL_ONLY,
+    defaultValue: DEFAULT_SHAPE_ID,
+    isApplicable: (context) => context.targetKind === 'layout',
+    validate: (value, context) => {
+      // Setup対象ではこの項目自体が無関係（isApplicable=false）なので、Setup自身の
+      // shapeIdと値が食い違っていても検証しない（毎回誤ってfallback診断が出る事故を避ける）。
+      if (context.targetKind !== 'layout') return { ok: true };
+      return value === context.shapeId
+        ? { ok: true }
+        : {
+          ok: false,
+          fallback: context.shapeId,
+          reason: `既定の形状に選んでいた物理形状が見つからないため、「${context.shape.name}」で測った`,
+        };
+    },
+  }),
 } as const satisfies ItemRegistry;
 
 export type SettingsItemId = keyof typeof SETTINGS_ITEMS;
@@ -216,6 +267,18 @@ export function resetSettingsItem(
   itemId: SettingsItemId,
 ): SettingsCascadeOverrides {
   return resetItemGeneric(overrides, level, itemId);
+}
+
+/**
+ * 「既定の形状」を単独で読む。`resolveSettings`（`resolveCascade`）を経由しない理由は
+ * `SETTINGS_ITEMS.defaultShapeId`のコメント参照: 配列を対象にした時の物理形状そのものを
+ * 決める値なので、`CascadeContext`（形状が既に決まっている前提）を組み立てる前に必要になる。
+ * globalのみが許可レベルで`defaultValue`もcontext非依存の固定値なので、
+ * `overrides.global`を直接読むだけで解決できる（`resolveCascade`と同じ「弱い順に重ねる」を
+ * 省略しても結果は一致する）。
+ */
+export function resolveDefaultShapeId(overrides: SettingsCascadeOverrides): string {
+  return readOverride(overrides, { kind: 'global' }, 'defaultShapeId') ?? DEFAULT_SHAPE_ID;
 }
 
 export function resetSettingsLevel(

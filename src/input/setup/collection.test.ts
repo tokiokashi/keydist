@@ -8,6 +8,7 @@ import {
   type ItemRegistry,
 } from '#input/settings/index.ts';
 import { createSetup, duplicateSetup, deleteSetup, relabelSetup, type SetupLibrary } from './collection.ts';
+import { layoutTargetColorIndex } from './color.ts';
 
 // Setup固有の上書き（カスケードのsetupレベル）が複製・削除に追従することを検証するための
 // 最小レジストリ。overrides.tsの判断（Setupの上書きはSetupオブジェクトではなくカスケードに
@@ -37,7 +38,8 @@ test('createSetup: 新しいSetupが追加され、上書きは変わらない',
   idCounter = 0;
   const library = createSetup(emptyLibrary(), 'qwerty', 'row-staggered', nextId);
   assert.equal(library.setups.length, 1);
-  assert.deepEqual(library.setups[0], { id: 'setup-1', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 });
+  // qwertyの配列対象の色（0番）を避けるので、空の手持ちからでも1番になる。
+  assert.deepEqual(library.setups[0], { id: 'setup-1', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 1 });
 });
 
 test('createSetup: ラベル付きで作れる', () => {
@@ -52,7 +54,11 @@ test('createSetup: 追加するたびに、その時点で最も使われてい�
   library = createSetup(library, 'qwerty', 'row-staggered', nextId);
   library = createSetup(library, 'dvorak', 'row-staggered', nextId);
   library = createSetup(library, 'colemak', 'row-staggered', nextId);
-  assert.deepEqual(library.setups.map((s) => s.colorIndex), [0, 1, 2]); // 手持ちが空から増えるので0番から順
+  // 最も使われていない色のうち、ベースの配列の色（qwerty=0・dvorak=6・colemak=4）を除いた最小。
+  assert.deepEqual(library.setups.map((s) => s.colorIndex), [1, 0, 2]);
+  for (const setup of library.setups) {
+    assert.notEqual(setup.colorIndex, layoutTargetColorIndex(setup.layoutId));
+  }
 });
 
 test('duplicateSetup: 配列・形状・上書きをコピーした独立のSetupができる', () => {
@@ -92,6 +98,7 @@ test('duplicateSetup: 複製元と別の色になる（同じ配列・形状の2
   library = duplicateSetup(library, sourceId, nextId);
   const copyColorIndex = library.setups[1].colorIndex;
   assert.notEqual(copyColorIndex, sourceColorIndex);
+  assert.notEqual(copyColorIndex, layoutTargetColorIndex('qwerty'), 'ベースの配列の色も避ける');
 });
 
 test('duplicateSetup: 存在しないidの複製は何もしない（例外にしない）', () => {
@@ -142,6 +149,22 @@ test('relabelSetup: ラベルを付ける・変える・外す', () => {
   assert.equal(library.setups[0].label, 'サブ');
 
   library = relabelSetup(library, id, undefined);
+  assert.equal('label' in library.setups[0], false);
+});
+
+test('relabelSetup / createSetup: 前後の空白を落とし、空白だけのラベルはラベル無しとして保存する', () => {
+  idCounter = 0;
+  let library = createSetup(emptyLibrary(), 'qwerty', 'row-staggered', nextId, ' 　 ');
+  const id = library.setups[0].id;
+  assert.equal('label' in library.setups[0], false);
+
+  library = relabelSetup(library, id, '  メイン ');
+  assert.equal(library.setups[0].label, 'メイン');
+
+  const unchanged = relabelSetup(library, id, 'メイン\t');
+  assert.equal(unchanged, library, '正規化後に同じラベルならno-op');
+
+  library = relabelSetup(library, id, '   ');
   assert.equal('label' in library.setups[0], false);
 });
 

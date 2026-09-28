@@ -283,7 +283,8 @@ const CATALOG = {
 function resolve(text = 'hello world'): ResolvedInput {
   const setup: Setup = { id: 'setup-bigram-flow', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
   const result = resolveEngineInput({
-    setup,
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides: EMPTY_SETTINGS_OVERRIDES,

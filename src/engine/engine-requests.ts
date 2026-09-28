@@ -67,7 +67,7 @@ export function createExtractRequest<Options, Extracted>(
 
 /**
  * 集合対象のAnalyzerインスタンス1個分の抽出の依頼（#544 Phase 3）。`request()`に渡すのは
- * 単一の解決済み入力ではなく、集合の各枠（Setup）ぶんの`{ setupId, resolution }`の列
+ * 単一の解決済み入力ではなく、集合の各枠（配列かSetup）ぶんの`{ target, resolution }`の列
  * （表示順のまま。`engine/keys.ts`の`setAnalyzerExtractionKeyOf`コメント参照）。
  * メンバーごとの解決失敗は`createEngineSetRequest`が早期returnせずそのまま
  * `EngineCache.getSetExtraction`へ渡すので、集合全体が`failed`になるのは

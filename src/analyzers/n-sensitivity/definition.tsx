@@ -10,7 +10,7 @@ import './n-sensitivity-view.css';
  * 順位表示・傾きスコアはしない**（AGENTS.md「優劣の判定・順位付け・合成スコアを作らない」。
  * 旧実装（`src/legacy/analyzer-metrics-content.tsx`）のコメントが「傾きが小さい配列ほど
  * 指を残したまま打てる配列」と書いていた評価的な言い回しはここでは引き継がない）。
- * 系列の色はSetup自身の色（`setupColor`）をそのまま使い、値の大小で強調しない。
+ * 系列の色は対象自身の色（`targetColor`）をそのまま使い、値の大小で強調しない。
  */
 
 const CHART_WIDTH = 640;
@@ -18,8 +18,10 @@ const CHART_HEIGHT = 320;
 const MARGIN = { top: 16, right: 16, bottom: 32, left: 48 };
 
 export interface NSensitivityRowContext {
-  readonly setupId: string;
+  readonly targetKey: string;
   readonly label: string;
+  /** 集合によらない完全な名前（レビュー指摘3）。hover（`title`属性）に出す。 */
+  readonly fullName: string;
   readonly layoutName: string;
   readonly geometryName: string;
   readonly fingerAssignmentName: string;
@@ -34,23 +36,23 @@ export interface NSensitivityRowContext {
 
 export interface NSensitivityVisualizationProps {
   extracted: NSensitivityExtracted;
-  /** 表示順（Setup id列）。ページ自身が持つ集合の並び順（#544 §6）。 */
+  /** 表示順（対象keyの列）。ページ自身が持つ集合の並び順（#544 §6）。 */
   order: readonly string[];
   rowContext: ReadonlyMap<string, NSensitivityRowContext>;
   options: NSensitivityOptions;
   onOptionsChange(next: NSensitivityOptions): void;
 }
 
-function seriesFor(series: readonly NSensitivitySeries[], setupId: string): NSensitivitySeries | undefined {
-  return series.find((item) => item.setupId === setupId);
+function seriesFor(series: readonly NSensitivitySeries[], targetKey: string): NSensitivitySeries | undefined {
+  return series.find((item) => item.targetKey === targetKey);
 }
 
 function failureLabel(kind: NSensitivitySeriesFailed['failureKind']): string {
   switch (kind) {
-    case 'reference': return '配列・形状が見つからない（削除された可能性）';
+    case 'reference': return '配列・形状が見つからない（削除された可能性がある）';
     case 'incompatible-text': return 'このテキストには使えない';
-    case 'geometry': return '形状を組み立てられない';
-    case 'setup-missing': return 'Setupが削除された';
+    case 'geometry': return 'キーボードを組み立てられない';
+    case 'target-missing': return '削除された、または見つからない';
   }
 }
 
@@ -65,8 +67,9 @@ function formatY(scale: NSensitivityOptions['scale'], value: number): string {
 }
 
 interface PlottedSeries {
-  readonly setupId: string;
+  readonly targetKey: string;
   readonly label: string;
+  readonly fullName: string;
   readonly color: string;
   readonly points: readonly { readonly windowSize: number; readonly y: number; readonly totalUnits: number }[];
 }
@@ -141,7 +144,7 @@ function NSensitivityChart({
           .map((p, i) => `${i === 0 ? 'M' : 'L'}${xScale(p.windowSize)},${yScale(p.y)}`)
           .join(' ');
         return (
-          <g key={s.setupId} data-n-sensitivity-series={s.setupId}>
+          <g key={s.targetKey} data-n-sensitivity-series={s.targetKey}>
             <path className="n-sensitivity-line" d={path} stroke={s.color} fill="none" />
             {s.points.map((p) => (
               <circle
@@ -170,8 +173,8 @@ export function NSensitivityVisualization({
   onOptionsChange,
 }: NSensitivityVisualizationProps) {
   const okRows = order
-    .map((setupId) => ({ setupId, entry: seriesFor(extracted.series, setupId), context: rowContext.get(setupId) }))
-    .filter((row): row is { setupId: string; entry: NSensitivitySeries; context: NSensitivityRowContext | undefined } => row.entry !== undefined);
+    .map((targetKey) => ({ targetKey, entry: seriesFor(extracted.series, targetKey), context: rowContext.get(targetKey) }))
+    .filter((row): row is { targetKey: string; entry: NSensitivitySeries; context: NSensitivityRowContext | undefined } => row.entry !== undefined);
 
   const plotted: PlottedSeries[] = okRows
     .filter((row) => row.entry.kind === 'ok')
@@ -179,8 +182,9 @@ export function NSensitivityVisualization({
       const okEntry = row.entry as Extract<NSensitivitySeries, { kind: 'ok' }>;
       const base = okEntry.points[0]?.totalUnits ?? 0;
       return {
-        setupId: row.setupId,
-        label: row.context?.label ?? row.setupId,
+        targetKey: row.targetKey,
+        label: row.context?.label ?? '—',
+        fullName: row.context?.fullName ?? '',
         color: row.context?.color ?? '#666',
         points: okEntry.points.map((point) => ({
           windowSize: point.windowSize,
@@ -194,7 +198,6 @@ export function NSensitivityVisualization({
     <section className="n-sensitivity-feature" data-react-feature="n-sensitivity">
       <div className="n-sensitivity-heading">
         <div>
-          <p className="eyebrow">N sensitivity</p>
           <h2>N感度</h2>
         </div>
         <p>
@@ -228,25 +231,25 @@ export function NSensitivityVisualization({
       </fieldset>
 
       {plotted.length === 0 ? (
-        <p className="note">Setupを1つ以上選ぶ</p>
+        <p className="note">対象を1つ以上選ぶ</p>
       ) : (
         <NSensitivityChart series={plotted} scale={options.scale} />
       )}
 
       <ul className="n-sensitivity-legend" aria-label="凡例">
-        {okRows.map(({ setupId, entry, context }) => {
+        {okRows.map(({ targetKey, entry, context }) => {
           if (entry.kind === 'failed') {
             return (
-              <li key={setupId} data-n-sensitivity-row="failed">
-                <span>{context?.label ?? setupId}</span>
-                <span role="alert">削除された、またはこの条件では解決できない: {entry.message || failureLabel(entry.failureKind)}</span>
+              <li key={targetKey} data-n-sensitivity-row="failed">
+                <span title={context?.fullName}>{context?.label ?? '—'}</span>
+                <span role="alert">{entry.message || failureLabel(entry.failureKind)}</span>
               </li>
             );
           }
           return (
-            <li key={setupId} data-n-sensitivity-row="ok">
+            <li key={targetKey} data-n-sensitivity-row="ok">
               <span className="n-sensitivity-swatch" style={{ backgroundColor: context?.color ?? '#666' }} aria-hidden="true" />
-              <span>{context?.label ?? setupId}</span>
+              <span title={context?.fullName}>{context?.label ?? '—'}</span>
               <span className="n-sensitivity-condition">
                 {context
                   ? `${context.layoutName} / ${context.geometryName} / 指の割当: ${context.fingerAssignmentName}`
@@ -262,17 +265,17 @@ export function NSensitivityVisualization({
 
       <div className="n-sensitivity-table-scroll">
         <table className="n-sensitivity-table">
-          <caption>各Setup・各Nの実測値。相対表示中も実測値[u]をここで確認できる。</caption>
+          <caption>各対象・各Nの実測値。相対表示中も実測値[u]をここで確認できる。</caption>
           <thead>
             <tr>
-              <th scope="col">Setup</th>
+              <th scope="col">対象</th>
               {N_SENSITIVITY_RANGE.map((n) => <th scope="col" key={n}>N={n}</th>)}
             </tr>
           </thead>
           <tbody>
             {plotted.map((s) => (
-              <tr key={s.setupId}>
-                <th scope="row">{s.label}</th>
+              <tr key={s.targetKey}>
+                <th scope="row" title={s.fullName}>{s.label}</th>
                 {s.points.map((p) => (
                   <td key={p.windowSize}>{p.totalUnits.toFixed(1)} u</td>
                 ))}

@@ -8,12 +8,7 @@ import type { Layout } from '#input/layouts/types.ts';
 import { withRomaji } from '#input/layouts/types.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { TextLanguage } from '#input/text/language.ts';
-import {
-  resolveSetupForText,
-  type Setup,
-  type SetupCatalog,
-  type SetupReferenceError,
-} from '#input/setup/index.ts';
+import type { AnalysisTarget, Setup, SetupCatalog, SetupReferenceError } from '#input/setup/index.ts';
 import { tableForRule, type UserRomajiRule } from '#input/romaji/rules.ts';
 import type { TracePolicy } from '#trace/generate.ts';
 import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
@@ -24,6 +19,7 @@ import {
   type ResolvedSettingsCascade,
   type SettingsCascadeOverrides,
 } from './settings-items.ts';
+import { resolveTargetForText } from './target-resolution.ts';
 
 /**
  * 解決済み入力（#544 §1・§7）。Setup + Setupの手持ち（上書き含む）+ テキスト + カタログから、
@@ -55,21 +51,22 @@ export type ResolvedInputError =
   /** `buildGeometry`が投げた例外を値へ変換したもの（例: 自作形状の行数と指割り当てが噛み合わない）。 */
   | { readonly kind: 'geometry'; readonly message: string }
   /**
-   * Setupの実体そのものが手持ち（`SetupLibrary.setups`）から消えている（#544 Phase 3
-   * 「Setup削除時の表示」）。`reference`（Setupは残っているが参照先の配列・形状が
-   * 無い）とは別のケース: こちらは`resolveEngineInput`を呼ぶための`Setup`自体が
-   * 手元に無いので、呼び出し側（`hosts/standalone`の集合対象ページ）がこの値を
-   * 直接組み立てて返す。`resolveEngineInput`自身はこの値を作らない（`Setup`が
-   * 引数として渡ってくる前提の関数のため）。
+   * 対象そのものの実体が手持ちから消えている（#578指摘1「Setup deleted or layout id
+   * unknown」で`setup-missing`を一般化）。Setup対象ならそのidが`SetupLibrary.setups`に
+   * 無い、配列対象ならそのidが`SetupCatalog.layouts`に無い、のどちらか。`reference`
+   * （対象自体は見つかるが、参照先の配列・形状が無い）とは別のケース:
+   * `resolveTargetForText`（`target-resolution.ts`）がこのモジュールを呼ぶ前に判定して返す。
    */
-  | { readonly kind: 'setup-missing'; readonly setupId: string };
+  | { readonly kind: 'target-missing'; readonly target: AnalysisTarget };
 
 export type ResolvedInputResult =
   | { readonly ok: true; readonly input: ResolvedInput }
   | { readonly ok: false; readonly error: ResolvedInputError };
 
 export interface ResolveEngineInputOptions {
-  readonly setup: Setup;
+  readonly target: AnalysisTarget;
+  /** Setup対象の解決に要る手持ち（`SetupLibrary.setups`をidで引けるようにしたもの）。 */
+  readonly setups: ReadonlyMap<string, Setup>;
   readonly catalog: SetupCatalog;
   readonly userLayouts: ReadonlyMap<string, UserLayout>;
   readonly customRomajiRules?: readonly UserRomajiRule[];
@@ -103,13 +100,18 @@ function withoutRomaji(layout: Layout): Layout {
  * 失敗は例外にせず値で返す（#544 §8-5）。
  */
 export function resolveEngineInput(options: ResolveEngineInputOptions): ResolvedInputResult {
-  const textResolution = resolveSetupForText(
-    options.setup,
+  const textResolution = resolveTargetForText(
+    options.target,
+    options.setups,
     options.catalog,
     options.userLayouts,
+    options.overrides,
     options.language,
   );
   if (!textResolution.ok) {
+    if (textResolution.kind === 'target-missing') {
+      return { ok: false, error: { kind: 'target-missing', target: textResolution.target } };
+    }
     return textResolution.kind === 'reference'
       ? { ok: false, error: { kind: 'reference', errors: textResolution.errors } }
       : {

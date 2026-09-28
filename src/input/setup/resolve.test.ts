@@ -24,6 +24,7 @@ test('resolveSetup: 配列・形状ともカタログにあれば解決できる
   assert.equal(result.layout, qwerty);
   assert.equal(result.shape, rowStaggered);
   assert.deepEqual(result.context, {
+    targetKind: 'setup',
     shapeId: rowStaggered.id,
     shape: rowStaggered,
     inputMethod: 'romaji',

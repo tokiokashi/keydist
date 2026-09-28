@@ -23,7 +23,8 @@ function setupFor(layoutId: string, shapeId = 'row-staggered'): Setup {
 
 test('ローマ字入力: qwerty + 日本語テキストはkunreiで組んだromajiTableを持つ', () => {
   const result = resolveEngineInput({
-    setup: setupFor('qwerty'),
+    target: { kind: 'setup', setupId: (setupFor('qwerty')).id },
+    setups: new Map([[(setupFor('qwerty')).id, setupFor('qwerty')]]),
     catalog: CATALOG,
     userLayouts: NO_USER_LAYOUTS,
     overrides: EMPTY_SETTINGS_OVERRIDES,
@@ -38,7 +39,8 @@ test('ローマ字入力: qwerty + 日本語テキストはkunreiで組んだrom
 
 test('かな直接入力: nicola + 日本語テキストはromajiTableを持たない', () => {
   const result = resolveEngineInput({
-    setup: setupFor('nicola'),
+    target: { kind: 'setup', setupId: (setupFor('nicola')).id },
+    setups: new Map([[(setupFor('nicola')).id, setupFor('nicola')]]),
     catalog: CATALOG,
     userLayouts: NO_USER_LAYOUTS,
     overrides: EMPTY_SETTINGS_OVERRIDES,
@@ -60,7 +62,8 @@ test('英字直接入力: qwerty + 英語テキストはLAYOUT_BY_IDの静的rom
   assert.ok(catalogEntry?.romajiTable, '前提: LAYOUT_BY_IDのqwertyは静的なromajiTableを持つ');
 
   const result = resolveEngineInput({
-    setup: setupFor('qwerty'),
+    target: { kind: 'setup', setupId: (setupFor('qwerty')).id },
+    setups: new Map([[(setupFor('qwerty')).id, setupFor('qwerty')]]),
     catalog: CATALOG,
     userLayouts: NO_USER_LAYOUTS,
     overrides: EMPTY_SETTINGS_OVERRIDES,
@@ -75,7 +78,8 @@ test('英字直接入力: qwerty + 英語テキストはLAYOUT_BY_IDの静的rom
 
 test('参照エラー: 手持ちに無いlayoutIdは値でreference失敗を返す', () => {
   const result = resolveEngineInput({
-    setup: setupFor('no-such-layout'),
+    target: { kind: 'setup', setupId: (setupFor('no-such-layout')).id },
+    setups: new Map([[(setupFor('no-such-layout')).id, setupFor('no-such-layout')]]),
     catalog: CATALOG,
     userLayouts: NO_USER_LAYOUTS,
     overrides: EMPTY_SETTINGS_OVERRIDES,
@@ -89,7 +93,8 @@ test('参照エラー: 手持ちに無いlayoutIdは値でreference失敗を返�
 
 test('テキスト不一致: かな配列に英語テキストは値でincompatible-text失敗を返す', () => {
   const result = resolveEngineInput({
-    setup: setupFor('nicola'),
+    target: { kind: 'setup', setupId: (setupFor('nicola')).id },
+    setups: new Map([[(setupFor('nicola')).id, setupFor('nicola')]]),
     catalog: CATALOG,
     userLayouts: NO_USER_LAYOUTS,
     overrides: EMPTY_SETTINGS_OVERRIDES,
@@ -103,7 +108,8 @@ test('テキスト不一致: かな配列に英語テキストは値でincompati
 
 test('指割り当て: 既定はDEFAULT_FINGER_ASSIGNMENT、setupレベルの上書きでJIS既定へ切り替わる', () => {
   const defaultResult = resolveEngineInput({
-    setup: setupFor('qwerty'),
+    target: { kind: 'setup', setupId: (setupFor('qwerty')).id },
+    setups: new Map([[(setupFor('qwerty')).id, setupFor('qwerty')]]),
     catalog: CATALOG,
     userLayouts: NO_USER_LAYOUTS,
     overrides: EMPTY_SETTINGS_OVERRIDES,
@@ -123,7 +129,8 @@ test('指割り当て: 既定はDEFAULT_FINGER_ASSIGNMENT、setupレベルの上
   if (!write.ok) return;
 
   const overriddenResult = resolveEngineInput({
-    setup: setupFor('qwerty'),
+    target: { kind: 'setup', setupId: (setupFor('qwerty')).id },
+    setups: new Map([[(setupFor('qwerty')).id, setupFor('qwerty')]]),
     catalog: CATALOG,
     userLayouts: NO_USER_LAYOUTS,
     overrides: write.overrides,
@@ -148,7 +155,8 @@ test('自作の指割り当て: customFingerAssignmentsの手持ちから解決�
   if (!write.ok) return;
 
   const result = resolveEngineInput({
-    setup: setupFor('qwerty'),
+    target: { kind: 'setup', setupId: (setupFor('qwerty')).id },
+    setups: new Map([[(setupFor('qwerty')).id, setupFor('qwerty')]]),
     catalog: CATALOG,
     userLayouts: NO_USER_LAYOUTS,
     customFingerAssignments: new Map([[custom.id, custom]]),
@@ -173,7 +181,8 @@ test('自作の指割り当て: 存在しないidは既定へfallbackし、診�
   if (!write.ok) return;
 
   const result = resolveEngineInput({
-    setup: setupFor('qwerty'),
+    target: { kind: 'setup', setupId: (setupFor('qwerty')).id },
+    setups: new Map([[(setupFor('qwerty')).id, setupFor('qwerty')]]),
     catalog: CATALOG,
     userLayouts: NO_USER_LAYOUTS,
     overrides: write.overrides,
@@ -205,7 +214,8 @@ test('自作の指割り当て: 中身が変わるとTraceのキーが変わる�
   if (!write.ok) return;
 
   const resultA = resolveEngineInput({
-    setup: setupFor('qwerty'),
+    target: { kind: 'setup', setupId: (setupFor('qwerty')).id },
+    setups: new Map([[(setupFor('qwerty')).id, setupFor('qwerty')]]),
     catalog: CATALOG,
     userLayouts: NO_USER_LAYOUTS,
     customFingerAssignments: new Map([[customA.id, customA]]),
@@ -214,7 +224,8 @@ test('自作の指割り当て: 中身が変わるとTraceのキーが変わる�
     language: 'en',
   });
   const resultB = resolveEngineInput({
-    setup: setupFor('qwerty'),
+    target: { kind: 'setup', setupId: (setupFor('qwerty')).id },
+    setups: new Map([[(setupFor('qwerty')).id, setupFor('qwerty')]]),
     catalog: CATALOG,
     userLayouts: NO_USER_LAYOUTS,
     customFingerAssignments: new Map([[customB.id, customB]]),
@@ -248,7 +259,8 @@ test('自作の指割り当て: 組み込みdefaultと同じ中身（keyFinger/h
 
   const text = 'the quick brown fox jumps over the lazy dog';
   const builtinResult = resolveEngineInput({
-    setup: setupFor('qwerty'),
+    target: { kind: 'setup', setupId: (setupFor('qwerty')).id },
+    setups: new Map([[(setupFor('qwerty')).id, setupFor('qwerty')]]),
     catalog: CATALOG,
     userLayouts: NO_USER_LAYOUTS,
     overrides: EMPTY_SETTINGS_OVERRIDES,
@@ -256,7 +268,8 @@ test('自作の指割り当て: 組み込みdefaultと同じ中身（keyFinger/h
     language: 'en',
   });
   const customResult = resolveEngineInput({
-    setup: setupFor('qwerty'),
+    target: { kind: 'setup', setupId: (setupFor('qwerty')).id },
+    setups: new Map([[(setupFor('qwerty')).id, setupFor('qwerty')]]),
     catalog: CATALOG,
     userLayouts: NO_USER_LAYOUTS,
     customFingerAssignments: new Map([[sameContent.id, sameContent]]),
@@ -288,7 +301,8 @@ test('形状エラー: 指割り当てが噛み合わない自作形状は値で
     shapes: new Map([[brokenShape.id, brokenShape]]),
   };
   const result = resolveEngineInput({
-    setup: setupFor('qwerty', 'shape-broken'),
+    target: { kind: 'setup', setupId: (setupFor('qwerty', 'shape-broken')).id },
+    setups: new Map([[(setupFor('qwerty', 'shape-broken')).id, setupFor('qwerty', 'shape-broken')]]),
     catalog,
     userLayouts: NO_USER_LAYOUTS,
     overrides: EMPTY_SETTINGS_OVERRIDES,

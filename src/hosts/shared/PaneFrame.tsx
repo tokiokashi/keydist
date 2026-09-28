@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type { EngineRequestState } from '#engine/request.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { describeEngineRequestError, paneStatusLabel } from './pane-status.ts';
-import { formatOrigin, type ConditionHeaderInfo, type ConditionSummaryRow } from './condition-summary.ts';
+import { conditionDiagnosticText, type ConditionHeaderInfo, type ConditionSummaryRow } from './condition-summary.ts';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 import './pane-frame.css';
 
@@ -78,15 +78,18 @@ export function PaneFrame({
                 <dt>{row.label}</dt>
                 <dd>
                   <span className="pane-condition-value">{row.displayValue}</span>
-                  <span className="pane-condition-origin">（{formatOrigin(row.origin)}）</span>
+                  <span className="pane-condition-origin">（{row.originLabel}）</span>
                   {!row.applicable ? <span className="pane-condition-flag">この配列・Setupでは効かない</span> : null}
-                  {row.diagnostics.length > 0 ? (
-                    <ul className="pane-condition-diagnostics">
-                      {row.diagnostics.map((diagnostic, index) => (
-                        <li key={index}>{diagnostic.message}</li>
-                      ))}
-                    </ul>
-                  ) : null}
+                  {(() => {
+                    const texts = row.diagnostics
+                      .map((diagnostic) => conditionDiagnosticText(row, diagnostic))
+                      .filter((text): text is string => text !== undefined);
+                    return texts.length > 0 ? (
+                      <ul className="pane-condition-diagnostics">
+                        {texts.map((text, index) => <li key={index}>{text}</li>)}
+                      </ul>
+                    ) : null;
+                  })()}
                 </dd>
               </div>
             ))}
@@ -102,12 +105,14 @@ export function PaneFrame({
         </ul>
       ) : null}
 
+      {/*
+        読み直しの診断文は保存形式のキー名・検証ライブラリの英文を含む開発者向けの文なので、
+        個々には出さず、何が起きたかを1行で伝える（件数だけ添える）。
+      */}
       {settingsDiagnostics && settingsDiagnostics.length > 0 ? (
-        <ul className="pane-settings-diagnostics" role="status" data-pane-settings-diagnostics="true">
-          {settingsDiagnostics.map((diagnostic, index) => (
-            <li key={index}>{diagnostic.message}</li>
-          ))}
-        </ul>
+        <p className="pane-settings-diagnostics" role="status" data-pane-settings-diagnostics="true">
+          読み取れない解析設定があったため、その項目は既定値へ戻した（{settingsDiagnostics.length}件）
+        </p>
       ) : null}
 
       {errorMessage ? (

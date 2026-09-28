@@ -194,7 +194,7 @@ function KeyboardFlow({
         className="flow-keyboard-svg"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="キーボード上のbigramベクトル"
+        aria-label="キーボード上の打鍵の流れ"
       >
         <g className="flow-key-layer">
           {keys.map((key) => {
@@ -305,7 +305,7 @@ function KeyboardFlow({
             const repeatCount = repeatCounts.get(key.id);
             const badgeText = hoveredKeyId !== null
               ? (hoverCount === undefined || hoverCount === 0 ? undefined : String(hoverCount))
-              : (repeatCount === undefined ? undefined : `R${repeatCount}`);
+              : (repeatCount === undefined ? undefined : `×${repeatCount}`);
             if (badgeText === undefined) return null;
             const width = badgeWidth(badgeText);
             return (
@@ -338,8 +338,8 @@ function KeyboardFlow({
           </>
         )}
         <span className="flow-coverage">
-          {allFlowVectors.length} connections · {repeatCounts.size} repeat keys
-          {hoveredKeyId === null ? ' · hover a key' : ` · ${hoverCounts.total} outgoing`}
+          線 {allFlowVectors.length}本 · 同じキーの連打 {repeatCounts.size}キー
+          {hoveredKeyId === null ? '' : ` · このキーから出る打鍵 ${hoverCounts.total}回`}
         </span>
       </div>
     </div>
@@ -437,7 +437,7 @@ function MovementProfilePlot({
           {relative.length}件 · 平均移動 {mean.distance.toFixed(2)}u ·{' '}
           <span
             className="flow-direction-cohesion"
-            title="0に近いほど方向が分散し、1に近いほど同じ方向へ集中します"
+            title="0に近いほど方向が分散し、1に近いほど同じ方向へ集中する"
           >
             方向のまとまり {summary.magnitude.toFixed(2)}
           </span>
@@ -455,7 +455,7 @@ function MovementProfilePlot({
           height={viewSize}
           viewBox={`${-halfSize} ${-halfSize} ${viewSize} ${viewSize}`}
           role="img"
-          aria-label={`${hand} hand movement profile`}
+          aria-label={`${hand === 'left' ? '左手' : '右手'}の移動の向きと距離`}
         >
         <circle
           className="direction-polar-baseline"
@@ -566,7 +566,7 @@ function MovementProfilePlot({
       </div>
 
       <div className="roll-summary">
-        <div className="roll-bar" aria-label="inward outward比率">
+        <div className="roll-bar" aria-label="内向きと外向きの割合">
           {hand === 'left' ? (
             <>
               <motion.span
@@ -709,19 +709,18 @@ export function BigramFlowVisualization({
     >
       <div className="flow-analysis-heading">
         <div>
-          <p className="eyebrow">Vector lab · #366</p>
           <h2>Bigram Flow</h2>
         </div>
         <p>
-          現在の評価テキスト・論理配列・物理形状・運指から、隣接打鍵の物理ベクトルを観察する。
-          structural Roll / Arpeggioの成立判定とは独立した表示。
+          選んだテキストを打った時に、続けて打つ2打鍵で指がキーボード上をどう動くかを描く。
+          配列・物理形状・指の割当は上で選んだ条件のまま使う。
         </p>
       </div>
 
-      <section className="flow-controls" aria-label="Bigram Flow controls">
+      <section className="flow-controls" aria-label="Bigram Flowの表示設定">
         <div className="flow-control-group">
           <span>Bigram</span>
-          <div className="flow-segmented" role="group" aria-label="bigram source">
+          <div className="flow-segmented" role="group" aria-label="2打鍵の取り方">
             {(['actual', 'within-hand'] as const).map((candidate) => (
               <button
                 type="button"
@@ -780,9 +779,9 @@ export function BigramFlowVisualization({
       <div className="flow-status">
         <span>{layout.name}</span>
         <span>{geometry.name}</span>
-        <span>{source === 'actual' ? '実Stroke bigram' : '反対手を飛ばした手内bigram'}</span>
-        <span>{extracted.rawCount.toLocaleString()} vectors</span>
-        {trace.skipped > 0 ? <span>{trace.skipped} skipped</span> : null}
+        <span>{source === 'actual' ? '実際に続けて打った2打鍵' : '反対の手の打鍵を飛ばして、同じ手で続けた2打鍵'}</span>
+        <span>2打鍵 {extracted.rawCount.toLocaleString()}組</span>
+        {trace.skipped > 0 ? <span>打てずに飛ばした文字 {trace.skipped}</span> : null}
       </div>
 
       <section className="flow-block">
@@ -792,8 +791,8 @@ export function BigramFlowVisualization({
             <h2>Keyboard Flow</h2>
           </div>
           <p>
-            全connectionをmountしたまま描き、太さで頻度を表す。始点は薄く終点を濃くして方向を示す。
-            キーhoverではそのキー始点の結合を強調する。
+            キーからキーへの移動を線で描き、太さで回数を表す。線は始点が薄く、終点が濃い。
+            キーにポインタを乗せると、そのキーから出る線を強調する。
           </p>
         </header>
         <KeyboardFlow
@@ -845,11 +844,11 @@ export function BigramFlowVisualization({
                 <h2>Relative vectors</h2>
               </div>
               <p>
-                打鍵ごとの移動方向と距離を表示します。
-                外周は移動方向の分布、白線は平均的な移動を表します。
+                打鍵ごとの移動方向と距離を描く。
+                外周は移動方向の分布、白線は平均的な移動を表す。
               </p>
             </header>
-            <div className="flow-profile-controls" aria-label="Movement profile controls">
+            <div className="flow-profile-controls" aria-label="移動の向きと距離の表示設定">
               <label>
                 <span>距離表示</span>
                 <select
@@ -927,7 +926,7 @@ export function BigramFlowVisualization({
             </div>
             {source === 'actual' && extracted.hasCrossHandInAnalysis ? (
               <p className="flow-footnote">
-                Cross-hand bigramはKeyboard Flowには残すが、左右のmovement profileからは除外する。
+                左右の手をまたぐ2打鍵は、Keyboard Flowには含めるが、Relative vectorsからは除く。
               </p>
             ) : null}
           </section>
@@ -935,7 +934,7 @@ export function BigramFlowVisualization({
       </AnimatePresence>
 
       <p className="flow-footnote">
-        Analyzerの現在条件をそのまま使用。方向と距離は観測値であり、配列の優劣を判定するスコアではない。
+        方向と距離は観測値であり、配列の優劣を判定するスコアではない。
       </p>
     </section>
   );
