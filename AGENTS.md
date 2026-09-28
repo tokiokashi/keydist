@@ -47,7 +47,7 @@ Claude Code は `CLAUDE.md` が無いプロジェクトでは `AGENTS.md` を読
 | 役 | 定義 | やること | やらないこと |
 |---|---|---|---|
 | リード | （セッション本体） | 作業単位の切り出し・委任・マージ判断・オーナーへの確認 | 実装を自分で書く。レビュー修正も実装役に戻す |
-| implementer | `.claude/agents/implementer.md` | 1単位の実装、`npm test` / `npm run build`、PR 本文の材料 | 自分の変更の承認、`main` への push、マージ |
+| implementer | `.claude/agents/implementer.md` | 1単位の実装、`npm test` / `npm run build`、PR 本文の材料（実装したモデルと effort を含む） | 自分の変更の承認、`main` への push、マージ |
 | reviewer | `.claude/agents/reviewer.md` | head の sha に対する承認/差し戻し。数値と生成物を測り直す | 修正の push（指摘として返す） |
 
 - 実装役とレビュー役はそれぞれ**自分の git worktree**（`.claude/worktrees/`、`origin/main` から切られる）で動く。
