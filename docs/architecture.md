@@ -25,7 +25,7 @@ keydist のコードの分け方と依存の向き。設計の経緯と未実装
 | 可視化 | visualization | 抽出したデータを表示するcomponent。計算しない |
 | 解析設定 | `AnalyzerOptions` | どの数値を・どの切り口で・どう見せるか |
 | engine | engine | 解決・Trace生成・解釈・抽出の実行とキャッシュ |
-| 単体ページ / Workspace | host | Analyzerを載せる器 |
+| 単体ページ / Workspace | host | Analyzerを載せる器。「単体ページ」は開発者向けの語で、画面には出さない（画面で単体ページを名指しする操作を置かないため） |
 | 資産 | assets | ユーザーが作って保存するもの（自作配列・物理配列・指の割当・ローマ字規則・Setup・カスケードの値・Workspace・個人速度・テキスト） |
 
 使わない語: `Shape` を指す「物理形状」「形状」（物理配列と呼ぶ）、mode（en / ja）、段の名前としての「評価」（`evaluate`）、View、`AnalysisSession` / `AnalysisSnapshot`、解釈を指す「ポリシー」（`ChainPolicy` / `ArpeggioPolicy`）。
@@ -116,7 +116,8 @@ host（単体ページ / Workspace）
 - スマホ幅のWorkspaceはDockviewを使わず、ペインを縦に積む
 - ⋯の中身
   - 単体ページ: 「Workspaceに追加」「解析設定を初期値に戻す」
-  - Workspace: 「単体で開く」「複製」「解析設定を初期値に戻す」「閉じる」
+  - Workspace: 「拡大表示」「複製」「解析設定を初期値に戻す」「閉じる」
+  - 拡大表示は、Workspaceの中でそのペインを大きく見せ、元の並びへ戻る操作。別のページへは移らない。モーダルにするかDockviewの最大化にするかは実物を見て決める（#628）
   - 「解析設定を初期値に戻す」には、対象と条件は変わらないことを説明に添える。「解析設定を既定へ」とは書かない
 
 ### 条件の要約
