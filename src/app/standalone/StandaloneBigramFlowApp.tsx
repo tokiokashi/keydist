@@ -1,9 +1,13 @@
 import { useMemo } from 'react';
 import { createEngineCache } from '#engine/cache.ts';
+import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
+import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
+import type { BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { BigramFlowStandalonePage } from '#hosts/standalone/index.ts';
 import { builtinStandaloneCatalog } from './catalog.ts';
 import { generateSetupId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
+import { useDebouncedCommit } from './use-debounced-commit.ts';
 
 /**
  * Bigram Flow単体ページの組み立て（#544 §9「app: 組み立て（platformの注入、Analyzerの
@@ -27,6 +31,12 @@ export function StandaloneBigramFlowApp() {
   const { assets, dispatch } = useKeydistAssets();
   const catalog = useMemo(() => builtinStandaloneCatalog(), []);
 
+  // 解析設定の書き込みは間引いてから`dispatch`する（`use-debounced-commit.ts`参照。
+  // スライダーのような連続操作でstorage書き込み・Undo履歴が埋まらないようにするため）。
+  const commitBigramFlowOptions = useDebouncedCommit<BigramFlowOptions>(dispatch, {
+    commandFor: (options) => setStandaloneAnalyzerOptionsCommand(bigramFlowAnalyzer.definition.id, options),
+  });
+
   return (
     <BigramFlowStandalonePage
       assets={assets}
@@ -34,6 +44,7 @@ export function StandaloneBigramFlowApp() {
       cache={engineCache}
       catalog={catalog}
       generateSetupId={generateSetupId}
+      onBigramFlowOptionsCommit={commitBigramFlowOptions}
     />
   );
 }

@@ -49,8 +49,19 @@ export interface AssetTabSync<T> {
   load(): T | undefined;
   /** storageへ書き込み、他タブ・同タブへ変更を通知する。 */
   save(value: T): void;
-  /** 変更通知の購読を止める。 */
-  stop(): void;
+  /**
+   * 変更通知の購読を始め、止める関数を返す。呼ぶたびに新しく購読し直す（何度呼んでもよい。
+   * 直前の購読が生きたままでも、返ってきた停止関数をそれぞれ独立に呼べる）。
+   *
+   * `load`/`save`とは違い、`start`は副作用（`window`へのイベント購読）を持つため、
+   * **呼び出し側は`useEffect`の中で呼び、返ってきた関数をその`cleanup`で呼ぶこと**
+   * （construct時に自動購読していた旧設計は、Reactの開発時StrictMode二重実行
+   * （mount→cleanup→mountを1回だけ模擬する）で「購読は1回しか起きないのに停止は
+   * 呼ばれる」という食い違いを起こし、2回目のmount以降ずっと外部変更を受け取れなく
+   * なる不具合があった。#544レビュー参照。`start`と`stop`を同じ`useEffect`のペアで
+   * 呼べば、StrictModeが cleanup→再実行 しても正しく購読し直される）。
+   */
+  start(): () => void;
 }
 
 function defaultStorage(): KeyValueStorage | undefined {
@@ -130,31 +141,33 @@ export function createAssetTabSync<T>(options: AssetTabSyncOptions<T>): AssetTab
     notify(options.storageKey);
   }
 
-  const unsubscribe = subscribe([options.storageKey], (key) => {
-    if (key !== options.storageKey) return;
-    const raw = readRaw();
-    // 削除（null）は今のところ扱わない対象（資産を消す操作はまだ無い）。
-    if (raw === null) return;
-    if (raw === lastWrittenRaw) return; // 自タブの書き込みの反響。外部変更として扱わない。
+  function start(): () => void {
+    return subscribe([options.storageKey], (key) => {
+      if (key !== options.storageKey) return;
+      const raw = readRaw();
+      // 削除（null）は今のところ扱わない対象（資産を消す操作はまだ無い）。
+      if (raw === null) return;
+      if (raw === lastWrittenRaw) return; // 自タブの書き込みの反響。外部変更として扱わない。
 
-    const result = decode(raw);
-    if (!result.ok) {
-      // 壊れたrawは記録しない。「最後に自分が知っているstorageの中身」という
-      // `lastWrittenRaw`の意味に、decodeできなかった値まで含めると、次に別の
-      // タブが正しい値を書き戻した時に比較対象が無意味になる。同じ壊れたrawが
-      // 続けて届いた場合はその都度`onLoadFailure`を報告し続ける（黙って
-      // 一度だけ報告して以後無視する、という特別扱いはしない。失敗は毎回
-      // 値として報告する、という#544 §8-5の方針に揃える）。
-      options.onLoadFailure?.(result.reason);
-      return;
-    }
-    // 「storageの現在値として最後に自分が知っているraw」に更新する。これが無いと、
-    // 自タブでsave→他タブがB→他タブがAに戻す、という3手目でstorageの中身が
-    // save時のrawと一致してしまい、外部からの書き戻しなのに反響と誤判定してしまう
-    // （lastWrittenRawを「自分が書いた値」のままにしていた時の穴）。
-    lastWrittenRaw = raw;
-    options.onExternalChange(result.value, result.diagnostics);
-  });
+      const result = decode(raw);
+      if (!result.ok) {
+        // 壊れたrawは記録しない。「最後に自分が知っているstorageの中身」という
+        // `lastWrittenRaw`の意味に、decodeできなかった値まで含めると、次に別の
+        // タブが正しい値を書き戻した時に比較対象が無意味になる。同じ壊れたrawが
+        // 続けて届いた場合はその都度`onLoadFailure`を報告し続ける（黙って
+        // 一度だけ報告して以後無視する、という特別扱いはしない。失敗は毎回
+        // 値として報告する、という#544 §8-5の方針に揃える）。
+        options.onLoadFailure?.(result.reason);
+        return;
+      }
+      // 「storageの現在値として最後に自分が知っているraw」に更新する。これが無いと、
+      // 自タブでsave→他タブがB→他タブがAに戻す、という3手目でstorageの中身が
+      // save時のrawと一致してしまい、外部からの書き戻しなのに反響と誤判定してしまう
+      // （lastWrittenRawを「自分が書いた値」のままにしていた時の穴）。
+      lastWrittenRaw = raw;
+      options.onExternalChange(result.value, result.diagnostics);
+    });
+  }
 
-  return { load, save, stop: unsubscribe };
+  return { load, save, start };
 }

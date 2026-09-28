@@ -20,9 +20,14 @@ export const SAMPLE_TEXTS: Record<TextLanguage, Record<string, string>> = {
   },
 };
 
+/**
+ * ラベルの「（既定）」は`FALLBACK_SAMPLE_ID`・`initialStandaloneText`（`standalone-text.ts`）
+ * が実際に使う既定のsampleIdに付ける（レビュー指摘: 以前は`ja.legacy`に付いていたが、
+ * 実際の既定は`ja.modern`だった）。
+ */
 export const SAMPLE_TEXT_NAMES: Record<TextLanguage, Record<string, string>> = {
   en: { default: '英文（既定）' },
-  ja: { modern: '現代文', legacy: '旧文「吾輩は猫である」（既定）' },
+  ja: { modern: '現代文（既定）', legacy: '旧文「吾輩は猫である」' },
 };
 
 const FALLBACK_SAMPLE_ID: Record<TextLanguage, string> = {
@@ -39,4 +44,28 @@ export function sampleText(language: TextLanguage, sampleId: string): string {
 export function isSampleText(text: string): boolean {
   return Object.values(SAMPLE_TEXTS)
     .some((samples) => Object.values(samples).includes(text));
+}
+
+/** サンプル選択UI向けに1件ずつ平らにした形（`{language, sampleId}`をUIの選択値に使う）。 */
+export interface SampleTextEntry {
+  readonly language: TextLanguage;
+  readonly sampleId: string;
+  readonly name: string;
+  readonly text: string;
+}
+
+/**
+ * 組み込みサンプルを1件ずつ平らな配列にする（#544指示書「テキストはサンプルを選べれば
+ * 十分（言語を選ぶUIは作らない）」）。言語をまたいで1つの選択肢一覧に並べたいので、
+ * `SAMPLE_TEXTS`のように言語をキーにした2段のRecordのままではUIから使いづらい。
+ * ここで初めて2つを合流させ、呼び出し側（UI）は言語を意識せず選ぶだけでよい形にする。
+ */
+export function sampleTextEntries(): readonly SampleTextEntry[] {
+  return (Object.keys(SAMPLE_TEXTS) as TextLanguage[]).flatMap((language) =>
+    Object.keys(SAMPLE_TEXTS[language]).map((sampleId) => ({
+      language,
+      sampleId,
+      name: SAMPLE_TEXT_NAMES[language][sampleId] ?? sampleId,
+      text: SAMPLE_TEXTS[language][sampleId]!,
+    })));
 }
