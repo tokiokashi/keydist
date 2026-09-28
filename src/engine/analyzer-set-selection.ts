@@ -1,19 +1,26 @@
+import { analysisTargetKey, sameAnalysisTarget, type AnalysisTarget } from '#input/setup/index.ts';
+
 /**
- * 集合対象Analyzerの単体ページが持つ、汎用の「対象の集合」（Analyzer id → 選んだSetup id列 +
- * 基準）。集合対象Analyzerごとに別の資産を持たせると、同じ概念の正が複数になるため1つにまとめる。
+ * 集合対象Analyzer全般（比較表・N感度等）が汎用で持つ「対象の集合」（Analyzer id → 選んだ
+ * 対象の列 + 基準）。集合対象Analyzerごとに別の資産を持たせると、同じ概念の正が複数になる
+ * ため1つにまとめる。
  *
- * `baselineSetupId`（比較表だけが使う「基準」）も集合対象Analyzer全般が持てる値として
- * ここに含める: N感度はこれを使わない（`undefined`のまま）だけで、型としては
- * どの集合対象Analyzerも同じ形を持つ。基準を独自の値として別の資産に分けるほどの
- * 違いではないため、1つの型に統合した。
+ * 対象そのものはSetup idではなく`AnalysisTarget`（#578指摘1「対象を配列かSetupにする」）で
+ * 持つ。「選択はSetup idではなく対象を保存する」という決定により、集合の各枠が配列でも
+ * Setupでも同じ列にそのまま並べられる。
+ *
+ * `baseline`（比較表だけが使う「基準」）も集合対象Analyzer全般が持てる値としてここに含める:
+ * N感度はこれを使わない（`undefined`のまま）だけで、型としてはどの集合対象Analyzerも
+ * 同じ形を持つ。基準を独自の値として別の資産に分けるほどの違いではないため、1つの型に
+ * 統合した。
  */
 export interface SetSelectionState {
-  readonly setupIds: readonly string[];
-  readonly baselineSetupId: string | undefined;
+  readonly targets: readonly AnalysisTarget[];
+  readonly baseline: AnalysisTarget | undefined;
 }
 
 /** 未選択時に返す既定値。`analyzerSetSelectionFor`が同じ参照を使い回す（下のコメント参照）。 */
-const EMPTY_SELECTION: SetSelectionState = { setupIds: [], baselineSetupId: undefined };
+const EMPTY_SELECTION: SetSelectionState = { targets: [], baseline: undefined };
 
 export function initialSetSelection(): SetSelectionState {
   return EMPTY_SELECTION;
@@ -39,57 +46,61 @@ export function analyzerSetSelectionFor(
   return Object.hasOwn(state, analyzerId) ? state[analyzerId]! : EMPTY_SELECTION;
 }
 
-function sameIds(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((id, index) => id === b[index]);
+function sameTargets(a: readonly AnalysisTarget[], b: readonly AnalysisTarget[]): boolean {
+  return a.length === b.length && a.every((target, index) => sameAnalysisTarget(target, b[index]!));
 }
 
-/** 順序を保ったまま重複を1つに畳む（`Set`は挿入順を保つので、そのままfilterに使える）。 */
-function dedupe(ids: readonly string[]): readonly string[] {
+/** 順序を保ったまま重複を1つに畳む。 */
+function dedupe(targets: readonly AnalysisTarget[]): readonly AnalysisTarget[] {
   const seen = new Set<string>();
-  const result: string[] = [];
-  for (const id of ids) {
-    if (seen.has(id)) continue;
-    seen.add(id);
-    result.push(id);
+  const result: AnalysisTarget[] = [];
+  for (const target of targets) {
+    const key = analysisTargetKey(target);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(target);
   }
   return result;
 }
 
 /**
  * 選択と並び順をまとめて書き換える（追加・削除・並び替えのどれもこの1本を通す。
- * `setupIds`の並びがそのまま表示順になる）。
+ * `targets`の並びがそのまま表示順になる）。
  *
- * **不変条件（基準 ∈ 選択）をここで1箇所に持つ**（レビュー指摘: 基準に選んでいた
- * Setupが選択から外れたら、基準も同時に外す。以前の比較表専用実装は「資産側では
- * 外さず、表示側（`definition.tsx`）が『基準なし』として扱う」形にしていたが、
- * 資産の値そのものが不変条件を満たさない状態を許すと、資産を読む側が毎回
- * 「基準が選択に含まれているか」を確認し直す必要が生じる。書き込みの時点で
- * 不変条件を保証しておけば、読む側は`baselineSetupId`をそのまま信用してよい）。
+ * **不変条件（基準 ∈ 選択）をここで1箇所に持つ**（レビュー指摘: 基準に選んでいた対象が
+ * 選択から外れたら、基準も同時に外す。以前の比較表専用実装は「資産側では外さず、
+ * 表示側（`definition.tsx`）が『基準なし』として扱う」形にしていたが、資産の値そのものが
+ * 不変条件を満たさない状態を許すと、資産を読む側が毎回「基準が選択に含まれているか」を
+ * 確認し直す必要が生じる。書き込みの時点で不変条件を保証しておけば、読む側は`baseline`を
+ * そのまま信用してよい）。
  */
-export function withSetSelectionSetupIds(
+export function withSetSelectionTargets(
   current: SetSelectionState,
-  setupIds: readonly string[],
+  targets: readonly AnalysisTarget[],
 ): SetSelectionState {
-  const deduped = dedupe(setupIds);
-  if (sameIds(current.setupIds, deduped)) return current;
-  const baselineSetupId = current.baselineSetupId !== undefined && deduped.includes(current.baselineSetupId)
-    ? current.baselineSetupId
+  const deduped = dedupe(targets);
+  if (sameTargets(current.targets, deduped)) return current;
+  const baseline = current.baseline !== undefined && deduped.some((t) => sameAnalysisTarget(t, current.baseline!))
+    ? current.baseline
     : undefined;
-  return { setupIds: deduped, baselineSetupId };
+  return { targets: deduped, baseline };
 }
 
 /**
  * 基準を差し替える。`undefined`は「基準なし」。不変条件（基準 ∈ 選択）を守るため、
- * 選択に含まれないSetup idを基準にしようとした場合は無視する（no-op。
- * `withSetSelectionSetupIds`のコメント参照）。
+ * 選択に含まれない対象を基準にしようとした場合は無視する（no-op。
+ * `withSetSelectionTargets`のコメント参照）。
  */
 export function withSetSelectionBaseline(
   current: SetSelectionState,
-  baselineSetupId: string | undefined,
+  baseline: AnalysisTarget | undefined,
 ): SetSelectionState {
-  if (current.baselineSetupId === baselineSetupId) return current;
-  if (baselineSetupId !== undefined && !current.setupIds.includes(baselineSetupId)) return current;
-  return { ...current, baselineSetupId };
+  if (current.baseline === baseline) return current;
+  if (current.baseline !== undefined && baseline !== undefined && sameAnalysisTarget(current.baseline, baseline)) {
+    return current;
+  }
+  if (baseline !== undefined && !current.targets.some((t) => sameAnalysisTarget(t, baseline))) return current;
+  return { ...current, baseline };
 }
 
 /**
@@ -105,7 +116,9 @@ export function withAnalyzerSetSelection(
 ): AnalyzerSetSelectionState {
   const existing = analyzerSetSelectionFor(state, analyzerId);
   if (existing === selection) return state;
-  if (sameIds(existing.setupIds, selection.setupIds) && existing.baselineSetupId === selection.baselineSetupId) {
+  const baselineSame = existing.baseline === selection.baseline
+    || (existing.baseline !== undefined && selection.baseline !== undefined && sameAnalysisTarget(existing.baseline, selection.baseline));
+  if (sameTargets(existing.targets, selection.targets) && baselineSame) {
     return state;
   }
   return { ...state, [analyzerId]: selection };

@@ -1,31 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import { setStandaloneAnalyzerOptionsCommand, type KeydistAssets } from '#engine/commands.ts';
+import { setAnalyzerTargetSelectionCommand, setStandaloneAnalyzerOptionsCommand, type KeydistAssets } from '#engine/commands.ts';
+import { analyzerTargetSelectionFor } from '#engine/analyzer-target-selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
 import type { EngineCache } from '#engine/cache.ts';
-import type { SetupIdGenerator } from '#input/setup/index.ts';
+import { DEFAULT_ANALYSIS_TARGET } from '#input/setup/index.ts';
 import { combinePaneStates, conditionHeaderInfoFromResolvedInput, traceConditionSummary, PaneFrame } from '#hosts/shared/index.ts';
-import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import { bigramFlowOptions, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { TextControl } from './TextControl.tsx';
+import { TargetPicker } from './TargetPicker.tsx';
+import { DefaultShapeControl } from './DefaultShapeControl.tsx';
 import { useAnalyzerPane } from './use-analyzer-pane.ts';
-import { useEnsureSetup } from './use-ensure-setup.ts';
 import './standalone.css';
-
-// Setupが用意される前の一瞬に渡す値。レンダーごとに作ると`useAnalyzerPane`の依存が毎回変わり、
-// 依頼を作り直し続けるので、参照が変わらないようモジュールに1つだけ置く。
-const NO_SETUP_YET: ResolvedInputResult = { ok: false, error: { kind: 'reference', errors: [] } };
 
 /**
  * Bigram Flowの単体ページ（#544 Phase 3「最初の縦切り」）。
  *
- * 対象Setupは1つ、テキストは単体ページ全体で共有の「最後に使ったテキスト」を使う
+ * 対象（配列かSetup。#578指摘1）は1つ、テキストは単体ページ全体で共有の
+ * 「最後に使ったテキスト」を使う
  * （#544 §5・§6）。書き込みはすべて`dispatch`（呼び出し元の`app`が組み立てた
  * コマンド適用 + 永続化）を経由する（#544 §8-2）。ここでは`applyCommand`もstorageも
  * 直接触らない。
@@ -42,7 +40,6 @@ export interface BigramFlowStandalonePageProps {
   readonly dispatch: (command: Command<KeydistAssets>) => void;
   readonly cache: EngineCache;
   readonly catalog: StandalonePaneCatalog;
-  readonly generateSetupId: SetupIdGenerator;
   readonly generateTextId: TextIdGenerator;
   /** `TextControl`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
   readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
@@ -60,24 +57,19 @@ export function BigramFlowStandalonePage({
   dispatch,
   cache,
   catalog,
-  generateSetupId,
   generateTextId,
   onTextContentCommit,
   onBigramFlowOptionsCommit,
 }: BigramFlowStandalonePageProps) {
   const setups = assets.setupLibrary.setups;
-  // 手持ちが空なら初期値を1つ作る（#544指示書「空なら簡単な初期値を用意する」）。
-  // `assetsReady`を待ってから「本当に空か」を判定する配線は`hosts/standalone`の
-  // 共通hookへ1本化してある（`use-ensure-setup.ts`のコメント参照。レビュー対応:
-  // 待たずに判定すると保存済みのSetupを巻き戻す事故になる）。
-  const { selectedSetupId, setSelectedSetupId } = useEnsureSetup(
-    setups,
-    assetsReady,
-    dispatch,
-    generateSetupId,
-  );
+  const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
 
-  const selectedSetup = setups.find((setup) => setup.id === selectedSetupId);
+  // 対象（`AnalysisTarget`）は資産（`analyzerTargetSelections`）が正（#578指摘1）。
+  // 手持ちが空でも配列（既定`DEFAULT_ANALYSIS_TARGET` = qwerty）が常に選べるので、
+  // 旧`use-ensure-setup.ts`のような「空なら初期Setupを作る」副作用は不要になった。
+  const analyzerId = bigramFlowAnalyzer.definition.id;
+  const target = analyzerTargetSelectionFor(assets.analyzerTargetSelections, analyzerId, DEFAULT_ANALYSIS_TARGET);
+  const setTarget = (next: typeof target) => dispatch(setAnalyzerTargetSelectionCommand(analyzerId, next));
 
   // テキストは資産（textLibrary + standaloneTextSelection）が正。編集・選択・複製・削除は
   // すべて共有部品`TextControl`（比較表・N感度と3ページで同じ操作を持つため。
@@ -92,7 +84,6 @@ export function BigramFlowStandalonePage({
   // （#544指示書「解析設定は資産として個人で保持する」）。`optionsDraft`はtextDraftと同じ形の
   // UI用の一時状態: 見た目は即座に反映しつつ（controlled）、資産への書き込みは
   // `onBigramFlowOptionsCommit`（呼び出し元がdebounceする）経由にする。
-  const analyzerId = bigramFlowAnalyzer.definition.id;
   const storedOptionsRaw = assets.standaloneAnalyzerOptions[analyzerId];
   const decoded = useMemo(
     () => decodeStoredAnalyzerOptions(bigramFlowAnalyzer.definition, storedOptionsRaw),
@@ -163,21 +154,19 @@ export function BigramFlowStandalonePage({
   };
 
   const resolution = useMemo(
-    () => selectedSetup === undefined
-      ? undefined
-      : resolveStandalonePaneInput(selectedSetup, catalog, assets.setupLibrary.overrides, resolvedText),
-    [selectedSetup, catalog, assets.setupLibrary.overrides, resolvedText],
+    () => resolveStandalonePaneInput(target, setupsById, catalog, assets.setupLibrary.overrides, resolvedText),
+    [target, setupsById, catalog, assets.setupLibrary.overrides, resolvedText],
   );
 
   const pane = useAnalyzerPane(
     cache,
     bigramFlowAnalyzer.definition,
     optionsDraft,
-    resolution ?? NO_SETUP_YET,
+    resolution,
   );
 
-  const conditionRows = resolution?.ok ? traceConditionSummary(resolution.input.cascade) : [];
-  const header = resolution?.ok
+  const conditionRows = resolution.ok ? traceConditionSummary(resolution.input.cascade, catalog.setupCatalog) : [];
+  const header = resolution.ok
     ? conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry)
     : undefined;
   const traceErrors = pane.trace.status === 'ready' || pane.trace.status === 'stale'
@@ -190,47 +179,54 @@ export function BigramFlowStandalonePage({
   return (
     <div className="standalone-page">
       <header className="standalone-page-header">
-        <p className="eyebrow">単体ページ</p>
         <h1>Bigram Flow</h1>
       </header>
 
-      <section className="standalone-controls" aria-label="対象と入力">
-        <label className="standalone-control">
-          <span>対象Setup</span>
-          <select
-            value={selectedSetupId ?? ''}
-            onChange={(event) => setSelectedSetupId(event.currentTarget.value || undefined)}
-            aria-label="対象Setup"
-          >
-            {setups.length === 0 ? <option value="">作成中…</option> : null}
-            {setups.map((setup) => (
-              <option key={setup.id} value={setup.id}>
-                {setup.label ?? `${setup.layoutId} / ${setup.shapeId}`}
-              </option>
-            ))}
-          </select>
-        </label>
+      {/*
+       * プリレンダーされたHTMLはハイドレーション前から操作できてしまう（レビュー指摘:
+       * ハイドレーション完了までの約750〜850msの間にクリック・入力すると、見た目は
+       * 変わっても実際には何も起きず、そのまま消える。加えてプリレンダー時点のDOMは
+       * `initialAssets()`＝ユーザーの保存済み資産ではない）。`assetsReady`が経由する
+       * `useKeydistAssets`はハイドレーション後にstorageを読み終えてから true になるので、
+       * それまでは操作系を丸ごと`disabled`にして「触れるが効かない」状態を作らない。
+       * `display:contents`でレイアウトへの影響を無くす（fieldsetは既定でblock）。
+       */}
+      <fieldset
+        disabled={!assetsReady}
+        style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
+      >
+        <section className="standalone-controls" aria-label="対象と入力">
+          <label className="standalone-control">
+            <span>対象</span>
+            <TargetPicker
+              aria-label="対象"
+              layouts={catalog.setupCatalog.layouts}
+              shapes={catalog.setupCatalog.shapes}
+              setups={setups}
+              value={target}
+              onChange={setTarget}
+            />
+          </label>
 
-        <div className="standalone-control">
-          <span>解析設定</span>
-          <button type="button" onClick={copyOptionsLink}>
-            {copyLinkFeedback ? 'コピーした' : '今の設定のURLをコピー'}
-          </button>
-        </div>
-      </section>
+          <DefaultShapeControl overrides={assets.setupLibrary.overrides} dispatch={dispatch} catalog={catalog} />
 
-      <TextControl
-        holder="standalone"
-        textLibrary={assets.textLibrary}
-        selection={assets.standaloneTextSelection}
-        dispatch={dispatch}
-        generateTextId={generateTextId}
-        onTextContentCommit={onTextContentCommit}
-      />
+          <div className="standalone-control">
+            <span>解析設定</span>
+            <button type="button" onClick={copyOptionsLink}>
+              {copyLinkFeedback ? 'コピーした' : '今の設定のURLをコピー'}
+            </button>
+          </div>
+        </section>
 
-      {selectedSetup === undefined ? (
-        <p aria-busy="true">Setupを準備している…</p>
-      ) : (
+        <TextControl
+          holder="standalone"
+          textLibrary={assets.textLibrary}
+          selection={assets.standaloneTextSelection}
+          dispatch={dispatch}
+          generateTextId={generateTextId}
+          onTextContentCommit={onTextContentCommit}
+        />
+
         <PaneFrame
           title="Bigram Flow"
           header={header}
@@ -244,7 +240,7 @@ export function BigramFlowStandalonePage({
             if (extraction.status === 'failed') return null;
             const hasExtraction = extraction.status === 'ready' || extraction.status === 'stale';
             const hasTrace = pane.trace.status === 'ready' || pane.trace.status === 'stale';
-            if (!resolution?.ok || !hasExtraction || !hasTrace) {
+            if (!resolution.ok || !hasExtraction || !hasTrace) {
               return <p aria-busy="true">計算している…</p>;
             }
             return (
@@ -262,7 +258,7 @@ export function BigramFlowStandalonePage({
             );
           })()}
         </PaneFrame>
-      )}
+      </fieldset>
     </div>
   );
 }

@@ -16,7 +16,8 @@ const CATALOG = {
 function resolve(text: string, overrides = EMPTY_SETTINGS_OVERRIDES): ResolvedInput {
   const setup: Setup = { id: 'setup-1', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
   const result = resolveEngineInput({
-    setup,
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides,

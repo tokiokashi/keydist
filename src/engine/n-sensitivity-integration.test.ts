@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
-import type { Setup } from '#input/setup/index.ts';
+import type { AnalysisTarget, Setup } from '#input/setup/index.ts';
 import { sampleText } from '#input/text/samples.ts';
 import { nSensitivity } from '#analyzers/n-sensitivity/sensitivity.ts';
 import {
@@ -40,7 +40,8 @@ function resolve(
 ): ResolvedInput {
   const setup: Setup = { id: `setup-${layoutId}`, layoutId, shapeId: 'row-staggered', colorIndex: 0 };
   const result = resolveEngineInput({
-    setup,
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides,
@@ -52,8 +53,12 @@ function resolve(
   return result.input;
 }
 
+function targetFor(layoutId: string): AnalysisTarget {
+  return { kind: 'setup', setupId: `setup-${layoutId}` };
+}
+
 function memberInputFor(layoutId: string, input: ResolvedInput): EngineSetMemberInput {
-  return { setupId: `setup-${layoutId}`, resolution: { ok: true, input } };
+  return { target: targetFor(layoutId), resolution: { ok: true, input } };
 }
 
 function assertSeriesMatchesLegacy(series: NSensitivitySeries | undefined, input: ResolvedInput): void {
@@ -99,8 +104,8 @@ test('cache.getSetExtraction: 異なる配列の2メンバーそれぞれが、�
   );
 
   assert.equal(result.extracted.series.length, 2);
-  assertSeriesMatchesLegacy(result.extracted.series.find((s) => s.setupId === 'setup-qwerty'), inputA);
-  assertSeriesMatchesLegacy(result.extracted.series.find((s) => s.setupId === 'setup-colemak-dh'), inputB);
+  assertSeriesMatchesLegacy(result.extracted.series.find((s) => s.targetKey === 'setup:setup-qwerty'), inputA);
+  assertSeriesMatchesLegacy(result.extracted.series.find((s) => s.targetKey === 'setup:setup-colemak-dh'), inputB);
 });
 
 test('cache.getSetExtraction: 長い日本語サンプル・windowSize=7（非既定）の実engine経路でも旧nSensitivityと全11N一致する', () => {
@@ -128,15 +133,15 @@ test('cache.getSetExtraction: 解決に失敗したメンバーは系列から�
   const result = cache.getSetExtraction(
     [
       memberInputFor('qwerty', inputA),
-      { setupId: 'setup-missing', resolution: { ok: false, error: { kind: 'setup-missing', setupId: 'setup-missing' } } },
+      { target: targetFor('missing'), resolution: { ok: false, error: { kind: 'target-missing', target: targetFor('missing') } } },
     ],
     nSensitivityDefinition,
     DEFAULT_N_SENSITIVITY_OPTIONS,
   );
 
   assert.equal(result.extracted.series.length, 2);
-  const ok = result.extracted.series.find((s) => s.setupId === 'setup-qwerty');
-  const failed = result.extracted.series.find((s) => s.setupId === 'setup-missing');
+  const ok = result.extracted.series.find((s) => s.targetKey === 'setup:setup-qwerty');
+  const failed = result.extracted.series.find((s) => s.targetKey === 'setup:setup-missing');
   assert.equal(ok?.kind, 'ok');
   assert.equal(failed?.kind, 'failed');
 });

@@ -36,17 +36,25 @@ const colemakEn = findLayout(LAYOUTS, 'colemak'); // 英字配列（ローマ字
 
 function contextFor(
   layout: Layout,
-  options: { shapeId?: PresetGeometryKind; inputMethod?: InputMethod; setupId?: string } = {},
+  options: {
+    shapeId?: PresetGeometryKind;
+    inputMethod?: InputMethod;
+    setupId?: string;
+    targetKind?: 'layout' | 'setup';
+  } = {},
 ): CascadeContext {
   const shapeId = options.shapeId ?? 'row-staggered';
-  return {
+  const base = {
     shapeId,
     shape: PHYSICAL_SHAPES[shapeId],
     inputMethod: options.inputMethod ?? 'direct',
     layoutId: layout.id,
     layout,
-    setupId: options.setupId,
   };
+  const targetKind = options.targetKind ?? (options.setupId === undefined ? 'layout' : 'setup');
+  return targetKind === 'layout'
+    ? { ...base, targetKind }
+    : { ...base, targetKind, setupId: options.setupId };
 }
 
 test('上書きが無ければ全項目が現行アプリの既定値で解決する', () => {
@@ -172,7 +180,8 @@ test('preferOppositeThumb: SandSを持たない配列ではnot-applicable、反�
   const resolved = resolveSettings(written.overrides, {
     shapeId: 'shape-no-right-thumb',
     shape: shapeNoRightThumb,
-    inputMethod: 'kana-direct',
+    targetKind: 'layout' as const,
+    inputMethod: 'kana-direct' as const,
     layoutId: naginata.id,
     layout: naginata,
   });
@@ -261,4 +270,121 @@ test('上書き無しの解決結果は、全組み込み配列でfixtureに記�
       assert.equal(resolved.romajiRuleId.applicable, false, scenario.id);
     }
   }
+});
+
+// ---------------------------------------------------------------------------
+// defaultShapeId（#578指摘1・レビュー指摘6）
+// ---------------------------------------------------------------------------
+
+test('defaultShapeId: 上書きが無ければ既定値（row-staggered）に解決する', () => {
+  const resolved = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(colemakEn));
+  assert.equal(resolved.defaultShapeId.value, 'row-staggered');
+  assert.equal(resolved.defaultShapeId.origin.kind, 'default');
+});
+
+test('defaultShapeId: globalレベルへの書き込みは許可される', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  // contextのshapeIdは、target-resolution.tsが実際に選んだ形状（＝この場合はortholinear。
+  // catalogに存在するのでfallbackは起きない）を表す。validateは「値と実際に使われた
+  // 形状が一致するか」を見るだけなので、一致させておかないとfallback診断が誤って乗る。
+  const resolved = resolveSettings(written.overrides, contextFor(colemakEn, { shapeId: 'ortholinear' }));
+  assert.equal(resolved.defaultShapeId.value, 'ortholinear');
+  assert.equal(resolved.defaultShapeId.origin.kind, 'global');
+  assert.equal(resolved.defaultShapeId.diagnostics.length, 0);
+});
+
+test('defaultShapeId: shapeレベルへの書き込みは拒否される（GLOBAL_ONLY）', () => {
+  const written = setSettingsOverride(
+    EMPTY_SETTINGS_OVERRIDES,
+    { kind: 'shape', shapeId: 'row-staggered' },
+    'defaultShapeId',
+    'ortholinear',
+  );
+  assert.equal(written.ok, false);
+});
+
+test('defaultShapeId: layoutレベルへの書き込みは拒否される（GLOBAL_ONLY）', () => {
+  const written = setSettingsOverride(
+    EMPTY_SETTINGS_OVERRIDES,
+    { kind: 'layout', layoutId: colemakEn.id },
+    'defaultShapeId',
+    'ortholinear',
+  );
+  assert.equal(written.ok, false);
+});
+
+test('defaultShapeId: setupレベルへの書き込みは拒否される（GLOBAL_ONLY）', () => {
+  const written = setSettingsOverride(
+    EMPTY_SETTINGS_OVERRIDES,
+    { kind: 'setup', setupId: 'some-setup' },
+    'defaultShapeId',
+    'ortholinear',
+  );
+  assert.equal(written.ok, false);
+});
+
+test('defaultShapeId: 配列対象（targetKind: layout）では効く', () => {
+  const resolved = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(colemakEn));
+  assert.equal(resolved.defaultShapeId.applicable, true);
+});
+
+test('defaultShapeId: Setup対象（targetKind: setup）では効かない', () => {
+  const resolved = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(colemakEn, { setupId: 'some-setup' }));
+  assert.equal(resolved.defaultShapeId.applicable, false);
+});
+
+test('defaultShapeId: idがまだ無いSetupのプレビューでも効かず、形状の食い違いを診断しない', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const resolved = resolveSettings(
+    written.overrides,
+    contextFor(colemakEn, { shapeId: 'row-staggered', targetKind: 'setup' }),
+  );
+  assert.equal(resolved.defaultShapeId.applicable, false);
+  // 効かない旨（not-applicable）は残るが、形状を読み替えるfallbackは起きない。
+  assert.deepEqual(resolved.defaultShapeId.diagnostics.map((d) => d.kind), ['not-applicable']);
+  assert.equal(resolved.defaultShapeId.value, 'ortholinear');
+});
+
+test('defaultShapeId: 値と実際に使われた形状（context.shapeId）が一致すればvalidateは素通りする', () => {
+  const resolved = resolveSettings(
+    EMPTY_SETTINGS_OVERRIDES,
+    contextFor(colemakEn, { shapeId: 'row-staggered' }),
+  );
+  assert.equal(resolved.defaultShapeId.diagnostics.length, 0);
+});
+
+test('defaultShapeId: 値が実際に使われた形状と食い違えば、context.shapeIdへfallbackし診断を残す（配列対象での「不明な形状」ケース）', () => {
+  // target-resolution.tsは「要求されたdefaultShapeIdがcatalogに無ければDEFAULT_SHAPE_IDへ
+  // fallbackし、実際に使った形状をcontext.shapeIdへ積む」という形でこの状況を作る。
+  // ここではその後段（resolveSettings側の検知）だけを、直接contextを組み立てて確認する。
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'deleted-shape');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const resolved = resolveSettings(written.overrides, contextFor(colemakEn, { shapeId: 'row-staggered' }));
+  assert.equal(resolved.defaultShapeId.value, 'row-staggered', 'fallbackした実際の形状へ読み替える');
+  assert.equal(resolved.defaultShapeId.diagnostics.length, 1);
+  // 画面に出る文なので、消えた形状のidは出さず、実際に測った形状の名前を出す。
+  assert.doesNotMatch(resolved.defaultShapeId.diagnostics[0]!.message, /deleted-shape/);
+  assert.match(resolved.defaultShapeId.diagnostics[0]!.message, new RegExp(PHYSICAL_SHAPES['row-staggered'].name.replace(/[()（）]/g, '.')));
+});
+
+test('defaultShapeId: Setup対象ではSetup自身のshapeIdと値が食い違っていても診断を出さない（無関係な値なので検証しない）', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  // Setup自身はrow-staggeredを使うが、グローバルのdefaultShapeIdはortholinear
+  // （Setup対象では無関係な値なので、突き合わせて誤診断を出してはいけない）。
+  const resolved = resolveSettings(
+    written.overrides,
+    contextFor(colemakEn, { shapeId: 'row-staggered', setupId: 'some-setup' }),
+  );
+  // Setup対象では項目自体が「効かない」ので診断は1件（not-applicable）だけになり、
+  // 値の食い違いを理由にしたfallback診断（`validate`由来）は乗らない。
+  assert.equal(resolved.defaultShapeId.applicable, false);
+  assert.equal(resolved.defaultShapeId.diagnostics.length, 1);
+  assert.equal(resolved.defaultShapeId.diagnostics[0]!.kind, 'not-applicable');
 });

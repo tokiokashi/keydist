@@ -84,9 +84,12 @@ test('decodeOptionsは壊れた値を既定値へ戻す（例外を投げない�
   assert.equal(diagnostics.length, 1);
 });
 
-test('AnalyzerTarget: setup 1つ / setupsの集合の2形だけを最小形として持つ', () => {
-  const single: AnalyzerTarget = { kind: 'setup', setupId: 'setup-1' };
-  const set: AnalyzerTarget = { kind: 'setups', setupIds: ['setup-1', 'setup-2'] };
-  assert.equal(single.kind, 'setup');
-  assert.equal(set.kind, 'setups');
+test('AnalyzerTarget: 単一対象(single) / 集合対象(set)の2形だけを最小形として持つ', () => {
+  const single: AnalyzerTarget = { kind: 'single', target: { kind: 'setup', setupId: 'setup-1' } };
+  const set: AnalyzerTarget = {
+    kind: 'set',
+    targets: [{ kind: 'setup', setupId: 'setup-1' }, { kind: 'layout', layoutId: 'qwerty' }],
+  };
+  assert.equal(single.kind, 'single');
+  assert.equal(set.kind, 'set');
 });

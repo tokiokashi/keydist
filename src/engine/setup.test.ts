@@ -3,21 +3,22 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LAYOUTS, LAYOUTS_JA, LAYOUT_BY_ID, type Layout } from '#input/layouts/index.ts';
+import { LAYOUTS, LAYOUTS_JA, type Layout } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PresetGeometryKind } from '#input/shapes/geometry.ts';
-import type { InputMethod } from '#input/settings/index.ts';
 import {
-  initialSetups,
   resolveSetup,
+  type AnalysisTarget,
   type Setup,
   type SetupCatalog,
 } from '#input/setup/index.ts';
 import {
+  DEFAULT_SHAPE_ID,
   EMPTY_SETTINGS_OVERRIDES,
   resolveSettings,
   setSettingsOverride,
   type SettingsCascadeOverrides,
 } from './settings-items.ts';
+import { resolveTargetForText } from './target-resolution.ts';
 
 // Setup（src/input/setup/）が、engineが持つ具体のカスケード項目（SETTINGS_ITEMS）と
 // 実レジストリを通して噛み合うことを確認する。Setup自体のテストはsrc/input/setup/*.test.ts、
@@ -117,10 +118,12 @@ test('resolveSetup: 配列が削除されたSetupは値としてエラーを返�
   assert.deepEqual(result.errors, [{ kind: 'layout-missing', layoutId: 'deleted-layout' }]);
 });
 
-// #544 Phase 2完了条件と同じ基準（「同じ入力で旧実装と同じ数値が出る」）を、初期Setupの解決結果
-// についても満たすことを確認する。initialSetups() は組み込み配列すべてに対してSetupを作るので、
-// fixtureの「上書き無しシナリオ」（id末尾が default/legacy/modern）と1対1に対応するはずである。
-test('initialSetups() を実カタログで解決すると、fixtureの既定条件（default/legacy/modern）と一致する', () => {
+// #544 Phase 2完了条件と同じ基準（「同じ入力で旧実装と同じ数値が出る」）を、配列を対象
+// （#578指摘1「対象を配列かSetupにする」の`AnalysisTarget`）にした解決結果についても
+// 満たすことを確認する。fixtureの「上書き無しシナリオ」（id末尾が default/legacy/modern）は
+// すべて`row-staggered`（＝`defaultShapeId`の既定値）を使う条件なので、Setupという器を
+// 経由しない配列対象の解決と1対1に対応する。
+test('配列を対象にした解決は、実カタログではfixtureの既定条件（default/legacy/modern）と一致する', () => {
   const fixturePath = join(ROOT, 'test', 'fixtures', 'analyzer-regression.json');
   const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as {
     cases: Array<{
@@ -140,31 +143,16 @@ test('initialSetups() を実カタログで解決すると、fixtureの既定条
   const defaultScenarios = fixture.cases.filter((c) => c.id.split(':').length === 3);
   assert.ok(defaultScenarios.length > 0);
 
-  // initialSetups()が作る集合は「組み込み配列 × row-staggered」で、layoutIdは
-  // LAYOUT_BY_ID（EN/JAを合わせた唯一の正）のkeyと1対1。fixtureのlayoutIdはEN/JAで
-  // 別カタログ（LAYOUTS / LAYOUTS_JA）を参照するので、initialSetups自体はLAYOUT_BY_ID越しに
-  // 1回だけ作り、各シナリオの解決にはシナリオの言語に合ったLayoutの実体を使う
-  // （'qwerty'等、EN/JA双方に同じidがあり中身が違う配列があるため。#544の打ち方の導出が
-  // 別項目で行う「言語からどちらの実体を使うか決める」判断を、ここではfixtureの記録通りに
-  // 手で再現している）。
-  const setups = initialSetups(() => 'unused'); // idは比較に使わないので固定でよい
-  assert.equal(setups.filter((s) => s.shapeId === 'row-staggered').length, setups.length);
-  const initialLayoutIds = new Set(setups.map((s) => s.layoutId));
-  assert.deepEqual(initialLayoutIds, new Set(LAYOUT_BY_ID.keys()));
-
   for (const scenario of defaultScenarios) {
+    assert.equal(scenario.conditions.geometryShapeId, DEFAULT_SHAPE_ID, `${scenario.id}: 既定シナリオは常にDEFAULT_SHAPE_ID`);
+
     const list = scenario.language === 'en' ? LAYOUTS : LAYOUTS_JA;
     const layout = findLayout(list, scenario.layoutId);
-    assert.ok(
-      initialLayoutIds.has(layout.id),
-      `initialSetups() に ${scenario.id} の配列(${layout.id})が含まれていない`,
-    );
-
-    const setup: Setup = { id: `fixture-${scenario.id}`, layoutId: layout.id, shapeId: scenario.conditions.geometryShapeId, colorIndex: 0 };
     const catalog = catalogFor(layout, scenario.conditions.geometryShapeId as PresetGeometryKind);
-    const inputMethod: InputMethod = scenario.conditions.romajiRuleId !== null ? 'romaji' : 'direct';
+    const target: AnalysisTarget = { kind: 'layout', layoutId: layout.id };
 
-    const resolution = resolveSetup(setup, catalog, inputMethod);
+    const language: 'en' | 'ja' = scenario.language;
+    const resolution = resolveTargetForText(target, new Map(), catalog, new Map(), EMPTY_SETTINGS_OVERRIDES, language);
     assert.ok(resolution.ok, scenario.id);
     if (!resolution.ok) continue;
 
@@ -176,6 +164,31 @@ test('initialSetups() を実カタログで解決すると、fixtureの既定条
       assert.equal(resolved.romajiRuleId.value, scenario.conditions.romajiRuleId, scenario.id);
     } else {
       assert.equal(resolved.romajiRuleId.applicable, false, scenario.id);
+    }
+
+    // 配列対象と、同じ配列・既定形状で上書きの無いSetup対象は、CascadeContextが
+    // setupIdの有無以外一致するはずなので、解決結果（実効値・出どころ）もビット一致する
+    // （`target-resolution.ts`のコメント参照。#578指摘1の「必ず確認する」項目）。
+    const equivalentSetup: Setup = {
+      id: `equivalent-${scenario.id}`,
+      layoutId: layout.id,
+      shapeId: scenario.conditions.geometryShapeId,
+      colorIndex: 0,
+    };
+    const setupResolution = resolveSetup(equivalentSetup, catalog, resolution.context.inputMethod);
+    assert.ok(setupResolution.ok, scenario.id);
+    if (!setupResolution.ok) continue;
+    const resolvedViaSetup = resolveSettings(EMPTY_SETTINGS_OVERRIDES, setupResolution.context);
+    assert.equal(resolved.defaultShapeId.applicable, true, `${scenario.id}: 配列対象ではdefaultShapeIdが効く`);
+    assert.equal(resolvedViaSetup.defaultShapeId.applicable, false, `${scenario.id}: Setup対象ではdefaultShapeIdは効かない`);
+    for (const itemId of Object.keys(resolved) as (keyof typeof resolved)[]) {
+      assert.deepEqual(resolved[itemId].value, resolvedViaSetup[itemId].value, `${scenario.id}: ${itemId}`);
+      assert.equal(resolved[itemId].origin.kind, resolvedViaSetup[itemId].origin.kind, `${scenario.id}: ${itemId}.origin`);
+      // defaultShapeIdだけは例外: 配列対象では意味を持つ（applicable=true）が、
+      // Setup対象ではSetup自身のshapeIdが優先されるため意味を持たない（applicable=false）。
+      // これは`SETTINGS_ITEMS.defaultShapeId.isApplicable`の設計どおりの差（レビュー指摘6）。
+      if (itemId === 'defaultShapeId') continue;
+      assert.equal(resolved[itemId].applicable, resolvedViaSetup[itemId].applicable, `${scenario.id}: ${itemId}`);
     }
   }
 });

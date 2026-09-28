@@ -17,10 +17,10 @@ import { StandaloneBigramFlowApp } from '#app/standalone/StandaloneBigramFlowApp
 export const Route = createFileRoute('/standalone/bigram-flow')({
   head: () => ({
     meta: [
-      { title: 'Bigram Flow (standalone) | keydist' },
+      { title: 'Bigram Flow | keydist' },
       {
         name: 'description',
-        content: 'Setup 1つを対象に、Bigram Flowを単体ページとして開く（#544 Analyzer再設計）。',
+        content: '配列やSetupを1つ選んで、続けて打つ2打鍵で指がキーボード上をどう動くかを図で見る。',
       },
     ],
   }),

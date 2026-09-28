@@ -1134,3 +1134,8 @@ test('composition FaceのpresentationLabelはsilent ignoreせずrejectする', (
     /composition FaceではpresentationLabelを指定できない/,
   );
 });
+
+test('組み込み配列の名前はすべて異なる（配列を選ぶ一覧・並べた時の名前で見分けられる）', () => {
+  const names = [...LAYOUT_BY_ID.values()].map((layout) => layout.name);
+  assert.equal(new Set(names).size, names.length, names.join(', '));
+});

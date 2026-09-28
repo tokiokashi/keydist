@@ -1,7 +1,8 @@
 import type { CascadeOverrides } from '#input/settings/index.ts';
 import type { Setup, SetupIdGenerator } from './types.ts';
 import { copySetupOverrides, dropSetupOverrides } from './overrides.ts';
-import { leastUsedColorIndex } from './color.ts';
+import { layoutTargetColorIndex, leastUsedColorIndex } from './color.ts';
+import { effectiveLabel } from './naming.ts';
 
 /**
  * Setupの手持ち（資産の集合）とカスケードの上書きをセットで扱う。Setup固有の上書きは
@@ -28,9 +29,11 @@ export function createSetup<V>(
   layoutId: string,
   shapeId: string,
   generateId: SetupIdGenerator,
-  label?: string,
+  rawLabel?: string,
 ): SetupLibrary<V> {
-  const colorIndex = leastUsedColorIndex(colorIndexesOf(library.setups));
+  const label = effectiveLabel(rawLabel);
+  // ベースの配列を配列対象として並べた時と別の色にする（color.tsの`targetColor`のコメント）。
+  const colorIndex = leastUsedColorIndex(colorIndexesOf(library.setups), [layoutTargetColorIndex(layoutId)]);
   const setup: Setup = label === undefined
     ? { id: generateId(), layoutId, shapeId, colorIndex }
     : { id: generateId(), layoutId, shapeId, colorIndex, label };
@@ -49,13 +52,17 @@ export function duplicateSetup<V>(
   library: SetupLibrary<V>,
   sourceSetupId: string,
   generateId: SetupIdGenerator,
-  label?: string,
+  rawLabel?: string,
 ): SetupLibrary<V> {
+  const label = effectiveLabel(rawLabel);
   const source = library.setups.find((setup) => setup.id === sourceSetupId);
   if (source === undefined) return library;
 
   const id = generateId();
-  const colorIndex = leastUsedColorIndex(colorIndexesOf(library.setups), source.colorIndex);
+  const colorIndex = leastUsedColorIndex(
+    colorIndexesOf(library.setups),
+    [source.colorIndex, layoutTargetColorIndex(source.layoutId)],
+  );
   const duplicated: Setup = label === undefined
     ? { id, layoutId: source.layoutId, shapeId: source.shapeId, colorIndex }
     : { id, layoutId: source.layoutId, shapeId: source.shapeId, colorIndex, label };
@@ -89,8 +96,10 @@ export function deleteSetup<V>(library: SetupLibrary<V>, setupId: string): Setup
 export function relabelSetup<V>(
   library: SetupLibrary<V>,
   setupId: string,
-  label: string | undefined,
+  rawLabel: string | undefined,
 ): SetupLibrary<V> {
+  // 空白だけのラベルは見出しとして読めないので、ラベル無し（自動命名）として保存する。
+  const label = effectiveLabel(rawLabel);
   const target = library.setups.find((setup) => setup.id === setupId);
   if (target === undefined || target.label === label) return library;
   return {

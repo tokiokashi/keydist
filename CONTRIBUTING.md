@@ -106,7 +106,7 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 ## ブランチとPR
 
 - `main` に直接pushしない。`<type>/<短い説明>` のブランチを切る（例: `feat/kana-layout-form`）
-- push前に `npm test` と `npm run build` を通す
+- push前に `npm test` と `npm run build` を通す。ブラウザe2eは手元で全件を回さず、pushしてCIの結果を読む（「ブラウザe2e」）
 - `main` へのマージは、リリースPRを除いて公開しない（「公開」）。CI（test / typecheck / build）は通る状態を保つ
 
 ### 作業単位の切り方
@@ -228,3 +228,22 @@ bashの無い環境では丸ごとスキップされるため、その分だけ�
 そのため、**件数が8ずれている時は食い違いではなくこの差である可能性が高い**。
 PR本文に件数を書く時は `# pass` だけでなく `# skipped` も併記すると、読む側が区別できる。
 CI（ubuntu）では必ず全件走るので、判断に迷ったらCIの数字を正とする。
+
+### ブラウザe2e
+
+`e2e/*.spec.ts` はPlaywright（`npm run test:browser`）で動かす。CIの `browser-e2e` ジョブが、
+**全ブランチへのpush**（`main` を含む）と `pull_request` の両方で全件を回す。
+公開リポジトリなのでGitHub-hostedの実行時間は無料で、手元の機械を全件の実行で塞ぐ理由が無い。
+
+- 手元では、触ったspecだけを1ワーカーで回す: `npx playwright test e2e/<触ったspec>.spec.ts --workers=1`
+- 全件は、ブランチをpushしてCIの結果を読む。PRが無くても走る。headのコミットのcheck runを見る
+
+  ```bash
+  sha=$(git rev-parse HEAD)
+  curl -s "https://api.github.com/repos/tokiokashi/keydist/commits/$sha/check-runs" \
+    | jq -r '.check_runs[] | "\(.name)\t\(.status)\t\(.conclusion)"'
+  ```
+
+  `browser-e2e` の `status` が `completed`、`conclusion` が `success` なら通っている。
+  失敗時はActionsの実行に `browser-e2e-trace`（`test-results/`）が7日間残る
+- PRを開いているブランチでは、同じheadにpush由来とpull_request由来の `browser-e2e` が両方付く。どちらも見る

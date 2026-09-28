@@ -8,7 +8,9 @@ import { expect, test } from '@playwright/test';
 test('単体ページが開き、Bigram Flowが描画される', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
 
-  await expect(page.getByRole('heading', { name: 'Bigram Flow', exact: true }).first()).toBeVisible();
+  // ページの見出し(h1)とAnalyzer自身の見出し(h2)は同じ文字列。h2は計算が済むと現れるので、
+  // 名前だけで探すと一致が1件か2件かが描画の速さで変わる。見出しの段まで指定する。
+  await expect(page.getByRole('heading', { name: 'Bigram Flow', exact: true, level: 1 })).toBeVisible();
 
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
@@ -22,6 +24,32 @@ test('単体ページが開き、Bigram Flowが描画される', async ({ page }
   // 条件の表示（出どころ含む）。
   await pane.locator('.pane-condition-summary summary').click();
   await expect(pane.locator('.pane-condition-summary')).toContainText('既定値');
+});
+
+test('操作系はハイドレーション+資産読み込み完了（assetsReady）まで無効化され、直後に選んでも取りこぼさない（レビュー指摘1）', async ({ page }) => {
+  // プリレンダーされたページは、Reactがハイドレーションを終える前から見た目上は
+  // 操作できてしまう。旧実装はここに約750〜850msの「クリック・選択しても静かに
+  // 元へ戻る」窓があった（`assetsReady`が経由する`useKeydistAssets`のstorage読み込みが
+  // 終わるまで、controlled componentのvalueが毎回リセットされるため）。ページ本体を
+  // `fieldset[disabled={!assetsReady}]`で包んだことで、この窓の間は`<select>`が
+  // 本当にdisabledになる。Playwrightの`selectOption`はdisabled要素に対して
+  // actionable（有効）になるまで自動的に待つので、ここでは「ネットワークアイドル等の
+  // 明示的な待ちを一切挟まずに選んでも、最終的に必ず反映される」ことを確認する
+  // （待たずに選んでも消える、が再現しないことの確認）。
+  await page.goto('/standalone/bigram-flow');
+  const targetSelect = page.getByLabel('対象', { exact: true });
+
+  // 選ぶ前は無効化されていることがある（ハイドレーション未完了の間）。
+  // 常に無効化されているとは限らない（読み込みが速いローカル実行では既に有効なことも
+  // ある）ため、状態そのもののアサートはせず、「選択が必ず反映される」ことだけを見る。
+  await targetSelect.selectOption('layout:colemak-dh');
+  await expect(targetSelect).toBeEnabled();
+  await expect(targetSelect).toHaveValue('layout:colemak-dh');
+
+  // 選択後は解析まで進み、取りこぼされていないことを可視化の面でも確認する。
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+  await expect(flow).toHaveAttribute('data-layout-id', 'colemak-dh');
 });
 
 test('見た目だけの設定を変えても壊れず、抽出設定を変えると表示が変わる', async ({ page }) => {
@@ -472,9 +500,30 @@ test('「今の設定のURLをコピー」で既定値と違う項目だけを�
   expect(clipboardText).not.toContain('lineScale=');
 });
 
-test('保存済みのSetupが2件あっても、開いた時に1件へ巻き戻らない（初期Setup作成の競合の回帰）', async ({ page }) => {
-  // #544レビュー: 初期Setup作成の効果がstorage読み込み前の空状態を見て新しいSetupを
-  // 作ってしまい、保存済みのSetup（複数件）がデフォルト1件で置き換わる事故の再現。
+test('新規プロファイルでは配列（既定QWERTY）が対象になり、Setupは1件も作られない（#578指摘1）', async ({ page }) => {
+  // 旧実装は手持ちが空なら初期Setupを1件自動で作っていたが、#578指摘1の決定で
+  // その仕掛けを撤去した。配列は組み込みカタログに最初から入っているので、
+  // 手持ちが空でも対象は選べる。
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  const targetSelect = page.getByLabel('対象', { exact: true });
+  await expect(targetSelect).toHaveValue('layout:qwerty');
+
+  const stored = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
+  expect(stored).toBeNull();
+
+  // リロードしても対象は変わらず、Setupも作られたままにならない。
+  await page.reload();
+  const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByLabel('対象', { exact: true })).toHaveValue('layout:qwerty');
+  const storedAfterReload = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
+  expect(storedAfterReload).toBeNull();
+});
+
+test('保存済みのSetupが2件あっても、開いた時に手を付けずそのまま残る', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem(
       'keydist:setup-library',
@@ -492,48 +541,31 @@ test('保存済みのSetupが2件あっても、開いた時に1件へ巻き戻�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
-  const setupSelect = page.getByLabel('対象Setup');
-  const optionValues = async () => setupSelect.locator('option').evaluateAll(
-    (options) => options.map((option) => (option as HTMLOptionElement).value),
-  );
-  await expect.poll(optionValues).toEqual(['fixed-a', 'fixed-b']);
+  // 対象を明示的にSetupへ切り替える（既定はqwerty配列のまま）。ページ本体は
+  // `fieldset[disabled]`でハイドレーション完了まで操作を無効化している
+  // （レビュー指摘1）ので、Playwrightのactionability待ちにそのまま任せてよい。
+  const targetSelect = page.getByLabel('対象', { exact: true });
+  await targetSelect.selectOption('setup:fixed-b');
+  await expect(targetSelect).toHaveValue('setup:fixed-b');
 
-  // storage側も2件のまま（idも変わらない）。
+  // storage側は2件のまま（idも変わらない。作成・削除どちらも起きていない）。
   const stored = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
   const parsed = JSON.parse(stored ?? '{}') as { setups: { id: string }[] };
   expect(parsed.setups.map((setup) => setup.id)).toEqual(['fixed-a', 'fixed-b']);
 
-  // リロードしても2件・id共に保たれる。
+  // 対象の選択がstorageへ書き込まれるまで待ってからリロードする。
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:analyzer-target-selections')))
+    .toContain('fixed-b');
+
+  // リロードしても2件・id・選択とも保たれる。
   await page.reload();
   const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
-  await expect.poll(optionValues).toEqual(['fixed-a', 'fixed-b']);
-});
-
-test('保存済みのSetupが1件だけの時、リロードのたびにidが変わったりしない', async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem(
-      'keydist:setup-library',
-      JSON.stringify({
-        version: 1,
-        setups: [{ id: 'fixed-only', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 }],
-        overrides: {},
-      }),
-    );
-  });
-  await page.goto('/standalone/bigram-flow');
-  const flow = page.locator('[data-react-feature="bigram-flow"]');
-  await expect(flow).toBeVisible({ timeout: 10_000 });
-
-  const setupSelect = page.getByLabel('対象Setup');
-  await expect.poll(async () => setupSelect.inputValue()).toEqual('fixed-only');
-
-  for (let i = 0; i < 3; i++) {
-    await page.reload();
-    const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
-    await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
-    await expect.poll(async () => page.getByLabel('対象Setup').inputValue()).toEqual('fixed-only');
-  }
+  await expect(page.getByLabel('対象', { exact: true })).toHaveValue('setup:fixed-b');
+  const storedAfterReload = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
+  const parsedAfterReload = JSON.parse(storedAfterReload ?? '{}') as { setups: { id: string }[] };
+  expect(parsedAfterReload.setups.map((setup) => setup.id)).toEqual(['fixed-a', 'fixed-b']);
 });
 
 test('タブ間同期: 別タブでのテキスト変更が届き、複数回変えても届き続ける', async ({ context }) => {
@@ -603,6 +635,8 @@ test('タブ間の競合修正: 他タブの選択切り替えが割り込んで
   await expect(pageB.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
   const textareaB = pageB.getByLabel('テキスト', { exact: true });
+  // 周回の前提（Bはu1を表示している）を、実際に画面へ出ていることで確かめてから始める。
+  await expect(textareaB).toHaveValue('one');
   const pickerA = pageA.getByLabel('テキストを選ぶ', { exact: true });
   const pickerB = pageB.getByLabel('テキストを選ぶ', { exact: true });
 
@@ -635,4 +669,51 @@ test('タブ間の競合修正: 他タブの選択切り替えが割り込んで
 
   await pageA.close();
   await pageB.close();
+});
+
+test('画面の文言に開発の内部（issue番号・Phase・ファイル名・開発用の語）が出ない（レビュー指摘H1〜H4）', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]').first()).toBeVisible({ timeout: 10_000 });
+  await expect(page).toHaveTitle('Bigram Flow | keydist');
+  const description = await page.locator('meta[name="description"]').getAttribute('content');
+  expect(description).not.toMatch(/#\d|Phase|standalone|単体ページ/);
+  const body = page.locator('body');
+  await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|\.ts\b|Vector lab|connections|N sensitivity|Setup comparison|baseline|言語判定: /);
+});
+
+test('読み込みで操作可能になった瞬間から、本文は保存済みのテキストを表示している（古い値へ入力が足されない）', async ({ page }) => {
+  // 以前は読み込み完了で操作可能になった後、本文の表示が1フレーム遅れて保存済みの値へ
+  // 差し替わっていた。その間に入力すると、差し替わった値の後ろへ足された。
+  // 本文の欄の「操作可能か・値」の移り変わりを記録し、操作可能な間に古い値が無いことを見る。
+  await page.addInitScript(() => {
+    localStorage.setItem('keydist:text-library', JSON.stringify({
+      version: 1,
+      texts: [{ id: 'u1', name: 'u1', text: 'one' }],
+    }));
+    localStorage.setItem(
+      'keydist:standalone-text-selection',
+      JSON.stringify({ version: 1, ref: { kind: 'user', id: 'u1' } }),
+    );
+    const states: string[] = [];
+    (window as unknown as { __textareaStates: string[] }).__textareaStates = states;
+    const record = () => {
+      const textarea = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="テキスト"]');
+      if (textarea === null) return;
+      const state = `${textarea.matches(':disabled') ? 'disabled' : 'enabled'}:${textarea.value}`;
+      if (states[states.length - 1] !== state) states.push(state);
+    };
+    new MutationObserver(record).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
+    const everyFrame = () => {
+      record();
+      requestAnimationFrame(everyFrame);
+    };
+    requestAnimationFrame(everyFrame);
+  });
+  await page.goto('/standalone/bigram-flow');
+  const textarea = page.getByLabel('テキスト', { exact: true });
+  await expect(textarea).toBeEnabled({ timeout: 10_000 });
+  await expect(textarea).toHaveValue('one');
+
+  const states = await page.evaluate(() => (window as unknown as { __textareaStates: string[] }).__textareaStates);
+  expect(states.filter((state) => state.startsWith('enabled:'))).toEqual(['enabled:one']);
 });

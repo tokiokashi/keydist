@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
-import type { Setup } from '#input/setup/index.ts';
+import type { AnalysisTarget, Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput, type ResolvedInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
@@ -26,10 +26,13 @@ const CATALOG = {
   shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
 };
 
+const TARGET_A: AnalysisTarget = { kind: 'setup', setupId: 'setup-a' };
+
 function resolve(layoutId: string, text: string): ResolvedInput {
   const setup: Setup = { id: 'setup-a', layoutId, shapeId: 'row-staggered', colorIndex: 0 };
   const result = resolveEngineInput({
-    setup,
+    target: TARGET_A,
+    setups: new Map([[setup.id, setup]]),
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides: EMPTY_SETTINGS_OVERRIDES,
@@ -48,7 +51,7 @@ function checkLayout(layoutId: string, text: string): void {
   const interpretationResult = cache.getInterpretation(input);
 
   const member = {
-    setupId: 'setup-a',
+    target: TARGET_A,
     trace: traceResult.trace,
     analysis: interpretationResult.analysis,
     metrics: interpretationResult.metrics,
@@ -94,7 +97,7 @@ test('computeMemberSeries: N=既定の点は、メンバー自身のMetrics（to
   const traceResult = cache.getTrace(input);
   const interpretationResult = cache.getInterpretation(input);
   const member = {
-    setupId: 'setup-a',
+    target: TARGET_A,
     trace: traceResult.trace,
     analysis: interpretationResult.analysis,
     metrics: interpretationResult.metrics,
@@ -117,20 +120,21 @@ test('computeNSensitivityExtraction: 解決できたメンバーはok系列、�
   const traceResult = cache.getTrace(input);
   const interpretationResult = cache.getInterpretation(input);
 
+  const targetDeleted: AnalysisTarget = { kind: 'setup', setupId: 'setup-deleted' };
   const extracted = computeNSensitivityExtraction(
     [{
-      setupId: 'setup-a',
+      target: TARGET_A,
       trace: traceResult.trace,
       analysis: interpretationResult.analysis,
       metrics: interpretationResult.metrics,
       requestTrace: { requestTrace: () => traceResult.trace },
     }],
-    [{ setupId: 'setup-deleted', kind: 'reference', message: '配列「x」が見つからない（削除された可能性）' }],
+    [{ target: targetDeleted, kind: 'reference', message: '配列が見つからない（削除された可能性がある）' }],
   );
 
   assert.equal(extracted.series.length, 2);
-  const ok = extracted.series.find((s) => s.setupId === 'setup-a');
-  const failed = extracted.series.find((s) => s.setupId === 'setup-deleted');
+  const ok = extracted.series.find((s) => s.targetKey === 'setup:setup-a');
+  const failed = extracted.series.find((s) => s.targetKey === 'setup:setup-deleted');
   assert.equal(ok?.kind, 'ok');
   assert.equal(failed?.kind, 'failed');
   if (failed?.kind === 'failed') {

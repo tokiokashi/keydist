@@ -157,8 +157,10 @@ jobs:
           append_failure_log "Test" "$TEST_OUTCOME" "$RUNNER_TEMP/test.log"
           append_failure_log "Build" "$BUILD_OUTCOME" "$RUNNER_TEMP/build.log"
 
+  # ブランチへの push（main を含む）でも pull_request でも走らせる。公開リポジトリなので
+  # GitHub-hosted の実行時間は無料で、エージェントは手元で全件を回さずに push した head の結果を読む。
+  # main も外さない。公開（release.yml / pages.yml）は typecheck・test・build だけで、ブラウザ e2e は回さないため
   browser-e2e:
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/feat/371-layer-guide'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -261,6 +263,9 @@ jobs:
           append_failure_log "Playwright Chromium install" "$PLAYWRIGHT_INSTALL_OUTCOME" "$RUNNER_TEMP/playwright-install.log"
           append_failure_log "Browser E2E" "$BROWSER_E2E_OUTCOME" "$RUNNER_TEMP/browser-e2e.log"
 
+  # pull_request でだけ走らせる。検査する範囲（base..head）を決められるのが PR だけで、
+  # push の before は新規ブランチでは全ゼロになり、main への push ではマージコミットを含む。
+  # push 時点ではローカルの commit-msg フックが同じスクリプトを掛けている
   commit-messages:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
