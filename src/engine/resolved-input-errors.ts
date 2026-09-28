@@ -19,7 +19,7 @@ import type { SetupReferenceError } from '#input/setup/index.ts';
 function describeSetupReferenceError(error: SetupReferenceError): string {
   switch (error.kind) {
     case 'layout-missing': return '配列が見つからない（削除された可能性がある）';
-    case 'shape-missing': return '物理形状が見つからない（削除された可能性がある）';
+    case 'shape-missing': return '物理配列が見つからない（削除された可能性がある）';
   }
 }
 
@@ -31,7 +31,7 @@ export function describeResolvedInputError(error: ResolvedInputError): string {
       return `このテキスト（${error.language === 'ja' ? '日本語' : '英語'}）には「${error.layout.name}」を使えない`;
     case 'geometry':
       // 例外の文（`error.message`）は定義の内部を指す開発者向けの文なので出さない。
-      return '物理形状と指の割当が噛み合わず、キーボードを組み立てられない';
+      return '物理配列と指の割当が噛み合わず、キーボードを組み立てられない';
     case 'target-missing':
       return error.target.kind === 'setup' ? 'Setupが削除された' : '配列が見つからない（削除された可能性がある）';
   }

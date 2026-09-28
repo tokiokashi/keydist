@@ -284,7 +284,7 @@ export function generateTrace(
       for (const id of step) {
         const key = geometry.keys.get(resolveKeyId(id));
         if (!key) {
-          record(errors, seen, `キー ${id} が形状に存在しない（文字「${char}」）`);
+          record(errors, seen, `キー ${id} が物理配列に存在しない（文字「${char}」）`);
           continue;
         }
         const group = byFinger.get(key.finger);

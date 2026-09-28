@@ -158,7 +158,7 @@ export function AnalyzerLayoutEditor({
 
       <div id="new-home-keys">
         <h4>配列側のホームキー（任意）</h4>
-        <p className="note">未指定なら物理形状側の既定ホームキーを使います。</p>
+        <p className="note">未指定なら物理配列側の既定ホームキーを使います。</p>
         {FINGERS.map((finger) => (
           <label className="geometry-number" key={finger}>
             <span>{FINGER_NAMES[finger]}</span>
@@ -170,7 +170,7 @@ export function AnalyzerLayoutEditor({
                 [finger]: event.currentTarget.value,
               }))}
             >
-              <option value="">形状の既定</option>
+              <option value="">物理配列の既定</option>
               {homeRowKeys.map((id) => <option value={id} key={id}>{id}</option>)}
             </select>
           </label>

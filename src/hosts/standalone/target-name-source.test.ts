@@ -56,7 +56,7 @@ test('配列 + 上書きの無い同じ配列のSetup + 別配列のSetup: 衝�
   for (const n of named) assert.doesNotMatch(`${n.displayName} ${n.fullName}`, /0d6f2c8e|layout:|setup:/);
 });
 
-test('Setup対象だけの集合で既定の形状を変えても、名前に「既定の形状」は出ない（M1）', () => {
+test('Setup対象だけの集合で既定の物理配列を変えても、名前に「既定の物理配列」は出ない（M1）', () => {
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;
@@ -65,7 +65,7 @@ test('Setup対象だけの集合で既定の形状を変えても、名前に「
     [fixedA, fixedB],
     written.overrides,
   );
-  for (const n of named) assert.doesNotMatch(`${n.displayName} ${n.fullName}`, /既定の形状|ortholinear/);
+  for (const n of named) assert.doesNotMatch(`${n.displayName} ${n.fullName}`, /既定の物理配列|ortholinear/);
 });
 
 test('解決に失敗したメンバーにも意味のある名前を付ける（L2）', () => {
@@ -82,7 +82,7 @@ test('解決に失敗したメンバーにも意味のある名前を付ける�
   const dvorak = LAYOUT_BY_ID.get('dvorak')!.name;
   assert.deepEqual(named.slice(1).map((n) => n.displayName), [
     '削除されたSetup',
-    `${dvorak}/見つからない形状`,
+    `${dvorak}/見つからない物理配列`,
     '見つからない配列',
   ]);
   for (const n of named) {
@@ -102,7 +102,7 @@ test('空白だけのラベルはラベル無しとして自動命名に戻る�
   assert.equal(named[1]!.displayName, LAYOUT_BY_ID.get('colemak-dh')!.name);
 });
 
-test('既定の形状を変えた配列対象の名前に、形状名が2回並ばない（レビュー指摘L-c）', () => {
+test('既定の物理配列を変えた配列対象の名前に、形状名が2回並ばない（レビュー指摘L-c）', () => {
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;
@@ -114,7 +114,7 @@ test('既定の形状を変えた配列対象の名前に、形状名が2回並�
   const ortho = PHYSICAL_SHAPES.ortholinear.name;
   for (const text of [named[0]!.displayName, named[0]!.fullName]) {
     assert.equal(text.split(ortho).length - 1, 1, text);
-    assert.doesNotMatch(text, /既定の形状/);
+    assert.doesNotMatch(text, /既定の物理配列/);
   }
 });
 

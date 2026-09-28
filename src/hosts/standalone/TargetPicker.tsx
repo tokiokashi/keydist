@@ -76,7 +76,7 @@ export function TargetPicker({
     key: setup.id,
     kind: 'setup' as const,
     layoutName: layouts.get(setup.layoutId)?.name ?? '見つからない配列',
-    shapeName: shapes.get(setup.shapeId)?.name ?? '見つからない形状',
+    shapeName: shapes.get(setup.shapeId)?.name ?? '見つからない物理配列',
   })));
   const setupOptionText = new Map(namedSetups.map((named, index) => {
     const setup = setups[index]!;

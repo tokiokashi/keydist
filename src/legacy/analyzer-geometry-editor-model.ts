@@ -127,7 +127,7 @@ export function createAnalyzerGeometryEditorModel(
     },
     saveShape(shapeDraft, rawName, asNew) {
       const name = rawName.trim();
-      if (!name) return '形状名を入力する';
+      if (!name) return '物理配列の名前を入力する';
 
       const shape = clonePhysicalShape(shapeDraft);
       ensureRowStagger(shape);
@@ -183,7 +183,7 @@ export function createAnalyzerGeometryEditorModel(
         const shape = clonePhysicalShape(settings.shape);
         shape.id = newGeometryId();
         ensureRowStagger(shape);
-        if (shape.name === 'カスタム形状') shape.name = '読み込んだ形状';
+        if (shape.name === 'カスタム形状') shape.name = '読み込んだ物理配列';
 
         context.commitUserGeometryShapes([
           ...context.getUserGeometryShapes(),

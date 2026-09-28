@@ -150,14 +150,14 @@ export function AnalyzerGeometryDialog({
   return (
     <form method="dialog" id="geometry-form" data-react-feature="geometry-dialog">
       <div className="dialog-head">
-        <h2>形状と運指の設定</h2>
+        <h2>物理配列と運指の設定</h2>
         <button type="submit" value="cancel" className="ghost close">閉じる</button>
       </div>
       <p className="note">
-        物理形状は内部ではキーピッチ単位 [u] で保存します。段ずれ・列オフセット・親指位置・分割間隔は、現在のピッチを使ってmm表示にも切り替えられます。
+        物理配列は内部ではキーピッチ単位 [u] で保存します。段ずれ・列オフセット・親指位置・分割間隔は、現在のピッチを使ってmm表示にも切り替えられます。
       </p>
       <label className="ctl">
-        <span>形状名</span>
+        <span>物理配列の名前</span>
         <input
           type="text"
           id="geometry-modal-name"
@@ -185,7 +185,7 @@ export function AnalyzerGeometryDialog({
           className="geometry-fields"
           key={`${shapeUnit}-${shapeRevision}`}
         >
-          <h3>物理形状の数値</h3>
+          <h3>物理配列の数値</h3>
           <GeometryNumber
             label="ピッチ [mm]"
             value={shape.pitchMm}
@@ -408,7 +408,7 @@ export function AnalyzerGeometryDialog({
             ))}
           </div>
           <p className="note">
-            ホームキーは配列側に紐づきます。配列追加時に指定しない場合は物理形状の既定値を使います。
+            ホームキーは配列側に紐づきます。配列追加時に指定しない場合は物理配列の既定値を使います。
           </p>
         </div>
 
@@ -430,7 +430,7 @@ export function AnalyzerGeometryDialog({
             if (model.deleteCurrentShape()) dialog.close();
           }}
         >
-          このカスタム形状を削除
+          このカスタム物理配列を削除
         </button>
         <span className="spacer" />
         <button

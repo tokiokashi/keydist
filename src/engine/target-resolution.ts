@@ -21,14 +21,14 @@ import { DEFAULT_SHAPE_ID, resolveDefaultShapeId, type SettingsCascadeOverrides 
  * - **Setup対象**: 手持ち（`setups`）から実体を探し、見つかれば`resolveSetupForText`
  *   （既存のSetup解決。`input/setup/input-method.ts`）へそのまま委ねる。今までと
  *   ビット単位で同じ結果になる（決定「Setup対象は今までどおり解決する」）
- * - **配列対象**: `Setup`という器を経由せず、配列idと「既定の形状」（カスケードの
+ * - **配列対象**: `Setup`という器を経由せず、配列idと「既定の物理配列」（カスケードの
  *   グローバル専用項目`defaultShapeId`。`settings-items.ts`）から`CascadeContext`を
  *   直接組み立てる。`targetKind: 'layout'`のcontextは型の上で`setupId`を持てないため、
  *   `resolveCascade`はSetupレベルの上書きを一切見ない（「配列を対象にした時はSetupレベルを
  *   持たない」が`CascadeContext`の型契約そのもので保証される。`input/settings/context.ts`の
  *   コメント参照）
  *
- * 手持ちのSetup一覧に上書きが1つも無いSetup（配列と「既定の形状」が一致するもの）を
+ * 手持ちのSetup一覧に上書きが1つも無いSetup（配列と「既定の物理配列」が一致するもの）を
  * 対象にした場合、このモジュールが作る`CascadeContext`は`targetKind`・`setupId`以外Setup版と
  * 完全に一致する（`targetKind`で変わるのは`defaultShapeId`の`applicable`だけで、Traceには効かない）。`resolveCascade`はSetupレベルに何も無ければ実効値へ影響しない
  * （`resolveItem`は`stored === undefined`なら何もしない）ので、両者の`ResolvedInput`
@@ -56,7 +56,7 @@ export function resolveTargetForText(
   const layout: Layout | undefined = catalog.layouts.get(target.layoutId);
   if (layout === undefined) return { ok: false, kind: 'target-missing', target };
 
-  // 「既定の形状」が壊れている（未知・削除されたid）だけでは配列対象の解決を失敗にしない
+  // 「既定の物理配列」が壊れている（未知・削除されたid）だけでは配列対象の解決を失敗にしない
   // （レビュー指摘6）。`DEFAULT_SHAPE_ID`へ静かにfallbackし、`context.shapeId`が実際に
   // 使った形状を持つ。その食い違いは`SETTINGS_ITEMS.defaultShapeId`の`validate`が
   // `resolveCascade`の通常の経路で検知して診断を積む（値と`context.shapeId`を突き合わせる
