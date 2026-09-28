@@ -147,11 +147,16 @@ function comboPresentation(
   };
 }
 
+/**
+ * 出力はどれもローマ字の綴り（site / kara / desu …）なので、英文に当てると英単語の途中で
+ * 誤発火する。日本語テキストをローマ字経由で打つ時だけ使う（仕様 §4.3）。
+ * 英文では同じ配列の単打配置だけで打つ。
+ */
 export const CUSTOM_COMBOS: ComboDefinition[] = RAW_CUSTOM_COMBOS.map(
   ([output, inputs, condition]) => [
     output,
     inputs,
-    condition,
+    { ...condition, romajiOnly: true },
     comboPresentation(output, condition),
     [comboClassification(output, condition)],
   ] as ComboDefinition,

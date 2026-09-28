@@ -74,7 +74,11 @@ export function useTypingSession(
     () => new TypingInputEngine(layout.canonicalInputs, {
       triggerRealizationPolicy: { useHold: true },
       contextSatisfied: (requirements) =>
-        liveRomajiContextSatisfied(requirements, rawTextRef.current),
+        liveRomajiContextSatisfied(
+          requirements,
+          rawTextRef.current,
+          layout.romajiTable !== undefined,
+        ),
     }),
     [layout],
   );

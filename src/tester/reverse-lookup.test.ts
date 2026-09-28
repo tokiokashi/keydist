@@ -53,7 +53,7 @@ test('reverseLookupは薙刀式の複合かなをcanonical actionから逆引き
 });
 
 test('reverseLookupはTK音直の語彙comboを通常打鍵より優先する', () => {
-  const layout = LAYOUT_BY_ID.get('oonishi-custom-combo');
+  const layout = LAYOUT_BY_ID.get('oonishi-custom');
   assert.ok(layout);
   const routes = reverseLookup(layout, 'です');
   assert.ok(routes.length > 0);
@@ -63,7 +63,7 @@ test('reverseLookupはTK音直の語彙comboを通常打鍵より優先する', 
 });
 
 test('reverseLookupはTK音直のyouon-only comboを前置子音がある場合だけ使う', () => {
-  const layout = LAYOUT_BY_ID.get('oonishi-custom-combo');
+  const layout = LAYOUT_BY_ID.get('oonishi-custom');
   assert.ok(layout);
 
   const kya = reverseLookup(layout, 'きゃ');

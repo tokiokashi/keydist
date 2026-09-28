@@ -98,8 +98,11 @@ export function romajiTypingCorrectness(
 export function liveRomajiContextSatisfied(
   requirements: readonly InputContextRequirement[],
   rawRomanText: string,
+  romajiInput: boolean,
 ): boolean {
   return requirements.every((requirement) => {
+    // ローマ字表を持つ配列で打っている時だけ成立する（仕様 §4.3）。
+    if (requirement.kind === 'romaji-input') return romajiInput;
     if (requirement.kind !== 'youon-only') return false;
     if (!/[bcdfghjklmnpqrstvwxyz]$/i.test(rawRomanText)) return false;
     // "nn" は既に撥音として完結している。後続の ya/yu/yo を

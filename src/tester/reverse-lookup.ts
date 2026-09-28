@@ -52,8 +52,11 @@ function contextSatisfied(
   requirements: readonly InputContextRequirement[],
   logicalText: string,
   cursor: number,
+  romajiInput: boolean,
 ): boolean {
   return requirements.every((requirement) => {
+    // queryをローマ字表で展開して照合する時だけ成立する（仕様 §4.3）。
+    if (requirement.kind === 'romaji-input') return romajiInput;
     if (requirement.kind !== 'youon-only') return false;
     if (cursor <= 0) return false;
     return /[bcdfghjklmnpqrstvwxyz]/i.test(logicalText[cursor - 1] ?? '');
@@ -291,7 +294,12 @@ export function reverseLookup(
       if (!logicalText.startsWith(output, cursor)) continue;
       const nextCursor = cursor + output.length;
       for (const alternative of layout.canonicalInputs.get(output) ?? []) {
-        if (!contextSatisfied(alternative.contextRequirements, logicalText, cursor)) continue;
+        if (!contextSatisfied(
+          alternative.contextRequirements,
+          logicalText,
+          cursor,
+          layout.romajiTable !== undefined,
+        )) continue;
         const step = stepFromAlternative(output, alternative);
         if (step.actions.length === 0) continue;
         for (const tail of search(nextCursor)) {

@@ -1404,8 +1404,8 @@ test('TK音直入力法はかなを直接表示しcomboと拗音contextを認識
   const output = page.getByLabel('自由入力テキスト');
 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  await page.getByLabel('配列', { exact: true }).selectOption('oonishi-custom-combo');
-  await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom-combo');
+  await page.getByLabel('配列', { exact: true }).selectOption('oonishi-custom');
+  await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom');
   await output.click();
 
   // TK音直のlogical k -> aを通常打鍵して「か」。
@@ -1457,8 +1457,8 @@ test('ローマ字入力の正しい未確定子音はお題上で誤入力表�
   const target = page.getByTestId('typing-target');
 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
-  await layoutSelect.selectOption('oonishi-custom-combo');
-  await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom-combo');
+  await layoutSelect.selectOption('oonishi-custom');
+  await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom');
 
   await lookup.fill('かな');
   await output.click();
@@ -1927,8 +1927,8 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
   expect(shinJisLeftSlot).toBe(shinJisRightSlot);
   await expect(page.locator('.input-layer-card').first()).toContainText('trigger: Space');
 
-  await page.getByLabel('配列', { exact: true }).selectOption('oonishi-custom-combo');
-  await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom-combo');
+  await page.getByLabel('配列', { exact: true }).selectOption('oonishi-custom');
+  await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom');
   await lookup.fill('です');
   await expect(results).toContainText('M + L');
   await expect(results).toContainText('コンボ');

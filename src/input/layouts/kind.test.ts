@@ -16,7 +16,6 @@ const EXPECTED: Record<string, LayoutKind> = {
   workman: 'alpha',
   oonishi: 'alpha',
   'oonishi-custom': 'alpha',
-  'oonishi-custom-combo': 'alpha',
   'naginata-v18': 'kana',
   nicola: 'kana',
   'shin-koume': 'kana',

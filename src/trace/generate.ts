@@ -5,6 +5,7 @@ import {
   type HoldPhase,
   type LayerDefinition,
   type Layout,
+  withoutRomajiOnlyCombos,
 } from '#input/layouts/types.ts';
 import { kanaToRomajiChunks } from '#input/romaji/kunrei.ts';
 import {
@@ -138,10 +139,14 @@ export interface Trace {
  */
 export function generateTrace(
   text: string,
-  layout: Layout,
+  sourceLayout: Layout,
   geometry: Geometry,
   options: TracePolicy = DEFAULT_TRACE_POLICY,
 ): Trace {
+  // 仕様 §4.3。ローマ字を経ない打ち方ではromajiOnlyのコンボを配列に無いものとして扱う。
+  // 見出し探索だけでなく定義数B（§11.8）とコンボ枠の有無も揃えるため、alternativeの
+  // filterだけで済ませず、評価前に配列ごと外す。
+  const layout = sourceLayout.romajiTable ? sourceLayout : withoutRomajiOnlyCombos(sourceLayout);
   const prev = {} as Record<Finger, Point>;
   const last = {} as Record<Finger, number>;
   const lastInputOrdinal = {} as Record<Finger, number>;
@@ -212,6 +217,7 @@ export function generateTrace(
           cursor,
           chars,
           chunkRanges,
+          chunks !== undefined,
         ));
       if (eligible && eligible.length > 0) {
         alternatives = eligible;
@@ -601,10 +607,15 @@ function alternativeContextSatisfied(
   cursor: number,
   chars: string[],
   chunks: RomajiChunkRange[],
+  romajiInput: boolean,
 ): boolean {
   return requirements.every((requirement) => {
     if (requirement.kind === 'youon-only') {
       return canFireYouonOnlyCombo(cursor, chars, chunks);
+    }
+    if (requirement.kind === 'romaji-input') {
+      // 配列ごと外すのが主経路。ここはかなをローマ字へ展開した時だけ成立させる二重の守り。
+      return romajiInput;
     }
     return false;
   });
