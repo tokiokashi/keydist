@@ -32,9 +32,9 @@ export default defineConfig({
   server: {
     warmup: {
       clientFiles: [
-        './src/analyzer-page.tsx',
-        './src/main.ts',
-        './src/analyzer-react-shell.tsx',
+        './src/legacy/analyzer-page.tsx',
+        './src/legacy/main.ts',
+        './src/legacy/analyzer-react-shell.tsx',
       ],
     },
   },

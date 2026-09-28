@@ -82,7 +82,7 @@ physical activation以外の成立条件は `InputAlternative.contextRequirement
 現在は `{ kind: 'youon-only' }` を持ち、logical output全体ではなくそのpathだけへ適用する。
 runtimeではまずcontext requirementを満たすalternativeだけをeligibleに絞り、1つも無ければ
 その見出し自体を不成立として短い見出しへfallbackする。その後にselection policyを適用する。
-`ResolvedComboDefinition.condition` はpresentation provenanceとして保持できるが、evaluate legalityのauthorityではない。runtime legalityはInputAlternative.contextRequirementsだけを見る。
+`ResolvedComboDefinition.condition` はpresentation provenanceとして保持できるが、generateTrace legalityのauthorityではない。runtime legalityはInputAlternative.contextRequirementsだけを見る。
 
 `preferOppositeThumb` はphysical key rewriteではなくalternative selection policyである。
 左右どちらの親指も合法なpathとしてauthoring時にcanonicalへ入り、policyがoutputと反対側の
@@ -191,7 +191,7 @@ Chain / Transition / Metrics / Timing / Playbackはすべて同じPolicy適用�
 **Raw hand run** は、各手がStroke列へ連続して参加したというfactだけを集めた区間。
 ここには良し悪しやRoll判定を入れない。
 
-**Analysis Chain** はRaw hand runへ **ChainPolicy** を適用した解析用区間。
+**Analysis Chain** はRaw hand runへ **ChainInterpretation** を適用した解析用区間。
 現在のPolicyは次の4条件を独立に持つ。
 
 - 非親指SFB Strokeで区切るか
@@ -243,10 +243,10 @@ horizontalReversal =
 この値はcandidateごとのraw quality factであり、Event単位のmax/minや閾値判定へ
 自動集約しない。また、この値によってRedirectEvent / Roll / ArpeggioSpanを削除しない。
 
-### ArpeggioSpan / ArpeggioPolicy
+### ArpeggioSpan / ArpeggioInterpretation
 
 keydistの **Arpeggio** は一般語としてのrollそのものではなく、LongRoll / standalone TwoRollへ
-**ArpeggioPolicy** を適用して得る派生Span。
+**ArpeggioInterpretation** を適用して得る派生Span。
 
 Policyは次の3項目だけを持つ。
 
@@ -299,4 +299,4 @@ overlap Spanでも同じTransition時間を重複適用しない。
 
 - Hand Rhythm / Alternationは#196で扱い、Chainへ吸収しない。
 - geometry / reversal品質は#184で扱い、Arpeggio構造定義へ戻さない。
-- 親指onlyのChainPolicy既定値は未決事項を本モデルから推測しない。
+- 親指onlyのChainInterpretation既定値は未決事項を本モデルから推測しない。

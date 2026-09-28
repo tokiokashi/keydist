@@ -60,7 +60,7 @@ PR 側の完了条件リストがその項目を落としていたため、リ�
 - **数値が変わる変更は `fix` か `feat`。** `refactor` を名乗るなら数値が 1 桁も動いていないこと。
   動いているなら型が違う
 - `tsconfig` の `strict` / `noUnusedLocals` / `noUnusedParameters` を緩めない
-- 計算部（`evaluate` / `metrics` / `geometry` / `sensitivity`）に DOM を持ち込まない
+- 計算部（`generateTrace` / `metrics` / `geometry` / `sensitivity`）に DOM を持ち込まない
 - コミットメッセージは Angular 形式。1行目 72 **文字**以内（バイトではない）、末尾に 。を付けない
 
 ## 必ず流す

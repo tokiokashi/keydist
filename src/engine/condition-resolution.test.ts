@@ -1,0 +1,76 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { resolveConditions, setLayoutGeometryOverride } from './condition-resolution.ts';
+import { DEFAULT_CONDITION_DEFAULTS } from '#legacy/ui-state.ts';
+
+test('配列別条件は既定値へ部分的に重なる', () => {
+  const resolved = resolveConditions(DEFAULT_CONDITION_DEFAULTS, {
+    geometry: 'ortholinear',
+    windowSize: 7,
+  });
+
+  assert.equal(resolved.geometry, 'ortholinear');
+  assert.deepEqual(resolved.options, {
+    windowSize: 7,
+    sfbHomeCost: true,
+    preferOppositeThumb: false,
+    triggerRealizationPolicy: { useHold: false },
+    actionRealizationPolicy: { triggerActivation: 'disabled', triggerActivationClassOverrides: {}, triggerActivationOverrides: [] },
+  });
+  assert.deepEqual(resolved.chainPolicy, DEFAULT_CONDITION_DEFAULTS.chain);
+  assert.deepEqual(resolved.arpeggioPolicy, DEFAULT_CONDITION_DEFAULTS.arpeggioPolicy);
+  assert.deepEqual(resolved.triggerRealizationPolicy, DEFAULT_CONDITION_DEFAULTS.triggerRealization);
+  assert.deepEqual(resolved.actionRealizationPolicy, { triggerActivation: 'disabled', triggerActivationClassOverrides: {}, triggerActivationOverrides: [] });
+});
+
+test('ActionRealizationPolicyはoverrideを含めconditionからevaluate optionsへそのまま渡す', () => {
+  const actionRealization = {
+    triggerActivation: 'semantic' as const,
+    triggerActivationClassOverrides: { 'order-free': 'separate' as const },
+    triggerActivationOverrides: [{
+      selector: {
+        modifierGroupIds: ['SandS'],
+        triggerKeys: ['thumb-r'],
+      },
+      grouping: 'separate' as const,
+    }],
+  };
+  const separated = resolveConditions(DEFAULT_CONDITION_DEFAULTS, { actionRealization });
+
+  assert.deepEqual(separated.actionRealizationPolicy, actionRealization);
+  assert.deepEqual(separated.options.actionRealizationPolicy, actionRealization);
+  assert.notEqual(
+    separated.actionRealizationPolicy.triggerActivationClassOverrides,
+    actionRealization.triggerActivationClassOverrides,
+  );
+  assert.notEqual(
+    separated.actionRealizationPolicy.triggerActivationOverrides,
+    actionRealization.triggerActivationOverrides,
+  );
+  assert.notEqual(
+    separated.actionRealizationPolicy.triggerActivationOverrides?.[0].selector.triggerKeys,
+    actionRealization.triggerActivationOverrides[0].selector.triggerKeys,
+  );
+});
+
+test('配列別条件が空なら既定値と同じになる', () => {
+  assert.deepEqual(
+    resolveConditions(DEFAULT_CONDITION_DEFAULTS, undefined),
+    resolveConditions(DEFAULT_CONDITION_DEFAULTS, {}),
+  );
+});
+
+test('詳細画面で形状を既定へ戻しても他の配列別条件を消さない', () => {
+  const perLayout = { qwerty: { romajiRule: 'azik', windowSize: 7 } };
+  setLayoutGeometryOverride(perLayout, 'qwerty', 'row-staggered', 'ortholinear');
+  assert.deepEqual(perLayout.qwerty, { romajiRule: 'azik', windowSize: 7, geometry: 'row-staggered' });
+
+  setLayoutGeometryOverride(perLayout, 'qwerty', 'ortholinear', 'ortholinear');
+  assert.deepEqual(perLayout.qwerty, { romajiRule: 'azik', windowSize: 7 });
+});
+
+test('個別設定がオンの空オブジェクトは形状を既定へ戻しても残る', () => {
+  const perLayout = { qwerty: {} };
+  setLayoutGeometryOverride(perLayout, 'qwerty', 'row-staggered', 'row-staggered');
+  assert.deepEqual(perLayout.qwerty, {});
+});

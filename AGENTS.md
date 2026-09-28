@@ -45,7 +45,11 @@ Claude Code は `CLAUDE.md` が無いプロジェクトでは `AGENTS.md` を読
   より目的に合う選択肢があれば置き換えてよい
 - **作り直し・置き換えの範囲は「新しい構成に残るか」で決める。** 旧コードで使われている、
   保存データやURLに載っている、既存テストが検査している、はどれも残す理由にならない。
-  旧データは移行で一度読めばよく、旧実装は置き換えの完了とともに消える
+  旧実装は置き換えの完了とともに消える
+  - **利用者の保存データ（localStorage・URL・書き出したファイル）の互換は守らない。** mainでリリース済みの形式でも同じ。
+    形式を変えて既存データが読めなくなってもよい。移行処理も要件にしない。責任を負う利用者を持たないフリーソフトなので、
+    互換の維持に払うコストの方が高い
+  - 「既存の保存形式を壊すから」「保存済みのデータがあるから」は、形を決める根拠として却下する
   - 名前を揃える範囲、互換コードを書くか、型・保存形式の形を決める時に「旧側がこう使っているから」を根拠にしない
   - 消える側のコードは、動き続けるのに必要な分だけ追従させる。消える側に合わせて残る側の形を曲げない
   - エージェントは既存コードを残す方向へ判断を寄せやすい。迷ったら、作り直す・消す側の案を先に検討する
@@ -69,19 +73,28 @@ UI・配列定義の追加など、モデルに触らない変更は仕様の更
 
 ## ディレクトリ構成
 
+分け方・依存の向き・用語は `docs/architecture.md` が正。依存の規則は `test/architecture-layers.test.ts` が検査する。
+新しいファイルは必ずその構造の中に置く（src直下などへ増やすとテストが落ちる）。
+
+Analyzer再設計（#544）のPhase 1で既存ファイルの配置は完了している。移行中なのは `features/analyzer-next/` だけで、置き換え完了時に削除する。
+
 | パス | 中身 |
 |---|---|
-| `src/evaluate.ts` | 評価器の本体。仕様 §7〜§10の実装 |
-| `src/metrics.ts` | 出力指標（仕様 §11） |
-| `src/geometry.ts` | 座標系・キー位置・指の割り当て（仕様 §3） |
-| `src/sensitivity.ts` | N感度曲線 |
-| `src/layouts/` | 配列定義。`types.ts` が記法の型。かな配列は `fromFaces` で面（trigger + mode）から書く |
-| `src/romaji/` | かな → ローマ字テーブル |
-| `src/user-layouts.ts` | 自作配列のlocalStorage永続化 |
-| `src/playback.ts` | 打鍵再生。表示時間は再生時間モデル仕様 §3 の実装 |
-| `src/playback-calibration.ts` | 個人速度の測定（再生時間モデル仕様 §6） |
-| `src/main.ts` `src/chart.ts` `src/theme.ts` | 画面 |
-| `test/` | `node --test` のテスト |
+| `src/input/layouts/` | 配列定義・型・層・配列import |
+| `src/input/shapes/` | 物理形状・座標系・指の割り当て |
+| `src/input/semantics/` | trigger / action realization |
+| `src/input/romaji/` | かな → ローマ字テーブル |
+| `src/trace/generate.ts` | Trace生成（`generateTrace`）。仕様 §7〜§10の実装 |
+| `src/interpretation/` | 構造解析・時間モデル・共通指標 |
+| `src/analyzers/` | Analyzerごとの抽出・設定・可視化 |
+| `src/engine/` | 条件解決・実行とキャッシュ |
+| `src/tester/` | Tester。 `engine/` は純粋層 |
+| `src/platform/` | storage・ブラウザAPI |
+| `src/app/` `src/ui/` `src/routes/` | アプリ組み立て・共通UI・ルーティング |
+| `src/legacy/` | 旧Analyzer。切り替え時にディレクトリごと削除 |
+| `src/features/analyzer-next/` | Analyzer Next移行中実装。新構造へ置き換え後に削除 |
+| `src/**/*.test.ts` | ソースの隣に置くunit test |
+| `test/` | architecture・commit-msg等の横断テストとfixture |
 | `spec/` | モデル仕様（距離モデル・再生時間モデル） |
 
 ## 開発コマンド
@@ -104,17 +117,17 @@ npm run build      # 型検査 + ビルド
 - テスト基盤は現状の仕組みを既定として使うが、要件に合わなくなった場合は変更してよい。
   「既存だから」だけを理由に別のテストランナーやブラウザテスト基盤を禁止しない
 - `tsconfig.json` は `strict` + `noUnusedLocals` + `noUnusedParameters`。緩めない
-- 計算部（`evaluate` / `metrics` / `geometry` / `sensitivity`）はDOMに依存させない。
+- 計算部（`docs/architecture.md` の「純粋な層」）は React・DOM・storage・ブラウザAPIに依存させない。
   テストから直接呼べる状態を保つ
 - コードコメントは日本語。「なぜそうしたか」を書く。「何をしているか」はコードで読ませる
 
 ## モデルに触る変更をした時
 
-`spec/distance-model.md` の該当節・`README.md` の「何を測るか」・`test/` の3点が
+`spec/distance-model.md` の該当節・`README.md` の「何を測るか」・該当ソース隣接のunit testの3点が
 揃っているか確認する。数値が変わる変更なら、issue #1に載っている測定表のように
 変更前後の値をPRに書く。
 
-再生の時間の決め方を変えた時は `spec/playback-timing.md` の該当節と `test/` の2点。
+再生の時間の決め方を変えた時は `spec/playback-timing.md` の該当節と `src/interpretation/timing/` のunit testの2点。
 **適用範囲（§7）に挙げた制約を外す変更なら、§7 の該当項目も消すか書き換える。**
 距離モデルの数値は動かないので、測定表は要らない。
 

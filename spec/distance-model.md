@@ -66,14 +66,25 @@ grid外キーの運指をshapeへ埋め込まない。extra key idはcanonical p
 空白やセンターシフトを打鍵列から落とすと、それらを挟んだ他の指の `g` が実際より小さくなり、
 単語や文節をまたぐ運指が実際より繋がって見える。
 
-### 3.2利用者が設定する形状と運指
+### 3.2利用者が設定する形状と指の割り当て
+
+物理形状（位置）と指の割り当ては独立した条件である。前者は `PhysicalShape`、後者は
+`FingerAssignment` として別に持つ。指の割り当ては形状の一部ではなく独立した条件として
+保存・選択され、既定は物理形状の規格（ANSI/JIS）から決まる。組み込み（既定・JIS）と自作の
+どちらの指の割り当ても、同じカスケードの項目（`fingerAssignmentId`。`engine/finger-assignment.ts`、
+`engine/settings-items.ts`）として物理形状・配列・Setupのレベルで選べる。同じ形状のまま
+組み込みのJIS運指へ差し替える、自作の運指へ差し替える、といった比較ができる。自作の指の割り当ては
+`input/shapes/user-finger-assignments.ts` が資産として持ち、`engine/commands.ts` の
+作成・複製・削除・改名コマンドで手持ちを操作する。idを解決できない（自作割り当てを削除した後に
+それを指す上書きが残っている等）場合は例外にせず、その形状の既定へfallbackした事実を診断として
+残す（`engine/finger-assignment.ts` の `resolveFingerAssignment`）。
 
 画面の「打ち手と機材」パネルの設定モーダルでは、既定形状を選んだうえで次の値を利用者が変更できる。
 
 - ピッチ、段ごとのxオフセット、列ごとのyオフセット、分割間隔
 - 左右の親指キーの列位置とy座標
 - grid外physical keyのstable id・座標・表示幅
-- 列単位の指割り当てと、列から外れるキー単位の上書き
+- 列単位の指割り当てと、列から外れるキー単位の上書き（組み込みと自作がある）
 
 段ずれ・列オフセット・親指位置・分割間隔は、UIでmmとuを切り替えて入力する。内部の正準値はuであり、
 mm表示は現在のピッチで変換する。形状は `shape-{識別子}` の名前付きカスタム形状として複数保存でき、
@@ -196,7 +207,7 @@ logical output matching
 
 `stepLayers / stepTriggerKeys / stepSemantics / StepSemantic` はcanonical cutover後に削除済み。
 legacy `Layout.map` だけをauthoring default / presentation互換として残すが、
-evaluateのsemantic authorityではない。
+generateTraceのsemantic authorityではない。
 
 左右どちらの親指でも同じshift semanticを成立させられる配列は、
 `thumbShiftKeys` に合法な親指physical keyを持ち、authoring時に左右両pathをcanonical
@@ -247,7 +258,8 @@ Shift keyのgeometryは既存PhysicalShapeの保存schemaへ混ぜず、bottom r
 押下後、その指は重心に留まる。
 
 代替の指を自動で探すことはしない。探索を入れると、
-配列の性質ではなく代替アルゴリズムの性質を測ることになる。運指は配列定義の一部である。
+配列の性質ではなく代替アルゴリズムの性質を測ることになる。どの指がどのキーを担当するかは
+モデルが探索する対象ではなく、測定条件として外から与えられる（§3.2）。
 
 割り当てを変えると同指連続の数も距離も変わる。どの割り当てで測ったかも形状と同じく
 数値に付随する情報であり、出力に併記する（§12.3）。
@@ -331,7 +343,7 @@ compile時にcombo alternativeへ `{ kind: 'youon-only' }` context requirement�
 
 **R3. Nはselected canonical input単位で数える。**
 
-evaluateが最長一致・context filter・alternative selection後に選んだlogical inputを1単位とし、
+generateTraceが最長一致・context filter・alternative selection後に選んだlogical inputを1単位とし、
 そのordinalを `inputOrdinal` とする。現在inputと、指 `f` が最後に参加したinputとの差を
 
 ```
@@ -492,7 +504,7 @@ Metrics / structural aggregationのcondition snapshotにも実効値を保存す
 **Raw hand run** として作る。この段階で保持するのは参加factだけで、同指・trigger・親指・
 逆手同時入力を理由に区切る判断はしない。
 
-Raw hand runへ **ChainPolicy** を適用した結果が **Analysis Chain** である。
+Raw hand runへ **ChainInterpretation** を適用した結果が **Analysis Chain** である。
 現時点でPolicyが持つ境界条件は次の3つ。
 
 - `breakOnSameFinger`: 同指移動Strokeを境界にする。既定 `true`（従来の
@@ -512,10 +524,10 @@ Analysis結果はStrokeを複製せず、1回の結果内で安定する `Stroke
 `chainIndex` で参照する。永続的なstable IDは作らない。後段のRoll / Redirect /
 Arpeggio等の構造要素はAnalysis Chain境界を越えてはならない。
 
-ChainPolicyは測定条件の一部として `conditions.defaults` / `conditions.perLayout` で
+ChainInterpretationは測定条件の一部として `conditions.defaults` / `conditions.perLayout` で
 配列ごとに解決し、`Metrics.conditions` のsnapshotにも保存する（§12.3）。
 旧 `ui.playback.chainIncludeSameFinger` / `chainIncludeLayerKeys` は移行期間の互換入口として
-残すが、意味が一意に対応する項目だけをadapterでChainPolicyへ変換する。
+残すが、意味が一意に対応する項目だけをadapterでChainInterpretationへ変換する。
 
 ### 10.2 Transition facts
 
@@ -592,7 +604,7 @@ Transition / Redirect factsからpure roll構造を作る時は、LongRollとTwo
 - output親指も構造候補として扱う
 - opposite-handの新規 `trigger` activationが同一Strokeにある場合はpure rollから除外
 - opposite-hand `held-trigger` だけでは除外しない
-- trigger-only Strokeの境界はChainPolicyへ従う
+- trigger-only Strokeの境界はChainInterpretationへ従う
 
 対象handの複数Press Strokeは、Transition候補から都合のよい1本を選んでpure rollへ
 通してはいけない。Redirectはexistential eventなので同じStrokeがpivotになれる場合があるが、
@@ -616,10 +628,10 @@ AnyRoll = LongRoll ∪ TwoRoll
 Stroke spanから対応Transitionを得る変換は共通helperへ集約し、後段が個別に
 off-by-one変換を実装しない。
 
-### 10.5 ArpeggioPolicy / ArpeggioSpan
+### 10.5 ArpeggioInterpretation / ArpeggioSpan
 
 ArpeggioはLongRoll / standalone TwoRollというstructural factそのものではなく、
-それらへ **ArpeggioPolicy** を適用して得るkeydist固有の派生Spanとする。
+それらへ **ArpeggioInterpretation** を適用して得るkeydist固有の派生Spanとする。
 
 初期Policyは次の3項目だけを持つ。
 
@@ -693,7 +705,7 @@ type StrokeAnnotation = {
 - SFB: raw Transition event数 / unique関与Stroke coverage
 
 重複Spanや重複Eventはraw countでは保持し、coverageではStroke indexのunionとして1回だけ数える。
-集計結果には解決済み `TriggerRealizationPolicy` / `ActionRealizationPolicy` / `ChainPolicy` / `ArpeggioPolicy` のimmutable snapshotを持たせ、
+集計結果には解決済み `TriggerRealizationPolicy` / `ActionRealizationPolicy` / `ChainInterpretation` / `ArpeggioInterpretation` のimmutable snapshotを持たせ、
 後からUI stateが変わっても算出条件を追跡できるようにする。
 
 ## 11. 出力指標

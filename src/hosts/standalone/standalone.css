@@ -1,0 +1,40 @@
+.standalone-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+.standalone-page-header h1 {
+  margin: 0.15rem 0 0;
+}
+
+.standalone-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.standalone-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.standalone-text-control {
+  flex: 1 1 24rem;
+}
+
+.standalone-text-control textarea {
+  font: inherit;
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.standalone-text-control small {
+  opacity: 0.7;
+}

@@ -43,7 +43,7 @@ realized Stroke gap = 0  → d(前のキー, 今のキー)               同指�
 入力距離 ΔI > N         → d(ホーム, 今のキー)                  復帰済み
 ```
 
-`N` は、evaluateが実際に選んだcanonical inputを単位にした先読み数です。次のinputは1、5入力先は5です。
+`N` は、generateTraceが実際に選んだcanonical inputを単位にした先読み数です。次のinputは1、5入力先は5です。
 `きゃ` が1見出しとして選ばれれば1単位、`き`+`ゃ`なら2単位です。1入力がtrigger/outputなど複数Strokeへ
 分割されてもN上は1単位のままなので、action groupingやcontinuous holdだけでは先読み範囲は変わりません。
 `N` を増やすと比較できる候補が増えるので、総距離は減る方向に動きます。
@@ -52,10 +52,10 @@ realized Stroke gap = 0  → d(前のキー, 今のキー)               同指�
 詳細は [spec/distance-model.md](spec/distance-model.md)。
 
 構造解析では、正規化したStrokeを手ごとの参加factで **Raw hand run** にまとめた後、
-ChainPolicyを適用して **Analysis Chain** を作ります。semantic normalization自体は
+ChainInterpretationを適用して **Analysis Chain** を作ります。semantic normalization自体は
 Chain境界を決めません。同指・trigger-only・逆手同時入力は独立したPolicy条件で、
 親指だけのlayer/modifier操作を区切るかは未決のため推測していません。
-ChainPolicyは配列ごとの測定条件として数値のsnapshotにも残します。
+ChainInterpretationは配列ごとの測定条件として数値のsnapshotにも残します。
 
 Analysis Chain内の隣接Strokeからは、手ごとの **Transition fact** を作ります。
 同時押しで1手に複数Pressがある場合もPress×Press候補を全部残し、指の内向き/外向き、
@@ -83,7 +83,7 @@ Policyを有効にしても元のRoll / Redirect / SFB factは変更せず、Arp
 解析結果はさらにStroke単位の非排他的なAnnotationへ投影し、LongRoll / TwoRoll /
 Arpeggio / Redirect pivot / SFBの所属を保持します。構造の「件数」はraw Event/Spanを数え、
 「coverage」は重複をunionしたユニークStroke数で数えるため、overlapするArpeggioSpanを
-coverageで二重計上しません。集計値には実効ChainPolicy / ArpeggioPolicyもsnapshotとして残します。
+coverageで二重計上しません。集計値には実効ChainInterpretation / ArpeggioInterpretationもsnapshotとして残します。
 
 一般的なbigram / trigram / SFB / roll / redirect / alternationと、
 keydist固有のRaw hand run / Analysis Chain / LongRoll / TwoRoll / RedirectEvent /
@@ -129,8 +129,8 @@ realized Stroke上の同指連続規則で親指が残った扱いになりま�
   同指連続のキー移動アニメーション、チェーンの表示も切り替えられる。
   キャリブレーションで通常のアクション/秒・同じ手の別指の組ごとの交互打鍵速度・指ごとの移動速度 [u/秒] を測定し、組ごとの結果を保存して個人速度として再生へ反映できる
 - **Analysis Chain** と **ArpeggioSpan** は構造解析済みの区間をそのまま再生図へ投影する。
-  表示側ではChain / Arpeggioを再判定しない。Chain境界とArpeggioPolicyはシミュレーション条件から編集でき、
-  ArpeggioPolicyは output親指・same bridge・redirect tail の3項目だけを持つ
+  表示側ではChain / Arpeggioを再判定しない。Chain境界とArpeggioInterpretationはシミュレーション条件から編集でき、
+  ArpeggioInterpretationは output親指・same bridge・redirect tail の3項目だけを持つ
 - 配列 × 指のマトリックスとして、指ごとの移動距離 [u/文字]、押下数 [押下/文字]、
   指間距離の平均 [u]を並べて出す。押下数の面には生の押下回数もツールチップで出す
 - 同指連続回数と比率

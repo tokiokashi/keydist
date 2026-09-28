@@ -7,9 +7,9 @@ import {
   useRouterState,
 } from '@tanstack/react-router';
 import { useLayoutEffect, type ReactNode } from 'react';
-import { getAppearanceSnapshot } from '../appearance.ts';
-import { applyTheme, THEME_BOOTSTRAP_SCRIPT } from '../theme.ts';
-import appCss from '../app.css?url';
+import { getAppearanceSnapshot } from '#app/theme/appearance.ts';
+import { applyTheme, THEME_BOOTSTRAP_SCRIPT } from '#app/theme/theme.ts';
+import appCss from '#app/app.css?url';
 
 export const Route = createRootRoute({
   head: () => ({
@@ -64,6 +64,9 @@ function RootDocument({ children }: { children: ReactNode }) {
               <Link to="/input" activeProps={{ 'aria-current': 'page' }}>
                 Tester
               </Link>
+              {/* 旧画面は /classic/ に凍結ビルドとして同梱する（#579）。別のビルドなのでルーターの外。
+                  置き換えが済むまでの暫定の導線。dev サーバーには同梱されないので手元では 404 になる */}
+              <a href={`${import.meta.env.BASE_URL}classic/`}>旧版</a>
             </nav>
           </header>
         )}
