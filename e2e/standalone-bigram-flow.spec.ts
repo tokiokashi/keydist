@@ -24,6 +24,32 @@ test('単体ページが開き、Bigram Flowが描画される', async ({ page }
   await expect(pane.locator('.pane-condition-summary')).toContainText('既定値');
 });
 
+test('操作系はハイドレーション+資産読み込み完了（assetsReady）まで無効化され、直後に選んでも取りこぼさない（レビュー指摘1）', async ({ page }) => {
+  // プリレンダーされたページは、Reactがハイドレーションを終える前から見た目上は
+  // 操作できてしまう。旧実装はここに約750〜850msの「クリック・選択しても静かに
+  // 元へ戻る」窓があった（`assetsReady`が経由する`useKeydistAssets`のstorage読み込みが
+  // 終わるまで、controlled componentのvalueが毎回リセットされるため）。ページ本体を
+  // `fieldset[disabled={!assetsReady}]`で包んだことで、この窓の間は`<select>`が
+  // 本当にdisabledになる。Playwrightの`selectOption`はdisabled要素に対して
+  // actionable（有効）になるまで自動的に待つので、ここでは「ネットワークアイドル等の
+  // 明示的な待ちを一切挟まずに選んでも、最終的に必ず反映される」ことを確認する
+  // （待たずに選んでも消える、が再現しないことの確認）。
+  await page.goto('/standalone/bigram-flow');
+  const targetSelect = page.getByLabel('対象', { exact: true });
+
+  // 選ぶ前は無効化されていることがある（ハイドレーション未完了の間）。
+  // 常に無効化されているとは限らない（読み込みが速いローカル実行では既に有効なことも
+  // ある）ため、状態そのもののアサートはせず、「選択が必ず反映される」ことだけを見る。
+  await targetSelect.selectOption('layout:colemak-dh');
+  await expect(targetSelect).toBeEnabled();
+  await expect(targetSelect).toHaveValue('layout:colemak-dh');
+
+  // 選択後は解析まで進み、取りこぼされていないことを可視化の面でも確認する。
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+  await expect(flow).toHaveAttribute('data-layout-id', 'colemak-dh');
+});
+
 test('見た目だけの設定を変えても壊れず、抽出設定を変えると表示が変わる', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
@@ -465,14 +491,12 @@ test('保存済みのSetupが2件あっても、開いた時に手を付けず�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
-  // 対象を明示的にSetupへ切り替える（既定はqwerty配列のまま）。ハイドレーション完了直後の
-  // ごく短い窓でonChangeが配線される前だと選択が効かないことがあるため、反映されるまで
-  // リトライする（#578指摘1のE2E実装時に発見）。
+  // 対象を明示的にSetupへ切り替える（既定はqwerty配列のまま）。ページ本体は
+  // `fieldset[disabled]`でハイドレーション完了まで操作を無効化している
+  // （レビュー指摘1）ので、Playwrightのactionability待ちにそのまま任せてよい。
   const targetSelect = page.getByLabel('対象', { exact: true });
-  await expect(async () => {
-    await targetSelect.selectOption('setup:fixed-b');
-    await expect(targetSelect).toHaveValue('setup:fixed-b', { timeout: 1_000 });
-  }).toPass({ timeout: 10_000 });
+  await targetSelect.selectOption('setup:fixed-b');
+  await expect(targetSelect).toHaveValue('setup:fixed-b');
 
   // storage側は2件のまま（idも変わらない。作成・削除どちらも起きていない）。
   const stored = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));

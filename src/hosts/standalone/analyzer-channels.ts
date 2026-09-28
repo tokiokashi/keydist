@@ -75,7 +75,7 @@ export function syncAnalyzerPaneChannels<Options, Extracted>(
   return { options: params.options, extraction, trace };
 }
 
-/** ペインが不要になった時（アンマウント・対象Setupの切り替えで作り直す時）の後始末。 */
+/** ペインが不要になった時（アンマウント・対象の切り替えで作り直す時）の後始末。 */
 export function closeAnalyzerPaneChannels(
   channels: AnalyzerPaneChannels<unknown> | undefined,
 ): void {

@@ -20,7 +20,7 @@ export const Route = createFileRoute('/standalone/bigram-flow')({
       { title: 'Bigram Flow (standalone) | keydist' },
       {
         name: 'description',
-        content: 'Setup 1つを対象に、Bigram Flowを単体ページとして開く（#544 Analyzer再設計）。',
+        content: '対象（配列またはSetup）を1つ選んで、Bigram Flowを単体ページとして開く（#544 Analyzer再設計）。',
       },
     ],
   }),

@@ -1,6 +1,7 @@
 import {
   defineItem,
   emptyCascadeOverrides,
+  readOverride,
   resetItem as resetItemGeneric,
   resetLevel as resetLevelGeneric,
   resolveCascade,
@@ -201,11 +202,39 @@ export const SETTINGS_ITEMS = {
    *
    * `allowedLevels`はglobalのみ（#578決定「scope: global only — 他のレベルは今は許可しない」。
    * 「先回りして足さない」の判断と同じ）。
+   *
+   * `isApplicable`: Setupレベルを持つ対象（`context.setupId`あり＝Setup対象）はSetup自身の
+   * `shapeId`で物理形状が決まるので、この項目は効かない（レビュー指摘6）。`context.setupId`
+   * の有無で判定できるのは、まさに「配列対象かSetup対象か」がそこに現れるため
+   * （`target-resolution.ts`のコメント参照。配列対象は`context.setupId`を持たない）。
+   *
+   * `validate`: 未知・削除された形状idが指されていた場合、`target-resolution.ts`が
+   * 実際に使う形状を`DEFAULT_SHAPE_ID`へ前もってfallbackさせた上で`context.shapeId`へ
+   * 積む（配列対象の解決自体を失敗させない。レビュー指摘6「fall back to DEFAULT_SHAPE_ID
+   * with a diagnostic … instead of failing every layout target」）。ここでの`validate`は
+   * 「生の上書き値」と「実際にその後使われた形状（`context.shapeId`）」を突き合わせるだけで、
+   * 食い違っていれば診断を1件積んで`context.shapeId`へ読み替える。`preferOppositeThumb`と
+   * 同じ「実現できない値をfallbackで戻す」役割を、fallback先の決定だけ呼び出し側
+   * （`target-resolution.ts`。catalogを持っているのはそちら）に任せる形。
    */
   defaultShapeId: defineItem<string>({
     id: 'defaultShapeId',
     allowedLevels: GLOBAL_ONLY,
     defaultValue: DEFAULT_SHAPE_ID,
+    isApplicable: (context) => context.setupId === undefined,
+    validate: (value, context) => {
+      // Setup対象（context.setupIdあり）ではこの項目自体が無関係（isApplicable=false）
+      // なので、Setup自身のshapeIdと値が食い違っていても検証しない（毎回誤って
+      // fallback診断が出てしまう事故を避ける）。
+      if (context.setupId !== undefined) return { ok: true };
+      return value === context.shapeId
+        ? { ok: true }
+        : {
+          ok: false,
+          fallback: context.shapeId,
+          reason: `物理形状「${value}」が見つからないため、既定の形状（${context.shapeId}）へ戻した`,
+        };
+    },
   }),
 } as const satisfies ItemRegistry;
 
@@ -251,8 +280,7 @@ export function resetSettingsItem(
  * 省略しても結果は一致する）。
  */
 export function resolveDefaultShapeId(overrides: SettingsCascadeOverrides): string {
-  const stored = overrides.global?.defaultShapeId;
-  return stored ?? DEFAULT_SHAPE_ID;
+  return readOverride(overrides, { kind: 'global' }, 'defaultShapeId') ?? DEFAULT_SHAPE_ID;
 }
 
 export function resetSettingsLevel(

@@ -5,7 +5,7 @@ import type { EngineCache } from '#engine/cache.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import { analyzerSetSelectionFor } from '#engine/analyzer-set-selection.ts';
-import { analysisTargetKey, nameTargets, targetColor, type AnalysisTarget, type NamedTarget, type Setup, type SetupIdGenerator } from '#input/setup/index.ts';
+import { analysisTargetKey, nameTargets, targetColor, type AnalysisTarget, type NamedTarget, type Setup } from '#input/setup/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
@@ -36,7 +36,6 @@ export interface NSensitivityStandalonePageProps {
   readonly dispatch: (command: Command<KeydistAssets>) => void;
   readonly cache: EngineCache;
   readonly catalog: StandalonePaneCatalog;
-  readonly generateSetupId: SetupIdGenerator;
   readonly generateTextId: TextIdGenerator;
   /** `TextControl`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
   readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
@@ -64,6 +63,7 @@ function buildRowContext(
     return {
       targetKey,
       label: named.displayName,
+      fullName: named.fullName,
       layoutName: header.layoutName,
       geometryName: header.shapeName,
       fingerAssignmentName: header.fingerAssignmentName,
@@ -71,11 +71,11 @@ function buildRowContext(
       ...(conditionSummary === undefined ? {} : { conditionSummary }),
     };
   }
-  const fallbackLabel = target.kind === 'layout' ? target.layoutId : target.setupId;
   return {
     targetKey,
-    label: named.displayName || fallbackLabel,
-    layoutName: fallbackLabel,
+    label: named.displayName,
+    fullName: named.fullName,
+    layoutName: named.fullName,
     geometryName: '—',
     fingerAssignmentName: '—',
     color,
@@ -84,11 +84,10 @@ function buildRowContext(
 
 export function NSensitivityStandalonePage({
   assets,
-  assetsReady: _assetsReady,
+  assetsReady,
   dispatch,
   cache,
   catalog,
-  generateSetupId: _generateSetupId,
   generateTextId,
   onTextContentCommit,
   onOptionsCommit,
@@ -136,10 +135,11 @@ export function NSensitivityStandalonePage({
     })),
     [targets, setupsById, catalog, assets.setupLibrary.overrides, resolvedText],
   );
+  const membersByTarget = useMemo(() => new Map(members.map((m) => [m.target, m] as const)), [members]);
 
   const namedTargets = useMemo(() => nameTargets(targets.map((target) => {
     const setup = target.kind === 'setup' ? setupsById.get(target.setupId) : undefined;
-    const member = members.find((m) => m.target === target);
+    const member = membersByTarget.get(target);
     if (member?.resolution.ok) {
       const header = conditionHeaderInfoFromResolvedInput(member.resolution.input.layout, member.resolution.input.geometry);
       const overrideSummary = summarizeNonDefaultConditions(
@@ -159,8 +159,9 @@ export function NSensitivityStandalonePage({
       ...(setup?.label !== undefined ? { label: setup.label } : {}),
       layoutName: fallback,
       shapeName: '—',
+      failed: true,
     };
-  })), [targets, setupsById, members]);
+  })), [targets, setupsById, membersByTarget]);
   const namedByKey = useMemo(() => new Map(namedTargets.map((n) => [n.key, n] as const)), [namedTargets]);
 
   const rowContext = useMemo(() => {
@@ -188,72 +189,80 @@ export function NSensitivityStandalonePage({
         <h1>N感度</h1>
       </header>
 
-      <TextControl
-        holder="standalone"
-        textLibrary={assets.textLibrary}
-        selection={assets.standaloneTextSelection}
-        dispatch={dispatch}
-        generateTextId={generateTextId}
-        onTextContentCommit={onTextContentCommit}
-      />
-
-      <DefaultShapeControl overrides={assets.setupLibrary.overrides} dispatch={dispatch} />
-
-      <section className="set-selection-controls" aria-label="対象の選択">
-        <div className="standalone-control">
-          <span>対象を追加</span>
-          <TargetPicker
-            aria-label="追加する対象"
-            layouts={catalog.setupCatalog.layouts}
-            setups={setups}
-            value={undefined}
-            placeholder
-            onChange={addMember}
-          />
-        </div>
-
-        {targets.length > 0 ? (
-          <ol className="set-selection-order" aria-label="表示順">
-            {targets.map((target, index) => {
-              const key = analysisTargetKey(target);
-              return (
-                <li key={key}>
-                  <span>{namedByKey.get(key)?.displayName ?? key}</span>
-                  <button type="button" onClick={() => moveMember(index, -1)} disabled={index === 0} aria-label={`${index + 1}番目を上へ`}>↑</button>
-                  <button
-                    type="button"
-                    onClick={() => moveMember(index, 1)}
-                    disabled={index === targets.length - 1}
-                    aria-label={`${index + 1}番目を下へ`}
-                  >
-                    ↓
-                  </button>
-                  <button type="button" onClick={() => removeMember(index)} aria-label={`${index + 1}番目を外す`}>✕</button>
-                </li>
-              );
-            })}
-          </ol>
-        ) : (
-          <p>対象を追加するとチャートに加わる。</p>
-        )}
-      </section>
-
-      {extracted === undefined ? (
-        <p aria-busy="true">
-          {extraction.status === 'failed' ? '計算に失敗した' : '計算している…'}
-        </p>
-      ) : (
-        <View
-          extracted={extracted}
-          order={order}
-          rowContext={rowContext}
-          options={optionsDraft}
-          onOptionsChange={(next) => {
-            setOptionsDraft(next);
-            onOptionsCommit(next);
-          }}
+      {/* プリレンダーされたページはハイドレーション完了まで操作を効かせない（レビュー指摘1）。 */}
+      <fieldset
+        disabled={!assetsReady}
+        style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
+      >
+        <TextControl
+          holder="standalone"
+          textLibrary={assets.textLibrary}
+          selection={assets.standaloneTextSelection}
+          dispatch={dispatch}
+          generateTextId={generateTextId}
+          onTextContentCommit={onTextContentCommit}
         />
-      )}
+
+        <DefaultShapeControl overrides={assets.setupLibrary.overrides} dispatch={dispatch} catalog={catalog} />
+
+        <section className="set-selection-controls" aria-label="対象の選択">
+          <div className="standalone-control">
+            <span>対象を追加</span>
+            <TargetPicker
+              aria-label="追加する対象"
+              layouts={catalog.setupCatalog.layouts}
+              shapes={catalog.setupCatalog.shapes}
+              setups={setups}
+              value={undefined}
+              placeholder
+              onChange={addMember}
+            />
+          </div>
+
+          {targets.length > 0 ? (
+            <ol className="set-selection-order" aria-label="表示順">
+              {targets.map((target, index) => {
+                const key = analysisTargetKey(target);
+                const named = namedByKey.get(key);
+                return (
+                  <li key={key}>
+                    <span title={named?.fullName}>{named?.displayName ?? key}</span>
+                    <button type="button" onClick={() => moveMember(index, -1)} disabled={index === 0} aria-label={`${index + 1}番目を上へ`}>↑</button>
+                    <button
+                      type="button"
+                      onClick={() => moveMember(index, 1)}
+                      disabled={index === targets.length - 1}
+                      aria-label={`${index + 1}番目を下へ`}
+                    >
+                      ↓
+                    </button>
+                    <button type="button" onClick={() => removeMember(index)} aria-label={`${index + 1}番目を外す`}>✕</button>
+                  </li>
+                );
+              })}
+            </ol>
+          ) : (
+            <p>対象を追加するとチャートに加わる。</p>
+          )}
+        </section>
+
+        {extracted === undefined ? (
+          <p aria-busy="true">
+            {extraction.status === 'failed' ? '計算に失敗した' : '計算している…'}
+          </p>
+        ) : (
+          <View
+            extracted={extracted}
+            order={order}
+            rowContext={rowContext}
+            options={optionsDraft}
+            onOptionsChange={(next) => {
+              setOptionsDraft(next);
+              onOptionsCommit(next);
+            }}
+          />
+        )}
+      </fieldset>
     </div>
   );
 }

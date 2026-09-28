@@ -94,7 +94,7 @@ export interface EngineCache {
     options: Options,
   ): EngineExtractionResult<Extracted>;
   /**
-   * 集合対象のAnalyzerの抽出（#544 Phase 3）。`members`は集合の各枠（Setup）の解決済み
+   * 集合対象のAnalyzerの抽出（#544 Phase 3）。`members`は集合の各枠（配列かSetup）の解決済み
    * 入力（または解決失敗）を、表示順のまま渡す（`setAnalyzerExtractionKeyOf`のコメント
    * 参照: 順序込みでキャッシュキーに畳み込む）。
    *

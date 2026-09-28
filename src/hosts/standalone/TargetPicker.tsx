@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { Layout } from '#input/layouts/types.ts';
-import { analysisTargetKey, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
+import type { PhysicalShape } from '#input/shapes/geometry.ts';
+import { analysisTargetKey, nameTargets, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
 
 /**
  * 対象（`AnalysisTarget`）を選ぶ部品（#578指摘1「対象選択UIで配列を選べるようにする」）。
@@ -32,9 +34,17 @@ function parseTargetOptionValue(value: string): AnalysisTarget | undefined {
   return undefined;
 }
 
+/** 不明な値の表示文（レビュー指摘5: 選ばれている値が候補に無い時も、実際の状態をそのまま見せる）。 */
+function describeUnknownValue(target: AnalysisTarget): string {
+  return target.kind === 'setup'
+    ? '（削除されたSetup）'
+    : `（不明な配列: ${target.layoutId}）`;
+}
+
 export interface TargetPickerProps {
   readonly 'aria-label': string;
   readonly layouts: ReadonlyMap<string, Layout>;
+  readonly shapes: ReadonlyMap<string, PhysicalShape>;
   readonly setups: readonly Setup[];
   readonly value: AnalysisTarget | undefined;
   readonly onChange: (target: AnalysisTarget) => void;
@@ -45,6 +55,7 @@ export interface TargetPickerProps {
 export function TargetPicker({
   'aria-label': ariaLabel,
   layouts,
+  shapes,
   setups,
   value,
   onChange,
@@ -52,16 +63,47 @@ export function TargetPicker({
 }: TargetPickerProps) {
   const layoutOptions = layoutOptionsFrom(layouts);
 
+  // Setupの表示名はnameTargets（#578指摘2・3）のfullNameを使う（レビュー指摘3
+  // 「TargetPickerは生のlayoutId/shapeIdでなくnameTargets/fullNameでSetupをラベル付けする」）。
+  // ピッカーの一覧は「並べて見比べる集合」ではなく「取りうる全部から探す」場なので、
+  // 集合内の共通部分を落とすdisplayNameではなく、常に全部を含むfullNameを使う。
+  const namedSetups = nameTargets(setups.map((setup) => ({
+    key: setup.id,
+    ...(setup.label !== undefined ? { label: setup.label } : {}),
+    layoutName: layouts.get(setup.layoutId)?.name ?? setup.layoutId,
+    shapeName: shapes.get(setup.shapeId)?.name ?? setup.shapeId,
+  })));
+  const setupFullNameById = new Map(namedSetups.map((n) => [n.key, n.fullName] as const));
+
+  const knownValues = new Set<string>([
+    ...layoutOptions.map((layout) => targetOptionValue({ kind: 'layout', layoutId: layout.id })),
+    ...setups.map((setup) => targetOptionValue({ kind: 'setup', setupId: setup.id })),
+  ]);
+  const valueIsUnknown = value !== undefined && !knownValues.has(targetOptionValue(value));
+
+  // 「追加」モードで重複した対象を選ぶと、選択は変わらないため資産への書き込みは
+  // no-opになり、親が再レンダーされない。この`<select>`は常に`value=""`の
+  // controlled componentのはずだが、親が再レンダーされないとDOM側の値がユーザーの
+  // 選択のまま残ってしまう（レビュー指摘5「重複を追加した後、ピッカーの表示を戻す」）。
+  // `key`をクリックのたびに変えて丸ごと作り直すことで、no-opでも必ずプレースホルダへ
+  // 戻す（controlled valueに頼らない、確実なリセット）。
+  const [resetToken, setResetToken] = useState(0);
+
   return (
     <select
+      key={placeholder ? resetToken : undefined}
       aria-label={ariaLabel}
       value={value === undefined ? '' : targetOptionValue(value)}
       onChange={(event) => {
         const parsed = parseTargetOptionValue(event.currentTarget.value);
+        if (placeholder) setResetToken((n) => n + 1);
         if (parsed !== undefined) onChange(parsed);
       }}
     >
       {placeholder ? <option value="">選ぶ…</option> : null}
+      {valueIsUnknown && value !== undefined ? (
+        <option value={targetOptionValue(value)} disabled>{describeUnknownValue(value)}</option>
+      ) : null}
       <optgroup label="配列">
         {layoutOptions.map((layout) => (
           <option key={layout.id} value={targetOptionValue({ kind: 'layout', layoutId: layout.id })}>
@@ -73,7 +115,7 @@ export function TargetPicker({
         <optgroup label="Setup">
           {setups.map((setup) => (
             <option key={setup.id} value={targetOptionValue({ kind: 'setup', setupId: setup.id })}>
-              {setup.label ?? `${setup.layoutId} / ${setup.shapeId}`}
+              {setupFullNameById.get(setup.id) ?? setup.id}
             </option>
           ))}
         </optgroup>

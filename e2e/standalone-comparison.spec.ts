@@ -34,17 +34,12 @@ function seedTwoSetups() {
 }
 
 /**
- * 対象を追加する。ハイドレーション完了直後は`<select>`のonChangeがまだReactに
- * 配線されていないごく短い窓があり、その間に選んでも見た目のDOM値だけ変わって
- * 実際の追加が起きないことがある（#578指摘1のE2E実装時に発見）。表示順リストの件数が
- * 増えるまでリトライすることで、この窓を安全にやり過ごす。
+ * 対象を追加する。ページ本体は`fieldset[disabled]`でハイドレーション完了
+ * （`assetsReady`）まで操作を無効化しているので（レビュー指摘1）、Playwrightの
+ * actionability待ち（disabled要素には操作しない）にそのまま任せてよい。
  */
 async function addTarget(page: import('@playwright/test').Page, optionValue: string) {
-  const before = await page.locator('.set-selection-order li').count();
-  await expect(async () => {
-    await page.getByLabel('追加する対象').selectOption(optionValue);
-    await expect(page.locator('.set-selection-order li')).toHaveCount(before + 1, { timeout: 1_000 });
-  }).toPass({ timeout: 10_000 });
+  await page.getByLabel('追加する対象').selectOption(optionValue);
 }
 
 test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを作らずに比較できる', async ({ page }) => {
@@ -87,7 +82,7 @@ test('Setupを2件選ぶと2行表示され、並び替え・基準選択が効�
   await expect(order.first()).toContainText('Colemak');
 
   // 基準を選ぶと、その行に基準マークが付く。
-  await page.getByLabel('基準Setup').selectOption('setup:fixed-a');
+  await page.getByLabel('基準', { exact: true }).selectOption('setup:fixed-a');
   await expect(table.locator('tr[data-baseline="true"]')).toHaveCount(1);
   await expect(table.locator('tr[data-baseline="true"]')).toContainText('QWERTY');
 });
@@ -105,7 +100,7 @@ test('選択・並び順・基準はリロードしても残る（資産の読�
   await order.nth(1).getByRole('button', { name: /上へ/ }).click();
   await expect(order.first()).toContainText('Colemak');
 
-  await page.getByLabel('基準Setup').selectOption('setup:fixed-a');
+  await page.getByLabel('基準', { exact: true }).selectOption('setup:fixed-a');
   await expect(table.locator('tr[data-baseline="true"]')).toHaveCount(1);
 
   // debounceされた資産への反映が実際にstorageへ書き込まれるまで待ってからリロードする。
@@ -126,7 +121,7 @@ test('選択・並び順・基準はリロードしても残る（資産の読�
   const orderAfterReload = page.locator('.set-selection-order li');
   await expect(orderAfterReload).toHaveCount(2);
   await expect(orderAfterReload.first()).toContainText('Colemak');
-  await expect(page.getByLabel('基準Setup')).toHaveValue('setup:fixed-a');
+  await expect(page.getByLabel('基準', { exact: true })).toHaveValue('setup:fixed-a');
   await expect(tableAfterReload.locator('tr[data-baseline="true"]')).toHaveCount(1);
 
   // storage側の中身も保たれている（並び順・基準とも）。

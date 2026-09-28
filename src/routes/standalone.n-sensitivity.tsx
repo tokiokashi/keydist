@@ -11,7 +11,7 @@ export const Route = createFileRoute('/standalone/n-sensitivity')({
       { title: 'N Sensitivity (standalone) | keydist' },
       {
         name: 'description',
-        content: '複数Setupを対象に、N感度（先読みN入力を振った時の総移動距離の変化）を単体ページとして開く（#544 Analyzer再設計 Phase 3）。',
+        content: '複数の対象（配列またはSetup）を選んで、N感度（先読みN入力を振った時の総移動距離の変化）を単体ページとして開く（#544 Analyzer再設計 Phase 3）。',
       },
     ],
   }),

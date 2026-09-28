@@ -179,10 +179,16 @@ test('配列を対象にした解決は、実カタログではfixtureの既定�
     assert.ok(setupResolution.ok, scenario.id);
     if (!setupResolution.ok) continue;
     const resolvedViaSetup = resolveSettings(EMPTY_SETTINGS_OVERRIDES, setupResolution.context);
+    assert.equal(resolved.defaultShapeId.applicable, true, `${scenario.id}: 配列対象ではdefaultShapeIdが効く`);
+    assert.equal(resolvedViaSetup.defaultShapeId.applicable, false, `${scenario.id}: Setup対象ではdefaultShapeIdは効かない`);
     for (const itemId of Object.keys(resolved) as (keyof typeof resolved)[]) {
       assert.deepEqual(resolved[itemId].value, resolvedViaSetup[itemId].value, `${scenario.id}: ${itemId}`);
-      assert.equal(resolved[itemId].applicable, resolvedViaSetup[itemId].applicable, `${scenario.id}: ${itemId}`);
       assert.equal(resolved[itemId].origin.kind, resolvedViaSetup[itemId].origin.kind, `${scenario.id}: ${itemId}.origin`);
+      // defaultShapeIdだけは例外: 配列対象では意味を持つ（applicable=true）が、
+      // Setup対象ではSetup自身のshapeIdが優先されるため意味を持たない（applicable=false）。
+      // これは`SETTINGS_ITEMS.defaultShapeId.isApplicable`の設計どおりの差（レビュー指摘6）。
+      if (itemId === 'defaultShapeId') continue;
+      assert.equal(resolved[itemId].applicable, resolvedViaSetup[itemId].applicable, `${scenario.id}: ${itemId}`);
     }
   }
 });

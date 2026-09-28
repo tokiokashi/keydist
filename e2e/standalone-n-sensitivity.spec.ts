@@ -29,17 +29,12 @@ function seedTwoSetups() {
 }
 
 /**
- * 対象を追加する。ハイドレーション完了直後は`<select>`のonChangeがまだReactに
- * 配線されていないごく短い窓があり、その間に選んでも見た目のDOM値だけ変わって
- * 実際の追加が起きないことがある（#578指摘1のE2E実装時に発見）。表示順リストの件数が
- * 増えるまでリトライすることで、この窓を安全にやり過ごす。
+ * 対象を追加する。ページ本体は`fieldset[disabled]`でハイドレーション完了
+ * （`assetsReady`）まで操作を無効化しているので（レビュー指摘1）、Playwrightの
+ * actionability待ち（disabled要素には操作しない）にそのまま任せてよい。
  */
 async function addTarget(page: import('@playwright/test').Page, optionValue: string) {
-  const before = await page.locator('.set-selection-order li').count();
-  await expect(async () => {
-    await page.getByLabel('追加する対象').selectOption(optionValue);
-    await expect(page.locator('.set-selection-order li')).toHaveCount(before + 1, { timeout: 1_000 });
-  }).toPass({ timeout: 10_000 });
+  await page.getByLabel('追加する対象').selectOption(optionValue);
 }
 
 test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを作らずに2本の折れ線が出る', async ({ page }) => {

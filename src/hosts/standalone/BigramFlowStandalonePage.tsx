@@ -22,7 +22,8 @@ import './standalone.css';
 /**
  * Bigram Flowの単体ページ（#544 Phase 3「最初の縦切り」）。
  *
- * 対象Setupは1つ、テキストは単体ページ全体で共有の「最後に使ったテキスト」を使う
+ * 対象（配列かSetup。#578指摘1）は1つ、テキストは単体ページ全体で共有の
+ * 「最後に使ったテキスト」を使う
  * （#544 §5・§6）。書き込みはすべて`dispatch`（呼び出し元の`app`が組み立てた
  * コマンド適用 + 永続化）を経由する（#544 §8-2）。ここでは`applyCommand`もstorageも
  * 直接触らない。
@@ -182,68 +183,83 @@ export function BigramFlowStandalonePage({
         <h1>Bigram Flow</h1>
       </header>
 
-      <section className="standalone-controls" aria-label="対象と入力">
-        <label className="standalone-control">
-          <span>対象</span>
-          <TargetPicker
-            aria-label="対象"
-            layouts={catalog.setupCatalog.layouts}
-            setups={setups}
-            value={target}
-            onChange={setTarget}
-          />
-        </label>
-
-        <DefaultShapeControl overrides={assets.setupLibrary.overrides} dispatch={dispatch} />
-
-        <div className="standalone-control">
-          <span>解析設定</span>
-          <button type="button" onClick={copyOptionsLink}>
-            {copyLinkFeedback ? 'コピーした' : '今の設定のURLをコピー'}
-          </button>
-        </div>
-      </section>
-
-      <TextControl
-        holder="standalone"
-        textLibrary={assets.textLibrary}
-        selection={assets.standaloneTextSelection}
-        dispatch={dispatch}
-        generateTextId={generateTextId}
-        onTextContentCommit={onTextContentCommit}
-      />
-
-      <PaneFrame
-        title="Bigram Flow"
-        header={header}
-        conditionRows={conditionRows}
-        engineState={combinePaneStates(extraction, pane.trace)}
-        traceErrors={traceErrors}
-        settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}
+      {/*
+       * プリレンダーされたHTMLはハイドレーション前から操作できてしまう（レビュー指摘:
+       * ハイドレーション完了までの約750〜850msの間にクリック・入力すると、見た目は
+       * 変わっても実際には何も起きず、そのまま消える。加えてプリレンダー時点のDOMは
+       * `initialAssets()`＝ユーザーの保存済み資産ではない）。`assetsReady`が経由する
+       * `useKeydistAssets`はハイドレーション後にstorageを読み終えてから true になるので、
+       * それまでは操作系を丸ごと`disabled`にして「触れるが効かない」状態を作らない。
+       * `display:contents`でレイアウトへの影響を無くす（fieldsetは既定でblock）。
+       */}
+      <fieldset
+        disabled={!assetsReady}
+        style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
       >
-        {(() => {
-          // 失敗はPaneFrame自身が値として表示する（#544 §8-5）ので、ここでは何も描かない。
-          if (extraction.status === 'failed') return null;
-          const hasExtraction = extraction.status === 'ready' || extraction.status === 'stale';
-          const hasTrace = pane.trace.status === 'ready' || pane.trace.status === 'stale';
-          if (!resolution.ok || !hasExtraction || !hasTrace) {
-            return <p aria-busy="true">計算している…</p>;
-          }
-          return (
-            <View
-              layout={resolution.input.layout}
-              geometry={resolution.input.geometry}
-              trace={pane.trace.value.trace}
-              extracted={extraction.value.extracted}
-              options={optionsDraft}
-              onOptionsChange={(next) => {
-                setOptionsDraft(next);
-                onBigramFlowOptionsCommit(next);
-              }}
+        <section className="standalone-controls" aria-label="対象と入力">
+          <label className="standalone-control">
+            <span>対象</span>
+            <TargetPicker
+              aria-label="対象"
+              layouts={catalog.setupCatalog.layouts}
+              shapes={catalog.setupCatalog.shapes}
+              setups={setups}
+              value={target}
+              onChange={setTarget}
             />
-          );
-        })()}
-      </PaneFrame>
+          </label>
+
+          <DefaultShapeControl overrides={assets.setupLibrary.overrides} dispatch={dispatch} catalog={catalog} />
+
+          <div className="standalone-control">
+            <span>解析設定</span>
+            <button type="button" onClick={copyOptionsLink}>
+              {copyLinkFeedback ? 'コピーした' : '今の設定のURLをコピー'}
+            </button>
+          </div>
+        </section>
+
+        <TextControl
+          holder="standalone"
+          textLibrary={assets.textLibrary}
+          selection={assets.standaloneTextSelection}
+          dispatch={dispatch}
+          generateTextId={generateTextId}
+          onTextContentCommit={onTextContentCommit}
+        />
+
+        <PaneFrame
+          title="Bigram Flow"
+          header={header}
+          conditionRows={conditionRows}
+          engineState={combinePaneStates(extraction, pane.trace)}
+          traceErrors={traceErrors}
+          settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}
+        >
+          {(() => {
+            // 失敗はPaneFrame自身が値として表示する（#544 §8-5）ので、ここでは何も描かない。
+            if (extraction.status === 'failed') return null;
+            const hasExtraction = extraction.status === 'ready' || extraction.status === 'stale';
+            const hasTrace = pane.trace.status === 'ready' || pane.trace.status === 'stale';
+            if (!resolution.ok || !hasExtraction || !hasTrace) {
+              return <p aria-busy="true">計算している…</p>;
+            }
+            return (
+              <View
+                layout={resolution.input.layout}
+                geometry={resolution.input.geometry}
+                trace={pane.trace.value.trace}
+                extracted={extraction.value.extracted}
+                options={optionsDraft}
+                onOptionsChange={(next) => {
+                  setOptionsDraft(next);
+                  onBigramFlowOptionsCommit(next);
+                }}
+              />
+            );
+          })()}
+        </PaneFrame>
+      </fieldset>
     </div>
   );
 }

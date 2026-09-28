@@ -67,7 +67,7 @@ export interface NSensitivitySeriesFailed {
 export type NSensitivitySeries = NSensitivitySeriesOk | NSensitivitySeriesFailed;
 
 export interface NSensitivityExtracted {
-  /** 集合の各枠（Setup）ぶんの系列。`rows`の並び順に表示上の意味は無い（`comparison/extract.ts`と同じ理由）。 */
+  /** 集合の各枠（配列かSetup）ぶんの系列。`rows`の並び順に表示上の意味は無い（`comparison/extract.ts`と同じ理由）。 */
   readonly series: readonly NSensitivitySeries[];
 }
 

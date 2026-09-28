@@ -24,6 +24,7 @@ import {
   selectTextCommand,
   setAnalyzerSetSelectionBaselineCommand,
   setAnalyzerSetSelectionTargetsCommand,
+  setAnalyzerTargetSelectionCommand,
   setCascadeOverrideCommand,
   setStandaloneAnalyzerOptionsCommand,
   setTextContentCommand,
@@ -671,4 +672,53 @@ test('setAnalyzerSetSelectionTargetsCommand: 基準に選んでいたSetupが選
   );
   assert.deepEqual(removed.assets.analyzerSetSelections.comparison?.targets, [TARGET_B]);
   assert.equal(removed.assets.analyzerSetSelections.comparison?.baseline, undefined);
+});
+
+test('setAnalyzerTargetSelectionCommand: 対象を書き込み、undo/redoで往復できる', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const target: AnalysisTarget = { kind: 'layout', layoutId: 'colemak-dh' };
+
+  const step = applyCommand(assets, history, setAnalyzerTargetSelectionCommand('bigram-flow', target));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.deepEqual(step.assets.analyzerTargetSelections['bigram-flow'], target);
+
+  const back = undo(step.assets, step.history);
+  assert.equal(back.assets.analyzerTargetSelections['bigram-flow'], undefined);
+
+  const redone = redo(back.assets, back.history);
+  assert.deepEqual(redone.assets.analyzerTargetSelections['bigram-flow'], target);
+});
+
+test('setAnalyzerTargetSelectionCommand: 同じ対象の書き込みはno-op', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const target: AnalysisTarget = { kind: 'layout', layoutId: 'colemak-dh' };
+
+  const step = applyCommand(assets, history, setAnalyzerTargetSelectionCommand('bigram-flow', target));
+  const again = applyCommand(
+    step.assets,
+    step.history,
+    setAnalyzerTargetSelectionCommand('bigram-flow', { kind: 'layout', layoutId: 'colemak-dh' }),
+  );
+  assert.equal(again.outcome.kind, 'no-op');
+  assert.equal(again.assets, step.assets);
+});
+
+test('setAnalyzerTargetSelectionCommand: Analyzer idごとに独立して書き込める', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const withBigramFlow = applyCommand(
+    assets,
+    history,
+    setAnalyzerTargetSelectionCommand('bigram-flow', { kind: 'layout', layoutId: 'colemak-dh' }),
+  );
+  const withBoth = applyCommand(
+    withBigramFlow.assets,
+    withBigramFlow.history,
+    setAnalyzerTargetSelectionCommand('other-analyzer', TARGET_A),
+  );
+  assert.deepEqual(withBoth.assets.analyzerTargetSelections['bigram-flow'], { kind: 'layout', layoutId: 'colemak-dh' });
+  assert.deepEqual(withBoth.assets.analyzerTargetSelections['other-analyzer'], TARGET_A);
 });

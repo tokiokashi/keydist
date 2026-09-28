@@ -56,7 +56,7 @@ export type ComparisonRow = ComparisonOkRow | ComparisonFailedRow;
 
 export interface ComparisonExtracted {
   /**
-   * 集合の各枠（Setup）ぶんの行。**この配列自体の順序に表示上の意味は無い**
+   * 集合の各枠（配列かSetup）ぶんの行。**この配列自体の順序に表示上の意味は無い**
    * （engineの抽出キーが順序込みで畳み込む対象は「集合そのものの並び順」であって、
    * `rows`の列挙順ではない）。ホスト側（`hosts/standalone`のComparison単体ページ）は
    * `targetKey`をキーに、自分が持つ集合の並び順へ引き直してから描画する

@@ -20,6 +20,11 @@ const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly la
   { id: 'actionRealizationPolicy', label: 'action実現方式' },
   { id: 'romajiRuleId', label: 'ローマ字規則' },
   { id: 'fingerAssignmentId', label: '指の割当' },
+  /**
+   * 配列を対象にした時だけ意味を持つ（`isApplicable`がSetup対象では`applicable: false`を
+   * 返す。#578指摘6「defaultShapeIdの診断はfingerAssignmentIdと同じ形で出す」）。
+   */
+  { id: 'defaultShapeId', label: '既定の形状' },
 ];
 
 export type ConditionValueFormat = 'primitive' | 'object';

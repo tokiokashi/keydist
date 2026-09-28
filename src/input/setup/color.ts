@@ -1,3 +1,4 @@
+import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import type { Setup } from './types.ts';
 import type { AnalysisTarget } from './target.ts';
 
@@ -78,10 +79,23 @@ export function leastUsedColorIndex(
 /**
  * 配列を対象にした時の色（#578指摘2の決定「色は集合によらず、対象ごとに固定する」）。
  * Setupと違って保存された`colorIndex`を持たない（配列idそのものが対象の識別子で、
- * 追加・複製という概念が無い）ので、配列idから決定的に求める。文字列ハッシュ
- * （FNV-1aの簡易版。暗号強度は不要で、同じ入力から同じ出力が返る決定性だけが要る）を
- * パレットのサイズで割った余りをindexにする。
+ * 追加・複製という概念が無い）ので、配列idから決定的に求める。
+ *
+ * **組み込み配列は`LAYOUT_BY_ID`の登録順から決定的なindexを割り当てる**（レビュー指摘2:
+ * 単純なハッシュだと18配列 vs 12色でよく衝突し、qwertyとcolemakのような並んで比べたい
+ * 組み込み同士が同じ色になっていた）。順に0,1,2,…ではなく、パレットサイズと互いに素な
+ * 歩幅（`BUILTIN_COLOR_STEP`）で回すことで、`LAYOUT_BY_ID`で隣り合う配列（アルファベット順・
+ * 追加順で近い配列は用途も似て並べて見られやすい）の色をなるべく離す。それでも
+ * 18配列・12色である以上、衝突（同じ色を持つ配列の組）は必ず残る（鳩の巣原理）。
+ * この方式は「衝突をゼロにする」のではなく「隣接した配列同士の衝突を減らす」ことが目的。
+ *
+ * 自作配列（`LAYOUT_BY_ID`に無いid）は登録順という概念が無いので、文字列ハッシュ
+ * （FNV-1aの簡易版。暗号強度は不要で、同じ入力から同じ出力が返る決定性だけが要る）へ
+ * フォールバックする。
  */
+const BUILTIN_COLOR_STEP = 5; // gcd(5, 12) === 1 なので12色を一巡してから重複が始まる
+const BUILTIN_LAYOUT_IDS: readonly string[] = [...LAYOUT_BY_ID.keys()];
+
 function hashToColorIndex(id: string): number {
   let hash = 0x811c9dc5;
   for (let i = 0; i < id.length; i++) {
@@ -91,14 +105,32 @@ function hashToColorIndex(id: string): number {
   return Math.abs(hash) % SETUP_COLOR_PALETTE_SIZE;
 }
 
+function layoutTargetColorIndex(layoutId: string): number {
+  const builtinIndex = BUILTIN_LAYOUT_IDS.indexOf(layoutId);
+  if (builtinIndex >= 0) return (builtinIndex * BUILTIN_COLOR_STEP) % SETUP_COLOR_PALETTE_SIZE;
+  return hashToColorIndex(layoutId);
+}
+
 /**
  * 対象（`AnalysisTarget`）の色。Setup対象は`setupColor`と同じ保存済み`colorIndex`を引き、
- * 配列対象は配列idから決定的に求める。`setups`はkeyでSetupを引くための手持ち
- * （見つからなければ既定のindex 0。呼び出し側は`resolveTargetForText`等で先に対象自体の
- * 解決失敗を扱っている前提なので、ここでのfallbackは「表示だけ壊れた色にしない」ための保険）。
+ * 配列対象は`layoutTargetColorIndex`で決定的に求める。`setups`はkeyでSetupを引くための
+ * 手持ち（見つからなければ既定のindex 0。呼び出し側は`resolveTargetForText`等で先に
+ * 対象自体の解決失敗を扱っている前提なので、ここでのfallbackは「表示だけ壊れた色に
+ * しない」ための保険）。
+ *
+ * **Setupの`colorIndex`割り当て（`leastUsedColorIndex`、`collection.ts`）は、その
+ * SetupがベースにしているlayoutのlayoutTargetColorIndexとの衝突を考慮しない**
+ * （レビュー指摘2「Setup colorIndex allocation must avoid colliding with layout-target
+ * colors where possible」への対応: 現状は「手持ちのSetup同士で最も使われていない色」しか
+ * 見ておらず、同じ画面にその配列自身の配列対象も並ぶケース（例: QWERTY配列と、QWERTYを
+ * ベースにしたSetup）は今のところ考慮していない。`createSetup`/`duplicateSetup`は
+ * 対象の集合（どの配列対象と並ぶか）を知らずに呼ばれるため、Setup作成時点では
+ * 「その他に何と並ぶか」が決まっていないことが多く、先回りして実装しない
+ * （AGENTS.md「設定項目を足すか決める」の3つ目と同じ判断）。実際に同じ色が並ぶ事故が
+ * 目立つようになったら、Setup作成時に対象の配列idを`avoid`の材料へ加える形で拡張する）。
  */
 export function targetColor(target: AnalysisTarget, setups: ReadonlyMap<string, Setup>): string {
-  if (target.kind === 'layout') return SETUP_COLOR_PALETTE[hashToColorIndex(target.layoutId)];
+  if (target.kind === 'layout') return SETUP_COLOR_PALETTE[layoutTargetColorIndex(target.layoutId)];
   const setup = setups.get(target.setupId);
   return setup === undefined ? SETUP_COLOR_PALETTE[0] : setupColor(setup);
 }

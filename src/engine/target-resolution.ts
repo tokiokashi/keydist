@@ -13,7 +13,7 @@ import {
   type SetupReferenceError,
   type SetupTextResolution,
 } from '#input/setup/index.ts';
-import { resolveDefaultShapeId, type SettingsCascadeOverrides } from './settings-items.ts';
+import { DEFAULT_SHAPE_ID, resolveDefaultShapeId, type SettingsCascadeOverrides } from './settings-items.ts';
 
 /**
  * `AnalysisTarget`の解決（#578指摘1の決定「対象を配列かSetupにする」）。
@@ -56,10 +56,17 @@ export function resolveTargetForText(
   const layout: Layout | undefined = catalog.layouts.get(target.layoutId);
   if (layout === undefined) return { ok: false, kind: 'target-missing', target };
 
-  const shapeId = resolveDefaultShapeId(overrides);
-  const shape: PhysicalShape | undefined = catalog.shapes.get(shapeId);
+  // 「既定の形状」が壊れている（未知・削除されたid）だけでは配列対象の解決を失敗にしない
+  // （レビュー指摘6）。`DEFAULT_SHAPE_ID`へ静かにfallbackし、`context.shapeId`が実際に
+  // 使った形状を持つ。その食い違いは`SETTINGS_ITEMS.defaultShapeId`の`validate`が
+  // `resolveCascade`の通常の経路で検知して診断を積む（値と`context.shapeId`を突き合わせる
+  // だけの軽い検査。settings-items.tsのコメント参照）ので、ここでは値の選定だけを行う。
+  // `DEFAULT_SHAPE_ID`自体もcatalogに無い場合（自作カタログが極端に小さい等）だけ、
+  // 本当に解決できないので`reference`エラーにする。
+  const requestedShapeId = resolveDefaultShapeId(overrides);
+  const shape: PhysicalShape | undefined = catalog.shapes.get(requestedShapeId) ?? catalog.shapes.get(DEFAULT_SHAPE_ID);
   if (shape === undefined) {
-    const errors: SetupReferenceError[] = [{ kind: 'shape-missing', shapeId }];
+    const errors: SetupReferenceError[] = [{ kind: 'shape-missing', shapeId: requestedShapeId }];
     return { ok: false, kind: 'reference', errors };
   }
 

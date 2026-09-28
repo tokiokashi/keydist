@@ -1,4 +1,4 @@
-import { sameAnalysisTarget, type AnalysisTarget } from '#input/setup/index.ts';
+import { analysisTargetKey, sameAnalysisTarget, type AnalysisTarget } from '#input/setup/index.ts';
 
 /**
  * 集合対象Analyzer全般（比較表・N感度等）が汎用で持つ「対象の集合」（Analyzer id → 選んだ
@@ -55,7 +55,7 @@ function dedupe(targets: readonly AnalysisTarget[]): readonly AnalysisTarget[] {
   const seen = new Set<string>();
   const result: AnalysisTarget[] = [];
   for (const target of targets) {
-    const key = target.kind === 'layout' ? `layout:${target.layoutId}` : `setup:${target.setupId}`;
+    const key = analysisTargetKey(target);
     if (seen.has(key)) continue;
     seen.add(key);
     result.push(target);

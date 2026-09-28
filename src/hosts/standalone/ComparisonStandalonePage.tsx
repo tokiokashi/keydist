@@ -9,7 +9,7 @@ import { analyzerSetSelectionFor } from '#engine/analyzer-set-selection.ts';
 import type { EngineCache } from '#engine/cache.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
-import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget, type SetupIdGenerator } from '#input/setup/index.ts';
+import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget } from '#input/setup/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
@@ -44,7 +44,6 @@ export interface ComparisonStandalonePageProps {
   readonly dispatch: (command: Command<KeydistAssets>) => void;
   readonly cache: EngineCache;
   readonly catalog: StandalonePaneCatalog;
-  readonly generateSetupId: SetupIdGenerator;
   readonly generateTextId: TextIdGenerator;
   /** `TextControl`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
   readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
@@ -69,6 +68,7 @@ function buildRowContext(
     return {
       targetKey,
       label: named.displayName,
+      fullName: named.fullName,
       layoutName: header.layoutName,
       geometryName: header.shapeName,
       fingerAssignmentName: header.fingerAssignmentName,
@@ -77,11 +77,11 @@ function buildRowContext(
   }
   // 解決に失敗した行でも対象自体は集合に残っている（Setupの参照が壊れている・
   // このテキストに使えない等）ので、idベースの表示だけは出す。
-  const fallbackLabel = target.kind === 'layout' ? target.layoutId : target.setupId;
   return {
     targetKey,
-    label: named.displayName || fallbackLabel,
-    layoutName: fallbackLabel,
+    label: named.displayName,
+    fullName: named.fullName,
+    layoutName: named.fullName,
     geometryName: '—',
     fingerAssignmentName: '—',
   };
@@ -89,11 +89,10 @@ function buildRowContext(
 
 export function ComparisonStandalonePage({
   assets,
-  assetsReady: _assetsReady,
+  assetsReady,
   dispatch,
   cache,
   catalog,
-  generateSetupId: _generateSetupId,
   generateTextId,
   onTextContentCommit,
   onComparisonOptionsCommit,
@@ -146,12 +145,14 @@ export function ComparisonStandalonePage({
     })),
     [selection.targets, setupsById, catalog, assets.setupLibrary.overrides, resolvedText],
   );
+  const membersByTarget = useMemo(() => new Map(members.map((m) => [m.target, m] as const)), [members]);
 
   // 表示名は常に集合全体に対して計算する（#578指摘2「表示名は常に同じ画面に並ぶ集合に
-  // 対して計算する」）。
+  // 対して計算する」）。解決に失敗したメンバーは、共通性の判定からは除く
+  // （レビュー指摘3。`naming.ts`の`TargetNameSource.failed`参照）。
   const namedTargets = useMemo(() => nameTargets(selection.targets.map((target) => {
     const setup = target.kind === 'setup' ? setupsById.get(target.setupId) : undefined;
-    const member = members.find((m) => m.target === target);
+    const member = membersByTarget.get(target);
     if (member?.resolution.ok) {
       const header = conditionHeaderInfoFromResolvedInput(member.resolution.input.layout, member.resolution.input.geometry);
       const overrideSummary = summarizeNonDefaultConditions(nonDefaultConditionRows(traceConditionSummary(member.resolution.input.cascade)));
@@ -169,8 +170,9 @@ export function ComparisonStandalonePage({
       ...(setup?.label !== undefined ? { label: setup.label } : {}),
       layoutName: fallback,
       shapeName: '—',
+      failed: true,
     };
-  })), [selection.targets, setupsById, members]);
+  })), [selection.targets, setupsById, membersByTarget]);
   const namedByKey = useMemo(() => new Map(namedTargets.map((n) => [n.key, n] as const)), [namedTargets]);
 
   const rowContext = useMemo(() => {
@@ -182,7 +184,7 @@ export function ComparisonStandalonePage({
       map.set(key, buildRowContext(member.target, member.resolution, named));
     }
     return map;
-  }, [members, namedByKey, setupsById]);
+  }, [members, namedByKey]);
 
   const order = useMemo(() => selection.targets.map(analysisTargetKey), [selection.targets]);
 
@@ -200,77 +202,85 @@ export function ComparisonStandalonePage({
         <h1>比較表</h1>
       </header>
 
-      <TextControl
-        holder="standalone"
-        textLibrary={assets.textLibrary}
-        selection={assets.standaloneTextSelection}
-        dispatch={dispatch}
-        generateTextId={generateTextId}
-        onTextContentCommit={onTextContentCommit}
-      />
-
-      <DefaultShapeControl overrides={assets.setupLibrary.overrides} dispatch={dispatch} />
-
-      <section className="set-selection-controls" aria-label="対象の選択">
-        <div className="standalone-control">
-          <span>対象を追加</span>
-          <TargetPicker
-            aria-label="追加する対象"
-            layouts={catalog.setupCatalog.layouts}
-            setups={setups}
-            value={undefined}
-            placeholder
-            onChange={addMember}
-          />
-        </div>
-
-        {selection.targets.length > 0 ? (
-          <ol className="set-selection-order" aria-label="表示順">
-            {selection.targets.map((target, index) => {
-              const key = analysisTargetKey(target);
-              return (
-                <li key={key}>
-                  <span>{namedByKey.get(key)?.displayName ?? key}</span>
-                  <button type="button" onClick={() => moveMember(index, -1)} disabled={index === 0} aria-label={`${index + 1}番目を上へ`}>↑</button>
-                  <button
-                    type="button"
-                    onClick={() => moveMember(index, 1)}
-                    disabled={index === selection.targets.length - 1}
-                    aria-label={`${index + 1}番目を下へ`}
-                  >
-                    ↓
-                  </button>
-                  <button type="button" onClick={() => removeMember(index)} aria-label={`${index + 1}番目を外す`}>✕</button>
-                </li>
-              );
-            })}
-          </ol>
-        ) : (
-          <p>対象を追加すると比較表に加わる。</p>
-        )}
-      </section>
-
-      {extracted === undefined ? (
-        <p aria-busy="true">
-          {extraction.status === 'failed' ? '計算に失敗した' : '計算している…'}
-        </p>
-      ) : (
-        <View
-          extracted={extracted}
-          order={order}
-          rowContext={rowContext}
-          baselineTargetKey={baselineTargetKey}
-          onBaselineTargetKeyChange={(nextKey) => {
-            const next = nextKey === undefined ? undefined : selection.targets.find((t) => analysisTargetKey(t) === nextKey);
-            dispatch(setAnalyzerSetSelectionBaselineCommand(ANALYZER_ID, next));
-          }}
-          options={optionsDraft}
-          onOptionsChange={(next) => {
-            setOptionsDraft(next);
-            onComparisonOptionsCommit(next);
-          }}
+      {/* プリレンダーされたページはハイドレーション完了まで操作を効かせない（レビュー指摘1）。 */}
+      <fieldset
+        disabled={!assetsReady}
+        style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
+      >
+        <TextControl
+          holder="standalone"
+          textLibrary={assets.textLibrary}
+          selection={assets.standaloneTextSelection}
+          dispatch={dispatch}
+          generateTextId={generateTextId}
+          onTextContentCommit={onTextContentCommit}
         />
-      )}
+
+        <DefaultShapeControl overrides={assets.setupLibrary.overrides} dispatch={dispatch} catalog={catalog} />
+
+        <section className="set-selection-controls" aria-label="対象の選択">
+          <div className="standalone-control">
+            <span>対象を追加</span>
+            <TargetPicker
+              aria-label="追加する対象"
+              layouts={catalog.setupCatalog.layouts}
+              shapes={catalog.setupCatalog.shapes}
+              setups={setups}
+              value={undefined}
+              placeholder
+              onChange={addMember}
+            />
+          </div>
+
+          {selection.targets.length > 0 ? (
+            <ol className="set-selection-order" aria-label="表示順">
+              {selection.targets.map((target, index) => {
+                const key = analysisTargetKey(target);
+                const named = namedByKey.get(key);
+                return (
+                  <li key={key}>
+                    <span title={named?.fullName}>{named?.displayName ?? key}</span>
+                    <button type="button" onClick={() => moveMember(index, -1)} disabled={index === 0} aria-label={`${index + 1}番目を上へ`}>↑</button>
+                    <button
+                      type="button"
+                      onClick={() => moveMember(index, 1)}
+                      disabled={index === selection.targets.length - 1}
+                      aria-label={`${index + 1}番目を下へ`}
+                    >
+                      ↓
+                    </button>
+                    <button type="button" onClick={() => removeMember(index)} aria-label={`${index + 1}番目を外す`}>✕</button>
+                  </li>
+                );
+              })}
+            </ol>
+          ) : (
+            <p>対象を追加すると比較表に加わる。</p>
+          )}
+        </section>
+
+        {extracted === undefined ? (
+          <p aria-busy="true">
+            {extraction.status === 'failed' ? '計算に失敗した' : '計算している…'}
+          </p>
+        ) : (
+          <View
+            extracted={extracted}
+            order={order}
+            rowContext={rowContext}
+            baselineTargetKey={baselineTargetKey}
+            onBaselineTargetKeyChange={(nextKey) => {
+              const next = nextKey === undefined ? undefined : selection.targets.find((t) => analysisTargetKey(t) === nextKey);
+              dispatch(setAnalyzerSetSelectionBaselineCommand(ANALYZER_ID, next));
+            }}
+            options={optionsDraft}
+            onOptionsChange={(next) => {
+              setOptionsDraft(next);
+              onComparisonOptionsCommit(next);
+            }}
+          />
+        )}
+      </fieldset>
     </div>
   );
 }

@@ -19,6 +19,8 @@ import './comparison-view.css';
 export interface ComparisonRowContext {
   readonly targetKey: string;
   readonly label: string;
+  /** 集合によらない完全な名前（レビュー指摘3）。hover（`title`属性）に出す。 */
+  readonly fullName: string;
   readonly layoutName: string;
   readonly geometryName: string;
   readonly fingerAssignmentName: string;
@@ -137,7 +139,7 @@ export function ComparisonVisualization({
         <label className="comparison-control">
           <span>基準（baseline）</span>
           <select
-            aria-label="基準Setup"
+            aria-label="基準"
             value={baselineTargetKey ?? ''}
             onChange={(event) => onBaselineTargetKeyChange(
               event.currentTarget.value === '' ? undefined : event.currentTarget.value,
@@ -145,7 +147,7 @@ export function ComparisonVisualization({
           >
             <option value="">基準なし</option>
             {order.map((targetKey) => (
-              <option key={targetKey} value={targetKey}>
+              <option key={targetKey} value={targetKey} title={rowContext.get(targetKey)?.fullName}>
                 {rowContext.get(targetKey)?.label ?? targetKey}
               </option>
             ))}
@@ -167,7 +169,7 @@ export function ComparisonVisualization({
         <table className="comparison-table">
           <thead>
             <tr>
-              <th scope="col">Setup</th>
+              <th scope="col">対象</th>
               <th scope="col">条件</th>
               {visibleColumns.map((column) => (
                 <th scope="col" key={column}>{COMPARISON_COLUMNS[column].label}</th>
@@ -179,13 +181,14 @@ export function ComparisonVisualization({
               const context = rowContext.get(targetKey);
               const row = rowFor(extracted.rows, targetKey);
               const label = context?.label ?? targetKey;
+              const fullName = context?.fullName ?? targetKey;
 
               if (row === undefined) {
                 // extractedにもrowContextにも無いtargetKey（依頼の作り直し途中の一瞬）。
                 // 空行として描き、値の欠落を偽らない。
                 return (
                   <tr key={targetKey} data-comparison-row="pending">
-                    <th scope="row">{label}</th>
+                    <th scope="row" title={fullName}>{label}</th>
                     <td colSpan={1 + visibleColumns.length} aria-busy="true">計算している…</td>
                   </tr>
                 );
@@ -194,7 +197,7 @@ export function ComparisonVisualization({
               if (row.kind === 'failed') {
                 return (
                   <tr key={targetKey} data-comparison-row="failed">
-                    <th scope="row">{label}</th>
+                    <th scope="row" title={fullName}>{label}</th>
                     <td colSpan={1 + visibleColumns.length} role="alert">
                       削除された、またはこの条件では解決できない: {row.message || failureLabel(row.failureKind)}
                     </td>
@@ -204,7 +207,7 @@ export function ComparisonVisualization({
 
               return (
                 <tr key={targetKey} data-comparison-row="ok" data-baseline={targetKey === baselineTargetKey || undefined}>
-                  <th scope="row">{label}</th>
+                  <th scope="row" title={fullName}>{label}</th>
                   <td className="comparison-condition-cell">
                     {context
                       ? `${context.layoutName} / ${context.geometryName} / 指の割当: ${context.fingerAssignmentName}${

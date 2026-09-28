@@ -11,7 +11,7 @@ export const Route = createFileRoute('/standalone/comparison')({
       { title: 'Comparison (standalone) | keydist' },
       {
         name: 'description',
-        content: '複数Setupを対象に、比較表を単体ページとして開く（#544 Analyzer再設計 Phase 3）。',
+        content: '複数の対象（配列またはSetup）を選んで、比較表を単体ページとして開く（#544 Analyzer再設計 Phase 3）。',
       },
     ],
   }),

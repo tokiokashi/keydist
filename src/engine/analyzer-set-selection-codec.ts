@@ -1,5 +1,5 @@
 import { defineAssetCodec, isRecord, UNSAFE_OBJECT_KEYS, type AssetCodec } from '#input/codec/index.ts';
-import { decodeAnalysisTarget, sameAnalysisTarget, type AnalysisTarget } from '#input/setup/index.ts';
+import { analysisTargetKey, decodeAnalysisTarget, sameAnalysisTarget, type AnalysisTarget } from '#input/setup/index.ts';
 import type { AnalyzerSetSelectionState, SetSelectionState } from './analyzer-set-selection.ts';
 
 /**
@@ -56,7 +56,7 @@ export const ANALYZER_SET_SELECTION_CODEC: AssetCodec<AnalyzerSetSelectionState>
       raw.targets.forEach((item, index) => {
         const decoded = decodeAnalysisTarget(item, `${path}.targets[${index}]`, diagnostics);
         if (decoded === undefined) return;
-        const key = decoded.kind === 'layout' ? `layout:${decoded.layoutId}` : `setup:${decoded.setupId}`;
+        const key = analysisTargetKey(decoded);
         if (seen.has(key)) {
           diagnostics.push({ path: `${path}.targets[${index}]`, message: `重複した対象「${key}」を1つに畳んだ` });
           return;

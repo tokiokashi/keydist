@@ -133,3 +133,19 @@ test('resolveStandalonePaneInput: 配列対象はlayoutレベルの上書きに�
   assert.equal(result.input.cascade.windowSize.value, 5);
   assert.equal(result.input.cascade.windowSize.origin.kind, 'layout');
 });
+
+test('resolveStandalonePaneInput: 既定の形状が壊れていても配列対象の解決は失敗せず、既定の形状へfallbackする（レビュー指摘6）', () => {
+  const target: AnalysisTarget = { kind: 'layout', layoutId: 'qwerty' };
+  const text = resolvedTextOf('hello world');
+
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'deleted-shape');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+
+  const result = resolveStandalonePaneInput(target, new Map(), CATALOG, written.overrides, text);
+  assert.ok(result.ok, '既定の形状が壊れていても解決自体は失敗しない');
+  if (!result.ok) return;
+  assert.equal(result.input.cascade.defaultShapeId.value, 'row-staggered', 'DEFAULT_SHAPE_IDへfallbackする');
+  assert.equal(result.input.cascade.defaultShapeId.diagnostics.length, 1);
+  assert.match(result.input.cascade.defaultShapeId.diagnostics[0]!.message, /deleted-shape/);
+});
