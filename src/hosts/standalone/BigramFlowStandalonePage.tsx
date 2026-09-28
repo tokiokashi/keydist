@@ -20,10 +20,10 @@ import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import { bigramFlowOptions, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
-import { TextControl } from './TextControl.tsx';
 import { TargetPicker } from './TargetPicker.tsx';
-import { DefaultShapeControl } from './DefaultShapeControl.tsx';
-import { CopySettingsLinkButton, StandaloneContextBar } from './StandaloneContextBar.tsx';
+import { ContextBar, ShareButton, UndoRedoButtons, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
+import { TextChip } from '#hosts/shared/TextChip.tsx';
+import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { setupNumbersOf, targetNameSource } from './target-name-source.ts';
 import { useOptionsDraft } from './use-options-draft.ts';
 import { useAnalyzerPane } from './use-analyzer-pane.ts';
@@ -51,13 +51,15 @@ export interface BigramFlowStandalonePageProps {
   readonly cache: EngineCache;
   readonly catalog: StandalonePaneCatalog;
   readonly generateTextId: TextIdGenerator;
-  /** `TextControl`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
+  /** `TextChip`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
   readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
   /**
    * 解析設定の変更を資産へ反映する（間引き済み。`app/standalone/use-debounced-commit.ts`
    * 参照）。`dispatch`を直接使わないのは、`hosts`が`platform`をimportできず
    * （依存規則）debounce自体をここへ持てないため。
    */
+  /** 資産のコマンド履歴（文脈バーのUndo / Redo）。`app` が組み立てる。 */
+  readonly history: ContextBarHistory;
   readonly onBigramFlowOptionsCommit: (options: BigramFlowOptions) => void;
 }
 
@@ -70,6 +72,7 @@ export function BigramFlowStandalonePage({
   generateTextId,
   onTextContentCommit,
   onBigramFlowOptionsCommit,
+  history,
 }: BigramFlowStandalonePageProps) {
   const setups = assets.setupLibrary.setups;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
@@ -82,7 +85,7 @@ export function BigramFlowStandalonePage({
   const setTarget = (next: typeof target) => dispatch(setAnalyzerTargetSelectionCommand(analyzerId, next));
 
   // テキストは資産（textLibrary + standaloneTextSelection）が正。編集・選択・複製・削除は
-  // すべて共有部品`TextControl`（比較表・N感度と3ページで同じ操作を持つため。
+  // すべて共有部品`TextChip`（文脈バーのテキストのチップ。比較表・N感度と3ページで同じ操作を持つため。
   // `resolve-pane-input.ts`が使う`resolveTextSelection`と同じものをここでも呼び、
   // 実効テキストを求める）へ切り出した。
   const resolvedText = useMemo(
@@ -196,8 +199,18 @@ export function BigramFlowStandalonePage({
         disabled={!assetsReady}
         style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
       >
-        <StandaloneContextBar>
-          <TextControl
+        <ContextBar
+          actions={(
+            <>
+              <UndoRedoButtons history={history} />
+              <ShareButton
+                description="今の解析設定を含むこの画面のURLをコピーする"
+                query={() => bigramFlowOptions.encodeOptionsToUrl(optionsDraft)}
+              />
+            </>
+          )}
+        >
+          <TextChip
             holder="standalone"
             textLibrary={assets.textLibrary}
             selection={assets.standaloneTextSelection}
@@ -205,43 +218,48 @@ export function BigramFlowStandalonePage({
             generateTextId={generateTextId}
             onTextContentCommit={onTextContentCommit}
           />
-          <DefaultShapeControl overrides={assets.setupLibrary.overrides} dispatch={dispatch} catalog={catalog} />
-          <CopySettingsLinkButton query={() => bigramFlowOptions.encodeOptionsToUrl(optionsDraft)} />
-        </StandaloneContextBar>
+          <DefaultShapeChip
+            overrides={assets.setupLibrary.overrides}
+            dispatch={dispatch}
+            shapes={catalog.setupCatalog.shapes}
+          />
+        </ContextBar>
 
-        <PaneFrame
-          name={bigramFlowAnalyzer.name}
-          description={bigramFlowAnalyzer.description}
-          headingLevel={1}
-          {...(named === undefined ? {} : { targetName: named.displayName, targetFullName: named.fullName })}
-          target={(
-            <TargetPicker
-              aria-label="対象"
-              layouts={catalog.setupCatalog.layouts}
-              shapes={catalog.setupCatalog.shapes}
-              setups={setups}
-              value={target}
-              onChange={setTarget}
-            />
-          )}
-          settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
-          menuItems={[resetOptionsMenuItem(() => changeOptions(bigramFlowAnalyzer.defaultOptions))]}
-          header={header}
-          conditionRows={conditionRows}
-          engineState={combinePaneStates(extraction, pane.trace)}
-          traceErrors={traceErrors}
-          settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}
-        >
-          {resolution.ok && hasExtraction && hasTrace ? (
-            <Body
-              layout={resolution.input.layout}
-              geometry={resolution.input.geometry}
-              trace={pane.trace.value.trace}
-              extracted={extraction.value.extracted}
-              options={optionsDraft}
-            />
-          ) : undefined}
-        </PaneFrame>
+        <div className="standalone-stage">
+          <PaneFrame
+            name={bigramFlowAnalyzer.name}
+            description={bigramFlowAnalyzer.description}
+            headingLevel={1}
+            {...(named === undefined ? {} : { targetName: named.displayName, targetFullName: named.fullName })}
+            target={(
+              <TargetPicker
+                aria-label="対象"
+                layouts={catalog.setupCatalog.layouts}
+                shapes={catalog.setupCatalog.shapes}
+                setups={setups}
+                value={target}
+                onChange={setTarget}
+              />
+            )}
+            settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
+            menuItems={[resetOptionsMenuItem(() => changeOptions(bigramFlowAnalyzer.defaultOptions))]}
+            header={header}
+            conditionRows={conditionRows}
+            engineState={combinePaneStates(extraction, pane.trace)}
+            traceErrors={traceErrors}
+            settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}
+          >
+            {resolution.ok && hasExtraction && hasTrace ? (
+              <Body
+                layout={resolution.input.layout}
+                geometry={resolution.input.geometry}
+                trace={pane.trace.value.trace}
+                extracted={extraction.value.extracted}
+                options={optionsDraft}
+              />
+            ) : undefined}
+          </PaneFrame>
+        </div>
       </fieldset>
     </div>
   );

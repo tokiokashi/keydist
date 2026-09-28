@@ -71,15 +71,17 @@ test('legacy Analyzer URL redirects to the React Analyzer route', async ({ page 
 
 
 test('Analyzer runtime remounts after SPA navigation away and back', async ({ page }) => {
+  // 旧Analyzerへの導線はトップの入口にだけある（サイドバーは新しい画面だけを並べる）。
   await page.goto('/input');
-  await page.getByRole('link', { name: 'Analyzer' }).click();
+  await page.locator('.app-sidebar').getByRole('link', { name: 'keydist', exact: true }).click();
+  await page.getByRole('link', { name: /^Analyzer/ }).click();
   await expect(page).toHaveURL(/\/analyzer\/?$/);
   await waitForAnalyzerRuntime(page);
   await expect(page.locator('#mode')).toHaveValue('ja');
 
   await page.goBack();
-  await expect(page).toHaveURL(/\/input\/?$/);
-  await expect(page.locator('.input-feature')).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('.hero')).toBeVisible();
 
   await page.goForward();
   await expect(page).toHaveURL(/\/analyzer\/?$/);
@@ -90,9 +92,9 @@ test('Analyzer runtime remounts after SPA navigation away and back', async ({ pa
 
 test('Analyzer topbar title returns to the app root', async ({ page }) => {
   await gotoAnalyzer(page);
-  await expect(page.locator('.app-header')).toHaveCount(0);
+  await expect(page.locator('.app-sidebar')).toHaveCount(0);
 
   await page.locator('.topbar').getByRole('link', { name: 'keydist', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.locator('.app-header')).toBeVisible();
+  await expect(page.locator('.app-sidebar')).toBeVisible();
 });

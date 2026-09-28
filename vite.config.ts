@@ -1,9 +1,13 @@
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
 import { nitro } from 'nitro/vite';
+import { readFileSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
 
 const base = process.env.KEYDIST_BASE_PATH ?? '/';
+
+// サイドバーの版表示に使う。版番号の正は package.json の version（CONTRIBUTING.md「公開」）。
+const packageVersion = (JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }).version;
 
 function legacyAnalyzerRedirect(): Plugin {
   const prefix = base === '/' ? '' : base.replace(/\/$/, '');
@@ -29,6 +33,9 @@ function legacyAnalyzerRedirect(): Plugin {
 
 export default defineConfig({
   base,
+  define: {
+    __KEYDIST_VERSION__: JSON.stringify(packageVersion),
+  },
   server: {
     warmup: {
       clientFiles: [

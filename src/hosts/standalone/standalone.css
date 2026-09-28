@@ -1,27 +1,19 @@
 .standalone-page {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  padding: 1.5rem;
-  max-width: 72rem;
-  margin: 0 auto;
 }
 
-/* 文脈バーができるまでの置き場（テキスト・既定の物理配列・共有）。 */
-.standalone-context-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: flex-start;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border);
+/* ペインの領域。個別画面のペインは枠を付けない。 */
+.standalone-stage {
+  width: 100%;
+  max-width: 76rem;
+  padding: 1rem 1.5rem 3rem;
 }
 
-.standalone-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: flex-start;
+@media (max-width: 760px) {
+  .standalone-stage {
+    padding: 0.85rem 1rem 2.5rem;
+  }
 }
 
 .standalone-control {
@@ -29,18 +21,4 @@
   flex-direction: column;
   gap: 0.25rem;
   font-size: 0.85rem;
-}
-
-.standalone-text-control {
-  flex: 1 1 24rem;
-}
-
-.standalone-text-control textarea {
-  font: inherit;
-  resize: vertical;
-  min-height: 4.5rem;
-}
-
-.standalone-text-control small {
-  opacity: 0.7;
 }

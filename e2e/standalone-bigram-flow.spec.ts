@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openTextChip } from './context-bar-helper.ts';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
 import { openSettings } from './pane-helper.ts';
 
@@ -73,6 +74,7 @@ test('テキストを変えると条件・可視化が追従する', async ({ pa
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
+  await openTextChip(page);
   const textarea = page.getByLabel('テキスト', { exact: true });
   await textarea.fill('hello world hello world hello world');
 
@@ -86,9 +88,11 @@ test('組み込みテキストを選ぶとテキストが置き換わる', async
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
+  await openTextChip(page);
   const textarea = page.getByLabel('テキスト', { exact: true });
   const before = await textarea.inputValue();
 
+  await openTextChip(page);
   const picker = page.getByLabel('テキストを選ぶ', { exact: true });
   await picker.selectOption({ label: '英文（既定）' });
 
@@ -109,6 +113,7 @@ test('組み込みを編集すると新しいユーザーテキストが作ら�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
+  await openTextChip(page);
   const textarea = page.getByLabel('テキスト', { exact: true });
   await textarea.fill('編集したテキスト');
 
@@ -128,6 +133,7 @@ test('組み込みを編集すると新しいユーザーテキストが作ら�
     }))
     .toEqual('user');
 
+  await openTextChip(page);
   const picker = page.getByLabel('テキストを選ぶ', { exact: true });
   await expect(picker.locator('optgroup[label="自作"] option')).toHaveCount(1);
 });
@@ -137,6 +143,7 @@ test('copy-on-write後にさらに打っても、コピーは増えない（同�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
+  await openTextChip(page);
   const textarea = page.getByLabel('テキスト', { exact: true });
   await textarea.fill('1回目の編集');
   await expect
@@ -163,6 +170,7 @@ test('copy-on-write後にさらに打っても、コピーは増えない（同�
 test('同じ組み込みを選び直して同じ本文を打っても保存される（重複排除で捨てない）', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await openTextChip(page);
   const textarea = page.getByLabel('テキスト', { exact: true });
   const picker = page.getByLabel('テキストを選ぶ', { exact: true });
   const libraryLength = () => page.evaluate(() => {
@@ -182,6 +190,7 @@ test('同じ組み込みを選び直して同じ本文を打っても保存さ�
   await expect.poll(libraryLength).toEqual(2);
 
   await page.reload();
+  await openTextChip(page);
   await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue(edited);
 });
 
@@ -195,6 +204,7 @@ test('選択が存在しない自作テキストを指していても、打っ�
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
+  await openTextChip(page);
   const textarea = page.getByLabel('テキスト', { exact: true });
   await textarea.fill('lost edit');
   await expect
@@ -205,6 +215,7 @@ test('選択が存在しない自作テキストを指していても、打っ�
     .toEqual(['lost edit']);
 
   await page.reload();
+  await openTextChip(page);
   await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue('lost edit');
 });
 
@@ -213,6 +224,7 @@ test('編集したテキストはリロードしても保持される', async ({
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
+  await openTextChip(page);
   const textarea = page.getByLabel('テキスト', { exact: true });
   await textarea.fill('リロードしても残るテキスト');
   await expect
@@ -222,6 +234,7 @@ test('編集したテキストはリロードしても保持される', async ({
   await page.reload();
   const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
+  await openTextChip(page);
   await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue('リロードしても残るテキスト');
 });
 
@@ -238,6 +251,7 @@ test('打ってすぐリロードしても編集が残る（組み込みから�
   const now = await page.evaluate(() => Date.now());
   await page.clock.pauseAt(now + 60_000);
 
+  await openTextChip(page);
   const textarea = page.getByLabel('テキスト', { exact: true });
   await textarea.fill('debounce完了前にリロードする編集(組み込み)');
 
@@ -248,6 +262,7 @@ test('打ってすぐリロードしても編集が残る（組み込みから�
   await page.reload();
   const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
+  await openTextChip(page);
   await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue('debounce完了前にリロードする編集(組み込み)');
 });
 
@@ -257,6 +272,7 @@ test('打ってすぐリロードしても編集が残る（既存のユーザ�
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
   // 先にユーザーテキストを1件作っておく（複製）。
+  await openTextChip(page);
   await page.getByRole('button', { name: '複製', exact: true }).click();
   await expect
     .poll(async () => page.evaluate(() => {
@@ -269,6 +285,7 @@ test('打ってすぐリロードしても編集が残る（既存のユーザ�
   const now = await page.evaluate(() => Date.now());
   await page.clock.pauseAt(now + 60_000);
 
+  await openTextChip(page);
   const textarea = page.getByLabel('テキスト', { exact: true });
   await textarea.fill('debounce完了前にリロードする編集(ユーザーテキスト)');
 
@@ -278,6 +295,7 @@ test('打ってすぐリロードしても編集が残る（既存のユーザ�
   await page.reload();
   const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
+  await openTextChip(page);
   await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue('debounce完了前にリロードする編集(ユーザーテキスト)');
   // コピーは増えていない（1件のまま）。
   const stored = await page.evaluate(() => localStorage.getItem('keydist:text-library'));
@@ -290,6 +308,7 @@ test('複製すると新しいユーザーテキストができ、選択がそ�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
+  await openTextChip(page);
   const picker = page.getByLabel('テキストを選ぶ', { exact: true });
   await page.getByRole('button', { name: '複製', exact: true }).click();
 
@@ -302,6 +321,7 @@ test('複製すると新しいユーザーテキストができ、選択がそ�
     .toEqual('user');
 
   // 複製元（既定の組み込み）と同じ本文で始まる。
+  await openTextChip(page);
   const textarea = page.getByLabel('テキスト', { exact: true });
   await expect(textarea).toHaveValue(/わがはい/);
 });
@@ -311,6 +331,7 @@ test('選択中のテキストを削除すると既定の組み込みへフォ�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
+  await openTextChip(page);
   const textarea = page.getByLabel('テキスト', { exact: true });
   await textarea.fill('削除される予定のテキスト');
   await expect
@@ -320,8 +341,8 @@ test('選択中のテキストを削除すると既定の組み込みへフォ�
     }))
     .toEqual(1);
 
-  // 削除は確認ダイアログを挟む（レビュー指摘: シェルUnitがUndo UIを持つまでの暫定策）。
-  page.once('dialog', (dialog) => dialog.accept());
+  // 削除は文脈バーの「元に戻す」で戻せるので、確認を挟まない。
+  await openTextChip(page);
   const deleteButton = page.getByRole('button', { name: '削除', exact: true });
   await expect(deleteButton).toBeEnabled();
   await deleteButton.click();
@@ -483,7 +504,7 @@ test('URLパラメータは既存の解析設定へ部分マージされる（�
   await expect((await openSettings(page)).getByLabel('紐の太さ', { exact: true })).toHaveValue('sqrt');
 });
 
-test('「今の設定のURLをコピー」で既定値と違う項目だけを含むURLがクリップボードに入る', async ({ page, context }) => {
+test('文脈バーの「共有」で既定値と違う項目だけを含むURLがクリップボードに入る', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/standalone/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
@@ -493,8 +514,8 @@ test('「今の設定のURLをコピー」で既定値と違う項目だけを�
   await withinHand.click();
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
 
-  await page.getByRole('button', { name: '今の設定のURLをコピー' }).click();
-  await expect(page.getByRole('button', { name: 'コピーした' })).toBeVisible();
+  await page.getByRole('button', { name: '共有', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
 
   const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
   expect(clipboardText).toContain('source=within-hand');
@@ -585,7 +606,9 @@ test('タブ間同期: 別タブでのテキスト変更が届き、複数回変
   await expect(pageA.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await expect(pageB.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
+  await openTextChip(pageA);
   const textareaA = pageA.getByLabel('テキスト', { exact: true });
+  await openTextChip(pageB);
   const textareaB = pageB.getByLabel('テキスト', { exact: true });
 
   for (const text of ['1回目の変更', '2回目の変更', '3回目の変更']) {
@@ -636,10 +659,13 @@ test('タブ間の競合修正: 他タブの選択切り替えが割り込んで
   await expect(pageA.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await expect(pageB.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
+  await openTextChip(pageB);
   const textareaB = pageB.getByLabel('テキスト', { exact: true });
   // 周回の前提（Bはu1を表示している）を、実際に画面へ出ていることで確かめてから始める。
   await expect(textareaB).toHaveValue('one');
+  await openTextChip(pageA);
   const pickerA = pageA.getByLabel('テキストを選ぶ', { exact: true });
+  await openTextChip(pageB);
   const pickerB = pageB.getByLabel('テキストを選ぶ', { exact: true });
 
   const textLibraryOf = (page: typeof pageA) => page.evaluate(() => {
@@ -683,10 +709,10 @@ test('画面の文言に開発の内部（issue番号・Phase・ファイル名�
   await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|個別画面|\.ts\b|Vector lab|connections|N sensitivity|Setup comparison|baseline|言語判定: /);
 });
 
-test('読み込みで操作可能になった瞬間から、本文は保存済みのテキストを表示している（古い値へ入力が足されない）', async ({ page }) => {
+test('読み込みで操作可能になった瞬間から、テキストのチップは保存済みのテキストを表示している', async ({ page }) => {
   // 以前は読み込み完了で操作可能になった後、本文の表示が1フレーム遅れて保存済みの値へ
-  // 差し替わっていた。その間に入力すると、差し替わった値の後ろへ足された。
-  // 本文の欄の「操作可能か・値」の移り変わりを記録し、操作可能な間に古い値が無いことを見る。
+  // 差し替わっていた。本文はチップを開いた時にだけ出るので、閉じた状態のチップについて
+  // 「操作可能か・表示している名前」の移り変わりを記録し、操作可能な間に古い値が無いことを見る。
   await page.addInitScript(() => {
     localStorage.setItem('keydist:text-library', JSON.stringify({
       version: 1,
@@ -697,11 +723,12 @@ test('読み込みで操作可能になった瞬間から、本文は保存済�
       JSON.stringify({ version: 1, ref: { kind: 'user', id: 'u1' } }),
     );
     const states: string[] = [];
-    (window as unknown as { __textareaStates: string[] }).__textareaStates = states;
+    (window as unknown as { __chipStates: string[] }).__chipStates = states;
     const record = () => {
-      const textarea = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="テキスト"]');
-      if (textarea === null) return;
-      const state = `${textarea.matches(':disabled') ? 'disabled' : 'enabled'}:${textarea.value}`;
+      const chip = document.querySelector<HTMLButtonElement>('.context-bar button.text-chip');
+      if (chip === null) return;
+      const name = chip.querySelector('.context-chip-value')?.textContent ?? '';
+      const state = `${chip.matches(':disabled') ? 'disabled' : 'enabled'}:${name}`;
       if (states[states.length - 1] !== state) states.push(state);
     };
     new MutationObserver(record).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
@@ -712,12 +739,16 @@ test('読み込みで操作可能になった瞬間から、本文は保存済�
     requestAnimationFrame(everyFrame);
   });
   await page.goto('/standalone/bigram-flow');
-  const textarea = page.getByLabel('テキスト', { exact: true });
-  await expect(textarea).toBeEnabled({ timeout: 10_000 });
-  await expect(textarea).toHaveValue('one');
+  const chip = page.locator('.context-bar button.text-chip');
+  await expect(chip).toBeEnabled({ timeout: 10_000 });
+  await expect(chip).toContainText('u1');
 
-  const states = await page.evaluate(() => (window as unknown as { __textareaStates: string[] }).__textareaStates);
-  expect(states.filter((state) => state.startsWith('enabled:'))).toEqual(['enabled:one']);
+  const states = await page.evaluate(() => (window as unknown as { __chipStates: string[] }).__chipStates);
+  expect(states.filter((state) => state.startsWith('enabled:'))).toEqual(['enabled:u1']);
+
+  // 開いた本文も保存済みの値になっている。
+  await openTextChip(page);
+  await expect(page.getByLabel('テキスト', { exact: true })).toHaveValue('one');
 });
 
 test('保存済みの解析設定は、操作可能になった瞬間から表示されている（既定値のまま操作できる瞬間が無い。#603）', async ({ page }) => {

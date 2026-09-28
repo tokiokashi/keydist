@@ -3,6 +3,7 @@ import { AnalyzerPage } from '#legacy/analyzer-page.tsx';
 import analyzerCss from '#legacy/style.css?url';
 
 export const Route = createFileRoute('/analyzer')({
+  staticData: { shell: 'none' },
   component: AnalyzerPage,
   head: () => ({
     meta: [

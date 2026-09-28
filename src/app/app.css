@@ -1,4 +1,5 @@
 @import '../ui/theme/theme.css';
+@import './shell/shell.css';
 
 :root {
   font-family:
@@ -24,44 +25,16 @@ a {
   color: inherit;
 }
 
-.app-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-  padding: 0.9rem max(1rem, calc((100vw - 70rem) / 2));
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
-  backdrop-filter: blur(12px);
-}
-
-.brand {
-  font-size: 1.15rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.app-header nav {
-  display: flex;
-  gap: 1rem;
-}
-
-.app-header nav a {
-  color: var(--text-muted);
-  text-decoration: none;
-}
-
-.app-header nav a[aria-current="page"] {
-  color: var(--text);
-  font-weight: 650;
-}
-
 .app-shell {
   width: min(70rem, calc(100% - 2rem));
   margin: 0 auto;
-  padding: 5rem 0;
+  padding: 2.5rem 0 4rem;
+}
+
+/* 文脈バーを持つページは、バーを本体の幅いっぱいに張るので余白をページ側に任せる。 */
+.app-shell:has(> .standalone-page) {
+  width: 100%;
+  padding: 0;
 }
 
 .app-shell.analyzer-route-shell {
@@ -134,7 +107,7 @@ h1 {
 }
 
 .app-shell:has(> .input-feature) {
-  width: min(80vw, 96rem);
+  width: min(calc(100% - 2rem), 96rem);
   padding: 1rem 0 1.5rem;
 }
 

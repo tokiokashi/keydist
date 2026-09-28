@@ -439,7 +439,7 @@ export function selectTextCommand(holder: TextSelectionHolder, ref: TextRef): Co
 }
 
 /**
- * テキストの本文を書き換える。呼び出し側（`TextControl`）は**打鍵の瞬間の対象**（`ref`）を
+ * テキストの本文を書き換える。呼び出し側（`hosts/shared/TextChip.tsx`）は**打鍵の瞬間の対象**（`ref`）を
  * 渡す。「適用時点の選択」を読み直す実装ではなく、これを明示的に運ぶのが肝心
  * （#544レビューで見つかった競合の再現: 同じユーザーテキストをタブA・Bで選択中、
  * タブBが入力→debounce待ちの間（既定400ms）にタブAが別のテキストへ選択を切り替えると、

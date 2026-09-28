@@ -12,6 +12,7 @@ import { applyCommand, applyExternalChange, emptyCommandHistory, type Command } 
 import {
   buildAssetSyncs,
   commitCommand,
+  commitHistoryStep,
   loadAssets,
   saveChangedAssets,
   startAssetSyncs,
@@ -158,6 +159,10 @@ function createTab(storage: KeyValueStorage) {
       const result = commitCommand(syncs, () => state, command);
       if (result.outcome.kind === 'applied') state = result;
     },
+    step(direction: 'undo' | 'redo') {
+      const result = commitHistoryStep(syncs, () => state, direction);
+      if (result.outcome.kind === 'applied') state = result;
+    },
   };
 }
 
@@ -222,4 +227,35 @@ test('commitCommand: 何も取り込まなければapplyCommandと同じ結果�
   const expected = applyCommand(tab.state.assets, tab.state.history, command);
   tab.dispatch(command);
   assert.deepEqual(tab.state.assets, expected.assets);
+});
+
+test('commitHistoryStep: Undoで戻した値をstorageへ書き、Redoでやり直した値も書く', () => {
+  const storage = createFakeStorage();
+  const tab = createTab(storage);
+  const read = () => loadAssets(buildAssetSyncs({ onExternalChange: () => {}, storage }));
+
+  tab.dispatch(selectTextCommand('standalone', { kind: 'builtin', id: 'builtin:ja.modern' }));
+  assert.deepEqual(read().standaloneTextSelection?.ref, { kind: 'builtin', id: 'builtin:ja.modern' });
+
+  tab.step('undo');
+  assert.notDeepEqual(read().standaloneTextSelection?.ref, { kind: 'builtin', id: 'builtin:ja.modern' });
+  assert.deepEqual(read().standaloneTextSelection, tab.state.assets.standaloneTextSelection);
+  assert.equal(tab.state.history.redoStack.length, 1);
+
+  tab.step('redo');
+  assert.deepEqual(read().standaloneTextSelection?.ref, { kind: 'builtin', id: 'builtin:ja.modern' });
+});
+
+test('commitHistoryStep: 他タブが書き換えた資産はUndoで巻き戻さない', () => {
+  const storage = createFakeStorage();
+  const tabA = createTab(storage);
+  const tabB = createTab(storage);
+
+  tabB.dispatch(createTextCommand('standalone', freshId));
+  tabA.dispatch(createTextCommand('standalone', freshId));
+  // tabBは通知を受けていないが、Undoの直前に追いつき、textLibraryに触れる履歴を捨てる。
+  tabB.step('undo');
+
+  const stored = loadAssets(buildAssetSyncs({ onExternalChange: () => {}, storage }));
+  assert.equal(stored.textLibrary?.texts.length, 2);
 });
