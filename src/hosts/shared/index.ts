@@ -1,11 +1,15 @@
 export {
   conditionHeaderInfo,
   conditionHeaderInfoFromResolvedInput,
+  conditionSummaryLine,
+  isChangedConditionRow,
+  orderConditionRowsForDetail,
   formatOrigin,
   nonDefaultConditionRows,
   summarizeNonDefaultConditions,
   traceConditionSummary,
   type ConditionHeaderInfo,
+  type ConditionSummaryLine,
   type ConditionSummaryRow,
   type ConditionValueFormat,
   type ConditionValueNames,
@@ -17,6 +21,7 @@ export {
   paneStatusLabel,
   type PaneEngineState,
 } from './pane-status.ts';
+export { ConditionSummary, type ConditionSummaryProps } from './ConditionSummary.tsx';
 export { PaneFrame, type PaneFrameProps } from './PaneFrame.tsx';
 export { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 export { PaneInfoButton, PaneMenu, type PaneMenuItem } from './PaneHeaderParts.tsx';
