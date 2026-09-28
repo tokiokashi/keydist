@@ -406,6 +406,10 @@ const ANALYZER_VIEW_FORBIDDEN_PATTERNS: readonly { pattern: RegExp; what: string
   { pattern: /\bhistory\s*\./, what: 'history' },
   { pattern: /\bclipboard\b/i, what: 'クリップボード' },
   { pattern: /\bexecCommand\s*\(/, what: 'クリップボード' },
+  { pattern: /\bdocument\s*\.\s*URL\b/, what: 'URL' },
+  // 画面の幅で描き分けない（置かれた領域の幅はcontainer queryか要素の実寸で取る）。
+  { pattern: /\binnerWidth\b/, what: '画面の幅' },
+  { pattern: /\bmatchMedia\s*\(/, what: '画面の幅' },
 ];
 
 export function analyzerViewViolations(source: string): readonly string[] {
@@ -432,6 +436,9 @@ test('Analyzerの可視化の判定そのもの', () => {
   assert.equal(analyzerViewViolations('window.history.replaceState(null, "", url)').length, 1);
   assert.equal(analyzerViewViolations('void navigator.clipboard.writeText(url)').length, 1);
   assert.equal(analyzerViewViolations('const params = new URLSearchParams(q)').length, 1);
+  assert.equal(analyzerViewViolations('const wide = window.innerWidth > 800').length, 1);
+  assert.equal(analyzerViewViolations("const narrow = matchMedia('(max-width: 800px)')").length, 1);
+  assert.equal(analyzerViewViolations('const here = document.URL').length, 1);
   // コメントの中の語は数えない（設計の説明で「URLは持たない」と書けるように）。
   assert.deepEqual(analyzerViewViolations('// location や history.replaceState はホストが持つ'), []);
 });
@@ -446,7 +453,7 @@ export function analyzerCssWidthViolations(css: string): readonly string[] {
   for (const match of stripped.matchAll(/@media[^{]*/g)) {
     if (/\b(?:min-|max-)?(?:width|inline-size)\b/.test(match[0])) problems.push(`幅の@media（${match[0].trim()}）`);
   }
-  for (const match of stripped.matchAll(/[-\d.]+(?:vw|vi|svw|lvw|dvw)\b/g)) problems.push(`画面幅の単位（${match[0]}）`);
+  for (const match of stripped.matchAll(/[-\d.]+(?:vw|vi|svw|lvw|dvw|vmin|vmax)\b/g)) problems.push(`画面幅の単位（${match[0]}）`);
   return problems;
 }
 
@@ -466,6 +473,7 @@ test('AnalyzerのCSSの判定そのもの', () => {
   assert.deepEqual(analyzerCssWidthViolations('@media (prefers-reduced-motion: reduce) { .a { b: c } }'), []);
   assert.equal(analyzerCssWidthViolations('@media (max-width: 800px) { .a { b: c } }').length, 1);
   assert.equal(analyzerCssWidthViolations('.a { width: 50vw; }').length, 1);
+  assert.equal(analyzerCssWidthViolations('.a { height: 40vmin; }').length, 1);
   assert.deepEqual(analyzerCssWidthViolations('/* @media (max-width: 1px) */ .a { width: 100%; }'), []);
 });
 
