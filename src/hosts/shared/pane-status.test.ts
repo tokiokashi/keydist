@@ -17,7 +17,21 @@ test('describeResolvedInputError: reference（配列・形状の削除）', () =
     kind: 'reference',
     errors: [{ kind: 'layout-missing', layoutId: 'ghost-layout' }],
   };
-  assert.match(describeResolvedInputError(error), /ghost-layout/);
+  const message = describeResolvedInputError(error);
+  assert.match(message, /配列が見つからない/);
+  // 画面にそのまま出る文なので、内部のidは含めない（レビュー指摘H3）。
+  assert.doesNotMatch(message, /ghost-layout/);
+});
+
+test('describeResolvedInputError: 削除された対象はidを出さず、1つの短い理由にする（レビュー指摘H3）', () => {
+  const setupMissing: ResolvedInputError = { kind: 'target-missing', target: { kind: 'setup', setupId: '3f2a-uuid' } };
+  const layoutMissing: ResolvedInputError = { kind: 'target-missing', target: { kind: 'layout', layoutId: 'gone-layout' } };
+  const shapeMissing: ResolvedInputError = { kind: 'reference', errors: [{ kind: 'shape-missing', shapeId: 'gone-shape' }] };
+  assert.equal(describeResolvedInputError(setupMissing), 'Setupが削除された');
+  for (const error of [setupMissing, layoutMissing, shapeMissing]) {
+    const message = describeResolvedInputError(error);
+    assert.doesNotMatch(message, /3f2a|gone-|:/);
+  }
 });
 
 test('describeResolvedInputError: incompatible-text（このテキストには使えないSetup）', () => {
@@ -32,8 +46,11 @@ test('describeResolvedInputError: incompatible-text（このテキストには�
 });
 
 test('describeResolvedInputError: geometry（形状が組めない）', () => {
-  const error: ResolvedInputError = { kind: 'geometry', message: '行数が足りない' };
-  assert.match(describeResolvedInputError(error), /行数が足りない/);
+  const error: ResolvedInputError = { kind: 'geometry', message: '指割り当て「finger-x」にキー q が無い' };
+  const message = describeResolvedInputError(error);
+  assert.match(message, /組み立てられない/);
+  // 例外の文は定義の内部（idやキー名）を指すので出さない。
+  assert.doesNotMatch(message, /finger-x/);
 });
 
 test('describeEngineRequestError: resolutionはResolvedInputErrorへ委譲する', () => {
@@ -41,7 +58,7 @@ test('describeEngineRequestError: resolutionはResolvedInputErrorへ委譲する
     kind: 'resolution',
     error: { kind: 'geometry', message: 'boom' },
   };
-  assert.match(describeEngineRequestError(error), /boom/);
+  assert.equal(describeEngineRequestError(error), describeResolvedInputError(error.error));
 });
 
 test('describeEngineRequestError: exceptionはErrorのmessageを使う', () => {

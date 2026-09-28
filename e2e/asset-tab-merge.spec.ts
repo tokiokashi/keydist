@@ -10,7 +10,6 @@ import { expect, test, type Page } from '@playwright/test';
  */
 
 const ITERATIONS = Number(process.env.ITER ?? 15);
-const SETUP_LIBRARY_KEY = 'keydist:setup-library';
 const TEXT_LIBRARY_KEY = 'keydist:text-library';
 const TEXT_SELECTION_KEY = 'keydist:standalone-text-selection';
 
@@ -26,13 +25,6 @@ async function readTexts(page: Page): Promise<readonly StoredText[]> {
   }, TEXT_LIBRARY_KEY);
 }
 
-async function readSetupIds(page: Page): Promise<readonly string[]> {
-  return page.evaluate((key) => {
-    const raw = localStorage.getItem(key);
-    return raw === null ? [] : (JSON.parse(raw) as { setups: { id: string }[] }).setups.map((setup) => setup.id);
-  }, SETUP_LIBRARY_KEY);
-}
-
 /** `check`が真になるまで待つ。`timeout`内に真にならなければ偽を返す（失敗を数えるため、投げない）。 */
 async function settles(check: () => Promise<boolean>, timeout = 3_000): Promise<boolean> {
   const deadline = Date.now() + timeout;
@@ -44,7 +36,6 @@ async function settles(check: () => Promise<boolean>, timeout = 3_000): Promise<
 }
 
 async function openBoth(pageA: Page, pageB: Page): Promise<void> {
-  // 両タブの読み込みを同時に始め、初回の書き込み（初期Setupの作成）どうしも競合させる
   await Promise.all([
     pageA.goto('/standalone/bigram-flow', { waitUntil: 'commit' }),
     pageB.goto('/standalone/bigram-flow', { waitUntil: 'commit' }),
@@ -103,30 +94,6 @@ test('2タブが同じ組み込みテキストを続けて書き換えても、�
       return texts.includes(textA) && texts.includes(textB);
     });
     if (!ok) failures.push(`#${i}: ${JSON.stringify((await readTexts(pageA)).map((entry) => entry.text))}`);
-  }
-  expect(failures).toEqual([]);
-});
-
-test('空の手持ちで2タブを同時に開いても、初期Setupは1件だけ作られ両タブが同じものを選ぶ', async ({ context }, testInfo) => {
-  testInfo.setTimeout(180_000);
-  const pageA = await context.newPage();
-  const pageB = await context.newPage();
-
-  const failures: string[] = [];
-  for (let i = 0; i < ITERATIONS; i++) {
-    if (i > 0) await pageA.evaluate((key) => localStorage.removeItem(key), SETUP_LIBRARY_KEY);
-    await openBoth(pageA, pageB);
-
-    const ok = await settles(async () => {
-      const ids = await readSetupIds(pageA);
-      if (ids.length !== 1) return false;
-      const [selectedA, selectedB] = await Promise.all([
-        pageA.getByLabel('対象Setup').inputValue(),
-        pageB.getByLabel('対象Setup').inputValue(),
-      ]);
-      return selectedA === ids[0] && selectedB === ids[0];
-    });
-    if (!ok) failures.push(`#${i}: ${JSON.stringify(await readSetupIds(pageA))}`);
   }
   expect(failures).toEqual([]);
 });

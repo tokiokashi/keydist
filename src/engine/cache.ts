@@ -1,4 +1,5 @@
 import type { AnalyzerSetMember, AnalyzerSetMemberFailure, SetAnalyzerDefinition, SingleAnalyzerDefinition } from '#analyzers/contract.ts';
+import type { AnalysisTarget } from '#input/setup/index.ts';
 import { analyzerExtractionKeyOf, interpretationKeyOf, setAnalyzerExtractionKeyOf, traceKeyOf } from './keys.ts';
 import {
   extractSet,
@@ -93,7 +94,7 @@ export interface EngineCache {
     options: Options,
   ): EngineExtractionResult<Extracted>;
   /**
-   * 集合対象のAnalyzerの抽出（#544 Phase 3）。`members`は集合の各枠（Setup）の解決済み
+   * 集合対象のAnalyzerの抽出（#544 Phase 3）。`members`は集合の各枠（配列かSetup）の解決済み
    * 入力（または解決失敗）を、表示順のまま渡す（`setAnalyzerExtractionKeyOf`のコメント
    * 参照: 順序込みでキャッシュキーに畳み込む）。
    *
@@ -178,25 +179,25 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
   ): EngineExtractionResult<Extracted> {
     const resolvedMembers: AnalyzerSetMember[] = [];
     const failures: AnalyzerSetMemberFailure[] = [];
-    const keyMembers: { readonly setupId: string; readonly memberKey: unknown }[] = [];
+    const keyMembers: { readonly target: AnalysisTarget; readonly memberKey: unknown }[] = [];
 
     for (const member of members) {
       if (!member.resolution.ok) {
         failures.push({
-          setupId: member.setupId,
+          target: member.target,
           kind: member.resolution.error.kind,
           message: describeResolvedInputError(member.resolution.error),
         });
-        keyMembers.push({ setupId: member.setupId, memberKey: { failed: member.resolution.error.kind } });
+        keyMembers.push({ target: member.target, memberKey: { failed: member.resolution.error.kind } });
         continue;
       }
       const input = member.resolution.input;
       const interpretationResult = getInterpretation(input);
       const traceResult = getTrace(input);
       const memberInterpretationKey = interpretationKeyOf(input, traceKeyOf(input));
-      keyMembers.push({ setupId: member.setupId, memberKey: memberInterpretationKey });
+      keyMembers.push({ target: member.target, memberKey: memberInterpretationKey });
       resolvedMembers.push({
-        setupId: member.setupId,
+        target: member.target,
         trace: traceResult.trace,
         analysis: interpretationResult.analysis,
         metrics: interpretationResult.metrics,

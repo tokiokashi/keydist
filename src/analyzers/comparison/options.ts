@@ -63,8 +63,8 @@ export const COMPARISON_COLUMNS: Readonly<Record<ComparisonColumnId, ComparisonC
   singleKeyRate: { label: '1キー率', format: percent },
   sameFinger: { label: '同指', format: count },
   sameFingerRate: { label: '同指率', format: percent },
-  adjacentMean: { label: '指間mean [u]', format: fixed(3) },
-  adjacentStdDev: { label: '指間σ [u]', format: fixed(3) },
+  adjacentMean: { label: '指間の平均 [u]', format: fixed(3) },
+  adjacentStdDev: { label: '指間のばらつき σ [u]', format: fixed(3) },
 } as const;
 
 function isComparisonColumnId(value: string): value is ComparisonColumnId {
@@ -81,7 +81,7 @@ function isComparisonColumnId(value: string): value is ComparisonColumnId {
  * ものと見た目だけのものを宣言する」の帰結として、抽出結果（行の集合と各行の13列の
  * 生値）はAnalyzerの解析設定を変えても再計算されない。
  *
- * **基準（baseline）Setup idはここに置かない。** #544 §6「集合を見るAnalyzerは
+ * **基準（baseline）対象はここに置かない。** #544 §6「集合を見るAnalyzerは
  * Setupの集合を対象にし、集合もそのページ自身が持つ」・指示書「ページ自身が
  * Setupの集合（手持ちからの選択・並び順・基準）を持つ」に従い、基準は「対象の集合」の
  * 一部（どのSetupを比べるか・どの順で並べるか・どれを基準にするか）としてホスト側の

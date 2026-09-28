@@ -25,7 +25,7 @@ test('standalone Bigram Flow connects the Gate 1 vertical slice and keeps ViewCo
 
   await flow.getByRole('button', { name: 'Within-hand' }).click();
   await expect.poll(() => new URL(page.url()).searchParams.get('source')).toBe('within-hand');
-  await expect(flow.getByText('反対手を飛ばした手内bigram')).toBeVisible();
+  await expect(flow.getByText('反対の手の打鍵を飛ばして、同じ手で続けた2打鍵')).toBeVisible();
   await expect(viewConfig).toContainText('source=within-hand');
 
   await flow.getByLabel('距離表示').selectOption('fixed');

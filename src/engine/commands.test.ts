@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { applyCommand, emptyCommandHistory, redo, undo } from '#input/commands/index.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
-import type { SetupLibrary } from '#input/setup/index.ts';
+import type { AnalysisTarget, SetupLibrary } from '#input/setup/index.ts';
 import { DEFAULT_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
 import { emptyTextLibrary } from '#input/text/library.ts';
 import { DEFAULT_TEXT_REF, type TextRef } from '#input/text/selection.ts';
@@ -23,7 +23,8 @@ import {
   resetCascadeLevelCommand,
   selectTextCommand,
   setAnalyzerSetSelectionBaselineCommand,
-  setAnalyzerSetSelectionSetupIdsCommand,
+  setAnalyzerSetSelectionTargetsCommand,
+  setAnalyzerTargetSelectionCommand,
   setCascadeOverrideCommand,
   setStandaloneAnalyzerOptionsCommand,
   setTextContentCommand,
@@ -46,8 +47,13 @@ function emptyAssets(): KeydistAssets {
     standaloneTextSelection: initialTextSelection(),
     standaloneAnalyzerOptions: {},
     analyzerSetSelections: {},
+    analyzerTargetSelections: {},
   };
 }
+
+const TARGET_A: AnalysisTarget = { kind: 'setup', setupId: 'a' };
+const TARGET_B: AnalysisTarget = { kind: 'setup', setupId: 'b' };
+const TARGET_NOT_SELECTED: AnalysisTarget = { kind: 'setup', setupId: 'not-selected' };
 
 let nextTextId = 0;
 const generateTextId = () => `text-${++nextTextId}`;
@@ -599,87 +605,136 @@ test('setStandaloneAnalyzerOptionsCommand: 別のAnalyzer idの設定は道連�
   });
 });
 
-test('setAnalyzerSetSelectionSetupIdsCommand: 対象の集合・並び順を書き込み、undo/redoで往復できる', () => {
+test('setAnalyzerSetSelectionTargetsCommand: 対象の集合・並び順を書き込み、undo/redoで往復できる', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const step = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
+  const step = applyCommand(assets, history, setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_A, TARGET_B]));
   assert.equal(step.outcome.kind, 'applied');
-  assert.deepEqual(step.assets.analyzerSetSelections.comparison?.setupIds, ['a', 'b']);
+  assert.deepEqual(step.assets.analyzerSetSelections.comparison?.targets, [TARGET_A, TARGET_B]);
 
   const back = undo(step.assets, step.history);
   assert.equal(back.assets.analyzerSetSelections.comparison, undefined);
 
   const redone = redo(back.assets, back.history);
-  assert.deepEqual(redone.assets.analyzerSetSelections.comparison?.setupIds, ['a', 'b']);
+  assert.deepEqual(redone.assets.analyzerSetSelections.comparison?.targets, [TARGET_A, TARGET_B]);
 });
 
-test('setAnalyzerSetSelectionSetupIdsCommand: 同じ並びの書き込みはno-op', () => {
+test('setAnalyzerSetSelectionTargetsCommand: 同じ並びの書き込みはno-op', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const step = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
-  const again = applyCommand(step.assets, step.history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
+  const step = applyCommand(assets, history, setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_A, TARGET_B]));
+  const again = applyCommand(step.assets, step.history, setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_A, TARGET_B]));
   assert.equal(again.outcome.kind, 'no-op');
   assert.equal(again.assets, step.assets);
 });
 
-test('setAnalyzerSetSelectionSetupIdsCommand: 重複したSetup idは1つに畳む', () => {
+test('setAnalyzerSetSelectionTargetsCommand: 重複したSetup idは1つに畳む', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const step = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b', 'a']));
-  assert.deepEqual(step.assets.analyzerSetSelections.comparison?.setupIds, ['a', 'b']);
+  const step = applyCommand(assets, history, setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_A, TARGET_B, TARGET_A]));
+  assert.deepEqual(step.assets.analyzerSetSelections.comparison?.targets, [TARGET_A, TARGET_B]);
 });
 
 test('setAnalyzerSetSelectionBaselineCommand: 基準の設定・解除を書き込める（選択に含まれるSetupだけ）', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const withSelection = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
+  const withSelection = applyCommand(assets, history, setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_A, TARGET_B]));
   const withBaseline = applyCommand(
     withSelection.assets,
     withSelection.history,
-    setAnalyzerSetSelectionBaselineCommand('comparison', 'a'),
+    setAnalyzerSetSelectionBaselineCommand('comparison', TARGET_A),
   );
-  assert.equal(withBaseline.assets.analyzerSetSelections.comparison?.baselineSetupId, 'a');
+  assert.equal(withBaseline.assets.analyzerSetSelections.comparison?.baseline, TARGET_A);
 
   const cleared = applyCommand(
     withBaseline.assets,
     withBaseline.history,
     setAnalyzerSetSelectionBaselineCommand('comparison', undefined),
   );
-  assert.equal(cleared.assets.analyzerSetSelections.comparison?.baselineSetupId, undefined);
+  assert.equal(cleared.assets.analyzerSetSelections.comparison?.baseline, undefined);
 });
 
 test('setAnalyzerSetSelectionBaselineCommand: 選択に含まれないSetupを基準にしようとするとno-op（不変条件）', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const withSelection = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
+  const withSelection = applyCommand(assets, history, setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_A, TARGET_B]));
   const attempt = applyCommand(
     withSelection.assets,
     withSelection.history,
-    setAnalyzerSetSelectionBaselineCommand('comparison', 'not-selected'),
+    setAnalyzerSetSelectionBaselineCommand('comparison', TARGET_NOT_SELECTED),
   );
   assert.equal(attempt.outcome.kind, 'no-op');
 });
 
-test('setAnalyzerSetSelectionSetupIdsCommand: 基準に選んでいたSetupが選択から外れたら、基準も一緒に外れる（不変条件）', () => {
+test('setAnalyzerSetSelectionTargetsCommand: 基準に選んでいたSetupが選択から外れたら、基準も一緒に外れる（不変条件）', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const withSelection = applyCommand(assets, history, setAnalyzerSetSelectionSetupIdsCommand('comparison', ['a', 'b']));
+  const withSelection = applyCommand(assets, history, setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_A, TARGET_B]));
   const withBaseline = applyCommand(
     withSelection.assets,
     withSelection.history,
-    setAnalyzerSetSelectionBaselineCommand('comparison', 'a'),
+    setAnalyzerSetSelectionBaselineCommand('comparison', TARGET_A),
   );
   const removed = applyCommand(
     withBaseline.assets,
     withBaseline.history,
-    setAnalyzerSetSelectionSetupIdsCommand('comparison', ['b']),
+    setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_B]),
   );
-  assert.deepEqual(removed.assets.analyzerSetSelections.comparison?.setupIds, ['b']);
-  assert.equal(removed.assets.analyzerSetSelections.comparison?.baselineSetupId, undefined);
+  assert.deepEqual(removed.assets.analyzerSetSelections.comparison?.targets, [TARGET_B]);
+  assert.equal(removed.assets.analyzerSetSelections.comparison?.baseline, undefined);
+});
+
+test('setAnalyzerTargetSelectionCommand: 対象を書き込み、undo/redoで往復できる', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const target: AnalysisTarget = { kind: 'layout', layoutId: 'colemak-dh' };
+
+  const step = applyCommand(assets, history, setAnalyzerTargetSelectionCommand('bigram-flow', target));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.deepEqual(step.assets.analyzerTargetSelections['bigram-flow'], target);
+
+  const back = undo(step.assets, step.history);
+  assert.equal(back.assets.analyzerTargetSelections['bigram-flow'], undefined);
+
+  const redone = redo(back.assets, back.history);
+  assert.deepEqual(redone.assets.analyzerTargetSelections['bigram-flow'], target);
+});
+
+test('setAnalyzerTargetSelectionCommand: 同じ対象の書き込みはno-op', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const target: AnalysisTarget = { kind: 'layout', layoutId: 'colemak-dh' };
+
+  const step = applyCommand(assets, history, setAnalyzerTargetSelectionCommand('bigram-flow', target));
+  const again = applyCommand(
+    step.assets,
+    step.history,
+    setAnalyzerTargetSelectionCommand('bigram-flow', { kind: 'layout', layoutId: 'colemak-dh' }),
+  );
+  assert.equal(again.outcome.kind, 'no-op');
+  assert.equal(again.assets, step.assets);
+});
+
+test('setAnalyzerTargetSelectionCommand: Analyzer idごとに独立して書き込める', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const withBigramFlow = applyCommand(
+    assets,
+    history,
+    setAnalyzerTargetSelectionCommand('bigram-flow', { kind: 'layout', layoutId: 'colemak-dh' }),
+  );
+  const withBoth = applyCommand(
+    withBigramFlow.assets,
+    withBigramFlow.history,
+    setAnalyzerTargetSelectionCommand('other-analyzer', TARGET_A),
+  );
+  assert.deepEqual(withBoth.assets.analyzerTargetSelections['bigram-flow'], { kind: 'layout', layoutId: 'colemak-dh' });
+  assert.deepEqual(withBoth.assets.analyzerTargetSelections['other-analyzer'], TARGET_A);
 });

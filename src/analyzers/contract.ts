@@ -1,6 +1,7 @@
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import type { Geometry } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
+import type { AnalysisTarget } from '#input/setup/index.ts';
 import type { Trace, TracePolicy } from '#trace/generate.ts';
 import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
@@ -73,7 +74,7 @@ export interface SingleAnalyzerExtractContext<Options> {
 
 /** 集合対象の抽出が受け取る、集合の1メンバー分のTrace結果・解釈結果。 */
 export interface AnalyzerSetMember {
-  readonly setupId: string;
+  readonly target: AnalysisTarget;
   readonly trace: Trace;
   readonly analysis: AggregatedAnalysisResult;
   readonly metrics: Metrics;
@@ -102,8 +103,8 @@ export interface AnalyzerSetMember {
  * （`message`）はengine側（`resolveEngineInput`を呼ぶ側）が組み立てて渡す。
  */
 export interface AnalyzerSetMemberFailure {
-  readonly setupId: string;
-  readonly kind: 'reference' | 'incompatible-text' | 'geometry' | 'setup-missing';
+  readonly target: AnalysisTarget;
+  readonly kind: 'reference' | 'incompatible-text' | 'geometry' | 'target-missing';
   readonly message: string;
 }
 
@@ -259,15 +260,18 @@ export function defineSetAnalyzer<R extends OptionsRegistry, Extracted>(config: 
 /**
  * ペインに置かれた1個のAnalyzerが見る対象（#544 用語集）。
  *
- * 今回は最小形: Setup idを1つ持つか、Setup idの集合を直接持つかだけを表す。
+ * 対象そのものの形（配列かSetupか）は`AnalysisTarget`（`input/setup/target.ts`、
+ * #578指摘1）が持つ。ここはその1個か集合かだけを表す最小形: 単一対象Analyzer
+ * （`SingleAnalyzerDefinition`）は`single`、集合対象Analyzer（`SetAnalyzerDefinition`）は
+ * `set`を使う。
  * Workspace（#544 §6）の「Workspaceに従う / 固定」はまだここに無い
  * （host/Workspace未着手のため、この作業単位の対象外）。
  * 将来足す時は `kind` を増やす形を想定する（例: `{ kind: 'follows-workspace' }`）。
  * PR本文に決めきれなかった点として残す。
  */
 export type AnalyzerTarget =
-  | { readonly kind: 'setup'; readonly setupId: string }
-  | { readonly kind: 'setups'; readonly setupIds: readonly string[] };
+  | { readonly kind: 'single'; readonly target: AnalysisTarget }
+  | { readonly kind: 'set'; readonly targets: readonly AnalysisTarget[] };
 
 /** ペインに置かれた1個のAnalyzer（#544 用語集の「Analyzerインスタンス」）。 */
 export interface AnalyzerInstance<Options = unknown> {

@@ -15,7 +15,5 @@ export {
   type StandalonePaneCatalog,
 } from './resolve-pane-input.ts';
 export { TextControl, type TextControlProps } from './TextControl.tsx';
-export {
-  DEFAULT_STANDALONE_SETUP_SPEC,
-  selectInitialSetupId,
-} from './setup-selection.ts';
+export { TargetPicker, type TargetPickerProps } from './TargetPicker.tsx';
+export { DefaultShapeControl, type DefaultShapeControlProps } from './DefaultShapeControl.tsx';

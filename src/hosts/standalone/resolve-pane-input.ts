@@ -1,6 +1,6 @@
 import { resolveEngineInput, type ResolvedInputResult } from '#engine/resolved-input.ts';
 import type { SettingsCascadeOverrides } from '#engine/settings-items.ts';
-import type { Setup, SetupCatalog } from '#input/setup/index.ts';
+import type { AnalysisTarget, Setup, SetupCatalog } from '#input/setup/index.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
 import type { UserRomajiRule } from '#input/romaji/rules.ts';
@@ -21,19 +21,25 @@ export interface StandalonePaneCatalog {
 }
 
 /**
- * 単体ページの入力解決（#544 §1・§5）。呼び出し側（`hosts/standalone`の各ページ）が
- * `resolveTextSelection`（`input/text/resolve.ts`）で既に決めた「今使っているテキスト」
- * （本文と実効言語。手動上書きがあればそちらを優先済み）を`resolveEngineInput`へ渡すだけの、
+ * 単体ページの入力解決（#544 §1・§5、#578指摘1「対象を配列かSetupにする」）。
+ * 呼び出し側（`hosts/standalone`の各ページ）が`resolveTextSelection`
+ * （`input/text/resolve.ts`）で既に決めた「今使っているテキスト」（本文と実効言語。
+ * 手動上書きがあればそちらを優先済み）を`resolveEngineInput`へ渡すだけの、
  * テキストの言語判定とengineの接続点。
+ *
+ * `setups`はSetup対象の解決に要る手持ち（`assets.setupLibrary.setups`をidで引ける形にした
+ * もの）。配列対象では参照しない（`resolveTargetForText`参照）。
  */
 export function resolveStandalonePaneInput(
-  setup: Setup,
+  target: AnalysisTarget,
+  setups: ReadonlyMap<string, Setup>,
   catalog: StandalonePaneCatalog,
   overrides: SettingsCascadeOverrides,
   resolvedText: ResolvedText,
 ): ResolvedInputResult {
   return resolveEngineInput({
-    setup,
+    target,
+    setups,
     catalog: catalog.setupCatalog,
     userLayouts: catalog.userLayouts,
     customRomajiRules: catalog.customRomajiRules,

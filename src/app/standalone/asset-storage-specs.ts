@@ -17,6 +17,9 @@ import { STANDALONE_ANALYZER_OPTIONS_CODEC } from '#engine/standalone-analyzer-o
 import { initialAnalyzerSetSelections } from '#engine/analyzer-set-selection.ts';
 import { ANALYZER_SET_SELECTION_CODEC } from '#engine/analyzer-set-selection-codec.ts';
 import { ANALYZER_SET_SELECTIONS_STORAGE_KEY } from '#platform/assets/analyzer-set-selections-storage.ts';
+import { initialAnalyzerTargetSelections } from '#engine/analyzer-target-selection.ts';
+import { ANALYZER_TARGET_SELECTION_CODEC } from '#engine/analyzer-target-selection-codec.ts';
+import { ANALYZER_TARGET_SELECTIONS_STORAGE_KEY } from '#platform/assets/analyzer-target-selections-storage.ts';
 
 /**
  * `KeydistAssets`（`engine/commands.ts`）の各キーを、永続化に要る3点
@@ -87,6 +90,11 @@ export const ASSET_STORAGE_SPECS: { readonly [K in keyof KeydistAssets]: AssetSt
     storageKey: ANALYZER_SET_SELECTIONS_STORAGE_KEY,
     codec: ANALYZER_SET_SELECTION_CODEC,
     initial: initialAnalyzerSetSelections,
+  },
+  analyzerTargetSelections: {
+    storageKey: ANALYZER_TARGET_SELECTIONS_STORAGE_KEY,
+    codec: ANALYZER_TARGET_SELECTION_CODEC,
+    initial: initialAnalyzerTargetSelections,
   },
 };
 

@@ -1,8 +1,9 @@
 /**
- * 集合対象Analyzerの単体ページ（比較表・N感度）が共通で使う、「Setupの集合を
- * チェックボックスで選び、順序リストで並び替える」UI（#544 Phase 3レビュー: 旧
+ * 集合対象Analyzerの単体ページ（比較表・N感度）が共通で使う、「対象（配列かSetup）を
+ * ピッカーで追加し、順序リストで並び替える」UI（#544 Phase 3レビュー: 旧
  * `comparison-standalone.css`はクラス名が`comparison-*`のままだったが、比較表以外の
- * ページ（N感度）も同じ見た目を使うようになったため、汎用名へ改める）。
+ * ページ（N感度）も同じ見た目を使うようになったため、汎用名へ改める。#578指摘1で
+ * チェックボックス一覧から対象ピッカー + 追加/削除へ作り直した）。
  */
 .set-selection-controls {
   display: grid;
@@ -47,4 +48,17 @@
 
 .set-selection-order li span {
   flex: 1;
+}
+
+/* 候補の<select>と「追加」ボタンを横に並べる。狭い幅では折り返す。 */
+.add-target-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.add-target-row select {
+  min-width: 0;
+  max-width: 100%;
 }

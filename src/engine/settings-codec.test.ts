@@ -7,6 +7,7 @@ import { LAYOUTS } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
 
 const context: CascadeContext = {
+  targetKind: 'setup',
   shapeId: PHYSICAL_SHAPES['row-staggered'].id,
   shape: PHYSICAL_SHAPES['row-staggered'],
   inputMethod: 'direct',

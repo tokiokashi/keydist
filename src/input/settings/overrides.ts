@@ -75,6 +75,23 @@ export function levelOverrides<V>(
 }
 
 /**
+ * 指定レベル・1項目だけの生の上書き値を読む（無ければ`undefined`）。`resolveCascade`
+ * （`resolve.ts`）はレベルを弱い順に重ねる・`validate`/`isApplicable`まで含めた「実効値」を
+ * 求める仕組みだが、`CascadeContext`をまだ組み立てられない場面（例: 配列を対象にした時の
+ * 物理形状そのものを決める`defaultShapeId`。`engine/settings-items.ts`の
+ * `resolveDefaultShapeId`）では、その前段として「特定の1レベルに書かれた生の値」だけが
+ * 要ることがある。`levelOverrides`を1項目ぶんに絞るだけの薄いヘルパー。
+ */
+export function readOverride<V, K extends keyof V>(
+  overrides: CascadeOverrides<V>,
+  level: CascadeLevel,
+  itemId: K,
+): V[K] | undefined {
+  const stored = levelOverrides(overrides, level);
+  return stored === undefined ? undefined : stored[itemId];
+}
+
+/**
  * 指定レベルの上書きを丸ごと置き換えた新しいCascadeOverridesを返す（イミュータブル）。
  * `next` が `undefined` ならそのレベルのエントリごと消す（空オブジェクトを残さない）。
  */

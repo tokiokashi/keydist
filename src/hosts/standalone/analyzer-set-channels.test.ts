@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
-import type { Setup } from '#input/setup/index.ts';
+import type { AnalysisTarget, Setup } from '#input/setup/index.ts';
 import { createEngineCache } from '#engine/cache.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
@@ -41,8 +41,10 @@ const CATALOG = {
 
 function memberFor(setupId: string, layoutId: string): EngineSetMemberInput {
   const setup: Setup = { id: setupId, layoutId, shapeId: 'row-staggered', colorIndex: 0 };
+  const target: AnalysisTarget = { kind: 'setup', setupId: setup.id };
   const resolution = resolveEngineInput({
-    setup,
+    target,
+    setups: new Map([[setup.id, setup]]),
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides: EMPTY_SETTINGS_OVERRIDES,
@@ -50,7 +52,7 @@ function memberFor(setupId: string, layoutId: string): EngineSetMemberInput {
     language: 'en',
   });
   assert.ok(resolution.ok);
-  return { setupId, resolution };
+  return { target, resolution };
 }
 
 test('syncAnalyzerSetPaneChannels: optionsが同じ参照なら同じ抽出チャンネルを使い続ける', () => {
@@ -123,9 +125,10 @@ test('syncAnalyzerSetPaneChannels: 一部メンバーが解決に失敗しても
   const scheduler = createManualScheduler();
   const cache = createEngineCache();
   const okMember = memberFor('a', 'qwerty');
+  const missingTarget: AnalysisTarget = { kind: 'setup', setupId: 'missing' };
   const failingMember: EngineSetMemberInput = {
-    setupId: 'missing',
-    resolution: { ok: false, error: { kind: 'setup-missing', setupId: 'missing' } },
+    target: missingTarget,
+    resolution: { ok: false, error: { kind: 'target-missing', target: missingTarget } },
   };
   const states: ExtractionRequestState<ComparisonExtracted>[] = [];
 
@@ -143,8 +146,8 @@ test('syncAnalyzerSetPaneChannels: 一部メンバーが解決に失敗しても
   assert.equal(last?.status, 'ready');
   if (last?.status === 'ready') {
     const rows = last.value.extracted.rows;
-    assert.deepEqual(rows.map((row) => row.setupId).sort(), ['a', 'missing']);
-    assert.equal(rows.find((row) => row.setupId === 'missing')?.kind, 'failed');
+    assert.deepEqual(rows.map((row) => row.targetKey).sort(), ['setup:a', 'setup:missing']);
+    assert.equal(rows.find((row) => row.targetKey === 'setup:missing')?.kind, 'failed');
   }
   closeAnalyzerSetPaneChannels(channels);
 });

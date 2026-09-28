@@ -6,7 +6,7 @@ import { nSensitivityAnalyzer } from '#analyzers/n-sensitivity/definition.tsx';
 import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { NSensitivityStandalonePage } from '#hosts/standalone/index.ts';
 import { builtinStandaloneCatalog } from './catalog.ts';
-import { generateSetupId, generateTextId } from './id-generator.ts';
+import { generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
 
@@ -36,7 +36,6 @@ export function StandaloneNSensitivityApp() {
       dispatch={dispatch}
       cache={engineCache}
       catalog={catalog}
-      generateSetupId={generateSetupId}
       generateTextId={generateTextId}
       onTextContentCommit={commitTextContent}
       onOptionsCommit={commitOptions}

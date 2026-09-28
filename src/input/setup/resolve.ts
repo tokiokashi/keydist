@@ -62,6 +62,7 @@ export function resolveSetup(
     layout: layout!,
     shape: shape!,
     context: {
+      targetKind: 'setup',
       shapeId: shape!.id,
       shape: shape!,
       inputMethod,
