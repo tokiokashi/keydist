@@ -25,7 +25,7 @@ TypeScript を中心としたWebアプリ。技術構成は実験に応じて変
     手順と版番号の付け方は「公開」
   - 並行作業はworktreeを分けてよい。同じファイルに触る単位は並行にせず直列にする
   - **PRで直さない後続はマージ前にissueにし、マイルストーン（`vX.Y.Z` / `later`）に振り分ける。** PR本文には番号だけ書く。
-    本線が待ちの間は今の版の小さいissueを別の単位で片付けてよい（`needs-decision` は取らない）。手順は「issueとマイルストーン」
+    本線が待ちの間は今の版の小さいissueを別の単位で片付ける（`needs-decision` は取らない）。手順は「issueとマイルストーン」
 
 この `AGENTS.md` を、Codex・Claude Code などエージェント向け規約の唯一の正とする。
 ツール固有の事情がない限り、同じ内容を別名の指示ファイルへ複製しない。
@@ -229,7 +229,7 @@ headのSHAのcheck run（`https://api.github.com/repos/tokiokashi/keydist/commit
 | `infra` | ビルド・CI・リポジトリ基盤 |
 | `docs` | README・仕様以外のドキュメント |
 | `meta` | ロードマップなどissue運用そのもの |
-| `needs-decision` | オーナーが決めていない選択を含む。待ち時間の作業に取らない |
+| `needs-decision` | オーナーが決めていない選択を含む。待ち時間の作業・ついでの修正に取らない |
 
 コミットとissueの紐づけ:
 
