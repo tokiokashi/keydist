@@ -113,9 +113,14 @@ npm run dev        # 開発サーバー
 npm test           # モデルの分岐を検証
 npm run typecheck  # 型検査のみ
 npm run build      # 型検査 + ビルド
+npm run test:browser  # ブラウザe2e（Playwright）。手元では全件を回さない
 ```
 
 **pushする前に `npm test` と `npm run build` を通す。** CIも同じものを回す。
+**ブラウザe2eの全件は手元で回さず、pushしてCIの結果を読む。** CIの `browser-e2e` は全ブランチへのpushで走る（PR不要）。
+headのSHAのcheck run（`https://api.github.com/repos/tokiokashi/keydist/commits/<sha>/check-runs`）で
+`browser-e2e` の結果を確かめる。手元では触ったspecだけを `npx playwright test e2e/<spec> --workers=1` で回す。
+手順の詳細は `CONTRIBUTING.md` の「ブラウザe2e」。
 マージしてよい条件と方式は `CONTRIBUTING.md` の「マージ」が正。受け入れ条件を満たしていることも前提にする。
 
 ## 実装の方針

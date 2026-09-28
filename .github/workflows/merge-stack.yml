@@ -78,7 +78,7 @@ jobs:
 
             // head の CI を確かめる。問題があれば理由の配列を返す。
             // 同じ head に push と pull_request の両方で同名のジョブが走り、片方が skipped になることがある
-            // （browser-e2e は pull_request でだけ走る）。名前ごとに skipped 以外で一番新しい実行を見る
+            // （commit-messages は pull_request でだけ走る）。名前ごとに skipped 以外で一番新しい実行を見る
             const checkHead = async (prNumber, sha) => {
               const problems = [];
               const runs = (await github.paginate(github.rest.checks.listForRef, {
