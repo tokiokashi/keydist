@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import { setAnalyzerTargetSelectionCommand, setStandaloneAnalyzerOptionsCommand, type KeydistAssets } from '#engine/commands.ts';
-import { analyzerTargetSelectionFor } from '#engine/analyzer-target-selection.ts';
+import { setSingleTargetCommand, setStandaloneAnalyzerOptionsCommand, type KeydistAssets } from '#engine/commands.ts';
+import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
 import type { EngineCache } from '#engine/cache.ts';
-import { DEFAULT_ANALYSIS_TARGET } from '#input/setup/index.ts';
 import {
   combinePaneStates,
   conditionHeaderInfoFromResolvedInput,
@@ -79,12 +78,11 @@ export function BigramFlowStandalonePage({
   const setups = assets.setupLibrary.setups;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
 
-  // 対象（`AnalysisTarget`）は資産（`analyzerTargetSelections`）が正（#578指摘1）。
-  // 手持ちが空でも配列（既定`DEFAULT_ANALYSIS_TARGET` = qwerty）が常に選べるので、
-  // 旧`use-ensure-setup.ts`のような「空なら初期Setupを作る」副作用は不要になった。
+  // 対象（`AnalysisTarget`）はSingleのAnalyzerが共有する資産（`singleTargetSelection`。#663）が正。
+  // まだ選んでいなければ既定の配列を使う（`effectiveSingleTarget`）。
   const analyzerId = bigramFlowAnalyzer.definition.id;
-  const target = analyzerTargetSelectionFor(assets.analyzerTargetSelections, analyzerId, DEFAULT_ANALYSIS_TARGET);
-  const setTarget = (next: typeof target) => dispatch(setAnalyzerTargetSelectionCommand(analyzerId, next));
+  const target = effectiveSingleTarget(assets.singleTargetSelection);
+  const setTarget = (next: typeof target) => dispatch(setSingleTargetCommand(next));
 
   // テキストは資産（textLibrary + standaloneTextSelection）が正。編集・選択・複製・削除は
   // すべて共有部品`TextChip`（文脈バーのテキストのチップ。比較表・N感度と3ページで同じ操作を持つため。

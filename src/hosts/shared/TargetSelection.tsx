@@ -367,6 +367,10 @@ export function TargetSelection({
                           value={choice.key}
                           checked={checked}
                           onChange={(event) => toggle(choice.target, choice.key, event.currentTarget.checked)}
+                          // 選ばれているラジオを押してもchangeは起きない。ホストが既定の対象を表示しているだけの時も
+                          // 「選んだ」として書き込み、押したら閉じる動きも揃える（描画時点で選ばれていたものだけ。
+                          // 矢印キーで別のラジオへ移る時のclickは、移り先がまだ選ばれていないので対象にならない）。
+                          onClick={mode === 'single' && checked ? () => toggle(choice.target, choice.key, true) : undefined}
                         />
                         {mode === 'multiple' ? (
                           <i

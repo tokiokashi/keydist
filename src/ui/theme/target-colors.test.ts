@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { COLOR_SLOT_COUNT } from '#engine/analyzer-set-selection.ts';
+import { COLOR_SLOT_COUNT } from '#engine/multi-target-selection.ts';
 import { TARGET_PALETTE_SIZE, targetPaletteColor } from './target-colors.ts';
 
 // 背景は theme.css から読む。直書きすると theme.css を変えた時に古い値で測り続け、

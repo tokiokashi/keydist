@@ -22,16 +22,18 @@ import {
   resetCascadeItemCommand,
   resetCascadeLevelCommand,
   selectTextCommand,
-  setAnalyzerSetSelectionBaselineCommand,
-  setAnalyzerSetSelectionTargetsCommand,
-  setAnalyzerTargetSelectionCommand,
   setCascadeOverrideCommand,
+  setMultiBaselineCommand,
+  setMultiTargetsCommand,
+  setSingleTargetCommand,
   setStandaloneAnalyzerOptionsCommand,
   setTextContentCommand,
   setTextLanguageOverrideCommand,
   type KeydistAssets,
 } from './commands.ts';
 import type { SettingsValueMap } from './settings-items.ts';
+import { initialMultiTargetSelection } from './multi-target-selection.ts';
+import { initialSingleTargetSelection } from './single-target-selection.ts';
 
 let nextId = 0;
 const generateId = () => `setup-${++nextId}`;
@@ -46,8 +48,8 @@ function emptyAssets(): KeydistAssets {
     textLibrary: emptyTextLibrary(),
     standaloneTextSelection: initialTextSelection(),
     standaloneAnalyzerOptions: {},
-    analyzerSetSelections: {},
-    analyzerTargetSelections: {},
+    multiTargetSelection: initialMultiTargetSelection(),
+    singleTargetSelection: initialSingleTargetSelection(),
   };
 }
 
@@ -605,136 +607,156 @@ test('setStandaloneAnalyzerOptionsCommand: 別のAnalyzer idの設定は道連�
   });
 });
 
-test('setAnalyzerSetSelectionTargetsCommand: 対象の集合・並び順を書き込み、undo/redoで往復できる', () => {
+test('setMultiTargetsCommand: 対象の集合・並び順を書き込み、undo/redoで往復できる', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const step = applyCommand(assets, history, setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_A, TARGET_B]));
+  const step = applyCommand(assets, history, setMultiTargetsCommand([TARGET_A, TARGET_B]));
   assert.equal(step.outcome.kind, 'applied');
-  assert.deepEqual(step.assets.analyzerSetSelections.comparison?.targets, [TARGET_A, TARGET_B]);
+  assert.deepEqual(step.assets.multiTargetSelection.targets, [TARGET_A, TARGET_B]);
 
   const back = undo(step.assets, step.history);
-  assert.equal(back.assets.analyzerSetSelections.comparison, undefined);
+  assert.deepEqual(back.assets.multiTargetSelection.targets, []);
 
   const redone = redo(back.assets, back.history);
-  assert.deepEqual(redone.assets.analyzerSetSelections.comparison?.targets, [TARGET_A, TARGET_B]);
+  assert.deepEqual(redone.assets.multiTargetSelection.targets, [TARGET_A, TARGET_B]);
 });
 
-test('setAnalyzerSetSelectionTargetsCommand: 同じ並びの書き込みはno-op', () => {
+test('setMultiTargetsCommand: 同じ並びの書き込みはno-op', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const step = applyCommand(assets, history, setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_A, TARGET_B]));
-  const again = applyCommand(step.assets, step.history, setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_A, TARGET_B]));
+  const step = applyCommand(assets, history, setMultiTargetsCommand([TARGET_A, TARGET_B]));
+  const again = applyCommand(step.assets, step.history, setMultiTargetsCommand([TARGET_A, TARGET_B]));
   assert.equal(again.outcome.kind, 'no-op');
   assert.equal(again.assets, step.assets);
 });
 
-test('setAnalyzerSetSelectionTargetsCommand: 重複したSetup idは1つに畳む', () => {
+test('setMultiTargetsCommand: 重複したSetup idは1つに畳む', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const step = applyCommand(assets, history, setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_A, TARGET_B, TARGET_A]));
-  assert.deepEqual(step.assets.analyzerSetSelections.comparison?.targets, [TARGET_A, TARGET_B]);
+  const step = applyCommand(assets, history, setMultiTargetsCommand([TARGET_A, TARGET_B, TARGET_A]));
+  assert.deepEqual(step.assets.multiTargetSelection.targets, [TARGET_A, TARGET_B]);
 });
 
-test('setAnalyzerSetSelectionBaselineCommand: 基準の設定・解除を書き込める（選択に含まれるSetupだけ）', () => {
+test('setMultiBaselineCommand: 基準の設定・解除を書き込める（選択に含まれるSetupだけ）', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const withSelection = applyCommand(assets, history, setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_A, TARGET_B]));
+  const withSelection = applyCommand(assets, history, setMultiTargetsCommand([TARGET_A, TARGET_B]));
   const withBaseline = applyCommand(
     withSelection.assets,
     withSelection.history,
-    setAnalyzerSetSelectionBaselineCommand('comparison', TARGET_A),
+    setMultiBaselineCommand(TARGET_A),
   );
-  assert.equal(withBaseline.assets.analyzerSetSelections.comparison?.baseline, TARGET_A);
+  assert.equal(withBaseline.assets.multiTargetSelection.baseline, TARGET_A);
 
   const cleared = applyCommand(
     withBaseline.assets,
     withBaseline.history,
-    setAnalyzerSetSelectionBaselineCommand('comparison', undefined),
+    setMultiBaselineCommand(undefined),
   );
-  assert.equal(cleared.assets.analyzerSetSelections.comparison?.baseline, undefined);
+  assert.equal(cleared.assets.multiTargetSelection.baseline, undefined);
 });
 
-test('setAnalyzerSetSelectionBaselineCommand: 選択に含まれないSetupを基準にしようとするとno-op（不変条件）', () => {
+test('setMultiBaselineCommand: 選択に含まれないSetupを基準にしようとするとno-op（不変条件）', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const withSelection = applyCommand(assets, history, setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_A, TARGET_B]));
+  const withSelection = applyCommand(assets, history, setMultiTargetsCommand([TARGET_A, TARGET_B]));
   const attempt = applyCommand(
     withSelection.assets,
     withSelection.history,
-    setAnalyzerSetSelectionBaselineCommand('comparison', TARGET_NOT_SELECTED),
+    setMultiBaselineCommand(TARGET_NOT_SELECTED),
   );
   assert.equal(attempt.outcome.kind, 'no-op');
 });
 
-test('setAnalyzerSetSelectionTargetsCommand: 基準に選んでいたSetupが選択から外れたら、基準も一緒に外れる（不変条件）', () => {
+test('setMultiTargetsCommand: 基準に選んでいたSetupが選択から外れたら、基準も一緒に外れる（不変条件）', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
-  const withSelection = applyCommand(assets, history, setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_A, TARGET_B]));
+  const withSelection = applyCommand(assets, history, setMultiTargetsCommand([TARGET_A, TARGET_B]));
   const withBaseline = applyCommand(
     withSelection.assets,
     withSelection.history,
-    setAnalyzerSetSelectionBaselineCommand('comparison', TARGET_A),
+    setMultiBaselineCommand(TARGET_A),
   );
   const removed = applyCommand(
     withBaseline.assets,
     withBaseline.history,
-    setAnalyzerSetSelectionTargetsCommand('comparison', [TARGET_B]),
+    setMultiTargetsCommand([TARGET_B]),
   );
-  assert.deepEqual(removed.assets.analyzerSetSelections.comparison?.targets, [TARGET_B]);
-  assert.equal(removed.assets.analyzerSetSelections.comparison?.baseline, undefined);
+  assert.deepEqual(removed.assets.multiTargetSelection.targets, [TARGET_B]);
+  assert.equal(removed.assets.multiTargetSelection.baseline, undefined);
 });
 
-test('setAnalyzerTargetSelectionCommand: 対象を書き込み、undo/redoで往復できる', () => {
+test('setSingleTargetCommand: 対象を書き込み、undo/redoで往復できる', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
   const target: AnalysisTarget = { kind: 'layout', layoutId: 'colemak-dh' };
 
-  const step = applyCommand(assets, history, setAnalyzerTargetSelectionCommand('bigram-flow', target));
+  const step = applyCommand(assets, history, setSingleTargetCommand(target));
   assert.equal(step.outcome.kind, 'applied');
-  assert.deepEqual(step.assets.analyzerTargetSelections['bigram-flow'], target);
+  assert.deepEqual(step.assets.singleTargetSelection.target, target);
 
   const back = undo(step.assets, step.history);
-  assert.equal(back.assets.analyzerTargetSelections['bigram-flow'], undefined);
+  assert.equal(back.assets.singleTargetSelection.target, undefined);
 
   const redone = redo(back.assets, back.history);
-  assert.deepEqual(redone.assets.analyzerTargetSelections['bigram-flow'], target);
+  assert.deepEqual(redone.assets.singleTargetSelection.target, target);
 });
 
-test('setAnalyzerTargetSelectionCommand: 同じ対象の書き込みはno-op', () => {
+test('setSingleTargetCommand: 同じ対象の書き込みはno-op', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
   const target: AnalysisTarget = { kind: 'layout', layoutId: 'colemak-dh' };
 
-  const step = applyCommand(assets, history, setAnalyzerTargetSelectionCommand('bigram-flow', target));
+  const step = applyCommand(assets, history, setSingleTargetCommand(target));
   const again = applyCommand(
     step.assets,
     step.history,
-    setAnalyzerTargetSelectionCommand('bigram-flow', { kind: 'layout', layoutId: 'colemak-dh' }),
+    setSingleTargetCommand({ kind: 'layout', layoutId: 'colemak-dh' }),
   );
   assert.equal(again.outcome.kind, 'no-op');
   assert.equal(again.assets, step.assets);
 });
 
-test('setAnalyzerTargetSelectionCommand: Analyzer idごとに独立して書き込める', () => {
+test('setMultiBaselineCommand: Singleが未選択なら同じコマンドでSingleにも基準を書き、Undoで一緒に戻る（#663）', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
+  const withSelection = applyCommand(assets, history, setMultiTargetsCommand([TARGET_A, TARGET_B]));
+  const withBaseline = applyCommand(withSelection.assets, withSelection.history, setMultiBaselineCommand(TARGET_B));
+  assert.equal(withBaseline.assets.multiTargetSelection.baseline, TARGET_B);
+  assert.equal(withBaseline.assets.singleTargetSelection.target, TARGET_B);
 
-  const withBigramFlow = applyCommand(
-    assets,
-    history,
-    setAnalyzerTargetSelectionCommand('bigram-flow', { kind: 'layout', layoutId: 'colemak-dh' }),
-  );
-  const withBoth = applyCommand(
-    withBigramFlow.assets,
-    withBigramFlow.history,
-    setAnalyzerTargetSelectionCommand('other-analyzer', TARGET_A),
-  );
-  assert.deepEqual(withBoth.assets.analyzerTargetSelections['bigram-flow'], { kind: 'layout', layoutId: 'colemak-dh' });
-  assert.deepEqual(withBoth.assets.analyzerTargetSelections['other-analyzer'], TARGET_A);
+  const back = undo(withBaseline.assets, withBaseline.history);
+  assert.equal(back.assets.multiTargetSelection.baseline, undefined);
+  assert.equal(back.assets.singleTargetSelection.target, undefined);
+});
+
+test('setMultiBaselineCommand: Singleに値が入った後は、基準を変えてもSingleは変わらない（連動させない）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const withSelection = applyCommand(assets, history, setMultiTargetsCommand([TARGET_A, TARGET_B]));
+  const filled = applyCommand(withSelection.assets, withSelection.history, setMultiBaselineCommand(TARGET_A));
+  const changed = applyCommand(filled.assets, filled.history, setMultiBaselineCommand(TARGET_B));
+  assert.equal(changed.assets.multiTargetSelection.baseline, TARGET_B);
+  assert.equal(changed.assets.singleTargetSelection.target, TARGET_A);
+
+  const chosen = applyCommand(withSelection.assets, withSelection.history, setSingleTargetCommand(TARGET_NOT_SELECTED));
+  const afterChosen = applyCommand(chosen.assets, chosen.history, setMultiBaselineCommand(TARGET_A));
+  assert.equal(afterChosen.assets.singleTargetSelection.target, TARGET_NOT_SELECTED);
+});
+
+test('setMultiBaselineCommand: 基準を外してもSingleには書かない', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const withSelection = applyCommand(assets, history, setMultiTargetsCommand([TARGET_A]));
+  const withBaseline = applyCommand(withSelection.assets, withSelection.history, setMultiBaselineCommand(TARGET_A));
+  const back = undo(withBaseline.assets, withBaseline.history);
+  const cleared = applyCommand(back.assets, back.history, setMultiBaselineCommand(undefined));
+  assert.equal(cleared.outcome.kind, 'no-op');
+  assert.equal(cleared.assets.singleTargetSelection.target, undefined);
 });
