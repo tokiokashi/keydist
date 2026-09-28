@@ -21,3 +21,4 @@ export {
   type SetupLibrary,
 } from './collection.ts';
 export { initialSetups } from './initial.ts';
+export { setupLibraryCodec } from './codec.ts';
