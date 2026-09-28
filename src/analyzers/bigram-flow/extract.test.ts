@@ -19,13 +19,20 @@ import {
   relativeVectors,
   repeatCountsByKey,
 } from './bigram-vectors.ts';
+import { findOptionsKeyDisciplineViolations, findViewOptionsExtractionViolations } from '#analyzers/options.ts';
 import { nonStationaryVectors } from './options.ts';
 import {
   bigramFlowDefinition,
   computeBigramFlowExtraction,
   type BigramFlowExtracted,
 } from './extract.ts';
-import { DEFAULT_BIGRAM_FLOW_OPTIONS, decodeBigramFlowOptions, type BigramFlowOptions } from './options.ts';
+import {
+  ALTERNATE_BIGRAM_FLOW_OPTIONS,
+  DEFAULT_BIGRAM_FLOW_OPTIONS,
+  bigramFlowOptions,
+  decodeBigramFlowOptions,
+  type BigramFlowOptions,
+} from './options.ts';
 
 /**
  * `computeBigramFlowExtraction`（`extract.ts`）が、旧`bigram-flow-view.tsx`が
@@ -311,10 +318,41 @@ test('engineのgetExtraction経由でBigram Flowを回すと、同じ抽出キ�
   assert.equal(counter.calls, 1);
 
   // 見た目だけの設定変更ではextractが増えない。
-  cache.getExtraction(input, definition, { ...DEFAULT_BIGRAM_FLOW_OPTIONS, lineScale: 'log' });
+  // `optionsDiscipline.extractForTest`が`Options`を反変位置でもう一度使うようになった影響で、
+  // ここから`Options`を推論に任せると型が広がってしまう（`lineScale`等がリテラル型では
+  // なく`string`に推論される）ため、明示的に型引数を渡して`definition`と揃える。
+  cache.getExtraction<BigramFlowOptions, BigramFlowExtracted>(
+    input, definition, { ...DEFAULT_BIGRAM_FLOW_OPTIONS, lineScale: 'log' },
+  );
   assert.equal(counter.calls, 1, '見た目だけの設定変更でextractが走った');
 
   // 抽出に効く設定変更では増える。
-  cache.getExtraction(input, definition, { ...DEFAULT_BIGRAM_FLOW_OPTIONS, source: 'within-hand' });
+  cache.getExtraction<BigramFlowOptions, BigramFlowExtracted>(
+    input, definition, { ...DEFAULT_BIGRAM_FLOW_OPTIONS, source: 'within-hand' },
+  );
   assert.equal(counter.calls, 2, '抽出に効く設定変更でextractが走らなかった');
+});
+
+// ---------------------------------------------------------------------------
+// 入れ忘れ防止: Bigram Flowの8項目全部を機械的に回す（#544指示書「入れ忘れ防止のテスト」）
+// ---------------------------------------------------------------------------
+
+test('入れ忘れ防止: 抽出キーはaffects:extractの項目だけで変わる（8項目全部を宣言から機械的に回す）', () => {
+  const violations = findOptionsKeyDisciplineViolations(
+    bigramFlowOptions,
+    DEFAULT_BIGRAM_FLOW_OPTIONS,
+    ALTERNATE_BIGRAM_FLOW_OPTIONS,
+  );
+  assert.deepEqual(violations, []);
+});
+
+test('入れ忘れ防止: affects:viewの項目を変えても実際のextract結果は変わらない（誤分類の検出）', () => {
+  const trace = fixtureTrace();
+  const violations = findViewOptionsExtractionViolations(
+    bigramFlowOptions,
+    DEFAULT_BIGRAM_FLOW_OPTIONS,
+    ALTERNATE_BIGRAM_FLOW_OPTIONS,
+    (options) => computeBigramFlowExtraction(trace, options),
+  );
+  assert.deepEqual(violations, []);
 });

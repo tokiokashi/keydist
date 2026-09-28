@@ -4,6 +4,11 @@ import type { Layout } from '#input/layouts/types.ts';
 import type { Trace, TracePolicy } from '#trace/generate.ts';
 import type { AggregatedAnalysisResult } from '#interpretation/structure/aggregate.ts';
 import type { Metrics } from '#interpretation/metrics.ts';
+import type { OptionsDefinition, OptionsDisciplineFixture, OptionsRegistry, OptionsValueMap } from './options.ts';
+
+// `OptionsRegistry`はこのファイルの型なので再exportして、横断テスト
+// （`test/analyzer-options-discipline.test.ts`）が`optionsItems`の型を書けるようにする。
+export type { OptionsRegistry } from './options.ts';
 
 /**
  * Analyzerの契約のうち純粋な部分（#544 §7・§9、docs/architecture.md）。
@@ -79,12 +84,26 @@ export interface SetAnalyzerExtractContext<Options> {
 // ---------------------------------------------------------------------------
 
 /**
+ * `SingleAnalyzerDefinition`/`SetAnalyzerDefinition`の“証”（#544レビュー対応A）。
+ *
+ * この`unique symbol`はこのモジュールの外へexportしないので、外のコードはこのキーを
+ * 持つオブジェクトリテラルを書けない。結果として、この2つの型はオブジェクトリテラルを
+ * 手組みして満たすことができず、`defineSingleAnalyzer`/`defineSetAnalyzer`（このファイルの
+ * 中でだけこのsymbolを使える）を経由してしか作れなくなる。狙いは`defaultOptions`/
+ * `decodeOptions`/`extractKeyOf`を宣言（`options.ts`）からしか得られない状態を
+ * 型検査でも強制すること: 手組みで3つを個別に書ける経路が残っていると、
+ * 「抽出に効く設定をextractKeyOfへ入れ忘れる」事故がAnalyzerを足すたびに再発しうる。
+ */
+const ANALYZER_DEFINITION_BRAND: unique symbol = Symbol('AnalyzerDefinition');
+
+/**
  * `AnalyzerDefinition` を対象の種類で2つに分ける（#544 用語集「Analyzerの対象はSetup 1つか
  * Setupの集合」）。1つの型に両方の形を詰め込むと、`cardinality` によって `extract` の引数の
  * 形が変わることをTypeScriptの型で表現しづらくなる（呼び出し側で毎回絞り込みが要る）ため、
  * 判別可能なUnionの片側ずつを別の型として定義し、`AnalyzerDefinition` はその合併にする。
  */
 export interface SingleAnalyzerDefinition<Options = unknown, Extracted = unknown> {
+  readonly [ANALYZER_DEFINITION_BRAND]: 'single';
   readonly id: string;
   readonly cardinality: 'single';
   readonly defaultOptions: Options;
@@ -104,20 +123,90 @@ export interface SingleAnalyzerDefinition<Options = unknown, Extracted = unknown
   extractKeyOf(options: Options): unknown;
   /** 抽出の純関数。Trace・解釈・options以外の外部状態を参照しない。 */
   extract(context: SingleAnalyzerExtractContext<Options>): Extracted;
+  /**
+   * 入れ忘れ防止テストの材料（#544レビュー対応B）。`defineSingleAnalyzer`が必須で
+   * 要求するので、宣言（items）だけ書いてテストの材料を用意し忘れる、という状態を
+   * 型検査の時点で作れない。横断テスト（`test/analyzer-options-discipline.test.ts`）が
+   * これを使って全Analyzerへ`checkOptionsDiscipline`（`options.ts`）を回す。
+   */
+  readonly optionsDiscipline: OptionsDisciplineFixture<Options, Extracted>;
+  /**
+   * 宣言（`options.ts`の`items`）そのもの。ジェネリックを`OptionsRegistry`まで消した形
+   * （`OptionsValueMap<R>`が`Options`と一致する保証をこの型だけでは表現できないため）。
+   * `test/analyzer-options-discipline.test.ts`が個別のAnalyzerユニットをimportできない
+   * 場所（analyzers/直下・engineから）から動的に読み込んだ定義を検査するために使う
+   * （`items`の`affects`宣言が要る。`extractKeyOf`は上の`extractKeyOf`をそのまま使う）。
+   */
+  readonly optionsItems: OptionsRegistry;
 }
 
 export interface SetAnalyzerDefinition<Options = unknown, Extracted = unknown> {
+  readonly [ANALYZER_DEFINITION_BRAND]: 'set';
   readonly id: string;
   readonly cardinality: 'set';
   readonly defaultOptions: Options;
   decodeOptions(raw: unknown, diagnostics: CodecDiagnostic[]): Options;
   extractKeyOf(options: Options): unknown;
   extract(context: SetAnalyzerExtractContext<Options>): Extracted;
+  readonly optionsDiscipline: OptionsDisciplineFixture<Options, Extracted>;
+  readonly optionsItems: OptionsRegistry;
 }
 
 export type AnalyzerDefinition<Options = unknown, Extracted = unknown> =
   | SingleAnalyzerDefinition<Options, Extracted>
   | SetAnalyzerDefinition<Options, Extracted>;
+
+// ---------------------------------------------------------------------------
+// 宣言（options.ts）からAnalyzerDefinitionを組み立てる
+// ---------------------------------------------------------------------------
+
+/**
+ * `defaultOptions` / `decodeOptions` / `extractKeyOf`を`OptionsDefinition`（`options.ts`。
+ * 項目ごとの宣言）から導いて`SingleAnalyzerDefinition`を組み立てる。#544指示書
+ * 「Analyzerが手書きで上書きできる口は作らない」: この3つを個別に上書きする引数は
+ * 存在しない。Analyzer実装が書くのは`id`・`options`（宣言）・`extract`・
+ * `optionsDiscipline`（入れ忘れ防止テストの材料。#544レビュー対応B）だけ。
+ * `optionsDiscipline`は省略できない必須のconfigフィールドなので、宣言（items）は
+ * 書いたがテストの材料を用意し忘れる、という状態を型検査で防ぐ。
+ */
+export function defineSingleAnalyzer<R extends OptionsRegistry, Extracted>(config: {
+  readonly id: string;
+  readonly options: OptionsDefinition<R>;
+  readonly extract: (context: SingleAnalyzerExtractContext<OptionsValueMap<R>>) => Extracted;
+  readonly optionsDiscipline: OptionsDisciplineFixture<OptionsValueMap<R>, Extracted>;
+}): SingleAnalyzerDefinition<OptionsValueMap<R>, Extracted> {
+  return {
+    [ANALYZER_DEFINITION_BRAND]: 'single',
+    id: config.id,
+    cardinality: 'single',
+    defaultOptions: config.options.defaultOptions,
+    decodeOptions: config.options.decodeOptions,
+    extractKeyOf: config.options.extractKeyOf,
+    extract: config.extract,
+    optionsDiscipline: config.optionsDiscipline,
+    optionsItems: config.options.items,
+  };
+}
+
+/** `defineSingleAnalyzer`の集合対象版。 */
+export function defineSetAnalyzer<R extends OptionsRegistry, Extracted>(config: {
+  readonly id: string;
+  readonly options: OptionsDefinition<R>;
+  readonly extract: (context: SetAnalyzerExtractContext<OptionsValueMap<R>>) => Extracted;
+  readonly optionsDiscipline: OptionsDisciplineFixture<OptionsValueMap<R>, Extracted>;
+}): SetAnalyzerDefinition<OptionsValueMap<R>, Extracted> {
+  return {
+    [ANALYZER_DEFINITION_BRAND]: 'set',
+    id: config.id,
+    cardinality: 'set',
+    defaultOptions: config.options.defaultOptions,
+    decodeOptions: config.options.decodeOptions,
+    extractKeyOf: config.options.extractKeyOf,
+    extract: config.extract,
+    optionsDiscipline: config.optionsDiscipline,
+    optionsItems: config.options.items,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // AnalyzerInstance

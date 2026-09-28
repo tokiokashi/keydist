@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import { createSetupCommand, setStandaloneTextCommand, type KeydistAssets } from '#engine/commands.ts';
+import { setStandaloneAnalyzerOptionsCommand, setStandaloneTextCommand, type KeydistAssets } from '#engine/commands.ts';
 import { sampleTextEntries } from '#input/text/samples.ts';
 import type { EngineCache } from '#engine/cache.ts';
 import type { SetupIdGenerator } from '#input/setup/index.ts';
 import { combinePaneStates, conditionHeaderInfoFromResolvedInput, traceConditionSummary, PaneFrame } from '#hosts/shared/index.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
+import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
-import type { BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
+import { bigramFlowOptions, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
-import { selectInitialSetupId, DEFAULT_STANDALONE_SETUP_SPEC } from './setup-selection.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { useAnalyzerPane } from './use-analyzer-pane.ts';
+import { useEnsureSetup } from './use-ensure-setup.ts';
 import './standalone.css';
 
 // Setupが用意される前の一瞬に渡す値。レンダーごとに作ると`useAnalyzerPane`の依存が毎回変わり、
@@ -28,6 +29,13 @@ const NO_SETUP_YET: ResolvedInputResult = { ok: false, error: { kind: 'reference
  */
 export interface BigramFlowStandalonePageProps {
   readonly assets: KeydistAssets;
+  /**
+   * `assets`が資産（storage）からの初回読み込みを終えているか（`useKeydistAssets`の
+   * `ready`。#544 Phase 3「URLでの受け取り」）。URLパラメータを既存の解析設定へ
+   * 部分マージする処理は、この読み込みより前に走ると既存の値を初期値へ巻き戻して
+   * しまうため、`ready`になるまで待つ。
+   */
+  readonly assetsReady: boolean;
   readonly dispatch: (command: Command<KeydistAssets>) => void;
   readonly cache: EngineCache;
   readonly catalog: StandalonePaneCatalog;
@@ -44,6 +52,7 @@ const TEXT_COMMIT_DEBOUNCE_MS = 400;
 
 export function BigramFlowStandalonePage({
   assets,
+  assetsReady,
   dispatch,
   cache,
   catalog,
@@ -51,27 +60,16 @@ export function BigramFlowStandalonePage({
   onBigramFlowOptionsCommit,
 }: BigramFlowStandalonePageProps) {
   const setups = assets.setupLibrary.setups;
-  const [selectedSetupId, setSelectedSetupId] = useState<string | undefined>(
-    () => selectInitialSetupId(setups),
+  // 手持ちが空なら初期値を1つ作る（#544指示書「空なら簡単な初期値を用意する」）。
+  // `assetsReady`を待ってから「本当に空か」を判定する配線は`hosts/standalone`の
+  // 共通hookへ1本化してある（`use-ensure-setup.ts`のコメント参照。レビュー対応:
+  // 待たずに判定すると保存済みのSetupを巻き戻す事故になる）。
+  const { selectedSetupId, setSelectedSetupId } = useEnsureSetup(
+    setups,
+    assetsReady,
+    dispatch,
+    generateSetupId,
   );
-
-  // 手持ちが空なら、簡単な初期値を1つ作る（#544指示書「空なら簡単な初期値を用意する」）。
-  // 既存のSetupを作るコマンドをそのまま使う（書き込みはコマンドを通す。#544 §8-2）。
-  useEffect(() => {
-    if (setups.length > 0) return;
-    dispatch(createSetupCommand(
-      DEFAULT_STANDALONE_SETUP_SPEC.layoutId,
-      DEFAULT_STANDALONE_SETUP_SPEC.shapeId,
-      generateSetupId,
-    ));
-    // `setups`自体を依存に含めると、作成直後（setups.length===1）でまたこの効果が走ってしまう
-    // ため、「空かどうか」という条件だけを依存にする。
-  }, [setups.length === 0, dispatch, generateSetupId]);
-
-  // 選んでいたSetupが手持ちから消えたら（削除・初回作成直後）選び直す。
-  useEffect(() => {
-    setSelectedSetupId((current) => selectInitialSetupId(setups, current));
-  }, [setups]);
 
   const selectedSetup = setups.find((setup) => setup.id === selectedSetupId);
 
@@ -109,6 +107,62 @@ export function BigramFlowStandalonePage({
     // draftを揃え直す。`decoded`は`storedOptionsRaw`が同じ参照なら同じ内容の
     // オブジェクトを毎回作るだけなので、無限ループにはならない（依存はdecoded自身）。
   }, [decoded]);
+
+  // URL経由で解析設定を受け取る（#544 Phase 3「URLでの受け取り」）。取り込む対象は
+  // 解析設定だけ（配列・形状・条件をURLへ載せる共有リンクはPhase 5の範囲外）。
+  // 資産（`assets`）がstorageからの初回読み込みを終える（`assetsReady`）まで待ってから
+  // 読み込んだらURLから該当パラメータを消す（#544「取り込み後はローカルが正」）。
+  // `assetsReady`を待たずに`decoded.options`をベースへマージすると、読み込み前の
+  // 初期値（空）をベースにしてしまい、既存の解析設定を巻き戻す事故になる
+  // （`useKeydistAssets`の`ready`のコメント参照。#544レビューで見つかった競合）。
+  //
+  // 取り込みは、URLで指定された項目だけを現在の解析設定へ上書きする部分マージにする:
+  // フルスクラッチの上書きだと「URLで指定していない項目まで既定値に戻る」事故になりやすく、
+  // 共有リンクを開いただけで自分の設定が丸ごと消える方が「一部だけ変わる」より驚きが
+  // 大きいと判断した（確認ダイアログは挟まない。単体ページの解析設定はUndo対象の資産なので、
+  // 誤って開いた場合もUndo/元のURLに戻すことで復旧できる）。
+  const decodedOptionsRef = useRef(decoded.options);
+  decodedOptionsRef.current = decoded.options;
+  const appliedUrlOptionsRef = useRef(false);
+  const [urlDiagnostics, setUrlDiagnostics] = useState<readonly CodecDiagnostic[]>([]);
+  useEffect(() => {
+    if (!assetsReady) return;
+    if (appliedUrlOptionsRef.current) return;
+    appliedUrlOptionsRef.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const diagnostics: CodecDiagnostic[] = [];
+    const result = bigramFlowOptions.decodeOptionsFromUrl(params, diagnostics);
+    if (diagnostics.length > 0) setUrlDiagnostics(diagnostics);
+    if (result.consumedParamNames.length === 0) return;
+
+    if (Object.keys(result.values).length > 0) {
+      const merged = { ...decodedOptionsRef.current, ...result.values };
+      dispatch(setStandaloneAnalyzerOptionsCommand(analyzerId, merged));
+      setOptionsDraft(merged);
+    }
+
+    const nextParams = new URLSearchParams(window.location.search);
+    for (const name of result.consumedParamNames) nextParams.delete(name);
+    const nextQuery = nextParams.toString();
+    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
+    window.history.replaceState(null, '', nextUrl);
+    // `assetsReady`がtrueになった最初の1回だけ実行する（`appliedUrlOptionsRef`）。
+    // `analyzerId`はAnalyzer定義由来の定数、`dispatch`は`useKeydistAssets`が返す
+    // 安定した参照なので、依存に含めても再実行の心配は無い。
+  }, [assetsReady, analyzerId, dispatch]);
+
+  const [copyLinkFeedback, setCopyLinkFeedback] = useState(false);
+  const copyOptionsLink = () => {
+    // 「今の設定のURLをコピー」導線（#544指示書「小さく済むなら足す」）。既定値と同じ項目は
+    // URLへ出ない（`encodeOptionsToUrl`）ので、変更した項目だけを含む短いリンクになる。
+    const params = bigramFlowOptions.encodeOptionsToUrl(optionsDraft);
+    const query = params.toString();
+    const url = `${window.location.origin}${window.location.pathname}${query ? `?${query}` : ''}`;
+    void navigator.clipboard.writeText(url).then(() => {
+      setCopyLinkFeedback(true);
+      setTimeout(() => setCopyLinkFeedback(false), 1500);
+    });
+  };
 
   // サンプルは選べれば十分で、言語を選ぶUIは作らない（#544指示書）。テキストが今どの
   // サンプルと一致するかを`<select>`の値に反映する（自由入力中はどれとも一致せず空になる）。
@@ -205,6 +259,13 @@ export function BigramFlowStandalonePage({
             ))}
           </select>
         </label>
+
+        <div className="standalone-control">
+          <span>解析設定</span>
+          <button type="button" onClick={copyOptionsLink}>
+            {copyLinkFeedback ? 'コピーした' : '今の設定のURLをコピー'}
+          </button>
+        </div>
       </section>
 
       {selectedSetup === undefined ? (
@@ -216,7 +277,7 @@ export function BigramFlowStandalonePage({
           conditionRows={conditionRows}
           engineState={combinePaneStates(extraction, pane.trace)}
           traceErrors={traceErrors}
-          settingsDiagnostics={decoded.diagnostics}
+          settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}
         >
           {(() => {
             // 失敗はPaneFrame自身が値として表示する（#544 §8-5）ので、ここでは何も描かない。

@@ -154,6 +154,152 @@ test('保存された解析設定が壊れていたら、既定値へ戻しつ�
   await expect(actual).toHaveAttribute('aria-pressed', 'true');
 });
 
+test('URLパラメータで開くと解析設定が反映され、資産に残り、URLから消える', async ({ page }) => {
+  // #544 Phase 3「URLでの受け取り」: 解析設定だけをURLクエリで受け取り、取り込んだら
+  // ローカル（資産）が正になる（=URLからは消える）ことを確認する。
+  await page.goto('/standalone/bigram-flow?source=within-hand&fingers=index');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  // 反映: sourceがWithin-hand、指選択がindexになっている。
+  const withinHand = flow.getByRole('button', { name: 'Within-hand' });
+  await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
+  const indexFinger = flow.locator('.flow-finger-buttons button', { hasText: '人' });
+  await expect(indexFinger).toHaveAttribute('aria-pressed', 'true');
+
+  // URLから消える（取り込み後はローカルが正）。
+  await expect(page).toHaveURL(/\/standalone\/bigram-flow$/);
+
+  // 資産（storage）に残る。
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options')))
+    .toContain('within-hand');
+
+  // リロードしても保たれる。
+  await page.reload();
+  const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
+  await expect(flowAfterReload.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('URLパラメータの壊れた値は既定値へ戻し、診断をペインに表示する', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow?source=diagonal');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  const diagnostics = page.locator('[data-pane-settings-diagnostics="true"]');
+  await expect(diagnostics).toBeVisible();
+
+  // 既定値のまま（壊れたURLパラメータは使われない）。
+  const actual = flow.getByRole('button', { name: 'Actual', exact: true });
+  await expect(actual).toHaveAttribute('aria-pressed', 'true');
+
+  // 壊れていても消費済みとしてURLからは消える。
+  await expect(page).toHaveURL(/\/standalone\/bigram-flow$/);
+});
+
+test('URLパラメータは既存の解析設定へ部分マージされる（指定していない項目は保たれる）', async ({ page }) => {
+  // 先にlineScaleを'sqrt'へ変更して資産へ保存する。
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+  const lineScale = flow.getByLabel('紐の太さのスケール');
+  await lineScale.selectOption('sqrt');
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options')))
+    .toContain('sqrt');
+
+  // sourceだけを指定したURLで開く。lineScaleの指定は無いので、保存済みの'sqrt'が保たれるはず。
+  await page.goto('/standalone/bigram-flow?source=within-hand');
+  const flowAfter = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flowAfter).toBeVisible({ timeout: 10_000 });
+  await expect(flowAfter.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(flowAfter.getByLabel('紐の太さのスケール')).toHaveValue('sqrt');
+});
+
+test('「今の設定のURLをコピー」で既定値と違う項目だけを含むURLがクリップボードに入る', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  const withinHand = flow.getByRole('button', { name: 'Within-hand' });
+  await withinHand.click();
+  await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByRole('button', { name: '今の設定のURLをコピー' }).click();
+  await expect(page.getByRole('button', { name: 'コピーした' })).toBeVisible();
+
+  const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+  expect(clipboardText).toContain('source=within-hand');
+  // 既定値のまま（変えていない）lineScale等はURLに含まれない。
+  expect(clipboardText).not.toContain('lineScale=');
+});
+
+test('保存済みのSetupが2件あっても、開いた時に1件へ巻き戻らない（初期Setup作成の競合の回帰）', async ({ page }) => {
+  // #544レビュー: 初期Setup作成の効果がstorage読み込み前の空状態を見て新しいSetupを
+  // 作ってしまい、保存済みのSetup（複数件）がデフォルト1件で置き換わる事故の再現。
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'keydist:setup-library',
+      JSON.stringify({
+        version: 1,
+        setups: [
+          { id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 },
+          { id: 'fixed-b', layoutId: 'colemak-dh', shapeId: 'row-staggered', colorIndex: 1 },
+        ],
+        overrides: {},
+      }),
+    );
+  });
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  const setupSelect = page.getByLabel('対象Setup');
+  const optionValues = async () => setupSelect.locator('option').evaluateAll(
+    (options) => options.map((option) => (option as HTMLOptionElement).value),
+  );
+  await expect.poll(optionValues).toEqual(['fixed-a', 'fixed-b']);
+
+  // storage側も2件のまま（idも変わらない）。
+  const stored = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
+  const parsed = JSON.parse(stored ?? '{}') as { setups: { id: string }[] };
+  expect(parsed.setups.map((setup) => setup.id)).toEqual(['fixed-a', 'fixed-b']);
+
+  // リロードしても2件・id共に保たれる。
+  await page.reload();
+  const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
+  await expect.poll(optionValues).toEqual(['fixed-a', 'fixed-b']);
+});
+
+test('保存済みのSetupが1件だけの時、リロードのたびにidが変わったりしない', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'keydist:setup-library',
+      JSON.stringify({
+        version: 1,
+        setups: [{ id: 'fixed-only', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 }],
+        overrides: {},
+      }),
+    );
+  });
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  const setupSelect = page.getByLabel('対象Setup');
+  await expect.poll(async () => setupSelect.inputValue()).toEqual('fixed-only');
+
+  for (let i = 0; i < 3; i++) {
+    await page.reload();
+    const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
+    await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
+    await expect.poll(async () => page.getByLabel('対象Setup').inputValue()).toEqual('fixed-only');
+  }
+});
+
 test('タブ間同期: 別タブでのテキスト変更が届き、複数回変えても届き続ける', async ({ context }) => {
   /**
    * タブ間同期の回帰テスト（#544レビュー: `createAssetTabSync`の購読を構築時に自動開始し、

@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type {
-  AnalyzerTarget,
-  SingleAnalyzerDefinition,
-  SingleAnalyzerExtractContext,
+import * as v from 'valibot';
+import { defineOption, defineOptions } from './options.ts';
+import {
+  defineSingleAnalyzer,
+  type AnalyzerTarget,
+  type SingleAnalyzerDefinition,
+  type SingleAnalyzerExtractContext,
 } from './contract.ts';
 
 /**
@@ -11,40 +14,44 @@ import type {
  * ここでは「フィクスチャの `SingleAnalyzerDefinition` を実際に作って呼べること」
  * 「抽出に効く設定の宣言（`extractKeyOf`）が見た目だけの項目を落とせること」を確認する。
  * 実際のengine配線（キャッシュキーへ畳み込む・依頼の打ち切り等）は `#engine` 側のテストで見る。
+ *
+ * `SingleAnalyzerDefinition`はブランド付きの型で、`defineSingleAnalyzer`を経由してしか
+ * 作れない（#544レビュー対応A。オブジェクトリテラルを手組みするとtypecheckで落ちる。
+ * `contract.test.ts`自身がその経路を通ることで、実物のAnalyzer（`analyzers/bigram-flow/`等）と
+ * 同じ作法を保つ）。
  */
 
-interface FixtureOptions {
-  readonly bucketSize: number;
-  readonly highlightColor: string;
-}
+const fixtureOptions = defineOptions({
+  bucketSize: defineOption<number>({
+    schema: v.pipe(v.number(), v.integer(), v.minValue(1)),
+    default: 4,
+    affects: 'extract',
+  }),
+  // 見た目だけの項目なので抽出キーに含めない（affects: 'view'）。
+  highlightColor: defineOption<string>({
+    schema: v.string(),
+    default: 'red',
+    affects: 'view',
+  }),
+});
 
-const DEFAULT_OPTIONS: FixtureOptions = { bucketSize: 4, highlightColor: 'red' };
+const DEFAULT_OPTIONS = fixtureOptions.defaultOptions;
 
-function createFixtureDefinition(): SingleAnalyzerDefinition<FixtureOptions, number> {
-  return {
+function createFixtureDefinition(): SingleAnalyzerDefinition<typeof DEFAULT_OPTIONS, number> {
+  return defineSingleAnalyzer({
     id: 'fixture',
-    cardinality: 'single',
-    defaultOptions: DEFAULT_OPTIONS,
-    decodeOptions(raw, diagnostics) {
-      if (typeof raw !== 'object' || raw === null) {
-        diagnostics.push({ path: 'options', message: '未知の形式のため既定値へ戻した' });
-        return DEFAULT_OPTIONS;
-      }
-      const source = raw as Record<string, unknown>;
-      const bucketSize = typeof source.bucketSize === 'number' ? source.bucketSize : DEFAULT_OPTIONS.bucketSize;
-      const highlightColor = typeof source.highlightColor === 'string'
-        ? source.highlightColor
-        : DEFAULT_OPTIONS.highlightColor;
-      return { bucketSize, highlightColor };
-    },
-    // highlightColorは見た目だけの項目なので抽出キーに含めない。
-    extractKeyOf(options) {
-      return { bucketSize: options.bucketSize };
-    },
-    extract(context: SingleAnalyzerExtractContext<FixtureOptions>) {
+    options: fixtureOptions,
+    extract(context: SingleAnalyzerExtractContext<typeof DEFAULT_OPTIONS>) {
       return Math.floor(context.metrics.totalUnits / context.options.bucketSize);
     },
-  };
+    // `optionsDiscipline`は`defineSingleAnalyzer`が必須で要求する（#544レビュー対応B）。
+    // `metrics.totalUnits`固定でoptionsだけ振ればこのfixtureのextractを再現できる。
+    optionsDiscipline: {
+      sample: DEFAULT_OPTIONS,
+      alternates: { bucketSize: 8, highlightColor: 'blue' },
+      extractForTest: (options) => Math.floor(100 / options.bucketSize),
+    },
+  });
 }
 
 test('SingleAnalyzerDefinition: extractは Trace結果 + 解釈結果 + options から値を返す純関数', () => {

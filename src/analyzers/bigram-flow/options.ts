@@ -1,4 +1,13 @@
-import { isRecord, type CodecDiagnostic } from '#input/codec/index.ts';
+import * as v from 'valibot';
+import type { CodecDiagnostic } from '#input/codec/index.ts';
+import {
+  defineOption,
+  defineOptions,
+  numberUrlCodec,
+  picklistUrlCodec,
+  stringSetUrlCodec,
+  type OptionsValueMap,
+} from '#analyzers/options.ts';
 import type { BigramSource, FingerClass } from './bigram-vectors.ts';
 import {
   MAX_POLAR_DISPLAY_GAIN,
@@ -10,39 +19,6 @@ export type KeyboardFlowWeightScale = 'linear' | 'sqrt' | 'log';
 export type KeyboardFlowLayerOrder = 'weight' | 'same-hand-top' | 'cross-hand-top';
 export type KeyboardFlowHoverScale = 'key' | 'global';
 
-/**
- * Bigram Flowの解析設定（#544 §7）。抽出に効くのは`source`・`selectedFingers`・
- * `polarBandwidth`だけで、残りは見た目だけ（`bigramFlowExtractKeyOf`参照）。
- */
-export interface BigramFlowOptions {
-  source: BigramSource;
-  selectedFingers: readonly FingerClass[];
-  lineScale: KeyboardFlowWeightScale;
-  layerOrder: KeyboardFlowLayerOrder;
-  hoverScale: KeyboardFlowHoverScale;
-  movementScaleMode: MovementScaleMode;
-  polarBandwidth: number;
-  polarGain: number;
-}
-
-export const DEFAULT_BIGRAM_FLOW_OPTIONS: BigramFlowOptions = {
-  source: 'actual',
-  selectedFingers: [],
-  lineScale: 'linear',
-  layerOrder: 'weight',
-  hoverScale: 'key',
-  movementScaleMode: 'fit',
-  polarBandwidth: 5,
-  polarGain: 1,
-};
-
-/**
- * 旧名。`src/legacy/`・`src/features/analyzer-next/`（どちらも切り替え時に消える）が
- * 参照しているので、動き続けるのに必要な別名だけ残す。新コードでは使わない。
- */
-export type BigramFlowDisplayConfig = BigramFlowOptions;
-export const DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG = DEFAULT_BIGRAM_FLOW_OPTIONS;
-
 const BIGRAM_SOURCES: readonly BigramSource[] = ['actual', 'within-hand'];
 const FINGER_CLASSES: readonly FingerClass[] = ['pinky', 'ring', 'middle', 'index'];
 const WEIGHT_SCALES: readonly KeyboardFlowWeightScale[] = ['linear', 'sqrt', 'log'];
@@ -50,50 +26,25 @@ const LAYER_ORDERS: readonly KeyboardFlowLayerOrder[] = ['weight', 'same-hand-to
 const HOVER_SCALES: readonly KeyboardFlowHoverScale[] = ['key', 'global'];
 const MOVEMENT_SCALE_MODES: readonly MovementScaleMode[] = ['fit', 'fixed'];
 
-function decodeChoice<T extends string>(
-  raw: unknown,
-  allowed: readonly T[],
-  fallback: T,
-  path: string,
-  diagnostics: CodecDiagnostic[],
-): T {
-  if (typeof raw === 'string' && (allowed as readonly string[]).includes(raw)) return raw as T;
-  if (raw !== undefined) {
-    diagnostics.push({ path, message: `未知の値「${String(raw)}」のため既定値へ戻した` });
-  }
-  return fallback;
-}
-
-function decodeNumberInRange(
-  raw: unknown,
-  min: number,
-  max: number,
-  fallback: number,
-  path: string,
-  diagnostics: CodecDiagnostic[],
-): number {
-  if (typeof raw === 'number' && Number.isFinite(raw) && raw >= min && raw <= max) return raw;
-  if (raw !== undefined) {
-    diagnostics.push({ path, message: `範囲外・不正な数値「${String(raw)}」のため既定値へ戻した` });
-  }
-  return fallback;
-}
+/** 指の組み合わせ選択（0〜2件）の集合上限。`filterBigramVectors`が0/1/2件だけを想定する。 */
+const MAX_SELECTED_FINGERS = 2;
 
 /**
- * 指の組み合わせ選択（0〜2件）をdecodeする。外部キーで引くrecordではなく配列なので
+ * 指の組み合わせ選択をdecodeする。壊れた要素だけを落として残りは読む集合系の項目なので
+ * `schema`単体（valibotの標準decode）では表現できず、`defineOption`の`decode`を自分で書く
+ * （`options.ts`の`OptionDef`コメント参照）。外部キーで引くrecordではなく配列なので
  * `UNSAFE_OBJECT_KEYS`（`#input/codec`）は対象外（`__proto__`等はarray要素として
  * 渡ってきても文字列比較で弾かれるだけで、プロトタイプ汚染の経路にならない）。
  */
 function decodeSelectedFingers(
   raw: unknown,
-  fallback: readonly FingerClass[],
   path: string,
   diagnostics: CodecDiagnostic[],
 ): readonly FingerClass[] {
-  if (raw === undefined) return fallback;
+  if (raw === undefined) return [];
   if (!Array.isArray(raw)) {
     diagnostics.push({ path, message: '配列でないため既定値へ戻した' });
-    return fallback;
+    return [];
   }
   const seen = new Set<FingerClass>();
   const result: FingerClass[] = [];
@@ -105,84 +56,128 @@ function decodeSelectedFingers(
       diagnostics.push({ path: `${path}[]`, message: `未知の指クラス「${String(item)}」を捨てた` });
     }
   }
-  // filterBigramVectors（bigram-vectors.ts）は0/1/2件だけを想定するので、3件目以降は
-  // 「選びすぎ」として静かに切り捨てるのではなく診断を残す。
-  if (result.length > 2) {
-    diagnostics.push({ path, message: `指の組み合わせは2件までのため、3件目以降を捨てた` });
+  if (result.length > MAX_SELECTED_FINGERS) {
+    diagnostics.push({ path, message: `指の組み合わせは${MAX_SELECTED_FINGERS}件までのため、3件目以降を捨てた` });
   }
-  return result.slice(0, 2);
+  return result.slice(0, MAX_SELECTED_FINGERS);
 }
 
 /**
- * `AnalyzerDefinition.decodeOptions`（`analyzers/contract.ts`）の実装。
- * 未知の形式・壊れた値は既定値へ戻し、診断を積む（例外を投げない）。
+ * Bigram Flowの解析設定の宣言（#544 Phase 3「Analyzerの解析設定を項目ごとの宣言にする」）。
+ *
+ * `affects`が抽出キー（`bigramFlowExtractKeyOf`）に乗るかどうかを決める。ここに書き忘れると
+ * キャッシュが古い抽出結果を返し続ける（#544指示書が最も警戒した壊れ方）ので、
+ * 「抽出に効くか」は各項目の隣にコメントで理由を書く。
+ *
+ * - `source`（抽出）: `buildBigramVectors`が実vector/手内vectorのどちらを作るかを決める
+ * - `selectedFingers`（抽出）: `filterBigramVectors`がvector集合を絞る。選択順ではなく
+ *   集合として効くので`normalizeForExtractKey`でソートし、順序違いの2状態を同じキーへ畳み込む
+ * - `polarBandwidth`（抽出）: `directionDensity`のKDE bandwidthそのもの（集計値が変わる）
+ * - 残り（`lineScale` `layerOrder` `hoverScale` `movementScaleMode` `polarGain`）は
+ *   抽出結果の数値を変えない表示専用の設定（`view`）
  */
-export function decodeBigramFlowOptions(
-  raw: unknown,
-  diagnostics: CodecDiagnostic[],
-): BigramFlowOptions {
-  if (!isRecord(raw)) {
-    if (raw !== undefined) diagnostics.push({ path: 'options', message: '未知の形式のため既定値へ戻した' });
-    return DEFAULT_BIGRAM_FLOW_OPTIONS;
-  }
-  return {
-    source: decodeChoice(raw.source, BIGRAM_SOURCES, DEFAULT_BIGRAM_FLOW_OPTIONS.source, 'options.source', diagnostics),
-    selectedFingers: decodeSelectedFingers(
-      raw.selectedFingers,
-      DEFAULT_BIGRAM_FLOW_OPTIONS.selectedFingers,
-      'options.selectedFingers',
-      diagnostics,
-    ),
-    lineScale: decodeChoice(raw.lineScale, WEIGHT_SCALES, DEFAULT_BIGRAM_FLOW_OPTIONS.lineScale, 'options.lineScale', diagnostics),
-    layerOrder: decodeChoice(raw.layerOrder, LAYER_ORDERS, DEFAULT_BIGRAM_FLOW_OPTIONS.layerOrder, 'options.layerOrder', diagnostics),
-    hoverScale: decodeChoice(raw.hoverScale, HOVER_SCALES, DEFAULT_BIGRAM_FLOW_OPTIONS.hoverScale, 'options.hoverScale', diagnostics),
-    movementScaleMode: decodeChoice(
-      raw.movementScaleMode,
-      MOVEMENT_SCALE_MODES,
-      DEFAULT_BIGRAM_FLOW_OPTIONS.movementScaleMode,
-      'options.movementScaleMode',
-      diagnostics,
-    ),
-    polarBandwidth: decodeNumberInRange(
-      raw.polarBandwidth,
-      MIN_POLAR_BANDWIDTH_DEGREES,
-      45,
-      DEFAULT_BIGRAM_FLOW_OPTIONS.polarBandwidth,
-      'options.polarBandwidth',
-      diagnostics,
-    ),
-    polarGain: decodeNumberInRange(
-      raw.polarGain,
-      0.25,
-      MAX_POLAR_DISPLAY_GAIN,
-      DEFAULT_BIGRAM_FLOW_OPTIONS.polarGain,
-      'options.polarGain',
-      diagnostics,
-    ),
-  };
-}
+export const bigramFlowOptions = defineOptions({
+  source: defineOption<BigramSource>({
+    schema: v.picklist(BIGRAM_SOURCES),
+    default: 'actual',
+    affects: 'extract',
+    url: picklistUrlCodec('source', BIGRAM_SOURCES),
+    label: 'Bigram source',
+  }),
+  selectedFingers: defineOption<readonly FingerClass[]>({
+    decode: decodeSelectedFingers,
+    default: [],
+    affects: 'extract',
+    normalizeForExtractKey: (value) => [...value].sort(),
+    url: stringSetUrlCodec('fingers', FINGER_CLASSES, MAX_SELECTED_FINGERS),
+    label: 'Fingers',
+  }),
+  lineScale: defineOption<KeyboardFlowWeightScale>({
+    schema: v.picklist(WEIGHT_SCALES),
+    default: 'linear',
+    affects: 'view',
+    url: picklistUrlCodec('lineScale', WEIGHT_SCALES),
+    label: '紐の太さ',
+  }),
+  layerOrder: defineOption<KeyboardFlowLayerOrder>({
+    schema: v.picklist(LAYER_ORDERS),
+    default: 'weight',
+    affects: 'view',
+    url: picklistUrlCodec('layerOrder', LAYER_ORDERS),
+    label: '重ね順',
+  }),
+  hoverScale: defineOption<KeyboardFlowHoverScale>({
+    schema: v.picklist(HOVER_SCALES),
+    default: 'key',
+    affects: 'view',
+    url: picklistUrlCodec('hoverScale', HOVER_SCALES),
+    label: 'ホバー基準',
+  }),
+  movementScaleMode: defineOption<MovementScaleMode>({
+    schema: v.picklist(MOVEMENT_SCALE_MODES),
+    default: 'fit',
+    affects: 'view',
+    url: picklistUrlCodec('movementScaleMode', MOVEMENT_SCALE_MODES),
+    label: '距離表示',
+  }),
+  polarBandwidth: defineOption<number>({
+    schema: v.pipe(v.number(), v.minValue(MIN_POLAR_BANDWIDTH_DEGREES), v.maxValue(45)),
+    default: 5,
+    affects: 'extract',
+    url: numberUrlCodec('polarBandwidth', MIN_POLAR_BANDWIDTH_DEGREES, 45),
+    label: '方向の広がり',
+  }),
+  polarGain: defineOption<number>({
+    schema: v.pipe(v.number(), v.minValue(0.25), v.maxValue(MAX_POLAR_DISPLAY_GAIN)),
+    default: 1,
+    affects: 'view',
+    url: numberUrlCodec('polarGain', 0.25, MAX_POLAR_DISPLAY_GAIN),
+    label: '方向分布の表示倍率',
+  }),
+});
+
+/** `Options`型は宣言から推論する（手で二重に書かない。#544指示書）。 */
+export type BigramFlowOptions = OptionsValueMap<typeof bigramFlowOptions.items>;
+
+export const DEFAULT_BIGRAM_FLOW_OPTIONS: BigramFlowOptions = bigramFlowOptions.defaultOptions;
 
 /**
- * `AnalyzerDefinition.extractKeyOf`（`analyzers/contract.ts`）の実装。
- *
- * 抽出に効くのは3項目だけ（`extract.ts`の分類表参照）:
- * - `source`: `buildBigramVectors`が実vector/手内vectorのどちらを作るかを決める
- * - `selectedFingers`: `filterBigramVectors`がvector集合を絞る
- * - `polarBandwidth`: `directionDensity`のKDE bandwidthそのもの（集計値が変わる）
- *
- * 残り（`lineScale` `layerOrder` `hoverScale` `movementScaleMode` `polarGain`）は
- * 抽出結果の数値を変えない表示専用の設定なので、ここでは含めない
- * （見た目だけの変更ではextractが走らない）。
- * `selectedFingers`は選択順ではなく集合として効く（`filterBigramVectors`参照）ので、
- * 並び替えて正規化し、順序違いの2状態を同じ抽出キーへ畳み込む。
+ * 既定値と全項目が異なる組（#544レビュー対応B「入れ忘れ防止テスト」の`alternates`）。
+ * `defineSingleAnalyzer`の`optionsDiscipline`（`extract.ts`）と、8項目全部を機械的に回す
+ * `extract.test.ts`の両方がこれを使う。値そのものはこのファイルにしか無い知識
+ * （「妥当な値」の判断）なので、決め方を二重に持たないようここに1箇所だけ置く。
  */
-export function bigramFlowExtractKeyOf(options: BigramFlowOptions): unknown {
-  return {
-    source: options.source,
-    selectedFingers: [...options.selectedFingers].sort(),
-    polarBandwidth: options.polarBandwidth,
-  };
-}
+export const ALTERNATE_BIGRAM_FLOW_OPTIONS: BigramFlowOptions = {
+  source: 'within-hand',
+  selectedFingers: ['index'],
+  lineScale: 'sqrt',
+  layerOrder: 'same-hand-top',
+  hoverScale: 'global',
+  movementScaleMode: 'fixed',
+  polarBandwidth: 20,
+  polarGain: 2,
+};
+
+/**
+ * 旧名。`src/legacy/`・`src/features/analyzer-next/`（どちらも切り替え時に消える）が
+ * 参照しているので、動き続けるのに必要な別名だけ残す。新コードでは使わない。
+ */
+export type BigramFlowDisplayConfig = BigramFlowOptions;
+export const DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG = DEFAULT_BIGRAM_FLOW_OPTIONS;
+
+/**
+ * `AnalyzerDefinition.decodeOptions`（`analyzers/contract.ts`）の実装。宣言（`bigramFlowOptions`）
+ * から導く（`defineSingleAnalyzer`が使う本体そのもの）。未知の形式・壊れた値は既定値へ戻し、
+ * 診断を積む（例外を投げない）。`extract.test.ts`等が直接importして使えるよう関数としても公開する。
+ */
+export const decodeBigramFlowOptions = bigramFlowOptions.decodeOptions;
+
+/**
+ * `AnalyzerDefinition.extractKeyOf`（`analyzers/contract.ts`）の実装。宣言から導く
+ * （`items`ごとの`affects`/`normalizeForExtractKey`を舐めるだけで、ここで個別に
+ * 列挙する経路は無い）。
+ */
+export const bigramFlowExtractKeyOf = bigramFlowOptions.extractKeyOf;
 
 export interface KeyboardFlowVectorLike {
   readonly id: string;
