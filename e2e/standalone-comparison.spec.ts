@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
-import { dismissAutoOpenedSelection, expectTargetNames, openSettings, openTargetSelection, targetNames, toggleTarget } from './pane-helper.ts';
+import { dismissAutoOpenedSelection, expectTargetNames, openSettings, openTargetSelection, targetButton, targetNames, toggleTarget } from './pane-helper.ts';
 
 /**
  * 比較表単体ページ（#544 Phase 3「集合を対象にする最初のAnalyzer（比較表）と、
@@ -501,4 +501,57 @@ test.describe('スマホ幅で対象が空の時', () => {
     await page.waitForTimeout(300);
     await expect(page.getByRole('dialog', { name: '対象の選択' })).toHaveCount(0);
   });
+});
+
+function seedQwertySelection() {
+  return () => {
+    localStorage.setItem(
+      'keydist:analyzer-set-selections',
+      JSON.stringify({ version: 2, selections: { comparison: { targets: [{ kind: 'layout', layoutId: 'qwerty' }] } } }),
+    );
+  };
+}
+
+test('読み込み時に対象があったペインは、最後の1件を外しても選択を自動で開かず、開き直すと絞り込み欄へフォーカスが入る', async ({ page }) => {
+  await page.addInitScript(seedQwertySelection());
+  await page.goto('/standalone/comparison');
+  await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(1, { timeout: 10_000 });
+  const selection = page.getByRole('dialog', { name: '対象の選択' });
+  await expect(selection).toHaveCount(0);
+
+  // 最後の1件を外して空にし、Escapeで閉じる。
+  const panel = await openTargetSelection(page);
+  await panel.locator('input[value="layout:qwerty"]').click();
+  await expect(page.locator('[data-pane-empty="true"]')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(selection).toHaveCount(0);
+  await page.waitForTimeout(300);
+  await expect(selection).toHaveCount(0);
+
+  // 見出しの対象ボタンで開き直すと、ふつうに開いた時と同じく絞り込み欄へフォーカスが入る。
+  await targetButton(page).click();
+  await expect(selection).toBeVisible();
+  await expect(selection.getByRole('searchbox')).toBeFocused();
+});
+
+test('別のタブで対象をすべて外されても、今のタブで選択が勝手に開かない', async ({ context }) => {
+  await context.addInitScript(seedQwertySelection());
+  const pageA = await context.newPage();
+  const pageB = await context.newPage();
+  await pageA.goto('/standalone/comparison');
+  await pageB.goto('/standalone/comparison');
+  await expect(pageA.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(1, { timeout: 10_000 });
+  await expect(pageB.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(1, { timeout: 10_000 });
+
+  const panelB = await openTargetSelection(pageB);
+  await panelB.getByRole('button', { name: 'すべて外す' }).click();
+  await expect(pageB.locator('[data-pane-empty="true"]')).toBeVisible();
+
+  // 外した結果はタブAへも届くが、タブAの選択は開かない。
+  await expect(pageA.locator('[data-pane-empty="true"]')).toBeVisible({ timeout: 10_000 });
+  await pageA.waitForTimeout(300);
+  await expect(pageA.getByRole('dialog', { name: '対象の選択' })).toHaveCount(0);
+
+  await pageA.close();
+  await pageB.close();
 });

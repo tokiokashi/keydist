@@ -43,10 +43,12 @@ export interface TargetSelectionProps {
   readonly open?: boolean;
   readonly onOpenChange?: (open: boolean) => void;
   /**
-   * trueになった時に一度だけ、フォーカスを奪わずに開く（対象が空のペインを開いた直後）。
-   * パソコン幅だけ。一度閉じたら出し直さない。スマホ幅のシートは画面を覆うので自動では出さない。
+   * 自動で開くか。`undefined`の間はまだ決めない（資産の読み込み中）。最初に`true`/`false`が来た時の値で
+   * 決めて固定し、`true`ならその時に一度だけ、フォーカスを奪わずに開く（対象が空のペインを開いた直後）。
+   * 後から対象が空になっても開かない（最後の1件を外した・別のタブで外された時に勝手に開かないように）。
+   * パソコン幅だけ。スマホ幅のシートは画面を覆うので自動では出さない。
    */
-  readonly autoOpen?: boolean;
+  readonly autoOpen?: boolean | undefined;
 }
 
 /** スマホ幅（シートで出す幅）。解析設定の小窓（`pane-frame.css`）と同じ境目。 */
@@ -120,7 +122,7 @@ export function TargetSelection({
   extraItem,
   open: controlledOpen,
   onOpenChange,
-  autoOpen = false,
+  autoOpen,
 }: TargetSelectionProps) {
   const [innerOpen, setInnerOpen] = useState(false);
   const open = controlledOpen ?? innerOpen;
@@ -130,7 +132,8 @@ export function TargetSelection({
   };
   // 開いた時にフォーカスを中へ移すか。自動で開いた時だけ移さない（他の操作を阻害しない）。
   const focusOnOpenRef = useRef(true);
-  const autoOpenedRef = useRef(false);
+  // 自動で開くかを決めたか（読み込みが終わった最初の1回で決め、以後は変えない）。
+  const autoOpenDecidedRef = useRef(false);
   const [query, setQuery] = useState('');
   const [position, setPosition] = useState<Position | undefined>(undefined);
   const [fits, setFits] = useState(true);
@@ -175,11 +178,13 @@ export function TargetSelection({
   }, [fullText]);
 
   useEffect(() => {
-    if (!autoOpen || autoOpenedRef.current || isSheet()) return;
-    autoOpenedRef.current = true;
+    if (autoOpen === undefined || autoOpenDecidedRef.current) return;
+    autoOpenDecidedRef.current = true;
+    // すでに開いている（読み込み中に押した）時は、フォーカスの扱いを変えない。
+    if (!autoOpen || open || isSheet()) return;
     focusOnOpenRef.current = false;
     setOpen(true);
-    // 開く操作は一度だけ（依存に`setOpen`を入れると、ホストの再描画のたびに走り直す）。
+    // 決めるのは一度だけ（依存に`setOpen`・`open`を入れると、ホストの再描画のたびに走り直す）。
   }, [autoOpen]);
 
   const close = (focusButton: boolean) => {

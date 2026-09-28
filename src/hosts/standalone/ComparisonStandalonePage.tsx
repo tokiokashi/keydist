@@ -244,7 +244,7 @@ export function ComparisonStandalonePage({
                 onChange={setSelection}
                 open={selectionOpen}
                 onOpenChange={setSelectionOpen}
-                autoOpen={assetsReady && targets.length === 0}
+                autoOpen={assetsReady ? targets.length === 0 : undefined}
                 extraItem={(
                   <TargetItem
                     value={baselineTargetKey}

@@ -225,7 +225,7 @@ export function NSensitivityStandalonePage({
                 onChange={setSelection}
                 open={selectionOpen}
                 onOpenChange={setSelectionOpen}
-                autoOpen={assetsReady && targets.length === 0}
+                autoOpen={assetsReady ? targets.length === 0 : undefined}
               />
             )}
             settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
