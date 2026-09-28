@@ -36,17 +36,25 @@ const colemakEn = findLayout(LAYOUTS, 'colemak'); // 英字配列（ローマ字
 
 function contextFor(
   layout: Layout,
-  options: { shapeId?: PresetGeometryKind; inputMethod?: InputMethod; setupId?: string } = {},
+  options: {
+    shapeId?: PresetGeometryKind;
+    inputMethod?: InputMethod;
+    setupId?: string;
+    targetKind?: 'layout' | 'setup';
+  } = {},
 ): CascadeContext {
   const shapeId = options.shapeId ?? 'row-staggered';
-  return {
+  const base = {
     shapeId,
     shape: PHYSICAL_SHAPES[shapeId],
     inputMethod: options.inputMethod ?? 'direct',
     layoutId: layout.id,
     layout,
-    setupId: options.setupId,
   };
+  const targetKind = options.targetKind ?? (options.setupId === undefined ? 'layout' : 'setup');
+  return targetKind === 'layout'
+    ? { ...base, targetKind }
+    : { ...base, targetKind, setupId: options.setupId };
 }
 
 test('上書きが無ければ全項目が現行アプリの既定値で解決する', () => {
@@ -172,7 +180,8 @@ test('preferOppositeThumb: SandSを持たない配列ではnot-applicable、反�
   const resolved = resolveSettings(written.overrides, {
     shapeId: 'shape-no-right-thumb',
     shape: shapeNoRightThumb,
-    inputMethod: 'kana-direct',
+    targetKind: 'layout' as const,
+    inputMethod: 'kana-direct' as const,
     layoutId: naginata.id,
     layout: naginata,
   });
@@ -316,14 +325,28 @@ test('defaultShapeId: setupレベルへの書き込みは拒否される（GLOBA
   assert.equal(written.ok, false);
 });
 
-test('defaultShapeId: 配列対象（setupIdを持たないcontext）では効く', () => {
+test('defaultShapeId: 配列対象（targetKind: layout）では効く', () => {
   const resolved = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(colemakEn));
   assert.equal(resolved.defaultShapeId.applicable, true);
 });
 
-test('defaultShapeId: Setup対象（setupIdを持つcontext）では効かない', () => {
+test('defaultShapeId: Setup対象（targetKind: setup）では効かない', () => {
   const resolved = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(colemakEn, { setupId: 'some-setup' }));
   assert.equal(resolved.defaultShapeId.applicable, false);
+});
+
+test('defaultShapeId: idがまだ無いSetupのプレビューでも効かず、形状の食い違いを診断しない', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const resolved = resolveSettings(
+    written.overrides,
+    contextFor(colemakEn, { shapeId: 'row-staggered', targetKind: 'setup' }),
+  );
+  assert.equal(resolved.defaultShapeId.applicable, false);
+  // 効かない旨（not-applicable）は残るが、形状を読み替えるfallbackは起きない。
+  assert.deepEqual(resolved.defaultShapeId.diagnostics.map((d) => d.kind), ['not-applicable']);
+  assert.equal(resolved.defaultShapeId.value, 'ortholinear');
 });
 
 test('defaultShapeId: 値と実際に使われた形状（context.shapeId）が一致すればvalidateは素通りする', () => {

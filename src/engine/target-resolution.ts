@@ -23,14 +23,14 @@ import { DEFAULT_SHAPE_ID, resolveDefaultShapeId, type SettingsCascadeOverrides 
  *   ビット単位で同じ結果になる（決定「Setup対象は今までどおり解決する」）
  * - **配列対象**: `Setup`という器を経由せず、配列idと「既定の形状」（カスケードの
  *   グローバル専用項目`defaultShapeId`。`settings-items.ts`）から`CascadeContext`を
- *   直接組み立てる。**`context.setupId`を持たない**ため、`resolveCascade`は
- *   Setupレベルの上書きを一切見ない（「配列を対象にした時はSetupレベルを持たない」が
- *   `CascadeContext`の型契約そのもので保証される。`input/settings/context.ts`の
+ *   直接組み立てる。`targetKind: 'layout'`のcontextは型の上で`setupId`を持てないため、
+ *   `resolveCascade`はSetupレベルの上書きを一切見ない（「配列を対象にした時はSetupレベルを
+ *   持たない」が`CascadeContext`の型契約そのもので保証される。`input/settings/context.ts`の
  *   コメント参照）
  *
  * 手持ちのSetup一覧に上書きが1つも無いSetup（配列と「既定の形状」が一致するもの）を
- * 対象にした場合、このモジュールが作る`CascadeContext`は`setupId`の有無以外Setup版と
- * 完全に一致する。`resolveCascade`はSetupレベルに何も無ければ実効値へ影響しない
+ * 対象にした場合、このモジュールが作る`CascadeContext`は`targetKind`・`setupId`以外Setup版と
+ * 完全に一致する（`targetKind`で変わるのは`defaultShapeId`の`applicable`だけで、Traceには効かない）。`resolveCascade`はSetupレベルに何も無ければ実効値へ影響しない
  * （`resolveItem`は`stored === undefined`なら何もしない）ので、両者の`ResolvedInput`
  * （ひいては`traceKeyOf`が使うTraceキー）は同一になる（#544 §7「Setupのid・ラベル・色は
  * キーに含めない」。`engine/keys.ts`のコメント参照）。
@@ -74,13 +74,12 @@ export function resolveTargetForText(
   if (!derivation.ok) return { ok: false, kind: 'incompatible-text', layout, language };
 
   const context: CascadeContext = {
+    targetKind: 'layout',
     shapeId: shape.id,
     shape,
     inputMethod: derivation.inputMethod,
     layoutId: layout.id,
     layout,
-    // setupIdを持たない: 配列を対象にした時はSetupレベルのカスケードを一切見ない
-    // （用語表「対象」・#578指摘1）。
   };
   return { ok: true, layout, shape, context };
 }

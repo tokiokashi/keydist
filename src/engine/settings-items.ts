@@ -203,10 +203,9 @@ export const SETTINGS_ITEMS = {
    * `allowedLevels`はglobalのみ（#578決定「scope: global only — 他のレベルは今は許可しない」。
    * 「先回りして足さない」の判断と同じ）。
    *
-   * `isApplicable`: Setupレベルを持つ対象（`context.setupId`あり＝Setup対象）はSetup自身の
-   * `shapeId`で物理形状が決まるので、この項目は効かない（レビュー指摘6）。`context.setupId`
-   * の有無で判定できるのは、まさに「配列対象かSetup対象か」がそこに現れるため
-   * （`target-resolution.ts`のコメント参照。配列対象は`context.setupId`を持たない）。
+   * `isApplicable`: Setup対象はSetup自身の`shapeId`で物理形状が決まるので、この項目は
+   * 効かない（レビュー指摘6）。判定は`context.targetKind`で行い、`setupId`の有無は見ない
+   * （idがまだ無いSetupのプレビューもSetup対象で、既定の形状は効かないため）。
    *
    * `validate`: 未知・削除された形状idが指されていた場合、`target-resolution.ts`が
    * 実際に使う形状を`DEFAULT_SHAPE_ID`へ前もってfallbackさせた上で`context.shapeId`へ
@@ -221,12 +220,11 @@ export const SETTINGS_ITEMS = {
     id: 'defaultShapeId',
     allowedLevels: GLOBAL_ONLY,
     defaultValue: DEFAULT_SHAPE_ID,
-    isApplicable: (context) => context.setupId === undefined,
+    isApplicable: (context) => context.targetKind === 'layout',
     validate: (value, context) => {
-      // Setup対象（context.setupIdあり）ではこの項目自体が無関係（isApplicable=false）
-      // なので、Setup自身のshapeIdと値が食い違っていても検証しない（毎回誤って
-      // fallback診断が出てしまう事故を避ける）。
-      if (context.setupId !== undefined) return { ok: true };
+      // Setup対象ではこの項目自体が無関係（isApplicable=false）なので、Setup自身の
+      // shapeIdと値が食い違っていても検証しない（毎回誤ってfallback診断が出る事故を避ける）。
+      if (context.targetKind !== 'layout') return { ok: true };
       return value === context.shapeId
         ? { ok: true }
         : {

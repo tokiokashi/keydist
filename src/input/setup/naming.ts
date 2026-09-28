@@ -16,27 +16,48 @@
  * 同じ理由。呼び出し側が文字列へ解決してから渡す）。
  */
 
-export interface TargetNameSource {
+interface TargetNameSourceBase {
   readonly key: string;
-  /** ユーザーが付けたラベル（Setupだけが持ちうる）。あれば常にそのまま表示名にする。空文字はラベル無し扱い。 */
+  /** 対象の種類。表示名が衝突した時の区別（「配列」「Setup n」）に使う。 */
+  readonly kind: 'layout' | 'setup';
+  /**
+   * ユーザーが付けたラベル（Setupだけが持ちうる）。あれば常にそのまま表示名にする。
+   * 前後の空白を除いて空になるものはラベル無し扱い（空白だけの名前は見出しとして読めないため）。
+   */
   readonly label?: string;
-  readonly layoutName: string;
-  /** 実効の物理形状名。配列対象は常にカスケードの「既定の形状」の名前になる。 */
-  readonly shapeName: string;
   /**
-   * 既定値と違う条件の短い併記（`hosts/shared/condition-summary.ts`の
-   * `summarizeNonDefaultConditions`と同じ形式の1行）。無ければ省略。
+   * 手持ちのSetup一覧での番号（1始まり）。衝突した時の区別に使う。idは内部の値
+   * （実Setupでは無意味なUUID）なので表示に出さず、代わりにこの番号を出す。
+   * 配列対象と、手持ちから消えたSetupは持たない。
    */
-  readonly overrideSummary?: string;
-  /**
-   * 対象の解決自体が失敗している（Setup削除・このテキストに使えない等）。
-   * レビュー指摘3: 失敗メンバーは「集合の中で何が共通か」を決める母集団から除く
-   * （失敗メンバーのlayoutName/shapeNameはfallback表示のための代用値でしかなく、
-   * 他メンバーとの共通性判定に混ぜると不自然な差分が出るため）。失敗メンバー自身の
-   * 表示名は通常どおり計算する（値はfallback表示のまま）。
-   */
-  readonly failed?: boolean;
+  readonly setupNumber?: number;
 }
+
+export type TargetNameSource = TargetNameSourceBase & (
+  | {
+    readonly failed?: false;
+    readonly layoutName: string;
+    /** 実効の物理形状名。配列対象は常にカスケードの「既定の形状」の名前になる。 */
+    readonly shapeName: string;
+    /**
+     * 既定値と違う条件の短い併記（`hosts/shared/condition-summary.ts`の
+     * `summarizeNonDefaultConditions`と同じ形式の1行）。無ければ省略。
+     */
+    readonly overrideSummary?: string;
+  }
+  | {
+    /**
+     * 対象の解決自体が失敗している（Setup削除・このテキストに使えない等）。
+     * 失敗メンバーは「集合の中で何が共通か」を決める母集団から除き、表示名には
+     * 呼び出し側が分かる範囲で作った説明（`description`）をそのまま使う。
+     * 実効の形状・条件が決まっていないので、差分計算に混ぜると不自然な差分が出るため。
+     */
+    readonly failed: true;
+    readonly description: string;
+  }
+);
+
+type ResolvedSource = Extract<TargetNameSource, { layoutName: string }>;
 
 export interface NamedTarget {
   readonly key: string;
@@ -46,86 +67,105 @@ export interface NamedTarget {
   readonly fullName: string;
 }
 
-function hasLabel(source: TargetNameSource): source is TargetNameSource & { label: string } {
-  return source.label !== undefined && source.label.length > 0;
+/** 表示に使うラベル。前後の空白を除いて空ならラベル無し。 */
+export function effectiveLabel(label: string | undefined): string | undefined {
+  const trimmed = label?.trim();
+  return trimmed === undefined || trimmed.length === 0 ? undefined : trimmed;
+}
+
+function isResolved(source: TargetNameSource): source is ResolvedSource {
+  return source.failed !== true;
 }
 
 function fullNameOf(source: TargetNameSource): string {
+  if (!isResolved(source)) return source.description;
   const base = `${source.layoutName}/${source.shapeName}`;
   return source.overrideSummary ? `${base} · ${source.overrideSummary}` : base;
 }
 
-function allSame(sources: readonly TargetNameSource[], pick: (s: TargetNameSource) => string): boolean {
+function allSame(sources: readonly ResolvedSource[], pick: (s: ResolvedSource) => string): boolean {
   return sources.length > 0 && sources.every((s) => pick(s) === pick(sources[0]!));
 }
 
-/**
- * `level`が上がるほど詳しく出す（衝突を解消するための段階的なエスカレーション。
- * レビュー指摘3「重複したら詳しく」）。
- * - 0: 集合内で共通な部分を落とす（従来どおり）
- * - 1: 共通でも配列名・形状名・条件併記を強制的に出す（形状だけ違う等の細かい差を拾う）
- * - 2: フルの名前（`fullNameOf`と同じ）
- * - 3: フルの名前 + `key`（同じ配列・形状・条件の対象が複数枠に並ぶ、最後の砦。
- *   `key`は対象ごとに必ず一意なので、ここまで来れば必ず解消する）
- */
-function computeDisplayName(
-  source: TargetNameSource,
-  commonalityBasis: readonly TargetNameSource[],
-  level: number,
-): string {
-  if (hasLabel(source)) return source.label;
-  if (level >= 3) return `${fullNameOf(source)}（${source.key}）`;
-  if (level >= 2) return fullNameOf(source);
+/** 集合内で共通な部分を落とした名前（衝突を考えない段階）。 */
+function differenceName(source: TargetNameSource, commonalityBasis: readonly ResolvedSource[]): string {
+  if (!isResolved(source)) return source.description;
 
   if (commonalityBasis.length <= 1) {
     // 比較対象が無い（自分だけ、または全員ラベル付き・失敗）: 単一対象と同じ扱い。
     return source.overrideSummary ? `${source.layoutName} · ${source.overrideSummary}` : source.layoutName;
   }
 
-  const sameLayout = allSame(commonalityBasis, (s) => s.layoutName);
-  const sameShape = allSame(commonalityBasis, (s) => s.shapeName);
-  const sameOverride = allSame(commonalityBasis, (s) => s.overrideSummary ?? '');
-  const forceAll = level >= 1;
-
   const parts: string[] = [];
-  if (!sameLayout || forceAll) parts.push(source.layoutName);
-  if (!sameShape || forceAll) parts.push(source.shapeName);
-  if ((!sameOverride || forceAll) && source.overrideSummary) parts.push(source.overrideSummary);
-
+  if (!allSame(commonalityBasis, (s) => s.layoutName)) parts.push(source.layoutName);
+  if (!allSame(commonalityBasis, (s) => s.shapeName)) parts.push(source.shapeName);
+  if (!allSame(commonalityBasis, (s) => s.overrideSummary ?? '') && source.overrideSummary) {
+    parts.push(source.overrideSummary);
+  }
   return parts.length > 0 ? parts.join(' · ') : source.layoutName;
 }
 
+function kindTag(source: TargetNameSource): string {
+  if (source.kind === 'layout') return '配列';
+  return source.setupNumber === undefined ? 'Setup' : `Setup ${source.setupNumber}`;
+}
+
 /**
- * 対象の集合から、表示名（差分だけ、衝突すれば段階的に詳しくする）とフルの名前を
+ * 衝突した時だけ、衝突したメンバーの名前を段階的に詳しくする（レビュー指摘3「重複したら詳しく」）。
+ * - 0: 集合内で共通な部分を落とした名前
+ * - 1: 対象の種類を添える（「配列」「Setup n」。配列対象と上書きの無いSetupが並ぶ等）
+ * - 2: 集合の中での位置を添える（同じ名前の自作配列が2つある等、種類でも分からない時の最後の砦。
+ *   位置は集合の中で一意なので、ここまで来れば必ず解消する）
+ *
+ * 配列名・形状名・条件のどれかが違えば段階0で既に名前に出ている（違う部分は全員に出す）ので、
+ * 段階0で衝突するメンバー同士は配列名・形状名・条件が同じ。そこへ形状名や条件を足しても
+ * 区別できないので、足すのは種類と位置だけにする。内部のkey（UUID等）は出さない。
+ */
+function escalatedName(base: string, source: TargetNameSource, position: number, level: number): string {
+  if (level <= 0) return base;
+  if (level === 1) return `${base}（${kindTag(source)}）`;
+  return `${base}（${kindTag(source)}・${position + 1}番目）`;
+}
+
+const MAX_LEVEL = 2;
+
+/**
+ * 対象の集合から、表示名（差分だけ、衝突すれば衝突した組だけ詳しくする）とフルの名前を
  * まとめて求める（純関数）。
  *
- * - `label`があれば常にそれをそのまま表示名にする（ユーザーが選んだ値は差分計算の対象外）
+ * - ラベルがあれば常にそれをそのまま表示名にする（ユーザーが選んだ値は差分計算の対象外）
  * - 「集合内で何が共通か」はラベル付き・解決失敗のメンバーを除いた母集団で判定する
- *   （レビュー指摘3）
- * - 差分計算の結果、ラベルを持たないメンバー同士で表示名が衝突したら、衝突が解消するまで
- *   `computeDisplayName`のlevelを上げて詳しくする（level 3で`key`込みになり必ず解消する）
+ * - ラベルを持たないメンバーの表示名が他と衝突したら、**衝突したメンバーだけ**段階を上げる
+ *   （集合全体を詳しくすると、衝突と無関係な対象まで読みにくくなるため）
  * - 表示名が空文字になることはない
  */
 export function nameTargets(sources: readonly TargetNameSource[]): readonly NamedTarget[] {
-  const commonalityBasis = sources.filter((s) => !hasLabel(s) && !s.failed);
+  const labels = sources.map((s) => effectiveLabel(s.label));
+  const commonalityBasis = sources.filter(
+    (s, i): s is ResolvedSource => labels[i] === undefined && isResolved(s),
+  );
+  const bases = sources.map((s, i) => labels[i] ?? differenceName(s, commonalityBasis));
+  const levels = sources.map(() => 0);
 
-  let level = 0;
-  let displayNameOf = new Map<string, string>();
+  const namesNow = () => sources.map((s, i) => (
+    labels[i] !== undefined ? labels[i]! : escalatedName(bases[i]!, s, i, levels[i]!)
+  ));
+
+  let names = namesNow();
   for (;;) {
-    displayNameOf = new Map(sources.map((s) => [s.key, computeDisplayName(s, commonalityBasis, level)]));
     const counts = new Map<string, number>();
-    for (const s of sources) {
-      const name = displayNameOf.get(s.key)!;
-      counts.set(name, (counts.get(name) ?? 0) + 1);
-    }
-    const collides = sources.some((s) => !hasLabel(s) && counts.get(displayNameOf.get(s.key)!)! > 1);
-    if (!collides || level >= 3) break;
-    level += 1;
+    for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
+    let raised = false;
+    sources.forEach((_, i) => {
+      if (labels[i] !== undefined) return;
+      if (counts.get(names[i]!)! > 1 && levels[i]! < MAX_LEVEL) {
+        levels[i] = levels[i]! + 1;
+        raised = true;
+      }
+    });
+    if (!raised) break;
+    names = namesNow();
   }
 
-  return sources.map((s) => ({
-    key: s.key,
-    displayName: displayNameOf.get(s.key)!,
-    fullName: fullNameOf(s),
-  }));
+  return sources.map((s, i) => ({ key: s.key, displayName: names[i]!, fullName: fullNameOf(s) }));
 }

@@ -6,7 +6,14 @@ import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES, resolveSettings, setSettingsOverride } from '#engine/settings-items.ts';
 import { resolveSetupForText } from '#input/setup/index.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
-import { conditionHeaderInfo, conditionHeaderInfoFromResolvedInput, formatOrigin, traceConditionSummary } from './condition-summary.ts';
+import {
+  conditionHeaderInfo,
+  conditionHeaderInfoFromResolvedInput,
+  formatOrigin,
+  nonDefaultConditionRows,
+  summarizeNonDefaultConditions,
+  traceConditionSummary,
+} from './condition-summary.ts';
 
 const CATALOG = {
   layouts: LAYOUT_BY_ID,
@@ -88,4 +95,63 @@ test('conditionHeaderInfoFromResolvedInput: ResolvedInputのgeometryから名前
   assert.equal(info.layoutName, result.input.layout.name);
   assert.equal(info.shapeName, result.input.geometry.name);
   assert.equal(info.fingerAssignmentName, result.input.geometry.assignment.name);
+});
+
+function resolveWith(
+  target: { kind: 'layout'; layoutId: string } | { kind: 'setup'; setupId: string },
+  setups: readonly Setup[],
+  overrides: typeof EMPTY_SETTINGS_OVERRIDES,
+  language: 'en' | 'ja',
+) {
+  const result = resolveEngineInput({
+    target,
+    setups: new Map(setups.map((setup) => [setup.id, setup])),
+    catalog: CATALOG,
+    userLayouts: NO_USER_LAYOUTS,
+    overrides,
+    text: language === 'ja' ? 'あいうえお' : 'hello',
+    language,
+  });
+  assert.ok(result.ok);
+  if (!result.ok) throw new Error('unreachable');
+  return result.input;
+}
+
+test('nonDefaultConditionRows: 効かない行（Setup対象の既定の形状）は上書きされていても併記しない（レビュー指摘M1）', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const setups = [setupFor('qwerty'), { ...setupFor('colemak-dh'), id: 'setup-2' }];
+  for (const setup of setups) {
+    const input = resolveWith({ kind: 'setup', setupId: setup.id }, setups, written.overrides, 'en');
+    const rows = nonDefaultConditionRows(traceConditionSummary(input.cascade, { shapes: CATALOG.shapes }));
+    assert.deepEqual(rows.map((row) => row.id), []);
+    assert.equal(summarizeNonDefaultConditions(rows), undefined);
+  }
+});
+
+test('nonDefaultConditionRows: 配列対象の既定の形状は効くので、idでなく形状名で併記する', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const input = resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], written.overrides, 'en');
+  const rows = nonDefaultConditionRows(traceConditionSummary(input.cascade, { shapes: CATALOG.shapes }));
+  assert.deepEqual(rows.map((row) => row.id), ['defaultShapeId']);
+  assert.equal(rows[0]!.displayValue, PHYSICAL_SHAPES.ortholinear.name);
+  assert.notEqual(rows[0]!.displayValue, 'ortholinear');
+});
+
+test('nonDefaultConditionRows: かな直接の配列ではローマ字規則の上書きを併記しない', () => {
+  const written = setSettingsOverride(
+    EMPTY_SETTINGS_OVERRIDES,
+    { kind: 'layout', layoutId: 'nicola' },
+    'romajiRuleId',
+    'hepburn',
+  );
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const input = resolveWith({ kind: 'layout', layoutId: 'nicola' }, [], written.overrides, 'ja');
+  const summary = traceConditionSummary(input.cascade);
+  assert.equal(summary.find((row) => row.id === 'romajiRuleId')?.origin.kind, 'layout');
+  assert.deepEqual(nonDefaultConditionRows(summary).map((row) => row.id), []);
 });

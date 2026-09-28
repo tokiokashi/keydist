@@ -10,7 +10,7 @@ export {
   decodeAnalysisTarget,
   encodeAnalysisTarget,
 } from './target-codec.ts';
-export { nameTargets, type NamedTarget, type TargetNameSource } from './naming.ts';
+export { nameTargets, effectiveLabel, type NamedTarget, type TargetNameSource } from './naming.ts';
 export { setupColor, targetColor, leastUsedColorIndex, SETUP_COLOR_PALETTE_SIZE } from './color.ts';
 export { copySetupOverrides, dropSetupOverrides } from './overrides.ts';
 export {

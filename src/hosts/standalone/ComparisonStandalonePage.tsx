@@ -13,7 +13,7 @@ import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget }
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
-import { conditionHeaderInfoFromResolvedInput, nonDefaultConditionRows, summarizeNonDefaultConditions, traceConditionSummary } from '#hosts/shared/index.ts';
+import { conditionHeaderInfoFromResolvedInput, nonDefaultConditionRows, summarizeNonDefaultConditions, traceConditionSummary, type ConditionValueNames } from '#hosts/shared/index.ts';
 import { comparisonAnalyzer, type ComparisonRowContext } from '#analyzers/comparison/definition.tsx';
 import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
@@ -22,6 +22,7 @@ import { TextControl } from './TextControl.tsx';
 import { TargetPicker } from './TargetPicker.tsx';
 import { DefaultShapeControl } from './DefaultShapeControl.tsx';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
+import { setupNumbersOf, targetNameSource } from './target-name-source.ts';
 import './standalone.css';
 import './set-selection-controls.css';
 
@@ -56,6 +57,7 @@ function buildRowContext(
   target: AnalysisTarget,
   resolution: ResolvedInputResult,
   named: NamedTarget,
+  conditionNames: ConditionValueNames,
 ): ComparisonRowContext {
   const targetKey = analysisTargetKey(target);
   if (resolution.ok) {
@@ -63,7 +65,7 @@ function buildRowContext(
     // 既定値と違う条件だけを併記する（#544 Phase 3レビュー「集合対象ページは各行に
     // 効いている条件を併記する」）。比較表はwindowSizeを掃引しないので除外しない。
     const cascadeOriginSummary = summarizeNonDefaultConditions(
-      nonDefaultConditionRows(traceConditionSummary(resolution.input.cascade)),
+      nonDefaultConditionRows(traceConditionSummary(resolution.input.cascade, conditionNames)),
     );
     return {
       targetKey,
@@ -150,41 +152,27 @@ export function ComparisonStandalonePage({
   // 表示名は常に集合全体に対して計算する（#578指摘2「表示名は常に同じ画面に並ぶ集合に
   // 対して計算する」）。解決に失敗したメンバーは、共通性の判定からは除く
   // （レビュー指摘3。`naming.ts`の`TargetNameSource.failed`参照）。
-  const namedTargets = useMemo(() => nameTargets(selection.targets.map((target) => {
-    const setup = target.kind === 'setup' ? setupsById.get(target.setupId) : undefined;
-    const member = membersByTarget.get(target);
-    if (member?.resolution.ok) {
-      const header = conditionHeaderInfoFromResolvedInput(member.resolution.input.layout, member.resolution.input.geometry);
-      const overrideSummary = summarizeNonDefaultConditions(nonDefaultConditionRows(traceConditionSummary(member.resolution.input.cascade)));
-      return {
-        key: analysisTargetKey(target),
-        ...(setup?.label !== undefined ? { label: setup.label } : {}),
-        layoutName: header.layoutName,
-        shapeName: header.shapeName,
-        ...(overrideSummary === undefined ? {} : { overrideSummary }),
-      };
-    }
-    const fallback = target.kind === 'layout' ? target.layoutId : (setup?.layoutId ?? target.setupId);
-    return {
-      key: analysisTargetKey(target),
-      ...(setup?.label !== undefined ? { label: setup.label } : {}),
-      layoutName: fallback,
-      shapeName: '—',
-      failed: true,
-    };
-  })), [selection.targets, setupsById, membersByTarget]);
+  const setupNumbers = useMemo(() => setupNumbersOf(setups), [setups]);
+  const namedTargets = useMemo(() => nameTargets(selection.targets.map((target) => targetNameSource(
+    target,
+    membersByTarget.get(target)?.resolution,
+    setupsById,
+    setupNumbers,
+    catalog.setupCatalog,
+  ))), [selection.targets, setupsById, setupNumbers, membersByTarget, catalog.setupCatalog]);
   const namedByKey = useMemo(() => new Map(namedTargets.map((n) => [n.key, n] as const)), [namedTargets]);
 
+  const conditionNames = useMemo(() => ({ shapes: catalog.setupCatalog.shapes }), [catalog.setupCatalog.shapes]);
   const rowContext = useMemo(() => {
     const map = new Map<string, ComparisonRowContext>();
     for (const member of members) {
       const key = analysisTargetKey(member.target);
       const named = namedByKey.get(key);
       if (named === undefined) continue;
-      map.set(key, buildRowContext(member.target, member.resolution, named));
+      map.set(key, buildRowContext(member.target, member.resolution, named, conditionNames));
     }
     return map;
-  }, [members, namedByKey]);
+  }, [members, namedByKey, conditionNames]);
 
   const order = useMemo(() => selection.targets.map(analysisTargetKey), [selection.targets]);
 

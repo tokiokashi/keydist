@@ -55,7 +55,22 @@ function cascadeLevelLabel(level: CascadeLevel): string {
   }
 }
 
-function formatValue(value: unknown): { format: ConditionValueFormat; displayValue: string } {
+/**
+ * 値がidである項目を、利用者が読める名前へ引くための手持ち。形状idをそのまま見せても
+ * 利用者は形状の選択肢（名前で並ぶ）と対応を取れないため。引けないidはそのまま出す。
+ */
+export interface ConditionValueNames {
+  readonly shapes: ReadonlyMap<string, { readonly name: string }>;
+}
+
+function formatValue(
+  id: SettingsItemId,
+  value: unknown,
+  names: ConditionValueNames | undefined,
+): { format: ConditionValueFormat; displayValue: string } {
+  if (id === 'defaultShapeId' && typeof value === 'string') {
+    return { format: 'primitive', displayValue: names?.shapes.get(value)?.name ?? value };
+  }
   if (value === null) return { format: 'primitive', displayValue: 'なし' };
   if (typeof value === 'boolean') return { format: 'primitive', displayValue: value ? 'ON' : 'OFF' };
   if (typeof value === 'string' || typeof value === 'number') {
@@ -71,10 +86,11 @@ function formatValue(value: unknown): { format: ConditionValueFormat; displayVal
 /** カスケードの解決結果から、Traceに効く項目だけを抜き出して表示用の行にする。 */
 export function traceConditionSummary(
   cascade: ResolvedSettingsCascade,
+  names?: ConditionValueNames,
 ): readonly ConditionSummaryRow[] {
   return TRACE_AFFECTING_ITEMS.map(({ id, label }) => {
     const resolved = cascade[id];
-    const { format, displayValue } = formatValue(resolved.value);
+    const { format, displayValue } = formatValue(id, resolved.value, names);
     return {
       id,
       label,
@@ -122,6 +138,9 @@ export { formatOrigin };
  * 全項目を`<details>`で出すと行ごとに同じ既定値の羅列が並んでしまい読みにくい。
  * 「このSetupだけ何が違うか」が知りたい場面なので、`origin.kind !== 'default'`
  * （カスケードのどこかのレベルで上書きされている）の行だけを残す。
+ * その対象に効かない行（`applicable: false`。Setup対象の「既定の形状」、かな配列の
+ * ローマ字規則等）は上書きされていても落とす。効かない値を併記すると、その条件で
+ * 測ったように読めてしまうため。
  *
  * `excludeIds`は呼び出し側が「この項目は元々全員に共通の軸として見せているので、
  * ここでは重複して出さない」という項目を落とすためのフック（N感度の`windowSize`。
@@ -131,7 +150,7 @@ export function nonDefaultConditionRows(
   rows: readonly ConditionSummaryRow[],
   excludeIds: readonly SettingsItemId[] = [],
 ): readonly ConditionSummaryRow[] {
-  return rows.filter((row) => row.origin.kind !== 'default' && !excludeIds.includes(row.id));
+  return rows.filter((row) => row.applicable && row.origin.kind !== 'default' && !excludeIds.includes(row.id));
 }
 
 /**

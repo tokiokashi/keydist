@@ -165,7 +165,7 @@ export function BigramFlowStandalonePage({
     resolution,
   );
 
-  const conditionRows = resolution.ok ? traceConditionSummary(resolution.input.cascade) : [];
+  const conditionRows = resolution.ok ? traceConditionSummary(resolution.input.cascade, { shapes: catalog.setupCatalog.shapes }) : [];
   const header = resolution.ok
     ? conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry)
     : undefined;

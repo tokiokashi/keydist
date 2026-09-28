@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import type { Layout } from '#input/layouts/types.ts';
 import type { PhysicalShape } from '#input/shapes/geometry.ts';
-import { analysisTargetKey, nameTargets, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
+import { analysisTargetKey, effectiveLabel, nameTargets, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
+import { setupNumbersOf } from './target-name-source.ts';
 
 /**
  * 対象（`AnalysisTarget`）を選ぶ部品（#578指摘1「対象選択UIで配列を選べるようにする」）。
@@ -38,7 +38,7 @@ function parseTargetOptionValue(value: string): AnalysisTarget | undefined {
 function describeUnknownValue(target: AnalysisTarget): string {
   return target.kind === 'setup'
     ? '（削除されたSetup）'
-    : `（不明な配列: ${target.layoutId}）`;
+    : '（見つからない配列）';
 }
 
 export interface TargetPickerProps {
@@ -63,17 +63,23 @@ export function TargetPicker({
 }: TargetPickerProps) {
   const layoutOptions = layoutOptionsFrom(layouts);
 
-  // Setupの表示名はnameTargets（#578指摘2・3）のfullNameを使う（レビュー指摘3
-  // 「TargetPickerは生のlayoutId/shapeIdでなくnameTargets/fullNameでSetupをラベル付けする」）。
-  // ピッカーの一覧は「並べて見比べる集合」ではなく「取りうる全部から探す」場なので、
-  // 集合内の共通部分を落とすdisplayNameではなく、常に全部を含むfullNameを使う。
+  // Setupの表示名はnameTargets（#578指摘2・3）のfullNameを使う。ピッカーの一覧は
+  // 「並べて見比べる集合」ではなく「取りうる全部から探す」場なので、集合内の共通部分を
+  // 落とすdisplayNameではなく常に全部を含むfullNameを使い、表示名の衝突時に添える
+  // 「Setup n」と同じ番号を頭に付けて対応を取れるようにする（idは内部の値なので出さない）。
+  const setupNumbers = setupNumbersOf(setups);
   const namedSetups = nameTargets(setups.map((setup) => ({
     key: setup.id,
-    ...(setup.label !== undefined ? { label: setup.label } : {}),
-    layoutName: layouts.get(setup.layoutId)?.name ?? setup.layoutId,
-    shapeName: shapes.get(setup.shapeId)?.name ?? setup.shapeId,
+    kind: 'setup' as const,
+    layoutName: layouts.get(setup.layoutId)?.name ?? '見つからない配列',
+    shapeName: shapes.get(setup.shapeId)?.name ?? '見つからない形状',
   })));
-  const setupFullNameById = new Map(namedSetups.map((n) => [n.key, n.fullName] as const));
+  const setupOptionText = new Map(namedSetups.map((named, index) => {
+    const setup = setups[index]!;
+    const label = effectiveLabel(setup.label);
+    const body = label === undefined ? named.fullName : `${label}（${named.fullName}）`;
+    return [setup.id, `Setup ${setupNumbers.get(setup.id)!}: ${body}`] as const;
+  }));
 
   const knownValues = new Set<string>([
     ...layoutOptions.map((layout) => targetOptionValue({ kind: 'layout', layoutId: layout.id })),
@@ -81,23 +87,19 @@ export function TargetPicker({
   ]);
   const valueIsUnknown = value !== undefined && !knownValues.has(targetOptionValue(value));
 
-  // 「追加」モードで重複した対象を選ぶと、選択は変わらないため資産への書き込みは
-  // no-opになり、親が再レンダーされない。この`<select>`は常に`value=""`の
-  // controlled componentのはずだが、親が再レンダーされないとDOM側の値がユーザーの
-  // 選択のまま残ってしまう（レビュー指摘5「重複を追加した後、ピッカーの表示を戻す」）。
-  // `key`をクリックのたびに変えて丸ごと作り直すことで、no-opでも必ずプレースホルダへ
-  // 戻す（controlled valueに頼らない、確実なリセット）。
-  const [resetToken, setResetToken] = useState(0);
-
   return (
     <select
-      key={placeholder ? resetToken : undefined}
       aria-label={ariaLabel}
       value={value === undefined ? '' : targetOptionValue(value)}
       onChange={(event) => {
-        const parsed = parseTargetOptionValue(event.currentTarget.value);
-        if (placeholder) setResetToken((n) => n + 1);
+        const select = event.currentTarget;
+        const parsed = parseTargetOptionValue(select.value);
         if (parsed !== undefined) onChange(parsed);
+        // 「追加」モードで重複した対象を選ぶと、選択は変わらないため資産への書き込みは
+        // no-opになり、親が再レンダーされない。controlledの`value=""`に頼るとDOM側の値が
+        // 選択のまま残るので、DOMの値を直接プレースホルダへ戻す（レビュー指摘5）。
+        // 要素を作り直す方式はフォーカスを失い、キーボードで続けて追加できなくなる（指摘L1）。
+        if (placeholder) select.value = '';
       }}
     >
       {placeholder ? <option value="">選ぶ…</option> : null}
@@ -115,7 +117,7 @@ export function TargetPicker({
         <optgroup label="Setup">
           {setups.map((setup) => (
             <option key={setup.id} value={targetOptionValue({ kind: 'setup', setupId: setup.id })}>
-              {setupFullNameById.get(setup.id) ?? setup.id}
+              {setupOptionText.get(setup.id)}
             </option>
           ))}
         </optgroup>

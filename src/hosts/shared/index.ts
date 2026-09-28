@@ -8,6 +8,7 @@ export {
   type ConditionHeaderInfo,
   type ConditionSummaryRow,
   type ConditionValueFormat,
+  type ConditionValueNames,
 } from './condition-summary.ts';
 export {
   combinePaneStates,

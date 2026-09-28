@@ -1,0 +1,103 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
+import { nameTargets, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
+import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
+import type { ResolvedText } from '#input/text/resolve.ts';
+import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
+import { setupNumbersOf, targetNameSource } from './target-name-source.ts';
+
+const CATALOG: StandalonePaneCatalog = {
+  setupCatalog: {
+    layouts: LAYOUT_BY_ID,
+    shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
+  },
+  userLayouts: new Map(),
+};
+
+const EN_TEXT: ResolvedText = {
+  ref: { kind: 'user', id: 'test-text' },
+  name: 'テスト用テキスト',
+  text: 'hello world',
+  language: 'en',
+  languageOverride: undefined,
+  isBuiltin: false,
+};
+
+/** 比較表・N感度のページと同じ経路（解決→名前の材料→nameTargets）で表示名を求める。 */
+function displayNames(
+  targets: readonly AnalysisTarget[],
+  setups: readonly Setup[],
+  overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES,
+) {
+  const setupsById = new Map(setups.map((setup) => [setup.id, setup] as const));
+  const numbers = setupNumbersOf(setups);
+  return nameTargets(targets.map((target) => targetNameSource(
+    target,
+    resolveStandalonePaneInput(target, setupsById, CATALOG, overrides, EN_TEXT),
+    setupsById,
+    numbers,
+    CATALOG.setupCatalog,
+  )));
+}
+
+const fixedA: Setup = { id: '0d6f2c8e-aaaa-4bbb-8ccc-111111111111', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
+const fixedB: Setup = { id: '0d6f2c8e-aaaa-4bbb-8ccc-222222222222', layoutId: 'colemak-dh', shapeId: 'row-staggered', colorIndex: 1 };
+
+test('配列 + 上書きの無い同じ配列のSetup + 別配列のSetup: 衝突した2つだけ種類で区別し、UUIDは出さない（M3）', () => {
+  const named = displayNames(
+    [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'setup', setupId: fixedA.id }, { kind: 'setup', setupId: fixedB.id }],
+    [fixedA, fixedB],
+  );
+  const qwerty = LAYOUT_BY_ID.get('qwerty')!.name;
+  const colemakDh = LAYOUT_BY_ID.get('colemak-dh')!.name;
+  assert.deepEqual(named.map((n) => n.displayName), [`${qwerty}（配列）`, `${qwerty}（Setup 1）`, colemakDh]);
+  for (const n of named) assert.doesNotMatch(`${n.displayName} ${n.fullName}`, /0d6f2c8e|layout:|setup:/);
+});
+
+test('Setup対象だけの集合で既定の形状を変えても、名前に「既定の形状」は出ない（M1）', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const named = displayNames(
+    [{ kind: 'setup', setupId: fixedA.id }, { kind: 'setup', setupId: fixedB.id }],
+    [fixedA, fixedB],
+    written.overrides,
+  );
+  for (const n of named) assert.doesNotMatch(`${n.displayName} ${n.fullName}`, /既定の形状|ortholinear/);
+});
+
+test('解決に失敗したメンバーにも意味のある名前を付ける（L2）', () => {
+  const brokenShape: Setup = { id: 'broken', layoutId: 'dvorak', shapeId: 'deleted-shape', colorIndex: 2 };
+  const named = displayNames(
+    [
+      { kind: 'setup', setupId: fixedA.id },
+      { kind: 'setup', setupId: 'deleted-setup' },
+      { kind: 'setup', setupId: brokenShape.id },
+      { kind: 'layout', layoutId: 'deleted-layout' },
+    ],
+    [fixedA, brokenShape],
+  );
+  const dvorak = LAYOUT_BY_ID.get('dvorak')!.name;
+  assert.deepEqual(named.slice(1).map((n) => n.displayName), [
+    '削除されたSetup',
+    `${dvorak}/見つからない形状`,
+    '見つからない配列',
+  ]);
+  for (const n of named) {
+    assert.notEqual(n.displayName.replace(/[—\s]/g, ''), '');
+    assert.doesNotMatch(`${n.displayName} ${n.fullName}`, /deleted-|broken/);
+  }
+});
+
+test('このテキストに使えない配列の失敗メンバーは配列名で呼ぶ', () => {
+  const named = displayNames([{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'layout', layoutId: 'nicola' }], []);
+  assert.equal(named[1]!.displayName, LAYOUT_BY_ID.get('nicola')!.name);
+});
+
+test('空白だけのラベルはラベル無しとして自動命名に戻る（L3）', () => {
+  const blank: Setup = { ...fixedB, label: '   ' };
+  const named = displayNames([{ kind: 'setup', setupId: fixedA.id }, { kind: 'setup', setupId: blank.id }], [fixedA, blank]);
+  assert.equal(named[1]!.displayName, LAYOUT_BY_ID.get('colemak-dh')!.name);
+});

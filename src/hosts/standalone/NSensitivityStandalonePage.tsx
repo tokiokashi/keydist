@@ -9,7 +9,7 @@ import { analysisTargetKey, nameTargets, targetColor, type AnalysisTarget, type 
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
-import { conditionHeaderInfoFromResolvedInput, nonDefaultConditionRows, summarizeNonDefaultConditions, traceConditionSummary } from '#hosts/shared/index.ts';
+import { conditionHeaderInfoFromResolvedInput, nonDefaultConditionRows, summarizeNonDefaultConditions, traceConditionSummary, type ConditionValueNames } from '#hosts/shared/index.ts';
 import { nSensitivityAnalyzer, type NSensitivityRowContext } from '#analyzers/n-sensitivity/definition.tsx';
 import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
@@ -18,6 +18,7 @@ import { TextControl } from './TextControl.tsx';
 import { TargetPicker } from './TargetPicker.tsx';
 import { DefaultShapeControl } from './DefaultShapeControl.tsx';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
+import { setupNumbersOf, targetNameSource } from './target-name-source.ts';
 import './standalone.css';
 import './set-selection-controls.css';
 
@@ -52,13 +53,14 @@ function buildRowContext(
   resolution: ResolvedInputResult,
   named: NamedTarget,
   setups: ReadonlyMap<string, Setup>,
+  conditionNames: ConditionValueNames,
 ): NSensitivityRowContext {
   const targetKey = analysisTargetKey(target);
   const color = targetColor(target, setups);
   if (resolution.ok) {
     const header = conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry);
     const conditionSummary = summarizeNonDefaultConditions(
-      nonDefaultConditionRows(traceConditionSummary(resolution.input.cascade), N_SENSITIVITY_CONDITION_EXCLUDE_IDS),
+      nonDefaultConditionRows(traceConditionSummary(resolution.input.cascade, conditionNames), N_SENSITIVITY_CONDITION_EXCLUDE_IDS),
     );
     return {
       targetKey,
@@ -137,43 +139,28 @@ export function NSensitivityStandalonePage({
   );
   const membersByTarget = useMemo(() => new Map(members.map((m) => [m.target, m] as const)), [members]);
 
-  const namedTargets = useMemo(() => nameTargets(targets.map((target) => {
-    const setup = target.kind === 'setup' ? setupsById.get(target.setupId) : undefined;
-    const member = membersByTarget.get(target);
-    if (member?.resolution.ok) {
-      const header = conditionHeaderInfoFromResolvedInput(member.resolution.input.layout, member.resolution.input.geometry);
-      const overrideSummary = summarizeNonDefaultConditions(
-        nonDefaultConditionRows(traceConditionSummary(member.resolution.input.cascade), N_SENSITIVITY_CONDITION_EXCLUDE_IDS),
-      );
-      return {
-        key: analysisTargetKey(target),
-        ...(setup?.label !== undefined ? { label: setup.label } : {}),
-        layoutName: header.layoutName,
-        shapeName: header.shapeName,
-        ...(overrideSummary === undefined ? {} : { overrideSummary }),
-      };
-    }
-    const fallback = target.kind === 'layout' ? target.layoutId : (setup?.layoutId ?? target.setupId);
-    return {
-      key: analysisTargetKey(target),
-      ...(setup?.label !== undefined ? { label: setup.label } : {}),
-      layoutName: fallback,
-      shapeName: '—',
-      failed: true,
-    };
-  })), [targets, setupsById, membersByTarget]);
+  const setupNumbers = useMemo(() => setupNumbersOf(setups), [setups]);
+  const namedTargets = useMemo(() => nameTargets(targets.map((target) => targetNameSource(
+    target,
+    membersByTarget.get(target)?.resolution,
+    setupsById,
+    setupNumbers,
+    catalog.setupCatalog,
+    N_SENSITIVITY_CONDITION_EXCLUDE_IDS,
+  ))), [targets, setupsById, setupNumbers, membersByTarget, catalog.setupCatalog]);
   const namedByKey = useMemo(() => new Map(namedTargets.map((n) => [n.key, n] as const)), [namedTargets]);
 
+  const conditionNames = useMemo(() => ({ shapes: catalog.setupCatalog.shapes }), [catalog.setupCatalog.shapes]);
   const rowContext = useMemo(() => {
     const map = new Map<string, NSensitivityRowContext>();
     for (const member of members) {
       const key = analysisTargetKey(member.target);
       const named = namedByKey.get(key);
       if (named === undefined) continue;
-      map.set(key, buildRowContext(member.target, member.resolution, named, setupsById));
+      map.set(key, buildRowContext(member.target, member.resolution, named, setupsById, conditionNames));
     }
     return map;
-  }, [members, namedByKey, setupsById]);
+  }, [members, namedByKey, setupsById, conditionNames]);
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
 

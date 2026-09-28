@@ -237,3 +237,79 @@ test('既定の形状を変えると、配列対象は追従しSetup対象（明
   await expect(rows.nth(0).locator('.comparison-condition-cell')).toContainText('オーソリニア', { timeout: 10_000 });
   await expect(rows.nth(1).locator('.comparison-condition-cell')).not.toContainText('オーソリニア');
 });
+
+/** fixed-a（qwerty）・fixed-b（colemak-dh）の2件と、比較表の集合を仕込む。 */
+function seedSelection({ targets, overrides }: { targets: readonly unknown[]; overrides: Record<string, unknown> }) {
+  localStorage.setItem(
+    'keydist:setup-library',
+    JSON.stringify({
+      version: 1,
+      setups: [
+        { id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 },
+        { id: 'fixed-b', layoutId: 'colemak-dh', shapeId: 'row-staggered', colorIndex: 1 },
+      ],
+      overrides,
+    }),
+  );
+  localStorage.setItem(
+    'keydist:analyzer-set-selections',
+    JSON.stringify({ version: 2, selections: { comparison: { targets } } }),
+  );
+}
+
+test('Setup対象だけの集合では、既定の形状を変えても名前・条件欄に「既定の形状」が出ない（M1）', async ({ page }) => {
+  const targets = [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'fixed-b' }];
+  await page.addInitScript(seedSelection, { targets, overrides: {} });
+  await page.goto('/standalone/comparison');
+
+  const table = page.locator('.comparison-table');
+  await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
+  await page.getByLabel('既定の形状').selectOption('ortholinear');
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:setup-library')))
+    .toContain('ortholinear');
+
+  await expect(page.locator('.set-selection-order li > span')).toHaveText(['QWERTY', 'Colemak-DH']);
+  await expect(table).not.toContainText('既定の形状');
+  await expect(table).not.toContainText('ortholinear');
+  await expect(table).not.toContainText('オーソリニア');
+});
+
+test('配列と上書きの無いSetupが同名になっても、衝突した2つだけ種類で区別しidは出さない（M3）', async ({ page }) => {
+  const targets = [
+    { kind: 'layout', layoutId: 'qwerty' },
+    { kind: 'setup', setupId: 'fixed-a' },
+    { kind: 'setup', setupId: 'fixed-b' },
+  ];
+  await page.addInitScript(seedSelection, { targets, overrides: {} });
+  await page.goto('/standalone/comparison');
+
+  const table = page.locator('.comparison-table');
+  await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 10_000 });
+  await expect(page.locator('.set-selection-order li > span')).toHaveText(['QWERTY（配列）', 'QWERTY（Setup 1）', 'Colemak-DH']);
+  await expect(page.locator('.set-selection-order')).not.toContainText(/layout:|setup:|fixed-/);
+  await expect(table).not.toContainText(/layout:|setup:|fixed-/);
+});
+
+test('解決に失敗したメンバーにも意味のある名前が付く（L2）', async ({ page }) => {
+  const targets = [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'deleted-setup' }];
+  await page.addInitScript(seedSelection, { targets, overrides: {} });
+  await page.goto('/standalone/comparison');
+
+  const table = page.locator('.comparison-table');
+  await expect(table.locator('tbody tr[data-comparison-row="failed"]')).toHaveCount(1, { timeout: 10_000 });
+  await expect(page.locator('.set-selection-order li > span').nth(1)).toHaveText('削除されたSetup');
+  await expect(table.locator('tbody tr[data-comparison-row="failed"]')).toContainText('削除されたSetup');
+});
+
+test('キーボードで対象を追加しても、ピッカーからフォーカスが外れずプレースホルダへ戻る（L1）', async ({ page }) => {
+  await page.goto('/standalone/comparison');
+  const picker = page.getByLabel('追加する対象');
+  await expect(picker).toBeEnabled();
+
+  await picker.focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('.set-selection-order li')).toHaveCount(1);
+  await expect(picker).toBeFocused();
+  await expect(picker).toHaveValue('');
+});
