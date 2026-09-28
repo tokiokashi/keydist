@@ -38,7 +38,14 @@ export function setOverride<R extends ItemRegistry, K extends keyof R & string>(
       },
     };
   }
-  const current = levelOverrides(overrides, level) ?? {};
+  const current: LevelOverrides<RegistryValueMap<R>> = levelOverrides(overrides, level) ?? {};
+  // 既に同じ値（プリミティブなので`Object.is`で比較できる）が保存されているなら、
+  // `overrides`をそのまま返す（新しいオブジェクトを作らない）。コマンド層
+  // （engine/commands.ts）はこの参照の一致で「何も変えなかった」を判定するため、
+  // ここで新しい参照を作ってしまうと同じ値の書き込みが毎回「変化した」と誤判定される。
+  if (itemId in current && Object.is(current[itemId], value)) {
+    return { ok: true, overrides };
+  }
   const next = { ...current, [itemId]: value } as LevelOverrides<RegistryValueMap<R>>;
   return { ok: true, overrides: withLevelOverrides(overrides, level, next) };
 }

@@ -144,3 +144,31 @@ test('relabelSetup: ラベルを付ける・変える・外す', () => {
   library = relabelSetup(library, id, undefined);
   assert.equal('label' in library.setups[0], false);
 });
+
+test('deleteSetup: 存在しないidの削除は何もしない（同一のlibrary参照を返す）', () => {
+  idCounter = 0;
+  const library = createSetup(emptyLibrary(), 'qwerty', 'row-staggered', nextId);
+  const result = deleteSetup(library, 'no-such-setup');
+  assert.equal(result, library);
+});
+
+test('relabelSetup: 存在しないidの変更は何もしない（同一のlibrary参照を返す）', () => {
+  idCounter = 0;
+  const library = createSetup(emptyLibrary(), 'qwerty', 'row-staggered', nextId);
+  const result = relabelSetup(library, 'no-such-setup', 'メイン');
+  assert.equal(result, library);
+});
+
+test('relabelSetup: 既に同じラベルを付け直しても何もしない（同一のlibrary参照を返す）', () => {
+  idCounter = 0;
+  let library = createSetup(emptyLibrary(), 'qwerty', 'row-staggered', nextId, 'メイン');
+  const id = library.setups[0].id;
+
+  const same = relabelSetup(library, id, 'メイン');
+  assert.equal(same, library);
+
+  // ラベルが無い状態へ`undefined`を付け直すのも同じく何もしない。
+  library = relabelSetup(library, id, undefined);
+  const stillUndefined = relabelSetup(library, id, undefined);
+  assert.equal(stillUndefined, library);
+});

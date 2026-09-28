@@ -6,8 +6,13 @@ import { leastUsedColorIndex } from './color.ts';
 /**
  * Setupの手持ち（資産の集合）とカスケードの上書きをセットで扱う。Setup固有の上書きは
  * `overrides.setup[id]` に入っている（overrides.ts参照）ため、Setupの削除・複製は
- * この2つを同時に操作しないと整合が取れない。コマンド層（後続の項目）はこれらの純関数を
- * 呼ぶだけになる想定。
+ * この2つを同時に操作しないと整合が取れない。コマンド層（`engine/commands.ts`）はこれらの
+ * 純関数を呼ぶだけになる想定。
+ *
+ * **規約: 変化が無ければ同一の`SetupLibrary`参照を返す。** コマンド層は「呼んだ純関数が
+ * 渡した参照をそのまま返したか」で「何もしなかった（no-op）」を判定する（存在しないidの
+ * 操作等）。`Array.prototype.filter`/`map`は対象が無くても新しい配列を作ってしまうので、
+ * 各関数は「そもそも何もしない」と分かった時点で早期に`library`自身を返す。
  */
 export interface SetupLibrary<V> {
   readonly setups: readonly Setup[];
@@ -61,20 +66,33 @@ export function duplicateSetup<V>(
   };
 }
 
-/** Setupを削除する。そのSetup固有の上書き（カスケードのsetupレベル）も一緒に消す。 */
+/**
+ * Setupを削除する。そのSetup固有の上書き（カスケードのsetupレベル）も一緒に消す。
+ * 対象のidが存在しない場合は`library`をそのまま返す（`duplicateSetup`と同じ
+ * 「変化が無ければ同一参照を返す」規約。コマンド層（`engine/commands.ts`）はこの
+ * 参照の一致でno-opを判定するため、`filter`が常に新しい配列を作ってしまう問題を
+ * ここで吸収する）。
+ */
 export function deleteSetup<V>(library: SetupLibrary<V>, setupId: string): SetupLibrary<V> {
+  if (!library.setups.some((setup) => setup.id === setupId)) return library;
   return {
     setups: library.setups.filter((setup) => setup.id !== setupId),
     overrides: dropSetupOverrides(library.overrides, setupId),
   };
 }
 
-/** ラベルを付け直す。`undefined` を渡すとラベルを消し、表示名は自動生成に戻る。 */
+/**
+ * ラベルを付け直す。`undefined` を渡すとラベルを消し、表示名は自動生成に戻る。
+ * 対象が存在しない、または既に同じラベルなら`library`をそのまま返す（`deleteSetup`と
+ * 同じ規約。`map`も対象が無くても新しい配列を作ってしまうため）。
+ */
 export function relabelSetup<V>(
   library: SetupLibrary<V>,
   setupId: string,
   label: string | undefined,
 ): SetupLibrary<V> {
+  const target = library.setups.find((setup) => setup.id === setupId);
+  if (target === undefined || target.label === label) return library;
   return {
     setups: library.setups.map((setup) => setup.id === setupId ? withLabel(setup, label) : setup),
     overrides: library.overrides,
