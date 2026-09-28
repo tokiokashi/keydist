@@ -286,3 +286,28 @@ test('orderConditionRowsForDetail: 変えた項目を上に、それぞれの中
   const rest = rows.map((row) => row.id).filter((id) => id !== 'windowSize' && id !== 'triggerRealizationPolicy');
   assert.deepEqual(ordered.slice(2), rest);
 });
+
+test('数えない時に例外だけ違う上書きは、変えた項目にも対象名の差分にも入れない（#597）', () => {
+  const rows = overrideRows([['actionRealizationPolicy', {
+    triggerActivation: 'disabled',
+    triggerActivationClassOverrides: { 'order-free': 'separate' },
+    triggerActivationOverrides: [],
+  }]]);
+  const action = rows.find((row) => row.id === 'actionRealizationPolicy')!;
+  assert.equal(action.origin.kind, 'global');
+  assert.equal(conditionSummaryLine(rows).changedCount, 0);
+  assert.deepEqual(nonDefaultConditionRows(rows).map((row) => row.id), []);
+  assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), undefined);
+  // 開いた時も既定と同じ群（下）に並ぶ。
+  assert.notEqual(orderConditionRowsForDetail(rows)[0]!.id, 'actionRealizationPolicy');
+});
+
+test('数える時の上書きは、変えた項目にも対象名の差分にも入る', () => {
+  const rows = overrideRows([['actionRealizationPolicy', {
+    triggerActivation: 'semantic',
+    triggerActivationClassOverrides: {},
+    triggerActivationOverrides: [],
+  }]]);
+  assert.equal(conditionSummaryLine(rows).changedCount, 1);
+  assert.deepEqual(nonDefaultConditionRows(rows).map((row) => row.id), ['actionRealizationPolicy']);
+});

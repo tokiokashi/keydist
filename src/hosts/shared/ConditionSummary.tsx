@@ -11,7 +11,7 @@ import {
  * 条件の要約（docs/architecture.md「画面の構成 > 条件の要約」）。
  *
  * 閉じた状態は1行で、変えた項目の先頭2件（項目の定義順）と「他N件」。何も変えていなければ
- * 「すべて既定値」。開くと先頭に対象のフル名、その下に変えた項目を上にして各行に出どころを添える。
+ * 「すべて既定値」。開くと先頭に対象の実体（配列 / 物理配列 · 指の割当）、その下に変えた項目を上にして各行に出どころを添える。
  * 狭いペインで項目名と値を縦に積むのはCSS（ペインのcontainer query）が行う。
  *
  * ペインの枠から切り離しておくのは、個別画面とWorkspaceのどちらのペインにも同じ部品を置くため（#629）。
@@ -20,13 +20,14 @@ import {
 export interface ConditionSummaryProps {
   /** Traceに効く条件の一覧。項目の定義順（`traceConditionSummary`の順）で渡す。 */
   readonly rows: readonly ConditionSummaryRow[];
-  /** 開いた先頭に出す、対象のフル名。 */
-  readonly targetFullName?: string;
-  /** 対象の実体（配列・物理配列・指の割当）の名前。解決前（読み込み中）は省略する。 */
+  /**
+   * 開いた先頭に出す、対象の実体（配列・物理配列・指の割当）の名前。解決前（読み込み中）は省略する。
+   * 対象のフル名（既定と違う条件つき）は出さない。条件の差分は直下の行が出どころつきで出すため。
+   */
   readonly header?: ConditionHeaderInfo;
 }
 
-export function ConditionSummary({ rows, targetFullName, header }: ConditionSummaryProps) {
+export function ConditionSummary({ rows, header }: ConditionSummaryProps) {
   if (rows.length === 0) return null;
   const line = conditionSummaryLine(rows);
   const ordered = orderConditionRowsForDetail(rows);
@@ -39,10 +40,9 @@ export function ConditionSummary({ rows, targetFullName, header }: ConditionSumm
         </svg>
         <span className="pane-condition-key">条件</span>
         {line.changedCount === 0 ? (
-          <span className="pane-condition-count">すべて既定値</span>
+          <span className="pane-condition-default">すべて既定値</span>
         ) : (
           <>
-            <span className="pane-condition-count">{line.changedCount}件変更</span>
             <span className="pane-condition-items">
               {line.shown.map((row) => `${row.label}: ${row.displayValue}`).join(' · ')}
             </span>
@@ -51,15 +51,10 @@ export function ConditionSummary({ rows, targetFullName, header }: ConditionSumm
         )}
       </summary>
       <div className="pane-condition-body">
-        {targetFullName !== undefined || header !== undefined ? (
-          <div className="pane-condition-target">
-            {targetFullName !== undefined ? <p className="pane-condition-target-name">{targetFullName}</p> : null}
-            {header !== undefined ? (
-              <p className="pane-condition-target-detail">
-                {header.layoutName} / {header.shapeName} · 指の割当: {header.fingerAssignmentName}
-              </p>
-            ) : null}
-          </div>
+        {header !== undefined ? (
+          <p className="pane-condition-target">
+            {header.layoutName} / {header.shapeName} · 指の割当: {header.fingerAssignmentName}
+          </p>
         ) : null}
         <dl>
           {ordered.map((row) => {

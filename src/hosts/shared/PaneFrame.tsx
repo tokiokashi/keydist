@@ -38,8 +38,6 @@ export interface PaneFrameProps {
   /** Workspaceのペインでは、小窓にペイン名を出す。個別画面ではページに1枚なので出さない。 */
   readonly showPaneNameInSettings?: boolean;
   readonly menuItems: readonly PaneMenuItem[];
-  /** 条件の要約を開いた先頭に出す、対象のフル名。 */
-  readonly targetFullName?: string;
   /** 対象の実体（配列・物理配列・指の割当）の名前。解決前（読み込み中）は省略する。 */
   readonly header?: ConditionHeaderInfo;
   /** Traceに効く条件の一覧（#544 §3「実効値の出どころを表示する」）。 */
@@ -73,7 +71,6 @@ export function PaneFrame({
   settings,
   showPaneNameInSettings = false,
   menuItems,
-  targetFullName,
   header,
   conditionRows,
   engineState,
@@ -132,7 +129,7 @@ export function PaneFrame({
         {settings}
       </SettingsWindow>
 
-      <ConditionSummary rows={conditionRows} targetFullName={targetFullName} header={header} />
+      <ConditionSummary rows={conditionRows} header={header} />
 
       {traceErrors && traceErrors.length > 0 ? (
         <ul className="pane-trace-errors" role="alert" data-pane-trace-errors="true">

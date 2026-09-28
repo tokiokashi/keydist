@@ -39,7 +39,6 @@ test('条件の要約: 変えた項目を閉じた1行に出し、開くと上�
   await page.getByLabel('既定の物理配列').selectOption('ortholinear');
   const conditions = pane.locator('.pane-condition-summary');
   const summary = conditions.locator('summary');
-  await expect(summary).toContainText('1件変更');
   await expect(summary).toContainText('既定の物理配列:');
   await expect(summary).not.toContainText('他');
 

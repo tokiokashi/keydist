@@ -1,5 +1,5 @@
 import type { CascadeLevel, Diagnostic, ResolvedOrigin } from '#input/settings/index.ts';
-import type { ResolvedSettingsCascade, SettingsItemId } from '#engine/settings-items.ts';
+import { SETTINGS_ITEMS, type ResolvedSettingsCascade, type SettingsItemId } from '#engine/settings-items.ts';
 import type { FingerAssignment, Geometry, PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { InputMethod } from '#input/settings/levels.ts';
@@ -43,7 +43,20 @@ export interface ConditionSummaryRow {
   /** `origin`を画面に出す文言（「既定値」「上書き: 配列「QWERTY」」等）。idは名前へ引いてある。 */
   readonly originLabel: string;
   readonly applicable: boolean;
+  /**
+   * 上書きされていても、効く値が既定と同じか。今は「シフト系キーを別の動作として数える」だけが
+   * 対象で、数えない時は例外を一切読まないため、例外だけ違う上書きは既定と同じに働く（#597）。
+   */
+  readonly sameAsDefault: boolean;
   readonly diagnostics: readonly Diagnostic[];
+}
+
+/** 効く値が既定と同じか。効かない部分（数えない時の例外）の違いは見ない。 */
+function effectivelySameAsDefault(id: SettingsItemId, value: unknown): boolean {
+  if (id !== 'actionRealizationPolicy') return false;
+  const defaultValue: unknown = SETTINGS_ITEMS.actionRealizationPolicy.defaultValue;
+  const semantic = (policy: unknown) => isRecord(policy) && policy['triggerActivation'] === 'semantic';
+  return !semantic(value) && !semantic(defaultValue);
 }
 
 function formatOrigin(origin: ResolvedOrigin, names?: ConditionValueNames): string {
@@ -144,6 +157,7 @@ export function traceConditionSummary(
       origin: resolved.origin,
       originLabel: formatOrigin(resolved.origin, names),
       applicable: resolved.applicable,
+      sameAsDefault: effectivelySameAsDefault(id, resolved.value),
       diagnostics: resolved.diagnostics,
     };
   });
@@ -214,8 +228,7 @@ export function nonDefaultConditionRows(
   rows: readonly ConditionSummaryRow[],
   excludeIds: readonly SettingsItemId[] = [],
 ): readonly ConditionSummaryRow[] {
-  return rows.filter((row) => row.applicable
-    && row.origin.kind !== 'default'
+  return rows.filter((row) => isChangedConditionRow(row)
     && !SHOWN_AS_SHAPE_NAME.includes(row.id)
     && !excludeIds.includes(row.id));
 }
@@ -231,11 +244,12 @@ export function summarizeNonDefaultConditions(rows: readonly ConditionSummaryRow
 
 /**
  * 条件の要約で「変えた項目」とみなすか（docs/architecture.md「条件の要約」）。
- * カスケードのどこかで上書きされていて、かつその対象に効く行だけ。効かない上書きを
- * 変えた項目に数えると、閉じた1行がその条件で測ったように読めてしまうため。
+ * カスケードのどこかで上書きされていて、その対象に効き、効く値が既定と違う行だけ。
+ * 効かない上書きを変えた項目に数えると、その条件で測ったように読めてしまうため。
+ * 対象ボタンの名前（`nonDefaultConditionRows`）と閉じた1行が食い違わないよう、両方がこれを使う。
  */
 export function isChangedConditionRow(row: ConditionSummaryRow): boolean {
-  return row.applicable && row.origin.kind !== 'default';
+  return row.applicable && row.origin.kind !== 'default' && !row.sameAsDefault;
 }
 
 /** 閉じた1行に名前を出す、変えた項目の件数。残りは「他N件」に畳む。 */

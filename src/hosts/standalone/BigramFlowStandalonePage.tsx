@@ -169,7 +169,7 @@ export function BigramFlowStandalonePage({
     ? pane.trace.value.trace.errors
     : [];
 
-  // 対象の名前（読み上げ用の名前と、条件の要約の先頭に出すフル名）。単一対象なので集合は自分1つ。
+  // 対象の名前（読み上げ用の名前と、見出しの対象・hoverに出すフル名）。単一対象なので集合は自分1つ。
   const setupNumbers = useMemo(() => setupNumbersOf(setups), [setups]);
   const named = useMemo(
     () => nameTargets([targetNameSource(target, resolution, setupsById, setupNumbers, catalog.setupCatalog)])[0],
@@ -240,7 +240,7 @@ export function BigramFlowStandalonePage({
             name={bigramFlowAnalyzer.name}
             description={bigramFlowAnalyzer.description}
             headingLevel={1}
-            {...(named === undefined ? {} : { targetName: named.displayName, targetFullName: named.fullName })}
+            {...(named === undefined ? {} : { targetName: named.displayName })}
             target={(
               <TargetSelection
                 mode="single"

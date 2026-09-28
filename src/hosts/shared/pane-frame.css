@@ -326,7 +326,7 @@ h2.pane-frame-title {
 
 /*
  * 条件の要約。閉じた状態は1行に収め、入り切らない項目は省略記号で切る
- * （「N件変更」と「他N件」は切らない。件数が見えれば開く理由が分かるため）。
+ * （「他N件」は切らない。残りがあると見えれば開く理由が分かるため）。
  */
 .pane-condition-summary {
   min-width: 0;
@@ -372,7 +372,7 @@ h2.pane-frame-title {
   flex: none;
 }
 
-.pane-condition-count {
+.pane-condition-default {
   flex: none;
   color: var(--text);
   font-weight: 600;
@@ -398,22 +398,11 @@ h2.pane-frame-title {
 }
 
 .pane-condition-target {
+  margin: 0;
   padding-bottom: 0.45rem;
   border-bottom: 1px solid var(--border);
-  overflow-wrap: anywhere;
-}
-
-.pane-condition-target p {
-  margin: 0;
-}
-
-.pane-condition-target-name {
   font-weight: 600;
-}
-
-.pane-condition-target-detail {
-  color: var(--text-muted);
-  font-size: 0.8rem;
+  overflow-wrap: anywhere;
 }
 
 .pane-condition-summary dl {
@@ -441,7 +430,9 @@ h2.pane-frame-title {
   overflow-wrap: anywhere;
 }
 
-.pane-condition-row[data-not-applicable="true"] {
+/* 行は display: contents で箱を持たないので、薄くするのは dt・dd に当てる。 */
+.pane-condition-row[data-not-applicable="true"] > dt,
+.pane-condition-row[data-not-applicable="true"] > dd {
   opacity: 0.55;
 }
 
