@@ -131,6 +131,34 @@ test('romajiRuleId: 同じ配列でも打ち方がromajiでなければnot-appli
   );
 });
 
+test('fingerAssignmentId: 既定は形状から決まり（JIS系形状はjis-default）、shape/layout/setupで上書きできる', () => {
+  const resolvedAnsi = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(asuka, { shapeId: 'row-staggered' }));
+  assert.equal(resolvedAnsi.fingerAssignmentId.value, 'default');
+  assert.equal(resolvedAnsi.fingerAssignmentId.origin.kind, 'default');
+
+  const resolvedJis = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(asuka, { shapeId: 'jis-row-staggered' }));
+  assert.equal(resolvedJis.fingerAssignmentId.value, 'jis-default');
+
+  const toInputMethod = setSettingsOverride(
+    EMPTY_SETTINGS_OVERRIDES,
+    { kind: 'inputMethod', inputMethod: 'romaji' },
+    'fingerAssignmentId',
+    'jis-default',
+  );
+  assert.equal(toInputMethod.ok, false, 'inputMethodレベルへの書き込みは許可されていない');
+
+  const toSetup = setSettingsOverride(
+    EMPTY_SETTINGS_OVERRIDES,
+    { kind: 'setup', setupId: 'setup-1' },
+    'fingerAssignmentId',
+    'jis-default',
+  );
+  assert.ok(toSetup.ok);
+  if (!toSetup.ok) return;
+  const resolved = resolveSettings(toSetup.overrides, contextFor(asuka, { shapeId: 'row-staggered', setupId: 'setup-1' }));
+  assert.equal(resolved.fingerAssignmentId.value, 'jis-default');
+});
+
 test('preferOppositeThumb: SandSを持たない配列ではnot-applicable、反対の親指キーが無い形状ではfallback', () => {
   const resolvedAsuka = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(asuka));
   assert.equal(resolvedAsuka.preferOppositeThumb.applicable, false);

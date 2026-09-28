@@ -29,7 +29,7 @@ test('decode: このアプリより新しいversionはfuture-versionとして報
   }
 });
 
-test('decode: 妥当な上書きはそのまま読める（全11項目）', () => {
+test('decode: 妥当な上書きはそのまま読める（全12項目）', () => {
   const raw = {
     version: 1,
     global: {
@@ -49,6 +49,7 @@ test('decode: 妥当な上書きはそのまま読める（全11項目）', () =
         triggerRealizationPolicy: { useHold: true },
         actionRealizationPolicy: { triggerActivation: 'semantic', triggerActivationOverrides: [] },
         romajiRuleId: 'kunrei',
+        fingerAssignmentId: 'jis-default',
       },
     },
   };
@@ -58,6 +59,7 @@ test('decode: 妥当な上書きはそのまま読める（全11項目）', () =
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.value.global?.windowSize, 4);
   assert.equal(result.value.layout?.[LAYOUTS[0].id]?.preferOppositeThumb, true);
+  assert.equal(result.value.layout?.[LAYOUTS[0].id]?.fingerAssignmentId, 'jis-default');
 });
 
 test('decode: 未知の項目idは捨てて診断を積む（将来バージョンが足した項目・削除済みの項目の両方を想定）', () => {

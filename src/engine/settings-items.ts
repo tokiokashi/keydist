@@ -20,6 +20,7 @@ import {
   type TriggerRealizationPolicy,
 } from '#input/semantics/index.ts';
 import { defaultRomajiRuleId } from '#input/romaji/rules.ts';
+import { defaultFingerAssignmentId } from './finger-assignment.ts';
 import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from '#interpretation/structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION, type ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 import {
@@ -42,6 +43,7 @@ const ANY_LEVEL = new Set<CascadeLevel['kind']>(['global', 'shape', 'inputMethod
 const GLOBAL_ONLY = new Set<CascadeLevel['kind']>(['global']);
 const GLOBAL_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'layout', 'setup']);
 const INPUT_METHOD_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['inputMethod', 'layout', 'setup']);
+const GLOBAL_SHAPE_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'shape', 'layout', 'setup']);
 
 /** 形状のthumbsに指定の手の親指キーがあるか。`preferOppositeThumb`の実現可能性判定に使う。 */
 function shapeHasThumb(context: CascadeContext, finger: 'LT' | 'RT'): boolean {
@@ -167,6 +169,19 @@ export const SETTINGS_ITEMS = {
     allowedLevels: INPUT_METHOD_LAYOUT_SETUP,
     defaultValue: (context) => defaultRomajiRuleId(context.layoutId),
     isApplicable: (context) => context.inputMethod === 'romaji',
+  }),
+  /**
+   * 指割り当てid（`#engine/finger-assignment.ts` 参照）。SetupCatalogの形状は
+   * `PhysicalShape` までしか持たず、指割り当てはその型に無い独立の軸なので、
+   * カスケードの項目として持つ。`row-staggered` の形状のまま `jis-default` へ差し替える等、
+   * 形状を変えずに運指だけ比べる分岐が既存fixtureに実在するため、shape/layout/setupの
+   * どのレベルでも上書きを許す（`allowedLevels`はwindowSize等と同じ「先回りして足さない」
+   * 判断で、今のところ要望が無いinputMethodレベルは持たない）。
+   */
+  fingerAssignmentId: defineItem<string>({
+    id: 'fingerAssignmentId',
+    allowedLevels: GLOBAL_SHAPE_LAYOUT_SETUP,
+    defaultValue: (context) => defaultFingerAssignmentId(context.shape),
   }),
 } as const satisfies ItemRegistry;
 

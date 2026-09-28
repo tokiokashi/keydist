@@ -74,6 +74,13 @@ const windowSizeSchema = v.pipe(v.number(), v.integer(), v.minValue(1));
 /** ローマ字規則idは組み込み・自作の両方がありうる（romajiRuleIdのコメント参照）ので、空文字だけ弾く。 */
 const romajiRuleIdSchema = v.pipe(v.string(), v.minLength(1));
 
+/**
+ * 指割り当てid（`#engine/finger-assignment.ts`）。今は組み込み2種類のみだが、
+ * romajiRuleIdと同じ理由（将来の自作分の余地）で値そのものは緩く、空文字だけ弾く。
+ * 未登録のidは`resolveFingerAssignment`側が`default`へfallbackする。
+ */
+const fingerAssignmentIdSchema = v.pipe(v.string(), v.minLength(1));
+
 export const SETTINGS_ITEM_SCHEMAS = {
   windowSize: windowSizeSchema,
   sfbHomeCost: v.boolean(),
@@ -90,6 +97,7 @@ export const SETTINGS_ITEM_SCHEMAS = {
     v.number(), v.minValue(PLAYBACK_RATE_HALF_LIFE_SECONDS_MIN), v.maxValue(PLAYBACK_RATE_HALF_LIFE_SECONDS_MAX),
   ),
   romajiRuleId: romajiRuleIdSchema,
+  fingerAssignmentId: fingerAssignmentIdSchema,
 } as const satisfies ItemSchemaMap<SettingsValueMap>;
 
 // SETTINGS_ITEMSと1対1対応していることを型で保証する（片方だけ項目を足すとここが壊れる）。
