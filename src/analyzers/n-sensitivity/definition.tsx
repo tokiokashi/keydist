@@ -10,7 +10,7 @@ import './n-sensitivity-view.css';
  * 順位表示・傾きスコアはしない**（AGENTS.md「優劣の判定・順位付け・合成スコアを作らない」。
  * 旧実装（`src/legacy/analyzer-metrics-content.tsx`）のコメントが「傾きが小さい配列ほど
  * 指を残したまま打てる配列」と書いていた評価的な言い回しはここでは引き継がない）。
- * 系列の色は対象自身の色（`targetColor`）をそのまま使い、値の大小で強調しない。
+ * 系列の色はhostが集合の中で配った色（`rowContext`の`color`）をそのまま使い、値の大小で強調しない。
  */
 
 const CHART_WIDTH = 640;

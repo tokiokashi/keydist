@@ -9,8 +9,8 @@ const C: AnalysisTarget = { kind: 'layout', layoutId: 'c' };
 
 test('ANALYZER_SET_SELECTION_CODEC: encode→decodeで往復する', () => {
   const state = {
-    comparison: { targets: [A, B], baseline: A },
-    'n-sensitivity': { targets: [C], baseline: undefined },
+    comparison: { targets: [A, B], baseline: A, colorSlots: [2, 0] },
+    'n-sensitivity': { targets: [C], baseline: undefined, colorSlots: [0] },
   };
   const decoded = ANALYZER_SET_SELECTION_CODEC.decode(ANALYZER_SET_SELECTION_CODEC.encode(state));
   assert.equal(decoded.ok, true);
@@ -18,7 +18,7 @@ test('ANALYZER_SET_SELECTION_CODEC: encode→decodeで往復する', () => {
 });
 
 test('ANALYZER_SET_SELECTION_CODEC: Analyzer idはpayload.selectionsへネストされ、versionと同じ名前空間にならない', () => {
-  const encoded = ANALYZER_SET_SELECTION_CODEC.encode({ comparison: { targets: [A], baseline: undefined } });
+  const encoded = ANALYZER_SET_SELECTION_CODEC.encode({ comparison: { targets: [A], baseline: undefined, colorSlots: [0] } });
   assert.equal(encoded.version, 2);
   assert.ok('selections' in encoded);
   // トップレベルにAnalyzer idが直接展開されていない（"comparison"というキーがversionと並ばない）。
@@ -26,7 +26,7 @@ test('ANALYZER_SET_SELECTION_CODEC: Analyzer idはpayload.selectionsへネスト
 });
 
 test('ANALYZER_SET_SELECTION_CODEC: "version"という名前のAnalyzer idがあってもcodecの予約語と衝突しない', () => {
-  const state = { version: { targets: [A], baseline: undefined } };
+  const state = { version: { targets: [A], baseline: undefined, colorSlots: [0] } };
   const decoded = ANALYZER_SET_SELECTION_CODEC.decode(ANALYZER_SET_SELECTION_CODEC.encode(state));
   assert.equal(decoded.ok, true);
   assert.deepEqual(decoded.ok ? decoded.value : undefined, state);
@@ -86,4 +86,32 @@ test('ANALYZER_SET_SELECTION_CODEC: selectionsが配列等object形式でなけ�
 test('ANALYZER_SET_SELECTION_CODEC: object形式でなければdecode自体が失敗する', () => {
   const decoded = ANALYZER_SET_SELECTION_CODEC.decode('not-an-object');
   assert.equal(decoded.ok, false);
+});
+
+test('ANALYZER_SET_SELECTION_CODEC: 色の番号が無ければ並びの順に配り直す（診断なし）', () => {
+  const decoded = ANALYZER_SET_SELECTION_CODEC.decode({
+    version: 2,
+    selections: { comparison: { targets: [A, B] } },
+  });
+  assert.equal(decoded.ok, true);
+  assert.deepEqual(decoded.ok ? decoded.value.comparison?.colorSlots : undefined, [0, 1]);
+  assert.deepEqual(decoded.ok ? decoded.diagnostics : undefined, []);
+});
+
+test('ANALYZER_SET_SELECTION_CODEC: 捨てた対象の番号は読まず、残った対象は自分の番号を保つ', () => {
+  const decoded = ANALYZER_SET_SELECTION_CODEC.decode({
+    version: 2,
+    selections: { comparison: { targets: [A, { kind: 'workspace', workspaceId: 'x' }, B], colorSlots: [3, 0, 1] } },
+  });
+  assert.equal(decoded.ok, true);
+  assert.deepEqual(decoded.ok ? decoded.value.comparison?.colorSlots : undefined, [3, 1]);
+});
+
+test('ANALYZER_SET_SELECTION_CODEC: 範囲外の色の番号は壊れた値として配り直す', () => {
+  const decoded = ANALYZER_SET_SELECTION_CODEC.decode({
+    version: 2,
+    selections: { comparison: { targets: [A, B], colorSlots: [0, 12] } },
+  });
+  assert.equal(decoded.ok, true);
+  assert.deepEqual(decoded.ok ? decoded.value.comparison?.colorSlots : undefined, [0, 1]);
 });

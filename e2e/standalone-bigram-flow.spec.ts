@@ -531,8 +531,8 @@ test('保存済みのSetupが2件あっても、開いた時に手を付けず�
       JSON.stringify({
         version: 1,
         setups: [
-          { id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 },
-          { id: 'fixed-b', layoutId: 'colemak-dh', shapeId: 'row-staggered', colorIndex: 1 },
+          { id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' },
+          { id: 'fixed-b', layoutId: 'colemak-dh', shapeId: 'row-staggered' },
         ],
         overrides: {},
       }),

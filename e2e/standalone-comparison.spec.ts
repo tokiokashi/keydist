@@ -25,8 +25,8 @@ function seedTwoSetups() {
       JSON.stringify({
         version: 1,
         setups: [
-          { id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 },
-          { id: 'fixed-b', layoutId: 'colemak-dh', shapeId: 'row-staggered', colorIndex: 1 },
+          { id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' },
+          { id: 'fixed-b', layoutId: 'colemak-dh', shapeId: 'row-staggered' },
         ],
         overrides: {},
       }),
@@ -146,7 +146,7 @@ test('集合に存在しないSetup idが混ざっていても行は消えず「
       'keydist:setup-library',
       JSON.stringify({
         version: 1,
-        setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 }],
+        setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' }],
         overrides: {},
       }),
     );
@@ -186,7 +186,7 @@ test('既定と違う条件が行に併記される（#544 Phase 3レビュー: 
       'keydist:setup-library',
       JSON.stringify({
         version: 1,
-        setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 }],
+        setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' }],
         overrides: { global: { sfbHomeCost: false } },
       }),
     );
@@ -208,7 +208,7 @@ test('既定の物理配列を変えると、配列対象は追従しSetup対象
       'keydist:setup-library',
       JSON.stringify({
         version: 1,
-        setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 }],
+        setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' }],
         overrides: {},
       }),
     );
@@ -249,8 +249,8 @@ function seedSelection({ targets, overrides }: { targets: readonly unknown[]; ov
     JSON.stringify({
       version: 1,
       setups: [
-        { id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 },
-        { id: 'fixed-b', layoutId: 'colemak-dh', shapeId: 'row-staggered', colorIndex: 1 },
+        { id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' },
+        { id: 'fixed-b', layoutId: 'colemak-dh', shapeId: 'row-staggered' },
       ],
       overrides,
     }),

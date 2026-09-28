@@ -42,8 +42,8 @@ function displayNames(
   )));
 }
 
-const fixedA: Setup = { id: '0d6f2c8e-aaaa-4bbb-8ccc-111111111111', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
-const fixedB: Setup = { id: '0d6f2c8e-aaaa-4bbb-8ccc-222222222222', layoutId: 'colemak-dh', shapeId: 'row-staggered', colorIndex: 1 };
+const fixedA: Setup = { id: '0d6f2c8e-aaaa-4bbb-8ccc-111111111111', layoutId: 'qwerty', shapeId: 'row-staggered' };
+const fixedB: Setup = { id: '0d6f2c8e-aaaa-4bbb-8ccc-222222222222', layoutId: 'colemak-dh', shapeId: 'row-staggered' };
 
 test('配列 + 上書きの無い同じ配列のSetup + 別配列のSetup: 衝突した2つだけ種類で区別し、UUIDは出さない（M3）', () => {
   const named = displayNames(
@@ -69,7 +69,7 @@ test('Setup対象だけの集合で既定の物理配列を変えても、名前
 });
 
 test('解決に失敗したメンバーにも意味のある名前を付ける（L2）', () => {
-  const brokenShape: Setup = { id: 'broken', layoutId: 'dvorak', shapeId: 'deleted-shape', colorIndex: 2 };
+  const brokenShape: Setup = { id: 'broken', layoutId: 'dvorak', shapeId: 'deleted-shape' };
   const named = displayNames(
     [
       { kind: 'setup', setupId: fixedA.id },

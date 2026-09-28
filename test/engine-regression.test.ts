@@ -179,7 +179,6 @@ function computeFor(fixtureCase: FixtureCase, cache = createEngineCache()) {
     id: setupId,
     layoutId: fixtureCase.layoutId,
     shapeId: fixtureCase.conditions.geometryShapeId,
-    colorIndex: 0,
   };
   const overrides = overridesFor(setupId, fixtureCase.conditions);
 
@@ -212,7 +211,6 @@ async function computeForAsync(fixtureCase: FixtureCase, cache = createEngineCac
     id: setupId,
     layoutId: fixtureCase.layoutId,
     shapeId: fixtureCase.conditions.geometryShapeId,
-    colorIndex: 0,
   };
   const overrides = overridesFor(setupId, fixtureCase.conditions);
   const resolution = resolveEngineInput({

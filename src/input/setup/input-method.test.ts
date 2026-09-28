@@ -104,7 +104,7 @@ function catalogWith(layoutId: string): SetupCatalog {
 }
 
 const setupFor = (layoutId: string): Setup => ({
-  id: 'setup-1', layoutId, shapeId: 'shape-1', colorIndex: 0,
+  id: 'setup-1', layoutId, shapeId: 'shape-1',
 });
 
 const NO_USER_LAYOUTS: ReadonlyMap<string, UserLayout> = new Map();

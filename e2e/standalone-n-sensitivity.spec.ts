@@ -20,8 +20,8 @@ function seedTwoSetups() {
       JSON.stringify({
         version: 1,
         setups: [
-          { id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 },
-          { id: 'fixed-b', layoutId: 'colemak-dh', shapeId: 'row-staggered', colorIndex: 1 },
+          { id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' },
+          { id: 'fixed-b', layoutId: 'colemak-dh', shapeId: 'row-staggered' },
         ],
         overrides: {},
       }),
@@ -54,6 +54,27 @@ test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを�
 
   const stored = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
   expect(stored).toBeNull();
+});
+
+test('色は加えた順に配り、1つ外しても他の線の色は変わらず、空いた色を次に加えた対象が使う', async ({ page }) => {
+  await page.goto('/standalone/n-sensitivity');
+  const strokeOf = (key: string) => page.locator(`[data-n-sensitivity-series="${key}"] path`).getAttribute('stroke');
+
+  await addTarget(page, 'layout:qwerty');
+  await addTarget(page, 'layout:colemak-dh');
+  await addTarget(page, 'layout:dvorak');
+  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(3, { timeout: 10_000 });
+  const [first, second, third] = [await strokeOf('layout:qwerty'), await strokeOf('layout:colemak-dh'), await strokeOf('layout:dvorak')];
+  expect(new Set([first, second, third]).size).toBe(3);
+
+  await page.getByRole('button', { name: '1番目を外す' }).click();
+  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
+  expect(await strokeOf('layout:colemak-dh')).toBe(second);
+  expect(await strokeOf('layout:dvorak')).toBe(third);
+
+  await addTarget(page, 'layout:workman');
+  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(3, { timeout: 10_000 });
+  expect(await strokeOf('layout:workman')).toBe(first);
 });
 
 test('Setupを2件選ぶと2本の折れ線が表示される', async ({ page }) => {
@@ -152,7 +173,7 @@ test('集合に存在しないSetup idが混ざっていても消えず「削除
       'keydist:setup-library',
       JSON.stringify({
         version: 1,
-        setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 }],
+        setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' }],
         overrides: {},
       }),
     );
@@ -185,7 +206,7 @@ test('既定と違う条件（windowSize以外）が併記される。windowSize
       'keydist:setup-library',
       JSON.stringify({
         version: 1,
-        setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 }],
+        setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' }],
         // sfbHomeCost=falseは既定(true)と違うので併記される。windowSizeは既定と違っても
         // 掃引軸として除外され、行の条件併記には出ない。
         overrides: { global: { sfbHomeCost: false, windowSize: 7 } },
