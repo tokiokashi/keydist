@@ -8,7 +8,9 @@ import { expect, test } from '@playwright/test';
 test('単体ページが開き、Bigram Flowが描画される', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
 
-  await expect(page.getByRole('heading', { name: 'Bigram Flow', exact: true }).first()).toBeVisible();
+  // ページの見出し(h1)とAnalyzer自身の見出し(h2)は同じ文字列。h2は計算が済むと現れるので、
+  // 名前だけで探すと一致が1件か2件かが描画の速さで変わる。見出しの段まで指定する。
+  await expect(page.getByRole('heading', { name: 'Bigram Flow', exact: true, level: 1 })).toBeVisible();
 
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });

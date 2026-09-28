@@ -45,7 +45,9 @@ async function addTarget(page: import('@playwright/test').Page, optionValue: str
 
 test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを作らずに比較できる', async ({ page }) => {
   await page.goto('/standalone/comparison');
-  await expect(page.getByRole('heading', { name: '比較表', exact: true })).toBeVisible();
+  // ページの見出し(h1)とAnalyzer自身の見出し(h2)は同じ文字列。h2は計算が済むと現れるので、
+  // 名前だけで探すと一致が1件か2件かが描画の速さで変わる。見出しの段まで指定する。
+  await expect(page.getByRole('heading', { name: '比較表', exact: true, level: 1 })).toBeVisible();
 
   // 手持ちのSetupは0件（初期Setupの自動生成をやめた。#578指摘1）。
   await expect(page.getByLabel('追加する対象').locator('optgroup[label="Setup"]')).toHaveCount(0);
@@ -66,10 +68,7 @@ test('Setupを2件選ぶと2行表示され、並び替え・基準選択が効�
   await page.addInitScript(seedTwoSetups());
   await page.goto('/standalone/comparison');
 
-  // ページ見出し(h1)とAnalyzer自身の見出し(h2)が同じ文字列を持つため`.first()`で絞る
-  // （`standalone-bigram-flow.spec.ts`と同じ形。#544 プリロード修正で描画が速くなり、
-  // 以前は間に合わずh1しか無かった場面でh2まで揃うようになって顕在化した）。
-  await expect(page.getByRole('heading', { name: '比較表', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: '比較表', exact: true, level: 1 })).toBeVisible();
 
   await addTarget(page, 'setup:fixed-a');
   await addTarget(page, 'setup:fixed-b');
