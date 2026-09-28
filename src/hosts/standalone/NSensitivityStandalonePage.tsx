@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import { setAnalyzerSetSelectionTargetsCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineCache } from '#engine/cache.ts';
@@ -6,7 +6,6 @@ import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import { analyzerSetSelectionFor } from '#engine/analyzer-set-selection.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget } from '#input/setup/index.ts';
-import { targetPaletteColor } from '#ui/theme/target-colors.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
@@ -17,7 +16,6 @@ import {
   resetOptionsMenuItem,
   setupNumbersOf,
   summarizeNonDefaultConditions,
-  targetChoiceGroups,
   TargetSelection,
   traceConditionSummary,
   type ConditionValueNames,
@@ -26,6 +24,7 @@ import { nSensitivityAnalyzer, type NSensitivityRowContext } from '#analyzers/n-
 import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
+import { useSetTargetSelection } from './use-set-target-selection.ts';
 import { ContextBar, ShareButton, UndoRedoButtons, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { TextChip } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
@@ -117,8 +116,10 @@ export function NSensitivityStandalonePage({
   );
 
   const selection = analyzerSetSelectionFor(assets.analyzerSetSelections, ANALYZER_ID);
-  const targets = selection.targets;
+  const { choiceGroups, targets, colorByKey } = useSetTargetSelection(selection, setups, catalog);
 
+  // 対象の選択を開いているか。空の時のペインのボタンからも開くので、ここで持つ。
+  const [selectionOpen, setSelectionOpen] = useState(false);
   const setSelection = (next: readonly AnalysisTarget[]) => dispatch(setAnalyzerSetSelectionTargetsCommand(ANALYZER_ID, next));
 
   const storedOptionsRaw = assets.standaloneAnalyzerOptions[ANALYZER_ID];
@@ -149,38 +150,25 @@ export function NSensitivityStandalonePage({
   const namedByKey = useMemo(() => new Map(namedTargets.map((n) => [n.key, n] as const)), [namedTargets]);
 
 
-  // 対象の選択の候補と、見出しに出す名前・色（色は集合が配った番号から引く。`colorSlots`は対象と同じ並び）。
-  const choiceGroups = useMemo(() => targetChoiceGroups({
-    layouts: catalog.setupCatalog.layouts,
-    userLayoutIds: new Set(catalog.userLayouts.keys()),
-    shapes: catalog.setupCatalog.shapes,
-    setups,
-    selected: targets,
-  }), [catalog, setups, targets]);
-  const targetSummary = useMemo(() => targets.map((target, index) => {
+  const targetSummary = useMemo(() => targets.map((target) => {
     const key = analysisTargetKey(target);
     const named = namedByKey.get(key);
-    return {
-      key,
-      label: named?.displayName ?? key,
-      fullName: named?.fullName ?? '',
-      color: targetPaletteColor(selection.colorSlots[index]!),
-    };
-  }), [targets, namedByKey, selection.colorSlots]);
+    return { key, label: named?.displayName ?? key, fullName: named?.fullName ?? '', color: colorByKey.get(key) };
+  }), [targets, namedByKey, colorByKey]);
 
   const conditionNames: ConditionValueNames = catalog.setupCatalog;
   const rowContext = useMemo(() => {
     const map = new Map<string, NSensitivityRowContext>();
-    // 色は集合が配った番号から引く（`SetSelectionState.colorSlots`。`members`は`targets`と同じ並び）。
-    members.forEach((member, index) => {
+    // 色は集合が配った番号から引く（加えた順。表示順とは別）。
+    members.forEach((member) => {
       const key = analysisTargetKey(member.target);
       const named = namedByKey.get(key);
-      if (named === undefined) return;
-      const color = targetPaletteColor(selection.colorSlots[index]!);
+      const color = colorByKey.get(key);
+      if (named === undefined || color === undefined) return;
       map.set(key, buildRowContext(member.target, member.resolution, named, color, conditionNames));
     });
     return map;
-  }, [members, namedByKey, selection.colorSlots, conditionNames]);
+  }, [members, namedByKey, colorByKey, conditionNames]);
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
 
@@ -235,6 +223,9 @@ export function NSensitivityStandalonePage({
                 selected={targets}
                 summary={targetSummary}
                 onChange={setSelection}
+                open={selectionOpen}
+                onOpenChange={setSelectionOpen}
+                autoOpen={assetsReady && targets.length === 0}
               />
             )}
             settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
@@ -242,7 +233,15 @@ export function NSensitivityStandalonePage({
             conditionRows={[]}
             engineState={extraction}
             settingsDiagnostics={decoded.diagnostics}
-            {...(targets.length === 0 ? { emptyMessage: '対象を1つ以上選ぶと、ここにチャートが出る。' } : {})}
+            {...(targets.length === 0
+              ? {
+                emptyContent: (
+                  <button type="button" className="pane-empty-button" onClick={() => setSelectionOpen(true)}>
+                    配列・Setupを選ぶ
+                  </button>
+                ),
+              }
+              : {})}
           >
             {extracted === undefined ? undefined : (
               <Body extracted={extracted} order={order} rowContext={rowContext} options={optionsDraft} />

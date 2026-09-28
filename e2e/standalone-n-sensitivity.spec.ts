@@ -132,32 +132,24 @@ test('縦軸（相対/実測値）の切り替えはリロードしても残る'
   await expect((await openSettings(page)).getByRole('radio', { name: '相対（N=0を100%）' })).not.toBeChecked();
 });
 
-test('選択・並び順はリロードしても残り、資産の読み込み前に上書きされない', async ({ page }) => {
+test('選択はリロードしても残り、資産の読み込み前に上書きされない。並びは付けた順によらず一覧の順', async ({ page }) => {
   await page.addInitScript(seedTwoSetups());
   await page.goto('/standalone/n-sensitivity');
 
-  await addTarget(page, 'setup:fixed-a');
   await addTarget(page, 'setup:fixed-b');
+  await addTarget(page, 'setup:fixed-a');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
-
   await expectTargetNames(page, ['QWERTY', 'Colemak-DH']);
-  await toggleTarget(page, 'setup:fixed-a');
-  await toggleTarget(page, 'setup:fixed-a');
-  await expectTargetNames(page, ['Colemak-DH', 'QWERTY']);
 
-  // 付け直した後の並び（fixed-bが先）がstorageへ書き込まれるまで待つ。
   await expect
-    .poll(async () => {
-      const stored = (await page.evaluate((key) => localStorage.getItem(key), ANALYZER_SET_SELECTIONS_KEY)) ?? '';
-      return stored.includes('fixed-a') && stored.indexOf('fixed-b') < stored.indexOf('fixed-a');
-    })
-    .toBe(true);
+    .poll(async () => page.evaluate((key) => localStorage.getItem(key), ANALYZER_SET_SELECTIONS_KEY))
+    .toContain('fixed-a');
 
   // 資産の読み込み前に空の初期値へ巻き戻る競合が無いことの回帰確認: リロード直後に
   // 2件→1件に減ったり、選択が消えたりしない。
   await page.reload();
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
-  await expectTargetNames(page, ['Colemak-DH', 'QWERTY']);
+  await expectTargetNames(page, ['QWERTY', 'Colemak-DH']);
 
   const storedAfterReload = await page.evaluate(
     (key) => localStorage.getItem(key),
@@ -261,9 +253,9 @@ test('保存済みの縦軸は、操作可能になった瞬間から表示さ�
   expect(await enabledValues(page)).toEqual(['true']);
 });
 
-test('対象が空の時はペインが案内を出し、全メンバーが失敗した時は凡例の失敗行だけが残る', async ({ page }) => {
+test('対象が空の時はペインに選ぶボタンを出し、全メンバーが失敗した時は凡例の失敗行だけが残る', async ({ page }) => {
   await page.goto('/standalone/n-sensitivity');
-  await expect(page.locator('[data-pane-empty="true"]')).toContainText('対象を1つ以上選ぶ');
+  await expect(page.locator('[data-pane-empty="true"]').getByRole('button', { name: '配列・Setupを選ぶ' })).toBeVisible();
 
   await page.addInitScript(() => {
     localStorage.setItem(
@@ -277,6 +269,6 @@ test('対象が空の時はペインが案内を出し、全メンバーが失�
   await page.reload();
   await expect(page.locator('[data-n-sensitivity-row="failed"]')).toHaveCount(1, { timeout: 10_000 });
   await expect(page.locator('[data-pane-empty="true"]')).toHaveCount(0);
-  await expect(page.locator('.pane-body')).not.toContainText('対象を1つ以上選ぶ');
+  await expect(page.locator('.pane-body')).not.toContainText('配列・Setupを選ぶ');
   await expect(page.locator('.n-sensitivity-svg')).toHaveCount(0);
 });

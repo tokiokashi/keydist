@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
-import { expectTargetNames, openSettings, openTargetSelection, targetNames, toggleTarget } from './pane-helper.ts';
+import { dismissAutoOpenedSelection, expectTargetNames, openSettings, openTargetSelection, targetNames, toggleTarget } from './pane-helper.ts';
 
 /**
  * 比較表単体ページ（#544 Phase 3「集合を対象にする最初のAnalyzer（比較表）と、
@@ -61,25 +61,29 @@ test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを�
   expect(stored).toBeNull();
 });
 
-test('Setupを2件選ぶと2行表示され、外して付け直すと末尾へ回り、基準選択が効く', async ({ page }) => {
+test('Setupを2件選ぶと2行表示され、並びは付けた順によらず一覧の順で、基準選択が効く', async ({ page }) => {
   await page.addInitScript(seedTwoSetups());
   await page.goto('/standalone/comparison');
 
   await expect(page.getByRole('heading', { name: '比較表', exact: true, level: 1 })).toBeVisible();
 
-  await addTarget(page, 'setup:fixed-a');
+  // 後ろのSetupから付けても、並びは一覧の順（Setup 1 → Setup 2）。
   await addTarget(page, 'setup:fixed-b');
+  await addTarget(page, 'setup:fixed-a');
 
   const table = page.locator('.comparison-table');
   await expect(table).toBeVisible({ timeout: 10_000 });
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
-
-  // 並びはチェックを付けた順。先頭（fixed-a）を外して付け直すと末尾へ回る。
   await expectTargetNames(page, ['QWERTY', 'Colemak-DH']);
+  await expect(table.locator('tbody tr').first()).toContainText('QWERTY');
+
+  // 配列はSetupより前。外して付け直しても並びは変わらない。
+  await addTarget(page, 'layout:dvorak');
+  await expectTargetNames(page, ['Dvorak', 'QWERTY', 'Colemak-DH']);
   await toggleTarget(page, 'setup:fixed-a');
   await toggleTarget(page, 'setup:fixed-a');
-  await expectTargetNames(page, ['Colemak-DH', 'QWERTY']);
-  await expect(table.locator('tbody tr').first()).toContainText('Colemak');
+  await expectTargetNames(page, ['Dvorak', 'QWERTY', 'Colemak-DH']);
+  await toggleTarget(page, 'layout:dvorak');
 
   // 基準を選ぶと、その行に基準マークが付く。
   await openTargetSelection(page);
@@ -88,18 +92,15 @@ test('Setupを2件選ぶと2行表示され、外して付け直すと末尾へ�
   await expect(table.locator('tr[data-baseline="true"]')).toContainText('QWERTY');
 });
 
-test('選択・並び順・基準はリロードしても残る（資産の読み込み前に消えない）', async ({ page }) => {
+test('選択・基準はリロードしても残る（資産の読み込み前に消えない）', async ({ page }) => {
   await page.addInitScript(seedTwoSetups());
   await page.goto('/standalone/comparison');
 
   const table = page.locator('.comparison-table');
-  await addTarget(page, 'setup:fixed-a');
   await addTarget(page, 'setup:fixed-b');
+  await addTarget(page, 'setup:fixed-a');
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
-
-  await toggleTarget(page, 'setup:fixed-a');
-  await toggleTarget(page, 'setup:fixed-a');
-  await expectTargetNames(page, ['Colemak-DH', 'QWERTY']);
+  await expectTargetNames(page, ['QWERTY', 'Colemak-DH']);
 
   await openTargetSelection(page);
   await page.getByLabel('基準', { exact: true }).selectOption('setup:fixed-a');
@@ -120,12 +121,12 @@ test('選択・並び順・基準はリロードしても残る（資産の読�
   await expect(tableAfterReload).toBeVisible({ timeout: 10_000 });
   await expect(tableAfterReload.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
 
-  await expectTargetNames(page, ['Colemak-DH', 'QWERTY']);
+  await expectTargetNames(page, ['QWERTY', 'Colemak-DH']);
   await openTargetSelection(page);
   await expect(page.getByLabel('基準', { exact: true })).toHaveValue('setup:fixed-a');
   await expect(tableAfterReload.locator('tr[data-baseline="true"]')).toHaveCount(1);
 
-  // storage側の中身も保たれている（並び順・基準とも）。
+  // storage側の中身も保たれている（付けた順・基準とも。付けた順は色を配る順）。
   const storedAfterReload = await page.evaluate(
     (key) => localStorage.getItem(key),
     ANALYZER_SET_SELECTIONS_KEY,
@@ -312,6 +313,7 @@ test('解決に失敗したメンバーにも意味のある名前が付く（L2
 test('絞り込み欄で候補を絞り、キーボードだけで選んで、Escapeで閉じるとボタンへ戻る', async ({ page }) => {
   await page.goto('/standalone/comparison');
   const button = page.getByRole('button', { name: /^対象: / });
+  await dismissAutoOpenedSelection(page);
   await button.click();
   const selection = page.getByRole('dialog', { name: '対象の選択' });
   await expect(selection).toBeVisible();
@@ -343,6 +345,7 @@ test('Tabで選択の最後から先へ進むと閉じてボタンの次へ、�
   await page.goto('/standalone/comparison');
   const button = page.getByRole('button', { name: /^対象: / });
   const selection = page.getByRole('dialog', { name: '対象の選択' });
+  await dismissAutoOpenedSelection(page);
 
   // 最初（絞り込み欄）からShift+Tabで戻ると、閉じて対象ボタンへ。
   await button.click();
@@ -463,8 +466,39 @@ test('基準にする対象は対象の選択の中にあり、解析設定に�
   await expect(body).not.toContainText('配列の優劣を判定するスコアではない');
 });
 
-test('対象が空の時はペインが案内を出し、本体は描かない', async ({ page }) => {
+test('対象が空の時は、ペインに選ぶボタンだけを出し、パソコン幅では選択を自動で開く（フォーカスは奪わない）', async ({ page }) => {
   await page.goto('/standalone/comparison');
-  await expect(page.locator('[data-pane-empty="true"]')).toContainText('対象を1つ以上選ぶ');
+  const empty = page.locator('[data-pane-empty="true"]');
+  const choose = empty.getByRole('button', { name: '配列・Setupを選ぶ' });
+  await expect(choose).toBeVisible();
+  // 操作すれば分かる結果の説明は置かない。
+  await expect(empty).toHaveText('配列・Setupを選ぶ');
   await expect(page.locator('.comparison-table')).toHaveCount(0);
+
+  // 開いた直後に自動で開くが、フォーカスは中へ移さない。
+  const selection = page.getByRole('dialog', { name: '対象の選択' });
+  await expect(selection).toBeVisible();
+  await expect(selection.getByRole('searchbox')).not.toBeFocused();
+
+  // 閉じたら同じペインでは出し直さない。空のボタンから開けば同じ選択が開く。
+  await page.getByRole('heading', { name: '比較表', level: 1 }).click();
+  await expect(selection).toHaveCount(0);
+  await page.waitForTimeout(300);
+  await expect(selection).toHaveCount(0);
+  await choose.click();
+  await expect(selection).toBeVisible();
+  await expect(selection.getByRole('searchbox')).toBeFocused();
+  await toggleTarget(page, 'layout:qwerty');
+  await expect(empty).toHaveCount(0);
+});
+
+test.describe('スマホ幅で対象が空の時', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('選択は自動では開かない', async ({ page }) => {
+    await page.goto('/standalone/comparison');
+    await expect(page.getByRole('button', { name: '配列・Setupを選ぶ' })).toBeEnabled();
+    await page.waitForTimeout(300);
+    await expect(page.getByRole('dialog', { name: '対象の選択' })).toHaveCount(0);
+  });
 });

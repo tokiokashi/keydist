@@ -37,6 +37,16 @@ export interface TargetSelectionProps {
   readonly onChange: (next: readonly AnalysisTarget[]) => void;
   /** Analyzerが対象の選択に差し込む項目（`AnalyzerPaneParts.TargetItem`をホストが値と結んだもの）。 */
   readonly extraItem?: ReactNode;
+  /**
+   * 開いているか（省略時は部品の中で持つ）。ペインの空の時のボタンからも開けるよう、ホストが持てる。
+   */
+  readonly open?: boolean;
+  readonly onOpenChange?: (open: boolean) => void;
+  /**
+   * trueになった時に一度だけ、フォーカスを奪わずに開く（対象が空のペインを開いた直後）。
+   * パソコン幅だけ。一度閉じたら出し直さない。スマホ幅のシートは画面を覆うので自動では出さない。
+   */
+  readonly autoOpen?: boolean;
 }
 
 /** スマホ幅（シートで出す幅）。解析設定の小窓（`pane-frame.css`）と同じ境目。 */
@@ -101,8 +111,26 @@ function placeFor(anchor: HTMLElement): Position {
   return isSheet() ? { x: 0, y: 0 } : popoverPosition(anchor);
 }
 
-export function TargetSelection({ mode, groups, selected, summary, onChange, extraItem }: TargetSelectionProps) {
-  const [open, setOpen] = useState(false);
+export function TargetSelection({
+  mode,
+  groups,
+  selected,
+  summary,
+  onChange,
+  extraItem,
+  open: controlledOpen,
+  onOpenChange,
+  autoOpen = false,
+}: TargetSelectionProps) {
+  const [innerOpen, setInnerOpen] = useState(false);
+  const open = controlledOpen ?? innerOpen;
+  const setOpen = (next: boolean) => {
+    if (controlledOpen === undefined) setInnerOpen(next);
+    onOpenChange?.(next);
+  };
+  // 開いた時にフォーカスを中へ移すか。自動で開いた時だけ移さない（他の操作を阻害しない）。
+  const focusOnOpenRef = useRef(true);
+  const autoOpenedRef = useRef(false);
   const [query, setQuery] = useState('');
   const [position, setPosition] = useState<Position | undefined>(undefined);
   const [fits, setFits] = useState(true);
@@ -146,6 +174,14 @@ export function TargetSelection({ mode, groups, selected, summary, onChange, ext
     return () => observer.disconnect();
   }, [fullText]);
 
+  useEffect(() => {
+    if (!autoOpen || autoOpenedRef.current || isSheet()) return;
+    autoOpenedRef.current = true;
+    focusOnOpenRef.current = false;
+    setOpen(true);
+    // 開く操作は一度だけ（依存に`setOpen`を入れると、ホストの再描画のたびに走り直す）。
+  }, [autoOpen]);
+
   const close = (focusButton: boolean) => {
     setOpen(false);
     setQuery('');
@@ -164,6 +200,10 @@ export function TargetSelection({ mode, groups, selected, summary, onChange, ext
   const placed = position !== undefined;
   useEffect(() => {
     if (!placed) return;
+    if (!focusOnOpenRef.current) {
+      focusOnOpenRef.current = true;
+      return;
+    }
     if (isSheet()) panelRef.current?.focus();
     else filterRef.current?.focus();
   }, [placed]);
@@ -181,9 +221,12 @@ export function TargetSelection({ mode, groups, selected, summary, onChange, ext
     const reposition = () => {
       if (buttonRef.current) setPosition(placeFor(buttonRef.current));
     };
-    // Escapeは、フォーカスが選択の外（ボタン等）にあっても閉じる。
+    // Escapeは、フォーカスが選択の外にあっても閉じる。フォーカスをボタンへ戻すのは、選択の中か
+    // ボタンにあった時だけ（自動で開いたまま別の所を操作している時に、フォーカスを奪わない）。
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close(true);
+      if (event.key !== 'Escape') return;
+      const active = document.activeElement;
+      close(active !== null && (panelRef.current?.contains(active) === true || buttonRef.current?.contains(active) === true));
     };
     document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -227,7 +270,7 @@ export function TargetSelection({ mode, groups, selected, summary, onChange, ext
       if (pointerRef.current) close(true);
       return;
     }
-    // 加えた対象は末尾に付く（並びが表示順。色は集合の側が加えた順に配る）。
+    // 加えた対象は末尾に付ける。表示の並びはホストが一覧の順に並べ直す（色は集合の側が加えた順に配る）。
     onChange(checked ? [...selected, target] : selected.filter((target) => analysisTargetKey(target) !== key));
   };
 

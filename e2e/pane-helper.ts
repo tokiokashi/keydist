@@ -21,10 +21,12 @@ export function targetButton(page: Page): Locator {
 /** 対象の選択（見出しの「対象」から開く）を開いて返す（開いていればそのまま返す）。 */
 export async function openTargetSelection(page: Page): Promise<Locator> {
   const panel = page.getByRole('dialog', { name: '対象の選択' });
-  if (!(await panel.isVisible())) {
-    await targetButton(page).click();
-  }
-  await expect(panel).toBeVisible();
+  // 対象が空のペインは、読み込みが済んだ直後に選択を自動で開く。その直前に押すと閉じる側に働くので、
+  // 開いていなければ押し直す。
+  await expect(async () => {
+    if (!(await panel.isVisible())) await targetButton(page).click();
+    await expect(panel).toBeVisible({ timeout: 1000 });
+  }).toPass();
   return panel;
 }
 
@@ -60,4 +62,12 @@ export async function expectChosenTarget(page: Page, key: string): Promise<void>
   await expect(choice).toBeChecked();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: '対象の選択' })).toHaveCount(0);
+}
+
+/** 対象が空のペインで自動で開いた選択を、Escapeで閉じる（フォーカスは奪われていない）。 */
+export async function dismissAutoOpenedSelection(page: Page): Promise<void> {
+  const panel = page.getByRole('dialog', { name: '対象の選択' });
+  await expect(panel).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveCount(0);
 }

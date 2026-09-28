@@ -25,6 +25,7 @@ export { resetOptionsMenuItem } from './pane-menu-items.ts';
 export {
   filterTargetChoiceGroups,
   setupNumbersOf,
+  sortTargetsByChoices,
   targetChoiceGroups,
   targetSummaryText,
   type TargetChoice,

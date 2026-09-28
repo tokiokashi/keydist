@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
-import type { Setup } from '#input/setup/index.ts';
-import { filterTargetChoiceGroups, targetChoiceGroups, targetSummaryText, type TargetChoiceSource } from './target-choices.ts';
+import { filterTargetChoiceGroups, sortTargetsByChoices, targetChoiceGroups, targetSummaryText, type TargetChoiceSource } from './target-choices.ts';
+import { analysisTargetKey, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
 
 const SHAPES = new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape]));
 
@@ -70,4 +70,27 @@ test('見出しの名前は、入れば全部、入らなければ先頭と「�
   assert.deepEqual(targetSummaryText(['QWERTY', 'Colemak', 'Dvorak'], false), { text: 'QWERTY', more: '他2件' });
   // 1件なら畳みようが無い（省略記号で切る）。
   assert.deepEqual(targetSummaryText(['とても長い名前'], false), { text: 'とても長い名前' });
+});
+
+test('集合の並びは付けた順によらず一覧の順（組み込みの定義順 → Setup）で、候補に無いものは末尾', () => {
+  const selected: AnalysisTarget[] = [
+    { kind: 'setup', setupId: 'b' },
+    { kind: 'setup', setupId: 'gone' },
+    { kind: 'layout', layoutId: 'naginata-v18' },
+    { kind: 'setup', setupId: 'a' },
+    { kind: 'layout', layoutId: 'dvorak' },
+    { kind: 'layout', layoutId: 'qwerty' },
+  ];
+  const groups = targetChoiceGroups(source({ setups: SETUPS, selected }));
+  assert.deepEqual(sortTargetsByChoices(selected, groups).map(analysisTargetKey), [
+    'layout:qwerty',
+    'layout:dvorak',
+    'layout:naginata-v18',
+    'setup:a',
+    'setup:b',
+    'setup:gone',
+  ]);
+  // 既に並んでいれば同じ参照を返す（依存配列に入れても再計算が続かないように）。
+  const sorted = [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'setup', setupId: 'a' }] as const;
+  assert.equal(sortTargetsByChoices(sorted, groups), sorted);
 });

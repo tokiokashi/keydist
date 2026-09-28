@@ -135,3 +135,24 @@ export function targetSummaryText(names: readonly string[], fits: boolean): { re
   if (fits || names.length === 1) return { text: names.join('、') };
   return { text: names[0]!, more: `他${names.length - 1}件` };
 }
+
+/**
+ * 集合の対象を、候補の一覧の順（組み込みの定義順 → 自作の配列 → Setup）に並べる。表示順はこれに固定する
+ * （チェックを付けた順にすると、同じ集合でも組み方によって並びが変わり、画面どうしで見比べにくい）。
+ * 色は並びと別で、集合が加えた順に配ったもの（`colorSlots`）を対象に付けたまま使う。
+ * 候補に無い対象（削除されたSetup等）は末尾へ、元の並びのまま置く。
+ */
+export function sortTargetsByChoices(
+  targets: readonly AnalysisTarget[],
+  groups: readonly TargetChoiceGroup[],
+): readonly AnalysisTarget[] {
+  const rank = new Map<string, number>();
+  for (const group of groups) {
+    if (group.id === 'missing') continue;
+    for (const choice of group.choices) rank.set(choice.key, rank.size);
+  }
+  const ranked = targets.map((target, index) => ({ target, index, rank: rank.get(analysisTargetKey(target)) ?? Number.POSITIVE_INFINITY }));
+  ranked.sort((a, b) => (a.rank === b.rank ? a.index - b.index : a.rank - b.rank));
+  const sorted = ranked.map((entry) => entry.target);
+  return sorted.every((target, index) => target === targets[index]) ? targets : sorted;
+}

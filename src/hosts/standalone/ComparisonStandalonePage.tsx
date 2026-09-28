@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import {
   setAnalyzerSetSelectionBaselineCommand,
@@ -13,7 +13,6 @@ import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget }
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
-import { targetPaletteColor } from '#ui/theme/target-colors.ts';
 import {
   conditionHeaderInfoFromResolvedInput,
   nonDefaultConditionRows,
@@ -21,7 +20,6 @@ import {
   resetOptionsMenuItem,
   setupNumbersOf,
   summarizeNonDefaultConditions,
-  targetChoiceGroups,
   TargetSelection,
   traceConditionSummary,
   type ConditionValueNames,
@@ -30,6 +28,7 @@ import { comparisonAnalyzer, type ComparisonRowContext } from '#analyzers/compar
 import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
+import { useSetTargetSelection } from './use-set-target-selection.ts';
 import { ContextBar, ShareButton, UndoRedoButtons, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { TextChip } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
@@ -123,8 +122,11 @@ export function ComparisonStandalonePage({
   );
 
   const selection = analyzerSetSelectionFor(assets.analyzerSetSelections, ANALYZER_ID);
+  const { choiceGroups, targets, colorByKey } = useSetTargetSelection(selection, setups, catalog);
 
-  const setSelection = (targets: readonly AnalysisTarget[]) => dispatch(setAnalyzerSetSelectionTargetsCommand(ANALYZER_ID, targets));
+  // 対象の選択を開いているか。空の時のペインのボタンからも開くので、ここで持つ。
+  const [selectionOpen, setSelectionOpen] = useState(false);
+  const setSelection = (next: readonly AnalysisTarget[]) => dispatch(setAnalyzerSetSelectionTargetsCommand(ANALYZER_ID, next));
 
   // 解析設定（列の表示・基準比の表示可否）は資産（standaloneAnalyzerOptions）が正
   // （BigramFlowStandalonePageと同じ形）。
@@ -137,14 +139,14 @@ export function ComparisonStandalonePage({
   // 資産への書き込みは呼び出し側がdebounceする（`onComparisonOptionsCommit`）。
   const [optionsDraft, setOptionsDraft] = useOptionsDraft<ComparisonOptions>(decoded.options);
 
-  // 各メンバーの解決済み入力（または解決失敗）。`selection.targets`の並びのまま作る
+  // 各メンバーの解決済み入力（または解決失敗）。表示順（`targets`）のまま作る
   // （engineの抽出キーが順序込みで畳み込む対象。#544 §7）。
   const members: readonly EngineSetMemberInput[] = useMemo(
-    () => selection.targets.map((target): EngineSetMemberInput => ({
+    () => targets.map((target): EngineSetMemberInput => ({
       target,
       resolution: resolveStandalonePaneInput(target, setupsById, catalog, assets.setupLibrary.overrides, resolvedText),
     })),
-    [selection.targets, setupsById, catalog, assets.setupLibrary.overrides, resolvedText],
+    [targets, setupsById, catalog, assets.setupLibrary.overrides, resolvedText],
   );
   const membersByTarget = useMemo(() => new Map(members.map((m) => [m.target, m] as const)), [members]);
 
@@ -152,34 +154,21 @@ export function ComparisonStandalonePage({
   // 対して計算する」）。解決に失敗したメンバーは、共通性の判定からは除く
   // （レビュー指摘3。`naming.ts`の`TargetNameSource.failed`参照）。
   const setupNumbers = useMemo(() => setupNumbersOf(setups), [setups]);
-  const namedTargets = useMemo(() => nameTargets(selection.targets.map((target) => targetNameSource(
+  const namedTargets = useMemo(() => nameTargets(targets.map((target) => targetNameSource(
     target,
     membersByTarget.get(target)?.resolution,
     setupsById,
     setupNumbers,
     catalog.setupCatalog,
-  ))), [selection.targets, setupsById, setupNumbers, membersByTarget, catalog.setupCatalog]);
+  ))), [targets, setupsById, setupNumbers, membersByTarget, catalog.setupCatalog]);
   const namedByKey = useMemo(() => new Map(namedTargets.map((n) => [n.key, n] as const)), [namedTargets]);
 
 
-  // 対象の選択の候補と、見出しに出す名前・色（色は集合が配った番号から引く。`colorSlots`は対象と同じ並び）。
-  const choiceGroups = useMemo(() => targetChoiceGroups({
-    layouts: catalog.setupCatalog.layouts,
-    userLayoutIds: new Set(catalog.userLayouts.keys()),
-    shapes: catalog.setupCatalog.shapes,
-    setups,
-    selected: selection.targets,
-  }), [catalog, setups, selection.targets]);
-  const targetSummary = useMemo(() => selection.targets.map((target, index) => {
+  const targetSummary = useMemo(() => targets.map((target) => {
     const key = analysisTargetKey(target);
     const named = namedByKey.get(key);
-    return {
-      key,
-      label: named?.displayName ?? key,
-      fullName: named?.fullName ?? '',
-      color: targetPaletteColor(selection.colorSlots[index]!),
-    };
-  }), [selection.targets, namedByKey, selection.colorSlots]);
+    return { key, label: named?.displayName ?? key, fullName: named?.fullName ?? '', color: colorByKey.get(key) };
+  }), [targets, namedByKey, colorByKey]);
 
   const conditionNames: ConditionValueNames = catalog.setupCatalog;
   const rowContext = useMemo(() => {
@@ -193,7 +182,7 @@ export function ComparisonStandalonePage({
     return map;
   }, [members, namedByKey, conditionNames]);
 
-  const order = useMemo(() => selection.targets.map(analysisTargetKey), [selection.targets]);
+  const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
 
   const pane = useAnalyzerSetPane(cache, comparisonAnalyzer.definition, optionsDraft, members);
   const { Body, Settings, TargetItem } = comparisonAnalyzer;
@@ -250,15 +239,18 @@ export function ComparisonStandalonePage({
               <TargetSelection
                 mode="multiple"
                 groups={choiceGroups}
-                selected={selection.targets}
+                selected={targets}
                 summary={targetSummary}
                 onChange={setSelection}
+                open={selectionOpen}
+                onOpenChange={setSelectionOpen}
+                autoOpen={assetsReady && targets.length === 0}
                 extraItem={(
                   <TargetItem
                     value={baselineTargetKey}
                     candidates={candidates}
                     onChange={(nextKey) => {
-                      const next = nextKey === undefined ? undefined : selection.targets.find((t) => analysisTargetKey(t) === nextKey);
+                      const next = nextKey === undefined ? undefined : targets.find((t) => analysisTargetKey(t) === nextKey);
                       dispatch(setAnalyzerSetSelectionBaselineCommand(ANALYZER_ID, next));
                     }}
                   />
@@ -270,7 +262,15 @@ export function ComparisonStandalonePage({
             conditionRows={[]}
             engineState={extraction}
             settingsDiagnostics={decoded.diagnostics}
-            {...(selection.targets.length === 0 ? { emptyMessage: '対象を1つ以上選ぶと、ここに表が出る。' } : {})}
+            {...(targets.length === 0
+              ? {
+                emptyContent: (
+                  <button type="button" className="pane-empty-button" onClick={() => setSelectionOpen(true)}>
+                    配列・Setupを選ぶ
+                  </button>
+                ),
+              }
+              : {})}
           >
             {extracted === undefined ? undefined : (
               <Body
