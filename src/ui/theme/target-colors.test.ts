@@ -1,15 +1,28 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { COLOR_SLOT_COUNT } from '#engine/analyzer-set-selection.ts';
 import { TARGET_PALETTE_SIZE, targetPaletteColor } from './target-colors.ts';
 
-// 背景は theme.css の値。N感度の線は実際にはページ地（--bg）の上に描かれる。枠付きの面（--surface）も測る。
-const BACKGROUNDS = {
-  'light --surface': '#ffffff',
-  'light --bg': '#f7f6f3',
-  'dark --surface': '#1c1c1a',
-  'dark --bg': '#131312',
-} as const;
+// 背景は theme.css から読む。直書きすると theme.css を変えた時に古い値で測り続け、
+// パレットが基準を割っても気づけない（#624）。N感度の線は実際にはページ地（--bg）の上に描かれる。
+// 枠付きの面（--surface）も測る。
+const THEME_CSS = readFileSync(new URL('./theme.css', import.meta.url), 'utf8');
+
+function lightDark(token: string): { light: string; dark: string } {
+  const pattern = new RegExp(`^\\s*${token}:\\s*light-dark\\(\\s*(#[0-9a-fA-F]{6})\\s*,\\s*(#[0-9a-fA-F]{6})\\s*\\);`, 'gm');
+  const matches = [...THEME_CSS.matchAll(pattern)];
+  // 1か所で定義し color-scheme だけで切り替える前提（theme.css 冒頭の注記）。複数あれば、どれを測るか決められない。
+  assert.equal(matches.length, 1, `theme.css の ${token} を light-dark(#rrggbb, #rrggbb) の形で1か所から読めない`);
+  return { light: matches[0]![1]!, dark: matches[0]![2]! };
+}
+
+const BACKGROUNDS: Record<string, string> = {};
+for (const token of ['--surface', '--bg']) {
+  const { light, dark } = lightDark(token);
+  BACKGROUNDS[`light ${token}`] = light;
+  BACKGROUNDS[`dark ${token}`] = dark;
+}
 
 function channels(hex: string): [number, number, number] {
   const n = Number.parseInt(hex.slice(1), 16);
