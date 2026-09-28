@@ -15,11 +15,6 @@ import {
   traceConditionSummary,
 } from '#hosts/shared/condition-summary.ts';
 
-/** 手持ちのSetupの番号（1始まり、一覧の並び順）。表示名の衝突時の区別とピッカーの表示で揃えて使う。 */
-export function setupNumbersOf(setups: readonly Setup[]): ReadonlyMap<string, number> {
-  return new Map(setups.map((setup, index) => [setup.id, index + 1] as const));
-}
-
 /**
  * 解決に失敗した対象の名前。実効の形状・条件は決まっていないので、手持ちから分かる範囲の
  * 名前だけで作る（レビュー指摘L2: 失敗メンバーの名前が「—」だけになるのを防ぐ）。

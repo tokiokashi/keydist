@@ -15,7 +15,10 @@ import {
   nonDefaultConditionRows,
   PaneFrame,
   resetOptionsMenuItem,
+  setupNumbersOf,
   summarizeNonDefaultConditions,
+  targetChoiceGroups,
+  TargetSelection,
   traceConditionSummary,
   type ConditionValueNames,
 } from '#hosts/shared/index.ts';
@@ -25,11 +28,10 @@ import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolv
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { TextControl } from './TextControl.tsx';
 import { DefaultShapeControl } from './DefaultShapeControl.tsx';
-import { SetTargetSelection } from './SetTargetSelection.tsx';
 import { StandaloneContextBar } from './StandaloneContextBar.tsx';
 import { useOptionsDraft } from './use-options-draft.ts';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
-import { setupNumbersOf, targetNameSource } from './target-name-source.ts';
+import { targetNameSource } from './target-name-source.ts';
 import './standalone.css';
 
 /**
@@ -143,6 +145,26 @@ export function NSensitivityStandalonePage({
   ))), [targets, setupsById, setupNumbers, membersByTarget, catalog.setupCatalog]);
   const namedByKey = useMemo(() => new Map(namedTargets.map((n) => [n.key, n] as const)), [namedTargets]);
 
+
+  // 対象の選択の候補と、見出しに出す名前・色（色は集合が配った番号から引く。`colorSlots`は対象と同じ並び）。
+  const choiceGroups = useMemo(() => targetChoiceGroups({
+    layouts: catalog.setupCatalog.layouts,
+    userLayoutIds: new Set(catalog.userLayouts.keys()),
+    shapes: catalog.setupCatalog.shapes,
+    setups,
+    selected: targets,
+  }), [catalog, setups, targets]);
+  const targetSummary = useMemo(() => targets.map((target, index) => {
+    const key = analysisTargetKey(target);
+    const named = namedByKey.get(key);
+    return {
+      key,
+      label: named?.displayName ?? key,
+      fullName: named?.fullName ?? '',
+      color: targetPaletteColor(selection.colorSlots[index]!),
+    };
+  }), [targets, namedByKey, selection.colorSlots]);
+
   const conditionNames: ConditionValueNames = catalog.setupCatalog;
   const rowContext = useMemo(() => {
     const map = new Map<string, NSensitivityRowContext>();
@@ -192,12 +214,11 @@ export function NSensitivityStandalonePage({
           description={nSensitivityAnalyzer.description}
           headingLevel={1}
           target={(
-            <SetTargetSelection
-              targets={targets}
-              namedByKey={namedByKey}
-              layouts={catalog.setupCatalog.layouts}
-              shapes={catalog.setupCatalog.shapes}
-              setups={setups}
+            <TargetSelection
+              mode="multiple"
+              groups={choiceGroups}
+              selected={targets}
+              summary={targetSummary}
               onChange={setSelection}
             />
           )}

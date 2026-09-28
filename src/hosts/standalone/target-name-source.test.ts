@@ -6,7 +6,8 @@ import { nameTargets, type AnalysisTarget, type Setup } from '#input/setup/index
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import type { ResolvedText } from '#input/text/resolve.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
-import { setupNumbersOf, targetNameSource } from './target-name-source.ts';
+import { setupNumbersOf } from '#hosts/shared/target-choices.ts';
+import { targetNameSource } from './target-name-source.ts';
 
 const CATALOG: StandalonePaneCatalog = {
   setupCatalog: {

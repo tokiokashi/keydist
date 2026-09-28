@@ -13,12 +13,16 @@ import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget }
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
+import { targetPaletteColor } from '#ui/theme/target-colors.ts';
 import {
   conditionHeaderInfoFromResolvedInput,
   nonDefaultConditionRows,
   PaneFrame,
   resetOptionsMenuItem,
+  setupNumbersOf,
   summarizeNonDefaultConditions,
+  targetChoiceGroups,
+  TargetSelection,
   traceConditionSummary,
   type ConditionValueNames,
 } from '#hosts/shared/index.ts';
@@ -28,11 +32,10 @@ import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolv
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { TextControl } from './TextControl.tsx';
 import { DefaultShapeControl } from './DefaultShapeControl.tsx';
-import { SetTargetSelection } from './SetTargetSelection.tsx';
 import { StandaloneContextBar } from './StandaloneContextBar.tsx';
 import { useOptionsDraft } from './use-options-draft.ts';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
-import { setupNumbersOf, targetNameSource } from './target-name-source.ts';
+import { targetNameSource } from './target-name-source.ts';
 import './standalone.css';
 
 /**
@@ -155,6 +158,26 @@ export function ComparisonStandalonePage({
   ))), [selection.targets, setupsById, setupNumbers, membersByTarget, catalog.setupCatalog]);
   const namedByKey = useMemo(() => new Map(namedTargets.map((n) => [n.key, n] as const)), [namedTargets]);
 
+
+  // 対象の選択の候補と、見出しに出す名前・色（色は集合が配った番号から引く。`colorSlots`は対象と同じ並び）。
+  const choiceGroups = useMemo(() => targetChoiceGroups({
+    layouts: catalog.setupCatalog.layouts,
+    userLayoutIds: new Set(catalog.userLayouts.keys()),
+    shapes: catalog.setupCatalog.shapes,
+    setups,
+    selected: selection.targets,
+  }), [catalog, setups, selection.targets]);
+  const targetSummary = useMemo(() => selection.targets.map((target, index) => {
+    const key = analysisTargetKey(target);
+    const named = namedByKey.get(key);
+    return {
+      key,
+      label: named?.displayName ?? key,
+      fullName: named?.fullName ?? '',
+      color: targetPaletteColor(selection.colorSlots[index]!),
+    };
+  }), [selection.targets, namedByKey, selection.colorSlots]);
+
   const conditionNames: ConditionValueNames = catalog.setupCatalog;
   const rowContext = useMemo(() => {
     const map = new Map<string, ComparisonRowContext>();
@@ -209,12 +232,11 @@ export function ComparisonStandalonePage({
           description={comparisonAnalyzer.description}
           headingLevel={1}
           target={(
-            <SetTargetSelection
-              targets={selection.targets}
-              namedByKey={namedByKey}
-              layouts={catalog.setupCatalog.layouts}
-              shapes={catalog.setupCatalog.shapes}
-              setups={setups}
+            <TargetSelection
+              mode="multiple"
+              groups={choiceGroups}
+              selected={selection.targets}
+              summary={targetSummary}
               onChange={setSelection}
               extraItem={(
                 <TargetItem

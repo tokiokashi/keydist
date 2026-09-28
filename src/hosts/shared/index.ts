@@ -22,3 +22,13 @@ export { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 export { PaneInfoButton, PaneMenu, type PaneMenuItem } from './PaneHeaderParts.tsx';
 export { SettingsWindow, type SettingsWindowProps } from './SettingsWindow.tsx';
 export { resetOptionsMenuItem } from './pane-menu-items.ts';
+export {
+  filterTargetChoiceGroups,
+  setupNumbersOf,
+  targetChoiceGroups,
+  targetSummaryText,
+  type TargetChoice,
+  type TargetChoiceGroup,
+  type TargetChoiceSource,
+} from './target-choices.ts';
+export { TargetSelection, type TargetSelectionProps, type TargetSummaryItem } from './TargetSelection.tsx';
