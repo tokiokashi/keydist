@@ -6,7 +6,7 @@
   "scripts": {
     "postinstall": "patch-package --error-on-fail",
     "dev": "vite",
-    "build": "vite build && node --experimental-strip-types scripts/write-legacy-analyzer-redirect.ts && node --experimental-strip-types scripts/check-modulepreload.ts",
+    "build": "vite build && node --experimental-strip-types scripts/write-legacy-analyzer-redirect.ts && node --experimental-strip-types --experimental-vm-modules --disable-warning=ExperimentalWarning scripts/check-modulepreload.ts",
     "check:sample": "node --experimental-strip-types scripts/check-sample-text.ts",
     "generate:kana-fixtures": "node --experimental-strip-types scripts/generate-kana-fixtures.ts",
     "generate:analyzer-regression-fixture": "node --experimental-strip-types scripts/gen-analyzer-regression-fixture.ts",

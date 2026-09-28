@@ -9,6 +9,7 @@
 // `import()` は遅延読み込みなので preload に出ていなくてよい。
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
+import vm from 'node:vm';
 
 const PUBLIC_DIR = resolve('.output/public');
 
@@ -48,20 +49,15 @@ function pageModules(html: string): { entries: string[]; preloads: Set<string> }
   return { entries, preloads };
 }
 
-// ビルド後のチャンクは静的importを先頭にまとめて持つ。先頭から文を順に読み、importが途切れたら止める。
-const LEADING_IMPORT = /^\s*(?:import\s*(?:[\w$]+\s*,?\s*)?(?:\{[^}]*\}|\*\s*as\s*[\w$]+)?\s*(?:from\s*)?|export\s*(?:\{[^}]*\}|\*(?:\s*as\s*[\w$]+)?)\s*from\s*)["']([^"']+)["']\s*;?/;
-
+// 静的importは node の ESM パーサ（vm.SourceTextModule）で読む。正規表現で文の先頭から読むと、
+// エントリのチャンクのように先頭が import 以外（`const __vite__mapDeps=...`）で始まる時に1本も読めない。
+// パースするだけで評価はしない。`--experimental-vm-modules` が要る。
 function staticImports(source: string, fromPath: string): string[] {
-  const imports: string[] = [];
-  let rest = source.replace(/^\s*\/\/[^\n]*\n/, '');
-  for (let match = LEADING_IMPORT.exec(rest); match !== null; match = LEADING_IMPORT.exec(rest)) {
-    const specifier = match[1]!;
-    if (specifier.startsWith('.')) {
-      imports.push(relative(PUBLIC_DIR, resolve(PUBLIC_DIR, fromPath, '..', specifier)));
-    }
-    rest = rest.slice(match[0].length);
-  }
-  return imports;
+  const module = new vm.SourceTextModule(source, { identifier: fromPath });
+  const specifiers = module.moduleRequests.map((request) => request.specifier);
+  return specifiers
+    .filter((specifier) => specifier.startsWith('.'))
+    .map((specifier) => relative(PUBLIC_DIR, resolve(PUBLIC_DIR, fromPath, '..', specifier)));
 }
 
 const importsCache = new Map<string, Promise<string[]>>();
@@ -89,17 +85,18 @@ async function closure(entries: readonly string[]): Promise<Set<string>> {
 
 const failures: string[] = [];
 let checkedPages = 0;
-let sawNestedImport = false;
 
 for (const file of (await htmlFiles(PUBLIC_DIR)).sort()) {
   const { entries, preloads } = pageModules(await readFile(file, 'utf8'));
   if (entries.length === 0) continue; // 転送用の legacy.html 等、モジュールを読まないページ
   checkedPages += 1;
-  // entry が静的importしない構成になると、この検査は何も見なくなる。黙って通さないよう、
-  // どこかのページで「preload されたチャンクがさらに import している」ことを確かめる。
+  // エントリのチャンクから静的importを1本も読めないなら、パースが効いていないか出力の形が変わった。
+  // その状態で「抜けが無い」と通すと検査が空振りするので、ページごとに失敗にする。
   const roots = new Set([...entries, ...preloads]);
-  for (const root of roots) {
-    if ((await importsOf(root)).length > 0) sawNestedImport = true;
+  for (const entry of entries) {
+    if ((await importsOf(entry)).length === 0) {
+      failures.push(`${relative(PUBLIC_DIR, file)}: エントリ ${entry} から静的importを1本も読めなかった`);
+    }
   }
   const missing = [...await closure([...roots])].filter((path) => !preloads.has(path) && !entries.includes(path));
   if (missing.length > 0) {
@@ -108,10 +105,9 @@ for (const file of (await htmlFiles(PUBLIC_DIR)).sort()) {
 }
 
 if (checkedPages === 0) failures.push('モジュールを読み込むページが .output/public に見つからない');
-else if (!sawNestedImport) failures.push('静的importを1つも読み取れなかった。チャンクの形が変わった可能性がある');
 
 if (failures.length > 0) {
-  console.error('[modulepreload] 推移閉包を覆っていない:');
+  console.error('[modulepreload] 検査に失敗した:');
   for (const failure of failures) console.error(`  ${failure}`);
   process.exit(1);
 }
