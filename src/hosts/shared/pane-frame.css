@@ -204,7 +204,8 @@ h2.pane-frame-title {
   flex-direction: column;
   width: 21rem;
   max-width: calc(100% - 16px);
-  max-height: calc(100dvh - 16px);
+  /* 下端が画面の外へ出ないよう、置いた位置から画面の下端までに収め、中身は小窓の中でスクロールする。 */
+  max-height: max(12rem, calc(100dvh - var(--settings-window-y, 5rem) - 8px));
   border: 1px solid var(--border-strong);
   border-radius: 10px;
   background: var(--surface-raised);
@@ -274,6 +275,7 @@ h2.pane-frame-title {
 
 .settings-window-body {
   container-type: inline-size;
+  min-height: 0;
   overflow: auto;
   padding: 0.8rem;
 }
