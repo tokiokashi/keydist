@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: ['**']  # main も含む。公開（pages.yml）はタグ起動になり、main の push では検査が走らないため。タグは pages.yml が検査する
+    branches: ['**']  # main も含む。公開（release.yml / pages.yml）は公開するタグのコミットを自前で検査するが、main そのものは検査しないため
   workflow_dispatch:
 
 permissions:

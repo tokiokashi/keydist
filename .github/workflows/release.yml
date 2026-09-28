@@ -1,0 +1,105 @@
+name: Release
+
+# リリースPR（タイトル `chore(release): X.Y.Z`、package.json の version を上げるPR）が
+# main に入った時に、そのPRの head コミットへ v<X.Y.Z> を打って公開する。判定は .github/scripts/release-plan.sh。
+#
+# - 公開するのはマージコミットではなくリリースPRの head。リリースPRを作った時点の main に固定し、
+#   オーナーがマージするまでに main へ入った別の作業を混ぜない
+# - version が変わらない push（ふつうのマージ）は何もしない
+# - pull_request の closed ではなく main への push で起動する。ref が main になるので、
+#   github-pages 環境の配信元の制限（main を許可）をそのまま通る
+# - タグは GITHUB_TOKEN で打つ。GITHUB_TOKEN のタグ push は別のワークフローを起動しないので、
+#   配信は pages.yml をこの実行の中で呼ぶ
+# - 配信し直しはこの実行の Re-run。タグが同じコミットに既にあれば打たずに配信だけする
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# ワークフロー全体の concurrency は置かない。同じグループで待てるのは1つだけで、
+# 後から来た実行が待っているリリースを取り消し、公開されないまま終わるため。
+# タグは版ごとに別なので、並んで走っても衝突しない。配信の順番は pages.yml の deploy ジョブが揃える
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      publish: ${{ steps.plan.outputs.publish }}
+      tag: ${{ steps.plan.outputs.tag }}
+      commit: ${{ steps.plan.outputs.commit }}
+      pr: ${{ steps.plan.outputs.pr }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Plan release
+        id: plan
+        shell: bash
+        env:
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          bash .github/scripts/release-plan.sh "$BEFORE" "$SHA" | tee -a "$GITHUB_OUTPUT"
+
+  tag:
+    needs: plan
+    if: needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # 再実行では plan の時点からタグが増えていることがあるので、ここでも確かめる
+      - name: Create tag
+        shell: bash
+        env:
+          TAG: ${{ needs.plan.outputs.tag }}
+          COMMIT: ${{ needs.plan.outputs.commit }}
+          PR: ${{ needs.plan.outputs.pr }}
+        run: |
+          set -euo pipefail
+          git fetch --force origin "refs/tags/*:refs/tags/*"
+          if existing=$(git rev-parse -q --verify "refs/tags/$TAG^{commit}"); then
+            if [ "$existing" != "$COMMIT" ]; then
+              echo "::error::タグ $TAG は既に別のコミット $existing を指している"
+              exit 1
+            fi
+            echo "タグ $TAG は既に $COMMIT にある。打たない"
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git tag -a "$TAG" -m "Release $TAG (#$PR)" "$COMMIT"
+            git push origin "refs/tags/$TAG"
+          fi
+          {
+            echo "## Release $TAG"
+            echo
+            echo "PR: #$PR"
+            echo "commit: \`$COMMIT\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: [plan, tag]
+    uses: ./.github/workflows/pages.yml
+    with:
+      tag: ${{ needs.plan.outputs.tag }}
+      commit: ${{ needs.plan.outputs.commit }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
