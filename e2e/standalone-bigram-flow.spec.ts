@@ -677,9 +677,9 @@ test('画面の文言に開発の内部（issue番号・Phase・ファイル名�
   await expect(page.locator('[data-react-feature="bigram-flow"]').first()).toBeVisible({ timeout: 10_000 });
   await expect(page).toHaveTitle('Bigram Flow | keydist');
   const description = await page.locator('meta[name="description"]').getAttribute('content');
-  expect(description).not.toMatch(/#\d|Phase|standalone|単体ページ/);
+  expect(description).not.toMatch(/#\d|Phase|standalone|単体ページ|個別画面/);
   const body = page.locator('body');
-  await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|\.ts\b|Vector lab|connections|N sensitivity|Setup comparison|baseline|言語判定: /);
+  await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|個別画面|\.ts\b|Vector lab|connections|N sensitivity|Setup comparison|baseline|言語判定: /);
 });
 
 test('読み込みで操作可能になった瞬間から、本文は保存済みのテキストを表示している（古い値へ入力が足されない）', async ({ page }) => {
