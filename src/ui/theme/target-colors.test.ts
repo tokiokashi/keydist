@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { COLOR_SLOT_COUNT } from '#engine/analyzer-set-selection.ts';
 import { TARGET_PALETTE_SIZE, targetPaletteColor } from './target-colors.ts';
 
-// 背景は theme.css の値（線と凡例は --surface 上に描かれる。ページ地の --bg も念のため測る）。
+// 背景は theme.css の値。N感度の線は実際にはページ地（--bg）の上に描かれる。枠付きの面（--surface）も測る。
 const BACKGROUNDS = {
   'light --surface': '#ffffff',
   'light --bg': '#f7f6f3',
@@ -86,4 +87,8 @@ test('パレット: 先頭から配った時、先頭の数色ほど互いに離
 test('targetPaletteColor: 番号がパレットの数を超えたら先頭から繰り返す', () => {
   assert.equal(targetPaletteColor(TARGET_PALETTE_SIZE), targetPaletteColor(0));
   assert.equal(targetPaletteColor(TARGET_PALETTE_SIZE + 1), targetPaletteColor(1));
+});
+
+test('パレットの色数は、集合が配る番号の数（COLOR_SLOT_COUNT）と一致する', () => {
+  assert.equal(TARGET_PALETTE_SIZE, COLOR_SLOT_COUNT);
 });

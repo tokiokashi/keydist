@@ -7,11 +7,12 @@
  *
  * **パレットはOKLCHで作った自前の12色。** 実績のあるカテゴリ配色（d3-scale-chromaticの
  * `schemeObservable10`・`schemeTableau10`）は明るい色（黄・水色・桃等）を含み、白の背景に対して
- * コントラスト比3に届かない色が10色中6〜7色ある。線と凡例の色見本は両themeの`--surface`上に
- * 描かれ、色をthemeで切り替える仕組みを持たないので、1色で明暗どちらの背景にも3以上に
- * なる明度の帯に収める必要がある。そこで、色相を約30°刻みで一周させ、明度・彩度を色ごとに
- * 振ってどの2色もOKLabの距離で0.12以上離した12色を使う（`target-colors.test.ts`が
- * コントラストと距離を検査する）。
+ * コントラスト比3に届かない色が10色中6〜7色ある。この色はJSから線・点・凡例の色見本へ直接
+ * 渡していて、themeで切り替えていない（theme.cssの`--series-N`は`light-dark()`で切り替わるが、
+ * ここは使っていない）。N感度の線は背景を指定した祖先を持たず、実際にはページ地（`--bg`）の上に
+ * 描かれる。そこで1色で明暗どちらの`--bg`・`--surface`にも3以上になる明度の帯に収め、
+ * 色相を約30°刻みで一周させ、明度・彩度を色ごとに振ってどの2色もOKLabの距離で0.12以上
+ * 離した12色を使う（`target-colors.test.ts`がコントラストと距離を検査する）。
  *
  * **並びは「先頭から配った時に離れる順」。** 集合は先頭の数色しか使わないことが多いので、
  * 青から始め、それまでに出た色から最も遠い色を次に置く（OKLabの距離で貪欲に選んだ順）。
@@ -35,8 +36,8 @@ const TARGET_PALETTE: readonly string[] = [
 export const TARGET_PALETTE_SIZE = TARGET_PALETTE.length;
 
 /**
- * 番号の色。集合がパレットより大きい時は先頭から繰り返す（同じ画面に13以上並べると
- * 色が重なるのは受け入れる。見分けられる色の数の上限なので、色を増やしても解決しない）。
+ * 番号の色。番号は集合の側が0以上`COLOR_SLOT_COUNT`（= この色数）未満で配る。範囲外が来ても
+ * 例外にしないよう、剰余で折り返す。
  */
 export function targetPaletteColor(slot: number): string {
   return TARGET_PALETTE[((slot % TARGET_PALETTE_SIZE) + TARGET_PALETTE_SIZE) % TARGET_PALETTE_SIZE]!;

@@ -156,7 +156,7 @@ export function NSensitivityStandalonePage({
       const key = analysisTargetKey(member.target);
       const named = namedByKey.get(key);
       if (named === undefined) return;
-      const color = targetPaletteColor(selection.colorSlots[index] ?? index);
+      const color = targetPaletteColor(selection.colorSlots[index]!);
       map.set(key, buildRowContext(member.target, member.resolution, named, color, conditionNames));
     });
     return map;

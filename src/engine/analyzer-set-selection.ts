@@ -18,8 +18,10 @@ export interface SetSelectionState {
   readonly targets: readonly AnalysisTarget[];
   readonly baseline: AnalysisTarget | undefined;
   /**
-   * 各対象に配った色の番号（`targets`と同じ長さで、同じ位置の対象の番号。値は互いに異なる
-   * 非負整数）。色そのもの（番号→色）は表示側が`ui/theme`のパレットで引く。
+   * 各対象に配った色の番号（`targets`と同じ長さで、同じ位置の対象の番号。値は
+   * 0以上`COLOR_SLOT_COUNT`未満の整数で、対象が`COLOR_SLOT_COUNT`件までなら互いに異なる。
+   * それを超える時だけ重なり、1つの番号を使う対象の数の差は1以内に収める）。
+   * 色そのもの（番号→色）は表示側が`ui/theme`のパレットで引く。
    *
    * 色は対象ごとに固定せず、同じ画面に並べている集合の中で配る（#601）。見分けられる
    * カテゴリ色は10〜12色が上限で、組み込み配列の数より少ないため、対象ごとに固定すると
@@ -76,29 +78,42 @@ function dedupe(targets: readonly AnalysisTarget[]): readonly AnalysisTarget[] {
 }
 
 /**
+ * 色の番号の数。表示側のパレット（`ui/theme/target-colors.ts`の`TARGET_PALETTE_SIZE`）と
+ * 同じ値でなければならない（engineはuiをimportできないので、ここに持って表示側のテストで
+ * 一致を検査する）。
+ */
+export const COLOR_SLOT_COUNT = 12;
+
+/**
  * 対象の列に色の番号を配る。`known`（対象のkey → 既に持っている番号）にある対象は
- * その番号をそのまま使い、無い対象には、まだ誰も使っていない最小の番号を列の先頭から順に配る。
- * 外した対象の番号は空くので、次に加えた対象がそれを使う（#601「1つ消しても他の色は
- * 動かさない。空いた色は次に追加したものが使う」）。`known`の番号が重複・不正なら、
- * 後に出た方を持っていないものとして配り直す（codecが外部由来のデータを読む時のため）。
+ * その番号をそのまま使い、無い対象には、範囲内で使っている対象が最も少ない番号（同数なら
+ * 小さい方）を列の先頭から順に配る。外した対象の番号は空くので、次に加えた対象がそれを使う
+ * （#601「1つ消しても他の色は動かさない。空いた色は次に追加したものが使う」）。
+ *
+ * 持ち越す番号は、1つの番号を使う対象が`ceil(対象数 / COLOR_SLOT_COUNT)`に達するまでに限る。
+ * `COLOR_SLOT_COUNT`件を超えて並べた時にできた重なりを、減らした後まで残さないため
+ * （13件から12件以下へ減らすと、重なっていた後の方を空いた番号へ配り直す）。範囲外・整数でない
+ * 番号も持っていないものとして配り直す（codecが外部由来のデータを読む時のため）。
  */
 export function assignColorSlots(
   targets: readonly AnalysisTarget[],
   known: ReadonlyMap<string, number>,
 ): readonly number[] {
-  const used = new Set<number>();
+  const counts = new Array<number>(COLOR_SLOT_COUNT).fill(0);
+  const cap = Math.max(1, Math.ceil(targets.length / COLOR_SLOT_COUNT));
   const slots: (number | undefined)[] = targets.map((target) => {
     const slot = known.get(analysisTargetKey(target));
-    if (slot === undefined || !Number.isInteger(slot) || slot < 0 || used.has(slot)) return undefined;
-    used.add(slot);
+    if (slot === undefined || !Number.isInteger(slot) || slot < 0 || slot >= COLOR_SLOT_COUNT) return undefined;
+    if (counts[slot]! >= cap) return undefined;
+    counts[slot]! += 1;
     return slot;
   });
-  let next = 0;
   return slots.map((slot) => {
     if (slot !== undefined) return slot;
-    while (used.has(next)) next += 1;
-    used.add(next);
-    return next;
+    let least = 0;
+    for (let i = 1; i < COLOR_SLOT_COUNT; i++) if (counts[i]! < counts[least]!) least = i;
+    counts[least]! += 1;
+    return least;
   });
 }
 

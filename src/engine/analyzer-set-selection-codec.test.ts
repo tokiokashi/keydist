@@ -106,3 +106,12 @@ test('ANALYZER_SET_SELECTION_CODEC: 捨てた対象の番号は読まず、残�
   assert.equal(decoded.ok, true);
   assert.deepEqual(decoded.ok ? decoded.value.comparison?.colorSlots : undefined, [3, 1]);
 });
+
+test('ANALYZER_SET_SELECTION_CODEC: 範囲外の色の番号は壊れた値として配り直す', () => {
+  const decoded = ANALYZER_SET_SELECTION_CODEC.decode({
+    version: 2,
+    selections: { comparison: { targets: [A, B], colorSlots: [0, 12] } },
+  });
+  assert.equal(decoded.ok, true);
+  assert.deepEqual(decoded.ok ? decoded.value.comparison?.colorSlots : undefined, [0, 1]);
+});

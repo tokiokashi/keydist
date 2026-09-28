@@ -4,6 +4,7 @@ import type { AnalysisTarget } from '#input/setup/index.ts';
 import {
   analyzerSetSelectionFor,
   assignColorSlots,
+  COLOR_SLOT_COUNT,
   initialAnalyzerSetSelections,
   initialSetSelection,
   withAnalyzerSetSelection,
@@ -147,4 +148,34 @@ test('withSetSelectionTargets: 外して加え直した対象は、その時点�
 test('assignColorSlots: 重複・不正な番号は持っていないものとして配り直す', () => {
   const known = new Map([['setup:a', 1], ['setup:b', 1], ['layout:c', -1]]);
   assert.deepEqual(assignColorSlots([A, B, C], known), [1, 0, 2]);
+});
+
+const layouts = (n: number): AnalysisTarget[] => Array.from({ length: n }, (_, i) => ({ kind: 'layout', layoutId: `l${i}` }));
+
+test('withSetSelectionTargets: 番号は常に0以上COLOR_SLOT_COUNT未満。超えて並べた時だけ重なり、偏らない', () => {
+  const state = withSetSelectionTargets(initialSetSelection(), layouts(COLOR_SLOT_COUNT + 1));
+  assert.ok(state.colorSlots.every((slot) => slot >= 0 && slot < COLOR_SLOT_COUNT));
+  assert.equal(new Set(state.colorSlots).size, COLOR_SLOT_COUNT);
+});
+
+test('withSetSelectionTargets: 13件並べてから7件に減らすと色が全部異なる', () => {
+  const all = layouts(13);
+  const state = withSetSelectionTargets(initialSetSelection(), all);
+  const reduced = withSetSelectionTargets(state, [all[0]!, ...all.slice(7)]);
+  assert.equal(reduced.targets.length, 7);
+  assert.equal(new Set(reduced.colorSlots).size, 7);
+  // 重なっていなかった対象（T0・T7〜T11）の番号は動かない。
+  assert.deepEqual(reduced.colorSlots.slice(0, 6), [state.colorSlots[0], ...state.colorSlots.slice(7, 12)]);
+});
+
+test('withSetSelectionTargets: 13件から12件へ減らしても重なりは残らない', () => {
+  const all = layouts(13);
+  const state = withSetSelectionTargets(initialSetSelection(), all);
+  const reduced = withSetSelectionTargets(state, all.filter((_, i) => i !== 5));
+  assert.equal(new Set(reduced.colorSlots).size, 12);
+});
+
+test('assignColorSlots: 範囲外の番号は持っていないものとして配り直す', () => {
+  const known = new Map([['setup:a', 0], ['setup:b', COLOR_SLOT_COUNT]]);
+  assert.deepEqual(assignColorSlots([A, B], known), [0, 1]);
 });
