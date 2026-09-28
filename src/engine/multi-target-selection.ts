@@ -1,20 +1,19 @@
 import { analysisTargetKey, sameAnalysisTarget, type AnalysisTarget } from '#input/setup/index.ts';
 
 /**
- * 集合対象Analyzer全般（比較表・N感度等）が汎用で持つ「対象の集合」（Analyzer id → 選んだ
- * 対象の列 + 基準）。集合対象Analyzerごとに別の資産を持たせると、同じ概念の正が複数になる
- * ため1つにまとめる。
+ * 個別画面のMulti（集合を見るAnalyzer。比較表・N感度等）が共有する「対象の集合」
+ * （`docs/architecture.md`「個別画面どうしで共有する対象」。#663）。Analyzerごとには持たず、
+ * Multiの全Analyzerで1つを読み書きする。1つの集合を選んでいろいろな解析を見るため、
+ * Analyzerを移るたびに選び直させない。
  *
  * 対象そのものはSetup idではなく`AnalysisTarget`（#578指摘1「対象を配列かSetupにする」）で
- * 持つ。「選択はSetup idではなく対象を保存する」という決定により、集合の各枠が配列でも
- * Setupでも同じ列にそのまま並べられる。
+ * 持つ。集合の各枠が配列でもSetupでも同じ列にそのまま並べられる。
  *
- * `baseline`（比較表だけが使う「基準」）も集合対象Analyzer全般が持てる値としてここに含める:
- * N感度はこれを使わない（`undefined`のまま）だけで、型としてはどの集合対象Analyzerも
- * 同じ形を持つ。基準を独自の値として別の資産に分けるほどの違いではないため、1つの型に
- * 統合した。
+ * `baseline`（比較表の「基準にする対象」）も集合の値としてここに含める（#663のオーナー決定）。
+ * N感度は基準を使わないが、集合を共有するので、比較表で選んだ基準はN感度を経ても残る。
+ * N感度で基準の対象を外した時だけ、不変条件（基準 ∈ 選択）により基準も外れる。
  */
-export interface SetSelectionState {
+export interface MultiTargetSelection {
   readonly targets: readonly AnalysisTarget[];
   readonly baseline: AnalysisTarget | undefined;
   /**
@@ -29,36 +28,13 @@ export interface SetSelectionState {
    * 必ずどこかで重なる。同じ画面に並ぶのは数個なので、集合の中で配れば重ならない。
    *
    * 番号は並べた順から毎回数え直さず、ここに持つ。並べた順から数えると、1つ外すと
-   * 後ろの対象の色が全部ずれ、線を追えなくなるため。配り方は`withSetSelectionTargets`。
+   * 後ろの対象の色が全部ずれ、線を追えなくなるため。配り方は`withMultiTargets`。
    */
   readonly colorSlots: readonly number[];
 }
 
-/** 未選択時に返す既定値。`analyzerSetSelectionFor`が同じ参照を使い回す（下のコメント参照）。 */
-const EMPTY_SELECTION: SetSelectionState = { targets: [], baseline: undefined, colorSlots: [] };
-
-export function initialSetSelection(): SetSelectionState {
-  return EMPTY_SELECTION;
-}
-
-export type AnalyzerSetSelectionState = Readonly<Record<string, SetSelectionState>>;
-
-export function initialAnalyzerSetSelections(): AnalyzerSetSelectionState {
-  return {};
-}
-
-/**
- * 1 Analyzerぶんの選択を読む。無ければ`EMPTY_SELECTION`という1つの定数を返す
- * （呼ぶたびに新しいobject/配列を作ると、これを依存配列に含む`useMemo`/`useEffect`
- * （`hosts/standalone`側）が「参照が毎回変わる」ことで無限に再計算・再実行され続ける。
- * Reactの依存比較は`Object.is`で、空集合として値は変わらないのに参照だけ変わり続けるのが
- * 原因。実際にN感度の単体ページでこれが無限レンダーループを起こした）。
- */
-export function analyzerSetSelectionFor(
-  state: AnalyzerSetSelectionState,
-  analyzerId: string,
-): SetSelectionState {
-  return Object.hasOwn(state, analyzerId) ? state[analyzerId]! : EMPTY_SELECTION;
+export function initialMultiTargetSelection(): MultiTargetSelection {
+  return { targets: [], baseline: undefined, colorSlots: [] };
 }
 
 function sameTargets(a: readonly AnalysisTarget[], b: readonly AnalysisTarget[]): boolean {
@@ -118,7 +94,7 @@ export function assignColorSlots(
   });
 }
 
-function colorSlotsByKey(selection: SetSelectionState): Map<string, number> {
+function colorSlotsByKey(selection: MultiTargetSelection): Map<string, number> {
   return new Map(selection.targets.map((target, index) => [analysisTargetKey(target), selection.colorSlots[index]!] as const));
 }
 
@@ -133,10 +109,10 @@ function colorSlotsByKey(selection: SetSelectionState): Map<string, number> {
  * 確認し直す必要が生じる。書き込みの時点で不変条件を保証しておけば、読む側は`baseline`を
  * そのまま信用してよい）。
  */
-export function withSetSelectionTargets(
-  current: SetSelectionState,
+export function withMultiTargets(
+  current: MultiTargetSelection,
   targets: readonly AnalysisTarget[],
-): SetSelectionState {
+): MultiTargetSelection {
   const deduped = dedupe(targets);
   if (sameTargets(current.targets, deduped)) return current;
   const baseline = current.baseline !== undefined && deduped.some((t) => sameAnalysisTarget(t, current.baseline!))
@@ -150,37 +126,16 @@ export function withSetSelectionTargets(
 /**
  * 基準を差し替える。`undefined`は「基準なし」。不変条件（基準 ∈ 選択）を守るため、
  * 選択に含まれない対象を基準にしようとした場合は無視する（no-op。
- * `withSetSelectionTargets`のコメント参照）。
+ * `withMultiTargets`のコメント参照）。
  */
-export function withSetSelectionBaseline(
-  current: SetSelectionState,
+export function withMultiBaseline(
+  current: MultiTargetSelection,
   baseline: AnalysisTarget | undefined,
-): SetSelectionState {
+): MultiTargetSelection {
   if (current.baseline === baseline) return current;
   if (current.baseline !== undefined && baseline !== undefined && sameAnalysisTarget(current.baseline, baseline)) {
     return current;
   }
   if (baseline !== undefined && !current.targets.some((t) => sameAnalysisTarget(t, baseline))) return current;
   return { ...current, baseline };
-}
-
-/**
- * 1 Analyzerぶんの選択を書き換える。値が変わらなければ同じ参照を返す
- * （`applyCommand`のObject.is判定に乗せるため。#544 §8-2）。`analyzerId`を計算プロパティで
- * 書き込む理由は`standalone-analyzer-options.ts`のコメントと同じ（ここでの`analyzerId`も
- * このアプリ自身が登録したAnalyzerの`definition.id`）。
- */
-export function withAnalyzerSetSelection(
-  state: AnalyzerSetSelectionState,
-  analyzerId: string,
-  selection: SetSelectionState,
-): AnalyzerSetSelectionState {
-  const existing = analyzerSetSelectionFor(state, analyzerId);
-  if (existing === selection) return state;
-  const baselineSame = existing.baseline === selection.baseline
-    || (existing.baseline !== undefined && selection.baseline !== undefined && sameAnalysisTarget(existing.baseline, selection.baseline));
-  if (sameTargets(existing.targets, selection.targets) && baselineSame) {
-    return state;
-  }
-  return { ...state, [analyzerId]: selection };
 }

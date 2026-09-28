@@ -2,7 +2,7 @@
  * 対象（配列・Setup）を並べて見せる時の色（#601）。
  *
  * 色は対象ごとに固定せず、同じ画面に並べている集合の中で、このパレットから加えた順に配る。
- * 何番を配るかは集合の側が持つ（`engine/analyzer-set-selection.ts`の`colorSlots`）。
+ * 何番を配るかは集合の側が持つ（`engine/multi-target-selection.ts`の`colorSlots`）。
  * ここは番号から色を引くだけ。
  *
  * **パレットはOKLCHで作った自前の12色。** 実績のあるカテゴリ配色（d3-scale-chromaticの

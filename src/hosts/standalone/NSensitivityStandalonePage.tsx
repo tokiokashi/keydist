@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import { setAnalyzerSetSelectionTargetsCommand, type KeydistAssets } from '#engine/commands.ts';
+import { setMultiTargetsCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineCache } from '#engine/cache.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
-import { analyzerSetSelectionFor } from '#engine/analyzer-set-selection.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget } from '#input/setup/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
@@ -35,12 +34,11 @@ import './standalone.css';
 
 /**
  * N感度の単体ページ（#544 Phase 3「N感度」、#578指摘1「対象を配列かSetupにする」）。
- * `ComparisonStandalonePage.tsx`と同じ形（対象は配列かSetupの**集合**。集合はこのページ
- * 自身の資産が持ち、書き込みは`dispatch`を経由する）。
+ * `ComparisonStandalonePage.tsx`と同じ形（対象は配列かSetupの**集合**。書き込みは`dispatch`を経由する）。
  *
- * 集合の保存先は`assets.analyzerSetSelections`（`engine/analyzer-set-selection.ts`。
- * Analyzer idで引く、集合対象Analyzer全般が使う汎用の資産）。比較表が使う`baseline`
- * フィールドは持つが、このページは基準の概念を使わないので触らない（`undefined`のまま）。
+ * 集合はMultiのAnalyzerが共有する`assets.multiTargetSelection`（`engine/multi-target-selection.ts`。
+ * #663）。比較表で選んだ基準も集合に入っているが、このページは基準を使わないので触らない
+ * （基準の対象をここで外した時だけ、集合の不変条件により基準も外れる）。
  */
 export interface NSensitivityStandalonePageProps {
   readonly assets: KeydistAssets;
@@ -115,12 +113,12 @@ export function NSensitivityStandalonePage({
     [assets.standaloneTextSelection, assets.textLibrary],
   );
 
-  const selection = analyzerSetSelectionFor(assets.analyzerSetSelections, ANALYZER_ID);
+  const selection = assets.multiTargetSelection;
   const { choiceGroups, targets, colorByKey } = useSetTargetSelection(selection, setups, catalog);
 
   // 対象の選択を開いているか。空の時のペインのボタンからも開くので、ここで持つ。
   const [selectionOpen, setSelectionOpen] = useState(false);
-  const setSelection = (next: readonly AnalysisTarget[]) => dispatch(setAnalyzerSetSelectionTargetsCommand(ANALYZER_ID, next));
+  const setSelection = (next: readonly AnalysisTarget[]) => dispatch(setMultiTargetsCommand(next));
 
   const storedOptionsRaw = assets.standaloneAnalyzerOptions[ANALYZER_ID];
   const decoded = useMemo(

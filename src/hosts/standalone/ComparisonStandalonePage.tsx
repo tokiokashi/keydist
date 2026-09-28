@@ -1,11 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import {
-  setAnalyzerSetSelectionBaselineCommand,
-  setAnalyzerSetSelectionTargetsCommand,
-  type KeydistAssets,
-} from '#engine/commands.ts';
-import { analyzerSetSelectionFor } from '#engine/analyzer-set-selection.ts';
+import { setMultiBaselineCommand, setMultiTargetsCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineCache } from '#engine/cache.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
@@ -41,9 +36,9 @@ import './standalone.css';
  * 比較表の単体ページ（#544 Phase 3「集合を対象にする最初のAnalyzer（比較表）と、
  * その単体ページ」、#578指摘1「対象を配列かSetupにする」）。
  *
- * 対象は**配列かSetupの集合**（用語表「対象」）。集合（選んだ対象・並び順・基準）は
- * このページ自身の資産（`assets.analyzerSetSelections`。Analyzer idで引く、集合対象
- * Analyzer全般が使う汎用の資産）が持ち、書き込みはすべて`dispatch`を経由する
+ * 対象は**配列かSetupの集合**（用語表「対象」）。集合（選んだ対象・並び順・色・基準）は
+ * MultiのAnalyzerが共有する資産（`assets.multiTargetSelection`。#663）が持ち、
+ * 書き込みはすべて`dispatch`を経由する
  * （`BigramFlowStandalonePage.tsx`と同じ形。#544 §8-2）。テキストは単体ページ全体で
  * 共有の「最後に使ったテキスト」を使う（#544 §5）。
  *
@@ -121,12 +116,12 @@ export function ComparisonStandalonePage({
     [assets.standaloneTextSelection, assets.textLibrary],
   );
 
-  const selection = analyzerSetSelectionFor(assets.analyzerSetSelections, ANALYZER_ID);
+  const selection = assets.multiTargetSelection;
   const { choiceGroups, targets, colorByKey } = useSetTargetSelection(selection, setups, catalog);
 
   // 対象の選択を開いているか。空の時のペインのボタンからも開くので、ここで持つ。
   const [selectionOpen, setSelectionOpen] = useState(false);
-  const setSelection = (next: readonly AnalysisTarget[]) => dispatch(setAnalyzerSetSelectionTargetsCommand(ANALYZER_ID, next));
+  const setSelection = (next: readonly AnalysisTarget[]) => dispatch(setMultiTargetsCommand(next));
 
   // 解析設定（列の表示・基準比の表示可否）は資産（standaloneAnalyzerOptions）が正
   // （BigramFlowStandalonePageと同じ形）。
@@ -251,7 +246,7 @@ export function ComparisonStandalonePage({
                     candidates={candidates}
                     onChange={(nextKey) => {
                       const next = nextKey === undefined ? undefined : targets.find((t) => analysisTargetKey(t) === nextKey);
-                      dispatch(setAnalyzerSetSelectionBaselineCommand(ANALYZER_ID, next));
+                      dispatch(setMultiBaselineCommand(next));
                     }}
                   />
                 )}

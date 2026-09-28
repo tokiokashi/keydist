@@ -6,12 +6,11 @@ import { expectTargetNames, openSettings, openTargetSelection, targetNames, togg
  * N感度単体ページ（#544 Phase 3「N感度」、#578指摘1「対象を配列かSetupにする」）のE2E。
  * `e2e/standalone-comparison.spec.ts`と同じ形。
  *
- * 対象は配列かSetupの**集合**（比較表と同じ）で、集合の保存先も同じ汎用資産
- * （`keydist:analyzer-set-selections`。`engine/analyzer-set-selection.ts`参照。
- * Analyzer idごとに`{targets, baseline}`を`selections`の下にネストして持つ）。
+ * 対象は配列かSetupの**集合**で、比較表と同じ1つの集合を共有する
+ * （`keydist:multi-target-selection`。`engine/multi-target-selection.ts`参照。#663）。
  */
 
-const ANALYZER_SET_SELECTIONS_KEY = 'keydist:analyzer-set-selections';
+const MULTI_TARGET_SELECTION_KEY = 'keydist:multi-target-selection';
 
 /** `#RRGGBB`をcomputed styleの形（`rgb(r, g, b)`）にする。 */
 function hexToRgb(hex: string): string {
@@ -142,7 +141,7 @@ test('選択はリロードしても残り、資産の読み込み前に上書�
   await expectTargetNames(page, ['QWERTY', 'Colemak-DH']);
 
   await expect
-    .poll(async () => page.evaluate((key) => localStorage.getItem(key), ANALYZER_SET_SELECTIONS_KEY))
+    .poll(async () => page.evaluate((key) => localStorage.getItem(key), MULTI_TARGET_SELECTION_KEY))
     .toContain('fixed-a');
 
   // 資産の読み込み前に空の初期値へ巻き戻る競合が無いことの回帰確認: リロード直後に
@@ -153,12 +152,13 @@ test('選択はリロードしても残り、資産の読み込み前に上書�
 
   const storedAfterReload = await page.evaluate(
     (key) => localStorage.getItem(key),
-    ANALYZER_SET_SELECTIONS_KEY,
+    MULTI_TARGET_SELECTION_KEY,
   );
   const parsed = JSON.parse(storedAfterReload ?? '{}') as {
-    selections: Record<string, { targets: { kind: string; setupId?: string }[]; baseline?: { kind: string; setupId?: string } }>;
+    targets: { kind: string; setupId?: string }[];
+    baseline?: { kind: string; setupId?: string };
   };
-  expect(parsed.selections['n-sensitivity']?.targets.map((t) => t.setupId)).toEqual(['fixed-b', 'fixed-a']);
+  expect(parsed.targets.map((t) => t.setupId)).toEqual(['fixed-b', 'fixed-a']);
 
   // setup-libraryはユーザーが足していない限り2件のまま（誤って1件へ巻き戻っていない）。
   const setupLibraryRaw = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
@@ -177,14 +177,10 @@ test('集合に存在しないSetup idが混ざっていても消えず「削除
       }),
     );
     localStorage.setItem(
-      'keydist:analyzer-set-selections',
+      'keydist:multi-target-selection',
       JSON.stringify({
-        version: 2,
-        selections: {
-          'n-sensitivity': {
-            targets: [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'deleted-setup' }],
-          },
-        },
+        version: 1,
+        targets: [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'deleted-setup' }],
       }),
     );
   });
@@ -212,8 +208,8 @@ test('既定と違う条件（windowSize以外）が併記される。windowSize
       }),
     );
     localStorage.setItem(
-      'keydist:analyzer-set-selections',
-      JSON.stringify({ version: 2, selections: { 'n-sensitivity': { targets: [{ kind: 'setup', setupId: 'fixed-a' }] } } }),
+      'keydist:multi-target-selection',
+      JSON.stringify({ version: 1, targets: [{ kind: 'setup', setupId: 'fixed-a' }] }),
     );
   });
   await page.goto('/standalone/n-sensitivity');
@@ -259,10 +255,10 @@ test('対象が空の時はペインに選ぶボタンを出し、全メンバ�
 
   await page.addInitScript(() => {
     localStorage.setItem(
-      'keydist:analyzer-set-selections',
+      'keydist:multi-target-selection',
       JSON.stringify({
-        version: 2,
-        selections: { 'n-sensitivity': { targets: [{ kind: 'setup', setupId: 'deleted-setup' }] } },
+        version: 1,
+        targets: [{ kind: 'setup', setupId: 'deleted-setup' }],
       }),
     );
   });

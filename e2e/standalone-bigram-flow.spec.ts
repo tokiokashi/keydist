@@ -575,7 +575,7 @@ test('保存済みのSetupが2件あっても、開いた時に手を付けず�
 
   // 対象の選択がstorageへ書き込まれるまで待ってからリロードする。
   await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:analyzer-target-selections')))
+    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection')))
     .toContain('fixed-b');
 
   // リロードしても2件・id・選択とも保たれる。

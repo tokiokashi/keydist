@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { COLOR_SLOT_COUNT } from '#engine/analyzer-set-selection.ts';
+import { COLOR_SLOT_COUNT } from '#engine/multi-target-selection.ts';
 import { TARGET_PALETTE_SIZE, targetPaletteColor } from './target-colors.ts';
 
 // 背景は theme.css の値。N感度の線は実際にはページ地（--bg）の上に描かれる。枠付きの面（--surface）も測る。
