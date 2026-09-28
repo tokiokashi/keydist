@@ -1,6 +1,7 @@
 import type { EngineRequestError, EngineRequestState } from '#engine/request.ts';
-import type { ResolvedInputError } from '#engine/resolved-input.ts';
-import type { SetupReferenceError } from '#input/setup/index.ts';
+import { describeResolvedInputError } from '#engine/resolved-input-errors.ts';
+
+export { describeResolvedInputError } from '#engine/resolved-input-errors.ts';
 
 /**
  * ペインの状態（#544 §8-1「計算中 / 古い結果を表示中 / 失敗」）。
@@ -39,29 +40,6 @@ export function paneStatusLabel(status: PaneEngineState<unknown>['status']): str
     case 'stale': return '計算中…（直前の結果を表示）';
     case 'ready': return '';
     case 'failed': return '失敗';
-  }
-}
-
-function describeSetupReferenceError(error: SetupReferenceError): string {
-  switch (error.kind) {
-    case 'layout-missing': return `配列「${error.layoutId}」が見つからない（削除された可能性）`;
-    case 'shape-missing': return `物理形状「${error.shapeId}」が見つからない（削除された可能性）`;
-  }
-}
-
-/**
- * 解決済み入力の失敗（#544 §6「残る例外表示はSetup・配列・形状が削除された時だけ」・
- * §4「このテキストには使えないSetup」・§3「形状で実現できない値」）を、ペインに出す
- * 日本語の説明へ変換する。
- */
-export function describeResolvedInputError(error: ResolvedInputError): string {
-  switch (error.kind) {
-    case 'reference':
-      return error.errors.map(describeSetupReferenceError).join(' / ');
-    case 'incompatible-text':
-      return `このテキスト（${error.language === 'ja' ? '日本語' : '英語'}）には「${error.layout.name}」を使えない`;
-    case 'geometry':
-      return `形状を組み立てられない: ${error.message}`;
   }
 }
 

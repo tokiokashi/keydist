@@ -17,6 +17,8 @@ import {
   resetCascadeItemCommand,
   resetCascadeLevelCommand,
   setCascadeOverrideCommand,
+  setComparisonBaselineSetupIdCommand,
+  setComparisonSetupIdsCommand,
   setStandaloneAnalyzerOptionsCommand,
   setStandaloneTextCommand,
   setStandaloneTextLanguageOverrideCommand,
@@ -36,6 +38,7 @@ function emptyAssets(): KeydistAssets {
     fingerAssignments: [],
     standaloneText: initialStandaloneText(),
     standaloneAnalyzerOptions: {},
+    comparisonSelection: { setupIds: [], baselineSetupId: undefined },
   };
 }
 
@@ -415,4 +418,40 @@ test('setStandaloneAnalyzerOptionsCommand: 別のAnalyzer idの設定は道連�
     heatmap: { colorScale: 'linear' },
     'bigram-flow': { source: 'actual' },
   });
+});
+
+test('setComparisonSetupIdsCommand: 対象の集合・並び順を書き込み、undo/redoで往復できる', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, setComparisonSetupIdsCommand(['a', 'b']));
+  assert.equal(step.outcome.kind, 'applied');
+  assert.deepEqual(step.assets.comparisonSelection.setupIds, ['a', 'b']);
+
+  const back = undo(step.assets, step.history);
+  assert.deepEqual(back.assets.comparisonSelection.setupIds, []);
+
+  const redone = redo(back.assets, back.history);
+  assert.deepEqual(redone.assets.comparisonSelection.setupIds, ['a', 'b']);
+});
+
+test('setComparisonSetupIdsCommand: 同じ並びの書き込みはno-op', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, setComparisonSetupIdsCommand(['a', 'b']));
+  const again = applyCommand(step.assets, step.history, setComparisonSetupIdsCommand(['a', 'b']));
+  assert.equal(again.outcome.kind, 'no-op');
+  assert.equal(again.assets, step.assets);
+});
+
+test('setComparisonBaselineSetupIdCommand: 基準の設定・解除を書き込める', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const withBaseline = applyCommand(assets, history, setComparisonBaselineSetupIdCommand('a'));
+  assert.equal(withBaseline.assets.comparisonSelection.baselineSetupId, 'a');
+
+  const cleared = applyCommand(withBaseline.assets, withBaseline.history, setComparisonBaselineSetupIdCommand(undefined));
+  assert.equal(cleared.assets.comparisonSelection.baselineSetupId, undefined);
 });

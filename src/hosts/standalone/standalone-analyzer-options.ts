@@ -1,9 +1,18 @@
-import type { SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 
 export interface DecodedAnalyzerOptions<Options> {
   readonly options: Options;
   readonly diagnostics: readonly CodecDiagnostic[];
+}
+
+/**
+ * `SingleAnalyzerDefinition`/`SetAnalyzerDefinition`のどちらでも持つ`decodeOptions`だけを
+ * 要求する最小形。`decodeStoredAnalyzerOptions`は対象の種類（単一/集合）を問わないため、
+ * `AnalyzerDefinition`のUnion全体ではなくこの構造的な形を受け取る（cardinalityが違う
+ * 2つの型はUnionのままでは関数の引数として素直に受け取れないため）。
+ */
+export interface DecodableAnalyzerDefinition<Options> {
+  decodeOptions(raw: unknown, diagnostics: CodecDiagnostic[]): Options;
 }
 
 /**
@@ -18,7 +27,7 @@ export interface DecodedAnalyzerOptions<Options> {
  * （レビュー指摘: 診断を作って捨てていたのを直す）。
  */
 export function decodeStoredAnalyzerOptions<Options>(
-  definition: SingleAnalyzerDefinition<Options>,
+  definition: DecodableAnalyzerDefinition<Options>,
   raw: unknown,
 ): DecodedAnalyzerOptions<Options> {
   const diagnostics: CodecDiagnostic[] = [];

@@ -143,3 +143,89 @@ export function createEngineRequest<T>(
 
   return { request, unsubscribe };
 }
+
+// ---------------------------------------------------------------------------
+// 集合対象の依頼（#544 Phase 3「集合を対象にする最初のAnalyzer」）
+// ---------------------------------------------------------------------------
+
+/**
+ * 集合対象の依頼1件分の入力: どのSetupの、どの解決済み入力（または失敗）か。
+ * `createEngineRequest`の`ResolvedInputResult`と違い、集合対象では要素ごとの解決失敗が
+ * 全体の失敗を意味しない（#544指示書「部分失敗」）ため、`ok: false`のメンバーも
+ * そのまま`compute`へ渡し、成功/失敗をメンバー単位でどう畳むかは`compute`
+ * （`EngineCache.getSetExtraction`）側の仕事にする。ここでの打ち切り・再入対策は
+ * `createEngineRequest`と同じ形をそのまま使う。
+ */
+export interface EngineSetMemberInput {
+  readonly setupId: string;
+  readonly resolution: ResolvedInputResult;
+}
+
+export interface EngineSetRequestChannel {
+  request(members: readonly EngineSetMemberInput[]): void;
+  unsubscribe(): void;
+}
+
+/**
+ * `createEngineRequest`の集合版。`resolution.ok`による早期return（単一対象では
+ * 解決失敗イコール依頼全体の失敗）が無い点だけが違う: 集合では要素ごとの失敗が
+ * 起こりうる前提そのものが目的なので、失敗の有無に関わらず必ず`compute`を呼ぶ
+ * （`compute`側がメンバーごとの成功/失敗を仕分ける）。打ち切り・再入対策
+ * （revision番号・scheduleをemitより先に行う順序）は`createEngineRequest`と同一。
+ * ロジックを1つの関数へ共通化しなかった理由: 「解決失敗を即座に返すか、必ずcomputeへ
+ * 渡すか」という分岐点が関数の構造そのもの（早期returnの有無）に埋め込まれており、
+ * オプションで切り替える形にすると早期returnのためだけの引数が増えて読みにくくなる。
+ */
+export function createEngineSetRequest<T>(
+  compute: (members: readonly EngineSetMemberInput[]) => T,
+  listener: (state: EngineRequestState<T>) => void,
+  options: EngineRequestOptions = {},
+): EngineSetRequestChannel {
+  const scheduler = options.scheduler ?? microtaskScheduler;
+
+  let revision = 0;
+  let unsubscribed = false;
+  let cancelScheduled: (() => void) | undefined;
+  let lastReadyValue: T | undefined;
+  let hasLastReadyValue = false;
+
+  function emit(state: EngineRequestState<T>): void {
+    if (unsubscribed) return;
+    listener(state);
+  }
+
+  function request(members: readonly EngineSetMemberInput[]): void {
+    if (unsubscribed) return;
+    revision += 1;
+    const myRevision = revision;
+    cancelScheduled?.();
+    cancelScheduled = undefined;
+
+    cancelScheduled = scheduler.schedule(() => {
+      cancelScheduled = undefined;
+      if (unsubscribed || myRevision !== revision) return;
+      try {
+        const value = compute(members);
+        lastReadyValue = value;
+        hasLastReadyValue = true;
+        emit({ status: 'ready', value });
+      } catch (error) {
+        emit({ status: 'failed', error: { kind: 'exception', error } });
+      }
+    });
+
+    emit(
+      hasLastReadyValue
+        ? { status: 'stale', value: lastReadyValue as T }
+        : { status: 'computing' },
+    );
+  }
+
+  function unsubscribe(): void {
+    unsubscribed = true;
+    cancelScheduled?.();
+    cancelScheduled = undefined;
+  }
+
+  return { request, unsubscribe };
+}

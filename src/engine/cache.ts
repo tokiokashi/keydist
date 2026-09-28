@@ -1,6 +1,7 @@
-import type { SingleAnalyzerDefinition } from '#analyzers/contract.ts';
-import { analyzerExtractionKeyOf, interpretationKeyOf, traceKeyOf } from './keys.ts';
+import type { AnalyzerSetMember, AnalyzerSetMemberFailure, SetAnalyzerDefinition, SingleAnalyzerDefinition } from '#analyzers/contract.ts';
+import { analyzerExtractionKeyOf, interpretationKeyOf, setAnalyzerExtractionKeyOf, traceKeyOf } from './keys.ts';
 import {
+  extractSet,
   extractSingle,
   generateEngineTrace,
   interpretEngineTrace,
@@ -8,7 +9,9 @@ import {
   type EngineInterpretationResult,
   type EngineTraceResult,
 } from './pipeline.ts';
+import type { EngineSetMemberInput } from './request.ts';
 import type { ResolvedInput } from './resolved-input.ts';
+import { describeResolvedInputError } from './resolved-input-errors.ts';
 import { createTraceRequesterFor } from './trace-requester.ts';
 
 /**
@@ -89,6 +92,22 @@ export interface EngineCache {
     definition: SingleAnalyzerDefinition<Options, Extracted>,
     options: Options,
   ): EngineExtractionResult<Extracted>;
+  /**
+   * 集合対象のAnalyzerの抽出（#544 Phase 3）。`members`は集合の各枠（Setup）の解決済み
+   * 入力（または解決失敗）を、表示順のまま渡す（`setAnalyzerExtractionKeyOf`のコメント
+   * 参照: 順序込みでキャッシュキーに畳み込む）。
+   *
+   * 解決できたメンバーのTrace・解釈は`getTrace`/`getInterpretation`と同じキャッシュを
+   * 共有する（同じ中身のSetupを含む集合を2つ作っても、共通するSetupの計算は1回で済む。
+   * #544 §7「各Setupのcompute（Trace・解釈）は単一対象と同じキャッシュを共有する」）。
+   * 解決に失敗したメンバーは`AnalyzerDefinition.extract`へ渡す`members`からは外し、
+   * `failures`として渡す（#544指示書「全体を失敗にせず、メンバーごとの失敗を値で持つ」）。
+   */
+  getSetExtraction<Options, Extracted>(
+    members: readonly EngineSetMemberInput[],
+    definition: SetAnalyzerDefinition<Options, Extracted>,
+    options: Options,
+  ): EngineExtractionResult<Extracted>;
   /** 計算結果は永続化しない（#544 §7）。明示的に空にする時だけ使う。 */
   clear(): void;
   readonly size: { readonly trace: number; readonly interpretation: number; readonly extraction: number };
@@ -152,10 +171,62 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
     return result;
   }
 
+  function getSetExtraction<Options, Extracted>(
+    members: readonly EngineSetMemberInput[],
+    definition: SetAnalyzerDefinition<Options, Extracted>,
+    options: Options,
+  ): EngineExtractionResult<Extracted> {
+    const resolvedMembers: AnalyzerSetMember[] = [];
+    const failures: AnalyzerSetMemberFailure[] = [];
+    const keyMembers: { readonly setupId: string; readonly memberKey: unknown }[] = [];
+    // TraceRequester（N感度等）の土台にする、最初に解決できたメンバーの入力
+    // （`SetAnalyzerExtractContext.requestTrace`のコメント参照）。
+    let firstResolvedInput: ResolvedInput | undefined;
+
+    for (const member of members) {
+      if (!member.resolution.ok) {
+        failures.push({
+          setupId: member.setupId,
+          kind: member.resolution.error.kind,
+          message: describeResolvedInputError(member.resolution.error),
+        });
+        keyMembers.push({ setupId: member.setupId, memberKey: { failed: member.resolution.error.kind } });
+        continue;
+      }
+      const input = member.resolution.input;
+      if (firstResolvedInput === undefined) firstResolvedInput = input;
+      const interpretationResult = getInterpretation(input);
+      const traceResult = getTrace(input);
+      const memberInterpretationKey = interpretationKeyOf(input, traceKeyOf(input));
+      keyMembers.push({ setupId: member.setupId, memberKey: memberInterpretationKey });
+      resolvedMembers.push({
+        setupId: member.setupId,
+        trace: traceResult.trace,
+        analysis: interpretationResult.analysis,
+        metrics: interpretationResult.metrics,
+      });
+    }
+
+    const key = setAnalyzerExtractionKeyOf(keyMembers, definition.id, definition.extractKeyOf(options));
+    const cached = extractionCache.get(key);
+    if (cached) return cached as EngineExtractionResult<Extracted>;
+
+    // メンバーが1件も解決できていない時にrequestTrace()を呼ぶAnalyzerは無い想定だが、
+    // 呼ばれたら「土台になる入力が無い」ことをそのまま例外として伝える（黙って
+    // でたらめなTraceを返さない。#544 Phase 3「決めきれなかった点」としてPR本文へ残す）。
+    const requester = firstResolvedInput === undefined
+      ? { requestTrace: () => { throw new Error('setAnalyzer: 解決できたメンバーが無いためTraceを依頼できない'); } }
+      : createTraceRequesterFor({ getTrace }, firstResolvedInput);
+    const result = extractSet(definition, options, resolvedMembers, failures, requester);
+    extractionCache.set(key, result as EngineExtractionResult<unknown>);
+    return result;
+  }
+
   return {
     getTrace,
     getInterpretation,
     getExtraction,
+    getSetExtraction,
     clear() {
       traceCache.clear();
       interpretationCache.clear();

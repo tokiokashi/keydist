@@ -26,6 +26,11 @@ import {
   type StandaloneAnalyzerOptionsState,
 } from './standalone-analyzer-options.ts';
 import {
+  withComparisonBaselineSetupId,
+  withComparisonSetupIds,
+  type ComparisonSelectionState,
+} from './comparison-selection.ts';
+import {
   resetSettingsItem,
   resetSettingsLevel,
   setSettingsOverride,
@@ -85,6 +90,16 @@ export interface KeydistAssets {
    * 個別Analyzerの`Options`型へ依存できないため）。
    */
   readonly standaloneAnalyzerOptions: StandaloneAnalyzerOptionsState;
+  /**
+   * 比較表単体ページが持つ「対象の集合」（#544 Phase 3、`hosts/standalone`の
+   * Comparison単体ページ）。`standaloneText`・`standaloneAnalyzerOptions`と同じ理由
+   * （他資産と対にならない、独立に読み書きできる値）で5つ目の資産キーとして足す。
+   * 複数の単体ページが集合を持つようになったら（比較表以外の集合対象Analyzerが
+   * 増えたら）、Analyzer idごとの集合を持つ形へ広げる想定（先回りして今は
+   * 比較表専用の1本にする。AGENTS.md「割れる人を想像できるが実例が無いものは
+   * 今は設定にしない」と同じ判断をAnalyzerの目的にも適用したもの）。
+   */
+  readonly comparisonSelection: ComparisonSelectionState;
 }
 
 type SetupLibraryComputation =
@@ -306,4 +321,36 @@ export function setStandaloneAnalyzerOptionsCommand(
       changes: { standaloneAnalyzerOptions: next },
     };
   };
+}
+
+/** `comparisonSelection`だけに触れるコマンドの共通の骨組み。他の単純な資産と同じ形。 */
+function comparisonSelectionCommand(
+  label: string,
+  compute: (current: ComparisonSelectionState) => ComparisonSelectionState,
+): Command<KeydistAssets> {
+  return (current) => {
+    const next = compute(current.comparisonSelection);
+    if (next === current.comparisonSelection) return { kind: 'no-op' };
+    return { kind: 'applied', label, changes: { comparisonSelection: next } };
+  };
+}
+
+/**
+ * 比較表の対象の集合（選んだSetup・並び順）を丸ごと差し替える（#544 Phase 3）。
+ * 追加・削除・並び替えのどれもこの1本のコマンドを通す（`setupIds`の並びがそのまま
+ * 表示順になる。`comparison-selection.ts`の`withComparisonSetupIds`コメント参照）。
+ */
+export function setComparisonSetupIdsCommand(setupIds: readonly string[]): Command<KeydistAssets> {
+  return comparisonSelectionCommand(
+    '比較表の対象を変更する',
+    (current) => withComparisonSetupIds(current, setupIds),
+  );
+}
+
+/** 比較表の基準（baseline）Setupを差し替える。`undefined`で「基準なし」にする。 */
+export function setComparisonBaselineSetupIdCommand(baselineSetupId: string | undefined): Command<KeydistAssets> {
+  return comparisonSelectionCommand(
+    '比較表の基準を変更する',
+    (current) => withComparisonBaselineSetupId(current, baselineSetupId),
+  );
 }
