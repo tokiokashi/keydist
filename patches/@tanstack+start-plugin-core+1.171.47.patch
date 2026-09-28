@@ -1,0 +1,36 @@
+diff --git a/node_modules/@tanstack/start-plugin-core/dist/esm/start-manifest-plugin/manifestBuilder.js b/node_modules/@tanstack/start-plugin-core/dist/esm/start-manifest-plugin/manifestBuilder.js
+index 997896d..6b821fb 100644
+--- a/node_modules/@tanstack/start-plugin-core/dist/esm/start-manifest-plugin/manifestBuilder.js
++++ b/node_modules/@tanstack/start-plugin-core/dist/esm/start-manifest-plugin/manifestBuilder.js
+@@ -86,7 +86,7 @@ function appendAdditionalRouteEntries(route, entries) {
+ }
+ function buildStartManifest(options) {
+ 	const scannedChunks = scanClientChunks(options.clientBuild);
+-	const assetResolvers = createManifestAssetResolvers(options.basePath);
++	const assetResolvers = createManifestAssetResolvers(options.basePath, scannedChunks.chunksByFileName);
+ 	const routes = buildRouteManifestRoutes({
+ 		routeTreeRoutes: options.routeTreeRoutes,
+ 		routeChunksByFilePath: scannedChunks.routeChunksByFilePath,
+@@ -140,7 +140,7 @@ function scanClientChunks(clientBuild) {
+ 		routeChunksByFilePath
+ 	};
+ }
+-function createManifestAssetResolvers(basePath) {
++function createManifestAssetResolvers(basePath, chunksByFileName) {
+ 	const assetPathByFileName = /* @__PURE__ */ new Map();
+ 	const stylesheetLinkByFileName = /* @__PURE__ */ new Map();
+ 	const preloadsByChunk = /* @__PURE__ */ new Map();
+@@ -161,8 +161,11 @@ function createManifestAssetResolvers(basePath) {
+ 	const getChunkPreloads = (chunk) => {
+ 		const cachedPreloads = preloadsByChunk.get(chunk);
+ 		if (cachedPreloads) return cachedPreloads;
+-		const preloads = [getAssetPath(chunk.fileName)];
+-		for (let i = 0; i < chunk.imports.length; i++) preloads.push(getAssetPath(chunk.imports[i]));
++		const fileNames = /* @__PURE__ */ new Set([chunk.fileName, ...chunk.imports]);
++		for (const fileName of fileNames) {
++			for (const imported of chunksByFileName?.get(fileName)?.imports ?? []) fileNames.add(imported);
++		}
++		const preloads = Array.from(fileNames, getAssetPath);
+ 		preloadsByChunk.set(chunk, preloads);
+ 		return preloads;
+ 	};
