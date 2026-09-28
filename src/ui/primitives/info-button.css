@@ -1,0 +1,49 @@
+/*
+ * 短い説明を出すⓘ（info-button.tsx）。ペインの見出しと図の横のどちらに置かれても同じ見た目にする。
+ * 説明の幅は、置かれたcontainer（ペイン）の幅を超えないようにする。
+ */
+.info {
+  position: relative;
+  display: inline-flex;
+}
+
+.info-button {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.info-button:hover,
+.info-button:focus-visible,
+.info-button[aria-expanded="true"] {
+  border-color: var(--border);
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.info-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  width: max-content;
+  max-width: min(22rem, calc(100cqw - 1rem));
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 14%);
+  font-size: 0.8rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.5;
+  white-space: normal;
+}
