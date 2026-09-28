@@ -186,6 +186,32 @@ export function BigramFlowStandalonePage({
 
   return (
     <div className="standalone-page">
+      <ContextBar
+        disabled={!assetsReady}
+        actions={(
+          <>
+            <UndoRedoButtons history={history} />
+            <ShareButton
+              description="今の解析設定を含むこの画面のURLをコピーする"
+              query={() => bigramFlowOptions.encodeOptionsToUrl(optionsDraft)}
+            />
+          </>
+        )}
+      >
+        <TextChip
+          holder="standalone"
+          textLibrary={assets.textLibrary}
+          selection={assets.standaloneTextSelection}
+          dispatch={dispatch}
+          generateTextId={generateTextId}
+          onTextContentCommit={onTextContentCommit}
+        />
+        <DefaultShapeChip
+          overrides={assets.setupLibrary.overrides}
+          dispatch={dispatch}
+          shapes={catalog.setupCatalog.shapes}
+        />
+      </ContextBar>
       {/*
        * プリレンダーされたHTMLはハイドレーション前から操作できてしまう（レビュー指摘:
        * ハイドレーション完了までの約750〜850msの間にクリック・入力すると、見た目は
@@ -199,32 +225,6 @@ export function BigramFlowStandalonePage({
         disabled={!assetsReady}
         style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
       >
-        <ContextBar
-          actions={(
-            <>
-              <UndoRedoButtons history={history} />
-              <ShareButton
-                description="今の解析設定を含むこの画面のURLをコピーする"
-                query={() => bigramFlowOptions.encodeOptionsToUrl(optionsDraft)}
-              />
-            </>
-          )}
-        >
-          <TextChip
-            holder="standalone"
-            textLibrary={assets.textLibrary}
-            selection={assets.standaloneTextSelection}
-            dispatch={dispatch}
-            generateTextId={generateTextId}
-            onTextContentCommit={onTextContentCommit}
-          />
-          <DefaultShapeChip
-            overrides={assets.setupLibrary.overrides}
-            dispatch={dispatch}
-            shapes={catalog.setupCatalog.shapes}
-          />
-        </ContextBar>
-
         <div className="standalone-stage">
           <PaneFrame
             name={bigramFlowAnalyzer.name}

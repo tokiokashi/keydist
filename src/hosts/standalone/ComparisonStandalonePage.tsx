@@ -190,34 +190,34 @@ export function ComparisonStandalonePage({
 
   return (
     <div className="standalone-page">
+      <ContextBar
+        disabled={!assetsReady}
+        actions={(
+          <>
+            <UndoRedoButtons history={history} />
+            <ShareButton description="この画面のURLをコピーする" />
+          </>
+        )}
+      >
+        <TextChip
+          holder="standalone"
+          textLibrary={assets.textLibrary}
+          selection={assets.standaloneTextSelection}
+          dispatch={dispatch}
+          generateTextId={generateTextId}
+          onTextContentCommit={onTextContentCommit}
+        />
+        <DefaultShapeChip
+          overrides={assets.setupLibrary.overrides}
+          dispatch={dispatch}
+          shapes={catalog.setupCatalog.shapes}
+        />
+      </ContextBar>
       {/* プリレンダーされたページはハイドレーション完了まで操作を効かせない（レビュー指摘1）。 */}
       <fieldset
         disabled={!assetsReady}
         style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
       >
-        <ContextBar
-          actions={(
-            <>
-              <UndoRedoButtons history={history} />
-              <ShareButton description="この画面のURLをコピーする" />
-            </>
-          )}
-        >
-          <TextChip
-            holder="standalone"
-            textLibrary={assets.textLibrary}
-            selection={assets.standaloneTextSelection}
-            dispatch={dispatch}
-            generateTextId={generateTextId}
-            onTextContentCommit={onTextContentCommit}
-          />
-          <DefaultShapeChip
-            overrides={assets.setupLibrary.overrides}
-            dispatch={dispatch}
-            shapes={catalog.setupCatalog.shapes}
-          />
-        </ContextBar>
-
         <div className="standalone-stage">
           <PaneFrame
             name={comparisonAnalyzer.name}

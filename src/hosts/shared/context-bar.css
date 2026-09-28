@@ -16,6 +16,10 @@
   backdrop-filter: blur(10px);
 }
 
+.context-bar-fieldset {
+  display: contents;
+}
+
 .context-bar-items {
   display: flex;
   align-items: center;

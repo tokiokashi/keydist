@@ -20,15 +20,22 @@ export interface ContextBarProps {
   readonly children: ReactNode;
   /** 右端に寄せる常時出す操作（Undo/Redo・共有）。 */
   readonly actions?: ReactNode;
+  /**
+   * 資産の読み込みが済むまで、バーの操作を効かせない（プリレンダーのHTMLは読み込み前から押せるため）。
+   * シェルが差し込むサイドバーのボタンは資産と関係ないので、ここに含めない。
+   */
+  readonly disabled?: boolean;
 }
 
-export function ContextBar({ children, actions }: ContextBarProps) {
+export function ContextBar({ children, actions, disabled = false }: ContextBarProps) {
   const leading = useContext(ContextBarLeadingSlot);
   return (
     <section className="context-bar" aria-label="テキストと画面の操作">
       {leading}
-      <div className="context-bar-items">{children}</div>
-      {actions === undefined ? null : <div className="context-bar-actions">{actions}</div>}
+      <fieldset className="context-bar-fieldset" disabled={disabled}>
+        <div className="context-bar-items">{children}</div>
+        {actions === undefined ? null : <div className="context-bar-actions">{actions}</div>}
+      </fieldset>
     </section>
   );
 }
