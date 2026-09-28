@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
-  applyCommand,
   applyExternalChange,
   emptyCommandHistory,
   type Command,
@@ -8,7 +7,7 @@ import {
 } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import { ASSET_KEYS, ASSET_STORAGE_SPECS } from './asset-storage-specs.ts';
-import { buildAssetSyncs, loadAssets, saveChangedAssets, startAssetSyncs, type AssetSyncMap } from './asset-syncs.ts';
+import { buildAssetSyncs, commitCommand, loadAssets, startAssetSyncs, type AssetSyncMap } from './asset-syncs.ts';
 
 /**
  * `KeydistAssets`（#544 §8-2）の永続化・タブ間追従・コマンド履歴を1つにまとめる
@@ -107,11 +106,10 @@ export function useKeydistAssets(): KeydistAssetsController {
   }, []);
 
   const dispatch = useMemo(() => (command: Command<KeydistAssets>) => {
-    const result = applyCommand(assetsRef.current, historyRef.current, command);
+    const result = commitCommand(syncs, () => ({ assets: assetsRef.current, history: historyRef.current }), command);
     if (result.outcome.kind !== 'applied') return;
     assetsRef.current = result.assets;
     historyRef.current = result.history;
-    saveChangedAssets(syncs, result.assets, Object.keys(result.outcome.changes) as (keyof KeydistAssets)[]);
     forceRender();
   }, [syncs]);
 

@@ -1,3 +1,4 @@
+import { applyCommand, type Command, type CommandHistory, type CommandStepResult } from '#input/commands/index.ts';
 import { createAssetTabSync, type AssetTabSync } from '#platform/asset-tab-sync.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import { notifyKeydistStorageChange, subscribeKeydistStorageChanges } from '#platform/browser-storage-events.ts';
@@ -100,4 +101,41 @@ export function startAssetSyncs(syncs: AssetSyncMap): () => void {
   return () => {
     for (const stop of stops) stop();
   };
+}
+
+/** 全資産の手持ちを今のstorageへ追いつかせる。他タブの変更は通知が届いた時と同じ`onExternalChange`へ流れる。 */
+export function catchUpAssets(syncs: AssetSyncMap): void {
+  for (const key of ASSET_KEYS) syncs[key].catchUp();
+}
+
+export interface AssetState {
+  readonly assets: KeydistAssets;
+  readonly history: CommandHistory<KeydistAssets>;
+}
+
+/**
+ * 手持ちを今のstorageへ追いつかせてからコマンドを適用し、変わった資産だけを書く。
+ *
+ * 資産は1つのstorageキーへ丸ごと書くので、他タブの書き込みの通知がまだ届いていない
+ * 古い手持ちへ適用すると、その書き込みを消してしまう。適用の直前に追いつくことで、
+ * コマンドは常に最新の資産へ効く。取り込みは通知経由と同じ`onExternalChange`を通るので、
+ * 他タブの変更に触れた履歴を捨てる規則（`applyExternalChange`）もそのまま効く。
+ * `readState`は追いついた後の手持ちを返す（`onExternalChange`が書き換えた先を読む）。
+ *
+ * 2タブがほぼ同時（他タブの書き込みがこのタブのstorageに届くまでの間）に書くと、
+ * まだ防げない。Web Locksでタブ間を直列化すれば閉じるが、適用が非同期になり、
+ * 描画時の値からコマンドを組む呼び出し側やpagehideでの書き出しが壊れるので採らない。
+ */
+export function commitCommand(
+  syncs: AssetSyncMap,
+  readState: () => AssetState,
+  command: Command<KeydistAssets>,
+): CommandStepResult<KeydistAssets> {
+  catchUpAssets(syncs);
+  const { assets, history } = readState();
+  const result = applyCommand(assets, history, command);
+  if (result.outcome.kind === 'applied') {
+    saveChangedAssets(syncs, result.assets, Object.keys(result.outcome.changes) as (keyof KeydistAssets)[]);
+  }
+  return result;
 }

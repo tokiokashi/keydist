@@ -450,10 +450,11 @@ export function selectTextCommand(holder: TextSelectionHolder, ref: TextRef): Co
  * - `ref`がユーザーテキストを指す: そのidが今も手持ちにあれば、選択がどこを向いていようと
  *   構わずそのテキストをその場で編集する（上の事故そのものへの対策）。idが手持ちから
  *   消えていれば（他タブでの削除等）何もしない
- * - `ref`が組み込みを指す: **指定した持ち主の選択が今もその組み込みを指している時だけ**
- *   copy-on-writeする。選択が既に他へ移っていれば、この書き込みは宛先を失った古いdraftな
- *   ので何もしない（ここを外すと、選択が動いた後に遅れて届いた組み込みへの書き込みが
- *   無意味な2つ目のコピーを作ってしまう）
+ * - `ref`が組み込みを指す: copy-on-writeで自作テキストを作る。選択を新しいテキストへ
+ *   移すのは、指定した持ち主の選択が今もその組み込みを指している時だけ。選択が既に他へ
+ *   移っていれば（他タブが同じ組み込みを先にcopy-on-writeした等）選択は動かさず、打った
+ *   内容を自作テキストとして残すだけにする。何もしないと、2タブが同じ組み込みを同時に
+ *   書き換えた時に後のタブの入力が消える
  */
 export function setTextContentCommand(
   holder: TextSelectionHolder,
@@ -477,14 +478,14 @@ export function setTextContentCommand(
     // 組み込みへ戻って表示されている間も、その組み込みへの編集として複製を作るため
     // （#544 レビュー: 生の参照と比べると一致せず、打った内容が全部捨てられていた）
     const resolvedRef = resolveTextSelection(current[key], library).ref;
-    if (resolvedRef.kind !== 'builtin' || resolvedRef.id !== ref.id) {
-      return { kind: 'no-op' };
-    }
     const builtin = builtinTextById(ref.id);
     if (builtin === undefined || builtin.text === text) return { kind: 'no-op' };
 
     const name = uniqueAutoTextName(library, deriveEditedTextName(builtin.name));
     const { library: nextLibrary, created } = appendCopiedUserText(library, generateId, { text, name });
+    if (resolvedRef.kind !== 'builtin' || resolvedRef.id !== ref.id) {
+      return { kind: 'applied', label: 'テキストを変更する', changes: { textLibrary: nextLibrary } };
+    }
     const nextSelection: TextSelectionState = { ref: { kind: 'user', id: created.id } };
     return {
       kind: 'applied',
