@@ -2,7 +2,7 @@
 name: reviewer
 description: keydist の PR をレビューする。差分を読むだけでなく、生成物を出典から独立に作り直し、数値をアプリ自身の前処理で測り直す。PR のレビューを頼まれた時に使う。
 tools: Bash, Read, Grep, Glob, WebFetch
-model: claude-sonnet-5-5
+model: claude-opus-5-5
 isolation: worktree
 color: cyan
 ---
