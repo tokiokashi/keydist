@@ -16,11 +16,33 @@ export interface TraceLookup {
 }
 
 /**
- * `baseInput`（今動いている抽出のSetupが解決された入力）に、依頼されたN等の
- * 上書きだけを重ねてTraceを求める。text/layout/geometryは`baseInput`のまま、
- * `tracePolicy`だけ丸ごと差し替える形にする（N感度が変えたいのは`windowSize`
- * 単体だが、`TraceRequestInput`は`tracePolicy`をまとめて持つ形なので、
- * 呼び出し側が`{ ...baseInput.tracePolicy, windowSize: n }`のように組み立てて渡す）。
+ * `object`から値が`undefined`のキーだけを落とす。`tsconfig.json`は
+ * `exactOptionalPropertyTypes`を立てていないため、`{ layout: undefined }`のような
+ * 「キーはあるが値がundefined」というオブジェクトが型検査をすり抜けて渡ってくる
+ * （レビュー指摘: `requestTrace({ layout: undefined })`が実際にクラッシュした・
+ * `{ tracePolicy: { windowSize: undefined } }`が省略時と別のキャッシュキーになった）。
+ * 単純な`{ ...base, ...request }`はこの「キーはある」を「上書きする」と区別できず、
+ * `undefined`で上書きしてしまう。呼び出し側が「省略」のつもりで書いた`undefined`を
+ * 実際に「省略」として扱うため、マージの直前にこの関数で落とす。
+ */
+function withoutUndefinedValues<T extends object>(obj: T | undefined): Partial<T> {
+  if (obj === undefined) return {};
+  const result: Partial<T> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) (result as Record<string, unknown>)[key] = value;
+  }
+  return result;
+}
+
+/**
+ * `baseInput`（このTraceRequesterの土台。単一対象なら抽出対象Setup自身、集合対象なら
+ * `AnalyzerSetMember`ごとのSetup自身の解決済み入力）に、依頼された上書きだけを重ねて
+ * Traceを求める。`request`の各フィールドは省略可（`TraceRequestInput`のコメント参照）:
+ * 省略したフィールドは`baseInput`のまま、`tracePolicy`は項目ごとにマージする
+ * （N感度が変えたいのは`windowSize`単体なので、呼び出し側は`{ tracePolicy: { windowSize: n } }`
+ * だけを渡せばよく、`tracePolicy`の他フィールドを自分で複製し直さずに済む）。値が
+ * `undefined`のキー（トップレベル・`tracePolicy`の中のどちらも）は「省略」として扱い、
+ * `baseInput`側の値を残す（`withoutUndefinedValues`のコメント参照）。
  *
  * `getTrace`はキー（`keys.ts`の`traceKeyOf`）で共有されるキャッシュを経由するので、
  * 同じ`tracePolicy`を要求する2つの抽出（同じAnalyzerの2インスタンス等）は
@@ -29,8 +51,13 @@ export interface TraceLookup {
 export function createTraceRequesterFor(lookup: TraceLookup, baseInput: ResolvedInput): TraceRequester {
   return {
     requestTrace(request: TraceRequestInput): Trace {
-      // フィールドを列挙せずに重ねる。`TraceRequestInput`に項目が増えても自動で差し替えに含まれる
-      const merged: ResolvedInput = { ...baseInput, ...request };
+      const { tracePolicy: requestTracePolicy, ...restRequest } = request;
+      const merged: ResolvedInput = {
+        ...baseInput,
+        ...withoutUndefinedValues(restRequest),
+        // tracePolicyだけは丸ごと差し替えでなく項目単位でマージする（上のコメント参照）。
+        tracePolicy: { ...baseInput.tracePolicy, ...withoutUndefinedValues(requestTracePolicy) },
+      };
       return lookup.getTrace(merged).trace;
     },
   };

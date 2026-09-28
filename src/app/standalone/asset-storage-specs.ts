@@ -11,9 +11,9 @@ import { STANDALONE_TEXT_STORAGE_KEY } from '#platform/assets/standalone-text-st
 import { STANDALONE_ANALYZER_OPTIONS_STORAGE_KEY } from '#platform/assets/standalone-analyzer-options-storage.ts';
 import { initialStandaloneAnalyzerOptions } from '#engine/standalone-analyzer-options.ts';
 import { STANDALONE_ANALYZER_OPTIONS_CODEC } from '#engine/standalone-analyzer-options-codec.ts';
-import { initialComparisonSelection } from '#engine/comparison-selection.ts';
-import { COMPARISON_SELECTION_CODEC } from '#engine/comparison-selection-codec.ts';
-import { COMPARISON_SELECTION_STORAGE_KEY } from '#platform/assets/comparison-selection-storage.ts';
+import { initialAnalyzerSetSelections } from '#engine/analyzer-set-selection.ts';
+import { ANALYZER_SET_SELECTION_CODEC } from '#engine/analyzer-set-selection-codec.ts';
+import { ANALYZER_SET_SELECTIONS_STORAGE_KEY } from '#platform/assets/analyzer-set-selections-storage.ts';
 
 /**
  * `KeydistAssets`（`engine/commands.ts`）の各キーを、永続化に要る3点
@@ -75,10 +75,10 @@ export const ASSET_STORAGE_SPECS: { readonly [K in keyof KeydistAssets]: AssetSt
     codec: STANDALONE_ANALYZER_OPTIONS_CODEC,
     initial: initialStandaloneAnalyzerOptions,
   },
-  comparisonSelection: {
-    storageKey: COMPARISON_SELECTION_STORAGE_KEY,
-    codec: COMPARISON_SELECTION_CODEC,
-    initial: initialComparisonSelection,
+  analyzerSetSelections: {
+    storageKey: ANALYZER_SET_SELECTIONS_STORAGE_KEY,
+    codec: ANALYZER_SET_SELECTION_CODEC,
+    initial: initialAnalyzerSetSelections,
   },
 };
 

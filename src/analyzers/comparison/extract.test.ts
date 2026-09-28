@@ -94,7 +94,13 @@ test('computeComparisonExtraction: 解決できたメンバーはok行、失敗�
   const interpretationResult = cache.getInterpretation(resolution.input);
 
   const extracted = computeComparisonExtraction(
-    [{ setupId: 'setup-a', trace: traceResult.trace, analysis: interpretationResult.analysis, metrics: interpretationResult.metrics }],
+    [{
+      setupId: 'setup-a',
+      trace: traceResult.trace,
+      analysis: interpretationResult.analysis,
+      metrics: interpretationResult.metrics,
+      requestTrace: { requestTrace: () => { throw new Error('unused'); } },
+    }],
     [{ setupId: 'setup-deleted', kind: 'reference', message: '配列「x」が見つからない（削除された可能性）' }],
   );
 

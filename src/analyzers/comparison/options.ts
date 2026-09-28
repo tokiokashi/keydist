@@ -85,7 +85,8 @@ function isComparisonColumnId(value: string): value is ComparisonColumnId {
  * Setupの集合を対象にし、集合もそのページ自身が持つ」・指示書「ページ自身が
  * Setupの集合（手持ちからの選択・並び順・基準）を持つ」に従い、基準は「対象の集合」の
  * 一部（どのSetupを比べるか・どの順で並べるか・どれを基準にするか）としてホスト側の
- * 資産（`app/standalone/asset-storage-specs.ts`の`comparisonSelection`）が持つ。
+ * 資産（`engine/analyzer-set-selection.ts`の`analyzerSetSelections`。集合対象Analyzer
+ * 全般が使う汎用の資産で、比較表はこの`definition.id`をキーに引く）が持つ。
  * Analyzerの解析設定（この`comparisonOptions`）は「同じ集合をどう見せるか」だけを
  * 持つ個人設定で、集合そのもの（対象）とは別の軸にする（`analyzers/contract.ts`の
  * `AnalyzerInstance.target`と`options`が別フィールドなのと同じ区別）。

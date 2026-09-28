@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import {
-  setComparisonBaselineSetupIdCommand,
-  setComparisonSetupIdsCommand,
+  setAnalyzerSetSelectionBaselineCommand,
+  setAnalyzerSetSelectionSetupIdsCommand,
   type KeydistAssets,
 } from '#engine/commands.ts';
+import { analyzerSetSelectionFor } from '#engine/analyzer-set-selection.ts';
 import type { EngineCache } from '#engine/cache.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import type { Setup, SetupIdGenerator } from '#input/setup/index.ts';
-import { conditionHeaderInfoFromResolvedInput } from '#hosts/shared/index.ts';
+import { conditionHeaderInfoFromResolvedInput, nonDefaultConditionRows, summarizeNonDefaultConditions, traceConditionSummary } from '#hosts/shared/index.ts';
 import { comparisonAnalyzer, type ComparisonRowContext } from '#analyzers/comparison/definition.tsx';
 import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
@@ -17,7 +18,7 @@ import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
 import { useEnsureSetup } from './use-ensure-setup.ts';
 import './standalone.css';
-import './comparison-standalone.css';
+import './set-selection-controls.css';
 
 /**
  * 比較表の単体ページ（#544 Phase 3「集合を対象にする最初のAnalyzer（比較表）と、
@@ -25,9 +26,10 @@ import './comparison-standalone.css';
  *
  * 対象はSetupの**集合**（#544 §6「集合を見るAnalyzerはSetupの集合を対象にし、集合も
  * そのページ自身が持つ」）。集合（選んだSetup・並び順・基準）はこのページ自身の資産
- * （`assets.comparisonSelection`）が持ち、書き込みはすべて`dispatch`を経由する
- * （`BigramFlowStandalonePage.tsx`と同じ形。#544 §8-2）。テキストは単体ページ全体で
- * 共有の「最後に使ったテキスト」を使う（#544 §5）。
+ * （`assets.analyzerSetSelections`。Analyzer idで引く、集合対象Analyzer全般が使う汎用の
+ * 資産）が持ち、
+ * 書き込みはすべて`dispatch`を経由する（`BigramFlowStandalonePage.tsx`と同じ形。
+ * #544 §8-2）。テキストは単体ページ全体で共有の「最後に使ったテキスト」を使う（#544 §5）。
  *
  * `useEnsureSetup`は「手持ちのSetupが1件も無ければ簡単な初期値を1つ作る」効果だけを
  * 使う（`BigramFlowStandalonePage`と同じ`ready`待ちの規則。#544レビュー対応の使い回し）。
@@ -36,7 +38,7 @@ import './comparison-standalone.css';
  */
 export interface ComparisonStandalonePageProps {
   readonly assets: KeydistAssets;
-  /** `assetsReady`前に集合（`comparisonSelection`）を書き換えない（`use-ensure-setup.ts`と同じ規則）。 */
+  /** `assetsReady`前に集合（`analyzerSetSelections`）を書き換えない（`use-ensure-setup.ts`と同じ規則）。 */
   readonly assetsReady: boolean;
   readonly dispatch: (command: Command<KeydistAssets>) => void;
   readonly cache: EngineCache;
@@ -45,16 +47,24 @@ export interface ComparisonStandalonePageProps {
   readonly onComparisonOptionsCommit: (options: ComparisonOptions) => void;
 }
 
+const ANALYZER_ID = comparisonAnalyzer.definition.id;
+
 function buildRowContext(setup: Setup, resolution: ResolvedInputResult): ComparisonRowContext {
   const label = setup.label ?? `${setup.layoutId} / ${setup.shapeId}`;
   if (resolution.ok) {
     const header = conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry);
+    // 既定値と違う条件だけを併記する（#544 Phase 3レビュー「集合対象ページは各行に
+    // 効いている条件を併記する」）。比較表はwindowSizeを掃引しないので除外しない。
+    const cascadeOriginSummary = summarizeNonDefaultConditions(
+      nonDefaultConditionRows(traceConditionSummary(resolution.input.cascade)),
+    );
     return {
       setupId: setup.id,
       label,
       layoutName: header.layoutName,
       geometryName: header.shapeName,
       fingerAssignmentName: header.fingerAssignmentName,
+      ...(cascadeOriginSummary === undefined ? {} : { cascadeOriginSummary }),
     };
   }
   // 解決に失敗した行でも、Setup自体は手持ちに残っている（配列・形状の参照が壊れている・
@@ -84,10 +94,10 @@ export function ComparisonStandalonePage({
   // 持たないので、戻り値の`selectedSetupId`/`setSelectedSetupId`は使わない。
   useEnsureSetup(setups, assetsReady, dispatch, generateSetupId);
 
-  const selection = assets.comparisonSelection;
+  const selection = analyzerSetSelectionFor(assets.analyzerSetSelections, ANALYZER_ID);
   const setupById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
 
-  const setSelection = (setupIds: readonly string[]) => dispatch(setComparisonSetupIdsCommand(setupIds));
+  const setSelection = (setupIds: readonly string[]) => dispatch(setAnalyzerSetSelectionSetupIdsCommand(ANALYZER_ID, setupIds));
 
   const toggleMember = (setupId: string) => {
     const next = selection.setupIds.includes(setupId)
@@ -107,8 +117,7 @@ export function ComparisonStandalonePage({
 
   // 解析設定（列の表示・基準比の表示可否）は資産（standaloneAnalyzerOptions）が正
   // （BigramFlowStandalonePageと同じ形）。
-  const analyzerId = comparisonAnalyzer.definition.id;
-  const storedOptionsRaw = assets.standaloneAnalyzerOptions[analyzerId];
+  const storedOptionsRaw = assets.standaloneAnalyzerOptions[ANALYZER_ID];
   const decoded = useMemo(
     () => decodeStoredAnalyzerOptions(comparisonAnalyzer.definition, storedOptionsRaw),
     [storedOptionsRaw],
@@ -159,12 +168,12 @@ export function ComparisonStandalonePage({
         <h1>比較表</h1>
       </header>
 
-      <section className="comparison-selection-controls" aria-label="対象Setupの選択">
+      <section className="set-selection-controls" aria-label="対象Setupの選択">
         <fieldset>
           <legend>比較するSetup</legend>
           {setups.length === 0 ? <p aria-busy="true">Setupを準備している…</p> : null}
           {setups.map((setup) => (
-            <label key={setup.id} className="comparison-selection-checkbox">
+            <label key={setup.id} className="set-selection-checkbox">
               <input
                 type="checkbox"
                 checked={selection.setupIds.includes(setup.id)}
@@ -176,7 +185,7 @@ export function ComparisonStandalonePage({
         </fieldset>
 
         {selection.setupIds.length > 0 ? (
-          <ol className="comparison-selection-order" aria-label="表示順">
+          <ol className="set-selection-order" aria-label="表示順">
             {selection.setupIds.map((setupId, index) => (
               <li key={setupId}>
                 <span>{rowContext.get(setupId)?.label ?? setupId}</span>
@@ -207,7 +216,7 @@ export function ComparisonStandalonePage({
           order={selection.setupIds}
           rowContext={rowContext}
           baselineSetupId={selection.baselineSetupId}
-          onBaselineSetupIdChange={(next) => dispatch(setComparisonBaselineSetupIdCommand(next))}
+          onBaselineSetupIdChange={(next) => dispatch(setAnalyzerSetSelectionBaselineCommand(ANALYZER_ID, next))}
           options={optionsDraft}
           onOptionsChange={(next) => {
             setOptionsDraft(next);

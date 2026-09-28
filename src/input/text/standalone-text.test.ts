@@ -7,7 +7,7 @@ import {
   withStandaloneText,
 } from './standalone-text.ts';
 
-test('initialStandaloneText: 既定はサンプルの現代文（かな）で、日本語と自動判定される', () => {
+test('initialStandaloneText: 既定はサンプルの「吾輩は猫である」（ja.legacy）で、日本語と自動判定される', () => {
   const state = initialStandaloneText();
   assert.ok(state.text.length > 0);
   assert.equal(state.language.detected, 'ja');
