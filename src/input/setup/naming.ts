@@ -105,15 +105,21 @@ function differenceName(source: TargetNameSource, commonalityBasis: readonly Res
   return parts.length > 0 ? parts.join(' · ') : source.layoutName;
 }
 
-function kindTag(source: TargetNameSource): string {
+/**
+ * 衝突した時に添える種類の札。配列対象は「配列」、手持ちにあるSetupは「Setup n」。
+ * 手持ちから消えたSetupは番号を持たず、「Setup」と添えても名前（「削除されたSetup」等）以上の
+ * 情報にならないので、札を持たない（`undefined`）。
+ */
+function kindTag(source: TargetNameSource): string | undefined {
   if (source.kind === 'layout') return '配列';
-  return source.setupNumber === undefined ? 'Setup' : `Setup ${source.setupNumber}`;
+  return source.setupNumber === undefined ? undefined : `Setup ${source.setupNumber}`;
 }
 
 /**
  * 衝突した時だけ、衝突したメンバーの名前を段階的に詳しくする（レビュー指摘3「重複したら詳しく」）。
- * - 0: 集合内で共通な部分を落とした名前
- * - 1: 対象の種類を添える（「配列」「Setup n」。配列対象と上書きの無いSetupが並ぶ等）
+ * - 0: 集合内で共通な部分を落とした名前（ラベルがあればラベル）
+ * - 1: 対象の種類を添える（「配列」「Setup n」。配列対象と上書きの無いSetupが並ぶ、同じラベルの
+ *   Setupが並ぶ等）。種類の札を持たない対象は、ここで段階2と同じ位置を添える
  * - 2: 集合の中での位置を添える（同じ名前の自作配列が2つある等、種類でも分からない時の最後の砦。
  *   位置は集合の中で一意なので、ここまで来れば必ず解消する）
  *
@@ -123,8 +129,9 @@ function kindTag(source: TargetNameSource): string {
  */
 function escalatedName(base: string, source: TargetNameSource, position: number, level: number): string {
   if (level <= 0) return base;
-  if (level === 1) return `${base}（${kindTag(source)}）`;
-  return `${base}（${kindTag(source)}・${position + 1}番目）`;
+  const tag = kindTag(source);
+  if (level === 1 && tag !== undefined) return `${base}（${tag}）`;
+  return `${base}（${position + 1}番目）`;
 }
 
 const MAX_LEVEL = 2;
@@ -133,10 +140,12 @@ const MAX_LEVEL = 2;
  * 対象の集合から、表示名（差分だけ、衝突すれば衝突した組だけ詳しくする）とフルの名前を
  * まとめて求める（純関数）。
  *
- * - ラベルがあれば常にそれをそのまま表示名にする（ユーザーが選んだ値は差分計算の対象外）
+ * - ラベルがあればそれを表示名の元にする（ユーザーが選んだ値は差分計算の対象外）
  * - 「集合内で何が共通か」はラベル付き・解決失敗のメンバーを除いた母集団で判定する
- * - ラベルを持たないメンバーの表示名が他と衝突したら、**衝突したメンバーだけ**段階を上げる
- *   （集合全体を詳しくすると、衝突と無関係な対象まで読みにくくなるため）
+ * - 表示名が他と衝突したら、**衝突したメンバーだけ**段階を上げる（集合全体を詳しくすると、
+ *   衝突と無関係な対象まで読みにくくなるため）。ラベルと計算した名前が衝突した時は、
+ *   ユーザーが付けたラベルはそのまま残し、計算した側だけを詳しくする。ラベル同士が衝突した時は
+ *   ラベル側も詳しくする（同じ名前のまま並ぶと見分けられないため）
  * - 表示名が空文字になることはない
  */
 export function nameTargets(sources: readonly TargetNameSource[]): readonly NamedTarget[] {
@@ -147,22 +156,25 @@ export function nameTargets(sources: readonly TargetNameSource[]): readonly Name
   const bases = sources.map((s, i) => labels[i] ?? differenceName(s, commonalityBasis));
   const levels = sources.map(() => 0);
 
-  const namesNow = () => sources.map((s, i) => (
-    labels[i] !== undefined ? labels[i]! : escalatedName(bases[i]!, s, i, levels[i]!)
-  ));
+  const namesNow = () => sources.map((s, i) => escalatedName(bases[i]!, s, i, levels[i]!));
 
   let names = namesNow();
   for (;;) {
-    const counts = new Map<string, number>();
-    for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
+    const members = new Map<string, number[]>();
+    names.forEach((name, i) => members.set(name, [...(members.get(name) ?? []), i]));
     let raised = false;
-    sources.forEach((_, i) => {
-      if (labels[i] !== undefined) return;
-      if (counts.get(names[i]!)! > 1 && levels[i]! < MAX_LEVEL) {
-        levels[i] = levels[i]! + 1;
-        raised = true;
+    for (const group of members.values()) {
+      if (group.length <= 1) continue;
+      // 計算した名前の側がいれば、そちらだけを上げる（ラベルは手を付けずに残す）。
+      const unlabeled = group.filter((i) => labels[i] === undefined);
+      const toRaise = unlabeled.length > 0 ? unlabeled : group;
+      for (const i of toRaise) {
+        if (levels[i]! < MAX_LEVEL) {
+          levels[i] = levels[i]! + 1;
+          raised = true;
+        }
       }
-    });
+    }
     if (!raised) break;
     names = namesNow();
   }

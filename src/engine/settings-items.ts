@@ -230,7 +230,7 @@ export const SETTINGS_ITEMS = {
         : {
           ok: false,
           fallback: context.shapeId,
-          reason: `物理形状「${value}」が見つからないため、既定の形状（${context.shapeId}）へ戻した`,
+          reason: `既定の形状に選んでいた物理形状が見つからないため、「${context.shape.name}」で測った`,
         };
     },
   }),

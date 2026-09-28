@@ -59,7 +59,7 @@ function refKey(ref: TextSelectionState['ref']): string {
 /** 言語判定の選択肢（#544レビュー: en/ja以外を扱う予定が無いのでトグルで足りていたが、
  * 「今どちらか」を見せつつ選ばせるにはselectの方が素直、という指摘を反映）。 */
 const LANGUAGE_OVERRIDE_OPTIONS: readonly { readonly value: 'auto' | TextLanguage; readonly label: string }[] = [
-  { value: 'auto', label: '自動' },
+  { value: 'auto', label: '自動で判定' },
   { value: 'ja', label: '日本語' },
   { value: 'en', label: '英語' },
 ];
@@ -140,7 +140,7 @@ export function TextControl({
           aria-label="テキスト"
         />
         <small>
-          言語判定: {resolved.language}
+          言語: {resolved.language === 'ja' ? '日本語' : '英語'}
           {' '}
           <select
             value={resolved.languageOverride ?? 'auto'}
@@ -149,7 +149,7 @@ export function TextControl({
               dispatch(setTextLanguageOverrideCommand(holder, value === 'auto' ? undefined : value as TextLanguage));
             }}
             disabled={resolved.isBuiltin}
-            aria-label="言語判定"
+            aria-label="言語の判定"
           >
             {LANGUAGE_OVERRIDE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>

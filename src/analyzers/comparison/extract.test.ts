@@ -105,7 +105,7 @@ test('computeComparisonExtraction: 解決できたメンバーはok行、失敗�
       metrics: interpretationResult.metrics,
       requestTrace: { requestTrace: () => { throw new Error('unused'); } },
     }],
-    [{ target: targetDeleted, kind: 'reference', message: '配列「x」が見つからない（削除された可能性）' }],
+    [{ target: targetDeleted, kind: 'reference', message: '配列が見つからない（削除された可能性がある）' }],
   );
 
   assert.equal(extracted.rows.length, 2);

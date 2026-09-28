@@ -40,6 +40,7 @@ function seedTwoSetups() {
  */
 async function addTarget(page: import('@playwright/test').Page, optionValue: string) {
   await page.getByLabel('追加する対象').selectOption(optionValue);
+  await page.getByRole('button', { name: '追加', exact: true }).click();
 }
 
 test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを作らずに比較できる', async ({ page }) => {
@@ -302,17 +303,46 @@ test('解決に失敗したメンバーにも意味のある名前が付く（L2
   const table = page.locator('.comparison-table');
   await expect(table.locator('tbody tr[data-comparison-row="failed"]')).toHaveCount(1, { timeout: 10_000 });
   await expect(page.locator('.set-selection-order li > span').nth(1)).toHaveText('削除されたSetup');
-  await expect(table.locator('tbody tr[data-comparison-row="failed"]')).toContainText('削除されたSetup');
+  const failedRow = table.locator('tbody tr[data-comparison-row="failed"]');
+  await expect(failedRow).toContainText('削除されたSetup');
+  // 理由は1つの短い文で、前置きを重ねない・idを出さない（レビュー指摘H3）。
+  await expect(failedRow.locator('td')).toHaveText('Setupが削除された');
+  await expect(failedRow).not.toContainText(/deleted-setup|解決できない/);
 });
 
-test('キーボードで対象を追加しても、ピッカーからフォーカスが外れずプレースホルダへ戻る（L1）', async ({ page }) => {
+test('候補を矢印キーで動かすだけでは追加されず、「追加」で確定した後はピッカーへフォーカスが戻る（L1・L-b）', async ({ page }) => {
   await page.goto('/standalone/comparison');
   const picker = page.getByLabel('追加する対象');
+  const addButton = page.getByRole('button', { name: '追加', exact: true });
   await expect(picker).toBeEnabled();
+  await expect(addButton).toBeDisabled();
 
+  // 矢印キーで候補を送る（環境によってはこれで<select>の値が確定する）。それでも追加はしない。
   await picker.focus();
   await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('.set-selection-order li')).toHaveCount(0);
+  await expect(picker).not.toHaveValue('');
+  await expect(addButton).toBeEnabled();
+
+  // キーボードだけで確定する。
+  await page.keyboard.press('Tab');
+  await expect(addButton).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(page.locator('.set-selection-order li')).toHaveCount(1);
   await expect(picker).toBeFocused();
   await expect(picker).toHaveValue('');
+  await expect(addButton).toBeDisabled();
+});
+
+test('画面の文言に開発の内部（issue番号・Phase・ファイル名・英語の仮ラベル）が出ない（レビュー指摘H1〜H4）', async ({ page }) => {
+  await page.goto('/standalone/comparison');
+  await addTarget(page, 'layout:qwerty');
+  await addTarget(page, 'layout:colemak');
+  await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
+  await expect(page).toHaveTitle('比較表 | keydist');
+  const description = await page.locator('meta[name="description"]').getAttribute('content');
+  expect(description).not.toMatch(/#\d|Phase|standalone|単体ページ/);
+  const body = page.locator('body');
+  await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|\.ts\b|Vector lab|connections|vectors|Movement profile|Cross-hand|N sensitivity|Setup comparison|baseline|言語判定: /);
 });

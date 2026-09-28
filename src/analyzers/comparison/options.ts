@@ -63,8 +63,8 @@ export const COMPARISON_COLUMNS: Readonly<Record<ComparisonColumnId, ComparisonC
   singleKeyRate: { label: '1キー率', format: percent },
   sameFinger: { label: '同指', format: count },
   sameFingerRate: { label: '同指率', format: percent },
-  adjacentMean: { label: '指間mean [u]', format: fixed(3) },
-  adjacentStdDev: { label: '指間σ [u]', format: fixed(3) },
+  adjacentMean: { label: '指間の平均 [u]', format: fixed(3) },
+  adjacentStdDev: { label: '指間のばらつき σ [u]', format: fixed(3) },
 } as const;
 
 function isComparisonColumnId(value: string): value is ComparisonColumnId {

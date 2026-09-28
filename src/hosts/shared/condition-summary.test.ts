@@ -9,8 +9,10 @@ import { resolveEngineInput } from '#engine/resolved-input.ts';
 import {
   conditionHeaderInfo,
   conditionHeaderInfoFromResolvedInput,
+  conditionDiagnosticText,
   formatOrigin,
   nonDefaultConditionRows,
+  type ConditionSummaryRow,
   summarizeNonDefaultConditions,
   traceConditionSummary,
 } from './condition-summary.ts';
@@ -130,15 +132,55 @@ test('nonDefaultConditionRows: 効かない行（Setup対象の既定の形状�
   }
 });
 
-test('nonDefaultConditionRows: 配列対象の既定の形状は効くので、idでなく形状名で併記する', () => {
+test('traceConditionSummary: 既定の形状はidでなく形状名で出す', () => {
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;
   const input = resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], written.overrides, 'en');
-  const rows = nonDefaultConditionRows(traceConditionSummary(input.cascade, { shapes: CATALOG.shapes }));
-  assert.deepEqual(rows.map((row) => row.id), ['defaultShapeId']);
-  assert.equal(rows[0]!.displayValue, PHYSICAL_SHAPES.ortholinear.name);
-  assert.notEqual(rows[0]!.displayValue, 'ortholinear');
+  const row = traceConditionSummary(input.cascade, CATALOG).find((r) => r.id === 'defaultShapeId')!;
+  assert.equal(row.displayValue, PHYSICAL_SHAPES.ortholinear.name);
+  assert.equal(row.originLabel, '上書き: 全体');
+});
+
+test('nonDefaultConditionRows: 既定の形状は形状名として別に出しているので、併記には含めない（レビュー指摘L-c）', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const input = resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], written.overrides, 'en');
+  const rows = nonDefaultConditionRows(traceConditionSummary(input.cascade, CATALOG));
+  assert.deepEqual(rows.map((row) => row.id), []);
+});
+
+test('traceConditionSummary: 値・上書きの置き場所のidは名前へ引き、引けないidも画面に出さない', () => {
+  let overrides = EMPTY_SETTINGS_OVERRIDES;
+  for (const [level, id, value] of [
+    [{ kind: 'layout', layoutId: 'qwerty' }, 'romajiRuleId', 'kunrei'],
+    [{ kind: 'shape', shapeId: 'row-staggered' }, 'fingerAssignmentId', 'finger-deleted-custom'],
+  ] as const) {
+    const written = setSettingsOverride(overrides, level, id, value);
+    assert.ok(written.ok, id);
+    if (!written.ok) return;
+    overrides = written.overrides;
+  }
+  const input = resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], overrides, 'ja');
+  const rows = traceConditionSummary(input.cascade, CATALOG);
+  const romaji = rows.find((row) => row.id === 'romajiRuleId')!;
+  assert.match(romaji.displayValue, /訓令式/);
+  assert.equal(romaji.originLabel, `上書き: 配列「${LAYOUT_BY_ID.get('qwerty')!.name}」`);
+  const finger = rows.find((row) => row.id === 'fingerAssignmentId')!;
+  assert.equal(finger.originLabel, `上書き: 形状「${PHYSICAL_SHAPES['row-staggered'].name}」`);
+  for (const row of rows) {
+    const texts = [row.label, row.displayValue, row.originLabel, ...row.diagnostics.map((d) => conditionDiagnosticText(row, d) ?? '')];
+    for (const text of texts) assert.doesNotMatch(text, /finger-deleted-custom|kunrei|row-staggered|qwerty|Realization|Policy/, text);
+  }
+});
+
+test('conditionDiagnosticText: 項目id・レベル名を含む診断文は出さず、「効かない」は行の目印に任せる', () => {
+  const row = { id: 'windowSize', label: '先読みN' } as ConditionSummaryRow;
+  assert.equal(conditionDiagnosticText(row, { kind: 'not-applicable', message: '項目「windowSize」は効かない' }), undefined);
+  const ignored = conditionDiagnosticText(row, { kind: 'ignored-disallowed-level', message: '項目「windowSize」のsetupレベル' })!;
+  assert.match(ignored, /先読みN/);
+  assert.doesNotMatch(ignored, /windowSize|setup/);
 });
 
 test('nonDefaultConditionRows: かな直接の配列ではローマ字規則の上書きを併記しない', () => {

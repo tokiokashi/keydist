@@ -37,7 +37,7 @@ export function DefaultShapeControl({ overrides, dispatch, catalog }: DefaultSha
          * 実際の状態をそのまま見せる（レビュー指摘5）。選び直させる操作は残しつつ、
          * このoptionだけは選べない（選んでも意味の無い値を作らせない）。
          */}
-        {currentIsKnown ? null : <option value={current} disabled>（不明な形状: {current}）</option>}
+        {currentIsKnown ? null : <option value={current} disabled>（見つからない形状）</option>}
         {[...shapes.values()].map((shape) => (
           <option key={shape.id} value={shape.id}>{shape.name}</option>
         ))}

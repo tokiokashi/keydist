@@ -58,7 +58,7 @@ export function targetNameSource(
   if (resolution?.ok) {
     const header = conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry);
     const overrideSummary = summarizeNonDefaultConditions(
-      nonDefaultConditionRows(traceConditionSummary(resolution.input.cascade, { shapes: catalog.shapes }), excludeIds),
+      nonDefaultConditionRows(traceConditionSummary(resolution.input.cascade, catalog), excludeIds),
     );
     return {
       ...base,

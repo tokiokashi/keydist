@@ -65,9 +65,9 @@ function rowFor(rows: readonly ComparisonRow[], targetKey: string): ComparisonRo
 
 function failureLabel(kind: ComparisonFailedRow['failureKind']): string {
   switch (kind) {
-    case 'reference': return '配列・形状が見つからない（削除された可能性）';
+    case 'reference': return '配列・形状が見つからない（削除された可能性がある）';
     case 'incompatible-text': return 'このテキストには使えない';
-    case 'geometry': return '形状を組み立てられない';
+    case 'geometry': return 'キーボードを組み立てられない';
     case 'target-missing': return '削除された、または見つからない';
   }
 }
@@ -123,13 +123,12 @@ export function ComparisonVisualization({
     <section className="comparison-feature" data-react-feature="comparison">
       <div className="comparison-heading">
         <div>
-          <p className="eyebrow">Setup comparison</p>
           <h2>比較表</h2>
         </div>
         <p>
-          選んだSetupを並べて、共通指標（`interpretation/metrics.ts`）を横に並べて見る。
-          優劣の判定・順位付け・合成スコアはこの表では作らない。基準行との比較は
-          差分の実測値を出すだけで、良し悪しの色付けはしない。
+          選んだ配列やSetupを並べて、同じテキストを打った時の指の移動距離などを横に比べる。
+          どれが良いかの判定や順位付けはしない。基準を選ぶと、基準に対する割合（%）も出せる
+          （良し悪しの色付けはしない）。
         </p>
       </div>
 
@@ -137,7 +136,7 @@ export function ComparisonVisualization({
         <ColumnPicker visibleColumns={visibleColumns} onToggle={toggleColumn} />
 
         <label className="comparison-control">
-          <span>基準（baseline）</span>
+          <span>基準にする対象</span>
           <select
             aria-label="基準"
             value={baselineTargetKey ?? ''}
@@ -148,7 +147,7 @@ export function ComparisonVisualization({
             <option value="">基準なし</option>
             {order.map((targetKey) => (
               <option key={targetKey} value={targetKey} title={rowContext.get(targetKey)?.fullName}>
-                {rowContext.get(targetKey)?.label ?? targetKey}
+                {rowContext.get(targetKey)?.label ?? '—'}
               </option>
             ))}
           </select>
@@ -180,8 +179,8 @@ export function ComparisonVisualization({
             {order.map((targetKey) => {
               const context = rowContext.get(targetKey);
               const row = rowFor(extracted.rows, targetKey);
-              const label = context?.label ?? targetKey;
-              const fullName = context?.fullName ?? targetKey;
+              const label = context?.label ?? '—';
+              const fullName = context?.fullName ?? '';
 
               if (row === undefined) {
                 // extractedにもrowContextにも無いtargetKey（依頼の作り直し途中の一瞬）。
@@ -199,7 +198,7 @@ export function ComparisonVisualization({
                   <tr key={targetKey} data-comparison-row="failed">
                     <th scope="row" title={fullName}>{label}</th>
                     <td colSpan={1 + visibleColumns.length} role="alert">
-                      削除された、またはこの条件では解決できない: {row.message || failureLabel(row.failureKind)}
+                      {row.message || failureLabel(row.failureKind)}
                     </td>
                   </tr>
                 );

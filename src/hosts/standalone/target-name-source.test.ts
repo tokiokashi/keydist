@@ -101,3 +101,29 @@ test('空白だけのラベルはラベル無しとして自動命名に戻る�
   const named = displayNames([{ kind: 'setup', setupId: fixedA.id }, { kind: 'setup', setupId: blank.id }], [fixedA, blank]);
   assert.equal(named[1]!.displayName, LAYOUT_BY_ID.get('colemak-dh')!.name);
 });
+
+test('既定の形状を変えた配列対象の名前に、形状名が2回並ばない（レビュー指摘L-c）', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const named = displayNames(
+    [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'setup', setupId: fixedB.id }],
+    [fixedA, fixedB],
+    written.overrides,
+  );
+  const ortho = PHYSICAL_SHAPES.ortholinear.name;
+  for (const text of [named[0]!.displayName, named[0]!.fullName]) {
+    assert.equal(text.split(ortho).length - 1, 1, text);
+    assert.doesNotMatch(text, /既定の形状/);
+  }
+});
+
+test('TK音直入力法の英字配置とかな配列は、並べても名前で見分けられる（レビュー指摘M-b）', () => {
+  const named = displayNames(
+    [{ kind: 'layout', layoutId: 'oonishi-custom' }, { kind: 'layout', layoutId: 'oonishi-custom-combo' }],
+    [],
+  );
+  assert.notEqual(named[0]!.displayName, named[1]!.displayName);
+  // 位置や種類を添える段階上げに頼らず、名前そのもので分かれる。
+  for (const n of named) assert.doesNotMatch(n.displayName, /番目|（配列）/);
+});

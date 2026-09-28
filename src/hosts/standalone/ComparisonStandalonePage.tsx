@@ -19,7 +19,7 @@ import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { TextControl } from './TextControl.tsx';
-import { TargetPicker } from './TargetPicker.tsx';
+import { AddTargetControl } from './TargetPicker.tsx';
 import { DefaultShapeControl } from './DefaultShapeControl.tsx';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
 import { setupNumbersOf, targetNameSource } from './target-name-source.ts';
@@ -162,7 +162,7 @@ export function ComparisonStandalonePage({
   ))), [selection.targets, setupsById, setupNumbers, membersByTarget, catalog.setupCatalog]);
   const namedByKey = useMemo(() => new Map(namedTargets.map((n) => [n.key, n] as const)), [namedTargets]);
 
-  const conditionNames = useMemo(() => ({ shapes: catalog.setupCatalog.shapes }), [catalog.setupCatalog.shapes]);
+  const conditionNames: ConditionValueNames = catalog.setupCatalog;
   const rowContext = useMemo(() => {
     const map = new Map<string, ComparisonRowContext>();
     for (const member of members) {
@@ -186,7 +186,6 @@ export function ComparisonStandalonePage({
   return (
     <div className="standalone-page">
       <header className="standalone-page-header">
-        <p className="eyebrow">単体ページ</p>
         <h1>比較表</h1>
       </header>
 
@@ -207,18 +206,12 @@ export function ComparisonStandalonePage({
         <DefaultShapeControl overrides={assets.setupLibrary.overrides} dispatch={dispatch} catalog={catalog} />
 
         <section className="set-selection-controls" aria-label="対象の選択">
-          <div className="standalone-control">
-            <span>対象を追加</span>
-            <TargetPicker
-              aria-label="追加する対象"
-              layouts={catalog.setupCatalog.layouts}
-              shapes={catalog.setupCatalog.shapes}
-              setups={setups}
-              value={undefined}
-              placeholder
-              onChange={addMember}
-            />
-          </div>
+          <AddTargetControl
+            layouts={catalog.setupCatalog.layouts}
+            shapes={catalog.setupCatalog.shapes}
+            setups={setups}
+            onAdd={addMember}
+          />
 
           {selection.targets.length > 0 ? (
             <ol className="set-selection-order" aria-label="表示順">

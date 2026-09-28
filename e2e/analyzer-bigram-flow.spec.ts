@@ -16,7 +16,7 @@ test('Bigram Flow is React-owned and follows the current Analyzer detail result'
     await expect(flow).toHaveAttribute('data-layout-id', nextLayout);
   }
 
-  const withinHand = flow.getByRole('button', { name: 'Within-hand' });
+  const withinHand = flow.getByRole('button', { name: '同じ手だけで続ける' });
   await withinHand.click();
   await expect(withinHand).toHaveAttribute('aria-pressed', 'true');
 

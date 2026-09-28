@@ -65,7 +65,7 @@ export function resolveFingerAssignment(
     assignment: fallback,
     diagnostic: {
       kind: 'invalid-fallback',
-      message: `指割り当て「${id}」は組み込み・自作のどちらにも見つからないため、既定「${fallback.name}」へ戻した`,
+      message: `選んでいた指の割当が見つからないため、既定の「${fallback.name}」で測った`,
     },
   };
 }

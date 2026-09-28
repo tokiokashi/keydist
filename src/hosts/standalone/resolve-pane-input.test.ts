@@ -147,5 +147,6 @@ test('resolveStandalonePaneInput: 既定の形状が壊れていても配列対�
   if (!result.ok) return;
   assert.equal(result.input.cascade.defaultShapeId.value, 'row-staggered', 'DEFAULT_SHAPE_IDへfallbackする');
   assert.equal(result.input.cascade.defaultShapeId.diagnostics.length, 1);
-  assert.match(result.input.cascade.defaultShapeId.diagnostics[0]!.message, /deleted-shape/);
+  assert.match(result.input.cascade.defaultShapeId.diagnostics[0]!.message, /見つからない/);
+  assert.doesNotMatch(result.input.cascade.defaultShapeId.diagnostics[0]!.message, /deleted-shape/);
 });

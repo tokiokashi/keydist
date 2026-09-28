@@ -49,3 +49,16 @@
 .set-selection-order li span {
   flex: 1;
 }
+
+/* 候補の<select>と「追加」ボタンを横に並べる。狭い幅では折り返す。 */
+.add-target-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.add-target-row select {
+  min-width: 0;
+  max-width: 100%;
+}

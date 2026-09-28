@@ -165,7 +165,7 @@ export function BigramFlowStandalonePage({
     resolution,
   );
 
-  const conditionRows = resolution.ok ? traceConditionSummary(resolution.input.cascade, { shapes: catalog.setupCatalog.shapes }) : [];
+  const conditionRows = resolution.ok ? traceConditionSummary(resolution.input.cascade, catalog.setupCatalog) : [];
   const header = resolution.ok
     ? conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry)
     : undefined;
@@ -179,7 +179,6 @@ export function BigramFlowStandalonePage({
   return (
     <div className="standalone-page">
       <header className="standalone-page-header">
-        <p className="eyebrow">単体ページ</p>
         <h1>Bigram Flow</h1>
       </header>
 

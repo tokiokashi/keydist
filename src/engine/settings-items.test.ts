@@ -367,7 +367,9 @@ test('defaultShapeId: 値が実際に使われた形状と食い違えば、cont
   const resolved = resolveSettings(written.overrides, contextFor(colemakEn, { shapeId: 'row-staggered' }));
   assert.equal(resolved.defaultShapeId.value, 'row-staggered', 'fallbackした実際の形状へ読み替える');
   assert.equal(resolved.defaultShapeId.diagnostics.length, 1);
-  assert.match(resolved.defaultShapeId.diagnostics[0]!.message, /deleted-shape/);
+  // 画面に出る文なので、消えた形状のidは出さず、実際に測った形状の名前を出す。
+  assert.doesNotMatch(resolved.defaultShapeId.diagnostics[0]!.message, /deleted-shape/);
+  assert.match(resolved.defaultShapeId.diagnostics[0]!.message, new RegExp(PHYSICAL_SHAPES['row-staggered'].name.replace(/[()（）]/g, '.')));
 });
 
 test('defaultShapeId: Setup対象ではSetup自身のshapeIdと値が食い違っていても診断を出さない（無関係な値なので検証しない）', () => {

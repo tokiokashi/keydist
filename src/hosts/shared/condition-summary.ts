@@ -2,6 +2,9 @@ import type { CascadeLevel, Diagnostic, ResolvedOrigin } from '#input/settings/i
 import type { ResolvedSettingsCascade, SettingsItemId } from '#engine/settings-items.ts';
 import type { FingerAssignment, Geometry, PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
+import type { InputMethod } from '#input/settings/levels.ts';
+import { ROMAJI_RULES } from '#input/romaji/rules.ts';
+import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
 
 /**
  * ペインの条件表示（#544 §3「実効値の出どころを表示する」・指示書「少なくともTraceに
@@ -16,8 +19,8 @@ const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly la
   { id: 'windowSize', label: '先読みN' },
   { id: 'sfbHomeCost', label: '同指連続のホーム復帰距離' },
   { id: 'preferOppositeThumb', label: '親指シフトの振り替え' },
-  { id: 'triggerRealizationPolicy', label: 'trigger実現方式' },
-  { id: 'actionRealizationPolicy', label: 'action実現方式' },
+  { id: 'triggerRealizationPolicy', label: 'シフト系キーの押し続け' },
+  { id: 'actionRealizationPolicy', label: 'シフト系キー単独の押下の扱い' },
   { id: 'romajiRuleId', label: 'ローマ字規則' },
   { id: 'fingerAssignmentId', label: '指の割当' },
   /**
@@ -36,21 +39,36 @@ export interface ConditionSummaryRow {
   readonly format: ConditionValueFormat;
   readonly displayValue: string;
   readonly origin: ResolvedOrigin;
+  /** `origin`を画面に出す文言（「既定値」「上書き: 配列「QWERTY」」等）。idは名前へ引いてある。 */
+  readonly originLabel: string;
   readonly applicable: boolean;
   readonly diagnostics: readonly Diagnostic[];
 }
 
-function formatOrigin(origin: ResolvedOrigin): string {
+function formatOrigin(origin: ResolvedOrigin, names?: ConditionValueNames): string {
   if (origin.kind === 'default') return '既定値';
-  return `上書き: ${cascadeLevelLabel(origin)}`;
+  return `上書き: ${cascadeLevelLabel(origin, names)}`;
 }
 
-function cascadeLevelLabel(level: CascadeLevel): string {
+const INPUT_METHOD_LABELS: Readonly<Record<InputMethod, string>> = {
+  'direct': '英字を直接打つ配列',
+  'romaji': 'ローマ字入力',
+  'kana-direct': 'かなを直接打つ配列',
+};
+
+/** 上書きの置き場所。形状・配列はidでなく名前で出す（引けなければ「この形状」等）。 */
+function cascadeLevelLabel(level: CascadeLevel, names: ConditionValueNames | undefined): string {
   switch (level.kind) {
-    case 'global': return 'グローバル';
-    case 'shape': return `形状「${level.shapeId}」`;
-    case 'inputMethod': return `打ち方「${level.inputMethod}」`;
-    case 'layout': return `配列「${level.layoutId}」`;
+    case 'global': return '全体';
+    case 'shape': {
+      const name = names?.shapes.get(level.shapeId)?.name;
+      return name === undefined ? 'この形状' : `形状「${name}」`;
+    }
+    case 'inputMethod': return INPUT_METHOD_LABELS[level.inputMethod];
+    case 'layout': {
+      const name = names?.layouts?.get(level.layoutId)?.name;
+      return name === undefined ? 'この配列' : `配列「${name}」`;
+    }
     case 'setup': return 'このSetup';
   }
 }
@@ -61,6 +79,7 @@ function cascadeLevelLabel(level: CascadeLevel): string {
  */
 export interface ConditionValueNames {
   readonly shapes: ReadonlyMap<string, { readonly name: string }>;
+  readonly layouts?: ReadonlyMap<string, { readonly name: string }>;
 }
 
 function formatValue(
@@ -68,8 +87,17 @@ function formatValue(
   value: unknown,
   names: ConditionValueNames | undefined,
 ): { format: ConditionValueFormat; displayValue: string } {
+  // 値がidの項目は名前へ引く。引けないid（削除済み・自作で手持ちに無い）もidのままは出さない。
   if (id === 'defaultShapeId' && typeof value === 'string') {
-    return { format: 'primitive', displayValue: names?.shapes.get(value)?.name ?? value };
+    return { format: 'primitive', displayValue: names?.shapes.get(value)?.name ?? '見つからない形状' };
+  }
+  if (id === 'romajiRuleId' && typeof value === 'string') {
+    const builtin = Object.hasOwn(ROMAJI_RULES, value) ? ROMAJI_RULES[value as keyof typeof ROMAJI_RULES] : undefined;
+    return { format: 'primitive', displayValue: builtin?.name ?? '自作のローマ字規則' };
+  }
+  if (id === 'fingerAssignmentId' && typeof value === 'string') {
+    const builtin = Object.hasOwn(FINGER_ASSIGNMENT_REGISTRY, value) ? FINGER_ASSIGNMENT_REGISTRY[value] : undefined;
+    return { format: 'primitive', displayValue: builtin?.name ?? '自作の指の割当' };
   }
   if (value === null) return { format: 'primitive', displayValue: 'なし' };
   if (typeof value === 'boolean') return { format: 'primitive', displayValue: value ? 'ON' : 'OFF' };
@@ -97,6 +125,7 @@ export function traceConditionSummary(
       format,
       displayValue,
       origin: resolved.origin,
+      originLabel: formatOrigin(resolved.origin, names),
       applicable: resolved.applicable,
       diagnostics: resolved.diagnostics,
     };
@@ -131,6 +160,19 @@ export function conditionHeaderInfoFromResolvedInput(layout: Layout, geometry: G
 export { formatOrigin };
 
 /**
+ * 条件の行に付いた診断を、画面に出す文言にする。`input/settings`の診断文は項目id・レベル名を
+ * 含む開発者向けの文なので、ここで項目の表示名から組み立て直す。「効かない」は行の目印
+ * （`applicable: false`）で既に示しているので出さない（`undefined`）。
+ */
+export function conditionDiagnosticText(row: ConditionSummaryRow, diagnostic: Diagnostic): string | undefined {
+  switch (diagnostic.kind) {
+    case 'not-applicable': return undefined;
+    case 'ignored-disallowed-level': return `「${row.label}」の上書きのうち、置けない場所にあった値を無視した`;
+    case 'invalid-fallback': return diagnostic.message;
+  }
+}
+
+/**
  * `traceConditionSummary`の結果から、既定値と違う項目だけを残す（#544 Phase 3レビュー
  * 「集合対象ページ（比較表・N感度）は各行に効いている条件を併記する」）。
  *
@@ -142,15 +184,23 @@ export { formatOrigin };
  * ローマ字規則等）は上書きされていても落とす。効かない値を併記すると、その条件で
  * 測ったように読めてしまうため。
  *
+ * 「既定の形状」は常に落とす。これが効く配列対象では、実際に使った形状の名前を名前・条件欄に
+ * 必ず出しているので、併記すると同じ形状名が2回並ぶため（レビュー指摘L-c）。
+ *
  * `excludeIds`は呼び出し側が「この項目は元々全員に共通の軸として見せているので、
  * ここでは重複して出さない」という項目を落とすためのフック（N感度の`windowSize`。
  * Nを振ること自体がそのページの主題なので、個別の上書きと並べて出すと紛らわしい）。
  */
+const SHOWN_AS_SHAPE_NAME: readonly SettingsItemId[] = ['defaultShapeId'];
+
 export function nonDefaultConditionRows(
   rows: readonly ConditionSummaryRow[],
   excludeIds: readonly SettingsItemId[] = [],
 ): readonly ConditionSummaryRow[] {
-  return rows.filter((row) => row.applicable && row.origin.kind !== 'default' && !excludeIds.includes(row.id));
+  return rows.filter((row) => row.applicable
+    && row.origin.kind !== 'default'
+    && !SHOWN_AS_SHAPE_NAME.includes(row.id)
+    && !excludeIds.includes(row.id));
 }
 
 /**

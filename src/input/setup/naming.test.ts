@@ -83,7 +83,7 @@ test('nameTargets: 番号の無い（手持ちから消えた）Setup同士が�
     { key: 'setup:gone-1', kind: 'setup', failed: true, description: '削除されたSetup' },
     { key: 'setup:gone-2', kind: 'setup', failed: true, description: '削除されたSetup' },
   ]);
-  assert.deepEqual(named.map((n) => n.displayName), ['削除されたSetup（Setup・1番目）', '削除されたSetup（Setup・2番目）']);
+  assert.deepEqual(named.map((n) => n.displayName), ['削除されたSetup（1番目）', '削除されたSetup（2番目）']);
 });
 
 test('nameTargets: 同じ配列名を持つ別のuser layout（oonishi-custom / oonishi-custom-combo相当）も衝突を解消する', () => {
@@ -95,8 +95,8 @@ test('nameTargets: 同じ配列名を持つ別のuser layout（oonishi-custom / 
   const b = named.find((n) => n.key === 'layout:oonishi-custom-combo')!;
   assert.notEqual(a.displayName, b.displayName);
   // 種類（どちらも配列）では区別できないので位置まで使う。idは出さない。
-  assert.equal(a.displayName, 'TK音直入力法（配列・1番目）');
-  assert.equal(b.displayName, 'TK音直入力法（配列・2番目）');
+  assert.equal(a.displayName, 'TK音直入力法（1番目）');
+  assert.equal(b.displayName, 'TK音直入力法（2番目）');
 });
 
 test('nameTargets: ラベルが他の対象の計算済み名と衝突しても、ラベル側はそのまま・相手側だけ詳しくする', () => {
@@ -143,4 +143,22 @@ test('nameTargets: 表示名が空文字になることはない', () => {
     assert.notEqual(n.displayName, '');
   }
   assert.equal(new Set(named.map((n) => n.displayName)).size, 3);
+});
+
+test('nameTargets: 同じラベルのSetup同士は種類（Setup n）で区別する（レビュー指摘L-d）', () => {
+  const named = nameTargets([
+    { key: 'setup:a', kind: 'setup', setupNumber: 1, label: 'A', layoutName: 'QWERTY', shapeName: '形状A' },
+    { key: 'setup:b', kind: 'setup', setupNumber: 3, label: 'A', layoutName: 'Dvorak', shapeName: '形状A' },
+    { key: 'layout:colemak', kind: 'layout', layoutName: 'Colemak', shapeName: '形状A' },
+  ]);
+  assert.deepEqual(named.map((n) => n.displayName), ['A（Setup 1）', 'A（Setup 3）', 'Colemak']);
+});
+
+test('nameTargets: 手持ちから消えたSetupは「Setup」を重ねず位置で区別する（レビュー指摘L-d）', () => {
+  const named = nameTargets([
+    { key: 'setup:ok', kind: 'setup', setupNumber: 1, layoutName: 'QWERTY', shapeName: '形状A' },
+    { key: 'setup:gone-1', kind: 'setup', failed: true, description: '削除されたSetup' },
+    { key: 'setup:gone-2', kind: 'setup', failed: true, description: '削除されたSetup' },
+  ]);
+  assert.deepEqual(named.map((n) => n.displayName), ['QWERTY', '削除されたSetup（2番目）', '削除されたSetup（3番目）']);
 });

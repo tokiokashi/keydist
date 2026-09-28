@@ -1,3 +1,4 @@
+import { useRef, useState, type Ref } from 'react';
 import type { Layout } from '#input/layouts/types.ts';
 import type { PhysicalShape } from '#input/shapes/geometry.ts';
 import { analysisTargetKey, effectiveLabel, nameTargets, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
@@ -9,9 +10,10 @@ import { setupNumbersOf } from './target-name-source.ts';
  * `<select>`だけの最小形（コーディネーター指示「シェル・ペイン見出しへ移すのは次の
  * 作業単位。ここでは磨かない」）。
  *
- * - `mode: 'select'`: 常に何か選ばれている状態を表す（単体ページの対象。`value`必須）
- * - `mode: 'add'`: 「追加する対象を選ぶ→追加ボタン」の形（集合対象ページ。選んでいる
- *   最中は`AnalysisTarget`を持たないプレースホルダ状態がありうる）
+ * - `TargetPicker`: 選んだ値がそのまま対象になる（単体ページの対象）
+ * - `AddTargetControl`: 「追加する対象を選ぶ→追加ボタン」の形（集合対象ページ）。
+ *   `<select>`の変更で直接追加すると、矢印キーで候補を動かすだけで確定する環境
+ *   （WindowsのChrome等）で、見ていくだけの候補まで追加されてしまうため、確定をボタンに分ける
  */
 export interface TargetPickerLayoutOption {
   readonly id: string;
@@ -50,6 +52,7 @@ export interface TargetPickerProps {
   readonly onChange: (target: AnalysisTarget) => void;
   /** trueなら先頭に「選ぶ…」のプレースホルダを出す（追加フロー用）。 */
   readonly placeholder?: boolean;
+  readonly ref?: Ref<HTMLSelectElement>;
 }
 
 export function TargetPicker({
@@ -60,6 +63,7 @@ export function TargetPicker({
   value,
   onChange,
   placeholder,
+  ref,
 }: TargetPickerProps) {
   const layoutOptions = layoutOptionsFrom(layouts);
 
@@ -89,17 +93,12 @@ export function TargetPicker({
 
   return (
     <select
+      ref={ref}
       aria-label={ariaLabel}
       value={value === undefined ? '' : targetOptionValue(value)}
       onChange={(event) => {
-        const select = event.currentTarget;
-        const parsed = parseTargetOptionValue(select.value);
+        const parsed = parseTargetOptionValue(event.currentTarget.value);
         if (parsed !== undefined) onChange(parsed);
-        // 「追加」モードで重複した対象を選ぶと、選択は変わらないため資産への書き込みは
-        // no-opになり、親が再レンダーされない。controlledの`value=""`に頼るとDOM側の値が
-        // 選択のまま残るので、DOMの値を直接プレースホルダへ戻す（レビュー指摘5）。
-        // 要素を作り直す方式はフォーカスを失い、キーボードで続けて追加できなくなる（指摘L1）。
-        if (placeholder) select.value = '';
       }}
     >
       {placeholder ? <option value="">選ぶ…</option> : null}
@@ -123,5 +122,52 @@ export function TargetPicker({
         </optgroup>
       ) : null}
     </select>
+  );
+}
+
+export interface AddTargetControlProps {
+  readonly layouts: ReadonlyMap<string, Layout>;
+  readonly shapes: ReadonlyMap<string, PhysicalShape>;
+  readonly setups: readonly Setup[];
+  readonly onAdd: (target: AnalysisTarget) => void;
+}
+
+/**
+ * 追加する対象を選んで「追加」で確定する部品（集合対象ページ）。候補は部品の中だけの状態で、
+ * 追加するまで資産へ書き込まない。追加したら候補をプレースホルダへ戻し、フォーカスを
+ * `<select>`へ返す（押したボタンは候補が空になって無効化されるため、そのままだとフォーカスが
+ * ページの先頭へ飛び、キーボードで続けて追加できない）。
+ */
+export function AddTargetControl({ layouts, shapes, setups, onAdd }: AddTargetControlProps) {
+  const [candidate, setCandidate] = useState<AnalysisTarget | undefined>(undefined);
+  const selectRef = useRef<HTMLSelectElement>(null);
+  return (
+    <div className="standalone-control">
+      <span>対象を追加</span>
+      <div className="add-target-row">
+        <TargetPicker
+          ref={selectRef}
+          aria-label="追加する対象"
+          layouts={layouts}
+          shapes={shapes}
+          setups={setups}
+          value={candidate}
+          placeholder
+          onChange={setCandidate}
+        />
+        <button
+          type="button"
+          disabled={candidate === undefined}
+          onClick={() => {
+            if (candidate === undefined) return;
+            onAdd(candidate);
+            setCandidate(undefined);
+            selectRef.current?.focus();
+          }}
+        >
+          追加
+        </button>
+      </div>
+    </div>
   );
 }

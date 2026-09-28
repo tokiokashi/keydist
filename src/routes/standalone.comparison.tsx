@@ -8,10 +8,10 @@ import { StandaloneComparisonApp } from '#app/standalone/StandaloneComparisonApp
 export const Route = createFileRoute('/standalone/comparison')({
   head: () => ({
     meta: [
-      { title: 'Comparison (standalone) | keydist' },
+      { title: '比較表 | keydist' },
       {
         name: 'description',
-        content: '複数の対象（配列またはSetup）を選んで、比較表を単体ページとして開く（#544 Analyzer再設計 Phase 3）。',
+        content: '配列やSetupを選んで並べ、同じテキストを打った時の指の移動距離などを表で比べる。',
       },
     ],
   }),

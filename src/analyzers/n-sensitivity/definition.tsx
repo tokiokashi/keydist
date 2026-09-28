@@ -49,9 +49,9 @@ function seriesFor(series: readonly NSensitivitySeries[], targetKey: string): NS
 
 function failureLabel(kind: NSensitivitySeriesFailed['failureKind']): string {
   switch (kind) {
-    case 'reference': return '配列・形状が見つからない（削除された可能性）';
+    case 'reference': return '配列・形状が見つからない（削除された可能性がある）';
     case 'incompatible-text': return 'このテキストには使えない';
-    case 'geometry': return '形状を組み立てられない';
+    case 'geometry': return 'キーボードを組み立てられない';
     case 'target-missing': return '削除された、または見つからない';
   }
 }
@@ -183,8 +183,8 @@ export function NSensitivityVisualization({
       const base = okEntry.points[0]?.totalUnits ?? 0;
       return {
         targetKey: row.targetKey,
-        label: row.context?.label ?? row.targetKey,
-        fullName: row.context?.fullName ?? row.targetKey,
+        label: row.context?.label ?? '—',
+        fullName: row.context?.fullName ?? '',
         color: row.context?.color ?? '#666',
         points: okEntry.points.map((point) => ({
           windowSize: point.windowSize,
@@ -198,7 +198,6 @@ export function NSensitivityVisualization({
     <section className="n-sensitivity-feature" data-react-feature="n-sensitivity">
       <div className="n-sensitivity-heading">
         <div>
-          <p className="eyebrow">N sensitivity</p>
           <h2>N感度</h2>
         </div>
         <p>
@@ -242,15 +241,15 @@ export function NSensitivityVisualization({
           if (entry.kind === 'failed') {
             return (
               <li key={targetKey} data-n-sensitivity-row="failed">
-                <span title={context?.fullName}>{context?.label ?? targetKey}</span>
-                <span role="alert">削除された、またはこの条件では解決できない: {entry.message || failureLabel(entry.failureKind)}</span>
+                <span title={context?.fullName}>{context?.label ?? '—'}</span>
+                <span role="alert">{entry.message || failureLabel(entry.failureKind)}</span>
               </li>
             );
           }
           return (
             <li key={targetKey} data-n-sensitivity-row="ok">
               <span className="n-sensitivity-swatch" style={{ backgroundColor: context?.color ?? '#666' }} aria-hidden="true" />
-              <span title={context?.fullName}>{context?.label ?? targetKey}</span>
+              <span title={context?.fullName}>{context?.label ?? '—'}</span>
               <span className="n-sensitivity-condition">
                 {context
                   ? `${context.layoutName} / ${context.geometryName} / 指の割当: ${context.fingerAssignmentName}`
