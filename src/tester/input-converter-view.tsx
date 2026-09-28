@@ -81,6 +81,7 @@ import {
   reverseLookupRouteLabel,
 } from './reverse-lookup.ts';
 import {
+  keyboardStandardForGeometryId,
   physicalKeyDisplayLabel,
   physicalKeyEngraving,
 } from '#input/shapes/key-labels.ts';
@@ -304,9 +305,7 @@ export function InputConverterView() {
   const [userGeometryShapes, setUserGeometryShapes] = useState<PhysicalShape[]>([]);
   const [geometryId, setGeometryId] = useState(PHYSICAL_SHAPES['row-staggered'].id);
   // 刻印の表示に使う規格。自作形状は規格を持たないので未指定にする
-  const keyboardStandard = isPresetGeometryKind(geometryId)
-    ? presetGeometryStandard(geometryId)
-    : undefined;
+  const keyboardStandard = keyboardStandardForGeometryId(geometryId);
   const keyLabel = (key: string) => physicalKeyDisplayLabel(key, keyboardStandard);
   const codeLabel = (code: string) => browserCodeDisplayLabel(code, keyboardStandard);
   const browserBindings = useMemo(() => ({
@@ -1387,7 +1386,7 @@ export function InputConverterView() {
                       ? <span className="input-muted">未割当</span>
                       : selectedBindingCodes.map((code) => (
                         <button
-                          aria-label={`${keyLabel(bindingTargetKey)}から${codeLabel(code)}を削除`}
+                          aria-label={`${keyLabel(bindingTargetKey)}の割り当てから実キー${codeLabel(code)}を外す`}
                           className="input-binding-chip"
                           key={code}
                           onClick={() => updateBindingOverrides(

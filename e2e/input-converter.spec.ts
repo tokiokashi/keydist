@@ -2094,7 +2094,7 @@ test('盤面クリックで任意browser codeをphysical keyへ再割当して�
   await keyboard.locator('[data-key-id="thumb-l"] rect').click();
   await expect(bindingBar).toContainText('実キーを押してください');
   await page.keyboard.press('Space');
-  await expect(bindingBar.getByRole('button', { name: '左親指からSpaceを削除' })).toBeVisible();
+  await expect(bindingBar.getByRole('button', { name: '左親指の割り当てから実キーSpaceを外す' })).toBeVisible();
 
   await output.click();
   await page.keyboard.down('Space');
