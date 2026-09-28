@@ -16,6 +16,7 @@ import { StandaloneBigramFlowApp } from '#app/standalone/StandaloneBigramFlowApp
  * （`hosts/standalone`はTanStack Routerを知らない）。
  */
 export const Route = createFileRoute('/standalone/bigram-flow')({
+  staticData: { contextBar: true },
   head: () => ({
     meta: [
       { title: `${BIGRAM_FLOW_PANE_META.name} | keydist` },

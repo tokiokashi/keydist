@@ -7,6 +7,7 @@ import { StandaloneComparisonApp } from '#app/standalone/StandaloneComparisonApp
  * （route自体は`createFileRoute`だけの薄いファイルにする。AGENTS.md）。
  */
 export const Route = createFileRoute('/standalone/comparison')({
+  staticData: { contextBar: true },
   head: () => ({
     meta: [
       { title: `${COMPARISON_PANE_META.name} | keydist` },

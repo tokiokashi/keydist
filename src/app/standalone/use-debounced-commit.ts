@@ -6,6 +6,13 @@ import {
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 
+/**
+ * 呼べば間引かれて反映される関数。`flush`は待っている値を今すぐ反映する
+ * （Undoの直前に呼ぶ。待ち中の変更を置いたままUndoすると、Undoの後にその変更が書かれて
+ * 戻したはずの値が上書きされるため）。
+ */
+export type DebouncedCommit<T> = ((value: T) => void) & { readonly flush: () => void };
+
 export interface UseDebouncedCommitOptions<T> {
   /** 値からコマンドを組み立てる。 */
   readonly commandFor: (value: T) => Command<KeydistAssets>;
@@ -27,7 +34,7 @@ export interface UseDebouncedCommitOptions<T> {
 export function useDebouncedCommit<T>(
   dispatch: (command: Command<KeydistAssets>) => void,
   options: UseDebouncedCommitOptions<T>,
-): (value: T) => void {
+): DebouncedCommit<T> {
   // `options`（コールバック含む）はレンダーのたびに新しい参照で渡ってくるので、
   // scheduler自体は初回だけ作り、中身の読み出しはrefで最新化する
   // （`useAssetSyncs`のuseRef遅延初期化と同じ理由。#544 §8-2）。
@@ -68,5 +75,8 @@ export function useDebouncedCommit<T>(
     };
   }, []);
 
-  return useMemo(() => (value: T) => schedulerRef.current!.notify(value), []);
+  return useMemo(() => Object.assign(
+    (value: T) => schedulerRef.current!.notify(value),
+    { flush: () => schedulerRef.current!.flush() },
+  ), []);
 }

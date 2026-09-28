@@ -1,7 +1,6 @@
 /// <reference types="vite/client" />
 import {
   HeadContent,
-  Link,
   Scripts,
   createRootRoute,
   useRouterState,
@@ -9,6 +8,9 @@ import {
 import { useLayoutEffect, type ReactNode } from 'react';
 import { getAppearanceSnapshot } from '#app/theme/appearance.ts';
 import { applyTheme, THEME_BOOTSTRAP_SCRIPT } from '#app/theme/theme.ts';
+import { AppShell } from '#app/shell/AppShell.tsx';
+import { SIDEBAR_BOOTSTRAP_SCRIPT } from '#app/shell/sidebar-preference.ts';
+import '#app/shell/route-layout.ts';
 import appCss from '#app/app.css?url';
 
 export const Route = createRootRoute({
@@ -41,38 +43,28 @@ function AppearanceAuthority() {
 
 function RootDocument({ children }: { children: ReactNode }) {
   // pathnameの文字列比較だと、GitHub Pagesが付ける末尾スラッシュ（/analyzer/）で外れ、
-  // prerender済みHTMLとの不一致でhydrationが失敗する。matchしたrouteで判定する。
-  const analyzerRoute = useRouterState({
-    select: (state) => state.matches.some((match) => match.routeId === '/analyzer'),
+  // prerender済みHTMLとの不一致でhydrationが失敗する。matchしたrouteの宣言で判定する。
+  const layout = useRouterState({
+    select: (state): 'bare' | 'context-bar' | 'plain' => {
+      if (state.matches.some((match) => match.staticData.shell === 'none')) return 'bare';
+      return state.matches.some((match) => match.staticData.contextBar === true) ? 'context-bar' : 'plain';
+    },
   });
 
   return (
     <html lang="ja" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: SIDEBAR_BOOTSTRAP_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
         <AppearanceAuthority />
-        {analyzerRoute ? null : (
-          <header className="app-header">
-            <Link className="brand" to="/">keydist</Link>
-            <nav aria-label="主要ナビゲーション">
-              <Link to="/analyzer" activeProps={{ 'aria-current': 'page' }}>
-                Analyzer
-              </Link>
-              <Link to="/input" activeProps={{ 'aria-current': 'page' }}>
-                Tester
-              </Link>
-              {/* 旧画面は /classic/ に凍結ビルドとして同梱する（#579）。別のビルドなのでルーターの外。
-                  置き換えが済むまでの暫定の導線。dev サーバーには同梱されないので手元では 404 になる */}
-              <a href={`${import.meta.env.BASE_URL}classic/`}>旧版</a>
-            </nav>
-          </header>
+        {layout === 'bare' ? (
+          <main className="app-shell analyzer-route-shell">{children}</main>
+        ) : (
+          <AppShell hasContextBar={layout === 'context-bar'}>{children}</AppShell>
         )}
-        <main className={analyzerRoute ? 'app-shell analyzer-route-shell' : 'app-shell'}>
-          {children}
-        </main>
         <Scripts />
       </body>
     </html>

@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('standalone Bigram Flow connects the Gate 1 vertical slice and keeps ViewConfig in the URL', async ({ page }) => {
   await page.goto('/analyzer/flow?mode=ja&layout=qwerty');
 
-  await expect(page.locator('.app-header')).toBeVisible();
+  await expect(page.locator('.app-sidebar')).toBeVisible();
 
   const host = page.locator('[data-analysis-view="bigram-flow"]');
   const flow = page.locator('[data-react-feature="bigram-flow"]');

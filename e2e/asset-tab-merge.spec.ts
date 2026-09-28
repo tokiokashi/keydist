@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openTextChip } from './context-bar-helper.ts';
 
 /**
  * コレクション資産（1つのstorageキーへ丸ごと書く`setupLibrary`・`textLibrary`）の
@@ -47,6 +48,7 @@ async function openBoth(pageA: Page, pageB: Page): Promise<void> {
 test('通知が届く前の他タブの追加を、自タブの書き込みで消さない', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await openTextChip(page);
   const create = page.getByRole('button', { name: '新規作成' });
   await create.click();
   await expect.poll(async () => (await readTexts(page)).length).toBe(1);
@@ -86,6 +88,9 @@ test('2タブが同じ組み込みテキストを続けて書き換えても、�
     // Bの反映時には選択がAの複製へ移っているので、以前はBの入力が捨てられていた
     const textA = `tab-A-${i}`;
     const textB = `tab-B-${i}`;
+    // チップを開く時間でAとBの間隔が変わらないよう、両方を先に開いておく。
+    await openTextChip(pageA);
+    await openTextChip(pageB);
     await pageA.getByLabel('テキスト', { exact: true }).fill(textA);
     await pageB.waitForTimeout(100);
     await pageB.getByLabel('テキスト', { exact: true }).fill(textB);

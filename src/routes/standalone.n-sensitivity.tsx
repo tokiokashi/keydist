@@ -7,6 +7,7 @@ import { StandaloneNSensitivityApp } from '#app/standalone/StandaloneNSensitivit
  * （route自体は`createFileRoute`だけの薄いファイルにする。AGENTS.md）。
  */
 export const Route = createFileRoute('/standalone/n-sensitivity')({
+  staticData: { contextBar: true },
   head: () => ({
     meta: [
       { title: `${N_SENSITIVITY_PANE_META.name} | keydist` },

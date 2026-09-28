@@ -1,0 +1,375 @@
+/*
+ * 文脈バー。本体の上端に貼り付け、スクロールしても残す。
+ * 左から（シェルが差し込むサイドバーのボタン）/ テキストのチップ等 / 右端に常時出す操作。
+ */
+.context-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3.1rem;
+  padding: 0.45rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.context-bar-fieldset {
+  display: contents;
+}
+
+.context-bar-items {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.context-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex: none;
+  margin-left: auto;
+}
+
+.context-bar button,
+.context-bar select,
+.context-bar input,
+.context-bar textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---- チップ（テキスト・既定の物理配列） ---- */
+.context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 2rem;
+  padding: 0.2rem 0.6rem 0.2rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+
+button.context-chip {
+  cursor: pointer;
+}
+
+button.context-chip:hover:not(:disabled),
+.context-select-chip:hover {
+  border-color: var(--border-strong);
+}
+
+.context-chip[aria-expanded="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.context-chip-key {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.context-chip-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-chip-chevron {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.text-chip-root {
+  position: relative;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.text-chip {
+  max-width: 28rem;
+}
+
+.text-chip-language {
+  flex: none;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.context-select-chip {
+  flex: 0 1 auto;
+  padding-right: 0.35rem;
+}
+
+.context-select-chip select {
+  min-width: 0;
+  max-width: 12rem;
+  border: 0;
+  background: transparent;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+/* ---- ポップオーバー（テキストの選択と編集） ---- */
+.context-popover {
+  position: absolute;
+  z-index: 30;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  box-shadow:
+    0 14px 36px light-dark(rgb(26 25 23 / 16%), rgb(0 0 0 / 45%)),
+    0 2px 6px light-dark(rgb(26 25 23 / 8%), rgb(0 0 0 / 30%));
+}
+
+.text-chip-panel {
+  top: calc(100% + 0.45rem);
+  left: 0;
+  width: min(34rem, calc(100vw - 2rem));
+  padding: 0.85rem;
+}
+
+.text-editor {
+  display: grid;
+  gap: 0.6rem;
+  font-size: 0.86rem;
+}
+
+.text-editor-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.text-editor-select {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.text-editor-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+}
+
+.text-editor-inline select,
+.text-editor-inline input {
+  color: var(--text);
+}
+
+.text-editor-name {
+  flex: 1 1 12rem;
+}
+
+.text-editor-name input {
+  flex: 1;
+  min-width: 0;
+}
+
+.text-editor select,
+.text-editor input,
+.text-editor button {
+  min-height: 1.9rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+}
+
+.text-editor button {
+  cursor: pointer;
+}
+
+.text-editor button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.text-editor button:disabled,
+.text-editor input:disabled,
+.text-editor select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.text-editor-body {
+  width: 100%;
+  min-height: 7rem;
+  resize: vertical;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  line-height: 1.7;
+}
+
+.text-editor-buttons {
+  display: flex;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.text-editor-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+/* ---- 常時出す操作 ---- */
+.context-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.context-icon-button:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.context-icon-button:disabled {
+  color: var(--text-muted);
+  opacity: 0.45;
+  cursor: default;
+}
+
+.context-share {
+  position: relative;
+  display: inline-flex;
+  margin-left: 0.25rem;
+}
+
+.context-share-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.2rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.context-share-button:hover {
+  border-color: var(--border-strong);
+}
+
+.context-share-status:empty {
+  display: none;
+}
+
+.context-share-status {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 30;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-raised);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.context-bar :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/*
+ * スマホ幅: テキストのチップを1行目に収める。そのために「テキスト」の文字を見た目から省き
+ * （読み上げには残す）、共有もアイコンだけにする。既定の物理配列は2行目へ回す。
+ */
+@media (max-width: 760px) {
+  .context-bar {
+    flex-wrap: wrap;
+    padding: 0.4rem 0.75rem;
+    gap: 0.35rem;
+  }
+
+  .context-bar-items {
+    display: contents;
+  }
+
+  .text-chip-root {
+    position: static;
+    flex: 1 1 0;
+  }
+
+  .text-chip {
+    width: 100%;
+    max-width: none;
+  }
+
+  .text-chip .context-chip-key,
+  .context-share-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .text-chip .context-chip-value {
+    flex: 1 1 auto;
+  }
+
+  .context-bar-actions {
+    margin-left: 0;
+  }
+
+  .context-share {
+    margin-left: 0;
+  }
+
+  .context-share-button {
+    width: 2rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .context-select-chip {
+    order: 10;
+    flex: 1 1 100%;
+  }
+
+  .context-select-chip select {
+    flex: 1;
+    max-width: none;
+  }
+
+  /* 文脈バーの真下に全幅で出す（バーは backdrop-filter で fixed の基準になるので absolute で足りる）。 */
+  .text-chip-panel {
+    top: 100%;
+    left: 0.5rem;
+    right: 0.5rem;
+    width: auto;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+}

@@ -1,0 +1,297 @@
+/*
+ * シェル: サイドバー + 本体。
+ * 固定（既定）は `<html>` に `data-sidebar` が無い状態。固定を外すと `data-sidebar="unpinned"`
+ * （head scriptと `sidebar-preference.ts` が付ける）。重ねて出している時は `.shell[data-sidebar-open]`。
+ */
+:root {
+  --sidebar-width: 15rem;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+:root[data-sidebar="unpinned"] .shell {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.shell-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- サイドバー ---- */
+.app-sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  width: var(--sidebar-width);
+  height: 100vh;
+  overflow-y: auto;
+  padding: 0.85rem 0.7rem 0.7rem;
+  border-right: 1px solid var(--border);
+  background: var(--surface-subtle);
+  font-size: 0.9rem;
+}
+
+/* 固定を外している時: 完全に隠し、左端に触れるかボタンで本体の上に重ねて出す。 */
+:root[data-sidebar="unpinned"] .app-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  transform: translateX(-102%);
+  transition: transform 0.18s ease;
+  box-shadow:
+    0 14px 36px light-dark(rgb(26 25 23 / 16%), rgb(0 0 0 / 45%)),
+    0 2px 6px light-dark(rgb(26 25 23 / 8%), rgb(0 0 0 / 30%));
+}
+
+:root[data-sidebar="unpinned"] .shell[data-sidebar-open] .app-sidebar {
+  transform: none;
+}
+
+.shell-edge {
+  display: none;
+}
+
+:root[data-sidebar="unpinned"] .shell-edge {
+  display: block;
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 39;
+  width: 8px;
+}
+
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-left: 0.5rem;
+}
+
+.sidebar-brand {
+  margin-right: auto;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.sidebar-icon-button,
+.shell-sidebar-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex: none;
+}
+
+.sidebar-icon-button:hover,
+.shell-sidebar-toggle:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.sidebar-pin[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--accent-strong);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.sidebar-group {
+  display: grid;
+  gap: 1px;
+}
+
+.sidebar-heading {
+  margin: 0 0 0.2rem;
+  padding: 0 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
+.sidebar-subheading {
+  margin: 0.3rem 0 0.1rem;
+  padding: 0 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.sidebar-link {
+  display: block;
+  padding: 0.32rem 0.5rem;
+  border-radius: 7px;
+  text-decoration: none;
+}
+
+.sidebar-link:hover {
+  background: var(--surface-muted);
+}
+
+.sidebar-link[aria-current="page"] {
+  background: var(--surface-muted);
+  font-weight: 650;
+}
+
+.sidebar-empty {
+  margin: 0;
+  padding: 0.2rem 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+/* 最下端: 版表示・旧版・テーマ切替 */
+.sidebar-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: auto;
+  padding: 0.6rem 0.5rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-version {
+  color: var(--text-muted);
+  font: 600 0.72rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.sidebar-old {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.sidebar-old:hover {
+  color: var(--text);
+}
+
+.sidebar-theme {
+  display: inline-flex;
+  flex: none;
+  margin-left: auto;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.sidebar-theme button {
+  display: inline-grid;
+  place-items: center;
+  padding: 0.25rem 0.4rem;
+  border: 0;
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.sidebar-theme button + button {
+  border-left: 1px solid var(--border);
+}
+
+.sidebar-theme button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--accent-strong);
+}
+
+.app-sidebar :focus-visible,
+.shell-sidebar-toggle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---- 本体の上端 ---- */
+
+/* サイドバーを開くボタン。固定している時は要らない。 */
+:root:not([data-sidebar="unpinned"]) .shell-sidebar-toggle {
+  display: none;
+}
+
+/* 文脈バーを持たないページ（トップ・Tester）で、ボタンだけを置く帯。 */
+.shell-bar {
+  display: none;
+}
+
+:root[data-sidebar="unpinned"] .shell-bar {
+  display: flex;
+  align-items: center;
+  padding: 0.45rem 1.25rem 0;
+}
+
+.shell-scrim {
+  display: none;
+}
+
+/* ---- スマホ幅: サイドバーは常に引き出し ---- */
+@media (max-width: 760px) {
+  .shell,
+  :root[data-sidebar="unpinned"] .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-sidebar,
+  :root[data-sidebar="unpinned"] .app-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(18rem, 86vw);
+    transform: translateX(-102%);
+    transition: transform 0.18s ease;
+  }
+
+  .shell[data-sidebar-open] .app-sidebar {
+    transform: none;
+    box-shadow: 0 14px 36px light-dark(rgb(26 25 23 / 16%), rgb(0 0 0 / 45%));
+  }
+
+  .shell-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: light-dark(rgb(19 19 18 / 38%), rgb(0 0 0 / 55%));
+  }
+
+  .sidebar-pin,
+  .shell-edge,
+  :root[data-sidebar="unpinned"] .shell-edge {
+    display: none;
+  }
+
+  .shell-sidebar-toggle,
+  :root:not([data-sidebar="unpinned"]) .shell-sidebar-toggle {
+    display: inline-grid;
+  }
+
+  .shell-bar,
+  :root[data-sidebar="unpinned"] .shell-bar {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem 0.75rem 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar {
+    transition: none !important;
+  }
+}

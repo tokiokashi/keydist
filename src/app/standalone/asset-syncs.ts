@@ -1,4 +1,11 @@
-import { applyCommand, type Command, type CommandHistory, type CommandStepResult } from '#input/commands/index.ts';
+import {
+  applyCommand,
+  redo,
+  undo,
+  type Command,
+  type CommandHistory,
+  type CommandStepResult,
+} from '#input/commands/index.ts';
 import { createAssetTabSync, type AssetTabSync } from '#platform/asset-tab-sync.ts';
 import type { KeyValueStorage } from '#platform/persistence/storage.ts';
 import { notifyKeydistStorageChange, subscribeKeydistStorageChanges } from '#platform/browser-storage-events.ts';
@@ -134,6 +141,27 @@ export function commitCommand(
   catchUpAssets(syncs);
   const { assets, history } = readState();
   const result = applyCommand(assets, history, command);
+  if (result.outcome.kind === 'applied') {
+    saveChangedAssets(syncs, result.assets, Object.keys(result.outcome.changes) as (keyof KeydistAssets)[]);
+  }
+  return result;
+}
+
+/**
+ * Undo / Redoを1段進め、変わった資産だけを書く。
+ *
+ * `commitCommand`と同じく、先に手持ちを今のstorageへ追いつかせる。他タブが書き換えた資産に
+ * 触れる履歴は取り込みの時点で捨てられる（`applyExternalChange`）ので、他タブの変更を
+ * 古い値で巻き戻すことはない。
+ */
+export function commitHistoryStep(
+  syncs: AssetSyncMap,
+  readState: () => AssetState,
+  direction: 'undo' | 'redo',
+): CommandStepResult<KeydistAssets> {
+  catchUpAssets(syncs);
+  const { assets, history } = readState();
+  const result = direction === 'undo' ? undo(assets, history) : redo(assets, history);
   if (result.outcome.kind === 'applied') {
     saveChangedAssets(syncs, result.assets, Object.keys(result.outcome.changes) as (keyof KeydistAssets)[]);
   }
