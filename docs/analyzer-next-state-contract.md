@@ -1,6 +1,11 @@
 # Analyzer Next state / view contract
 
-Issue #505 の新Analyzerで使うstate ownershipとView bindingの契約。旧Analyzerとの互換層ではなく、新route / Workspaceの共通前提として扱う。
+Issue #505 の実装（`src/features/analyzer-next/`）が使うstate ownershipとView bindingの契約。
+適用範囲はその移行中の実装だけで、置き換えが済んだらこの文書ごと消す（`docs/architecture.md`「移行中の扱い」）。
+
+新しいAnalyzer・個別画面・Workspaceの正は `docs/architecture.md`。
+Analyzerがペインに何を渡し、ホストが何を持つかは同「Analyzerがペインに渡すもの」、
+URLが運ぶものは同「条件の編集とURL」にあり、この文書の「View」「ViewConfig」「Session」の語では書かない。
 
 ## Ownership
 
@@ -98,14 +103,12 @@ Session commands that mutate a model condition always identify either the defaul
 
 ## View invariants
 
-- Workspace layout never owns analysis conditions.
-- View components never write storage directly.
-- View components do not import Router or Dockview.
-- View components do not call `resolveConditions` or `generateTrace`.
-- Storage / route / Dockview integration belongs to hosts.
-- ViewConfig changes are returned through `onConfigChange`.
+`features/analyzer-next/` の中でだけ守る。
+
 - Session changes are commands with explicit default/per-layout scope.
-- A pane that presents a number must carry the resolved condition delta and the relevant ViewConfig projection in shared pane chrome.
+
+View componentとホストの分担（見出し・条件の表示・storage・Router・Dockviewを誰が持つか）は、
+`docs/architecture.md`「Analyzerがペインに渡すもの」に移した。
 
 ## Binding
 
@@ -143,11 +146,9 @@ Unknown/removed View types or invalid persisted bindings are rejected during dec
 
 ## Route ownership
 
-Standalone routes and Workspace use the same View component. Route search params may encode View type, binding and compact bookmark-worthy ViewConfig only.
-
 AnalysisSession is never URL authority. A pinned route targeting an unselected layout shows the same placeholder as Workspace and may offer an explicit Session command to add it.
 
-Shared conditions use a separate versioned Condition Bundle in `#share=...`, imported once after confirmation and then removed from the URL.
+個別画面とWorkspaceが同じcomponentを使うこと、URLが運ぶものは `docs/architecture.md` が正。
 
 ## Dockview boundary
 
