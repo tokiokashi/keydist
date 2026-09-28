@@ -3,11 +3,16 @@ import { test } from 'node:test';
 import { applyCommand, emptyCommandHistory, redo, undo } from '#input/commands/index.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
 import type { SetupLibrary } from '#input/setup/index.ts';
+import { DEFAULT_FINGER_ASSIGNMENT } from '#input/shapes/geometry.ts';
 import {
+  createFingerAssignmentCommand,
   createSetupCommand,
+  deleteFingerAssignmentCommand,
   deleteSetupCommand,
+  duplicateFingerAssignmentCommand,
   duplicateSetupCommand,
   relabelSetupCommand,
+  renameFingerAssignmentCommand,
   resetCascadeItemCommand,
   resetCascadeLevelCommand,
   setCascadeOverrideCommand,
@@ -17,10 +22,12 @@ import type { SettingsValueMap } from './settings-items.ts';
 
 let nextId = 0;
 const generateId = () => `setup-${++nextId}`;
+let nextFingerAssignmentId = 0;
+const generateFingerAssignmentId = () => `finger-${++nextFingerAssignmentId}`;
 
 function emptyAssets(): KeydistAssets {
   const setupLibrary: SetupLibrary<SettingsValueMap> = { setups: [], overrides: emptyCascadeOverrides() };
-  return { setupLibrary };
+  return { setupLibrary, fingerAssignments: [] };
 }
 
 test('setCascadeOverrideCommand: globalレベルへ書き込み、undo/redoで往復できる', () => {
@@ -195,4 +202,118 @@ test('relabelSetupCommand: 同じラベルへの付け直しはno-op', () => {
   );
   assert.equal(relabeledDifferent.outcome.kind, 'applied');
   assert.equal(relabeledDifferent.assets.setupLibrary.setups[0]!.label, '別名');
+});
+
+test('createFingerAssignmentCommand: 指割り当てを1件作成する。undoで手持ちが空に戻る', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(
+    assets,
+    history,
+    createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT, 'マイ運指'),
+  );
+  assert.equal(step.outcome.kind, 'applied');
+  assert.equal(step.assets.fingerAssignments.length, 1);
+  assert.equal(step.assets.fingerAssignments[0]!.name, 'マイ運指');
+  assert.deepEqual(step.assets.fingerAssignments[0]!.keyFinger, DEFAULT_FINGER_ASSIGNMENT.keyFinger);
+
+  const undone = undo(step.assets, step.history);
+  assert.equal(undone.assets.fingerAssignments.length, 0);
+});
+
+test('duplicateFingerAssignmentCommand: 存在しない指割り当ての複製はno-op', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, duplicateFingerAssignmentCommand('no-such-id', generateFingerAssignmentId));
+  assert.equal(step.outcome.kind, 'no-op');
+  assert.equal(step.assets, assets);
+});
+
+test('duplicateFingerAssignmentCommand: 実在する指割り当てを複製する', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const created = applyCommand(
+    assets,
+    history,
+    createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT, '元'),
+  );
+  const sourceId = created.assets.fingerAssignments[0]!.id;
+
+  const duplicated = applyCommand(
+    created.assets,
+    created.history,
+    duplicateFingerAssignmentCommand(sourceId, generateFingerAssignmentId),
+  );
+  assert.equal(duplicated.outcome.kind, 'applied');
+  assert.equal(duplicated.assets.fingerAssignments.length, 2);
+  assert.equal(duplicated.assets.fingerAssignments[1]!.name, '元のコピー');
+  assert.notEqual(duplicated.assets.fingerAssignments[1]!.id, sourceId);
+});
+
+test('deleteFingerAssignmentCommand: 存在しないidの削除はno-op', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const step = applyCommand(assets, history, deleteFingerAssignmentCommand('no-such-id'));
+  assert.equal(step.outcome.kind, 'no-op');
+  assert.equal(step.assets, assets);
+  assert.equal(step.history, history);
+});
+
+test('deleteFingerAssignmentCommand: 削除後もそれを参照するカスケードの上書きはそのまま残る（解決側でfallbackする設計）', () => {
+  let assets = emptyAssets();
+  let history = emptyCommandHistory<KeydistAssets>();
+
+  const created = applyCommand(
+    assets,
+    history,
+    createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT),
+  );
+  assets = created.assets;
+  history = created.history;
+  const assignmentId = assets.fingerAssignments[0]!.id;
+
+  const overridden = applyCommand(
+    assets,
+    history,
+    setCascadeOverrideCommand({ kind: 'global' }, 'fingerAssignmentId', assignmentId),
+  );
+  assets = overridden.assets;
+  history = overridden.history;
+
+  const deleted = applyCommand(assets, history, deleteFingerAssignmentCommand(assignmentId));
+  assert.equal(deleted.outcome.kind, 'applied');
+  assert.equal(deleted.assets.fingerAssignments.length, 0);
+  // Setupの上書きと違い、削除してもoverrides側の値はそのまま残る（orphan-cleanupしない）。
+  assert.equal(deleted.assets.setupLibrary.overrides.global?.fingerAssignmentId, assignmentId);
+});
+
+test('renameFingerAssignmentCommand: 同じ名前への変更はno-op', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+
+  const created = applyCommand(
+    assets,
+    history,
+    createFingerAssignmentCommand(generateFingerAssignmentId, DEFAULT_FINGER_ASSIGNMENT, 'マイ運指'),
+  );
+  const assignmentId = created.assets.fingerAssignments[0]!.id;
+
+  const renamedSame = applyCommand(
+    created.assets,
+    created.history,
+    renameFingerAssignmentCommand(assignmentId, 'マイ運指'),
+  );
+  assert.equal(renamedSame.outcome.kind, 'no-op');
+
+  const renamedDifferent = applyCommand(
+    created.assets,
+    created.history,
+    renameFingerAssignmentCommand(assignmentId, '別名'),
+  );
+  assert.equal(renamedDifferent.outcome.kind, 'applied');
+  assert.equal(renamedDifferent.assets.fingerAssignments[0]!.name, '別名');
 });

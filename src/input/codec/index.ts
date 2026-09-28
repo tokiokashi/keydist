@@ -67,6 +67,13 @@ export interface AssetCodec<T> {
   encode(value: T): Record<string, unknown>;
 }
 
+/**
+ * 外部由来のobjectのkeyとして弾く予約名。`JSON.parse`はリテラルな own property
+ * "__proto__" を作れるので、共有リンク・importファイルから実際に出現しうる。
+ * 捨てる側は必ず診断を積む（「捨てた値には必ず診断」）。
+ */
+export const UNSAFE_OBJECT_KEYS: ReadonlySet<string> = new Set(['__proto__', 'constructor', 'prototype']);
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }

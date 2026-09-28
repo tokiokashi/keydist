@@ -70,10 +70,14 @@ grid外キーの運指をshapeへ埋め込まない。extra key idはcanonical p
 
 物理形状（位置）と指の割り当ては独立した条件である。前者は `PhysicalShape`、後者は
 `FingerAssignment` として別に持つ。指の割り当ては形状の一部ではなく独立した条件として
-保存・選択され、既定は物理形状の規格（ANSI/JIS）から決まる。組み込みの指の割り当て（既定・JIS）は
-カスケードの項目（`fingerAssignmentId`。`engine/finger-assignment.ts`、`engine/settings-items.ts`）
-として物理形状・配列・Setupのレベルで上書きでき、同じ形状のまま組み込みのJIS運指へ差し替える、
-といった比較ができる。
+保存・選択され、既定は物理形状の規格（ANSI/JIS）から決まる。組み込み（既定・JIS）と自作の
+どちらの指の割り当ても、同じカスケードの項目（`fingerAssignmentId`。`engine/finger-assignment.ts`、
+`engine/settings-items.ts`）として物理形状・配列・Setupのレベルで選べる。同じ形状のまま
+組み込みのJIS運指へ差し替える、自作の運指へ差し替える、といった比較ができる。自作の指の割り当ては
+`input/shapes/user-finger-assignments.ts` が資産として持ち、`engine/commands.ts` の
+作成・複製・削除・改名コマンドで手持ちを操作する。idを解決できない（自作割り当てを削除した後に
+それを指す上書きが残っている等）場合は例外にせず、その形状の既定へfallbackした事実を診断として
+残す（`engine/finger-assignment.ts` の `resolveFingerAssignment`）。
 
 画面の「打ち手と機材」パネルの設定モーダルでは、既定形状を選んだうえで次の値を利用者が変更できる。
 
