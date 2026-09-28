@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
-import { openSettings, openTargetSelection } from './pane-helper.ts';
+import { expectTargetNames, openSettings, openTargetSelection, targetNames, toggleTarget } from './pane-helper.ts';
 
 /**
  * N感度単体ページ（#544 Phase 3「N感度」、#578指摘1「対象を配列かSetupにする」）のE2E。
@@ -12,6 +12,12 @@ import { openSettings, openTargetSelection } from './pane-helper.ts';
  */
 
 const ANALYZER_SET_SELECTIONS_KEY = 'keydist:analyzer-set-selections';
+
+/** `#RRGGBB`をcomputed styleの形（`rgb(r, g, b)`）にする。 */
+function hexToRgb(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+  return `rgb(${r}, ${g}, ${b})`;
+}
 const STANDALONE_ANALYZER_OPTIONS_KEY = 'keydist:standalone-analyzer-options';
 
 function seedTwoSetups() {
@@ -30,15 +36,9 @@ function seedTwoSetups() {
   };
 }
 
-/**
- * 対象を追加する。ページ本体は`fieldset[disabled]`でハイドレーション完了
- * （`assetsReady`）まで操作を無効化しているので（レビュー指摘1）、Playwrightの
- * actionability待ち（disabled要素には操作しない）にそのまま任せてよい。
- */
-async function addTarget(page: import('@playwright/test').Page, optionValue: string) {
-  await openTargetSelection(page);
-  await page.getByLabel('追加する対象').selectOption(optionValue);
-  await page.getByRole('button', { name: '追加', exact: true }).click();
+/** 対象を加える（対象の選択でチェックを付ける。付けた瞬間に反映される）。 */
+async function addTarget(page: import('@playwright/test').Page, key: string) {
+  await toggleTarget(page, key);
 }
 
 test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを作らずに2本の折れ線が出る', async ({ page }) => {
@@ -69,7 +69,11 @@ test('色は加えた順に配り、1つ外しても他の線の色は変わら�
   const [first, second, third] = [await strokeOf('layout:qwerty'), await strokeOf('layout:colemak-dh'), await strokeOf('layout:dvorak')];
   expect(new Set([first, second, third]).size).toBe(3);
 
-  await page.getByRole('button', { name: '1番目を外す' }).click();
+  // 対象の選択の色見本も線と同じ色。
+  const selection = await openTargetSelection(page);
+  await expect(selection.locator('label:has(input[value="layout:colemak-dh"]) .target-selection-swatch'))
+    .toHaveCSS('background-color', hexToRgb(second!));
+  await toggleTarget(page, 'layout:qwerty');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
   expect(await strokeOf('layout:colemak-dh')).toBe(second);
   expect(await strokeOf('layout:dvorak')).toBe(third);
@@ -128,20 +132,14 @@ test('縦軸（相対/実測値）の切り替えはリロードしても残る'
   await expect((await openSettings(page)).getByRole('radio', { name: '相対（N=0を100%）' })).not.toBeChecked();
 });
 
-test('選択・並び順はリロードしても残り、資産の読み込み前に上書きされない', async ({ page }) => {
+test('選択はリロードしても残り、資産の読み込み前に上書きされない。並びは付けた順によらず一覧の順', async ({ page }) => {
   await page.addInitScript(seedTwoSetups());
   await page.goto('/standalone/n-sensitivity');
 
-  await addTarget(page, 'setup:fixed-a');
   await addTarget(page, 'setup:fixed-b');
+  await addTarget(page, 'setup:fixed-a');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
-
-  await openTargetSelection(page);
-  const order = page.locator('.set-selection-order li');
-  await expect(order).toHaveCount(2);
-  await expect(order.first()).toContainText('QWERTY');
-  await order.nth(1).getByRole('button', { name: /上へ/ }).click();
-  await expect(order.first()).toContainText('Colemak');
+  await expectTargetNames(page, ['QWERTY', 'Colemak-DH']);
 
   await expect
     .poll(async () => page.evaluate((key) => localStorage.getItem(key), ANALYZER_SET_SELECTIONS_KEY))
@@ -151,10 +149,7 @@ test('選択・並び順はリロードしても残り、資産の読み込み�
   // 2件→1件に減ったり、選択が消えたりしない。
   await page.reload();
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
-  await openTargetSelection(page);
-  const orderAfterReload = page.locator('.set-selection-order li');
-  await expect(orderAfterReload).toHaveCount(2);
-  await expect(orderAfterReload.first()).toContainText('Colemak');
+  await expectTargetNames(page, ['QWERTY', 'Colemak-DH']);
 
   const storedAfterReload = await page.evaluate(
     (key) => localStorage.getItem(key),
@@ -201,8 +196,7 @@ test('集合に存在しないSetup idが混ざっていても消えず「削除
   await expect(failedRow).toHaveCount(1);
   await expect(failedRow).toContainText('削除された');
 
-  await openTargetSelection(page);
-  await expect(page.locator('.set-selection-order li')).toHaveCount(2);
+  await expect.poll(async () => (await targetNames(page)).length).toBe(2);
 });
 
 test('既定と違う条件（windowSize以外）が併記される。windowSizeは掃引軸なので出さない', async ({ page }) => {
@@ -259,9 +253,9 @@ test('保存済みの縦軸は、操作可能になった瞬間から表示さ�
   expect(await enabledValues(page)).toEqual(['true']);
 });
 
-test('対象が空の時はペインが案内を出し、全メンバーが失敗した時は凡例の失敗行だけが残る', async ({ page }) => {
+test('対象が空の時はペインに選ぶボタンを出し、全メンバーが失敗した時は凡例の失敗行だけが残る', async ({ page }) => {
   await page.goto('/standalone/n-sensitivity');
-  await expect(page.locator('[data-pane-empty="true"]')).toContainText('対象を1つ以上選ぶ');
+  await expect(page.locator('[data-pane-empty="true"]').getByRole('button', { name: '配列・Setupを選ぶ' })).toBeVisible();
 
   await page.addInitScript(() => {
     localStorage.setItem(
@@ -275,6 +269,6 @@ test('対象が空の時はペインが案内を出し、全メンバーが失�
   await page.reload();
   await expect(page.locator('[data-n-sensitivity-row="failed"]')).toHaveCount(1, { timeout: 10_000 });
   await expect(page.locator('[data-pane-empty="true"]')).toHaveCount(0);
-  await expect(page.locator('.pane-body')).not.toContainText('対象を1つ以上選ぶ');
+  await expect(page.locator('.pane-body')).not.toContainText('配列・Setupを選ぶ');
   await expect(page.locator('.n-sensitivity-svg')).toHaveCount(0);
 });

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { openTextChip } from './context-bar-helper.ts';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
-import { openSettings } from './pane-helper.ts';
+import { expectChosenTarget, openSettings, openTargetSelection, targetButton, toggleTarget } from './pane-helper.ts';
 
 /**
  * Bigram Flow単体ページ（#544 Phase 3「最初の縦切り」）のE2E。
@@ -34,20 +34,19 @@ test('操作系はハイドレーション+資産読み込み完了（assetsRead
   // 操作できてしまう。旧実装はここに約750〜850msの「クリック・選択しても静かに
   // 元へ戻る」窓があった（`assetsReady`が経由する`useKeydistAssets`のstorage読み込みが
   // 終わるまで、controlled componentのvalueが毎回リセットされるため）。ページ本体を
-  // `fieldset[disabled={!assetsReady}]`で包んだことで、この窓の間は`<select>`が
-  // 本当にdisabledになる。Playwrightの`selectOption`はdisabled要素に対して
+  // `fieldset[disabled={!assetsReady}]`で包んだことで、この窓の間は見出しの「対象」ボタンが
+  // 本当にdisabledになる。Playwrightの操作はdisabled要素に対して
   // actionable（有効）になるまで自動的に待つので、ここでは「ネットワークアイドル等の
   // 明示的な待ちを一切挟まずに選んでも、最終的に必ず反映される」ことを確認する
   // （待たずに選んでも消える、が再現しないことの確認）。
   await page.goto('/standalone/bigram-flow');
-  const targetSelect = page.getByLabel('対象', { exact: true });
 
   // 選ぶ前は無効化されていることがある（ハイドレーション未完了の間）。
   // 常に無効化されているとは限らない（読み込みが速いローカル実行では既に有効なことも
   // ある）ため、状態そのもののアサートはせず、「選択が必ず反映される」ことだけを見る。
-  await targetSelect.selectOption('layout:colemak-dh');
-  await expect(targetSelect).toBeEnabled();
-  await expect(targetSelect).toHaveValue('layout:colemak-dh');
+  await toggleTarget(page, 'layout:colemak-dh');
+  await expect(targetButton(page)).toBeEnabled();
+  await expectChosenTarget(page, 'layout:colemak-dh');
 
   // 選択後は解析まで進み、取りこぼされていないことを可視化の面でも確認する。
   const flow = page.locator('[data-react-feature="bigram-flow"]');
@@ -531,8 +530,7 @@ test('新規プロファイルでは配列（既定QWERTY）が対象になり�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
-  const targetSelect = page.getByLabel('対象', { exact: true });
-  await expect(targetSelect).toHaveValue('layout:qwerty');
+  await expectChosenTarget(page, 'layout:qwerty');
 
   const stored = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
   expect(stored).toBeNull();
@@ -541,7 +539,7 @@ test('新規プロファイルでは配列（既定QWERTY）が対象になり�
   await page.reload();
   const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByLabel('対象', { exact: true })).toHaveValue('layout:qwerty');
+  await expectChosenTarget(page, 'layout:qwerty');
   const storedAfterReload = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
   expect(storedAfterReload).toBeNull();
 });
@@ -567,9 +565,8 @@ test('保存済みのSetupが2件あっても、開いた時に手を付けず�
   // 対象を明示的にSetupへ切り替える（既定はqwerty配列のまま）。ページ本体は
   // `fieldset[disabled]`でハイドレーション完了まで操作を無効化している
   // （レビュー指摘1）ので、Playwrightのactionability待ちにそのまま任せてよい。
-  const targetSelect = page.getByLabel('対象', { exact: true });
-  await targetSelect.selectOption('setup:fixed-b');
-  await expect(targetSelect).toHaveValue('setup:fixed-b');
+  await toggleTarget(page, 'setup:fixed-b');
+  await expectChosenTarget(page, 'setup:fixed-b');
 
   // storage側は2件のまま（idも変わらない。作成・削除どちらも起きていない）。
   const stored = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
@@ -585,7 +582,7 @@ test('保存済みのSetupが2件あっても、開いた時に手を付けず�
   await page.reload();
   const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByLabel('対象', { exact: true })).toHaveValue('setup:fixed-b');
+  await expectChosenTarget(page, 'setup:fixed-b');
   const storedAfterReload = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
   const parsedAfterReload = JSON.parse(storedAfterReload ?? '{}') as { setups: { id: string }[] };
   expect(parsedAfterReload.setups.map((setup) => setup.id)).toEqual(['fixed-a', 'fixed-b']);
@@ -784,6 +781,31 @@ test('見出しは「名前 ⓘ / 対象 / 解析設定 / ⋯」で、ⓘで短�
   await expect(page.getByRole('tooltip')).toHaveCount(0);
 });
 
+test('対象は同じ部品をラジオで1つ選び、押すと閉じて見出しに出る。矢印キーで送る間は閉じない', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await expect(targetButton(page)).toHaveAccessibleName('対象: QWERTY');
+
+  const selection = await openTargetSelection(page);
+  await expect(selection.locator('input[type="checkbox"]')).toHaveCount(0);
+  await expect(selection.locator('legend')).toHaveText(['組み込み・英字の配列', '組み込み・かな配列']);
+  await selection.getByRole('radio', { name: 'Colemak-DH' }).click();
+  await expect(selection).toHaveCount(0);
+  await expect(targetButton(page)).toHaveAccessibleName('対象: Colemak-DH');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toHaveAttribute('data-layout-id', 'colemak-dh');
+
+  // キーボードでは、矢印で送った先がその場で反映され、開いたまま次を見比べられる。
+  await openTargetSelection(page);
+  await selection.getByRole('radio', { name: 'Colemak-DH' }).focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(selection).toBeVisible();
+  await expect(selection.getByRole('radio', { name: 'Workman' })).toBeChecked();
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toHaveAttribute('data-layout-id', 'workman');
+  await page.keyboard.press('Escape');
+  await expect(selection).toHaveCount(0);
+  await expect(targetButton(page)).toBeFocused();
+});
+
 test('解析設定の小窓は非モーダルで、開いたまま図を操作でき、見出しをドラッグで動かせる', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
@@ -792,7 +814,7 @@ test('解析設定の小窓は非モーダルで、開いたまま図を操作�
   await expect(settings).toHaveAttribute('aria-modal', 'false');
 
   // 開いたまま、背後の対象を変えられる（背後を塞がない）。
-  await page.getByLabel('対象', { exact: true }).selectOption('layout:colemak-dh');
+  await toggleTarget(page, 'layout:colemak-dh');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toHaveAttribute('data-layout-id', 'colemak-dh');
   await expect(settings).toBeVisible();
 
@@ -835,7 +857,7 @@ test('項目ごとの「既定値へ戻す」は既定と違う項目にだけ�
 test('⋯の「解析設定を初期値に戻す」は解析設定だけを既定値へ戻し、対象はそのまま', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
-  await page.getByLabel('対象', { exact: true }).selectOption('layout:colemak-dh');
+  await toggleTarget(page, 'layout:colemak-dh');
 
   const settings = await openSettings(page);
   await settings.getByRole('button', { name: 'Within-hand' }).click();
@@ -848,7 +870,7 @@ test('⋯の「解析設定を初期値に戻す」は解析設定だけを既�
 
   await expect(settings.getByRole('button', { name: 'Actual', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(settings.getByLabel('紐の太さ', { exact: true })).toHaveValue('linear');
-  await expect(page.getByLabel('対象', { exact: true })).toHaveValue('layout:colemak-dh');
+  await expectChosenTarget(page, 'layout:colemak-dh');
 });
 
 test('観測値の注記はトップにだけ置く', async ({ page }) => {

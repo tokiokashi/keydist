@@ -392,6 +392,22 @@ h2.pane-frame-title {
   color: #b8860b;
 }
 
+.pane-empty-button {
+  min-height: 2.25rem;
+  padding: 0 1rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.pane-empty-button:hover {
+  background: var(--accent-strong);
+}
+
 .pane-empty,
 .pane-busy {
   margin: 0;

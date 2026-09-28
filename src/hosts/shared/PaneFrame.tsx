@@ -52,8 +52,11 @@ export interface PaneFrameProps {
    * `traceErrors`とは出どころが違うので混ぜない。
    */
   readonly settingsDiagnostics?: readonly CodecDiagnostic[];
-  /** ペイン全体で対象が空の時の案内。これがある間は本体を呼ばない。 */
-  readonly emptyMessage?: ReactNode;
+  /**
+   * ペイン全体で対象が空の時に出すもの（対象を選ぶボタン等）。これがある間は本体を呼ばない。
+   * 選べば分かる結果（「選ぶと表が出る」等）の説明は置かない。
+   */
+  readonly emptyContent?: ReactNode;
   /**
    * 本体。描ける値がそろってから渡す。`undefined`の間（計算中で前の結果も無い）は枠が計算中と出す。
    */
@@ -75,13 +78,13 @@ export function PaneFrame({
   engineState,
   traceErrors,
   settingsDiagnostics,
-  emptyMessage,
+  emptyContent,
   children,
 }: PaneFrameProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
-  const statusLabel = emptyMessage === undefined ? paneStatusLabel(engineState.status) : '';
-  const errorMessage = emptyMessage === undefined && engineState.status === 'failed'
+  const statusLabel = emptyContent === undefined ? paneStatusLabel(engineState.status) : '';
+  const errorMessage = emptyContent === undefined && engineState.status === 'failed'
     ? describeEngineRequestError(engineState.error)
     : undefined;
   const paneName = targetName === undefined ? name : `${name} — ${targetName}`;
@@ -188,8 +191,8 @@ export function PaneFrame({
         </p>
       ) : null}
 
-      {emptyMessage !== undefined ? (
-        <p className="pane-empty" data-pane-empty="true">{emptyMessage}</p>
+      {emptyContent !== undefined ? (
+        <div className="pane-empty" data-pane-empty="true">{emptyContent}</div>
       ) : errorMessage ? (
         <p className="pane-error" role="alert" data-pane-error="true">{errorMessage}</p>
       ) : children === undefined ? (
