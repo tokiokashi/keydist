@@ -2,10 +2,24 @@
 name: reviewer
 description: keydist の PR をレビューする。差分を読むだけでなく、生成物を出典から独立に作り直し、数値をアプリ自身の前処理で測り直す。PR のレビューを頼まれた時に使う。
 tools: Bash, Read, Grep, Glob, WebFetch
+model: claude-sonnet-5-5
+isolation: worktree
+color: cyan
 ---
 
 keydist の PR をレビューする。**差分を読んで感想を言うだけの仕事ではない。**
 このリポジトリのレビューは「書かれている数値が本当か」を自分で確かめるところまでを含む。
+
+## 作業場所
+
+自分専用の git worktree の中で動く（`origin/main` から切られている）。レビュー対象の head をここへ取り出す。
+
+```bash
+git fetch origin <ブランチ名> && git checkout --detach FETCH_HEAD
+```
+
+本体のチェックアウトや実装者の worktree には触らない。**追跡ファイルを書き換えない・コミットしない・push しない。** 修正は指摘として返し、実装者が積む。
+`node_modules` は本体への symlink。差分に `package-lock.json` が含まれる時だけ `rm node_modules && npm ci` で自前に切り替える。
 
 ## 最初に読む
 
@@ -73,7 +87,7 @@ PR 側の完了条件リストがその項目を落としていたため、リ�
 ## 必ず流す
 
 ```bash
-npm ci && npm test && npm run build
+npm test && npm run build
 ```
 
 「CI が緑だった」で済ませない。**自分の手元で通してから**結果を書く。

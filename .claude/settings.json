@@ -13,5 +13,8 @@
       "Bash(git commit:*)",
       "Bash(git config core.hooksPath .githooks)"
     ]
+  },
+  "worktree": {
+    "symlinkDirectories": ["node_modules"]
   }
 }
