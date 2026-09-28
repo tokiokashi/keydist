@@ -47,9 +47,7 @@ export interface TextControlProps {
    * 値は`{ ref, text }`のペアで渡す（レビュー指摘: 打鍵の瞬間にどのテキストへ向けた
    * 変更かを`ref`としてキャプチャしておく。debounce完了時に「今の選択」を読み直すと、
    * 待っている間に選択が切り替わった時に別のテキストへ書き込んでしまう事故になる。
-   * `engine/commands.ts`の`setTextContentCommand`コメント参照）。`text`だけを値にすると
-   * 「直前に書いた値と同じなら省く」という`useDebouncedCommit`の重複排除が、同じ本文を
-   * 違うテキストへ書く時にも誤って発動してしまうため、`ref`ごと1つの値として扱う。
+   * `engine/commands.ts`の`setTextContentCommand`コメント参照）。
    */
   readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
 }

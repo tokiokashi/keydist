@@ -69,6 +69,15 @@ test('decode: languageOverrideが無い要素は診断を積まない', () => {
   if (result.ok) assert.deepEqual(result.diagnostics, []);
 });
 
+test('decode: 未知の項目は捨てて診断を積む（要素は残す）', () => {
+  const result = TEXT_LIBRARY_CODEC.decode({ version: 1, texts: [{ id: 'b', name: 'n', text: 't', typo: 1 }] });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.deepEqual(result.value.texts, [{ id: 'b', name: 'n', text: 't' }]);
+    assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.path), ['texts[0].typo']);
+  }
+});
+
 test('encode → decode: 往復して同じ値になる', () => {
   const value = { texts: [textA, textB] };
   const encoded = TEXT_LIBRARY_CODEC.encode(value);
