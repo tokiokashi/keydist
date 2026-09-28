@@ -7,6 +7,7 @@ import {
 } from '#analyzers/contract.ts';
 import type { Finger, Key } from '#input/shapes/geometry.ts';
 import { DEFAULT_METRIC_CONDITIONS, type Metrics } from '#interpretation/metrics.ts';
+import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import type { Press, Stroke, StrokeParticipation, Trace } from '#trace/generate.ts';
 import {
   ALTERNATE_N_SENSITIVITY_OPTIONS,
@@ -52,13 +53,13 @@ export interface NSensitivityPoint {
 
 export interface NSensitivitySeriesOk {
   readonly kind: 'ok';
-  readonly setupId: string;
+  readonly targetKey: string;
   readonly points: readonly NSensitivityPoint[];
 }
 
 export interface NSensitivitySeriesFailed {
   readonly kind: 'failed';
-  readonly setupId: string;
+  readonly targetKey: string;
   readonly failureKind: AnalyzerSetMemberFailure['kind'];
   readonly message: string;
 }
@@ -81,11 +82,11 @@ export function computeMemberSeries(member: AnalyzerSetMember): NSensitivitySeri
     const totalUnits = totalUnitsOf(trace);
     return { windowSize, totalUnits };
   });
-  return { kind: 'ok', setupId: member.setupId, points };
+  return { kind: 'ok', targetKey: analysisTargetKey(member.target), points };
 }
 
 function failureToSeries(failure: AnalyzerSetMemberFailure): NSensitivitySeriesFailed {
-  return { kind: 'failed', setupId: failure.setupId, failureKind: failure.kind, message: failure.message };
+  return { kind: 'failed', targetKey: analysisTargetKey(failure.target), failureKind: failure.kind, message: failure.message };
 }
 
 export function computeNSensitivityExtraction(
@@ -184,9 +185,12 @@ function fixtureRequestTrace(): AnalyzerSetMember['requestTrace'] {
   };
 }
 
+const FIXTURE_TARGET_A: AnalysisTarget = { kind: 'setup', setupId: 'fixture-a' };
+const FIXTURE_TARGET_MISSING: AnalysisTarget = { kind: 'setup', setupId: 'fixture-missing' };
+
 const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
   {
-    setupId: 'fixture-a',
+    target: FIXTURE_TARGET_A,
     trace: fixtureTrace(4),
     analysis: { chains: [], arpeggios: [] } as unknown as AnalyzerSetMember['analysis'],
     metrics: fixtureMetrics(4),
@@ -195,7 +199,7 @@ const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
 ];
 
 const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [
-  { setupId: 'fixture-missing', kind: 'reference', message: '配列「x」が見つからない（削除された可能性）' },
+  { target: FIXTURE_TARGET_MISSING, kind: 'reference', message: '配列「x」が見つからない（削除された可能性）' },
 ];
 
 /**

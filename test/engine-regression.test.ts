@@ -184,7 +184,8 @@ function computeFor(fixtureCase: FixtureCase, cache = createEngineCache()) {
   const overrides = overridesFor(setupId, fixtureCase.conditions);
 
   const resolution = resolveEngineInput({
-    setup,
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides,
@@ -215,7 +216,8 @@ async function computeForAsync(fixtureCase: FixtureCase, cache = createEngineCac
   };
   const overrides = overridesFor(setupId, fixtureCase.conditions);
   const resolution = resolveEngineInput({
-    setup,
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides,

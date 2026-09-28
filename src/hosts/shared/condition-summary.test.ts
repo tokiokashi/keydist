@@ -74,7 +74,8 @@ test('conditionHeaderInfo: 配列・形状・指割当の名前を集める', ()
 
 test('conditionHeaderInfoFromResolvedInput: ResolvedInputのgeometryから名前を集める', () => {
   const result = resolveEngineInput({
-    setup: setupFor('qwerty'),
+    target: { kind: 'setup', setupId: (setupFor('qwerty')).id },
+    setups: new Map([[(setupFor('qwerty')).id, setupFor('qwerty')]]),
     catalog: CATALOG,
     userLayouts: NO_USER_LAYOUTS,
     overrides: EMPTY_SETTINGS_OVERRIDES,

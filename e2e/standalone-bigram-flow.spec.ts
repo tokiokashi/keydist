@@ -424,9 +424,30 @@ test('「今の設定のURLをコピー」で既定値と違う項目だけを�
   expect(clipboardText).not.toContain('lineScale=');
 });
 
-test('保存済みのSetupが2件あっても、開いた時に1件へ巻き戻らない（初期Setup作成の競合の回帰）', async ({ page }) => {
-  // #544レビュー: 初期Setup作成の効果がstorage読み込み前の空状態を見て新しいSetupを
-  // 作ってしまい、保存済みのSetup（複数件）がデフォルト1件で置き換わる事故の再現。
+test('新規プロファイルでは配列（既定QWERTY）が対象になり、Setupは1件も作られない（#578指摘1）', async ({ page }) => {
+  // 旧実装は手持ちが空なら初期Setupを1件自動で作っていたが、#578指摘1の決定で
+  // その仕掛けを撤去した。配列は組み込みカタログに最初から入っているので、
+  // 手持ちが空でも対象は選べる。
+  await page.goto('/standalone/bigram-flow');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+
+  const targetSelect = page.getByLabel('対象', { exact: true });
+  await expect(targetSelect).toHaveValue('layout:qwerty');
+
+  const stored = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
+  expect(stored).toBeNull();
+
+  // リロードしても対象は変わらず、Setupも作られたままにならない。
+  await page.reload();
+  const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByLabel('対象', { exact: true })).toHaveValue('layout:qwerty');
+  const storedAfterReload = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
+  expect(storedAfterReload).toBeNull();
+});
+
+test('保存済みのSetupが2件あっても、開いた時に手を付けずそのまま残る', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem(
       'keydist:setup-library',
@@ -444,48 +465,33 @@ test('保存済みのSetupが2件あっても、開いた時に1件へ巻き戻�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
-  const setupSelect = page.getByLabel('対象Setup');
-  const optionValues = async () => setupSelect.locator('option').evaluateAll(
-    (options) => options.map((option) => (option as HTMLOptionElement).value),
-  );
-  await expect.poll(optionValues).toEqual(['fixed-a', 'fixed-b']);
+  // 対象を明示的にSetupへ切り替える（既定はqwerty配列のまま）。ハイドレーション完了直後の
+  // ごく短い窓でonChangeが配線される前だと選択が効かないことがあるため、反映されるまで
+  // リトライする（#578指摘1のE2E実装時に発見）。
+  const targetSelect = page.getByLabel('対象', { exact: true });
+  await expect(async () => {
+    await targetSelect.selectOption('setup:fixed-b');
+    await expect(targetSelect).toHaveValue('setup:fixed-b', { timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
 
-  // storage側も2件のまま（idも変わらない）。
+  // storage側は2件のまま（idも変わらない。作成・削除どちらも起きていない）。
   const stored = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
   const parsed = JSON.parse(stored ?? '{}') as { setups: { id: string }[] };
   expect(parsed.setups.map((setup) => setup.id)).toEqual(['fixed-a', 'fixed-b']);
 
-  // リロードしても2件・id共に保たれる。
+  // 対象の選択がstorageへ書き込まれるまで待ってからリロードする。
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:analyzer-target-selections')))
+    .toContain('fixed-b');
+
+  // リロードしても2件・id・選択とも保たれる。
   await page.reload();
   const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
-  await expect.poll(optionValues).toEqual(['fixed-a', 'fixed-b']);
-});
-
-test('保存済みのSetupが1件だけの時、リロードのたびにidが変わったりしない', async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem(
-      'keydist:setup-library',
-      JSON.stringify({
-        version: 1,
-        setups: [{ id: 'fixed-only', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 }],
-        overrides: {},
-      }),
-    );
-  });
-  await page.goto('/standalone/bigram-flow');
-  const flow = page.locator('[data-react-feature="bigram-flow"]');
-  await expect(flow).toBeVisible({ timeout: 10_000 });
-
-  const setupSelect = page.getByLabel('対象Setup');
-  await expect.poll(async () => setupSelect.inputValue()).toEqual('fixed-only');
-
-  for (let i = 0; i < 3; i++) {
-    await page.reload();
-    const flowAfterReload = page.locator('[data-react-feature="bigram-flow"]');
-    await expect(flowAfterReload).toBeVisible({ timeout: 10_000 });
-    await expect.poll(async () => page.getByLabel('対象Setup').inputValue()).toEqual('fixed-only');
-  }
+  await expect(page.getByLabel('対象', { exact: true })).toHaveValue('setup:fixed-b');
+  const storedAfterReload = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
+  const parsedAfterReload = JSON.parse(storedAfterReload ?? '{}') as { setups: { id: string }[] };
+  expect(parsedAfterReload.setups.map((setup) => setup.id)).toEqual(['fixed-a', 'fixed-b']);
 });
 
 test('タブ間同期: 別タブでのテキスト変更が届き、複数回変えても届き続ける', async ({ context }) => {

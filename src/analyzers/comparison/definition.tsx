@@ -17,7 +17,7 @@ import './comparison-view.css';
 
 /** 1 Setupぶんの、行に併記する条件（配列・形状・指の割当・カスケードの出どころ）。 */
 export interface ComparisonRowContext {
-  readonly setupId: string;
+  readonly targetKey: string;
   readonly label: string;
   readonly layoutName: string;
   readonly geometryName: string;
@@ -28,16 +28,16 @@ export interface ComparisonRowContext {
 
 export interface ComparisonVisualizationProps {
   extracted: ComparisonExtracted;
-  /** 表示順（Setup id列）。ページ自身が持つ集合の並び順（#544 §6）。 */
+  /** 表示順（対象keyの列）。ページ自身が持つ集合の並び順（#544 §6）。 */
   order: readonly string[];
   rowContext: ReadonlyMap<string, ComparisonRowContext>;
   /**
-   * 基準（baseline）にするSetup id。`options.ts`のコメントの通り、これはAnalyzerの
+   * 基準（baseline）にする対象key。`options.ts`のコメントの通り、これはAnalyzerの
    * 解析設定ではなく「対象の集合」の一部としてホスト（単体ページ）が持つ値を
    * そのまま受け取る。`undefined`は「基準なし」。
    */
-  baselineSetupId: string | undefined;
-  onBaselineSetupIdChange(next: string | undefined): void;
+  baselineTargetKey: string | undefined;
+  onBaselineTargetKeyChange(next: string | undefined): void;
   options: ComparisonOptions;
   onOptionsChange(next: ComparisonOptions): void;
 }
@@ -57,8 +57,8 @@ function formatRatio(value: number, baseline: number): string {
   return `${((value / baseline) * 100).toFixed(1)}%`;
 }
 
-function rowFor(rows: readonly ComparisonRow[], setupId: string): ComparisonRow | undefined {
-  return rows.find((row) => row.setupId === setupId);
+function rowFor(rows: readonly ComparisonRow[], targetKey: string): ComparisonRow | undefined {
+  return rows.find((row) => row.targetKey === targetKey);
 }
 
 function failureLabel(kind: ComparisonFailedRow['failureKind']): string {
@@ -66,7 +66,7 @@ function failureLabel(kind: ComparisonFailedRow['failureKind']): string {
     case 'reference': return '配列・形状が見つからない（削除された可能性）';
     case 'incompatible-text': return 'このテキストには使えない';
     case 'geometry': return '形状を組み立てられない';
-    case 'setup-missing': return 'Setupが削除された';
+    case 'target-missing': return '削除された、または見つからない';
   }
 }
 
@@ -98,8 +98,8 @@ export function ComparisonVisualization({
   extracted,
   order,
   rowContext,
-  baselineSetupId,
-  onBaselineSetupIdChange,
+  baselineTargetKey,
+  onBaselineTargetKeyChange,
   options,
   onOptionsChange,
 }: ComparisonVisualizationProps) {
@@ -107,7 +107,7 @@ export function ComparisonVisualization({
   // 基準に選んだSetupが集合から外れていたら（削除・選択解除）「基準なし」として扱う
   // （#544指示書「基準に選んだSetupが集合から外れた場合の扱い」）。存在しないidを
   // 指したままの表示にしない。
-  const baselineRow = baselineSetupId === undefined ? undefined : rowFor(extracted.rows, baselineSetupId);
+  const baselineRow = baselineTargetKey === undefined ? undefined : rowFor(extracted.rows, baselineTargetKey);
   const effectiveBaseline = baselineRow?.kind === 'ok' ? baselineRow : undefined;
 
   const toggleColumn = (column: ComparisonColumnId) => {
@@ -138,15 +138,15 @@ export function ComparisonVisualization({
           <span>基準（baseline）</span>
           <select
             aria-label="基準Setup"
-            value={baselineSetupId ?? ''}
-            onChange={(event) => onBaselineSetupIdChange(
+            value={baselineTargetKey ?? ''}
+            onChange={(event) => onBaselineTargetKeyChange(
               event.currentTarget.value === '' ? undefined : event.currentTarget.value,
             )}
           >
             <option value="">基準なし</option>
-            {order.map((setupId) => (
-              <option key={setupId} value={setupId}>
-                {rowContext.get(setupId)?.label ?? setupId}
+            {order.map((targetKey) => (
+              <option key={targetKey} value={targetKey}>
+                {rowContext.get(targetKey)?.label ?? targetKey}
               </option>
             ))}
           </select>
@@ -175,16 +175,16 @@ export function ComparisonVisualization({
             </tr>
           </thead>
           <tbody>
-            {order.map((setupId) => {
-              const context = rowContext.get(setupId);
-              const row = rowFor(extracted.rows, setupId);
-              const label = context?.label ?? setupId;
+            {order.map((targetKey) => {
+              const context = rowContext.get(targetKey);
+              const row = rowFor(extracted.rows, targetKey);
+              const label = context?.label ?? targetKey;
 
               if (row === undefined) {
-                // extractedにもrowContextにも無いsetupId（依頼の作り直し途中の一瞬）。
+                // extractedにもrowContextにも無いtargetKey（依頼の作り直し途中の一瞬）。
                 // 空行として描き、値の欠落を偽らない。
                 return (
-                  <tr key={setupId} data-comparison-row="pending">
+                  <tr key={targetKey} data-comparison-row="pending">
                     <th scope="row">{label}</th>
                     <td colSpan={1 + visibleColumns.length} aria-busy="true">計算している…</td>
                   </tr>
@@ -193,7 +193,7 @@ export function ComparisonVisualization({
 
               if (row.kind === 'failed') {
                 return (
-                  <tr key={setupId} data-comparison-row="failed">
+                  <tr key={targetKey} data-comparison-row="failed">
                     <th scope="row">{label}</th>
                     <td colSpan={1 + visibleColumns.length} role="alert">
                       削除された、またはこの条件では解決できない: {row.message || failureLabel(row.failureKind)}
@@ -203,7 +203,7 @@ export function ComparisonVisualization({
               }
 
               return (
-                <tr key={setupId} data-comparison-row="ok" data-baseline={setupId === baselineSetupId || undefined}>
+                <tr key={targetKey} data-comparison-row="ok" data-baseline={targetKey === baselineTargetKey || undefined}>
                   <th scope="row">{label}</th>
                   <td className="comparison-condition-cell">
                     {context
@@ -216,7 +216,7 @@ export function ComparisonVisualization({
                     const value = row.values[column];
                     const showRatio = showBaselineRatio
                       && effectiveBaseline !== undefined
-                      && effectiveBaseline.setupId !== setupId;
+                      && effectiveBaseline.targetKey !== targetKey;
                     return (
                       <td key={column} className="comparison-value-cell">
                         <span className="comparison-value">{formatValue(column, value)}</span>

@@ -39,6 +39,13 @@ import {
  * （docs/architecture.mdの依存規則）。
  */
 
+/**
+ * 「既定の形状」の既定値。3形状（`PHYSICAL_SHAPES`）のうち最初から選ばれている既定
+ * （`src/input/shapes/geometry.ts`の`row-staggered`）に合わせる。実体はimportせず、
+ * idの文字列だけを持つ（`initial.ts`が持っていた同名の定数の後継。#578指摘1）。
+ */
+export const DEFAULT_SHAPE_ID = 'row-staggered';
+
 const ANY_LEVEL = new Set<CascadeLevel['kind']>(['global', 'shape', 'inputMethod', 'layout', 'setup']);
 const GLOBAL_ONLY = new Set<CascadeLevel['kind']>(['global']);
 const GLOBAL_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'layout', 'setup']);
@@ -183,6 +190,23 @@ export const SETTINGS_ITEMS = {
     allowedLevels: GLOBAL_SHAPE_LAYOUT_SETUP,
     defaultValue: (context) => defaultFingerAssignmentId(context.shape),
   }),
+  /**
+   * 既定の形状（#578指摘1の決定「対象を配列かSetupにする」）。**配列を対象にした時の
+   * 物理形状**を決めるグローバル専用の項目。カスケードの他の項目と違い、この値自体は
+   * `CascadeContext`（既に形状が決まっている前提の型）を組み立てる**前**に読む必要がある
+   * （`target-resolution.ts`参照）ため、`resolveCascade`は経由しない。項目としては
+   * `resolveCascade`の他の項目と同じ形（`SettingItem`）で持ち、書き込みは既存の
+   * `setSettingsOverride`をそのまま使えるようにする（読み出しだけ専用の
+   * `resolveDefaultShapeId`を使う）。
+   *
+   * `allowedLevels`はglobalのみ（#578決定「scope: global only — 他のレベルは今は許可しない」。
+   * 「先回りして足さない」の判断と同じ）。
+   */
+  defaultShapeId: defineItem<string>({
+    id: 'defaultShapeId',
+    allowedLevels: GLOBAL_ONLY,
+    defaultValue: DEFAULT_SHAPE_ID,
+  }),
 } as const satisfies ItemRegistry;
 
 export type SettingsItemId = keyof typeof SETTINGS_ITEMS;
@@ -216,6 +240,19 @@ export function resetSettingsItem(
   itemId: SettingsItemId,
 ): SettingsCascadeOverrides {
   return resetItemGeneric(overrides, level, itemId);
+}
+
+/**
+ * 「既定の形状」を単独で読む。`resolveSettings`（`resolveCascade`）を経由しない理由は
+ * `SETTINGS_ITEMS.defaultShapeId`のコメント参照: 配列を対象にした時の物理形状そのものを
+ * 決める値なので、`CascadeContext`（形状が既に決まっている前提）を組み立てる前に必要になる。
+ * globalのみが許可レベルで`defaultValue`もcontext非依存の固定値なので、
+ * `overrides.global`を直接読むだけで解決できる（`resolveCascade`と同じ「弱い順に重ねる」を
+ * 省略しても結果は一致する）。
+ */
+export function resolveDefaultShapeId(overrides: SettingsCascadeOverrides): string {
+  const stored = overrides.global?.defaultShapeId;
+  return stored ?? DEFAULT_SHAPE_ID;
 }
 
 export function resetSettingsLevel(

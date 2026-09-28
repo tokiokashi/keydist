@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
 
 /**
- * N感度単体ページ（#544 Phase 3「N感度」）のE2E。`e2e/standalone-comparison.spec.ts`と同じ形。
+ * N感度単体ページ（#544 Phase 3「N感度」、#578指摘1「対象を配列かSetupにする」）のE2E。
+ * `e2e/standalone-comparison.spec.ts`と同じ形。
  *
- * 対象はSetupの**集合**（比較表と同じ）で、集合の保存先も同じ汎用資産
+ * 対象は配列かSetupの**集合**（比較表と同じ）で、集合の保存先も同じ汎用資産
  * （`keydist:analyzer-set-selections`。`engine/analyzer-set-selection.ts`参照。
- * Analyzer idごとに`{setupIds, baselineSetupId}`を`selections`の下にネストして持つ）。
+ * Analyzer idごとに`{targets, baseline}`を`selections`の下にネストして持つ）。
  */
 
 const ANALYZER_SET_SELECTIONS_KEY = 'keydist:analyzer-set-selections';
@@ -27,16 +28,43 @@ function seedTwoSetups() {
   };
 }
 
+/**
+ * 対象を追加する。ハイドレーション完了直後は`<select>`のonChangeがまだReactに
+ * 配線されていないごく短い窓があり、その間に選んでも見た目のDOM値だけ変わって
+ * 実際の追加が起きないことがある（#578指摘1のE2E実装時に発見）。表示順リストの件数が
+ * 増えるまでリトライすることで、この窓を安全にやり過ごす。
+ */
+async function addTarget(page: import('@playwright/test').Page, optionValue: string) {
+  const before = await page.locator('.set-selection-order li').count();
+  await expect(async () => {
+    await page.getByLabel('追加する対象').selectOption(optionValue);
+    await expect(page.locator('.set-selection-order li')).toHaveCount(before + 1, { timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
+}
+
+test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを作らずに2本の折れ線が出る', async ({ page }) => {
+  await page.goto('/standalone/n-sensitivity');
+  await expect(page.getByRole('heading', { name: 'N感度', exact: true })).toBeVisible();
+
+  await addTarget(page, 'layout:qwerty');
+  await addTarget(page, 'layout:colemak-dh');
+
+  const chart = page.locator('.n-sensitivity-svg');
+  await expect(chart).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
+
+  const stored = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
+  expect(stored).toBeNull();
+});
+
 test('Setupを2件選ぶと2本の折れ線が表示される', async ({ page }) => {
   await page.addInitScript(seedTwoSetups());
   await page.goto('/standalone/n-sensitivity');
 
   await expect(page.getByRole('heading', { name: 'N感度', exact: true })).toBeVisible();
 
-  const checkboxA = page.locator('.set-selection-checkbox', { hasText: 'qwerty / row-staggered' }).getByRole('checkbox');
-  const checkboxB = page.locator('.set-selection-checkbox', { hasText: 'colemak-dh / row-staggered' }).getByRole('checkbox');
-  await checkboxA.check();
-  await checkboxB.check();
+  await addTarget(page, 'setup:fixed-a');
+  await addTarget(page, 'setup:fixed-b');
 
   const chart = page.locator('.n-sensitivity-svg');
   await expect(chart).toBeVisible({ timeout: 10_000 });
@@ -56,8 +84,7 @@ test('縦軸（相対/実測値）の切り替えはリロードしても残る'
   await page.addInitScript(seedTwoSetups());
   await page.goto('/standalone/n-sensitivity');
 
-  const checkboxA = page.locator('.set-selection-checkbox', { hasText: 'qwerty / row-staggered' }).getByRole('checkbox');
-  await checkboxA.check();
+  await addTarget(page, 'setup:fixed-a');
   await expect(page.locator('.n-sensitivity-svg')).toBeVisible({ timeout: 10_000 });
 
   const relative = page.getByRole('radio', { name: '相対（N=0を100%）' });
@@ -83,38 +110,36 @@ test('選択・並び順はリロードしても残り、資産の読み込み�
   await page.addInitScript(seedTwoSetups());
   await page.goto('/standalone/n-sensitivity');
 
-  const checkboxA = page.locator('.set-selection-checkbox', { hasText: 'qwerty / row-staggered' }).getByRole('checkbox');
-  const checkboxB = page.locator('.set-selection-checkbox', { hasText: 'colemak-dh / row-staggered' }).getByRole('checkbox');
-  await checkboxA.check();
-  await checkboxB.check();
+  await addTarget(page, 'setup:fixed-a');
+  await addTarget(page, 'setup:fixed-b');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
 
   const order = page.locator('.set-selection-order li');
   await expect(order).toHaveCount(2);
-  await expect(order.first()).toContainText('qwerty');
+  await expect(order.first()).toContainText('QWERTY');
   await order.nth(1).getByRole('button', { name: /上へ/ }).click();
-  await expect(order.first()).toContainText('colemak-dh');
+  await expect(order.first()).toContainText('Colemak');
 
   await expect
     .poll(async () => page.evaluate((key) => localStorage.getItem(key), ANALYZER_SET_SELECTIONS_KEY))
     .toContain('fixed-a');
 
-  // `useEnsureSetup`の「assetsReady前は本当に空か判定しない」規則（`use-ensure-setup.ts`）の
-  // 回帰確認: リロード直後に空の初期値へ巻き戻って2件→1件に減ったり、選択が消えたりしない。
+  // 資産の読み込み前に空の初期値へ巻き戻る競合が無いことの回帰確認: リロード直後に
+  // 2件→1件に減ったり、選択が消えたりしない。
   await page.reload();
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
   const orderAfterReload = page.locator('.set-selection-order li');
   await expect(orderAfterReload).toHaveCount(2);
-  await expect(orderAfterReload.first()).toContainText('colemak-dh');
+  await expect(orderAfterReload.first()).toContainText('Colemak');
 
   const storedAfterReload = await page.evaluate(
     (key) => localStorage.getItem(key),
     ANALYZER_SET_SELECTIONS_KEY,
   );
   const parsed = JSON.parse(storedAfterReload ?? '{}') as {
-    selections: Record<string, { setupIds: string[]; baselineSetupId?: string }>;
+    selections: Record<string, { targets: { kind: string; setupId?: string }[]; baseline?: { kind: string; setupId?: string } }>;
   };
-  expect(parsed.selections['n-sensitivity']?.setupIds).toEqual(['fixed-b', 'fixed-a']);
+  expect(parsed.selections['n-sensitivity']?.targets.map((t) => t.setupId)).toEqual(['fixed-b', 'fixed-a']);
 
   // setup-libraryはユーザーが足していない限り2件のまま（誤って1件へ巻き戻っていない）。
   const setupLibraryRaw = await page.evaluate(() => localStorage.getItem('keydist:setup-library'));
@@ -134,7 +159,14 @@ test('集合に存在しないSetup idが混ざっていても消えず「削除
     );
     localStorage.setItem(
       'keydist:analyzer-set-selections',
-      JSON.stringify({ version: 1, selections: { 'n-sensitivity': { setupIds: ['fixed-a', 'deleted-setup'] } } }),
+      JSON.stringify({
+        version: 2,
+        selections: {
+          'n-sensitivity': {
+            targets: [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'deleted-setup' }],
+          },
+        },
+      }),
     );
   });
   await page.goto('/standalone/n-sensitivity');
@@ -162,7 +194,7 @@ test('既定と違う条件（windowSize以外）が併記される。windowSize
     );
     localStorage.setItem(
       'keydist:analyzer-set-selections',
-      JSON.stringify({ version: 1, selections: { 'n-sensitivity': { setupIds: ['fixed-a'] } } }),
+      JSON.stringify({ version: 2, selections: { 'n-sensitivity': { targets: [{ kind: 'setup', setupId: 'fixed-a' }] } } }),
     );
   });
   await page.goto('/standalone/n-sensitivity');

@@ -37,10 +37,15 @@ import {
   analyzerSetSelectionFor,
   withAnalyzerSetSelection,
   withSetSelectionBaseline,
-  withSetSelectionSetupIds,
+  withSetSelectionTargets,
   type AnalyzerSetSelectionState,
   type SetSelectionState,
 } from './analyzer-set-selection.ts';
+import {
+  withAnalyzerTargetSelection,
+  type AnalyzerTargetSelectionState,
+} from './analyzer-target-selection.ts';
+import type { AnalysisTarget } from '#input/setup/index.ts';
 import {
   resetSettingsItem,
   resetSettingsLevel,
@@ -113,11 +118,19 @@ export interface KeydistAssets {
   readonly standaloneAnalyzerOptions: StandaloneAnalyzerOptionsState;
   /**
    * 集合対象Analyzer全般（比較表・N感度等）が使う、汎用の「対象の集合」
-   * （Analyzer id → 選んだSetup id列 + 基準。#544 Phase 3）。`standaloneText`・
+   * （Analyzer id → 選んだ対象の列 + 基準。#544 Phase 3、#578指摘1）。`standaloneText`・
    * `standaloneAnalyzerOptions`と同じ理由（他資産と対にならない、独立に読み書きできる値）で
    * 5つ目の資産キーとして足す。
    */
   readonly analyzerSetSelections: AnalyzerSetSelectionState;
+  /**
+   * 単一対象Analyzer全般（Bigram Flow等）が汎用で持つ「今選んでいる対象」
+   * （#578指摘1）。`analyzerSetSelections`の単一対象版で、同じ理由（他資産と対にならない、
+   * 独立に読み書きできる値）で6つ目の資産キーとして足す。旧`use-ensure-setup.ts`の
+   * ローカルstate + 「手持ちが空なら作る」副作用をこの資産へ置き換えた
+   * （初期Setupの自動生成をやめる決定と対になる変更）。
+   */
+  readonly analyzerTargetSelections: AnalyzerTargetSelectionState;
 }
 
 type SetupLibraryComputation =
@@ -539,33 +552,52 @@ function analyzerSetSelectionCommand(
 }
 
 /**
- * 集合対象Analyzerの対象の集合（選んだSetup・並び順）を丸ごと差し替える（#544 Phase 3）。
- * 追加・削除・並び替えのどれもこの1本のコマンドを通す（`setupIds`の並びがそのまま
- * 表示順になる。`analyzer-set-selection.ts`の`withSetSelectionSetupIds`コメント参照。
- * 選択から基準が外れたら、同じコマンドの中で基準も一緒に外す）。
+ * 集合対象Analyzerの対象の集合（選んだ対象・並び順）を丸ごと差し替える（#544 Phase 3、
+ * #578指摘1「選択は対象（`AnalysisTarget`）で持つ」）。追加・削除・並び替えのどれも
+ * この1本のコマンドを通す（`targets`の並びがそのまま表示順になる。
+ * `analyzer-set-selection.ts`の`withSetSelectionTargets`コメント参照。選択から基準が
+ * 外れたら、同じコマンドの中で基準も一緒に外す）。
  */
-export function setAnalyzerSetSelectionSetupIdsCommand(
+export function setAnalyzerSetSelectionTargetsCommand(
   analyzerId: string,
-  setupIds: readonly string[],
+  targets: readonly AnalysisTarget[],
 ): Command<KeydistAssets> {
   return analyzerSetSelectionCommand(
     '対象の集合を変更する',
     analyzerId,
-    (current) => withSetSelectionSetupIds(current, setupIds),
+    (current) => withSetSelectionTargets(current, targets),
   );
 }
 
 /**
- * 集合対象Analyzerの基準（baseline）Setupを差し替える。`undefined`で「基準なし」にする
+ * 集合対象Analyzerの基準（baseline）対象を差し替える。`undefined`で「基準なし」にする
  * （比較表が使う。N感度など基準の概念を持たないAnalyzerは呼ばない）。
  */
 export function setAnalyzerSetSelectionBaselineCommand(
   analyzerId: string,
-  baselineSetupId: string | undefined,
+  baseline: AnalysisTarget | undefined,
 ): Command<KeydistAssets> {
   return analyzerSetSelectionCommand(
     '基準を変更する',
     analyzerId,
-    (current) => withSetSelectionBaseline(current, baselineSetupId),
+    (current) => withSetSelectionBaseline(current, baseline),
   );
+}
+
+/**
+ * 単一対象Analyzerの「今選んでいる対象」を差し替える（#578指摘1）。
+ */
+export function setAnalyzerTargetSelectionCommand(
+  analyzerId: string,
+  target: AnalysisTarget,
+): Command<KeydistAssets> {
+  return (current) => {
+    const next = withAnalyzerTargetSelection(current.analyzerTargetSelections, analyzerId, target);
+    if (next === current.analyzerTargetSelections) return { kind: 'no-op' };
+    return {
+      kind: 'applied',
+      label: `対象を選ぶ: ${analyzerId}`,
+      changes: { analyzerTargetSelections: next },
+    };
+  };
 }

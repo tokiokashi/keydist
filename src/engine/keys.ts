@@ -1,6 +1,7 @@
 import { stableStringify } from './cache-key.ts';
 import { MODEL_VERSION } from './model-version.ts';
 import type { TraceRequestInput } from '#analyzers/contract.ts';
+import type { AnalysisTarget } from '#input/setup/index.ts';
 import type { ResolvedInput } from './resolved-input.ts';
 
 /**
@@ -89,16 +90,16 @@ export function analyzerExtractionKeyOf(
  * キーに畳み込む（ソートしない）。結果として、同じSetup集合でも並び替えるとキャッシュは
  * 当たらず再計算になるが、対象は多くても数十件のSetup比較なので計算コストは小さい。
  *
- * 各メンバーは `{ setupId, memberKey }` の組で表す。`memberKey`は解決できたメンバーなら
+ * 各メンバーは `{ target, memberKey }` の組で表す。`memberKey`は解決できたメンバーなら
  * そのメンバーの解釈キー、解決に失敗したメンバーなら失敗の種類（`kind`）を含む印
  * （`AnalyzerSetMemberFailure`の`kind`。`message`はUI文言でしかなく再計算の要否には
- * 関わらないため含めない）にする。`setupId`を含めるのは、同じ中身のSetupが集合の
- * 複数枠に並ぶ場合（同一Setupを重ねて基準比較する等）でも枠ごとに区別するため
+ * 関わらないため含めない）にする。`target`（`AnalysisTarget`）を含めるのは、同じ中身の
+ * 対象が集合の複数枠に並ぶ場合（同一Setupを重ねて基準比較する等）でも枠ごとに区別するため
  * （`traceKeyOf`がSetupのidをキーから意図的に除くのとは逆に、ここでは「集合の中の
  * どの枠か」を区別する必要がある）。
  */
 export function setAnalyzerExtractionKeyOf(
-  members: readonly { readonly setupId: string; readonly memberKey: unknown }[],
+  members: readonly { readonly target: AnalysisTarget; readonly memberKey: unknown }[],
   definitionId: string,
   extractionRelevantOptions: unknown,
 ): string {

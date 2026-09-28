@@ -1,4 +1,5 @@
 import type { Setup } from './types.ts';
+import type { AnalysisTarget } from './target.ts';
 
 /**
  * Setupの色（#544 §4「色は自動で付ける」）。
@@ -72,4 +73,32 @@ export function leastUsedColorIndex(
   };
 
   return pick(avoid) ?? pick(undefined)!;
+}
+
+/**
+ * 配列を対象にした時の色（#578指摘2の決定「色は集合によらず、対象ごとに固定する」）。
+ * Setupと違って保存された`colorIndex`を持たない（配列idそのものが対象の識別子で、
+ * 追加・複製という概念が無い）ので、配列idから決定的に求める。文字列ハッシュ
+ * （FNV-1aの簡易版。暗号強度は不要で、同じ入力から同じ出力が返る決定性だけが要る）を
+ * パレットのサイズで割った余りをindexにする。
+ */
+function hashToColorIndex(id: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < id.length; i++) {
+    hash ^= id.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return Math.abs(hash) % SETUP_COLOR_PALETTE_SIZE;
+}
+
+/**
+ * 対象（`AnalysisTarget`）の色。Setup対象は`setupColor`と同じ保存済み`colorIndex`を引き、
+ * 配列対象は配列idから決定的に求める。`setups`はkeyでSetupを引くための手持ち
+ * （見つからなければ既定のindex 0。呼び出し側は`resolveTargetForText`等で先に対象自体の
+ * 解決失敗を扱っている前提なので、ここでのfallbackは「表示だけ壊れた色にしない」ための保険）。
+ */
+export function targetColor(target: AnalysisTarget, setups: ReadonlyMap<string, Setup>): string {
+  if (target.kind === 'layout') return SETUP_COLOR_PALETTE[hashToColorIndex(target.layoutId)];
+  const setup = setups.get(target.setupId);
+  return setup === undefined ? SETUP_COLOR_PALETTE[0] : setupColor(setup);
 }

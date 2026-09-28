@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import type { AnalysisTarget } from '#input/setup/index.ts';
 import {
   analyzerSetSelectionFor,
   initialAnalyzerSetSelections,
   withAnalyzerSetSelection,
   withSetSelectionBaseline,
-  withSetSelectionSetupIds,
+  withSetSelectionTargets,
 } from './analyzer-set-selection.ts';
+
+const A: AnalysisTarget = { kind: 'setup', setupId: 'a' };
+const B: AnalysisTarget = { kind: 'setup', setupId: 'b' };
+const C: AnalysisTarget = { kind: 'layout', layoutId: 'c' };
+const NOT_SELECTED: AnalysisTarget = { kind: 'setup', setupId: 'not-selected' };
 
 test('initialAnalyzerSetSelections: 空から始まる', () => {
   assert.deepEqual(initialAnalyzerSetSelections(), {});
@@ -14,7 +20,7 @@ test('initialAnalyzerSetSelections: 空から始まる', () => {
 
 test('analyzerSetSelectionFor: 未選択のAnalyzer idは空の集合・基準なしを返す', () => {
   const selection = analyzerSetSelectionFor(initialAnalyzerSetSelections(), 'comparison');
-  assert.deepEqual(selection, { setupIds: [], baselineSetupId: undefined });
+  assert.deepEqual(selection, { targets: [], baseline: undefined });
 });
 
 test('analyzerSetSelectionFor: 未選択時は毎回同じ参照を返す（無限レンダーループ対策）', () => {
@@ -24,61 +30,61 @@ test('analyzerSetSelectionFor: 未選択時は毎回同じ参照を返す（無�
   assert.equal(a, b, '別のAnalyzer idでも、どちらも未選択なら同じ参照');
 });
 
-test('withSetSelectionSetupIds: 並び順が変われば別の値になる', () => {
-  const state = withSetSelectionSetupIds({ setupIds: [], baselineSetupId: undefined }, ['a', 'b']);
-  const reversed = withSetSelectionSetupIds(state, ['b', 'a']);
+test('withSetSelectionTargets: 並び順が変われば別の値になる', () => {
+  const state = withSetSelectionTargets({ targets: [], baseline: undefined }, [A, B]);
+  const reversed = withSetSelectionTargets(state, [B, A]);
   assert.notEqual(state, reversed);
-  assert.deepEqual(reversed.setupIds, ['b', 'a']);
+  assert.deepEqual(reversed.targets, [B, A]);
 });
 
-test('withSetSelectionSetupIds: 同じ並びを渡せば同じ参照を返す（no-op判定）', () => {
-  const state = withSetSelectionSetupIds({ setupIds: [], baselineSetupId: undefined }, ['a', 'b']);
-  const again = withSetSelectionSetupIds(state, ['a', 'b']);
+test('withSetSelectionTargets: 同じ並びを渡せば同じ参照を返す（no-op判定）', () => {
+  const state = withSetSelectionTargets({ targets: [], baseline: undefined }, [A, B]);
+  const again = withSetSelectionTargets(state, [A, B]);
   assert.equal(state, again);
 });
 
-test('withSetSelectionSetupIds: 重複したSetup idは先に出た方だけ残して1つに畳む', () => {
-  const state = withSetSelectionSetupIds({ setupIds: [], baselineSetupId: undefined }, ['a', 'b', 'a', 'c', 'b']);
-  assert.deepEqual(state.setupIds, ['a', 'b', 'c']);
+test('withSetSelectionTargets: 重複した対象は先に出た方だけ残して1つに畳む', () => {
+  const state = withSetSelectionTargets({ targets: [], baseline: undefined }, [A, B, A, C, B]);
+  assert.deepEqual(state.targets, [A, B, C]);
 });
 
-test('withSetSelectionSetupIds: 基準に選んでいたSetupが選択から外れたら、基準も一緒に外れる（不変条件）', () => {
+test('withSetSelectionTargets: 基準に選んでいた対象が選択から外れたら、基準も一緒に外れる（不変条件）', () => {
   const withBaseline = withSetSelectionBaseline(
-    withSetSelectionSetupIds({ setupIds: [], baselineSetupId: undefined }, ['a', 'b']),
-    'a',
+    withSetSelectionTargets({ targets: [], baseline: undefined }, [A, B]),
+    A,
   );
-  assert.equal(withBaseline.baselineSetupId, 'a');
+  assert.equal(withBaseline.baseline, A);
 
-  const removed = withSetSelectionSetupIds(withBaseline, ['b']);
-  assert.deepEqual(removed.setupIds, ['b']);
-  assert.equal(removed.baselineSetupId, undefined, '基準に選んでいたaが選択から外れたので基準も外れる');
+  const removed = withSetSelectionTargets(withBaseline, [B]);
+  assert.deepEqual(removed.targets, [B]);
+  assert.equal(removed.baseline, undefined, '基準に選んでいたAが選択から外れたので基準も外れる');
 });
 
-test('withSetSelectionSetupIds: 基準に選んでいたSetupが選択に残っていれば、基準は保たれる', () => {
+test('withSetSelectionTargets: 基準に選んでいた対象が選択に残っていれば、基準は保たれる', () => {
   const withBaseline = withSetSelectionBaseline(
-    withSetSelectionSetupIds({ setupIds: [], baselineSetupId: undefined }, ['a', 'b']),
-    'a',
+    withSetSelectionTargets({ targets: [], baseline: undefined }, [A, B]),
+    A,
   );
-  const reordered = withSetSelectionSetupIds(withBaseline, ['b', 'a']);
-  assert.equal(reordered.baselineSetupId, 'a');
+  const reordered = withSetSelectionTargets(withBaseline, [B, A]);
+  assert.equal(reordered.baseline, A);
 });
 
-test('withSetSelectionBaseline: 選択に含まれるSetupへは設定・解除できる', () => {
-  const state = withSetSelectionSetupIds({ setupIds: [], baselineSetupId: undefined }, ['a', 'b']);
-  const withBaseline = withSetSelectionBaseline(state, 'a');
-  assert.equal(withBaseline.baselineSetupId, 'a');
+test('withSetSelectionBaseline: 選択に含まれる対象へは設定・解除できる', () => {
+  const state = withSetSelectionTargets({ targets: [], baseline: undefined }, [A, B]);
+  const withBaseline = withSetSelectionBaseline(state, A);
+  assert.equal(withBaseline.baseline, A);
   const cleared = withSetSelectionBaseline(withBaseline, undefined);
-  assert.equal(cleared.baselineSetupId, undefined);
+  assert.equal(cleared.baseline, undefined);
 });
 
-test('withSetSelectionBaseline: 選択に含まれないSetupを基準にしようとするとno-op（不変条件）', () => {
-  const state = withSetSelectionSetupIds({ setupIds: [], baselineSetupId: undefined }, ['a', 'b']);
-  const attempt = withSetSelectionBaseline(state, 'not-selected');
-  assert.equal(attempt, state, '選択に無いSetupを基準にはできないので、同じ参照のまま（no-op）');
+test('withSetSelectionBaseline: 選択に含まれない対象を基準にしようとするとno-op（不変条件）', () => {
+  const state = withSetSelectionTargets({ targets: [], baseline: undefined }, [A, B]);
+  const attempt = withSetSelectionBaseline(state, NOT_SELECTED);
+  assert.equal(attempt, state, '選択に無い対象を基準にはできないので、同じ参照のまま（no-op）');
 });
 
 test('withSetSelectionBaseline: 同じ値なら同じ参照を返す（no-op判定）', () => {
-  const state = withSetSelectionSetupIds({ setupIds: [], baselineSetupId: undefined }, ['a']);
+  const state = withSetSelectionTargets({ targets: [], baseline: undefined }, [A]);
   const again = withSetSelectionBaseline(state, undefined);
   assert.equal(state, again, '既定のundefinedへ「変更」しても中身は変わらないので同じ参照');
 });
@@ -88,20 +94,20 @@ test('withAnalyzerSetSelection: Analyzer idごとに独立して書き込める'
   const withComparison = withAnalyzerSetSelection(
     empty,
     'comparison',
-    withSetSelectionSetupIds({ setupIds: [], baselineSetupId: undefined }, ['a', 'b']),
+    withSetSelectionTargets({ targets: [], baseline: undefined }, [A, B]),
   );
   const withBoth = withAnalyzerSetSelection(
     withComparison,
     'n-sensitivity',
-    withSetSelectionSetupIds({ setupIds: [], baselineSetupId: undefined }, ['c']),
+    withSetSelectionTargets({ targets: [], baseline: undefined }, [C]),
   );
-  assert.deepEqual(analyzerSetSelectionFor(withBoth, 'comparison').setupIds, ['a', 'b']);
-  assert.deepEqual(analyzerSetSelectionFor(withBoth, 'n-sensitivity').setupIds, ['c']);
+  assert.deepEqual(analyzerSetSelectionFor(withBoth, 'comparison').targets, [A, B]);
+  assert.deepEqual(analyzerSetSelectionFor(withBoth, 'n-sensitivity').targets, [C]);
 });
 
 test('withAnalyzerSetSelection: 中身が同じ選択を書き込んでもno-op（同じ参照を返す）', () => {
-  const selection = withSetSelectionSetupIds({ setupIds: [], baselineSetupId: undefined }, ['a']);
+  const selection = withSetSelectionTargets({ targets: [], baseline: undefined }, [A]);
   const withOne = withAnalyzerSetSelection(initialAnalyzerSetSelections(), 'comparison', selection);
-  const again = withAnalyzerSetSelection(withOne, 'comparison', { setupIds: ['a'], baselineSetupId: undefined });
+  const again = withAnalyzerSetSelection(withOne, 'comparison', { targets: [A], baseline: undefined });
   assert.equal(withOne, again);
 });

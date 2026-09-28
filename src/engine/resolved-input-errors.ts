@@ -29,7 +29,7 @@ export function describeResolvedInputError(error: ResolvedInputError): string {
       return `このテキスト（${error.language === 'ja' ? '日本語' : '英語'}）には「${error.layout.name}」を使えない`;
     case 'geometry':
       return `形状を組み立てられない: ${error.message}`;
-    case 'setup-missing':
-      return 'Setupが削除された';
+    case 'target-missing':
+      return error.target.kind === 'setup' ? 'Setupが削除された' : `配列「${error.target.layoutId}」が見つからない（削除された可能性）`;
   }
 }

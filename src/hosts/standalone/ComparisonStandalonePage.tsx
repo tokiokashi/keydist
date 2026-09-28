@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import {
   setAnalyzerSetSelectionBaselineCommand,
-  setAnalyzerSetSelectionSetupIdsCommand,
+  setAnalyzerSetSelectionTargetsCommand,
   type KeydistAssets,
 } from '#engine/commands.ts';
 import { analyzerSetSelectionFor } from '#engine/analyzer-set-selection.ts';
 import type { EngineCache } from '#engine/cache.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
-import type { Setup, SetupIdGenerator } from '#input/setup/index.ts';
+import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget, type SetupIdGenerator } from '#input/setup/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
@@ -19,30 +19,27 @@ import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { TextControl } from './TextControl.tsx';
+import { TargetPicker } from './TargetPicker.tsx';
+import { DefaultShapeControl } from './DefaultShapeControl.tsx';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
-import { useEnsureSetup } from './use-ensure-setup.ts';
 import './standalone.css';
 import './set-selection-controls.css';
 
 /**
  * 比較表の単体ページ（#544 Phase 3「集合を対象にする最初のAnalyzer（比較表）と、
- * その単体ページ」）。
+ * その単体ページ」、#578指摘1「対象を配列かSetupにする」）。
  *
- * 対象はSetupの**集合**（#544 §6「集合を見るAnalyzerはSetupの集合を対象にし、集合も
- * そのページ自身が持つ」）。集合（選んだSetup・並び順・基準）はこのページ自身の資産
- * （`assets.analyzerSetSelections`。Analyzer idで引く、集合対象Analyzer全般が使う汎用の
- * 資産）が持ち、
- * 書き込みはすべて`dispatch`を経由する（`BigramFlowStandalonePage.tsx`と同じ形。
- * #544 §8-2）。テキストは単体ページ全体で共有の「最後に使ったテキスト」を使う（#544 §5）。
+ * 対象は**配列かSetupの集合**（用語表「対象」）。集合（選んだ対象・並び順・基準）は
+ * このページ自身の資産（`assets.analyzerSetSelections`。Analyzer idで引く、集合対象
+ * Analyzer全般が使う汎用の資産）が持ち、書き込みはすべて`dispatch`を経由する
+ * （`BigramFlowStandalonePage.tsx`と同じ形。#544 §8-2）。テキストは単体ページ全体で
+ * 共有の「最後に使ったテキスト」を使う（#544 §5）。
  *
- * `useEnsureSetup`は「手持ちのSetupが1件も無ければ簡単な初期値を1つ作る」効果だけを
- * 使う（`BigramFlowStandalonePage`と同じ`ready`待ちの規則。#544レビュー対応の使い回し）。
- * このページ自体は「選んでいる1つのSetup」を持たないので、返り値の`selectedSetupId`
- * 自体は使わない。
+ * 配列は常に選べる（組み込みカタログに最初から入っている）ため、旧`use-ensure-setup.ts`の
+ * ような「手持ちが空なら初期Setupを作る」副作用は無くなった。
  */
 export interface ComparisonStandalonePageProps {
   readonly assets: KeydistAssets;
-  /** `assetsReady`前に集合（`analyzerSetSelections`）を書き換えない（`use-ensure-setup.ts`と同じ規則）。 */
   readonly assetsReady: boolean;
   readonly dispatch: (command: Command<KeydistAssets>) => void;
   readonly cache: EngineCache;
@@ -56,8 +53,12 @@ export interface ComparisonStandalonePageProps {
 
 const ANALYZER_ID = comparisonAnalyzer.definition.id;
 
-function buildRowContext(setup: Setup, resolution: ResolvedInputResult): ComparisonRowContext {
-  const label = setup.label ?? `${setup.layoutId} / ${setup.shapeId}`;
+function buildRowContext(
+  target: AnalysisTarget,
+  resolution: ResolvedInputResult,
+  named: NamedTarget,
+): ComparisonRowContext {
+  const targetKey = analysisTargetKey(target);
   if (resolution.ok) {
     const header = conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry);
     // 既定値と違う条件だけを併記する（#544 Phase 3レビュー「集合対象ページは各行に
@@ -66,42 +67,39 @@ function buildRowContext(setup: Setup, resolution: ResolvedInputResult): Compari
       nonDefaultConditionRows(traceConditionSummary(resolution.input.cascade)),
     );
     return {
-      setupId: setup.id,
-      label,
+      targetKey,
+      label: named.displayName,
       layoutName: header.layoutName,
       geometryName: header.shapeName,
       fingerAssignmentName: header.fingerAssignmentName,
       ...(cascadeOriginSummary === undefined ? {} : { cascadeOriginSummary }),
     };
   }
-  // 解決に失敗した行でも、Setup自体は手持ちに残っている（配列・形状の参照が壊れている・
-  // このテキストに使えない等）ので、idベースの表示だけは出す（#544指示書「Setup削除時の
-  // 表示」は「Setupの実体そのものが消えた」場合の話で、こちらはSetupは残っている）。
+  // 解決に失敗した行でも対象自体は集合に残っている（Setupの参照が壊れている・
+  // このテキストに使えない等）ので、idベースの表示だけは出す。
+  const fallbackLabel = target.kind === 'layout' ? target.layoutId : target.setupId;
   return {
-    setupId: setup.id,
-    label,
-    layoutName: setup.layoutId,
-    geometryName: setup.shapeId,
+    targetKey,
+    label: named.displayName || fallbackLabel,
+    layoutName: fallbackLabel,
+    geometryName: '—',
     fingerAssignmentName: '—',
   };
 }
 
 export function ComparisonStandalonePage({
   assets,
-  assetsReady,
+  assetsReady: _assetsReady,
   dispatch,
   cache,
   catalog,
-  generateSetupId,
+  generateSetupId: _generateSetupId,
   generateTextId,
   onTextContentCommit,
   onComparisonOptionsCommit,
 }: ComparisonStandalonePageProps) {
   const setups = assets.setupLibrary.setups;
-  // 手持ちが空なら初期値を1つ作る（選べる対象が無いと比較表が始められないため。
-  // `BigramFlowStandalonePage`と同じ配線）。このページ自体は単一の「選択中Setup」を
-  // 持たないので、戻り値の`selectedSetupId`/`setSelectedSetupId`は使わない。
-  useEnsureSetup(setups, assetsReady, dispatch, generateSetupId);
+  const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
 
   const resolvedText = useMemo(
     () => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary),
@@ -109,21 +107,17 @@ export function ComparisonStandalonePage({
   );
 
   const selection = analyzerSetSelectionFor(assets.analyzerSetSelections, ANALYZER_ID);
-  const setupById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
 
-  const setSelection = (setupIds: readonly string[]) => dispatch(setAnalyzerSetSelectionSetupIdsCommand(ANALYZER_ID, setupIds));
+  const setSelection = (targets: readonly AnalysisTarget[]) => dispatch(setAnalyzerSetSelectionTargetsCommand(ANALYZER_ID, targets));
 
-  const toggleMember = (setupId: string) => {
-    const next = selection.setupIds.includes(setupId)
-      ? selection.setupIds.filter((id) => id !== setupId)
-      : [...selection.setupIds, setupId];
-    setSelection(next);
-  };
+  const addMember = (target: AnalysisTarget) => setSelection([...selection.targets, target]);
+
+  const removeMember = (index: number) => setSelection(selection.targets.filter((_, i) => i !== index));
 
   const moveMember = (index: number, direction: -1 | 1) => {
     const target = index + direction;
-    if (target < 0 || target >= selection.setupIds.length) return;
-    const next = [...selection.setupIds];
+    if (target < 0 || target >= selection.targets.length) return;
+    const next = [...selection.targets];
     const [item] = next.splice(index, 1);
     next.splice(target, 0, item!);
     setSelection(next);
@@ -143,37 +137,61 @@ export function ComparisonStandalonePage({
     setOptionsDraft(decoded.options);
   }, [decoded]);
 
-  // 各メンバーの解決済み入力（または解決失敗）。`selection.setupIds`の並びのまま作る
+  // 各メンバーの解決済み入力（または解決失敗）。`selection.targets`の並びのまま作る
   // （engineの抽出キーが順序込みで畳み込む対象。#544 §7）。
   const members: readonly EngineSetMemberInput[] = useMemo(
-    () => selection.setupIds.map((setupId): EngineSetMemberInput => {
-      const setup = setupById.get(setupId);
-      if (setup === undefined) {
-        // Setupの実体そのものが手持ちから消えている（#544指示書「Setup削除時の表示」）。
-        return { setupId, resolution: { ok: false, error: { kind: 'setup-missing', setupId } } };
-      }
-      return {
-        setupId,
-        resolution: resolveStandalonePaneInput(setup, catalog, assets.setupLibrary.overrides, resolvedText),
-      };
-    }),
-    [selection.setupIds, setupById, catalog, assets.setupLibrary.overrides, resolvedText],
+    () => selection.targets.map((target): EngineSetMemberInput => ({
+      target,
+      resolution: resolveStandalonePaneInput(target, setupsById, catalog, assets.setupLibrary.overrides, resolvedText),
+    })),
+    [selection.targets, setupsById, catalog, assets.setupLibrary.overrides, resolvedText],
   );
+
+  // 表示名は常に集合全体に対して計算する（#578指摘2「表示名は常に同じ画面に並ぶ集合に
+  // 対して計算する」）。
+  const namedTargets = useMemo(() => nameTargets(selection.targets.map((target) => {
+    const setup = target.kind === 'setup' ? setupsById.get(target.setupId) : undefined;
+    const member = members.find((m) => m.target === target);
+    if (member?.resolution.ok) {
+      const header = conditionHeaderInfoFromResolvedInput(member.resolution.input.layout, member.resolution.input.geometry);
+      const overrideSummary = summarizeNonDefaultConditions(nonDefaultConditionRows(traceConditionSummary(member.resolution.input.cascade)));
+      return {
+        key: analysisTargetKey(target),
+        ...(setup?.label !== undefined ? { label: setup.label } : {}),
+        layoutName: header.layoutName,
+        shapeName: header.shapeName,
+        ...(overrideSummary === undefined ? {} : { overrideSummary }),
+      };
+    }
+    const fallback = target.kind === 'layout' ? target.layoutId : (setup?.layoutId ?? target.setupId);
+    return {
+      key: analysisTargetKey(target),
+      ...(setup?.label !== undefined ? { label: setup.label } : {}),
+      layoutName: fallback,
+      shapeName: '—',
+    };
+  })), [selection.targets, setupsById, members]);
+  const namedByKey = useMemo(() => new Map(namedTargets.map((n) => [n.key, n] as const)), [namedTargets]);
 
   const rowContext = useMemo(() => {
     const map = new Map<string, ComparisonRowContext>();
     for (const member of members) {
-      const setup = setupById.get(member.setupId);
-      if (setup === undefined) continue;
-      map.set(member.setupId, buildRowContext(setup, member.resolution));
+      const key = analysisTargetKey(member.target);
+      const named = namedByKey.get(key);
+      if (named === undefined) continue;
+      map.set(key, buildRowContext(member.target, member.resolution, named));
     }
     return map;
-  }, [members, setupById]);
+  }, [members, namedByKey, setupsById]);
+
+  const order = useMemo(() => selection.targets.map(analysisTargetKey), [selection.targets]);
 
   const pane = useAnalyzerSetPane(cache, comparisonAnalyzer.definition, optionsDraft, members);
   const View = comparisonAnalyzer.View;
   const extraction = pane.extraction;
   const extracted = extraction.status === 'ready' || extraction.status === 'stale' ? extraction.value.extracted : undefined;
+
+  const baselineTargetKey = selection.baseline === undefined ? undefined : analysisTargetKey(selection.baseline);
 
   return (
     <div className="standalone-page">
@@ -191,41 +209,44 @@ export function ComparisonStandalonePage({
         onTextContentCommit={onTextContentCommit}
       />
 
-      <section className="set-selection-controls" aria-label="対象Setupの選択">
-        <fieldset>
-          <legend>比較するSetup</legend>
-          {setups.length === 0 ? <p aria-busy="true">Setupを準備している…</p> : null}
-          {setups.map((setup) => (
-            <label key={setup.id} className="set-selection-checkbox">
-              <input
-                type="checkbox"
-                checked={selection.setupIds.includes(setup.id)}
-                onChange={() => toggleMember(setup.id)}
-              />
-              {setup.label ?? `${setup.layoutId} / ${setup.shapeId}`}
-            </label>
-          ))}
-        </fieldset>
+      <DefaultShapeControl overrides={assets.setupLibrary.overrides} dispatch={dispatch} />
 
-        {selection.setupIds.length > 0 ? (
+      <section className="set-selection-controls" aria-label="対象の選択">
+        <div className="standalone-control">
+          <span>対象を追加</span>
+          <TargetPicker
+            aria-label="追加する対象"
+            layouts={catalog.setupCatalog.layouts}
+            setups={setups}
+            value={undefined}
+            placeholder
+            onChange={addMember}
+          />
+        </div>
+
+        {selection.targets.length > 0 ? (
           <ol className="set-selection-order" aria-label="表示順">
-            {selection.setupIds.map((setupId, index) => (
-              <li key={setupId}>
-                <span>{rowContext.get(setupId)?.label ?? setupId}</span>
-                <button type="button" onClick={() => moveMember(index, -1)} disabled={index === 0} aria-label={`${index + 1}番目を上へ`}>↑</button>
-                <button
-                  type="button"
-                  onClick={() => moveMember(index, 1)}
-                  disabled={index === selection.setupIds.length - 1}
-                  aria-label={`${index + 1}番目を下へ`}
-                >
-                  ↓
-                </button>
-              </li>
-            ))}
+            {selection.targets.map((target, index) => {
+              const key = analysisTargetKey(target);
+              return (
+                <li key={key}>
+                  <span>{namedByKey.get(key)?.displayName ?? key}</span>
+                  <button type="button" onClick={() => moveMember(index, -1)} disabled={index === 0} aria-label={`${index + 1}番目を上へ`}>↑</button>
+                  <button
+                    type="button"
+                    onClick={() => moveMember(index, 1)}
+                    disabled={index === selection.targets.length - 1}
+                    aria-label={`${index + 1}番目を下へ`}
+                  >
+                    ↓
+                  </button>
+                  <button type="button" onClick={() => removeMember(index)} aria-label={`${index + 1}番目を外す`}>✕</button>
+                </li>
+              );
+            })}
           </ol>
         ) : (
-          <p>Setupをチェックすると比較表に加わる。</p>
+          <p>対象を追加すると比較表に加わる。</p>
         )}
       </section>
 
@@ -236,10 +257,13 @@ export function ComparisonStandalonePage({
       ) : (
         <View
           extracted={extracted}
-          order={selection.setupIds}
+          order={order}
           rowContext={rowContext}
-          baselineSetupId={selection.baselineSetupId}
-          onBaselineSetupIdChange={(next) => dispatch(setAnalyzerSetSelectionBaselineCommand(ANALYZER_ID, next))}
+          baselineTargetKey={baselineTargetKey}
+          onBaselineTargetKeyChange={(nextKey) => {
+            const next = nextKey === undefined ? undefined : selection.targets.find((t) => analysisTargetKey(t) === nextKey);
+            dispatch(setAnalyzerSetSelectionBaselineCommand(ANALYZER_ID, next));
+          }}
           options={optionsDraft}
           onOptionsChange={(next) => {
             setOptionsDraft(next);

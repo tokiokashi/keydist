@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
-import type { Setup } from '#input/setup/index.ts';
+import type { AnalysisTarget, Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import { createEngineCache } from '#engine/cache.ts';
@@ -27,7 +27,8 @@ const CATALOG = {
 test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接呼んだ値と一致する', () => {
   const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
   const resolution = resolveEngineInput({
-    setup,
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides: EMPTY_SETTINGS_OVERRIDES,
@@ -79,7 +80,8 @@ test('computeComparisonRowValues: interpretation/metrics.tsを同条件で直接
 test('computeComparisonExtraction: 解決できたメンバーはok行、失敗はfailed行になる（行を消さない）', () => {
   const setup: Setup = { id: 'setup-a', layoutId: 'qwerty', shapeId: 'row-staggered', colorIndex: 0 };
   const resolution = resolveEngineInput({
-    setup,
+    target: { kind: 'setup', setupId: setup.id },
+    setups: new Map([[setup.id, setup]]),
     catalog: CATALOG,
     userLayouts: new Map(),
     overrides: EMPTY_SETTINGS_OVERRIDES,
@@ -93,20 +95,22 @@ test('computeComparisonExtraction: 解決できたメンバーはok行、失敗�
   const traceResult = cache.getTrace(resolution.input);
   const interpretationResult = cache.getInterpretation(resolution.input);
 
+  const targetA: AnalysisTarget = { kind: 'setup', setupId: 'setup-a' };
+  const targetDeleted: AnalysisTarget = { kind: 'setup', setupId: 'setup-deleted' };
   const extracted = computeComparisonExtraction(
     [{
-      setupId: 'setup-a',
+      target: targetA,
       trace: traceResult.trace,
       analysis: interpretationResult.analysis,
       metrics: interpretationResult.metrics,
       requestTrace: { requestTrace: () => { throw new Error('unused'); } },
     }],
-    [{ setupId: 'setup-deleted', kind: 'reference', message: '配列「x」が見つからない（削除された可能性）' }],
+    [{ target: targetDeleted, kind: 'reference', message: '配列「x」が見つからない（削除された可能性）' }],
   );
 
   assert.equal(extracted.rows.length, 2);
-  const okRow = extracted.rows.find((row) => row.setupId === 'setup-a');
-  const failedRow = extracted.rows.find((row) => row.setupId === 'setup-deleted');
+  const okRow = extracted.rows.find((row) => row.targetKey === 'setup:setup-a');
+  const failedRow = extracted.rows.find((row) => row.targetKey === 'setup:setup-deleted');
   assert.equal(okRow?.kind, 'ok');
   assert.equal(failedRow?.kind, 'failed');
   if (failedRow?.kind === 'failed') {

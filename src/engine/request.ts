@@ -1,3 +1,4 @@
+import type { AnalysisTarget } from '#input/setup/index.ts';
 import type { ResolvedInput, ResolvedInputError, ResolvedInputResult } from './resolved-input.ts';
 import { microtaskScheduler, type EngineScheduler } from './scheduler.ts';
 
@@ -157,7 +158,7 @@ export function createEngineRequest<T>(
  * `createEngineRequest`と同じ形をそのまま使う。
  */
 export interface EngineSetMemberInput {
-  readonly setupId: string;
+  readonly target: AnalysisTarget;
   readonly resolution: ResolvedInputResult;
 }
 

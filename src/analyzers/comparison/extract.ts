@@ -6,6 +6,7 @@ import {
   type SetAnalyzerExtractContext,
 } from '#analyzers/contract.ts';
 import { DEFAULT_METRIC_CONDITIONS, type Metrics } from '#interpretation/metrics.ts';
+import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import type { Finger, Key } from '#input/shapes/geometry.ts';
 import type { Press, Stroke, StrokeParticipation, Trace } from '#trace/generate.ts';
 import {
@@ -34,7 +35,7 @@ export type ComparisonRowValues = Readonly<Record<ComparisonColumnId, number>>;
 /** 解決できたメンバー1件の行。 */
 export interface ComparisonOkRow {
   readonly kind: 'ok';
-  readonly setupId: string;
+  readonly targetKey: string;
   readonly values: ComparisonRowValues;
 }
 
@@ -46,7 +47,7 @@ export interface ComparisonOkRow {
  */
 export interface ComparisonFailedRow {
   readonly kind: 'failed';
-  readonly setupId: string;
+  readonly targetKey: string;
   readonly failureKind: AnalyzerSetMemberFailure['kind'];
   readonly message: string;
 }
@@ -58,7 +59,7 @@ export interface ComparisonExtracted {
    * 集合の各枠（Setup）ぶんの行。**この配列自体の順序に表示上の意味は無い**
    * （engineの抽出キーが順序込みで畳み込む対象は「集合そのものの並び順」であって、
    * `rows`の列挙順ではない）。ホスト側（`hosts/standalone`のComparison単体ページ）は
-   * `setupId`をキーに、自分が持つ集合の並び順へ引き直してから描画する
+   * `targetKey`をキーに、自分が持つ集合の並び順へ引き直してから描画する
    * （集合の並び順＝ページ自身の資産。`extract.ts`はSetupのラベル・並び順を
    * 一切知らない、抽出の純粋さのため）。
    */
@@ -88,11 +89,11 @@ export function computeComparisonRowValues(metrics: Metrics): ComparisonRowValue
 }
 
 function memberToRow(member: AnalyzerSetMember): ComparisonOkRow {
-  return { kind: 'ok', setupId: member.setupId, values: computeComparisonRowValues(member.metrics) };
+  return { kind: 'ok', targetKey: analysisTargetKey(member.target), values: computeComparisonRowValues(member.metrics) };
 }
 
 function failureToRow(failure: AnalyzerSetMemberFailure): ComparisonFailedRow {
-  return { kind: 'failed', setupId: failure.setupId, failureKind: failure.kind, message: failure.message };
+  return { kind: 'failed', targetKey: analysisTargetKey(failure.target), failureKind: failure.kind, message: failure.message };
 }
 
 export function computeComparisonExtraction(
@@ -189,16 +190,20 @@ function fixtureMetrics(totalUnits: number): Metrics {
 // 比較表はTraceRequesterを使わないので、フィクスチャでは「呼ばれたら気づく」スタブにする。
 const UNUSED_REQUEST_TRACE = { requestTrace: () => { throw new Error('unused'); } };
 
+const FIXTURE_TARGET_A: AnalysisTarget = { kind: 'setup', setupId: 'fixture-a' };
+const FIXTURE_TARGET_B: AnalysisTarget = { kind: 'setup', setupId: 'fixture-b' };
+const FIXTURE_TARGET_MISSING: AnalysisTarget = { kind: 'setup', setupId: 'fixture-missing' };
+
 const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
   {
-    setupId: 'fixture-a',
+    target: FIXTURE_TARGET_A,
     trace: FIXTURE_TRACE,
     analysis: { chains: [], arpeggios: [] } as unknown as AnalyzerSetMember['analysis'],
     metrics: fixtureMetrics(10),
     requestTrace: UNUSED_REQUEST_TRACE,
   },
   {
-    setupId: 'fixture-b',
+    target: FIXTURE_TARGET_B,
     trace: FIXTURE_TRACE,
     analysis: { chains: [], arpeggios: [] } as unknown as AnalyzerSetMember['analysis'],
     metrics: fixtureMetrics(20),
@@ -207,7 +212,7 @@ const FIXTURE_MEMBERS: readonly AnalyzerSetMember[] = [
 ];
 
 const FIXTURE_FAILURES: readonly AnalyzerSetMemberFailure[] = [
-  { setupId: 'fixture-missing', kind: 'reference', message: '配列「x」が見つからない（削除された可能性）' },
+  { target: FIXTURE_TARGET_MISSING, kind: 'reference', message: '配列「x」が見つからない（削除された可能性）' },
 ];
 
 /**
