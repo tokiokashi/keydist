@@ -9,7 +9,10 @@ import {
   directionDistribution,
   directionSummary,
   filterBigramVectors,
+  isStationaryBigramVector,
   meanDisplacement,
+  relativeVectors,
+  repeatCountsByKey,
   type BigramVector,
 } from './bigram-vectors.ts';
 
@@ -274,6 +277,38 @@ test('direction distributionは対向2方向集中と一様分布を区別でき
   );
 });
 
+
+test('isStationaryBigramVectorは同一キーへ戻る（物理移動が無い）vectorだけを真にする', () => {
+  assert.equal(isStationaryBigramVector(vector({ distance: 0 })), true);
+  assert.equal(isStationaryBigramVector(vector({ distance: 1e-8 })), true);
+  assert.equal(isStationaryBigramVector(vector({ distance: 1 })), false);
+});
+
+test('repeatCountsByKeyは同一キーへ戻るvectorのweightだけをキーごとに積む', () => {
+  const counts = repeatCountsByKey([
+    vector({ id: 'repeat-a', fromKeyIds: ['f'], toKeyIds: ['f'], distance: 0, weight: 3 }),
+    vector({ id: 'repeat-b', fromKeyIds: ['f'], toKeyIds: ['f'], distance: 0, weight: 2 }),
+    vector({ id: 'moving', fromKeyIds: ['f'], toKeyIds: ['d'], distance: 1, weight: 9 }),
+  ]);
+
+  assert.equal(counts.get('f'), 5);
+  assert.equal(counts.has('d'), false);
+});
+
+test('relativeVectorsは移動量（dx/dy）と指の組が同じvectorを合算し、絶対位置は持たない', () => {
+  const grouped = relativeVectors([
+    vector({ id: 'a', hand: 'left', dx: 1, dy: 0, distance: 1, weight: 2, fromFingerClass: 'index', toFingerClass: 'middle' }),
+    vector({ id: 'b', hand: 'left', dx: 1, dy: 0, distance: 1, weight: 3, fromFingerClass: 'index', toFingerClass: 'middle' }),
+    vector({ id: 'c', hand: 'left', dx: 2, dy: 0, distance: 2, weight: 1, fromFingerClass: 'index', toFingerClass: 'middle' }),
+    vector({ id: 'd', hand: 'right', dx: 1, dy: 0, distance: 1, weight: 5 }),
+    vector({ id: 'e', hand: 'left', dx: 0, dy: 0, distance: 0, weight: 9 }),
+  ], 'left');
+
+  assert.equal(grouped.length, 2, 'dx/dyと指の組が違えば別グループ、同じキーへ戻るvector(distance=0)は除く');
+  const merged = grouped.find((g) => g.dx === 1 && g.dy === 0);
+  assert.equal(merged?.weight, 5, '同じ相対移動・指の組はweightを合算する');
+  assert.equal('id' in (merged ?? {}), true, '絶対座標(from/to)は持たずidだけを識別子として持つ');
+});
 
 function circularIntegral(samples: readonly { density: number }[]): number {
   return samples.reduce((sum, sample) => sum + sample.density, 0)
