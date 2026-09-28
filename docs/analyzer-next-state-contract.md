@@ -103,12 +103,14 @@ Session commands that mutate a model condition always identify either the defaul
 
 ## View invariants
 
-`features/analyzer-next/` の中でだけ守る。
-
+- Workspace layout never owns analysis conditions.
+- View components never write storage directly.
+- View components do not import Router or Dockview.
+- View components do not call `resolveConditions` or `generateTrace`.
+- Storage / route / Dockview integration belongs to hosts.
+- ViewConfig changes are returned through `onConfigChange`.
 - Session changes are commands with explicit default/per-layout scope.
-
-View componentとホストの分担（見出し・条件の表示・storage・Router・Dockviewを誰が持つか）は、
-`docs/architecture.md`「Analyzerがペインに渡すもの」に移した。
+- A pane that presents a number must carry the resolved condition delta and the relevant ViewConfig projection in shared pane chrome.
 
 ## Binding
 
@@ -146,9 +148,9 @@ Unknown/removed View types or invalid persisted bindings are rejected during dec
 
 ## Route ownership
 
-AnalysisSession is never URL authority. A pinned route targeting an unselected layout shows the same placeholder as Workspace and may offer an explicit Session command to add it.
+Standalone routes and Workspace use the same View component. Route search params may encode View type, binding and compact bookmark-worthy ViewConfig only.
 
-個別画面とWorkspaceが同じcomponentを使うこと、URLが運ぶものは `docs/architecture.md` が正。
+AnalysisSession is never URL authority. A pinned route targeting an unselected layout shows the same placeholder as Workspace and may offer an explicit Session command to add it.
 
 ## Dockview boundary
 
