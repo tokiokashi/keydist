@@ -1,0 +1,180 @@
+name: Merge stack
+
+# スタックPRの一番上に `merge-stack` ラベルを付けると、スタック全体を main へ merge commit で入れる。
+# スタックのPRは GitHub の非同期マージAPI（PUT /pulls/{n}/merge-async）でしかマージできず、
+# エージェントのツールにはそれが無い。ラベルならエージェントも付けられるので、実行をここへ寄せる。
+#
+# ラベルを付けること自体が「マージしてよい条件（CONTRIBUTING.md「マージ」）を満たした」という宣言になる。
+# ここで機械的に確かめるのは、付けた人の権限・スタックの形・各PRの head の CI だけ。
+# レビューの有無とオーナーが決めていない選択の有無は確かめられないので、付ける側が守る。
+#
+# pull_request ではなく pull_request_target で起動する。PRのコードはチェックアウトしないので安全で、
+# 衝突していてマージ用の ref が無いPRでも起動する。ワークフローの定義は base（一番上のPRなら1つ下のブランチ）のものが使われる。
+#
+# GITHUB_TOKEN でのマージは別のワークフローを起動しない（main への push で CI・release.yml が走らない）。
+# リポジトリの secret に STACK_MERGE_TOKEN（Contents と Pull requests に write を持つ fine-grained PAT）を
+# 置くとそちらでマージし、main の CI も走る。無ければ GITHUB_TOKEN を使う。
+on:
+  pull_request_target:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: merge-stack-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  merge-stack:
+    if: github.event.label.name == 'merge-stack'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+      statuses: read
+    env:
+      # スタックを入れてよい base。main 以外へのスタックはこのワークフローでは入れない
+      ALLOWED_BASE: main
+      # 各PRの head で成功していなければならない CI のジョブ（.github/workflows/ci.yml の pull_request で走るもの）
+      REQUIRED_CHECKS: verify,browser-e2e,commit-messages
+      LABEL: merge-stack
+      API_VERSION: '2026-03-10'
+    steps:
+      - name: Merge stack
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.STACK_MERGE_TOKEN || github.token }}
+          script: |
+            const { owner, repo } = context.repo;
+            const number = context.payload.pull_request.number;
+            const sender = context.payload.sender.login;
+            const headers = { 'X-GitHub-Api-Version': process.env.API_VERSION };
+            const required = process.env.REQUIRED_CHECKS.split(',').map((s) => s.trim()).filter(Boolean);
+            const selfJob = process.env.GITHUB_JOB;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const lines = [];
+
+            const comment = (body) =>
+              github.rest.issues.createComment({ owner, repo, issue_number: number, body: `${body}\n\n[実行ログ](${runUrl})` });
+
+            // 付けたラベルは結果にかかわらず外す。付け直せば再実行になる
+            const removeLabel = async () => {
+              try {
+                await github.rest.issues.removeLabel({ owner, repo, issue_number: number, name: process.env.LABEL });
+              } catch (e) {
+                core.warning(`ラベルを外せなかった: ${e.message}`);
+              }
+            };
+
+            class Refusal extends Error {}
+            const refuse = (msg) => { throw new Refusal(msg); };
+
+            // head の CI を確かめる。問題があれば理由の配列を返す。
+            // 同じ head に push と pull_request の両方で同名のジョブが走り、片方が skipped になることがある
+            // （browser-e2e は pull_request でだけ走る）。名前ごとに skipped 以外で一番新しい実行を見る
+            const checkHead = async (prNumber, sha) => {
+              const problems = [];
+              const runs = (await github.paginate(github.rest.checks.listForRef, {
+                owner, repo, ref: sha, filter: 'all', per_page: 100,
+              })).filter((r) => r.name !== selfJob);
+              const byName = new Map();
+              for (const r of runs) byName.set(r.name, [...(byName.get(r.name) ?? []), r]);
+              const latest = (list) => {
+                const live = list.filter((r) => r.conclusion !== 'skipped');
+                const pool = live.length ? live : list;
+                return pool.reduce((a, b) => ((a.started_at ?? '') >= (b.started_at ?? '') ? a : b));
+              };
+              for (const name of required)
+                if (!byName.has(name)) problems.push(`#${prNumber}: 必須の \`${name}\` が head で走っていない`);
+              for (const [name, list] of byName) {
+                const r = latest(list);
+                const ok = required.includes(name) ? ['success'] : ['success', 'neutral', 'skipped'];
+                if (r.status !== 'completed') problems.push(`#${prNumber}: \`${name}\` が終わっていない（${r.status}）`);
+                else if (!ok.includes(r.conclusion)) problems.push(`#${prNumber}: \`${name}\` が ${r.conclusion}`);
+              }
+              const { data: combined } = await github.rest.repos.getCombinedStatusForRef({ owner, repo, ref: sha });
+              if (combined.total_count > 0 && combined.state !== 'success')
+                problems.push(`#${prNumber}: commit status が ${combined.state}`);
+              return problems;
+            };
+
+            try {
+              // 1. 付けた人が書き込み権限を持つか
+              const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({ owner, repo, username: sender });
+              if (!['admin', 'maintain', 'write'].includes(perm.permission) && !['admin', 'maintain', 'write'].includes(perm.role_name))
+                refuse(`@${sender} は書き込み権限を持たない（${perm.role_name ?? perm.permission}）`);
+
+              // 2. スタックの一番上か
+              const { data: stacks } = await github.request('GET /repos/{owner}/{repo}/stacks', {
+                owner, repo, pull_request: number, headers,
+              });
+              const stack = stacks.find((s) => s.open && s.pull_requests.some((p) => p.number === number));
+              if (!stack) refuse(`#${number} は開いているスタックに入っていない。スタックでないPRはふつうにマージする`);
+              if (stack.base.ref !== process.env.ALLOWED_BASE)
+                refuse(`スタックの base が \`${stack.base.ref}\`。このワークフローが入れるのは \`${process.env.ALLOWED_BASE}\` だけ`);
+              const pending = stack.pull_requests.filter((p) => !p.merged_at);
+              const top = pending[pending.length - 1];
+              if (!top || top.number !== number)
+                refuse(`#${number} はスタック #${stack.number} の一番上ではない（一番上は #${top?.number}）。ラベルは一番上に付ける`);
+              const closed = pending.filter((p) => p.state !== 'open');
+              if (closed.length) refuse(`未マージのまま閉じたPRがある: ${closed.map((p) => `#${p.number}`).join(', ')}`);
+              const drafts = pending.filter((p) => p.draft);
+              if (drafts.length) refuse(`draft のPRがある: ${drafts.map((p) => `#${p.number}`).join(', ')}`);
+              lines.push(`スタック #${stack.number}（base \`${stack.base.ref}\`）: ${pending.map((p) => `#${p.number}`).join(' → ')}`);
+
+              // 3. 各PRの head の CI
+              const problems = [];
+              for (const p of pending) problems.push(...(await checkHead(p.number, p.head.sha)));
+              if (problems.length) refuse(`head の CI が揃っていない:\n${problems.map((s) => `- ${s}`).join('\n')}`);
+
+              // 4. 一番上を merge commit でマージする。一番下からここまでが一緒に入る。
+              //    sha を渡し、確認した後に push されていたら GitHub 側でマージを取り消させる
+              let res;
+              try {
+                res = await github.request('PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge-async', {
+                  owner, repo, pull_number: number, headers,
+                  sha: top.head.sha,
+                  merge_method: 'merge',
+                  merge_action: 'default',
+                });
+              } catch (e) {
+                // 409 は同じPRへの要求が既にある。その uuid を追う
+                if (e.status === 409 && e.response?.data?.details?.uuid) res = { status: 409, data: e.response.data };
+                else throw e;
+              }
+              core.info(`merge-async: HTTP ${res.status} ${JSON.stringify(res.data)}`);
+              let result = res.data;
+              const uuid = result.details?.uuid;
+              const deadline = Date.now() + 15 * 60 * 1000;
+              while (result.status === 'pending' && uuid && Date.now() < deadline) {
+                await new Promise((r) => setTimeout(r, 10000));
+                ({ data: result } = await github.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/merge-async/{uuid}', {
+                  owner, repo, pull_number: number, uuid, headers,
+                }));
+                core.info(`poll: ${JSON.stringify(result)}`);
+              }
+
+              const msg = result.details?.message ?? '';
+              if (result.status === 'merged') {
+                lines.push(`マージした（merge commit \`${result.details?.sha ?? '?'}\`）。${msg}`);
+                await comment(`**merge-stack: 完了**\n\n${lines.join('\n\n')}`);
+              } else if (result.status === 'enqueued') {
+                lines.push(`マージキューに入った。${msg}`);
+                await comment(`**merge-stack: キュー投入**\n\n${lines.join('\n\n')}`);
+              } else {
+                const why = result.status === 'pending' ? '15分待っても終わらなかった' : `失敗した: ${msg}`;
+                lines.push(why);
+                await comment(`**merge-stack: 失敗**\n\n${lines.join('\n\n')}`);
+                core.setFailed(why);
+              }
+            } catch (e) {
+              const refused = e instanceof Refusal;
+              lines.push(refused ? e.message : `エラー: ${e.status ?? ''} ${e.message}`);
+              await comment(`**merge-stack: ${refused ? 'マージしなかった' : 'エラー'}**\n\n${lines.join('\n\n')}`);
+              core.setFailed(e.message);
+            } finally {
+              await removeLabel();
+            }
