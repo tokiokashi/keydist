@@ -41,7 +41,7 @@ import {
  */
 
 /**
- * 「既定の形状」の既定値。3形状（`PHYSICAL_SHAPES`）のうち最初から選ばれている既定
+ * 「既定の物理配列」の既定値。3形状（`PHYSICAL_SHAPES`）のうち最初から選ばれている既定
  * （`src/input/shapes/geometry.ts`の`row-staggered`）に合わせる。実体はimportせず、
  * idの文字列だけを持つ（`initial.ts`が持っていた同名の定数の後継。#578指摘1）。
  */
@@ -92,7 +92,7 @@ export const SETTINGS_ITEMS = {
       const realizable = shapeHasThumb(context, 'LT') && shapeHasThumb(context, 'RT');
       return realizable
         ? { ok: true }
-        : { ok: false, fallback: false, reason: '形状に左右いずれかの親指キーが無く、反対側への振り替えを実現できない' };
+        : { ok: false, fallback: false, reason: '物理配列に左右いずれかの親指キーが無く、反対側への振り替えを実現できない' };
     },
   }),
   /**
@@ -230,7 +230,7 @@ export const SETTINGS_ITEMS = {
         : {
           ok: false,
           fallback: context.shapeId,
-          reason: `既定の形状に選んでいた物理形状が見つからないため、「${context.shape.name}」で測った`,
+          reason: `既定に選んでいた物理配列が見つからないため、「${context.shape.name}」で測った`,
         };
     },
   }),
@@ -270,7 +270,7 @@ export function resetSettingsItem(
 }
 
 /**
- * 「既定の形状」を単独で読む。`resolveSettings`（`resolveCascade`）を経由しない理由は
+ * 「既定の物理配列」を単独で読む。`resolveSettings`（`resolveCascade`）を経由しない理由は
  * `SETTINGS_ITEMS.defaultShapeId`のコメント参照: 配列を対象にした時の物理形状そのものを
  * 決める値なので、`CascadeContext`（形状が既に決まっている前提）を組み立てる前に必要になる。
  * globalのみが許可レベルで`defaultValue`もcontext非依存の固定値なので、

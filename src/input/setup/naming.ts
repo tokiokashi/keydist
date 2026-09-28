@@ -37,7 +37,7 @@ export type TargetNameSource = TargetNameSourceBase & (
   | {
     readonly failed?: false;
     readonly layoutName: string;
-    /** 実効の物理形状名。配列対象は常にカスケードの「既定の形状」の名前になる。 */
+    /** 実効の物理形状名。配列対象は常にカスケードの「既定の物理配列」の名前になる。 */
     readonly shapeName: string;
     /**
      * 既定値と違う条件の短い併記（`hosts/shared/condition-summary.ts`の

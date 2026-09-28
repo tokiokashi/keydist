@@ -9,13 +9,13 @@ keydist のコードの分け方と依存の向き。設計の経緯と未実装
 
 | 用語 | コード | 意味 |
 |---|---|---|
-| 配列 | `Layout` | 論理的な配列定義（面・trigger・コンボ等）。組み込みと自作がある |
-| 物理形状 | `Shape` | キーの物理的な位置（と規格。ANSI/JIS） |
-| 指の割当 | `FingerAssignment` | 各キーを担当する指。物理形状の属性ではなく**カスケードの項目**（`fingerAssignmentId`）として持つ。既定は物理形状の規格から決まり、物理形状・配列・Setupのレベルで上書きできる（#544。`engine/finger-assignment.ts`）。組み込み（既定・JIS）と自作がある |
+| 配列 | `Layout` | 論理配列。キーに何を割り当てるかの定義（面・trigger・コンボ等）。組み込みと自作がある。キーボードの界隈の普通の使い方どおり、単に「配列」と言えば論理配列を指す。画面でも「配列」と書き、「論理配列」と書き分ける必要は無い |
+| 物理配列 | `Shape` | キーの物理的な位置（と規格。ANSI/JIS）。配列（論理配列）と対になる語。コードの識別子（`Shape`・`shapeId`・`src/input/shapes/`）は画面の語ではないので「shape」のまま |
+| 指の割当 | `FingerAssignment` | 各キーを担当する指。物理配列の属性ではなく**カスケードの項目**（`fingerAssignmentId`）として持つ。既定は物理配列の規格から決まり、物理配列・配列・Setupのレベルで上書きできる（#544。`engine/finger-assignment.ts`）。組み込み（既定・JIS）と自作がある |
 | ポリシー | `TracePolicy` | **Traceを作る**条件（trigger / action realization、SandSの手、反対側の親指、N、ローマ字規則等） |
-| Setup | `Setup` | 配列 × 物理形状 × 上書き。**上書きを持ちたい時にだけ作る**資産（同じ配列を形状違い・指の割当違い・ポリシー違いで並べる用途）。上書きを持たないSetupは作らない |
-| 対象 | `AnalysisTarget` | Analyzerが見るもの。**配列**（カスケードの実効値をそのまま使う。物理形状はカスケードの「既定の形状」）か**Setup**のどちらか。集合を見るAnalyzerは対象の列を持つ。計算の単位は、対象を解決した入力（配列 × 物理形状 × 指の割当 × ポリシー） |
-| カスケード | settings cascade | ポリシー・指の割当・解釈の値を グローバル → 物理形状 → 打ち方 → 配列 → Setup の順に上書きして実効値を求める仕組み。配列を対象にした時の物理形状（既定の形状）もグローバルの項目として持つ |
+| Setup | `Setup` | 配列 × 物理配列 × 上書き。**上書きを持ちたい時にだけ作る**資産（同じ配列を物理配列違い・指の割当違い・ポリシー違いで並べる用途）。上書きを持たないSetupは作らない |
+| 対象 | `AnalysisTarget` | Analyzerが見るもの。**配列**（カスケードの実効値をそのまま使う。物理配列はカスケードの「既定の物理配列」）か**Setup**のどちらか。集合を見るAnalyzerは対象の列を持つ。計算の単位は、対象を解決した入力（配列 × 物理配列 × 指の割当 × ポリシー） |
+| カスケード | settings cascade | ポリシー・指の割当・解釈の値を グローバル → 物理配列 → 打ち方 → 配列 → Setup の順に上書きして実効値を求める仕組み。配列を対象にした時の物理配列（既定の物理配列）もグローバルの項目として持つ |
 | テキスト | Text | 打つ文章。言語を属性に持つ。Setupと同じく**資産**として複数持ち、単体ページ・Workspaceはそこから選ぶ。組み込み（サンプル）と自作がある |
 | 打ち方 | input method | テキストの言語 × 配列の種類から導く（かな直接 / ローマ字 / 直接） |
 | Trace | `Trace` | 対象を解決した入力でテキストを打った記録（打鍵列・指の移動・押し方）。`generateTrace` が作る |
@@ -26,14 +26,14 @@ keydist のコードの分け方と依存の向き。設計の経緯と未実装
 | 解析設定 | `AnalyzerOptions` | どの数値を・どの切り口で・どう見せるか |
 | engine | engine | 解決・Trace生成・解釈・抽出の実行とキャッシュ |
 | 単体ページ / Workspace | host | Analyzerを載せる器 |
-| 資産 | assets | ユーザーが作って保存するもの（自作配列・形状・指の割当・ローマ字規則・Setup・カスケードの値・Workspace・個人速度・テキスト） |
+| 資産 | assets | ユーザーが作って保存するもの（自作配列・物理配列・指の割当・ローマ字規則・Setup・カスケードの値・Workspace・個人速度・テキスト） |
 
-使わない語: mode（en / ja）、段の名前としての「評価」（`evaluate`）、View、`AnalysisSession` / `AnalysisSnapshot`、解釈を指す「ポリシー」（`ChainPolicy` / `ArpeggioPolicy`）。
+使わない語: `Shape` を指す「物理形状」「形状」（物理配列と呼ぶ）、mode（en / ja）、段の名前としての「評価」（`evaluate`）、View、`AnalysisSession` / `AnalysisSnapshot`、解釈を指す「ポリシー」（`ChainPolicy` / `ArpeggioPolicy`）。
 
 ## 流れ
 
 ```text
-対象（配列 または Setup）→ 解決（配列 × 物理形状 × 指の割当 × ポリシー）+ テキスト
+対象（配列 または Setup）→ 解決（配列 × 物理配列 × 指の割当 × ポリシー）+ テキスト
   ↓ Trace生成
 Trace
   ↓ 解釈（構造・時間モデル・複数のAnalyzerが使う指標）
@@ -53,7 +53,7 @@ host（単体ページ / Workspace）
 
 指の割当（`FingerAssignment`）もこの分類では**ポリシー**と同じ扱いになる
 （Traceの中身を変え、持ち主はカスケード）。ただし型は`TracePolicy`ではなく独立した
-`FingerAssignment`で、`generateTrace`へは物理形状と合成した`Geometry`として渡る
+`FingerAssignment`で、`generateTrace`へは物理配列と合成した`Geometry`として渡る
 （`engine/resolved-input.ts`）。
 
 ## 画面の構成
@@ -97,7 +97,7 @@ host（単体ページ / Workspace）
 src/
   input/             入力の段
     layouts/         配列定義と型、層、配列のimport
-    shapes/          物理形状
+    shapes/          物理配列
     semantics/       trigger / action realization
     romaji/
     text/            サンプルテキストと言語

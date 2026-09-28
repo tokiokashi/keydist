@@ -391,7 +391,7 @@ export function buildGeometry(
     const canonicalId = resolveKeyId(spec.id);
     if (canonicalId !== spec.id) {
       throw new Error(
-        `形状「${s.id}」の追加キー ${spec.id} はcanonical physical key idではない（${canonicalId}）`,
+        `物理配列「${s.id}」の追加キー ${spec.id} はcanonical physical key idではない（${canonicalId}）`,
       );
     }
     if (
@@ -400,7 +400,7 @@ export function buildGeometry(
       || canonicalId === SHIFT_KEY.R
       || s.thumbs.some((thumb) => resolveKeyId(thumb.id) === canonicalId)
     ) {
-      throw new Error(`形状「${s.id}」の追加キー ${spec.id} が既存キーと重複している`);
+      throw new Error(`物理配列「${s.id}」の追加キー ${spec.id} が既存キーと重複している`);
     }
     const finger = assignment.keyFinger[canonicalId];
     if (!finger) throw new Error(`指割り当て「${assignment.id}」にキー ${spec.id} が無い`);
@@ -465,7 +465,7 @@ export function buildGeometry(
   for (const finger of ['LT', 'RT'] as const) {
     const candidates = thumbsByFinger[finger];
     if (candidates.length === 0) {
-      throw new Error(`形状「${s.id}」に ${finger} の親指キーが無い`);
+      throw new Error(`物理配列「${s.id}」に ${finger} の親指キーが無い`);
     }
     const homeId = s.thumbHome?.[finger];
     const home = homeId
@@ -474,7 +474,7 @@ export function buildGeometry(
         ? candidates[0]
         : undefined;
     if (!home) {
-      throw new Error(`形状「${s.id}」の ${finger} は親指キーが複数あるためthumbHomeで明示する`);
+      throw new Error(`物理配列「${s.id}」の ${finger} は親指キーが複数あるためthumbHomeで明示する`);
     }
     thumbs[finger] = home;
   }

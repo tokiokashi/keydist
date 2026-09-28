@@ -49,7 +49,7 @@ function seriesFor(series: readonly NSensitivitySeries[], targetKey: string): NS
 
 function failureLabel(kind: NSensitivitySeriesFailed['failureKind']): string {
   switch (kind) {
-    case 'reference': return '配列・形状が見つからない（削除された可能性がある）';
+    case 'reference': return '配列・物理配列が見つからない（削除された可能性がある）';
     case 'incompatible-text': return 'このテキストには使えない';
     case 'geometry': return 'キーボードを組み立てられない';
     case 'target-missing': return '削除された、または見つからない';

@@ -188,7 +188,7 @@ function metricConditionText(
   const defaults = state.conditions.defaults;
   const override = state.conditions.perLayout[layout.id];
   const differences = [
-    metrics.geometryId !== defaultGeometryId(state) ? `形状: ${metrics.geometryName}` : '',
+    metrics.geometryId !== defaultGeometryId(state) ? `物理配列: ${metrics.geometryName}` : '',
     metrics.fingerAssignmentId !== 'default'
       ? `運指: ${metrics.fingerAssignmentName}`
       : '',
@@ -208,8 +208,8 @@ function metricConditionText(
       : '',
     override?.romajiRule !== undefined ? `ローマ字: ${override.romajiRule}` : '',
   ].filter(Boolean);
-  return `形状: ${metrics.geometryName} / 運指: ${metrics.fingerAssignmentName}`
-    + ` / ホーム: ${hasLayoutHomeKeys ? '配列指定' : '形状既定'}`
+  return `物理配列: ${metrics.geometryName} / 運指: ${metrics.fingerAssignmentName}`
+    + ` / ホーム: ${hasLayoutHomeKeys ? '配列指定' : '物理配列の既定'}`
     + (differences.length > 0
       ? ` / 条件差分: ${differences.join('、')}`
       : ' / 既定条件');
@@ -610,7 +610,7 @@ function sensitivityLabel(
   const override = state.conditions.perLayout[result.layout.id];
   const differences = [
     result.geometry.id !== defaultGeometryId(state)
-      ? `形状=${result.geometry.name}`
+      ? `物理配列=${result.geometry.name}`
       : '',
     result.options.windowSize !== defaults.windowSize
       ? `N=${result.options.windowSize}`

@@ -30,7 +30,7 @@ function failedDescription(target: AnalysisTarget, setup: Setup | undefined, cat
   const layoutLabel = (layoutId: string) => catalog.layouts.get(layoutId)?.name ?? '見つからない配列';
   if (target.kind === 'layout') return layoutLabel(target.layoutId);
   if (setup === undefined) return '削除されたSetup';
-  const shapeLabel = catalog.shapes.get(setup.shapeId)?.name ?? '見つからない形状';
+  const shapeLabel = catalog.shapes.get(setup.shapeId)?.name ?? '見つからない物理配列';
   return `${layoutLabel(setup.layoutId)}/${shapeLabel}`;
 }
 

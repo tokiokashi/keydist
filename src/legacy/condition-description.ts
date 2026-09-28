@@ -29,11 +29,11 @@ const GEOMETRY_LABEL: Record<PresetGeometryKind | 'custom', string> = {
   'jis-ortholinear': 'オーソリニア（JIS 109）',
   'column-staggered': 'カラムスタッガード（ANSI）',
   'jis-column-staggered': 'カラムスタッガード（JIS 109）',
-  custom: 'カスタム形状',
+  custom: 'カスタム物理配列',
 };
 
 function geometryLabel(value: UiStateConditionsDefaults['geometry']): string {
-  if (isCustomGeometryKind(value)) return 'カスタム形状';
+  if (isCustomGeometryKind(value)) return 'カスタム物理配列';
   return GEOMETRY_LABEL[value];
 }
 
@@ -86,8 +86,8 @@ export const CONDITION_DESCRIPTORS = {
     format: (value) => formatActionRealizationPolicy(value as ActionRealizationPolicy),
   },
   geometry: {
-    label: '物理形状',
-    effect: 'ピッチ・段ずれ・列オフセットを決める物理形状です。形状を変えると距離の絶対値が変わります。',
+    label: '物理配列',
+    effect: 'ピッチ・段ずれ・列オフセットを決める物理配列です。物理配列を変えると距離の絶対値が変わります。',
     format: (value) => geometryLabel(value as UiStateConditionsDefaults['geometry']),
   },
   windowSize: {

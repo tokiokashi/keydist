@@ -93,7 +93,7 @@ export function AnalyzerSidebarControls({
       </label>
 
       <label className="ctl">
-        <span>この配列の物理形状</span>
+        <span>この配列で使う物理配列</span>
         <select
           id="detail-geometry"
           value={detailGeometry}
@@ -262,11 +262,11 @@ export function AnalyzerGeometryControls({
   return (
     <div data-react-feature="geometry-controls">
       <p className="note">
-        形状と運指は設定モーダルで編集できます。ホームキーは配列ごとに指定し、未指定なら物理形状の既定値を使います。
-        形状と運指を変えると距離の絶対値と同指連続数が変わるため、結果には設定名を併記します。
+        物理配列と運指は設定モーダルで編集できます。ホームキーは配列ごとに指定し、未指定なら物理配列の既定値を使います。
+        物理配列と運指を変えると距離の絶対値と同指連続数が変わるため、結果には設定名を併記します。
       </p>
       <label className="ctl">
-        <span>物理形状</span>
+        <span>物理配列</span>
         <select
           id="geometry"
           value={effectiveGeometry}
@@ -279,7 +279,7 @@ export function AnalyzerGeometryControls({
       </label>
       <p className="note" id="geometry-current">{catalog.geometrySummary}</p>
       <button type="button" className="secondary" id="geometry-edit" onClick={onEdit}>
-        形状と運指を編集
+        物理配列と運指を編集
       </button>
       <div className="geometry-file-actions">
         <button type="button" className="secondary" id="geometry-export" onClick={onExport}>
@@ -361,7 +361,7 @@ export function AnalyzerHowDialog({ dialog }: { dialog: HTMLDialogElement }) {
         <ul>
           <li>出てきた数字を絶対値として評価することは難しいと考えています。現在自分が使っている配列の数字と相対比較して他の配列の特性をイメージするといった用途に向いていると考えています。</li>
           <li>タイピングという2次元的な動きを距離という1次元に圧縮しています。</li>
-          <li>全ての計算は指がホームポジションにあるのが良いということを前提としています。配列追加時にホームキーを指定でき、未指定なら物理形状の既定値を使います。</li>
+          <li>全ての計算は指がホームポジションにあるのが良いということを前提としています。配列追加時にホームキーを指定でき、未指定なら物理配列の既定値を使います。</li>
           <li>指の長さや手の動きなどの個人差のある部分は意図的にモデルから排除しています。あくまで配列の押すキーの解析情報と捉えてください。</li>
           <li>同じ理由で「指の疲れ」等を導出することはありません。指の特性や係数など全ての項目をフィッティングすることは困難と考えるためです。疲労を考えたい人は移動距離や指間距離などの数値の傾向から相対的に判断してください。</li>
           <li>任意の指を自動探索する運指最適化はありません。キーと指の対応は設定モーダルから明示的に指定します。</li>
