@@ -17,6 +17,8 @@
 #   リリースPRを作った時点の main の状態に固定し、マージまでの間に main へ入った別の作業を公開物に混ぜないため
 # - タグ v<X.Y.Z> が既にあり、同じコミットを指していれば打たずに公開だけする（再実行の冪等性）。
 #   別のコミットを指していれば失敗させる。同じ版番号で中身の違う公開を作らない
+# - リリースPRは main から分かれた後の1コミットだけで、package.json と package-lock.json しか変えないこと
+# - version を変えたのが push の先頭以外のコミットなら、そのコミットと PR を名指しして失敗させる
 # - version が下がった場合は公開しない（警告だけ）。初回リリースの準備で 0.0.0 に戻した時がこれにあたる
 #
 # first parent ではなく before と比べるのは、1回の push に複数コミットが載る場合に
@@ -72,8 +74,7 @@ new=$(version_at "$sha")
 old=$(version_at "$base")
 [ "$new" != "$old" ] || no_release "version は $new のまま。リリースしない"
 
-printf '%s' "$new" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' \
-  || fail "package.json の version '$new' が X.Y.Z 形式ではない"
+[[ "$new" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "package.json の version '$new' が X.Y.Z 形式ではない"
 
 if ! version_gt "$new" "$old"; then
   echo "::warning::version が $old → $new に下がった。公開しない" >&2
@@ -81,23 +82,48 @@ if ! version_gt "$new" "$old"; then
   exit 0
 fi
 
-# sha を作ったマージの PR を探す。merge commit 方式のマージなら merge_commit_sha が sha と一致する
-prs=$(curl -fsSL \
-  -H "Authorization: Bearer $GH_TOKEN" \
-  -H "Accept: application/vnd.github+json" \
-  "$api/repos/$GITHUB_REPOSITORY/commits/$sha/pulls")
-pr=$(printf '%s' "$prs" | SHA="$sha" node -e '
-  let s = "";
-  process.stdin.on("data", (d) => (s += d));
-  process.stdin.on("end", () => {
-    const hits = JSON.parse(s).filter((p) => p.merged_at && p.merge_commit_sha === process.env.SHA);
-    if (hits.length === 1) {
-      const p = hits[0];
-      process.stdout.write([p.number, p.head.sha, p.base.ref, p.title].join("\t"));
-    }
-  });
-')
-[ -n "$pr" ] || fail "version が $old → $new に変わったが、$sha をマージコミットとする PR が見つからない。version はリリースPR（merge commit でマージ）でだけ上げる"
+# commit をマージコミットとする PR を探し、「番号 TAB head TAB base TAB タイトル」を返す。見つからなければ空
+lookup_pr() {
+  local prs
+  prs=$(curl -fsSL \
+    -H "Authorization: Bearer $GH_TOKEN" \
+    -H "Accept: application/vnd.github+json" \
+    "$api/repos/$GITHUB_REPOSITORY/commits/$1/pulls") \
+    || fail "PR の検索（commits/$1/pulls）に失敗した。一時的なものなら Re-run で直る"
+  printf '%s' "$prs" | SHA="$1" node -e '
+    let s = "";
+    process.stdin.on("data", (d) => (s += d));
+    process.stdin.on("end", () => {
+      const hits = JSON.parse(s).filter((p) => p.merged_at && p.merge_commit_sha === process.env.SHA);
+      if (hits.length === 1) {
+        const p = hits[0];
+        process.stdout.write([p.number, p.head.sha, p.base.ref, p.title].join("\t"));
+      }
+    });
+  '
+}
+
+# version を変えたのは push の範囲のどのコミットか。main の first parent を新しい方から辿る
+changer=""
+for c in $(git rev-list --first-parent "$base..$sha"); do
+  if git rev-parse -q --verify "$c^1" >/dev/null && [ "$(version_at "$c")" != "$(version_at "$c^1")" ]; then
+    changer="$c"
+    break
+  fi
+done
+[ -n "$changer" ] || fail "version が $old → $new に変わったが、変えたコミットを main の first parent 上に見つけられない"
+
+if [ "$changer" != "$sha" ]; then
+  culprit=$(lookup_pr "$changer")
+  if [ -n "$culprit" ]; then
+    IFS=$'\t' read -r c_number _ _ c_title <<<"$culprit"
+    fail "version を変えたのは PR #$c_number（'$c_title'、$changer）で、push の先頭 $sha ではない。リリースPRは単独でマージする。version はリリースPRでだけ上げる"
+  fi
+  fail "version を変えたのは $changer で、push の先頭 $sha ではない（PR は見つからない）。version はリリースPRでだけ上げる"
+fi
+
+pr=$(lookup_pr "$sha")
+[ -n "$pr" ] || fail "version が $old → $new に変わったが、$sha をマージコミットとする PR が見つからない。version はリリースPR（merge commit でマージ）でだけ上げる。API の反映遅れなら Re-run で直る"
 
 IFS=$'\t' read -r pr_number head base_ref title <<<"$pr"
 [ "$title" = "chore(release): $new" ] \
@@ -108,6 +134,13 @@ git cat-file -e "$head^{commit}" 2>/dev/null || fail "リリースPR #$pr_number
 git merge-base --is-ancestor "$head" "$sha" || fail "リリースPR #$pr_number の head $head が main（$sha）から辿れない"
 head_version=$(version_at "$head")
 [ "$head_version" = "$new" ] || fail "リリースPR #$pr_number の head の version が $head_version で、$new ではない"
+
+# リリースPRは version を上げる1コミットだけ。公開物がPRの差分から読めるようにする
+fork=$(git merge-base "$head" "$sha^1")
+count=$(git rev-list --count "$fork..$head")
+[ "$count" = 1 ] || fail "リリースPR #$pr_number のコミットが $count 個ある。version を上げる1コミットだけにする"
+extra=$(git diff --name-only "$fork" "$head" | grep -vxE 'package\.json|package-lock\.json' || true)
+[ -z "$extra" ] || fail "リリースPR #$pr_number が package.json / package-lock.json 以外を変えている: $(echo "$extra" | tr '\n' ' ')"
 
 tag="v$new"
 create_tag=true

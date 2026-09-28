@@ -18,9 +18,9 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: release
-  cancel-in-progress: false
+# ワークフロー全体の concurrency は置かない。同じグループで待てるのは1つだけで、
+# 後から来た実行が待っているリリースを取り消し、公開されないまま終わるため。
+# タグは版ごとに別なので、並んで走っても衝突しない。配信の順番は pages.yml の deploy ジョブが揃える
 
 jobs:
   plan:
@@ -98,6 +98,7 @@ jobs:
     uses: ./.github/workflows/pages.yml
     with:
       tag: ${{ needs.plan.outputs.tag }}
+      commit: ${{ needs.plan.outputs.commit }}
     permissions:
       contents: read
       pages: write

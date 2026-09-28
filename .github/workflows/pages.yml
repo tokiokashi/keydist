@@ -18,6 +18,11 @@ on:
         description: 公開する既存の v* タグ（例 v0.1.0）
         required: true
         type: string
+      commit:
+        description: タグが指しているはずのコミット。release.yml が決めたものと食い違ったら公開しない
+        required: false
+        type: string
+        default: ''
   workflow_dispatch:
     inputs:
       tag:
@@ -27,8 +32,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   build:
@@ -65,7 +68,7 @@ jobs:
             echo "::error::公開するタグが決まらない（event=$EVENT_NAME, ref_type=$REF_TYPE）"
             exit 1
           fi
-          if ! printf '%s' "$tag" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::'$tag' は vX.Y.Z 形式のタグ名ではない。ブランチ名・SHAは公開できない"
             exit 1
           fi
@@ -87,6 +90,7 @@ jobs:
         shell: bash
         env:
           TAG: ${{ steps.resolve.outputs.tag }}
+          EXPECTED_COMMIT: ${{ inputs.commit }}
         run: |
           set -euo pipefail
           version=$(node -p "require('./package.json').version")
@@ -98,6 +102,10 @@ jobs:
           head_commit=$(git rev-parse HEAD)
           if [ "$tag_commit" != "$head_commit" ]; then
             echo "::error::チェックアウトしたコミット $head_commit がタグ $TAG のコミット $tag_commit と違う"
+            exit 1
+          fi
+          if [ -n "$EXPECTED_COMMIT" ] && [ "$EXPECTED_COMMIT" != "$head_commit" ]; then
+            echo "::error::タグ $TAG は $head_commit を指しているが、release.yml が決めたのは $EXPECTED_COMMIT"
             exit 1
           fi
           {
@@ -163,12 +171,6 @@ jobs:
           rm -rf ../.output/public/classic
           cp -R .output/public ../.output/public/classic
 
-      - name: Configure Pages
-        id: configure-pages
-        uses: actions/configure-pages@v6
-        with:
-          enablement: true
-
       - name: Upload Pages artifact
         id: upload-pages
         uses: actions/upload-pages-artifact@v5
@@ -189,7 +191,6 @@ jobs:
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           CHECKOUT_CLASSIC_OUTCOME: ${{ steps.checkout-classic.outcome }}
           BUILD_CLASSIC_OUTCOME: ${{ steps.build-classic.outcome }}
-          CONFIGURE_PAGES_OUTCOME: ${{ steps.configure-pages.outcome }}
           UPLOAD_PAGES_OUTCOME: ${{ steps.upload-pages.outcome }}
         run: |
           icon() {
@@ -217,7 +218,6 @@ jobs:
             printf '| Build | %s %s |\n' "$(icon "$BUILD_OUTCOME")" "$BUILD_OUTCOME"
             printf '| Checkout classic (%s) | %s %s |\n' "$CLASSIC_REF" "$(icon "$CHECKOUT_CLASSIC_OUTCOME")" "$CHECKOUT_CLASSIC_OUTCOME"
             printf '| Build classic | %s %s |\n' "$(icon "$BUILD_CLASSIC_OUTCOME")" "$BUILD_CLASSIC_OUTCOME"
-            printf '| Configure Pages | %s %s |\n' "$(icon "$CONFIGURE_PAGES_OUTCOME")" "$CONFIGURE_PAGES_OUTCOME"
             printf '| Upload Pages artifact | %s %s |\n' "$(icon "$UPLOAD_PAGES_OUTCOME")" "$UPLOAD_PAGES_OUTCOME"
             echo
             echo "[Open full run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
@@ -253,6 +253,10 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    # 書き込みの権限は配信だけに渡す。workflow_call では呼び出し側のジョブもこの2つを渡す
+    permissions:
+      pages: write
+      id-token: write
     # workflow_call で呼ばれても効くよう、トップレベルではなくジョブに置く。
     # 配信は同時に1つだけ。走っている配信は途中で止めず、待っている方は新しいものに置き換わる
     concurrency:
@@ -262,6 +266,13 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # Pages の設定の確認・有効化は pages: write を要るので、build ではなくここで行う
+      - name: Configure Pages
+        id: configure-pages
+        uses: actions/configure-pages@v6
+        with:
+          enablement: true
+
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v5
@@ -270,22 +281,26 @@ jobs:
         if: always()
         shell: bash
         env:
+          CONFIGURE_PAGES_OUTCOME: ${{ steps.configure-pages.outcome }}
           DEPLOY_OUTCOME: ${{ steps.deployment.outcome }}
         run: |
-          case "$DEPLOY_OUTCOME" in
-            success) icon='✅' ;;
-            failure) icon='❌' ;;
-            skipped) icon='⏭️' ;;
-            cancelled) icon='🚫' ;;
-            *) icon='❔' ;;
-          esac
+          icon() {
+            case "$1" in
+              success) printf '✅' ;;
+              failure) printf '❌' ;;
+              skipped) printf '⏭️' ;;
+              cancelled) printf '🚫' ;;
+              *) printf '❔' ;;
+            esac
+          }
 
           {
             echo "## Pages deploy summary"
             echo
             echo "| Check | Result |"
             echo "| --- | --- |"
-            printf '| Deploy Pages | %s %s |\n' "$icon" "$DEPLOY_OUTCOME"
+            printf '| Configure Pages | %s %s |\n' "$(icon "$CONFIGURE_PAGES_OUTCOME")" "$CONFIGURE_PAGES_OUTCOME"
+            printf '| Deploy Pages | %s %s |\n' "$(icon "$DEPLOY_OUTCOME")" "$DEPLOY_OUTCOME"
             echo
             echo "[Open full run logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
           } >> "$GITHUB_STEP_SUMMARY"
