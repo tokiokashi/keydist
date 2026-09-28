@@ -88,7 +88,7 @@ host（単体ページ / Workspace）
 
 ### サイドバー
 
-- 区分見出しは英語にする。Analyze（その中に Inspect = 1つの対象をじっくり見るAnalyzer / Compare = 並べて見比べるAnalyzer。どちらも動詞で揃える）、Workspace（用語集の語のまま）、Assets（手持ちの資産）。先頭だけ大文字にし、全部を大文字にはしない
+- 区分見出しは英語にする。Analyze（その中に Single = 対象を1つ見るAnalyzer / Multi = 複数の対象を見るAnalyzer。対象の数で揃える）、Workspace（用語集の語のまま）、Assets（手持ちの資産）。先頭だけ大文字にし、全部を大文字にはしない
 - Testerは区分に入れず、単独の項目として置く。Testerと同じ種類のものが増えた時に区分へ昇格する
 - Workspaceの区分は保存したWorkspaceの一覧と「＋ 新しいWorkspace」。1つも無い時は案内文を出す
 - **最下端に版表示・旧版へのリンク・テーマ切替（自動 / 明 / 暗）を置く。** ナビゲーションだけという原則の例外
