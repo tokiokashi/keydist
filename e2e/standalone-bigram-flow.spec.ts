@@ -912,3 +912,15 @@ test('解析設定の小窓を開くとフォーカスが中へ入り、Escape�
   await expect(settings).toHaveCount(0);
   await expect(button).toBeFocused();
 });
+
+test('未選択の時に表示している既定の対象を押しても「選んだ」になり、選択が閉じる（#663）', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  expect(await page.evaluate(() => localStorage.getItem('keydist:single-target-selection'))).toBeNull();
+
+  await toggleTarget(page, 'layout:qwerty');
+  await expect(page.getByRole('dialog', { name: '対象の選択' })).toHaveCount(0);
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection')))
+    .toContain('qwerty');
+});

@@ -111,14 +111,14 @@ export interface KeydistAssets {
    */
   readonly standaloneAnalyzerOptions: StandaloneAnalyzerOptionsState;
   /**
-   * 個別画面のMulti（比較表・N感度等）が共有する「対象の集合」（対象の列・並び順・色・基準。
+   * 個別画面のMulti（比較表・N感度等）が共有する「対象の集合」（選んだ対象・色・基準。
    * #663）。Analyzerごとには持たない。他資産と対にならない、独立に読み書きできる値なので
    * 別のキーとして持つ。
    */
   readonly multiTargetSelection: MultiTargetSelection;
   /**
    * 個別画面のSingle（Bigram Flow等）が共有する「今選んでいる対象」（#663）。Multiとは
-   * 連動させない（まだ選んでいない時だけMultiの基準で埋める。`effectiveSingleTarget`）。
+   * 連動させない（まだ選んでいない時にMultiで基準を選ぶと、一度だけ埋める。`setMultiBaselineCommand`）。
    */
   readonly singleTargetSelection: SingleTargetSelection;
 }
@@ -541,8 +541,8 @@ function multiTargetSelectionCommand(
 }
 
 /**
- * Multiの集合（選んだ対象・並び順）を丸ごと差し替える（#663）。追加・削除・並び替えのどれも
- * この1本のコマンドを通す（`targets`の並びがそのまま表示順になる。選択から基準が
+ * Multiの集合の選んだ対象を丸ごと差し替える（#663）。追加・削除のどちらも
+ * この1本のコマンドを通す（`targets`は加えた順。表示の並びはホストが一覧の順に並べ直す。選択から基準が
  * 外れたら、同じコマンドの中で基準も一緒に外す。`withMultiTargets`）。
  */
 export function setMultiTargetsCommand(targets: readonly AnalysisTarget[]): Command<KeydistAssets> {
@@ -552,9 +552,24 @@ export function setMultiTargetsCommand(targets: readonly AnalysisTarget[]): Comm
 /**
  * Multiの集合の基準を差し替える。`undefined`で「基準なし」にする（比較表が使う。
  * N感度など基準の概念を持たないAnalyzerは呼ばない）。
+ *
+ * Singleの対象がまだ選ばれていなければ、同じコマンドでSingleにも基準を書く（#663の
+ * オーナー決定）。1コマンド・1履歴なので、Undoで基準とSingleが一緒に戻る。Singleに値が
+ * 入った後は基準を変えてもSingleは変わらない（連動させない）。
  */
 export function setMultiBaselineCommand(baseline: AnalysisTarget | undefined): Command<KeydistAssets> {
-  return multiTargetSelectionCommand('基準を変更する', (current) => withMultiBaseline(current, baseline));
+  return (current) => {
+    const next = withMultiBaseline(current.multiTargetSelection, baseline);
+    if (next === current.multiTargetSelection) return { kind: 'no-op' };
+    const fillSingle = baseline !== undefined && current.singleTargetSelection.target === undefined;
+    return {
+      kind: 'applied',
+      label: '基準を変更する',
+      changes: fillSingle
+        ? { multiTargetSelection: next, singleTargetSelection: withSingleTarget(current.singleTargetSelection, baseline) }
+        : { multiTargetSelection: next },
+    };
+  };
 }
 
 /** Singleの対象を差し替える（#663）。 */

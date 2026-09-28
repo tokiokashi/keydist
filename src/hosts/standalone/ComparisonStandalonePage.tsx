@@ -36,7 +36,7 @@ import './standalone.css';
  * 比較表の単体ページ（#544 Phase 3「集合を対象にする最初のAnalyzer（比較表）と、
  * その単体ページ」、#578指摘1「対象を配列かSetupにする」）。
  *
- * 対象は**配列かSetupの集合**（用語表「対象」）。集合（選んだ対象・並び順・色・基準）は
+ * 対象は**配列かSetupの集合**（用語表「対象」）。集合（選んだ対象・色・基準）は
  * MultiのAnalyzerが共有する資産（`assets.multiTargetSelection`。#663）が持ち、
  * 書き込みはすべて`dispatch`を経由する
  * （`BigramFlowStandalonePage.tsx`と同じ形。#544 §8-2）。テキストは単体ページ全体で

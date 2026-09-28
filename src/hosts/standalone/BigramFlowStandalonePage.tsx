@@ -79,9 +79,9 @@ export function BigramFlowStandalonePage({
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
 
   // 対象（`AnalysisTarget`）はSingleのAnalyzerが共有する資産（`singleTargetSelection`。#663）が正。
-  // まだ選んでいなければMultiの集合の基準、それも無ければ既定の配列を使う（`effectiveSingleTarget`）。
+  // まだ選んでいなければ既定の配列を使う（`effectiveSingleTarget`）。
   const analyzerId = bigramFlowAnalyzer.definition.id;
-  const target = effectiveSingleTarget(assets.singleTargetSelection, assets.multiTargetSelection);
+  const target = effectiveSingleTarget(assets.singleTargetSelection);
   const setTarget = (next: typeof target) => dispatch(setSingleTargetCommand(next));
 
   // テキストは資産（textLibrary + standaloneTextSelection）が正。編集・選択・複製・削除は

@@ -722,3 +722,41 @@ test('setSingleTargetCommand: 同じ対象の書き込みはno-op', () => {
   assert.equal(again.outcome.kind, 'no-op');
   assert.equal(again.assets, step.assets);
 });
+
+test('setMultiBaselineCommand: Singleが未選択なら同じコマンドでSingleにも基準を書き、Undoで一緒に戻る（#663）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const withSelection = applyCommand(assets, history, setMultiTargetsCommand([TARGET_A, TARGET_B]));
+  const withBaseline = applyCommand(withSelection.assets, withSelection.history, setMultiBaselineCommand(TARGET_B));
+  assert.equal(withBaseline.assets.multiTargetSelection.baseline, TARGET_B);
+  assert.equal(withBaseline.assets.singleTargetSelection.target, TARGET_B);
+
+  const back = undo(withBaseline.assets, withBaseline.history);
+  assert.equal(back.assets.multiTargetSelection.baseline, undefined);
+  assert.equal(back.assets.singleTargetSelection.target, undefined);
+});
+
+test('setMultiBaselineCommand: Singleに値が入った後は、基準を変えてもSingleは変わらない（連動させない）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const withSelection = applyCommand(assets, history, setMultiTargetsCommand([TARGET_A, TARGET_B]));
+  const filled = applyCommand(withSelection.assets, withSelection.history, setMultiBaselineCommand(TARGET_A));
+  const changed = applyCommand(filled.assets, filled.history, setMultiBaselineCommand(TARGET_B));
+  assert.equal(changed.assets.multiTargetSelection.baseline, TARGET_B);
+  assert.equal(changed.assets.singleTargetSelection.target, TARGET_A);
+
+  const chosen = applyCommand(withSelection.assets, withSelection.history, setSingleTargetCommand(TARGET_NOT_SELECTED));
+  const afterChosen = applyCommand(chosen.assets, chosen.history, setMultiBaselineCommand(TARGET_A));
+  assert.equal(afterChosen.assets.singleTargetSelection.target, TARGET_NOT_SELECTED);
+});
+
+test('setMultiBaselineCommand: 基準を外してもSingleには書かない', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const withSelection = applyCommand(assets, history, setMultiTargetsCommand([TARGET_A]));
+  const withBaseline = applyCommand(withSelection.assets, withSelection.history, setMultiBaselineCommand(TARGET_A));
+  const back = undo(withBaseline.assets, withBaseline.history);
+  const cleared = applyCommand(back.assets, back.history, setMultiBaselineCommand(undefined));
+  assert.equal(cleared.outcome.kind, 'no-op');
+  assert.equal(cleared.assets.singleTargetSelection.target, undefined);
+});
