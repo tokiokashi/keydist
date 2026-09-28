@@ -1,0 +1,104 @@
+.pane-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border: 1px solid var(--pane-border, #3336);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+}
+
+.pane-frame-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pane-frame-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.pane-frame-subtitle,
+.pane-frame-description {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.pane-status-badge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.pane-status-badge[data-status="computing"],
+.pane-status-badge[data-status="stale"] {
+  background: color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.pane-status-badge[data-status="failed"] {
+  color: #d6333f;
+  background: color-mix(in srgb, #d6333f 15%, transparent);
+}
+
+.pane-condition-summary dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 0.75rem;
+  margin: 0.5rem 0 0;
+}
+
+.pane-condition-row {
+  display: contents;
+}
+
+.pane-condition-row[data-not-applicable="true"] {
+  opacity: 0.55;
+}
+
+.pane-condition-origin {
+  opacity: 0.65;
+  font-size: 0.85em;
+}
+
+.pane-condition-flag {
+  margin-left: 0.5rem;
+  font-size: 0.8em;
+  color: #b8860b;
+}
+
+.pane-condition-diagnostics {
+  margin: 0.15rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.8em;
+  opacity: 0.8;
+}
+
+.pane-trace-errors,
+.pane-error {
+  color: #d6333f;
+}
+
+.pane-trace-errors {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+}
+
+.pane-body[data-pane-stale="true"] {
+  opacity: 0.6;
+}
+
+.pane-crashed {
+  border: 1px dashed #d6333f;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: #d6333f;
+}
+
+.pane-crashed-detail {
+  font-size: 0.85em;
+  opacity: 0.85;
+}
