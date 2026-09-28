@@ -83,6 +83,17 @@ async function closure(entries: readonly string[]): Promise<Set<string>> {
   return seen;
 }
 
+// moduleRequests は Node v22.20.0 / v24.4.0 で入った（23系には無い）。無い版では
+// `undefined.map` の TypeError になり原因が分かりにくいので、先に確かめて要る版を示して落とす。
+// package.json の engines は npm の警告にしかならないため、ここでも止める。
+if (!Array.isArray((new vm.SourceTextModule('') as { moduleRequests?: unknown }).moduleRequests)) {
+  console.error(
+    `[modulepreload] この検査には Node.js 22.20以上（24系なら24.4以上）が要る（今は ${process.version}）。`
+      + 'vm.SourceTextModule の moduleRequests が無い',
+  );
+  process.exit(1);
+}
+
 const failures: string[] = [];
 let checkedPages = 0;
 
