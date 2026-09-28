@@ -1,13 +1,16 @@
 import type { AssetCodec } from '#input/codec/index.ts';
 import { emptyCascadeOverrides } from '#input/settings/index.ts';
-import { initialStandaloneText } from '#input/text/standalone-text.ts';
-import { STANDALONE_TEXT_CODEC } from '#input/text/standalone-text-codec.ts';
+import { emptyTextLibrary } from '#input/text/library.ts';
+import { TEXT_LIBRARY_CODEC } from '#input/text/library-codec.ts';
+import { initialTextSelection } from '#input/text/selection.ts';
+import { STANDALONE_TEXT_SELECTION_CODEC } from '#input/text/selection-codec.ts';
 import { USER_FINGER_ASSIGNMENTS_CODEC } from '#input/shapes/user-finger-assignments.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import { SETUP_LIBRARY_CODEC } from '#engine/setup-codec.ts';
 import { SETUP_LIBRARY_STORAGE_KEY } from '#platform/assets/setup-library-storage.ts';
 import { USER_FINGER_ASSIGNMENTS_STORAGE_KEY } from '#platform/assets/user-finger-assignments-storage.ts';
-import { STANDALONE_TEXT_STORAGE_KEY } from '#platform/assets/standalone-text-storage.ts';
+import { TEXT_LIBRARY_STORAGE_KEY } from '#platform/assets/text-library-storage.ts';
+import { STANDALONE_TEXT_SELECTION_STORAGE_KEY } from '#platform/assets/standalone-text-selection-storage.ts';
 import { STANDALONE_ANALYZER_OPTIONS_STORAGE_KEY } from '#platform/assets/standalone-analyzer-options-storage.ts';
 import { initialStandaloneAnalyzerOptions } from '#engine/standalone-analyzer-options.ts';
 import { STANDALONE_ANALYZER_OPTIONS_CODEC } from '#engine/standalone-analyzer-options-codec.ts';
@@ -65,10 +68,15 @@ export const ASSET_STORAGE_SPECS: { readonly [K in keyof KeydistAssets]: AssetSt
     codec: USER_FINGER_ASSIGNMENTS_CODEC,
     initial: () => [],
   },
-  standaloneText: {
-    storageKey: STANDALONE_TEXT_STORAGE_KEY,
-    codec: STANDALONE_TEXT_CODEC,
-    initial: initialStandaloneText,
+  textLibrary: {
+    storageKey: TEXT_LIBRARY_STORAGE_KEY,
+    codec: TEXT_LIBRARY_CODEC,
+    initial: emptyTextLibrary,
+  },
+  standaloneTextSelection: {
+    storageKey: STANDALONE_TEXT_SELECTION_STORAGE_KEY,
+    codec: STANDALONE_TEXT_SELECTION_CODEC,
+    initial: initialTextSelection,
   },
   standaloneAnalyzerOptions: {
     storageKey: STANDALONE_ANALYZER_OPTIONS_STORAGE_KEY,

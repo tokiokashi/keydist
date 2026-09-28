@@ -14,6 +14,7 @@ export {
   resolveStandalonePaneInput,
   type StandalonePaneCatalog,
 } from './resolve-pane-input.ts';
+export { TextControl, type TextControlProps } from './TextControl.tsx';
 export {
   DEFAULT_STANDALONE_SETUP_SPEC,
   selectInitialSetupId,

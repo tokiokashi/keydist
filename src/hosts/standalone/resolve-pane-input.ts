@@ -4,7 +4,7 @@ import type { Setup, SetupCatalog } from '#input/setup/index.ts';
 import type { UserLayout } from '#input/layouts/user-layouts.ts';
 import type { FingerAssignment } from '#input/shapes/geometry.ts';
 import type { UserRomajiRule } from '#input/romaji/rules.ts';
-import { standaloneTextLanguage, type StandaloneTextState } from '#input/text/standalone-text.ts';
+import type { ResolvedText } from '#input/text/resolve.ts';
 
 /**
  * 単体ページが`resolveEngineInput`を呼ぶのに要る、Setup以外のカタログ一式。
@@ -21,15 +21,16 @@ export interface StandalonePaneCatalog {
 }
 
 /**
- * 単体ページの入力解決（#544 §1・§5）。「最後に使ったテキスト」から実際に使う言語
- * （`standaloneTextLanguage`。手動上書きがあればそちらを優先）を決めてから
- * `resolveEngineInput`へ渡す、テキストの言語判定とengineの接続点。
+ * 単体ページの入力解決（#544 §1・§5）。呼び出し側（`hosts/standalone`の各ページ）が
+ * `resolveTextSelection`（`input/text/resolve.ts`）で既に決めた「今使っているテキスト」
+ * （本文と実効言語。手動上書きがあればそちらを優先済み）を`resolveEngineInput`へ渡すだけの、
+ * テキストの言語判定とengineの接続点。
  */
 export function resolveStandalonePaneInput(
   setup: Setup,
   catalog: StandalonePaneCatalog,
   overrides: SettingsCascadeOverrides,
-  standaloneText: StandaloneTextState,
+  resolvedText: ResolvedText,
 ): ResolvedInputResult {
   return resolveEngineInput({
     setup,
@@ -38,7 +39,7 @@ export function resolveStandalonePaneInput(
     customRomajiRules: catalog.customRomajiRules,
     customFingerAssignments: catalog.customFingerAssignments,
     overrides,
-    text: standaloneText.text,
-    language: standaloneTextLanguage(standaloneText),
+    text: resolvedText.text,
+    language: resolvedText.language,
   });
 }

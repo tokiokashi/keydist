@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import { setStandaloneAnalyzerOptionsCommand, setStandaloneTextCommand, type KeydistAssets } from '#engine/commands.ts';
-import { sampleTextEntries } from '#input/text/samples.ts';
+import { setStandaloneAnalyzerOptionsCommand, type KeydistAssets } from '#engine/commands.ts';
+import { resolveTextSelection } from '#input/text/resolve.ts';
+import type { TextIdGenerator } from '#input/text/library.ts';
+import type { TextRef } from '#input/text/selection.ts';
 import type { EngineCache } from '#engine/cache.ts';
 import type { SetupIdGenerator } from '#input/setup/index.ts';
 import { combinePaneStates, conditionHeaderInfoFromResolvedInput, traceConditionSummary, PaneFrame } from '#hosts/shared/index.ts';
@@ -11,6 +13,7 @@ import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import { bigramFlowOptions, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
+import { TextControl } from './TextControl.tsx';
 import { useAnalyzerPane } from './use-analyzer-pane.ts';
 import { useEnsureSetup } from './use-ensure-setup.ts';
 import './standalone.css';
@@ -40,6 +43,9 @@ export interface BigramFlowStandalonePageProps {
   readonly cache: EngineCache;
   readonly catalog: StandalonePaneCatalog;
   readonly generateSetupId: SetupIdGenerator;
+  readonly generateTextId: TextIdGenerator;
+  /** `TextControl`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
+  readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
   /**
    * 解析設定の変更を資産へ反映する（間引き済み。`app/standalone/use-debounced-commit.ts`
    * 参照）。`dispatch`を直接使わないのは、`hosts`が`platform`をimportできず
@@ -48,8 +54,6 @@ export interface BigramFlowStandalonePageProps {
   readonly onBigramFlowOptionsCommit: (options: BigramFlowOptions) => void;
 }
 
-const TEXT_COMMIT_DEBOUNCE_MS = 400;
-
 export function BigramFlowStandalonePage({
   assets,
   assetsReady,
@@ -57,6 +61,8 @@ export function BigramFlowStandalonePage({
   cache,
   catalog,
   generateSetupId,
+  generateTextId,
+  onTextContentCommit,
   onBigramFlowOptionsCommit,
 }: BigramFlowStandalonePageProps) {
   const setups = assets.setupLibrary.setups;
@@ -73,22 +79,14 @@ export function BigramFlowStandalonePage({
 
   const selectedSetup = setups.find((setup) => setup.id === selectedSetupId);
 
-  // テキストは即座に見た目へ反映しつつ（controlled textarea）、コマンドへの反映は
-  // 軽くdebounceする（1打鍵ごとにTrace再計算が走らないようにするため）。
-  const [textDraft, setTextDraft] = useState(assets.standaloneText.text);
-  const textDraftRef = useRef(textDraft);
-  textDraftRef.current = textDraft;
-  useEffect(() => {
-    setTextDraft(assets.standaloneText.text);
-  }, [assets.standaloneText.text]);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (textDraftRef.current !== assets.standaloneText.text) {
-        dispatch(setStandaloneTextCommand(textDraftRef.current));
-      }
-    }, TEXT_COMMIT_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [textDraft, dispatch, assets.standaloneText.text]);
+  // テキストは資産（textLibrary + standaloneTextSelection）が正。編集・選択・複製・削除は
+  // すべて共有部品`TextControl`（比較表・N感度と3ページで同じ操作を持つため。
+  // `resolve-pane-input.ts`が使う`resolveTextSelection`と同じものをここでも呼び、
+  // 実効テキストを求める）へ切り出した。
+  const resolvedText = useMemo(
+    () => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary),
+    [assets.standaloneTextSelection, assets.textLibrary],
+  );
 
   // 解析設定は資産（assets.standaloneAnalyzerOptions）が正で、ページはローカルには持たない
   // （#544指示書「解析設定は資産として個人で保持する」）。`optionsDraft`はtextDraftと同じ形の
@@ -164,19 +162,11 @@ export function BigramFlowStandalonePage({
     });
   };
 
-  // サンプルは選べれば十分で、言語を選ぶUIは作らない（#544指示書）。テキストが今どの
-  // サンプルと一致するかを`<select>`の値に反映する（自由入力中はどれとも一致せず空になる）。
-  const sampleEntries = useMemo(() => sampleTextEntries(), []);
-  const currentSampleKey = useMemo(() => {
-    const match = sampleEntries.find((entry) => entry.text === assets.standaloneText.text);
-    return match === undefined ? '' : `${match.language}:${match.sampleId}`;
-  }, [sampleEntries, assets.standaloneText.text]);
-
   const resolution = useMemo(
     () => selectedSetup === undefined
       ? undefined
-      : resolveStandalonePaneInput(selectedSetup, catalog, assets.setupLibrary.overrides, assets.standaloneText),
-    [selectedSetup, catalog, assets.setupLibrary.overrides, assets.standaloneText],
+      : resolveStandalonePaneInput(selectedSetup, catalog, assets.setupLibrary.overrides, resolvedText),
+    [selectedSetup, catalog, assets.setupLibrary.overrides, resolvedText],
   );
 
   const pane = useAnalyzerPane(
@@ -221,45 +211,6 @@ export function BigramFlowStandalonePage({
           </select>
         </label>
 
-        <label className="standalone-control standalone-text-control">
-          <span>テキスト</span>
-          <textarea
-            value={textDraft}
-            onChange={(event) => setTextDraft(event.currentTarget.value)}
-            rows={3}
-            aria-label="テキスト"
-          />
-          <small>
-            言語判定: {assets.standaloneText.language.override ?? assets.standaloneText.language.detected}
-            {assets.standaloneText.language.override ? '（手動指定）' : '（自動）'}
-          </small>
-        </label>
-
-        <label className="standalone-control">
-          <span>サンプル</span>
-          <select
-            value={currentSampleKey}
-            onChange={(event) => {
-              const key = event.currentTarget.value;
-              if (key === '') return;
-              const entry = sampleEntries.find((candidate) => `${candidate.language}:${candidate.sampleId}` === key);
-              if (entry === undefined) return;
-              // サンプルの選択は連続入力ではなく1回きりの決定なので、textareaのdebounce
-              // （TEXT_COMMIT_DEBOUNCE_MS）を待たずに即座にコマンドとして反映する。
-              setTextDraft(entry.text);
-              dispatch(setStandaloneTextCommand(entry.text));
-            }}
-            aria-label="サンプル"
-          >
-            <option value="">（自由入力）</option>
-            {sampleEntries.map((entry) => (
-              <option key={`${entry.language}:${entry.sampleId}`} value={`${entry.language}:${entry.sampleId}`}>
-                {entry.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
         <div className="standalone-control">
           <span>解析設定</span>
           <button type="button" onClick={copyOptionsLink}>
@@ -267,6 +218,15 @@ export function BigramFlowStandalonePage({
           </button>
         </div>
       </section>
+
+      <TextControl
+        holder="standalone"
+        textLibrary={assets.textLibrary}
+        selection={assets.standaloneTextSelection}
+        dispatch={dispatch}
+        generateTextId={generateTextId}
+        onTextContentCommit={onTextContentCommit}
+      />
 
       {selectedSetup === undefined ? (
         <p aria-busy="true">Setupを準備している…</p>

@@ -49,13 +49,13 @@ test('loadAssets: storageが空なら何も返さない', () => {
 test('saveChangedAssets→loadAssets: 書いたキーだけ往復する', () => {
   const storage = createFakeStorage();
   const syncsA = buildAssetSyncs({ onExternalChange: () => {}, storage });
-  const nextText = { ...ASSET_STORAGE_SPECS.standaloneText.initial(), text: 'hello' };
-  saveChangedAssets(syncsA, { ...baseAssets(), standaloneText: nextText }, ['standaloneText']);
+  const nextLibrary = { texts: [{ id: 'text-1', name: 'hello', text: 'hello' }] };
+  saveChangedAssets(syncsA, { ...baseAssets(), textLibrary: nextLibrary }, ['textLibrary']);
 
   // 別インスタンス（＝別タブ相当）で読む。同じstorageを共有すればload側は独立して読める。
   const syncsB = buildAssetSyncs({ onExternalChange: () => {}, storage });
   const loaded = loadAssets(syncsB);
-  assert.deepEqual(loaded.standaloneText, nextText);
+  assert.deepEqual(loaded.textLibrary, nextLibrary);
   assert.equal(loaded.setupLibrary, undefined);
   assert.equal(loaded.fingerAssignments, undefined);
 });
@@ -80,10 +80,10 @@ test('外部変更: 購読開始(startAssetSyncs)後、他タブの書き込み�
   const stopA = startAssetSyncs(syncsA);
   const stopB = startAssetSyncs(syncsB);
 
-  const nextText = { ...ASSET_STORAGE_SPECS.standaloneText.initial(), text: 'from tab B' };
-  saveChangedAssets(syncsB, { ...baseAssets(), standaloneText: nextText }, ['standaloneText']);
+  const nextLibrary = { texts: [{ id: 'text-1', name: 'from tab B', text: 'from tab B' }] };
+  saveChangedAssets(syncsB, { ...baseAssets(), textLibrary: nextLibrary }, ['textLibrary']);
 
-  assert.deepEqual(seen, [['standaloneText', nextText]]);
+  assert.deepEqual(seen, [['textLibrary', nextLibrary]]);
   stopA();
   stopB();
 });
@@ -117,10 +117,10 @@ test('startAssetSyncs→stop→startAssetSyncs（StrictModeの二重実行を模
   const stopSecond = startAssetSyncs(syncsA); // 2回目のmount（実際に生きる購読）
   startAssetSyncs(syncsB);
 
-  const nextText = { ...ASSET_STORAGE_SPECS.standaloneText.initial(), text: 'from tab B after remount' };
-  saveChangedAssets(syncsB, { ...baseAssets(), standaloneText: nextText }, ['standaloneText']);
+  const nextLibrary = { texts: [{ id: 'text-1', name: 'from tab B after remount', text: 'from tab B after remount' }] };
+  saveChangedAssets(syncsB, { ...baseAssets(), textLibrary: nextLibrary }, ['textLibrary']);
 
-  assert.deepEqual(seen, [['standaloneText', nextText]], '2回目のstart後も外部変更が届く');
+  assert.deepEqual(seen, [['textLibrary', nextLibrary]], '2回目のstart後も外部変更が届く');
   stopSecond();
 });
 

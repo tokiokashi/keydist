@@ -7,11 +7,15 @@ import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import { analyzerSetSelectionFor } from '#engine/analyzer-set-selection.ts';
 import type { Setup, SetupIdGenerator } from '#input/setup/index.ts';
 import { setupColor } from '#input/setup/index.ts';
+import type { TextIdGenerator } from '#input/text/library.ts';
+import type { TextRef } from '#input/text/selection.ts';
+import { resolveTextSelection } from '#input/text/resolve.ts';
 import { conditionHeaderInfoFromResolvedInput, nonDefaultConditionRows, summarizeNonDefaultConditions, traceConditionSummary } from '#hosts/shared/index.ts';
 import { nSensitivityAnalyzer, type NSensitivityRowContext } from '#analyzers/n-sensitivity/definition.tsx';
 import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
+import { TextControl } from './TextControl.tsx';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
 import { useEnsureSetup } from './use-ensure-setup.ts';
 import './standalone.css';
@@ -37,6 +41,9 @@ export interface NSensitivityStandalonePageProps {
   readonly cache: EngineCache;
   readonly catalog: StandalonePaneCatalog;
   readonly generateSetupId: SetupIdGenerator;
+  readonly generateTextId: TextIdGenerator;
+  /** `TextControl`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
+  readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
   readonly onOptionsCommit: (options: NSensitivityOptions) => void;
 }
 
@@ -80,10 +87,17 @@ export function NSensitivityStandalonePage({
   cache,
   catalog,
   generateSetupId,
+  generateTextId,
+  onTextContentCommit,
   onOptionsCommit,
 }: NSensitivityStandalonePageProps) {
   const setups = assets.setupLibrary.setups;
   useEnsureSetup(setups, assetsReady, dispatch, generateSetupId);
+
+  const resolvedText = useMemo(
+    () => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary),
+    [assets.standaloneTextSelection, assets.textLibrary],
+  );
 
   const selection = analyzerSetSelectionFor(assets.analyzerSetSelections, ANALYZER_ID);
   const setupIds = selection.setupIds;
@@ -125,10 +139,10 @@ export function NSensitivityStandalonePage({
       }
       return {
         setupId,
-        resolution: resolveStandalonePaneInput(setup, catalog, assets.setupLibrary.overrides, assets.standaloneText),
+        resolution: resolveStandalonePaneInput(setup, catalog, assets.setupLibrary.overrides, resolvedText),
       };
     }),
-    [setupIds, setupById, catalog, assets.setupLibrary.overrides, assets.standaloneText],
+    [setupIds, setupById, catalog, assets.setupLibrary.overrides, resolvedText],
   );
 
   const rowContext = useMemo(() => {
@@ -152,6 +166,15 @@ export function NSensitivityStandalonePage({
         <p className="eyebrow">単体ページ</p>
         <h1>N感度</h1>
       </header>
+
+      <TextControl
+        holder="standalone"
+        textLibrary={assets.textLibrary}
+        selection={assets.standaloneTextSelection}
+        dispatch={dispatch}
+        generateTextId={generateTextId}
+        onTextContentCommit={onTextContentCommit}
+      />
 
       <section className="set-selection-controls" aria-label="対象Setupの選択">
         <fieldset>
