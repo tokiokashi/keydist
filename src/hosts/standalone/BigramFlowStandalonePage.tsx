@@ -16,6 +16,7 @@ import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { TextControl } from './TextControl.tsx';
 import { TargetPicker } from './TargetPicker.tsx';
 import { DefaultShapeControl } from './DefaultShapeControl.tsx';
+import { useOptionsDraft } from './use-options-draft.ts';
 import { useAnalyzerPane } from './use-analyzer-pane.ts';
 import './standalone.css';
 
@@ -89,13 +90,7 @@ export function BigramFlowStandalonePage({
     () => decodeStoredAnalyzerOptions(bigramFlowAnalyzer.definition, storedOptionsRaw),
     [storedOptionsRaw],
   );
-  const [optionsDraft, setOptionsDraft] = useState<BigramFlowOptions>(decoded.options);
-  useEffect(() => {
-    setOptionsDraft(decoded.options);
-    // 資産側が変わった（初回読み込み・他タブからの反映・自分のcommitの反響）時だけ
-    // draftを揃え直す。`decoded`は`storedOptionsRaw`が同じ参照なら同じ内容の
-    // オブジェクトを毎回作るだけなので、無限ループにはならない（依存はdecoded自身）。
-  }, [decoded]);
+  const [optionsDraft, setOptionsDraft] = useOptionsDraft<BigramFlowOptions>(decoded.options);
 
   // URL経由で解析設定を受け取る（#544 Phase 3「URLでの受け取り」）。取り込む対象は
   // 解析設定だけ（配列・形状・条件をURLへ載せる共有リンクはPhase 5の範囲外）。

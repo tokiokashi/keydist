@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
 
 /**
  * Bigram Flow単体ページ（#544 Phase 3「最初の縦切り」）のE2E。
@@ -716,4 +717,20 @@ test('読み込みで操作可能になった瞬間から、本文は保存済�
 
   const states = await page.evaluate(() => (window as unknown as { __textareaStates: string[] }).__textareaStates);
   expect(states.filter((state) => state.startsWith('enabled:'))).toEqual(['enabled:one']);
+});
+
+test('保存済みの解析設定は、操作可能になった瞬間から表示されている（既定値のまま操作できる瞬間が無い。#603）', async ({ page }) => {
+  await recordControlStates(
+    page,
+    {
+      storageKey: 'keydist:standalone-analyzer-options',
+      storageValue: JSON.stringify({ version: 1, 'bigram-flow': { lineScale: 'sqrt' } }),
+    },
+    { selector: 'select[aria-label="紐の太さのスケール"]', read: 'value' },
+  );
+  await page.goto('/standalone/bigram-flow');
+  const lineScale = page.getByLabel('紐の太さのスケール');
+  await expect(lineScale).toBeEnabled({ timeout: 10_000 });
+  await expect(lineScale).toHaveValue('sqrt');
+  expect(await enabledValues(page)).toEqual(['sqrt']);
 });

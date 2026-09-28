@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import {
   setAnalyzerSetSelectionBaselineCommand,
@@ -21,6 +21,7 @@ import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { TextControl } from './TextControl.tsx';
 import { AddTargetControl } from './TargetPicker.tsx';
 import { DefaultShapeControl } from './DefaultShapeControl.tsx';
+import { useOptionsDraft } from './use-options-draft.ts';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
 import { setupNumbersOf, targetNameSource } from './target-name-source.ts';
 import './standalone.css';
@@ -133,10 +134,7 @@ export function ComparisonStandalonePage({
   );
   // `BigramFlowStandalonePage`と同じ形: 見た目は即座に反映しつつ（controlled）、
   // 資産への書き込みは呼び出し側がdebounceする（`onComparisonOptionsCommit`）。
-  const [optionsDraft, setOptionsDraft] = useState<ComparisonOptions>(decoded.options);
-  useEffect(() => {
-    setOptionsDraft(decoded.options);
-  }, [decoded]);
+  const [optionsDraft, setOptionsDraft] = useOptionsDraft<ComparisonOptions>(decoded.options);
 
   // 各メンバーの解決済み入力（または解決失敗）。`selection.targets`の並びのまま作る
   // （engineの抽出キーが順序込みで畳み込む対象。#544 §7）。

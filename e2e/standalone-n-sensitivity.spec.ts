@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
 
 /**
  * N感度単体ページ（#544 Phase 3「N感度」、#578指摘1「対象を配列かSetupにする」）のE2E。
@@ -213,4 +214,20 @@ test('画面の文言に開発の内部（issue番号・Phase・ファイル名�
   expect(description).not.toMatch(/#\d|Phase|standalone|単体ページ/);
   const body = page.locator('body');
   await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|\.ts\b|Vector lab|connections|N sensitivity|Setup comparison|baseline|言語判定: /);
+});
+
+test('保存済みの縦軸は、操作可能になった瞬間から表示されている（既定値のまま操作できる瞬間が無い。#603）', async ({ page }) => {
+  await recordControlStates(
+    page,
+    {
+      storageKey: STANDALONE_ANALYZER_OPTIONS_KEY,
+      storageValue: JSON.stringify({ version: 1, 'n-sensitivity': { scale: 'absolute' } }),
+    },
+    { selector: 'input[name="n-sensitivity-scale"][value="absolute"]', read: 'checked' },
+  );
+  await page.goto('/standalone/n-sensitivity');
+  const absolute = page.getByRole('radio', { name: '実測値 [u]' });
+  await expect(absolute).toBeEnabled({ timeout: 10_000 });
+  await expect(absolute).toBeChecked();
+  expect(await enabledValues(page)).toEqual(['true']);
 });

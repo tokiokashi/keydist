@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
 
 /**
  * 比較表単体ページ（#544 Phase 3「集合を対象にする最初のAnalyzer（比較表）と、
@@ -344,4 +345,21 @@ test('画面の文言に開発の内部（issue番号・Phase・ファイル名�
   expect(description).not.toMatch(/#\d|Phase|standalone|単体ページ/);
   const body = page.locator('body');
   await expect(body).not.toContainText(/#\d{3}|Phase|standalone|単体ページ|\.ts\b|Vector lab|connections|N sensitivity|Setup comparison|baseline|言語判定: /);
+});
+
+test('保存済みの表示する列は、操作可能になった瞬間から表示されている（既定値のまま操作できる瞬間が無い。#603）', async ({ page }) => {
+  // 既定は全列表示。保存値では先頭の「動作数」を外しておく。
+  await recordControlStates(
+    page,
+    {
+      storageKey: 'keydist:standalone-analyzer-options',
+      storageValue: JSON.stringify({ version: 1, comparison: { visibleColumns: ['totalUnits'] } }),
+    },
+    { selector: '.comparison-column-picker input[type="checkbox"]', read: 'checked' },
+  );
+  await page.goto('/standalone/comparison');
+  const firstColumn = page.locator('.comparison-column-picker input[type="checkbox"]').first();
+  await expect(firstColumn).toBeEnabled({ timeout: 10_000 });
+  await expect(firstColumn).not.toBeChecked();
+  expect(await enabledValues(page)).toEqual(['false']);
 });

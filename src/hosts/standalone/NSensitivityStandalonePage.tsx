@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import { setAnalyzerSetSelectionTargetsCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineCache } from '#engine/cache.ts';
@@ -17,6 +17,7 @@ import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { TextControl } from './TextControl.tsx';
 import { AddTargetControl } from './TargetPicker.tsx';
 import { DefaultShapeControl } from './DefaultShapeControl.tsx';
+import { useOptionsDraft } from './use-options-draft.ts';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
 import { setupNumbersOf, targetNameSource } from './target-name-source.ts';
 import './standalone.css';
@@ -125,10 +126,7 @@ export function NSensitivityStandalonePage({
     () => decodeStoredAnalyzerOptions(nSensitivityAnalyzer.definition, storedOptionsRaw),
     [storedOptionsRaw],
   );
-  const [optionsDraft, setOptionsDraft] = useState<NSensitivityOptions>(decoded.options);
-  useEffect(() => {
-    setOptionsDraft(decoded.options);
-  }, [decoded]);
+  const [optionsDraft, setOptionsDraft] = useOptionsDraft<NSensitivityOptions>(decoded.options);
 
   const members: readonly EngineSetMemberInput[] = useMemo(
     () => targets.map((target): EngineSetMemberInput => ({
