@@ -26,9 +26,9 @@ import { nSensitivityAnalyzer, type NSensitivityRowContext } from '#analyzers/n-
 import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
-import { TextControl } from './TextControl.tsx';
-import { DefaultShapeControl } from './DefaultShapeControl.tsx';
-import { StandaloneContextBar } from './StandaloneContextBar.tsx';
+import { ContextBar, ShareButton, UndoRedoButtons, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
+import { TextChip } from '#hosts/shared/TextChip.tsx';
+import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { useOptionsDraft } from './use-options-draft.ts';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
 import { targetNameSource } from './target-name-source.ts';
@@ -50,8 +50,10 @@ export interface NSensitivityStandalonePageProps {
   readonly cache: EngineCache;
   readonly catalog: StandalonePaneCatalog;
   readonly generateTextId: TextIdGenerator;
-  /** `TextControl`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
+  /** `TextChip`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
   readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
+  /** 資産のコマンド履歴（文脈バーのUndo / Redo）。`app` が組み立てる。 */
+  readonly history: ContextBarHistory;
   readonly onOptionsCommit: (options: NSensitivityOptions) => void;
 }
 
@@ -104,6 +106,7 @@ export function NSensitivityStandalonePage({
   generateTextId,
   onTextContentCommit,
   onOptionsCommit,
+  history,
 }: NSensitivityStandalonePageProps) {
   const setups = assets.setupLibrary.setups;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
@@ -192,47 +195,60 @@ export function NSensitivityStandalonePage({
 
   return (
     <div className="standalone-page">
+      <ContextBar
+        disabled={!assetsReady}
+        actions={(
+          <>
+            <UndoRedoButtons history={history} />
+            <ShareButton description="この画面のURLをコピーする" />
+          </>
+        )}
+      >
+        <TextChip
+          holder="standalone"
+          textLibrary={assets.textLibrary}
+          selection={assets.standaloneTextSelection}
+          dispatch={dispatch}
+          generateTextId={generateTextId}
+          onTextContentCommit={onTextContentCommit}
+        />
+        <DefaultShapeChip
+          overrides={assets.setupLibrary.overrides}
+          dispatch={dispatch}
+          shapes={catalog.setupCatalog.shapes}
+        />
+      </ContextBar>
       {/* プリレンダーされたページはハイドレーション完了まで操作を効かせない（レビュー指摘1）。 */}
       <fieldset
         disabled={!assetsReady}
         style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
       >
-        <StandaloneContextBar>
-          <TextControl
-            holder="standalone"
-            textLibrary={assets.textLibrary}
-            selection={assets.standaloneTextSelection}
-            dispatch={dispatch}
-            generateTextId={generateTextId}
-            onTextContentCommit={onTextContentCommit}
-          />
-          <DefaultShapeControl overrides={assets.setupLibrary.overrides} dispatch={dispatch} catalog={catalog} />
-        </StandaloneContextBar>
-
-        <PaneFrame
-          name={nSensitivityAnalyzer.name}
-          description={nSensitivityAnalyzer.description}
-          headingLevel={1}
-          target={(
-            <TargetSelection
-              mode="multiple"
-              groups={choiceGroups}
-              selected={targets}
-              summary={targetSummary}
-              onChange={setSelection}
-            />
-          )}
-          settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
-          menuItems={[resetOptionsMenuItem(() => changeOptions(nSensitivityAnalyzer.defaultOptions))]}
-          conditionRows={[]}
-          engineState={extraction}
-          settingsDiagnostics={decoded.diagnostics}
-          {...(targets.length === 0 ? { emptyMessage: '対象を1つ以上選ぶと、ここにチャートが出る。' } : {})}
-        >
-          {extracted === undefined ? undefined : (
-            <Body extracted={extracted} order={order} rowContext={rowContext} options={optionsDraft} />
-          )}
-        </PaneFrame>
+        <div className="standalone-stage">
+          <PaneFrame
+            name={nSensitivityAnalyzer.name}
+            description={nSensitivityAnalyzer.description}
+            headingLevel={1}
+            target={(
+              <TargetSelection
+                mode="multiple"
+                groups={choiceGroups}
+                selected={targets}
+                summary={targetSummary}
+                onChange={setSelection}
+              />
+            )}
+            settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
+            menuItems={[resetOptionsMenuItem(() => changeOptions(nSensitivityAnalyzer.defaultOptions))]}
+            conditionRows={[]}
+            engineState={extraction}
+            settingsDiagnostics={decoded.diagnostics}
+            {...(targets.length === 0 ? { emptyMessage: '対象を1つ以上選ぶと、ここにチャートが出る。' } : {})}
+          >
+            {extracted === undefined ? undefined : (
+              <Body extracted={extracted} order={order} rowContext={rowContext} options={optionsDraft} />
+            )}
+          </PaneFrame>
+        </div>
       </fieldset>
     </div>
   );

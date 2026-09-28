@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { createEngineCache } from '#engine/cache.ts';
 import { setStandaloneAnalyzerOptionsCommand, setTextContentCommand } from '#engine/commands.ts';
 import type { TextRef } from '#input/text/selection.ts';
@@ -25,7 +26,7 @@ import { useDebouncedCommit } from './use-debounced-commit.ts';
 const engineCache = createEngineCache();
 
 export function StandaloneBigramFlowApp() {
-  const { assets, ready, dispatch } = useKeydistAssets();
+  const { assets, ready, dispatch, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => builtinStandaloneCatalog(), []);
 
   // 解析設定の書き込みは間引いてから`dispatch`する（`use-debounced-commit.ts`参照。
@@ -35,11 +36,28 @@ export function StandaloneBigramFlowApp() {
   });
 
   // テキストの本文もdebounceしてから`dispatch`する。値は`{ ref, text }`のペアで運ぶ
-  // （`TextControl`の`onTextContentCommit`コメント参照。打鍵時点の対象を明示し、
+  // （`TextChip`の`onTextContentCommit`コメント参照。打鍵時点の対象を明示し、
   // debounce完了時に「今の選択」を読み直して事故る競合を避ける）。
   const commitTextContent = useDebouncedCommit<{ ref: TextRef; text: string }>(dispatch, {
     commandFor: ({ ref, text }) => setTextContentCommand('standalone', ref, text, generateTextId),
   });
+
+  // 間引き待ちの変更を先に書いてから戻す。待ち中の値を残したまま戻すと、戻した後にその値が
+  // 書かれて、戻したはずの変更がまた入るため。
+  const history: ContextBarHistory = {
+    canUndo,
+    canRedo,
+    undo: () => {
+      commitTextContent.flush();
+      commitBigramFlowOptions.flush();
+      undo();
+    },
+    redo: () => {
+      commitTextContent.flush();
+      commitBigramFlowOptions.flush();
+      redo();
+    },
+  };
 
   return (
     <BigramFlowStandalonePage
@@ -49,6 +67,7 @@ export function StandaloneBigramFlowApp() {
       cache={engineCache}
       catalog={catalog}
       generateTextId={generateTextId}
+      history={history}
       onTextContentCommit={commitTextContent}
       onBigramFlowOptionsCommit={commitBigramFlowOptions}
     />

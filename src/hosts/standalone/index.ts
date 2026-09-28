@@ -14,5 +14,3 @@ export {
   resolveStandalonePaneInput,
   type StandalonePaneCatalog,
 } from './resolve-pane-input.ts';
-export { TextControl, type TextControlProps } from './TextControl.tsx';
-export { DefaultShapeControl, type DefaultShapeControlProps } from './DefaultShapeControl.tsx';

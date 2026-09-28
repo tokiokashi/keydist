@@ -10,6 +10,11 @@ export interface AppearancePreferencesV1 {
   theme: ThemeChoice;
 }
 
+/** シェルの見た目の状態（このブラウザに覚える。サイドバーの固定）。 */
+export interface ShellPreferencesV1 {
+  sidebarPinned: boolean;
+}
+
 export type AnalyzerPreferencesV2 = Omit<UiStateV1['ui'], 'playback'>;
 
 export interface AppStateV2 {
@@ -18,6 +23,7 @@ export interface AppStateV2 {
   analyzerWorkspace?: AnalyzerWorkspaceStateV1;
   inputConverter?: InputConverterPreferencesV2;
   appearance?: AppearancePreferencesV1;
+  shell?: ShellPreferencesV1;
   analyzer?: AnalyzerPreferencesV2;
   conditions?: UiStateV1['conditions'];
   playback?: UiPlaybackState;

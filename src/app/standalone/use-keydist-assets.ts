@@ -7,7 +7,14 @@ import {
 } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import { ASSET_KEYS, ASSET_STORAGE_SPECS } from './asset-storage-specs.ts';
-import { buildAssetSyncs, commitCommand, loadAssets, startAssetSyncs, type AssetSyncMap } from './asset-syncs.ts';
+import {
+  buildAssetSyncs,
+  commitCommand,
+  commitHistoryStep,
+  loadAssets,
+  startAssetSyncs,
+  type AssetSyncMap,
+} from './asset-syncs.ts';
 
 /**
  * `KeydistAssets`（#544 §8-2）の永続化・タブ間追従・コマンド履歴を1つにまとめる
@@ -35,6 +42,11 @@ export interface KeydistAssetsController {
    */
   readonly ready: boolean;
   dispatch(command: Command<KeydistAssets>): void;
+  /** 戻せる・やり直せる項目があるか（文脈バーのUndo / Redoの押せる状態）。 */
+  readonly canUndo: boolean;
+  readonly canRedo: boolean;
+  undo(): void;
+  redo(): void;
 }
 
 function initialAssets(): KeydistAssets {
@@ -113,5 +125,23 @@ export function useKeydistAssets(): KeydistAssetsController {
     forceRender();
   }, [syncs]);
 
-  return { assets: assetsRef.current, ready, dispatch };
+  const step = useMemo(() => (direction: 'undo' | 'redo') => {
+    const result = commitHistoryStep(syncs, () => ({ assets: assetsRef.current, history: historyRef.current }), direction);
+    if (result.outcome.kind !== 'applied') return;
+    assetsRef.current = result.assets;
+    historyRef.current = result.history;
+    forceRender();
+  }, [syncs]);
+  const undo = useMemo(() => () => step('undo'), [step]);
+  const redo = useMemo(() => () => step('redo'), [step]);
+
+  return {
+    assets: assetsRef.current,
+    ready,
+    dispatch,
+    canUndo: historyRef.current.undoStack.length > 0,
+    canRedo: historyRef.current.redoStack.length > 0,
+    undo,
+    redo,
+  };
 }

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { createEngineCache } from '#engine/cache.ts';
 import { setStandaloneAnalyzerOptionsCommand, setTextContentCommand } from '#engine/commands.ts';
 import type { TextRef } from '#input/text/selection.ts';
@@ -23,7 +24,7 @@ import { useDebouncedCommit } from './use-debounced-commit.ts';
 const engineCache = createEngineCache();
 
 export function StandaloneComparisonApp() {
-  const { assets, ready, dispatch } = useKeydistAssets();
+  const { assets, ready, dispatch, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => builtinStandaloneCatalog(), []);
 
   const commitComparisonOptions = useDebouncedCommit<ComparisonOptions>(dispatch, {
@@ -34,6 +35,23 @@ export function StandaloneComparisonApp() {
     commandFor: ({ ref, text }) => setTextContentCommand('standalone', ref, text, generateTextId),
   });
 
+  // 間引き待ちの変更を先に書いてから戻す。待ち中の値を残したまま戻すと、戻した後にその値が
+  // 書かれて、戻したはずの変更がまた入るため。
+  const history: ContextBarHistory = {
+    canUndo,
+    canRedo,
+    undo: () => {
+      commitTextContent.flush();
+      commitComparisonOptions.flush();
+      undo();
+    },
+    redo: () => {
+      commitTextContent.flush();
+      commitComparisonOptions.flush();
+      redo();
+    },
+  };
+
   return (
     <ComparisonStandalonePage
       assets={assets}
@@ -42,6 +60,7 @@ export function StandaloneComparisonApp() {
       cache={engineCache}
       catalog={catalog}
       generateTextId={generateTextId}
+      history={history}
       onTextContentCommit={commitTextContent}
       onComparisonOptionsCommit={commitComparisonOptions}
     />

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('theme authority survives SPA route transitions and reload', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Analyzer', exact: true }).click();
+  await page.getByRole('link', { name: /^Analyzer/ }).click();
 
   const controls = page.locator('[data-react-feature="theme-controls"]');
   await expect(controls).toBeVisible();
