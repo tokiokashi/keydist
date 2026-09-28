@@ -40,14 +40,14 @@ test('appearance migrates AppState analyzer.theme and removes the old field afte
 
 test('appearance can migrate UiStateV1 theme without consuming the analyzer migration document', () => {
   const storage = new MemoryStorage();
-  storage.setItem('keydist:ui-state', JSON.stringify({
+  storage.setItem('keydist-classic:ui-state', JSON.stringify({
     version: 1,
     ui: { theme: 'light' },
   }));
 
   assert.deepEqual(loadAppearancePreference(storage), { theme: 'light' });
   assert.equal(appState(storage).appearance.theme, 'light');
-  assert.notEqual(storage.getItem('keydist:ui-state'), null);
+  assert.notEqual(storage.getItem('keydist-classic:ui-state'), null);
 });
 
 test('server snapshot never touches storage and always returns the default theme', () => {

@@ -15,7 +15,7 @@ test('Tester restores selected layout and physical geometry after reload', async
   await expect(geometrySelect).toHaveValue('column-staggered');
 
   await expect.poll(async () => page.evaluate(() => {
-    const raw = window.localStorage.getItem('keydist:app-state');
+    const raw = window.localStorage.getItem('keydist-classic:app-state');
     return raw === null ? null : JSON.parse(raw).inputConverter;
   })).toMatchObject({
     version: 2,
@@ -41,7 +41,7 @@ test('Tester restores selected layout and physical geometry after reload', async
   await expect(geometrySelect).toHaveValue('column-staggered');
 });
 
-const STORAGE_KEY = 'keydist:app-state';
+const STORAGE_KEY = 'keydist-classic:app-state';
 
 /** dragging解除後のscale springが収まるのを待つ（既存e2eの慣例に合わせる） */
 async function waitForSpringSettle(page: import('@playwright/test').Page) {

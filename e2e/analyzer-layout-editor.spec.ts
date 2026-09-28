@@ -20,9 +20,9 @@ test('Layout editor is React-owned and new layout selection restores through App
   await expect(pickerRow.getByRole('checkbox')).toBeChecked();
 
   const stored = await page.evaluate(() => {
-    const layouts = JSON.parse(localStorage.getItem('keydist:layouts') ?? '[]');
+    const layouts = JSON.parse(localStorage.getItem('keydist-classic:layouts') ?? '[]');
     const layout = layouts.find((item: { name?: string }) => item.name === 'Phase9 Test Layout');
-    const app = JSON.parse(localStorage.getItem('keydist:app-state') ?? '{}');
+    const app = JSON.parse(localStorage.getItem('keydist-classic:app-state') ?? '{}');
     return {
       id: layout?.id ?? null,
       en: app.analyzer?.layouts?.selectedByMode?.en ?? [],

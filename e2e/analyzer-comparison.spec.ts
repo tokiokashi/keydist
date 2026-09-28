@@ -19,7 +19,7 @@ test('comparison and sensitivity controls are React-owned and restore from AppSt
   await sensitivity.getByRole('button', { name: '絶対 [u]' }).click();
 
   await expect.poll(async () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:app-state');
+    const raw = localStorage.getItem('keydist-classic:app-state');
     if (!raw) return null;
     const state = JSON.parse(raw);
     return {

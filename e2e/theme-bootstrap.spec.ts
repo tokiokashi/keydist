@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('explicit theme is applied by the head bootstrap before client scripts run', async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem('keydist:app-state', JSON.stringify({
+    localStorage.setItem('keydist-classic:app-state', JSON.stringify({
       version: 2,
       appearance: { theme: 'dark' },
     }));
@@ -21,7 +21,7 @@ test('explicit theme is applied by the head bootstrap before client scripts run'
 
 test('an invalid appearance.theme falls back to analyzer.theme before client scripts run', async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem('keydist:app-state', JSON.stringify({
+    localStorage.setItem('keydist-classic:app-state', JSON.stringify({
       version: 2,
       appearance: { theme: 'not-a-real-theme' },
       analyzer: { theme: 'dark' },

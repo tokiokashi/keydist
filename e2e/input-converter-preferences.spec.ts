@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const STORAGE_KEY = 'keydist:app-state';
+const STORAGE_KEY = 'keydist-classic:app-state';
 
 /** dragging解除後のscale springが収まるのを待つ（workspace-persistence.spec.tsの慣例に合わせる） */
 async function waitForSpringSettle(page: import('@playwright/test').Page) {

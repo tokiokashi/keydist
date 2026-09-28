@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
  */
 test('pressed theme button never flickers through an intermediate value on /analyzer', async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem('keydist:app-state', JSON.stringify({
+    localStorage.setItem('keydist-classic:app-state', JSON.stringify({
       version: 2,
       appearance: { theme: 'dark' },
     }));
@@ -49,14 +49,14 @@ test('a theme change in another tab syncs the controls via the storage event', a
   const pageB = await context.newPage();
 
   await pageA.addInitScript(() => {
-    localStorage.setItem('keydist:app-state', JSON.stringify({
+    localStorage.setItem('keydist-classic:app-state', JSON.stringify({
       version: 2,
       appearance: { theme: 'light' },
     }));
   });
   await pageA.goto('/analyzer');
   await pageB.addInitScript(() => {
-    localStorage.setItem('keydist:app-state', JSON.stringify({
+    localStorage.setItem('keydist-classic:app-state', JSON.stringify({
       version: 2,
       appearance: { theme: 'light' },
     }));

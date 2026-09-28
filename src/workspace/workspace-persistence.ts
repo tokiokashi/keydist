@@ -24,7 +24,7 @@ import {
 } from './workspace-state.ts';
 
 /** AppStateV2移行元。Phase 8以降はこのkeyへ書かない。 */
-export const WORKSPACE_STORAGE_KEY = 'keydist:workspace-state';
+export const WORKSPACE_STORAGE_KEY = 'keydist-classic:workspace-state';
 
 function isPanelRect(value: unknown): value is PanelRect {
   if (typeof value !== 'object' || value === null) return false;

@@ -63,7 +63,7 @@ export const ROMAJI_RULES: Record<BuiltinRomajiRuleId, RomajiRuleSpec & {
   },
 };
 
-const STORAGE_KEY = 'keydist:romaji-rules';
+const STORAGE_KEY = 'keydist-classic:romaji-rules';
 const QWERTY_KEYS = new Set([...QWERTY_LEGEND.join('')]);
 
 /** 既定配列に最初から割り当てるルール。保存設定が無ければこれを使う。 */

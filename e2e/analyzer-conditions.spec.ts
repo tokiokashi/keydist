@@ -14,7 +14,7 @@ test('Conditions content is React-hosted and restores defaults from AppState', a
   await defaultWindow.blur();
 
   await expect.poll(async () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:app-state');
+    const raw = localStorage.getItem('keydist-classic:app-state');
     return raw ? JSON.parse(raw).conditions?.defaults?.windowSize ?? null : null;
   })).toBe(5);
 

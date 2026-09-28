@@ -16,8 +16,8 @@ export const DEFAULT_THUMB_KEY_BINDINGS: ThumbKeyBindings = {
 
 export const EMPTY_BROWSER_KEY_BINDING_OVERRIDES: BrowserKeyBindingOverrides = {};
 
-const LEGACY_THUMB_STORAGE_KEY = 'keydist:input-thumb-key-bindings';
-const STORAGE_KEY = 'keydist:input-key-bindings';
+const LEGACY_THUMB_STORAGE_KEY = 'keydist-classic:input-thumb-key-bindings';
+const STORAGE_KEY = 'keydist-classic:input-key-bindings';
 const DEFAULT_THUMB_CODES = ['NonConvert', 'Space', 'Convert'] as const;
 const MAX_CODES_PER_THUMB = 8;
 

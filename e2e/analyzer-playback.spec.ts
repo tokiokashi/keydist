@@ -18,7 +18,7 @@ test('Playback surface is React-hosted and panel state restores from AppState', 
   await expect(position).toHaveText(/^1 \/ /);
 
   await expect.poll(async () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:app-state');
+    const raw = localStorage.getItem('keydist-classic:app-state');
     return raw ? JSON.parse(raw).analyzer?.panels?.playback : null;
   })).toBe(true);
 
@@ -47,7 +47,7 @@ test('Playback settings are React-hosted and restore through the AppState playba
   await trail.setChecked(next);
 
   await expect.poll(async () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:app-state');
+    const raw = localStorage.getItem('keydist-classic:app-state');
     return raw ? JSON.parse(raw).playback?.showTrail ?? null : null;
   })).toBe(next);
 

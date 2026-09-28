@@ -563,7 +563,7 @@ test('floating panel dragはpointer中のrectを永続stateへ連打せず終了
   await expect(guide).toHaveAttribute('data-floating', 'true');
 
   const persistedRect = async () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:app-state');
+    const raw = localStorage.getItem('keydist-classic:app-state');
     if (raw === null) return null;
     const state = JSON.parse(raw).workspace as {
       panels?: Record<string, { rect?: { x: number; y: number; width: number; height: number } }>;
@@ -1201,7 +1201,7 @@ test('Tester keeps browser key lifecycle consistent', async ({ page }) => {
 
 test('Tester selects preset and saved custom physical geometry', async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem('keydist:geometry-shapes', JSON.stringify([{
+    localStorage.setItem('keydist-classic:geometry-shapes', JSON.stringify([{
       id: 'shape-e2e-grid',
       name: 'E2E Grid',
       pitchMm: 19.05,

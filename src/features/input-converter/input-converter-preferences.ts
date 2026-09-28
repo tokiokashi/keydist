@@ -9,11 +9,11 @@ import { decodeVersionedState } from '../../persistence/versioned-state.ts';
 
 /*
  * Tester preferenceは#413 Phase 8でAppStateV2へ統合済み。
- * keydist:input-converter-preferences はread-once migration sourceとしてのみ残す。
+ * keydist-classic:input-converter-preferences はread-once migration sourceとしてのみ残す。
  *
  * 次のstorageはUI preferenceではなくdomain/user assetなのでAppStateへ吸収しない。
- * - keydist:input-key-bindings（レガシーキー: keydist:input-thumb-key-bindings）
- * - keydist:geometry-shapes
+ * - keydist-classic:input-key-bindings（レガシーキー: keydist-classic:input-thumb-key-bindings）
+ * - keydist-classic:geometry-shapes
  *
  * 現在選択中の配列と物理配列はTester全体の状態として保存し、
  * 練習環境は配列ごとに保存する。
@@ -22,7 +22,7 @@ import { decodeVersionedState } from '../../persistence/versioned-state.ts';
 export const INPUT_CONVERTER_PREFERENCES_VERSION = 2;
 
 /** AppStateV2移行元。Phase 8以降はこのkeyへ書かない。 */
-export const INPUT_CONVERTER_PREFERENCES_STORAGE_KEY = 'keydist:input-converter-preferences';
+export const INPUT_CONVERTER_PREFERENCES_STORAGE_KEY = 'keydist-classic:input-converter-preferences';
 
 export type InputConverterRandomPracticeMode = 'word' | 'phrase';
 

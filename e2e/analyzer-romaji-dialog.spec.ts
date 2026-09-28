@@ -24,7 +24,7 @@ test('Romaji editor dialog is React-owned and preserves editor interactions', as
   await expect(editor.locator('#romaji-edit')).toHaveValue(/^custom-/);
 
   await expect.poll(async () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:romaji-rules');
+    const raw = localStorage.getItem('keydist-classic:romaji-rules');
     if (!raw) return null;
     const settings = JSON.parse(raw);
     return settings.rules?.find((rule: { name?: string }) => rule.name === 'React移行テスト') ?? null;

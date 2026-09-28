@@ -25,7 +25,7 @@ test('explicit light overrides a dark OS preference and system follows it', asyn
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/input');
   await page.evaluate(() => {
-    localStorage.setItem('keydist:app-state', JSON.stringify({
+    localStorage.setItem('keydist-classic:app-state', JSON.stringify({
       version: 2,
       appearance: { theme: 'light' },
     }));
@@ -36,7 +36,7 @@ test('explicit light overrides a dark OS preference and system follows it', asyn
     .toBe('light');
 
   await page.evaluate(() => {
-    localStorage.setItem('keydist:app-state', JSON.stringify({
+    localStorage.setItem('keydist-classic:app-state', JSON.stringify({
       version: 2,
       appearance: { theme: 'system' },
     }));

@@ -11,7 +11,7 @@ import {
   type UiStateStorage,
 } from './ui-state.ts';
 
-const STORAGE_KEY = 'keydist:condition-presets';
+const STORAGE_KEY = 'keydist-classic:condition-presets';
 
 export interface ConditionPreset {
   id: string;

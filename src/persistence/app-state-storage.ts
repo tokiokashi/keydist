@@ -9,7 +9,7 @@ import {
 } from './debounced-scheduler.ts';
 import type { KeyValueStorage } from './storage.ts';
 
-export const APP_STATE_STORAGE_KEY = 'keydist:app-state';
+export const APP_STATE_STORAGE_KEY = 'keydist-classic:app-state';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

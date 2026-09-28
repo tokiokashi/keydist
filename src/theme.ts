@@ -16,21 +16,21 @@ export const THEME_BOOTSTRAP_SCRIPT = `(() => {
   // 無効値が混ざっていてもそこで止めず次の候補へ進む（旧実装は??で1段しか見ず、
   // 不正値があると本来通るはずのfallbackを塞いでいた）。
   try {
-    const raw = localStorage.getItem('keydist:app-state');
+    const raw = localStorage.getItem('keydist-classic:app-state');
     const state = raw ? JSON.parse(raw) : null;
     if (valid(state?.appearance?.theme)) { theme = state.appearance.theme; found = true; }
     else if (valid(state?.analyzer?.theme)) { theme = state.analyzer.theme; found = true; }
   } catch {}
   if (!found) {
     try {
-      const legacyRaw = localStorage.getItem('keydist:ui-state');
+      const legacyRaw = localStorage.getItem('keydist-classic:ui-state');
       const legacy = legacyRaw ? JSON.parse(legacyRaw) : null;
       if (valid(legacy?.ui?.theme)) { theme = legacy.ui.theme; found = true; }
     } catch {}
   }
   if (!found) {
     try {
-      const legacyTheme = localStorage.getItem('keydist:theme');
+      const legacyTheme = localStorage.getItem('keydist-classic:theme');
       if (valid(legacyTheme)) theme = legacyTheme;
     } catch {}
   }

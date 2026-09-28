@@ -70,9 +70,9 @@ function cleanupLegacyAppearanceSources(storage: UiStateStorage): void {
 /**
  * App-level appearance authority.
  *
- * 既存の AppState.analyzer.theme / UiStateV1 / keydist:theme は read-once source として扱い、
+ * 既存の AppState.analyzer.theme / UiStateV1 / keydist-classic:theme は read-once source として扱い、
  * appearance 保存成功後に Analyzer slice の theme と旧theme keyを掃除する。
- * keydist:ui-state 自体は Analyzer migration が他fieldを読み終えるまで残す。
+ * keydist-classic:ui-state 自体は Analyzer migration が他fieldを読み終えるまで残す。
  */
 export function loadAppearancePreference(
   storage: UiStateStorage,

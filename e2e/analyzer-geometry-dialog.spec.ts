@@ -34,7 +34,7 @@ test('Geometry editor dialog is React-owned and keeps existing editor behavior',
   await expect(dialog).not.toHaveAttribute('open', '');
 
   await expect.poll(async () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:geometry-shapes');
+    const raw = localStorage.getItem('keydist-classic:geometry-shapes');
     if (!raw) return false;
     const shapes = JSON.parse(raw) as Array<{ name?: string }>;
     return shapes.some((shape) => shape.name === 'E2E Geometry');

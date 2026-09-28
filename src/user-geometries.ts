@@ -1,7 +1,7 @@
 import { PHYSICAL_SHAPES, type PhysicalShape } from './geometry.ts';
 import { sanitizePhysicalShape } from './geometry-settings.ts';
 
-const STORAGE_KEY = 'keydist:geometry-shapes';
+const STORAGE_KEY = 'keydist-classic:geometry-shapes';
 
 export interface GeometryShapeStorage {
   getItem(key: string): string | null;

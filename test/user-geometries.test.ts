@@ -36,7 +36,7 @@ test('名前付きカスタム形状を複数保存・復元できる', () => {
 
 test('保存データの無効な形状idは除外する', () => {
   const storage = fakeStorage();
-  storage.setItem('keydist:geometry-shapes', JSON.stringify([
+  storage.setItem('keydist-classic:geometry-shapes', JSON.stringify([
     { ...PHYSICAL_SHAPES['row-staggered'], id: 'row-staggered', name: '組み込みの偽装' },
     { ...PHYSICAL_SHAPES['row-staggered'], id: 'shape-valid', name: '有効' },
   ]));

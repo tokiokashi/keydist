@@ -38,13 +38,13 @@ import {
   type TriggerRealizationPolicy,
 } from './core/semantic-input/index.ts';
 
-export const UI_STATE_STORAGE_KEY = 'keydist:ui-state';
+export const UI_STATE_STORAGE_KEY = 'keydist-classic:ui-state';
 export const UI_STATE_VERSION = 1;
 export const MAX_SAVED_TEXT_LENGTH = 100_000;
 
-export const LEGACY_THEME_KEY = 'keydist:theme';
-export const LEGACY_SELECTION_KEY = 'keydist:selected-layouts';
-export const LEGACY_TEXT_COLLAPSED_KEY = 'keydist:text-collapsed';
+export const LEGACY_THEME_KEY = 'keydist-classic:theme';
+export const LEGACY_SELECTION_KEY = 'keydist-classic:selected-layouts';
+export const LEGACY_TEXT_COLLAPSED_KEY = 'keydist-classic:text-collapsed';
 
 export type MatrixKind = 'press' | 'finger' | 'adjacentMean' | 'adjacentStdDev';
 export type LayerView = 'auto' | 'side-by-side' | 'tabs';
@@ -794,7 +794,7 @@ function legacyState(storage: UiStateStorage, defaults: UiStateV1): UiStateV1 | 
   let found = false;
   const state = structuredClone(defaults);
 
-  // keydist:themeの実値はappearance migration（loadAppearancePreference）が先に読む。
+  // keydist-classic:themeの実値はappearance migration（loadAppearancePreference）が先に読む。
   // ここではlegacy migration一式の「foundされた」判定にだけ使い、UiStateV1側へは書き戻さない。
   if (storage.getItem(LEGACY_THEME_KEY) !== null) found = true;
 

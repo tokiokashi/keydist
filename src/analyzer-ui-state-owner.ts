@@ -57,7 +57,7 @@ function loadAnalyzerState(
     && appState.playback !== undefined;
 
   // AppStateが未完成ならUiStateV1系を一度だけmigration sourceとして読む。
-  // loadUiState内の旧々形式migrationが一時的にkeydist:ui-stateへ書いても、
+  // loadUiState内の旧々形式migrationが一時的にkeydist-classic:ui-stateへ書いても、
   // AppState保存成功後に下で必ずcleanupする。
   const source = hasAllSlices
     ? {
@@ -96,7 +96,7 @@ function saveAnalyzerState(
  * Analyzerのruntime compatibility owner。
  *
  * runtimeではPhase 9までUiStateV1を維持するが、永続化authorityはAppStateV2だけ。
- * keydist:ui-stateとそれ以前のキーはload時の一方向migration sourceとしてのみ扱う。
+ * keydist-classic:ui-stateとそれ以前のキーはload時の一方向migration sourceとしてのみ扱う。
  */
 export function createAnalyzerUiStateOwner(
   storage: UiStateStorage | undefined,

@@ -9,7 +9,7 @@ import { fromRows, SINGLE_LAYER_ID, withRomaji, type Layout } from './layouts/in
 import { ROMAJI_RULES, tableForRule, type RomajiRuleId, type UserRomajiRule } from './romaji/rules.ts';
 import type { Sequence } from './layouts/types.ts';
 
-const STORAGE_KEY = 'keydist:layouts';
+const STORAGE_KEY = 'keydist-classic:layouts';
 
 /** 選べるローマ字の綴り */
 export { ROMAJI_RULES };

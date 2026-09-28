@@ -23,7 +23,7 @@ test('remaining Analyzer controls are React-owned and detail selection restores 
   await detail.selectOption(target!);
 
   await expect.poll(async () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:app-state');
+    const raw = localStorage.getItem('keydist-classic:app-state');
     return raw ? JSON.parse(raw).analyzer?.layouts?.detailByMode?.ja ?? null : null;
   })).toBe(target);
 
@@ -57,7 +57,7 @@ test('legacy panel open state is coordinated by React and restores through AppSt
   await expect(textPanel).not.toHaveAttribute('open', '');
 
   await expect.poll(async () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:app-state');
+    const raw = localStorage.getItem('keydist-classic:app-state');
     return raw ? JSON.parse(raw).analyzer?.panels?.text ?? null : null;
   })).toBe(false);
 
@@ -93,7 +93,7 @@ test('layout selection persists and drives analysis across reloads', async ({ pa
   await expect(detail.locator('option')).toHaveCount(initialCount - 1);
   await expect(page.locator('#compare tbody tr')).toHaveCount(initialCount - 1);
   await expect.poll(async () => page.evaluate((layoutId) => {
-    const raw = localStorage.getItem('keydist:app-state');
+    const raw = localStorage.getItem('keydist-classic:app-state');
     if (!raw) return null;
     return JSON.parse(raw).analyzer?.layouts?.selectedByMode?.ja?.includes(layoutId) ?? null;
   }, targetId)).toBe(false);
@@ -112,7 +112,7 @@ test('layout selection persists and drives analysis across reloads', async ({ pa
   await reloadedToggle.check();
   await expect(page.locator('#compare tbody tr')).toHaveCount(initialCount);
   await expect.poll(async () => page.evaluate((layoutId) => {
-    const raw = localStorage.getItem('keydist:app-state');
+    const raw = localStorage.getItem('keydist-classic:app-state');
     if (!raw) return null;
     return JSON.parse(raw).analyzer?.layouts?.selectedByMode?.ja?.includes(layoutId) ?? null;
   }, targetId)).toBe(true);
@@ -138,7 +138,7 @@ test('theme controls are React-owned and restore through AppState', async ({ pag
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(controls.locator('[data-theme-set="dark"]')).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(async () => page.evaluate(() => {
-    const raw = localStorage.getItem('keydist:app-state');
+    const raw = localStorage.getItem('keydist-classic:app-state');
     return raw ? JSON.parse(raw).appearance?.theme ?? null : null;
   })).toBe('dark');
 
