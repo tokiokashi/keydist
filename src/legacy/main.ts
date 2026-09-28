@@ -232,7 +232,7 @@ function migrateCurrentGeometryShape(): void {
   if (!existing) {
     const migrated = clonePhysicalShape(current);
     migrated.id = current.id.startsWith('shape-') ? current.id : newGeometryId();
-    if (migrated.name === 'カスタム形状') migrated.name = 'カスタム形状 1';
+    if (migrated.name === 'カスタム形状') migrated.name = 'カスタム物理配列 1';
     userGeometryShapes = [...userGeometryShapes, migrated];
     persistUserGeometryShapes(userGeometryShapes);
     updateUiState((draft) => {

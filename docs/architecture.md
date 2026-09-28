@@ -28,7 +28,7 @@ keydist のコードの分け方と依存の向き。設計の経緯と未実装
 | 単体ページ / Workspace | host | Analyzerを載せる器 |
 | 資産 | assets | ユーザーが作って保存するもの（自作配列・物理配列・指の割当・ローマ字規則・Setup・カスケードの値・Workspace・個人速度・テキスト） |
 
-使わない語: 物理形状・形状（物理配列と呼ぶ）、mode（en / ja）、段の名前としての「評価」（`evaluate`）、View、`AnalysisSession` / `AnalysisSnapshot`、解釈を指す「ポリシー」（`ChainPolicy` / `ArpeggioPolicy`）。
+使わない語: `Shape` を指す「物理形状」「形状」（物理配列と呼ぶ）、mode（en / ja）、段の名前としての「評価」（`evaluate`）、View、`AnalysisSession` / `AnalysisSnapshot`、解釈を指す「ポリシー」（`ChainPolicy` / `ArpeggioPolicy`）。
 
 ## 流れ
 
