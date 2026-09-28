@@ -1,4 +1,5 @@
 import { resolveKeyId } from '../shapes/geometry.ts';
+import { physicalKeyDisplayLabel } from '../shapes/key-labels.ts';
 import {
   faceCells,
   handOfKey,
@@ -273,22 +274,12 @@ export function presentationLayerGuide(
       .filter((text): text is string => text !== undefined && text.trim() !== ''),
   )];
 
-  let triggerDisplayText: string;
-  if (authoredTexts.length === 1) {
-    triggerDisplayText = authoredTexts[0];
-  } else if (triggerKeys.length === 0) {
-    triggerDisplayText = '—';
-  } else {
-    const equivalentThumbs = new Set((layout.thumbShiftKeys ?? []).map(resolveKeyId));
-    const labels = [...new Set(
-      triggerKeys.map((key) => layout.legends.get(resolveKeyId(key)) ?? resolveKeyId(key)),
-    )];
-    triggerDisplayText = equivalentThumbs.size > 1
-      && triggerKeys.every((key) => equivalentThumbs.has(resolveKeyId(key)))
-      && labels.length === 1
-      ? labels[0]
-      : labels.join(' + ');
-  }
+  const triggerDisplayText = authoredTexts.length === 1
+    ? authoredTexts[0]
+    : triggerChordsDisplayText(
+      layout,
+      layer.faces.flatMap((face) => displayTriggerAlternatives(face)),
+    );
 
   return { legends, triggerKeys, triggerDisplayText };
 }
@@ -413,20 +404,64 @@ export function aggregationTriggerDisplayText(
   )];
   if (authoredTexts.length === 1) return authoredTexts[0];
 
-  const keys = aggregationTriggerKeys(layout, aggregationGroupId);
-  if (keys.length === 0) return '—';
+  return triggerChordsDisplayText(layout, aggregationTriggerChords(layout, aggregationGroupId));
+}
 
+/** aggregationTriggerKeysのchord構造を保ったview。realizationごとに1 chordとする。 */
+function aggregationTriggerChords(
+  layout: Pick<Layout, 'canonicalInputs'>,
+  aggregationGroupId: string,
+): readonly (readonly string[])[] {
+  const chords: string[][] = [];
+  for (const alternatives of layout.canonicalInputs.values()) {
+    for (const alternative of alternatives) {
+      alternative.semanticInputs.forEach((input, index) => {
+        if (input.aggregationGroupId !== aggregationGroupId) return;
+        const realization = alternative.baseRealizations[index];
+        chords.push((realization?.defaultTriggerKeys ?? []).map(resolveKeyId));
+        for (const view of realization?.alternateParticipations ?? []) {
+          chords.push(view.triggerKeys.map(resolveKeyId));
+        }
+      });
+    }
+  }
+  return chords;
+}
+
+/**
+ * triggerのchord列を表示文字列へ畳む。chord内の同時押しは「+」、どれか1つで足りる
+ * alternative同士は「/」でつなぐ（「+」でつなぐと、どちらか片方で足りるシフトを同時押しと誤読させる）。
+ * 刻印の無いキーは物理キーの表示名で出し、内部のキーidを画面に出さない。
+ */
+function triggerChordsDisplayText(
+  layout: Pick<Layout, 'thumbShiftKeys' | 'legends'>,
+  chords: readonly (readonly string[])[],
+): string {
+  const label = (key: string) => {
+    const legend = layout.legends.get(key);
+    return legend !== undefined && legend.trim() !== '' ? legend : physicalKeyDisplayLabel(key);
+  };
+  const seen = new Set<string>();
+  const unique: (readonly string[])[] = [];
+  for (const chord of chords) {
+    const keys = [...new Set(chord.map(resolveKeyId))];
+    if (keys.length === 0) continue;
+    const signature = [...keys].sort().join('\u0000');
+    if (seen.has(signature)) continue;
+    seen.add(signature);
+    unique.push(keys);
+  }
+  if (unique.length === 0) return '—';
+
+  // 左右どちらの親指でも同じシフトになる配列は、刻印が揃っていれば1つにまとめる
   const equivalentThumbs = new Set((layout.thumbShiftKeys ?? []).map(resolveKeyId));
-  if (equivalentThumbs.size > 1 && keys.every((key) => equivalentThumbs.has(resolveKeyId(key)))) {
-    const labels = [...new Set(
-      keys.map((key) => layout.legends.get(resolveKeyId(key)) ?? resolveKeyId(key)),
-    )];
-    if (labels.length === 1) return labels[0];
+  const allKeys = unique.flat();
+  if (equivalentThumbs.size > 1 && allKeys.every((key) => equivalentThumbs.has(key))) {
+    const labels = [...new Set(allKeys.map(label))];
+    if (labels.length === 1) return labels[0]!;
   }
 
-  return keys
-    .map((key) => layout.legends.get(resolveKeyId(key)) ?? resolveKeyId(key))
-    .join(' + ');
+  return [...new Set(unique.map((chord) => chord.map(label).join(' + ')))].join(' / ');
 }
 
 

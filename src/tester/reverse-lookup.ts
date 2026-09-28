@@ -3,7 +3,8 @@ import {
   type InputAlternative,
   type InputContextRequirement,
 } from '#input/semantics/index.ts';
-import { resolveKeyId } from '#input/shapes/geometry.ts';
+import { resolveKeyId, type PhysicalKeyboardStandard } from '#input/shapes/geometry.ts';
+import { physicalKeyDisplayLabel } from '#input/shapes/key-labels.ts';
 import type { Layout } from '#input/layouts/index.ts';
 import { kanaToRomaji } from '#input/romaji/kunrei.ts';
 import { romajiToKana } from './live-romaji.ts';
@@ -341,17 +342,6 @@ export function longestReverseLookupRoute(
   );
 }
 
-export function physicalKeyDisplayLabel(key: string): string {
-  if (key.length === 1) return key.toUpperCase();
-  if (key === 'thumb-l') return '左親指';
-  if (key === 'thumb-r') return '右親指';
-  if (key === 'shift-l') return '左Shift';
-  if (key === 'shift-r') return '右Shift';
-  if (key === 'tab') return 'Tab';
-  if (key === 'escape') return 'Esc';
-  return key;
-}
-
 export function reverseLookupStepMatchesRecognition(
   step: ReverseLookupStep,
   recognition: { readonly output: string; readonly alternative: InputAlternative },
@@ -486,11 +476,13 @@ function guideActionLabels(
   layout: Layout,
   keys: readonly string[],
   alternatives: readonly (readonly string[])[],
+  standard: PhysicalKeyboardStandard | undefined,
 ): readonly string[] {
+  const label = (key: string) => physicalKeyDisplayLabel(key, standard);
   const equivalentThumbs = new Set((layout.thumbShiftKeys ?? []).map(resolveKeyId));
   const thumbLabel = equivalentThumbShiftLabel(layout);
   if (thumbLabel === undefined || equivalentThumbs.size < 2 || alternatives.length < 2) {
-    return keys.map(physicalKeyDisplayLabel);
+    return keys.map(label);
   }
 
   const normalize = (variant: readonly string[]) =>
@@ -499,32 +491,42 @@ function guideActionLabels(
   const signatures = alternatives.map((variant) =>
     [...normalize(variant)].sort().join('\u0000'));
   if (!signatures.every((signature) => signature === signatures[0])) {
-    return keys.map(physicalKeyDisplayLabel);
+    return keys.map(label);
   }
 
   return normalize(keys).map((key) =>
-    key === '__thumb-shift__' ? thumbLabel : physicalKeyDisplayLabel(key));
+    key === '__thumb-shift__' ? thumbLabel : label(key));
 }
 
 export function reverseLookupGuideActionLabel(
   layout: Layout,
   action: ReverseLookupGuideAction,
+  standard?: PhysicalKeyboardStandard,
 ): string {
-  return guideActionLabels(layout, action.keys, action.keyAlternatives).join(' + ');
+  return guideActionLabels(layout, action.keys, action.keyAlternatives, standard).join(' + ');
 }
 
-export function reverseLookupStepLabel(layout: Layout, step: ReverseLookupStep): string {
+export function reverseLookupStepLabel(
+  layout: Layout,
+  step: ReverseLookupStep,
+  standard?: PhysicalKeyboardStandard,
+): string {
   return step.actions
     .map((action, actionIndex) => guideActionLabels(
       layout,
       action,
       step.actionKeyAlternatives[actionIndex] ?? [action],
+      standard,
     ).join(' + '))
     .join(' → ');
 }
 
-export function reverseLookupRouteLabel(layout: Layout, route: ReverseLookupRoute): string {
+export function reverseLookupRouteLabel(
+  layout: Layout,
+  route: ReverseLookupRoute,
+  standard?: PhysicalKeyboardStandard,
+): string {
   return route.steps
-    .map((step) => reverseLookupStepLabel(layout, step))
+    .map((step) => reverseLookupStepLabel(layout, step, standard))
     .join(' → ');
 }

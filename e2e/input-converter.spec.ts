@@ -11,7 +11,7 @@ test('Tester uses a resizable wide FHD workspace without test-mode scrolling', a
   const guide = page.getByLabel('Layer Guide', { exact: true });
   const capture = page.locator('.input-capture-panel');
   const keyboardPanel = page.locator('.input-keyboard-panel');
-  const keyStatus = page.getByLabel('Key status');
+  const keyStatus = page.getByLabel('キーの状態');
   const layerLabel = page.locator('.input-active-layer');
   const splitter = page.getByRole('separator', { name: 'カンペと入力領域の幅を調整' });
 
@@ -313,7 +313,7 @@ test('Keyboard View keeps Pressed and Recognized together while floating', async
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   const panel = page.locator('.input-keyboard-panel');
-  const status = page.getByLabel('Key status');
+  const status = page.getByLabel('キーの状態');
   const sections = status.locator('section');
 
   await page.getByLabel('Keyboard Viewをクリックまたはドラッグして小窓表示')
@@ -903,7 +903,7 @@ test('Recognized detail stays one row when one event realizes multiple inputs', 
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   const output = page.getByLabel('自由入力テキスト');
-  const recognizedSection = page.getByLabel('Key status').locator('section').nth(1);
+  const recognizedSection = page.getByLabel('キーの状態').locator('section').nth(1);
 
   await output.click();
   await page.keyboard.down('r');
@@ -931,7 +931,7 @@ test('Recognized detail stays one row for the reported k/j re-press sequence', a
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
   const output = page.getByLabel('自由入力テキスト');
-  const recognizedRows = page.getByLabel('Key status').locator('.input-recognized');
+  const recognizedRows = page.getByLabel('キーの状態').locator('.input-recognized');
 
   await output.click();
   await page.keyboard.down('k');
@@ -974,7 +974,7 @@ test('Recognized detail keeps the same typography and height before and after in
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
 
-  const recognizedSection = page.getByLabel('Key status').locator('section').nth(1);
+  const recognizedSection = page.getByLabel('キーの状態').locator('section').nth(1);
   const empty = recognizedSection.locator('.input-recognized-empty');
   await expect(empty).toHaveText('-');
   await expect(recognizedSection.getByRole('heading', { name: 'Recognized' })).toBeVisible();
@@ -1133,7 +1133,7 @@ test('Tester keeps browser key lifecycle consistent', async ({ page }) => {
   const feature = page.locator('.input-feature');
   await expect(feature).toHaveAttribute('data-input-ready', 'naginata-v18');
   const output = page.getByLabel('自由入力テキスト');
-  const pressed = page.getByLabel('Key status').locator('section').first().locator('p');
+  const pressed = page.getByLabel('キーの状態').locator('section').first().locator('p');
 
   await output.click();
   await expect(output).toBeFocused();
@@ -1907,7 +1907,7 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
     .getAttribute('data-accent-slot');
   expect(naginataLeftSlot).not.toBeNull();
   expect(naginataLeftSlot).toBe(naginataRightSlot);
-  await expect(page.locator('.input-layer-card').first()).toContainText('trigger: Space');
+  await expect(page.locator('.input-layer-card').first()).toContainText('切り替えキー: Space');
 
   // 新JISも左右Spaceを同一presentation layerとして扱う。
   await page.getByLabel('配列', { exact: true }).selectOption('shin-jis-simultaneous');
@@ -1925,7 +1925,7 @@ test('打ち方逆引きは配列ごとのcanonical inputを表示する', async
     .getAttribute('data-accent-slot');
   expect(shinJisLeftSlot).not.toBeNull();
   expect(shinJisLeftSlot).toBe(shinJisRightSlot);
-  await expect(page.locator('.input-layer-card').first()).toContainText('trigger: Space');
+  await expect(page.locator('.input-layer-card').first()).toContainText('切り替えキー: Space');
 
   await page.getByLabel('配列', { exact: true }).selectOption('oonishi-custom');
   await expect(feature).toHaveAttribute('data-input-ready', 'oonishi-custom');

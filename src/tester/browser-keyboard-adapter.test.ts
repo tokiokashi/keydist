@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  browserCodeDisplayLabel,
   browserCodeToPhysicalKey,
   browserKeyboardEventToPhysicalKeyEvent,
   isBrowserTextInputCode,
@@ -168,4 +169,28 @@ test('browser adapterは任意code overrideで通常keyを親指physical keyへ�
     ),
     { type: 'down', key: 'thumb-l' },
   );
+});
+
+test('ブラウザのキーcodeは刻印で表示する', () => {
+  assert.equal(browserCodeDisplayLabel('KeyA'), 'A');
+  assert.equal(browserCodeDisplayLabel('Digit7'), '7');
+  assert.equal(browserCodeDisplayLabel('Space'), 'Space');
+  assert.equal(browserCodeDisplayLabel('NonConvert'), '無変換');
+  assert.equal(browserCodeDisplayLabel('Convert'), '変換');
+  assert.equal(browserCodeDisplayLabel('IntlYen'), '¥');
+  assert.equal(browserCodeDisplayLabel('IntlRo'), '\\ (ろ)');
+  assert.equal(browserCodeDisplayLabel('Tab'), 'Tab');
+  assert.equal(browserCodeDisplayLabel('Escape'), 'Esc');
+  assert.equal(browserCodeDisplayLabel('ShiftLeft'), '左Shift');
+  assert.equal(browserCodeDisplayLabel('Backquote', 'ansi'), '`');
+  assert.equal(browserCodeDisplayLabel('Backslash', 'ansi'), '\\');
+});
+
+test('JISキーボードではUS配列の位置名のcodeをJISの刻印に引き直す', () => {
+  assert.equal(browserCodeDisplayLabel('Equal', 'jis'), '^');
+  assert.equal(browserCodeDisplayLabel('BracketLeft', 'jis'), '@');
+  assert.equal(browserCodeDisplayLabel('BracketRight', 'jis'), '[');
+  assert.equal(browserCodeDisplayLabel('Quote', 'jis'), ':');
+  assert.equal(browserCodeDisplayLabel('Backslash', 'jis'), ']');
+  assert.equal(browserCodeDisplayLabel('BracketLeft', 'ansi'), '[');
 });
