@@ -13,10 +13,11 @@ name: Merge stack
 # PRのコードはチェックアウトしない。衝突していてマージ用の ref が無いPRでも起動する。
 # そのため、このファイルの変更は main に入るまで効かない
 #
-# GITHUB_TOKEN でのマージは別のワークフローを起動しない（main への push で CI・release.yml が走らない）。
-# そのため version を変えるスタックはここで断る。
-# リポジトリの secret に STACK_MERGE_TOKEN（Contents と Pull requests に write を持つ fine-grained PAT）を
-# 置くとそちらでマージし、main の CI も走る。無ければ GITHUB_TOKEN を使う。
+# マージに使うトークンは secret の STACK_MERGE_TOKEN（Contents と Pull requests に write を持つ fine-grained PAT）。
+# このリポジトリには設定してあり、マージはオーナーとして行われ、main への push で CI・release.yml が走る。
+# 未設定なら GITHUB_TOKEN に落ちる。その場合 push は別のワークフローを起動せず、main の CI・release.yml は走らない。
+# どちらでも version を変えるスタックは断る。スタックはリリースPRではないので、release.yml が走れば失敗し、
+# 走らなければ version だけ上がって公開されない状態が main に入る
 on:
   pull_request_target:
     types: [labeled]
@@ -128,8 +129,8 @@ jobs:
               if (drafts.length) refuse(`draft のPRがある: ${drafts.map((p) => `#${p.number}`).join(', ')}`);
               lines.push(`スタック #${stack.number}（base \`${stack.base.ref}\`）: ${pending.map((p) => `#${p.number}`).join(' → ')}`);
 
-              // スタックで version を変えない。GITHUB_TOKEN のマージは release.yml を起動しないので、
-              // ここで止めないと version だけ上がって公開されない状態が main に入る
+              // スタックで version を変えない。スタックはリリースPRではないので、release.yml が走れば失敗し、
+              // （GITHUB_TOKEN でマージして）走らなければ version だけ上がって公開されない状態が main に入る
               const versionAt = async (ref) => {
                 const { data } = await github.rest.repos.getContent({ owner, repo, path: 'package.json', ref });
                 return JSON.parse(Buffer.from(data.content, 'base64').toString('utf8')).version;

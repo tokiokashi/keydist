@@ -148,9 +148,10 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
   - 全PRのheadで `verify` / `browser-e2e` / `commit-messages` が成功し、他のチェックに失敗・実行中が無いかを確かめる
   - 一番上のPRを `merge-async`（merge commit）でマージし、終わるまで待つ
   - レビューの有無と未決の選択の有無は機械では確かめない。ラベルを付けることが、それらを満たしたという宣言になる
-- `merge-stack` はリポジトリの `GITHUB_TOKEN` でマージする。`GITHUB_TOKEN` による push は別のワークフローを起動しないので、
-  このマージでは `main` のCIも `release.yml` も走らない（各PRのheadのCIは確認済み。`version` を変えるスタックは上の検査で断る）。走らせたい時は、オーナーがsecret `STACK_MERGE_TOKEN`
-  （Contents・Pull requestsにwriteを持つfine-grained PAT）を置く
+- `merge-stack` はsecret `STACK_MERGE_TOKEN`（Contents・Pull requestsにwriteを持つfine-grained PAT）でマージする。
+  このリポジトリには設定してあるので、マージはオーナーとして行われ、`main` へのpushでCIと `release.yml` が走る
+  （`version` を変えないので `release.yml` は何も公開せずに終わる）。
+  未設定なら `GITHUB_TOKEN` に落ち、そのpushは別のワークフローを起動しないので `main` のCIも `release.yml` も走らない
 - 下のPRが入ると、GitHubは上のブランチをサーバー側で書き換える（rebase）。rebase・強制pushの禁止はエージェント自身の操作の話で、
   これは対象外。書き換えられたブランチで作業を続ける前に、fetchしてローカルのworktreeをリモートのブランチに合わせる。
   古いローカルの履歴をpushしない
