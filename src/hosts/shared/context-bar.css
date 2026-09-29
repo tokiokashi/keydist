@@ -141,6 +141,15 @@ button.context-chip:hover:not(:disabled),
   cursor: pointer;
 }
 
+/* selectは透明でも、選択肢の一覧は自前の背景を持つ。背景を指定しないと、暗いテーマで
+   文字だけ明るく背景が明るいまま（または透明）になって読めない。テーマの面と文字の色を明示する。
+   テキストの編集内の select（一覧・言語）も同じ規則で覆う。 */
+.context-bar select option,
+.context-bar select optgroup {
+  background-color: var(--surface-raised);
+  color: var(--text);
+}
+
 /* ---- ポップオーバー（テキストの選択と編集） ---- */
 .context-popover {
   position: absolute;
