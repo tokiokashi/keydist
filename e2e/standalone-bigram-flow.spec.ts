@@ -1152,3 +1152,19 @@ test('Keyboard Flow: 縮んでも同キー連打のラベルは読める大き�
   });
   expect(thinnest).toBeGreaterThanOrEqual(1.2);
 });
+
+test('Keyboard Flow: 390pxでホバーした時、行き先件数のバッジは拡大されず、連打ラベルだけが拡大される（#744）', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+
+  const repeatTransform = await page.locator('.flow-repeat-badge').first().getAttribute('transform');
+  expect(repeatTransform).not.toContain('scale(1)');
+
+  await page.locator('.flow-key[data-key-id="a"]').hover({ force: true });
+  const destinations = page.locator('.flow-key-badge:not(.flow-repeat-badge)');
+  await expect(destinations.first()).toBeAttached();
+  const transforms = await destinations.evaluateAll((els) => els.map((el) => el.getAttribute('transform') ?? ''));
+  expect(transforms.length).toBeGreaterThan(0);
+  for (const transform of transforms) expect(transform).toContain('scale(1)');
+});

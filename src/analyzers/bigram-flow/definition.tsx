@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { Geometry, Key, Point } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { Trace } from '#trace/generate.ts';
@@ -167,7 +167,8 @@ function badgeWidth(text: string): number {
 function useElementWidth(): [RefObject<SVGSVGElement | null>, number] {
   const ref = useRef<SVGSVGElement | null>(null);
   const [width, setWidth] = useState(0);
-  useEffect(() => {
+  // 初回の描画前に幅を測る（測る前の1フレームだけ線が細く出るのを避ける）。
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
     const update = () => setWidth(el.getBoundingClientRect().width);
@@ -367,6 +368,7 @@ function KeyboardFlow({
             const count = hoveredKeyId === null || hoveredKeyId === key.id
               ? repeatCount
               : hoverCounts.destinations.get(key.id);
+            const isRepeatBadge = hoveredKeyId === null || hoveredKeyId === key.id;
             const badgeText = count === undefined || count === 0 ? undefined : String(count);
             if (badgeText === undefined) return null;
             const width = badgeWidth(badgeText);
@@ -374,8 +376,8 @@ function KeyboardFlow({
               <g
                 className={hoveredKeyId === null || hoveredKeyId === key.id ? 'flow-key-badge flow-repeat-badge' : 'flow-key-badge'}
                 key={`badge-${key.id}`}
-                // 縮んでも同キー連打のラベルだけは読めるよう、バッジの中心を軸に拡大する。
-                transform={`translate(${point.x + 15} ${point.y - 18}) scale(${badgeScale}) translate(${-width / 2} 0)`}
+                // 縮んでも読めるまま残すのは同キー連打のラベルだけ。行き先の件数は拡大せず、線と行き先のキーを覆わない。
+                transform={`translate(${point.x + 15} ${point.y - 18}) scale(${isRepeatBadge ? badgeScale : 1}) translate(${-width / 2} 0)`}
               >
                 <rect x="0" y="-8" width={width} height="15" rx="7.5" />
                 <text x={width / 2} y="0" dominantBaseline="middle" textAnchor="middle">
