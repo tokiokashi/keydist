@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { stableStringify } from '#engine/cache-key.ts';
 
 /**
  * 解析設定の下書き（UI用の一時状態）。見た目は即座に変えつつ、資産への書き込みは
@@ -10,15 +11,19 @@ import { useState } from 'react';
  * 「既定値 + 変えた1項目」として書き込まれ、保存済みの設定を消していた（#603）。
  * 描画中の更新は確定前に描き直される。
  *
- * `stored`は呼び出し側で保存値からmemoした値を渡す。比較は参照で行うので、保存値が
- * 変わらない限り同じ参照である必要がある（毎回作り直すと下書きが毎回戻される）。
+ * 比較は参照でなく中身（`stableStringify`。`withStandaloneAnalyzerOptions`が書き込みの
+ * 同値判定に使うものと同じ正規化）で行う。解析設定は3つのAnalyzerの分が1つのstorageキーに
+ * 入っているので、他タブが別のAnalyzerの設定を書くと記録全体が読み直され、自分のAnalyzerの
+ * 設定も中身は同じまま新しい参照になる。参照で比べると、debounce待ちの下書きが保存値へ戻され、
+ * 戻っている間の別の変更が先の変更を上書きして失われる（#606）。
  */
 export function useOptionsDraft<T>(stored: T): readonly [T, (next: T) => void] {
   const [draft, setDraft] = useState(stored);
   const [source, setSource] = useState(stored);
   if (source !== stored) {
     setSource(stored);
-    setDraft(stored);
+    // 中身が同じなら下書きは触らない（参照だけが変わった読み直し）
+    if (stableStringify(source) !== stableStringify(stored)) setDraft(stored);
   }
   return [draft, setDraft] as const;
 }
