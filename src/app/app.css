@@ -75,14 +75,105 @@ h1 {
   font-size: 0.85rem;
 }
 
-.route-grid {
+/* 全体像の説明。サイドバーの見本は、本物のサイドバーが引き出しになる幅（スマホ幅）でだけ出す。
+   パソコン幅では本物が横に見えているので隠す。境目はシェルの `@media (max-width: 760px)`（shell.css）と揃える */
+.top-guide {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
   margin-top: 2rem;
 }
 
-.route-card,
+.top-sample {
+  display: none;
+  gap: 1rem;
+  padding: 0.9rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: var(--surface);
+}
+
+@media (max-width: 760px) {
+  .top-sample {
+    display: grid;
+  }
+}
+
+.top-sample .sidebar-heading,
+.top-sample .sidebar-subheading {
+  /* 見本の見出しは段落タグで描くので、段落の既定の余白・色を打ち消す */
+  color: var(--text-muted);
+}
+
+.top-sample .sidebar-heading {
+  margin: 0 0 0.2rem;
+}
+
+.top-sample .sidebar-subheading {
+  margin: 0.3rem 0 0.1rem;
+}
+
+.top-sample .sidebar-empty {
+  margin: 0;
+}
+
+.top-points {
+  display: grid;
+  gap: 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: top-point;
+}
+
+.top-points li {
+  position: relative;
+  padding-left: 2.25rem;
+  counter-increment: top-point;
+}
+
+.top-points li::before {
+  content: counter(top-point);
+  position: absolute;
+  top: 0.1rem;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  font: 600 0.8rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.top-points h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+  font-weight: 650;
+}
+
+.hero .top-points p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.75;
+}
+
+.hero > p.hero-legacy {
+  margin-top: 1.25rem;
+  font-size: 0.85rem;
+}
+
+.hero-legacy a {
+  color: var(--text-muted);
+  text-underline-offset: 3px;
+}
+
+.hero-legacy a:hover {
+  color: var(--text);
+}
+
 .feature-placeholder {
   padding: 1.25rem;
   border: 1px solid var(--border);
@@ -90,13 +181,6 @@ h1 {
   background: var(--surface);
 }
 
-.route-card {
-  display: grid;
-  gap: 0.35rem;
-  text-decoration: none;
-}
-
-.route-card span,
 .feature-placeholder {
   color: var(--text-muted);
 }

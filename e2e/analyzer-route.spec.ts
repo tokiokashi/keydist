@@ -77,7 +77,7 @@ test('Analyzer runtime remounts after SPA navigation away and back', async ({ pa
   // ハイドレーション前に押すとSPA遷移にならず全体の読み込みになり、確かめたい経路を通らない。
   await waitForHydration(page);
   await page.locator('.app-sidebar').getByRole('link', { name: 'keydist', exact: true }).click();
-  await page.getByRole('link', { name: /^Analyzer/ }).click();
+  await page.getByRole('link', { name: 'これまでの Analyzer', exact: true }).click();
   await expect(page).toHaveURL(/\/analyzer\/?$/);
   await waitForAnalyzerRuntime(page);
   await expect(page.locator('#mode')).toHaveValue('ja');

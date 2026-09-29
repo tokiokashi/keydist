@@ -1,8 +1,35 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
+import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
+import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
+import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
+import { WORKSPACE_EMPTY_TEXT } from '../app/shell/Sidebar.tsx';
 
 export const Route = createFileRoute('/')({
   component: Home,
 });
+
+/**
+ * サイドバーの Analyze / Workspace の区分の見本。見出しと名前は実物と同じ定義から取り、
+ * 名前は各画面へのリンクにする。見た目はサイドバーの部品のCSSをそのまま使う。
+ */
+function SidebarSample() {
+  return (
+    <div className="top-sample" role="group" aria-label="サイドバーの見本">
+      <section className="sidebar-group">
+        <p className="sidebar-heading">Analyze</p>
+        <p className="sidebar-subheading">Single</p>
+        <Link className="sidebar-link" to="/standalone/bigram-flow">{BIGRAM_FLOW_PANE_META.name}</Link>
+        <p className="sidebar-subheading">Multi</p>
+        <Link className="sidebar-link" to="/standalone/comparison">{COMPARISON_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/standalone/n-sensitivity">{N_SENSITIVITY_PANE_META.name}</Link>
+      </section>
+      <section className="sidebar-group">
+        <p className="sidebar-heading">Workspace</p>
+        <p className="sidebar-empty">{WORKSPACE_EMPTY_TEXT}</p>
+      </section>
+    </div>
+  );
+}
 
 function Home() {
   return (
@@ -10,29 +37,44 @@ function Home() {
       <p className="eyebrow">keyboard layout laboratory</p>
       <h1>keydist</h1>
       <p>
-        キーボードの配列を、文章を打った時に指がどれだけ動くかで調べるツールです。配列の良し悪しを決めるのではなく、性質を数値で眺めるために使います。
+        キーボードの配列を、文章を打った時に押すキーから調べるツールです。配列の良し悪しを決めるのではなく、性質を数値で眺めるために使います。
       </p>
-      {/* トップは入口だけ。個々のAnalyzerへの導線はシェルのサイドバーが持つ（docs/architecture.md「画面の構成」） */}
-      <div className="route-grid">
-        <Link className="route-card" to="/analyzer">
-          <strong>Analyzer</strong>
-          <span>配列とテキストを選び、指の移動距離などの数値と打鍵の再生を見る</span>
-        </Link>
-        <Link className="route-card" to="/input">
-          <strong>Tester</strong>
-          <span>配列を選び、手元のキーボードで実際に打って試す</span>
-        </Link>
-        {/* 旧版は別ビルドとして同梱されるのでルーターの外。dev サーバーでは 404 になる */}
-        <a className="route-card" href={`${import.meta.env.BASE_URL}classic/`}>
-          <strong>旧版</strong>
-          <span>以前の画面をそのまま開く</span>
-        </a>
+      {/*
+        トップは道具の全体像を説明するページ（docs/architecture.md「画面の構成」）。
+        左にサイドバーの Analyze / Workspace の見本を描き、右で4点（Analyzer・Single と Multi・始め方・Workspace）を説明する。
+        操作の細部（元に戻す・共有など）は書かない。
+      */}
+      <div className="top-guide">
+        <SidebarSample />
+        <ol className="top-points">
+          <li>
+            <h2>Analyzer</h2>
+            <p>配列でテキストを打った時に押すキーについて、特定の切り口で情報を見せる画面です。</p>
+          </li>
+          <li>
+            <h2>Single と Multi</h2>
+            <p>Single は1つの配列について、Multi は複数の配列を選んで、情報を比較します。</p>
+          </li>
+          <li>
+            <h2>始め方</h2>
+            <p>
+              サイドバーで見たい Analyzer を開き、その画面で見たい配列を選びます。別の Analyzer へ移っても、テキスト・物理配列・条件は引き継がれます。選んだ配列は、同じ区分（Single・Multi）の Analyzer どうしで引き継がれます。
+            </p>
+          </li>
+          <li>
+            <h2>Workspace</h2>
+            <p>準備中です。複数の Analyzer を並べて見る画面になります。</p>
+          </li>
+        </ol>
       </div>
       {/*
-        観測値の注記はトップにだけ置く（docs/architecture.md「画面の構成」。トップは入口だけという原則の例外）。
+        観測値の注記はトップにだけ置く（docs/architecture.md「画面の構成」）。
         各ペイン・各Analyzerには出さない。
       */}
       <p className="hero-note">数値は観測値であり、配列の優劣を判定するスコアではない。</p>
+      <p className="hero-legacy">
+        <Link to="/analyzer">これまでの Analyzer</Link>
+      </p>
     </section>
   );
 }

@@ -5,7 +5,7 @@ test('theme authority survives SPA route transitions and reload', async ({ page 
   await page.goto('/');
   // ハイドレーション前に押すとSPA遷移にならず全体の読み込みになり、確かめたい経路を通らない。
   await waitForHydration(page);
-  await page.getByRole('link', { name: /^Analyzer/ }).click();
+  await page.getByRole('link', { name: 'これまでの Analyzer', exact: true }).click();
 
   const controls = page.locator('[data-react-feature="theme-controls"]');
   await expect(controls).toBeVisible();
