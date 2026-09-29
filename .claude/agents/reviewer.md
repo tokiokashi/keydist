@@ -20,8 +20,9 @@ git fetch origin <ブランチ名> && git checkout --detach FETCH_HEAD
 ```
 
 本体のチェックアウトや実装者の worktree には触らない。**追跡ファイルを書き換えない・コミットしない・push しない。** 修正は指摘として返し、実装者が積む。
-`node_modules` は、無ければ `npm ci` する。本体への symlink が張られている場合は、差分に `package.json` / `package-lock.json` / `patches/` のいずれかが含まれる時だけ `rm node_modules && npm ci` で自前に切り替える。
-`patches/` を含めるのは、`postinstall` の `patch-package` が `patches/` を `node_modules` に当てるため。symlink 越しだと本体側のパッチで走り、PR のパッチが一度も当たらない。
+`node_modules` は `.worktreeinclude` により本体からコピーされる（symlink ではない。本体には影響しない）。
+差分に `package.json` / `package-lock.json` / `patches/` のいずれかが含まれる時は `npm ci` で入れ直す。含まれなければコピーのまま使う。コピーが無ければ `npm ci`。
+`patches/` を含めるのは、`postinstall` の `patch-package` が `patches/` を `node_modules` に当てるため。コピーには本体側でパッチ適用済みの状態が乗るので、入れ直さないと PR のパッチが一度も当たらない。
 
 ## 最初に読む
 
