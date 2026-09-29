@@ -11,7 +11,8 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # main は取り消さない。続けてマージすると途中のマージコミットの e2e が cancelled になり、どこで壊れたか追えなくなる
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   verify:

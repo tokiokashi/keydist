@@ -107,7 +107,7 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 
 - `main` に直接pushしない。`<type>/<短い説明>` のブランチを切る（例: `feat/kana-layout-form`）
 - push前に `npm test` と `npm run build` を通す。ブラウザe2eは手元で全件を回さず、pushしてCIの結果を読む（「ブラウザe2e」）
-- `main` へのマージは、リリースPRを除いて公開しない（「公開」）。CI（test / typecheck / build）は通る状態を保つ
+- `main` へのマージは、リリースPRを除いて公開しない（「公開」）。CI（test / typecheck / build / browser-e2e）は通る状態を保つ
 
 ### 作業単位の切り方
 
@@ -149,13 +149,23 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
   ラベルを受けて `.github/workflows/merge-stack.yml` が次を行い、結果をPRにコメントしてラベルを外す（失敗しても外れるので、直してから付け直す）
   - 付けた人が書き込み権限を持つか、PRが `main` 向けの開いたスタックの一番上か、draft・未マージで閉じたPRが無いかを確かめる
   - スタックが `package.json` の `version` を変えていないかを確かめる（変えていたら断る。リリースPRはスタックに入れない）
-  - 全PRのheadで `verify` / `browser-e2e` / `commit-messages` が成功し、他のチェックに失敗・実行中が無いかを確かめる
+  - 全PRのheadで `verify` / `browser-e2e` / `commit-messages` が成功し、他のチェックに失敗・実行中が無いかを確かめる。
+    同じheadにpush由来とpull_request由来の同名ジョブが付くので、**eventごとに最新の実行を取り、両方の成功を求める**（片方の成功でもう片方の失敗を隠さない）。
+    判定のロジックは `.github/scripts/merge-stack-checks.cjs`（`test/merge-stack-checks.test.ts` で検証）
+  - 判定してからマージ要求までの間に、どれかのPRのheadが動いていないかを取り直して照合する（動いていたら断る。付け直す）。
+    `merge-async` のshaで固定できるのは一番上のPRだけなので、下のPRは照合で守る。照合とマージ要求の間の一瞬は固定できない
   - 一番上のPRを `merge-async`（merge commit）でマージし、終わるまで待つ
   - 「マージ」の条件のうち、レビュー・未決の選択・後続のissue化など上に挙げた以外のものは機械では確かめない。ラベルを付けることが、それらを全部満たしたという宣言になる
 - `merge-stack` はsecret `STACK_MERGE_TOKEN`（Contents・Pull requestsにwriteを持つfine-grained PAT）でマージする。
   このリポジトリには設定してあるので、マージはオーナーとして行われ、`main` へのpushでCIと `release.yml` が走る
   （`version` を変えないので `release.yml` は何も公開せずに終わる）。
   未設定なら `GITHUB_TOKEN` に落ち、そのpushは別のワークフローを起動しないので `main` のCIも `release.yml` も走らない
+- `STACK_MERGE_TOKEN` は有効期限が切れる。切れると `merge-stack` は最初のAPI呼び出しで401（`Bad credentials`）になる。
+  コメントもラベルの取り外しも同じトークンで行うので、**PRには何も書かれず、ラベルも残ったまま**、Actionsの実行だけが赤くなる（スタックの中身の問題ではない）。
+  ラベルを付けたのに反応が無ければ、Actionsの `Merge stack` の実行ログを見る。更新はオーナーだけが行う
+  - GitHubの Settings → Developer settings → Fine-grained personal access tokens で、このリポジトリに Contents・Pull requests の write を持つトークンを再生成する
+  - リポジトリの Settings → Secrets and variables → Actions で `STACK_MERGE_TOKEN` の値を差し替える
+  - 更新後はPRの `merge-stack` ラベルを外して付け直す
 - 下のPRが入ると、GitHubは上のブランチをサーバー側で書き換える（rebase）。rebase・強制pushの禁止はエージェント自身の操作の話で、
   これは対象外。書き換えられたブランチで作業を続ける前に、fetchしてローカルのworktreeをリモートのブランチに合わせる。
   古いローカルの履歴をpushしない
@@ -303,4 +313,6 @@ CI（ubuntu）では必ず全件走るので、判断に迷ったらCIの数字�
 
   `browser-e2e` の `status` が `completed`、`conclusion` が `success` なら通っている。
   失敗時はActionsの実行に `browser-e2e-trace`（`test-results/`）が7日間残る
-- PRを開いているブランチでは、同じheadにpush由来とpull_request由来の `browser-e2e` が両方付く。どちらも見る
+- PRを開いているブランチでは、同じheadにpush由来とpull_request由来の `browser-e2e` が両方付く。人が読む時は両方が `success` か見る。
+  `merge-stack` はeventごとに最新の実行を取り、両方の成功を求める。
+  `main` へのpushは、続けてマージしても途中のマージコミットの実行を取り消さない（`ci.yml` の `cancel-in-progress` はmain以外だけ）
