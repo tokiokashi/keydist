@@ -1,5 +1,5 @@
 import { THUMB_KEY } from '../shapes/geometry.ts';
-import { faceFromEntries, fromFaces, type Face, type Layout } from './types.ts';
+import { faceFromEntries, fromFaces, withAliases, type Face, type Layout } from './types.ts';
 
 /**
  * 新下駄配列。
@@ -70,4 +70,4 @@ export const SHINGETA_FACES: Face[] = [
 const layout: Layout = fromFaces('shingeta', '新下駄', SHINGETA_FACES);
 layout.legends.delete(THUMB_KEY.LT);
 layout.legends.delete(THUMB_KEY.RT);
-export const SHINGETA = layout;
+export const SHINGETA = withAliases(layout, ['しんげた']);

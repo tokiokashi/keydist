@@ -24,7 +24,7 @@ import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { useSetTargetSelection } from './use-set-target-selection.ts';
-import { ContextBar, ShareButton, UndoRedoButtons, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
+import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { TextChip } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { useOptionsDraft } from './use-options-draft.ts';
@@ -38,7 +38,7 @@ import './standalone.css';
  *
  * 集合はMultiのAnalyzerが共有する`assets.multiTargetSelection`（`engine/multi-target-selection.ts`。
  * #663）。比較表で選んだ基準も集合に入っているが、このページは基準を使わないので触らない
- * （基準の対象をここで外した時だけ、集合の不変条件により基準も外れる）。
+ * （基準の対象をここで外しても記録は残り、比較表では効く基準が無くなる。付け直すと戻る）。
  */
 export interface NSensitivityStandalonePageProps {
   readonly assets: KeydistAssets;
@@ -183,12 +183,8 @@ export function NSensitivityStandalonePage({
     <div className="standalone-page">
       <ContextBar
         disabled={!assetsReady}
-        actions={(
-          <>
-            <UndoRedoButtons history={history} />
-            <ShareButton description="この画面のURLをコピーする" />
-          </>
-        )}
+        history={history}
+        share={{ description: 'この画面のURLをコピーする' }}
       >
         <TextChip
           holder="standalone"

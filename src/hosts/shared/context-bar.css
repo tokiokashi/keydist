@@ -29,6 +29,7 @@
 }
 
 .context-bar-actions {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.2rem;
@@ -232,6 +233,11 @@ button.context-chip:hover:not(:disabled),
   line-height: 1.6;
 }
 
+/* スマホ幅でだけ見せるアイコン（パソコン幅は文字のラベルを見せる）。 */
+.context-chip-icon {
+  display: none;
+}
+
 /* ---- 常時出す操作 ---- */
 .context-icon-button {
   display: inline-grid;
@@ -301,18 +307,19 @@ button.context-chip:hover:not(:disabled),
 }
 
 /*
- * スマホ幅: テキストのチップを1行目に収める。そのために「テキスト」の文字を見た目から省き
- * （読み上げには残す）、共有もアイコンだけにする。既定の物理配列は2行目へ回す。
+ * スマホ幅: 全体を1行に収める（☰ / テキストのチップ / 既定の物理配列のチップ / Undo・Redo / 共有）。
+ * そのために「テキスト」「既定の物理配列」の文字は見た目から省き（読み上げには残す）、
+ * 物理配列はアイコンだけにし、共有はアイコンだけにする（Undo/Redoと共に常時出す）。
+ * チップが余る幅を分け合い、足りない時はテキストのチップが省略して縮む。
  */
 @media (max-width: 760px) {
   .context-bar {
-    flex-wrap: wrap;
     padding: 0.4rem 0.75rem;
     gap: 0.35rem;
   }
 
   .context-bar-items {
-    display: contents;
+    gap: 0.35rem;
   }
 
   .text-chip-root {
@@ -326,7 +333,8 @@ button.context-chip:hover:not(:disabled),
   }
 
   .text-chip .context-chip-key,
-  .context-share-label {
+  .text-chip .text-chip-language,
+  .context-select-chip .context-chip-key {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -339,8 +347,13 @@ button.context-chip:hover:not(:disabled),
     flex: 1 1 auto;
   }
 
-  .context-bar-actions {
-    margin-left: 0;
+  .context-share-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 
   .context-share {
@@ -353,14 +366,31 @@ button.context-chip:hover:not(:disabled),
     justify-content: center;
   }
 
-  .context-select-chip {
-    order: 10;
-    flex: 1 1 100%;
+  /* 幅が足りないので、チップは詰めた形にする。 */
+  .context-bar .context-chip {
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
   }
 
+  /* 物理配列は名前を出さず、キーボードのアイコンだけにする。 */
+  .context-bar .context-select-chip {
+    position: relative;
+    flex: none;
+    padding-inline: 0.3rem;
+  }
+
+  .context-select-chip .context-chip-icon {
+    display: block;
+    color: var(--text-muted);
+  }
+
+  /* 選択は透明なselectが受ける。チップ全体を覆い、タップでネイティブの選択肢が開く。 */
   .context-select-chip select {
-    flex: 1;
+    position: absolute;
+    inset: 0;
+    width: 100%;
     max-width: none;
+    opacity: 0;
   }
 
   /* 文脈バーの真下に全幅で出す（バーは backdrop-filter で fixed の基準になるので absolute で足りる）。 */

@@ -2,6 +2,7 @@ import { THUMB_KEY } from '../shapes/geometry.ts';
 import {
   faceFromEntries,
   fromFaces,
+  withAliases,
   withComposedOutputs,
   withThumbShiftAlternatives,
   type Face,
@@ -99,7 +100,7 @@ function makeLayout(
   );
   layout.legends.set(THUMB_KEY.LT, 'Space');
   layout.legends.set(THUMB_KEY.RT, 'Space');
-  return layout;
+  return withAliases(layout, ['しんじす', 'しんじすはいれつ']);
 }
 
 export const SHIN_JIS_PREFIX = makeLayout('shin-jis-prefix', '新JIS（逐次シフト）', 'prefix', 'single');

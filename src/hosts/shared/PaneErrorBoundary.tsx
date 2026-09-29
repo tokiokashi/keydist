@@ -1,4 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { ErrorDetails } from './ErrorDetails.tsx';
+import { describeErrorDetail } from './pane-status.ts';
 
 /**
  * ペイン単位のerror boundary（#544 §8-5「ペインごとにerror boundaryで囲む。1つのAnalyzerの
@@ -28,11 +30,10 @@ export class PaneErrorBoundary extends Component<{ children: ReactNode }, PaneEr
 
   override render() {
     if (this.state.error !== undefined) {
-      const message = this.state.error instanceof Error ? this.state.error.message : String(this.state.error);
       return (
         <div className="pane-crashed" role="alert" data-pane-crashed="true">
-          <p>この可視化の描画中にエラーが発生した。</p>
-          <p className="pane-crashed-detail">{message}</p>
+          <p>この可視化を表示できなかった。条件を変えて試してほしい</p>
+          <ErrorDetails lines={describeErrorDetail(this.state.error)} />
         </div>
       );
     }

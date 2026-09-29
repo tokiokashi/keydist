@@ -3,8 +3,11 @@ import assert from 'node:assert/strict';
 import { inputAlternativeSelectionIdentity } from '#input/semantics/index.ts';
 import type { InputAlternativeOrigin } from '#input/semantics/types.ts';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
+import { JIS_KANA } from '#input/layouts/jis-kana.ts';
+import { buildGeometry, JIS_FINGER_ASSIGNMENT, resolveKeyId } from '#input/shapes/geometry.ts';
 import {
   longestReverseLookupRoute,
+  physicalAvailableKeys,
   reverseLookup,
   reverseLookupGuideActionHighlightKeys,
   reverseLookupGuideActionLabel,
@@ -275,4 +278,25 @@ test('longestReverseLookupRouteはstep数・action数・key数すべて同点な
 
 test('longestReverseLookupRouteは空配列でundefinedを返す', () => {
   assert.equal(longestReverseLookupRoute([]), undefined);
+});
+
+test('reverseLookupは物理配列に無いキーを答えにせず、打てない文字は空で返す', () => {
+  const layout = JIS_KANA;
+  assert.ok(layout);
+  const ansi = physicalAvailableKeys(buildGeometry('row-staggered'));
+  const jis = physicalAvailableKeys(buildGeometry('jis-row-staggered', JIS_FINGER_ASSIGNMENT));
+  const keysOf = (route: ReverseLookupRoute) =>
+    route.steps.flatMap((step) => step.actions.flat());
+
+  // 「ー」はJISかなでANSIに無いキーを使う
+  const withJis = reverseLookup(layout, 'ー', 3, jis);
+  assert.ok(withJis.length > 0);
+  assert.ok(keysOf(withJis[0]!).some((key) => !ansi.has(resolveKeyId(key))));
+  assert.equal(reverseLookup(layout, 'ー', 3, ansi).length, 0);
+
+  for (const route of reverseLookup(layout, 'あいう', 5, ansi)) {
+    for (const key of keysOf(route)) assert.ok(ansi.has(resolveKeyId(key)), key);
+  }
+  // 制限なしでは従来どおり答える（画面側が理由を区別する根拠）
+  assert.ok(reverseLookup(layout, 'ー', 3).length > 0);
 });

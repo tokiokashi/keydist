@@ -11,7 +11,10 @@ import { analysisTargetKey, sameAnalysisTarget, type AnalysisTarget } from '#inp
  *
  * `baseline`（比較表の「基準にする対象」）も集合の値としてここに含める（#663のオーナー決定）。
  * N感度は基準を使わないが、集合を共有するので、比較表で選んだ基準はN感度を経ても残る。
- * N感度で基準の対象を外した時だけ、不変条件（基準 ∈ 選択）により基準も外れる。
+ * `baseline`は「記録された基準」で、集合に含まれる時だけ効く（効く基準は`effectiveMultiBaseline`）。
+ * 基準の対象を集合から外しても記録は消さず、効く基準が「なし」になるだけ。同じ対象を
+ * 付け直せば基準が戻る（#678。N感度で対象を出し入れしても、比較表の基準を失わないため）。
+ * 不変条件は「効く基準 ∈ 選択」で、読む側は`baseline`を直接読まず`effectiveMultiBaseline`を通す。
  */
 export interface MultiTargetSelection {
   readonly targets: readonly AnalysisTarget[];
@@ -99,15 +102,21 @@ function colorSlotsByKey(selection: MultiTargetSelection): Map<string, number> {
 }
 
 /**
+ * 効く基準。記録された基準が集合に含まれる時だけその対象を返し、含まれなければ`undefined`
+ * （基準なし）。表示側（比較表・対象の選択の「基準にする対象」）は必ずこれを読む。
+ */
+export function effectiveMultiBaseline(selection: MultiTargetSelection): AnalysisTarget | undefined {
+  const { baseline } = selection;
+  if (baseline === undefined) return undefined;
+  return selection.targets.some((t) => sameAnalysisTarget(t, baseline)) ? baseline : undefined;
+}
+
+/**
  * 選択をまとめて書き換える（追加・削除のどちらもこの1本を通す。`targets`は加えた順で、
  * 表示の並びはホストが一覧の順に並べ直す）。色の番号もここで配る（`assignColorSlots`）。
  *
- * **不変条件（基準 ∈ 選択）をここで1箇所に持つ**（レビュー指摘: 基準に選んでいた対象が
- * 選択から外れたら、基準も同時に外す。以前の比較表専用実装は「資産側では外さず、
- * 表示側（`definition.tsx`）が『基準なし』として扱う」形にしていたが、資産の値そのものが
- * 不変条件を満たさない状態を許すと、資産を読む側が毎回「基準が選択に含まれているか」を
- * 確認し直す必要が生じる。書き込みの時点で不変条件を保証しておけば、読む側は`baseline`を
- * そのまま信用してよい）。
+ * 基準の記録（`baseline`）は集合の変更で触らない。外した対象は効く基準から外れるだけで、
+ * 付け直せば戻る（`effectiveMultiBaseline`）。
  */
 export function withMultiTargets(
   current: MultiTargetSelection,
@@ -115,18 +124,14 @@ export function withMultiTargets(
 ): MultiTargetSelection {
   const deduped = dedupe(targets);
   if (sameTargets(current.targets, deduped)) return current;
-  const baseline = current.baseline !== undefined && deduped.some((t) => sameAnalysisTarget(t, current.baseline!))
-    ? current.baseline
-    : undefined;
   // 残った対象は色を持ち越す。並び替えでも色は対象に付いて動く（色は並べた位置ではなく、
   // 加えた順で配ったもの）。
-  return { targets: deduped, baseline, colorSlots: assignColorSlots(deduped, colorSlotsByKey(current)) };
+  return { targets: deduped, baseline: current.baseline, colorSlots: assignColorSlots(deduped, colorSlotsByKey(current)) };
 }
 
 /**
- * 基準を差し替える。`undefined`は「基準なし」。不変条件（基準 ∈ 選択）を守るため、
- * 選択に含まれない対象を基準にしようとした場合は無視する（no-op。
- * `withMultiTargets`のコメント参照）。
+ * 基準を差し替える（記録も上書きする）。`undefined`は「基準なし」で、記録も消す。
+ * 選択に含まれない対象を基準にしようとした場合は無視する（no-op。選べるのは集合の中だけ）。
  */
 export function withMultiBaseline(
   current: MultiTargetSelection,

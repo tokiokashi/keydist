@@ -542,8 +542,8 @@ function multiTargetSelectionCommand(
 
 /**
  * Multiの集合の選んだ対象を丸ごと差し替える（#663）。追加・削除のどちらも
- * この1本のコマンドを通す（`targets`は加えた順。表示の並びはホストが一覧の順に並べ直す。選択から基準が
- * 外れたら、同じコマンドの中で基準も一緒に外す。`withMultiTargets`）。
+ * この1本のコマンドを通す（`targets`は加えた順。表示の並びはホストが一覧の順に並べ直す。基準の記録は
+ * 触らない。外した対象は効く基準から外れるだけで、付け直すと戻る。`effectiveMultiBaseline`）。
  */
 export function setMultiTargetsCommand(targets: readonly AnalysisTarget[]): Command<KeydistAssets> {
   return multiTargetSelectionCommand('対象の集合を変更する', (current) => withMultiTargets(current, targets));

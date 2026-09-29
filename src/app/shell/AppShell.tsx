@@ -84,7 +84,9 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
     }
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
+      // 暗幕は自分のclickで閉じる（下の暗幕の説明）。
       if (asideRef.current?.contains(target) || toggleRef.current?.contains(target)) return;
+      if ((target as Element).closest?.('.shell-scrim')) return;
       close();
     };
     // パソコン幅で重ねて出している間は、ポインタがサイドバーの外へ出たら引っ込める。
@@ -173,7 +175,12 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
           }}
         />
       </aside>
-      {mobile && open ? <div className="shell-scrim" aria-hidden="true" onClick={close} /> : null}
+      {/* pointerdownで閉じると、暗幕が消えた後にmousedownの既定動作がフォーカスをBODYへ落とし、
+          開くボタンへ戻したフォーカスを上書きする。そのため暗幕はclickで閉じ、mousedownでは
+          フォーカスを動かさない（サイドバー内にあったフォーカスがcloseで開くボタンへ戻る）。 */}
+      {mobile && open ? (
+        <div className="shell-scrim" aria-hidden="true" onMouseDown={(event) => event.preventDefault()} onClick={close} />
+      ) : null}
 
       <ContextBarLeadingSlot.Provider value={toggle}>
         <div className="shell-body" inert={bodyInert}>

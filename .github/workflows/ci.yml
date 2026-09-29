@@ -10,8 +10,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.ref == 'refs/heads/main' && format('ci-main-{0}', github.sha) || format('ci-{0}', github.ref) }}
+  # main は sha ごとの group にして取り消さない。同じ group では pending の run が新しい queued に置き換わって cancelled になるため、
+  # 続けてマージすると途中のマージコミットの e2e が消え、どこで壊れたか追えなくなる
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   verify:

@@ -18,8 +18,10 @@ export const ContextBarLeadingSlot = createContext<ReactNode>(null);
 export interface ContextBarProps {
   /** テキストのチップなど、バーの左側に並べるもの。 */
   readonly children: ReactNode;
-  /** 右端に寄せる常時出す操作（Undo/Redo・共有）。 */
-  readonly actions?: ReactNode;
+  /** Undo/Redoの状態と操作。 */
+  readonly history: ContextBarHistory;
+  /** 共有（URLのコピー）。 */
+  readonly share: ContextBarShare;
   /**
    * 資産の読み込みが済むまで、バーの操作を効かせない（プリレンダーのHTMLは読み込み前から押せるため）。
    * シェルが差し込むサイドバーのボタンは資産と関係ないので、ここに含めない。
@@ -27,7 +29,11 @@ export interface ContextBarProps {
   readonly disabled?: boolean;
 }
 
-export function ContextBar({ children, actions, disabled = false }: ContextBarProps) {
+/**
+ * Undo/Redoと共有はどの幅でも常時出す。スマホ幅では共有の文字を見た目から省き、アイコンだけにする
+ * （1行に収めるため。読み上げには残す）。
+ */
+export function ContextBar({ children, history, share, disabled = false }: ContextBarProps) {
   const leading = useContext(ContextBarLeadingSlot);
   const barRef = useRef<HTMLElement>(null);
 
@@ -47,12 +53,19 @@ export function ContextBar({ children, actions, disabled = false }: ContextBarPr
     };
   }, []);
 
+  const { state, copy } = useShareCopy(share.query);
   return (
     <section ref={barRef} className="context-bar" aria-label="テキストと画面の操作">
       {leading}
       <fieldset className="context-bar-fieldset" disabled={disabled}>
         <div className="context-bar-items">{children}</div>
-        {actions === undefined ? null : <div className="context-bar-actions">{actions}</div>}
+        <div className="context-bar-actions">
+          <UndoRedoButtons history={history} />
+          <ShareButton description={share.description} onCopy={copy} />
+          <span className="context-share-status" role="status">
+            {state === 'copied' ? 'URLをコピーした' : state === 'failed' ? 'コピーできなかった' : ''}
+          </span>
+        </div>
       </fieldset>
     </section>
   );
@@ -66,7 +79,7 @@ export interface ContextBarHistory {
   readonly redo: () => void;
 }
 
-export function UndoRedoButtons({ history }: { readonly history: ContextBarHistory }) {
+function UndoRedoButtons({ history }: { readonly history: ContextBarHistory }) {
   return (
     <>
       <button
@@ -99,19 +112,20 @@ export function UndoRedoButtons({ history }: { readonly history: ContextBarHisto
   );
 }
 
-export interface ShareButtonProps {
+export interface ContextBarShare {
   /**
    * URLに載せる値（解析設定など）。無ければ今の画面のURLをそのままコピーする。
    * URLとクリップボードに触るのはホストだけ（Analyzerの本体・解析設定は触らない）。
    */
   readonly query?: () => URLSearchParams;
-  /** 何を含むURLをコピーするかの説明（ボタンのtitle）。 */
+  /** 何を含むURLをコピーするかの説明（ボタンのtitle・メニュー項目の説明）。 */
   readonly description: string;
 }
 
 type ShareState = 'idle' | 'copied' | 'failed';
 
-export function ShareButton({ query, description }: ShareButtonProps) {
+/** URLのコピーと、その結果の表示状態（しばらくして消える）。 */
+function useShareCopy(query: ContextBarShare['query']): { readonly state: ShareState; readonly copy: () => void } {
   const [state, setState] = useState<ShareState>('idle');
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timerRef.current), []);
@@ -134,18 +148,25 @@ export function ShareButton({ query, description }: ShareButtonProps) {
     clipboard.writeText(url).then(() => show('copied'), () => show('failed'));
   };
 
+  return { state, copy };
+}
+
+function ShareButton({ description, onCopy }: { readonly description: string; readonly onCopy: () => void }) {
   return (
     <span className="context-share">
-      <button type="button" className="context-share-button" title={description} onClick={copy}>
-        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
-          <path d="M8 10V2.5M5 5.25 8 2.25l3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M4.5 7.5H3.75A1.25 1.25 0 0 0 2.5 8.75v4.5c0 .69.56 1.25 1.25 1.25h8.5c.69 0 1.25-.56 1.25-1.25v-4.5c0-.69-.56-1.25-1.25-1.25H11.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
+      <button type="button" className="context-share-button" aria-label="共有" title={`共有: ${description}`} onClick={onCopy}>
+        <ShareIcon />
         <span className="context-share-label">共有</span>
       </button>
-      <span className="context-share-status" role="status">
-        {state === 'copied' ? 'URLをコピーした' : state === 'failed' ? 'コピーできなかった' : ''}
-      </span>
     </span>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+      <path d="M8 10V2.5M5 5.25 8 2.25l3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4.5 7.5H3.75A1.25 1.25 0 0 0 2.5 8.75v4.5c0 .69.56 1.25 1.25 1.25h8.5c.69 0 1.25-.56 1.25-1.25v-4.5c0-.69-.56-1.25-1.25-1.25H11.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
   );
 }

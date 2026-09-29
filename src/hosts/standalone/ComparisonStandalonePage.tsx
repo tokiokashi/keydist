@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import { setMultiBaselineCommand, setMultiTargetsCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineCache } from '#engine/cache.ts';
+import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget } from '#input/setup/index.ts';
@@ -24,7 +25,7 @@ import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { useSetTargetSelection } from './use-set-target-selection.ts';
-import { ContextBar, ShareButton, UndoRedoButtons, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
+import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { TextChip } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { useOptionsDraft } from './use-options-draft.ts';
@@ -188,7 +189,8 @@ export function ComparisonStandalonePage({
     onComparisonOptionsCommit(next);
   };
 
-  const baselineTargetKey = selection.baseline === undefined ? undefined : analysisTargetKey(selection.baseline);
+  const effectiveBaseline = effectiveMultiBaseline(selection);
+  const baselineTargetKey = effectiveBaseline === undefined ? undefined : analysisTargetKey(effectiveBaseline);
   const candidates = order.map((key) => ({
     key,
     label: namedByKey.get(key)?.displayName ?? key,
@@ -199,12 +201,8 @@ export function ComparisonStandalonePage({
     <div className="standalone-page">
       <ContextBar
         disabled={!assetsReady}
-        actions={(
-          <>
-            <UndoRedoButtons history={history} />
-            <ShareButton description="この画面のURLをコピーする" />
-          </>
-        )}
+        history={history}
+        share={{ description: 'この画面のURLをコピーする' }}
       >
         <TextChip
           holder="standalone"

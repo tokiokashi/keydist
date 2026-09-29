@@ -38,6 +38,7 @@ jobs:
       contents: write
       pull-requests: write
       checks: read
+      actions: read
       statuses: read
     env:
       # スタックを入れてよい base。main 以外へのスタックはこのワークフローでは入れない
@@ -47,11 +48,19 @@ jobs:
       LABEL: merge-stack
       API_VERSION: '2026-03-10'
     steps:
+      # pull_request_target の既定は base（main）のチェックアウト。PRのコードは取らない
+      - name: Checkout scripts
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
       - name: Merge stack
         uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.STACK_MERGE_TOKEN || github.token }}
           script: |
+            const { evaluateChecks, movedHeads } = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/merge-stack-checks.cjs`);
             const { owner, repo } = context.repo;
             const number = context.payload.pull_request.number;
             const sender = context.payload.sender.login;
@@ -77,28 +86,20 @@ jobs:
             const refuse = (msg) => { throw new Refusal(msg); };
 
             // head の CI を確かめる。問題があれば理由の配列を返す。
-            // 同じ head に push と pull_request の両方で同名のジョブが走り、片方が skipped になることがある
-            // （commit-messages は pull_request でだけ走る）。名前ごとに skipped 以外で一番新しい実行を見る
+            // 同じ head に push と pull_request の両方で同名のジョブが走るので、check run を workflow run の
+            // event に引き当て、(名前, event) ごとの最新で判定する（ロジックは .github/scripts/merge-stack-checks.cjs）
             const checkHead = async (prNumber, sha) => {
-              const problems = [];
+              const wfRuns = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+                owner, repo, head_sha: sha, per_page: 100,
+              });
+              const eventBySuite = new Map(wfRuns.map((w) => [w.check_suite_id, w.event]));
               const runs = (await github.paginate(github.rest.checks.listForRef, {
                 owner, repo, ref: sha, filter: 'all', per_page: 100,
-              })).filter((r) => r.name !== selfJob);
-              const byName = new Map();
-              for (const r of runs) byName.set(r.name, [...(byName.get(r.name) ?? []), r]);
-              const latest = (list) => {
-                const live = list.filter((r) => r.conclusion !== 'skipped');
-                const pool = live.length ? live : list;
-                return pool.reduce((a, b) => ((a.started_at ?? '') >= (b.started_at ?? '') ? a : b));
-              };
-              for (const name of required)
-                if (!byName.has(name)) problems.push(`#${prNumber}: 必須の \`${name}\` が head で走っていない`);
-              for (const [name, list] of byName) {
-                const r = latest(list);
-                const ok = required.includes(name) ? ['success'] : ['success', 'neutral', 'skipped'];
-                if (r.status !== 'completed') problems.push(`#${prNumber}: \`${name}\` が終わっていない（${r.status}）`);
-                else if (!ok.includes(r.conclusion)) problems.push(`#${prNumber}: \`${name}\` が ${r.conclusion}`);
-              }
+              })).map((r) => ({
+                name: r.name, status: r.status, conclusion: r.conclusion, started_at: r.started_at,
+                event: eventBySuite.get(r.check_suite?.id),
+              }));
+              const problems = evaluateChecks({ runs, required, selfJob, prNumber });
               const { data: combined } = await github.rest.repos.getCombinedStatusForRef({ owner, repo, ref: sha });
               if (combined.total_count > 0 && combined.state !== 'success')
                 problems.push(`#${prNumber}: commit status が ${combined.state}`);
@@ -146,6 +147,15 @@ jobs:
               const problems = [];
               for (const p of pending) problems.push(...(await checkHead(p.number, p.head.sha)));
               if (problems.length) refuse(`head の CI が揃っていない:\n${problems.map((s) => `- ${s}`).join('\n')}`);
+
+              // 3.5 判定してからマージ要求までの間に、どれかの PR に push されていないか。
+              //     merge-async の sha で固定できるのは一番上だけなので、下の PR は直前に取り直して照合する
+              const { data: fresh } = await github.request('GET /repos/{owner}/{repo}/stacks', {
+                owner, repo, pull_request: number, headers,
+              });
+              const freshStack = fresh.find((s) => s.open && s.pull_requests.some((p) => p.number === number));
+              const moved = movedHeads(pending, (freshStack?.pull_requests ?? []).filter((p) => !p.merged_at));
+              if (moved.length) refuse(`CI を確かめた後に head が動いた。付け直す:\n${moved.map((s) => `- ${s}`).join('\n')}`);
 
               // 4. 一番上を merge commit でマージする。一番下からここまでが一緒に入る。
               //    sha を渡し、確認した後に push されていたら GitHub 側でマージを取り消させる

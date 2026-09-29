@@ -1,4 +1,4 @@
-import { faceFromEntries, fromFaces, type Face, type Layout } from './types.ts';
+import { faceFromEntries, fromFaces, withAliases, type Face, type Layout } from './types.ts';
 
 /**
  * かわせみ配列改。
@@ -498,4 +498,4 @@ const KAWASEMI_KAI_SOURCES: SourceFace[] = [
 
 export const KAWASEMI_KAI_FACES: Face[] = selectShortestFaces(KAWASEMI_KAI_SOURCES);
 
-export const KAWASEMI_KAI: Layout = fromFaces('kawasemi-kai', 'かわせみ配列改', KAWASEMI_KAI_FACES);
+export const KAWASEMI_KAI: Layout = withAliases(fromFaces('kawasemi-kai', 'かわせみ配列改', KAWASEMI_KAI_FACES), ['かわせみ', 'かわせみかい']);

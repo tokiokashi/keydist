@@ -333,6 +333,20 @@ test('絞り込み欄で候補を絞り、キーボードだけで選んで、Es
   await expect(filter).toHaveValue('');
 });
 
+test('絞り込み欄は読みでも探せ、カタカナで打っても同じ候補が出る', async ({ page }) => {
+  await page.goto('/standalone/comparison');
+  await dismissAutoOpenedSelection(page);
+  await page.getByRole('button', { name: /^対象: / }).click();
+  const selection = page.getByRole('dialog', { name: '対象の選択' });
+  const filter = selection.getByRole('searchbox', { name: '配列・Setupを名前で絞り込む' });
+  await filter.fill('なぎなた');
+  await expect(selection.locator('input[type="checkbox"]')).toHaveCount(1);
+  await expect(selection.locator('input[value="layout:naginata-v18"]')).toBeVisible();
+  await filter.fill('ナギナタ');
+  await expect(selection.locator('input[type="checkbox"]')).toHaveCount(1);
+  await expect(selection.locator('input[value="layout:naginata-v18"]')).toBeVisible();
+});
+
 test('Tabで選択の最後から先へ進むと閉じてボタンの次へ、最初から戻るとボタンへ移る', async ({ page }) => {
   await page.goto('/standalone/comparison');
   const button = page.getByRole('button', { name: /^対象: / });
@@ -591,4 +605,26 @@ test('Multiの集合（並び・色・基準）はN感度と共有し、Single�
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await expectChosenTarget(page, 'layout:dvorak');
+});
+
+test('基準の配列を外すと基準なしになり、付け直すと基準と表の内容が戻る（#678）', async ({ page }) => {
+  await page.goto('/standalone/comparison');
+  const table = page.locator('.comparison-table');
+  await addTarget(page, 'layout:qwerty');
+  await addTarget(page, 'layout:dvorak');
+  await addTarget(page, 'layout:colemak-dh');
+  await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 10_000 });
+  await openTargetSelection(page);
+  await page.getByLabel('基準', { exact: true }).selectOption('layout:qwerty');
+  await expect(table.locator('tr[data-baseline="true"]')).toContainText('QWERTY');
+  const before = await table.innerText();
+
+  await toggleTarget(page, 'layout:qwerty');
+  await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
+  await expect(table.locator('tr[data-baseline="true"]')).toHaveCount(0);
+
+  await toggleTarget(page, 'layout:qwerty');
+  await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 10_000 });
+  await expect(table.locator('tr[data-baseline="true"]')).toContainText('QWERTY');
+  expect(await table.innerText()).toBe(before);
 });

@@ -1,5 +1,5 @@
 import { THUMB_KEY } from '../shapes/geometry.ts';
-import { faceFromEntries, fromFaces, type Face, type Layout } from './types.ts';
+import { faceFromEntries, fromFaces, withAliases, type Face, type Layout } from './types.ts';
 
 /**
  * かわせみ配列+。
@@ -1034,4 +1034,4 @@ const layout: Layout = fromFaces('kawasemi-plus', 'かわせみ配列+', KAWASEM
 layout.legends.set(THUMB_KEY.LT, '左親指');
 layout.legends.set(THUMB_KEY.RT, '右親指');
 
-export const KAWASEMI_PLUS = layout;
+export const KAWASEMI_PLUS = withAliases(layout, ['かわせみ', 'かわせみぷらす']);

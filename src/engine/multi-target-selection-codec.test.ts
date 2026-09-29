@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import { MULTI_TARGET_SELECTION_CODEC } from './multi-target-selection-codec.ts';
+import { effectiveMultiBaseline } from './multi-target-selection.ts';
 
 const A: AnalysisTarget = { kind: 'setup', setupId: 'a' };
 const B: AnalysisTarget = { kind: 'setup', setupId: 'b' };
@@ -33,10 +34,12 @@ test('MULTI_TARGET_SELECTION_CODEC: 重複した対象は1つに畳んで読む'
   assert.ok(decoded.diagnostics.length > 0, '重複を畳んだことの診断が残る');
 });
 
-test('MULTI_TARGET_SELECTION_CODEC: 選択に含まれないbaselineは基準なしへ戻す（不変条件をdecode時にも保証）', () => {
+test('MULTI_TARGET_SELECTION_CODEC: 選択に含まれないbaselineも記録として残り、効く基準はなし', () => {
   const decoded = decodeValue({ version: 1, targets: [A], baseline: B });
-  assert.equal(decoded.value.baseline, undefined);
-  assert.ok(decoded.diagnostics.length > 0);
+  assert.deepEqual(decoded.value.baseline, B);
+  assert.equal(effectiveMultiBaseline(decoded.value), undefined);
+  const again = decodeValue(MULTI_TARGET_SELECTION_CODEC.encode(decoded.value));
+  assert.deepEqual(again.value.baseline, B, '外している間の記録もencode→decodeで残る');
 });
 
 test('MULTI_TARGET_SELECTION_CODEC: 壊れた対象（未知kind）はその1件だけ捨てて読む', () => {

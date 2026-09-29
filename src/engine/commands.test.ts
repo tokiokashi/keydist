@@ -32,7 +32,7 @@ import {
   type KeydistAssets,
 } from './commands.ts';
 import type { SettingsValueMap } from './settings-items.ts';
-import { initialMultiTargetSelection } from './multi-target-selection.ts';
+import { effectiveMultiBaseline, initialMultiTargetSelection } from './multi-target-selection.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
 
 let nextId = 0;
@@ -673,7 +673,7 @@ test('setMultiBaselineCommand: 選択に含まれないSetupを基準にしよ�
   assert.equal(attempt.outcome.kind, 'no-op');
 });
 
-test('setMultiTargetsCommand: 基準に選んでいたSetupが選択から外れたら、基準も一緒に外れる（不変条件）', () => {
+test('setMultiTargetsCommand: 基準に選んでいたSetupが選択から外れたら、効く基準はなしになる（記録は残る）', () => {
   const assets = emptyAssets();
   const history = emptyCommandHistory<KeydistAssets>();
 
@@ -689,7 +689,8 @@ test('setMultiTargetsCommand: 基準に選んでいたSetupが選択から外れ
     setMultiTargetsCommand([TARGET_B]),
   );
   assert.deepEqual(removed.assets.multiTargetSelection.targets, [TARGET_B]);
-  assert.equal(removed.assets.multiTargetSelection.baseline, undefined);
+  assert.equal(effectiveMultiBaseline(removed.assets.multiTargetSelection), undefined);
+  assert.equal(removed.assets.multiTargetSelection.baseline, TARGET_A);
 });
 
 test('setSingleTargetCommand: 対象を書き込み、undo/redoで往復できる', () => {

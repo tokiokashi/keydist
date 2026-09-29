@@ -6,6 +6,7 @@ import {
   COLOR_SLOT_COUNT,
   initialMultiTargetSelection,
   withMultiBaseline,
+  effectiveMultiBaseline,
   withMultiTargets,
 } from './multi-target-selection.ts';
 
@@ -36,16 +37,29 @@ test('withMultiTargets: 重複した対象は先に出た方だけ残して1つ�
   assert.deepEqual(state.targets, [A, B, C]);
 });
 
-test('withMultiTargets: 基準に選んでいた対象が選択から外れたら、基準も一緒に外れる（不変条件）', () => {
+test('withMultiTargets: 基準の対象を外すと効く基準はなしになり、記録は残る。付け直すと戻る', () => {
   const withBaseline = withMultiBaseline(
     withMultiTargets(initialMultiTargetSelection(), [A, B]),
     A,
   );
-  assert.equal(withBaseline.baseline, A);
+  assert.equal(effectiveMultiBaseline(withBaseline), A);
 
   const removed = withMultiTargets(withBaseline, [B]);
   assert.deepEqual(removed.targets, [B]);
-  assert.equal(removed.baseline, undefined, '基準に選んでいたAが選択から外れたので基準も外れる');
+  assert.equal(effectiveMultiBaseline(removed), undefined, '集合に無い間は基準なし');
+  assert.equal(removed.baseline, A, '記録は消さない');
+
+  const restored = withMultiTargets(removed, [B, A]);
+  assert.equal(effectiveMultiBaseline(restored), A, '付け直すと基準が戻る');
+});
+
+test('withMultiBaseline: 外している間に別の基準を選ぶと記録が上書きされ、元の配列を付け直しても戻らない', () => {
+  const withBaseline = withMultiBaseline(withMultiTargets(initialMultiTargetSelection(), [A, B]), A);
+  const removed = withMultiTargets(withBaseline, [B]);
+  const overwritten = withMultiBaseline(removed, B);
+  assert.equal(overwritten.baseline, B);
+  const restored = withMultiTargets(overwritten, [A, B]);
+  assert.equal(effectiveMultiBaseline(restored), B);
 });
 
 test('withMultiTargets: 基準に選んでいた対象が選択に残っていれば、基準は保たれる', () => {
@@ -54,7 +68,7 @@ test('withMultiTargets: 基準に選んでいた対象が選択に残ってい�
     A,
   );
   const reordered = withMultiTargets(withBaseline, [B, A]);
-  assert.equal(reordered.baseline, A);
+  assert.equal(effectiveMultiBaseline(reordered), A);
 });
 
 test('withMultiBaseline: 選択に含まれる対象へは設定・解除できる', () => {
@@ -63,6 +77,7 @@ test('withMultiBaseline: 選択に含まれる対象へは設定・解除でき�
   assert.equal(withBaseline.baseline, A);
   const cleared = withMultiBaseline(withBaseline, undefined);
   assert.equal(cleared.baseline, undefined);
+  assert.equal(effectiveMultiBaseline(cleared), undefined);
 });
 
 test('withMultiBaseline: 選択に含まれない対象を基準にしようとするとno-op（不変条件）', () => {
