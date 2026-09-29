@@ -43,6 +43,14 @@ export function useTextContentCommit(
     return resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary).ref;
   };
 
+  // 覚えた移行は、最新の選択がその複製に留まっている間だけ有効にする。選択が別のテキストへ
+  // 移ったら捨てる（後で選び直した複製へ、古い移行が誤って当たるのを防ぐ）。
+  // 描画のたびに「今の選択」と突き合わせて捨てる。目印を読んで消費する形にしないのは、
+  // StrictModeの二重描画で2回目の描画が偽になるため（同じ入力なら何度呼んでも同じ結果になる）。
+  if (redirectRef.current !== undefined && !sameRef(redirectRef.current.to, resolvedRef())) {
+    redirectRef.current = undefined;
+  }
+
   // 書き込みの前後で解決後の選択が組み込みから自作へ移っていたら、その組み込み宛ての
   // 以後の打鍵の向け先として覚える。
   const dispatchAndRemember = (command: Command<KeydistAssets>) => {

@@ -195,3 +195,26 @@ test('他タブが作った複製へ選択が移っても、下書きは複製�
   await expect(pageB.getByLabel('テキスト', { exact: true })).toHaveValue('fromAk');
   await expect.poll(async () => (await storedTexts(pageB)).find((t) => t.id === copy.id)?.text).toBe('fromAk');
 });
+
+test('複製から組み込みへ、また複製へと選択欄で選び直しても、複製の本文は書き換え前の下書きに置き換わらない', async ({ page }) => {
+  await setup(page);
+  const select = page.getByLabel('テキストを選ぶ');
+  const builtinValue = await select.inputValue();
+  await page.evaluate(() => (window as unknown as RaceWindow).__type('a'));
+  const firedFirst = await page.evaluate(() => (window as unknown as RaceWindow).__fire());
+  expect(firedFirst).toBeGreaterThanOrEqual(1);
+  const [copy] = await storedTexts(page);
+  const copyValue = `user:${copy.id}`;
+  await expect(select).toHaveValue(copyValue);
+
+  await select.selectOption(builtinValue);
+  await select.selectOption(copyValue);
+  const body = page.getByLabel('テキスト', { exact: true });
+  await expect(body).toHaveValue(copy.text);
+
+  await page.evaluate(() => (window as unknown as RaceWindow).__type('k'));
+  const firedSecond = await page.evaluate(() => (window as unknown as RaceWindow).__fire());
+  expect(firedSecond).toBeGreaterThanOrEqual(1);
+  await expect(body).toHaveValue(/ak$/);
+  await expect.poll(async () => (await storedTexts(page)).map((t) => t.text.slice(-2))).toEqual(['ak']);
+});
