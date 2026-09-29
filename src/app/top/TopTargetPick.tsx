@@ -15,12 +15,11 @@ import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 
 /**
  * トップで気になる配列を1つ選ぶ部品（#741）。選んだ配列は Single の対象になり、Multi の組にも入る
- * （`setTargetForSingleAndMultiCommand`。1回の操作なのでUndo 1回で両方戻る）。
+ * （`setTargetForSingleAndMultiCommand`）。
  *
  * 選ぶ部品は各画面の見出しと同じ`TargetSelection`（単一選択）。資産の読み書きも各画面と同じ
  * `useKeydistAssets`を通すので、他のタブへの反映は同じ形で乗る。履歴は画面ごとに持ち、
  * トップには元に戻す操作が無いので、画面からこの書き込みを戻す手段は無い（選び直す）。
- * コマンドが1回で戻せる形なのは、履歴を持つ画面から使えるようにするため。
  * 資産にはこの部品が書き込むまで Single の対象が無い。無い間は各画面と同じく既定の配列を
  * 選択中として見せ、Analyzerへのリンクは「選んだ後」にだけ出す。
  */
