@@ -32,3 +32,40 @@ test('サイドバー固定で761〜1100の幅を20px刻みに動かしても、
     expect(layout.overflow, `幅${width}`).toBeLessThanOrEqual(0);
   }
 });
+
+test('アイコン化した幅ではテキストのチップの文字が左寄せで、境目付近でもチップが重ならない', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
+  await expect(page.locator('.context-bar button.text-chip')).toBeEnabled({ timeout: 10_000 });
+  await page.setViewportSize({ width: 1100, height: 900 });
+  const gap = await page.evaluate(() => {
+    const value = document.querySelector('.text-chip .context-chip-value')!;
+    const range = document.createRange();
+    range.selectNodeContents(value);
+    return range.getBoundingClientRect().left - value.getBoundingClientRect().left;
+  });
+  // 中央寄せなら余った幅の半分だけ右へずれる。
+  expect(gap).toBeLessThan(2);
+
+  // サイドバーを固定しない時の境目（バーの内幅856px＝画面幅896px）の前後。余裕が小さい側。
+  await page.locator('#app-sidebar').getByRole('button', { name: 'サイドバーを固定' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-sidebar', 'unpinned');
+  for (const width of [895, 897, 899]) {
+    await page.setViewportSize({ width, height: 900 });
+    const layout = await page.evaluate(() => {
+      const text = document.querySelector('.context-bar button.text-chip')!.getBoundingClientRect();
+      const shape = document.querySelector('.context-bar .context-select-chip')!.getBoundingClientRect();
+      const actions = document.querySelector('.context-bar-actions')!.getBoundingClientRect();
+      return {
+        barHeight: document.querySelector('.context-bar')!.getBoundingClientRect().height,
+        overlap: text.left < shape.right - 0.5 && shape.left < text.right - 0.5,
+        overActions: shape.right > actions.left + 0.5,
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+      };
+    });
+    expect(layout.barHeight, `幅${width}`).toBeLessThan(60);
+    expect(layout.overlap, `幅${width}`).toBe(false);
+    expect(layout.overActions, `幅${width}`).toBe(false);
+    expect(layout.overflow, `幅${width}`).toBeLessThanOrEqual(0);
+  }
+});
