@@ -159,11 +159,12 @@
   line-height: 1.55;
 }
 
-/* 最下端: 版表示・テーマ切替 */
+/* 最下端: 版表示・旧バージョンへのリンク・テーマ切替 */
 .sidebar-foot {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.6rem;
   margin-top: auto;
   padding: 0.6rem 0.5rem 0;
   border-top: 1px solid var(--border);
@@ -172,6 +173,20 @@
 .sidebar-version {
   color: var(--text-muted);
   font: 600 0.72rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.sidebar-legacy {
+  /* 幅の狭いサイドバーでテーマ切替が切れないよう、版表示・テーマ切替の上の行に単独で置く */
+  order: -1;
+  flex-basis: 100%;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.sidebar-legacy:hover {
+  color: var(--text);
 }
 
 .sidebar-theme {

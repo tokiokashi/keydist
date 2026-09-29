@@ -11,12 +11,15 @@ import {
 } from '../theme/appearance.ts';
 import type { ThemeChoice } from '../theme/theme.ts';
 
+/** 旧バージョン（`/analyzer`）へのリンクの文言。トップの下端のリンクも同じ文を出す。 */
+export const LEGACY_ANALYZER_LABEL = '旧バージョン';
+
 /** Workspace 区分の案内文。トップの見本も同じ文を出す。 */
 export const WORKSPACE_EMPTY_TEXT = 'Analyzerを並べて見る画面。';
 
 /**
  * サイドバーの中身（docs/architecture.md「サイドバー」）。ナビゲーションだけを持ち、
- * 最下端にだけ例外として版表示・テーマ切替を置く。
+ * 最下端にだけ例外として版表示・旧バージョンへのリンク・テーマ切替を置く。
  *
  * 区分見出しは英語（Analyze / Workspace / Assets）。Analyzeの中は対象の数で
  * Single / Multi に分ける。Testerは区分に入れず単独で置く。
@@ -138,6 +141,8 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
 
       <div className="sidebar-foot">
         <span className="sidebar-version">v{__KEYDIST_VERSION__}</span>
+        {/* /analyzer はシェルに載らない別ページ。リンクで遷移すると新しい画面に切り替わる */}
+        <Link className="sidebar-legacy" to="/analyzer" onClick={onNavigate}>{LEGACY_ANALYZER_LABEL}</Link>
         <ThemeSwitch />
       </div>
     </>
