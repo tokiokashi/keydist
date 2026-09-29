@@ -22,7 +22,7 @@ import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import { bigramFlowOptions, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
-import { ContextBar, ShareButton, UndoRedoButtons, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
+import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { TextChip } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { targetNameSource } from './target-name-source.ts';
@@ -196,15 +196,11 @@ export function BigramFlowStandalonePage({
     <div className="standalone-page">
       <ContextBar
         disabled={!assetsReady}
-        actions={(
-          <>
-            <UndoRedoButtons history={history} />
-            <ShareButton
-              description="今の解析設定を含むこの画面のURLをコピーする"
-              query={() => bigramFlowOptions.encodeOptionsToUrl(optionsDraft)}
-            />
-          </>
-        )}
+        history={history}
+        share={{
+          description: '今の解析設定を含むこの画面のURLをコピーする',
+          query: () => bigramFlowOptions.encodeOptionsToUrl(optionsDraft),
+        }}
       >
         <TextChip
           holder="standalone"

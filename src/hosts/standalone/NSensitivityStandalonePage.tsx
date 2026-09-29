@@ -24,7 +24,7 @@ import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { useSetTargetSelection } from './use-set-target-selection.ts';
-import { ContextBar, ShareButton, UndoRedoButtons, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
+import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { TextChip } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { useOptionsDraft } from './use-options-draft.ts';
@@ -183,12 +183,8 @@ export function NSensitivityStandalonePage({
     <div className="standalone-page">
       <ContextBar
         disabled={!assetsReady}
-        actions={(
-          <>
-            <UndoRedoButtons history={history} />
-            <ShareButton description="この画面のURLをコピーする" />
-          </>
-        )}
+        history={history}
+        share={{ description: 'この画面のURLをコピーする' }}
       >
         <TextChip
           holder="standalone"
