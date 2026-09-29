@@ -4,21 +4,17 @@
 }
 
 /*
- * チャートは置かれた領域の幅いっぱいに描く。viewBoxの座標系は640×320の固定なので、
- * 幅に比例して文字も縮む。狭い領域で目盛りが読めなくなる前に、図の幅を40rem（座標系と
- * 等倍）で止め、それより狭い領域では図の枠を横にスクロールさせる。
- * 広い領域で縦に伸びすぎないよう高さも止める（描画は中央に寄る）。
+ * チャートの座標系は、置かれた領域の実寸の幅に合わせて組み直す（definition.tsx）。
+ * 表示と座標系が等倍なので、文字は領域の幅によらず指定のpxで出る。
  */
 .n-sensitivity-chart {
-  overflow-x: auto;
+  min-width: 0;
 }
 
 .n-sensitivity-svg {
   display: block;
   width: 100%;
-  min-width: 40rem;
   height: auto;
-  max-height: 24rem;
 }
 
 .n-sensitivity-grid-line {

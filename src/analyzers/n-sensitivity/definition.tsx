@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivityExtracted, type NSensitivitySeries, type NSensitivitySeriesFailed } from './extract.ts';
 import { DEFAULT_N_SENSITIVITY_OPTIONS, type NSensitivityOptions } from './options.ts';
 import { bindOption, RadioOptionField } from '#ui/primitives/option-fields.tsx';
@@ -16,8 +17,12 @@ import './n-sensitivity-view.css';
  * 系列の色はhostが集合の中で配った色（`rowContext`の`color`）をそのまま使い、値の大小で強調しない。
  */
 
-const CHART_WIDTH = 640;
-const CHART_HEIGHT = 320;
+/** プリレンダーと、幅を測る前の最初の描画に使う幅。 */
+const DEFAULT_CHART_WIDTH = 640;
+const MIN_CHART_HEIGHT = 200;
+const MAX_CHART_HEIGHT = 360;
+/** Nの目盛りの間隔がこれを割ったら、目盛りを1つ飛ばしにする（10pxの文字の「10」が並べる幅）。 */
+const MIN_TICK_SPACING = 30;
 const MARGIN = { top: 16, right: 16, bottom: 32, left: 48 };
 
 export interface NSensitivityRowContext {
@@ -76,6 +81,28 @@ interface PlottedSeries {
   readonly points: readonly { readonly windowSize: number; readonly y: number; readonly totalUnits: number }[];
 }
 
+/**
+ * 要素の幅を測る。測れるのはハイドレーション後なので、それまでは`null`（既定の幅で描く）。
+ * 観測はアンマウントで必ず解除する。
+ */
+function useMeasuredWidth(): [React.RefObject<HTMLDivElement | null>, number | null] {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState<number | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const update = () => {
+      const next = Math.floor(el.clientWidth);
+      if (next > 0) setWidth(next);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, width];
+}
+
 /** 折れ線チャート本体（#544指示書「非legacyの折れ線が無ければ自前でSVGを書く」）。 */
 function NSensitivityChart({
   series,
@@ -84,8 +111,14 @@ function NSensitivityChart({
   series: readonly PlottedSeries[];
   scale: NSensitivityOptions['scale'];
 }) {
+  // 置かれた領域の幅をそのままviewBoxの幅にする（表示と等倍になり、文字が縮まない）。
+  // 高さは2:1を基本に、狭い領域でも線の間隔が潰れない下限と、広い領域で伸びすぎない上限で止める。
+  const [wrapRef, measured] = useMeasuredWidth();
+  const CHART_WIDTH = measured ?? DEFAULT_CHART_WIDTH;
+  const CHART_HEIGHT = Math.min(MAX_CHART_HEIGHT, Math.max(MIN_CHART_HEIGHT, Math.round(CHART_WIDTH / 2)));
   const plotWidth = CHART_WIDTH - MARGIN.left - MARGIN.right;
   const plotHeight = CHART_HEIGHT - MARGIN.top - MARGIN.bottom;
+  const tickStep = plotWidth / (N_SENSITIVITY_RANGE.length - 1) < MIN_TICK_SPACING ? 2 : 1;
   const xMin = N_SENSITIVITY_RANGE[0];
   const xMax = N_SENSITIVITY_RANGE[N_SENSITIVITY_RANGE.length - 1]!;
   const xScale = (n: number) => MARGIN.left + ((n - xMin) / (xMax - xMin)) * plotWidth;
@@ -101,7 +134,7 @@ function NSensitivityChart({
   const yTickValues = Array.from({ length: yTicks + 1 }, (_, i) => (yMax / yTicks) * i);
 
   return (
-    <div className="n-sensitivity-chart">
+    <div className="n-sensitivity-chart" ref={wrapRef}>
     <svg
       className="n-sensitivity-svg"
       viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
@@ -122,7 +155,7 @@ function NSensitivityChart({
           </text>
         </g>
       ))}
-      {N_SENSITIVITY_RANGE.map((n) => (
+      {N_SENSITIVITY_RANGE.filter((_, i) => i % tickStep === 0).map((n) => (
         <text
           key={n}
           className="n-sensitivity-axis-label"
