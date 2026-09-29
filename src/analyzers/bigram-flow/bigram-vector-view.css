@@ -348,15 +348,8 @@
   display: block;
   flex: 0 0 auto;
   margin: 0;
-}
-
-.flow-profile-svg[data-scale-mode="fixed"] {
-  /* 固定では範囲を広げない。外へ出る分はviewportの枠で見切れる。 */
+  /* 図の範囲は一定。外へ出る分はviewportの枠で見切れる（縮めない）。 */
   overflow: visible;
-}
-
-.flow-profile-svg[data-scale-mode="fit"],
-.flow-profile-svg[data-scale-mode="fixed"] {
   width: auto !important;
   max-width: none;
 }

@@ -29,8 +29,8 @@ test('standalone Bigram Flow connects the Gate 1 vertical slice and keeps ViewCo
   await expect(page.locator('.flow-legacy-settings').getByText('反対の手の打鍵を飛ばして、同じ手で続けた2打鍵')).toBeVisible();
   await expect(viewConfig).toContainText('source=within-hand');
 
-  await (await openFigureSettings(page, 'Relative vectors')).getByLabel('距離表示', { exact: true }).selectOption('fixed');
-  await expect.poll(() => new URL(page.url()).searchParams.get('movementScale')).toBe('fixed');
+  await (await openFigureSettings(page, 'Relative vectors')).getByLabel('方向分布の表示倍率', { exact: true }).fill('2');
+  await expect.poll(() => new URL(page.url()).searchParams.get('gain')).toBe('2');
 
   await expect(host).toHaveAttribute('data-session-target-revision', targetRevision!);
   await expect(host).toHaveAttribute('data-session-distance-revision', distanceRevision!);

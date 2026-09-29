@@ -217,7 +217,6 @@ export const ANALYSIS_VIEW_DEFINITIONS = new Map<
         { label: 'line', value: config.lineScale },
         { label: 'layer', value: config.layerOrder },
         { label: 'hover', value: config.hoverScale },
-        { label: 'movement', value: config.movementScaleMode },
         { label: 'bandwidth', value: `±${config.polarBandwidth}°` },
         { label: 'gain', value: `${config.polarGain}×` },
       ];
@@ -246,11 +245,6 @@ export const ANALYSIS_VIEW_DEFINITIONS = new Map<
             source.hoverScale,
             ['key', 'global'],
             BIGRAM_DEFAULTS.hoverScale,
-          ),
-          movementScaleMode: choice(
-            source.movementScaleMode,
-            ['fit', 'fixed'],
-            BIGRAM_DEFAULTS.movementScaleMode,
           ),
           polarBandwidth: integer(
             source.polarBandwidth,

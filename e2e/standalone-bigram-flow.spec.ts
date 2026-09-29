@@ -889,9 +889,8 @@ test('ペインの解析設定には両方の図に効く項目だけがあり�
   await expect(keyboard.getByLabel('ホバー中はそのキーの線だけで太さを決める')).toBeVisible();
 
   const vectors = await openFigureSettings(page, 'Relative vectors');
-  await expect(vectors.locator('select')).toHaveCount(1);
+  await expect(vectors.locator('select')).toHaveCount(0);
   await expect(vectors.locator('input[type="range"]')).toHaveCount(2);
-  await expect(vectors.getByLabel('距離表示', { exact: true })).toBeVisible();
   await expect(vectors.getByLabel('方向の広がり', { exact: true })).toBeVisible();
   await expect(vectors.getByLabel('方向分布の表示倍率', { exact: true })).toBeVisible();
   // もう一方を開いても閉じない。
@@ -976,7 +975,7 @@ test('解析設定の小窓のヘッダーの「すべて初期値に戻す」�
   const figure = await openFigureSettings(page, 'Keyboard Flow');
   await figure.getByLabel('紐の太さ', { exact: true }).selectOption('sqrt');
   const vectors = await openFigureSettings(page, 'Relative vectors');
-  await vectors.getByLabel('距離表示', { exact: true }).selectOption('fixed');
+  await vectors.getByLabel('方向分布の表示倍率', { exact: true }).fill('2');
   const settings = await openSettings(page);
   await settings.getByRole('button', { name: 'Within-hand' }).click();
 
@@ -992,7 +991,7 @@ test('解析設定の小窓のヘッダーの「すべて初期値に戻す」�
   await expect(settings.getByRole('button', { name: 'Actual', exact: true })).toHaveAttribute('aria-pressed', 'true');
   // 図のそばへ移した項目も戻る（展開は開いたまま）。
   await expect(figure.getByLabel('紐の太さ', { exact: true })).toHaveValue('linear');
-  await expect(vectors.getByLabel('距離表示', { exact: true })).toHaveValue('fit');
+  await expect(vectors.getByLabel('方向分布の表示倍率', { exact: true })).toHaveValue('1');
   await expectChosenTarget(page, 'layout:colemak-dh');
 });
 

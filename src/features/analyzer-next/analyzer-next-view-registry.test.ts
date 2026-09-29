@@ -25,7 +25,6 @@ test('Bigram Flow codec sanitizes config without changing Session state', () => 
     lineScale: 'log',
     layerOrder: 'cross-hand-top',
     hoverScale: 'global',
-    movementScaleMode: 'fixed',
     polarBandwidth: 12,
     polarGain: 2.5,
   }, 1), {
@@ -34,7 +33,6 @@ test('Bigram Flow codec sanitizes config without changing Session state', () => 
     lineScale: 'log',
     layerOrder: 'cross-hand-top',
     hoverScale: 'global',
-    movementScaleMode: 'fixed',
     polarBandwidth: 12,
     polarGain: 2.5,
   });
@@ -44,7 +42,6 @@ test('Bigram Flow codec sanitizes config without changing Session state', () => 
     lineScale: 'linear',
     layerOrder: 'weight',
     hoverScale: 'key',
-    movementScaleMode: 'fit',
     polarBandwidth: 5,
     polarGain: 1,
   });

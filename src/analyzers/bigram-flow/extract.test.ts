@@ -130,11 +130,6 @@ function referenceExtraction(trace: Trace, options: BigramFlowOptions): BigramFl
 
   const leftDensity = directionDensity(analysisVectors, 'left', options.polarBandwidth, 192);
   const rightDensity = directionDensity(analysisVectors, 'right', options.polarBandwidth, 192);
-  const sharedMaxDensity = Math.max(
-    0,
-    ...leftDensity.samples.map((s) => s.density),
-    ...rightDensity.samples.map((s) => s.density),
-  );
 
   const movingVectors = nonStationaryVectors(aggregated);
   const maxWeight = Math.max(1, ...movingVectors.map((v) => v.weight));
@@ -159,7 +154,6 @@ function referenceExtraction(trace: Trace, options: BigramFlowOptions): BigramFl
     },
     relativeMaxDistance,
     relativeMaxWeight,
-    sharedMaxDensity,
     hasCrossHandInAnalysis: options.source === 'actual' && analysisVectors.some((v) => v.hand === 'cross'),
   };
 }
@@ -177,7 +171,6 @@ test('computeBigramFlowExtractionは旧view実装が計算していたのと同�
   assert.deepEqual(extracted.hands.right, reference.hands.right);
   assert.equal(extracted.relativeMaxDistance, reference.relativeMaxDistance);
   assert.equal(extracted.relativeMaxWeight, reference.relativeMaxWeight);
-  assert.equal(extracted.sharedMaxDensity, reference.sharedMaxDensity);
   assert.equal(extracted.hasCrossHandInAnalysis, reference.hasCrossHandInAnalysis);
 });
 
@@ -212,7 +205,6 @@ test('extractKeyOf: 見た目だけの設定（lineScale等）を変えても抽
     lineScale: 'log',
     layerOrder: 'cross-hand-top',
     hoverScale: 'global',
-    movementScaleMode: 'fixed',
     polarGain: 2.5,
   };
   assert.deepEqual(
