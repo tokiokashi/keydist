@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openFigureSettings } from './bigram-flow-figure-helper.ts';
 import { openTextChip } from './context-bar-helper.ts';
+import { installTimerCapture, type RaceWindow } from './text-timer-capture-helper.ts';
 
 /**
  * コレクション資産（1つのstorageキーへ丸ごと書く`setupLibrary`・`textLibrary`）の
@@ -25,16 +26,6 @@ async function readTexts(page: Page): Promise<readonly StoredText[]> {
     const raw = localStorage.getItem(key);
     return raw === null ? [] : (JSON.parse(raw) as { texts: StoredText[] }).texts;
   }, TEXT_LIBRARY_KEY);
-}
-
-/** `check`が真になるまで待つ。`timeout`内に真にならなければ偽を返す（失敗を数えるため、投げない）。 */
-async function settles(check: () => Promise<boolean>, timeout = 3_000): Promise<boolean> {
-  const deadline = Date.now() + timeout;
-  while (Date.now() < deadline) {
-    if (await check()) return true;
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  return check();
 }
 
 async function openBoth(pageA: Page, pageB: Page): Promise<void> {
@@ -71,37 +62,34 @@ test('通知が届く前の他タブの追加を、自タブの書き込みで�
   }
 });
 
-test('2タブが同じ組み込みテキストを続けて書き換えても、両方の本文が残る', async ({ context }, testInfo) => {
-  testInfo.setTimeout(180_000);
+test('2タブが同じ組み込みテキストを続けて書き換えても、両方の本文が残る', async ({ context }) => {
   const pageA = await context.newPage();
   const pageB = await context.newPage();
+  // Bだけ本文のdebounceタイマーを保留する。Bは組み込みのまま打ち始め、Bの反映より先に
+  // Aのcopy-on-writeが届く順序を、待ちの長さではなく状態（Bの選択がAの複製へ移った）で作る。
+  // Bの反映時には選択がAの複製へ移っているので、以前はBの入力が捨てられていた
+  await installTimerCapture(pageB);
+  await openBoth(pageA, pageB);
+  await openTextChip(pageA);
+  await openTextChip(pageB);
 
-  const failures: string[] = [];
-  for (let i = 0; i < ITERATIONS; i++) {
-    if (i > 0) {
-      await pageA.evaluate((keys) => {
-        for (const key of keys) localStorage.removeItem(key);
-      }, [TEXT_LIBRARY_KEY, TEXT_SELECTION_KEY]);
-    }
-    await openBoth(pageA, pageB);
+  const textA = 'tab-A';
+  const textB = 'tab-B';
+  await pageB.evaluate((s) => (window as unknown as RaceWindow).__type(s), textB);
+  await pageA.getByLabel('テキスト', { exact: true }).fill(textA);
+  await expect
+    .poll(async () => (await readTexts(pageA)).map((entry) => entry.text))
+    .toContain(textA);
+  const [copy] = await readTexts(pageA);
+  // Aの書き込みがBへ届き、選択が複製へ移るまで待つ。それからBの保留を撃つ
+  await expect(pageB.getByLabel('テキストを選ぶ')).toHaveValue(`user:${copy!.id}`);
+  const fired = await pageB.evaluate(() => (window as unknown as RaceWindow).__fire());
+  expect(fired).toBeGreaterThanOrEqual(1);
 
-    // Bは組み込みのまま打ち始め、Bの反映（debounce後）より先にAのcopy-on-writeが届く。
-    // Bの反映時には選択がAの複製へ移っているので、以前はBの入力が捨てられていた
-    const textA = `tab-A-${i}`;
-    const textB = `tab-B-${i}`;
-    // チップを開く時間でAとBの間隔が変わらないよう、両方を先に開いておく。
-    await openTextChip(pageA);
-    await openTextChip(pageB);
-    await pageA.getByLabel('テキスト', { exact: true }).fill(textA);
-    await pageB.waitForTimeout(100);
-    await pageB.getByLabel('テキスト', { exact: true }).fill(textB);
-    const ok = await settles(async () => {
-      const texts = (await readTexts(pageA)).map((entry) => entry.text);
-      return texts.includes(textA) && texts.includes(textB);
-    });
-    if (!ok) failures.push(`#${i}: ${JSON.stringify((await readTexts(pageA)).map((entry) => entry.text))}`);
-  }
-  expect(failures).toEqual([]);
+  // Bの入力は組み込みの本文の末尾に足されるので、末尾で照合する
+  await expect
+    .poll(async () => (await readTexts(pageA)).map((entry) => entry.text))
+    .toEqual(expect.arrayContaining([textA, expect.stringMatching(new RegExp(`${textB}$`))]));
 });
 
 test('他タブが別のAnalyzerの解析設定を書いても、自タブの未反映の変更を戻さない', async ({ context }) => {
