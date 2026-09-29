@@ -7,9 +7,7 @@ import type { BigramVector, FingerClass, RelativeVector } from './bigram-vectors
 import { bigramFlowDefinition, type BigramFlowExtracted, type BigramFlowHandProfile } from './extract.ts';
 import {
   MIN_POLAR_BANDWIDTH_DEGREES,
-  movementPlotExtent,
   movementPlotScale,
-  type MovementScaleMode,
 } from './movement-profile-scale.ts';
 import {
   computeOutgoingMaxWeight,
@@ -396,23 +394,19 @@ function MovementProfilePlot({
   profile,
   maxDistance,
   maxVectorWeight,
-  scaleMode,
   bandwidthDegrees,
   polarGain,
-  sharedHalfSize,
 }: {
   hand: 'left' | 'right';
   profile: BigramFlowHandProfile;
   maxDistance: number;
   maxVectorWeight: number;
-  scaleMode: MovementScaleMode;
   bandwidthDegrees: number;
   polarGain: number;
-  sharedHalfSize: number;
 }) {
   const reduceMotion = useReducedMotion();
   const { relative, summary, mean, density } = profile;
-  const scale = movementPlotScale(maxDistance, scaleMode);
+  const scale = movementPlotScale(maxDistance);
   const {
     scaleMax,
     unitsPerSvgUnit,
@@ -420,9 +414,7 @@ function MovementProfilePlot({
     polarBaseRadius,
     polarAmplitude,
   } = scale;
-  // 外周余白だけを整数SVG unitへ切り上げ、extent更新時のサブピクセル再配置を避ける。
-  // data座標・u scale・KDE値は丸めない。
-  const halfSize = Math.ceil(sharedHalfSize);
+  const halfSize = scale.halfSize;
   const viewSize = halfSize * 2;
   const originX = 0;
   const originY = 0;
@@ -464,7 +456,6 @@ function MovementProfilePlot({
         >
         <svg
           className="flow-profile-svg"
-          data-scale-mode={scaleMode}
           width={viewSize}
           height={viewSize}
           viewBox={`${-halfSize} ${-halfSize} ${viewSize} ${viewSize}`}
@@ -575,7 +566,7 @@ function MovementProfilePlot({
         <span><i className="flow-dot flow-dot-inward" /> 内向き</span>
         <span><i className="flow-dot flow-dot-outward" /> 外向き</span>
         <span className="flow-profile-scale-summary">
-          {scaleMode === 'fit' ? '自動調整' : '固定スケール'} · 最大{scaleMax}u · ±{bandwidthDegrees}°
+          最大{scaleMax}u · ±{bandwidthDegrees}°
         </span>
       </div>
 
@@ -680,7 +671,6 @@ export function BigramFlowBody({
     lineScale,
     layerOrder,
     hoverScale,
-    movementScaleMode,
     polarBandwidth,
     polarGain,
   } = options;
@@ -688,13 +678,6 @@ export function BigramFlowBody({
   // 展開の状態は保存しない（再読み込みで閉じる）。閉じるまで開いたまま。
   const [keyboardFlowOpen, setKeyboardFlowOpen] = useState(false);
   const [relativeVectorsOpen, setRelativeVectorsOpen] = useState(false);
-
-  const movementScale = movementPlotScale(extracted.relativeMaxDistance, movementScaleMode);
-  const sharedMovementHalfSize = movementPlotExtent(
-    movementScale,
-    extracted.sharedMaxDensity,
-    polarGain,
-  );
 
   return (
     <section
@@ -705,7 +688,6 @@ export function BigramFlowBody({
       data-line-scale={lineScale}
       data-layer-order={layerOrder}
       data-hover-scale={hoverScale}
-      data-movement-scale-mode={movementScaleMode}
       data-polar-bandwidth={polarBandwidth}
       data-polar-gain={polarGain}
     >
@@ -775,20 +757,16 @@ export function BigramFlowBody({
               profile={extracted.hands.left}
               maxDistance={extracted.relativeMaxDistance}
               maxVectorWeight={extracted.relativeMaxWeight}
-              scaleMode={movementScaleMode}
               bandwidthDegrees={polarBandwidth}
               polarGain={polarGain}
-              sharedHalfSize={sharedMovementHalfSize}
             />
             <MovementProfilePlot
               hand="right"
               profile={extracted.hands.right}
               maxDistance={extracted.relativeMaxDistance}
               maxVectorWeight={extracted.relativeMaxWeight}
-              scaleMode={movementScaleMode}
               bandwidthDegrees={polarBandwidth}
               polarGain={polarGain}
-              sharedHalfSize={sharedMovementHalfSize}
             />
           </div>
           {source === 'actual' && extracted.hasCrossHandInAnalysis ? (
@@ -943,17 +921,6 @@ function RelativeVectorsFigureSettings({ options, onOptionsChange }: FigureSetti
   const bind = <K extends keyof BigramFlowOptions>(key: K) => bindBigramFlowOption(options, onOptionsChange, key);
   return (
     <div className="flow-figure-settings" role="group" aria-label="Relative vectorsの表示">
-      <SelectOptionField
-        label="距離表示"
-        binding={bind('movementScaleMode')}
-        choices={[
-          { value: 'fit', label: '自動調整' },
-          { value: 'fixed', label: '固定スケール' },
-        ]}
-        hint={options.movementScaleMode === 'fit'
-          ? '今のデータを見やすい大きさに調整する'
-          : '対象を変えても同じ距離を同じ長さで描く'}
-      />
       <RangeOptionField
         label="方向の広がり"
         binding={bind('polarBandwidth')}

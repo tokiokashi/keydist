@@ -12,7 +12,6 @@ import type { BigramSource, FingerClass } from './bigram-vectors.ts';
 import {
   MAX_POLAR_DISPLAY_GAIN,
   MIN_POLAR_BANDWIDTH_DEGREES,
-  type MovementScaleMode,
 } from './movement-profile-scale.ts';
 
 export type KeyboardFlowWeightScale = 'linear' | 'sqrt' | 'log';
@@ -24,7 +23,6 @@ const FINGER_CLASSES: readonly FingerClass[] = ['pinky', 'ring', 'middle', 'inde
 const WEIGHT_SCALES: readonly KeyboardFlowWeightScale[] = ['linear', 'sqrt', 'log'];
 const LAYER_ORDERS: readonly KeyboardFlowLayerOrder[] = ['weight', 'same-hand-top', 'cross-hand-top'];
 const HOVER_SCALES: readonly KeyboardFlowHoverScale[] = ['key', 'global'];
-const MOVEMENT_SCALE_MODES: readonly MovementScaleMode[] = ['fit', 'fixed'];
 
 /** 指の組み合わせ選択（0〜2件）の集合上限。`filterBigramVectors`が0/1/2件だけを想定する。 */
 const MAX_SELECTED_FINGERS = 2;
@@ -73,7 +71,7 @@ function decodeSelectedFingers(
  * - `selectedFingers`（抽出）: `filterBigramVectors`がvector集合を絞る。選択順ではなく
  *   集合として効くので`normalizeForExtractKey`でソートし、順序違いの2状態を同じキーへ畳み込む
  * - `polarBandwidth`（抽出）: `directionDensity`のKDE bandwidthそのもの（集計値が変わる）
- * - 残り（`lineScale` `layerOrder` `hoverScale` `movementScaleMode` `polarGain`）は
+ * - 残り（`lineScale` `layerOrder` `hoverScale` `polarGain`）は
  *   抽出結果の数値を変えない表示専用の設定（`view`）
  */
 export const bigramFlowOptions = defineOptions({
@@ -113,13 +111,6 @@ export const bigramFlowOptions = defineOptions({
     url: picklistUrlCodec('hoverScale', HOVER_SCALES),
     label: 'ホバー基準',
   }),
-  movementScaleMode: defineOption<MovementScaleMode>({
-    schema: v.picklist(MOVEMENT_SCALE_MODES),
-    default: 'fit',
-    affects: 'view',
-    url: picklistUrlCodec('movementScaleMode', MOVEMENT_SCALE_MODES),
-    label: '距離表示',
-  }),
   polarBandwidth: defineOption<number>({
     schema: v.pipe(v.number(), v.minValue(MIN_POLAR_BANDWIDTH_DEGREES), v.maxValue(45)),
     default: 5,
@@ -153,7 +144,6 @@ export const ALTERNATE_BIGRAM_FLOW_OPTIONS: BigramFlowOptions = {
   lineScale: 'sqrt',
   layerOrder: 'same-hand-top',
   hoverScale: 'global',
-  movementScaleMode: 'fixed',
   polarBandwidth: 20,
   polarGain: 2,
 };

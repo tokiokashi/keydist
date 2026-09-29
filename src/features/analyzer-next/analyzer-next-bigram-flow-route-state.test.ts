@@ -15,7 +15,6 @@ test('Bigram Flow route search validates binding and the current ViewConfig surf
     lineScale: 'log',
     layerOrder: 'cross-hand-top',
     hoverScale: 'global',
-    movementScale: 'fixed',
     bandwidth: '12',
     gain: '1.75',
     ignored: 'x',
@@ -27,7 +26,6 @@ test('Bigram Flow route search validates binding and the current ViewConfig surf
     lineScale: 'log',
     layerOrder: 'cross-hand-top',
     hoverScale: 'global',
-    movementScale: 'fixed',
     bandwidth: 12,
     gain: 1.75,
   });
@@ -40,7 +38,6 @@ test('Bigram Flow route config uses current defaults for absent or invalid param
     lineScale: 'power',
     layerOrder: 'random',
     hoverScale: 'hovered',
-    movementScale: 'zoom',
     bandwidth: '3',
     gain: '9',
   });
@@ -51,7 +48,6 @@ test('Bigram Flow route config uses current defaults for absent or invalid param
     lineScale: 'linear',
     layerOrder: 'weight',
     hoverScale: 'key',
-    movementScaleMode: 'fit',
     polarBandwidth: 5,
     polarGain: 1,
   });
@@ -81,7 +77,6 @@ test('Bigram Flow route omits default ViewConfig from the URL patch', () => {
     lineScale: 'linear',
     layerOrder: 'weight',
     hoverScale: 'key',
-    movementScaleMode: 'fit',
     polarBandwidth: 5,
     polarGain: 1,
   }), {
@@ -90,7 +85,6 @@ test('Bigram Flow route omits default ViewConfig from the URL patch', () => {
     lineScale: undefined,
     layerOrder: undefined,
     hoverScale: undefined,
-    movementScale: undefined,
     bandwidth: undefined,
     gain: undefined,
   });
@@ -103,7 +97,6 @@ test('Bigram Flow route serializes non-default ViewConfig without Session state'
     lineScale: 'sqrt',
     layerOrder: 'same-hand-top',
     hoverScale: 'global',
-    movementScaleMode: 'fixed',
     polarBandwidth: 15,
     polarGain: 1.4,
   }), {
@@ -112,7 +105,6 @@ test('Bigram Flow route serializes non-default ViewConfig without Session state'
     lineScale: 'sqrt',
     layerOrder: 'same-hand-top',
     hoverScale: 'global',
-    movementScale: 'fixed',
     bandwidth: 15,
     gain: 1.4,
   });

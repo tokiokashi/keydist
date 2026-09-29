@@ -33,8 +33,7 @@ import {
  *
  * ここに含めるのは「抽出に効く設定（`source` `selectedFingers` `polarBandwidth`。
  * `options.ts`の`bigramFlowExtractKeyOf`のコメント参照）で値が変わる計算」だけ。
- * 見た目だけの設定（`lineScale` `layerOrder` `hoverScale` `movementScaleMode`
- * `polarGain`）は、この抽出結果を画面のpixel/scaleへ変換する側（`definition.tsx`の
+ * 見た目だけの設定（`lineScale` `layerOrder` `hoverScale` `polarGain`）は、この抽出結果を画面のpixel/scaleへ変換する側（`definition.tsx`の
  * 可視化component）が担う。
  */
 
@@ -66,8 +65,6 @@ export interface BigramFlowExtracted {
   /** 左右共通のスケールで揃えるための、相対vectorの最大距離・最大weight。 */
   readonly relativeMaxDistance: number;
   readonly relativeMaxWeight: number;
-  /** 左右で個別正規化せず共通のextentを取るための、KDE密度の最大値。 */
-  readonly sharedMaxDensity: number;
   /** Cross-hand bigramがMovement profile対象（analysisVectors）に含まれるか。脚注の出し分けに使う。 */
   readonly hasCrossHandInAnalysis: boolean;
 }
@@ -109,11 +106,6 @@ export function computeBigramFlowExtraction(
 
   const leftDensity = directionDensity(analysisVectors, 'left', options.polarBandwidth, POLAR_SAMPLE_COUNT);
   const rightDensity = directionDensity(analysisVectors, 'right', options.polarBandwidth, POLAR_SAMPLE_COUNT);
-  const sharedMaxDensity = Math.max(
-    0,
-    ...leftDensity.samples.map((sample) => sample.density),
-    ...rightDensity.samples.map((sample) => sample.density),
-  );
 
   const movingVectors = nonStationaryVectors(aggregated);
   const maxWeight = Math.max(1, ...movingVectors.map((vector) => vector.weight));
@@ -141,7 +133,6 @@ export function computeBigramFlowExtraction(
     },
     relativeMaxDistance,
     relativeMaxWeight,
-    sharedMaxDensity,
     hasCrossHandInAnalysis,
   };
 }
