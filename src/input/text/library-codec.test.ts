@@ -85,3 +85,17 @@ test('encode → decode: 往復して同じ値になる', () => {
   assert.equal(decoded.ok, true);
   if (decoded.ok) assert.deepEqual(decoded.value, value);
 });
+
+test('decode/encode: 「新しい」印は往復で残り、壊れた印は診断を積んで捨てる（本文は残す）', () => {
+  const marked: UserText = { ...textA, unseen: true };
+  const ok = TEXT_LIBRARY_CODEC.decode({ version: 1, texts: [marked] });
+  assert.equal(ok.ok, true);
+  if (ok.ok) assert.deepEqual(ok.value.texts, [marked]);
+
+  const broken = TEXT_LIBRARY_CODEC.decode({ version: 1, texts: [{ ...textA, unseen: 'yes' }] });
+  assert.equal(broken.ok, true);
+  if (broken.ok) {
+    assert.deepEqual(broken.value.texts, [textA]);
+    assert.equal(broken.diagnostics.length, 1);
+  }
+});

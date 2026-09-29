@@ -18,6 +18,7 @@ import {
 import {
   appendCopiedUserText,
   deleteUserText,
+  markUserTextsSeen,
   editUserTextContent,
   renameUserText,
   setUserTextLanguageOverride,
@@ -423,8 +424,29 @@ export function selectTextCommand(holder: TextSelectionHolder, ref: TextRef): Co
       return { kind: 'no-op' };
     }
     const next = withTextSelection(current[key], ref);
-    if (next === current[key]) return { kind: 'no-op' };
-    return { kind: 'applied', label: 'テキストを選ぶ', changes: { [key]: next } };
+    // 開いたコピーの「新しい」印はここで外す（#611）
+    const nextLibrary = ref.kind === 'user'
+      ? markUserTextsSeen(current.textLibrary, [ref.id])
+      : current.textLibrary;
+    if (next === current[key] && nextLibrary === current.textLibrary) return { kind: 'no-op' };
+    return {
+      kind: 'applied',
+      label: 'テキストを選ぶ',
+      changes: nextLibrary === current.textLibrary
+        ? { [key]: next }
+        : { [key]: next, textLibrary: nextLibrary },
+    };
+  };
+}
+
+/**
+ * 「新しい」印を外す（一覧を見た時。#611）。印の無い・存在しないidだけなら何もしない。
+ */
+export function markTextsSeenCommand(ids: readonly string[]): Command<KeydistAssets> {
+  return (current) => {
+    const next = markUserTextsSeen(current.textLibrary, ids);
+    if (next === current.textLibrary) return { kind: 'no-op' };
+    return { kind: 'applied', label: 'テキストを確認済みにする', changes: { textLibrary: next } };
   };
 }
 
@@ -472,8 +494,15 @@ export function setTextContentCommand(
     if (builtin === undefined || builtin.text === text) return { kind: 'no-op' };
 
     const name = uniqueAutoTextName(library, deriveEditedTextName(builtin.name));
-    const { library: nextLibrary, created } = appendCopiedUserText(library, generateId, { text, name });
-    if (resolvedRef.kind !== 'builtin' || resolvedRef.id !== ref.id) {
+    const notSelected = resolvedRef.kind !== 'builtin' || resolvedRef.id !== ref.id;
+    // 選ばれないコピーは、打った本人の画面から本文が消えたように見える。文脈バーのチップに
+    // 印を付けて知らせるため、まだ見ていない印を付けて残す（#611）
+    const { library: nextLibrary, created } = appendCopiedUserText(
+      library,
+      generateId,
+      notSelected ? { text, name, unseen: true } : { text, name },
+    );
+    if (notSelected) {
       return { kind: 'applied', label: 'テキストを変更する', changes: { textLibrary: nextLibrary } };
     }
     const nextSelection: TextSelectionState = { ref: { kind: 'user', id: created.id } };

@@ -18,6 +18,7 @@ import type { TextLibrary, UserText } from './library.ts';
  */
 const textLanguageSchema = v.union([v.literal('en'), v.literal('ja')]);
 const optionalTextLanguageSchema = v.optional(textLanguageSchema);
+const optionalUnseenSchema = v.optional(v.literal(true));
 
 // `languageOverride`を持つ入力も構造としては受け入れる必要があるので`v.looseObject`にする
 // （`v.strictObject`は未知のキーがあると要素ごと弾いてしまう）。値の中身は見ず、
@@ -28,7 +29,7 @@ const requiredFieldsSchema = v.looseObject({
   text: v.string(),
 });
 
-const KNOWN_USER_TEXT_KEYS: ReadonlySet<string> = new Set(['id', 'name', 'text', 'languageOverride']);
+const KNOWN_USER_TEXT_KEYS: ReadonlySet<string> = new Set(['id', 'name', 'text', 'languageOverride', 'unseen']);
 
 function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): UserText[] {
   if (!Array.isArray(raw)) return [];
@@ -59,9 +60,22 @@ function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDiagnosti
       diagnostics,
     );
 
-    texts.push(languageOverride === undefined
-      ? { id: decoded.id, name: decoded.name, text: decoded.text }
-      : { id: decoded.id, name: decoded.name, text: decoded.text, languageOverride });
+    // 印は壊れていても要素は残す（印が消えるだけで本文は失わない）
+    const unseen = decodeField(
+      optionalUnseenSchema,
+      isRecord(candidate) ? candidate.unseen : undefined,
+      undefined,
+      `${elementPath}.unseen`,
+      diagnostics,
+    );
+
+    texts.push({
+      id: decoded.id,
+      name: decoded.name,
+      text: decoded.text,
+      ...(languageOverride === undefined ? {} : { languageOverride }),
+      ...(unseen === undefined ? {} : { unseen }),
+    });
   });
   return texts;
 }

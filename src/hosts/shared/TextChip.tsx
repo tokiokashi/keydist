@@ -4,6 +4,7 @@ import {
   createTextCommand,
   deleteTextCommand,
   duplicateTextCommand,
+  markTextsSeenCommand,
   renameTextCommand,
   selectTextCommand,
   setTextLanguageOverrideCommand,
@@ -66,6 +67,9 @@ export function TextChip(props: TextChipProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const resolved = resolveTextSelection(props.selection, props.textLibrary);
+  // 競合で選ばれずに残ったコピーがまだ見られていない間、チップに点を出す（#611）。
+  // 文脈バーが狭くてキー名や言語を隠す時も、チップ自体は残るので点は見える。
+  const hasUnseen = props.textLibrary.texts.some((text) => text.unseen === true);
 
   // 外を押すと閉じる（開いたままだと図に被るため）。
   useEffect(() => {
@@ -101,6 +105,9 @@ export function TextChip(props: TextChipProps) {
       >
         <span className="context-chip-key">テキスト</span>
         <span className="context-chip-value">{resolved.name}</span>
+        {hasUnseen ? (
+          <span className="text-chip-unseen" role="img" aria-label="新しいテキストがある" title="新しいテキストがある" />
+        ) : null}
         <span className="text-chip-language">{languageLabel(resolved.language)}</span>
         <svg className="context-chip-chevron" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
           <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -174,6 +181,23 @@ function TextEditor({
   commitRenameRef.current = commitRename;
   useEffect(() => () => commitRenameRef.current(), []);
 
+  // 一覧を見た時に「新しい」印を外す。一覧を開いた瞬間に外すと「新しい」が読めないので、
+  // 触ってから離れる時（欄を離れる・チップを閉じる）に外す。見えていたテキストだけを外し、
+  // 見ている間に届いた別のコピーの印は残す。
+  const viewedUnseenRef = useRef<readonly string[]>([]);
+  const commitViewed = () => {
+    const ids = viewedUnseenRef.current;
+    if (ids.length === 0) return;
+    viewedUnseenRef.current = [];
+    dispatchRef.current(markTextsSeenCommand(ids));
+  };
+  const commitViewedRef = useRef(commitViewed);
+  commitViewedRef.current = commitViewed;
+  useEffect(() => () => commitViewedRef.current(), []);
+  const beginViewingList = () => {
+    viewedUnseenRef.current = textLibrary.texts.filter((text) => text.unseen === true).map((text) => text.id);
+  };
+
   return (
     <div className="text-editor">
       <div className="text-editor-row">
@@ -189,6 +213,9 @@ function TextEditor({
             dispatch(selectTextCommand(holder, { kind, id }));
           }}
           aria-label="テキストを選ぶ"
+          onPointerDown={beginViewingList}
+          onKeyDown={beginViewingList}
+          onBlur={commitViewed}
         >
           <optgroup label="サンプル">
             {BUILTIN_TEXTS.map((builtin) => (
@@ -201,7 +228,7 @@ function TextEditor({
             <optgroup label="自作">
               {textLibrary.texts.map((text) => (
                 <option key={text.id} value={refKey({ kind: 'user', id: text.id })}>
-                  {text.name}
+                  {text.unseen === true ? `${text.name}・新しい` : text.name}
                 </option>
               ))}
             </optgroup>

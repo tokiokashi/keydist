@@ -14,6 +14,12 @@ export interface UserText {
   readonly name: string;
   readonly text: string;
   readonly languageOverride?: TextLanguage;
+  /**
+   * 競合で選ばれずに残ったコピー（他タブや直前の切り替えに負けた書き込み）で、まだ本人が見ていない印（#611）。
+   * 文脈バーのチップに点を出し、一覧で「新しい」と示すために使う。見た時に外す。
+   * 他タブへ伝えるため、セッションの中ではなく資産に持つ。
+   */
+  readonly unseen?: true;
 }
 
 export interface TextLibrary {
@@ -40,14 +46,20 @@ export function emptyTextLibrary(): TextLibrary {
 export function appendCopiedUserText(
   library: TextLibrary,
   generateId: TextIdGenerator,
-  source: { readonly text: string; readonly name: string; readonly languageOverride?: TextLanguage },
+  source: {
+    readonly text: string;
+    readonly name: string;
+    readonly languageOverride?: TextLanguage;
+    readonly unseen?: true;
+  },
   name?: string,
 ): { readonly library: TextLibrary; readonly created: UserText } {
   const id = generateId();
   const entryName = name ?? source.name;
-  const created: UserText = source.languageOverride === undefined
+  const base: UserText = source.languageOverride === undefined
     ? { id, name: entryName, text: source.text }
     : { id, name: entryName, text: source.text, languageOverride: source.languageOverride };
+  const created: UserText = source.unseen === true ? { ...base, unseen: true } : base;
   return { library: { texts: [...library.texts, created] }, created };
 }
 
@@ -94,6 +106,22 @@ export function setUserTextLanguageOverride(
     ? withoutLanguageOverride(target)
     : { ...target, languageOverride: override };
   return { texts: library.texts.map((text) => text.id === id ? next : text) };
+}
+
+/**
+ * 指定したテキストの「新しい」印を外す。印の無いテキストだけなら`library`をそのまま返す
+ * （他の関数と同じ「変化が無ければ同一参照」の規約）。
+ */
+export function markUserTextsSeen(library: TextLibrary, ids: readonly string[]): TextLibrary {
+  const targets = new Set(ids);
+  if (!library.texts.some((text) => text.unseen === true && targets.has(text.id))) return library;
+  return {
+    texts: library.texts.map((text) => {
+      if (text.unseen !== true || !targets.has(text.id)) return text;
+      const { unseen: _drop, ...rest } = text;
+      return rest;
+    }),
+  };
 }
 
 function withoutLanguageOverride(text: UserText): UserText {

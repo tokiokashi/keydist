@@ -28,6 +28,7 @@ import {
   setSingleTargetCommand,
   setStandaloneAnalyzerOptionsCommand,
   setTextContentCommand,
+  markTextsSeenCommand,
   setTextLanguageOverrideCommand,
   type KeydistAssets,
 } from './commands.ts';
@@ -760,4 +761,25 @@ test('setMultiBaselineCommand: 基準を外してもSingleには書かない', (
   const cleared = applyCommand(back.assets, back.history, setMultiBaselineCommand(undefined));
   assert.equal(cleared.outcome.kind, 'no-op');
   assert.equal(cleared.assets.singleTargetSelection.target, undefined);
+});
+
+test('setTextContentCommand: 選ばれないコピーには「新しい」印が付き、選ばれるコピーには付かない（#611）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const selected = applyCommand(assets, history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, '選ばれる', generateTextId));
+  assert.equal(selected.assets.textLibrary.texts[0]!.unseen, undefined);
+
+  // 選択が既に移った後に届いた同じ組み込みへの書き込みは、選ばれないコピーになる
+  const stale = applyCommand(selected.assets, selected.history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, '遅れて届く', generateTextId));
+  const copy = stale.assets.textLibrary.texts[1]!;
+  assert.equal(copy.text, '遅れて届く');
+  assert.equal(copy.unseen, true);
+
+  // 一覧で見た印の外しと、コピーを選んだ時の外し
+  const seen = applyCommand(stale.assets, stale.history, markTextsSeenCommand([copy.id]));
+  assert.equal(seen.assets.textLibrary.texts[1]!.unseen, undefined);
+  assert.equal(applyCommand(seen.assets, seen.history, markTextsSeenCommand([copy.id])).outcome.kind, 'no-op');
+  const opened = applyCommand(stale.assets, stale.history, selectTextCommand('standalone', { kind: 'user', id: copy.id }));
+  assert.equal(opened.assets.textLibrary.texts[1]!.unseen, undefined);
+  assert.equal(opened.assets.standaloneTextSelection.ref.id, copy.id);
 });
