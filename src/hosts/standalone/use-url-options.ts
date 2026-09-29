@@ -25,6 +25,15 @@ export interface UseUrlOptionsInput<Options> {
 }
 
 /**
+ * 共有リンクの解析設定に読み取れない値があった時にペインへ出す文。
+ * 保存済みの設定の読み直し（「既定値へ戻した」）とは事実が違う。URLでは、集合の要素を落とした時は
+ * 残りを取り込み、値全体を捨てた時は今の値が残る。どちらも「取り込まなかった」は正しい。
+ */
+export function urlOptionsNotices(diagnostics: readonly CodecDiagnostic[]): readonly string[] {
+  return diagnostics.length === 0 ? [] : [`共有リンクの解析設定のうち、読み取れない値は取り込まなかった（${diagnostics.length}件）`];
+}
+
+/**
  * 共有リンクのURLに載った解析設定を、開いた側で受け取る（#544 Phase 3「URLでの受け取り」、
  * #644で3つの単体ページ共通にした）。取り込む対象は解析設定だけで、対象（配列・Setup）は載せない。
  *

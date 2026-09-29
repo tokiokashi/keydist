@@ -722,7 +722,7 @@ test('「共有」でコピーしたURLを新しいページで開くと、解�
   try {
     const opened = await other.newPage();
     await opened.goto(url);
-    await addTarget(opened, 'layout:qwerty');
+    // 対象もURLで届くので、選び直さなくても表が出る。
     const openedTable = opened.locator('.comparison-table');
     await expect(openedTable).toBeVisible({ timeout: 10_000 });
     await expect(openedTable.locator('thead')).toContainText('距離 [u]');
@@ -732,6 +732,88 @@ test('「共有」でコピーしたURLを新しいページで開くと、解�
   } finally {
     await other.close();
   }
+});
+
+/** 共有リンクを開く別の利用者（保存値の無い新しいコンテキスト。`setups`があれば手持ちのSetupとして置く）。 */
+async function openShared(context: import('@playwright/test').BrowserContext, url: string, setups: readonly object[] = []) {
+  const other = await context.browser()!.newContext();
+  const opened = await other.newPage();
+  if (setups.length > 0) {
+    await opened.addInitScript((list) => {
+      localStorage.setItem('keydist:setup-library', JSON.stringify({ version: 1, setups: list, overrides: {} }));
+    }, setups);
+  }
+  await opened.goto(url);
+  return { opened, close: () => other.close() };
+}
+
+test('共有リンクは集合を並び順・基準ごと運び、自作のSetupは名前で引き、無ければ名前を添えて示す（#719）', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'keydist:setup-library',
+      JSON.stringify({
+        version: 1,
+        setups: [{ id: 'src-1', layoutId: 'colemak-dh', shapeId: 'row-staggered', label: '仕事用' }],
+        overrides: {},
+      }),
+    );
+  });
+  await page.goto('/standalone/comparison');
+  // 加えた順は Dvorak → 仕事用 → QWERTY（表示の並びは一覧の順で、ここの順とは別）。
+  await addTarget(page, 'layout:dvorak');
+  await addTarget(page, 'setup:src-1');
+  await addTarget(page, 'layout:qwerty');
+  await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 10_000 });
+  await openTargetSelection(page);
+  await page.getByLabel('基準', { exact: true }).selectOption('setup:src-1');
+  await expect(page.locator('.comparison-table tr[data-baseline="true"]')).toContainText('仕事用');
+  await page.getByRole('button', { name: '共有', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+  // 組み込みの配列はid、Setupは名前だけ（端末ごとのidは載せない）。
+  expect(url).toContain('targets=layout%3Advorak');
+  expect(url).not.toContain('src-1');
+
+  // 同じ名前のSetupを別のidで持つ人は、そのSetupで開く。並び順と基準も同じ。
+  const same = await openShared(context, url, [
+    { id: 'dst-9', layoutId: 'colemak-dh', shapeId: 'row-staggered', label: '仕事用' },
+  ]);
+  try {
+    await expect(same.opened.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 10_000 });
+    await expect(same.opened.locator('.comparison-table tr[data-baseline="true"]')).toContainText('仕事用');
+    await expect(same.opened.locator('[data-pane-link-notice="true"]')).toHaveCount(0);
+    await expect(same.opened).toHaveURL(/\/standalone\/comparison$/);
+    const stored = await same.opened.evaluate((key) => localStorage.getItem(key), MULTI_TARGET_SELECTION_KEY);
+    expect(JSON.parse(stored!).targets).toEqual([
+      { kind: 'layout', layoutId: 'dvorak' },
+      { kind: 'setup', setupId: 'dst-9' },
+      { kind: 'layout', layoutId: 'qwerty' },
+    ]);
+  } finally {
+    await same.close();
+  }
+
+  // Setupを持たない人は、見つからない名前を示され、残りの配列で開く。基準は集合に無いので「なし」。
+  const missing = await openShared(context, url);
+  try {
+    await expect(missing.opened.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
+    await expect(missing.opened.locator('[data-pane-link-notice="true"]')).toContainText('Setup「仕事用」');
+    await expect(missing.opened.locator('[data-pane-link-notice="true"]')).toContainText('見つからなかった');
+    await expect(missing.opened.locator('.comparison-table tr[data-baseline="true"]')).toHaveCount(0);
+  } finally {
+    await missing.close();
+  }
+});
+
+test('共有リンクの対象を1つも引けない時は、今の対象を変えずに名前を示す（#719）', async ({ page }) => {
+  await page.goto('/standalone/comparison');
+  await addTarget(page, 'layout:dvorak');
+  await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(1, { timeout: 10_000 });
+  await page.goto('/standalone/comparison?targets=setup%3A%E6%B6%88%E3%81%88%E3%81%9FSetup');
+  await expect(page.locator('[data-pane-link-notice="true"]')).toContainText('Setup「消えたSetup」');
+  await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(1, { timeout: 10_000 });
+  await expect(page).toHaveURL(/\/standalone\/comparison$/);
 });
 
 async function openSummaryWith(page: Page, setups: readonly { id: string; layoutId: string; shapeId: string }[]) {

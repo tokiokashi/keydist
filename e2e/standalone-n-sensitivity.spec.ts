@@ -300,7 +300,7 @@ test('「共有」でコピーしたURLを新しいページで開くと、解�
   try {
     const opened = await other.newPage();
     await opened.goto(url);
-    await addTarget(opened, 'layout:qwerty');
+    // 対象もURLで届くので、選び直さなくても図が出る。
     await expect(opened.locator('.n-sensitivity-svg')).toBeVisible({ timeout: 10_000 });
     await expect((await openSettings(opened)).getByRole('radio', { name: '実測値 [u]' })).toBeChecked();
     await expect(opened).toHaveURL(/\/standalone\/n-sensitivity$/);
