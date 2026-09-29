@@ -16,6 +16,9 @@
   max-width: 100%;
   min-width: 0;
   min-height: 2rem;
+  /* 全文を測る見えない要素（position: absolute・nowrap）がボタンの外へ伸びてページや
+     ペインの横幅を広げないよう、ボタンの中で切る。測る幅（scrollWidth）は変わらない。 */
+  overflow: clip;
   padding: 0 0.6rem;
   border: 1px solid var(--border-strong);
   border-radius: 6px;

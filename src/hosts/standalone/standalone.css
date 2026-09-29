@@ -46,11 +46,6 @@
     min-width: 4rem;
   }
 
-  /* 全文を測る見えない要素（position: absolute）がページの横幅を広げないよう、ボタンの中で切る。 */
-  .standalone-page .target-selection-button {
-    overflow: hidden;
-  }
-
   .standalone-page .pane-settings-button,
   .standalone-page .pane-frame-menu {
     flex: none;
