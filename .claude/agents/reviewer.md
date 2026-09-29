@@ -21,7 +21,7 @@ git fetch origin <ブランチ名> && git checkout --detach FETCH_HEAD
 
 本体のチェックアウトや実装者の worktree には触らない。**追跡ファイルを書き換えない・コミットしない・push しない。** 修正は指摘として返し、実装者が積む。
 `node_modules` は `.worktreeinclude` により本体からコピーされる（symlink ではない。本体には影響しない）。
-差分に `package.json` / `package-lock.json` / `patches/` のいずれかが含まれる時は `npm ci` で入れ直す。含まれなければコピーのまま使う。コピーが無ければ `npm ci`。
+差分に `package.json` / `package-lock.json` / `patches/` のいずれかが含まれる時は `npm ci` で入れ直す。含まれなければ、まず `npm rebuild --ignore-scripts` を1回流してからコピーのまま使う（コピーは symlink を運ばず `node_modules/.bin` が無い。放置すると親の本体側の道具で動いてしまう。0.5 秒で `.bin` のリンクだけ作り直し、`postinstall` は走らない）。コピーが無ければ `npm ci`。
 `patches/` を含めるのは、`postinstall` の `patch-package` が `patches/` を `node_modules` に当てるため。コピーには本体側でパッチ適用済みの状態が乗るので、入れ直さないと PR のパッチが一度も当たらない。
 
 ## 最初に読む

@@ -22,7 +22,8 @@ keydist の作業単位を1つ実装する。**自分の変更を自分で承認
 
 - `node_modules` は `.worktreeinclude` により本体からコピーされる（symlink ではない。本体には影響しない）。
   差分が依存に触る単位（`package.json` / `package-lock.json` / `patches/` のいずれかを含む）は `npm ci` で入れ直す。
-  触らないならコピーのまま使う。コピーが無ければ（`.worktreeinclude` が効かなかった場合）`npm ci`
+  触らないなら、まず `npm rebuild --ignore-scripts` を1回流してからコピーのまま使う
+  （コピーは symlink を運ばず `node_modules/.bin` が無い。放置すると親の本体側の道具で動いてしまう。0.5 秒で `.bin` のリンクだけ作り直し、`postinstall` は走らない。`npm ci` は `.bin` も作り直すので不要）。コピーが無ければ（`.worktreeinclude` が効かなかった場合）`npm ci`
 - 作業ブランチは `<type>/<短い説明>` で切り直す（`git checkout -b feat/...`）。
   worktree が用意した `worktree-*` ブランチのまま push しない
 - push は自分のブランチだけ。`main` へ push しない。既存ブランチの rebase・強制 push もしない
