@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
   applyExternalChange,
   emptyCommandHistory,
@@ -42,6 +42,12 @@ export interface KeydistAssetsController {
    */
   readonly ready: boolean;
   dispatch(command: Command<KeydistAssets>): void;
+  /**
+   * 描画を待たない最新の資産。`assets`は描画した時点の値なので、`dispatch`の直後（特に
+   * Reactのイベントの外から書いた直後）に読むと古い。書き込みの結果を次の書き込みへ
+   * 引き継ぐ時はこちらを読む。
+   */
+  getAssets(): KeydistAssets;
   /** 戻せる・やり直せる項目があるか（文脈バーのUndo / Redoの押せる状態）。 */
   readonly canUndo: boolean;
   readonly canRedo: boolean;
@@ -125,6 +131,8 @@ export function useKeydistAssets(): KeydistAssetsController {
     forceRender();
   }, [syncs]);
 
+  const getAssets = useCallback(() => assetsRef.current, []);
+
   const step = useMemo(() => (direction: 'undo' | 'redo') => {
     const result = commitHistoryStep(syncs, () => ({ assets: assetsRef.current, history: historyRef.current }), direction);
     if (result.outcome.kind !== 'applied') return;
@@ -139,6 +147,7 @@ export function useKeydistAssets(): KeydistAssetsController {
     assets: assetsRef.current,
     ready,
     dispatch,
+    getAssets,
     canUndo: historyRef.current.undoStack.length > 0,
     canRedo: historyRef.current.redoStack.length > 0,
     undo,
