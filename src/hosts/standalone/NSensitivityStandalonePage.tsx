@@ -19,7 +19,7 @@ import {
   type ConditionValueNames,
 } from '#hosts/shared/index.ts';
 import { nSensitivityAnalyzer, type NSensitivityRowContext } from '#analyzers/n-sensitivity/definition.tsx';
-import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
+import { nSensitivityOptions, type NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { useSetTargetSelection } from './use-set-target-selection.ts';
@@ -27,6 +27,7 @@ import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx
 import { TextChip } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { useOptionsDraft } from './use-options-draft.ts';
+import { useUrlOptions } from './use-url-options.ts';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
 import { targetNameSource } from './target-name-source.ts';
 import './standalone.css';
@@ -125,6 +126,15 @@ export function NSensitivityStandalonePage({
     [storedOptionsRaw],
   );
   const [optionsDraft, setOptionsDraft] = useOptionsDraft<NSensitivityOptions>(decoded.options);
+  // URL経由で解析設定を受け取る（共有リンク。`use-url-options.ts`）。対象は載らない。
+  const urlDiagnostics = useUrlOptions({
+    analyzerId: ANALYZER_ID,
+    optionsDefinition: nSensitivityOptions,
+    currentOptions: decoded.options,
+    assetsReady,
+    dispatch,
+    setOptionsDraft,
+  });
 
   const members: readonly EngineSetMemberInput[] = useMemo(
     () => targets.map((target): EngineSetMemberInput => ({
@@ -183,7 +193,10 @@ export function NSensitivityStandalonePage({
       <ContextBar
         disabled={!assetsReady}
         history={history}
-        share={{ description: 'この画面のURLをコピーする' }}
+        share={{
+          description: '今の解析設定を含むこの画面のURLをコピーする',
+          query: () => nSensitivityOptions.encodeOptionsToUrl(optionsDraft),
+        }}
       >
         <TextChip
           holder="standalone"
@@ -226,7 +239,7 @@ export function NSensitivityStandalonePage({
             onResetOptions={() => changeOptions(nSensitivityAnalyzer.defaultOptions)}
             conditionRows={[]}
             engineState={extraction}
-            settingsDiagnostics={decoded.diagnostics}
+            settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}
             {...(targets.length === 0
               ? {
                 // 資産の読み込み前は保存済みの対象が未反映なだけで、空とは限らない。
