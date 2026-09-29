@@ -71,6 +71,7 @@ export function BigramFlowView({
         trace={data.trace}
         extracted={extracted}
         options={config}
+        onOptionsChange={onConfigChange}
       />
     </div>
   );

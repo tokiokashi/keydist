@@ -43,6 +43,34 @@
   position: static;
 }
 
+/* 図のそばの表示調整。ボタンは見出し行の右端、展開は見出しの直下（小窓にしない）。 */
+.flow-figure-settings-toggle {
+  display: inline-grid;
+  place-items: center;
+  margin-left: auto;
+  padding: 0.25rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.flow-figure-settings-toggle:hover,
+.flow-figure-settings-toggle[aria-expanded='true'] {
+  border-color: var(--border, currentColor);
+  color: var(--text);
+}
+
+.flow-figure-settings {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border, currentColor);
+  border-radius: 8px;
+}
+
 /* 図が2つあるので、図ごとの小見出しだけを持つ（Analyzer名・説明の段落はペインの見出しが持つ）。 */
 .flow-block-title {
   margin: 0;

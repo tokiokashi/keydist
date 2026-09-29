@@ -41,7 +41,14 @@ export function useAnalyzerPane<Options, Extracted>(
       definition,
       options,
       resolution,
-      onExtraction: setExtraction,
+      // 解析設定の変更で抽出の依頼を作り直すと、最初の通知は値の無い`computing`になる。
+      // そのまま本体を外すと、本体が持つ状態（図のそばで開いた表示の調整）が、抽出に効く項目を
+      // 動かすたびに閉じてしまう。直前の結果があれば`stale`（直前の結果を表示）として残す。
+      onExtraction: (next) => setExtraction((previous) => (
+        next.status === 'computing' && (previous.status === 'ready' || previous.status === 'stale')
+          ? { status: 'stale', value: previous.value }
+          : next
+      )),
       onTrace: setTrace,
     });
     // 依存配列を省略すると毎レンダー後に実行され、request()が呼ぶsetState（listener）が
