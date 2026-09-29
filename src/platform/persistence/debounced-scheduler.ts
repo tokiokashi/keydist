@@ -27,7 +27,7 @@ export interface DebouncedPersistenceSchedulerOptions<T> {
   clearTimeoutFn?: typeof clearTimeout;
 }
 
-const DEFAULT_DEBOUNCE_MS = 400;
+export const DEFAULT_DEBOUNCE_MS = 400;
 
 export function createDebouncedPersistenceScheduler<T>(
   options: DebouncedPersistenceSchedulerOptions<T>,
