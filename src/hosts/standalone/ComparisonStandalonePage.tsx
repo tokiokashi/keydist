@@ -7,7 +7,6 @@ import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget } from '#input/setup/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
-import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import {
   conditionHeaderInfoFromResolvedInput,
@@ -26,7 +25,7 @@ import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolv
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { useSetTargetSelection } from './use-set-target-selection.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
-import { TextChip } from '#hosts/shared/TextChip.tsx';
+import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { useOptionsDraft } from './use-options-draft.ts';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
@@ -54,7 +53,7 @@ export interface ComparisonStandalonePageProps {
   readonly catalog: StandalonePaneCatalog;
   readonly generateTextId: TextIdGenerator;
   /** `TextChip`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
-  readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
+  readonly onTextContentCommit: TextContentCommit;
   /** 資産のコマンド履歴（文脈バーのUndo / Redo）。`app` が組み立てる。 */
   readonly history: ContextBarHistory;
   readonly onComparisonOptionsCommit: (options: ComparisonOptions) => void;

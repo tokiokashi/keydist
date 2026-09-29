@@ -169,3 +169,29 @@ test('他タブが同じ複製の本文を書き換えたら、下書きがそ�
   await expect.poll(async () => (await storedTexts(pageA))[0]?.text).toBe('from-other-tab');
   await expect(bodyA).toHaveValue('from-other-tab');
 });
+
+test('他タブが作った複製へ選択が移っても、下書きは複製の本文へ揃う（自分の書き込みで移った時だけ下書きを保つ）', async ({ context }) => {
+  // Bだけタイマーを捕まえる。Bは組み込みに`m`を打って保留し、その間にAが複製Dを作る。
+  const pageB = await context.newPage();
+  await setup(pageB);
+  const pageA = await context.newPage();
+  await pageA.goto('/standalone/bigram-flow');
+  await expect(pageA.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await openTextChip(pageA);
+  await pageB.evaluate(() => (window as unknown as RaceWindow).__type('m'));
+  await pageA.getByLabel('テキスト', { exact: true }).fill('fromA');
+  await expect.poll(() => storedTextCount(pageA)).toBe(1);
+  const [copy] = await storedTexts(pageA);
+  // Bの選択がDへ移り、下書きがDの本文に揃うのを待つ。
+  await expect(pageB.getByLabel('テキストを選ぶ')).toHaveValue(`user:${copy.id}`);
+  await expect(pageB.getByLabel('テキスト', { exact: true })).toHaveValue('fromA');
+
+  // Bの保留（組み込み宛ての`m`）を撃ってから`k`を打つ。Aの本文を上書きしない。
+  const firedFirst = await pageB.evaluate(() => (window as unknown as RaceWindow).__fire());
+  expect(firedFirst).toBeGreaterThanOrEqual(1);
+  await pageB.evaluate(() => (window as unknown as RaceWindow).__type('k'));
+  const firedSecond = await pageB.evaluate(() => (window as unknown as RaceWindow).__fire());
+  expect(firedSecond).toBeGreaterThanOrEqual(1);
+  await expect(pageB.getByLabel('テキスト', { exact: true })).toHaveValue('fromAk');
+  await expect.poll(async () => (await storedTexts(pageB)).find((t) => t.id === copy.id)?.text).toBe('fromAk');
+});

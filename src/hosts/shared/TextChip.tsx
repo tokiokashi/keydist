@@ -17,6 +17,14 @@ import type { TextLanguage } from '#input/text/language.ts';
 import type { TextRef, TextSelectionState } from '#input/text/selection.ts';
 import './context-bar.css';
 
+export type TextContentCommit = ((value: { readonly ref: TextRef; readonly text: string }) => void) & {
+  /**
+   * 自分の書き込みで、選択が組み込み`from`から複製`to`へ移ったか。他タブが作った複製へ選択が
+   * 移った場合は含まない（下書きを保つかの判定に使う。#711）。
+   */
+  readonly wasRedirected: (from: TextRef, to: TextRef) => boolean;
+};
+
 /**
  * 文脈バーのテキストのチップ（docs/architecture.md「文脈バー」）。閉じている時は1行で
  * 今のテキストの名前と言語だけを出し、開いた時だけ選択・編集を出す。
@@ -35,7 +43,7 @@ export interface TextChipProps {
    * どのテキストへ向けた変更かを捕まえておかないと、待っている間に選択が切り替わった時に
    * 別のテキストへ書き込んでしまう（`engine/commands.ts` の `setTextContentCommand` 参照）。
    */
-  readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
+  readonly onTextContentCommit: TextContentCommit;
 }
 
 function refKey(ref: TextSelectionState['ref']): string {
@@ -122,23 +130,21 @@ function TextEditor({
   // 「新しい資産で描いたが下書きは古い値」の画面が1フレーム確定し、その間の入力が
   // 古い値の後ろへ足されるため。resolved.textは毎回作り直す値なので、比べるのは文字列。
   //
-  // 揃え直さない場合が1つある。組み込みを書き換えた書き込みで選択が複製へ移った時、その書き込みの
+  // 揃え直さない場合が1つある。組み込みを書き換えた自分の書き込みで選択が複製へ移った時、その書き込みの
   // 後・描画の前に打った文字は下書きにだけあり、複製の保存値（書き込んだ時点の本文）には無い。
-  // 保存値へ揃えるとその文字が消える（#711）。この移り方（自分が打った組み込みから複製へ）に限って
-  // 下書きを保つ。ユーザーが選択欄で選んだ時は`typedRefKey`を捨てるので通常どおり揃える。
-  // 他タブの書き換えで揃う経路（選択が動かない）は従来のまま。
+  // 保存値へ揃えるとその文字が消える（#711）。「自分の書き込みで移った」かは書き込み側
+  // （`onTextContentCommit.wasRedirected`）が知っているので、それに従う。他タブが作った複製へ移った
+  // 場合や他タブの書き換えで揃う経路は従来どおり保存値へ揃える。
   const currentKey = refKey(resolved.ref);
   const [textDraft, setTextDraft] = useState(resolved.text);
-  const [textDraftSource, setTextDraftSource] = useState({ text: resolved.text, key: currentKey });
-  // 最後に打鍵で書き込みを頼んだ宛先。描画中に読むだけで、書くのはイベントハンドラ。
-  const typedRefKey = useRef<string | undefined>(undefined);
-  if (textDraftSource.text !== resolved.text || textDraftSource.key !== currentKey) {
-    const movedFromTypedBuiltin =
-      typedRefKey.current === textDraftSource.key &&
-      textDraftSource.key.startsWith('builtin:') &&
-      resolved.ref.kind === 'user';
-    setTextDraftSource({ text: resolved.text, key: currentKey });
-    if (textDraftSource.text !== resolved.text && !(movedFromTypedBuiltin && textDraft !== resolved.text)) {
+  const [textDraftSource, setTextDraftSource] = useState({ text: resolved.text, ref: resolved.ref });
+  if (textDraftSource.text !== resolved.text || refKey(textDraftSource.ref) !== currentKey) {
+    const movedByOwnWrite =
+      textDraftSource.ref.kind === 'builtin' &&
+      resolved.ref.kind === 'user' &&
+      onTextContentCommit.wasRedirected(textDraftSource.ref, resolved.ref);
+    setTextDraftSource({ text: resolved.text, ref: resolved.ref });
+    if (textDraftSource.text !== resolved.text && !(movedByOwnWrite && textDraft !== resolved.text)) {
       setTextDraft(resolved.text);
     }
   }
@@ -180,7 +186,6 @@ function TextEditor({
             const separatorIndex = value.indexOf(':');
             const kind = value.slice(0, separatorIndex) as 'builtin' | 'user';
             const id = value.slice(separatorIndex + 1);
-            typedRefKey.current = undefined;
             dispatch(selectTextCommand(holder, { kind, id }));
           }}
           aria-label="テキストを選ぶ"
@@ -228,7 +233,6 @@ function TextEditor({
         onChange={(event) => {
           const text = event.currentTarget.value;
           setTextDraft(text);
-          typedRefKey.current = refKey(resolved.ref);
           // 打鍵の瞬間の対象をそのまま運ぶ。この後選択が切り替わっても宛先は変わらない。
           onTextContentCommit({ ref: resolved.ref, text });
         }}

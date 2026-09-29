@@ -4,7 +4,6 @@ import { setSingleTargetCommand, setStandaloneAnalyzerOptionsCommand, type Keydi
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
-import type { TextRef } from '#input/text/selection.ts';
 import type { EngineCache } from '#engine/cache.ts';
 import {
   combinePaneStates,
@@ -23,7 +22,7 @@ import { bigramFlowOptions, type BigramFlowOptions } from '#analyzers/bigram-flo
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
 import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
-import { TextChip } from '#hosts/shared/TextChip.tsx';
+import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { targetNameSource } from './target-name-source.ts';
 import { useOptionsDraft } from './use-options-draft.ts';
@@ -53,7 +52,7 @@ export interface BigramFlowStandalonePageProps {
   readonly catalog: StandalonePaneCatalog;
   readonly generateTextId: TextIdGenerator;
   /** `TextChip`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
-  readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
+  readonly onTextContentCommit: TextContentCommit;
   /**
    * 解析設定の変更を資産へ反映する（間引き済み。`app/standalone/use-debounced-commit.ts`
    * 参照）。`dispatch`を直接使わないのは、`hosts`が`platform`をimportできず
