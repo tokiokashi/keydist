@@ -539,17 +539,18 @@ h2.pane-frame-title {
 }
 
 
-/* 解析設定の小窓の最上段。各項目の「既定値へ戻す」より目立たせず、本体の幅いっぱいには広げない。 */
+/* 解析設定の小窓のヘッダー行にある、文字だけの小さいボタン。タイトルの右、閉じるボタンの左に寄せる。 */
 .settings-window-reset-all {
-  margin-bottom: 0.8rem;
-  min-height: 2rem;
-  padding: 0 0.7rem;
-  border: 1px solid var(--border-strong);
+  margin-left: auto;
+  padding: 0.2rem 0.4rem;
+  border: 0;
   border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
+  background: transparent;
+  color: var(--accent-strong);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
 }
 

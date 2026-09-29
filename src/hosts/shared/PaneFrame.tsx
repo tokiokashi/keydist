@@ -47,7 +47,7 @@ export interface PaneFrameProps {
   /** ⋯のメニュー。空なら⋯を出さない（個別画面は出さない。Workspaceのペインが使う）。 */
   readonly menuItems?: readonly PaneMenuItem[];
   /**
-   * 解析設定をAnalyzerの既定値（`defaultOptions`）へ戻す。解析設定の小窓の最上段に「すべて初期値に戻す」を出す。
+   * 解析設定をAnalyzerの既定値（`defaultOptions`）へ戻す。解析設定の小窓のヘッダーに「すべて初期値に戻す」を出す。
    * 戻す先は個別画面でもWorkspaceでも既定値で、URLで開いた時の値や保存した値へは戻さない（#637）。
    */
   readonly onResetOptions?: () => void;

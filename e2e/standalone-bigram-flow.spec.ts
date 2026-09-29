@@ -874,7 +874,7 @@ test('項目ごとの「既定値へ戻す」は既定と違う項目にだけ�
   await expect(page.getByRole('button', { name: '標準に戻す' })).toHaveCount(0);
 });
 
-test('解析設定の小窓の最上段の「すべて初期値に戻す」は解析設定だけを既定値へ戻し、対象はそのまま', async ({ page }) => {
+test('解析設定の小窓のヘッダーの「すべて初期値に戻す」は解析設定だけを既定値へ戻し、対象はそのまま', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await toggleTarget(page, 'layout:colemak-dh');
@@ -887,10 +887,9 @@ test('解析設定の小窓の最上段の「すべて初期値に戻す」は�
   await expect(page.getByRole('button', { name: /の操作$/ })).toHaveCount(0);
   const reset = settings.getByRole('button', { name: 'すべて初期値に戻す' });
   await expect(reset).toHaveAttribute('title', '対象と条件は変わらない');
-  // 最上段（各項目の「既定値へ戻す」より上）にある。
-  const resetY = (await reset.boundingBox())!.y;
-  const firstItemReset = await settings.locator('[data-option-reset="true"]').first().boundingBox();
-  expect(resetY).toBeLessThan(firstItemReset!.y);
+  // ヘッダー行（タイトルと閉じるボタンの間）にある。本体の中ではない。
+  await expect(settings.locator('.settings-window-handle').getByRole('button', { name: 'すべて初期値に戻す' })).toHaveCount(1);
+  await expect(settings.locator('.settings-window-body').getByRole('button', { name: 'すべて初期値に戻す' })).toHaveCount(0);
   await reset.click();
 
   await expect(settings.getByRole('button', { name: 'Actual', exact: true })).toHaveAttribute('aria-pressed', 'true');

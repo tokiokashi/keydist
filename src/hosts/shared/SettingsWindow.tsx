@@ -21,7 +21,7 @@ export interface SettingsWindowProps {
   readonly paneName?: string;
   /** 開いた時に小窓を寄せる基準（見出しの「解析設定」ボタン）。 */
   readonly anchor: HTMLElement | null;
-  /** 解析設定をすべて初期値へ戻す。あれば本体の最上段にボタンを出す（各項目の「既定値へ戻す」の上）。 */
+  /** 解析設定をすべて初期値へ戻す。あればヘッダー行（タイトルと閉じるボタンの間）に文字ボタンを出す。 */
   readonly onReset?: () => void;
   readonly children: ReactNode;
 }
@@ -140,13 +140,6 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, child
           解析設定
           {paneName === undefined ? null : <span className="settings-window-pane">{paneName}</span>}
         </span>
-        <button type="button" className="settings-window-close" aria-label="解析設定を閉じる" onClick={onClose}>
-          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-            <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
-        </button>
-      </div>
-      <div className="settings-window-body">
         {onReset === undefined ? null : (
           <button
             type="button"
@@ -157,8 +150,13 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, child
             すべて初期値に戻す
           </button>
         )}
-        {children}
+        <button type="button" className="settings-window-close" aria-label="解析設定を閉じる" onClick={onClose}>
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+        </button>
       </div>
+      <div className="settings-window-body">{children}</div>
     </div>,
     document.body,
   );
