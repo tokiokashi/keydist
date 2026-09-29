@@ -62,6 +62,21 @@ test('スクロールしても見出しが文脈バーの下に残り、対象�
   expect(Math.abs(windowBox2!.y - (button2.y + button2.height))).toBeLessThanOrEqual(12);
 });
 
+test('サイドバーを固定できる最小幅（761px）でも、見出しは1行で横にあふれない', async ({ page }) => {
+  await page.setViewportSize({ width: 761, height: 900 });
+  await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+  const header = await boxOf(page, '.pane-frame-header');
+  expect(header.height).toBeLessThan(40);
+  const name = await boxOf(page, '.pane-frame-name');
+  const target = await boxOf(page, '.pane-frame-target');
+  const settings = await boxOf(page, '.pane-settings-button');
+  expect(Math.abs(target.y - name.y)).toBeLessThan(20);
+  expect(Math.abs(settings.y - name.y)).toBeLessThan(20);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+});
+
 test('スマホ幅でも見出しは文脈バーの下に残る', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/standalone/bigram-flow');

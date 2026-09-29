@@ -32,7 +32,10 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* ⋯が無い見出し（個別画面）は、右端の列を持たない。 */
+/*
+ * ⋯が無い見出し（個別画面）は、右端の列を持たない。特異度が下の狭いペイン用の2段（@container）より高いので、
+ * 個別画面は狭いペインでも1行のまま（固定する見出しを薄く保つため。意図した挙動）。
+ */
 .pane-frame-header:not([data-menu]) {
   grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-areas: "name target settings";
