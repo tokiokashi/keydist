@@ -805,3 +805,21 @@ test('markTextsSeenCommand: 履歴に積まず、Undoは直前の編集を戻し
   assert.equal(back.history.redoStack.length, 1, 'redoを消さない');
   assert.equal(applyCommand(back.assets, back.history, markTextsSeenCommand([copy.id])).history.redoStack.length, 1);
 });
+
+test('markTextsSeenCommand: 編集をUndoした後に印を外しても、Redoで印が戻らない（redo側の写しも変換する）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const first = applyCommand(assets, history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, '選ばれる', generateTextId));
+  const stale = applyCommand(first.assets, first.history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, '遅れて届く', generateTextId));
+  const copy = stale.assets.textLibrary.texts[1]!;
+  const firstRef = { kind: 'user', id: first.assets.textLibrary.texts[0]!.id } as const;
+  const edited = applyCommand(stale.assets, stale.history, setTextContentCommand('standalone', firstRef, '編集した', generateTextId));
+  const undone = undo(edited.assets, edited.history);
+  assert.equal(undone.assets.textLibrary.texts[1]!.unseen, true);
+
+  const seen = applyCommand(undone.assets, undone.history, markTextsSeenCommand([copy.id]));
+  assert.equal(seen.history.redoStack.length, 1, 'redoは残る');
+  const redone = redo(seen.assets, seen.history);
+  assert.equal(redone.assets.textLibrary.texts[0]!.text, '編集した', '編集がやり直される');
+  assert.equal(redone.assets.textLibrary.texts[1]!.unseen, undefined, '印は戻らない');
+});

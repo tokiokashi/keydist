@@ -47,6 +47,8 @@ export interface TextChipProps {
   readonly onTextContentCommit: TextContentCommit;
 }
 
+const LIST_VIEW_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Enter', ' ', 'F4']);
+
 function refKey(ref: TextSelectionState['ref']): string {
   return `${ref.kind}:${ref.id}`;
 }
@@ -214,7 +216,12 @@ function TextEditor({
           }}
           aria-label="テキストを選ぶ"
           onPointerDown={beginViewingList}
-          onKeyDown={beginViewingList}
+          onKeyDown={(event) => {
+            // 一覧を開く・値を動かすキーだけを「見た」とみなす。開いた直後の自動フォーカスのまま
+            // Esc・Tabで閉じるだけでは、一覧を見ていないので印を残す
+            if (event.ctrlKey || event.metaKey) return;
+            if (LIST_VIEW_KEYS.has(event.key)) beginViewingList();
+          }}
           onBlur={commitViewed}
         >
           <optgroup label="サンプル">

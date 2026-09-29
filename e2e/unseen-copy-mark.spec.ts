@@ -1,13 +1,15 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { openTextChip } from './context-bar-helper.ts';
+import { installTimerCapture, type RaceWindow } from './text-timer-capture-helper.ts';
 
 /**
  * 競合で選ばれないコピー（「…（編集） 2」等）ができた時の知らせ方（#611）。
  * 文脈バーのテキストのチップに点が付き、一覧でそのコピーに「新しい」と出て、
  * コピーを開くか一覧を見ると消える。通知（トースト・バナー）は出さない。
  *
- * 選ばれないコピーは、タブAの組み込みの書き換えが届く前にタブBが同じ組み込みへ打つと作られる
- * （`asset-tab-merge.spec.ts`と同じ手順）。
+ * 選ばれないコピーは、タブAの組み込みの書き換えが届く前にタブBが同じ組み込みへ打つと作られる。
+ * 時間で競合を作るとずれるので、Bのdebounceタイマーを捕まえておき、Aの書き込みがBへ届いた後で
+ * 撃つ（`text-content-timer-race.spec.ts`と同じ手順）。
  */
 
 const TEXT_LIBRARY_KEY = 'keydist:text-library';
@@ -29,6 +31,7 @@ async function readTexts(page: Page): Promise<readonly StoredText[]> {
 async function open(context: BrowserContext, width = 1440): Promise<{ pageA: Page; pageB: Page }> {
   const pageA = await context.newPage();
   const pageB = await context.newPage();
+  await installTimerCapture(pageB);
   for (const page of [pageA, pageB]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/standalone/bigram-flow');
@@ -37,16 +40,24 @@ async function open(context: BrowserContext, width = 1440): Promise<{ pageA: Pag
   return { pageA, pageB };
 }
 
-/** 2タブが同じ組み込みを続けて書き換え、Bの書き込みが選ばれないコピーになる状態を作る。 */
+/**
+ * Bが組み込みへ打った書き込みを保留し、その間にAが同じ組み込みを書き換える。Bの選択がAの複製へ
+ * 移ってから保留を撃つと、Bの書き込みは選ばれないコピーになる。
+ */
 async function makeUnseenCopy(pageA: Page, pageB: Page): Promise<StoredText> {
   await openTextChip(pageA);
   await openTextChip(pageB);
+  await pageB.evaluate(() => (window as unknown as RaceWindow).__type('m'));
   await pageA.getByLabel('テキスト', { exact: true }).fill('tab-A');
-  await pageB.waitForTimeout(200);
-  await pageB.getByLabel('テキスト', { exact: true }).fill('tab-B');
-  await expect.poll(async () => (await readTexts(pageA)).length, { timeout: 5_000 }).toBe(2);
-  const copy = (await readTexts(pageA)).find((entry) => entry.text === 'tab-B');
-  expect(copy, 'Bの本文が選ばれないコピーとして残る').toBeDefined();
+  await expect.poll(async () => (await readTexts(pageA)).length).toBe(1);
+  const [own] = await readTexts(pageA);
+  await expect(pageB.getByLabel('テキストを選ぶ')).toHaveValue(`user:${own!.id}`);
+
+  const fired = await pageB.evaluate(() => (window as unknown as RaceWindow).__fire());
+  expect(fired).toBeGreaterThanOrEqual(1);
+  await expect.poll(async () => (await readTexts(pageA)).length).toBe(2);
+  const copy = (await readTexts(pageA)).find((entry) => entry.id !== own!.id);
+  expect(copy, 'Bの書き込みが選ばれないコピーとして残る').toBeDefined();
   return copy!;
 }
 
@@ -118,6 +129,20 @@ test('印を外した後の元に戻すは、直前の本文の編集を戻す',
   // 印は戻らない
   expect(texts.some((entry) => entry.unseen === true)).toBe(false);
   await expect(mark(pageA)).toHaveCount(0);
+});
+
+test('チップを開いて（フォーカスは一覧のまま）Escで閉じても、印は残る', async ({ context }) => {
+  const { pageA, pageB } = await open(context);
+  await makeUnseenCopy(pageA, pageB);
+  // 本文にフォーカスがある状態で一度閉じてから、開き直す（開くと一覧にフォーカスが移る）
+  await pageA.keyboard.press('Escape');
+  await expect(pageA.getByRole('dialog', { name: 'テキストの選択と編集' })).toHaveCount(0);
+  await openTextChip(pageA);
+  await expect(pageA.getByLabel('テキストを選ぶ')).toBeFocused();
+  await pageA.keyboard.press('Escape');
+  await expect(pageA.getByRole('dialog', { name: 'テキストの選択と編集' })).toHaveCount(0);
+  await expect(mark(pageA)).toBeVisible();
+  expect((await readTexts(pageA)).some((entry) => entry.unseen === true)).toBe(true);
 });
 
 test('チップを閉じても、見ていなければ印は残る', async ({ context }) => {
