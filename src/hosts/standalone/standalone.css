@@ -3,10 +3,14 @@
   flex-direction: column;
 }
 
-/* ペインの領域。個別画面のペインは枠を付けない。 */
+/*
+ * ペインの領域。個別画面のペインは枠を付けない。
+ * 広い画面では上限まで広げ、それでも余る分は左右に振り分ける（右にだけ空白を残さない）。
+ */
 .standalone-stage {
   width: 100%;
-  max-width: 76rem;
+  max-width: 96rem;
+  margin-inline: auto;
   padding: 1rem 1.5rem 3rem;
 }
 
