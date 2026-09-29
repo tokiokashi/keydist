@@ -115,12 +115,16 @@
   mask-image: linear-gradient(to bottom, black, transparent 90%);
 }
 
+/*
+ * 描画エリアの縦横比はviewBoxで固定（物理配列によらない）。置かれた領域の幅へ全体を伸縮するので
+ * 横スクロールにしない。余白はviewBoxの中（AREA_PAD）に持つので、ここでは足さない。
+ */
 .flow-keyboard-svg {
   position: relative;
   z-index: 1;
+  display: block;
   width: 100%;
-  min-width: 46rem;
-  padding: 0.4rem;
+  height: auto;
 }
 
 .flow-vector-layer {
@@ -192,16 +196,20 @@
   fill: var(--viz-overlay-muted);
 }
 
+/*
+ * 凡例は図の上に重ねず、図の下に置く（重ねると幅によってキーや線を覆い、枠の外へ切れる）。
+ * 件数の文が長いので、狭い幅では折り返す。
+ */
 .flow-legend {
-  position: absolute;
-  right: 0.8rem;
-  bottom: 0.65rem;
+  position: relative;
   z-index: 2;
   display: flex;
-  gap: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  margin: 0 0.65rem 0.65rem;
   padding: 0.35rem 0.55rem;
   border: 1px solid color-mix(in srgb, var(--viz-key-text) 9%, transparent);
-  border-radius: 999px;
+  border-radius: 12px;
   background: var(--viz-overlay);
   color: var(--viz-overlay-muted);
   font-size: 0.64rem;
@@ -510,16 +518,6 @@
 @container (max-width: 800px) {
   .flow-two-up {
     grid-template-columns: 1fr;
-  }
-
-  .flow-legend {
-    position: static;
-    margin: 0 0.65rem 0.65rem;
-    width: max-content;
-  }
-
-  .flow-stage {
-    overflow-x: auto;
   }
 }
 

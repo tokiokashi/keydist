@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { Geometry, Key, Point } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { Trace } from '#trace/generate.ts';
@@ -31,6 +31,14 @@ import {
   type OptionBinding,
 } from '#ui/primitives/option-fields.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
+import {
+  AREA_HEIGHT,
+  AREA_WIDTH,
+  fitKeyboardToArea,
+  flowLineWidth,
+  KEY_PITCH,
+  repeatLabelScale,
+} from './keyboard-flow-area.ts';
 import { BIGRAM_FLOW_PANE_META } from './pane-meta.ts';
 import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
 import './bigram-vector-view.css';
@@ -60,8 +68,6 @@ const FINGER_OPTIONS: readonly { id: FingerClass; label: string }[] = [
   { id: 'ring', label: '薬' },
   { id: 'pinky', label: '小' },
 ];
-const SCALE = 58;
-const PAD = 42;
 const FLOW_COLORS = {
   left: 'var(--viz-flow-left)',
   right: 'var(--viz-flow-right)',
@@ -82,10 +88,14 @@ function bounds(keys: readonly Key[]) {
   };
 }
 
+/**
+ * minX/minYは「エリアの左上(0,0)に対応する物理座標」。キー中心の最小値からエリア中央へ寄せる
+ * ぶんだけずらした値を渡す（`KeyboardFlow`の`origin`）。縮尺は全物理配列で共通。
+ */
 function chartPoint(point: Point, minX: number, minY: number) {
   return {
-    x: PAD + (point.x - minX) * SCALE,
-    y: PAD + (point.y - minY) * SCALE,
+    x: (point.x - minX) * KEY_PITCH,
+    y: (point.y - minY) * KEY_PITCH,
   };
 }
 
@@ -153,6 +163,22 @@ function badgeWidth(text: string): number {
   return Math.max(18, 8 + text.length * 6);
 }
 
+/** 要素の表示幅（px）。0は未計測。 */
+function useElementWidth(): [RefObject<SVGSVGElement | null>, number] {
+  const ref = useRef<SVGSVGElement | null>(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const update = () => setWidth(el.getBoundingClientRect().width);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, width];
+}
+
 function KeyboardFlow({
   geometry,
   layout,
@@ -178,8 +204,24 @@ function KeyboardFlow({
   const keys = useMemo(() => geometry.grid.flat(), [geometry]);
   const keyBounds = useMemo(() => bounds(keys), [keys]);
   const [hoveredKeyId, setHoveredKeyId] = useState<string | null>(null);
-  const width = PAD * 2 + (keyBounds.maxX - keyBounds.minX) * SCALE;
-  const height = PAD * 2 + (keyBounds.maxY - keyBounds.minY) * SCALE;
+  // 描画エリアは物理配列によらず固定。キーボードは中央に置き、自作の物理配列が収まらない時だけ縮める。
+  const fit = useMemo(
+    () => fitKeyboardToArea(keyBounds.maxX - keyBounds.minX, keyBounds.maxY - keyBounds.minY),
+    [keyBounds],
+  );
+  const origin = useMemo(
+    () => ({
+      minX: keyBounds.minX - fit.originX / KEY_PITCH,
+      minY: keyBounds.minY - fit.originY / KEY_PITCH,
+    }),
+    [keyBounds, fit],
+  );
+  const [stageRef, stageWidth] = useElementWidth();
+  // 画面上のSVG幅 / ユーザー座標の幅（自作配列を縮めた分も含める）。縮んだ時に線と連打ラベルだけを読める大きさに保つのに使う。
+  const zoom = stageWidth > 0 ? (stageWidth / AREA_WIDTH) * fit.shrink : fit.shrink;
+  const badgeScale = repeatLabelScale(zoom);
+  const areaCenterX = AREA_WIDTH / 2;
+  const areaCenterY = AREA_HEIGHT / 2;
   // 重ね順（layerOrder）は見た目だけの設定なので、抽出済みvectorをここで並べ替える。
   const allFlowVectors = useMemo(
     () => orderKeyboardFlowVectors(vectors, layerOrder),
@@ -202,14 +244,22 @@ function KeyboardFlow({
   return (
     <div className="flow-stage">
       <svg
+        ref={stageRef}
         className="flow-keyboard-svg"
-        viewBox={`0 0 ${width} ${height}`}
+        viewBox={`0 0 ${AREA_WIDTH} ${AREA_HEIGHT}`}
         role="img"
         aria-label="キーボード上の打鍵の流れ"
       >
+        {/* 自作の物理配列がエリアに収まらない時だけshrinkが1未満。エリアの中心を軸に縮める。 */}
+        <g
+          data-flow-shrink={fit.shrink}
+          transform={fit.shrink === 1
+            ? undefined
+            : `translate(${areaCenterX} ${areaCenterY}) scale(${fit.shrink}) translate(${-areaCenterX} ${-areaCenterY})`}
+        >
         <g className="flow-key-layer">
           {keys.map((key) => {
-            const point = chartPoint(key, keyBounds.minX, keyBounds.minY);
+            const point = chartPoint(key, origin.minX, origin.minY);
             const keyClass = key.finger[1] === 'P'
               ? 'pinky'
               : key.finger[1] === 'R'
@@ -246,8 +296,8 @@ function KeyboardFlow({
 
         <defs>
           {allFlowVectors.map((vector, index) => {
-            const from = chartPoint(vector.from, keyBounds.minX, keyBounds.minY);
-            const to = chartPoint(vector.to, keyBounds.minX, keyBounds.minY);
+            const from = chartPoint(vector.from, origin.minX, origin.minY);
+            const to = chartPoint(vector.to, origin.minX, origin.minY);
             const color = FLOW_COLORS[edgeKind(vector, showRollDirection)];
             return (
               <linearGradient
@@ -288,10 +338,10 @@ function KeyboardFlow({
                   data-flow-weight={vector.weight}
                   data-from-keys={vector.fromKeyIds.join('+')}
                   data-to-keys={vector.toKeyIds.join('+')}
-                  d={edgePath(vector, keyBounds.minX, keyBounds.minY)}
+                  d={edgePath(vector, origin.minX, origin.minY)}
                   fill="none"
                   stroke={gradientIndex === undefined ? FLOW_COLORS.cross : `url(#flow-gradient-${gradientIndex})`}
-                  strokeWidth={0.45 + 6.1 * strength}
+                  strokeWidth={flowLineWidth((0.45 + 6.1 * strength), zoom)}
                   initial={reduceMotion ? false : { opacity: 0, pathLength: 0 }}
                   animate={{ opacity: hoverVisible ? (hoveredKeyId === null ? 0.72 : 0.96) : 0.035, pathLength: 1 }}
                   transition={reduceMotion
@@ -309,7 +359,7 @@ function KeyboardFlow({
 
         <g className="flow-overlay-layer" aria-hidden="true">
           {keys.map((key) => {
-            const point = chartPoint(key, keyBounds.minX, keyBounds.minY);
+            const point = chartPoint(key, origin.minX, origin.minY);
             // 数字の意味は常に「ホバー元 → そのキー」の回数に揃える。
             // ホバー元自身は線が無い（repeatは線から除外済み）ので、repeat回数を出す。
             // 出発の合計はここに出さず、下部の「このキーから出る打鍵」で読ませる。
@@ -324,7 +374,8 @@ function KeyboardFlow({
               <g
                 className={hoveredKeyId === null || hoveredKeyId === key.id ? 'flow-key-badge flow-repeat-badge' : 'flow-key-badge'}
                 key={`badge-${key.id}`}
-                transform={`translate(${point.x + 15 - width / 2} ${point.y - 18})`}
+                // 縮んでも同キー連打のラベルだけは読めるよう、バッジの中心を軸に拡大する。
+                transform={`translate(${point.x + 15} ${point.y - 18}) scale(${badgeScale}) translate(${-width / 2} 0)`}
               >
                 <rect x="0" y="-8" width={width} height="15" rx="7.5" />
                 <text x={width / 2} y="0" dominantBaseline="middle" textAnchor="middle">
@@ -333,6 +384,7 @@ function KeyboardFlow({
               </g>
             );
           })}
+        </g>
         </g>
       </svg>
       <div className="flow-legend" aria-hidden="true">
