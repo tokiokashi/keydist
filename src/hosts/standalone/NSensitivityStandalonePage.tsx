@@ -38,7 +38,7 @@ import './standalone.css';
  *
  * 集合はMultiのAnalyzerが共有する`assets.multiTargetSelection`（`engine/multi-target-selection.ts`。
  * #663）。比較表で選んだ基準も集合に入っているが、このページは基準を使わないので触らない
- * （基準の対象をここで外した時だけ、集合の不変条件により基準も外れる）。
+ * （基準の対象をここで外しても記録は残り、比較表では効く基準が無くなる。付け直すと戻る）。
  */
 export interface NSensitivityStandalonePageProps {
   readonly assets: KeydistAssets;

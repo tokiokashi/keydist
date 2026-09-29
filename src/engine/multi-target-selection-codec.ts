@@ -1,5 +1,5 @@
 import { defineAssetCodec, isRecord, type AssetCodec } from '#input/codec/index.ts';
-import { analysisTargetKey, decodeAnalysisTarget, sameAnalysisTarget, type AnalysisTarget } from '#input/setup/index.ts';
+import { analysisTargetKey, decodeAnalysisTarget, type AnalysisTarget } from '#input/setup/index.ts';
 import { assignColorSlots, type MultiTargetSelection } from './multi-target-selection.ts';
 
 /**
@@ -12,8 +12,8 @@ import { assignColorSlots, type MultiTargetSelection } from './multi-target-sele
  * 壊れた対象1件は診断付きで捨て、集合全体は捨てない（「壊れた要素だけ捨てて残りを読む」方針）。
  * 重複は先に出た方だけ残して1つに畳む（`multi-target-selection.ts`の`dedupe`と同じ規則。
  * 書き込み側は常に重複の無い形で書くが、手で書き換えたstorage等は重複を含みうるため）。
- * `baseline`は`targets`（重複除去後）に含まれる場合だけ残す（不変条件「基準 ∈ 選択」を
- * decode時点でも保証する）。
+ * `baseline`は記録された基準で、`targets`に含まれなくてもそのまま残す（外している間も
+ * 記録は保ち、付け直すと戻る。#678。効く基準は`effectiveMultiBaseline`）。
  *
  * `colorSlots`（色の番号）は`targets`と同じ位置の値を読む。無い・壊れている・重複した番号は
  * 診断を出さずに配り直す（`assignColorSlots`）。色は表示だけの値で、壊れていても利用者が
@@ -50,11 +50,7 @@ export const MULTI_TARGET_SELECTION_CODEC: AssetCodec<MultiTargetSelection> = de
     if (payload.baseline !== undefined) {
       const decodedBaseline = decodeAnalysisTarget(payload.baseline, `${path}.baseline`, diagnostics);
       if (decodedBaseline !== undefined) {
-        if (targets.some((t) => sameAnalysisTarget(t, decodedBaseline))) {
-          baseline = decodedBaseline;
-        } else {
-          diagnostics.push({ path: `${path}.baseline`, message: '選択に含まれない対象が基準になっていたため基準なしへ戻した' });
-        }
+        baseline = decodedBaseline;
       }
     }
     return { targets, baseline, colorSlots: assignColorSlots(targets, knownSlots) };
