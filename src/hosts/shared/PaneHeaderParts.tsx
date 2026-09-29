@@ -35,7 +35,7 @@ export function PaneMenu({ paneName, items }: { readonly paneName: string; reado
 
   const close = () => {
     setOpen(false);
-    buttonRef.current?.focus();
+    buttonRef.current?.focus({ preventScroll: true });
   };
 
   return (
