@@ -39,6 +39,24 @@ Claude Code は `CLAUDE.md` が無いプロジェクトでは `AGENTS.md` を読
 - clone 直後に一度だけ `git config core.hooksPath .githooks` を実行する
 - `main` に直接 push しない。ブランチを切って PR を出す
 
+## エージェントの役割
+
+複数のエージェントで回す時は、リード1人がオーケストレーションに専念し、実装とレビューを別の役に出す。
+役の定義は `.claude/agents/` に置き、**モデルと作業場所は定義側で固定する**（呼び出しのたびに指定しない。指定を忘れた回だけ条件が変わるため）。
+
+| 役 | 定義 | やること | やらないこと |
+|---|---|---|---|
+| リード | （セッション本体） | 作業単位の切り出し・委任・マージ判断・オーナーへの確認 | 実装を自分で書く。レビュー修正も実装役に戻す |
+| implementer | `.claude/agents/implementer.md` | 1単位の実装、`npm test` / `npm run build`、PR 本文の材料（実装したモデルと effort を含む） | 自分の変更の承認、`main` への push、マージ |
+| reviewer | `.claude/agents/reviewer.md` | head の sha に対する承認/差し戻し。数値と生成物を測り直す | 修正の push（指摘として返す） |
+
+- 実装役とレビュー役はそれぞれ**自分の git worktree**（`.claude/worktrees/`、`origin/main` から切られる）で動く。
+  本体のチェックアウトを共有しない。同じファイルに触る単位は並行にしない（`CONTRIBUTING.md`「作業単位の切り方」）
+- リードは implementer / reviewer を1回起動するたびに、結果に付く使用量（`subagent_tokens`・`tool_uses`・`duration_ms`）を
+  役・モデル・effort と一緒に PR のコメントに残す。モデルの組を替えた時にコストと効果を比べる材料はこれしか無い
+- 「マージ」の条件（`CONTRIBUTING.md`）のうち、レビューの有無は機械で確かめられない。**reviewer が現在の head を承認した記録が無ければ、リードはマージしない**。
+  レビューを通さずに入れた変更から退行が出た実績がある
+
 ## 実験場としての開発方針
 
 このリポジトリは、安定運用中の業務システムではなく**技術検証を兼ねた実験場**でもある。
