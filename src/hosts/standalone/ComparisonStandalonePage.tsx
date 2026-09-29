@@ -13,7 +13,6 @@ import {
   conditionHeaderInfoFromResolvedInput,
   nonDefaultConditionRows,
   PaneFrame,
-  resetOptionsMenuItem,
   setupNumbersOf,
   summarizeNonDefaultConditions,
   TargetSelection,
@@ -241,6 +240,7 @@ export function ComparisonStandalonePage({
             name={comparisonAnalyzer.name}
             description={comparisonAnalyzer.description}
             headingLevel={1}
+            stickyHeader
             target={(
               <TargetSelection
                 mode="multiple"
@@ -264,7 +264,7 @@ export function ComparisonStandalonePage({
               />
             )}
             settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
-            menuItems={[resetOptionsMenuItem(() => changeOptions(comparisonAnalyzer.defaultOptions))]}
+            onResetOptions={() => changeOptions(comparisonAnalyzer.defaultOptions)}
             conditionRows={[]}
             engineState={extraction}
             settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}

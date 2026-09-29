@@ -3,11 +3,18 @@
   gap: 1rem;
 }
 
+/*
+ * チャートの座標系は、置かれた領域の実寸の幅に合わせて組み直す（definition.tsx）。
+ * 表示と座標系が等倍なので、文字は領域の幅によらず指定のpxで出る。
+ */
+.n-sensitivity-chart {
+  min-width: 0;
+}
+
 .n-sensitivity-svg {
+  display: block;
   width: 100%;
   height: auto;
-  /* 幅は置かれた領域いっぱいに取り、広い領域で縦に伸びすぎないよう高さだけ止める（描画は中央に寄る）。 */
-  max-height: 24rem;
 }
 
 .n-sensitivity-grid-line {

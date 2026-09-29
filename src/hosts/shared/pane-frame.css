@@ -19,6 +19,28 @@
   gap: 0.5rem 0.75rem;
 }
 
+/*
+ * 個別画面では文脈バーの下に固定する。位置は文脈バーが公開する実際の高さ（折り返すスマホ幅で変わる）。
+ * 背景を敷くのは、下を通る図が透けて見出しに重ならないようにするため。文脈バーより下の層に置く。
+ */
+.pane-frame-header[data-sticky] {
+  position: sticky;
+  top: var(--context-bar-height, 3.1rem);
+  z-index: 10;
+  padding-block: 0.15rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+/*
+ * ⋯が無い見出し（個別画面）は、右端の列を持たない。特異度が下の狭いペイン用の2段（@container）より高いので、
+ * 個別画面は狭いペインでも1行のまま（固定する見出しを薄く保つため。意図した挙動）。
+ */
+.pane-frame-header:not([data-menu]) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "name target settings";
+}
+
 .pane-frame-name {
   grid-area: name;
   display: flex;
@@ -519,3 +541,23 @@ h2.pane-frame-title {
   color: #d6333f;
 }
 
+
+/* 解析設定の小窓のヘッダー行にある、文字だけの小さいボタン。タイトルの右、閉じるボタンの左に寄せる。 */
+.settings-window-reset-all {
+  margin-left: auto;
+  padding: 0.2rem 0.4rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.settings-window-reset-all:hover,
+.settings-window-reset-all:focus-visible {
+  background: var(--surface-muted);
+}

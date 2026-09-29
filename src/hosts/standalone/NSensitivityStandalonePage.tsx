@@ -12,7 +12,6 @@ import {
   conditionHeaderInfoFromResolvedInput,
   nonDefaultConditionRows,
   PaneFrame,
-  resetOptionsMenuItem,
   setupNumbersOf,
   summarizeNonDefaultConditions,
   TargetSelection,
@@ -223,6 +222,7 @@ export function NSensitivityStandalonePage({
             name={nSensitivityAnalyzer.name}
             description={nSensitivityAnalyzer.description}
             headingLevel={1}
+            stickyHeader
             target={(
               <TargetSelection
                 mode="multiple"
@@ -236,7 +236,7 @@ export function NSensitivityStandalonePage({
               />
             )}
             settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
-            menuItems={[resetOptionsMenuItem(() => changeOptions(nSensitivityAnalyzer.defaultOptions))]}
+            onResetOptions={() => changeOptions(nSensitivityAnalyzer.defaultOptions)}
             conditionRows={[]}
             engineState={extraction}
             settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}

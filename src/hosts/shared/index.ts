@@ -26,7 +26,6 @@ export { PaneFrame, type PaneFrameProps } from './PaneFrame.tsx';
 export { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 export { PaneMenu, type PaneMenuItem } from './PaneHeaderParts.tsx';
 export { SettingsWindow, type SettingsWindowProps } from './SettingsWindow.tsx';
-export { resetOptionsMenuItem } from './pane-menu-items.ts';
 export {
   filterTargetChoiceGroups,
   setupNumbersOf,
