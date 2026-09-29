@@ -2,6 +2,7 @@ import { THUMB_KEY } from '../shapes/geometry.ts';
 import {
   faceFromEntries,
   fromFaces,
+  withAliases,
   withComposedOutputs,
   type Face,
   type Layout,
@@ -64,4 +65,4 @@ const composed = withComposedOutputs(
 );
 composed.legends.delete(THUMB_KEY.LT);
 composed.legends.delete(THUMB_KEY.RT);
-export const TSUKI_2_263 = composed;
+export const TSUKI_2_263 = withAliases(composed, ['つき', 'つきはいれつ', 'つきにーにーろくさんしき']);

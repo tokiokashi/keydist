@@ -1,5 +1,5 @@
 import { THUMB_KEY } from '../shapes/geometry.ts';
-import { faceFromEntries, fromFaces, type Face, type Layout } from './types.ts';
+import { faceFromEntries, fromFaces, withAliases, type Face, type Layout } from './types.ts';
 
 /**
  * 飛鳥123（最終版）。
@@ -54,4 +54,4 @@ const layout: Layout = fromFaces('asuka', '飛鳥', ASUKA_FACES);
 layout.legends.set(THUMB_KEY.LT, '左親指');
 layout.legends.set(THUMB_KEY.RT, '右親指');
 
-export const ASUKA = layout;
+export const ASUKA = withAliases(layout, ['あすか']);

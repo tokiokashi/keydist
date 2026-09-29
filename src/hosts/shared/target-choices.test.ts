@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
-import { filterTargetChoiceGroups, sortTargetsByChoices, targetChoiceGroups, targetSummaryText, type TargetChoiceSource } from './target-choices.ts';
+import { filterTargetChoiceGroups, normalizeSearchText, sortTargetsByChoices, targetChoiceGroups, targetSummaryText, type TargetChoiceSource } from './target-choices.ts';
 import { analysisTargetKey, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
 
 const SHAPES = new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape]));
@@ -93,4 +93,32 @@ test('集合の並びは付けた順によらず一覧の順（組み込みの�
   // 既に並んでいれば同じ参照を返す（依存配列に入れても再計算が続かないように）。
   const sorted = [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'setup', setupId: 'a' }] as const;
   assert.equal(sortTargetsByChoices(sorted, groups), sorted);
+});
+
+test('絞り込みの正規化は、ひらがな・カタカナ・半角カナ・全角半角・大文字小文字を揃える', () => {
+  assert.equal(normalizeSearchText('カワセミ'), normalizeSearchText('かわせみ'));
+  assert.equal(normalizeSearchText('ｶﾜｾﾐ'), normalizeSearchText('かわせみ'));
+  assert.equal(normalizeSearchText('ヴ'), normalizeSearchText('ゔ'));
+  assert.equal(normalizeSearchText('ＣＯＬＥＭＡＫ'), 'colemak');
+  assert.equal(normalizeSearchText('ー'), 'ー');
+});
+
+test('絞り込みはひらがな・カタカナを区別せず、読み・別名でも当たる', () => {
+  const groups = targetChoiceGroups(source({ setups: SETUPS }));
+  const keys = (query: string) => filterTargetChoiceGroups(groups, query).flatMap((group) => group.choices.map((choice) => choice.key));
+  assert.deepEqual(keys('かわせみ'), ['layout:kawasemi-kai', 'layout:kawasemi-plus']);
+  assert.deepEqual(keys('カワセミ'), keys('かわせみ'));
+  assert.deepEqual(keys('なぎなた'), ['layout:naginata-v18']);
+  assert.deepEqual(keys('ナギナタ'), ['layout:naginata-v18']);
+  assert.ok(keys('にこら').includes('layout:nicola'));
+  assert.ok(keys('つき').includes('layout:tsuki-2-263'));
+  assert.ok(keys('くわーてぃ').includes('layout:qwerty'));
+  assert.deepEqual(keys('nicola'), ['layout:nicola']);
+});
+
+test('別名は絞り込みにだけ効き、名前や区分の並びは変えない', () => {
+  const groups = targetChoiceGroups(source());
+  const naginata = groups.flatMap((group) => group.choices).find((choice) => choice.key === 'layout:naginata-v18')!;
+  assert.equal(naginata.name, '薙刀式v18');
+  assert.equal(naginata.fullName, undefined);
 });
