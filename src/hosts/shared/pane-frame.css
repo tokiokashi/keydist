@@ -280,9 +280,9 @@ h2.pane-frame-title {
 }
 
 /*
- * スマホ幅の出し方は未決（#636）。決まるまでの暫定として、下端に固定したシートにする。
- * 高さを画面の半分までに止め、上半分の図を見ながら変えられるようにする。ドラッグの位置は使わない。
- * ここは小窓という器の置き方なので、Analyzerの中身と違い画面の幅で切り替える。
+ * スマホ幅では、下から出るシートにする。高さを画面の半分までに止め、上半分の図を見ながら変えられるようにする。
+ * 上端の掴みとヘッダー行を下へドラッグすると、--settings-sheet-yだけ下がり、超えると閉じる（SettingsWindow.tsx）。
+ * ここは小窓という器の置き方なので、Analyzerの中身と違い画面の幅で切り替える（幅はSHEET_QUERYと揃える）。
  */
 @media (max-width: 640px) {
   .settings-window {
@@ -294,10 +294,41 @@ h2.pane-frame-title {
     max-width: none;
     max-height: 55dvh;
     border-radius: 12px 12px 0 0;
+    transform: translateY(var(--settings-sheet-y, 0px));
+    transition: transform 0.2s ease-out;
+  }
+
+  .settings-window[data-sheet-dragging] {
+    transition: none;
   }
 
   .settings-window-handle {
     cursor: default;
+    /* 掴みが上の縁を担うので、ヘッダー行の上の余白は詰める。 */
+    padding-top: 0.1rem;
+  }
+
+  .settings-sheet-grabber {
+    display: grid;
+    flex: none;
+    place-items: center;
+    height: 1.4rem;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .settings-sheet-grabber-bar {
+    width: 2.5rem;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border-strong);
+  }
+}
+
+@media (max-width: 640px) and (prefers-reduced-motion: reduce) {
+  .settings-window {
+    transition: none;
   }
 }
 
