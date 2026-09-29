@@ -121,11 +121,26 @@ function TextEditor({
   // 資産側の値が変わったら下書きを合わせる。effectでなく描画中に合わせるのは、effectだと
   // 「新しい資産で描いたが下書きは古い値」の画面が1フレーム確定し、その間の入力が
   // 古い値の後ろへ足されるため。resolved.textは毎回作り直す値なので、比べるのは文字列。
+  //
+  // 揃え直さない場合が1つある。組み込みを書き換えた書き込みで選択が複製へ移った時、その書き込みの
+  // 後・描画の前に打った文字は下書きにだけあり、複製の保存値（書き込んだ時点の本文）には無い。
+  // 保存値へ揃えるとその文字が消える（#711）。この移り方（自分が打った組み込みから複製へ）に限って
+  // 下書きを保つ。ユーザーが選択欄で選んだ時は`typedRefKey`を捨てるので通常どおり揃える。
+  // 他タブの書き換えで揃う経路（選択が動かない）は従来のまま。
+  const currentKey = refKey(resolved.ref);
   const [textDraft, setTextDraft] = useState(resolved.text);
-  const [textDraftSource, setTextDraftSource] = useState(resolved.text);
-  if (textDraftSource !== resolved.text) {
-    setTextDraftSource(resolved.text);
-    setTextDraft(resolved.text);
+  const [textDraftSource, setTextDraftSource] = useState({ text: resolved.text, key: currentKey });
+  // 最後に打鍵で書き込みを頼んだ宛先。描画中に読むだけで、書くのはイベントハンドラ。
+  const typedRefKey = useRef<string | undefined>(undefined);
+  if (textDraftSource.text !== resolved.text || textDraftSource.key !== currentKey) {
+    const movedFromTypedBuiltin =
+      typedRefKey.current === textDraftSource.key &&
+      textDraftSource.key.startsWith('builtin:') &&
+      resolved.ref.kind === 'user';
+    setTextDraftSource({ text: resolved.text, key: currentKey });
+    if (textDraftSource.text !== resolved.text && !(movedFromTypedBuiltin && textDraft !== resolved.text)) {
+      setTextDraft(resolved.text);
+    }
   }
 
   const [renameDraft, setRenameDraft] = useState(resolved.name);
@@ -165,6 +180,7 @@ function TextEditor({
             const separatorIndex = value.indexOf(':');
             const kind = value.slice(0, separatorIndex) as 'builtin' | 'user';
             const id = value.slice(separatorIndex + 1);
+            typedRefKey.current = undefined;
             dispatch(selectTextCommand(holder, { kind, id }));
           }}
           aria-label="テキストを選ぶ"
@@ -212,6 +228,7 @@ function TextEditor({
         onChange={(event) => {
           const text = event.currentTarget.value;
           setTextDraft(text);
+          typedRefKey.current = refKey(resolved.ref);
           // 打鍵の瞬間の対象をそのまま運ぶ。この後選択が切り替わっても宛先は変わらない。
           onTextContentCommit({ ref: resolved.ref, text });
         }}

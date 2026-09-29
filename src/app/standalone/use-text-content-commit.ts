@@ -26,7 +26,7 @@ function sameRef(a: TextRef, b: TextRef): boolean {
  * 向け直すのは、打鍵の時点の最新の資産が今もその複製を選んでいる時だけ。ユーザーが組み込みを
  * 選び直した後の打鍵は、宛先が本当にその組み込みなので向け直さない。判定を書き込みの時点に
  * 遅らせると、打鍵の後に選択が動いた場合に別のテキストの本文を上書きする。
- * （TextChipの下書きが2打目を消す件は別の原因で、ここでは直さない。）
+ * （TextChipの下書きが複製への移行で打鍵を消す件は、TextChip側で直している（#711）。）
  */
 export function useTextContentCommit(
   dispatch: (command: Command<KeydistAssets>) => void,
