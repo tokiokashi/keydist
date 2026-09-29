@@ -104,19 +104,30 @@ test('ボタンで重ねて出している間は、Tabで本体へ抜けない',
     return { count: items.length, index: items.indexOf(document.activeElement as HTMLElement) };
   });
   expect(index).toBeGreaterThanOrEqual(0);
-  const insideSidebar = () =>
+  // 端を越えた1回だけは、ブラウザのUIへ抜けてBODYになってよい。本体（.shell-body）へ入っていないことを見る。
+  const where = () =>
     page.evaluate(() => {
       const active = document.activeElement;
-      return active !== null && active !== document.body && document.getElementById('app-sidebar')!.contains(active);
+      if (active === null || active === document.body) return 'body';
+      if (document.getElementById('app-sidebar')!.contains(active)) return 'sidebar';
+      return document.querySelector('.shell-body')!.contains(active) ? 'main' : 'other';
     });
   for (let i = 0; i < count - 1 - index; i++) {
     await page.keyboard.press('Tab');
-    expect(await insideSidebar(), `Tab ${i + 1}回目でサイドバーの外へ出た`).toBe(true);
+    expect(await where(), `Tab ${i + 1}回目でサイドバーの外へ出た`).toBe('sidebar');
   }
+  await page.keyboard.press('Tab');
+  expect(['sidebar', 'body'], '端を越えたTabが本体へ入った').toContain(await where());
+  await page.evaluate(() => {
+    const items = document.querySelectorAll<HTMLElement>('#app-sidebar a[href], #app-sidebar button:not([disabled])');
+    items[items.length - 1]!.focus();
+  });
   for (let i = 0; i < count - 1; i++) {
     await page.keyboard.press('Shift+Tab');
-    expect(await insideSidebar(), `Shift+Tab ${i + 1}回目でサイドバーの外へ出た`).toBe(true);
+    expect(await where(), `Shift+Tab ${i + 1}回目でサイドバーの外へ出た`).toBe('sidebar');
   }
+  await page.keyboard.press('Shift+Tab');
+  expect(['sidebar', 'body'], '端を越えたShift+Tabが本体へ入った').toContain(await where());
   await expect(sidebar).toBeInViewport();
 });
 
