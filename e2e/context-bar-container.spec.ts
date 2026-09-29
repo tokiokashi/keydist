@@ -69,3 +69,32 @@ test('アイコン化した幅ではテキストのチップの文字が左寄�
     expect(layout.overflow, `幅${width}`).toBeLessThanOrEqual(0);
   }
 });
+
+test('暗いテーマで、既定の物理配列の選択肢の背景と文字がテーマの面・文字の色になる', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
+  const colors = await page.evaluate(() => {
+    // トークンは使われた要素の color-scheme で解決されるので、同じ要素の中で解決した値と比べる。
+    const resolve = (el: Element, token: string, prop: 'backgroundColor' | 'color') => {
+      const probe = document.createElement('span');
+      probe.style[prop] = `var(${token})`;
+      el.appendChild(probe);
+      const value = getComputedStyle(probe)[prop];
+      probe.remove();
+      return value;
+    };
+    const option = document.querySelector('.context-select-chip select option')!;
+    const style = getComputedStyle(option);
+    return {
+      bg: style.backgroundColor,
+      color: style.color,
+      surface: resolve(option, '--surface-raised', 'backgroundColor'),
+      text: resolve(option, '--text', 'color'),
+    };
+  });
+  expect(colors.bg).toBe(colors.surface);
+  expect(colors.color).toBe(colors.text);
+  expect(colors.bg).not.toBe('rgba(0, 0, 0, 0)');
+});
