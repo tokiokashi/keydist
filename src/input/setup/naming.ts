@@ -153,7 +153,11 @@ export function nameTargets(sources: readonly TargetNameSource[]): readonly Name
   const commonalityBasis = sources.filter(
     (s, i): s is ResolvedSource => labels[i] === undefined && isResolved(s),
   );
-  const bases = sources.map((s, i) => labels[i] ?? differenceName(s, commonalityBasis));
+  // 集合が1件なら共通部分は全部なので、名前だけにする（条件の差分は直下の条件の要約で見る）。
+  // 2件以上で他がラベル付き・失敗のため基準が1件以下になる場合は、区別のために従来どおり差を含める。
+  const bases = sources.map((s, i) => labels[i] ?? (sources.length === 1 && isResolved(s)
+    ? s.layoutName
+    : differenceName(s, commonalityBasis)));
   const levels = sources.map(() => 0);
 
   const namesNow = () => sources.map((s, i) => escalatedName(bases[i]!, s, i, levels[i]!));
