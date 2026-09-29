@@ -40,29 +40,128 @@ test('単体ページが開き、Bigram Flowが描画される', async ({ page }
   const pane = page.locator('.pane-frame');
   await expect(pane).toHaveAttribute('data-pane-status', 'ready');
 
-  // 条件の要約: 何も変えていなければ閉じた1行は「すべて既定値」。開くと出どころが出る。
+  // 条件の要約: 何も変えていなければ閉じた1行は「すべて既定値」。押すと条件のモーダルが開き、各行に出どころが出る。
   const conditions = pane.locator('.pane-condition-summary');
-  await expect(conditions.locator('summary')).toHaveText('条件すべて既定値');
-  await conditions.locator('summary').click();
-  await expect(conditions.locator('.pane-condition-row').first()).toContainText('（既定値）');
+  await expect(conditions.locator('.pane-condition-trigger')).toHaveText('条件すべて既定値');
+  await conditions.locator('.pane-condition-trigger').click();
+  const modal = page.getByRole('dialog', { name: '条件' });
+  await expect(modal).toBeVisible();
+  await expect(modal.locator('[data-item="windowSize"]')).toContainText('既定値');
+  await expect(modal.locator('[data-item="windowSize"]')).not.toHaveAttribute('data-changed', /.*/);
 });
 
-test('条件の要約: 変えた項目を閉じた1行に出し、開くと上に並べて出どころを添える', async ({ page }) => {
+/** 条件のモーダルを開いて返す。 */
+async function openConditionModal(page: Page): Promise<Locator> {
+  await page.locator('.pane-condition-trigger').click();
+  const modal = page.getByRole('dialog', { name: '条件' });
+  await expect(modal).toBeVisible();
+  return modal;
+}
+
+test('条件のモーダル: 全体の値を変えると要約と出どころに出て、文脈バーの元に戻す/やり直すが効く', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   const pane = page.locator('.pane-frame');
   await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+  const trigger = page.locator('.pane-condition-trigger');
 
-  await page.getByLabel('既定の物理配列').selectOption('ortholinear');
-  const conditions = pane.locator('.pane-condition-summary');
-  const summary = conditions.locator('summary');
-  await expect(summary).toContainText('既定の物理配列:');
-  await expect(summary).not.toContainText('他');
+  const modal = await openConditionModal(page);
+  await modal.getByRole('button', { name: '先読みNを1増やす' }).click();
+  const row = modal.locator('[data-item="windowSize"]');
+  await expect(row).toHaveAttribute('data-changed', 'true');
+  await expect(row).toContainText('全体で変更');
+  await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('4');
 
-  await summary.click();
-  const first = conditions.locator('.pane-condition-row').first();
-  await expect(first).toHaveAttribute('data-changed', 'true');
-  await expect(first).toContainText('既定の物理配列');
-  await expect(first).toContainText('上書き: 全体');
+  await page.keyboard.press('Escape');
+  await expect(modal).toHaveCount(0);
+  await expect(trigger).toContainText('先読みN: 4');
+
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect(trigger).toHaveText('条件すべて既定値');
+  await page.getByRole('button', { name: 'やり直す' }).click();
+  await expect(trigger).toContainText('先読みN: 4');
+
+  // 行の「既定値へ戻す」で全体の上書きが消える。
+  const again = await openConditionModal(page);
+  await again.getByRole('button', { name: '先読みNを既定値へ戻す' }).click();
+  await expect(again.locator('[data-item="windowSize"]')).not.toHaveAttribute('data-changed', /.*/);
+  await page.keyboard.press('Escape');
+  await expect(trigger).toHaveText('条件すべて既定値');
+});
+
+test('条件のモーダル: 既定の物理配列は文脈バーのチップと同じ値を書く', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+  const chip = page.locator('.context-bar').getByLabel('既定の物理配列');
+
+  await chip.selectOption('ortholinear');
+  const modal = await openConditionModal(page);
+  await expect(modal.getByLabel('既定の物理配列', { exact: true })).toHaveValue('ortholinear');
+  await expect(modal.locator('[data-item="defaultShapeId"]')).toContainText('全体で変更');
+
+  await modal.getByLabel('既定の物理配列', { exact: true }).selectOption('row-staggered');
+  await page.keyboard.press('Escape');
+  await expect(chip).toHaveValue('row-staggered');
+  await expect(page.locator('.pane-condition-trigger')).toHaveText('条件すべて既定値');
+});
+
+test('条件のモーダル: 動作数の扱いは2動作にした時だけ例外を出し、1動作へ戻すと消える', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+  const trigger = page.locator('.pane-condition-trigger');
+
+  const modal = await openConditionModal(page);
+  const row = modal.locator('[data-item="actionRealizationPolicy"]');
+  await expect(row.getByRole('button', { name: 'Shift+A で1動作' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(row.locator('[data-condition-fold]')).toHaveCount(0);
+
+  await row.getByRole('button', { name: 'Shift→A で2動作' }).click();
+  const fold = row.locator('[data-condition-fold]');
+  await fold.locator('summary').click();
+  const orderFree = fold.locator('[data-exception-class="order-free"]');
+  await orderFree.getByRole('button', { name: '2動作' }).click();
+
+  await page.keyboard.press('Escape');
+  await expect(trigger).toContainText('動作数の扱い: Shift→A で2動作（例外あり）');
+
+  const again = await openConditionModal(page);
+  await again.locator('[data-item="actionRealizationPolicy"]').getByRole('button', { name: 'Shift+A で1動作' }).click();
+  await expect(again.locator('[data-condition-fold]')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(trigger).toHaveText('条件すべて既定値');
+});
+
+/** 配列レベルに先読みNの上書きを置いた状態で、指定の配列を対象にして開く。 */
+async function openWithLayoutOverride(page: Page, layoutId: string) {
+  await page.addInitScript((id) => {
+    localStorage.setItem(
+      'keydist:setup-library',
+      JSON.stringify({ version: 1, setups: [], overrides: { layout: { [id]: { windowSize: 2 } } } }),
+    );
+    localStorage.setItem(
+      'keydist:single-target-selection',
+      JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: id } }),
+    );
+  }, layoutId);
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+  return openConditionModal(page);
+}
+
+test('条件のモーダル: 推奨の入力を確定した配列では、下のレベルが勝つ行に理由を出し、編集はできる', async ({ page }) => {
+  const modal = await openWithLayoutOverride(page, 'oonishi');
+  const row = modal.locator('[data-item="windowSize"]');
+  await expect(row.locator('[data-condition-notice]')).toContainText('の値が優先されるため、全体を変えてもこの画面は変わらない');
+  await expect(row).toContainText('で変更');
+  // 編集はできるまま。
+  await row.getByRole('button', { name: '先読みNを1増やす' }).click();
+  await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('4');
+});
+
+test('条件のモーダル: 推奨の入力を確定していない配列では、下のレベルが勝っていても理由を出さない', async ({ page }) => {
+  const modal = await openWithLayoutOverride(page, 'qwerty');
+  const row = modal.locator('[data-item="windowSize"]');
+  await expect(row).toContainText('で変更');
+  await expect(row.locator('[data-condition-notice]')).toHaveCount(0);
 });
 
 test('操作系はハイドレーション+資産読み込み完了（assetsReady）まで無効化され、直後に選んでも取りこぼさない（レビュー指摘1）', async ({ page }) => {
@@ -1078,7 +1177,7 @@ test('条件を変えたSetupを選んでも、対象ボタンは名前だけで
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
   await expect(targetButton(page)).toHaveAccessibleName('対象: QWERTY');
-  await expect(page.locator('.pane-condition-summary summary')).toContainText('同指連続のホーム復帰距離');
+  await expect(page.locator('.pane-condition-trigger')).toContainText('同指連続のホーム復帰距離');
 });
 
 /** Keyboard Flowのエリア（SVG）の画面上の大きさと、キー1つの画面上の大きさ。 */

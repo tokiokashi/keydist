@@ -43,3 +43,5 @@ export {
   type TargetChoiceSource,
 } from './target-choices.ts';
 export { TargetSelection, type TargetSelectionProps, type TargetSummaryItem } from './TargetSelection.tsx';
+export { ConditionEditor, type ConditionEditorContext, type ConditionEditorProps } from './ConditionEditor.tsx';
+export { overrideWinsNotices } from './condition-edit.ts';

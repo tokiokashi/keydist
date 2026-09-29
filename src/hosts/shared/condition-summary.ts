@@ -5,15 +5,18 @@ import type { Layout } from '#input/layouts/types.ts';
 import type { InputMethod } from '#input/settings/levels.ts';
 import { ROMAJI_RULES, defaultRomajiRuleId } from '#input/romaji/rules.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
+import { DEFAULT_CHAIN_INTERPRETATION } from '#interpretation/structure/chain.ts';
+import { DEFAULT_ARPEGGIO_INTERPRETATION } from '#interpretation/structure/arpeggio.ts';
 
 /**
  * ペインの条件表示（#544 §3「実効値の出どころを表示する」・指示書「少なくともTraceに
  * 効く項目と、診断・警告があれば」）。
  *
- * 表示対象はTracePolicy（`generateTrace`が直接読む値）に効く項目 + 指の割当id。
- * 解釈（chain/arpeggio）・速度平均はTraceそのものには効かない（docs/architecture.mdの
- * 「解釈はTraceの読み方」）ため、この一覧には含めない（先回りして足さない。
- * AGENTS.md「設定項目を足すか決める」）。行が要ると分かった時点で足す。
+ * 表示対象はTracePolicy（`generateTrace`が直接読む値）に効く項目 + 指の割当id + 解釈（chain/arpeggio）。
+ * 解釈はTraceそのものには効かない（docs/architecture.mdの「解釈はTraceの読み方」）が、
+ * チェーン・アルペジオの数え方は出力される数値を動かし、条件のモーダルで編集する対象なので
+ * 一覧に含める（#655）。速度平均は今の画面のどこにも効かないので含めない
+ * （先回りして足さない。AGENTS.md「設定項目を足すか決める」）。
  */
 const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly label: string }[] = [
   { id: 'windowSize', label: '先読みN' },
@@ -21,7 +24,7 @@ const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly la
   { id: 'preferOppositeThumb', label: '親指シフトの振り替え' },
   { id: 'triggerRealizationPolicy', label: 'シフト系キーの押し続け' },
   // 文字キーと一緒に押したシフト系キーを、別の動作（Stroke）として数えるか。動作数の列が変わる。
-  { id: 'actionRealizationPolicy', label: 'シフト系キーを別の動作として数える' },
+  { id: 'actionRealizationPolicy', label: '動作数の扱い' },
   { id: 'romajiRuleId', label: 'ローマ字規則' },
   { id: 'fingerAssignmentId', label: '指の割当' },
   /**
@@ -29,6 +32,8 @@ const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly la
    * 返す。#578指摘6「defaultShapeIdの診断はfingerAssignmentIdと同じ形で出す」）。
    */
   { id: 'defaultShapeId', label: '既定の物理配列' },
+  { id: 'chainInterpretation', label: 'チェーンの区切り' },
+  { id: 'arpeggioInterpretation', label: 'アルペジオの数え方' },
 ];
 
 export type ConditionValueFormat = 'primitive' | 'object';
@@ -49,8 +54,9 @@ export interface ConditionSummaryRow {
   readonly originLabel: string;
   readonly applicable: boolean;
   /**
-   * 上書きされていても、効く値が既定と同じか。今は「シフト系キーを別の動作として数える」だけが
-   * 対象で、数えない時は例外を一切読まないため、例外だけ違う上書きは既定と同じに働く（#597）。
+   * 上書きされていても、効く値が既定と同じか。「動作数の扱い」は、Shift+Aを1動作にする時は例外を
+   * 一切読まないため、例外だけ違う上書きは既定と同じに働く（#597）。解釈の2項目は、上書きの中身が
+   * 既定と同じなら同じ。
    */
   readonly sameAsDefault: boolean;
   readonly diagnostics: readonly Diagnostic[];
@@ -58,10 +64,18 @@ export interface ConditionSummaryRow {
 
 /** 効く値が既定と同じか。効かない部分（数えない時の例外）の違いは見ない。 */
 function effectivelySameAsDefault(id: SettingsItemId, value: unknown): boolean {
+  if (id === 'chainInterpretation') return changedFieldCount(value, DEFAULT_CHAIN_INTERPRETATION) === 0;
+  if (id === 'arpeggioInterpretation') return changedFieldCount(value, DEFAULT_ARPEGGIO_INTERPRETATION) === 0;
   if (id !== 'actionRealizationPolicy') return false;
   const defaultValue: unknown = SETTINGS_ITEMS.actionRealizationPolicy.defaultValue;
   const semantic = (policy: unknown) => isRecord(policy) && policy['triggerActivation'] === 'semantic';
   return !semantic(value) && !semantic(defaultValue);
+}
+
+/** 真偽の項目だけを持つ解釈の値で、既定と違う項目の数。 */
+function changedFieldCount(value: unknown, defaults: object): number {
+  if (!isRecord(value)) return 0;
+  return Object.entries(defaults).filter(([key, fallback]) => value[key] !== undefined && value[key] !== fallback).length;
 }
 
 function formatOrigin(origin: ResolvedOrigin, names?: ConditionValueNames): string {
@@ -124,14 +138,24 @@ function formatValue(
     return { format: 'primitive', displayValue: value['useHold'] === true ? 'する' : 'しない' };
   }
   if (id === 'actionRealizationPolicy' && isRecord(value)) {
-    // 「しない」の時は例外を一切読まない（`input/semantics/action-realization.ts`）ので、
+    // Shift+Aを1動作にする時は例外を一切読まない（`input/semantics/action-realization.ts`）ので、
     // 例外が残っていても出さない。出すと効いていない例外で測ったように読めてしまう（#597）。
-    if (value['triggerActivation'] !== 'semantic') return { format: 'primitive', displayValue: 'しない' };
+    if (value['triggerActivation'] !== 'semantic') return { format: 'primitive', displayValue: ACTION_COUNT_TEXT.combined };
     const classOverrides = isRecord(value['triggerActivationClassOverrides'])
       ? Object.keys(value['triggerActivationClassOverrides']).length
       : 0;
     const overrides = Array.isArray(value['triggerActivationOverrides']) ? value['triggerActivationOverrides'].length : 0;
-    return { format: 'primitive', displayValue: classOverrides + overrides > 0 ? 'する（例外あり）' : 'する' };
+    return {
+      format: 'primitive',
+      displayValue: classOverrides + overrides > 0 ? `${ACTION_COUNT_TEXT.separate}（例外あり）` : ACTION_COUNT_TEXT.separate,
+    };
+  }
+  // 解釈の2項目はチェックの束なので、既定と違う項目の数で示す（中身は条件のモーダルで見る）。
+  if (id === 'chainInterpretation' && isRecord(value)) {
+    return { format: 'primitive', displayValue: interpretationText(changedFieldCount(value, DEFAULT_CHAIN_INTERPRETATION)) };
+  }
+  if (id === 'arpeggioInterpretation' && isRecord(value)) {
+    return { format: 'primitive', displayValue: interpretationText(changedFieldCount(value, DEFAULT_ARPEGGIO_INTERPRETATION)) };
   }
   if (value === null) return { format: 'primitive', displayValue: 'なし' };
   if (typeof value === 'boolean') return { format: 'primitive', displayValue: value ? 'ON' : 'OFF' };
@@ -141,6 +165,16 @@ function formatValue(
   // 上で扱っていないオブジェクト値は要約せず「詳細設定」とだけ示す（今のTRACE_AFFECTING_ITEMSには無い）。
   return { format: 'object', displayValue: '（詳細設定）' };
 }
+
+function interpretationText(changed: number): string {
+  return changed === 0 ? '既定と同じ' : `${changed}項目を変更`;
+}
+
+/** 「動作数の扱い」の2つの選択肢の文言（オーナー決定。条件のモーダルと要約で同じ語を使う）。 */
+export const ACTION_COUNT_TEXT = {
+  combined: 'Shift+A で1動作',
+  separate: 'Shift→A で2動作',
+} as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -203,7 +237,7 @@ export function conditionHeaderInfoFromResolvedInput(layout: Layout, geometry: G
   return { layoutName: layout.name, shapeName: geometry.name, fingerAssignmentName: geometry.assignment.name };
 }
 
-export { formatOrigin };
+export { formatOrigin, cascadeLevelLabel as conditionLevelLabel };
 
 /**
  * 条件の行に付いた診断を、画面に出す文言にする。`input/settings`の診断文は項目id・レベル名を

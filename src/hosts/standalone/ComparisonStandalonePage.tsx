@@ -245,6 +245,12 @@ export function ComparisonStandalonePage({
             settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
             onResetOptions={() => changeOptions(comparisonAnalyzer.defaultOptions)}
             conditionRows={conditionSummary.rows}
+            conditionEditor={{
+              overrides: assets.setupLibrary.overrides,
+              dispatch,
+              shapes: catalog.setupCatalog.shapes,
+              customFingerAssignments: catalog.customFingerAssignments,
+            }}
             conditionTargetDiffs={conditionSummary.diffs}
             engineState={extraction}
             settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}

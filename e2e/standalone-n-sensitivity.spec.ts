@@ -223,10 +223,10 @@ test('条件の要約は先読みNを出さず、対象ごとの差にもNを出
   const summary = page.locator('.pane-condition-summary');
   await expect(summary).toBeVisible({ timeout: 10_000 });
   // 共通の行は画面の値（全体のOFF）。fixed-aだけがONで、差に出る
-  await expect(summary.locator('summary')).toContainText('同指連続のホーム復帰距離');
-  await expect(summary.locator('summary')).toContainText('対象ごとに差あり');
-  await expect(summary.locator('summary')).not.toContainText('先読みN');
-  await summary.locator('summary').click();
+  await expect(summary.locator('.pane-condition-trigger')).toContainText('同指連続のホーム復帰距離');
+  await expect(summary.locator('.pane-condition-trigger')).toContainText('対象ごとに差あり');
+  await expect(summary.locator('.pane-condition-trigger')).not.toContainText('先読みN');
+  await summary.locator('.pane-condition-trigger').click();
   const diffs = summary.getByRole('region', { name: '対象ごとの差' });
   await expect(diffs.locator('.pane-condition-diff')).toHaveCount(1);
   await expect(diffs.locator('.pane-condition-diff')).toContainText('同指連続のホーム復帰距離=ON');
@@ -349,7 +349,7 @@ test('上書きありのSetupを1件だけ選ぶと、条件の要約の「対�
   });
   await page.goto('/standalone/n-sensitivity');
   const summary = page.locator('.pane-condition-summary');
-  await expect(summary.locator('summary')).toContainText('対象ごとに差あり', { timeout: 10_000 });
-  await summary.locator('summary').click();
+  await expect(summary.locator('.pane-condition-trigger')).toContainText('対象ごとに差あり', { timeout: 10_000 });
+  await summary.locator('.pane-condition-trigger').click();
   await expect(summary.getByRole('region', { name: '対象ごとの差' })).toContainText('同指連続のホーム復帰距離=OFF');
 });

@@ -351,7 +351,7 @@ h2.pane-frame-title {
 
 /*
  * 条件の要約。閉じた状態は1行に収め、入り切らない項目は省略記号で切る
- * （「他N件」は切らない。残りがあると見えれば開く理由が分かるため）。
+ * （「他N件」は切らない。残りがあると見えれば開く理由が分かるため）。押すと条件のモーダルが開く。
  */
 .pane-condition-summary {
   min-width: 0;
@@ -361,36 +361,28 @@ h2.pane-frame-title {
   font-size: 0.84rem;
 }
 
-.pane-condition-summary > summary {
+.pane-condition-trigger {
   display: flex;
   align-items: center;
   gap: 0.45rem;
+  width: 100%;
   min-width: 0;
   padding: 0.38rem 0.65rem;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
   color: var(--text-muted);
+  font: inherit;
+  text-align: left;
   cursor: pointer;
-  list-style: none;
 }
 
-.pane-condition-summary > summary::-webkit-details-marker {
-  display: none;
+.pane-condition-trigger:hover {
+  background: var(--surface-muted);
 }
 
-.pane-condition-caret {
+.pane-condition-icon {
   flex: none;
-  width: 0.7rem;
-  height: 0.7rem;
-  transition: transform 0.15s;
-}
-
-.pane-condition-summary[open] .pane-condition-caret {
-  transform: rotate(90deg);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pane-condition-caret {
-    transition: none;
-  }
 }
 
 .pane-condition-key {
@@ -429,6 +421,13 @@ h2.pane-frame-title {
   color: var(--text-muted);
 }
 
+.pane-condition-diffs dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.3rem 0.9rem;
+  margin: 0;
+}
+
 .pane-condition-diff {
   display: contents;
 }
@@ -443,81 +442,21 @@ h2.pane-frame-title {
   overflow-wrap: anywhere;
 }
 
-.pane-condition-body {
-  display: grid;
-  gap: 0.5rem;
-  padding: 0.1rem 0.65rem 0.65rem;
-}
-
 .pane-condition-target {
-  margin: 0;
+  margin: 0 0 0.6rem;
   padding-bottom: 0.45rem;
   border-bottom: 1px solid var(--border);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
-.pane-condition-summary dl {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: 0.3rem 0.9rem;
-  margin: 0;
-}
-
-.pane-condition-row {
-  display: contents;
-}
-
-.pane-condition-row dt {
-  color: var(--text-muted);
-}
-
-.pane-condition-row[data-changed="true"] dt {
-  color: var(--text);
-  font-weight: 700;
-}
-
-.pane-condition-row dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-/* 行は display: contents で箱を持たないので、薄くするのは dt・dd に当てる。 */
-.pane-condition-row[data-not-applicable="true"] > dt,
-.pane-condition-row[data-not-applicable="true"] > dd {
-  opacity: 0.55;
-}
-
-.pane-condition-origin {
-  color: var(--text-muted);
-  font-size: 0.85em;
-}
-
-.pane-condition-row[data-changed="true"] .pane-condition-origin {
-  color: var(--accent-strong);
-}
-
-.pane-condition-flag {
-  margin-left: 0.5rem;
-  font-size: 0.8em;
-  color: #b8860b;
-}
-
-.pane-condition-diagnostics {
-  margin: 0.15rem 0 0;
-  padding-left: 1.1rem;
-  font-size: 0.8em;
-  opacity: 0.8;
-}
-
-/* 狭いペインでは項目名と値を縦に積む（項目名が長く、2列だと値の列が潰れるため）。 */
-@container pane (max-width: 26rem) {
-  .pane-condition-summary dl {
+/* 狭い幅では対象ごとの差も項目名と値を縦に積む。 */
+@media (max-width: 640px) {
+  .pane-condition-diffs dl {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.05rem;
   }
 
-  .pane-condition-row dd,
   .pane-condition-diff dd {
     margin-bottom: 0.4rem;
   }

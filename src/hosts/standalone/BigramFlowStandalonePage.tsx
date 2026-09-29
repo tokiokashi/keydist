@@ -8,6 +8,7 @@ import type { EngineCache } from '#engine/cache.ts';
 import {
   combinePaneStates,
   conditionHeaderInfoFromResolvedInput,
+  overrideWinsNotices,
   PaneFrame,
   setupNumbersOf,
   targetChoiceGroups,
@@ -216,6 +217,13 @@ export function BigramFlowStandalonePage({
             onResetOptions={() => changeOptions(bigramFlowAnalyzer.defaultOptions)}
             header={header}
             conditionRows={conditionRows}
+            conditionEditor={{
+              overrides: assets.setupLibrary.overrides,
+              dispatch,
+              shapes: catalog.setupCatalog.shapes,
+              customFingerAssignments: catalog.customFingerAssignments,
+              notices: overrideWinsNotices(conditionRows, resolution.ok ? resolution.input.layout.id : undefined, catalog.setupCatalog),
+            }}
             engineState={combinePaneStates(extraction, pane.trace)}
             traceErrors={traceErrors}
             settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}

@@ -5,6 +5,8 @@ import { DEFAULT_FINGER_ASSIGNMENT, PHYSICAL_SHAPES, type PhysicalShape } from '
 import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES, resolveSettings, setSettingsOverride, type SettingsItemId } from '#engine/settings-items.ts';
 import { resolveSetupForText } from '#input/setup/index.ts';
+import { DEFAULT_CHAIN_INTERPRETATION } from '#interpretation/structure/chain.ts';
+import { DEFAULT_ARPEGGIO_INTERPRETATION } from '#interpretation/structure/arpeggio.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import {
   conditionHeaderInfo,
@@ -13,6 +15,7 @@ import {
   orderConditionRowsForDetail,
   conditionDiagnosticText,
   formatOrigin,
+  isChangedConditionRow,
   globalConditionValues,
   multiTargetConditionSummary,
   nonDefaultConditionRows,
@@ -202,14 +205,14 @@ test('nonDefaultConditionRows: かな直接の配列ではローマ字規則の�
   assert.deepEqual(nonDefaultConditionRows(summary).map((row) => row.id), []);
 });
 
-test('traceConditionSummary: シフト系キーの2項目は「する/しない」で値を出す（「(詳細設定)」にしない）', () => {
+test('traceConditionSummary: シフト系キーの2項目は選べる主な値で出す（「(詳細設定)」にしない）', () => {
   const defaults = traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], EMPTY_SETTINGS_OVERRIDES, 'en').cascade, CATALOG);
   const hold = defaults.find((row) => row.id === 'triggerRealizationPolicy')!;
   const action = defaults.find((row) => row.id === 'actionRealizationPolicy')!;
   assert.equal(hold.label, 'シフト系キーの押し続け');
   assert.equal(hold.displayValue, 'しない');
-  assert.equal(action.label, 'シフト系キーを別の動作として数える');
-  assert.equal(action.displayValue, 'しない');
+  assert.equal(action.label, '動作数の扱い');
+  assert.equal(action.displayValue, 'Shift+A で1動作');
 
   let overrides = EMPTY_SETTINGS_OVERRIDES;
   for (const [id, value] of [
@@ -227,11 +230,11 @@ test('traceConditionSummary: シフト系キーの2項目は「する/しない�
   }
   const rows = traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], overrides, 'en').cascade, CATALOG);
   assert.equal(rows.find((row) => row.id === 'triggerRealizationPolicy')!.displayValue, 'する');
-  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'する（例外あり）');
+  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'Shift→A で2動作（例外あり）');
   for (const row of rows) assert.doesNotMatch(row.displayValue, /[()]/, row.displayValue);
 });
 
-test('traceConditionSummary: 別の動作として数えない時は、残っている例外を出さない（#597）', () => {
+test('traceConditionSummary: 1動作の時は、残っている例外を出さない（#597）', () => {
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'actionRealizationPolicy', {
     triggerActivation: 'disabled',
     triggerActivationClassOverrides: { 'order-free': 'separate' },
@@ -240,7 +243,21 @@ test('traceConditionSummary: 別の動作として数えない時は、残って
   assert.ok(written.ok);
   if (!written.ok) return;
   const rows = traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], written.overrides, 'en').cascade, CATALOG);
-  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'しない');
+  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'Shift+A で1動作');
+});
+
+test('traceConditionSummary: チェーン・アルペジオは既定と違う項目の数で出し、既定と同じ中身の上書きは変えた項目に数えない', () => {
+  const rows = overrideRows([
+    ['chainInterpretation', { ...DEFAULT_CHAIN_INTERPRETATION, breakOnTriggerOnly: true, breakOnThumbOnly: false }],
+    ['arpeggioInterpretation', { ...DEFAULT_ARPEGGIO_INTERPRETATION }],
+  ]);
+  const chain = rows.find((row) => row.id === 'chainInterpretation')!;
+  const arpeggio = rows.find((row) => row.id === 'arpeggioInterpretation')!;
+  assert.equal(chain.label, 'チェーンの区切り');
+  assert.equal(chain.displayValue, '2項目を変更');
+  assert.ok(isChangedConditionRow(chain));
+  assert.equal(arpeggio.displayValue, '既定と同じ');
+  assert.equal(isChangedConditionRow(arpeggio), false);
 });
 
 function overrideRows(entries: readonly (readonly [string, unknown])[]): readonly ConditionSummaryRow[] {
