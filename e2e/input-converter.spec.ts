@@ -110,7 +110,7 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
 
   await lookup.fill('かな');
   await expect(panel.locator('.input-lookup-results')).not.toContainText(
-    '打ちたい文字を入力すると、この配列での打ち方を表示します。',
+    '打ちたい文字を、この配列でどう打つか調べられます。',
   );
 
   await page

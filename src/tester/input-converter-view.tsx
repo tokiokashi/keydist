@@ -1534,7 +1534,7 @@ export function InputConverterView() {
               </div>
               <div className="input-lookup-results" aria-live="polite">
                 {lookupQuery.length === 0 ? (
-                  <span className="input-muted">打ちたい文字を入力すると、この配列での打ち方を表示します。</span>
+                  <span className="input-muted">打ちたい文字を、この配列でどう打つか調べられます。</span>
                 ) : activeLookupRoute === undefined
                   || activeLookupStep === undefined
                   || activeLookupAction === undefined ? (

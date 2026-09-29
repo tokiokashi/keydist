@@ -18,7 +18,7 @@ test('サイドバーは区分ごとのナビゲーションと、最下端の�
     await expect(sidebar.getByRole('heading', { name: heading, exact: true })).toBeVisible();
   }
   await expect(sidebar.getByRole('link', { name: 'Bigram Flow', exact: true })).toHaveAttribute('aria-current', 'page');
-  await expect(sidebar.getByText('保存したWorkspaceがここに並ぶ。')).toBeVisible();
+  await expect(sidebar.getByText('Analyzerを並べて見る画面。')).toBeVisible();
   await expect(sidebar).toContainText(`v${PACKAGE_VERSION}`);
   await expect(sidebar.getByRole('link', { name: '旧版', exact: true })).toHaveAttribute('href', /classic\/$/);
 
