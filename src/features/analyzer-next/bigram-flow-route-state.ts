@@ -6,7 +6,6 @@ import {
   type KeyboardFlowLayerOrder,
   type KeyboardFlowWeightScale,
 } from '#analyzers/bigram-flow/options.ts';
-import type { MovementScaleMode } from '#analyzers/bigram-flow/movement-profile-scale.ts';
 import {
   validateStandaloneViewSearch,
   type StandaloneViewSearch,
@@ -20,7 +19,6 @@ const LAYER_ORDERS: readonly KeyboardFlowLayerOrder[] = [
   'cross-hand-top',
 ];
 const HOVER_SCALES: readonly KeyboardFlowHoverScale[] = ['key', 'global'];
-const MOVEMENT_SCALE_MODES: readonly MovementScaleMode[] = ['fit', 'fixed'];
 
 export interface BigramFlowRouteSearch extends StandaloneViewSearch {
   source?: BigramFlowDisplayConfig['source'];
@@ -28,7 +26,6 @@ export interface BigramFlowRouteSearch extends StandaloneViewSearch {
   lineScale?: KeyboardFlowWeightScale;
   layerOrder?: KeyboardFlowLayerOrder;
   hoverScale?: KeyboardFlowHoverScale;
-  movementScale?: MovementScaleMode;
   bandwidth?: number;
   gain?: number;
 }
@@ -86,7 +83,6 @@ export function validateBigramFlowSearch(
   const lineScale = choice(raw.lineScale, LINE_SCALES);
   const layerOrder = choice(raw.layerOrder, LAYER_ORDERS);
   const hoverScale = choice(raw.hoverScale, HOVER_SCALES);
-  const movementScale = choice(raw.movementScale, MOVEMENT_SCALE_MODES);
   const bandwidth = integerValue(raw.bandwidth, 4, 45);
   const gain = numberValue(raw.gain, 0.25, 3);
 
@@ -97,7 +93,6 @@ export function validateBigramFlowSearch(
     ...(lineScale === undefined ? {} : { lineScale }),
     ...(layerOrder === undefined ? {} : { layerOrder }),
     ...(hoverScale === undefined ? {} : { hoverScale }),
-    ...(movementScale === undefined ? {} : { movementScale }),
     ...(bandwidth === undefined ? {} : { bandwidth }),
     ...(gain === undefined ? {} : { gain }),
   };
@@ -116,8 +111,6 @@ export function bigramFlowConfigFromSearch(
     lineScale: search.lineScale ?? DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.lineScale,
     layerOrder: search.layerOrder ?? DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.layerOrder,
     hoverScale: search.hoverScale ?? DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.hoverScale,
-    movementScaleMode:
-      search.movementScale ?? DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.movementScaleMode,
     polarBandwidth: search.bandwidth ?? DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.polarBandwidth,
     polarGain: search.gain ?? DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.polarGain,
   };
@@ -136,7 +129,6 @@ export function bigramFlowConfigSearchPatch(
   | 'lineScale'
   | 'layerOrder'
   | 'hoverScale'
-  | 'movementScale'
   | 'bandwidth'
   | 'gain'
 > {
@@ -156,10 +148,6 @@ export function bigramFlowConfigSearchPatch(
     hoverScale: config.hoverScale === DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.hoverScale
       ? undefined
       : config.hoverScale,
-    movementScale:
-      config.movementScaleMode === DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.movementScaleMode
-        ? undefined
-        : config.movementScaleMode,
     bandwidth: config.polarBandwidth === DEFAULT_BIGRAM_FLOW_DISPLAY_CONFIG.polarBandwidth
       ? undefined
       : config.polarBandwidth,

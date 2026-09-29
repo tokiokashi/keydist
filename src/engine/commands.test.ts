@@ -26,6 +26,7 @@ import {
   setMultiBaselineCommand,
   setMultiTargetsCommand,
   setSingleTargetCommand,
+  setTargetForSingleAndMultiCommand,
   setStandaloneAnalyzerOptionsCommand,
   setTextContentCommand,
   markTextsSeenCommand,
@@ -822,4 +823,39 @@ test('markTextsSeenCommand: 編集をUndoした後に印を外しても、Redo�
   const redone = redo(seen.assets, seen.history);
   assert.equal(redone.assets.textLibrary.texts[0]!.text, '編集した', '編集がやり直される');
   assert.equal(redone.assets.textLibrary.texts[1]!.unseen, undefined, '印は戻らない');
+});
+
+test('setTargetForSingleAndMultiCommand: Singleの対象にし、Multiの組にも加える', () => {
+  const start = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), setMultiTargetsCommand([TARGET_A]));
+  const step = applyCommand(start.assets, start.history, setTargetForSingleAndMultiCommand(TARGET_B));
+  assert.equal(step.assets.singleTargetSelection.target, TARGET_B);
+  assert.deepEqual(step.assets.multiTargetSelection.targets, [TARGET_A, TARGET_B]);
+});
+
+test('setTargetForSingleAndMultiCommand: Multiにすでにあれば重複させず、並びも動かさない', () => {
+  const start = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), setMultiTargetsCommand([TARGET_A, TARGET_B]));
+  const step = applyCommand(start.assets, start.history, setTargetForSingleAndMultiCommand(TARGET_A));
+  assert.equal(step.assets.singleTargetSelection.target, TARGET_A);
+  assert.deepEqual(step.assets.multiTargetSelection.targets, [TARGET_A, TARGET_B]);
+});
+
+test('setTargetForSingleAndMultiCommand: Undo 1回でSingleとMultiが一緒に戻り、Redoで再び入る', () => {
+  const start = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), setMultiTargetsCommand([TARGET_A]));
+  const step = applyCommand(start.assets, start.history, setTargetForSingleAndMultiCommand(TARGET_B));
+  const back = undo(step.assets, step.history);
+  assert.equal(back.assets.singleTargetSelection.target, undefined);
+  assert.deepEqual(back.assets.multiTargetSelection.targets, [TARGET_A]);
+  const redone = redo(back.assets, back.history);
+  assert.equal(redone.assets.singleTargetSelection.target, TARGET_B);
+  assert.deepEqual(redone.assets.multiTargetSelection.targets, [TARGET_A, TARGET_B]);
+});
+
+test('setTargetForSingleAndMultiCommand: どちらかが揃っていても、足りない方は書く。両方揃っていればno-op', () => {
+  const onlyMulti = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), setMultiTargetsCommand([TARGET_A]));
+  const filled = applyCommand(onlyMulti.assets, onlyMulti.history, setTargetForSingleAndMultiCommand(TARGET_A));
+  assert.equal(filled.assets.singleTargetSelection.target, TARGET_A);
+  assert.deepEqual(filled.assets.multiTargetSelection.targets, [TARGET_A]);
+
+  const again = applyCommand(filled.assets, filled.history, setTargetForSingleAndMultiCommand(TARGET_A));
+  assert.equal(again.outcome.kind, 'no-op');
 });

@@ -1,5 +1,3 @@
-export type MovementScaleMode = 'fit' | 'fixed';
-
 export interface MovementPlotScale {
   readonly scaleMax: number;
   readonly unitsPerSvgUnit: number;
@@ -10,49 +8,39 @@ export interface MovementPlotScale {
   readonly viewSize: number;
 }
 
-const FIT_PLOT_RADIUS = 82;
-const FIXED_SVG_UNITS_PER_U = 24;
+const SVG_UNITS_PER_U = 24;
 const POLAR_GAP = 9;
 const POLAR_AMPLITUDE = 16;
 export const MIN_POLAR_BANDWIDTH_DEGREES = 4;
 export const MAX_POLAR_DISPLAY_GAIN = 3;
 const OUTER_MARGIN = 13;
 
-export function movementPlotScale(
-  maxDistance: number,
-  mode: MovementScaleMode,
-): MovementPlotScale {
+/**
+ * 角度と確率の円の半径。データの最長ベクトルに依らない定数にして、
+ * 物理配列・配列・テキスト・指の絞り込みを変えても円の大きさが動かないようにする。
+ * 組み込みの物理配列・配列・サンプル（492条件）で最長ベクトルは3〜6u、5u以下が約8割。
+ * 5uまでが円の内側に収まる大きさにした（6uは円と重なる。重なってよい）。
+ */
+const POLAR_SCALE_MAX = 5;
+const POLAR_BASE_RADIUS = POLAR_SCALE_MAX * SVG_UNITS_PER_U + POLAR_GAP;
+
+/**
+ * 図の大きさは、データ・表示倍率・密度のどれにもよらず一定にする（画面上の1uあたりのpx、円のpx）。
+ * 円より長いベクトルや外へ伸びた方向分布は、図の枠で見切れてよい。縮めたり範囲を広げたりしない。
+ * `maxDistance`は目盛りのリングの本数（最長ベクトルまで）と軸の長さだけに効く。
+ */
+export function movementPlotScale(maxDistance: number): MovementPlotScale {
   const scaleMax = Math.max(1, Math.ceil(maxDistance));
-  const unitsPerSvgUnit = mode === 'fit'
-    ? FIT_PLOT_RADIUS / scaleMax
-    : FIXED_SVG_UNITS_PER_U;
-  const plotRadius = scaleMax * unitsPerSvgUnit;
-  const polarBaseRadius = plotRadius + POLAR_GAP;
-  const polarAmplitude = POLAR_AMPLITUDE;
-  const halfSize = polarBaseRadius + OUTER_MARGIN;
+  const plotRadius = scaleMax * SVG_UNITS_PER_U;
+  const halfSize = POLAR_BASE_RADIUS + OUTER_MARGIN;
 
   return {
     scaleMax,
-    unitsPerSvgUnit,
+    unitsPerSvgUnit: SVG_UNITS_PER_U,
     plotRadius,
-    polarBaseRadius,
-    polarAmplitude,
+    polarBaseRadius: POLAR_BASE_RADIUS,
+    polarAmplitude: POLAR_AMPLITUDE,
     halfSize,
     viewSize: halfSize * 2,
   };
-}
-
-
-/**
- * KDE densityとdisplay gainから必要なpolar外周extentを計算する。
- * density自体は変更せず、canvas/viewBoxの確保量だけを増やす。
- */
-export function movementPlotExtent(
-  scale: MovementPlotScale,
-  maxDensity: number,
-  displayGain: number,
-): number {
-  const polarRadius = scale.polarBaseRadius
-    + Math.max(0, maxDensity) * scale.polarAmplitude * Math.max(0, displayGain);
-  return Math.max(scale.halfSize, polarRadius + OUTER_MARGIN);
 }
