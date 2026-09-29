@@ -41,7 +41,7 @@ export type ItemSchemaMap<V> = { readonly [K in keyof V]: BaseSchema<unknown, V[
 // 既知の落とし穴。`JSON.parse('{"__proto__":{...}}')`はリテラルな own property
 // "__proto__" を作れてしまう（代入のexotic setterを経由しないため）ので、
 // 外部由来の資産（共有リンク・importファイル）のkeyとして実際に出現しうる。
-// decodeCascadeOverridesのinstanceKey（配列id・形状id・Setup id等の任意文字列）は
+// decodeCascadeOverridesのinstanceKey（配列id・物理配列id・Setup id等の任意文字列）は
 // ここを通るので、書き込む前に予約名として弾く（診断付きで丸ごと捨てる。
 // 「捨てた値には必ず診断」の原則を守る）。
 
@@ -105,7 +105,7 @@ export function decodeCascadeOverrides<V>(
         // `bucket[instanceKey] = ...`という素のbracket代入は、instanceKeyが
         // "__proto__"だとObject.prototypeの継承setterを踏み、エントリを追加する
         // 代わりにbucket自身のprototypeを差し替えてしまう（値が診断なしで消える。
-        // Object.keys(bucket)にも現れない）。instanceKeyは配列id・形状id・Setup id
+        // Object.keys(bucket)にも現れない）。instanceKeyは配列id・物理配列id・Setup id
         // など外部由来の任意文字列なので、書き込む前に予約名として弾き、
         // 「捨てた値には必ず診断」を守る。
         diagnostics.push({

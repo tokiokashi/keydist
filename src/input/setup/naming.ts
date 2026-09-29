@@ -37,7 +37,7 @@ export type TargetNameSource = TargetNameSourceBase & (
   | {
     readonly failed?: false;
     readonly layoutName: string;
-    /** 実効の物理形状名。配列対象は常にカスケードの「既定の物理配列」の名前になる。 */
+    /** 実効の物理配列名。配列対象は常にカスケードの「既定の物理配列」の名前になる。 */
     readonly shapeName: string;
     /**
      * 既定値と違う条件の短い併記（`hosts/shared/condition-summary.ts`の
@@ -50,7 +50,7 @@ export type TargetNameSource = TargetNameSourceBase & (
      * 対象の解決自体が失敗している（Setup削除・このテキストに使えない等）。
      * 失敗メンバーは「集合の中で何が共通か」を決める母集団から除き、表示名には
      * 呼び出し側が分かる範囲で作った説明（`description`）をそのまま使う。
-     * 実効の形状・条件が決まっていないので、差分計算に混ぜると不自然な差分が出るため。
+     * 実効の物理配列・条件が決まっていないので、差分計算に混ぜると不自然な差分が出るため。
      */
     readonly failed: true;
     readonly description: string;
@@ -123,8 +123,8 @@ function kindTag(source: TargetNameSource): string | undefined {
  * - 2: 集合の中での位置を添える（同じ名前の自作配列が2つある等、種類でも分からない時の最後の砦。
  *   位置は集合の中で一意なので、ここまで来れば必ず解消する）
  *
- * 配列名・形状名・条件のどれかが違えば段階0で既に名前に出ている（違う部分は全員に出す）ので、
- * 段階0で衝突するメンバー同士は配列名・形状名・条件が同じ。そこへ形状名や条件を足しても
+ * 配列名・物理配列名・条件のどれかが違えば段階0で既に名前に出ている（違う部分は全員に出す）ので、
+ * 段階0で衝突するメンバー同士は配列名・物理配列名・条件が同じ。そこへ物理配列名や条件を足しても
  * 区別できないので、足すのは種類と位置だけにする。内部のkey（UUID等）は出さない。
  */
 function escalatedName(base: string, source: TargetNameSource, position: number, level: number): string {

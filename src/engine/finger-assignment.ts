@@ -12,13 +12,13 @@ import {
  * 指割り当てid → 実体（#544 Phase 2「engine」/「自作の指割当を資産として engine に入れる」）。
  *
  * 旧実装（`test/fixtures/analyzer-regression.json`）は fingerAssignmentId を
- * geometryShapeId とは独立した条件として記録している（同じ `row-staggered` 形状のまま
+ * geometryShapeId とは独立した条件として記録している（同じ `row-staggered` 物理配列のまま
  * `jis-default` へ差し替える分岐が実在する）。しかし今のSetup / SetupCatalogは
  * `shapeId → PhysicalShape` までしか持たず、指割り当てはその型に無い軸になっている。
  *
  * この差を埋めるため、指割り当てidをカスケードの項目にする（`settings-items.ts` の
- * `fingerAssignmentId`）。「その配列に無い機能」ではなく「その形状に無い機能」でもないので
- * shape/layout/setupレベルでの上書きを許す（形状を変えずに運指だけ比べたい・組み込みJIS運指を
+ * `fingerAssignmentId`）。「その配列に無い機能」ではなく「その物理配列に無い機能」でもないので
+ * shape/layout/setupレベルでの上書きを許す（物理配列を変えずに運指だけ比べたい・組み込みJIS運指を
  * 既定にしたい、の両方を表現できる）。
  *
  * 自作の指割り当て（`input/shapes/user-finger-assignments.ts`）はSetupCatalogのような
@@ -73,8 +73,8 @@ export function resolveFingerAssignment(
 const EMPTY_CUSTOM_ASSIGNMENTS: ReadonlyMap<string, FingerAssignment> = new Map();
 
 /**
- * 形状から既定の指割り当てidを決める。プリセットのJIS系形状（`jis-`接頭辞）はJIS既定、
- * それ以外（ANSIプリセット・自作形状）は列固定の既定を使う。
+ * 物理配列から既定の指割り当てidを決める。プリセットのJIS系物理配列（`jis-`接頭辞）はJIS既定、
+ * それ以外（ANSIプリセット・自作物理配列）は列固定の既定を使う。
  */
 export function defaultFingerAssignmentId(shape: PhysicalShape): string {
   if (isPresetGeometryKind(shape.id) && presetGeometryStandard(shape.id) === 'jis') {

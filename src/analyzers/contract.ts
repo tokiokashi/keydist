@@ -95,7 +95,7 @@ export interface AnalyzerSetMember {
  * 集合の1メンバーの解決が失敗した時の値（#544 Phase 3「集合を対象にする最初のAnalyzer」）。
  *
  * 集合対象では、メンバーの一部が失敗（Setup参照切れ・このテキストに使えない配列・
- * 形状を組み立てられない）しても集合全体を`failed`にしない。失敗したメンバーは
+ * 物理配列を組み立てられない）しても集合全体を`failed`にしない。失敗したメンバーは
  * `members`からは外し、代わりにこの値として`failures`へ積む（#544指示書「メンバーごとの
  * 失敗を値で持つ形を推奨」）。`kind`は`engine/resolved-input.ts`の`ResolvedInputError.kind`と
  * 同じ語彙にするが、`analyzers/contract.ts`（契約側）は`engine`をimportできない

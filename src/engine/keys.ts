@@ -13,7 +13,7 @@ import type { ResolvedInput } from './resolved-input.ts';
  * modelVersionも含める。Trace生成のロジックが変われば別キーになり、旧キャッシュへは
  * 当たらなくなる。
  *
- * LayoutとGeometryをまるごと含めるのは、自作配列・自作形状・自作ローマ字規則の編集を
+ * LayoutとGeometryをまるごと含めるのは、自作配列・自作物理配列・自作ローマ字規則の編集を
  * キーへ自動で反映するため。idだけをキーにすると、同じidのまま中身を編集した時に
  * 古いTraceを返してしまう。Layoutは`canonicalInputs`やUI専用の`legends`等も持つが、
  * 「Trace生成に使うフィールドだけを選ぶ」よりも「解決済みの入力をまるごとキーにする」方が、

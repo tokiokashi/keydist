@@ -657,7 +657,7 @@ export function sanitizeUiState(
   const sanitizedPlayback = sanitizePlaybackSettings(playback, defaults.ui.playback);
   const sanitizedConditionDefaults = sanitizeConditionDefaults({
     ...conditionDefaults,
-    // v1では物理形状がui.inputにだけ保存されていたため、未保存なら旧値を引き継ぐ。
+    // v1では物理配列がui.inputにだけ保存されていたため、未保存なら旧値を引き継ぐ。
     geometry: conditionDefaults.geometry ?? input.geometry,
   }, defaults.conditions.defaults);
   if (!isRecord(conditionDefaults.chain)

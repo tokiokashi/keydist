@@ -62,7 +62,7 @@ const TEST_ITEMS = {
     allowedLevels: new Set(['global']),
     defaultValue: true,
   }),
-  // preferOppositeThumb相当: SandSが無い配列では効かず、反対側の親指キーが無い形状では実現できない。
+  // preferOppositeThumb相当: SandSが無い配列では効かず、反対側の親指キーが無い物理配列では実現できない。
   thumbRequiring: defineItem<boolean>({
     id: 'thumbRequiring',
     allowedLevels: ANY_LEVEL,
@@ -176,7 +176,7 @@ test('許可されていないレベルに残っている古い値は解決時�
   assert.ok(resolved.globalOnlyFlag.diagnostics.some((d) => d.kind === 'ignored-disallowed-level'));
 });
 
-test('妥当性: 反対側の親指キーが無い形状では実現できずfallback+警告になる', () => {
+test('妥当性: 反対側の親指キーが無い物理配列では実現できずfallback+警告になる', () => {
   const shapeNoRightThumb = {
     ...PHYSICAL_SHAPES['row-staggered'],
     thumbs: PHYSICAL_SHAPES['row-staggered'].thumbs.filter((thumb) => thumb.finger !== 'RT'),
@@ -197,7 +197,7 @@ test('妥当性: 反対側の親指キーが無い形状では実現できずfal
   assert.deepEqual(resolved.thumbRequiring.origin, { kind: 'global' }); // 出どころ自体は書き込まれた場所のまま
   assert.ok(resolved.thumbRequiring.diagnostics.some((d) => d.kind === 'invalid-fallback'));
 
-  // 両方の親指キーがある形状では同じ上書きがそのまま実現できる
+  // 両方の親指キーがある物理配列では同じ上書きがそのまま実現できる
   const resolvedOk = resolveCascade(
     TEST_ITEMS,
     written.overrides,

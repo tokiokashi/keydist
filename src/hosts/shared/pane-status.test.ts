@@ -12,7 +12,7 @@ test('paneStatusLabel: 各状態に短い文言を返す', () => {
   assert.equal(paneStatusLabel('failed'), '失敗');
 });
 
-test('describeResolvedInputError: reference（配列・形状の削除）', () => {
+test('describeResolvedInputError: reference（配列・物理配列の削除）', () => {
   const error: ResolvedInputError = {
     kind: 'reference',
     errors: [{ kind: 'layout-missing', layoutId: 'ghost-layout' }],
@@ -45,7 +45,7 @@ test('describeResolvedInputError: incompatible-text（このテキストには�
   assert.match(message, /英語/);
 });
 
-test('describeResolvedInputError: geometry（形状が組めない）', () => {
+test('describeResolvedInputError: geometry（物理配列が組めない）', () => {
   const error: ResolvedInputError = { kind: 'geometry', message: '指割り当て「finger-x」にキー q が無い' };
   const message = describeResolvedInputError(error);
   assert.match(message, /組み立てられない/);

@@ -4,7 +4,7 @@ import type { CascadeContext, InputMethod } from '#input/settings/index.ts';
 import type { Setup } from './types.ts';
 
 /**
- * Setupが参照する配列・形状の実体を探すカタログ。組み込み・自作の両方をこの1つの写像に
+ * Setupが参照する配列・物理配列の実体を探すカタログ。組み込み・自作の両方をこの1つの写像に
  * まとめるのは呼び出し側の責任（`src/input/layouts/index.ts` の `LAYOUT_BY_ID` に
  * ユーザー配列を合わせた写像を渡す、等）。ここでは「idから引けること」だけを要求する。
  */
@@ -14,8 +14,8 @@ export interface SetupCatalog {
 }
 
 /**
- * Setupの参照が解決できない理由（#544 §6「残る例外表示は、Setup/配列/形状が削除された時だけ」）。
- * 配列・形状のどちらも削除されている場合があるので、両方をまとめて返せるようにする。
+ * Setupの参照が解決できない理由（#544 §6「残る例外表示は、Setup/配列/物理配列が削除された時だけ」）。
+ * 配列・物理配列のどちらも削除されている場合があるので、両方をまとめて返せるようにする。
  */
 export type SetupReferenceError =
   | { readonly kind: 'layout-missing'; readonly layoutId: string }
@@ -31,8 +31,8 @@ export type SetupResolution =
   | { readonly ok: false; readonly errors: readonly SetupReferenceError[] };
 
 /**
- * Setup + 配列・形状のカタログから、解決済みの {配列, 形状, カスケードcontext} を返す。
- * 配列や形状が削除されていても例外を投げず、値として理由を返す（#544 §8-5「エラーは値」）。
+ * Setup + 配列・物理配列のカタログから、解決済みの {配列, 物理配列, カスケードcontext} を返す。
+ * 配列や物理配列が削除されていても例外を投げず、値として理由を返す（#544 §8-5「エラーは値」）。
  *
  * `inputMethod` は引数で受け取る。打ち方（テキストの言語 × 配列の種類から導く値）の導出は
  * 別項目（Phase 2「打ち方の導出」）の対象でここでは実装しない。配列の実体だけでは打ち方が

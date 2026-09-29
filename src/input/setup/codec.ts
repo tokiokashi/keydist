@@ -7,7 +7,7 @@ import type { SetupLibrary } from './collection.ts';
 
 /**
  * Setupの手持ち（`SetupLibrary<V>`）のcodec（#544 §8-3・§4）。
- * `Setup`本体（id・配列id・形状id・ラベル）と、カスケードの`setup`レベルを
+ * `Setup`本体（id・配列id・物理配列id・ラベル）と、カスケードの`setup`レベルを
  * 含む全レベルの上書きをまとめて1つの資産として運ぶ（overrides.ts「Setup固有の上書きは
  * カスケードのsetupレベルに置く」）。
  *

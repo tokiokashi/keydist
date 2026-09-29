@@ -289,7 +289,7 @@ test('自作の指割り当て: 組み込みdefaultと同じ中身（keyFinger/h
   assert.notEqual(customResult.input.geometry.assignment.id, builtinResult.input.geometry.assignment.id, '前提: idそのものは違う');
 });
 
-test('形状エラー: 指割り当てが噛み合わない自作形状は値でgeometry失敗を返す', () => {
+test('物理配列エラー: 指割り当てが噛み合わない自作物理配列は値でgeometry失敗を返す', () => {
   const brokenShape: PhysicalShape = {
     ...PHYSICAL_SHAPES['row-staggered'],
     id: 'shape-broken',

@@ -15,7 +15,7 @@ function fakeStorage(): Storage {
   };
 }
 
-test('名前付きカスタム形状を複数保存・復元できる', () => {
+test('名前付きカスタム物理配列を複数保存・復元できる', () => {
   const storage = fakeStorage();
   const first = {
     ...structuredClone(PHYSICAL_SHAPES['row-staggered']),
@@ -34,7 +34,7 @@ test('名前付きカスタム形状を複数保存・復元できる', () => {
   assert.deepEqual(restored, [first, second]);
 });
 
-test('保存データの無効な形状idは除外する', () => {
+test('保存データの無効な物理配列idは除外する', () => {
   const storage = fakeStorage();
   storage.setItem('keydist:geometry-shapes', JSON.stringify([
     { ...PHYSICAL_SHAPES['row-staggered'], id: 'row-staggered', name: '組み込みの偽装' },
@@ -45,7 +45,7 @@ test('保存データの無効な形状idは除外する', () => {
 });
 
 
-test('名前付きカスタム形状のextraKeysを保存・復元できる', () => {
+test('名前付きカスタム物理配列のextraKeysを保存・復元できる', () => {
   const storage = fakeStorage();
   const custom = {
     ...structuredClone(PHYSICAL_SHAPES['row-staggered']),

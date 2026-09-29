@@ -21,7 +21,7 @@ import { SETTINGS_ITEMS, type SettingsCascadeOverrides, type SettingsValueMap } 
  * decode）へこのschema写像を渡すだけで良い（依存の向きはdocs/architecture.md通り）。
  *
  * 各項目のschemaは「値の形が正しいか」だけを見る。実現可能性（`validate`）・
- * 適用可否（`isApplicable`）はcontext（形状・配列）が要るのでcodecの仕事ではなく
+ * 適用可否（`isApplicable`）はcontext（物理配列・配列）が要るのでcodecの仕事ではなく
  * `resolveCascade`の仕事（#544 §3・resolve.ts）。この境界も二重管理を避けるため。
  */
 
@@ -82,7 +82,7 @@ const romajiRuleIdSchema = v.pipe(v.string(), v.minLength(1));
 const fingerAssignmentIdSchema = v.pipe(v.string(), v.minLength(1));
 
 /**
- * 既定の形状id（`defaultShapeId`。#578指摘1）。物理形状idは組み込み3種類のみだが、
+ * 既定の物理配列id（`defaultShapeId`。#578指摘1）。物理配列idは組み込み3種類のみだが、
  * fingerAssignmentIdと同じ理由（将来の自作分の余地）で値そのものは緩く、空文字だけ弾く。
  * 未登録のidを指した場合は`target-resolution.ts`側が`reference`（shape-missing）として
  * 値のまま扱う（例外にしない。#544 §8-5）。

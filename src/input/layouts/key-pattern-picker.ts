@@ -469,7 +469,7 @@ export function advanceKeyPatternPresentation(
 /**
  * 選択中の単一キーがpresentation上の単キーtrigger alternativeに一致するなら、その面を返す。
  * 枠色を既存のレイヤー色へ揃えるための表示補助にだけ使う。
- * semantic Face.triggerの形状は再解釈せず、presentation alternativeとのexact matchだけを見る。
+ * semantic Face.triggerの成立形は再解釈せず、presentation alternativeとのexact matchだけを見る。
  */
 export function findActiveLayerFace(layout: Layout, selected: ReadonlySet<string>): Face | undefined {
   if (selected.size !== 1 || !layout.faces) return undefined;

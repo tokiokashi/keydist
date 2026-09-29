@@ -10,7 +10,7 @@ import { assignmentWithHomeKeys, buildGeometry } from './geometry.ts';
 import { fromDisplayUnits, toDisplayUnits } from './units.ts';
 import { toLayout, type UserLayout } from '../layouts/user-layouts.ts';
 
-test('運指と物理形状をJSONへ書き出して復元できる', () => {
+test('運指と物理配列をJSONへ書き出して復元できる', () => {
   const settings = structuredClone(DEFAULT_GEOMETRY_SETTINGS);
   settings.assignment.id = 'custom';
   settings.assignment.name = '小指を使わない';
@@ -52,7 +52,7 @@ test('未知の設定ファイル形式は拒否する', () => {
   assert.throws(() => parseGeometrySettings('{"version":2,"settings":{}}'), /バージョン/);
 });
 
-test('物理形状のuとmm表示は相互変換しても正準値を保つ', () => {
+test('物理配列のuとmm表示は相互変換しても正準値を保つ', () => {
   const valueU = 0.75;
   const valueMm = toDisplayUnits(valueU, 19.05, 'mm');
   assert.ok(Math.abs(valueMm - 14.2875) < 1e-12);

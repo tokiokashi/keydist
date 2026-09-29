@@ -103,7 +103,7 @@ test('空白だけのラベルはラベル無しとして自動命名に戻る�
   assert.equal(named[1]!.displayName, LAYOUT_BY_ID.get('colemak-dh')!.name);
 });
 
-test('既定の物理配列を変えた配列対象の名前に、形状名が2回並ばない（レビュー指摘L-c）', () => {
+test('既定の物理配列を変えた配列対象の名前に、物理配列名が2回並ばない（レビュー指摘L-c）', () => {
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;
