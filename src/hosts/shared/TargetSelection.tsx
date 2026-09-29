@@ -191,7 +191,7 @@ export function TargetSelection({
     setOpen(false);
     setQuery('');
     setPosition(undefined);
-    if (focusButton) buttonRef.current?.focus();
+    if (focusButton) buttonRef.current?.focus({ preventScroll: true });
   };
 
   // 開いたら置き場を決める（描く前に決まるので、置く前の位置は見えない）。
