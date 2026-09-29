@@ -27,7 +27,7 @@
   position: sticky;
   top: var(--context-bar-height, 3.1rem);
   z-index: 10;
-  padding-block: 0.5rem;
+  padding-block: 0.15rem;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
