@@ -32,6 +32,12 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* ⋯が無い見出し（個別画面）は、右端の列を持たない。 */
+.pane-frame-header:not([data-menu]) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "name target settings";
+}
+
 .pane-frame-name {
   grid-area: name;
   display: flex;
@@ -532,3 +538,22 @@ h2.pane-frame-title {
   color: #d6333f;
 }
 
+
+/* 解析設定の小窓の最上段。各項目の「既定値へ戻す」より目立たせず、本体の幅いっぱいには広げない。 */
+.settings-window-reset-all {
+  margin-bottom: 0.8rem;
+  min-height: 2rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.settings-window-reset-all:hover,
+.settings-window-reset-all:focus-visible {
+  background: var(--surface-muted);
+}

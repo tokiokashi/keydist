@@ -27,7 +27,7 @@ for (const path of PAGES) {
     expect(bar?.height).toBeLessThan(56);
     expect(header?.height).toBeLessThan(40);
 
-    // 1行の中に、テキスト・既定の物理配列・共有（文脈バー）と、対象・解析設定・⋯（見出し）が並ぶ。
+    // 1行の中に、テキスト・既定の物理配列・共有（文脈バー）と、対象・解析設定（見出し）が並ぶ。
     const barTops = await Promise.all([
       page.locator('.context-bar button.text-chip').boundingBox(),
       page.locator('.context-bar .context-select-chip').boundingBox(),

@@ -44,7 +44,13 @@ export interface PaneFrameProps {
   readonly settings: ReactNode;
   /** Workspaceのペインでは、小窓にペイン名を出す。個別画面ではページに1枚なので出さない。 */
   readonly showPaneNameInSettings?: boolean;
-  readonly menuItems: readonly PaneMenuItem[];
+  /** ⋯のメニュー。空なら⋯を出さない（個別画面は出さない。Workspaceのペインが使う）。 */
+  readonly menuItems?: readonly PaneMenuItem[];
+  /**
+   * 解析設定をAnalyzerの既定値（`defaultOptions`）へ戻す。解析設定の小窓の最上段に「すべて初期値に戻す」を出す。
+   * 戻す先は個別画面でもWorkspaceでも既定値で、URLで開いた時の値や保存した値へは戻さない（#637）。
+   */
+  readonly onResetOptions?: () => void;
   /** 対象の実体（配列・物理配列・指の割当）の名前。解決前（読み込み中）は省略する。 */
   readonly header?: ConditionHeaderInfo;
   /** Traceに効く条件の一覧（#544 §3「実効値の出どころを表示する」）。 */
@@ -78,7 +84,8 @@ export function PaneFrame({
   target,
   settings,
   showPaneNameInSettings = false,
-  menuItems,
+  menuItems = [],
+  onResetOptions,
   header,
   conditionRows,
   engineState,
@@ -103,7 +110,7 @@ export function PaneFrame({
 
   return (
     <section className="pane-frame" aria-label={paneName} data-pane-status={engineState.status}>
-      <header className="pane-frame-header" data-sticky={stickyHeader || undefined}>
+      <header className="pane-frame-header" data-sticky={stickyHeader || undefined} data-menu={menuItems.length > 0 || undefined}>
         <div className="pane-frame-name">
           <Heading className="pane-frame-title">{name}</Heading>
           <InfoButton name={name} description={description} />
@@ -123,15 +130,18 @@ export function PaneFrame({
           <SettingsIcon />
           <span className="pane-settings-button-text">解析設定</span>
         </button>
-        <div className="pane-frame-menu">
-          <PaneMenu paneName={paneName} items={menuItems} />
-        </div>
+        {menuItems.length === 0 ? null : (
+          <div className="pane-frame-menu">
+            <PaneMenu paneName={paneName} items={menuItems} />
+          </div>
+        )}
       </header>
 
       <SettingsWindow
         open={settingsOpen}
         onClose={closeSettings}
         anchor={settingsButtonRef.current}
+        {...(onResetOptions === undefined ? {} : { onReset: onResetOptions })}
         {...(showPaneNameInSettings ? { paneName } : {})}
       >
         {settings}

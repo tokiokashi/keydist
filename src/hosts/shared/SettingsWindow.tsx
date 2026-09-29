@@ -21,6 +21,8 @@ export interface SettingsWindowProps {
   readonly paneName?: string;
   /** 開いた時に小窓を寄せる基準（見出しの「解析設定」ボタン）。 */
   readonly anchor: HTMLElement | null;
+  /** 解析設定をすべて初期値へ戻す。あれば本体の最上段にボタンを出す（各項目の「既定値へ戻す」の上）。 */
+  readonly onReset?: () => void;
   readonly children: ReactNode;
 }
 
@@ -52,7 +54,7 @@ function initialPosition(anchor: HTMLElement | null, element: HTMLElement | null
   return clamp({ x: rect.right - width, y: rect.bottom + 6 }, element);
 }
 
-export function SettingsWindow({ open, onClose, paneName, anchor, children }: SettingsWindowProps) {
+export function SettingsWindow({ open, onClose, paneName, anchor, onReset, children }: SettingsWindowProps) {
   const windowRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<Position | undefined>(undefined);
   const focusPendingRef = useRef(false);
@@ -144,7 +146,19 @@ export function SettingsWindow({ open, onClose, paneName, anchor, children }: Se
           </svg>
         </button>
       </div>
-      <div className="settings-window-body">{children}</div>
+      <div className="settings-window-body">
+        {onReset === undefined ? null : (
+          <button
+            type="button"
+            className="settings-window-reset-all"
+            title="対象と条件は変わらない"
+            onClick={onReset}
+          >
+            すべて初期値に戻す
+          </button>
+        )}
+        {children}
+      </div>
     </div>,
     document.body,
   );

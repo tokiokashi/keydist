@@ -13,7 +13,6 @@ import {
   conditionHeaderInfoFromResolvedInput,
   nonDefaultConditionRows,
   PaneFrame,
-  resetOptionsMenuItem,
   setupNumbersOf,
   summarizeNonDefaultConditions,
   TargetSelection,
@@ -252,7 +251,7 @@ export function ComparisonStandalonePage({
               />
             )}
             settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
-            menuItems={[resetOptionsMenuItem(() => changeOptions(comparisonAnalyzer.defaultOptions))]}
+            onResetOptions={() => changeOptions(comparisonAnalyzer.defaultOptions)}
             conditionRows={[]}
             engineState={extraction}
             settingsDiagnostics={decoded.diagnostics}

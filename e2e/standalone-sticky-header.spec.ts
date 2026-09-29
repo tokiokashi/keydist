@@ -3,7 +3,7 @@ import { waitForHydration } from './hydration-helper.ts';
 import { openSettings, openTargetSelection, targetButton } from './pane-helper.ts';
 
 /**
- * 個別画面では、ペインの見出し（Analyzer名 / 対象 / 解析設定 / ⋯）を文脈バーの下に一緒に固定する。
+ * 個別画面では、ペインの見出し（Analyzer名 / 対象 / 解析設定）を文脈バーの下に一緒に固定する。
  * 図を下までスクロールしても対象と解析設定を変えられること、開いた選択・小窓が見出しからずれないことを確かめる。
  */
 

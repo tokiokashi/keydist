@@ -10,7 +10,6 @@ import {
   combinePaneStates,
   conditionHeaderInfoFromResolvedInput,
   PaneFrame,
-  resetOptionsMenuItem,
   setupNumbersOf,
   targetChoiceGroups,
   TargetSelection,
@@ -248,7 +247,7 @@ export function BigramFlowStandalonePage({
               />
             )}
             settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
-            menuItems={[resetOptionsMenuItem(() => changeOptions(bigramFlowAnalyzer.defaultOptions))]}
+            onResetOptions={() => changeOptions(bigramFlowAnalyzer.defaultOptions)}
             header={header}
             conditionRows={conditionRows}
             engineState={combinePaneStates(extraction, pane.trace)}

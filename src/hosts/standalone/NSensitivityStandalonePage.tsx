@@ -12,7 +12,6 @@ import {
   conditionHeaderInfoFromResolvedInput,
   nonDefaultConditionRows,
   PaneFrame,
-  resetOptionsMenuItem,
   setupNumbersOf,
   summarizeNonDefaultConditions,
   TargetSelection,
@@ -224,7 +223,7 @@ export function NSensitivityStandalonePage({
               />
             )}
             settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
-            menuItems={[resetOptionsMenuItem(() => changeOptions(nSensitivityAnalyzer.defaultOptions))]}
+            onResetOptions={() => changeOptions(nSensitivityAnalyzer.defaultOptions)}
             conditionRows={[]}
             engineState={extraction}
             settingsDiagnostics={decoded.diagnostics}
