@@ -347,45 +347,90 @@ test('multiTargetConditionSummary: 全対象が同じ条件なら差の節は空
   assert.equal(conditionSummaryLine(summary.rows).changedCount, 1);
 });
 
-test('multiTargetConditionSummary: 1つだけNが違う対象は、その対象のNだけが差に出る。共通のNは他の対象の値', () => {
+test('multiTargetConditionSummary: 1つだけNが違う時、Nは共通の行から外れ、効く対象すべての値が差に出る', () => {
   const summary = multiTargetConditionSummary(targetsWith([], [[], [['s', 'windowSize', 2]], []]));
-  assert.deepEqual(summary.diffs, [
-    { key: 's2', label: 'Setup s2', items: [{ id: 'windowSize', label: '先読みN', displayValue: '2' }] },
+  assert.equal(summary.rows.some((row) => row.id === 'windowSize'), false);
+  assert.deepEqual(summary.diffs.map((d) => [d.key, d.items.map((i) => i.displayValue)]), [
+    ['s1', ['3']],
+    ['s2', ['2']],
+    ['s3', ['3']],
   ]);
-  const n = summary.rows.find((row) => row.id === 'windowSize')!;
-  assert.equal(n.displayValue, '3');
-  assert.equal(n.origin.kind, 'default');
-  // 閉じた1行の数えには、対象ごとの上書きは入らない
   assert.equal(conditionSummaryLine(summary.rows).changedCount, 0);
 });
 
-test('multiTargetConditionSummary: 2つの対象が別々の項目で違えば、それぞれ違う項目だけを持つ。効かない上書き（親指キーの無い配列の親指シフト振り替え）は数えない', () => {
+test('multiTargetConditionSummary: 2つの対象が別々の項目で違えば、値の違う項目だけが差に出る。効かない上書き（親指キーの無い配列の親指シフト振り替え）は数えない', () => {
   const summary = multiTargetConditionSummary(targetsWith([], [
     [['s', 'windowSize', 2], ['s', 'preferOppositeThumb', true]],
     [['s', 'sfbHomeCost', false]],
-    [],
   ]));
   assert.deepEqual(summary.diffs.map((d) => [d.key, d.items.map((i) => i.id)]), [
-    ['s1', ['windowSize']],
-    ['s2', ['sfbHomeCost']],
+    ['s1', ['windowSize', 'sfbHomeCost']],
+    ['s2', ['windowSize', 'sfbHomeCost']],
   ]);
+  assert.equal(summary.rows.some((row) => row.id === 'preferOppositeThumb'), true);
 });
 
-test('multiTargetConditionSummary: 全体の上書きと同じ値を対象ごとに書いても差にしない。効かない上書きも数えない', () => {
+test('multiTargetConditionSummary: 全体の上書きと同じ値を対象ごとに書いても差にしない', () => {
   const same = multiTargetConditionSummary(targetsWith([['g', 'windowSize', 4]], [[['s', 'windowSize', 4]], []]));
   assert.deepEqual(same.diffs, []);
-  // 対象ごとの上書きが既定と同じ値でも、全体が別の値なら共通と違うので差になる
-  const differs = multiTargetConditionSummary(targetsWith([['g', 'windowSize', 4]], [[['s', 'windowSize', 3]], []]));
-  assert.deepEqual(differs.diffs.map((d) => d.key), ['s1']);
+  assert.equal(same.rows.find((row) => row.id === 'windowSize')!.originLabel, '上書き: 全体');
 });
 
-test('multiTargetConditionSummary: 全対象が対象ごとに上書きしていれば、同じ値ならその値を共通に、違えば既定値を共通にする', () => {
+test('multiTargetConditionSummary: 全対象が同じ値へ上書きしたら共通の行。出どころは「各Setup」', () => {
   const equal = multiTargetConditionSummary(targetsWith([], [[['s', 'windowSize', 2]], [['s', 'windowSize', 2]]]));
-  assert.equal(equal.rows.find((row) => row.id === 'windowSize')!.displayValue, '2');
+  const n = equal.rows.find((row) => row.id === 'windowSize')!;
+  assert.equal(n.displayValue, '2');
+  assert.equal(n.originLabel, '上書き: 各Setup');
   assert.deepEqual(equal.diffs, []);
   const differ = multiTargetConditionSummary(targetsWith([], [[['s', 'windowSize', 2]], [['s', 'windowSize', 4]]]));
-  assert.equal(differ.rows.find((row) => row.id === 'windowSize')!.displayValue, '3');
+  assert.equal(differ.rows.some((row) => row.id === 'windowSize'), false);
   assert.equal(differ.diffs.length, 2);
+});
+
+/** Setup（配列 + 物理配列）を並べた時の、対象ごとの条件。 */
+function setupTargets(
+  specs: readonly { layoutId: string; shapeId: string }[],
+  language: 'en' | 'ja',
+  overrides: typeof EMPTY_SETTINGS_OVERRIDES = EMPTY_SETTINGS_OVERRIDES,
+) {
+  const setups = specs.map((spec, i) => ({ id: `t${i + 1}`, ...spec }));
+  return setups.map((setup) => {
+    const input = resolveWith({ kind: 'setup', setupId: setup.id }, setups, overrides, language);
+    return { key: setup.id, label: setup.id, rows: traceConditionSummary(input.cascade, CATALOG) };
+  });
+}
+
+test('multiTargetConditionSummary: ANSIとJISのQWERTYは、指の割当が共通の行に出ず、両方の値が差に出る', () => {
+  const summary = multiTargetConditionSummary(setupTargets([
+    { layoutId: 'qwerty', shapeId: 'row-staggered' },
+    { layoutId: 'qwerty', shapeId: 'jis-row-staggered' },
+  ], 'en'));
+  assert.equal(summary.rows.some((row) => row.id === 'fingerAssignmentId'), false);
+  const values = summary.diffs.map((d) => d.items.find((i) => i.id === 'fingerAssignmentId')?.displayValue);
+  assert.equal(values.length, 2);
+  assert.notEqual(values[0], values[1]);
+});
+
+test('multiTargetConditionSummary: QWERTYと大西配列は、ローマ字規則が並びによらず共通の行に出ず、差に出る', () => {
+  const specs = [{ layoutId: 'qwerty', shapeId: 'row-staggered' }, { layoutId: 'oonishi', shapeId: 'row-staggered' }];
+  for (const ordered of [specs, [...specs].reverse()]) {
+    const summary = multiTargetConditionSummary(setupTargets(ordered, 'ja'));
+    assert.equal(summary.rows.some((row) => row.id === 'romajiRuleId'), false);
+    const values = summary.diffs.map((d) => d.items.find((i) => i.id === 'romajiRuleId')?.displayValue);
+    assert.equal(new Set(values).size, 2);
+  }
+});
+
+test('multiTargetConditionSummary: 物理配列のレベルの上書きが片方の対象にしか効かない時も差に出る', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'shape', shapeId: 'ortholinear' }, 'fingerAssignmentId', 'jis-default');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const summary = multiTargetConditionSummary(setupTargets([
+    { layoutId: 'qwerty', shapeId: 'row-staggered' },
+    { layoutId: 'qwerty', shapeId: 'ortholinear' },
+  ], 'en', written.overrides));
+  assert.equal(summary.rows.some((row) => row.id === 'fingerAssignmentId'), false);
+  assert.equal(summary.diffs.length, 2);
 });
 
 test('multiTargetConditionSummary: excludeIdsの項目は共通の行にも差にも出ない', () => {

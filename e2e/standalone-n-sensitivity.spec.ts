@@ -222,13 +222,14 @@ test('条件の要約は先読みNを出さず、対象ごとの差にもNを出
 
   const summary = page.locator('.pane-condition-summary');
   await expect(summary).toBeVisible({ timeout: 10_000 });
-  await expect(summary.locator('summary')).toContainText('同指連続のホーム復帰距離');
+  // sfbHomeCostは対象どうしで効く値が違う（fixed-aはON、fixed-bは全体のOFF）ので共通の行に出ず、差に出る
   await expect(summary.locator('summary')).toContainText('対象ごとに差あり');
   await expect(summary.locator('summary')).not.toContainText('先読みN');
   await summary.locator('summary').click();
   const diffs = summary.getByRole('region', { name: '対象ごとの差' });
-  await expect(diffs.locator('.pane-condition-diff')).toHaveCount(1);
-  await expect(diffs.locator('.pane-condition-diff')).toContainText('同指連続のホーム復帰距離');
+  await expect(diffs.locator('.pane-condition-diff')).toHaveCount(2);
+  await expect(diffs.locator('.pane-condition-diff').first()).toContainText('同指連続のホーム復帰距離=ON');
+  await expect(diffs.locator('.pane-condition-diff').last()).toContainText('同指連続のホーム復帰距離=OFF');
   await expect(summary).not.toContainText('先読みN');
 });
 
@@ -335,4 +336,21 @@ test('狭い画面（390）でもチャートは置かれた領域の幅で描�
   expect(fontSize).toBe('10px');
   const scale = await svg.evaluate((el) => (el as SVGSVGElement).getBoundingClientRect().width / (el as SVGSVGElement).viewBox.baseVal.width);
   expect(scale).toBeCloseTo(1, 1);
+});
+
+test('上書きありのSetupを1件だけ選ぶと、条件の要約にその条件が出る', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('keydist:setup-library', JSON.stringify({
+      version: 1,
+      setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' }],
+      overrides: { setup: { 'fixed-a': { sfbHomeCost: false } } },
+    }));
+    localStorage.setItem('keydist:multi-target-selection', JSON.stringify({ version: 1, targets: [{ kind: 'setup', setupId: 'fixed-a' }] }));
+  });
+  await page.goto('/standalone/n-sensitivity');
+  const summary = page.locator('.pane-condition-summary');
+  await expect(summary.locator('summary')).toContainText('同指連続のホーム復帰距離', { timeout: 10_000 });
+  await expect(summary.locator('summary')).not.toContainText('対象ごとに差あり');
+  await summary.locator('summary').click();
+  await expect(summary).toContainText('上書き: このSetup');
 });

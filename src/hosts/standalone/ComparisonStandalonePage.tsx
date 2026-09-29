@@ -163,7 +163,6 @@ export function ComparisonStandalonePage({
         rows: traceConditionSummary(member.resolution.input.cascade, conditionNames),
       }];
     }),
-    { names: conditionNames },
   ), [members, namedByKey, conditionNames]);
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);

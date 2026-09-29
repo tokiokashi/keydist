@@ -182,7 +182,7 @@ export function NSensitivityStandalonePage({
         rows: traceConditionSummary(member.resolution.input.cascade, conditionNames),
       }];
     }),
-    { excludeIds: N_SENSITIVITY_CONDITION_EXCLUDE_IDS, names: conditionNames },
+    { excludeIds: N_SENSITIVITY_CONDITION_EXCLUDE_IDS },
   ), [members, namedByKey, conditionNames]);
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);

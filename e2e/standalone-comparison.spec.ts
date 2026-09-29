@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
 import { dismissAutoOpenedSelection, expectChosenTarget, expectTargetNames, openSettings, openTargetSelection, targetButton, targetNames, toggleTarget } from './pane-helper.ts';
 
@@ -263,9 +263,11 @@ test('対象ごとに条件が違う時は、閉じた1行に「対象ごとに�
   await expect(summary.locator('summary')).toContainText('対象ごとに差あり');
   await summary.locator('summary').click();
   const diffs = summary.getByRole('region', { name: '対象ごとの差' });
-  await expect(diffs.locator('.pane-condition-diff')).toHaveCount(1);
-  await expect(diffs.locator('.pane-condition-diff')).toContainText('先読みN=2');
-  await expect(diffs.locator('.pane-condition-diff')).not.toContainText('同指連続');
+  // Nが対象どうしで違うので、共通の行から外れ、効く対象すべての値が出る
+  await expect(diffs.locator('.pane-condition-diff')).toHaveCount(2);
+  await expect(diffs.locator('.pane-condition-diff').first()).toContainText('先読みN=2');
+  await expect(diffs.locator('.pane-condition-diff').last()).toContainText('先読みN=3');
+  await expect(diffs).not.toContainText('同指連続');
 });
 
 test('全対象の条件が同じなら、対象ごとの差の節も「対象ごとに差あり」も出ない', async ({ page }) => {
@@ -731,4 +733,60 @@ test('「共有」でコピーしたURLを新しいページで開くと、解�
   } finally {
     await other.close();
   }
+});
+
+async function openSummaryWith(page: Page, setups: readonly { id: string; layoutId: string; shapeId: string }[]) {
+  await page.addInitScript(({ setups: list }) => {
+    localStorage.setItem('keydist:setup-library', JSON.stringify({ version: 1, setups: list, overrides: {} }));
+    localStorage.setItem(
+      'keydist:multi-target-selection',
+      JSON.stringify({ version: 1, targets: list.map((s) => ({ kind: 'setup', setupId: s.id })) }),
+    );
+  }, { setups });
+  await page.goto('/standalone/comparison');
+  await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(setups.length, { timeout: 10_000 });
+  const summary = page.locator('.pane-condition-summary');
+  await summary.locator('summary').click();
+  return summary;
+}
+
+test('ANSIとJISのQWERTYは、指の割当を共通の行に出さず、対象ごとの差に両方の値を出す', async ({ page }) => {
+  const summary = await openSummaryWith(page, [
+    { id: 'ansi', layoutId: 'qwerty', shapeId: 'row-staggered' },
+    { id: 'jis', layoutId: 'qwerty', shapeId: 'jis-row-staggered' },
+  ]);
+  await expect(summary.locator('summary')).toContainText('対象ごとに差あり');
+  const diffs = summary.getByRole('region', { name: '対象ごとの差' });
+  await expect(diffs.locator('.pane-condition-diff')).toHaveCount(2);
+  await expect(diffs.locator('.pane-condition-diff').first()).toContainText('指の割当=既定（列固定）');
+  await expect(diffs.locator('.pane-condition-diff').last()).toContainText('指の割当=JIS既定（列固定）');
+});
+
+test('QWERTYと大西配列は、並びによらずローマ字規則を共通の行に出さず、対象ごとの差に出す', async ({ page }) => {
+  const summary = await openSummaryWith(page, [
+    { id: 'onishi', layoutId: 'oonishi', shapeId: 'row-staggered' },
+    { id: 'qwerty', layoutId: 'qwerty', shapeId: 'row-staggered' },
+  ]);
+  const diffs = summary.getByRole('region', { name: '対象ごとの差' });
+  await expect(diffs.locator('.pane-condition-diff')).toHaveCount(2);
+  await expect(diffs).toContainText('ローマ字規則=大西式');
+  await expect(diffs).toContainText('ローマ字規則=訓令式');
+});
+
+test('上書きありのSetupを1件だけ選ぶと、条件の要約にその条件が出る（「条件」の列が無くても条件が見える）', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('keydist:setup-library', JSON.stringify({
+      version: 1,
+      setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' }],
+      overrides: { setup: { 'fixed-a': { windowSize: 2 } } },
+    }));
+    localStorage.setItem('keydist:multi-target-selection', JSON.stringify({ version: 1, targets: [{ kind: 'setup', setupId: 'fixed-a' }] }));
+  });
+  await page.goto('/standalone/comparison');
+  await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(1, { timeout: 10_000 });
+  const summary = page.locator('.pane-condition-summary');
+  await expect(summary.locator('summary')).toContainText('先読みN: 2', { timeout: 10_000 });
+  await expect(summary.locator('summary')).not.toContainText('対象ごとに差あり');
+  await summary.locator('summary').click();
+  await expect(summary).toContainText('上書き: このSetup');
 });
