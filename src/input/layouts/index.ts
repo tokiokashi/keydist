@@ -70,13 +70,13 @@ const ALPHA: Layout[] = [
     'qwertyuiop[]',
     "asdfghjkl;'",
     'zxcvbnm,./',
-  ])), ['くわーてぃ', 'くぉーてぃ']),
+  ])), ['くわーてぃ', 'くぉーてぃ', 'くあーてぃ', 'くうぇるてぃ']),
   withAliases(withShiftedOutputs(fromRows('dvorak', 'Dvorak', [
     '1234567890[]',
     "',.pyfgcrl/=",
     'aoeuidhtns-',
     ';qjkxbmwvz',
-  ])), ['どゔぉらく', 'どヴぉらく']),
+  ])), ['どゔぉらっく', 'どぼらっく']),
   withAliases(withShiftedOutputs(fromRows('colemak', 'Colemak', [
     '1234567890-=',
     'qwfpgjluy;[]',

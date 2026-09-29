@@ -100,7 +100,7 @@ function makeLayout(
   );
   layout.legends.set(THUMB_KEY.LT, 'Space');
   layout.legends.set(THUMB_KEY.RT, 'Space');
-  return withAliases(layout, ['しんじす', 'しんじすはいれつ', 'jis']);
+  return withAliases(layout, ['しんじす', 'しんじすはいれつ']);
 }
 
 export const SHIN_JIS_PREFIX = makeLayout('shin-jis-prefix', '新JIS（逐次シフト）', 'prefix', 'single');

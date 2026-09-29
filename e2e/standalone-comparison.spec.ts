@@ -343,6 +343,7 @@ test('絞り込み欄は読みでも探せ、カタカナで打っても同じ�
   await expect(selection.locator('input[type="checkbox"]')).toHaveCount(1);
   await expect(selection.locator('input[value="layout:naginata-v18"]')).toBeVisible();
   await filter.fill('ナギナタ');
+  await expect(selection.locator('input[type="checkbox"]')).toHaveCount(1);
   await expect(selection.locator('input[value="layout:naginata-v18"]')).toBeVisible();
 });
 
