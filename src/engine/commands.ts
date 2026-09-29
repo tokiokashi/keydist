@@ -607,6 +607,25 @@ export function setMultiBaselineCommand(baseline: AnalysisTarget | undefined): C
   };
 }
 
+/**
+ * トップで選んだ配列を、Singleの対象にし、Multiの組の1つとしても入れる（#741のオーナー決定）。
+ * Multiにすでにあれば重複させず、並びも動かさない（`withMultiTargets`が畳む）。
+ * 1コマンド・1履歴なので、Undo 1回でSingleとMultiが一緒に戻る。どちらか一方だけが
+ * すでに揃っていても、もう一方は書く。両方が揃っていれば何もしない。
+ */
+export function setTargetForSingleAndMultiCommand(target: AnalysisTarget): Command<KeydistAssets> {
+  return (current) => {
+    const multi = withMultiTargets(current.multiTargetSelection, [...current.multiTargetSelection.targets, target]);
+    const single = withSingleTarget(current.singleTargetSelection, target);
+    if (multi === current.multiTargetSelection && single === current.singleTargetSelection) return { kind: 'no-op' };
+    return {
+      kind: 'applied',
+      label: '対象を選ぶ',
+      changes: { multiTargetSelection: multi, singleTargetSelection: single },
+    };
+  };
+}
+
 /** Singleの対象を差し替える（#663）。 */
 export function setSingleTargetCommand(target: AnalysisTarget): Command<KeydistAssets> {
   return (current) => {
