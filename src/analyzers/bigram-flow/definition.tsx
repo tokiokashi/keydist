@@ -32,6 +32,7 @@ import {
   SelectOptionField,
   type OptionBinding,
 } from '#ui/primitives/option-fields.tsx';
+import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { BIGRAM_FLOW_PANE_META } from './pane-meta.ts';
 import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
 import './bigram-vector-view.css';
@@ -648,6 +649,13 @@ export interface BigramFlowBodyProps {
 }
 
 /**
+ * 図の読み方。図ごとの小見出しの横のⓘで出す（#641）。常に出す凡例にはしない（狭いペインで図を覆うため）。
+ * 操作すれば分かること（キーにポインタを乗せると線を強調する等）は書かない。
+ */
+const KEYBOARD_FLOW_READING = 'キーからキーへの移動を線で描く。太さが回数で、線は始点が薄く終点が濃い。';
+const RELATIVE_VECTORS_READING = '打鍵ごとの移動の向きと距離を、打ち始めのキーを中心に重ねて描く。外周は移動方向の分布、白い線は平均の移動を表す。';
+
+/**
  * Bigram Flowの本体（図）。`extracted`（`extract.ts`の計算結果）と見た目だけの設定を描くだけで、
  * Trace・vectorそのものからの再計算はしない。解析設定の入力部品は持たない（`BigramFlowSettings`）。
  */
@@ -696,7 +704,10 @@ export function BigramFlowBody({
       </p>
 
       <section className="flow-block" aria-label="Keyboard Flow">
-        <h3 className="flow-block-title">Keyboard Flow</h3>
+        <div className="flow-block-heading">
+          <h3 className="flow-block-title">Keyboard Flow</h3>
+          <InfoButton name="Keyboard Flow" description={KEYBOARD_FLOW_READING} />
+        </div>
         <KeyboardFlow
           geometry={geometry}
           layout={layout}
@@ -720,9 +731,12 @@ export function BigramFlowBody({
           exit={{ opacity: 0, y: 10 }}
           transition={{ type: 'spring', stiffness: 180, damping: 24 }}
         >
-          <h3 className="flow-block-title">
-            Relative vectors <span className="flow-block-subject">{fingerSetLabel(selectedFingers)}</span>
-          </h3>
+          <div className="flow-block-heading">
+            <h3 className="flow-block-title">
+              Relative vectors <span className="flow-block-subject">{fingerSetLabel(selectedFingers)}</span>
+            </h3>
+            <InfoButton name="Relative vectors" description={RELATIVE_VECTORS_READING} />
+          </div>
           <div className="flow-two-up">
             <MovementProfilePlot
               hand="left"

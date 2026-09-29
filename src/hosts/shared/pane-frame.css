@@ -98,11 +98,6 @@ h2.pane-frame-title {
   color: var(--text);
 }
 
-.pane-info-button {
-  width: 1.6rem;
-  height: 1.6rem;
-}
-
 /* 狭いペインは2段に固定する（1段目: 名前・ⓘ・⋯、2段目: 対象・解析設定）。解析設定はアイコンだけにする。 */
 @container pane (max-width: 40rem) {
   .pane-frame-header {
@@ -121,29 +116,6 @@ h2.pane-frame-title {
   .pane-settings-button-text {
     display: none;
   }
-}
-
-.pane-info {
-  position: relative;
-  display: inline-flex;
-}
-
-.pane-info-popover {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 30;
-  width: max-content;
-  max-width: min(22rem, calc(100cqw - 1rem));
-  padding: 0.55rem 0.7rem;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  background: var(--surface-raised);
-  color: var(--text);
-  box-shadow: 0 6px 20px rgb(0 0 0 / 14%);
-  font-size: 0.8rem;
-  font-weight: 400;
-  line-height: 1.5;
 }
 
 .pane-menu {

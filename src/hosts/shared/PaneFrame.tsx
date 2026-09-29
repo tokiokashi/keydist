@@ -5,7 +5,8 @@ import { describeEngineRequestError, paneStatusLabel } from './pane-status.ts';
 import type { ConditionHeaderInfo, ConditionSummaryRow } from './condition-summary.ts';
 import { ConditionSummary } from './ConditionSummary.tsx';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
-import { PaneInfoButton, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
+import { InfoButton } from '#ui/primitives/info-button.tsx';
+import { PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
 import './pane-frame.css';
 
@@ -98,7 +99,7 @@ export function PaneFrame({
       <header className="pane-frame-header">
         <div className="pane-frame-name">
           <Heading className="pane-frame-title">{name}</Heading>
-          <PaneInfoButton name={name} description={description} />
+          <InfoButton name={name} description={description} />
           {statusLabel ? (
             <span className="pane-status-badge" data-status={engineState.status}>{statusLabel}</span>
           ) : null}

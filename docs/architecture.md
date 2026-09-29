@@ -244,7 +244,7 @@ src/
   editors/           資産を編集するUI
   tester/            Tester（engine/ は純粋）
   ui/
-    primitives/      汎用部品（解析設定の項目を描く入力部品と「既定値へ戻す」は option-fields.tsx）
+    primitives/      汎用部品（解析設定の項目を描く入力部品と「既定値へ戻す」は option-fields.tsx、短い説明のⓘは info-button.tsx）
     theme/           token
     keyboard/        キーボード図など、入力の型を知る部品
     charts/          グラフの部品
