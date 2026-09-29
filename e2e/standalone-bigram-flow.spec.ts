@@ -924,3 +924,35 @@ test('未選択の時に表示している既定の対象を押しても「選�
     .poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection')))
     .toContain('qwerty');
 });
+
+test('キーボードで開いて表示中のラジオにSpaceを押すと「選んだ」になって閉じる（#679）', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  expect(await page.evaluate(() => localStorage.getItem('keydist:single-target-selection'))).toBeNull();
+
+  const selection = await openTargetSelection(page);
+  const qwerty = selection.getByRole('radio', { name: 'QWERTY' }).first();
+  await qwerty.focus();
+  await expect(qwerty).toBeChecked();
+  await page.keyboard.press('Space');
+  await expect(selection).toHaveCount(0);
+  await expect(targetButton(page)).toBeFocused();
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection')))
+    .toContain('qwerty');
+});
+
+test('選ばれているラジオから矢印キーで動かしても閉じず、Enterでは確定して閉じる（#679）', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+
+  const selection = await openTargetSelection(page);
+  await selection.getByRole('radio', { name: 'QWERTY' }).first().focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(selection).toBeVisible();
+  const moved = selection.locator('input[type="radio"]:checked');
+  await expect(moved).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(selection).toHaveCount(0);
+  await expect(targetButton(page)).toBeFocused();
+});

@@ -279,6 +279,15 @@ export function TargetSelection({
     onChange(checked ? [...selected, target] : selected.filter((target) => analysisTargetKey(target) !== key));
   };
 
+  /**
+   * 選ばれているラジオを押した・Space/Enterで確定した時の共通処理（書き込んで閉じる）。
+   * 押す前から選ばれているのでchangeは起きない。ホストが既定の対象を表示しているだけの時も「選んだ」にする。
+   */
+  const confirmChecked = (target: AnalysisTarget, key: string) => {
+    toggle(target, key, true);
+    close(true);
+  };
+
   const ariaSummary = names.length === 0 ? '未選択' : names.join('、');
 
   return (
@@ -370,7 +379,15 @@ export function TargetSelection({
                           // 選ばれているラジオを押してもchangeは起きない。ホストが既定の対象を表示しているだけの時も
                           // 「選んだ」として書き込み、押したら閉じる動きも揃える（描画時点で選ばれていたものだけ。
                           // 矢印キーで別のラジオへ移る時のclickは、移り先がまだ選ばれていないので対象にならない）。
-                          onClick={mode === 'single' && checked ? () => toggle(choice.target, choice.key, true) : undefined}
+                          onClick={mode === 'single' && checked ? () => confirmChecked(choice.target, choice.key) : undefined}
+                          // Chromeでは選ばれているラジオでSpaceを押してもclickが起きないので、キーボードでも同じ確定を通す。
+                          // 矢印キーはここでは扱わず、これまでどおりchangeで書いて閉じない。
+                          onKeyDown={mode === 'single' && checked ? (event) => {
+                            if (event.key !== ' ' && event.key !== 'Enter') return;
+                            // Enterのフォーム送信・Spaceのスクロールやclick（ブラウザによっては二重に走る）を止める。
+                            event.preventDefault();
+                            confirmChecked(choice.target, choice.key);
+                          } : undefined}
                         />
                         {mode === 'multiple' ? (
                           <i
