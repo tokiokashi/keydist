@@ -78,6 +78,7 @@ h1 {
 .hero > .usage-title {
   margin: 2.5rem 0 1rem;
   font-size: 1.4rem;
+  font-weight: 650;
 }
 
 /* 使い方のカード。パソコン幅は2列、スマホ幅は1列 */
@@ -109,6 +110,7 @@ h1 {
 .usage-card h3 {
   margin: 0;
   font-size: 1.05rem;
+  font-weight: 650;
 }
 
 .usage-card p {

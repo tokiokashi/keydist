@@ -275,3 +275,17 @@ test('トップは使い方のページで、旧版への導線は無く、こ�
   await hero.getByRole('link', { name: 'これまでの Analyzer', exact: true }).click();
   await expect(page).toHaveURL(/\/analyzer\/?$/);
 });
+
+test('トップの画面の名前から各画面に行ける', async ({ page }) => {
+  const targets = [
+    ['Bigram Flow', /\/standalone\/bigram-flow$/],
+    ['比較表', /\/standalone\/comparison$/],
+    ['N感度', /\/standalone\/n-sensitivity$/],
+  ] as const;
+  for (const [name, url] of targets) {
+    await page.goto('/');
+    await waitForHydration(page);
+    await page.locator('.hero').getByRole('link', { name, exact: true }).click();
+    await expect(page).toHaveURL(url);
+  }
+});
