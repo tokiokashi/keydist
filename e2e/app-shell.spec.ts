@@ -8,7 +8,7 @@ import { waitForHydration } from './hydration-helper.ts';
  */
 const PACKAGE_VERSION = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
 
-test('サイドバーは区分ごとのナビゲーションと、最下端の版表示・旧版・テーマ切替を持つ', async ({ page }) => {
+test('サイドバーは区分ごとのナビゲーションと、最下端の版表示・テーマ切替を持つ', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   await waitForHydration(page);
   const sidebar = page.locator('#app-sidebar');
@@ -20,7 +20,8 @@ test('サイドバーは区分ごとのナビゲーションと、最下端の�
   await expect(sidebar.getByRole('link', { name: 'Bigram Flow', exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(sidebar.getByText('Analyzerを並べて見る画面。')).toBeVisible();
   await expect(sidebar).toContainText(`v${PACKAGE_VERSION}`);
-  await expect(sidebar.getByRole('link', { name: '旧版', exact: true })).toHaveAttribute('href', /classic\/$/);
+  await expect(sidebar.getByRole('link', { name: '旧版' })).toHaveCount(0);
+  await expect(sidebar.locator('a[href*="classic"]')).toHaveCount(0);
 
   await sidebar.getByRole('link', { name: '比較表', exact: true }).click();
   await expect(page).toHaveURL(/\/standalone\/comparison$/);
@@ -259,4 +260,18 @@ test('トップとTesterもシェルに載り、旧Analyzerは載らない', asy
   await expect(page.locator('#app-sidebar').getByRole('link', { name: 'Tester', exact: true })).toHaveAttribute('aria-current', 'page');
   await page.goto('/analyzer');
   await expect(page.locator('#app-sidebar')).toHaveCount(0);
+});
+
+test('トップは使い方のページで、旧版への導線は無く、これまでの Analyzer へ行ける', async ({ page }) => {
+  await page.goto('/');
+  await waitForHydration(page);
+  const hero = page.locator('.hero');
+  await expect(hero.getByRole('heading', { name: '使い方', level: 2 })).toBeVisible();
+  await expect(hero.getByRole('heading', { name: '条件の要約', level: 3 })).toBeVisible();
+  await expect(hero.locator('a[href*="classic"]')).toHaveCount(0);
+  await expect(page.locator('#app-sidebar').locator('a[href*="classic"]')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: '旧版' })).toHaveCount(0);
+
+  await hero.getByRole('link', { name: 'これまでの Analyzer', exact: true }).click();
+  await expect(page).toHaveURL(/\/analyzer\/?$/);
 });

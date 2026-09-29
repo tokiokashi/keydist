@@ -13,7 +13,7 @@ import type { ThemeChoice } from '../theme/theme.ts';
 
 /**
  * サイドバーの中身（docs/architecture.md「サイドバー」）。ナビゲーションだけを持ち、
- * 最下端にだけ例外として版表示・旧版・テーマ切替を置く。
+ * 最下端にだけ例外として版表示・テーマ切替を置く。
  *
  * 区分見出しは英語（Analyze / Workspace / Assets）。Analyzeの中は対象の数で
  * Single / Multi に分ける。Testerは区分に入れず単独で置く。
@@ -135,8 +135,6 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
 
       <div className="sidebar-foot">
         <span className="sidebar-version">v{__KEYDIST_VERSION__}</span>
-        {/* 旧版は別のビルドとして同梱するのでルーターの外。devサーバーには無いので手元では404になる */}
-        <a className="sidebar-old" href={`${import.meta.env.BASE_URL}classic/`}>旧版</a>
         <ThemeSwitch />
       </div>
     </>

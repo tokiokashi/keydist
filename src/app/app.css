@@ -75,14 +75,40 @@ h1 {
   font-size: 0.85rem;
 }
 
-.route-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: 1rem;
-  margin-top: 2rem;
+.usage {
+  margin-top: 2.5rem;
 }
 
-.route-card,
+.usage h2 {
+  margin: 0 0 1rem;
+  font-size: 1.4rem;
+}
+
+.usage h3 {
+  margin: 1.5rem 0 0.4rem;
+  font-size: 1.05rem;
+}
+
+.usage > p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.hero > p.hero-legacy {
+  margin-top: 1.25rem;
+  font-size: 0.85rem;
+}
+
+.hero-legacy a {
+  color: var(--text-muted);
+  text-underline-offset: 3px;
+}
+
+.hero-legacy a:hover {
+  color: var(--text);
+}
+
 .feature-placeholder {
   padding: 1.25rem;
   border: 1px solid var(--border);
@@ -90,13 +116,6 @@ h1 {
   background: var(--surface);
 }
 
-.route-card {
-  display: grid;
-  gap: 0.35rem;
-  text-decoration: none;
-}
-
-.route-card span,
 .feature-placeholder {
   color: var(--text-muted);
 }

@@ -159,7 +159,7 @@
   line-height: 1.55;
 }
 
-/* 最下端: 版表示・旧版・テーマ切替 */
+/* 最下端: 版表示・テーマ切替 */
 .sidebar-foot {
   display: flex;
   align-items: center;
@@ -172,17 +172,6 @@
 .sidebar-version {
   color: var(--text-muted);
   font: 600 0.72rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-
-.sidebar-old {
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  text-underline-offset: 3px;
-  white-space: nowrap;
-}
-
-.sidebar-old:hover {
-  color: var(--text);
 }
 
 .sidebar-theme {
