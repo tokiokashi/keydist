@@ -25,6 +25,10 @@ async function expectNameColumnStays(page: Page, tableSelector: string) {
   const after = (await cell.boundingBox())!.x;
   expect(after).toBeCloseTo(before, 0);
 
+  // 狭い幅でも固定した列が画面の半分を超えない（数値の列を読む幅を残す）。
+  const width = (await cell.boundingBox())!.width;
+  expect(width).toBeLessThan(390 / 2);
+
   // 固定した列の背景は透けない（数値がその下を通る）。
   const bg = await cell.evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(bg).not.toBe('rgba(0, 0, 0, 0)');
