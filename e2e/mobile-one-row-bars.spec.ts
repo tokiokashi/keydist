@@ -47,7 +47,7 @@ for (const path of PAGES) {
 test('スマホ幅: 物理配列はアイコンだけで、selectを操作して選べる', async ({ page }) => {
   await openReady(page, 'bigram-flow');
   const chip = page.locator('.context-bar .context-select-chip');
-  await expect(chip).toHaveAttribute('title', '既定の物理配列');
+  await expect(chip).toHaveAttribute('title', '既定の物理配列: 配列を対象にした時に使う物理配列');
   const box = await chip.boundingBox();
   expect(box?.width).toBeLessThan(48);
   const select = page.getByLabel('既定の物理配列');

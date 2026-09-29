@@ -24,7 +24,7 @@ export function DefaultShapeChip({ overrides, dispatch, shapes }: DefaultShapeCh
   const current = resolveDefaultShapeId(overrides);
   const currentIsKnown = shapes.has(current);
   return (
-    <label className="context-chip context-select-chip" title="既定の物理配列">
+    <label className="context-chip context-select-chip" title="既定の物理配列: 配列を対象にした時に使う物理配列">
       {/* スマホ幅では名前を出さずこのアイコンだけにする。選択は透明にしたselectが受ける（タップで選択肢が開く）。 */}
       <svg className="context-chip-icon" viewBox="0 0 20 14" width="20" height="14" aria-hidden="true">
         {/* キーボード: 枠の中にキーの四角（1段目5個・2段目4個をずらして）と幅広のスペースバー。線でなく四角で描き、☰と読まれないようにする。 */}

@@ -233,7 +233,7 @@ button.context-chip:hover:not(:disabled),
   line-height: 1.6;
 }
 
-/* スマホ幅でだけ見せる短い名前（パソコン幅は選択欄そのものを見せる）。 */
+/* スマホ幅でだけ見せるアイコン（パソコン幅は文字のラベルを見せる）。 */
 .context-chip-icon {
   display: none;
 }
@@ -290,7 +290,7 @@ button.context-chip:hover:not(:disabled),
 
 .context-share-status {
   position: absolute;
-  top: calc(100% + 0.6rem);
+  top: calc(100% + 0.4rem);
   right: 0;
   z-index: 30;
   padding: 0.25rem 0.6rem;
