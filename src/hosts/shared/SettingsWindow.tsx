@@ -11,8 +11,10 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as Reac
  * 個別画面とWorkspaceの両方で使うので`hosts/shared`に置き、Dockviewのフローティング
  * グループでは作らない（Dockviewは`hosts/workspace`だけが使う。依存の規則）。
  *
- * スマホ幅での出し方は未決（#636）。決まるまでの暫定として、狭い画面では下端に固定した
- * シート（高さは画面の半分まで・ドラッグなし）にする（`pane-frame.css`）。
+ * スマホ幅（`SHEET_QUERY`）では、画面の下から出るシートにする（`pane-frame.css`）。高さは画面の半分まで。
+ * 上端の掴みとヘッダー行を下へドラッグすると閉じる（×とEscapeでも閉じる）。ドラッグを掴みとヘッダー行に
+ * 限るのは、本文のスクロールとドラッグが喧嘩しないようにするため。シートが「解析設定」ボタンを覆っても、
+ * ドラッグで閉じられるので、ボタンを押し直して閉じる必要はない。
  */
 export interface SettingsWindowProps {
   readonly open: boolean;
@@ -29,6 +31,25 @@ export interface SettingsWindowProps {
 interface Position {
   readonly x: number;
   readonly y: number;
+}
+
+/** シートにする幅。`pane-frame.css`の`@media`と同じ値に揃える。 */
+const SHEET_QUERY = '(max-width: 640px)';
+/** シートの高さのこの割合を超えて引き下ろしたら閉じる。 */
+const CLOSE_RATIO = 1 / 3;
+/** これより速い下向きのフリック（px/ms）なら、距離が足りなくても閉じる。 */
+const FLICK_SPEED = 0.6;
+
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches);
+  useEffect(() => {
+    const list = window.matchMedia(query);
+    const onChange = () => setMatches(list.matches);
+    onChange();
+    list.addEventListener('change', onChange);
+    return () => list.removeEventListener('change', onChange);
+  }, [query]);
+  return matches;
 }
 
 /** 画面の端から最低限これだけ内側に残す（見出しを掴めなくならないように）。 */
@@ -59,11 +80,21 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, child
   const [position, setPosition] = useState<Position | undefined>(undefined);
   const focusPendingRef = useRef(false);
   const dragRef = useRef<{ pointerId: number; offsetX: number; offsetY: number } | undefined>(undefined);
+  const isSheet = useMediaQuery(SHEET_QUERY);
+  // シートを引き下ろしている量（px）。undefinedは触っていない状態。
+  const [sheetY, setSheetY] = useState<number | undefined>(undefined);
+  const [sheetDragging, setSheetDragging] = useState(false);
+  const sheetDragRef = useRef<{ pointerId: number; startY: number; lastY: number; lastTime: number; speed: number } | undefined>(undefined);
+  const closingRef = useRef(false);
 
   // 開くたびにボタンの近くへ出し直す（前回ドラッグした位置は、閉じたら意味を失う）。
   useLayoutEffect(() => {
     if (!open) {
       setPosition(undefined);
+      setSheetY(undefined);
+      setSheetDragging(false);
+      sheetDragRef.current = undefined;
+      closingRef.current = false;
       return;
     }
     setPosition(initialPosition(anchor, windowRef.current));
@@ -87,6 +118,50 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, child
   }, [open]);
 
   if (!open) return null;
+
+  const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const closeSheet = () => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    const height = windowRef.current?.offsetHeight ?? 0;
+    if (prefersReducedMotion() || height === 0) {
+      onClose();
+      return;
+    }
+    // 下へ出し切ってから閉じる。transitionendが来ない場合（非表示など）に備えて時間でも閉じる。
+    setSheetY(height);
+    window.setTimeout(onClose, 250);
+  };
+
+  const onSheetPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || closingRef.current) return;
+    if ((event.target as Element).closest('button')) return;
+    sheetDragRef.current = { pointerId: event.pointerId, startY: event.clientY, lastY: event.clientY, lastTime: event.timeStamp, speed: 0 };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSheetDragging(true);
+  };
+  const onSheetPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = sheetDragRef.current;
+    if (drag === undefined || drag.pointerId !== event.pointerId) return;
+    const dt = event.timeStamp - drag.lastTime;
+    if (dt > 0) drag.speed = (event.clientY - drag.lastY) / dt;
+    drag.lastY = event.clientY;
+    drag.lastTime = event.timeStamp;
+    // 上へは動かさない（元の位置より上にはシートの居場所が無い）。
+    setSheetY(Math.max(0, event.clientY - drag.startY));
+  };
+  const onSheetPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = sheetDragRef.current;
+    if (drag === undefined || drag.pointerId !== event.pointerId) return;
+    sheetDragRef.current = undefined;
+    setSheetDragging(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    const distance = Math.max(0, event.clientY - drag.startY);
+    const height = windowRef.current?.offsetHeight ?? 0;
+    const cancelled = event.type === 'pointercancel';
+    if (!cancelled && (distance > height * CLOSE_RATIO || (distance > 0 && drag.speed > FLICK_SPEED))) closeSheet();
+    else setSheetY(undefined);
+  };
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || position === undefined) return;
@@ -119,9 +194,15 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, child
       aria-label={title}
       tabIndex={-1}
       data-settings-window="true"
+      data-sheet={isSheet || undefined}
+      data-sheet-dragging={sheetDragging || undefined}
       style={position === undefined
         ? { visibility: 'hidden' }
-        : { ['--settings-window-x' as string]: `${position.x}px`, ['--settings-window-y' as string]: `${position.y}px` }}
+        : {
+            ['--settings-window-x' as string]: `${position.x}px`,
+            ['--settings-window-y' as string]: `${position.y}px`,
+            ...(isSheet && sheetY !== undefined ? { ['--settings-sheet-y' as string]: `${sheetY}px` } : {}),
+          }}
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           event.stopPropagation();
@@ -129,12 +210,33 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, child
         }
       }}
     >
+      {isSheet ? (
+        <div
+          className="settings-sheet-grabber"
+          role="button"
+          tabIndex={0}
+          aria-label="解析設定シートを下へ引いて閉じる"
+          onPointerDown={onSheetPointerDown}
+          onPointerMove={onSheetPointerMove}
+          onPointerUp={onSheetPointerEnd}
+          onPointerCancel={onSheetPointerEnd}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              event.stopPropagation();
+              closeSheet();
+            }
+          }}
+        >
+          <span className="settings-sheet-grabber-bar" aria-hidden="true" />
+        </div>
+      ) : null}
       <div
         className="settings-window-handle"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
+        onPointerDown={isSheet ? onSheetPointerDown : onPointerDown}
+        onPointerMove={isSheet ? onSheetPointerMove : onPointerMove}
+        onPointerUp={isSheet ? onSheetPointerEnd : endDrag}
+        onPointerCancel={isSheet ? onSheetPointerEnd : endDrag}
       >
         <span className="settings-window-title">
           解析設定
