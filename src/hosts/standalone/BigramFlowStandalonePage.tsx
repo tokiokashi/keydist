@@ -10,7 +10,6 @@ import {
   combinePaneStates,
   conditionHeaderInfoFromResolvedInput,
   PaneFrame,
-  resetOptionsMenuItem,
   setupNumbersOf,
   targetChoiceGroups,
   TargetSelection,
@@ -234,6 +233,7 @@ export function BigramFlowStandalonePage({
             name={bigramFlowAnalyzer.name}
             description={bigramFlowAnalyzer.description}
             headingLevel={1}
+            stickyHeader
             {...(named === undefined ? {} : { targetName: named.displayName })}
             target={(
               <TargetSelection
@@ -247,7 +247,7 @@ export function BigramFlowStandalonePage({
               />
             )}
             settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
-            menuItems={[resetOptionsMenuItem(() => changeOptions(bigramFlowAnalyzer.defaultOptions))]}
+            onResetOptions={() => changeOptions(bigramFlowAnalyzer.defaultOptions)}
             header={header}
             conditionRows={conditionRows}
             engineState={combinePaneStates(extraction, pane.trace)}

@@ -41,7 +41,7 @@ export interface AnalyzerPaneParts<Definition, Options, BodyProps, TargetItemVal
   readonly description: string;
   readonly Body: ComponentType<BodyProps>;
   readonly Settings: ComponentType<AnalyzerSettingsProps<Options>>;
-  /** 解析設定の各項目の「既定値へ戻す」と、⋯の「解析設定を初期値に戻す」の戻す先。 */
+  /** 解析設定の各項目の「既定値へ戻す」と、解析設定のヘッダーの「すべて初期値に戻す」（Workspaceは⋯の「解析設定を初期値に戻す」）の戻す先。 */
   readonly defaultOptions: Options;
   /** 対象の集合に属する、このAnalyzerだけの項目（比較表の基準）。 */
   readonly TargetItem?: ComponentType<AnalyzerTargetItemProps<TargetItemValue>>;

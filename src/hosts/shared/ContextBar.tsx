@@ -35,9 +35,27 @@ export interface ContextBarProps {
  */
 export function ContextBar({ children, history, share, disabled = false }: ContextBarProps) {
   const leading = useContext(ContextBarLeadingSlot);
+  const barRef = useRef<HTMLElement>(null);
+
+  // スマホ幅では文脈バーが折り返して高さが変わる。その下に固定するペインの見出しが位置を合わせられるよう、
+  // 実際の高さをCSS変数で公開する（値が無い間はCSS側の既定＝1行分）。
+  useEffect(() => {
+    const bar = barRef.current;
+    if (bar === null) return undefined;
+    const root = document.documentElement;
+    const publish = () => root.style.setProperty('--context-bar-height', `${bar.getBoundingClientRect().height}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(bar);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--context-bar-height');
+    };
+  }, []);
+
   const { state, copy } = useShareCopy(share.query);
   return (
-    <section className="context-bar" aria-label="テキストと画面の操作">
+    <section ref={barRef} className="context-bar" aria-label="テキストと画面の操作">
       {leading}
       <fieldset className="context-bar-fieldset" disabled={disabled}>
         <div className="context-bar-items">{children}</div>

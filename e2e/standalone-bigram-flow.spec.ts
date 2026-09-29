@@ -785,7 +785,7 @@ test('保存済みの解析設定は、操作可能になった瞬間から表�
   expect(await enabledValues(page)).toEqual(['sqrt']);
 });
 
-test('見出しは「名前 ⓘ / 対象 / 解析設定 / ⋯」で、ⓘで短い説明が出る', async ({ page }) => {
+test('見出しは「名前 ⓘ / 対象 / 解析設定」で、ⓘで短い説明が出る', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
@@ -874,7 +874,7 @@ test('項目ごとの「既定値へ戻す」は既定と違う項目にだけ�
   await expect(page.getByRole('button', { name: '標準に戻す' })).toHaveCount(0);
 });
 
-test('⋯の「解析設定を初期値に戻す」は解析設定だけを既定値へ戻し、対象はそのまま', async ({ page }) => {
+test('解析設定の小窓のヘッダーの「すべて初期値に戻す」は解析設定だけを既定値へ戻し、対象はそのまま', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await toggleTarget(page, 'layout:colemak-dh');
@@ -883,10 +883,14 @@ test('⋯の「解析設定を初期値に戻す」は解析設定だけを既�
   await settings.getByRole('button', { name: 'Within-hand' }).click();
   await settings.getByLabel('紐の太さ', { exact: true }).selectOption('sqrt');
 
-  await page.getByRole('button', { name: /の操作$/ }).click();
-  const item = page.getByRole('menuitem', { name: /解析設定を初期値に戻す/ });
-  await expect(item).toContainText('対象と条件は変わらない');
-  await item.click();
+  // 個別画面の見出しに⋯は無い。
+  await expect(page.getByRole('button', { name: /の操作$/ })).toHaveCount(0);
+  const reset = settings.getByRole('button', { name: 'すべて初期値に戻す' });
+  await expect(reset).toHaveAttribute('title', '対象と条件は変わらない');
+  // ヘッダー行（タイトルと閉じるボタンの間）にある。本体の中ではない。
+  await expect(settings.locator('.settings-window-handle').getByRole('button', { name: 'すべて初期値に戻す' })).toHaveCount(1);
+  await expect(settings.locator('.settings-window-body').getByRole('button', { name: 'すべて初期値に戻す' })).toHaveCount(0);
+  await reset.click();
 
   await expect(settings.getByRole('button', { name: 'Actual', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(settings.getByLabel('紐の太さ', { exact: true })).toHaveValue('linear');

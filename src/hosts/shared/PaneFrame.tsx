@@ -14,8 +14,10 @@ import './pane-frame.css';
 /**
  * ペインの枠（docs/architecture.md「ペイン」「Analyzerがペインに渡すもの」）。
  *
- * 見出しは「Analyzer名 ⓘ / 対象 / 解析設定 / ⋯」。ペインが狭い時は2段に固定する
+ * 見出しは個別画面が「Analyzer名 ⓘ / 対象 / 解析設定」、Workspaceのペインは末尾に⋯が付く。
+ * ⋯のあるペインは、狭い時に2段に固定する
  * （1段目: 名前・ⓘ・⋯、2段目: 対象・解析設定）。段数はペインの幅だけで決め、名前の長さでは変えない。
+ * ⋯の無い個別画面は、固定する見出しを薄く保つため狭くても1行のまま。
  *
  * Analyzerから受け取るのは名前・短い説明・本体・解析設定のcomponentだけで、置く場所はここが決める。
  * engineの依頼を購読して本体へ渡す値を用意するのは呼び出し側（`hosts/<host>`）の仕事で、
@@ -33,13 +35,24 @@ export interface PaneFrameProps {
    * 解析設定の小窓にも出す（どのペインの設定か分かるように）。
    */
   readonly targetName?: string;
+  /**
+   * 見出しを文脈バーの下に固定する（個別画面）。図を下までスクロールしても対象と解析設定を変えられる。
+   * Workspaceのペインは自分の枠の中でスクロールするので固定しない。
+   */
+  readonly stickyHeader?: boolean;
   /** 見出しの対象の欄（単一対象の選択、集合の要約とその選択）。 */
   readonly target: ReactNode;
   /** 解析設定のcomponent（Analyzerの`Settings`をホストが値と結んだもの）。 */
   readonly settings: ReactNode;
   /** Workspaceのペインでは、小窓にペイン名を出す。個別画面ではページに1枚なので出さない。 */
   readonly showPaneNameInSettings?: boolean;
-  readonly menuItems: readonly PaneMenuItem[];
+  /** ⋯のメニュー。空なら⋯を出さない（個別画面は出さない。Workspaceのペインが使う）。 */
+  readonly menuItems?: readonly PaneMenuItem[];
+  /**
+   * 解析設定をAnalyzerの既定値（`defaultOptions`）へ戻す。解析設定の小窓のヘッダーに「すべて初期値に戻す」を出す。
+   * 戻す先は個別画面でもWorkspaceでも既定値で、URLで開いた時の値や保存した値へは戻さない（#637）。
+   */
+  readonly onResetOptions?: () => void;
   /** 対象の実体（配列・物理配列・指の割当）の名前。解決前（読み込み中）は省略する。 */
   readonly header?: ConditionHeaderInfo;
   /** Traceに効く条件の一覧（#544 §3「実効値の出どころを表示する」）。 */
@@ -68,11 +81,13 @@ export function PaneFrame({
   name,
   description,
   headingLevel = 2,
+  stickyHeader = false,
   targetName,
   target,
   settings,
   showPaneNameInSettings = false,
-  menuItems,
+  menuItems = [],
+  onResetOptions,
   header,
   conditionRows,
   engineState,
@@ -97,7 +112,7 @@ export function PaneFrame({
 
   return (
     <section className="pane-frame" aria-label={paneName} data-pane-status={engineState.status}>
-      <header className="pane-frame-header">
+      <header className="pane-frame-header" data-sticky={stickyHeader || undefined} data-menu={menuItems.length > 0 || undefined}>
         <div className="pane-frame-name">
           <Heading className="pane-frame-title">{name}</Heading>
           <InfoButton name={name} description={description} />
@@ -117,15 +132,18 @@ export function PaneFrame({
           <SettingsIcon />
           <span className="pane-settings-button-text">解析設定</span>
         </button>
-        <div className="pane-frame-menu">
-          <PaneMenu paneName={paneName} items={menuItems} />
-        </div>
+        {menuItems.length === 0 ? null : (
+          <div className="pane-frame-menu">
+            <PaneMenu paneName={paneName} items={menuItems} />
+          </div>
+        )}
       </header>
 
       <SettingsWindow
         open={settingsOpen}
         onClose={closeSettings}
         anchor={settingsButtonRef.current}
+        {...(onResetOptions === undefined ? {} : { onReset: onResetOptions })}
         {...(showPaneNameInSettings ? { paneName } : {})}
       >
         {settings}
