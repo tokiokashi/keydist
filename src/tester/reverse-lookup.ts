@@ -264,11 +264,13 @@ function prependStep(
  * - romaji配列: layoutのromajiTableでqueryをlogical roman streamへ変換して照合
  * - routeはaction数、総キー数、step数の順で少ないものを優先
  * - context requirementもquery内の位置を使って評価する
+ * - availableKeysを渡すと、そのキーだけで打てる経路に絞る（物理配列に存在するキー集合）
  */
 export function reverseLookup(
   layout: Layout,
   query: string,
   limit = 5,
+  availableKeys?: ReadonlySet<string>,
 ): readonly ReverseLookupRoute[] {
   if (query.length === 0 || limit <= 0) return [];
 
@@ -303,6 +305,10 @@ export function reverseLookup(
         )) continue;
         const step = stepFromAlternative(output, alternative);
         if (step.actions.length === 0) continue;
+        // 選んでいる物理配列に無いキーを含む打ち方は答えにしない。
+        // 実際には打てないキーを案内すると、利用者が探しても見つからないため。
+        if (availableKeys !== undefined && !step.actions.every((action) =>
+          action.every((key) => availableKeys.has(resolveKeyId(key))))) continue;
         for (const tail of search(nextCursor)) {
           routes.push(prependStep(step, tail));
         }
@@ -340,6 +346,13 @@ export function longestReverseLookupRoute(
     (best, route) => (best === undefined || compareRoutes(route, best) < 0 ? route : best),
     undefined,
   );
+}
+
+/** 物理配列が持つキーのid集合。resolveKeyIdで正規化済みで、reverseLookupのavailableKeysへ渡す。 */
+export function physicalAvailableKeys(
+  geometry: { readonly keys: ReadonlyMap<string, unknown> },
+): ReadonlySet<string> {
+  return new Set([...geometry.keys.keys()].map(resolveKeyId));
 }
 
 export function reverseLookupStepMatchesRecognition(
