@@ -10,6 +10,7 @@ import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import {
   conditionHeaderInfoFromResolvedInput,
+  globalConditionValues,
   multiTargetConditionSummary,
   PaneFrame,
   setupNumbersOf,
@@ -182,8 +183,8 @@ export function NSensitivityStandalonePage({
         rows: traceConditionSummary(member.resolution.input.cascade, conditionNames),
       }];
     }),
-    { excludeIds: N_SENSITIVITY_CONDITION_EXCLUDE_IDS },
-  ), [members, namedByKey, conditionNames]);
+    { excludeIds: N_SENSITIVITY_CONDITION_EXCLUDE_IDS, globalValues: globalConditionValues(assets.setupLibrary.overrides), names: conditionNames },
+  ), [members, namedByKey, conditionNames, assets.setupLibrary.overrides]);
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
 

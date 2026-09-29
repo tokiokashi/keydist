@@ -9,6 +9,7 @@ import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import {
+  globalConditionValues,
   multiTargetConditionSummary,
   PaneFrame,
   setupNumbersOf,
@@ -163,7 +164,8 @@ export function ComparisonStandalonePage({
         rows: traceConditionSummary(member.resolution.input.cascade, conditionNames),
       }];
     }),
-  ), [members, namedByKey, conditionNames]);
+    { globalValues: globalConditionValues(assets.setupLibrary.overrides), names: conditionNames },
+  ), [members, namedByKey, conditionNames, assets.setupLibrary.overrides]);
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
 

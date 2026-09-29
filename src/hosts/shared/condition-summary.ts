@@ -1,5 +1,5 @@
-import type { CascadeLevel, Diagnostic, ResolvedOrigin } from '#input/settings/index.ts';
-import { SETTINGS_ITEMS, type ResolvedSettingsCascade, type SettingsItemId } from '#engine/settings-items.ts';
+import { readOverride, type CascadeLevel, type Diagnostic, type ResolvedOrigin } from '#input/settings/index.ts';
+import { SETTINGS_ITEMS, type ResolvedSettingsCascade, type SettingsCascadeOverrides, type SettingsItemId } from '#engine/settings-items.ts';
 import { DEFAULT_FINGER_ASSIGNMENT, type FingerAssignment, type Geometry, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { InputMethod } from '#input/settings/levels.ts';
@@ -332,7 +332,12 @@ export interface MultiTargetConditionSummary {
  */
 export function multiTargetConditionSummary(
   targets: readonly TargetConditionInput[],
-  options: { readonly excludeIds?: readonly SettingsItemId[] } = {},
+  options: {
+    readonly excludeIds?: readonly SettingsItemId[];
+    /** 全体のレベルの値（`globalConditionValues`）。共通の行はここから作る。 */
+    readonly globalValues?: GlobalConditionValues;
+    readonly names?: ConditionValueNames;
+  } = {},
 ): MultiTargetConditionSummary {
   const excluded = options.excludeIds ?? [];
   const first = targets[0];
@@ -351,7 +356,7 @@ export function multiTargetConditionSummary(
       rows.push(templateRow);
       continue;
     }
-    const screen = screenRow(templateRow, applicable.map(({ row }) => row));
+    const screen = screenRow(templateRow, options.globalValues, options.names);
     rows.push(screen);
     for (const { target, row } of applicable) {
       if (row.valueKey === screen.valueKey) continue;
@@ -367,30 +372,53 @@ export function multiTargetConditionSummary(
   return { rows, diffs };
 }
 
+/** 全体のレベルに書かれた値（許可されている項目だけ）。対象の解決結果とは独立に読む。 */
+export type GlobalConditionValues = Readonly<Partial<Record<SettingsItemId, unknown>>>;
+
 /**
- * 1項目の、この画面で効く値の行。全体のレベルの上書きがあればその行（値も出どころも全対象で同じ）、
- * 無ければ項目の既定値。既定値が配列ごとに変わる項目は、配列も物理配列も持たない時の値
+ * 上書きの全体のレベルから値を読む。共通の行を対象の行の出どころから拾うと、全対象が下位
+ * （Setup・配列）で上書きしている時に全体の値が見つからず、画面で効く値でない既定値を出すため。
+ */
+export function globalConditionValues(overrides: SettingsCascadeOverrides): GlobalConditionValues {
+  const values: Partial<Record<SettingsItemId, unknown>> = {};
+  for (const id of Object.keys(SETTINGS_ITEMS) as SettingsItemId[]) {
+    if (!SETTINGS_ITEMS[id].allowedLevels.has('global')) continue;
+    const value: unknown = readOverride(overrides, { kind: 'global' }, id);
+    if (value !== undefined) values[id] = value;
+  }
+  return values;
+}
+
+/**
+ * 1項目の、この画面で効く値の行。全体のレベルの値があればそれ（出どころは全体）、無ければ項目の既定値。
+ * 既定値が配列ごとに変わる項目は、配列も物理配列も持たない時の値
  * （ローマ字規則は訓令式、指の割当は列固定）を画面の値とする。
  */
-function screenRow(template: ConditionSummaryRow, applicable: readonly ConditionSummaryRow[]): ConditionSummaryRow {
-  const global = applicable.find((row) => row.origin.kind === 'global');
-  if (global !== undefined) return global;
+function screenRow(
+  template: ConditionSummaryRow,
+  globalValues: GlobalConditionValues | undefined,
+  names: ConditionValueNames | undefined,
+): ConditionSummaryRow {
+  const globalValue = globalValues?.[template.id];
+  const origin: ResolvedOrigin = globalValue === undefined ? { kind: 'default' } : { kind: 'global' };
   const rawDefault: unknown = SETTINGS_ITEMS[template.id].defaultValue;
-  const value = template.id === 'romajiRuleId'
-    ? defaultRomajiRuleId('')
-    : template.id === 'fingerAssignmentId'
-      ? DEFAULT_FINGER_ASSIGNMENT.id
-      : rawDefault;
-  const { format, displayValue } = formatValue(template.id, value, undefined);
+  const value = globalValue !== undefined
+    ? globalValue
+    : template.id === 'romajiRuleId'
+      ? defaultRomajiRuleId('')
+      : template.id === 'fingerAssignmentId'
+        ? DEFAULT_FINGER_ASSIGNMENT.id
+        : rawDefault;
+  const { format, displayValue } = formatValue(template.id, value, names);
   return {
     ...template,
     format,
     displayValue,
     valueKey: valueKeyOf(template.id, value, displayValue),
-    origin: { kind: 'default' },
-    originLabel: formatOrigin({ kind: 'default' }),
+    origin,
+    originLabel: formatOrigin(origin, names),
     applicable: true,
-    sameAsDefault: false,
+    sameAsDefault: globalValue !== undefined && effectivelySameAsDefault(template.id, value),
     diagnostics: [],
   };
 }

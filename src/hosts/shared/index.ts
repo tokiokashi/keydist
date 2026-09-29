@@ -3,6 +3,7 @@ export {
   conditionHeaderInfoFromResolvedInput,
   conditionSummaryLine,
   isChangedConditionRow,
+  globalConditionValues,
   multiTargetConditionSummary,
   orderConditionRowsForDetail,
   formatOrigin,
