@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import type { Geometry, Key, Point } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { Trace } from '#trace/generate.ts';
@@ -460,13 +460,11 @@ function MovementProfilePlot({
       <div className="flow-profile-viewport">
         <div
           className="flow-profile-stage"
-          style={{ width: viewSize, height: viewSize }}
+          style={{ '--flow-profile-size': `${viewSize}px` } as CSSProperties}
         >
         <svg
           className="flow-profile-svg"
           data-scale-mode={scaleMode}
-          width={viewSize}
-          height={viewSize}
           viewBox={`${-halfSize} ${-halfSize} ${viewSize} ${viewSize}`}
           role="img"
           aria-label={`${hand === 'left' ? '左手' : '右手'}の移動の向きと距離`}
