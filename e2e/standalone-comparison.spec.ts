@@ -263,10 +263,9 @@ test('対象ごとに条件が違う時は、閉じた1行に「対象ごとに�
   await expect(summary.locator('summary')).toContainText('対象ごとに差あり');
   await summary.locator('summary').click();
   const diffs = summary.getByRole('region', { name: '対象ごとの差' });
-  // Nが対象どうしで違うので、共通の行から外れ、効く対象すべての値が出る
-  await expect(diffs.locator('.pane-condition-diff')).toHaveCount(2);
-  await expect(diffs.locator('.pane-condition-diff').first()).toContainText('先読みN=2');
-  await expect(diffs.locator('.pane-condition-diff').last()).toContainText('先読みN=3');
+  // 共通の行は画面の値（N=3）。違うSetupだけが差に出る
+  await expect(diffs.locator('.pane-condition-diff')).toHaveCount(1);
+  await expect(diffs.locator('.pane-condition-diff')).toContainText('先読みN=2');
   await expect(diffs).not.toContainText('同指連続');
 });
 
@@ -750,43 +749,57 @@ async function openSummaryWith(page: Page, setups: readonly { id: string; layout
   return summary;
 }
 
-test('ANSIとJISのQWERTYは、指の割当を共通の行に出さず、対象ごとの差に両方の値を出す', async ({ page }) => {
+test('ANSIとJISのQWERTYは、共通の指の割当は列固定で、JISだけが対象ごとの差に出る', async ({ page }) => {
   const summary = await openSummaryWith(page, [
     { id: 'ansi', layoutId: 'qwerty', shapeId: 'row-staggered' },
     { id: 'jis', layoutId: 'qwerty', shapeId: 'jis-row-staggered' },
   ]);
   await expect(summary.locator('summary')).toContainText('対象ごとに差あり');
+  await expect(summary).toContainText('既定（列固定）');
   const diffs = summary.getByRole('region', { name: '対象ごとの差' });
-  await expect(diffs.locator('.pane-condition-diff')).toHaveCount(2);
-  await expect(diffs.locator('.pane-condition-diff').first()).toContainText('指の割当=既定（列固定）');
-  await expect(diffs.locator('.pane-condition-diff').last()).toContainText('指の割当=JIS既定（列固定）');
+  await expect(diffs.locator('.pane-condition-diff')).toHaveCount(1);
+  await expect(diffs.locator('.pane-condition-diff')).toContainText('JIS 109');
+  await expect(diffs.locator('.pane-condition-diff')).toContainText('指の割当=JIS既定（列固定）');
 });
 
-test('QWERTYと大西配列は、並びによらずローマ字規則を共通の行に出さず、対象ごとの差に出す', async ({ page }) => {
-  const summary = await openSummaryWith(page, [
-    { id: 'onishi', layoutId: 'oonishi', shapeId: 'row-staggered' },
-    { id: 'qwerty', layoutId: 'qwerty', shapeId: 'row-staggered' },
-  ]);
+for (const order of ['大西が先', 'QWERTYが先']) {
+  test(`QWERTYと大西配列は、並び（${order}）によらず共通は訓令式で、大西配列だけが対象ごとの差に出る`, async ({ page }) => {
+    const qwerty = { id: 'qwerty', layoutId: 'qwerty', shapeId: 'row-staggered' };
+    const onishi = { id: 'onishi', layoutId: 'oonishi', shapeId: 'row-staggered' };
+    const summary = await openSummaryWith(page, order === '大西が先' ? [onishi, qwerty] : [qwerty, onishi]);
+    await expect(summary).toContainText('訓令式');
+    const diffs = summary.getByRole('region', { name: '対象ごとの差' });
+    await expect(diffs.locator('.pane-condition-diff')).toHaveCount(1);
+    await expect(diffs.locator('.pane-condition-diff')).toContainText('ローマ字規則=大西式');
+  });
+}
+
+test('2件とも同じ値へ上書きしても、共通の行は画面の値のまま、2件とも対象ごとの差に出る', async ({ page }) => {
+  await page.addInitScript(seedSelection, {
+    targets: [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'fixed-b' }],
+    overrides: { setup: { 'fixed-a': { windowSize: 2 }, 'fixed-b': { windowSize: 2 } } },
+  });
+  await page.goto('/standalone/comparison');
+  await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
+  const summary = page.locator('.pane-condition-summary');
+  await expect(summary.locator('summary')).toContainText('対象ごとに差あり');
+  await summary.locator('summary').click();
+  await expect(summary.locator('dl').first()).toContainText('既定値');
   const diffs = summary.getByRole('region', { name: '対象ごとの差' });
   await expect(diffs.locator('.pane-condition-diff')).toHaveCount(2);
-  await expect(diffs).toContainText('ローマ字規則=大西式');
-  await expect(diffs).toContainText('ローマ字規則=訓令式');
+  await expect(diffs.locator('.pane-condition-diff').first()).toContainText('先読みN=2');
+  await expect(diffs.locator('.pane-condition-diff').last()).toContainText('先読みN=2');
 });
 
-test('上書きありのSetupを1件だけ選ぶと、条件の要約にその条件が出る（「条件」の列が無くても条件が見える）', async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem('keydist:setup-library', JSON.stringify({
-      version: 1,
-      setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' }],
-      overrides: { setup: { 'fixed-a': { windowSize: 2 } } },
-    }));
-    localStorage.setItem('keydist:multi-target-selection', JSON.stringify({ version: 1, targets: [{ kind: 'setup', setupId: 'fixed-a' }] }));
+test('上書きありのSetupを1件だけ選ぶと、条件の要約の「対象ごとの差」にその条件が出る（「条件」の列が無くても条件が見える）', async ({ page }) => {
+  await page.addInitScript(seedSelection, {
+    targets: [{ kind: 'setup', setupId: 'fixed-a' }],
+    overrides: { setup: { 'fixed-a': { windowSize: 2 } } },
   });
   await page.goto('/standalone/comparison');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(1, { timeout: 10_000 });
   const summary = page.locator('.pane-condition-summary');
-  await expect(summary.locator('summary')).toContainText('先読みN: 2', { timeout: 10_000 });
-  await expect(summary.locator('summary')).not.toContainText('対象ごとに差あり');
+  await expect(summary.locator('summary')).toContainText('対象ごとに差あり');
   await summary.locator('summary').click();
-  await expect(summary).toContainText('上書き: このSetup');
+  await expect(summary.getByRole('region', { name: '対象ごとの差' })).toContainText('先読みN=2');
 });

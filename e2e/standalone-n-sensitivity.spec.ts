@@ -222,14 +222,14 @@ test('条件の要約は先読みNを出さず、対象ごとの差にもNを出
 
   const summary = page.locator('.pane-condition-summary');
   await expect(summary).toBeVisible({ timeout: 10_000 });
-  // sfbHomeCostは対象どうしで効く値が違う（fixed-aはON、fixed-bは全体のOFF）ので共通の行に出ず、差に出る
+  // 共通の行は画面の値（全体のOFF）。fixed-aだけがONで、差に出る
+  await expect(summary.locator('summary')).toContainText('同指連続のホーム復帰距離');
   await expect(summary.locator('summary')).toContainText('対象ごとに差あり');
   await expect(summary.locator('summary')).not.toContainText('先読みN');
   await summary.locator('summary').click();
   const diffs = summary.getByRole('region', { name: '対象ごとの差' });
-  await expect(diffs.locator('.pane-condition-diff')).toHaveCount(2);
-  await expect(diffs.locator('.pane-condition-diff').first()).toContainText('同指連続のホーム復帰距離=ON');
-  await expect(diffs.locator('.pane-condition-diff').last()).toContainText('同指連続のホーム復帰距離=OFF');
+  await expect(diffs.locator('.pane-condition-diff')).toHaveCount(1);
+  await expect(diffs.locator('.pane-condition-diff')).toContainText('同指連続のホーム復帰距離=ON');
   await expect(summary).not.toContainText('先読みN');
 });
 
@@ -338,7 +338,7 @@ test('狭い画面（390）でもチャートは置かれた領域の幅で描�
   expect(scale).toBeCloseTo(1, 1);
 });
 
-test('上書きありのSetupを1件だけ選ぶと、条件の要約にその条件が出る', async ({ page }) => {
+test('上書きありのSetupを1件だけ選ぶと、条件の要約の「対象ごとの差」にその条件が出る', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('keydist:setup-library', JSON.stringify({
       version: 1,
@@ -349,8 +349,7 @@ test('上書きありのSetupを1件だけ選ぶと、条件の要約にその�
   });
   await page.goto('/standalone/n-sensitivity');
   const summary = page.locator('.pane-condition-summary');
-  await expect(summary.locator('summary')).toContainText('同指連続のホーム復帰距離', { timeout: 10_000 });
-  await expect(summary.locator('summary')).not.toContainText('対象ごとに差あり');
+  await expect(summary.locator('summary')).toContainText('対象ごとに差あり', { timeout: 10_000 });
   await summary.locator('summary').click();
-  await expect(summary).toContainText('上書き: このSetup');
+  await expect(summary.getByRole('region', { name: '対象ごとの差' })).toContainText('同指連続のホーム復帰距離=OFF');
 });

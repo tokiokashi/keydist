@@ -1,9 +1,9 @@
 import type { CascadeLevel, Diagnostic, ResolvedOrigin } from '#input/settings/index.ts';
 import { SETTINGS_ITEMS, type ResolvedSettingsCascade, type SettingsItemId } from '#engine/settings-items.ts';
-import type { FingerAssignment, Geometry, PhysicalShape } from '#input/shapes/geometry.ts';
+import { DEFAULT_FINGER_ASSIGNMENT, type FingerAssignment, type Geometry, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { InputMethod } from '#input/settings/levels.ts';
-import { ROMAJI_RULES } from '#input/romaji/rules.ts';
+import { ROMAJI_RULES, defaultRomajiRuleId } from '#input/romaji/rules.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
 
 /**
@@ -322,11 +322,11 @@ export interface MultiTargetConditionSummary {
 /**
  * 複数の対象の条件を「共通の条件」と「対象ごとの差」にまとめる（docs/architecture.md「条件の要約」）。
  *
- * 出どころでなく**効く値**（`valueKey`）で判定する。配列・物理配列ごとに既定値が変わる項目
- * （指の割当・ローマ字規則）は、出どころが既定値でも対象どうしで値が違うので、最初の対象の値を
- * 共通として出すと他の対象を偽って示す。
- * - 効く対象すべてで値が同じ項目 → 共通の行
- * - 値が違う項目 → 共通の行から外し、効く対象すべての値を「対象ごとの差」に出す
+ * 共通の行は**この画面で効く値**。対象ごとの上書きも、配列・物理配列ごとの既定も受けない時の値
+ * （全体のレベルの値、それも無ければ項目の既定値）で、対象の並びに依らない。
+ * 差は、効く値が共通の行の値と違う対象だけを、違う項目だけで出す。
+ * 最初の対象の値を共通に採ると、配列ごとに既定が変わる項目（指の割当・ローマ字規則）で
+ * 他の対象を偽って示すため、共通の値は対象から取らない。
  * 効かない項目・効かない対象は数えない（その条件で測ったように読めるため）。
  * `excludeIds`はペイン自身が掃引する項目（N感度の先読みN）。
  */
@@ -351,12 +351,10 @@ export function multiTargetConditionSummary(
       rows.push(templateRow);
       continue;
     }
-    const firstKey = applicable[0]!.row.valueKey;
-    if (applicable.every(({ row }) => row.valueKey === firstKey)) {
-      rows.push(commonRow(applicable.map(({ row }) => row)));
-      continue;
-    }
+    const screen = screenRow(templateRow, applicable.map(({ row }) => row));
+    rows.push(screen);
     for (const { target, row } of applicable) {
+      if (row.valueKey === screen.valueKey) continue;
       const list = diffItems.get(target.key) ?? [];
       list.push({ id: row.id, label: row.label, displayValue: row.displayValue });
       diffItems.set(target.key, list);
@@ -370,20 +368,29 @@ export function multiTargetConditionSummary(
 }
 
 /**
- * 効く値が全対象で同じ項目の共通の行。出どころが全対象で同じ種類ならそのまま、対象ごとの上書きを
- * 束ねた時は「各Setup」等と出す（「このSetup」では、どのSetupか読めない）。
+ * 1項目の、この画面で効く値の行。全体のレベルの上書きがあればその行（値も出どころも全対象で同じ）、
+ * 無ければ項目の既定値。既定値が配列ごとに変わる項目は、配列も物理配列も持たない時の値
+ * （ローマ字規則は訓令式、指の割当は列固定）を画面の値とする。
  */
-function commonRow(same: readonly ConditionSummaryRow[]): ConditionSummaryRow {
-  const firstRow = same[0]!;
-  if (same.length === 1) return firstRow;
-  const kinds = new Set(same.map((row) => row.origin.kind));
-  if (kinds.size === 1) {
-    const kind = firstRow.origin.kind;
-    if (kind === 'setup') return { ...firstRow, originLabel: '上書き: 各Setup' };
-    if (kind === 'layout') return { ...firstRow, originLabel: '上書き: 各配列' };
-    return firstRow;
-  }
-  // 出どころがまたがる（全体の上書きと同じ値を対象ごとにも書いた等）時は、対象ごとでない側を採る
-  const shared = same.find((row) => row.origin.kind !== 'setup' && row.origin.kind !== 'layout');
-  return shared ?? { ...firstRow, originLabel: '上書き: 対象ごと' };
+function screenRow(template: ConditionSummaryRow, applicable: readonly ConditionSummaryRow[]): ConditionSummaryRow {
+  const global = applicable.find((row) => row.origin.kind === 'global');
+  if (global !== undefined) return global;
+  const rawDefault: unknown = SETTINGS_ITEMS[template.id].defaultValue;
+  const value = template.id === 'romajiRuleId'
+    ? defaultRomajiRuleId('')
+    : template.id === 'fingerAssignmentId'
+      ? DEFAULT_FINGER_ASSIGNMENT.id
+      : rawDefault;
+  const { format, displayValue } = formatValue(template.id, value, undefined);
+  return {
+    ...template,
+    format,
+    displayValue,
+    valueKey: valueKeyOf(template.id, value, displayValue),
+    origin: { kind: 'default' },
+    originLabel: formatOrigin({ kind: 'default' }),
+    applicable: true,
+    sameAsDefault: false,
+    diagnostics: [],
+  };
 }
