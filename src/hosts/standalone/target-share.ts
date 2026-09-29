@@ -12,7 +12,7 @@ import { analysisTargetKey, effectiveLabel, type AnalysisTarget, type Setup } fr
  * - `user-layout:<名前>` / `setup:<名前>`: 自作の配列・Setup。idは端末ごとの値で受け取った側には意味が無いので、
  *   名前だけを載せて、受け取った側で同じ名前のものを探す（無ければ「見つからない」と示す）
  *
- * パラメータは Single が `target`、Multi が `targets`（対象ごとに繰り返す。並び順ごと運ぶ。色は並びから決まる）と
+ * パラメータは Single が `target`、Multi が `targets`（対象ごとに繰り返す。並び順ごと運ぶ。色の番号は運ばず、受け取った側で配る）と
  * `baseline`（比較表の基準）。Multiの対象を1つの値へカンマで詰めないのは、名前がカンマを含みうるため。
  *
  * 外から来る値なので、資産と同じcodecの境界（valibot + `decodeDroppingInvalid`）を通し、
