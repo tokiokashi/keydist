@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { createEngineCache } from '#engine/cache.ts';
-import { setStandaloneAnalyzerOptionsCommand, setTextContentCommand } from '#engine/commands.ts';
-import type { TextRef } from '#input/text/selection.ts';
+import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
 import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
 import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { ComparisonStandalonePage } from '#hosts/standalone/index.ts';
@@ -10,6 +9,7 @@ import { builtinStandaloneCatalog } from './catalog.ts';
 import { generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
+import { useTextContentCommit } from './use-text-content-commit.ts';
 
 /**
  * 比較表単体ページの組み立て（#544 Phase 3。`StandaloneBigramFlowApp.tsx`と同じ形）。
@@ -24,16 +24,14 @@ import { useDebouncedCommit } from './use-debounced-commit.ts';
 const engineCache = createEngineCache();
 
 export function StandaloneComparisonApp() {
-  const { assets, ready, dispatch, canUndo, canRedo, undo, redo } = useKeydistAssets();
+  const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => builtinStandaloneCatalog(), []);
 
   const commitComparisonOptions = useDebouncedCommit<ComparisonOptions>(dispatch, {
     commandFor: (options) => setStandaloneAnalyzerOptionsCommand(comparisonAnalyzer.definition.id, options),
   });
 
-  const commitTextContent = useDebouncedCommit<{ ref: TextRef; text: string }>(dispatch, {
-    commandFor: ({ ref, text }) => setTextContentCommand('standalone', ref, text, generateTextId),
-  });
+  const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId);
 
   // 間引き待ちの変更を先に書いてから戻す。待ち中の値を残したまま戻すと、戻した後にその値が
   // 書かれて、戻したはずの変更がまた入るため。
