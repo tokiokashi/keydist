@@ -335,9 +335,9 @@ export function multiTargetConditionSummary(
   options: {
     readonly excludeIds?: readonly SettingsItemId[];
     /** 全体のレベルの値（`globalConditionValues`）。共通の行はここから作る。 */
-    readonly globalValues?: GlobalConditionValues;
+    readonly globalValues: GlobalConditionValues;
     readonly names?: ConditionValueNames;
-  } = {},
+  },
 ): MultiTargetConditionSummary {
   const excluded = options.excludeIds ?? [];
   const first = targets[0];
@@ -396,10 +396,10 @@ export function globalConditionValues(overrides: SettingsCascadeOverrides): Glob
  */
 function screenRow(
   template: ConditionSummaryRow,
-  globalValues: GlobalConditionValues | undefined,
+  globalValues: GlobalConditionValues,
   names: ConditionValueNames | undefined,
 ): ConditionSummaryRow {
-  const globalValue = globalValues?.[template.id];
+  const globalValue = globalValues[template.id];
   const origin: ResolvedOrigin = globalValue === undefined ? { kind: 'default' } : { kind: 'global' };
   const rawDefault: unknown = SETTINGS_ITEMS[template.id].defaultValue;
   const value = globalValue !== undefined
