@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { gotoAnalyzer } from './analyzer-helper.ts';
+import { openFigureSettings } from './bigram-flow-figure-helper.ts';
 
 test('Bigram Flow is React-owned and follows the current Analyzer detail result', async ({ page }) => {
   await gotoAnalyzer(page);
@@ -45,14 +46,14 @@ test('Bigram Flow view controls switch line scale and layer order locally', asyn
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible();
 
-  const lineScale = page.locator('.flow-legacy-settings').getByLabel('紐の太さ', { exact: true });
+  const lineScale = (await openFigureSettings(page, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true });
   await expect(lineScale).toHaveValue('linear');
   await lineScale.selectOption('sqrt');
   await expect(flow).toHaveAttribute('data-line-scale', 'sqrt');
   await lineScale.selectOption('log');
   await expect(flow).toHaveAttribute('data-line-scale', 'log');
 
-  const layerOrder = page.locator('.flow-legacy-settings').getByLabel('重ね順', { exact: true });
+  const layerOrder = (await openFigureSettings(page, 'Keyboard Flow')).getByLabel('重ね順', { exact: true });
   await expect(layerOrder).toHaveValue('weight');
   await layerOrder.selectOption('same-hand-top');
   await expect(flow).toHaveAttribute('data-layer-order', 'same-hand-top');
@@ -66,7 +67,7 @@ test('per-key hover scale widens the local max-weight outgoing edge to the globa
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible();
 
-  const hoverScaleToggle = page.locator('.flow-legacy-settings').getByLabel('ホバー中はそのキーの線だけで太さを決める');
+  const hoverScaleToggle = (await openFigureSettings(page, 'Keyboard Flow')).getByLabel('ホバー中はそのキーの線だけで太さを決める');
   await expect(hoverScaleToggle).toBeChecked();
   await expect(flow).toHaveAttribute('data-hover-scale', 'key');
 
@@ -151,7 +152,7 @@ test('layer order controls where cross-hand edges land in DOM paint order', asyn
   expect(initialOrder.some(isCross)).toBe(true);
   expect(initialOrder.some((hand) => !isCross(hand))).toBe(true);
 
-  const layerOrder = page.locator('.flow-legacy-settings').getByLabel('重ね順', { exact: true });
+  const layerOrder = (await openFigureSettings(page, 'Keyboard Flow')).getByLabel('重ね順', { exact: true });
 
   await layerOrder.selectOption('cross-hand-top');
   await expect(flow).toHaveAttribute('data-layer-order', 'cross-hand-top');
@@ -193,7 +194,7 @@ test('sqrt line scale widens a below-max edge more than linear, but leaves the m
 
   const strokeWidthOf = (index: number) => edges.nth(index).getAttribute('stroke-width').then(Number);
 
-  const lineScale = page.locator('.flow-legacy-settings').getByLabel('紐の太さ', { exact: true });
+  const lineScale = (await openFigureSettings(page, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true });
   await expect(lineScale).toHaveValue('linear');
   const minLinear = await strokeWidthOf(minIndex);
   const maxLinear = await strokeWidthOf(maxIndex);

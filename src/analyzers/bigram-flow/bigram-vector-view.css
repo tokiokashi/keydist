@@ -71,6 +71,11 @@
   border-radius: 8px;
 }
 
+/* 広い画面で入力が全幅に伸びて間延びしないように、入力の幅だけを抑える。 */
+.flow-figure-settings > * {
+  max-width: 24rem;
+}
+
 /* 図が2つあるので、図ごとの小見出しだけを持つ（Analyzer名・説明の段落はペインの見出しが持つ）。 */
 .flow-block-title {
   margin: 0;

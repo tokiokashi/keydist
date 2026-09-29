@@ -82,3 +82,18 @@ export function closeAnalyzerPaneChannels(
   channels?.extraction.unsubscribe();
   channels?.trace.unsubscribe();
 }
+
+/**
+ * 抽出の状態の遷移を畳む。解析設定の変更で抽出の依頼を作り直すと、最初の通知は値の無い
+ * `computing`になる。そのまま本体を外すと、本体が持つ状態（図のそばで開いた表示の調整）が、
+ * 抽出に効く項目を動かすたびに閉じてしまう。直前の結果があれば`stale`（直前の結果を表示）に
+ * 置き換えて、本体を残す。
+ */
+export function foldExtractionState<Extracted>(
+  previous: ExtractionRequestState<Extracted>,
+  next: ExtractionRequestState<Extracted>,
+): ExtractionRequestState<Extracted> {
+  return next.status === 'computing' && (previous.status === 'ready' || previous.status === 'stale')
+    ? { status: 'stale', value: previous.value }
+    : next;
+}

@@ -10,7 +10,7 @@ import type { ExtractionRequestState, TraceRequestState } from '#engine/engine-r
 import type { EngineScheduler } from '#engine/scheduler.ts';
 import { bigramFlowDefinition, type BigramFlowExtracted } from '#analyzers/bigram-flow/extract.ts';
 import { DEFAULT_BIGRAM_FLOW_OPTIONS, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
-import { closeAnalyzerPaneChannels, syncAnalyzerPaneChannels, type AnalyzerPaneChannels } from './analyzer-channels.ts';
+import { closeAnalyzerPaneChannels, foldExtractionState, syncAnalyzerPaneChannels, type AnalyzerPaneChannels } from './analyzer-channels.ts';
 
 /** `request.test.ts`と同じ、flush()するまで実行しない決定的なスケジューラ。 */
 function createManualScheduler(): EngineScheduler & { flush(): void } {
@@ -130,4 +130,13 @@ test('syncAnalyzerPaneChannels: 見た目だけの解析設定を変えてもdef
   assert.equal(extractCallCount, 2, '抽出に効く変更なのにextractが再実行されなかった');
 
   closeAnalyzerPaneChannels(channels);
+});
+
+test('foldExtractionState: 直前の結果がある時の computing は stale に置き換え、無ければそのまま', () => {
+  type State = Parameters<typeof foldExtractionState<string>>[0];
+  const computing = { status: 'computing' } as unknown as State;
+  assert.deepEqual(foldExtractionState({ status: 'ready', value: 'a' } as unknown as State, computing), { status: 'stale', value: 'a' });
+  assert.deepEqual(foldExtractionState({ status: 'stale', value: 'b' } as unknown as State, computing), { status: 'stale', value: 'b' });
+  assert.deepEqual(foldExtractionState({ status: 'idle' } as unknown as State, computing), computing);
+  assert.deepEqual(foldExtractionState({ status: 'ready', value: 'a' } as unknown as State, { status: 'ready', value: 'c' } as unknown as State), { status: 'ready', value: 'c' });
 });

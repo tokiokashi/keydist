@@ -663,7 +663,8 @@ const RELATIVE_VECTORS_READING = '打鍵ごとの移動の向きと距離を、�
 
 /**
  * Bigram Flowの本体（図）。`extracted`（`extract.ts`の計算結果）と見た目だけの設定を描くだけで、
- * Trace・vectorそのものからの再計算はしない。解析設定の入力部品は持たない（`BigramFlowSettings`）。
+ * Trace・vectorそのものからの再計算はしない。両方の図に効く解析設定の入力部品は持たない
+ * （`BigramFlowSettings`）。図ごとにしか効かない項目だけは、図の見出し行のボタンから図のそばで開く。
  */
 export function BigramFlowBody({
   layout,

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openFigureSettings } from './bigram-flow-figure-helper.ts';
 
 test('standalone Bigram Flow connects the Gate 1 vertical slice and keeps ViewConfig in the URL', async ({ page }) => {
   await page.goto('/analyzer/flow?mode=ja&layout=qwerty');
@@ -28,7 +29,7 @@ test('standalone Bigram Flow connects the Gate 1 vertical slice and keeps ViewCo
   await expect(page.locator('.flow-legacy-settings').getByText('反対の手の打鍵を飛ばして、同じ手で続けた2打鍵')).toBeVisible();
   await expect(viewConfig).toContainText('source=within-hand');
 
-  await page.locator('.flow-legacy-settings').getByLabel('距離表示', { exact: true }).selectOption('fixed');
+  await (await openFigureSettings(page, 'Relative vectors')).getByLabel('距離表示', { exact: true }).selectOption('fixed');
   await expect.poll(() => new URL(page.url()).searchParams.get('movementScale')).toBe('fixed');
 
   await expect(host).toHaveAttribute('data-session-target-revision', targetRevision!);
