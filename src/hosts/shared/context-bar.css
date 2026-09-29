@@ -102,7 +102,20 @@ button.context-chip:hover:not(:disabled),
 }
 
 .text-chip {
+  position: relative;
   max-width: 28rem;
+}
+
+/* 競合で選ばれずに残ったコピーの印。チップの角に重ねるので、狭くて中身を絞っても見える */
+.text-chip-unseen {
+  position: absolute;
+  top: -0.15rem;
+  right: -0.15rem;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface);
 }
 
 .text-chip-language {

@@ -33,6 +33,18 @@ export type AssetValues = object;
  */
 export type CommandOutcome<A extends AssetValues> =
   | { readonly kind: 'applied'; readonly label: string; readonly changes: Readonly<Partial<A>> }
+  /**
+   * 履歴に積まない書き込み（Undoの対象にならない、資産に付く印の更新など。#611）。資産は書くが
+   * `undoStack`には積まず、`redoStack`も消さない。`transforms`は資産キーごとの変換で、
+   * 現在値と、履歴の各項目が持つそのキーのbefore/afterへ同じ変換を掛ける。履歴の値へも掛けるのは、
+   * 掛けないと、後のUndoが変換前の値（印が付いたまま等）を書き戻してしまうため。
+   * 結果の`outcome`は`applied`（`changes`は変換後の現在値）として返るので、呼び出し側は区別しなくてよい。
+   */
+  | {
+    readonly kind: 'quiet';
+    readonly label: string;
+    readonly transforms: { readonly [K in keyof A]?: (value: A[K]) => A[K] };
+  }
   | { readonly kind: 'no-op' }
   | { readonly kind: 'rejected'; readonly reason: unknown };
 

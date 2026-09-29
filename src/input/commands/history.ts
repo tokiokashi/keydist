@@ -62,6 +62,7 @@ export function applyCommand<A extends AssetValues>(
   maxEntries: number = DEFAULT_MAX_HISTORY_ENTRIES,
 ): CommandStepResult<A> {
   const outcome = command(assets);
+  if (outcome.kind === 'quiet') return applyQuietly(assets, history, outcome);
   if (outcome.kind !== 'applied') {
     return { assets, history, outcome };
   }
@@ -77,6 +78,46 @@ export function applyCommand<A extends AssetValues>(
     redoStack: [],
   };
   return { assets: withPatch(assets, after), history: nextHistory, outcome };
+}
+
+/**
+ * 履歴に積まない書き込み。現在値と履歴の各項目のbefore/afterへ同じ変換を掛ける
+ * （`CommandOutcome`の`quiet`参照）。変換で何も変わらなければ何もしない。
+ */
+function applyQuietly<A extends AssetValues>(
+  assets: A,
+  history: CommandHistory<A>,
+  outcome: Extract<CommandOutcome<A>, { kind: 'quiet' }>,
+): CommandStepResult<A> {
+  const keys = Object.keys(outcome.transforms) as (keyof A & string)[];
+  const changes: Partial<A> = {};
+  for (const key of keys) {
+    const next = outcome.transforms[key]!(assets[key]);
+    if (!Object.is(next, assets[key])) changes[key] = next;
+  }
+  if (Object.keys(changes).length === 0) return { assets, history, outcome: { kind: 'no-op' } };
+
+  const mapSnapshot = (snapshot: Readonly<Partial<A>>): Readonly<Partial<A>> => {
+    let mapped: Partial<A> | undefined;
+    for (const key of keys) {
+      if (!Object.hasOwn(snapshot, key)) continue;
+      const next = outcome.transforms[key]!(snapshot[key] as A[typeof key]);
+      if (Object.is(next, snapshot[key])) continue;
+      mapped ??= { ...snapshot };
+      mapped[key] = next;
+    }
+    return mapped ?? snapshot;
+  };
+  const mapEntry = (entry: HistoryEntry<A>): HistoryEntry<A> => {
+    const before = mapSnapshot(entry.before);
+    const after = mapSnapshot(entry.after);
+    return before === entry.before && after === entry.after ? entry : { ...entry, before, after };
+  };
+  return {
+    assets: { ...assets, ...changes },
+    history: { undoStack: history.undoStack.map(mapEntry), redoStack: history.redoStack.map(mapEntry) },
+    outcome: { kind: 'applied', label: outcome.label, changes },
+  };
 }
 
 const NO_OP_OUTCOME: CommandOutcome<AssetValues> = { kind: 'no-op' };

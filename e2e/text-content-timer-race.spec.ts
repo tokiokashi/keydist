@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openTextChip } from './context-bar-helper.ts';
-import { DEFAULT_DEBOUNCE_MS } from '../src/platform/persistence/debounced-scheduler.ts';
+import { installTimerCapture, type RaceWindow } from './text-timer-capture-helper.ts';
 
 /**
  * 組み込みテキストを書き換えた直後の打鍵が、複製を2つ作らず1つに書かれることの回帰テスト（#707）。
@@ -11,50 +11,8 @@ import { DEFAULT_DEBOUNCE_MS } from '../src/platform/persistence/debounced-sched
  * 描画を挟まずに詰める（挟む場合も確かめる）。
  */
 
-interface RaceWindow {
-  __timers: Map<number, () => void>;
-  __fire: () => number;
-  __type: (s: string) => void;
-}
-
 async function setup(page: Page): Promise<void> {
-  await page.addInitScript((debounceMs) => {
-    const w = window as unknown as RaceWindow;
-    w.__timers = new Map();
-    let fake = 1e9;
-    const origSet = window.setTimeout.bind(window);
-    const origClear = window.clearTimeout.bind(window);
-    // 本文のdebounce（`DEFAULT_DEBOUNCE_MS`）だけ横取りして、テストが撃つまで待たせる。
-    // 定数が変わっても捕まえ損ねないよう、撃った件数は各テストで検査する。
-    (window as unknown as { setTimeout: unknown }).setTimeout = (fn: () => void, ms?: number, ...args: unknown[]) => {
-      if (ms === debounceMs) {
-        const id = ++fake;
-        w.__timers.set(id, fn);
-        return id;
-      }
-      return origSet(fn, ms, ...args);
-    };
-    (window as unknown as { clearTimeout: unknown }).clearTimeout = (id: number) => {
-      if (w.__timers.has(id)) {
-        w.__timers.delete(id);
-        return;
-      }
-      origClear(id);
-    };
-    w.__fire = () => {
-      const entries = [...w.__timers.values()];
-      w.__timers.clear();
-      for (const fn of entries) fn();
-      return entries.length;
-    };
-    // Reactが拾う形で1文字足す（valueのsetterを直接呼び、inputイベントを起こす）。
-    w.__type = (s: string) => {
-      const ta = document.querySelector('textarea[aria-label="テキスト"]') as HTMLTextAreaElement;
-      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!;
-      setter.call(ta, ta.value + s);
-      ta.dispatchEvent(new Event('input', { bubbles: true }));
-    };
-  }, DEFAULT_DEBOUNCE_MS);
+  await installTimerCapture(page);
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await openTextChip(page);
