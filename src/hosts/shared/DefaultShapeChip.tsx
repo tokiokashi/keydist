@@ -1,7 +1,6 @@
 import type { Command } from '#input/commands/index.ts';
 import { setCascadeOverrideCommand, type KeydistAssets } from '#engine/commands.ts';
 import { resolveDefaultShapeId } from '#engine/settings-items.ts';
-import { shortShapeNames } from './short-shape-name.ts';
 import './context-bar.css';
 
 /**
@@ -24,12 +23,14 @@ export interface DefaultShapeChipProps {
 export function DefaultShapeChip({ overrides, dispatch, shapes }: DefaultShapeChipProps) {
   const current = resolveDefaultShapeId(overrides);
   const currentIsKnown = shapes.has(current);
-  const shortNames = shortShapeNames([...shapes.values()]);
   return (
-    <label className="context-chip context-select-chip" title="配列を対象にした時に使う物理配列">
+    <label className="context-chip context-select-chip" title="既定の物理配列">
+      {/* スマホ幅では名前を出さずこのアイコンだけにする。選択は透明にしたselectが受ける（タップで選択肢が開く）。 */}
+      <svg className="context-chip-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+        <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
+        <path d="M4 6.5h1M7.5 6.5h1M11 6.5h1M4 9.5h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
       <span className="context-chip-key">既定の物理配列</span>
-      {/* スマホ幅ではこの短い名前を見せ、選択は透明にしたselectが受ける（タップで選択肢が開く）。 */}
-      <span className="context-select-short" aria-hidden="true">{currentIsKnown ? (shortNames.get(current) ?? current) : '（見つからない物理配列）'}</span>
       <select
         aria-label="既定の物理配列"
         value={current}

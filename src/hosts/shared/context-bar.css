@@ -37,12 +37,6 @@
   margin-left: auto;
 }
 
-.context-bar-inline-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-}
-
 /* ⋯のメニューはスマホ幅でだけ出す（パソコン幅は操作を右端に並べる）。 */
 .context-menu {
   position: relative;
@@ -292,7 +286,7 @@ button.context-chip:hover:not(:disabled),
 }
 
 /* スマホ幅でだけ見せる短い名前（パソコン幅は選択欄そのものを見せる）。 */
-.context-select-short {
+.context-chip-icon {
   display: none;
 }
 
@@ -367,7 +361,7 @@ button.context-chip:hover:not(:disabled),
 /*
  * スマホ幅: 全体を1行に収める（☰ / テキストのチップ / 既定の物理配列のチップ / ⋯）。
  * そのために「テキスト」「既定の物理配列」の文字は見た目から省き（読み上げには残す）、
- * 物理配列は短い名前で出し、Undo/Redoと共有は⋯のメニューへ入れる。
+ * 物理配列はアイコンだけにし、共有は⋯のメニューへ入れる（Undo/Redoは常時出す）。
  * チップが余る幅を分け合い、足りない時はテキストのチップが省略して縮む。
  */
 @media (max-width: 760px) {
@@ -405,7 +399,13 @@ button.context-chip:hover:not(:disabled),
     flex: 1 1 auto;
   }
 
-  .context-bar-inline-actions {
+  /* 幅が足りないので、チップは詰めた形にする。 */
+  .context-bar .context-chip {
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  .context-share {
     display: none;
   }
 
@@ -413,30 +413,15 @@ button.context-chip:hover:not(:disabled),
     display: block;
   }
 
+  /* 物理配列は名前を出さず、キーボードのアイコンだけにする。 */
   .context-select-chip {
     position: relative;
-    flex: 0 1 auto;
-    max-width: 9rem;
-    padding: 0.2rem 0.6rem 0.2rem 0.8rem;
-  }
-
-  .context-select-short {
-    display: block;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .context-select-chip::after {
-    content: "";
     flex: none;
-    width: 0.35rem;
-    height: 0.35rem;
-    margin-top: -0.2rem;
-    border-right: 1.8px solid var(--text-muted);
-    border-bottom: 1.8px solid var(--text-muted);
-    transform: rotate(45deg);
+  }
+
+  .context-select-chip .context-chip-icon {
+    display: block;
+    color: var(--text-muted);
   }
 
   /* 選択は透明なselectが受ける。チップ全体を覆い、タップでネイティブの選択肢が開く。 */

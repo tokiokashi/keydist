@@ -30,7 +30,7 @@ export interface ContextBarProps {
 }
 
 /**
- * 常時出す操作（Undo/Redo・共有）はパソコン幅では右端に並べ、スマホ幅では⋯のメニューに入れる
+ * Undo/Redoはどの幅でも常時出す。共有はパソコン幅では右端に並べ、スマホ幅では⋯のメニューに入れる
  * （1行に収めるため）。どちらを見せるかはCSSだけで切り替える（プリレンダーのHTMLとハイドレーション後で
  * 出し分けがずれないように）。⋯のメニューの中身は開いた時だけ描くので、操作の実体は同時に2つ存在しない。
  */
@@ -43,11 +43,9 @@ export function ContextBar({ children, history, share, disabled = false }: Conte
       <fieldset className="context-bar-fieldset" disabled={disabled}>
         <div className="context-bar-items">{children}</div>
         <div className="context-bar-actions">
-          <div className="context-bar-inline-actions">
-            <UndoRedoButtons history={history} />
-            <ShareButton description={share.description} onCopy={copy} />
-          </div>
-          <ContextMenu history={history} share={share} onCopy={copy} />
+          <UndoRedoButtons history={history} />
+          <ShareButton description={share.description} onCopy={copy} />
+          <ContextMenu share={share} onCopy={copy} />
           <span className="context-share-status" role="status">
             {state === 'copied' ? 'URLをコピーした' : state === 'failed' ? 'コピーできなかった' : ''}
           </span>
@@ -157,8 +155,8 @@ function ShareIcon() {
   );
 }
 
-/** スマホ幅で、Undo/Redo・共有をまとめる⋯のメニュー。 */
-function ContextMenu({ history, share, onCopy }: { readonly history: ContextBarHistory; readonly share: ContextBarShare; readonly onCopy: () => void }) {
+/** スマホ幅で、共有を入れる⋯のメニュー。 */
+function ContextMenu({ share, onCopy }: { readonly share: ContextBarShare; readonly onCopy: () => void }) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -181,8 +179,6 @@ function ContextMenu({ history, share, onCopy }: { readonly history: ContextBarH
   };
 
   const items: readonly { readonly id: string; readonly label: string; readonly description?: string; readonly disabled?: boolean; readonly run: () => void }[] = [
-    { id: 'undo', label: '元に戻す', disabled: !history.canUndo, run: history.undo },
-    { id: 'redo', label: 'やり直す', disabled: !history.canRedo, run: history.redo },
     { id: 'share', label: '共有', description: share.description, run: onCopy },
   ];
 

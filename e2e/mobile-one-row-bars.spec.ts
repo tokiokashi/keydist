@@ -44,46 +44,65 @@ for (const path of PAGES) {
   });
 }
 
-test('スマホ幅: 物理配列は短い名前で出て、選ぶと変わる', async ({ page }) => {
+test('スマホ幅: 物理配列はアイコンだけで、selectを操作して選べる', async ({ page }) => {
   await openReady(page, 'bigram-flow');
   const chip = page.locator('.context-bar .context-select-chip');
-  await expect(chip.locator('.context-select-short')).toHaveText('ロウ（ANSI）');
-  await page.getByLabel('既定の物理配列').selectOption('ortholinear');
-  await expect(chip.locator('.context-select-short')).toHaveText('オーソリニア（ANSI）');
+  await expect(chip).toHaveAttribute('title', '既定の物理配列');
+  const box = await chip.boundingBox();
+  expect(box?.width).toBeLessThan(48);
+  const select = page.getByLabel('既定の物理配列');
+  await expect(select).toHaveValue('row-staggered');
+  await select.selectOption('ortholinear');
+  await expect(select).toHaveValue('ortholinear');
 });
 
-test('スマホ幅: ⋯のメニューから元に戻す・やり直す・共有が使える', async ({ page, context }) => {
+test('スマホ幅: テキストのチップは名前が8文字以上読める幅を持つ', async ({ page }) => {
+  await openReady(page, 'bigram-flow');
+  const visible = await page.evaluate(() => {
+    const value = document.querySelector('.text-chip .context-chip-value') as HTMLElement;
+    const style = getComputedStyle(value);
+    const context = document.createElement('canvas').getContext('2d') as CanvasRenderingContext2D;
+    context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    const name = value.textContent ?? '';
+    let count = 0;
+    while (count < name.length && context.measureText(`${name.slice(0, count + 1)}…`).width <= value.clientWidth) count += 1;
+    return count;
+  });
+  expect(visible).toBeGreaterThanOrEqual(8);
+});
+
+test('スマホ幅: 文脈バーの元に戻す・やり直すが直接押せ、共有は⋯のメニューから使える', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await openReady(page, 'bigram-flow');
   const bar = page.locator('.context-bar');
   const chip = bar.locator('button.text-chip');
+  const undo = bar.getByRole('button', { name: '元に戻す' });
+  const redo = bar.getByRole('button', { name: 'やり直す' });
 
-  // パソコン幅の並びはスマホ幅では出ない。
+  // 共有のボタンはスマホ幅では出ない。Undo/Redoは常に出ている。
   await expect(bar.getByRole('button', { name: '共有', exact: true })).toBeHidden();
-  await expect(bar.getByRole('button', { name: '元に戻す' })).toBeHidden();
-
-  const menuButton = page.getByRole('button', { name: '画面のメニュー' });
-  await menuButton.click();
-  await expect(page.getByRole('menuitem', { name: '元に戻す' })).toBeDisabled();
-  await expect(page.getByRole('menuitem', { name: 'やり直す' })).toBeDisabled();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('menu')).toHaveCount(0);
+  await expect(undo).toBeVisible();
+  await expect(redo).toBeVisible();
+  await expect(undo).toBeDisabled();
 
   const panel = await openTextChip(page);
   await panel.getByLabel('テキストを選ぶ', { exact: true }).selectOption({ label: '英文（既定）' });
   await expect(chip).toContainText('英文');
 
-  await menuButton.click();
-  await page.getByRole('menuitem', { name: '元に戻す' }).click();
+  await undo.click();
   await expect(chip).toContainText('吾輩は猫である');
+  await redo.click();
+  await expect(chip).toContainText('英文');
+
+  const menuButton = page.getByRole('button', { name: '画面のメニュー' });
+  await menuButton.click();
+  await expect(page.getByRole('menuitem')).toHaveCount(1);
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('menu')).toHaveCount(0);
 
   await menuButton.click();
-  await page.getByRole('menuitem', { name: 'やり直す' }).click();
-  await expect(chip).toContainText('英文');
-
-  await menuButton.click();
   await page.getByRole('menuitem', { name: '共有' }).click();
+  await expect(page.getByRole('menu')).toHaveCount(0);
   await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('/standalone/bigram-flow');
 });
