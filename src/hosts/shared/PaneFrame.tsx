@@ -107,7 +107,8 @@ export function PaneFrame({
 
   const closeSettings = () => {
     setSettingsOpen(false);
-    settingsButtonRef.current?.focus();
+    // 見出しを固定しないペインではボタンが画面外にあり、既定のfocus()はそこまでスクロールしてしまう。
+    settingsButtonRef.current?.focus({ preventScroll: true });
   };
 
   return (

@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { defineOption, defineOptions } from '#analyzers/options.ts';
+import { booleanUrlCodec, defineOption, defineOptions, stringSetUrlCodec, type OptionUrlCodec } from '#analyzers/options.ts';
 
 /**
  * 比較表Analyzerの列（#544 Phase 3「集合を対象にする最初のAnalyzer（比較表）」）。
@@ -91,6 +91,15 @@ function isComparisonColumnId(value: string): value is ComparisonColumnId {
  * 持つ個人設定で、集合そのもの（対象）とは別の軸にする（`analyzers/contract.ts`の
  * `AnalyzerInstance.target`と`options`が別フィールドなのと同じ区別）。
  */
+/**
+ * 表示する列のURL codec。並びごと読み書きする。空（0列）も「0列にした」という設定なので、
+ * 汎用の集合codecが省く空を空文字で残す（省くと既定の全列へ戻り、共有先で違う表になる）。
+ */
+const visibleColumnsUrl: OptionUrlCodec<readonly ComparisonColumnId[]> = (() => {
+  const set = stringSetUrlCodec('columns', COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_IDS.length);
+  return { ...set, encode: (value) => value.join(',') };
+})();
+
 export const comparisonOptions = defineOptions({
   /** 表示する列。空集合は「全列表示」という意味にはしない（要求どおり0列を描く）。 */
   visibleColumns: defineOption<readonly ComparisonColumnId[]>({
@@ -114,13 +123,19 @@ export const comparisonOptions = defineOptions({
     },
     default: [...COMPARISON_COLUMN_IDS],
     affects: 'view',
+    url: visibleColumnsUrl,
   }),
   /**
    * 基準がある時、各セルを絶対値と並べて基準比（%）でも見せるか。
    * 優劣を示す色は付けない（AGENTS.md「良い/悪いの色付けはしない」）——ここは
    * 数値を出すか出さないかだけの切り替え。
    */
-  showBaselineRatio: defineOption<boolean>({ schema: v.boolean(), default: true, affects: 'view' }),
+  showBaselineRatio: defineOption<boolean>({
+    schema: v.boolean(),
+    default: true,
+    affects: 'view',
+    url: booleanUrlCodec('baselineRatio'),
+  }),
 });
 
 export type ComparisonOptions = typeof comparisonOptions.defaultOptions;
