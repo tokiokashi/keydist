@@ -18,6 +18,18 @@ async function breakMath(page: Page, name: 'hypot' | 'sin') {
   }, { message: BREAK_MESSAGE, fn: name });
 }
 
+/**
+ * 計算はWorkerの中で走るので、メインスレッドの`Math`を書き換えても計算は壊れない。
+ * Workerのスクリプトの先頭に同じ差し込みを足し、`__break`はWorker側で立てる。
+ */
+async function breakMathInWorker(page: Page, name: 'hypot') {
+  await page.route('**/*engine-worker*', async (route) => {
+    const response = await route.fetch();
+    const patch = `(() => { const original = Math.${name}; Math.${name} = (...values) => { if (self.__break) throw new Error(${JSON.stringify(BREAK_MESSAGE)}); return original(...values); }; })();\n`;
+    await route.fulfill({ response, body: patch + (await response.text()) });
+  });
+}
+
 async function expectFoldedDetails(alert: ReturnType<Page['locator']>, withStack: boolean) {
   const details = alert.locator('details[data-pane-error-details]');
   await expect(details).not.toHaveAttribute('open', '');
@@ -28,12 +40,13 @@ async function expectFoldedDetails(alert: ReturnType<Page['locator']>, withStack
 }
 
 test('計算中の例外: 1文だけ出し、原文は折りたたんだ詳細に入る', async ({ page }) => {
-  await breakMath(page, 'hypot');
+  await breakMathInWorker(page, 'hypot');
   await page.goto('/standalone/bigram-flow');
   const pane = page.locator('.pane-frame');
   await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
 
-  await page.evaluate(() => { (window as unknown as { __break: boolean }).__break = true; });
+  expect(page.workers()).toHaveLength(1);
+  await Promise.all(page.workers().map((worker) => worker.evaluate(() => { (self as unknown as { __break: boolean }).__break = true; })));
   await page.getByLabel('既定の物理配列').selectOption('ortholinear');
 
   const alert = pane.locator('[data-pane-error]');

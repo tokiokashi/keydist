@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
-import { createEngineCache } from '#engine/cache.ts';
 import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
 import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
 import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { ComparisonStandalonePage } from '#hosts/standalone/index.ts';
 import { builtinStandaloneCatalog } from './catalog.ts';
+import { sharedEngineComputer } from './engine-computer.ts';
 import { generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
@@ -14,15 +14,8 @@ import { useTextContentCommit } from './use-text-content-commit.ts';
 /**
  * 比較表単体ページの組み立て（#544 Phase 3。`StandaloneBigramFlowApp.tsx`と同じ形）。
  *
- * `EngineCache`はこのAppの生存期間で1つだけ（モジュールscope）。Bigram Flow単体ページと
- * 別のモジュールscopeなので別インスタンスになるが、どちらも永続化しないメモリキャッシュ
- * （#544 §7）であり、単体ページ間でキャッシュを共有する要求は今のところ無いため
- * （タブをまたいだページ遷移のたびに作り直しても実害が無い規模。`engine/cache.ts`の
- * 「表示中のSetupだけを計算する前提なので大きくしなくてよい」コメント参照）、
- * ここでは`StandaloneBigramFlowApp`と同じパターンをそのまま踏襲する。
+ * 計算の窓口は他の単体ページと共有する（`engine-computer.ts`）。
  */
-const engineCache = createEngineCache();
-
 export function StandaloneComparisonApp() {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => builtinStandaloneCatalog(), []);
@@ -55,7 +48,7 @@ export function StandaloneComparisonApp() {
       assets={assets}
       assetsReady={ready}
       dispatch={dispatch}
-      cache={engineCache}
+      cache={sharedEngineComputer}
       catalog={catalog}
       generateTextId={generateTextId}
       history={history}
