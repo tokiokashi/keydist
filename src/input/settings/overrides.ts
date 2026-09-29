@@ -23,7 +23,7 @@ export function emptyCascadeOverrides<V>(): CascadeOverrides<V> {
 }
 
 /**
- * `instanceKey`（配列id・形状id・Setup id等、外部（importしたJSON等）から来うる
+ * `instanceKey`（配列id・物理配列id・Setup id等、外部（importしたJSON等）から来うる
  * 任意の文字列）を使ったbucketの安全な読み書き。
  *
  * 素のbracketアクセス（`bucket[instanceKey]`）は、instanceKeyが`"__proto__"`だと
@@ -78,7 +78,7 @@ export function levelOverrides<V>(
  * 指定レベル・1項目だけの生の上書き値を読む（無ければ`undefined`）。`resolveCascade`
  * （`resolve.ts`）はレベルを弱い順に重ねる・`validate`/`isApplicable`まで含めた「実効値」を
  * 求める仕組みだが、`CascadeContext`をまだ組み立てられない場面（例: 配列を対象にした時の
- * 物理形状そのものを決める`defaultShapeId`。`engine/settings-items.ts`の
+ * 物理配列そのものを決める`defaultShapeId`。`engine/settings-items.ts`の
  * `resolveDefaultShapeId`）では、その前段として「特定の1レベルに書かれた生の値」だけが
  * 要ることがある。`levelOverrides`を1項目ぶんに絞るだけの薄いヘルパー。
  */

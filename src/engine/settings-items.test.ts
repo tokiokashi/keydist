@@ -139,7 +139,7 @@ test('romajiRuleId: 同じ配列でも打ち方がromajiでなければnot-appli
   );
 });
 
-test('fingerAssignmentId: 既定は形状から決まり（JIS系形状はjis-default）、shape/layout/setupで上書きできる', () => {
+test('fingerAssignmentId: 既定は物理配列から決まり（JIS系物理配列はjis-default）、shape/layout/setupで上書きできる', () => {
   const resolvedAnsi = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(asuka, { shapeId: 'row-staggered' }));
   assert.equal(resolvedAnsi.fingerAssignmentId.value, 'default');
   assert.equal(resolvedAnsi.fingerAssignmentId.origin.kind, 'default');
@@ -167,7 +167,7 @@ test('fingerAssignmentId: 既定は形状から決まり（JIS系形状はjis-de
   assert.equal(resolved.fingerAssignmentId.value, 'jis-default');
 });
 
-test('preferOppositeThumb: SandSを持たない配列ではnot-applicable、反対の親指キーが無い形状ではfallback', () => {
+test('preferOppositeThumb: SandSを持たない配列ではnot-applicable、反対の親指キーが無い物理配列ではfallback', () => {
   const resolvedAsuka = resolveSettings(EMPTY_SETTINGS_OVERRIDES, contextFor(asuka));
   assert.equal(resolvedAsuka.preferOppositeThumb.applicable, false);
 
@@ -286,9 +286,9 @@ test('defaultShapeId: globalレベルへの書き込みは許可される', () =
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;
-  // contextのshapeIdは、target-resolution.tsが実際に選んだ形状（＝この場合はortholinear。
+  // contextのshapeIdは、target-resolution.tsが実際に選んだ物理配列（＝この場合はortholinear。
   // catalogに存在するのでfallbackは起きない）を表す。validateは「値と実際に使われた
-  // 形状が一致するか」を見るだけなので、一致させておかないとfallback診断が誤って乗る。
+  // 物理配列が一致するか」を見るだけなので、一致させておかないとfallback診断が誤って乗る。
   const resolved = resolveSettings(written.overrides, contextFor(colemakEn, { shapeId: 'ortholinear' }));
   assert.equal(resolved.defaultShapeId.value, 'ortholinear');
   assert.equal(resolved.defaultShapeId.origin.kind, 'global');
@@ -335,7 +335,7 @@ test('defaultShapeId: Setup対象（targetKind: setup）では効かない', () 
   assert.equal(resolved.defaultShapeId.applicable, false);
 });
 
-test('defaultShapeId: idがまだ無いSetupのプレビューでも効かず、形状の食い違いを診断しない', () => {
+test('defaultShapeId: idがまだ無いSetupのプレビューでも効かず、物理配列の食い違いを診断しない', () => {
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;
@@ -344,12 +344,12 @@ test('defaultShapeId: idがまだ無いSetupのプレビューでも効かず、
     contextFor(colemakEn, { shapeId: 'row-staggered', targetKind: 'setup' }),
   );
   assert.equal(resolved.defaultShapeId.applicable, false);
-  // 効かない旨（not-applicable）は残るが、形状を読み替えるfallbackは起きない。
+  // 効かない旨（not-applicable）は残るが、物理配列を読み替えるfallbackは起きない。
   assert.deepEqual(resolved.defaultShapeId.diagnostics.map((d) => d.kind), ['not-applicable']);
   assert.equal(resolved.defaultShapeId.value, 'ortholinear');
 });
 
-test('defaultShapeId: 値と実際に使われた形状（context.shapeId）が一致すればvalidateは素通りする', () => {
+test('defaultShapeId: 値と実際に使われた物理配列（context.shapeId）が一致すればvalidateは素通りする', () => {
   const resolved = resolveSettings(
     EMPTY_SETTINGS_OVERRIDES,
     contextFor(colemakEn, { shapeId: 'row-staggered' }),
@@ -357,17 +357,17 @@ test('defaultShapeId: 値と実際に使われた形状（context.shapeId）が�
   assert.equal(resolved.defaultShapeId.diagnostics.length, 0);
 });
 
-test('defaultShapeId: 値が実際に使われた形状と食い違えば、context.shapeIdへfallbackし診断を残す（配列対象での「不明な形状」ケース）', () => {
+test('defaultShapeId: 値が実際に使われた物理配列と食い違えば、context.shapeIdへfallbackし診断を残す（配列対象での「不明な物理配列」ケース）', () => {
   // target-resolution.tsは「要求されたdefaultShapeIdがcatalogに無ければDEFAULT_SHAPE_IDへ
-  // fallbackし、実際に使った形状をcontext.shapeIdへ積む」という形でこの状況を作る。
+  // fallbackし、実際に使った物理配列をcontext.shapeIdへ積む」という形でこの状況を作る。
   // ここではその後段（resolveSettings側の検知）だけを、直接contextを組み立てて確認する。
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'deleted-shape');
   assert.ok(written.ok);
   if (!written.ok) return;
   const resolved = resolveSettings(written.overrides, contextFor(colemakEn, { shapeId: 'row-staggered' }));
-  assert.equal(resolved.defaultShapeId.value, 'row-staggered', 'fallbackした実際の形状へ読み替える');
+  assert.equal(resolved.defaultShapeId.value, 'row-staggered', 'fallbackした実際の物理配列へ読み替える');
   assert.equal(resolved.defaultShapeId.diagnostics.length, 1);
-  // 画面に出る文なので、消えた形状のidは出さず、実際に測った形状の名前を出す。
+  // 画面に出る文なので、消えた物理配列のidは出さず、実際に測った物理配列の名前を出す。
   assert.doesNotMatch(resolved.defaultShapeId.diagnostics[0]!.message, /deleted-shape/);
   assert.match(resolved.defaultShapeId.diagnostics[0]!.message, new RegExp(PHYSICAL_SHAPES['row-staggered'].name.replace(/[()（）]/g, '.')));
 });

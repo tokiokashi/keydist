@@ -82,7 +82,7 @@ test('カスケードの追従: 上書きの無いSetupはグローバルの変�
   assert.equal(resolveSettings(overrides, overridingResolution.context).windowSize.value, 9); // 変わらない
 });
 
-test('配列・形状が同じ2つのSetupはポリシーだけ変えて比較できる', () => {
+test('配列・物理配列が同じ2つのSetupはポリシーだけ変えて比較できる', () => {
   const catalog = catalogFor(asuka);
   const setupA: Setup = { id: 'setup-a', layoutId: asuka.id, shapeId: 'row-staggered' };
   const setupB: Setup = { id: 'setup-b', layoutId: asuka.id, shapeId: 'row-staggered' };
@@ -102,7 +102,7 @@ test('配列・形状が同じ2つのSetupはポリシーだけ変えて比較�
   assert.ok(resolutionB.ok);
   if (!resolutionA.ok || !resolutionB.ok) return;
 
-  // 配列・形状は同じ実体を指す。
+  // 配列・物理配列は同じ実体を指す。
   assert.equal(resolutionA.layout, resolutionB.layout);
   assert.equal(resolutionA.shape, resolutionB.shape);
   // ただし解決結果（実効値）はSetup固有の上書きだけ違う。
@@ -166,7 +166,7 @@ test('配列を対象にした解決は、実カタログではfixtureの既定�
       assert.equal(resolved.romajiRuleId.applicable, false, scenario.id);
     }
 
-    // 配列対象と、同じ配列・既定形状で上書きの無いSetup対象は、CascadeContextが
+    // 配列対象と、同じ配列・既定の物理配列で上書きの無いSetup対象は、CascadeContextが
     // setupIdの有無以外一致するはずなので、解決結果（実効値・出どころ）もビット一致する
     // （`target-resolution.ts`のコメント参照。#578指摘1の「必ず確認する」項目）。
     const equivalentSetup: Setup = {

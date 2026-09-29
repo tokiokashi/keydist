@@ -79,7 +79,7 @@ function resolveItem(
     origin = level;
   }
 
-  // 妥当性: 形状等で実現できない値は順序で解決せず、実現できる値へ戻す。
+  // 妥当性: 物理配列等で実現できない値は順序で解決せず、実現できる値へ戻す。
   if (item.validate) {
     const result = item.validate(value, context);
     if (!result.ok) {

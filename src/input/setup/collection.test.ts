@@ -46,7 +46,7 @@ test('createSetup: ラベル付きで作れる', () => {
   assert.equal(library.setups[0].label, '実験用');
 });
 
-test('duplicateSetup: 配列・形状・上書きをコピーした独立のSetupができる', () => {
+test('duplicateSetup: 配列・物理配列・上書きをコピーした独立のSetupができる', () => {
   idCounter = 0;
   let library = createSetup(emptyLibrary(), 'qwerty', 'row-staggered', nextId);
   const sourceId = library.setups[0].id;

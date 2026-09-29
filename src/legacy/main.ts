@@ -215,7 +215,7 @@ function updateUiState(change: (draft: UiStateV1) => void, debounce = false): vo
   uiStateOwner.update(change, debounce);
 }
 
-/** 旧形式の単一custom設定を、名前付き形状の先頭要素へ移行する。 */
+/** 旧形式の単一custom設定を、名前付き物理配列の先頭要素へ移行する。 */
 function migrateCurrentGeometryShape(): void {
   const current = uiState.conditions.geometrySettings.shape;
   const presetId = current.id;
@@ -430,7 +430,7 @@ function selectedShapeForKind(kind: GeometryKind): PhysicalShape | undefined {
   return undefined;
 }
 
-/** 配列行で選ばれた形状だけを差し替え、運指設定は共通の現在値を使う。 */
+/** 配列行で選ばれた物理配列だけを差し替え、運指設定は共通の現在値を使う。 */
 function geometrySettingsForKind(kind: GeometryKind): GeometrySettings {
   const current = uiState.conditions.geometrySettings;
   return {

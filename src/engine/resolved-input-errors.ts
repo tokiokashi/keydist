@@ -3,7 +3,7 @@ import type { SetupReferenceError } from '#input/setup/index.ts';
 
 /**
  * `ResolvedInputError`を日本語の説明文へ変換する（#544 §6「残る例外表示はSetup・配列・
- * 形状が削除された時だけ」・§4「このテキストには使えないSetup」・§3「形状で実現できない値」）。
+ * 物理配列が削除された時だけ」・§4「このテキストには使えないSetup」・§3「物理配列で実現できない値」）。
  *
  * 元は`hosts/shared/pane-status.ts`にあった（単一対象のペインだけが使っていた）。
  * Phase 3で集合対象のAnalyzer（比較表）の抽出がメンバーごとの解決失敗を値として持つ
@@ -14,7 +14,7 @@ import type { SetupReferenceError } from '#input/setup/index.ts';
  * ここを re-export するだけにする（依存が逆向きにならないよう、`engine`は`hosts`を
  * 一切importしない）。
  */
-// 画面にそのまま出る文なので、配列・形状・Setupのidは含めない（利用者には意味の無い内部の値）。
+// 画面にそのまま出る文なので、配列・物理配列・Setupのidは含めない（利用者には意味の無い内部の値）。
 // どの対象の失敗かは、行・見出しに並ぶ対象の名前で分かる。
 function describeSetupReferenceError(error: SetupReferenceError): string {
   switch (error.kind) {

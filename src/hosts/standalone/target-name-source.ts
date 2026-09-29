@@ -16,9 +16,9 @@ import {
 } from '#hosts/shared/condition-summary.ts';
 
 /**
- * 解決に失敗した対象の名前。実効の形状・条件は決まっていないので、手持ちから分かる範囲の
+ * 解決に失敗した対象の名前。実効の物理配列・条件は決まっていないので、手持ちから分かる範囲の
  * 名前だけで作る（レビュー指摘L2: 失敗メンバーの名前が「—」だけになるのを防ぐ）。
- * 配列・形状が消えている時もidは出さない（自作配列のidは内部の値で、画面に出す文言の
+ * 配列・物理配列が消えている時もidは出さない（自作配列のidは内部の値で、画面に出す文言の
  * 読者には意味を持たないため）。同じ説明が並んだ時の区別は`nameTargets`の段階上げに任せる。
  */
 function failedDescription(target: AnalysisTarget, setup: Setup | undefined, catalog: SetupCatalog): string {

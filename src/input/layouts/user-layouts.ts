@@ -25,7 +25,7 @@ export interface UserLayout {
   legends?: [string, string][];
   /** かなをローマ字へ変換せず、sequencesを直接使う */
   direct?: boolean;
-  /** 配列側が前提とする非親指のホームキー。省略時は物理形状側の既定値を使う */
+  /** 配列側が前提とする非親指のホームキー。省略時は物理配列側の既定値を使う */
   homeKeys?: Partial<Record<NonThumb, string>>;
 }
 

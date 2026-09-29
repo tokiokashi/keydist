@@ -60,7 +60,7 @@ test('配列別条件が空なら既定値と同じになる', () => {
   );
 });
 
-test('詳細画面で形状を既定へ戻しても他の配列別条件を消さない', () => {
+test('詳細画面で物理配列を既定へ戻しても他の配列別条件を消さない', () => {
   const perLayout = { qwerty: { romajiRule: 'azik', windowSize: 7 } };
   setLayoutGeometryOverride(perLayout, 'qwerty', 'row-staggered', 'ortholinear');
   assert.deepEqual(perLayout.qwerty, { romajiRule: 'azik', windowSize: 7, geometry: 'row-staggered' });
@@ -69,7 +69,7 @@ test('詳細画面で形状を既定へ戻しても他の配列別条件を消�
   assert.deepEqual(perLayout.qwerty, { romajiRule: 'azik', windowSize: 7 });
 });
 
-test('個別設定がオンの空オブジェクトは形状を既定へ戻しても残る', () => {
+test('個別設定がオンの空オブジェクトは物理配列を既定へ戻しても残る', () => {
   const perLayout = { qwerty: {} };
   setLayoutGeometryOverride(perLayout, 'qwerty', 'row-staggered', 'row-staggered');
   assert.deepEqual(perLayout.qwerty, {});

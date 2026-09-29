@@ -44,7 +44,7 @@ export interface Geometry {
   /** 各手のホームとなる親指キー（仕様 §3.1） */
   thumbs: Record<'LT' | 'RT', Key>;
   homes: Record<Finger, Point>;
-  /** この形状の構築に使った指割り当て（仕様 §4.2準拠。出力に併記するため保持する） */
+  /** この物理配列の構築に使った指割り当て（仕様 §4.2準拠。出力に併記するため保持する） */
   assignment: FingerAssignment;
 }
 
@@ -60,8 +60,8 @@ export const QWERTY_LEGEND = [
 ] as const;
 
 /**
- * 物理キーのid。QWERTY刻印の範囲内（既定形状の行・列数以内）ならその文字を使い、
- * 範囲外（形状定義でキー数を増やした場合）は `r{row}c{col}` で生成する。
+ * 物理キーのid。QWERTY刻印の範囲内（既定の物理配列の行・列数以内）ならその文字を使い、
+ * 範囲外（物理配列定義でキー数を増やした場合）は `r{row}c{col}` で生成する。
  */
 export const keyId = (row: number, col: number): string => {
   const legend: string | undefined = QWERTY_LEGEND[row];
@@ -69,7 +69,7 @@ export const keyId = (row: number, col: number): string => {
   return `r${row}c${col}`;
 };
 
-/** 親指キーのid（既定形状のもの） */
+/** 親指キーのid（既定の物理配列のもの） */
 export const THUMB_KEY = { LT: 'thumb-l', RT: 'thumb-r' } as const;
 
 /** 左右Shiftのcanonical physical key id。browser adapterもこのidへ正規化する。 */
@@ -78,7 +78,7 @@ export const SHIFT_KEY = { L: 'shift-l', R: 'shift-r' } as const;
 /** 旧定義やlocalStorageに残る親指キーidを正式名へ解決する。 */
 export const resolveKeyId = (id: string): string => id === 'space' ? THUMB_KEY.RT : id;
 
-/** 各行の列数は刻印の長さで決まる（12 / 12 / 11 / 10）。既定形状のrowWidthsに使う */
+/** 各行の列数は刻印の長さで決まる（12 / 12 / 11 / 10）。既定の物理配列のrowWidthsに使う */
 const ROW_WIDTH = QWERTY_LEGEND.map((row) => row.length);
 const JIS_ROW_WIDTH = [13, 12, 12, 11] as const;
 
@@ -101,7 +101,7 @@ export interface FingerAssignment {
   keyFinger: Record<string, Finger>;
   /**
    * 各指のホーム位置となるキーid（仕様 §3のH_f）。
-   * 座標はここで指した物理キーの実座標から引くため、形状（row-staggered等）ごとに解決される。
+   * 座標はここで指した物理キーの実座標から引くため、物理配列（row-staggered等）ごとに解決される。
    */
   homeKey: Record<NonThumb, string>;
 }
@@ -122,7 +122,7 @@ export function assignmentWithHomeKeys(
 
 /**
  * 列を単位に指を割り当てる（既定の割り当てが取る形）。同じ列は全行で同じ指になる。
- * `rowWidths` を渡すと既定（ANSI 12/12/11/10）以外の形状にも割り当てを作れる。
+ * `rowWidths` を渡すと既定（ANSI 12/12/11/10）以外の物理配列にも割り当てを作れる。
  */
 export function columnFingerAssignment(
   id: string,
@@ -184,12 +184,12 @@ export const customGeometryKind = (shapeId: string): CustomGeometryKind => `cust
 export const isCustomGeometryKind = (value: unknown): value is 'custom' | CustomGeometryKind =>
   value === 'custom' || (typeof value === 'string' && value.startsWith('custom:'));
 
-/** 親指キー1個の定義。物理形状（`PhysicalShape`）が個数・位置を持つ（仕様 §3.1） */
+/** 親指キー1個の定義。物理配列（`PhysicalShape`）が個数・位置を持つ（仕様 §3.1） */
 export interface ThumbKeySpec {
   /** 物理キーid */
   id: string;
   finger: 'LT' | 'RT';
-  /** ホーム段 (row = HOME_ROW)を基準にした列位置。x座標はここから形状のxOfで求める */
+  /** ホーム段 (row = HOME_ROW)を基準にした列位置。x座標はここから物理配列のxOfで求める */
   col: number;
   /** y座標 [u] */
   y: number;
@@ -210,8 +210,8 @@ export interface ExtraPhysicalKeySpec {
 }
 
 /**
- * 物理形状の定義（仕様 §3）。ピッチ・各段のキー数・段ずれ量・列オフセット・
- * 親指キーの数と位置をまとめて持つ。既定の3形状（`PHYSICAL_SHAPES`）を変えると
+ * 物理配列の定義（仕様 §3）。ピッチ・各段のキー数・段ずれ量・列オフセット・
+ * 親指キーの数と位置をまとめて持つ。既定の3種類の物理配列（`PHYSICAL_SHAPES`）を変えると
  * 既存の測定値が動くため変更しない。
  */
 export interface PhysicalShape {
@@ -265,7 +265,7 @@ const DEFAULT_THUMBS: ThumbKeySpec[] = [
 ];
 
 /**
- * 既定の3形状。数値（ピッチ・段ずれ・列オフセット）はこれまでの固定実装と同じにしてあり、
+ * 既定の3種類の物理配列。数値（ピッチ・段ずれ・列オフセット）はこれまでの固定実装と同じにしてあり、
  * ここを変えると既存の測定値が動くため変更しない。
  */
 export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
@@ -420,7 +420,7 @@ export function buildGeometry(
 
   // Shiftは既存PhysicalShape永続化schemaを増やさず、bottom rowの実座標から派生する。
   // ANSI/JISの標準幅を前提に、左2.25u・右2.75u Shiftの中心を隣接キー中心から求める。
-  // custom shapeでもbottom rowの位置へ追随し、標準Shiftを使わない特殊形状は別semanticで扱う。
+  // custom shapeでもbottom rowの位置へ追随し、標準Shiftを使わない特殊な物理配列は別semanticで扱う。
   const bottomRow = grid[3] ?? grid.at(-1);
   const firstBottomKey = bottomRow?.[0];
   const lastBottomKey = bottomRow?.at(-1);
@@ -479,7 +479,7 @@ export function buildGeometry(
     thumbs[finger] = home;
   }
 
-  // ホーム位置は指割り当てが指すキーの実座標から引く（仕様 §3。形状ごとに解決される）
+  // ホーム位置は指割り当てが指すキーの実座標から引く（仕様 §3。物理配列ごとに解決される）
   const homes = {} as Record<Finger, Point>;
   for (const finger of FINGERS) {
     const homeKeyId = assignment.homeKey[finger];

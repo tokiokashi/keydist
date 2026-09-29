@@ -17,7 +17,7 @@ function setup(overrides: Partial<Setup> = {}): Setup {
   return { id: 'setup-1', layoutId: qwerty.id, shapeId: rowStaggered.id, ...overrides };
 }
 
-test('resolveSetup: 配列・形状ともカタログにあれば解決できる', () => {
+test('resolveSetup: 配列・物理配列ともカタログにあれば解決できる', () => {
   const result = resolveSetup(setup(), CATALOG, 'romaji');
   assert.equal(result.ok, true);
   if (!result.ok) return;
@@ -41,14 +41,14 @@ test('resolveSetup: 配列が削除されていればlayout-missingエラーを�
   assert.deepEqual(result.errors, [{ kind: 'layout-missing', layoutId: 'deleted-layout' }]);
 });
 
-test('resolveSetup: 形状が削除されていればshape-missingエラーを返す', () => {
+test('resolveSetup: 物理配列が削除されていればshape-missingエラーを返す', () => {
   const result = resolveSetup(setup({ shapeId: 'deleted-shape' }), CATALOG, 'romaji');
   assert.equal(result.ok, false);
   if (result.ok) return;
   assert.deepEqual(result.errors, [{ kind: 'shape-missing', shapeId: 'deleted-shape' }]);
 });
 
-test('resolveSetup: 配列・形状の両方が削除されていれば両方のエラーをまとめて返す', () => {
+test('resolveSetup: 配列・物理配列の両方が削除されていれば両方のエラーをまとめて返す', () => {
   const result = resolveSetup(
     setup({ layoutId: 'deleted-layout', shapeId: 'deleted-shape' }),
     CATALOG,

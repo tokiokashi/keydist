@@ -17,8 +17,8 @@ import { FINGERS, type FingerAssignment, type NonThumb } from './geometry.ts';
  * 自作分のidは組み込みと衝突しない名前空間にする（`user-geometries.ts` の `shape-{識別子}` と
  * 同じ考え方）。
  *
- * 形状（`PhysicalShape`）との整合はここでは見ない。`FingerAssignment` は仕様上
- * 形状から独立した条件なので、キーが形状に合わない自作割り当ても値としては妥当
+ * 物理配列（`PhysicalShape`）との整合はここでは見ない。`FingerAssignment` は仕様上
+ * 物理配列から独立した条件なので、キーが物理配列に合わない自作割り当ても値としては妥当
  * （`buildGeometry` が組み合わせ時に例外を投げ、`resolveEngineInput` がそれを
  * `{ kind: 'geometry' }` の値へ変換する。既存fixtureのJISケースと同じ経路）。
  */

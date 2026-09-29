@@ -50,7 +50,7 @@ export interface InputConverterPreferencesV2 {
   /** 現在選択中の配列id（src/layouts の Layout.id） */
   layoutId: string;
   /**
-   * 選択中の物理配列id（プリセットの PhysicalShape.id、または自作形状のid）。
+   * 選択中の物理配列id（プリセットの PhysicalShape.id、または自作物理配列のid）。
    * 物理配列は配列ごとには分けず、Tester全体で1つだけ保持する。
    */
   geometryId: string;

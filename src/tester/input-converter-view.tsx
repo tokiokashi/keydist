@@ -305,7 +305,7 @@ export function InputConverterView() {
   const bindingCaptureCodeRef = useRef<string | undefined>(undefined);
   const [userGeometryShapes, setUserGeometryShapes] = useState<PhysicalShape[]>([]);
   const [geometryId, setGeometryId] = useState(PHYSICAL_SHAPES['row-staggered'].id);
-  // 刻印の表示に使う規格。自作形状は規格を持たないので未指定にする
+  // 刻印の表示に使う規格。自作物理配列は規格を持たないので未指定にする
   const keyboardStandard = keyboardStandardForGeometryId(geometryId);
   const keyLabel = (key: string) => physicalKeyDisplayLabel(key, keyboardStandard);
   const codeLabel = (code: string) => browserCodeDisplayLabel(code, keyboardStandard);

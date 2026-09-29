@@ -1,7 +1,7 @@
 /**
- * Setup（#544 §4 / docs/architecture.md 用語表）。計算の単位 = 配列 × 物理形状 × ポリシー。
+ * Setup（#544 §4 / docs/architecture.md 用語表）。計算の単位 = 配列 × 物理配列 × ポリシー。
  *
- * ユーザーが保存するのは「配列・物理形状・Setup固有の上書き」の3つだけ（#544 §4）。
+ * ユーザーが保存するのは「配列・物理配列・Setup固有の上書き」の3つだけ（#544 §4）。
  * このうち上書きは、この型ではなくカスケードの `setup` レベル（`CascadeOverrides.setup[id]`）
  * に置く。理由は overrides.ts の先頭コメントにまとめてある。そのため `Setup` 自身は
  * ポリシーの値もTraceも持たない。ポリシーの実効値はカスケードから、Traceは
@@ -19,7 +19,7 @@ export interface Setup {
   readonly layoutId: string;
   readonly shapeId: string;
   /**
-   * ユーザーが付けたラベル。名前は「配列名 + 形状名」から自動で付け、
+   * ユーザーが付けたラベル。名前は「配列名 + 物理配列名」から自動で付け、
    * 同名になる時だけユーザーがラベルを付ける（#544 §4）。表示名の決め方は naming.ts。
    */
   readonly label?: string;

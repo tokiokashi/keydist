@@ -8,7 +8,7 @@ import type { ResolvedText } from '#input/text/resolve.ts';
 
 /**
  * 単体ページが`resolveEngineInput`を呼ぶのに要る、Setup以外のカタログ一式。
- * `app`が組み立て（組み込み+自作の配列・形状・ローマ字規則・指割当）、hostへ注入する
+ * `app`が組み立て（組み込み+自作の配列・物理配列・ローマ字規則・指割当）、hostへ注入する
  * （`docs/architecture.md`「保存が要る層は、appが組み立てたアダプタを注入して使う」と
  * 同じ形。ここに入るのはカタログ＝読み取り専用の参照なので、storageそのものではないが
  * 「appが組み立てる」という点は揃える）。

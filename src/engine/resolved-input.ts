@@ -48,13 +48,13 @@ export interface ResolvedInput {
 export type ResolvedInputError =
   | { readonly kind: 'reference'; readonly errors: readonly SetupReferenceError[] }
   | { readonly kind: 'incompatible-text'; readonly layout: Layout; readonly language: TextLanguage }
-  /** `buildGeometry`が投げた例外を値へ変換したもの（例: 自作形状の行数と指割り当てが噛み合わない）。 */
+  /** `buildGeometry`が投げた例外を値へ変換したもの（例: 自作物理配列の行数と指割り当てが噛み合わない）。 */
   | { readonly kind: 'geometry'; readonly message: string }
   /**
    * 対象そのものの実体が手持ちから消えている（#578指摘1「Setup deleted or layout id
    * unknown」で`setup-missing`を一般化）。Setup対象ならそのidが`SetupLibrary.setups`に
    * 無い、配列対象ならそのidが`SetupCatalog.layouts`に無い、のどちらか。`reference`
-   * （対象自体は見つかるが、参照先の配列・形状が無い）とは別のケース:
+   * （対象自体は見つかるが、参照先の配列・物理配列が無い）とは別のケース:
    * `resolveTargetForText`（`target-resolution.ts`）がこのモジュールを呼ぶ前に判定して返す。
    */
   | { readonly kind: 'target-missing'; readonly target: AnalysisTarget };
@@ -131,7 +131,7 @@ export function resolveEngineInput(options: ResolveEngineInputOptions): Resolved
     ? withRomaji(baseLayout, tableForRule(romajiRuleId, options.customRomajiRules ? [...options.customRomajiRules] : undefined))
     : withoutRomajiOnlyCombos(baseLayout);
 
-  // 未知のidが渡ってきた時のfallback先は「その形状の既定」（defaultFingerAssignmentId）に揃える。
+  // 未知のidが渡ってきた時のfallback先は「その物理配列の既定」（defaultFingerAssignmentId）に揃える。
   // 上書きが無い時の既定値（settings-items.tsのdefaultValue）と同じ規則にすることで、
   // 「壊れた上書きを消したら何が起きるか」が「最初から上書きが無かった状態」と一致する。
   const fallbackAssignment = resolveFingerAssignment(defaultFingerAssignmentId(textResolution.shape)).assignment;

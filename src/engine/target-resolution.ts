@@ -58,7 +58,7 @@ export function resolveTargetForText(
 
   // 「既定の物理配列」が壊れている（未知・削除されたid）だけでは配列対象の解決を失敗にしない
   // （レビュー指摘6）。`DEFAULT_SHAPE_ID`へ静かにfallbackし、`context.shapeId`が実際に
-  // 使った形状を持つ。その食い違いは`SETTINGS_ITEMS.defaultShapeId`の`validate`が
+  // 使った物理配列を持つ。その食い違いは`SETTINGS_ITEMS.defaultShapeId`の`validate`が
   // `resolveCascade`の通常の経路で検知して診断を積む（値と`context.shapeId`を突き合わせる
   // だけの軽い検査。settings-items.tsのコメント参照）ので、ここでは値の選定だけを行う。
   // `DEFAULT_SHAPE_ID`自体もcatalogに無い場合（自作カタログが極端に小さい等）だけ、

@@ -54,7 +54,7 @@ export function resolveConditions(
   };
 }
 
-/** 詳細画面の形状変更。既存の配列別条件は geometry 以外も含めて保持する。 */
+/** 詳細画面の物理配列変更。既存の配列別条件は geometry 以外も含めて保持する。 */
 export function setLayoutGeometryOverride(
   perLayout: Record<string, LayoutConditionOverrides>,
   layoutId: string,

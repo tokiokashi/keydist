@@ -134,16 +134,16 @@ test('ホームキーが存在しない割り当ては例外になる', () => {
   assert.throws(() => buildGeometry('row-staggered', assignment), /ホームキー/);
 });
 
-// ---- 物理形状（issue #15。仕様 §3・§3.1） ----
+// ---- 物理配列（issue #15。仕様 §3・§3.1） ----
 
-test('metricsの出力に使用した物理形状が併記される（仕様 §3）', () => {
+test('metricsの出力に使用した物理配列が併記される（仕様 §3）', () => {
   const geometry = buildGeometry('column-staggered');
   const m = computeMetrics(generateTrace('asdf', qwerty, geometry, opts), geometry);
   assert.equal(m.geometryId, 'column-staggered');
   assert.equal(m.geometryName, geometry.name);
 });
 
-test('GeometryKind文字列はPHYSICAL_SHAPESから解決される。直接渡しても同じ形状になる', () => {
+test('GeometryKind文字列はPHYSICAL_SHAPESから解決される。直接渡しても同じ物理配列になる', () => {
   const byKind = buildGeometry('row-staggered');
   const byShape = buildGeometry(PHYSICAL_SHAPES['row-staggered']);
   assert.equal(byKind.id, byShape.id);
@@ -186,7 +186,7 @@ test('QWERTY刻印の範囲を超える列はr{row}c{col} のidになる', () =>
   assert.equal(keyId(0, 12), 'r0c12');
 });
 
-test('ピッチ（pitch_mm）は形状ごとにカスタムできる', () => {
+test('ピッチ（pitch_mm）は物理配列ごとにカスタムできる', () => {
   const shape: PhysicalShape = { ...PHYSICAL_SHAPES.ortholinear, id: 'custom-pitch', pitchMm: 17 };
   const geometry = buildGeometry(shape);
   assert.equal(geometry.pitchMm, 17);
@@ -194,7 +194,7 @@ test('ピッチ（pitch_mm）は形状ごとにカスタムできる', () => {
   near(m.totalMm, m.totalUnits * 17, 'totalMm');
 });
 
-test('段ずれ量（段ごとのxオフセット）は形状ごとにカスタムできる', () => {
+test('段ずれ量（段ごとのxオフセット）は物理配列ごとにカスタムできる', () => {
   const shape: PhysicalShape = {
     ...PHYSICAL_SHAPES.ortholinear,
     id: 'custom-row-stagger',
@@ -207,7 +207,7 @@ test('段ずれ量（段ごとのxオフセット）は形状ごとにカスタ�
   near(geometry.grid[3][0].x, 3, 'row3');
 });
 
-test('列ごとのyオフセット（column-staggered）は形状ごとにカスタムできる', () => {
+test('列ごとのyオフセット（column-staggered）は物理配列ごとにカスタムできる', () => {
   const shape: PhysicalShape = {
     ...PHYSICAL_SHAPES.ortholinear,
     id: 'custom-column-stagger',
@@ -220,7 +220,7 @@ test('列ごとのyオフセット（column-staggered）は形状ごとにカス
   near(geometry.grid[0][5].y, 0.5, 'col5（はみ出し）');
 });
 
-/** 10列 × 4段のコンパクトな形状用の割り当て。ホーム位置の考え方は既定と同じ */
+/** 10列 × 4段のコンパクトな物理配列用の割り当て。ホーム位置の考え方は既定と同じ */
 function compactAssignment() {
   const columnFinger: Finger[] = ['LP', 'LR', 'LM', 'LI', 'LI', 'RI', 'RI', 'RM', 'RR', 'RP'];
   const homeColumn: Record<NonThumb, number> = {
@@ -229,17 +229,17 @@ function compactAssignment() {
   return columnFingerAssignment('compact', 'コンパクト', columnFinger, homeColumn, [10, 10, 10, 10]);
 }
 
-test('段に置けるキー数は形状定義（rowWidths）から導かれる', () => {
+test('段に置けるキー数は物理配列定義（rowWidths）から導かれる', () => {
   const shape: PhysicalShape = {
     ...PHYSICAL_SHAPES.ortholinear,
     id: 'compact-shape',
-    name: 'コンパクト形状',
+    name: 'コンパクト物理配列',
     rowWidths: [10, 10, 10, 10],
   };
   const geometry = buildGeometry(shape, compactAssignment());
   assert.equal(geometry.grid[1].length, 10);
   assert.equal(geometry.keys.has('p'), true);
-  // 既定のANSI形状（12列）にはある右外側の列が、この10列の形状には無い
+  // 既定のANSI物理配列（12列）にはある右外側の列が、この10列の物理配列には無い
   assert.equal(geometry.keys.has('['), false);
   assert.equal(geometry.keys.has(']'), false);
 });
@@ -252,7 +252,7 @@ test('親指キーが1つの手はそのキーが自動でホームになり、�
   near(geometry.homes.RT.y, geometry.thumbs.RT.y);
 });
 
-/** 右手に親指キーを2つ持つ形状（薙刀式のセンターシフトのような構成を想定） */
+/** 右手に親指キーを2つ持つ物理配列（薙刀式のセンターシフトのような構成を想定） */
 function dualThumbShape(thumbHome?: Partial<Record<'LT' | 'RT', string>>): PhysicalShape {
   return {
     ...PHYSICAL_SHAPES['row-staggered'],
@@ -266,11 +266,11 @@ function dualThumbShape(thumbHome?: Partial<Record<'LT' | 'RT', string>>): Physi
   };
 }
 
-test('親指キーが手ごとに複数ある形状はthumbHomeを明示しないと例外になる', () => {
+test('親指キーが手ごとに複数ある物理配列はthumbHomeを明示しないと例外になる', () => {
   assert.throws(() => buildGeometry(dualThumbShape()), /thumbHome/);
 });
 
-test('thumbHomeを指定すると複数の親指キーを持つ形状を構築できる', () => {
+test('thumbHomeを指定すると複数の親指キーを持つ物理配列を構築できる', () => {
   const geometry = buildGeometry(dualThumbShape({ RT: 'space' }));
   assert.equal(geometry.thumbs.RT.id, 'space');
   near(geometry.homes.RT.x, geometry.keys.get('space')!.x);
