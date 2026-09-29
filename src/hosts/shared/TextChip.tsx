@@ -219,7 +219,7 @@ function TextEditor({
           aria-label="テキストを選ぶ"
           onPointerDown={beginViewingList}
           onKeyDown={(event) => {
-            // 一覧を開く・値を動かすキーだけを「見た」とみなす。開いた直後の自動フォーカスのまま
+            // 一覧を開くキー（Enter・Space・F4・Alt+↑↓）だけを「見た」とみなす。開いた直後の自動フォーカスのまま
             // Esc・Tabで閉じるだけでは、一覧を見ていないので印を残す
             if (event.ctrlKey || event.metaKey) return;
             // 素の↑↓は数えない（閉じた一覧では値が動くだけで、一覧は見えていない）。印のコピーの

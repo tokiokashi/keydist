@@ -88,7 +88,7 @@ export interface KeydistAssets {
   readonly fingerAssignments: readonly FingerAssignment[];
   /**
    * ユーザーが自作したテキストの手持ち（#544 Phase 3「テキストの資産化」）。`Setup`（配列 ×
-   * 形状）と同じく、器（単体ページ / 将来のWorkspace）をまたいで共有する資産にする。
+   * 物理配列）と同じく、器（単体ページ / 将来のWorkspace）をまたいで共有する資産にする。
    * どのテキストを今使っているかという「選択」は器ごとに別のキー（`standaloneTextSelection`）
    * に持つ（`setupLibrary.setups`と「今選んでいるSetup」がそもそも別概念であるのと同じ分担。
    * ただしSetupの選択は各hostのローカルstateで、資産にはしていない。テキストの選択を資産に

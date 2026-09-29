@@ -15,7 +15,7 @@ import { ALTERNATE_COMPARISON_OPTIONS, DEFAULT_COMPARISON_OPTIONS, comparisonOpt
  * `computeComparisonRowValues`（`extract.ts`）が、`interpretation/metrics.ts`の
  * `computeMetrics`を同条件で直接呼んだ値と一致することを検証する
  * （AGENTS.md「比較表に出る数値を、同条件でinterpretation/metrics.tsを直接呼んだ値と
- * 突き合わせる」）。条件: 配列qwerty・形状row-staggered・指割当既定・テキスト
+ * 突き合わせる」）。条件: 配列qwerty・物理配列row-staggered・指割当既定・テキスト
  * "hello world"・windowSize等はengineの既定（`EMPTY_SETTINGS_OVERRIDES`）。
  */
 

@@ -1510,7 +1510,7 @@
         },
         "windowSize": 3
       },
-      "id": "en:qwerty:default:物理形状=ortholinear（既定row-staggeredと段差モデルが違う分岐）",
+      "id": "en:qwerty:default:物理配列=ortholinear（既定row-staggeredと段差モデルが違う分岐）",
       "language": "en",
       "layoutId": "qwerty",
       "metrics": {
@@ -1632,7 +1632,7 @@
         "totalMm": 12135.153079540823,
         "totalUnits": 637.0159096871823
       },
-      "note": "物理形状=ortholinear（既定row-staggeredと段差モデルが違う分岐）",
+      "note": "物理配列=ortholinear（既定row-staggeredと段差モデルが違う分岐）",
       "sampleId": "default",
       "textLength": 1003,
       "textSha256": "a2b941518b5a8114218229e15a734f3c15ca7a1b159e0383cad9c74b5f310189"
@@ -11054,6 +11054,6 @@
       "textSha256": "2a61be92b6bfc223fa4b1282f374426e5a058d84c2d04b289c39431b62bf7fc0"
     }
   ],
-  "sourceCommit": "540911e760665d504adf20039f18d3a4caa7389f",
+  "sourceCommit": "cc62a95b93ee379d1e3395554412d0d1bf6cbdd9",
   "version": 1
 }

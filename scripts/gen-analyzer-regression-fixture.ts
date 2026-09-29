@@ -333,7 +333,7 @@ function generate(): Fixture {
   }));
   cases.push(runCase('en', qwertyEn, 'default', {
     shapeId: 'ortholinear',
-    note: '物理形状=ortholinear（既定row-staggeredと段差モデルが違う分岐）',
+    note: '物理配列=ortholinear（既定row-staggeredと段差モデルが違う分岐）',
   }));
   cases.push(runCase('ja', naginata, 'modern', {
     preferOppositeThumb: true,
