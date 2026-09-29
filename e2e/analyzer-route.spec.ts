@@ -72,12 +72,12 @@ test('legacy Analyzer URL redirects to the React Analyzer route', async ({ page 
 
 
 test('Analyzer runtime remounts after SPA navigation away and back', async ({ page }) => {
-  // 旧Analyzerへの導線はトップの入口にだけある（サイドバーは新しい画面だけを並べる）。
+  // 旧バージョンへの導線はトップの下端とサイドバーの最下端にある。ここはトップ側を通る（サイドバーにも同名のリンクがあるので範囲を絞る）。
   await page.goto('/input');
   // ハイドレーション前に押すとSPA遷移にならず全体の読み込みになり、確かめたい経路を通らない。
   await waitForHydration(page);
   await page.locator('.app-sidebar').getByRole('link', { name: 'keydist', exact: true }).click();
-  await page.getByRole('link', { name: '旧バージョン', exact: true }).click();
+  await page.locator('.hero').getByRole('link', { name: '旧バージョン', exact: true }).click();
   await expect(page).toHaveURL(/\/analyzer\/?$/);
   await waitForAnalyzerRuntime(page);
   await expect(page.locator('#mode')).toHaveValue('ja');
