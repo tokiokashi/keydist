@@ -30,14 +30,14 @@ export interface ContextBarProps {
 }
 
 /**
- * Undo/Redoと共有はどの幅でも常時出す。スマホ幅では共有の文字を見た目から省き、アイコンだけにする
+ * Undo/Redoと共有はどの幅でも常時出す。バーが狭い時は共有の文字を見た目から省き、アイコンだけにする
  * （1行に収めるため。読み上げには残す）。
  */
 export function ContextBar({ children, history, share, disabled = false }: ContextBarProps) {
   const leading = useContext(ContextBarLeadingSlot);
   const barRef = useRef<HTMLElement>(null);
 
-  // スマホ幅では文脈バーが折り返して高さが変わる。その下に固定するペインの見出しが位置を合わせられるよう、
+  // バーの高さが変わる場合がある。その下に固定するペインの見出しが位置を合わせられるよう、
   // 実際の高さをCSS変数で公開する（値が無い間はCSS側の既定＝1行分）。
   useEffect(() => {
     const bar = barRef.current;
