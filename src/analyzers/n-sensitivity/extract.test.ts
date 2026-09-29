@@ -17,7 +17,7 @@ import { ALTERNATE_N_SENSITIVITY_OPTIONS, DEFAULT_N_SENSITIVITY_OPTIONS, nSensit
  * 検証する（指示書「新しいextractの点が、旧nSensitivity(...)の出力と一致することを
  * 全11N・bit-for-bitでassertする」）。
  *
- * 条件: 配列qwerty・形状row-staggered・指割当既定・テキスト"hello world"・windowSize等は
+ * 条件: 配列qwerty・物理配列row-staggered・指割当既定・テキスト"hello world"・windowSize等は
  * engineの既定（`EMPTY_SETTINGS_OVERRIDES`）。2つ目のケースとして配列colemak-dhでも同様に確認する。
  */
 

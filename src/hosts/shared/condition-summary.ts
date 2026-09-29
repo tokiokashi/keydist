@@ -93,8 +93,8 @@ function cascadeLevelLabel(level: CascadeLevel, names: ConditionValueNames | und
 }
 
 /**
- * 値がidである項目を、利用者が読める名前へ引くための手持ち。形状idをそのまま見せても
- * 利用者は形状の選択肢（名前で並ぶ）と対応を取れないため。引けないidはそのまま出す。
+ * 値がidである項目を、利用者が読める名前へ引くための手持ち。物理配列idをそのまま見せても
+ * 利用者は物理配列の選択肢（名前で並ぶ）と対応を取れないため。引けないidはそのまま出す。
  */
 export interface ConditionValueNames {
   readonly shapes: ReadonlyMap<string, { readonly name: string }>;
@@ -178,7 +178,7 @@ export function traceConditionSummary(
   });
 }
 
-/** ペイン見出しに出す、Setupの実体名（配列・形状・実際に使われた指の割当）。 */
+/** ペイン見出しに出す、Setupの実体名（配列・物理配列・実際に使われた指の割当）。 */
 export interface ConditionHeaderInfo {
   readonly layoutName: string;
   readonly shapeName: string;
@@ -230,8 +230,8 @@ export function conditionDiagnosticText(row: ConditionSummaryRow, diagnostic: Di
  * ローマ字規則等）は上書きされていても落とす。効かない値を併記すると、その条件で
  * 測ったように読めてしまうため。
  *
- * 「既定の物理配列」は常に落とす。これが効く配列対象では、実際に使った形状の名前を名前・条件欄に
- * 必ず出しているので、併記すると同じ形状名が2回並ぶため（レビュー指摘L-c）。
+ * 「既定の物理配列」は常に落とす。これが効く配列対象では、実際に使った物理配列の名前を名前・条件欄に
+ * 必ず出しているので、併記すると同じ物理配列名が2回並ぶため（レビュー指摘L-c）。
  *
  * `excludeIds`は呼び出し側が「この項目は元々全員に共通の軸として見せているので、
  * ここでは重複して出さない」という項目を落とすためのフック（N感度の`windowSize`。

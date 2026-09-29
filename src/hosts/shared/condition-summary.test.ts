@@ -75,7 +75,7 @@ test('traceConditionSummary: シフト系キーの項目もオブジェクトの
   assert.equal(trigger?.format, 'primitive');
 });
 
-test('conditionHeaderInfo: 配列・形状・指割当の名前を集める', () => {
+test('conditionHeaderInfo: 配列・物理配列・指割当の名前を集める', () => {
   const resolution = resolveSetupForText(setupFor('qwerty'), CATALOG, NO_USER_LAYOUTS, 'en');
   assert.ok(resolution.ok);
   if (!resolution.ok) return;
@@ -136,7 +136,7 @@ test('nonDefaultConditionRows: 効かない行（Setup対象の既定の物理�
   }
 });
 
-test('traceConditionSummary: 既定の物理配列はidでなく形状名で出す', () => {
+test('traceConditionSummary: 既定の物理配列はidでなく物理配列名で出す', () => {
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;
@@ -146,7 +146,7 @@ test('traceConditionSummary: 既定の物理配列はidでなく形状名で出�
   assert.equal(row.originLabel, '上書き: 全体');
 });
 
-test('nonDefaultConditionRows: 既定の物理配列は形状名として別に出しているので、併記には含めない（レビュー指摘L-c）', () => {
+test('nonDefaultConditionRows: 既定の物理配列は物理配列名として別に出しているので、併記には含めない（レビュー指摘L-c）', () => {
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'ortholinear');
   assert.ok(written.ok);
   if (!written.ok) return;

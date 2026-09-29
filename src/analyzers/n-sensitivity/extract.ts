@@ -36,7 +36,7 @@ import {
  * `totalUnits × geometry.pitchMm`という掛け算1回で計算されるのに対し、逆算は割り算を
  * 挟むため浮動小数点の丸めが往復で一致しない（実測: 1840メンバー条件・20,240点の
  * レビュー計測で約1.5%が旧`nSensitivity()`の`totalMm`とビット一致しなかった。
- * 例: ja.modern配列・colemak-dh形状・row-staggered・グローバルwindowSize=7・N=0で
+ * 例: ja.modern・colemak-dh配列・row-staggered物理配列・グローバルwindowSize=7・N=0で
  * 新22691.038468072355 vs 旧22691.03846807235）。ビット一致を主張できない値は
  * 出さない方がよい（AGENTS.md「数値は必ず実行して出す」の裏側）。View側も`totalMm`を
  * 表示していないので、`pitchMm`を契約へ足す（`AnalyzerSetMember`にGeometryを持たせる等）
