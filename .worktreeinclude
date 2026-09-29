@@ -1,0 +1,2 @@
+# サブエージェントの worktree に node_modules を複製する（公式: gitignore 済みのファイルだけをコピー）
+node_modules/
