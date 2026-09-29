@@ -145,6 +145,32 @@ test('チップを開いて（フォーカスは一覧のまま）Escで閉じ�
   expect((await readTexts(pageA)).some((entry) => entry.unseen === true)).toBe(true);
 });
 
+test('開き直した直後に↑を押し、Escで閉じても、印は残る', async ({ context }) => {
+  const { pageA, pageB } = await open(context);
+  await makeUnseenCopy(pageA, pageB);
+  await pageA.keyboard.press('Escape');
+  await openTextChip(pageA);
+  await expect(pageA.getByLabel('テキストを選ぶ')).toBeFocused();
+  // 閉じた一覧の素の↑は、一覧を開かずに値を動かすだけ
+  await pageA.keyboard.press('ArrowUp');
+  await pageA.keyboard.press('Escape');
+  await expect(pageA.getByRole('dialog', { name: 'テキストの選択と編集' })).toHaveCount(0);
+  await expect(mark(pageA)).toBeVisible();
+  expect((await readTexts(pageA)).some((entry) => entry.unseen === true)).toBe(true);
+});
+
+test('Tabで一覧から離れても、印は残る', async ({ context }) => {
+  const { pageA, pageB } = await open(context);
+  await makeUnseenCopy(pageA, pageB);
+  await pageA.keyboard.press('Escape');
+  await openTextChip(pageA);
+  await expect(pageA.getByLabel('テキストを選ぶ')).toBeFocused();
+  await pageA.keyboard.press('Tab');
+  await expect(pageA.getByLabel('テキストを選ぶ')).not.toBeFocused();
+  await expect(mark(pageA)).toBeVisible();
+  expect((await readTexts(pageA)).some((entry) => entry.unseen === true)).toBe(true);
+});
+
 test('チップを閉じても、見ていなければ印は残る', async ({ context }) => {
   const { pageA, pageB } = await open(context);
   await makeUnseenCopy(pageA, pageB);

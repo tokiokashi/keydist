@@ -47,7 +47,9 @@ export interface TextChipProps {
   readonly onTextContentCommit: TextContentCommit;
 }
 
-const LIST_VIEW_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp', 'Enter', ' ', 'F4']);
+const LIST_VIEW_KEYS: ReadonlySet<string> = new Set(['Enter', ' ', 'F4']);
+/** 閉じた一覧では、素の↑↓は一覧を開かず値を動かすだけ。Altを添えた時だけ一覧が開く。 */
+const LIST_OPEN_ARROW_KEYS: ReadonlySet<string> = new Set(['ArrowDown', 'ArrowUp']);
 
 function refKey(ref: TextSelectionState['ref']): string {
   return `${ref.kind}:${ref.id}`;
@@ -220,7 +222,11 @@ function TextEditor({
             // 一覧を開く・値を動かすキーだけを「見た」とみなす。開いた直後の自動フォーカスのまま
             // Esc・Tabで閉じるだけでは、一覧を見ていないので印を残す
             if (event.ctrlKey || event.metaKey) return;
-            if (LIST_VIEW_KEYS.has(event.key)) beginViewingList();
+            // 素の↑↓は数えない（閉じた一覧では値が動くだけで、一覧は見えていない）。印のコピーの
+            // 上で止まればselectTextCommandがその場で印を外すので、失うものは無い
+            if (LIST_VIEW_KEYS.has(event.key) || (event.altKey && LIST_OPEN_ARROW_KEYS.has(event.key))) {
+              beginViewingList();
+            }
           }}
           onBlur={commitViewed}
         >
