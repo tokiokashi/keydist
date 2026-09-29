@@ -37,58 +37,6 @@
   margin-left: auto;
 }
 
-/* ⋯のメニューはスマホ幅でだけ出す（パソコン幅は操作を右端に並べる）。 */
-.context-menu {
-  position: relative;
-  display: none;
-}
-
-.context-menu-list {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 30;
-  display: grid;
-  min-width: 13rem;
-  padding: 0.3rem;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  background: var(--surface-raised);
-  box-shadow: 0 6px 20px rgb(0 0 0 / 14%);
-}
-
-.context-menu-item {
-  display: grid;
-  gap: 0.15rem;
-  padding: 0.5rem 0.6rem;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-}
-
-.context-menu-item:hover:not(:disabled),
-.context-menu-item:focus-visible {
-  background: var(--surface-muted);
-}
-
-.context-menu-item:disabled {
-  color: var(--text-muted);
-  opacity: 0.55;
-  cursor: default;
-}
-
-.context-menu-item-label {
-  font-size: 0.88rem;
-}
-
-.context-menu-item-description {
-  color: var(--text-muted);
-  font-size: 0.72rem;
-}
-
 .context-bar button,
 .context-bar select,
 .context-bar input,
@@ -359,9 +307,9 @@ button.context-chip:hover:not(:disabled),
 }
 
 /*
- * スマホ幅: 全体を1行に収める（☰ / テキストのチップ / 既定の物理配列のチップ / ⋯）。
+ * スマホ幅: 全体を1行に収める（☰ / テキストのチップ / 既定の物理配列のチップ / Undo・Redo / 共有）。
  * そのために「テキスト」「既定の物理配列」の文字は見た目から省き（読み上げには残す）、
- * 物理配列はアイコンだけにし、共有は⋯のメニューへ入れる（Undo/Redoは常時出す）。
+ * 物理配列はアイコンだけにし、共有はアイコンだけにする（Undo/Redoと共に常時出す）。
  * チップが余る幅を分け合い、足りない時はテキストのチップが省略して縮む。
  */
 @media (max-width: 760px) {
@@ -399,24 +347,36 @@ button.context-chip:hover:not(:disabled),
     flex: 1 1 auto;
   }
 
+  .context-share-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .context-share {
+    margin-left: 0;
+  }
+
+  .context-share-button {
+    width: 2rem;
+    padding: 0;
+    justify-content: center;
+  }
+
   /* 幅が足りないので、チップは詰めた形にする。 */
   .context-bar .context-chip {
     gap: 0.3rem;
     padding: 0.2rem 0.5rem;
   }
 
-  .context-share {
-    display: none;
-  }
-
-  .context-menu {
-    display: block;
-  }
-
   /* 物理配列は名前を出さず、キーボードのアイコンだけにする。 */
-  .context-select-chip {
+  .context-bar .context-select-chip {
     position: relative;
     flex: none;
+    padding-inline: 0.3rem;
   }
 
   .context-select-chip .context-chip-icon {

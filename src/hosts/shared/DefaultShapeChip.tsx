@@ -26,9 +26,14 @@ export function DefaultShapeChip({ overrides, dispatch, shapes }: DefaultShapeCh
   return (
     <label className="context-chip context-select-chip" title="既定の物理配列">
       {/* スマホ幅では名前を出さずこのアイコンだけにする。選択は透明にしたselectが受ける（タップで選択肢が開く）。 */}
-      <svg className="context-chip-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-        <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
-        <path d="M4 6.5h1M7.5 6.5h1M11 6.5h1M4 9.5h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <svg className="context-chip-icon" viewBox="0 0 20 14" width="20" height="14" aria-hidden="true">
+        {/* キーボード: 枠の中にキーの四角（1段目5個・2段目4個をずらして）と幅広のスペースバー。線でなく四角で描き、☰と読まれないようにする。 */}
+        <rect x="0.7" y="0.7" width="18.6" height="12.6" rx="2" fill="none" stroke="currentColor" strokeWidth="1.2" />
+        <g fill="currentColor">
+          {[0, 1, 2, 3, 4].map((i) => <rect key={`a${i}`} x={2 + i * 3.4} y="3" width="2.2" height="2" rx="0.4" />)}
+          {[0, 1, 2, 3].map((i) => <rect key={`b${i}`} x={3.7 + i * 3.4} y="6.2" width="2.2" height="2" rx="0.4" />)}
+          <rect x="5.5" y="9.4" width="9" height="2" rx="0.4" />
+        </g>
       </svg>
       <span className="context-chip-key">既定の物理配列</span>
       <select

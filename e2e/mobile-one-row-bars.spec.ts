@@ -27,11 +27,11 @@ for (const path of PAGES) {
     expect(bar?.height).toBeLessThan(56);
     expect(header?.height).toBeLessThan(40);
 
-    // 1行の中に、テキスト・既定の物理配列・⋯（文脈バー）と、対象・解析設定・⋯（見出し）が並ぶ。
+    // 1行の中に、テキスト・既定の物理配列・共有（文脈バー）と、対象・解析設定・⋯（見出し）が並ぶ。
     const barTops = await Promise.all([
       page.locator('.context-bar button.text-chip').boundingBox(),
       page.locator('.context-bar .context-select-chip').boundingBox(),
-      page.getByRole('button', { name: '画面のメニュー' }).boundingBox(),
+      page.getByRole('button', { name: '共有', exact: true }).boundingBox(),
     ]);
     for (const box of barTops) expect(Math.abs((box?.y ?? -100) - (barTops[0]?.y ?? 0))).toBeLessThan(8);
     const headerTops = await Promise.all([
@@ -87,19 +87,23 @@ test('スマホ幅の見出しにAnalyzer名が出ず、対象名が省略され
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
 });
 
-test('スマホ幅: 文脈バーの元に戻す・やり直すが直接押せ、共有は⋯のメニューから使える', async ({ page, context }) => {
+test('スマホ幅: 文脈バーの元に戻す・やり直す・共有が直接押せる', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await openReady(page, 'bigram-flow');
   const bar = page.locator('.context-bar');
   const chip = bar.locator('button.text-chip');
   const undo = bar.getByRole('button', { name: '元に戻す' });
   const redo = bar.getByRole('button', { name: 'やり直す' });
+  const share = bar.getByRole('button', { name: '共有', exact: true });
 
-  // 共有のボタンはスマホ幅では出ない。Undo/Redoは常に出ている。
-  await expect(bar.getByRole('button', { name: '共有', exact: true })).toBeHidden();
   await expect(undo).toBeVisible();
   await expect(redo).toBeVisible();
   await expect(undo).toBeDisabled();
+
+  // 共有は文字を省いたアイコンだけのボタン（⋯のメニューは無い）。
+  await expect(share).toBeVisible();
+  expect((await share.boundingBox())?.width ?? 99).toBeLessThan(40);
+  await expect(page.getByRole('button', { name: '画面のメニュー' })).toHaveCount(0);
 
   const panel = await openTextChip(page);
   await panel.getByLabel('テキストを選ぶ', { exact: true }).selectOption({ label: '英文（既定）' });
@@ -110,15 +114,7 @@ test('スマホ幅: 文脈バーの元に戻す・やり直すが直接押せ、
   await redo.click();
   await expect(chip).toContainText('英文');
 
-  const menuButton = page.getByRole('button', { name: '画面のメニュー' });
-  await menuButton.click();
-  await expect(page.getByRole('menuitem')).toHaveCount(1);
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('menu')).toHaveCount(0);
-
-  await menuButton.click();
-  await page.getByRole('menuitem', { name: '共有' }).click();
-  await expect(page.getByRole('menu')).toHaveCount(0);
+  await share.click();
   await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('/standalone/bigram-flow');
 });
@@ -126,12 +122,13 @@ test('スマホ幅: 文脈バーの元に戻す・やり直すが直接押せ、
 test.describe('パソコン幅', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test('操作は右端に並び、⋯のメニューは出ない', async ({ page }) => {
+  test('操作は右端に並び、共有は文字付きで出る', async ({ page }) => {
     await openReady(page, 'bigram-flow');
     const bar = page.locator('.context-bar');
     await expect(bar.getByRole('button', { name: '共有', exact: true })).toBeVisible();
     await expect(bar.getByRole('button', { name: '元に戻す' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '画面のメニュー' })).toBeHidden();
+    await expect(bar.getByRole('button', { name: '共有', exact: true })).toContainText('共有');
+    expect((await bar.getByRole('button', { name: '共有', exact: true }).boundingBox())?.width ?? 0).toBeGreaterThan(50);
     const header = await page.locator('.pane-frame-header').boundingBox();
     expect(header?.height).toBeLessThan(40);
     // パソコン幅では、見出しにAnalyzer名を出す。
