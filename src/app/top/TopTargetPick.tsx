@@ -7,7 +7,9 @@ import { setTargetForSingleAndMultiCommand } from '#engine/commands.ts';
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
 import { setupNumbersOf, targetChoiceGroups, TargetSelection } from '#hosts/shared/index.ts';
 import { targetNameSource } from '#hosts/standalone/target-name-source.ts';
+import { resolveStandalonePaneInput } from '#hosts/standalone/index.ts';
 import { nameTargets } from '#input/setup/index.ts';
+import { resolveTextSelection } from '#input/text/resolve.ts';
 import { builtinStandaloneCatalog } from '../standalone/catalog.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 
@@ -16,7 +18,9 @@ import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
  * （`setTargetForSingleAndMultiCommand`。1回の操作なのでUndo 1回で両方戻る）。
  *
  * 選ぶ部品は各画面の見出しと同じ`TargetSelection`（単一選択）。資産の読み書きも各画面と同じ
- * `useKeydistAssets`を通すので、他のタブへの反映やUndoの履歴も同じ形で乗る。
+ * `useKeydistAssets`を通すので、他のタブへの反映は同じ形で乗る。履歴は画面ごとに持ち、
+ * トップには元に戻す操作が無いので、画面からこの書き込みを戻す手段は無い（選び直す）。
+ * コマンドが1回で戻せる形なのは、履歴を持つ画面から使えるようにするため。
  * 資産にはこの部品が書き込むまで Single の対象が無い。無い間は各画面と同じく既定の配列を
  * 選択中として見せ、Analyzerへのリンクは「選んだ後」にだけ出す。
  */
@@ -26,10 +30,17 @@ export function TopTargetPick() {
   const setups = assets.setupLibrary.setups;
   const target = effectiveSingleTarget(assets.singleTargetSelection);
 
+  // 名前は各画面の見出しと同じ手順で作る（解決した入力を渡す）。解決結果が無いとSetupの名前だけが
+  // 「配列/物理配列」の形になり、見出しの名前（集合が1件なら名前だけ）と食い違う。
+  const resolvedText = useMemo(
+    () => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary),
+    [assets.standaloneTextSelection, assets.textLibrary],
+  );
   const named = useMemo(() => {
     const setupsById = new Map(setups.map((setup) => [setup.id, setup] as const));
-    return nameTargets([targetNameSource(target, undefined, setupsById, setupNumbersOf(setups), catalog.setupCatalog)])[0];
-  }, [target, setups, catalog]);
+    const resolution = resolveStandalonePaneInput(target, setupsById, catalog, assets.setupLibrary.overrides, resolvedText);
+    return nameTargets([targetNameSource(target, resolution, setupsById, setupNumbersOf(setups), catalog.setupCatalog)])[0];
+  }, [target, setups, catalog, assets.setupLibrary.overrides, resolvedText]);
 
   const groups = useMemo(() => targetChoiceGroups({
     layouts: catalog.setupCatalog.layouts,

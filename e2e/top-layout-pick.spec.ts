@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
-import { expectTargetNames, targetChoice, targetNames } from './pane-helper.ts';
+import { expectTargetNames, targetButton, targetChoice, targetNames } from './pane-helper.ts';
 
 /**
  * トップで気になる配列を1つ選ぶと、Single（Bigram Flow）の対象になり、Multi（比較表）の組にも入る（#741）。
@@ -52,4 +52,26 @@ test('Multi にすでにある配列を選んでも重複しない', async ({ pa
   await expect(page.getByRole('heading', { name: 'Bigram Flow', level: 1, exact: true })).toBeVisible();
   await expectTargetNames(page, ['Colemak-DH']);
   await expect(await targetChoice(page, 'layout:colemak-dh')).toBeChecked();
+});
+
+test('Setup を選んだ時の名前は、Bigram Flow の見出しと同じ（名前だけ）', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (localStorage.getItem('keydist:setup-library') !== null) return;
+    localStorage.setItem(
+      'keydist:setup-library',
+      JSON.stringify({ version: 1, setups: [{ id: 'fixed-b', layoutId: 'colemak-dh', shapeId: 'row-staggered' }], overrides: {} }),
+    );
+  });
+  await page.goto('/');
+  await waitForHydration(page);
+  const hero = page.locator('.hero');
+  await hero.getByRole('button', { name: /^対象: / }).click();
+  await page.getByRole('dialog', { name: '対象の選択' }).locator('input[value="setup:fixed-b"]').click();
+  await expect(hero.locator('.top-pick-links')).toBeVisible();
+  const topLabel = await hero.getByRole('button', { name: /^対象: / }).getAttribute('aria-label');
+
+  await hero.getByRole('link', { name: 'Bigram Flow', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Bigram Flow', level: 1, exact: true })).toBeVisible();
+  await expect.poll(async () => targetButton(page).getAttribute('aria-label')).toBe(topLabel);
+  expect(topLabel).not.toContain('/');
 });
