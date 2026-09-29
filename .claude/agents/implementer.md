@@ -20,8 +20,9 @@ keydist の作業単位を1つ実装する。**自分の変更を自分で承認
 
 自分専用の git worktree の中で動く（`origin/main` から切られている）。
 
-- `node_modules` は本体のチェックアウトへの symlink。**依存を変える単位**では
-  `rm node_modules && npm ci` で自前の `node_modules` に切り替えてから作業する
+- `node_modules` は、無ければ `npm ci` する。本体への symlink が張られている場合は、差分が依存に触る単位
+  （`package.json` / `package-lock.json` / `patches/` のいずれかを含む）だけ `rm node_modules && npm ci` で
+  自前の `node_modules` に切り替えてから作業する。触らないならそのまま使う
   （symlink 越しに `npm install` すると本体側の依存が変わる）
 - 作業ブランチは `<type>/<短い説明>` で切り直す（`git checkout -b feat/...`）。
   worktree が用意した `worktree-*` ブランチのまま push しない
