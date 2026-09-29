@@ -42,7 +42,7 @@ async function drag(target: Locator, dy: number, options: { release?: boolean; g
   });
 }
 
-const grabber = (page: Page) => page.getByRole('button', { name: '解析設定シートを下へ引いて閉じる' });
+const grabber = (page: Page) => page.locator('.settings-sheet-grabber');
 
 test('掴みを下へ大きくドラッグすると閉じ、フォーカスは「解析設定」ボタンへ戻る', async ({ page }) => {
   await openSheet(page);
@@ -66,6 +66,31 @@ test('少しだけドラッグして放すと、元の位置へ戻る', async ({
   await expect.poll(async () => (await page.locator(SHEET).boundingBox())!.y).toBeCloseTo(before.y, 0);
 });
 
+test('引いて指を止めてから離すと、元の位置へ戻る', async ({ page }) => {
+  await openSheet(page);
+  await grabber(page).evaluate(async (el) => {
+    const box = el.getBoundingClientRect();
+    const x = box.x + 20;
+    const y = box.y + box.height / 2;
+    const fire = (type: string, clientY: number) =>
+      el.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 7, pointerType: 'touch', button: 0, clientX: x, clientY }));
+    fire('pointerdown', y);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    fire('pointermove', y + 40);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    fire('pointerup', y + 40);
+  });
+  // 閉じる場合はアニメーションの後に消えるので、その分を待ってから残っていることを確かめる。
+  await page.waitForTimeout(600);
+  await expect(page.locator(SHEET)).toBeVisible();
+});
+
+test('掴みはTabと読み上げの対象にならない', async ({ page }) => {
+  await openSheet(page);
+  await expect(grabber(page)).toHaveAttribute('aria-hidden', 'true');
+  await expect(grabber(page)).not.toHaveAttribute('tabindex', /.*/);
+});
+
 test('ヘッダー行のドラッグでも閉じ、本文のドラッグでは閉じない', async ({ page }) => {
   await openSheet(page);
   const height = (await page.locator(SHEET).boundingBox())!.height;
@@ -87,12 +112,4 @@ test('Escapeで閉じるとフォーカスは「解析設定」ボタンへ戻�
   await page.keyboard.press('Escape');
   await expect(page.locator(SHEET)).toHaveCount(0);
   await expect(settingsButton(page)).toBeFocused();
-});
-
-test('スクリーンショット: 開いた状態とドラッグ途中', async ({ page }) => {
-  await openSheet(page);
-  const dir = process.env.SHOT_DIR;
-  if (dir) await page.screenshot({ path: `${dir}/open.png` });
-  await drag(grabber(page), 90, { release: false, gapMs: 30 });
-  if (dir) await page.screenshot({ path: `${dir}/dragging.png` });
 });

@@ -12,7 +12,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as Reac
  * グループでは作らない（Dockviewは`hosts/workspace`だけが使う。依存の規則）。
  *
  * スマホ幅（`SHEET_QUERY`）では、画面の下から出るシートにする（`pane-frame.css`）。高さは画面の半分まで。
- * 上端の掴みとヘッダー行を下へドラッグすると閉じる（×とEscapeでも閉じる）。ドラッグを掴みとヘッダー行に
+ * 上端の掴みとヘッダー行を下へドラッグすると閉じる（×とEscapeでも閉じる。掴みはタッチ専用の見た目で、Tabや読み上げの対象にしない）。ドラッグを掴みとヘッダー行に
  * 限るのは、本文のスクロールとドラッグが喧嘩しないようにするため。シートが「解析設定」ボタンを覆っても、
  * ドラッグで閉じられるので、ボタンを押し直して閉じる必要はない。
  */
@@ -39,6 +39,8 @@ const SHEET_QUERY = '(max-width: 640px)';
 const CLOSE_RATIO = 1 / 3;
 /** これより速い下向きのフリック（px/ms）なら、距離が足りなくても閉じる。 */
 const FLICK_SPEED = 0.6;
+/** 最後のmoveからこれ以上経って離したら、指は止まっていたとみなす（ms）。 */
+const STALE_MS = 100;
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches);
@@ -86,9 +88,13 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, child
   const [sheetDragging, setSheetDragging] = useState(false);
   const sheetDragRef = useRef<{ pointerId: number; startY: number; lastY: number; lastTime: number; speed: number } | undefined>(undefined);
   const closingRef = useRef(false);
+  const closeTimerRef = useRef<number | undefined>(undefined);
 
   // 開くたびにボタンの近くへ出し直す（前回ドラッグした位置は、閉じたら意味を失う）。
   useLayoutEffect(() => {
+    // 閉じ終わる前に開き直した時、遅れて来る閉じる処理が新しいシートを閉じないようにする。
+    window.clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = undefined;
     if (!open) {
       setPosition(undefined);
       setSheetY(undefined);
@@ -130,7 +136,7 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, child
     }
     // 下へ出し切ってから閉じる。transitionendが来ない場合（非表示など）に備えて時間でも閉じる。
     setSheetY(height);
-    window.setTimeout(onClose, 250);
+    closeTimerRef.current = window.setTimeout(onClose, 250);
   };
 
   const onSheetPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -156,10 +162,12 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, child
     sheetDragRef.current = undefined;
     setSheetDragging(false);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    // 引いたあと指を止めていたなら、フリックではない（最後のmoveの速さを持ち越さない）。
+    const speed = event.timeStamp - drag.lastTime > STALE_MS ? 0 : drag.speed;
     const distance = Math.max(0, event.clientY - drag.startY);
     const height = windowRef.current?.offsetHeight ?? 0;
     const cancelled = event.type === 'pointercancel';
-    if (!cancelled && (distance > height * CLOSE_RATIO || (distance > 0 && drag.speed > FLICK_SPEED))) closeSheet();
+    if (!cancelled && (distance > height * CLOSE_RATIO || (distance > 0 && speed > FLICK_SPEED))) closeSheet();
     else setSheetY(undefined);
   };
 
@@ -213,22 +221,13 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, child
       {isSheet ? (
         <div
           className="settings-sheet-grabber"
-          role="button"
-          tabIndex={0}
-          aria-label="解析設定シートを下へ引いて閉じる"
+          aria-hidden="true"
           onPointerDown={onSheetPointerDown}
           onPointerMove={onSheetPointerMove}
           onPointerUp={onSheetPointerEnd}
           onPointerCancel={onSheetPointerEnd}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              event.stopPropagation();
-              closeSheet();
-            }
-          }}
         >
-          <span className="settings-sheet-grabber-bar" aria-hidden="true" />
+          <span className="settings-sheet-grabber-bar" />
         </div>
       ) : null}
       <div

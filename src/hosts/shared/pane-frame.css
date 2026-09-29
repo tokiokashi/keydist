@@ -318,12 +318,6 @@ h2.pane-frame-title {
     user-select: none;
   }
 
-  .settings-sheet-grabber:focus-visible {
-    outline: 2px solid var(--focus);
-    outline-offset: -2px;
-    border-radius: 12px 12px 0 0;
-  }
-
   .settings-sheet-grabber-bar {
     width: 2.5rem;
     height: 4px;
