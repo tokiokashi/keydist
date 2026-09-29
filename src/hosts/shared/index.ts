@@ -5,7 +5,6 @@ export {
   isChangedConditionRow,
   globalConditionValues,
   multiTargetConditionSummary,
-  orderConditionRowsForDetail,
   formatOrigin,
   nonDefaultConditionRows,
   summarizeNonDefaultConditions,

@@ -88,6 +88,28 @@ test('条件のモーダル: 全体の値を変えると要約と出どころに
   await expect(trigger).toHaveText('条件すべて既定値');
 });
 
+test('条件のモーダル: すべて既定値に戻すで、行のある項目の全体の上書きがまとめて消え、元に戻す1回で戻る', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+  const trigger = page.locator('.pane-condition-trigger');
+
+  const modal = await openConditionModal(page);
+  const resetAll = modal.getByRole('button', { name: 'すべて既定値に戻す' });
+  await expect(resetAll).toBeDisabled();
+  await modal.getByRole('button', { name: '先読みNを1増やす' }).click();
+  await modal.locator('[data-item="sfbHomeCost"]').getByRole('button', { name: 'OFF' }).click();
+  await expect(resetAll).toBeEnabled();
+  await resetAll.click();
+  await expect(modal.locator('[data-changed]')).toHaveCount(0);
+  await expect(resetAll).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(trigger).toHaveText('条件すべて既定値');
+
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect(trigger).toContainText('先読みN: 4');
+  await expect(trigger).toContainText('同指連続のホーム復帰距離: OFF');
+});
+
 test('条件のモーダル: 既定の物理配列は文脈バーのチップと同じ値を書く', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });

@@ -12,10 +12,8 @@ import {
   conditionHeaderInfo,
   conditionHeaderInfoFromResolvedInput,
   conditionSummaryLine,
-  orderConditionRowsForDetail,
   conditionDiagnosticText,
   formatOrigin,
-  isChangedConditionRow,
   globalConditionValues,
   multiTargetConditionSummary,
   nonDefaultConditionRows,
@@ -246,18 +244,14 @@ test('traceConditionSummary: 1動作の時は、残っている例外を出さ�
   assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'Shift+A で1動作');
 });
 
-test('traceConditionSummary: チェーン・アルペジオは既定と違う項目の数で出し、既定と同じ中身の上書きは変えた項目に数えない', () => {
+test('チェーン・アルペジオを全体で変えても、要約の数にも対象名の差分にも出ない（今の画面に読む数値が無い）', () => {
   const rows = overrideRows([
-    ['chainInterpretation', { ...DEFAULT_CHAIN_INTERPRETATION, breakOnTriggerOnly: true, breakOnThumbOnly: false }],
-    ['arpeggioInterpretation', { ...DEFAULT_ARPEGGIO_INTERPRETATION }],
+    ['chainInterpretation', { ...DEFAULT_CHAIN_INTERPRETATION, breakOnTriggerOnly: true }],
+    ['arpeggioInterpretation', { ...DEFAULT_ARPEGGIO_INTERPRETATION, includeThumb: true }],
   ]);
-  const chain = rows.find((row) => row.id === 'chainInterpretation')!;
-  const arpeggio = rows.find((row) => row.id === 'arpeggioInterpretation')!;
-  assert.equal(chain.label, 'チェーンの区切り');
-  assert.equal(chain.displayValue, '2項目を変更');
-  assert.ok(isChangedConditionRow(chain));
-  assert.equal(arpeggio.displayValue, '既定と同じ');
-  assert.equal(isChangedConditionRow(arpeggio), false);
+  assert.equal(rows.some((row) => row.id === 'chainInterpretation' || row.id === 'arpeggioInterpretation'), false);
+  assert.equal(conditionSummaryLine(rows).changedCount, 0);
+  assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), undefined);
 });
 
 function overrideRows(entries: readonly (readonly [string, unknown])[]): readonly ConditionSummaryRow[] {
@@ -298,14 +292,6 @@ test('conditionSummaryLine: 効かない上書きは変えた項目に数えな�
   assert.equal(conditionSummaryLine(rows).changedCount, 0);
 });
 
-test('orderConditionRowsForDetail: 変えた項目を上に、それぞれの中は定義順のまま', () => {
-  const rows = overrideRows([['triggerRealizationPolicy', { useHold: true }], ['windowSize', 5]]);
-  const ordered = orderConditionRowsForDetail(rows).map((row) => row.id);
-  assert.deepEqual(ordered.slice(0, 2), ['windowSize', 'triggerRealizationPolicy']);
-  const rest = rows.map((row) => row.id).filter((id) => id !== 'windowSize' && id !== 'triggerRealizationPolicy');
-  assert.deepEqual(ordered.slice(2), rest);
-});
-
 test('数えない時に例外だけ違う上書きは、変えた項目にも対象名の差分にも入れない（#597）', () => {
   const rows = overrideRows([['actionRealizationPolicy', {
     triggerActivation: 'disabled',
@@ -317,8 +303,6 @@ test('数えない時に例外だけ違う上書きは、変えた項目にも�
   assert.equal(conditionSummaryLine(rows).changedCount, 0);
   assert.deepEqual(nonDefaultConditionRows(rows).map((row) => row.id), []);
   assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), undefined);
-  // 開いた時も既定と同じ群（下）に並ぶ。
-  assert.notEqual(orderConditionRowsForDetail(rows)[0]!.id, 'actionRealizationPolicy');
 });
 
 test('数える時の上書きは、変えた項目にも対象名の差分にも入る', () => {

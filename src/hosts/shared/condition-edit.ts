@@ -9,6 +9,7 @@ import {
 } from '#input/semantics/index.ts';
 import {
   resetCascadeItemCommand,
+  resetCascadeItemsCommand,
   setCascadeOverrideCommand,
   type KeydistAssets,
 } from '#engine/commands.ts';
@@ -41,6 +42,32 @@ export type GlobalEditableId = Extract<
   | 'chainInterpretation'
   | 'arpeggioInterpretation'
 >;
+
+/** モーダルに行がある項目。「すべて既定値に戻す」はこの項目の全体の上書きだけを消す。 */
+export const GLOBAL_EDITABLE_IDS: readonly GlobalEditableId[] = [
+  'windowSize',
+  'sfbHomeCost',
+  'preferOppositeThumb',
+  'triggerRealizationPolicy',
+  'actionRealizationPolicy',
+  'defaultShapeId',
+  'fingerAssignmentId',
+  'chainInterpretation',
+  'arpeggioInterpretation',
+];
+
+/** 行を出している項目（`hiddenIds`を除く）のうち、全体の上書きがあるもの。 */
+export function resettableGlobalIds(
+  overrides: SettingsCascadeOverrides,
+  hiddenIds: readonly SettingsItemId[] = [],
+): readonly GlobalEditableId[] {
+  return GLOBAL_EDITABLE_IDS.filter((id) => !hiddenIds.includes(id) && globalOverrideOf(overrides, id) !== undefined);
+}
+
+/** 全体のレベルの上書きを、モーダルに行がある項目だけまとめて消す（行の無い項目は消さない）。 */
+export function resetAllGlobalCommand(ids: readonly GlobalEditableId[]): Command<KeydistAssets> {
+  return resetCascadeItemsCommand(GLOBAL_LEVEL, ids);
+}
 
 /** 全体のレベルの上書き。無ければ`undefined`（既定値のまま）。 */
 export function globalOverrideOf<K extends GlobalEditableId>(

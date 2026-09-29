@@ -5,18 +5,17 @@ import type { Layout } from '#input/layouts/types.ts';
 import type { InputMethod } from '#input/settings/levels.ts';
 import { ROMAJI_RULES, defaultRomajiRuleId } from '#input/romaji/rules.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
-import { DEFAULT_CHAIN_INTERPRETATION } from '#interpretation/structure/chain.ts';
-import { DEFAULT_ARPEGGIO_INTERPRETATION } from '#interpretation/structure/arpeggio.ts';
 
 /**
  * ペインの条件表示（#544 §3「実効値の出どころを表示する」・指示書「少なくともTraceに
  * 効く項目と、診断・警告があれば」）。
  *
- * 表示対象はTracePolicy（`generateTrace`が直接読む値）に効く項目 + 指の割当id + 解釈（chain/arpeggio）。
- * 解釈はTraceそのものには効かない（docs/architecture.mdの「解釈はTraceの読み方」）が、
- * チェーン・アルペジオの数え方は出力される数値を動かし、条件のモーダルで編集する対象なので
- * 一覧に含める（#655）。速度平均は今の画面のどこにも効かないので含めない
- * （先回りして足さない。AGENTS.md「設定項目を足すか決める」）。
+ * 表示対象はTracePolicy（`generateTrace`が直接読む値）に効く項目 + 指の割当id。
+ * 解釈（chain/arpeggio）・速度平均はTraceそのものには効かない（docs/architecture.mdの
+ * 「解釈はTraceの読み方」）うえ、今の画面（Bigram Flow・比較表・N感度）にこれらを読む数値も無い。
+ * 効かない上書きを「変えた項目」に数えると、その条件で測ったように読めるため、この一覧
+ * （要約の閉じた1行・対象名の併記）には含めない。チェーン・アルペジオは条件のモーダルの
+ * 行としてだけ編集できる（`ConditionEditor`。全体のレベルを直接読む）。
  */
 const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly label: string }[] = [
   { id: 'windowSize', label: '先読みN' },
@@ -32,8 +31,6 @@ const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly la
    * 返す。#578指摘6「defaultShapeIdの診断はfingerAssignmentIdと同じ形で出す」）。
    */
   { id: 'defaultShapeId', label: '既定の物理配列' },
-  { id: 'chainInterpretation', label: 'チェーンの区切り' },
-  { id: 'arpeggioInterpretation', label: 'アルペジオの数え方' },
 ];
 
 export type ConditionValueFormat = 'primitive' | 'object';
@@ -55,8 +52,7 @@ export interface ConditionSummaryRow {
   readonly applicable: boolean;
   /**
    * 上書きされていても、効く値が既定と同じか。「動作数の扱い」は、Shift+Aを1動作にする時は例外を
-   * 一切読まないため、例外だけ違う上書きは既定と同じに働く（#597）。解釈の2項目は、上書きの中身が
-   * 既定と同じなら同じ。
+   * 一切読まないため、例外だけ違う上書きは既定と同じに働く（#597）。
    */
   readonly sameAsDefault: boolean;
   readonly diagnostics: readonly Diagnostic[];
@@ -64,18 +60,10 @@ export interface ConditionSummaryRow {
 
 /** 効く値が既定と同じか。効かない部分（数えない時の例外）の違いは見ない。 */
 function effectivelySameAsDefault(id: SettingsItemId, value: unknown): boolean {
-  if (id === 'chainInterpretation') return changedFieldCount(value, DEFAULT_CHAIN_INTERPRETATION) === 0;
-  if (id === 'arpeggioInterpretation') return changedFieldCount(value, DEFAULT_ARPEGGIO_INTERPRETATION) === 0;
   if (id !== 'actionRealizationPolicy') return false;
   const defaultValue: unknown = SETTINGS_ITEMS.actionRealizationPolicy.defaultValue;
   const semantic = (policy: unknown) => isRecord(policy) && policy['triggerActivation'] === 'semantic';
   return !semantic(value) && !semantic(defaultValue);
-}
-
-/** 真偽の項目だけを持つ解釈の値で、既定と違う項目の数。 */
-function changedFieldCount(value: unknown, defaults: object): number {
-  if (!isRecord(value)) return 0;
-  return Object.entries(defaults).filter(([key, fallback]) => value[key] !== undefined && value[key] !== fallback).length;
 }
 
 function formatOrigin(origin: ResolvedOrigin, names?: ConditionValueNames): string {
@@ -150,13 +138,6 @@ function formatValue(
       displayValue: classOverrides + overrides > 0 ? `${ACTION_COUNT_TEXT.separate}（例外あり）` : ACTION_COUNT_TEXT.separate,
     };
   }
-  // 解釈の2項目はチェックの束なので、既定と違う項目の数で示す（中身は条件のモーダルで見る）。
-  if (id === 'chainInterpretation' && isRecord(value)) {
-    return { format: 'primitive', displayValue: interpretationText(changedFieldCount(value, DEFAULT_CHAIN_INTERPRETATION)) };
-  }
-  if (id === 'arpeggioInterpretation' && isRecord(value)) {
-    return { format: 'primitive', displayValue: interpretationText(changedFieldCount(value, DEFAULT_ARPEGGIO_INTERPRETATION)) };
-  }
   if (value === null) return { format: 'primitive', displayValue: 'なし' };
   if (typeof value === 'boolean') return { format: 'primitive', displayValue: value ? 'ON' : 'OFF' };
   if (typeof value === 'string' || typeof value === 'number') {
@@ -164,10 +145,6 @@ function formatValue(
   }
   // 上で扱っていないオブジェクト値は要約せず「詳細設定」とだけ示す（今のTRACE_AFFECTING_ITEMSには無い）。
   return { format: 'object', displayValue: '（詳細設定）' };
-}
-
-function interpretationText(changed: number): string {
-  return changed === 0 ? '既定と同じ' : `${changed}項目を変更`;
 }
 
 /** 「動作数の扱い」の2つの選択肢の文言（オーナー決定。条件のモーダルと要約で同じ語を使う）。 */
@@ -318,11 +295,6 @@ export function conditionSummaryLine(rows: readonly ConditionSummaryRow[]): Cond
   const changed = rows.filter(isChangedConditionRow);
   const shown = changed.slice(0, SUMMARY_LINE_ITEMS);
   return { changedCount: changed.length, shown, restCount: changed.length - shown.length };
-}
-
-/** 開いた時の並び。変えた項目を上に、それぞれの中は項目の定義順のまま。 */
-export function orderConditionRowsForDetail(rows: readonly ConditionSummaryRow[]): readonly ConditionSummaryRow[] {
-  return [...rows.filter(isChangedConditionRow), ...rows.filter((row) => !isChangedConditionRow(row))];
 }
 
 /** 複数の対象を持つペインに渡す、対象1つぶんの条件。 */

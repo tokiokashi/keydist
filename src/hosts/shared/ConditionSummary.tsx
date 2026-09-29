@@ -5,6 +5,7 @@ import {
   type ConditionSummaryRow,
   type ConditionTargetDiff,
 } from './condition-summary.ts';
+import { resetAllGlobalCommand, resettableGlobalIds } from './condition-edit.ts';
 import { ConditionEditor, type ConditionEditorContext } from './ConditionEditor.tsx';
 
 /**
@@ -93,6 +94,7 @@ interface ConditionModalProps extends ConditionSummaryProps {
 function ConditionModal({ rows, header, targetDiffs, editor, onClose }: ConditionModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const resettable = resettableGlobalIds(editor.overrides, editor.hiddenIds);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -118,6 +120,14 @@ function ConditionModal({ rows, header, targetDiffs, editor, onClose }: Conditio
         <header className="condition-modal-head">
           <h2 id={titleId}>条件</h2>
           <span className="condition-modal-scope">全体の値を変える。すべての画面に効く</span>
+          <button
+            type="button"
+            className="condition-modal-reset-all"
+            disabled={resettable.length === 0}
+            onClick={() => editor.dispatch(resetAllGlobalCommand(resettable))}
+          >
+            すべて既定値に戻す
+          </button>
           <button type="button" className="condition-modal-close" aria-label="閉じる" onClick={() => dialogRef.current?.close()}>
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
               <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />

@@ -6,7 +6,7 @@ import type { SetupLibrary } from '#input/setup/index.ts';
 import { DEFAULT_ACTION_REALIZATION_POLICY } from '#input/semantics/index.ts';
 import { emptyTextLibrary } from '#input/text/library.ts';
 import { initialTextSelection } from '#input/text/selection.ts';
-import type { KeydistAssets } from '#engine/commands.ts';
+import { setCascadeOverrideCommand, type KeydistAssets } from '#engine/commands.ts';
 import { initialMultiTargetSelection } from '#engine/multi-target-selection.ts';
 import { initialSingleTargetSelection } from '#engine/single-target-selection.ts';
 import type { SettingsValueMap } from '#engine/settings-items.ts';
@@ -15,6 +15,8 @@ import {
   classGroupingOf,
   globalOverrideOf,
   overrideWinsNotices,
+  resetAllGlobalCommand,
+  resettableGlobalIds,
   setGlobalCommand,
   staticDefaultOf,
   withActionCountMode,
@@ -118,4 +120,34 @@ test('overrideWinsNotices: 推奨の入力を確定していない配列では�
   const rows = [row('windowSize', { kind: 'layout', layoutId: 'qwerty' }, '上書き: 配列')];
   assert.equal(overrideWinsNotices(rows, 'qwerty').size, 0);
   assert.equal(overrideWinsNotices(rows, undefined).size, 0);
+});
+
+test('すべて既定値に戻す: 行のある項目の全体の上書きだけを1コマンドで消し、行の無い項目は残す。元に戻すの1回で全部戻る', () => {
+  let assets = emptyAssets();
+  let history = emptyCommandHistory<KeydistAssets>();
+  for (const command of [
+    setGlobalCommand('windowSize', 5, staticDefaultOf('windowSize')),
+    setGlobalCommand('sfbHomeCost', false, true),
+    setCascadeOverrideCommand({ kind: 'global' }, 'playbackRateWindow', 9),
+  ]) {
+    const step = applyCommand(assets, history, command);
+    assets = step.assets;
+    history = step.history;
+  }
+  const ids = resettableGlobalIds(assets.setupLibrary.overrides);
+  assert.deepEqual(ids, ['windowSize', 'sfbHomeCost']);
+  const before = history.undoStack.length;
+  const reset = applyCommand(assets, history, resetAllGlobalCommand(ids));
+  assert.equal(reset.history.undoStack.length, before + 1);
+  assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'windowSize'), undefined);
+  assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'sfbHomeCost'), undefined);
+  assert.equal(reset.assets.setupLibrary.overrides.global?.playbackRateWindow, 9);
+  const undone = undo(reset.assets, reset.history);
+  assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'windowSize'), 5);
+  assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'sfbHomeCost'), false);
+});
+
+test('resettableGlobalIds: このペインが行を出さない項目は数えない', () => {
+  const step = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), setGlobalCommand('windowSize', 5, staticDefaultOf('windowSize')));
+  assert.deepEqual(resettableGlobalIds(step.assets.setupLibrary.overrides, ['windowSize']), []);
 });
