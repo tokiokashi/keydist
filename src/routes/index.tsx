@@ -3,6 +3,7 @@ import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
 import { WORKSPACE_EMPTY_TEXT } from '../app/shell/Sidebar.tsx';
+import { TopTargetPick } from '../app/top/TopTargetPick.tsx';
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -41,7 +42,7 @@ function Home() {
       </p>
       {/*
         トップは道具の全体像を説明するページ（docs/architecture.md「画面の構成」）。
-        左にサイドバーの Analyze / Workspace の見本を描き、右で4点（Analyzer・Single と Multi・始め方・Workspace）を説明する。
+        サイドバーの Analyze / Workspace の見本（スマホ幅だけ）を描き、その下に縦1列で4点（Analyzer・Single と Multi・始め方・Workspace）を説明する。
         操作の細部（元に戻す・共有など）は書かない。
       */}
       <div className="top-guide">
@@ -57,9 +58,9 @@ function Home() {
           </li>
           <li>
             <h2>始め方</h2>
-            <p>
-              サイドバーで見たい Analyzer を開き、その画面で見たい配列を選びます。別の Analyzer へ移っても、テキスト・物理配列・条件は引き継がれます。選んだ配列は、同じ区分（Single・Multi）の Analyzer どうしで引き継がれます。
-            </p>
+            <p>気になる配列を1つ選んでください。続けて見たい Analyzer を開きます。</p>
+            <TopTargetPick />
+            <p className="top-note">※テキスト・物理配列・条件は、Analyzer を移っても引き継がれます。</p>
           </li>
           <li>
             <h2>Workspace</h2>
