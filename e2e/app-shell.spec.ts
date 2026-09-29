@@ -262,12 +262,14 @@ test('トップとTesterもシェルに載り、旧Analyzerは載らない', asy
   await expect(page.locator('#app-sidebar')).toHaveCount(0);
 });
 
-test('トップは使い方のページで、旧版への導線は無く、これまでの Analyzer へ行ける', async ({ page }) => {
+test('トップは道具の全体像を説明するページで、旧版への導線は無く、これまでの Analyzer へ行ける', async ({ page }) => {
   await page.goto('/');
   await waitForHydration(page);
   const hero = page.locator('.hero');
-  await expect(hero.getByRole('heading', { name: '使い方', level: 2 })).toBeVisible();
-  await expect(hero.getByRole('heading', { name: '条件の要約', level: 3 })).toBeVisible();
+  for (const name of ['Analyzer', 'Single と Multi', '始め方', 'Workspace']) {
+    await expect(hero.getByRole('heading', { name, level: 2, exact: true })).toBeVisible();
+  }
+  await expect(hero.getByText('選んだ配列は、Single と Multi で別々です。')).toBeVisible();
   await expect(hero.locator('a[href*="classic"]')).toHaveCount(0);
   await expect(page.locator('#app-sidebar').locator('a[href*="classic"]')).toHaveCount(0);
   await expect(page.getByRole('link', { name: '旧版' })).toHaveCount(0);

@@ -1,4 +1,3 @@
-import { ConditionCaret } from './chrome-faces.tsx';
 import {
   conditionDiagnosticText,
   conditionSummaryLine,
@@ -42,7 +41,9 @@ export function ConditionSummary({ rows, header, targetDiffs = [] }: ConditionSu
   return (
     <details className="pane-condition-summary" data-changed-count={line.changedCount}>
       <summary>
-        <ConditionCaret />
+        <svg className="pane-condition-caret" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M5 3l6 5-6 5z" />
+        </svg>
         <span className="pane-condition-key">条件</span>
         {line.changedCount === 0 ? (
           <span className="pane-condition-default">すべて既定値</span>

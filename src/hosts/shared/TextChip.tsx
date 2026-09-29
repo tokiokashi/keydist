@@ -16,7 +16,6 @@ import type { TextIdGenerator, TextLibrary } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import type { TextLanguage } from '#input/text/language.ts';
 import type { TextRef, TextSelectionState } from '#input/text/selection.ts';
-import { TextChipFace, languageLabel } from './chrome-faces.tsx';
 import './context-bar.css';
 
 export type TextContentCommit = ((value: { readonly ref: TextRef; readonly text: string }) => void) & {
@@ -62,6 +61,10 @@ const LANGUAGE_OVERRIDE_OPTIONS: readonly { readonly value: 'auto' | TextLanguag
   { value: 'en', label: '英語' },
 ];
 
+function languageLabel(language: TextLanguage): string {
+  return language === 'ja' ? '日本語' : '英語';
+}
+
 export function TextChip(props: TextChipProps) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -104,10 +107,15 @@ export function TextChip(props: TextChipProps) {
         title={resolved.name}
         onClick={() => setOpen((current) => !current)}
       >
-        <TextChipFace name={resolved.name} language={resolved.language} />
+        <span className="context-chip-key">テキスト</span>
+        <span className="context-chip-value">{resolved.name}</span>
         {hasUnseen ? (
           <span className="text-chip-unseen" role="img" aria-label="新しいテキストがある" title="新しいテキストがある" />
         ) : null}
+        <span className="text-chip-language">{languageLabel(resolved.language)}</span>
+        <svg className="context-chip-chevron" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+          <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
       </button>
       {open ? (
         <div className="context-popover text-chip-panel" id={panelId} role="dialog" aria-label="テキストの選択と編集">

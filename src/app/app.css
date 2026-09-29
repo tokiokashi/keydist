@@ -75,92 +75,89 @@ h1 {
   font-size: 0.85rem;
 }
 
-.hero > .usage-title {
-  margin: 2.5rem 0 1rem;
-  font-size: 1.4rem;
-  font-weight: 650;
+/* 全体像の説明。左にサイドバーの見本、右に4点。スマホ幅は縦に並べる */
+.top-guide {
+  display: grid;
+  grid-template-columns: minmax(12rem, 14rem) minmax(0, 1fr);
+  gap: 1.5rem 2rem;
+  align-items: start;
+  margin-top: 2rem;
 }
 
-/* 使い方のカード。パソコン幅は2列、スマホ幅は1列 */
-.usage-grid {
+@media (max-width: 40rem) {
+  .top-guide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.top-sample {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
   gap: 1rem;
-}
-
-.usage-card {
-  display: grid;
-  align-content: start;
-  gap: 0.6rem;
-  min-width: 0;
-  padding: 1rem 1.15rem;
+  padding: 0.9rem 0.6rem;
   border: 1px solid var(--border);
   border-radius: 0.8rem;
   background: var(--surface);
 }
 
-.usage-card-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 0.75rem;
+.top-sample .sidebar-heading,
+.top-sample .sidebar-subheading {
+  /* 見本の見出しは段落タグで描くので、段落の既定の余白・色を打ち消す */
+  color: var(--text-muted);
 }
 
-.usage-card h3 {
+.top-sample .sidebar-heading {
+  margin: 0 0 0.2rem;
+}
+
+.top-sample .sidebar-subheading {
+  margin: 0.3rem 0 0.1rem;
+}
+
+.top-sample .sidebar-empty {
   margin: 0;
-  font-size: 1.05rem;
+}
+
+.top-points {
+  display: grid;
+  gap: 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: top-point;
+}
+
+.top-points li {
+  position: relative;
+  padding-left: 2.25rem;
+  counter-increment: top-point;
+}
+
+.top-points li::before {
+  content: counter(top-point);
+  position: absolute;
+  top: 0.1rem;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  font: 600 0.8rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.top-points h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
   font-weight: 650;
 }
 
-.usage-card p {
+.hero .top-points p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   line-height: 1.75;
-}
-
-.usage-card p a {
-  color: var(--accent-strong);
-  text-underline-offset: 3px;
-}
-
-.usage-samples {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
-  min-width: 0;
-}
-
-/* 実物の部品の見本。押せない・選択できないことが分かるよう、操作の見た目（カーソル・hover）を付けない */
-.usage-sample {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  max-width: 100%;
-  font-size: 1rem;
-  line-height: 1.3;
-  pointer-events: none;
-  user-select: none;
-}
-
-.usage-sample .context-chip-key,
-.usage-sample .pane-condition-key {
-  color: var(--text-muted);
-}
-
-.usage-condition {
-  display: inline-flex;
-}
-
-/* 実物の条件の要約は details の summary。見本は開けない見出し部分だけを同じ寸法で描く */
-.usage-condition-head {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.38rem 0.65rem;
-  color: var(--text-muted);
 }
 
 .hero > p.hero-legacy {

@@ -1,27 +1,33 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
-import type { ReactNode } from 'react';
-import {
-  ConditionSample,
-  SettingsSample,
-  ShapeChipSample,
-  ShareSample,
-  TextChipSample,
-  UndoRedoSample,
-} from '#hosts/shared/usage-samples.tsx';
+import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
+import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
+import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
+import { WORKSPACE_EMPTY_TEXT } from '../app/shell/Sidebar.tsx';
 
 export const Route = createFileRoute('/')({
   component: Home,
 });
 
-function UsageCard({ title, samples, children }: { readonly title: string; readonly samples?: ReactNode; readonly children: ReactNode }) {
+/**
+ * サイドバーの Analyze / Workspace の区分の見本。見出しと名前は実物と同じ定義から取り、
+ * 名前は各画面へのリンクにする。見た目はサイドバーの部品のCSSをそのまま使う。
+ */
+function SidebarSample() {
   return (
-    <section className="usage-card">
-      <div className="usage-card-head">
-        <h3>{title}</h3>
-        {samples === undefined ? null : <div className="usage-samples">{samples}</div>}
-      </div>
-      {children}
-    </section>
+    <div className="top-sample" role="group" aria-label="サイドバーの見本">
+      <section className="sidebar-group">
+        <p className="sidebar-heading">Analyze</p>
+        <p className="sidebar-subheading">Single</p>
+        <Link className="sidebar-link" to="/standalone/bigram-flow">{BIGRAM_FLOW_PANE_META.name}</Link>
+        <p className="sidebar-subheading">Multi</p>
+        <Link className="sidebar-link" to="/standalone/comparison">{COMPARISON_PANE_META.name}</Link>
+        <Link className="sidebar-link" to="/standalone/n-sensitivity">{N_SENSITIVITY_PANE_META.name}</Link>
+      </section>
+      <section className="sidebar-group">
+        <p className="sidebar-heading">Workspace</p>
+        <p className="sidebar-empty">{WORKSPACE_EMPTY_TEXT}</p>
+      </section>
+    </div>
   );
 }
 
@@ -34,50 +40,32 @@ function Home() {
         キーボードの配列を、文章を打った時に指がどれだけ動くかで調べるツールです。配列の良し悪しを決めるのではなく、性質を数値で眺めるために使います。
       </p>
       {/*
-        トップは使い方のページ（docs/architecture.md「画面の構成」）。画面への入口はサイドバーが持つので、
-        ここでメニューを繰り返さない。書くのは、画面を見ても触っても分からないことだけ。
-        各項目には説明している部品の見本を添える（実物と同じ部品・CSSで描くので、テーマの明暗にも追従する）。
-        Analyzerの説明は pane-meta と重なるが、トップでは使い方の文脈に合わせた文を優先して別に持つ。
+        トップは道具の全体像を説明するページ（docs/architecture.md「画面の構成」）。
+        左にサイドバーの Analyze / Workspace の見本を描き、右で4点（Analyzer・Single と Multi・始め方・Workspace）を説明する。
+        操作の細部（元に戻す・共有など）は書かない。
       */}
-      <h2 className="usage-title">使い方</h2>
-      <div className="usage-grid">
-        <UsageCard title="画面">
-          <p>
-            <Link to="/standalone/bigram-flow">Bigram Flow</Link>は、続けて打つ2打鍵で指がキーボードの上をどう動くかを見ます。
-            <Link to="/standalone/comparison">比較表</Link>は、選んだ配列で同じテキストを打った時の数値を並べます。
-            <Link to="/standalone/n-sensitivity">N感度</Link>は、先読みの数 N を変えた時に総移動距離がどう変わるかを配列ごとに描きます。
-          </p>
-        </UsageCard>
-
-        <UsageCard title="選択" samples={<><ShapeChipSample /><TextChipSample /></>}>
-          <p>
-            画面上部で選ぶ物理配列とテキストは、すべての画面で共通です。
-            <br />
-            組み込みのサンプルを書き換えると、自分のテキストとして別に保存します。元のサンプルはそのまま残ります。
-            <br />
-            比較表と N感度は、選んだ配列の組を共有します。
-          </p>
-        </UsageCard>
-
-        <UsageCard title="元に戻す" samples={<UndoRedoSample />}>
-          <p>
-            テキスト・選んだ配列・物理配列・解析設定の変更を、元に戻したりやり直したりできます。テキストの削除も戻せるので、削除の前に確認は出しません。
-          </p>
-        </UsageCard>
-
-        <UsageCard title="共有" samples={<><ShareSample /><SettingsSample /></>}>
-          <p>
-            今の画面の URL をコピーします。解析設定を含むので、受け取った人も同じ表示の設定で開けます。
-            <br />
-            配列とテキストは含まないので、受け取った人の側で選んでいるもので表示されます。
-          </p>
-        </UsageCard>
-
-        <UsageCard title="条件の要約" samples={<ConditionSample />}>
-          <p>
-            各画面の見出しの下で、数値がどの条件で出たかを確かめられます。開くと、各条件の値と、その値がどこで決まったかを見られます。
-          </p>
-        </UsageCard>
+      <div className="top-guide">
+        <SidebarSample />
+        <ol className="top-points">
+          <li>
+            <h2>Analyzer</h2>
+            <p>配列でテキストを打った時の指の動きを、1つの切り口で見せる画面です。</p>
+          </li>
+          <li>
+            <h2>Single と Multi</h2>
+            <p>Single は1つの配列を詳しく見ます。Multi は複数の配列を並べて比べます。選んだ配列は、Single と Multi で別々です。</p>
+          </li>
+          <li>
+            <h2>始め方</h2>
+            <p>
+              サイドバーで見たい Analyzer を開き、その画面で見たい配列を選びます。別の Analyzer へ移っても、選んだ配列は Single どうし・Multi どうしで引き継がれ、テキスト・物理配列・条件はどの Analyzer でも共通です。
+            </p>
+          </li>
+          <li>
+            <h2>Workspace</h2>
+            <p>準備中です。複数の Analyzer を並べて見る画面になります。</p>
+          </li>
+        </ol>
       </div>
       {/*
         観測値の注記はトップにだけ置く（docs/architecture.md「画面の構成」）。

@@ -11,6 +11,9 @@ import {
 } from '../theme/appearance.ts';
 import type { ThemeChoice } from '../theme/theme.ts';
 
+/** Workspace 区分の案内文。トップの見本も同じ文を出す。 */
+export const WORKSPACE_EMPTY_TEXT = 'Analyzerを並べて見る画面。';
+
 /**
  * サイドバーの中身（docs/architecture.md「サイドバー」）。ナビゲーションだけを持ち、
  * 最下端にだけ例外として版表示・テーマ切替を置く。
@@ -125,7 +128,7 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
 
         <section className="sidebar-group" aria-labelledby="sidebar-workspace">
           <h2 className="sidebar-heading" id="sidebar-workspace">Workspace</h2>
-          <p className="sidebar-empty">Analyzerを並べて見る画面。</p>
+          <p className="sidebar-empty">{WORKSPACE_EMPTY_TEXT}</p>
         </section>
 
         <section className="sidebar-group">
