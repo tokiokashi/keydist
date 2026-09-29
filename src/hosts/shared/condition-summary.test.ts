@@ -474,5 +474,5 @@ test('multiTargetConditionSummary: excludeIdsの項目は共通の行にも差�
 });
 
 test('multiTargetConditionSummary: 対象が無ければ空', () => {
-  assert.deepEqual(multiTargetConditionSummary([]), { rows: [], diffs: [] });
+  assert.deepEqual(multiTargetConditionSummary([], { globalValues: {} }), { rows: [], diffs: [] });
 });
