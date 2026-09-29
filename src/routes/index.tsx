@@ -2,7 +2,7 @@ import { Link, createFileRoute } from '@tanstack/react-router';
 import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
-import { WORKSPACE_EMPTY_TEXT } from '../app/shell/Sidebar.tsx';
+import { LEGACY_ANALYZER_LABEL, WORKSPACE_EMPTY_TEXT } from '../app/shell/Sidebar.tsx';
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -73,7 +73,7 @@ function Home() {
       */}
       <p className="hero-note">数値は観測値であり、配列の優劣を判定するスコアではない。</p>
       <p className="hero-legacy">
-        <Link to="/analyzer">これまでの Analyzer</Link>
+        <Link to="/analyzer">{LEGACY_ANALYZER_LABEL}</Link>
       </p>
     </section>
   );

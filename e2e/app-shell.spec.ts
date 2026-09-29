@@ -161,6 +161,34 @@ test('スマホ幅ではサイドバーは引き出しで、リンクを押す�
   await expect(sidebar).not.toBeInViewport();
 });
 
+test('サイドバー最下端のリンクから旧バージョンへ行ける（パソコン幅）', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
+  const link = page.locator('#app-sidebar .sidebar-foot').getByRole('link', { name: '旧バージョン', exact: true });
+  await expect(link).toHaveAttribute('href', '/analyzer');
+  await link.click();
+  await expect(page).toHaveURL(/\/analyzer\/?$/);
+  await expect(page.locator('#app-sidebar')).toHaveCount(0);
+  // 反証: 旧Analyzerの画面が実際に出ている（リンクだけ遷移して空白になっていない）
+  await expect(page.locator('main, #root').first()).not.toBeEmpty();
+  await expect(page.getByRole('heading').first()).toBeVisible();
+});
+
+test('サイドバー最下端のリンクから旧バージョンへ行ける（スマホ幅の引き出し）', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await waitForHydration(page);
+  await page.getByRole('button', { name: 'サイドバーを開く' }).click();
+  const sidebar = page.locator('#app-sidebar');
+  await expect(sidebar).toBeInViewport();
+  const link = sidebar.getByRole('link', { name: '旧バージョン', exact: true });
+  await expect(link).toBeInViewport();
+  await link.click();
+  await expect(page).toHaveURL(/\/analyzer\/?$/);
+  await expect(page.locator('#app-sidebar')).toHaveCount(0);
+  await expect(page.getByRole('heading').first()).toBeVisible();
+});
+
 test('文脈バー: テキストのチップは閉じた時1行で、開くと選択・編集が出る。Undo / Redoで選択を戻せる', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   const bar = page.locator('.context-bar');
@@ -262,7 +290,7 @@ test('トップとTesterもシェルに載り、旧Analyzerは載らない', asy
   await expect(page.locator('#app-sidebar')).toHaveCount(0);
 });
 
-test('トップは道具の全体像を説明するページで、旧版への導線は無く、これまでの Analyzer へ行ける', async ({ page }) => {
+test('トップは道具の全体像を説明するページで、旧版への導線は無く、旧バージョンへ行ける', async ({ page }) => {
   await page.goto('/');
   await waitForHydration(page);
   const hero = page.locator('.hero');
@@ -274,7 +302,7 @@ test('トップは道具の全体像を説明するページで、旧版への�
   await expect(page.locator('#app-sidebar').locator('a[href*="classic"]')).toHaveCount(0);
   await expect(page.getByRole('link', { name: '旧版' })).toHaveCount(0);
 
-  await hero.getByRole('link', { name: 'これまでの Analyzer', exact: true }).click();
+  await hero.getByRole('link', { name: '旧バージョン', exact: true }).click();
   await expect(page).toHaveURL(/\/analyzer\/?$/);
 });
 
