@@ -960,3 +960,25 @@ test('選ばれているラジオから矢印キーで動かしても閉じず�
   await expect(selection).toHaveCount(0);
   await expect(targetButton(page)).toBeFocused();
 });
+
+test('条件を変えたSetupを選んでも、対象ボタンは名前だけで、条件の差分は条件の要約に出る（#670）', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'keydist:setup-library',
+      JSON.stringify({
+        version: 1,
+        setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' }],
+        overrides: { global: { sfbHomeCost: false } },
+      }),
+    );
+    localStorage.setItem(
+      'keydist:single-target-selection',
+      JSON.stringify({ version: 1, target: { kind: 'setup', setupId: 'fixed-a' } }),
+    );
+  });
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+
+  await expect(targetButton(page)).toHaveAccessibleName('対象: QWERTY');
+  await expect(page.locator('.pane-condition-summary summary')).toContainText('同指連続のホーム復帰距離');
+});

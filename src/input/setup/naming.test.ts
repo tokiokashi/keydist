@@ -11,11 +11,12 @@ test('nameTargets: 単一の対象は配列名だけを出す', () => {
   assert.equal(named[0].fullName, 'QWERTY/ロウスタッガード（ANSI）');
 });
 
-test('nameTargets: 単一の対象でも非既定条件があれば併記する', () => {
+test('nameTargets: 単一の対象では非既定条件を併記しない', () => {
   const named = nameTargets([
     { key: 'setup:s1', kind: 'setup', layoutName: 'QWERTY', shapeName: '形状A', overrideSummary: '指の割当: JIS' },
   ]);
-  assert.equal(named[0].displayName, 'QWERTY · 指の割当: JIS');
+  assert.equal(named[0].displayName, 'QWERTY');
+  assert.equal(named[0].fullName, 'QWERTY/形状A · 指の割当: JIS');
 });
 
 test('nameTargets: #578の例（配列2つ + 指割当違いのSetup）で差分だけ残す', () => {
