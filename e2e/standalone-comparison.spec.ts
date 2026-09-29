@@ -651,3 +651,38 @@ test('読み込み前のHTMLに空状態のボタンが無く、保存済みの�
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
   await expect(page.getByRole('button', { name: '配列・Setupを選ぶ' })).toHaveCount(0);
 });
+
+test('「共有」でコピーしたURLを新しいページで開くと、解析設定（表示する列）がその値で開く', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/standalone/comparison');
+  await addTarget(page, 'layout:qwerty');
+  const table = page.locator('.comparison-table');
+  await expect(table).toBeVisible({ timeout: 10_000 });
+
+  // 既定（全列）から「動作数」の列を外す。
+  await expect(table.locator('thead')).toContainText('動作数');
+  const actions = (await openSettings(page)).getByRole('checkbox', { name: '動作数', exact: true });
+  await actions.uncheck();
+  await expect(table.locator('thead th', { hasText: /^動作数$/ })).toHaveCount(0);
+
+  await page.getByRole('button', { name: '共有', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+  expect(url).toContain('columns=');
+
+  // 保存値の無い新しいコンテキストで開く。URLの値で開き、取り込み後はURLから消える。
+  const other = await context.browser()!.newContext();
+  try {
+    const opened = await other.newPage();
+    await opened.goto(url);
+    await addTarget(opened, 'layout:qwerty');
+    const openedTable = opened.locator('.comparison-table');
+    await expect(openedTable).toBeVisible({ timeout: 10_000 });
+    await expect(openedTable.locator('thead')).toContainText('距離 [u]');
+    await expect(openedTable.locator('thead th', { hasText: /^動作数$/ })).toHaveCount(0);
+    await expect((await openSettings(opened)).getByRole('checkbox', { name: '動作数', exact: true })).not.toBeChecked();
+    await expect(opened).toHaveURL(/\/standalone\/comparison$/);
+  } finally {
+    await other.close();
+  }
+});

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { COMPARISON_COLUMNS } from './options.ts';
+import { COMPARISON_COLUMNS, comparisonOptions } from './options.ts';
 
 /**
  * 列ごとの表示形式（コーディネーターレビュー対応: 一律ルールではなく列の宣言に持たせる）。
@@ -42,4 +42,27 @@ test('COMPARISON_COLUMNS: 全13列に表示形式が定義されている', () =
     assert.equal(typeof def.label, 'string');
     assert.equal(typeof def.format(1), 'string');
   }
+});
+
+test('URL: 既定値なら何も書かず、変えた項目だけが往復する', () => {
+  assert.equal(comparisonOptions.encodeOptionsToUrl(comparisonOptions.defaultOptions).toString(), '');
+  const options = { visibleColumns: ['totalUnits', 'actions'], showBaselineRatio: false } as const;
+  const params = comparisonOptions.encodeOptionsToUrl(options);
+  const diagnostics: { path: string; message: string }[] = [];
+  const decoded = comparisonOptions.decodeOptionsFromUrl(new URLSearchParams(params.toString()), diagnostics);
+  assert.deepEqual(decoded.values, options);
+  assert.deepEqual(diagnostics, []);
+});
+
+test('URL: 0列は空のまま往復し、全列へ戻らない', () => {
+  const params = comparisonOptions.encodeOptionsToUrl({ ...comparisonOptions.defaultOptions, visibleColumns: [] });
+  const decoded = comparisonOptions.decodeOptionsFromUrl(new URLSearchParams(params.toString()), []);
+  assert.deepEqual(decoded.values.visibleColumns, []);
+});
+
+test('URL: 未知の列や真偽値は診断を積んで捨てる', () => {
+  const diagnostics: { path: string; message: string }[] = [];
+  const decoded = comparisonOptions.decodeOptionsFromUrl(new URLSearchParams('columns=actions,nope&baselineRatio=maybe'), diagnostics);
+  assert.deepEqual(decoded.values, { visibleColumns: ['actions'] });
+  assert.equal(diagnostics.length, 2);
 });

@@ -231,6 +231,20 @@ export function picklistUrlCodec<T extends string>(name: string, allowed: readon
   };
 }
 
+/** 真偽値のURL codec。`true` / `false` で読み書きする。 */
+export function booleanUrlCodec(name: string): OptionUrlCodec<boolean> {
+  return {
+    name,
+    encode: (value) => String(value),
+    decode: (raw, path, diagnostics) => {
+      if (raw === 'true') return true;
+      if (raw === 'false') return false;
+      diagnostics.push({ path, message: `URLパラメータの値「${raw}」は未知のため捨てた` });
+      return undefined;
+    },
+  };
+}
+
 /** 数値範囲のURL codec。 */
 export function numberUrlCodec(name: string, min: number, max: number): OptionUrlCodec<number> {
   return {
