@@ -441,12 +441,18 @@ export function selectTextCommand(holder: TextSelectionHolder, ref: TextRef): Co
 
 /**
  * 「新しい」印を外す（一覧を見た時。#611）。印の無い・存在しないidだけなら何もしない。
+ * 履歴には積まない（`CommandOutcome`の`quiet`）。
  */
 export function markTextsSeenCommand(ids: readonly string[]): Command<KeydistAssets> {
   return (current) => {
-    const next = markUserTextsSeen(current.textLibrary, ids);
-    if (next === current.textLibrary) return { kind: 'no-op' };
-    return { kind: 'applied', label: 'テキストを確認済みにする', changes: { textLibrary: next } };
+    if (markUserTextsSeen(current.textLibrary, ids) === current.textLibrary) return { kind: 'no-op' };
+    // 印を外しただけでUndoの履歴を増やさない（「元に戻す」が編集でなく印を戻してしまうため）。
+    // 履歴の中の本文の写しからも同じ印を外し、Undoで印が戻らないようにする
+    return {
+      kind: 'quiet',
+      label: 'テキストを確認済みにする',
+      transforms: { textLibrary: (library) => markUserTextsSeen(library, ids) },
+    };
   };
 }
 

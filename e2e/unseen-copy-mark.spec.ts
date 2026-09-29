@@ -42,7 +42,7 @@ async function makeUnseenCopy(pageA: Page, pageB: Page): Promise<StoredText> {
   await openTextChip(pageA);
   await openTextChip(pageB);
   await pageA.getByLabel('テキスト', { exact: true }).fill('tab-A');
-  await pageB.waitForTimeout(100);
+  await pageB.waitForTimeout(200);
   await pageB.getByLabel('テキスト', { exact: true }).fill('tab-B');
   await expect.poll(async () => (await readTexts(pageA)).length, { timeout: 5_000 }).toBe(2);
   const copy = (await readTexts(pageA)).find((entry) => entry.text === 'tab-B');
@@ -95,6 +95,29 @@ test('コピーを開くと印が消える', async ({ context }) => {
   await pageA.getByLabel('テキストを選ぶ').selectOption({ value: `user:${copy.id}` });
   await expect(mark(pageA)).toHaveCount(0);
   await expect.poll(async () => (await readTexts(pageA)).some((entry) => entry.unseen === true)).toBe(false);
+});
+
+test('印を外した後の元に戻すは、直前の本文の編集を戻す', async ({ context }) => {
+  const { pageA, pageB } = await open(context);
+  await makeUnseenCopy(pageA, pageB);
+  const body = pageA.getByLabel('テキスト', { exact: true });
+  await expect(body).toHaveValue('tab-A');
+  await body.fill('tab-A 編集後');
+  await expect.poll(async () => (await readTexts(pageA)).map((entry) => entry.text)).toContain('tab-A 編集後');
+
+  // 一覧を見て印を外す（履歴には積まない）
+  await pageA.getByLabel('テキストを選ぶ').click();
+  await body.click();
+  await expect(mark(pageA)).toHaveCount(0);
+  await expect.poll(async () => (await readTexts(pageA)).some((entry) => entry.unseen === true)).toBe(false);
+
+  await pageA.getByRole('button', { name: '元に戻す' }).click();
+  await expect.poll(async () => (await readTexts(pageA)).map((entry) => entry.text)).not.toContain('tab-A 編集後');
+  const texts = await readTexts(pageA);
+  expect(texts.map((entry) => entry.text)).toContain('tab-A');
+  // 印は戻らない
+  expect(texts.some((entry) => entry.unseen === true)).toBe(false);
+  await expect(mark(pageA)).toHaveCount(0);
 });
 
 test('チップを閉じても、見ていなければ印は残る', async ({ context }) => {

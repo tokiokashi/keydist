@@ -783,3 +783,25 @@ test('setTextContentCommand: 選ばれないコピーには「新しい」印が
   assert.equal(opened.assets.textLibrary.texts[1]!.unseen, undefined);
   assert.equal(opened.assets.standaloneTextSelection.ref.id, copy.id);
 });
+
+test('markTextsSeenCommand: 履歴に積まず、Undoは直前の編集を戻して印は戻さない（#611）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const first = applyCommand(assets, history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, '選ばれる', generateTextId));
+  const stale = applyCommand(first.assets, first.history, setTextContentCommand('standalone', DEFAULT_TEXT_REF, '遅れて届く', generateTextId));
+  const copy = stale.assets.textLibrary.texts[1]!;
+  const firstRef = { kind: 'user', id: first.assets.textLibrary.texts[0]!.id } as const;
+  const edited = applyCommand(stale.assets, stale.history, setTextContentCommand('standalone', firstRef, '編集した', generateTextId));
+  assert.equal(edited.assets.textLibrary.texts[1]!.unseen, true);
+
+  const seen = applyCommand(edited.assets, edited.history, markTextsSeenCommand([copy.id]));
+  assert.equal(seen.outcome.kind, 'applied');
+  assert.equal(seen.assets.textLibrary.texts[1]!.unseen, undefined);
+  assert.equal(seen.history.undoStack.length, edited.history.undoStack.length, '履歴を増やさない');
+
+  const back = undo(seen.assets, seen.history);
+  assert.equal(back.assets.textLibrary.texts[0]!.text, '選ばれる', '直前の編集が戻る');
+  assert.equal(back.assets.textLibrary.texts[1]!.unseen, undefined, '印は戻らない');
+  assert.equal(back.history.redoStack.length, 1, 'redoを消さない');
+  assert.equal(applyCommand(back.assets, back.history, markTextsSeenCommand([copy.id])).history.redoStack.length, 1);
+});
