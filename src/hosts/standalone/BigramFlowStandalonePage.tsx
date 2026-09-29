@@ -227,6 +227,7 @@ export function BigramFlowStandalonePage({
                 trace={pane.trace.value.trace}
                 extracted={extraction.value.extracted}
                 options={optionsDraft}
+                onOptionsChange={changeOptions}
               />
             ) : undefined}
           </PaneFrame>

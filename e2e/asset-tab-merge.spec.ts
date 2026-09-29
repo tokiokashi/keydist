@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openFigureSettings } from './bigram-flow-figure-helper.ts';
 import { openTextChip } from './context-bar-helper.ts';
 
 /**
@@ -118,7 +119,8 @@ test('他タブが別のAnalyzerの解析設定を書いても、自タブの未
   if (!(await settings.isVisible())) await pageA.getByRole('button', { name: '解析設定', exact: true }).click();
   await expect(settings).toBeVisible();
   const withinHand = settings.getByRole('button', { name: 'Within-hand' });
-  const lineScale = settings.getByLabel('紐の太さ', { exact: true });
+  // 紐の太さは図のそばの展開にある（展開は解析設定の小窓を閉じてから開く）。
+  const lineScale = (await openFigureSettings(pageA, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true });
 
   // 自分のAnalyzerの設定が保存済みの状態にする（未保存だと他タブの書き込みで参照が変わらない）
   await lineScale.selectOption('linear');
@@ -130,7 +132,10 @@ test('他タブが別のAnalyzerの解析設定を書いても、自タブの未
   await pageA.clock.pauseAt(now + 60_000);
 
   // 変更A（debounce待ち。時計が止まっているので書かれない）
+  await pageA.getByRole('button', { name: '解析設定', exact: true }).click();
+  await expect(settings).toBeVisible();
   await withinHand.click();
+  await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
   // 他タブが別のAnalyzerの分だけを書く。Aのタブへstorageイベントが届く
   // リスナーの登録を確かめてからBに書かせる（登録前に届いたイベントを取りこぼさないため）
   await pageA.evaluate(() => {
@@ -169,7 +174,7 @@ test('他タブが同じAnalyzerの解析設定を変えたら、自タブの表
   const settings = pageA.locator('[data-settings-window="true"]');
   if (!(await settings.isVisible())) await pageA.getByRole('button', { name: '解析設定', exact: true }).click();
   await expect(settings).toBeVisible();
-  const lineScale = settings.getByLabel('紐の太さ', { exact: true });
+  const lineScale = (await openFigureSettings(pageA, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true });
 
   await lineScale.selectOption('linear');
   await expect

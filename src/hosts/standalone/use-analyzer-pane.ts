@@ -5,6 +5,7 @@ import type { ExtractionRequestState, TraceRequestState } from '#engine/engine-r
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import {
   closeAnalyzerPaneChannels,
+  foldExtractionState,
   syncAnalyzerPaneChannels,
   type AnalyzerPaneChannels,
 } from './analyzer-channels.ts';
@@ -41,7 +42,7 @@ export function useAnalyzerPane<Options, Extracted>(
       definition,
       options,
       resolution,
-      onExtraction: setExtraction,
+      onExtraction: (next) => setExtraction((previous) => foldExtractionState(previous, next)),
       onTrace: setTrace,
     });
     // 依存配列を省略すると毎レンダー後に実行され、request()が呼ぶsetState（listener）が

@@ -647,6 +647,11 @@ export interface BigramFlowBodyProps {
   readonly trace: Trace;
   readonly extracted: BigramFlowExtracted;
   readonly options: BigramFlowOptions;
+  /**
+   * 図のそばで開く表示の調整（紐の太さ等）の書き込み先。省略すると調整のボタンを出さない。
+   * 値の持ち主は解析設定と同じ1つの`AnalyzerOptions`で、ここは開く場所が増えるだけ。
+   */
+  readonly onOptionsChange?: (next: BigramFlowOptions) => void;
 }
 
 /**
@@ -658,7 +663,8 @@ const RELATIVE_VECTORS_READING = '打鍵ごとの移動の向きと距離を、�
 
 /**
  * Bigram Flowの本体（図）。`extracted`（`extract.ts`の計算結果）と見た目だけの設定を描くだけで、
- * Trace・vectorそのものからの再計算はしない。解析設定の入力部品は持たない（`BigramFlowSettings`）。
+ * Trace・vectorそのものからの再計算はしない。両方の図に効く解析設定の入力部品は持たない
+ * （`BigramFlowSettings`）。図ごとにしか効かない項目だけは、図の見出し行のボタンから図のそばで開く。
  */
 export function BigramFlowBody({
   layout,
@@ -666,6 +672,7 @@ export function BigramFlowBody({
   trace,
   extracted,
   options,
+  onOptionsChange,
 }: BigramFlowBodyProps) {
   const {
     source,
@@ -677,6 +684,10 @@ export function BigramFlowBody({
     polarBandwidth,
     polarGain,
   } = options;
+
+  // 展開の状態は保存しない（再読み込みで閉じる）。閉じるまで開いたまま。
+  const [keyboardFlowOpen, setKeyboardFlowOpen] = useState(false);
+  const [relativeVectorsOpen, setRelativeVectorsOpen] = useState(false);
 
   const movementScale = movementPlotScale(extracted.relativeMaxDistance, movementScaleMode);
   const sharedMovementHalfSize = movementPlotExtent(
@@ -708,7 +719,17 @@ export function BigramFlowBody({
         <div className="flow-block-heading">
           <h3 className="flow-block-title">Keyboard Flow</h3>
           <InfoButton name="Keyboard Flow" description={KEYBOARD_FLOW_READING} />
+          {onOptionsChange !== undefined ? (
+            <FigureSettingsToggle
+              name="Keyboard Flow"
+              open={keyboardFlowOpen}
+              onToggle={() => setKeyboardFlowOpen(!keyboardFlowOpen)}
+            />
+          ) : null}
         </div>
+        {onOptionsChange !== undefined && keyboardFlowOpen ? (
+          <KeyboardFlowFigureSettings options={options} onOptionsChange={onOptionsChange} />
+        ) : null}
         <KeyboardFlow
           geometry={geometry}
           layout={layout}
@@ -737,7 +758,17 @@ export function BigramFlowBody({
               Relative vectors <span className="flow-block-subject">{fingerSetLabel(selectedFingers)}</span>
             </h3>
             <InfoButton name="Relative vectors" description={RELATIVE_VECTORS_READING} />
+            {onOptionsChange !== undefined ? (
+              <FigureSettingsToggle
+                name="Relative vectors"
+                open={relativeVectorsOpen}
+                onToggle={() => setRelativeVectorsOpen(!relativeVectorsOpen)}
+              />
+            ) : null}
           </div>
+          {onOptionsChange !== undefined && relativeVectorsOpen ? (
+            <RelativeVectorsFigureSettings options={options} onOptionsChange={onOptionsChange} />
+          ) : null}
           <div className="flow-two-up">
             <MovementProfilePlot
               hand="left"
@@ -805,10 +836,18 @@ function FingerOptionField({ binding }: { binding: OptionBinding<readonly Finger
   );
 }
 
-/** Bigram Flowの解析設定。項目の既定値は宣言（`options.ts`）から導いた`defaultOptions`。 */
+const bindBigramFlowOption = <K extends keyof BigramFlowOptions>(
+  options: BigramFlowOptions,
+  onOptionsChange: (next: BigramFlowOptions) => void,
+  key: K,
+) => bindOption(options, DEFAULT_BIGRAM_FLOW_OPTIONS, onOptionsChange, key);
+
+/**
+ * Bigram Flowのペインの解析設定。両方の図に効く入力（2打鍵の取り方・指）だけを置く。
+ * 図ごとにしか効かない項目は、その図のそばで開く（`FigureSettingsToggle`）。
+ */
 export function BigramFlowSettings({ options, onOptionsChange }: AnalyzerSettingsProps<BigramFlowOptions>) {
-  const bind = <K extends keyof BigramFlowOptions>(key: K) =>
-    bindOption(options, DEFAULT_BIGRAM_FLOW_OPTIONS, onOptionsChange, key);
+  const bind = <K extends keyof BigramFlowOptions>(key: K) => bindBigramFlowOption(options, onOptionsChange, key);
   return (
     <div className="option-groups">
       <OptionGroup title="描く2打鍵">
@@ -825,65 +864,112 @@ export function BigramFlowSettings({ options, onOptionsChange }: AnalyzerSetting
         />
         <FingerOptionField binding={bind('selectedFingers')} />
       </OptionGroup>
+    </div>
+  );
+}
 
-      <OptionGroup title="Keyboard Flow">
-        <SelectOptionField
-          label="紐の太さ"
-          binding={bind('lineScale')}
-          choices={[
-            { value: 'linear', label: '線形' },
-            { value: 'sqrt', label: '平方根' },
-            { value: 'log', label: '対数' },
-          ]}
+/**
+ * 図の見出し行の右に置く、その図の表示を調整するボタン。ペインの解析設定のボタンとは別の
+ * 目のアイコンにして、押すと見出しの直下へ展開する（小窓ではない）。
+ */
+function FigureSettingsToggle({ name, open, onToggle }: {
+  readonly name: string;
+  readonly open: boolean;
+  readonly onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="flow-figure-settings-toggle"
+      aria-label={`${name}の表示`}
+      title={`${name}の表示を調整する`}
+      aria-expanded={open}
+      onClick={onToggle}
+    >
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+        <path
+          d="M1.5 8C3 5 5.3 3.5 8 3.5S13 5 14.5 8C13 11 10.7 12.5 8 12.5S3 11 1.5 8Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
         />
-        <SelectOptionField
-          label="重ね順"
-          binding={bind('layerOrder')}
-          choices={[
-            { value: 'weight', label: '重みの順' },
-            { value: 'same-hand-top', label: '同手を上' },
-            { value: 'cross-hand-top', label: '逆手を上' },
-          ]}
-        />
-        <CheckboxOptionField
-          label="ホバー中はそのキーの線だけで太さを決める"
-          binding={{
-            value: options.hoverScale === 'key',
-            defaultValue: DEFAULT_BIGRAM_FLOW_OPTIONS.hoverScale === 'key',
-            onChange: (checked) => onOptionsChange({ ...options, hoverScale: checked ? 'key' : 'global' }),
-          }}
-        />
-      </OptionGroup>
+        <circle cx="8" cy="8" r="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    </button>
+  );
+}
 
-      <OptionGroup title="Relative vectors">
-        <SelectOptionField
-          label="距離表示"
-          binding={bind('movementScaleMode')}
-          choices={[
-            { value: 'fit', label: '自動調整' },
-            { value: 'fixed', label: '固定スケール' },
-          ]}
-          hint={options.movementScaleMode === 'fit'
-            ? '今のデータを見やすい大きさに調整する'
-            : '対象を変えても同じ距離を同じ長さで描く'}
-        />
-        <RangeOptionField
-          label="方向の広がり"
-          binding={bind('polarBandwidth')}
-          min={MIN_POLAR_BANDWIDTH_DEGREES}
-          max={45}
-          step={1}
-          format={(value) => `±${value}°`}
-        />
-        <RangeOptionField
-          label="方向分布の表示倍率"
-          binding={bind('polarGain')}
-          min={0.25}
-          max={3}
-          step={0.05}
-          format={(value) => `${value.toFixed(1)}×`}
-        />
-      </OptionGroup>
+interface FigureSettingsProps {
+  readonly options: BigramFlowOptions;
+  readonly onOptionsChange: (next: BigramFlowOptions) => void;
+}
+
+function KeyboardFlowFigureSettings({ options, onOptionsChange }: FigureSettingsProps) {
+  const bind = <K extends keyof BigramFlowOptions>(key: K) => bindBigramFlowOption(options, onOptionsChange, key);
+  return (
+    <div className="flow-figure-settings" role="group" aria-label="Keyboard Flowの表示">
+      <SelectOptionField
+        label="紐の太さ"
+        binding={bind('lineScale')}
+        choices={[
+          { value: 'linear', label: '線形' },
+          { value: 'sqrt', label: '平方根' },
+          { value: 'log', label: '対数' },
+        ]}
+      />
+      <SelectOptionField
+        label="重ね順"
+        binding={bind('layerOrder')}
+        choices={[
+          { value: 'weight', label: '重みの順' },
+          { value: 'same-hand-top', label: '同手を上' },
+          { value: 'cross-hand-top', label: '逆手を上' },
+        ]}
+      />
+      <CheckboxOptionField
+        label="ホバー中はそのキーの線だけで太さを決める"
+        binding={{
+          value: options.hoverScale === 'key',
+          defaultValue: DEFAULT_BIGRAM_FLOW_OPTIONS.hoverScale === 'key',
+          onChange: (checked) => onOptionsChange({ ...options, hoverScale: checked ? 'key' : 'global' }),
+        }}
+      />
+    </div>
+  );
+}
+
+function RelativeVectorsFigureSettings({ options, onOptionsChange }: FigureSettingsProps) {
+  const bind = <K extends keyof BigramFlowOptions>(key: K) => bindBigramFlowOption(options, onOptionsChange, key);
+  return (
+    <div className="flow-figure-settings" role="group" aria-label="Relative vectorsの表示">
+      <SelectOptionField
+        label="距離表示"
+        binding={bind('movementScaleMode')}
+        choices={[
+          { value: 'fit', label: '自動調整' },
+          { value: 'fixed', label: '固定スケール' },
+        ]}
+        hint={options.movementScaleMode === 'fit'
+          ? '今のデータを見やすい大きさに調整する'
+          : '対象を変えても同じ距離を同じ長さで描く'}
+      />
+      <RangeOptionField
+        label="方向の広がり"
+        binding={bind('polarBandwidth')}
+        min={MIN_POLAR_BANDWIDTH_DEGREES}
+        max={45}
+        step={1}
+        format={(value) => `±${value}°`}
+      />
+      <RangeOptionField
+        label="方向分布の表示倍率"
+        binding={bind('polarGain')}
+        min={0.25}
+        max={3}
+        step={0.05}
+        format={(value) => `${value.toFixed(1)}×`}
+      />
     </div>
   );
 }

@@ -1,7 +1,23 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { openTextChip } from './context-bar-helper.ts';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
 import { expectChosenTarget, openSettings, openTargetSelection, targetButton, toggleTarget } from './pane-helper.ts';
+
+/** 図の見出し行のボタンで、その図の表示の調整を見出しの直下へ開いて返す（開いていればそのまま返す）。 */
+async function openFigureSettings(page: Page, figure: 'Keyboard Flow' | 'Relative vectors'): Promise<Locator> {
+  const panel = page.getByRole('group', { name: `${figure}の表示` });
+  // 解析設定の小窓は図の上に浮くので、開いていれば先に閉じる（図のそばの操作を覆うため）。
+  const settingsWindow = page.locator('[data-settings-window="true"]');
+  if (await settingsWindow.isVisible()) {
+    await settingsWindow.getByRole('button', { name: '解析設定を閉じる' }).click();
+    await expect(settingsWindow).toHaveCount(0);
+  }
+  if (!(await panel.isVisible())) {
+    await page.getByRole('button', { name: `${figure}の表示`, exact: true }).click();
+  }
+  await expect(panel).toBeVisible();
+  return panel;
+}
 
 /**
  * Bigram Flow単体ページ（#544 Phase 3「最初の縦切り」）のE2E。
@@ -79,7 +95,7 @@ test('見た目だけの設定を変えても壊れず、抽出設定を変え�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
-  const lineScale = (await openSettings(page)).getByLabel('紐の太さ', { exact: true });
+  const lineScale = (await openFigureSettings(page, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true });
   await lineScale.selectOption('sqrt');
   await expect(lineScale).toHaveValue('sqrt');
 
@@ -509,7 +525,7 @@ test('URLパラメータは既存の解析設定へ部分マージされる（�
   await page.goto('/standalone/bigram-flow');
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
-  const lineScale = (await openSettings(page)).getByLabel('紐の太さ', { exact: true });
+  const lineScale = (await openFigureSettings(page, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true });
   await lineScale.selectOption('sqrt');
   await expect
     .poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options')))
@@ -520,7 +536,7 @@ test('URLパラメータは既存の解析設定へ部分マージされる（�
   const flowAfter = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flowAfter).toBeVisible({ timeout: 10_000 });
   await expect((await openSettings(page)).getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
-  await expect((await openSettings(page)).getByLabel('紐の太さ', { exact: true })).toHaveValue('sqrt');
+  await expect((await openFigureSettings(page, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true })).toHaveValue('sqrt');
 });
 
 test('文脈バーの「共有」で既定値と違う項目だけを含むURLがクリップボードに入る', async ({ page, context }) => {
@@ -775,11 +791,11 @@ test('保存済みの解析設定は、操作可能になった瞬間から表�
       storageKey: 'keydist:standalone-analyzer-options',
       storageValue: JSON.stringify({ version: 1, 'bigram-flow': { lineScale: 'sqrt' } }),
     },
-    // 解析設定は小窓にあり、小窓を開くボタンは読み込みが済むまで押せない。小窓の最初のselectが紐の太さ。
-    { selector: '[data-settings-window="true"] select', read: 'value' },
+    // 紐の太さは図のそばの展開にあり、展開のボタンは図が描かれてから（読み込みが済んでから）出る。
+    { selector: '.flow-figure-settings select', read: 'value' },
   );
   await page.goto('/standalone/bigram-flow');
-  const lineScale = (await openSettings(page)).getByLabel('紐の太さ', { exact: true });
+  const lineScale = (await openFigureSettings(page, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true });
   await expect(lineScale).toBeEnabled({ timeout: 10_000 });
   await expect(lineScale).toHaveValue('sqrt');
   expect(await enabledValues(page)).toEqual(['sqrt']);
@@ -853,21 +869,99 @@ test('解析設定の小窓は非モーダルで、開いたまま図を操作�
   await expect(settings).toHaveCount(0);
 });
 
-test('項目ごとの「既定値へ戻す」は既定と違う項目にだけ出て、その項目だけを戻す', async ({ page }) => {
+test('ペインの解析設定には両方の図に効く項目だけがあり、図ごとの項目は図のそばの展開にある', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   const settings = await openSettings(page);
+  await expect(settings.getByRole('button', { name: 'Actual', exact: true })).toBeVisible();
+  await expect(settings.getByText('指の組み合わせ')).toBeVisible();
+  await expect(settings.locator('select, input[type="range"], input[type="checkbox"]')).toHaveCount(0);
+  await expect(settings.getByLabel('紐の太さ', { exact: true })).toHaveCount(0);
 
-  // 既定のままなら戻すボタンは無い。
+  // 展開は閉じている間は無く、ボタンで見出しの直下に開き、閉じるまで開いたまま。
+  await expect(page.locator('.flow-figure-settings')).toHaveCount(0);
+  await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
+  const keyboard = await openFigureSettings(page, 'Keyboard Flow');
+  await expect(keyboard.locator('select')).toHaveCount(2);
+  await expect(keyboard.locator('input[type="checkbox"]')).toHaveCount(1);
+  await expect(keyboard.getByLabel('紐の太さ', { exact: true })).toBeVisible();
+  await expect(keyboard.getByLabel('重ね順', { exact: true })).toBeVisible();
+  await expect(keyboard.getByLabel('ホバー中はそのキーの線だけで太さを決める')).toBeVisible();
+
+  const vectors = await openFigureSettings(page, 'Relative vectors');
+  await expect(vectors.locator('select')).toHaveCount(1);
+  await expect(vectors.locator('input[type="range"]')).toHaveCount(2);
+  await expect(vectors.getByLabel('距離表示', { exact: true })).toBeVisible();
+  await expect(vectors.getByLabel('方向の広がり', { exact: true })).toBeVisible();
+  await expect(vectors.getByLabel('方向分布の表示倍率', { exact: true })).toBeVisible();
+  // もう一方を開いても閉じない。
+  await expect(keyboard).toBeVisible();
+  await page.getByRole('button', { name: 'Keyboard Flowの表示', exact: true }).click();
+  await expect(keyboard).toHaveCount(0);
+  await expect(vectors).toBeVisible();
+});
+
+test('図のそばの展開を開いても横にあふれない', async ({ page }) => {
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/standalone/bigram-flow');
+    await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+    await openFigureSettings(page, 'Keyboard Flow');
+    await openFigureSettings(page, 'Relative vectors');
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow, `幅${width}`).toBeLessThanOrEqual(0);
+  }
+});
+
+test('抽出に効く項目（方向の広がり・2打鍵の取り方）を動かしても、図のそばの展開は開いたまま', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  const vectors = await openFigureSettings(page, 'Relative vectors');
+  await vectors.getByLabel('方向の広がり', { exact: true }).fill('12');
+  await expect(vectors.getByLabel('方向の広がり', { exact: true })).toHaveValue('12');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toHaveAttribute('data-polar-bandwidth', '12');
+  await expect(vectors).toBeVisible();
+  await (await openSettings(page)).getByRole('button', { name: 'Within-hand' }).click();
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toHaveAttribute('data-layer-order', 'weight');
+  await page.locator('[data-settings-window="true"]').getByRole('button', { name: '解析設定を閉じる' }).click();
+  await expect(vectors).toBeVisible();
+});
+
+test('展開の状態は保存しない（再読み込みで閉じ、値は残る）', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  const figure = await openFigureSettings(page, 'Keyboard Flow');
+  await figure.getByLabel('紐の太さ', { exact: true }).selectOption('sqrt');
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options')))
+    .toContain('sqrt');
+  await page.reload();
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('.flow-figure-settings')).toHaveCount(0);
+  await expect((await openFigureSettings(page, 'Keyboard Flow')).getByLabel('紐の太さ', { exact: true })).toHaveValue('sqrt');
+});
+
+test('項目ごとの「既定値へ戻す」は既定と違う項目にだけ出て、その項目だけを戻す', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  const figure = await openFigureSettings(page, 'Keyboard Flow');
+
+  // 既定のままなら戻すボタンは無い（図のそばにもペインの解析設定にも）。
+  await expect(figure.locator('[data-option-reset="true"]')).toHaveCount(0);
+  await figure.getByLabel('紐の太さ', { exact: true }).selectOption('log');
+  await expect(figure.locator('[data-option-reset="true"]')).toHaveCount(1);
+  let settings = await openSettings(page);
   await expect(settings.locator('[data-option-reset="true"]')).toHaveCount(0);
-
-  await settings.getByLabel('紐の太さ', { exact: true }).selectOption('log');
   await settings.getByRole('button', { name: 'Within-hand' }).click();
-  await expect(settings.locator('[data-option-reset="true"]')).toHaveCount(2);
+  await expect(settings.locator('[data-option-reset="true"]')).toHaveCount(1);
 
-  await settings.getByRole('button', { name: '紐の太さを既定値へ戻す' }).click();
-  await expect(settings.getByLabel('紐の太さ', { exact: true })).toHaveValue('linear');
+  // 図のそばの項目も、同じ部品で「既定値へ戻す」が出る。
+  await openFigureSettings(page, 'Keyboard Flow');
+  await figure.getByRole('button', { name: '紐の太さを既定値へ戻す' }).click();
+  await expect(figure.getByLabel('紐の太さ', { exact: true })).toHaveValue('linear');
+  await expect(figure.locator('[data-option-reset="true"]')).toHaveCount(0);
   // 他の項目はそのまま。
+  settings = await openSettings(page);
   await expect(settings.getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
   await expect(settings.locator('[data-option-reset="true"]')).toHaveCount(1);
   // 旧「標準に戻す」（複数項目をまとめて戻す）は無い。
@@ -879,9 +973,12 @@ test('解析設定の小窓のヘッダーの「すべて初期値に戻す」�
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
   await toggleTarget(page, 'layout:colemak-dh');
 
+  const figure = await openFigureSettings(page, 'Keyboard Flow');
+  await figure.getByLabel('紐の太さ', { exact: true }).selectOption('sqrt');
+  const vectors = await openFigureSettings(page, 'Relative vectors');
+  await vectors.getByLabel('距離表示', { exact: true }).selectOption('fixed');
   const settings = await openSettings(page);
   await settings.getByRole('button', { name: 'Within-hand' }).click();
-  await settings.getByLabel('紐の太さ', { exact: true }).selectOption('sqrt');
 
   // 個別画面の見出しに⋯は無い。
   await expect(page.getByRole('button', { name: /の操作$/ })).toHaveCount(0);
@@ -893,7 +990,9 @@ test('解析設定の小窓のヘッダーの「すべて初期値に戻す」�
   await reset.click();
 
   await expect(settings.getByRole('button', { name: 'Actual', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(settings.getByLabel('紐の太さ', { exact: true })).toHaveValue('linear');
+  // 図のそばへ移した項目も戻る（展開は開いたまま）。
+  await expect(figure.getByLabel('紐の太さ', { exact: true })).toHaveValue('linear');
+  await expect(vectors.getByLabel('距離表示', { exact: true })).toHaveValue('fit');
   await expectChosenTarget(page, 'layout:colemak-dh');
 });
 
