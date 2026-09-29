@@ -220,7 +220,7 @@ Analyzerの結び付け（各Analyzerの `definition.tsx`）が渡すもの:
 ### 条件の編集とURL
 
 - **条件の編集は条件のペインで行う。** 書き込むレベルの既定は対象のレベル（配列を対象にしていれば配列、Setupならそれ）。「この条件だけ別にしたい」は、その場でSetupを作る操作として出す。上位への適用（この配列全部・全体）は昇格の操作として出す
-- **URL**: 個別画面は `/analyzer/<analyzer>`。URLで固定された1ペインで、URLはペインの初期値（対象・解析設定）を運ぶ。保存したWorkspaceは `/workspace/<id>` で、URLは識別子だけ（#544 非目標「URLをWorkspaceの保存先にしない」）
+- **URL**: 個別画面は `/analyzer/<analyzer>`。URLで固定された1ペインで、URLはペインの初期値（対象・解析設定）を運ぶ。3つの単体ページの「共有」は解析設定だけをURLに載せ、開いた側が取り込む（`hosts/standalone/use-url-options.ts`。対象は載せない）。保存したWorkspaceは `/workspace/<id>` で、URLは識別子だけ（#544 非目標「URLをWorkspaceの保存先にしない」）
 
 ## ディレクトリ
 

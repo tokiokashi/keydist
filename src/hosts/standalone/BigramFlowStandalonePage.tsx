@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import { setSingleTargetCommand, setStandaloneAnalyzerOptionsCommand, type KeydistAssets } from '#engine/commands.ts';
+import { setSingleTargetCommand, type KeydistAssets } from '#engine/commands.ts';
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
@@ -16,7 +16,6 @@ import {
   traceConditionSummary,
 } from '#hosts/shared/index.ts';
 import { nameTargets } from '#input/setup/index.ts';
-import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import { bigramFlowOptions, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
@@ -26,6 +25,7 @@ import { TextChip } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { targetNameSource } from './target-name-source.ts';
 import { useOptionsDraft } from './use-options-draft.ts';
+import { useUrlOptions } from './use-url-options.ts';
 import { useAnalyzerPane } from './use-analyzer-pane.ts';
 import './standalone.css';
 
@@ -103,48 +103,15 @@ export function BigramFlowStandalonePage({
   );
   const [optionsDraft, setOptionsDraft] = useOptionsDraft<BigramFlowOptions>(decoded.options);
 
-  // URL経由で解析設定を受け取る（#544 Phase 3「URLでの受け取り」）。取り込む対象は
-  // 解析設定だけ（配列・形状・条件をURLへ載せる共有リンクはPhase 5の範囲外）。
-  // 資産（`assets`）がstorageからの初回読み込みを終える（`assetsReady`）まで待ってから
-  // 読み込んだらURLから該当パラメータを消す（#544「取り込み後はローカルが正」）。
-  // `assetsReady`を待たずに`decoded.options`をベースへマージすると、読み込み前の
-  // 初期値（空）をベースにしてしまい、既存の解析設定を巻き戻す事故になる
-  // （`useKeydistAssets`の`ready`のコメント参照。#544レビューで見つかった競合）。
-  //
-  // 取り込みは、URLで指定された項目だけを現在の解析設定へ上書きする部分マージにする:
-  // フルスクラッチの上書きだと「URLで指定していない項目まで既定値に戻る」事故になりやすく、
-  // 共有リンクを開いただけで自分の設定が丸ごと消える方が「一部だけ変わる」より驚きが
-  // 大きいと判断した（確認ダイアログは挟まない。単体ページの解析設定はUndo対象の資産なので、
-  // 誤って開いた場合もUndo/元のURLに戻すことで復旧できる）。
-  const decodedOptionsRef = useRef(decoded.options);
-  decodedOptionsRef.current = decoded.options;
-  const appliedUrlOptionsRef = useRef(false);
-  const [urlDiagnostics, setUrlDiagnostics] = useState<readonly CodecDiagnostic[]>([]);
-  useEffect(() => {
-    if (!assetsReady) return;
-    if (appliedUrlOptionsRef.current) return;
-    appliedUrlOptionsRef.current = true;
-    const params = new URLSearchParams(window.location.search);
-    const diagnostics: CodecDiagnostic[] = [];
-    const result = bigramFlowOptions.decodeOptionsFromUrl(params, diagnostics);
-    if (diagnostics.length > 0) setUrlDiagnostics(diagnostics);
-    if (result.consumedParamNames.length === 0) return;
-
-    if (Object.keys(result.values).length > 0) {
-      const merged = { ...decodedOptionsRef.current, ...result.values };
-      dispatch(setStandaloneAnalyzerOptionsCommand(analyzerId, merged));
-      setOptionsDraft(merged);
-    }
-
-    const nextParams = new URLSearchParams(window.location.search);
-    for (const name of result.consumedParamNames) nextParams.delete(name);
-    const nextQuery = nextParams.toString();
-    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
-    window.history.replaceState(null, '', nextUrl);
-    // `assetsReady`がtrueになった最初の1回だけ実行する（`appliedUrlOptionsRef`）。
-    // `analyzerId`はAnalyzer定義由来の定数、`dispatch`は`useKeydistAssets`が返す
-    // 安定した参照なので、依存に含めても再実行の心配は無い。
-  }, [assetsReady, analyzerId, dispatch]);
+  // URL経由で解析設定を受け取る（3つの単体ページ共通。`use-url-options.ts`）。
+  const urlDiagnostics = useUrlOptions({
+    analyzerId,
+    optionsDefinition: bigramFlowOptions,
+    currentOptions: decoded.options,
+    assetsReady,
+    dispatch,
+    setOptionsDraft,
+  });
 
   const resolution = useMemo(
     () => resolveStandalonePaneInput(target, setupsById, catalog, assets.setupLibrary.overrides, resolvedText),

@@ -269,6 +269,33 @@ test('対象が空の時はペインに選ぶボタンを出し、全メンバ�
   await expect(page.locator('.n-sensitivity-svg')).toHaveCount(0);
 });
 
+test('「共有」でコピーしたURLを新しいページで開くと、解析設定（縦軸）がその値で開く', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/standalone/n-sensitivity');
+  await addTarget(page, 'layout:qwerty');
+  await expect(page.locator('.n-sensitivity-svg')).toBeVisible({ timeout: 10_000 });
+
+  await (await openSettings(page)).getByRole('radio', { name: '実測値 [u]' }).check();
+
+  await page.getByRole('button', { name: '共有', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+  expect(url).toContain('scale=absolute');
+
+  // 保存値の無い新しいコンテキストで開く。URLの値で開き、取り込み後はURLから消える。
+  const other = await context.browser()!.newContext();
+  try {
+    const opened = await other.newPage();
+    await opened.goto(url);
+    await addTarget(opened, 'layout:qwerty');
+    await expect(opened.locator('.n-sensitivity-svg')).toBeVisible({ timeout: 10_000 });
+    await expect((await openSettings(opened)).getByRole('radio', { name: '実測値 [u]' })).toBeChecked();
+    await expect(opened).toHaveURL(/\/standalone\/n-sensitivity$/);
+  } finally {
+    await other.close();
+  }
+});
+
 test('狭い画面（390）でもチャートは置かれた領域の幅で描かれ、横あふれせず、目盛り文字は10pxのまま', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto('/standalone/n-sensitivity');
