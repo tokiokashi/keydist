@@ -39,6 +39,11 @@ export interface ConditionSummaryRow {
   /** プリミティブならそのまま描ける文字列、オブジェクトなら要約できないので詳細行だけ示す。 */
   readonly format: ConditionValueFormat;
   readonly displayValue: string;
+  /**
+   * 効く値の同一判定に使うキー。`displayValue`は自作のidを「自作の…」に畳むため、
+   * 別々の自作どうしを区別できない。対象どうしの差（`multiTargetConditionSummary`）はこちらで比べる。
+   */
+  readonly valueKey: string;
   readonly origin: ResolvedOrigin;
   /** `origin`を画面に出す文言（「既定値」「上書き: 配列「QWERTY」」等）。idは名前へ引いてある。 */
   readonly originLabel: string;
@@ -141,6 +146,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/**
+ * 実現方式の2項目は、画面に出す効く値（例外を数えない時は例外を読まない）が同一性の基準。
+ * それ以外は値そのもの（idを含む）で比べる。
+ */
+function valueKeyOf(id: SettingsItemId, value: unknown, displayValue: string): string {
+  if (id === 'triggerRealizationPolicy' || id === 'actionRealizationPolicy') return displayValue;
+  return JSON.stringify(value) ?? displayValue;
+}
+
 /** カスケードの解決結果から、Traceに効く項目だけを抜き出して表示用の行にする。 */
 export function traceConditionSummary(
   cascade: ResolvedSettingsCascade,
@@ -154,6 +168,7 @@ export function traceConditionSummary(
       label,
       format,
       displayValue,
+      valueKey: valueKeyOf(id, resolved.value, displayValue),
       origin: resolved.origin,
       originLabel: formatOrigin(resolved.origin, names),
       applicable: resolved.applicable,
@@ -274,4 +289,109 @@ export function conditionSummaryLine(rows: readonly ConditionSummaryRow[]): Cond
 /** 開いた時の並び。変えた項目を上に、それぞれの中は項目の定義順のまま。 */
 export function orderConditionRowsForDetail(rows: readonly ConditionSummaryRow[]): readonly ConditionSummaryRow[] {
   return [...rows.filter(isChangedConditionRow), ...rows.filter((row) => !isChangedConditionRow(row))];
+}
+
+/** 複数の対象を持つペインに渡す、対象1つぶんの条件。 */
+export interface TargetConditionInput {
+  readonly key: string;
+  /** 「対象ごとの差」に出す対象の表示名（集合に対して計算したもの）。 */
+  readonly label: string;
+  readonly rows: readonly ConditionSummaryRow[];
+}
+
+export interface ConditionTargetDiffItem {
+  readonly id: SettingsItemId;
+  readonly label: string;
+  readonly displayValue: string;
+}
+
+/** 共通の条件と違う対象と、その違う項目だけ。 */
+export interface ConditionTargetDiff {
+  readonly key: string;
+  readonly label: string;
+  readonly items: readonly ConditionTargetDiffItem[];
+}
+
+export interface MultiTargetConditionSummary {
+  /** 共通の条件の行。項目の定義順。 */
+  readonly rows: readonly ConditionSummaryRow[];
+  /** 差のある対象だけ。全対象が同じなら空。 */
+  readonly diffs: readonly ConditionTargetDiff[];
+}
+
+/** 対象ごとに値を持てる出どころ。これ以外（既定・全体・物理配列・打ち方）はペインで共通の側とみなす。 */
+function isPerTargetOrigin(origin: ResolvedOrigin): boolean {
+  return origin.kind === 'layout' || origin.kind === 'setup';
+}
+
+/**
+ * 複数の対象の条件を「共通の条件」と「対象ごとの差」にまとめる（docs/architecture.md「条件の要約」）。
+ *
+ * 共通の条件は、対象ごとの上書き（配列・Setupのレベル）を受けていない対象の値。全対象が対象ごとの
+ * 上書きを受けている項目は、全対象の値が同じならその値、違えば既定値（既定値が配列ごとに変わる項目は
+ * 行を出さない。どの対象も共通の値を使っていないため）。
+ * 差は、対象ごとの上書きを受けていて効く値が共通と違う対象だけ。効かない項目・効かない上書きは数えない
+ * （その条件で測ったように読めるため）。配列ごとの既定値の違い（ローマ字規則・指の割当）は上書きではないので差にしない。
+ * `excludeIds`はペイン自身が掃引する項目（N感度の先読みN）。
+ */
+export function multiTargetConditionSummary(
+  targets: readonly TargetConditionInput[],
+  options: { readonly excludeIds?: readonly SettingsItemId[]; readonly names?: ConditionValueNames } = {},
+): MultiTargetConditionSummary {
+  const excluded = options.excludeIds ?? [];
+  const first = targets[0];
+  if (first === undefined) return { rows: [], diffs: [] };
+
+  const rows: ConditionSummaryRow[] = [];
+  const diffItems = new Map<string, ConditionTargetDiffItem[]>();
+  for (const templateRow of first.rows) {
+    if (excluded.includes(templateRow.id)) continue;
+    const perTarget = targets.flatMap((target) => {
+      const row = target.rows.find((r) => r.id === templateRow.id);
+      return row === undefined ? [] : [{ target, row }];
+    });
+    const applicable = perTarget.filter(({ row }) => row.applicable);
+    const reference = commonRow(templateRow, applicable.map(({ row }) => row), options.names);
+    if (reference !== undefined) rows.push(reference);
+    for (const { target, row } of applicable) {
+      if (!isPerTargetOrigin(row.origin) || !isChangedConditionRow(row)) continue;
+      if (reference !== undefined && row.valueKey === reference.valueKey) continue;
+      const list = diffItems.get(target.key) ?? [];
+      list.push({ id: row.id, label: row.label, displayValue: row.displayValue });
+      diffItems.set(target.key, list);
+    }
+  }
+  const diffs = targets.flatMap((target) => {
+    const items = diffItems.get(target.key);
+    return items === undefined ? [] : [{ key: target.key, label: target.label, items }];
+  });
+  return { rows, diffs };
+}
+
+/** 1項目の共通の行。決められなければ`undefined`。`applicable`は、その項目が効く対象の行。 */
+function commonRow(
+  template: ConditionSummaryRow,
+  applicable: readonly ConditionSummaryRow[],
+  names: ConditionValueNames | undefined,
+): ConditionSummaryRow | undefined {
+  // どの対象にも効かない項目は、効かない旨の行のまま出す（Singleと同じ）
+  if (applicable.length === 0) return template;
+  const shared = applicable.find((row) => !isPerTargetOrigin(row.origin));
+  if (shared !== undefined) return shared;
+  const firstRow = applicable[0]!;
+  if (applicable.every((row) => row.valueKey === firstRow.valueKey)) return firstRow;
+  const defaultValue: unknown = SETTINGS_ITEMS[template.id].defaultValue;
+  if (typeof defaultValue === 'function') return undefined;
+  const { format, displayValue } = formatValue(template.id, defaultValue, names);
+  return {
+    ...template,
+    format,
+    displayValue,
+    valueKey: valueKeyOf(template.id, defaultValue, displayValue),
+    origin: { kind: 'default' },
+    originLabel: formatOrigin({ kind: 'default' }),
+    applicable: true,
+    sameAsDefault: false,
+    diagnostics: [],
+  };
 }
