@@ -127,3 +127,94 @@ test('複製へ移った後に組み込みを選び直して打った本文は�
   expect(first.text.endsWith('a')).toBe(true);
   expect(second.text.endsWith('z')).toBe(true);
 });
+
+test('複製ができた直後・描画の前に打った文字は、描画の後に打っても消えない（#711）', async ({ page }) => {
+  await setup(page);
+  await page.evaluate(() => (window as unknown as RaceWindow).__type('a'));
+  // タイマーの書き込みで複製ができ、描画の前にbを打つ。
+  const firedFirst = await page.evaluate(() => {
+    const w = window as unknown as RaceWindow;
+    const fired = w.__fire();
+    w.__type('b');
+    return fired;
+  });
+  expect(firedFirst).toBeGreaterThanOrEqual(1);
+  // 選択が複製へ移った描画を待ってからcを打つ。
+  await expect(page.getByLabel('テキストを選ぶ')).toHaveValue(/^user:/);
+  await page.evaluate(() => (window as unknown as RaceWindow).__type('c'));
+  const firedSecond = await page.evaluate(() => (window as unknown as RaceWindow).__fire());
+  expect(firedSecond).toBeGreaterThanOrEqual(1);
+
+  const body = page.getByLabel('テキスト', { exact: true });
+  await expect(body).toHaveValue(/abc$/);
+  await expect.poll(async () => (await storedTexts(page)).map((t) => t.text.slice(-3))).toEqual(['abc']);
+});
+
+test('他タブが同じ複製の本文を書き換えたら、下書きがそれに揃う', async ({ context }) => {
+  const pageA = await context.newPage();
+  await pageA.goto('/standalone/bigram-flow');
+  await expect(pageA.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await openTextChip(pageA);
+  const bodyA = pageA.getByLabel('テキスト', { exact: true });
+  await bodyA.fill('own-copy');
+  await expect.poll(() => storedTextCount(pageA)).toBe(1);
+  const [copy] = await storedTexts(pageA);
+
+  const pageB = await context.newPage();
+  await pageB.goto('/standalone/bigram-flow');
+  await expect(pageB.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await openTextChip(pageB);
+  await expect(pageB.getByLabel('テキストを選ぶ')).toHaveValue(`user:${copy.id}`);
+  await pageB.getByLabel('テキスト', { exact: true }).fill('from-other-tab');
+  await expect.poll(async () => (await storedTexts(pageA))[0]?.text).toBe('from-other-tab');
+  await expect(bodyA).toHaveValue('from-other-tab');
+});
+
+test('他タブが作った複製へ選択が移っても、下書きは複製の本文へ揃う（自分の書き込みで移った時だけ下書きを保つ）', async ({ context }) => {
+  // Bだけタイマーを捕まえる。Bは組み込みに`m`を打って保留し、その間にAが複製Dを作る。
+  const pageB = await context.newPage();
+  await setup(pageB);
+  const pageA = await context.newPage();
+  await pageA.goto('/standalone/bigram-flow');
+  await expect(pageA.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await openTextChip(pageA);
+  await pageB.evaluate(() => (window as unknown as RaceWindow).__type('m'));
+  await pageA.getByLabel('テキスト', { exact: true }).fill('fromA');
+  await expect.poll(() => storedTextCount(pageA)).toBe(1);
+  const [copy] = await storedTexts(pageA);
+  // Bの選択がDへ移り、下書きがDの本文に揃うのを待つ。
+  await expect(pageB.getByLabel('テキストを選ぶ')).toHaveValue(`user:${copy.id}`);
+  await expect(pageB.getByLabel('テキスト', { exact: true })).toHaveValue('fromA');
+
+  // Bの保留（組み込み宛ての`m`）を撃ってから`k`を打つ。Aの本文を上書きしない。
+  const firedFirst = await pageB.evaluate(() => (window as unknown as RaceWindow).__fire());
+  expect(firedFirst).toBeGreaterThanOrEqual(1);
+  await pageB.evaluate(() => (window as unknown as RaceWindow).__type('k'));
+  const firedSecond = await pageB.evaluate(() => (window as unknown as RaceWindow).__fire());
+  expect(firedSecond).toBeGreaterThanOrEqual(1);
+  await expect(pageB.getByLabel('テキスト', { exact: true })).toHaveValue('fromAk');
+  await expect.poll(async () => (await storedTexts(pageB)).find((t) => t.id === copy.id)?.text).toBe('fromAk');
+});
+
+test('複製から組み込みへ、また複製へと選択欄で選び直しても、複製の本文は書き換え前の下書きに置き換わらない', async ({ page }) => {
+  await setup(page);
+  const select = page.getByLabel('テキストを選ぶ');
+  const builtinValue = await select.inputValue();
+  await page.evaluate(() => (window as unknown as RaceWindow).__type('a'));
+  const firedFirst = await page.evaluate(() => (window as unknown as RaceWindow).__fire());
+  expect(firedFirst).toBeGreaterThanOrEqual(1);
+  const [copy] = await storedTexts(page);
+  const copyValue = `user:${copy.id}`;
+  await expect(select).toHaveValue(copyValue);
+
+  await select.selectOption(builtinValue);
+  await select.selectOption(copyValue);
+  const body = page.getByLabel('テキスト', { exact: true });
+  await expect(body).toHaveValue(copy.text);
+
+  await page.evaluate(() => (window as unknown as RaceWindow).__type('k'));
+  const firedSecond = await page.evaluate(() => (window as unknown as RaceWindow).__fire());
+  expect(firedSecond).toBeGreaterThanOrEqual(1);
+  await expect(body).toHaveValue(/ak$/);
+  await expect.poll(async () => (await storedTexts(page)).map((t) => t.text.slice(-2))).toEqual(['ak']);
+});

@@ -4,6 +4,7 @@ import { setTextContentCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import type { TextRef } from '#input/text/selection.ts';
+import type { TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { useDebouncedCommit, type DebouncedCommit } from './use-debounced-commit.ts';
 
 export interface TextContentValue {
@@ -26,19 +27,29 @@ function sameRef(a: TextRef, b: TextRef): boolean {
  * 向け直すのは、打鍵の時点の最新の資産が今もその複製を選んでいる時だけ。ユーザーが組み込みを
  * 選び直した後の打鍵は、宛先が本当にその組み込みなので向け直さない。判定を書き込みの時点に
  * 遅らせると、打鍵の後に選択が動いた場合に別のテキストの本文を上書きする。
- * （TextChipの下書きが2打目を消す件は別の原因で、ここでは直さない。）
+ * 下書き側（TextChip）が「自分の書き込みで移った」かを知る必要もあるので、覚えた移行は`wasRedirected`で
+ * 返す。判定の元をここ1つにして、TextChipは近似で判定しない（他タブが作った複製へ選択が移った場合と
+ * 区別するため。#711）。
  */
 export function useTextContentCommit(
   dispatch: (command: Command<KeydistAssets>) => void,
   getAssets: () => KeydistAssets,
   generateTextId: TextIdGenerator,
-): DebouncedCommit<TextContentValue> {
+): DebouncedCommit<TextContentValue> & TextContentCommit {
   const redirectRef = useRef<{ readonly from: TextRef; readonly to: TextRef } | undefined>(undefined);
 
   const resolvedRef = (): TextRef => {
     const assets = getAssets();
     return resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary).ref;
   };
+
+  // 覚えた移行は、最新の選択がその複製に留まっている間だけ有効にする。選択が別のテキストへ
+  // 移ったら捨てる（後で選び直した複製へ、古い移行が誤って当たるのを防ぐ）。
+  // 描画のたびに「今の選択」と突き合わせて捨てる。目印を読んで消費する形にしないのは、
+  // StrictModeの二重描画で2回目の描画が偽になるため（同じ入力なら何度呼んでも同じ結果になる）。
+  if (redirectRef.current !== undefined && !sameRef(redirectRef.current.to, resolvedRef())) {
+    redirectRef.current = undefined;
+  }
 
   // 書き込みの前後で解決後の選択が組み込みから自作へ移っていたら、その組み込み宛ての
   // 以後の打鍵の向け先として覚える。
@@ -63,11 +74,17 @@ export function useTextContentCommit(
   };
 
   // 参照を変えない。`flush`は元のものをそのまま使う。
-  const stableRef = useRef<DebouncedCommit<TextContentValue> | undefined>(undefined);
+  const stableRef = useRef<(DebouncedCommit<TextContentValue> & TextContentCommit) | undefined>(undefined);
   if (stableRef.current === undefined) {
     stableRef.current = Object.assign(
       (value: TextContentValue) => commit(retargetRef.current(value)),
-      { flush: commit.flush },
+      {
+        flush: commit.flush,
+        wasRedirected: (from: TextRef, to: TextRef) => {
+          const redirect = redirectRef.current;
+          return redirect !== undefined && sameRef(redirect.from, from) && sameRef(redirect.to, to);
+        },
+      },
     );
   }
   return stableRef.current;

@@ -17,6 +17,14 @@ import type { TextLanguage } from '#input/text/language.ts';
 import type { TextRef, TextSelectionState } from '#input/text/selection.ts';
 import './context-bar.css';
 
+export type TextContentCommit = ((value: { readonly ref: TextRef; readonly text: string }) => void) & {
+  /**
+   * 自分の書き込みで、選択が組み込み`from`から複製`to`へ移ったか。他タブが作った複製へ選択が
+   * 移った場合は含まない（下書きを保つかの判定に使う。#711）。
+   */
+  readonly wasRedirected: (from: TextRef, to: TextRef) => boolean;
+};
+
 /**
  * 文脈バーのテキストのチップ（docs/architecture.md「文脈バー」）。閉じている時は1行で
  * 今のテキストの名前と言語だけを出し、開いた時だけ選択・編集を出す。
@@ -35,7 +43,7 @@ export interface TextChipProps {
    * どのテキストへ向けた変更かを捕まえておかないと、待っている間に選択が切り替わった時に
    * 別のテキストへ書き込んでしまう（`engine/commands.ts` の `setTextContentCommand` 参照）。
    */
-  readonly onTextContentCommit: (value: { readonly ref: TextRef; readonly text: string }) => void;
+  readonly onTextContentCommit: TextContentCommit;
 }
 
 function refKey(ref: TextSelectionState['ref']): string {
@@ -121,11 +129,24 @@ function TextEditor({
   // 資産側の値が変わったら下書きを合わせる。effectでなく描画中に合わせるのは、effectだと
   // 「新しい資産で描いたが下書きは古い値」の画面が1フレーム確定し、その間の入力が
   // 古い値の後ろへ足されるため。resolved.textは毎回作り直す値なので、比べるのは文字列。
+  //
+  // 揃え直さない場合が1つある。組み込みを書き換えた自分の書き込みで選択が複製へ移った時、その書き込みの
+  // 後・描画の前に打った文字は下書きにだけあり、複製の保存値（書き込んだ時点の本文）には無い。
+  // 保存値へ揃えるとその文字が消える（#711）。「自分の書き込みで移った」かは書き込み側
+  // （`onTextContentCommit.wasRedirected`）が知っているので、それに従う。他タブが作った複製へ移った
+  // 場合や他タブの書き換えで揃う経路は従来どおり保存値へ揃える。
+  const currentKey = refKey(resolved.ref);
   const [textDraft, setTextDraft] = useState(resolved.text);
-  const [textDraftSource, setTextDraftSource] = useState(resolved.text);
-  if (textDraftSource !== resolved.text) {
-    setTextDraftSource(resolved.text);
-    setTextDraft(resolved.text);
+  const [textDraftSource, setTextDraftSource] = useState({ text: resolved.text, ref: resolved.ref });
+  if (textDraftSource.text !== resolved.text || refKey(textDraftSource.ref) !== currentKey) {
+    const movedByOwnWrite =
+      textDraftSource.ref.kind === 'builtin' &&
+      resolved.ref.kind === 'user' &&
+      onTextContentCommit.wasRedirected(textDraftSource.ref, resolved.ref);
+    setTextDraftSource({ text: resolved.text, ref: resolved.ref });
+    if (textDraftSource.text !== resolved.text && !(movedByOwnWrite && textDraft !== resolved.text)) {
+      setTextDraft(resolved.text);
+    }
   }
 
   const [renameDraft, setRenameDraft] = useState(resolved.name);
