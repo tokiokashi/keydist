@@ -281,7 +281,7 @@ for (const index of ASYNC_SAMPLE_INDICES) {
   });
 }
 
-test('中身が同じ2つのSetup（配列・形状・条件が同じでidだけ違う）はTraceを共有する', () => {
+test('中身が同じ2つのSetup（配列・物理配列・条件が同じでidだけ違う）はTraceを共有する', () => {
   const cache = createEngineCache();
   const base = fixture.cases[0]!;
   const first = computeFor(base, cache);
