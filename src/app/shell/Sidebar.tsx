@@ -125,7 +125,7 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
 
         <section className="sidebar-group" aria-labelledby="sidebar-workspace">
           <h2 className="sidebar-heading" id="sidebar-workspace">Workspace</h2>
-          <p className="sidebar-empty">Analyzerを並べて見る画面。保存したWorkspaceがここに並ぶ。</p>
+          <p className="sidebar-empty">Analyzerを並べて見る画面。</p>
         </section>
 
         <section className="sidebar-group">

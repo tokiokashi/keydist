@@ -257,11 +257,13 @@ export function ComparisonStandalonePage({
             settingsDiagnostics={decoded.diagnostics}
             {...(targets.length === 0
               ? {
-                emptyContent: (
+                // 資産の読み込み前は保存済みの対象が未反映なだけで、空とは限らない。
+                // 押せないボタンが一瞬見えてから表に置き換わるのを避けるため、空のペインにする
+                emptyContent: assetsReady ? (
                   <button type="button" className="pane-empty-button" onClick={() => setSelectionOpen(true)}>
                     配列・Setupを選ぶ
                   </button>
-                ),
+                ) : null,
               }
               : {})}
           >

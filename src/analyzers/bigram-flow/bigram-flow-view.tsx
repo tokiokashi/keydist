@@ -51,7 +51,7 @@ export function BigramFlowView({
     return (
       <div className="flow-analysis-locked" data-react-feature="bigram-flow">
         <strong>Bigram Flow</strong>
-        <p>詳細表示する配列を選ぶとベクトルを表示する。</p>
+        <p>続けて打つ2打鍵で、指がどう動くかを図で見られる。</p>
       </div>
     );
   }

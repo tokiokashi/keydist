@@ -187,3 +187,27 @@ test('他タブが同じAnalyzerの解析設定を変えたら、自タブの表
   await setFromOtherTab('linear');
   await expect(lineScale).toHaveValue('linear');
 });
+
+test('通知が届く前の他タブの追加を、Undoで消さない', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await openTextChip(page);
+  await page.getByRole('button', { name: '新規作成' }).click();
+  await expect.poll(async () => (await readTexts(page)).length).toBe(1);
+  const undoButton = page.getByRole('button', { name: '元に戻す' });
+  await expect(undoButton).toBeEnabled();
+
+  // 他タブが書いたが通知がまだ届いていない状態を作る（同じページからの書き込みには
+  // storageイベントが届かない）。この状態でUndoしても、他タブの追加が残ること
+  const injectedId = await page.evaluate((key) => {
+    const library = JSON.parse(localStorage.getItem(key)!) as { texts: { id: string; name: string }[] };
+    const id = 'other-tab-added';
+    library.texts.push({ ...library.texts[0]!, id, name: id });
+    localStorage.setItem(key, JSON.stringify(library));
+    return id;
+  }, TEXT_LIBRARY_KEY);
+  await undoButton.click();
+  // Undoの結果は非同期に描画へ届くので、少し待ってから残っていることを確かめる
+  await page.waitForTimeout(500);
+  expect((await readTexts(page)).map((entry) => entry.id)).toContain(injectedId);
+});
