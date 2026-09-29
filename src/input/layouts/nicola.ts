@@ -1,5 +1,5 @@
 import { THUMB_KEY } from '../shapes/geometry.ts';
-import { faceFromEntries, fromFaces, type Face, type Layout } from './types.ts';
+import { faceFromEntries, fromFaces, withAliases, type Face, type Layout } from './types.ts';
 
 const face = (
   trigger: string[],
@@ -47,6 +47,6 @@ export const NICOLA_FACES: Face[] = [
   }, 'modifier'),
 ];
 
-export const NICOLA: Layout = fromFaces('nicola', '親指シフト（NICOLA）', NICOLA_FACES);
+export const NICOLA: Layout = withAliases(fromFaces('nicola', '親指シフト（NICOLA）', NICOLA_FACES), ['にこら', 'おやゆびしふと', 'にこらはいれつ']);
 NICOLA.legends.set(THUMB_KEY.LT, '無変換');
 NICOLA.legends.set(THUMB_KEY.RT, '変換');

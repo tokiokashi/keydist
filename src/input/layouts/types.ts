@@ -201,6 +201,11 @@ export interface Layout {
   resolvedComboDefinitions?: readonly ResolvedComboDefinition[];
   /** 層・コンボの表示順と種別。 */
   layerDefinitions?: readonly LayerDefinition[];
+  /**
+   * 対象の選択の絞り込みだけに効く読み・別名（ひらがなの読みと通称）。画面には出さない。
+   * 名前と同じ定義に置くのは、配列の追加・改名で別の対応表が置き去りにならないようにするため。
+   */
+  aliases?: readonly string[];
   /** 面から展開した配列で、各面がどのpresentation layerへ属するかをUIが引くための表 */
   faceLayerIds?: ReadonlyMap<Face, string>;
   /** layer表示だけに使うLayout-level presentation metadata。semantic評価には使わない。 */
@@ -869,6 +874,11 @@ export function withShiftedOutputs(
     layerDefinitions,
     shiftKeys: canonicalShiftKeys,
   };
+}
+
+/** 絞り込み用の読み・別名を足す（`Layout.aliases`）。 */
+export function withAliases(layout: Layout, aliases: readonly string[]): Layout {
+  return { ...layout, aliases: [...(layout.aliases ?? []), ...aliases] };
 }
 
 /** ローマ字テーブルを付ける。評価時にかなテキストがローマ字へ展開される */

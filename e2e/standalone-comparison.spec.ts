@@ -333,6 +333,20 @@ test('絞り込み欄で候補を絞り、キーボードだけで選んで、Es
   await expect(filter).toHaveValue('');
 });
 
+test('絞り込み欄は読みでも探せ、カタカナで打っても同じ候補が出る', async ({ page }) => {
+  await page.goto('/standalone/comparison');
+  await dismissAutoOpenedSelection(page);
+  await page.getByRole('button', { name: /^対象: / }).click();
+  const selection = page.getByRole('dialog', { name: '対象の選択' });
+  const filter = selection.getByRole('searchbox', { name: '配列・Setupを名前で絞り込む' });
+  await filter.fill('なぎなた');
+  await expect(selection.locator('input[type="checkbox"]')).toHaveCount(1);
+  await expect(selection.locator('input[value="layout:naginata-v18"]')).toBeVisible();
+  await filter.fill('ナギナタ');
+  await expect(selection.locator('input[type="checkbox"]')).toHaveCount(1);
+  await expect(selection.locator('input[value="layout:naginata-v18"]')).toBeVisible();
+});
+
 test('Tabで選択の最後から先へ進むと閉じてボタンの次へ、最初から戻るとボタンへ移る', async ({ page }) => {
   await page.goto('/standalone/comparison');
   const button = page.getByRole('button', { name: /^対象: / });

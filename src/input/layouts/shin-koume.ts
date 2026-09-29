@@ -1,5 +1,5 @@
 import { THUMB_KEY } from '../shapes/geometry.ts';
-import { faceFromEntries, fromFaces, type Face, type Layout } from './types.ts';
+import { faceFromEntries, fromFaces, withAliases, type Face, type Layout } from './types.ts';
 
 /**
  * シン蜂蜜小梅（作: 141F氏）。
@@ -122,4 +122,4 @@ const layout: Layout = fromFaces('shin-koume', 'シン蜂蜜小梅', SHIN_KOUME_
 layout.legends.set(THUMB_KEY.LT, '親指左');
 layout.legends.set(THUMB_KEY.RT, '親指右');
 
-export const SHIN_KOUME = layout;
+export const SHIN_KOUME = withAliases(layout, ['しんはちみつこうめ', 'しんこうめ', 'はちみつこうめ']);

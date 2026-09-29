@@ -4,6 +4,7 @@ import { NAGINATA_V18 } from './naginata.ts';
 import { CUSTOM_COMBOS } from './combos-custom.ts';
 import {
   fromRows,
+  withAliases,
   withCombos,
   withoutRomajiOnlyCombos,
   withRomaji,
@@ -64,44 +65,44 @@ const ROMAJI_OONISHI = oonishiRomaji();
  * 大西配列は `-` をホーム段に置くため、数字段には `-` を入れない。
  */
 const ALPHA: Layout[] = [
-  withShiftedOutputs(fromRows('qwerty', 'QWERTY', [
+  withAliases(withShiftedOutputs(fromRows('qwerty', 'QWERTY', [
     '1234567890-=',
     'qwertyuiop[]',
     "asdfghjkl;'",
     'zxcvbnm,./',
-  ])),
-  withShiftedOutputs(fromRows('dvorak', 'Dvorak', [
+  ])), ['くわーてぃ', 'くぉーてぃ', 'くあーてぃ', 'くうぇるてぃ']),
+  withAliases(withShiftedOutputs(fromRows('dvorak', 'Dvorak', [
     '1234567890[]',
     "',.pyfgcrl/=",
     'aoeuidhtns-',
     ';qjkxbmwvz',
-  ])),
-  withShiftedOutputs(fromRows('colemak', 'Colemak', [
+  ])), ['どゔぉらっく', 'どぼらっく']),
+  withAliases(withShiftedOutputs(fromRows('colemak', 'Colemak', [
     '1234567890-=',
     'qwfpgjluy;[]',
     "arstdhneio'",
     'zxcvbkm,./',
-  ])),
-  withShiftedOutputs(fromRows('colemak-dh', 'Colemak-DH', [
+  ])), ['こーるまっく']),
+  withAliases(withShiftedOutputs(fromRows('colemak-dh', 'Colemak-DH', [
     '1234567890-=',
     'qwfpbjluy;[]',
     "arstgmneio'",
     'zxcdvkh,./',
-  ])),
-  withShiftedOutputs(fromRows('workman', 'Workman', [
+  ])), ['こーるまっくでぃーえいち', 'こーるまっくdh']),
+  withAliases(withShiftedOutputs(fromRows('workman', 'Workman', [
     '1234567890-=',
     'qdrwbjfup;[]',
     "ashtgyneoi'",
     'zxmcvkl,./',
-  ])),
-  withShiftedOutputs(fromRows('oonishi', '大西配列', [
+  ])), ['わーくまん']),
+  withAliases(withShiftedOutputs(fromRows('oonishi', '大西配列', [
     '1234567890',
     'qlu,.fwryp',
     'eiao-ktnsh',
     'zxcv;gdmjb',
-  ])),
+  ])), ['おおにし', 'おおにしはいれつ']),
   // コンボはどれもromajiOnly（仕様 §4.3）。日本語はコンボ込み、英文は単打配置だけで打つ。
-  withCombos(
+  withAliases(withCombos(
     'oonishi-custom',
     'TK音直入力法',
     withShiftedOutputs(fromRows('oonishi-custom', 'TK音直入力法', [
@@ -111,7 +112,7 @@ const ALPHA: Layout[] = [
       'xjcv/gdmzb',
     ])),
     CUSTOM_COMBOS,
-  ),
+  ), ['てぃーけーおんちょくにゅうりょくほう', 'てぃーけー', 'tk']),
 ];
 
 const ALPHA_BY_ID = new Map(ALPHA.map((l) => [l.id, l]));

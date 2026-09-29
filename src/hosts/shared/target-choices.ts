@@ -27,6 +27,8 @@ export interface TargetChoice {
   readonly fullName?: string;
   /** 名前の右に小さく添える種類（`Setup n`）。 */
   readonly tag?: string;
+  /** 絞り込みだけに効く読み・別名（`Layout.aliases`）。画面には出さない。 */
+  readonly aliases?: readonly string[];
 }
 
 export interface TargetChoiceGroup {
@@ -59,7 +61,12 @@ export function targetChoiceGroups({ layouts, userLayoutIds, shapes, setups, sel
   // 並びはカタログの並び（配列の定義順）のまま。名前順にすると、英字の配列の中でQWERTYが先頭に来ない。
   for (const layout of layouts.values()) {
     const target: AnalysisTarget = { kind: 'layout', layoutId: layout.id };
-    const choice: TargetChoice = { key: analysisTargetKey(target), target, name: layout.name };
+    const choice: TargetChoice = {
+      key: analysisTargetKey(target),
+      target,
+      name: layout.name,
+      ...(layout.aliases === undefined || layout.aliases.length === 0 ? {} : { aliases: layout.aliases }),
+    };
     if (userLayoutIds.has(layout.id)) user.push(choice);
     // 英字とかなの区分は配列の種類の対応表（`input/layouts/kind.ts`）に従う。`Layout`の形からは決まらない。
     else if (builtInLayoutKind(layout.id) === 'kana') kana.push(choice);
@@ -103,23 +110,29 @@ export function targetChoiceGroups({ layouts, userLayoutIds, shapes, setups, sel
   return groups.filter((group) => group.choices.length > 0);
 }
 
-/** 絞り込みの比較用に揃える（全角・半角と大文字・小文字の違いを無視する）。 */
-function normalize(text: string): string {
-  return text.normalize('NFKC').toLowerCase();
+/**
+ * 絞り込みの比較用に揃える。全角・半角と大文字・小文字に加え、ひらがなとカタカナも同じにする
+ * （NFKCは半角カナを全角カナへ寄せるので、その後にカタカナをひらがなへ写せば半角カナも揃う）。
+ */
+export function normalizeSearchText(text: string): string {
+  return text
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\u30A1-\u30F6]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
 }
 
 /**
- * 絞り込み欄の語で候補を絞る。空白で区切った語をすべて含む候補を残す（名前・フル名・種類のどれかに）。
+ * 絞り込み欄の語で候補を絞る。空白で区切った語をすべて含む候補を残す（名前・フル名・種類・読みや別名のどれかに）。
  * 候補が無くなった区分は落とす。
  */
 export function filterTargetChoiceGroups(groups: readonly TargetChoiceGroup[], query: string): readonly TargetChoiceGroup[] {
-  const words = normalize(query).split(/\s+/).filter((word) => word !== '');
+  const words = normalizeSearchText(query).split(/\s+/).filter((word) => word !== '');
   if (words.length === 0) return groups;
   return groups
     .map((group) => ({
       ...group,
       choices: group.choices.filter((choice) => {
-        const haystack = normalize([choice.name, choice.fullName ?? '', choice.tag ?? ''].join(' '));
+        const haystack = normalizeSearchText([choice.name, choice.fullName ?? '', choice.tag ?? '', ...(choice.aliases ?? [])].join(' '));
         return words.every((word) => haystack.includes(word));
       }),
     }))
