@@ -71,6 +71,7 @@ import {
 } from './random-samples.ts';
 import {
   longestReverseLookupRoute,
+  physicalAvailableKeys,
   reverseLookup,
   reverseLookupGuideActionHighlightKeys,
   reverseLookupGuideActionLabel,
@@ -656,17 +657,25 @@ export function InputConverterView() {
     () => presentationTriggerColorSlots(layout),
     [layout],
   );
+  const availableKeys = useMemo(() => physicalAvailableKeys(geometry), [geometry]);
   const playableRandomSamples = useMemo(() => ({
     words: JAPANESE_INPUT_SAMPLE_POOLS.words.filter(
-      (sample) => reverseLookup(layout, sample, 1).length > 0,
+      (sample) => reverseLookup(layout, sample, 1, availableKeys).length > 0,
     ),
     phrases: JAPANESE_INPUT_SAMPLE_POOLS.phrases.filter(
-      (sample) => reverseLookup(layout, sample, 1).length > 0,
+      (sample) => reverseLookup(layout, sample, 1, availableKeys).length > 0,
     ),
-  }), [layout]);
+  }), [layout, availableKeys]);
   const lookupRoutes = useMemo(
-    () => reverseLookup(layout, lookupQuery, 3),
-    [layout, lookupQuery],
+    () => reverseLookup(layout, lookupQuery, 3, availableKeys),
+    [layout, lookupQuery, availableKeys],
+  );
+  // 物理配列を問わなければ打てる文字か。打てない理由を「配列に無い」と「物理配列に無い」で分ける
+  const lookupTypableElsewhere = useMemo(
+    () => lookupQuery.length > 0
+      && lookupRoutes.length === 0
+      && reverseLookup(layout, lookupQuery, 1).length > 0,
+    [layout, lookupQuery, lookupRoutes],
   );
   // 表示・ガイドとも「最長候補」（＝最初のstepでより多くのかなをまとめて打つ経路）に揃える。
   // reverseLookupの並び順は既にこの基準で先頭がそれになるが、選択自体は
@@ -1529,7 +1538,11 @@ export function InputConverterView() {
                 ) : activeLookupRoute === undefined
                   || activeLookupStep === undefined
                   || activeLookupAction === undefined ? (
-                  <span className="input-muted">この配列では打ち方が見つかりません。</span>
+                  <span className="input-muted">
+                    {lookupTypableElsewhere
+                      ? 'この物理配列には必要なキーが無く、打てません。'
+                      : 'この配列では打ち方が見つかりません。'}
+                  </span>
                 ) : (
                   <>
                     <div className="input-lookup-guide" aria-label="入力順ガイド">
