@@ -312,18 +312,19 @@ function KeyboardFlow({
         <g className="flow-overlay-layer" aria-hidden="true">
           {keys.map((key) => {
             const point = chartPoint(key, keyBounds.minX, keyBounds.minY);
-            const hoverCount = hoveredKeyId === key.id
-              ? hoverCounts.total
-              : hoverCounts.destinations.get(key.id);
+            // 数字の意味は常に「ホバー元 → そのキー」の回数に揃える。
+            // ホバー元自身は線が無い（repeatは線から除外済み）ので、repeat回数を出す。
+            // 出発の合計はここに出さず、下部の「このキーから出る打鍵」で読ませる。
             const repeatCount = repeatCounts.get(key.id);
-            const badgeText = hoveredKeyId !== null
-              ? (hoverCount === undefined || hoverCount === 0 ? undefined : String(hoverCount))
-              : (repeatCount === undefined ? undefined : `×${repeatCount}`);
+            const count = hoveredKeyId === null || hoveredKeyId === key.id
+              ? repeatCount
+              : hoverCounts.destinations.get(key.id);
+            const badgeText = count === undefined || count === 0 ? undefined : String(count);
             if (badgeText === undefined) return null;
             const width = badgeWidth(badgeText);
             return (
               <g
-                className={hoveredKeyId === null ? 'flow-key-badge flow-repeat-badge' : 'flow-key-badge'}
+                className={hoveredKeyId === null || hoveredKeyId === key.id ? 'flow-key-badge flow-repeat-badge' : 'flow-key-badge'}
                 key={`badge-${key.id}`}
                 transform={`translate(${point.x + 15 - width / 2} ${point.y - 18})`}
               >
