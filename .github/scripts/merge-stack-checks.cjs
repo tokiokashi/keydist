@@ -32,6 +32,9 @@ function evaluateChecks({ runs, required, selfJob, prNumber }) {
     const byEvent = groups.get(name);
     const ran = byEvent && [...byEvent.values()].some((l) => l.some((r) => r.conclusion !== 'skipped'));
     if (!ran) problems.push(`#${prNumber}: 必須の \`${name}\` が head で走っていない`);
+    // event が引けないと全部 unknown に潰れ、旧来の「名前ごとの最新」に黙って戻る。必須ジョブでそうなったら判定しない
+    else if ([...byEvent.values()].some((l) => l.some((r) => !r.event)))
+      problems.push(`#${prNumber}: 必須の \`${name}\` の起動元が引けないので判定できない`);
   }
 
   for (const [name, byEvent] of groups) {

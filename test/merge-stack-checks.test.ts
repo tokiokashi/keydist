@@ -46,6 +46,10 @@ describe('evaluateChecks', () => {
     assert.deepEqual(check([...green, run('lint', 'push', 'neutral', '1')]), []);
     assert.match(check([...green, run('lint', 'push', 'failure', '1')])[0], /lint/);
   });
+  test('必須ジョブの event が引けなければ断る', () => {
+    const runs = green.map((r) => (r.name === 'verify' ? { ...r, event: undefined } : r));
+    assert.match(check(runs)[0], /verify.*起動元/);
+  });
   test('自分自身のジョブは見ない', () => {
     assert.deepEqual(check([...green, run('merge-stack', 'pull_request_target', null, '3', 'in_progress')]), []);
   });

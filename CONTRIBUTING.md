@@ -160,8 +160,8 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
   このリポジトリには設定してあるので、マージはオーナーとして行われ、`main` へのpushでCIと `release.yml` が走る
   （`version` を変えないので `release.yml` は何も公開せずに終わる）。
   未設定なら `GITHUB_TOKEN` に落ち、そのpushは別のワークフローを起動しないので `main` のCIも `release.yml` も走らない
-- `STACK_MERGE_TOKEN` は有効期限が切れる。切れると `merge-stack` は最初のAPI呼び出しで401（`Bad credentials`）になる。
-  コメントもラベルの取り外しも同じトークンで行うので、**PRには何も書かれず、ラベルも残ったまま**、Actionsの実行だけが赤くなる（スタックの中身の問題ではない）。
+- `STACK_MERGE_TOKEN` は有効期限が切れる。切れると `merge-stack` は認証エラーで失敗する。
+  症状は、**PRに何も書かれず、ラベルも残ったまま**、Actionsの実行だけが赤くなること（スタックの中身の問題ではない）。
   ラベルを付けたのに反応が無ければ、Actionsの `Merge stack` の実行ログを見る。更新はオーナーだけが行う
   - GitHubの Settings → Developer settings → Fine-grained personal access tokens で、このリポジトリに Contents・Pull requests の write を持つトークンを再生成する
   - リポジトリの Settings → Secrets and variables → Actions で `STACK_MERGE_TOKEN` の値を差し替える
@@ -315,4 +315,4 @@ CI（ubuntu）では必ず全件走るので、判断に迷ったらCIの数字�
   失敗時はActionsの実行に `browser-e2e-trace`（`test-results/`）が7日間残る
 - PRを開いているブランチでは、同じheadにpush由来とpull_request由来の `browser-e2e` が両方付く。人が読む時は両方が `success` か見る。
   `merge-stack` はeventごとに最新の実行を取り、両方の成功を求める。
-  `main` へのpushは、続けてマージしても途中のマージコミットの実行を取り消さない（`ci.yml` の `cancel-in-progress` はmain以外だけ）
+  `main` へのpushは、続けてマージしても途中のマージコミットの実行を取り消さない（`ci.yml` の concurrency はmainだけコミットごとのgroupにし、main以外は同じブランチの古い実行を取り消す。同じgroupのpendingは新しい実行に置き換わって取り消されるため、mainではgroupを分けている）
