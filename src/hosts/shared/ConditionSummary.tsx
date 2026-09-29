@@ -5,6 +5,7 @@ import {
   orderConditionRowsForDetail,
   type ConditionHeaderInfo,
   type ConditionSummaryRow,
+  type ConditionTargetDiff,
 } from './condition-summary.ts';
 
 /**
@@ -15,7 +16,7 @@ import {
  * 狭いペインで項目名と値を縦に積むのはCSS（ペインのcontainer query）が行う。
  *
  * ペインの枠から切り離しておくのは、個別画面とWorkspaceのどちらのペインにも同じ部品を置くため（#629）。
- * 今は単一の対象の条件だけを受け取る。複数の対象を持つペインの見せ方は #629 で決める。
+ * 複数の対象を持つペインは、共通の条件を`rows`に、対象ごとの差を`targetDiffs`に渡す。
  */
 export interface ConditionSummaryProps {
   /** Traceに効く条件の一覧。項目の定義順（`traceConditionSummary`の順）で渡す。 */
@@ -25,9 +26,14 @@ export interface ConditionSummaryProps {
    * 対象のフル名（既定と違う条件つき）は出さない。条件の差分は直下の行が出どころつきで出すため。
    */
   readonly header?: ConditionHeaderInfo;
+  /**
+   * 複数の対象を持つペインで、共通の条件（`rows`）と違う対象とその項目。全対象が同じなら空か省略。
+   * 単一の対象のペインは渡さない。
+   */
+  readonly targetDiffs?: readonly ConditionTargetDiff[];
 }
 
-export function ConditionSummary({ rows, header }: ConditionSummaryProps) {
+export function ConditionSummary({ rows, header, targetDiffs = [] }: ConditionSummaryProps) {
   if (rows.length === 0) return null;
   const line = conditionSummaryLine(rows);
   const ordered = orderConditionRowsForDetail(rows);
@@ -49,6 +55,7 @@ export function ConditionSummary({ rows, header }: ConditionSummaryProps) {
             {line.restCount > 0 ? <span className="pane-condition-more">他{line.restCount}件</span> : null}
           </>
         )}
+        {targetDiffs.length > 0 ? <span className="pane-condition-diff-flag">対象ごとに差あり</span> : null}
       </summary>
       <div className="pane-condition-body">
         {header !== undefined ? (
@@ -85,6 +92,19 @@ export function ConditionSummary({ rows, header }: ConditionSummaryProps) {
             );
           })}
         </dl>
+        {targetDiffs.length > 0 ? (
+          <section className="pane-condition-diffs" aria-label="対象ごとの差">
+            <h4>対象ごとの差</h4>
+            <dl>
+              {targetDiffs.map((diff) => (
+                <div key={diff.key} className="pane-condition-diff">
+                  <dt>{diff.label}</dt>
+                  <dd>{diff.items.map((item) => `${item.label}=${item.displayValue}`).join('、')}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        ) : null}
       </div>
     </details>
   );

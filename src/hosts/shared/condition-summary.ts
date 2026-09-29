@@ -1,9 +1,9 @@
-import type { CascadeLevel, Diagnostic, ResolvedOrigin } from '#input/settings/index.ts';
-import { SETTINGS_ITEMS, type ResolvedSettingsCascade, type SettingsItemId } from '#engine/settings-items.ts';
-import type { FingerAssignment, Geometry, PhysicalShape } from '#input/shapes/geometry.ts';
+import { readOverride, type CascadeLevel, type Diagnostic, type ResolvedOrigin } from '#input/settings/index.ts';
+import { SETTINGS_ITEMS, type ResolvedSettingsCascade, type SettingsCascadeOverrides, type SettingsItemId } from '#engine/settings-items.ts';
+import { DEFAULT_FINGER_ASSIGNMENT, type FingerAssignment, type Geometry, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { InputMethod } from '#input/settings/levels.ts';
-import { ROMAJI_RULES } from '#input/romaji/rules.ts';
+import { ROMAJI_RULES, defaultRomajiRuleId } from '#input/romaji/rules.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
 
 /**
@@ -39,6 +39,11 @@ export interface ConditionSummaryRow {
   /** プリミティブならそのまま描ける文字列、オブジェクトなら要約できないので詳細行だけ示す。 */
   readonly format: ConditionValueFormat;
   readonly displayValue: string;
+  /**
+   * 効く値の同一判定に使うキー。`displayValue`は自作のidを「自作の…」に畳むため、
+   * 別々の自作どうしを区別できない。対象どうしの差（`multiTargetConditionSummary`）はこちらで比べる。
+   */
+  readonly valueKey: string;
   readonly origin: ResolvedOrigin;
   /** `origin`を画面に出す文言（「既定値」「上書き: 配列「QWERTY」」等）。idは名前へ引いてある。 */
   readonly originLabel: string;
@@ -141,6 +146,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/**
+ * 実現方式の2項目は、画面に出す効く値（例外を数えない時は例外を読まない）が同一性の基準。
+ * それ以外は値そのもの（idを含む）で比べる。
+ */
+function valueKeyOf(id: SettingsItemId, value: unknown, displayValue: string): string {
+  if (id === 'triggerRealizationPolicy' || id === 'actionRealizationPolicy') return displayValue;
+  return JSON.stringify(value) ?? displayValue;
+}
+
 /** カスケードの解決結果から、Traceに効く項目だけを抜き出して表示用の行にする。 */
 export function traceConditionSummary(
   cascade: ResolvedSettingsCascade,
@@ -154,6 +168,7 @@ export function traceConditionSummary(
       label,
       format,
       displayValue,
+      valueKey: valueKeyOf(id, resolved.value, displayValue),
       origin: resolved.origin,
       originLabel: formatOrigin(resolved.origin, names),
       applicable: resolved.applicable,
@@ -274,4 +289,136 @@ export function conditionSummaryLine(rows: readonly ConditionSummaryRow[]): Cond
 /** 開いた時の並び。変えた項目を上に、それぞれの中は項目の定義順のまま。 */
 export function orderConditionRowsForDetail(rows: readonly ConditionSummaryRow[]): readonly ConditionSummaryRow[] {
   return [...rows.filter(isChangedConditionRow), ...rows.filter((row) => !isChangedConditionRow(row))];
+}
+
+/** 複数の対象を持つペインに渡す、対象1つぶんの条件。 */
+export interface TargetConditionInput {
+  readonly key: string;
+  /** 「対象ごとの差」に出す対象の表示名（集合に対して計算したもの）。 */
+  readonly label: string;
+  readonly rows: readonly ConditionSummaryRow[];
+}
+
+export interface ConditionTargetDiffItem {
+  readonly id: SettingsItemId;
+  readonly label: string;
+  readonly displayValue: string;
+}
+
+/** 共通の条件と違う対象と、その違う項目だけ。 */
+export interface ConditionTargetDiff {
+  readonly key: string;
+  readonly label: string;
+  readonly items: readonly ConditionTargetDiffItem[];
+}
+
+export interface MultiTargetConditionSummary {
+  /** 共通の条件の行。項目の定義順。 */
+  readonly rows: readonly ConditionSummaryRow[];
+  /** 差のある対象だけ。全対象が同じなら空。 */
+  readonly diffs: readonly ConditionTargetDiff[];
+}
+
+/**
+ * 複数の対象の条件を「共通の条件」と「対象ごとの差」にまとめる（docs/architecture.md「条件の要約」）。
+ *
+ * 共通の行は**この画面で効く値**。対象ごとの上書きも、配列・物理配列ごとの既定も受けない時の値
+ * （全体のレベルの値、それも無ければ項目の既定値）で、対象の並びに依らない。
+ * 差は、効く値が共通の行の値と違う対象だけを、違う項目だけで出す。
+ * 最初の対象の値を共通に採ると、配列ごとに既定が変わる項目（指の割当・ローマ字規則）で
+ * 他の対象を偽って示すため、共通の値は対象から取らない。
+ * 効かない項目・効かない対象は数えない（その条件で測ったように読めるため）。
+ * `excludeIds`はペイン自身が掃引する項目（N感度の先読みN）。
+ */
+export function multiTargetConditionSummary(
+  targets: readonly TargetConditionInput[],
+  options: {
+    readonly excludeIds?: readonly SettingsItemId[];
+    /** 全体のレベルの値（`globalConditionValues`）。共通の行はここから作る。 */
+    readonly globalValues?: GlobalConditionValues;
+    readonly names?: ConditionValueNames;
+  } = {},
+): MultiTargetConditionSummary {
+  const excluded = options.excludeIds ?? [];
+  const first = targets[0];
+  if (first === undefined) return { rows: [], diffs: [] };
+
+  const rows: ConditionSummaryRow[] = [];
+  const diffItems = new Map<string, ConditionTargetDiffItem[]>();
+  for (const templateRow of first.rows) {
+    if (excluded.includes(templateRow.id)) continue;
+    const applicable = targets.flatMap((target) => {
+      const row = target.rows.find((r) => r.id === templateRow.id);
+      return row !== undefined && row.applicable ? [{ target, row }] : [];
+    });
+    // どの対象にも効かない項目は、効かない旨の行のまま出す（Singleと同じ）
+    if (applicable.length === 0) {
+      rows.push(templateRow);
+      continue;
+    }
+    const screen = screenRow(templateRow, options.globalValues, options.names);
+    rows.push(screen);
+    for (const { target, row } of applicable) {
+      if (row.valueKey === screen.valueKey) continue;
+      const list = diffItems.get(target.key) ?? [];
+      list.push({ id: row.id, label: row.label, displayValue: row.displayValue });
+      diffItems.set(target.key, list);
+    }
+  }
+  const diffs = targets.flatMap((target) => {
+    const items = diffItems.get(target.key);
+    return items === undefined ? [] : [{ key: target.key, label: target.label, items }];
+  });
+  return { rows, diffs };
+}
+
+/** 全体のレベルに書かれた値（許可されている項目だけ）。対象の解決結果とは独立に読む。 */
+export type GlobalConditionValues = Readonly<Partial<Record<SettingsItemId, unknown>>>;
+
+/**
+ * 上書きの全体のレベルから値を読む。共通の行を対象の行の出どころから拾うと、全対象が下位
+ * （Setup・配列）で上書きしている時に全体の値が見つからず、画面で効く値でない既定値を出すため。
+ */
+export function globalConditionValues(overrides: SettingsCascadeOverrides): GlobalConditionValues {
+  const values: Partial<Record<SettingsItemId, unknown>> = {};
+  for (const id of Object.keys(SETTINGS_ITEMS) as SettingsItemId[]) {
+    if (!SETTINGS_ITEMS[id].allowedLevels.has('global')) continue;
+    const value: unknown = readOverride(overrides, { kind: 'global' }, id);
+    if (value !== undefined) values[id] = value;
+  }
+  return values;
+}
+
+/**
+ * 1項目の、この画面で効く値の行。全体のレベルの値があればそれ（出どころは全体）、無ければ項目の既定値。
+ * 既定値が配列ごとに変わる項目は、配列も物理配列も持たない時の値
+ * （ローマ字規則は訓令式、指の割当は列固定）を画面の値とする。
+ */
+function screenRow(
+  template: ConditionSummaryRow,
+  globalValues: GlobalConditionValues | undefined,
+  names: ConditionValueNames | undefined,
+): ConditionSummaryRow {
+  const globalValue = globalValues?.[template.id];
+  const origin: ResolvedOrigin = globalValue === undefined ? { kind: 'default' } : { kind: 'global' };
+  const rawDefault: unknown = SETTINGS_ITEMS[template.id].defaultValue;
+  const value = globalValue !== undefined
+    ? globalValue
+    : template.id === 'romajiRuleId'
+      ? defaultRomajiRuleId('')
+      : template.id === 'fingerAssignmentId'
+        ? DEFAULT_FINGER_ASSIGNMENT.id
+        : rawDefault;
+  const { format, displayValue } = formatValue(template.id, value, names);
+  return {
+    ...template,
+    format,
+    displayValue,
+    valueKey: valueKeyOf(template.id, value, displayValue),
+    origin,
+    originLabel: formatOrigin(origin, names),
+    applicable: true,
+    sameAsDefault: globalValue !== undefined && effectivelySameAsDefault(template.id, value),
+    diagnostics: [],
+  };
 }

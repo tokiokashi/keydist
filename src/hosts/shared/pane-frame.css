@@ -416,6 +416,33 @@ h2.pane-frame-title {
   color: var(--accent-strong);
 }
 
+.pane-condition-diff-flag {
+  flex: none;
+  color: var(--accent-strong);
+}
+
+.pane-condition-diffs h4 {
+  margin: 0 0 0.3rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--border);
+  font-size: inherit;
+  color: var(--text-muted);
+}
+
+.pane-condition-diff {
+  display: contents;
+}
+
+.pane-condition-diff dt {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.pane-condition-diff dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .pane-condition-body {
   display: grid;
   gap: 0.5rem;
@@ -490,7 +517,8 @@ h2.pane-frame-title {
     gap: 0.05rem;
   }
 
-  .pane-condition-row dd {
+  .pane-condition-row dd,
+  .pane-condition-diff dd {
     margin-bottom: 0.4rem;
   }
 }

@@ -27,12 +27,6 @@
   font-weight: 500;
 }
 
-.comparison-condition-cell {
-  text-align: left;
-  color: var(--text-muted);
-  white-space: normal;
-}
-
 .comparison-value-cell {
   display: table-cell;
 }

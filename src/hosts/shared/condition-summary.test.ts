@@ -3,7 +3,7 @@ import test from 'node:test';
 import { LAYOUT_BY_ID } from '#input/layouts/index.ts';
 import { DEFAULT_FINGER_ASSIGNMENT, PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Setup } from '#input/setup/index.ts';
-import { EMPTY_SETTINGS_OVERRIDES, resolveSettings, setSettingsOverride } from '#engine/settings-items.ts';
+import { EMPTY_SETTINGS_OVERRIDES, resolveSettings, setSettingsOverride, type SettingsItemId } from '#engine/settings-items.ts';
 import { resolveSetupForText } from '#input/setup/index.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import {
@@ -13,6 +13,8 @@ import {
   orderConditionRowsForDetail,
   conditionDiagnosticText,
   formatOrigin,
+  globalConditionValues,
+  multiTargetConditionSummary,
   nonDefaultConditionRows,
   type ConditionSummaryRow,
   summarizeNonDefaultConditions,
@@ -310,4 +312,167 @@ test('数える時の上書きは、変えた項目にも対象名の差分に�
   }]]);
   assert.equal(conditionSummaryLine(rows).changedCount, 1);
   assert.deepEqual(nonDefaultConditionRows(rows).map((row) => row.id), ['actionRealizationPolicy']);
+});
+
+type SettingWrite = readonly [string, 'windowSize' | 'sfbHomeCost' | 'preferOppositeThumb', number | boolean];
+
+/** setup-1..n（すべてqwerty）へ、Setupのレベルで上書きを書いた状態の、対象ごとの条件。 */
+function targetsWith(
+  global: readonly SettingWrite[],
+  bySetup: readonly (readonly SettingWrite[])[],
+  language: 'en' | 'ja' = 'en',
+) {
+  let overrides = EMPTY_SETTINGS_OVERRIDES;
+  const write = (level: Parameters<typeof setSettingsOverride>[1], id: SettingWrite[1], value: number | boolean) => {
+    const written = setSettingsOverride(overrides, level, id, value as never);
+    assert.ok(written.ok, id);
+    if (written.ok) overrides = written.overrides;
+  };
+  for (const [, id, value] of global) write({ kind: 'global' }, id, value);
+  const setups = bySetup.map((_, i) => ({ ...setupFor('qwerty'), id: `s${i + 1}` }));
+  bySetup.forEach((writes, i) => {
+    for (const [, id, value] of writes) write({ kind: 'setup', setupId: `s${i + 1}` }, id, value);
+  });
+  return withOverrides(setups.map((setup) => {
+    const input = resolveWith({ kind: 'setup', setupId: setup.id }, setups, overrides, language);
+    return { key: setup.id, label: `Setup ${setup.id}`, rows: traceConditionSummary(input.cascade, CATALOG) };
+  }), overrides);
+}
+
+/** 対象ごとの条件に、それを解決した上書きを添える（共通の行は全体のレベルの値から作るため）。 */
+function withOverrides<T extends readonly object[]>(targets: T, overrides: typeof EMPTY_SETTINGS_OVERRIDES) {
+  return Object.assign([...targets], { overrides }) as unknown as T & { overrides: typeof EMPTY_SETTINGS_OVERRIDES };
+}
+
+function summarize(built: ReturnType<typeof targetsWith>, options: { excludeIds?: SettingsItemId[] } = {}) {
+  return multiTargetConditionSummary(built, { ...options, globalValues: globalConditionValues(built.overrides) });
+}
+
+test('multiTargetConditionSummary: 全対象が同じ条件なら差の節は空で、共通の行は出どころつき', () => {
+  const summary = summarize(targetsWith([['g', 'windowSize', 5]], [[], []]));
+  assert.deepEqual(summary.diffs, []);
+  const n = summary.rows.find((row) => row.id === 'windowSize')!;
+  assert.equal(n.displayValue, '5');
+  assert.equal(n.originLabel, '上書き: 全体');
+  assert.equal(conditionSummaryLine(summary.rows).changedCount, 1);
+});
+
+test('multiTargetConditionSummary: 1つだけNが違う時、共通のNは画面の値で、違う対象だけが差に出る', () => {
+  const summary = summarize(targetsWith([], [[], [['s', 'windowSize', 2]], []]));
+  const n = summary.rows.find((row) => row.id === 'windowSize')!;
+  assert.equal(n.displayValue, '3');
+  assert.equal(n.originLabel, '既定値');
+  assert.deepEqual(summary.diffs, [
+    { key: 's2', label: 'Setup s2', items: [{ id: 'windowSize', label: '先読みN', displayValue: '2' }] },
+  ]);
+  assert.equal(conditionSummaryLine(summary.rows).changedCount, 0);
+});
+
+test('multiTargetConditionSummary: 別々の項目で違えば、それぞれ違う項目だけを持つ。効かない上書き（親指キーの無い配列の親指シフト振り替え）は数えない', () => {
+  const summary = summarize(targetsWith([], [
+    [['s', 'windowSize', 2], ['s', 'preferOppositeThumb', true]],
+    [['s', 'sfbHomeCost', false]],
+    [],
+  ]));
+  assert.deepEqual(summary.diffs.map((d) => [d.key, d.items.map((i) => i.id)]), [
+    ['s1', ['windowSize']],
+    ['s2', ['sfbHomeCost']],
+  ]);
+});
+
+test('multiTargetConditionSummary: 全体の上書きと同じ値を対象ごとに書いても差にしない', () => {
+  const same = summarize(targetsWith([['g', 'windowSize', 4]], [[['s', 'windowSize', 4]], []]));
+  assert.deepEqual(same.diffs, []);
+  assert.equal(same.rows.find((row) => row.id === 'windowSize')!.originLabel, '上書き: 全体');
+});
+
+test('multiTargetConditionSummary: 全対象が同じ値へ上書きしても、共通の行は画面の値のまま、全対象が差に出る', () => {
+  const summary = summarize(targetsWith([], [[['s', 'windowSize', 2]], [['s', 'windowSize', 2]]]));
+  const n = summary.rows.find((row) => row.id === 'windowSize')!;
+  assert.equal(n.displayValue, '3');
+  assert.equal(n.originLabel, '既定値');
+  assert.deepEqual(summary.diffs.map((d) => [d.key, d.items.map((i) => i.displayValue)]), [['s1', ['2']], ['s2', ['2']]]);
+});
+
+/** Setup（配列 + 物理配列）を並べた時の、対象ごとの条件。 */
+function setupTargets(
+  specs: readonly { layoutId: string; shapeId: string }[],
+  language: 'en' | 'ja',
+  overrides: typeof EMPTY_SETTINGS_OVERRIDES = EMPTY_SETTINGS_OVERRIDES,
+) {
+  const setups = specs.map((spec, i) => ({ id: `t${i + 1}`, ...spec }));
+  return withOverrides(setups.map((setup) => {
+    const input = resolveWith({ kind: 'setup', setupId: setup.id }, setups, overrides, language);
+    return { key: setup.id, label: setup.id, rows: traceConditionSummary(input.cascade, CATALOG) };
+  }), overrides);
+}
+
+function diffValue(summary: ReturnType<typeof multiTargetConditionSummary>, id: SettingsItemId) {
+  return summary.diffs.map((d) => [d.key, d.items.find((i) => i.id === id)?.displayValue] as const);
+}
+
+test('multiTargetConditionSummary: ANSIとJISのQWERTYは、共通の指の割当は列固定で、JISだけが差に出る', () => {
+  const summary = summarize(setupTargets([
+    { layoutId: 'qwerty', shapeId: 'row-staggered' },
+    { layoutId: 'qwerty', shapeId: 'jis-row-staggered' },
+  ], 'en'));
+  assert.equal(summary.rows.find((row) => row.id === 'fingerAssignmentId')!.displayValue, '既定（列固定）');
+  assert.deepEqual(diffValue(summary, 'fingerAssignmentId'), [['t2', 'JIS既定（列固定）']]);
+});
+
+test('multiTargetConditionSummary: QWERTYと大西配列は、並びによらず共通は訓令式で、大西配列だけが差に出る', () => {
+  const specs = [{ layoutId: 'qwerty', shapeId: 'row-staggered' }, { layoutId: 'oonishi', shapeId: 'row-staggered' }];
+  for (const ordered of [specs, [...specs].reverse()]) {
+    const summary = summarize(setupTargets(ordered, 'ja'));
+    const common = summary.rows.find((row) => row.id === 'romajiRuleId')!;
+    assert.equal(common.displayValue, '訓令式（si / sya / zi / zya）');
+    assert.equal(common.originLabel, '既定値');
+    assert.equal(summary.diffs.length, 1);
+    assert.equal(summary.diffs[0]!.items.find((i) => i.id === 'romajiRuleId')!.displayValue.startsWith('大西'), true);
+  }
+});
+
+test('multiTargetConditionSummary: 物理配列のレベルの上書きが片方の対象にしか効かない時も、その対象だけが差に出る', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'shape', shapeId: 'ortholinear' }, 'fingerAssignmentId', 'jis-default');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const summary = summarize(setupTargets([
+    { layoutId: 'qwerty', shapeId: 'row-staggered' },
+    { layoutId: 'qwerty', shapeId: 'ortholinear' },
+  ], 'en', written.overrides));
+  assert.equal(summary.rows.find((row) => row.id === 'fingerAssignmentId')!.displayValue, '既定（列固定）');
+  assert.deepEqual(diffValue(summary, 'fingerAssignmentId'), [['t2', 'JIS既定（列固定）']]);
+});
+
+test('multiTargetConditionSummary: 全体で指の割当を変え、全対象がSetupで別の値に上書きしても、共通の行は全体の値で、差は全対象', () => {
+  let overrides = EMPTY_SETTINGS_OVERRIDES;
+  const write = (level: Parameters<typeof setSettingsOverride>[1], value: string) => {
+    const written = setSettingsOverride(overrides, level, 'fingerAssignmentId', value);
+    assert.ok(written.ok);
+    if (written.ok) overrides = written.overrides;
+  };
+  write({ kind: 'global' }, 'jis-default');
+  write({ kind: 'setup', setupId: 't1' }, 'default');
+  write({ kind: 'setup', setupId: 't2' }, 'default');
+  const summary = summarize(setupTargets([
+    { layoutId: 'qwerty', shapeId: 'row-staggered' },
+    { layoutId: 'qwerty', shapeId: 'row-staggered' },
+  ], 'en', overrides));
+  const common = summary.rows.find((row) => row.id === 'fingerAssignmentId')!;
+  assert.equal(common.displayValue, 'JIS既定（列固定）');
+  assert.equal(common.origin.kind, 'global');
+  assert.deepEqual(diffValue(summary, 'fingerAssignmentId'), [['t1', '既定（列固定）'], ['t2', '既定（列固定）']]);
+});
+
+test('multiTargetConditionSummary: excludeIdsの項目は共通の行にも差にも出ない', () => {
+  const summary = summarize(
+    targetsWith([], [[['s', 'windowSize', 2], ['s', 'sfbHomeCost', false]], []]),
+    { excludeIds: ['windowSize'] },
+  );
+  assert.equal(summary.rows.some((row) => row.id === 'windowSize'), false);
+  assert.deepEqual(summary.diffs[0]!.items.map((i) => i.id), ['sfbHomeCost']);
+});
+
+test('multiTargetConditionSummary: 対象が無ければ空', () => {
+  assert.deepEqual(multiTargetConditionSummary([]), { rows: [], diffs: [] });
 });
