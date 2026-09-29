@@ -103,6 +103,91 @@ test('2タブが同じ組み込みテキストを続けて書き換えても、�
   expect(failures).toEqual([]);
 });
 
+test('他タブが別のAnalyzerの解析設定を書いても、自タブの未反映の変更を戻さない', async ({ context }) => {
+  // 解析設定は3つのAnalyzerの分が1つのstorageキーに入る。他タブの書き込みで記録全体が
+  // 読み直されると、自分のAnalyzerの設定が中身は同じまま新しい参照になり、debounce待ちの
+  // 下書きが保存値へ戻されて、その後の別の変更が先の変更を上書きしていた（#606）。
+  const key = 'keydist:standalone-analyzer-options';
+  const pageA = await context.newPage();
+  const pageB = await context.newPage();
+  // debounce（400ms）が実時間で切れると競合の窓が閉じるので、自タブのタイマーを止めて再現する
+  await pageA.clock.install();
+  await openBoth(pageA, pageB);
+
+  const settings = pageA.locator('[data-settings-window="true"]');
+  if (!(await settings.isVisible())) await pageA.getByRole('button', { name: '解析設定', exact: true }).click();
+  await expect(settings).toBeVisible();
+  const withinHand = settings.getByRole('button', { name: 'Within-hand' });
+  const lineScale = settings.getByLabel('紐の太さ', { exact: true });
+
+  // 自分のAnalyzerの設定が保存済みの状態にする（未保存だと他タブの書き込みで参照が変わらない）
+  await lineScale.selectOption('linear');
+  await expect
+    .poll(async () => pageA.evaluate((k) => localStorage.getItem(k), key))
+    .toContain('linear');
+
+  const now = await pageA.evaluate(() => Date.now());
+  await pageA.clock.pauseAt(now + 60_000);
+
+  // 変更A（debounce待ち。時計が止まっているので書かれない）
+  await withinHand.click();
+  // 他タブが別のAnalyzerの分だけを書く。Aのタブへstorageイベントが届く
+  // リスナーの登録を確かめてからBに書かせる（登録前に届いたイベントを取りこぼさないため）
+  await pageA.evaluate(() => {
+    (window as unknown as { __arrived: Promise<void> }).__arrived = new Promise<void>((resolve) => {
+      window.addEventListener('storage', () => resolve(), { once: true });
+    });
+  });
+  await pageB.evaluate((k) => {
+    const record = JSON.parse(localStorage.getItem(k) ?? '{"version":1}') as Record<string, unknown>;
+    record['n-sensitivity'] = { ...(record['n-sensitivity'] as object | undefined), other: Date.now() };
+    localStorage.setItem(k, JSON.stringify(record));
+  }, key);
+  await pageA.evaluate(() => (window as unknown as { __arrived: Promise<void> }).__arrived);
+  // 通知を受けた描画が終わるまで実時間で待つ（時計は止めているので描画はタイマーに依らない）
+  await pageA.waitForTimeout(300);
+
+  // 変更B
+  await lineScale.selectOption('log');
+  await pageA.clock.runFor(1_000);
+
+  await expect
+    .poll(async () => pageA.evaluate((k) => {
+      const flow = (JSON.parse(localStorage.getItem(k) ?? '{}') as Record<string, Record<string, unknown> | undefined>)['bigram-flow'];
+      return `${String(flow?.source)}/${String(flow?.lineScale)}`;
+    }, key), { timeout: 5_000 })
+    .toBe('within-hand/log');
+});
+
+test('他タブが同じAnalyzerの解析設定を変えたら、自タブの表示がそれに揃う', async ({ context }) => {
+  // 中身比較にしても、中身が変わった読み直しでは下書きを保存値へ揃える（#606）
+  const key = 'keydist:standalone-analyzer-options';
+  const pageA = await context.newPage();
+  const pageB = await context.newPage();
+  await openBoth(pageA, pageB);
+
+  const settings = pageA.locator('[data-settings-window="true"]');
+  if (!(await settings.isVisible())) await pageA.getByRole('button', { name: '解析設定', exact: true }).click();
+  await expect(settings).toBeVisible();
+  const lineScale = settings.getByLabel('紐の太さ', { exact: true });
+
+  await lineScale.selectOption('linear');
+  await expect
+    .poll(async () => pageA.evaluate((k) => localStorage.getItem(k), key))
+    .toContain('linear');
+
+  const setFromOtherTab = (value: string) => pageB.evaluate(({ k, v }) => {
+    const record = JSON.parse(localStorage.getItem(k)!) as Record<string, Record<string, unknown>>;
+    record['bigram-flow'] = { ...record['bigram-flow'], lineScale: v };
+    localStorage.setItem(k, JSON.stringify(record));
+  }, { k: key, v: value });
+
+  await setFromOtherTab('sqrt');
+  await expect(lineScale).toHaveValue('sqrt');
+  await setFromOtherTab('linear');
+  await expect(lineScale).toHaveValue('linear');
+});
+
 test('通知が届く前の他タブの追加を、Undoで消さない', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
