@@ -108,10 +108,12 @@ test('打ち方逆引きpanelはcontrolsを保ったまま独立小窓化でき�
   await expect(panel).not.toHaveAttribute('data-floating');
   await expect(lookup).not.toHaveValue('');
 
+  const emptyHint = '打ちたい文字を、この配列でどう打つか調べられます。';
+  // 文言がずれても否定が素通りしないよう、空の時に出ていることを先に確かめる。
+  await lookup.fill('');
+  await expect(panel.locator('.input-lookup-results')).toContainText(emptyHint);
   await lookup.fill('かな');
-  await expect(panel.locator('.input-lookup-results')).not.toContainText(
-    '打ちたい文字を、この配列でどう打つか調べられます。',
-  );
+  await expect(panel.locator('.input-lookup-results')).not.toContainText(emptyHint);
 
   await page
     .getByLabel('Practice Textをクリックまたはドラッグして小窓表示')
