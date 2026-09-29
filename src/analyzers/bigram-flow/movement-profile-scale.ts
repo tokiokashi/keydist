@@ -1,6 +1,7 @@
 export type MovementScaleMode = 'fit' | 'fixed';
 
 export interface MovementPlotScale {
+  readonly mode: MovementScaleMode;
   readonly scaleMax: number;
   readonly unitsPerSvgUnit: number;
   readonly plotRadius: number;
@@ -37,11 +38,15 @@ export function movementPlotScale(
   const plotRadius = scaleMax * unitsPerSvgUnit;
   const polarBaseRadius = mode === 'fit' ? plotRadius + POLAR_GAP : FIXED_POLAR_BASE_RADIUS;
   const polarAmplitude = POLAR_AMPLITUDE;
-  // 固定では円より長いベクトルが出うるので、最長ベクトルの先端もviewBoxに含める
-  // （円の半径だけを定数にし、描画領域はデータに追従させる）。fitではplotRadius+GAP=円なので従来と同じ。
-  const halfSize = Math.max(polarBaseRadius, plotRadius + POLAR_GAP) + OUTER_MARGIN;
+  // 固定では図の画面上の大きさを、データ・表示倍率・密度のどれにもよらず一定にする。
+  // 円より長いベクトルや外へ伸びた方向分布は、図の枠で見切れてよい（縮めない）。
+  // fitではplotRadius+GAP=円なので従来と同じ。
+  const halfSize = mode === 'fit'
+    ? Math.max(polarBaseRadius, plotRadius + POLAR_GAP) + OUTER_MARGIN
+    : FIXED_POLAR_BASE_RADIUS + OUTER_MARGIN;
 
   return {
+    mode,
     scaleMax,
     unitsPerSvgUnit,
     plotRadius,
@@ -62,6 +67,8 @@ export function movementPlotExtent(
   maxDensity: number,
   displayGain: number,
 ): number {
+  // 固定は一定の大きさのまま。はみ出す分は描画の枠で見切れる。
+  if (scale.mode === 'fixed') return scale.halfSize;
   const polarRadius = scale.polarBaseRadius
     + Math.max(0, maxDensity) * scale.polarAmplitude * Math.max(0, displayGain);
   return Math.max(scale.halfSize, polarRadius + OUTER_MARGIN);

@@ -34,13 +34,21 @@ test('Fixedは最大距離が違っても角度と確率の円の半径が同じ
   assert.equal(movementPlotScale(6, 'fit').halfSize, 82 + 9 + 13);
 });
 
-test('Fixedで円より長いベクトルの先端もviewBoxに収まる', () => {
-  for (const max of [1, 3, 5, 6, 9, 15]) {
+test('Fixedはviewboxも最大距離・倍率・密度によらず一定で、fitは従来どおり動く', () => {
+  const base = movementPlotScale(3, 'fixed');
+  for (const max of [1, 5, 6, 15]) {
     const scale = movementPlotScale(max, 'fixed');
-    assert.ok(scale.halfSize >= max * 24 + 13, `max=${max}`);
-    assert.ok(scale.halfSize >= scale.polarBaseRadius + 13, `max=${max}`);
-    assert.ok(movementPlotExtent(scale, 0, 1) >= scale.halfSize);
+    assert.equal(scale.halfSize, base.halfSize);
+    assert.equal(scale.viewSize, base.viewSize);
+    assert.equal(scale.polarBaseRadius, base.polarBaseRadius);
+    for (const [density, gain] of [[0, 1], [1.8, 1], [3.84, 3]]) {
+      assert.equal(movementPlotExtent(scale, density, gain), base.halfSize);
+    }
   }
+  assert.equal(base.halfSize, 129 + 13);
+  // fitは密度と倍率で広がる（従来どおり）
+  const fit = movementPlotScale(3, 'fit');
+  assert.ok(movementPlotExtent(fit, 3.84, 3) > fit.halfSize);
 });
 
 test('movement plot scaleはdisplay gainから独立する', () => {
@@ -53,14 +61,13 @@ test('movement plot scaleはdisplay gainから独立する', () => {
   assert.equal(scale.polarAmplitude, 16);
 });
 
-test('polar extentは実densityとdisplay gainに応じてcanvasだけを拡張する', () => {
-  const scale = movementPlotScale(3, 'fixed');
+test('polar extentは実densityとdisplay gainに応じてcanvasだけを拡張する（fit）', () => {
+  const scale = movementPlotScale(3, 'fit');
   const normal = movementPlotExtent(scale, 1.8, 1);
   const narrowHighPeak = movementPlotExtent(scale, 6.7, 3);
 
-  assert.equal(scale.unitsPerSvgUnit, 24);
-  assert.equal(scale.plotRadius, 72);
-  assert.equal(scale.polarBaseRadius, 129);
+  assert.equal(scale.plotRadius, 82);
+  assert.equal(scale.polarBaseRadius, 91);
   assert.ok(narrowHighPeak > normal);
   assert.ok(
     Math.abs(

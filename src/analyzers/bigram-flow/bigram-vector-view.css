@@ -342,18 +342,23 @@
   display: grid;
   place-items: center;
   transform: translate(-50%, -50%);
-  /* 方向分布の表示倍率を上げると図の範囲が枠（高さ22rem・幅100%）より大きくなる。
-     切れないよう、枠に収まらない時だけ図全体を縮める（収まる時は等倍）。 */
-  width: min(var(--flow-profile-size), 100%, 22rem);
-  aspect-ratio: 1;
 }
 
 .flow-profile-svg {
   display: block;
   flex: 0 0 auto;
   margin: 0;
-  width: 100%;
-  height: 100%;
+}
+
+.flow-profile-svg[data-scale-mode="fixed"] {
+  /* 固定では範囲を広げない。外へ出る分はviewportの枠で見切れる。 */
+  overflow: visible;
+}
+
+.flow-profile-svg[data-scale-mode="fit"],
+.flow-profile-svg[data-scale-mode="fixed"] {
+  width: auto !important;
+  max-width: none;
 }
 
 .flow-axis {
