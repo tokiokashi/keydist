@@ -160,6 +160,13 @@ h1 {
   line-height: 1.75;
 }
 
+/* 始め方の注記。本文より控えめにする */
+.hero .top-points p.top-note {
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
 /* 始め方の配列の選択と、選んだ後に出す Analyzer へのリンク */
 .top-pick {
   margin-top: 0.75rem;

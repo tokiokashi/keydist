@@ -58,10 +58,9 @@ function Home() {
           </li>
           <li>
             <h2>始め方</h2>
-            <p>
-              気になる配列を1つ選ぶと、Single で見る配列になり、Multi の組にも入ります。続けて見たい Analyzer を開きます。テキスト・物理配列・条件は、Analyzer を移っても引き継がれます。
-            </p>
+            <p>気になる配列を1つ選んでください。続けて見たい Analyzer を開きます。</p>
             <TopTargetPick />
+            <p className="top-note">※テキスト・物理配列・条件は、Analyzer を移っても引き継がれます。</p>
           </li>
           <li>
             <h2>Workspace</h2>
