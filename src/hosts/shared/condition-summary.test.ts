@@ -13,6 +13,7 @@ import {
   orderConditionRowsForDetail,
   conditionDiagnosticText,
   formatOrigin,
+  multiTargetConditionSummary,
   nonDefaultConditionRows,
   type ConditionSummaryRow,
   summarizeNonDefaultConditions,
@@ -310,4 +311,92 @@ test('数える時の上書きは、変えた項目にも対象名の差分に�
   }]]);
   assert.equal(conditionSummaryLine(rows).changedCount, 1);
   assert.deepEqual(nonDefaultConditionRows(rows).map((row) => row.id), ['actionRealizationPolicy']);
+});
+
+type SettingWrite = readonly [string, 'windowSize' | 'sfbHomeCost' | 'preferOppositeThumb', number | boolean];
+
+/** setup-1..n（すべてqwerty）へ、Setupのレベルで上書きを書いた状態の、対象ごとの条件。 */
+function targetsWith(
+  global: readonly SettingWrite[],
+  bySetup: readonly (readonly SettingWrite[])[],
+  language: 'en' | 'ja' = 'en',
+) {
+  let overrides = EMPTY_SETTINGS_OVERRIDES;
+  const write = (level: Parameters<typeof setSettingsOverride>[1], id: SettingWrite[1], value: number | boolean) => {
+    const written = setSettingsOverride(overrides, level, id, value as never);
+    assert.ok(written.ok, id);
+    if (written.ok) overrides = written.overrides;
+  };
+  for (const [, id, value] of global) write({ kind: 'global' }, id, value);
+  const setups = bySetup.map((_, i) => ({ ...setupFor('qwerty'), id: `s${i + 1}` }));
+  bySetup.forEach((writes, i) => {
+    for (const [, id, value] of writes) write({ kind: 'setup', setupId: `s${i + 1}` }, id, value);
+  });
+  return setups.map((setup) => {
+    const input = resolveWith({ kind: 'setup', setupId: setup.id }, setups, overrides, language);
+    return { key: setup.id, label: `Setup ${setup.id}`, rows: traceConditionSummary(input.cascade, CATALOG) };
+  });
+}
+
+test('multiTargetConditionSummary: 全対象が同じ条件なら差の節は空で、共通の行は出どころつき', () => {
+  const summary = multiTargetConditionSummary(targetsWith([['g', 'windowSize', 5]], [[], []]));
+  assert.deepEqual(summary.diffs, []);
+  const n = summary.rows.find((row) => row.id === 'windowSize')!;
+  assert.equal(n.displayValue, '5');
+  assert.equal(n.originLabel, '上書き: 全体');
+  assert.equal(conditionSummaryLine(summary.rows).changedCount, 1);
+});
+
+test('multiTargetConditionSummary: 1つだけNが違う対象は、その対象のNだけが差に出る。共通のNは他の対象の値', () => {
+  const summary = multiTargetConditionSummary(targetsWith([], [[], [['s', 'windowSize', 2]], []]));
+  assert.deepEqual(summary.diffs, [
+    { key: 's2', label: 'Setup s2', items: [{ id: 'windowSize', label: '先読みN', displayValue: '2' }] },
+  ]);
+  const n = summary.rows.find((row) => row.id === 'windowSize')!;
+  assert.equal(n.displayValue, '3');
+  assert.equal(n.origin.kind, 'default');
+  // 閉じた1行の数えには、対象ごとの上書きは入らない
+  assert.equal(conditionSummaryLine(summary.rows).changedCount, 0);
+});
+
+test('multiTargetConditionSummary: 2つの対象が別々の項目で違えば、それぞれ違う項目だけを持つ。効かない上書き（親指キーの無い配列の親指シフト振り替え）は数えない', () => {
+  const summary = multiTargetConditionSummary(targetsWith([], [
+    [['s', 'windowSize', 2], ['s', 'preferOppositeThumb', true]],
+    [['s', 'sfbHomeCost', false]],
+    [],
+  ]));
+  assert.deepEqual(summary.diffs.map((d) => [d.key, d.items.map((i) => i.id)]), [
+    ['s1', ['windowSize']],
+    ['s2', ['sfbHomeCost']],
+  ]);
+});
+
+test('multiTargetConditionSummary: 全体の上書きと同じ値を対象ごとに書いても差にしない。効かない上書きも数えない', () => {
+  const same = multiTargetConditionSummary(targetsWith([['g', 'windowSize', 4]], [[['s', 'windowSize', 4]], []]));
+  assert.deepEqual(same.diffs, []);
+  // 対象ごとの上書きが既定と同じ値でも、全体が別の値なら共通と違うので差になる
+  const differs = multiTargetConditionSummary(targetsWith([['g', 'windowSize', 4]], [[['s', 'windowSize', 3]], []]));
+  assert.deepEqual(differs.diffs.map((d) => d.key), ['s1']);
+});
+
+test('multiTargetConditionSummary: 全対象が対象ごとに上書きしていれば、同じ値ならその値を共通に、違えば既定値を共通にする', () => {
+  const equal = multiTargetConditionSummary(targetsWith([], [[['s', 'windowSize', 2]], [['s', 'windowSize', 2]]]));
+  assert.equal(equal.rows.find((row) => row.id === 'windowSize')!.displayValue, '2');
+  assert.deepEqual(equal.diffs, []);
+  const differ = multiTargetConditionSummary(targetsWith([], [[['s', 'windowSize', 2]], [['s', 'windowSize', 4]]]));
+  assert.equal(differ.rows.find((row) => row.id === 'windowSize')!.displayValue, '3');
+  assert.equal(differ.diffs.length, 2);
+});
+
+test('multiTargetConditionSummary: excludeIdsの項目は共通の行にも差にも出ない', () => {
+  const summary = multiTargetConditionSummary(
+    targetsWith([], [[['s', 'windowSize', 2], ['s', 'sfbHomeCost', false]], []]),
+    { excludeIds: ['windowSize'] },
+  );
+  assert.equal(summary.rows.some((row) => row.id === 'windowSize'), false);
+  assert.deepEqual(summary.diffs[0]!.items.map((i) => i.id), ['sfbHomeCost']);
+});
+
+test('multiTargetConditionSummary: 対象が無ければ空', () => {
+  assert.deepEqual(multiTargetConditionSummary([]), { rows: [], diffs: [] });
 });

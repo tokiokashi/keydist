@@ -4,17 +4,14 @@ import { setMultiBaselineCommand, setMultiTargetsCommand, type KeydistAssets } f
 import type { EngineCache } from '#engine/cache.ts';
 import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
-import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget } from '#input/setup/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import {
-  conditionHeaderInfoFromResolvedInput,
-  nonDefaultConditionRows,
+  multiTargetConditionSummary,
   PaneFrame,
   setupNumbersOf,
-  summarizeNonDefaultConditions,
   TargetSelection,
   traceConditionSummary,
   type ConditionValueNames,
@@ -62,40 +59,8 @@ export interface ComparisonStandalonePageProps {
 
 const ANALYZER_ID = comparisonAnalyzer.definition.id;
 
-function buildRowContext(
-  target: AnalysisTarget,
-  resolution: ResolvedInputResult,
-  named: NamedTarget,
-  conditionNames: ConditionValueNames,
-): ComparisonRowContext {
-  const targetKey = analysisTargetKey(target);
-  if (resolution.ok) {
-    const header = conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry);
-    // 既定値と違う条件だけを併記する（#544 Phase 3レビュー「集合対象ページは各行に
-    // 効いている条件を併記する」）。比較表はwindowSizeを掃引しないので除外しない。
-    const cascadeOriginSummary = summarizeNonDefaultConditions(
-      nonDefaultConditionRows(traceConditionSummary(resolution.input.cascade, conditionNames)),
-    );
-    return {
-      targetKey,
-      label: named.displayName,
-      fullName: named.fullName,
-      layoutName: header.layoutName,
-      geometryName: header.shapeName,
-      fingerAssignmentName: header.fingerAssignmentName,
-      ...(cascadeOriginSummary === undefined ? {} : { cascadeOriginSummary }),
-    };
-  }
-  // 解決に失敗した行でも対象自体は集合に残っている（Setupの参照が壊れている・
-  // このテキストに使えない等）ので、idベースの表示だけは出す。
-  return {
-    targetKey,
-    label: named.displayName,
-    fullName: named.fullName,
-    layoutName: named.fullName,
-    geometryName: '—',
-    fingerAssignmentName: '—',
-  };
+function buildRowContext(target: AnalysisTarget, named: NamedTarget): ComparisonRowContext {
+  return { targetKey: analysisTargetKey(target), label: named.displayName, fullName: named.fullName };
 }
 
 export function ComparisonStandalonePage({
@@ -182,10 +147,24 @@ export function ComparisonStandalonePage({
       const key = analysisTargetKey(member.target);
       const named = namedByKey.get(key);
       if (named === undefined) continue;
-      map.set(key, buildRowContext(member.target, member.resolution, named, conditionNames));
+      map.set(key, buildRowContext(member.target, named));
     }
     return map;
-  }, [members, namedByKey, conditionNames]);
+  }, [members, namedByKey]);
+
+  // 条件の要約は、共通の条件と、対象ごとに違う条件（Setupの上書き）に分けて出す。
+  const conditionSummary = useMemo(() => multiTargetConditionSummary(
+    members.flatMap((member) => {
+      if (!member.resolution.ok) return [];
+      const key = analysisTargetKey(member.target);
+      return [{
+        key,
+        label: namedByKey.get(key)?.displayName ?? key,
+        rows: traceConditionSummary(member.resolution.input.cascade, conditionNames),
+      }];
+    }),
+    { names: conditionNames },
+  ), [members, namedByKey, conditionNames]);
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
 
@@ -265,7 +244,8 @@ export function ComparisonStandalonePage({
             )}
             settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
             onResetOptions={() => changeOptions(comparisonAnalyzer.defaultOptions)}
-            conditionRows={[]}
+            conditionRows={conditionSummary.rows}
+            conditionTargetDiffs={conditionSummary.diffs}
             engineState={extraction}
             settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}
             {...(targets.length === 0

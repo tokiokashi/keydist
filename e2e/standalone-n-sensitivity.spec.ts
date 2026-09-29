@@ -195,29 +195,41 @@ test('集合に存在しないSetup idが混ざっていても消えず「削除
   await expect.poll(async () => (await targetNames(page)).length).toBe(2);
 });
 
-test('既定と違う条件（windowSize以外）が併記される。windowSizeは掃引軸なので出さない', async ({ page }) => {
+test('条件の要約は先読みNを出さず、対象ごとの差にもNを出さない（掃引軸）', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem(
       'keydist:setup-library',
       JSON.stringify({
         version: 1,
-        setups: [{ id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' }],
-        // sfbHomeCost=falseは既定(true)と違うので併記される。windowSizeは既定と違っても
-        // 掃引軸として除外され、行の条件併記には出ない。
-        overrides: { global: { sfbHomeCost: false, windowSize: 7 } },
+        setups: [
+          { id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' },
+          { id: 'fixed-b', layoutId: 'colemak-dh', shapeId: 'row-staggered' },
+        ],
+        // 全体のsfbHomeCost=falseは共通の条件に出る。windowSizeは掃引軸なので、
+        // 全体でも対象ごとでも出ない。fixed-aだけのsfbHomeCostは差になる。
+        overrides: {
+          global: { sfbHomeCost: false, windowSize: 7 },
+          setup: { 'fixed-a': { windowSize: 2, sfbHomeCost: true } },
+        },
       }),
     );
     localStorage.setItem(
       'keydist:multi-target-selection',
-      JSON.stringify({ version: 1, targets: [{ kind: 'setup', setupId: 'fixed-a' }] }),
+      JSON.stringify({ version: 1, targets: [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'fixed-b' }] }),
     );
   });
   await page.goto('/standalone/n-sensitivity');
 
-  const conditionDiff = page.locator('.n-sensitivity-condition-diff');
-  await expect(conditionDiff).toBeVisible({ timeout: 10_000 });
-  await expect(conditionDiff).toContainText('同指連続のホーム復帰距離');
-  await expect(conditionDiff).not.toContainText('先読みN');
+  const summary = page.locator('.pane-condition-summary');
+  await expect(summary).toBeVisible({ timeout: 10_000 });
+  await expect(summary.locator('summary')).toContainText('同指連続のホーム復帰距離');
+  await expect(summary.locator('summary')).toContainText('対象ごとに差あり');
+  await expect(summary.locator('summary')).not.toContainText('先読みN');
+  await summary.locator('summary').click();
+  const diffs = summary.getByRole('region', { name: '対象ごとの差' });
+  await expect(diffs.locator('.pane-condition-diff')).toHaveCount(1);
+  await expect(diffs.locator('.pane-condition-diff')).toContainText('同指連続のホーム復帰距離');
+  await expect(summary).not.toContainText('先読みN');
 });
 
 test('画面の文言に開発の内部（issue番号・Phase・ファイル名・開発用の語）が出ない（レビュー指摘H1〜H4）', async ({ page }) => {

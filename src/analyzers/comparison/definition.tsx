@@ -24,17 +24,12 @@ import './comparison-view.css';
  * 順のまま描き、列の値で自動ソートするUIも持たない。
  */
 
-/** 1 Setupぶんの、行に併記する条件（配列・形状・指の割当・カスケードの出どころ）。 */
+/** 1 対象ぶんの、行の名前。条件は行に併記せず、ペインの条件の要約が出す。 */
 export interface ComparisonRowContext {
   readonly targetKey: string;
   readonly label: string;
   /** 集合によらない完全な名前（レビュー指摘3）。hover（`title`属性）に出す。 */
   readonly fullName: string;
-  readonly layoutName: string;
-  readonly geometryName: string;
-  readonly fingerAssignmentName: string;
-  /** カスケードの出どころの短い要約（例: "Setup override" "global"）。空なら省略。 */
-  readonly cascadeOriginSummary?: string;
 }
 
 export interface ComparisonBodyProps {
@@ -102,7 +97,6 @@ export function ComparisonBody({
           <thead>
             <tr>
               <th scope="col">対象</th>
-              <th scope="col">条件</th>
               {visibleColumns.map((column) => (
                 <th scope="col" key={column}>{COMPARISON_COLUMNS[column].label}</th>
               ))}
@@ -120,7 +114,7 @@ export function ComparisonBody({
                 return (
                   <tr key={targetKey} data-comparison-row="pending">
                     <th scope="row" title={fullName}>{label}</th>
-                    <td colSpan={1 + visibleColumns.length} aria-busy="true">計算している…</td>
+                    <td colSpan={visibleColumns.length} aria-busy="true">計算している…</td>
                   </tr>
                 );
               }
@@ -129,7 +123,7 @@ export function ComparisonBody({
                 return (
                   <tr key={targetKey} data-comparison-row="failed">
                     <th scope="row" title={fullName}>{label}</th>
-                    <td colSpan={1 + visibleColumns.length} role="alert">
+                    <td colSpan={visibleColumns.length} role="alert">
                       {row.message || failureLabel(row.failureKind)}
                     </td>
                   </tr>
@@ -142,13 +136,6 @@ export function ComparisonBody({
                     {label}
                     {targetKey === baselineTargetKey ? <span className="comparison-baseline-tag">基準</span> : null}
                   </th>
-                  <td className="comparison-condition-cell">
-                    {context
-                      ? `${context.layoutName} / ${context.geometryName} / 指の割当: ${context.fingerAssignmentName}${
-                        context.cascadeOriginSummary ? ` ・ ${context.cascadeOriginSummary}` : ''
-                      }`
-                      : '—'}
-                  </td>
                   {visibleColumns.map((column) => {
                     const value = row.values[column];
                     const showRatio = showBaselineRatio

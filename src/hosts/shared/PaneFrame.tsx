@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import type { EngineRequestState } from '#engine/request.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { describeEngineRequestError, engineRequestErrorDetail, paneStatusLabel, TRACE_ERRORS_SENTENCE } from './pane-status.ts';
-import type { ConditionHeaderInfo, ConditionSummaryRow } from './condition-summary.ts';
+import type { ConditionHeaderInfo, ConditionSummaryRow, ConditionTargetDiff } from './condition-summary.ts';
 import { ConditionSummary } from './ConditionSummary.tsx';
 import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
@@ -57,6 +57,8 @@ export interface PaneFrameProps {
   readonly header?: ConditionHeaderInfo;
   /** Traceに効く条件の一覧（#544 §3「実効値の出どころを表示する」）。 */
   readonly conditionRows: readonly ConditionSummaryRow[];
+  /** 複数の対象を持つペインの、対象ごとの差（`conditionRows`は共通の条件）。 */
+  readonly conditionTargetDiffs?: readonly ConditionTargetDiff[];
   /** 抽出の依頼の現在の状態。値そのもの（`value`）は本体側で使うので、ここでは見ない。 */
   readonly engineState: EngineRequestState<unknown>;
   /** Trace生成段の診断（配列定義の不備等）。値として表示する（#544 §8-5）。 */
@@ -90,6 +92,7 @@ export function PaneFrame({
   onResetOptions,
   header,
   conditionRows,
+  conditionTargetDiffs,
   engineState,
   traceErrors,
   settingsDiagnostics,
@@ -150,7 +153,7 @@ export function PaneFrame({
         {settings}
       </SettingsWindow>
 
-      <ConditionSummary rows={conditionRows} header={header} />
+      <ConditionSummary rows={conditionRows} header={header} targetDiffs={conditionTargetDiffs} />
 
       {traceErrors && traceErrors.length > 0 ? (
         <div className="pane-trace-errors" role="alert" data-pane-trace-errors="true">

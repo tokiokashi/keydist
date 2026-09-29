@@ -10,10 +10,9 @@ import type { TextRef } from '#input/text/selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import {
   conditionHeaderInfoFromResolvedInput,
-  nonDefaultConditionRows,
+  multiTargetConditionSummary,
   PaneFrame,
   setupNumbersOf,
-  summarizeNonDefaultConditions,
   TargetSelection,
   traceConditionSummary,
   type ConditionValueNames,
@@ -56,7 +55,7 @@ export interface NSensitivityStandalonePageProps {
 
 const ANALYZER_ID = nSensitivityAnalyzer.definition.id;
 
-/** Nはこのページ自身が掃引する軸なので、条件の併記からは除く（`nonDefaultConditionRows`のコメント参照）。 */
+/** Nはこのページ自身が掃引する軸なので、条件の要約からは除く。 */
 const N_SENSITIVITY_CONDITION_EXCLUDE_IDS = ['windowSize'] as const;
 
 function buildRowContext(
@@ -64,14 +63,10 @@ function buildRowContext(
   resolution: ResolvedInputResult,
   named: NamedTarget,
   color: string,
-  conditionNames: ConditionValueNames,
 ): NSensitivityRowContext {
   const targetKey = analysisTargetKey(target);
   if (resolution.ok) {
     const header = conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry);
-    const conditionSummary = summarizeNonDefaultConditions(
-      nonDefaultConditionRows(traceConditionSummary(resolution.input.cascade, conditionNames), N_SENSITIVITY_CONDITION_EXCLUDE_IDS),
-    );
     return {
       targetKey,
       label: named.displayName,
@@ -80,7 +75,6 @@ function buildRowContext(
       geometryName: header.shapeName,
       fingerAssignmentName: header.fingerAssignmentName,
       color,
-      ...(conditionSummary === undefined ? {} : { conditionSummary }),
     };
   }
   return {
@@ -172,10 +166,24 @@ export function NSensitivityStandalonePage({
       const named = namedByKey.get(key);
       const color = colorByKey.get(key);
       if (named === undefined || color === undefined) return;
-      map.set(key, buildRowContext(member.target, member.resolution, named, color, conditionNames));
+      map.set(key, buildRowContext(member.target, member.resolution, named, color));
     });
     return map;
-  }, [members, namedByKey, colorByKey, conditionNames]);
+  }, [members, namedByKey, colorByKey]);
+
+  // 条件の要約は、共通の条件と、対象ごとに違う条件（Setupの上書き）に分けて出す。
+  const conditionSummary = useMemo(() => multiTargetConditionSummary(
+    members.flatMap((member) => {
+      if (!member.resolution.ok) return [];
+      const key = analysisTargetKey(member.target);
+      return [{
+        key,
+        label: namedByKey.get(key)?.displayName ?? key,
+        rows: traceConditionSummary(member.resolution.input.cascade, conditionNames),
+      }];
+    }),
+    { excludeIds: N_SENSITIVITY_CONDITION_EXCLUDE_IDS, names: conditionNames },
+  ), [members, namedByKey, conditionNames]);
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
 
@@ -237,7 +245,8 @@ export function NSensitivityStandalonePage({
             )}
             settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
             onResetOptions={() => changeOptions(nSensitivityAnalyzer.defaultOptions)}
-            conditionRows={[]}
+            conditionRows={conditionSummary.rows}
+            conditionTargetDiffs={conditionSummary.diffs}
             engineState={extraction}
             settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}
             {...(targets.length === 0

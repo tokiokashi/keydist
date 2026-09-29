@@ -176,7 +176,7 @@ test('集合に存在しないSetup idが混ざっていても行は消えず「
   await expect(missing).toBeChecked();
 });
 
-test('既定と違う条件が行に併記される（#544 Phase 3レビュー: 集合対象ページ共通の条件併記）', async ({ page }) => {
+test('既定と違う条件が条件の要約に出る（対象ごとの差は無い）', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem(
       'keydist:setup-library',
@@ -195,7 +195,11 @@ test('既定と違う条件が行に併記される（#544 Phase 3レビュー: 
 
   const table = page.locator('.comparison-table');
   await expect(table).toBeVisible({ timeout: 10_000 });
-  await expect(table.locator('.comparison-condition-cell')).toContainText('同指連続のホーム復帰距離');
+  const summary = page.locator('.pane-condition-summary');
+  await expect(summary.locator('summary')).toContainText('同指連続のホーム復帰距離');
+  await expect(summary.locator('summary')).not.toContainText('対象ごとに差あり');
+  await summary.locator('summary').click();
+  await expect(summary.getByRole('region', { name: '対象ごとの差' })).toHaveCount(0);
 });
 
 test('既定の物理配列を変えると、配列対象は追従しSetup対象（明示的な物理配列を持つ）は追従しない', async ({ page }) => {
@@ -227,11 +231,53 @@ test('既定の物理配列を変えると、配列対象は追従しSetup対象
 
   await page.getByLabel('既定の物理配列').selectOption('ortholinear');
 
-  // 配列対象（行1: layout:qwerty）の条件欄に物理配列の変更が反映される。
-  // Setup対象（行2: setup:fixed-a、shapeIdを明示的に持つ）は変わらない。
-  const rows = table.locator('tbody tr[data-comparison-row="ok"]');
-  await expect(rows.nth(0).locator('.comparison-condition-cell')).toContainText('オーソリニア', { timeout: 10_000 });
-  await expect(rows.nth(1).locator('.comparison-condition-cell')).not.toContainText('オーソリニア');
+  // 既定の物理配列は全体の条件として、条件の要約に出る。
+  await expect(page.locator('.pane-condition-summary > summary')).toContainText('オーソリニア', { timeout: 10_000 });
+});
+
+test('対象ごとに条件が違う時は、閉じた1行に「対象ごとに差あり」、開くと違う対象の違う項目だけが出る。「条件」の列は無い', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'keydist:setup-library',
+      JSON.stringify({
+        version: 1,
+        setups: [
+          { id: 'fixed-a', layoutId: 'qwerty', shapeId: 'row-staggered' },
+          { id: 'fixed-b', layoutId: 'colemak-dh', shapeId: 'row-staggered' },
+        ],
+        overrides: { setup: { 'fixed-a': { windowSize: 2 } } },
+      }),
+    );
+    localStorage.setItem(
+      'keydist:multi-target-selection',
+      JSON.stringify({ version: 1, targets: [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'fixed-b' }] }),
+    );
+  });
+  await page.goto('/standalone/comparison');
+
+  const table = page.locator('.comparison-table');
+  await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
+  await expect(table.getByRole('columnheader', { name: '条件' })).toHaveCount(0);
+
+  const summary = page.locator('.pane-condition-summary');
+  await expect(summary.locator('summary')).toContainText('対象ごとに差あり');
+  await summary.locator('summary').click();
+  const diffs = summary.getByRole('region', { name: '対象ごとの差' });
+  await expect(diffs.locator('.pane-condition-diff')).toHaveCount(1);
+  await expect(diffs.locator('.pane-condition-diff')).toContainText('先読みN=2');
+  await expect(diffs.locator('.pane-condition-diff')).not.toContainText('同指連続');
+});
+
+test('全対象の条件が同じなら、対象ごとの差の節も「対象ごとに差あり」も出ない', async ({ page }) => {
+  const targets = [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'fixed-b' }];
+  await page.addInitScript(seedSelection, { targets, overrides: {} });
+  await page.goto('/standalone/comparison');
+
+  await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
+  const summary = page.locator('.pane-condition-summary');
+  await expect(summary.locator('summary')).not.toContainText('対象ごとに差あり');
+  await summary.locator('summary').click();
+  await expect(summary.getByRole('region', { name: '対象ごとの差' })).toHaveCount(0);
 });
 
 /** fixed-a（qwerty）・fixed-b（colemak-dh）の2件と、比較表の集合を仕込む。 */
