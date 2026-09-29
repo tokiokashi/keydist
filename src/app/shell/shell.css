@@ -151,6 +151,21 @@
   font-weight: 650;
 }
 
+/* リンクと同じ見た目のボタン（「＋ 新しいWorkspace」）。 */
+.sidebar-new-workspace {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar-new-workspace:hover {
+  color: var(--text);
+}
+
 .sidebar-empty {
   margin: 0;
   padding: 0.2rem 0.5rem;

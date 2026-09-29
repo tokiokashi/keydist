@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { decodeField, defineAssetCodec, isRecord, type AssetCodec } from '#input/codec/index.ts';
+import { decodeField, defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic } from '#input/codec/index.ts';
 import { builtinTextById } from './builtin.ts';
 import { DEFAULT_TEXT_REF, type TextRef, type TextSelectionState } from './selection.ts';
 
@@ -22,16 +22,31 @@ const textRefSchema = v.variant('kind', [
   v.strictObject({ kind: v.literal('user'), id: v.pipe(v.string(), v.minLength(1)) }),
 ]);
 
+/**
+ * 選択1件のdecode。資産の中に選択を抱える別の資産（Workspaceが自分のテキストの選択を持つ）も
+ * 同じ規則で読めるよう、codecの外へ出してある。`path`は診断に載せる位置（空なら資産の直下）。
+ */
+export function decodeTextSelectionState(
+  raw: unknown,
+  path: string,
+  diagnostics: CodecDiagnostic[],
+): TextSelectionState | undefined {
+  if (!isRecord(raw)) return undefined;
+  const refPath = path === '' ? 'ref' : `${path}.ref`;
+  const ref = decodeField<TextRef>(textRefSchema, raw.ref, DEFAULT_TEXT_REF, refPath, diagnostics);
+  if (ref.kind === 'builtin' && builtinTextById(ref.id) === undefined) {
+    diagnostics.push({ path: refPath, message: `組み込みテキスト「${ref.id}」が存在しないため既定へ戻した` });
+    return { ref: DEFAULT_TEXT_REF };
+  }
+  return { ref };
+}
+
+export function encodeTextSelectionState(value: TextSelectionState): Record<string, unknown> {
+  return { ref: { ...value.ref } };
+}
+
 export const STANDALONE_TEXT_SELECTION_CODEC: AssetCodec<TextSelectionState> = defineAssetCodec<TextSelectionState>({
   currentVersion: 1,
-  decodePayload: (payload, diagnostics) => {
-    if (!isRecord(payload)) return undefined;
-    const ref = decodeField<TextRef>(textRefSchema, payload.ref, DEFAULT_TEXT_REF, 'ref', diagnostics);
-    if (ref.kind === 'builtin' && builtinTextById(ref.id) === undefined) {
-      diagnostics.push({ path: 'ref', message: `組み込みテキスト「${ref.id}」が存在しないため既定へ戻した` });
-      return { ref: DEFAULT_TEXT_REF };
-    }
-    return { ref };
-  },
-  encodePayload: (value) => ({ ref: { ...value.ref } }),
+  decodePayload: (payload, diagnostics) => decodeTextSelectionState(payload, '', diagnostics),
+  encodePayload: encodeTextSelectionState,
 });

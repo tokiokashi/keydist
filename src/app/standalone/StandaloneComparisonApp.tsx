@@ -5,7 +5,7 @@ import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
 import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
 import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { ComparisonStandalonePage } from '#hosts/standalone/index.ts';
-import { builtinStandaloneCatalog } from './catalog.ts';
+import { builtinPaneCatalog } from './catalog.ts';
 import { generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
@@ -25,7 +25,7 @@ const engineCache = createEngineCache();
 
 export function StandaloneComparisonApp() {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const catalog = useMemo(() => builtinStandaloneCatalog(), []);
+  const catalog = useMemo(() => builtinPaneCatalog(), []);
 
   const commitComparisonOptions = useDebouncedCommit<ComparisonOptions>(dispatch, {
     commandFor: (options) => setStandaloneAnalyzerOptionsCommand(comparisonAnalyzer.definition.id, options),

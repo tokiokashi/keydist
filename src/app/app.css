@@ -32,7 +32,8 @@ a {
 }
 
 /* 文脈バーを持つページは、バーを本体の幅いっぱいに張るので余白をページ側に任せる。 */
-.app-shell:has(> .standalone-page) {
+.app-shell:has(> .standalone-page),
+.app-shell:has(> .workspace-page) {
   width: 100%;
   padding: 0;
 }

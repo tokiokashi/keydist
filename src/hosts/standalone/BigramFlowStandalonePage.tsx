@@ -5,31 +5,23 @@ import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { EngineCache } from '#engine/cache.ts';
-import {
-  combinePaneStates,
-  conditionHeaderInfoFromResolvedInput,
-  PaneFrame,
-  setupNumbersOf,
-  targetChoiceGroups,
-  TargetSelection,
-  traceConditionSummary,
-} from '#hosts/shared/index.ts';
-import { nameTargets } from '#input/setup/index.ts';
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import { bigramFlowOptions, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
-import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
-import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
-import { targetNameSource } from './target-name-source.ts';
-import { useOptionsDraft } from './use-options-draft.ts';
+import { decodeStoredAnalyzerOptions } from '#hosts/shared/decode-analyzer-options.ts';
+import { BigramFlowPane } from '#hosts/shared/panes/BigramFlowPane.tsx';
+import type { PaneChrome, PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
+import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
+import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { useUrlOptions } from './use-url-options.ts';
-import { useAnalyzerPane } from './use-analyzer-pane.ts';
 import './standalone.css';
 
 /**
- * Bigram Flowの単体ページ（#544 Phase 3「最初の縦切り」）。
+ * Bigram Flowの単体ページ（#544 Phase 3「最初の縦切り」）。ペインは1枚だけで、Workspaceのペインと
+ * 同じcomponent（`hosts/shared/panes/BigramFlowPane.tsx`）を使う。ここが持つのは個別画面の器の
+ * 部分（文脈バー・共有のテキスト・URLからの解析設定の取り込み）と、値の持ち主（資産）への結び付け。
  *
  * 対象（配列かSetup。#578指摘1）は1つ、テキストは単体ページ全体で共有の
  * 「最後に使ったテキスト」を使う
@@ -48,7 +40,7 @@ export interface BigramFlowStandalonePageProps {
   readonly assetsReady: boolean;
   readonly dispatch: (command: Command<KeydistAssets>) => void;
   readonly cache: EngineCache;
-  readonly catalog: StandalonePaneCatalog;
+  readonly catalog: PaneCatalog;
   readonly generateTextId: TextIdGenerator;
   /** `TextChip`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
   readonly onTextContentCommit: TextContentCommit;
@@ -62,6 +54,9 @@ export interface BigramFlowStandalonePageProps {
   readonly history: ContextBarHistory;
 }
 
+/** 個別画面のペインの枠まわり。ペインのAnalyzer名がページのh1で、見出しを文脈バーの下に固定する。 */
+const STANDALONE_CHROME: PaneChrome = { headingLevel: 1, stickyHeader: true, autoOpenTargetSelection: true };
+
 export function BigramFlowStandalonePage({
   assets,
   assetsReady,
@@ -73,19 +68,13 @@ export function BigramFlowStandalonePage({
   onBigramFlowOptionsCommit,
   history,
 }: BigramFlowStandalonePageProps) {
-  const setups = assets.setupLibrary.setups;
-  const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
-
   // 対象（`AnalysisTarget`）はSingleのAnalyzerが共有する資産（`singleTargetSelection`。#663）が正。
   // まだ選んでいなければ既定の配列を使う（`effectiveSingleTarget`）。
   const analyzerId = bigramFlowAnalyzer.definition.id;
   const target = effectiveSingleTarget(assets.singleTargetSelection);
-  const setTarget = (next: typeof target) => dispatch(setSingleTargetCommand(next));
 
   // テキストは資産（textLibrary + standaloneTextSelection）が正。編集・選択・複製・削除は
-  // すべて共有部品`TextChip`（文脈バーのテキストのチップ。比較表・N感度と3ページで同じ操作を持つため。
-  // `resolve-pane-input.ts`が使う`resolveTextSelection`と同じものをここでも呼び、
-  // 実効テキストを求める）へ切り出した。
+  // すべて共有部品`TextChip`（文脈バーのテキストのチップ。比較表・N感度と3ページで同じ操作を持つため）。
   const resolvedText = useMemo(
     () => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary),
     [assets.standaloneTextSelection, assets.textLibrary],
@@ -112,50 +101,19 @@ export function BigramFlowStandalonePage({
     setOptionsDraft,
   });
 
-  const resolution = useMemo(
-    () => resolveStandalonePaneInput(target, setupsById, catalog, assets.setupLibrary.overrides, resolvedText),
-    [target, setupsById, catalog, assets.setupLibrary.overrides, resolvedText],
-  );
-
-  const pane = useAnalyzerPane(
+  const env: PaneEnvironment = useMemo(() => ({
+    setups: assets.setupLibrary.setups,
+    overrides: assets.setupLibrary.overrides,
+    catalog,
+    resolvedText,
     cache,
-    bigramFlowAnalyzer.definition,
-    optionsDraft,
-    resolution,
-  );
+    assetsReady,
+  }), [assets.setupLibrary, catalog, resolvedText, cache, assetsReady]);
 
-  const conditionRows = resolution.ok ? traceConditionSummary(resolution.input.cascade, catalog.setupCatalog) : [];
-  const header = resolution.ok
-    ? conditionHeaderInfoFromResolvedInput(resolution.input.layout, resolution.input.geometry)
-    : undefined;
-  const traceErrors = pane.trace.status === 'ready' || pane.trace.status === 'stale'
-    ? pane.trace.value.trace.errors
-    : [];
-
-  // 対象の名前（読み上げ用の名前と、見出しの対象・hoverに出すフル名）。単一対象なので集合は自分1つ。
-  const setupNumbers = useMemo(() => setupNumbersOf(setups), [setups]);
-  const named = useMemo(
-    () => nameTargets([targetNameSource(target, resolution, setupsById, setupNumbers, catalog.setupCatalog)])[0],
-    [target, resolution, setupsById, setupNumbers, catalog.setupCatalog],
-  );
-
-  const choiceGroups = useMemo(() => targetChoiceGroups({
-    layouts: catalog.setupCatalog.layouts,
-    userLayoutIds: new Set(catalog.userLayouts.keys()),
-    shapes: catalog.setupCatalog.shapes,
-    setups,
-    selected: [target],
-  }), [catalog, setups, target]);
-
-  const { Body, Settings } = bigramFlowAnalyzer;
-  const extraction = pane.extraction;
   const changeOptions = (next: BigramFlowOptions) => {
     setOptionsDraft(next);
     onBigramFlowOptionsCommit(next);
   };
-
-  const hasExtraction = extraction.status === 'ready' || extraction.status === 'stale';
-  const hasTrace = pane.trace.status === 'ready' || pane.trace.status === 'stale';
 
   return (
     <div className="standalone-page">
@@ -195,42 +153,15 @@ export function BigramFlowStandalonePage({
         style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
       >
         <div className="standalone-stage">
-          <PaneFrame
-            name={bigramFlowAnalyzer.name}
-            description={bigramFlowAnalyzer.description}
-            headingLevel={1}
-            stickyHeader
-            {...(named === undefined ? {} : { targetName: named.displayName })}
-            target={(
-              <TargetSelection
-                mode="single"
-                groups={choiceGroups}
-                selected={[target]}
-                summary={named === undefined ? [] : [{ key: named.key, label: named.displayName, fullName: named.fullName }]}
-                onChange={(next) => {
-                  if (next[0] !== undefined) setTarget(next[0]);
-                }}
-              />
-            )}
-            settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
-            onResetOptions={() => changeOptions(bigramFlowAnalyzer.defaultOptions)}
-            header={header}
-            conditionRows={conditionRows}
-            engineState={combinePaneStates(extraction, pane.trace)}
-            traceErrors={traceErrors}
+          <BigramFlowPane
+            env={env}
+            chrome={STANDALONE_CHROME}
+            target={target}
+            onTargetChange={(next) => dispatch(setSingleTargetCommand(next))}
+            options={optionsDraft}
+            onOptionsChange={changeOptions}
             settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}
-          >
-            {resolution.ok && hasExtraction && hasTrace ? (
-              <Body
-                layout={resolution.input.layout}
-                geometry={resolution.input.geometry}
-                trace={pane.trace.value.trace}
-                extracted={extraction.value.extracted}
-                options={optionsDraft}
-                onOptionsChange={changeOptions}
-              />
-            ) : undefined}
-          </PaneFrame>
+          />
         </div>
       </fieldset>
     </div>

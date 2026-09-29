@@ -5,7 +5,7 @@ import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
 import { nSensitivityAnalyzer } from '#analyzers/n-sensitivity/definition.tsx';
 import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { NSensitivityStandalonePage } from '#hosts/standalone/index.ts';
-import { builtinStandaloneCatalog } from './catalog.ts';
+import { builtinPaneCatalog } from './catalog.ts';
 import { generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
@@ -20,7 +20,7 @@ const engineCache = createEngineCache();
 
 export function StandaloneNSensitivityApp() {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const catalog = useMemo(() => builtinStandaloneCatalog(), []);
+  const catalog = useMemo(() => builtinPaneCatalog(), []);
 
   const commitOptions = useDebouncedCommit<NSensitivityOptions>(dispatch, {
     commandFor: (options) => setStandaloneAnalyzerOptionsCommand(nSensitivityAnalyzer.definition.id, options),

@@ -13,7 +13,7 @@ import {
   nonDefaultConditionRows,
   summarizeNonDefaultConditions,
   traceConditionSummary,
-} from '#hosts/shared/condition-summary.ts';
+} from './condition-summary.ts';
 
 /**
  * 解決に失敗した対象の名前。実効の物理配列・条件は決まっていないので、手持ちから分かる範囲の

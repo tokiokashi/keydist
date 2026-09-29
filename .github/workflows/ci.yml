@@ -74,6 +74,7 @@ jobs:
             .output/public/analyzer/index.html
             .output/public/input/index.html
             .output/public/legacy.html
+            .output/public/404.html
           )
 
           for path in "${paths[@]}"; do

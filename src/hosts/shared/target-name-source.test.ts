@@ -5,11 +5,11 @@ import { PHYSICAL_SHAPES, type PhysicalShape } from '#input/shapes/geometry.ts';
 import { nameTargets, type AnalysisTarget, type Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES, setSettingsOverride, type SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import type { ResolvedText } from '#input/text/resolve.ts';
-import { resolveStandalonePaneInput, type StandalonePaneCatalog } from './resolve-pane-input.ts';
-import { setupNumbersOf } from '#hosts/shared/target-choices.ts';
+import { resolvePaneInput, type PaneCatalog } from './resolve-pane-input.ts';
+import { setupNumbersOf } from './target-choices.ts';
 import { targetNameSource } from './target-name-source.ts';
 
-const CATALOG: StandalonePaneCatalog = {
+const CATALOG: PaneCatalog = {
   setupCatalog: {
     layouts: LAYOUT_BY_ID,
     shapes: new Map<string, PhysicalShape>(Object.values(PHYSICAL_SHAPES).map((shape) => [shape.id, shape])),
@@ -36,7 +36,7 @@ function displayNames(
   const numbers = setupNumbersOf(setups);
   return nameTargets(targets.map((target) => targetNameSource(
     target,
-    resolveStandalonePaneInput(target, setupsById, CATALOG, overrides, EN_TEXT),
+    resolvePaneInput(target, setupsById, CATALOG, overrides, EN_TEXT),
     setupsById,
     numbers,
     CATALOG.setupCatalog,

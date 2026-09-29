@@ -9,7 +9,7 @@
   "scripts": {
     "postinstall": "patch-package --error-on-fail",
     "dev": "vite",
-    "build": "vite build && node --experimental-strip-types scripts/write-legacy-analyzer-redirect.ts && node --experimental-strip-types --experimental-vm-modules --disable-warning=ExperimentalWarning scripts/check-modulepreload.ts",
+    "build": "vite build && node --experimental-strip-types scripts/write-legacy-analyzer-redirect.ts && node --experimental-strip-types --experimental-vm-modules --disable-warning=ExperimentalWarning scripts/check-modulepreload.ts && node --experimental-strip-types scripts/write-workspace-fallback.ts",
     "check:sample": "node --experimental-strip-types scripts/check-sample-text.ts",
     "generate:kana-fixtures": "node --experimental-strip-types scripts/generate-kana-fixtures.ts",
     "generate:analyzer-regression-fixture": "node --experimental-strip-types scripts/gen-analyzer-regression-fixture.ts",
@@ -22,6 +22,7 @@
   "dependencies": {
     "@tanstack/react-router": "^1.170.38",
     "@tanstack/react-start": "^1.168.57",
+    "dockview-react": "^8.3.1",
     "motion": "^13.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

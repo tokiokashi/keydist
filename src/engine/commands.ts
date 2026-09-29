@@ -40,6 +40,7 @@ import {
   type MultiTargetSelection,
 } from './multi-target-selection.ts';
 import { withSingleTarget, type SingleTargetSelection } from './single-target-selection.ts';
+import { findWorkspace, withWorkspaceText, type WorkspaceLibrary } from './workspace.ts';
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import {
   resetSettingsItem,
@@ -122,6 +123,13 @@ export interface KeydistAssets {
    * 連動させない（まだ選んでいない時にMultiで基準を選ぶと、一度だけ埋める。`setMultiBaselineCommand`）。
    */
   readonly singleTargetSelection: SingleTargetSelection;
+  /**
+   * 保存したWorkspaceの手持ち（#757）。ペイン・配置・自分のテキストの選択まで1件ずつが
+   * 自分で持つので、他の資産とは対にならない。新しいキーとして足す。
+   * Workspaceのテキストの選択はここ（`Workspace.text`）に入り、`textLibrary`（自作テキストの実体）は
+   * 個別画面と共有する。
+   */
+  readonly workspaces: WorkspaceLibrary;
 }
 
 type SetupLibraryComputation =
@@ -295,20 +303,31 @@ export function renameFingerAssignmentCommand(id: string, name: string): Command
 }
 
 /**
- * テキストの選択の持ち主。将来Workspaceが自分の選択を持つ時に2つ目の値が増える前提の型に
- * しておく。今実装しているのは単体ページの1つだけだが、コマンドの名前に
- * `standaloneTextSelection`を直接埋め込まず、引数として持ち主を渡す形にしておく
- * （レビュー指摘: `current`止まりの名前だと、Workspace用の2つ目の持ち主を足す時に
- * 別名の関数一式を丸ごと複製する羽目になる）。
+ * テキストの選択の持ち主。個別画面は全体で1つの選択（`standaloneTextSelection`）、Workspaceは
+ * 自分の選択を持つ（`Workspace.text`。#544 §5）。コマンドの名前に持ち主を埋め込まず、引数として
+ * 渡す形にしてある（持ち主が増えても、別名の関数一式を複製しない）。
  */
-export type TextSelectionHolder = 'standalone';
+export type TextSelectionHolder = 'standalone' | { readonly workspaceId: string };
 
-/** 持ち主から、その選択を保持する`KeydistAssets`のキーを引く。 */
-function textSelectionAssetKey(holder: TextSelectionHolder): 'standaloneTextSelection' {
-  switch (holder) {
-    case 'standalone':
-      return 'standaloneTextSelection';
-  }
+/** 持ち主が今持っている選択。Workspaceが（他タブでの削除等で）無ければ`undefined`。 */
+export function textSelectionOf(
+  assets: Readonly<KeydistAssets>,
+  holder: TextSelectionHolder,
+): TextSelectionState | undefined {
+  return holder === 'standalone'
+    ? assets.standaloneTextSelection
+    : findWorkspace(assets.workspaces, holder.workspaceId)?.text;
+}
+
+/** 持ち主の選択を書き換える`changes`の断片。値が同じ参照なら、その資産は変わらない（`applyCommand`が判定する）。 */
+function withTextSelectionOf(
+  assets: Readonly<KeydistAssets>,
+  holder: TextSelectionHolder,
+  selection: TextSelectionState,
+): Partial<KeydistAssets> {
+  return holder === 'standalone'
+    ? { standaloneTextSelection: selection }
+    : { workspaces: withWorkspaceText(assets.workspaces, holder.workspaceId, selection) };
 }
 
 /**
@@ -324,16 +343,18 @@ function currentTextCommand(
   compute: (current: { readonly library: TextLibrary; readonly selection: TextSelectionState }) =>
     { readonly library: TextLibrary; readonly selection: TextSelectionState },
 ): Command<KeydistAssets> {
-  const key = textSelectionAssetKey(holder);
   return (current) => {
-    const next = compute({ library: current.textLibrary, selection: current[key] });
-    if (next.library === current.textLibrary && next.selection === current[key]) {
+    const selection = textSelectionOf(current, holder);
+    // 持ち主のWorkspaceが（他タブでの削除等で）無ければ、何も書かない
+    if (selection === undefined) return { kind: 'no-op' };
+    const next = compute({ library: current.textLibrary, selection });
+    if (next.library === current.textLibrary && next.selection === selection) {
       return { kind: 'no-op' };
     }
     return {
       kind: 'applied',
       label,
-      changes: { textLibrary: next.library, [key]: next.selection },
+      changes: { textLibrary: next.library, ...withTextSelectionOf(current, holder, next.selection) },
     };
   };
 }
@@ -415,26 +436,27 @@ export function deleteTextCommand(holder: TextSelectionHolder, id: string): Comm
  * （他のコマンドと同じ「存在しない対象は無視する」方針。#544 §8-5）。
  */
 export function selectTextCommand(holder: TextSelectionHolder, ref: TextRef): Command<KeydistAssets> {
-  const key = textSelectionAssetKey(holder);
   return (current) => {
+    const selection = textSelectionOf(current, holder);
+    if (selection === undefined) return { kind: 'no-op' };
     if (ref.kind === 'user' && !current.textLibrary.texts.some((text) => text.id === ref.id)) {
       return { kind: 'no-op' };
     }
     if (ref.kind === 'builtin' && builtinTextById(ref.id) === undefined) {
       return { kind: 'no-op' };
     }
-    const next = withTextSelection(current[key], ref);
+    const next = withTextSelection(selection, ref);
     // 開いたコピーの「新しい」印はここで外す（#611）
     const nextLibrary = ref.kind === 'user'
       ? markUserTextsSeen(current.textLibrary, [ref.id])
       : current.textLibrary;
-    if (next === current[key] && nextLibrary === current.textLibrary) return { kind: 'no-op' };
+    if (next === selection && nextLibrary === current.textLibrary) return { kind: 'no-op' };
     return {
       kind: 'applied',
       label: 'テキストを選ぶ',
       changes: nextLibrary === current.textLibrary
-        ? { [key]: next }
-        : { [key]: next, textLibrary: nextLibrary },
+        ? withTextSelectionOf(current, holder, next)
+        : { ...withTextSelectionOf(current, holder, next), textLibrary: nextLibrary },
     };
   };
 }
@@ -480,7 +502,6 @@ export function setTextContentCommand(
   text: string,
   generateId: TextIdGenerator,
 ): Command<KeydistAssets> {
-  const key = textSelectionAssetKey(holder);
   return (current) => {
     const library = current.textLibrary;
 
@@ -495,7 +516,9 @@ export function setTextContentCommand(
     // 生の選択ではなく解決後の参照と比べる。選択が消えた自作テキストを指していて既定の
     // 組み込みへ戻って表示されている間も、その組み込みへの編集として複製を作るため
     // （#544 レビュー: 生の参照と比べると一致せず、打った内容が全部捨てられていた）
-    const resolvedRef = resolveTextSelection(current[key], library).ref;
+    const selection = textSelectionOf(current, holder);
+    if (selection === undefined) return { kind: 'no-op' };
+    const resolvedRef = resolveTextSelection(selection, library).ref;
     const builtin = builtinTextById(ref.id);
     if (builtin === undefined || builtin.text === text) return { kind: 'no-op' };
 
@@ -515,7 +538,7 @@ export function setTextContentCommand(
     return {
       kind: 'applied',
       label: 'テキストを変更する',
-      changes: { textLibrary: nextLibrary, [key]: nextSelection },
+      changes: { textLibrary: nextLibrary, ...withTextSelectionOf(current, holder, nextSelection) },
     };
   };
 }

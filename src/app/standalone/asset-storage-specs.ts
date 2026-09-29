@@ -20,6 +20,9 @@ import { MULTI_TARGET_SELECTION_STORAGE_KEY } from '#platform/assets/multi-targe
 import { initialSingleTargetSelection } from '#engine/single-target-selection.ts';
 import { SINGLE_TARGET_SELECTION_CODEC } from '#engine/single-target-selection-codec.ts';
 import { SINGLE_TARGET_SELECTION_STORAGE_KEY } from '#platform/assets/single-target-selection-storage.ts';
+import { initialWorkspaceLibrary } from '#engine/workspace.ts';
+import { WORKSPACE_LIBRARY_CODEC } from '#engine/workspace-codec.ts';
+import { WORKSPACES_STORAGE_KEY } from '#platform/assets/workspaces-storage.ts';
 
 /**
  * `KeydistAssets`（`engine/commands.ts`）の各キーを、永続化に要る3点
@@ -96,7 +99,23 @@ export const ASSET_STORAGE_SPECS: { readonly [K in keyof KeydistAssets]: AssetSt
     codec: SINGLE_TARGET_SELECTION_CODEC,
     initial: initialSingleTargetSelection,
   },
+  workspaces: {
+    storageKey: WORKSPACES_STORAGE_KEY,
+    codec: WORKSPACE_LIBRARY_CODEC,
+    initial: initialWorkspaceLibrary,
+  },
 };
 
 /** `ASSET_STORAGE_SPECS`の全キー。反復のたびに`Object.keys`とキャストを書かずに済むように。 */
 export const ASSET_KEYS = Object.keys(ASSET_STORAGE_SPECS) as readonly (keyof KeydistAssets)[];
+
+/**
+ * 全資産の初期値。storageに何も無い時の手持ちで、読み込み前の描画にも使う。
+ * `ASSET_STORAGE_SPECS`が`KeydistAssets`の全キーを型で強制しているので、`unknown`経由のcastは
+ * 「全キー分そろっている」という保証済みの前提を表す1箇所だけの変換として許容する
+ * （`Array#map`がタプルの相関をunionへ潰してしまうため）。
+ */
+export function initialAssets(): KeydistAssets {
+  const entries = ASSET_KEYS.map((key) => [key, ASSET_STORAGE_SPECS[key].initial()] as const);
+  return Object.fromEntries(entries) as unknown as KeydistAssets;
+}
