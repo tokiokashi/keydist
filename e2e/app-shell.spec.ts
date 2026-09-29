@@ -97,15 +97,52 @@ test('ボタンで重ねて出している間は、Tabで本体へ抜けない',
   await expectSidebarShown(page);
   const sidebar = page.locator('#app-sidebar');
   await expect(sidebar.getByRole('link', { name: 'Bigram Flow', exact: true })).toBeFocused();
-  for (let i = 0; i < 12; i++) {
-    await page.keyboard.press('Tab');
-    const inside = await page.evaluate(() => {
+  // サイドバーの端を越えたTabは、ブラウザ自身のUIへ抜けてBODYに見える。それは「本体へ抜けた」ではないので、
+  // 端を越えない回数だけ往復し、常にサイドバーの中の要素にあることを見る（BODYは内側とみなさない）。
+  const { count, index } = await page.evaluate(() => {
+    const items = [...document.querySelectorAll<HTMLElement>('#app-sidebar a[href], #app-sidebar button:not([disabled])')];
+    return { count: items.length, index: items.indexOf(document.activeElement as HTMLElement) };
+  });
+  expect(index).toBeGreaterThanOrEqual(0);
+  // 端を越えた1回だけは、ブラウザのUIへ抜けてBODYになってよい。本体（.shell-body）へ入っていないことを見る。
+  const where = () =>
+    page.evaluate(() => {
       const active = document.activeElement;
-      return active === null || active === document.body || document.getElementById('app-sidebar')!.contains(active);
+      if (active === null || active === document.body) return 'body';
+      if (document.getElementById('app-sidebar')!.contains(active)) return 'sidebar';
+      return document.querySelector('.shell-body')!.contains(active) ? 'main' : 'other';
     });
-    expect(inside, `Tab ${i + 1}回目でサイドバーの外へ出た`).toBe(true);
+  for (let i = 0; i < count - 1 - index; i++) {
+    await page.keyboard.press('Tab');
+    expect(await where(), `Tab ${i + 1}回目でサイドバーの外へ出た`).toBe('sidebar');
   }
+  await page.keyboard.press('Tab');
+  expect(['sidebar', 'body'], '端を越えたTabが本体へ入った').toContain(await where());
+  await page.evaluate(() => {
+    const items = document.querySelectorAll<HTMLElement>('#app-sidebar a[href], #app-sidebar button:not([disabled])');
+    items[items.length - 1]!.focus();
+  });
+  for (let i = 0; i < count - 1; i++) {
+    await page.keyboard.press('Shift+Tab');
+    expect(await where(), `Shift+Tab ${i + 1}回目でサイドバーの外へ出た`).toBe('sidebar');
+  }
+  await page.keyboard.press('Shift+Tab');
+  expect(['sidebar', 'body'], '端を越えたShift+Tabが本体へ入った').toContain(await where());
   await expect(sidebar).toBeInViewport();
+});
+
+test('スマホ幅で暗幕をタップして閉じると、フォーカスは開くボタンに戻る', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await waitForHydration(page);
+  const toggle = page.getByRole('button', { name: 'サイドバーを開く' });
+  await toggle.click();
+  const sidebar = page.locator('#app-sidebar');
+  await expect(sidebar).toBeInViewport();
+  await expect(sidebar.getByRole('link').first()).toBeFocused();
+  await page.locator('.shell-scrim').click({ position: { x: 370, y: 400 } });
+  await expect(sidebar).not.toBeInViewport();
+  await expect(toggle).toBeFocused();
 });
 
 test('スマホ幅ではサイドバーは引き出しで、リンクを押すと閉じる', async ({ page }) => {
