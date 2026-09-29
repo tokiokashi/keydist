@@ -98,3 +98,28 @@
   color: var(--text-muted);
   font-weight: 500;
 }
+
+/*
+ * 行の見出し（対象名）の列は、横にスクロールしても左端に残す。どの行の値か分からなくなるため。
+ * 背景を敷くのは、下をスクロールする数値が透けないようにするため。
+ * border-collapseでは固定したセルの罫線がスクロールに付いてこないので、右の境界はbox-shadowで描く。
+ * 縦方向の固定（ペイン見出し）とは別の軸で、この表の外側にあるので重ならない。
+ */
+.n-sensitivity-table th[scope='row'],
+.n-sensitivity-table thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg);
+  box-shadow: 1px 0 0 var(--border-strong);
+}
+
+/* 狭い幅では固定した列が画面を占めすぎないよう幅を絞り、長い名前は折り返して全文をその場で読めるようにする。 */
+@container (max-width: 40rem) {
+  .n-sensitivity-table th[scope='row'] {
+    max-width: 7.5rem;
+    white-space: normal;
+    min-width: 5rem;
+    overflow-wrap: break-word;
+  }
+}
