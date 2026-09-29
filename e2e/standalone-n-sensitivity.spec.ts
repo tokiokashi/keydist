@@ -268,3 +268,32 @@ test('対象が空の時はペインに選ぶボタンを出し、全メンバ�
   await expect(page.locator('.pane-body')).not.toContainText('配列・Setupを選ぶ');
   await expect(page.locator('.n-sensitivity-svg')).toHaveCount(0);
 });
+
+test('狭い画面（390）でもチャートは置かれた領域の幅で描かれ、横あふれせず、目盛り文字は10pxのまま', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto('/standalone/n-sensitivity');
+  await addTarget(page, 'layout:qwerty');
+  await addTarget(page, 'layout:colemak-dh');
+
+  const svg = page.locator('.n-sensitivity-svg');
+  await expect(svg).toBeVisible({ timeout: 10_000 });
+  // 幅を測って描き直した後の値で確かめる（viewBoxの幅が本体の幅と一致するまで待つ）。
+  await expect.poll(async () => {
+    const box = await svg.boundingBox();
+    const viewBox = await svg.getAttribute('viewBox');
+    return box !== null && viewBox !== null && Number(viewBox.split(' ')[2]) === Math.floor(box.width);
+  }).toBe(true);
+
+  const body = await page.locator('.pane-body').boundingBox();
+  const box = await svg.boundingBox();
+  expect(Math.abs(box!.width - body!.width)).toBeLessThan(1);
+
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBe(0);
+
+  // 表示と座標系が等倍なので、文字はCSSの指定どおり10pxで出る。
+  const fontSize = await page.locator('.n-sensitivity-axis-label').first().evaluate((el) => getComputedStyle(el).fontSize);
+  expect(fontSize).toBe('10px');
+  const scale = await svg.evaluate((el) => (el as SVGSVGElement).getBoundingClientRect().width / (el as SVGSVGElement).viewBox.baseVal.width);
+  expect(scale).toBeCloseTo(1, 1);
+});
