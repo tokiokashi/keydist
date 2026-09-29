@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openTextChip } from './context-bar-helper.ts';
+import { toggleTarget } from './pane-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
@@ -34,7 +35,6 @@ for (const path of PAGES) {
     ]);
     for (const box of barTops) expect(Math.abs((box?.y ?? -100) - (barTops[0]?.y ?? 0))).toBeLessThan(8);
     const headerTops = await Promise.all([
-      page.locator('.pane-frame-title').boundingBox(),
       page.locator('.pane-frame-target').boundingBox(),
       page.getByRole('button', { name: '解析設定' }).boundingBox(),
     ]);
@@ -69,6 +69,22 @@ test('スマホ幅: テキストのチップは名前が8文字以上読める�
     return count;
   });
   expect(visible).toBeGreaterThanOrEqual(8);
+});
+
+test('スマホ幅の見出しにAnalyzer名が出ず、対象名が省略されずに見える', async ({ page }) => {
+  await openReady(page, 'bigram-flow');
+  // 名前は見た目から外れるが、h1・ⓘのラベル・ペインの名前には残る。
+  const title = page.getByRole('heading', { name: 'Bigram Flow', level: 1 });
+  await expect(title).toHaveCount(1);
+  expect((await title.boundingBox())?.width ?? 0).toBeLessThanOrEqual(2);
+  await expect(page.getByRole('button', { name: 'Bigram Flowの説明' })).toBeVisible();
+
+  await toggleTarget(page, 'layout:nicola');
+  await page.keyboard.press('Escape');
+  const summary = page.locator('.target-selection-summary');
+  await expect(summary).toHaveText('親指シフト（NICOLA）');
+  expect(await summary.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
 });
 
 test('スマホ幅: 文脈バーの元に戻す・やり直すが直接押せ、共有は⋯のメニューから使える', async ({ page, context }) => {
@@ -118,5 +134,7 @@ test.describe('パソコン幅', () => {
     await expect(page.getByRole('button', { name: '画面のメニュー' })).toBeHidden();
     const header = await page.locator('.pane-frame-header').boundingBox();
     expect(header?.height).toBeLessThan(40);
+    // パソコン幅では、見出しにAnalyzer名を出す。
+    expect((await page.getByRole('heading', { name: 'Bigram Flow', level: 1 }).boundingBox())?.width ?? 0).toBeGreaterThan(40);
   });
 });
