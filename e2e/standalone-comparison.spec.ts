@@ -628,3 +628,26 @@ test('基準の配列を外すと基準なしになり、付け直すと基準�
   await expect(table.locator('tr[data-baseline="true"]')).toContainText('QWERTY');
   expect(await table.innerText()).toBe(before);
 });
+
+test('読み込み前のHTMLに空状態のボタンが無く、保存済みの対象があれば読み込み後に表が出る（#664）', async ({ page }) => {
+  // プリレンダーされたHTML（=ハイドレーション前に見える画面）。保存済みの対象が
+  // まだ反映されていないだけの間に、押せない「配列・Setupを選ぶ」を出さない。
+  for (const path of ['/standalone/comparison', '/standalone/n-sensitivity']) {
+    const html = await (await page.request.get(path)).text();
+    expect(html, path).not.toContain('配列・Setupを選ぶ');
+  }
+
+  await page.addInitScript((key) => {
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        version: 1,
+        targets: [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'layout', layoutId: 'dvorak' }],
+        colorSlots: {},
+      }),
+    );
+  }, MULTI_TARGET_SELECTION_KEY);
+  await page.goto('/standalone/comparison');
+  await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
+  await expect(page.getByRole('button', { name: '配列・Setupを選ぶ' })).toHaveCount(0);
+});
