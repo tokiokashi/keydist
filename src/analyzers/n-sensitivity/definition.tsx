@@ -101,6 +101,7 @@ function NSensitivityChart({
   const yTickValues = Array.from({ length: yTicks + 1 }, (_, i) => (yMax / yTicks) * i);
 
   return (
+    <div className="n-sensitivity-chart">
     <svg
       className="n-sensitivity-svg"
       viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
@@ -164,6 +165,7 @@ function NSensitivityChart({
         );
       })}
     </svg>
+    </div>
   );
 }
 
