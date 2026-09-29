@@ -14,6 +14,38 @@
   .standalone-stage {
     padding: 0.85rem 1rem 2.5rem;
   }
+
+  /*
+   * スマホ幅の個別画面では、ペインの見出しを1行にする（Analyzer名 ⓘ / 対象 / 解析設定 / ⋯）。
+   * ペインの幅だけで決まる2段（pane-frame.css）を、ここで上書きする。Workspaceのペインは
+   * この画面の外なので影響を受けない。名前や対象名が長い時は省略して1行を保つ。
+   */
+  .standalone-page .pane-frame-header {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+  }
+
+  .standalone-page .pane-frame-name {
+    flex: 0 1 auto;
+    min-width: 4rem;
+  }
+
+  .standalone-page .pane-frame-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .standalone-page .pane-frame-target {
+    flex: 1 1 5rem;
+    min-width: 4rem;
+  }
+
+  .standalone-page .pane-settings-button,
+  .standalone-page .pane-frame-menu {
+    flex: none;
+  }
 }
 
 .standalone-control {

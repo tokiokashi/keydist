@@ -1,6 +1,7 @@
 import type { Command } from '#input/commands/index.ts';
 import { setCascadeOverrideCommand, type KeydistAssets } from '#engine/commands.ts';
 import { resolveDefaultShapeId } from '#engine/settings-items.ts';
+import { shortShapeNames } from './short-shape-name.ts';
 import './context-bar.css';
 
 /**
@@ -23,9 +24,12 @@ export interface DefaultShapeChipProps {
 export function DefaultShapeChip({ overrides, dispatch, shapes }: DefaultShapeChipProps) {
   const current = resolveDefaultShapeId(overrides);
   const currentIsKnown = shapes.has(current);
+  const shortNames = shortShapeNames([...shapes.values()]);
   return (
     <label className="context-chip context-select-chip" title="配列を対象にした時に使う物理配列">
       <span className="context-chip-key">既定の物理配列</span>
+      {/* スマホ幅ではこの短い名前を見せ、選択は透明にしたselectが受ける（タップで選択肢が開く）。 */}
+      <span className="context-select-short" aria-hidden="true">{currentIsKnown ? (shortNames.get(current) ?? current) : '（見つからない物理配列）'}</span>
       <select
         aria-label="既定の物理配列"
         value={current}
