@@ -14,6 +14,8 @@
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(10px);
+  /* 狭い時の見た目は画面幅ではなくバー自身の幅で決める（サイドバーの固定で本体の幅が変わるため）。 */
+  container: context-bar / inline-size;
 }
 
 .context-bar-fieldset {
@@ -233,7 +235,7 @@ button.context-chip:hover:not(:disabled),
   line-height: 1.6;
 }
 
-/* スマホ幅でだけ見せるアイコン（パソコン幅は文字のラベルを見せる）。 */
+/* バーが狭い時だけ見せるアイコン（広い時は文字のラベルを見せる）。 */
 .context-chip-icon {
   display: none;
 }
@@ -306,18 +308,27 @@ button.context-chip:hover:not(:disabled),
   outline-offset: 2px;
 }
 
-/*
- * スマホ幅: 全体を1行に収める（☰ / テキストのチップ / 既定の物理配列のチップ / Undo・Redo / 共有）。
- * そのために「テキスト」「既定の物理配列」の文字は見た目から省き（読み上げには残す）、
- * 物理配列はアイコンだけにし、共有はアイコンだけにする（Undo/Redoと共に常時出す）。
- * チップが余る幅を分け合い、足りない時はテキストのチップが省略して縮む。
- */
+/* バー自身の余白と間隔は、自分の幅では変えられない（コンテナの外側）ので画面幅で詰める。 */
 @media (max-width: 760px) {
   .context-bar {
     padding: 0.4rem 0.75rem;
     gap: 0.35rem;
   }
+}
 
+/*
+ * 文脈バーが狭い時: 全体を1行に収める（☰ / テキストのチップ / 既定の物理配列のチップ / Undo・Redo / 共有）。
+ * そのために「テキスト」「既定の物理配列」の文字とテキストの言語の札は見た目から省き（読み上げには残す）、
+ * 物理配列はアイコンだけにし、共有もアイコンだけにする（Undo/Redoと共に常時出す）。
+ * チップが余る幅を分け合い、足りない時はテキストのチップが省略して縮む。
+ *
+ * 境目は、テキストのチップが8文字読める最小幅（338px）＋物理配列のチップの幅（307px。selectの上限12remで切られた幅で、
+ * どの配列を選んでいても同じ。この上限を変えるなら閾値も見直す）
+ * ＋Undo/Redo・共有（151px）＋行の間隔（8px×2）＝812pxに、サイドバーを固定していない時に左端へ入る
+ * ☰（32px＋間隔8px）を足した852pxを、rem（16px基準）へ丸めた53.5rem。これ未満で3つを同時に切り替える
+ * （中間段階は置かない）。コンテナの幅は余白を除いた内側の幅。
+ */
+@container context-bar (max-width: 53.5rem) {
   .context-bar-items {
     gap: 0.35rem;
   }
@@ -345,6 +356,8 @@ button.context-chip:hover:not(:disabled),
 
   .text-chip .context-chip-value {
     flex: 1 1 auto;
+    /* 伸びた枠の中でbuttonの既定（中央寄せ）を継がず、左端から読ませる。 */
+    text-align: start;
   }
 
   .context-share-label {
