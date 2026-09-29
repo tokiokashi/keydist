@@ -49,6 +49,12 @@ a {
   max-width: 50rem;
 }
 
+/* 読み物の幅は1行が長くなりすぎない50remに抑え、ページの中央に置く。左に寄せると、
+   パソコン幅で本体の右側だけが大きく空く（#740）。 */
+.hero {
+  margin-inline: auto;
+}
+
 .eyebrow {
   margin: 0 0 0.5rem;
   color: var(--text-muted);
