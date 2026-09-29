@@ -1080,3 +1080,91 @@ test('条件を変えたSetupを選んでも、対象ボタンは名前だけで
   await expect(targetButton(page)).toHaveAccessibleName('対象: QWERTY');
   await expect(page.locator('.pane-condition-summary summary')).toContainText('同指連続のホーム復帰距離');
 });
+
+/** Keyboard Flowのエリア（SVG）の画面上の大きさと、キー1つの画面上の大きさ。 */
+async function keyboardFlowMetrics(page: Page) {
+  const svgBox = await page.locator('.flow-keyboard-svg').boundingBox();
+  const keyBox = await page.locator('.flow-keyboard-svg .flow-key rect').first().boundingBox();
+  if (!svgBox || !keyBox) throw new Error('Keyboard Flowが描画されていない');
+  return { areaWidth: svgBox.width, areaHeight: svgBox.height, keyWidth: keyBox.width, keyHeight: keyBox.height };
+}
+
+async function measureAcross(page: Page, kinds: readonly string[]) {
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toBeVisible({ timeout: 10_000 });
+  const select = page.getByLabel('既定の物理配列');
+  const measured: Awaited<ReturnType<typeof keyboardFlowMetrics>>[] = [];
+  for (const kind of kinds) {
+    await select.selectOption(kind);
+    await expect(flow).toHaveAttribute('data-geometry-id', kind, { timeout: 10_000 });
+    measured.push(await keyboardFlowMetrics(page));
+  }
+  return measured;
+}
+
+test('Keyboard Flow: 物理配列を切り替えても、エリアの縦横比とキーの画面上の大きさが変わらない（#744）', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/standalone/bigram-flow');
+  const [first, ...rest] = await measureAcross(page, ['row-staggered', 'ortholinear', 'jis-column-staggered']);
+  if (!first) throw new Error('測れていない');
+  for (const m of rest) {
+    expect(m.areaWidth / m.areaHeight).toBeCloseTo(first.areaWidth / first.areaHeight, 2);
+    expect(m.areaWidth).toBeCloseTo(first.areaWidth, 1);
+    expect(m.keyWidth).toBeCloseTo(first.keyWidth, 1);
+    expect(m.keyHeight).toBeCloseTo(first.keyHeight, 1);
+  }
+});
+
+test('Keyboard Flow: スマホ幅（390px）でも横スクロールが出ず、物理配列どうしの縮尺は揃ったまま（#744）', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/standalone/bigram-flow');
+  const [a, b] = await measureAcross(page, ['row-staggered', 'ortholinear']);
+  if (!a || !b) throw new Error('測れていない');
+  const overflow = await page.evaluate(() => {
+    const stage = document.querySelector('.flow-stage') as HTMLElement;
+    return {
+      page: document.documentElement.scrollWidth - window.innerWidth,
+      stage: stage.scrollWidth - stage.clientWidth,
+    };
+  });
+  expect(overflow.page).toBeLessThanOrEqual(0);
+  expect(overflow.stage).toBeLessThanOrEqual(0);
+  expect(a.areaWidth).toBeLessThanOrEqual(390);
+  expect(b.keyWidth).toBeCloseTo(a.keyWidth, 1);
+  expect(b.areaHeight).toBeCloseTo(a.areaHeight, 1);
+});
+
+test('Keyboard Flow: 縮んでも同キー連打のラベルは読める大きさのまま、線は画面上で見える太さを保つ（#744）', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+
+  const badge = page.locator('.flow-repeat-badge text').first();
+  await expect(badge).toBeAttached();
+  // 文字の枠の高さ（フォントサイズより小さい）。縮んでいない時（約6px）を下回らない。
+  const glyphHeight = await badge.evaluate((el) => el.getBoundingClientRect().height);
+  expect(glyphHeight).toBeGreaterThanOrEqual(6);
+
+  const thinnest = await page.locator('[data-flow-edge="true"]').evaluateAll((edges) => {
+    const svg = document.querySelector('.flow-keyboard-svg') as SVGSVGElement;
+    const zoom = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
+    return Math.min(...edges.map((edge) => Number(edge.getAttribute('stroke-width')) * zoom));
+  });
+  expect(thinnest).toBeGreaterThanOrEqual(1.2);
+});
+
+test('Keyboard Flow: 390pxでホバーした時、行き先件数のバッジは拡大されず、連打ラベルだけが拡大される（#744）', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+
+  const repeatTransform = await page.locator('.flow-repeat-badge').first().getAttribute('transform');
+  expect(repeatTransform).not.toContain('scale(1)');
+
+  await page.locator('.flow-key[data-key-id="a"]').hover({ force: true });
+  const destinations = page.locator('.flow-key-badge:not(.flow-repeat-badge)');
+  await expect(destinations.first()).toBeAttached();
+  const transforms = await destinations.evaluateAll((els) => els.map((el) => el.getAttribute('transform') ?? ''));
+  expect(transforms.length).toBeGreaterThan(0);
+  for (const transform of transforms) expect(transform).toContain('scale(1)');
+});
