@@ -269,7 +269,7 @@ test('トップは道具の全体像を説明するページで、旧版への�
   for (const name of ['Analyzer', 'Single と Multi', '始め方', 'Workspace']) {
     await expect(hero.getByRole('heading', { name, level: 2, exact: true })).toBeVisible();
   }
-  await expect(hero.getByText('選んだ配列は、Single と Multi で別々です。')).toBeVisible();
+  await expect(hero.getByText('複数の配列を選んで、情報を比較します。')).toBeVisible();
   await expect(hero.locator('a[href*="classic"]')).toHaveCount(0);
   await expect(page.locator('#app-sidebar').locator('a[href*="classic"]')).toHaveCount(0);
   await expect(page.getByRole('link', { name: '旧版' })).toHaveCount(0);
@@ -278,7 +278,8 @@ test('トップは道具の全体像を説明するページで、旧版への�
   await expect(page).toHaveURL(/\/analyzer\/?$/);
 });
 
-test('トップの画面の名前から各画面に行ける', async ({ page }) => {
+test('トップの画面の名前から各画面に行ける（見本が出るスマホ幅）', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
   const targets = [
     ['Bigram Flow', /\/standalone\/bigram-flow$/],
     ['比較表', /\/standalone\/comparison$/],
@@ -290,4 +291,17 @@ test('トップの画面の名前から各画面に行ける', async ({ page }) 
     await page.locator('.hero').getByRole('link', { name, exact: true }).click();
     await expect(page).toHaveURL(url);
   }
+});
+
+test('トップのサイドバーの見本は、サイドバーが引き出しになるスマホ幅でだけ出る', async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.goto('/');
+  await waitForHydration(page);
+  const sample = page.getByRole('group', { name: 'サイドバーの見本' });
+  await expect(page.locator('#app-sidebar')).toBeVisible();
+  await expect(sample).toBeHidden();
+
+  await page.setViewportSize({ width: 390, height: 800 });
+  await expect(sample).toBeVisible();
+  await expect(sample.getByRole('link', { name: 'Bigram Flow', exact: true })).toBeVisible();
 });

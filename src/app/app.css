@@ -75,28 +75,28 @@ h1 {
   font-size: 0.85rem;
 }
 
-/* 全体像の説明。左にサイドバーの見本、右に4点。スマホ幅は縦に並べる */
+/* 全体像の説明。サイドバーの見本は、本物のサイドバーが引き出しになる幅（スマホ幅）でだけ出す。
+   パソコン幅では本物が横に見えているので隠す。境目はシェルの `@media (max-width: 760px)`（shell.css）と揃える */
 .top-guide {
   display: grid;
-  grid-template-columns: minmax(12rem, 14rem) minmax(0, 1fr);
-  gap: 1.5rem 2rem;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
   margin-top: 2rem;
 }
 
-@media (max-width: 40rem) {
-  .top-guide {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 .top-sample {
-  display: grid;
+  display: none;
   gap: 1rem;
   padding: 0.9rem 0.6rem;
   border: 1px solid var(--border);
   border-radius: 0.8rem;
   background: var(--surface);
+}
+
+@media (max-width: 760px) {
+  .top-sample {
+    display: grid;
+  }
 }
 
 .top-sample .sidebar-heading,

@@ -49,16 +49,16 @@ function Home() {
         <ol className="top-points">
           <li>
             <h2>Analyzer</h2>
-            <p>配列でテキストを打った時の指の動きを、1つの切り口で見せる画面です。</p>
+            <p>配列でテキストを打った時に押すキーについて、特定の切り口で情報を見せる画面です。</p>
           </li>
           <li>
             <h2>Single と Multi</h2>
-            <p>Single は1つの配列を詳しく見ます。Multi は複数の配列を並べて比べます。選んだ配列は、Single と Multi で別々です。</p>
+            <p>Single は1つの配列について、Multi は複数の配列を選んで、情報を比較します。</p>
           </li>
           <li>
             <h2>始め方</h2>
             <p>
-              サイドバーで見たい Analyzer を開き、その画面で見たい配列を選びます。別の Analyzer へ移っても、選んだ配列は Single どうし・Multi どうしで引き継がれ、テキスト・物理配列・条件はどの Analyzer でも共通です。
+              サイドバーで見たい Analyzer を開き、その画面で見たい配列を選びます。別の Analyzer へ移っても、テキスト・物理配列・条件は引き継がれます。選んだ配列は、同じ区分（Single・Multi）の Analyzer どうしで引き継がれます。
             </p>
           </li>
           <li>
