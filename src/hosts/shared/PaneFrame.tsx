@@ -1,9 +1,10 @@
 import { useRef, useState, type ReactNode } from 'react';
 import type { EngineRequestState } from '#engine/request.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
-import { describeEngineRequestError, paneStatusLabel } from './pane-status.ts';
+import { describeEngineRequestError, engineRequestErrorDetail, paneStatusLabel, TRACE_ERRORS_SENTENCE } from './pane-status.ts';
 import type { ConditionHeaderInfo, ConditionSummaryRow } from './condition-summary.ts';
 import { ConditionSummary } from './ConditionSummary.tsx';
+import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
@@ -133,11 +134,10 @@ export function PaneFrame({
       <ConditionSummary rows={conditionRows} header={header} />
 
       {traceErrors && traceErrors.length > 0 ? (
-        <ul className="pane-trace-errors" role="alert" data-pane-trace-errors="true">
-          {traceErrors.map((message, index) => (
-            <li key={index}>{message}</li>
-          ))}
-        </ul>
+        <div className="pane-trace-errors" role="alert" data-pane-trace-errors="true">
+          <p>{TRACE_ERRORS_SENTENCE}</p>
+          <ErrorDetails lines={traceErrors} />
+        </div>
       ) : null}
 
       {/*
@@ -153,7 +153,10 @@ export function PaneFrame({
       {emptyContent !== undefined ? (
         <div className="pane-empty" data-pane-empty="true">{emptyContent}</div>
       ) : errorMessage ? (
-        <p className="pane-error" role="alert" data-pane-error="true">{errorMessage}</p>
+        <div className="pane-error" role="alert" data-pane-error="true">
+          <p>{errorMessage}</p>
+          {engineState.status === 'failed' ? <ErrorDetails lines={engineRequestErrorDetail(engineState.error)} /> : null}
+        </div>
       ) : children === undefined ? (
         <p className="pane-busy" aria-busy="true" data-pane-busy="true">計算している…</p>
       ) : (

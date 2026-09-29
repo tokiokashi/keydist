@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { EngineRequestError } from '#engine/request.ts';
 import type { ResolvedInputError } from '#engine/resolved-input.ts';
-import { combinePaneStates, describeEngineRequestError, describeResolvedInputError, paneStatusLabel } from './pane-status.ts';
+import { combinePaneStates, describeEngineRequestError, describeResolvedInputError, engineRequestErrorDetail, paneStatusLabel } from './pane-status.ts';
 
 test('paneStatusLabel: 各状態に短い文言を返す', () => {
   assert.equal(paneStatusLabel('idle'), '未計算');
@@ -61,9 +61,11 @@ test('describeEngineRequestError: resolutionはResolvedInputErrorへ委譲する
   assert.equal(describeEngineRequestError(error), describeResolvedInputError(error.error));
 });
 
-test('describeEngineRequestError: exceptionはErrorのmessageを使う', () => {
-  const error: EngineRequestError = { kind: 'exception', error: new Error('computed failure') };
-  assert.match(describeEngineRequestError(error), /computed failure/);
+test('describeEngineRequestError: exceptionは1文だけ返し、原文は詳細へ分ける', () => {
+  const error: EngineRequestError = { kind: 'exception', error: new Error('キー k_12 が無い') };
+  assert.doesNotMatch(describeEngineRequestError(error), /k_12/);
+  assert.match(engineRequestErrorDetail(error).join('\n'), /k_12/);
+  assert.deepEqual(engineRequestErrorDetail({ kind: 'exception', error: 'plain' }), ['plain']);
 });
 
 test('combinePaneStates: 抽出がreadyでもTraceが揃っていなければ計算中にする', () => {
