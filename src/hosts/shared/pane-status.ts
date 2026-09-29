@@ -43,9 +43,26 @@ export function paneStatusLabel(status: PaneEngineState<unknown>['status']): str
   }
 }
 
-/** `EngineRequestError`（依頼そのものの失敗と計算中の例外の2種）の説明文。 */
+/** `EngineRequestError`（依頼そのものの失敗と計算中の例外の2種）の、利用者向けの1文。 */
 export function describeEngineRequestError(error: EngineRequestError): string {
   if (error.kind === 'resolution') return describeResolvedInputError(error.error);
-  const message = error.error instanceof Error ? error.error.message : String(error.error);
-  return `計算中にエラーが発生した: ${message}`;
+  return '計算中にエラーが発生した。条件を変えて試してほしい';
 }
+
+/** 例外の原文（メッセージとstack）。不具合報告用に折りたたんで出す。 */
+export function describeErrorDetail(error: unknown): string[] {
+  if (error instanceof Error) {
+    return [error.stack && error.stack.includes(error.message) ? error.stack : `${error.name}: ${error.message}`];
+  }
+  return [String(error)];
+}
+
+/** `describeEngineRequestError`の1文に添える詳細。原文が無い失敗（参照切れ等）は空。 */
+export function engineRequestErrorDetail(error: EngineRequestError): string[] {
+  if (error.kind === 'exception') return describeErrorDetail(error.error);
+  if (error.error.kind === 'geometry') return [error.error.message];
+  return [];
+}
+
+/** Trace生成の診断（キーidを含む）につける、利用者向けの1文。 */
+export const TRACE_ERRORS_SENTENCE = '配列と物理配列が噛み合わず、一部の文字を計算に含められなかった';

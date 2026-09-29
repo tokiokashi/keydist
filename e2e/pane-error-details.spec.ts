@@ -1,0 +1,62 @@
+import { expect, test, type Page } from '@playwright/test';
+
+/**
+ * 例外が起きた時のペインの表示。利用者向けの1文だけを見せ、例外の原文（不具合報告用）は
+ * 折りたたんだ詳細へ入れる。
+ */
+const BREAK_MESSAGE = 'キー k_99 の座標が壊れている';
+
+/** 指定した Math の関数を、`__break` が立っている間だけ例外にする。 */
+async function breakMath(page: Page, name: 'hypot' | 'sin') {
+  await page.addInitScript(({ message, fn }) => {
+    const target = Math as unknown as Record<string, (...values: number[]) => number>;
+    const original = target[fn]!;
+    target[fn] = (...values: number[]) => {
+      if ((window as unknown as { __break?: boolean }).__break) throw new Error(message);
+      return original(...values);
+    };
+  }, { message: BREAK_MESSAGE, fn: name });
+}
+
+async function expectFoldedDetails(alert: ReturnType<Page['locator']>, withStack: boolean) {
+  const details = alert.locator('details[data-pane-error-details]');
+  await expect(details).not.toHaveAttribute('open', '');
+  await expect(details.locator('pre')).toBeHidden();
+  await details.locator('summary').click();
+  await expect(details.locator('pre')).toContainText(BREAK_MESSAGE);
+  if (withStack) await expect(details.locator('pre')).toContainText(/\n\s+at /);
+}
+
+test('計算中の例外: 1文だけ出し、原文は折りたたんだ詳細に入る', async ({ page }) => {
+  await breakMath(page, 'hypot');
+  await page.goto('/standalone/bigram-flow');
+  const pane = page.locator('.pane-frame');
+  await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+
+  await page.evaluate(() => { (window as unknown as { __break: boolean }).__break = true; });
+  await page.getByLabel('既定の物理配列').selectOption('ortholinear');
+
+  const alert = pane.locator('[data-pane-error]');
+  await expect(alert).toBeVisible({ timeout: 10_000 });
+  await expect(alert.locator('> p')).toHaveText('計算中にエラーが発生した。条件を変えて試してほしい');
+  await expect(alert.locator('> p')).not.toContainText(/k_99/);
+  await expectFoldedDetails(alert, false);
+});
+
+test('描画中の例外（error boundary）: 1文だけ出し、原文とstackは折りたたんだ詳細に入る', async ({ page }) => {
+  // Math.sin は Bigram Flow の描画でしか使われないので、計算は成功したまま描画だけが落ちる。
+  await breakMath(page, 'sin');
+  await page.goto('/standalone/bigram-flow');
+  const pane = page.locator('.pane-frame');
+  await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+
+  await page.evaluate(() => { (window as unknown as { __break: boolean }).__break = true; });
+  await page.getByLabel('既定の物理配列').selectOption('ortholinear');
+
+  const alert = pane.locator('[data-pane-crashed]');
+  await expect(alert).toBeVisible({ timeout: 10_000 });
+  await expect(pane).toHaveAttribute('data-pane-status', 'ready');
+  await expect(alert.locator('> p')).toHaveText('この可視化を表示できなかった。条件を変えて試してほしい');
+  await expect(alert.locator('> p')).not.toContainText(/k_99/);
+  await expectFoldedDetails(alert, true);
+});
