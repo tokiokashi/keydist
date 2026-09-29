@@ -32,6 +32,11 @@ export interface PaneFrameProps {
    * 解析設定の小窓にも出す（どのペインの設定か分かるように）。
    */
   readonly targetName?: string;
+  /**
+   * 見出しを文脈バーの下に固定する（個別画面）。図を下までスクロールしても対象と解析設定を変えられる。
+   * Workspaceのペインは自分の枠の中でスクロールするので固定しない。
+   */
+  readonly stickyHeader?: boolean;
   /** 見出しの対象の欄（単一対象の選択、集合の要約とその選択）。 */
   readonly target: ReactNode;
   /** 解析設定のcomponent（Analyzerの`Settings`をホストが値と結んだもの）。 */
@@ -67,6 +72,7 @@ export function PaneFrame({
   name,
   description,
   headingLevel = 2,
+  stickyHeader = false,
   targetName,
   target,
   settings,
@@ -96,7 +102,7 @@ export function PaneFrame({
 
   return (
     <section className="pane-frame" aria-label={paneName} data-pane-status={engineState.status}>
-      <header className="pane-frame-header">
+      <header className="pane-frame-header" data-sticky={stickyHeader || undefined}>
         <div className="pane-frame-name">
           <Heading className="pane-frame-title">{name}</Heading>
           <InfoButton name={name} description={description} />

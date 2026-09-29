@@ -19,6 +19,19 @@
   gap: 0.5rem 0.75rem;
 }
 
+/*
+ * 個別画面では文脈バーの下に固定する。位置は文脈バーが公開する実際の高さ（折り返すスマホ幅で変わる）。
+ * 背景を敷くのは、下を通る図が透けて見出しに重ならないようにするため。文脈バーより下の層に置く。
+ */
+.pane-frame-header[data-sticky] {
+  position: sticky;
+  top: var(--context-bar-height, 3.1rem);
+  z-index: 10;
+  padding-block: 0.5rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
 .pane-frame-name {
   grid-area: name;
   display: flex;

@@ -230,6 +230,7 @@ export function ComparisonStandalonePage({
             name={comparisonAnalyzer.name}
             description={comparisonAnalyzer.description}
             headingLevel={1}
+            stickyHeader
             target={(
               <TargetSelection
                 mode="multiple"

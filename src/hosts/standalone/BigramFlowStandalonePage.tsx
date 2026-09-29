@@ -238,6 +238,7 @@ export function BigramFlowStandalonePage({
             name={bigramFlowAnalyzer.name}
             description={bigramFlowAnalyzer.description}
             headingLevel={1}
+            stickyHeader
             {...(named === undefined ? {} : { targetName: named.displayName })}
             target={(
               <TargetSelection

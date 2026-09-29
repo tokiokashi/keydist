@@ -214,6 +214,7 @@ export function NSensitivityStandalonePage({
             name={nSensitivityAnalyzer.name}
             description={nSensitivityAnalyzer.description}
             headingLevel={1}
+            stickyHeader
             target={(
               <TargetSelection
                 mode="multiple"
