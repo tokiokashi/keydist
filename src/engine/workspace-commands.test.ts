@@ -25,9 +25,10 @@ import {
   renameWorkspaceCommand,
   setWorkspaceLayoutCommand,
   setWorkspacePaneOptionsCommand,
-  setWorkspacePaneTargetCommand,
+  setWorkspacePaneBindingCommand,
+  setWorkspaceTargetCommand,
 } from './workspace-commands.ts';
-import { findWorkspace, type WorkspacePane } from './workspace.ts';
+import { findWorkspace, FOLLOW_BINDING, type WorkspacePane } from './workspace.ts';
 import { layoutPaneIds } from './workspace-layout.ts';
 
 function emptyAssets(): KeydistAssets {
@@ -47,7 +48,7 @@ const pane = (id: string): WorkspacePane => ({
   id,
   analyzerId: 'bigram-flow',
   options: undefined,
-  target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } },
+  binding: FOLLOW_BINDING,
 });
 
 interface State {
@@ -140,12 +141,39 @@ test('解析設定・対象・並びの書き込みは、同じ中身なら履�
   const again = run(
     once,
     setWorkspacePaneOptionsCommand('w1', 'a', { x: 1 }),
-    setWorkspacePaneTargetCommand('w1', 'a', { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } }),
+    setWorkspacePaneBindingCommand('w1', 'a', FOLLOW_BINDING),
+    setWorkspaceTargetCommand('w1', { kind: 'set', selection: initialMultiTargetSelection() }),
     setWorkspaceLayoutCommand('w1', findWorkspace(once.assets.workspaces, 'w1')!.layout),
   );
   assert.equal(again.history.undoStack.length, depth);
-  const changed = run(again, setWorkspacePaneTargetCommand('w1', 'a', { kind: 'single', target: { kind: 'layout', layoutId: 'colemak-dh' } }));
+  const changed = run(again, setWorkspacePaneBindingCommand('w1', 'a', { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'colemak-dh' } } }));
   assert.equal(changed.history.undoStack.length, depth + 1);
+});
+
+test('Workspaceの対象の切り替えは1回のUndoで戻り、固定のペインは動かない', () => {
+  const state = run(
+    withWorkspace(),
+    setWorkspacePaneBindingCommand('w1', 'b', { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } }),
+  );
+  const switched = run(state, setWorkspaceTargetCommand('w1', { kind: 'single', target: { kind: 'layout', layoutId: 'colemak-dh' } }));
+  const after = findWorkspace(switched.assets.workspaces, 'w1')!;
+  assert.deepEqual(after.target.single.target, { kind: 'layout', layoutId: 'colemak-dh' });
+  assert.deepEqual(after.panes.map((p) => p.binding), findWorkspace(state.assets.workspaces, 'w1')!.panes.map((p) => p.binding));
+  const undone = undo(switched.assets, switched.history);
+  assert.deepEqual(findWorkspace(undone.assets.workspaces, 'w1')!.target, findWorkspace(state.assets.workspaces, 'w1')!.target);
+});
+
+test('createWorkspaceCommand: 個別画面で選んでいる対象を、Workspaceの対象として写して始める', () => {
+  const base = emptyAssets();
+  const assets: KeydistAssets = {
+    ...base,
+    singleTargetSelection: { target: { kind: 'layout', layoutId: 'colemak-dh' } },
+    multiTargetSelection: { targets: [{ kind: 'layout', layoutId: 'qwerty' }], baseline: undefined, colorSlots: [0] },
+  };
+  const created = run({ assets, history: emptyCommandHistory() }, createWorkspaceCommand('w9'));
+  const workspace = findWorkspace(created.assets.workspaces, 'w9')!;
+  assert.deepEqual(workspace.target.single, assets.singleTargetSelection);
+  assert.deepEqual(workspace.target.set, assets.multiTargetSelection);
 });
 
 test('削除はUndoで戻る', () => {

@@ -27,6 +27,12 @@ export interface PaneEnvironment {
   readonly assetsReady: boolean;
 }
 
+export interface PaneTargetBindingControl {
+  /** `true`ならWorkspaceの対象に従っている。`false`ならこのペインだけの対象に固定している。 */
+  readonly follows: boolean;
+  readonly onChange: (follows: boolean) => void;
+}
+
 /**
  * ペインの枠まわりの、器ごとの違い。個別画面はペインのAnalyzer名がページのh1で見出しを
  * 文脈バーの下に固定し、Workspaceのペインはh2で固定せず、⋯を持つ。
@@ -35,6 +41,11 @@ export interface PaneChrome {
   readonly headingLevel?: 1 | 2;
   readonly stickyHeader?: boolean;
   readonly menuItems?: readonly PaneMenuItem[];
+  /**
+   * 対象がWorkspaceに従っているか固定かの表示と切り替え（Workspaceのペイン）。個別画面は対象を
+   * ペインの外に持たないので置かない。
+   */
+  readonly targetBinding?: PaneTargetBindingControl;
   /** 解析設定の小窓にペイン名を出す（Workspaceでは、どのペインの設定か分かるように）。 */
   readonly showPaneNameInSettings?: boolean;
   /**

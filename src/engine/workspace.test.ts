@@ -7,17 +7,20 @@ import {
   createWorkspace,
   deleteWorkspace,
   duplicateWorkspacePane,
-  emptySetTarget,
   findWorkspace,
+  FOLLOW_BINDING,
   initialWorkspaceLibrary,
+  resolveWorkspacePaneTarget,
   renameWorkspace,
   uniqueWorkspaceName,
   withWorkspaceLayout,
   withWorkspacePaneOptions,
-  withWorkspacePaneTarget,
+  withWorkspacePaneBinding,
+  withWorkspaceTarget,
   withWorkspaceText,
   type WorkspaceLibrary,
   type WorkspacePane,
+  type WorkspaceTarget,
 } from './workspace.ts';
 import { layoutPaneIds } from './workspace-layout.ts';
 
@@ -25,7 +28,7 @@ const QWERTY: AnalysisTarget = { kind: 'layout', layoutId: 'qwerty' };
 const COLEMAK: AnalysisTarget = { kind: 'layout', layoutId: 'colemak-dh' };
 
 function pane(id: string, analyzerId = 'bigram-flow'): WorkspacePane {
-  return { id, analyzerId, options: undefined, target: { kind: 'single', target: QWERTY } };
+  return { id, analyzerId, options: undefined, binding: FOLLOW_BINDING };
 }
 
 function libraryWith(...paneIds: string[]): WorkspaceLibrary {
@@ -80,16 +83,16 @@ test('closeWorkspacePane: ペインと配置から一緒に消える。無いid�
   assert.equal(findWorkspace(closeWorkspacePane(closed, 'w1', 'b'), 'w1')!.layout, undefined);
 });
 
-test('duplicateWorkspacePane: 解析設定と対象を写して右隣に置く', () => {
+test('duplicateWorkspacePane: 解析設定と対象の持ち方（従う / 固定）を写して右隣に置く', () => {
   let library = libraryWith('a', 'b');
   library = withWorkspacePaneOptions(library, 'w1', 'a', { foo: 1 });
-  library = withWorkspacePaneTarget(library, 'w1', 'a', { kind: 'single', target: COLEMAK });
+  library = withWorkspacePaneBinding(library, 'w1', 'a', { mode: 'fixed', target: { kind: 'single', target: COLEMAK } });
   const next = duplicateWorkspacePane(library, 'w1', 'a', 'a2');
   const workspace = findWorkspace(next, 'w1')!;
   assert.deepEqual(layoutPaneIds(workspace.layout), ['a', 'a2', 'b']);
   const copy = workspace.panes.find((p) => p.id === 'a2')!;
   assert.deepEqual(copy.options, { foo: 1 });
-  assert.deepEqual(copy.target, { kind: 'single', target: COLEMAK });
+  assert.deepEqual(copy.binding, { mode: 'fixed', target: { kind: 'single', target: COLEMAK } });
   // 元のペインとは独立（複製後の書き換えが元へ及ばない）
   const edited = withWorkspacePaneOptions(next, 'w1', 'a2', { foo: 2 });
   assert.deepEqual(findWorkspace(edited, 'w1')!.panes.find((p) => p.id === 'a')!.options, { foo: 1 });
@@ -106,15 +109,59 @@ test('withWorkspacePaneOptions: 中身が同じなら参照を変えない。und
   assert.equal(withWorkspacePaneOptions(library, 'w1', 'none', { x: 1 }), library);
 });
 
-test('withWorkspacePaneTarget: 集合の対象へも書き換えられ、同じ中身なら何もしない', () => {
-  const setPane: WorkspacePane = { id: 's', analyzerId: 'comparison', options: undefined, target: emptySetTarget() };
-  const library = addWorkspacePane(libraryWith(), 'w1', setPane);
-  assert.equal(withWorkspacePaneTarget(library, 'w1', 's', emptySetTarget()), library);
-  const next = withWorkspacePaneTarget(library, 'w1', 's', {
-    kind: 'set',
-    selection: { targets: [QWERTY], baseline: undefined, colorSlots: [0] },
-  });
-  assert.notEqual(next, library);
+test('createWorkspace: Workspaceの対象は渡された値から始め、省略すれば空から始める', () => {
+  const empty = createWorkspace(initialWorkspaceLibrary(), () => 'w1').created;
+  assert.deepEqual(empty.target.single, { target: undefined });
+  assert.deepEqual(empty.target.set.targets, []);
+  const target: WorkspaceTarget = {
+    single: { target: COLEMAK },
+    set: { targets: [QWERTY], baseline: undefined, colorSlots: [0] },
+  };
+  assert.deepEqual(createWorkspace(initialWorkspaceLibrary(), () => 'w2', undefined, target).created.target, target);
+});
+
+test('withWorkspaceTarget: 単体用と集合用を別々に書き、同じ中身なら何もしない', () => {
+  const library = libraryWith();
+  const single = withWorkspaceTarget(library, 'w1', { kind: 'single', target: COLEMAK });
+  assert.deepEqual(findWorkspace(single, 'w1')!.target.single, { target: COLEMAK });
+  assert.deepEqual(findWorkspace(single, 'w1')!.target.set.targets, []);
+  assert.equal(withWorkspaceTarget(single, 'w1', { kind: 'single', target: { ...COLEMAK } }), single);
+
+  const selection = { targets: [QWERTY], baseline: undefined, colorSlots: [0] };
+  const set = withWorkspaceTarget(single, 'w1', { kind: 'set', selection });
+  assert.deepEqual(findWorkspace(set, 'w1')!.target.set, selection);
+  assert.deepEqual(findWorkspace(set, 'w1')!.target.single, { target: COLEMAK });
+  assert.equal(withWorkspaceTarget(set, 'w1', { kind: 'set', selection: { ...selection } }), set);
+  assert.equal(withWorkspaceTarget(set, 'none', { kind: 'single', target: QWERTY }), set);
+});
+
+test('resolveWorkspacePaneTarget: 従うペインはWorkspaceの対象、固定のペインは自分の対象を映す', () => {
+  const workspaceTarget: WorkspaceTarget = {
+    single: { target: COLEMAK },
+    set: { targets: [QWERTY], baseline: undefined, colorSlots: [0] },
+  };
+  assert.deepEqual(resolveWorkspacePaneTarget(FOLLOW_BINDING, workspaceTarget, 'single'), { kind: 'single', target: COLEMAK });
+  assert.deepEqual(resolveWorkspacePaneTarget(FOLLOW_BINDING, workspaceTarget, 'set'), { kind: 'set', selection: workspaceTarget.set });
+  // Singleをまだ選んでいなければ既定の配列
+  const unselected = resolveWorkspacePaneTarget(FOLLOW_BINDING, { ...workspaceTarget, single: { target: undefined } }, 'single');
+  assert.equal(unselected?.kind, 'single');
+  const fixed = { mode: 'fixed', target: { kind: 'single', target: QWERTY } } as const;
+  assert.deepEqual(resolveWorkspacePaneTarget(fixed, workspaceTarget, 'single'), fixed.target);
+  // 形が合わない固定の対象は映せない
+  assert.equal(resolveWorkspacePaneTarget(fixed, workspaceTarget, 'set'), undefined);
+});
+
+test('withWorkspacePaneBinding: 従う / 固定を切り替え、同じ中身なら何もしない。Workspaceの対象は固定のペインに及ばない', () => {
+  const library = libraryWith('a', 'b');
+  assert.equal(withWorkspacePaneBinding(library, 'w1', 'a', FOLLOW_BINDING), library);
+  const fixed = withWorkspacePaneBinding(library, 'w1', 'a', { mode: 'fixed', target: { kind: 'single', target: QWERTY } });
+  assert.notEqual(fixed, library);
+  assert.equal(withWorkspacePaneBinding(fixed, 'w1', 'a', { mode: 'fixed', target: { kind: 'single', target: { ...QWERTY } } }), fixed);
+  // Workspaceの対象を書き換えても、固定のペインの持つ値は変わらない
+  const moved = withWorkspaceTarget(fixed, 'w1', { kind: 'single', target: COLEMAK });
+  assert.deepEqual(findWorkspace(moved, 'w1')!.panes[0]!.binding, { mode: 'fixed', target: { kind: 'single', target: QWERTY } });
+  assert.deepEqual(findWorkspace(moved, 'w1')!.panes[1]!.binding, FOLLOW_BINDING);
+  assert.equal(withWorkspacePaneBinding(library, 'w1', 'none', FOLLOW_BINDING), library);
 });
 
 test('withWorkspaceLayout: 重みまで同じなら何もしない。ペインと食い違う配置は直して書く', () => {

@@ -5,13 +5,10 @@ import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
 import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { ComparisonPane } from '#hosts/shared/panes/ComparisonPane.tsx';
 import type { PaneChrome } from '#hosts/shared/panes/pane-environment.ts';
-import { paneMenuItems, type WorkspacePaneRuntime } from '../pane-runtime.ts';
+import { workspacePaneChrome, type WorkspacePaneRuntime } from '../pane-runtime.ts';
 import { usePaneOptions } from '../use-pane-options.ts';
 
-/** Workspaceのペインの枠まわり。h2で、見出しは固定せず、⋯を持つ。 */
-const WORKSPACE_CHROME = { headingLevel: 2, showPaneNameInSettings: true } as const satisfies PaneChrome;
-
-/** 比較表のペイン。個別画面と同じ`ComparisonPane`に、このペインが持つ集合と解析設定を結ぶ。 */
+/** 比較表のペイン。個別画面と同じ`ComparisonPane`に、このペインが映す集合と解析設定を結ぶ。 */
 export function ComparisonWorkspacePane({
   pane,
   runtime,
@@ -24,12 +21,13 @@ export function ComparisonWorkspacePane({
     pane.options,
     (next) => runtime.commitPaneOptions(pane.id, next),
   );
-  const chrome: PaneChrome = useMemo(() => ({
-    ...WORKSPACE_CHROME,
-    menuItems: paneMenuItems(runtime, pane.id, () => onOptionsChange(comparisonAnalyzer.defaultOptions)),
-  }), [runtime, pane.id, onOptionsChange]);
-  if (pane.target.kind !== 'set') return null;
-  const selection = pane.target.selection;
+  const chrome: PaneChrome = useMemo(
+    () => workspacePaneChrome(runtime, pane, () => onOptionsChange(comparisonAnalyzer.defaultOptions)),
+    [runtime, pane, onOptionsChange],
+  );
+  const resolved = runtime.paneTarget(pane, 'set');
+  if (resolved?.kind !== 'set') return null;
+  const selection = resolved.selection;
   return (
     <ComparisonPane
       env={runtime.env}

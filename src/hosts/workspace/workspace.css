@@ -136,3 +136,25 @@
 .workspace-pane-notice p {
   margin: 0;
 }
+
+/* ---- Workspaceの対象（文脈バー） ---- */
+.workspace-target-bar {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.workspace-target-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.workspace-target-bar-key {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}

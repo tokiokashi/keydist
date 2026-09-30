@@ -10,7 +10,10 @@ import { decodeTextSelectionState, encodeTextSelectionState } from '#input/text/
 import { decodeMultiTargetSelection, encodeMultiTargetSelection } from './multi-target-selection-codec.ts';
 import {
   DEFAULT_WORKSPACE_NAME,
+  initialWorkspaceTarget,
+  type PaneTargetBinding,
   type Workspace,
+  type WorkspaceTarget,
   type WorkspaceLibrary,
   type WorkspacePane,
   type WorkspacePaneTarget,
@@ -27,7 +30,7 @@ import { normalizeLayout, type WorkspaceLayout, type WorkspaceLayoutNode } from 
  * - 並びが壊れている・ペインと食い違っている時は、ペインを失わないよう`normalizeLayout`で直す
  * - 今のアプリが知らないAnalyzerのペインは捨てずに残す（表示側が使えないペインとして出す）
  *
- * 版1は、`docs/architecture.md`の決定を反映した最初の形。互換は守らない（AGENTS.md）。
+ * 版2は、ペインの対象の持ち方（従う / 固定）とWorkspaceの対象を足した形。版1は読まない（互換は守らない。AGENTS.md）。
  */
 
 /** 並びの入れ子の深さの上限。壊れた・悪意のあるデータで再帰を深くしないため。 */
@@ -86,6 +89,33 @@ function decodePaneTarget(raw: unknown, path: string, diagnostics: CodecDiagnost
   return undefined;
 }
 
+function decodeBinding(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): PaneTargetBinding | undefined {
+  if (!isRecord(raw)) {
+    diagnostics.push({ path, message: 'object形式でないためペインを捨てた' });
+    return undefined;
+  }
+  if (raw.mode === 'follow') return { mode: 'follow' };
+  if (raw.mode === 'fixed') {
+    const target = decodePaneTarget(raw.target, `${path}.target`, diagnostics);
+    return target === undefined ? undefined : { mode: 'fixed', target };
+  }
+  diagnostics.push({ path: `${path}.mode`, message: '対象の持ち方が読めないためペインを捨てた' });
+  return undefined;
+}
+
+/** 壊れた部分だけ空へ戻し、読めた部分は残す。 */
+function decodeWorkspaceTarget(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): WorkspaceTarget {
+  const initial = initialWorkspaceTarget();
+  if (raw === undefined) return initial;
+  if (!isRecord(raw)) {
+    diagnostics.push({ path, message: 'object形式でないためWorkspaceの対象を空へ戻した' });
+    return initial;
+  }
+  const singleTarget = raw.single === undefined ? undefined : decodeAnalysisTarget(raw.single, `${path}.single`, diagnostics);
+  const set = raw.set === undefined ? undefined : decodeMultiTargetSelection(raw.set, `${path}.set`, diagnostics);
+  return { single: { target: singleTarget }, set: set ?? initial.set };
+}
+
 function decodePane(raw: unknown, path: string, seen: Set<string>, diagnostics: CodecDiagnostic[]): WorkspacePane | undefined {
   if (!isRecord(raw)) {
     diagnostics.push({ path, message: 'object形式でないためペインを捨てた' });
@@ -99,10 +129,10 @@ function decodePane(raw: unknown, path: string, seen: Set<string>, diagnostics: 
     diagnostics.push({ path: `${path}.id`, message: `重複したペインid「${raw.id}」のためペインを捨てた` });
     return undefined;
   }
-  const target = decodePaneTarget(raw.target, `${path}.target`, diagnostics);
-  if (target === undefined) return undefined;
+  const binding = decodeBinding(raw.binding, `${path}.binding`, diagnostics);
+  if (binding === undefined) return undefined;
   seen.add(raw.id);
-  return { id: raw.id, analyzerId: raw.analyzerId, options: raw.options, target };
+  return { id: raw.id, analyzerId: raw.analyzerId, options: raw.options, binding };
 }
 
 function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagnostics: CodecDiagnostic[]): Workspace | undefined {
@@ -131,6 +161,8 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
     ? initialTextSelection()
     : decodeTextSelectionState(raw.text, `${path}.text`, diagnostics) ?? initialTextSelection();
 
+  const target = decodeWorkspaceTarget(raw.target, `${path}.target`, diagnostics);
+
   const rawPanes: readonly unknown[] = Array.isArray(raw.panes) ? raw.panes : [];
   if (raw.panes !== undefined && !Array.isArray(raw.panes)) {
     diagnostics.push({ path: `${path}.panes`, message: '配列形式でないためペインを捨てた' });
@@ -144,7 +176,13 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
 
   const rawLayout = raw.layout === undefined ? undefined : decodeLayoutNode(raw.layout, `${path}.layout`, 0, diagnostics);
   const layout: WorkspaceLayout = normalizeLayout(rawLayout, panes.map((pane) => pane.id));
-  return { id: raw.id, name, text, panes, layout };
+  return { id: raw.id, name, text, target, panes, layout };
+}
+
+function encodePaneTarget(target: WorkspacePaneTarget): Record<string, unknown> {
+  return target.kind === 'single'
+    ? { kind: 'single', target: encodeAnalysisTarget(target.target) }
+    : { kind: 'set', selection: encodeMultiTargetSelection(target.selection) };
 }
 
 function encodePane(pane: WorkspacePane): Record<string, unknown> {
@@ -152,9 +190,9 @@ function encodePane(pane: WorkspacePane): Record<string, unknown> {
     id: pane.id,
     analyzerId: pane.analyzerId,
     ...(pane.options === undefined ? {} : { options: pane.options }),
-    target: pane.target.kind === 'single'
-      ? { kind: 'single', target: encodeAnalysisTarget(pane.target.target) }
-      : { kind: 'set', selection: encodeMultiTargetSelection(pane.target.selection) },
+    binding: pane.binding.mode === 'follow'
+      ? { mode: 'follow' }
+      : { mode: 'fixed', target: encodePaneTarget(pane.binding.target) },
   };
 }
 
@@ -171,7 +209,7 @@ function encodeLayoutNode(node: WorkspaceLayoutNode): Record<string, unknown> {
 }
 
 export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAssetCodec({
-  currentVersion: 1,
+  currentVersion: 2,
   decodePayload: (payload, diagnostics) => {
     if (!isRecord(payload)) return undefined;
     const raw: readonly unknown[] = Array.isArray(payload.workspaces) ? payload.workspaces : [];
@@ -191,6 +229,10 @@ export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAsset
       id: workspace.id,
       name: workspace.name,
       text: encodeTextSelectionState(workspace.text),
+      target: {
+        ...(workspace.target.single.target === undefined ? {} : { single: encodeAnalysisTarget(workspace.target.single.target) }),
+        set: encodeMultiTargetSelection(workspace.target.set),
+      },
       panes: workspace.panes.map(encodePane),
       ...(workspace.layout === undefined ? {} : { layout: encodeLayoutNode(workspace.layout) }),
     })),

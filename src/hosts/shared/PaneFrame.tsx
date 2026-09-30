@@ -8,6 +8,7 @@ import type { ConditionEditorContext } from './ConditionEditor.tsx';
 import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
+import type { PaneTargetBindingControl } from './panes/pane-environment.ts';
 import { PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
 import './pane-frame.css';
@@ -43,6 +44,8 @@ export interface PaneFrameProps {
   readonly stickyHeader?: boolean;
   /** 見出しの対象の欄（単一対象の選択、集合の要約とその選択）。 */
   readonly target: ReactNode;
+  /** 対象がWorkspaceに従っているか固定かの表示と切り替え。Workspaceのペインだけが渡す。 */
+  readonly targetBinding?: PaneTargetBindingControl;
   /** 解析設定のcomponent（Analyzerの`Settings`をホストが値と結んだもの）。 */
   readonly settings: ReactNode;
   /** Workspaceのペインでは、小窓にペイン名を出す。個別画面ではページに1枚なので出さない。 */
@@ -91,6 +94,7 @@ export function PaneFrame({
   stickyHeader = false,
   targetName,
   target,
+  targetBinding,
   settings,
   showPaneNameInSettings = false,
   menuItems = [],
@@ -131,7 +135,10 @@ export function PaneFrame({
             <span className="pane-status-badge" data-status={engineState.status}>{statusLabel}</span>
           ) : null}
         </div>
-        <div className="pane-frame-target">{target}</div>
+        <div className="pane-frame-target">
+          {target}
+          {targetBinding === undefined ? null : <TargetBindingButton control={targetBinding} />}
+        </div>
         <button
           ref={settingsButtonRef}
           type="button"
@@ -200,5 +207,25 @@ export function PaneFrame({
         </PaneErrorBoundary>
       )}
     </section>
+  );
+}
+
+/**
+ * 対象がWorkspaceの対象に従っているか、このペインだけに固定しているかを示し、押すと切り替える。
+ * 従うへ戻すと、固定していた対象は捨てる（戻したい時はUndo）。
+ */
+function TargetBindingButton({ control }: { readonly control: PaneTargetBindingControl }) {
+  const { follows, onChange } = control;
+  return (
+    <button
+      type="button"
+      className="pane-target-binding"
+      data-follows={follows}
+      aria-label={follows ? 'Workspaceの対象に従っている。押すとこのペインだけの対象に固定する' : 'このペインだけの対象に固定している。押すとWorkspaceの対象に従う'}
+      title={follows ? 'Workspaceの対象に従っている' : 'このペインだけの対象に固定している'}
+      onClick={() => onChange(!follows)}
+    >
+      {follows ? '従う' : '固定'}
+    </button>
   );
 }

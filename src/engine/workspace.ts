@@ -3,6 +3,12 @@ import { initialTextSelection, type TextSelectionState } from '#input/text/selec
 import { stableStringify } from './cache-key.ts';
 import { initialMultiTargetSelection, type MultiTargetSelection } from './multi-target-selection.ts';
 import {
+  effectiveSingleTarget,
+  initialSingleTargetSelection,
+  withSingleTarget,
+  type SingleTargetSelection,
+} from './single-target-selection.ts';
+import {
   layoutWithPane,
   layoutWithPaneNextTo,
   layoutWithoutPane,
@@ -18,14 +24,53 @@ import {
  *
  * 資産の形はペインを載せるライブラリの保存形式とは独立に持つ（`workspace-layout.ts`冒頭）。
  *
- * ペインの対象は今は「固定」だけで、ペイン自身が持つ。Workspaceに従わせる対象と、その一括の
- * 切り替えは後から足す（形を足す時は資産の版を上げる）。
+ * ペインの対象は2種類（#544 §6）。Workspaceの対象（`Workspace.target`）を読む「従う」と、ペイン自身が
+ * 持つ「固定」。全ペインがどちらかを明示して持つので、比較中のペインが黙って別の対象を映すことは無い。
+ * 「従う」ペインの対象を選ぶ操作は、Workspaceの対象を書き換える（隣の従うペインも一緒に変わる）。
  */
 export type WorkspacePaneTarget =
   /** 対象を1つ見るAnalyzer（Bigram Flow等）の対象。 */
   | { readonly kind: 'single'; readonly target: AnalysisTarget }
   /** 対象の集合を見るAnalyzer（比較表・N感度等）の集合。色の番号・基準はこのペインの中で持つ。 */
   | { readonly kind: 'set'; readonly selection: MultiTargetSelection };
+
+/**
+ * ペインの対象の持ち方。`follow`はWorkspaceの対象を読み、`fixed`はこのペインだけの対象を持つ。
+ * 固定の対象は、従っている間は持たない（従うへ戻す時に捨てる。戻したい時はUndo）。
+ */
+export type PaneTargetBinding =
+  | { readonly mode: 'follow' }
+  | { readonly mode: 'fixed'; readonly target: WorkspacePaneTarget };
+
+export const FOLLOW_BINDING: PaneTargetBinding = { mode: 'follow' };
+
+/**
+ * Workspaceの対象。Setup1つを見るAnalyzer用の1つと、集合を見るAnalyzer用の集合を別々に持つ
+ * （個別画面のSingle・Multiが別々の選択を持つのと同じ。1つの値へ畳むとAnalyzerの種類で意味が変わる）。
+ */
+export interface WorkspaceTarget {
+  readonly single: SingleTargetSelection;
+  readonly set: MultiTargetSelection;
+}
+
+export function initialWorkspaceTarget(): WorkspaceTarget {
+  return { single: initialSingleTargetSelection(), set: initialMultiTargetSelection() };
+}
+
+/**
+ * ペインが今映す対象。従うならWorkspaceの対象、固定ならペイン自身の対象。
+ * Analyzerが期待する形（`kind`）と合わない固定の対象は`undefined`（使えないペインとして扱う）。
+ */
+export function resolveWorkspacePaneTarget(
+  binding: PaneTargetBinding,
+  workspaceTarget: WorkspaceTarget,
+  kind: WorkspacePaneTarget['kind'],
+): WorkspacePaneTarget | undefined {
+  if (binding.mode === 'fixed') return binding.target.kind === kind ? binding.target : undefined;
+  return kind === 'single'
+    ? { kind: 'single', target: effectiveSingleTarget(workspaceTarget.single) }
+    : { kind: 'set', selection: workspaceTarget.set };
+}
 
 export interface WorkspacePane {
   /** Workspaceの中で一意なid。配置がペインを指すのに使う。 */
@@ -41,7 +86,7 @@ export interface WorkspacePane {
    * （Analyzerの既定値を使う）。
    */
   readonly options: unknown;
-  readonly target: WorkspacePaneTarget;
+  readonly binding: PaneTargetBinding;
 }
 
 export interface Workspace {
@@ -49,6 +94,8 @@ export interface Workspace {
   readonly name: string;
   /** このWorkspaceが使うテキスト。個別画面の「最後に使ったテキスト」とは別に持つ。 */
   readonly text: TextSelectionState;
+  /** 「従う」ペインが読む対象。 */
+  readonly target: WorkspaceTarget;
   readonly panes: readonly WorkspacePane[];
   readonly layout: WorkspaceLayout;
 }
@@ -78,16 +125,18 @@ export function uniqueWorkspaceName(library: WorkspaceLibrary, base: string): st
   }
 }
 
-/** 空のWorkspaceを作る。テキストは既定の選択から始める。 */
+/** 空のWorkspaceを作る。テキストは既定の選択から、対象は渡された値（省略時は空）から始める。 */
 export function createWorkspace(
   library: WorkspaceLibrary,
   generateId: WorkspaceIdGenerator,
   name?: string,
+  target: WorkspaceTarget = initialWorkspaceTarget(),
 ): { readonly library: WorkspaceLibrary; readonly created: Workspace } {
   const created: Workspace = {
     id: generateId(),
     name: uniqueWorkspaceName(library, name?.trim() || DEFAULT_WORKSPACE_NAME),
     text: initialTextSelection(),
+    target,
     panes: [],
     layout: undefined,
   };
@@ -128,9 +177,20 @@ export function withWorkspaceText(library: WorkspaceLibrary, id: string, selecti
   ));
 }
 
-/** 空の対象を持つペインの初期値。 */
-export function emptySetTarget(): WorkspacePaneTarget {
-  return { kind: 'set', selection: initialMultiTargetSelection() };
+/**
+ * Workspaceの対象を書き換える。`target.kind`が、単体用（`single`）と集合用（`set`）のどちらを
+ * 書くかを決める。値が変わらなければ同じ参照を返す。
+ */
+export function withWorkspaceTarget(library: WorkspaceLibrary, id: string, target: WorkspacePaneTarget): WorkspaceLibrary {
+  return updateWorkspace(library, id, (workspace) => {
+    if (target.kind === 'single') {
+      const single = withSingleTarget(workspace.target.single, target.target);
+      return single === workspace.target.single ? workspace : { ...workspace, target: { ...workspace.target, single } };
+    }
+    return stableStringify(workspace.target.set) === stableStringify(target.selection)
+      ? workspace
+      : { ...workspace, target: { ...workspace.target, set: target.selection } };
+  });
 }
 
 /** ペインを右端に足す。同じidのペインが既にあれば何もしない。 */
@@ -158,7 +218,7 @@ export function closeWorkspacePane(library: WorkspaceLibrary, workspaceId: strin
 }
 
 /**
- * ペインを複製する。解析設定と対象を写し、元のペインの右隣の新しい枠に置く。
+ * ペインを複製する。解析設定と対象の持ち方（従う / 固定）を写し、元のペインの右隣の新しい枠に置く。
  * 元のペインが無い、または新しいidが既に使われていれば何もしない。
  */
 export function duplicateWorkspacePane(
@@ -212,15 +272,15 @@ export function withWorkspacePaneOptions(
   });
 }
 
-/** ペインの対象を書き換える。中身が同じなら何もしない。 */
-export function withWorkspacePaneTarget(
+/** ペインの対象の持ち方（従う / 固定とその対象）を書き換える。中身が同じなら何もしない。 */
+export function withWorkspacePaneBinding(
   library: WorkspaceLibrary,
   workspaceId: string,
   paneId: string,
-  target: WorkspacePaneTarget,
+  binding: PaneTargetBinding,
 ): WorkspaceLibrary {
   return updatePane(library, workspaceId, paneId, (pane) => (
-    stableStringify(pane.target) === stableStringify(target) ? pane : { ...pane, target }
+    stableStringify(pane.binding) === stableStringify(binding) ? pane : { ...pane, binding }
   ));
 }
 

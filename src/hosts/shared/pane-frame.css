@@ -74,6 +74,30 @@ h2.pane-frame-title {
   text-overflow: ellipsis;
 }
 
+/* 対象が従うか固定かの表示。従う時は控えめに、固定の時は目立たせて、比べている対象がこのペイン専用だと分かるようにする。 */
+.pane-target-binding {
+  flex: none;
+  min-height: 1.6rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.pane-target-binding[data-follows="false"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pane-target-binding:hover,
+.pane-target-binding:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--surface-muted);
+}
+
 .pane-settings-button {
   grid-area: settings;
   display: inline-flex;

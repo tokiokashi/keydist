@@ -9,7 +9,10 @@ import {
   renameWorkspace,
   withWorkspaceLayout,
   withWorkspacePaneOptions,
-  withWorkspacePaneTarget,
+  withWorkspacePaneBinding,
+  withWorkspaceTarget,
+  type PaneTargetBinding,
+  type WorkspaceTarget,
   type WorkspaceLibrary,
   type WorkspacePane,
   type WorkspacePaneTarget,
@@ -35,12 +38,22 @@ function workspacesCommand(
   };
 }
 
-/** 空のWorkspaceを作る。`id`は呼び出し側が発行する。名前が使われていれば連番を振る。 */
+/**
+ * 空のWorkspaceを作る。`id`は呼び出し側が発行する。名前が使われていれば連番を振る。
+ * Workspaceの対象は、個別画面で今選んでいる対象（Singleの対象・Multiの集合）を写して始める
+ * （見ていた配列から比べ始められるように）。写した後は個別画面と連動しない。
+ */
 export function createWorkspaceCommand(id: string, name?: string): Command<KeydistAssets> {
-  return workspacesCommand('Workspaceを作成する', (library) => {
-    if (library.some((workspace) => workspace.id === id)) return library;
-    return createWorkspace(library, () => id, name).library;
-  });
+  return (current) => {
+    const library = current.workspaces;
+    if (library.some((workspace) => workspace.id === id)) return { kind: 'no-op' };
+    const target: WorkspaceTarget = { single: current.singleTargetSelection, set: current.multiTargetSelection };
+    return {
+      kind: 'applied',
+      label: 'Workspaceを作成する',
+      changes: { workspaces: createWorkspace(library, () => id, name, target).library },
+    };
+  };
 }
 
 export function renameWorkspaceCommand(id: string, name: string): Command<KeydistAssets> {
@@ -82,12 +95,21 @@ export function setWorkspacePaneOptionsCommand(
   ));
 }
 
-export function setWorkspacePaneTargetCommand(
+/** ペインの対象の持ち方（従う / 固定とその対象）を書き換える。 */
+export function setWorkspacePaneBindingCommand(
   workspaceId: string,
   paneId: string,
-  target: WorkspacePaneTarget,
+  binding: PaneTargetBinding,
 ): Command<KeydistAssets> {
-  return workspacesCommand('対象を選ぶ', (library) => withWorkspacePaneTarget(library, workspaceId, paneId, target));
+  return workspacesCommand('対象を選ぶ', (library) => withWorkspacePaneBinding(library, workspaceId, paneId, binding));
+}
+
+/**
+ * Workspaceの対象を書き換える。従うペイン全部が一括で追従する。`target.kind`が単体用と集合用の
+ * どちらを書くかを決める。
+ */
+export function setWorkspaceTargetCommand(workspaceId: string, target: WorkspacePaneTarget): Command<KeydistAssets> {
+  return workspacesCommand('Workspaceの対象を選ぶ', (library) => withWorkspaceTarget(library, workspaceId, target));
 }
 
 /** ペインの並び（ドラッグ・リサイズの結果）を書き換える。 */

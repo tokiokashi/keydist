@@ -4,13 +4,10 @@ import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import type { BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { BigramFlowPane } from '#hosts/shared/panes/BigramFlowPane.tsx';
 import type { PaneChrome } from '#hosts/shared/panes/pane-environment.ts';
-import { paneMenuItems, type WorkspacePaneRuntime } from '../pane-runtime.ts';
+import { workspacePaneChrome, type WorkspacePaneRuntime } from '../pane-runtime.ts';
 import { usePaneOptions } from '../use-pane-options.ts';
 
-/** Workspaceのペインの枠まわり。h2で、見出しは固定せず、⋯を持つ。 */
-const WORKSPACE_CHROME = { headingLevel: 2, showPaneNameInSettings: true } as const satisfies PaneChrome;
-
-/** Bigram Flowのペイン。個別画面と同じ`BigramFlowPane`に、このペインが持つ対象と解析設定を結ぶ。 */
+/** Bigram Flowのペイン。個別画面と同じ`BigramFlowPane`に、このペインが映す対象と解析設定を結ぶ。 */
 export function BigramFlowWorkspacePane({
   pane,
   runtime,
@@ -23,16 +20,17 @@ export function BigramFlowWorkspacePane({
     pane.options,
     (next) => runtime.commitPaneOptions(pane.id, next),
   );
-  const chrome: PaneChrome = useMemo(() => ({
-    ...WORKSPACE_CHROME,
-    menuItems: paneMenuItems(runtime, pane.id, () => onOptionsChange(bigramFlowAnalyzer.defaultOptions)),
-  }), [runtime, pane.id, onOptionsChange]);
-  if (pane.target.kind !== 'single') return null;
+  const chrome: PaneChrome = useMemo(
+    () => workspacePaneChrome(runtime, pane, () => onOptionsChange(bigramFlowAnalyzer.defaultOptions)),
+    [runtime, pane, onOptionsChange],
+  );
+  const resolved = runtime.paneTarget(pane, 'single');
+  if (resolved?.kind !== 'single') return null;
   return (
     <BigramFlowPane
       env={runtime.env}
       chrome={chrome}
-      target={pane.target.target}
+      target={resolved.target}
       onTargetChange={(target) => runtime.setPaneTarget(pane.id, { kind: 'single', target })}
       options={options}
       onOptionsChange={onOptionsChange}
