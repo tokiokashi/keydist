@@ -18,7 +18,8 @@ import { assignColorSlots, type MultiTargetSelection } from './multi-target-sele
  * decode / encode 本体は、集合を抱える別の資産（Workspaceのペイン）も使えるよう関数として出している。
  *
  * `colorSlots`（色の番号）は`targets`と同じ位置の値を読む。無い・壊れている・重複した番号は
- * 診断を出さずに配り直す（`assignColorSlots`）。色は表示だけの値で、壊れていても利用者が
+ * 診断を出さずに配り直す（`assignColorSlots`）。ただし`colorSlots`自体が配列でない時は
+ * 全対象の色が変わるので診断を1件出す（`undefined`は書かれていないだけなので出さない）。色は表示だけの値で、壊れていても利用者が
  * 取れるアクションが無いため（`input/codec/index.ts`先頭コメントの「診断を要らない場合」）。
  */
 export function decodeMultiTargetSelection(
@@ -37,6 +38,10 @@ export function decodeMultiTargetSelection(
   const seen = new Set<string>();
   const targets: AnalysisTarget[] = [];
   const rawSlots: readonly unknown[] = Array.isArray(payload.colorSlots) ? payload.colorSlots : [];
+  // 値があるのに配列でないのは、番号の一覧ごと壊れている（要素1つの不備とは違い、全対象の色が振り直される）
+  if (payload.colorSlots !== undefined && !Array.isArray(payload.colorSlots)) {
+    diagnostics.push({ path: `${path}.colorSlots`, message: '配列形式でないため色の番号を配り直した' });
+  }
   const knownSlots = new Map<string, number>();
   rawTargets.forEach((item, index) => {
     const decoded = decodeAnalysisTarget(item, `${path}.targets[${index}]`, diagnostics);

@@ -73,3 +73,13 @@ test('MULTI_TARGET_SELECTION_CODEC: 範囲外の色の番号は壊れた値と�
   const decoded = decodeValue({ version: 1, targets: [A, B], colorSlots: [0, 12] });
   assert.deepEqual(decoded.value.colorSlots, [0, 1]);
 });
+
+test('MULTI_TARGET_SELECTION_CODEC: colorSlotsが配列でなければ診断を1件積んで配り直す。undefinedは診断なし', () => {
+  for (const broken of ['0,1', { 0: 1 }, 5, null]) {
+    const decoded = decodeValue({ version: 1, targets: [A, B], colorSlots: broken });
+    assert.deepEqual(decoded.value.colorSlots, [0, 1]);
+    assert.deepEqual(decoded.diagnostics.map((d) => d.path), ['payload.colorSlots'], `値: ${JSON.stringify(broken)}`);
+  }
+  const absent = decodeValue({ version: 1, targets: [A, B], colorSlots: undefined });
+  assert.deepEqual(absent.diagnostics, []);
+});
