@@ -210,6 +210,7 @@ test('高さに合わせて縮んだ図の線は、枠の幅ではなく実際�
   });
   // 横長の枠に、縦で決まる小さい図が収まっている（枠の幅で測ると倍率が大きすぎて線が細くなる）
   expect(info.drawnWidth).toBeLessThan(info.boxWidth - 20);
-  // 最も細い線でも、描かれる幅での画面上の太さが下限（1.25px）を割らない
-  expect(info.minStroke * info.zoom).toBeGreaterThanOrEqual(1.25 - 0.05);
+  // 最も細い線でも、描かれる幅での画面上の太さが下限（1.25px）を割らない。正しい実装の誤差は1e-5未満なので許容は狭く取る
+  // （枠の幅を倍率にすると、この値は1.19ほどに下がる）
+  expect(info.minStroke * info.zoom).toBeGreaterThanOrEqual(1.25 - 0.01);
 });
