@@ -4,6 +4,7 @@ import type { FingerAssignment, PhysicalShape } from '#input/shapes/geometry.ts'
 import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
 import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 import { DEFAULT_TRIGGER_ACTIVATION_GROUPINGS } from '#input/semantics/index.ts';
+import { ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import { FINGER_ASSIGNMENT_REGISTRY, defaultFingerAssignmentId } from '#engine/finger-assignment.ts';
 import {
@@ -49,6 +50,8 @@ export interface ConditionEditorContext {
   readonly shapes: ReadonlyMap<string, PhysicalShape>;
   /** 自作の指の割当（組み込みの2つに足して選べる）。 */
   readonly customFingerAssignments?: ReadonlyMap<string, FingerAssignment>;
+  /** 自作のローマ字規則（組み込みに足して選べる）。 */
+  readonly customRomajiRules?: readonly UserRomajiRule[];
   /** 全体で変えても画面が変わらない行の理由（`overrideWinsNotices`）。 */
   readonly notices?: ReadonlyMap<SettingsItemId, string>;
   /** このペインが自分で動かす項目（N感度の先読みN）。全体の値として編集させない。 */
@@ -153,6 +156,14 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     .length;
 
   const romajiRow = rowOf('romajiRuleId');
+  const romajiBinding = bind('romajiRuleId');
+  const romajiChoices = [
+    ...Object.entries(ROMAJI_RULES).map(([id, rule]) => ({ value: id, label: rule.name })),
+    ...(editor.customRomajiRules ?? []).map((rule) => ({ value: rule.id, label: rule.name })),
+  ];
+  if (!romajiChoices.some((choice) => choice.value === romajiBinding.value)) {
+    romajiChoices.unshift({ value: romajiBinding.value, label: '（見つからないローマ字規則）' });
+  }
 
   return (
     <div className="condition-editor">
@@ -269,14 +280,15 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
         {romajiRow === undefined ? null : (
           <section className="condition-group" aria-label="ローマ字">
             <h3 className="condition-group-title">ローマ字</h3>
-            <div className="condition-row" data-item="romajiRuleId" data-not-applicable={romajiRow.applicable ? undefined : 'true'}>
-              <div className="option-field-head">
-                <span className="option-field-label">{romajiRow.label}</span>
-                <span className="condition-origin">{romajiRow.originLabel}</span>
-              </div>
-              <p className="condition-readonly-value">{romajiRow.displayValue}</p>
-              {romajiRow.applicable ? null : <p className="condition-row-flag">この配列・Setupでは効かない</p>}
-            </div>
+            {row('romajiRuleId', (badge) => (
+              <SelectOptionField
+                label="ローマ字規則"
+                binding={romajiBinding}
+                choices={romajiChoices}
+                badge={badge}
+                hint="かなをローマ字で打つ時の綴り。かな配列には効かない"
+              />
+            ))}
           </section>
         )}
 

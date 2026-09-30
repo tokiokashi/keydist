@@ -65,10 +65,24 @@ export const ROMAJI_RULES: Record<BuiltinRomajiRuleId, RomajiRuleSpec & {
 
 const QWERTY_KEYS = new Set([...QWERTY_LEGEND.join('')]);
 
-/** 既定配列に最初から割り当てるルール。保存設定が無ければこれを使う。 */
-export function defaultRomajiRuleId(layoutId: string): BuiltinRomajiRuleId {
+/** 全体のレベルの既定。推奨を持たない配列はこれで打つ。 */
+export const DEFAULT_ROMAJI_RULE_ID: BuiltinRomajiRuleId = 'kunrei';
+
+/**
+ * 配列が組み込みで持つローマ字規則の推奨。無ければ`undefined`（全体の値に従う）。
+ * 大西配列は公式が前提とする大西式の綴り、TK音直入力法のコンボは訓令式（sya / zya）の綴りを
+ * 前提に組まれているので、全体を別の規則へ変えても、この2つは推奨のまま打つ。
+ * 全体の既定と同じ訓令式でも、TK音直入力法は「推奨として持つ」ので全体の変更に流されない。
+ */
+export function recommendedRomajiRuleId(layoutId: string): BuiltinRomajiRuleId | undefined {
   if (layoutId === 'oonishi') return 'oonishi';
-  return 'kunrei';
+  if (layoutId === 'oonishi-custom') return 'kunrei';
+  return undefined;
+}
+
+/** 全体の値を変えていない時に、その配列で使うルール。 */
+export function defaultRomajiRuleId(layoutId: string): BuiltinRomajiRuleId {
+  return recommendedRomajiRuleId(layoutId) ?? DEFAULT_ROMAJI_RULE_ID;
 }
 
 /** 基底ルールと差分から、評価器に渡すテーブルを組み立てる。 */

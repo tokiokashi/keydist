@@ -20,7 +20,7 @@ import {
   type ActionRealizationPolicy,
   type TriggerRealizationPolicy,
 } from '#input/semantics/index.ts';
-import { defaultRomajiRuleId } from '#input/romaji/rules.ts';
+import { DEFAULT_ROMAJI_RULE_ID, recommendedRomajiRuleId } from '#input/romaji/rules.ts';
 import { defaultFingerAssignmentId } from './finger-assignment.ts';
 import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from '#interpretation/structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION, type ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
@@ -50,7 +50,7 @@ export const DEFAULT_SHAPE_ID = 'row-staggered';
 const ANY_LEVEL = new Set<CascadeLevel['kind']>(['global', 'shape', 'inputMethod', 'layout', 'setup']);
 const GLOBAL_ONLY = new Set<CascadeLevel['kind']>(['global']);
 const GLOBAL_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'layout', 'setup']);
-const INPUT_METHOD_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['inputMethod', 'layout', 'setup']);
+const GLOBAL_INPUT_METHOD_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'inputMethod', 'layout', 'setup']);
 const GLOBAL_SHAPE_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'shape', 'layout', 'setup']);
 
 /** 物理配列のthumbsに指定の手の親指キーがあるか。`preferOppositeThumb`の実現可能性判定に使う。 */
@@ -153,14 +153,16 @@ export const SETTINGS_ITEMS = {
     defaultValue: DEFAULT_PLAYBACK_RATE_HALF_LIFE_SECONDS,
   }),
   /**
-   * ローマ字規則id。既定値は配列ごとに違う（`defaultRomajiRuleId` は大西配列だけ`oonishi`、
-   * それ以外は`kunrei`を返す）ので、`defaultValue` をcontextの関数にしている。
+   * ローマ字規則id。全体の既定は訓令式で、大西配列（大西式）・TK音直入力法（訓令式）のように
+   * 綴りを前提に組まれた配列は組み込みの推奨（`layoutRecommendation`）を持つ。
+   * 優先は 配列・Setupの上書き ＞ 配列の推奨 ＞ 全体・打ち方・物理配列の値 ＞ 既定（オーナー決定 #655）。
+   * 推奨を持つ配列は、全体を変えても推奨のまま打つ。
    * `undefined`を既定にしてしまうと「上書きが無い＝どの規則で焼き込んだ配列由来のテーブルか
    * 分からない」状態が生じ、#561のレビューで指摘された「見かけ上の一致」の問題を再現する
-   * （テーブルの実体とidの対応が取れない）。
+   * （テーブルの実体とidの対応が取れない）ので、既定は常に具体のidにする。
    *
-   * 打ち方（ローマ字入力）レベルでの上書きを想定して inputMethod/layout/setup を許可し、
-   * globalは持たない（ローマ字を使わない打ち方には意味が無い値のため）。
+   * 全体を許すのは、ローマ字とかなで別々に設定するものではなく、かな配列には単に効かない
+   * （`isApplicable`）だけの項目だから。打ち方（ローマ字入力）・配列・Setupも許可する。
    *
    * `isApplicable` は `context.inputMethod === 'romaji'` だけで判定する（`layout.romajiTable`
    * の有無は見ない）。mode（en/ja）を廃止したことで、`qwerty` 等の組み込み配列は英語を
@@ -174,8 +176,9 @@ export const SETTINGS_ITEMS = {
    */
   romajiRuleId: defineItem<string>({
     id: 'romajiRuleId',
-    allowedLevels: INPUT_METHOD_LAYOUT_SETUP,
-    defaultValue: (context) => defaultRomajiRuleId(context.layoutId),
+    allowedLevels: GLOBAL_INPUT_METHOD_LAYOUT_SETUP,
+    defaultValue: DEFAULT_ROMAJI_RULE_ID,
+    layoutRecommendation: (context) => recommendedRomajiRuleId(context.layoutId),
     isApplicable: (context) => context.inputMethod === 'romaji',
   }),
   /**
