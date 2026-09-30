@@ -36,6 +36,8 @@ export interface ComparisonPaneProps {
   readonly options: ComparisonOptions;
   readonly onOptionsChange: (next: ComparisonOptions) => void;
   readonly settingsDiagnostics?: readonly CodecDiagnostic[];
+  /** 共有リンクを開いた時に、取り込めなかったものを伝える文。 */
+  readonly linkNotices?: readonly string[];
 }
 
 function buildRowContext(target: AnalysisTarget, named: NamedTarget): ComparisonRowContext {
@@ -51,6 +53,7 @@ export function ComparisonPane({
   options,
   onOptionsChange,
   settingsDiagnostics = [],
+  linkNotices,
 }: ComparisonPaneProps) {
   const { setups, overrides, catalog, resolvedText, cache, assetsReady } = env;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
@@ -166,6 +169,7 @@ export function ComparisonPane({
       conditionTargetDiffs={conditionSummary.diffs}
       engineState={extraction}
       settingsDiagnostics={settingsDiagnostics}
+      linkNotices={linkNotices}
       {...(targets.length === 0
         ? {
           // 資産の読み込み前は保存済みの対象が未反映なだけで、空とは限らない。

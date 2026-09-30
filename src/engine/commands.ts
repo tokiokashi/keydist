@@ -631,6 +631,20 @@ export function setMultiBaselineCommand(baseline: AnalysisTarget | undefined): C
 }
 
 /**
+ * 共有リンクで受け取った集合を、選んだ対象と基準ごと1つの操作で書く（#719）。
+ * 1コマンド・1履歴なので、Undo 1回で受け取る前の集合へ戻る。基準を選ぶ操作
+ * （`setMultiBaselineCommand`）と違い、Singleの対象は書かない（リンクが運ぶのはMultiの集合だけ）。
+ * `baseline`が`undefined`なら基準の記録も消す（リンクが基準を運ばないなら「基準なし」で開く）。
+ */
+export function setMultiSelectionCommand(
+  targets: readonly AnalysisTarget[],
+  baseline: AnalysisTarget | undefined,
+): Command<KeydistAssets> {
+  return multiTargetSelectionCommand('共有された対象の集合を取り込む', (current) =>
+    withMultiBaseline(withMultiTargets(current, targets), baseline));
+}
+
+/**
  * トップで選んだ配列を、Singleの対象にし、Multiの組の1つとしても入れる（#741のオーナー決定）。
  * Multiにすでにあれば重複させず、並びも動かさない（`withMultiTargets`が畳む）。
  * 1コマンド・1履歴なので、Undo 1回でSingleとMultiが一緒に戻る。どちらか一方だけが

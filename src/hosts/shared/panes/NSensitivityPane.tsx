@@ -34,6 +34,8 @@ export interface NSensitivityPaneProps {
   readonly options: NSensitivityOptions;
   readonly onOptionsChange: (next: NSensitivityOptions) => void;
   readonly settingsDiagnostics?: readonly CodecDiagnostic[];
+  /** 共有リンクを開いた時に、取り込めなかったものを伝える文。 */
+  readonly linkNotices?: readonly string[];
 }
 
 /** Nはこのペイン自身が掃引する軸なので、条件の要約からは除く。 */
@@ -77,6 +79,7 @@ export function NSensitivityPane({
   options,
   onOptionsChange,
   settingsDiagnostics = [],
+  linkNotices,
 }: NSensitivityPaneProps) {
   const { setups, overrides, catalog, resolvedText, cache, assetsReady } = env;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
@@ -172,6 +175,7 @@ export function NSensitivityPane({
       conditionTargetDiffs={conditionSummary.diffs}
       engineState={extraction}
       settingsDiagnostics={settingsDiagnostics}
+      linkNotices={linkNotices}
       {...(targets.length === 0
         ? {
           // 資産の読み込み前は保存済みの対象が未反映なだけで、空とは限らない。

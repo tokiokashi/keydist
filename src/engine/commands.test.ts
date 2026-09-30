@@ -24,6 +24,7 @@ import {
   selectTextCommand,
   setCascadeOverrideCommand,
   setMultiBaselineCommand,
+  setMultiSelectionCommand,
   setMultiTargetsCommand,
   setSingleTargetCommand,
   setTargetForSingleAndMultiCommand,
@@ -694,6 +695,29 @@ test('setMultiTargetsCommand: 基準に選んでいたSetupが選択から外れ
   assert.deepEqual(removed.assets.multiTargetSelection.targets, [TARGET_B]);
   assert.equal(effectiveMultiBaseline(removed.assets.multiTargetSelection), undefined);
   assert.equal(removed.assets.multiTargetSelection.baseline, TARGET_A);
+});
+
+test('setMultiSelectionCommand: 共有された集合を基準ごと1操作で書き、Singleは触らず、Undoで一緒に戻る（#719）', () => {
+  const assets = emptyAssets();
+  const history = emptyCommandHistory<KeydistAssets>();
+  const before = applyCommand(assets, history, setMultiTargetsCommand([TARGET_NOT_SELECTED]));
+
+  const step = applyCommand(before.assets, before.history, setMultiSelectionCommand([TARGET_B, TARGET_A], TARGET_A));
+  assert.deepEqual(step.assets.multiTargetSelection.targets, [TARGET_B, TARGET_A]);
+  assert.equal(effectiveMultiBaseline(step.assets.multiTargetSelection), TARGET_A);
+  // 基準を選ぶ操作と違い、Singleがまだ選ばれていなくても書かない。
+  assert.equal(step.assets.singleTargetSelection.target, undefined);
+
+  const undone = undo(step.assets, step.history);
+  assert.deepEqual(undone.assets.multiTargetSelection.targets, [TARGET_NOT_SELECTED]);
+  assert.equal(effectiveMultiBaseline(undone.assets.multiTargetSelection), undefined);
+
+  // 基準を運ばないリンクは、前の基準の記録を残さず「基準なし」で開く。
+  const again = applyCommand(step.assets, step.history, setMultiSelectionCommand([TARGET_A, TARGET_B], undefined));
+  assert.equal(again.assets.multiTargetSelection.baseline, undefined);
+  // 同じ内容なら何も書かない。
+  const same = applyCommand(again.assets, again.history, setMultiSelectionCommand([TARGET_A, TARGET_B], undefined));
+  assert.equal(same.outcome.kind, 'no-op');
 });
 
 test('setSingleTargetCommand: 対象を書き込み、undo/redoで往復できる', () => {

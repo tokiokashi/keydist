@@ -14,7 +14,10 @@ import { ComparisonPane } from '#hosts/shared/panes/ComparisonPane.tsx';
 import type { PaneChrome, PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
-import { useUrlOptions } from './use-url-options.ts';
+import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
+import { urlOptionsNotices, useUrlOptions } from './use-url-options.ts';
+import { useTargetShareSource, useUrlTargets } from './use-url-targets.ts';
+import { encodeMultiTargetsToUrl, hasSharedTargetParams } from './target-share.ts';
 import './standalone.css';
 
 /**
@@ -86,6 +89,10 @@ export function ComparisonStandalonePage({
     setOptionsDraft,
   });
 
+  // URL経由で対象（集合と基準）を受け取る（`use-url-targets.ts`）。
+  const shareSource = useTargetShareSource(catalog, assets.setupLibrary.setups);
+  const targetNotices = useUrlTargets({ kind: 'multi', assetsReady, source: shareSource, dispatch });
+
   const env: PaneEnvironment = useMemo(() => ({
     setups: assets.setupLibrary.setups,
     overrides: assets.setupLibrary.overrides,
@@ -100,14 +107,26 @@ export function ComparisonStandalonePage({
     onComparisonOptionsCommit(next);
   };
 
+  // 共有リンクで対象が届く間は、空の対象の選択を自動で開かない（取り込んだ後に開いてしまうため）。
+  // `window`は資産の読み込み後（ブラウザ）にだけ読む。
+  const chrome: PaneChrome = assetsReady && hasSharedTargetParams(window.location.search, 'multi')
+    ? { ...STANDALONE_CHROME, autoOpenTargetSelection: false }
+    : STANDALONE_CHROME;
+
   return (
     <div className="standalone-page">
       <ContextBar
         disabled={!assetsReady}
         history={history}
         share={{
-          description: '今の解析設定を含むこの画面のURLをコピーする',
-          query: () => comparisonOptions.encodeOptionsToUrl(optionsDraft),
+          description: '今の対象と解析設定を含むこの画面のURLをコピーする',
+          query: () => {
+            const params = comparisonOptions.encodeOptionsToUrl(optionsDraft);
+            const selection = assets.multiTargetSelection;
+            encodeMultiTargetsToUrl(selection.targets, effectiveMultiBaseline(selection), shareSource)
+              .forEach((value, key) => params.append(key, value));
+            return params;
+          },
         }}
       >
         <TextChip
@@ -132,13 +151,14 @@ export function ComparisonStandalonePage({
         <div className="standalone-stage">
           <ComparisonPane
             env={env}
-            chrome={STANDALONE_CHROME}
+            chrome={chrome}
             selection={assets.multiTargetSelection}
             onTargetsChange={(next) => dispatch(setMultiTargetsCommand(next))}
             onBaselineChange={(next) => dispatch(setMultiBaselineCommand(next))}
             options={optionsDraft}
             onOptionsChange={changeOptions}
-            settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}
+            settingsDiagnostics={decoded.diagnostics}
+            linkNotices={[...urlOptionsNotices(urlDiagnostics), ...targetNotices]}
           />
         </div>
       </fieldset>

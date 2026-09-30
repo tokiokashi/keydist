@@ -32,6 +32,8 @@ export interface BigramFlowPaneProps {
   readonly onOptionsChange: (next: BigramFlowOptions) => void;
   /** 保存した解析設定を読み直した時の診断。 */
   readonly settingsDiagnostics?: readonly CodecDiagnostic[];
+  /** 共有リンクを開いた時に、取り込めなかったものを伝える文。 */
+  readonly linkNotices?: readonly string[];
 }
 
 export function BigramFlowPane({
@@ -42,6 +44,7 @@ export function BigramFlowPane({
   options,
   onOptionsChange,
   settingsDiagnostics = [],
+  linkNotices,
 }: BigramFlowPaneProps) {
   const { setups, overrides, catalog, resolvedText, cache } = env;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
@@ -107,6 +110,7 @@ export function BigramFlowPane({
       engineState={combinePaneStates(extraction, pane.trace)}
       traceErrors={traceErrors}
       settingsDiagnostics={settingsDiagnostics}
+      linkNotices={linkNotices}
     >
       {resolution.ok && hasExtraction && hasTrace ? (
         <Body

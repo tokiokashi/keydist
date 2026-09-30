@@ -15,7 +15,9 @@ import { BigramFlowPane } from '#hosts/shared/panes/BigramFlowPane.tsx';
 import type { PaneChrome, PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
-import { useUrlOptions } from './use-url-options.ts';
+import { urlOptionsNotices, useUrlOptions } from './use-url-options.ts';
+import { useTargetShareSource, useUrlTargets } from './use-url-targets.ts';
+import { encodeSingleTargetToUrl } from './target-share.ts';
 import './standalone.css';
 
 /**
@@ -101,6 +103,10 @@ export function BigramFlowStandalonePage({
     setOptionsDraft,
   });
 
+  // URL経由で対象を受け取る（`use-url-targets.ts`）。
+  const shareSource = useTargetShareSource(catalog, assets.setupLibrary.setups);
+  const targetNotices = useUrlTargets({ kind: 'single', assetsReady, source: shareSource, dispatch });
+
   const env: PaneEnvironment = useMemo(() => ({
     setups: assets.setupLibrary.setups,
     overrides: assets.setupLibrary.overrides,
@@ -121,8 +127,12 @@ export function BigramFlowStandalonePage({
         disabled={!assetsReady}
         history={history}
         share={{
-          description: '今の解析設定を含むこの画面のURLをコピーする',
-          query: () => bigramFlowOptions.encodeOptionsToUrl(optionsDraft),
+          description: '今の対象と解析設定を含むこの画面のURLをコピーする',
+          query: () => {
+            const params = bigramFlowOptions.encodeOptionsToUrl(optionsDraft);
+            encodeSingleTargetToUrl(target, shareSource).forEach((value, key) => params.append(key, value));
+            return params;
+          },
         }}
       >
         <TextChip
@@ -160,7 +170,8 @@ export function BigramFlowStandalonePage({
             onTargetChange={(next) => dispatch(setSingleTargetCommand(next))}
             options={optionsDraft}
             onOptionsChange={changeOptions}
-            settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}
+            settingsDiagnostics={decoded.diagnostics}
+            linkNotices={[...urlOptionsNotices(urlDiagnostics), ...targetNotices]}
           />
         </div>
       </fieldset>
