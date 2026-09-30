@@ -141,7 +141,7 @@ export function PaneFrame({
             <PaneMenu
               paneName={paneName}
               items={targetBinding.items}
-              label={targetBinding.follows ? `連動 ${targetBinding.groupNumber}（対象: ${targetBinding.summary}）` : '固定'}
+              label={`${targetBinding.follows ? `連動 ${targetBinding.groupNumber}` : '固定'}（対象: ${targetBinding.summary}）`}
               title={targetBinding.follows
                 ? `連動 ${targetBinding.groupNumber}: 同じ番号のペインと、配列・Setupが一緒に変わる`
                 : '固定: このペインの対象は、他のペインに合わせて変わらない'}

@@ -279,7 +279,7 @@ test('ペインの対象: 従うペイン2つと固定のペイン1つ。従う�
   // 足したペインは最初の連動に従う。3つ目を固定にすると、押した瞬間は見た目が変わらない
   for (let n = 0; n < 3; n += 1) await expect(pinButton(panes.nth(n))).toHaveAttribute('aria-label', /^連動 1（/);
   await pickBinding(page, panes.nth(2), '固定');
-  await expect(pinButton(panes.nth(2))).toHaveAttribute('aria-label', '固定');
+  await expect(pinButton(panes.nth(2))).toHaveAttribute('aria-label', /^固定（対象: /);
   await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', QWERTY_LABEL);
 
   // 従うペインの見出しで対象を選ぶと、同じ連動の2つだけが追従する
@@ -307,7 +307,7 @@ test('ペインの対象: 従うペイン2つと固定のペイン1つ。従う�
   await waitForHydration(page);
   await expect(targetButton(page.locator('.pane-frame').nth(1))).toHaveAttribute('aria-label', COLEMAK_LABEL);
   await expect(targetButton(page.locator('.pane-frame').nth(2))).toHaveAttribute('aria-label', QWERTY_LABEL);
-  await expect(pinButton(page.locator('.pane-frame').nth(2))).toHaveAttribute('aria-label', '固定');
+  await expect(pinButton(page.locator('.pane-frame').nth(2))).toHaveAttribute('aria-label', /^固定（対象: /);
 
   // 固定のペインを最初の連動へ戻すと、その連動の対象へ追従する
   await pickBinding(page, page.locator('.pane-frame').nth(2), '連動 1');
@@ -345,6 +345,8 @@ test('連動を2つ持てる: 組ごとに対象が別で、片方を変えて�
   for (const [n, name] of ['固定', '連動 1（Colemak-DH）', '連動 2（QWERTY）', '新しい連動（今の対象で作る）'].entries()) {
     await expect(items.nth(n)).toHaveAttribute('aria-label', name);
   }
+  // 開いた直後は、選ばれている項目（この固定のペインでは「固定」）へフォーカスが移る
+  await expect(items.nth(0)).toBeFocused();
   // 項目は絵（ピン・鎖と番号・鎖と＋）と要約の1行で、「リンク」の文字は出さない
   await expect(items.nth(1).locator('.pane-binding-icon-number')).toHaveText('1');
   await expect(items.nth(1).locator('.pane-menu-item-label')).toHaveText('Colemak-DH');
@@ -373,7 +375,7 @@ test('連動を2つ持てる: 組ごとに対象が別で、片方を変えて�
   await waitForHydration(page);
   const reloaded = page.locator('.pane-frame');
   await expect(pinButton(reloaded.nth(1))).toHaveAttribute('aria-label', /^連動 2（/);
-  await expect(pinButton(reloaded.nth(3))).toHaveAttribute('aria-label', '固定');
+  await expect(pinButton(reloaded.nth(3))).toHaveAttribute('aria-label', /^固定（対象: /);
   await expect(targetButton(reloaded.nth(3))).toHaveAttribute('aria-label', QWERTY_LABEL);
 
   // 誰も従わなくなった連動は消える（3つ目・2つ目を連動1へ寄せると、連動2が空になる）
@@ -382,6 +384,8 @@ test('連動を2つ持てる: 組ごとに対象が別で、片方を変えて�
   await expect.poll(async () => (await storedFirst(page)).groups.length).toBe(1);
   await pinButton(reloaded.nth(0)).click();
   await expect(page.locator('.pane-menu-item')).toHaveCount(3);
+  // 連動のペインでは、従っている連動の項目へフォーカスが移る
+  await expect(page.locator('.pane-menu-item').nth(1)).toBeFocused();
 });
 
 test('連動を複数持つ時、集合のペインも組ごとに別の集合を持つ。固定のペインは変わらない', async ({ page }) => {
@@ -391,7 +395,7 @@ test('連動を複数持つ時、集合のペインも組ごとに別の集合�
   const comparison = pane(page, '比較表');
   const sensitivity = pane(page, 'N感度');
   await pickBinding(page, sensitivity, '固定');
-  await expect(pinButton(sensitivity)).toHaveAttribute('aria-label', '固定');
+  await expect(pinButton(sensitivity)).toHaveAttribute('aria-label', /^固定（対象: /);
 
   await comparison.getByRole('button', { name: '配列・Setupを選ぶ' }).click();
   const dialog = page.getByRole('dialog', { name: '対象の選択' });

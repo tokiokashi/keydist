@@ -1,5 +1,5 @@
 import { findWorkspaceAnalyzer } from './analyzer-registry.ts';
-import type { LinkGroupSummary } from './group-summary.ts';
+import { summarizePaneTarget, type LinkGroupSummary } from './group-summary.ts';
 import type { LinkGroup, WorkspacePane, WorkspacePaneTarget } from '#engine/workspace.ts';
 import type { PaneChrome, PaneEnvironment, PaneTargetBindingControl } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneMenuItem } from '#hosts/shared/PaneHeaderParts.tsx';
@@ -24,7 +24,7 @@ export interface WorkspacePaneRuntime {
   readonly setPaneTarget: (paneId: string, target: WorkspacePaneTarget) => void;
   /** 連動の組。従うペインの対象の持ち主で、番号は並びの順（1から）。 */
   readonly groups: readonly LinkGroup[];
-  /** `groups`と同じ並びの、組ごとの対象の要約（ピンのメニューで組を見分ける）。 */
+  /** `groups`と同じ並びの、組ごとの対象の要約（連動のメニューで組を見分ける）。 */
   readonly groupSummaries: readonly LinkGroupSummary[];
   /**
    * ペインの対象の持ち方を切り替える。固定にする時・新しい組へ移す時は、今映している対象を
@@ -75,7 +75,10 @@ function bindingControl(runtime: WorkspacePaneRuntime, pane: WorkspacePane): Pan
   const index = runtime.groups.findIndex((group) => group.id === followed);
   return {
     follows: followed !== undefined,
-    ...(index === -1 ? {} : { groupNumber: index + 1, summary: summaryOf(runtime, index, pane) }),
+    summary: pane.binding.mode === 'fixed'
+      ? summarizePaneTarget(runtime.env, pane.binding.target)
+      : index === -1 ? '' : summaryOf(runtime, index, pane),
+    ...(index === -1 ? {} : { groupNumber: index + 1 }),
     items: [
       {
         id: 'fixed',
