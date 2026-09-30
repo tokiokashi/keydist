@@ -1402,5 +1402,14 @@ test('Relative vectors: 内向き・外向きの割合は、読み上げでも�
     const names = await labels.evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') ?? ''));
     expect(names.every((name) => /^(内向き|外向き) \d+\.\d%$/.test(name))).toBe(true);
     expect(new Set(names.map((name) => name.split(' ')[0])).size).toBe(2);
+    // 内向きと外向きの割合は合わせて100%
+    const total = names.reduce((sum, name) => sum + Number(name.split(' ')[1]!.replace('%', '')), 0);
+    expect(total).toBeCloseTo(100, 0);
   }
+  // 既定の条件（QWERTY・既定のテキスト）での値と向きの対応。取り違えると落ちる
+  const names = async (hand: number) => section.locator('.roll-summary').nth(hand).getByRole('img')
+    .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
+  // 図の並びと同じ順（左手は外側が左、右手は内側が左）で読み上げる
+  expect(await names(0)).toEqual(['外向き 56.8%', '内向き 43.2%']);
+  expect(await names(1)).toEqual(['内向き 57.9%', '外向き 42.1%']);
 });
