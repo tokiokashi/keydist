@@ -1,3 +1,4 @@
+import { initialWorkspaceLibrary } from '#engine/workspace.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { applyCommand, emptyCommandHistory, undo } from '#input/commands/index.ts';
@@ -34,6 +35,7 @@ function emptyAssets(): KeydistAssets {
     standaloneAnalyzerOptions: {},
     multiTargetSelection: initialMultiTargetSelection(),
     singleTargetSelection: initialSingleTargetSelection(),
+    workspaces: initialWorkspaceLibrary(),
   };
 }
 

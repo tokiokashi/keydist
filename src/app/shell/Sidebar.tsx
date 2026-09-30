@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { useSyncExternalStore, type ReactNode } from 'react';
 import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
@@ -10,11 +10,14 @@ import {
   subscribeAppearance,
 } from '../theme/appearance.ts';
 import type { ThemeChoice } from '../theme/theme.ts';
+import { createWorkspaceInStorage } from '../workspace/create-workspace.ts';
+import { generateWorkspaceId } from '../workspace/id-generator.ts';
+import { useWorkspaceLinks } from './use-workspace-links.ts';
 
 /** 旧バージョン（`/analyzer`）へのリンクの文言。トップの下端のリンクも同じ文を出す。 */
 export const LEGACY_ANALYZER_LABEL = '旧バージョン';
 
-/** Workspace 区分の案内文。トップの見本も同じ文を出す。 */
+/** Workspace 区分の案内文（保存したWorkspaceが1つも無い時）。トップの見本も同じ文を出す。 */
 export const WORKSPACE_EMPTY_TEXT = 'Analyzerを並べて見る画面。';
 
 /**
@@ -23,6 +26,7 @@ export const WORKSPACE_EMPTY_TEXT = 'Analyzerを並べて見る画面。';
  *
  * 区分見出しは英語（Analyze / Workspace / Assets）。Analyzeの中は対象の数で
  * Single / Multi に分ける。Testerは区分に入れず単独で置く。
+ * Workspaceは保存したWorkspaceの一覧と「＋ 新しいWorkspace」で、1つも無い時は案内文を出す。
  * Assetsは手持ちの資産の編集画面へのリンクを並べる区分で、編集画面がまだ1つも無いので出さない。
  */
 export interface SidebarProps {
@@ -100,6 +104,16 @@ function NavLink({ to, children, onNavigate }: { readonly to: string; readonly c
 }
 
 export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
+  const { ready: workspacesReady, links: workspaceLinks } = useWorkspaceLinks();
+  const navigate = useNavigate();
+
+  const createWorkspace = () => {
+    const id = generateWorkspaceId();
+    if (!createWorkspaceInStorage(id)) return;
+    onNavigate();
+    void navigate({ to: '/workspace/$id', params: { id } });
+  };
+
   return (
     <>
       <div className="sidebar-top">
@@ -131,7 +145,22 @@ export function Sidebar({ pinned, onPinnedChange, onNavigate }: SidebarProps) {
 
         <section className="sidebar-group" aria-labelledby="sidebar-workspace">
           <h2 className="sidebar-heading" id="sidebar-workspace">Workspace</h2>
-          <p className="sidebar-empty">{WORKSPACE_EMPTY_TEXT}</p>
+          {workspacesReady && workspaceLinks.length === 0 ? <p className="sidebar-empty">{WORKSPACE_EMPTY_TEXT}</p> : null}
+          {workspaceLinks.map((workspace) => (
+            <Link
+              key={workspace.id}
+              className="sidebar-link"
+              to="/workspace/$id"
+              params={{ id: workspace.id }}
+              activeProps={{ 'aria-current': 'page' }}
+              onClick={onNavigate}
+            >
+              {workspace.name}
+            </Link>
+          ))}
+          <button type="button" className="sidebar-link sidebar-new-workspace" onClick={createWorkspace}>
+            ＋ 新しいWorkspace
+          </button>
         </section>
 
         <section className="sidebar-group">

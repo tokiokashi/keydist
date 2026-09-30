@@ -4,7 +4,7 @@ import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
 import { nSensitivityAnalyzer } from '#analyzers/n-sensitivity/definition.tsx';
 import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { NSensitivityStandalonePage } from '#hosts/standalone/index.ts';
-import { builtinStandaloneCatalog } from './catalog.ts';
+import { builtinPaneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
@@ -13,11 +13,11 @@ import { useTextContentCommit } from './use-text-content-commit.ts';
 
 /**
  * N感度単体ページの組み立て（#544 Phase 3。`StandaloneComparisonApp.tsx`と同じ形）。
- * 計算の窓口は他の単体ページと共有する（`engine-computer.ts`）。
+ * 計算の窓口は他の単体ページと共有する（`engine-computer.ts`。ブラウザではWorker）。
  */
 export function StandaloneNSensitivityApp() {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const catalog = useMemo(() => builtinStandaloneCatalog(), []);
+  const catalog = useMemo(() => builtinPaneCatalog(), []);
 
   const commitOptions = useDebouncedCommit<NSensitivityOptions>(dispatch, {
     commandFor: (options) => setStandaloneAnalyzerOptionsCommand(nSensitivityAnalyzer.definition.id, options),

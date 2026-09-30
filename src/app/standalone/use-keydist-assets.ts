@@ -6,7 +6,7 @@ import {
   type CommandHistory,
 } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
-import { ASSET_KEYS, ASSET_STORAGE_SPECS } from './asset-storage-specs.ts';
+import { initialAssets } from './asset-storage-specs.ts';
 import {
   buildAssetSyncs,
   commitCommand,
@@ -53,14 +53,6 @@ export interface KeydistAssetsController {
   readonly canRedo: boolean;
   undo(): void;
   redo(): void;
-}
-
-function initialAssets(): KeydistAssets {
-  // `ASSET_STORAGE_SPECS`がKeydistAssetsの全キーを型で強制しているので、`unknown`経由の
-  // castは「全キー分そろっている」という保証済みの前提を表す1箇所だけの変換として許容する
-  // （`Array#map`がタプルの相関をunionへ潰してしまうため。`asset-syncs.ts`の`buildOne`コメント参照）。
-  const entries = ASSET_KEYS.map((key) => [key, ASSET_STORAGE_SPECS[key].initial()] as const);
-  return Object.fromEntries(entries) as unknown as KeydistAssets;
 }
 
 /**

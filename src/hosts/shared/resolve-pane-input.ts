@@ -13,7 +13,7 @@ import type { ResolvedText } from '#input/text/resolve.ts';
  * 同じ形。ここに入るのはカタログ＝読み取り専用の参照なので、storageそのものではないが
  * 「appが組み立てる」という点は揃える）。
  */
-export interface StandalonePaneCatalog {
+export interface PaneCatalog {
   readonly setupCatalog: SetupCatalog;
   readonly userLayouts: ReadonlyMap<string, UserLayout>;
   readonly customRomajiRules?: readonly UserRomajiRule[];
@@ -30,10 +30,10 @@ export interface StandalonePaneCatalog {
  * `setups`はSetup対象の解決に要る手持ち（`assets.setupLibrary.setups`をidで引ける形にした
  * もの）。配列対象では参照しない（`resolveTargetForText`参照）。
  */
-export function resolveStandalonePaneInput(
+export function resolvePaneInput(
   target: AnalysisTarget,
   setups: ReadonlyMap<string, Setup>,
-  catalog: StandalonePaneCatalog,
+  catalog: PaneCatalog,
   overrides: SettingsCascadeOverrides,
   resolvedText: ResolvedText,
 ): ResolvedInputResult {

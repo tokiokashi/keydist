@@ -4,7 +4,7 @@ import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
 import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
 import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { ComparisonStandalonePage } from '#hosts/standalone/index.ts';
-import { builtinStandaloneCatalog } from './catalog.ts';
+import { builtinPaneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
@@ -14,11 +14,11 @@ import { useTextContentCommit } from './use-text-content-commit.ts';
 /**
  * 比較表単体ページの組み立て（#544 Phase 3。`StandaloneBigramFlowApp.tsx`と同じ形）。
  *
- * 計算の窓口は他の単体ページと共有する（`engine-computer.ts`）。
+ * 計算の窓口は他の単体ページと共有する（`engine-computer.ts`。ブラウザではWorker）。
  */
 export function StandaloneComparisonApp() {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const catalog = useMemo(() => builtinStandaloneCatalog(), []);
+  const catalog = useMemo(() => builtinPaneCatalog(), []);
 
   const commitComparisonOptions = useDebouncedCommit<ComparisonOptions>(dispatch, {
     commandFor: (options) => setStandaloneAnalyzerOptionsCommand(comparisonAnalyzer.definition.id, options),

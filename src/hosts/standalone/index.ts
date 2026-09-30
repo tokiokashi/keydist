@@ -10,7 +10,3 @@ export {
   NSensitivityStandalonePage,
   type NSensitivityStandalonePageProps,
 } from './NSensitivityStandalonePage.tsx';
-export {
-  resolveStandalonePaneInput,
-  type StandalonePaneCatalog,
-} from './resolve-pane-input.ts';

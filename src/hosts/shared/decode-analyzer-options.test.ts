@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { decodeStoredAnalyzerOptions } from './standalone-analyzer-options.ts';
+import { decodeStoredAnalyzerOptions } from './decode-analyzer-options.ts';
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
 import { DEFAULT_BIGRAM_FLOW_OPTIONS } from '#analyzers/bigram-flow/options.ts';
 
