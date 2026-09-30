@@ -102,24 +102,22 @@ function row(id: ConditionSummaryRow['id'], origin: ConditionSummaryRow['origin'
   };
 }
 
-test('overrideWinsNotices: 推奨の入力を確定している配列で、下のレベルが勝つ行にだけ理由を出す', () => {
+test('overrideWinsNotices: 下のレベルが勝つ行にだけ、配列を問わず理由を出す', () => {
   const rows = [
     row('windowSize', { kind: 'layout', layoutId: 'oonishi' }, '上書き: 配列「大西配列」'),
     row('sfbHomeCost', { kind: 'global' }, '上書き: 全体'),
     row('preferOppositeThumb', { kind: 'default' }, '既定値'),
   ];
   const names = { shapes: new Map(), layouts: new Map([['oonishi', { name: '大西配列' }]]) };
-  const notices = overrideWinsNotices(rows, 'oonishi', names);
+  const notices = overrideWinsNotices(rows, names);
   assert.deepEqual([...notices.keys()], ['windowSize']);
   assert.match(notices.get('windowSize')!, /^配列「大西配列」の値が優先されるため/);
-  // TK音直入力法も対象。
-  assert.equal(overrideWinsNotices(rows, 'oonishi-custom').size, 1);
 });
 
-test('overrideWinsNotices: 推奨の入力を確定していない配列では、下のレベルが勝っていても理由を出さない', () => {
+test('overrideWinsNotices: QWERTYの配列の上書きでも理由を出す', () => {
   const rows = [row('windowSize', { kind: 'layout', layoutId: 'qwerty' }, '上書き: 配列')];
-  assert.equal(overrideWinsNotices(rows, 'qwerty').size, 0);
-  assert.equal(overrideWinsNotices(rows, undefined).size, 0);
+  const names = { shapes: new Map(), layouts: new Map([['qwerty', { name: 'QWERTY' }]]) };
+  assert.match(overrideWinsNotices(rows, names).get('windowSize')!, /^配列「QWERTY」の値が優先されるため/);
 });
 
 test('すべて既定値に戻す: 行のある項目の全体の上書きだけを1コマンドで消し、行の無い項目は残す。元に戻すの1回で全部戻る', () => {

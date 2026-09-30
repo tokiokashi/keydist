@@ -136,23 +136,15 @@ export function withClassGrouping(
 }
 
 /**
- * 配列が推奨の入力（ローマ字の綴り）を確定している配列。今は大西配列の大西式と、
- * TK音直入力法（コンボが訓令式の綴りを前提に組まれている。`input/layouts/index.ts`）。
- */
-const LAYOUTS_WITH_FIXED_RECOMMENDED_INPUT: ReadonlySet<string> = new Set(['oonishi', 'oonishi-custom']);
-
-/**
  * 全体を変えても下のレベルの値が勝って画面が変わらない行の理由。モーダルの行は編集できるまま、
- * 行の下に文を添える。出すのは、配列が推奨の入力を確定している時だけ（オーナー決定 #655）。
+ * 行の下に文を添える。配列を問わず出す（オーナー決定 #655）。
  * 下のレベルの上書きが無い行（効いている値が全体か既定値）は理由が要らない。
  */
 export function overrideWinsNotices(
   rows: readonly ConditionSummaryRow[],
-  layoutId: string | undefined,
   names?: ConditionValueNames,
 ): ReadonlyMap<SettingsItemId, string> {
   const notices = new Map<SettingsItemId, string>();
-  if (layoutId === undefined || !LAYOUTS_WITH_FIXED_RECOMMENDED_INPUT.has(layoutId)) return notices;
   for (const row of rows) {
     if (!isChangedConditionRow(row)) continue;
     if (row.origin.kind === 'default' || row.origin.kind === 'global') continue;

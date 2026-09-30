@@ -222,7 +222,7 @@ export function BigramFlowStandalonePage({
               dispatch,
               shapes: catalog.setupCatalog.shapes,
               customFingerAssignments: catalog.customFingerAssignments,
-              notices: overrideWinsNotices(conditionRows, resolution.ok ? resolution.input.layout.id : undefined, catalog.setupCatalog),
+              notices: overrideWinsNotices(conditionRows, catalog.setupCatalog),
             }}
             engineState={combinePaneStates(extraction, pane.trace)}
             traceErrors={traceErrors}

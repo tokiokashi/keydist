@@ -169,7 +169,7 @@ async function openWithLayoutOverride(page: Page, layoutId: string) {
   return openConditionModal(page);
 }
 
-test('条件のモーダル: 推奨の入力を確定した配列では、下のレベルが勝つ行に理由を出し、編集はできる', async ({ page }) => {
+test('条件のモーダル: 下のレベルが勝つ行に理由を出し、編集はできる', async ({ page }) => {
   const modal = await openWithLayoutOverride(page, 'oonishi');
   const row = modal.locator('[data-item="windowSize"]');
   await expect(row.locator('[data-condition-notice]')).toContainText('の値が優先されるため、全体を変えてもこの画面は変わらない');
@@ -179,11 +179,11 @@ test('条件のモーダル: 推奨の入力を確定した配列では、下の
   await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('4');
 });
 
-test('条件のモーダル: 推奨の入力を確定していない配列では、下のレベルが勝っていても理由を出さない', async ({ page }) => {
+test('条件のモーダル: QWERTYの配列の上書きでも、下のレベルが勝つ行に理由を出す', async ({ page }) => {
   const modal = await openWithLayoutOverride(page, 'qwerty');
   const row = modal.locator('[data-item="windowSize"]');
   await expect(row).toContainText('で変更');
-  await expect(row.locator('[data-condition-notice]')).toHaveCount(0);
+  await expect(row.locator('[data-condition-notice]')).toContainText('の値が優先されるため、全体を変えてもこの画面は変わらない');
 });
 
 test('操作系はハイドレーション+資産読み込み完了（assetsReady）まで無効化され、直後に選んでも取りこぼさない（レビュー指摘1）', async ({ page }) => {
