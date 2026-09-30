@@ -314,11 +314,17 @@ test('ペインの対象: 従うペイン2つと固定のペイン1つ。従う�
   await expect(targetButton(page.locator('.pane-frame').nth(2))).toHaveAttribute('aria-label', COLEMAK_LABEL);
 });
 
-test('連動を2つ持てる: 組ごとに対象が別で、片方を変えてももう片方と固定は動かない。空になった連動は消える', async ({ page }) => {
+/** Workspaceを作り、Bigram Flowのペインを`count`枚並べて、最後のペインの描画を待つ。 */
+async function createWithBigramPanes(page: Page, count: number): Promise<Locator> {
   await createWorkspace(page);
-  for (let n = 0; n < 4; n += 1) await addAnalyzer(page, 'Bigram Flow');
+  for (let n = 0; n < count; n += 1) await addAnalyzer(page, 'Bigram Flow');
   const panes = page.locator('.pane-frame');
-  await expect(panes.nth(3).locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await expect(panes.nth(count - 1).locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  return panes;
+}
+
+test('連動を2つ持てる: 組ごとに対象が別で、片方を変えてももう片方と固定は動かない。Undo・再読み込みで戻る', async ({ page }) => {
+  const panes = await createWithBigramPanes(page, 4);
 
   // 3つ目を新しい連動へ移す（見た目は変わらない）。4つ目は固定にする
   await pickBinding(page, panes.nth(2), '新しい連動');
@@ -332,14 +338,69 @@ test('連動を2つ持てる: 組ごとに対象が別で、片方を変えて�
   await expect(targetButton(panes.nth(1))).toHaveAttribute('aria-label', COLEMAK_LABEL);
   await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', QWERTY_LABEL);
   await expect(targetButton(panes.nth(3))).toHaveAttribute('aria-label', QWERTY_LABEL);
-  let stored = await storedFirst(page);
+  const stored = await storedFirst(page);
   expect(stored.groups.map((g) => g.target.single?.layoutId)).toEqual(['colemak-dh', 'qwerty']);
   expect(stored.panes.map((p) => p.binding.group ?? p.binding.mode)).toEqual([stored.groups[0]!.id, stored.groups[0]!.id, stored.groups[1]!.id, 'fixed']);
 
+  // 元に戻す1回で、連動1の変更だけが戻る（連動の組は残る）
+  await page.locator('.context-bar').getByRole('button', { name: '元に戻す' }).click();
+  for (let n = 0; n < 4; n += 1) await expect(targetButton(panes.nth(n))).toHaveAttribute('aria-label', QWERTY_LABEL);
+  expect((await storedFirst(page)).groups).toHaveLength(2);
+  await page.locator('.context-bar').getByRole('button', { name: 'やり直す' }).click();
+  await expect(targetButton(panes.nth(1))).toHaveAttribute('aria-label', COLEMAK_LABEL);
+});
+
+test('連動2のペインで対象を選ぶと連動2だけが変わり、別のペインを連動2へ移せる。再読み込みしても残る', async ({ page }) => {
+  const panes = await createWithBigramPanes(page, 4);
+  await pickBinding(page, panes.nth(2), '新しい連動');
+  await pickBinding(page, panes.nth(3), '固定');
+
+  await chooseLayout(page, targetButton(panes.nth(2)), 'colemak-dh');
+  await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', COLEMAK_LABEL);
+  for (const n of [0, 1, 3]) await expect(targetButton(panes.nth(n))).toHaveAttribute('aria-label', QWERTY_LABEL);
+
+  // 2つ目を連動2へ移すと、連動2の対象へ追従する。連動1（1つ目）と固定は動かない
+  await pickBinding(page, panes.nth(1), '連動 2');
+  await expect(targetButton(panes.nth(1))).toHaveAttribute('aria-label', COLEMAK_LABEL);
+  await expect(targetButton(panes.nth(0))).toHaveAttribute('aria-label', QWERTY_LABEL);
+  await expect(targetButton(panes.nth(3))).toHaveAttribute('aria-label', QWERTY_LABEL);
+  await page.reload();
+  await waitForHydration(page);
+  const reloaded = page.locator('.pane-frame');
+  await expect(pinButton(reloaded.nth(1))).toHaveAttribute('aria-label', /^連動 2（/);
+  await expect(pinButton(reloaded.nth(3))).toHaveAttribute('aria-label', /^固定（対象: /);
+  await expect(targetButton(reloaded.nth(1))).toHaveAttribute('aria-label', COLEMAK_LABEL);
+  await expect(targetButton(reloaded.nth(3))).toHaveAttribute('aria-label', QWERTY_LABEL);
+});
+
+test('誰も従わなくなった連動は消え、連動のメニューを開くと従っている項目へフォーカスが移る', async ({ page }) => {
+  const panes = await createWithBigramPanes(page, 3);
+  await pickBinding(page, panes.nth(2), '新しい連動');
+  await expect(pinButton(panes.nth(2))).toHaveAttribute('aria-label', /^連動 2（/);
+  expect((await storedFirst(page)).groups).toHaveLength(2);
+
+  // 3つ目を連動1へ戻すと、連動2が空になって消える
+  await pickBinding(page, panes.nth(2), '連動 1');
+  await expect.poll(async () => (await storedFirst(page)).groups.length).toBe(1);
+  await pinButton(panes.nth(0)).click();
+  await expect(page.locator('.pane-menu-item')).toHaveCount(3);
+  // 連動のペインでは、従っている連動の項目へフォーカスが移る
+  await expect(page.locator('.pane-menu-item').nth(1)).toBeFocused();
+});
+
+test('連動のメニュー: 項目は絵と対象の要約の1行で、読み上げ名・hoverの説明があり、固定のペインでは「固定」へフォーカスが移る', async ({ page }) => {
+  const panes = await createWithBigramPanes(page, 3);
+  // 1つ目・2つ目は連動1、3つ目は連動2、2つ目は固定にする
+  await pickBinding(page, panes.nth(2), '新しい連動');
+  await pickBinding(page, panes.nth(1), '固定');
+  await chooseLayout(page, targetButton(panes.nth(0)), 'colemak-dh');
+  await expect(targetButton(panes.nth(0))).toHaveAttribute('aria-label', COLEMAK_LABEL);
+  await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', QWERTY_LABEL);
+
   // 連動は鎖と組の番号、固定はピン。メニューの各連動には、その連動の対象の要約が出る
   await expect(pinButton(panes.nth(0)).locator('svg[data-icon="link"]')).toBeVisible();
-  await expect(pinButton(panes.nth(3)).locator('svg[data-icon="pin"]')).toBeVisible();
-  await pinButton(panes.nth(3)).click();
+  await expect(pinButton(panes.nth(1)).locator('svg[data-icon="pin"]')).toBeVisible();
+  await pinButton(panes.nth(1)).click();
   const items = page.locator('.pane-menu-item');
   await expect(items).toHaveCount(4);
   for (const [n, name] of ['固定', '連動 1（Colemak-DH）', '連動 2（QWERTY）', '新しい連動（今の対象で作る）'].entries()) {
@@ -355,37 +416,8 @@ test('連動を2つ持てる: 組ごとに対象が別で、片方を変えて�
   await expect(page.locator('.pane-menu-list')).not.toContainText('リンク');
   // ボタンの説明（hover）は、対象に付く条件が変わらないとは書かない
   await expect(pinButton(panes.nth(0))).toHaveAttribute('title', /同じ番号のペインと、配列・Setupが一緒に変わる/);
-  await expect(pinButton(panes.nth(3))).toHaveAttribute('title', /他のペインに合わせて変わらない/);
+  await expect(pinButton(panes.nth(1))).toHaveAttribute('title', /他のペインに合わせて変わらない/);
   await page.keyboard.press('Escape');
-
-  // 元に戻す1回で、連動1の変更だけが戻る（連動の組は残る）
-  await page.locator('.context-bar').getByRole('button', { name: '元に戻す' }).click();
-  for (let n = 0; n < 4; n += 1) await expect(targetButton(panes.nth(n))).toHaveAttribute('aria-label', QWERTY_LABEL);
-  expect((await storedFirst(page)).groups).toHaveLength(2);
-  await page.locator('.context-bar').getByRole('button', { name: 'やり直す' }).click();
-  await expect(targetButton(panes.nth(1))).toHaveAttribute('aria-label', COLEMAK_LABEL);
-
-  // 連動2のペインの見出しで選ぶと、連動2だけが変わる。再読み込みしても残る
-  await chooseLayout(page, targetButton(panes.nth(2)), 'colemak-dh');
-  await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', COLEMAK_LABEL);
-  await pickBinding(page, panes.nth(1), '連動 2');
-  await expect(targetButton(panes.nth(0))).toHaveAttribute('aria-label', COLEMAK_LABEL);
-  await expect(targetButton(panes.nth(3))).toHaveAttribute('aria-label', QWERTY_LABEL);
-  await page.reload();
-  await waitForHydration(page);
-  const reloaded = page.locator('.pane-frame');
-  await expect(pinButton(reloaded.nth(1))).toHaveAttribute('aria-label', /^連動 2（/);
-  await expect(pinButton(reloaded.nth(3))).toHaveAttribute('aria-label', /^固定（対象: /);
-  await expect(targetButton(reloaded.nth(3))).toHaveAttribute('aria-label', QWERTY_LABEL);
-
-  // 誰も従わなくなった連動は消える（3つ目・2つ目を連動1へ寄せると、連動2が空になる）
-  await pickBinding(page, reloaded.nth(1), '連動 1');
-  await pickBinding(page, reloaded.nth(2), '連動 1');
-  await expect.poll(async () => (await storedFirst(page)).groups.length).toBe(1);
-  await pinButton(reloaded.nth(0)).click();
-  await expect(page.locator('.pane-menu-item')).toHaveCount(3);
-  // 連動のペインでは、従っている連動の項目へフォーカスが移る
-  await expect(page.locator('.pane-menu-item').nth(1)).toBeFocused();
 });
 
 test('連動を複数持つ時、集合のペインも組ごとに別の集合を持つ。固定のペインは変わらない', async ({ page }) => {

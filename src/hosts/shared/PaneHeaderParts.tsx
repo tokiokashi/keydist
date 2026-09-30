@@ -54,8 +54,7 @@ export function PaneMenu({
       if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
     };
     document.addEventListener('pointerdown', onPointerDown);
-    // 開いたら先頭の項目へフォーカスを移す（キーボードでそのまま選べるように）。
-    // 択一のメニュー（menuitemradio）は選ばれている項目、無ければ先頭へ移す。
+    // 開いたら、選ばれている項目（択一のメニューの時）、無ければ先頭の項目へフォーカスを移す（キーボードでそのまま選べるように）。
     const items = rootRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"], [role="menuitemradio"]');
     const target = items === undefined ? undefined : [...items].find((item) => item.getAttribute('aria-checked') === 'true') ?? items[0];
     target?.focus();
