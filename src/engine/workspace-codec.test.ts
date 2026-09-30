@@ -285,3 +285,24 @@ test('配置を書き換えた値も往復する', () => {
   assert.ok(decoded.ok);
   assert.deepEqual(decoded.value, library);
 });
+
+test('splitのchildrenが配列でなければ診断を1件積み、ペインは失わない。undefinedは診断なし', () => {
+  const decode = (children: unknown) => WORKSPACE_LIBRARY_CODEC.decode({
+    version: 3,
+    workspaces: [{
+      id: 'w',
+      name: 'n',
+      panes: ['a', 'b'].map((id) => ({ id, analyzerId: 'x', binding: { mode: 'follow' } })),
+      layout: { kind: 'split', direction: 'row', children },
+    }],
+  });
+  for (const broken of ['abc', { 0: 1 }, 3, null]) {
+    const result = decode(broken);
+    assert.ok(result.ok);
+    assert.deepEqual(result.diagnostics.map((d) => d.path).filter((path) => path.includes('layout')), ['payload.workspaces[0].layout.children'], `値: ${JSON.stringify(broken)}`);
+    assert.deepEqual([...layoutPaneIds(result.value[0]!.layout)].sort(), ['a', 'b'], '空のsplitはnormalizeLayoutが直し、ペインは残る');
+  }
+  const absent = decode(undefined);
+  assert.ok(absent.ok);
+  assert.deepEqual(absent.diagnostics.filter((d) => d.path.includes('layout')), []);
+});
