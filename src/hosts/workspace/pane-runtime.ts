@@ -70,6 +70,14 @@ export function workspacePaneChrome(
   };
 }
 
+/**
+ * 連動の番号は並びの順（1から）で、組が消えたら詰める。ピンの読み上げ名・番号の絵と、
+ * メニューの項目の読み上げ名・番号の絵が同じ番号になるよう、番号はここ1か所から出す。
+ */
+function linkGroupNumber(index: number): number {
+  return index + 1;
+}
+
 function bindingControl(runtime: WorkspacePaneRuntime, pane: WorkspacePane): PaneTargetBindingControl {
   const followed = pane.binding.mode === 'follow' ? pane.binding.group : undefined;
   const index = runtime.groups.findIndex((group) => group.id === followed);
@@ -78,7 +86,7 @@ function bindingControl(runtime: WorkspacePaneRuntime, pane: WorkspacePane): Pan
     summary: pane.binding.mode === 'fixed'
       ? summarizePaneTarget(runtime.env, pane.binding.target)
       : index === -1 ? '' : summaryOf(runtime, index, pane),
-    ...(index === -1 ? {} : { groupNumber: index + 1 }),
+    ...(index === -1 ? {} : { groupNumber: linkGroupNumber(index) }),
     items: [
       {
         id: 'fixed',
@@ -90,11 +98,12 @@ function bindingControl(runtime: WorkspacePaneRuntime, pane: WorkspacePane): Pan
       },
       ...runtime.groups.map((group, i) => {
         const summary = summaryOf(runtime, i, pane);
+        const number = linkGroupNumber(i);
         return {
           id: `group-${group.id}`,
           label: summary,
-          ariaLabel: `連動 ${i + 1}（${summary}）`,
-          glyph: { kind: 'link' as const, number: i + 1 },
+          ariaLabel: `連動 ${number}（${summary}）`,
+          glyph: { kind: 'link' as const, number },
           selected: group.id === followed,
           onSelect: () => runtime.bindPane(pane.id, { kind: 'group', id: group.id }),
         };

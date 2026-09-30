@@ -400,6 +400,23 @@ test('先頭の連動が空になって消えると、残った連動が「連�
   await expect(pinButton(panes.nth(2))).toHaveAttribute('aria-label', /^連動 1（/);
 });
 
+test('先頭の連動が消えた後にメニューを開くと、項目の番号が「連動 1」から詰まる', async ({ page }) => {
+  const panes = await createWithBigramPanes(page, 3);
+  await pickBinding(page, panes.nth(2), '新しい連動');
+  await pickBinding(page, panes.nth(0), '固定');
+  await pickBinding(page, panes.nth(1), '固定');
+  await expect.poll(async () => (await storedFirst(page)).groups.length).toBe(1);
+
+  await pinButton(panes.nth(2)).click();
+  const items = page.locator('.pane-menu-item');
+  await expect(items).toHaveCount(3);
+  await expect(items.nth(1)).toHaveAttribute('aria-label', /^連動 1（/);
+  await expect(items.nth(1).locator('.pane-binding-icon-number')).toHaveText('1');
+  // 従っているペインでは、選ばれている連動の項目へフォーカスが移る
+  await expect(items.nth(1)).toBeFocused();
+  await expect(pinButton(panes.nth(2)).locator('.pane-binding-icon-number')).toHaveText('1');
+});
+
 test('連動のメニュー: 項目は絵と対象の要約の1行で、読み上げ名・hoverの説明があり、固定のペインでは「固定」へフォーカスが移る', async ({ page }) => {
   const panes = await createWithBigramPanes(page, 3);
   // 3つ目を新しい連動（連動2）へ移し、2つ目を固定にする。1つ目は連動1のまま
