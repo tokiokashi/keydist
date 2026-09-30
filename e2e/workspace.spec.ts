@@ -151,6 +151,17 @@ test('Analyzerを追加して並べる。個別画面と同じcomponentが載り
   expect(new URL(page.url()).pathname.endsWith(id)).toBe(true);
 });
 
+/**
+ * ペインの名前を、画面の左から右の順に返す。隠れたタブを残す描画（`always`）では、ペインのDOMは
+ * 作った順に並び、画面の並びとは限らないので、DOMの順ではなく位置で並べる。
+ */
+function paneTitlesLeftToRight(page: Page): Promise<string[]> {
+  return page.evaluate(() => [...document.querySelectorAll('.pane-frame')]
+    .map((frame) => ({ left: frame.getBoundingClientRect().left, title: frame.querySelector('h2.pane-frame-title')?.textContent ?? '' }))
+    .sort((a, b) => a.left - b.left)
+    .map((entry) => entry.title));
+}
+
 test('ペインの⋯: 複製・閉じる。解析設定と対象を写して右隣に並び、Undo / Redoで戻る', async ({ page }) => {
   await createWorkspace(page);
   await addAnalyzer(page, 'Bigram Flow');
@@ -168,8 +179,8 @@ test('ペインの⋯: 複製・閉じる。解析設定と対象を写して右
   await expect(page.getByRole('menuitem')).toHaveText([/複製/, /解析設定を初期値に戻す/, /閉じる/]);
   await page.getByRole('menuitem', { name: /複製/ }).click();
 
-  await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', 'Bigram Flow', 'N感度']);
-  const copy = page.locator('.pane-frame').nth(1);
+  await expect.poll(() => paneTitlesLeftToRight(page)).toEqual(['Bigram Flow', 'Bigram Flow', 'N感度']);
+  const copy = page.locator('.pane-frame').filter({ has: page.getByRole('heading', { level: 2, name: 'Bigram Flow', exact: true }) }).nth(1);
   await copy.getByRole('button', { name: '解析設定', exact: true }).click();
   await expect(page.locator('[data-settings-window="true"]').getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
   await page.locator('[data-settings-window="true"]').getByRole('button', { name: '解析設定を閉じる' }).click();
@@ -177,16 +188,16 @@ test('ペインの⋯: 複製・閉じる。解析設定と対象を写して右
   // 閉じる
   await copy.getByRole('button', { name: /の操作$/ }).click();
   await page.getByRole('menuitem', { name: /閉じる/ }).click();
-  await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', 'N感度']);
+  await expect.poll(() => paneTitlesLeftToRight(page)).toEqual(['Bigram Flow', 'N感度']);
 
   // Undoで閉じたペインが元の位置に戻り、もう一度Undoで複製が消える。Redoで進む
   const bar = page.locator('.context-bar');
   await bar.getByRole('button', { name: '元に戻す' }).click();
-  await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', 'Bigram Flow', 'N感度']);
+  await expect.poll(() => paneTitlesLeftToRight(page)).toEqual(['Bigram Flow', 'Bigram Flow', 'N感度']);
   await bar.getByRole('button', { name: '元に戻す' }).click();
-  await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', 'N感度']);
+  await expect.poll(() => paneTitlesLeftToRight(page)).toEqual(['Bigram Flow', 'N感度']);
   await bar.getByRole('button', { name: 'やり直す' }).click();
-  await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', 'Bigram Flow', 'N感度']);
+  await expect.poll(() => paneTitlesLeftToRight(page)).toEqual(['Bigram Flow', 'Bigram Flow', 'N感度']);
 });
 
 test('タブの×で閉じたペインも資産から消え、最後の1つを閉じると空の表示に戻る', async ({ page }) => {
@@ -196,7 +207,7 @@ test('タブの×で閉じたペインも資産から消え、最後の1つを�
   await expect(page.locator('.dv-default-tab')).toHaveCount(2);
 
   await page.locator('.dv-default-tab').filter({ hasText: '比較表' }).getByRole('button', { name: '閉じる' }).click();
-  await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow']);
+  await expect.poll(() => paneTitlesLeftToRight(page)).toEqual(['Bigram Flow']);
   await expect.poll(async () => (await storedWorkspaces(page)).workspaces[0]?.panes.length).toBe(1);
 
   await page.locator('.dv-default-tab').getByRole('button', { name: '閉じる' }).click();
@@ -204,7 +215,7 @@ test('タブの×で閉じたペインも資産から消え、最後の1つを�
   await expect.poll(async () => (await storedWorkspaces(page)).workspaces[0]?.panes.length).toBe(0);
   // Undoで戻る
   await page.locator('.context-bar').getByRole('button', { name: '元に戻す' }).click();
-  await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow']);
+  await expect.poll(() => paneTitlesLeftToRight(page)).toEqual(['Bigram Flow']);
 });
 
 test('ペインの解析設定はペインごとに持ち、再読み込みしても残り、初期値へ戻せる', async ({ page }) => {

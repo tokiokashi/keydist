@@ -274,6 +274,9 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
           theme={WORKSPACE_THEME}
           components={COMPONENTS}
           defaultTabComponent={WorkspaceTab}
+          // 隠れたタブのペインをDOMに残す（既定は見えている間だけ）。戻した時に組み立て直さず、
+          // 図の状態・計算の購読・解析設定の小窓を保つ。ペインはすべて同じ種類なので全体の既定で指定する
+          defaultRenderer="always"
           singleTabMode="fullwidth"
           disableFloatingGroups
           announcements={false}
