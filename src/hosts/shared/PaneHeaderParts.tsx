@@ -129,24 +129,36 @@ export function SettingsIcon() {
 }
 
 /**
- * 対象の連動のアイコン（ピン）。連動している（組に従っている）間は塗りつぶして組の番号を添え、
- * 固定の間は輪郭だけにする。番号は組の見分け用で、対象の色（配列ごとの色）とは無関係。
+ * 対象の持ち方のアイコン。リンクに従っている間は鎖に組の番号を添え、このペインだけの対象に固定している間はピンにする。
+ * 番号は組の見分け用で、対象の色（配列ごとの色）とは無関係。
  */
-export function LinkPinIcon({ groupNumber }: { readonly groupNumber?: number }) {
+export function TargetBindingIcon({ groupNumber }: { readonly groupNumber?: number }) {
   const linked = groupNumber !== undefined;
   return (
-    <span className="pane-link-pin" data-linked={linked}>
-      <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
-        <path
-          d="M6 2h4l-.6 4.2L12 9H4l2.6-2.8L6 2z M8 9v5"
-          fill={linked ? 'currentColor' : 'none'}
-          stroke="currentColor"
-          strokeWidth="1.3"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      </svg>
-      {linked ? <span className="pane-link-pin-number">{groupNumber}</span> : null}
+    <span className="pane-binding-icon" data-linked={linked}>
+      {linked ? (
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" data-icon="link">
+          <path
+            d="M6.7 9.3l2.6-2.6M7.2 4.6l.9-.9a2.5 2.5 0 013.5 3.5l-.9.9M8.8 11.4l-.9.9a2.5 2.5 0 01-3.5-3.5l.9-.9"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" data-icon="pin">
+          <path
+            d="M6 2h4l-.6 4.2L12 9H4l2.6-2.8L6 2z M8 9v5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        </svg>
+      )}
+      {linked ? <span className="pane-binding-icon-number">{groupNumber}</span> : null}
     </span>
   );
 }

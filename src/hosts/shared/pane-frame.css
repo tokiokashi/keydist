@@ -75,7 +75,7 @@ h2.pane-frame-title {
 }
 
 /*
- * 対象の連動（ピン）。連動している間はアクセント色、固定の間は控えめにする。組の番号は
+ * 対象の持ち方。リンクに従っている間は鎖と組の番号をアクセント色で、固定の間はピンを控えめに出す。組の番号は
  * 対象の色（配列ごとの色）と紛れないよう、色を使わず数字で見分ける。
  */
 .pane-target-binding .pane-menu-button {
@@ -84,18 +84,18 @@ h2.pane-frame-title {
   padding: 0 0.4rem;
 }
 
-.pane-link-pin {
+.pane-binding-icon {
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
   color: var(--text-muted);
 }
 
-.pane-link-pin[data-linked="true"] {
+.pane-binding-icon[data-linked="true"] {
   color: var(--accent);
 }
 
-.pane-link-pin-number {
+.pane-binding-icon-number {
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1;

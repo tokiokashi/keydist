@@ -30,6 +30,7 @@ import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { AddPaneMenu } from './AddPaneMenu.tsx';
 import { findWorkspaceAnalyzer, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
 import type { PaneBindingChoice, WorkspacePaneRuntime } from './pane-runtime.ts';
+import { summarizeLinkGroups } from './group-summary.ts';
 import { WorkspaceDock } from './WorkspaceDock.tsx';
 import { WorkspaceName } from './WorkspaceName.tsx';
 import { WorkspacePaneView } from './WorkspacePaneView.tsx';
@@ -133,6 +134,10 @@ export function WorkspacePage({
   const paneIds = useMemo(() => (panes ?? []).map((pane) => pane.id), [panes]);
 
   const groups = workspace?.groups;
+  const groupSummaries = useMemo(
+    () => (env === undefined || groups === undefined ? [] : summarizeLinkGroups(env, groups)),
+    [env, groups],
+  );
 
   const runtime: WorkspacePaneRuntime | undefined = useMemo(() => (env === undefined ? undefined : {
     env,
@@ -150,6 +155,7 @@ export function WorkspacePage({
       }
     },
     groups: groups ?? [],
+    groupSummaries,
     bindPane: (paneId: string, choice: PaneBindingChoice) => {
       const pane = panesById.get(paneId);
       if (pane === undefined || groups === undefined) return;
@@ -173,7 +179,7 @@ export function WorkspacePage({
       flushPending();
       dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
     },
-  }), [env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups]);
+  }), [env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, groupSummaries]);
 
   const titleOf = useCallback(
     (paneId: string) => {

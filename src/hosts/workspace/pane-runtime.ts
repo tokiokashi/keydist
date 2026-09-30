@@ -1,3 +1,5 @@
+import { findWorkspaceAnalyzer } from './analyzer-registry.ts';
+import type { LinkGroupSummary } from './group-summary.ts';
 import type { LinkGroup, WorkspacePane, WorkspacePaneTarget } from '#engine/workspace.ts';
 import type { PaneChrome, PaneEnvironment, PaneTargetBindingControl } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneMenuItem } from '#hosts/shared/PaneHeaderParts.tsx';
@@ -22,6 +24,8 @@ export interface WorkspacePaneRuntime {
   readonly setPaneTarget: (paneId: string, target: WorkspacePaneTarget) => void;
   /** 連動の組。従うペインの対象の持ち主で、番号は並びの順（1から）。 */
   readonly groups: readonly LinkGroup[];
+  /** `groups`と同じ並びの、組ごとの対象の要約（ピンのメニューで組を見分ける）。 */
+  readonly groupSummaries: readonly LinkGroupSummary[];
   /**
    * ペインの対象の持ち方を切り替える。固定にする時・新しい組へ移す時は、今映している対象を
    * そのまま持つ（押した瞬間に見た目が変わらない）。
@@ -81,24 +85,32 @@ function bindingControl(runtime: WorkspacePaneRuntime, pane: WorkspacePane): Pan
       {
         id: 'fixed',
         label: '固定',
-        description: 'このペインだけの対象にする',
+        description: 'このペインだけ',
         selected: followed === undefined,
         onSelect: () => runtime.bindPane(pane.id, { kind: 'fixed' }),
       },
       ...runtime.groups.map((group, i) => ({
         id: `group-${group.id}`,
         label: linkGroupLabel(i),
-        description: '同じリンクのペインと対象を揃える',
+        description: summaryOf(runtime, i, pane),
         selected: group.id === followed,
         onSelect: () => runtime.bindPane(pane.id, { kind: 'group', id: group.id }),
       })),
       {
         id: 'new-group',
         label: '新しいリンク',
-        description: '今の対象で、このペインだけの新しいリンクを作る',
+        description: '今の対象で作る',
         selected: false,
         onSelect: () => runtime.bindPane(pane.id, { kind: 'new-group' }),
       },
     ],
   };
+}
+
+/** メニューに出す組の対象の要約。ペインのAnalyzerが見る形（Single / Multi）の側を出す。 */
+function summaryOf(runtime: WorkspacePaneRuntime, index: number, pane: WorkspacePane): string | undefined {
+  const summary = runtime.groupSummaries[index];
+  if (summary === undefined) return undefined;
+  const kind = findWorkspaceAnalyzer(pane.analyzerId)?.cardinality;
+  return kind === 'set' ? summary.set : summary.single;
 }

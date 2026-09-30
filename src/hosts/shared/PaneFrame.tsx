@@ -9,7 +9,7 @@ import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import type { PaneTargetBindingControl } from './panes/pane-environment.ts';
-import { LinkPinIcon, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
+import { TargetBindingIcon, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
 import './pane-frame.css';
 
@@ -142,7 +142,7 @@ export function PaneFrame({
               paneName={paneName}
               items={targetBinding.items}
               label={`${name}の対象の連動: ${targetBinding.follows ? `リンク ${targetBinding.groupNumber}` : '固定'}`}
-              icon={<LinkPinIcon groupNumber={targetBinding.follows ? targetBinding.groupNumber : undefined} />}
+              icon={<TargetBindingIcon groupNumber={targetBinding.follows ? targetBinding.groupNumber : undefined} />}
               className="pane-target-binding"
               data={{ 'data-follows': String(targetBinding.follows) }}
             />

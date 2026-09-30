@@ -336,6 +336,14 @@ test('リンクを2つ持てる: 組ごとに対象が別で、片方を変え�
   expect(stored.groups.map((g) => g.target.single?.layoutId)).toEqual(['colemak-dh', 'qwerty']);
   expect(stored.panes.map((p) => p.binding.group ?? p.binding.mode)).toEqual([stored.groups[0]!.id, stored.groups[0]!.id, stored.groups[1]!.id, 'fixed']);
 
+  // 連動は鎖と組の番号、固定はピン。メニューの各リンクには、そのリンクの対象の要約が出る
+  await expect(pinButton(panes.nth(0)).locator('svg[data-icon="link"]')).toBeVisible();
+  await expect(pinButton(panes.nth(3)).locator('svg[data-icon="pin"]')).toBeVisible();
+  await pinButton(panes.nth(3)).click();
+  await expect(page.locator('.pane-menu-item-label')).toHaveText(['固定', 'リンク 1', 'リンク 2', '新しいリンク']);
+  await expect(page.locator('.pane-menu-item-description')).toHaveText(['このペインだけ', 'Colemak-DH', 'QWERTY', '今の対象で作る']);
+  await page.keyboard.press('Escape');
+
   // 元に戻す1回で、リンク1の変更だけが戻る（リンクの組は残る）
   await page.locator('.context-bar').getByRole('button', { name: '元に戻す' }).click();
   for (let n = 0; n < 4; n += 1) await expect(targetButton(panes.nth(n))).toHaveAttribute('aria-label', QWERTY_LABEL);
@@ -382,6 +390,11 @@ test('リンクを複数持つ時、集合のペインも組ごとに別の集�
   // 固定のN感度は空のまま
   await expect(sensitivity.getByRole('button', { name: '配列・Setupを選ぶ' })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('keydist:multi-target-selection'))).toBeNull();
+
+  // メニューには、リンクの集合の要約が出る
+  await pinButton(comparison).click();
+  await expect(page.locator('.pane-menu-item-description').nth(1)).toHaveText('QWERTY、Colemak-DH');
+  await page.keyboard.press('Escape');
 
   // 新しいリンクへ移すと、今の集合で始まる（表は変わらない）
   await pickBinding(page, comparison, '新しいリンク');
