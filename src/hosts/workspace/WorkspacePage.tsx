@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
@@ -104,6 +104,16 @@ export function WorkspacePage({
   onDelete,
 }: WorkspacePageProps) {
   const workspace = findWorkspace(assets.workspaces, workspaceId);
+  // 【試作】1画面に収める案の切り替え（#808）。`?fit=a|b|c`と`?chrome=compact`を<html>へ写す。
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const root = document.documentElement;
+    for (const key of ['fit', 'chrome'] as const) {
+      const value = query.get(key);
+      if (value === null) delete root.dataset[key];
+      else root.dataset[key] = value;
+    }
+  }, []);
   const flushLayoutRef = useRef<(() => void) | undefined>(undefined);
   const registerFlush = useCallback((flush: (() => void) | undefined) => {
     flushLayoutRef.current = flush;

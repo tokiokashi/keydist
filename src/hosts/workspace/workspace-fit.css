@@ -1,0 +1,41 @@
+/*
+ * 【試作】ペインを1画面に収める案（#808）の共通の土台。`<html data-fit>`がある時だけ効く。
+ *
+ * 今の本体の領域（.pane-body）は幅だけをcontainerにしていて、高さは中身で決まる。
+ * 高さに合わせて図を縮めるには、本体の領域が「ペインの残りの高さ」を持つ必要がある。
+ * ペインの枠を高さいっぱいにし、見出しなどを引いた残りを本体の領域へ渡して、両方向のcontainerにする。
+ * 収まらない時（極端に小さいペイン）は本体の領域の中でスクロールする。
+ * 個別画面は高さが中身で決まるのでここには入れない（Workspaceのペインの中だけ）。
+ */
+:root[data-fit] .workspace-pane {
+  overflow: hidden;
+  padding-bottom: 0.75rem;
+}
+
+:root[data-fit] .workspace-pane .pane-frame {
+  height: 100%;
+}
+
+:root[data-fit] .workspace-pane .pane-body {
+  flex: 1 1 0;
+  min-height: 0;
+  container-type: size;
+  overflow: auto;
+}
+
+/*
+ * 見出しを薄くする（`?chrome=compact`）。ペインの名前はDockviewのタブが出しているので、
+ * 見出しの名前の文字は視覚的には隠し（読み上げには残す）、ⓘ・対象・解析設定・⋯を1行に並べる。
+ */
+:root[data-chrome='compact'] .workspace-pane .pane-frame-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+:root[data-chrome='compact'] .workspace-pane .pane-frame-header {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: 'name target settings menu';
+}

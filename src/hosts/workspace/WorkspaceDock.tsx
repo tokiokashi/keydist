@@ -20,6 +20,7 @@ import 'dockview-react/dist/styles/dockview.css';
 import { sameLayout, type WorkspaceLayoutNode } from '#engine/workspace-layout.ts';
 import { fromDockviewLayout, PANE_COMPONENT, toDockviewLayout } from './layout-adapter.ts';
 import './workspace-dock.css';
+import './workspace-fit.css';
 
 /**
  * ペインを並べる面。Dockviewを使うのはこのファイルだけで、資産（保存データ）とペインの中身は
