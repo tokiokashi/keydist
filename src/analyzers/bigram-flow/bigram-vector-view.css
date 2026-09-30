@@ -283,24 +283,19 @@
 
 .flow-two-up {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.8rem;
 }
 
 .flow-mini-panel {
-  min-height: 18rem;
+  min-width: 0;
 }
 
+/* 狭い幅で2つ並べるので、見出しは図に重ねず図の上に置く（重ねると図と文字がぶつかる）。 */
 .flow-mini-panel header {
-  position: absolute;
-  top: 0.7rem;
-  right: 0.8rem;
-  left: 0.8rem;
-  z-index: 2;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.6rem 0.7rem 0;
 }
 
 .flow-mini-panel header strong {
@@ -309,17 +304,12 @@
   text-transform: uppercase;
 }
 
-.flow-mini-panel header span {
+.flow-profile-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.55rem;
   color: var(--viz-key-muted);
-  font: 600 0.64rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-.flow-mini-panel header > span {
-  text-align: right;
-}
-
-.flow-direction-cohesion {
-  cursor: help;
+  font: 600 0.64rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .flow-mini-panel svg {
@@ -329,37 +319,32 @@
 }
 
 .flow-profile-panel {
-  position: relative;
-  height: 22rem;
-  min-height: 22rem;
-  overflow: hidden;
+  display: grid;
 }
 
+/*
+ * 図は置かれた幅へ縮む（上限は描画の大きさ）。円の外へ伸びる方向分布は、図の枠で見切れてよい。
+ * 狭い幅でも左右を横に並べるため、図の大きさを幅に追従させる。
+ */
 .flow-profile-viewport {
   position: relative;
   z-index: 1;
-  width: 100%;
-  height: 22rem;
+  display: grid;
+  place-items: center;
+  padding: 0.3rem 0.2rem;
   overflow: hidden;
 }
 
 .flow-profile-stage {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  display: grid;
-  place-items: center;
-  transform: translate(-50%, -50%);
+  width: 100%;
 }
 
 .flow-profile-svg {
   display: block;
-  flex: 0 0 auto;
   margin: 0;
-  /* 図の範囲は一定。外へ出る分はviewportの枠で見切れる（縮めない）。 */
   overflow: visible;
-  width: auto !important;
-  max-width: none;
+  width: 100% !important;
+  height: auto !important;
 }
 
 .flow-axis {
@@ -435,14 +420,12 @@
   filter: drop-shadow(0 0 4px color-mix(in srgb, var(--viz-resultant) 34%, transparent));
 }
 
+/* 内向き・外向きの凡例と目盛りの要約。左右の図で共通なので、図の上に1つだけ置く。 */
 .flow-roll-legend {
-  position: absolute;
-  top: 2.2rem;
-  right: 0.8rem;
-  z-index: 2;
   display: flex;
-  gap: 0.65rem;
-  color: var(--viz-overlay-muted);
+  flex-wrap: wrap;
+  gap: 0.2rem 0.65rem;
+  color: var(--text-muted);
   font: 600 0.61rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
@@ -452,27 +435,12 @@
   gap: 0.3rem;
 }
 
-.flow-profile-legend {
-  top: 2.2rem;
-  right: 0.8rem;
-  left: 0.8rem;
-  bottom: auto;
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
-  align-items: center;
-}
-
 .flow-profile-scale-summary {
-  justify-self: end;
-  text-align: right;
+  margin-left: auto;
 }
 
 .roll-summary {
-  position: absolute;
-  right: 0.85rem;
-  bottom: 0.75rem;
-  left: 0.85rem;
-  z-index: 2;
+  padding: 0 0.7rem 0.65rem;
 }
 
 .roll-bar {
@@ -496,10 +464,16 @@
   background: var(--viz-flow-outward);
 }
 
+.roll-summary > div:last-child span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
 .roll-summary > div:last-child {
   display: flex;
   justify-content: space-between;
-  margin-top: 0.35rem;
+  margin-top: 0.3rem;
   color: var(--viz-overlay-muted);
   font: 600 0.62rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
 }
@@ -515,7 +489,15 @@
  * 幅の切り替えは画面ではなく置かれた領域（ホストがcontainerにする本体の領域）の幅で行う
  * （docs/architecture.md「Analyzerがペインに渡すもの」）。
  */
-@container (max-width: 800px) {
+@container (max-width: 600px) {
+  /* 図の目盛りの数字は、縮んだ図では読めないので消す（大きさは上の凡例の「最大」で分かる）。 */
+  .flow-axis-ring-label {
+    display: none;
+  }
+}
+
+/* 左右の図が読めなくなる幅（1つがおよそ120px）より狭い時だけ、縦に積む。 */
+@container (max-width: 280px) {
   .flow-two-up {
     grid-template-columns: 1fr;
   }

@@ -453,14 +453,12 @@ function MovementProfilePlot({
   profile,
   maxDistance,
   maxVectorWeight,
-  bandwidthDegrees,
   polarGain,
 }: {
   hand: 'left' | 'right';
   profile: BigramFlowHandProfile;
   maxDistance: number;
   maxVectorWeight: number;
-  bandwidthDegrees: number;
   polarGain: number;
 }) {
   const reduceMotion = useReducedMotion();
@@ -498,20 +496,16 @@ function MovementProfilePlot({
     <div className="flow-mini-panel flow-profile-panel">
       <header>
         <strong>{hand === 'left' ? 'Left' : 'Right'}</strong>
-        <span>
-          {relative.length}件 · 平均移動 {mean.distance.toFixed(2)}u ·{' '}
-          <span
-            className="flow-direction-cohesion"
-            title="0に近いほど方向が分散し、1に近いほど同じ方向へ集中する"
-          >
-            方向のまとまり {summary.magnitude.toFixed(2)}
-          </span>
+        <span className="flow-profile-stats">
+          <span>{relative.length}件</span>
+          <span>平均移動 {mean.distance.toFixed(2)}u</span>
+          <span>まとまり {summary.magnitude.toFixed(2)}</span>
         </span>
       </header>
       <div className="flow-profile-viewport">
         <div
           className="flow-profile-stage"
-          style={{ width: viewSize, height: viewSize }}
+          style={{ maxWidth: viewSize }}
         >
         <svg
           className="flow-profile-svg"
@@ -621,14 +615,6 @@ function MovementProfilePlot({
         </div>
       </div>
 
-      <div className="flow-roll-legend flow-profile-legend" aria-hidden="true">
-        <span><i className="flow-dot flow-dot-inward" /> 内向き</span>
-        <span><i className="flow-dot flow-dot-outward" /> 外向き</span>
-        <span className="flow-profile-scale-summary">
-          最大{scaleMax}u · ±{bandwidthDegrees}°
-        </span>
-      </div>
-
       <div className="roll-summary">
         <div className="roll-bar" aria-label="内向きと外向きの割合">
           {hand === 'left' ? (
@@ -662,13 +648,13 @@ function MovementProfilePlot({
         <div>
           {hand === 'left' ? (
             <>
-              <span>外向き {(outwardRate * 100).toFixed(1)}%</span>
-              <span>内向き {(inwardRate * 100).toFixed(1)}%</span>
+              <span role="img" aria-label={`外向き ${(outwardRate * 100).toFixed(1)}%`}><i className="flow-dot flow-dot-outward" /> {(outwardRate * 100).toFixed(1)}%</span>
+              <span role="img" aria-label={`内向き ${(inwardRate * 100).toFixed(1)}%`}><i className="flow-dot flow-dot-inward" /> {(inwardRate * 100).toFixed(1)}%</span>
             </>
           ) : (
             <>
-              <span>内向き {(inwardRate * 100).toFixed(1)}%</span>
-              <span>外向き {(outwardRate * 100).toFixed(1)}%</span>
+              <span role="img" aria-label={`内向き ${(inwardRate * 100).toFixed(1)}%`}><i className="flow-dot flow-dot-inward" /> {(inwardRate * 100).toFixed(1)}%</span>
+              <span role="img" aria-label={`外向き ${(outwardRate * 100).toFixed(1)}%`}><i className="flow-dot flow-dot-outward" /> {(outwardRate * 100).toFixed(1)}%</span>
             </>
           )}
         </div>
@@ -709,7 +695,7 @@ export interface BigramFlowBodyProps {
  * 操作すれば分かること（キーにポインタを乗せると線を強調する等）は書かない。
  */
 const KEYBOARD_FLOW_READING = 'キーからキーへの移動を線で描く。太さが回数で、線は始点が薄く終点が濃い。';
-const RELATIVE_VECTORS_READING = '打鍵ごとの移動の向きと距離を、打ち始めのキーを中心に重ねて描く。外周は移動方向の分布、白い線は平均の移動を表す。';
+const RELATIVE_VECTORS_READING = '打鍵ごとの移動の向きと距離を、打ち始めのキーを中心に重ねて描く。外周は移動方向の分布、白い線は平均の移動を表す。点線の円は1uごとの距離。件数は描いた線の数（指の組と移動が同じものはまとめて1本）、平均移動は平均の移動の長さ、まとまりは0に近いほど方向が分散し1に近いほど同じ方向へ集中する。下の割合は内向きと外向きの比。';
 
 /**
  * Bigram Flowの本体（図）。`extracted`（`extract.ts`の計算結果）と見た目だけの設定を描くだけで、
@@ -810,13 +796,19 @@ export function BigramFlowBody({
           {onOptionsChange !== undefined && relativeVectorsOpen ? (
             <RelativeVectorsFigureSettings options={options} onOptionsChange={onOptionsChange} />
           ) : null}
+          <div className="flow-roll-legend" aria-hidden="true">
+            <span><i className="flow-dot flow-dot-inward" /> 内向き</span>
+            <span><i className="flow-dot flow-dot-outward" /> 外向き</span>
+            <span className="flow-profile-scale-summary">
+              最大{movementPlotScale(extracted.relativeMaxDistance).scaleMax}u · ±{polarBandwidth}°
+            </span>
+          </div>
           <div className="flow-two-up">
             <MovementProfilePlot
               hand="left"
               profile={extracted.hands.left}
               maxDistance={extracted.relativeMaxDistance}
               maxVectorWeight={extracted.relativeMaxWeight}
-              bandwidthDegrees={polarBandwidth}
               polarGain={polarGain}
             />
             <MovementProfilePlot
@@ -824,7 +816,6 @@ export function BigramFlowBody({
               profile={extracted.hands.right}
               maxDistance={extracted.relativeMaxDistance}
               maxVectorWeight={extracted.relativeMaxWeight}
-              bandwidthDegrees={polarBandwidth}
               polarGain={polarGain}
             />
           </div>

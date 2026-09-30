@@ -1373,3 +1373,43 @@ test('Keyboard Flow: 390pxでホバーした時、行き先件数のバッジは
   expect(transforms.length).toBeGreaterThan(0);
   for (const transform of transforms) expect(transform).toContain('scale(1)');
 });
+
+test('Relative vectors: スマホ幅でも左右の図は横に2つ並ぶ', async ({ page }) => {
+  // 幅の下限に近い320px。図の並びは画面ではなく置かれた領域の幅で決まる。
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto('/standalone/bigram-flow');
+  const plots = page.locator('section[aria-label="Relative vectors"] .flow-profile-svg');
+  await expect(plots).toHaveCount(2, { timeout: 15_000 });
+  await plots.first().scrollIntoViewIfNeeded();
+  const [left, right] = await Promise.all([plots.nth(0).boundingBox(), plots.nth(1).boundingBox()]);
+  expect(left).not.toBeNull();
+  expect(right).not.toBeNull();
+  // 横に並ぶ: 上端がほぼ同じで、右の図は左の図の右にある
+  expect(Math.abs(left!.y - right!.y)).toBeLessThan(2);
+  expect(right!.x).toBeGreaterThanOrEqual(left!.x + left!.width - 1);
+  // 縮んでも図として読める大きさを保つ
+  expect(left!.width).toBeGreaterThan(100);
+});
+
+test('Relative vectors: 内向き・外向きの割合は、読み上げでも向きと値が分かる名前を持つ', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  const section = page.locator('section[aria-label="Relative vectors"]');
+  await expect(section.locator('.flow-profile-svg')).toHaveCount(2, { timeout: 15_000 });
+  // 左右どちらの手でも、内向き・外向きが1つずつ、向きの語と割合を名前に持つ
+  for (const hand of [0, 1]) {
+    const labels = section.locator('.roll-summary').nth(hand).getByRole('img');
+    await expect(labels).toHaveCount(2);
+    const names = await labels.evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') ?? ''));
+    expect(names.every((name) => /^(内向き|外向き) \d+\.\d%$/.test(name))).toBe(true);
+    expect(new Set(names.map((name) => name.split(' ')[0])).size).toBe(2);
+    // 内向きと外向きの割合は合わせて100%
+    const total = names.reduce((sum, name) => sum + Number(name.split(' ')[1]!.replace('%', '')), 0);
+    expect(total).toBeCloseTo(100, 0);
+  }
+  // 既定の条件（QWERTY・既定のテキスト）での値と向きの対応。取り違えると落ちる
+  const names = async (hand: number) => section.locator('.roll-summary').nth(hand).getByRole('img')
+    .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
+  // 図の並びと同じ順（左手は外側が左、右手は内側が左）で読み上げる
+  expect(await names(0)).toEqual(['外向き 56.8%', '内向き 43.2%']);
+  expect(await names(1)).toEqual(['内向き 57.9%', '外向き 42.1%']);
+});

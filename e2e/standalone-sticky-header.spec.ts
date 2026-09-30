@@ -78,7 +78,8 @@ test('サイドバーを固定できる最小幅（761px）でも、見出しは
 });
 
 test('スマホ幅でも見出しは文脈バーの下に残る', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  // 左右の図が横に並んで縦に短くなったので、スクロールできる高さが残る低い画面にする。
+  await page.setViewportSize({ width: 390, height: 480 });
   await page.goto('/standalone/bigram-flow');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
