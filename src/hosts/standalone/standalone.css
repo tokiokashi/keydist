@@ -5,13 +5,18 @@
 
 /*
  * ペインの領域。個別画面のペインは枠を付けない。
- * 広い画面では上限まで広げ、それでも余る分は左右に振り分ける（右にだけ空白を残さない）。
+ * 幅の上限はペインの推奨幅（`analyzers/recommended-width.ts`）で決まる。ここには持たない。
+ * 個別画面はペインが1枚なので、見出しも含めた枠ごと推奨幅で止めて中央へ寄せる
+ * （右にだけ空白を残さない。見出しだけ広く本体が狭い、という見た目にもしない）。
  */
 .standalone-stage {
   width: 100%;
-  max-width: 96rem;
-  margin-inline: auto;
   padding: 1rem 1.5rem 3rem;
+}
+
+.standalone-stage > .pane-frame {
+  max-width: var(--pane-recommended-width);
+  margin-inline: auto;
 }
 
 @media (max-width: 760px) {

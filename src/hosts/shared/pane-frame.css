@@ -573,6 +573,17 @@ h2.pane-frame-title {
   color: var(--text-muted);
 }
 
+/*
+ * 推奨幅（`analyzers/recommended-width.ts`。PaneFrameが --pane-recommended-width に入れる）。
+ * ペインが推奨幅より広い時、見出しを除く中身（条件の要約・通知・本体）をそこで止めて中央に寄せる。
+ * 狭い時は min() で100%になり、ペインの幅に縮むだけ（固定幅にしないのでスクロールは出ない）。
+ * 見出しはペインの幅いっぱいのまま残す（ペインの操作は端に置く）。
+ */
+.pane-frame > :not(.pane-frame-header) {
+  width: min(100%, var(--pane-recommended-width, 100%));
+  margin-inline: auto;
+}
+
 /* 本体の領域はペインいっぱいに取り、containerにする（本体は画面ではなくこの幅で描く）。 */
 .pane-body {
   container-type: inline-size;
