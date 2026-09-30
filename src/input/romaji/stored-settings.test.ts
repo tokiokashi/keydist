@@ -32,6 +32,15 @@ test('正常な値は変わらず診断も無い', () => {
   assert.deepEqual(result.diagnostics, []);
 });
 
+test('予約名のキーの割り当ては診断付きで捨て、ほかは読む', () => {
+  // リテラルに__proto__と書くと自分のプロパティにならないので、JSON.parseで作る
+  const raw = JSON.parse('{"rules":[],"assignments":{"__proto__":"rule-a","constructor":"rule-b","x":"y"}}');
+  const result = decodeStoredRomajiSettings(raw);
+  assert.deepEqual(Object.keys(result.value.assignments), ['x']);
+  assert.equal(Object.getPrototypeOf(result.value.assignments), Object.prototype);
+  assert.deepEqual(result.diagnostics.map((d) => d.path), ['assignments.__proto__', 'assignments.constructor']);
+});
+
 test('壊れた規則・割り当ては捨てて診断を積み、残りは読む', () => {
   const result = decodeStoredRomajiSettings({
     rules: [rule, { id: 'bad' }, null],

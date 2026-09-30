@@ -100,8 +100,6 @@ export function decodeUserLayouts(value: unknown): DecodedWithDiagnostics<UserLa
   return { value: layouts, diagnostics };
 }
 
-/** 診断が要らない読み手（旧画面の条件ファイル）向け。診断を使える経路は`decodeUserLayouts`を呼ぶ。 */
-export const sanitizeUserLayouts = (value: unknown): UserLayout[] => decodeUserLayouts(value).value;
 
 /**
  * 入力を検査する。列数オーバーだけを弾く。

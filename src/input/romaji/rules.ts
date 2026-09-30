@@ -1,4 +1,4 @@
-import type { CodecDiagnostic, DecodedWithDiagnostics } from '../codec/index.ts';
+import { UNSAFE_OBJECT_KEYS, type CodecDiagnostic, type DecodedWithDiagnostics } from '../codec/index.ts';
 import { azik } from './azik.ts';
 import { kunrei, addSokuonForms } from './kunrei.ts';
 import { OONISHI_OVERRIDES, oonishiRomaji } from './oonishi.ts';
@@ -198,7 +198,9 @@ export function decodeStoredRomajiSettings(value: unknown): DecodedWithDiagnosti
   const assignments: Record<string, string> = {};
   if (isRecord(value.assignments)) {
     for (const [key, id] of Object.entries(value.assignments)) {
-      if (typeof id === 'string') assignments[key] = id;
+      // 予約名のキーは代入で自分のプロパティにならず黙って消えるので、捨てる旨を診断に残す
+      if (UNSAFE_OBJECT_KEYS.has(key)) diagnostics.push({ path: `assignments.${key}`, message: `予約名のキー「${key}」を捨てた` });
+      else if (typeof id === 'string') assignments[key] = id;
       else diagnostics.push({ path: `assignments.${key}`, message: '文字列でないため規則の割り当てを捨てた' });
     }
   } else if (value.assignments !== undefined) {
