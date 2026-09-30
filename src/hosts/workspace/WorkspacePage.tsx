@@ -70,7 +70,7 @@ export interface WorkspacePageProps {
  * 保存したWorkspaceの画面（`/workspace/<id>`）。Analyzerをペインとして並べる器で、ペインは
  * 個別画面と同じAnalyzerのcomponent（`hosts/shared/panes/`）を載せる。
  *
- * 持つのは、文脈バー（Workspace名・このWorkspace自身のテキスト・Undo/Redo・共有）と、ペインの追加・
+ * 持つのは、文脈バー（Workspace名・このWorkspace自身のテキスト・Undo/Redo）と、ペインの追加・
  * 複製・閉じる・並びの変更を資産のコマンドへ結ぶところ。書き込みはすべて`dispatch`を通す（#544 §8-2）。
  * ペインの対象は「連動の組に従う」か「固定」（ペイン自身が持つ）。従うペインは、従う組の対象を読む。組の切り替えはペインの見出し（見出しの連動のメニュー）で行い、文脈バーには置かない。
  */
@@ -207,12 +207,10 @@ export function WorkspacePage({
     dispatch(addWorkspacePaneCommand(workspaceId, pane));
   };
 
-  const shareDescription = 'このWorkspaceのURLをコピーする';
-
   if (workspace === undefined) {
     return (
       <div className="workspace-page">
-        <ContextBar disabled history={pageHistory} share={{ description: shareDescription }}>{null}</ContextBar>
+        <ContextBar disabled history={pageHistory}>{null}</ContextBar>
         {assetsReady ? (
           <div className="workspace-missing" data-workspace-missing="true">
             <h1>Workspaceが見つからない</h1>
@@ -228,7 +226,6 @@ export function WorkspacePage({
       <ContextBar
         disabled={!assetsReady}
         history={pageHistory}
-        share={{ description: shareDescription }}
       >
         <WorkspaceName
           name={workspace.name}

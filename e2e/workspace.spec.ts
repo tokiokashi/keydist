@@ -820,6 +820,25 @@ test('Workspaceの画面の文言に開発の内部が出ない', async ({ page 
   await expect(page.locator('[aria-label="Close tab"]')).toHaveCount(0);
 });
 
+test('Workspaceの文脈バーに共有ボタンは無く、個別画面には有る', async ({ page }) => {
+  await createWorkspace(page);
+  const share = page.locator('.context-bar').getByRole('button', { name: '共有', exact: true });
+  // 元に戻すは出ている（バーは描かれた上で、共有だけが無い）
+  await expect(page.locator('.context-bar').getByRole('button', { name: '元に戻す' })).toBeVisible();
+  await expect(share).toHaveCount(0);
+
+  // 見つからないWorkspaceのバーにも出さない
+  await page.goto('/workspace/no-such-workspace');
+  await waitForHydration(page);
+  await expect(page.locator('[data-workspace-missing="true"]')).toBeVisible();
+  await expect(share).toHaveCount(0);
+
+  // 個別画面はURLで対象を運べるので、共有が残る
+  await page.goto('/standalone/comparison');
+  await waitForHydration(page);
+  await expect(share).toBeVisible();
+});
+
 const SETUP_LIBRARY_KEY = 'keydist:setup-library';
 
 /** 全体の条件の保存内容（`setupLibrary.overrides.global`。decodeせず生のJSON）。無ければ空。 */
