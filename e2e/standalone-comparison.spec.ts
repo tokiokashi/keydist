@@ -865,6 +865,22 @@ for (const order of ['大西が先', 'QWERTYが先']) {
   });
 }
 
+test('全体のローマ字規則を変えると、QWERTYの数値は動き、推奨を持つ大西配列は動かない', async ({ page }) => {
+  const summary = await openSummaryWith(page, [
+    { id: 'qwerty', layoutId: 'qwerty', shapeId: 'row-staggered' },
+    { id: 'onishi', layoutId: 'oonishi', shapeId: 'row-staggered' },
+  ]);
+  const rows = page.locator('.comparison-table tbody tr[data-comparison-row="ok"]');
+  const before = await rows.allInnerTexts();
+
+  await summary.getByLabel('ローマ字規則', { exact: true }).selectOption('azik');
+  await expect(summary.locator('[data-item="romajiRuleId"]')).toContainText('全体で変更');
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await rows.allInnerTexts())[0]).not.toBe(before[0]);
+  const after = await rows.allInnerTexts();
+  expect(after[1]).toBe(before[1]);
+});
+
 test('2件とも同じ値へ上書きしても、共通の行は画面の値のまま、2件とも対象ごとの差に出る', async ({ page }) => {
   await page.addInitScript(seedSelection, {
     targets: [{ kind: 'setup', setupId: 'fixed-a' }, { kind: 'setup', setupId: 'fixed-b' }],

@@ -113,6 +113,7 @@ export function BigramFlowPane({
         dispatch,
         shapes: catalog.setupCatalog.shapes,
         customFingerAssignments: catalog.customFingerAssignments,
+        customRomajiRules: catalog.customRomajiRules,
         notices: overrideWinsNotices(conditionRows, catalog.setupCatalog),
       }}
       engineState={combinePaneStates(extraction, pane.trace)}

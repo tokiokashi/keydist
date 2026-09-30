@@ -203,6 +203,60 @@ test('nonDefaultConditionRows: かな直接の配列ではローマ字規則の�
   assert.deepEqual(nonDefaultConditionRows(summary).map((row) => row.id), []);
 });
 
+function withGlobalRomaji(ruleId: string) {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'romajiRuleId', ruleId);
+  assert.ok(written.ok);
+  if (!written.ok) throw new Error('unreachable');
+  return written.overrides;
+}
+
+test('全体のローマ字規則: 推奨の無いローマ字入力の配列だけが変えた項目に数える。大西配列・かな配列は数えない', () => {
+  const overrides = withGlobalRomaji('azik');
+  const rowsOf = (layoutId: string) => traceConditionSummary(
+    resolveWith({ kind: 'layout', layoutId }, [], overrides, 'ja').cascade,
+    CATALOG,
+  );
+  const qwerty = rowsOf('qwerty');
+  assert.deepEqual(nonDefaultConditionRows(qwerty).map((row) => row.id), ['romajiRuleId']);
+  assert.equal(qwerty.find((row) => row.id === 'romajiRuleId')!.originLabel, '上書き: 全体');
+
+  // 大西配列・TK音直入力法は推奨のまま（数えない）。負けた全体は行の印から分かる
+  for (const layoutId of ['oonishi', 'oonishi-custom']) {
+    const rows = rowsOf(layoutId);
+    assert.equal(conditionSummaryLine(rows).changedCount, 0, layoutId);
+    assert.equal(rows.find((row) => row.id === 'romajiRuleId')!.recommendationWinsOverGlobal, true, layoutId);
+  }
+  // かな配列は効かないので数えない
+  const nicola = rowsOf('nicola');
+  assert.equal(nicola.find((row) => row.id === 'romajiRuleId')!.applicable, false);
+  assert.equal(conditionSummaryLine(nicola).changedCount, 0);
+});
+
+test('全体未設定でも、大西配列は推奨が全体の既定に勝つので理由の印が立つ。TK音直入力法と QWERTY は立たない', () => {
+  const flagOf = (layoutId: string) => traceConditionSummary(
+    resolveWith({ kind: 'layout', layoutId }, [], EMPTY_SETTINGS_OVERRIDES, 'ja').cascade,
+    CATALOG,
+  ).find((row) => row.id === 'romajiRuleId')!;
+  const oonishi = flagOf('oonishi');
+  assert.equal(oonishi.recommendationWinsOverGlobal, true);
+  assert.equal(oonishi.origin.kind, 'default');
+  assert.equal(flagOf('oonishi-custom').recommendationWinsOverGlobal, false);
+  assert.equal(flagOf('qwerty').recommendationWinsOverGlobal, false);
+});
+
+test('全体のローマ字規則: 共通の行は全体の値で、推奨を持つ対象だけが差に出る（効かない対象は数えない）', () => {
+  const overrides = withGlobalRomaji('azik');
+  const summary = summarize(setupTargets([
+    { layoutId: 'qwerty', shapeId: 'row-staggered' },
+    { layoutId: 'oonishi', shapeId: 'row-staggered' },
+    { layoutId: 'nicola', shapeId: 'row-staggered' },
+  ], 'ja', overrides));
+  const common = summary.rows.find((row) => row.id === 'romajiRuleId')!;
+  assert.equal(common.originLabel, '上書き: 全体');
+  assert.equal(common.displayValue.startsWith('AZIK'), true);
+  assert.deepEqual(diffValue(summary, 'romajiRuleId').map(([key]) => key), ['t2']);
+});
+
 test('traceConditionSummary: シフト系キーの2項目は選べる主な値で出す（「(詳細設定)」にしない）', () => {
   const defaults = traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], EMPTY_SETTINGS_OVERRIDES, 'en').cascade, CATALOG);
   const hold = defaults.find((row) => row.id === 'triggerRealizationPolicy')!;

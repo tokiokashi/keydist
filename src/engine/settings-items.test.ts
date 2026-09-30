@@ -94,10 +94,7 @@ test('romajiRuleId: 既定値は配列ごとに違う（大西配列だけoonish
   assert.equal(resolvedOonishi.romajiRuleId.value, 'oonishi');
 });
 
-test('romajiRuleId: globalへは書き込めない。inputMethodレベルで「ローマ字入力は全部Xにする」ができる', () => {
-  const toGlobal = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'romajiRuleId', 'azik');
-  assert.equal(toGlobal.ok, false);
-
+test('romajiRuleId: 打ち方のレベルで「ローマ字入力は全部Xにする」ができる（推奨の無い配列）', () => {
   const toInputMethod = setSettingsOverride(
     EMPTY_SETTINGS_OVERRIDES,
     { kind: 'inputMethod', inputMethod: 'romaji' },
@@ -109,8 +106,63 @@ test('romajiRuleId: globalへは書き込めない。inputMethodレベルで「�
     toInputMethod.overrides,
     contextFor(qwertyJa, { inputMethod: 'romaji' }),
   );
-  assert.equal(resolved.romajiRuleId.value, 'azik'); // layoutの既定（kunrei）より強い
+  assert.equal(resolved.romajiRuleId.value, 'azik'); // 全体の既定（kunrei）より強い
   assert.deepEqual(resolved.romajiRuleId.origin, { kind: 'inputMethod', inputMethod: 'romaji' });
+});
+
+function withGlobalRomaji(ruleId: string): SettingsCascadeOverrides {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'romajiRuleId', ruleId);
+  assert.ok(written.ok, '全体のレベルへ書ける');
+  return written.overrides;
+}
+
+test('romajiRuleId: 全体の値は推奨の無い配列に効き、出どころは全体', () => {
+  const resolved = resolveSettings(withGlobalRomaji('azik'), contextFor(qwertyJa, { inputMethod: 'romaji' }));
+  assert.equal(resolved.romajiRuleId.value, 'azik');
+  assert.deepEqual(resolved.romajiRuleId.origin, { kind: 'global' });
+  assert.equal(resolved.romajiRuleId.recommendationWins, undefined);
+});
+
+test('romajiRuleId: 推奨を持つ配列（大西配列・TK音直入力法）は全体を変えても推奨のまま。負けた全体は理由に残る', () => {
+  const tk = findLayout(LAYOUTS_JA, 'oonishi-custom');
+  for (const [layout, expected] of [[oonishiJa, 'oonishi'], [tk, 'kunrei']] as const) {
+    const resolved = resolveSettings(withGlobalRomaji('azik'), contextFor(layout, { inputMethod: 'romaji' }));
+    assert.equal(resolved.romajiRuleId.value, expected, layout.id);
+    // 推奨は利用者が変えた値ではないので、出どころは既定値のまま
+    assert.deepEqual(resolved.romajiRuleId.origin, { kind: 'default' }, layout.id);
+    assert.deepEqual(resolved.romajiRuleId.recommendationWins, { shadowed: ['global'] }, layout.id);
+  }
+});
+
+test('romajiRuleId: 全体の値が推奨と同じなら、負けた値は無い', () => {
+  const resolved = resolveSettings(withGlobalRomaji('oonishi'), contextFor(oonishiJa, { inputMethod: 'romaji' }));
+  assert.equal(resolved.romajiRuleId.value, 'oonishi');
+  assert.equal(resolved.romajiRuleId.recommendationWins, undefined);
+});
+
+test('romajiRuleId: 配列・Setupの上書きは推奨より強い', () => {
+  const layoutOverride = setSettingsOverride(
+    withGlobalRomaji('azik'),
+    { kind: 'layout', layoutId: 'oonishi' },
+    'romajiRuleId',
+    'qwerty',
+  );
+  assert.ok(layoutOverride.ok);
+  const byLayout = resolveSettings(layoutOverride.overrides, contextFor(oonishiJa, { inputMethod: 'romaji' }));
+  assert.equal(byLayout.romajiRuleId.value, 'qwerty');
+  assert.deepEqual(byLayout.romajiRuleId.origin, { kind: 'layout', layoutId: 'oonishi' });
+  assert.equal(byLayout.romajiRuleId.recommendationWins, undefined);
+
+  const setupOverride = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'setup', setupId: 's1' }, 'romajiRuleId', 'azik');
+  assert.ok(setupOverride.ok);
+  const bySetup = resolveSettings(setupOverride.overrides, contextFor(oonishiJa, { inputMethod: 'romaji', setupId: 's1' }));
+  assert.equal(bySetup.romajiRuleId.value, 'azik');
+  assert.deepEqual(bySetup.romajiRuleId.origin, { kind: 'setup', setupId: 's1' });
+});
+
+test('romajiRuleId: かな配列でも全体の値は解決するが効かない', () => {
+  const resolved = resolveSettings(withGlobalRomaji('azik'), contextFor(nicola, { inputMethod: 'kana-direct' }));
+  assert.equal(resolved.romajiRuleId.applicable, false);
 });
 
 test('romajiRuleId: 打ち方がromaji以外（既定値のdirect）ではnot-applicable', () => {
