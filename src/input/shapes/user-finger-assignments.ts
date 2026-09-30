@@ -55,7 +55,11 @@ function decodeUserFingerAssignments(
   path: string,
   diagnostics: CodecDiagnostic[],
 ): FingerAssignment[] {
-  if (!Array.isArray(raw)) return [];
+  if (!Array.isArray(raw)) {
+    // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
+    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないため指の割り当てを捨てた' });
+    return [];
+  }
   const seen = new Set<string>();
   const assignments: FingerAssignment[] = [];
   raw.forEach((candidate, index) => {
@@ -90,8 +94,7 @@ export const USER_FINGER_ASSIGNMENTS_CODEC: AssetCodec<readonly FingerAssignment
   currentVersion: 1,
   decodePayload: (payload, diagnostics) => {
     if (!isRecord(payload)) return undefined;
-    // `assignments`が配列でなくても資産全体は失敗にせず空扱いにする
-    // （`input/setup/codec.ts`の`decodeSetups`と同じ寛容さ）。
+    // `assignments`が配列でなくても資産全体は失敗にせず空扱いにする（捨てた旨の診断は積む）。
     return decodeUserFingerAssignments(payload.assignments, 'assignments', diagnostics);
   },
   encodePayload: (value) => ({ assignments: value.map((assignment) => ({ ...assignment })) }),

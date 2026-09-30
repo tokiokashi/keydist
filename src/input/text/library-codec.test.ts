@@ -99,3 +99,21 @@ test('decode/encode: 「新しい」印は往復で残り、壊れた印は診�
     assert.equal(broken.diagnostics.length, 1);
   }
 });
+
+test('decode: textsが配列でない値（文字列・オブジェクト・数値・null）なら診断を1件積んで空にする', () => {
+  for (const texts of ['not-an-array', { a: 1 }, 42, null]) {
+    const result = TEXT_LIBRARY_CODEC.decode({ version: 1, texts });
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.deepEqual(result.value.texts, []);
+      assert.equal(result.diagnostics.length, 1);
+      assert.equal(result.diagnostics[0].path, 'texts');
+    }
+  }
+});
+
+test('decode: textsが無い（undefined）時は診断を積まない', () => {
+  const result = TEXT_LIBRARY_CODEC.decode({ version: 1 });
+  assert.equal(result.ok, true);
+  if (result.ok) assert.deepEqual(result.diagnostics, []);
+});

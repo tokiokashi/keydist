@@ -134,3 +134,21 @@ test('renameUserFingerAssignment: 名前を変更する', () => {
   const result = renameUserFingerAssignment([CUSTOM], CUSTOM.id, '別名');
   assert.equal(result[0]!.name, '別名');
 });
+
+test('decode: assignmentsが配列でない値（文字列・オブジェクト・数値・null）なら診断を1件積んで空にする', () => {
+  for (const assignments of ['not-an-array', { a: 1 }, 42, null]) {
+    const result = USER_FINGER_ASSIGNMENTS_CODEC.decode({ version: 1, assignments });
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.deepEqual(result.value, []);
+      assert.equal(result.diagnostics.length, 1);
+      assert.equal(result.diagnostics[0].path, 'assignments');
+    }
+  }
+});
+
+test('decode: assignmentsが無い（undefined）時は診断を積まない', () => {
+  const result = USER_FINGER_ASSIGNMENTS_CODEC.decode({ version: 1 });
+  assert.equal(result.ok, true);
+  if (result.ok) assert.deepEqual(result.diagnostics, []);
+});
