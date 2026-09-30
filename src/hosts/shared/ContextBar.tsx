@@ -3,7 +3,7 @@ import './context-bar.css';
 
 /**
  * 文脈バー（docs/architecture.md「画面の構成」「文脈バー」）。本体の上端に置き、
- * Workspaceの時はWorkspace名、使うテキストのチップ、常時出す操作（Undo/Redo・共有）を持つ。
+ * Workspaceの時はWorkspace名、使うテキストのチップ、常時出す操作（Undo/Redo。個別画面は共有も）を持つ。
  * ペイン固有の値は持たない。
  *
  * 個別画面とWorkspaceで同じものを使うので `hosts/shared` に置く。
@@ -20,8 +20,11 @@ export interface ContextBarProps {
   readonly children: ReactNode;
   /** Undo/Redoの状態と操作。 */
   readonly history: ContextBarHistory;
-  /** 共有（URLのコピー）。 */
-  readonly share: ContextBarShare;
+  /**
+   * 共有（URLのコピー）。渡した時だけボタンを出す。Workspaceは渡さない
+   * （URLのidはこのブラウザの保存先を指すので、受け取った側では開けない）。
+   */
+  readonly share?: ContextBarShare;
   /**
    * 資産の読み込みが済むまで、バーの操作を効かせない（プリレンダーのHTMLは読み込み前から押せるため）。
    * シェルが差し込むサイドバーのボタンは資産と関係ないので、ここに含めない。
@@ -30,7 +33,7 @@ export interface ContextBarProps {
 }
 
 /**
- * Undo/Redoと共有はどの幅でも常時出す。バーが狭い時は共有の文字を見た目から省き、アイコンだけにする
+ * Undo/Redoと共有（渡された時）はどの幅でも常時出す。バーが狭い時は共有の文字を見た目から省き、アイコンだけにする
  * （1行に収めるため。読み上げには残す）。
  */
 export function ContextBar({ children, history, share, disabled = false }: ContextBarProps) {
@@ -53,7 +56,7 @@ export function ContextBar({ children, history, share, disabled = false }: Conte
     };
   }, []);
 
-  const { state, copy } = useShareCopy(share.query);
+  const { state, copy } = useShareCopy(share?.query);
   return (
     <section ref={barRef} className="context-bar" aria-label="テキストと画面の操作">
       {leading}
@@ -61,10 +64,14 @@ export function ContextBar({ children, history, share, disabled = false }: Conte
         <div className="context-bar-items">{children}</div>
         <div className="context-bar-actions">
           <UndoRedoButtons history={history} />
-          <ShareButton description={share.description} onCopy={copy} />
-          <span className="context-share-status" role="status">
-            {state === 'copied' ? 'URLをコピーした' : state === 'failed' ? 'コピーできなかった' : ''}
-          </span>
+          {share === undefined ? null : (
+            <>
+              <ShareButton description={share.description} onCopy={copy} />
+              <span className="context-share-status" role="status">
+                {state === 'copied' ? 'URLをコピーした' : state === 'failed' ? 'コピーできなかった' : ''}
+              </span>
+            </>
+          )}
         </div>
       </fieldset>
     </section>
