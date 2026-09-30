@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivityExtracted, type NSensitivitySeries, type NSensitivitySeriesFailed } from './extract.ts';
 import { DEFAULT_N_SENSITIVITY_OPTIONS, type NSensitivityOptions } from './options.ts';
 import { bindOption, RadioOptionField } from '#ui/primitives/option-fields.tsx';
+import { useFitMode } from '#ui/primitives/fit-mode.ts';
 import { N_SENSITIVITY_PANE_META } from './pane-meta.ts';
 import { computeYRange, formatYTicks } from './y-range.ts';
 import {
@@ -17,6 +18,7 @@ import {
 } from './legend-placement.ts';
 import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
 import './n-sensitivity-view.css';
+import './n-sensitivity-fit.css';
 
 /**
  * N感度の可視化（#544 Phase 3「N感度」）。
@@ -33,6 +35,7 @@ import './n-sensitivity-view.css';
 const DEFAULT_CHART_WIDTH = 640;
 const MIN_CHART_HEIGHT = 200;
 const MAX_CHART_HEIGHT = 360;
+const FIT_MIN_CHART_HEIGHT = 120;
 /** 凡例をプロットの下に置く時の、図の左右の余白と、軸の見出しとの間隔。 */
 const LEGEND_BELOW_SIDE = 8;
 const LEGEND_BELOW_GAP = 6;
@@ -94,22 +97,25 @@ interface PlottedSeries {
  * 要素の幅を測る。測れるのはハイドレーション後なので、それまでは`null`（既定の幅で描く）。
  * 観測はアンマウントで必ず解除する。
  */
-function useMeasuredWidth(): [React.RefObject<HTMLDivElement | null>, number | null] {
+function useMeasuredWidth(): [React.RefObject<HTMLDivElement | null>, number | null, number | null] {
   const ref = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState<number | null>(null);
+  const [height, setHeight] = useState<number | null>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
     const update = () => {
       const next = Math.floor(el.clientWidth);
       if (next > 0) setWidth(next);
+      const nextHeight = Math.floor(el.clientHeight);
+      if (nextHeight > 0) setHeight(nextHeight);
     };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  return [ref, width];
+  return [ref, width, height];
 }
 
 let measureContext: CanvasRenderingContext2D | null | undefined;
@@ -156,9 +162,13 @@ function NSensitivityChart({
 }) {
   // 置かれた領域の幅をそのままviewBoxの幅にする（表示と等倍になり、文字が縮まない）。
   // 高さは2:1を基本に、狭い領域でも線の間隔が潰れない下限と、広い領域で伸びすぎない上限で止める。
-  const [wrapRef, measured] = useMeasuredWidth();
+  const [wrapRef, measured, measuredHeight] = useMeasuredWidth();
+  const fitMode = useFitMode();
   const CHART_WIDTH = measured ?? DEFAULT_CHART_WIDTH;
-  const baseHeight = Math.min(MAX_CHART_HEIGHT, Math.max(MIN_CHART_HEIGHT, Math.round(CHART_WIDTH / 2)));
+  // 【試作】高さで収める時（#808）は、枠の高さをそのままチャートの高さにする（2:1の基準・上限は使わない）。
+  const baseHeight = fitMode !== null && measuredHeight !== null
+    ? Math.max(FIT_MIN_CHART_HEIGHT, measuredHeight)
+    : Math.min(MAX_CHART_HEIGHT, Math.max(MIN_CHART_HEIGHT, Math.round(CHART_WIDTH / 2)));
   const plotWidth = CHART_WIDTH - MARGIN.left - MARGIN.right;
   const tickStep = plotWidth / (N_SENSITIVITY_RANGE.length - 1) < MIN_TICK_SPACING ? 2 : 1;
   const xMin = N_SENSITIVITY_RANGE[0];
@@ -317,6 +327,13 @@ export function NSensitivityBody({
       };
     });
 
+  // 【試作】実測値の表は補助なので、Workspaceのペイン（高さで収める案）では畳んで始める。
+  const fitMode = useFitMode();
+  const [tableOpen, setTableOpen] = useState(true);
+  useEffect(() => {
+    if (fitMode !== null) setTableOpen(false);
+  }, [fitMode]);
+
   const failedRows = okRows.filter(
     (row): row is typeof row & { entry: NSensitivitySeriesFailed } => row.entry.kind === 'failed',
   );
@@ -337,9 +354,14 @@ export function NSensitivityBody({
       ) : null}
 
       {plotted.length > 0 ? (
+      <details
+        className="n-sensitivity-table-details"
+        open={tableOpen}
+        onToggle={(event) => setTableOpen(event.currentTarget.open)}
+      >
+      <summary>各Nの実測値 [u]</summary>
       <div className="n-sensitivity-table-scroll">
         <table className="n-sensitivity-table">
-          <caption>各Nの実測値 [u]</caption>
           <thead>
             <tr>
               <th scope="col">対象</th>
@@ -358,6 +380,7 @@ export function NSensitivityBody({
           </tbody>
         </table>
       </div>
+      </details>
       ) : null}
     </section>
   );

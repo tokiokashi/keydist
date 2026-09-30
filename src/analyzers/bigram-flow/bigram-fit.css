@@ -1,0 +1,95 @@
+/*
+ * 【試作】案A: ペインの高さに合わせて図を縮める（#808）。`<html data-fit>`がある時だけ効く。
+ *
+ * 本体の領域（.pane-body）がペインの残りの高さを持つので、その中で
+ * 「状態の1行・Keyboard Flow・Relative vectors」を高さで分け合い、各図は縦横比を保ったまま
+ * 割り当てられた枠の中へ縮む（SVGの既定のpreserveAspectRatio）。
+ * 図に付く文字は減らす（注記はⓘへ移し、件数の文と手ごとの要約は縦が足りない時に隠す）。
+ */
+:root[data-fit] .flow-feature {
+  height: 100%;
+  grid-template-rows: auto minmax(0, 0.85fr) minmax(0, 1fr);
+  gap: 0.6rem;
+}
+
+:root[data-fit] .flow-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 0;
+}
+
+:root[data-fit] .flow-block-heading,
+:root[data-fit] .flow-figure-settings,
+:root[data-fit] .flow-roll-legend {
+  flex: none;
+}
+
+/* Keyboard Flow: 枠の残りに図を入れ、凡例は図の下に1行で残す。 */
+:root[data-fit] .flow-stage {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+
+:root[data-fit] .flow-keyboard-svg {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+}
+
+:root[data-fit] .flow-legend {
+  flex: none;
+  margin: 0 0.5rem 0.4rem;
+  padding: 0.2rem 0.5rem;
+}
+
+/* Relative vectors: 左右の図を、枠の残りの高さに正方形のまま収める。 */
+:root[data-fit] .flow-two-up {
+  flex: 1 1 0;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+
+:root[data-fit] .flow-mini-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+}
+
+:root[data-fit] .flow-mini-panel header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.5rem;
+  padding: 0.4rem 0.6rem 0;
+}
+
+:root[data-fit] .flow-profile-viewport {
+  min-height: 0;
+  padding: 0.15rem;
+}
+
+:root[data-fit] .flow-profile-stage {
+  width: 100%;
+  height: 100%;
+  max-width: none !important;
+}
+
+:root[data-fit] .flow-profile-svg {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+:root[data-fit] .roll-summary {
+  padding: 0 0.6rem 0.4rem;
+}
+
+/* 縦が足りないペインでは、件数の文と手ごとの要約（平均移動・まとまり）を隠す。数字は図の各線のtitleと解析設定の外にも残らないので、ⓘの説明にある「読み方」で補う。 */
+@container (max-height: 520px) {
+  :root[data-fit] .flow-coverage,
+  :root[data-fit] .flow-profile-stats {
+    display: none;
+  }
+}

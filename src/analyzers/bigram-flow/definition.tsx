@@ -42,6 +42,7 @@ import {
 import { BIGRAM_FLOW_PANE_META } from './pane-meta.ts';
 import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
 import './bigram-vector-view.css';
+import './bigram-fit.css';
 
 /**
  * Bigram Flowの可視化（definition.tsx。docs/architecture.md「Analyzerの契約は
@@ -171,7 +172,11 @@ function useElementWidth(): [RefObject<SVGSVGElement | null>, number] {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
-    const update = () => setWidth(el.getBoundingClientRect().width);
+    // 高さで収める時は図が枠より小さく描かれる（縦横比を保って縮む）ので、実際に描かれる幅で測る。
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      setWidth(Math.min(rect.width, (rect.height * AREA_WIDTH) / AREA_HEIGHT));
+    };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(el);
@@ -697,6 +702,9 @@ export interface BigramFlowBodyProps {
 const KEYBOARD_FLOW_READING = 'キーからキーへの移動を線で描く。太さが回数で、線は始点が薄く終点が濃い。';
 const RELATIVE_VECTORS_READING = '打鍵ごとの移動の向きと距離を、打ち始めのキーを中心に重ねて描く。外周は移動方向の分布、白い線は平均の移動を表す。点線の円は1uごとの距離。件数は描いた線の数（指の組と移動が同じものはまとめて1本）、平均移動は平均の移動の長さ、まとまりは0に近いほど方向が分散し1に近いほど同じ方向へ集中する。下の割合は内向きと外向きの比。';
 
+/** 左右の手をまたぐ2打鍵の扱い。図の下の注記だった文を、高さを取らないようⓘの中へ移した。 */
+const CROSS_HAND_NOTE = '左右の手をまたぐ2打鍵は、Keyboard Flowには含めるが、Relative vectorsからは除く。';
+
 /**
  * Bigram Flowの本体（図）。`extracted`（`extract.ts`の計算結果）と見た目だけの設定を描くだけで、
  * Trace・vectorそのものからの再計算はしない。両方の図に効く解析設定の入力部品は持たない
@@ -784,7 +792,12 @@ export function BigramFlowBody({
             <h3 className="flow-block-title">
               Relative vectors <span className="flow-block-subject">{fingerSetLabel(selectedFingers)}</span>
             </h3>
-            <InfoButton name="Relative vectors" description={RELATIVE_VECTORS_READING} />
+            <InfoButton
+              name="Relative vectors"
+              description={source === 'actual' && extracted.hasCrossHandInAnalysis
+                ? `${RELATIVE_VECTORS_READING}${CROSS_HAND_NOTE}`
+                : RELATIVE_VECTORS_READING}
+            />
             {onOptionsChange !== undefined ? (
               <FigureSettingsToggle
                 name="Relative vectors"
@@ -819,11 +832,6 @@ export function BigramFlowBody({
               polarGain={polarGain}
             />
           </div>
-          {source === 'actual' && extracted.hasCrossHandInAnalysis ? (
-            <p className="flow-footnote">
-              左右の手をまたぐ2打鍵は、Keyboard Flowには含めるが、Relative vectorsからは除く。
-            </p>
-          ) : null}
         </motion.section>
       </AnimatePresence>
     </section>

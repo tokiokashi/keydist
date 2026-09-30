@@ -1,0 +1,40 @@
+/*
+ * 【試作】案A: ペインの高さに合わせてチャートを伸縮する（#808）。`<html data-fit>`がある時だけ効く。
+ * チャートは本体の領域の残りの高さをそのまま使い、実測値の表は畳んだ見出し1行だけにする。
+ */
+:root[data-fit] .n-sensitivity-feature {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 100%;
+}
+
+:root[data-fit] .n-sensitivity-chart {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+:root[data-fit] .n-sensitivity-svg {
+  height: 100%;
+}
+
+.n-sensitivity-table-details {
+  flex: none;
+}
+
+.n-sensitivity-table-details > summary {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.n-sensitivity-table-details[open] > .n-sensitivity-table-scroll {
+  margin-top: 0.4rem;
+}
+
+/* 畳んだ表を開いた時は、チャートを縮めずに本体の領域の中でスクロールさせる。 */
+:root[data-fit] .n-sensitivity-table-details[open] {
+  max-height: 60%;
+  overflow: auto;
+}
