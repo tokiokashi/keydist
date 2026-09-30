@@ -26,7 +26,8 @@ async function expectHeaderPinnedBelowContextBar(page: Page) {
 }
 
 test('スクロールしても見出しが文脈バーの下に残り、対象の選択・解析設定が見出しの近くに出る', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
+  // 図の下の注記をⓘへ移して本体が短くなったので、スクロールできる高さ（閾値200px）が残る低い画面にする。
+  await page.setViewportSize({ width: 1440, height: 760 });
   await page.goto('/standalone/bigram-flow');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
