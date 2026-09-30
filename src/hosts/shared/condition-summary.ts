@@ -33,6 +33,19 @@ const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly la
   { id: 'defaultShapeId', label: '既定の物理配列' },
 ];
 
+/**
+ * 条件の項目を、画面に出す名前へ写す。プリセットの流し込みで「入れなかった項目」を、内部の項目idでなく
+ * 利用者が見る行の名前で伝えるため。要約に出ない項目（チェーン・アルペジオ）は、モーダルの節の名前で出す。
+ * 行の無い項目（再生速度の平均など）と未知のidは`undefined`（呼び出し側が件数だけで伝える）。
+ */
+export function conditionItemLabel(id: string): string | undefined {
+  const traced = TRACE_AFFECTING_ITEMS.find((item) => item.id === id);
+  if (traced !== undefined) return traced.label;
+  if (id === 'chainInterpretation') return 'チェーンの区切り';
+  if (id === 'arpeggioInterpretation') return 'アルペジオ';
+  return undefined;
+}
+
 export type ConditionValueFormat = 'primitive' | 'object';
 
 export interface ConditionSummaryRow {

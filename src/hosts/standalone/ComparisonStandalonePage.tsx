@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import { setMultiBaselineCommand, setMultiTargetsCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
+import type { PresetIdGenerator } from '#input/presets/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
@@ -13,6 +14,7 @@ import { decodeStoredAnalyzerOptions } from '#hosts/shared/decode-analyzer-optio
 import { ComparisonPane } from '#hosts/shared/panes/ComparisonPane.tsx';
 import type { PaneChrome, PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
+import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
 import { urlOptionsNotices, useUrlOptions } from './use-url-options.ts';
@@ -45,6 +47,8 @@ export interface ComparisonStandalonePageProps {
   readonly onTextContentCommit: TextContentCommit;
   /** 資産のコマンド履歴（文脈バーのUndo / Redo）。`app` が組み立てる。 */
   readonly history: ContextBarHistory;
+  /** プリセットの新しいidの発行（条件のモーダルのプリセットの節が使う）。 */
+  readonly generatePresetId: PresetIdGenerator;
   readonly onComparisonOptionsCommit: (options: ComparisonOptions) => void;
 }
 
@@ -63,6 +67,7 @@ export function ComparisonStandalonePage({
   onTextContentCommit,
   onComparisonOptionsCommit,
   history,
+  generatePresetId,
 }: ComparisonStandalonePageProps) {
   const resolvedText = useMemo(
     () => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary),
@@ -93,6 +98,7 @@ export function ComparisonStandalonePage({
   const shareSource = useTargetShareSource(catalog, assets.setupLibrary.setups);
   const targetNotices = useUrlTargets({ kind: 'multi', assetsReady, source: shareSource, dispatch });
 
+  const undo = useLatestCallback(history.undo);
   const env: PaneEnvironment = useMemo(() => ({
     setups: assets.setupLibrary.setups,
     overrides: assets.setupLibrary.overrides,
@@ -100,8 +106,11 @@ export function ComparisonStandalonePage({
     resolvedText,
     cache,
     dispatch,
+    presetLibrary: assets.presetLibrary,
+    generatePresetId,
+    undo,
     assetsReady,
-  }), [assets.setupLibrary, catalog, resolvedText, cache, dispatch, assetsReady]);
+  }), [assets.setupLibrary, assets.presetLibrary, catalog, resolvedText, cache, dispatch, generatePresetId, undo, assetsReady]);
 
   const changeOptions = (next: ComparisonOptions) => {
     setOptionsDraft(next);

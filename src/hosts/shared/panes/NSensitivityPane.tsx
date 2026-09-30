@@ -176,6 +176,9 @@ export function NSensitivityPane({
       conditionEditor={{
         overrides,
         dispatch,
+        presetLibrary: env.presetLibrary,
+        generatePresetId: env.generatePresetId,
+        undo: env.undo,
         shapes: catalog.setupCatalog.shapes,
         customFingerAssignments: catalog.customFingerAssignments,
         customRomajiRules: catalog.customRomajiRules,

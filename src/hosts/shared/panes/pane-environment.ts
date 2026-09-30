@@ -2,6 +2,8 @@ import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
 import type { SettingsCascadeOverrides } from '#engine/settings-items.ts';
+import type { PresetIdGenerator, PresetLibrary } from '#input/presets/index.ts';
+import type { SettingsValueMap } from '#engine/settings-items.ts';
 import type { Setup } from '#input/setup/index.ts';
 import type { ResolvedText } from '#input/text/resolve.ts';
 import type { PaneMenuItem } from '../PaneHeaderParts.tsx';
@@ -23,6 +25,11 @@ export interface PaneEnvironment {
   readonly cache: EngineComputer;
   /** 資産への書き込み（条件のモーダルが全体のレベルの条件を書き換える）。 */
   readonly dispatch: (command: Command<KeydistAssets>) => void;
+  /** 保存したプリセット（条件のモーダルの上部が一覧にする）。 */
+  readonly presetLibrary: PresetLibrary<SettingsValueMap>;
+  readonly generatePresetId: PresetIdGenerator;
+  /** 器の元に戻す（文脈バーと同じ。待っている書き込みを先に反映してから戻す）。モーダルの中の「元に戻す」が呼ぶ。 */
+  readonly undo: () => void;
   /** 資産の初回読み込みが済んでいるか。済む前は、対象が空に見えても空とは限らない。 */
   readonly assetsReady: boolean;
 }

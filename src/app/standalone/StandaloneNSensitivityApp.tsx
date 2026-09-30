@@ -6,7 +6,7 @@ import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { NSensitivityStandalonePage } from '#hosts/standalone/index.ts';
 import { builtinPaneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
-import { generateTextId } from './id-generator.ts';
+import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
 import { useTextContentCommit } from './use-text-content-commit.ts';
@@ -50,6 +50,7 @@ export function StandaloneNSensitivityApp() {
       cache={sharedEngineComputer}
       catalog={catalog}
       generateTextId={generateTextId}
+      generatePresetId={generatePresetId}
       history={history}
       onTextContentCommit={commitTextContent}
       onOptionsCommit={commitOptions}

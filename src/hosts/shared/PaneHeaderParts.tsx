@@ -75,6 +75,8 @@ export function PaneMenu({
       {...data}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && open) {
+          // モーダルの中に置いた時に、メニューを閉じるだけでモーダルまで閉じないようにする
+          event.preventDefault();
           event.stopPropagation();
           close();
         }

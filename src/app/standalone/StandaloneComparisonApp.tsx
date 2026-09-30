@@ -6,7 +6,7 @@ import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import { ComparisonStandalonePage } from '#hosts/standalone/index.ts';
 import { builtinPaneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
-import { generateTextId } from './id-generator.ts';
+import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
 import { useTextContentCommit } from './use-text-content-commit.ts';
@@ -51,6 +51,7 @@ export function StandaloneComparisonApp() {
       cache={sharedEngineComputer}
       catalog={catalog}
       generateTextId={generateTextId}
+      generatePresetId={generatePresetId}
       history={history}
       onTextContentCommit={commitTextContent}
       onComparisonOptionsCommit={commitComparisonOptions}

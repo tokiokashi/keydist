@@ -6,6 +6,7 @@ import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.
 import { DEFAULT_TRIGGER_ACTIVATION_GROUPINGS } from '#input/semantics/index.ts';
 import { ROMAJI_RULES, type UserRomajiRule } from '#input/romaji/rules.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
+import type { PresetIdGenerator, PresetLibrary } from '#input/presets/index.ts';
 import { FINGER_ASSIGNMENT_REGISTRY, defaultFingerAssignmentId } from '#engine/finger-assignment.ts';
 import {
   DEFAULT_SHAPE_ID,
@@ -56,6 +57,15 @@ export interface ConditionEditorContext {
   readonly notices?: ReadonlyMap<SettingsItemId, string>;
   /** このペインが自分で動かす項目（N感度の先読みN）。全体の値として編集させない。 */
   readonly hiddenIds?: readonly SettingsItemId[];
+  /** 保存したプリセット。モーダル上部のプリセットの節が読む。 */
+  readonly presetLibrary: PresetLibrary<SettingsValueMap>;
+  /** プリセットの新しいidの発行（純粋層は乱数を持たないので、`app`が注入する）。 */
+  readonly generatePresetId: PresetIdGenerator;
+  /**
+   * 直前の操作を元に戻す（文脈バーの元に戻すと同じもの）。モーダルは背後を操作できなくするので、
+   * プリセットの流し込み・削除の直後に、モーダルの中から戻せるようにするために渡す。
+   */
+  readonly undo: () => void;
 }
 
 export interface ConditionEditorProps {

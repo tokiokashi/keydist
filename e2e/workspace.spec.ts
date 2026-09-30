@@ -878,6 +878,22 @@ test('Workspaceのペインの条件のモーダルで全体の条件を変え�
   await expect(standaloneModal.locator('[data-item="windowSize"]').locator('output[aria-label="先読みN"]')).toHaveText('4');
 });
 
+test('Workspaceのペインの条件のモーダルでもプリセットを保存・流し込みでき、元に戻すで戻る', async ({ page }) => {
+  const panes = await createWithBigramPanes(page, 1);
+  const modal = await openPaneConditionModal(page, panes.first());
+  await modal.getByRole('button', { name: '先読みNを1増やす' }).click();
+  const section = modal.locator('[data-condition-presets]');
+  await section.locator('summary').click();
+  await section.getByLabel('プリセットの名前').fill('厳しめ');
+  await section.getByRole('button', { name: '今の全体の値を保存' }).click();
+  await modal.getByRole('button', { name: 'すべて既定値に戻す' }).click();
+  await section.getByRole('button', { name: '「厳しめ」の値を流し込む' }).click();
+  await expect(modal.locator('[data-item="windowSize"] output')).toHaveText('4');
+  await section.getByRole('button', { name: '元に戻す' }).click();
+  await expect(modal.locator('[data-item="windowSize"] output')).toHaveText('3');
+  await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBeUndefined();
+});
+
 test('Workspaceで変えた全体の条件はWorkspaceの元に戻すで戻り、その結果が個別画面にも効く。元に戻すの履歴は画面ごと', async ({ page, context }) => {
   const panes = await createWithBigramPanes(page, 1);
   const trigger = panes.first().locator('.pane-condition-trigger');
