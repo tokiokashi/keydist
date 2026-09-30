@@ -21,6 +21,10 @@
   --dv-tab-margin-block: 0.4rem;
   --dv-tabs-and-actions-container-height: 2.6rem;
   --dv-tab-font-size: 0.85rem;
+  /* ペインの本文の左右の余白。見出しの文字と×もこの線に揃える（#807） */
+  --workspace-pane-inline: 1rem;
+  /* 見出しの帯の左端から、タブの背景の左端まで（帯の内側の余白 = 角丸の半分 + Dockviewのタブの前の余白） */
+  --workspace-tab-offset: 9px;
 
   /* 色は明・暗ともアプリのtokenに従わせる */
   --dv-group-view-background-color: var(--surface);
@@ -53,6 +57,18 @@
   overflow: hidden;
 }
 
+/*
+ * 見出しの文字の左端を、ペインの本文の文字の左端（帯の左端から--workspace-pane-inline）に揃える。
+ * タブの背景は帯の左端から--workspace-tab-offsetだけ内側から始まるので、その分を引いたものが背景の中の余白になる。
+ * ×は右端の背景から同じ余白だけ内側に置く（×のボタン自身の内側の余白4pxは除く）。
+ * タブが1つだけの時（fullwidth）はDockviewが余白を0にするので、複数の時と同じ値で上書きする。
+ * タブの構造は変えない（#628）。
+ */
+.workspace-dock-area .dockview-theme-light-spaced .dv-tabs-and-actions-container .dv-tabs-container .dv-tab {
+  padding-inline: calc(var(--workspace-pane-inline) - var(--workspace-tab-offset))
+    calc(var(--workspace-pane-inline) - var(--workspace-tab-offset) - 4px);
+}
+
 /* タブの帯を出さない表示（見比べ用）。ペインの見出しだけが残る。 */
 .workspace-dock-area[data-hide-tabs] .dv-tabs-and-actions-container {
   display: none;
@@ -65,6 +81,6 @@
 .workspace-pane {
   height: 100%;
   overflow: auto;
-  padding: 0.75rem 1rem 1rem;
+  padding: 0.75rem var(--workspace-pane-inline, 1rem) 1rem;
   box-sizing: border-box;
 }
