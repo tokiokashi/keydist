@@ -79,6 +79,8 @@ test('書き出したファイルを読み込み直すと、同名は番号付�
   // 同じファイルを続けて選べるよう、読み込みの後に選択を空へ戻している
   await expect(section.getByLabel('読み込むプリセットのファイル')).toHaveValue('');
   await expect(result(section)).toContainText('2件のプリセットを読み込んだ');
+  // 押したボタンから離れて結果が出るので、フォーカスは結果の行へ移る（読み上げで結果に気づける）
+  await expect(result(section)).toBeFocused();
   await expect(section.locator('summary')).toHaveText('プリセット（4）');
   await expect(section.locator('.condition-preset-name')).toHaveText(['自分用メモ', '比較用（N=5）', '自分用メモ 2', '比較用（N=5） 2']);
   // 読み込んだだけでは条件は変わらない
@@ -174,6 +176,8 @@ test.describe('スマホ幅', () => {
     await expect(section.getByRole('button', { name: '読み込む…' })).toBeVisible();
     await importText(section, '{ 壊れた');
     await expect(result(section)).toContainText('条件ファイルとして読めませんでした');
+    await expect(result(section)).toBeFocused();
+    await expect(result(section)).toBeInViewport({ ratio: 1 });
     const overflow = await modal.evaluate((dialog) => {
       const body = dialog.querySelector('.condition-modal-body')!;
       return body.scrollWidth - body.clientWidth;

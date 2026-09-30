@@ -55,6 +55,18 @@ interface Notice {
   readonly settled?: { readonly overrides: unknown; readonly library: unknown };
 }
 
+/**
+ * 操作の後にフォーカスを移す先。押したボタンや行が消える操作の後にBODYへ落ちると、
+ * 読み上げで今どこにいるかが分からなくなるため、描画後に移す。
+ * - menu: その行の⋯（名前の変更を確定・やめた後。操作を始めたボタンへ戻す）
+ * - undo: 結果の行の元に戻す（削除の後。消えた行の代わりに、続けて戻せる所）
+ * - result: 結果の行そのもの（元に戻した後・読み込みの後。押したボタンが消えるか、結果が新しく出るため）
+ */
+type FocusTarget =
+  | { readonly kind: 'menu'; readonly id: string }
+  | { readonly kind: 'undo' }
+  | { readonly kind: 'result' };
+
 export function PresetSection({ editor }: { readonly editor: ConditionEditorContext }) {
   const { overrides, presetLibrary, dispatch } = editor;
   const rows = useMemo(() => presetRows(presetLibrary, overrides), [presetLibrary, overrides]);
@@ -79,6 +91,22 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
 
   const fileIo = useContext(PresetFileIoContext);
   const fileInput = useRef<HTMLInputElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+  const pendingFocus = useRef<FocusTarget | undefined>(undefined);
+
+  // 状態の更新を描画し終えてから、移し先が現れていれば移す（現れるまでは持ち越す）
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (target === undefined || root.current === null) return;
+    const element = target.kind === 'menu'
+      ? root.current.querySelector<HTMLElement>(`[data-preset-id="${CSS.escape(target.id)}"] .pane-menu-button`)
+      : target.kind === 'undo'
+        ? root.current.querySelector<HTMLElement>('[data-preset-result] button')
+        : root.current.querySelector<HTMLElement>('[data-preset-result]');
+    if (element === null) return;
+    pendingFocus.current = undefined;
+    element.focus();
+  });
 
   /** この端末にある参照先。ファイルの値がこれに無いidを指していたら、読み込みの結果で注記する。 */
   const references = (): PresetReferences => ({
@@ -110,17 +138,20 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
     const read = await fileIo.readText(file, PRESET_FILE_MAX_BYTES);
     if (read.kind !== 'ok') {
       show(read.kind === 'too-large' ? PRESET_FILE_TOO_LARGE_MESSAGE : PRESET_FILE_UNREADABLE_MESSAGE, false);
+      pendingFocus.current = { kind: 'result' };
       return;
     }
     const parsed = parsePresetFile(read.text, references());
     if (!parsed.ok) {
       show(parsed.message, false, parsed.details);
+      pendingFocus.current = { kind: 'result' };
       return;
     }
     // 追加後の名前（同名は番号付き）で注記するため、コマンドと同じ計算を先に行う。追加分は末尾に並ぶ
     const added = appendImportedPresets(presetLibrary, parsed.presets, () => '').presets.slice(presetLibrary.presets.length);
     dispatch(importPresetsCommand(parsed.presets, editor.generatePresetId));
     show(importResultMessage(parsed.message, parsed.missingReferences, added.map((preset) => preset.name)), true, parsed.details);
+    pendingFocus.current = { kind: 'result' };
   };
 
   const save = (event: FormEvent) => {
@@ -146,6 +177,7 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
     if (preset === undefined) return;
     dispatch(deletePresetCommand(id));
     show(deletedResultText(preset.name), true);
+    pendingFocus.current = { kind: 'undo' };
   };
 
   const commitRename = (event: FormEvent) => {
@@ -153,16 +185,18 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
     if (renaming === undefined || !isSavableName(renaming.draft)) return;
     dispatch(renamePresetCommand(renaming.id, renaming.draft));
     setRenaming(undefined);
+    pendingFocus.current = { kind: 'menu', id: renaming.id };
   };
 
   const undo = () => {
     editor.undo();
     // 戻した結果の行は、戻したこと自体を伝える（元に戻すは付けない）
     setNotice({ text: '元に戻した', undoable: false, base: { overrides, library: presetLibrary } });
+    pendingFocus.current = { kind: 'result' };
   };
 
   return (
-    <details className="condition-presets" data-condition-presets="true">
+    <details ref={root} className="condition-presets" data-condition-presets="true">
       <summary>プリセット（{rows.length}）</summary>
       <div className="condition-presets-body">
         {rows.length === 0 ? (
@@ -185,15 +219,19 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
                         event.preventDefault();
                         event.stopPropagation();
                         setRenaming(undefined);
+                        pendingFocus.current = { kind: 'menu', id: row.id };
                       }}
                     />
                     <button type="submit" disabled={!isSavableName(renaming.draft)}>変更</button>
-                    <button type="button" onClick={() => setRenaming(undefined)}>やめる</button>
+                    <button type="button" onClick={() => {
+                      setRenaming(undefined);
+                      pendingFocus.current = { kind: 'menu', id: row.id };
+                    }}>やめる</button>
                   </form>
                 ) : (
                   <>
                     <span className="condition-preset-name">{row.name}</span>
-                    {row.sameAsCurrent ? <span className="condition-preset-same">いまの値と同じ</span> : null}
+                    {row.sameAsCurrent ? <span className="condition-preset-same">今の値と同じ</span> : null}
                     <button
                       type="button"
                       className="condition-preset-apply"
@@ -244,7 +282,7 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
         )}
         {visibleNotice === undefined ? null : (
           <div className="condition-preset-result-block">
-            <p className="condition-preset-result" role="status" data-preset-result="true">
+            <p className="condition-preset-result" role="status" data-preset-result="true" tabIndex={-1}>
               <span>{visibleNotice.text}</span>
               {visibleNotice.undoable ? <button type="button" onClick={undo}>元に戻す</button> : null}
             </p>
