@@ -95,6 +95,7 @@ export function WorkspacePage({
     canUndo: history.canUndo,
     canRedo: history.canRedo,
     undo: () => {
+      flushPending();
       history.undo();
     },
     redo: () => {
