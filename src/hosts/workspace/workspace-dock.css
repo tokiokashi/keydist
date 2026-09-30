@@ -21,6 +21,16 @@
   --dv-tab-margin-block: 0.4rem;
   --dv-tabs-and-actions-container-height: 2.6rem;
   --dv-tab-font-size: 0.85rem;
+  /* ペインの本文の左右の余白。見出しの文字と×もこの線に揃える（#807） */
+  --workspace-pane-inline: 1rem;
+  /*
+   * 見出しの帯の左端から、タブの背景の左端まで。Dockviewのテーマが置く2つの余白の和
+   * （帯の内側の余白 = 角丸の半分、タブの左右の外側の余白）。値を写さず同じ変数から求めるので、
+   * ルートの文字サイズ（rem）が変わっても、テーマの値が変わっても本文と揃う。
+   */
+  --workspace-tab-offset: calc(var(--dv-border-radius) / 2 + var(--dv-tab-margin-inline));
+  /* ×のボタン自身の内側の余白。Dockviewは指で押す端末（pointer: coarse）で8pxにするので下で合わせる */
+  --workspace-tab-action-inset: 4px;
 
   /* 色は明・暗ともアプリのtokenに従わせる */
   --dv-group-view-background-color: var(--surface);
@@ -53,6 +63,25 @@
   overflow: hidden;
 }
 
+/*
+ * 見出しの文字の左端を、ペインの本文の文字の左端（帯の左端から--workspace-pane-inline）に揃える。
+ * タブの背景は帯の左端から--workspace-tab-offsetだけ内側から始まるので、その分を引いたものが背景の中の余白になる。
+ * ×は右端の背景から同じ余白だけ内側に置く（×のボタン自身の内側の余白は除く）。
+ * 差が負になる指で押す端末では0に切り詰められ、1pxほど内側に寄る。
+ * タブが1つだけの時（fullwidth）はDockviewが余白を0にするので、複数の時と同じ値で上書きする。
+ * タブの構造は変えない（#628）。
+ */
+.workspace-dock-area .dockview-theme-light-spaced .dv-tabs-and-actions-container .dv-tabs-container .dv-tab {
+  padding-inline: calc(var(--workspace-pane-inline) - var(--workspace-tab-offset))
+    calc(var(--workspace-pane-inline) - var(--workspace-tab-offset) - var(--workspace-tab-action-inset));
+}
+
+@media (pointer: coarse) {
+  .workspace-dock-area .dockview-theme-light-spaced {
+    --workspace-tab-action-inset: 8px;
+  }
+}
+
 /* タブの帯を出さない表示（見比べ用）。ペインの見出しだけが残る。 */
 .workspace-dock-area[data-hide-tabs] .dv-tabs-and-actions-container {
   display: none;
@@ -65,6 +94,6 @@
 .workspace-pane {
   height: 100%;
   overflow: auto;
-  padding: 0.75rem 1rem 1rem;
+  padding: 0.75rem var(--workspace-pane-inline, 1rem) 1rem;
   box-sizing: border-box;
 }
