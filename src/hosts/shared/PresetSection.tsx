@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { applyPresetValues, normalizePresetName } from '#input/presets/index.ts';
+import { appendImportedPresets, applyPresetValues, normalizePresetName } from '#input/presets/index.ts';
 import { SETTINGS_ITEMS } from '#engine/settings-items.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
 import { ROMAJI_RULES } from '#input/romaji/rules.ts';
@@ -20,6 +20,7 @@ import {
   PRESET_FILE_MAX_BYTES,
   PRESET_FILE_TOO_LARGE_MESSAGE,
   PRESET_FILE_UNREADABLE_MESSAGE,
+  importResultMessage,
   parsePresetFile,
   presetFileBody,
   presetFileName,
@@ -116,8 +117,10 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
       show(parsed.message, false, parsed.details);
       return;
     }
+    // 追加後の名前（同名は番号付き）で注記するため、コマンドと同じ計算を先に行う。追加分は末尾に並ぶ
+    const added = appendImportedPresets(presetLibrary, parsed.presets, () => '').presets.slice(presetLibrary.presets.length);
     dispatch(importPresetsCommand(parsed.presets, editor.generatePresetId));
-    show(parsed.message, true, parsed.details);
+    show(importResultMessage(parsed.message, parsed.missingReferences, added.map((preset) => preset.name)), true, parsed.details);
   };
 
   const save = (event: FormEvent) => {

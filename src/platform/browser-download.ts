@@ -10,8 +10,9 @@ export function downloadText(
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
-  // ダウンロードが始まる前にURLを失効させると、ファイル名が指定どおりにならない（「download」になる）。
-  // 保存の開始は非同期なので、少し待ってから解放する。
+  // 解放を遅らせるのは、保存の開始が非同期なブラウザへの備え（そのようなブラウザは確かめていない）。
+  // 日本語のファイル名が「download」になる現象はこれとは無関係で、LANG未設定（C/POSIX）のLinuxの
+  // Chromiumが名前をUTF-8へ変換できないことによる（LANG=C.UTF-8なら即時に解放しても保たれる）。
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 

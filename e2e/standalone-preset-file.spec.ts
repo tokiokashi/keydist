@@ -8,8 +8,9 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
  */
 
 /**
- * アンカーに指定したファイル名を控える。日本語のファイル名は、ヘッドレスのChromiumでは
- * ダウンロードイベントの`suggestedFilename()`が「download」に落ちるので、こちらで名前を確かめる。
+ * アンカーに指定したファイル名を控える。LANG未設定（C/POSIX）のLinuxのChromiumは、日本語のファイル名を
+ * ダウンロードイベントの`suggestedFilename()`で「download」にする（名前をUTF-8へ変換できないため）。
+ * 実行環境のロケールに左右されないよう、こちらで名前を確かめる。
  */
 async function recordDownloadNames(page: Page) {
   await page.addInitScript(() => {
@@ -75,6 +76,8 @@ test('書き出したファイルを読み込み直すと、同名は番号付�
   await expect(result(section)).toContainText('2件のプリセットを書き出した');
 
   await importText(section, text);
+  // 同じファイルを続けて選べるよう、読み込みの後に選択を空へ戻している
+  await expect(section.getByLabel('読み込むプリセットのファイル')).toHaveValue('');
   await expect(result(section)).toContainText('2件のプリセットを読み込んだ');
   await expect(section.locator('summary')).toHaveText('プリセット（4）');
   await expect(section.locator('.condition-preset-name')).toHaveText(['自分用メモ', '比較用（N=5）', '自分用メモ 2', '比較用（N=5） 2']);
@@ -146,6 +149,19 @@ test('一部の値だけ読めない時は、読める分を読み込み、項�
   await details.locator('summary').click();
   await expect(details).toContainText('futureItem');
   await expect(section.locator('summary').first()).toHaveText('プリセット（1）');
+});
+
+test('参照先の注記は、番号が付いた追加分の名前を指す（手元の同名を指さない）', async ({ page }) => {
+  const { section } = await openPresets(page);
+  await savePreset(section, '比較用（N=5）');
+  const file = {
+    format: 'keydist-presets',
+    version: 1,
+    presets: [{ id: 'x', name: '比較用（N=5）', values: { fingerAssignmentId: 'from-elsewhere' } }],
+  };
+  await importText(section, JSON.stringify(file));
+  await expect(result(section)).toContainText('「比較用（N=5） 2」はこの端末に無い指の割当を使っています');
+  await expect(result(section)).not.toContainText('「比較用（N=5）」');
 });
 
 test.describe('スマホ幅', () => {

@@ -5,6 +5,7 @@ import type { SettingsValueMap } from '#engine/settings-items.ts';
 import {
   PRESET_FILE_FORMAT,
   PRESET_FILE_MAX_PRESETS,
+  importResultMessage,
   parsePresetFile,
   presetFileBody,
   presetFileName,
@@ -157,10 +158,25 @@ test('参照先: この端末に無い指の割当・ローマ字規則・物理
   assert.ok(result.ok);
   // 値は捨てない
   assert.equal((result.presets[0]!.values as Record<string, unknown>).fingerAssignmentId, 'custom-1');
-  assert.match(result.message, /「自分用メモ」はこの端末に無い指の割当を使っています。流し込むと既定に戻ります/);
-  assert.match(result.message, /「比較用（N=5）」はこの端末に無いローマ字規則を使っています/);
-  assert.match(result.message, /「比較用（N=5）」はこの端末に無い物理配列を使っています/);
-  assert.doesNotMatch(result.message, /手元にあるだけ/);
+  const names = result.presets.map((preset) => preset.name);
+  const message = importResultMessage(result.message, result.missingReferences, names);
+  assert.match(message, /「自分用メモ」はこの端末に無い指の割当を使っています。流し込むと既定に戻ります/);
+  assert.match(message, /「比較用（N=5）」はこの端末に無いローマ字規則を使っています/);
+  assert.match(message, /「比較用（N=5）」はこの端末に無い物理配列を使っています/);
+  assert.doesNotMatch(message, /手元にあるだけ/);
+});
+
+test('参照先: 手元に同名のプリセットがあっても、注記は番号付きの追加分の名前を指す', () => {
+  const result = parsePresetFile(
+    fileText({ version: 1, presets: [{ id: 'a', name: '比較用（N=5）', values: { fingerAssignmentId: 'custom-1' } }] }),
+    REFERENCES,
+  );
+  assert.ok(result.ok);
+  const library: PresetLibrary<SettingsValueMap> = { presets: [{ id: 'own', name: '比較用（N=5）', values: {} }] };
+  const added = appendImportedPresets(library, result.presets, () => 'new').presets.slice(library.presets.length);
+  const message = importResultMessage(result.message, result.missingReferences, added.map((preset) => preset.name));
+  assert.match(message, /「比較用（N=5） 2」はこの端末に無い指の割当/);
+  assert.doesNotMatch(message, /「比較用（N=5）」/);
 });
 
 test('参照先: 手元にある参照先なら注記しない', () => {

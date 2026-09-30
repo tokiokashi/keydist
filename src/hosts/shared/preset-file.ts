@@ -68,11 +68,18 @@ export type PresetFileReadResult =
   | {
       readonly ok: true;
       readonly presets: readonly ImportedPreset[];
-      /** 結果の行に出す文。一部を読めなかった・参照先が無い時の注記も含む。 */
+      /** 結果の行に出す文。一部を読めなかった時の注記を含む。参照先の注記は追加後の名前が要るので含めない（`importResultMessage`）。 */
       readonly message: string;
+      /** 参照先がこの端末に無いプリセット（`presets`の添字）。名前は番号付けの後で決まるので、添字で返す。 */
+      readonly missingReferences: readonly MissingReference[];
       /** 不具合報告用の原文（捨てた値の診断）。 */
       readonly details: readonly string[];
     };
+
+export interface MissingReference {
+  readonly noun: string;
+  readonly indices: readonly number[];
+}
 
 export const PRESET_FILE_TOO_LARGE_MESSAGE = 'ファイルが大きすぎます（1MBまで）';
 export const PRESET_FILE_UNREADABLE_MESSAGE = 'ファイルを読み取れませんでした';
@@ -134,22 +141,36 @@ const REFERENCE_KINDS: readonly {
 ];
 
 /**
- * 参照先の資産がこの端末に無いプリセットの注記。ファイルには参照先を同梱しないので、他の端末で作った
+ * 参照先の資産がこの端末に無いプリセット。ファイルには参照先を同梱しないので、他の端末で作った
  * 自作の指の割当などを指す値が入ってくる。値は捨てずに残し、流し込むと既定へ戻ることを先に伝える。
+ * 読み込みは同名に番号を付けるので、名前ではなく添字で返す（手元の同名のプリセットを指さないため）。
  */
-function missingReferenceTexts(presets: readonly ImportedPreset[], references: PresetReferences): readonly string[] {
-  const texts: string[] = [];
+function missingReferences(presets: readonly ImportedPreset[], references: PresetReferences): readonly MissingReference[] {
+  const found: MissingReference[] = [];
   for (const kind of REFERENCE_KINDS) {
     const known = kind.known(references);
-    const names = presets
-      .filter((preset) => {
-        const id = (preset.values as Record<string, unknown>)[kind.item];
-        return typeof id === 'string' && !known.has(id);
-      })
-      .map((preset) => `「${preset.name}」`);
-    if (names.length > 0) texts.push(`${names.join('')}はこの端末に無い${kind.noun}を使っています。流し込むと既定に戻ります`);
+    const indices = presets.flatMap((preset, index) => {
+      const id = (preset.values as Record<string, unknown>)[kind.item];
+      return typeof id === 'string' && !known.has(id) ? [index] : [];
+    });
+    if (indices.length > 0) found.push({ noun: kind.noun, indices });
   }
-  return texts;
+  return found;
+}
+
+/**
+ * 結果の行に出す文。参照先の注記は、追加後の名前（`addedNames`。`presets`と同じ並び）で書く。
+ */
+export function importResultMessage(
+  message: string,
+  missing: readonly MissingReference[],
+  addedNames: readonly string[],
+): string {
+  const notes = missing.map(({ noun, indices }) => {
+    const names = indices.map((index) => `「${addedNames[index] ?? ''}」`).join('');
+    return `${names}はこの端末に無い${noun}を使っています。流し込むと既定に戻ります`;
+  });
+  return [message, ...notes].join('。');
 }
 
 /**
@@ -192,10 +213,6 @@ export function parsePresetFile(text: string, references: PresetReferences): Pre
       ...(details.length === 0 ? ['presets: 0'] : []),
     );
   }
-  const message = [
-    `${presets.length}件のプリセットを読み込んだ`,
-    ...droppedTexts(decoded.diagnostics),
-    ...missingReferenceTexts(presets, references),
-  ].join('。');
-  return { ok: true, presets, message, details };
+  const message = [`${presets.length}件のプリセットを読み込んだ`, ...droppedTexts(decoded.diagnostics)].join('。');
+  return { ok: true, presets, message, missingReferences: missingReferences(presets, references), details };
 }
