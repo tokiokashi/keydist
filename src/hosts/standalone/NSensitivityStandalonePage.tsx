@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
 import type { Command } from '#input/commands/index.ts';
 import { setMultiTargetsCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
@@ -26,7 +27,9 @@ import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { useOptionsDraft } from './use-options-draft.ts';
-import { useUrlOptions } from './use-url-options.ts';
+import { urlOptionsNotices, useUrlOptions } from './use-url-options.ts';
+import { useTargetShareSource, useUrlTargets } from './use-url-targets.ts';
+import { encodeMultiTargetsToUrl, hasSharedTargetParams } from './target-share.ts';
 import { useAnalyzerSetPane } from './use-analyzer-set-pane.ts';
 import { targetNameSource } from './target-name-source.ts';
 import './standalone.css';
@@ -120,7 +123,7 @@ export function NSensitivityStandalonePage({
     [storedOptionsRaw],
   );
   const [optionsDraft, setOptionsDraft] = useOptionsDraft<NSensitivityOptions>(decoded.options);
-  // URL経由で解析設定を受け取る（共有リンク。`use-url-options.ts`）。対象は載らない。
+  // URL経由で解析設定を受け取る（共有リンク。`use-url-options.ts`）。対象は`useUrlTargets`が受け取る。
   const urlDiagnostics = useUrlOptions({
     analyzerId: ANALYZER_ID,
     optionsDefinition: nSensitivityOptions,
@@ -129,6 +132,9 @@ export function NSensitivityStandalonePage({
     dispatch,
     setOptionsDraft,
   });
+  // URL経由で対象（集合と基準）を受け取る（`use-url-targets.ts`）。
+  const shareSource = useTargetShareSource(catalog, setups);
+  const targetNotices = useUrlTargets({ kind: 'multi', assetsReady, source: shareSource, dispatch });
 
   const members: readonly EngineSetMemberInput[] = useMemo(
     () => targets.map((target): EngineSetMemberInput => ({
@@ -202,8 +208,13 @@ export function NSensitivityStandalonePage({
         disabled={!assetsReady}
         history={history}
         share={{
-          description: '今の解析設定を含むこの画面のURLをコピーする',
-          query: () => nSensitivityOptions.encodeOptionsToUrl(optionsDraft),
+          description: '今の対象と解析設定を含むこの画面のURLをコピーする',
+          query: () => {
+            const params = nSensitivityOptions.encodeOptionsToUrl(optionsDraft);
+            const targetParams = encodeMultiTargetsToUrl(selection.targets, effectiveMultiBaseline(selection), shareSource);
+            targetParams.forEach((value, key) => params.append(key, value));
+            return params;
+          },
         }}
       >
         <TextChip
@@ -240,7 +251,7 @@ export function NSensitivityStandalonePage({
                 onChange={setSelection}
                 open={selectionOpen}
                 onOpenChange={setSelectionOpen}
-                autoOpen={assetsReady ? targets.length === 0 : undefined}
+                autoOpen={assetsReady ? targets.length === 0 && !hasSharedTargetParams(window.location.search, 'multi') : undefined}
               />
             )}
             settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
@@ -248,7 +259,8 @@ export function NSensitivityStandalonePage({
             conditionRows={conditionSummary.rows}
             conditionTargetDiffs={conditionSummary.diffs}
             engineState={extraction}
-            settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}
+            settingsDiagnostics={decoded.diagnostics}
+            linkNotices={[...urlOptionsNotices(urlDiagnostics), ...targetNotices]}
             {...(targets.length === 0
               ? {
                 // 資産の読み込み前は保存済みの対象が未反映なだけで、空とは限らない。
