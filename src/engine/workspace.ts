@@ -187,6 +187,33 @@ export function deleteWorkspace(library: WorkspaceLibrary, id: string): Workspac
     : library;
 }
 
+/** 複製の名前に付ける語尾（「〜 のコピー」）。 */
+export const WORKSPACE_COPY_SUFFIX = ' のコピー';
+
+/**
+ * Workspaceを複製する。ペインの並び・連動の組・固定の対象・解析設定・テキストの選択をそのまま写し、
+ * 元のWorkspaceの右隣に置く（一覧で元と並んで見つかるように）。名前は「〜 のコピー」で、使われていれば連番。
+ * ペインと組のidはWorkspaceの中でだけ一意なので、写してもぶつからない（並びが指すidも変えずに済む）。
+ * 元が無い、または新しいidが既に使われていれば何もしない。
+ */
+export function duplicateWorkspace(library: WorkspaceLibrary, id: string, newId: string): WorkspaceLibrary {
+  const index = library.findIndex((workspace) => workspace.id === id);
+  if (index === -1 || library.some((workspace) => workspace.id === newId)) return library;
+  const source = library[index]!;
+  const copy: Workspace = { ...source, id: newId, name: uniqueWorkspaceName(library, `${source.name}${WORKSPACE_COPY_SUFFIX}`) };
+  return [...library.slice(0, index + 1), copy, ...library.slice(index + 1)];
+}
+
+/**
+ * 削除したWorkspaceを元の位置へ戻す。同じidが既にあれば何もしない。
+ * 位置は削除した時の番号で、その間に一覧が短くなっていれば末尾に置く。
+ */
+export function restoreWorkspace(library: WorkspaceLibrary, workspace: Workspace, index: number): WorkspaceLibrary {
+  if (library.some((existing) => existing.id === workspace.id)) return library;
+  const at = Math.max(0, Math.min(index, library.length));
+  return [...library.slice(0, at), workspace, ...library.slice(at)];
+}
+
 /** このWorkspaceのテキストの選択を書き換える。値が変わらなければ同じ参照を返す。 */
 export function withWorkspaceText(library: WorkspaceLibrary, id: string, selection: TextSelectionState): WorkspaceLibrary {
   return updateWorkspace(library, id, (workspace) => (

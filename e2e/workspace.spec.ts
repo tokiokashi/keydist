@@ -988,3 +988,107 @@ test('Bigram Flowを配列違いで並べても、Keyboard Flowの線は自分�
   expect(foreign.map((f) => f.total > 0)).toEqual([true, true]);
   expect(foreign.map((f) => f.outside)).toEqual([0, 0]);
 });
+
+/** 見出しの⋯からWorkspaceの操作（複製・削除）を選ぶ。 */
+async function workspaceMenu(page: Page, item: '複製' | '削除'): Promise<void> {
+  await page.locator('.context-bar').getByRole('button', { name: 'Workspaceの操作' }).click();
+  await page.getByRole('menuitem', { name: item, exact: true }).click();
+}
+
+function currentId(page: Page): string {
+  return new URL(page.url()).pathname.split('/').pop()!;
+}
+
+test('Workspaceを複製すると、ペイン・解析設定を写した別のWorkspaceが開き、再読み込みしても残る', async ({ page }) => {
+  const sourceId = await createWorkspace(page);
+  const bar = page.locator('.context-bar');
+  const sidebar = page.locator('#app-sidebar');
+  await addAnalyzer(page, 'Bigram Flow');
+  await addAnalyzer(page, 'N感度');
+  const first = pane(page, 'Bigram Flow');
+  await first.getByRole('button', { name: '解析設定', exact: true }).click();
+  const settings = page.locator('[data-settings-window="true"]');
+  await settings.getByRole('button', { name: 'Within-hand' }).click();
+  await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
+
+  // ⋯の一覧は画面の左端で切れない
+  await bar.getByRole('button', { name: 'Workspaceの操作' }).click();
+  expect((await page.getByRole('menuitem', { name: '複製', exact: true }).boundingBox())!.x).toBeGreaterThanOrEqual(0);
+  await page.keyboard.press('Escape');
+
+  await workspaceMenu(page, '複製');
+  await expect(bar.getByRole('heading', { level: 1, name: '新しいWorkspace のコピー', exact: true })).toBeVisible();
+  const copyId = currentId(page);
+  expect(copyId).not.toBe(sourceId);
+  await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', 'N感度']);
+  await pane(page, 'Bigram Flow').getByRole('button', { name: '解析設定', exact: true }).click();
+  await expect(page.locator('[data-settings-window="true"]').getByRole('button', { name: 'Within-hand' })).toHaveAttribute('aria-pressed', 'true');
+
+  // 一覧では元の右隣に並び、元も残っている
+  await expect(sidebar.getByRole('link', { name: /^新しいWorkspace/ })).toHaveText(['新しいWorkspace', '新しいWorkspace のコピー']);
+
+  await page.reload();
+  await expect(bar.getByRole('heading', { level: 1, name: '新しいWorkspace のコピー', exact: true })).toBeVisible();
+  const stored = await storedWorkspaces(page);
+  expect(stored.workspaces.map((workspace) => workspace.id)).toEqual([sourceId, copyId]);
+  expect(stored.workspaces[1]!.panes.map((p) => p.analyzerId)).toEqual(stored.workspaces[0]!.panes.map((p) => p.analyzerId));
+  // 元は複製で変わらない
+  await page.goto(`/workspace/${sourceId}`);
+  await expect(bar.getByRole('heading', { level: 1, name: '新しいWorkspace', exact: true })).toBeVisible();
+  await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', 'N感度']);
+});
+
+test('Workspaceを削除すると次のWorkspaceへ移り、元に戻すで元の位置に戻る。再読み込みしても削除は残る', async ({ page }) => {
+  const firstId = await createWorkspace(page);
+  await workspaceMenu(page, '複製');
+  const secondId = currentId(page);
+  await workspaceMenu(page, '複製');
+  const thirdId = currentId(page);
+  const bar = page.locator('.context-bar');
+  const sidebar = page.locator('#app-sidebar');
+  const notice = page.locator('[data-deleted-workspace-notice="true"]');
+  // 複製は、複製した元の右隣に入る（開いていた順に並ぶ）
+  expect((await storedWorkspaces(page)).workspaces.map((w) => w.id)).toEqual([firstId, secondId, thirdId]);
+
+  // 真ん中を開いて削除すると、一覧で次のWorkspaceへ移る
+  await sidebar.getByRole('link', { name: '新しいWorkspace のコピー', exact: true }).first().click();
+  await expect(page).toHaveURL(new RegExp(`/workspace/${secondId}$`));
+  await workspaceMenu(page, '削除');
+  await expect(page).toHaveURL(new RegExp(`/workspace/${thirdId}$`));
+  await expect(bar.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(notice).toContainText('を削除した');
+  expect((await storedWorkspaces(page)).workspaces.map((w) => w.id)).toEqual([firstId, thirdId]);
+
+  // 元に戻すと、元の位置へ戻ってそのWorkspaceが開く
+  await notice.getByRole('button', { name: '元に戻す' }).click();
+  await expect(page).toHaveURL(new RegExp(`/workspace/${secondId}$`));
+  await expect(notice).toHaveCount(0);
+  expect((await storedWorkspaces(page)).workspaces.map((w) => w.id)).toEqual([firstId, secondId, thirdId]);
+
+  // もう一度削除して再読み込みしても、削除は残る。知らせは再読み込みで消える
+  await workspaceMenu(page, '削除');
+  await page.reload();
+  await expect(notice).toHaveCount(0);
+  expect((await storedWorkspaces(page)).workspaces.map((w) => w.id)).toEqual([firstId, thirdId]);
+  await expect(sidebar.getByRole('link', { name: /^新しいWorkspace/ })).toHaveCount(2);
+});
+
+test('末尾のWorkspaceを削除すると1つ前へ、最後の1つを削除するとトップへ移る。戻すとそのWorkspaceを開く', async ({ page }) => {
+  const firstId = await createWorkspace(page);
+  await workspaceMenu(page, '複製');
+  const sidebar = page.locator('#app-sidebar');
+  const notice = page.locator('[data-deleted-workspace-notice="true"]');
+
+  await workspaceMenu(page, '削除');
+  await expect(page).toHaveURL(new RegExp(`/workspace/${firstId}$`));
+
+  await workspaceMenu(page, '削除');
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('[data-workspace-missing="true"]')).toHaveCount(0);
+  await expect(sidebar.getByText('Analyzerを並べて見る画面。')).toBeVisible();
+  expect((await storedWorkspaces(page)).workspaces).toEqual([]);
+
+  await notice.getByRole('button', { name: '元に戻す' }).click();
+  await expect(page).toHaveURL(new RegExp(`/workspace/${firstId}$`));
+  expect((await storedWorkspaces(page)).workspaces.map((w) => w.id)).toEqual([firstId]);
+});

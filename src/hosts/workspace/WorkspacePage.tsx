@@ -30,6 +30,7 @@ import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import type { PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
+import { PaneMenu } from '#hosts/shared/PaneHeaderParts.tsx';
 import { AddPaneMenu } from './AddPaneMenu.tsx';
 import { findWorkspaceAnalyzer, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
 import type { PaneBindingChoice, WorkspacePaneRuntime } from './pane-runtime.ts';
@@ -69,6 +70,12 @@ export interface WorkspacePageProps {
   readonly onTextContentCommit: TextContentCommit;
   readonly onPaneOptionsCommit: PaneOptionsCommit;
   readonly tabs?: WorkspaceTabsMode;
+  /**
+   * このWorkspaceを複製する・削除する。書き込みと、その後どの画面へ移るかは組み立て側（`app`）が決める
+   * （削除すると画面ごとの履歴が使えなくなるため。移り先と元に戻す手段もそちらが持つ）。
+   */
+  readonly onDuplicate: () => void;
+  readonly onDelete: () => void;
 }
 
 /**
@@ -93,6 +100,8 @@ export function WorkspacePage({
   onTextContentCommit,
   onPaneOptionsCommit,
   tabs = 'show',
+  onDuplicate,
+  onDelete,
 }: WorkspacePageProps) {
   const workspace = findWorkspace(assets.workspaces, workspaceId);
   const flushLayoutRef = useRef<(() => void) | undefined>(undefined);
@@ -244,6 +253,16 @@ export function WorkspacePage({
         <WorkspaceName
           name={workspace.name}
           onRename={(next) => dispatch(renameWorkspaceCommand(workspaceId, next))}
+        />
+        {/* 待っている変更（並び・解析設定）を先に書いてから複製・削除する。写す・戻す中身が古くならないように */}
+        <PaneMenu
+          paneName={workspace.name}
+          label="Workspaceの操作"
+          className="workspace-menu"
+          items={[
+            { id: 'duplicate', label: '複製', onSelect: () => { flushPending(); onDuplicate(); } },
+            { id: 'delete', label: '削除', onSelect: () => { flushPending(); onDelete(); } },
+          ]}
         />
         <TextChip
           holder={{ workspaceId }}

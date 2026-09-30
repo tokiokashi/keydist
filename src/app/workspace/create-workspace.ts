@@ -1,5 +1,6 @@
+import type { Workspace } from '#engine/workspace.ts';
 import { emptyCommandHistory } from '#input/commands/index.ts';
-import { createWorkspaceCommand } from '#engine/workspace-commands.ts';
+import { createWorkspaceCommand, restoreWorkspaceCommand } from '#engine/workspace-commands.ts';
 import { initialAssets } from '../standalone/asset-storage-specs.ts';
 import { buildAssetSyncs, commitCommand, loadAssets } from '../standalone/asset-syncs.ts';
 
@@ -18,5 +19,21 @@ export function createWorkspaceInStorage(id: string): boolean {
   const syncs = buildAssetSyncs({ onExternalChange: () => {} });
   const assets = { ...initialAssets(), ...loadAssets(syncs) };
   const result = commitCommand(syncs, () => ({ assets, history: emptyCommandHistory() }), createWorkspaceCommand(id));
+  return result.outcome.kind === 'applied';
+}
+
+/**
+ * 削除したWorkspaceを元の位置へ戻して保存する。削除した画面の履歴が残らない所（移った先の画面）から使うので、
+ * `createWorkspaceInStorage`と同じく手持ちをこの場でstorageから読んで組み立てる。
+ * 戻せたら`true`。同じidが既にある時は`false`。
+ */
+export function restoreWorkspaceInStorage(workspace: Workspace, index: number): boolean {
+  const syncs = buildAssetSyncs({ onExternalChange: () => {} });
+  const assets = { ...initialAssets(), ...loadAssets(syncs) };
+  const result = commitCommand(
+    syncs,
+    () => ({ assets, history: emptyCommandHistory() }),
+    restoreWorkspaceCommand(workspace, index),
+  );
   return result.outcome.kind === 'applied';
 }

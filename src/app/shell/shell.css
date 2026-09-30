@@ -314,3 +314,44 @@
     transition: none !important;
   }
 }
+
+/* Workspaceを削除した直後の知らせ（元に戻す）。画面の下端に浮かせ、本体の操作を邪魔しない。 */
+.shell-notice {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.5rem 0.75rem 0.5rem 1rem;
+  transform: translateX(-50%);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.18);
+  font-size: 0.88rem;
+}
+
+.shell-notice-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell-notice button {
+  flex: none;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.shell-notice button:hover {
+  background: var(--surface-muted);
+}

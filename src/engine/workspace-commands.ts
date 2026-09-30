@@ -5,7 +5,9 @@ import {
   closeWorkspacePane,
   createWorkspace,
   deleteWorkspace,
+  duplicateWorkspace,
   duplicateWorkspacePane,
+  restoreWorkspace,
   renameWorkspace,
   withWorkspaceLayout,
   withWorkspacePaneOptions,
@@ -13,6 +15,7 @@ import {
   withPaneInNewLinkGroup,
   withWorkspaceTarget,
   type PaneTargetBinding,
+  type Workspace,
   type WorkspaceTarget,
   type WorkspaceLibrary,
   type WorkspacePane,
@@ -63,6 +66,22 @@ export function renameWorkspaceCommand(id: string, name: string): Command<Keydis
 
 export function deleteWorkspaceCommand(id: string): Command<KeydistAssets> {
   return workspacesCommand('Workspaceを削除する', (library) => deleteWorkspace(library, id));
+}
+
+/**
+ * Workspaceを複製する。`newId`は呼び出し側が発行する。中身の写し方は`duplicateWorkspace`。
+ * 複製から開く画面が新しいidを知る必要があるので、`createWorkspaceCommand`と同じくidは外から渡す。
+ */
+export function duplicateWorkspaceCommand(id: string, newId: string): Command<KeydistAssets> {
+  return workspacesCommand('Workspaceを複製する', (library) => duplicateWorkspace(library, id, newId));
+}
+
+/**
+ * 削除したWorkspaceを元の位置へ戻す。削除した画面が閉じた後（履歴が残らない所）から戻す時に使う。
+ * 画面の履歴が残っている間は、削除のUndoが同じ結果になる。
+ */
+export function restoreWorkspaceCommand(workspace: Workspace, index: number): Command<KeydistAssets> {
+  return workspacesCommand('Workspaceの削除を取り消す', (library) => restoreWorkspace(library, workspace, index));
 }
 
 /** ペインを右端に足す。`pane`（idと初期の対象）は呼び出し側が組み立てる。 */
