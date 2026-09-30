@@ -371,6 +371,17 @@
   cursor: default;
 }
 
+.condition-preset-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.condition-preset-result-block {
+  display: grid;
+  gap: 0.3rem;
+}
+
 .condition-preset-result {
   display: flex;
   align-items: center;

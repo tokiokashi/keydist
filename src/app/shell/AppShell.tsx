@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ContextBarLeadingSlot } from '#hosts/shared/ContextBar.tsx';
+import { PresetFileIoContext, type PresetFileIo } from '#hosts/shared/preset-file-io.ts';
+import { downloadJson } from '#platform/browser-download.ts';
+import { readTextFile } from '#platform/browser-file.ts';
 import { Sidebar } from './Sidebar.tsx';
 import {
   getServerSidebarPinnedSnapshot,
@@ -18,6 +21,9 @@ import {
  * 見た目の切り替えは `<html data-sidebar>`（固定）とこのcomponentの `data-sidebar-open`（重ねて
  * 出しているか）でCSSが行う。固定の状態はプリレンダーの前から効くようhead scriptが付ける。
  */
+
+/** プリセットの書き出し・読み込みのブラウザ実装。条件のモーダルがどの画面でも使えるよう、シェルで渡す。 */
+const PRESET_FILE_IO: PresetFileIo = { saveJson: downloadJson, readText: readTextFile };
 
 /** スマホ幅の境目。CSS（shell.css・context-bar.css）の `@media (max-width: 760px)` と揃える。 */
 const MOBILE_QUERY = '(max-width: 760px)';
@@ -183,10 +189,12 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
       ) : null}
 
       <ContextBarLeadingSlot.Provider value={toggle}>
-        <div className="shell-body" inert={bodyInert}>
-          {hasContextBar ? null : <div className="shell-bar">{toggle}</div>}
-          <main className="app-shell">{children}</main>
-        </div>
+        <PresetFileIoContext.Provider value={PRESET_FILE_IO}>
+          <div className="shell-body" inert={bodyInert}>
+            {hasContextBar ? null : <div className="shell-bar">{toggle}</div>}
+            <main className="app-shell">{children}</main>
+          </div>
+        </PresetFileIoContext.Provider>
       </ContextBarLeadingSlot.Provider>
     </div>
   );
