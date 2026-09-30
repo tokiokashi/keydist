@@ -257,6 +257,13 @@ export function NSensitivityStandalonePage({
             settings={<Settings options={optionsDraft} onOptionsChange={changeOptions} />}
             onResetOptions={() => changeOptions(nSensitivityAnalyzer.defaultOptions)}
             conditionRows={conditionSummary.rows}
+            conditionEditor={{
+              overrides: assets.setupLibrary.overrides,
+              dispatch,
+              shapes: catalog.setupCatalog.shapes,
+              customFingerAssignments: catalog.customFingerAssignments,
+              hiddenIds: N_SENSITIVITY_CONDITION_EXCLUDE_IDS,
+            }}
             conditionTargetDiffs={conditionSummary.diffs}
             engineState={extraction}
             settingsDiagnostics={decoded.diagnostics}

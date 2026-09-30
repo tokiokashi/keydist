@@ -70,6 +70,8 @@ export interface OptionFieldProps<T> {
   /** 項目名の横に出す、今の値の短い表示（スライダーの値等）。 */
   readonly valueText?: ReactNode;
   readonly hint?: ReactNode;
+  /** 項目名の横に添える小さな札（条件の「全体で変更」等）。 */
+  readonly badge?: ReactNode;
   /** 入力部品。`id`をラベルと結ぶ時は`inputId`を使う。 */
   readonly children: (inputId: string) => ReactNode;
 }
@@ -78,12 +80,13 @@ export interface OptionFieldProps<T> {
  * 1項目ぶんの行（項目名・入力・既定値へ戻す・補足）。専用の部品に当てはまらない入力
  * （指の組み合わせのような制約付きの複数選択）もこの行に載せれば、戻す操作が揃う。
  */
-export function OptionField<T>({ label, binding, valueText, hint, children }: OptionFieldProps<T>) {
+export function OptionField<T>({ label, binding, valueText, hint, badge, children }: OptionFieldProps<T>) {
   const inputId = useId();
   return (
     <div className="option-field" data-option-default={isDefaultValue(binding) || undefined}>
       <div className="option-field-head">
         <label className="option-field-label" id={`${inputId}-label`} htmlFor={inputId}>{label}</label>
+        {badge}
         {valueText !== undefined ? <output className="option-field-value" htmlFor={inputId}>{valueText}</output> : null}
         <ResetButton label={label} binding={binding} />
       </div>
@@ -103,14 +106,16 @@ export function SelectOptionField<T extends string>({
   binding,
   choices,
   hint,
+  badge,
 }: {
   readonly label: string;
   readonly binding: OptionBinding<T>;
   readonly choices: readonly OptionChoice<T>[];
   readonly hint?: ReactNode;
+  readonly badge?: ReactNode;
 }) {
   return (
-    <OptionField label={label} binding={binding} hint={hint}>
+    <OptionField label={label} binding={binding} hint={hint} badge={badge}>
       {(id) => (
         <select
           id={id}
@@ -132,14 +137,16 @@ export function SegmentedOptionField<T extends string>({
   binding,
   choices,
   hint,
+  badge,
 }: {
   readonly label: string;
   readonly binding: OptionBinding<T>;
   readonly choices: readonly OptionChoice<T>[];
   readonly hint?: ReactNode;
+  readonly badge?: ReactNode;
 }) {
   return (
-    <OptionField label={label} binding={binding} hint={hint}>
+    <OptionField label={label} binding={binding} hint={hint} badge={badge}>
       {(id) => (
         <div className="option-segmented" role="group" aria-labelledby={`${id}-label`} id={id}>
           {choices.map((choice) => (
@@ -204,10 +211,12 @@ export function CheckboxOptionField({
   label,
   binding,
   hint,
+  badge,
 }: {
   readonly label: string;
   readonly binding: OptionBinding<boolean>;
   readonly hint?: ReactNode;
+  readonly badge?: ReactNode;
 }) {
   const inputId = useId();
   return (
@@ -220,6 +229,7 @@ export function CheckboxOptionField({
           onChange={(event) => binding.onChange(event.currentTarget.checked)}
         />
         <label className="option-field-label" htmlFor={inputId}>{label}</label>
+        {badge}
         <ResetButton label={label} binding={binding} />
       </div>
       {hint !== undefined ? <p className="option-field-hint">{hint}</p> : null}

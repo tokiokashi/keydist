@@ -4,6 +4,7 @@ import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { describeEngineRequestError, engineRequestErrorDetail, paneStatusLabel, TRACE_ERRORS_SENTENCE } from './pane-status.ts';
 import type { ConditionHeaderInfo, ConditionSummaryRow, ConditionTargetDiff } from './condition-summary.ts';
 import { ConditionSummary } from './ConditionSummary.tsx';
+import type { ConditionEditorContext } from './ConditionEditor.tsx';
 import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
@@ -57,6 +58,8 @@ export interface PaneFrameProps {
   readonly header?: ConditionHeaderInfo;
   /** Traceに効く条件の一覧（#544 §3「実効値の出どころを表示する」）。 */
   readonly conditionRows: readonly ConditionSummaryRow[];
+  /** 条件のモーダルが全体のレベルの条件を書き換えるための手持ち。 */
+  readonly conditionEditor: ConditionEditorContext;
   /** 複数の対象を持つペインの、対象ごとの差（`conditionRows`は共通の条件）。 */
   readonly conditionTargetDiffs?: readonly ConditionTargetDiff[];
   /** 抽出の依頼の現在の状態。値そのもの（`value`）は本体側で使うので、ここでは見ない。 */
@@ -94,6 +97,7 @@ export function PaneFrame({
   onResetOptions,
   header,
   conditionRows,
+  conditionEditor,
   conditionTargetDiffs,
   engineState,
   traceErrors,
@@ -156,7 +160,7 @@ export function PaneFrame({
         {settings}
       </SettingsWindow>
 
-      <ConditionSummary rows={conditionRows} header={header} targetDiffs={conditionTargetDiffs} />
+      <ConditionSummary rows={conditionRows} header={header} targetDiffs={conditionTargetDiffs} editor={conditionEditor} />
 
       {traceErrors && traceErrors.length > 0 ? (
         <div className="pane-trace-errors" role="alert" data-pane-trace-errors="true">
