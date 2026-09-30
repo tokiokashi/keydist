@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useId, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { Geometry, Key, Point } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { Trace } from '#trace/generate.ts';
@@ -236,6 +236,11 @@ function KeyboardFlow({
     () => computeOutgoingMaxWeight(allFlowVectors, hoveredKeyId),
     [allFlowVectors, hoveredKeyId],
   );
+  // グラデーションのidは文書全体で一意でなければならない。Workspaceで同じ図を複数並べると、
+  // 固定のid（`flow-gradient-0`等）では後のペインの線が先頭のペインの定義を参照してしまい、
+  // 別の配列の色と座標で塗られる。useIdの`:`はurl(#...)で扱いにくいので落とす。
+  const gradientScope = useId().replace(/:/g, '');
+  const gradientId = (index: number) => `flow-gradient-${gradientScope}-${index}`;
   const gradientIndexById = useMemo(
     () => new Map(allFlowVectors.map((vector, index) => [vector.id, index] as const)),
     [allFlowVectors],
@@ -302,7 +307,7 @@ function KeyboardFlow({
             const color = FLOW_COLORS[edgeKind(vector, showRollDirection)];
             return (
               <linearGradient
-                id={`flow-gradient-${index}`}
+                id={gradientId(index)}
                 key={`gradient-${vector.id}`}
                 gradientUnits="userSpaceOnUse"
                 x1={from.x}
@@ -341,7 +346,7 @@ function KeyboardFlow({
                   data-to-keys={vector.toKeyIds.join('+')}
                   d={edgePath(vector, origin.minX, origin.minY)}
                   fill="none"
-                  stroke={gradientIndex === undefined ? FLOW_COLORS.cross : `url(#flow-gradient-${gradientIndex})`}
+                  stroke={gradientIndex === undefined ? FLOW_COLORS.cross : `url(#${gradientId(gradientIndex)})`}
                   strokeWidth={flowLineWidth((0.45 + 6.1 * strength), zoom)}
                   initial={reduceMotion ? false : { opacity: 0, pathLength: 0 }}
                   animate={{ opacity: hoverVisible ? (hoveredKeyId === null ? 0.72 : 0.96) : 0.035, pathLength: 1 }}

@@ -950,3 +950,41 @@ test('Workspaceで変えた全体の条件はWorkspaceの元に戻すで戻り�
   await expect(other.locator('.pane-condition-trigger')).toHaveText('条件すべて既定値');
   await other.close();
 });
+
+test('Bigram Flowを配列違いで並べても、Keyboard Flowの線は自分のペインの色で塗られる', async ({ page }) => {
+  const fixed = (id: string, layoutId: string) => ({
+    id, analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId } } },
+  });
+  await seedWorkspace(page, {
+    id: 'flow-gradient',
+    name: '色の確認',
+    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+    panes: [fixed('a', 'qwerty'), fixed('b', 'dvorak')],
+    layout: {
+      kind: 'split', direction: 'row', weight: 1,
+      children: [{ kind: 'group', paneIds: ['a'], weight: 1 }, { kind: 'group', paneIds: ['b'], weight: 1 }],
+    },
+  });
+  await page.goto('/workspace/flow-gradient');
+  await waitForHydration(page);
+  const flows = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flows.nth(1)).toBeVisible({ timeout: 10_000 });
+  await expect(flows.nth(1).locator('[data-flow-edge="true"]').first()).toBeAttached();
+
+  // 線が参照する塗りは、同じ図（SVG）の中の定義でなければならない。idが図をまたいで重なると、
+  // 後ろの図の線が先頭の図の色・座標で塗られる
+  const foreign = await flows.evaluateAll((roots) => roots.map((root) => {
+    const svg = root.querySelector('svg.flow-keyboard-svg')!;
+    let total = 0;
+    let outside = 0;
+    for (const edge of svg.querySelectorAll('[data-flow-edge="true"]')) {
+      const id = /url\(#(.+)\)/.exec(edge.getAttribute('stroke') ?? '')?.[1];
+      if (id === undefined) continue;
+      total += 1;
+      if (document.getElementById(id)?.closest('svg') !== svg) outside += 1;
+    }
+    return { total, outside };
+  }));
+  expect(foreign.map((f) => f.total > 0)).toEqual([true, true]);
+  expect(foreign.map((f) => f.outside)).toEqual([0, 0]);
+});
