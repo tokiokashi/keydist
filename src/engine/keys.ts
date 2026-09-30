@@ -2,6 +2,7 @@ import { stableStringify } from './cache-key.ts';
 import { MODEL_VERSION } from './model-version.ts';
 import type { TraceRequestInput } from '#analyzers/contract.ts';
 import type { AnalysisTarget } from '#input/setup/index.ts';
+import type { EngineSetMemberInput } from './request.ts';
 import type { ResolvedInput } from './resolved-input.ts';
 
 /**
@@ -26,14 +27,25 @@ import type { ResolvedInput } from './resolved-input.ts';
  * 「キーには効くのに依頼側から差し替えられない」ずれが型で止まる。
  */
 export function traceKeyOf(input: TraceRequestInput): string {
-  return stableStringify({
+  const known = traceKeyByInput.get(input);
+  if (known !== undefined) return known;
+  const key = stableStringify({
     modelVersion: MODEL_VERSION,
     text: input.text,
     layout: input.layout,
     geometry: input.geometry,
     tracePolicy: input.tracePolicy,
   });
+  traceKeyByInput.set(input, key);
+  return key;
 }
+
+/**
+ * 同じ入力オブジェクトに対するキーの使い回し。1回の依頼でも、ペインの同期引き・Workerへの依頼・
+ * 抽出のキーで同じ入力のキーを何度も求める。長いテキストでは文字列化が無視できないので、
+ * 入力ごとに1回で済ませる。解決済み入力は作った後に書き換えない値なので、キーは変わらない。
+ */
+const traceKeyByInput = new WeakMap<object, string>();
 
 /**
  * 解釈のキー = Traceのキー + 解釈の値（#544 §7）。
@@ -108,4 +120,37 @@ export function setAnalyzerExtractionKeyOf(
     definitionId,
     options: extractionRelevantOptions,
   });
+}
+
+/**
+ * 単一対象の抽出キーを解決済み入力から一気に作る。キャッシュ本体（`cache.ts`）と、Workerの結果を
+ * メインスレッドに写して同期に引く側（`worker-client.ts`）が同じキーで引くための共通の入口。
+ * 2か所で組み立てを書き分けると、片方だけ直してキーがずれ、当たるはずの結果を外す。
+ */
+export function singleExtractionKeyOf(
+  input: ResolvedInput,
+  definitionId: string,
+  extractionRelevantOptions: unknown,
+): string {
+  return analyzerExtractionKeyOf(interpretationKeyOf(input, traceKeyOf(input)), definitionId, extractionRelevantOptions);
+}
+
+/** 集合のメンバー1枠のキー。解決できた枠は解釈キー、失敗した枠は失敗の種類の印（`setAnalyzerExtractionKeyOf`参照）。 */
+export function setMemberKeyOf(member: EngineSetMemberInput): unknown {
+  return member.resolution.ok
+    ? interpretationKeyOf(member.resolution.input, traceKeyOf(member.resolution.input))
+    : { failed: member.resolution.error.kind };
+}
+
+/** 集合対象の抽出キーを、メンバー（表示順）から一気に作る。`singleExtractionKeyOf`と同じ理由で共通の入口にする。 */
+export function setExtractionKeyOf(
+  members: readonly EngineSetMemberInput[],
+  definitionId: string,
+  extractionRelevantOptions: unknown,
+): string {
+  return setAnalyzerExtractionKeyOf(
+    members.map((member) => ({ target: member.target, memberKey: setMemberKeyOf(member) })),
+    definitionId,
+    extractionRelevantOptions,
+  );
 }

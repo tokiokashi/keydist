@@ -244,3 +244,54 @@ test('disposeは待ちと実行中の依頼を打ち切り扱いで拒否し、W
   await assert.rejects(waiting, EngineAbortError);
   assert.equal(fake.isTerminated(), true);
 });
+
+test('受け取った結果はメインスレッドに写り、同じ中身の入力なら別のオブジェクトでも同期に引ける', async () => {
+  const fake = createFakeWorker();
+  const remote = createWorkerEngineComputer(() => fake.worker);
+  const [first] = resolveAll('hello world', 'en');
+  // 計算前は引けない（peekは計算を始めない）
+  assert.equal(remote.peekTrace?.(first!.input), undefined);
+  assert.equal(remote.peekExtraction?.(first!.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS), undefined);
+  assert.equal(fake.received.length, 0);
+
+  const trace = await remote.getTrace(first!.input);
+  const extraction = await remote.getExtraction(first!.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS);
+  const sent = fake.received.length;
+
+  // 解決し直した（中身は同じで参照は別の）入力でも、送らずに同じ値が返る
+  const [again] = resolveAll('hello world', 'en');
+  assert.notEqual(again!.input, first!.input);
+  assert.strictEqual(remote.peekTrace?.(again!.input), trace);
+  assert.strictEqual(remote.peekExtraction?.(again!.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS), extraction);
+  assert.equal(fake.received.length, sent);
+
+  // 中身が違えば引けない（配列が違う・テキストが違う）
+  assert.equal(remote.peekTrace?.(resolveAll('hello world', 'en')[1]!.input), undefined);
+  assert.equal(remote.peekTrace?.(resolveAll('hello worlds', 'en')[0]!.input), undefined);
+  remote.dispose();
+});
+
+test('集合の抽出も、メンバーの中身と並びが同じなら同期に引け、並びが変われば引けない', async () => {
+  const remote = createWorkerEngineComputer(() => createFakeWorker().worker);
+  const members = resolveAll('hello world', 'en').map((entry) => entry.member);
+  assert.equal(remote.peekSetExtraction?.(members, comparisonDefinition, DEFAULT_COMPARISON_OPTIONS), undefined);
+  const result = await remote.getSetExtraction(members, comparisonDefinition, DEFAULT_COMPARISON_OPTIONS);
+
+  const rebuilt = resolveAll('hello world', 'en').map((entry) => entry.member);
+  assert.strictEqual(remote.peekSetExtraction?.(rebuilt, comparisonDefinition, DEFAULT_COMPARISON_OPTIONS), result);
+  assert.equal(remote.peekSetExtraction?.([...rebuilt].reverse(), comparisonDefinition, DEFAULT_COMPARISON_OPTIONS), undefined);
+  assert.equal(remote.peekSetExtraction?.(rebuilt, nSensitivityDefinition, DEFAULT_N_SENSITIVITY_OPTIONS), undefined);
+  remote.dispose();
+});
+
+test('打ち切られた依頼の結果は写らない', async () => {
+  const fake = createFakeWorker({ manual: true });
+  const remote = createWorkerEngineComputer(() => fake.worker);
+  const [entry] = resolveAll('hello', 'en');
+  const controller = new AbortController();
+  const pending = remote.getTrace(entry!.input, controller.signal);
+  controller.abort();
+  await assert.rejects(pending, EngineAbortError);
+  assert.equal(remote.peekTrace?.(entry!.input), undefined);
+  remote.dispose();
+});

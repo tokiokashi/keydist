@@ -25,6 +25,7 @@ import type { TextIdGenerator } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
+import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
 import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import type { PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
@@ -119,10 +120,12 @@ export function WorkspacePage({
     },
   }), [history, flushPending]);
 
-  const resolvedText = useMemo(
+  // Workspaceの保存はどれも`workspace`を作り直す。中身が同じテキストは同じ参照のまま渡して、
+  // テキストと関係の無い保存（アクティブなタブ・連動の組の対象）で全ペインが依頼を出し直さないようにする。
+  const resolvedText = useStableResolvedText(useMemo(
     () => (workspace === undefined ? undefined : resolveTextSelection(workspace.text, assets.textLibrary)),
     [workspace, assets.textLibrary],
-  );
+  ));
 
   // 条件のモーダルの元に戻すも、文脈バーと同じく待っている書き込みを先に反映してから戻す
   const undo = useLatestCallback(pageHistory.undo);

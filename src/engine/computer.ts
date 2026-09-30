@@ -28,4 +28,23 @@ export interface EngineComputer {
     options: Options,
     signal?: AbortSignal,
   ): MaybePromise<EngineExtractionResult<Extracted>>;
+
+  /**
+   * 計算済みの結果があれば、待たずに同期で返す（無ければ`undefined`。計算は始めない）。
+   * Workerへ計算を逃がす実装は結果がメインスレッドに無く、依頼のたびにWorkerへ1往復する。
+   * 往復の間、ペインは「計算中」を挟んでしまうので、同じ入力の結果を一度受け取っていれば
+   * メインスレッド側で引けるようにする。同期の実装（`EngineCache`）は依頼がそのまま同期に返るので持たない。
+   * 返す値は、同じ入力で`getTrace`等が返す値と同じ（キーは`engine/keys.ts`の共通の入口）。
+   */
+  peekTrace?(input: ResolvedInput): EngineTraceResult | undefined;
+  peekExtraction?<Options, Extracted>(
+    input: ResolvedInput,
+    definition: SingleAnalyzerDefinition<Options, Extracted>,
+    options: Options,
+  ): EngineExtractionResult<Extracted> | undefined;
+  peekSetExtraction?<Options, Extracted>(
+    members: readonly EngineSetMemberInput[],
+    definition: SetAnalyzerDefinition<Options, Extracted>,
+    options: Options,
+  ): EngineExtractionResult<Extracted> | undefined;
 }

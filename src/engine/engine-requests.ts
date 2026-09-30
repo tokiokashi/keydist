@@ -30,7 +30,12 @@ export function createTraceRequest(
   listener: (state: TraceRequestState) => void,
   options?: EngineRequestOptions,
 ): EngineRequestChannel {
-  return createEngineRequest((input, signal) => cache.getTrace(input, signal), listener, options);
+  return createEngineRequest(
+    (input, signal) => cache.getTrace(input, signal),
+    listener,
+    options,
+    cache.peekTrace === undefined ? undefined : (input) => cache.peekTrace!(input),
+  );
 }
 
 /** 解釈（構造 + 共通指標）の依頼。Traceは`EngineCache`の中で共有されるキャッシュ経由で再利用される。 */
@@ -64,6 +69,9 @@ export function createExtractRequest<Options, Extracted>(
     (input, signal) => cache.getExtraction(input, definition, analyzerOptions, signal),
     listener,
     options,
+    cache.peekExtraction === undefined
+      ? undefined
+      : (input) => cache.peekExtraction!(input, definition, analyzerOptions),
   );
 }
 
@@ -87,5 +95,8 @@ export function createSetExtractRequest<Options, Extracted>(
       cache.getSetExtraction(members, definition, analyzerOptions, signal),
     listener,
     options,
+    cache.peekSetExtraction === undefined
+      ? undefined
+      : (members) => cache.peekSetExtraction!(members, definition, analyzerOptions),
   );
 }

@@ -7,6 +7,7 @@ import type { TextIdGenerator } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import { nSensitivityAnalyzer } from '#analyzers/n-sensitivity/definition.tsx';
 import { nSensitivityOptions, type NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
+import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
@@ -64,10 +65,10 @@ export function NSensitivityStandalonePage({
   history,
   generatePresetId,
 }: NSensitivityStandalonePageProps) {
-  const resolvedText = useMemo(
+  const resolvedText = useStableResolvedText(useMemo(
     () => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary),
     [assets.standaloneTextSelection, assets.textLibrary],
-  );
+  ));
 
   const storedOptionsRaw = assets.standaloneAnalyzerOptions[ANALYZER_ID];
   const decoded = useMemo(

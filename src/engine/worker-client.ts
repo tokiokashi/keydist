@@ -3,6 +3,8 @@ import type { EngineComputer } from './computer.ts';
 import type { EngineExtractionResult, EngineTraceResult } from './pipeline.ts';
 import type { EngineSetMemberInput } from './request.ts';
 import type { ResolvedInput } from './resolved-input.ts';
+import { LruCache } from './lru-cache.ts';
+import { setExtractionKeyOf, singleExtractionKeyOf, traceKeyOf } from './keys.ts';
 import type { EngineWorkerRequest, EngineWorkerResponse } from './worker-protocol.ts';
 
 /**
@@ -16,6 +18,9 @@ export interface WorkerLike {
   onerror: ((event: { readonly message?: string }) => void) | null;
   onmessageerror: ((event: unknown) => void) | null;
 }
+
+/** メインスレッドに写しておく結果の最大件数（`engine/cache.ts`の既定と同じ）。 */
+const MIRROR_MAX_ENTRIES = 32;
 
 /** 常にPromiseを返す`EngineComputer`（`EngineComputer`は同期の値も許すので、こちらで狭める）。 */
 export interface WorkerEngineComputer extends EngineComputer {
@@ -72,6 +77,12 @@ export class EngineAbortError extends Error {
  *   Worker内のキャッシュに当たり、同じTraceを二度作らない
  */
 export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngineComputer {
+  // Workerから受け取った結果を、メインスレッドにも中身のキー（`engine/keys.ts`）で写しておく。
+  // 一度計算した入力へ戻る時（タブの切り替え・配列の選び直し・ペインの作り直し）に、Workerへの
+  // 1往復を挟まず`peek*`で同期に引き、ペインを「計算中」にしない。Workerの結果は値の複製なので、
+  // ここで持つ値は`get*`が返した値そのもの（数値は変わらない）。件数は`EngineCache`と同じ規模。
+  const traceMirror = new LruCache<string, EngineTraceResult>(MIRROR_MAX_ENTRIES);
+  const extractionMirror = new LruCache<string, EngineExtractionResult<unknown>>(MIRROR_MAX_ENTRIES);
   let worker: WorkerLike | undefined;
   let current: Job | undefined;
   const queue: Job[] = [];
@@ -158,9 +169,36 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
     });
   }
 
+  /** 結果が届いたらミラーに積んでから返す。失敗（拒否）は積まない。 */
+  function remember<T>(mirror: LruCache<string, T>, key: string, pending: Promise<T>): Promise<T> {
+    return pending.then((value) => {
+      mirror.set(key, value);
+      return value;
+    });
+  }
+
   return {
     getTrace(input: ResolvedInput, signal?: AbortSignal): Promise<EngineTraceResult> {
-      return enqueue((id) => ({ id, kind: 'trace', input }), signal);
+      return remember(traceMirror, traceKeyOf(input), enqueue((id) => ({ id, kind: 'trace', input }), signal));
+    },
+    peekTrace(input: ResolvedInput): EngineTraceResult | undefined {
+      return traceMirror.get(traceKeyOf(input));
+    },
+    peekExtraction<Options, Extracted>(
+      input: ResolvedInput,
+      definition: SingleAnalyzerDefinition<Options, Extracted>,
+      options: Options,
+    ): EngineExtractionResult<Extracted> | undefined {
+      return extractionMirror.get(singleExtractionKeyOf(input, definition.id, definition.extractKeyOf(options))) as
+        EngineExtractionResult<Extracted> | undefined;
+    },
+    peekSetExtraction<Options, Extracted>(
+      members: readonly EngineSetMemberInput[],
+      definition: SetAnalyzerDefinition<Options, Extracted>,
+      options: Options,
+    ): EngineExtractionResult<Extracted> | undefined {
+      return extractionMirror.get(setExtractionKeyOf(members, definition.id, definition.extractKeyOf(options))) as
+        EngineExtractionResult<Extracted> | undefined;
     },
     getExtraction<Options, Extracted>(
       input: ResolvedInput,
@@ -168,7 +206,11 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
       options: Options,
       signal?: AbortSignal,
     ): Promise<EngineExtractionResult<Extracted>> {
-      return enqueue((id) => ({ id, kind: 'extraction', input, definitionId: definition.id, options }), signal);
+      return remember(
+        extractionMirror as LruCache<string, EngineExtractionResult<Extracted>>,
+        singleExtractionKeyOf(input, definition.id, definition.extractKeyOf(options)),
+        enqueue((id) => ({ id, kind: 'extraction', input, definitionId: definition.id, options }), signal),
+      );
     },
     getSetExtraction<Options, Extracted>(
       members: readonly EngineSetMemberInput[],
@@ -176,7 +218,11 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
       options: Options,
       signal?: AbortSignal,
     ): Promise<EngineExtractionResult<Extracted>> {
-      return enqueue((id) => ({ id, kind: 'set-extraction', members, definitionId: definition.id, options }), signal);
+      return remember(
+        extractionMirror as LruCache<string, EngineExtractionResult<Extracted>>,
+        setExtractionKeyOf(members, definition.id, definition.extractKeyOf(options)),
+        enqueue((id) => ({ id, kind: 'set-extraction', members, definitionId: definition.id, options }), signal),
+      );
     },
     dispose(): void {
       for (const job of queue.splice(0)) finish(job, () => job.reject(new EngineAbortError()));
