@@ -83,6 +83,9 @@ test('スマホ幅の見出しにAnalyzer名が出ず、対象名が省略され
   await page.keyboard.press('Escape');
   const summary = page.locator('.target-selection-summary');
   await expect(summary).toHaveText('親指シフト（NICOLA）');
+  // 対象を変えた直後は「計算中…」のバッジが見出しに出て、対象の欄を狭める（測ると省略されている）。
+  // 計算が終わってバッジが消え、欄が広がってから測る。
+  await expect(page.locator('.pane-status-badge')).toHaveCount(0);
   expect(await summary.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
 });
