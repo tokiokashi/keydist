@@ -53,6 +53,16 @@ async function importText(section: Locator, content: string | Buffer, name = 'pr
   });
 }
 
+/** 実際のファイル選択の流れ（読み込む…を押す → 選ぶ）。選んだ後もフォーカスは押したボタンに残る。 */
+async function importViaChooser(page: Page, section: Locator, content: string) {
+  const button = section.getByRole('button', { name: '読み込む…' });
+  const choosing = page.waitForEvent('filechooser');
+  await button.click();
+  await (await choosing).setFiles({ name: 'presets.json', mimeType: 'application/json', buffer: Buffer.from(content) });
+  await expect(result(section)).toBeVisible();
+  await expect(button).toBeFocused();
+}
+
 const result = (section: Locator) => section.locator('[data-preset-result]');
 
 test('書き出したファイルを読み込み直すと、同名は番号付きで追加され、条件は変わらない。元に戻せる', async ({ page }) => {
@@ -84,6 +94,11 @@ test('書き出したファイルを読み込み直すと、同名は番号付�
   // 読み込んだだけでは条件は変わらない
   await expect(modal.locator('[data-item="windowSize"] output')).toHaveText('3');
   await expect(modal.locator('[data-changed]')).toHaveCount(0);
+
+  // 読み込みの後、フォーカスは「読み込む…」に残る（BODYへ落ちない）
+  await importViaChooser(page, section, text);
+  await result(section).getByRole('button', { name: '元に戻す' }).click();
+  await expect(section.locator('summary')).toHaveText('プリセット（4）');
 
   // 同じファイルをもう一度選んでも読み込める。結果の行から元に戻すと、その読み込みだけが消える
   await importText(section, text);
@@ -174,6 +189,7 @@ test.describe('スマホ幅', () => {
     await expect(section.getByRole('button', { name: '読み込む…' })).toBeVisible();
     await importText(section, '{ 壊れた');
     await expect(result(section)).toContainText('条件ファイルとして読めませんでした');
+    await expect(result(section)).toBeInViewport({ ratio: 1 });
     const overflow = await modal.evaluate((dialog) => {
       const body = dialog.querySelector('.condition-modal-body')!;
       return body.scrollWidth - body.clientWidth;

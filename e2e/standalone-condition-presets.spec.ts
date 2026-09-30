@@ -42,7 +42,7 @@ async function savePreset(section: Locator, name: string) {
   await section.getByRole('button', { name: '今の全体の値を保存' }).click();
 }
 
-function rowOf(section: Locator, name: string): Locator {
+function rowOf(section: Locator, name: string | RegExp): Locator {
   return section.locator('.condition-preset-row').filter({ hasText: name });
 }
 
@@ -61,7 +61,7 @@ test('プリセット: 閉じたまま開き、件数が見出しに出る。空
   await expect(section.locator('summary')).toHaveText('プリセット（0）');
 });
 
-test('プリセット: 今の全体の値を保存すると一覧に加わり、いまの値と同じ印が付く。値を変えると印が消える', async ({ page }) => {
+test('プリセット: 今の全体の値を保存すると一覧に加わり、今の値と同じ印が付く。値を変えると印が消える', async ({ page }) => {
   const modal = await openBigramFlowModal(page);
   await raiseWindowSize(modal);
   const section = await openPresets(modal);
@@ -69,7 +69,7 @@ test('プリセット: 今の全体の値を保存すると一覧に加わり、
   await savePreset(section, ' 厳しめ ');
   await expect(section.locator('summary')).toHaveText('プリセット（1）');
   const row = rowOf(section, '厳しめ');
-  await expect(row).toContainText('いまの値と同じ');
+  await expect(row).toContainText('今の値と同じ');
   await expect(section.locator('[data-preset-result]')).toContainText('「厳しめ」として今の全体の値を保存した');
   await expect(section.getByLabel('プリセットの名前')).toHaveValue('');
 
@@ -78,7 +78,7 @@ test('プリセット: 今の全体の値を保存すると一覧に加わり、
   expect(JSON.parse(stored ?? '{}').presets[0]).toMatchObject({ name: '厳しめ', values: { windowSize: 5 } });
 
   await modal.getByRole('button', { name: '先読みNを1増やす' }).click();
-  await expect(row).not.toContainText('いまの値と同じ');
+  await expect(row).not.toContainText('今の値と同じ');
   // 別の操作の後に、古い結果の元に戻すが残らない
   await expect(section.locator('[data-preset-result]')).toHaveCount(0);
 });
@@ -93,14 +93,14 @@ test('プリセット: 流し込むと全体の値が置き換わり、結果の
   // 全部を既定へ戻してから流し込む
   await modal.getByRole('button', { name: 'すべて既定値に戻す' }).click();
   await expect(modal.locator('[data-changed]')).toHaveCount(0);
-  await expect(rowOf(section, '厳しめ')).not.toContainText('いまの値と同じ');
+  await expect(rowOf(section, '厳しめ')).not.toContainText('今の値と同じ');
 
   await rowOf(section, '厳しめ').getByRole('button', { name: '「厳しめ」の値を流し込む' }).click();
   const windowRow = modal.locator('[data-item="windowSize"]');
   await expect(windowRow.locator('output')).toHaveText('5');
   await expect(windowRow).toContainText('全体で変更');
   await expect(section.locator('[data-preset-result]')).toContainText('「厳しめ」の値にした（2項目が変わった）');
-  await expect(rowOf(section, '厳しめ')).toContainText('いまの値と同じ');
+  await expect(rowOf(section, '厳しめ')).toContainText('今の値と同じ');
 
   await section.getByRole('button', { name: '元に戻す' }).click();
   await expect(windowRow.locator('output')).toHaveText('3');
@@ -169,6 +169,39 @@ test('プリセット: 削除すると一覧から消え、結果の行の元に
   await expect(rowOf(section, '厳しめ')).toBeVisible();
 });
 
+test('プリセット: 名前の変更・削除・元に戻すの後、フォーカスはBODYへ落ちず操作を続けられる所へ移る', async ({ page }) => {
+  const modal = await openBigramFlowModal(page);
+  const section = await openPresets(modal);
+  await savePreset(section, '厳しめ');
+  const menuButton = () => rowOf(section, /厳しめ|ゆるめ/).getByRole('button', { name: /の操作$/ });
+  const chooseRename = async () => {
+    await menuButton().click();
+    await page.getByRole('menuitem', { name: '名前を変更' }).click();
+  };
+
+  // やめる（Escape・ボタン）と確定の後は、操作を始めた⋯へ戻る
+  await chooseRename();
+  await section.getByLabel('新しい名前').press('Escape');
+  await expect(menuButton()).toBeFocused();
+  await chooseRename();
+  await section.getByRole('button', { name: 'やめる' }).click();
+  await expect(menuButton()).toBeFocused();
+  await chooseRename();
+  await section.getByLabel('新しい名前').fill('ゆるめ');
+  await section.getByLabel('新しい名前').press('Enter');
+  await expect(rowOf(section, 'ゆるめ')).toBeVisible();
+  await expect(menuButton()).toBeFocused();
+
+  // 削除の後は、消えた行の代わりに結果の行の元に戻す。戻した後は結果の行
+  await menuButton().click();
+  await page.getByRole('menuitem', { name: '削除' }).click();
+  await expect(section.locator('[data-preset-result]').getByRole('button', { name: '元に戻す' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(rowOf(section, 'ゆるめ')).toBeVisible();
+  // 元に戻した後は、いつもある節の見出しへ（結果の行はライブリージョンなので、フォーカスは当てない）
+  await expect(section.locator('summary')).toBeFocused();
+});
+
 test('プリセット: 再読み込みしても残り、流し込める', async ({ page }) => {
   const modal = await openBigramFlowModal(page);
   await raiseWindowSize(modal);
@@ -204,7 +237,7 @@ test('プリセット: 比較表とN感度の個別画面のモーダルにも�
     const modal = await openConditionModal(page);
     const section = await openPresets(modal);
     await savePreset(section, path);
-    await expect(rowOf(section, path)).toContainText('いまの値と同じ');
+    await expect(rowOf(section, path)).toContainText('今の値と同じ');
     await page.keyboard.press('Escape');
     await expect(modal).toHaveCount(0);
   }
@@ -231,5 +264,15 @@ test.describe('スマホ幅', () => {
     await modal.getByRole('button', { name: 'すべて既定値に戻す' }).click();
     await row.getByRole('button', { name: /を流し込む$/ }).click();
     await expect(modal.locator('[data-item="windowSize"] output')).toHaveText('5');
+  });
+  test('プリセット: 削除の後の元に戻すへ移ったフォーカスは、下へスクロールしても画面内に見える', async ({ page }) => {
+    const modal = await openBigramFlowModal(page);
+    const section = await openPresets(modal);
+    for (const name of ['一つ目', '二つ目', '三つ目', '四つ目']) await savePreset(section, name);
+    await rowOf(section, '二つ目').getByRole('button', { name: /の操作$/ }).click();
+    await page.getByRole('menuitem', { name: '削除' }).click();
+    const undo = section.locator('[data-preset-result]').getByRole('button', { name: '元に戻す' });
+    await expect(undo).toBeFocused();
+    await expect(undo).toBeInViewport({ ratio: 1 });
   });
 });

@@ -16,17 +16,17 @@ import { conditionItemLabel } from './condition-summary.ts';
 export interface PresetRowView {
   readonly id: string;
   readonly name: string;
-  /** 流し込んでも全体の値が変わらない（＝いまの値と同じ）。 */
+  /** 流し込んでも全体の値が変わらない（＝今の値と同じ）。 */
   readonly sameAsCurrent: boolean;
 }
 
 /**
- * 一覧の行。「いまの値と同じ」は、流し込みが変化を起こさないかで決める（`applyPresetValues`は
+ * 一覧の行。「今の値と同じ」は、流し込みが変化を起こさないかで決める（`applyPresetValues`は
  * 変化が無ければ同じ参照を返す。判定は流し込みの`sameLevel`と同じ規則）。値の一致を別に
  * 比べ直すと、既定と同じ値を含むプリセットで「同じ」と「流し込むと変わる」が食い違うため。
  *
  * 指の割当は既定と同じ値でも上書きとして残る（既定が物理配列で決まるため）。そのため
- * 「いまの値と同じ」の行でも、指の割当の行には「全体で変更」の札が出ることがある。
+ * 「今の値と同じ」の行でも、指の割当の行には「全体で変更」の札が出ることがある。
  */
 export function presetRows(
   library: PresetLibrary<SettingsValueMap>,

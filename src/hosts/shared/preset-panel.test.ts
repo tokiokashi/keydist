@@ -19,7 +19,7 @@ const LIBRARY: PresetLibrary<SettingsValueMap> = {
   ],
 };
 
-test('presetRows: 全体の上書きが流し込み後と同じ行にだけ「いまの値と同じ」が付く', () => {
+test('presetRows: 全体の上書きが流し込み後と同じ行にだけ「今の値と同じ」が付く', () => {
   const overrides: SettingsCascadeOverrides = { global: { windowSize: 5, sfbHomeCost: false } };
   const rows = presetRows(LIBRARY, overrides);
   assert.deepEqual(rows.map((row) => [row.name, row.sameAsCurrent]), [

@@ -55,6 +55,20 @@ interface Notice {
   readonly settled?: { readonly overrides: unknown; readonly library: unknown };
 }
 
+/**
+ * 操作の後にフォーカスを移す先。押したボタンや行が消える操作の後にBODYへ落ちると、
+ * 読み上げで今どこにいるかが分からなくなるため、描画後に移す。
+ * - menu: その行の⋯（名前の変更を確定・やめた後。操作を始めたボタンへ戻す）
+ * - undo: 結果の行の元に戻す（削除の後。消えた行の代わりに、続けて戻せる所）
+ * - summary: 節の見出し（元に戻した後。押した「元に戻す」が消える。いつもあり、ライブリージョンでもないので
+ *   読み上げが二重にならない。結果の行（role=status）には、状態の変化でフォーカスを当てない）
+ * 読み込みの後は移さない（選択の後もフォーカスは「読み込む…」に残る）。
+ */
+type FocusTarget =
+  | { readonly kind: 'menu'; readonly id: string }
+  | { readonly kind: 'undo' }
+  | { readonly kind: 'summary' };
+
 export function PresetSection({ editor }: { readonly editor: ConditionEditorContext }) {
   const { overrides, presetLibrary, dispatch } = editor;
   const rows = useMemo(() => presetRows(presetLibrary, overrides), [presetLibrary, overrides]);
@@ -79,6 +93,22 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
 
   const fileIo = useContext(PresetFileIoContext);
   const fileInput = useRef<HTMLInputElement>(null);
+  const root = useRef<HTMLDetailsElement>(null);
+  const pendingFocus = useRef<FocusTarget | undefined>(undefined);
+
+  // 状態の更新を描画し終えてから、移し先があれば移す
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (target === undefined || root.current === null) return;
+    // 一度きり。見つからなくても消し、古い指定が後の描画で急に効かないようにする
+    pendingFocus.current = undefined;
+    const element = target.kind === 'menu'
+      ? root.current.querySelector<HTMLElement>(`[data-preset-id="${CSS.escape(target.id)}"] .pane-menu-button`)
+      : target.kind === 'undo'
+        ? root.current.querySelector<HTMLElement>('[data-preset-result] button')
+        : root.current.querySelector<HTMLElement>('summary');
+    element?.focus();
+  });
 
   /** この端末にある参照先。ファイルの値がこれに無いidを指していたら、読み込みの結果で注記する。 */
   const references = (): PresetReferences => ({
@@ -146,6 +176,7 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
     if (preset === undefined) return;
     dispatch(deletePresetCommand(id));
     show(deletedResultText(preset.name), true);
+    pendingFocus.current = { kind: 'undo' };
   };
 
   const commitRename = (event: FormEvent) => {
@@ -153,16 +184,18 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
     if (renaming === undefined || !isSavableName(renaming.draft)) return;
     dispatch(renamePresetCommand(renaming.id, renaming.draft));
     setRenaming(undefined);
+    pendingFocus.current = { kind: 'menu', id: renaming.id };
   };
 
   const undo = () => {
     editor.undo();
     // 戻した結果の行は、戻したこと自体を伝える（元に戻すは付けない）
     setNotice({ text: '元に戻した', undoable: false, base: { overrides, library: presetLibrary } });
+    pendingFocus.current = { kind: 'summary' };
   };
 
   return (
-    <details className="condition-presets" data-condition-presets="true">
+    <details ref={root} className="condition-presets" data-condition-presets="true">
       <summary>プリセット（{rows.length}）</summary>
       <div className="condition-presets-body">
         {rows.length === 0 ? (
@@ -185,15 +218,19 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
                         event.preventDefault();
                         event.stopPropagation();
                         setRenaming(undefined);
+                        pendingFocus.current = { kind: 'menu', id: row.id };
                       }}
                     />
                     <button type="submit" disabled={!isSavableName(renaming.draft)}>変更</button>
-                    <button type="button" onClick={() => setRenaming(undefined)}>やめる</button>
+                    <button type="button" onClick={() => {
+                      setRenaming(undefined);
+                      pendingFocus.current = { kind: 'menu', id: row.id };
+                    }}>やめる</button>
                   </form>
                 ) : (
                   <>
                     <span className="condition-preset-name">{row.name}</span>
-                    {row.sameAsCurrent ? <span className="condition-preset-same">いまの値と同じ</span> : null}
+                    {row.sameAsCurrent ? <span className="condition-preset-same">今の値と同じ</span> : null}
                     <button
                       type="button"
                       className="condition-preset-apply"
