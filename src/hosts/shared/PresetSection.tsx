@@ -91,7 +91,7 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
 
   const fileIo = useContext(PresetFileIoContext);
   const fileInput = useRef<HTMLInputElement>(null);
-  const root = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLDetailsElement>(null);
   const pendingFocus = useRef<FocusTarget | undefined>(undefined);
 
   // 状態の更新を描画し終えてから、移し先が現れていれば移す（現れるまでは持ち越す）
