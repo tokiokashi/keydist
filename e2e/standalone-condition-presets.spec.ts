@@ -198,7 +198,8 @@ test('プリセット: 名前の変更・削除・元に戻すの後、フォー
   await expect(section.locator('[data-preset-result]').getByRole('button', { name: '元に戻す' })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(rowOf(section, 'ゆるめ')).toBeVisible();
-  await expect(section.locator('[data-preset-result]')).toBeFocused();
+  // 元に戻した後は、いつもある節の見出しへ（結果の行はライブリージョンなので、フォーカスは当てない）
+  await expect(section.locator('summary')).toBeFocused();
 });
 
 test('プリセット: 再読み込みしても残り、流し込める', async ({ page }) => {

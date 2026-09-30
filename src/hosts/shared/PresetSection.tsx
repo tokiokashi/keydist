@@ -60,12 +60,14 @@ interface Notice {
  * 読み上げで今どこにいるかが分からなくなるため、描画後に移す。
  * - menu: その行の⋯（名前の変更を確定・やめた後。操作を始めたボタンへ戻す）
  * - undo: 結果の行の元に戻す（削除の後。消えた行の代わりに、続けて戻せる所）
- * - result: 結果の行そのもの（元に戻した後・読み込みの後。押したボタンが消えるか、結果が新しく出るため）
+ * - summary: 節の見出し（元に戻した後。押した「元に戻す」が消える。いつもあり、ライブリージョンでもないので
+ *   読み上げが二重にならない。結果の行（role=status）には、状態の変化でフォーカスを当てない）
+ * 読み込みの後は移さない（選択の後もフォーカスは「読み込む…」に残る）。
  */
 type FocusTarget =
   | { readonly kind: 'menu'; readonly id: string }
   | { readonly kind: 'undo' }
-  | { readonly kind: 'result' };
+  | { readonly kind: 'summary' };
 
 export function PresetSection({ editor }: { readonly editor: ConditionEditorContext }) {
   const { overrides, presetLibrary, dispatch } = editor;
@@ -94,18 +96,18 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
   const root = useRef<HTMLDetailsElement>(null);
   const pendingFocus = useRef<FocusTarget | undefined>(undefined);
 
-  // 状態の更新を描画し終えてから、移し先が現れていれば移す（現れるまでは持ち越す）
+  // 状態の更新を描画し終えてから、移し先があれば移す
   useEffect(() => {
     const target = pendingFocus.current;
     if (target === undefined || root.current === null) return;
+    // 一度きり。見つからなくても消し、古い指定が後の描画で急に効かないようにする
+    pendingFocus.current = undefined;
     const element = target.kind === 'menu'
       ? root.current.querySelector<HTMLElement>(`[data-preset-id="${CSS.escape(target.id)}"] .pane-menu-button`)
       : target.kind === 'undo'
         ? root.current.querySelector<HTMLElement>('[data-preset-result] button')
-        : root.current.querySelector<HTMLElement>('[data-preset-result]');
-    if (element === null) return;
-    pendingFocus.current = undefined;
-    element.focus();
+        : root.current.querySelector<HTMLElement>('summary');
+    element?.focus();
   });
 
   /** この端末にある参照先。ファイルの値がこれに無いidを指していたら、読み込みの結果で注記する。 */
@@ -138,20 +140,17 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
     const read = await fileIo.readText(file, PRESET_FILE_MAX_BYTES);
     if (read.kind !== 'ok') {
       show(read.kind === 'too-large' ? PRESET_FILE_TOO_LARGE_MESSAGE : PRESET_FILE_UNREADABLE_MESSAGE, false);
-      pendingFocus.current = { kind: 'result' };
       return;
     }
     const parsed = parsePresetFile(read.text, references());
     if (!parsed.ok) {
       show(parsed.message, false, parsed.details);
-      pendingFocus.current = { kind: 'result' };
       return;
     }
     // 追加後の名前（同名は番号付き）で注記するため、コマンドと同じ計算を先に行う。追加分は末尾に並ぶ
     const added = appendImportedPresets(presetLibrary, parsed.presets, () => '').presets.slice(presetLibrary.presets.length);
     dispatch(importPresetsCommand(parsed.presets, editor.generatePresetId));
     show(importResultMessage(parsed.message, parsed.missingReferences, added.map((preset) => preset.name)), true, parsed.details);
-    pendingFocus.current = { kind: 'result' };
   };
 
   const save = (event: FormEvent) => {
@@ -192,7 +191,7 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
     editor.undo();
     // 戻した結果の行は、戻したこと自体を伝える（元に戻すは付けない）
     setNotice({ text: '元に戻した', undoable: false, base: { overrides, library: presetLibrary } });
-    pendingFocus.current = { kind: 'result' };
+    pendingFocus.current = { kind: 'summary' };
   };
 
   return (
@@ -282,7 +281,7 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
         )}
         {visibleNotice === undefined ? null : (
           <div className="condition-preset-result-block">
-            <p className="condition-preset-result" role="status" data-preset-result="true" tabIndex={-1}>
+            <p className="condition-preset-result" role="status" data-preset-result="true">
               <span>{visibleNotice.text}</span>
               {visibleNotice.undoable ? <button type="button" onClick={undo}>元に戻す</button> : null}
             </p>
