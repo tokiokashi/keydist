@@ -1373,3 +1373,20 @@ test('Keyboard Flow: 390pxでホバーした時、行き先件数のバッジは
   expect(transforms.length).toBeGreaterThan(0);
   for (const transform of transforms) expect(transform).toContain('scale(1)');
 });
+
+test('Relative vectors: スマホ幅でも左右の図は横に2つ並ぶ', async ({ page }) => {
+  // 幅の下限に近い320px。図の並びは画面ではなく置かれた領域の幅で決まる。
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto('/standalone/bigram-flow');
+  const plots = page.locator('section[aria-label="Relative vectors"] .flow-profile-svg');
+  await expect(plots).toHaveCount(2, { timeout: 15_000 });
+  await plots.first().scrollIntoViewIfNeeded();
+  const [left, right] = await Promise.all([plots.nth(0).boundingBox(), plots.nth(1).boundingBox()]);
+  expect(left).not.toBeNull();
+  expect(right).not.toBeNull();
+  // 横に並ぶ: 上端がほぼ同じで、右の図は左の図の右にある
+  expect(Math.abs(left!.y - right!.y)).toBeLessThan(2);
+  expect(right!.x).toBeGreaterThanOrEqual(left!.x + left!.width - 1);
+  // 縮んでも図として読める大きさを保つ
+  expect(left!.width).toBeGreaterThan(100);
+});
