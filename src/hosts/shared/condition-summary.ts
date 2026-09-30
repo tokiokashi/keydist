@@ -12,8 +12,10 @@ import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
  *
  * 表示対象はTracePolicy（`generateTrace`が直接読む値）に効く項目 + 指の割当id。
  * 解釈（chain/arpeggio）・速度平均はTraceそのものには効かない（docs/architecture.mdの
- * 「解釈はTraceの読み方」）ため、この一覧には含めない（先回りして足さない。
- * AGENTS.md「設定項目を足すか決める」）。行が要ると分かった時点で足す。
+ * 「解釈はTraceの読み方」）うえ、今の画面（Bigram Flow・比較表・N感度）にこれらを読む数値も無い。
+ * 効かない上書きを「変えた項目」に数えると、その条件で測ったように読めるため、この一覧
+ * （要約の閉じた1行・対象名の併記）には含めない。チェーン・アルペジオは条件のモーダルの
+ * 行としてだけ編集できる（`ConditionEditor`。全体のレベルを直接読む）。
  */
 const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly label: string }[] = [
   { id: 'windowSize', label: '先読みN' },
@@ -21,7 +23,7 @@ const TRACE_AFFECTING_ITEMS: readonly { readonly id: SettingsItemId; readonly la
   { id: 'preferOppositeThumb', label: '親指シフトの振り替え' },
   { id: 'triggerRealizationPolicy', label: 'シフト系キーの押し続け' },
   // 文字キーと一緒に押したシフト系キーを、別の動作（Stroke）として数えるか。動作数の列が変わる。
-  { id: 'actionRealizationPolicy', label: 'シフト系キーを別の動作として数える' },
+  { id: 'actionRealizationPolicy', label: '動作数の扱い' },
   { id: 'romajiRuleId', label: 'ローマ字規則' },
   { id: 'fingerAssignmentId', label: '指の割当' },
   /**
@@ -49,8 +51,8 @@ export interface ConditionSummaryRow {
   readonly originLabel: string;
   readonly applicable: boolean;
   /**
-   * 上書きされていても、効く値が既定と同じか。今は「シフト系キーを別の動作として数える」だけが
-   * 対象で、数えない時は例外を一切読まないため、例外だけ違う上書きは既定と同じに働く（#597）。
+   * 上書きされていても、効く値が既定と同じか。「動作数の扱い」は、Shift+Aを1動作にする時は例外を
+   * 一切読まないため、例外だけ違う上書きは既定と同じに働く（#597）。
    */
   readonly sameAsDefault: boolean;
   readonly diagnostics: readonly Diagnostic[];
@@ -124,14 +126,17 @@ function formatValue(
     return { format: 'primitive', displayValue: value['useHold'] === true ? 'する' : 'しない' };
   }
   if (id === 'actionRealizationPolicy' && isRecord(value)) {
-    // 「しない」の時は例外を一切読まない（`input/semantics/action-realization.ts`）ので、
+    // Shift+Aを1動作にする時は例外を一切読まない（`input/semantics/action-realization.ts`）ので、
     // 例外が残っていても出さない。出すと効いていない例外で測ったように読めてしまう（#597）。
-    if (value['triggerActivation'] !== 'semantic') return { format: 'primitive', displayValue: 'しない' };
+    if (value['triggerActivation'] !== 'semantic') return { format: 'primitive', displayValue: ACTION_COUNT_TEXT.combined };
     const classOverrides = isRecord(value['triggerActivationClassOverrides'])
       ? Object.keys(value['triggerActivationClassOverrides']).length
       : 0;
     const overrides = Array.isArray(value['triggerActivationOverrides']) ? value['triggerActivationOverrides'].length : 0;
-    return { format: 'primitive', displayValue: classOverrides + overrides > 0 ? 'する（例外あり）' : 'する' };
+    return {
+      format: 'primitive',
+      displayValue: classOverrides + overrides > 0 ? `${ACTION_COUNT_TEXT.separate}（例外あり）` : ACTION_COUNT_TEXT.separate,
+    };
   }
   if (value === null) return { format: 'primitive', displayValue: 'なし' };
   if (typeof value === 'boolean') return { format: 'primitive', displayValue: value ? 'ON' : 'OFF' };
@@ -141,6 +146,12 @@ function formatValue(
   // 上で扱っていないオブジェクト値は要約せず「詳細設定」とだけ示す（今のTRACE_AFFECTING_ITEMSには無い）。
   return { format: 'object', displayValue: '（詳細設定）' };
 }
+
+/** 「動作数の扱い」の2つの選択肢の文言（オーナー決定。条件のモーダルと要約で同じ語を使う）。 */
+export const ACTION_COUNT_TEXT = {
+  combined: 'Shift+A で1動作',
+  separate: 'Shift→A で2動作',
+} as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -203,7 +214,7 @@ export function conditionHeaderInfoFromResolvedInput(layout: Layout, geometry: G
   return { layoutName: layout.name, shapeName: geometry.name, fingerAssignmentName: geometry.assignment.name };
 }
 
-export { formatOrigin };
+export { formatOrigin, cascadeLevelLabel as conditionLevelLabel };
 
 /**
  * 条件の行に付いた診断を、画面に出す文言にする。`input/settings`の診断文は項目id・レベル名を
@@ -284,11 +295,6 @@ export function conditionSummaryLine(rows: readonly ConditionSummaryRow[]): Cond
   const changed = rows.filter(isChangedConditionRow);
   const shown = changed.slice(0, SUMMARY_LINE_ITEMS);
   return { changedCount: changed.length, shown, restCount: changed.length - shown.length };
-}
-
-/** 開いた時の並び。変えた項目を上に、それぞれの中は項目の定義順のまま。 */
-export function orderConditionRowsForDetail(rows: readonly ConditionSummaryRow[]): readonly ConditionSummaryRow[] {
-  return [...rows.filter(isChangedConditionRow), ...rows.filter((row) => !isChangedConditionRow(row))];
 }
 
 /** 複数の対象を持つペインに渡す、対象1つぶんの条件。 */

@@ -1,0 +1,284 @@
+/*
+ * 条件のモーダルとその中身。パソコン幅は中央のモーダル、スマホ幅（640px以下。解析設定のシートと同じ境目）は
+ * 下からのシート。項目の入力は解析設定と同じ部品（`ui/primitives/option-fields`）を使い、
+ * ここでは行の外枠（左線・札・理由）とグループの並びだけを足す。
+ */
+.condition-modal {
+  width: min(58rem, calc(100% - 2rem));
+  max-height: min(46rem, calc(100dvh - 4rem));
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 30%);
+}
+
+.condition-modal::backdrop {
+  background: rgb(0 0 0 / 40%);
+}
+
+.condition-modal-inner {
+  display: flex;
+  flex-direction: column;
+  max-height: inherit;
+  min-height: 0;
+}
+
+.condition-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.55rem 0.55rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.condition-modal-head h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.condition-modal-scope {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.condition-modal-reset-all {
+  margin-left: auto;
+  padding: 0.2rem 0.3rem;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--accent-strong);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.condition-modal-reset-all:disabled {
+  color: var(--text-muted);
+  opacity: 0.6;
+  cursor: default;
+}
+
+.condition-modal-close {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.condition-modal-close:hover,
+.condition-modal-close:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--surface-muted);
+}
+
+.condition-modal-body {
+  container: condition-body / inline-size;
+  min-height: 0;
+  padding: 0.9rem 1rem 1rem;
+  overflow-y: auto;
+  font-size: 0.84rem;
+}
+
+.condition-groups {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.9rem 1.4rem;
+  align-items: start;
+}
+
+@container condition-body (min-width: 34rem) {
+  .condition-groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container condition-body (min-width: 50rem) {
+  .condition-groups {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.condition-group {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.condition-group-title {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.condition-row {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  padding-left: 0.55rem;
+  border-left: 3px solid transparent;
+}
+
+.condition-row[data-changed] {
+  border-left-color: var(--accent);
+}
+
+.condition-row[data-not-applicable] > * {
+  opacity: 0.55;
+}
+
+/* 札があると、戻すボタンは項目名の直後にならない。行の右端へ寄せ直す。 */
+.condition-row .option-field-head .option-field-reset {
+  margin-left: auto;
+}
+
+.condition-origin {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.condition-origin[data-origin="global"] {
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.condition-origin[data-origin="lower"] {
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.condition-row-flag,
+.condition-row-notice,
+.condition-row-diagnostic {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.condition-row-flag {
+  color: var(--text-muted);
+}
+
+.condition-row-notice {
+  color: var(--text);
+}
+
+.condition-row-diagnostic {
+  color: #b8860b;
+}
+
+.condition-readonly-value {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 先読みNの数の入力は、項目名と同じ行の右に詰める（説明文だけ下の行へ回す）。 */
+.condition-row[data-item="windowSize"] .option-field {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.condition-row[data-item="windowSize"] .option-field-head {
+  flex-wrap: wrap;
+}
+
+.condition-row[data-item="windowSize"] .option-field-label {
+  white-space: nowrap;
+}
+
+.condition-row[data-item="windowSize"] .option-field-input {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.condition-row[data-item="windowSize"] .option-field-hint {
+  grid-column: 1 / -1;
+}
+
+.condition-stepper {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface-subtle);
+}
+
+.condition-stepper button {
+  width: 1.8rem;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.condition-stepper button:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.condition-stepper output {
+  display: grid;
+  place-items: center;
+  min-width: 2rem;
+  border-inline: 1px solid var(--border);
+  font: 600 0.85rem/1.8rem ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.condition-fold {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-subtle);
+}
+
+.condition-fold > summary {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.3rem 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.condition-fold-count {
+  margin-left: auto;
+}
+
+.condition-fold-body {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.1rem 0.5rem 0.5rem;
+}
+
+.condition-fold-row {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.76rem;
+}
+
+@media (max-width: 640px) {
+  .condition-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 72dvh;
+    margin: auto 0 0;
+    border-bottom: 0;
+    border-radius: 12px 12px 0 0;
+  }
+}

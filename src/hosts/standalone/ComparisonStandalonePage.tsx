@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import { setMultiBaselineCommand, setMultiTargetsCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
@@ -99,18 +99,24 @@ export function ComparisonStandalonePage({
     catalog,
     resolvedText,
     cache,
+    dispatch,
     assetsReady,
-  }), [assets.setupLibrary, catalog, resolvedText, cache, assetsReady]);
+  }), [assets.setupLibrary, catalog, resolvedText, cache, dispatch, assetsReady]);
 
   const changeOptions = (next: ComparisonOptions) => {
     setOptionsDraft(next);
     onComparisonOptionsCommit(next);
   };
 
-  // 共有リンクで対象が届く間は、空の対象の選択を自動で開かない（取り込んだ後に開いてしまうため）。
-  // `window`は資産の読み込み後（ブラウザ）にだけ読む。
-  const chrome: PaneChrome = assetsReady && hasSharedTargetParams(window.location.search, 'multi')
-    ? { ...STANDALONE_CHROME, autoOpenTargetSelection: false }
+  // 共有リンクで対象が届く間は、空の対象の選択を自動で開かない。開くかの判断は資産の読み込み後の
+  // 最初の描画で1回だけ決まるので、その時点のURLを一度だけ読んで保持する（取り込み後にURLから
+  // パラメータが消えても、判断を「開く」へ戻さない）。`window`はブラウザでだけ読む。
+  const sharedTargetsAtReadyRef = useRef<boolean | undefined>(undefined);
+  if (assetsReady && sharedTargetsAtReadyRef.current === undefined) {
+    sharedTargetsAtReadyRef.current = hasSharedTargetParams(window.location.search, 'multi');
+  }
+  const chrome: PaneChrome = sharedTargetsAtReadyRef.current === true
+    ? { ...STANDALONE_CHROME, holdTargetSelectionClosed: true }
     : STANDALONE_CHROME;
 
   return (

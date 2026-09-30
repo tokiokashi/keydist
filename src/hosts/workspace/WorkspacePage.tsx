@@ -115,8 +115,9 @@ export function WorkspacePage({
     catalog,
     resolvedText,
     cache,
+    dispatch,
     assetsReady,
-  }), [assets.setupLibrary, catalog, resolvedText, cache, assetsReady]);
+  }), [assets.setupLibrary, catalog, resolvedText, cache, dispatch, assetsReady]);
 
   const runtime: WorkspacePaneRuntime | undefined = useMemo(() => (env === undefined ? undefined : {
     env,

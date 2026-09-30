@@ -113,8 +113,9 @@ export function BigramFlowStandalonePage({
     catalog,
     resolvedText,
     cache,
+    dispatch,
     assetsReady,
-  }), [assets.setupLibrary, catalog, resolvedText, cache, assetsReady]);
+  }), [assets.setupLibrary, catalog, resolvedText, cache, dispatch, assetsReady]);
 
   const changeOptions = (next: BigramFlowOptions) => {
     setOptionsDraft(next);

@@ -187,6 +187,18 @@ export function resetCascadeItemCommand(level: CascadeLevel, itemId: SettingsIte
   });
 }
 
+/**
+ * 1レベルの、指定した項目の上書きだけをまとめて消す（1コマンド＝元に戻すの1回で全部戻る）。
+ * 指定に無い項目の上書きは残す。
+ */
+export function resetCascadeItemsCommand(level: CascadeLevel, itemIds: readonly SettingsItemId[]): Command<KeydistAssets> {
+  return setupLibraryCommand('指定した項目の設定をまとめてリセットする', (library) => {
+    const overrides = itemIds.reduce((current, id) => resetSettingsItem(current, level, id), library.overrides);
+    if (overrides === library.overrides) return { ok: true, library };
+    return { ok: true, library: { ...library, overrides } };
+  });
+}
+
 /** 1レベルの上書きを全項目まとめて消す。no-op判定の理由は`resetCascadeItemCommand`と同じ。 */
 export function resetCascadeLevelCommand(level: CascadeLevel): Command<KeydistAssets> {
   return setupLibraryCommand('レベルの設定をまとめてリセットする', (library) => {

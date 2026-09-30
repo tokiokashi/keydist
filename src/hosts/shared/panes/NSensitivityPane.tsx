@@ -81,7 +81,7 @@ export function NSensitivityPane({
   settingsDiagnostics = [],
   linkNotices,
 }: NSensitivityPaneProps) {
-  const { setups, overrides, catalog, resolvedText, cache, assetsReady } = env;
+  const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
   const { choiceGroups, targets, colorByKey } = useSetTargetSelection(selection, setups, catalog);
 
@@ -166,12 +166,19 @@ export function NSensitivityPane({
           onChange={onTargetsChange}
           open={selectionOpen}
           onOpenChange={setSelectionOpen}
-          autoOpen={assetsReady && chrome.autoOpenTargetSelection ? targets.length === 0 : undefined}
+          autoOpen={assetsReady && chrome.autoOpenTargetSelection ? targets.length === 0 && !chrome.holdTargetSelectionClosed : undefined}
         />
       )}
       settings={<Settings options={options} onOptionsChange={onOptionsChange} />}
       onResetOptions={() => onOptionsChange(nSensitivityAnalyzer.defaultOptions)}
       conditionRows={conditionSummary.rows}
+      conditionEditor={{
+        overrides,
+        dispatch,
+        shapes: catalog.setupCatalog.shapes,
+        customFingerAssignments: catalog.customFingerAssignments,
+        hiddenIds: N_SENSITIVITY_CONDITION_EXCLUDE_IDS,
+      }}
       conditionTargetDiffs={conditionSummary.diffs}
       engineState={extraction}
       settingsDiagnostics={settingsDiagnostics}

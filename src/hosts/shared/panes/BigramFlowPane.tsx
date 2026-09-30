@@ -6,6 +6,7 @@ import type { BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { conditionHeaderInfoFromResolvedInput, traceConditionSummary } from '../condition-summary.ts';
 import { combinePaneStates } from '../pane-status.ts';
 import { PaneFrame } from '../PaneFrame.tsx';
+import { overrideWinsNotices } from '../condition-edit.ts';
 import { resolvePaneInput } from '../resolve-pane-input.ts';
 import { targetNameSource } from '../target-name-source.ts';
 import { setupNumbersOf, targetChoiceGroups } from '../target-choices.ts';
@@ -46,7 +47,7 @@ export function BigramFlowPane({
   settingsDiagnostics = [],
   linkNotices,
 }: BigramFlowPaneProps) {
-  const { setups, overrides, catalog, resolvedText, cache } = env;
+  const { setups, overrides, catalog, resolvedText, cache, dispatch } = env;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
 
   const resolution = useMemo(
@@ -107,6 +108,13 @@ export function BigramFlowPane({
       onResetOptions={() => onOptionsChange(bigramFlowAnalyzer.defaultOptions)}
       header={header}
       conditionRows={conditionRows}
+      conditionEditor={{
+        overrides,
+        dispatch,
+        shapes: catalog.setupCatalog.shapes,
+        customFingerAssignments: catalog.customFingerAssignments,
+        notices: overrideWinsNotices(conditionRows, catalog.setupCatalog),
+      }}
       engineState={combinePaneStates(extraction, pane.trace)}
       traceErrors={traceErrors}
       settingsDiagnostics={settingsDiagnostics}

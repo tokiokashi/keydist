@@ -196,9 +196,9 @@ test('既定と違う条件が条件の要約に出る（対象ごとの差は�
   const table = page.locator('.comparison-table');
   await expect(table).toBeVisible({ timeout: 10_000 });
   const summary = page.locator('.pane-condition-summary');
-  await expect(summary.locator('summary')).toContainText('同指連続のホーム復帰距離');
-  await expect(summary.locator('summary')).not.toContainText('対象ごとに差あり');
-  await summary.locator('summary').click();
+  await expect(summary.locator('.pane-condition-trigger')).toContainText('同指連続のホーム復帰距離');
+  await expect(summary.locator('.pane-condition-trigger')).not.toContainText('対象ごとに差あり');
+  await summary.locator('.pane-condition-trigger').click();
   await expect(summary.getByRole('region', { name: '対象ごとの差' })).toHaveCount(0);
 });
 
@@ -232,7 +232,7 @@ test('既定の物理配列を変えると、配列対象は追従しSetup対象
   await page.getByLabel('既定の物理配列').selectOption('ortholinear');
 
   // 既定の物理配列は全体の条件として、条件の要約に出る。
-  await expect(page.locator('.pane-condition-summary > summary')).toContainText('オーソリニア', { timeout: 10_000 });
+  await expect(page.locator('.pane-condition-trigger')).toContainText('オーソリニア', { timeout: 10_000 });
 });
 
 test('対象ごとに条件が違う時は、閉じた1行に「対象ごとに差あり」、開くと違う対象の違う項目だけが出る。「条件」の列は無い', async ({ page }) => {
@@ -260,8 +260,8 @@ test('対象ごとに条件が違う時は、閉じた1行に「対象ごとに�
   await expect(table.getByRole('columnheader', { name: '条件' })).toHaveCount(0);
 
   const summary = page.locator('.pane-condition-summary');
-  await expect(summary.locator('summary')).toContainText('対象ごとに差あり');
-  await summary.locator('summary').click();
+  await expect(summary.locator('.pane-condition-trigger')).toContainText('対象ごとに差あり');
+  await summary.locator('.pane-condition-trigger').click();
   const diffs = summary.getByRole('region', { name: '対象ごとの差' });
   // 共通の行は画面の値（N=3）。違うSetupだけが差に出る
   await expect(diffs.locator('.pane-condition-diff')).toHaveCount(1);
@@ -276,8 +276,8 @@ test('全対象の条件が同じなら、対象ごとの差の節も「対象�
 
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
   const summary = page.locator('.pane-condition-summary');
-  await expect(summary.locator('summary')).not.toContainText('対象ごとに差あり');
-  await summary.locator('summary').click();
+  await expect(summary.locator('.pane-condition-trigger')).not.toContainText('対象ごとに差あり');
+  await summary.locator('.pane-condition-trigger').click();
   await expect(summary.getByRole('region', { name: '対象ごとの差' })).toHaveCount(0);
 });
 
@@ -816,6 +816,15 @@ test('共有リンクの対象を1つも引けない時は、今の対象を変�
   await expect(page).toHaveURL(/\/standalone\/comparison$/);
 });
 
+test('手持ちの集合が空で共有リンクの対象を1つも引けない時も、対象の選択を自動で開かない', async ({ page }) => {
+  await page.goto('/standalone/comparison?targets=setup%3A%E6%B6%88%E3%81%88%E3%81%9FSetup');
+  await expect(page.locator('[data-pane-link-notice="true"]')).toContainText('Setup「消えたSetup」');
+  await expect(page).toHaveURL(/\/standalone\/comparison$/);
+  // URLからパラメータが消えた後の再描画でも、開く判断へ戻らない
+  await page.waitForTimeout(800);
+  await expect(page.getByRole('dialog', { name: '対象の選択' })).toHaveCount(0);
+});
+
 async function openSummaryWith(page: Page, setups: readonly { id: string; layoutId: string; shapeId: string }[]) {
   await page.addInitScript(({ setups: list }) => {
     localStorage.setItem('keydist:setup-library', JSON.stringify({ version: 1, setups: list, overrides: {} }));
@@ -827,7 +836,7 @@ async function openSummaryWith(page: Page, setups: readonly { id: string; layout
   await page.goto('/standalone/comparison');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(setups.length, { timeout: 10_000 });
   const summary = page.locator('.pane-condition-summary');
-  await summary.locator('summary').click();
+  await summary.locator('.pane-condition-trigger').click();
   return summary;
 }
 
@@ -836,8 +845,8 @@ test('ANSIとJISのQWERTYは、共通の指の割当は列固定で、JISだけ�
     { id: 'ansi', layoutId: 'qwerty', shapeId: 'row-staggered' },
     { id: 'jis', layoutId: 'qwerty', shapeId: 'jis-row-staggered' },
   ]);
-  await expect(summary.locator('summary')).toContainText('対象ごとに差あり');
-  await expect(summary).toContainText('既定（列固定）');
+  await expect(summary.locator('.pane-condition-trigger')).toContainText('対象ごとに差あり');
+  await expect(summary.getByLabel('指の割当', { exact: true })).toHaveValue('default');
   const diffs = summary.getByRole('region', { name: '対象ごとの差' });
   await expect(diffs.locator('.pane-condition-diff')).toHaveCount(1);
   await expect(diffs.locator('.pane-condition-diff')).toContainText('JIS 109');
@@ -864,9 +873,9 @@ test('2件とも同じ値へ上書きしても、共通の行は画面の値の�
   await page.goto('/standalone/comparison');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
   const summary = page.locator('.pane-condition-summary');
-  await expect(summary.locator('summary')).toContainText('対象ごとに差あり');
-  await summary.locator('summary').click();
-  await expect(summary.locator('dl').first()).toContainText('既定値');
+  await expect(summary.locator('.pane-condition-trigger')).toContainText('対象ごとに差あり');
+  await summary.locator('.pane-condition-trigger').click();
+  await expect(summary.locator('[data-item="windowSize"]')).toContainText('既定値');
   const diffs = summary.getByRole('region', { name: '対象ごとの差' });
   await expect(diffs.locator('.pane-condition-diff')).toHaveCount(2);
   await expect(diffs.locator('.pane-condition-diff').first()).toContainText('先読みN=2');
@@ -881,7 +890,7 @@ test('上書きありのSetupを1件だけ選ぶと、条件の要約の「対�
   await page.goto('/standalone/comparison');
   await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(1, { timeout: 10_000 });
   const summary = page.locator('.pane-condition-summary');
-  await expect(summary.locator('summary')).toContainText('対象ごとに差あり');
-  await summary.locator('summary').click();
+  await expect(summary.locator('.pane-condition-trigger')).toContainText('対象ごとに差あり');
+  await summary.locator('.pane-condition-trigger').click();
   await expect(summary.getByRole('region', { name: '対象ごとの差' })).toContainText('先読みN=2');
 });

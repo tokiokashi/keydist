@@ -1,3 +1,5 @@
+import type { Command } from '#input/commands/index.ts';
+import type { KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
 import type { SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import type { Setup } from '#input/setup/index.ts';
@@ -19,6 +21,8 @@ export interface PaneEnvironment {
   readonly resolvedText: ResolvedText;
   /** 抽出・Traceのキャッシュ。器の中のペイン全部で同じものを渡し、計算を共有する。 */
   readonly cache: EngineComputer;
+  /** 資産への書き込み（条件のモーダルが全体のレベルの条件を書き換える）。 */
+  readonly dispatch: (command: Command<KeydistAssets>) => void;
   /** 資産の初回読み込みが済んでいるか。済む前は、対象が空に見えても空とは限らない。 */
   readonly assetsReady: boolean;
 }
@@ -38,4 +42,9 @@ export interface PaneChrome {
    * ペインが同時に開こうとするので使わない。
    */
   readonly autoOpenTargetSelection?: boolean;
+  /**
+   * 自動で開く判断を「開かない」で確定させる（共有リンクで対象が届く間。取り込みの結果、対象が空のままでも開かない）。
+   * 判断は最初の1回で固定されるので、判断を先送りせずfalseを渡すためのもの。
+   */
+  readonly holdTargetSelectionClosed?: boolean;
 }

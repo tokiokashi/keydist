@@ -5,12 +5,13 @@ import { DEFAULT_FINGER_ASSIGNMENT, PHYSICAL_SHAPES, type PhysicalShape } from '
 import type { Setup } from '#input/setup/index.ts';
 import { EMPTY_SETTINGS_OVERRIDES, resolveSettings, setSettingsOverride, type SettingsItemId } from '#engine/settings-items.ts';
 import { resolveSetupForText } from '#input/setup/index.ts';
+import { DEFAULT_CHAIN_INTERPRETATION } from '#interpretation/structure/chain.ts';
+import { DEFAULT_ARPEGGIO_INTERPRETATION } from '#interpretation/structure/arpeggio.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import {
   conditionHeaderInfo,
   conditionHeaderInfoFromResolvedInput,
   conditionSummaryLine,
-  orderConditionRowsForDetail,
   conditionDiagnosticText,
   formatOrigin,
   globalConditionValues,
@@ -202,14 +203,14 @@ test('nonDefaultConditionRows: かな直接の配列ではローマ字規則の�
   assert.deepEqual(nonDefaultConditionRows(summary).map((row) => row.id), []);
 });
 
-test('traceConditionSummary: シフト系キーの2項目は「する/しない」で値を出す（「(詳細設定)」にしない）', () => {
+test('traceConditionSummary: シフト系キーの2項目は選べる主な値で出す（「(詳細設定)」にしない）', () => {
   const defaults = traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], EMPTY_SETTINGS_OVERRIDES, 'en').cascade, CATALOG);
   const hold = defaults.find((row) => row.id === 'triggerRealizationPolicy')!;
   const action = defaults.find((row) => row.id === 'actionRealizationPolicy')!;
   assert.equal(hold.label, 'シフト系キーの押し続け');
   assert.equal(hold.displayValue, 'しない');
-  assert.equal(action.label, 'シフト系キーを別の動作として数える');
-  assert.equal(action.displayValue, 'しない');
+  assert.equal(action.label, '動作数の扱い');
+  assert.equal(action.displayValue, 'Shift+A で1動作');
 
   let overrides = EMPTY_SETTINGS_OVERRIDES;
   for (const [id, value] of [
@@ -227,11 +228,11 @@ test('traceConditionSummary: シフト系キーの2項目は「する/しない�
   }
   const rows = traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], overrides, 'en').cascade, CATALOG);
   assert.equal(rows.find((row) => row.id === 'triggerRealizationPolicy')!.displayValue, 'する');
-  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'する（例外あり）');
+  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'Shift→A で2動作（例外あり）');
   for (const row of rows) assert.doesNotMatch(row.displayValue, /[()]/, row.displayValue);
 });
 
-test('traceConditionSummary: 別の動作として数えない時は、残っている例外を出さない（#597）', () => {
+test('traceConditionSummary: 1動作の時は、残っている例外を出さない（#597）', () => {
   const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'actionRealizationPolicy', {
     triggerActivation: 'disabled',
     triggerActivationClassOverrides: { 'order-free': 'separate' },
@@ -240,7 +241,17 @@ test('traceConditionSummary: 別の動作として数えない時は、残って
   assert.ok(written.ok);
   if (!written.ok) return;
   const rows = traceConditionSummary(resolveWith({ kind: 'layout', layoutId: 'qwerty' }, [], written.overrides, 'en').cascade, CATALOG);
-  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'しない');
+  assert.equal(rows.find((row) => row.id === 'actionRealizationPolicy')!.displayValue, 'Shift+A で1動作');
+});
+
+test('チェーン・アルペジオを全体で変えても、要約の数にも対象名の差分にも出ない（今の画面に読む数値が無い）', () => {
+  const rows = overrideRows([
+    ['chainInterpretation', { ...DEFAULT_CHAIN_INTERPRETATION, breakOnTriggerOnly: true }],
+    ['arpeggioInterpretation', { ...DEFAULT_ARPEGGIO_INTERPRETATION, includeThumb: true }],
+  ]);
+  assert.equal(rows.some((row) => row.id === 'chainInterpretation' || row.id === 'arpeggioInterpretation'), false);
+  assert.equal(conditionSummaryLine(rows).changedCount, 0);
+  assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), undefined);
 });
 
 function overrideRows(entries: readonly (readonly [string, unknown])[]): readonly ConditionSummaryRow[] {
@@ -281,14 +292,6 @@ test('conditionSummaryLine: 効かない上書きは変えた項目に数えな�
   assert.equal(conditionSummaryLine(rows).changedCount, 0);
 });
 
-test('orderConditionRowsForDetail: 変えた項目を上に、それぞれの中は定義順のまま', () => {
-  const rows = overrideRows([['triggerRealizationPolicy', { useHold: true }], ['windowSize', 5]]);
-  const ordered = orderConditionRowsForDetail(rows).map((row) => row.id);
-  assert.deepEqual(ordered.slice(0, 2), ['windowSize', 'triggerRealizationPolicy']);
-  const rest = rows.map((row) => row.id).filter((id) => id !== 'windowSize' && id !== 'triggerRealizationPolicy');
-  assert.deepEqual(ordered.slice(2), rest);
-});
-
 test('数えない時に例外だけ違う上書きは、変えた項目にも対象名の差分にも入れない（#597）', () => {
   const rows = overrideRows([['actionRealizationPolicy', {
     triggerActivation: 'disabled',
@@ -300,8 +303,6 @@ test('数えない時に例外だけ違う上書きは、変えた項目にも�
   assert.equal(conditionSummaryLine(rows).changedCount, 0);
   assert.deepEqual(nonDefaultConditionRows(rows).map((row) => row.id), []);
   assert.equal(summarizeNonDefaultConditions(nonDefaultConditionRows(rows)), undefined);
-  // 開いた時も既定と同じ群（下）に並ぶ。
-  assert.notEqual(orderConditionRowsForDetail(rows)[0]!.id, 'actionRealizationPolicy');
 });
 
 test('数える時の上書きは、変えた項目にも対象名の差分にも入る', () => {
