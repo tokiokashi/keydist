@@ -34,6 +34,7 @@ export {
 } from './resolve.ts';
 export {
   decodeCascadeOverrides,
+  decodeLevelOverrides,
   encodeCascadeOverrides,
   type ItemSchemaMap,
 } from './codec.ts';
