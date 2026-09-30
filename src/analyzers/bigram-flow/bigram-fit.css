@@ -8,6 +8,8 @@
  */
 :root[data-fit] .flow-feature {
   height: 100%;
+  /* 縮めすぎて図が読めなくなる前に止める。これを下回るペインでは、本体の領域の中でスクロールする。 */
+  min-height: 28rem;
   grid-template-rows: auto minmax(0, 0.85fr) minmax(0, 1fr);
   gap: 0.6rem;
 }
@@ -105,6 +107,7 @@
     grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     column-gap: 0.8rem;
+    min-height: 16rem;
   }
 
   :root[data-fit='b'] .flow-status {
@@ -122,6 +125,7 @@
 
 :root[data-fit='c'] .flow-feature {
   grid-template-rows: auto minmax(0, 1fr);
+  min-height: 16rem;
 }
 
 .flow-view-tabs {
@@ -168,13 +172,17 @@
   font-size: 0.8rem;
 }
 
-/* Keyboard Flowは横長の図なので、縦に長いペインでは枠いっぱいに伸ばさず図の高さで止める（残りは空く）。 */
-:root[data-fit='c'] .flow-stage {
-  flex: none;
-}
+/*
+ * Keyboard Flowは横長の図。縦長のペインでは枠いっぱいに伸ばさず図の高さで止める（残りは空く）。
+ * 横長のペインではAと同じく高さに合わせて縮める。
+ */
+@container (max-aspect-ratio: 1 / 1) {
+  :root[data-fit='c'] .flow-stage {
+    flex: none;
+  }
 
-:root[data-fit='c'] .flow-keyboard-svg {
-  flex: none;
-  height: auto;
-  max-height: 100%;
+  :root[data-fit='c'] .flow-keyboard-svg {
+    flex: none;
+    height: auto;
+  }
 }
