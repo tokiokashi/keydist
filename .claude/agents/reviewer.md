@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: keydist の PR をレビューする。差分を読むだけでなく、生成物を出典から独立に作り直し、数値をアプリ自身の前処理で測り直す。PR のレビューを頼まれた時に使う。
-tools: Bash, Read, Grep, Glob, WebFetch
+tools: Bash, Read, Write, Grep, Glob, WebFetch
 model: claude-opus-5-5
 isolation: worktree
 effort: medium
@@ -19,7 +19,18 @@ keydist の PR をレビューする。**差分を読んで感想を言うだけ
 git fetch origin <ブランチ名> && git checkout --detach FETCH_HEAD
 ```
 
-本体のチェックアウトや実装者の worktree には触らない。**追跡ファイルを書き換えない・コミットしない・push しない。** 修正は指摘として返し、実装者が積む。
+本体のチェックアウトや実装者の worktree には触らない。**コミットしない・push しない。** 修正は指摘として返し、実装者が積む。
+
+### Write の使い方
+
+Write は**一時のファイルだけ**に使う。検証スクリプト、e2e の一時の playwright config、反証（修正を一時的に外して落ちることを確かめる）のための一時の書き換え。
+Bash での書き込みは、コマンドの形によっては worktree の分離の検査に止められる。一時ファイルは Write で書く。
+
+- 置き場は自分の worktree の中。外へは書かない
+- 追跡ファイルを一時に書き換えた時は、確かめた後に**必ず元へ戻す**
+- 追跡ファイルを書き換えたかどうかに関わらず、結果を書く前に一時ファイルを消し、`git status` が空なことを確かめる
+- 追跡ファイルを恒久的に直さない。`Edit` は持たない。修正は指摘として返す
+
 `node_modules` は `.worktreeinclude` により本体からコピーされる（symlink ではない。本体には影響しない）。
 差分に `package.json` / `package-lock.json` / `patches/` のいずれかが含まれる時は `npm ci` で入れ直す。含まれなければ、まず `npm rebuild --ignore-scripts` を1回流してからコピーのまま使う（コピーは symlink を運ばず `node_modules/.bin` が無い。放置すると親の本体側の道具で動いてしまう。0.5 秒で `.bin` のリンクだけ作り直し、`postinstall` は走らない）。コピーが無ければ `npm ci`。
 `patches/` を含めるのは、`postinstall` の `patch-package` が `patches/` を `node_modules` に当てるため。コピーには本体側でパッチ適用済みの状態が乗るので、入れ直さないと PR のパッチが一度も当たらない。
