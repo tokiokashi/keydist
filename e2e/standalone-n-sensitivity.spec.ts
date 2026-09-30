@@ -35,6 +35,55 @@ function seedTwoSetups() {
   };
 }
 
+const LAYOUT_IDS_8 = ['qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi', 'naginata-v18', 'nicola'];
+
+/** 選択（配列）を直接書いて、リロード無しで最初から出す。 */
+function seedLayouts(page: import('@playwright/test').Page, layoutIds: readonly string[]) {
+  return page.addInitScript((ids) => {
+    localStorage.setItem(
+      'keydist:multi-target-selection',
+      JSON.stringify({ version: 1, targets: ids.map((layoutId) => ({ kind: 'layout', layoutId })) }),
+    );
+  }, layoutIds);
+}
+
+/**
+ * 凡例の枠と、線・点の位置関係を画面の座標で測る。
+ * 線は`getPointAtLength`で1pxおきに辿り、点は円の外接矩形で見る（枠に触れたら重なりとする）。
+ */
+async function measureLegend(page: import('@playwright/test').Page, svgSelector = '.n-sensitivity-svg') {
+  return page.locator(svgSelector).first().evaluate((svg) => {
+    const svgRect = svg.getBoundingClientRect();
+    const frame = svg.querySelector('.n-sensitivity-legend-frame')!.getBoundingClientRect();
+    const touches = (x: number, y: number) => x >= frame.left && x <= frame.right && y >= frame.top && y <= frame.bottom;
+    let linePointsInside = 0;
+    for (const path of svg.querySelectorAll<SVGPathElement>('[data-n-sensitivity-series] path')) {
+      const matrix = path.getScreenCTM()!;
+      const length = path.getTotalLength();
+      for (let at = 0; at <= length; at += 1) {
+        const point = path.getPointAtLength(at).matrixTransform(matrix);
+        if (touches(point.x, point.y)) linePointsInside += 1;
+      }
+    }
+    let dotsInside = 0;
+    for (const circle of svg.querySelectorAll('.n-sensitivity-point')) {
+      const r = circle.getBoundingClientRect();
+      if (r.right >= frame.left && r.left <= frame.right && r.bottom >= frame.top && r.top <= frame.bottom) dotsInside += 1;
+    }
+    return {
+      insideSvg: frame.left >= svgRect.left && frame.right <= svgRect.right && frame.top >= svgRect.top && frame.bottom <= svgRect.bottom,
+      corner: svg.querySelector('[data-n-sensitivity-legend]')!.getAttribute('data-n-sensitivity-legend'),
+      linePointsInside,
+      dotsInside,
+      names: [...svg.querySelectorAll('.n-sensitivity-legend-label')].map((el) => el.textContent),
+      labelsInsideFrame: [...svg.querySelectorAll('.n-sensitivity-legend-label')].every((el) => {
+        const r = el.getBoundingClientRect();
+        return r.left >= frame.left && r.right <= frame.right && r.top >= frame.top && r.bottom <= frame.bottom;
+      }),
+    };
+  });
+}
+
 /** 対象を加える（対象の選択でチェックを付ける。付けた瞬間に反映される）。 */
 async function addTarget(page: import('@playwright/test').Page, key: string) {
   await toggleTarget(page, key);
@@ -262,7 +311,7 @@ test('保存済みの縦軸は、操作可能になった瞬間から表示さ�
   expect(await enabledValues(page)).toEqual(['true']);
 });
 
-test('対象が空の時はペインに選ぶボタンを出し、全メンバーが失敗した時は凡例の失敗行だけが残る', async ({ page }) => {
+test('対象が空の時はペインに選ぶボタンを出し、全メンバーが失敗した時は失敗の行だけが残る', async ({ page }) => {
   await page.goto('/standalone/n-sensitivity');
   await expect(page.locator('[data-pane-empty="true"]').getByRole('button', { name: '配列・Setupを選ぶ' })).toBeVisible();
 
@@ -361,4 +410,89 @@ test('手持ちの集合が空で共有リンクの対象を1つも引けない�
   // URLからパラメータが消えた後の再描画でも、開く判断へ戻らない
   await page.waitForTimeout(800);
   await expect(page.getByRole('dialog', { name: '対象の選択' })).toHaveCount(0);
+});
+
+/** 幅を測って描き直した後（viewBoxの幅が本体の幅と一致した後）の座標で確かめるための待ち。 */
+async function waitForMeasuredWidth(svg: import('@playwright/test').Locator) {
+  await expect.poll(async () => {
+    const box = await svg.boundingBox();
+    const viewBox = await svg.getAttribute('viewBox');
+    return box !== null && viewBox !== null && Math.abs(Number(viewBox.split(' ')[2]) - box.width) < 1.5 && Number(viewBox.split(' ')[2]) !== 640;
+  }).toBe(true);
+}
+
+for (const scale of ['relative', 'absolute'] as const) {
+  for (const { count, width } of [{ count: 3, width: 1440 }, { count: 8, width: 1440 }, { count: 3, width: 390 }, { count: 8, width: 390 }]) {
+    test(`凡例は図の中の枠にあり、線にも点にも重ならない（${scale}・対象${count}件・${width}px）`, async ({ page }) => {
+      const ids = LAYOUT_IDS_8.slice(0, count);
+      await page.addInitScript((value) => {
+        localStorage.setItem('keydist:standalone-analyzer-options', JSON.stringify({ version: 1, 'n-sensitivity': { scale: value } }));
+      }, scale);
+      await seedLayouts(page, ids);
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/standalone/n-sensitivity');
+      await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(count, { timeout: 20_000 });
+      await waitForMeasuredWidth(page.locator('.n-sensitivity-svg'));
+
+      const legend = await measureLegend(page);
+      expect(legend.insideSvg, '凡例の枠が図の中にある').toBe(true);
+      expect(legend.linePointsInside, '凡例の枠の中を線が通らない').toBe(0);
+      expect(legend.dotsInside, '凡例の枠に点が触れない').toBe(0);
+      expect(legend.labelsInsideFrame, '名前が枠に収まる').toBe(true);
+      expect(legend.names, '凡例は対象の数だけ').toHaveLength(count);
+      // 図の外に凡例（一覧）が無い。対象の行は図の中にだけある
+      await expect(page.locator('ul[aria-label="凡例"]')).toHaveCount(0);
+      await expect(page.locator('[data-n-sensitivity-row="ok"]')).toHaveCount(count);
+      await expect(page.locator('.n-sensitivity-svg [data-n-sensitivity-row="ok"]')).toHaveCount(count);
+    });
+  }
+}
+
+test('凡例の名前は見出しと同じ表示名で、条件は付かない', async ({ page }) => {
+  await seedLayouts(page, ['qwerty', 'colemak-dh']);
+  await page.goto('/standalone/n-sensitivity');
+  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 20_000 });
+  const legend = await measureLegend(page);
+  expect(legend.names).toEqual(['QWERTY', 'Colemak-DH']);
+  expect(legend.names).toEqual(await targetNames(page));
+  await expect(page.locator('.n-sensitivity-svg')).not.toContainText('指の割当');
+});
+
+test('Workspaceの狭いペイン（約500px）に3つ並べても、凡例は図の中で線に重ならない', async ({ page }) => {
+  const layouts = ['qwerty', 'dvorak', 'colemak-dh'].map((layoutId) => ({ kind: 'layout', layoutId }));
+  await page.addInitScript((targets) => {
+    const set = (id: string) => ({ id, analyzerId: 'n-sensitivity', binding: { mode: 'fixed', target: { kind: 'set', selection: { targets, colorSlots: [0, 1, 2] } } } });
+    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [{
+      id: 'legend-panes', name: '凡例の確認', panes: [set('a'), set('b'), set('c')],
+      layout: { kind: 'split', direction: 'row', weight: 1, children: [
+        { kind: 'group', paneIds: ['a'], weight: 1 }, { kind: 'group', paneIds: ['b'], weight: 1 }, { kind: 'group', paneIds: ['c'], weight: 1 },
+      ] },
+    }] }));
+  }, layouts);
+  await page.setViewportSize({ width: 1800, height: 900 });
+  await page.goto('/workspace/legend-panes');
+  await expect(page.locator('.n-sensitivity-svg')).toHaveCount(3, { timeout: 30_000 });
+  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(9, { timeout: 30_000 });
+  for (let i = 0; i < 3; i += 1) {
+    const svg = page.locator('.n-sensitivity-svg').nth(i);
+    await waitForMeasuredWidth(svg);
+    expect((await svg.boundingBox())!.width).toBeLessThan(560);
+    const legend = await measureLegend(page, `.n-sensitivity-svg >> nth=${i}`);
+    expect(legend.insideSvg).toBe(true);
+    expect(legend.linePointsInside).toBe(0);
+    expect(legend.dotsInside).toBe(0);
+    expect(legend.names).toEqual(['QWERTY', 'Dvorak', 'Colemak-DH']);
+  }
+});
+
+test('軸の目盛りの文字とNの軸の見出しが重ならない', async ({ page }) => {
+  await seedLayouts(page, ['qwerty']);
+  await page.goto('/standalone/n-sensitivity');
+  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(1, { timeout: 20_000 });
+  const gap = await page.locator('.n-sensitivity-svg').evaluate((svg) => {
+    const ticks = [...svg.querySelectorAll('.n-sensitivity-axis-label')].map((el) => el.getBoundingClientRect()).filter((r) => r.top > svg.getBoundingClientRect().bottom - 60);
+    const title = svg.querySelector('.n-sensitivity-axis-title')!.getBoundingClientRect();
+    return title.top - Math.max(...ticks.map((r) => r.bottom));
+  });
+  expect(gap).toBeGreaterThanOrEqual(4);
 });

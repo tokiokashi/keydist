@@ -36,31 +36,34 @@
   stroke-width: 2;
 }
 
-.n-sensitivity-legend {
+/*
+ * 凡例は図の中の隅に置く枠（配置は legend-placement.ts）。線には重ならない位置を選ぶが、
+ * 罫線は下を通るので、枠に背景を敷いて文字を読めるようにする。
+ */
+.n-sensitivity-legend-frame {
+  fill: var(--bg);
+  fill-opacity: 0.92;
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+
+.n-sensitivity-legend-label {
+  fill: var(--text);
+}
+
+.n-sensitivity-failures {
   list-style: none;
-  margin: 0.75rem 0 0;
+  margin: 0;
   padding: 0;
   display: grid;
   gap: 0.35rem;
   font-size: 0.82rem;
 }
 
-.n-sensitivity-legend li {
+.n-sensitivity-failures li {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-}
-
-.n-sensitivity-swatch {
-  display: inline-block;
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 50%;
-}
-
-.n-sensitivity-condition {
-  color: var(--text-muted);
-  font-size: 0.75rem;
 }
 
 .n-sensitivity-table-scroll {
