@@ -64,7 +64,7 @@ function Home() {
           </li>
           <li>
             <h2>Workspace</h2>
-            <p>準備中です。複数の Analyzer を並べて見る画面になります。</p>
+            <p>複数の Analyzer を並べて見る画面です。サイドバーの「＋ 新しいWorkspace」から作ります。</p>
           </li>
         </ol>
       </div>

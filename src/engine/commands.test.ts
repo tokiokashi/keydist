@@ -53,6 +53,7 @@ function emptyAssets(): KeydistAssets {
     standaloneAnalyzerOptions: {},
     multiTargetSelection: initialMultiTargetSelection(),
     singleTargetSelection: initialSingleTargetSelection(),
+    workspaces: [],
   };
 }
 

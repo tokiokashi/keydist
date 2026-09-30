@@ -1,0 +1,22 @@
+import { emptyCommandHistory } from '#input/commands/index.ts';
+import { createWorkspaceCommand } from '#engine/workspace-commands.ts';
+import { initialAssets } from '../standalone/asset-storage-specs.ts';
+import { buildAssetSyncs, commitCommand, loadAssets } from '../standalone/asset-syncs.ts';
+
+/**
+ * 空のWorkspaceを作って保存する（サイドバーの「＋ 新しいWorkspace」）。
+ *
+ * サイドバーは画面をまたいで常に出ていて、どの画面の`useKeydistAssets`（資産の手持ちと履歴）にも
+ * 属さない。そこで、書き込みの入口は他と同じコマンド（`createWorkspaceCommand`）を通し、
+ * 手持ちはこの場でstorageから読んで組み立てる。変わった資産（`workspaces`）だけを書き、他タブ・
+ * 開いている画面には通知で伝わる。作った直後に新しいWorkspaceの画面へ移るので、この書き込みは
+ * その画面のUndo履歴には入らない（履歴は画面ごとのメモリ上のもの）。
+ *
+ * 作ったら`true`。保存できなかった（既に同じidがある等）時は`false`。
+ */
+export function createWorkspaceInStorage(id: string): boolean {
+  const syncs = buildAssetSyncs({ onExternalChange: () => {} });
+  const assets = { ...initialAssets(), ...loadAssets(syncs) };
+  const result = commitCommand(syncs, () => ({ assets, history: emptyCommandHistory() }), createWorkspaceCommand(id));
+  return result.outcome.kind === 'applied';
+}

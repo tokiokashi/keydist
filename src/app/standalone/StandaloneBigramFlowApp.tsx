@@ -4,7 +4,7 @@ import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import type { BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { BigramFlowStandalonePage } from '#hosts/standalone/index.ts';
-import { builtinStandaloneCatalog } from './catalog.ts';
+import { builtinPaneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
@@ -20,11 +20,11 @@ import { useTextContentCommit } from './use-text-content-commit.ts';
  * `analyzers/pane-parts.tsx`）を直接importする形のまま。「idから動的に引く」必要が生じた
  * 時点で、`app`側にAnalyzer idごとのレジストリを立てる（先回りして作らない）。
  *
- * 計算は3つの単体ページで共有する窓口（`engine-computer.ts`。ブラウザではWorker）へ頼む。
+ * 計算の窓口は他の単体ページと共有する（`engine-computer.ts`。ブラウザではWorker）。
  */
 export function StandaloneBigramFlowApp() {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
-  const catalog = useMemo(() => builtinStandaloneCatalog(), []);
+  const catalog = useMemo(() => builtinPaneCatalog(), []);
 
   // 解析設定の書き込みは間引いてから`dispatch`する（`use-debounced-commit.ts`参照。
   // スライダーのような連続操作でstorage書き込み・Undo履歴が埋まらないようにするため）。

@@ -150,7 +150,7 @@ export function overrideWinsNotices(
   for (const row of rows) {
     // 配列の推奨が勝つ行は、推奨が実効値なので「変えた行」ではない（出どころは既定値のまま）。
     if (row.recommendationWinsOverGlobal) {
-      notices.set(row.id, 'この配列の推奨が優先されるため、全体を変えてもこの画面は変わらない');
+      notices.set(row.id, `この配列の推奨（${row.displayValue}）が優先されるため、全体を変えてもこの画面は変わらない`);
       continue;
     }
     if (!isChangedConditionRow(row)) continue;

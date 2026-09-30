@@ -353,3 +353,12 @@ test('上書きありのSetupを1件だけ選ぶと、条件の要約の「対�
   await summary.locator('.pane-condition-trigger').click();
   await expect(summary.getByRole('region', { name: '対象ごとの差' })).toContainText('同指連続のホーム復帰距離=OFF');
 });
+
+test('手持ちの集合が空で共有リンクの対象を1つも引けない時も、対象の選択を自動で開かない', async ({ page }) => {
+  await page.goto('/standalone/n-sensitivity?targets=setup%3A%E6%B6%88%E3%81%88%E3%81%9FSetup');
+  await expect(page.locator('[data-pane-link-notice="true"]')).toContainText('Setup「消えたSetup」');
+  await expect(page).toHaveURL(/\/standalone\/n-sensitivity$/);
+  // URLからパラメータが消えた後の再描画でも、開く判断へ戻らない
+  await page.waitForTimeout(800);
+  await expect(page.getByRole('dialog', { name: '対象の選択' })).toHaveCount(0);
+});

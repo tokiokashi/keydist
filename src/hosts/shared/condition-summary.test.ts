@@ -232,6 +232,18 @@ test('全体のローマ字規則: 推奨の無いローマ字入力の配列だ
   assert.equal(conditionSummaryLine(nicola).changedCount, 0);
 });
 
+test('全体未設定でも、大西配列は推奨が全体の既定に勝つので理由の印が立つ。TK音直入力法と QWERTY は立たない', () => {
+  const flagOf = (layoutId: string) => traceConditionSummary(
+    resolveWith({ kind: 'layout', layoutId }, [], EMPTY_SETTINGS_OVERRIDES, 'ja').cascade,
+    CATALOG,
+  ).find((row) => row.id === 'romajiRuleId')!;
+  const oonishi = flagOf('oonishi');
+  assert.equal(oonishi.recommendationWinsOverGlobal, true);
+  assert.equal(oonishi.origin.kind, 'default');
+  assert.equal(flagOf('oonishi-custom').recommendationWinsOverGlobal, false);
+  assert.equal(flagOf('qwerty').recommendationWinsOverGlobal, false);
+});
+
 test('全体のローマ字規則: 共通の行は全体の値で、推奨を持つ対象だけが差に出る（効かない対象は数えない）', () => {
   const overrides = withGlobalRomaji('azik');
   const summary = summarize(setupTargets([

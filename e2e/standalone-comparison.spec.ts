@@ -816,6 +816,15 @@ test('共有リンクの対象を1つも引けない時は、今の対象を変�
   await expect(page).toHaveURL(/\/standalone\/comparison$/);
 });
 
+test('手持ちの集合が空で共有リンクの対象を1つも引けない時も、対象の選択を自動で開かない', async ({ page }) => {
+  await page.goto('/standalone/comparison?targets=setup%3A%E6%B6%88%E3%81%88%E3%81%9FSetup');
+  await expect(page.locator('[data-pane-link-notice="true"]')).toContainText('Setup「消えたSetup」');
+  await expect(page).toHaveURL(/\/standalone\/comparison$/);
+  // URLからパラメータが消えた後の再描画でも、開く判断へ戻らない
+  await page.waitForTimeout(800);
+  await expect(page.getByRole('dialog', { name: '対象の選択' })).toHaveCount(0);
+});
+
 async function openSummaryWith(page: Page, setups: readonly { id: string; layoutId: string; shapeId: string }[]) {
   await page.addInitScript(({ setups: list }) => {
     localStorage.setItem('keydist:setup-library', JSON.stringify({ version: 1, setups: list, overrides: {} }));

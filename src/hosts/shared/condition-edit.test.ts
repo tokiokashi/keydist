@@ -1,3 +1,4 @@
+import { initialWorkspaceLibrary } from '#engine/workspace.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { applyCommand, emptyCommandHistory, undo } from '#input/commands/index.ts';
@@ -34,6 +35,7 @@ function emptyAssets(): KeydistAssets {
     standaloneAnalyzerOptions: {},
     multiTargetSelection: initialMultiTargetSelection(),
     singleTargetSelection: initialSingleTargetSelection(),
+    workspaces: initialWorkspaceLibrary(),
   };
 }
 
@@ -123,12 +125,12 @@ test('overrideWinsNotices: QWERTYの配列の上書きでも理由を出す', ()
 
 test('overrideWinsNotices: 配列の推奨が全体に勝つ行は、既定値のままでも理由を出す', () => {
   const rows = [
-    { ...row('romajiRuleId', { kind: 'default' }, '既定値'), recommendationWinsOverGlobal: true },
+    { ...row('romajiRuleId', { kind: 'default' }, '既定値'), displayValue: '大西式', recommendationWinsOverGlobal: true },
     row('windowSize', { kind: 'default' }, '既定値'),
   ];
   const notices = overrideWinsNotices(rows);
   assert.deepEqual([...notices.keys()], ['romajiRuleId']);
-  assert.match(notices.get('romajiRuleId')!, /^この配列の推奨が優先されるため/);
+  assert.match(notices.get('romajiRuleId')!, /^この配列の推奨（大西式）が優先されるため/);
 });
 
 test('すべて既定値に戻す: 行のある項目の全体の上書きだけを1コマンドで消し、行の無い項目は残す。元に戻すの1回で全部戻る', () => {

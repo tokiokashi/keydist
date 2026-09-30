@@ -477,6 +477,50 @@ test('AnalyzerのCSSの判定そのもの', () => {
   assert.deepEqual(analyzerCssWidthViolations('/* @media (max-width: 1px) */ .a { width: 100%; }'), []);
 });
 
+/**
+ * Dockviewを実行時に読んでよいファイル（hosts/workspaceの中でも1つだけ）。
+ * 資産の型・変換（`layout-adapter.ts`）・ペインの中身は、Dockviewを読まないか、型だけを読む。
+ * Dockviewの保存形式がペインや資産へ漏れると、資産のschemaがDockviewの形に縛られる
+ * （#544 レビューゲート5）。
+ */
+const DOCKVIEW_RUNTIME_FILES: ReadonlySet<string> = new Set(['hosts/workspace/WorkspaceDock.tsx']);
+
+/** Dockviewを実行時に読むimport（`import type` と型だけの名前は除く）。 */
+export function dockviewRuntimeImports(source: string): readonly string[] {
+  const stripped = stripComments(source);
+  const found: string[] = [];
+  for (const match of stripped.matchAll(/import\s+(type\s+)?([^'";]*?)\s*from\s*['"](dockview[^'"]*)['"]/g)) {
+    if (match[1] !== undefined) continue;
+    const names = match[2]!.replace(/[{}]/g, ' ').split(',').map((name) => name.trim()).filter((name) => name !== '');
+    // `{ type A, type B }` のように全部が型なら実行時には消える
+    if (names.length > 0 && names.every((name) => name.startsWith('type '))) continue;
+    found.push(match[3]!);
+  }
+  for (const match of stripped.matchAll(/import\s*['"](dockview[^'"]*)['"]/g)) found.push(match[1]!);
+  return found;
+}
+
+test('Dockviewを実行時に読むのは WorkspaceDock.tsx だけ（変換・資産・ペインは型だけ）', async () => {
+  const problems: string[] = [];
+  for (const path of (await sourceFiles(SRC)).filter(isCode)) {
+    const file = srcRelative(path);
+    if (!file.startsWith('hosts/') || DOCKVIEW_RUNTIME_FILES.has(file)) continue;
+    for (const specifier of dockviewRuntimeImports(await readFile(path, 'utf8'))) {
+      problems.push(`${file}: ${specifier}を実行時に読まない（読むのは WorkspaceDock.tsx だけ。型は import type で）`);
+    }
+  }
+  assert.deepEqual(problems, []);
+});
+
+test('Dockviewの実行時importの判定そのもの', () => {
+  assert.deepEqual(dockviewRuntimeImports("import type { SerializedDockview } from 'dockview-react';"), []);
+  assert.deepEqual(dockviewRuntimeImports("import { type SerializedDockview } from 'dockview-react';"), []);
+  assert.deepEqual(dockviewRuntimeImports("import { DockviewReact } from 'dockview-react';"), ['dockview-react']);
+  assert.deepEqual(dockviewRuntimeImports("import { DockviewReact, type DockviewApi } from 'dockview-react';"), ['dockview-react']);
+  assert.deepEqual(dockviewRuntimeImports("import 'dockview-react/dist/styles/dockview.css';"), ['dockview-react/dist/styles/dockview.css']);
+  assert.deepEqual(dockviewRuntimeImports("// import { DockviewReact } from 'dockview-react';"), []);
+});
+
 test('新しいファイルは新しい構造の中に置く（src直下などへ増やさない）', async () => {
   const unplaced = (await sourceFiles(SRC))
     .filter((path) => !isTest(path))

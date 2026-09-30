@@ -1,4 +1,4 @@
-import { defineAssetCodec, isRecord, type AssetCodec } from '#input/codec/index.ts';
+import { defineAssetCodec, isRecord, type AssetCodec, type CodecDiagnostic } from '#input/codec/index.ts';
 import { analysisTargetKey, decodeAnalysisTarget, type AnalysisTarget } from '#input/setup/index.ts';
 import { assignColorSlots, type MultiTargetSelection } from './multi-target-selection.ts';
 
@@ -15,49 +15,60 @@ import { assignColorSlots, type MultiTargetSelection } from './multi-target-sele
  * `baseline`は記録された基準で、`targets`に含まれなくてもそのまま残す（外している間も
  * 記録は保ち、付け直すと戻る。#678。効く基準は`effectiveMultiBaseline`）。
  *
+ * decode / encode 本体は、集合を抱える別の資産（Workspaceのペイン）も使えるよう関数として出している。
+ *
  * `colorSlots`（色の番号）は`targets`と同じ位置の値を読む。無い・壊れている・重複した番号は
  * 診断を出さずに配り直す（`assignColorSlots`）。色は表示だけの値で、壊れていても利用者が
  * 取れるアクションが無いため（`input/codec/index.ts`先頭コメントの「診断を要らない場合」）。
  */
-export const MULTI_TARGET_SELECTION_CODEC: AssetCodec<MultiTargetSelection> = defineAssetCodec({
-  currentVersion: 1,
-  decodePayload: (payload, diagnostics) => {
-    if (!isRecord(payload)) return undefined;
-    const path = 'payload';
-    const rawTargets: readonly unknown[] = Array.isArray(payload.targets) ? payload.targets : [];
-    if (payload.targets !== undefined && !Array.isArray(payload.targets)) {
-      diagnostics.push({ path: `${path}.targets`, message: '配列形式でないため選択を捨てた' });
+export function decodeMultiTargetSelection(
+  payload: unknown,
+  path: string,
+  diagnostics: CodecDiagnostic[],
+): MultiTargetSelection | undefined {
+  if (!isRecord(payload)) return undefined;
+  const rawTargets: readonly unknown[] = Array.isArray(payload.targets) ? payload.targets : [];
+  if (payload.targets !== undefined && !Array.isArray(payload.targets)) {
+    diagnostics.push({ path: `${path}.targets`, message: '配列形式でないため選択を捨てた' });
+  }
+  const seen = new Set<string>();
+  const targets: AnalysisTarget[] = [];
+  const rawSlots: readonly unknown[] = Array.isArray(payload.colorSlots) ? payload.colorSlots : [];
+  const knownSlots = new Map<string, number>();
+  rawTargets.forEach((item, index) => {
+    const decoded = decodeAnalysisTarget(item, `${path}.targets[${index}]`, diagnostics);
+    if (decoded === undefined) return;
+    const key = analysisTargetKey(decoded);
+    if (seen.has(key)) {
+      diagnostics.push({ path: `${path}.targets[${index}]`, message: `重複した対象「${key}」を1つに畳んだ` });
+      return;
     }
-    const seen = new Set<string>();
-    const targets: AnalysisTarget[] = [];
-    const rawSlots: readonly unknown[] = Array.isArray(payload.colorSlots) ? payload.colorSlots : [];
-    const knownSlots = new Map<string, number>();
-    rawTargets.forEach((item, index) => {
-      const decoded = decodeAnalysisTarget(item, `${path}.targets[${index}]`, diagnostics);
-      if (decoded === undefined) return;
-      const key = analysisTargetKey(decoded);
-      if (seen.has(key)) {
-        diagnostics.push({ path: `${path}.targets[${index}]`, message: `重複した対象「${key}」を1つに畳んだ` });
-        return;
-      }
-      seen.add(key);
-      targets.push(decoded);
-      const slot = rawSlots[index];
-      if (typeof slot === 'number') knownSlots.set(key, slot);
-    });
+    seen.add(key);
+    targets.push(decoded);
+    const slot = rawSlots[index];
+    if (typeof slot === 'number') knownSlots.set(key, slot);
+  });
 
-    let baseline: AnalysisTarget | undefined;
-    if (payload.baseline !== undefined) {
-      const decodedBaseline = decodeAnalysisTarget(payload.baseline, `${path}.baseline`, diagnostics);
-      if (decodedBaseline !== undefined) {
-        baseline = decodedBaseline;
-      }
+  let baseline: AnalysisTarget | undefined;
+  if (payload.baseline !== undefined) {
+    const decodedBaseline = decodeAnalysisTarget(payload.baseline, `${path}.baseline`, diagnostics);
+    if (decodedBaseline !== undefined) {
+      baseline = decodedBaseline;
     }
-    return { targets, baseline, colorSlots: assignColorSlots(targets, knownSlots) };
-  },
-  encodePayload: (value) => ({
+  }
+  return { targets, baseline, colorSlots: assignColorSlots(targets, knownSlots) };
+}
+
+export function encodeMultiTargetSelection(value: MultiTargetSelection): Record<string, unknown> {
+  return {
     targets: value.targets.map((target) => ({ ...target })),
     colorSlots: [...value.colorSlots],
     ...(value.baseline === undefined ? {} : { baseline: { ...value.baseline } }),
-  }),
+  };
+}
+
+export const MULTI_TARGET_SELECTION_CODEC: AssetCodec<MultiTargetSelection> = defineAssetCodec({
+  currentVersion: 1,
+  decodePayload: (payload, diagnostics) => decodeMultiTargetSelection(payload, 'payload', diagnostics),
+  encodePayload: encodeMultiTargetSelection,
 });

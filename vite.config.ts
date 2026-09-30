@@ -49,6 +49,10 @@ export default defineConfig({
     legacyAnalyzerRedirect(),
     tanstackStart({
       srcDirectory: 'src',
+      // 保存したWorkspaceのURL（/workspace/<id>）はidがビルド時に分からず、URLごとのHTMLを作れない。
+      // ブラウザで描く枠として `/workspace/_` だけをビルドし、静的配信の404.htmlへ複製する
+      // （scripts/write-workspace-fallback.ts）
+      pages: [{ path: '/workspace/_' }],
       prerender: {
         enabled: true,
         autoStaticPathsDiscovery: true,

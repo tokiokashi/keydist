@@ -26,7 +26,8 @@ export interface ResolvedItem<T> {
   readonly applicable: boolean;
   readonly diagnostics: readonly Diagnostic[];
   /**
-   * 配列の推奨が実効値になっている時、それより下のレベル（全体など）に別の値があって負けたもの。
+   * 配列の推奨が実効値になっている時、それより下のレベル（全体など）に別の値があって負けたもの
+   * （全体は保存された値が無くても、既定値が推奨と違えば含む）。
    * 「全体を変えても変わらない」理由を出すのに使う。推奨が無い・負けた値が無い時は`undefined`。
    * 出どころ（`origin`）は上書きが無いので`default`のまま（推奨は利用者が変えた値ではない）。
    */
@@ -79,6 +80,16 @@ function resolveItem(
     // この後で重なるので、利用者の上書き＞推奨＞全体、の順になる。
     if (level.kind === 'layout' && recommended !== undefined) {
       shadowed = lowerApplied.filter((applied) => applied.value !== recommended).map((applied) => applied.kind);
+      // 全体に保存された値が無くても、全体の既定が推奨と違えば負けている（例: 大西配列の大西式は
+      // 全体の既定の訓令式に勝つ）。理由を出す側は保存の有無を問わず「全体の値」で比べたいので、
+      // 既定値が負けた時も全体として記録する。
+      if (
+        !lowerApplied.some((applied) => applied.kind === 'global')
+        && item.allowedLevels.has('global')
+        && resolveDefaultValue(item, context) !== recommended
+      ) {
+        shadowed = ['global', ...shadowed];
+      }
       value = recommended;
       origin = { kind: 'default' };
     }

@@ -207,10 +207,22 @@ test('条件のモーダル: 全体のローマ字規則を変えても、推奨
   const row = modal.locator('[data-item="romajiRuleId"]');
   await row.getByLabel('ローマ字規則', { exact: true }).selectOption('azik');
   await expect(row).toContainText('全体で変更');
-  await expect(row.locator('[data-condition-notice]')).toContainText('この配列の推奨が優先されるため、全体を変えてもこの画面は変わらない');
+  await expect(row.locator('[data-condition-notice]')).toContainText('この配列の推奨（大西式');
   await page.keyboard.press('Escape');
   // 効いている値は推奨（大西式）のままなので、変えた項目には数えない
   await expect(page.locator('.pane-condition-trigger')).toHaveText('条件すべて既定値');
+});
+
+test('条件のモーダル: 大西配列を全体未設定で開くと理由が出て、推奨の値が読める。TK音直入力法は全体が訓令式の間は出ない', async ({ page }) => {
+  const modal = await openWithLayout(page, 'oonishi');
+  const row = modal.locator('[data-item="romajiRuleId"]');
+  await expect(row).toContainText('既定値');
+  await expect(row.locator('[data-condition-notice]')).toContainText('この配列の推奨（大西式');
+});
+
+test('条件のモーダル: TK音直入力法は、全体が訓令式の間は理由を出さない', async ({ page }) => {
+  const modal = await openWithLayout(page, 'oonishi-custom');
+  await expect(modal.locator('[data-item="romajiRuleId"] [data-condition-notice]')).toHaveCount(0);
 });
 
 test('条件のモーダル: QWERTYの配列の上書きでも、下のレベルが勝つ行に理由を出す', async ({ page }) => {

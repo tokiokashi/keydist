@@ -1,9 +1,9 @@
 import { useRef } from 'react';
 import type { Command } from '#input/commands/index.ts';
-import { setTextContentCommand, type KeydistAssets } from '#engine/commands.ts';
+import { setTextContentCommand, textSelectionOf, type KeydistAssets, type TextSelectionHolder } from '#engine/commands.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
-import type { TextRef } from '#input/text/selection.ts';
+import { initialTextSelection, type TextRef } from '#input/text/selection.ts';
 import type { TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { useDebouncedCommit, type DebouncedCommit } from './use-debounced-commit.ts';
 
@@ -35,12 +35,16 @@ export function useTextContentCommit(
   dispatch: (command: Command<KeydistAssets>) => void,
   getAssets: () => KeydistAssets,
   generateTextId: TextIdGenerator,
+  /** 本文を書くテキストの選択の持ち主。個別画面は全体で1つ、Workspaceは自分の選択。 */
+  holder: TextSelectionHolder = 'standalone',
 ): DebouncedCommit<TextContentValue> & TextContentCommit {
   const redirectRef = useRef<{ readonly from: TextRef; readonly to: TextRef } | undefined>(undefined);
 
   const resolvedRef = (): TextRef => {
     const assets = getAssets();
-    return resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary).ref;
+    const selection = textSelectionOf(assets, holder);
+    // 持ち主のWorkspaceが消えた後は、既定の選択として扱う（書き込み側のコマンドが何もしない）
+    return resolveTextSelection(selection ?? initialTextSelection(), assets.textLibrary).ref;
   };
 
   // 覚えた移行は、最新の選択がその複製に留まっている間だけ有効にする。選択が別のテキストへ
@@ -61,7 +65,7 @@ export function useTextContentCommit(
   };
 
   const commit = useDebouncedCommit<TextContentValue>(dispatchAndRemember, {
-    commandFor: ({ ref, text }) => setTextContentCommand('standalone', ref, text, generateTextId),
+    commandFor: ({ ref, text }) => setTextContentCommand(holder, ref, text, generateTextId),
   });
 
   const retargetRef = useRef((value: TextContentValue): TextContentValue => value);

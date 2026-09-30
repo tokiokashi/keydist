@@ -6,11 +6,11 @@ import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
 import { setTargetForSingleAndMultiCommand } from '#engine/commands.ts';
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
 import { setupNumbersOf, targetChoiceGroups, TargetSelection } from '#hosts/shared/index.ts';
-import { targetNameSource } from '#hosts/standalone/target-name-source.ts';
-import { resolveStandalonePaneInput } from '#hosts/standalone/index.ts';
+import { targetNameSource } from '#hosts/shared/target-name-source.ts';
+import { resolvePaneInput } from '#hosts/shared/resolve-pane-input.ts';
 import { nameTargets } from '#input/setup/index.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
-import { builtinStandaloneCatalog } from '../standalone/catalog.ts';
+import { builtinPaneCatalog } from '../standalone/catalog.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 
 /**
@@ -25,7 +25,7 @@ import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
  */
 export function TopTargetPick() {
   const { assets, ready, dispatch } = useKeydistAssets();
-  const catalog = useMemo(() => builtinStandaloneCatalog(), []);
+  const catalog = useMemo(() => builtinPaneCatalog(), []);
   const setups = assets.setupLibrary.setups;
   const target = effectiveSingleTarget(assets.singleTargetSelection);
 
@@ -37,7 +37,7 @@ export function TopTargetPick() {
   );
   const named = useMemo(() => {
     const setupsById = new Map(setups.map((setup) => [setup.id, setup] as const));
-    const resolution = resolveStandalonePaneInput(target, setupsById, catalog, assets.setupLibrary.overrides, resolvedText);
+    const resolution = resolvePaneInput(target, setupsById, catalog, assets.setupLibrary.overrides, resolvedText);
     return nameTargets([targetNameSource(target, resolution, setupsById, setupNumbersOf(setups), catalog.setupCatalog)])[0];
   }, [target, setups, catalog, assets.setupLibrary.overrides, resolvedText]);
 

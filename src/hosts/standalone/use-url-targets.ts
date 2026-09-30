@@ -11,7 +11,7 @@ import {
   type SharedTargetsKind,
   type TargetShareSource,
 } from './target-share.ts';
-import type { StandalonePaneCatalog } from './resolve-pane-input.ts';
+import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 
 export interface UseUrlTargetsInput {
   /** Singleの画面（Bigram Flow）か、Multiの画面（比較表・N感度）か。 */
@@ -69,7 +69,7 @@ export function useUrlTargets({ kind, assetsReady, source, dispatch }: UseUrlTar
 }
 
 /** 共有リンクの対象を名前で引く・作るための手持ち。ページの再描画ごとに作り直さない。 */
-export function useTargetShareSource(catalog: StandalonePaneCatalog, setups: readonly Setup[]): TargetShareSource {
+export function useTargetShareSource(catalog: PaneCatalog, setups: readonly Setup[]): TargetShareSource {
   return useMemo(() => ({
     layouts: catalog.setupCatalog.layouts,
     userLayoutIds: new Set(catalog.userLayouts.keys()),
