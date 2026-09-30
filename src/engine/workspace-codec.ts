@@ -64,6 +64,10 @@ function decodeLayoutNode(raw: unknown, path: string, depth: number, diagnostics
       return undefined;
     }
     const rawChildren: readonly unknown[] = Array.isArray(raw.children) ? raw.children : [];
+    if (raw.children !== undefined && !Array.isArray(raw.children)) {
+      // 空のsplitは`normalizeLayout`が捨ててペインを既定の位置へ置き直すので、配置がまるごと変わる
+      diagnostics.push({ path: `${path}.children`, message: '配列形式でないため配置の子要素を捨てた' });
+    }
     const children: WorkspaceLayoutNode[] = [];
     rawChildren.forEach((child, index) => {
       const decoded = decodeLayoutNode(child, `${path}.children[${index}]`, depth + 1, diagnostics);
