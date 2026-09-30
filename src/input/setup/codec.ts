@@ -32,7 +32,11 @@ const setupSchema = v.strictObject({
 });
 
 function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): Setup[] {
-  if (!Array.isArray(raw)) return [];
+  if (!Array.isArray(raw)) {
+    // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
+    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためSetupを捨てた' });
+    return [];
+  }
   const seen = new Set<string>();
   const setups: Setup[] = [];
   raw.forEach((candidate, index) => {

@@ -32,7 +32,11 @@ const requiredFieldsSchema = v.looseObject({
 const KNOWN_USER_TEXT_KEYS: ReadonlySet<string> = new Set(['id', 'name', 'text', 'languageOverride', 'unseen']);
 
 function decodeUserTexts(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): UserText[] {
-  if (!Array.isArray(raw)) return [];
+  if (!Array.isArray(raw)) {
+    // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
+    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためテキストを捨てた' });
+    return [];
+  }
   const seen = new Set<string>();
   const texts: UserText[] = [];
   raw.forEach((candidate, index) => {
