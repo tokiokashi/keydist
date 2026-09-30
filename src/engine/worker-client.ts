@@ -19,8 +19,13 @@ export interface WorkerLike {
   onmessageerror: ((event: unknown) => void) | null;
 }
 
-/** メインスレッドに写しておく結果の最大件数（`engine/cache.ts`の既定と同じ）。 */
-const MIRROR_MAX_ENTRIES = 32;
+/**
+ * メインスレッドに写しておく結果の最大件数。抽出は`engine/cache.ts`の既定と同じ32件。
+ * Traceは日本語1万字で1件が約17MiBのヒープを取り、32件だと約555MiBになるので、別の上限で8件にする
+ * （最悪でも約140MiB。配列を選び直して元に戻る往復には足りる）。
+ */
+export const TRACE_MIRROR_MAX_ENTRIES = 8;
+export const EXTRACTION_MIRROR_MAX_ENTRIES = 32;
 
 /** 常にPromiseを返す`EngineComputer`（`EngineComputer`は同期の値も許すので、こちらで狭める）。 */
 export interface WorkerEngineComputer extends EngineComputer {
@@ -80,9 +85,9 @@ export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngin
   // Workerから受け取った結果を、メインスレッドにも中身のキー（`engine/keys.ts`）で写しておく。
   // 一度計算した入力へ戻る時（タブの切り替え・配列の選び直し・ペインの作り直し）に、Workerへの
   // 1往復を挟まず`peek*`で同期に引き、ペインを「計算中」にしない。Workerの結果は値の複製なので、
-  // ここで持つ値は`get*`が返した値そのもの（数値は変わらない）。件数は`EngineCache`と同じ規模。
-  const traceMirror = new LruCache<string, EngineTraceResult>(MIRROR_MAX_ENTRIES);
-  const extractionMirror = new LruCache<string, EngineExtractionResult<unknown>>(MIRROR_MAX_ENTRIES);
+  // ここで持つ値は`get*`が返した値そのもの（数値は変わらない）。件数の上限は下の定数。
+  const traceMirror = new LruCache<string, EngineTraceResult>(TRACE_MIRROR_MAX_ENTRIES);
+  const extractionMirror = new LruCache<string, EngineExtractionResult<unknown>>(EXTRACTION_MIRROR_MAX_ENTRIES);
   let worker: WorkerLike | undefined;
   let current: Job | undefined;
   const queue: Job[] = [];

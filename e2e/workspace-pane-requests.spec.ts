@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openTextChip } from './context-bar-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
@@ -72,6 +73,15 @@ async function readLog(page: Page): Promise<{ requests: number; stale: number[] 
   return page.evaluate(() => (window as unknown as { __log: { requests: number; stale: number[] } }).__log);
 }
 
+/** `paneIndex`番目のペインの対象を選び直し、そのペインが計算し終わるまで待つ。 */
+async function selectTarget(page: Page, paneIndex: number, layoutId: string, timeout = 5000): Promise<void> {
+  const pane = page.locator('.pane-frame').nth(paneIndex);
+  await pane.getByRole('button', { name: /^対象: / }).click();
+  await page.getByRole('dialog', { name: '対象の選択' }).locator(`input[value="layout:${layoutId}"]`).click();
+  await page.keyboard.press('Escape');
+  await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout });
+}
+
 const WORKSPACE_BASE = { id: 'requests', name: '依頼の確認', text: TEXT };
 
 test('配列を選び直すと、変わったペインだけが依頼を出して計算中になる。戻す時は計算済みなので依頼も計算中も無い', async ({ page }) => {
@@ -90,12 +100,7 @@ test('配列を選び直すと、変わったペインだけが依頼を出し�
   await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(3, { timeout: 15_000 });
   await waitForInitialCompute(page);
 
-  const select = async (paneIndex: number, layoutId: string) => {
-    await panes.nth(paneIndex).getByRole('button', { name: /^対象: / }).click();
-    await page.getByRole('dialog', { name: '対象の選択' }).locator(`input[value="layout:${layoutId}"]`).click();
-    await page.keyboard.press('Escape');
-    await expect(panes.nth(paneIndex)).toHaveAttribute('data-pane-status', 'ready');
-  };
+  const select = (paneIndex: number, layoutId: string) => selectTarget(page, paneIndex, layoutId);
 
   await resetLog(page);
   await select(1, 'workman');
@@ -131,4 +136,52 @@ test('同じ枠のタブを切り替えても、依頼は出ず、計算中に�
     const log = await readLog(page);
     expect(log, `タブ${index + 1}へ切り替え`).toEqual({ requests: 0, stale: [] });
   }
+
+  // 数え方が効いていることの確認: 依頼が増える操作（まだ計算していない配列への選び直し）では数字が動く。
+  // 数え方が壊れていれば上の「0のまま」は空振りで通ってしまう
+  await resetLog(page);
+  await selectTarget(page, 0, 'workman');
+  const changed = await readLog(page);
+  // aとbは同じ組に連動しているので、見えていないbのぶんも依頼が出る（2ペイン × Traceと抽出）
+  expect(changed.requests).toBe(4);
+  expect(changed.stale).toEqual([0]);
+});
+
+const SENTENCE = 'The quick brown fox jumps over the lazy dog while the five boxing wizards jump quickly. ';
+
+test('計算中に別のタブを開いて戻っても、計算中だったペインの依頼は打ち切られず出し直されない', async ({ page }) => {
+  // 長いテキスト（英文1万字）で、計算が数秒かかるようにする。計算中の依頼が、タブの切り替えに
+  // 伴う保存で打ち切られて出し直されると、依頼の数が倍になる
+  await openSeeded(page, {
+    ...WORKSPACE_BASE,
+    groups: [groupOf('g1', 'qwerty')],
+    panes: [follow('a', 'g1'), fixed('b', 'dvorak')],
+    layout: { kind: 'group', paneIds: ['a', 'b'], weight: 1 },
+  });
+  const tabs = page.locator('.dv-default-tab');
+  await expect(tabs).toHaveCount(2);
+  await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(1, { timeout: 15_000 });
+
+  const body = (await openTextChip(page)).getByLabel('テキスト', { exact: true });
+  await body.fill(SENTENCE.repeat(120));
+  await page.keyboard.press('Escape');
+  // テキストの変更で始まる計算（見えていないタブのぶんも含む）が済むまで待つ
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'stale', { timeout: 10_000 });
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 30_000 });
+  await waitForInitialCompute(page);
+
+  // aを、まだ計算していない配列に選び直す。計算中（stale）のうちに、bのタブを開いてaへ戻る
+  await resetLog(page);
+  const pane = page.locator('.pane-frame');
+  await pane.getByRole('button', { name: /^対象: / }).click();
+  await page.getByRole('dialog', { name: '対象の選択' }).locator('input[value="layout:workman"]').click();
+  await page.keyboard.press('Escape');
+  await expect(pane).toHaveAttribute('data-pane-status', 'stale');
+  await tabs.nth(1).click();
+  await tabs.nth(0).click();
+  await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 30_000 });
+
+  const log = await readLog(page);
+  // workmanのTraceと抽出の2件だけ
+  expect(log.requests).toBe(2);
 });

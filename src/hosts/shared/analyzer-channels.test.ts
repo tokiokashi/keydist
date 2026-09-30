@@ -8,6 +8,8 @@ import { EMPTY_SETTINGS_OVERRIDES } from '#engine/settings-items.ts';
 import { resolveEngineInput } from '#engine/resolved-input.ts';
 import type { ExtractionRequestState, TraceRequestState } from '#engine/engine-requests.ts';
 import type { EngineComputer } from '#engine/computer.ts';
+import { singleExtractionKeyOf, traceKeyOf } from '#engine/keys.ts';
+import type { ResolvedInput } from '#engine/resolved-input.ts';
 import type { EngineScheduler } from '#engine/scheduler.ts';
 import { bigramFlowDefinition, type BigramFlowExtracted } from '#analyzers/bigram-flow/extract.ts';
 import { DEFAULT_BIGRAM_FLOW_OPTIONS, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
@@ -137,24 +139,26 @@ test('結果を同期に引ける計算機では、解決し直した同じ中�
   const scheduler = createManualScheduler();
   const cache = createEngineCache();
   const requested: string[] = [];
-  // 計算のたびに記録し、結果は`peek`でも引ける計算機（メインスレッドに結果を写すWorker側の形）
+  // 計算のたびに記録し、結果は入力の中身のキーで`peek`からも引ける計算機（メインスレッドに結果を写すWorker側の形）
   const remembered = new Map<string, unknown>();
+  const traceKey = (input: ResolvedInput) => traceKeyOf(input);
+  const extractionKey = (input: ResolvedInput) => singleExtractionKeyOf(input, bigramFlowDefinition.id, bigramFlowDefinition.extractKeyOf(DEFAULT_BIGRAM_FLOW_OPTIONS));
   const computer: EngineComputer = {
     getTrace: (input) => {
       requested.push('trace');
       const result = cache.getTrace(input);
-      remembered.set('trace', result);
+      remembered.set(traceKey(input), result);
       return result;
     },
     getExtraction: (input, definition, options) => {
       requested.push('extraction');
       const result = cache.getExtraction(input, definition, options);
-      remembered.set('extraction', result);
+      remembered.set(extractionKey(input), result);
       return result;
     },
     getSetExtraction: (members, definition, options) => cache.getSetExtraction(members, definition, options),
-    peekTrace: () => remembered.get('trace') as never,
-    peekExtraction: () => remembered.get('extraction') as never,
+    peekTrace: (input) => remembered.get(traceKey(input)) as never,
+    peekExtraction: (input) => remembered.get(extractionKey(input)) as never,
   };
   const extractionStates: ExtractionRequestState<BigramFlowExtracted>[] = [];
   const traceStates: TraceRequestState[] = [];
@@ -180,6 +184,13 @@ test('結果を同期に引ける計算機では、解決し直した同じ中�
   assert.deepEqual(requested, ['trace', 'extraction'], '計算機へ依頼を出し直した');
   assert.deepEqual(extractionStates.map((s) => s.status), ['ready']);
   assert.deepEqual(traceStates.map((s) => s.status), ['ready']);
+
+  // 中身が違う入力は引けないので、依頼が出て計算中を経る
+  extractionStates.length = 0;
+  channels = syncAnalyzerPaneChannels(channels, params(resolutionFor('dvorak')));
+  scheduler.flush();
+  assert.deepEqual(requested, ['trace', 'extraction', 'trace', 'extraction']);
+  assert.ok(extractionStates.some((s) => s.status === 'stale'));
   closeAnalyzerPaneChannels(channels);
 });
 

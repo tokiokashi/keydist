@@ -14,7 +14,7 @@ import { createEngineCache } from './cache.ts';
 import { resolveEngineInput, type ResolvedInput } from './resolved-input.ts';
 import type { EngineSetMemberInput } from './request.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from './settings-items.ts';
-import { createWorkerEngineComputer, EngineAbortError, type WorkerLike } from './worker-client.ts';
+import { createWorkerEngineComputer, EngineAbortError, TRACE_MIRROR_MAX_ENTRIES, type WorkerLike } from './worker-client.ts';
 import { createEngineWorkerHandler } from './worker-handler.ts';
 import type { EngineWorkerRequest, EngineWorkerResponse } from './worker-protocol.ts';
 
@@ -293,5 +293,24 @@ test('打ち切られた依頼の結果は写らない', async () => {
   controller.abort();
   await assert.rejects(pending, EngineAbortError);
   assert.equal(remote.peekTrace?.(entry!.input), undefined);
+  remote.dispose();
+});
+
+test('Traceの写しは8件まで（古いものから捨てる）。A→B→Aの往復と、直近8件の行き来は同期に引ける', async () => {
+  assert.equal(TRACE_MIRROR_MAX_ENTRIES, 8);
+  const remote = createWorkerEngineComputer(() => createFakeWorker().worker);
+  const inputs = Array.from({ length: TRACE_MIRROR_MAX_ENTRIES + 1 }, (_, i) => resolveAll(`hello ${i}`, 'en')[0]!.input);
+
+  // A→B→A: 間に1件挟んでも、最初の入力へ戻る時に引ける
+  await remote.getTrace(inputs[0]!);
+  await remote.getTrace(inputs[1]!);
+  assert.ok(remote.peekTrace?.(inputs[0]!) !== undefined, 'A→B→Aで戻れない');
+
+  // 9件目で、最も長く触っていない1件（ここでは直前にpeekしたAではなく、Bより古いもの）が押し出される
+  for (const input of inputs.slice(2)) await remote.getTrace(input);
+  assert.equal(remote.peekTrace?.(inputs[1]!), undefined, '上限を超えたのに古い写しが残っている');
+  for (const index of [0, 2, 3, 4, 5, 6, 7, 8]) {
+    assert.ok(remote.peekTrace?.(inputs[index]!) !== undefined, `直近8件のうち${index}番目が引けない`);
+  }
   remote.dispose();
 });
