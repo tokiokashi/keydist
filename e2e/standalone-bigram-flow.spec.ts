@@ -1390,3 +1390,17 @@ test('Relative vectors: スマホ幅でも左右の図は横に2つ並ぶ', asyn
   // 縮んでも図として読める大きさを保つ
   expect(left!.width).toBeGreaterThan(100);
 });
+
+test('Relative vectors: 内向き・外向きの割合は、読み上げでも向きと値が分かる名前を持つ', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  const section = page.locator('section[aria-label="Relative vectors"]');
+  await expect(section.locator('.flow-profile-svg')).toHaveCount(2, { timeout: 15_000 });
+  // 左右どちらの手でも、内向き・外向きが1つずつ、向きの語と割合を名前に持つ
+  for (const hand of [0, 1]) {
+    const labels = section.locator('.roll-summary').nth(hand).getByRole('img');
+    await expect(labels).toHaveCount(2);
+    const names = await labels.evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') ?? ''));
+    expect(names.every((name) => /^(内向き|外向き) \d+\.\d%$/.test(name))).toBe(true);
+    expect(new Set(names.map((name) => name.split(' ')[0])).size).toBe(2);
+  }
+});
