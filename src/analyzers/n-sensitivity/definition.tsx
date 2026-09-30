@@ -3,8 +3,18 @@ import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivityExtracted
 import { DEFAULT_N_SENSITIVITY_OPTIONS, type NSensitivityOptions } from './options.ts';
 import { bindOption, RadioOptionField } from '#ui/primitives/option-fields.tsx';
 import { N_SENSITIVITY_PANE_META } from './pane-meta.ts';
-import { computeYRange } from './y-range.ts';
-import { legendItemOffset, placeLegend, truncateLabel, LEGEND_FONT_SIZE, LEGEND_SWATCH_WIDTH } from './legend-placement.ts';
+import { computeYRange, formatYTicks } from './y-range.ts';
+import {
+  estimateTextWidth,
+  fitLabels,
+  legendItemOffset,
+  placeLegend,
+  LEGEND_FONT_SIZE,
+  LEGEND_PADDING,
+  LEGEND_SWATCH_GAP,
+  LEGEND_SWATCH_WIDTH,
+  type MeasureText,
+} from './legend-placement.ts';
 import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
 import './n-sensitivity-view.css';
 
@@ -23,9 +33,9 @@ import './n-sensitivity-view.css';
 const DEFAULT_CHART_WIDTH = 640;
 const MIN_CHART_HEIGHT = 200;
 const MAX_CHART_HEIGHT = 360;
-/** 対象が多く凡例が収まらない時に、図を縦へ伸ばしてよい上限と、1回に伸ばす量。 */
-const MAX_LEGEND_CHART_HEIGHT = 720;
-const CHART_HEIGHT_STEP = 40;
+/** 凡例をプロットの下に置く時の、図の左右の余白と、軸の見出しとの間隔。 */
+const LEGEND_BELOW_SIDE = 8;
+const LEGEND_BELOW_GAP = 6;
 /** Nの目盛りの間隔がこれを割ったら、目盛りを1つ飛ばしにする（10pxの文字の「10」が並べる幅）。 */
 const MIN_TICK_SPACING = 30;
 const MARGIN = { top: 16, right: 16, bottom: 40, left: 48 };
@@ -102,6 +112,36 @@ function useMeasuredWidth(): [React.RefObject<HTMLDivElement | null>, number | n
   return [ref, width];
 }
 
+let measureContext: CanvasRenderingContext2D | null | undefined;
+
+/**
+ * 凡例の文字の幅を、実際に描くフォントで測る関数。フォントは要素の計算済みスタイルから読む。
+ * 測れる（ブラウザで、描画後）までは見積もりを返す。フォントの読み込み完了で測り直す
+ * （字幅が変わると凡例の枠の大きさが変わるため）。
+ */
+function useLegendMeasure(ref: React.RefObject<HTMLElement | null>): MeasureText {
+  const [font, setFont] = useState<string | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    let cancelled = false;
+    const read = () => {
+      if (!cancelled) setFont(`${LEGEND_FONT_SIZE}px ${getComputedStyle(el).fontFamily}`);
+    };
+    read();
+    void document.fonts?.ready.then(read);
+    return () => { cancelled = true; };
+  }, [ref]);
+  if (font === null) return estimateTextWidth;
+  if (measureContext === undefined) measureContext = document.createElement('canvas').getContext('2d');
+  const context = measureContext;
+  if (!context) return estimateTextWidth;
+  return (text) => {
+    context.font = font;
+    return context.measureText(text).width;
+  };
+}
+
 /** 折れ線チャート本体（#544指示書「非legacyの折れ線が無ければ自前でSVGを書く」）。 */
 function NSensitivityChart({
   series,
@@ -129,38 +169,34 @@ function NSensitivityChart({
   const ySpan = yRange.hi - yRange.lo || 1;
   const yTickValues = yRange.ticks;
 
-  // 凡例は図の中の空いた隅に置く。線の実際の位置から空きを調べるので、線と重ならない。
-  // 対象が多くてどの隅にも収まらない時は、収まるまで図を縦へ伸ばす（線を隠すより、図が高い方を選ぶ）。
-  const legendLabels = series.map((s) => truncateLabel(s.label));
-  let CHART_HEIGHT = baseHeight;
-  let plotHeight = CHART_HEIGHT - MARGIN.top - MARGIN.bottom;
-  let yScale = (y: number) => MARGIN.top + plotHeight - ((y - yRange.lo) / ySpan) * plotHeight;
-  let legend = placeLegendFor(plotHeight, yScale);
-  while (legend.overlaps > 0 && CHART_HEIGHT < MAX_LEGEND_CHART_HEIGHT) {
-    CHART_HEIGHT += CHART_HEIGHT_STEP;
-    plotHeight = CHART_HEIGHT - MARGIN.top - MARGIN.bottom;
-    const height = plotHeight;
-    yScale = (y: number) => MARGIN.top + height - ((y - yRange.lo) / ySpan) * height;
-    legend = placeLegendFor(plotHeight, yScale);
-  }
-
-  function placeLegendFor(height: number, toY: (y: number) => number) {
-    return placeLegend(
-      { x: MARGIN.left, y: MARGIN.top, width: plotWidth, height },
-      series.map((s) => s.points.map((p) => ({ x: xScale(p.windowSize), y: toY(p.y) }))),
-      legendLabels,
-    );
-  }
+  // 凡例は図の中の空いた所に置く。線の実際の位置から空きを調べるので、線と重ならない。
+  // 対象が多くて（または図が狭くて）どこにも収まらない時は、プロットの下に並べて図を高くする
+  // （線を隠すより、図が高い方を選ぶ）。
+  const CHART_HEIGHT = baseHeight;
+  const plotHeight = CHART_HEIGHT - MARGIN.top - MARGIN.bottom;
+  const yScale = (y: number) => MARGIN.top + plotHeight - ((y - yRange.lo) / ySpan) * plotHeight;
+  const measure = useLegendMeasure(wrapRef);
+  const labelRoom = CHART_WIDTH - LEGEND_BELOW_SIDE * 2 - LEGEND_PADDING * 2 - LEGEND_SWATCH_WIDTH - LEGEND_SWATCH_GAP;
+  const legendLabels = fitLabels(series.map((s) => s.label), measure, undefined, labelRoom);
+  const legend = placeLegend(
+    { x: MARGIN.left, y: MARGIN.top, width: plotWidth, height: plotHeight },
+    series.map((s) => s.points.map((p) => ({ x: xScale(p.windowSize), y: yScale(p.y) }))),
+    legendLabels,
+    measure,
+    { x: LEGEND_BELOW_SIDE, y: CHART_HEIGHT + LEGEND_BELOW_GAP, width: CHART_WIDTH - LEGEND_BELOW_SIDE * 2 },
+  );
+  const svgHeight = legend.corner === 'below' ? legend.rect.y + legend.rect.height + LEGEND_BELOW_GAP : CHART_HEIGHT;
+  const yTickLabels = formatYTicks(scale === 'relative', yTickValues);
 
   return (
     <div className="n-sensitivity-chart" ref={wrapRef}>
     <svg
       className="n-sensitivity-svg"
-      viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+      viewBox={`0 0 ${CHART_WIDTH} ${svgHeight}`}
       role="img"
       aria-label={`N感度チャート: ${series.map((s) => s.label).join('、')}`}
     >
-      {yTickValues.map((value) => (
+      {yTickValues.map((value, i) => (
         <g key={value}>
           <line
             className="n-sensitivity-grid-line"
@@ -170,7 +206,7 @@ function NSensitivityChart({
             y2={yScale(value)}
           />
           <text className="n-sensitivity-axis-label" x={MARGIN.left - 6} y={yScale(value)} textAnchor="end" dominantBaseline="middle">
-            {formatY(scale, value)}
+            {yTickLabels[i]}
           </text>
         </g>
       ))}

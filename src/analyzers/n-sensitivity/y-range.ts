@@ -7,10 +7,12 @@
  *
  * - full: 0から始める。相対は0〜100%。実測は0〜最大値。
  * - fit: 値のある範囲に合わせる。データの最小値より少し下（幅の5%）を下限にし、区切りのよい値へ丸める
- * - coarse: 0〜最大値を4等分した区切りのうち、データの最小値を含む一番高い区切りを下限にする。
+ * - coarse: 相対は0〜100%を4等分した区切り、実測はきりのよい刻みの区切りのうち、
+ *   データの最小値を含む一番高い区切りを下限にする。
  *   fitより下限が粗く、軸が0から始まらないことが目盛りから読み取りやすい
  *
- * 上限は、相対ではN=0が必ず100%（=最大）なので、どの決め方でも100%。実測では最大値。
+ * 上限は、相対ではN=0が必ず100%（=最大）なので、どの決め方でも100%。実測では最大値
+（fit・coarseは、目盛りがきりのよい値になるよう上へ丸める）。
  * 「0を含めて上だけ詰める」は、相対では上限が最初から最大なので詰める余地が無く、fullと同じになる。
  */
 export type YRangeMode = 'full' | 'fit' | 'coarse';
@@ -39,7 +41,22 @@ function niceStep(span: number, intervals: number): number {
 
 function ticksBetween(lo: number, hi: number, step: number): number[] {
   const count = Math.round((hi - lo) / step);
-  return Array.from({ length: count + 1 }, (_, i) => lo + step * i);
+  // 0.1刻みなどで足し算の誤差が目盛りの値に残らないよう、桁を丸める
+  return Array.from({ length: count + 1 }, (_, i) => Number((lo + step * i).toFixed(9)));
+}
+
+/** 目盛りの値をすべて正確に表せる最小の小数桁数（0〜4）。刻みが1未満でも目盛りが重複して並ばない。 */
+function decimalsFor(ticks: readonly number[]): number {
+  for (let digits = 0; digits < 4; digits += 1) {
+    if (ticks.every((tick) => Math.abs(tick - Number(tick.toFixed(digits))) < 1e-6)) return digits;
+  }
+  return 4;
+}
+
+/** 縦軸の目盛りの文字。相対は%、実測は[u]。実測値は大きさが一定でないので、整数で丸める。 */
+export function formatYTicks(relative: boolean, ticks: readonly number[]): string[] {
+  const digits = relative ? decimalsFor(ticks) : 0;
+  return ticks.map((tick) => (relative ? `${tick.toFixed(digits)}%` : `${tick.toFixed(0)} u`));
 }
 
 /**
@@ -56,9 +73,11 @@ export function computeYRange(mode: YRangeMode, relative: boolean, values: reado
   }
 
   if (mode === 'coarse') {
-    const quarter = hi / 4;
-    const lo = Math.min(3, Math.floor(dataMin / quarter)) * quarter;
-    return { lo, hi, ticks: ticksBetween(lo, hi, quarter) };
+    // 相対は0〜100%の4等分（25%刻み）。実測の最大値は区切りが悪いので、きりのよい刻みで上へ丸める
+    const quarter = relative ? hi / 4 : niceStep(hi, 4);
+    const top = relative ? hi : Math.ceil(hi / quarter) * quarter;
+    const lo = Math.min(Math.round(top / quarter) - 1, Math.floor(dataMin / quarter)) * quarter;
+    return { lo, hi: top, ticks: ticksBetween(lo, top, quarter) };
   }
 
   // fit: 下限は最小値の少し下を、目盛り幅の倍数へ切り下げる。上限は最大値（相対は100）のまま。

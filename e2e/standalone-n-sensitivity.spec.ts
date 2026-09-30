@@ -517,7 +517,7 @@ test('縦軸の範囲を切り替えると目盛りが変わり、表とツー�
 
   const settings = await openSettings(page);
   await expect(settings.getByRole('radio', { name: '0から' })).toBeChecked();
-  expect(await yTickTexts(page)).toEqual(['0%', '20%', '40%', '60%', '80%', '100%']);
+  await expect.poll(() => yTickTexts(page)).toEqual(['0%', '20%', '40%', '60%', '80%', '100%']);
   const base = await shownValues(page);
 
   await settings.getByRole('radio', { name: '値の範囲' }).check();
@@ -573,4 +573,109 @@ test('Workspaceのペインでも縦軸の範囲が効き、ペインごとに�
   await expect(page.locator('.n-sensitivity-svg')).toHaveCount(2, { timeout: 30_000 });
   await expect.poll(() => yTickTexts(page, 0)).toEqual(['0%', '20%', '40%', '60%', '80%', '100%']);
   await expect.poll(async () => (await yTickTexts(page, 1))[0]).not.toBe('0%');
+});
+
+const LAYOUT_IDS_17 = [
+  'qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi', 'naginata-v18', 'nicola', 'shin-koume', 'asuka',
+  'shin-jis-prefix', 'shin-jis-simultaneous', 'shingeta', 'tsuki-2-263', 'kawasemi-kai', 'kawasemi-plus', 'oonishi-custom',
+];
+
+for (const { width, yRange, scale } of [
+  { width: 320, yRange: 'full', scale: 'relative' }, { width: 390, yRange: 'fit', scale: 'relative' }, { width: 390, yRange: 'fit', scale: 'absolute' },
+  { width: 1440, yRange: 'full', scale: 'absolute' }, { width: 1440, yRange: 'fit', scale: 'relative' },
+] as const) {
+  test(`対象17件でも、凡例は図の幅に収まり線に重ならず、名前は重複しない（${width}px・${scale}・縦軸の範囲${yRange}）`, async ({ page }) => {
+    await page.addInitScript(({ range, scaleValue }) => {
+      localStorage.setItem('keydist:standalone-analyzer-options', JSON.stringify({ version: 1, 'n-sensitivity': { yRange: range, scale: scaleValue } }));
+    }, { range: yRange, scaleValue: scale });
+    await seedLayouts(page, LAYOUT_IDS_17);
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/standalone/n-sensitivity');
+    await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(17, { timeout: 30_000 });
+    await waitForMeasuredWidth(page.locator('.n-sensitivity-svg'));
+    const legend = await measureLegend(page);
+    expect(legend.insideSvg, '枠が図の中に収まる').toBe(true);
+    expect(legend.linePointsInside).toBe(0);
+    expect(legend.dotsInside).toBe(0);
+    expect(legend.labelsInsideFrame, '名前が枠に収まる').toBe(true);
+    expect(new Set(legend.names).size, '名前が重複しない').toBe(17);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBe(0);
+  });
+}
+
+for (const width of [390, 1440]) {
+  test(`対象1件でも、名前が凡例の枠からはみ出さない（${width}px）`, async ({ page }) => {
+    await seedLayouts(page, ['qwerty']);
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/standalone/n-sensitivity');
+    await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(1, { timeout: 20_000 });
+    await waitForMeasuredWidth(page.locator('.n-sensitivity-svg'));
+    // 描画後に実際の字幅で枠を測り直す（フォントの読み込みが済むまで待つ）
+    await expect.poll(async () => (await measureLegend(page)).labelsInsideFrame).toBe(true);
+    // 名前と枠の右端の間に余白が残る（見積もりが小さいと、ぎりぎりか越える）
+    const gap = await page.locator('.n-sensitivity-svg').evaluate((svg) => {
+      const frame = svg.querySelector('.n-sensitivity-legend-frame')!.getBoundingClientRect();
+      const label = svg.querySelector('.n-sensitivity-legend-label')!.getBoundingClientRect();
+      return frame.right - label.right;
+    });
+    expect(gap).toBeGreaterThanOrEqual(4);
+  });
+}
+
+test('物理配列だけが違うSetupを4件並べても、凡例の名前が重ならない（省いても区別が残る）', async ({ page }) => {
+  await page.addInitScript(() => {
+    const shapes = ['row-staggered', 'jis-row-staggered', 'column-staggered', 'jis-column-staggered'];
+    const setups = shapes.map((shapeId, i) => ({ id: `nicola-${i}`, layoutId: 'nicola', shapeId }));
+    localStorage.setItem('keydist:setup-library', JSON.stringify({ version: 1, setups, overrides: {} }));
+    localStorage.setItem('keydist:multi-target-selection', JSON.stringify({ version: 1, targets: setups.map((s) => ({ kind: 'setup', setupId: s.id })) }));
+  });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/standalone/n-sensitivity');
+    await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(4, { timeout: 30_000 });
+    await waitForMeasuredWidth(page.locator('.n-sensitivity-svg'));
+    const legend = await measureLegend(page);
+    expect(new Set(legend.names).size, `${width}px: 名前が重複しない`).toBe(4);
+    // 省いた名前にも、物理配列を区別する部分が残る
+    expect(legend.names.join('|')).toContain('ANSI');
+    expect(legend.names.join('|')).toContain('JIS 109');
+    expect(legend.insideSvg).toBe(true);
+    expect(legend.linePointsInside).toBe(0);
+  }
+});
+
+test('Workspaceの狭い4ペイン（約340px）でも、凡例は図の中に収まり線に重ならない', async ({ page }) => {
+  const layouts = ['qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi', 'nicola', 'asuka'].map((layoutId) => ({ kind: 'layout', layoutId }));
+  await page.addInitScript((targets) => {
+    const set = (id: string) => ({ id, analyzerId: 'n-sensitivity', binding: { mode: 'fixed', target: { kind: 'set', selection: { targets, colorSlots: [0, 1, 2, 3, 4, 5, 6, 7] } } } });
+    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [{
+      id: 'four-panes', name: '4ペイン', panes: [set('a'), set('b'), set('c'), set('d')],
+      layout: { kind: 'split', direction: 'row', weight: 1, children: ['a', 'b', 'c', 'd'].map((id) => ({ kind: 'group', paneIds: [id], weight: 1 })) },
+    }] }));
+  }, layouts);
+  await page.setViewportSize({ width: 1700, height: 900 });
+  await page.goto('/workspace/four-panes');
+  await expect(page.locator('.n-sensitivity-svg')).toHaveCount(4, { timeout: 30_000 });
+  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(32, { timeout: 30_000 });
+  for (let i = 0; i < 4; i += 1) {
+    const svg = page.locator('.n-sensitivity-svg').nth(i);
+    await waitForMeasuredWidth(svg);
+    expect((await svg.boundingBox())!.width).toBeLessThan(400);
+    const legend = await measureLegend(page, `.n-sensitivity-svg >> nth=${i}`);
+    expect(legend.insideSvg).toBe(true);
+    expect(legend.linePointsInside).toBe(0);
+    expect(legend.dotsInside).toBe(0);
+    expect(legend.labelsInsideFrame).toBe(true);
+  }
+});
+
+test('実測値で縦軸の範囲を粗い区切りにすると、目盛りはきりのよい値になる', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('keydist:standalone-analyzer-options', JSON.stringify({ version: 1, 'n-sensitivity': { yRange: 'coarse', scale: 'absolute' } }));
+  });
+  await seedLayouts(page, ['qwerty', 'dvorak', 'colemak-dh']);
+  await page.goto('/standalone/n-sensitivity');
+  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(3, { timeout: 20_000 });
+  expect(await yTickTexts(page)).toEqual(['100 u', '200 u', '300 u', '400 u']);
 });

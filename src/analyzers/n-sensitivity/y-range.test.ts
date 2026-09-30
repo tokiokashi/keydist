@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { computeYRange } from './y-range.ts';
+import { computeYRange, formatYTicks } from './y-range.ts';
 import { DEFAULT_N_SENSITIVITY_OPTIONS } from './options.ts';
 
 const relative = [100, 100, 90, 77, 65, 97, 85, 82];
@@ -24,9 +24,15 @@ test('fit: 値のある範囲に合わせ、相対の上限は100%のまま', ()
   assert.ok(absolute.hi >= 380);
 });
 
-test('coarse: 0〜最大を4等分した区切りへ下限を切り下げる', () => {
+test('coarse: 相対は4等分した区切りへ下限を切り下げる', () => {
   assert.deepEqual(computeYRange('coarse', true, relative), { lo: 50, hi: 100, ticks: [50, 75, 100] });
   assert.equal(computeYRange('coarse', true, [100, 20]).lo, 0);
+});
+
+test('coarse: 実測の目盛りはきりのよい値（区切りの悪い最大値をそのまま4等分しない）', () => {
+  const range = computeYRange('coarse', false, [380.8, 247.3, 168.6, 137.7]);
+  assert.deepEqual(range, { lo: 100, hi: 400, ticks: [100, 200, 300, 400] });
+  assert.deepEqual(formatYTicks(false, range.ticks), ['100 u', '200 u', '300 u', '400 u']);
 });
 
 test('値が上限に張り付く時（全点が100%）と空の時は、詰めずに0から', () => {
@@ -36,7 +42,23 @@ test('値が上限に張り付く時（全点が100%）と空の時は、詰め�
 
 test('どの決め方でも、範囲は全点を含む', () => {
   for (const mode of ['full', 'fit', 'coarse'] as const) {
-    const range = computeYRange(mode, false, [380.8, 247.3, 168.6, 137.7]);
-    assert.ok(range.lo <= 137.7 && range.hi >= 380.8, mode);
+    for (const relativeScale of [true, false]) {
+      const values = relativeScale ? [100, 99.6, 99.55, 99.9] : [380.8, 247.3, 168.6, 137.7];
+      const range = computeYRange(mode, relativeScale, values);
+      assert.ok(range.lo <= Math.min(...values) && range.hi >= Math.max(...values), `${mode} ${relativeScale}`);
+    }
   }
+});
+
+test('値の幅がごく狭い時、目盛りは小数で書き分け、同じ文字が並ばない', () => {
+  const range = computeYRange('fit', true, [100, 100, 99.9, 99.7, 99.55]);
+  const labels = formatYTicks(true, range.ticks);
+  assert.equal(new Set(labels).size, labels.length);
+  assert.ok(labels.some((label) => /\.\d%$/.test(label)), labels.join(' '));
+  assert.ok(range.ticks.every((tick) => Number.isFinite(tick)));
+});
+
+test('整数の刻みなら小数を付けない（従来の見た目のまま）', () => {
+  assert.deepEqual(formatYTicks(true, [0, 20, 40, 60, 80, 100]), ['0%', '20%', '40%', '60%', '80%', '100%']);
+  assert.deepEqual(formatYTicks(false, [0, 76.16, 152.32]), ['0 u', '76 u', '152 u']);
 });
