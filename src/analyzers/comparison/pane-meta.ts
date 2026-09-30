@@ -1,3 +1,5 @@
+import { WIDE_RECOMMENDED_WIDTH_REM } from '../recommended-width.ts';
+
 /**
  * 画面に出す名前と短い説明（docs/architecture.md「Analyzerがペインに渡すもの」）。
  *
@@ -8,4 +10,6 @@
 export const COMPARISON_PANE_META = {
   name: '比較表',
   description: '選んだ配列やSetupで同じテキストを打った時の、指の移動距離などの数値を表に並べる。基準を選ぶと、基準に対する割合も出せる。',
+  /** 列が多く横に並ぶので、他より広く取る。 */
+  recommendedWidthRem: WIDE_RECOMMENDED_WIDTH_REM,
 } as const;

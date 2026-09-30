@@ -31,11 +31,12 @@ for (const width of pcWidths) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(`/standalone/${route}`);
       await waitForHydration(page);
-      const gaps = await sideGaps(page, '.standalone-stage');
+      const gaps = await sideGaps(page, '.standalone-stage .pane-frame');
       expect(Math.abs(gaps.left - gaps.right)).toBeLessThanOrEqual(2);
-      // 余りを空白にしすぎない: 本体の幅が上限（96rem）以下なら幅いっぱいを使う
+      // 余りを空白にしすぎない: 本体の幅が推奨幅（比較表は96rem、他は64rem）と余白の和以下なら幅いっぱいを使う
+      const limit = (route === 'comparison' ? 1536 : 1024) + 48;
       const bodyWidth = gaps.left + gaps.width + gaps.right;
-      if (bodyWidth <= 1536) expect(gaps.left).toBeLessThanOrEqual(2);
+      if (bodyWidth <= limit) expect(gaps.left).toBeLessThanOrEqual(25);
     });
   }
 }

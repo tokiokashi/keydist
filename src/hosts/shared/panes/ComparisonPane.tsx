@@ -11,6 +11,7 @@ import {
   traceConditionSummary,
   type ConditionValueNames,
 } from '../condition-summary.ts';
+import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
 import { PaneFrame } from '../PaneFrame.tsx';
 import { resolvePaneInput } from '../resolve-pane-input.ts';
 import { targetNameSource } from '../target-name-source.ts';
@@ -137,6 +138,7 @@ export function ComparisonPane({
     <PaneFrame
       name={comparisonAnalyzer.name}
       description={comparisonAnalyzer.description}
+      recommendedWidthRem={recommendedWidthRemOf(comparisonAnalyzer)}
       headingLevel={chrome.headingLevel}
       stickyHeader={chrome.stickyHeader}
       menuItems={chrome.menuItems}

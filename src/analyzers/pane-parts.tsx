@@ -39,6 +39,8 @@ export interface AnalyzerPaneParts<Definition, Options, BodyProps, TargetItemVal
   readonly name: string;
   /** 何を描くかを1〜2文で。見出しのⓘで出す。操作の説明や経緯は書かない。 */
   readonly description: string;
+  /** 本体の推奨幅 [rem]。省略すると既定（`recommended-width.ts`）。 */
+  readonly recommendedWidthRem?: number;
   readonly Body: ComponentType<BodyProps>;
   readonly Settings: ComponentType<AnalyzerSettingsProps<Options>>;
   /** 解析設定の各項目の「既定値へ戻す」と、解析設定のヘッダーの「すべて初期値に戻す」（Workspaceは⋯の「解析設定を初期値に戻す」）の戻す先。 */

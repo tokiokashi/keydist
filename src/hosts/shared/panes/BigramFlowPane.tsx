@@ -5,6 +5,7 @@ import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import type { BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { conditionHeaderInfoFromResolvedInput, traceConditionSummary } from '../condition-summary.ts';
 import { combinePaneStates } from '../pane-status.ts';
+import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
 import { PaneFrame } from '../PaneFrame.tsx';
 import { overrideWinsNotices } from '../condition-edit.ts';
 import { resolvePaneInput } from '../resolve-pane-input.ts';
@@ -88,6 +89,7 @@ export function BigramFlowPane({
     <PaneFrame
       name={bigramFlowAnalyzer.name}
       description={bigramFlowAnalyzer.description}
+      recommendedWidthRem={recommendedWidthRemOf(bigramFlowAnalyzer)}
       headingLevel={chrome.headingLevel}
       stickyHeader={chrome.stickyHeader}
       menuItems={chrome.menuItems}

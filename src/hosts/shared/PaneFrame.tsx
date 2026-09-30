@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { EngineRequestState } from '#engine/request.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { describeEngineRequestError, engineRequestErrorDetail, paneStatusLabel, TRACE_ERRORS_SENTENCE } from './pane-status.ts';
@@ -30,6 +30,11 @@ export interface PaneFrameProps {
   readonly name: string;
   /** Analyzerの短い説明。見出しのⓘで出す。 */
   readonly description: string;
+  /**
+   * 本体の推奨幅 [rem]（`analyzers/recommended-width.ts`）。ペインがこれより広い時、本体はここで止まって中央に寄る。
+   * 狭い時は効かず、ペインの幅に縮む。
+   */
+  readonly recommendedWidthRem: number;
   /** 個別画面ではペインのAnalyzer名がページのh1になる。Workspaceでは2。 */
   readonly headingLevel?: 1 | 2;
   /**
@@ -90,6 +95,7 @@ export interface PaneFrameProps {
 export function PaneFrame({
   name,
   description,
+  recommendedWidthRem,
   headingLevel = 2,
   stickyHeader = false,
   targetName,
@@ -126,7 +132,12 @@ export function PaneFrame({
   };
 
   return (
-    <section className="pane-frame" aria-label={paneName} data-pane-status={engineState.status}>
+    <section
+      className="pane-frame"
+      aria-label={paneName}
+      data-pane-status={engineState.status}
+      style={{ '--pane-recommended-width': `${recommendedWidthRem}rem` } as CSSProperties}
+    >
       <header className="pane-frame-header" data-sticky={stickyHeader || undefined} data-menu={menuItems.length > 0 || undefined}>
         <div className="pane-frame-name">
           <Heading className="pane-frame-title">{name}</Heading>

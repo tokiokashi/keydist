@@ -5,11 +5,22 @@
  * 余白と角丸は実物を見て決める値（#627）で、ここに1か所に集める。
  * 余白（ペインの間・面の外周）の数値は、`WorkspaceDock.tsx`の`PANE_GAP`と、下の`--dv-spacing-padding`。
  */
+/*
+ * 板そのものの最大幅。既定では効かせない（none）。広い画面で板を狭めた見た目を比べる時は、
+ * ここの値（例: 120rem）を書き換えるだけで切り替わり、余りは左右の余白になる。
+ * ペインの中身の幅は別（ペインの推奨幅。`analyzers/recommended-width.ts`）で、こちらとは独立に効く。
+ */
+:root {
+  --workspace-board-max-width: none;
+}
+
 .workspace-dock-area {
   position: relative;
   flex: 1 1 0;
   min-width: 0;
   min-height: 0;
+  max-width: var(--workspace-board-max-width);
+  margin-inline: auto;
 }
 
 /* テーマのclassは面の入れ物の中にDockviewが作る要素に付くので、子孫として指す。 */
