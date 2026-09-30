@@ -38,3 +38,44 @@
   max-height: 60%;
   overflow: auto;
 }
+
+/*
+ * 【試作】案C: グラフと実測値をタブで切り替える（#808）。表は畳まず、選んだ時に領域いっぱいに出す。
+ */
+.n-sensitivity-view-tabs {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.n-sensitivity-view-tabs [role='tab'] {
+  padding: 0.25rem 0.7rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.n-sensitivity-view-tabs [role='tab'][aria-selected='true'] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+:root[data-fit='c'] .n-sensitivity-table-details > summary {
+  display: none;
+}
+
+:root[data-fit='c'] .n-sensitivity-table-details {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+}

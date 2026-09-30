@@ -331,8 +331,11 @@ export function NSensitivityBody({
   const fitMode = useFitMode();
   const [tableOpen, setTableOpen] = useState(true);
   useEffect(() => {
-    if (fitMode !== null) setTableOpen(false);
+    setTableOpen(fitMode === 'a' || fitMode === 'b' ? false : true);
   }, [fitMode]);
+  // 【試作】案C: グラフと表を切り替える。
+  const tabbed = fitMode === 'c';
+  const [view, setView] = useState<'chart' | 'table'>('chart');
 
   const failedRows = okRows.filter(
     (row): row is typeof row & { entry: NSensitivitySeriesFailed } => row.entry.kind === 'failed',
@@ -340,7 +343,15 @@ export function NSensitivityBody({
 
   return (
     <section className="n-sensitivity-feature" data-react-feature="n-sensitivity">
-      {plotted.length > 0 ? <NSensitivityChart series={plotted} scale={options.scale} yRangeMode={options.yRange} /> : null}
+      {tabbed && plotted.length > 0 ? (
+        <div className="n-sensitivity-view-tabs" role="tablist" aria-label="表示の切り替え">
+          <button type="button" role="tab" aria-selected={view === 'chart'} onClick={() => setView('chart')}>グラフ</button>
+          <button type="button" role="tab" aria-selected={view === 'table'} onClick={() => setView('table')}>実測値</button>
+        </div>
+      ) : null}
+      {plotted.length > 0 && !(tabbed && view === 'table')
+        ? <NSensitivityChart series={plotted} scale={options.scale} yRangeMode={options.yRange} />
+        : null}
 
       {failedRows.length > 0 ? (
         <ul className="n-sensitivity-failures">
@@ -353,7 +364,7 @@ export function NSensitivityBody({
         </ul>
       ) : null}
 
-      {plotted.length > 0 ? (
+      {plotted.length > 0 && !(tabbed && view === 'chart') ? (
       <details
         className="n-sensitivity-table-details"
         open={tableOpen}

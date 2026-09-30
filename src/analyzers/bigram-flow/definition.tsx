@@ -31,6 +31,7 @@ import {
   type OptionBinding,
 } from '#ui/primitives/option-fields.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
+import { useFitMode } from '#ui/primitives/fit-mode.ts';
 import {
   AREA_HEIGHT,
   AREA_WIDTH,
@@ -728,6 +729,16 @@ export function BigramFlowBody({
     polarGain,
   } = options;
 
+  // 【試作】案C（#808）: 図を1つに絞って切り替える。
+  const tabbed = useFitMode() === 'c';
+  const [view, setView] = useState<'keyboard' | 'relative'>('keyboard');
+  const statusChips = (
+    <p className="flow-status">
+      <span>2打鍵 {extracted.rawCount.toLocaleString()}組</span>
+      {trace.skipped > 0 ? <span>打てずに飛ばした文字 {trace.skipped}</span> : null}
+    </p>
+  );
+
   // 展開の状態は保存しない（再読み込みで閉じる）。閉じるまで開いたまま。
   const [keyboardFlowOpen, setKeyboardFlowOpen] = useState(false);
   const [relativeVectorsOpen, setRelativeVectorsOpen] = useState(false);
@@ -745,12 +756,21 @@ export function BigramFlowBody({
       data-polar-gain={polarGain}
     >
       {/* 表示中のデータに付く数（何組を描いたか・何を飛ばしたか）だけを置く。配列名などの条件は見出しと条件の要約が出す。 */}
-      <p className="flow-status">
-        <span>2打鍵 {extracted.rawCount.toLocaleString()}組</span>
-        {trace.skipped > 0 ? <span>打てずに飛ばした文字 {trace.skipped}</span> : null}
-      </p>
+      {tabbed ? (
+        <div className="flow-view-tabs">
+          <div role="tablist" aria-label="図の切り替え">
+            <button type="button" role="tab" aria-selected={view === 'keyboard'} onClick={() => setView('keyboard')}>
+              Keyboard Flow
+            </button>
+            <button type="button" role="tab" aria-selected={view === 'relative'} onClick={() => setView('relative')}>
+              Relative vectors
+            </button>
+          </div>
+          {statusChips}
+        </div>
+      ) : statusChips}
 
-      <section className="flow-block" aria-label="Keyboard Flow">
+      <section className="flow-block" aria-label="Keyboard Flow" hidden={tabbed && view !== 'keyboard'}>
         <div className="flow-block-heading">
           <h3 className="flow-block-title">Keyboard Flow</h3>
           <InfoButton name="Keyboard Flow" description={KEYBOARD_FLOW_READING} />
@@ -782,6 +802,7 @@ export function BigramFlowBody({
         <motion.section
           className="flow-block flow-analysis"
           aria-label="Relative vectors"
+          hidden={tabbed && view !== 'relative'}
           key={selectedFingers.length === 0 ? 'all' : selectedFingers.slice().sort().join('-')}
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}

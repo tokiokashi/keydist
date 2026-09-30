@@ -111,3 +111,70 @@
     grid-column: 1 / -1;
   }
 }
+
+/*
+ * 【試作】案C: 図を1つに絞ってタブで切り替える（#808）。Aの「枠いっぱいに縮める」はそのまま使い、
+ * 見せる図が1つになるぶん、1つの図が使える高さが増える。
+ */
+:root[data-fit='c'] .flow-block[hidden] {
+  display: none;
+}
+
+:root[data-fit='c'] .flow-feature {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.flow-view-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem 0.6rem;
+}
+
+.flow-view-tabs [role='tablist'] {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.flow-view-tabs [role='tab'] {
+  padding: 0.25rem 0.7rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.flow-view-tabs [role='tab'][aria-selected='true'] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+/* タブが名前を持つので、図の小見出しの文字は隠す（ⓘ・表示の調整・対象の指の組は残す）。 */
+:root[data-fit='c'] .flow-block-title {
+  font-size: 0;
+}
+
+:root[data-fit='c'] .flow-block-subject {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+/* Keyboard Flowは横長の図なので、縦に長いペインでは枠いっぱいに伸ばさず図の高さで止める（残りは空く）。 */
+:root[data-fit='c'] .flow-stage {
+  flex: none;
+}
+
+:root[data-fit='c'] .flow-keyboard-svg {
+  flex: none;
+  height: auto;
+  max-height: 100%;
+}
