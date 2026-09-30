@@ -1,3 +1,4 @@
+import { UNSAFE_OBJECT_KEYS, type CodecDiagnostic, type DecodedWithDiagnostics } from '../codec/index.ts';
 import { azik } from './azik.ts';
 import { kunrei, addSokuonForms } from './kunrei.ts';
 import { OONISHI_OVERRIDES, oonishiRomaji } from './oonishi.ts';
@@ -175,13 +176,37 @@ export function isUserRomajiRule(value: unknown): value is UserRomajiRule {
     ) && typeof value.generateSokuon === 'boolean';
 }
 
-export function sanitizeStoredRomajiSettings(value: unknown): RomajiSettings {
-  if (!isRecord(value)) return { rules: [], assignments: {} };
-  const rules = Array.isArray(value.rules) ? value.rules.filter(isUserRomajiRule) : [];
-  const assignments = isRecord(value.assignments)
-    ? Object.fromEntries(Object.entries(value.assignments).filter(([, id]) => typeof id === 'string'))
-    : {};
-  return { rules, assignments };
+/**
+ * 保存された自作のローマ字規則と割り当てを読む。値があって想定の形でない時（nullを含む）と、
+ * 壊れた要素を捨てる時は診断を積む。`undefined`（保存が無い・項目が無い）は空で正しいので診断しない。
+ */
+export function decodeStoredRomajiSettings(value: unknown): DecodedWithDiagnostics<RomajiSettings> {
+  const diagnostics: CodecDiagnostic[] = [];
+  if (!isRecord(value)) {
+    if (value !== undefined) diagnostics.push({ path: '', message: '形式が不正なため自作のローマ字規則を捨てた' });
+    return { value: { rules: [], assignments: {} }, diagnostics };
+  }
+  const rules: UserRomajiRule[] = [];
+  if (Array.isArray(value.rules)) {
+    value.rules.forEach((candidate, index) => {
+      if (isUserRomajiRule(candidate)) rules.push(candidate);
+      else diagnostics.push({ path: `rules[${index}]`, message: '形式が不正なためローマ字規則を捨てた' });
+    });
+  } else if (value.rules !== undefined) {
+    diagnostics.push({ path: 'rules', message: '配列形式でないためローマ字規則を捨てた' });
+  }
+  const assignments: Record<string, string> = {};
+  if (isRecord(value.assignments)) {
+    for (const [key, id] of Object.entries(value.assignments)) {
+      // 予約名のキーは代入で自分のプロパティにならず黙って消えるので、捨てる旨を診断に残す
+      if (UNSAFE_OBJECT_KEYS.has(key)) diagnostics.push({ path: `assignments.${key}`, message: `予約名のキー「${key}」を捨てた` });
+      else if (typeof id === 'string') assignments[key] = id;
+      else diagnostics.push({ path: `assignments.${key}`, message: '文字列でないため規則の割り当てを捨てた' });
+    }
+  } else if (value.assignments !== undefined) {
+    diagnostics.push({ path: 'assignments', message: '形式が不正なため規則の割り当てを捨てた' });
+  }
+  return { value: { rules, assignments }, diagnostics };
 }
 
 export function sanitizeRomajiSettings(value: unknown): RomajiSettings {

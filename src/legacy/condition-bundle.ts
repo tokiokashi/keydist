@@ -14,7 +14,7 @@ import {
   type UiStateV1,
 } from './ui-state.ts';
 import {
-  sanitizeUserLayouts,
+  decodeUserLayouts,
   type UserLayout,
 } from '#input/layouts/user-layouts.ts';
 import {
@@ -88,7 +88,7 @@ export function parseConditionBundle(
   const parsed = record(JSON.parse(source));
   if (parsed.version !== CONDITION_BUNDLE_VERSION) throw new Error('条件ファイルのバージョンが違う');
 
-  const layouts = sanitizeUserLayouts(parsed.layouts);
+  const layouts = decodeUserLayouts(parsed.layouts).value;
   const expandedChoices = choicesWithLayouts(choices, layouts);
   const candidateState = {
     ...defaults,

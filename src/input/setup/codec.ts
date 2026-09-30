@@ -19,7 +19,7 @@ import type { SetupLibrary } from './collection.ts';
  * `Setup`の各fieldの寛容さ:
  * - id / layoutId / shapeId: この3つが無いとSetupとして機能しない（`resolveSetup`が
  *   参照できない・Setupを一覧に出せない）。1つでも欠けたり型が違えば**Setup全体を
- *   捨てる**（`decodeDroppingInvalid`を要素単位で使う。既存の`sanitizeUserLayouts`と
+ *   捨てる**（`decodeDroppingInvalid`を要素単位で使う。既存の`decodeUserLayouts`と
  *   同じ「壊れた要素だけ捨てて残りを読む」方針）
  * - label: 無くても自動命名（naming.ts）に落ちるだけなので、無効なら**フィールドだけ
  *   落として省略**（Setup自体は残す）

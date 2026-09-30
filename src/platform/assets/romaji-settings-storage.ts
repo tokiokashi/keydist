@@ -1,18 +1,28 @@
+import type { CodecDiagnostic, DecodedWithDiagnostics } from '#input/codec/index.ts';
 import {
-  sanitizeStoredRomajiSettings,
+  decodeStoredRomajiSettings,
   type RomajiSettings,
 } from '#input/romaji/rules.ts';
 
 export const ROMAJI_SETTINGS_STORAGE_KEY = 'keydist:romaji-rules';
 
-export function loadRomajiSettings(): RomajiSettings {
+/**
+ * 保存を読み、捨てたものの診断も返す。保存が無い時は診断なしの空、
+ * JSONとして読めない時は空と診断（壊れたまま次の保存で上書きされることを示すため）。
+ */
+export function loadRomajiSettingsWithDiagnostics(): DecodedWithDiagnostics<RomajiSettings> {
   try {
     const raw = localStorage.getItem(ROMAJI_SETTINGS_STORAGE_KEY);
-    if (!raw) return { rules: [], assignments: {} };
-    return sanitizeStoredRomajiSettings(JSON.parse(raw));
+    if (!raw) return decodeStoredRomajiSettings(undefined);
+    return decodeStoredRomajiSettings(JSON.parse(raw));
   } catch {
-    return { rules: [], assignments: {} };
+    const diagnostics: CodecDiagnostic[] = [{ path: '', message: '読み取れないため自作のローマ字規則を捨てた' }];
+    return { value: { rules: [], assignments: {} }, diagnostics };
   }
+}
+
+export function loadRomajiSettings(): RomajiSettings {
+  return loadRomajiSettingsWithDiagnostics().value;
 }
 
 export function saveRomajiSettings(settings: RomajiSettings) {
