@@ -3,7 +3,7 @@ import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivityExtracted
 import { DEFAULT_N_SENSITIVITY_OPTIONS, type NSensitivityOptions } from './options.ts';
 import { bindOption, RadioOptionField } from '#ui/primitives/option-fields.tsx';
 import { N_SENSITIVITY_PANE_META } from './pane-meta.ts';
-import { computeYRange, N_SENSITIVITY_Y_RANGE_MODE } from './y-range.ts';
+import { computeYRange } from './y-range.ts';
 import { legendItemOffset, placeLegend, truncateLabel, LEGEND_FONT_SIZE, LEGEND_SWATCH_WIDTH } from './legend-placement.ts';
 import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
 import './n-sensitivity-view.css';
@@ -106,9 +106,11 @@ function useMeasuredWidth(): [React.RefObject<HTMLDivElement | null>, number | n
 function NSensitivityChart({
   series,
   scale,
+  yRangeMode,
 }: {
   series: readonly PlottedSeries[];
   scale: NSensitivityOptions['scale'];
+  yRangeMode: NSensitivityOptions['yRange'];
 }) {
   // 置かれた領域の幅をそのままviewBoxの幅にする（表示と等倍になり、文字が縮まない）。
   // 高さは2:1を基本に、狭い領域でも線の間隔が潰れない下限と、広い領域で伸びすぎない上限で止める。
@@ -123,7 +125,7 @@ function NSensitivityChart({
 
   // 縦軸の範囲は決め方を`y-range.ts`に閉じている（既定は0から）。相対は上限100%固定
   // （N=0が100%で、Nを増やしても距離は増えないため）。実測は系列の最大値に合わせる。
-  const yRange = computeYRange(N_SENSITIVITY_Y_RANGE_MODE, scale === 'relative', series.flatMap((s) => s.points.map((p) => p.y)));
+  const yRange = computeYRange(yRangeMode, scale === 'relative', series.flatMap((s) => s.points.map((p) => p.y)));
   const ySpan = yRange.hi - yRange.lo || 1;
   const yTickValues = yRange.ticks;
 
@@ -283,7 +285,7 @@ export function NSensitivityBody({
 
   return (
     <section className="n-sensitivity-feature" data-react-feature="n-sensitivity">
-      {plotted.length > 0 ? <NSensitivityChart series={plotted} scale={options.scale} /> : null}
+      {plotted.length > 0 ? <NSensitivityChart series={plotted} scale={options.scale} yRangeMode={options.yRange} /> : null}
 
       {failedRows.length > 0 ? (
         <ul className="n-sensitivity-failures">
@@ -333,6 +335,15 @@ export function NSensitivitySettings({ options, onOptionsChange }: AnalyzerSetti
         choices={[
           { value: 'relative', label: '相対（N=0を100%）' },
           { value: 'absolute', label: '実測値 [u]' },
+        ]}
+      />
+      <RadioOptionField
+        label="縦軸の範囲"
+        binding={bindOption(options, DEFAULT_N_SENSITIVITY_OPTIONS, onOptionsChange, 'yRange')}
+        choices={[
+          { value: 'full', label: '0から' },
+          { value: 'fit', label: '値の範囲' },
+          { value: 'coarse', label: '粗い区切り' },
         ]}
       />
     </div>

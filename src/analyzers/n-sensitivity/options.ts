@@ -18,6 +18,13 @@ import { defineOption, defineOptions, picklistUrlCodec } from '#analyzers/option
 const SCALES = ['relative', 'absolute'] as const;
 export type NSensitivityScale = (typeof SCALES)[number];
 
+/**
+ * `yRange`は縦軸の範囲の決め方（決め方の中身は`y-range.ts`）。表示だけが変わり数値は動かない
+ * ので`affects: 'view'`。範囲を詰めると配列間の差が大きく見えるため、既定は0から始める。
+ */
+const Y_RANGES = ['full', 'fit', 'coarse'] as const;
+export type NSensitivityYRange = (typeof Y_RANGES)[number];
+
 export const nSensitivityOptions = defineOptions({
   scale: defineOption<NSensitivityScale>({
     schema: v.picklist(SCALES),
@@ -25,6 +32,13 @@ export const nSensitivityOptions = defineOptions({
     affects: 'view',
     url: picklistUrlCodec('scale', SCALES),
     label: '縦軸',
+  }),
+  yRange: defineOption<NSensitivityYRange>({
+    schema: v.picklist(Y_RANGES),
+    default: 'full',
+    affects: 'view',
+    url: picklistUrlCodec('yrange', Y_RANGES),
+    label: '縦軸の範囲',
   }),
 });
 
@@ -35,4 +49,5 @@ export const DEFAULT_N_SENSITIVITY_OPTIONS: NSensitivityOptions = nSensitivityOp
 /** 入れ忘れ防止テスト（`optionsDiscipline`）用の、既定値と異なる妥当な値の組。 */
 export const ALTERNATE_N_SENSITIVITY_OPTIONS: NSensitivityOptions = {
   scale: 'absolute',
+  yRange: 'fit',
 };

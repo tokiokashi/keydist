@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { computeYRange, N_SENSITIVITY_Y_RANGE_MODE } from './y-range.ts';
+import { computeYRange } from './y-range.ts';
+import { DEFAULT_N_SENSITIVITY_OPTIONS } from './options.ts';
 
 const relative = [100, 100, 90, 77, 65, 97, 85, 82];
 
 test('既定は0から始める決め方（縦軸の見た目を変えない）', () => {
-  assert.equal(N_SENSITIVITY_Y_RANGE_MODE, 'full');
+  assert.equal(DEFAULT_N_SENSITIVITY_OPTIONS.yRange, 'full');
 });
 
 test('full: 相対は0〜100%を20%刻み、実測は0〜最大値', () => {

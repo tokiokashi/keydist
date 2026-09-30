@@ -2,8 +2,8 @@
  * N感度の縦軸の範囲の決め方（#806）。
  *
  * 見せ方で読まれ方が変わる（範囲を詰めるほど、配列間の差が大きく見える）。このツールは優劣を
- * 裁定しない（spec/distance-model.md §12.3）ので、どれを既定にするかはオーナーが決める。
- * 既定を替えるのは`N_SENSITIVITY_Y_RANGE_MODE`の1行だけで済むよう、決め方をここに閉じ込める。
+ * 裁定しない（spec/distance-model.md §12.3）ので、既定は0から始めるfullにする。
+ * 利用者が解析設定で選ぶ（既定はfull）。決め方はここに閉じ込める。
  *
  * - full: 0から始める。相対は0〜100%。実測は0〜最大値。
  * - fit: 値のある範囲に合わせる。データの最小値より少し下（幅の5%）を下限にし、区切りのよい値へ丸める
@@ -14,9 +14,6 @@
  * 「0を含めて上だけ詰める」は、相対では上限が最初から最大なので詰める余地が無く、fullと同じになる。
  */
 export type YRangeMode = 'full' | 'fit' | 'coarse';
-
-/** 縦軸の範囲の既定。オーナーが決めたらここだけを替える。 */
-export const N_SENSITIVITY_Y_RANGE_MODE: YRangeMode = 'full';
 
 export interface YRange {
   readonly lo: number;

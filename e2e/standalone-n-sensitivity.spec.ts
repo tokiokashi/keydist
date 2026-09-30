@@ -496,3 +496,81 @@ test('軸の目盛りの文字とNの軸の見出しが重ならない', async (
   });
   expect(gap).toBeGreaterThanOrEqual(4);
 });
+
+/** 縦軸の目盛りの文字（DOMの順。下から上）。 */
+async function yTickTexts(page: import('@playwright/test').Page, nth = 0): Promise<string[]> {
+  return page.locator('.n-sensitivity-svg').nth(nth).locator('text[text-anchor="end"]').allTextContents();
+}
+
+/** 表の実測値と、ツールチップの相対値・実測値（図の値が変わっていないことの確認用）。 */
+async function shownValues(page: import('@playwright/test').Page) {
+  return page.evaluate(() => ({
+    table: [...document.querySelectorAll('.n-sensitivity-table tbody tr')].map((tr) => [...tr.querySelectorAll('td')].map((td) => td.textContent)),
+    tips: [...document.querySelectorAll('[data-n-sensitivity-series] circle title')].map((t) => t.textContent),
+  }));
+}
+
+test('縦軸の範囲を切り替えると目盛りが変わり、表とツールチップの値は変わらない。リロードしても残る', async ({ page }) => {
+  await seedLayouts(page, ['qwerty', 'dvorak', 'colemak-dh']);
+  await page.goto('/standalone/n-sensitivity');
+  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(3, { timeout: 20_000 });
+
+  const settings = await openSettings(page);
+  await expect(settings.getByRole('radio', { name: '0から' })).toBeChecked();
+  expect(await yTickTexts(page)).toEqual(['0%', '20%', '40%', '60%', '80%', '100%']);
+  const base = await shownValues(page);
+
+  await settings.getByRole('radio', { name: '値の範囲' }).check();
+  await expect.poll(() => yTickTexts(page)).toEqual(['60%', '70%', '80%', '90%', '100%']);
+  expect(await shownValues(page)).toEqual(base);
+
+  await (await openSettings(page)).getByRole('radio', { name: '粗い区切り' }).check();
+  await expect.poll(() => yTickTexts(page)).toEqual(['50%', '75%', '100%']);
+  expect(await shownValues(page)).toEqual(base);
+
+  await expect
+    .poll(async () => page.evaluate((key) => localStorage.getItem(key), STANDALONE_ANALYZER_OPTIONS_KEY))
+    .toContain('coarse');
+  await page.reload();
+  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(3, { timeout: 20_000 });
+  await expect.poll(() => yTickTexts(page)).toEqual(['50%', '75%', '100%']);
+  await expect((await openSettings(page)).getByRole('radio', { name: '粗い区切り' })).toBeChecked();
+});
+
+for (const yRange of ['fit', 'coarse'] as const) {
+  for (const { count, width } of [{ count: 3, width: 1440 }, { count: 8, width: 390 }]) {
+    test(`縦軸の範囲が${yRange}でも、凡例は線にも点にも重ならない（対象${count}件・${width}px）`, async ({ page }) => {
+      await page.addInitScript((value) => {
+        localStorage.setItem('keydist:standalone-analyzer-options', JSON.stringify({ version: 1, 'n-sensitivity': { yRange: value } }));
+      }, yRange);
+      await seedLayouts(page, LAYOUT_IDS_8.slice(0, count));
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/standalone/n-sensitivity');
+      await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(count, { timeout: 20_000 });
+      await waitForMeasuredWidth(page.locator('.n-sensitivity-svg'));
+      expect((await yTickTexts(page))[0]).not.toBe('0%');
+      const legend = await measureLegend(page);
+      expect(legend.insideSvg).toBe(true);
+      expect(legend.linePointsInside).toBe(0);
+      expect(legend.dotsInside).toBe(0);
+    });
+  }
+}
+
+test('Workspaceのペインでも縦軸の範囲が効き、ペインごとに選べる', async ({ page }) => {
+  const layouts = ['qwerty', 'dvorak'].map((layoutId) => ({ kind: 'layout', layoutId }));
+  await page.addInitScript((targets) => {
+    const set = (id: string, options?: unknown) => ({ id, analyzerId: 'n-sensitivity', options, binding: { mode: 'fixed', target: { kind: 'set', selection: { targets, colorSlots: [0, 1] } } } });
+    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [{
+      id: 'yrange-panes', name: '縦軸の確認', panes: [set('a'), set('b', { yRange: 'fit' })],
+      layout: { kind: 'split', direction: 'row', weight: 1, children: [
+        { kind: 'group', paneIds: ['a'], weight: 1 }, { kind: 'group', paneIds: ['b'], weight: 1 },
+      ] },
+    }] }));
+  }, layouts);
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.goto('/workspace/yrange-panes');
+  await expect(page.locator('.n-sensitivity-svg')).toHaveCount(2, { timeout: 30_000 });
+  await expect.poll(() => yTickTexts(page, 0)).toEqual(['0%', '20%', '40%', '60%', '80%', '100%']);
+  await expect.poll(async () => (await yTickTexts(page, 1))[0]).not.toBe('0%');
+});
