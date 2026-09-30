@@ -7,6 +7,7 @@ import {
 } from './condition-summary.ts';
 import { resetAllGlobalCommand, resettableGlobalIds } from './condition-edit.ts';
 import { ConditionEditor, type ConditionEditorContext } from './ConditionEditor.tsx';
+import { PresetSection } from './PresetSection.tsx';
 
 /**
  * 条件の要約（docs/architecture.md「画面の構成 > 条件の要約」）。
@@ -140,6 +141,7 @@ function ConditionModal({ rows, header, targetDiffs, editor, onClose }: Conditio
               {header.layoutName} / {header.shapeName} · 指の割当: {header.fingerAssignmentName}
             </p>
           ) : null}
+          <PresetSection editor={editor} />
           <ConditionEditor editor={editor} rows={rows} />
           {targetDiffs.length > 0 ? (
             <section className="pane-condition-diffs" aria-label="対象ごとの差">

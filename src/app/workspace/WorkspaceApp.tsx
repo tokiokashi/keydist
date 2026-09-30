@@ -3,7 +3,7 @@ import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { WorkspacePage, type WorkspaceTabsMode } from '#hosts/workspace/index.ts';
 import { builtinPaneCatalog } from '../standalone/catalog.ts';
 import { sharedEngineComputer } from '../standalone/engine-computer.ts';
-import { generateTextId } from '../standalone/id-generator.ts';
+import { generatePresetId, generateTextId } from '../standalone/id-generator.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 import { useTextContentCommit } from '../standalone/use-text-content-commit.ts';
 import { generatePaneId } from './id-generator.ts';
@@ -54,6 +54,7 @@ export function WorkspaceApp({ workspaceId, tabs }: { readonly workspaceId: stri
       catalog={catalog}
       generateTextId={generateTextId}
       generateId={generatePaneId}
+      generatePresetId={generatePresetId}
       history={history}
       onTextContentCommit={commitTextContent}
       onPaneOptionsCommit={commitPaneOptions}

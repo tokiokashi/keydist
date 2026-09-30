@@ -1,5 +1,6 @@
 export {
   conditionHeaderInfo,
+  conditionItemLabel,
   conditionHeaderInfoFromResolvedInput,
   conditionSummaryLine,
   isChangedConditionRow,

@@ -3,6 +3,7 @@ import type { Command } from '#input/commands/index.ts';
 import { setSingleTargetCommand, type KeydistAssets } from '#engine/commands.ts';
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
+import type { PresetIdGenerator } from '#input/presets/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import type { EngineComputer } from '#engine/computer.ts';
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
@@ -14,6 +15,7 @@ import { decodeStoredAnalyzerOptions } from '#hosts/shared/decode-analyzer-optio
 import { BigramFlowPane } from '#hosts/shared/panes/BigramFlowPane.tsx';
 import type { PaneChrome, PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
+import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { urlOptionsNotices, useUrlOptions } from './use-url-options.ts';
 import { useTargetShareSource, useUrlTargets } from './use-url-targets.ts';
@@ -54,6 +56,8 @@ export interface BigramFlowStandalonePageProps {
   readonly onBigramFlowOptionsCommit: (options: BigramFlowOptions) => void;
   /** 資産のコマンド履歴（文脈バーのUndo / Redo）。`app` が組み立てる。 */
   readonly history: ContextBarHistory;
+  /** プリセットの新しいidの発行（条件のモーダルのプリセットの節が使う）。 */
+  readonly generatePresetId: PresetIdGenerator;
 }
 
 /** 個別画面のペインの枠まわり。ペインのAnalyzer名がページのh1で、見出しを文脈バーの下に固定する。 */
@@ -69,6 +73,7 @@ export function BigramFlowStandalonePage({
   onTextContentCommit,
   onBigramFlowOptionsCommit,
   history,
+  generatePresetId,
 }: BigramFlowStandalonePageProps) {
   // 対象（`AnalysisTarget`）はSingleのAnalyzerが共有する資産（`singleTargetSelection`。#663）が正。
   // まだ選んでいなければ既定の配列を使う（`effectiveSingleTarget`）。
@@ -107,6 +112,7 @@ export function BigramFlowStandalonePage({
   const shareSource = useTargetShareSource(catalog, assets.setupLibrary.setups);
   const targetNotices = useUrlTargets({ kind: 'single', assetsReady, source: shareSource, dispatch });
 
+  const undo = useLatestCallback(history.undo);
   const env: PaneEnvironment = useMemo(() => ({
     setups: assets.setupLibrary.setups,
     overrides: assets.setupLibrary.overrides,
@@ -114,8 +120,11 @@ export function BigramFlowStandalonePage({
     resolvedText,
     cache,
     dispatch,
+    presetLibrary: assets.presetLibrary,
+    generatePresetId,
+    undo,
     assetsReady,
-  }), [assets.setupLibrary, catalog, resolvedText, cache, dispatch, assetsReady]);
+  }), [assets.setupLibrary, assets.presetLibrary, catalog, resolvedText, cache, dispatch, generatePresetId, undo, assetsReady]);
 
   const changeOptions = (next: BigramFlowOptions) => {
     setOptionsDraft(next);

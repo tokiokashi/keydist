@@ -272,6 +272,117 @@
   font-size: 0.76rem;
 }
 
+/* モーダル上部のプリセットの節。閉じたまま開き、条件の行と同じ幅で並べる。 */
+.condition-presets {
+  margin-bottom: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+}
+
+.condition-presets > summary {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.condition-presets-body {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.2rem 0.7rem 0.7rem;
+}
+
+.condition-presets-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.condition-preset-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.condition-preset-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.condition-preset-row:last-child {
+  border-bottom: 0;
+}
+
+.condition-preset-name {
+  min-width: 0;
+  margin-right: auto;
+  overflow-wrap: anywhere;
+}
+
+.condition-preset-same {
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.condition-preset-rename,
+.condition-preset-save {
+  display: flex;
+  flex: 1;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.condition-preset-rename input,
+.condition-preset-save input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+}
+
+.condition-presets button:not(.pane-menu-button):not(.pane-menu-item) {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.condition-presets button:disabled {
+  color: var(--text-muted);
+  opacity: 0.6;
+  cursor: default;
+}
+
+.condition-preset-result {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.condition-preset-result button {
+  margin-left: auto;
+}
+
 @media (max-width: 640px) {
   .condition-modal {
     width: 100%;
@@ -280,5 +391,10 @@
     margin: auto 0 0;
     border-bottom: 0;
     border-radius: 12px 12px 0 0;
+  }
+
+  .condition-preset-save,
+  .condition-preset-result {
+    flex-wrap: wrap;
   }
 }

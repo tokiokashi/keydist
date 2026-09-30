@@ -30,7 +30,7 @@ test('置き換え: 既定と同じ値は上書きとして残さない。全部
   assert.deepEqual(result.overrides, {});
 });
 
-test('置き換え: 既定が文脈で決まる項目は既定を判れないので値を残す', () => {
+test('置き換え: 既定が文脈で決まる項目は既定を判定できないので値を残す', () => {
   const result = applyPresetValues(REGISTRY, {}, GLOBAL, { contextual: 'ctx' });
   assert.deepEqual(result.overrides.global, { contextual: 'ctx' });
 });

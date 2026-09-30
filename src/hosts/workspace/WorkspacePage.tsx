@@ -20,10 +20,12 @@ import {
   type WorkspacePane,
   type WorkspacePaneTarget,
 } from '#engine/workspace.ts';
+import type { PresetIdGenerator } from '#input/presets/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
+import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import type { PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
@@ -60,6 +62,8 @@ export interface WorkspacePageProps {
   readonly generateTextId: TextIdGenerator;
   /** ペインのidの発行。 */
   readonly generateId: WorkspaceIdGenerator;
+  /** プリセットの新しいidの発行（条件のモーダルのプリセットの節が使う）。 */
+  readonly generatePresetId: PresetIdGenerator;
   readonly history: ContextBarHistory;
   readonly onTextContentCommit: TextContentCommit;
   readonly onPaneOptionsCommit: PaneOptionsCommit;
@@ -83,6 +87,7 @@ export function WorkspacePage({
   catalog,
   generateTextId,
   generateId,
+  generatePresetId,
   history,
   onTextContentCommit,
   onPaneOptionsCommit,
@@ -119,6 +124,9 @@ export function WorkspacePage({
     [workspace, assets.textLibrary],
   );
 
+  // 条件のモーダルの元に戻すも、文脈バーと同じく待っている書き込みを先に反映してから戻す
+  const undo = useLatestCallback(pageHistory.undo);
+
   const env: PaneEnvironment | undefined = useMemo(() => (resolvedText === undefined ? undefined : {
     setups: assets.setupLibrary.setups,
     overrides: assets.setupLibrary.overrides,
@@ -126,8 +134,11 @@ export function WorkspacePage({
     resolvedText,
     cache,
     dispatch,
+    presetLibrary: assets.presetLibrary,
+    generatePresetId,
+    undo,
     assetsReady,
-  }), [assets.setupLibrary, catalog, resolvedText, cache, dispatch, assetsReady]);
+  }), [assets.setupLibrary, assets.presetLibrary, catalog, resolvedText, cache, dispatch, generatePresetId, undo, assetsReady]);
 
   const panes = workspace?.panes;
   const panesById = useMemo(() => new Map((panes ?? []).map((pane) => [pane.id, pane] as const)), [panes]);
