@@ -96,3 +96,14 @@ test('PRESET_LIBRARY_CODEC: 名前は前後の空白を落として読む', () =
   const result = decodeOk({ version: 1, presets: [{ id: 'a', name: '  名前  ', values: {} }] });
   assert.equal(result.value.presets[0].name, '名前');
 });
+
+test('PRESET_LIBRARY_CODEC: presets が配列でない時は診断を1件積む。無い時は診断なしで空', () => {
+  for (const presets of ['x', { a: 1 }, 5, null]) {
+    const result = decodeOk({ version: 1, presets });
+    assert.deepEqual(result.value.presets, []);
+    assert.equal(result.diagnostics.length, 1);
+  }
+  const missing = decodeOk({ version: 1 });
+  assert.deepEqual(missing.value.presets, []);
+  assert.deepEqual(missing.diagnostics, []);
+});

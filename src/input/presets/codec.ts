@@ -21,7 +21,11 @@ function decodePresets<V>(
   path: string,
   diagnostics: CodecDiagnostic[],
 ): Preset<V>[] {
-  if (!Array.isArray(raw)) return [];
+  if (!Array.isArray(raw)) {
+    // 値があって配列でない時は、全件が消えることを診断で示す（無い時は空の手持ちで正しい）
+    if (raw !== undefined) diagnostics.push({ path, message: '配列形式でないためプリセットを捨てた' });
+    return [];
+  }
   const seen = new Set<string>();
   const presets: Preset<V>[] = [];
   raw.forEach((candidate, index) => {
