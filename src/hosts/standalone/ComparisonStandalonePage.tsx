@@ -7,6 +7,7 @@ import type { TextIdGenerator } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
 import { comparisonOptions, type ComparisonOptions } from '#analyzers/comparison/options.ts';
+import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
@@ -69,10 +70,10 @@ export function ComparisonStandalonePage({
   history,
   generatePresetId,
 }: ComparisonStandalonePageProps) {
-  const resolvedText = useMemo(
+  const resolvedText = useStableResolvedText(useMemo(
     () => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary),
     [assets.standaloneTextSelection, assets.textLibrary],
-  );
+  ));
 
   // 解析設定（列の表示・基準比の表示可否）は資産（standaloneAnalyzerOptions）が正
   // （BigramFlowStandalonePageと同じ形）。

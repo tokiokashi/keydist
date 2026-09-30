@@ -262,3 +262,48 @@ test('購読していない（requestを呼んでいない）間はcomputeが走
   scheduler.flush();
   assert.equal(computeCalls, 0);
 });
+
+test('peekが値を返す入力は、計算中もstaleも挟まず同期にreadyになり、computeもscheduleも走らない', () => {
+  const scheduler = createManualScheduler();
+  const states: EngineRequestState<string>[] = [];
+  let computeCalls = 0;
+  const known = new Map([['a', 'peeked:a']]);
+  const channel = createEngineRequest<string>(
+    (input) => {
+      computeCalls++;
+      return `computed:${tagOf(input)}`;
+    },
+    (s) => states.push(s),
+    { scheduler },
+    (input) => known.get(tagOf(input)),
+  );
+
+  channel.request(okResolution('a'));
+  assert.deepEqual(states, [{ status: 'ready', value: 'peeked:a' }]);
+  assert.equal(scheduler.pendingCount(), 0);
+  scheduler.flush();
+  assert.equal(computeCalls, 0);
+
+  // 知らない入力は従来どおり: 直前の値をstaleで持ったまま計算する
+  channel.request(okResolution('b'));
+  assert.deepEqual(states.at(-1), { status: 'stale', value: 'peeked:a' });
+  scheduler.flush();
+  assert.deepEqual(states.at(-1), { status: 'ready', value: 'computed:b' });
+  assert.equal(computeCalls, 1);
+});
+
+test('peekで即答した依頼は、待っていた前の計算の結果を捨てる', () => {
+  const scheduler = createManualScheduler();
+  const states: EngineRequestState<string>[] = [];
+  const channel = createEngineRequest<string>(
+    (input) => `computed:${tagOf(input)}`,
+    (s) => states.push(s),
+    { scheduler },
+    (input) => (tagOf(input) === 'known' ? 'peeked' : undefined),
+  );
+  channel.request(okResolution('slow'));
+  channel.request(okResolution('known'));
+  scheduler.flush();
+  assert.deepEqual(states.map((s) => s.status), ['computing', 'ready']);
+  assert.deepEqual(states.at(-1), { status: 'ready', value: 'peeked' });
+});

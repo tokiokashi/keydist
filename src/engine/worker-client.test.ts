@@ -14,7 +14,7 @@ import { createEngineCache } from './cache.ts';
 import { resolveEngineInput, type ResolvedInput } from './resolved-input.ts';
 import type { EngineSetMemberInput } from './request.ts';
 import { EMPTY_SETTINGS_OVERRIDES } from './settings-items.ts';
-import { createWorkerEngineComputer, EngineAbortError, type WorkerLike } from './worker-client.ts';
+import { createWorkerEngineComputer, EngineAbortError, TRACE_MIRROR_MAX_ENTRIES, type WorkerLike } from './worker-client.ts';
 import { createEngineWorkerHandler } from './worker-handler.ts';
 import type { EngineWorkerRequest, EngineWorkerResponse } from './worker-protocol.ts';
 
@@ -243,4 +243,74 @@ test('disposeは待ちと実行中の依頼を打ち切り扱いで拒否し、W
   await assert.rejects(running, EngineAbortError);
   await assert.rejects(waiting, EngineAbortError);
   assert.equal(fake.isTerminated(), true);
+});
+
+test('受け取った結果はメインスレッドに写り、同じ中身の入力なら別のオブジェクトでも同期に引ける', async () => {
+  const fake = createFakeWorker();
+  const remote = createWorkerEngineComputer(() => fake.worker);
+  const [first] = resolveAll('hello world', 'en');
+  // 計算前は引けない（peekは計算を始めない）
+  assert.equal(remote.peekTrace?.(first!.input), undefined);
+  assert.equal(remote.peekExtraction?.(first!.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS), undefined);
+  assert.equal(fake.received.length, 0);
+
+  const trace = await remote.getTrace(first!.input);
+  const extraction = await remote.getExtraction(first!.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS);
+  const sent = fake.received.length;
+
+  // 解決し直した（中身は同じで参照は別の）入力でも、送らずに同じ値が返る
+  const [again] = resolveAll('hello world', 'en');
+  assert.notEqual(again!.input, first!.input);
+  assert.strictEqual(remote.peekTrace?.(again!.input), trace);
+  assert.strictEqual(remote.peekExtraction?.(again!.input, bigramFlowDefinition, DEFAULT_BIGRAM_FLOW_OPTIONS), extraction);
+  assert.equal(fake.received.length, sent);
+
+  // 中身が違えば引けない（配列が違う・テキストが違う）
+  assert.equal(remote.peekTrace?.(resolveAll('hello world', 'en')[1]!.input), undefined);
+  assert.equal(remote.peekTrace?.(resolveAll('hello worlds', 'en')[0]!.input), undefined);
+  remote.dispose();
+});
+
+test('集合の抽出も、メンバーの中身と並びが同じなら同期に引け、並びが変われば引けない', async () => {
+  const remote = createWorkerEngineComputer(() => createFakeWorker().worker);
+  const members = resolveAll('hello world', 'en').map((entry) => entry.member);
+  assert.equal(remote.peekSetExtraction?.(members, comparisonDefinition, DEFAULT_COMPARISON_OPTIONS), undefined);
+  const result = await remote.getSetExtraction(members, comparisonDefinition, DEFAULT_COMPARISON_OPTIONS);
+
+  const rebuilt = resolveAll('hello world', 'en').map((entry) => entry.member);
+  assert.strictEqual(remote.peekSetExtraction?.(rebuilt, comparisonDefinition, DEFAULT_COMPARISON_OPTIONS), result);
+  assert.equal(remote.peekSetExtraction?.([...rebuilt].reverse(), comparisonDefinition, DEFAULT_COMPARISON_OPTIONS), undefined);
+  assert.equal(remote.peekSetExtraction?.(rebuilt, nSensitivityDefinition, DEFAULT_N_SENSITIVITY_OPTIONS), undefined);
+  remote.dispose();
+});
+
+test('打ち切られた依頼の結果は写らない', async () => {
+  const fake = createFakeWorker({ manual: true });
+  const remote = createWorkerEngineComputer(() => fake.worker);
+  const [entry] = resolveAll('hello', 'en');
+  const controller = new AbortController();
+  const pending = remote.getTrace(entry!.input, controller.signal);
+  controller.abort();
+  await assert.rejects(pending, EngineAbortError);
+  assert.equal(remote.peekTrace?.(entry!.input), undefined);
+  remote.dispose();
+});
+
+test('Traceの写しは8件まで（古いものから捨てる）。A→B→Aの往復と、直近8件の行き来は同期に引ける', async () => {
+  assert.equal(TRACE_MIRROR_MAX_ENTRIES, 8);
+  const remote = createWorkerEngineComputer(() => createFakeWorker().worker);
+  const inputs = Array.from({ length: TRACE_MIRROR_MAX_ENTRIES + 1 }, (_, i) => resolveAll(`hello ${i}`, 'en')[0]!.input);
+
+  // A→B→A: 間に1件挟んでも、最初の入力へ戻る時に引ける
+  await remote.getTrace(inputs[0]!);
+  await remote.getTrace(inputs[1]!);
+  assert.ok(remote.peekTrace?.(inputs[0]!) !== undefined, 'A→B→Aで戻れない');
+
+  // 9件目で、最も長く触っていない1件（ここでは直前にpeekしたAではなく、Bより古いもの）が押し出される
+  for (const input of inputs.slice(2)) await remote.getTrace(input);
+  assert.equal(remote.peekTrace?.(inputs[1]!), undefined, '上限を超えたのに古い写しが残っている');
+  for (const index of [0, 2, 3, 4, 5, 6, 7, 8]) {
+    assert.ok(remote.peekTrace?.(inputs[index]!) !== undefined, `直近8件のうち${index}番目が引けない`);
+  }
+  remote.dispose();
 });

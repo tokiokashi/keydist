@@ -52,4 +52,22 @@ export const sharedEngineComputer: EngineComputer = {
   ) {
     return computer().getSetExtraction(members, definition, options, signal);
   },
+  // 結果を引くだけで計算は始めない。実体（Worker）が未作成なら何も無いので、ここで作らない。
+  peekTrace(input: ResolvedInput) {
+    return instance?.peekTrace?.(input);
+  },
+  peekExtraction<Options, Extracted>(
+    input: ResolvedInput,
+    definition: SingleAnalyzerDefinition<Options, Extracted>,
+    options: Options,
+  ) {
+    return instance?.peekExtraction?.(input, definition, options);
+  },
+  peekSetExtraction<Options, Extracted>(
+    members: readonly EngineSetMemberInput[],
+    definition: SetAnalyzerDefinition<Options, Extracted>,
+    options: Options,
+  ) {
+    return instance?.peekSetExtraction?.(members, definition, options);
+  },
 };

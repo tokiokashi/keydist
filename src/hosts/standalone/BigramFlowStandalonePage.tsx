@@ -8,6 +8,7 @@ import type { TextIdGenerator } from '#input/text/library.ts';
 import type { EngineComputer } from '#engine/computer.ts';
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import { bigramFlowOptions, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
+import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
@@ -82,10 +83,10 @@ export function BigramFlowStandalonePage({
 
   // テキストは資産（textLibrary + standaloneTextSelection）が正。編集・選択・複製・削除は
   // すべて共有部品`TextChip`（文脈バーのテキストのチップ。比較表・N感度と3ページで同じ操作を持つため）。
-  const resolvedText = useMemo(
+  const resolvedText = useStableResolvedText(useMemo(
     () => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary),
     [assets.standaloneTextSelection, assets.textLibrary],
-  );
+  ));
 
   // 解析設定は資産（assets.standaloneAnalyzerOptions）が正で、ページはローカルには持たない
   // （#544指示書「解析設定は資産として個人で保持する」）。`optionsDraft`はtextDraftと同じ形の

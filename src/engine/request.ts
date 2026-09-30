@@ -108,10 +108,11 @@ export interface EngineRequestChannel {
    * 直前の`ready`値だけが（あれば）保持される。
    *
    * 同じ内容の`resolution`を続けて渡しても、ここでは「同じだから無視する」判断はしない。
-   * 呼ぶたびに`computing`/`stale`を経て再計算する（キー自体が同じなら`EngineCache`側の
-   * 計算は共有されるので無駄な再計算にはならないが、状態は一度揺れる）。同じキーへの
-   * 依頼を弾くかどうかはペイン側の関心事（例:「テキストが変わっていなければ
-   * request()を呼ばない」）として、呼び出し側に委ねる。
+   * 計算済みの結果を同期に引ける（`peek`が値を返す）入力なら、`computing`/`stale`を挟まず
+   * その場で`ready`にして、計算は頼まない。引けない入力は`computing`/`stale`を経て再計算する
+   * （キー自体が同じなら`EngineCache`側の計算は共有されるので無駄な再計算にはならないが、
+   * 状態は一度揺れる）。同じキーへの依頼を弾くかどうかはペイン側の関心事（例:「テキストが
+   * 変わっていなければrequest()を呼ばない」）として、呼び出し側に委ねる。
    */
   request(resolution: ResolvedInputResult): void;
   /** 購読を止める。進行中の計算があっても、以降`listener`は呼ばれない。 */
@@ -127,6 +128,7 @@ export function createEngineRequest<T>(
   compute: (input: ResolvedInput, signal: AbortSignal) => MaybePromise<T>,
   listener: (state: EngineRequestState<T>) => void,
   options: EngineRequestOptions = {},
+  peek?: (input: ResolvedInput) => T | undefined,
 ): EngineRequestChannel {
   const scheduler = options.scheduler ?? microtaskScheduler;
 
@@ -171,6 +173,17 @@ export function createEngineRequest<T>(
 
     // クロージャ内でも型が絞られたままになるよう、ここで一度取り出しておく。
     const input = resolution.input;
+
+    // 計算済みの結果が手元にあれば、計算中を挟まず同期にreadyを返す（Worker越しの実装が、
+    // 往復の間ペインを「計算中」にしてしまうのを避ける）。前の依頼は上で打ち切り済みで、
+    // ここではscheduleも積まないので、再入の心配も無い。
+    const hit = peek?.(input);
+    if (hit !== undefined) {
+      lastReadyValue = hit;
+      hasLastReadyValue = true;
+      emit({ status: 'ready', value: hit });
+      return;
+    }
 
     // 先にscheduleしてからemitする（再入対策）。emitはlistenerを同期に呼ぶので、
     // listenerがその場でさらに`request()`や`unsubscribe()`を呼ぶ（再入）ことがある。
@@ -244,6 +257,7 @@ export function createEngineSetRequest<T>(
   compute: (members: readonly EngineSetMemberInput[], signal: AbortSignal) => MaybePromise<T>,
   listener: (state: EngineRequestState<T>) => void,
   options: EngineRequestOptions = {},
+  peek?: (members: readonly EngineSetMemberInput[]) => T | undefined,
 ): EngineSetRequestChannel {
   const scheduler = options.scheduler ?? microtaskScheduler;
 
@@ -275,6 +289,15 @@ export function createEngineSetRequest<T>(
     cancelScheduled?.();
     cancelScheduled = undefined;
     runner.abort();
+
+    // 単一対象の依頼と同じく、計算済みなら計算中を挟まず同期にreadyを返す。
+    const hit = peek?.(members);
+    if (hit !== undefined) {
+      lastReadyValue = hit;
+      hasLastReadyValue = true;
+      emit({ status: 'ready', value: hit });
+      return;
+    }
 
     cancelScheduled = scheduler.schedule(() => {
       cancelScheduled = undefined;

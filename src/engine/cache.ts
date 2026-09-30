@@ -1,6 +1,7 @@
 import type { AnalyzerSetMember, AnalyzerSetMemberFailure, SetAnalyzerDefinition, SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import type { AnalysisTarget } from '#input/setup/index.ts';
-import { analyzerExtractionKeyOf, interpretationKeyOf, setAnalyzerExtractionKeyOf, traceKeyOf } from './keys.ts';
+import { LruCache } from './lru-cache.ts';
+import { interpretationKeyOf, setAnalyzerExtractionKeyOf, setMemberKeyOf, singleExtractionKeyOf, traceKeyOf } from './keys.ts';
 import {
   extractSet,
   extractSingle,
@@ -21,44 +22,6 @@ import { createTraceRequesterFor } from './trace-requester.ts';
  * 上限を超えたら最も長く参照されていないキーを1件だけ捨てる（LRU）。
  */
 const DEFAULT_MAX_ENTRIES = 32;
-
-/**
- * 挿入順を保つ`Map`を使った素朴なLRU。`get`で当たったキーを末尾へ動かし、
- * `set`で上限を超えたら先頭（最も長く触っていない）を1件捨てる。
- */
-class LruCache<K, V> {
-  private readonly store = new Map<K, V>();
-  private readonly max: number;
-
-  constructor(max: number) {
-    this.max = max;
-  }
-
-  get(key: K): V | undefined {
-    const value = this.store.get(key);
-    if (value === undefined) return undefined;
-    // 触ったキーを最新として末尾へ動かす。
-    this.store.delete(key);
-    this.store.set(key, value);
-    return value;
-  }
-
-  set(key: K, value: V): void {
-    this.store.delete(key);
-    this.store.set(key, value);
-    if (this.store.size <= this.max) return;
-    const oldest = this.store.keys().next();
-    if (!oldest.done) this.store.delete(oldest.value);
-  }
-
-  clear(): void {
-    this.store.clear();
-  }
-
-  get size(): number {
-    return this.store.size;
-  }
-}
 
 export interface EngineCacheOptions {
   /** Traceキャッシュの最大保持件数。省略時は`DEFAULT_MAX_ENTRIES`。 */
@@ -161,8 +124,7 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
     options: Options,
   ): EngineExtractionResult<Extracted> {
     const interpretationResult = getInterpretation(input);
-    const interpretationKey = interpretationKeyOf(input, traceKeyOf(input));
-    const key = analyzerExtractionKeyOf(interpretationKey, definition.id, definition.extractKeyOf(options));
+    const key = singleExtractionKeyOf(input, definition.id, definition.extractKeyOf(options));
     const cached = extractionCache.get(key);
     if (cached) return cached as EngineExtractionResult<Extracted>;
     const traceResult = getTrace(input);
@@ -182,20 +144,20 @@ export function createEngineCache(options: EngineCacheOptions = {}): EngineCache
     const keyMembers: { readonly target: AnalysisTarget; readonly memberKey: unknown }[] = [];
 
     for (const member of members) {
+      const memberKey = setMemberKeyOf(member);
       if (!member.resolution.ok) {
         failures.push({
           target: member.target,
           kind: member.resolution.error.kind,
           message: describeResolvedInputError(member.resolution.error),
         });
-        keyMembers.push({ target: member.target, memberKey: { failed: member.resolution.error.kind } });
+        keyMembers.push({ target: member.target, memberKey });
         continue;
       }
       const input = member.resolution.input;
       const interpretationResult = getInterpretation(input);
       const traceResult = getTrace(input);
-      const memberInterpretationKey = interpretationKeyOf(input, traceKeyOf(input));
-      keyMembers.push({ target: member.target, memberKey: memberInterpretationKey });
+      keyMembers.push({ target: member.target, memberKey });
       resolvedMembers.push({
         target: member.target,
         trace: traceResult.trace,
