@@ -819,3 +819,70 @@ test('Workspaceの画面の文言に開発の内部が出ない', async ({ page 
   // 英語の既定の文言（読み上げ用を含む）が残っていない
   await expect(page.locator('[aria-label="Close tab"]')).toHaveCount(0);
 });
+
+const SETUP_LIBRARY_KEY = 'keydist:setup-library';
+
+/** 全体の条件の保存内容（`setupLibrary.overrides.global`。decodeせず生のJSON）。無ければ空。 */
+async function storedGlobalOverrides(page: Page): Promise<Record<string, unknown>> {
+  const raw = await page.evaluate((key) => localStorage.getItem(key), SETUP_LIBRARY_KEY);
+  if (raw === null) return {};
+  return (JSON.parse(raw) as { overrides?: { global?: Record<string, unknown> } }).overrides?.global ?? {};
+}
+
+/** ペインの条件の要約を押して、条件のモーダルを開いて返す。 */
+async function openPaneConditionModal(page: Page, paneLocator: Locator): Promise<Locator> {
+  await paneLocator.locator('.pane-condition-trigger').click();
+  const modal = page.getByRole('dialog', { name: '条件' });
+  await expect(modal).toBeVisible();
+  return modal;
+}
+
+test('Workspaceのペインの条件のモーダルで全体の条件を変えると、全体の保存先に書かれ、個別画面にも反映される', async ({ page }) => {
+  const panes = await createWithBigramPanes(page, 1);
+  await expect(panes.first().locator('.pane-condition-trigger')).toHaveText('条件すべて既定値');
+
+  const modal = await openPaneConditionModal(page, panes.first());
+  await modal.getByRole('button', { name: '先読みNを1増やす' }).click();
+  await expect(modal.locator('[data-item="windowSize"]')).toContainText('全体で変更');
+  await page.keyboard.press('Escape');
+  await expect(panes.first().locator('.pane-condition-trigger')).toContainText('先読みN: 4');
+
+  // 書き込み先は全体の値。Workspaceは条件を別に持たない
+  await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBe(4);
+  expect(JSON.stringify(await storedWorkspaces(page))).not.toContain('windowSize');
+
+  // 個別画面を開き直すと、同じ全体の値が反映されている
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+  await expect(page.locator('.pane-condition-trigger')).toContainText('先読みN: 4');
+  const standaloneModal = await openPaneConditionModal(page, page.locator('.pane-frame'));
+  await expect(standaloneModal.locator('[data-item="windowSize"]').locator('output[aria-label="先読みN"]')).toHaveText('4');
+});
+
+test('Workspaceで変えた全体の条件はWorkspaceの元に戻すで戻り、その結果が個別画面にも効く。元に戻すの履歴は画面ごと', async ({ page, context }) => {
+  const panes = await createWithBigramPanes(page, 1);
+  const trigger = panes.first().locator('.pane-condition-trigger');
+  const modal = await openPaneConditionModal(page, panes.first());
+  await modal.getByRole('button', { name: '先読みNを1増やす' }).click();
+  await page.keyboard.press('Escape');
+  await expect(trigger).toContainText('先読みN: 4');
+  await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBe(4);
+
+  // 別のタブで開いた個別画面は変更を反映していて、その画面の履歴は空（Workspaceの操作は戻せない）
+  const other = await context.newPage();
+  await other.goto('/standalone/bigram-flow');
+  await expect(other.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+  await expect(other.locator('.pane-condition-trigger')).toContainText('先読みN: 4');
+  await expect(other.getByRole('button', { name: '元に戻す' })).toBeDisabled();
+
+  // Workspaceの元に戻すで、全体の条件が既定へ戻る
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect(trigger).toHaveText('条件すべて既定値');
+  await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBeUndefined();
+
+  // 個別画面を開き直すと、戻った結果が効いている
+  await other.reload();
+  await expect(other.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+  await expect(other.locator('.pane-condition-trigger')).toHaveText('条件すべて既定値');
+  await other.close();
+});
