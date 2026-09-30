@@ -21,6 +21,9 @@ import { initialSingleTargetSelection } from '#engine/single-target-selection.ts
 import { SINGLE_TARGET_SELECTION_CODEC } from '#engine/single-target-selection-codec.ts';
 import { SINGLE_TARGET_SELECTION_STORAGE_KEY } from '#platform/assets/single-target-selection-storage.ts';
 import { initialWorkspaceLibrary } from '#engine/workspace.ts';
+import { PRESET_LIBRARY_CODEC } from '#engine/preset-codec.ts';
+import { PRESET_LIBRARY_STORAGE_KEY } from '#platform/assets/preset-library-storage.ts';
+import { emptyPresetLibrary } from '#input/presets/index.ts';
 import { WORKSPACE_LIBRARY_CODEC } from '#engine/workspace-codec.ts';
 import { WORKSPACES_STORAGE_KEY } from '#platform/assets/workspaces-storage.ts';
 
@@ -103,6 +106,11 @@ export const ASSET_STORAGE_SPECS: { readonly [K in keyof KeydistAssets]: AssetSt
     storageKey: WORKSPACES_STORAGE_KEY,
     codec: WORKSPACE_LIBRARY_CODEC,
     initial: initialWorkspaceLibrary,
+  },
+  presetLibrary: {
+    storageKey: PRESET_LIBRARY_STORAGE_KEY,
+    codec: PRESET_LIBRARY_CODEC,
+    initial: emptyPresetLibrary,
   },
 };
 

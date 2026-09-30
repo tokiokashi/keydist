@@ -36,6 +36,7 @@ function emptyAssets(): KeydistAssets {
     multiTargetSelection: initialMultiTargetSelection(),
     singleTargetSelection: initialSingleTargetSelection(),
     workspaces: initialWorkspaceLibrary(),
+    presetLibrary: { presets: [] },
   };
 }
 

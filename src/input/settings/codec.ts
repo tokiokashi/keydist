@@ -45,7 +45,13 @@ export type ItemSchemaMap<V> = { readonly [K in keyof V]: BaseSchema<unknown, V[
 // ここを通るので、書き込む前に予約名として弾く（診断付きで丸ごと捨てる。
 // 「捨てた値には必ず診断」の原則を守る）。
 
-function decodeLevelOverrides<V>(
+/**
+ * 1レベル分の上書きのdecode。カスケード全体（`decodeCascadeOverrides`）の各レベルと、
+ * 1レベル分だけを運ぶ資産（プリセット）が同じ読み方を共有するためにexportする。
+ * 空になったら`undefined`を返す（呼び出し側が「空」と「壊れている」を区別したい時は
+ * 元の値が`isRecord`かを自分で見る）。
+ */
+export function decodeLevelOverrides<V>(
   itemSchemas: ItemSchemaMap<V>,
   raw: unknown,
   path: string,

@@ -7,6 +7,7 @@ import {
   duplicateUserFingerAssignment,
   renameUserFingerAssignment,
 } from '#input/shapes/user-finger-assignments.ts';
+import type { PresetLibrary } from '#input/presets/index.ts';
 import {
   createSetup,
   deleteSetup,
@@ -130,6 +131,12 @@ export interface KeydistAssets {
    * 個別画面と共有する。
    */
   readonly workspaces: WorkspaceLibrary;
+  /**
+   * 条件のプリセットの手持ち。`setupLibrary`に同居させない（保存・削除・書き出しがSetupと
+   * 整合を取る必要が無く、別キーなら他タブの書き込みでこのタブのカスケード上書きの履歴が
+   * 消えない）。流し込みだけが`setupLibrary`に触れる（`preset-commands.ts`）。
+   */
+  readonly presetLibrary: PresetLibrary<SettingsValueMap>;
 }
 
 type SetupLibraryComputation =
