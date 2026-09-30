@@ -1,15 +1,30 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { applyPresetValues, normalizePresetName } from '#input/presets/index.ts';
 import { SETTINGS_ITEMS } from '#engine/settings-items.ts';
+import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
+import { ROMAJI_RULES } from '#input/romaji/rules.ts';
 import {
   applyPresetCommand,
   deletePresetCommand,
+  importPresetsCommand,
   renamePresetCommand,
   savePresetCommand,
 } from '#engine/preset-commands.ts';
 import { GLOBAL_LEVEL } from './condition-edit.ts';
 import type { ConditionEditorContext } from './ConditionEditor.tsx';
+import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneMenu } from './PaneHeaderParts.tsx';
+import { PresetFileIoContext } from './preset-file-io.ts';
+import {
+  PRESET_FILE_FORMAT,
+  PRESET_FILE_MAX_BYTES,
+  PRESET_FILE_TOO_LARGE_MESSAGE,
+  PRESET_FILE_UNREADABLE_MESSAGE,
+  parsePresetFile,
+  presetFileBody,
+  presetFileName,
+  type PresetReferences,
+} from './preset-file.ts';
 import {
   applyResultText,
   changedGlobalItemCount,
@@ -32,6 +47,8 @@ import {
 interface Notice {
   readonly text: string;
   readonly undoable: boolean;
+  /** 不具合報告用の原文（読み込みで捨てた値の診断など）。 */
+  readonly details?: readonly string[];
   /** 操作の直前の資産。これと違う参照になった最初の描画で、結果の反映後の参照を`settled`に記録する。 */
   readonly base: { readonly overrides: unknown; readonly library: unknown };
   readonly settled?: { readonly overrides: unknown; readonly library: unknown };
@@ -55,8 +72,52 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
     && (notice.settled.overrides !== overrides || notice.settled.library !== presetLibrary);
   const visibleNotice = stale ? undefined : notice;
 
-  const show = (text: string, undoable: boolean) => {
-    setNotice({ text, undoable, base: { overrides, library: presetLibrary } });
+  const show = (text: string, undoable: boolean, details?: readonly string[]) => {
+    setNotice({ text, undoable, details, base: { overrides, library: presetLibrary } });
+  };
+
+  const fileIo = useContext(PresetFileIoContext);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  /** この端末にある参照先。ファイルの値がこれに無いidを指していたら、読み込みの結果で注記する。 */
+  const references = (): PresetReferences => ({
+    fingerAssignmentIds: new Set([
+      ...Object.values(FINGER_ASSIGNMENT_REGISTRY).map((assignment) => assignment.id),
+      ...(editor.customFingerAssignments?.keys() ?? []),
+    ]),
+    romajiRuleIds: new Set([...Object.keys(ROMAJI_RULES), ...(editor.customRomajiRules ?? []).map((rule) => rule.id)]),
+    shapeIds: new Set(editor.shapes.keys()),
+  });
+
+  const exportPresets = (ids?: readonly string[]) => {
+    if (fileIo === undefined) return;
+    const chosen = ids === undefined ? presetLibrary.presets : presetLibrary.presets.filter((preset) => ids.includes(preset.id));
+    if (chosen.length === 0) return;
+    const filename = chosen.length === 1 && ids !== undefined
+      ? presetFileName({ kind: 'one', name: chosen[0]!.name })
+      : presetFileName({ kind: 'all', date: new Date() });
+    fileIo.saveJson(filename, PRESET_FILE_FORMAT, presetFileBody({ presets: chosen }));
+    show(chosen.length === 1 && ids !== undefined ? `「${chosen[0]!.name}」を書き出した` : `${chosen.length}件のプリセットを書き出した`, false);
+  };
+
+  const importFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    // 同じファイルをもう一度選んでも変更として届くよう、選択を空へ戻す
+    input.value = '';
+    if (file === undefined || fileIo === undefined) return;
+    const read = await fileIo.readText(file, PRESET_FILE_MAX_BYTES);
+    if (read.kind !== 'ok') {
+      show(read.kind === 'too-large' ? PRESET_FILE_TOO_LARGE_MESSAGE : PRESET_FILE_UNREADABLE_MESSAGE, false);
+      return;
+    }
+    const parsed = parsePresetFile(read.text, references());
+    if (!parsed.ok) {
+      show(parsed.message, false, parsed.details);
+      return;
+    }
+    dispatch(importPresetsCommand(parsed.presets, editor.generatePresetId));
+    show(parsed.message, true, parsed.details);
   };
 
   const save = (event: FormEvent) => {
@@ -144,6 +205,7 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
                       className="condition-preset-menu"
                       items={[
                         { id: 'rename', label: '名前を変更', onSelect: () => setRenaming({ id: row.id, draft: row.name }) },
+                        ...(fileIo === undefined ? [] : [{ id: 'export', label: '書き出す', onSelect: () => exportPresets([row.id]) }]),
                         { id: 'delete', label: '削除', onSelect: () => remove(row.id) },
                       ]}
                     />
@@ -163,11 +225,28 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
           />
           <button type="submit" disabled={!isSavableName(name)}>今の全体の値を保存</button>
         </form>
+        {fileIo === undefined ? null : (
+          <div className="condition-preset-files">
+            <button type="button" disabled={rows.length === 0} onClick={() => exportPresets()}>すべて書き出す</button>
+            <button type="button" onClick={() => fileInput.current?.click()}>読み込む…</button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".json,application/json"
+              hidden
+              aria-label="読み込むプリセットのファイル"
+              onChange={(event) => void importFile(event)}
+            />
+          </div>
+        )}
         {visibleNotice === undefined ? null : (
-          <p className="condition-preset-result" role="status" data-preset-result="true">
-            <span>{visibleNotice.text}</span>
-            {visibleNotice.undoable ? <button type="button" onClick={undo}>元に戻す</button> : null}
-          </p>
+          <div className="condition-preset-result-block">
+            <p className="condition-preset-result" role="status" data-preset-result="true">
+              <span>{visibleNotice.text}</span>
+              {visibleNotice.undoable ? <button type="button" onClick={undo}>元に戻す</button> : null}
+            </p>
+            <ErrorDetails lines={visibleNotice.details ?? []} />
+          </div>
         )}
       </div>
     </details>
