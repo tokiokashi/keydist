@@ -99,6 +99,7 @@ function row(id: ConditionSummaryRow['id'], origin: ConditionSummaryRow['origin'
     applicable: true,
     sameAsDefault: false,
     diagnostics: [],
+    recommendationWinsOverGlobal: false,
   };
 }
 
@@ -118,6 +119,16 @@ test('overrideWinsNotices: QWERTYの配列の上書きでも理由を出す', ()
   const rows = [row('windowSize', { kind: 'layout', layoutId: 'qwerty' }, '上書き: 配列')];
   const names = { shapes: new Map(), layouts: new Map([['qwerty', { name: 'QWERTY' }]]) };
   assert.match(overrideWinsNotices(rows, names).get('windowSize')!, /^配列「QWERTY」の値が優先されるため/);
+});
+
+test('overrideWinsNotices: 配列の推奨が全体に勝つ行は、既定値のままでも理由を出す', () => {
+  const rows = [
+    { ...row('romajiRuleId', { kind: 'default' }, '既定値'), recommendationWinsOverGlobal: true },
+    row('windowSize', { kind: 'default' }, '既定値'),
+  ];
+  const notices = overrideWinsNotices(rows);
+  assert.deepEqual([...notices.keys()], ['romajiRuleId']);
+  assert.match(notices.get('romajiRuleId')!, /^この配列の推奨が優先されるため/);
 });
 
 test('すべて既定値に戻す: 行のある項目の全体の上書きだけを1コマンドで消し、行の無い項目は残す。元に戻すの1回で全部戻る', () => {

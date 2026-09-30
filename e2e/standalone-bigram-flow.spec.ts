@@ -179,6 +179,40 @@ test('条件のモーダル: 下のレベルが勝つ行に理由を出し、編
   await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('4');
 });
 
+/** 配列を対象にして開く（上書きは置かない）。 */
+async function openWithLayout(page: Page, layoutId: string) {
+  await page.addInitScript((id) => {
+    localStorage.setItem(
+      'keydist:single-target-selection',
+      JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: id } }),
+    );
+  }, layoutId);
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+  return openConditionModal(page);
+}
+
+test('条件のモーダル: 全体のローマ字規則を変えると、推奨の無い配列（QWERTY）は従い、要約に出る', async ({ page }) => {
+  const modal = await openWithLayout(page, 'qwerty');
+  const row = modal.locator('[data-item="romajiRuleId"]');
+  await row.getByLabel('ローマ字規則', { exact: true }).selectOption('azik');
+  await expect(row).toContainText('全体で変更');
+  await expect(row.locator('[data-condition-notice]')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.pane-condition-trigger')).toContainText('ローマ字規則: AZIK');
+});
+
+test('条件のモーダル: 全体のローマ字規則を変えても、推奨を持つ配列（大西配列）は推奨のままで、理由を出す', async ({ page }) => {
+  const modal = await openWithLayout(page, 'oonishi');
+  const row = modal.locator('[data-item="romajiRuleId"]');
+  await row.getByLabel('ローマ字規則', { exact: true }).selectOption('azik');
+  await expect(row).toContainText('全体で変更');
+  await expect(row.locator('[data-condition-notice]')).toContainText('この配列の推奨が優先されるため、全体を変えてもこの画面は変わらない');
+  await page.keyboard.press('Escape');
+  // 効いている値は推奨（大西式）のままなので、変えた項目には数えない
+  await expect(page.locator('.pane-condition-trigger')).toHaveText('条件すべて既定値');
+});
+
 test('条件のモーダル: QWERTYの配列の上書きでも、下のレベルが勝つ行に理由を出す', async ({ page }) => {
   const modal = await openWithLayoutOverride(page, 'qwerty');
   const row = modal.locator('[data-item="windowSize"]');

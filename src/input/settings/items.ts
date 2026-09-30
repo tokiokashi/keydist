@@ -18,6 +18,10 @@ export type ValidateResult<T> =
  * - `defaultValue` はContextに依存してよい（例: ローマ字規則idは配列ごとに既定が違う）。
  *   固定値だけの項目は関数にせず直接値を書けばよい
  * - `validate` は「物理配列で実現できるか」を判定する。実現できなければ`fallback`を使い警告を出す
+ * - `layoutRecommendation` は配列が組み込みで持つ推奨値（無ければ`undefined`）。配列のレベルの
+ *   利用者の上書きより弱く、それより下（全体・物理配列・打ち方）の上書きより強い。
+ *   推奨を持つ配列は、全体を変えても推奨のまま（オーナー決定 #655）。既定値の一種ではなく、
+ *   レベルの間に挟まる値なので、`defaultValue` とは別に持つ
  * - `isApplicable` は「その配列にこの機能があるか」を判定する。無ければ値は解決するが
  *   「効かない」ことを診断で示す（適用できるかとフィールド妥当性は別の軸なので分けている）
  */
@@ -25,6 +29,7 @@ export interface SettingItem<T> {
   readonly id: string;
   readonly allowedLevels: ReadonlySet<CascadeLevelKind>;
   readonly defaultValue: T | ((context: CascadeContext) => T);
+  readonly layoutRecommendation?: (context: CascadeContext) => T | undefined;
   readonly validate?: (value: T, context: CascadeContext) => ValidateResult<T>;
   readonly isApplicable?: (context: CascadeContext) => boolean;
 }

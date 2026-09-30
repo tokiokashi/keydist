@@ -25,6 +25,12 @@ export interface ResolvedItem<T> {
   /** 現在のSetupにこの項目が意味を持つか（#544 §3「その配列に無い機能の設定」）。 */
   readonly applicable: boolean;
   readonly diagnostics: readonly Diagnostic[];
+  /**
+   * 配列の推奨が実効値になっている時、それより下のレベル（全体など）に別の値があって負けたもの。
+   * 「全体を変えても変わらない」理由を出すのに使う。推奨が無い・負けた値が無い時は`undefined`。
+   * 出どころ（`origin`）は上書きが無いので`default`のまま（推奨は利用者が変えた値ではない）。
+   */
+  readonly recommendationWins?: { readonly shadowed: readonly CascadeLevelKind[] };
 }
 
 export type ResolvedCascade<V> = { readonly [K in keyof V]: ResolvedItem<V[K]> };
@@ -65,7 +71,17 @@ function resolveItem(
 
   // 弱い順に重ねる。許可されていないレベルの値は解決に使わず、診断だけ残す
   // （インポートした旧データ等、許可外レベルに値が残っているケースを想定）。
+  const recommended = item.layoutRecommendation?.(context);
+  const lowerApplied: { readonly kind: CascadeLevelKind; readonly value: unknown }[] = [];
+  let shadowed: readonly CascadeLevelKind[] = [];
   for (const level of levels) {
+    // 配列の推奨は、配列のレベルの手前で下のレベルの値を置き換える。配列・Setupの上書きは
+    // この後で重なるので、利用者の上書き＞推奨＞全体、の順になる。
+    if (level.kind === 'layout' && recommended !== undefined) {
+      shadowed = lowerApplied.filter((applied) => applied.value !== recommended).map((applied) => applied.kind);
+      value = recommended;
+      origin = { kind: 'default' };
+    }
     const stored = levelOverrides(overrides, level) as Record<string, unknown> | undefined;
     if (stored === undefined || !(itemId in stored)) continue;
     if (!item.allowedLevels.has(level.kind)) {
@@ -77,6 +93,7 @@ function resolveItem(
     }
     value = stored[itemId];
     origin = level;
+    lowerApplied.push({ kind: level.kind, value });
   }
 
   // 妥当性: 物理配列等で実現できない値は順序で解決せず、実現できる値へ戻す。
@@ -97,7 +114,13 @@ function resolveItem(
     });
   }
 
-  return { value, origin, applicable, diagnostics };
+  return {
+    value,
+    origin,
+    applicable,
+    diagnostics,
+    ...(shadowed.length > 0 && origin.kind === 'default' ? { recommendationWins: { shadowed } } : {}),
+  };
 }
 
 /**

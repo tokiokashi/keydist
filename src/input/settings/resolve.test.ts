@@ -240,3 +240,48 @@ test('リセット: レベル単位でそのレベルの上書きが全部消え
   assert.equal(resolved.anyLevelNumber.value, 3);
   assert.equal(resolved.thumbRequiring.value, false);
 });
+
+// 配列の組み込みの推奨は、配列のレベルの手前で全体・物理配列・打ち方の値を置き換え、
+// 配列・Setupの上書きには負ける（オーナー決定 #655）。
+const RECOMMENDING_ITEMS = {
+  rule: defineItem<string>({
+    id: 'rule',
+    allowedLevels: ANY_LEVEL,
+    defaultValue: 'base',
+    layoutRecommendation: (context) => (context.layoutId === asuka.id ? 'recommended' : undefined),
+  }),
+} as const satisfies ItemRegistry;
+
+type RecommendingOverrides = CascadeOverrides<{ rule: string }>;
+
+function writeRule(overrides: RecommendingOverrides, level: Parameters<typeof setOverride>[2], value: string): RecommendingOverrides {
+  const written = setOverride(RECOMMENDING_ITEMS, overrides, level, 'rule', value);
+  assert.ok(written.ok);
+  return (written as { ok: true; overrides: RecommendingOverrides }).overrides;
+}
+
+test('配列の推奨: 全体・打ち方の値に勝ち、勝った相手を記録する。出どころは既定値のまま', () => {
+  const empty: RecommendingOverrides = emptyCascadeOverrides();
+  const overrides = writeRule(writeRule(empty, { kind: 'global' }, 'g'), { kind: 'inputMethod', inputMethod: 'romaji' }, 'm');
+  const resolved = resolveCascade(RECOMMENDING_ITEMS, overrides, contextFor(asuka, { inputMethod: 'romaji' }));
+  assert.equal(resolved.rule.value, 'recommended');
+  assert.equal(resolved.rule.origin.kind, 'default');
+  assert.deepEqual(resolved.rule.recommendationWins, { shadowed: ['global', 'inputMethod'] });
+});
+
+test('配列の推奨: 推奨の無い配列は全体の値に従う', () => {
+  const overrides = writeRule(emptyCascadeOverrides(), { kind: 'global' }, 'g');
+  const resolved = resolveCascade(RECOMMENDING_ITEMS, overrides, contextFor(naginata));
+  assert.equal(resolved.rule.value, 'g');
+  assert.equal(resolved.rule.recommendationWins, undefined);
+});
+
+test('配列の推奨: 配列・Setupの上書きは推奨に勝つ', () => {
+  const base = writeRule(emptyCascadeOverrides(), { kind: 'global' }, 'g');
+  const byLayout = writeRule(base, { kind: 'layout', layoutId: asuka.id }, 'mine');
+  const layoutResolved = resolveCascade(RECOMMENDING_ITEMS, byLayout, contextFor(asuka));
+  assert.equal(layoutResolved.rule.value, 'mine');
+  assert.equal(layoutResolved.rule.recommendationWins, undefined);
+  const bySetup = writeRule(base, { kind: 'setup', setupId: 's' }, 'setup-mine');
+  assert.equal(resolveCascade(RECOMMENDING_ITEMS, bySetup, contextFor(asuka, { setupId: 's' })).rule.value, 'setup-mine');
+});

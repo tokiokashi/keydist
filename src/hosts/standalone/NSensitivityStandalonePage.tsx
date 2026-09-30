@@ -262,6 +262,7 @@ export function NSensitivityStandalonePage({
               dispatch,
               shapes: catalog.setupCatalog.shapes,
               customFingerAssignments: catalog.customFingerAssignments,
+              customRomajiRules: catalog.customRomajiRules,
               hiddenIds: N_SENSITIVITY_CONDITION_EXCLUDE_IDS,
             }}
             conditionTargetDiffs={conditionSummary.diffs}

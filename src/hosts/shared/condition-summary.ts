@@ -3,7 +3,7 @@ import { SETTINGS_ITEMS, type ResolvedSettingsCascade, type SettingsCascadeOverr
 import { DEFAULT_FINGER_ASSIGNMENT, type FingerAssignment, type Geometry, type PhysicalShape } from '#input/shapes/geometry.ts';
 import type { Layout } from '#input/layouts/types.ts';
 import type { InputMethod } from '#input/settings/levels.ts';
-import { ROMAJI_RULES, defaultRomajiRuleId } from '#input/romaji/rules.ts';
+import { ROMAJI_RULES } from '#input/romaji/rules.ts';
 import { FINGER_ASSIGNMENT_REGISTRY } from '#engine/finger-assignment.ts';
 
 /**
@@ -56,6 +56,11 @@ export interface ConditionSummaryRow {
    */
   readonly sameAsDefault: boolean;
   readonly diagnostics: readonly Diagnostic[];
+  /**
+   * 配列の推奨が効いていて、全体に置いた別の値が負けている（全体を変えても画面が変わらない）。
+   * 出どころは「既定値」のまま（推奨は利用者が変えた値ではないので、変えた項目には数えない）。
+   */
+  readonly recommendationWinsOverGlobal: boolean;
 }
 
 /** 効く値が既定と同じか。効かない部分（数えない時の例外）の違いは見ない。 */
@@ -185,6 +190,7 @@ export function traceConditionSummary(
       applicable: resolved.applicable,
       sameAsDefault: effectivelySameAsDefault(id, resolved.value),
       diagnostics: resolved.diagnostics,
+      recommendationWinsOverGlobal: resolved.recommendationWins?.shadowed.includes('global') ?? false,
     };
   });
 }
@@ -397,8 +403,8 @@ export function globalConditionValues(overrides: SettingsCascadeOverrides): Glob
 
 /**
  * 1項目の、この画面で効く値の行。全体のレベルの値があればそれ（出どころは全体）、無ければ項目の既定値。
- * 既定値が配列ごとに変わる項目は、配列も物理配列も持たない時の値
- * （ローマ字規則は訓令式、指の割当は列固定）を画面の値とする。
+ * 既定値が物理配列ごとに変わる項目は、物理配列を持たない時の値（指の割当は列固定）を画面の値とする。
+ * ローマ字規則の配列ごとの推奨は画面の値に入れない（推奨を持つ配列は「対象ごとの差」に出る）。
  */
 function screenRow(
   template: ConditionSummaryRow,
@@ -410,11 +416,9 @@ function screenRow(
   const rawDefault: unknown = SETTINGS_ITEMS[template.id].defaultValue;
   const value = globalValue !== undefined
     ? globalValue
-    : template.id === 'romajiRuleId'
-      ? defaultRomajiRuleId('')
-      : template.id === 'fingerAssignmentId'
-        ? DEFAULT_FINGER_ASSIGNMENT.id
-        : rawDefault;
+    : template.id === 'fingerAssignmentId'
+      ? DEFAULT_FINGER_ASSIGNMENT.id
+      : rawDefault;
   const { format, displayValue } = formatValue(template.id, value, names);
   return {
     ...template,
@@ -426,5 +430,6 @@ function screenRow(
     applicable: true,
     sameAsDefault: globalValue !== undefined && effectivelySameAsDefault(template.id, value),
     diagnostics: [],
+    recommendationWinsOverGlobal: false,
   };
 }

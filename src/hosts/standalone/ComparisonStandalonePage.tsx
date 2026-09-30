@@ -260,6 +260,7 @@ export function ComparisonStandalonePage({
               dispatch,
               shapes: catalog.setupCatalog.shapes,
               customFingerAssignments: catalog.customFingerAssignments,
+              customRomajiRules: catalog.customRomajiRules,
             }}
             conditionTargetDiffs={conditionSummary.diffs}
             engineState={extraction}

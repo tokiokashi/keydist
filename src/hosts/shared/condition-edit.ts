@@ -39,6 +39,7 @@ export type GlobalEditableId = Extract<
   | 'actionRealizationPolicy'
   | 'defaultShapeId'
   | 'fingerAssignmentId'
+  | 'romajiRuleId'
   | 'chainInterpretation'
   | 'arpeggioInterpretation'
 >;
@@ -52,6 +53,7 @@ export const GLOBAL_EDITABLE_IDS: readonly GlobalEditableId[] = [
   'actionRealizationPolicy',
   'defaultShapeId',
   'fingerAssignmentId',
+  'romajiRuleId',
   'chainInterpretation',
   'arpeggioInterpretation',
 ];
@@ -136,9 +138,9 @@ export function withClassGrouping(
 }
 
 /**
- * 全体を変えても下のレベルの値が勝って画面が変わらない行の理由。モーダルの行は編集できるまま、
+ * 全体を変えても下のレベルの値・配列の推奨が勝って画面が変わらない行の理由。モーダルの行は編集できるまま、
  * 行の下に文を添える。配列を問わず出す（オーナー決定 #655）。
- * 下のレベルの上書きが無い行（効いている値が全体か既定値）は理由が要らない。
+ * 勝つものが無い行（効いている値が全体か既定値）は理由が要らない。
  */
 export function overrideWinsNotices(
   rows: readonly ConditionSummaryRow[],
@@ -146,6 +148,11 @@ export function overrideWinsNotices(
 ): ReadonlyMap<SettingsItemId, string> {
   const notices = new Map<SettingsItemId, string>();
   for (const row of rows) {
+    // 配列の推奨が勝つ行は、推奨が実効値なので「変えた行」ではない（出どころは既定値のまま）。
+    if (row.recommendationWinsOverGlobal) {
+      notices.set(row.id, 'この配列の推奨が優先されるため、全体を変えてもこの画面は変わらない');
+      continue;
+    }
     if (!isChangedConditionRow(row)) continue;
     if (row.origin.kind === 'default' || row.origin.kind === 'global') continue;
     notices.set(row.id, `${conditionLevelLabel(row.origin, names)}の値が優先されるため、全体を変えてもこの画面は変わらない`);
