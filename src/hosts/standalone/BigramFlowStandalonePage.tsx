@@ -4,7 +4,7 @@ import { setSingleTargetCommand, type KeydistAssets } from '#engine/commands.ts'
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
-import type { EngineCache } from '#engine/cache.ts';
+import type { EngineComputer } from '#engine/computer.ts';
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import { bigramFlowOptions, type BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
@@ -39,7 +39,7 @@ export interface BigramFlowStandalonePageProps {
    */
   readonly assetsReady: boolean;
   readonly dispatch: (command: Command<KeydistAssets>) => void;
-  readonly cache: EngineCache;
+  readonly cache: EngineComputer;
   readonly catalog: PaneCatalog;
   readonly generateTextId: TextIdGenerator;
   /** `TextChip`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */

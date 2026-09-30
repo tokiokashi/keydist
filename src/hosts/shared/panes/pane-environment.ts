@@ -1,4 +1,4 @@
-import type { EngineCache } from '#engine/cache.ts';
+import type { EngineComputer } from '#engine/computer.ts';
 import type { SettingsCascadeOverrides } from '#engine/settings-items.ts';
 import type { Setup } from '#input/setup/index.ts';
 import type { ResolvedText } from '#input/text/resolve.ts';
@@ -18,7 +18,7 @@ export interface PaneEnvironment {
   readonly catalog: PaneCatalog;
   readonly resolvedText: ResolvedText;
   /** 抽出・Traceのキャッシュ。器の中のペイン全部で同じものを渡し、計算を共有する。 */
-  readonly cache: EngineCache;
+  readonly cache: EngineComputer;
   /** 資産の初回読み込みが済んでいるか。済む前は、対象が空に見えても空とは限らない。 */
   readonly assetsReady: boolean;
 }

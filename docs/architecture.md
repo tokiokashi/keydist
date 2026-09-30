@@ -312,6 +312,7 @@ src/
 - **可視化は計算しない。** engineが抽出を実行し、hostが結果をcomponentへ渡す
 - **Analyzerの契約は純粋な部分だけを `analyzers/contract.ts` に置く。** 名前・短い説明・本体と解析設定のcomponentとの結び付けは各Analyzerの `definition.tsx` で行う（「Analyzerがペインに渡すもの」）。結び付けは `analyzers/pane-parts.tsx` の `AnalyzerPaneParts` の形のオブジェクト（`bigramFlowAnalyzer` 等）で、ペインの見出し・個別画面のh1・routeの `<title>` はここから名前を読む。名前と短い説明はReactに依存しない `analyzers/<name>/pane-meta.ts` に置き、routeはそちらを読む（`definition.tsx` をimportすると本体のcomponentとCSSが全ページの初期読み込みに入るため）。engineは純粋な部分しか知らないので、engineの型にReactが現れず、Workerへそのまま移せる
   - 抽出のキャッシュキーは「解釈のキー + Analyzer id + 抽出に効くoptions」（`AnalyzerDefinition.extractKeyOf` が返す値。`engine/keys.ts` の `analyzerExtractionKeyOf`）。見た目だけの解析設定はここで除かれるので、見た目だけの変更ではextractが走らない
+  - 単体ページの計算は、ブラウザでは Web Worker で走らせる（長いテキストで入力とスクロールが止まらないため）。ペインが頼む窓口は `engine/computer.ts` の `EngineComputer` で、メインスレッドの `EngineCache` と Worker 越しの `engine/worker-client.ts` のどちらも満たす。Worker の入口は `app/standalone/engine-worker.ts` で、そこに載せた Analyzer の定義だけが Worker で計算できる（Analyzer を足す時は、ここにも足す）。数値は変わらない（Worker の中も同じ `EngineCache` と同じ純関数で、メッセージは値の複製だけ）
   - 集合対象とN感度の例外向けに、抽出は「Traceを依頼する窓口」（`TraceRequester`、`analyzers/contract.ts`）を受け取れる。窓口の実装（キャッシュ経由でTraceを共有する）は `engine/trace-requester.ts` が持つ
 - **storageを直接触るのは platform と app だけ。** 保存が要る層（hosts・editors等）は、appが組み立てたアダプタを注入して使う。Testerは当面の例外
 - **import の書き方。** 別のトップディレクトリへは `#<dir>/...`（`package.json` の `imports`）、同じトップディレクトリの中は相対パス。ディレクトリを import しない（`index.ts` の暗黙解決はNodeのstrip-typesで動かない）。拡張子を付けて書く

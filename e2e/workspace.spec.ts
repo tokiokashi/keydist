@@ -305,18 +305,21 @@ test('テキストはWorkspace自身が持ち、個別画面のテキストと�
 });
 
 test('ペイン間でengineのキャッシュを共有する: 同じ条件の2つ目のペインは計算をやり直さず、違う条件は計算する', async ({ page }) => {
-  // 抽出の計算だけが通る関数（描画は使わない）の呼び出し回数で、計算が走ったかを見る
-  await page.addInitScript(() => {
-    const counter = { atan2: 0 };
-    (window as unknown as { __counter: typeof counter }).__counter = counter;
-    const original = Math.atan2;
-    Math.atan2 = (y: number, x: number) => {
-      counter.atan2 += 1;
-      return original(y, x);
-    };
+  // 計算はWorkerの中で走る。Workerのスクリプトの先頭に差し込み、抽出の計算だけが通る関数
+  // （描画は使わない）の呼び出し回数で、計算が走ったかを見る
+  await page.route('**/*engine-worker*', async (route) => {
+    const response = await route.fetch();
+    const patch = 'self.__counter = { atan2: 0 }; { const original = Math.atan2; Math.atan2 = (y, x) => { self.__counter.atan2 += 1; return original(y, x); }; }\n';
+    await route.fulfill({ response, body: patch + (await response.text()) });
   });
-  const calls = () => page.evaluate(() => (window as unknown as { __counter: { atan2: number } }).__counter.atan2);
-  // 描画が落ち着いてから数える
+  const calls = async () => {
+    // Workerが複数起きても（共有が崩れた時）、全部の合計で数える
+    const counts = await Promise.all(
+      page.workers().map((worker) => worker.evaluate(() => (self as unknown as { __counter: { atan2: number } }).__counter.atan2)),
+    );
+    return counts.reduce((sum, count) => sum + count, 0);
+  };
+  // 計算が落ち着いてから数える
   const settled = async () => {
     let previous = -1;
     await expect.poll(async () => {

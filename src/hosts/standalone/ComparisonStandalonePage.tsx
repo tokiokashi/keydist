@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import { setMultiBaselineCommand, setMultiTargetsCommand, type KeydistAssets } from '#engine/commands.ts';
-import type { EngineCache } from '#engine/cache.ts';
+import type { EngineComputer } from '#engine/computer.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
@@ -35,7 +35,7 @@ export interface ComparisonStandalonePageProps {
   readonly assets: KeydistAssets;
   readonly assetsReady: boolean;
   readonly dispatch: (command: Command<KeydistAssets>) => void;
-  readonly cache: EngineCache;
+  readonly cache: EngineComputer;
   readonly catalog: PaneCatalog;
   readonly generateTextId: TextIdGenerator;
   /** `TextChip`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */

@@ -1,5 +1,5 @@
 import type { SetAnalyzerDefinition } from '#analyzers/contract.ts';
-import type { EngineCache } from '#engine/cache.ts';
+import type { EngineComputer } from '#engine/computer.ts';
 import { createSetExtractRequest, type ExtractionRequestState } from '#engine/engine-requests.ts';
 import type { EngineRequestOptions, EngineSetMemberInput, EngineSetRequestChannel } from '#engine/request.ts';
 
@@ -20,7 +20,7 @@ export interface AnalyzerSetPaneChannels<Options> {
 }
 
 export interface AnalyzerSetPaneChannelParams<Options, Extracted> {
-  readonly cache: EngineCache;
+  readonly cache: EngineComputer;
   readonly definition: SetAnalyzerDefinition<Options, Extracted>;
   readonly options: Options;
   readonly members: readonly EngineSetMemberInput[];

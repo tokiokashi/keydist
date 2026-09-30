@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
-import { createEngineCache } from '#engine/cache.ts';
 import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
 import { nSensitivityAnalyzer } from '#analyzers/n-sensitivity/definition.tsx';
 import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import { NSensitivityStandalonePage } from '#hosts/standalone/index.ts';
 import { builtinPaneCatalog } from './catalog.ts';
+import { sharedEngineComputer } from './engine-computer.ts';
 import { generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
@@ -13,11 +13,8 @@ import { useTextContentCommit } from './use-text-content-commit.ts';
 
 /**
  * N感度単体ページの組み立て（#544 Phase 3。`StandaloneComparisonApp.tsx`と同じ形）。
- * `EngineCache`はこのAppの生存期間で1つだけ（他の単体ページと別のモジュールscope。
- * `StandaloneComparisonApp.tsx`冒頭コメント参照）。
+ * 計算の窓口は他の単体ページと共有する（`engine-computer.ts`。ブラウザではWorker）。
  */
-const engineCache = createEngineCache();
-
 export function StandaloneNSensitivityApp() {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => builtinPaneCatalog(), []);
@@ -50,7 +47,7 @@ export function StandaloneNSensitivityApp() {
       assets={assets}
       assetsReady={ready}
       dispatch={dispatch}
-      cache={engineCache}
+      cache={sharedEngineComputer}
       catalog={catalog}
       generateTextId={generateTextId}
       history={history}

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
-import type { EngineCache } from '#engine/cache.ts';
+import type { EngineComputer } from '#engine/computer.ts';
 import {
   addWorkspacePaneCommand,
   closeWorkspacePaneCommand,
@@ -45,7 +45,7 @@ export interface WorkspacePageProps {
   readonly assetsReady: boolean;
   readonly dispatch: (command: Command<KeydistAssets>) => void;
   /** Workspaceの全ペインが共有する。同じ条件の計算は1回で済む。 */
-  readonly cache: EngineCache;
+  readonly cache: EngineComputer;
   readonly catalog: PaneCatalog;
   readonly generateTextId: TextIdGenerator;
   /** ペインのidの発行。 */

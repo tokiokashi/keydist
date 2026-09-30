@@ -1,5 +1,5 @@
 import type { SingleAnalyzerDefinition } from '#analyzers/contract.ts';
-import type { EngineCache } from '#engine/cache.ts';
+import type { EngineComputer } from '#engine/computer.ts';
 import {
   createExtractRequest,
   createTraceRequest,
@@ -15,7 +15,7 @@ import type { ResolvedInputResult } from '#engine/resolved-input.ts';
  * Traceを別途購読するのは、`ExtractionRequestState`（`engine/cache.ts`の`getExtraction`が
  * 返す`EngineExtractionResult`）が抽出結果（`extracted`）しか持たず、`Trace.errors`
  * （配列定義の不備。#544 §8-5「Traceのerrorsは値としてペインに表示する」）を含まない
- * ため。Traceは`EngineCache`の中で抽出と同じキャッシュを共有するので、二重に計算は走らない
+ * ため。Traceは`EngineComputer`の中で抽出と同じキャッシュを共有するので、二重に計算は走らない
  * （`engine/cache.ts`の`getExtraction`が内部で`getTrace`を呼ぶのと同じキャッシュ）。
  */
 export interface AnalyzerPaneChannels<Options> {
@@ -25,7 +25,7 @@ export interface AnalyzerPaneChannels<Options> {
 }
 
 export interface AnalyzerPaneChannelParams<Options, Extracted> {
-  readonly cache: EngineCache;
+  readonly cache: EngineComputer;
   readonly definition: SingleAnalyzerDefinition<Options, Extracted>;
   readonly options: Options;
   readonly resolution: ResolvedInputResult;
@@ -40,7 +40,7 @@ export interface AnalyzerPaneChannelParams<Options, Extracted> {
  * 見た目だけのものを宣言する。見た目だけの変更では抽出を走らせない」の配線）。
  *
  * - `options`の参照が変わった時だけ抽出チャンネルを作り直す。作り直しても
- *   `definition.extract`が実際に再実行されるかどうかは`EngineCache.getExtraction`が
+ *   `definition.extract`が実際に再実行されるかどうかは`EngineComputer.getExtraction`が
  *   `definition.extractKeyOf(options)`で決めるので、見た目だけの項目が変わって
  *   `extractKeyOf`の値が変わらなければ、チャンネルを作り直してもキャッシュが当たり
  *   `extract`は呼ばれない（`analyzer-channels.test.ts`で確認する）。ここでは
