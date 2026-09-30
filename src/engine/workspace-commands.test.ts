@@ -21,6 +21,8 @@ import {
   closeWorkspacePaneCommand,
   createWorkspaceCommand,
   deleteWorkspaceCommand,
+  duplicateWorkspaceCommand,
+  restoreWorkspaceCommand,
   duplicateWorkspacePaneCommand,
   renameWorkspaceCommand,
   setWorkspaceLayoutCommand,
@@ -255,4 +257,70 @@ test('持ち主のWorkspaceが無い時、テキストの書き込みは何も�
   );
   assert.equal(next.history.undoStack.length, 0);
   assert.equal(textSelectionOf(next.assets, holder), undefined);
+});
+
+/** ペイン・連動・固定・解析設定・テキスト・名前まで手を入れた、複製の元になるWorkspace。 */
+function richWorkspace(): State {
+  const other = BUILTIN_TEXTS.find((text) => text.id !== initialTextSelection().ref.id)!;
+  return run(
+    withWorkspace(),
+    renameWorkspaceCommand('w1', '比較'),
+    setWorkspacePaneOptionsCommand('w1', 'a', { x: 1 }),
+    setWorkspacePaneBindingCommand('w1', 'b', {
+      mode: 'fixed',
+      target: { kind: 'set', selection: initialMultiTargetSelection() },
+    }),
+    linkWorkspacePaneToNewGroupCommand('w1', 'a', 'link-2', { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } }),
+    selectTextCommand({ workspaceId: 'w1' }, { kind: 'builtin', id: other.id }),
+  );
+}
+
+test('複製は、ペインの並び・連動の組・固定の対象・解析設定・テキストをそのまま写し、idと名前だけが新しい', () => {
+  const state = richWorkspace();
+  const copied = run(state, duplicateWorkspaceCommand('w1', 'w2'));
+  const source = findWorkspace(copied.assets.workspaces, 'w1')!;
+  const copy = findWorkspace(copied.assets.workspaces, 'w2')!;
+  assert.notEqual(copy.id, source.id);
+  assert.equal(copy.name, '比較 のコピー');
+  assert.deepEqual({ ...copy, id: '', name: '' }, { ...source, id: '', name: '' });
+  // 元は変わらない
+  assert.deepEqual(source, findWorkspace(state.assets.workspaces, 'w1'));
+  // 写した後は別物: 片方の書き込みがもう片方に及ばない
+  const edited = run(copied, setWorkspacePaneOptionsCommand('w2', 'a', { x: 2 }));
+  assert.deepEqual(findWorkspace(edited.assets.workspaces, 'w1')!.panes[0]!.options, { x: 1 });
+});
+
+test('複製は元の右隣に置き、名前が使われていれば連番を振る', () => {
+  const state = run(richWorkspace(), createWorkspaceCommand('w3', '別'));
+  const twice = run(state, duplicateWorkspaceCommand('w1', 'w2'), duplicateWorkspaceCommand('w1', 'w4'));
+  assert.deepEqual(twice.assets.workspaces.map((workspace) => workspace.id), ['w1', 'w4', 'w2', 'w3']);
+  assert.deepEqual(twice.assets.workspaces.map((workspace) => workspace.name), ['比較', '比較 のコピー 2', '比較 のコピー', '別']);
+});
+
+test('複製はUndoで消え、Redoで戻る。無い元・使われているidは履歴に積まない', () => {
+  const state = richWorkspace();
+  const copied = run(state, duplicateWorkspaceCommand('w1', 'w2'));
+  const undone = undo(copied.assets, copied.history);
+  assert.deepEqual(undone.assets.workspaces, state.assets.workspaces);
+  assert.deepEqual(redo(undone.assets, undone.history).assets.workspaces, copied.assets.workspaces);
+
+  const depth = state.history.undoStack.length;
+  const noop = run(state, duplicateWorkspaceCommand('none', 'w2'), duplicateWorkspaceCommand('w1', 'w1'));
+  assert.equal(noop.history.undoStack.length, depth);
+  assert.equal(noop.assets.workspaces, state.assets.workspaces);
+});
+
+test('削除したWorkspaceは元の位置へ復元でき、同じidがあれば何もしない', () => {
+  const state = run(richWorkspace(), createWorkspaceCommand('w3'), createWorkspaceCommand('w5'));
+  const deleted = findWorkspace(state.assets.workspaces, 'w3')!;
+  const index = state.assets.workspaces.indexOf(deleted);
+  const after = run(state, deleteWorkspaceCommand('w3'));
+  const restored = run(after, restoreWorkspaceCommand(deleted, index));
+  assert.deepEqual(restored.assets.workspaces, state.assets.workspaces);
+  // 一覧が短くなっていれば末尾へ
+  const tail = run(after, deleteWorkspaceCommand('w5'), restoreWorkspaceCommand(deleted, 9));
+  assert.deepEqual(tail.assets.workspaces.map((workspace) => workspace.id), ['w1', 'w3']);
+  // 既にあるidは積まない
+  const depth = restored.history.undoStack.length;
+  assert.equal(run(restored, restoreWorkspaceCommand(deleted, 0)).history.undoStack.length, depth);
 });

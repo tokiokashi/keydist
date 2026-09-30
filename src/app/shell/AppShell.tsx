@@ -3,6 +3,7 @@ import { ContextBarLeadingSlot } from '#hosts/shared/ContextBar.tsx';
 import { PresetFileIoContext, type PresetFileIo } from '#hosts/shared/preset-file-io.ts';
 import { downloadJson } from '#platform/browser-download.ts';
 import { readTextFile } from '#platform/browser-file.ts';
+import { DeletedWorkspaceNotice } from '../workspace/DeletedWorkspaceNotice.tsx';
 import { Sidebar } from './Sidebar.tsx';
 import {
   getServerSidebarPinnedSnapshot,
@@ -196,6 +197,7 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
           </div>
         </PresetFileIoContext.Provider>
       </ContextBarLeadingSlot.Provider>
+      <DeletedWorkspaceNotice />
     </div>
   );
 }

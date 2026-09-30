@@ -125,6 +125,18 @@
   background: var(--surface);
 }
 
+/* 見出しの⋯（複製・削除）。名前の右隣に置く。 */
+.workspace-menu {
+  flex: none;
+}
+
+/* 見出しの左寄りに置くので、一覧は右端ではなくボタンの左端に揃えて開く（左へはみ出して切れないように）。 */
+.workspace-menu .pane-menu-list {
+  right: auto;
+  left: 0;
+  min-width: 9rem;
+}
+
 /* ---- 使えないペイン・表示できなかったペイン ---- */
 .workspace-pane-notice {
   display: grid;

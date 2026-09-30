@@ -1,4 +1,7 @@
+import { useNavigate } from '@tanstack/react-router';
 import { useMemo } from 'react';
+import { deleteWorkspaceCommand, duplicateWorkspaceCommand } from '#engine/workspace-commands.ts';
+import { findWorkspace } from '#engine/workspace.ts';
 import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { WorkspacePage, type WorkspaceTabsMode } from '#hosts/workspace/index.ts';
 import { builtinPaneCatalog } from '../standalone/catalog.ts';
@@ -6,7 +9,8 @@ import { sharedEngineComputer } from '../standalone/engine-computer.ts';
 import { generatePresetId, generateTextId } from '../standalone/id-generator.ts';
 import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 import { useTextContentCommit } from '../standalone/use-text-content-commit.ts';
-import { generatePaneId } from './id-generator.ts';
+import { setDeletedWorkspace } from './deleted-workspace-notice.ts';
+import { generatePaneId, generateWorkspaceId } from './id-generator.ts';
 import { usePaneOptionsCommit } from './use-pane-options-commit.ts';
 
 /**
@@ -44,6 +48,32 @@ export function WorkspaceApp({ workspaceId, tabs }: { readonly workspaceId: stri
     },
   };
 
+  const navigate = useNavigate();
+
+  // 複製したら、写したWorkspaceを開く（作った時と同じ）。
+  const duplicate = () => {
+    commitTextContent.flush();
+    const newId = generateWorkspaceId();
+    dispatch(duplicateWorkspaceCommand(workspaceId, newId));
+    if (findWorkspace(getAssets().workspaces, newId) === undefined) return;
+    void navigate({ to: '/workspace/$id', params: { id: newId } });
+  };
+
+  // 削除したら、一覧で次のWorkspace（最後だったら1つ前）へ移る。1つも残らなければトップへ移る。
+  // 空のWorkspaceを黙って作って開くことはしない。元に戻すは、移った先に出す知らせから行う。
+  const remove = () => {
+    commitTextContent.flush();
+    const before = getAssets().workspaces;
+    const index = before.findIndex((workspace) => workspace.id === workspaceId);
+    const deleted = before[index];
+    if (deleted === undefined) return;
+    dispatch(deleteWorkspaceCommand(workspaceId));
+    setDeletedWorkspace({ workspace: deleted, index });
+    const rest = before.filter((workspace) => workspace.id !== workspaceId);
+    const next = rest[Math.min(index, rest.length - 1)];
+    void (next === undefined ? navigate({ to: '/' }) : navigate({ to: '/workspace/$id', params: { id: next.id } }));
+  };
+
   return (
     <WorkspacePage
       workspaceId={workspaceId}
@@ -59,6 +89,8 @@ export function WorkspaceApp({ workspaceId, tabs }: { readonly workspaceId: stri
       onTextContentCommit={commitTextContent}
       onPaneOptionsCommit={commitPaneOptions}
       tabs={tabs}
+      onDuplicate={duplicate}
+      onDelete={remove}
     />
   );
 }
