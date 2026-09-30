@@ -26,9 +26,10 @@ import {
   setWorkspaceLayoutCommand,
   setWorkspacePaneOptionsCommand,
   setWorkspacePaneBindingCommand,
+  linkWorkspacePaneToNewGroupCommand,
   setWorkspaceTargetCommand,
 } from './workspace-commands.ts';
-import { findWorkspace, FOLLOW_BINDING, type WorkspacePane } from './workspace.ts';
+import { findWorkspace, followBinding, INITIAL_LINK_GROUP_ID as G, type WorkspacePane } from './workspace.ts';
 import { layoutPaneIds } from './workspace-layout.ts';
 
 function emptyAssets(): KeydistAssets {
@@ -48,7 +49,7 @@ const pane = (id: string): WorkspacePane => ({
   id,
   analyzerId: 'bigram-flow',
   options: undefined,
-  binding: FOLLOW_BINDING,
+  binding: followBinding(G),
 });
 
 interface State {
@@ -141,8 +142,8 @@ test('解析設定・対象・並びの書き込みは、同じ中身なら履�
   const again = run(
     once,
     setWorkspacePaneOptionsCommand('w1', 'a', { x: 1 }),
-    setWorkspacePaneBindingCommand('w1', 'a', FOLLOW_BINDING),
-    setWorkspaceTargetCommand('w1', { kind: 'set', selection: initialMultiTargetSelection() }),
+    setWorkspacePaneBindingCommand('w1', 'a', followBinding(G)),
+    setWorkspaceTargetCommand('w1', G, { kind: 'set', selection: initialMultiTargetSelection() }),
     setWorkspaceLayoutCommand('w1', findWorkspace(once.assets.workspaces, 'w1')!.layout),
   );
   assert.equal(again.history.undoStack.length, depth);
@@ -155,12 +156,12 @@ test('Workspaceの対象の切り替えは1回のUndoで戻り、固定のペイ
     withWorkspace(),
     setWorkspacePaneBindingCommand('w1', 'b', { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } }),
   );
-  const switched = run(state, setWorkspaceTargetCommand('w1', { kind: 'single', target: { kind: 'layout', layoutId: 'colemak-dh' } }));
+  const switched = run(state, setWorkspaceTargetCommand('w1', G, { kind: 'single', target: { kind: 'layout', layoutId: 'colemak-dh' } }));
   const after = findWorkspace(switched.assets.workspaces, 'w1')!;
-  assert.deepEqual(after.target.single.target, { kind: 'layout', layoutId: 'colemak-dh' });
+  assert.deepEqual(after.groups[0]!.target.single.target, { kind: 'layout', layoutId: 'colemak-dh' });
   assert.deepEqual(after.panes.map((p) => p.binding), findWorkspace(state.assets.workspaces, 'w1')!.panes.map((p) => p.binding));
   const undone = undo(switched.assets, switched.history);
-  assert.deepEqual(findWorkspace(undone.assets.workspaces, 'w1')!.target, findWorkspace(state.assets.workspaces, 'w1')!.target);
+  assert.deepEqual(findWorkspace(undone.assets.workspaces, 'w1')!.groups, findWorkspace(state.assets.workspaces, 'w1')!.groups);
 });
 
 test('createWorkspaceCommand: 個別画面で選んでいる対象を、Workspaceの対象として写して始める', () => {
@@ -172,8 +173,24 @@ test('createWorkspaceCommand: 個別画面で選んでいる対象を、Workspac
   };
   const created = run({ assets, history: emptyCommandHistory() }, createWorkspaceCommand('w9'));
   const workspace = findWorkspace(created.assets.workspaces, 'w9')!;
-  assert.deepEqual(workspace.target.single, assets.singleTargetSelection);
-  assert.deepEqual(workspace.target.set, assets.multiTargetSelection);
+  assert.deepEqual(workspace.groups[0]!.target.single, assets.singleTargetSelection);
+  assert.deepEqual(workspace.groups[0]!.target.set, assets.multiTargetSelection);
+});
+
+test('新しい組への付け替えと、組ごとの対象の切り替えは、それぞれ1回のUndoで戻る', () => {
+  const state = withWorkspace();
+  const linked = run(state, linkWorkspacePaneToNewGroupCommand('w1', 'b', 'g2', { kind: 'single', target: { kind: 'layout', layoutId: 'colemak-dh' } }));
+  const workspace = findWorkspace(linked.assets.workspaces, 'w1')!;
+  assert.deepEqual(workspace.groups.map((g) => g.id), [G, 'g2']);
+  assert.deepEqual(workspace.panes.map((p) => p.binding), [followBinding(G), followBinding('g2')]);
+  assert.equal(linked.history.undoStack.length, state.history.undoStack.length + 1);
+
+  const switched = run(linked, setWorkspaceTargetCommand('w1', G, { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } }));
+  const after = findWorkspace(switched.assets.workspaces, 'w1')!;
+  assert.deepEqual(after.groups[0]!.target.single.target, { kind: 'layout', layoutId: 'qwerty' });
+  assert.deepEqual(after.groups[1], workspace.groups[1]);
+  assert.deepEqual(findWorkspace(undo(switched.assets, switched.history).assets.workspaces, 'w1')!.groups, workspace.groups);
+  assert.deepEqual(findWorkspace(undo(linked.assets, linked.history).assets.workspaces, 'w1')!.groups, findWorkspace(state.assets.workspaces, 'w1')!.groups);
 });
 
 test('削除はUndoで戻る', () => {

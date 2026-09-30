@@ -10,6 +10,7 @@ import {
   withWorkspaceLayout,
   withWorkspacePaneOptions,
   withWorkspacePaneBinding,
+  withPaneInNewLinkGroup,
   withWorkspaceTarget,
   type PaneTargetBinding,
   type WorkspaceTarget,
@@ -105,11 +106,26 @@ export function setWorkspacePaneBindingCommand(
 }
 
 /**
- * Workspaceの対象を書き換える。従うペイン全部が一括で追従する。`target.kind`が単体用と集合用の
- * どちらを書くかを決める。
+ * 連動の組の対象を書き換える。その組に従うペイン全部が一括で追従し、他の組・固定のペインは動かない。
+ * `target.kind`が単体用と集合用のどちらを書くかを決める。
  */
-export function setWorkspaceTargetCommand(workspaceId: string, target: WorkspacePaneTarget): Command<KeydistAssets> {
-  return workspacesCommand('Workspaceの対象を選ぶ', (library) => withWorkspaceTarget(library, workspaceId, target));
+export function setWorkspaceTargetCommand(workspaceId: string, groupId: string, target: WorkspacePaneTarget): Command<KeydistAssets> {
+  return workspacesCommand('連動の対象を選ぶ', (library) => withWorkspaceTarget(library, workspaceId, groupId, target));
+}
+
+/**
+ * ペインを新しい連動の組へ移す。新しい組の対象は、そのペインが今映している対象（`current`）から始める。
+ * 組の作成・ペインの付け替え・空になった組の削除は1回の操作で、Undoも1回で戻る。
+ */
+export function linkWorkspacePaneToNewGroupCommand(
+  workspaceId: string,
+  paneId: string,
+  newGroupId: string,
+  current: WorkspacePaneTarget,
+): Command<KeydistAssets> {
+  return workspacesCommand('新しい連動の組へ移す', (library) => (
+    withPaneInNewLinkGroup(library, workspaceId, paneId, newGroupId, current)
+  ));
 }
 
 /** ペインの並び（ドラッグ・リサイズの結果）を書き換える。 */

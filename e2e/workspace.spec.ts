@@ -39,7 +39,7 @@ async function storedWorkspaces(page: Page): Promise<{ workspaces: { id: string;
 /** 保存先へ、ペインを指定してWorkspaceを直接書く（画面を経由せず状態を作る）。 */
 function seedWorkspace(page: Page, workspace: unknown): Promise<void> {
   return page.addInitScript(({ key, value }) => {
-    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 2, workspaces: [value] }));
+    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 3, workspaces: [value] }));
   }, { key: WORKSPACES_KEY, value: workspace });
 }
 
@@ -245,17 +245,30 @@ test('ペインの解析設定はペインごとに持ち、再読み込みし�
 
 /** ペインの見出しの対象ボタン。 */
 const targetButton = (pane: Locator) => pane.getByRole('button', { name: /^対象: / });
-/** 見出しの「従う / 固定」ボタン。 */
-const bindingButton = (pane: Locator) => pane.locator('.pane-target-binding');
-/** 文脈バーのWorkspaceの対象（Single）。 */
-const workspaceSingle = (page: Page) => page.locator('.context-bar').getByRole('button', { name: /^Workspaceの対象（Single）: / });
+/** 見出しの対象の連動（ピン）のボタン。 */
+const pinButton = (pane: Locator) => pane.locator('.pane-target-binding .pane-menu-button');
+
+/** ピンのメニューから、固定・リンク N・新しいリンクを選ぶ。 */
+async function pickBinding(page: Page, pane: Locator, label: string): Promise<void> {
+  await pinButton(pane).click();
+  await page.locator('.pane-menu-item').filter({ has: page.locator('.pane-menu-item-label', { hasText: new RegExp(`^${label}$`) }) }).click();
+}
 
 async function chooseLayout(page: Page, button: Locator, layoutId: string): Promise<void> {
   await button.click();
   await page.getByRole('dialog', { name: '対象の選択' }).locator(`input[value="layout:${layoutId}"]`).click();
 }
 
-test('ペインの対象: 従うペイン2つと固定のペイン1つ。Workspaceの対象を切り替えると従う2つだけ変わり、Undoで戻る', async ({ page }) => {
+interface StoredWorkspace {
+  groups: { id: string; target: { single?: { layoutId: string } } }[];
+  panes: { binding: { mode: string; group?: string; target?: { target: { layoutId: string } } } }[];
+}
+const storedFirst = async (page: Page) => (await storedWorkspaces(page)).workspaces[0]! as unknown as StoredWorkspace;
+
+const QWERTY_LABEL = '対象: QWERTY';
+const COLEMAK_LABEL = '対象: Colemak-DH';
+
+test('ペインの対象: 従うペイン2つと固定のペイン1つ。従うペインで対象を選ぶと従う2つだけ変わり、Undoで戻る', async ({ page }) => {
   await createWorkspace(page);
   await addAnalyzer(page, 'Bigram Flow');
   await addAnalyzer(page, 'Bigram Flow');
@@ -263,24 +276,20 @@ test('ペインの対象: 従うペイン2つと固定のペイン1つ。Workspa
   const panes = page.locator('.pane-frame');
   await expect(panes.nth(2).locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
-  // 足したペインは既定で従う。3つ目を固定にすると、押した瞬間は見た目が変わらない
-  for (let n = 0; n < 3; n += 1) await expect(bindingButton(panes.nth(n))).toHaveText('従う');
-  await bindingButton(panes.nth(2)).click();
-  await expect(bindingButton(panes.nth(2))).toHaveText('固定');
-  await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', '対象: QWERTY');
+  // 足したペインは最初のリンクに従う。3つ目を固定にすると、押した瞬間は見た目が変わらない
+  for (let n = 0; n < 3; n += 1) await expect(pinButton(panes.nth(n))).toHaveAttribute('aria-label', 'Bigram Flowの対象の連動: リンク 1');
+  await pickBinding(page, panes.nth(2), '固定');
+  await expect(pinButton(panes.nth(2))).toHaveAttribute('aria-label', 'Bigram Flowの対象の連動: 固定');
+  await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', QWERTY_LABEL);
 
-  // Workspaceの対象を切り替える。従う2つだけが追従する
-  await chooseLayout(page, workspaceSingle(page), 'colemak-dh');
-  await expect(workspaceSingle(page)).toHaveAttribute('aria-label', 'Workspaceの対象（Single）: Colemak-DH');
-  await expect(targetButton(panes.nth(0))).toHaveAttribute('aria-label', '対象: Colemak-DH');
-  await expect(targetButton(panes.nth(1))).toHaveAttribute('aria-label', '対象: Colemak-DH');
-  await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', '対象: QWERTY');
+  // 従うペインの見出しで対象を選ぶと、同じリンクの2つだけが追従する
+  await chooseLayout(page, targetButton(panes.nth(0)), 'colemak-dh');
+  await expect(targetButton(panes.nth(0))).toHaveAttribute('aria-label', COLEMAK_LABEL);
+  await expect(targetButton(panes.nth(1))).toHaveAttribute('aria-label', COLEMAK_LABEL);
+  await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', QWERTY_LABEL);
 
-  const stored = (await storedWorkspaces(page)).workspaces[0]! as unknown as {
-    target: { single: { layoutId: string } };
-    panes: { binding: { mode: string; target?: { target: { layoutId: string } } } }[];
-  };
-  expect(stored.target.single.layoutId).toBe('colemak-dh');
+  const stored = await storedFirst(page);
+  expect(stored.groups.map((g) => g.target.single?.layoutId)).toEqual(['colemak-dh']);
   expect(stored.panes.map((p) => p.binding.mode)).toEqual(['follow', 'follow', 'fixed']);
   expect(stored.panes[2]!.binding.target!.target.layoutId).toBe('qwerty');
   // 個別画面のSingleの対象には書かない
@@ -288,56 +297,83 @@ test('ペインの対象: 従うペイン2つと固定のペイン1つ。Workspa
 
   // 元に戻すで、従う2つが戻り、固定はそのまま
   await page.locator('.context-bar').getByRole('button', { name: '元に戻す' }).click();
-  await expect(targetButton(panes.nth(0))).toHaveAttribute('aria-label', '対象: QWERTY');
-  await expect(targetButton(panes.nth(1))).toHaveAttribute('aria-label', '対象: QWERTY');
-  await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', '対象: QWERTY');
+  for (let n = 0; n < 3; n += 1) await expect(targetButton(panes.nth(n))).toHaveAttribute('aria-label', QWERTY_LABEL);
   await page.locator('.context-bar').getByRole('button', { name: 'やり直す' }).click();
-  await expect(targetButton(panes.nth(0))).toHaveAttribute('aria-label', '対象: Colemak-DH');
-  await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', '対象: QWERTY');
+  await expect(targetButton(panes.nth(0))).toHaveAttribute('aria-label', COLEMAK_LABEL);
+  await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', QWERTY_LABEL);
 
   // 再読み込みしても、従う / 固定と対象が残る
   await page.reload();
   await waitForHydration(page);
-  await expect(targetButton(page.locator('.pane-frame').nth(1))).toHaveAttribute('aria-label', '対象: Colemak-DH');
-  await expect(targetButton(page.locator('.pane-frame').nth(2))).toHaveAttribute('aria-label', '対象: QWERTY');
-  await expect(bindingButton(page.locator('.pane-frame').nth(2))).toHaveText('固定');
+  await expect(targetButton(page.locator('.pane-frame').nth(1))).toHaveAttribute('aria-label', COLEMAK_LABEL);
+  await expect(targetButton(page.locator('.pane-frame').nth(2))).toHaveAttribute('aria-label', QWERTY_LABEL);
+  await expect(pinButton(page.locator('.pane-frame').nth(2))).toHaveAttribute('aria-label', 'Bigram Flowの対象の連動: 固定');
 
-  // 固定のペインを従うへ戻すと、Workspaceの対象へ追従する
-  await bindingButton(page.locator('.pane-frame').nth(2)).click();
-  await expect(bindingButton(page.locator('.pane-frame').nth(2))).toHaveText('従う');
-  await expect(targetButton(page.locator('.pane-frame').nth(2))).toHaveAttribute('aria-label', '対象: Colemak-DH');
+  // 固定のペインを最初のリンクへ戻すと、そのリンクの対象へ追従する
+  await pickBinding(page, page.locator('.pane-frame').nth(2), 'リンク 1');
+  await expect(targetButton(page.locator('.pane-frame').nth(2))).toHaveAttribute('aria-label', COLEMAK_LABEL);
 });
 
-test('従うペインで対象を選ぶとWorkspaceの対象が変わり、隣の従うペインも一緒に変わる。固定のペインで選んでも他は動かない', async ({ page }) => {
+test('リンクを2つ持てる: 組ごとに対象が別で、片方を変えてももう片方と固定は動かない。空になったリンクは消える', async ({ page }) => {
   await createWorkspace(page);
-  await addAnalyzer(page, 'Bigram Flow');
-  await addAnalyzer(page, 'Bigram Flow');
+  for (let n = 0; n < 4; n += 1) await addAnalyzer(page, 'Bigram Flow');
   const panes = page.locator('.pane-frame');
-  await expect(panes.nth(1).locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await expect(panes.nth(3).locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
-  await chooseLayout(page, targetButton(panes.nth(1)), 'colemak-dh');
-  await expect(targetButton(panes.nth(0))).toHaveAttribute('aria-label', '対象: Colemak-DH');
-  await expect(workspaceSingle(page)).toHaveAttribute('aria-label', 'Workspaceの対象（Single）: Colemak-DH');
+  // 3つ目を新しいリンクへ移す（見た目は変わらない）。4つ目は固定にする
+  await pickBinding(page, panes.nth(2), '新しいリンク');
+  await expect(pinButton(panes.nth(2))).toHaveAttribute('aria-label', 'Bigram Flowの対象の連動: リンク 2');
+  await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', QWERTY_LABEL);
+  await pickBinding(page, panes.nth(3), '固定');
 
-  // 右を固定にしてから選ぶと、右だけが変わる
-  await bindingButton(panes.nth(1)).click();
-  await chooseLayout(page, targetButton(panes.nth(1)), 'qwerty');
-  await expect(targetButton(panes.nth(1))).toHaveAttribute('aria-label', '対象: QWERTY');
-  await expect(targetButton(panes.nth(0))).toHaveAttribute('aria-label', '対象: Colemak-DH');
-  await expect(workspaceSingle(page)).toHaveAttribute('aria-label', 'Workspaceの対象（Single）: Colemak-DH');
+  // リンク1のペインで対象を選ぶと、リンク1のペインだけが変わる
+  await chooseLayout(page, targetButton(panes.nth(0)), 'colemak-dh');
+  await expect(targetButton(panes.nth(0))).toHaveAttribute('aria-label', COLEMAK_LABEL);
+  await expect(targetButton(panes.nth(1))).toHaveAttribute('aria-label', COLEMAK_LABEL);
+  await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', QWERTY_LABEL);
+  await expect(targetButton(panes.nth(3))).toHaveAttribute('aria-label', QWERTY_LABEL);
+  let stored = await storedFirst(page);
+  expect(stored.groups.map((g) => g.target.single?.layoutId)).toEqual(['colemak-dh', 'qwerty']);
+  expect(stored.panes.map((p) => p.binding.group ?? p.binding.mode)).toEqual([stored.groups[0]!.id, stored.groups[0]!.id, stored.groups[1]!.id, 'fixed']);
+
+  // 元に戻す1回で、リンク1の変更だけが戻る（リンクの組は残る）
+  await page.locator('.context-bar').getByRole('button', { name: '元に戻す' }).click();
+  for (let n = 0; n < 4; n += 1) await expect(targetButton(panes.nth(n))).toHaveAttribute('aria-label', QWERTY_LABEL);
+  expect((await storedFirst(page)).groups).toHaveLength(2);
+  await page.locator('.context-bar').getByRole('button', { name: 'やり直す' }).click();
+  await expect(targetButton(panes.nth(1))).toHaveAttribute('aria-label', COLEMAK_LABEL);
+
+  // リンク2のペインの見出しで選ぶと、リンク2だけが変わる。再読み込みしても残る
+  await chooseLayout(page, targetButton(panes.nth(2)), 'colemak-dh');
+  await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', COLEMAK_LABEL);
+  await pickBinding(page, panes.nth(1), 'リンク 2');
+  await expect(targetButton(panes.nth(0))).toHaveAttribute('aria-label', COLEMAK_LABEL);
+  await expect(targetButton(panes.nth(3))).toHaveAttribute('aria-label', QWERTY_LABEL);
+  await page.reload();
+  await waitForHydration(page);
+  const reloaded = page.locator('.pane-frame');
+  await expect(pinButton(reloaded.nth(1))).toHaveAttribute('aria-label', 'Bigram Flowの対象の連動: リンク 2');
+  await expect(pinButton(reloaded.nth(3))).toHaveAttribute('aria-label', 'Bigram Flowの対象の連動: 固定');
+  await expect(targetButton(reloaded.nth(3))).toHaveAttribute('aria-label', QWERTY_LABEL);
+
+  // 誰も従わなくなったリンクは消える（3つ目・2つ目をリンク1へ寄せると、リンク2が空になる）
+  await pickBinding(page, reloaded.nth(1), 'リンク 1');
+  await pickBinding(page, reloaded.nth(2), 'リンク 1');
+  await expect.poll(async () => (await storedFirst(page)).groups.length).toBe(1);
+  await pinButton(reloaded.nth(0)).click();
+  await expect(page.locator('.pane-menu-item-label')).toHaveText(['固定', 'リンク 1', '新しいリンク']);
 });
 
-test('Workspaceの対象（Multi）を切り替えると、従う集合のペインが変わる。固定のペインは変わらない', async ({ page }) => {
+test('リンクを複数持つ時、集合のペインも組ごとに別の集合を持つ。固定のペインは変わらない', async ({ page }) => {
   await createWorkspace(page);
   await addAnalyzer(page, '比較表');
   await addAnalyzer(page, 'N感度');
   const comparison = pane(page, '比較表');
   const sensitivity = pane(page, 'N感度');
-  await bindingButton(sensitivity).click();
-  await expect(bindingButton(sensitivity)).toHaveText('固定');
+  await pickBinding(page, sensitivity, '固定');
+  await expect(pinButton(sensitivity)).toHaveAttribute('aria-label', 'N感度の対象の連動: 固定');
 
-  const multi = page.locator('.context-bar').getByRole('button', { name: /^Workspaceの対象（Multi）: / });
-  await multi.click();
+  await comparison.getByRole('button', { name: '配列・Setupを選ぶ' }).click();
   const dialog = page.getByRole('dialog', { name: '対象の選択' });
   await dialog.locator('input[value="layout:qwerty"]').click();
   await dialog.locator('input[value="layout:colemak-dh"]').click();
@@ -346,19 +382,36 @@ test('Workspaceの対象（Multi）を切り替えると、従う集合のペイ
   // 固定のN感度は空のまま
   await expect(sensitivity.getByRole('button', { name: '配列・Setupを選ぶ' })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('keydist:multi-target-selection'))).toBeNull();
+
+  // 新しいリンクへ移すと、今の集合で始まる（表は変わらない）
+  await pickBinding(page, comparison, '新しいリンク');
+  await expect(comparison.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
+  // 元のリンクは空になって消えるので、新しいリンクが唯一のリンク（リンク 1）になる
+  await expect(pinButton(comparison)).toHaveAttribute('aria-label', '比較表の対象の連動: リンク 1');
+  await expect.poll(async () => (await storedFirst(page)).groups.length).toBe(1);
 });
 
-test('Workspaceを作ると、個別画面で選んでいる対象がWorkspaceの対象として写る。以後は連動しない', async ({ page }) => {
+test('Workspaceを作ると、個別画面で選んでいる対象が最初のリンクの対象として写る。以後は連動しない', async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem('keydist:single-target-selection', JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: 'colemak-dh' } }));
+    if (localStorage.getItem('keydist:single-target-selection') === null) {
+      localStorage.setItem('keydist:single-target-selection', JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: 'colemak-dh' } }));
+    }
   });
   await createWorkspace(page);
-  await expect(workspaceSingle(page)).toHaveAttribute('aria-label', 'Workspaceの対象（Single）: Colemak-DH');
   await addAnalyzer(page, 'Bigram Flow');
-  await expect(targetButton(page.locator('.pane-frame').first())).toHaveAttribute('aria-label', '対象: Colemak-DH');
+  await expect(targetButton(page.locator('.pane-frame').first())).toHaveAttribute('aria-label', COLEMAK_LABEL);
+
+  // 個別画面で選び直しても、Workspaceの対象は変わらない
+  await page.goto('/standalone/bigram-flow');
+  await waitForHydration(page);
+  await chooseLayout(page, targetButton(page.locator('.pane-frame')), 'qwerty');
+  await expect(targetButton(page.locator('.pane-frame'))).toHaveAttribute('aria-label', QWERTY_LABEL);
+  await page.locator('#app-sidebar').getByRole('link', { name: '新しいWorkspace', exact: true }).click();
+  await expect(page).toHaveURL(/\/workspace\//);
+  await expect(targetButton(page.locator('.pane-frame').first())).toHaveAttribute('aria-label', COLEMAK_LABEL);
 });
 
-test('従う集合のペインで対象を選ぶと、Workspaceの対象が変わり、個別画面のMultiの集合は書き換えない', async ({ page }) => {
+test('従う集合のペインで対象を選ぶと、リンクの対象が変わり、個別画面のMultiの集合は書き換えない', async ({ page }) => {
   await createWorkspace(page);
   await addAnalyzer(page, '比較表');
   const comparison = pane(page, '比較表');
@@ -512,7 +565,7 @@ test('使えないAnalyzerのペインは使えないと出て、閉じられる
 test('壊れた保存データでも画面は開き、壊れた部分だけが落ちる', async ({ page }) => {
   await page.addInitScript(({ key }) => {
     localStorage.setItem(key, JSON.stringify({
-      version: 2,
+      version: 3,
       workspaces: [
         { id: 'w', name: '一部が壊れている', panes: [
           { id: 'ok', analyzerId: 'bigram-flow', binding: { mode: 'follow' } },

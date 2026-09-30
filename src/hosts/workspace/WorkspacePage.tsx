@@ -8,11 +8,12 @@ import {
   duplicateWorkspacePaneCommand,
   renameWorkspaceCommand,
   setWorkspaceLayoutCommand,
+  linkWorkspacePaneToNewGroupCommand,
   setWorkspacePaneBindingCommand,
   setWorkspaceTargetCommand,
 } from '#engine/workspace-commands.ts';
 import {
-  FOLLOW_BINDING,
+  followBinding,
   findWorkspace,
   resolveWorkspacePaneTarget,
   type WorkspaceIdGenerator,
@@ -28,10 +29,9 @@ import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { AddPaneMenu } from './AddPaneMenu.tsx';
 import { findWorkspaceAnalyzer, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
-import type { WorkspacePaneRuntime } from './pane-runtime.ts';
+import type { PaneBindingChoice, WorkspacePaneRuntime } from './pane-runtime.ts';
 import { WorkspaceDock } from './WorkspaceDock.tsx';
 import { WorkspaceName } from './WorkspaceName.tsx';
-import { WorkspaceTargetBar } from './WorkspaceTargetBar.tsx';
 import { WorkspacePaneView } from './WorkspacePaneView.tsx';
 import './workspace.css';
 
@@ -132,35 +132,38 @@ export function WorkspacePage({
   const panesById = useMemo(() => new Map((panes ?? []).map((pane) => [pane.id, pane] as const)), [panes]);
   const paneIds = useMemo(() => (panes ?? []).map((pane) => pane.id), [panes]);
 
-  const workspaceTarget = workspace?.target;
+  const groups = workspace?.groups;
 
   const runtime: WorkspacePaneRuntime | undefined = useMemo(() => (env === undefined ? undefined : {
     env,
     commitPaneOptions: (paneId: string, options: unknown) => onPaneOptionsCommit(paneId, options),
     paneTarget: (pane: WorkspacePane, kind: WorkspacePaneTarget['kind']) => (
-      workspaceTarget === undefined ? undefined : resolveWorkspacePaneTarget(pane.binding, workspaceTarget, kind)
+      groups === undefined ? undefined : resolveWorkspacePaneTarget(pane.binding, groups, kind)
     ),
     setPaneTarget: (paneId: string, target: WorkspacePaneTarget) => {
-      // 従うペインで対象を選ぶと、Workspaceの対象を書き換える（隣の従うペインも一緒に変わる）。
-      if (panesById.get(paneId)?.binding.mode === 'follow') {
-        dispatch(setWorkspaceTargetCommand(workspaceId, target));
+      // 従うペインで対象を選ぶと、その組の対象を書き換える（同じ組の他のペインも一緒に変わる）。
+      const binding = panesById.get(paneId)?.binding;
+      if (binding?.mode === 'follow') {
+        dispatch(setWorkspaceTargetCommand(workspaceId, binding.group, target));
       } else {
         dispatch(setWorkspacePaneBindingCommand(workspaceId, paneId, { mode: 'fixed', target }));
       }
     },
-    setPaneFollows: (paneId: string, follows: boolean) => {
+    groups: groups ?? [],
+    bindPane: (paneId: string, choice: PaneBindingChoice) => {
       const pane = panesById.get(paneId);
-      if (pane === undefined) return;
-      if (follows) {
-        dispatch(setWorkspacePaneBindingCommand(workspaceId, paneId, FOLLOW_BINDING));
+      if (pane === undefined || groups === undefined) return;
+      if (choice.kind === 'group') {
+        dispatch(setWorkspacePaneBindingCommand(workspaceId, paneId, followBinding(choice.id)));
         return;
       }
-      // 固定にする時は、今映している対象をそのまま持つ（押した瞬間に見た目が変わらないように）。
+      // 固定・新しい組は、今映している対象をそのまま持つ（押した瞬間に見た目が変わらないように）。
       const kind = findWorkspaceAnalyzer(pane.analyzerId)?.cardinality;
-      const current = kind === undefined || workspaceTarget === undefined
-        ? undefined
-        : resolveWorkspacePaneTarget(pane.binding, workspaceTarget, kind);
-      if (current !== undefined) dispatch(setWorkspacePaneBindingCommand(workspaceId, paneId, { mode: 'fixed', target: current }));
+      const current = kind === undefined ? undefined : resolveWorkspacePaneTarget(pane.binding, groups, kind);
+      if (current === undefined) return;
+      dispatch(choice.kind === 'fixed'
+        ? setWorkspacePaneBindingCommand(workspaceId, paneId, { mode: 'fixed', target: current })
+        : linkWorkspacePaneToNewGroupCommand(workspaceId, paneId, generateId(), current));
     },
     duplicatePane: (paneId: string) => {
       flushPending();
@@ -170,7 +173,7 @@ export function WorkspacePage({
       flushPending();
       dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
     },
-  }), [env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, workspaceTarget]);
+  }), [env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups]);
 
   const titleOf = useCallback(
     (paneId: string) => {
@@ -192,8 +195,8 @@ export function WorkspacePage({
       id: generateId(),
       analyzerId: entry.id,
       options: undefined,
-      // 新しいペインはWorkspaceの対象に従う（比較中に黙って別の対象を映さない）。
-      binding: FOLLOW_BINDING,
+      // 新しいペインは最初の組に従う（比較中に黙って別の対象を映さない）。
+      binding: followBinding(workspace!.groups[0]!.id),
     };
     dispatch(addWorkspacePaneCommand(workspaceId, pane));
   };
@@ -233,13 +236,6 @@ export function WorkspacePage({
           generateTextId={generateTextId}
           onTextContentCommit={onTextContentCommit}
         />
-        {env === undefined ? null : (
-          <WorkspaceTargetBar
-            env={env}
-            target={workspace.target}
-            onChange={(target) => dispatch(setWorkspaceTargetCommand(workspaceId, target))}
-          />
-        )}
         <DefaultShapeChip
           overrides={assets.setupLibrary.overrides}
           dispatch={dispatch}

@@ -35,17 +35,15 @@ export type WorkspacePaneTarget =
   | { readonly kind: 'set'; readonly selection: MultiTargetSelection };
 
 /**
- * ペインの対象の持ち方。`follow`はWorkspaceの対象を読み、`fixed`はこのペインだけの対象を持つ。
+ * ペインの対象の持ち方。`follow`は連動の組（`LinkGroup`）の対象を読み、`fixed`はこのペインだけの対象を持つ。
  * 固定の対象は、従っている間は持たない（従うへ戻す時に捨てる。戻したい時はUndo）。
  */
 export type PaneTargetBinding =
-  | { readonly mode: 'follow' }
+  | { readonly mode: 'follow'; readonly group: string }
   | { readonly mode: 'fixed'; readonly target: WorkspacePaneTarget };
 
-export const FOLLOW_BINDING: PaneTargetBinding = { mode: 'follow' };
-
 /**
- * Workspaceの対象。Setup1つを見るAnalyzer用の1つと、集合を見るAnalyzer用の集合を別々に持つ
+ * 組の対象。Setup1つを見るAnalyzer用の1つと、集合を見るAnalyzer用の集合を別々に持つ
  * （個別画面のSingle・Multiが別々の選択を持つのと同じ。1つの値へ畳むとAnalyzerの種類で意味が変わる）。
  */
 export interface WorkspaceTarget {
@@ -58,18 +56,37 @@ export function initialWorkspaceTarget(): WorkspaceTarget {
 }
 
 /**
- * ペインが今映す対象。従うならWorkspaceの対象、固定ならペイン自身の対象。
- * Analyzerが期待する形（`kind`）と合わない固定の対象は`undefined`（使えないペインとして扱う）。
+ * 連動の組。同じ組に従うペインは、組の対象を切り替えると一括で追従する。Workspaceは組を複数持てて、
+ * 組ごとに対象を持つ（比べる2つの群を、それぞれ別の対象で並べられる）。
+ * 組の見分けは並びの番号で出す。対象の色（配列ごとの色）とは無関係。
+ */
+export interface LinkGroup {
+  readonly id: string;
+  readonly target: WorkspaceTarget;
+}
+
+/** 新しいWorkspaceが最初に持つ組のid。 */
+export const INITIAL_LINK_GROUP_ID = 'link-1';
+
+export function followBinding(group: string): PaneTargetBinding {
+  return { mode: 'follow', group };
+}
+
+/**
+ * ペインが今映す対象。従うなら組の対象、固定ならペイン自身の対象。
+ * Analyzerが期待する形（`kind`）と合わない固定の対象・存在しない組は`undefined`（使えないペインとして扱う）。
  */
 export function resolveWorkspacePaneTarget(
   binding: PaneTargetBinding,
-  workspaceTarget: WorkspaceTarget,
+  groups: readonly LinkGroup[],
   kind: WorkspacePaneTarget['kind'],
 ): WorkspacePaneTarget | undefined {
   if (binding.mode === 'fixed') return binding.target.kind === kind ? binding.target : undefined;
+  const group = groups.find((candidate) => candidate.id === binding.group);
+  if (group === undefined) return undefined;
   return kind === 'single'
-    ? { kind: 'single', target: effectiveSingleTarget(workspaceTarget.single) }
-    : { kind: 'set', selection: workspaceTarget.set };
+    ? { kind: 'single', target: effectiveSingleTarget(group.target.single) }
+    : { kind: 'set', selection: group.target.set };
 }
 
 export interface WorkspacePane {
@@ -94,8 +111,8 @@ export interface Workspace {
   readonly name: string;
   /** このWorkspaceが使うテキスト。個別画面の「最後に使ったテキスト」とは別に持つ。 */
   readonly text: TextSelectionState;
-  /** 「従う」ペインが読む対象。 */
-  readonly target: WorkspaceTarget;
+  /** 連動の組。「従う」ペインは、このうち1つの対象を読む。1つ以上を常に持つ。 */
+  readonly groups: readonly LinkGroup[];
   readonly panes: readonly WorkspacePane[];
   readonly layout: WorkspaceLayout;
 }
@@ -125,7 +142,7 @@ export function uniqueWorkspaceName(library: WorkspaceLibrary, base: string): st
   }
 }
 
-/** 空のWorkspaceを作る。テキストは既定の選択から、対象は渡された値（省略時は空）から始める。 */
+/** 空のWorkspaceを作る。テキストは既定の選択から、最初の組の対象は渡された値（省略時は空）から始める。 */
 export function createWorkspace(
   library: WorkspaceLibrary,
   generateId: WorkspaceIdGenerator,
@@ -136,7 +153,7 @@ export function createWorkspace(
     id: generateId(),
     name: uniqueWorkspaceName(library, name?.trim() || DEFAULT_WORKSPACE_NAME),
     text: initialTextSelection(),
-    target,
+    groups: [{ id: INITIAL_LINK_GROUP_ID, target }],
     panes: [],
     layout: undefined,
   };
@@ -178,19 +195,41 @@ export function withWorkspaceText(library: WorkspaceLibrary, id: string, selecti
 }
 
 /**
- * Workspaceの対象を書き換える。`target.kind`が、単体用（`single`）と集合用（`set`）のどちらを
+ * 組の対象を書き換える。`target.kind`が、単体用（`single`）と集合用（`set`）のどちらを
  * 書くかを決める。値が変わらなければ同じ参照を返す。
  */
-export function withWorkspaceTarget(library: WorkspaceLibrary, id: string, target: WorkspacePaneTarget): WorkspaceLibrary {
+export function withWorkspaceTarget(
+  library: WorkspaceLibrary,
+  id: string,
+  groupId: string,
+  target: WorkspacePaneTarget,
+): WorkspaceLibrary {
   return updateWorkspace(library, id, (workspace) => {
+    const index = workspace.groups.findIndex((group) => group.id === groupId);
+    if (index === -1) return workspace;
+    const group = workspace.groups[index]!;
+    let next: WorkspaceTarget;
     if (target.kind === 'single') {
-      const single = withSingleTarget(workspace.target.single, target.target);
-      return single === workspace.target.single ? workspace : { ...workspace, target: { ...workspace.target, single } };
+      const single = withSingleTarget(group.target.single, target.target);
+      if (single === group.target.single) return workspace;
+      next = { ...group.target, single };
+    } else {
+      if (stableStringify(group.target.set) === stableStringify(target.selection)) return workspace;
+      next = { ...group.target, set: target.selection };
     }
-    return stableStringify(workspace.target.set) === stableStringify(target.selection)
-      ? workspace
-      : { ...workspace, target: { ...workspace.target, set: target.selection } };
+    return { ...workspace, groups: workspace.groups.map((g, i) => (i === index ? { ...g, target: next } : g)) };
   });
+}
+
+/**
+ * どのペインも従っていない組を消す。ただし組は1つ以上残す（全部空なら先頭を残す。
+ * 空のWorkspaceの対象を失わず、次に足すペインが従う先にもなる）。
+ */
+function pruneLinkGroups(workspace: Workspace): Workspace {
+  const used = new Set(workspace.panes.flatMap((pane) => (pane.binding.mode === 'follow' ? [pane.binding.group] : [])));
+  let kept = workspace.groups.filter((group) => used.has(group.id));
+  if (kept.length === 0) kept = workspace.groups.slice(0, 1);
+  return kept.length === workspace.groups.length ? workspace : { ...workspace, groups: kept };
 }
 
 /** ペインを右端に足す。同じidのペインが既にあれば何もしない。 */
@@ -209,11 +248,11 @@ export function addWorkspacePane(library: WorkspaceLibrary, workspaceId: string,
 export function closeWorkspacePane(library: WorkspaceLibrary, workspaceId: string, paneId: string): WorkspaceLibrary {
   return updateWorkspace(library, workspaceId, (workspace) => {
     if (!workspace.panes.some((pane) => pane.id === paneId)) return workspace;
-    return {
+    return pruneLinkGroups({
       ...workspace,
       panes: workspace.panes.filter((pane) => pane.id !== paneId),
       layout: layoutWithoutPane(workspace.layout, paneId),
-    };
+    });
   });
 }
 
@@ -272,16 +311,59 @@ export function withWorkspacePaneOptions(
   });
 }
 
-/** ペインの対象の持ち方（従う / 固定とその対象）を書き換える。中身が同じなら何もしない。 */
+/**
+ * ペインの対象の持ち方（従う組 / 固定とその対象）を書き換える。中身が同じなら何もしない。
+ * 誰も従わなくなった組は消える。存在しない組へ従わせる指定は何もしない。
+ */
 export function withWorkspacePaneBinding(
   library: WorkspaceLibrary,
   workspaceId: string,
   paneId: string,
   binding: PaneTargetBinding,
 ): WorkspaceLibrary {
-  return updatePane(library, workspaceId, paneId, (pane) => (
-    stableStringify(pane.binding) === stableStringify(binding) ? pane : { ...pane, binding }
-  ));
+  return updateWorkspace(library, workspaceId, (workspace) => {
+    if (binding.mode === 'follow' && !workspace.groups.some((group) => group.id === binding.group)) return workspace;
+    const index = workspace.panes.findIndex((pane) => pane.id === paneId);
+    if (index === -1) return workspace;
+    const current = workspace.panes[index]!;
+    if (stableStringify(current.binding) === stableStringify(binding)) return workspace;
+    return pruneLinkGroups({
+      ...workspace,
+      panes: workspace.panes.map((pane, i) => (i === index ? { ...current, binding } : pane)),
+    });
+  });
+}
+
+/**
+ * ペインを新しい組へ移す。新しい組の対象は、そのペインが今映している対象（`current`）から始める
+ * （押しても見た目が変わらない）。`current`と別の形（Single / Multi）の対象は、元の組があればそこから写し、
+ * 固定だったペインなら空から始める。元の組は、誰も従わなくなれば消える。
+ */
+export function withPaneInNewLinkGroup(
+  library: WorkspaceLibrary,
+  workspaceId: string,
+  paneId: string,
+  newGroupId: string,
+  current: WorkspacePaneTarget,
+): WorkspaceLibrary {
+  return updateWorkspace(library, workspaceId, (workspace) => {
+    const pane = workspace.panes.find((candidate) => candidate.id === paneId);
+    if (pane === undefined || workspace.groups.some((group) => group.id === newGroupId)) return workspace;
+    const previous = pane.binding.mode === 'follow'
+      ? workspace.groups.find((group) => group.id === (pane.binding as { group: string }).group)
+      : undefined;
+    const base = previous?.target ?? initialWorkspaceTarget();
+    const target: WorkspaceTarget = current.kind === 'single'
+      ? { ...base, single: { target: current.target } }
+      : { ...base, set: current.selection };
+    return pruneLinkGroups({
+      ...workspace,
+      groups: [...workspace.groups, { id: newGroupId, target }],
+      panes: workspace.panes.map((candidate) => (
+        candidate.id === paneId ? { ...candidate, binding: followBinding(newGroupId) } : candidate
+      )),
+    });
+  });
 }
 
 /**

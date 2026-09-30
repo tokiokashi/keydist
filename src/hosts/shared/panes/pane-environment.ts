@@ -28,9 +28,12 @@ export interface PaneEnvironment {
 }
 
 export interface PaneTargetBindingControl {
-  /** `true`ならWorkspaceの対象に従っている。`false`ならこのペインだけの対象に固定している。 */
+  /** `true`なら連動の組に従っている。`false`ならこのペインだけの対象に固定している。 */
   readonly follows: boolean;
-  readonly onChange: (follows: boolean) => void;
+  /** 従っている組の番号（1から）。固定の間は無い。 */
+  readonly groupNumber?: number;
+  /** 選べるもの（固定・各組・新しい組）。 */
+  readonly items: readonly PaneMenuItem[];
 }
 
 /**
@@ -42,7 +45,7 @@ export interface PaneChrome {
   readonly stickyHeader?: boolean;
   readonly menuItems?: readonly PaneMenuItem[];
   /**
-   * 対象がWorkspaceに従っているか固定かの表示と切り替え（Workspaceのペイン）。個別画面は対象を
+   * 対象が連動の組に従っているか固定かの表示と切り替え（Workspaceのペイン）。個別画面は対象を
    * ペインの外に持たないので置かない。
    */
   readonly targetBinding?: PaneTargetBindingControl;

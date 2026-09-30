@@ -49,8 +49,6 @@ export interface TargetSelectionProps {
    * パソコン幅だけ。スマホ幅のシートは画面を覆うので自動では出さない。
    */
   readonly autoOpen?: boolean | undefined;
-  /** ボタンの読み上げ用の名前の先頭（省略時は「対象」）。同じ画面に対象の選択が複数ある時に区別する。 */
-  readonly label?: string;
 }
 
 /** スマホ幅（シートで出す幅）。解析設定の小窓（`pane-frame.css`）と同じ境目。 */
@@ -125,7 +123,6 @@ export function TargetSelection({
   open: controlledOpen,
   onOpenChange,
   autoOpen,
-  label = '対象',
 }: TargetSelectionProps) {
   const [innerOpen, setInnerOpen] = useState(false);
   const open = controlledOpen ?? innerOpen;
@@ -302,7 +299,7 @@ export function TargetSelection({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        aria-label={`${label}: ${ariaSummary}`}
+        aria-label={`対象: ${ariaSummary}`}
         title={title || undefined}
         onClick={() => (open ? close(false) : setOpen(true))}
       >

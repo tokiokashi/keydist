@@ -1,5 +1,5 @@
-import type { WorkspacePane, WorkspacePaneTarget } from '#engine/workspace.ts';
-import type { PaneChrome, PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
+import type { LinkGroup, WorkspacePane, WorkspacePaneTarget } from '#engine/workspace.ts';
+import type { PaneChrome, PaneEnvironment, PaneTargetBindingControl } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneMenuItem } from '#hosts/shared/PaneHeaderParts.tsx';
 
 /**
@@ -20,11 +20,21 @@ export interface WorkspacePaneRuntime {
    * （隣の従うペインも一緒に変わる）。
    */
   readonly setPaneTarget: (paneId: string, target: WorkspacePaneTarget) => void;
-  /** 従う / 固定を切り替える。固定にする時は、今映している対象をそのペインの対象として持つ。 */
-  readonly setPaneFollows: (paneId: string, follows: boolean) => void;
+  /** 連動の組。従うペインの対象の持ち主で、番号は並びの順（1から）。 */
+  readonly groups: readonly LinkGroup[];
+  /**
+   * ペインの対象の持ち方を切り替える。固定にする時・新しい組へ移す時は、今映している対象を
+   * そのまま持つ（押した瞬間に見た目が変わらない）。
+   */
+  readonly bindPane: (paneId: string, choice: PaneBindingChoice) => void;
   readonly duplicatePane: (paneId: string) => void;
   readonly closePane: (paneId: string) => void;
 }
+
+export type PaneBindingChoice =
+  | { readonly kind: 'fixed' }
+  | { readonly kind: 'group'; readonly id: string }
+  | { readonly kind: 'new-group' };
 
 /**
  * ペインの⋯の中身（docs/architecture.md「ペイン」）。「拡大表示」は入れていない
@@ -52,9 +62,43 @@ export function workspacePaneChrome(
     headingLevel: 2,
     showPaneNameInSettings: true,
     menuItems: paneMenuItems(runtime, pane.id, resetOptions),
-    targetBinding: {
-      follows: pane.binding.mode === 'follow',
-      onChange: (follows) => runtime.setPaneFollows(pane.id, follows),
-    },
+    targetBinding: bindingControl(runtime, pane),
+  };
+}
+
+/** 連動の組の名前（並びの番号で見分ける）。 */
+export function linkGroupLabel(index: number): string {
+  return `リンク ${index + 1}`;
+}
+
+function bindingControl(runtime: WorkspacePaneRuntime, pane: WorkspacePane): PaneTargetBindingControl {
+  const followed = pane.binding.mode === 'follow' ? pane.binding.group : undefined;
+  const index = runtime.groups.findIndex((group) => group.id === followed);
+  return {
+    follows: followed !== undefined,
+    ...(index === -1 ? {} : { groupNumber: index + 1 }),
+    items: [
+      {
+        id: 'fixed',
+        label: '固定',
+        description: 'このペインだけの対象にする',
+        selected: followed === undefined,
+        onSelect: () => runtime.bindPane(pane.id, { kind: 'fixed' }),
+      },
+      ...runtime.groups.map((group, i) => ({
+        id: `group-${group.id}`,
+        label: linkGroupLabel(i),
+        description: '同じリンクのペインと対象を揃える',
+        selected: group.id === followed,
+        onSelect: () => runtime.bindPane(pane.id, { kind: 'group', id: group.id }),
+      })),
+      {
+        id: 'new-group',
+        label: '新しいリンク',
+        description: '今の対象で、このペインだけの新しいリンクを作る',
+        selected: false,
+        onSelect: () => runtime.bindPane(pane.id, { kind: 'new-group' }),
+      },
+    ],
   };
 }

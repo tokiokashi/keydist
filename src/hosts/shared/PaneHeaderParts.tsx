@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 /**
  * ペインの見出しに置く小さな部品（⋯のメニュー）。
@@ -10,11 +10,32 @@ export interface PaneMenuItem {
   readonly label: string;
   /** 押すと何が変わり、何が変わらないかの短い説明。 */
   readonly description?: string;
+  /** 択一のメニューで、今選ばれている項目（`menuitemradio`として読み上げる）。 */
+  readonly selected?: boolean;
   readonly onSelect: () => void;
 }
 
-/** ペインへの操作（⋯）。 */
-export function PaneMenu({ paneName, items }: { readonly paneName: string; readonly items: readonly PaneMenuItem[] }) {
+/**
+ * ペインの見出しに置くメニュー。既定はペインへの操作（⋯）。`label`と`icon`を渡すと、別の用途
+ * （対象の連動の選択など）のボタンになる。`selected`を持つ項目があれば択一のメニューとして出す。
+ */
+export function PaneMenu({
+  paneName,
+  items,
+  label,
+  icon,
+  className,
+  data,
+}: {
+  readonly paneName: string;
+  readonly items: readonly PaneMenuItem[];
+  /** ボタンとメニューの読み上げ名。省略時は「<ペイン名>の操作」。 */
+  readonly label?: string;
+  readonly icon?: ReactNode;
+  readonly className?: string;
+  readonly data?: Readonly<Record<string, string>>;
+}) {
+  const accessibleName = label ?? `${paneName}の操作`;
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -41,7 +62,8 @@ export function PaneMenu({ paneName, items }: { readonly paneName: string; reado
   return (
     <div
       ref={rootRef}
-      className="pane-menu"
+      className={className === undefined ? 'pane-menu' : `pane-menu ${className}`}
+      {...data}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && open) {
           event.stopPropagation();
@@ -53,26 +75,31 @@ export function PaneMenu({ paneName, items }: { readonly paneName: string; reado
         ref={buttonRef}
         type="button"
         className="pane-icon-button pane-menu-button"
-        aria-label={`${paneName}の操作`}
+        aria-label={accessibleName}
+        title={label === undefined ? undefined : accessibleName}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((current) => !current)}
       >
-        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-          <circle cx="3.5" cy="8" r="1.3" fill="currentColor" />
-          <circle cx="8" cy="8" r="1.3" fill="currentColor" />
-          <circle cx="12.5" cy="8" r="1.3" fill="currentColor" />
-        </svg>
+        {icon ?? (
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <circle cx="3.5" cy="8" r="1.3" fill="currentColor" />
+            <circle cx="8" cy="8" r="1.3" fill="currentColor" />
+            <circle cx="12.5" cy="8" r="1.3" fill="currentColor" />
+          </svg>
+        )}
       </button>
       {open ? (
-        <div className="pane-menu-list" role="menu" id={menuId} aria-label={`${paneName}の操作`}>
+        <div className="pane-menu-list" role="menu" id={menuId} aria-label={accessibleName}>
           {items.map((item) => (
             <button
               type="button"
-              role="menuitem"
+              role={item.selected === undefined ? 'menuitem' : 'menuitemradio'}
+              aria-checked={item.selected}
               key={item.id}
               className="pane-menu-item"
+              data-selected={item.selected || undefined}
               onClick={() => {
                 item.onSelect();
                 close();
@@ -98,5 +125,28 @@ export function SettingsIcon() {
       <circle cx="10" cy="4.5" r="1.6" fill="none" stroke="currentColor" strokeWidth="1.4" />
       <circle cx="6" cy="11.5" r="1.6" fill="none" stroke="currentColor" strokeWidth="1.4" />
     </svg>
+  );
+}
+
+/**
+ * 対象の連動のアイコン（ピン）。連動している（組に従っている）間は塗りつぶして組の番号を添え、
+ * 固定の間は輪郭だけにする。番号は組の見分け用で、対象の色（配列ごとの色）とは無関係。
+ */
+export function LinkPinIcon({ groupNumber }: { readonly groupNumber?: number }) {
+  const linked = groupNumber !== undefined;
+  return (
+    <span className="pane-link-pin" data-linked={linked}>
+      <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+        <path
+          d="M6 2h4l-.6 4.2L12 9H4l2.6-2.8L6 2z M8 9v5"
+          fill={linked ? 'currentColor' : 'none'}
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      </svg>
+      {linked ? <span className="pane-link-pin-number">{groupNumber}</span> : null}
+    </span>
   );
 }
