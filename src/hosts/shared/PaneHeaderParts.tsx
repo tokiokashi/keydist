@@ -12,6 +12,10 @@ export interface PaneMenuItem {
   readonly description?: string;
   /** 択一のメニューで、今選ばれている項目（`menuitemradio`として読み上げる）。 */
   readonly selected?: boolean;
+  /** 項目の先頭に出す絵（対象の持ち方）。あれば1行で出す。 */
+  readonly glyph?: { readonly kind: BindingGlyphKind; readonly number?: number };
+  /** 読み上げ名。省略時は`label`。 */
+  readonly ariaLabel?: string;
   readonly onSelect: () => void;
 }
 
@@ -23,6 +27,7 @@ export function PaneMenu({
   paneName,
   items,
   label,
+  title,
   icon,
   className,
   data,
@@ -31,6 +36,8 @@ export function PaneMenu({
   readonly items: readonly PaneMenuItem[];
   /** ボタンとメニューの読み上げ名。省略時は「<ペイン名>の操作」。 */
   readonly label?: string;
+  /** hoverで出す説明。 */
+  readonly title?: string;
   readonly icon?: ReactNode;
   readonly className?: string;
   readonly data?: Readonly<Record<string, string>>;
@@ -76,7 +83,7 @@ export function PaneMenu({
         type="button"
         className="pane-icon-button pane-menu-button"
         aria-label={accessibleName}
-        title={label === undefined ? undefined : accessibleName}
+        title={title}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
@@ -96,6 +103,8 @@ export function PaneMenu({
             <button
               type="button"
               role={item.selected === undefined ? 'menuitem' : 'menuitemradio'}
+              aria-label={item.ariaLabel}
+              data-glyph={item.glyph === undefined ? undefined : ''}
               aria-checked={item.selected}
               key={item.id}
               className="pane-menu-item"
@@ -105,6 +114,7 @@ export function PaneMenu({
                 close();
               }}
             >
+              {item.glyph === undefined ? null : <BindingGlyph kind={item.glyph.kind} number={item.glyph.number} />}
               <span className="pane-menu-item-label">{item.label}</span>
               {item.description === undefined ? null : (
                 <span className="pane-menu-item-description">{item.description}</span>
@@ -128,25 +138,19 @@ export function SettingsIcon() {
   );
 }
 
+export type BindingGlyphKind = 'pin' | 'link' | 'link-new';
+
+const CHAIN_PATH = 'M6.7 9.3l2.6-2.6M7.2 4.6l.9-.9a2.5 2.5 0 013.5 3.5l-.9.9M8.8 11.4l-.9.9a2.5 2.5 0 01-3.5-3.5l.9-.9';
+
 /**
- * 対象の持ち方のアイコン。リンクに従っている間は鎖に組の番号を添え、このペインだけの対象に固定している間はピンにする。
- * 番号は組の見分け用で、対象の色（配列ごとの色）とは無関係。
+ * 対象の持ち方の絵。固定はピン、連動に従う間は鎖（`number`の組の番号を添える）、
+ * 新しい連動は鎖に「＋」。番号は組の見分け用で、対象の色（配列ごとの色）とは無関係。
+ * 文字の名前は持たず、読み上げ名は呼び出し側のボタン・項目が持つ。
  */
-export function TargetBindingIcon({ groupNumber }: { readonly groupNumber?: number }) {
-  const linked = groupNumber !== undefined;
+export function BindingGlyph({ kind, number }: { readonly kind: BindingGlyphKind; readonly number?: number }) {
   return (
-    <span className="pane-binding-icon" data-linked={linked}>
-      {linked ? (
-        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" data-icon="link">
-          <path
-            d="M6.7 9.3l2.6-2.6M7.2 4.6l.9-.9a2.5 2.5 0 013.5 3.5l-.9.9M8.8 11.4l-.9.9a2.5 2.5 0 01-3.5-3.5l.9-.9"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.4"
-            strokeLinecap="round"
-          />
-        </svg>
-      ) : (
+    <span className="pane-binding-icon" data-linked={kind !== 'pin'}>
+      {kind === 'pin' ? (
         <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" data-icon="pin">
           <path
             d="M6 2h4l-.6 4.2L12 9H4l2.6-2.8L6 2z M8 9v5"
@@ -157,8 +161,17 @@ export function TargetBindingIcon({ groupNumber }: { readonly groupNumber?: numb
             strokeLinecap="round"
           />
         </svg>
+      ) : (
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" data-icon={kind}>
+          <g transform={kind === 'link-new' ? 'translate(-1 -1) scale(.85)' : undefined}>
+            <path d={CHAIN_PATH} fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          </g>
+          {kind === 'link-new' ? (
+            <path d="M12.5 9.8v5M10 12.3h5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          ) : null}
+        </svg>
       )}
-      {linked ? <span className="pane-binding-icon-number">{groupNumber}</span> : null}
+      {number === undefined ? null : <span className="pane-binding-icon-number">{number}</span>}
     </span>
   );
 }

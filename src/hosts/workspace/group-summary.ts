@@ -17,7 +17,7 @@ const MAX_NAMES = 2;
 
 /**
  * ペインの見出しの対象と同じ名前（同じ集合の中で区別できる表示名）で、組ごとの対象を要約する。
- * ピンのメニューで、どのリンクがどの対象かを見分けるのに使う。
+ * ピンのメニューで、どの連動がどの対象かを見分けるのに使う。
  */
 export function summarizeLinkGroups(env: PaneEnvironment, groups: readonly LinkGroup[]): readonly LinkGroupSummary[] {
   const { setups, overrides, catalog, resolvedText } = env;

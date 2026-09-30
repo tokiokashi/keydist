@@ -32,6 +32,8 @@ export interface PaneTargetBindingControl {
   readonly follows: boolean;
   /** 従っている組の番号（1から）。固定の間は無い。 */
   readonly groupNumber?: number;
+  /** 従っている組の対象の要約（読み上げ名に使う）。 */
+  readonly summary?: string;
   /** 選べるもの（固定・各組・新しい組）。 */
   readonly items: readonly PaneMenuItem[];
 }

@@ -70,36 +70,37 @@ export function workspacePaneChrome(
   };
 }
 
-/** 連動の組の名前（並びの番号で見分ける）。 */
-export function linkGroupLabel(index: number): string {
-  return `リンク ${index + 1}`;
-}
-
 function bindingControl(runtime: WorkspacePaneRuntime, pane: WorkspacePane): PaneTargetBindingControl {
   const followed = pane.binding.mode === 'follow' ? pane.binding.group : undefined;
   const index = runtime.groups.findIndex((group) => group.id === followed);
   return {
     follows: followed !== undefined,
-    ...(index === -1 ? {} : { groupNumber: index + 1 }),
+    ...(index === -1 ? {} : { groupNumber: index + 1, summary: summaryOf(runtime, index, pane) }),
     items: [
       {
         id: 'fixed',
         label: '固定',
-        description: 'このペインだけ',
+        ariaLabel: '固定',
+        glyph: { kind: 'pin' },
         selected: followed === undefined,
         onSelect: () => runtime.bindPane(pane.id, { kind: 'fixed' }),
       },
-      ...runtime.groups.map((group, i) => ({
-        id: `group-${group.id}`,
-        label: linkGroupLabel(i),
-        description: summaryOf(runtime, i, pane),
-        selected: group.id === followed,
-        onSelect: () => runtime.bindPane(pane.id, { kind: 'group', id: group.id }),
-      })),
+      ...runtime.groups.map((group, i) => {
+        const summary = summaryOf(runtime, i, pane);
+        return {
+          id: `group-${group.id}`,
+          label: summary,
+          ariaLabel: `連動 ${i + 1}（${summary}）`,
+          glyph: { kind: 'link' as const, number: i + 1 },
+          selected: group.id === followed,
+          onSelect: () => runtime.bindPane(pane.id, { kind: 'group', id: group.id }),
+        };
+      }),
       {
         id: 'new-group',
-        label: '新しいリンク',
-        description: '今の対象で作る',
+        label: '新しい連動',
+        ariaLabel: '新しい連動（今の対象で作る）',
+        glyph: { kind: 'link-new' },
         selected: false,
         onSelect: () => runtime.bindPane(pane.id, { kind: 'new-group' }),
       },
@@ -108,9 +109,9 @@ function bindingControl(runtime: WorkspacePaneRuntime, pane: WorkspacePane): Pan
 }
 
 /** メニューに出す組の対象の要約。ペインのAnalyzerが見る形（Single / Multi）の側を出す。 */
-function summaryOf(runtime: WorkspacePaneRuntime, index: number, pane: WorkspacePane): string | undefined {
+function summaryOf(runtime: WorkspacePaneRuntime, index: number, pane: WorkspacePane): string {
   const summary = runtime.groupSummaries[index];
-  if (summary === undefined) return undefined;
+  if (summary === undefined) return '';
   const kind = findWorkspaceAnalyzer(pane.analyzerId)?.cardinality;
   return kind === 'set' ? summary.set : summary.single;
 }

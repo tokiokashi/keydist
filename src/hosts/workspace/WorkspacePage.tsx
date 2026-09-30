@@ -72,7 +72,7 @@ export interface WorkspacePageProps {
  *
  * 持つのは、文脈バー（Workspace名・このWorkspace自身のテキスト・Undo/Redo・共有）と、ペインの追加・
  * 複製・閉じる・並びの変更を資産のコマンドへ結ぶところ。書き込みはすべて`dispatch`を通す（#544 §8-2）。
- * ペインの対象は「Workspaceに従う」か「固定」（ペイン自身が持つ）。従うペインは文脈バーのWorkspaceの対象を読む。
+ * ペインの対象は「連動の組に従う」か「固定」（ペイン自身が持つ）。従うペインは、従う組の対象を読む。組の切り替えはペインの見出し（ピンのメニュー）で行い、文脈バーには置かない。
  */
 export function WorkspacePage({
   workspaceId,

@@ -9,7 +9,7 @@ import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import type { PaneTargetBindingControl } from './panes/pane-environment.ts';
-import { TargetBindingIcon, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
+import { BindingGlyph, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
 import './pane-frame.css';
 
@@ -141,8 +141,11 @@ export function PaneFrame({
             <PaneMenu
               paneName={paneName}
               items={targetBinding.items}
-              label={`${name}の対象の連動: ${targetBinding.follows ? `リンク ${targetBinding.groupNumber}` : '固定'}`}
-              icon={<TargetBindingIcon groupNumber={targetBinding.follows ? targetBinding.groupNumber : undefined} />}
+              label={targetBinding.follows ? `連動 ${targetBinding.groupNumber}（対象: ${targetBinding.summary}）` : '固定'}
+              title={targetBinding.follows
+                ? `連動 ${targetBinding.groupNumber}: 同じ番号のペインと、配列・Setupが一緒に変わる`
+                : '固定: このペインの対象は、他のペインに合わせて変わらない'}
+              icon={<BindingGlyph kind={targetBinding.follows ? 'link' : 'pin'} number={targetBinding.follows ? targetBinding.groupNumber : undefined} />}
               className="pane-target-binding"
               data={{ 'data-follows': String(targetBinding.follows) }}
             />

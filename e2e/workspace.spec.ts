@@ -248,10 +248,10 @@ const targetButton = (pane: Locator) => pane.getByRole('button', { name: /^対�
 /** 見出しの対象の連動（ピン）のボタン。 */
 const pinButton = (pane: Locator) => pane.locator('.pane-target-binding .pane-menu-button');
 
-/** ピンのメニューから、固定・リンク N・新しいリンクを選ぶ。 */
+/** ピンのメニューから、固定・連動 N・新しい連動を選ぶ（項目の読み上げ名の先頭で引く）。 */
 async function pickBinding(page: Page, pane: Locator, label: string): Promise<void> {
   await pinButton(pane).click();
-  await page.locator('.pane-menu-item').filter({ has: page.locator('.pane-menu-item-label', { hasText: new RegExp(`^${label}$`) }) }).click();
+  await page.locator(`.pane-menu-item[aria-label^="${label}"]`).click();
 }
 
 async function chooseLayout(page: Page, button: Locator, layoutId: string): Promise<void> {
@@ -276,13 +276,13 @@ test('ペインの対象: 従うペイン2つと固定のペイン1つ。従う�
   const panes = page.locator('.pane-frame');
   await expect(panes.nth(2).locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
-  // 足したペインは最初のリンクに従う。3つ目を固定にすると、押した瞬間は見た目が変わらない
-  for (let n = 0; n < 3; n += 1) await expect(pinButton(panes.nth(n))).toHaveAttribute('aria-label', 'Bigram Flowの対象の連動: リンク 1');
+  // 足したペインは最初の連動に従う。3つ目を固定にすると、押した瞬間は見た目が変わらない
+  for (let n = 0; n < 3; n += 1) await expect(pinButton(panes.nth(n))).toHaveAttribute('aria-label', /^連動 1（/);
   await pickBinding(page, panes.nth(2), '固定');
-  await expect(pinButton(panes.nth(2))).toHaveAttribute('aria-label', 'Bigram Flowの対象の連動: 固定');
+  await expect(pinButton(panes.nth(2))).toHaveAttribute('aria-label', '固定');
   await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', QWERTY_LABEL);
 
-  // 従うペインの見出しで対象を選ぶと、同じリンクの2つだけが追従する
+  // 従うペインの見出しで対象を選ぶと、同じ連動の2つだけが追従する
   await chooseLayout(page, targetButton(panes.nth(0)), 'colemak-dh');
   await expect(targetButton(panes.nth(0))).toHaveAttribute('aria-label', COLEMAK_LABEL);
   await expect(targetButton(panes.nth(1))).toHaveAttribute('aria-label', COLEMAK_LABEL);
@@ -307,26 +307,26 @@ test('ペインの対象: 従うペイン2つと固定のペイン1つ。従う�
   await waitForHydration(page);
   await expect(targetButton(page.locator('.pane-frame').nth(1))).toHaveAttribute('aria-label', COLEMAK_LABEL);
   await expect(targetButton(page.locator('.pane-frame').nth(2))).toHaveAttribute('aria-label', QWERTY_LABEL);
-  await expect(pinButton(page.locator('.pane-frame').nth(2))).toHaveAttribute('aria-label', 'Bigram Flowの対象の連動: 固定');
+  await expect(pinButton(page.locator('.pane-frame').nth(2))).toHaveAttribute('aria-label', '固定');
 
-  // 固定のペインを最初のリンクへ戻すと、そのリンクの対象へ追従する
-  await pickBinding(page, page.locator('.pane-frame').nth(2), 'リンク 1');
+  // 固定のペインを最初の連動へ戻すと、その連動の対象へ追従する
+  await pickBinding(page, page.locator('.pane-frame').nth(2), '連動 1');
   await expect(targetButton(page.locator('.pane-frame').nth(2))).toHaveAttribute('aria-label', COLEMAK_LABEL);
 });
 
-test('リンクを2つ持てる: 組ごとに対象が別で、片方を変えてももう片方と固定は動かない。空になったリンクは消える', async ({ page }) => {
+test('連動を2つ持てる: 組ごとに対象が別で、片方を変えてももう片方と固定は動かない。空になった連動は消える', async ({ page }) => {
   await createWorkspace(page);
   for (let n = 0; n < 4; n += 1) await addAnalyzer(page, 'Bigram Flow');
   const panes = page.locator('.pane-frame');
   await expect(panes.nth(3).locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
 
-  // 3つ目を新しいリンクへ移す（見た目は変わらない）。4つ目は固定にする
-  await pickBinding(page, panes.nth(2), '新しいリンク');
-  await expect(pinButton(panes.nth(2))).toHaveAttribute('aria-label', 'Bigram Flowの対象の連動: リンク 2');
+  // 3つ目を新しい連動へ移す（見た目は変わらない）。4つ目は固定にする
+  await pickBinding(page, panes.nth(2), '新しい連動');
+  await expect(pinButton(panes.nth(2))).toHaveAttribute('aria-label', /^連動 2（/);
   await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', QWERTY_LABEL);
   await pickBinding(page, panes.nth(3), '固定');
 
-  // リンク1のペインで対象を選ぶと、リンク1のペインだけが変わる
+  // 連動1のペインで対象を選ぶと、連動1のペインだけが変わる
   await chooseLayout(page, targetButton(panes.nth(0)), 'colemak-dh');
   await expect(targetButton(panes.nth(0))).toHaveAttribute('aria-label', COLEMAK_LABEL);
   await expect(targetButton(panes.nth(1))).toHaveAttribute('aria-label', COLEMAK_LABEL);
@@ -336,50 +336,62 @@ test('リンクを2つ持てる: 組ごとに対象が別で、片方を変え�
   expect(stored.groups.map((g) => g.target.single?.layoutId)).toEqual(['colemak-dh', 'qwerty']);
   expect(stored.panes.map((p) => p.binding.group ?? p.binding.mode)).toEqual([stored.groups[0]!.id, stored.groups[0]!.id, stored.groups[1]!.id, 'fixed']);
 
-  // 連動は鎖と組の番号、固定はピン。メニューの各リンクには、そのリンクの対象の要約が出る
+  // 連動は鎖と組の番号、固定はピン。メニューの各連動には、その連動の対象の要約が出る
   await expect(pinButton(panes.nth(0)).locator('svg[data-icon="link"]')).toBeVisible();
   await expect(pinButton(panes.nth(3)).locator('svg[data-icon="pin"]')).toBeVisible();
   await pinButton(panes.nth(3)).click();
-  await expect(page.locator('.pane-menu-item-label')).toHaveText(['固定', 'リンク 1', 'リンク 2', '新しいリンク']);
-  await expect(page.locator('.pane-menu-item-description')).toHaveText(['このペインだけ', 'Colemak-DH', 'QWERTY', '今の対象で作る']);
+  const items = page.locator('.pane-menu-item');
+  await expect(items).toHaveCount(4);
+  for (const [n, name] of ['固定', '連動 1（Colemak-DH）', '連動 2（QWERTY）', '新しい連動（今の対象で作る）'].entries()) {
+    await expect(items.nth(n)).toHaveAttribute('aria-label', name);
+  }
+  // 項目は絵（ピン・鎖と番号・鎖と＋）と要約の1行で、「リンク」の文字は出さない
+  await expect(items.nth(1).locator('.pane-binding-icon-number')).toHaveText('1');
+  await expect(items.nth(1).locator('.pane-menu-item-label')).toHaveText('Colemak-DH');
+  await expect(items.nth(3).locator('svg[data-icon="link-new"]')).toBeVisible();
+  await expect(items.nth(0).locator('svg[data-icon="pin"]')).toBeVisible();
+  await expect(page.locator('.pane-menu-list')).not.toContainText('リンク');
+  // ボタンの説明（hover）は、対象に付く条件が変わらないとは書かない
+  await expect(pinButton(panes.nth(0))).toHaveAttribute('title', /同じ番号のペインと、配列・Setupが一緒に変わる/);
+  await expect(pinButton(panes.nth(3))).toHaveAttribute('title', /他のペインに合わせて変わらない/);
   await page.keyboard.press('Escape');
 
-  // 元に戻す1回で、リンク1の変更だけが戻る（リンクの組は残る）
+  // 元に戻す1回で、連動1の変更だけが戻る（連動の組は残る）
   await page.locator('.context-bar').getByRole('button', { name: '元に戻す' }).click();
   for (let n = 0; n < 4; n += 1) await expect(targetButton(panes.nth(n))).toHaveAttribute('aria-label', QWERTY_LABEL);
   expect((await storedFirst(page)).groups).toHaveLength(2);
   await page.locator('.context-bar').getByRole('button', { name: 'やり直す' }).click();
   await expect(targetButton(panes.nth(1))).toHaveAttribute('aria-label', COLEMAK_LABEL);
 
-  // リンク2のペインの見出しで選ぶと、リンク2だけが変わる。再読み込みしても残る
+  // 連動2のペインの見出しで選ぶと、連動2だけが変わる。再読み込みしても残る
   await chooseLayout(page, targetButton(panes.nth(2)), 'colemak-dh');
   await expect(targetButton(panes.nth(2))).toHaveAttribute('aria-label', COLEMAK_LABEL);
-  await pickBinding(page, panes.nth(1), 'リンク 2');
+  await pickBinding(page, panes.nth(1), '連動 2');
   await expect(targetButton(panes.nth(0))).toHaveAttribute('aria-label', COLEMAK_LABEL);
   await expect(targetButton(panes.nth(3))).toHaveAttribute('aria-label', QWERTY_LABEL);
   await page.reload();
   await waitForHydration(page);
   const reloaded = page.locator('.pane-frame');
-  await expect(pinButton(reloaded.nth(1))).toHaveAttribute('aria-label', 'Bigram Flowの対象の連動: リンク 2');
-  await expect(pinButton(reloaded.nth(3))).toHaveAttribute('aria-label', 'Bigram Flowの対象の連動: 固定');
+  await expect(pinButton(reloaded.nth(1))).toHaveAttribute('aria-label', /^連動 2（/);
+  await expect(pinButton(reloaded.nth(3))).toHaveAttribute('aria-label', '固定');
   await expect(targetButton(reloaded.nth(3))).toHaveAttribute('aria-label', QWERTY_LABEL);
 
-  // 誰も従わなくなったリンクは消える（3つ目・2つ目をリンク1へ寄せると、リンク2が空になる）
-  await pickBinding(page, reloaded.nth(1), 'リンク 1');
-  await pickBinding(page, reloaded.nth(2), 'リンク 1');
+  // 誰も従わなくなった連動は消える（3つ目・2つ目を連動1へ寄せると、連動2が空になる）
+  await pickBinding(page, reloaded.nth(1), '連動 1');
+  await pickBinding(page, reloaded.nth(2), '連動 1');
   await expect.poll(async () => (await storedFirst(page)).groups.length).toBe(1);
   await pinButton(reloaded.nth(0)).click();
-  await expect(page.locator('.pane-menu-item-label')).toHaveText(['固定', 'リンク 1', '新しいリンク']);
+  await expect(page.locator('.pane-menu-item')).toHaveCount(3);
 });
 
-test('リンクを複数持つ時、集合のペインも組ごとに別の集合を持つ。固定のペインは変わらない', async ({ page }) => {
+test('連動を複数持つ時、集合のペインも組ごとに別の集合を持つ。固定のペインは変わらない', async ({ page }) => {
   await createWorkspace(page);
   await addAnalyzer(page, '比較表');
   await addAnalyzer(page, 'N感度');
   const comparison = pane(page, '比較表');
   const sensitivity = pane(page, 'N感度');
   await pickBinding(page, sensitivity, '固定');
-  await expect(pinButton(sensitivity)).toHaveAttribute('aria-label', 'N感度の対象の連動: 固定');
+  await expect(pinButton(sensitivity)).toHaveAttribute('aria-label', '固定');
 
   await comparison.getByRole('button', { name: '配列・Setupを選ぶ' }).click();
   const dialog = page.getByRole('dialog', { name: '対象の選択' });
@@ -391,20 +403,20 @@ test('リンクを複数持つ時、集合のペインも組ごとに別の集�
   await expect(sensitivity.getByRole('button', { name: '配列・Setupを選ぶ' })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('keydist:multi-target-selection'))).toBeNull();
 
-  // メニューには、リンクの集合の要約が出る
+  // メニューには、連動の集合の要約が出る
   await pinButton(comparison).click();
-  await expect(page.locator('.pane-menu-item-description').nth(1)).toHaveText('QWERTY、Colemak-DH');
+  await expect(page.locator('.pane-menu-item').nth(1)).toHaveAttribute('aria-label', '連動 1（QWERTY、Colemak-DH）');
   await page.keyboard.press('Escape');
 
-  // 新しいリンクへ移すと、今の集合で始まる（表は変わらない）
-  await pickBinding(page, comparison, '新しいリンク');
+  // 新しい連動へ移すと、今の集合で始まる（表は変わらない）
+  await pickBinding(page, comparison, '新しい連動');
   await expect(comparison.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
-  // 元のリンクは空になって消えるので、新しいリンクが唯一のリンク（リンク 1）になる
-  await expect(pinButton(comparison)).toHaveAttribute('aria-label', '比較表の対象の連動: リンク 1');
+  // 元の連動は空になって消えるので、新しい連動が唯一の連動（連動1）になる
+  await expect(pinButton(comparison)).toHaveAttribute('aria-label', /^連動 1（/);
   await expect.poll(async () => (await storedFirst(page)).groups.length).toBe(1);
 });
 
-test('Workspaceを作ると、個別画面で選んでいる対象が最初のリンクの対象として写る。以後は連動しない', async ({ page }) => {
+test('Workspaceを作ると、個別画面で選んでいる対象が最初の連動の対象として写る。以後は連動しない', async ({ page }) => {
   await page.addInitScript(() => {
     if (localStorage.getItem('keydist:single-target-selection') === null) {
       localStorage.setItem('keydist:single-target-selection', JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: 'colemak-dh' } }));
@@ -424,7 +436,7 @@ test('Workspaceを作ると、個別画面で選んでいる対象が最初の�
   await expect(targetButton(page.locator('.pane-frame').first())).toHaveAttribute('aria-label', COLEMAK_LABEL);
 });
 
-test('従う集合のペインで対象を選ぶと、リンクの対象が変わり、個別画面のMultiの集合は書き換えない', async ({ page }) => {
+test('従う集合のペインで対象を選ぶと、連動の対象が変わり、個別画面のMultiの集合は書き換えない', async ({ page }) => {
   await createWorkspace(page);
   await addAnalyzer(page, '比較表');
   const comparison = pane(page, '比較表');
