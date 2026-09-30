@@ -27,6 +27,15 @@ export interface CodecDiagnostic {
   readonly message: string;
 }
 
+/**
+ * 版番号を持たない素の保存形式（配列・レコード）を読んだ結果。`AssetCodec`と違い失敗は無く、
+ * 読めた分の値と、捨てたものの診断を必ず一緒に返す。
+ */
+export interface DecodedWithDiagnostics<T> {
+  readonly value: T;
+  readonly diagnostics: readonly CodecDiagnostic[];
+}
+
 export type DecodeFailure =
   | { readonly kind: 'not-an-object' }
   | { readonly kind: 'missing-version' }

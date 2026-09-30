@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PHYSICAL_SHAPES } from './geometry.ts';
-import { load, save } from '#platform/assets/user-geometries-storage.ts';
+import { load, loadWithDiagnostics, save } from '#platform/assets/user-geometries-storage.ts';
+import { decodeUserGeometryShapes } from './user-geometries.ts';
 
 function fakeStorage(): Storage {
   const values = new Map<string, string>();
@@ -62,4 +63,31 @@ test('名前付きカスタム物理配列のextraKeysを保存・復元でき�
 
   assert.equal(restored.length, 1);
   assert.deepEqual(restored[0]?.extraKeys, custom.extraKeys);
+});
+
+test('配列でない保存は空にして診断を1件積む（nullを含む）', () => {
+  for (const value of ['text', { a: 1 }, 3, null]) {
+    const result = decodeUserGeometryShapes(value);
+    assert.deepEqual(result.value, [], JSON.stringify(value));
+    assert.equal(result.diagnostics.length, 1, JSON.stringify(value));
+  }
+  assert.deepEqual(decodeUserGeometryShapes(undefined), { value: [], diagnostics: [] });
+});
+
+test('壊れた要素は捨てた数だけ診断を積み、正常な要素は診断なしで読む', () => {
+  const valid = { ...structuredClone(PHYSICAL_SHAPES['row-staggered']), id: 'shape-valid', name: '有効' };
+  const result = decodeUserGeometryShapes([valid, { id: 'row-staggered' }, 7]);
+  assert.deepEqual(result.value.map((shape) => shape.id), ['shape-valid']);
+  assert.deepEqual(result.diagnostics.map((d) => d.path), ['[1]', '[2]']);
+  assert.deepEqual(decodeUserGeometryShapes([valid]).diagnostics, []);
+});
+
+test('storage: 保存が無ければ診断なし、壊れていれば診断付きの空', () => {
+  const storage = fakeStorage();
+  assert.deepEqual(loadWithDiagnostics(storage), { value: [], diagnostics: [] });
+  storage.setItem('keydist:geometry-shapes', 'null');
+  assert.equal(loadWithDiagnostics(storage).diagnostics.length, 1);
+  storage.setItem('keydist:geometry-shapes', '{"oops":');
+  assert.equal(loadWithDiagnostics(storage).diagnostics.length, 1);
+  assert.deepEqual(load(storage), []);
 });

@@ -1,5 +1,6 @@
+import type { CodecDiagnostic, DecodedWithDiagnostics } from '#input/codec/index.ts';
 import {
-  sanitizeUserGeometryShapes,
+  decodeUserGeometryShapes,
   type PhysicalShape,
 } from '#input/shapes/user-geometries.ts';
 
@@ -18,15 +19,23 @@ function storageOrUndefined(): GeometryShapeStorage | undefined {
   }
 }
 
-export function load(storage = storageOrUndefined()): PhysicalShape[] {
-  if (!storage) return [];
+/**
+ * 保存を読み、捨てたものの診断も返す。保存が無い時は診断なしの空、
+ * JSONとして読めない時は空と診断（壊れたまま次の保存で上書きされることを示すため）。
+ */
+export function loadWithDiagnostics(storage = storageOrUndefined()): DecodedWithDiagnostics<PhysicalShape[]> {
+  if (!storage) return { value: [], diagnostics: [] };
   try {
-    return sanitizeUserGeometryShapes(
-      JSON.parse(storage.getItem(USER_GEOMETRIES_STORAGE_KEY) ?? '[]'),
-    );
+    const raw = storage.getItem(USER_GEOMETRIES_STORAGE_KEY);
+    return decodeUserGeometryShapes(raw === null ? undefined : JSON.parse(raw));
   } catch {
-    return [];
+    const diagnostics: CodecDiagnostic[] = [{ path: '', message: '読み取れないため自作の物理配列を捨てた' }];
+    return { value: [], diagnostics };
   }
+}
+
+export function load(storage = storageOrUndefined()): PhysicalShape[] {
+  return loadWithDiagnostics(storage).value;
 }
 
 export function save(shapes: readonly PhysicalShape[], storage = storageOrUndefined()): void {

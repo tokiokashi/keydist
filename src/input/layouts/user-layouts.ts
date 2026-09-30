@@ -1,3 +1,4 @@
+import type { CodecDiagnostic, DecodedWithDiagnostics } from '../codec/index.ts';
 import {
   canonicalInputAlternativeIdentity,
   compileSequenceInputAlternative,
@@ -69,15 +70,38 @@ export const isValidUserLayout = (l: unknown): l is UserLayout => {
     isHomeKeys(value.homeKeys);
 };
 
-export function sanitizeUserLayouts(value: unknown): UserLayout[] {
-  if (!Array.isArray(value)) return [];
+/**
+ * 保存された自作配列の一覧を読む。値があって配列でない時（nullを含む）と、壊れた要素・id重複を
+ * 捨てる時は診断を積む。`undefined`（保存が無い）は空の一覧で正しいので診断しない。
+ */
+export function decodeUserLayouts(value: unknown): DecodedWithDiagnostics<UserLayout[]> {
+  if (!Array.isArray(value)) {
+    const diagnostics = value === undefined
+      ? []
+      : [{ path: '', message: '配列形式でないため自作の配列を捨てた' }];
+    return { value: [], diagnostics };
+  }
+  const diagnostics: CodecDiagnostic[] = [];
   const seen = new Set<string>();
-  return value.filter(isValidUserLayout).filter((layout) => {
-    if (seen.has(layout.id)) return false;
-    seen.add(layout.id);
-    return true;
+  const layouts: UserLayout[] = [];
+  value.forEach((candidate, index) => {
+    const path = `[${index}]`;
+    if (!isValidUserLayout(candidate)) {
+      diagnostics.push({ path, message: '形式が不正なため自作の配列を捨てた' });
+      return;
+    }
+    if (seen.has(candidate.id)) {
+      diagnostics.push({ path, message: `id「${candidate.id}」が重複しているため捨てた` });
+      return;
+    }
+    seen.add(candidate.id);
+    layouts.push(candidate);
   });
+  return { value: layouts, diagnostics };
 }
+
+/** 診断が要らない読み手（旧画面の条件ファイル）向け。診断を使える経路は`decodeUserLayouts`を呼ぶ。 */
+export const sanitizeUserLayouts = (value: unknown): UserLayout[] => decodeUserLayouts(value).value;
 
 /**
  * 入力を検査する。列数オーバーだけを弾く。
