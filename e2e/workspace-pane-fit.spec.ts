@@ -175,3 +175,41 @@ test('左右の手をまたぐ2打鍵の注記は図の下ではなくRelative v
   await flowRoot.getByRole('button', { name: 'Relative vectorsの説明' }).click();
   await expect(page.getByRole('tooltip')).toContainText('左右の手をまたぐ2打鍵は、Keyboard Flowには含めるが、Relative vectorsからは除く');
 });
+
+test('個別画面の外側に高さを測れるcontainerがあっても、Workspace用の規則は漏れない（本体の領域は名前つきで問う）', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 15_000 });
+  // 名前の無い問い合わせだと、幅しか測れない本体の領域は飛ばされ、この外側のcontainerの高さを読んでしまう。
+  await page.addStyleTag({ content: '.pane-frame { container-type: size; height: 400px; }' });
+  const info = await page.evaluate(() => {
+    const feature = document.querySelector('[data-react-feature="bigram-flow"]')!;
+    return {
+      minHeight: getComputedStyle(feature).minHeight,
+      statsDisplay: getComputedStyle(feature.querySelector('.flow-profile-stats')!).display,
+      coverageDisplay: getComputedStyle(feature.querySelector('.flow-coverage')!).display,
+      columns: getComputedStyle(feature).gridTemplateColumns.split(' ').length,
+    };
+  });
+  expect(parseFloat(info.minHeight)).toBeLessThan(1);
+  expect(info.statsDisplay).not.toBe('none');
+  expect(info.coverageDisplay).not.toBe('none');
+  expect(info.columns).toBe(1);
+});
+
+test('高さに合わせて縮んだ図の線は、枠の幅ではなく実際に描かれる幅を倍率にして太さを保つ', async ({ page }) => {
+  await openWorkspace(page, [flow], group('f'), { width: 1440, height: 520 });
+  const info = await page.evaluate(() => {
+    const svg = document.querySelector('[data-react-feature="bigram-flow"] .flow-keyboard-svg') as SVGSVGElement;
+    const rect = svg.getBoundingClientRect();
+    const view = svg.viewBox.baseVal;
+    // 縦横比を保って枠の中に収まるので、描かれる幅は高さから決まる
+    const drawnWidth = Math.min(rect.width, (rect.height * view.width) / view.height);
+    const widths = [...svg.querySelectorAll('[data-flow-edge="true"]')].map((edge) => parseFloat(getComputedStyle(edge).strokeWidth));
+    return { boxWidth: rect.width, drawnWidth, zoom: drawnWidth / view.width, minStroke: Math.min(...widths) };
+  });
+  // 横長の枠に、縦で決まる小さい図が収まっている（枠の幅で測ると倍率が大きすぎて線が細くなる）
+  expect(info.drawnWidth).toBeLessThan(info.boxWidth - 20);
+  // 最も細い線でも、描かれる幅での画面上の太さが下限（1.25px）を割らない
+  expect(info.minStroke * info.zoom).toBeGreaterThanOrEqual(1.25 - 0.05);
+});

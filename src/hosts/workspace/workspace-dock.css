@@ -129,6 +129,6 @@
    * スクロールする（窓が数十pxになって、その中を動かすことになるのを避ける）。
    */
   min-height: 12rem;
-  container-type: size;
+  container: pane-body / size;
   overflow: auto;
 }

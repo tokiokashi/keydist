@@ -528,15 +528,16 @@
 
 /*
  * 高さに合わせて縮める（#808）。ホストが本体の領域に高さを持たせている時（Workspaceのペイン）だけ効く。
- * `(min-height: 1px)` は高さを測れるcontainerの中でだけ真になるので、高さが中身で決まる個別画面では
- * 下の規則は何も変えない。ホストが誰かをここで知らずに済む。
+ * 名前つきの `@container pane-body (min-height: 1px)` は、高さを測れる本体の領域の中でだけ真になる。
+ * 個別画面の本体は同じ名前で幅しか測れないので偽になり、外側に同じ名前のcontainerも無い
+ * （名前を付けないと、条件を測れる外側の祖先まで探しに行って規則が漏れる）。ホストが誰かをここで知らずに済む。
  *
  * 領域の高さを「状態の1行・Keyboard Flow・Relative vectors」で分け合い、各図は縦横比を保ったまま
  * 割り当てられた枠の中へ縮む（SVGの縦横比は保たれ、余りは図の背景が埋める）。
  * 領域が横長なら左右に並べる（下の縦横比の規則）。縮めすぎて読めなくなる前に下限で止め、
  * それより低い領域では本体の領域の中でスクロールする。
  */
-@container (min-height: 1px) {
+@container pane-body (min-height: 1px) {
   .flow-feature {
     height: 100%;
     /* Keyboard Flowの図（横長）とRelative vectorsの正方形が、図として読める大きさで残る高さ。 */
@@ -626,7 +627,7 @@
  * 縦が足りない時は、件数の文と手ごとの要約（件数・平均移動・まとまり）を隠す。図から読める流れは残り、
  * 数字が要る時は領域を縦に広げるか、個別画面で見る。
  */
-@container (min-height: 1px) and (max-height: 520px) {
+@container pane-body (min-height: 1px) and (max-height: 520px) {
   .flow-legend .flow-coverage,
   .flow-profile-stats {
     display: none;
@@ -637,7 +638,7 @@
  * 領域が横長（幅が高さの1.5倍以上）なら、Keyboard Flowを左、Relative vectorsを右に並べる。
  * 切り替えは画面の幅ではなく、置かれた領域の縦横比で決める。縦長・正方形に近い時は縦に積んだまま。
  */
-@container (min-aspect-ratio: 3 / 2) {
+@container pane-body (min-height: 1px) and (min-aspect-ratio: 3 / 2) {
   .flow-feature {
     grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
@@ -651,7 +652,7 @@
 }
 
 /* 高さに合わせる時は左右の図を1行に収める前提なので、極端に狭くても縦に積まない（行が増えて高さの配分が崩れる）。 */
-@container (min-height: 1px) and (max-width: 280px) {
+@container pane-body (min-height: 1px) and (max-width: 280px) {
   .flow-two-up {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
