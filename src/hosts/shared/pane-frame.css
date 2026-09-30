@@ -74,6 +74,57 @@ h2.pane-frame-title {
   text-overflow: ellipsis;
 }
 
+/*
+ * 対象の持ち方。連動に従っている間は鎖と組の番号をアクセント色で、固定の間はピンを控えめに出す。組の番号は
+ * 対象の色（配列ごとの色）と紛れないよう、色を使わず数字で見分ける。
+ */
+.pane-target-binding .pane-menu-button {
+  width: auto;
+  min-width: 2rem;
+  padding: 0 0.4rem;
+}
+
+.pane-binding-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--text-muted);
+}
+
+.pane-binding-icon[data-linked="true"] {
+  color: var(--accent);
+}
+
+.pane-binding-icon-number {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.pane-menu-item[data-selected="true"] {
+  background: var(--surface-muted);
+}
+
+.pane-menu-item[data-selected="true"] .pane-menu-item-label {
+  font-weight: 600;
+}
+
+/* 絵つきの項目は1行にする（絵・要約の順）。 */
+.pane-menu-item[data-glyph] {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.pane-menu-item[data-glyph] .pane-menu-item-label {
+  white-space: nowrap;
+}
+
+.pane-menu-item[data-glyph] .pane-binding-icon {
+  flex: none;
+  min-width: 2rem;
+}
+
 .pane-settings-button {
   grid-area: settings;
   display: inline-flex;

@@ -8,9 +8,18 @@ import {
   duplicateWorkspacePaneCommand,
   renameWorkspaceCommand,
   setWorkspaceLayoutCommand,
-  setWorkspacePaneTargetCommand,
+  linkWorkspacePaneToNewGroupCommand,
+  setWorkspacePaneBindingCommand,
+  setWorkspaceTargetCommand,
 } from '#engine/workspace-commands.ts';
-import { findWorkspace, type WorkspaceIdGenerator, type WorkspacePane, type WorkspacePaneTarget } from '#engine/workspace.ts';
+import {
+  followBinding,
+  findWorkspace,
+  resolveWorkspacePaneTarget,
+  type WorkspaceIdGenerator,
+  type WorkspacePane,
+  type WorkspacePaneTarget,
+} from '#engine/workspace.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
@@ -19,8 +28,9 @@ import type { PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { AddPaneMenu } from './AddPaneMenu.tsx';
-import { findWorkspaceAnalyzer, initialPaneTarget, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
-import type { WorkspacePaneRuntime } from './pane-runtime.ts';
+import { findWorkspaceAnalyzer, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
+import type { PaneBindingChoice, WorkspacePaneRuntime } from './pane-runtime.ts';
+import { summarizeLinkGroups } from './group-summary.ts';
 import { WorkspaceDock } from './WorkspaceDock.tsx';
 import { WorkspaceName } from './WorkspaceName.tsx';
 import { WorkspacePaneView } from './WorkspacePaneView.tsx';
@@ -62,7 +72,7 @@ export interface WorkspacePageProps {
  *
  * 持つのは、文脈バー（Workspace名・このWorkspace自身のテキスト・Undo/Redo・共有）と、ペインの追加・
  * 複製・閉じる・並びの変更を資産のコマンドへ結ぶところ。書き込みはすべて`dispatch`を通す（#544 §8-2）。
- * ペインの対象は今は「固定」（ペイン自身が持つ）だけ。
+ * ペインの対象は「連動の組に従う」か「固定」（ペイン自身が持つ）。従うペインは、従う組の対象を読む。組の切り替えはペインの見出し（見出しの連動のメニュー）で行い、文脈バーには置かない。
  */
 export function WorkspacePage({
   workspaceId,
@@ -119,11 +129,47 @@ export function WorkspacePage({
     assetsReady,
   }), [assets.setupLibrary, catalog, resolvedText, cache, dispatch, assetsReady]);
 
+  const panes = workspace?.panes;
+  const panesById = useMemo(() => new Map((panes ?? []).map((pane) => [pane.id, pane] as const)), [panes]);
+  const paneIds = useMemo(() => (panes ?? []).map((pane) => pane.id), [panes]);
+
+  const groups = workspace?.groups;
+  const groupSummaries = useMemo(
+    () => (env === undefined || groups === undefined ? [] : summarizeLinkGroups(env, groups)),
+    [env, groups],
+  );
+
   const runtime: WorkspacePaneRuntime | undefined = useMemo(() => (env === undefined ? undefined : {
     env,
     commitPaneOptions: (paneId: string, options: unknown) => onPaneOptionsCommit(paneId, options),
+    paneTarget: (pane: WorkspacePane, kind: WorkspacePaneTarget['kind']) => (
+      groups === undefined ? undefined : resolveWorkspacePaneTarget(pane.binding, groups, kind)
+    ),
     setPaneTarget: (paneId: string, target: WorkspacePaneTarget) => {
-      dispatch(setWorkspacePaneTargetCommand(workspaceId, paneId, target));
+      // 従うペインで対象を選ぶと、その組の対象を書き換える（同じ組の他のペインも一緒に変わる）。
+      const binding = panesById.get(paneId)?.binding;
+      if (binding?.mode === 'follow') {
+        dispatch(setWorkspaceTargetCommand(workspaceId, binding.group, target));
+      } else {
+        dispatch(setWorkspacePaneBindingCommand(workspaceId, paneId, { mode: 'fixed', target }));
+      }
+    },
+    groups: groups ?? [],
+    groupSummaries,
+    bindPane: (paneId: string, choice: PaneBindingChoice) => {
+      const pane = panesById.get(paneId);
+      if (pane === undefined || groups === undefined) return;
+      if (choice.kind === 'group') {
+        dispatch(setWorkspacePaneBindingCommand(workspaceId, paneId, followBinding(choice.id)));
+        return;
+      }
+      // 固定・新しい組は、今映している対象をそのまま持つ（押した瞬間に見た目が変わらないように）。
+      const kind = findWorkspaceAnalyzer(pane.analyzerId)?.cardinality;
+      const current = kind === undefined ? undefined : resolveWorkspacePaneTarget(pane.binding, groups, kind);
+      if (current === undefined) return;
+      dispatch(choice.kind === 'fixed'
+        ? setWorkspacePaneBindingCommand(workspaceId, paneId, { mode: 'fixed', target: current })
+        : linkWorkspacePaneToNewGroupCommand(workspaceId, paneId, generateId(), current));
     },
     duplicatePane: (paneId: string) => {
       flushPending();
@@ -133,11 +179,7 @@ export function WorkspacePage({
       flushPending();
       dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
     },
-  }), [env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending]);
-
-  const panes = workspace?.panes;
-  const panesById = useMemo(() => new Map((panes ?? []).map((pane) => [pane.id, pane] as const)), [panes]);
-  const paneIds = useMemo(() => (panes ?? []).map((pane) => pane.id), [panes]);
+  }), [env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, groupSummaries]);
 
   const titleOf = useCallback(
     (paneId: string) => {
@@ -159,7 +201,8 @@ export function WorkspacePage({
       id: generateId(),
       analyzerId: entry.id,
       options: undefined,
-      target: initialPaneTarget(entry, assets),
+      // 新しいペインは最初の組に従う（比較中に黙って別の対象を映さない）。
+      binding: followBinding(workspace!.groups[0]!.id),
     };
     dispatch(addWorkspacePaneCommand(workspaceId, pane));
   };

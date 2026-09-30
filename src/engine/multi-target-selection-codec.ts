@@ -26,7 +26,10 @@ export function decodeMultiTargetSelection(
   path: string,
   diagnostics: CodecDiagnostic[],
 ): MultiTargetSelection | undefined {
-  if (!isRecord(payload)) return undefined;
+  if (!isRecord(payload)) {
+    diagnostics.push({ path, message: 'object形式でないため選択を捨てた' });
+    return undefined;
+  }
   const rawTargets: readonly unknown[] = Array.isArray(payload.targets) ? payload.targets : [];
   if (payload.targets !== undefined && !Array.isArray(payload.targets)) {
     diagnostics.push({ path: `${path}.targets`, message: '配列形式でないため選択を捨てた' });

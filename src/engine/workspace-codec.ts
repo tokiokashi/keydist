@@ -10,7 +10,13 @@ import { decodeTextSelectionState, encodeTextSelectionState } from '#input/text/
 import { decodeMultiTargetSelection, encodeMultiTargetSelection } from './multi-target-selection-codec.ts';
 import {
   DEFAULT_WORKSPACE_NAME,
+  followBinding,
+  initialWorkspaceTarget,
+  INITIAL_LINK_GROUP_ID,
+  type LinkGroup,
+  type PaneTargetBinding,
   type Workspace,
+  type WorkspaceTarget,
   type WorkspaceLibrary,
   type WorkspacePane,
   type WorkspacePaneTarget,
@@ -27,7 +33,7 @@ import { normalizeLayout, type WorkspaceLayout, type WorkspaceLayoutNode } from 
  * - 並びが壊れている・ペインと食い違っている時は、ペインを失わないよう`normalizeLayout`で直す
  * - 今のアプリが知らないAnalyzerのペインは捨てずに残す（表示側が使えないペインとして出す）
  *
- * 版1は、`docs/architecture.md`の決定を反映した最初の形。互換は守らない（AGENTS.md）。
+ * 版3は、ペインの対象の持ち方（従う組 / 固定）と、連動の組ごとの対象を持つ形。版2以前は読まない（互換は守らない。AGENTS.md）。
  */
 
 /** 並びの入れ子の深さの上限。壊れた・悪意のあるデータで再帰を深くしないため。 */
@@ -86,7 +92,87 @@ function decodePaneTarget(raw: unknown, path: string, diagnostics: CodecDiagnost
   return undefined;
 }
 
-function decodePane(raw: unknown, path: string, seen: Set<string>, diagnostics: CodecDiagnostic[]): WorkspacePane | undefined {
+/**
+ * 従う組が読めない・存在しない時は、ペインを失わないよう先頭の組へ従わせる（診断は出す）。
+ * 対象の持ち方そのものが読めない時は、どの対象を映すか決められないのでペインを捨てる。
+ */
+function decodeBinding(
+  raw: unknown,
+  path: string,
+  groupIds: ReadonlySet<string>,
+  fallbackGroup: string,
+  diagnostics: CodecDiagnostic[],
+): PaneTargetBinding | undefined {
+  if (raw === undefined) {
+    diagnostics.push({ path, message: '対象の持ち方が無いためペインを捨てた' });
+    return undefined;
+  }
+  if (!isRecord(raw)) {
+    diagnostics.push({ path, message: 'object形式でないため対象の持ち方が読めず、ペインを捨てた' });
+    return undefined;
+  }
+  if (raw.mode === 'follow') {
+    if (typeof raw.group === 'string' && groupIds.has(raw.group)) return followBinding(raw.group);
+    diagnostics.push({ path: `${path}.group`, message: '従う組が見つからないため先頭の組へ従わせた' });
+    return followBinding(fallbackGroup);
+  }
+  if (raw.mode === 'fixed') {
+    const target = decodePaneTarget(raw.target, `${path}.target`, diagnostics);
+    return target === undefined ? undefined : { mode: 'fixed', target };
+  }
+  diagnostics.push({ path: `${path}.mode`, message: '対象の持ち方が読めないためペインを捨てた' });
+  return undefined;
+}
+
+/** 壊れた部分だけ空へ戻し、読めた部分は残す。 */
+function decodeWorkspaceTarget(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): WorkspaceTarget {
+  const initial = initialWorkspaceTarget();
+  if (raw === undefined) return initial;
+  if (!isRecord(raw)) {
+    diagnostics.push({ path, message: 'object形式でないため組の対象を空へ戻した' });
+    return initial;
+  }
+  const singleTarget = raw.single === undefined ? undefined : decodeAnalysisTarget(raw.single, `${path}.single`, diagnostics);
+  const set = raw.set === undefined ? undefined : decodeMultiTargetSelection(raw.set, `${path}.set`, diagnostics);
+  return { single: { target: singleTarget }, set: set ?? initial.set };
+}
+
+/** 組は1つ以上を常に持つ。読めた組が無ければ、空の対象の組を1つ作る（診断は出す）。 */
+function decodeGroups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): readonly LinkGroup[] {
+  const groups: LinkGroup[] = [];
+  const seen = new Set<string>();
+  if (!Array.isArray(raw)) {
+    diagnostics.push({ path, message: '配列形式でないため連動の組を作り直した' });
+  } else {
+    raw.forEach((item, index) => {
+      const itemPath = `${path}[${index}]`;
+      if (!isRecord(item) || typeof item.id !== 'string' || item.id === '') {
+        diagnostics.push({ path: itemPath, message: 'idが読めないため連動の組を捨てた' });
+        return;
+      }
+      if (seen.has(item.id)) {
+        diagnostics.push({ path: `${itemPath}.id`, message: `重複したid「${item.id}」のため連動の組を捨てた` });
+        return;
+      }
+      seen.add(item.id);
+      groups.push({ id: item.id, target: decodeWorkspaceTarget(item.target, `${itemPath}.target`, diagnostics) });
+    });
+  }
+  if (groups.length === 0) {
+    if (Array.isArray(raw)) diagnostics.push({ path, message: '読める連動の組が無いため作り直した' });
+    groups.push({ id: INITIAL_LINK_GROUP_ID, target: initialWorkspaceTarget() });
+  }
+  return groups;
+}
+
+function decodePane(
+  raw: unknown,
+  path: string,
+  seen: Set<string>,
+  groupIds: ReadonlySet<string>,
+  fallbackGroup: string,
+  diagnostics: CodecDiagnostic[],
+): WorkspacePane | undefined {
   if (!isRecord(raw)) {
     diagnostics.push({ path, message: 'object形式でないためペインを捨てた' });
     return undefined;
@@ -99,10 +185,10 @@ function decodePane(raw: unknown, path: string, seen: Set<string>, diagnostics: 
     diagnostics.push({ path: `${path}.id`, message: `重複したペインid「${raw.id}」のためペインを捨てた` });
     return undefined;
   }
-  const target = decodePaneTarget(raw.target, `${path}.target`, diagnostics);
-  if (target === undefined) return undefined;
+  const binding = decodeBinding(raw.binding, `${path}.binding`, groupIds, fallbackGroup, diagnostics);
+  if (binding === undefined) return undefined;
   seen.add(raw.id);
-  return { id: raw.id, analyzerId: raw.analyzerId, options: raw.options, target };
+  return { id: raw.id, analyzerId: raw.analyzerId, options: raw.options, binding };
 }
 
 function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagnostics: CodecDiagnostic[]): Workspace | undefined {
@@ -131,6 +217,9 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
     ? initialTextSelection()
     : decodeTextSelectionState(raw.text, `${path}.text`, diagnostics) ?? initialTextSelection();
 
+  const groups = decodeGroups(raw.groups, `${path}.groups`, diagnostics);
+  const groupIds = new Set(groups.map((group) => group.id));
+
   const rawPanes: readonly unknown[] = Array.isArray(raw.panes) ? raw.panes : [];
   if (raw.panes !== undefined && !Array.isArray(raw.panes)) {
     diagnostics.push({ path: `${path}.panes`, message: '配列形式でないためペインを捨てた' });
@@ -138,13 +227,19 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
   const seenPaneIds = new Set<string>();
   const panes: WorkspacePane[] = [];
   rawPanes.forEach((item, index) => {
-    const pane = decodePane(item, `${path}.panes[${index}]`, seenPaneIds, diagnostics);
+    const pane = decodePane(item, `${path}.panes[${index}]`, seenPaneIds, groupIds, groups[0]!.id, diagnostics);
     if (pane !== undefined) panes.push(pane);
   });
 
   const rawLayout = raw.layout === undefined ? undefined : decodeLayoutNode(raw.layout, `${path}.layout`, 0, diagnostics);
   const layout: WorkspaceLayout = normalizeLayout(rawLayout, panes.map((pane) => pane.id));
-  return { id: raw.id, name, text, panes, layout };
+  return { id: raw.id, name, text, groups, panes, layout };
+}
+
+function encodePaneTarget(target: WorkspacePaneTarget): Record<string, unknown> {
+  return target.kind === 'single'
+    ? { kind: 'single', target: encodeAnalysisTarget(target.target) }
+    : { kind: 'set', selection: encodeMultiTargetSelection(target.selection) };
 }
 
 function encodePane(pane: WorkspacePane): Record<string, unknown> {
@@ -152,9 +247,9 @@ function encodePane(pane: WorkspacePane): Record<string, unknown> {
     id: pane.id,
     analyzerId: pane.analyzerId,
     ...(pane.options === undefined ? {} : { options: pane.options }),
-    target: pane.target.kind === 'single'
-      ? { kind: 'single', target: encodeAnalysisTarget(pane.target.target) }
-      : { kind: 'set', selection: encodeMultiTargetSelection(pane.target.selection) },
+    binding: pane.binding.mode === 'follow'
+      ? { mode: 'follow', group: pane.binding.group }
+      : { mode: 'fixed', target: encodePaneTarget(pane.binding.target) },
   };
 }
 
@@ -171,7 +266,7 @@ function encodeLayoutNode(node: WorkspaceLayoutNode): Record<string, unknown> {
 }
 
 export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAssetCodec({
-  currentVersion: 1,
+  currentVersion: 3,
   decodePayload: (payload, diagnostics) => {
     if (!isRecord(payload)) return undefined;
     const raw: readonly unknown[] = Array.isArray(payload.workspaces) ? payload.workspaces : [];
@@ -191,6 +286,13 @@ export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAsset
       id: workspace.id,
       name: workspace.name,
       text: encodeTextSelectionState(workspace.text),
+      groups: workspace.groups.map((group) => ({
+        id: group.id,
+        target: {
+          ...(group.target.single.target === undefined ? {} : { single: encodeAnalysisTarget(group.target.single.target) }),
+          set: encodeMultiTargetSelection(group.target.set),
+        },
+      })),
       panes: workspace.panes.map(encodePane),
       ...(workspace.layout === undefined ? {} : { layout: encodeLayoutNode(workspace.layout) }),
     })),

@@ -8,7 +8,8 @@ import type { ConditionEditorContext } from './ConditionEditor.tsx';
 import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
-import { PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
+import type { PaneTargetBindingControl } from './panes/pane-environment.ts';
+import { BindingGlyph, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
 import './pane-frame.css';
 
@@ -43,6 +44,8 @@ export interface PaneFrameProps {
   readonly stickyHeader?: boolean;
   /** 見出しの対象の欄（単一対象の選択、集合の要約とその選択）。 */
   readonly target: ReactNode;
+  /** 対象が連動の組に従っているか固定かの表示と選択。Workspaceのペインだけが渡す。 */
+  readonly targetBinding?: PaneTargetBindingControl;
   /** 解析設定のcomponent（Analyzerの`Settings`をホストが値と結んだもの）。 */
   readonly settings: ReactNode;
   /** Workspaceのペインでは、小窓にペイン名を出す。個別画面ではページに1枚なので出さない。 */
@@ -91,6 +94,7 @@ export function PaneFrame({
   stickyHeader = false,
   targetName,
   target,
+  targetBinding,
   settings,
   showPaneNameInSettings = false,
   menuItems = [],
@@ -131,7 +135,22 @@ export function PaneFrame({
             <span className="pane-status-badge" data-status={engineState.status}>{statusLabel}</span>
           ) : null}
         </div>
-        <div className="pane-frame-target">{target}</div>
+        <div className="pane-frame-target">
+          {target}
+          {targetBinding === undefined ? null : (
+            <PaneMenu
+              paneName={paneName}
+              items={targetBinding.items}
+              label={`${targetBinding.follows ? `連動 ${targetBinding.groupNumber}` : '固定'}（対象: ${targetBinding.summary}）`}
+              title={targetBinding.follows
+                ? `連動 ${targetBinding.groupNumber}: 同じ番号のペインと、配列・Setupが一緒に変わる`
+                : '固定: このペインの対象は、他のペインに合わせて変わらない'}
+              icon={<BindingGlyph kind={targetBinding.follows ? 'link' : 'pin'} number={targetBinding.follows ? targetBinding.groupNumber : undefined} />}
+              className="pane-target-binding"
+              data={{ 'data-follows': String(targetBinding.follows) }}
+            />
+          )}
+        </div>
         <button
           ref={settingsButtonRef}
           type="button"

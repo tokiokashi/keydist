@@ -25,7 +25,8 @@ export function WorkspacePaneView({
   readonly runtime: WorkspacePaneRuntime;
 }) {
   const entry = findWorkspaceAnalyzer(pane.analyzerId);
-  const usable = entry !== undefined && pane.target.kind === entry.cardinality;
+  // 固定の対象がAnalyzerの形と合わない時だけ使えない（従うペインは、Workspaceの対象から形に合う方を読む）。
+  const usable = entry !== undefined && (pane.binding.mode === 'follow' || pane.binding.target.kind === entry.cardinality);
   return (
     <WorkspacePaneBoundary onClose={() => runtime.closePane(pane.id)}>
       {usable ? <AnalyzerPane pane={pane} runtime={runtime} /> : (

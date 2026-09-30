@@ -156,6 +156,7 @@ export function NSensitivityPane({
       headingLevel={chrome.headingLevel}
       stickyHeader={chrome.stickyHeader}
       menuItems={chrome.menuItems}
+      targetBinding={chrome.targetBinding}
       showPaneNameInSettings={chrome.showPaneNameInSettings}
       target={(
         <TargetSelection
