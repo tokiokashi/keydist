@@ -140,6 +140,31 @@ test('全対象が共有する部分を先に省き、区別の部分（ANSI・J
   assert.ok(fitted.every((label) => estimateTextWidth(label) <= LEGEND_MAX_LABEL_WIDTH));
 });
 
+test('NICOLAのSetup 4件: 物理配列を区別する語（ロウ/カラム・ANSI/JIS 109）が、省いた名前にも残る', () => {
+  const labels = [
+    'ロウスタッガード（ANSI）',
+    'ロウスタッガード（JIS 109）',
+    'カラムスタッガード（ANSI・分割想定）',
+    'カラムスタッガード（JIS 109・分割想定）',
+  ];
+  for (const hardMax of [270, 400]) {
+    const fitted = fitLabels(labels, measure, LEGEND_MAX_LABEL_WIDTH, hardMax);
+    const words = [['ロウ', 'ANSI'], ['ロウ', 'JIS 109'], ['カラム', 'ANSI'], ['カラム', 'JIS 109']];
+    words.forEach(([kind, size], i) => {
+      assert.ok(fitted[i]!.includes(kind!) && fitted[i]!.includes(size!), `${hardMax}: ${fitted[i]}`);
+    });
+    assert.equal(new Set(fitted).size, 4);
+    // 違いが1文字（「I」）だけ残るような省き方をしない
+    assert.ok(!fitted.some((text) => text.includes('…I・')));
+  }
+});
+
+test('互いに全く共有しない名前は、長くても上限で省く（区別の条件にしない）', () => {
+  const fitted = fitLabels(['とても長い名前の配列その一その一その一', 'Dvorak'], measure, LEGEND_MAX_LABEL_WIDTH, 300);
+  assert.ok(estimateTextWidth(fitted[0]!) <= LEGEND_MAX_LABEL_WIDTH);
+  assert.equal(fitted[1], 'Dvorak');
+});
+
 test('名前が収まる幅の上限内なら、省くのは上限までで、全文が上限内なら全文を返す', () => {
   const labels = ['あ'.repeat(30), 'い'.repeat(30)];
   const fitted = fitLabels(labels, measure, LEGEND_MAX_LABEL_WIDTH, 400);

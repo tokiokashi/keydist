@@ -630,18 +630,21 @@ test('物理配列だけが違うSetupを4件並べても、凡例の名前が�
     localStorage.setItem('keydist:setup-library', JSON.stringify({ version: 1, setups, overrides: {} }));
     localStorage.setItem('keydist:multi-target-selection', JSON.stringify({ version: 1, targets: setups.map((s) => ({ kind: 'setup', setupId: s.id })) }));
   });
-  for (const width of [1440, 390]) {
+  for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/standalone/n-sensitivity');
     await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(4, { timeout: 30_000 });
     await waitForMeasuredWidth(page.locator('.n-sensitivity-svg'));
     const legend = await measureLegend(page);
     expect(new Set(legend.names).size, `${width}px: 名前が重複しない`).toBe(4);
-    // 省いた名前にも、物理配列を区別する部分が残る
-    expect(legend.names.join('|')).toContain('ANSI');
-    expect(legend.names.join('|')).toContain('JIS 109');
-    expect(legend.insideSvg).toBe(true);
+    // 4件それぞれの名前に、自分の物理配列の語が残る（省いて1文字だけの違いにならない）
+    const found = [['ロウ', 'ANSI'], ['ロウ', 'JIS 109'], ['カラム', 'ANSI'], ['カラム', 'JIS 109']].map(([kind, size]) =>
+      legend.names.find((name) => name!.includes(kind!) && name!.includes(size!)));
+    expect(found.every((name) => name !== undefined), `${width}px: ${legend.names.join(' | ')}`).toBe(true);
+    expect(new Set(found).size).toBe(4);
+    expect(legend.insideSvg, `${width}px: 枠が図の中に収まる`).toBe(true);
     expect(legend.linePointsInside).toBe(0);
+    expect(legend.labelsInsideFrame).toBe(true);
   }
 });
 

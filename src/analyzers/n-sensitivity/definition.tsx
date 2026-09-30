@@ -120,24 +120,26 @@ let measureContext: CanvasRenderingContext2D | null | undefined;
  * （字幅が変わると凡例の枠の大きさが変わるため）。
  */
 function useLegendMeasure(ref: React.RefObject<HTMLElement | null>): MeasureText {
-  const [font, setFont] = useState<string | null>(null);
+  // 読み直すたびに新しいオブジェクトを入れる。文字列（フォント名）が前と同じでも再描画させ、
+  // フォントの読み込み完了後の字幅で凡例の枠を測り直すため。
+  const [source, setSource] = useState<{ font: string } | null>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
     let cancelled = false;
     const read = () => {
-      if (!cancelled) setFont(`${LEGEND_FONT_SIZE}px ${getComputedStyle(el).fontFamily}`);
+      if (!cancelled) setSource({ font: `${LEGEND_FONT_SIZE}px ${getComputedStyle(el).fontFamily}` });
     };
     read();
     void document.fonts?.ready.then(read);
     return () => { cancelled = true; };
   }, [ref]);
-  if (font === null) return estimateTextWidth;
+  if (source === null) return estimateTextWidth;
   if (measureContext === undefined) measureContext = document.createElement('canvas').getContext('2d');
   const context = measureContext;
   if (!context) return estimateTextWidth;
   return (text) => {
-    context.font = font;
+    context.font = source.font;
     return context.measureText(text).width;
   };
 }

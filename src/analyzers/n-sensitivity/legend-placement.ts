@@ -82,45 +82,70 @@ export function elideMiddle(text: string, maxWidth: number, measure: MeasureText
   return `${chars[0]}${ELLIPSIS}`;
 }
 
-/** すべての名前が共有する先頭・末尾の文字数（文字単位）。1件だけなら0。 */
-function sharedAffixLengths(labels: readonly string[]): { prefix: number; suffix: number } {
-  if (labels.length < 2) return { prefix: 0, suffix: 0 };
-  const chars = labels.map((label) => [...label]);
-  const shortest = Math.min(...chars.map((c) => c.length));
-  let prefix = 0;
-  while (prefix < shortest - 1 && chars.every((c) => c[prefix] === chars[0]![prefix])) prefix += 1;
-  let suffix = 0;
-  while (suffix < shortest - 1 - prefix && chars.every((c) => c[c.length - 1 - suffix] === chars[0]![chars[0]!.length - 1 - suffix])) suffix += 1;
-  return { prefix, suffix };
-}
-
-/** 共有する部分（先頭・末尾）を先に「…」へ替え、それでも長ければ中央を省く。区別の部分を残すため。 */
-function shortenLabel(label: string, cap: number, measure: MeasureText, shared: { prefix: number; suffix: number }): string {
-  if (measure(label) <= cap) return label;
-  const chars = [...label];
-  const minRun = 3;
-  const dropPrefix = shared.prefix >= minRun ? shared.prefix : 0;
-  const dropSuffix = shared.suffix >= minRun ? shared.suffix : 0;
-  if (dropPrefix > 0) {
-    const candidate = `${ELLIPSIS}${chars.slice(dropPrefix).join('')}`;
-    if (measure(candidate) <= cap) return candidate;
-  }
-  if (dropPrefix > 0 || dropSuffix > 0) {
-    const inner = chars.slice(dropPrefix, chars.length - dropSuffix).join('');
-    const candidate = `${dropPrefix > 0 ? ELLIPSIS : ''}${inner}${dropSuffix > 0 ? ELLIPSIS : ''}`;
-    if (measure(candidate) <= cap) return candidate;
-    return elideMiddle(candidate, cap, measure);
-  }
-  return elideMiddle(label, cap, measure);
+interface LabelRegion {
+  /** 他の名前と違う区間の文字列（残さないと見分けられない部分）。区間が無ければ空。 */
+  readonly text: string;
+  readonly start: number;
+  readonly end: number;
 }
 
 /**
- * 凡例に出す名前をそろえて省く。**省いた後も、別の対象が同じ名前にならない**ことを保証する
- * （元の名前が互いに異なる限り）。全対象が共有する先頭・末尾を先に省いて区別の部分を残し、
- * それでも足りなければ中央を省く。区別の部分が落ちて衝突する時は、上限の幅を広げて省き直し、
- * `hardMax`まで広げても衝突するなら省かない。`hardMax`は図の幅に収まる名前の幅の上限で、
- * 全文がそれを超える時だけ、`hardMax`で省いた名前（衝突しうる）を返す。
- * 完全な名前は、凡例の項目のhover（`<title>`）に別に出す。
+ * 名前ごとに「他のどの名前とも見分けるために残す区間」を求める。
+ * 相手ごとに、先頭・末尾を共有する分を除いた違いの区間があり、その和（一番外側）を取る。
+ * 末尾の「）」だけを共有するような相手でも、違いの区間の外側は省いてよいが、区間そのものは残す。
+ * 先頭も末尾も全く共有しない相手（互いに別物と読める名前）は、条件にしない。
+ * 条件になる相手が居なければ区間は空で、どこを省いてもよい。
+ */
+function labelRegions(labels: readonly string[]): LabelRegion[] {
+  const chars = labels.map((label) => [...label]);
+  return chars.map((mine, i) => {
+    let start = Number.POSITIVE_INFINITY;
+    let sharedSuffix = Number.POSITIVE_INFINITY;
+    for (let j = 0; j < chars.length; j += 1) {
+      if (j === i) continue;
+      const other = chars[j]!;
+      const limit = Math.min(mine.length, other.length);
+      let prefix = 0;
+      while (prefix < limit && mine[prefix] === other[prefix]) prefix += 1;
+      let suffix = 0;
+      while (suffix < limit - prefix && mine[mine.length - 1 - suffix] === other[other.length - 1 - suffix]) suffix += 1;
+      if (prefix + suffix === 0) continue;
+      start = Math.min(start, prefix);
+      sharedSuffix = Math.min(sharedSuffix, suffix);
+    }
+    if (!Number.isFinite(start)) return { text: '', start: 0, end: 0 };
+    const end = mine.length - sharedSuffix;
+    return { text: end > start ? mine.slice(start, end).join('') : '', start, end };
+  });
+}
+
+/**
+ * 違いの区間を残したまま、周りの文脈を入るだけ残して両側を「…」で省く。
+ * 区間だけでも入らなければ中央を省く（区間が落ちるので、呼び出し側が広い上限で省き直す）。
+ */
+function shortenLabel(label: string, cap: number, measure: MeasureText, region: LabelRegion): string {
+  if (measure(label) <= cap) return label;
+  if (region.text === '') return elideMiddle(label, cap, measure);
+  const chars = [...label];
+  const around = (extra: number) => {
+    const from = Math.max(0, region.start - extra);
+    const to = Math.min(chars.length, region.end + extra);
+    return `${from > 0 ? ELLIPSIS : ''}${chars.slice(from, to).join('')}${to < chars.length ? ELLIPSIS : ''}`;
+  };
+  for (let extra = Math.max(region.start, chars.length - region.end); extra >= 0; extra -= 1) {
+    const candidate = around(extra);
+    if (measure(candidate) <= cap) return candidate;
+  }
+  return elideMiddle(around(0), cap, measure);
+}
+
+/**
+ * 凡例に出す名前をそろえて省く。**省いた後も、別の対象と見分けられる**ことを保証する
+ * （元の名前が互いに異なる限り）。「見分けられる」は、同じ文字列にならないこと、かつ、
+ * 名前ごとに、他の名前と違う区間（`labelRegions`）が「…」で消えていないこと。
+ * 消える時は、上限の幅を広げて省き直し、`hardMax`まで広げても消えるなら省かない。
+ * `hardMax`は図の幅に収まる名前の幅の上限で、全文がそれを超える時だけ、`hardMax`で省いた名前
+ * （区間が消えうる）を返す。完全な名前は、凡例の項目のhover（`<title>`）に別に出す。
  */
 export function fitLabels(
   labels: readonly string[],
@@ -129,13 +154,14 @@ export function fitLabels(
   hardMax = maxWidth,
 ): string[] {
   const upper = Math.max(maxWidth, hardMax);
-  const shared = sharedAffixLengths(labels);
+  const regions = labelRegions(labels);
   for (let cap = maxWidth; cap <= upper; cap += 20) {
-    const fitted = labels.map((label) => shortenLabel(label, cap, measure, shared));
-    if (new Set(fitted).size === new Set(labels).size) return fitted;
+    const fitted = labels.map((label, i) => shortenLabel(label, cap, measure, regions[i]!));
+    const distinct = new Set(fitted).size === new Set(labels).size;
+    if (distinct && fitted.every((text, i) => text.includes(regions[i]!.text))) return fitted;
   }
   if (labels.every((label) => measure(label) <= upper)) return [...labels];
-  return labels.map((label) => shortenLabel(label, upper, measure, shared));
+  return labels.map((label, i) => shortenLabel(label, upper, measure, regions[i]!));
 }
 
 export interface LegendPlacement {
