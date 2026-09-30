@@ -227,7 +227,13 @@ Analyzerの結び付け（各Analyzerの `definition.tsx`）が渡すもの:
 ### 条件の編集とURL
 
 - **条件の編集は条件のペインで行う。** 書き込むレベルの既定は対象のレベル（配列を対象にしていれば配列、Setupならそれ）。「この条件だけ別にしたい」は、その場でSetupを作る操作として出す。上位への適用（この配列全部・全体）は昇格の操作として出す。今書けるのは全体のレベルだけ（上の「条件の要約」のモーダル）で、配列・Setupのレベルへの書き込みは後の段
-- **URL**: 個別画面は `/analyzer/<analyzer>`。URLで固定された1ペインで、URLはペインの初期値（対象・解析設定）を運ぶ。3つの単体ページの「共有」は解析設定だけをURLに載せ、開いた側が取り込む（`hosts/standalone/use-url-options.ts`。対象は載せない）。保存したWorkspaceは `/workspace/<id>` で、URLは識別子だけ（#544 非目標「URLをWorkspaceの保存先にしない」）
+- **URL**: 個別画面は `/analyzer/<analyzer>`。URLで固定された1ペインで、URLはペインの初期値（対象・解析設定）を運ぶ。3つの単体ページの「共有」は、対象と解析設定をURLに載せ、開いた側が取り込む（解析設定は`hosts/standalone/use-url-options.ts`、対象は`use-url-targets.ts`。読み書きの純粋な部分は`target-share.ts`）。
+  - **対象の載せ方**: 組み込みの配列は id（`layout:<id>`）で載せ、受け取った側でそのまま開く。自作の配列・Setup は名前だけ（`user-layout:<名前>` / `setup:<名前>`。Setup は付けたラベル、無ければ「配列名/物理配列名」）で載せる。端末ごとの id は運ばない。受け取った側に同じ名前が無ければ、名前を添えて「見つからなかった」と示す（同じ名前が複数ある時は一覧の先頭）
+  - **画面ごと**: Single（Bigram Flow）は `target`、Multi（比較表・N感度）は `targets`（対象ごとに繰り返す。並び順ごと運ぶ。色の番号は運ばず、受け取った側で配る。元から持っていた対象の色は持ち越し、新しい対象にだけ配る）と `baseline`（効いている基準だけ。比較表の基準は集合の値の一部で、受け取った側で見え方が変わるため、基準を使わないN感度のリンクにも載せる）
+  - **取り込み**: 資産の読み込み後に1回だけ、手持ちで引けた対象でその画面の対象（Single / Multiの集合と基準）を置き換える。1操作なのでUndoで受け取る前へ戻る。1つも引けなければ今の対象を変えない。取り込んだらURLから消す
+  - 外から来る値なので、資産と同じcodecの境界（valibot）を通し、対象は40件まで・1件200文字までに絞る（共有リンクのサイズ上限）
+  - 取り込めなかったものは、保存済みの設定の読み直し（「既定値へ戻した」）とは別の文でペインに出す（`PaneFrame`の`linkNotices`）。URLでは、集合の要素を落とした時は残りを取り込み、値全体を捨てた時は今の値が残るので、どちらにも当てはまる「取り込まなかった」と書く。
+- 保存したWorkspaceは `/workspace/<id>` で、URLは識別子だけ（#544 非目標「URLをWorkspaceの保存先にしない」）
 
 ## ディレクトリ
 
@@ -302,6 +308,7 @@ src/
 - **可視化は計算しない。** engineが抽出を実行し、hostが結果をcomponentへ渡す
 - **Analyzerの契約は純粋な部分だけを `analyzers/contract.ts` に置く。** 名前・短い説明・本体と解析設定のcomponentとの結び付けは各Analyzerの `definition.tsx` で行う（「Analyzerがペインに渡すもの」）。結び付けは `analyzers/pane-parts.tsx` の `AnalyzerPaneParts` の形のオブジェクト（`bigramFlowAnalyzer` 等）で、ペインの見出し・個別画面のh1・routeの `<title>` はここから名前を読む。名前と短い説明はReactに依存しない `analyzers/<name>/pane-meta.ts` に置き、routeはそちらを読む（`definition.tsx` をimportすると本体のcomponentとCSSが全ページの初期読み込みに入るため）。engineは純粋な部分しか知らないので、engineの型にReactが現れず、Workerへそのまま移せる
   - 抽出のキャッシュキーは「解釈のキー + Analyzer id + 抽出に効くoptions」（`AnalyzerDefinition.extractKeyOf` が返す値。`engine/keys.ts` の `analyzerExtractionKeyOf`）。見た目だけの解析設定はここで除かれるので、見た目だけの変更ではextractが走らない
+  - 単体ページの計算は、ブラウザでは Web Worker で走らせる（長いテキストで入力とスクロールが止まらないため）。ペインが頼む窓口は `engine/computer.ts` の `EngineComputer` で、メインスレッドの `EngineCache` と Worker 越しの `engine/worker-client.ts` のどちらも満たす。Worker の入口は `app/standalone/engine-worker.ts` で、そこに載せた Analyzer の定義だけが Worker で計算できる（Analyzer を足す時は、ここにも足す）。数値は変わらない（Worker の中も同じ `EngineCache` と同じ純関数で、メッセージは値の複製だけ）
   - 集合対象とN感度の例外向けに、抽出は「Traceを依頼する窓口」（`TraceRequester`、`analyzers/contract.ts`）を受け取れる。窓口の実装（キャッシュ経由でTraceを共有する）は `engine/trace-requester.ts` が持つ
 - **storageを直接触るのは platform と app だけ。** 保存が要る層（hosts・editors等）は、appが組み立てたアダプタを注入して使う。Testerは当面の例外
 - **import の書き方。** 別のトップディレクトリへは `#<dir>/...`（`package.json` の `imports`）、同じトップディレクトリの中は相対パス。ディレクトリを import しない（`index.ts` の暗黙解決はNodeのstrip-typesで動かない）。拡張子を付けて書く

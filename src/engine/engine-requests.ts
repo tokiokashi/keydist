@@ -1,5 +1,6 @@
 import type { SetAnalyzerDefinition, SingleAnalyzerDefinition } from '#analyzers/contract.ts';
 import type { EngineCache } from './cache.ts';
+import type { EngineComputer } from './computer.ts';
 import type { EngineExtractionResult, EngineInterpretationResult, EngineTraceResult } from './pipeline.ts';
 import {
   createEngineRequest,
@@ -12,7 +13,8 @@ import {
 } from './request.ts';
 
 /**
- * `EngineCache`を具体的な計算（Trace / 解釈）に束ねた依頼の窓口（#544 §8-1）。
+ * `EngineCache`（メインスレッド）または`EngineComputer`（Worker越しも含む）を、具体的な計算
+ * （Trace / 抽出）に束ねた依頼の窓口（#544 §8-1）。
  *
  * `request.ts`の`createEngineRequest`はどんな`compute`にも使える形にしてあるので
  * （Phase 3で抽出段の依頼を足す時もこれを再利用する）、ここではTrace・解釈の2種類だけを
@@ -24,11 +26,11 @@ export type InterpretationRequestState = EngineRequestState<EngineInterpretation
 
 /** Trace単体の依頼。抽出段がTraceだけを見たい場合（N感度など）向け。 */
 export function createTraceRequest(
-  cache: EngineCache,
+  cache: EngineComputer,
   listener: (state: TraceRequestState) => void,
   options?: EngineRequestOptions,
 ): EngineRequestChannel {
-  return createEngineRequest((input) => cache.getTrace(input), listener, options);
+  return createEngineRequest((input, signal) => cache.getTrace(input, signal), listener, options);
 }
 
 /** 解釈（構造 + 共通指標）の依頼。Traceは`EngineCache`の中で共有されるキャッシュ経由で再利用される。 */
@@ -52,14 +54,14 @@ export type ExtractionRequestState<Extracted> = EngineRequestState<EngineExtract
  * try/catchが`failed`（`kind: 'exception'`）へ変換する（#544 §8-5）。
  */
 export function createExtractRequest<Options, Extracted>(
-  cache: EngineCache,
+  cache: EngineComputer,
   definition: SingleAnalyzerDefinition<Options, Extracted>,
   analyzerOptions: Options,
   listener: (state: ExtractionRequestState<Extracted>) => void,
   options?: EngineRequestOptions,
 ): EngineRequestChannel {
   return createEngineRequest(
-    (input) => cache.getExtraction(input, definition, analyzerOptions),
+    (input, signal) => cache.getExtraction(input, definition, analyzerOptions, signal),
     listener,
     options,
   );
@@ -74,14 +76,15 @@ export function createExtractRequest<Options, Extracted>(
  * `definition.extract`自身が例外を投げた時だけ。
  */
 export function createSetExtractRequest<Options, Extracted>(
-  cache: EngineCache,
+  cache: EngineComputer,
   definition: SetAnalyzerDefinition<Options, Extracted>,
   analyzerOptions: Options,
   listener: (state: ExtractionRequestState<Extracted>) => void,
   options?: EngineRequestOptions,
 ): EngineSetRequestChannel {
   return createEngineSetRequest(
-    (members: readonly EngineSetMemberInput[]) => cache.getSetExtraction(members, definition, analyzerOptions),
+    (members: readonly EngineSetMemberInput[], signal) =>
+      cache.getSetExtraction(members, definition, analyzerOptions, signal),
     listener,
     options,
   );

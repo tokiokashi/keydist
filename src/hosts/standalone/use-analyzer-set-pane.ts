@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SetAnalyzerDefinition } from '#analyzers/contract.ts';
-import type { EngineCache } from '#engine/cache.ts';
+import type { EngineComputer } from '#engine/computer.ts';
 import type { ExtractionRequestState } from '#engine/engine-requests.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import {
@@ -21,7 +21,7 @@ const IDLE_EXTRACTION: ExtractionRequestState<never> = { status: 'idle' };
  * 判断は持たない。
  */
 export function useAnalyzerSetPane<Options, Extracted>(
-  cache: EngineCache,
+  cache: EngineComputer,
   definition: SetAnalyzerDefinition<Options, Extracted>,
   options: Options,
   members: readonly EngineSetMemberInput[],

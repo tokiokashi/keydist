@@ -4,7 +4,7 @@ import { setSingleTargetCommand, type KeydistAssets } from '#engine/commands.ts'
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
-import type { EngineCache } from '#engine/cache.ts';
+import type { EngineComputer } from '#engine/computer.ts';
 import {
   combinePaneStates,
   conditionHeaderInfoFromResolvedInput,
@@ -25,7 +25,9 @@ import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { targetNameSource } from './target-name-source.ts';
 import { useOptionsDraft } from './use-options-draft.ts';
-import { useUrlOptions } from './use-url-options.ts';
+import { urlOptionsNotices, useUrlOptions } from './use-url-options.ts';
+import { useTargetShareSource, useUrlTargets } from './use-url-targets.ts';
+import { encodeSingleTargetToUrl } from './target-share.ts';
 import { useAnalyzerPane } from './use-analyzer-pane.ts';
 import './standalone.css';
 
@@ -48,7 +50,7 @@ export interface BigramFlowStandalonePageProps {
    */
   readonly assetsReady: boolean;
   readonly dispatch: (command: Command<KeydistAssets>) => void;
-  readonly cache: EngineCache;
+  readonly cache: EngineComputer;
   readonly catalog: StandalonePaneCatalog;
   readonly generateTextId: TextIdGenerator;
   /** `TextChip`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */
@@ -113,6 +115,10 @@ export function BigramFlowStandalonePage({
     setOptionsDraft,
   });
 
+  // URL経由で対象を受け取る（`use-url-targets.ts`）。
+  const shareSource = useTargetShareSource(catalog, setups);
+  const targetNotices = useUrlTargets({ kind: 'single', assetsReady, source: shareSource, dispatch });
+
   const resolution = useMemo(
     () => resolveStandalonePaneInput(target, setupsById, catalog, assets.setupLibrary.overrides, resolvedText),
     [target, setupsById, catalog, assets.setupLibrary.overrides, resolvedText],
@@ -164,8 +170,12 @@ export function BigramFlowStandalonePage({
         disabled={!assetsReady}
         history={history}
         share={{
-          description: '今の解析設定を含むこの画面のURLをコピーする',
-          query: () => bigramFlowOptions.encodeOptionsToUrl(optionsDraft),
+          description: '今の対象と解析設定を含むこの画面のURLをコピーする',
+          query: () => {
+            const params = bigramFlowOptions.encodeOptionsToUrl(optionsDraft);
+            encodeSingleTargetToUrl(target, shareSource).forEach((value, key) => params.append(key, value));
+            return params;
+          },
         }}
       >
         <TextChip
@@ -226,7 +236,8 @@ export function BigramFlowStandalonePage({
             }}
             engineState={combinePaneStates(extraction, pane.trace)}
             traceErrors={traceErrors}
-            settingsDiagnostics={[...decoded.diagnostics, ...urlDiagnostics]}
+            settingsDiagnostics={decoded.diagnostics}
+            linkNotices={[...urlOptionsNotices(urlDiagnostics), ...targetNotices]}
           >
             {resolution.ok && hasExtraction && hasTrace ? (
               <Body

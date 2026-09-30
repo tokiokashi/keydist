@@ -67,10 +67,12 @@ export interface PaneFrameProps {
   /** Trace生成段の診断（配列定義の不備等）。値として表示する（#544 §8-5）。 */
   readonly traceErrors?: readonly string[];
   /**
-   * 解析設定を保存・URLから読み直した時の診断（壊れた値・未知の値を既定値へ戻したという報告）。
-   * `traceErrors`とは出どころが違うので混ぜない。
+   * 保存済みの解析設定を読み直した時の診断（壊れた値・未知の値を既定値へ戻したという報告）。
+   * `traceErrors`とは出どころが違うので混ぜない。共有リンクの取り込みは事実が違うので`linkNotices`で出す。
    */
   readonly settingsDiagnostics?: readonly CodecDiagnostic[];
+  /** 共有リンクを開いた時に、取り込めなかったものを伝える文（解析設定・対象）。 */
+  readonly linkNotices?: readonly string[];
   /**
    * ペイン全体で対象が空の時に出すもの（対象を選ぶボタン等）。これがある間は本体を呼ばない。
    * 選べば分かる結果（「選ぶと表が出る」等）の説明は置かない。
@@ -100,6 +102,7 @@ export function PaneFrame({
   engineState,
   traceErrors,
   settingsDiagnostics,
+  linkNotices,
   emptyContent,
   children,
 }: PaneFrameProps) {
@@ -175,6 +178,10 @@ export function PaneFrame({
           読み取れない解析設定があったため、その項目は既定値へ戻した（{settingsDiagnostics.length}件）
         </p>
       ) : null}
+
+      {linkNotices?.map((line) => (
+        <p key={line} className="pane-settings-diagnostics" role="status" data-pane-link-notice="true">{line}</p>
+      ))}
 
       {emptyContent !== undefined ? (
         <div className="pane-empty" data-pane-empty="true">{emptyContent}</div>

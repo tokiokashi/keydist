@@ -630,8 +630,11 @@ test('URLパラメータの壊れた値は既定値へ戻し、診断をペイ�
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
 
-  const diagnostics = page.locator('[data-pane-settings-diagnostics="true"]');
-  await expect(diagnostics).toBeVisible();
+  // 共有リンクの取り込みは、保存済みの読み直し（既定値へ戻した）とは別の文で伝える。
+  const notice = page.locator('[data-pane-link-notice="true"]');
+  await expect(notice).toBeVisible();
+  await expect(notice).toContainText('取り込まなかった');
+  await expect(page.locator('[data-pane-settings-diagnostics="true"]:not([data-pane-link-notice])')).toHaveCount(0);
 
   // 既定値のまま（壊れたURLパラメータは使われない）。
   const actual = (await openSettings(page)).getByRole('button', { name: 'Actual', exact: true });
@@ -677,6 +680,41 @@ test('文脈バーの「共有」で既定値と違う項目だけを含むURL�
   expect(clipboardText).toContain('source=within-hand');
   // 既定値のまま（変えていない）lineScale等はURLに含まれない。
   expect(clipboardText).not.toContain('lineScale=');
+});
+
+test('共有リンクで対象（配列）が届き、取り込み後はURLから消える。Undoで受け取る前へ戻る（#719）', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await toggleTarget(page, 'layout:dvorak');
+  await expectChosenTarget(page, 'layout:dvorak');
+  await page.getByRole('button', { name: '共有', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'URLをコピーした' })).toBeVisible();
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+  expect(url).toContain('target=layout%3Advorak');
+
+  const other = await context.browser()!.newContext();
+  try {
+    const opened = await other.newPage();
+    await opened.goto(url);
+    await expect(opened.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+    await expectChosenTarget(opened, 'layout:dvorak');
+    await expect(opened).toHaveURL(/\/standalone\/bigram-flow$/);
+    await expect(opened.locator('[data-pane-link-notice="true"]')).toHaveCount(0);
+    // 開くだけで選択の自動オープン等が起きず、Undoで受け取る前（未選択＝既定のQWERTY）へ戻る。
+    await opened.getByRole('button', { name: '元に戻す' }).click();
+    await expectChosenTarget(opened, 'layout:qwerty');
+  } finally {
+    await other.close();
+  }
+});
+
+test('共有リンクの対象が手持ちに無ければ名前を示し、今の対象を変えない（#719）', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow?target=setup%3A%E6%B6%88%E3%81%88%E3%81%9F');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[data-pane-link-notice="true"]')).toContainText('Setup「消えた」');
+  await expectChosenTarget(page, 'layout:qwerty');
+  await expect(page).toHaveURL(/\/standalone\/bigram-flow$/);
 });
 
 test('新規プロファイルでは配列（既定QWERTY）が対象になり、Setupは1件も作られない（#578指摘1）', async ({ page }) => {

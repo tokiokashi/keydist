@@ -25,15 +25,25 @@ export interface UseUrlOptionsInput<Options> {
 }
 
 /**
+ * 共有リンクの解析設定に読み取れない値があった時にペインへ出す文。
+ * 保存済みの設定の読み直し（「既定値へ戻した」）とは事実が違う。URLでは、集合の要素を落とした時は
+ * 残りを取り込み、値全体を捨てた時は今の値が残る。どちらも「取り込まなかった」は正しい。
+ */
+export function urlOptionsNotices(diagnostics: readonly CodecDiagnostic[]): readonly string[] {
+  return diagnostics.length === 0 ? [] : [`共有リンクの解析設定のうち、読み取れない値は取り込まなかった（${diagnostics.length}件）`];
+}
+
+/**
  * 共有リンクのURLに載った解析設定を、開いた側で受け取る（#544 Phase 3「URLでの受け取り」、
- * #644で3つの単体ページ共通にした）。取り込む対象は解析設定だけで、対象（配列・Setup）は載せない。
+ * #644で3つの単体ページ共通にした）。ここで取り込むのは解析設定だけ。対象（配列・Setup）は`use-url-targets.ts`が受け取る。
  *
  * - 資産の初回読み込み（`assetsReady`）を待つ。待たずに`currentOptions`をベースへマージすると、
  *   読み込み前の初期値で既存の設定を巻き戻す（#544レビューで見つかった競合）
  * - URLで指定された項目だけを現在の設定へ上書きする部分マージ。指定しなかった項目まで既定値へ
  *   戻ると、リンクを開いただけで自分の設定が丸ごと消える。誤って開いてもUndoで戻せる
  * - 取り込んだら該当パラメータをURLから消す（取り込み後はローカルが正）
- * - 壊れた値は診断として返す。呼び出し側がペインの`settingsDiagnostics`へ渡す
+ * - 壊れた値は診断として返す。呼び出し側は`urlOptionsNotices`で文にして、ペインの`linkNotices`へ渡す
+  （`settingsDiagnostics`は保存済みの読み直し用で、「既定値へ戻した」と出るため事実が合わない）
  */
 export function useUrlOptions<Options>({
   analyzerId,

@@ -34,6 +34,64 @@ export type EngineRequestState<T> =
   | { readonly status: 'ready'; readonly value: T }
   | { readonly status: 'failed'; readonly error: EngineRequestError };
 
+/**
+ * 計算の戻り値。同期に値を返す実装（メインスレッドの`EngineCache`）と、Worker越しに
+ * Promiseを返す実装（`worker-client.ts`）を同じ窓口で扱う。同期の値は従来どおり
+ * scheduleしたタスクの中で即座に`ready`になる（Promiseに包み直さない。既存の
+ * 決定的なテストと、同期に済む計算の体感を変えないため）。
+ */
+export type MaybePromise<T> = T | Promise<T>;
+
+function isPromiseLike<T>(value: MaybePromise<T>): value is Promise<T> {
+  return typeof value === 'object' && value !== null && typeof (value as { then?: unknown }).then === 'function';
+}
+
+interface ComputeRunnerHost<T> {
+  /** 依頼の世代`revision`が、まだ最新の依頼か（購読が続いているか）。 */
+  isCurrent(revision: number): boolean;
+  onReady(value: T): void;
+  onFailed(error: unknown): void;
+}
+
+/**
+ * 計算を1回走らせて結果を届ける（単一対象・集合対象の依頼で共通）。
+ * Promiseを返す実装では、待っている間に新しい依頼が来る（世代が古くなる）か購読が
+ * 止まったら、結果もエラーも捨てる。`abort()`は計算中の依頼へ`AbortSignal`で打ち切りを
+ * 伝える（Worker越しの実装が、走っている計算を止めるのに使う）。
+ */
+function createComputeRunner<T>(host: ComputeRunnerHost<T>) {
+  let inFlight: AbortController | undefined;
+  return {
+    abort(): void {
+      inFlight?.abort();
+      inFlight = undefined;
+    },
+    run(revision: number, compute: (signal: AbortSignal) => MaybePromise<T>): void {
+      const controller = new AbortController();
+      inFlight = controller;
+      const settle = (deliver: () => void): void => {
+        if (inFlight === controller) inFlight = undefined;
+        if (host.isCurrent(revision)) deliver();
+      };
+      let result: MaybePromise<T>;
+      try {
+        result = compute(controller.signal);
+      } catch (error) {
+        settle(() => host.onFailed(error));
+        return;
+      }
+      if (isPromiseLike(result)) {
+        result.then(
+          (value) => settle(() => host.onReady(value)),
+          (error) => settle(() => host.onFailed(error)),
+        );
+      } else {
+        settle(() => host.onReady(result));
+      }
+    },
+  };
+}
+
 export interface EngineRequestOptions {
   /** 省略時は`microtaskScheduler`（`queueMicrotask`1回）。テストで決定的に進めたい時に差し替える。 */
   readonly scheduler?: EngineScheduler;
@@ -66,7 +124,7 @@ export interface EngineRequestChannel {
  * （キャッシュ・共有はすでに`EngineCache`が持つ）。
  */
 export function createEngineRequest<T>(
-  compute: (input: ResolvedInput) => T,
+  compute: (input: ResolvedInput, signal: AbortSignal) => MaybePromise<T>,
   listener: (state: EngineRequestState<T>) => void,
   options: EngineRequestOptions = {},
 ): EngineRequestChannel {
@@ -87,12 +145,23 @@ export function createEngineRequest<T>(
     listener(state);
   }
 
+  const runner = createComputeRunner<T>({
+    isCurrent: (rev) => !unsubscribed && rev === revision,
+    onReady(value) {
+      lastReadyValue = value;
+      hasLastReadyValue = true;
+      emit({ status: 'ready', value });
+    },
+    onFailed: (error) => emit({ status: 'failed', error: { kind: 'exception', error } }),
+  });
+
   function request(resolution: ResolvedInputResult): void {
     if (unsubscribed) return;
     revision += 1;
     const myRevision = revision;
     cancelScheduled?.();
     cancelScheduled = undefined;
+    runner.abort();
 
     if (!resolution.ok) {
       // 解決済み入力自体の失敗は同期に分かっているので、計算を挟まず即座に失敗を返す。
@@ -119,14 +188,7 @@ export function createEngineRequest<T>(
       // 取り消せない。#544 §8-1「重くなったらWorkerへ移せるように」）の最後の砦として、
       // 実行時に「自分がまだ最新の依頼か」を再チェックしてから結果を届ける。
       if (unsubscribed || myRevision !== revision) return;
-      try {
-        const value = compute(input);
-        lastReadyValue = value;
-        hasLastReadyValue = true;
-        emit({ status: 'ready', value });
-      } catch (error) {
-        emit({ status: 'failed', error: { kind: 'exception', error } });
-      }
+      runner.run(myRevision, (signal) => compute(input, signal));
     });
 
     emit(
@@ -140,6 +202,7 @@ export function createEngineRequest<T>(
     unsubscribed = true;
     cancelScheduled?.();
     cancelScheduled = undefined;
+    runner.abort();
   }
 
   return { request, unsubscribe };
@@ -178,7 +241,7 @@ export interface EngineSetRequestChannel {
  * オプションで切り替える形にすると早期returnのためだけの引数が増えて読みにくくなる。
  */
 export function createEngineSetRequest<T>(
-  compute: (members: readonly EngineSetMemberInput[]) => T,
+  compute: (members: readonly EngineSetMemberInput[], signal: AbortSignal) => MaybePromise<T>,
   listener: (state: EngineRequestState<T>) => void,
   options: EngineRequestOptions = {},
 ): EngineSetRequestChannel {
@@ -195,24 +258,28 @@ export function createEngineSetRequest<T>(
     listener(state);
   }
 
+  const runner = createComputeRunner<T>({
+    isCurrent: (rev) => !unsubscribed && rev === revision,
+    onReady(value) {
+      lastReadyValue = value;
+      hasLastReadyValue = true;
+      emit({ status: 'ready', value });
+    },
+    onFailed: (error) => emit({ status: 'failed', error: { kind: 'exception', error } }),
+  });
+
   function request(members: readonly EngineSetMemberInput[]): void {
     if (unsubscribed) return;
     revision += 1;
     const myRevision = revision;
     cancelScheduled?.();
     cancelScheduled = undefined;
+    runner.abort();
 
     cancelScheduled = scheduler.schedule(() => {
       cancelScheduled = undefined;
       if (unsubscribed || myRevision !== revision) return;
-      try {
-        const value = compute(members);
-        lastReadyValue = value;
-        hasLastReadyValue = true;
-        emit({ status: 'ready', value });
-      } catch (error) {
-        emit({ status: 'failed', error: { kind: 'exception', error } });
-      }
+      runner.run(myRevision, (signal) => compute(members, signal));
     });
 
     emit(
@@ -226,6 +293,7 @@ export function createEngineSetRequest<T>(
     unsubscribed = true;
     cancelScheduled?.();
     cancelScheduled = undefined;
+    runner.abort();
   }
 
   return { request, unsubscribe };
