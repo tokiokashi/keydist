@@ -3,6 +3,18 @@ import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivityExtracted
 import { DEFAULT_N_SENSITIVITY_OPTIONS, type NSensitivityOptions } from './options.ts';
 import { bindOption, RadioOptionField } from '#ui/primitives/option-fields.tsx';
 import { N_SENSITIVITY_PANE_META } from './pane-meta.ts';
+import { computeYRange, formatYTicks } from './y-range.ts';
+import {
+  estimateTextWidth,
+  fitLabels,
+  legendItemOffset,
+  placeLegend,
+  LEGEND_FONT_SIZE,
+  LEGEND_PADDING,
+  LEGEND_SWATCH_GAP,
+  LEGEND_SWATCH_WIDTH,
+  type MeasureText,
+} from './legend-placement.ts';
 import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
 import './n-sensitivity-view.css';
 
@@ -21,9 +33,12 @@ import './n-sensitivity-view.css';
 const DEFAULT_CHART_WIDTH = 640;
 const MIN_CHART_HEIGHT = 200;
 const MAX_CHART_HEIGHT = 360;
+/** 凡例をプロットの下に置く時の、図の左右の余白と、軸の見出しとの間隔。 */
+const LEGEND_BELOW_SIDE = 8;
+const LEGEND_BELOW_GAP = 6;
 /** Nの目盛りの間隔がこれを割ったら、目盛りを1つ飛ばしにする（10pxの文字の「10」が並べる幅）。 */
 const MIN_TICK_SPACING = 30;
-const MARGIN = { top: 16, right: 16, bottom: 32, left: 48 };
+const MARGIN = { top: 16, right: 16, bottom: 40, left: 48 };
 
 export interface NSensitivityRowContext {
   readonly targetKey: string;
@@ -97,45 +112,93 @@ function useMeasuredWidth(): [React.RefObject<HTMLDivElement | null>, number | n
   return [ref, width];
 }
 
+let measureContext: CanvasRenderingContext2D | null | undefined;
+
+/**
+ * 凡例の文字の幅を、実際に描くフォントで測る関数。フォントは要素の計算済みスタイルから読む。
+ * 測れる（ブラウザで、描画後）までは見積もりを返す。フォントの読み込み完了で測り直す
+ * （字幅が変わると凡例の枠の大きさが変わるため）。
+ */
+function useLegendMeasure(ref: React.RefObject<HTMLElement | null>): MeasureText {
+  // 読み直すたびに新しいオブジェクトを入れる。文字列（フォント名）が前と同じでも再描画させ、
+  // フォントの読み込み完了後の字幅で凡例の枠を測り直すため。
+  const [source, setSource] = useState<{ font: string } | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    let cancelled = false;
+    const read = () => {
+      if (!cancelled) setSource({ font: `${LEGEND_FONT_SIZE}px ${getComputedStyle(el).fontFamily}` });
+    };
+    read();
+    void document.fonts?.ready.then(read);
+    return () => { cancelled = true; };
+  }, [ref]);
+  if (source === null) return estimateTextWidth;
+  if (measureContext === undefined) measureContext = document.createElement('canvas').getContext('2d');
+  const context = measureContext;
+  if (!context) return estimateTextWidth;
+  return (text) => {
+    context.font = source.font;
+    return context.measureText(text).width;
+  };
+}
+
 /** 折れ線チャート本体（#544指示書「非legacyの折れ線が無ければ自前でSVGを書く」）。 */
 function NSensitivityChart({
   series,
   scale,
+  yRangeMode,
 }: {
   series: readonly PlottedSeries[];
   scale: NSensitivityOptions['scale'];
+  yRangeMode: NSensitivityOptions['yRange'];
 }) {
   // 置かれた領域の幅をそのままviewBoxの幅にする（表示と等倍になり、文字が縮まない）。
   // 高さは2:1を基本に、狭い領域でも線の間隔が潰れない下限と、広い領域で伸びすぎない上限で止める。
   const [wrapRef, measured] = useMeasuredWidth();
   const CHART_WIDTH = measured ?? DEFAULT_CHART_WIDTH;
-  const CHART_HEIGHT = Math.min(MAX_CHART_HEIGHT, Math.max(MIN_CHART_HEIGHT, Math.round(CHART_WIDTH / 2)));
+  const baseHeight = Math.min(MAX_CHART_HEIGHT, Math.max(MIN_CHART_HEIGHT, Math.round(CHART_WIDTH / 2)));
   const plotWidth = CHART_WIDTH - MARGIN.left - MARGIN.right;
-  const plotHeight = CHART_HEIGHT - MARGIN.top - MARGIN.bottom;
   const tickStep = plotWidth / (N_SENSITIVITY_RANGE.length - 1) < MIN_TICK_SPACING ? 2 : 1;
   const xMin = N_SENSITIVITY_RANGE[0];
   const xMax = N_SENSITIVITY_RANGE[N_SENSITIVITY_RANGE.length - 1]!;
   const xScale = (n: number) => MARGIN.left + ((n - xMin) / (xMax - xMin)) * plotWidth;
 
-  // relativeは旧実装と同じくyMax=100固定（N=0を100%とした相対値なので、実測が100を
-  // 超えることは通常無い。absoluteは系列の実測最大値に合わせて自動スケールする）。
-  const yMax = scale === 'relative'
-    ? 100
-    : Math.max(1, ...series.flatMap((s) => s.points.map((p) => p.y)));
-  const yScale = (y: number) => MARGIN.top + plotHeight - (y / yMax) * plotHeight;
+  // 縦軸の範囲は決め方を`y-range.ts`に閉じている（既定は0から）。相対は上限100%固定
+  // （N=0が100%で、Nを増やしても距離は増えないため）。実測は系列の最大値に合わせる。
+  const yRange = computeYRange(yRangeMode, scale === 'relative', series.flatMap((s) => s.points.map((p) => p.y)));
+  const ySpan = yRange.hi - yRange.lo || 1;
+  const yTickValues = yRange.ticks;
 
-  const yTicks = 5;
-  const yTickValues = Array.from({ length: yTicks + 1 }, (_, i) => (yMax / yTicks) * i);
+  // 凡例は図の中の空いた所に置く。線の実際の位置から空きを調べるので、線と重ならない。
+  // 対象が多くて（または図が狭くて）どこにも収まらない時は、プロットの下に並べて図を高くする
+  // （線を隠すより、図が高い方を選ぶ）。
+  const CHART_HEIGHT = baseHeight;
+  const plotHeight = CHART_HEIGHT - MARGIN.top - MARGIN.bottom;
+  const yScale = (y: number) => MARGIN.top + plotHeight - ((y - yRange.lo) / ySpan) * plotHeight;
+  const measure = useLegendMeasure(wrapRef);
+  const labelRoom = CHART_WIDTH - LEGEND_BELOW_SIDE * 2 - LEGEND_PADDING * 2 - LEGEND_SWATCH_WIDTH - LEGEND_SWATCH_GAP;
+  const legendLabels = fitLabels(series.map((s) => s.label), measure, undefined, labelRoom);
+  const legend = placeLegend(
+    { x: MARGIN.left, y: MARGIN.top, width: plotWidth, height: plotHeight },
+    series.map((s) => s.points.map((p) => ({ x: xScale(p.windowSize), y: yScale(p.y) }))),
+    legendLabels,
+    measure,
+    { x: LEGEND_BELOW_SIDE, y: CHART_HEIGHT + LEGEND_BELOW_GAP, width: CHART_WIDTH - LEGEND_BELOW_SIDE * 2 },
+  );
+  const svgHeight = legend.corner === 'below' ? legend.rect.y + legend.rect.height + LEGEND_BELOW_GAP : CHART_HEIGHT;
+  const yTickLabels = formatYTicks(scale === 'relative', yTickValues);
 
   return (
     <div className="n-sensitivity-chart" ref={wrapRef}>
     <svg
       className="n-sensitivity-svg"
-      viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+      viewBox={`0 0 ${CHART_WIDTH} ${svgHeight}`}
       role="img"
-      aria-label="N感度チャート"
+      aria-label={`N感度チャート: ${series.map((s) => s.label).join('、')}`}
     >
-      {yTickValues.map((value) => (
+      {yTickValues.map((value, i) => (
         <g key={value}>
           <line
             className="n-sensitivity-grid-line"
@@ -145,7 +208,7 @@ function NSensitivityChart({
             y2={yScale(value)}
           />
           <text className="n-sensitivity-axis-label" x={MARGIN.left - 6} y={yScale(value)} textAnchor="end" dominantBaseline="middle">
-            {formatY(scale, value)}
+            {yTickLabels[i]}
           </text>
         </g>
       ))}
@@ -191,14 +254,40 @@ function NSensitivityChart({
           </g>
         );
       })}
+
+      <g
+        className="n-sensitivity-legend"
+        data-n-sensitivity-legend={legend.corner}
+        transform={`translate(${legend.rect.x},${legend.rect.y})`}
+      >
+        <rect className="n-sensitivity-legend-frame" width={legend.rect.width} height={legend.rect.height} rx={3} />
+        {series.map((s, i) => {
+          const at = legendItemOffset(legend, i);
+          return (
+            <g key={s.targetKey} data-n-sensitivity-row="ok" transform={`translate(${at.x},${at.y})`}>
+              <title>{s.fullName || s.label}</title>
+              <line className="n-sensitivity-line" x1={0} x2={LEGEND_SWATCH_WIDTH} stroke={s.color} />
+              <circle cx={LEGEND_SWATCH_WIDTH / 2} r={2.5} fill={s.color} />
+              <text
+                className="n-sensitivity-legend-label"
+                x={LEGEND_SWATCH_WIDTH + 6}
+                dominantBaseline="middle"
+                fontSize={LEGEND_FONT_SIZE}
+              >
+                {legendLabels[i]}
+              </text>
+            </g>
+          );
+        })}
+      </g>
     </svg>
     </div>
   );
 }
 
 /**
- * N感度の本体（チャート・凡例・実測値の表）。メンバー単位の失敗は凡例の行に出す。
- * 対象が空の時はホストが選ぶボタンを出し、本体は呼ばれない。全メンバーが失敗した時は凡例の失敗行だけが残る。
+ * N感度の本体（凡例を図の中に持つチャートと実測値の表）。メンバー単位の失敗は図の下に行で出す。
+ * 対象が空の時はホストが選ぶボタンを出し、本体は呼ばれない。全メンバーが失敗した時は失敗の行だけが残る。
  */
 export function NSensitivityBody({
   extracted,
@@ -228,38 +317,29 @@ export function NSensitivityBody({
       };
     });
 
+  const failedRows = okRows.filter(
+    (row): row is typeof row & { entry: NSensitivitySeriesFailed } => row.entry.kind === 'failed',
+  );
+
   return (
     <section className="n-sensitivity-feature" data-react-feature="n-sensitivity">
-      {plotted.length > 0 ? <NSensitivityChart series={plotted} scale={options.scale} /> : null}
+      {plotted.length > 0 ? <NSensitivityChart series={plotted} scale={options.scale} yRangeMode={options.yRange} /> : null}
 
-      <ul className="n-sensitivity-legend" aria-label="凡例">
-        {okRows.map(({ targetKey, entry, context }) => {
-          if (entry.kind === 'failed') {
-            return (
-              <li key={targetKey} data-n-sensitivity-row="failed">
-                <span title={context?.fullName}>{context?.label ?? '—'}</span>
-                <span role="alert">{entry.message || failureLabel(entry.failureKind)}</span>
-              </li>
-            );
-          }
-          return (
-            <li key={targetKey} data-n-sensitivity-row="ok">
-              <span className="n-sensitivity-swatch" style={{ backgroundColor: context?.color ?? '#666' }} aria-hidden="true" />
+      {failedRows.length > 0 ? (
+        <ul className="n-sensitivity-failures">
+          {failedRows.map(({ targetKey, entry, context }) => (
+            <li key={targetKey} data-n-sensitivity-row="failed">
               <span title={context?.fullName}>{context?.label ?? '—'}</span>
-              <span className="n-sensitivity-condition">
-                {context
-                  ? `${context.layoutName} / ${context.geometryName} / 指の割当: ${context.fingerAssignmentName}`
-                  : '—'}
-              </span>
+              <span role="alert">{entry.message || failureLabel(entry.failureKind)}</span>
             </li>
-          );
-        })}
-      </ul>
+          ))}
+        </ul>
+      ) : null}
 
       {plotted.length > 0 ? (
       <div className="n-sensitivity-table-scroll">
         <table className="n-sensitivity-table">
-          <caption>各対象・各Nの実測値。相対表示中も実測値[u]をここで確認できる。</caption>
+          <caption>各Nの実測値 [u]</caption>
           <thead>
             <tr>
               <th scope="col">対象</th>
@@ -293,6 +373,15 @@ export function NSensitivitySettings({ options, onOptionsChange }: AnalyzerSetti
         choices={[
           { value: 'relative', label: '相対（N=0を100%）' },
           { value: 'absolute', label: '実測値 [u]' },
+        ]}
+      />
+      <RadioOptionField
+        label="縦軸の範囲"
+        binding={bindOption(options, DEFAULT_N_SENSITIVITY_OPTIONS, onOptionsChange, 'yRange')}
+        choices={[
+          { value: 'full', label: '0から' },
+          { value: 'fit', label: '値の範囲' },
+          { value: 'coarse', label: '粗い区切り' },
         ]}
       />
     </div>
