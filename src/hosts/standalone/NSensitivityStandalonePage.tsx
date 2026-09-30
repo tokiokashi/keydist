@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import { setMultiTargetsCommand, type KeydistAssets } from '#engine/commands.ts';
-import type { EngineCache } from '#engine/cache.ts';
+import type { EngineComputer } from '#engine/computer.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget } from '#input/setup/index.ts';
@@ -43,7 +43,7 @@ export interface NSensitivityStandalonePageProps {
   readonly assets: KeydistAssets;
   readonly assetsReady: boolean;
   readonly dispatch: (command: Command<KeydistAssets>) => void;
-  readonly cache: EngineCache;
+  readonly cache: EngineComputer;
   readonly catalog: StandalonePaneCatalog;
   readonly generateTextId: TextIdGenerator;
   /** `TextChip`の本文debounce書き込み（`app/standalone`がuseDebouncedCommitで組み立てる）。 */

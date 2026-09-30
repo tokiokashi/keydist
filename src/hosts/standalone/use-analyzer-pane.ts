@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SingleAnalyzerDefinition } from '#analyzers/contract.ts';
-import type { EngineCache } from '#engine/cache.ts';
+import type { EngineComputer } from '#engine/computer.ts';
 import type { ExtractionRequestState, TraceRequestState } from '#engine/engine-requests.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
 import {
@@ -25,7 +25,7 @@ const IDLE_TRACE: TraceRequestState = { status: 'idle' };
  * options/resolutionで同期する」という配線だけを担う）。
  */
 export function useAnalyzerPane<Options, Extracted>(
-  cache: EngineCache,
+  cache: EngineComputer,
   definition: SingleAnalyzerDefinition<Options, Extracted>,
   options: Options,
   resolution: ResolvedInputResult,

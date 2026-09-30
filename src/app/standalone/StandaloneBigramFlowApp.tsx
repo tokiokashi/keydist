@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
-import { createEngineCache } from '#engine/cache.ts';
 import { setStandaloneAnalyzerOptionsCommand } from '#engine/commands.ts';
 import { bigramFlowAnalyzer } from '#analyzers/bigram-flow/definition.tsx';
 import type { BigramFlowOptions } from '#analyzers/bigram-flow/options.ts';
 import { BigramFlowStandalonePage } from '#hosts/standalone/index.ts';
 import { builtinStandaloneCatalog } from './catalog.ts';
+import { sharedEngineComputer } from './engine-computer.ts';
 import { generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
@@ -20,11 +20,8 @@ import { useTextContentCommit } from './use-text-content-commit.ts';
  * `analyzers/pane-parts.tsx`）を直接importする形のまま。「idから動的に引く」必要が生じた
  * 時点で、`app`側にAnalyzer idごとのレジストリを立てる（先回りして作らない）。
  *
- * `EngineCache`はこのAppの生存期間で1つだけ（モジュールscope）。永続化しない
- * メモリキャッシュなので、ページ遷移をまたいで使い回して問題ない（#544 §7）。
+ * 計算は3つの単体ページで共有する窓口（`engine-computer.ts`。ブラウザではWorker）へ頼む。
  */
-const engineCache = createEngineCache();
-
 export function StandaloneBigramFlowApp() {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => builtinStandaloneCatalog(), []);
@@ -62,7 +59,7 @@ export function StandaloneBigramFlowApp() {
       assets={assets}
       assetsReady={ready}
       dispatch={dispatch}
-      cache={engineCache}
+      cache={sharedEngineComputer}
       catalog={catalog}
       generateTextId={generateTextId}
       history={history}
