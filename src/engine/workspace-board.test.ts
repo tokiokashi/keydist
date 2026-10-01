@@ -8,6 +8,7 @@ import type { KeydistAssets } from './commands.ts';
 import { initialMultiTargetSelection } from './multi-target-selection.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
 import {
+  changedColumnKeys,
   distributeByFloor,
   layoutShapeKey,
   requiredBoardHeightRem,
@@ -254,4 +255,79 @@ test('人が狭めた列のペインを別の列へ移しても、板は移っ�
   const right = (workspace.layout as Split).children[1] as Split;
   assert.equal(layoutShapeKey(right), 'c[g(c) g(d)]');
   assert.ok(right.children[0]!.weight === 0.6 && right.children[1]!.weight === 0.01);
+});
+
+/** 使うペインだけを置き（a=tall30・b=mid20・c=short10・d=mid20・e=short10）、`from`を最初の形、`to`へ並びを変える。 */
+function moved(ids: readonly string[], from: WorkspaceLayoutNode, to: WorkspaceLayoutNode) {
+  const kind: Record<string, string> = { a: 'tall', b: 'mid', c: 'short', d: 'mid', e: 'short' };
+  const start = { assets: emptyAssets(), history: emptyCommandHistory<KeydistAssets>() };
+  const placed = run(
+    start,
+    createWorkspaceCommand('w'),
+    ...ids.map((id) => addWorkspacePaneCommand('w', pane(id, kind[id]!), undefined)),
+    setWorkspaceLayoutCommand('w', from, policy),
+  );
+  const workspace = (state: typeof placed) => findWorkspace(state.assets.workspaces, 'w')!;
+  const next = run(placed, setWorkspaceLayoutCommand('w', to, policy));
+  return { before: workspace(placed), after: workspace(next) };
+}
+const near = (actual: number | undefined, expected: number) => assert.ok(actual !== undefined && Math.abs(actual - expected) <= 0.05, `板: ${actual}（期待 ${expected}）`);
+
+test('根が縦の配置での移動も、形が変わった扱いで板を伸ばし、動かしたペインを含む列を配り直す', () => {
+  // 外周2・間1。d を b の下へ: 内側の列 (b 20 + d 20 + 間1 = 41)、根の列 (41 と c 10 を比に: 41+10+1) + 外周2 = 54
+  const { after } = moved(['a', 'b', 'c', 'd'], column(row(group('a'), group('b')), row(group('c'), group('d'))), column(row(group('a'), column(group('b'), group('d'))), group('c')));
+  near(after.boardHeightRem, 54);
+  const root = after.layout as Split;
+  const total = root.children[0]!.weight + root.children[1]!.weight;
+  assert.ok(Math.abs(root.children[0]!.weight / total - 41 / 51) < 0.01, '根の列も下限に比例した比へ配り直す');
+
+  // b を c の下へ（a の段は a だけになり、b は一番下の段へ）: a30 + c10 + b20 + 間2 + 外周2 = 64
+  const second = moved(['a', 'b', 'c'], column(row(group('a'), group('b')), group('c')), column(group('a'), group('c'), group('b')));
+  near(second.after.boardHeightRem, 64);
+
+  // タブの組から b を出して同じ列の段にする: a30 + b20 + c10 + 間2 + 外周2 = 64
+  const tabs = moved(
+    ['a', 'b', 'c'],
+    column({ kind: 'group', paneIds: ['a', 'b'], weight: 1 }, group('c')),
+    column(group('a'), group('b'), group('c')),
+  );
+  near(tabs.after.boardHeightRem, 64);
+});
+
+test('入れ子の列へ移すと、内側の列も外側の列も下限に比例して配り直し、板を伸ばす', () => {
+  // e を内側の列 (c, d) の下へ。内側: 10+20+10 + 間2 = 42、横並びの段は max(b 20, 42)、根: a30 と 42 + 間1 + 外周2 = 75
+  const { after } = moved(
+    ['a', 'b', 'c', 'd', 'e'],
+    column(group('a'), row(group('b'), column(group('c'), group('d'))), group('e')),
+    column(group('a'), row(group('b'), column(group('c'), group('d'), group('e')))),
+  );
+  near(after.boardHeightRem, 75);
+  const inner = ((after.layout as Split).children[1] as Split).children[1] as Split;
+  assert.equal(layoutShapeKey(inner), 'c[g(c) g(d) g(e)]');
+  const total = inner.children.reduce((sum, child) => sum + child.weight, 0);
+  assert.deepEqual(inner.children.map((child) => Math.round((child.weight / total) * 100) / 100), [0.25, 0.5, 0.25]);
+});
+
+test('増えた列の中に人が比を決めた列があっても、その比で割って板が暴走しない（下限の和 + 間で数える）', () => {
+  // f=a(30)・n=b(20)・c=c(10)・c2=e(10)。右の列 (n .97, c .01, c2 .02) の c2 を下端へ出す
+  const { before, after } = moved(
+    ['a', 'b', 'c', 'e'],
+    row(group('a'), column(group('b', 0.97), group('c', 0.01), group('e', 0.02))),
+    column(row(group('a'), column(group('b', 0.99), group('c', 0.01))), group('e')),
+  );
+  assert.ok(before.boardHeightRem! < 100);
+  // 内側の列 (n, c) は人の比のまま下限の和 (20+10+1=31)。段の高さは max(a30, 31)、根: 31 と e10 + 間1 + 外周2 = 44
+  near(after.boardHeightRem, 44);
+  const inner = ((after.layout as Split).children[0] as Split).children[1] as Split;
+  assert.deepEqual(inner.children.map((child) => child.weight), [0.99, 0.01]);
+});
+
+test('ペインを取り除いただけの列と、何も変えていない列は、変わっていない扱い（根が縦でも）', () => {
+  const layout = column(row(group('a'), group('b')), group('c'), group('d'));
+  const keys = (to: WorkspaceLayoutNode) => [...changedColumnKeys(to, layout)];
+  assert.deepEqual(keys(layout), []);
+  assert.deepEqual(keys(column(row(group('a'), group('b')), group('d'))), []);
+  // 段の入れ替え・段の中の組み替えは、変わった扱い
+  assert.equal(keys(column(group('c'), row(group('a'), group('b')), group('d'))).length, 1);
+  assert.equal(keys(column(group('a'), group('b'), group('c'), group('d'))).length, 1);
 });
