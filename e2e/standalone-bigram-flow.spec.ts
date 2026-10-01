@@ -1427,7 +1427,7 @@ test('Keyboard Flow: 個別画面の連打ラベルは、縮んだ図でも読�
       cap: getComputedStyle(svg).getPropertyValue('--flow-repeat-label-max-scale'),
     };
   });
-  // 文字が画面上で8pxになる拡大率（上限なし）。Workspaceのペインの上限（2）を超える
+  // 文字が画面上で8pxになる拡大率（上限なし）。Workspaceのペインの上限（1.4）を超える
   expect(info.cap.trim()).toBe('');
   expect(info.scale).toBeCloseTo(8 / (6.2 * info.zoom), 1);
   expect(info.scale).toBeGreaterThan(2.5);

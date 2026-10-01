@@ -164,11 +164,11 @@ function badgeWidth(text: string): number {
 }
 
 /**
- * 要素の表示幅（px。0は未計測）と、連打ラベルの拡大率の上限。
+ * 図の描かれる幅（px。0は未計測）と、連打ラベルの拡大率の上限。
  * 上限は図の置き場がCSSで決める（`--flow-repeat-label-max-scale`。無ければ上限なし）。
  * 置き場が高さに合わせて図を縮める時（Workspaceのペイン）だけ宣言されるので、ここでは置き場を知らずに済む。
  */
-function useElementWidth(): [RefObject<SVGSVGElement | null>, number, number] {
+function useKeyboardFigureSize(): [RefObject<SVGSVGElement | null>, number, number] {
   const ref = useRef<SVGSVGElement | null>(null);
   const [width, setWidth] = useState(0);
   const [maxScale, setMaxScale] = useState(Number.POSITIVE_INFINITY);
@@ -229,7 +229,7 @@ function KeyboardFlow({
     }),
     [keyBounds, fit],
   );
-  const [stageRef, stageWidth, labelMaxScale] = useElementWidth();
+  const [stageRef, stageWidth, labelMaxScale] = useKeyboardFigureSize();
   // 画面上のSVG幅 / ユーザー座標の幅（自作配列を縮めた分も含める）。縮んだ時に線と連打ラベルだけを読める大きさに保つのに使う。
   const zoom = stageWidth > 0 ? (stageWidth / AREA_WIDTH) * fit.shrink : fit.shrink;
   const badgeScale = repeatLabelScale(zoom, labelMaxScale);
