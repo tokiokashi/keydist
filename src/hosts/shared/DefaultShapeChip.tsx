@@ -1,15 +1,16 @@
 import type { Command } from '#input/commands/index.ts';
-import { setCascadeOverrideCommand, type KeydistAssets } from '#engine/commands.ts';
+import type { KeydistAssets } from '#engine/commands.ts';
 import { resolveDefaultShapeId } from '#engine/settings-items.ts';
+import { defaultShapeCommand } from './condition-edit.ts';
 import './context-bar.css';
 
 /**
  * グローバルの「既定の物理配列」（`defaultShapeId`）を変える（配列を対象にした時の物理配列。
  * docs/architecture.md「用語」のカスケード）。
  *
- * 正の置き場は条件のペイン（docs/architecture.md「条件の編集とURL」）。条件のペインが
- * できるまでは、配列を対象にしたペインすべてに効くグローバルの値なので、ペインではなく
- * 文脈バーに暫定で置く（#639）。
+ * 条件のモーダルの全体の行と同じ値を書く、文脈バーの恒久の近道（docs/architecture.md「文脈バー」）。
+ * 物理配列は図を見比べる時に一番よく切り替える条件なので、モーダルを開く1手を省くために置く。
+ * 書き込みは `defaultShapeCommand`（モーダルと同じ `setGlobalCommand`）で、2か所で値は食い違わない。
  *
  * 選べる物理配列は、呼び出し側が持つカタログから引く（自作の物理配列が増えた時に、
  * ここだけ組み込みに取り残されないように）。
@@ -39,7 +40,7 @@ export function DefaultShapeChip({ overrides, dispatch, shapes }: DefaultShapeCh
       <select
         aria-label="既定の物理配列"
         value={current}
-        onChange={(event) => dispatch(setCascadeOverrideCommand({ kind: 'global' }, 'defaultShapeId', event.currentTarget.value))}
+        onChange={(event) => dispatch(defaultShapeCommand(event.currentTarget.value))}
       >
         {/* 選ばれているidがカタログに無い時も、実際の状態をそのまま見せる（選び直せるが、このoptionは選べない）。 */}
         {currentIsKnown ? null : <option value={current} disabled>（見つからない物理配列）</option>}

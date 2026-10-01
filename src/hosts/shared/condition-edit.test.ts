@@ -14,6 +14,7 @@ import type { SettingsValueMap } from '#engine/settings-items.ts';
 import {
   actionCountModeOf,
   classGroupingOf,
+  defaultShapeCommand,
   globalOverrideOf,
   overrideWinsNotices,
   resetAllGlobalCommand,
@@ -169,6 +170,13 @@ test('既定の物理配列: 全体のレベルへ書き、既定の物理配列
   assert.equal(globalOverrideOf(back.assets.setupLibrary.overrides, 'defaultShapeId'), undefined);
   const undone = undo(back.assets, back.history);
   assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'defaultShapeId'), 'ortholinear');
+});
+
+test('文脈バーのチップの命令: 既定と同じ物理配列を選び直すと全体の上書きが消える', () => {
+  const set = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), defaultShapeCommand('ortholinear'));
+  assert.equal(globalOverrideOf(set.assets.setupLibrary.overrides, 'defaultShapeId'), 'ortholinear');
+  const back = applyCommand(set.assets, set.history, defaultShapeCommand(staticDefaultOf('defaultShapeId')));
+  assert.equal(globalOverrideOf(back.assets.setupLibrary.overrides, 'defaultShapeId'), undefined);
 });
 
 test('すべて既定値に戻す: 既定の物理配列の全体の上書きも消す', () => {
