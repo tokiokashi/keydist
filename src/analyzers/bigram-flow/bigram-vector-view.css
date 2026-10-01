@@ -356,7 +356,9 @@
   fill: none;
   stroke: color-mix(in srgb, var(--viz-key-text) 12%, transparent);
   stroke-dasharray: 2 4;
-  stroke-width: 0.7;
+  /* 図が縮んでも線の太さ・点線の刻みは画面上で変えない（縮む分だけ細くなると、DPR 1の画面でほぼ消える）。 */
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
 }
 
 .flow-axis-ring-label {
@@ -478,13 +480,6 @@
   font: 600 0.62rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-.flow-footnote {
-  margin: 0.85rem 0 0;
-  color: var(--text-muted);
-  font-size: 0.76rem;
-  line-height: 1.55;
-}
-
 /*
  * 幅の切り替えは画面ではなく置かれた領域（ホストがcontainerにする本体の領域）の幅で行う
  * （docs/architecture.md「Analyzerがペインに渡すもの」）。
@@ -529,4 +524,136 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
   gap: 1rem;
+}
+
+/*
+ * 高さに合わせて縮める（#808）。ホストが本体の領域に高さを持たせている時（Workspaceのペイン）だけ効く。
+ * 名前つきの `@container pane-body (min-height: 1px)` は、高さを測れる本体の領域の中でだけ真になる。
+ * 個別画面の本体は同じ名前で幅しか測れないので偽になり、外側に同じ名前のcontainerも無い
+ * （名前を付けないと、条件を測れる外側の祖先まで探しに行って規則が漏れる）。ホストが誰かをここで知らずに済む。
+ *
+ * 領域の高さを「状態の1行・Keyboard Flow・Relative vectors」で分け合い、各図は縦横比を保ったまま
+ * 割り当てられた枠の中へ縮む（SVGの縦横比は保たれ、余りは図の背景が埋める）。
+ * 領域が横長なら左右に並べる（下の縦横比の規則）。縮めすぎて読めなくなる前に下限で止め、
+ * それより低い領域では本体の領域の中でスクロールする。
+ */
+@container pane-body (min-height: 1px) {
+  .flow-feature {
+    height: 100%;
+    /* Keyboard Flowの図（横長）とRelative vectorsの正方形が、図として読める大きさで残る高さ。 */
+    min-height: 26rem;
+    grid-template-rows: auto minmax(0, 0.85fr) minmax(0, 1fr);
+    gap: 0.6rem;
+  }
+
+  .flow-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-height: 0;
+  }
+
+  .flow-block-heading,
+  .flow-figure-settings,
+  .flow-roll-legend {
+    flex: none;
+  }
+
+  /* Keyboard Flow: 枠の残りに図を入れ、凡例は図の下に1行で残す。 */
+  .flow-stage {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .flow-keyboard-svg {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .flow-legend {
+    flex: none;
+    margin: 0 0.5rem 0.4rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  /* Relative vectors: 左右の図を、枠の残りの高さに正方形のまま収める。 */
+  .flow-two-up {
+    flex: 1 1 0;
+    grid-template-rows: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .flow-mini-panel {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    min-height: 0;
+  }
+
+  .flow-mini-panel header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.5rem;
+    padding: 0.4rem 0.6rem 0;
+  }
+
+  .flow-profile-viewport {
+    min-height: 0;
+    padding: 0.15rem;
+  }
+
+  /* 図の大きさは枠（幅も高さも）で決める。元の規則は幅だけで決めるので、ここで上書きする。 */
+  .flow-profile-stage {
+    position: absolute;
+    inset: 0.15rem;
+    width: auto;
+    max-width: none !important;
+  }
+
+  .flow-profile-svg {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .roll-summary {
+    padding: 0 0.6rem 0.4rem;
+  }
+}
+
+/*
+ * 縦が足りない時は、件数の文と手ごとの要約（件数・平均移動・まとまり）を隠す。図から読める流れは残り、
+ * 数字が要る時は領域を縦に広げるか、個別画面で見る。
+ */
+@container pane-body (min-height: 1px) and (max-height: 520px) {
+  .flow-legend .flow-coverage,
+  .flow-profile-stats {
+    display: none;
+  }
+}
+
+/*
+ * 領域が横長（幅が高さの1.5倍以上）なら、Keyboard Flowを左、Relative vectorsを右に並べる。
+ * 切り替えは画面の幅ではなく、置かれた領域の縦横比で決める。縦長・正方形に近い時は縦に積んだまま。
+ */
+@container pane-body (min-height: 1px) and (min-aspect-ratio: 3 / 2) {
+  .flow-feature {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 0.8rem;
+    min-height: 16rem;
+  }
+
+  .flow-status {
+    grid-column: 1 / -1;
+  }
+}
+
+/* 高さに合わせる時は左右の図を1行に収める前提なので、極端に狭くても縦に積まない（行が増えて高さの配分が崩れる）。 */
+@container pane-body (min-height: 1px) and (max-width: 280px) {
+  .flow-two-up {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
 }

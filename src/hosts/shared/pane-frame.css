@@ -584,9 +584,14 @@ h2.pane-frame-title {
   margin-inline: auto;
 }
 
-/* 本体の領域はペインいっぱいに取り、containerにする（本体は画面ではなくこの幅で描く）。 */
+/*
+ * 本体の領域はペインいっぱいに取り、containerにする（本体は画面ではなくこの幅で描く）。
+ * 名前（pane-body）を付けるのは、Analyzerが「高さを測れる本体の領域か」を名前つきで問えるようにするため。
+ * 名前の無い問い合わせは、条件を測れる祖先のうち一番近いものを選ぶので、個別画面（幅だけ）の本体は飛ばされ、
+ * 外側に高さを測れるcontainerがあると規則が漏れる。
+ */
 .pane-body {
-  container-type: inline-size;
+  container: pane-body / inline-size;
   min-width: 0;
 }
 
