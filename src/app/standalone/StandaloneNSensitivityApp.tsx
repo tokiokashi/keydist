@@ -24,9 +24,12 @@ export function StandaloneNSensitivityApp() {
     commandFor: (options) => setStandaloneAnalyzerOptionsCommand(nSensitivityAnalyzer.definition.id, options),
   });
 
-  const addToWorkspace = useAddToWorkspace(nSensitivityAnalyzer.definition.id, dispatch, getAssets);
-
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId);
+
+  const addToWorkspace = useAddToWorkspace(nSensitivityAnalyzer.definition.id, dispatch, getAssets, () => {
+    commitTextContent.flush();
+    commitOptions.flush();
+  });
 
   // 間引き待ちの変更を先に書いてから戻す。待ち中の値を残したまま戻すと、戻した後にその値が
   // 書かれて、戻したはずの変更がまた入るため。

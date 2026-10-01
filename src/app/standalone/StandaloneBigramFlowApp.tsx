@@ -36,9 +36,12 @@ export function StandaloneBigramFlowApp() {
   // テキストの本文もdebounceしてから`dispatch`する。値は`{ ref, text }`のペアで運ぶ
   // （`TextChip`の`onTextContentCommit`コメント参照。打鍵時点の対象を明示し、
   // debounce完了時に「今の選択」を読み直して事故る競合を避ける）。
-  const addToWorkspace = useAddToWorkspace(bigramFlowAnalyzer.definition.id, dispatch, getAssets);
-
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId);
+
+  const addToWorkspace = useAddToWorkspace(bigramFlowAnalyzer.definition.id, dispatch, getAssets, () => {
+    commitTextContent.flush();
+    commitBigramFlowOptions.flush();
+  });
 
   // 間引き待ちの変更を先に書いてから戻す。待ち中の値を残したまま戻すと、戻した後にその値が
   // 書かれて、戻したはずの変更がまた入るため。

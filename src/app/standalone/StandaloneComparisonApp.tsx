@@ -25,9 +25,12 @@ export function StandaloneComparisonApp() {
     commandFor: (options) => setStandaloneAnalyzerOptionsCommand(comparisonAnalyzer.definition.id, options),
   });
 
-  const addToWorkspace = useAddToWorkspace(comparisonAnalyzer.definition.id, dispatch, getAssets);
-
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId);
+
+  const addToWorkspace = useAddToWorkspace(comparisonAnalyzer.definition.id, dispatch, getAssets, () => {
+    commitTextContent.flush();
+    commitComparisonOptions.flush();
+  });
 
   // 間引き待ちの変更を先に書いてから戻す。待ち中の値を残したまま戻すと、戻した後にその値が
   // 書かれて、戻したはずの変更がまた入るため。

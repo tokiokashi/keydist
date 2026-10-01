@@ -51,22 +51,33 @@ function workspacesCommand(
  */
 export function createWorkspaceCommand(id: string, name?: string): Command<KeydistAssets> {
   return (current) => {
-    const library = current.workspaces;
-    if (library.some((workspace) => workspace.id === id)) return { kind: 'no-op' };
-    const target: WorkspaceTarget = { single: current.singleTargetSelection, set: current.multiTargetSelection };
-    return {
-      kind: 'applied',
-      label: 'Workspaceを作成する',
-      changes: { workspaces: createWorkspace(library, () => id, name, target).library },
-    };
+    const created = createWorkspaceFromAssets(current, id, name);
+    if (created === undefined) return { kind: 'no-op' };
+    return { kind: 'applied', label: 'Workspaceを作成する', changes: { workspaces: created.library } };
   };
+}
+
+/**
+ * 今の資産から新しいWorkspaceを作る（対象の写し方を含む）。Workspaceを作るコマンドはすべてここを通し、
+ * 対象の組み立て（個別画面の選択のどこをWorkspaceの最初の組へ写すか）を1か所に持つ。
+ * 同じidのWorkspaceが既にあれば`undefined`。
+ */
+function createWorkspaceFromAssets(
+  current: KeydistAssets,
+  id: string,
+  name?: string,
+): ReturnType<typeof createWorkspace> | undefined {
+  const library = current.workspaces;
+  if (library.some((workspace) => workspace.id === id)) return undefined;
+  const target: WorkspaceTarget = { single: current.singleTargetSelection, set: current.multiTargetSelection };
+  return createWorkspace(library, () => id, name, target);
 }
 
 /** 個別画面から送るAnalyzer（ペインの素）。idと、個別画面で使っていた解析設定。 */
 export interface PaneFromStandalone {
   readonly paneId: string;
   readonly analyzerId: string;
-  /** 個別画面の解析設定。一度も変えていなければ`undefined`（Analyzerの既定値）。 */
+  /** 個別画面の解析設定（画面で今見えている値。既定値のままでも、既定値を展開した値が入る）。 */
   readonly options: unknown;
 }
 
@@ -105,10 +116,8 @@ export function addStandalonePaneToNewWorkspaceCommand(
   board: BoardPolicy | undefined,
 ): Command<KeydistAssets> {
   return (current) => {
-    const library = current.workspaces;
-    if (library.some((workspace) => workspace.id === workspaceId)) return { kind: 'no-op' };
-    const target: WorkspaceTarget = { single: current.singleTargetSelection, set: current.multiTargetSelection };
-    const created = createWorkspace(library, () => workspaceId, undefined, target);
+    const created = createWorkspaceFromAssets(current, workspaceId);
+    if (created === undefined) return { kind: 'no-op' };
     const group = created.created.groups[0];
     if (group === undefined) return { kind: 'no-op' };
     const withPane = addWorkspacePane(created.library, workspaceId, standalonePane(source, group.id));

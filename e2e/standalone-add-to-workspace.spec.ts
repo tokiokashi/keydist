@@ -36,6 +36,20 @@ function seedWorkspace(page: Page, id = 'w1', name = '比較用'): Promise<void>
   });
 }
 
+/** 保存先へ、Workspaceを2つ（どちらもBigram Flowのペインを1つ持つ）直接書く。 */
+function seedTwoWorkspaces(page: Page): Promise<void> {
+  const make = (id: string, name: string) => ({
+    id,
+    name,
+    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+    panes: [{ id: `${id}-pane`, analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } } } }],
+    layout: { kind: 'group', paneIds: [`${id}-pane`], weight: 1 },
+  });
+  return page.addInitScript(({ key, value }) => {
+    if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ version: 3, workspaces: value }));
+  }, { key: WORKSPACES_KEY, value: [make('w1', '一つ目'), make('w2', '二つ目')] });
+}
+
 async function openStandalone(page: Page, path = '/standalone/n-sensitivity'): Promise<void> {
   await page.goto(path);
   await waitForHydration(page);
@@ -117,4 +131,79 @@ test('キーボードだけで開いて選べ、Escapeで何も追加せずに�
   await expect.poll(async () => (await storedWorkspaces(page))[0]?.panes.map((pane) => pane.analyzerId))
     .toEqual(['bigram-flow', 'comparison']);
   expect(await storedWorkspaces(page)).toHaveLength(1);
+});
+
+test('削除の知らせと追加の知らせが同時に出ても重ならず、両方の操作ボタンが押せる', async ({ page }) => {
+  await seedTwoWorkspaces(page);
+  await page.goto('/workspace/w1');
+  await waitForHydration(page);
+  await page.locator('.context-bar').getByRole('button', { name: 'Workspaceの操作' }).click();
+  await page.getByRole('menuitem', { name: '削除', exact: true }).click();
+  const deleted = page.locator('[data-deleted-workspace-notice]');
+  await expect(deleted).toContainText('を削除した');
+
+  // 画面内の移動（読み込み直さない）で個別画面へ移り、そこで追加する
+  await page.locator('#app-sidebar').getByRole('link', { name: 'N感度', exact: true }).click();
+  await expect(addButton(page)).toBeEnabled({ timeout: 15_000 });
+  await addButton(page).click();
+  await page.getByRole('menuitem', { name: '二つ目' }).click();
+  const added = page.locator('[data-added-to-workspace-notice]');
+  await expect(added).toContainText('「二つ目」に追加した');
+  await expect(deleted).toBeVisible();
+
+  const a = (await deleted.boundingBox())!;
+  const b = (await added.boundingBox())!;
+  expect(a.y + a.height <= b.y || b.y + b.height <= a.y, '2つの知らせが縦に重ならない').toBe(true);
+  // 実際に押せること（他の知らせに覆われていると、試し押しが失敗する）
+  await deleted.getByRole('button', { name: '元に戻す' }).click({ trial: true });
+  await added.getByRole('link', { name: '開く' }).click({ trial: true });
+
+  await deleted.getByRole('button', { name: '元に戻す' }).click();
+  await expect(page).toHaveURL(/\/workspace\/w1$/);
+  expect((await storedWorkspaces(page)).map((workspace) => workspace.id)).toEqual(['w1', 'w2']);
+});
+
+test('追加を元に戻すと知らせが消え、やり直すと戻る（「開く」が無いWorkspaceへ移らない）', async ({ page }) => {
+  await openStandalone(page, '/standalone/bigram-flow');
+  await addButton(page).click();
+  await page.getByRole('menuitem', { name: '新しいWorkspaceに追加' }).click();
+  const notice = page.locator('[data-added-to-workspace-notice]');
+  await expect(notice).toContainText('に追加した');
+  expect(await storedWorkspaces(page)).toHaveLength(1);
+
+  const bar = page.locator('.context-bar');
+  await bar.getByRole('button', { name: '元に戻す' }).click();
+  await expect(notice).toHaveCount(0);
+  expect(await storedWorkspaces(page)).toHaveLength(0);
+
+  await bar.getByRole('button', { name: 'やり直す' }).click();
+  await expect(notice).toContainText('に追加した');
+  expect(await storedWorkspaces(page)).toHaveLength(1);
+  await notice.getByRole('link', { name: '開く' }).click();
+  await expect(page.locator('.pane-frame').filter({ has: page.getByRole('heading', { level: 2, name: 'Bigram Flow', exact: true }) })).toBeVisible({ timeout: 15_000 });
+});
+
+test('解析設定の書き込みが間引き待ちの間に追加しても、元に戻す1回で追加が戻る', async ({ page }) => {
+  // 間引き（400ms）のタイマーを止めて、待ち中の変更を作る
+  await page.clock.install();
+  await openStandalone(page, '/standalone/bigram-flow');
+  const now = await page.evaluate(() => Date.now());
+  await page.clock.pauseAt(now + 60_000);
+
+  await page.getByRole('button', { name: '解析設定', exact: true }).click();
+  const settings = page.locator('[data-settings-window="true"]');
+  await expect(settings).toBeVisible();
+  await settings.getByRole('button', { name: 'Within-hand' }).click();
+  await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
+  // まだ書かれていない（待ち中）
+  expect(await page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options')) ?? '').not.toContain('bigram-flow');
+
+  await addButton(page).click();
+  await page.getByRole('menuitem', { name: '新しいWorkspaceに追加' }).click();
+  await expect(page.locator('[data-added-to-workspace-notice]')).toContainText('に追加した');
+  // 追加の前に、待っていた解析設定が書かれている
+  expect(await page.evaluate(() => localStorage.getItem('keydist:standalone-analyzer-options')) ?? '').toContain('bigram-flow');
+
+  await page.locator('.context-bar').getByRole('button', { name: '元に戻す' }).click();
+  expect(await storedWorkspaces(page)).toHaveLength(0);
 });

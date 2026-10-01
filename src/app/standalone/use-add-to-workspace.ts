@@ -22,8 +22,14 @@ export function useAddToWorkspace(
   analyzerId: string,
   dispatch: (command: Command<KeydistAssets>) => void,
   getAssets: () => KeydistAssets,
+  /**
+   * 間引き待ちの書き込み（解析設定・テキストの本文）を今すぐ反映する。待ちを残して追加すると、履歴が
+   * 「追加」→「待っていた変更」の順に積まれ、Undo 1回で追加が戻らない（`WorkspaceApp`の複製・削除と同じ理由）。
+   */
+  flushPending: () => void,
 ) {
   return useCallback((destination: AddToWorkspaceDestination, options: unknown) => {
+    flushPending();
     const source = { paneId: generatePaneId(), analyzerId, options };
     const board = workspaceBoardPolicy(false);
     if (destination.kind === 'existing') {
@@ -37,6 +43,6 @@ export function useAddToWorkspace(
       ? findWorkspace(workspaces, destination.workspaceId)
       : workspaces.find((workspace) => workspace.panes.some((pane) => pane.id === source.paneId));
     if (target === undefined || !target.panes.some((pane) => pane.id === source.paneId)) return;
-    setAddedToWorkspace({ workspaceId: target.id, workspaceName: target.name });
-  }, [analyzerId, dispatch, getAssets]);
+    setAddedToWorkspace({ workspaceId: target.id, paneId: source.paneId });
+  }, [analyzerId, dispatch, getAssets, flushPending]);
 }

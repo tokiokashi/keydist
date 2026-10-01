@@ -365,3 +365,15 @@ test('個別画面から新しいWorkspaceへ追加: 対象を写して作り、
   // 同じidのWorkspaceが既にあれば何もしない
   assert.equal(run(added, addStandalonePaneToNewWorkspaceCommand('w9', { paneId: 'q', analyzerId: 'bigram-flow', options: undefined }, undefined)).history, added.history);
 });
+
+test('新しいWorkspaceへの追加は、createWorkspaceCommandと同じ作り方（対象・名前）で作る', () => {
+  const start = { assets: emptyAssets(), history: emptyCommandHistory<KeydistAssets>() };
+  const plain = findWorkspace(run(start, createWorkspaceCommand('a')).assets.workspaces, 'a')!;
+  const viaAdd = findWorkspace(
+    run(start, addStandalonePaneToNewWorkspaceCommand('a', { paneId: 'p', analyzerId: 'bigram-flow', options: undefined }, undefined)).assets.workspaces,
+    'a',
+  )!;
+  assert.deepEqual(viaAdd.groups, plain.groups);
+  assert.equal(viaAdd.name, plain.name);
+  assert.deepEqual(viaAdd.text, plain.text);
+});

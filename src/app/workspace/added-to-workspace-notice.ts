@@ -5,8 +5,8 @@
  */
 export interface AddedToWorkspace {
   readonly workspaceId: string;
-  /** 追加した時点のWorkspace名。 */
-  readonly workspaceName: string;
+  /** 追加したペインのid。知らせは、このペインが追加先に残っている間だけ出す（Undoで消えたら出さない）。 */
+  readonly paneId: string;
   /** 追加ごとの通し番号。同じ先へ続けて追加しても、知らせを出し直す。 */
   readonly serial: number;
 }
@@ -24,7 +24,7 @@ export function getAddedToWorkspaceSnapshot(): AddedToWorkspace | undefined {
   return current;
 }
 
-export function setAddedToWorkspace(next: { readonly workspaceId: string; readonly workspaceName: string } | undefined): void {
+export function setAddedToWorkspace(next: { readonly workspaceId: string; readonly paneId: string } | undefined): void {
   current = next === undefined ? undefined : { ...next, serial: ++serial };
   for (const listener of listeners) listener();
 }

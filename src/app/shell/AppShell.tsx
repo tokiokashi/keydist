@@ -198,8 +198,10 @@ export function AppShell({ children, hasContextBar }: AppShellProps) {
           </div>
         </PresetFileIoContext.Provider>
       </ContextBarLeadingSlot.Provider>
-      <DeletedWorkspaceNotice />
-      <AddedToWorkspaceNotice />
+      <div className="shell-notices">
+        <DeletedWorkspaceNotice />
+        <AddedToWorkspaceNotice />
+      </div>
     </div>
   );
 }
