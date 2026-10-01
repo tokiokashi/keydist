@@ -115,13 +115,12 @@ describe('commit-msgフック', { skip: hasBash ? false : 'bashが無い' }, () 
     assert.ok(!out.includes(Buffer.from('Claude-Session:')));
   });
 
-  test('Claudeの共作者行を、メールを外したAI-Assisted-Byに書き換える', () => {
+  test('Claudeの共作者行から、メールアドレスだけを外す', () => {
     const r = rewritten(
       'docs: 規約を足す\n\n理由を書く\n\nCo-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>\n',
     );
     assert.ok(r.ok);
-    assert.ok(r.text.includes('AI-Assisted-By: Claude Sonnet 5.5\n'));
-    assert.ok(!/co-authored-by/i.test(r.text));
+    assert.ok(r.text.includes('Co-Authored-By: Claude Sonnet 5.5\n'));
     assert.ok(!r.text.includes('noreply@anthropic.com'));
   });
 
@@ -131,7 +130,7 @@ describe('commit-msgフック', { skip: hasBash ? false : 'bashが無い' }, () 
     );
     assert.ok(r.ok);
     assert.ok(r.text.includes('Co-authored-by: Taro <taro@example.com>'));
-    assert.ok(r.text.includes('AI-Assisted-By: Claude Opus 5.5\n'));
+    assert.ok(r.text.includes('Co-Authored-By: Claude Opus 5.5\n'));
     assert.ok(r.text.includes('Co-authored-by: Claude Bot <bot@example.com>'));
   });
 
@@ -149,6 +148,6 @@ describe('commit-msgフック', { skip: hasBash ? false : 'bashが無い' }, () 
     const out = readFileSync(file);
     assert.equal(status, 0);
     assert.ok(out.includes(Buffer.from([0x62, 0x61, 0x64, 0x20, 0xff, 0xfe])), '不正なバイト列を含む行が残る');
-    assert.ok(out.includes(Buffer.from('AI-Assisted-By: Claude Sonnet 5.5\n')));
+    assert.ok(out.includes(Buffer.from('Co-Authored-By: Claude Sonnet 5.5\n')));
   });
 });
