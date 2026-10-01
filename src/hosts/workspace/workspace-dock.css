@@ -132,3 +132,14 @@
   container: pane-body / size;
   overflow: auto;
 }
+
+/* 【試作 #827 案B】タブの帯の右端の入れ物（操作が入る） */
+.workspace-header-slot {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  padding-inline: 0.25rem calc(var(--workspace-pane-inline, 1rem) - 0.5rem);
+}

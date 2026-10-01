@@ -13,12 +13,17 @@ import {
   themeLightSpaced,
   type DockviewApi,
   type DockviewReadyEvent,
+  type IDockviewHeaderActionsProps,
   type IDockviewPanelHeaderProps,
   type IDockviewPanelProps,
 } from 'dockview-react';
 import 'dockview-react/dist/styles/dockview.css';
 import { sameLayout, type WorkspaceLayoutNode } from '#engine/workspace-layout.ts';
 import { fromDockviewLayout, PANE_COMPONENT, toDockviewLayout } from './layout-adapter.ts';
+import { headerVariant } from '#hosts/shared/hv.ts';
+import { PaneHeaderSlotContext } from '#hosts/shared/pane-header-slot.ts';
+import { createPortal } from 'react-dom';
+import { WORKSPACE_ANALYZERS } from './analyzer-registry.ts';
 import './workspace-dock.css';
 
 /**
@@ -58,9 +63,32 @@ const FALLBACK_SIZE = { width: 1000, height: 600 } as const;
 
 const PaneRenderContext = createContext<(paneId: string) => ReactNode>(() => null);
 
-function DockPane({ params }: IDockviewPanelProps<{ paneId: string }>) {
+/** 【試作 #827 案B】グループごとの、タブの帯の右端の入れ物。 */
+const SlotsContext = createContext<Readonly<Record<string, HTMLElement>>>({});
+const RegisterSlotContext = createContext<(groupId: string, element: HTMLElement | null) => void>(() => undefined);
+
+function DockPane({ params, api }: IDockviewPanelProps<{ paneId: string }>) {
   const render = useContext(PaneRenderContext);
-  return <div className="workspace-pane">{render(params.paneId)}</div>;
+  const slots = useContext(SlotsContext);
+  // 同じグループのタブは全部マウントされる。タブの帯の右端に操作を出すのは、見えているタブのペインだけ
+  const [visible, setVisible] = useState(api.isVisible);
+  useEffect(() => {
+    setVisible(api.isVisible);
+    const subscription = api.onDidVisibilityChange((event) => setVisible(event.isVisible));
+    return () => subscription.dispose();
+  }, [api]);
+  const slot = headerVariant() === 'b' ? (visible ? slots[api.group.id] ?? null : null) : undefined;
+  return (
+    <PaneHeaderSlotContext.Provider value={slot}>
+      <div className="workspace-pane">{render(params.paneId)}</div>
+    </PaneHeaderSlotContext.Provider>
+  );
+}
+
+function HeaderActions({ group }: IDockviewHeaderActionsProps) {
+  const register = useContext(RegisterSlotContext);
+  if (headerVariant() !== 'b') return null;
+  return <div className="workspace-header-slot" ref={(element) => register(group.id, element)} />;
 }
 
 const COMPONENTS = { [PANE_COMPONENT]: DockPane };
@@ -68,6 +96,57 @@ const COMPONENTS = { [PANE_COMPONENT]: DockPane };
 /** ペインの間の余白（画素）。実物を見て決める値（#627）。面の外周の余白と角丸は`workspace-dock.css`。 */
 const PANE_GAP = 8;
 const WORKSPACE_THEME = { ...themeLightSpaced, gap: PANE_GAP };
+
+/**
+ * タブの中のⓘ。タブの帯はスクロールの入れ物で説明が切れるので、説明はbody直下へ出して、ⓘの真下に置く。
+ * 出し方はInfoButtonと同じ（hoverとフォーカスで出し、押すと出したままにする）。
+ */
+function TabInfo({ name, description }: { readonly name: string; readonly description: string }) {
+  const [hovered, setHovered] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!pinned) return undefined;
+    const close = () => setPinned(false);
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [pinned]);
+  const rect = hovered || pinned ? buttonRef.current?.getBoundingClientRect() : undefined;
+  return (
+    <span
+      className="workspace-tab-info"
+      onPointerDown={(event) => event.stopPropagation()}
+      onPointerEnter={(event) => { if (event.pointerType === 'mouse') setHovered(true); }}
+      onPointerLeave={() => setHovered(false)}
+    >
+      <button
+        ref={buttonRef}
+        type="button"
+        className="info-button"
+        aria-label={`${name}の説明`}
+        onClick={() => setPinned((current) => !current)}
+        onFocus={() => setHovered(true)}
+        onBlur={() => setHovered(false)}
+      >
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+          <circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M8 7.2v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          <circle cx="8" cy="4.9" r="0.95" fill="currentColor" />
+        </svg>
+      </button>
+      {rect === undefined ? null : createPortal(
+        <span
+          className="info-popover workspace-tab-info-popover"
+          role="tooltip"
+          style={{ top: rect.bottom + 6, left: Math.max(8, Math.min(rect.left, window.innerWidth - 360)) }}
+        >
+          {description}
+        </span>,
+        document.body,
+      )}
+    </span>
+  );
+}
 
 /** タブ。閉じるボタンの名前を日本語にするため、既定のタブを使わずに同じ形で持つ。 */
 function WorkspaceTab({
@@ -85,6 +164,9 @@ function WorkspaceTab({
   return (
     <div {...rest} className="dv-default-tab">
       <span className="dv-default-tab-content">{title}</span>
+      {headerVariant() === 'a' || headerVariant() === 'b' ? (
+        <TabInfo name={title ?? ''} description={WORKSPACE_ANALYZERS.find((entry) => entry.name === title)?.description ?? ''} />
+      ) : null}
       <button
         type="button"
         className="dv-default-tab-action"
@@ -130,6 +212,17 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
   // 比が動いた分を、人が並びを変えた操作と取り違えて書かないために使う
   const syncedSizeRef = useRef<{ readonly width: number; readonly height: number } | undefined>(undefined);
   const disposablesRef = useRef<{ dispose: () => void }[]>([]);
+  const [slots, setSlots] = useState<Readonly<Record<string, HTMLElement>>>({});
+  const registerSlot = useCallback((groupId: string, element: HTMLElement | null) => {
+    setSlots((current) => {
+      if (element === null) {
+        if (!(groupId in current)) return current;
+        const { [groupId]: _removed, ...rest } = current;
+        return rest;
+      }
+      return current[groupId] === element ? current : { ...current, [groupId]: element };
+    });
+  }, []);
 
   const areaSize = useCallback(() => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -269,17 +362,22 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
 
   return (
     <PaneRenderContext.Provider value={props.renderPane}>
+     <RegisterSlotContext.Provider value={registerSlot}>
+      <SlotsContext.Provider value={slots}>
       <div ref={containerRef} className="workspace-dock-area" data-hide-tabs={props.hideTabs || undefined}>
         <DockviewReact
           theme={WORKSPACE_THEME}
           components={COMPONENTS}
           defaultTabComponent={WorkspaceTab}
           singleTabMode="fullwidth"
+          rightHeaderActionsComponent={HeaderActions}
           disableFloatingGroups
           announcements={false}
           onReady={onReady}
         />
       </div>
+      </SlotsContext.Provider>
+     </RegisterSlotContext.Provider>
     </PaneRenderContext.Provider>
   );
 }

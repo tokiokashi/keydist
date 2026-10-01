@@ -1,0 +1,188 @@
+/*
+ * 【試作 #827】ペインの見出しの案。`<html data-hv="a|b|c">`で切り替える（無ければ今の見出し）。
+ * 本実装には入れない。案の比較用。
+ */
+
+/* 条件の要約を見出しの行へ畳む形（案A=chip、案B・C=icon） */
+.pane-condition-summary[data-compact] {
+  flex: none;
+  border: 0;
+  background: transparent;
+  font-size: 0.85rem;
+}
+
+.pane-condition-summary[data-compact] .pane-condition-trigger {
+  position: relative;
+  width: auto;
+  min-height: 2rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-muted);
+  gap: 0.35rem;
+}
+
+.pane-condition-summary[data-compact="icon"] .pane-condition-trigger {
+  width: 2rem;
+  padding: 0;
+  justify-content: center;
+}
+
+/* 既定と違う時だけ出す印 */
+.pane-condition-dot {
+  position: absolute;
+  top: 0.28rem;
+  right: 0.28rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.pane-frame-title-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 案A: 見出しは1行（対象・連動・条件・解析設定・⋯）。名前と説明はタブが持つ */
+.pane-frame[data-hv="a"] .pane-frame-header {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "target settings menu";
+}
+
+.pane-frame[data-hv="a"] .pane-frame-target {
+  flex-wrap: nowrap;
+}
+
+.pane-frame[data-hv="a"] .pane-condition-summary {
+  margin-left: auto;
+}
+
+@container pane (max-width: 34rem) {
+  .pane-frame[data-hv="a"] .pane-condition-summary[data-compact="chip"] .pane-condition-trigger {
+    width: 2rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .pane-frame[data-hv="a"] .pane-condition-summary[data-compact="chip"] .pane-condition-trigger > span {
+    display: none;
+  }
+}
+
+html[data-hv="a"] .workspace-pane,
+html[data-hv="b"] .workspace-pane {
+  padding-top: 0.5rem;
+}
+
+html[data-hv="a"] .pane-frame,
+html[data-hv="b"] .pane-frame {
+  gap: 0.5rem;
+}
+
+/* 案A・B: 名前の隣のⓘはタブが持つ */
+.workspace-tab-info {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0.25rem;
+  color: var(--text-muted);
+}
+
+/* 案B: 操作はDockviewのタブの帯の右端へ置く。枠の見出しは空になるので出さない */
+.pane-frame-header[data-slot] {
+  display: none;
+}
+
+.pane-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.pane-header-controls .pane-frame-target {
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+}
+
+/* 案B: 帯は「タブ | 空き（グループを掴める） | 操作」の順。タブは中身の幅で止め、余りは空きに渡す */
+html[data-hv="b"] .dv-tabs-and-actions-container .dv-scrollable,
+html[data-hv="b"] .dv-tabs-and-actions-container.dv-single-tab.dv-full-width-single-tab .dv-scrollable,
+html[data-hv="b"] .dv-tabs-and-actions-container.dv-single-tab.dv-full-width-single-tab .dv-tabs-container {
+  flex: 0 1 auto;
+  min-width: 6.5rem;
+}
+
+html[data-hv="b"] .dv-tabs-and-actions-container .dv-void-container,
+html[data-hv="b"] .dv-tabs-and-actions-container.dv-single-tab.dv-full-width-single-tab .dv-void-container {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+html[data-hv="b"] .dv-tabs-and-actions-container .dv-right-actions-container {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.pane-header-controls .pane-frame-target > button,
+.pane-header-controls .pane-frame-target select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pane-header-controls .pane-settings-button {
+  width: 2rem;
+  padding: 0;
+  justify-content: center;
+}
+
+.pane-header-controls .pane-settings-button-text {
+  display: none;
+}
+
+.pane-header-controls .target-selection {
+  min-width: 0;
+}
+
+/* 案A: 変更の印は、文字が出ている間は文字が兼ねる。アイコンだけに縮んだ時に出す */
+.pane-condition-summary[data-compact="chip"] .pane-condition-dot {
+  display: none;
+}
+
+@container pane (max-width: 34rem) {
+  .pane-frame[data-hv="a"] .pane-condition-summary[data-compact="chip"] .pane-condition-dot {
+    display: block;
+  }
+}
+
+.workspace-tab-info-popover {
+  position: fixed;
+  max-width: 22rem;
+}
+
+/* 案A・B: ⓘは名前のすぐ右、×は右端 */
+html[data-hv="a"] .dv-tab .dv-default-tab .dv-default-tab-content,
+html[data-hv="b"] .dv-tab .dv-default-tab .dv-default-tab-content {
+  flex-grow: 0;
+}
+
+html[data-hv="a"] .dv-tab .dv-default-tab .dv-default-tab-action,
+html[data-hv="b"] .dv-tab .dv-default-tab .dv-default-tab-action {
+  margin-left: auto;
+}
+
+/* 案B: タブが1枚の時は縮めない（名前と説明を削らない）。操作側が縮む */
+html[data-hv="b"] .dv-tabs-and-actions-container.dv-single-tab.dv-full-width-single-tab .dv-scrollable,
+html[data-hv="b"] .dv-tabs-and-actions-container.dv-single-tab.dv-full-width-single-tab .dv-tabs-container {
+  flex: 0 0 auto;
+  min-width: auto;
+}
+
+html[data-hv="b"] .dv-tabs-and-actions-container.dv-single-tab .dv-tabs-overflow-dropdown-root {
+  display: none;
+}

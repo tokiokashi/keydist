@@ -35,9 +35,11 @@ export interface ConditionSummaryProps {
   readonly targetDiffs?: readonly ConditionTargetDiff[];
   /** 全体のレベルの条件を書き換えるための手持ち。 */
   readonly editor: ConditionEditorContext;
+  /** 【試作 #827】見出しの行に畳む形。chip=アイコンと短い文字、icon=アイコンと変更の印だけ。 */
+  readonly compact?: 'chip' | 'icon';
 }
 
-export function ConditionSummary({ rows, header, targetDiffs = [], editor }: ConditionSummaryProps) {
+export function ConditionSummary({ rows, header, targetDiffs = [], editor, compact }: ConditionSummaryProps) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   if (rows.length === 0) return null;
@@ -49,24 +51,43 @@ export function ConditionSummary({ rows, header, targetDiffs = [], editor }: Con
     buttonRef.current?.focus({ preventScroll: true });
   };
 
+  const fullText = line.changedCount === 0
+    ? 'すべて既定値'
+    : `${line.shown.map((row) => `${row.label}: ${row.displayValue}`).join(' · ')}${line.restCount > 0 ? ` 他${line.restCount}件` : ''}`;
   return (
-    <div className="pane-condition-summary" data-changed-count={line.changedCount}>
+    <div className="pane-condition-summary" data-changed-count={line.changedCount} data-compact={compact}>
       <button
         ref={buttonRef}
         type="button"
         className="pane-condition-trigger"
         aria-haspopup="dialog"
         aria-expanded={open}
-        title="条件を見る・変える"
+        aria-label={compact === undefined ? undefined : `条件: ${fullText}`}
+        title={compact === undefined ? '条件を見る・変える' : `条件: ${fullText}`}
         onClick={() => setOpen(true)}
       >
-        <svg className="pane-condition-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-          <path d="M2.5 4.5h7M12.5 4.5h1M2.5 11.5h2M7.5 11.5h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-          <circle cx="11" cy="4.5" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
-          <circle cx="6" cy="11.5" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
-        </svg>
-        <span className="pane-condition-key">条件</span>
-        {line.changedCount === 0 ? (
+        {compact !== undefined ? (
+          // 解析設定のボタン（スライダーの絵）と見分けるため、条件の一覧を表す絵にする
+          <svg className="pane-condition-icon" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+            <path d="M6 4h7.5M6 8h7.5M6 12h7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+            <circle cx="2.8" cy="4" r="0.9" fill="currentColor" />
+            <circle cx="2.8" cy="8" r="0.9" fill="currentColor" />
+            <circle cx="2.8" cy="12" r="0.9" fill="currentColor" />
+          </svg>
+        ) : (
+          <svg className="pane-condition-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path d="M2.5 4.5h7M12.5 4.5h1M2.5 11.5h2M7.5 11.5h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+            <circle cx="11" cy="4.5" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+            <circle cx="6" cy="11.5" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+          </svg>
+        )}
+        {compact !== undefined && (line.changedCount > 0 || targetDiffs.length > 0) ? <span className="pane-condition-dot" aria-hidden="true" /> : null}
+        {compact === 'icon' ? null : compact === 'chip' ? (
+          <span className={line.changedCount === 0 ? 'pane-condition-default' : 'pane-condition-more'}>
+            {line.changedCount === 0 ? '既定値' : `${line.changedCount}件変更`}
+          </span>
+        ) : <span className="pane-condition-key">条件</span>}
+        {compact !== undefined ? null : line.changedCount === 0 ? (
           <span className="pane-condition-default">すべて既定値</span>
         ) : (
           <>
@@ -76,7 +97,7 @@ export function ConditionSummary({ rows, header, targetDiffs = [], editor }: Con
             {line.restCount > 0 ? <span className="pane-condition-more">他{line.restCount}件</span> : null}
           </>
         )}
-        {targetDiffs.length > 0 ? <span className="pane-condition-diff-flag">対象ごとに差あり</span> : null}
+        {compact === undefined && targetDiffs.length > 0 ? <span className="pane-condition-diff-flag">対象ごとに差あり</span> : null}
       </button>
       {open ? <ConditionModal rows={rows} header={header} targetDiffs={targetDiffs} editor={editor} onClose={close} /> : null}
     </div>

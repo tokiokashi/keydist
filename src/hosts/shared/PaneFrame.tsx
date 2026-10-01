@@ -1,4 +1,7 @@
-import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useContext, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { headerVariant } from './hv.ts';
+import { PaneHeaderSlotContext } from './pane-header-slot.ts';
 import type { EngineRequestState } from '#engine/request.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { describeEngineRequestError, engineRequestErrorDetail, paneStatusLabel, TRACE_ERRORS_SENTENCE } from './pane-status.ts';
@@ -12,6 +15,7 @@ import type { PaneTargetBindingControl } from './panes/pane-environment.ts';
 import { BindingGlyph, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
 import './pane-frame.css';
+import './header-proto.css';
 
 /**
  * ペインの枠（docs/architecture.md「ペイン」「Analyzerがペインに渡すもの」）。
@@ -131,53 +135,85 @@ export function PaneFrame({
     settingsButtonRef.current?.focus({ preventScroll: true });
   };
 
+  const v = headerVariant();
+  const slot = useContext(PaneHeaderSlotContext);
+  const portal = v === 'b' && slot !== undefined && slot !== null;
+  const condition = (
+    <ConditionSummary
+      rows={conditionRows}
+      header={header}
+      targetDiffs={conditionTargetDiffs}
+      editor={conditionEditor}
+      {...(v === 'a' ? { compact: 'chip' as const } : v === 'b' || v === 'c' ? { compact: 'icon' as const } : {})}
+    />
+  );
+  const controls = (
+    <>
+      <div className="pane-frame-target">
+        {target}
+        {targetBinding === undefined ? null : (
+          <PaneMenu
+            paneName={paneName}
+            items={targetBinding.items}
+            label={`${targetBinding.follows ? `連動 ${targetBinding.groupNumber}` : '固定'}（対象: ${targetBinding.summary}）`}
+            title={targetBinding.follows
+              ? `連動 ${targetBinding.groupNumber}: 同じ番号のペインと、配列・Setupが一緒に変わる`
+              : '固定: このペインの対象は、他のペインに合わせて変わらない'}
+            icon={<BindingGlyph kind={targetBinding.follows ? 'link' : 'pin'} number={targetBinding.follows ? targetBinding.groupNumber : undefined} />}
+            className="pane-target-binding"
+            data={{ 'data-follows': String(targetBinding.follows) }}
+          />
+        )}
+        {v === undefined ? null : condition}
+        {(v === 'a' || v === 'b') && statusLabel ? (
+          <span className="pane-status-badge" data-status={engineState.status}>{statusLabel}</span>
+        ) : null}
+      </div>
+      <button
+        ref={settingsButtonRef}
+        type="button"
+        className="pane-settings-button"
+        aria-label="解析設定"
+        aria-expanded={settingsOpen}
+        onClick={() => (settingsOpen ? closeSettings() : setSettingsOpen(true))}
+      >
+        <SettingsIcon />
+        <span className="pane-settings-button-text">解析設定</span>
+      </button>
+      {menuItems.length === 0 ? null : (
+        <div className="pane-frame-menu">
+          <PaneMenu paneName={paneName} items={menuItems} />
+        </div>
+      )}
+    </>
+  );
+
   return (
     <section
       className="pane-frame"
       aria-label={paneName}
       data-pane-status={engineState.status}
+      data-hv={v}
       style={{ '--pane-recommended-width': `${recommendedWidthRem}rem` } as CSSProperties}
     >
-      <header className="pane-frame-header" data-sticky={stickyHeader || undefined} data-menu={menuItems.length > 0 || undefined}>
-        <div className="pane-frame-name">
-          <Heading className="pane-frame-title">{name}</Heading>
-          <InfoButton name={name} description={description} />
-          {statusLabel ? (
-            <span className="pane-status-badge" data-status={engineState.status}>{statusLabel}</span>
-          ) : null}
-        </div>
-        <div className="pane-frame-target">
-          {target}
-          {targetBinding === undefined ? null : (
-            <PaneMenu
-              paneName={paneName}
-              items={targetBinding.items}
-              label={`${targetBinding.follows ? `連動 ${targetBinding.groupNumber}` : '固定'}（対象: ${targetBinding.summary}）`}
-              title={targetBinding.follows
-                ? `連動 ${targetBinding.groupNumber}: 同じ番号のペインと、配列・Setupが一緒に変わる`
-                : '固定: このペインの対象は、他のペインに合わせて変わらない'}
-              icon={<BindingGlyph kind={targetBinding.follows ? 'link' : 'pin'} number={targetBinding.follows ? targetBinding.groupNumber : undefined} />}
-              className="pane-target-binding"
-              data={{ 'data-follows': String(targetBinding.follows) }}
-            />
-          )}
-        </div>
-        <button
-          ref={settingsButtonRef}
-          type="button"
-          className="pane-settings-button"
-          aria-label="解析設定"
-          aria-expanded={settingsOpen}
-          onClick={() => (settingsOpen ? closeSettings() : setSettingsOpen(true))}
-        >
-          <SettingsIcon />
-          <span className="pane-settings-button-text">解析設定</span>
-        </button>
-        {menuItems.length === 0 ? null : (
-          <div className="pane-frame-menu">
-            <PaneMenu paneName={paneName} items={menuItems} />
+      <header
+        className="pane-frame-header"
+        data-sticky={stickyHeader || undefined}
+        data-menu={menuItems.length > 0 || undefined}
+        data-slot={portal ? '' : undefined}
+      >
+        {v === 'a' || v === 'b' ? (
+          <Heading className="pane-frame-title pane-frame-title-hidden">{name}</Heading>
+        ) : (
+          <div className="pane-frame-name">
+            <Heading className="pane-frame-title">{name}</Heading>
+            <InfoButton name={name} description={description} />
+            {statusLabel ? (
+              <span className="pane-status-badge" data-status={engineState.status}>{statusLabel}</span>
+            ) : null}
           </div>
         )}
+        {v === 'b' && slot === null ? null : portal ? createPortal(<div className="pane-header-controls">{controls}</div>, slot) : controls}
       </header>
 
       <SettingsWindow
@@ -190,7 +226,7 @@ export function PaneFrame({
         {settings}
       </SettingsWindow>
 
-      <ConditionSummary rows={conditionRows} header={header} targetDiffs={conditionTargetDiffs} editor={conditionEditor} />
+      {v === undefined ? condition : null}
 
       {traceErrors && traceErrors.length > 0 ? (
         <div className="pane-trace-errors" role="alert" data-pane-trace-errors="true">
