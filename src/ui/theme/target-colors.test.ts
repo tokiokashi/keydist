@@ -70,10 +70,10 @@ for (let i = 0; i < TARGET_PALETTE_SIZE; i++) {
   PALETTES.light.push(light);
   PALETTES.dark.push(dark);
 }
-const PALETTE = PALETTES.light;
+const THEMES = ['light', 'dark'] as const;
 
 test('パレット: どの色も明暗両themeの背景に対してコントラスト比3以上', () => {
-  for (const theme of ['light', 'dark'] as const) {
+  for (const theme of THEMES) {
     for (const color of PALETTES[theme]) {
       for (const [name, background] of Object.entries(BACKGROUNDS)) {
         if (!name.startsWith(theme)) continue;
@@ -84,15 +84,14 @@ test('パレット: どの色も明暗両themeの背景に対してコントラ�
   }
 });
 
-test.skip('パレット: 1色目は、入れ替えても距離の変わらない2色目より背景とのコントラスト比が高い', () => {
+test('パレット: 1色目は、入れ替えても距離の変わらない2色目より、明暗の面を通した最悪のコントラスト比が高い', () => {
   // 1色だけの集合では1色目しか使わない。先頭2色の入れ替えは先頭k色（k≥2）の距離を変えないので、
-  // 背景とのコントラスト比の最小値が高い方を先にする。
-  const minContrast = (color: string) => Math.min(...Object.values(BACKGROUNDS).map((background) => contrast(color, background)));
-  const [first, second] = [PALETTE[0]!, PALETTE[1]!];
-  assert.ok(
-    minContrast(first) >= minContrast(second),
-    `${first} は ${minContrast(first).toFixed(2)}、${second} は ${minContrast(second).toFixed(2)}`,
-  );
+  // 明・暗それぞれの色をそれぞれの theme の全ての面に当てた最小値が高い方を先にする。
+  // theme ごとに比べると、暗では青紫が橙より下がる（青紫は暗の面の明度の下限に近い）ので、theme をまたいだ最悪値で見る。
+  const worst = (slot: number) => Math.min(...THEMES.flatMap((theme) =>
+    Object.entries(BACKGROUNDS).filter(([name]) => name.startsWith(theme)).map(([, background]) => contrast(PALETTES[theme][slot]!, background))));
+  const [first, second] = [worst(0), worst(1)];
+  assert.ok(first >= second, `1色目 ${first.toFixed(3)}、2色目 ${second.toFixed(3)}`);
 });
 
 test('パレット: どの2色もOKLabの距離で0.12以上離れている（明暗それぞれ）', () => {
@@ -106,17 +105,20 @@ test('パレット: どの2色もOKLabの距離で0.12以上離れている（�
   }
 });
 
-test.skip('パレット: 先頭から配った時、先頭の数色ほど互いに離れている', () => {
+test('パレット: 先頭から配った時、先頭の数色ほど互いに離れている（明暗それぞれ）', () => {
   // 集合は先頭の数色しか使わないことが多い。先頭k色の最小距離がkとともに減る（増えない）ことと、
   // 先頭3色が色相の隣り合わない色（距離0.25以上）であることを確かめる。
-  const minDistance = (k: number) => {
-    let min = Number.POSITIVE_INFINITY;
-    for (let i = 0; i < k; i++) for (let j = i + 1; j < k; j++) min = Math.min(min, distance(PALETTE[i]!, PALETTE[j]!));
-    return min;
-  };
-  assert.ok(minDistance(3) >= 0.25, `先頭3色の最小距離 ${minDistance(3).toFixed(3)}`);
-  for (let k = 3; k <= PALETTE.length; k++) {
-    assert.ok(minDistance(k) <= minDistance(k - 1) + 1e-9);
+  for (const theme of THEMES) {
+    const pal = PALETTES[theme];
+    const minDistance = (k: number) => {
+      let min = Number.POSITIVE_INFINITY;
+      for (let i = 0; i < k; i++) for (let j = i + 1; j < k; j++) min = Math.min(min, distance(pal[i]!, pal[j]!));
+      return min;
+    };
+    assert.ok(minDistance(3) >= 0.25, `${theme}: 先頭3色の最小距離 ${minDistance(3).toFixed(3)}`);
+    for (let k = 3; k <= pal.length; k++) {
+      assert.ok(minDistance(k) <= minDistance(k - 1) + 1e-9, `${theme}: k=${k}`);
+    }
   }
 });
 

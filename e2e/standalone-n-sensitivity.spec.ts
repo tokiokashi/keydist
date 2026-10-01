@@ -103,7 +103,7 @@ test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを�
 
 test('色は加えた順に配り、1つ外しても他の線の色は変わらず、空いた色を次に加えた対象が使う', async ({ page }) => {
   await page.goto('/standalone/n-sensitivity');
-  const strokeOf = (key: string) => page.locator(`[data-n-sensitivity-series="${key}"] path`).getAttribute('stroke');
+  const strokeOf = (key: string) => page.locator(`[data-n-sensitivity-series="${key}"] path`).evaluate((path) => getComputedStyle(path).stroke);
 
   await addTarget(page, 'layout:qwerty');
   await addTarget(page, 'layout:colemak-dh');
@@ -115,7 +115,7 @@ test('色は加えた順に配り、1つ外しても他の線の色は変わら�
   // 対象の選択の色見本も線と同じ色。
   const selection = await openTargetSelection(page);
   await expect(selection.locator('label:has(input[value="layout:colemak-dh"]) .target-selection-swatch'))
-    .toHaveCSS('background-color', await page.locator('[data-n-sensitivity-series="layout:colemak-dh"] path').evaluate((path) => getComputedStyle(path).stroke));
+    .toHaveCSS('background-color', second!);
   await toggleTarget(page, 'layout:qwerty');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
   expect(await strokeOf('layout:colemak-dh')).toBe(second);

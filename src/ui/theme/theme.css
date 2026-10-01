@@ -40,7 +40,7 @@
   --series-7: light-dark(#4a3aa7, #9085e9);
   --series-8: light-dark(#e34948, #e66767);
 
-  /* 対象の色（#601）。番号は集合が配る。明暗で明度を変え、同じ番号は同じ色相に保つ。
+  /* 対象の色（#601・#623）。番号は画面の器が配る。明暗で明度を変え、同じ番号は同じ色相に保つ。
      明は#efefecまで、暗は#2a2a27まで（--surface-muted）の全ての面で、コントラスト比3以上。 */
   --target-color-0: light-dark(#764ff8, #7955fb);
   --target-color-1: light-dark(#e3600e, #f96807);
