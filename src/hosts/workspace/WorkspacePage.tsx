@@ -7,6 +7,7 @@ import {
   closeWorkspacePaneCommand,
   duplicateWorkspacePaneCommand,
   renameWorkspaceCommand,
+  setWorkspaceBoardHeightCommand,
   setWorkspaceLayoutCommand,
   linkWorkspacePaneToNewGroupCommand,
   setWorkspacePaneBindingCommand,
@@ -35,6 +36,7 @@ import { AddPaneMenu } from './AddPaneMenu.tsx';
 import { findWorkspaceAnalyzer, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
 import type { PaneBindingChoice, WorkspacePaneRuntime } from './pane-runtime.ts';
 import { summarizeLinkGroups } from './group-summary.ts';
+import { minBoardHeightRem as minBoardHeightRemOf } from '#engine/workspace-board.ts';
 import { workspaceBoardPolicy } from './board-policy.ts';
 import { WorkspaceDock } from './WorkspaceDock.tsx';
 import { WorkspaceName } from './WorkspaceName.tsx';
@@ -112,6 +114,13 @@ export function WorkspacePage({
   const stacked = useStacked();
   // 板の高さの計算に渡す、ペインの下限と余白（ペインを足す・複製する・並びを変える時に板を伸ばす）
   const boardPolicy = useMemo(() => workspaceBoardPolicy(tabs === 'hide'), [tabs]);
+  // 板の下端のつまみで縮められる下限（各ペインの下限の和 + 余白）
+  const workspaceLayout = workspace?.layout;
+  const workspacePanes = workspace?.panes;
+  const minBoardHeightRem = useMemo(() => {
+    const analyzerOf = new Map((workspacePanes ?? []).map((pane) => [pane.id, pane.analyzerId]));
+    return minBoardHeightRemOf(workspaceLayout, (paneId) => boardPolicy.floorRemOfAnalyzer(analyzerOf.get(paneId) ?? ''), boardPolicy);
+  }, [workspaceLayout, workspacePanes, boardPolicy]);
   const flushLayoutRef = useRef<(() => void) | undefined>(undefined);
   const registerFlush = useCallback((flush: (() => void) | undefined) => {
     flushLayoutRef.current = flush;
@@ -329,6 +338,8 @@ export function WorkspacePage({
                   }}
                   registerFlush={registerFlush}
                   boardHeightRem={workspace.boardHeightRem}
+                  minBoardHeightRem={minBoardHeightRem}
+                  onBoardHeightChange={(rem) => dispatch(setWorkspaceBoardHeightCommand(workspaceId, rem))}
                 />
               </div>
             )}

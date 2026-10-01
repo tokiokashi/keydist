@@ -414,6 +414,15 @@ export function withPaneInNewLinkGroup(
   });
 }
 
+/** 板の高さ（rem）を書く。`undefined`は消す（1画面に戻す）。 */
+export function withWorkspaceBoardHeight(library: WorkspaceLibrary, workspaceId: string, boardHeightRem: number | undefined): WorkspaceLibrary {
+  return updateWorkspace(library, workspaceId, (workspace) => {
+    if (workspace.boardHeightRem === boardHeightRem) return workspace;
+    const { boardHeightRem: _removed, ...rest } = workspace;
+    return boardHeightRem === undefined ? rest : { ...rest, boardHeightRem: Math.min(boardHeightRem, MAX_BOARD_HEIGHT_REM) };
+  });
+}
+
 /**
  * ペインの並びを書き換える。ペインの集まりと食い違う部分（載っていないペイン・未知のペイン）は
  * `normalizeLayout` が直すので、呼び出し側は載せる側から受け取った形をそのまま渡してよい。
