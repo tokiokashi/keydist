@@ -609,12 +609,13 @@ test('別のタブで対象をすべて外されても、今のタブで選択�
   await pageB.close();
 });
 
-test('Multiの集合（並び・色・基準）はN感度と共有し、Singleはまだ選んでいなければ基準で埋まるが連動はしない（#663）', async ({ page }) => {
+// 1本にまとめると6回のページ遷移で単独でも12〜15秒かかり、並列の負荷で30秒の枠を超える。
+// 共有（Multi同士）、穴埋めと独立（Single→Multi）、Singleを選んだ後の不変（Multi→Single）は別の主張なので、3本に分ける。
+test('Multiの集合（並び・色・基準）はN感度と共有される（#663）', async ({ page }) => {
   await page.goto('/standalone/comparison');
-  const table = page.locator('.comparison-table');
   await addTarget(page, 'layout:qwerty');
   await addTarget(page, 'layout:colemak-dh');
-  await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
+  await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
   await openTargetSelection(page);
   await page.getByLabel('基準', { exact: true }).selectOption('layout:colemak-dh');
   await expect
@@ -626,6 +627,21 @@ test('Multiの集合（並び・色・基準）はN感度と共有し、Single�
   await page.goto('/standalone/n-sensitivity');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
   await expectTargetNames(page, comparisonNames);
+});
+
+test('Singleはまだ選んでいなければMultiの基準で埋まり、Singleで選び直してもMultiの集合は変わらない（#663）', async ({ page }) => {
+  // Singleの穴埋めは、Multiで基準を選んだ時に一度だけ書かれる（保存済みの集合を読んでも起きない）ので、画面で基準を選ぶ。
+  const table = page.locator('.comparison-table');
+  await page.goto('/standalone/comparison');
+  await addTarget(page, 'layout:qwerty');
+  await addTarget(page, 'layout:colemak-dh');
+  await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
+  await openTargetSelection(page);
+  await page.getByLabel('基準', { exact: true }).selectOption('layout:colemak-dh');
+  await expect
+    .poll(async () => page.evaluate((key) => localStorage.getItem(key), MULTI_TARGET_SELECTION_KEY))
+    .toContain('"baseline"');
+  const comparisonNames = await targetNames(page);
 
   // Bigram Flowはまだ対象を選んでいないので、Multiの基準（Colemak-DH）で埋まる。
   await page.goto('/standalone/bigram-flow');
@@ -642,8 +658,21 @@ test('Multiの集合（並び・色・基準）はN感度と共有し、Single�
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
   await expectTargetNames(page, comparisonNames);
   await expect(table.locator('tr[data-baseline="true"]')).toContainText('Colemak-DH');
+});
 
-  // Singleで一度選んだ後は、Multiの基準を変えてもSingleは変わらない。
+test('Singleで一度選んだ後は、Multiの基準を変えてもSingleは変わらない（#663）', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await toggleTarget(page, 'layout:dvorak');
+  await expectChosenTarget(page, 'layout:dvorak');
+  await expect
+    .poll(async () => page.evaluate(() => localStorage.getItem('keydist:single-target-selection')))
+    .toContain('dvorak');
+
+  await page.goto('/standalone/comparison');
+  await addTarget(page, 'layout:qwerty');
+  await addTarget(page, 'layout:colemak-dh');
+  await expect(page.locator('.comparison-table tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
   await openTargetSelection(page);
   await page.getByLabel('基準', { exact: true }).selectOption('layout:qwerty');
   await expect
