@@ -81,6 +81,7 @@ export function InfoButton({ name, description, floating = false }: { readonly n
         className="info-button"
         aria-label={`${name}の説明`}
         aria-expanded={visible}
+        data-pinned={pinned || undefined}
         aria-describedby={visible ? tooltipId : undefined}
         onClick={() => setPinned((current) => !current)}
         onFocus={() => setHovered(true)}
