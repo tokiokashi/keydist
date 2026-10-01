@@ -159,6 +159,30 @@ test('すべて既定値に戻す: 行のある項目の全体の上書きだけ
   assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'sfbHomeCost'), false);
 });
 
+test('既定の物理配列: 全体のレベルへ書き、既定の物理配列と同じ値を書くと上書きを消す。元に戻すが効く', () => {
+  const defaultShape = staticDefaultOf('defaultShapeId');
+  const first = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), setGlobalCommand('defaultShapeId', 'ortholinear', defaultShape));
+  assert.equal(first.outcome.kind, 'applied');
+  assert.equal(globalOverrideOf(first.assets.setupLibrary.overrides, 'defaultShapeId'), 'ortholinear');
+
+  const back = applyCommand(first.assets, first.history, setGlobalCommand('defaultShapeId', defaultShape, defaultShape));
+  assert.equal(globalOverrideOf(back.assets.setupLibrary.overrides, 'defaultShapeId'), undefined);
+  const undone = undo(back.assets, back.history);
+  assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'defaultShapeId'), 'ortholinear');
+});
+
+test('すべて既定値に戻す: 既定の物理配列の全体の上書きも消す', () => {
+  const step = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    setGlobalCommand('defaultShapeId', 'ortholinear', staticDefaultOf('defaultShapeId')),
+  );
+  const ids = resettableGlobalIds(step.assets.setupLibrary.overrides);
+  assert.deepEqual(ids, ['defaultShapeId']);
+  const reset = applyCommand(step.assets, step.history, resetAllGlobalCommand(ids));
+  assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'defaultShapeId'), undefined);
+});
+
 test('resettableGlobalIds: このペインが行を出さない項目は数えない', () => {
   const step = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), setGlobalCommand('windowSize', 5, staticDefaultOf('windowSize')));
   assert.deepEqual(resettableGlobalIds(step.assets.setupLibrary.overrides, ['windowSize']), []);

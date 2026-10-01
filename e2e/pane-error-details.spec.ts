@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { setDefaultShape } from './context-bar-helper.ts';
 
 /**
  * 例外が起きた時のペインの表示。利用者向けの1文だけを見せ、例外の原文（不具合報告用）は
@@ -47,7 +48,7 @@ test('計算中の例外: 1文だけ出し、原文は折りたたんだ詳細�
 
   expect(page.workers()).toHaveLength(1);
   await Promise.all(page.workers().map((worker) => worker.evaluate(() => { (self as unknown as { __break: boolean }).__break = true; })));
-  await page.getByLabel('既定の物理配列').selectOption('ortholinear');
+  await setDefaultShape(page, 'ortholinear');
 
   const alert = pane.locator('[data-pane-error]');
   await expect(alert).toBeVisible({ timeout: 10_000 });
@@ -64,7 +65,7 @@ test('描画中の例外（error boundary）: 1文だけ出し、原文とstack�
   await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
 
   await page.evaluate(() => { (window as unknown as { __break: boolean }).__break = true; });
-  await page.getByLabel('既定の物理配列').selectOption('ortholinear');
+  await setDefaultShape(page, 'ortholinear');
 
   const alert = pane.locator('[data-pane-crashed]');
   await expect(alert).toBeVisible({ timeout: 10_000 });

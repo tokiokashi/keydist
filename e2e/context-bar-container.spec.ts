@@ -3,7 +3,7 @@ import { waitForHydration } from './hydration-helper.ts';
 
 /**
  * サイドバーを固定した中間の幅（761〜1100）でも、文脈バーは1行に収まり、
- * テキストと既定の物理配列のチップが重ならない（バー自身の幅で見た目を切り替える）。
+ * テキストのチップが操作のボタンに重ならない（バー自身の幅で見た目を切り替える）。
  */
 test.use({ viewport: { width: 1100, height: 900 } });
 
@@ -20,10 +20,10 @@ test('サイドバー固定で761〜1100の幅を20px刻みに動かしても、
       const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
       const bar = rect('.context-bar');
       const text = rect('.context-bar button.text-chip');
-      const shape = rect('.context-bar .context-select-chip');
+      const actions = rect('.context-bar-actions');
       return {
         barHeight: bar.height,
-        overlap: text.left < shape.right - 0.5 && shape.left < text.right - 0.5 && text.top < shape.bottom - 0.5 && shape.top < text.bottom - 0.5,
+        overlap: text.left < actions.right - 0.5 && actions.left < text.right - 0.5 && text.top < actions.bottom - 0.5 && actions.top < text.bottom - 0.5,
         overflow: document.documentElement.scrollWidth - window.innerWidth,
       };
     });
@@ -54,47 +54,15 @@ test('アイコン化した幅ではテキストのチップの文字が左寄�
     await page.setViewportSize({ width, height: 900 });
     const layout = await page.evaluate(() => {
       const text = document.querySelector('.context-bar button.text-chip')!.getBoundingClientRect();
-      const shape = document.querySelector('.context-bar .context-select-chip')!.getBoundingClientRect();
       const actions = document.querySelector('.context-bar-actions')!.getBoundingClientRect();
       return {
         barHeight: document.querySelector('.context-bar')!.getBoundingClientRect().height,
-        overlap: text.left < shape.right - 0.5 && shape.left < text.right - 0.5,
-        overActions: shape.right > actions.left + 0.5,
+        overActions: text.right > actions.left + 0.5,
         overflow: document.documentElement.scrollWidth - window.innerWidth,
       };
     });
     expect(layout.barHeight, `幅${width}`).toBeLessThan(60);
-    expect(layout.overlap, `幅${width}`).toBe(false);
     expect(layout.overActions, `幅${width}`).toBe(false);
     expect(layout.overflow, `幅${width}`).toBeLessThanOrEqual(0);
   }
-});
-
-test('暗いテーマで、既定の物理配列の選択肢の背景と文字がテーマの面・文字の色になる', async ({ page }) => {
-  await page.emulateMedia({ colorScheme: 'dark' });
-  await page.goto('/standalone/bigram-flow');
-  await waitForHydration(page);
-  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
-  const colors = await page.evaluate(() => {
-    // トークンは使われた要素の color-scheme で解決されるので、同じ要素の中で解決した値と比べる。
-    const resolve = (el: Element, token: string, prop: 'backgroundColor' | 'color') => {
-      const probe = document.createElement('span');
-      probe.style[prop] = `var(${token})`;
-      el.appendChild(probe);
-      const value = getComputedStyle(probe)[prop];
-      probe.remove();
-      return value;
-    };
-    const option = document.querySelector('.context-select-chip select option')!;
-    const style = getComputedStyle(option);
-    return {
-      bg: style.backgroundColor,
-      color: style.color,
-      surface: resolve(option, '--surface-raised', 'backgroundColor'),
-      text: resolve(option, '--text', 'color'),
-    };
-  });
-  expect(colors.bg).toBe(colors.surface);
-  expect(colors.color).toBe(colors.text);
-  expect(colors.bg).not.toBe('rgba(0, 0, 0, 0)');
 });

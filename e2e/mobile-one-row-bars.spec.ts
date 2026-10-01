@@ -27,10 +27,9 @@ for (const path of PAGES) {
     expect(bar?.height).toBeLessThan(56);
     expect(header?.height).toBeLessThan(40);
 
-    // 1行の中に、テキスト・既定の物理配列・共有（文脈バー）と、対象・解析設定（見出し）が並ぶ。
+    // 1行の中に、テキスト・共有（文脈バー）と、対象・解析設定（見出し）が並ぶ。
     const barTops = await Promise.all([
       page.locator('.context-bar button.text-chip').boundingBox(),
-      page.locator('.context-bar .context-select-chip').boundingBox(),
       page.getByRole('button', { name: '共有', exact: true }).boundingBox(),
     ]);
     for (const box of barTops) expect(Math.abs((box?.y ?? -100) - (barTops[0]?.y ?? 0))).toBeLessThan(8);
@@ -43,18 +42,6 @@ for (const path of PAGES) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
   });
 }
-
-test('スマホ幅: 物理配列はアイコンだけで、selectを操作して選べる', async ({ page }) => {
-  await openReady(page, 'bigram-flow');
-  const chip = page.locator('.context-bar .context-select-chip');
-  await expect(chip).toHaveAttribute('title', '既定の物理配列: 配列を対象にした時に使う物理配列');
-  const box = await chip.boundingBox();
-  expect(box?.width).toBeLessThan(48);
-  const select = page.getByLabel('既定の物理配列');
-  await expect(select).toHaveValue('row-staggered');
-  await select.selectOption('ortholinear');
-  await expect(select).toHaveValue('ortholinear');
-});
 
 test('スマホ幅: テキストのチップは名前が8文字以上読める幅を持つ', async ({ page }) => {
   await openReady(page, 'bigram-flow');

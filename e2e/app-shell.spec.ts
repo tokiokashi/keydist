@@ -212,8 +212,8 @@ test('文脈バー: テキストのチップは閉じた時1行で、開くと�
   await redo.click();
   await expect(chip).toContainText('英文');
 
-  // 既定の物理配列は文脈バーにある。
-  await expect(bar.getByLabel('既定の物理配列')).toBeVisible();
+  // 既定の物理配列は文脈バーに置かない（条件のモーダルにある）。
+  await expect(bar.getByLabel('既定の物理配列')).toHaveCount(0);
 });
 
 test('Undoは待ち中の本文の変更を先に書いてから戻す（その前の操作は戻さない）', async ({ page }) => {

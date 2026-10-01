@@ -10,7 +10,6 @@ import { comparisonOptions, type ComparisonOptions } from '#analyzers/comparison
 import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
-import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { decodeStoredAnalyzerOptions } from '#hosts/shared/decode-analyzer-options.ts';
 import { ComparisonPane } from '#hosts/shared/panes/ComparisonPane.tsx';
 import type { PaneChrome, PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
@@ -167,11 +166,6 @@ export function ComparisonStandalonePage({
           dispatch={dispatch}
           generateTextId={generateTextId}
           onTextContentCommit={onTextContentCommit}
-        />
-        <DefaultShapeChip
-          overrides={assets.setupLibrary.overrides}
-          dispatch={dispatch}
-          shapes={catalog.setupCatalog.shapes}
         />
       </ContextBar>
       {/* プリレンダーされたページはハイドレーション完了まで操作を効かせない（レビュー指摘1）。 */}

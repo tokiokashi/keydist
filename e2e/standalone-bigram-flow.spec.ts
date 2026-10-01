@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { openTextChip } from './context-bar-helper.ts';
+import { openTextChip, setDefaultShape } from './context-bar-helper.ts';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
 import { expectChosenTarget, openSettings, openTargetSelection, targetButton, toggleTarget } from './pane-helper.ts';
 
@@ -110,19 +110,21 @@ test('条件のモーダル: すべて既定値に戻すで、行のある項目
   await expect(trigger).toContainText('同指連続のホーム復帰距離: OFF');
 });
 
-test('条件のモーダル: 既定の物理配列は文脈バーのチップと同じ値を書く', async ({ page }) => {
+test('条件のモーダル: 既定の物理配列を全体の値として書き、既定へ戻すと上書きが消える', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
-  const chip = page.locator('.context-bar').getByLabel('既定の物理配列');
+  // 文脈バーには置かない
+  await expect(page.locator('.context-bar').getByLabel('既定の物理配列')).toHaveCount(0);
 
-  await chip.selectOption('ortholinear');
   const modal = await openConditionModal(page);
-  await expect(modal.getByLabel('既定の物理配列', { exact: true })).toHaveValue('ortholinear');
+  await expect(modal.getByLabel('既定の物理配列', { exact: true })).toHaveValue('row-staggered');
+  await expect(modal.locator('[data-item="defaultShapeId"]')).toContainText('既定値');
+  await modal.getByLabel('既定の物理配列', { exact: true }).selectOption('ortholinear');
   await expect(modal.locator('[data-item="defaultShapeId"]')).toContainText('全体で変更');
 
   await modal.getByLabel('既定の物理配列', { exact: true }).selectOption('row-staggered');
+  await expect(modal.locator('[data-item="defaultShapeId"]')).not.toHaveAttribute('data-changed', 'true');
   await page.keyboard.press('Escape');
-  await expect(chip).toHaveValue('row-staggered');
   await expect(page.locator('.pane-condition-trigger')).toHaveText('条件すべて既定値');
 });
 
@@ -1297,10 +1299,9 @@ async function keyboardFlowMetrics(page: Page) {
 async function measureAcross(page: Page, kinds: readonly string[]) {
   const flow = page.locator('[data-react-feature="bigram-flow"]');
   await expect(flow).toBeVisible({ timeout: 10_000 });
-  const select = page.getByLabel('既定の物理配列');
   const measured: Awaited<ReturnType<typeof keyboardFlowMetrics>>[] = [];
   for (const kind of kinds) {
-    await select.selectOption(kind);
+    await setDefaultShape(page, kind);
     await expect(flow).toHaveAttribute('data-geometry-id', kind, { timeout: 10_000 });
     measured.push(await keyboardFlowMetrics(page));
   }

@@ -25,7 +25,6 @@ import type { PresetIdGenerator } from '#input/presets/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import { ContextBar, type ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
-import { DefaultShapeChip } from '#hosts/shared/DefaultShapeChip.tsx';
 import { useStableResolvedText } from '#hosts/shared/stable-resolved-text.ts';
 import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import type { PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
@@ -315,11 +314,6 @@ export function WorkspacePage({
           dispatch={dispatch}
           generateTextId={generateTextId}
           onTextContentCommit={onTextContentCommit}
-        />
-        <DefaultShapeChip
-          overrides={assets.setupLibrary.overrides}
-          dispatch={dispatch}
-          shapes={catalog.setupCatalog.shapes}
         />
       </ContextBar>
       {/* プリレンダーやハイドレーション前は操作を効かせない（個別画面と同じ扱い）。 */}

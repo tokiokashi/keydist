@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { setDefaultShape } from './context-bar-helper.ts';
 import { enabledValues, recordControlStates } from './options-draft-recorder.ts';
 import { dismissAutoOpenedSelection, expectChosenTarget, expectTargetNames, openSettings, openTargetSelection, targetButton, targetNames, toggleTarget } from './pane-helper.ts';
 
@@ -229,7 +230,7 @@ test('既定の物理配列を変えると、配列対象は追従しSetup対象
   // 配列対象・Setup対象とも最初は同じ物理配列（row-staggered、既定）なので条件欄は差分無し。
   await expect.poll(async () => (await targetNames(page))[0]).toContain('QWERTY');
 
-  await page.getByLabel('既定の物理配列').selectOption('ortholinear');
+  await setDefaultShape(page, 'ortholinear');
 
   // 既定の物理配列は全体の条件として、条件の要約に出る。
   await expect(page.locator('.pane-condition-trigger')).toContainText('オーソリニア', { timeout: 10_000 });
@@ -307,7 +308,7 @@ test('Setup対象だけの集合では、既定の物理配列を変えても名
 
   const table = page.locator('.comparison-table');
   await expect(table.locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(2, { timeout: 10_000 });
-  await page.getByLabel('既定の物理配列').selectOption('ortholinear');
+  await setDefaultShape(page, 'ortholinear');
   await expect
     .poll(async () => page.evaluate(() => localStorage.getItem('keydist:setup-library')))
     .toContain('ortholinear');

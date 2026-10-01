@@ -12,3 +12,17 @@ export async function openTextChip(page: Page): Promise<Locator> {
   await expect(panel).toBeVisible();
   return panel;
 }
+
+/**
+ * 条件のモーダルで既定の物理配列を選び、モーダルを閉じる。
+ * 既定の物理配列は文脈バーではなく、ペインの条件のモーダル（全体のレベルの行）にある。
+ * Workspaceのように条件の要約が複数あっても、全体の値なのでどのペインから開いても同じ。
+ */
+export async function setDefaultShape(page: Page, shapeId: string): Promise<void> {
+  await page.locator('.pane-condition-trigger').first().click();
+  const modal = page.getByRole('dialog', { name: '条件' });
+  await expect(modal).toBeVisible();
+  await modal.getByLabel('既定の物理配列', { exact: true }).selectOption(shapeId);
+  await page.keyboard.press('Escape');
+  await expect(modal).toHaveCount(0);
+}

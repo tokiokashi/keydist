@@ -136,25 +136,20 @@ for (const [width, name] of [[390, '新しいWorkspace'], [360, '新しいWorksp
     expect(chevronBox.x + chevronBox.width).toBeLessThanOrEqual(chipBox.x + chipBox.width + 0.5);
     expect(await chip.locator('.context-chip-value').evaluate((el) => el.getBoundingClientRect().width)).toBeGreaterThan(60);
 
-    // 並び: 1段目に☰・名前・⋯・元に戻す・やり直す、2段目にテキストと物理配列のチップ
+    // 並び: 1段目に☰・名前・⋯・元に戻す・やり直す、2段目にテキストのチップ
     const nameBox = await box(bar.locator('.workspace-name'));
     const menuBox = await box(bar.getByRole('button', { name: 'Workspaceの操作' }));
     const undoBox = await box(bar.getByRole('button', { name: '元に戻す' }));
     const redoBox = await box(bar.getByRole('button', { name: 'やり直す' }));
-    const shapeBox = await box(bar.locator('.context-select-chip'));
     const toggleBox = await box(bar.locator('.shell-sidebar-toggle'));
     for (const first of [nameBox, menuBox, undoBox, redoBox, toggleBox]) {
       expect(Math.abs((first.y + first.height / 2) - (nameBox.y + nameBox.height / 2))).toBeLessThan(6);
       expect(first.y + first.height).toBeLessThanOrEqual(chipBox.y + 1);
     }
-    expect(Math.abs(shapeBox.y - chipBox.y)).toBeLessThan(6);
-    expect(shapeBox.width).toBeGreaterThanOrEqual(24);
     // 名前が長くても、⋯と元に戻す・やり直すが1段目に収まり、画面の外へ出ない
     expect(menuBox.x).toBeGreaterThan(nameBox.x);
     expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(undoBox.x);
     expect(redoBox.x + redoBox.width).toBeLessThanOrEqual(width);
-    // 隣り合うチップは重ならない
-    expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(shapeBox.x);
   });
 }
 

@@ -47,7 +47,7 @@
   color: inherit;
 }
 
-/* ---- チップ（テキスト・既定の物理配列） ---- */
+/* ---- チップ（テキスト） ---- */
 .context-chip {
   display: inline-flex;
   align-items: center;
@@ -67,8 +67,7 @@ button.context-chip {
   cursor: pointer;
 }
 
-button.context-chip:hover:not(:disabled),
-.context-select-chip:hover {
+button.context-chip:hover:not(:disabled) {
   border-color: var(--border-strong);
 }
 
@@ -125,20 +124,6 @@ button.context-chip:hover:not(:disabled),
   background: var(--surface-muted);
   color: var(--text-muted);
   font-size: 0.72rem;
-}
-
-.context-select-chip {
-  flex: 0 1 auto;
-  padding-right: 0.35rem;
-}
-
-.context-select-chip select {
-  min-width: 0;
-  max-width: 12rem;
-  border: 0;
-  background: transparent;
-  font-size: 0.88rem;
-  cursor: pointer;
 }
 
 /* selectは透明でも、選択肢の一覧は自前の背景を持つ。背景を指定しないと、暗いテーマで
@@ -257,11 +242,6 @@ button.context-chip:hover:not(:disabled),
   line-height: 1.6;
 }
 
-/* バーが狭い時だけ見せるアイコン（広い時は文字のラベルを見せる）。 */
-.context-chip-icon {
-  display: none;
-}
-
 /* ---- 常時出す操作 ---- */
 .context-icon-button {
   display: inline-grid;
@@ -339,16 +319,15 @@ button.context-chip:hover:not(:disabled),
 }
 
 /*
- * 文脈バーが狭い時: 全体を1行に収める（☰ / テキストのチップ / 既定の物理配列のチップ / Undo・Redo / 共有）。
- * そのために「テキスト」「既定の物理配列」の文字とテキストの言語の札は見た目から省き（読み上げには残す）、
- * 物理配列はアイコンだけにし、共有もアイコンだけにする（Undo/Redoと共に常時出す）。
- * チップが余る幅を分け合い、足りない時はテキストのチップが省略して縮む。
+ * 文脈バーが狭い時: 全体を1行に収める（☰ / テキストのチップ / Undo・Redo / 共有）。
+ * そのために「テキスト」の文字とテキストの言語の札は見た目から省き（読み上げには残す）、
+ * 共有もアイコンだけにする（Undo/Redoと共に常時出す）。
+ * テキストのチップが余る幅を使い、足りない時は省略して縮む。
  *
- * 境目は、テキストのチップが8文字読める最小幅（338px）＋物理配列のチップの幅（307px。selectの上限12remで切られた幅で、
- * どの配列を選んでいても同じ。この上限を変えるなら閾値も見直す）
- * ＋Undo/Redo・共有（151px）＋行の間隔（8px×2）＝812pxに、サイドバーを固定していない時に左端へ入る
- * ☰（32px＋間隔8px）を足した852pxを、rem（16px基準）へ丸めた53.5rem。これ未満で3つを同時に切り替える
- * （中間段階は置かない）。コンテナの幅は余白を除いた内側の幅。
+ * 境目は53.5rem。もとは、テキストのチップが8文字読める最小幅と、既定の物理配列のチップの幅
+ * （条件のモーダルへ移したので、もうバーに無い）を足し合わせて決めた値で、物理配列のチップが無くなった今は
+ * もっと狭い幅まで広い表示を保てる。ただし切り替わる幅の見直しは別の話なので、据え置いている。
+ * これ未満でまとめて切り替える（中間段階は置かない）。コンテナの幅は余白を除いた内側の幅。
  */
 @container context-bar (max-width: 53.5rem) {
   .context-bar-items {
@@ -366,8 +345,7 @@ button.context-chip:hover:not(:disabled),
   }
 
   .text-chip .context-chip-key,
-  .text-chip .text-chip-language,
-  .context-select-chip .context-chip-key {
+  .text-chip .text-chip-language {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -407,27 +385,6 @@ button.context-chip:hover:not(:disabled),
     padding: 0.2rem 0.5rem;
   }
 
-  /* 物理配列は名前を出さず、キーボードのアイコンだけにする。 */
-  .context-bar .context-select-chip {
-    position: relative;
-    flex: none;
-    padding-inline: 0.3rem;
-  }
-
-  .context-select-chip .context-chip-icon {
-    display: block;
-    color: var(--text-muted);
-  }
-
-  /* 選択は透明なselectが受ける。チップ全体を覆い、タップでネイティブの選択肢が開く。 */
-  .context-select-chip select {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    max-width: none;
-    opacity: 0;
-  }
-
   /* 文脈バーの真下に全幅で出す（バーは backdrop-filter で fixed の基準になるので absolute で足りる）。 */
   .text-chip-panel {
     top: 100%;
@@ -442,13 +399,12 @@ button.context-chip:hover:not(:disabled),
 /*
  * Workspaceの文脈バー（Workspace名がある）が狭い時は、2段にする。
  *   1段目: ☰ / Workspace名 / ⋯ ………… 元に戻す・やり直す
- *   2段目: テキストのチップ（余る幅を全部取る）/ 物理配列のチップ
+ *   2段目: テキストのチップ（余る幅を全部取る）
  * 名前と⋯を同じ行に足すと、1行ではテキストのチップが潰れて、文字も▾も見えなくなる
  * （390pxで18px。タップの最小の大きさ24pxを下回る）。テキストのチップが潰れないよう、チップは次の段へ送る。
  * 段が増えても、狭い時の切り替えは上と同じ境目（53.5rem）で行う（中間段階は置かない）。個別画面（Workspace名が無い）は1行のまま。
  *
- * 2段目へ送るのは、テキストのチップの基準の幅を「1段目いっぱいから物理配列のチップ分を引いた幅」にして、
- * 1段目に入りきらなくするため。物理配列のチップ（アイコンだけ、約2rem）と間隔が2段目の残りに収まる。
+ * 2段目へ送るのは、テキストのチップの基準の幅を1段目いっぱい（100%）にして、1段目に入りきらなくするため。
  * Workspace名は長くても1段目の幅を超えないよう、⋯の分（2.5rem）を残して省略する。
  */
 @container context-bar (max-width: 53.5rem) {
@@ -463,7 +419,7 @@ button.context-chip:hover:not(:disabled),
   }
 
   .context-bar-items:has(.workspace-name) .text-chip-root {
-    flex: 1 1 calc(100% - 3.5rem);
+    flex: 1 1 100%;
   }
 
   /* ☰と右端の操作は1段目の高さ（2rem）に揃える（2段分の真ん中に浮かせない）。 */

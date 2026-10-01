@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { openTextChip } from './context-bar-helper.ts';
+import { openTextChip, setDefaultShape } from './context-bar-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
@@ -617,7 +617,7 @@ test('1つのペインの描画が落ちても、他のペインとWorkspaceは�
 
   await page.evaluate(() => { (window as unknown as { __break: boolean }).__break = true; });
   // 既定の物理配列を変えて、Bigram Flowを描き直させる
-  await page.getByLabel('既定の物理配列').selectOption('ortholinear');
+  await setDefaultShape(page, 'ortholinear');
   await expect(pane(page, 'Bigram Flow').locator('[data-pane-crashed]')).toBeVisible({ timeout: 10_000 });
 
   // 落ちたのはそのペインの本体だけ。見出しは残り、他のペインは動き、Workspaceの操作もできる
