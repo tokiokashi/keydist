@@ -77,7 +77,7 @@ function measureLegend(page: Page) {
     const frame = svg.querySelector('.n-sensitivity-legend-frame')!.getBoundingClientRect();
     const touches = (x: number, y: number) => x >= frame.left && x <= frame.right && y >= frame.top && y <= frame.bottom;
     let linePointsInside = 0;
-    for (const path of svg.querySelectorAll<SVGPathElement>('[data-n-sensitivity-series] path')) {
+    for (const path of svg.querySelectorAll<SVGPathElement>('[data-n-sensitivity-series] .n-sensitivity-line')) {
       const matrix = path.getScreenCTM()!;
       const length = path.getTotalLength();
       for (let at = 0; at <= length; at += 1) {

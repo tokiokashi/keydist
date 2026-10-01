@@ -55,7 +55,7 @@ test('同じ対象は、別のペインに違う順で入れても、図の線�
     const svg = page.locator('.n-sensitivity-svg').nth(svgIndex);
     const result: Record<string, string | null> = {};
     for (const key of ['layout:qwerty', 'layout:colemak-dh', 'layout:dvorak']) {
-      result[key] = await svg.locator(`[data-n-sensitivity-series="${key}"] path`).first().evaluate((path) => getComputedStyle(path).stroke);
+      result[key] = await svg.locator(`[data-n-sensitivity-series="${key}"] .n-sensitivity-line`).first().evaluate((path) => getComputedStyle(path).stroke);
     }
     return result;
   };
@@ -67,7 +67,37 @@ test('同じ対象は、別のペインに違う順で入れても、図の線�
 
   // 比較表のペインの見出しの色見本（表示順は一覧の順: QWERTY, Dvorak）も、図の線と同じ色
   const swatches = await page.locator('.pane-frame').nth(2).locator('.target-selection-swatch').evaluateAll(
-    (nodes) => nodes.map((node) => getComputedStyle(node).backgroundColor),
+    (nodes) => nodes.map((node) => {
+      const style = getComputedStyle(node.querySelector('path')!);
+      return style.fill !== 'none' ? style.fill : style.stroke;
+    }),
   );
   expect(swatches).toEqual([first['layout:qwerty'], first['layout:dvorak']]);
+});
+
+test('同じ対象は、別のペインでも同じ点の形と線種になり、見出しの色見本の形も図と同じ（色以外の手がかり）', async ({ page }) => {
+  await openWorkspace(page);
+  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(6, { timeout: 30_000 });
+
+  const keys = ['layout:qwerty', 'layout:colemak-dh', 'layout:dvorak'];
+  const marks = async (svgIndex: number) => {
+    const svg = page.locator('.n-sensitivity-svg').nth(svgIndex);
+    const result: Record<string, string | null> = {};
+    for (const key of keys) {
+      const series = svg.locator(`[data-n-sensitivity-series="${key}"]`);
+      const shape = await series.locator('.n-sensitivity-point').first().getAttribute('data-mark');
+      const dash = await series.locator('.n-sensitivity-line').getAttribute('stroke-dasharray');
+      result[key] = `${shape}/${dash ?? 'solid'}`;
+    }
+    return result;
+  };
+  const first = await marks(0);
+  expect(await marks(1)).toEqual(first);
+  expect(new Set(Object.values(first)).size).toBe(3);
+
+  // 比較表のペイン（QWERTY, Dvorakの順）の色見本は、図の点と同じ形
+  const swatchShapes = await page.locator('.pane-frame').nth(2).locator('.target-selection-swatch').evaluateAll(
+    (nodes) => nodes.map((node) => node.getAttribute('data-mark')),
+  );
+  expect(swatchShapes).toEqual([first['layout:qwerty'], first['layout:dvorak']].map((mark) => mark!.split('/')[0]));
 });

@@ -14,6 +14,7 @@ import {
   type ConditionValueNames,
 } from '../condition-summary.ts';
 import { recommendedWidthRemOf } from '#analyzers/recommended-width.ts';
+import type { TargetMark } from '#ui/theme/target-marks.ts';
 import { PaneFrame } from '../PaneFrame.tsx';
 import { resolvePaneInput } from '../resolve-pane-input.ts';
 import { targetNameSource } from '../target-name-source.ts';
@@ -49,6 +50,7 @@ function buildRowContext(
   resolution: ResolvedInputResult,
   named: NamedTarget,
   color: string,
+  mark: TargetMark,
 ): NSensitivityRowContext {
   const targetKey = analysisTargetKey(target);
   if (resolution.ok) {
@@ -61,6 +63,7 @@ function buildRowContext(
       geometryName: header.shapeName,
       fingerAssignmentName: header.fingerAssignmentName,
       color,
+      mark,
     };
   }
   return {
@@ -71,6 +74,7 @@ function buildRowContext(
     geometryName: '—',
     fingerAssignmentName: '—',
     color,
+    mark,
   };
 }
 
@@ -87,7 +91,7 @@ export function NSensitivityPane({
 }: NSensitivityPaneProps) {
   const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
-  const { choiceGroups, targets, colorByKey } = useSetTargetSelection(selection, colorSlots, setups, catalog);
+  const { choiceGroups, targets, colorByKey, markByKey } = useSetTargetSelection(selection, colorSlots, setups, catalog);
 
   // 対象の選択を開いているか。空の時のペインのボタンからも開くので、ここで持つ。
   const [selectionOpen, setSelectionOpen] = useState(false);
@@ -115,8 +119,8 @@ export function NSensitivityPane({
   const targetSummary = useMemo(() => targets.map((target) => {
     const key = analysisTargetKey(target);
     const named = namedByKey.get(key);
-    return { key, label: named?.displayName ?? key, fullName: named?.fullName ?? '', color: colorByKey.get(key) };
-  }), [targets, namedByKey, colorByKey]);
+    return { key, label: named?.displayName ?? key, fullName: named?.fullName ?? '', color: colorByKey.get(key), mark: markByKey.get(key) };
+  }), [targets, namedByKey, colorByKey, markByKey]);
 
   const conditionNames: ConditionValueNames = catalog.setupCatalog;
   const rowContext = useMemo(() => {
@@ -126,11 +130,12 @@ export function NSensitivityPane({
       const key = analysisTargetKey(member.target);
       const named = namedByKey.get(key);
       const color = colorByKey.get(key);
-      if (named === undefined || color === undefined) return;
-      map.set(key, buildRowContext(member.target, member.resolution, named, color));
+      const mark = markByKey.get(key);
+      if (named === undefined || color === undefined || mark === undefined) return;
+      map.set(key, buildRowContext(member.target, member.resolution, named, color, mark));
     });
     return map;
-  }, [members, namedByKey, colorByKey]);
+  }, [members, namedByKey, colorByKey, markByKey]);
 
   // 条件の要約は、共通の条件と、対象ごとに違う条件（Setupの上書き）に分けて出す。
   const conditionSummary = useMemo(() => multiTargetConditionSummary(

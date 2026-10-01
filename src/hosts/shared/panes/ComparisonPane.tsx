@@ -61,7 +61,7 @@ export function ComparisonPane({
 }: ComparisonPaneProps) {
   const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
-  const { choiceGroups, targets, colorByKey } = useSetTargetSelection(selection, colorSlots, setups, catalog);
+  const { choiceGroups, targets, colorByKey, markByKey } = useSetTargetSelection(selection, colorSlots, setups, catalog);
 
   // 対象の選択を開いているか。空の時のペインのボタンからも開くので、ここで持つ。
   const [selectionOpen, setSelectionOpen] = useState(false);
@@ -93,8 +93,8 @@ export function ComparisonPane({
   const targetSummary = useMemo(() => targets.map((target) => {
     const key = analysisTargetKey(target);
     const named = namedByKey.get(key);
-    return { key, label: named?.displayName ?? key, fullName: named?.fullName ?? '', color: colorByKey.get(key) };
-  }), [targets, namedByKey, colorByKey]);
+    return { key, label: named?.displayName ?? key, fullName: named?.fullName ?? '', color: colorByKey.get(key), mark: markByKey.get(key) };
+  }), [targets, namedByKey, colorByKey, markByKey]);
 
   const conditionNames: ConditionValueNames = catalog.setupCatalog;
   const rowContext = useMemo(() => {
