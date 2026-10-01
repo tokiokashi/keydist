@@ -422,9 +422,9 @@ h2.pane-frame-title {
 /*
  * スマホ幅では、下から出るシートにする。高さを画面の半分までに止め、上半分の図を見ながら変えられるようにする。
  * 上端の掴みとヘッダー行を下へドラッグすると、--settings-sheet-yだけ下がり、超えると閉じる（SettingsWindow.tsx）。
- * ここは小窓という器の置き方なので、Analyzerの中身と違い画面の幅で切り替える（幅はSHEET_QUERYと揃える）。
+ * ここは小窓という器の置き方なので、Analyzerの中身と違い画面の幅で切り替える（幅はSHEET_QUERYと揃える。`ui/theme/breakpoints.ts` が正）。
  */
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .settings-window {
     top: auto;
     right: 0;
@@ -466,7 +466,7 @@ h2.pane-frame-title {
   }
 }
 
-@media (max-width: 640px) and (prefers-reduced-motion: reduce) {
+@media (max-width: 760px) and (prefers-reduced-motion: reduce) {
   .settings-window {
     transition: none;
   }
@@ -591,7 +591,7 @@ h2.pane-frame-title {
 }
 
 /* 狭い幅では対象ごとの差も項目名と値を縦に積む。 */
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .pane-condition-diffs dl {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.05rem;
