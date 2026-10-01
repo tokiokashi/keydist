@@ -37,6 +37,8 @@ import type { PaneBindingChoice, WorkspacePaneRuntime } from './pane-runtime.ts'
 import { summarizeLinkGroups } from './group-summary.ts';
 import { WorkspaceDock } from './WorkspaceDock.tsx';
 import { WorkspaceName } from './WorkspaceName.tsx';
+import { WorkspaceStack } from './WorkspaceStack.tsx';
+import { useStacked } from './use-stacked.ts';
 import { WorkspacePaneView } from './WorkspacePaneView.tsx';
 import './workspace.css';
 
@@ -104,6 +106,8 @@ export function WorkspacePage({
   onDelete,
 }: WorkspacePageProps) {
   const workspace = findWorkspace(assets.workspaces, workspaceId);
+  // スマホ幅ではDockviewを外し、ペインを縦に積む。資産の配置は読むだけなので、戻ると元の並びで描き直される
+  const stacked = useStacked();
   const flushLayoutRef = useRef<(() => void) | undefined>(undefined);
   const registerFlush = useCallback((flush: (() => void) | undefined) => {
     flushLayoutRef.current = flush;
@@ -245,7 +249,7 @@ export function WorkspacePage({
   }
 
   return (
-    <div className="workspace-page">
+    <div className="workspace-page" data-stacked={stacked || undefined}>
       <ContextBar
         disabled={!assetsReady}
         history={pageHistory}
@@ -293,21 +297,25 @@ export function WorkspacePage({
             <div className="workspace-toolbar">
               <AddPaneMenu onAdd={addPane} />
             </div>
-            <div className="workspace-stage">
-              <WorkspaceDock
-                layout={workspace.layout}
-                paneIds={paneIds}
-                titleOf={titleOf}
-                renderPane={renderPane}
-                hideTabs={tabs === 'hide'}
-                onLayoutChange={(layout) => dispatch(setWorkspaceLayoutCommand(workspaceId, layout))}
-                onPaneClosed={(paneId) => {
-                  onPaneOptionsCommit.flush();
-                  dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
-                }}
-                registerFlush={registerFlush}
-              />
-            </div>
+            {stacked ? (
+              <WorkspaceStack layout={workspace.layout} renderPane={renderPane} />
+            ) : (
+              <div className="workspace-stage">
+                <WorkspaceDock
+                  layout={workspace.layout}
+                  paneIds={paneIds}
+                  titleOf={titleOf}
+                  renderPane={renderPane}
+                  hideTabs={tabs === 'hide'}
+                  onLayoutChange={(layout) => dispatch(setWorkspaceLayoutCommand(workspaceId, layout))}
+                  onPaneClosed={(paneId) => {
+                    onPaneOptionsCommit.flush();
+                    dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
+                  }}
+                  registerFlush={registerFlush}
+                />
+              </div>
+            )}
           </>
         )}
       </fieldset>
