@@ -124,7 +124,8 @@ export function BoardResizeHandle({ areaRef, minRem, onPreview, onCommit }: Boar
     flushKeys();
     const m = measure(area);
     event.currentTarget.setPointerCapture(event.pointerId);
-    lockRef.current = document.documentElement.style.minHeight;
+    // 固定済みなら取り直さない（固定した後の値を「元の値」として覚えると、戻せなくなる）
+    if (lockRef.current === null) lockRef.current = document.documentElement.style.minHeight;
     document.documentElement.style.minHeight = `${document.documentElement.scrollHeight}px`;
     dragRef.current = {
       pointerId: event.pointerId,
@@ -201,6 +202,8 @@ export function BoardResizeHandle({ areaRef, minRem, onPreview, onCommit }: Boar
       onPointerMove={onPointerMove}
       onPointerUp={(event) => finish(event, true)}
       onPointerCancel={(event) => finish(event, false)}
+      // pointerupが来ないまま掴みが外れた時（右クリックのメニュー・ウィンドウの切り替え）は、中断として保存せず、固定も戻す
+      onLostPointerCapture={(event) => finish(event, false)}
       onKeyDown={onKeyDown}
       onBlur={flushKeys}
       onDoubleClick={() => {

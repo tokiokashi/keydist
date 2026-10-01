@@ -197,7 +197,35 @@ test('ページの下端までスクロールした状態で上へ動かすと�
     await expect.poll(async () => Math.round(before - (await areaHeight(page)))).toBeGreaterThan(dy - 3);
     await page.waitForTimeout(300);
     expect(Math.abs(before - (await areaHeight(page)) - dy)).toBeLessThanOrEqual(2);
+    // 通常のドラッグの後は、ページの高さの固定が戻っている
+    expect(await pageMinHeight(page)).toBe('');
   }
+});
+
+const pageMinHeight = (page: Page) => page.evaluate(() => document.documentElement.style.minHeight);
+
+test('pointerupが来ないまま掴みが外れても、ページの高さの固定が戻り、次のドラッグでも残らない', async ({ page }) => {
+  await openWorkspace(page, PANES, TWO(), WIDE, { boardHeightRem: 100 });
+  await waitForDock(page);
+  await handle(page).scrollIntoViewIfNeeded();
+  const box = (await handle(page).boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y - 30, { steps: 5 });
+  expect(await pageMinHeight(page)).not.toBe('');
+  const before = await storedBoardHeight(page);
+  // 掴みを外して、つまみの外で離す
+  await handle(page).evaluate((el) => el.releasePointerCapture(1));
+  await page.mouse.move(x, y - 200, { steps: 5 });
+  await page.mouse.up();
+  expect(await pageMinHeight(page)).toBe('');
+  // 中断として扱い、保存は変わらない
+  expect(await storedBoardHeight(page)).toBe(before);
+  await dragHandle(page, -40);
+  await expect.poll(() => storedBoardHeight(page)).not.toBe(before);
+  expect(await pageMinHeight(page)).toBe('');
 });
 
 test('矢印キーを続けて押した後の元に戻す1回で、押す前の高さに戻る。押している間は保存しない', async ({ page }) => {
