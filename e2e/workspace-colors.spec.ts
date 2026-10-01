@@ -55,7 +55,7 @@ test('同じ対象は、別のペインに違う順で入れても、図の線�
     const svg = page.locator('.n-sensitivity-svg').nth(svgIndex);
     const result: Record<string, string | null> = {};
     for (const key of ['layout:qwerty', 'layout:colemak-dh', 'layout:dvorak']) {
-      result[key] = await svg.locator(`[data-n-sensitivity-series="${key}"] .n-sensitivity-line`).first().getAttribute('stroke');
+      result[key] = await svg.locator(`[data-n-sensitivity-series="${key}"] .n-sensitivity-line`).first().evaluate((path) => getComputedStyle(path).stroke);
     }
     return result;
   };
@@ -68,11 +68,11 @@ test('同じ対象は、別のペインに違う順で入れても、図の線�
   // 比較表のペインの見出しの色見本（表示順は一覧の順: QWERTY, Dvorak）も、図の線と同じ色
   const swatches = await page.locator('.pane-frame').nth(2).locator('.target-selection-swatch').evaluateAll(
     (nodes) => nodes.map((node) => {
-      const shape = node.querySelector('path')!;
-      return (shape.getAttribute('fill') !== 'none' ? shape.getAttribute('fill')! : shape.getAttribute('stroke')!).toLowerCase();
+      const style = getComputedStyle(node.querySelector('path')!);
+      return style.fill !== 'none' ? style.fill : style.stroke;
     }),
   );
-  expect(swatches).toEqual([first['layout:qwerty'], first['layout:dvorak']].map((color) => color!.toLowerCase()));
+  expect(swatches).toEqual([first['layout:qwerty'], first['layout:dvorak']]);
 });
 
 test('同じ対象は、別のペインでも同じ点の形と線種になり、見出しの色見本の形も図と同じ（色以外の手がかり）', async ({ page }) => {

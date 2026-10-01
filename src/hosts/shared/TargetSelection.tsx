@@ -4,6 +4,7 @@ import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import { filterTargetChoiceGroups, targetSummaryText, type TargetChoiceGroup } from './target-choices.ts';
 import { isStrokeOnlyMark, targetMark, targetMarkPath, type TargetMark } from '#ui/theme/target-marks.ts';
 import './target-selection.css';
+import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
 
 /**
  * 見出しの「対象」ボタンと、そこから開く対象の選択（docs/architecture.md「対象の選択」）。
@@ -54,8 +55,8 @@ export interface TargetSelectionProps {
   readonly autoOpen?: boolean | undefined;
 }
 
-/** スマホ幅（シートで出す幅）。解析設定の小窓（`pane-frame.css`）と同じ境目。 */
-const SHEET_MEDIA = '(max-width: 640px)';
+/** スマホ幅（シートで出す幅）。解析設定のシートと同じ境目（`ui/theme/breakpoints.ts`）。 */
+const SHEET_MEDIA = MOBILE_QUERY;
 const EDGE = 8;
 
 function isSheet(): boolean {
@@ -442,7 +443,7 @@ function TargetSwatch({ color, mark }: { readonly color: string | undefined; rea
   if (color === undefined) {
     return (
       <svg className="target-selection-swatch" viewBox="-5 -5 10 10" aria-hidden="true" data-off="true">
-        <circle r={3.6} fill="none" stroke="var(--border-strong)" strokeWidth={1.2} />
+        <circle r={3.6} style={{ fill: 'none', stroke: 'var(--border-strong)' }} strokeWidth={1.2} />
       </svg>
     );
   }
@@ -452,8 +453,7 @@ function TargetSwatch({ color, mark }: { readonly color: string | undefined; rea
     <svg className="target-selection-swatch" viewBox="-5 -5 10 10" aria-hidden="true" data-mark={shape}>
       <path
         d={targetMarkPath(shape, 3.8)}
-        fill={strokeOnly ? 'none' : color}
-        stroke={strokeOnly ? color : undefined}
+        style={strokeOnly ? { fill: 'none', stroke: color } : { fill: color }}
         strokeWidth={strokeOnly ? 1.8 : undefined}
       />
     </svg>

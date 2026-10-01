@@ -120,8 +120,8 @@ function SeriesMark({ mark, color, x, y, className, children }: {
       data-mark={mark.shape}
       transform={`translate(${x},${y})`}
       d={d}
-      fill={isStrokeOnlyMark(mark.shape) ? 'none' : color}
-      stroke={isStrokeOnlyMark(mark.shape) ? color : undefined}
+      // 色は`var(--target-color-N)`が来るので、属性でなくstyleで渡す（属性ではvar()が解けない）
+      style={isStrokeOnlyMark(mark.shape) ? { fill: 'none', stroke: color } : { fill: color }}
       strokeWidth={isStrokeOnlyMark(mark.shape) ? 1.8 : undefined}
     >
       {children}
@@ -334,7 +334,7 @@ function NSensitivityChart({
             <path
               className="n-sensitivity-line"
               d={path}
-              stroke={s.color}
+              style={{ stroke: s.color }}
               fill="none"
               strokeDasharray={s.mark.dashed ? TARGET_DASH_ARRAY : undefined}
             />
@@ -369,7 +369,7 @@ function NSensitivityChart({
                 className="n-sensitivity-line"
                 x1={0}
                 x2={LEGEND_SWATCH_WIDTH}
-                stroke={s.color}
+                style={{ stroke: s.color }}
                 strokeDasharray={s.mark.dashed ? TARGET_DASH_ARRAY : undefined}
               />
               <SeriesMark className="n-sensitivity-legend-mark" mark={s.mark} color={s.color} x={LEGEND_SWATCH_WIDTH / 2} y={0} />

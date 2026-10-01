@@ -12,11 +12,6 @@ import { expectTargetNames, openSettings, openTargetSelection, targetNames, togg
 
 const MULTI_TARGET_SELECTION_KEY = 'keydist:multi-target-selection';
 
-/** `#RRGGBB`をcomputed styleの形（`rgb(r, g, b)`）にする。 */
-function hexToRgb(hex: string): string {
-  const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
-  return `rgb(${r}, ${g}, ${b})`;
-}
 const STANDALONE_ANALYZER_OPTIONS_KEY = 'keydist:standalone-analyzer-options';
 
 function seedTwoSetups() {
@@ -108,7 +103,7 @@ test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを�
 
 test('色は加えた順に配り、1つ外しても他の線の色は変わらず、空いた色を次に加えた対象が使う', async ({ page }) => {
   await page.goto('/standalone/n-sensitivity');
-  const strokeOf = (key: string) => page.locator(`[data-n-sensitivity-series="${key}"] .n-sensitivity-line`).getAttribute('stroke');
+  const strokeOf = (key: string) => page.locator(`[data-n-sensitivity-series="${key}"] .n-sensitivity-line`).evaluate((path) => getComputedStyle(path).stroke);
 
   await addTarget(page, 'layout:qwerty');
   await addTarget(page, 'layout:colemak-dh');
@@ -120,7 +115,7 @@ test('色は加えた順に配り、1つ外しても他の線の色は変わら�
   // 対象の選択の色見本も線と同じ色。
   const selection = await openTargetSelection(page);
   await expect(selection.locator('label:has(input[value="layout:colemak-dh"]) .target-selection-swatch path'))
-    .toHaveCSS('fill', hexToRgb(second!));
+    .toHaveCSS('fill', second!);
   await toggleTarget(page, 'layout:qwerty');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
   expect(await strokeOf('layout:colemak-dh')).toBe(second);
