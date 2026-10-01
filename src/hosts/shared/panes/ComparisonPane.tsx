@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
-import { effectiveMultiBaseline, type MultiTargetSelection } from '#engine/multi-target-selection.ts';
+import { effectiveMultiBaseline, type ColorSlotsByKey, type TargetSet } from '#engine/multi-target-selection.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget } from '#input/setup/index.ts';
 import { comparisonAnalyzer, type ComparisonRowContext } from '#analyzers/comparison/definition.tsx';
 import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
@@ -29,8 +29,10 @@ import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
 export interface ComparisonPaneProps {
   readonly env: PaneEnvironment;
   readonly chrome?: PaneChrome;
-  /** 選んだ対象・色の番号・基準。 */
-  readonly selection: MultiTargetSelection;
+  /** 選んだ対象・基準。 */
+  readonly selection: TargetSet;
+  /** 対象に配った色の番号（対象のkey → 番号）。配るのは器（個別画面は集合、Workspaceは全ペインの和）。 */
+  readonly colorSlots: ColorSlotsByKey;
   readonly onTargetsChange: (next: readonly AnalysisTarget[]) => void;
   /** 基準にする対象。`undefined`で「基準なし」。 */
   readonly onBaselineChange: (next: AnalysisTarget | undefined) => void;
@@ -49,6 +51,7 @@ export function ComparisonPane({
   env,
   chrome = {},
   selection,
+  colorSlots,
   onTargetsChange,
   onBaselineChange,
   options,
@@ -58,7 +61,7 @@ export function ComparisonPane({
 }: ComparisonPaneProps) {
   const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
-  const { choiceGroups, targets, colorByKey } = useSetTargetSelection(selection, setups, catalog);
+  const { choiceGroups, targets, colorByKey } = useSetTargetSelection(selection, colorSlots, setups, catalog);
 
   // 対象の選択を開いているか。空の時のペインのボタンからも開くので、ここで持つ。
   const [selectionOpen, setSelectionOpen] = useState(false);
@@ -142,6 +145,7 @@ export function ComparisonPane({
       headingLevel={chrome.headingLevel}
       stickyHeader={chrome.stickyHeader}
       menuItems={chrome.menuItems}
+      headerAction={chrome.headerAction}
       targetBinding={chrome.targetBinding}
       showPaneNameInSettings={chrome.showPaneNameInSettings}
       target={(

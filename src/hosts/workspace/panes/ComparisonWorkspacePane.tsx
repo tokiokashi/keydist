@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { withMultiBaseline, withMultiTargets } from '#engine/multi-target-selection.ts';
+import { withMultiBaseline, withTargetSetTargets } from '#engine/multi-target-selection.ts';
 import type { WorkspacePane } from '#engine/workspace.ts';
 import { comparisonAnalyzer } from '#analyzers/comparison/definition.tsx';
 import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
@@ -33,7 +33,8 @@ export function ComparisonWorkspacePane({
       env={runtime.env}
       chrome={chrome}
       selection={selection}
-      onTargetsChange={(targets) => runtime.setPaneTarget(pane.id, { kind: 'set', selection: withMultiTargets(selection, targets) })}
+      colorSlots={runtime.colorSlots}
+      onTargetsChange={(targets) => runtime.setPaneTarget(pane.id, { kind: 'set', selection: withTargetSetTargets(selection, targets) })}
       onBaselineChange={(baseline) => runtime.setPaneTarget(pane.id, { kind: 'set', selection: withMultiBaseline(selection, baseline) })}
       options={options}
       onOptionsChange={onOptionsChange}

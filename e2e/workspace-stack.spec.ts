@@ -13,14 +13,14 @@ const flow = { id: 'f', analyzerId: 'bigram-flow', binding: { mode: 'fixed', tar
 const comparison = {
   id: 'c',
   analyzerId: 'comparison',
-  binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: [QWERTY, { kind: 'layout', layoutId: 'dvorak' }], colorSlots: [0, 1] } } },
+  binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: [QWERTY, { kind: 'layout', layoutId: 'dvorak' }] } } },
 };
 const sensitivity = { id: 'n', analyzerId: 'n-sensitivity', binding: { mode: 'follow' } };
 /** 対象を持つN感度（本体の領域が出る）。 */
 const sensitivityWithTarget = {
   id: 'n',
   analyzerId: 'n-sensitivity',
-  binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: [QWERTY, { kind: 'layout', layoutId: 'dvorak' }], colorSlots: [0, 1] } } },
+  binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: [QWERTY, { kind: 'layout', layoutId: 'dvorak' }] } } },
 };
 /** 左にBigram Flow、右に上から比較表・N感度。重みは既定の等分から外しておく（戻した時に大きさが残るかを見る）。 */
 const LAYOUT = {

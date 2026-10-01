@@ -41,6 +41,11 @@
   grid-template-areas: "name target settings";
 }
 
+.pane-frame-header[data-action]:not([data-menu]) {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "name target settings menu";
+}
+
 .pane-frame-name {
   grid-area: name;
   display: flex;
@@ -718,4 +723,38 @@ h2.pane-frame-title {
 .settings-window-reset-all:hover,
 .settings-window-reset-all:focus-visible {
   background: var(--surface-muted);
+}
+
+/* 個別画面の見出しの右端に置く「Workspaceに追加」。文字つきのボタンで、設定ボタンと同じ高さ・見た目に揃える。 */
+.pane-menu-button[data-with-text] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: auto;
+  min-height: 2rem;
+  padding: 0 0.7rem;
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* スマホ幅は1行に収めるため、文字を省いてアイコンだけにする（対象の欄を狭めない）。読み上げ名とhoverの説明は残る。 */
+@media (max-width: 760px) {
+  .pane-menu-button[data-with-text] {
+    width: 2rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .pane-menu-button[data-with-text] .pane-menu-button-text {
+    display: none;
+  }
+}
+
+/* 保存したWorkspaceが多くても、メニューが画面の下へはみ出さないようにする。 */
+.add-to-workspace .pane-menu-list {
+  max-height: min(60vh, 24rem);
+  overflow-y: auto;
 }

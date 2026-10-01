@@ -121,7 +121,7 @@ test('createWorkspace: 連動の組を1つ持ち、対象は渡された値か�
   assert.deepEqual(empty.groups[0]!.target.set.targets, []);
   const target: WorkspaceTarget = {
     single: { target: COLEMAK },
-    set: { targets: [QWERTY], baseline: undefined, colorSlots: [0] },
+    set: { targets: [QWERTY], baseline: undefined },
   };
   assert.deepEqual(createWorkspace(initialWorkspaceLibrary(), () => 'w2', undefined, target).created.groups[0]!.target, target);
 });
@@ -133,7 +133,7 @@ test('withWorkspaceTarget: 組の単体用と集合用を別々に書き、同�
   assert.deepEqual(group(single).target.set.targets, []);
   assert.equal(withWorkspaceTarget(single, 'w1', G, { kind: 'single', target: { ...COLEMAK } }), single);
 
-  const selection = { targets: [QWERTY], baseline: undefined, colorSlots: [0] };
+  const selection = { targets: [QWERTY], baseline: undefined };
   const set = withWorkspaceTarget(single, 'w1', G, { kind: 'set', selection });
   assert.deepEqual(group(set).target.set, selection);
   assert.deepEqual(group(set).target.single, { target: COLEMAK });
@@ -144,8 +144,8 @@ test('withWorkspaceTarget: 組の単体用と集合用を別々に書き、同�
 
 test('resolveWorkspacePaneTarget: 従うペインは組の対象、固定のペインは自分の対象を映す', () => {
   const groups = [
-    { id: G, target: { single: { target: COLEMAK }, set: { targets: [QWERTY], baseline: undefined, colorSlots: [0] } } },
-    { id: 'g2', target: { single: { target: QWERTY }, set: { targets: [], baseline: undefined, colorSlots: [] } } },
+    { id: G, target: { single: { target: COLEMAK }, set: { targets: [QWERTY], baseline: undefined } } },
+    { id: 'g2', target: { single: { target: QWERTY }, set: { targets: [], baseline: undefined } } },
   ];
   assert.deepEqual(resolveWorkspacePaneTarget(followBinding(G), groups, 'single'), { kind: 'single', target: COLEMAK });
   assert.deepEqual(resolveWorkspacePaneTarget(followBinding('g2'), groups, 'single'), { kind: 'single', target: QWERTY });
@@ -177,7 +177,7 @@ test('withWorkspacePaneBinding: 従う組 / 固定を切り替え、同じ中身
 
 test('withPaneInNewLinkGroup: 今の対象で新しい組を作って移り、組ごとに対象が別々になる。空になった組は消える', () => {
   let library = libraryWith('a', 'b', 'c');
-  library = withWorkspaceTarget(library, 'w1', G, { kind: 'set', selection: { targets: [QWERTY], baseline: undefined, colorSlots: [0] } });
+  library = withWorkspaceTarget(library, 'w1', G, { kind: 'set', selection: { targets: [QWERTY], baseline: undefined } });
   const next = withPaneInNewLinkGroup(library, 'w1', 'c', 'g2', { kind: 'single', target: COLEMAK });
   const workspace = findWorkspace(next, 'w1')!;
   assert.deepEqual(workspace.groups.map((g) => g.id), [G, 'g2']);
