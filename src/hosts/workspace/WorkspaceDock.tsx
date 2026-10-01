@@ -8,6 +8,7 @@ import {
   useState,
   type CSSProperties,
   type HTMLAttributes,
+  type RefObject,
   type ReactNode,
 } from 'react';
 import {
@@ -83,7 +84,7 @@ function DockPane({ params }: IDockviewPanelProps<{ paneId: string }>) {
   // タブが名前を出す間は、ペインの中の名前の行を出さない（見出しが1行になる。`pane-frame.css`）
   return (
     <PaneNameInTabContext.Provider value={!hideTabs}>
-      <div className="workspace-pane" data-name-in-tab={!hideTabs || undefined}>{render(params.paneId)}</div>
+      <div className="workspace-pane" data-pane-id={params.paneId} data-name-in-tab={!hideTabs || undefined}>{render(params.paneId)}</div>
     </PaneNameInTabContext.Provider>
   );
 }
@@ -93,6 +94,38 @@ const COMPONENTS = { [PANE_COMPONENT]: DockPane };
 /** ペインの間の余白（画素）。実物を見て決める値（#627）。面の外周の余白と角丸は`workspace-dock.css`。 */
 const PANE_GAP = 8;
 const WORKSPACE_THEME = { ...themeLightSpaced, gap: PANE_GAP };
+
+/**
+ * このタブが、タブの帯の中でTabキーの止まる場所（Dockviewのロービングtabindexの0番）か。
+ * Dockviewがタブの要素へ書く`tabindex`を読む（矢印・Home/End・選択のたびに動くので、属性の変化を見る）。
+ */
+function useIsRovingTabStop(innerRef: RefObject<HTMLElement | null>): boolean {
+  const [stop, setStop] = useState(false);
+  useEffect(() => {
+    const tab = innerRef.current?.closest<HTMLElement>('.dv-tab');
+    if (tab === null || tab === undefined) return undefined;
+    // タブの中（ⓘ・×）へフォーカスが移ると、Dockviewがグループを前面にしてタブのtabindexを選択中のタブへ
+    // 戻すことがある。その瞬間にⓘ・×がTabで届かなくなると、タブ→ⓘ→×と進めないので、フォーカスがある間は保つ
+    let within = false;
+    const read = () => setStop(within || tab.tabIndex === 0);
+    const onFocusIn = () => { within = true; read(); };
+    const onFocusOut = (event: FocusEvent) => {
+      within = event.relatedTarget instanceof Node && tab.contains(event.relatedTarget);
+      read();
+    };
+    read();
+    tab.addEventListener('focusin', onFocusIn);
+    tab.addEventListener('focusout', onFocusOut);
+    const observer = new MutationObserver(read);
+    observer.observe(tab, { attributes: true, attributeFilter: ['tabindex'] });
+    return () => {
+      tab.removeEventListener('focusin', onFocusIn);
+      tab.removeEventListener('focusout', onFocusOut);
+      observer.disconnect();
+    };
+  }, [innerRef]);
+  return stop;
+}
 
 /**
  * タブ。名前とⓘ（Analyzerの短い説明）を出し、右端に閉じるボタンを置く。
@@ -108,19 +141,25 @@ function WorkspaceTab({
 }: IDockviewPanelHeaderProps & HTMLAttributes<HTMLDivElement>) {
   const { descriptionOf } = useContext(TabContext);
   const description = descriptionOf(api.id);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const tabStop = useIsRovingTabStop(rowRef);
+  // ⓘと×は、タブの帯の中のTabで止まる場所を増やさないよう、今フォーカスの取れるタブ（ロービングの0番）の分だけ
+  // Tabで届かせる。他のタブの分は、そのタブを選ぶと届く
+  const innerTabIndex = tabStop ? 0 : -1;
   const [title, setTitle] = useState(api.title);
   useEffect(() => {
     const subscription = api.onDidTitleChange((event) => setTitle(event.title));
     return () => subscription.dispose();
   }, [api]);
   return (
-    <div {...rest} className="dv-default-tab">
+    <div {...rest} ref={rowRef} className="dv-default-tab">
       <span className="dv-default-tab-content">{title}</span>
-      {title !== undefined && description !== '' ? <InfoButton name={title} description={description} floating /> : null}
+      {title !== undefined && description !== '' ? <InfoButton name={title} description={description} floating tabIndex={innerTabIndex} /> : null}
       <button
         type="button"
         className="dv-default-tab-action"
         aria-label="閉じる"
+        tabIndex={innerTabIndex}
         onPointerDown={(event) => event.preventDefault()}
         onClick={(event) => {
           event.preventDefault();
