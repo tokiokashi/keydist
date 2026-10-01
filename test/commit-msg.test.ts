@@ -114,4 +114,67 @@ describe('commit-msgフック', { skip: hasBash ? false : 'bashが無い' }, () 
     assert.ok(out.includes(Buffer.from('after\n')));
     assert.ok(!out.includes(Buffer.from('Claude-Session:')));
   });
+
+  test('Claudeの共作者行から、メールアドレスだけを外す', () => {
+    const r = rewritten(
+      'docs: 規約を足す\n\n理由を書く\n\nCo-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>\n',
+    );
+    assert.ok(r.ok);
+    assert.ok(r.text.includes('Co-Authored-By: Claude Sonnet 5.5\n'));
+    assert.ok(!r.text.includes('noreply@anthropic.com'));
+  });
+
+  test('人間の共作者の行と、Claude以外のメールの行は書き換えない', () => {
+    const r = rewritten(
+      'docs: 規約を足す\n\nCo-authored-by: Taro <taro@example.com>\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nCo-authored-by: Claude Bot <bot@example.com>\n',
+    );
+    assert.ok(r.ok);
+    assert.ok(r.text.includes('Co-authored-by: Taro <taro@example.com>'));
+    assert.ok(r.text.includes('Co-Authored-By: Claude Opus 5.5\n'));
+    assert.ok(r.text.includes('Co-authored-by: Claude Bot <bot@example.com>'));
+  });
+
+  test('共作者行の書き換えでも、不正なバイト列を含む行を消さない', () => {
+    const file = join(dir, 'COMMIT_EDITMSG');
+    writeFileSync(
+      file,
+      Buffer.concat([
+        Buffer.from('fix: a\n\nbad '),
+        Buffer.from([0xff, 0xfe]),
+        Buffer.from(' byte\nCo-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>\n'),
+      ]),
+    );
+    const status = spawnSync('bash', [HOOK, file], { env: { ...process.env, LC_ALL: 'C.UTF-8' } }).status;
+    const out = readFileSync(file);
+    assert.equal(status, 0);
+    assert.ok(out.includes(Buffer.from([0x62, 0x61, 0x64, 0x20, 0xff, 0xfe])), '不正なバイト列を含む行が残る');
+    assert.ok(out.includes(Buffer.from('Co-Authored-By: Claude Sonnet 5.5\n')));
+  });
+
+  test('素のClaudeの共作者行（モデル名なし）からもメールアドレスを外す', () => {
+    const r = rewritten(
+      'docs: 規約を足す\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nCo-Authored-By:Claude\t<noreply@anthropic.com>\r\nCo-authored-by: Claude Monet <m@e.com>\n',
+    );
+    assert.ok(r.ok);
+    assert.ok(r.text.includes('Co-Authored-By: Claude\nCo-Authored-By:Claude\nCo-authored-by: Claude Monet <m@e.com>'));
+    assert.ok(!r.text.includes('noreply@anthropic.com'));
+  });
+
+  test('共作者行そのものに不正なバイト列があっても、メールアドレスを外す', () => {
+    // grep を LC_ALL=C にしないと、UTF-8 ロケールでは不正なバイト列に [^<] が一致せず検出を逃す
+    const file = join(dir, 'COMMIT_EDITMSG');
+    writeFileSync(
+      file,
+      Buffer.concat([
+        Buffer.from('fix: a\n\nCo-Authored-By: Claude '),
+        Buffer.from([0xff]),
+        Buffer.from(' <noreply@anthropic.com>\n'),
+      ]),
+    );
+    const status = spawnSync('bash', [HOOK, file], { env: { ...process.env, LC_ALL: 'C.UTF-8' } }).status;
+    const out = readFileSync(file);
+    assert.equal(status, 0);
+    assert.ok(!out.includes(Buffer.from('noreply@anthropic.com')));
+    assert.ok(out.includes(Buffer.from([0x43, 0x6c, 0x61, 0x75, 0x64, 0x65, 0x20, 0xff, 0x0a])));
+  });
 });

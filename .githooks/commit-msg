@@ -16,6 +16,21 @@ if grep -aq '^Claude-Session:' "$msg_file"; then
   rm -f "$stripped"
 fi
 
+# Claude の共作者行(Co-Authored-By: Claude ... <noreply@anthropic.com>)から、メールアドレスだけを外す。
+# 行は Co-Authored-By: Claude ... のまま残し、使ったモデルの記録を文字で残す。
+# GitHub は共作者の行のメールをアカウントに紐づけてアイコンを出すので、外せばアイコンは付かない
+# (メール付きは「tokiokashi and claude committed」でアイコン2つ、外すと「tokiokashi committed」で1つになる)。
+# 人間の共作者の行は触らない。
+# grep・sed とも LC_ALL=C でバイト単位に読ませる。共作者行そのものに不正なバイト列があっても外せるようにするため。
+# Claude の後ろは省略できる(素の `Co-Authored-By: Claude <...>` も外す)
+co_pattern='^[Cc]o-[Aa]uthored-[Bb]y:[[:space:]]*Claude[^<]*<noreply@anthropic\.com>[[:space:]]*$'
+if LC_ALL=C grep -aq "$co_pattern" "$msg_file"; then
+  rewritten=$(mktemp) \
+    && LC_ALL=C sed -E 's/^([Cc]o-[Aa]uthored-[Bb]y:[[:space:]]*Claude([^<]*[^<[:space:]])?)[[:space:]]*<noreply@anthropic\.com>[[:space:]]*$/\1/' "$msg_file" > "$rewritten" \
+    && cat "$rewritten" > "$msg_file"
+  rm -f "$rewritten"
+fi
+
 # コメント行を落とす。件名は 1 行目、2 行目は空行でなければならない。
 # 空行を飛ばして探すと、件名を書き忘れた時に本文の 1 行目を件名と誤認する
 body=$(grep -v '^#' "$msg_file")
