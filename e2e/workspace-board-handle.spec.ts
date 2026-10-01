@@ -66,7 +66,7 @@ async function waitForSettledLayout(page: Page) {
 }
 
 async function waitForDock(page: Page, paneCount = PANES.length) {
-  // 読み込みが重い時のために、表示待ちの枠は広めにとる（テスト全体の枠は playwright の既定のまま）
+  // 読み込みが重い時のために、表示待ちの枠は広めにとる（テスト全体の枠は既定の30秒。再読み込みを含む1本だけ広げてある）
   await expect(page.locator('.dv-groupview')).toHaveCount(paneCount, { timeout: 20_000 });
   await expect(page.locator('.dv-groupview').first()).toBeVisible();
   await waitForSettledLayout(page);
