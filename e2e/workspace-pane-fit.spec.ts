@@ -118,8 +118,8 @@ test('下限より低いペインでは本体の領域の中でスクロール�
 });
 
 test('縦に積む形にも下限があり、それより低いペインでは領域の中でスクロールする', async ({ page }) => {
-  // 領域が幅472・高さ386ほどで、横長にならない
-  await openWorkspace(page, [flow], group('f'), { width: 770, height: 700 });
+  // 領域が幅472・高さ390ほどで、横長にならない（見出しが1行（#827）なので、見出しが2段だった時より窓を低くする）
+  await openWorkspace(page, [flow], group('f'), { width: 770, height: 650 });
   const m = await measure(page);
   expect(m.body.width / m.body.height).toBeLessThan(1.5);
   expect(m.relative.top).toBeGreaterThanOrEqual(m.keyboard.bottom - 1);
@@ -198,7 +198,8 @@ test('個別画面の外側に高さを測れるcontainerがあっても、Works
 });
 
 test('高さに合わせて縮んだ図の線は、枠の幅ではなく実際に描かれる幅を倍率にして太さを保つ', async ({ page }) => {
-  await openWorkspace(page, [flow], group('f'), { width: 1440, height: 520 });
+  // 見出しが1行（#827）になった分、窓を低くして、図が高さで決まる形を保つ
+  await openWorkspace(page, [flow], group('f'), { width: 1440, height: 470 });
   const info = await page.evaluate(() => {
     const svg = document.querySelector('[data-react-feature="bigram-flow"] .flow-keyboard-svg') as SVGSVGElement;
     const rect = svg.getBoundingClientRect();
@@ -287,7 +288,7 @@ const twoPaneRow = { kind: 'split', direction: 'row', weight: 1, children: [grou
 
 test('幅が狭い横長のペインでは、縦横比が横長でも左右に並べず縦に積む。境目は本体の幅520px', async ({ page }) => {
   // 本体の幅が520pxに届かない横長（縦横比は1.5を超える）
-  await openWorkspace(page, [flow, comparison], twoPaneRow, { width: 1300, height: 600 });
+  await openWorkspace(page, [flow, comparison], twoPaneRow, { width: 1300, height: 508 });
   await expect.poll(async () => (await measure(page)).body.height).toBeLessThan(330);
   let m = await measure(page);
   expect(m.body.width / m.body.height).toBeGreaterThanOrEqual(1.5);
@@ -295,7 +296,7 @@ test('幅が狭い横長のペインでは、縦横比が横長でも左右に�
   expect(await arrangement(page)).toBe('stack');
 
   // 幅だけを広げて520pxを超えると、同じ縦横比のまま左右に並ぶ
-  await page.setViewportSize({ width: 1440, height: 600 });
+  await page.setViewportSize({ width: 1440, height: 508 });
   await expect.poll(async () => (await measure(page)).body.width).toBeGreaterThanOrEqual(530);
   m = await measure(page);
   expect(m.body.width / m.body.height).toBeGreaterThanOrEqual(1.5);
@@ -304,10 +305,10 @@ test('幅が狭い横長のペインでは、縦横比が横長でも左右に�
 
 test('境目の前後で並びが行き来しても振動せず、同じ幅なら往復しても同じ並びになる', async ({ page }) => {
   // 縦が低く、縦に積むと領域の中でスクロールが出る高さ（スクロールバーが幅を狭めて境目を行き来しないことの確認）
-  await openWorkspace(page, [flow, comparison], twoPaneRow, { width: 1300, height: 600 });
+  await openWorkspace(page, [flow, comparison], twoPaneRow, { width: 1300, height: 508 });
   const widths = [1300, 1320, 1340, 1360, 1380, 1400, 1420, 1440];
   const record = async (width: number) => {
-    await page.setViewportSize({ width, height: 600 });
+    await page.setViewportSize({ width, height: 508 });
     await expect.poll(async () => (await measure(page)).body.height).toBeLessThan(330);
     // 設定した幅に落ち着くまで待ち、並びが2回続けて変わらないことを確かめる
     await page.waitForTimeout(250);

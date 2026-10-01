@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 /**
  * ペインの見出しに置く小さな部品（⋯のメニュー）。
@@ -47,6 +47,27 @@ export function PaneMenu({
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  // メニューが枠（ペイン）の左右からはみ出す分を戻す横のずれ [px]。ペインの枠は角丸のためにはみ出しを切るので、
+  // 切れた項目は見えず押せない。見出しが1行の狭いペインでは、連動のボタンが枠の左寄りに来て右端揃えだと左へはみ出す
+  const [shift, setShift] = useState(0);
+
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    const frame = rootRef.current?.closest('.pane-frame');
+    if (!open || list === null || frame === null || frame === undefined) {
+      setShift(0);
+      return;
+    }
+    // ずれを外した位置で測る（開き直し・幅の変化で積み上げない）
+    list.style.transform = '';
+    const margin = 8;
+    const box = list.getBoundingClientRect();
+    const bounds = frame.getBoundingClientRect();
+    if (box.left < bounds.left + margin) setShift(bounds.left + margin - box.left);
+    else if (box.right > bounds.right - margin) setShift(bounds.right - margin - box.right);
+    else setShift(0);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -102,7 +123,14 @@ export function PaneMenu({
         )}
       </button>
       {open ? (
-        <div className="pane-menu-list" role="menu" id={menuId} aria-label={accessibleName}>
+        <div
+          ref={listRef}
+          className="pane-menu-list"
+          role="menu"
+          id={menuId}
+          aria-label={accessibleName}
+          style={shift === 0 ? undefined : { transform: `translateX(${shift}px)` }}
+        >
           {items.map((item) => (
             <button
               type="button"

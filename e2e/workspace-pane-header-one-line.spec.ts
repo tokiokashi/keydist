@@ -224,3 +224,20 @@ test('個別画面の見出しは今のまま（名前の行・条件の行が�
     if (width === 1440) await expect(pane.locator('.pane-frame-name')).toBeVisible();
   }
 });
+
+test('狭いペインでも、連動のメニューはペインの枠からはみ出して切れない', async ({ page }) => {
+  // 4列（1ペインが約290px）。連動のボタンが枠の左寄りに来るので、右端揃えのままだと左へはみ出して切れる
+  const four = ['a', 'b', 'c', 'd'].map(flow);
+  await openWorkspace(page, four, row(...four.map((pane) => group(pane.id))), { width: 1440, height: 900 });
+  const frame = page.locator('.pane-frame').nth(2);
+  await frame.locator('.pane-target-binding .pane-menu-button').click();
+  const list = page.getByRole('menu').first();
+  await expect(list).toBeVisible();
+  const box = (await list.boundingBox())!;
+  const bounds = (await page.locator('.dv-groupview').nth(2).boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(bounds.x);
+  expect(box.x + box.width).toBeLessThanOrEqual(bounds.x + bounds.width);
+  // 項目が押せる（隣のペインに覆われていない）
+  await page.getByRole('menuitemradio', { name: /^新しい連動/ }).click();
+  await expect(frame.locator('.pane-target-binding .pane-menu-button')).toHaveAttribute('aria-label', /^連動 /);
+});
