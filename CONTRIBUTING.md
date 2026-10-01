@@ -110,7 +110,7 @@ CIもPRの各コミットに同じスクリプトを掛けるため、フック�
 ## ブランチとPR
 
 - `main` に直接pushしない。`<type>/<短い説明>` のブランチを切る（例: `feat/kana-layout-form`）
-- push前に `npm test` と `npm run build` を通す。ブラウザe2eは手元で全件を回さず、pushしてCIの結果を読む（「ブラウザe2e」）
+- push前に `npm run typecheck`・`npm test`・`npm run build` を通す。ブラウザe2eは手元で全件を回さず、pushしてCIの結果を読む（「ブラウザe2e」）
 - `main` へのマージは、リリースPRを除いて公開しない（「公開」）。CI（test / typecheck / build / browser-e2e）は通る状態を保つ
 
 ### 作業単位の切り方
