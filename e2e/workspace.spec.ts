@@ -165,7 +165,7 @@ test('ペインの⋯: 複製・閉じる。解析設定と対象を写して右
   await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
 
   await first.getByRole('button', { name: /の操作$/ }).click();
-  await expect(page.getByRole('menuitem')).toHaveText([/複製/, /解析設定を初期値に戻す/, /閉じる/]);
+  await expect(page.getByRole('menuitem')).toHaveText([/拡大表示/, /複製/, /解析設定を初期値に戻す/, /閉じる/]);
   await page.getByRole('menuitem', { name: /複製/ }).click();
 
   await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', 'Bigram Flow', 'N感度']);
