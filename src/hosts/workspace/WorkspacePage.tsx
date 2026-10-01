@@ -38,6 +38,7 @@ import type { PaneBindingChoice, WorkspacePaneRuntime } from './pane-runtime.ts'
 import { summarizeLinkGroups } from './group-summary.ts';
 import { minBoardHeightRem as minBoardHeightRemOf } from '#engine/workspace-board.ts';
 import { workspaceBoardPolicy } from './board-policy.ts';
+import { useFocusAfterClose } from './use-focus-after-close.ts';
 import { WorkspaceDock } from './WorkspaceDock.tsx';
 import { WorkspaceName } from './WorkspaceName.tsx';
 import { WorkspaceStack } from './WorkspaceStack.tsx';
@@ -179,6 +180,8 @@ export function WorkspacePage({
   const panes = workspace?.panes;
   const panesById = useMemo(() => new Map((panes ?? []).map((pane) => [pane.id, pane] as const)), [panes]);
   const paneIds = useMemo(() => (panes ?? []).map((pane) => pane.id), [panes]);
+  // ペインを閉じた後に、フォーカスをbodyへ落とさない（どの経路で閉じても同じ規則）
+  const pageRef = useFocusAfterClose(paneIds);
 
   const groups = workspace?.groups;
   const colorSlots = workspace?.colorSlots ?? initialWorkspaceColorSlots();
@@ -286,7 +289,7 @@ export function WorkspacePage({
   }
 
   return (
-    <div className="workspace-page" data-stacked={stacked || undefined}>
+    <div ref={pageRef} className="workspace-page" data-stacked={stacked || undefined}>
       <ContextBar
         disabled={!assetsReady}
         history={pageHistory}

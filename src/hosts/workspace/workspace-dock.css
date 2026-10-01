@@ -155,6 +155,14 @@
   margin-left: 0.2rem;
 }
 
+/*
+ * 選択中でないタブの×はDockviewの既定ではhoverの間だけ見える（`visibility: hidden`はTabでも届かない）。
+ * キーボードでそのタブへ来た時（タブ・ⓘ・×のどれかにフォーカスがある間）も見せる。
+ */
+.workspace-dock-area .dv-tab.dv-inactive-tab:focus-within .dv-default-tab .dv-default-tab-action {
+  visibility: visible;
+}
+
 /* タブの帯を出さない表示（見比べ用）。ペインの見出しだけが残る。 */
 .workspace-dock-area[data-hide-tabs] .dv-tabs-and-actions-container {
   display: none;

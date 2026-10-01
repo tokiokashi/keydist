@@ -10,7 +10,18 @@ import './info-button.css';
  * `floating`は、帯などはみ出しを切る入れ物（Workspaceのタブの帯）の中に置く時に使う。説明を`body`直下へ出し、
  * ⓘの真下に画面基準で置くので、入れ物に隠れない。
  */
-export function InfoButton({ name, description, floating = false }: { readonly name: string; readonly description: string; readonly floating?: boolean }) {
+export function InfoButton({
+  name,
+  description,
+  floating = false,
+  tabIndex,
+}: {
+  readonly name: string;
+  readonly description: string;
+  readonly floating?: boolean;
+  /** 親が移動の規則（ロービング）を持つ時だけ渡す。省略はブラウザの既定（Tabで届く）。 */
+  readonly tabIndex?: number;
+}) {
   const [hovered, setHovered] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [anchor, setAnchor] = useState<{ readonly top: number; readonly left: number } | undefined>(undefined);
@@ -79,6 +90,7 @@ export function InfoButton({ name, description, floating = false }: { readonly n
         ref={buttonRef}
         type="button"
         className="info-button"
+        tabIndex={tabIndex}
         aria-label={`${name}の説明`}
         aria-expanded={visible}
         data-pinned={pinned || undefined}

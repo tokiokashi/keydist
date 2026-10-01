@@ -9,6 +9,7 @@ import {
   useState,
   type CSSProperties,
   type HTMLAttributes,
+  type RefObject,
   type ReactNode,
 } from 'react';
 import {
@@ -128,7 +129,7 @@ function DockPane({ params }: IDockviewPanelProps<{ paneId: string }>) {
   // タブが名前を出す間は、ペインの中の名前の行を出さない（見出しが1行になる。`pane-frame.css`）
   return (
     <PaneNameInTabContext.Provider value={!hideTabs}>
-      <div className="workspace-pane" data-name-in-tab={!hideTabs || undefined}>{render(params.paneId)}</div>
+      <div className="workspace-pane" data-pane-id={params.paneId} data-name-in-tab={!hideTabs || undefined}>{render(params.paneId)}</div>
     </PaneNameInTabContext.Provider>
   );
 }
@@ -138,6 +139,28 @@ const COMPONENTS = { [PANE_COMPONENT]: DockPane };
 /** ペインの間の余白（画素）。実物を見て決める値（#627）。面の外周の余白と角丸は`workspace-dock.css`。 */
 const PANE_GAP = 8;
 const WORKSPACE_THEME = { ...themeLightSpaced, gap: PANE_GAP };
+
+/**
+ * このタブが、タブの帯の中でTabキーの止まる場所（Dockviewのロービングtabindexの0番）か。
+ * Dockviewがタブの要素へ書く`tabindex`を読む（矢印・Home/End・選択のたびに動くので、属性の変化を見る）。
+ */
+function useIsRovingTabStop(innerRef: RefObject<HTMLElement | null>): boolean {
+  const [stop, setStop] = useState(false);
+  useEffect(() => {
+    const inner = innerRef.current;
+    // Dockviewは描き直し（`fromJSON`）のたびに`.dv-tab`の要素を作り直すが、中の部品（この要素）は使い回す。
+    // 最初の`.dv-tab`だけを見続けると、切り離された古い要素を見て固まるので、面の根（作り直されない）を見張り、
+    // 読むたびに今の`.dv-tab`を引き直す
+    const area = inner?.closest<HTMLElement>('.workspace-dock-area');
+    if (inner === null || inner === undefined || area === null || area === undefined) return undefined;
+    const read = () => setStop(inner.closest<HTMLElement>('.dv-tab')?.tabIndex === 0);
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(area, { subtree: true, childList: true, attributes: true, attributeFilter: ['tabindex'] });
+    return () => observer.disconnect();
+  }, [innerRef]);
+  return stop;
+}
 
 /**
  * タブ。名前とⓘ（Analyzerの短い説明）を出し、右端に閉じるボタンを置く。
@@ -153,19 +176,25 @@ function WorkspaceTab({
 }: IDockviewPanelHeaderProps & HTMLAttributes<HTMLDivElement>) {
   const { descriptionOf } = useContext(TabContext);
   const description = descriptionOf(api.id);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const tabStop = useIsRovingTabStop(rowRef);
+  // ⓘと×は、タブの帯の中のTabで止まる場所を増やさないよう、今フォーカスの取れるタブ（ロービングの0番）の分だけ
+  // Tabで届かせる。他のタブの分は、そのタブを選ぶと届く
+  const innerTabIndex = tabStop ? 0 : -1;
   const [title, setTitle] = useState(api.title);
   useEffect(() => {
     const subscription = api.onDidTitleChange((event) => setTitle(event.title));
     return () => subscription.dispose();
   }, [api]);
   return (
-    <div {...rest} className="dv-default-tab">
+    <div {...rest} ref={rowRef} className="dv-default-tab">
       <span className="dv-default-tab-content">{title}</span>
-      {title !== undefined && description !== '' ? <InfoButton name={title} description={description} floating /> : null}
+      {title !== undefined && description !== '' ? <InfoButton name={title} description={description} floating tabIndex={innerTabIndex} /> : null}
       <button
         type="button"
         className="dv-default-tab-action"
         aria-label="閉じる"
+        tabIndex={innerTabIndex}
         onPointerDown={(event) => event.preventDefault()}
         onClick={(event) => {
           event.preventDefault();
@@ -198,6 +227,10 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
   // 描画時のpropsが変わらないことがある（ドラッグを書いてすぐUndoすると、資産は元の値へ戻る）。
   // その時はDockviewだけが人の操作の結果のまま残るので、propsが変わらなくても資産に合わせ直す
   const divergedRef = useRef(false);
+  // 直近に資産へ書いた並び。書いた直後（資産が書き戻ってくるまでの間）に人がまた並びを変える
+  // （タブを続けて選ぶ等）と、戻ってきた資産は古い並びで、Dockviewの方が新しい。その時に資産へ合わせると、
+  // 新しい操作を巻き戻してしまうので、見分けるために覚える
+  const lastWrittenRef = useRef<WorkspaceLayoutNode | undefined>(undefined);
   const lastSyncedPropsRef = useRef<{
     readonly layout: WorkspaceLayoutNode;
     readonly paneIds: readonly string[];
@@ -270,6 +303,7 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
       const current = fromDockviewLayout(api.toJSON(), paneIds);
       if (current !== undefined && !sameLayout(current, layout)) {
         divergedRef.current = true;
+        lastWrittenRef.current = current;
         onLayoutChange(current);
       }
     } catch {
@@ -344,6 +378,18 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
       || last.hideTabs !== props.hideTabs;
     lastSyncedPropsRef.current = { layout: props.layout, paneIds: props.paneIds, hideTabs: props.hideTabs };
     if (!changed && !divergedRef.current) return;
+    // 自分が書いた並びが戻ってきただけで、待っている新しい並びの変更がある時は、描き直さない
+    // （待っている変更が、次に資産へ書かれる）。Undoなど別の理由で資産が変わった時は、書いた並びと一致しない
+    const written = lastWrittenRef.current;
+    lastWrittenRef.current = undefined;
+    const onlyLayoutChanged = last !== undefined && last.paneIds === props.paneIds && last.hideTabs === props.hideTabs;
+    if (onlyLayoutChanged && timerRef.current !== undefined && written !== undefined && sameLayout(props.layout, written)) {
+      divergedRef.current = false;
+      // 待っている変更は「戻ってきた資産」を基準に書く。基準が古い資産のままだと、書く時に
+      // 資産が変わったと見なされて捨てられ、新しい選択が保存されないまま残る
+      scheduledAgainstRef.current = props.layout;
+      return;
+    }
     divergedRef.current = false;
     applyLayout();
   });
