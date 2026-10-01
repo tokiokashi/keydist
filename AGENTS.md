@@ -48,7 +48,7 @@ Claude Code は `CLAUDE.md` が無いプロジェクトでは `AGENTS.md` を読
 | 役 | 定義 | やること | やらないこと |
 |---|---|---|---|
 | リード | （セッション本体） | 作業単位の切り出し・委任・マージ判断・オーナーへの確認 | 実装を自分で書く。レビュー修正も実装役に戻す |
-| implementer | `.claude/agents/implementer.md` | 1単位の実装、`npm test` / `npm run build`、PR 本文の材料（実装したモデルと effort を含む） | 自分の変更の承認、`main` への push、マージ |
+| implementer | `.claude/agents/implementer.md` | 1単位の実装、`npm run typecheck` / `npm test` / `npm run build`、PR 本文の材料（実装したモデルと effort を含む） | 自分の変更の承認、`main` への push、マージ |
 | reviewer | `.claude/agents/reviewer.md` | head の sha に対する承認/差し戻し。数値と生成物を測り直す。検証用の一時ファイルは Write で書き、追跡ファイルを書き換えたら戻す | 修正のコミット・push（指摘として返す） |
 
 - 実装役とレビュー役はそれぞれ**自分の git worktree**（`.claude/worktrees/`、`origin/main` から切られる）で動く。
@@ -132,12 +132,12 @@ Analyzer再設計（#544）のPhase 1で既存ファイルの配置は完了し�
 npm install
 npm run dev        # 開発サーバー
 npm test           # モデルの分岐を検証
-npm run typecheck  # 型検査のみ
-npm run build      # 型検査 + ビルド
+npm run typecheck  # 型検査のみ。ビルドは型検査をしないので別に回す
+npm run build      # ビルドのみ（型検査はしない）
 npm run test:browser  # ブラウザe2e（Playwright）。手元では全件を回さない
 ```
 
-**pushする前に `npm test` と `npm run build` を通す。** CIも同じものを回す。
+**pushする前に `npm run typecheck`・`npm test`・`npm run build` を通す。** CIも同じものを別々に回す。
 **ブラウザe2eの全件は手元で回さず、pushしてCIの結果を読む。** CIの `browser-e2e` は全ブランチへのpushで走る（PR不要）。
 headのSHAのcheck run（`https://api.github.com/repos/tokiokashi/keydist/commits/<sha>/check-runs`）で
 `browser-e2e` の結果を確かめる。手元では触ったspecだけを `npx playwright test e2e/<spec> --workers=1` で回す。
