@@ -7,7 +7,7 @@ import type { SetupLibrary } from './collection.ts';
 
 /**
  * Setupの手持ち（`SetupLibrary<V>`）のcodec（#544 §8-3・§4）。
- * `Setup`本体（id・配列id・物理配列id・ラベル）と、カスケードの`setup`レベルを
+ * `Setup`本体（id・番号・配列id・物理配列id・ラベル）と、カスケードの`setup`レベルを
  * 含む全レベルの上書きをまとめて1つの資産として運ぶ（overrides.ts「Setup固有の上書きは
  * カスケードのsetupレベルに置く」）。
  *
@@ -26,10 +26,48 @@ import type { SetupLibrary } from './collection.ts';
  */
 const setupSchema = v.strictObject({
   id: v.pipe(v.string(), v.minLength(1)),
+  // 無い・不正な時はSetupを捨てず、読み込み後に配り直す（`assignMissingNumbers`）
+  number: v.optional(v.unknown()),
   layoutId: v.pipe(v.string(), v.minLength(1)),
   shapeId: v.pipe(v.string(), v.minLength(1)),
   label: v.optional(v.pipe(v.string(), v.minLength(1))),
 });
+
+type RawSetup = Omit<Setup, 'number'> & { readonly number?: unknown };
+
+/** 入力配列での位置を持たせる。診断のpathは、捨てた要素を除いた後の位置ではなく入力の位置で作るため。 */
+interface IndexedRawSetup {
+  readonly raw: RawSetup;
+  readonly index: number;
+}
+
+function isSetupNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 1;
+}
+
+/**
+ * 番号が無い・不正・他と重複するSetupに、並びの順で「その時点の最大＋1」を配る。
+ * 番号を持つ最初のSetupはそのまま残す。保存済みの番号を動かさないので、読み込みで既存の番号は変わらない。
+ * 番号が無いだけ（旧い保存値）なら診断は積まない。不正な値・重複を置き換えた時は積む（捨てた値には診断）。
+ */
+function assignMissingNumbers(indexed: readonly IndexedRawSetup[], path: string, diagnostics: CodecDiagnostic[]): Setup[] {
+  const used = new Set<number>();
+  const kept = indexed.map(({ raw, index }) => {
+    if (raw.number === undefined) return undefined;
+    if (!isSetupNumber(raw.number)) {
+      diagnostics.push({ path: `${path}[${index}].number`, message: '番号として読めないため、振り直した' });
+      return undefined;
+    }
+    if (used.has(raw.number)) {
+      diagnostics.push({ path: `${path}[${index}].number`, message: `番号「${raw.number}」が重複しているため、振り直した` });
+      return undefined;
+    }
+    used.add(raw.number);
+    return raw.number;
+  });
+  let next = Math.max(0, ...used) + 1;
+  return indexed.map(({ raw }, i) => ({ ...raw, number: kept[i] ?? next++ }));
+}
 
 function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): Setup[] {
   if (!Array.isArray(raw)) {
@@ -38,7 +76,7 @@ function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]
     return [];
   }
   const seen = new Set<string>();
-  const setups: Setup[] = [];
+  const setups: IndexedRawSetup[] = [];
   raw.forEach((candidate, index) => {
     const decoded = decodeDroppingInvalid(setupSchema, candidate, `${path}[${index}]`, diagnostics);
     if (decoded === undefined) return;
@@ -47,9 +85,9 @@ function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]
       return;
     }
     seen.add(decoded.id);
-    setups.push(decoded);
+    setups.push({ raw: decoded as RawSetup, index });
   });
-  return setups;
+  return assignMissingNumbers(setups, path, diagnostics);
 }
 
 /**

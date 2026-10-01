@@ -273,7 +273,7 @@ const CATALOG = {
 };
 
 function resolve(text = 'hello world'): ResolvedInput {
-  const setup: Setup = { id: 'setup-bigram-flow', layoutId: 'qwerty', shapeId: 'row-staggered' };
+  const setup: Setup = { id: 'setup-bigram-flow', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' };
   const result = resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
     setups: new Map([[setup.id, setup]]),

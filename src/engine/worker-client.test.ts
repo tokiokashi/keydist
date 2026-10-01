@@ -34,7 +34,7 @@ const LAYOUT_IDS = ['qwerty', 'dvorak', 'colemak-dh'];
 
 function resolveAll(text: string, language: TextLanguage): Array<{ id: string; input: ResolvedInput; member: EngineSetMemberInput }> {
   const setups = new Map<string, Setup>(
-    LAYOUT_IDS.map((id) => [`setup-${id}`, { id: `setup-${id}`, layoutId: id, shapeId: 'row-staggered' }]),
+    LAYOUT_IDS.map((id) => [`setup-${id}`, { id: `setup-${id}`, number: 1, layoutId: id, shapeId: 'row-staggered' }]),
   );
   return LAYOUT_IDS.map((id) => {
     const target: AnalysisTarget = { kind: 'setup', setupId: `setup-${id}` };

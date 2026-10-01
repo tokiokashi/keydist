@@ -14,7 +14,7 @@ const CATALOG = {
 };
 
 function resolve(text: string, overrides = EMPTY_SETTINGS_OVERRIDES): ResolvedInput {
-  const setup: Setup = { id: 'setup-1', layoutId: 'qwerty', shapeId: 'row-staggered' };
+  const setup: Setup = { id: 'setup-1', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' };
   const result = resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
     setups: new Map([[setup.id, setup]]),

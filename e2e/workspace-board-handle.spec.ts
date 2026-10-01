@@ -233,11 +233,17 @@ test('矢印キーを続けて押した後の元に戻す1回で、押す前の�
   await waitForDock(page);
   const h = handle(page);
   await h.focus();
+  // 待ちの250msは時計を止めて進める。実時間のままだと、負荷でキーの間が250msを超えた時に、途中で保存されてしまう
+  await page.clock.install();
+  await page.clock.pauseAt(Date.now() + 60_000);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('PageDown');
-  // 最後のキーから少し経つまで保存しない
+  // 最後のキーから待ちが過ぎるまで保存しない
+  await page.clock.runFor(200);
   expect(await storedBoardHeight(page)).toBe(80);
+  await page.clock.runFor(100);
+  await page.clock.resume();
   await expect.poll(() => storedBoardHeight(page)).toBe(94);
   await page.getByRole('button', { name: '元に戻す' }).click();
   await expect.poll(() => storedBoardHeight(page)).toBe(80);
