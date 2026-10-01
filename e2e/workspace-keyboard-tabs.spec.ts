@@ -175,3 +175,39 @@ test('⋯の「閉じる」で最後のペインを閉じると、「Analyzerを
   await expect(page.getByRole('tab')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Analyzerを追加' })).toBeFocused();
 });
+
+/** 保存した並びで、左の組の前面にあるペインのid。 */
+async function savedActivePane(page: Page): Promise<string | undefined> {
+  return page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('keydist:workspaces') ?? '{}') as {
+      workspaces?: { layout?: { kind: string; children?: { activePaneId?: string }[] } }[];
+    };
+    return saved.workspaces?.[0]?.layout?.children?.[0]?.activePaneId;
+  });
+}
+
+test('並びを書いた直後に別のタブを選んでも、表示・保存・再読み込み後の3つが一致する', async ({ page }) => {
+  await openWorkspace(page);
+  // 比較表の選択が保存される瞬間に、Bigram FlowへのSpaceを割り込ませる（書いた並びが資産から戻る前の操作）
+  await page.evaluate(() => {
+    const original = Storage.prototype.setItem;
+    let fired = false;
+    Storage.prototype.setItem = function patched(this: Storage, key: string, value: string) {
+      original.call(this, key, value);
+      if (!fired && key === 'keydist:workspaces' && value.includes('"activePaneId":"c"')) {
+        fired = true;
+        document.querySelector('.dv-tab[data-tab-panel-id="f"]')
+          ?.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+      }
+    };
+  });
+  await tab(page, 'Bigram Flow').focus();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(tab(page, 'Bigram Flow')).toHaveAttribute('aria-selected', 'true');
+  await expect.poll(() => savedActivePane(page)).toBe('f');
+  await page.reload();
+  await waitForHydration(page);
+  await expect(tab(page, 'Bigram Flow')).toHaveAttribute('aria-selected', 'true');
+  await expect(tab(page, '比較表')).toHaveAttribute('aria-selected', 'false');
+});

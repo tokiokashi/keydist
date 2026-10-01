@@ -104,25 +104,11 @@ function useIsRovingTabStop(innerRef: RefObject<HTMLElement | null>): boolean {
   useEffect(() => {
     const tab = innerRef.current?.closest<HTMLElement>('.dv-tab');
     if (tab === null || tab === undefined) return undefined;
-    // タブの中（ⓘ・×）へフォーカスが移ると、Dockviewがグループを前面にしてタブのtabindexを選択中のタブへ
-    // 戻すことがある。その瞬間にⓘ・×がTabで届かなくなると、タブ→ⓘ→×と進めないので、フォーカスがある間は保つ
-    let within = false;
-    const read = () => setStop(within || tab.tabIndex === 0);
-    const onFocusIn = () => { within = true; read(); };
-    const onFocusOut = (event: FocusEvent) => {
-      within = event.relatedTarget instanceof Node && tab.contains(event.relatedTarget);
-      read();
-    };
+    const read = () => setStop(tab.tabIndex === 0);
     read();
-    tab.addEventListener('focusin', onFocusIn);
-    tab.addEventListener('focusout', onFocusOut);
     const observer = new MutationObserver(read);
     observer.observe(tab, { attributes: true, attributeFilter: ['tabindex'] });
-    return () => {
-      tab.removeEventListener('focusin', onFocusIn);
-      tab.removeEventListener('focusout', onFocusOut);
-      observer.disconnect();
-    };
+    return () => observer.disconnect();
   }, [innerRef]);
   return stop;
 }
@@ -343,8 +329,12 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
     // （待っている変更が、次に資産へ書かれる）。Undoなど別の理由で資産が変わった時は、書いた並びと一致しない
     const written = lastWrittenRef.current;
     lastWrittenRef.current = undefined;
-    if (timerRef.current !== undefined && written !== undefined && sameLayout(props.layout, written)) {
+    const onlyLayoutChanged = last !== undefined && last.paneIds === props.paneIds && last.hideTabs === props.hideTabs;
+    if (onlyLayoutChanged && timerRef.current !== undefined && written !== undefined && sameLayout(props.layout, written)) {
       divergedRef.current = false;
+      // 待っている変更は「戻ってきた資産」を基準に書く。基準が古い資産のままだと、書く時に
+      // 資産が変わったと見なされて捨てられ、新しい選択が保存されないまま残る
+      scheduledAgainstRef.current = props.layout;
       return;
     }
     divergedRef.current = false;
