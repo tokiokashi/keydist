@@ -66,22 +66,22 @@
   gap: 0.5rem;
 }
 
+/* 表の見出し。畳んだ時も開いた時も同じ見た目で、押せることはマーカーと手のカーソルで示す。 */
+.n-sensitivity-table-details > summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
 .n-sensitivity-table-scroll {
   overflow-x: auto;
-  margin-top: 1rem;
+  margin-top: 0.35rem;
 }
 
 .n-sensitivity-table {
   border-collapse: collapse;
   width: 100%;
   font-size: 0.78rem;
-}
-
-.n-sensitivity-table caption {
-  text-align: left;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  margin-bottom: 0.35rem;
 }
 
 .n-sensitivity-table th,
@@ -124,5 +124,48 @@
     white-space: normal;
     min-width: 5rem;
     overflow-wrap: break-word;
+  }
+}
+
+/*
+ * ペインの残りの高さに合わせる（#808）。ホストが本体の領域に高さを持たせている時（Workspaceのペイン）だけ
+ * 真になる（個別画面では偽。理由は docs/architecture.md「Analyzerがペインに渡すもの」）。
+ *
+ * 図は領域の残りの高さをもらい、縦横比を固定せず高さに追従する。描く大きさはJS側が領域の実寸から決める
+ * （definition.tsx。凡例の置き場が図の大きさから空きを計算するため）ので、svgは領域を絶対配置で埋めるだけにする。
+ * 自分の高さが領域の高さを押し広げると、測った高さが前の描画の高さになって縮められなくなる。
+ * 縮めすぎて線の間隔と軸の文字が読めなくなる前に下限（図の領域の min-height）で止め、
+ * それより低い領域では本体の領域の中でスクロールする。
+ * --n-sensitivity-fit は、この規則が効いていることをJSが読むための印。
+ */
+@container pane-body (min-height: 1px) {
+  .n-sensitivity-feature {
+    --n-sensitivity-fit: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    height: 100%;
+  }
+
+  .n-sensitivity-chart {
+    position: relative;
+    flex: 1 1 0;
+    /* 凡例を図の中に置ける高さ（definition.tsx の MIN_FIT_CHART_HEIGHT に軸の余白ぶんを足したもの）。 */
+    min-height: 12rem;
+  }
+
+  .n-sensitivity-svg {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+  }
+
+  .n-sensitivity-failures,
+  .n-sensitivity-table-details {
+    flex: none;
+  }
+
+  .n-sensitivity-table-scroll {
+    margin-top: 0.35rem;
   }
 }
