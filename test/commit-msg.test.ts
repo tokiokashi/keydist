@@ -150,4 +150,31 @@ describe('commit-msgフック', { skip: hasBash ? false : 'bashが無い' }, () 
     assert.ok(out.includes(Buffer.from([0x62, 0x61, 0x64, 0x20, 0xff, 0xfe])), '不正なバイト列を含む行が残る');
     assert.ok(out.includes(Buffer.from('Co-Authored-By: Claude Sonnet 5.5\n')));
   });
+
+  test('素のClaudeの共作者行（モデル名なし）からもメールアドレスを外す', () => {
+    const r = rewritten(
+      'docs: 規約を足す\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nCo-Authored-By:Claude\t<noreply@anthropic.com>\r\nCo-authored-by: Claude Monet <m@e.com>\n',
+    );
+    assert.ok(r.ok);
+    assert.ok(r.text.includes('Co-Authored-By: Claude\nCo-Authored-By:Claude\nCo-authored-by: Claude Monet <m@e.com>'));
+    assert.ok(!r.text.includes('noreply@anthropic.com'));
+  });
+
+  test('共作者行そのものに不正なバイト列があっても、メールアドレスを外す', () => {
+    // grep を LC_ALL=C にしないと、UTF-8 ロケールでは不正なバイト列に [^<] が一致せず検出を逃す
+    const file = join(dir, 'COMMIT_EDITMSG');
+    writeFileSync(
+      file,
+      Buffer.concat([
+        Buffer.from('fix: a\n\nCo-Authored-By: Claude '),
+        Buffer.from([0xff]),
+        Buffer.from(' <noreply@anthropic.com>\n'),
+      ]),
+    );
+    const status = spawnSync('bash', [HOOK, file], { env: { ...process.env, LC_ALL: 'C.UTF-8' } }).status;
+    const out = readFileSync(file);
+    assert.equal(status, 0);
+    assert.ok(!out.includes(Buffer.from('noreply@anthropic.com')));
+    assert.ok(out.includes(Buffer.from([0x43, 0x6c, 0x61, 0x75, 0x64, 0x65, 0x20, 0xff, 0x0a])));
+  });
 });
