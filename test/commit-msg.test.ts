@@ -95,4 +95,23 @@ describe('commit-msgフック', { skip: hasBash ? false : 'bashが無い' }, () 
     assert.ok(r.ok);
     assert.ok(r.text.includes('本文に Claude-Session: という語を書く'));
   });
+
+  test('UTF-8ロケールで不正なバイト列を含む行も、セッションの行と一緒に消さない', () => {
+    // -a が無いと GNU grep がメッセージ全体をバイナリと判定し、該当行を黙って落とす
+    const file = join(dir, 'COMMIT_EDITMSG');
+    writeFileSync(
+      file,
+      Buffer.concat([
+        Buffer.from('fix: a\n\nbad '),
+        Buffer.from([0xff, 0xfe]),
+        Buffer.from(' byte\nafter\nClaude-Session: https://example.com/x\n'),
+      ]),
+    );
+    const status = spawnSync('bash', [HOOK, file], { env: { ...process.env, LC_ALL: 'C.UTF-8' } }).status;
+    const out = readFileSync(file);
+    assert.equal(status, 0);
+    assert.ok(out.includes(Buffer.from([0x62, 0x61, 0x64, 0x20, 0xff, 0xfe])), '不正なバイト列を含む行が残る');
+    assert.ok(out.includes(Buffer.from('after\n')));
+    assert.ok(!out.includes(Buffer.from('Claude-Session:')));
+  });
 });
