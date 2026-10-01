@@ -2,6 +2,7 @@ import { createPortal } from 'react-dom';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import { filterTargetChoiceGroups, targetSummaryText, type TargetChoiceGroup } from './target-choices.ts';
+import { isStrokeOnlyMark, targetMark, targetMarkPath, type TargetMark } from '#ui/theme/target-marks.ts';
 import './target-selection.css';
 
 /**
@@ -24,6 +25,8 @@ export interface TargetSummaryItem {
   readonly fullName: string;
   /** 集合の中で配った色。色を使わないAnalyzerでは省く。 */
   readonly color?: string;
+  /** 色以外の手がかり（点の形）。色と同じ番号から決まる。 */
+  readonly mark?: TargetMark;
 }
 
 export interface TargetSelectionProps {
@@ -153,7 +156,7 @@ export function TargetSelection({
   const summaryText = targetSummaryText(names, fits);
   const title = summary.map((item) => item.fullName).filter((name) => name !== '').join('\n');
   const selectedKeys = useMemo(() => new Set(summary.map((item) => item.key)), [summary]);
-  const colorByKey = useMemo(() => new Map(summary.map((item) => [item.key, item.color] as const)), [summary]);
+  const swatchByKey = useMemo(() => new Map(summary.map((item) => [item.key, item] as const)), [summary]);
   const visibleGroups = filterTargetChoiceGroups(groups, query);
 
   // 全部の名前が入るかを実寸で測る。測る用の要素（見えない・全文）と、ボタンが使える幅を比べる。
@@ -306,7 +309,7 @@ export function TargetSelection({
         {mode === 'multiple' && summary.some((item) => item.color !== undefined) ? (
           <span className="target-selection-swatches" aria-hidden="true">
             {summary.slice(0, 3).map((item) => (
-              <i key={item.key} className="target-selection-swatch" style={{ ['--swatch' as string]: item.color }} />
+              <TargetSwatch key={item.key} color={item.color} mark={item.mark} />
             ))}
           </span>
         ) : null}
@@ -367,7 +370,7 @@ export function TargetSelection({
                   <legend>{group.label}</legend>
                   {group.choices.map((choice) => {
                     const checked = selectedKeys.has(choice.key);
-                    const color = colorByKey.get(choice.key);
+                    const swatch = swatchByKey.get(choice.key);
                     return (
                       <label key={choice.key} className="target-selection-choice" title={choice.fullName ?? choice.name}>
                         <input
@@ -390,11 +393,9 @@ export function TargetSelection({
                           } : undefined}
                         />
                         {mode === 'multiple' ? (
-                          <i
-                            className="target-selection-swatch"
-                            data-off={checked && color !== undefined ? undefined : 'true'}
-                            style={checked && color !== undefined ? { ['--swatch' as string]: color } : undefined}
-                            aria-hidden="true"
+                          <TargetSwatch
+                            color={checked ? swatch?.color : undefined}
+                            mark={checked ? swatch?.mark : undefined}
                           />
                         ) : null}
                         <span className="target-selection-choice-text">
@@ -430,5 +431,31 @@ export function TargetSelection({
         document.body,
       ) : null}
     </div>
+  );
+}
+
+/**
+ * 対象の色見本。色に加えて点の形を持つので、色を見分けにくくても、図の凡例と対応づけられる。
+ * 選ばれていない時（色が無い時）は、塗らない丸の枠で場所だけ空けておく。
+ */
+function TargetSwatch({ color, mark }: { readonly color: string | undefined; readonly mark: TargetMark | undefined }) {
+  if (color === undefined) {
+    return (
+      <svg className="target-selection-swatch" viewBox="-5 -5 10 10" aria-hidden="true" data-off="true">
+        <circle r={3.6} fill="none" stroke="var(--border-strong)" strokeWidth={1.2} />
+      </svg>
+    );
+  }
+  const shape = (mark ?? targetMark(0)).shape;
+  const strokeOnly = isStrokeOnlyMark(shape);
+  return (
+    <svg className="target-selection-swatch" viewBox="-5 -5 10 10" aria-hidden="true" data-mark={shape}>
+      <path
+        d={targetMarkPath(shape, 3.8)}
+        fill={strokeOnly ? 'none' : color}
+        stroke={strokeOnly ? color : undefined}
+        strokeWidth={strokeOnly ? 1.8 : undefined}
+      />
+    </svg>
   );
 }

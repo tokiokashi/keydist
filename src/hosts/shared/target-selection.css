@@ -72,16 +72,9 @@
 .target-selection-swatch {
   display: inline-block;
   flex: none;
-  width: 0.62rem;
-  height: 0.62rem;
-  border-radius: 50%;
-  background: var(--swatch, transparent);
-  box-shadow: 0 0 0 1.5px var(--surface);
-}
-
-.target-selection-swatch[data-off="true"] {
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px var(--border-strong);
+  width: 0.8rem;
+  height: 0.8rem;
+  overflow: visible;
 }
 
 /*

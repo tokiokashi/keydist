@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { multiColorSlots, type ColorSlotsByKey, type MultiTargetSelection, type TargetSet } from '#engine/multi-target-selection.ts';
 import { analysisTargetKey, type Setup } from '#input/setup/index.ts';
 import { targetPaletteColor } from '#ui/theme/target-colors.ts';
+import { targetMark } from '#ui/theme/target-marks.ts';
 import { sortTargetsByChoices, targetChoiceGroups } from './target-choices.ts';
 import type { PaneCatalog } from './resolve-pane-input.ts';
 
@@ -31,5 +32,13 @@ export function useSetTargetSelection(selection: TargetSet, colorSlots: ColorSlo
     })),
     [selection.targets, colorSlots],
   );
-  return { choiceGroups, targets, colorByKey };
+  // 色以外の手がかり。色と同じ番号から決めるので、同じ対象はどのペインでも同じ形・線種になる。
+  const markByKey = useMemo(
+    () => new Map(selection.targets.map((target) => {
+      const key = analysisTargetKey(target);
+      return [key, targetMark(colorSlots[key] ?? 0)] as const;
+    })),
+    [selection.targets, colorSlots],
+  );
+  return { choiceGroups, targets, colorByKey, markByKey };
 }

@@ -57,7 +57,7 @@ async function measureLegend(page: import('@playwright/test').Page, svgSelector 
     const frame = svg.querySelector('.n-sensitivity-legend-frame')!.getBoundingClientRect();
     const touches = (x: number, y: number) => x >= frame.left && x <= frame.right && y >= frame.top && y <= frame.bottom;
     let linePointsInside = 0;
-    for (const path of svg.querySelectorAll<SVGPathElement>('[data-n-sensitivity-series] path')) {
+    for (const path of svg.querySelectorAll<SVGPathElement>('[data-n-sensitivity-series] .n-sensitivity-line')) {
       const matrix = path.getScreenCTM()!;
       const length = path.getTotalLength();
       for (let at = 0; at <= length; at += 1) {
@@ -108,7 +108,7 @@ test('新規プロファイルで、配列を2つ直接選ぶだけでSetupを�
 
 test('色は加えた順に配り、1つ外しても他の線の色は変わらず、空いた色を次に加えた対象が使う', async ({ page }) => {
   await page.goto('/standalone/n-sensitivity');
-  const strokeOf = (key: string) => page.locator(`[data-n-sensitivity-series="${key}"] path`).getAttribute('stroke');
+  const strokeOf = (key: string) => page.locator(`[data-n-sensitivity-series="${key}"] .n-sensitivity-line`).getAttribute('stroke');
 
   await addTarget(page, 'layout:qwerty');
   await addTarget(page, 'layout:colemak-dh');
@@ -119,8 +119,8 @@ test('色は加えた順に配り、1つ外しても他の線の色は変わら�
 
   // 対象の選択の色見本も線と同じ色。
   const selection = await openTargetSelection(page);
-  await expect(selection.locator('label:has(input[value="layout:colemak-dh"]) .target-selection-swatch'))
-    .toHaveCSS('background-color', hexToRgb(second!));
+  await expect(selection.locator('label:has(input[value="layout:colemak-dh"]) .target-selection-swatch path'))
+    .toHaveCSS('fill', hexToRgb(second!));
   await toggleTarget(page, 'layout:qwerty');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 10_000 });
   expect(await strokeOf('layout:colemak-dh')).toBe(second);
@@ -129,6 +129,39 @@ test('色は加えた順に配り、1つ外しても他の線の色は変わら�
   await addTarget(page, 'layout:workman');
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(3, { timeout: 10_000 });
   expect(await strokeOf('layout:workman')).toBe(first);
+});
+
+test('色を除いても、線は点の形と線種で区別でき、凡例の見本が図の線と対応する（7件で線種も使う）', async ({ page }) => {
+  await seedLayouts(page, LAYOUT_IDS_8.slice(0, 7));
+  await page.goto('/standalone/n-sensitivity');
+  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(7, { timeout: 15_000 });
+
+  const read = () => page.locator('.n-sensitivity-svg').evaluate((svg) => {
+    const marks = (root: Element, line: string, point: string) => {
+      const dash = root.querySelector(line)?.getAttribute('stroke-dasharray') ?? 'solid';
+      return `${root.querySelector(point)?.getAttribute('data-mark')}/${dash}`;
+    };
+    return {
+      series: [...svg.querySelectorAll('[data-n-sensitivity-series]')].map((g) => marks(g, '.n-sensitivity-line', '.n-sensitivity-point')),
+      legend: [...svg.querySelectorAll('[data-n-sensitivity-row]')].map((g) => marks(g, '.n-sensitivity-line', '.n-sensitivity-legend-mark')),
+    };
+  });
+  const { series, legend } = await read();
+  // 色を見ずに、形と線種の組だけで7本が全部違う
+  expect(new Set(series).size).toBe(7);
+  // 先頭6本は実線、7本目は破線で、凡例の見本も同じ組
+  expect(series.slice(0, 6).every((mark) => mark.endsWith('/solid'))).toBe(true);
+  expect(series[6]).toMatch(/\/5 3$/);
+  expect(legend).toEqual(series);
+
+  // 反証: 色の属性を全部同じにしても、組の数は変わらない（色に頼っていない）
+  await page.locator('.n-sensitivity-svg').evaluate((svg) => {
+    for (const el of svg.querySelectorAll('[stroke], [fill]')) {
+      if (el.getAttribute('stroke') !== null && el.getAttribute('stroke') !== 'none') el.setAttribute('stroke', '#000');
+      if (el.getAttribute('fill') !== null && el.getAttribute('fill') !== 'none') el.setAttribute('fill', '#000');
+    }
+  });
+  expect(new Set((await read()).series).size).toBe(7);
 });
 
 test('Setupを2件選ぶと2本の折れ線が表示される', async ({ page }) => {
@@ -506,7 +539,7 @@ async function yTickTexts(page: import('@playwright/test').Page, nth = 0): Promi
 async function shownValues(page: import('@playwright/test').Page) {
   return page.evaluate(() => ({
     table: [...document.querySelectorAll('.n-sensitivity-table tbody tr')].map((tr) => [...tr.querySelectorAll('td')].map((td) => td.textContent)),
-    tips: [...document.querySelectorAll('[data-n-sensitivity-series] circle title')].map((t) => t.textContent),
+    tips: [...document.querySelectorAll('[data-n-sensitivity-series] .n-sensitivity-point title')].map((t) => t.textContent),
   }));
 }
 

@@ -16,6 +16,7 @@ import {
   LEGEND_SWATCH_WIDTH,
   type MeasureText,
 } from './legend-placement.ts';
+import { isStrokeOnlyMark, targetMarkPath, TARGET_DASH_ARRAY, targetMark, type TargetMark } from '#ui/theme/target-marks.ts';
 import type { AnalyzerPaneParts, AnalyzerSettingsProps } from '../pane-parts.tsx';
 import './n-sensitivity-view.css';
 
@@ -65,6 +66,8 @@ export interface NSensitivityRowContext {
   readonly geometryName: string;
   readonly fingerAssignmentName: string;
   readonly color: string;
+  /** 色以外の手がかり（点の形と線種）。同じ対象は色と同じ番号から決まり、どのペインでも同じになる。 */
+  readonly mark: TargetMark;
 }
 
 export interface NSensitivityBodyProps {
@@ -98,11 +101,40 @@ function formatY(scale: NSensitivityOptions['scale'], value: number): string {
   return scale === 'relative' ? `${value.toFixed(0)}%` : `${value.toFixed(0)} u`;
 }
 
+/** 点の半径。形が変わっても外接がこの前後に収まる（`target-marks.ts`）。線との間隔は凡例の配置が見る。 */
+const MARK_RADIUS = 3;
+
+/** 系列の点・凡例の見本。形は対象ごとに違い、色を見分けられなくても区別できる。 */
+function SeriesMark({ mark, color, x, y, className, children }: {
+  readonly mark: TargetMark;
+  readonly color: string;
+  readonly x: number;
+  readonly y: number;
+  readonly className: string;
+  readonly children?: React.ReactNode;
+}) {
+  const d = targetMarkPath(mark.shape, MARK_RADIUS);
+  return (
+    <path
+      className={className}
+      data-mark={mark.shape}
+      transform={`translate(${x},${y})`}
+      d={d}
+      fill={isStrokeOnlyMark(mark.shape) ? 'none' : color}
+      stroke={isStrokeOnlyMark(mark.shape) ? color : undefined}
+      strokeWidth={isStrokeOnlyMark(mark.shape) ? 1.8 : undefined}
+    >
+      {children}
+    </path>
+  );
+}
+
 interface PlottedSeries {
   readonly targetKey: string;
   readonly label: string;
   readonly fullName: string;
   readonly color: string;
+  readonly mark: TargetMark;
   readonly points: readonly { readonly windowSize: number; readonly y: number; readonly totalUnits: number }[];
 }
 
@@ -299,18 +331,24 @@ function NSensitivityChart({
           .join(' ');
         return (
           <g key={s.targetKey} data-n-sensitivity-series={s.targetKey}>
-            <path className="n-sensitivity-line" d={path} stroke={s.color} fill="none" />
+            <path
+              className="n-sensitivity-line"
+              d={path}
+              stroke={s.color}
+              fill="none"
+              strokeDasharray={s.mark.dashed ? TARGET_DASH_ARRAY : undefined}
+            />
             {s.points.map((p) => (
-              <circle
+              <SeriesMark
                 key={p.windowSize}
                 className="n-sensitivity-point"
-                cx={xScale(p.windowSize)}
-                cy={yScale(p.y)}
-                r={2.5}
-                fill={s.color}
+                mark={s.mark}
+                color={s.color}
+                x={xScale(p.windowSize)}
+                y={yScale(p.y)}
               >
                 <title>{`${s.label} N=${p.windowSize}: ${formatY(scale, p.y)}（実測 ${p.totalUnits.toFixed(1)} u）`}</title>
-              </circle>
+              </SeriesMark>
             ))}
           </g>
         );
@@ -327,8 +365,14 @@ function NSensitivityChart({
           return (
             <g key={s.targetKey} data-n-sensitivity-row="ok" transform={`translate(${at.x},${at.y})`}>
               <title>{s.fullName || s.label}</title>
-              <line className="n-sensitivity-line" x1={0} x2={LEGEND_SWATCH_WIDTH} stroke={s.color} />
-              <circle cx={LEGEND_SWATCH_WIDTH / 2} r={2.5} fill={s.color} />
+              <line
+                className="n-sensitivity-line"
+                x1={0}
+                x2={LEGEND_SWATCH_WIDTH}
+                stroke={s.color}
+                strokeDasharray={s.mark.dashed ? TARGET_DASH_ARRAY : undefined}
+              />
+              <SeriesMark className="n-sensitivity-legend-mark" mark={s.mark} color={s.color} x={LEGEND_SWATCH_WIDTH / 2} y={0} />
               <text
                 className="n-sensitivity-legend-label"
                 x={LEGEND_SWATCH_WIDTH + 6}
@@ -431,6 +475,7 @@ export function NSensitivityBody({
         label: row.context?.label ?? '—',
         fullName: row.context?.fullName ?? '',
         color: row.context?.color ?? '#666',
+        mark: row.context?.mark ?? targetMark(0),
         points: okEntry.points.map((point) => ({
           windowSize: point.windowSize,
           y: yValueOf(options.scale, base, point.totalUnits),
