@@ -2,8 +2,8 @@
  * ペインを並べる面（Dockview）の見た目。ペインの間の余白・角丸のあるspacedテーマの骨組みに、
  * アプリのtoken（明・暗の両方に効く）で色を載せる。
  *
- * 余白と角丸は実物を見て決める値（#627）で、ここに1か所に集める。
- * 余白（ペインの間・面の外周）の数値は、`WorkspaceDock.tsx`の`PANE_GAP`と、下の`--dv-spacing-padding`。
+ * 余白と角丸は実物を見て決める値（#627）で、下の:rootの3変数に1か所に集める（縦積みの面も読む）。
+ * ペインの間の余白だけはDockviewへJSで渡すので、`WorkspaceDock.tsx`の`PANE_GAP`。
  */
 /*
  * 板そのものの最大幅。既定では効かせない（none）。広い画面で板を狭めた見た目を比べる時は、
@@ -12,6 +12,10 @@
  */
 :root {
   --workspace-board-max-width: none;
+  /* ペインの見た目の3値（#627）。並べる面と縦に積む面（workspace-stack.css）が同じ値を読む */
+  --workspace-board-padding: 0.75rem;
+  --workspace-pane-radius: 10px;
+  --workspace-pane-inline: 1rem;
 }
 
 .workspace-dock-area {
@@ -71,14 +75,12 @@
 /* テーマのclassは面の入れ物の中にDockviewが作る要素に付くので、子孫として指す。 */
 .workspace-dock-area .dockview-theme-light-spaced {
   /* 面の外周の余白と、ペインの角丸 */
-  --dv-spacing-padding: 0.75rem;
-  --dv-border-radius: 10px;
+  --dv-spacing-padding: var(--workspace-board-padding);
+  --dv-border-radius: var(--workspace-pane-radius);
   --dv-tab-border-radius: 6px;
   --dv-tab-margin-block: 0.4rem;
   --dv-tabs-and-actions-container-height: 2.6rem;
   --dv-tab-font-size: 0.85rem;
-  /* ペインの本文の左右の余白。見出しの文字と×もこの線に揃える（#807） */
-  --workspace-pane-inline: 1rem;
   /*
    * 見出しの帯の左端から、タブの背景の左端まで。Dockviewのテーマが置く2つの余白の和
    * （帯の内側の余白 = 角丸の半分、タブの左右の外側の余白）。値を写さず同じ変数から求めるので、
