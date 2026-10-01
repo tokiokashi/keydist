@@ -299,7 +299,7 @@ function NSensitivityChart({
           .join(' ');
         return (
           <g key={s.targetKey} data-n-sensitivity-series={s.targetKey}>
-            <path className="n-sensitivity-line" d={path} stroke={s.color} fill="none" />
+            <path className="n-sensitivity-line" d={path} style={{ stroke: s.color }} fill="none" />
             {s.points.map((p) => (
               <circle
                 key={p.windowSize}
@@ -307,7 +307,7 @@ function NSensitivityChart({
                 cx={xScale(p.windowSize)}
                 cy={yScale(p.y)}
                 r={2.5}
-                fill={s.color}
+                style={{ fill: s.color }}
               >
                 <title>{`${s.label} N=${p.windowSize}: ${formatY(scale, p.y)}（実測 ${p.totalUnits.toFixed(1)} u）`}</title>
               </circle>
@@ -327,8 +327,8 @@ function NSensitivityChart({
           return (
             <g key={s.targetKey} data-n-sensitivity-row="ok" transform={`translate(${at.x},${at.y})`}>
               <title>{s.fullName || s.label}</title>
-              <line className="n-sensitivity-line" x1={0} x2={LEGEND_SWATCH_WIDTH} stroke={s.color} />
-              <circle cx={LEGEND_SWATCH_WIDTH / 2} r={2.5} fill={s.color} />
+              <line className="n-sensitivity-line" x1={0} x2={LEGEND_SWATCH_WIDTH} style={{ stroke: s.color }} />
+              <circle cx={LEGEND_SWATCH_WIDTH / 2} r={2.5} style={{ fill: s.color }} />
               <text
                 className="n-sensitivity-legend-label"
                 x={LEGEND_SWATCH_WIDTH + 6}

@@ -152,7 +152,7 @@ export function targetSummaryText(names: readonly string[], fits: boolean): { re
 /**
  * 集合の対象を、候補の一覧の順（組み込みの定義順 → 自作の配列 → Setup）に並べる。表示順はこれに固定する
  * （チェックを付けた順にすると、同じ集合でも組み方によって並びが変わり、画面どうしで見比べにくい）。
- * 色は並びと別で、集合が加えた順に配ったもの（`colorSlots`）を対象に付けたまま使う。
+ * 色は並びと別で、画面の器が加えた順に配ったもの（`colorSlots`。個別画面は集合、Workspaceは全ペインの和）を対象に付けたまま使う。
  * 候補に無い対象（削除されたSetup等）は末尾へ、元の並びのまま置く。
  */
 export function sortTargetsByChoices(

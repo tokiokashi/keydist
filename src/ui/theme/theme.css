@@ -40,6 +40,21 @@
   --series-7: light-dark(#4a3aa7, #9085e9);
   --series-8: light-dark(#e34948, #e66767);
 
+  /* 対象の色（#601・#623）。番号は画面の器が配る。明暗で明度を変え、同じ番号は同じ色相に保つ。
+     明は#efefecまで、暗は#2a2a27まで（--surface-muted）の全ての面で、コントラスト比3以上。 */
+  --target-color-0: light-dark(#764ff8, #7955fb);
+  --target-color-1: light-dark(#e3600e, #f96807);
+  --target-color-2: light-dark(#029c6d, #13b680);
+  --target-color-3: light-dark(#ae1e85, #b94893);
+  --target-color-4: light-dark(#ad6cc2, #c27bd9);
+  --target-color-5: light-dark(#875e12, #996a09);
+  --target-color-6: light-dark(#045fae, #1875ce);
+  --target-color-7: light-dark(#4a6d6d, #577d7d);
+  --target-color-8: light-dark(#918d0b, #a39e04);
+  --target-color-9: light-dark(#2093ba, #3da7ce);
+  --target-color-10: light-dark(#3a760c, #458717);
+  --target-color-11: light-dark(#a57576, #b48283);
+
   --picker-selected: light-dark(#c81cad, #e879f9);
   --picker-candidate: light-dark(#0e8a9e, #22d3ee);
 
