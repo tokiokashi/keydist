@@ -13,9 +13,11 @@
 :root {
   --workspace-board-max-width: none;
   /* ペインの見た目の3値（#627）。並べる面と縦に積む面（workspace-stack.css）が同じ値を読む */
-  --workspace-board-padding: 0.75rem;
-  --workspace-pane-radius: 10px;
-  --workspace-pane-inline: 1rem;
+  --workspace-board-padding: 0.5rem;
+  --workspace-pane-radius: 8px;
+  --workspace-pane-inline: 0.75rem;
+  /* ペインを並べる面の背景。ペインの面（--surface）より一段濃くして、ペインの間の溝と面の外周を色で見せる */
+  --workspace-board-bg: light-dark(#dfddd6, #0a0a09);
 }
 
 .workspace-dock-area {
@@ -29,7 +31,7 @@
 }
 
 /*
- * 板の下端のつまみ。面の外周の余白（--dv-spacing-padding = 0.75rem）の中に置くので、通常はペインに重ならない。
+ * 板の下端のつまみ。面の外周の余白（--dv-spacing-padding = 0.5rem）の中に置くので、通常はペインに重ならない。
  * 見た目は中央の短い線だけで、つかめる範囲は横いっぱい。指で触る端末では触りやすいよう1.25remに高くし、
  * 余白からはみ出した分（約0.5rem）は一番下のペインの下端に重なる（つまみが手前）。
  */
@@ -110,7 +112,7 @@
   --dv-active-sash-color: var(--accent);
   /* テーマの既定は明固定。アプリのtheme（明・暗・自動）に従わせる */
   color-scheme: inherit;
-  background-color: var(--bg);
+  background-color: var(--workspace-board-bg);
   font: inherit;
 }
 
@@ -177,7 +179,7 @@
 .workspace-pane {
   height: 100%;
   overflow: auto;
-  padding: 0.75rem var(--workspace-pane-inline, 1rem) 1rem;
+  padding: 0.75rem var(--workspace-pane-inline) 1rem;
   box-sizing: border-box;
 }
 

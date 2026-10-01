@@ -21,8 +21,8 @@ const PANE_CHROME_REM_TABS_HIDDEN = 9.9;
 const TAB_BAR_REM = 2.6;
 
 /** 板の外周の余白（上下の合計）と、縦に並ぶペインの間。`workspace-dock.css`の`--dv-spacing-padding`と`PANE_GAP`。 */
-const BOARD_PADDING_REM = 1.5;
-const PANE_GAP_REM = 0.5;
+const BOARD_PADDING_REM = 1;
+const PANE_GAP_REM = 0.375;
 
 export function workspaceBoardPolicy(hideTabs: boolean): BoardPolicy {
   return {
