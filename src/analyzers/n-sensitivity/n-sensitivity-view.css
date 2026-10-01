@@ -66,6 +66,11 @@
   gap: 0.5rem;
 }
 
+/* 横に長い表を内側でスクロールさせるため、幅の最小値を中身（nowrapの表）に引きずらせない。 */
+.n-sensitivity-table-details {
+  min-width: 0;
+}
+
 /* 表の見出し。畳んだ時も開いた時も同じ見た目で、押せることはマーカーと手のカーソルで示す。 */
 .n-sensitivity-table-details > summary {
   cursor: pointer;
@@ -150,7 +155,7 @@
   .n-sensitivity-chart {
     position: relative;
     flex: 1 1 0;
-    /* 凡例を図の中に置ける高さ（definition.tsx の MIN_FIT_CHART_HEIGHT に軸の余白ぶんを足したもの）。 */
+    /* 線の間隔と軸の文字が読める高さ。凡例を図の下に出す時の下限は definition.tsx の MIN_FIT_CHART_HEIGHT。 */
     min-height: 12rem;
   }
 
