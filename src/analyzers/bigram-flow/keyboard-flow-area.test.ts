@@ -70,3 +70,13 @@ test('同キー連打のラベルは画面上で8pxを下回る幅では拡大�
   assert.ok(repeatLabelScale(0.4) > 3);
   assert.equal(repeatLabelScale(0), 1);
 });
+
+test('同キー連打のラベルの拡大率に上限がある時は、縮んだ図でも上限を超えず、倍率が大きい図には影響しない', () => {
+  assert.equal(repeatLabelScale(0.3, 2), 2);
+  assert.equal(repeatLabelScale(0.2, 2), 2);
+  // 上限の手前（拡大率が上限未満）の倍率は上限なしと同じ
+  assert.equal(repeatLabelScale(0.8, 2), repeatLabelScale(0.8));
+  assert.equal(repeatLabelScale(2, 2), 1);
+  // 上限があっても画面上のラベルは図より速く縮まない（倍率 × 拡大率が倍率に比例する）
+  assert.ok(Math.abs(0.2 * repeatLabelScale(0.2, 2) / (0.4 * repeatLabelScale(0.4, 2)) - 0.5) < 1e-9);
+});

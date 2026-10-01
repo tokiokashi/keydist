@@ -532,25 +532,42 @@
  * 個別画面の本体は同じ名前で幅しか測れないので偽になり、外側に同じ名前のcontainerも無い
  * （名前を付けないと、条件を測れる外側の祖先まで探しに行って規則が漏れる）。ホストが誰かをここで知らずに済む。
  *
- * 領域の高さを「状態の1行・Keyboard Flow・Relative vectors」で分け合い、各図は縦横比を保ったまま
- * 割り当てられた枠の中へ縮む（SVGの縦横比は保たれ、余りは図の背景が埋める）。
- * 領域が横長なら左右に並べる（下の縦横比の規則）。縮めすぎて読めなくなる前に下限で止め、
- * それより低い領域では本体の領域の中でスクロールする。
+ * 縦に積む時は、状態の1行・Keyboard Flow・Relative vectorsを中身の高さで縦に並べ、領域より高くなる分だけ
+ * 縦横比を保って縮める。枠は図の縦横比より縦に伸ばさず、余った高さは枠の外（一番下）に置く
+ * （枠へ高さを配ると、幅で大きさが決まる細長いペインで、図は小さいまま枠だけが縦に伸びる）。
+ * 縮めすぎて読めなくなる前に下限で止め、それより低い領域では本体の領域の中でスクロールする。
+ * 領域が横長で幅も足りるなら左右に並べる（下の並びの規則）。
  */
 @container pane-body (min-height: 1px) {
   .flow-feature {
+    display: flex;
+    flex-direction: column;
     height: 100%;
     /* Keyboard Flowの図（横長）とRelative vectorsの正方形が、図として読める大きさで残る高さ。 */
     min-height: 26rem;
-    grid-template-rows: auto minmax(0, 0.85fr) minmax(0, 1fr);
     gap: 0.6rem;
+  }
+
+  .flow-status {
+    flex: none;
+  }
+
+  /* 図を縮める時、連打ラベルは図と一緒に縮める（縮んだ図でラベルだけ大きいと、キーと後ろの線を覆う）。 */
+  .flow-keyboard-svg {
+    --flow-repeat-label-max-scale: 1.4;
   }
 
   .flow-block {
     display: flex;
+    flex: 0 1 auto;
     flex-direction: column;
     gap: 0.35rem;
     min-height: 0;
+  }
+
+  /* 縦が足りない時の縮み方。横長のKeyboard Flowは縮めると幅が余るので、正方形の図の側を多く縮める。 */
+  .flow-keyboard-block {
+    flex-shrink: 0.5;
   }
 
   .flow-block-heading,
@@ -559,18 +576,17 @@
     flex: none;
   }
 
-  /* Keyboard Flow: 枠の残りに図を入れ、凡例は図の下に1行で残す。 */
+  /* Keyboard Flow: 枠は図の高さまで。足りない時だけ、図が縦横比を保ったまま枠の中へ縮む。凡例は図の下に1行で残す。 */
   .flow-stage {
     display: flex;
-    flex: 1 1 0;
+    flex: 0 1 auto;
     flex-direction: column;
     min-height: 0;
   }
 
   .flow-keyboard-svg {
-    flex: 1 1 0;
+    flex: 0 1 auto;
     min-height: 0;
-    height: 100%;
   }
 
   .flow-legend {
@@ -579,9 +595,9 @@
     padding: 0.2rem 0.5rem;
   }
 
-  /* Relative vectors: 左右の図を、枠の残りの高さに正方形のまま収める。 */
+  /* Relative vectors: 左右の図は正方形。幅で決まる高さまで枠を取り、足りない時だけ縮む。 */
   .flow-two-up {
-    flex: 1 1 0;
+    flex: 0 1 auto;
     grid-template-rows: minmax(0, 1fr);
     min-height: 0;
   }
@@ -600,7 +616,14 @@
     padding: 0.4rem 0.6rem 0;
   }
 
+  /*
+   * 枠は幅いっぱい、高さは幅の分（正方形）まで。高さが足りない時は枠の幅を保ったまま低くなり、
+   * 描かれる正方形は枠の中央に収まる（`aspect-ratio` だけだと枠の幅まで縮んで左端に寄る）。
+   */
   .flow-profile-viewport {
+    align-self: stretch;
+    justify-self: stretch;
+    aspect-ratio: 1;
     min-height: 0;
     padding: 0.15rem;
   }
@@ -635,11 +658,15 @@
 }
 
 /*
- * 領域が横長（幅が高さの1.5倍以上）なら、Keyboard Flowを左、Relative vectorsを右に並べる。
- * 切り替えは画面の幅ではなく、置かれた領域の縦横比で決める。縦長・正方形に近い時は縦に積んだまま。
+ * 領域が横長（幅が高さの1.5倍以上）で、幅も足りる時だけ、Keyboard Flowを左、Relative vectorsを右に並べる。
+ * 切り替えは画面の幅ではなく、置かれた領域の大きさで決める。縦長・正方形に近い時、幅が足りない時は縦に積んだまま。
+ * 幅の下限は520px。横に並べたKeyboard Flowは幅が約0.535倍になり、520pxで図の倍率が約0.3（キーの間隔が約17px）。
+ * これより狭いと図が読めなくなるので縦に積む。幅が約530pxで高さが低い領域は、従来どおり左右に並べる。
+ * 縦横比だけで決めると、幅の狭い低いペインで2つの図が小さく潰れる。
  */
-@container pane-body (min-height: 1px) and (min-aspect-ratio: 3 / 2) {
+@container pane-body (min-height: 1px) and (min-aspect-ratio: 3 / 2) and (min-width: 520px) {
   .flow-feature {
+    display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     column-gap: 0.8rem;

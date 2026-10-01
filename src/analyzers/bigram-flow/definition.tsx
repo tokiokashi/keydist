@@ -163,10 +163,15 @@ function badgeWidth(text: string): number {
   return Math.max(18, 8 + text.length * 6);
 }
 
-/** 要素の表示幅（px）。0は未計測。 */
-function useElementWidth(): [RefObject<SVGSVGElement | null>, number] {
+/**
+ * 図の描かれる幅（px。0は未計測）と、連打ラベルの拡大率の上限。
+ * 上限は図の置き場がCSSで決める（`--flow-repeat-label-max-scale`。無ければ上限なし）。
+ * 置き場が高さに合わせて図を縮める時（Workspaceのペイン）だけ宣言されるので、ここでは置き場を知らずに済む。
+ */
+function useKeyboardFigureSize(): [RefObject<SVGSVGElement | null>, number, number] {
   const ref = useRef<SVGSVGElement | null>(null);
   const [width, setWidth] = useState(0);
+  const [maxScale, setMaxScale] = useState(Number.POSITIVE_INFINITY);
   // 初回の描画前に幅を測る（測る前の1フレームだけ線が細く出るのを避ける）。
   useLayoutEffect(() => {
     const el = ref.current;
@@ -176,13 +181,15 @@ function useElementWidth(): [RefObject<SVGSVGElement | null>, number] {
     const update = () => {
       const rect = el.getBoundingClientRect();
       setWidth(Math.min(rect.width, (rect.height * AREA_WIDTH) / AREA_HEIGHT));
+      const declared = Number.parseFloat(getComputedStyle(el).getPropertyValue('--flow-repeat-label-max-scale'));
+      setMaxScale(declared > 0 ? declared : Number.POSITIVE_INFINITY);
     };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  return [ref, width];
+  return [ref, width, maxScale];
 }
 
 function KeyboardFlow({
@@ -222,10 +229,10 @@ function KeyboardFlow({
     }),
     [keyBounds, fit],
   );
-  const [stageRef, stageWidth] = useElementWidth();
+  const [stageRef, stageWidth, labelMaxScale] = useKeyboardFigureSize();
   // 画面上のSVG幅 / ユーザー座標の幅（自作配列を縮めた分も含める）。縮んだ時に線と連打ラベルだけを読める大きさに保つのに使う。
   const zoom = stageWidth > 0 ? (stageWidth / AREA_WIDTH) * fit.shrink : fit.shrink;
-  const badgeScale = repeatLabelScale(zoom);
+  const badgeScale = repeatLabelScale(zoom, labelMaxScale);
   const areaCenterX = AREA_WIDTH / 2;
   const areaCenterY = AREA_HEIGHT / 2;
   // 重ね順（layerOrder）は見た目だけの設定なので、抽出済みvectorをここで並べ替える。
@@ -753,7 +760,7 @@ export function BigramFlowBody({
         {trace.skipped > 0 ? <span>打てずに飛ばした文字 {trace.skipped}</span> : null}
       </p>
 
-      <section className="flow-block" aria-label="Keyboard Flow">
+      <section className="flow-block flow-keyboard-block" aria-label="Keyboard Flow">
         <div className="flow-block-heading">
           <h3 className="flow-block-title">Keyboard Flow</h3>
           <InfoButton name="Keyboard Flow" description={KEYBOARD_FLOW_READING} />
