@@ -17,14 +17,14 @@ const flow = { id: 'f', analyzerId: 'bigram-flow', binding: { mode: 'fixed', tar
 const group = (id: string) => ({ kind: 'group', paneIds: [id], weight: 1 });
 const split = (direction: string, ...children: unknown[]) => ({ kind: 'split', direction, weight: 1, children });
 
-async function openWorkspace(page: Page, panes: readonly unknown[], layout: unknown, size: { width: number; height: number }) {
+async function openWorkspace(page: Page, panes: readonly unknown[], layout: unknown, size: { width: number; height: number }, seriesCount = 2) {
   await page.setViewportSize(size);
   await page.addInitScript((value) => {
     localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
   }, { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, layout });
   await page.goto('/workspace/fit');
   await waitForHydration(page);
-  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 15_000 });
+  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(seriesCount, { timeout: 15_000 });
   // 図の大きさが領域の実寸に合うまで待つ（最初の描画は既定の幅）
   await expect.poll(() => page.locator('.n-sensitivity-svg').first().evaluate((svg) => {
     const box = svg.getBoundingClientRect();
@@ -190,4 +190,96 @@ test('個別画面に漏れない: 外側に高さを測れるcontainerがあっ
   expect(Math.abs(info.svgHeight - before)).toBeLessThan(1);
   // 個別画面の図は幅の半分（上限360px）
   expect(before).toBeLessThanOrEqual(360 + 1);
+});
+
+const LAYOUT_IDS_17 = [
+  'qwerty', 'dvorak', 'colemak', 'colemak-dh', 'workman', 'oonishi', 'naginata-v18', 'nicola', 'shin-koume', 'asuka',
+  'shin-jis-prefix', 'shin-jis-simultaneous', 'shingeta', 'tsuki-2-263', 'kawasemi-kai', 'kawasemi-plus', 'oonishi-custom',
+];
+const nsens17 = {
+  id: 'n',
+  analyzerId: 'n-sensitivity',
+  binding: {
+    mode: 'fixed',
+    target: { kind: 'set', selection: { targets: LAYOUT_IDS_17.map((layoutId) => ({ kind: 'layout', layoutId })), colorSlots: LAYOUT_IDS_17.map((_, i) => i % 8) } },
+  },
+};
+
+/** rAFで数十フレーム、図の描画の高さと領域の min-height の記録を取る（値が変わり続けるなら振動している）。 */
+function recordFrames(page: Page, frames = 40) {
+  return page.evaluate((count) => new Promise<string[]>((resolve) => {
+    const out: string[] = [];
+    const tick = () => {
+      const svg = document.querySelector('.n-sensitivity-svg')!;
+      const wrap = svg.parentElement!;
+      out.push(`${svg.getAttribute('viewBox')}|${wrap.style.minHeight}|${wrap.style.maxHeight}|${wrap.clientHeight}`);
+      if (out.length >= count) resolve(out);
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }), frames);
+}
+
+test('凡例が図の下に出て下限に当たる低いペインでも、描画の高さは振動しない', async ({ page }) => {
+  // 対象17件の凡例は図の中に収まらず下に出る。縦3段にして図の領域を下限まで縮める。
+  await openWorkspace(
+    page,
+    [nsens17, { ...flow, id: 'f1' }, { ...flow, id: 'f2' }],
+    split('column', group('n'), group('f1'), group('f2')),
+    { width: 1920, height: 700 },
+    17,
+  );
+  await expect(page.locator('[data-n-sensitivity-legend]')).toHaveAttribute('data-n-sensitivity-legend', 'below');
+  const frames = await recordFrames(page);
+  expect(new Set(frames).size, frames.slice(0, 4).join(' / ')).toBe(1);
+  const m = await measure(page);
+  expect(m.svgHeight).toBeGreaterThanOrEqual(CHART_FLOOR - 1);
+});
+
+test('縦に長いペインでも、図の高さは幅を超えず、表の見出しは図のすぐ下に来る', async ({ page }) => {
+  await openWorkspace(page, [nsens], group('n'), { width: 1280, height: 1400 });
+  const m = await page.evaluate(() => {
+    const feature = document.querySelector('[data-react-feature="n-sensitivity"]')!;
+    const svg = feature.querySelector('.n-sensitivity-svg')!.getBoundingClientRect();
+    const summary = feature.querySelector('summary')!.getBoundingClientRect();
+    return { w: svg.width, h: svg.height, gap: summary.top - svg.bottom };
+  });
+  expect(m.h).toBeLessThanOrEqual(m.w + 1);
+  expect(m.gap).toBeLessThan(24);
+});
+
+test('裏のタブで開いたN感度も、表示した時に表が畳まれている', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript((value) => {
+    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
+  }, {
+    id: 'fit',
+    name: '収まりの確認',
+    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
+    panes: [flow, nsens],
+    layout: { kind: 'group', paneIds: ['f', 'n'], weight: 1, activePaneId: 'f' },
+  });
+  await page.goto('/workspace/fit');
+  await waitForHydration(page);
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 15_000 });
+  await page.waitForTimeout(3000);
+  await page.locator('.dv-tab', { hasText: 'N感度' }).click();
+  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 15_000 });
+  await expect(page.locator('.n-sensitivity-table')).toBeHidden();
+  expect(await page.locator('details.n-sensitivity-table-details').evaluate((el: HTMLDetailsElement) => el.open)).toBe(false);
+});
+
+const svgHeight = (page: Page) => page.locator('.n-sensitivity-svg').first().evaluate((svg) => svg.getBoundingClientRect().height);
+
+test('縦積みの幅（760px以下）では表が開いて始まり、広げ直しても図の高さが0にならず振動しない', async ({ page }) => {
+  await openWorkspace(page, [nsens], group('n'), { width: 700, height: 900 });
+  expect(await page.locator('details.n-sensitivity-table-details').evaluate((el: HTMLDetailsElement) => el.open)).toBe(true);
+  expect((await svgHeight(page))).toBeGreaterThan(100);
+  expect(new Set(await recordFrames(page)).size).toBe(1);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect.poll(async () => (await svgHeight(page))).toBeGreaterThan(100);
+  expect(new Set(await recordFrames(page)).size).toBe(1);
+  await page.setViewportSize({ width: 700, height: 900 });
+  await expect.poll(async () => (await svgHeight(page))).toBeGreaterThan(100);
+  expect(new Set(await recordFrames(page)).size).toBe(1);
 });

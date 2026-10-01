@@ -39,6 +39,11 @@ const MAX_CHART_HEIGHT = 360;
  */
 const MIN_FIT_CHART_HEIGHT = 170;
 /**
+ * ペインの高さに合わせる時の、図の縦横比（高さ÷幅）の上限。縦に長いペインで図が細長くなりすぎないよう、
+ * 高さは幅を超えない（1:1まで）。余った高さは図の下（表の見出しの下）の余白になる。
+ */
+const MAX_FIT_ASPECT = 1;
+/**
  * ホストが本体の領域に高さを持たせている時（Workspaceのペイン）にCSSが立てる印（n-sensitivity-view.css）。
  * 高さに合わせるかどうかは、container queryの結果を要素の計算済みスタイルから読んで知る。
  */
@@ -218,14 +223,23 @@ function NSensitivityChart({
     }
   }
   const { chartHeight: CHART_HEIGHT, yScale, legend } = layout;
-  // 領域に合わせる時の描画の高さは領域の高さそのもの（等倍）。下限で止まって領域より高くなる時は、
-  // 領域の方を最低限その高さまで広げる（広げる値は領域の高さに依らないので、測り直しが振動しない）。
+  // 領域に合わせる時の描画の高さは領域の高さそのもの（等倍）。下限は領域の min-height が保つので、
+  // 領域が描画より低くなることはない。
   const svgHeight = fitHeight === null ? layout.svgHeight : Math.max(fitHeight, layout.svgHeight);
-  const wrapMinHeight = fitHeight !== null && layout.svgHeight > fitHeight ? layout.svgHeight : undefined;
+  // 領域の高さは幅から決まる上限（縦横比の頭打ち）と、凡例が図の下に出る時の下限で挟む。どちらも測った高さに
+  // 依らない値にする。測った高さから決めると、測るたびに領域の高さが変わって描き直しが止まらなくなる。
+  let wrapStyle: React.CSSProperties | undefined;
+  if (fitHeight !== null) {
+    const floor = layoutFor(MIN_FIT_CHART_HEIGHT);
+    wrapStyle = {
+      maxHeight: Math.round(CHART_WIDTH * MAX_FIT_ASPECT),
+      minHeight: floor.legend.corner === 'below' ? floor.svgHeight : undefined,
+    };
+  }
   const yTickLabels = formatYTicks(scale === 'relative', yTickValues);
 
   return (
-    <div className="n-sensitivity-chart" ref={wrapRef} style={wrapMinHeight === undefined ? undefined : { minHeight: wrapMinHeight }}>
+    <div className="n-sensitivity-chart" ref={wrapRef} style={wrapStyle}>
     <svg
       className="n-sensitivity-svg"
       viewBox={`0 0 ${CHART_WIDTH} ${svgHeight}`}
@@ -329,7 +343,20 @@ function NSensitivityTable({ plotted }: { plotted: readonly PlottedSeries[] }) {
   const ref = useRef<HTMLDetailsElement | null>(null);
   useLayoutEffect(() => {
     const el = ref.current;
-    if (el && getComputedStyle(el).getPropertyValue(FIT_FLAG).trim() === '1') el.open = false;
+    if (!el) return undefined;
+    // 畳むかは、領域がペインの高さに合わせているかで決まり、印は大きさを持つ要素でしか読めない。
+    // 裏のタブにある間はDOMから外れていて大きさが無いので、最初に大きさが来た時まで待つ。
+    const decide = () => {
+      if (el.offsetWidth === 0) return false;
+      if (getComputedStyle(el).getPropertyValue(FIT_FLAG).trim() === '1') el.open = false;
+      return true;
+    };
+    if (decide()) return undefined;
+    const observer = new ResizeObserver(() => {
+      if (decide()) observer.disconnect();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
   return (
     <details className="n-sensitivity-table-details" ref={ref} open>
