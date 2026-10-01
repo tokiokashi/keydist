@@ -16,8 +16,6 @@
   --workspace-board-padding: 0.5rem;
   --workspace-pane-radius: 8px;
   --workspace-pane-inline: 0.75rem;
-  /* ペインを並べる面の背景。ペインの面（--surface）より一段濃くして、ペインの間の溝と面の外周を色で見せる */
-  --workspace-board-bg: light-dark(#dfddd6, #0a0a09);
 }
 
 .workspace-dock-area {
@@ -112,8 +110,17 @@
   --dv-active-sash-color: var(--accent);
   /* テーマの既定は明固定。アプリのtheme（明・暗・自動）に従わせる */
   color-scheme: inherit;
-  background-color: var(--workspace-board-bg);
+  background-color: var(--bg);
   font: inherit;
+}
+
+/*
+ * ペインの間の溝。Dockviewは分割の入れ物（.dv-dockview）を --dv-group-view-background-color（= --surface）で
+ * 塗るので、そのままだと溝だけがペインと同じ白になり、外周の余白（--bg）と色が割れる。
+ * 外周と同じページの背景（--bg）に揃え、ペインの面（--surface）だけが浮いて見えるようにする。
+ */
+.workspace-dock-area .dv-dockview {
+  background-color: var(--bg);
 }
 
 /* ペインの枠。面の背景（--bg）の上に、ペインの面（--surface）を線で縁取って載せる。 */
