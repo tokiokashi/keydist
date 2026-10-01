@@ -280,3 +280,26 @@ test('拡大中のTabは、拡大したペインの外（見えないペイン�
   await page.getByRole('button', { name: '比較表の操作' }).focus();
   await expect(page.getByRole('button', { name: '比較表の操作' })).toBeFocused();
 });
+
+test('解析設定の小窓を開いたまま拡大中のペインの中を操作しても、Escapeで拡大から戻れる（小窓は中にフォーカスがある時だけ先に閉じる）', async ({ page }) => {
+  await openWorkspace(page, { width: 1440, height: 900 });
+  await maximizeFlow(page);
+  const frame = page.locator('.dv-groupview').filter({ has: page.locator('.pane-frame') }).first();
+  await frame.getByRole('button', { name: '解析設定' }).click();
+  await expect(page.locator('.settings-window')).toBeVisible();
+  // 小窓を開いたまま、ペインの中の別のボタンを押す（フォーカスは小窓の外へ移る）
+  const toggle = frame.getByRole('button', { name: 'Keyboard Flowの表示' });
+  await toggle.click();
+  await expect(toggle).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect.poll(() => isMaximized(page)).toBe(false);
+  // 小窓の中にフォーカスがある間は、Escapeは小窓だけを閉じる（従来どおり）
+  // 小窓は開いたまま（ペインの状態）。もう一度拡大して、小窓の中へフォーカスを置く
+  await maximizeFlow(page);
+  await expect(page.locator('.settings-window')).toBeVisible();
+  await page.locator('.settings-window').focus();
+  await expect(page.locator('.settings-window')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.settings-window')).toHaveCount(0);
+  expect(await isMaximized(page)).toBe(true);
+});

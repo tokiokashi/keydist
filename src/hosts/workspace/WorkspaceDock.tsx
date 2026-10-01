@@ -86,18 +86,21 @@ function isTypingTarget(target: EventTarget | null): boolean {
  * Escapeで先に閉じるべきもの（上に重なって出て、Escapeで閉じるもの）が開いているか。開閉の状態は各部品が持つので、
  * 画面に出ているものをDOMで見る。`aria-expanded`だけでは数えない: 図の表示の欄の開閉ボタンなど、欄を展開するだけで
  * Escapeでは閉じないものまで数えると、開いている間は拡大から戻れなくなる。
- * - `aria-haspopup`付きのボタンが開いている間: ⋯のメニュー・条件・対象の選択・Analyzerを追加
- * - 小窓・モーダル・ポップアップそのもの、ピン留めしたⓘの説明（hoverだけの説明は数えない）
- * - 重ねて出したサイドバー（`aria-haspopup`を持たない）
+ * 閉じる側がEscapeをどこで受けるかに合わせて数える。自分の要素の中でしか受けないものを、フォーカスが外にある時まで
+ * 数えると、どちらも閉じずに何も起きなくなる:
+ * - documentで受ける（フォーカスの位置によらない）: 条件・対象の選択（`aria-haspopup="dialog"`）、モーダル、
+ *   対象の選択の本体、ピン留めしたⓘの説明（hoverだけの説明は数えない）、重ねて出したサイドバー
+ * - 自分の要素の中でだけ受ける（中にフォーカスがある時だけ数える）: ⋯などのメニュー、解析設定の小窓、テキストのチップのポップアップ
  */
 const OVERLAY_SELECTOR = [
-  '[aria-haspopup][aria-expanded="true"]',
+  '[aria-haspopup="dialog"][aria-expanded="true"]',
   'dialog[open]',
-  '.settings-window',
   '.target-selection-panel',
-  '.text-chip-panel',
   '.info-button[data-pinned]',
   '.shell[data-sidebar-open="true"]',
+  '.pane-menu:focus-within > [aria-haspopup][aria-expanded="true"]',
+  '.settings-window:focus-within',
+  '.text-chip-root:focus-within .text-chip-panel',
 ].join(', ');
 function hasOpenOverlay(): boolean {
   return document.querySelector(OVERLAY_SELECTOR) !== null;
