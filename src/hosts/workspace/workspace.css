@@ -1,12 +1,14 @@
 /*
  * Workspaceの画面。文脈バーの下に、ペインの追加の帯と、ペインを並べる面を縦に積む。
  * 面は画面の残りの高さいっぱいに取り、ペインは自分の枠の中でスクロールする。
+ * 面の高さは「画面の残り」と「保存した板の高さ」の大きい方（#833）。ペインが多くて下限を割る配置では、
+ * 板が伸びてページが縦にスクロールする（文脈バーは上に貼り付いたまま）。
  */
 .workspace-page {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
-  min-height: 0;
+  height: auto;
+  min-height: 100dvh;
 }
 
 .workspace-toolbar {
@@ -16,8 +18,8 @@
 }
 
 .workspace-stage {
-  flex: 1 1 0;
-  min-height: 0;
+  /* 板の高さ（--workspace-board-height）が画面の残りより大きければ、その分だけページが伸びる */
+  flex: 1 0 auto;
   display: flex;
 }
 

@@ -115,7 +115,16 @@ export interface Workspace {
   readonly groups: readonly LinkGroup[];
   readonly panes: readonly WorkspacePane[];
   readonly layout: WorkspaceLayout;
+  /**
+   * 板（ペインを並べる面）の高さ [rem]。無ければ1画面。板は「画面の高さ」と「この値」の大きい方になる。
+   * 配置の形が変わって、どれかのペインが下限を割る時にだけ、`workspace-board.ts` が伸ばして書く（縮めるのは人の操作だけ）。
+   * 画素でなくremなのは、ペインの下限をremで持つので、文字の大きさを変えても下限との関係が崩れないため。
+   */
+  readonly boardHeightRem?: number;
 }
+
+/** 板の高さの上限 [rem]。壊れた保存データで板が際限なく伸びないための安全弁（ペインを数十個積んでも届かない）。 */
+export const MAX_BOARD_HEIGHT_REM = 1000;
 
 /** Workspaceの手持ち（資産）。作った順。 */
 export type WorkspaceLibrary = readonly Workspace[];

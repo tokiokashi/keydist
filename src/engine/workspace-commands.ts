@@ -21,6 +21,7 @@ import {
   type WorkspacePane,
   type WorkspacePaneTarget,
 } from './workspace.ts';
+import { fitLibraryBoard, type BoardPolicy } from './workspace-board.ts';
 import type { WorkspaceLayout } from './workspace-layout.ts';
 
 /**
@@ -84,11 +85,21 @@ export function restoreWorkspaceCommand(workspace: Workspace, index: number): Co
   return workspacesCommand('Workspaceの削除を取り消す', (library) => restoreWorkspace(library, workspace, index));
 }
 
-/** ペインを右端に足す。`pane`（idと初期の対象）は呼び出し側が組み立てる。 */
-export function addWorkspacePaneCommand(workspaceId: string, pane: WorkspacePane): Command<KeydistAssets> {
-  return workspacesCommand('ペインを追加する', (library) => addWorkspacePane(library, workspaceId, pane));
+/**
+ * ペインを右端に足す。`pane`（idと初期の対象）は呼び出し側が組み立てる。
+ * `board`を渡すと、下限を割る時に板の高さを伸ばし、縦の分割の高さを下限の比に配る（#833）。同じ1回のUndoで戻る。
+ */
+export function addWorkspacePaneCommand(workspaceId: string, pane: WorkspacePane, board: BoardPolicy | undefined): Command<KeydistAssets> {
+  return workspacesCommand('ペインを追加する', (library) => (
+    fitLibraryBoard(library, addWorkspacePane(library, workspaceId, pane), workspaceId, board, true)
+  ));
 }
 
+/**
+ * ペインを閉じる。板の高さには触れない（配り直しも、伸ばす計算もしない）。閉じても、どのペインの縦の割合も減らないので、
+ * 伸ばす理由が無い。閉じると残りの横の分割が畳まれ、人が狭めた比の列が親の列に合わさることがあり、その並びを
+ * 「形が変わった」と数えると、人の比で下限を割って板が際限なく伸びる。縮めるのは人の操作だけ。
+ */
 export function closeWorkspacePaneCommand(workspaceId: string, paneId: string): Command<KeydistAssets> {
   return workspacesCommand('ペインを閉じる', (library) => closeWorkspacePane(library, workspaceId, paneId));
 }
@@ -98,9 +109,10 @@ export function duplicateWorkspacePaneCommand(
   workspaceId: string,
   paneId: string,
   newPaneId: string,
+  board: BoardPolicy | undefined,
 ): Command<KeydistAssets> {
   return workspacesCommand('ペインを複製する', (library) => (
-    duplicateWorkspacePane(library, workspaceId, paneId, newPaneId)
+    fitLibraryBoard(library, duplicateWorkspacePane(library, workspaceId, paneId, newPaneId), workspaceId, board, true)
   ));
 }
 
@@ -148,6 +160,9 @@ export function linkWorkspacePaneToNewGroupCommand(
 }
 
 /** ペインの並び（ドラッグ・リサイズの結果）を書き換える。 */
-export function setWorkspaceLayoutCommand(workspaceId: string, layout: WorkspaceLayout): Command<KeydistAssets> {
-  return workspacesCommand('ペインの並びを変える', (library) => withWorkspaceLayout(library, workspaceId, layout));
+export function setWorkspaceLayoutCommand(workspaceId: string, layout: WorkspaceLayout, board: BoardPolicy | undefined): Command<KeydistAssets> {
+  return workspacesCommand('ペインの並びを変える', (library) => (
+    // サッシのドラッグは形を変えないので、板の高さにも他のペインの比にも触れない。ペインの移動・分割だけが対象
+    fitLibraryBoard(library, withWorkspaceLayout(library, workspaceId, layout), workspaceId, board, true)
+  ));
 }
