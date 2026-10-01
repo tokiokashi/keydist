@@ -19,6 +19,8 @@ export interface WorkspaceAnalyzerEntry {
   readonly description: string;
   /** 対象を1つ見るか、集合を見るか。ペインが持つ対象の形を決める。 */
   readonly cardinality: 'single' | 'set';
+  /** 本体の縦の下限 [rem]（`analyzers/min-body-height.ts`）。宣言しないAnalyzerは既定。 */
+  readonly minBodyHeightRem?: number;
 }
 
 export const WORKSPACE_ANALYZERS: readonly WorkspaceAnalyzerEntry[] = [

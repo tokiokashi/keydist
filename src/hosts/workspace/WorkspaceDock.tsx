@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type HTMLAttributes,
   type ReactNode,
 } from 'react';
@@ -48,6 +49,8 @@ export interface WorkspaceDockProps {
   readonly onPaneClosed: (paneId: string) => void;
   /** 待っている並びの書き込みを今すぐ行う関数を渡す（Undoの直前に呼ぶ）。 */
   readonly registerFlush: (flush: (() => void) | undefined) => void;
+  /** 板の高さ [rem]。板は画面の高さとこの値の大きい方になる。無ければ1画面。 */
+  readonly boardHeightRem: number | undefined;
 }
 
 /** 並びの変更を資産へ書くまでの間引き（ミリ秒）。ドラッグ・リサイズの途中を書かない。 */
@@ -269,7 +272,12 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
 
   return (
     <PaneRenderContext.Provider value={props.renderPane}>
-      <div ref={containerRef} className="workspace-dock-area" data-hide-tabs={props.hideTabs || undefined}>
+      <div
+        ref={containerRef}
+        className="workspace-dock-area"
+        data-hide-tabs={props.hideTabs || undefined}
+        style={props.boardHeightRem === undefined ? undefined : ({ '--workspace-board-height': `${props.boardHeightRem}rem` } as CSSProperties)}
+      >
         <DockviewReact
           theme={WORKSPACE_THEME}
           components={COMPONENTS}

@@ -35,6 +35,7 @@ import { AddPaneMenu } from './AddPaneMenu.tsx';
 import { findWorkspaceAnalyzer, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
 import type { PaneBindingChoice, WorkspacePaneRuntime } from './pane-runtime.ts';
 import { summarizeLinkGroups } from './group-summary.ts';
+import { workspaceBoardPolicy } from './board-policy.ts';
 import { WorkspaceDock } from './WorkspaceDock.tsx';
 import { WorkspaceName } from './WorkspaceName.tsx';
 import { WorkspaceStack } from './WorkspaceStack.tsx';
@@ -108,6 +109,8 @@ export function WorkspacePage({
   const workspace = findWorkspace(assets.workspaces, workspaceId);
   // スマホ幅ではDockviewを外し、ペインを縦に積む。資産の配置は読むだけなので、戻ると元の並びで描き直される
   const stacked = useStacked();
+  // 板の高さの計算に渡す、ペインの下限と余白（ペインを足す・複製する・並びを変える時に板を伸ばす）
+  const boardPolicy = useMemo(() => workspaceBoardPolicy(tabs === 'hide'), [tabs]);
   const flushLayoutRef = useRef<(() => void) | undefined>(undefined);
   const registerFlush = useCallback((flush: (() => void) | undefined) => {
     flushLayoutRef.current = flush;
@@ -200,11 +203,11 @@ export function WorkspacePage({
     },
     duplicatePane: (paneId: string) => {
       flushPending();
-      dispatch(duplicateWorkspacePaneCommand(workspaceId, paneId, generateId()));
+      dispatch(duplicateWorkspacePaneCommand(workspaceId, paneId, generateId(), boardPolicy));
     },
     closePane: (paneId: string) => {
       flushPending();
-      dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
+      dispatch(closeWorkspacePaneCommand(workspaceId, paneId, boardPolicy));
     },
   }), [env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, groupSummaries]);
 
@@ -231,7 +234,7 @@ export function WorkspacePage({
       // 新しいペインは最初の組に従う（比較中に黙って別の対象を映さない）。
       binding: followBinding(workspace!.groups[0]!.id),
     };
-    dispatch(addWorkspacePaneCommand(workspaceId, pane));
+    dispatch(addWorkspacePaneCommand(workspaceId, pane, boardPolicy));
   };
 
   if (workspace === undefined) {
@@ -307,12 +310,13 @@ export function WorkspacePage({
                   titleOf={titleOf}
                   renderPane={renderPane}
                   hideTabs={tabs === 'hide'}
-                  onLayoutChange={(layout) => dispatch(setWorkspaceLayoutCommand(workspaceId, layout))}
+                  onLayoutChange={(layout) => dispatch(setWorkspaceLayoutCommand(workspaceId, layout, boardPolicy))}
                   onPaneClosed={(paneId) => {
                     onPaneOptionsCommit.flush();
-                    dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
+                    dispatch(closeWorkspacePaneCommand(workspaceId, paneId, boardPolicy));
                   }}
                   registerFlush={registerFlush}
+                  boardHeightRem={workspace.boardHeightRem}
                 />
               </div>
             )}

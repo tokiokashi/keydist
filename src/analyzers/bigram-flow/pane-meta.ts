@@ -8,4 +8,9 @@
 export const BIGRAM_FLOW_PANE_META = {
   name: 'Bigram Flow',
   description: '続けて打つ2打鍵で、指がキーボード上をどう動くかを描く。キー間の流れと、手ごとの移動の向きと距離の分布を並べる。',
+  /**
+   * 本体の縦の下限 [rem]。Keyboard Flowの図（横長）とRelative vectorsの正方形が、縦に積んでも図として読める高さ
+   * （`bigram-vector-view.css` のWorkspace用の `.flow-feature` の `min-height` と同じ値）。
+   */
+  minBodyHeightRem: 26,
 } as const;

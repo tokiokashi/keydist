@@ -13,6 +13,7 @@ import {
   followBinding,
   initialWorkspaceTarget,
   INITIAL_LINK_GROUP_ID,
+  MAX_BOARD_HEIGHT_REM,
   type LinkGroup,
   type PaneTargetBinding,
   type Workspace,
@@ -237,7 +238,15 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
 
   const rawLayout = raw.layout === undefined ? undefined : decodeLayoutNode(raw.layout, `${path}.layout`, 0, diagnostics);
   const layout: WorkspaceLayout = normalizeLayout(rawLayout, panes.map((pane) => pane.id));
-  return { id: raw.id, name, text, groups, panes, layout };
+  let boardHeightRem: number | undefined;
+  if (raw.boardHeightRem !== undefined) {
+    if (typeof raw.boardHeightRem === 'number' && Number.isFinite(raw.boardHeightRem) && raw.boardHeightRem > 0) {
+      boardHeightRem = Math.min(raw.boardHeightRem, MAX_BOARD_HEIGHT_REM);
+    } else {
+      diagnostics.push({ path: `${path}.boardHeightRem`, message: '板の高さが読めないため1画面へ戻した' });
+    }
+  }
+  return { id: raw.id, name, text, groups, panes, layout, ...(boardHeightRem === undefined ? {} : { boardHeightRem }) };
 }
 
 function encodePaneTarget(target: WorkspacePaneTarget): Record<string, unknown> {
@@ -299,6 +308,7 @@ export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAsset
       })),
       panes: workspace.panes.map(encodePane),
       ...(workspace.layout === undefined ? {} : { layout: encodeLayoutNode(workspace.layout) }),
+      ...(workspace.boardHeightRem === undefined ? {} : { boardHeightRem: workspace.boardHeightRem }),
     })),
   }),
 });

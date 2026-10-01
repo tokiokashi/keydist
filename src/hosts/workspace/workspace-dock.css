@@ -18,7 +18,8 @@
   position: relative;
   flex: 1 1 0;
   min-width: 0;
-  min-height: 0;
+  /* 板の高さ。保存が無ければ0で、画面の残りの高さいっぱいになる（#833）。縦積みでは板を使わない */
+  min-height: var(--workspace-board-height, 0);
   max-width: var(--workspace-board-max-width);
   margin-inline: auto;
 }
