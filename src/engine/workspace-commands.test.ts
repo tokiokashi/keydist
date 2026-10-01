@@ -95,7 +95,7 @@ test('作成・ペインの追加/複製/閉じる・名前の変更がUndo / Re
   const renamed = run(duplicated, renameWorkspaceCommand('w1', '比較'));
   assert.equal(findWorkspace(renamed.assets.workspaces, 'w1')!.name, '比較');
 
-  const closed = run(renamed, closeWorkspacePaneCommand('w1', 'a', undefined));
+  const closed = run(renamed, closeWorkspacePaneCommand('w1', 'a'));
   assert.deepEqual(findWorkspace(closed.assets.workspaces, 'w1')!.panes.map((p) => p.id), ['a2']);
 
   // 5つの操作（作成・追加・複製・名前の変更・閉じる）を1手ずつ戻す
@@ -117,7 +117,7 @@ test('作成・ペインの追加/複製/閉じる・名前の変更がUndo / Re
 
 test('Undoで消えたペインが、配置ごと元の位置へ戻る', () => {
   const state = withWorkspace();
-  const closed = run(state, closeWorkspacePaneCommand('w1', 'a', undefined));
+  const closed = run(state, closeWorkspacePaneCommand('w1', 'a'));
   const step = undo(closed.assets, closed.history);
   assert.deepEqual(step.assets.workspaces, state.assets.workspaces);
 });
@@ -127,8 +127,8 @@ test('存在しないWorkspace・ペインへの書き込みは履歴に積ま�
   const depth = state.history.undoStack.length;
   const next = run(
     state,
-    closeWorkspacePaneCommand('w1', 'none', undefined),
-    closeWorkspacePaneCommand('none', 'a', undefined),
+    closeWorkspacePaneCommand('w1', 'none'),
+    closeWorkspacePaneCommand('none', 'a'),
     renameWorkspaceCommand('w1', '   '),
     setWorkspacePaneOptionsCommand('w1', 'none', {}),
     deleteWorkspaceCommand('none'),

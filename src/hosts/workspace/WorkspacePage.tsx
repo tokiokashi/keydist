@@ -207,7 +207,7 @@ export function WorkspacePage({
     },
     closePane: (paneId: string) => {
       flushPending();
-      dispatch(closeWorkspacePaneCommand(workspaceId, paneId, boardPolicy));
+      dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
     },
   }), [env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, groupSummaries]);
 
@@ -313,7 +313,7 @@ export function WorkspacePage({
                   onLayoutChange={(layout) => dispatch(setWorkspaceLayoutCommand(workspaceId, layout, boardPolicy))}
                   onPaneClosed={(paneId) => {
                     onPaneOptionsCommit.flush();
-                    dispatch(closeWorkspacePaneCommand(workspaceId, paneId, boardPolicy));
+                    dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
                   }}
                   registerFlush={registerFlush}
                   boardHeightRem={workspace.boardHeightRem}

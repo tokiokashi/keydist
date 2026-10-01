@@ -320,6 +320,25 @@ test('増えた列の中に人が比を決めた列があっても、板が暴�
   expect(stored).toBeLessThanOrEqual(expected + 0.05);
 });
 
+test('閉じて横の分割が畳まれ、人が狭めた比の列が親の列に合わさっても、板は伸びない', async ({ page }) => {
+  // 比較表c1と「比較表3:1の列」の横並びの下にBigram Flow。c1を閉じると横の分割が畳まれ、根が (c2, c3, f) の列になる
+  const inner = { kind: 'split', direction: 'column', weight: 1, children: [group('c2', 0.75), group('c3', 0.25)] };
+  await openWorkspace(
+    page,
+    [comparison('c1'), comparison('c2'), comparison('c3'), flow('f')],
+    column({ kind: 'split', direction: 'row', weight: 1, children: [group('c1'), inner] }, group('f')),
+    { width: 1440, height: 900 },
+    { boardHeightRem: 100 },
+  );
+  const pane = page.locator('.workspace-pane').filter({ has: page.locator('[data-react-feature="comparison"]') }).first();
+  await pane.getByRole('button', { name: /の操作$/ }).click();
+  await page.getByRole('menuitem', { name: /閉じる/ }).click();
+  await expect(page.locator('.dv-groupview')).toHaveCount(3);
+  await page.waitForTimeout(800);
+  // 閉じても、どのペインの縦の割合も減らない。人が狭めた比で下限を割っていても伸ばす理由にならない（以前は198.5rem）
+  expect(await storedBoardHeight(page)).toBe(100);
+});
+
 test('縦積みの幅（760px以下）では板の高さを使わない', async ({ page }) => {
   await openWorkspace(page, [flow('f'), comparison('c')], column(group('f'), group('c')), { width: 700, height: 900 }, { boardHeightRem: 300 }, false);
   await expect(page.locator('.workspace-stack')).toBeVisible();

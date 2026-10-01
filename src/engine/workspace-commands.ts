@@ -95,11 +95,13 @@ export function addWorkspacePaneCommand(workspaceId: string, pane: WorkspacePane
   ));
 }
 
-export function closeWorkspacePaneCommand(workspaceId: string, paneId: string, board: BoardPolicy | undefined): Command<KeydistAssets> {
-  return workspacesCommand('ペインを閉じる', (library) => (
-    // 閉じても配り直さない（人が調整した比のまま）。板を伸ばすのは、ペインが増えた縦の分割だけ（閉じた側は数えない）
-    fitLibraryBoard(library, closeWorkspacePane(library, workspaceId, paneId), workspaceId, board, false)
-  ));
+/**
+ * ペインを閉じる。板の高さには触れない（配り直しも、伸ばす計算もしない）。閉じても、どのペインの縦の割合も減らないので、
+ * 伸ばす理由が無い。閉じると残りの横の分割が畳まれ、人が狭めた比の列が親の列に合わさることがあり、その並びを
+ * 「形が変わった」と数えると、人の比で下限を割って板が際限なく伸びる。縮めるのは人の操作だけ。
+ */
+export function closeWorkspacePaneCommand(workspaceId: string, paneId: string): Command<KeydistAssets> {
+  return workspacesCommand('ペインを閉じる', (library) => closeWorkspacePane(library, workspaceId, paneId));
 }
 
 /** ペインを複製する。解析設定と対象を写し、元のペインの右隣に置く。 */

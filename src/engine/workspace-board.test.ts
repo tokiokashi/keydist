@@ -165,7 +165,7 @@ test('複製・閉じる: 複製は形が変わるので配り直して伸ばし
   // 縦: a(30) と、横に2つ並んだ b・b2(10)。比は 30:10 → 必要な高さは 30 + 10 + 間の余白1 + 外周2
   assert.equal(duplicated.boardHeightRem, 43);
 
-  state = run(state, closeWorkspacePaneCommand('w', 'b2', policy));
+  state = run(state, closeWorkspacePaneCommand('w', 'b2'));
   assert.equal(findWorkspace(state.assets.workspaces, 'w')!.boardHeightRem, 43);
 });
 
@@ -227,9 +227,9 @@ test('人が狭めたペインは、下限を割っていても、次に形が�
   assert.equal(boardOf(state), stored);
 
   // 別の列のペインを閉じても、狭めた列は数えない
-  assert.equal(boardOf(run(state, closeWorkspacePaneCommand('w', 'd', policy))), stored);
+  assert.equal(boardOf(run(state, closeWorkspacePaneCommand('w', 'd'))), stored);
   // 狭めた列の中のペインを閉じても、残りの比は人が決めたまま（配り直さず、板も伸ばさない）
-  const closedInside = run(state, closeWorkspacePaneCommand('w', 'a', policy));
+  const closedInside = run(state, closeWorkspacePaneCommand('w', 'a'));
   assert.equal(boardOf(closedInside), stored);
   const left = (findWorkspace(closedInside.assets.workspaces, 'w')!.layout as Split).children[0] as Split;
   assert.equal(layoutShapeKey(left), 'c[g(b) g(c)]');
@@ -320,6 +320,30 @@ test('増えた列の中に人が比を決めた列があっても、その比�
   near(after.boardHeightRem, 44);
   const inner = ((after.layout as Split).children[0] as Split).children[1] as Split;
   assert.deepEqual(inner.children.map((child) => child.weight), [0.99, 0.01]);
+});
+
+test('閉じて横の分割が畳まれ、人が狭めた比の列が親の列に合わさっても、板は動かない（暴走しない）', () => {
+  // column(row(a, column(b .95, c .05)), d) で a を閉じる。残りは根が column(b .95, c .05, d) に畳まれる
+  const start = { assets: emptyAssets(), history: emptyCommandHistory<KeydistAssets>() };
+  const placed = run(
+    start,
+    createWorkspaceCommand('w'),
+    addWorkspacePaneCommand('w', pane('a', 'tall'), undefined),
+    addWorkspacePaneCommand('w', pane('b', 'mid'), undefined),
+    addWorkspacePaneCommand('w', pane('c', 'short'), undefined),
+    addWorkspacePaneCommand('w', pane('d', 'mid'), undefined),
+    setWorkspaceLayoutCommand('w', column(row(group('a'), column(group('b'), group('c'))), group('d')), policy),
+    // サッシで内側の列を 0.95 : 0.05 に狭める（形は同じ）
+    setWorkspaceLayoutCommand('w', column(row(group('a'), column(group('b', 0.95), group('c', 0.05))), group('d')), policy),
+  );
+  const before = boardOf(placed);
+  const closed = run(placed, closeWorkspacePaneCommand('w', 'a'));
+  const workspace = findWorkspace(closed.assets.workspaces, 'w')!;
+  assert.equal(layoutShapeKey(workspace.layout!), 'c[g(b) g(c) g(d)]');
+  assert.equal(workspace.boardHeightRem, before);
+  // 畳まれた後の比は、人が決めた比のまま
+  const [b, c] = (workspace.layout as Split).children;
+  assert.ok(c!.weight / b!.weight < 0.1);
 });
 
 test('ペインを取り除いただけの列と、何も変えていない列は、変わっていない扱い（根が縦でも）', () => {
