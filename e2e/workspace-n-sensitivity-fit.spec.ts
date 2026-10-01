@@ -205,7 +205,7 @@ const nsens17 = {
   },
 };
 
-/** rAFで数十フレーム、図の描画の高さと領域の min-height の記録を取る（値が変わり続けるなら振動している）。 */
+/** 16msおきに数十回（rAFは並列実行中の裏のページで止まることがあるのでタイマーで測る）、図の描画の高さと領域の min-height の記録を取る（値が変わり続けるなら振動している）。 */
 function recordFrames(page: Page, frames = 40) {
   return page.evaluate((count) => new Promise<string[]>((resolve) => {
     const out: string[] = [];
@@ -214,9 +214,9 @@ function recordFrames(page: Page, frames = 40) {
       const wrap = svg.parentElement!;
       out.push(`${svg.getAttribute('viewBox')}|${wrap.style.minHeight}|${wrap.style.maxHeight}|${wrap.clientHeight}`);
       if (out.length >= count) resolve(out);
-      else requestAnimationFrame(tick);
+      else setTimeout(tick, 16);
     };
-    requestAnimationFrame(tick);
+    setTimeout(tick, 16);
   }), frames);
 }
 
