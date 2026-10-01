@@ -72,6 +72,8 @@ test('⋯の「拡大表示」でそのペインが板いっぱいになり、�
   expect(before.every((s) => s.width > 100 && s.height > 100)).toBe(true);
 
   await maximizeFlow(page);
+  // 拡大を始めた時、フォーカスは拡大したペインの中にあり、操作不能な（inertの）組には残らない
+  expect(await page.evaluate(() => document.activeElement?.closest('.dv-groupview') !== null && document.activeElement?.closest('[inert]') === null)).toBe(true);
   const area = await page.locator('.workspace-dock-area').boundingBox();
   const maximized = (await groupSizes(page)).find((s) => s.width > 100 && s.height > 100)!;
   // 拡大したペインは板（余白を除く）を使い切り、元の幅・高さより大きい
