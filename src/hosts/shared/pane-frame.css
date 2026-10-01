@@ -195,7 +195,7 @@ h2.pane-frame-title {
  * 名前とⓘをWorkspaceのタブが持つペイン（data-name-in-tab）は、見出しを幅によらず1行にする
  * （対象・連動・条件・状態・解析設定・⋯）。上の2段は、タブの無い面（縦積み・タブを隠した表示）のためのもの。
  * 特異度で上の規則（.pane-frame-headerの@container）に勝たせる。
- * 解析設定を絵だけにする規則は上の@containerのまま効く（文字が入る幅は40rem超）。
+ * 解析設定を絵だけにする規則は上の@containerの規則が、そのまま適用される（文字が入る幅は40rem超）。
  */
 .pane-frame[data-name-in-tab] .pane-frame-header {
   grid-template-columns: minmax(0, 1fr) auto auto;

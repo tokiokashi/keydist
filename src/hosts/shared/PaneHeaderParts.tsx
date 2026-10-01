@@ -54,7 +54,10 @@ export function PaneMenu({
 
   useLayoutEffect(() => {
     const list = listRef.current;
-    const frame = rootRef.current?.closest('.pane-frame');
+    // 条件のモーダル（<dialog>）の中に置いたメニューは、ペインの枠の中に描かれていてもモーダルの中で開く。
+    // 枠を基準にずらすと、ボタンから離れて開くのでずらさない
+    const root = rootRef.current;
+    const frame = root === null || root.closest('dialog') !== null ? null : root.closest('.pane-frame');
     if (!open || list === null || frame === null || frame === undefined) {
       setShift(0);
       return;

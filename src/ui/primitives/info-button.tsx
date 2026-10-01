@@ -17,22 +17,43 @@ export function InfoButton({ name, description, floating = false }: { readonly n
   const buttonRef = useRef<HTMLButtonElement>(null);
   const tooltipId = useId();
   const rootRef = useRef<HTMLSpanElement>(null);
+  const popoverRef = useRef<HTMLSpanElement>(null);
   const visible = hovered || pinned;
 
-  // 説明を出す時のⓘの位置を測る。画面の右端からはみ出さないよう、説明の最大幅（22rem）の分を残す
+  // 説明の位置を測る。画面の右端からはみ出さないよう、説明の最大幅（22rem）の分を残す。
+  // 下に収まらない時はⓘの上に出す（説明の高さは、描いた後に測れるので、描いた後にもう一度測る）
+  const placed = anchor !== undefined;
   useLayoutEffect(() => {
-    if (!floating || !visible) return;
-    const rect = buttonRef.current?.getBoundingClientRect();
-    if (rect === undefined) return;
-    const maxWidth = 22 * parseFloat(getComputedStyle(document.documentElement).fontSize);
-    setAnchor({ top: rect.bottom + 6, left: Math.max(8, Math.min(rect.left, window.innerWidth - maxWidth - 8)) });
-  }, [floating, visible]);
+    if (!floating || !visible) return undefined;
+    const place = () => {
+      const rect = buttonRef.current?.getBoundingClientRect();
+      if (rect === undefined) return;
+      const maxWidth = 22 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+      const height = popoverRef.current?.getBoundingClientRect().height ?? 0;
+      const below = rect.bottom + 6;
+      const above = rect.top - 6 - height;
+      const top = below + height > window.innerHeight - 8 && above >= 8 ? above : below;
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - maxWidth - 8));
+      setAnchor((current) => (current !== undefined && current.top === top && current.left === left ? current : { top, left }));
+    };
+    place();
+    // position: fixedなので、スクロールや窓の大きさの変化でⓘが動いても、説明は画面の同じ位置に残る。
+    // スクロールは入れ物の中（Workspaceの板など）でも起きるので、captureで拾う
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [floating, visible, placed]);
 
   // 出したままの説明は、外を押すかEscapeで閉じる（開いたままだと下の図に被るため）。
+  // floatingの説明はbody直下に出るのでrootの外にある。説明そのものを押しても閉じない
   useEffect(() => {
     if (!pinned) return undefined;
     const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setPinned(false);
+      const target = event.target as Node;
+      if (!rootRef.current?.contains(target) && !popoverRef.current?.contains(target)) setPinned(false);
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setPinned(false);
@@ -84,7 +105,7 @@ export function InfoButton({ name, description, floating = false }: { readonly n
         </span>
       ) : null}
       {visible && floating && anchor !== undefined ? createPortal(
-        <span className="info-popover info-popover-floating" role="tooltip" id={tooltipId} style={anchor}>
+        <span ref={popoverRef} className="info-popover info-popover-floating" role="tooltip" id={tooltipId} style={anchor}>
           {description}
         </span>,
         document.body,
