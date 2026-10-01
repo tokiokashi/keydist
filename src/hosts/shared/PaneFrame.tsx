@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useContext, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { EngineRequestState } from '#engine/request.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { describeEngineRequestError, engineRequestErrorDetail, paneStatusLabel, TRACE_ERRORS_SENTENCE } from './pane-status.ts';
@@ -7,6 +7,7 @@ import { ConditionSummary } from './ConditionSummary.tsx';
 import type { ConditionEditorContext } from './ConditionEditor.tsx';
 import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
+import { PaneNameInTabContext } from './pane-name-in-tab.ts';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import type { PaneTargetBindingControl } from './panes/pane-environment.ts';
 import { BindingGlyph, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
@@ -17,7 +18,10 @@ import './pane-frame.css';
  * ペインの枠（docs/architecture.md「ペイン」「Analyzerがペインに渡すもの」）。
  *
  * 見出しは個別画面が「Analyzer名 ⓘ / 対象 / 解析設定」、Workspaceのペインは末尾に⋯が付く。
- * ⋯のあるペインは、狭い時に2段に固定する
+ * Workspaceのタブが名前とⓘを持つ時（`PaneNameInTabContext`）は、枠の中の名前の行を出さず、見出しは
+ * 幅によらず1行（対象・連動・条件・解析設定・⋯。状態バッジも）。条件は1行に畳んだ形（`ConditionSummary`の`compact`）で
+ * 見出しに入れ、別の行にしない。読み上げ用の見出し（h2）は視覚的に隠して残す。
+ * タブの無い面のうち⋯のあるペイン（縦積み・タブを隠した表示）は、狭い時に2段に固定する
  * （1段目: 名前・ⓘ・⋯、2段目: 対象・解析設定）。段数はペインの幅だけで決め、名前の長さでは変えない。
  * ⋯の無い個別画面は、固定する見出しを薄く保つため狭くても1行のまま。
  *
@@ -124,6 +128,7 @@ export function PaneFrame({
     : undefined;
   const paneName = targetName === undefined ? name : `${name} — ${targetName}`;
   const Heading = headingLevel === 1 ? 'h1' : 'h2';
+  const nameInTab = useContext(PaneNameInTabContext);
 
   const closeSettings = () => {
     setSettingsOpen(false);
@@ -131,21 +136,36 @@ export function PaneFrame({
     settingsButtonRef.current?.focus({ preventScroll: true });
   };
 
+  const conditionSummary = (
+    <ConditionSummary
+      rows={conditionRows}
+      header={header}
+      targetDiffs={conditionTargetDiffs}
+      editor={conditionEditor}
+      compact={nameInTab}
+    />
+  );
+
   return (
     <section
       className="pane-frame"
       aria-label={paneName}
       data-pane-status={engineState.status}
+      data-name-in-tab={nameInTab || undefined}
       style={{ '--pane-recommended-width': `${recommendedWidthRem}rem` } as CSSProperties}
     >
       <header className="pane-frame-header" data-sticky={stickyHeader || undefined} data-menu={menuItems.length > 0 || undefined}>
-        <div className="pane-frame-name">
-          <Heading className="pane-frame-title">{name}</Heading>
-          <InfoButton name={name} description={description} />
-          {statusLabel ? (
-            <span className="pane-status-badge" data-status={engineState.status}>{statusLabel}</span>
-          ) : null}
-        </div>
+        {nameInTab ? (
+          <Heading className="pane-frame-title pane-visually-hidden">{name}</Heading>
+        ) : (
+          <div className="pane-frame-name">
+            <Heading className="pane-frame-title">{name}</Heading>
+            <InfoButton name={name} description={description} />
+            {statusLabel ? (
+              <span className="pane-status-badge" data-status={engineState.status}>{statusLabel}</span>
+            ) : null}
+          </div>
+        )}
         <div className="pane-frame-target">
           {target}
           {targetBinding === undefined ? null : (
@@ -161,6 +181,10 @@ export function PaneFrame({
               data={{ 'data-follows': String(targetBinding.follows) }}
             />
           )}
+          {nameInTab ? conditionSummary : null}
+          {nameInTab && statusLabel ? (
+            <span className="pane-status-badge" data-status={engineState.status}>{statusLabel}</span>
+          ) : null}
         </div>
         <button
           ref={settingsButtonRef}
@@ -190,7 +214,7 @@ export function PaneFrame({
         {settings}
       </SettingsWindow>
 
-      <ConditionSummary rows={conditionRows} header={header} targetDiffs={conditionTargetDiffs} editor={conditionEditor} />
+      {nameInTab ? null : conditionSummary}
 
       {traceErrors && traceErrors.length > 0 ? (
         <div className="pane-trace-errors" role="alert" data-pane-trace-errors="true">

@@ -35,9 +35,21 @@ export interface ConditionSummaryProps {
   readonly targetDiffs?: readonly ConditionTargetDiff[];
   /** 全体のレベルの条件を書き換えるための手持ち。 */
   readonly editor: ConditionEditorContext;
+  /**
+   * 見出しの1行に置く小さい形（Workspaceの、名前をタブに出すペイン）。広い時は「条件: 既定値」「条件: 3件変更」の
+   * chip、狭い時（ペインの幅34rem以下）は絵と、既定と違う時の点だけ。文字は狭い時も読み上げ用に残す。
+   * 変えた項目の中身はchipに出さず、押して開くモーダルと、hoverの説明が出す。
+   */
+  readonly compact?: boolean;
 }
 
-export function ConditionSummary({ rows, header, targetDiffs = [], editor }: ConditionSummaryProps) {
+/** 見出しの1行に置く形の、chipの文字。 */
+function compactLabel(changedCount: number, hasTargetDiffs: boolean): string {
+  if (changedCount > 0) return `条件: ${changedCount}件変更`;
+  return hasTargetDiffs ? '条件: 対象ごとに差あり' : '条件: 既定値';
+}
+
+export function ConditionSummary({ rows, header, targetDiffs = [], editor, compact = false }: ConditionSummaryProps) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   if (rows.length === 0) return null;
@@ -49,34 +61,60 @@ export function ConditionSummary({ rows, header, targetDiffs = [], editor }: Con
     buttonRef.current?.focus({ preventScroll: true });
   };
 
+  const differs = line.changedCount > 0 || targetDiffs.length > 0;
+  // 変えた項目の中身はchipに載らないので、hoverで読めるようにする（押せば条件のモーダルで全部読める）
+  const detail = line.changedCount === 0
+    ? 'すべて既定値'
+    : `${line.shown.map((row) => `${row.label}: ${row.displayValue}`).join(' · ')}${line.restCount > 0 ? ` 他${line.restCount}件` : ''}`;
+
   return (
-    <div className="pane-condition-summary" data-changed-count={line.changedCount}>
+    <div
+      className="pane-condition-summary"
+      data-changed-count={line.changedCount}
+      data-compact={compact || undefined}
+    >
       <button
         ref={buttonRef}
         type="button"
         className="pane-condition-trigger"
         aria-haspopup="dialog"
         aria-expanded={open}
-        title="条件を見る・変える"
+        title={compact ? `条件: ${detail}${targetDiffs.length > 0 ? '（対象ごとに差あり）' : ''}` : '条件を見る・変える'}
         onClick={() => setOpen(true)}
       >
-        <svg className="pane-condition-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-          <path d="M2.5 4.5h7M12.5 4.5h1M2.5 11.5h2M7.5 11.5h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-          <circle cx="11" cy="4.5" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
-          <circle cx="6" cy="11.5" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
-        </svg>
-        <span className="pane-condition-key">条件</span>
-        {line.changedCount === 0 ? (
-          <span className="pane-condition-default">すべて既定値</span>
+        {compact ? (
+          <>
+            {/* 解析設定のボタン（スライダーの絵）と取り違えないよう、項目を並べた一覧の絵にする */}
+            <svg className="pane-condition-icon" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+              <path d="M6 4h7.5M6 8h7.5M6 12h7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+              <circle cx="2.8" cy="4" r="0.9" fill="currentColor" />
+              <circle cx="2.8" cy="8" r="0.9" fill="currentColor" />
+              <circle cx="2.8" cy="12" r="0.9" fill="currentColor" />
+            </svg>
+            <span className="pane-condition-chip-text">{compactLabel(line.changedCount, targetDiffs.length > 0)}</span>
+            {differs ? <span className="pane-condition-dot" aria-hidden="true" /> : null}
+          </>
         ) : (
           <>
-            <span className="pane-condition-items">
-              {line.shown.map((row) => `${row.label}: ${row.displayValue}`).join(' · ')}
-            </span>
-            {line.restCount > 0 ? <span className="pane-condition-more">他{line.restCount}件</span> : null}
+            <svg className="pane-condition-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path d="M2.5 4.5h7M12.5 4.5h1M2.5 11.5h2M7.5 11.5h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+              <circle cx="11" cy="4.5" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+              <circle cx="6" cy="11.5" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+            </svg>
+            <span className="pane-condition-key">条件</span>
+            {line.changedCount === 0 ? (
+              <span className="pane-condition-default">すべて既定値</span>
+            ) : (
+              <>
+                <span className="pane-condition-items">
+                  {line.shown.map((row) => `${row.label}: ${row.displayValue}`).join(' · ')}
+                </span>
+                {line.restCount > 0 ? <span className="pane-condition-more">他{line.restCount}件</span> : null}
+              </>
+            )}
+            {targetDiffs.length > 0 ? <span className="pane-condition-diff-flag">対象ごとに差あり</span> : null}
           </>
         )}
-        {targetDiffs.length > 0 ? <span className="pane-condition-diff-flag">対象ごとに差あり</span> : null}
       </button>
       {open ? <ConditionModal rows={rows} header={header} targetDiffs={targetDiffs} editor={editor} onClose={close} /> : null}
     </div>

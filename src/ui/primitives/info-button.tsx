@@ -1,17 +1,32 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './info-button.css';
 
 /**
  * 短い説明を出すⓘ。ペインの見出し（Analyzerの短い説明）と、Analyzerの図の横（図の読み方）の両方で使う。
  * hoverとフォーカスで出し、タップ（クリック）で出したままにする。
  * タップで開けるのは、タッチの端末にhoverが無いため。
+ *
+ * `floating`は、帯などはみ出しを切る入れ物（Workspaceのタブの帯）の中に置く時に使う。説明を`body`直下へ出し、
+ * ⓘの真下に画面基準で置くので、入れ物に隠れない。
  */
-export function InfoButton({ name, description }: { readonly name: string; readonly description: string }) {
+export function InfoButton({ name, description, floating = false }: { readonly name: string; readonly description: string; readonly floating?: boolean }) {
   const [hovered, setHovered] = useState(false);
   const [pinned, setPinned] = useState(false);
+  const [anchor, setAnchor] = useState<{ readonly top: number; readonly left: number } | undefined>(undefined);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const tooltipId = useId();
   const rootRef = useRef<HTMLSpanElement>(null);
   const visible = hovered || pinned;
+
+  // 説明を出す時のⓘの位置を測る。画面の右端からはみ出さないよう、説明の最大幅（22rem）の分を残す
+  useLayoutEffect(() => {
+    if (!floating || !visible) return;
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (rect === undefined) return;
+    const maxWidth = 22 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+    setAnchor({ top: rect.bottom + 6, left: Math.max(8, Math.min(rect.left, window.innerWidth - maxWidth - 8)) });
+  }, [floating, visible]);
 
   // 出したままの説明は、外を押すかEscapeで閉じる（開いたままだと下の図に被るため）。
   useEffect(() => {
@@ -40,6 +55,7 @@ export function InfoButton({ name, description }: { readonly name: string; reado
       onPointerLeave={() => setHovered(false)}
     >
       <button
+        ref={buttonRef}
         type="button"
         className="info-button"
         aria-label={`${name}の説明`}
@@ -62,10 +78,16 @@ export function InfoButton({ name, description }: { readonly name: string; reado
           <circle cx="8" cy="4.9" r="0.95" fill="currentColor" />
         </svg>
       </button>
-      {visible ? (
+      {visible && !floating ? (
         <span className="info-popover" role="tooltip" id={tooltipId}>
           {description}
         </span>
+      ) : null}
+      {visible && floating && anchor !== undefined ? createPortal(
+        <span className="info-popover info-popover-floating" role="tooltip" id={tooltipId} style={anchor}>
+          {description}
+        </span>,
+        document.body,
       ) : null}
     </span>
   );

@@ -887,13 +887,15 @@ async function openPaneConditionModal(page: Page, paneLocator: Locator): Promise
 
 test('Workspaceのペインの条件のモーダルで全体の条件を変えると、全体の保存先に書かれ、個別画面にも反映される', async ({ page }) => {
   const panes = await createWithBigramPanes(page, 1);
-  await expect(panes.first().locator('.pane-condition-trigger')).toHaveText('条件すべて既定値');
+  // 見出しの1行には chip で出す（変えた項目の中身はhoverの説明とモーダルが出す）
+  await expect(panes.first().locator('.pane-condition-trigger')).toHaveText('条件: 既定値');
 
   const modal = await openPaneConditionModal(page, panes.first());
   await modal.getByRole('button', { name: '先読みNを1増やす' }).click();
   await expect(modal.locator('[data-item="windowSize"]')).toContainText('全体で変更');
   await page.keyboard.press('Escape');
-  await expect(panes.first().locator('.pane-condition-trigger')).toContainText('先読みN: 4');
+  await expect(panes.first().locator('.pane-condition-trigger')).toHaveText('条件: 1件変更');
+  await expect(panes.first().locator('.pane-condition-trigger')).toHaveAttribute('title', /先読みN: 4/);
 
   // 書き込み先は全体の値。Workspaceは条件を別に持たない
   await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBe(4);
@@ -929,7 +931,7 @@ test('Workspaceで変えた全体の条件はWorkspaceの元に戻すで戻り�
   const modal = await openPaneConditionModal(page, panes.first());
   await modal.getByRole('button', { name: '先読みNを1増やす' }).click();
   await page.keyboard.press('Escape');
-  await expect(trigger).toContainText('先読みN: 4');
+  await expect(trigger).toHaveText('条件: 1件変更');
   await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBe(4);
 
   // 別のタブで開いた個別画面は変更を反映していて、その画面の履歴は空（Workspaceの操作は戻せない）
@@ -941,7 +943,7 @@ test('Workspaceで変えた全体の条件はWorkspaceの元に戻すで戻り�
 
   // Workspaceの元に戻すで、全体の条件が既定へ戻る
   await page.getByRole('button', { name: '元に戻す' }).click();
-  await expect(trigger).toHaveText('条件すべて既定値');
+  await expect(trigger).toHaveText('条件: 既定値');
   await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBeUndefined();
 
   // 個別画面を開き直すと、戻った結果が効いている

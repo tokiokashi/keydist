@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -19,6 +20,8 @@ import {
 } from 'dockview-react';
 import 'dockview-react/dist/styles/dockview.css';
 import { sameLayout, type WorkspaceLayoutNode } from '#engine/workspace-layout.ts';
+import { PaneNameInTabContext } from '#hosts/shared/pane-name-in-tab.ts';
+import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { fromDockviewLayout, PANE_COMPONENT, toDockviewLayout } from './layout-adapter.ts';
 import './workspace-dock.css';
 
@@ -40,6 +43,8 @@ export interface WorkspaceDockProps {
   readonly paneIds: readonly string[];
   /** タブに出す名前。 */
   readonly titleOf: (paneId: string) => string;
+  /** タブのⓘに出す短い説明。空ならⓘを出さない。 */
+  readonly descriptionOf: (paneId: string) => string;
   readonly renderPane: (paneId: string) => ReactNode;
   /** タブの帯を出さない（ペインの見出しだけにする）。 */
   readonly hideTabs: boolean;
@@ -61,9 +66,21 @@ const FALLBACK_SIZE = { width: 1000, height: 600 } as const;
 
 const PaneRenderContext = createContext<(paneId: string) => ReactNode>(() => null);
 
+/** タブを出しているか（タブが名前とⓘを持つか）と、タブのⓘの説明の引き方。 */
+const TabContext = createContext<{
+  readonly hideTabs: boolean;
+  readonly descriptionOf: (paneId: string) => string;
+}>({ hideTabs: false, descriptionOf: () => '' });
+
 function DockPane({ params }: IDockviewPanelProps<{ paneId: string }>) {
   const render = useContext(PaneRenderContext);
-  return <div className="workspace-pane">{render(params.paneId)}</div>;
+  const { hideTabs } = useContext(TabContext);
+  // タブが名前を出す間は、ペインの中の名前の行を出さない（見出しが1行になる。`pane-frame.css`）
+  return (
+    <PaneNameInTabContext.Provider value={!hideTabs}>
+      <div className="workspace-pane" data-name-in-tab={!hideTabs || undefined}>{render(params.paneId)}</div>
+    </PaneNameInTabContext.Provider>
+  );
 }
 
 const COMPONENTS = { [PANE_COMPONENT]: DockPane };
@@ -72,7 +89,11 @@ const COMPONENTS = { [PANE_COMPONENT]: DockPane };
 const PANE_GAP = 8;
 const WORKSPACE_THEME = { ...themeLightSpaced, gap: PANE_GAP };
 
-/** タブ。閉じるボタンの名前を日本語にするため、既定のタブを使わずに同じ形で持つ。 */
+/**
+ * タブ。名前とⓘ（Analyzerの短い説明）を出し、右端に閉じるボタンを置く。
+ * 閉じるボタンの名前を日本語にするため、既定のタブを使わずに同じ形で持つ。
+ * ⓘの説明はタブの帯の外（body直下）へ出す（帯ははみ出しを切るので、中に出すと隠れる）。
+ */
 function WorkspaceTab({
   api,
   containerApi: _containerApi,
@@ -80,6 +101,8 @@ function WorkspaceTab({
   tabLocation: _tabLocation,
   ...rest
 }: IDockviewPanelHeaderProps & HTMLAttributes<HTMLDivElement>) {
+  const { descriptionOf } = useContext(TabContext);
+  const description = descriptionOf(api.id);
   const [title, setTitle] = useState(api.title);
   useEffect(() => {
     const subscription = api.onDidTitleChange((event) => setTitle(event.title));
@@ -88,6 +111,7 @@ function WorkspaceTab({
   return (
     <div {...rest} className="dv-default-tab">
       <span className="dv-default-tab-content">{title}</span>
+      {title !== undefined && description !== '' ? <InfoButton name={title} description={description} floating /> : null}
       <button
         type="button"
         className="dv-default-tab-action"
@@ -270,24 +294,31 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
     applyLayout();
   });
 
+  const tabContext = useMemo(
+    () => ({ hideTabs: props.hideTabs, descriptionOf: props.descriptionOf }),
+    [props.hideTabs, props.descriptionOf],
+  );
+
   return (
     <PaneRenderContext.Provider value={props.renderPane}>
-      <div
-        ref={containerRef}
-        className="workspace-dock-area"
-        data-hide-tabs={props.hideTabs || undefined}
-        style={props.boardHeightRem === undefined ? undefined : ({ '--workspace-board-height': `${props.boardHeightRem}rem` } as CSSProperties)}
-      >
-        <DockviewReact
-          theme={WORKSPACE_THEME}
-          components={COMPONENTS}
-          defaultTabComponent={WorkspaceTab}
-          singleTabMode="fullwidth"
-          disableFloatingGroups
-          announcements={false}
-          onReady={onReady}
-        />
-      </div>
+      <TabContext.Provider value={tabContext}>
+        <div
+          ref={containerRef}
+          className="workspace-dock-area"
+          data-hide-tabs={props.hideTabs || undefined}
+          style={props.boardHeightRem === undefined ? undefined : ({ '--workspace-board-height': `${props.boardHeightRem}rem` } as CSSProperties)}
+        >
+          <DockviewReact
+            theme={WORKSPACE_THEME}
+            components={COMPONENTS}
+            defaultTabComponent={WorkspaceTab}
+            singleTabMode="fullwidth"
+            disableFloatingGroups
+            announcements={false}
+            onReady={onReady}
+          />
+        </div>
+      </TabContext.Provider>
     </PaneRenderContext.Provider>
   );
 }

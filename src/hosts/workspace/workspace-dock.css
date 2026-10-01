@@ -94,6 +94,23 @@
   }
 }
 
+/*
+ * タブは名前・ⓘ・×の順。名前は中身の幅で止め（伸ばさない）、ⓘは名前のすぐ右、×は右端へ寄せる。
+ * 名前が長くて縮む時は名前だけが縮み、ⓘと×は残す。
+ */
+.workspace-dock-area .dv-tab .dv-default-tab .dv-default-tab-content {
+  flex-grow: 0;
+}
+
+.workspace-dock-area .dv-tab .dv-default-tab .dv-default-tab-action {
+  margin-left: auto;
+}
+
+.workspace-dock-area .dv-tab .dv-default-tab .info {
+  flex: none;
+  margin-left: 0.2rem;
+}
+
 /* タブの帯を出さない表示（見比べ用）。ペインの見出しだけが残る。 */
 .workspace-dock-area[data-hide-tabs] .dv-tabs-and-actions-container {
   display: none;
@@ -108,6 +125,18 @@
   overflow: auto;
   padding: 0.75rem var(--workspace-pane-inline, 1rem) 1rem;
   box-sizing: border-box;
+}
+
+/*
+ * 名前をタブが持つペイン（タブを隠さない時）は、見出しが1行になるぶん、上の余白と行間を詰める（12 → 8px）。
+ * 見出しの高さは`board-policy.ts`の`PANE_CHROME_REM`に入っているので、ここを変えたらそちらも測り直す。
+ */
+.workspace-pane[data-name-in-tab] {
+  padding-top: 0.5rem;
+}
+
+.workspace-pane[data-name-in-tab] .pane-frame {
+  gap: 0.5rem;
 }
 
 /*

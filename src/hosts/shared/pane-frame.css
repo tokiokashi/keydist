@@ -191,6 +191,95 @@ h2.pane-frame-title {
   }
 }
 
+/*
+ * 名前とⓘをWorkspaceのタブが持つペイン（data-name-in-tab）は、見出しを幅によらず1行にする
+ * （対象・連動・条件・状態・解析設定・⋯）。上の2段は、タブの無い面（縦積み・タブを隠した表示）のためのもの。
+ * 特異度で上の規則（.pane-frame-headerの@container）に勝たせる。
+ * 解析設定を絵だけにする規則は上の@containerのまま効く（文字が入る幅は40rem超）。
+ */
+.pane-frame[data-name-in-tab] .pane-frame-header {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "target settings menu";
+  gap: 0.5rem;
+}
+
+.pane-frame[data-name-in-tab] .pane-frame-target {
+  flex-wrap: nowrap;
+}
+
+/* 視覚的には隠し、読み上げには残す（見出しの階層・ペインの名前を保つ） */
+.pane-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * 見出しの1行に畳んだ条件（ConditionSummaryのcompact）。広い時は文字のchip、狭い時（34rem以下）は
+ * 絵だけにして、既定と違う時は右上の点で知らせる。文字は消さず、読み上げ用に残す。
+ * 右へ寄せるのは、対象の選択が空きを取り、条件・状態が右端の操作の隣に並ぶようにするため。
+ */
+.pane-condition-summary[data-compact] {
+  flex: none;
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+}
+
+.pane-condition-summary[data-compact] .pane-condition-trigger {
+  position: relative;
+  width: auto;
+  min-height: 2rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  white-space: nowrap;
+}
+
+.pane-condition-summary[data-compact] .pane-condition-trigger:hover {
+  background: var(--surface-muted);
+}
+
+.pane-condition-summary[data-compact][data-changed-count]:not([data-changed-count="0"]) .pane-condition-chip-text {
+  color: var(--accent-strong);
+}
+
+/* 既定と違う印。文字が出ている間は文字が兼ねるので、絵だけに縮んだ時に出す */
+.pane-condition-dot {
+  display: none;
+  position: absolute;
+  top: 0.28rem;
+  right: 0.28rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+@container pane (max-width: 34rem) {
+  .pane-condition-summary[data-compact] .pane-condition-trigger {
+    width: 2rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .pane-condition-summary[data-compact] .pane-condition-chip-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .pane-condition-dot {
+    display: block;
+  }
+}
+
 .pane-menu {
   position: relative;
 }
