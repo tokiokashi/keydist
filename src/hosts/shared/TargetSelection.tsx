@@ -3,6 +3,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type Keyb
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import { filterTargetChoiceGroups, targetSummaryText, type TargetChoiceGroup } from './target-choices.ts';
 import './target-selection.css';
+import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
 
 /**
  * 見出しの「対象」ボタンと、そこから開く対象の選択（docs/architecture.md「対象の選択」）。
@@ -51,8 +52,8 @@ export interface TargetSelectionProps {
   readonly autoOpen?: boolean | undefined;
 }
 
-/** スマホ幅（シートで出す幅）。解析設定の小窓（`pane-frame.css`）と同じ境目。 */
-const SHEET_MEDIA = '(max-width: 640px)';
+/** スマホ幅（シートで出す幅）。解析設定のシートと同じ境目（`ui/theme/breakpoints.ts`）。 */
+const SHEET_MEDIA = MOBILE_QUERY;
 const EDGE = 8;
 
 function isSheet(): boolean {

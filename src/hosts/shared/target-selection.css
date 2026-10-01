@@ -237,7 +237,7 @@
  * スマホ幅: 画面下からのシート。背後を暗くし、暗い所を押すと閉じる。
  * ここは器の置き方なので、Analyzerの中身と違い画面の幅で切り替える（解析設定の小窓と同じ境目）。
  */
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .target-selection-scrim {
     display: block;
     position: fixed;

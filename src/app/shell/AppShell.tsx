@@ -12,6 +12,7 @@ import {
   setSidebarPinned,
   subscribeSidebarPinned,
 } from './sidebar-preference.ts';
+import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
 
 /**
  * 全画面を載せる器（docs/architecture.md「画面の構成」）。サイドバーと本体を持つ。
@@ -27,8 +28,6 @@ import {
 /** プリセットの書き出し・読み込みのブラウザ実装。条件のモーダルがどの画面でも使えるよう、シェルで渡す。 */
 const PRESET_FILE_IO: PresetFileIo = { saveJson: downloadJson, readText: readTextFile };
 
-/** スマホ幅の境目。CSS（shell.css・context-bar.css）の `@media (max-width: 760px)` と揃える。 */
-const MOBILE_QUERY = '(max-width: 760px)';
 
 function subscribeMobile(listener: () => void): () => void {
   const query = window.matchMedia(MOBILE_QUERY);

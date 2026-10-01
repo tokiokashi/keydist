@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { MOBILE_QUERY } from '#ui/theme/breakpoints.ts';
 
 /**
  * 解析設定の小窓（docs/architecture.md「ペイン」の「解析設定は小窓で開く」）。
@@ -33,8 +34,8 @@ interface Position {
   readonly y: number;
 }
 
-/** シートにする幅。`pane-frame.css`の`@media`と同じ値に揃える。 */
-const SHEET_QUERY = '(max-width: 640px)';
+/** シートにする幅。縦積み・見出し1行と同じスマホ幅の境目（`ui/theme/breakpoints.ts`）。 */
+const SHEET_QUERY = MOBILE_QUERY;
 /** シートの高さのこの割合を超えて引き下ろしたら閉じる。 */
 const CLOSE_RATIO = 1 / 3;
 /** これより速い下向きのフリック（px/ms）なら、距離が足りなくても閉じる。 */
