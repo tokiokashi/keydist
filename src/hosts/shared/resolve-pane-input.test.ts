@@ -17,7 +17,7 @@ const CATALOG: PaneCatalog = {
 };
 
 function setupFor(layoutId: string, shapeId = 'row-staggered'): Setup {
-  return { id: 'setup-1', layoutId, shapeId };
+  return { id: 'setup-1', number: 1, layoutId, shapeId };
 }
 
 function setupsMap(...setups: readonly Setup[]): ReadonlyMap<string, Setup> {

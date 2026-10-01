@@ -32,8 +32,8 @@ function source(setups: readonly Setup[] = []): TargetShareSource {
 const QWERTY: AnalysisTarget = { kind: 'layout', layoutId: 'qwerty' };
 const DVORAK: AnalysisTarget = { kind: 'layout', layoutId: 'dvorak' };
 const MINE: AnalysisTarget = { kind: 'layout', layoutId: 'user-1' };
-const setupA: Setup = { id: 'uuid-a', layoutId: 'qwerty', shapeId: 'row-staggered', label: '仕事用' };
-const setupB: Setup = { id: 'uuid-b', layoutId: 'dvorak', shapeId: 'row-staggered' };
+const setupA: Setup = { id: 'uuid-a', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered', label: '仕事用' };
+const setupB: Setup = { id: 'uuid-b', number: 2, layoutId: 'dvorak', shapeId: 'row-staggered' };
 
 test('組み込みの配列はidで、自作の配列とSetupは名前だけで載せる（内部のidを運ばない）', () => {
   const src = source([setupA, setupB]);

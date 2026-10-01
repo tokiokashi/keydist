@@ -29,7 +29,7 @@ const CATALOG = {
 const TARGET_A: AnalysisTarget = { kind: 'setup', setupId: 'setup-a' };
 
 function resolve(layoutId: string, text: string): ResolvedInput {
-  const setup: Setup = { id: 'setup-a', layoutId, shapeId: 'row-staggered' };
+  const setup: Setup = { id: 'setup-a', number: 1, layoutId, shapeId: 'row-staggered' };
   const result = resolveEngineInput({
     target: TARGET_A,
     setups: new Map([[setup.id, setup]]),

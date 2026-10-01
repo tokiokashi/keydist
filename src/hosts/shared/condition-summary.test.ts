@@ -29,7 +29,7 @@ const CATALOG = {
 const NO_USER_LAYOUTS = new Map();
 
 function setupFor(layoutId: string, shapeId = 'row-staggered'): Setup {
-  return { id: 'setup-1', layoutId, shapeId };
+  return { id: 'setup-1', number: 1, layoutId, shapeId };
 }
 
 test('traceConditionSummary: 既定値のみなら全項目がdefault originになる', () => {
@@ -455,7 +455,7 @@ function setupTargets(
   language: 'en' | 'ja',
   overrides: typeof EMPTY_SETTINGS_OVERRIDES = EMPTY_SETTINGS_OVERRIDES,
 ) {
-  const setups = specs.map((spec, i) => ({ id: `t${i + 1}`, ...spec }));
+  const setups = specs.map((spec, i) => ({ id: `t${i + 1}`, number: i + 1, ...spec }));
   return withOverrides(setups.map((setup) => {
     const input = resolveWith({ kind: 'setup', setupId: setup.id }, setups, overrides, language);
     return { key: setup.id, label: setup.id, rows: traceConditionSummary(input.cascade, CATALOG) };

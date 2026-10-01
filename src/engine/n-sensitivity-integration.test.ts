@@ -38,7 +38,7 @@ function resolve(
   overrides: SettingsCascadeOverrides = EMPTY_SETTINGS_OVERRIDES,
   language: 'en' | 'ja' = 'en',
 ): ResolvedInput {
-  const setup: Setup = { id: `setup-${layoutId}`, layoutId, shapeId: 'row-staggered' };
+  const setup: Setup = { id: `setup-${layoutId}`, number: 1, layoutId, shapeId: 'row-staggered' };
   const result = resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
     setups: new Map([[setup.id, setup]]),

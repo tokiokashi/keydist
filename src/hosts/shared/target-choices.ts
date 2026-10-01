@@ -10,9 +10,9 @@ import { analysisTargetKey, effectiveLabel, nameTargets, type AnalysisTarget, ty
  * 純粋な組み立てなので、ペインの枠（個別画面・Workspace）のどちらからも同じものを使う。
  */
 
-/** 手持ちのSetupの番号（1始まり、一覧の並び順）。表示名の衝突時の区別と候補の表示で揃えて使う。 */
+/** 手持ちのSetupの番号（作成時に固定した`Setup.number`）。表示名の衝突時の区別と候補の表示で揃えて使う。 */
 export function setupNumbersOf(setups: readonly Setup[]): ReadonlyMap<string, number> {
-  return new Map(setups.map((setup, index) => [setup.id, index + 1] as const));
+  return new Map(setups.map((setup) => [setup.id, setup.number] as const));
 }
 
 export type TargetChoiceGroupId = 'missing' | 'builtin-alphabet' | 'builtin-kana' | 'user' | 'setup';

@@ -38,7 +38,7 @@ const CATALOG = {
 };
 
 function resolutionFor(layoutId: string) {
-  const setup: Setup = { id: 'setup-1', layoutId, shapeId: 'row-staggered' };
+  const setup: Setup = { id: 'setup-1', number: 1, layoutId, shapeId: 'row-staggered' };
   const result = resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
     setups: new Map([[setup.id, setup]]),

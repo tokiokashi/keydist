@@ -26,6 +26,7 @@ export {
 } from './input-method.ts';
 export {
   createSetup,
+  nextSetupNumber,
   duplicateSetup,
   deleteSetup,
   relabelSetup,

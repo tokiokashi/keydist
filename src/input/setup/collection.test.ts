@@ -37,7 +37,7 @@ test('createSetup: 新しいSetupが追加され、上書きは変わらない',
   idCounter = 0;
   const library = createSetup(emptyLibrary(), 'qwerty', 'row-staggered', nextId);
   assert.equal(library.setups.length, 1);
-  assert.deepEqual(library.setups[0], { id: 'setup-1', layoutId: 'qwerty', shapeId: 'row-staggered' });
+  assert.deepEqual(library.setups[0], { id: 'setup-1', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' });
 });
 
 test('createSetup: ラベル付きで作れる', () => {
@@ -167,4 +167,30 @@ test('relabelSetup: 既に同じラベルを付け直しても何もしない（
   library = relabelSetup(library, id, undefined);
   const stillUndefined = relabelSetup(library, id, undefined);
   assert.equal(stillUndefined, library);
+});
+
+test('番号: 作成で付き、既存の最大＋1になる', () => {
+  idCounter = 0;
+  let library = createSetup(emptyLibrary(), 'qwerty', 'row-staggered', nextId);
+  library = createSetup(library, 'dvorak', 'row-staggered', nextId);
+  library = duplicateSetup(library, 'setup-1', nextId);
+  assert.deepEqual(library.setups.map((setup) => setup.number), [1, 2, 3]);
+});
+
+test('番号: 削除・ラベル変更で他のSetupの番号は変わらず、間の空いた番号は使わない', () => {
+  idCounter = 0;
+  let library = createSetup(emptyLibrary(), 'qwerty', 'row-staggered', nextId);
+  library = createSetup(library, 'dvorak', 'row-staggered', nextId);
+  library = createSetup(library, 'colemak', 'row-staggered', nextId);
+  library = deleteSetup(library, 'setup-2');
+  assert.deepEqual(library.setups.map((setup) => [setup.id, setup.number]), [['setup-1', 1], ['setup-3', 3]]);
+  library = relabelSetup(library, 'setup-3', '名前');
+  assert.equal(library.setups[1]!.number, 3);
+  // 最大（3）の次。削除で空いた2は使わない
+  library = createSetup(library, 'qwerty', 'row-staggered', nextId);
+  assert.deepEqual(library.setups.map((setup) => setup.number), [1, 3, 4]);
+  // 末尾（最大）を消した後に作ると、消した番号が再び付く（指す先が残っていないので衝突しない）
+  library = deleteSetup(library, 'setup-4');
+  library = createSetup(library, 'qwerty', 'row-staggered', nextId);
+  assert.deepEqual(library.setups.map((setup) => setup.number), [1, 3, 4]);
 });

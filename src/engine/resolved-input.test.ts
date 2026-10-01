@@ -18,7 +18,7 @@ const CATALOG = {
 const NO_USER_LAYOUTS = new Map();
 
 function setupFor(layoutId: string, shapeId = 'row-staggered'): Setup {
-  return { id: 'setup-1', layoutId, shapeId };
+  return { id: 'setup-1', number: 1, layoutId, shapeId };
 }
 
 test('ローマ字入力: qwerty + 日本語テキストはkunreiで組んだromajiTableを持つ', () => {
