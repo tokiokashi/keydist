@@ -21,6 +21,8 @@ const comparison = (id: string) => ({ id, analyzerId: 'comparison', binding: fix
 const group = (id: string, weight = 1) => ({ kind: 'group', paneIds: [id], weight });
 const column = (...children: unknown[]) => ({ kind: 'split', direction: 'column', weight: 1, children });
 
+const PANES = [flow('f'), comparison('c')];
+
 async function openWorkspace(
   page: Page,
   panes: readonly unknown[],
@@ -39,9 +41,35 @@ async function openWorkspace(
   await waitForHydration(page);
 }
 
-async function waitForDock(page: Page) {
-  await expect(page.locator('.dv-groupview').first()).toBeVisible({ timeout: 15_000 });
-  await page.waitForTimeout(500);
+/**
+ * 板と各ペインの枠の位置・大きさが、連続する描画フレームで変わらなくなるまで待つ。
+ * 固定の待ち時間は、負荷が小さければ無駄で、大きければ足りない。寸法が落ち着いたことそのものを条件にする。
+ */
+async function waitForSettledLayout(page: Page) {
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    const signature = () => [...document.querySelectorAll('.workspace-dock-area, .dv-groupview')]
+      .map((el) => {
+        const r = el.getBoundingClientRect();
+        return `${r.top}|${r.height}|${r.width}`;
+      }).join(',');
+    let last = signature();
+    let stable = 0;
+    const tick = () => {
+      const now = signature();
+      stable = now === last ? stable + 1 : 0;
+      last = now;
+      if (stable >= 10) resolve();
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }));
+}
+
+async function waitForDock(page: Page, paneCount = PANES.length) {
+  // 読み込みが重い時のために、表示待ちの枠は広めにとる（テスト全体の枠は既定の30秒。再読み込みを含む1本だけ広げてある）
+  await expect(page.locator('.dv-groupview')).toHaveCount(paneCount, { timeout: 20_000 });
+  await expect(page.locator('.dv-groupview').first()).toBeVisible();
+  await waitForSettledLayout(page);
 }
 
 const handle = (page: Page) => page.getByRole('separator', { name: 'ペインを並べる領域の高さ' });
@@ -75,13 +103,15 @@ async function dragHandle(page: Page, dy: number) {
   await page.mouse.up();
 }
 
-const PANES = [flow('f'), comparison('c')];
 const TWO = () => column(group('f', 3), group('c', 2));
 const WIDE = { width: 1440, height: 900 };
 /** 下限の和（2枚で53.6rem）が1画面に収まる高さ */
 const TALL = { width: 1440, height: 1200 };
 
 test('下端のつまみをドラッグすると板が伸び、ペインは比を保って伸びる。保存され、再読み込みでも残る', async ({ page }) => {
+  // ページを2回読み込む（最初と再読み込み）上にドラッグも挟むので、他の1回読みのテストと同じ30秒では、
+  // 並列の負荷で読み込みが遅い時に待ちの途中で枠が尽きる。待ち自体は条件待ちで、枠だけを2回分にする。
+  test.setTimeout(60_000);
   await openWorkspace(page, PANES, TWO(), WIDE);
   await waitForDock(page);
   const before = await areaHeight(page);
@@ -96,7 +126,7 @@ test('下端のつまみをドラッグすると板が伸び、ペインは比�
   expect(Math.abs((await storedBoardHeight(page))! - after / REM)).toBeLessThan(0.1);
 
   // 比を保つ（上の段 : 下の段 が、伸ばす前と同じ）
-  await page.waitForTimeout(400);
+  await waitForSettledLayout(page);
   const afterGroups = await groupHeights(page);
   expect(afterGroups[0]! / afterGroups[1]!).toBeCloseTo(beforeGroups[0]! / beforeGroups[1]!, 1);
   expect(afterGroups[0]!).toBeGreaterThan(beforeGroups[0]! + 100);
@@ -113,7 +143,7 @@ test('縮める時は、ペインの下限の和で止まる。1画面より小�
   // 下限の和 + 余白（縦3段）。1440×900の1画面より高い
   const minRem = floorOf('bigram-flow') + floorOf('n-sensitivity') + floorOf('comparison') + 0.5 * 2 + 1.5;
   await openWorkspace(page, [flow('f'), nSens('n'), comparison('c')], column(group('f', 2.6), group('n', 1.7), group('c', 1.5)), WIDE, { boardHeightRem: 110 });
-  await waitForDock(page);
+  await waitForDock(page, 3);
   expect(Math.abs((await areaHeight(page)) / REM - 110)).toBeLessThan(0.1);
 
   await dragHandle(page, -3000);
@@ -191,11 +221,12 @@ test('ページの下端までスクロールした状態で上へ動かすと�
   await waitForDock(page);
   for (const dy of [100, 40]) {
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-    await page.waitForTimeout(200);
+    await expect.poll(() => page.evaluate(() => window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 1)).toBe(true);
+    await waitForSettledLayout(page);
     const before = await areaHeight(page);
     await dragHandle(page, -dy);
     await expect.poll(async () => Math.round(before - (await areaHeight(page)))).toBeGreaterThan(dy - 3);
-    await page.waitForTimeout(300);
+    await waitForSettledLayout(page);
     expect(Math.abs(before - (await areaHeight(page)) - dy)).toBeLessThanOrEqual(2);
     // 通常のドラッグの後は、ページの高さの固定が戻っている
     expect(await pageMinHeight(page)).toBe('');
