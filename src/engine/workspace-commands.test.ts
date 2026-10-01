@@ -76,8 +76,8 @@ function withWorkspace(): State {
   return run(
     { assets: emptyAssets(), history: emptyCommandHistory() },
     createWorkspaceCommand('w1'),
-    addWorkspacePaneCommand('w1', pane('a')),
-    addWorkspacePaneCommand('w1', pane('b')),
+    addWorkspacePaneCommand('w1', pane('a'), undefined),
+    addWorkspacePaneCommand('w1', pane('b'), undefined),
   );
 }
 
@@ -86,16 +86,16 @@ test('作成・ペインの追加/複製/閉じる・名前の変更がUndo / Re
   const created = run(start, createWorkspaceCommand('w1'));
   assert.equal(created.assets.workspaces.length, 1);
 
-  const added = run(created, addWorkspacePaneCommand('w1', pane('a')));
+  const added = run(created, addWorkspacePaneCommand('w1', pane('a'), undefined));
   assert.equal(findWorkspace(added.assets.workspaces, 'w1')!.panes.length, 1);
 
-  const duplicated = run(added, duplicateWorkspacePaneCommand('w1', 'a', 'a2'));
+  const duplicated = run(added, duplicateWorkspacePaneCommand('w1', 'a', 'a2', undefined));
   assert.deepEqual(layoutPaneIds(findWorkspace(duplicated.assets.workspaces, 'w1')!.layout), ['a', 'a2']);
 
   const renamed = run(duplicated, renameWorkspaceCommand('w1', '比較'));
   assert.equal(findWorkspace(renamed.assets.workspaces, 'w1')!.name, '比較');
 
-  const closed = run(renamed, closeWorkspacePaneCommand('w1', 'a'));
+  const closed = run(renamed, closeWorkspacePaneCommand('w1', 'a', undefined));
   assert.deepEqual(findWorkspace(closed.assets.workspaces, 'w1')!.panes.map((p) => p.id), ['a2']);
 
   // 5つの操作（作成・追加・複製・名前の変更・閉じる）を1手ずつ戻す
@@ -117,7 +117,7 @@ test('作成・ペインの追加/複製/閉じる・名前の変更がUndo / Re
 
 test('Undoで消えたペインが、配置ごと元の位置へ戻る', () => {
   const state = withWorkspace();
-  const closed = run(state, closeWorkspacePaneCommand('w1', 'a'));
+  const closed = run(state, closeWorkspacePaneCommand('w1', 'a', undefined));
   const step = undo(closed.assets, closed.history);
   assert.deepEqual(step.assets.workspaces, state.assets.workspaces);
 });
@@ -127,8 +127,8 @@ test('存在しないWorkspace・ペインへの書き込みは履歴に積ま�
   const depth = state.history.undoStack.length;
   const next = run(
     state,
-    closeWorkspacePaneCommand('w1', 'none'),
-    closeWorkspacePaneCommand('none', 'a'),
+    closeWorkspacePaneCommand('w1', 'none', undefined),
+    closeWorkspacePaneCommand('none', 'a', undefined),
     renameWorkspaceCommand('w1', '   '),
     setWorkspacePaneOptionsCommand('w1', 'none', {}),
     deleteWorkspaceCommand('none'),
@@ -147,7 +147,7 @@ test('解析設定・対象・並びの書き込みは、同じ中身なら履�
     setWorkspacePaneOptionsCommand('w1', 'a', { x: 1 }),
     setWorkspacePaneBindingCommand('w1', 'a', followBinding(G)),
     setWorkspaceTargetCommand('w1', G, { kind: 'set', selection: initialMultiTargetSelection() }),
-    setWorkspaceLayoutCommand('w1', findWorkspace(once.assets.workspaces, 'w1')!.layout),
+    setWorkspaceLayoutCommand('w1', findWorkspace(once.assets.workspaces, 'w1')!.layout, undefined),
   );
   assert.equal(again.history.undoStack.length, depth);
   const changed = run(again, setWorkspacePaneBindingCommand('w1', 'a', { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'colemak-dh' } } }));

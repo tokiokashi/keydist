@@ -113,7 +113,7 @@ test('ペインの追加: 下限を割る形になる時だけ板を伸ばし、
   const second = run(first, addWorkspacePaneCommand('w', pane('b', 'short'), policy));
   assert.equal(findWorkspace(second.assets.workspaces, 'w')!.boardHeightRem, 32);
   // 方針を渡さなければ板には触れない
-  const plain = run(start, createWorkspaceCommand('w'), addWorkspacePaneCommand('w', pane('a', 'tall')));
+  const plain = run(start, createWorkspaceCommand('w'), addWorkspacePaneCommand('w', pane('a', 'tall'), undefined));
   assert.equal(findWorkspace(plain.assets.workspaces, 'w')!.boardHeightRem, undefined);
 
   // Undoは、ペインと板の高さをいっしょに戻す
@@ -128,9 +128,9 @@ test('並びの変更: サッシのドラッグ（形が同じ）は板も他の
   let state = run(
     start,
     createWorkspaceCommand('w'),
-    addWorkspacePaneCommand('w', pane('a', 'tall')),
-    addWorkspacePaneCommand('w', pane('b', 'mid')),
-    addWorkspacePaneCommand('w', pane('c', 'short')),
+    addWorkspacePaneCommand('w', pane('a', 'tall'), undefined),
+    addWorkspacePaneCommand('w', pane('b', 'mid'), undefined),
+    addWorkspacePaneCommand('w', pane('c', 'short'), undefined),
   );
   assert.equal(findWorkspace(state.assets.workspaces, 'w')!.boardHeightRem, undefined);
 
@@ -155,9 +155,9 @@ test('複製・閉じる: 複製は形が変わるので配り直して伸ばし
   let state = run(
     start,
     createWorkspaceCommand('w'),
-    addWorkspacePaneCommand('w', pane('a', 'tall')),
-    addWorkspacePaneCommand('w', pane('b', 'short')),
-    setWorkspaceLayoutCommand('w', column(group('a', 1), group('b', 1))),
+    addWorkspacePaneCommand('w', pane('a', 'tall'), undefined),
+    addWorkspacePaneCommand('w', pane('b', 'short'), undefined),
+    setWorkspaceLayoutCommand('w', column(group('a', 1), group('b', 1)), undefined),
   );
   state = run(state, duplicateWorkspacePaneCommand('w', 'b', 'b2', policy));
   const duplicated = findWorkspace(state.assets.workspaces, 'w')!;
@@ -189,4 +189,69 @@ test('板の高さの保存: 往復できる。壊れた値は診断つきで1�
     assert.ok(result.diagnostics.some((d) => d.path.endsWith('boardHeightRem')));
   }
   assert.equal(decodeWith(1e9).value[0]!.boardHeightRem, MAX_BOARD_HEIGHT_REM);
+});
+
+type Split = Extract<WorkspaceLayoutNode, { kind: 'split' }>;
+
+/** 縦の分割の重みを置き換える（サッシのドラッグ: 形は変えず、比だけ変える）。 */
+function withWeights(node: WorkspaceLayoutNode, weights: readonly number[]): WorkspaceLayoutNode {
+  assert.equal(node.kind, 'split');
+  return { ...node, children: (node as Split).children.map((child, i) => ({ ...child, weight: weights[i]! })) };
+}
+
+/** 5つのペインを置き、`layout`を形の変更として書いた状態（板は必要な高さまで伸びている）。 */
+function stacked(layout: WorkspaceLayoutNode) {
+  const start = { assets: emptyAssets(), history: emptyCommandHistory<KeydistAssets>() };
+  return run(
+    start,
+    createWorkspaceCommand('w'),
+    addWorkspacePaneCommand('w', pane('a', 'tall'), undefined),
+    addWorkspacePaneCommand('w', pane('b', 'mid'), undefined),
+    addWorkspacePaneCommand('w', pane('c', 'short'), undefined),
+    addWorkspacePaneCommand('w', pane('d', 'mid'), undefined),
+    addWorkspacePaneCommand('w', pane('e', 'short'), undefined),
+    setWorkspaceLayoutCommand('w', layout, policy),
+  );
+}
+const boardOf = (state: ReturnType<typeof stacked>) => findWorkspace(state.assets.workspaces, 'w')!.boardHeightRem!;
+
+test('人が狭めたペインは、下限を割っていても、次に形が変わる時の板を伸ばす理由にならない（追加・閉じる）', () => {
+  // 縦3段（a・b・c）+ 別の列（d・e）。まず形として書き、板が伸びた状態にする
+  const base = row(column(group('a'), group('b'), group('c')), column(group('d'), group('e'))) as Split;
+  let state = stacked(base);
+  const stored = boardOf(state);
+  // サッシで c と e を最小近くまで狭める（形は同じ。板は動かない）
+  const squeezed = row(withWeights(base.children[0]!, [0.5, 0.49, 0.01]), withWeights(base.children[1]!, [0.99, 0.01]));
+  state = run(state, setWorkspaceLayoutCommand('w', squeezed, policy));
+  assert.equal(boardOf(state), stored);
+
+  // 別の列のペインを閉じても、狭めた列は数えない
+  assert.equal(boardOf(run(state, closeWorkspacePaneCommand('w', 'd', policy))), stored);
+  // 狭めた列の中のペインを閉じても、残りの比は人が決めたまま（配り直さず、板も伸ばさない）
+  const closedInside = run(state, closeWorkspacePaneCommand('w', 'a', policy));
+  assert.equal(boardOf(closedInside), stored);
+  const left = (findWorkspace(closedInside.assets.workspaces, 'w')!.layout as Split).children[0] as Split;
+  assert.equal(layoutShapeKey(left), 'c[g(b) g(c)]');
+  assert.ok(left.children[1]!.weight < 0.1, '狭めた段の比は配り直されない');
+
+  // 新しいペインを足しても、足したペインの分だけ（狭めた列は数えない）
+  assert.equal(boardOf(run(state, addWorkspacePaneCommand('w', pane('f', 'tall'), policy))), stored);
+});
+
+test('人が狭めた列のペインを別の列へ移しても、板は移った先の必要高さだけで決まる', () => {
+  const base = row(column(group('a'), group('b')), column(group('c'), group('d'), group('e'))) as Split;
+  let state = stacked(base);
+  // 右の列は d を最小近くまで狭める（形は同じ）
+  state = run(state, setWorkspaceLayoutCommand('w', row(base.children[0]!, withWeights(base.children[1]!, [0.6, 0.01, 0.39])), policy));
+  const before = boardOf(state);
+  // e を左の列の a の下へ移す。左は a・e・b の3段になり、右は c・d が残る
+  const moved = row(column(group('a'), group('e'), group('b')), column(group('c', 0.6), group('d', 0.01)));
+  const workspace = findWorkspace(run(state, setWorkspaceLayoutCommand('w', moved, policy)).assets.workspaces, 'w')!;
+  // 左の3段の必要高さ（a30 + e10 + b20 + 間2 + 外周2 = 64）まで。狭めた d の比（0.01）で数千に伸びない
+  assert.ok(workspace.boardHeightRem! >= before);
+  assert.ok(workspace.boardHeightRem! <= 70, `板: ${workspace.boardHeightRem}`);
+  // 抜けた側（右の列）は比を配り直さない
+  const right = (workspace.layout as Split).children[1] as Split;
+  assert.equal(layoutShapeKey(right), 'c[g(c) g(d)]');
+  assert.ok(right.children[0]!.weight === 0.6 && right.children[1]!.weight === 0.01);
 });
