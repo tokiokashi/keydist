@@ -36,17 +36,26 @@ const setupSchema = v.strictObject({
 type RawSetup = Omit<Setup, 'number'> & { readonly number?: unknown };
 
 function isSetupNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 1;
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 1;
 }
 
 /**
  * 番号が無い・不正・他と重複するSetupに、並びの順で「その時点の最大＋1」を配る。
  * 番号を持つ最初のSetupはそのまま残す。保存済みの番号を動かさないので、読み込みで既存の番号は変わらない。
+ * 番号が無いだけ（旧い保存値）なら診断は積まない。不正な値・重複を置き換えた時は積む（捨てた値には診断）。
  */
-function assignMissingNumbers(raws: readonly RawSetup[]): Setup[] {
+function assignMissingNumbers(raws: readonly RawSetup[], path: string, diagnostics: CodecDiagnostic[]): Setup[] {
   const used = new Set<number>();
-  const kept = raws.map((raw) => {
-    if (!isSetupNumber(raw.number) || used.has(raw.number)) return undefined;
+  const kept = raws.map((raw, i) => {
+    if (raw.number === undefined) return undefined;
+    if (!isSetupNumber(raw.number)) {
+      diagnostics.push({ path: `${path}[${i}].number`, message: '番号として読めないため、振り直した' });
+      return undefined;
+    }
+    if (used.has(raw.number)) {
+      diagnostics.push({ path: `${path}[${i}].number`, message: `番号「${raw.number}」が重複しているため、振り直した` });
+      return undefined;
+    }
     used.add(raw.number);
     return raw.number;
   });
@@ -72,7 +81,7 @@ function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]
     seen.add(decoded.id);
     setups.push(decoded as RawSetup);
   });
-  return assignMissingNumbers(setups);
+  return assignMissingNumbers(setups, path, diagnostics);
 }
 
 /**

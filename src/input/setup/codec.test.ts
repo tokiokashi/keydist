@@ -154,5 +154,24 @@ test('decode: 番号が無い・不正・重複するSetupには、並びの順�
     ],
   });
   assert.equal(result.ok, true);
-  if (result.ok) assert.deepEqual(result.value.setups.map((setup) => [setup.id, setup.number]), [['a', 6], ['b', 5], ['c', 7], ['d', 8], ['e', 2]]);
+  if (result.ok) {
+    assert.deepEqual(result.value.setups.map((setup) => [setup.id, setup.number]), [['a', 6], ['b', 5], ['c', 7], ['d', 8], ['e', 2]]);
+    // 無いだけのa（旧い保存値）は診断なし。不正なcと重複したdだけ積む
+    assert.deepEqual(result.diagnostics.map((d) => d.path), ['setups[2].number', 'setups[3].number']);
+  }
+});
+
+test('decode: 2^53以上など安全な整数でない番号は不正として振り直し、診断を積む', () => {
+  const result = codec.decode({
+    version: 1,
+    setups: [
+      { id: 'a', number: 2 ** 53, layoutId: 'qwerty', shapeId: 'row-staggered' },
+      { id: 'b', number: 2 ** 53, layoutId: 'qwerty', shapeId: 'row-staggered' },
+    ],
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.deepEqual(result.value.setups.map((setup) => setup.number), [1, 2]);
+    assert.equal(result.diagnostics.length, 2);
+  }
 });
