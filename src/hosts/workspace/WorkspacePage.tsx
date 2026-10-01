@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
@@ -44,6 +44,7 @@ import { WorkspaceStack } from './WorkspaceStack.tsx';
 import { useStacked } from './use-stacked.ts';
 import { WorkspacePaneView } from './WorkspacePaneView.tsx';
 import { initialWorkspaceColorSlots } from '#engine/workspace-colors.ts';
+import { WorkspaceMaximizeDialog } from './WorkspaceMaximizeDialog.tsx';
 import './workspace.css';
 
 /** ペインの解析設定を間引いて資産へ反映する関数（`app`が組み立てる。ペインごとに別の待ち行列を持つ）。 */
@@ -76,6 +77,8 @@ export interface WorkspacePageProps {
   readonly onTextContentCommit: TextContentCommit;
   readonly onPaneOptionsCommit: PaneOptionsCommit;
   readonly tabs?: WorkspaceTabsMode;
+  /** 試作（#628）: 拡大表示の方式。`m`はモーダル、`d`はDockviewの最大化。 */
+  readonly maximize?: 'm' | 'd' | undefined;
   /**
    * このWorkspaceを複製する・削除する。書き込みと、その後どの画面へ移るかは組み立て側（`app`）が決める
    * （削除すると画面ごとの履歴が使えなくなるため。移り先と元に戻す手段もそちらが持つ）。
@@ -106,6 +109,7 @@ export function WorkspacePage({
   onTextContentCommit,
   onPaneOptionsCommit,
   tabs = 'show',
+  maximize = 'm',
   onDuplicate,
   onDelete,
 }: WorkspacePageProps) {
@@ -121,6 +125,7 @@ export function WorkspacePage({
     const analyzerOf = new Map((workspacePanes ?? []).map((pane) => [pane.id, pane.analyzerId]));
     return minBoardHeightRemOf(workspaceLayout, (paneId) => boardPolicy.floorRemOfAnalyzer(analyzerOf.get(paneId) ?? ''), boardPolicy);
   }, [workspaceLayout, workspacePanes, boardPolicy]);
+  const [maximizedId, setMaximizedId] = useState<string | undefined>(undefined);
   const flushLayoutRef = useRef<(() => void) | undefined>(undefined);
   const registerFlush = useCallback((flush: (() => void) | undefined) => {
     flushLayoutRef.current = flush;
@@ -221,7 +226,9 @@ export function WorkspacePage({
       flushPending();
       dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
     },
-  }), [env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, groupSummaries, colorSlots]);
+    maximizedPaneId: maximizedId,
+    maximizePane: setMaximizedId,
+  }), [maximizedId, env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, groupSummaries, colorSlots]);
 
   const titleOf = useCallback(
     (paneId: string) => {
@@ -321,7 +328,7 @@ export function WorkspacePage({
               <AddPaneMenu onAdd={addPane} />
             </div>
             {stacked ? (
-              <WorkspaceStack layout={workspace.layout} renderPane={renderPane} />
+              <WorkspaceStack layout={workspace.layout} renderPane={renderPane} maximizedPaneId={maximize === 'd' ? maximizedId : undefined} />
             ) : (
               <div className="workspace-stage">
                 <WorkspaceDock
@@ -331,6 +338,8 @@ export function WorkspacePage({
                   descriptionOf={descriptionOf}
                   renderPane={renderPane}
                   hideTabs={tabs === 'hide'}
+                  maximizedPaneId={maximize === 'd' ? maximizedId : undefined}
+                  onMaximizedChange={setMaximizedId}
                   onLayoutChange={(layout) => dispatch(setWorkspaceLayoutCommand(workspaceId, layout, boardPolicy))}
                   onPaneClosed={(paneId) => {
                     onPaneOptionsCommit.flush();
@@ -346,6 +355,11 @@ export function WorkspacePage({
           </>
         )}
       </fieldset>
+      {maximize === 'm' && maximizedId !== undefined && panesById.has(maximizedId) ? (
+        <WorkspaceMaximizeDialog title={titleOf(maximizedId)} onClose={() => setMaximizedId(undefined)}>
+          {renderPane(maximizedId)}
+        </WorkspaceMaximizeDialog>
+      ) : null}
     </div>
   );
 }

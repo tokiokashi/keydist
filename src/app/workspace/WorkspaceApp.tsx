@@ -23,7 +23,7 @@ import { usePaneOptionsCommit } from './use-pane-options-commit.ts';
  * 呼び出し側（route）は`workspaceId`をkeyにする。Workspaceを切り替えた時に、待っている間引き書き込みが
  * 元のWorkspaceへ書かれて確定するようにするため（切り替えでこのcomponentが作り直される）。
  */
-export function WorkspaceApp({ workspaceId, tabs }: { readonly workspaceId: string; readonly tabs: WorkspaceTabsMode }) {
+export function WorkspaceApp({ workspaceId, tabs, maximize }: { readonly workspaceId: string; readonly tabs: WorkspaceTabsMode; readonly maximize?: 'm' | 'd' | undefined }) {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => builtinPaneCatalog(), []);
   const holder = useMemo(() => ({ workspaceId }), [workspaceId]);
@@ -89,6 +89,7 @@ export function WorkspaceApp({ workspaceId, tabs }: { readonly workspaceId: stri
       onTextContentCommit={commitTextContent}
       onPaneOptionsCommit={commitPaneOptions}
       tabs={tabs}
+      maximize={maximize}
       onDuplicate={duplicate}
       onDelete={remove}
     />

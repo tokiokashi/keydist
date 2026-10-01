@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom';
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { PortalRootContext } from './portal-root.ts';
+import { useContext, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 
 /**
  * 解析設定の小窓（docs/architecture.md「ペイン」の「解析設定は小窓で開く」）。
@@ -78,6 +79,7 @@ function initialPosition(anchor: HTMLElement | null, element: HTMLElement | null
 }
 
 export function SettingsWindow({ open, onClose, paneName, anchor, onReset, children }: SettingsWindowProps) {
+  const portalRoot = useContext(PortalRootContext);
   const windowRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<Position | undefined>(undefined);
   const focusPendingRef = useRef(false);
@@ -259,6 +261,6 @@ export function SettingsWindow({ open, onClose, paneName, anchor, onReset, child
       </div>
       <div className="settings-window-body">{children}</div>
     </div>,
-    document.body,
+    portalRoot ?? document.body,
   );
 }

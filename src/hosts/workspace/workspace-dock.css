@@ -206,3 +206,28 @@
   container: pane-body / size;
   overflow: auto;
 }
+
+/* 試作（#628 案M）: 拡大表示のモーダル。 */
+.workspace-maximize {
+  width: calc(100vw - 4rem);
+  height: calc(100dvh - 4rem);
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.workspace-maximize::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+
+@media (max-width: 760px) {
+  .workspace-maximize {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+  }
+}

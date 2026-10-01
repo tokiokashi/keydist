@@ -55,6 +55,9 @@ export interface WorkspaceDockProps {
   readonly onPaneClosed: (paneId: string) => void;
   /** 待っている並びの書き込みを今すぐ行う関数を渡す（Undoの直前に呼ぶ）。 */
   readonly registerFlush: (flush: (() => void) | undefined) => void;
+  /** 試作（#628 案D）: 最大化しているペイン。 */
+  readonly maximizedPaneId?: string | undefined;
+  readonly onMaximizedChange?: (paneId: string | undefined) => void;
   /** 板の高さ [rem]。板は画面の高さとこの値の大きい方になる。無ければ1画面。 */
   readonly boardHeightRem: number | undefined;
   /** 配置が要る最小の板の高さ [rem]。下端のつまみで縮める時の下限になる。 */
@@ -257,6 +260,10 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
         scheduledAgainstRef.current = propsRef.current.layout;
         timerRef.current = setTimeout(() => commitLayout(), LAYOUT_COMMIT_DELAY_MS);
       }),
+      event.api.onDidMaximizedGroupChange((e) => {
+        // Dockview側で最大化が解けた（描き直し以外）時に、資産側の状態を合わせる
+        if (!e.isMaximized && !syncingRef.current) propsRef.current.onMaximizedChange?.(undefined);
+      }),
       event.api.onDidRemovePanel((panel) => {
         if (!syncingRef.current) propsRef.current.onPaneClosed(panel.id);
       }),
@@ -297,6 +304,24 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
     if (!changed && !divergedRef.current) return;
     divergedRef.current = false;
     applyLayout();
+  });
+
+  // 試作（#628 案D）: 最大化はDockviewの状態。描き直し（fromJSON）で解けるので、毎回の描画の後に合わせ直す
+  useEffect(() => {
+    const api = apiRef.current;
+    if (api === undefined) return;
+    const id = props.maximizedPaneId;
+    const panel = id === undefined ? undefined : api.getPanel(id);
+    syncingRef.current = true;
+    try {
+      if (panel !== undefined) {
+        if (!panel.group.api.isMaximized()) api.maximizeGroup(panel);
+      } else if (api.hasMaximizedGroup()) {
+        api.exitMaximizedGroup();
+      }
+    } finally {
+      syncingRef.current = false;
+    }
   });
 
   // つまみをドラッグしている間だけ、保存前の高さで見せる

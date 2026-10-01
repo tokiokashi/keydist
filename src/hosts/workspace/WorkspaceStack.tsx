@@ -17,14 +17,17 @@ import './workspace-stack.css';
 export function WorkspaceStack({
   layout,
   renderPane,
+  maximizedPaneId,
 }: {
   readonly layout: WorkspaceLayoutNode;
   readonly renderPane: (paneId: string) => ReactNode;
+  /** 試作（#628 案D）: 縦積みでは最大化の仕組みが無いので、他のペインを隠して代用する。 */
+  readonly maximizedPaneId?: string | undefined;
 }) {
   return (
     <div className="workspace-stack" data-workspace-stack="true">
       {layoutPaneIds(layout).map((paneId) => (
-        <section key={paneId} className="workspace-stack-pane" data-pane-id={paneId}>
+        <section key={paneId} className="workspace-stack-pane" data-pane-id={paneId} hidden={maximizedPaneId !== undefined && maximizedPaneId !== paneId}>
           {renderPane(paneId)}
         </section>
       ))}

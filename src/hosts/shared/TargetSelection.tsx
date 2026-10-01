@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom';
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { PortalRootContext } from './portal-root.ts';
+import { useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { analysisTargetKey, type AnalysisTarget } from '#input/setup/index.ts';
 import { filterTargetChoiceGroups, targetSummaryText, type TargetChoiceGroup } from './target-choices.ts';
 import './target-selection.css';
@@ -124,6 +125,7 @@ export function TargetSelection({
   onOpenChange,
   autoOpen,
 }: TargetSelectionProps) {
+  const portalRoot = useContext(PortalRootContext);
   const [innerOpen, setInnerOpen] = useState(false);
   const open = controlledOpen ?? innerOpen;
   const setOpen = (next: boolean) => {
@@ -427,7 +429,7 @@ export function TargetSelection({
             </div>
           </div>
         </>,
-        document.body,
+        portalRoot ?? document.body,
       ) : null}
     </div>
   );
