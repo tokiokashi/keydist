@@ -149,13 +149,15 @@ test('色を除いても、線は点の形と線種で区別でき、凡例の�
   expect(series[6]).toMatch(/\/5 3$/);
   expect(legend).toEqual(series);
 
-  // 反証: 色の属性を全部同じにしても、組の数は変わらない（色に頼っていない）
-  await page.locator('.n-sensitivity-svg').evaluate((svg) => {
-    for (const el of svg.querySelectorAll('[stroke], [fill]')) {
-      if (el.getAttribute('stroke') !== null && el.getAttribute('stroke') !== 'none') el.setAttribute('stroke', '#000');
-      if (el.getAttribute('fill') !== null && el.getAttribute('fill') !== 'none') el.setAttribute('fill', '#000');
-    }
-  });
+  // 色を全部同じにしても、形と線種の組の数は変わらない（色に頼っていない）。
+  // 色は`var(--target-color-N)`をstyleで渡しているので、変数の値を揃える。
+  const slots = Array.from({ length: 12 }, (_, i) => `--target-color-${i}: #888 !important;`).join(' ');
+  await page.addStyleTag({ content: `:root, :root * { ${slots} }` });
+  const strokes = await page.locator('[data-n-sensitivity-series] .n-sensitivity-line').evaluateAll(
+    (lines) => lines.map((line) => getComputedStyle(line).stroke),
+  );
+  expect(strokes).toHaveLength(7);
+  expect(new Set(strokes).size).toBe(1);
   expect(new Set((await read()).series).size).toBe(7);
 });
 
