@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivityExtracted, type NSensitivitySeries, type NSensitivitySeriesFailed } from './extract.ts';
 import { DEFAULT_N_SENSITIVITY_OPTIONS, type NSensitivityOptions } from './options.ts';
 import { bindOption, RadioOptionField } from '#ui/primitives/option-fields.tsx';
@@ -33,6 +33,21 @@ import './n-sensitivity-view.css';
 const DEFAULT_CHART_WIDTH = 640;
 const MIN_CHART_HEIGHT = 200;
 const MAX_CHART_HEIGHT = 360;
+/**
+ * Workspaceのペインでペインの高さに合わせる時の、図の高さ（凡例を図の下に置く分を除く）の下限。
+ * ペインの領域が低くても、線の間隔と軸の文字が読める高さは残す（CSS側の下限と揃える）。
+ */
+const MIN_FIT_CHART_HEIGHT = 170;
+/**
+ * ペインの高さに合わせる時の、図の縦横比（高さ÷幅）の上限。縦に長いペインで図が細長くなりすぎないよう、
+ * 高さは幅を超えない（1:1まで）。余った高さは図の下（表の見出しの下）の余白になる。
+ */
+const MAX_FIT_ASPECT = 1;
+/**
+ * ホストが本体の領域に高さを持たせている時（Workspaceのペイン）にCSSが立てる印（n-sensitivity-view.css）。
+ * 高さに合わせるかどうかは、container queryの結果を要素の計算済みスタイルから読んで知る。
+ */
+const FIT_FLAG = '--n-sensitivity-fit';
 /** 凡例をプロットの下に置く時の、図の左右の余白と、軸の見出しとの間隔。 */
 const LEGEND_BELOW_SIDE = 8;
 const LEGEND_BELOW_GAP = 6;
@@ -92,24 +107,30 @@ interface PlottedSeries {
 
 /**
  * 要素の幅を測る。測れるのはハイドレーション後なので、それまでは`null`（既定の幅で描く）。
+ * 高さは、領域がペインの残りの高さに合わせている時（`FIT_FLAG`が立つ時）だけ測る。
+ * 個別画面の領域の高さは図の高さで決まるので、測ると自分の高さを読み返してしまう。
  * 観測はアンマウントで必ず解除する。
  */
-function useMeasuredWidth(): [React.RefObject<HTMLDivElement | null>, number | null] {
+function useMeasuredSize(): [React.RefObject<HTMLDivElement | null>, { width: number; fitHeight: number | null } | null] {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [width, setWidth] = useState<number | null>(null);
+  const [size, setSize] = useState<{ width: number; fitHeight: number | null } | null>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
     const update = () => {
-      const next = Math.floor(el.clientWidth);
-      if (next > 0) setWidth(next);
+      const width = Math.floor(el.clientWidth);
+      if (width <= 0) return;
+      const fit = getComputedStyle(el).getPropertyValue(FIT_FLAG).trim() === '1';
+      const height = Math.floor(el.clientHeight);
+      const fitHeight = fit && height > 0 ? height : null;
+      setSize((prev) => (prev !== null && prev.width === width && prev.fitHeight === fitHeight ? prev : { width, fitHeight }));
     };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  return [ref, width];
+  return [ref, size];
 }
 
 let measureContext: CanvasRenderingContext2D | null | undefined;
@@ -156,8 +177,10 @@ function NSensitivityChart({
 }) {
   // 置かれた領域の幅をそのままviewBoxの幅にする（表示と等倍になり、文字が縮まない）。
   // 高さは2:1を基本に、狭い領域でも線の間隔が潰れない下限と、広い領域で伸びすぎない上限で止める。
-  const [wrapRef, measured] = useMeasuredWidth();
-  const CHART_WIDTH = measured ?? DEFAULT_CHART_WIDTH;
+  // Workspaceのペインでは、幅ではなくペインの残りの高さに合わせる（下限は置く）。
+  const [wrapRef, measured] = useMeasuredSize();
+  const CHART_WIDTH = measured?.width ?? DEFAULT_CHART_WIDTH;
+  const fitHeight = measured?.fitHeight ?? null;
   const baseHeight = Math.min(MAX_CHART_HEIGHT, Math.max(MIN_CHART_HEIGHT, Math.round(CHART_WIDTH / 2)));
   const plotWidth = CHART_WIDTH - MARGIN.left - MARGIN.right;
   const tickStep = plotWidth / (N_SENSITIVITY_RANGE.length - 1) < MIN_TICK_SPACING ? 2 : 1;
@@ -174,24 +197,49 @@ function NSensitivityChart({
   // 凡例は図の中の空いた所に置く。線の実際の位置から空きを調べるので、線と重ならない。
   // 対象が多くて（または図が狭くて）どこにも収まらない時は、プロットの下に並べて図を高くする
   // （線を隠すより、図が高い方を選ぶ）。
-  const CHART_HEIGHT = baseHeight;
-  const plotHeight = CHART_HEIGHT - MARGIN.top - MARGIN.bottom;
-  const yScale = (y: number) => MARGIN.top + plotHeight - ((y - yRange.lo) / ySpan) * plotHeight;
   const measure = useLegendMeasure(wrapRef);
   const labelRoom = CHART_WIDTH - LEGEND_BELOW_SIDE * 2 - LEGEND_PADDING * 2 - LEGEND_SWATCH_WIDTH - LEGEND_SWATCH_GAP;
   const legendLabels = fitLabels(series.map((s) => s.label), measure, undefined, labelRoom);
-  const legend = placeLegend(
-    { x: MARGIN.left, y: MARGIN.top, width: plotWidth, height: plotHeight },
-    series.map((s) => s.points.map((p) => ({ x: xScale(p.windowSize), y: yScale(p.y) }))),
-    legendLabels,
-    measure,
-    { x: LEGEND_BELOW_SIDE, y: CHART_HEIGHT + LEGEND_BELOW_GAP, width: CHART_WIDTH - LEGEND_BELOW_SIDE * 2 },
-  );
-  const svgHeight = legend.corner === 'below' ? legend.rect.y + legend.rect.height + LEGEND_BELOW_GAP : CHART_HEIGHT;
+  const layoutFor = (chartHeight: number) => {
+    const plotHeight = chartHeight - MARGIN.top - MARGIN.bottom;
+    const yScale = (y: number) => MARGIN.top + plotHeight - ((y - yRange.lo) / ySpan) * plotHeight;
+    const legend = placeLegend(
+      { x: MARGIN.left, y: MARGIN.top, width: plotWidth, height: plotHeight },
+      series.map((s) => s.points.map((p) => ({ x: xScale(p.windowSize), y: yScale(p.y) }))),
+      legendLabels,
+      measure,
+      { x: LEGEND_BELOW_SIDE, y: chartHeight + LEGEND_BELOW_GAP, width: CHART_WIDTH - LEGEND_BELOW_SIDE * 2 },
+    );
+    const svgHeight = legend.corner === 'below' ? legend.rect.y + legend.rect.height + LEGEND_BELOW_GAP : chartHeight;
+    return { chartHeight, yScale, legend, svgHeight };
+  };
+  let layout = layoutFor(baseHeight);
+  if (fitHeight !== null) {
+    // 領域の高さを図と、図の下に並べる凡例で分け合う。凡例が下に出るなら、その分を引いて組み直す。
+    layout = layoutFor(Math.max(MIN_FIT_CHART_HEIGHT, fitHeight));
+    if (layout.legend.corner === 'below') {
+      const below = layout.svgHeight - layout.chartHeight;
+      layout = layoutFor(Math.max(MIN_FIT_CHART_HEIGHT, fitHeight - below));
+    }
+  }
+  const { chartHeight: CHART_HEIGHT, yScale, legend } = layout;
+  // 領域に合わせる時の描画の高さは領域の高さそのもの（等倍）。下限は領域の min-height が保つので、
+  // 領域が描画より低くなることはない。
+  const svgHeight = fitHeight === null ? layout.svgHeight : Math.max(fitHeight, layout.svgHeight);
+  // 領域の高さは幅から決まる上限（縦横比の頭打ち）と、凡例が図の下に出る時の下限で挟む。どちらも測った高さに
+  // 依らない値にする。測った高さから決めると、測るたびに領域の高さが変わって描き直しが止まらなくなる。
+  let wrapStyle: React.CSSProperties | undefined;
+  if (fitHeight !== null) {
+    const floor = layoutFor(MIN_FIT_CHART_HEIGHT);
+    wrapStyle = {
+      maxHeight: Math.round(CHART_WIDTH * MAX_FIT_ASPECT),
+      minHeight: floor.legend.corner === 'below' ? floor.svgHeight : undefined,
+    };
+  }
   const yTickLabels = formatYTicks(scale === 'relative', yTickValues);
 
   return (
-    <div className="n-sensitivity-chart" ref={wrapRef}>
+    <div className="n-sensitivity-chart" ref={wrapRef} style={wrapStyle}>
     <svg
       className="n-sensitivity-svg"
       viewBox={`0 0 ${CHART_WIDTH} ${svgHeight}`}
@@ -286,6 +334,58 @@ function NSensitivityChart({
 }
 
 /**
+ * 各Nの実測値の表。見出し（summary）で開閉できる。個別画面は開いて始め、Workspaceのペイン
+ * （領域がペインの高さに合わせている時）は畳んで始める。図が主役で、表は数値が要る時に開けば足りるため。
+ * 開閉は標準の`<details>`なので、畳んでいてもキーボード（Tab・Enter・Space）と読み上げで届く。
+ * 初期の状態は表が出た時に一度だけ決め、以後の開閉は利用者の操作に任せる。
+ */
+function NSensitivityTable({ plotted }: { plotted: readonly PlottedSeries[] }) {
+  const ref = useRef<HTMLDetailsElement | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    // 畳むかは、領域がペインの高さに合わせているかで決まり、印は大きさを持つ要素でしか読めない。
+    // 裏のタブにある間はDOMから外れていて大きさが無いので、最初に大きさが来た時まで待つ。
+    const decide = () => {
+      if (el.offsetWidth === 0) return false;
+      if (getComputedStyle(el).getPropertyValue(FIT_FLAG).trim() === '1') el.open = false;
+      return true;
+    };
+    if (decide()) return undefined;
+    const observer = new ResizeObserver(() => {
+      if (decide()) observer.disconnect();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <details className="n-sensitivity-table-details" ref={ref} open>
+      <summary>各Nの実測値 [u]</summary>
+      <div className="n-sensitivity-table-scroll">
+        <table className="n-sensitivity-table" aria-label="各Nの実測値 [u]">
+          <thead>
+            <tr>
+              <th scope="col">対象</th>
+              {N_SENSITIVITY_RANGE.map((n) => <th scope="col" key={n}>N={n}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {plotted.map((s) => (
+              <tr key={s.targetKey}>
+                <th scope="row" title={s.fullName}>{s.label}</th>
+                {s.points.map((p) => (
+                  <td key={p.windowSize}>{p.totalUnits.toFixed(1)} u</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  );
+}
+
+/**
  * N感度の本体（凡例を図の中に持つチャートと実測値の表）。メンバー単位の失敗は図の下に行で出す。
  * 対象が空の時はホストが選ぶボタンを出し、本体は呼ばれない。全メンバーが失敗した時は失敗の行だけが残る。
  */
@@ -336,29 +436,7 @@ export function NSensitivityBody({
         </ul>
       ) : null}
 
-      {plotted.length > 0 ? (
-      <div className="n-sensitivity-table-scroll">
-        <table className="n-sensitivity-table">
-          <caption>各Nの実測値 [u]</caption>
-          <thead>
-            <tr>
-              <th scope="col">対象</th>
-              {N_SENSITIVITY_RANGE.map((n) => <th scope="col" key={n}>N={n}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {plotted.map((s) => (
-              <tr key={s.targetKey}>
-                <th scope="row" title={s.fullName}>{s.label}</th>
-                {s.points.map((p) => (
-                  <td key={p.windowSize}>{p.totalUnits.toFixed(1)} u</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      ) : null}
+      {plotted.length > 0 ? <NSensitivityTable plotted={plotted} /> : null}
     </section>
   );
 }
