@@ -271,15 +271,34 @@ test('裏のタブで開いたN感度も、表示した時に余りが無けれ�
 
 const svgHeight = (page: Page) => page.locator('.n-sensitivity-svg').first().evaluate((svg) => svg.getBoundingClientRect().height);
 
+/** 図の viewBox（描画する大きさの宣言）。 */
+const viewBoxOf = (page: Page) => page.locator('.n-sensitivity-svg').first().evaluate((svg) => svg.getAttribute('viewBox'));
+
+/**
+ * ビューポートを変えた後、図が新しい並びの大きさへ作り直され、描画の大きさと領域の高さが揃うまで待つ。
+ * 高さが正かどうかでは待てない。変える前の図も高さが正なので、作り直しの前に通り抜ける。
+ * また作り直しは複数段で収束する（図の高さが領域の高さに追いつくまで数フレームかかる）。
+ * 途中で記録を始めると、収束の途中を拾って「値が2つある」と誤って振動と読む。
+ */
+async function waitForRelayout(page: Page, previousViewBox: string | null) {
+  await expect.poll(() => page.locator('.n-sensitivity-svg').first().evaluate((svg, previous) => {
+    const viewBox = svg.getAttribute('viewBox')!;
+    const box = svg.getBoundingClientRect();
+    const [, , w, h] = viewBox.split(' ').map(Number);
+    const wrapHeight = svg.parentElement!.clientHeight;
+    return viewBox !== previous && Math.abs(box.width - w!) < 1.5 && Math.abs(box.height - h!) < 1.5 && Math.abs(wrapHeight - h!) < 1.5 && box.height > 100;
+  }, previousViewBox)).toBe(true);
+}
+
 test('縦積みの幅（760px以下）では表が開いて始まり、広げ直しても図の高さが0にならず振動しない', async ({ page }) => {
   await openWorkspace(page, [nsens], group('n'), { width: 700, height: 900 });
   expect(await page.locator('details.n-sensitivity-table-details').evaluate((el: HTMLDetailsElement) => el.open)).toBe(true);
   expect((await svgHeight(page))).toBeGreaterThan(100);
   expect(new Set(await recordFrames(page)).size).toBe(1);
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await expect.poll(async () => (await svgHeight(page))).toBeGreaterThan(100);
-  expect(new Set(await recordFrames(page)).size).toBe(1);
-  await page.setViewportSize({ width: 700, height: 900 });
-  await expect.poll(async () => (await svgHeight(page))).toBeGreaterThan(100);
-  expect(new Set(await recordFrames(page)).size).toBe(1);
+  for (const size of [{ width: 1440, height: 900 }, { width: 700, height: 900 }]) {
+    const before = await viewBoxOf(page);
+    await page.setViewportSize(size);
+    await waitForRelayout(page, before);
+    expect(new Set(await recordFrames(page)).size).toBe(1);
+  }
 });
