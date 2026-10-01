@@ -39,6 +39,7 @@ import { WorkspaceDock } from './WorkspaceDock.tsx';
 import { WorkspaceName } from './WorkspaceName.tsx';
 import { WorkspaceStack } from './WorkspaceStack.tsx';
 import { useStacked } from './use-stacked.ts';
+import { DEFAULT_FLOOR, PANE_FLOOR, parseBoardMode } from './board-height.ts';
 import { WorkspacePaneView } from './WorkspacePaneView.tsx';
 import './workspace.css';
 
@@ -108,6 +109,8 @@ export function WorkspacePage({
   const workspace = findWorkspace(assets.workspaces, workspaceId);
   // スマホ幅ではDockviewを外し、ペインを縦に積む。資産の配置は読むだけなので、戻ると元の並びで描き直される
   const stacked = useStacked();
+  // 【試作 #833】板の高さの案（?board=a|b|c）
+  const boardMode = typeof location === 'undefined' ? 'main' : parseBoardMode(location.search);
   const flushLayoutRef = useRef<(() => void) | undefined>(undefined);
   const registerFlush = useCallback((flush: (() => void) | undefined) => {
     flushLayoutRef.current = flush;
@@ -249,7 +252,7 @@ export function WorkspacePage({
   }
 
   return (
-    <div className="workspace-page" data-stacked={stacked || undefined}>
+    <div className="workspace-page" data-stacked={stacked || undefined} data-board={boardMode === 'main' ? undefined : boardMode}>
       <ContextBar
         disabled={!assetsReady}
         history={pageHistory}
@@ -313,6 +316,9 @@ export function WorkspacePage({
                     dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
                   }}
                   registerFlush={registerFlush}
+                  boardMode={boardMode}
+                  storageKey={workspaceId}
+                  floorOf={(paneId) => PANE_FLOOR[panesById.get(paneId)?.analyzerId ?? ''] ?? DEFAULT_FLOOR}
                 />
               </div>
             )}

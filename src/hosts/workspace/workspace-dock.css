@@ -132,3 +132,46 @@
   container: pane-body / size;
   overflow: auto;
 }
+
+/*
+ * 【試作 #833】板の高さを自動で伸ばす案（?board=a|b|c）。板の高さはJSがインラインで決め、ページが縦にスクロールする。
+ * 今の作り（画面の高さに固定）は、これらの規則が効かない（data-boardが付かない）。
+ */
+.workspace-page[data-board] {
+  height: auto;
+  min-height: 100dvh;
+}
+
+.workspace-page[data-board] .workspace-stage {
+  display: block;
+  flex: none;
+}
+
+.workspace-page[data-board] .workspace-dock-area {
+  flex: none;
+}
+
+/* 板の下端のハンドル（案A・B）。板の高さを直接変える。 */
+.workspace-board-handle {
+  position: relative;
+  height: 14px;
+  margin-inline: auto;
+  max-width: var(--workspace-board-max-width);
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.workspace-board-handle::after {
+  content: '';
+  position: absolute;
+  inset: 5px 50% auto;
+  width: 48px;
+  height: 4px;
+  margin-left: -24px;
+  border-radius: 2px;
+  background: var(--border-strong);
+}
+
+.workspace-board-handle:hover::after {
+  background: var(--accent);
+}

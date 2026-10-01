@@ -3,9 +3,11 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type HTMLAttributes,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
 import {
@@ -20,6 +22,15 @@ import 'dockview-react/dist/styles/dockview.css';
 import { sameLayout, type WorkspaceLayoutNode } from '#engine/workspace-layout.ts';
 import { fromDockviewLayout, PANE_COMPONENT, toDockviewLayout } from './layout-adapter.ts';
 import './workspace-dock.css';
+import {
+  followSash,
+  shapeKey,
+  requiredHeight,
+  resizeBoard,
+  ROW_MIN,
+  stackDepth,
+  type BoardMode,
+} from './board-height.ts';
 
 /**
  * ペインを並べる面。Dockviewを使うのはこのファイルだけで、資産（保存データ）とペインの中身は
@@ -48,6 +59,12 @@ export interface WorkspaceDockProps {
   readonly onPaneClosed: (paneId: string) => void;
   /** 待っている並びの書き込みを今すぐ行う関数を渡す（Undoの直前に呼ぶ）。 */
   readonly registerFlush: (flush: (() => void) | undefined) => void;
+  /** 【試作 #833】板の高さの案。`main`は今の作り（画面の高さに固定）。 */
+  readonly boardMode?: BoardMode;
+  /** 【試作 #833】ペインの高さの下限（画素）。 */
+  readonly floorOf?: (paneId: string) => number;
+  /** 【試作 #833】板の高さを保存する先の名前。 */
+  readonly storageKey?: string;
 }
 
 /** 並びの変更を資産へ書くまでの間引き（ミリ秒）。ドラッグ・リサイズの途中を書かない。 */
@@ -55,6 +72,8 @@ const LAYOUT_COMMIT_DELAY_MS = 250;
 
 /** 領域の大きさが測れない時（描画の直後）の仮の大きさ。重みの比だけが意味を持つ。 */
 const FALLBACK_SIZE = { width: 1000, height: 600 } as const;
+
+type SerializedDockviewLike = ReturnType<DockviewApi['toJSON']>;
 
 const PaneRenderContext = createContext<(paneId: string) => ReactNode>(() => null);
 
@@ -131,10 +150,71 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
   const syncedSizeRef = useRef<{ readonly width: number; readonly height: number } | undefined>(undefined);
   const disposablesRef = useRef<{ dispose: () => void }[]>([]);
 
+  // ---- 【試作 #833】板の高さ ----
+  const boardMode: BoardMode = props.boardMode ?? 'main';
+  const grows = boardMode !== 'main';
+  const storeName = `keydist:proto833:${props.storageKey ?? 'ws'}`;
+  const [avail, setAvail] = useState(0);
+  const [stored, setStored] = useState<number | undefined>(() => {
+    if (typeof localStorage === 'undefined') return undefined;
+    const raw = localStorage.getItem(storeName);
+    return raw === null ? undefined : Number(raw);
+  });
+  const floorOf = props.floorOf ?? (() => 360);
+  const need = Math.round(requiredHeight(props.layout, floorOf));
+  // 板の高さ。案Cはペインの数だけから決める（保存しない）。案A・Bは保存値（無ければ必要な高さ）。
+  const boardHeight = !grows
+    ? undefined
+    : boardMode === 'c'
+      ? Math.max(avail, stackDepth(props.layout) * ROW_MIN)
+      : Math.max(avail, stored ?? need);
+  const boardHeightRef = useRef<number | undefined>(undefined);
+  boardHeightRef.current = boardHeight;
+  const availRef = useRef(0);
+  availRef.current = avail;
+  const storedRef = useRef<number | undefined>(undefined);
+  storedRef.current = stored;
+  const snapshotRef = useRef<SerializedDockviewLike | undefined>(undefined);
+
+  const persistHeight = useCallback((value: number) => {
+    setStored(value);
+    try { localStorage.setItem(storeName, String(Math.round(value))); } catch { /* 試作 */ }
+  }, [storeName]);
+
+  // 画面に残っている高さ（板の上端から画面の下端まで）。ウィンドウの大きさで変わる
+  useLayoutEffect(() => {
+    if (!grows) return undefined;
+    const measure = () => {
+      const el = containerRef.current;
+      if (el === null) return;
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      setAvail(Math.max(300, Math.floor(window.innerHeight - top)));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [grows]);
+
+  // 案A・B: 最初は「画面の高さと必要な高さの大きい方」を保存値にする。以後は、ペインの出入り・分割で
+  // 形が変わった時だけ、今の高さでは下限を割るなら伸ばす（縮めるのは人の操作だけ。比の変化では動かさない）
+  const shape = shapeKey(props.layout);
+  const lastShapeRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (boardMode !== 'a' && boardMode !== 'b') return;
+    if (avail === 0) return;
+    if (storedRef.current === undefined) {
+      persistHeight(Math.max(avail, need));
+    } else if (lastShapeRef.current !== undefined && lastShapeRef.current !== shape && need > storedRef.current) {
+      persistHeight(need);
+    }
+    lastShapeRef.current = shape;
+  }, [boardMode, avail, shape, need, persistHeight]);
+
   const areaSize = useCallback(() => {
     const rect = containerRef.current?.getBoundingClientRect();
-    return rect !== undefined && rect.width > 0 && rect.height > 0
-      ? { width: rect.width, height: rect.height }
+    const height = boardHeightRef.current ?? rect?.height;
+    return rect !== undefined && rect.width > 0 && height !== undefined && height > 0
+      ? { width: rect.width, height }
       : FALLBACK_SIZE;
   }, []);
 
@@ -190,7 +270,28 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
       const { layout, paneIds, onLayoutChange } = propsRef.current;
       // 待っている間に資産の配置が変わっていたら、その変更が正。人の操作の結果で上書きしない
       if (layout !== scheduledAgainstRef.current) return;
-      const current = fromDockviewLayout(api.toJSON(), paneIds);
+      let json = api.toJSON();
+      // 案A: サッシより下のペインは動かさず、板の高さを追従させる
+      const before = snapshotRef.current;
+      snapshotRef.current = undefined;
+      if (boardMode === 'a' && before !== undefined) {
+        // Dockviewの内側の高さ（grid.height）は、板の高さから外周の余白の分だけ小さい
+        const chrome = (boardHeightRef.current ?? before.grid.height) - before.grid.height;
+        const fixed = followSash(before, json, availRef.current - chrome);
+        if (fixed !== undefined) {
+          syncingRef.current = true;
+          try {
+            api.fromJSON(fixed.json, { reuseExistingPanels: true });
+          } finally {
+            syncingRef.current = false;
+          }
+          boardHeightRef.current = fixed.height + chrome;
+          syncedSizeRef.current = { width: size.width, height: fixed.height + chrome };
+          persistHeight(fixed.height + chrome);
+          json = fixed.json;
+        }
+      }
+      const current = fromDockviewLayout(json, paneIds);
       if (current !== undefined && !sameLayout(current, layout)) {
         divergedRef.current = true;
         onLayoutChange(current);
@@ -198,7 +299,7 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
     } catch {
       // 破棄済みのDockviewを読んだ時（画面を離れる途中）。書かなくてよい
     }
-  }, [samePaneSet, areaSize]);
+  }, [samePaneSet, areaSize, boardMode, persistHeight]);
 
   const flush = useCallback(() => {
     if (timerRef.current === undefined) return;
@@ -233,7 +334,12 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
   }, [applyLayout, commitLayout]);
 
   useEffect(() => {
-    const onDown = () => { pointerDownRef.current = true; };
+    const onDown = (event: Event) => {
+      pointerDownRef.current = true;
+      if (boardMode === 'a' && (event.target as Element | null)?.closest?.('.dv-sash') && apiRef.current !== undefined) {
+        snapshotRef.current = apiRef.current.toJSON();
+      }
+    };
     const onUp = () => { pointerDownRef.current = false; };
     const container = containerRef.current;
     container?.addEventListener('pointerdown', onDown, true);
@@ -244,7 +350,7 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
       window.removeEventListener('pointerup', onUp, true);
       window.removeEventListener('pointercancel', onUp, true);
     };
-  }, []);
+  }, [boardMode]);
 
   useEffect(() => () => {
     clearTimeout(timerRef.current);
@@ -267,9 +373,51 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
     applyLayout();
   });
 
+  const startHandleDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const startY = event.clientY;
+    const startHeight = boardHeightRef.current ?? 0;
+    const target = event.currentTarget;
+    target.setPointerCapture(event.pointerId);
+    const move = (e: PointerEvent) => {
+      const next = Math.max(availRef.current, Math.round(startHeight + e.clientY - startY));
+      if (boardMode === 'a' && apiRef.current !== undefined) {
+        // 案A: 増減は最後の段が受ける（他の段は動かさない）
+        syncingRef.current = true;
+        try {
+          const current = apiRef.current.toJSON();
+          apiRef.current.fromJSON(resizeBoard(current, next - ((boardHeightRef.current ?? current.grid.height) - current.grid.height)), { reuseExistingPanels: true });
+        } finally {
+          syncingRef.current = false;
+        }
+      }
+      boardHeightRef.current = next;
+      persistHeight(next);
+    };
+    const up = () => {
+      target.removeEventListener('pointermove', move);
+      target.removeEventListener('pointerup', up);
+      target.removeEventListener('pointercancel', up);
+      // 案Aは並びが変わったので資産へ書く。案Bは比のまま（高さだけ変わる）
+      if (boardMode === 'a') {
+        scheduledAgainstRef.current = propsRef.current.layout;
+        syncedSizeRef.current = areaSize();
+        timerRef.current = setTimeout(() => commitLayout(true), 0);
+      }
+    };
+    target.addEventListener('pointermove', move);
+    target.addEventListener('pointerup', up);
+    target.addEventListener('pointercancel', up);
+  };
+
   return (
     <PaneRenderContext.Provider value={props.renderPane}>
-      <div ref={containerRef} className="workspace-dock-area" data-hide-tabs={props.hideTabs || undefined}>
+      <div
+        ref={containerRef}
+        className="workspace-dock-area"
+        data-hide-tabs={props.hideTabs || undefined}
+        style={boardHeight === undefined ? undefined : { height: boardHeight }}
+      >
         <DockviewReact
           theme={WORKSPACE_THEME}
           components={COMPONENTS}
@@ -280,6 +428,15 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
           onReady={onReady}
         />
       </div>
+      {boardMode === 'a' || boardMode === 'b' ? (
+        <div
+          className="workspace-board-handle"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="板の高さを変える"
+          onPointerDown={startHandleDrag}
+        />
+      ) : null}
     </PaneRenderContext.Provider>
   );
 }
