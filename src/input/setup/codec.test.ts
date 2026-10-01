@@ -175,3 +175,20 @@ test('decode: 2^53以上など安全な整数でない番号は不正として�
     assert.equal(result.diagnostics.length, 2);
   }
 });
+
+test('decode: 前の要素を捨てた後でも、番号の診断pathは入力の位置を指す', () => {
+  const result = codec.decode({
+    version: 1,
+    setups: [
+      { id: 'x' },
+      { id: 'a', number: 'z', layoutId: 'qwerty', shapeId: 'row-staggered' },
+      { id: 'b', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' },
+    ],
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.deepEqual(result.value.setups.map((setup) => [setup.id, setup.number]), [['a', 2], ['b', 1]]);
+    assert.ok(result.diagnostics.some((d) => d.path === 'setups[1].number'));
+    assert.ok(!result.diagnostics.some((d) => d.path === 'setups[0].number'));
+  }
+});

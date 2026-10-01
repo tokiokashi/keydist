@@ -35,6 +35,12 @@ const setupSchema = v.strictObject({
 
 type RawSetup = Omit<Setup, 'number'> & { readonly number?: unknown };
 
+/** 入力配列での位置を持たせる。診断のpathは、捨てた要素を除いた後の位置ではなく入力の位置で作るため。 */
+interface IndexedRawSetup {
+  readonly raw: RawSetup;
+  readonly index: number;
+}
+
 function isSetupNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 1;
 }
@@ -44,23 +50,23 @@ function isSetupNumber(value: unknown): value is number {
  * 番号を持つ最初のSetupはそのまま残す。保存済みの番号を動かさないので、読み込みで既存の番号は変わらない。
  * 番号が無いだけ（旧い保存値）なら診断は積まない。不正な値・重複を置き換えた時は積む（捨てた値には診断）。
  */
-function assignMissingNumbers(raws: readonly RawSetup[], path: string, diagnostics: CodecDiagnostic[]): Setup[] {
+function assignMissingNumbers(indexed: readonly IndexedRawSetup[], path: string, diagnostics: CodecDiagnostic[]): Setup[] {
   const used = new Set<number>();
-  const kept = raws.map((raw, i) => {
+  const kept = indexed.map(({ raw, index }) => {
     if (raw.number === undefined) return undefined;
     if (!isSetupNumber(raw.number)) {
-      diagnostics.push({ path: `${path}[${i}].number`, message: '番号として読めないため、振り直した' });
+      diagnostics.push({ path: `${path}[${index}].number`, message: '番号として読めないため、振り直した' });
       return undefined;
     }
     if (used.has(raw.number)) {
-      diagnostics.push({ path: `${path}[${i}].number`, message: `番号「${raw.number}」が重複しているため、振り直した` });
+      diagnostics.push({ path: `${path}[${index}].number`, message: `番号「${raw.number}」が重複しているため、振り直した` });
       return undefined;
     }
     used.add(raw.number);
     return raw.number;
   });
   let next = Math.max(0, ...used) + 1;
-  return raws.map((raw, i) => ({ ...raw, number: kept[i] ?? next++ }));
+  return indexed.map(({ raw }, i) => ({ ...raw, number: kept[i] ?? next++ }));
 }
 
 function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): Setup[] {
@@ -70,7 +76,7 @@ function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]
     return [];
   }
   const seen = new Set<string>();
-  const setups: RawSetup[] = [];
+  const setups: IndexedRawSetup[] = [];
   raw.forEach((candidate, index) => {
     const decoded = decodeDroppingInvalid(setupSchema, candidate, `${path}[${index}]`, diagnostics);
     if (decoded === undefined) return;
@@ -79,7 +85,7 @@ function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]
       return;
     }
     seen.add(decoded.id);
-    setups.push(decoded as RawSetup);
+    setups.push({ raw: decoded as RawSetup, index });
   });
   return assignMissingNumbers(setups, path, diagnostics);
 }

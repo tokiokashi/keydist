@@ -177,7 +177,7 @@ test('番号: 作成で付き、既存の最大＋1になる', () => {
   assert.deepEqual(library.setups.map((setup) => setup.number), [1, 2, 3]);
 });
 
-test('番号: 削除・ラベル変更で他のSetupの番号は変わらず、空いた番号は再利用しない', () => {
+test('番号: 削除・ラベル変更で他のSetupの番号は変わらず、間の空いた番号は使わない', () => {
   idCounter = 0;
   let library = createSetup(emptyLibrary(), 'qwerty', 'row-staggered', nextId);
   library = createSetup(library, 'dvorak', 'row-staggered', nextId);
