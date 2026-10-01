@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -55,6 +56,13 @@ export interface WorkspaceDockProps {
   readonly onPaneClosed: (paneId: string) => void;
   /** 待っている並びの書き込みを今すぐ行う関数を渡す（Undoの直前に呼ぶ）。 */
   readonly registerFlush: (flush: (() => void) | undefined) => void;
+  /**
+   * 拡大表示しているペイン（Dockviewの最大化）。保存しない見た目だけの状態で、持ち主は呼び出し側。
+   * 拡大している間は、板の高さを保存値ではなく1画面にし、下端のつまみを出さない。
+   */
+  readonly maximizedPaneId: string | undefined;
+  /** Dockview側で最大化が解けた、または人がEscapeで戻した。 */
+  readonly onMaximizedChange: (paneId: string | undefined) => void;
   /** 板の高さ [rem]。板は画面の高さとこの値の大きい方になる。無ければ1画面。 */
   readonly boardHeightRem: number | undefined;
   /** 配置が要る最小の板の高さ [rem]。下端のつまみで縮める時の下限になる。 */
@@ -68,6 +76,28 @@ const LAYOUT_COMMIT_DELAY_MS = 250;
 
 /** 領域の大きさが測れない時（描画の直後）の仮の大きさ。重みの比だけが意味を持つ。 */
 const FALLBACK_SIZE = { width: 1000, height: 600 } as const;
+
+/** 入力欄・選択欄での押下か（Escapeは入力の取り消しに使われるので、拡大は解かない）。 */
+function isTypingTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
+}
+
+/**
+ * Escapeで先に閉じるべきものが開いているか。開閉の状態は各部品が持つので、画面に出ているものをDOMで見る。
+ * `aria-expanded="true"`は、メニュー・解析設定・対象の選択・条件など、開いている間だけ付くボタンの印。
+ */
+const OVERLAY_SELECTOR = 'dialog[open], .settings-window, .target-selection-panel, .info-popover, [aria-expanded="true"]';
+function hasOpenOverlay(): boolean {
+  return document.querySelector(OVERLAY_SELECTOR) !== null;
+}
+
+/** フォーカスが無ければ（bodyにある時）、そのペインの⋯のボタンへ置く。 */
+function restoreFocus(api: DockviewApi | undefined, paneId: string): void {
+  const active = document.activeElement;
+  if (active !== null && active !== document.body) return;
+  const button = api?.getPanel(paneId)?.group.element.querySelector<HTMLElement>('.pane-frame-menu .pane-menu-button');
+  button?.focus({ preventScroll: true });
+}
 
 const PaneRenderContext = createContext<(paneId: string) => ReactNode>(() => null);
 
@@ -257,6 +287,10 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
         scheduledAgainstRef.current = propsRef.current.layout;
         timerRef.current = setTimeout(() => commitLayout(), LAYOUT_COMMIT_DELAY_MS);
       }),
+      event.api.onDidMaximizedGroupChange((e) => {
+        // Dockview側で最大化が解けた（描き直し以外）時に、呼び出し側の状態を合わせる
+        if (!e.isMaximized && !syncingRef.current) propsRef.current.onMaximizedChange(undefined);
+      }),
       event.api.onDidRemovePanel((panel) => {
         if (!syncingRef.current) propsRef.current.onPaneClosed(panel.id);
       }),
@@ -299,9 +333,68 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
     applyLayout();
   });
 
+  // 最大化はDockviewの状態で、描き直し（fromJSON）で解ける。毎回の描画の後に、呼び出し側の状態へ合わせ直す。
+  // 合わせる間の通知は人の操作ではないので、並びの書き込みにも状態の更新にも使わない
+  const maximizedPaneId = props.maximizedPaneId;
+  useEffect(() => {
+    const api = apiRef.current;
+    if (api === undefined) return;
+    const panel = maximizedPaneId === undefined ? undefined : api.getPanel(maximizedPaneId);
+    syncingRef.current = true;
+    try {
+      if (panel !== undefined) {
+        if (!panel.group.api.isMaximized()) api.maximizeGroup(panel);
+      } else if (api.hasMaximizedGroup()) {
+        api.exitMaximizedGroup();
+      }
+    } finally {
+      syncingRef.current = false;
+    }
+  });
+
+  // 拡大の出入りでページのスクロールを扱う。拡大したら板の上端が画面に入るよう先頭へ戻し、戻したら元の位置へ。
+  // 拡大すると板が1画面に縮んでページが短くなり、ブラウザがスクロール位置を切り詰める。元の位置は、その前（描画中）に覚える
+  const scrollBeforeMaximizeRef = useRef<number | undefined>(undefined);
+  const wasMaximizedInRenderRef = useRef(false);
+  const isMaximized = maximizedPaneId !== undefined;
+  if (isMaximized && !wasMaximizedInRenderRef.current) scrollBeforeMaximizeRef.current = window.scrollY;
+  wasMaximizedInRenderRef.current = isMaximized;
+  useLayoutEffect(() => {
+    if (!isMaximized) return undefined;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    return () => {
+      const before = scrollBeforeMaximizeRef.current;
+      scrollBeforeMaximizeRef.current = undefined;
+      if (before !== undefined) window.scrollTo({ top: before, behavior: 'instant' });
+    };
+  }, [isMaximized]);
+
+  // Escapeで元に戻す。ただし拡大中に開いたもの（メニュー・解析設定の小窓・対象の選択・条件のモーダル・ⓘの説明）が
+  // 開いている間は、それらを閉じるだけにする（内側から1枚ずつ）。各部品は自分のEscapeで閉じるので、
+  // それより先に（captureで）開いているかを見る。閉じた後に見ると、閉じたのと同じ押下で拡大まで解けてしまう
+  useEffect(() => {
+    if (maximizedPaneId === undefined) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing) return;
+      if (isTypingTarget(event.target) || hasOpenOverlay()) return;
+      propsRef.current.onMaximizedChange(undefined);
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [maximizedPaneId]);
+
+  // 戻した後（メニュー・Escape・他の操作のどれでも）、フォーカスが行き場を失っていれば、拡大していたペインの⋯へ置く
+  const wasMaximizedRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const before = wasMaximizedRef.current;
+    wasMaximizedRef.current = maximizedPaneId;
+    if (before !== undefined && maximizedPaneId === undefined) restoreFocus(apiRef.current, before);
+  }, [maximizedPaneId]);
+
   // つまみをドラッグしている間だけ、保存前の高さで見せる
   const [boardPreview, setBoardPreview] = useState<{ readonly rem: number | undefined } | null>(null);
-  const shownBoardHeightRem = boardPreview === null ? props.boardHeightRem : boardPreview.rem;
+  // 拡大している間は保存値を使わず、1画面（保存が無い時と同じ）にする。保存値そのものは書き換えない
+  const shownBoardHeightRem = isMaximized ? undefined : boardPreview === null ? props.boardHeightRem : boardPreview.rem;
 
   const tabContext = useMemo(
     () => ({ hideTabs: props.hideTabs, descriptionOf: props.descriptionOf }),
@@ -315,6 +408,7 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
           ref={containerRef}
           className="workspace-dock-area"
           data-hide-tabs={props.hideTabs || undefined}
+          data-maximized={isMaximized || undefined}
           style={shownBoardHeightRem === undefined ? undefined : ({ '--workspace-board-height': `${shownBoardHeightRem}rem` } as CSSProperties)}
         >
           <DockviewReact
@@ -326,12 +420,14 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
             announcements={false}
             onReady={onReady}
           />
-          <BoardResizeHandle
-            areaRef={containerRef}
-            minRem={props.minBoardHeightRem}
-            onPreview={setBoardPreview}
-            onCommit={props.onBoardHeightChange}
-          />
+          {isMaximized ? null : (
+            <BoardResizeHandle
+              areaRef={containerRef}
+              minRem={props.minBoardHeightRem}
+              onPreview={setBoardPreview}
+              onCommit={props.onBoardHeightChange}
+            />
+          )}
         </div>
       </TabContext.Provider>
     </PaneRenderContext.Provider>
