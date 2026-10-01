@@ -1,7 +1,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -15,6 +15,14 @@ function accepts(message: string): boolean {
   const file = join(dir, 'COMMIT_EDITMSG');
   writeFileSync(file, message);
   return spawnSync('bash', [HOOK, file]).status === 0;
+}
+
+/** フックを通したあとのメッセージと、通ったかどうかを返す */
+function rewritten(message: string): { ok: boolean; text: string } {
+  const file = join(dir, 'COMMIT_EDITMSG');
+  writeFileSync(file, message);
+  const ok = spawnSync('bash', [HOOK, file]).status === 0;
+  return { ok, text: readFileSync(file, 'utf8') };
 }
 
 const ja = (n: number) => 'あ'.repeat(n);
@@ -64,5 +72,46 @@ describe('commit-msgフック', { skip: hasBash ? false : 'bashが無い' }, () 
 
   test('件名を書き忘れた時に本文を件名と読み違えない', () => {
     assert.ok(!accepts('\nfeat(ui): 本文の側に書いてしまった'));
+  });
+
+  test('セッションURLの行(Claude-Session:)を落として、ほかの行は残す', () => {
+    const r = rewritten(
+      'docs: 規約を足す\n\n理由を書く\n\nCo-Authored-By: Someone <a@example.com>\nClaude-Session: https://example.com/session_x\n',
+    );
+    assert.ok(r.ok);
+    assert.ok(!/^Claude-Session:/m.test(r.text));
+    assert.ok(r.text.includes('Co-Authored-By: Someone'));
+    assert.ok(r.text.includes('理由を書く'));
+  });
+
+  test('Merge など素通しするメッセージからも落とす', () => {
+    const r = rewritten("Merge branch 'main' into feat/x\n\nClaude-Session: https://example.com/session_x\n");
+    assert.ok(r.ok);
+    assert.ok(!r.text.includes('Claude-Session:'));
+  });
+
+  test('行頭でない Claude-Session: は消さない', () => {
+    const r = rewritten('docs: 説明を足す\n\n本文に Claude-Session: という語を書く\n');
+    assert.ok(r.ok);
+    assert.ok(r.text.includes('本文に Claude-Session: という語を書く'));
+  });
+
+  test('UTF-8ロケールで不正なバイト列を含む行も、セッションの行と一緒に消さない', () => {
+    // -a が無いと GNU grep がメッセージ全体をバイナリと判定し、該当行を黙って落とす
+    const file = join(dir, 'COMMIT_EDITMSG');
+    writeFileSync(
+      file,
+      Buffer.concat([
+        Buffer.from('fix: a\n\nbad '),
+        Buffer.from([0xff, 0xfe]),
+        Buffer.from(' byte\nafter\nClaude-Session: https://example.com/x\n'),
+      ]),
+    );
+    const status = spawnSync('bash', [HOOK, file], { env: { ...process.env, LC_ALL: 'C.UTF-8' } }).status;
+    const out = readFileSync(file);
+    assert.equal(status, 0);
+    assert.ok(out.includes(Buffer.from([0x62, 0x61, 0x64, 0x20, 0xff, 0xfe])), '不正なバイト列を含む行が残る');
+    assert.ok(out.includes(Buffer.from('after\n')));
+    assert.ok(!out.includes(Buffer.from('Claude-Session:')));
   });
 });

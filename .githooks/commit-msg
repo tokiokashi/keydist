@@ -5,6 +5,17 @@ set -u
 
 msg_file="$1"
 
+# セッションURLの行(Claude-Session:)を落とす。公開リポジトリの履歴に残さないため(AGENTS.md)。
+# 規約の検査より前に書き換える。Merge などの素通しするメッセージにも効かせるため。
+# CI は PR の各コミットを一時ファイルに書いて掛けるので、ここでは落とすだけで弾かない
+# (push 済みのブランチは書き換えない運用で、弾くと直せないため)
+# -a: UTF-8 ロケールで不正なバイト列を含む行があると GNU grep がバイナリ扱いにして、
+# その行を出さずに終了コード 0 を返す。-a で常にテキストとして読み、他の行を黙って失わない
+if grep -aq '^Claude-Session:' "$msg_file"; then
+  stripped=$(mktemp) && grep -av '^Claude-Session:' "$msg_file" > "$stripped" && cat "$stripped" > "$msg_file"
+  rm -f "$stripped"
+fi
+
 # コメント行を落とす。件名は 1 行目、2 行目は空行でなければならない。
 # 空行を飛ばして探すと、件名を書き忘れた時に本文の 1 行目を件名と誤認する
 body=$(grep -v '^#' "$msg_file")
