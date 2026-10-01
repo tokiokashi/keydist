@@ -438,3 +438,37 @@ button.context-chip:hover:not(:disabled),
     overflow-y: auto;
   }
 }
+
+/*
+ * Workspaceの文脈バー（Workspace名がある）が狭い時は、2段にする。
+ *   1段目: ☰ / Workspace名 / ⋯ ………… 元に戻す・やり直す
+ *   2段目: テキストのチップ（余る幅を全部取る）/ 物理配列のチップ
+ * 名前と⋯を同じ行に足すと、1行ではテキストのチップが潰れて、文字も▾も見えなくなる
+ * （390pxで18px。タップの最小の大きさ24pxを下回る）。テキストのチップが潰れないよう、チップは次の段へ送る。
+ * 段が増えても、狭い時の切り替えは上と同じ境目（53.5rem）で行う（中間段階は置かない）。個別画面（Workspace名が無い）は1行のまま。
+ *
+ * 2段目へ送るのは、テキストのチップの基準の幅を「1段目いっぱいから物理配列のチップ分を引いた幅」にして、
+ * 1段目に入りきらなくするため。物理配列のチップ（アイコンだけ、約2rem）と間隔が2段目の残りに収まる。
+ * Workspace名は長くても1段目の幅を超えないよう、⋯の分（2.5rem）を残して省略する。
+ */
+@container context-bar (max-width: 53.5rem) {
+  .context-bar-items:has(.workspace-name) {
+    flex-wrap: wrap;
+    row-gap: 0.35rem;
+  }
+
+  .context-bar-items:has(.workspace-name) .workspace-name {
+    flex: 0 1 auto;
+    max-width: min(16rem, calc(100% - 2.5rem));
+  }
+
+  .context-bar-items:has(.workspace-name) .text-chip-root {
+    flex: 1 1 calc(100% - 3.5rem);
+  }
+
+  /* ☰と右端の操作は1段目の高さ（2rem）に揃える（2段分の真ん中に浮かせない）。 */
+  .context-bar:has(.workspace-name) > .shell-sidebar-toggle,
+  .context-bar:has(.workspace-name) .context-bar-actions {
+    align-self: flex-start;
+  }
+}

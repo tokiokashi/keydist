@@ -5,6 +5,7 @@ import { waitForHydration } from './hydration-helper.ts';
  * Workspaceのペインの見出し（Dockviewのタブの帯）の余白。
  * 見出しの文字の左端が、帯の左端から本文の文字と同じ距離にあること（±1px）を確かめる。
  * 背景に文字が埋まって見えないように、明暗・幅・タブの数（1つだけ／複数）の全部で見る。
+ * スマホ幅（760px以下）はDockviewを使わずペインを縦に積むので、ここでは見ない（狭い側は800pxで見る）。
  */
 
 const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
@@ -60,8 +61,8 @@ async function measure(page: Page) {
 const CASES = [
   { name: '明るいテーマ・パソコン幅', theme: 'light', width: 1440, rootFontSize: undefined },
   { name: '暗いテーマ・パソコン幅', theme: 'dark', width: 1440, rootFontSize: undefined },
-  { name: '明るいテーマ・スマホ幅', theme: 'light', width: 390, rootFontSize: undefined },
-  { name: '暗いテーマ・スマホ幅', theme: 'dark', width: 390, rootFontSize: undefined },
+  { name: '明るいテーマ・狭いパソコン幅', theme: 'light', width: 800, rootFontSize: undefined },
+  { name: '暗いテーマ・狭いパソコン幅', theme: 'dark', width: 800, rootFontSize: undefined },
   // 文字サイズを変えると本文の余白（rem）も動く。見出しの側も同じ基準で動くこと
   { name: 'ルートの文字サイズ20px', theme: 'light', width: 1440, rootFontSize: 20 },
   { name: 'ルートの文字サイズ24px', theme: 'light', width: 1440, rootFontSize: 24 },
