@@ -7,7 +7,7 @@ import {
 import { decodeAnalysisTarget, encodeAnalysisTarget } from '#input/setup/index.ts';
 import { initialTextSelection } from '#input/text/selection.ts';
 import { decodeTextSelectionState, encodeTextSelectionState } from '#input/text/selection-codec.ts';
-import { decodeMultiTargetSelection, encodeMultiTargetSelection } from './multi-target-selection-codec.ts';
+import { decodeTargetSet, encodeTargetSet } from './multi-target-selection-codec.ts';
 import {
   DEFAULT_WORKSPACE_NAME,
   followBinding,
@@ -22,6 +22,7 @@ import {
   type WorkspacePane,
   type WorkspacePaneTarget,
 } from './workspace.ts';
+import { assignWorkspaceColors } from './workspace-colors.ts';
 import { normalizeLayout, type WorkspaceLayout, type WorkspaceLayoutNode } from './workspace-layout.ts';
 
 /**
@@ -34,7 +35,10 @@ import { normalizeLayout, type WorkspaceLayout, type WorkspaceLayoutNode } from 
  * - 並びが壊れている・ペインと食い違っている時は、ペインを失わないよう`normalizeLayout`で直す
  * - 今のアプリが知らないAnalyzerのペインは捨てずに残す（表示側が使えないペインとして出す）
  *
- * 版3は、ペインの対象の持ち方（従う組 / 固定）と、連動の組ごとの対象を持つ形。版2以前は読まない（互換は守らない。AGENTS.md）。
+ * 版3は、ペインの対象の持ち方（従う組 / 固定）と、連動の組ごとの対象を持ち、色の番号をWorkspaceが全ペインの和に配って持つ形
+ * （#630）。集合ごとに色の番号を持っていた頃の値は、集合の`colorSlots`を読まず、色を配り直す（版は上げない。
+ * 版を上げても読めない値が増えるだけで、既存のペイン・組・配置は同じ形のまま読めるため）。版2以前は読まない
+ * （互換は守らない。AGENTS.md）。
  */
 
 /** 並びの入れ子の深さの上限。壊れた・悪意のあるデータで再帰を深くしないため。 */
@@ -90,7 +94,7 @@ function decodePaneTarget(raw: unknown, path: string, diagnostics: CodecDiagnost
     return target === undefined ? undefined : { kind: 'single', target };
   }
   if (raw.kind === 'set') {
-    const selection = decodeMultiTargetSelection(raw.selection ?? {}, `${path}.selection`, diagnostics);
+    const selection = decodeTargetSet(raw.selection ?? {}, `${path}.selection`, diagnostics);
     return selection === undefined ? undefined : { kind: 'set', selection };
   }
   diagnostics.push({ path: `${path}.kind`, message: '対象の種類が読めないためペインを捨てた' });
@@ -138,7 +142,7 @@ function decodeWorkspaceTarget(raw: unknown, path: string, diagnostics: CodecDia
     return initial;
   }
   const singleTarget = raw.single === undefined ? undefined : decodeAnalysisTarget(raw.single, `${path}.single`, diagnostics);
-  const set = raw.set === undefined ? undefined : decodeMultiTargetSelection(raw.set, `${path}.set`, diagnostics);
+  const set = raw.set === undefined ? undefined : decodeTargetSet(raw.set, `${path}.set`, diagnostics);
   return { single: { target: singleTarget }, set: set ?? initial.set };
 }
 
@@ -246,13 +250,19 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
       diagnostics.push({ path: `${path}.boardHeightRem`, message: '板の高さが読めないため1画面へ戻した' });
     }
   }
-  return { id: raw.id, name, text, groups, panes, layout, ...(boardHeightRem === undefined ? {} : { boardHeightRem }) };
+  // 色の番号は、読めた分を持ち越し、無い・壊れた・和に無い対象は配り直す（診断は出さない。色は表示だけの値）
+  const known = new Map<string, number>();
+  if (isRecord(raw.colorSlots)) {
+    for (const [key, slot] of Object.entries(raw.colorSlots)) if (typeof slot === 'number') known.set(key, slot);
+  }
+  const colorSlots = assignWorkspaceColors({ groups, panes, colorSlots: {} }, known);
+  return { id: raw.id, name, text, groups, panes, layout, colorSlots, ...(boardHeightRem === undefined ? {} : { boardHeightRem }) };
 }
 
 function encodePaneTarget(target: WorkspacePaneTarget): Record<string, unknown> {
   return target.kind === 'single'
     ? { kind: 'single', target: encodeAnalysisTarget(target.target) }
-    : { kind: 'set', selection: encodeMultiTargetSelection(target.selection) };
+    : { kind: 'set', selection: encodeTargetSet(target.selection) };
 }
 
 function encodePane(pane: WorkspacePane): Record<string, unknown> {
@@ -303,10 +313,11 @@ export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAsset
         id: group.id,
         target: {
           ...(group.target.single.target === undefined ? {} : { single: encodeAnalysisTarget(group.target.single.target) }),
-          set: encodeMultiTargetSelection(group.target.set),
+          set: encodeTargetSet(group.target.set),
         },
       })),
       panes: workspace.panes.map(encodePane),
+      colorSlots: { ...workspace.colorSlots },
       ...(workspace.layout === undefined ? {} : { layout: encodeLayoutNode(workspace.layout) }),
       ...(workspace.boardHeightRem === undefined ? {} : { boardHeightRem: workspace.boardHeightRem }),
     })),

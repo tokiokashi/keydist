@@ -1,5 +1,6 @@
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from './commands.ts';
+import { multiColorSlots } from './multi-target-selection.ts';
 import {
   addWorkspacePane,
   closeWorkspacePane,
@@ -52,11 +53,15 @@ export function createWorkspaceCommand(id: string, name?: string): Command<Keydi
   return (current) => {
     const library = current.workspaces;
     if (library.some((workspace) => workspace.id === id)) return { kind: 'no-op' };
-    const target: WorkspaceTarget = { single: current.singleTargetSelection, set: current.multiTargetSelection };
+    const selection = current.multiTargetSelection;
+    const target: WorkspaceTarget = {
+      single: current.singleTargetSelection,
+      set: { targets: selection.targets, baseline: selection.baseline },
+    };
     return {
       kind: 'applied',
       label: 'Workspaceを作成する',
-      changes: { workspaces: createWorkspace(library, () => id, name, target).library },
+      changes: { workspaces: createWorkspace(library, () => id, name, target, new Map(Object.entries(multiColorSlots(selection)))).library },
     };
   };
 }

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import type { EngineSetMemberInput } from '#engine/request.ts';
 import type { ResolvedInputResult } from '#engine/resolved-input.ts';
-import type { MultiTargetSelection } from '#engine/multi-target-selection.ts';
+import type { ColorSlotsByKey, TargetSet } from '#engine/multi-target-selection.ts';
 import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget } from '#input/setup/index.ts';
 import { nSensitivityAnalyzer, type NSensitivityRowContext } from '#analyzers/n-sensitivity/definition.tsx';
 import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
@@ -30,7 +30,9 @@ import type { PaneChrome, PaneEnvironment } from './pane-environment.ts';
 export interface NSensitivityPaneProps {
   readonly env: PaneEnvironment;
   readonly chrome?: PaneChrome;
-  readonly selection: MultiTargetSelection;
+  readonly selection: TargetSet;
+  /** 対象に配った色の番号（対象のkey → 番号）。配るのは器（個別画面は集合、Workspaceは全ペインの和）。 */
+  readonly colorSlots: ColorSlotsByKey;
   readonly onTargetsChange: (next: readonly AnalysisTarget[]) => void;
   readonly options: NSensitivityOptions;
   readonly onOptionsChange: (next: NSensitivityOptions) => void;
@@ -76,6 +78,7 @@ export function NSensitivityPane({
   env,
   chrome = {},
   selection,
+  colorSlots,
   onTargetsChange,
   options,
   onOptionsChange,
@@ -84,7 +87,7 @@ export function NSensitivityPane({
 }: NSensitivityPaneProps) {
   const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
-  const { choiceGroups, targets, colorByKey } = useSetTargetSelection(selection, setups, catalog);
+  const { choiceGroups, targets, colorByKey } = useSetTargetSelection(selection, colorSlots, setups, catalog);
 
   // 対象の選択を開いているか。空の時のペインのボタンからも開くので、ここで持つ。
   const [selectionOpen, setSelectionOpen] = useState(false);

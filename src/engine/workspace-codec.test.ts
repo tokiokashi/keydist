@@ -35,7 +35,6 @@ const setPane = (id: string): WorkspacePane => ({
       selection: {
         targets: [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'setup', setupId: 's1' }],
         baseline: { kind: 'layout', layoutId: 'qwerty' },
-        colorSlots: [0, 1],
       },
     },
   },
@@ -51,7 +50,7 @@ function sample(): WorkspaceLibrary {
   library = withWorkspaceTarget(library, 'w1', G, { kind: 'single', target: { kind: 'layout', layoutId: 'colemak-dh' } });
   library = withWorkspaceTarget(library, 'w1', G, {
     kind: 'set',
-    selection: { targets: [{ kind: 'layout', layoutId: 'qwerty' }], baseline: undefined, colorSlots: [0] },
+    selection: { targets: [{ kind: 'layout', layoutId: 'qwerty' }], baseline: undefined },
   });
   library = withPaneInNewLinkGroup(library, 'w1', 'p1', 'link-2', { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } });
   library = createWorkspace(library, () => 'w2').library;

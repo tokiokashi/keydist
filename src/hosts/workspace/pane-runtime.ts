@@ -1,6 +1,7 @@
 import { findWorkspaceAnalyzer } from './analyzer-registry.ts';
 import { summarizePaneTarget, type LinkGroupSummary } from './group-summary.ts';
 import type { LinkGroup, WorkspacePane, WorkspacePaneTarget } from '#engine/workspace.ts';
+import type { WorkspaceColorSlots } from '#engine/workspace-colors.ts';
 import type { PaneChrome, PaneEnvironment, PaneTargetBindingControl } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneMenuItem } from '#hosts/shared/PaneHeaderParts.tsx';
 
@@ -22,6 +23,8 @@ export interface WorkspacePaneRuntime {
    * （隣の従うペインも一緒に変わる）。
    */
   readonly setPaneTarget: (paneId: string, target: WorkspacePaneTarget) => void;
+  /** 対象の色の番号。全ペインの対象の和に配ったもので、同じ対象はどのペインでも同じ色になる。 */
+  readonly colorSlots: WorkspaceColorSlots;
   /** 連動の組。従うペインの対象の持ち主で、番号は並びの順（1から）。 */
   readonly groups: readonly LinkGroup[];
   /** `groups`と同じ並びの、組ごとの対象の要約（連動のメニューで組を見分ける）。 */
