@@ -38,6 +38,7 @@ Claude Code は `CLAUDE.md` が無いプロジェクトでは `AGENTS.md` を読
 - 作業前に `git status --short` で未コミット変更を確認し、変更が無ければ `main` で `git pull --ff-only origin main` を実行してから作業ブランチを切る
 - clone 直後に一度だけ `git config core.hooksPath .githooks` を実行する
 - `main` に直接 push しない。ブランチを切って PR を出す
+- コミットメッセージと PR 本文に、セッションの URL（`Claude-Session:` の行など）を入れない。公開リポジトリなので、同じセッションで作業を続けていることが外から読み取れてしまう。過去のコミットに残る分は、v1.0.0 のリポジトリ作り直し（#841）で消える
 
 ## エージェントの役割
 
