@@ -63,8 +63,13 @@ export function flowLineWidth(baseWidth: number, zoom: number): number {
   return Math.max(baseWidth, MIN_LINE_SCREEN_PX / zoom);
 }
 
-/** 連打ラベルを、画面上で読める大きさを保つよう拡大する率（縮んだ時だけ1を超える）。 */
-export function repeatLabelScale(zoom: number): number {
+/**
+ * 連打ラベルを、画面上で読める大きさを保つよう拡大する率（縮んだ時だけ1を超える）。
+ * `maxScale` は図を他と分け合って縮める置き場（Workspaceのペイン）の上限。図が縮んでもラベルだけ大きいままだと、
+ * キーに対してラベルが大きくなって後ろの線を覆うので、拡大率に上限を置いて図と一緒に縮める。
+ * 上限が無い時（個別画面）は従来どおり読める大きさを優先する。
+ */
+export function repeatLabelScale(zoom: number, maxScale = Number.POSITIVE_INFINITY): number {
   if (!(zoom > 0)) return 1;
-  return Math.max(1, MIN_REPEAT_LABEL_SCREEN_PX / (REPEAT_LABEL_FONT_UNITS * zoom));
+  return Math.max(1, Math.min(maxScale, MIN_REPEAT_LABEL_SCREEN_PX / (REPEAT_LABEL_FONT_UNITS * zoom)));
 }

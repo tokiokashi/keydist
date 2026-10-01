@@ -214,3 +214,104 @@ test('高さに合わせて縮んだ図の線は、枠の幅ではなく実際�
   // （枠の幅を倍率にすると、この値は1.19ほどに下がる）
   expect(info.minStroke * info.zoom).toBeGreaterThanOrEqual(1.25 - 0.01);
 });
+
+/** Bigram Flowを細い列に置く配置（768×1024で本体が幅200px前後・高さ670px前後の細長いペインになる）。 */
+const narrowColumnLayout = {
+  kind: 'split',
+  direction: 'row',
+  weight: 1,
+  children: [
+    group('f'),
+    { kind: 'split', direction: 'column', weight: 1, children: [group('c'), group('d')] },
+  ],
+};
+const comparison2 = { ...comparison, id: 'd' };
+
+/** 図の枠と、実際に描かれる大きさ。 */
+function measureFit(page: Page) {
+  return page.evaluate(() => {
+    const feature = document.querySelector('[data-react-feature="bigram-flow"]')!;
+    const rect = (el: Element) => el.getBoundingClientRect();
+    const svg = feature.querySelector('.flow-keyboard-svg') as SVGSVGElement;
+    const view = svg.viewBox.baseVal;
+    const stage = rect(feature.querySelector('.flow-stage')!);
+    const legend = rect(feature.querySelector('.flow-legend')!);
+    const keyboard = rect(svg);
+    const profile = rect(feature.querySelector('.flow-profile-svg')!);
+    const viewport = rect(feature.querySelector('.flow-profile-viewport')!);
+    const keyRect = rect(feature.querySelector('.flow-key rect')!);
+    const badge = feature.querySelector('.flow-repeat-badge') as SVGGElement;
+    const scale = Number(/scale\(([\d.]+)\)/.exec(badge.getAttribute('transform') ?? '')?.[1]);
+    const drawnWidth = Math.min(keyboard.width, (keyboard.height * view.width) / view.height);
+    return {
+      stage,
+      legendHeight: legend.height,
+      keyboard,
+      keyboardDrawnHeight: (drawnWidth * view.height) / view.width,
+      zoom: drawnWidth / view.width,
+      profile,
+      viewport,
+      keyWidth: keyRect.width,
+      badgeScale: scale,
+      badgeHeight: rect(badge).height,
+    };
+  });
+}
+
+test('細長いペインでは枠が図の縦横比より縦に伸びず、余った高さは枠の外に置かれる', async ({ page }) => {
+  await openWorkspace(page, [flow, comparison, comparison2], narrowColumnLayout, { width: 768, height: 1024 });
+  const m = await measureFit(page);
+  const body = (await measure(page)).body;
+  // 幅で大きさが決まる細長いペイン（領域は縦に十分長い）
+  expect(body.height).toBeGreaterThan(body.width * 2.5);
+  // Keyboard Flowの枠の高さ = 描かれる図の高さ + 凡例（枠が縦に伸びていない）
+  expect(m.keyboard.height).toBeLessThanOrEqual(m.keyboardDrawnHeight + 1);
+  expect(m.stage.height).toBeLessThanOrEqual(m.keyboardDrawnHeight + m.legendHeight + 16);
+  // Relative vectorsの図の枠は正方形（余白を枠の中に持たない）
+  expect(Math.abs(m.profile.width - m.profile.height)).toBeLessThan(2);
+  expect(m.viewport.height).toBeLessThanOrEqual(m.profile.height + 8);
+  // 余りは枠の外: 領域の下端と図の下端のあいだが大きく空く
+  const after = await measure(page);
+  expect(after.body.bottom - after.relative.bottom).toBeGreaterThan(40);
+  expect(after.bodyScrollHeight).toBeLessThanOrEqual(after.bodyClientHeight + 1);
+});
+
+test('幅が狭い横長のペインでは、縦横比が横長でも左右に並べず縦に積む', async ({ page }) => {
+  // 2ペインの横並びで、Bigram Flowの領域が幅550・高さ300ほど（縦横比は1.5を超える）
+  await openWorkspace(
+    page,
+    [flow, comparison],
+    { kind: 'split', direction: 'row', weight: 1, children: [group('f'), group('c')] },
+    { width: 1440, height: 620 },
+  );
+  await expect.poll(async () => {
+    const next = await measure(page);
+    return next.body.height < 330;
+  }).toBe(true);
+  let m = await measure(page);
+  expect(m.body.width / m.body.height).toBeGreaterThanOrEqual(1.5);
+  expect(m.body.width).toBeLessThan(600);
+  expect(m.relative.top).toBeGreaterThanOrEqual(m.keyboard.bottom - 1);
+
+  // 同じ縦横比でも、幅が600px以上なら左右に並ぶ（境目は幅600px）
+  await openWorkspace(page, [flow], group('f'), { width: 1100, height: 600 });
+  m = await measure(page);
+  expect(m.body.width).toBeGreaterThanOrEqual(600);
+  expect(m.body.width / m.body.height).toBeGreaterThanOrEqual(1.5);
+  expect(m.keyboard.right).toBeLessThanOrEqual(m.relative.left + 1);
+});
+
+test('連打ラベルは図の倍率に合わせて縮み、図が小さくてもキーより大きくならない', async ({ page }) => {
+  await openWorkspace(page, [flow, comparison, comparison2], narrowColumnLayout, { width: 768, height: 1024 });
+  const small = await measureFit(page);
+  // 図は幅200px未満に縮んでいる。ラベルの拡大率は上限（2）を超えず、画面上のラベルの高さはキーの幅より小さい
+  expect(small.zoom).toBeLessThan(0.3);
+  expect(small.badgeScale).toBeLessThanOrEqual(2 + 1e-6);
+  expect(small.badgeHeight).toBeLessThan(small.keyWidth);
+
+  // 図が広いペインでは、ラベルも倍率に応じて大きい
+  await openWorkspace(page, [flow], group('f'), { width: 1440, height: 900 });
+  const large = await measureFit(page);
+  expect(large.zoom).toBeGreaterThan(small.zoom * 2);
+  expect(large.badgeHeight).toBeGreaterThan(small.badgeHeight * 1.5);
+});

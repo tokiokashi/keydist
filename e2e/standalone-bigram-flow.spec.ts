@@ -1413,3 +1413,22 @@ test('Relative vectors: 内向き・外向きの割合は、読み上げでも�
   expect(await names(0)).toEqual(['外向き 56.8%', '内向き 43.2%']);
   expect(await names(1)).toEqual(['内向き 57.9%', '外向き 42.1%']);
 });
+
+test('Keyboard Flow: 個別画面の連打ラベルは、縮んだ図でも読める大きさまで広げる（拡大率に上限を置かない）', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  const info = await page.locator('.flow-repeat-badge').first().evaluate((badge) => {
+    const svg = document.querySelector('.flow-keyboard-svg') as SVGSVGElement;
+    const zoom = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
+    return {
+      zoom,
+      scale: Number(/scale\(([\d.]+)\)/.exec(badge.getAttribute('transform') ?? '')?.[1]),
+      cap: getComputedStyle(svg).getPropertyValue('--flow-repeat-label-max-scale'),
+    };
+  });
+  // 文字が画面上で8pxになる拡大率（上限なし）。Workspaceのペインの上限（2）を超える
+  expect(info.cap.trim()).toBe('');
+  expect(info.scale).toBeCloseTo(8 / (6.2 * info.zoom), 1);
+  expect(info.scale).toBeGreaterThan(2.5);
+});
