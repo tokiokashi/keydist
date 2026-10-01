@@ -1,5 +1,6 @@
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from './commands.ts';
+import { multiColorSlots } from './multi-target-selection.ts';
 import {
   addWorkspacePane,
   closeWorkspacePane,
@@ -69,8 +70,13 @@ function createWorkspaceFromAssets(
 ): ReturnType<typeof createWorkspace> | undefined {
   const library = current.workspaces;
   if (library.some((workspace) => workspace.id === id)) return undefined;
-  const target: WorkspaceTarget = { single: current.singleTargetSelection, set: current.multiTargetSelection };
-  return createWorkspace(library, () => id, name, target);
+  const selection = current.multiTargetSelection;
+  const target: WorkspaceTarget = {
+    single: current.singleTargetSelection,
+    set: { targets: selection.targets, baseline: selection.baseline },
+  };
+  // 集合の色の番号も写す（`createWorkspaceCommand`と「新しいWorkspaceに追加」で同じ）
+  return createWorkspace(library, () => id, name, target, new Map(Object.entries(multiColorSlots(selection))));
 }
 
 /** 個別画面から送るAnalyzer（ペインの素）。idと、個別画面で使っていた解析設定。 */

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { withMultiTargets } from '#engine/multi-target-selection.ts';
+import { withTargetSetTargets } from '#engine/multi-target-selection.ts';
 import type { WorkspacePane } from '#engine/workspace.ts';
 import { nSensitivityAnalyzer } from '#analyzers/n-sensitivity/definition.tsx';
 import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
@@ -33,7 +33,8 @@ export function NSensitivityWorkspacePane({
       env={runtime.env}
       chrome={chrome}
       selection={selection}
-      onTargetsChange={(targets) => runtime.setPaneTarget(pane.id, { kind: 'set', selection: withMultiTargets(selection, targets) })}
+      colorSlots={runtime.colorSlots}
+      onTargetsChange={(targets) => runtime.setPaneTarget(pane.id, { kind: 'set', selection: withTargetSetTargets(selection, targets) })}
       options={options}
       onOptionsChange={onOptionsChange}
       settingsDiagnostics={diagnostics}

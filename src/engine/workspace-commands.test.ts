@@ -14,7 +14,7 @@ import {
   textSelectionOf,
   type KeydistAssets,
 } from './commands.ts';
-import { initialMultiTargetSelection } from './multi-target-selection.ts';
+import { initialMultiTargetSelection, initialTargetSet } from './multi-target-selection.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
 import {
   addStandalonePaneToNewWorkspaceCommand,
@@ -148,7 +148,7 @@ test('解析設定・対象・並びの書き込みは、同じ中身なら履�
     once,
     setWorkspacePaneOptionsCommand('w1', 'a', { x: 1 }),
     setWorkspacePaneBindingCommand('w1', 'a', followBinding(G)),
-    setWorkspaceTargetCommand('w1', G, { kind: 'set', selection: initialMultiTargetSelection() }),
+    setWorkspaceTargetCommand('w1', G, { kind: 'set', selection: initialTargetSet() }),
     setWorkspaceLayoutCommand('w1', findWorkspace(once.assets.workspaces, 'w1')!.layout, undefined),
   );
   assert.equal(again.history.undoStack.length, depth);
@@ -179,7 +179,9 @@ test('createWorkspaceCommand: 個別画面で選んでいる対象を、Workspac
   const created = run({ assets, history: emptyCommandHistory() }, createWorkspaceCommand('w9'));
   const workspace = findWorkspace(created.assets.workspaces, 'w9')!;
   assert.deepEqual(workspace.groups[0]!.target.single, assets.singleTargetSelection);
-  assert.deepEqual(workspace.groups[0]!.target.set, assets.multiTargetSelection);
+  assert.deepEqual(workspace.groups[0]!.target.set, { targets: assets.multiTargetSelection.targets, baseline: undefined });
+  // 個別画面で配っていた色を引き継ぐ
+  assert.deepEqual(workspace.colorSlots, { 'layout:qwerty': 0 });
 });
 
 test('新しい組への付け替えと、組ごとの対象の切り替えは、それぞれ1回のUndoで戻る', () => {
@@ -270,7 +272,7 @@ function richWorkspace(): State {
     setWorkspacePaneOptionsCommand('w1', 'a', { x: 1 }),
     setWorkspacePaneBindingCommand('w1', 'b', {
       mode: 'fixed',
-      target: { kind: 'set', selection: initialMultiTargetSelection() },
+      target: { kind: 'set', selection: initialTargetSet() },
     }),
     linkWorkspacePaneToNewGroupCommand('w1', 'a', 'link-2', { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } }),
     selectTextCommand({ workspaceId: 'w1' }, { kind: 'builtin', id: other.id }),
@@ -357,7 +359,7 @@ test('個別画面から新しいWorkspaceへ追加: 対象を写して作り、
   const workspace = findWorkspace(added.assets.workspaces, 'w9')!;
   assert.deepEqual(workspace.panes.map((p) => p.id), ['p']);
   assert.deepEqual(workspace.panes[0]!.binding, followBinding(workspace.groups[0]!.id));
-  assert.deepEqual(workspace.groups[0]!.target, { single: start.assets.singleTargetSelection, set: start.assets.multiTargetSelection });
+  assert.deepEqual(workspace.groups[0]!.target, { single: start.assets.singleTargetSelection, set: { targets: start.assets.multiTargetSelection.targets, baseline: start.assets.multiTargetSelection.baseline } });
   assert.deepEqual(layoutPaneIds(workspace.layout), ['p']);
 
   const undone = undo(added.assets, added.history);
@@ -367,7 +369,20 @@ test('個別画面から新しいWorkspaceへ追加: 対象を写して作り、
 });
 
 test('新しいWorkspaceへの追加は、createWorkspaceCommandと同じ作り方（対象・名前）で作る', () => {
-  const start = { assets: emptyAssets(), history: emptyCommandHistory<KeydistAssets>() };
+  const base = emptyAssets();
+  const start = {
+    assets: {
+      ...base,
+      singleTargetSelection: { target: { kind: 'layout', layoutId: 'colemak-dh' } },
+      // 色の番号は並びの順ではない値（2と5）にして、写し損ねを見分ける
+      multiTargetSelection: {
+        targets: [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'layout', layoutId: 'dvorak' }],
+        baseline: undefined,
+        colorSlots: [2, 5],
+      },
+    } as KeydistAssets,
+    history: emptyCommandHistory<KeydistAssets>(),
+  };
   const plain = findWorkspace(run(start, createWorkspaceCommand('a')).assets.workspaces, 'a')!;
   const viaAdd = findWorkspace(
     run(start, addStandalonePaneToNewWorkspaceCommand('a', { paneId: 'p', analyzerId: 'bigram-flow', options: undefined }, undefined)).assets.workspaces,
@@ -376,4 +391,7 @@ test('新しいWorkspaceへの追加は、createWorkspaceCommandと同じ作り�
   assert.deepEqual(viaAdd.groups, plain.groups);
   assert.equal(viaAdd.name, plain.name);
   assert.deepEqual(viaAdd.text, plain.text);
+  // 個別画面で配っていた色の番号も引き継ぐ（作成と同じ）
+  assert.deepEqual(viaAdd.colorSlots, { 'layout:qwerty': 2, 'layout:dvorak': 5 });
+  assert.deepEqual(viaAdd.colorSlots, plain.colorSlots);
 });

@@ -16,9 +16,18 @@ import { analysisTargetKey, sameAnalysisTarget, type AnalysisTarget } from '#inp
  * 付け直せば基準が戻る（#678。N感度で対象を出し入れしても、比較表の基準を失わないため）。
  * 不変条件は「効く基準 ∈ 選択」で、読む側は`baseline`を直接読まず`effectiveMultiBaseline`を通す。
  */
-export interface MultiTargetSelection {
+export interface TargetSet {
   readonly targets: readonly AnalysisTarget[];
   readonly baseline: AnalysisTarget | undefined;
+}
+
+/**
+ * 個別画面のMultiが持つ集合。`TargetSet`に、その集合の中で配った色の番号を足したもの。
+ * 個別画面はペインが1枚なので、ペインの集合＝画面の集合で、色の番号を集合に持たせる。
+ * Workspaceは画面に複数のペインが並ぶので、色の番号は集合ではなくWorkspaceが持つ
+ * （`workspace.ts`の`Workspace.colorSlots`。#630）。
+ */
+export interface MultiTargetSelection extends TargetSet {
   /**
    * 各対象に配った色の番号（`targets`と同じ長さで、同じ位置の対象の番号。値は
    * 0以上`COLOR_SLOT_COUNT`未満の整数で、対象が`COLOR_SLOT_COUNT`件までなら互いに異なる。
@@ -36,16 +45,20 @@ export interface MultiTargetSelection {
   readonly colorSlots: readonly number[];
 }
 
+export function initialTargetSet(): TargetSet {
+  return { targets: [], baseline: undefined };
+}
+
 export function initialMultiTargetSelection(): MultiTargetSelection {
   return { targets: [], baseline: undefined, colorSlots: [] };
 }
 
-function sameTargets(a: readonly AnalysisTarget[], b: readonly AnalysisTarget[]): boolean {
+export function sameTargets(a: readonly AnalysisTarget[], b: readonly AnalysisTarget[]): boolean {
   return a.length === b.length && a.every((target, index) => sameAnalysisTarget(target, b[index]!));
 }
 
 /** 順序を保ったまま重複を1つに畳む。 */
-function dedupe(targets: readonly AnalysisTarget[]): readonly AnalysisTarget[] {
+export function dedupeTargets(targets: readonly AnalysisTarget[]): readonly AnalysisTarget[] {
   const seen = new Set<string>();
   const result: AnalysisTarget[] = [];
   for (const target of targets) {
@@ -102,10 +115,20 @@ function colorSlotsByKey(selection: MultiTargetSelection): Map<string, number> {
 }
 
 /**
+ * 対象のkey → 色の番号。色を引く側（表示）が、個別画面の集合でもWorkspaceでも同じ形で受け取るための形
+ * （Workspaceが持つ`WorkspaceColorSlots`と同じ）。
+ */
+export type ColorSlotsByKey = Readonly<Record<string, number>>;
+
+export function multiColorSlots(selection: MultiTargetSelection): ColorSlotsByKey {
+  return Object.fromEntries(colorSlotsByKey(selection));
+}
+
+/**
  * 効く基準。記録された基準が集合に含まれる時だけその対象を返し、含まれなければ`undefined`
  * （基準なし）。表示側（比較表・対象の選択の「基準にする対象」）は必ずこれを読む。
  */
-export function effectiveMultiBaseline(selection: MultiTargetSelection): AnalysisTarget | undefined {
+export function effectiveMultiBaseline(selection: TargetSet): AnalysisTarget | undefined {
   const { baseline } = selection;
   if (baseline === undefined) return undefined;
   return selection.targets.some((t) => sameAnalysisTarget(t, baseline)) ? baseline : undefined;
@@ -122,7 +145,7 @@ export function withMultiTargets(
   current: MultiTargetSelection,
   targets: readonly AnalysisTarget[],
 ): MultiTargetSelection {
-  const deduped = dedupe(targets);
+  const deduped = dedupeTargets(targets);
   if (sameTargets(current.targets, deduped)) return current;
   // 残った対象は色を持ち越す。並び替えでも色は対象に付いて動く（色は並べた位置ではなく、
   // 加えた順で配ったもの）。
@@ -130,13 +153,23 @@ export function withMultiTargets(
 }
 
 /**
+ * 色を持たない集合（Workspaceの組・固定のペインが持つ集合）の対象を差し替える。
+ * 基準の扱いは`withMultiTargets`と同じ（記録は触らない）。色はWorkspaceが配る。
+ */
+export function withTargetSetTargets(current: TargetSet, targets: readonly AnalysisTarget[]): TargetSet {
+  const deduped = dedupeTargets(targets);
+  if (sameTargets(current.targets, deduped)) return current;
+  return { targets: deduped, baseline: current.baseline };
+}
+
+/**
  * 基準を差し替える（記録も上書きする）。`undefined`は「基準なし」で、記録も消す。
  * 選択に含まれない対象を基準にしようとした場合は無視する（no-op。選べるのは集合の中だけ）。
  */
-export function withMultiBaseline(
-  current: MultiTargetSelection,
+export function withMultiBaseline<T extends TargetSet>(
+  current: T,
   baseline: AnalysisTarget | undefined,
-): MultiTargetSelection {
+): T {
   if (current.baseline === baseline) return current;
   if (current.baseline !== undefined && baseline !== undefined && sameAnalysisTarget(current.baseline, baseline)) {
     return current;

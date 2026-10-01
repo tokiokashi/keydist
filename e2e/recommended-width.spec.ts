@@ -69,7 +69,7 @@ test('Workspaceのペイン: 広いペインでも中身は推奨幅で止まり
         id: 'seeded',
         name: '幅の確認',
         text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-        panes: [{ id: 'p1', analyzerId: 'n-sensitivity', binding: { mode: 'fixed', target: { kind: 'set', selection: { targets, colorSlots: [] } } } }],
+        panes: [{ id: 'p1', analyzerId: 'n-sensitivity', binding: { mode: 'fixed', target: { kind: 'set', selection: { targets } } } }],
         layout: { kind: 'split', direction: 'row', weight: 1, children: [{ kind: 'group', paneIds: ['p1'], weight: 1 }] },
       }],
     }));

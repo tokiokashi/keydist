@@ -15,6 +15,7 @@ import { decodeStoredAnalyzerOptions } from '#hosts/shared/decode-analyzer-optio
 import { ComparisonPane } from '#hosts/shared/panes/ComparisonPane.tsx';
 import type { PaneChrome, PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
+import { useMultiColorSlots } from '#hosts/shared/use-set-target-selection.ts';
 import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
@@ -132,6 +133,7 @@ export function ComparisonStandalonePage({
   if (assetsReady && sharedTargetsAtReadyRef.current === undefined) {
     sharedTargetsAtReadyRef.current = hasSharedTargetParams(window.location.search, 'multi');
   }
+  const colorSlots = useMultiColorSlots(assets.multiTargetSelection);
   const baseChrome: PaneChrome = sharedTargetsAtReadyRef.current === true
     ? { ...STANDALONE_CHROME, holdTargetSelectionClosed: true }
     : STANDALONE_CHROME;
@@ -182,6 +184,7 @@ export function ComparisonStandalonePage({
             env={env}
             chrome={chrome}
             selection={assets.multiTargetSelection}
+            colorSlots={colorSlots}
             onTargetsChange={(next) => dispatch(setMultiTargetsCommand(next))}
             onBaselineChange={(next) => dispatch(setMultiBaselineCommand(next))}
             options={optionsDraft}
