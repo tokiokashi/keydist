@@ -157,10 +157,32 @@ for (const [name, pane, count, expected] of [
     await waitForHydration(page);
     await expect(page.locator('[data-react-feature="bigram-flow"]').first()).toBeVisible({ timeout: 15_000 });
     await page.waitForTimeout(2500);
+    // 表示後の各フレームで、描画の直前（rAFの中で作ったResizeObserverのcallback。アプリのものより後に呼ばれる）に、
+    // 大きさを持った表が開いたまま描かれようとしていないかを記録する
+    await page.evaluate(() => {
+      const w = window as unknown as { __drawnOpen: number; __frames: number };
+      w.__drawnOpen = 0;
+      w.__frames = 0;
+      const frame = () => {
+        const details = document.querySelector('details.n-sensitivity-table-details') as HTMLDetailsElement | null;
+        if (details) {
+          const observer = new ResizeObserver(() => {
+            observer.disconnect();
+            if (details.offsetWidth > 0 && details.open && !(details as HTMLElement).dataset.userOpened) w.__drawnOpen += 1;
+          });
+          observer.observe(details);
+        }
+        w.__frames += 1;
+        if (w.__frames < 400) requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    });
     await page.locator('.dv-tab', { hasText: 'N感度' }).click();
     await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(count, { timeout: 15_000 });
     await expect.poll(() => isOpen(page)).toBe(expected);
     await page.waitForTimeout(300);
     expect(await isOpen(page)).toBe(expected);
+    // 畳むと決まる場合に、開いた表が描かれたフレームが無い（収まる場合は開くのが正なので数えない）
+    if (!expected) expect(await page.evaluate(() => (window as unknown as { __drawnOpen: number }).__drawnOpen)).toBe(0);
   });
 }

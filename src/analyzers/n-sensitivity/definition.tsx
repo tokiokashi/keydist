@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivityExtracted, type NSensitivitySeries, type NSensitivitySeriesFailed } from './extract.ts';
 import { DEFAULT_N_SENSITIVITY_OPTIONS, type NSensitivityOptions } from './options.ts';
 import { bindOption, RadioOptionField } from '#ui/primitives/option-fields.tsx';
@@ -127,7 +128,8 @@ function useMeasuredSize(): [React.RefObject<HTMLDivElement | null>, { width: nu
       setSize((prev) => (prev !== null && prev.width === width && prev.fitHeight === fitHeight ? prev : { width, fitHeight }));
     };
     update();
-    const observer = new ResizeObserver(update);
+    // 同期で反映する。裏のタブから表示された時、描き直しが描画の後に回ると、判定の前の状態（開いた表・既定幅の図）が一度描かれる。
+    const observer = new ResizeObserver(() => flushSync(update));
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
@@ -177,7 +179,7 @@ function NSensitivityChart({
   scale: NSensitivityOptions['scale'];
   yRangeMode: NSensitivityOptions['yRange'];
   /** 領域が初めて大きさを持って測れた時に呼ぶ（表の開閉の判定を、図の高さの上限が決まった後に行うため）。 */
-  onMeasured: () => void;
+  onMeasured: (ready: boolean) => void;
 }) {
   // 置かれた領域の幅をそのままviewBoxの幅にする（表示と等倍になり、文字が縮まない）。
   // 高さは2:1を基本に、狭い領域でも線の間隔が潰れない下限と、広い領域で伸びすぎない上限で止める。
@@ -185,7 +187,10 @@ function NSensitivityChart({
   const [wrapRef, measured] = useMeasuredSize();
   const isMeasured = measured !== null;
   useLayoutEffect(() => {
-    if (isMeasured) onMeasured();
+    if (!isMeasured) return undefined;
+    onMeasured(true);
+    // 図が外れる（表示できる対象が0件になる）時に戻す。残ると、作り直された表が上限の入る前に判定される。
+    return () => onMeasured(false);
   }, [isMeasured, onMeasured]);
   const CHART_WIDTH = measured?.width ?? DEFAULT_CHART_WIDTH;
   const fitHeight = measured?.fitHeight ?? null;
@@ -411,7 +416,7 @@ export function NSensitivityBody({
   options,
 }: NSensitivityBodyProps) {
   const [chartReady, setChartReady] = useState(false);
-  const markChartReady = useCallback(() => setChartReady(true), []);
+  const markChartReady = useCallback((ready: boolean) => setChartReady(ready), []);
   const okRows = order
     .map((targetKey) => ({ targetKey, entry: seriesFor(extracted.series, targetKey), context: rowContext.get(targetKey) }))
     .filter((row): row is { targetKey: string; entry: NSensitivitySeries; context: NSensitivityRowContext | undefined } => row.entry !== undefined);
