@@ -341,7 +341,8 @@
   white-space: nowrap;
 }
 
-.shell-notice button {
+.shell-notice button,
+.shell-notice-link {
   flex: none;
   padding: 0.2rem 0.55rem;
   border: 1px solid var(--border);
@@ -352,6 +353,11 @@
   cursor: pointer;
 }
 
-.shell-notice button:hover {
+.shell-notice-link {
+  text-decoration: none;
+}
+
+.shell-notice button:hover,
+.shell-notice-link:hover {
   background: var(--surface-muted);
 }

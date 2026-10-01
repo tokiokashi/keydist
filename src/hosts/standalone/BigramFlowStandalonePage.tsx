@@ -18,6 +18,7 @@ import type { PaneChrome, PaneEnvironment } from '#hosts/shared/panes/pane-envir
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
+import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
 import { urlOptionsNotices, useUrlOptions } from './use-url-options.ts';
 import { useTargetShareSource, useUrlTargets } from './use-url-targets.ts';
 import { encodeSingleTargetToUrl } from './target-share.ts';
@@ -59,6 +60,11 @@ export interface BigramFlowStandalonePageProps {
   readonly history: ContextBarHistory;
   /** プリセットの新しいidの発行（条件のモーダルのプリセットの節が使う）。 */
   readonly generatePresetId: PresetIdGenerator;
+  /**
+   * 見出しの「Workspaceに追加」で送り先を選んだ時。今の解析設定（`options`）を添えて渡す。
+   * 書き込みと通知は組み立て側（`app`）が持つ。
+   */
+  readonly onAddToWorkspace: (destination: AddToWorkspaceDestination, options: unknown) => void;
 }
 
 /** 個別画面のペインの枠まわり。ペインのAnalyzer名がページのh1で、見出しを文脈バーの下に固定する。 */
@@ -75,6 +81,7 @@ export function BigramFlowStandalonePage({
   onBigramFlowOptionsCommit,
   history,
   generatePresetId,
+  onAddToWorkspace,
 }: BigramFlowStandalonePageProps) {
   // 対象（`AnalysisTarget`）はSingleのAnalyzerが共有する資産（`singleTargetSelection`。#663）が正。
   // まだ選んでいなければ既定の配列を使う（`effectiveSingleTarget`）。
@@ -132,6 +139,13 @@ export function BigramFlowStandalonePage({
     onBigramFlowOptionsCommit(next);
   };
 
+  const chrome: PaneChrome = {
+    ...STANDALONE_CHROME,
+    headerAction: (
+      <AddToWorkspaceMenu workspaces={assets.workspaces} onAdd={(destination) => onAddToWorkspace(destination, optionsDraft)} />
+    ),
+  };
+
   return (
     <div className="standalone-page">
       <ContextBar
@@ -176,7 +190,7 @@ export function BigramFlowStandalonePage({
         <div className="standalone-stage">
           <BigramFlowPane
             env={env}
-            chrome={STANDALONE_CHROME}
+            chrome={chrome}
             target={target}
             onTargetChange={(next) => dispatch(setSingleTargetCommand(next))}
             options={optionsDraft}

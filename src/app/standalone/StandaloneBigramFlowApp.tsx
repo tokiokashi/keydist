@@ -8,6 +8,7 @@ import { builtinPaneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
+import { useAddToWorkspace } from './use-add-to-workspace.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
 import { useTextContentCommit } from './use-text-content-commit.ts';
 
@@ -35,6 +36,8 @@ export function StandaloneBigramFlowApp() {
   // テキストの本文もdebounceしてから`dispatch`する。値は`{ ref, text }`のペアで運ぶ
   // （`TextChip`の`onTextContentCommit`コメント参照。打鍵時点の対象を明示し、
   // debounce完了時に「今の選択」を読み直して事故る競合を避ける）。
+  const addToWorkspace = useAddToWorkspace(bigramFlowAnalyzer.definition.id, dispatch, getAssets);
+
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId);
 
   // 間引き待ちの変更を先に書いてから戻す。待ち中の値を残したまま戻すと、戻した後にその値が
@@ -65,6 +68,7 @@ export function StandaloneBigramFlowApp() {
       generatePresetId={generatePresetId}
       history={history}
       onTextContentCommit={commitTextContent}
+      onAddToWorkspace={addToWorkspace}
       onBigramFlowOptionsCommit={commitBigramFlowOptions}
     />
   );

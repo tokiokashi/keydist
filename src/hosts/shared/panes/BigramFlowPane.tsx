@@ -93,6 +93,7 @@ export function BigramFlowPane({
       headingLevel={chrome.headingLevel}
       stickyHeader={chrome.stickyHeader}
       menuItems={chrome.menuItems}
+      headerAction={chrome.headerAction}
       targetBinding={chrome.targetBinding}
       showPaneNameInSettings={chrome.showPaneNameInSettings}
       {...(named === undefined ? {} : { targetName: named.displayName })}

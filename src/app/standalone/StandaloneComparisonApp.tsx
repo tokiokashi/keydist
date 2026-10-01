@@ -8,6 +8,7 @@ import { builtinPaneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
+import { useAddToWorkspace } from './use-add-to-workspace.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
 import { useTextContentCommit } from './use-text-content-commit.ts';
 
@@ -23,6 +24,8 @@ export function StandaloneComparisonApp() {
   const commitComparisonOptions = useDebouncedCommit<ComparisonOptions>(dispatch, {
     commandFor: (options) => setStandaloneAnalyzerOptionsCommand(comparisonAnalyzer.definition.id, options),
   });
+
+  const addToWorkspace = useAddToWorkspace(comparisonAnalyzer.definition.id, dispatch, getAssets);
 
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId);
 
@@ -54,6 +57,7 @@ export function StandaloneComparisonApp() {
       generatePresetId={generatePresetId}
       history={history}
       onTextContentCommit={commitTextContent}
+      onAddToWorkspace={addToWorkspace}
       onComparisonOptionsCommit={commitComparisonOptions}
     />
   );

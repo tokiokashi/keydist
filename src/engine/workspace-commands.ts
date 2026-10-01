@@ -10,6 +10,7 @@ import {
   restoreWorkspace,
   renameWorkspace,
   withWorkspaceLayout,
+  followBinding,
   withWorkspacePaneOptions,
   withWorkspacePaneBinding,
   withPaneInNewLinkGroup,
@@ -57,6 +58,64 @@ export function createWorkspaceCommand(id: string, name?: string): Command<Keydi
       kind: 'applied',
       label: 'Workspaceを作成する',
       changes: { workspaces: createWorkspace(library, () => id, name, target).library },
+    };
+  };
+}
+
+/** 個別画面から送るAnalyzer（ペインの素）。idと、個別画面で使っていた解析設定。 */
+export interface PaneFromStandalone {
+  readonly paneId: string;
+  readonly analyzerId: string;
+  /** 個別画面の解析設定。一度も変えていなければ`undefined`（Analyzerの既定値）。 */
+  readonly options: unknown;
+}
+
+function standalonePane(source: PaneFromStandalone, groupId: string): WorkspacePane {
+  return { id: source.paneId, analyzerId: source.analyzerId, options: source.options, binding: followBinding(groupId) };
+}
+
+/**
+ * 個別画面で見ていたAnalyzerを、既存のWorkspaceへペインとして足す（「Workspaceに追加」）。
+ * 解析設定は個別画面のものを写す。対象は写さず、Workspaceの「Analyzerを追加」と同じく最初の連動の組に従わせる
+ * （そのWorkspaceで比べている対象を、追加で黙って書き換えないため）。Workspaceが無ければ何もしない。
+ */
+export function addStandalonePaneToWorkspaceCommand(
+  workspaceId: string,
+  source: PaneFromStandalone,
+  board: BoardPolicy | undefined,
+): Command<KeydistAssets> {
+  return (current) => {
+    const workspace = current.workspaces.find((candidate) => candidate.id === workspaceId);
+    const group = workspace?.groups[0];
+    if (workspace === undefined || group === undefined) return { kind: 'no-op' };
+    const library = current.workspaces;
+    const next = fitLibraryBoard(library, addWorkspacePane(library, workspaceId, standalonePane(source, group.id)), workspaceId, board, true);
+    if (next === library) return { kind: 'no-op' };
+    return { kind: 'applied', label: 'Workspaceに追加する', changes: { workspaces: next } };
+  };
+}
+
+/**
+ * 新しいWorkspaceを作り、個別画面で見ていたAnalyzerをペインとして足す。作成と追加は1回の操作で、Undoも1回で戻る。
+ * Workspaceの最初の対象は、`createWorkspaceCommand`と同じく個別画面で今選んでいる対象を写す。
+ */
+export function addStandalonePaneToNewWorkspaceCommand(
+  workspaceId: string,
+  source: PaneFromStandalone,
+  board: BoardPolicy | undefined,
+): Command<KeydistAssets> {
+  return (current) => {
+    const library = current.workspaces;
+    if (library.some((workspace) => workspace.id === workspaceId)) return { kind: 'no-op' };
+    const target: WorkspaceTarget = { single: current.singleTargetSelection, set: current.multiTargetSelection };
+    const created = createWorkspace(library, () => workspaceId, undefined, target);
+    const group = created.created.groups[0];
+    if (group === undefined) return { kind: 'no-op' };
+    const withPane = addWorkspacePane(created.library, workspaceId, standalonePane(source, group.id));
+    return {
+      kind: 'applied',
+      label: '新しいWorkspaceに追加する',
+      changes: { workspaces: fitLibraryBoard(created.library, withPane, workspaceId, board, true) },
     };
   };
 }

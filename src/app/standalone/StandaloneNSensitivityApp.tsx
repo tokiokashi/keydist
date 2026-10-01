@@ -8,6 +8,7 @@ import { builtinPaneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
+import { useAddToWorkspace } from './use-add-to-workspace.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
 import { useTextContentCommit } from './use-text-content-commit.ts';
 
@@ -22,6 +23,8 @@ export function StandaloneNSensitivityApp() {
   const commitOptions = useDebouncedCommit<NSensitivityOptions>(dispatch, {
     commandFor: (options) => setStandaloneAnalyzerOptionsCommand(nSensitivityAnalyzer.definition.id, options),
   });
+
+  const addToWorkspace = useAddToWorkspace(nSensitivityAnalyzer.definition.id, dispatch, getAssets);
 
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId);
 
@@ -53,6 +56,7 @@ export function StandaloneNSensitivityApp() {
       generatePresetId={generatePresetId}
       history={history}
       onTextContentCommit={commitTextContent}
+      onAddToWorkspace={addToWorkspace}
       onOptionsCommit={commitOptions}
     />
   );
