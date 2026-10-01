@@ -41,6 +41,7 @@ import { WorkspaceName } from './WorkspaceName.tsx';
 import { WorkspaceStack } from './WorkspaceStack.tsx';
 import { useStacked } from './use-stacked.ts';
 import { WorkspacePaneView } from './WorkspacePaneView.tsx';
+import { initialWorkspaceColorSlots } from '#engine/workspace-colors.ts';
 import './workspace.css';
 
 /** ペインの解析設定を間引いて資産へ反映する関数（`app`が組み立てる。ペインごとに別の待ち行列を持つ）。 */
@@ -164,6 +165,7 @@ export function WorkspacePage({
   const paneIds = useMemo(() => (panes ?? []).map((pane) => pane.id), [panes]);
 
   const groups = workspace?.groups;
+  const colorSlots = workspace?.colorSlots ?? initialWorkspaceColorSlots();
   const groupSummaries = useMemo(
     () => (env === undefined || groups === undefined ? [] : summarizeLinkGroups(env, groups)),
     [env, groups],
@@ -184,6 +186,7 @@ export function WorkspacePage({
         dispatch(setWorkspacePaneBindingCommand(workspaceId, paneId, { mode: 'fixed', target }));
       }
     },
+    colorSlots,
     groups: groups ?? [],
     groupSummaries,
     bindPane: (paneId: string, choice: PaneBindingChoice) => {
@@ -209,7 +212,7 @@ export function WorkspacePage({
       flushPending();
       dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
     },
-  }), [env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, groupSummaries]);
+  }), [env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, groupSummaries, colorSlots]);
 
   const titleOf = useCallback(
     (paneId: string) => {

@@ -14,7 +14,7 @@ import {
   textSelectionOf,
   type KeydistAssets,
 } from './commands.ts';
-import { initialMultiTargetSelection } from './multi-target-selection.ts';
+import { initialMultiTargetSelection, initialTargetSet } from './multi-target-selection.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
 import {
   addWorkspacePaneCommand,
@@ -146,7 +146,7 @@ test('解析設定・対象・並びの書き込みは、同じ中身なら履�
     once,
     setWorkspacePaneOptionsCommand('w1', 'a', { x: 1 }),
     setWorkspacePaneBindingCommand('w1', 'a', followBinding(G)),
-    setWorkspaceTargetCommand('w1', G, { kind: 'set', selection: initialMultiTargetSelection() }),
+    setWorkspaceTargetCommand('w1', G, { kind: 'set', selection: initialTargetSet() }),
     setWorkspaceLayoutCommand('w1', findWorkspace(once.assets.workspaces, 'w1')!.layout, undefined),
   );
   assert.equal(again.history.undoStack.length, depth);
@@ -177,7 +177,9 @@ test('createWorkspaceCommand: 個別画面で選んでいる対象を、Workspac
   const created = run({ assets, history: emptyCommandHistory() }, createWorkspaceCommand('w9'));
   const workspace = findWorkspace(created.assets.workspaces, 'w9')!;
   assert.deepEqual(workspace.groups[0]!.target.single, assets.singleTargetSelection);
-  assert.deepEqual(workspace.groups[0]!.target.set, assets.multiTargetSelection);
+  assert.deepEqual(workspace.groups[0]!.target.set, { targets: assets.multiTargetSelection.targets, baseline: undefined });
+  // 個別画面で配っていた色を引き継ぐ
+  assert.deepEqual(workspace.colorSlots, { 'layout:qwerty': 0 });
 });
 
 test('新しい組への付け替えと、組ごとの対象の切り替えは、それぞれ1回のUndoで戻る', () => {
@@ -268,7 +270,7 @@ function richWorkspace(): State {
     setWorkspacePaneOptionsCommand('w1', 'a', { x: 1 }),
     setWorkspacePaneBindingCommand('w1', 'b', {
       mode: 'fixed',
-      target: { kind: 'set', selection: initialMultiTargetSelection() },
+      target: { kind: 'set', selection: initialTargetSet() },
     }),
     linkWorkspacePaneToNewGroupCommand('w1', 'a', 'link-2', { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } }),
     selectTextCommand({ workspaceId: 'w1' }, { kind: 'builtin', id: other.id }),

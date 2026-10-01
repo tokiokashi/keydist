@@ -5,6 +5,8 @@ import {
   assignColorSlots,
   COLOR_SLOT_COUNT,
   initialMultiTargetSelection,
+  initialTargetSet,
+  withTargetSetTargets,
   withMultiBaseline,
   effectiveMultiBaseline,
   withMultiTargets,
@@ -14,6 +16,13 @@ const A: AnalysisTarget = { kind: 'setup', setupId: 'a' };
 const B: AnalysisTarget = { kind: 'setup', setupId: 'b' };
 const C: AnalysisTarget = { kind: 'layout', layoutId: 'c' };
 const NOT_SELECTED: AnalysisTarget = { kind: 'setup', setupId: 'not-selected' };
+
+test('withTargetSetTargets: 色を持たない集合の対象を差し替える。重複は畳み、同じ並びなら参照を変えず、基準の記録は触らない', () => {
+  const set = { targets: [A, B], baseline: A };
+  assert.equal(withTargetSetTargets(set, [A, B, A]), set);
+  assert.deepEqual(withTargetSetTargets(set, [B, C]), { targets: [B, C], baseline: A });
+  assert.deepEqual(initialTargetSet(), { targets: [], baseline: undefined });
+});
 
 test('initialMultiTargetSelection: 空の集合・基準なしから始まる', () => {
   assert.deepEqual(initialMultiTargetSelection(), { targets: [], baseline: undefined, colorSlots: [] });

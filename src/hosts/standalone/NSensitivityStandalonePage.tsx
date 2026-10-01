@@ -15,6 +15,7 @@ import { decodeStoredAnalyzerOptions } from '#hosts/shared/decode-analyzer-optio
 import { NSensitivityPane } from '#hosts/shared/panes/NSensitivityPane.tsx';
 import type { PaneChrome, PaneEnvironment } from '#hosts/shared/panes/pane-environment.ts';
 import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
+import { useMultiColorSlots } from '#hosts/shared/use-set-target-selection.ts';
 import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
@@ -116,6 +117,7 @@ export function NSensitivityStandalonePage({
   if (assetsReady && sharedTargetsAtReadyRef.current === undefined) {
     sharedTargetsAtReadyRef.current = hasSharedTargetParams(window.location.search, 'multi');
   }
+  const colorSlots = useMultiColorSlots(assets.multiTargetSelection);
   const chrome: PaneChrome = sharedTargetsAtReadyRef.current === true
     ? { ...STANDALONE_CHROME, holdTargetSelectionClosed: true }
     : STANDALONE_CHROME;
@@ -160,6 +162,7 @@ export function NSensitivityStandalonePage({
             env={env}
             chrome={chrome}
             selection={assets.multiTargetSelection}
+            colorSlots={colorSlots}
             onTargetsChange={(next) => dispatch(setMultiTargetsCommand(next))}
             options={optionsDraft}
             onOptionsChange={changeOptions}
