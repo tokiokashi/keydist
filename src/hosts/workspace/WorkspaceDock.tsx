@@ -152,7 +152,7 @@ function useIsRovingTabStop(innerRef: RefObject<HTMLElement | null>): boolean {
     // 最初の`.dv-tab`だけを見続けると、切り離された古い要素を見て固まるので、面の根（作り直されない）を見張り、
     // 読むたびに今の`.dv-tab`を引き直す
     const area = inner?.closest<HTMLElement>('.workspace-dock-area');
-    if (inner === null || inner === undefined || area === null) return undefined;
+    if (inner === null || inner === undefined || area === null || area === undefined) return undefined;
     const read = () => setStop(inner.closest<HTMLElement>('.dv-tab')?.tabIndex === 0);
     read();
     const observer = new MutationObserver(read);

@@ -251,3 +251,30 @@ test('描き直し（ペインの追加・Undo）の後も、ⓘと×のtabindex
   await expect(page.getByRole('tab')).toHaveCount(3);
   await expectRovingInvariants(page);
 });
+
+test('拡大中: 帯の矢印移動は拡大したグループの中で動き、閉じた後のフォーカスはbodyにも操作不能のタブにも落ちない', async ({ page }) => {
+  await openWorkspace(page);
+  await page.locator('.workspace-pane[data-pane-id="f"]').getByRole('button', { name: /の操作$/ }).click();
+  await page.getByRole('menuitem', { name: '拡大表示' }).click();
+  await expect.poll(() => page.evaluate(() => document.querySelector('.workspace-dock-area')?.hasAttribute('data-maximized') ?? false)).toBe(true);
+  // 拡大していないグループは操作不能
+  await expect(page.locator('.dv-groupview[inert]')).toHaveCount(1);
+
+  // 拡大したグループの帯では、矢印が普通に動く
+  await tab(page, 'Bigram Flow').focus();
+  await page.keyboard.press('ArrowRight');
+  expect(await focusedLabel(page)).toBe('tab:比較表');
+
+  // 拡大中のグループで別のタブを閉じる: 拡大は続き、フォーカスは残ったタブへ
+  await page.keyboard.press('Delete');
+  await expect(tab(page, '比較表')).toHaveCount(0);
+  await expect.poll(() => focusedLabel(page)).toBe('tab:Bigram Flow');
+  await expect(page.locator('.dv-groupview[inert]')).toHaveCount(1);
+
+  // 拡大していたペイン自身を閉じる: 拡大が解け、フォーカスは次の組（操作不能が外れた後）のタブへ
+  await page.keyboard.press('Delete');
+  await expect(tab(page, 'Bigram Flow')).toHaveCount(0);
+  await expect.poll(() => focusedLabel(page)).toBe('tab:N感度');
+  await expect(page.locator('[inert]')).toHaveCount(0);
+  expect(await page.evaluate(() => document.activeElement?.closest('[inert]') === null)).toBe(true);
+});

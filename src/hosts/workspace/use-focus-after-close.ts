@@ -83,7 +83,8 @@ export function useFocusAfterClose(paneIds: readonly string[]): RefCallback<HTML
         tab = group.querySelector<HTMLElement>('.dv-tab[aria-selected="true"]') ?? member as HTMLElement;
         break;
       }
-      tab?.focus({ preventScroll: true });
+      // 拡大中に操作不能（inert）なグループのタブは選ばない（フォーカスできず、置き直しが空振りする）。追加のボタンへ
+      if (tab !== null && tab.closest('[inert]') === null) tab.focus({ preventScroll: true });
       if (document.activeElement === null || document.activeElement === document.body) {
         focusableAddButton(root)?.focus({ preventScroll: true });
       }
