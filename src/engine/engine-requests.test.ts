@@ -22,7 +22,7 @@ const CATALOG = {
 };
 
 function resolveFor(id: string, text: string) {
-  const setup: Setup = { id, layoutId: 'qwerty', shapeId: 'row-staggered' };
+  const setup: Setup = { id, number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' };
   return resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
     setups: new Map([[setup.id, setup]]),
@@ -197,7 +197,7 @@ test('createSetExtractRequest: メンバー1件の解決失敗だけでは依頼
   const states: ExtractionRequestState<number>[] = [];
   const channel = createSetExtractRequest(cache, definition, emptyOptions.defaultOptions, (s) => states.push(s));
 
-  const setup = { id: 'missing', layoutId: 'no-such-layout', shapeId: 'row-staggered' };
+  const setup = { id: 'missing', number: 1, layoutId: 'no-such-layout', shapeId: 'row-staggered' };
   const failingResolution = resolveEngineInput({
     target: { kind: 'setup', setupId: setup.id },
     setups: new Map([[setup.id, setup]]),

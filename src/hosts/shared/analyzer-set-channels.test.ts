@@ -40,7 +40,7 @@ const CATALOG = {
 };
 
 function memberFor(setupId: string, layoutId: string): EngineSetMemberInput {
-  const setup: Setup = { id: setupId, layoutId, shapeId: 'row-staggered' };
+  const setup: Setup = { id: setupId, number: 1, layoutId, shapeId: 'row-staggered' };
   const target: AnalysisTarget = { kind: 'setup', setupId: setup.id };
   const resolution = resolveEngineInput({
     target,

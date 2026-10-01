@@ -43,8 +43,8 @@ function displayNames(
   )));
 }
 
-const fixedA: Setup = { id: '0d6f2c8e-aaaa-4bbb-8ccc-111111111111', layoutId: 'qwerty', shapeId: 'row-staggered' };
-const fixedB: Setup = { id: '0d6f2c8e-aaaa-4bbb-8ccc-222222222222', layoutId: 'colemak-dh', shapeId: 'row-staggered' };
+const fixedA: Setup = { id: '0d6f2c8e-aaaa-4bbb-8ccc-111111111111', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' };
+const fixedB: Setup = { id: '0d6f2c8e-aaaa-4bbb-8ccc-222222222222', number: 2, layoutId: 'colemak-dh', shapeId: 'row-staggered' };
 
 test('配列 + 上書きの無い同じ配列のSetup + 別配列のSetup: 衝突した2つだけ種類で区別し、UUIDは出さない（M3）', () => {
   const named = displayNames(
@@ -70,7 +70,7 @@ test('Setup対象だけの集合で既定の物理配列を変えても、名前
 });
 
 test('解決に失敗したメンバーにも意味のある名前を付ける（L2）', () => {
-  const brokenShape: Setup = { id: 'broken', layoutId: 'dvorak', shapeId: 'deleted-shape' };
+  const brokenShape: Setup = { id: 'broken', number: 1, layoutId: 'dvorak', shapeId: 'deleted-shape' };
   const named = displayNames(
     [
       { kind: 'setup', setupId: fixedA.id },
@@ -128,4 +128,13 @@ test('TK音直入力法は言語によらず1つの配列で、並べる時は�
   assert.doesNotMatch(named[0]!.displayName, /英字配置/);
   assert.notEqual(named[0]!.displayName, named[1]!.displayName);
   for (const n of named) assert.doesNotMatch(n.displayName, /番目|（配列）/);
+});
+
+test('Setupを削除しても、残ったSetupの衝突時の番号は変わらない', () => {
+  const dup: Setup = { ...fixedA, id: '0d6f2c8e-aaaa-4bbb-8ccc-333333333333', number: 3 };
+  const targets: AnalysisTarget[] = [{ kind: 'setup', setupId: dup.id }, { kind: 'layout', layoutId: 'qwerty' }];
+  const qwerty = LAYOUT_BY_ID.get('qwerty')!.name;
+  // fixedB（番号2）を消した後の手持ち。dupは並びが2番目になるが、番号は作成時の3のまま
+  assert.deepEqual(displayNames(targets, [fixedA, fixedB, dup]).map((n) => n.displayName), [`${qwerty}（Setup 3）`, `${qwerty}（配列）`]);
+  assert.deepEqual(displayNames(targets, [fixedA, dup]).map((n) => n.displayName), [`${qwerty}（Setup 3）`, `${qwerty}（配列）`]);
 });

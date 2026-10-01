@@ -101,7 +101,7 @@ PR 側の完了条件リストがその項目を落としていたため、リ�
 ## 必ず流す
 
 ```bash
-npm test && npm run build
+npm run typecheck && npm test && npm run build
 ```
 
 「CI が緑だった」で済ませない。**自分の手元で通してから**結果を書く。

@@ -12,8 +12,8 @@ function source(overrides: Partial<TargetChoiceSource> = {}): TargetChoiceSource
 }
 
 const SETUPS: readonly Setup[] = [
-  { id: 'a', layoutId: 'qwerty', shapeId: 'row-staggered' },
-  { id: 'b', layoutId: 'tsuki-2-263', shapeId: 'row-staggered', label: '会社の月配列' },
+  { id: 'a', number: 1, layoutId: 'qwerty', shapeId: 'row-staggered' },
+  { id: 'b', number: 2, layoutId: 'tsuki-2-263', shapeId: 'row-staggered', label: '会社の月配列' },
 ];
 
 test('組み込みの配列を英字とかなに分け、空の区分は出さない', () => {
@@ -33,6 +33,7 @@ test('自作の配列とSetupはそれぞれの区分に入り、Setupには番�
   assert.ok(!groups[0]!.choices.some((choice) => choice.key === 'layout:dvorak'));
   const [plain, labeled] = groups[3]!.choices;
   assert.equal(plain!.tag, 'Setup 1');
+  assert.equal(labeled!.tag, 'Setup 2');
   assert.match(plain!.name, /QWERTY/);
   assert.equal(labeled!.name, '会社の月配列');
   assert.match(labeled!.fullName!, /月配列2-263式/);

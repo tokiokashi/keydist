@@ -3,11 +3,13 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
   type HTMLAttributes,
+  type RefObject,
   type ReactNode,
 } from 'react';
 import {
@@ -55,6 +57,13 @@ export interface WorkspaceDockProps {
   readonly onPaneClosed: (paneId: string) => void;
   /** 待っている並びの書き込みを今すぐ行う関数を渡す（Undoの直前に呼ぶ）。 */
   readonly registerFlush: (flush: (() => void) | undefined) => void;
+  /**
+   * 拡大表示しているペイン（Dockviewの最大化）。保存しない見た目だけの状態で、持ち主は呼び出し側。
+   * 拡大している間は、板の高さを保存値ではなく1画面にし、下端のつまみを出さない。
+   */
+  readonly maximizedPaneId: string | undefined;
+  /** Dockview側で最大化が解けた、または人がEscapeで戻した。 */
+  readonly onMaximizedChange: (paneId: string | undefined) => void;
   /** 板の高さ [rem]。板は画面の高さとこの値の大きい方になる。無ければ1画面。 */
   readonly boardHeightRem: number | undefined;
   /** 配置が要る最小の板の高さ [rem]。下端のつまみで縮める時の下限になる。 */
@@ -68,6 +77,43 @@ const LAYOUT_COMMIT_DELAY_MS = 250;
 
 /** 領域の大きさが測れない時（描画の直後）の仮の大きさ。重みの比だけが意味を持つ。 */
 const FALLBACK_SIZE = { width: 1000, height: 600 } as const;
+
+/** 入力欄・選択欄での押下か（Escapeは入力の取り消しに使われるので、拡大は解かない）。 */
+function isTypingTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
+}
+
+/**
+ * Escapeで先に閉じるべきもの（上に重なって出て、Escapeで閉じるもの）が開いているか。開閉の状態は各部品が持つので、
+ * 画面に出ているものをDOMで見る。`aria-expanded`だけでは数えない: 図の表示の欄の開閉ボタンなど、欄を展開するだけで
+ * Escapeでは閉じないものまで数えると、開いている間は拡大から戻れなくなる。
+ * 閉じる側がEscapeをどこで受けるかに合わせて数える。自分の要素の中でしか受けないものを、フォーカスが外にある時まで
+ * 数えると、どちらも閉じずに何も起きなくなる:
+ * - documentで受ける（フォーカスの位置によらない）: 条件・対象の選択（`aria-haspopup="dialog"`）、モーダル、
+ *   対象の選択の本体、ピン留めしたⓘの説明（hoverだけの説明は数えない）、重ねて出したサイドバー
+ * - 自分の要素の中でだけ受ける（中にフォーカスがある時だけ数える）: ⋯などのメニュー、解析設定の小窓、テキストのチップのポップアップ
+ */
+const OVERLAY_SELECTOR = [
+  '[aria-haspopup="dialog"][aria-expanded="true"]',
+  'dialog[open]',
+  '.target-selection-panel',
+  '.info-button[data-pinned]',
+  '.shell[data-sidebar-open="true"]',
+  '.pane-menu:focus-within > [aria-haspopup][aria-expanded="true"]',
+  '.settings-window:focus-within',
+  '.text-chip-root:focus-within .text-chip-panel',
+].join(', ');
+function hasOpenOverlay(): boolean {
+  return document.querySelector(OVERLAY_SELECTOR) !== null;
+}
+
+/** フォーカスが無ければ（bodyにある時）、そのペインの⋯のボタンへ置く。 */
+function restoreFocus(api: DockviewApi | undefined, paneId: string): void {
+  const active = document.activeElement;
+  if (active !== null && active !== document.body) return;
+  const button = api?.getPanel(paneId)?.group.element.querySelector<HTMLElement>('.pane-frame-menu .pane-menu-button');
+  button?.focus({ preventScroll: true });
+}
 
 const PaneRenderContext = createContext<(paneId: string) => ReactNode>(() => null);
 
@@ -83,7 +129,7 @@ function DockPane({ params }: IDockviewPanelProps<{ paneId: string }>) {
   // タブが名前を出す間は、ペインの中の名前の行を出さない（見出しが1行になる。`pane-frame.css`）
   return (
     <PaneNameInTabContext.Provider value={!hideTabs}>
-      <div className="workspace-pane" data-name-in-tab={!hideTabs || undefined}>{render(params.paneId)}</div>
+      <div className="workspace-pane" data-pane-id={params.paneId} data-name-in-tab={!hideTabs || undefined}>{render(params.paneId)}</div>
     </PaneNameInTabContext.Provider>
   );
 }
@@ -93,6 +139,28 @@ const COMPONENTS = { [PANE_COMPONENT]: DockPane };
 /** ペインの間の余白（画素）。実物を見て決める値（#627）。面の外周の余白と角丸は`workspace-dock.css`。 */
 const PANE_GAP = 8;
 const WORKSPACE_THEME = { ...themeLightSpaced, gap: PANE_GAP };
+
+/**
+ * このタブが、タブの帯の中でTabキーの止まる場所（Dockviewのロービングtabindexの0番）か。
+ * Dockviewがタブの要素へ書く`tabindex`を読む（矢印・Home/End・選択のたびに動くので、属性の変化を見る）。
+ */
+function useIsRovingTabStop(innerRef: RefObject<HTMLElement | null>): boolean {
+  const [stop, setStop] = useState(false);
+  useEffect(() => {
+    const inner = innerRef.current;
+    // Dockviewは描き直し（`fromJSON`）のたびに`.dv-tab`の要素を作り直すが、中の部品（この要素）は使い回す。
+    // 最初の`.dv-tab`だけを見続けると、切り離された古い要素を見て固まるので、面の根（作り直されない）を見張り、
+    // 読むたびに今の`.dv-tab`を引き直す
+    const area = inner?.closest<HTMLElement>('.workspace-dock-area');
+    if (inner === null || inner === undefined || area === null || area === undefined) return undefined;
+    const read = () => setStop(inner.closest<HTMLElement>('.dv-tab')?.tabIndex === 0);
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(area, { subtree: true, childList: true, attributes: true, attributeFilter: ['tabindex'] });
+    return () => observer.disconnect();
+  }, [innerRef]);
+  return stop;
+}
 
 /**
  * タブ。名前とⓘ（Analyzerの短い説明）を出し、右端に閉じるボタンを置く。
@@ -108,19 +176,25 @@ function WorkspaceTab({
 }: IDockviewPanelHeaderProps & HTMLAttributes<HTMLDivElement>) {
   const { descriptionOf } = useContext(TabContext);
   const description = descriptionOf(api.id);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const tabStop = useIsRovingTabStop(rowRef);
+  // ⓘと×は、タブの帯の中のTabで止まる場所を増やさないよう、今フォーカスの取れるタブ（ロービングの0番）の分だけ
+  // Tabで届かせる。他のタブの分は、そのタブを選ぶと届く
+  const innerTabIndex = tabStop ? 0 : -1;
   const [title, setTitle] = useState(api.title);
   useEffect(() => {
     const subscription = api.onDidTitleChange((event) => setTitle(event.title));
     return () => subscription.dispose();
   }, [api]);
   return (
-    <div {...rest} className="dv-default-tab">
+    <div {...rest} ref={rowRef} className="dv-default-tab">
       <span className="dv-default-tab-content">{title}</span>
-      {title !== undefined && description !== '' ? <InfoButton name={title} description={description} floating /> : null}
+      {title !== undefined && description !== '' ? <InfoButton name={title} description={description} floating tabIndex={innerTabIndex} /> : null}
       <button
         type="button"
         className="dv-default-tab-action"
         aria-label="閉じる"
+        tabIndex={innerTabIndex}
         onPointerDown={(event) => event.preventDefault()}
         onClick={(event) => {
           event.preventDefault();
@@ -153,6 +227,10 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
   // 描画時のpropsが変わらないことがある（ドラッグを書いてすぐUndoすると、資産は元の値へ戻る）。
   // その時はDockviewだけが人の操作の結果のまま残るので、propsが変わらなくても資産に合わせ直す
   const divergedRef = useRef(false);
+  // 直近に資産へ書いた並び。書いた直後（資産が書き戻ってくるまでの間）に人がまた並びを変える
+  // （タブを続けて選ぶ等）と、戻ってきた資産は古い並びで、Dockviewの方が新しい。その時に資産へ合わせると、
+  // 新しい操作を巻き戻してしまうので、見分けるために覚える
+  const lastWrittenRef = useRef<WorkspaceLayoutNode | undefined>(undefined);
   const lastSyncedPropsRef = useRef<{
     readonly layout: WorkspaceLayoutNode;
     readonly paneIds: readonly string[];
@@ -225,6 +303,7 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
       const current = fromDockviewLayout(api.toJSON(), paneIds);
       if (current !== undefined && !sameLayout(current, layout)) {
         divergedRef.current = true;
+        lastWrittenRef.current = current;
         onLayoutChange(current);
       }
     } catch {
@@ -256,6 +335,10 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
         clearTimeout(timerRef.current);
         scheduledAgainstRef.current = propsRef.current.layout;
         timerRef.current = setTimeout(() => commitLayout(), LAYOUT_COMMIT_DELAY_MS);
+      }),
+      event.api.onDidMaximizedGroupChange((e) => {
+        // Dockview側で最大化が解けた（描き直し以外）時に、呼び出し側の状態を合わせる
+        if (!e.isMaximized && !syncingRef.current) propsRef.current.onMaximizedChange(undefined);
       }),
       event.api.onDidRemovePanel((panel) => {
         if (!syncingRef.current) propsRef.current.onPaneClosed(panel.id);
@@ -295,13 +378,109 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
       || last.hideTabs !== props.hideTabs;
     lastSyncedPropsRef.current = { layout: props.layout, paneIds: props.paneIds, hideTabs: props.hideTabs };
     if (!changed && !divergedRef.current) return;
+    // 自分が書いた並びが戻ってきただけで、待っている新しい並びの変更がある時は、描き直さない
+    // （待っている変更が、次に資産へ書かれる）。Undoなど別の理由で資産が変わった時は、書いた並びと一致しない
+    const written = lastWrittenRef.current;
+    lastWrittenRef.current = undefined;
+    const onlyLayoutChanged = last !== undefined && last.paneIds === props.paneIds && last.hideTabs === props.hideTabs;
+    if (onlyLayoutChanged && timerRef.current !== undefined && written !== undefined && sameLayout(props.layout, written)) {
+      divergedRef.current = false;
+      // 待っている変更は「戻ってきた資産」を基準に書く。基準が古い資産のままだと、書く時に
+      // 資産が変わったと見なされて捨てられ、新しい選択が保存されないまま残る
+      scheduledAgainstRef.current = props.layout;
+      return;
+    }
     divergedRef.current = false;
     applyLayout();
   });
 
+  // 最大化はDockviewの状態で、描き直し（fromJSON）で解ける。毎回の描画の後に、呼び出し側の状態へ合わせ直す。
+  // 合わせる間の通知は人の操作ではないので、並びの書き込みにも状態の更新にも使わない
+  const maximizedPaneId = props.maximizedPaneId;
+  useEffect(() => {
+    const api = apiRef.current;
+    if (api === undefined) return;
+    const panel = maximizedPaneId === undefined ? undefined : api.getPanel(maximizedPaneId);
+    syncingRef.current = true;
+    try {
+      if (panel !== undefined) {
+        if (!panel.group.api.isMaximized()) api.maximizeGroup(panel);
+      } else if (api.hasMaximizedGroup()) {
+        api.exitMaximizedGroup();
+      }
+    } finally {
+      syncingRef.current = false;
+    }
+    // 最大化は他のグループを数画素に縮めるだけで、中のボタンへTabが入ってしまう。拡大中は、拡大したグループ以外を
+    // 操作不能（inert）にする。付けたものだけを覚え、戻す時はそれだけを外す（他が付けた状態には触れない）
+    const keep = panel?.group.element;
+    for (const group of api.groups) {
+      const element = group.element;
+      if (keep !== undefined && element !== keep) {
+        if (!element.hasAttribute('inert')) {
+          element.setAttribute('inert', '');
+          inertByUsRef.current.add(element);
+        }
+      } else if (inertByUsRef.current.delete(element)) {
+        element.removeAttribute('inert');
+      }
+    }
+    for (const element of [...inertByUsRef.current]) {
+      if (keep === undefined || !element.isConnected) {
+        element.removeAttribute('inert');
+        inertByUsRef.current.delete(element);
+      }
+    }
+  });
+  const inertByUsRef = useRef(new Set<HTMLElement>());
+  useEffect(() => () => {
+    for (const element of inertByUsRef.current) element.removeAttribute('inert');
+    inertByUsRef.current.clear();
+  }, []);
+
+  // 拡大の出入りでページのスクロールを扱う。拡大したら板の上端が画面に入るよう先頭へ戻し、戻したら元の位置へ。
+  // 拡大すると板が1画面に縮んでページが短くなり、ブラウザがスクロール位置を切り詰める。元の位置は、その前（描画中）に覚える
+  const scrollBeforeMaximizeRef = useRef<number | undefined>(undefined);
+  const wasMaximizedInRenderRef = useRef(false);
+  const isMaximized = maximizedPaneId !== undefined;
+  if (isMaximized && !wasMaximizedInRenderRef.current) scrollBeforeMaximizeRef.current = window.scrollY;
+  wasMaximizedInRenderRef.current = isMaximized;
+  useLayoutEffect(() => {
+    if (!isMaximized) return undefined;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    return () => {
+      const before = scrollBeforeMaximizeRef.current;
+      scrollBeforeMaximizeRef.current = undefined;
+      if (before !== undefined) window.scrollTo({ top: before, behavior: 'instant' });
+    };
+  }, [isMaximized]);
+
+  // Escapeで元に戻す。ただし拡大中に開いたもの（メニュー・解析設定の小窓・対象の選択・条件のモーダル・ⓘの説明）が
+  // 開いている間は、それらを閉じるだけにする（内側から1枚ずつ）。各部品は自分のEscapeで閉じるので、
+  // それより先に（captureで）開いているかを見る。閉じた後に見ると、閉じたのと同じ押下で拡大まで解けてしまう
+  useEffect(() => {
+    if (maximizedPaneId === undefined) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing) return;
+      if (isTypingTarget(event.target) || hasOpenOverlay()) return;
+      propsRef.current.onMaximizedChange(undefined);
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [maximizedPaneId]);
+
+  // 戻した後（メニュー・Escape・他の操作のどれでも）、フォーカスが行き場を失っていれば、拡大していたペインの⋯へ置く
+  const wasMaximizedRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const before = wasMaximizedRef.current;
+    wasMaximizedRef.current = maximizedPaneId;
+    if (before !== undefined && maximizedPaneId === undefined) restoreFocus(apiRef.current, before);
+  }, [maximizedPaneId]);
+
   // つまみをドラッグしている間だけ、保存前の高さで見せる
   const [boardPreview, setBoardPreview] = useState<{ readonly rem: number | undefined } | null>(null);
-  const shownBoardHeightRem = boardPreview === null ? props.boardHeightRem : boardPreview.rem;
+  // 拡大している間は保存値を使わず、1画面（保存が無い時と同じ）にする。保存値そのものは書き換えない
+  const shownBoardHeightRem = isMaximized ? undefined : boardPreview === null ? props.boardHeightRem : boardPreview.rem;
 
   const tabContext = useMemo(
     () => ({ hideTabs: props.hideTabs, descriptionOf: props.descriptionOf }),
@@ -315,6 +494,7 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
           ref={containerRef}
           className="workspace-dock-area"
           data-hide-tabs={props.hideTabs || undefined}
+          data-maximized={isMaximized || undefined}
           style={shownBoardHeightRem === undefined ? undefined : ({ '--workspace-board-height': `${shownBoardHeightRem}rem` } as CSSProperties)}
         >
           <DockviewReact
@@ -326,12 +506,14 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
             announcements={false}
             onReady={onReady}
           />
-          <BoardResizeHandle
-            areaRef={containerRef}
-            minRem={props.minBoardHeightRem}
-            onPreview={setBoardPreview}
-            onCommit={props.onBoardHeightChange}
-          />
+          {isMaximized ? null : (
+            <BoardResizeHandle
+              areaRef={containerRef}
+              minRem={props.minBoardHeightRem}
+              onPreview={setBoardPreview}
+              onCommit={props.onBoardHeightChange}
+            />
+          )}
         </div>
       </TabContext.Provider>
     </PaneRenderContext.Provider>

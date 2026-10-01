@@ -44,8 +44,8 @@ function catalogFor(layout: Layout, shapeId: PresetGeometryKind = 'row-staggered
 const asuka = findLayout(LAYOUTS_JA, 'asuka');
 
 test('カスケードの追従: 上書きの無いSetupはグローバルの変更に追従し、Setupレベルで上書きしたSetupは追従しない', () => {
-  const followingSetup: Setup = { id: 'setup-follow', layoutId: asuka.id, shapeId: 'row-staggered' };
-  const overridingSetup: Setup = { id: 'setup-override', layoutId: asuka.id, shapeId: 'row-staggered' };
+  const followingSetup: Setup = { id: 'setup-follow', number: 1, layoutId: asuka.id, shapeId: 'row-staggered' };
+  const overridingSetup: Setup = { id: 'setup-override', number: 1, layoutId: asuka.id, shapeId: 'row-staggered' };
   const catalog = catalogFor(asuka);
 
   // まずグローバルにwindowSizeを書く。
@@ -84,8 +84,8 @@ test('カスケードの追従: 上書きの無いSetupはグローバルの変�
 
 test('配列・物理配列が同じ2つのSetupはポリシーだけ変えて比較できる', () => {
   const catalog = catalogFor(asuka);
-  const setupA: Setup = { id: 'setup-a', layoutId: asuka.id, shapeId: 'row-staggered' };
-  const setupB: Setup = { id: 'setup-b', layoutId: asuka.id, shapeId: 'row-staggered' };
+  const setupA: Setup = { id: 'setup-a', number: 1, layoutId: asuka.id, shapeId: 'row-staggered' };
+  const setupB: Setup = { id: 'setup-b', number: 1, layoutId: asuka.id, shapeId: 'row-staggered' };
 
   const written = setSettingsOverride(
     EMPTY_SETTINGS_OVERRIDES,
@@ -111,7 +111,7 @@ test('配列・物理配列が同じ2つのSetupはポリシーだけ変えて�
 });
 
 test('resolveSetup: 配列が削除されたSetupは値としてエラーを返し、例外にしない', () => {
-  const setup: Setup = { id: 'setup-x', layoutId: 'deleted-layout', shapeId: 'row-staggered' };
+  const setup: Setup = { id: 'setup-x', number: 1, layoutId: 'deleted-layout', shapeId: 'row-staggered' };
   const result = resolveSetup(setup, catalogFor(asuka), 'kana-direct');
   assert.equal(result.ok, false);
   if (result.ok) return;
@@ -171,6 +171,7 @@ test('配列を対象にした解決は、実カタログではfixtureの既定�
     // （`target-resolution.ts`のコメント参照。#578指摘1の「必ず確認する」項目）。
     const equivalentSetup: Setup = {
       id: `equivalent-${scenario.id}`,
+      number: 1,
       layoutId: layout.id,
       shapeId: scenario.conditions.geometryShapeId,
     };
