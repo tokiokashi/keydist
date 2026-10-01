@@ -371,18 +371,23 @@ test('つまみの下限: 各ペインの下限の和 + 間の余白 + 外周。
 
 test('つまみの範囲: 下限は1画面とペインの下限の和の大きい方。今の高さが下限を割っていれば今の高さまで', () => {
   // 1画面50rem・下限の和40rem → 1画面まで縮められる
-  assert.deepEqual(boardResizeBounds(40, 50, 50), { minRem: 50, maxRem: MAX_BOARD_HEIGHT_REM, oneScreenRem: 50 });
+  assert.deepEqual(boardResizeBounds(40, 50, 50), { minRem: 50, maxRem: 200, oneScreenRem: 50 });
   // 下限の和80rem → 80remまで
   assert.equal(boardResizeBounds(80, 50, 120).minRem, 80);
   // 自動で伸ばした高さ（60rem）が、列の下限の和（80rem）を割っている時は、60remを下限にする
   assert.equal(boardResizeBounds(80, 50, 60).minRem, 60);
+  // 上限は1画面の4倍。ペインの下限の和・今の高さがそれより大きければそちら。保存値の上限は超えない
+  assert.equal(boardResizeBounds(40, 50, 50).maxRem, 200);
+  assert.equal(boardResizeBounds(300, 50, 300).maxRem, 300);
+  assert.equal(boardResizeBounds(40, 50, 250).maxRem, 250);
+  assert.equal(boardResizeBounds(40, 400, 400).maxRem, MAX_BOARD_HEIGHT_REM);
 });
 
 test('つまみの結果: 範囲に収めて0.01remに丸める。1画面以下は保存しない', () => {
   const bounds = boardResizeBounds(80, 50, 120);
   assert.equal(resolveBoardHeightRem(100.004, bounds), 100);
   assert.equal(resolveBoardHeightRem(10, bounds), 80);
-  assert.equal(resolveBoardHeightRem(1e9, bounds), MAX_BOARD_HEIGHT_REM);
+  assert.equal(resolveBoardHeightRem(1e9, bounds), 200);
   assert.equal(resolveBoardHeightRem(Number.NaN, bounds), undefined);
   // 下限が1画面なら、そこまで縮めた時は自動（保存を消す）
   const auto = boardResizeBounds(40, 50, 90);

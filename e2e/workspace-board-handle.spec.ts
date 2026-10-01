@@ -44,7 +44,7 @@ async function waitForDock(page: Page) {
   await page.waitForTimeout(500);
 }
 
-const handle = (page: Page) => page.getByRole('separator', { name: '板の高さ' });
+const handle = (page: Page) => page.getByRole('separator', { name: 'ペインを並べる領域の高さ' });
 
 const areaHeight = (page: Page) => page.evaluate(() => document.querySelector('.workspace-dock-area')!.getBoundingClientRect().height);
 
@@ -137,10 +137,13 @@ test('キーボード: 矢印で2rem、PageUp/PageDownで10rem、Home/Endで下�
   await waitForDock(page);
   const h = handle(page);
   await expect(h).toHaveAttribute('aria-orientation', 'horizontal');
-  await expect(h).toHaveAttribute('aria-label', '板の高さ');
+  await expect(h).toHaveAttribute('aria-label', 'ペインを並べる領域の高さ');
   await expect(h).toHaveAttribute('tabindex', '0');
   await expect(h).toHaveAttribute('aria-valuenow', '80');
-  await expect(h).toHaveAttribute('aria-valuemax', '1000');
+  // 上限は1画面の4倍（1440×1200で約270rem）。保存値の上限（1000rem）ではない
+  const max = Number(await h.getAttribute('aria-valuemax'));
+  expect(max).toBeGreaterThan(200);
+  expect(max).toBeLessThan(400);
   const min = Number(await h.getAttribute('aria-valuemin'));
   expect(min).toBeGreaterThan(40);
   expect(min).toBeLessThan(80);
@@ -156,8 +159,8 @@ test('キーボード: 矢印で2rem、PageUp/PageDownで10rem、Home/Endで下�
   await page.keyboard.press('PageUp');
   await expect.poll(() => storedBoardHeight(page)).toBe(80);
   await page.keyboard.press('End');
-  await expect.poll(() => storedBoardHeight(page)).toBe(1000);
-  await expect(h).toHaveAttribute('aria-valuenow', '1000');
+  await expect.poll(() => storedBoardHeight(page)).toBe(max);
+  await expect(h).toHaveAttribute('aria-valuenow', String(max));
   // Homeは下限（ここでは1画面）。下限が1画面なら保存を消す
   await page.keyboard.press('Home');
   await expect.poll(() => storedBoardHeight(page)).toBeUndefined();
@@ -181,4 +184,33 @@ test('?tabs=hide でもつまみが出る。縦積み（スマホ幅）では出
   await page.setViewportSize({ width: 700, height: 900 });
   await expect(page.locator('[data-workspace-stack]')).toBeVisible();
   await expect(handle(page)).toHaveCount(0);
+});
+
+test('ページの下端までスクロールした状態で上へ動かすと、板はポインタと同じだけ縮む', async ({ page }) => {
+  await openWorkspace(page, PANES, TWO(), WIDE, { boardHeightRem: 100 });
+  await waitForDock(page);
+  for (const dy of [100, 40]) {
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForTimeout(200);
+    const before = await areaHeight(page);
+    await dragHandle(page, -dy);
+    await expect.poll(async () => Math.round(before - (await areaHeight(page)))).toBeGreaterThan(dy - 3);
+    await page.waitForTimeout(300);
+    expect(Math.abs(before - (await areaHeight(page)) - dy)).toBeLessThanOrEqual(2);
+  }
+});
+
+test('矢印キーを続けて押した後の元に戻す1回で、押す前の高さに戻る。押している間は保存しない', async ({ page }) => {
+  await openWorkspace(page, PANES, TWO(), TALL, { boardHeightRem: 80 });
+  await waitForDock(page);
+  const h = handle(page);
+  await h.focus();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('PageDown');
+  // 最後のキーから少し経つまで保存しない
+  expect(await storedBoardHeight(page)).toBe(80);
+  await expect.poll(() => storedBoardHeight(page)).toBe(94);
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect.poll(() => storedBoardHeight(page)).toBe(80);
 });

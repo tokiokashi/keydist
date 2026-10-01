@@ -5,9 +5,10 @@ import type { WorkspaceLayout, WorkspaceLayoutNode } from './workspace-layout.ts
  * 板（ペインを並べる面）の高さの計算（#833）。配置が要る高さと、ペインを足した時の高さの配分。
  *
  * 板の高さは「画面の高さ」と「保存した高さ（`Workspace.boardHeightRem`）」の大きい方になる（描画側）。
- * 保存した高さを書くのはここだけで、**配置の形が変わった時**（ペインの追加・複製・分割・タブの移動。閉じる操作では計算しない）に、
+ * 保存した高さを書くのは、ここ（自動で伸ばす）と、人が板の下端のつまみで変える時（`resolveBoardHeightRem`の結果をコマンドが書く）の2つ。
+ * 自動で伸ばすのは**配置の形が変わった時**（ペインの追加・複製・分割・タブの移動。閉じる操作では計算しない）に、
  * 形が変わった縦の分割（`changedColumnKeys`）の各ペインが下限を割るなら伸ばす（人が狭めて比を決めた列は数えない）。比の変化（サッシのドラッグ）は形を変えないので、板を動かさない。
- * 縮めるのは人の操作だけ（自動では縮めない）。
+ * 縮めるのは人の操作（つまみ）だけで、自動では縮めない。
  *
  * ペインの下限（Analyzerごとの値）と余白は、ペインを描く側が知っているので、`BoardPolicy` として渡す。
  * この層はそれらの値を持たない。単位はすべてrem。
@@ -184,6 +185,9 @@ export function fitLibraryBoard(
   return fitted === current ? after : after.map((workspace) => (workspace === current ? fitted : workspace));
 }
 
+/** つまみで伸ばせる上限を、1画面の何倍にするか。 */
+const BOARD_MAX_SCREENS = 4;
+
 /** どのペインも下限を満たす最小の板の高さ [rem]（各ペインの下限の和 + 間の余白 + 外周の余白）。比は見ない。ペインが無ければ0。 */
 export function minBoardHeightRem(
   layout: WorkspaceLayout,
@@ -198,7 +202,7 @@ export function minBoardHeightRem(
 export interface BoardResizeBounds {
   /** 縮められる下限。 */
   readonly minRem: number;
-  /** 伸ばせる上限。 */
+  /** 伸ばせる上限。1画面の4倍。ペインの下限の和・今の高さがそれより大きければそちら（`MAX_BOARD_HEIGHT_REM`を超えない）。 */
   readonly maxRem: number;
   /** 1画面ぶんの高さ。板は保存値がこれ以下なら1画面なので、これ以下を保存する意味は無い。 */
   readonly oneScreenRem: number;
@@ -211,7 +215,8 @@ export interface BoardResizeBounds {
  */
 export function boardResizeBounds(minRem: number, oneScreenRem: number, currentRem: number): BoardResizeBounds {
   const floor = Math.max(minRem, oneScreenRem);
-  return { minRem: Math.min(floor, Math.max(currentRem, oneScreenRem)), maxRem: MAX_BOARD_HEIGHT_REM, oneScreenRem };
+  const maxRem = Math.min(MAX_BOARD_HEIGHT_REM, Math.max(oneScreenRem * BOARD_MAX_SCREENS, minRem, currentRem));
+  return { minRem: Math.min(floor, Math.max(currentRem, oneScreenRem)), maxRem, oneScreenRem };
 }
 
 /**
