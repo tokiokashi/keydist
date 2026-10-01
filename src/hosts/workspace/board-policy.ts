@@ -10,9 +10,9 @@ import { findWorkspaceAnalyzer } from './analyzer-registry.ts';
  * 下限ちょうどのペインで本体が窓の高さを割らないことを確かめる）。見出しは狭いペインで2段になるので、
  * 2段の時の高さを取る（広いペインでは1段分だけ余る。余る方に倒す）。
  */
-const PANE_CHROME_REM = 0;
+const PANE_CHROME_REM = 9.9;
 
-/** タブの帯。タブを隠す表示（見比べ用）では無い。 */
+/** タブの帯。タブを隠す表示（見比べ用）では要らない。 */
 const TAB_BAR_REM = 2.6;
 
 /** 板の外周の余白（上下の合計）と、縦に並ぶペインの間。`workspace-dock.css`の`--dv-spacing-padding`と`PANE_GAP`。 */
