@@ -23,6 +23,7 @@ import { sameLayout, type WorkspaceLayoutNode } from '#engine/workspace-layout.t
 import { PaneNameInTabContext } from '#hosts/shared/pane-name-in-tab.ts';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { fromDockviewLayout, PANE_COMPONENT, toDockviewLayout } from './layout-adapter.ts';
+import { BoardResizeHandle } from './BoardResizeHandle.tsx';
 import './workspace-dock.css';
 
 /**
@@ -56,6 +57,10 @@ export interface WorkspaceDockProps {
   readonly registerFlush: (flush: (() => void) | undefined) => void;
   /** 板の高さ [rem]。板は画面の高さとこの値の大きい方になる。無ければ1画面。 */
   readonly boardHeightRem: number | undefined;
+  /** 配置が要る最小の板の高さ [rem]。下端のつまみで縮める時の下限になる。 */
+  readonly minBoardHeightRem: number;
+  /** 人が下端のつまみで板の高さを変えた。`undefined`は1画面（自動）へ戻す。 */
+  readonly onBoardHeightChange: (rem: number | undefined) => void;
 }
 
 /** 並びの変更を資産へ書くまでの間引き（ミリ秒）。ドラッグ・リサイズの途中を書かない。 */
@@ -294,6 +299,10 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
     applyLayout();
   });
 
+  // つまみをドラッグしている間だけ、保存前の高さで見せる
+  const [boardPreview, setBoardPreview] = useState<{ readonly rem: number | undefined } | null>(null);
+  const shownBoardHeightRem = boardPreview === null ? props.boardHeightRem : boardPreview.rem;
+
   const tabContext = useMemo(
     () => ({ hideTabs: props.hideTabs, descriptionOf: props.descriptionOf }),
     [props.hideTabs, props.descriptionOf],
@@ -306,7 +315,7 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
           ref={containerRef}
           className="workspace-dock-area"
           data-hide-tabs={props.hideTabs || undefined}
-          style={props.boardHeightRem === undefined ? undefined : ({ '--workspace-board-height': `${props.boardHeightRem}rem` } as CSSProperties)}
+          style={shownBoardHeightRem === undefined ? undefined : ({ '--workspace-board-height': `${shownBoardHeightRem}rem` } as CSSProperties)}
         >
           <DockviewReact
             theme={WORKSPACE_THEME}
@@ -316,6 +325,12 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
             disableFloatingGroups
             announcements={false}
             onReady={onReady}
+          />
+          <BoardResizeHandle
+            areaRef={containerRef}
+            minRem={props.minBoardHeightRem}
+            onPreview={setBoardPreview}
+            onCommit={props.onBoardHeightChange}
           />
         </div>
       </TabContext.Provider>

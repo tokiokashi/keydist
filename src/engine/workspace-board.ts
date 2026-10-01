@@ -183,3 +183,44 @@ export function fitLibraryBoard(
   const fitted = fitBoardToLayout(previous, current, policy, redistribute);
   return fitted === current ? after : after.map((workspace) => (workspace === current ? fitted : workspace));
 }
+
+/** どのペインも下限を満たす最小の板の高さ [rem]（各ペインの下限の和 + 間の余白 + 外周の余白）。比は見ない。ペインが無ければ0。 */
+export function minBoardHeightRem(
+  layout: WorkspaceLayout,
+  floorRemOf: (paneId: string) => number,
+  policy: Pick<BoardPolicy, 'paddingRem' | 'gapRem'>,
+): number {
+  if (layout === undefined) return 0;
+  return naturalHeightRem(layout, floorRemOf, policy.gapRem) + policy.paddingRem;
+}
+
+/** 板の下端のつまみが扱える高さの範囲 [rem]。 */
+export interface BoardResizeBounds {
+  /** 縮められる下限。 */
+  readonly minRem: number;
+  /** 伸ばせる上限。 */
+  readonly maxRem: number;
+  /** 1画面ぶんの高さ。板は保存値がこれ以下なら1画面なので、これ以下を保存する意味は無い。 */
+  readonly oneScreenRem: number;
+}
+
+/**
+ * 板の高さの範囲。縮める下限は「ペインの下限の和」と「1画面」の大きい方で、1画面より小さくはならない（板は画面の高さを下回らない）。
+ * ただし今の高さ（`currentRem`）が下限の和を割っている時（自動で伸ばす時は変わった列だけを数えるので起きる）は、
+ * その今の高さまで。操作しただけで板が跳ね上がらないようにする。
+ */
+export function boardResizeBounds(minRem: number, oneScreenRem: number, currentRem: number): BoardResizeBounds {
+  const floor = Math.max(minRem, oneScreenRem);
+  return { minRem: Math.min(floor, Math.max(currentRem, oneScreenRem)), maxRem: MAX_BOARD_HEIGHT_REM, oneScreenRem };
+}
+
+/**
+ * つまみで望んだ高さを、保存する値にする。範囲に収め、0.01remに丸める。
+ * 1画面以下になる時は`undefined`（保存しない = 自動で1画面）。
+ */
+export function resolveBoardHeightRem(requestedRem: number, bounds: BoardResizeBounds): number | undefined {
+  if (!Number.isFinite(requestedRem)) return undefined;
+  const clamped = Math.min(bounds.maxRem, Math.max(bounds.minRem, requestedRem));
+  const rounded = Math.round(clamped * 100) / 100;
+  return rounded <= bounds.oneScreenRem + 0.01 ? undefined : rounded;
+}

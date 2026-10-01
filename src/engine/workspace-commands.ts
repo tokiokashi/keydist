@@ -9,6 +9,7 @@ import {
   duplicateWorkspacePane,
   restoreWorkspace,
   renameWorkspace,
+  withWorkspaceBoardHeight,
   withWorkspaceLayout,
   withWorkspacePaneOptions,
   withWorkspacePaneBinding,
@@ -165,4 +166,9 @@ export function setWorkspaceLayoutCommand(workspaceId: string, layout: Workspace
     // サッシのドラッグは形を変えないので、板の高さにも他のペインの比にも触れない。ペインの移動・分割だけが対象
     fitLibraryBoard(library, withWorkspaceLayout(library, workspaceId, layout), workspaceId, board, true)
   ));
+}
+
+/** 板の高さを人が変える（板の下端のつまみ）。`undefined`は保存を消して1画面（自動）へ戻す。 */
+export function setWorkspaceBoardHeightCommand(workspaceId: string, boardHeightRem: number | undefined): Command<KeydistAssets> {
+  return workspacesCommand('板の高さを変える', (library) => withWorkspaceBoardHeight(library, workspaceId, boardHeightRem));
 }

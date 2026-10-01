@@ -24,6 +24,49 @@
   margin-inline: auto;
 }
 
+/*
+ * 板の下端のつまみ。面の外周の余白（--dv-spacing-padding）の中に置くので、ペインに重ならない。
+ * 見た目は中央の短い線だけで、つかめる範囲は横いっぱい。指で触る端末では高くする。
+ */
+.workspace-board-handle {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 2;
+  height: 0.75rem;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+@media (pointer: coarse) {
+  .workspace-board-handle {
+    height: 1.25rem;
+  }
+}
+
+.workspace-board-handle::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0.2rem;
+  width: 3rem;
+  height: 4px;
+  margin-inline: auto;
+  border-radius: 2px;
+  background: var(--border-strong);
+}
+
+.workspace-board-handle:hover::after,
+.workspace-board-handle:focus-visible::after {
+  background: var(--accent);
+}
+
+.workspace-board-handle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
 /* テーマのclassは面の入れ物の中にDockviewが作る要素に付くので、子孫として指す。 */
 .workspace-dock-area .dockview-theme-light-spaced {
   /* 面の外周の余白と、ペインの角丸 */
