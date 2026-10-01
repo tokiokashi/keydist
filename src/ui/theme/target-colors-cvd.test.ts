@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { TARGET_PALETTE_SIZE, targetPaletteColor } from './target-colors.ts';
+import { TARGET_PALETTE_SIZE } from './target-colors.ts';
 
 // 対象の色パレットを色覚多様性のシミュレーションに通して、先頭の数色が見分けられるかを検査する（#625）。
 // 通常の色覚でのコントラスト・距離は target-colors.test.ts が見る。
@@ -51,7 +52,11 @@ function oklab([r, g, b]: Vec3): Vec3 {
   ];
 }
 
-const PALETTE = Array.from({ length: TARGET_PALETTE_SIZE }, (_, i) => targetPaletteColor(i));
+const THEME_CSS = readFileSync(new URL('./theme.css', import.meta.url), 'utf8');
+const PALETTES = [1, 2].map((group) => Array.from({ length: TARGET_PALETTE_SIZE }, (_, i) => {
+  const m = THEME_CSS.match(new RegExp(`--target-color-${i}:\\s*light-dark\\(\\s*(#[0-9a-fA-F]{6})\\s*,\\s*(#[0-9a-fA-F]{6})`))!;
+  return m[group]!;
+}));
 
 // 集合は先頭の数色しか使わないことが多い。12色すべてを見分けられる並びは作れない
 // （1型・2型・3型では0.03を割る組が必ず残る）ので、先頭の範囲に限って保証する。
@@ -60,12 +65,14 @@ const MIN_DISTANCE = 0.1;
 
 for (const [name, matrix] of Object.entries(SIMULATIONS)) {
   test(`パレット: ${name}のシミュレーションでも、先頭${LEADING}色はどの2色もOKLabの距離で${MIN_DISTANCE}以上離れている`, () => {
-    const seen = PALETTE.slice(0, LEADING).map((hex) => ({ hex, lab: oklab(simulate(linearRgb(hex), matrix)) }));
-    for (let i = 0; i < seen.length; i++) {
-      for (let j = i + 1; j < seen.length; j++) {
-        const [a, b] = [seen[i]!, seen[j]!];
-        const d = Math.hypot(a.lab[0] - b.lab[0], a.lab[1] - b.lab[1], a.lab[2] - b.lab[2]);
-        assert.ok(d >= MIN_DISTANCE, `${name}: ${a.hex} と ${b.hex} の距離 ${d.toFixed(3)}`);
+    for (const palette of PALETTES) {
+      const seen = palette.slice(0, LEADING).map((hex) => ({ hex, lab: oklab(simulate(linearRgb(hex), matrix)) }));
+      for (let i = 0; i < seen.length; i++) {
+        for (let j = i + 1; j < seen.length; j++) {
+          const [a, b] = [seen[i]!, seen[j]!];
+          const d = Math.hypot(a.lab[0] - b.lab[0], a.lab[1] - b.lab[1], a.lab[2] - b.lab[2]);
+          assert.ok(d >= MIN_DISTANCE, `${name}: ${a.hex} と ${b.hex} の距離 ${d.toFixed(3)}`);
+        }
       }
     }
   });

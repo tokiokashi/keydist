@@ -27,27 +27,15 @@
  * 1色目を青紫・橙のどちらにしても2色目以降の距離は同じなので、1色だけの集合で背景とのコントラスト比が
  * 高い青紫（明暗の`--bg`・`--surface`に対して最小3.94。橙は3.06）を先にする。
  */
-const TARGET_PALETTE: readonly string[] = [
-  '#7C66E9', // 青紫
-  '#ED6200', // 橙
-  '#04A271', // 青緑
-  '#B8358F', // 赤紫
-  '#AE7BBF', // 薄紫
-  '#8F630B', // 黄土
-  '#0E6CC2', // 青
-  '#1A7979', // 深い水色
-  '#979200', // オリーブ
-  '#3899BD', // 空色
-  '#3C7A0C', // 緑
-  '#B86469', // くすんだ赤
-];
+/** 色の値は theme.css の `--target-color-N`（明暗で値が変わる）。ここは番号の数だけ持つ。 */
+const TARGET_PALETTE_SIZE_VALUE = 12;
 
-export const TARGET_PALETTE_SIZE = TARGET_PALETTE.length;
+export const TARGET_PALETTE_SIZE = TARGET_PALETTE_SIZE_VALUE;
 
 /**
  * 番号の色。番号は集合の側が0以上`COLOR_SLOT_COUNT`（= この色数）未満で配る。範囲外が来ても
  * 例外にしないよう、剰余で折り返す。
  */
 export function targetPaletteColor(slot: number): string {
-  return TARGET_PALETTE[((slot % TARGET_PALETTE_SIZE) + TARGET_PALETTE_SIZE) % TARGET_PALETTE_SIZE]!;
+  return `var(--target-color-${((slot % TARGET_PALETTE_SIZE) + TARGET_PALETTE_SIZE) % TARGET_PALETTE_SIZE})`;
 }
