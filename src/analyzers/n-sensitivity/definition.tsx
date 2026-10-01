@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { N_SENSITIVITY_RANGE, nSensitivityDefinition, type NSensitivityExtracted, type NSensitivitySeries, type NSensitivitySeriesFailed } from './extract.ts';
 import { DEFAULT_N_SENSITIVITY_OPTIONS, type NSensitivityOptions } from './options.ts';
 import { bindOption, RadioOptionField } from '#ui/primitives/option-fields.tsx';
@@ -109,12 +110,13 @@ interface PlottedSeries {
  * 要素の幅を測る。測れるのはハイドレーション後なので、それまでは`null`（既定の幅で描く）。
  * 高さは、領域がペインの残りの高さに合わせている時（`FIT_FLAG`が立つ時）だけ測る。
  * 個別画面の領域の高さは図の高さで決まるので、測ると自分の高さを読み返してしまう。
- * 観測はアンマウントで必ず解除する。
+ * 観測はアンマウントで必ず解除する。最初の測定は描画前（layout effect）に行い、既定の幅のまま
+ * 一度描かれてから描き直されるのを避ける（表の開閉の判定が、この測定の後に続く）。
  */
 function useMeasuredSize(): [React.RefObject<HTMLDivElement | null>, { width: number; fitHeight: number | null } | null] {
   const ref = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState<{ width: number; fitHeight: number | null } | null>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
     const update = () => {
@@ -126,7 +128,8 @@ function useMeasuredSize(): [React.RefObject<HTMLDivElement | null>, { width: nu
       setSize((prev) => (prev !== null && prev.width === width && prev.fitHeight === fitHeight ? prev : { width, fitHeight }));
     };
     update();
-    const observer = new ResizeObserver(update);
+    // 同期で反映する。裏のタブから表示された時、描き直しが描画の後に回ると、判定の前の状態（開いた表・既定幅の図）が一度描かれる。
+    const observer = new ResizeObserver(() => flushSync(update));
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
@@ -170,15 +173,25 @@ function NSensitivityChart({
   series,
   scale,
   yRangeMode,
+  onMeasured,
 }: {
   series: readonly PlottedSeries[];
   scale: NSensitivityOptions['scale'];
   yRangeMode: NSensitivityOptions['yRange'];
+  /** 領域が初めて大きさを持って測れた時に呼ぶ（表の開閉の判定を、図の高さの上限が決まった後に行うため）。 */
+  onMeasured: (ready: boolean) => void;
 }) {
   // 置かれた領域の幅をそのままviewBoxの幅にする（表示と等倍になり、文字が縮まない）。
   // 高さは2:1を基本に、狭い領域でも線の間隔が潰れない下限と、広い領域で伸びすぎない上限で止める。
   // Workspaceのペインでは、幅ではなくペインの残りの高さに合わせる（下限は置く）。
   const [wrapRef, measured] = useMeasuredSize();
+  const isMeasured = measured !== null;
+  useLayoutEffect(() => {
+    if (!isMeasured) return undefined;
+    onMeasured(true);
+    // 図が外れる（表示できる対象が0件になる）時に戻す。残ると、作り直された表が上限の入る前に判定される。
+    return () => onMeasured(false);
+  }, [isMeasured, onMeasured]);
   const CHART_WIDTH = measured?.width ?? DEFAULT_CHART_WIDTH;
   const fitHeight = measured?.fitHeight ?? null;
   const baseHeight = Math.min(MAX_CHART_HEIGHT, Math.max(MIN_CHART_HEIGHT, Math.round(CHART_WIDTH / 2)));
@@ -334,30 +347,37 @@ function NSensitivityChart({
 }
 
 /**
- * 各Nの実測値の表。見出し（summary）で開閉できる。個別画面は開いて始め、Workspaceのペイン
- * （領域がペインの高さに合わせている時）は畳んで始める。図が主役で、表は数値が要る時に開けば足りるため。
+ * 各Nの実測値の表。見出し（summary）で開閉できる。個別画面は開いて始める。Workspaceのペイン
+ * （領域がペインの高さに合わせている時）は、図の下の余りに表が収まれば開いて始め、収まらなければ畳んで始める。
+ * 図が主役で、表は数値が要る時に開けば足りるため。余りがあるのに畳むと、ペインの下が空白になる。
  * 開閉は標準の`<details>`なので、畳んでいてもキーボード（Tab・Enter・Space）と読み上げで届く。
- * 初期の状態は表が出た時に一度だけ決め、以後の開閉は利用者の操作に任せる。
+ *
+ * 開いて始めるかの判定は、図の大きさが決まった後に一度だけ行い、以後の開閉は利用者の操作に任せる
+ * （リサイズで勝手に開閉しない）。裏のタブにある間は大きさが無いので、図が初めて測れた時まで待つ。
+ *
+ * 振動を避けるため、判定は開閉で変わらない値だけで行う。畳んだ状態で測った余り（ペインの下端 - 見出しの下端。
+ * 図は上限（幅）で止まっているので、余りは図が使わない分になる）と、開いた時に表が増やす高さを比べる。
+ * 開いた後の余りは見ない（開くと余りが減るので、見ると畳む側に倒れて行き来する）。
  */
-function NSensitivityTable({ plotted }: { plotted: readonly PlottedSeries[] }) {
+function NSensitivityTable({ plotted, chartReady }: { plotted: readonly PlottedSeries[]; chartReady: boolean }) {
   const ref = useRef<HTMLDetailsElement | null>(null);
+  const decided = useRef(false);
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el) return undefined;
-    // 畳むかは、領域がペインの高さに合わせているかで決まり、印は大きさを持つ要素でしか読めない。
-    // 裏のタブにある間はDOMから外れていて大きさが無いので、最初に大きさが来た時まで待つ。
-    const decide = () => {
-      if (el.offsetWidth === 0) return false;
-      if (getComputedStyle(el).getPropertyValue(FIT_FLAG).trim() === '1') el.open = false;
-      return true;
-    };
-    if (decide()) return undefined;
-    const observer = new ResizeObserver(() => {
-      if (decide()) observer.disconnect();
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+    if (!el || decided.current || !chartReady || el.offsetWidth === 0) return;
+    decided.current = true;
+    const feature = el.parentElement;
+    // 領域がペインの高さに合わせていなければ（個別画面・縦積み）、開いたまま
+    if (!feature || getComputedStyle(el).getPropertyValue(FIT_FLAG).trim() !== '1') return;
+    // 同期的に畳み→測り→開き→測る。描画は挟まらないので、途中の状態は画面に出ない。
+    el.open = false;
+    const closedBottom = el.getBoundingClientRect().bottom;
+    const closedHeight = el.getBoundingClientRect().height;
+    const spare = feature.getBoundingClientRect().bottom - closedBottom;
+    el.open = true;
+    const extra = el.getBoundingClientRect().height - closedHeight;
+    if (extra > spare) el.open = false;
+  }, [chartReady]);
   return (
     <details className="n-sensitivity-table-details" ref={ref} open>
       <summary>各Nの実測値 [u]</summary>
@@ -395,6 +415,8 @@ export function NSensitivityBody({
   rowContext,
   options,
 }: NSensitivityBodyProps) {
+  const [chartReady, setChartReady] = useState(false);
+  const markChartReady = useCallback((ready: boolean) => setChartReady(ready), []);
   const okRows = order
     .map((targetKey) => ({ targetKey, entry: seriesFor(extracted.series, targetKey), context: rowContext.get(targetKey) }))
     .filter((row): row is { targetKey: string; entry: NSensitivitySeries; context: NSensitivityRowContext | undefined } => row.entry !== undefined);
@@ -423,7 +445,7 @@ export function NSensitivityBody({
 
   return (
     <section className="n-sensitivity-feature" data-react-feature="n-sensitivity">
-      {plotted.length > 0 ? <NSensitivityChart series={plotted} scale={options.scale} yRangeMode={options.yRange} /> : null}
+      {plotted.length > 0 ? <NSensitivityChart series={plotted} scale={options.scale} yRangeMode={options.yRange} onMeasured={markChartReady} /> : null}
 
       {failedRows.length > 0 ? (
         <ul className="n-sensitivity-failures">
@@ -436,7 +458,7 @@ export function NSensitivityBody({
         </ul>
       ) : null}
 
-      {plotted.length > 0 ? <NSensitivityTable plotted={plotted} /> : null}
+      {plotted.length > 0 ? <NSensitivityTable plotted={plotted} chartReady={chartReady} /> : null}
     </section>
   );
 }

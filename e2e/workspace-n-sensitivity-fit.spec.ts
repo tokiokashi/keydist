@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
- * N感度のグラフがWorkspaceのペインの残りの高さに合わせて伸縮し、実測値の表を畳んで始める（#808）。
+ * N感度のグラフがWorkspaceのペインの残りの高さに合わせて伸縮し、実測値の表を、余りが無ければ畳んで始める（#808。余りがある時に開くのは #837、workspace-n-sensitivity-table-fit.spec.ts）。
  * 個別画面（高さが図で決まる）には効かないことも確かめる。
  */
 
@@ -98,7 +98,7 @@ function measureLegend(page: Page) {
   });
 }
 
-test('Workspaceでは実測値の表が畳まれて始まり、キーボードで開ける', async ({ page }) => {
+test('Workspaceで余りの無いペインでは実測値の表が畳まれて始まり、キーボードで開ける', async ({ page }) => {
   await openWorkspace(page, [nsens], group('n'), { width: 1440, height: 900 });
   const summary = page.getByText('各Nの実測値 [u]', { exact: true });
   await expect(summary).toBeVisible();
@@ -248,7 +248,7 @@ test('縦に長いペインでも、図の高さは幅を超えず、表の見�
   expect(m.gap).toBeLessThan(24);
 });
 
-test('裏のタブで開いたN感度も、表示した時に表が畳まれている', async ({ page }) => {
+test('裏のタブで開いたN感度も、表示した時に余りが無ければ表が畳まれている', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript((value) => {
     localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
