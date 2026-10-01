@@ -635,7 +635,7 @@ test('使えないAnalyzerのペインは使えないと出て、閉じられる
     text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
     panes: [
       { id: 'p-good', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } },
-      { id: 'p-unknown', analyzerId: 'future-analyzer', options: { z: 1 }, binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: [], colorSlots: [] } } } },
+      { id: 'p-unknown', analyzerId: 'future-analyzer', options: { z: 1 }, binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: [] } } } },
       { id: 'p-mismatch', analyzerId: 'comparison', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } },
     ],
     layout: {

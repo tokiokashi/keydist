@@ -8,6 +8,7 @@ import { builtinPaneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
+import { useAddToWorkspace } from './use-add-to-workspace.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
 import { useTextContentCommit } from './use-text-content-commit.ts';
 
@@ -37,6 +38,11 @@ export function StandaloneBigramFlowApp() {
   // debounce完了時に「今の選択」を読み直して事故る競合を避ける）。
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId);
 
+  const addToWorkspace = useAddToWorkspace(bigramFlowAnalyzer.definition.id, dispatch, getAssets, () => {
+    commitTextContent.flush();
+    commitBigramFlowOptions.flush();
+  });
+
   // 間引き待ちの変更を先に書いてから戻す。待ち中の値を残したまま戻すと、戻した後にその値が
   // 書かれて、戻したはずの変更がまた入るため。
   const history: ContextBarHistory = {
@@ -65,6 +71,7 @@ export function StandaloneBigramFlowApp() {
       generatePresetId={generatePresetId}
       history={history}
       onTextContentCommit={commitTextContent}
+      onAddToWorkspace={addToWorkspace}
       onBigramFlowOptionsCommit={commitBigramFlowOptions}
     />
   );

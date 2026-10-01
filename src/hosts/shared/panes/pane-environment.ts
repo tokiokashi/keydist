@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
@@ -53,6 +54,8 @@ export interface PaneChrome {
   readonly headingLevel?: 1 | 2;
   readonly stickyHeader?: boolean;
   readonly menuItems?: readonly PaneMenuItem[];
+  /** 見出しの右端に置く操作（個別画面の「Workspaceに追加」）。Workspaceのペインは置かない。 */
+  readonly headerAction?: ReactNode;
   /**
    * 対象が連動の組に従っているか固定かの表示と切り替え（Workspaceのペイン）。個別画面は対象を
    * ペインの外に持たないので置かない。

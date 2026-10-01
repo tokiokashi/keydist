@@ -1,13 +1,14 @@
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import { initialTextSelection, type TextSelectionState } from '#input/text/selection.ts';
 import { stableStringify } from './cache-key.ts';
-import { initialMultiTargetSelection, type MultiTargetSelection } from './multi-target-selection.ts';
+import { initialTargetSet, type TargetSet } from './multi-target-selection.ts';
 import {
   effectiveSingleTarget,
   initialSingleTargetSelection,
   withSingleTarget,
   type SingleTargetSelection,
 } from './single-target-selection.ts';
+import { initialWorkspaceColorSlots, withWorkspaceColors, type WorkspaceColorSlots } from './workspace-colors.ts';
 import {
   layoutWithPane,
   layoutWithPaneNextTo,
@@ -31,8 +32,8 @@ import {
 export type WorkspacePaneTarget =
   /** 対象を1つ見るAnalyzer（Bigram Flow等）の対象。 */
   | { readonly kind: 'single'; readonly target: AnalysisTarget }
-  /** 対象の集合を見るAnalyzer（比較表・N感度等）の集合。色の番号・基準はこのペインの中で持つ。 */
-  | { readonly kind: 'set'; readonly selection: MultiTargetSelection };
+  /** 対象の集合を見るAnalyzer（比較表・N感度等）の集合。基準は集合の中で持つ。色はWorkspaceが全ペインの和に配る（#630）。 */
+  | { readonly kind: 'set'; readonly selection: TargetSet };
 
 /**
  * ペインの対象の持ち方。`follow`は連動の組（`LinkGroup`）の対象を読み、`fixed`はこのペインだけの対象を持つ。
@@ -48,11 +49,11 @@ export type PaneTargetBinding =
  */
 export interface WorkspaceTarget {
   readonly single: SingleTargetSelection;
-  readonly set: MultiTargetSelection;
+  readonly set: TargetSet;
 }
 
 export function initialWorkspaceTarget(): WorkspaceTarget {
-  return { single: initialSingleTargetSelection(), set: initialMultiTargetSelection() };
+  return { single: initialSingleTargetSelection(), set: initialTargetSet() };
 }
 
 /**
@@ -116,6 +117,12 @@ export interface Workspace {
   readonly panes: readonly WorkspacePane[];
   readonly layout: WorkspaceLayout;
   /**
+   * 集合の対象に配った色の番号。全ペインの対象の和を1つの集合として配るので、同じ対象はどのペインでも
+   * 同じ色になる（`workspace-colors.ts`。#630）。ペインを閉じる・対象を外すなどで和から消えた対象の番号は空く。
+   * 書き込みの後に`updateWorkspace`が配り直すので、コマンドの側は意識しない。
+   */
+  readonly colorSlots: WorkspaceColorSlots;
+  /**
    * 板（ペインを並べる面）の高さ [rem]。無ければ1画面。板は「画面の高さ」と「この値」の大きい方になる。
    * 配置の形が変わって、どれかのペインが下限を割る時にだけ、`workspace-board.ts` が伸ばして書く（縮めるのは人の操作だけ）。
    * 画素でなくremなのは、ペインの下限をremで持つので、文字の大きさを変えても下限との関係が崩れないため。
@@ -157,15 +164,18 @@ export function createWorkspace(
   generateId: WorkspaceIdGenerator,
   name?: string,
   target: WorkspaceTarget = initialWorkspaceTarget(),
+  /** 写し元（個別画面）で配っていた色の番号。見ていた対象の色を引き継ぐため。 */
+  knownColors?: ReadonlyMap<string, number>,
 ): { readonly library: WorkspaceLibrary; readonly created: Workspace } {
-  const created: Workspace = {
+  const created: Workspace = withWorkspaceColors({
     id: generateId(),
     name: uniqueWorkspaceName(library, name?.trim() || DEFAULT_WORKSPACE_NAME),
     text: initialTextSelection(),
     groups: [{ id: INITIAL_LINK_GROUP_ID, target }],
     panes: [],
     layout: undefined,
-  };
+    colorSlots: initialWorkspaceColorSlots(),
+  }, knownColors);
   return { library: [...library, created], created };
 }
 
@@ -178,8 +188,10 @@ function updateWorkspace(
   const index = library.findIndex((workspace) => workspace.id === id);
   if (index === -1) return library;
   const current = library[index]!;
-  const next = update(current);
-  if (next === current) return library;
+  const updated = update(current);
+  if (updated === current) return library;
+  // 対象が増減しうるどの書き込みも、ここで色を配り直す（外した対象の色を空け、加えた対象に配る）
+  const next = withWorkspaceColors(updated);
   return library.map((workspace, i) => (i === index ? next : workspace));
 }
 
