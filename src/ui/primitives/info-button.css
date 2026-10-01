@@ -47,3 +47,9 @@
   line-height: 1.5;
   white-space: normal;
 }
+
+/* 入れ物の外（body直下）へ出す説明。位置は画面基準で、ⓘの真下（info-button.tsxが測る） */
+.info-popover-floating {
+  position: fixed;
+  max-width: min(22rem, calc(100vw - 1rem));
+}

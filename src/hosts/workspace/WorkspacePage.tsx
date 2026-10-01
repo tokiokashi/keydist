@@ -219,6 +219,14 @@ export function WorkspacePage({
     [panesById],
   );
 
+  const descriptionOf = useCallback(
+    (paneId: string) => {
+      const pane = panesById.get(paneId);
+      return (pane === undefined ? undefined : findWorkspaceAnalyzer(pane.analyzerId)?.description) ?? '';
+    },
+    [panesById],
+  );
+
   const renderPane = useCallback((paneId: string) => {
     const pane = panesById.get(paneId);
     if (pane === undefined || runtime === undefined) return null;
@@ -308,6 +316,7 @@ export function WorkspacePage({
                   layout={workspace.layout}
                   paneIds={paneIds}
                   titleOf={titleOf}
+                  descriptionOf={descriptionOf}
                   renderPane={renderPane}
                   hideTabs={tabs === 'hide'}
                   onLayoutChange={(layout) => dispatch(setWorkspaceLayoutCommand(workspaceId, layout, boardPolicy))}

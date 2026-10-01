@@ -8,7 +8,7 @@ import { waitForHydration } from './hydration-helper.ts';
 
 const REM = 16;
 /** ペインの下限 = 見出し・余白 + 本体の下限。本体の下限は各Analyzerのpane-meta、見出し・余白は`board-policy.ts`。 */
-const CHROME_REM = 9.9 + 2.6;
+const CHROME_REM = 4.2 + 2.6;
 const FLOOR_BODY_REM = { 'bigram-flow': 26, 'n-sensitivity': 13.6, comparison: 12 } as const;
 const floorOf = (id: keyof typeof FLOOR_BODY_REM) => CHROME_REM + FLOOR_BODY_REM[id];
 
