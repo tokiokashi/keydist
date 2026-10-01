@@ -192,6 +192,10 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
   // 描画時のpropsが変わらないことがある（ドラッグを書いてすぐUndoすると、資産は元の値へ戻る）。
   // その時はDockviewだけが人の操作の結果のまま残るので、propsが変わらなくても資産に合わせ直す
   const divergedRef = useRef(false);
+  // 直近に資産へ書いた並び。書いた直後（資産が書き戻ってくるまでの間）に人がまた並びを変える
+  // （タブを続けて選ぶ等）と、戻ってきた資産は古い並びで、Dockviewの方が新しい。その時に資産へ合わせると、
+  // 新しい操作を巻き戻してしまうので、見分けるために覚える
+  const lastWrittenRef = useRef<WorkspaceLayoutNode | undefined>(undefined);
   const lastSyncedPropsRef = useRef<{
     readonly layout: WorkspaceLayoutNode;
     readonly paneIds: readonly string[];
@@ -264,6 +268,7 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
       const current = fromDockviewLayout(api.toJSON(), paneIds);
       if (current !== undefined && !sameLayout(current, layout)) {
         divergedRef.current = true;
+        lastWrittenRef.current = current;
         onLayoutChange(current);
       }
     } catch {
@@ -334,6 +339,14 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
       || last.hideTabs !== props.hideTabs;
     lastSyncedPropsRef.current = { layout: props.layout, paneIds: props.paneIds, hideTabs: props.hideTabs };
     if (!changed && !divergedRef.current) return;
+    // 自分が書いた並びが戻ってきただけで、待っている新しい並びの変更がある時は、描き直さない
+    // （待っている変更が、次に資産へ書かれる）。Undoなど別の理由で資産が変わった時は、書いた並びと一致しない
+    const written = lastWrittenRef.current;
+    lastWrittenRef.current = undefined;
+    if (timerRef.current !== undefined && written !== undefined && sameLayout(props.layout, written)) {
+      divergedRef.current = false;
+      return;
+    }
     divergedRef.current = false;
     applyLayout();
   });
