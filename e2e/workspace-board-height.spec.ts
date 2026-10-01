@@ -138,46 +138,119 @@ test('足した時の高さの配分は、各Analyzerの下限に比例する（
   expect(Math.abs(hFlow - hN)).toBeGreaterThan(100);
 });
 
-test('サッシで狭めると隣が広がり、板の高さは変わらない', async ({ page }) => {
-  // すでに伸びている板（保存済み）に、上から2段目と3段目の境のサッシを動かす
-  await openWorkspace(page, [flow('f'), nSens('n'), comparison('c')], column(group('f', 3), group('n', 2), group('c', 2)), { width: 1440, height: 900 }, { boardHeightRem: 100 });
-  const before = await measure(page);
-  expect(before.area / REM).toBeGreaterThan(99);
-  const sash = page.locator('.dv-sash').nth(1);
+/** 縦に並べた段の、どれも下限を割らない板の高さ [rem]（保存値の種に使う。`workspace-board.ts`の計算と同じ）。 */
+function requiredRem(floors: readonly number[], weights: readonly number[]): number {
+  const total = weights.reduce((sum, w) => sum + w, 0);
+  const need = Math.max(...floors.map((floor, i) => floor / (weights[i]! / total))) + 0.5 * (floors.length - 1) + 1.5;
+  return Math.ceil(need * 100) / 100;
+}
+
+/** 保存された配置のルート（縦の分割）の、子の割合。Dockviewが書いた比を、書き込みの後に読むために使う。 */
+async function storedColumnFractions(page: Page): Promise<number[]> {
+  return page.evaluate(() => {
+    const stored = JSON.parse(localStorage.getItem('keydist:workspaces') ?? '{}') as { workspaces?: { layout?: { children?: { weight: number }[] } }[] };
+    const children = stored.workspaces?.[0]?.layout?.children ?? [];
+    const total = children.reduce((sum, child) => sum + child.weight, 0);
+    return children.map((child) => child.weight / total);
+  });
+}
+
+/** `index`番目のサッシを`dy`だけ動かす（画面に入れてから、画面の中で動かす）。 */
+async function dragSash(page: Page, index: number, dy: number) {
+  const sash = page.locator('.dv-sash').nth(index);
   await sash.scrollIntoViewIfNeeded();
   const box = (await sash.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const y = box.y + box.height / 2;
+  const target = Math.min(Math.max(y + dy, 4), page.viewportSize()!.height - 4);
+  await page.mouse.move(box.x + box.width / 2, y);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 150, { steps: 8 });
+  await page.mouse.move(box.x + box.width / 2, target, { steps: 10 });
   await page.mouse.up();
+}
+
+/** 書き込み（`LAYOUT_COMMIT_DELAY`の250ms）を越えて、保存された割合が`predicate`を満たすまで待つ。 */
+async function waitForStoredFractions(page: Page, predicate: (fractions: number[]) => boolean) {
+  await expect.poll(async () => predicate(await storedColumnFractions(page)), { timeout: 10_000 }).toBe(true);
+}
+
+const STACK_WEIGHTS = [3, 2, 2];
+const STACK_FLOORS = [floorOf('bigram-flow'), floorOf('n-sensitivity'), floorOf('comparison')];
+const STACK_BOARD_REM = requiredRem(STACK_FLOORS, STACK_WEIGHTS);
+const STACK_PANES = [flow('f'), nSens('n'), comparison('c')];
+const stackLayout = () => column(group('f', 3), group('n', 2), group('c', 2));
+
+test('サッシで狭めると隣が広がり、板の高さも保存値も変わらない（人の比のまま保存される）', async ({ page }) => {
+  // 保存値は必要高さちょうど（余裕を持たせると、板が伸びる経路を通らなくても通ってしまう）
+  await openWorkspace(page, STACK_PANES, stackLayout(), { width: 1440, height: 900 }, { boardHeightRem: STACK_BOARD_REM });
+  const before = await measure(page);
+  expect(Math.abs(before.area / REM - STACK_BOARD_REM)).toBeLessThan(0.1);
+  const seeded = await storedColumnFractions(page);
+
+  // 上から2段目と3段目の境のサッシを上へ。N感度が狭まり、比較表（隣）が広がる
+  await dragSash(page, 1, -150);
   await expect.poll(async () => (await measure(page)).groups[1]!.height).toBeLessThan(before.groups[1]!.height - 100);
+  // Dockviewが資産へ書いた後（書き込みの間引きを越えた後）の配置が、人の比のまま
+  await waitForStoredFractions(page, (f) => f[1]! < seeded[1]! - 0.03 && f[2]! > seeded[2]! + 0.03);
+  const written = await storedColumnFractions(page);
+  expect(Math.abs(written[0]! - seeded[0]!)).toBeLessThan(0.01);
+  // 保存した配置は、下限に比例した比へ配り直されていない（形が変わらなければ他の比に触れない）
+  expect(Math.abs(written[1]! / written[2]! - STACK_FLOORS[1]! / STACK_FLOORS[2]!)).toBeGreaterThan(0.1);
+
   const after = await measure(page);
-  // 狭めた分は隣（下）が取り、板の高さも保存値も動かない
   expect(after.groups[2]!.height).toBeGreaterThan(before.groups[2]!.height + 100);
   expect(Math.abs(after.area - before.area)).toBeLessThan(1);
-  await page.waitForTimeout(600);
-  expect(await storedBoardHeight(page)).toBe(100);
-  // 再読み込みしても板の高さは同じ
+  expect(await storedBoardHeight(page)).toBe(STACK_BOARD_REM);
+  // 再読み込みしても板の高さと比は同じ
   await page.reload();
   await waitForHydration(page);
   await expect(page.locator('.dv-groupview').first()).toBeVisible({ timeout: 15_000 });
   expect(Math.abs((await measure(page)).area - before.area)).toBeLessThan(1);
+  expect(Math.abs((await storedColumnFractions(page))[1]! - written[1]!)).toBeLessThan(0.001);
 });
 
 test('ペインは下限より狭められ、狭めても板は伸びない', async ({ page }) => {
-  await openWorkspace(page, [flow('f'), comparison('c')], column(group('f'), group('c')), { width: 1440, height: 900 }, { boardHeightRem: 80 });
+  const floors = [floorOf('bigram-flow'), floorOf('comparison')];
+  const boardRem = requiredRem(floors, [1, 1]);
+  await openWorkspace(page, [flow('f'), comparison('c')], column(group('f'), group('c')), { width: 1440, height: 900 }, { boardHeightRem: boardRem });
   const before = await measure(page);
-  const box = (await page.locator('.dv-sash').first().boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 2000, { steps: 10 });
-  await page.mouse.up();
+  await dragSash(page, 0, -2000);
   await expect.poll(async () => (await measure(page)).groups[0]!.height).toBeLessThan(floorOf('bigram-flow') * REM - 100);
+  await waitForStoredFractions(page, (f) => f[0]! < 0.2);
   const after = await measure(page);
   expect(after.groups[0]!.height).toBeGreaterThanOrEqual(90);
   expect(Math.abs(after.area - before.area)).toBeLessThan(1);
-  await page.waitForTimeout(600);
-  expect(await storedBoardHeight(page)).toBe(80);
+  expect(await storedBoardHeight(page)).toBe(boardRem);
+});
+
+test('サッシで狭めた後にAnalyzerを足しても、狭めたペインは板を伸ばす理由にならない', async ({ page }) => {
+  await openWorkspace(page, STACK_PANES, stackLayout(), { width: 1440, height: 900 }, { boardHeightRem: STACK_BOARD_REM });
+  const seeded = await storedColumnFractions(page);
+  // N感度を最小近くまで狭める
+  await dragSash(page, 1, -2000);
+  await waitForStoredFractions(page, (f) => f[1]! < seeded[1]! / 2);
+  await page.getByRole('button', { name: /Analyzerを追加/ }).click();
+  await page.getByRole('menuitem', { name: /比較表/ }).click();
+  await expect(page.locator('.dv-groupview')).toHaveCount(4);
+  await page.waitForTimeout(800);
+  expect(await storedBoardHeight(page)).toBe(STACK_BOARD_REM);
+});
+
+test('サッシで狭めた後に別のペインを閉じても、板は伸びず、残りの比は人が決めたまま', async ({ page }) => {
+  await openWorkspace(page, STACK_PANES, stackLayout(), { width: 1440, height: 900 }, { boardHeightRem: STACK_BOARD_REM });
+  const seeded = await storedColumnFractions(page);
+  await dragSash(page, 1, -2000);
+  await waitForStoredFractions(page, (f) => f[1]! < seeded[1]! / 2);
+  const squeezed = await storedColumnFractions(page);
+  // 一番下（比較表）を閉じる
+  const pane = page.locator('.workspace-pane').filter({ has: page.locator('[data-react-feature="comparison"]') }).first();
+  await pane.getByRole('button', { name: /の操作$/ }).click();
+  await page.getByRole('menuitem', { name: /閉じる/ }).click();
+  await expect(page.locator('.dv-groupview')).toHaveCount(2);
+  await page.waitForTimeout(800);
+  expect(await storedBoardHeight(page)).toBe(STACK_BOARD_REM);
+  // 残った2段の比は、狭めた比のまま（N感度 : Bigram Flow）
+  const rest = await storedColumnFractions(page);
+  expect(rest[1]! / rest[0]!).toBeCloseTo(squeezed[1]! / squeezed[0]!, 2);
 });
 
 test('Analyzerを追加しても、下限を割らなければ板は動かない', async ({ page }) => {
@@ -189,19 +262,16 @@ test('Analyzerを追加しても、下限を割らなければ板は動かない
   expect(m.docHeight).toBe(m.viewHeight);
 });
 
-test('Analyzerを追加して下限を割る形になると、板が伸びて保存される', async ({ page }) => {
-  // 縦に3段（等分）の右に1つ足す。3段は等分のままなので、各段が下限を満たす高さまで板が伸びる
-  await openWorkspace(page, [flow('f'), nSens('n'), comparison('c')], column(group('f'), group('n'), group('c')), { width: 1440, height: 900 });
+test('Analyzerを追加すると、足したペインの下限まで保存される。既にある縦の分割は数えない', async ({ page }) => {
+  // 縦に3段（等分、保存なし）の右に1つ足す。数えるのは足したペインだけで、3段の下限は数えない（人が決めた比として扱う）
+  await openWorkspace(page, STACK_PANES, column(group('f'), group('n'), group('c')), { width: 1440, height: 900 });
   expect(await storedBoardHeight(page)).toBeUndefined();
   await page.getByRole('button', { name: /Analyzerを追加/ }).click();
   await page.getByRole('menuitem', { name: /比較表/ }).click();
   await expect(page.locator('.dv-groupview')).toHaveCount(4);
-  // 3段 × 一番高い下限（Bigram Flow）+ 段の間の余白 + 外周の余白
-  const expected = 3 * floorOf('bigram-flow') + 2 * 0.5 + 1.5;
-  await expect.poll(async () => (await storedBoardHeight(page)) ?? 0).toBeGreaterThanOrEqual(expected - 0.1);
-  const m = await measure(page);
-  expect(m.docHeight).toBeGreaterThan(900);
-  for (const g of m.groups.filter((g) => g.analyzer === 'bigram-flow')) expect(g.body).toBeGreaterThanOrEqual(26 * REM - 2);
+  await expect.poll(async () => (await storedBoardHeight(page)) ?? 0).toBeGreaterThan(0);
+  expect(await storedBoardHeight(page)).toBe(Math.ceil((floorOf('comparison') + 1.5) * 100) / 100);
+  expect((await measure(page)).docHeight).toBe(900);
 });
 
 test('縦積みの幅（760px以下）では板の高さを使わない', async ({ page }) => {
