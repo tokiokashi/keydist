@@ -19,6 +19,15 @@ export interface SetupLibrary<V> {
   readonly overrides: CascadeOverrides<V>;
 }
 
+/**
+ * 次に付けるSetupの番号。手持ちの最大＋1にする。空いている最小を使うと、削除した後に作った
+ * 別のSetupが削除済みのSetupと同じ番号になり、保存した名前・共有した名前が別のSetupを指してしまう。
+ * 全部削除して空になった時は1から振り直す（指す先が残っていないので衝突しない）。
+ */
+export function nextSetupNumber(setups: readonly Setup[]): number {
+  return setups.reduce((max, setup) => Math.max(max, setup.number), 0) + 1;
+}
+
 export function createSetup<V>(
   library: SetupLibrary<V>,
   layoutId: string,
@@ -27,9 +36,10 @@ export function createSetup<V>(
   rawLabel?: string,
 ): SetupLibrary<V> {
   const label = effectiveLabel(rawLabel);
+  const number = nextSetupNumber(library.setups);
   const setup: Setup = label === undefined
-    ? { id: generateId(), layoutId, shapeId }
-    : { id: generateId(), layoutId, shapeId, label };
+    ? { id: generateId(), number, layoutId, shapeId }
+    : { id: generateId(), number, layoutId, shapeId, label };
   return { setups: [...library.setups, setup], overrides: library.overrides };
 }
 
@@ -50,9 +60,10 @@ export function duplicateSetup<V>(
   if (source === undefined) return library;
 
   const id = generateId();
+  const number = nextSetupNumber(library.setups);
   const duplicated: Setup = label === undefined
-    ? { id, layoutId: source.layoutId, shapeId: source.shapeId }
-    : { id, layoutId: source.layoutId, shapeId: source.shapeId, label };
+    ? { id, number, layoutId: source.layoutId, shapeId: source.shapeId }
+    : { id, number, layoutId: source.layoutId, shapeId: source.shapeId, label };
 
   return {
     setups: [...library.setups, duplicated],

@@ -176,6 +176,7 @@ function computeFor(fixtureCase: FixtureCase, cache = createEngineCache()) {
 
   const setupId = `setup:${fixtureCase.id}`;
   const setup: Setup = {
+      number: 1,
     id: setupId,
     layoutId: fixtureCase.layoutId,
     shapeId: fixtureCase.conditions.geometryShapeId,
@@ -208,6 +209,7 @@ async function computeForAsync(fixtureCase: FixtureCase, cache = createEngineCac
   const text = sampleText(fixtureCase.language, fixtureCase.sampleId);
   const setupId = `setup-async:${fixtureCase.id}`;
   const setup: Setup = {
+      number: 1,
     id: setupId,
     layoutId: fixtureCase.layoutId,
     shapeId: fixtureCase.conditions.geometryShapeId,

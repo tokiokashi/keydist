@@ -16,6 +16,12 @@
  */
 export interface Setup {
   readonly id: string;
+  /**
+   * 作成時に決めて固定する番号（1始まり）。名前が衝突した時の「Setup n」に使う。
+   * 一覧の並び順から作ると、削除や並べ替えで同じSetupの番号が変わってしまう。
+   * 削除で空いた番号は再利用しない（`nextSetupNumber`）ので、同じ番号が別のSetupを指すことは無い。
+   */
+  readonly number: number;
   readonly layoutId: string;
   readonly shapeId: string;
   /**

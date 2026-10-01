@@ -7,7 +7,7 @@ import type { SetupLibrary } from './collection.ts';
 
 /**
  * Setupの手持ち（`SetupLibrary<V>`）のcodec（#544 §8-3・§4）。
- * `Setup`本体（id・配列id・物理配列id・ラベル）と、カスケードの`setup`レベルを
+ * `Setup`本体（id・番号・配列id・物理配列id・ラベル）と、カスケードの`setup`レベルを
  * 含む全レベルの上書きをまとめて1つの資産として運ぶ（overrides.ts「Setup固有の上書きは
  * カスケードのsetupレベルに置く」）。
  *
@@ -26,10 +26,33 @@ import type { SetupLibrary } from './collection.ts';
  */
 const setupSchema = v.strictObject({
   id: v.pipe(v.string(), v.minLength(1)),
+  // 無い・不正な時はSetupを捨てず、読み込み後に配り直す（`assignMissingNumbers`）
+  number: v.optional(v.unknown()),
   layoutId: v.pipe(v.string(), v.minLength(1)),
   shapeId: v.pipe(v.string(), v.minLength(1)),
   label: v.optional(v.pipe(v.string(), v.minLength(1))),
 });
+
+type RawSetup = Omit<Setup, 'number'> & { readonly number?: unknown };
+
+function isSetupNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1;
+}
+
+/**
+ * 番号が無い・不正・他と重複するSetupに、並びの順で「その時点の最大＋1」を配る。
+ * 番号を持つ最初のSetupはそのまま残す。保存済みの番号を動かさないので、読み込みで既存の番号は変わらない。
+ */
+function assignMissingNumbers(raws: readonly RawSetup[]): Setup[] {
+  const used = new Set<number>();
+  const kept = raws.map((raw) => {
+    if (!isSetupNumber(raw.number) || used.has(raw.number)) return undefined;
+    used.add(raw.number);
+    return raw.number;
+  });
+  let next = Math.max(0, ...used) + 1;
+  return raws.map((raw, i) => ({ ...raw, number: kept[i] ?? next++ }));
+}
 
 function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): Setup[] {
   if (!Array.isArray(raw)) {
@@ -38,7 +61,7 @@ function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]
     return [];
   }
   const seen = new Set<string>();
-  const setups: Setup[] = [];
+  const setups: RawSetup[] = [];
   raw.forEach((candidate, index) => {
     const decoded = decodeDroppingInvalid(setupSchema, candidate, `${path}[${index}]`, diagnostics);
     if (decoded === undefined) return;
@@ -47,9 +70,9 @@ function decodeSetups(raw: unknown, path: string, diagnostics: CodecDiagnostic[]
       return;
     }
     seen.add(decoded.id);
-    setups.push(decoded);
+    setups.push(decoded as RawSetup);
   });
-  return setups;
+  return assignMissingNumbers(setups);
 }
 
 /**
