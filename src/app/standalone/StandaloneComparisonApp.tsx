@@ -8,6 +8,7 @@ import { builtinPaneCatalog } from './catalog.ts';
 import { sharedEngineComputer } from './engine-computer.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
+import { useAddToWorkspace } from './use-add-to-workspace.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
 import { useTextContentCommit } from './use-text-content-commit.ts';
 
@@ -25,6 +26,11 @@ export function StandaloneComparisonApp() {
   });
 
   const commitTextContent = useTextContentCommit(dispatch, getAssets, generateTextId);
+
+  const addToWorkspace = useAddToWorkspace(comparisonAnalyzer.definition.id, dispatch, getAssets, () => {
+    commitTextContent.flush();
+    commitComparisonOptions.flush();
+  });
 
   // 間引き待ちの変更を先に書いてから戻す。待ち中の値を残したまま戻すと、戻した後にその値が
   // 書かれて、戻したはずの変更がまた入るため。
@@ -54,6 +60,7 @@ export function StandaloneComparisonApp() {
       generatePresetId={generatePresetId}
       history={history}
       onTextContentCommit={commitTextContent}
+      onAddToWorkspace={addToWorkspace}
       onComparisonOptionsCommit={commitComparisonOptions}
     />
   );

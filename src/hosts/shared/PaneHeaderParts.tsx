@@ -29,6 +29,7 @@ export function PaneMenu({
   label,
   title,
   icon,
+  text,
   className,
   data,
 }: {
@@ -39,6 +40,8 @@ export function PaneMenu({
   /** hoverで出す説明。 */
   readonly title?: string;
   readonly icon?: ReactNode;
+  /** アイコンの隣に出すボタンの文字。省略すればアイコンだけ。 */
+  readonly text?: string;
   readonly className?: string;
   readonly data?: Readonly<Record<string, string>>;
 }) {
@@ -110,6 +113,7 @@ export function PaneMenu({
         ref={buttonRef}
         type="button"
         className="pane-icon-button pane-menu-button"
+        data-with-text={text === undefined ? undefined : ''}
         aria-label={accessibleName}
         title={title}
         aria-haspopup="menu"
@@ -124,6 +128,7 @@ export function PaneMenu({
             <circle cx="12.5" cy="8" r="1.3" fill="currentColor" />
           </svg>
         )}
+        {text === undefined ? null : <span className="pane-menu-button-text">{text}</span>}
       </button>
       {open ? (
         <div

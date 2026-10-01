@@ -17,6 +17,8 @@ import {
 import { initialMultiTargetSelection, initialTargetSet } from './multi-target-selection.ts';
 import { initialSingleTargetSelection } from './single-target-selection.ts';
 import {
+  addStandalonePaneToNewWorkspaceCommand,
+  addStandalonePaneToWorkspaceCommand,
   addWorkspacePaneCommand,
   closeWorkspacePaneCommand,
   createWorkspaceCommand,
@@ -325,4 +327,71 @@ test('削除したWorkspaceは元の位置へ復元でき、同じidがあれば
   // 既にあるidは積まない
   const depth = restored.history.undoStack.length;
   assert.equal(run(restored, restoreWorkspaceCommand(deleted, 0)).history.undoStack.length, depth);
+});
+
+test('個別画面から既存のWorkspaceへ追加: 解析設定を写し、最初の組に従い、対象は書き換えない。Undoで戻る', () => {
+  const before = withWorkspace();
+  const options = { columns: ['a'] };
+  const added = run(before, addStandalonePaneToWorkspaceCommand('w1', { paneId: 'c', analyzerId: 'comparison', options }, undefined));
+  const workspace = findWorkspace(added.assets.workspaces, 'w1')!;
+  assert.deepEqual(workspace.panes.map((p) => p.id), ['a', 'b', 'c']);
+  const created = workspace.panes[2]!;
+  assert.equal(created.analyzerId, 'comparison');
+  assert.deepEqual(created.options, options);
+  assert.deepEqual(created.binding, followBinding(G));
+  assert.deepEqual(workspace.groups, findWorkspace(before.assets.workspaces, 'w1')!.groups);
+  assert.deepEqual(layoutPaneIds(workspace.layout), ['a', 'b', 'c']);
+
+  const undone = undo(added.assets, added.history);
+  assert.deepEqual(findWorkspace(undone.assets.workspaces, 'w1')!.panes.map((p) => p.id), ['a', 'b']);
+});
+
+test('個別画面から既存のWorkspaceへ追加: 無いWorkspace・使われているペインidは履歴に積まない', () => {
+  const before = withWorkspace();
+  const source = { paneId: 'c', analyzerId: 'bigram-flow', options: undefined };
+  assert.equal(run(before, addStandalonePaneToWorkspaceCommand('missing', source, undefined)).history, before.history);
+  assert.equal(run(before, addStandalonePaneToWorkspaceCommand('w1', { ...source, paneId: 'a' }, undefined)).history, before.history);
+});
+
+test('個別画面から新しいWorkspaceへ追加: 対象を写して作り、ペインを足すまでが1回のUndoで戻る', () => {
+  const start = { assets: emptyAssets(), history: emptyCommandHistory<KeydistAssets>() };
+  const added = run(start, addStandalonePaneToNewWorkspaceCommand('w9', { paneId: 'p', analyzerId: 'bigram-flow', options: undefined }, undefined));
+  const workspace = findWorkspace(added.assets.workspaces, 'w9')!;
+  assert.deepEqual(workspace.panes.map((p) => p.id), ['p']);
+  assert.deepEqual(workspace.panes[0]!.binding, followBinding(workspace.groups[0]!.id));
+  assert.deepEqual(workspace.groups[0]!.target, { single: start.assets.singleTargetSelection, set: { targets: start.assets.multiTargetSelection.targets, baseline: start.assets.multiTargetSelection.baseline } });
+  assert.deepEqual(layoutPaneIds(workspace.layout), ['p']);
+
+  const undone = undo(added.assets, added.history);
+  assert.deepEqual(undone.assets.workspaces, []);
+  // 同じidのWorkspaceが既にあれば何もしない
+  assert.equal(run(added, addStandalonePaneToNewWorkspaceCommand('w9', { paneId: 'q', analyzerId: 'bigram-flow', options: undefined }, undefined)).history, added.history);
+});
+
+test('新しいWorkspaceへの追加は、createWorkspaceCommandと同じ作り方（対象・名前）で作る', () => {
+  const base = emptyAssets();
+  const start = {
+    assets: {
+      ...base,
+      singleTargetSelection: { target: { kind: 'layout', layoutId: 'colemak-dh' } },
+      // 色の番号は並びの順ではない値（2と5）にして、写し損ねを見分ける
+      multiTargetSelection: {
+        targets: [{ kind: 'layout', layoutId: 'qwerty' }, { kind: 'layout', layoutId: 'dvorak' }],
+        baseline: undefined,
+        colorSlots: [2, 5],
+      },
+    } as KeydistAssets,
+    history: emptyCommandHistory<KeydistAssets>(),
+  };
+  const plain = findWorkspace(run(start, createWorkspaceCommand('a')).assets.workspaces, 'a')!;
+  const viaAdd = findWorkspace(
+    run(start, addStandalonePaneToNewWorkspaceCommand('a', { paneId: 'p', analyzerId: 'bigram-flow', options: undefined }, undefined)).assets.workspaces,
+    'a',
+  )!;
+  assert.deepEqual(viaAdd.groups, plain.groups);
+  assert.equal(viaAdd.name, plain.name);
+  assert.deepEqual(viaAdd.text, plain.text);
+  // 個別画面で配っていた色の番号も引き継ぐ（作成と同じ）
+  assert.deepEqual(viaAdd.colorSlots, { 'layout:qwerty': 2, 'layout:dvorak': 5 });
+  assert.deepEqual(viaAdd.colorSlots, plain.colorSlots);
 });

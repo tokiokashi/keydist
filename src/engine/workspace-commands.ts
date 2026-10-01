@@ -11,6 +11,7 @@ import {
   restoreWorkspace,
   renameWorkspace,
   withWorkspaceLayout,
+  followBinding,
   withWorkspacePaneOptions,
   withWorkspacePaneBinding,
   withPaneInNewLinkGroup,
@@ -51,17 +52,85 @@ function workspacesCommand(
  */
 export function createWorkspaceCommand(id: string, name?: string): Command<KeydistAssets> {
   return (current) => {
+    const created = createWorkspaceFromAssets(current, id, name);
+    if (created === undefined) return { kind: 'no-op' };
+    return { kind: 'applied', label: 'Workspaceを作成する', changes: { workspaces: created.library } };
+  };
+}
+
+/**
+ * 今の資産から新しいWorkspaceを作る（対象の写し方を含む）。Workspaceを作るコマンドはすべてここを通し、
+ * 対象の組み立て（個別画面の選択のどこをWorkspaceの最初の組へ写すか）を1か所に持つ。
+ * 同じidのWorkspaceが既にあれば`undefined`。
+ */
+function createWorkspaceFromAssets(
+  current: KeydistAssets,
+  id: string,
+  name?: string,
+): ReturnType<typeof createWorkspace> | undefined {
+  const library = current.workspaces;
+  if (library.some((workspace) => workspace.id === id)) return undefined;
+  const selection = current.multiTargetSelection;
+  const target: WorkspaceTarget = {
+    single: current.singleTargetSelection,
+    set: { targets: selection.targets, baseline: selection.baseline },
+  };
+  // 集合の色の番号も写す（`createWorkspaceCommand`と「新しいWorkspaceに追加」で同じ）
+  return createWorkspace(library, () => id, name, target, new Map(Object.entries(multiColorSlots(selection))));
+}
+
+/** 個別画面から送るAnalyzer（ペインの素）。idと、個別画面で使っていた解析設定。 */
+export interface PaneFromStandalone {
+  readonly paneId: string;
+  readonly analyzerId: string;
+  /** 個別画面の解析設定（画面で今見えている値。既定値のままでも、既定値を展開した値が入る）。 */
+  readonly options: unknown;
+}
+
+function standalonePane(source: PaneFromStandalone, groupId: string): WorkspacePane {
+  return { id: source.paneId, analyzerId: source.analyzerId, options: source.options, binding: followBinding(groupId) };
+}
+
+/**
+ * 個別画面で見ていたAnalyzerを、既存のWorkspaceへペインとして足す（「Workspaceに追加」）。
+ * 解析設定は個別画面のものを写す。対象は写さず、Workspaceの「Analyzerを追加」と同じく最初の連動の組に従わせる
+ * （そのWorkspaceで比べている対象を、追加で黙って書き換えないため）。Workspaceが無ければ何もしない。
+ */
+export function addStandalonePaneToWorkspaceCommand(
+  workspaceId: string,
+  source: PaneFromStandalone,
+  board: BoardPolicy | undefined,
+): Command<KeydistAssets> {
+  return (current) => {
+    const workspace = current.workspaces.find((candidate) => candidate.id === workspaceId);
+    const group = workspace?.groups[0];
+    if (workspace === undefined || group === undefined) return { kind: 'no-op' };
     const library = current.workspaces;
-    if (library.some((workspace) => workspace.id === id)) return { kind: 'no-op' };
-    const selection = current.multiTargetSelection;
-    const target: WorkspaceTarget = {
-      single: current.singleTargetSelection,
-      set: { targets: selection.targets, baseline: selection.baseline },
-    };
+    const next = fitLibraryBoard(library, addWorkspacePane(library, workspaceId, standalonePane(source, group.id)), workspaceId, board, true);
+    if (next === library) return { kind: 'no-op' };
+    return { kind: 'applied', label: 'Workspaceに追加する', changes: { workspaces: next } };
+  };
+}
+
+/**
+ * 新しいWorkspaceを作り、個別画面で見ていたAnalyzerをペインとして足す。作成と追加は1回の操作で、Undoも1回で戻る。
+ * Workspaceの最初の対象は、`createWorkspaceCommand`と同じく個別画面で今選んでいる対象を写す。
+ */
+export function addStandalonePaneToNewWorkspaceCommand(
+  workspaceId: string,
+  source: PaneFromStandalone,
+  board: BoardPolicy | undefined,
+): Command<KeydistAssets> {
+  return (current) => {
+    const created = createWorkspaceFromAssets(current, workspaceId);
+    if (created === undefined) return { kind: 'no-op' };
+    const group = created.created.groups[0];
+    if (group === undefined) return { kind: 'no-op' };
+    const withPane = addWorkspacePane(created.library, workspaceId, standalonePane(source, group.id));
     return {
       kind: 'applied',
-      label: 'Workspaceを作成する',
-      changes: { workspaces: createWorkspace(library, () => id, name, target, new Map(Object.entries(multiColorSlots(selection)))).library },
+      label: '新しいWorkspaceに追加する',
+      changes: { workspaces: fitLibraryBoard(created.library, withPane, workspaceId, board, true) },
     };
   };
 }

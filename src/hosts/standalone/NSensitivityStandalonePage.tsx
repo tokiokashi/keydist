@@ -19,6 +19,7 @@ import { useMultiColorSlots } from '#hosts/shared/use-set-target-selection.ts';
 import { useLatestCallback } from '#hosts/shared/use-latest-callback.ts';
 import { useOptionsDraft } from '#hosts/shared/use-options-draft.ts';
 import { effectiveMultiBaseline } from '#engine/multi-target-selection.ts';
+import { AddToWorkspaceMenu, type AddToWorkspaceDestination } from '#hosts/shared/AddToWorkspaceMenu.tsx';
 import { urlOptionsNotices, useUrlOptions } from './use-url-options.ts';
 import { useTargetShareSource, useUrlTargets } from './use-url-targets.ts';
 import { encodeMultiTargetsToUrl, hasSharedTargetParams } from './target-share.ts';
@@ -47,6 +48,11 @@ export interface NSensitivityStandalonePageProps {
   /** プリセットの新しいidの発行（条件のモーダルのプリセットの節が使う）。 */
   readonly generatePresetId: PresetIdGenerator;
   readonly onOptionsCommit: (options: NSensitivityOptions) => void;
+  /**
+   * 見出しの「Workspaceに追加」で送り先を選んだ時。今の解析設定（`options`）を添えて渡す。
+   * 書き込みと通知は組み立て側（`app`）が持つ。
+   */
+  readonly onAddToWorkspace: (destination: AddToWorkspaceDestination, options: unknown) => void;
 }
 
 const ANALYZER_ID = nSensitivityAnalyzer.definition.id;
@@ -65,6 +71,7 @@ export function NSensitivityStandalonePage({
   onOptionsCommit,
   history,
   generatePresetId,
+  onAddToWorkspace,
 }: NSensitivityStandalonePageProps) {
   const resolvedText = useStableResolvedText(useMemo(
     () => resolveTextSelection(assets.standaloneTextSelection, assets.textLibrary),
@@ -118,9 +125,15 @@ export function NSensitivityStandalonePage({
     sharedTargetsAtReadyRef.current = hasSharedTargetParams(window.location.search, 'multi');
   }
   const colorSlots = useMultiColorSlots(assets.multiTargetSelection);
-  const chrome: PaneChrome = sharedTargetsAtReadyRef.current === true
+  const baseChrome: PaneChrome = sharedTargetsAtReadyRef.current === true
     ? { ...STANDALONE_CHROME, holdTargetSelectionClosed: true }
     : STANDALONE_CHROME;
+  const chrome: PaneChrome = {
+    ...baseChrome,
+    headerAction: (
+      <AddToWorkspaceMenu workspaces={assets.workspaces} onAdd={(destination) => onAddToWorkspace(destination, optionsDraft)} />
+    ),
+  };
 
   return (
     <div className="standalone-page">

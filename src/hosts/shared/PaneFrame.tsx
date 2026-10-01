@@ -61,6 +61,8 @@ export interface PaneFrameProps {
   readonly showPaneNameInSettings?: boolean;
   /** ⋯のメニュー。空なら⋯を出さない（個別画面は出さない。Workspaceのペインが使う）。 */
   readonly menuItems?: readonly PaneMenuItem[];
+  /** 見出しの右端に置く操作（個別画面の「Workspaceに追加」）。⋯と同じ位置に出す。 */
+  readonly headerAction?: ReactNode;
   /**
    * 解析設定をAnalyzerの既定値（`defaultOptions`）へ戻す。解析設定の小窓のヘッダーに「すべて初期値に戻す」を出す。
    * 戻す先は個別画面でもWorkspaceでも既定値で、URLで開いた時の値や保存した値へは戻さない（#637）。
@@ -108,6 +110,7 @@ export function PaneFrame({
   settings,
   showPaneNameInSettings = false,
   menuItems = [],
+  headerAction,
   onResetOptions,
   header,
   conditionRows,
@@ -154,7 +157,8 @@ export function PaneFrame({
       data-name-in-tab={nameInTab || undefined}
       style={{ '--pane-recommended-width': `${recommendedWidthRem}rem` } as CSSProperties}
     >
-      <header className="pane-frame-header" data-sticky={stickyHeader || undefined} data-menu={menuItems.length > 0 || undefined}>
+      <header className="pane-frame-header" data-sticky={stickyHeader || undefined} data-menu={menuItems.length > 0 || undefined}
+        data-action={headerAction !== undefined || undefined}>
         {nameInTab ? (
           <Heading className="pane-frame-title pane-visually-hidden">{name}</Heading>
         ) : (
@@ -197,9 +201,10 @@ export function PaneFrame({
           <SettingsIcon />
           <span className="pane-settings-button-text">解析設定</span>
         </button>
-        {menuItems.length === 0 ? null : (
+        {menuItems.length === 0 && headerAction === undefined ? null : (
           <div className="pane-frame-menu">
-            <PaneMenu paneName={paneName} items={menuItems} />
+            {menuItems.length === 0 ? null : <PaneMenu paneName={paneName} items={menuItems} />}
+            {headerAction}
           </div>
         )}
       </header>
