@@ -102,12 +102,16 @@ const WORKSPACE_THEME = { ...themeLightSpaced, gap: PANE_GAP };
 function useIsRovingTabStop(innerRef: RefObject<HTMLElement | null>): boolean {
   const [stop, setStop] = useState(false);
   useEffect(() => {
-    const tab = innerRef.current?.closest<HTMLElement>('.dv-tab');
-    if (tab === null || tab === undefined) return undefined;
-    const read = () => setStop(tab.tabIndex === 0);
+    const inner = innerRef.current;
+    // Dockviewは描き直し（`fromJSON`）のたびに`.dv-tab`の要素を作り直すが、中の部品（この要素）は使い回す。
+    // 最初の`.dv-tab`だけを見続けると、切り離された古い要素を見て固まるので、面の根（作り直されない）を見張り、
+    // 読むたびに今の`.dv-tab`を引き直す
+    const area = inner?.closest<HTMLElement>('.workspace-dock-area');
+    if (inner === null || inner === undefined || area === null) return undefined;
+    const read = () => setStop(inner.closest<HTMLElement>('.dv-tab')?.tabIndex === 0);
     read();
     const observer = new MutationObserver(read);
-    observer.observe(tab, { attributes: true, attributeFilter: ['tabindex'] });
+    observer.observe(area, { subtree: true, childList: true, attributes: true, attributeFilter: ['tabindex'] });
     return () => observer.disconnect();
   }, [innerRef]);
   return stop;

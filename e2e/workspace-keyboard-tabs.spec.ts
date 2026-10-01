@@ -211,3 +211,43 @@ test('並びを書いた直後に別のタブを選んでも、表示・保存�
   await expect(tab(page, 'Bigram Flow')).toHaveAttribute('aria-selected', 'true');
   await expect(tab(page, '比較表')).toHaveAttribute('aria-selected', 'false');
 });
+
+/** tablistごとにtabindex 0のタブは1つで、各タブのⓘと×のtabindexはそのタブと同じ（0なら0、他は-1）。 */
+async function expectRovingInvariants(page: Page): Promise<void> {
+  await expect.poll(() => page.evaluate(() => {
+    const problems: string[] = [];
+    for (const list of document.querySelectorAll('[role="tablist"]')) {
+      const tabs = [...list.querySelectorAll<HTMLElement>('.dv-tab')];
+      const stops = tabs.filter((t) => t.tabIndex === 0).length;
+      if (stops !== 1) problems.push(`tablistのtabindex 0が${stops}個`);
+      for (const t of tabs) {
+        const want = t.tabIndex === 0 ? 0 : -1;
+        for (const inner of t.querySelectorAll<HTMLElement>('.info-button, .dv-default-tab-action')) {
+          if (inner.tabIndex !== want) problems.push(`${t.getAttribute('aria-label')}の${inner.className}が${inner.tabIndex}（期待${want}）`);
+        }
+      }
+    }
+    return problems;
+  })).toEqual([]);
+}
+
+test('描き直し（ペインの追加・Undo）の後も、ⓘと×のtabindexはタブに付いていく', async ({ page }) => {
+  await openWorkspace(page);
+  await expectRovingInvariants(page);
+
+  await page.getByRole('button', { name: 'Analyzerを追加' }).click();
+  await page.getByRole('menuitem', { name: /N感度/ }).click();
+  await expect(page.getByRole('tab')).toHaveCount(4);
+  await expectRovingInvariants(page);
+
+  // 追加の後も、矢印で動いたタブのⓘ・×へTabで届く
+  await tab(page, 'Bigram Flow').focus();
+  await page.keyboard.press('ArrowRight');
+  await expectRovingInvariants(page);
+  await page.keyboard.press('Tab');
+  expect(await focusedLabel(page)).toBe('button:比較表の説明');
+
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect(page.getByRole('tab')).toHaveCount(3);
+  await expectRovingInvariants(page);
+});
