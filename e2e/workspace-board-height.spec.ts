@@ -274,6 +274,52 @@ test('Analyzerを追加すると、足したペインの下限まで保存され
   expect((await measure(page)).docHeight).toBe(900);
 });
 
+/** `tab`のタブを、`target`のペインの枠の下端へドラッグする（枠の下に新しい段ができる）。 */
+async function dragTabBelow(page: Page, tabAnalyzer: string, nth: number, targetAnalyzer: string) {
+  const tab = page.locator('.dv-tab').filter({ hasText: tabAnalyzer }).nth(nth);
+  const target = page.locator('.dv-groupview').filter({ has: page.locator(`[data-react-feature="${targetAnalyzer}"]`) });
+  const box = (await target.boundingBox())!;
+  await tab.dragTo(target, { targetPosition: { x: box.width / 2, y: box.height - 8 } });
+}
+
+test('根が縦の配置でペインを別の段へ移すと、下限を割る段の分だけ板が伸びる', async ({ page }) => {
+  // 縦2段（上は比較表が横に2つ、下がBigram Flow）。比較表の1つをBigram Flowの下へ移すと、3段（1/3ずつ）になる形
+  await openWorkspace(page, [comparison('c1'), comparison('c2'), flow('f')], column({ kind: 'split', direction: 'row', weight: 1, children: [group('c1'), group('c2')] }, group('f')), { width: 1440, height: 900 });
+  expect(await storedBoardHeight(page)).toBeUndefined();
+  await dragTabBelow(page, '比較表', 1, 'bigram-flow');
+  // 3段の下限の和 + 段の間の余白 + 外周の余白
+  const expected = Math.ceil((2 * floorOf('comparison') + floorOf('bigram-flow') + 2 * 0.5 + 1.5) * 100) / 100;
+  await expect.poll(async () => (await storedBoardHeight(page)) ?? 0, { timeout: 10_000 }).toBeGreaterThanOrEqual(expected - 0.05);
+  expect(await storedBoardHeight(page)).toBeLessThanOrEqual(expected + 0.05);
+  await expect.poll(async () => (await measure(page)).docHeight).toBeGreaterThan(900);
+  const m = await measure(page);
+  // 移した後の3段は、どれも本体が下限を割らない
+  for (const g of m.groups) {
+    const floorBody = FLOOR_BODY_REM[g.analyzer as keyof typeof FLOOR_BODY_REM] ?? 12;
+    expect(g.body, `${g.analyzer} の本体`).toBeGreaterThanOrEqual(floorBody * REM - 2);
+  }
+});
+
+test('増えた列の中に人が比を決めた列があっても、板が暴走せず、その列の下限の和で足りる', async ({ page }) => {
+  // 左の列（N感度、比較表と「比較表3:1の列」の横並び）の下に、右のBigram Flowを移す。内側の3:1の列は人が決めた比
+  const inner = { kind: 'split', direction: 'column', weight: 1, children: [group('c2', 0.75), group('c3', 0.25)] };
+  const left = column(group('n'), { kind: 'split', direction: 'row', weight: 1, children: [group('c1'), inner] });
+  await openWorkspace(
+    page,
+    [nSens('n'), comparison('c1'), comparison('c2'), comparison('c3'), flow('f')],
+    { kind: 'split', direction: 'row', weight: 1, children: [left, group('f')] },
+    { width: 1440, height: 900 },
+  );
+  await dragTabBelow(page, 'Bigram Flow', 0, 'n-sensitivity');
+  // 内側の列は比（0.25）で割らず、下限の和（比較表2つ + 間）で数える。3段の下限の和 + 余白がちょうど
+  const expected = Math.ceil((floorOf('n-sensitivity') + floorOf('bigram-flow') + 2 * floorOf('comparison') + 0.5 + 2 * 0.5 + 1.5) * 100) / 100;
+  await expect.poll(async () => (await storedBoardHeight(page)) ?? 0, { timeout: 10_000 }).toBeGreaterThan(900 / REM);
+  await page.waitForTimeout(800);
+  const stored = (await storedBoardHeight(page))!;
+  expect(stored).toBeGreaterThanOrEqual(expected - 0.05);
+  expect(stored).toBeLessThanOrEqual(expected + 0.05);
+});
+
 test('縦積みの幅（760px以下）では板の高さを使わない', async ({ page }) => {
   await openWorkspace(page, [flow('f'), comparison('c')], column(group('f'), group('c')), { width: 700, height: 900 }, { boardHeightRem: 300 }, false);
   await expect(page.locator('.workspace-stack')).toBeVisible();
