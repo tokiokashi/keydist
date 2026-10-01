@@ -238,3 +238,43 @@ test('拡大中にタブの×でペインを閉じても、拡大が解けて残
   await expect(page.locator('.dv-groupview')).toHaveCount(2);
   await expect.poll(async () => (await groupSizes(page)).every((s) => s.width > 100 && s.height > 100)).toBe(true);
 });
+
+test('図の表示の欄を開いていても、ⓘにhoverしていても、Escapeで拡大から戻る（Escapeで閉じないものは数えない）', async ({ page }) => {
+  await openWorkspace(page, { width: 1440, height: 900 });
+  await maximizeFlow(page);
+  const frame = page.locator('.dv-groupview').filter({ has: page.locator('.pane-frame') }).first();
+  // 欄を展開するだけのボタン（Escapeでは閉じない）
+  await frame.getByRole('button', { name: 'Keyboard Flowの表示' }).click();
+  await expect(frame.getByRole('button', { name: 'Keyboard Flowの表示' })).toHaveAttribute('aria-expanded', 'true');
+  // ⓘにhoverして説明を出している間
+  await frame.getByRole('button', { name: 'Bigram Flowの説明' }).hover();
+  await expect(page.getByRole('tooltip')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect.poll(() => isMaximized(page)).toBe(false);
+});
+
+test('拡大中のTabは、拡大したペインの外（見えないペイン）へ出ない。戻すと他のペインへ入れる', async ({ page }) => {
+  await openWorkspace(page, { width: 1440, height: 900 });
+  await maximizeFlow(page);
+  await flowMenuButton(page).focus();
+  const outside: string[] = [];
+  for (let i = 0; i < 60; i += 1) {
+    await page.keyboard.press('Tab');
+    const where = await page.evaluate(() => {
+      const active = document.activeElement;
+      const group = active?.closest('.dv-groupview');
+      if (group === null || group === undefined) return 'outside-dock';
+      const rect = group.getBoundingClientRect();
+      return rect.width < 100 || rect.height < 100 ? `hidden:${active?.getAttribute('aria-label') ?? active?.className}` : 'maximized';
+    });
+    if (where.startsWith('hidden')) outside.push(where);
+  }
+  expect(outside).toEqual([]);
+  // inertは戻すと外れる
+  expect(await page.locator('.dv-groupview[inert]').count()).toBeGreaterThan(0);
+  await page.keyboard.press('Escape');
+  await expect.poll(() => isMaximized(page)).toBe(false);
+  expect(await page.locator('.dv-groupview[inert]').count()).toBe(0);
+  await page.getByRole('button', { name: '比較表の操作' }).focus();
+  await expect(page.getByRole('button', { name: '比較表の操作' })).toBeFocused();
+});

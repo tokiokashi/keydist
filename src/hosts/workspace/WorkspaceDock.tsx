@@ -83,10 +83,22 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 /**
- * Escapeで先に閉じるべきものが開いているか。開閉の状態は各部品が持つので、画面に出ているものをDOMで見る。
- * `aria-expanded="true"`は、メニュー・解析設定・対象の選択・条件など、開いている間だけ付くボタンの印。
+ * Escapeで先に閉じるべきもの（上に重なって出て、Escapeで閉じるもの）が開いているか。開閉の状態は各部品が持つので、
+ * 画面に出ているものをDOMで見る。`aria-expanded`だけでは数えない: 図の表示の欄の開閉ボタンなど、欄を展開するだけで
+ * Escapeでは閉じないものまで数えると、開いている間は拡大から戻れなくなる。
+ * - `aria-haspopup`付きのボタンが開いている間: ⋯のメニュー・条件・対象の選択・Analyzerを追加
+ * - 小窓・モーダル・ポップアップそのもの、ピン留めしたⓘの説明（hoverだけの説明は数えない）
+ * - 重ねて出したサイドバー（`aria-haspopup`を持たない）
  */
-const OVERLAY_SELECTOR = 'dialog[open], .settings-window, .target-selection-panel, .info-popover, [aria-expanded="true"]';
+const OVERLAY_SELECTOR = [
+  '[aria-haspopup][aria-expanded="true"]',
+  'dialog[open]',
+  '.settings-window',
+  '.target-selection-panel',
+  '.text-chip-panel',
+  '.info-button[data-pinned]',
+  '.shell[data-sidebar-open="true"]',
+].join(', ');
 function hasOpenOverlay(): boolean {
   return document.querySelector(OVERLAY_SELECTOR) !== null;
 }
@@ -350,7 +362,32 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
     } finally {
       syncingRef.current = false;
     }
+    // 最大化は他のグループを数画素に縮めるだけで、中のボタンへTabが入ってしまう。拡大中は、拡大したグループ以外を
+    // 操作不能（inert）にする。付けたものだけを覚え、戻す時はそれだけを外す（他が付けた状態には触れない）
+    const keep = panel?.group.element;
+    for (const group of api.groups) {
+      const element = group.element;
+      if (keep !== undefined && element !== keep) {
+        if (!element.hasAttribute('inert')) {
+          element.setAttribute('inert', '');
+          inertByUsRef.current.add(element);
+        }
+      } else if (inertByUsRef.current.delete(element)) {
+        element.removeAttribute('inert');
+      }
+    }
+    for (const element of [...inertByUsRef.current]) {
+      if (keep === undefined || !element.isConnected) {
+        element.removeAttribute('inert');
+        inertByUsRef.current.delete(element);
+      }
+    }
   });
+  const inertByUsRef = useRef(new Set<HTMLElement>());
+  useEffect(() => () => {
+    for (const element of inertByUsRef.current) element.removeAttribute('inert');
+    inertByUsRef.current.clear();
+  }, []);
 
   // 拡大の出入りでページのスクロールを扱う。拡大したら板の上端が画面に入るよう先頭へ戻し、戻したら元の位置へ。
   // 拡大すると板が1画面に縮んでページが短くなり、ブラウザがスクロール位置を切り詰める。元の位置は、その前（描画中）に覚える
