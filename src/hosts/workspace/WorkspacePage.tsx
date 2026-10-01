@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
@@ -113,6 +113,10 @@ export function WorkspacePage({
   const workspace = findWorkspace(assets.workspaces, workspaceId);
   // スマホ幅ではDockviewを外し、ペインを縦に積む。資産の配置は読むだけなので、戻ると元の並びで描き直される
   const stacked = useStacked();
+  // 拡大表示しているペイン。保存しない見た目だけの状態で、リロードで元に戻る。
+  // 拡大できるのはDockviewの面だけなので、縦積みへ変わったら解く（戻した時に勝手に拡大し直さない）
+  const [maximizedId, setMaximizedId] = useState<string | undefined>(undefined);
+  if (stacked && maximizedId !== undefined) setMaximizedId(undefined);
   // 板の高さの計算に渡す、ペインの下限と余白（ペインを足す・複製する・並びを変える時に板を伸ばす）
   const boardPolicy = useMemo(() => workspaceBoardPolicy(tabs === 'hide'), [tabs]);
   // 板の下端のつまみで縮められる下限（各ペインの下限の和 + 余白）
@@ -137,12 +141,15 @@ export function WorkspacePage({
   const pageHistory: ContextBarHistory = useMemo(() => ({
     canUndo: history.canUndo,
     canRedo: history.canRedo,
+    // 戻す・やり直すで並びやペインが変わる。新しく現れるペインが隠れないよう、拡大は解く
     undo: () => {
       flushPending();
+      setMaximizedId(undefined);
       history.undo();
     },
     redo: () => {
       flushPending();
+      setMaximizedId(undefined);
       history.redo();
     },
   }), [history, flushPending]);
@@ -218,13 +225,18 @@ export function WorkspacePage({
     },
     duplicatePane: (paneId: string) => {
       flushPending();
+      // 写したペインが隣に現れるので、拡大は解いて見えるようにする
+      setMaximizedId(undefined);
       dispatch(duplicateWorkspacePaneCommand(workspaceId, paneId, generateId(), boardPolicy));
     },
     closePane: (paneId: string) => {
       flushPending();
+      setMaximizedId((current) => (current === paneId ? undefined : current));
       dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
     },
-  }), [env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, groupSummaries, colorSlots]);
+    // 縦積みはDockviewを使わず拡大できないので、渡さない（⋯に項目を出さない）
+    ...(stacked ? {} : { maximizedPaneId: maximizedId, maximizePane: setMaximizedId }),
+  }), [stacked, maximizedId, env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, groupSummaries, colorSlots]);
 
   const titleOf = useCallback(
     (paneId: string) => {
@@ -250,6 +262,8 @@ export function WorkspacePage({
 
   const addPane = (entry: WorkspaceAnalyzerEntry) => {
     flushPending();
+    // 足したペインが隠れないよう、拡大は解く
+    setMaximizedId(undefined);
     const pane: WorkspacePane = {
       id: generateId(),
       analyzerId: entry.id,
@@ -335,8 +349,11 @@ export function WorkspacePage({
                   renderPane={renderPane}
                   hideTabs={tabs === 'hide'}
                   onLayoutChange={(layout) => dispatch(setWorkspaceLayoutCommand(workspaceId, layout, boardPolicy))}
+                  maximizedPaneId={maximizedId !== undefined && panesById.has(maximizedId) ? maximizedId : undefined}
+                  onMaximizedChange={setMaximizedId}
                   onPaneClosed={(paneId) => {
                     onPaneOptionsCommit.flush();
+                    setMaximizedId((current) => (current === paneId ? undefined : current));
                     dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
                   }}
                   registerFlush={registerFlush}
