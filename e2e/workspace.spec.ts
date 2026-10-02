@@ -800,7 +800,14 @@ test('窓の大きさを変えても、並びは書き換わらない（格子�
   await waitForHydration(page);
   await expect(page.locator('.pane-frame')).toHaveCount(3);
   const widths = () => page.$$eval('.workspace-grid-item', (elements) => elements.map((element) => Math.round(element.getBoundingClientRect().width)));
-  const wide = await widths();
+  // ライブラリの配置の動き（200ms）が済み、幅が落ち着いてから基準を測る
+  let wide = await widths();
+  for (let stable = 0; stable < 4;) {
+    await page.waitForTimeout(100);
+    const now = await widths();
+    stable = JSON.stringify(now) === JSON.stringify(wide) ? stable + 1 : 0;
+    wide = now;
+  }
   const gridBefore = JSON.stringify((await storedWorkspaces(page)).workspaces[0]!.grid);
 
   await page.setViewportSize({ width: 1000, height: 900 });
