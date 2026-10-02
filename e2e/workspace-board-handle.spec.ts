@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
+import { BOARD_PADDING_REM, PANE_GAP_REM } from '../src/hosts/workspace/board-spacing.ts';
 
 /**
  * 板の下端のつまみ（#833）。ドラッグ・キーボードで板の高さを変え、中のペインは比を保って伸び縮みする。
@@ -141,7 +142,7 @@ test('下端のつまみをドラッグすると板が伸び、ペインは比�
 
 test('縮める時は、ペインの下限の和で止まる。1画面より小さくはならない', async ({ page }) => {
   // 下限の和 + 余白（縦3段）。1440×900の1画面より高い
-  const minRem = floorOf('bigram-flow') + floorOf('n-sensitivity') + floorOf('comparison') + 0.5 * 2 + 1.5;
+  const minRem = floorOf('bigram-flow') + floorOf('n-sensitivity') + floorOf('comparison') + PANE_GAP_REM * 2 + BOARD_PADDING_REM;
   await openWorkspace(page, [flow('f'), nSens('n'), comparison('c')], column(group('f', 2.6), group('n', 1.7), group('c', 1.5)), WIDE, { boardHeightRem: 110 });
   await waitForDock(page, 3);
   expect(Math.abs((await areaHeight(page)) / REM - 110)).toBeLessThan(0.1);

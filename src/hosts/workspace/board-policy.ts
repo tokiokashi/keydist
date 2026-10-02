@@ -1,6 +1,7 @@
 import { minBodyHeightRemOf } from '#analyzers/min-body-height.ts';
 import type { BoardPolicy } from '#engine/workspace-board.ts';
 import { findWorkspaceAnalyzer, isBlankPane } from './analyzer-registry.ts';
+import { BOARD_PADDING_REM, PANE_GAP_REM } from './board-spacing.ts';
 
 /**
  * 板の高さの計算（`engine/workspace-board.ts`）に渡す、ペインを描く側の値。単位はrem。
@@ -19,10 +20,6 @@ const PANE_CHROME_REM_TABS_HIDDEN = 9.9;
 
 /** タブの帯。タブを隠す表示（見比べ用）では要らない。 */
 const TAB_BAR_REM = 2.6;
-
-/** 板の外周の余白（上下の合計）と、縦に並ぶペインの間。`workspace-dock.css`の`--dv-spacing-padding`と`PANE_GAP`。 */
-const BOARD_PADDING_REM = 1.5;
-const PANE_GAP_REM = 0.5;
 
 /**
  * 余白のペインの下限。本体を持たないので、見出し（⋯の1行）とその周りの隙間だけ。2段になる見出しも持たないので、

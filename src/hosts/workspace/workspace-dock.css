@@ -2,8 +2,8 @@
  * ペインを並べる面（Dockview）の見た目。ペインの間の余白・角丸のあるspacedテーマの骨組みに、
  * アプリのtoken（明・暗の両方に効く）で色を載せる。
  *
- * 余白と角丸は実物を見て決める値（#627）で、ここに1か所に集める。
- * 余白（ペインの間・面の外周）の数値は、`WorkspaceDock.tsx`の`PANE_GAP`と、下の`--dv-spacing-padding`。
+ * 余白と角丸は実物を見て決める値（#627）で、下の:rootの3変数に1か所に集める（縦積みの面も読む）。
+ * ペインの間の余白だけはDockviewへJSで渡すので、`WorkspaceDock.tsx`の`PANE_GAP`。
  */
 /*
  * 板そのものの最大幅。既定では効かせない（none）。広い画面で板を狭めた見た目を比べる時は、
@@ -12,6 +12,10 @@
  */
 :root {
   --workspace-board-max-width: none;
+  /* ペインの見た目の3値（#627）。並べる面と縦に積む面（workspace-stack.css）が同じ値を読む */
+  --workspace-board-padding: 0.5rem;
+  --workspace-pane-radius: 8px;
+  --workspace-pane-inline: 0.75rem;
 }
 
 .workspace-dock-area {
@@ -25,7 +29,7 @@
 }
 
 /*
- * 板の下端のつまみ。面の外周の余白（--dv-spacing-padding = 0.75rem）の中に置くので、通常はペインに重ならない。
+ * 板の下端のつまみ。面の外周の余白（--dv-spacing-padding = 0.5rem）の中に置くので、通常はペインに重ならない。
  * 見た目は中央の短い線だけで、つかめる範囲は横いっぱい。指で触る端末では触りやすいよう1.25remに高くし、
  * 余白からはみ出した分（約0.5rem）は一番下のペインの下端に重なる（つまみが手前）。
  */
@@ -71,14 +75,12 @@
 /* テーマのclassは面の入れ物の中にDockviewが作る要素に付くので、子孫として指す。 */
 .workspace-dock-area .dockview-theme-light-spaced {
   /* 面の外周の余白と、ペインの角丸 */
-  --dv-spacing-padding: 0.75rem;
-  --dv-border-radius: 10px;
+  --dv-spacing-padding: var(--workspace-board-padding);
+  --dv-border-radius: var(--workspace-pane-radius);
   --dv-tab-border-radius: 6px;
   --dv-tab-margin-block: 0.4rem;
   --dv-tabs-and-actions-container-height: 2.6rem;
   --dv-tab-font-size: 0.85rem;
-  /* ペインの本文の左右の余白。見出しの文字と×もこの線に揃える（#807） */
-  --workspace-pane-inline: 1rem;
   /*
    * 見出しの帯の左端から、タブの背景の左端まで。Dockviewのテーマが置く2つの余白の和
    * （帯の内側の余白 = 角丸の半分、タブの左右の外側の余白）。値を写さず同じ変数から求めるので、
@@ -112,6 +114,15 @@
   font: inherit;
 }
 
+/*
+ * ペインの間の溝。Dockviewは分割の入れ物（.dv-dockview）を --dv-group-view-background-color（= --surface）で
+ * 塗るので、そのままだと溝だけがペインと同じ白になり、外周の余白（--bg）と色が割れる。
+ * 外周と同じページの背景（--bg）に揃え、ペインの面（--surface）だけが浮いて見えるようにする。
+ */
+.workspace-dock-area .dv-dockview {
+  background-color: var(--bg);
+}
+
 /* ペインの枠。面の背景（--bg）の上に、ペインの面（--surface）を線で縁取って載せる。 */
 .workspace-dock-area .dv-groupview {
   border: 1px solid var(--border);
@@ -123,13 +134,14 @@
  * 見出しの文字の左端を、ペインの本文の文字の左端（帯の左端から--workspace-pane-inline）に揃える。
  * タブの背景は帯の左端から--workspace-tab-offsetだけ内側から始まるので、その分を引いたものが背景の中の余白になる。
  * ×は右端の背景から同じ余白だけ内側に置く（×のボタン自身の内側の余白は除く）。
- * 差が負になる指で押す端末では0に切り詰められ、1pxほど内側に寄る。
+ * 差が負になる指で押す端末（×の内側の余白が8px）では、タブの余白を0で止め、足りない分は×の負のmarginで右へ出す。
+ * 余白を0に切り詰めるだけだと、×が本文の右端から負の分（4px）だけ内側に寄る。
  * タブが1つだけの時（fullwidth）はDockviewが余白を0にするので、複数の時と同じ値で上書きする。
  * タブの構造は変えない（#628）。
  */
 .workspace-dock-area .dockview-theme-light-spaced .dv-tabs-and-actions-container .dv-tabs-container .dv-tab {
-  padding-inline: calc(var(--workspace-pane-inline) - var(--workspace-tab-offset))
-    calc(var(--workspace-pane-inline) - var(--workspace-tab-offset) - var(--workspace-tab-action-inset));
+  --workspace-tab-end-gap: calc(var(--workspace-pane-inline) - var(--workspace-tab-offset) - var(--workspace-tab-action-inset));
+  padding-inline: calc(var(--workspace-pane-inline) - var(--workspace-tab-offset)) max(0px, var(--workspace-tab-end-gap));
 }
 
 @media (pointer: coarse) {
@@ -148,6 +160,8 @@
 
 .workspace-dock-area .dv-tab .dv-default-tab .dv-default-tab-action {
   margin-left: auto;
+  /* タブの右の余白が負になる分（上の--workspace-tab-end-gap）。負でなければ0 */
+  margin-right: min(0px, var(--workspace-tab-end-gap, 0px));
 }
 
 .workspace-dock-area .dv-tab .dv-default-tab .info {
@@ -175,7 +189,7 @@
 .workspace-pane {
   height: 100%;
   overflow: auto;
-  padding: 0.75rem var(--workspace-pane-inline, 1rem) 1rem;
+  padding: 0.75rem var(--workspace-pane-inline) 1rem;
   box-sizing: border-box;
 }
 
