@@ -137,7 +137,7 @@ function DockPane({ params }: IDockviewPanelProps<{ paneId: string }>) {
 const COMPONENTS = { [PANE_COMPONENT]: DockPane };
 
 /** ペインの間の余白（画素）。実物を見て決める値（#627）。面の外周の余白と角丸は`workspace-dock.css`。 */
-const PANE_GAP = 8;
+const PANE_GAP = 6;
 const WORKSPACE_THEME = { ...themeLightSpaced, gap: PANE_GAP };
 
 /**

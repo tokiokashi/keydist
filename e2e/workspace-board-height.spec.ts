@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
+import { BOARD_PADDING_REM, PANE_GAP_REM } from '../src/hosts/workspace/board-spacing.ts';
 
 /**
  * Workspaceの板の高さ（#833）。板は「画面の高さ」と「保存した高さ」の大きい方で、配置の形が変わって
@@ -141,7 +142,7 @@ test('足した時の高さの配分は、各Analyzerの下限に比例する（
 /** 縦に並べた段の、どれも下限を割らない板の高さ [rem]（保存値の種に使う。`workspace-board.ts`の計算と同じ）。 */
 function requiredRem(floors: readonly number[], weights: readonly number[]): number {
   const total = weights.reduce((sum, w) => sum + w, 0);
-  const need = Math.max(...floors.map((floor, i) => floor / (weights[i]! / total))) + 0.5 * (floors.length - 1) + 1.5;
+  const need = Math.max(...floors.map((floor, i) => floor / (weights[i]! / total))) + PANE_GAP_REM * (floors.length - 1) + BOARD_PADDING_REM;
   return Math.ceil(need * 100) / 100;
 }
 
@@ -270,7 +271,7 @@ test('Analyzerを追加すると、足したペインの下限まで保存され
   await page.getByRole('menuitem', { name: /比較表/ }).click();
   await expect(page.locator('.dv-groupview')).toHaveCount(4);
   await expect.poll(async () => (await storedBoardHeight(page)) ?? 0).toBeGreaterThan(0);
-  expect(await storedBoardHeight(page)).toBe(Math.ceil((floorOf('comparison') + 1.5) * 100) / 100);
+  expect(await storedBoardHeight(page)).toBe(Math.ceil((floorOf('comparison') + BOARD_PADDING_REM) * 100) / 100);
   expect((await measure(page)).docHeight).toBe(900);
 });
 
@@ -288,7 +289,7 @@ test('根が縦の配置でペインを別の段へ移すと、下限を割る�
   expect(await storedBoardHeight(page)).toBeUndefined();
   await dragTabBelow(page, '比較表', 1, 'bigram-flow');
   // 3段の下限の和 + 段の間の余白 + 外周の余白
-  const expected = Math.ceil((2 * floorOf('comparison') + floorOf('bigram-flow') + 2 * 0.5 + 1.5) * 100) / 100;
+  const expected = Math.ceil((2 * floorOf('comparison') + floorOf('bigram-flow') + 2 * PANE_GAP_REM + BOARD_PADDING_REM) * 100) / 100;
   await expect.poll(async () => (await storedBoardHeight(page)) ?? 0, { timeout: 10_000 }).toBeGreaterThanOrEqual(expected - 0.05);
   expect(await storedBoardHeight(page)).toBeLessThanOrEqual(expected + 0.05);
   await expect.poll(async () => (await measure(page)).docHeight).toBeGreaterThan(900);
@@ -312,7 +313,7 @@ test('増えた列の中に人が比を決めた列があっても、板が暴�
   );
   await dragTabBelow(page, 'Bigram Flow', 0, 'n-sensitivity');
   // 内側の列は比（0.25）で割らず、下限の和（比較表2つ + 間）で数える。3段の下限の和 + 余白がちょうど
-  const expected = Math.ceil((floorOf('n-sensitivity') + floorOf('bigram-flow') + 2 * floorOf('comparison') + 0.5 + 2 * 0.5 + 1.5) * 100) / 100;
+  const expected = Math.ceil((floorOf('n-sensitivity') + floorOf('bigram-flow') + 2 * floorOf('comparison') + 3 * PANE_GAP_REM + BOARD_PADDING_REM) * 100) / 100;
   await expect.poll(async () => (await storedBoardHeight(page)) ?? 0, { timeout: 10_000 }).toBeGreaterThan(900 / REM);
   await page.waitForTimeout(800);
   const stored = (await storedBoardHeight(page))!;

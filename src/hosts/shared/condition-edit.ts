@@ -160,6 +160,14 @@ export function promoteToGlobalCommand<K extends GlobalEditableId>(
   return promoteCascadeOverrideCommand(layoutLevel(layoutId), GLOBAL_LEVEL, id, defaultValue);
 }
 
+/**
+ * 文脈バーの既定の物理配列のチップが書く命令。条件のモーダルと同じ書き込み（`setGlobalCommand`）にして、
+ * 既定と同じ物理配列を選び直した時に全体の上書きを消す（2か所で状態が食い違わないように）。
+ */
+export function defaultShapeCommand(next: string): Command<KeydistAssets> {
+  return setGlobalCommand('defaultShapeId', next, staticDefaultOf('defaultShapeId'));
+}
+
 /** 既定値が文脈に依らない項目の既定値。 */
 export function staticDefaultOf<K extends Exclude<GlobalEditableId, 'fingerAssignmentId'>>(id: K): SettingsValueMap[K] {
   return SETTINGS_ITEMS[id].defaultValue as SettingsValueMap[K];
