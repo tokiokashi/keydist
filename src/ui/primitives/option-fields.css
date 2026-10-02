@@ -98,6 +98,13 @@
   font-size: 0.82rem;
 }
 
+/* 一覧のグループ見出し（optgroup）も、暗いテーマで背景が合わず読めなくならないよう、selectと同じ面と文字の色を明示する。 */
+.option-field-input select option,
+.option-field-input select optgroup {
+  background-color: var(--surface-subtle);
+  color: var(--text);
+}
+
 .option-field-hint {
   margin: 0;
   color: var(--text-muted);

@@ -43,7 +43,7 @@ import {
  */
 
 /**
- * 「既定の物理配列」の既定値。3種類の物理配列（`PHYSICAL_SHAPES`）のうち最初から選ばれている既定
+ * 「既定の物理配列」の既定値。組み込みの物理配列（`PHYSICAL_SHAPES`）のうち最初から選ばれている既定
  * （`src/input/shapes/geometry.ts`の`row-staggered`）に合わせる。実体はimportせず、
  * idの文字列だけを持つ（`initial.ts`が持っていた同名の定数の後継。#578指摘1）。
  */

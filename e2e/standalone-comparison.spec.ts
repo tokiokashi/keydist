@@ -878,7 +878,7 @@ test('ANSIとJISのQWERTYは、共通の指の割当は列固定で、JISだけ�
   await expect(summary.getByLabel('指の割当', { exact: true })).toHaveValue('default');
   const diffs = summary.getByRole('region', { name: '対象ごとの差' });
   await expect(diffs.locator('.pane-condition-diff')).toHaveCount(1);
-  await expect(diffs.locator('.pane-condition-diff')).toContainText('JIS 109');
+  await expect(diffs.locator('.pane-condition-diff')).toContainText('JIS');
   await expect(diffs.locator('.pane-condition-diff')).toContainText('指の割当=JIS既定（列固定）');
 });
 

@@ -1244,8 +1244,8 @@ test('Tester selects preset and saved custom physical geometry', async ({ page }
     await expect(keyboard).toHaveAttribute('data-geometry-id', id);
   }
 
-  await expect(geometry.locator('optgroup[label="US / ANSI"] option')).toHaveCount(4);
-  await expect(geometry.locator('optgroup[label="JIS 109"] option')).toHaveCount(4);
+  await expect(geometry.locator('optgroup[label="US配列（ANSI）"] option')).toHaveCount(4);
+  await expect(geometry.locator('optgroup[label="JIS配列"] option')).toHaveCount(4);
   await expect(geometry.locator('option[value="shape-e2e-grid"]')).toHaveText('E2E Grid');
   await geometry.selectOption('shape-e2e-grid');
   await expect(keyboard).toHaveAttribute('data-geometry-id', 'shape-e2e-grid');

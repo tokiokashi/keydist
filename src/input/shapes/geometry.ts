@@ -214,8 +214,8 @@ export interface ExtraPhysicalKeySpec {
 
 /**
  * 物理配列の定義（仕様 §3）。ピッチ・各段のキー数・段ずれ量・列オフセット・
- * 親指キーの数と位置をまとめて持つ。既定の3種類の物理配列（`PHYSICAL_SHAPES`）を変えると
- * 既存の測定値が動くため変更しない。
+ * 親指キーの数と位置をまとめて持つ。組み込みの物理配列（`PHYSICAL_SHAPES`）の
+ * 既存の数値を変えると既存の測定値が動くため変更しない。
  */
 export interface PhysicalShape {
   id: string;
@@ -268,8 +268,9 @@ const DEFAULT_THUMBS: ThumbKeySpec[] = [
 ];
 
 /**
- * 既定の3種類の物理配列。数値（ピッチ・段ずれ・列オフセット）はこれまでの固定実装と同じにしてあり、
- * ここを変えると既存の測定値が動くため変更しない。
+ * 組み込みの物理配列（8種類。ANSI・JISのそれぞれにロウスタッガード・オーソリニア・
+ * 分割のオーソリニア・カラムスタッガード）。数値（ピッチ・段ずれ・列オフセット）は
+ * これまでの固定実装と同じにしてあり、ここを変えると既存の測定値が動くため変更しない。
  */
 export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
   'row-staggered': {
@@ -282,7 +283,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
   },
   'jis-row-staggered': {
     id: 'jis-row-staggered',
-    name: 'ロウスタッガード（JIS 109）',
+    name: 'ロウスタッガード（JIS）',
     pitchMm: 19.05,
     rowWidths: [...JIS_ROW_WIDTH],
     rowStagger: ROW_STAGGER,
@@ -297,7 +298,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
   },
   'jis-ortholinear': {
     id: 'jis-ortholinear',
-    name: 'オーソリニア（JIS 109）',
+    name: 'オーソリニア（JIS）',
     pitchMm: 19.05,
     rowWidths: [...JIS_ROW_WIDTH],
     thumbs: DEFAULT_THUMBS,
@@ -338,7 +339,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
   },
   'jis-column-staggered': {
     id: 'jis-column-staggered',
-    name: 'カラムスタッガード（JIS 109・分割想定）',
+    name: 'カラムスタッガード（JIS・分割想定）',
     pitchMm: 18,
     rowWidths: [...JIS_ROW_WIDTH],
     columnStagger: COLUMN_STAGGER,

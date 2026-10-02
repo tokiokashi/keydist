@@ -87,7 +87,10 @@ test('暗いテーマで、既定の物理配列の選択肢の背景と文字�
     };
     const option = document.querySelector('.context-select-chip select option')!;
     const style = getComputedStyle(option);
+    const groupStyle = getComputedStyle(document.querySelector('.context-select-chip select optgroup')!);
     return {
+      groupBg: groupStyle.backgroundColor,
+      groupColor: groupStyle.color,
       bg: style.backgroundColor,
       color: style.color,
       surface: resolve(option, '--surface-raised', 'backgroundColor'),
@@ -97,4 +100,7 @@ test('暗いテーマで、既定の物理配列の選択肢の背景と文字�
   expect(colors.bg).toBe(colors.surface);
   expect(colors.color).toBe(colors.text);
   expect(colors.bg).not.toBe('rgba(0, 0, 0, 0)');
+  // グループの見出し（US配列（ANSI）・JIS配列）も同じ面と文字の色になる
+  expect(colors.groupBg).toBe(colors.surface);
+  expect(colors.groupColor).toBe(colors.text);
 });

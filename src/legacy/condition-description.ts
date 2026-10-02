@@ -24,13 +24,13 @@ interface ConditionDescriptor {
 /** 条件を追加した時に説明の追従漏れを型とテストで検出するための一覧。 */
 const GEOMETRY_LABEL: Record<PresetGeometryKind | 'custom', string> = {
   'row-staggered': 'ロウスタッガード（ANSI）',
-  'jis-row-staggered': 'ロウスタッガード（JIS 109）',
+  'jis-row-staggered': 'ロウスタッガード（JIS）',
   ortholinear: 'オーソリニア（ANSI）',
-  'jis-ortholinear': 'オーソリニア（JIS 109）',
+  'jis-ortholinear': 'オーソリニア（JIS）',
   'split-ortholinear': 'オーソリニア（ANSI・分割）',
   'jis-split-ortholinear': 'オーソリニア（JIS・分割）',
   'column-staggered': 'カラムスタッガード（ANSI）',
-  'jis-column-staggered': 'カラムスタッガード（JIS 109）',
+  'jis-column-staggered': 'カラムスタッガード（JIS）',
   custom: 'カスタム物理配列',
 };
 

@@ -17,6 +17,7 @@ import {
   type PhysicalKeyboardStandard,
   type PhysicalShape,
 } from '#input/shapes/geometry.ts';
+import { SHAPE_GROUP_LABEL } from '#input/shapes/shape-groups.ts';
 import {
   sanitizeGeometrySettings,
 } from '#input/shapes/settings.ts';
@@ -1018,18 +1019,18 @@ export function InputConverterView() {
                   value={geometryId}
                   onChange={(event) => setGeometryId(event.target.value)}
                 >
-                  <optgroup label="US / ANSI">
+                  <optgroup label={SHAPE_GROUP_LABEL.ansi}>
                     {ANSI_GEOMETRY_SHAPES.map((shape) => (
                       <option key={shape.id} value={shape.id}>{shape.name}</option>
                     ))}
                   </optgroup>
-                  <optgroup label="JIS 109">
+                  <optgroup label={SHAPE_GROUP_LABEL.jis}>
                     {JIS_GEOMETRY_SHAPES.map((shape) => (
                       <option key={shape.id} value={shape.id}>{shape.name}</option>
                     ))}
                   </optgroup>
                   {userGeometryShapes.length > 0 ? (
-                    <optgroup label="自作">
+                    <optgroup label={SHAPE_GROUP_LABEL.user}>
                       {userGeometryShapes.map((shape) => (
                         <option key={shape.id} value={shape.id}>{shape.name}</option>
                       ))}

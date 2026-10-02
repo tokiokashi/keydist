@@ -101,6 +101,19 @@ export function OptionField<T>({ label, binding, valueText, hint, badge, childre
 export interface OptionChoice<T extends string> {
   readonly value: T;
   readonly label: string;
+  /** `SelectOptionField` で見出し（`<optgroup>`）の下にまとめる時の見出し。無ければ見出しの外に置く。 */
+  readonly group?: string;
+}
+
+/** 選択肢を見出しごとにまとめる。見出しの順は最初に現れた順。見出しの無い選択肢は先頭に置く。 */
+function groupChoices<T extends string>(choices: readonly OptionChoice<T>[]) {
+  const plain = choices.filter((choice) => choice.group === undefined);
+  const groups = new Map<string, OptionChoice<T>[]>();
+  for (const choice of choices) {
+    if (choice.group === undefined) continue;
+    groups.set(choice.group, [...(groups.get(choice.group) ?? []), choice]);
+  }
+  return { plain, groups: [...groups] };
 }
 
 export function SelectOptionField<T extends string>({
@@ -116,6 +129,7 @@ export function SelectOptionField<T extends string>({
   readonly hint?: ReactNode;
   readonly badge?: ReactNode;
 }) {
+  const { plain, groups } = groupChoices(choices);
   return (
     <OptionField label={label} binding={binding} hint={hint} badge={badge}>
       {(id) => (
@@ -124,8 +138,15 @@ export function SelectOptionField<T extends string>({
           value={binding.value}
           onChange={(event) => binding.onChange(event.currentTarget.value as T)}
         >
-          {choices.map((choice) => (
+          {plain.map((choice) => (
             <option key={choice.value} value={choice.value}>{choice.label}</option>
+          ))}
+          {groups.map(([group, members]) => (
+            <optgroup key={group} label={group}>
+              {members.map((choice) => (
+                <option key={choice.value} value={choice.value}>{choice.label}</option>
+              ))}
+            </optgroup>
           ))}
         </select>
       )}

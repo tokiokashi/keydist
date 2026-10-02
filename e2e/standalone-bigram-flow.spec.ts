@@ -127,6 +127,26 @@ test('既定の物理配列にオーソリニア（分割）を選べて、図�
   await expect(chip).toHaveValue('jis-split-ortholinear');
 });
 
+test('既定の物理配列の選択肢は、チップとモーダルの行のどちらも「US配列（ANSI）」「JIS配列」の見出しに4つずつ並ぶ', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+  const chip = page.locator('.context-bar').getByLabel('既定の物理配列');
+  const modal = await openConditionModal(page);
+  const row = modal.getByLabel('既定の物理配列', { exact: true });
+  for (const select of [chip, row]) {
+    await expect(select.locator('optgroup')).toHaveCount(2);
+    await expect(select.locator('optgroup').nth(0)).toHaveAttribute('label', 'US配列（ANSI）');
+    await expect(select.locator('optgroup').nth(1)).toHaveAttribute('label', 'JIS配列');
+    await expect(select.locator('optgroup[label="US配列（ANSI）"] option')).toHaveCount(4);
+    await expect(select.locator('optgroup[label="JIS配列"] option')).toHaveCount(4);
+    await expect(select.locator('option[value="jis-ortholinear"]')).toHaveText('オーソリニア（JIS）');
+    await expect(select.locator('option', { hasText: '109' })).toHaveCount(0);
+  }
+  await row.selectOption('jis-column-staggered');
+  await page.keyboard.press('Escape');
+  await expect(chip).toHaveValue('jis-column-staggered');
+});
+
 test('条件のモーダル: 既定の物理配列は文脈バーのチップと同じ値を書く', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
