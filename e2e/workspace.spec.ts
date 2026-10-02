@@ -20,7 +20,7 @@ async function createWorkspace(page: Page): Promise<string> {
   return new URL(page.url()).pathname.split('/').pop()!;
 }
 
-/** Analyzerを追加（見出しの「Analyzerを追加」から選ぶ）。 */
+/** Analyzerを追加（見出しの「ペインを追加」から選ぶ）。 */
 async function addAnalyzer(page: Page, name: string): Promise<void> {
   await page.getByRole('button', { name: /ペインを追加/ }).click();
   await page.getByRole('menuitem', { name: new RegExp(name) }).click();

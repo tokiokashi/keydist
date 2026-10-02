@@ -122,7 +122,7 @@ test('矢印で動いたタブのⓘ・×へもTabで届く（Tabの止まる場
   await expect.poll(() => focusedLabel(page)).toBe('tab:Bigram Flow');
 });
 
-test('Deleteでタブを閉じ、組が空になったら次の組のタブ、最後は「Analyzerを追加」へ', async ({ page }) => {
+test('Deleteでタブを閉じ、組が空になったら次の組のタブ、最後は「ペインを追加」へ', async ({ page }) => {
   await openWorkspace(page);
   await tab(page, 'Bigram Flow').focus();
   await page.keyboard.press('Delete');
@@ -134,7 +134,7 @@ test('Deleteでタブを閉じ、組が空になったら次の組のタブ、�
   await expect(tab(page, '比較表')).toHaveCount(0);
   await expect.poll(() => focusedLabel(page)).toBe('tab:N感度');
 
-  // 最後の1枚を閉じると、ペインが無い状態の「Analyzerを追加」へ
+  // 最後の1枚を閉じると、ペインが無い状態の「ペインを追加」へ
   await page.keyboard.press('Delete');
   await expect(page.getByRole('tab')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'ペインを追加' })).toBeFocused();
@@ -161,7 +161,7 @@ test('ペインの⋯の「閉じる」をキーボードだけで使え、閉�
   await expect.poll(() => focusedLabel(page)).toBe('tab:比較表');
 });
 
-test('⋯の「閉じる」で最後のペインを閉じると、「Analyzerを追加」へ', async ({ page }) => {
+test('⋯の「閉じる」で最後のペインを閉じると、「ペインを追加」へ', async ({ page }) => {
   await openWorkspace(page);
   for (const name of ['Bigram Flow', '比較表']) {
     await tab(page, name).focus();
