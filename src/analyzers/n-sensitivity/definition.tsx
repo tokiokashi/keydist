@@ -160,7 +160,7 @@ function useMeasuredSize(): [React.RefObject<HTMLDivElement | null>, { width: nu
       setSize((prev) => (prev !== null && prev.width === width && prev.fitHeight === fitHeight ? prev : { width, fitHeight }));
     };
     update();
-    // 同期で反映する。裏のタブから表示された時、描き直しが描画の後に回ると、判定の前の状態（開いた表・既定幅の図）が一度描かれる。
+    // 同期で反映する。初めて表示された時（表示されるまで大きさが0）、描き直しが描画の後に回ると、判定の前の状態（開いた表・既定幅の図）が一度描かれる。
     const observer = new ResizeObserver(() => flushSync(update));
     observer.observe(el);
     return () => observer.disconnect();
@@ -397,7 +397,7 @@ function NSensitivityChart({
  * 開閉は標準の`<details>`なので、畳んでいてもキーボード（Tab・Enter・Space）と読み上げで届く。
  *
  * 開いて始めるかの判定は、図の大きさが決まった後に一度だけ行い、以後の開閉は利用者の操作に任せる
- * （リサイズで勝手に開閉しない）。裏のタブにある間は大きさが無いので、図が初めて測れた時まで待つ。
+ * （リサイズで勝手に開閉しない）。表示されるまでは大きさが0なので、図が初めて測れた時まで待つ。
  *
  * 振動を避けるため、判定は開閉で変わらない値だけで行う。畳んだ状態で測った余り（ペインの下端 - 見出しの下端。
  * 図は上限（幅）で止まっているので、余りは図が使わない分になる）と、開いた時に表が増やす高さを比べる。

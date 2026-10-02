@@ -83,7 +83,7 @@ export class EngineAbortError extends Error {
  */
 export function createWorkerEngineComputer(spawn: () => WorkerLike): WorkerEngineComputer {
   // Workerから受け取った結果を、メインスレッドにも中身のキー（`engine/keys.ts`）で写しておく。
-  // 一度計算した入力へ戻る時（タブの切り替え・配列の選び直し・ペインの作り直し）に、Workerへの
+  // 一度計算した入力へ戻る時（配列の選び直し・ペインの作り直し）に、Workerへの
   // 1往復を挟まず`peek*`で同期に引き、ペインを「計算中」にしない。Workerの結果は値の複製なので、
   // ここで持つ値は`get*`が返した値そのもの（数値は変わらない）。件数の上限は下の定数。
   const traceMirror = new LruCache<string, EngineTraceResult>(TRACE_MIRROR_MAX_ENTRIES);
