@@ -97,8 +97,8 @@ test.describe('指で押す端末', () => {
   test('ペインの見出し: 文字と×の位置が本文の余白と揃う（pointer: coarse）', async ({ page }) => {
     await openWorkspace(page, 'light');
     expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
-    // ×のボタンの内側の余白（8px）が、本文の余白から背景までの差（7px）より大きく、
-    // タブの余白は負にならず0で止まる。×の右端は本文より1pxほど内側に寄るので、許容は±1pxのまま
+    // ×のボタンの内側の余白（8px）が、本文の余白から背景までの差（4px）より大きく、タブの右の余白は負になる。
+    // 0で止めたうえで、足りない分を×の負のmarginで出すので、×の右端は本文の右端に揃う
     await expectAligned(page, 1);
   });
 });

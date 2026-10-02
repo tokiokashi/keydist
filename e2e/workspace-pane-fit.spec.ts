@@ -72,7 +72,7 @@ test('2ペイン横並び（Bigram Flow＋比較表）の1440×900で、Bigram F
 });
 
 test('領域が横長なら図は左右に並び、縦長なら縦に積む。切り替えは画面の幅ではなく領域の縦横比', async ({ page }) => {
-  await openWorkspace(page, [flow], group('f'), { width: 1440, height: 900 });
+  await openWorkspace(page, [flow], group('f'), { width: 1440, height: 860 });
   let m = await measure(page);
   expect(m.body.width / m.body.height).toBeGreaterThanOrEqual(1.5);
   expect(m.keyboard.right).toBeLessThanOrEqual(m.relative.left + 1);
@@ -88,7 +88,7 @@ test('領域が横長なら図は左右に並び、縦長なら縦に積む。�
   expect(m.relative.top).toBeGreaterThanOrEqual(m.keyboard.bottom - 1);
 
   // 高さを戻して領域が再び横長になると、また左右に並ぶ。
-  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.setViewportSize({ width: 1440, height: 860 });
   await expect.poll(async () => {
     const next = await measure(page);
     return next.keyboard.right <= next.relative.left + 1;
@@ -97,7 +97,7 @@ test('領域が横長なら図は左右に並び、縦長なら縦に積む。�
 
 test('下限より低いペインでは本体の領域の中でスクロールに戻り、図は下限より小さくならない', async ({ page }) => {
   // 横に並ぶ形: 領域が下限（16rem）より低くなる高さ
-  await openWorkspace(page, [flow], group('f'), { width: 1440, height: 470 });
+  await openWorkspace(page, [flow], group('f'), { width: 1440, height: 450 });
   let m = await measure(page);
   expect(m.body.width / m.body.height).toBeGreaterThanOrEqual(1.5);
   expect(m.bodyClientHeight).toBeLessThan(SIDE_BY_SIDE_FLOOR);
