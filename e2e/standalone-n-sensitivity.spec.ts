@@ -668,7 +668,7 @@ test('物理配列だけが違うSetupを4件並べても、凡例の名前が�
     const legend = await measureLegend(page);
     expect(new Set(legend.names).size, `${width}px: 名前が重複しない`).toBe(4);
     // 4件それぞれの名前に、自分の物理配列の語が残る（省いて1文字だけの違いにならない）
-    const found = [['ロウ', 'ANSI'], ['ロウ', 'JIS 109'], ['カラム', 'ANSI'], ['カラム', 'JIS 109']].map(([kind, size]) =>
+    const found = [['ロウ', 'ANSI'], ['ロウ', 'JIS'], ['カラム', 'ANSI'], ['カラム', 'JIS']].map(([kind, size]) =>
       legend.names.find((name) => name!.includes(kind!) && name!.includes(size!)));
     expect(found.every((name) => name !== undefined), `${width}px: ${legend.names.join(' | ')}`).toBe(true);
     expect(new Set(found).size).toBe(4);

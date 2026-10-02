@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import type { FingerAssignment, PhysicalShape } from '#input/shapes/geometry.ts';
+import { groupShapes } from '#input/shapes/shape-groups.ts';
 import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
 import type { ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
 import { DEFAULT_TRIGGER_ACTIVATION_GROUPINGS } from '#input/semantics/index.ts';
@@ -20,6 +21,7 @@ import {
   SegmentedOptionField,
   SelectOptionField,
   type OptionBinding,
+  type OptionChoice,
 } from '#ui/primitives/option-fields.tsx';
 import {
   ACTION_EXCEPTION_CLASSES,
@@ -285,7 +287,8 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     );
   };
 
-  const shapeChoices = [...editor.shapes.values()].map((shape) => ({ value: shape.id, label: shape.name }));
+  const shapeChoices: OptionChoice<string>[] = groupShapes(editor.shapes.values()).flatMap((group) =>
+    group.shapes.map((shape) => ({ value: shape.id, label: shape.name, group: group.label })));
   const shapeBinding = bind('defaultShapeId');
   if (!editor.shapes.has(shapeBinding.value)) {
     // 選ばれているidが手持ちに無い時も、実際の状態をそのまま見せる。

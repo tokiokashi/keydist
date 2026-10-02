@@ -2,6 +2,7 @@ import { useId } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import { resolveGlobalDefaultShapeId, resolveWorkspaceDefaultShapeId } from '#engine/settings-items.ts';
+import { groupShapes } from '#input/shapes/shape-groups.ts';
 import { defaultShapeChipNotice, defaultShapeCommand, defaultShapeWorkspaceCommand } from './condition-edit.ts';
 import './context-bar.css';
 
@@ -63,8 +64,12 @@ export function DefaultShapeChip({ overrides, workspaceId, dispatch, shapes, lay
         >
           {/* 選ばれているidがカタログに無い時も、実際の状態をそのまま見せる（選び直せるが、このoptionは選べない）。 */}
           {currentIsKnown ? null : <option value={current} disabled>（見つからない物理配列）</option>}
-          {[...shapes.values()].map((shape) => (
-            <option key={shape.id} value={shape.id}>{shape.name}</option>
+          {groupShapes(shapes.values()).map((group) => (
+            <optgroup key={group.key} label={group.label}>
+              {group.shapes.map((shape) => (
+                <option key={shape.id} value={shape.id}>{shape.name}</option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </label>

@@ -127,29 +127,29 @@ test('省いた後も、別の対象が同じ名前にならない（区別の�
   }
 });
 
-test('全対象が共有する部分を先に省き、区別の部分（ANSI・JIS 109など）を残す', () => {
+test('全対象が共有する部分を先に省き、区別の部分（ANSI・JISなど）を残す', () => {
   const labels = [
     'カラムスタッガード（ANSI・分割想定）',
-    'カラムスタッガード（JIS 109・分割想定）',
+    'カラムスタッガード（JIS・分割想定）',
     'カラムスタッガード（ISO・分割想定）',
   ];
   const fitted = fitLabels(labels, measure, LEGEND_MAX_LABEL_WIDTH, 300);
   assert.ok(fitted[0]!.includes('ANSI'));
-  assert.ok(fitted[1]!.includes('JIS 109'));
+  assert.ok(fitted[1]!.includes('JIS'));
   assert.ok(fitted[2]!.includes('ISO'));
   assert.ok(fitted.every((label) => estimateTextWidth(label) <= LEGEND_MAX_LABEL_WIDTH));
 });
 
-test('NICOLAのSetup 4件: 物理配列を区別する語（ロウ/カラム・ANSI/JIS 109）が、省いた名前にも残る', () => {
+test('NICOLAのSetup 4件: 物理配列を区別する語（ロウ/カラム・ANSI/JIS）が、省いた名前にも残る', () => {
   const labels = [
     'ロウスタッガード（ANSI）',
-    'ロウスタッガード（JIS 109）',
+    'ロウスタッガード（JIS）',
     'カラムスタッガード（ANSI・分割想定）',
-    'カラムスタッガード（JIS 109・分割想定）',
+    'カラムスタッガード（JIS・分割想定）',
   ];
   for (const hardMax of [270, 400]) {
     const fitted = fitLabels(labels, measure, LEGEND_MAX_LABEL_WIDTH, hardMax);
-    const words = [['ロウ', 'ANSI'], ['ロウ', 'JIS 109'], ['カラム', 'ANSI'], ['カラム', 'JIS 109']];
+    const words = [['ロウ', 'ANSI'], ['ロウ', 'JIS'], ['カラム', 'ANSI'], ['カラム', 'JIS']];
     words.forEach(([kind, size], i) => {
       assert.ok(fitted[i]!.includes(kind!) && fitted[i]!.includes(size!), `${hardMax}: ${fitted[i]}`);
     });
