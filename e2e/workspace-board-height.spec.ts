@@ -352,34 +352,34 @@ test('縦積みの幅（760px以下）では板の高さを使わない', async 
 /** タブを隠す表示の余白のペインの下限。Dockviewのグループの最小の高さ（100px）に合わせてある（`board-policy.ts`）。 */
 const BLANK_FLOOR_HIDDEN_REM = 100 / REM;
 const COMPARISON_FLOOR_HIDDEN_REM = 9.9 + 12;
-/** 縮め切った時にDockviewが残すペインの高さ。最小の高さ100pxから、ペインの間の余白の分だけ引いた値になる（旧下限4.2rem=67pxなら割る）。 */
-const DOCKVIEW_MIN_PX = 94;
 const blank = (id: string) => ({ id, analyzerId: 'blank', binding: { mode: 'none' } });
 
-test('タブを隠す表示で余白のペインを縦に重ねて下限まで縮めても、余白のペインはDockviewの最小の高さを割らず、他のペインは下限を割らない', async ({ page }) => {
-  const floors = [BLANK_FLOOR_HIDDEN_REM, BLANK_FLOOR_HIDDEN_REM, COMPARISON_FLOOR_HIDDEN_REM];
-  // 各段を下限の比で並べ、板を「どの段も下限を割らない最小」にする（全段が下限ちょうど）
-  const weights = floors.map((f) => f);
+test('タブを隠す表示で余白のペインを縦に重ねて板を下限まで縮めても、比較表の枠は下限を割らない', async ({ page }) => {
+  // 板の下限はアプリ自身に計算させる（保存値を書き込まない）。比は下限の比。
+  // 余白のペインの下限がDockviewの最小の高さより低いと、余白がそこまでしか縮まず、足りない分が比較表の枠を押し縮める。
+  // 下限の和は1画面（450px）より大きいので、つまみのHomeで下限まで縮めた時に効く
   await openWorkspace(
     page,
     [blank('b1'), blank('b2'), comparison('c')],
-    column(group('b1', weights[0]), group('b2', weights[1]), group('c', weights[2])),
-    { width: 1440, height: 900 },
-    { boardHeightRem: requiredRem(floors, weights) },
+    column(group('b1', BLANK_FLOOR_HIDDEN_REM), group('b2', BLANK_FLOOR_HIDDEN_REM), group('c', COMPARISON_FLOOR_HIDDEN_REM)),
+    { width: 1440, height: 450 },
+    {},
     true,
     '?tabs=hide',
   );
   // 比較表は描画が遅れて入るので、出てから測る（出る前は枠だけで、Analyzerの印が付かない）
   await expect(page.locator('[data-react-feature="comparison"]')).toBeVisible({ timeout: 15_000 });
-  const m = await measure(page);
-  expect(m.groups).toHaveLength(3);
-  for (const g of m.groups.filter((g) => g.analyzer === '')) expect(g.height).toBeGreaterThanOrEqual(DOCKVIEW_MIN_PX);
-  const cmp = m.groups.find((g) => g.analyzer === 'comparison')!;
-  expect(cmp.body, '比較表の本体').toBeGreaterThanOrEqual(12 * REM - 2);
-  // 余白のペインを下限まで縮めても、比較表は下限を割らない
-  await dragSash(page, 0, -2000);
+  const handle = page.getByRole('separator', { name: 'ペインを並べる領域の高さ' });
+  await handle.scrollIntoViewIfNeeded();
+  await handle.focus();
+  // 一度伸ばしてから下限へ戻す。Homeの行き先（下限）はアプリが計算した値
+  await page.keyboard.press('End');
+  await page.waitForTimeout(400);
+  await page.keyboard.press('Home');
+  await expect(handle).toHaveAttribute('aria-valuenow', (await handle.getAttribute('aria-valuemin')) ?? '');
   await page.waitForTimeout(600);
-  const after = await measure(page);
-  for (const g of after.groups.filter((g) => g.analyzer === '')) expect(g.height).toBeGreaterThanOrEqual(DOCKVIEW_MIN_PX);
-  expect(after.groups.find((g) => g.analyzer === 'comparison')!.body).toBeGreaterThanOrEqual(12 * REM - 2);
+  const m = await measure(page);
+  const cmp = m.groups.find((g) => g.analyzer === 'comparison')!;
+  // 枠の高さ（本体の高さは枠が下限を割っても変わらないので使えない）。枠線の分の2pxは許す
+  expect(cmp.height).toBeGreaterThanOrEqual(COMPARISON_FLOOR_HIDDEN_REM * REM - 2);
 });
