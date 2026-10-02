@@ -24,6 +24,7 @@ import {
   overrideWinsNotices,
   promoteWorkspaceToGlobalCommand,
   resetAllCommand,
+  resetAllPlan,
   resettableGlobalIds,
   resettableWorkspaceIds,
   setWorkspaceCommand,
@@ -118,6 +119,34 @@ test('「すべて戻す」（Workspace）: Workspaceの上書きだけを消し
   const undone = undo(reset.assets, reset.history);
   assert.deepEqual(findWorkspace(undone.assets.workspaces, 'w1')?.conditions, { windowSize: 5, sfbHomeCost: false });
   assert.equal(undone.assets.setupLibrary.overrides.layout?.qwerty?.windowSize, 2);
+});
+
+test('「すべて戻す」の組み立て: Workspaceのペインは配列の上書きを渡さず、配列の上書きだけの時は押せない。単体ページは配列も消す', () => {
+  let state = assets();
+  let history = emptyCommandHistory<KeydistAssets>();
+  for (const command of [
+    setCascadeOverrideCommand(WORKSPACE_LEVEL, 'windowSize', 5, 'w1'),
+    setCascadeOverrideCommand({ kind: 'layout', layoutId: 'qwerty' }, 'sfbHomeCost', false),
+  ]) {
+    const step = applyCommand(state, history, command);
+    state = step.assets;
+    history = step.history;
+  }
+  const view = withWorkspaceConditions(state.setupLibrary.overrides, findWorkspace(state.workspaces, 'w1')?.conditions);
+  const plan = resetAllPlan(view, [], 'qwerty', 'w1');
+  assert.deepEqual(plan.workspaceIds, ['windowSize']);
+  assert.deepEqual(plan.layoutIds, []);
+  assert.equal(plan.disabled, false);
+  const reset = applyCommand(state, history, plan.command);
+  assert.equal(findWorkspace(reset.assets.workspaces, 'w1')?.conditions, undefined);
+  assert.equal(reset.assets.setupLibrary.overrides.layout?.qwerty?.sfbHomeCost, false);
+  // 配列の上書きだけがある時は押せない
+  const onlyLayout = resetAllPlan(state.setupLibrary.overrides, [], 'qwerty', 'w1');
+  assert.equal(onlyLayout.disabled, true);
+  // 単体ページ（Workspaceを指さない）は今の配列の上書きも消す
+  const standalone = resetAllPlan(state.setupLibrary.overrides, [], 'qwerty', undefined);
+  assert.deepEqual(standalone.layoutIds, ['sfbHomeCost']);
+  assert.equal(standalone.disabled, false);
 });
 
 test('Workspaceの値を全体へ移す: 全体へ書いてWorkspaceの値を消す。移しても、このWorkspaceの解決値は変わらない', () => {

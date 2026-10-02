@@ -110,6 +110,41 @@ export function resetAllCommand(
   ], workspace?.workspaceId);
 }
 
+/**
+ * モーダルの見出しの「すべて戻す」ボタンの状態。消す対象のリストと、押せるか、押した時のコマンドを返す。
+ * 単体ページは全体と今の配列の上書きを消す。Workspaceのペインはそのレベルだけを消し、配列の上書きは
+ * 渡さない（配列のレベルの値は単体ページや他のWorkspaceにも入るので、Workspaceの変更に数えない）。
+ * そのため配列の上書きだけがある時、Workspaceのペインでは押せない。
+ */
+export function resetAllPlan(
+  overrides: SettingsCascadeOverrides,
+  hiddenIds: readonly SettingsItemId[],
+  layoutId: string | undefined,
+  workspaceId: string | undefined,
+): {
+  readonly globalIds: readonly GlobalEditableId[];
+  readonly workspaceIds: readonly GlobalEditableId[];
+  readonly layoutIds: readonly GlobalEditableId[];
+  readonly disabled: boolean;
+  readonly command: Command<KeydistAssets>;
+} {
+  const inWorkspace = workspaceId !== undefined;
+  const globalIds = inWorkspace ? [] : resettableGlobalIds(overrides, hiddenIds);
+  const workspaceIds = inWorkspace ? resettableWorkspaceIds(overrides, hiddenIds) : [];
+  const layoutIds = layoutId === undefined || inWorkspace ? [] : resettableLayoutIds(overrides, layoutId, hiddenIds);
+  return {
+    globalIds,
+    workspaceIds,
+    layoutIds,
+    disabled: globalIds.length === 0 && workspaceIds.length === 0 && layoutIds.length === 0,
+    command: resetAllCommand(
+      globalIds,
+      layoutId === undefined || inWorkspace ? undefined : { layoutId, ids: layoutIds },
+      workspaceId === undefined ? undefined : { workspaceId, ids: workspaceIds },
+    ),
+  };
+}
+
 /** Workspaceのレベルの上書き。無ければ`undefined`（全体の値を継承している）。 */
 export function workspaceOverrideOf<K extends SettingsItemId>(
   overrides: SettingsCascadeOverrides,

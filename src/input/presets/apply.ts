@@ -23,6 +23,9 @@ import {
  * - プリセットに無い項目は既定値として扱う。全体が既定と違えばその既定値をWorkspaceへ書く
  * - 継承値と同じ項目は上書きを残さない
  *
+ * 例外: プリセットに無い項目のうち既定値が文脈で決まるもの（指の割当）は、全体に上書きがあっても既定値を書けない。
+ * Workspaceの値は全体のままになるので、`skipped`に入れて返す（黙って残さない）。
+ *
  * 「既定と同じ」を判定できるのは既定値が文脈に依らない項目だけ（`defaultValue`が関数の項目は
  * 配列・物理配列を知らないと決まらない。例: 指の割当）。そういう項目の値は、既定と同じに
  * 見えても上書きとして残す。ここで既定を推測して消すと、別の文脈で実効値が変わってしまう。
@@ -70,7 +73,12 @@ export function applyPresetValues<R extends ItemRegistry>(
     // プリセットに無い項目は既定値。全体が既定と違う項目は、Workspaceで既定値へ戻すために明示的に書く
     for (const [itemId, item] of Object.entries(registry)) {
       if (Object.hasOwn(values, itemId) || !item.allowedLevels.has(level.kind)) continue;
-      if (!Object.hasOwn(inherited, itemId) || typeof item.defaultValue === 'function') continue;
+      if (!Object.hasOwn(inherited, itemId)) continue;
+      // 既定値が文脈で決まる項目（指の割当）は、既定値を書けない。全体の値が残るので、入れなかった項目として返す
+      if (typeof item.defaultValue === 'function') {
+        skipped.push(itemId);
+        continue;
+      }
       if (sameValue(inherited[itemId], item.defaultValue)) continue;
       next[itemId] = item.defaultValue;
     }

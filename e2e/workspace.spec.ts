@@ -1063,6 +1063,34 @@ test('Workspaceのレベルのプリセット: 全体の値を重ねた値を保
   await expect.poll(async () => (await storedWorkspaceConditions(page)).windowSize).toBeUndefined();
 });
 
+test('Workspaceの変更をすべて戻す: Workspaceの値だけが消え、「この配列だけ別に」の値は残る。元に戻すで戻る', async ({ page }) => {
+  const panes = await createWithBigramPanes(page, 1);
+  const modal = await openPaneConditionModal(page, panes.first());
+  const row = modal.locator('[data-item="windowSize"]');
+  await row.getByRole('button', { name: '先読みNを1増やす' }).click();
+  await expect.poll(async () => (await storedWorkspaceConditions(page)).windowSize).toBe(4);
+  await pickScope(row, 'この配列だけ別に');
+  await row.getByRole('button', { name: '先読みNを1増やす' }).click();
+  const layoutWindowSize = async () => {
+    const raw = await page.evaluate((key) => localStorage.getItem(key), SETUP_LIBRARY_KEY);
+    const layouts = (JSON.parse(raw ?? '{}') as { overrides?: { layout?: Record<string, { windowSize?: number }> } }).overrides?.layout ?? {};
+    return Object.values(layouts)[0]?.windowSize;
+  };
+  await expect.poll(layoutWindowSize).toBe(5);
+
+  await modal.getByRole('button', { name: 'Workspaceの変更をすべて戻す' }).click();
+  await expect.poll(async () => (await storedWorkspaceConditions(page)).windowSize).toBeUndefined();
+  expect(await layoutWindowSize()).toBe(5);
+  expect(await storedGlobalOverrides(page)).toEqual({});
+  // 配列の上書きだけが残る時は、押せない
+  await expect(modal.getByRole('button', { name: 'Workspaceの変更をすべて戻す' })).toBeDisabled();
+
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect.poll(async () => (await storedWorkspaceConditions(page)).windowSize).toBe(4);
+  expect(await layoutWindowSize()).toBe(5);
+});
+
 test('Workspaceで変えた条件はWorkspaceの元に戻すで戻り、個別画面には元から入っていない。元に戻すの履歴は画面ごと', async ({ page, context }) => {
   const panes = await createWithBigramPanes(page, 1);
   const trigger = panes.first().locator('.pane-condition-trigger');

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { PresetLibrary } from '#input/presets/index.ts';
+import { applyPresetValues, type PresetLibrary } from '#input/presets/index.ts';
+import { levelOverrides } from '#input/settings/index.ts';
+import { SETTINGS_ITEMS } from '#engine/settings-items.ts';
 import type { SettingsCascadeOverrides, SettingsValueMap } from '#engine/settings-items.ts';
 import { conditionItemLabel } from './condition-summary.ts';
 import {
@@ -110,4 +112,19 @@ test('changedGlobalItemCount: Workspaceは継承した値で比べ、全体と�
   assert.equal(changedGlobalItemCount(before, after, WORKSPACE), 0);
   const changed: SettingsCascadeOverrides = { global: { windowSize: 7 }, workspace: { windowSize: 3 } };
   assert.equal(changedGlobalItemCount(before, changed, WORKSPACE), 1);
+});
+
+test('Workspaceへ流し込む: プリセットに無い指の割当は、全体に上書きがあると入れなかった項目になり、「今の値と同じ」とは出ない', () => {
+  const library: PresetLibrary<SettingsValueMap> = { presets: [{ id: 'e', name: '空', values: {} }] };
+  const view: SettingsCascadeOverrides = { global: { fingerAssignmentId: 'X-custom', windowSize: 5 } };
+  const applied = applyPresetValues(SETTINGS_ITEMS, view, WORKSPACE, {});
+  assert.deepEqual(applied.skipped, ['fingerAssignmentId']);
+  // 既定値を書ける項目（先読みN）は、既定値をWorkspaceへ明示的に書く
+  assert.deepEqual(levelOverrides(applied.overrides, WORKSPACE), { windowSize: 3 });
+  assert.equal(presetRows(library, view, WORKSPACE)[0]?.sameAsCurrent, false);
+  // 全体が指の割当だけの時も、同じと誤って出さない
+  assert.equal(presetRows(library, { global: { fingerAssignmentId: 'X-custom' } }, WORKSPACE)[0]?.sameAsCurrent, false);
+  // 全体に指の割当の上書きが無ければ入れなかった項目は無く、同じになる
+  assert.equal(presetRows(library, {}, WORKSPACE)[0]?.sameAsCurrent, true);
+  assert.deepEqual(applyResultText('空', 0, ['fingerAssignmentId']), { text: '「空」で変わった項目は無い。入れなかった項目: 指の割当', undoable: false });
 });

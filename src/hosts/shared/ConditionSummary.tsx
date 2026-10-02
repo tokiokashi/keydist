@@ -5,7 +5,7 @@ import {
   type ConditionSummaryRow,
   type ConditionTargetDiff,
 } from './condition-summary.ts';
-import { resetAllCommand, resettableGlobalIds, resettableLayoutIds, resettableWorkspaceIds } from './condition-edit.ts';
+import { resetAllPlan } from './condition-edit.ts';
 import { ConditionEditor, type ConditionEditorContext } from './ConditionEditor.tsx';
 import { PresetSection } from './PresetSection.tsx';
 
@@ -133,15 +133,9 @@ interface ConditionModalProps extends ConditionSummaryProps {
 function ConditionModal({ rows, header, targetDiffs, editor, onClose }: ConditionModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
-  // 消すのは、モーダルが開いた時の編集先のレベル。単体ページは全体、Workspaceのペインはそのレベル
-  // （Workspaceの中の操作で、他の画面に入る全体の値は消さない）。
+  // 消すレベルの組み立て（単体ページは全体と今の配列、Workspaceのペインはそのレベルだけ）は`resetAllPlan`
   const inWorkspace = editor.workspace !== undefined;
-  const resettable = inWorkspace ? [] : resettableGlobalIds(editor.overrides, editor.hiddenIds);
-  const workspaceResettable = inWorkspace ? resettableWorkspaceIds(editor.overrides, editor.hiddenIds) : [];
-  // 単体ページは、配列を対象にしている時にその配列の上書きも一緒に消す（元に戻すの1回で全部戻る）。
-  // Workspaceのペインは消さない。配列のレベルの値は単体ページや他のWorkspaceにも入るため、
-  // 「Workspaceの変更」には数えない。
-  const layoutResettable = editor.layout === undefined || inWorkspace ? [] : resettableLayoutIds(editor.overrides, editor.layout.id, editor.hiddenIds);
+  const resetPlan = resetAllPlan(editor.overrides, editor.hiddenIds ?? [], editor.layout?.id, editor.workspace?.id);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -178,12 +172,8 @@ function ConditionModal({ rows, header, targetDiffs, editor, onClose }: Conditio
           <button
             type="button"
             className="condition-modal-reset-all"
-            disabled={resettable.length === 0 && workspaceResettable.length === 0 && layoutResettable.length === 0}
-            onClick={() => editor.dispatch(resetAllCommand(
-              resettable,
-              editor.layout === undefined ? undefined : { layoutId: editor.layout.id, ids: layoutResettable },
-              editor.workspace === undefined ? undefined : { workspaceId: editor.workspace.id, ids: workspaceResettable },
-            ))}
+            disabled={resetPlan.disabled}
+            onClick={() => editor.dispatch(resetPlan.command)}
           >
             {inWorkspace ? 'Workspaceの変更をすべて戻す' : 'すべて既定値に戻す'}
           </button>

@@ -35,6 +35,12 @@ function resolvedLevelValue(overrides: SettingsCascadeOverrides, level: CascadeL
   return typeof item?.defaultValue === 'function' ? undefined : item?.defaultValue;
 }
 
+/** 流し込んでも値が変わらず、入れられなかった項目も無い（入れなかった項目があれば、今の値とは言えない）。 */
+function sameAfterApply(overrides: SettingsCascadeOverrides, level: CascadeLevel, values: PresetLibrary<SettingsValueMap>['presets'][number]['values']): boolean {
+  const applied = applyPresetValues(SETTINGS_ITEMS, overrides, level, values);
+  return applied.skipped.length === 0 && changedGlobalItemCount(overrides, applied.overrides, level) === 0;
+}
+
 /**
  * 一覧の行。「今の値と同じ」は、流し込んだ後に解決した値が変わらないかで決める。
  * 上書きの有無で比べると、Workspaceでは全体の値と同じ値を上書きとして持つ・持たないの違いで
@@ -52,8 +58,7 @@ export function presetRows(
   return library.presets.map((preset) => ({
     id: preset.id,
     name: preset.name,
-    sameAsCurrent:
-      changedGlobalItemCount(overrides, applyPresetValues(SETTINGS_ITEMS, overrides, level, preset.values).overrides, level) === 0,
+    sameAsCurrent: sameAfterApply(overrides, level, preset.values),
   }));
 }
 
@@ -96,6 +101,7 @@ export function applyResultText(
 ): { readonly text: string; readonly undoable: boolean } {
   const skippedText = skippedItemsText(skipped);
   const tail = skippedText === undefined ? '' : `。${skippedText}`;
+  if (changedCount === 0 && skippedText !== undefined) return { text: `「${name}」で変わった項目は無い${tail}`, undoable: false };
   if (changedCount === 0) return { text: `「${name}」は今の値と同じで、変わった項目は無い${tail}`, undoable: false };
   return { text: `「${name}」の値にした（${changedCount}項目が変わった）${tail}`, undoable: true };
 }
