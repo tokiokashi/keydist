@@ -369,6 +369,8 @@ test('タブを隠す表示で余白のペインを縦に重ねて下限まで�
     true,
     '?tabs=hide',
   );
+  // 比較表は描画が遅れて入るので、出てから測る（出る前は枠だけで、Analyzerの印が付かない）
+  await expect(page.locator('[data-react-feature="comparison"]')).toBeVisible({ timeout: 15_000 });
   const m = await measure(page);
   expect(m.groups).toHaveLength(3);
   for (const g of m.groups.filter((g) => g.analyzer === '')) expect(g.height).toBeGreaterThanOrEqual(DOCKVIEW_MIN_PX);
