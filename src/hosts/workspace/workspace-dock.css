@@ -134,13 +134,14 @@
  * 見出しの文字の左端を、ペインの本文の文字の左端（帯の左端から--workspace-pane-inline）に揃える。
  * タブの背景は帯の左端から--workspace-tab-offsetだけ内側から始まるので、その分を引いたものが背景の中の余白になる。
  * ×は右端の背景から同じ余白だけ内側に置く（×のボタン自身の内側の余白は除く）。
- * 差が負になる指で押す端末では0に切り詰められ、1pxほど内側に寄る。
+ * 差が負になる指で押す端末（×の内側の余白が8px）では、タブの余白を0で止め、足りない分は×の負のmarginで右へ出す。
+ * 余白を0に切り詰めるだけだと、×が本文の右端から負の分（4px）だけ内側に寄る。
  * タブが1つだけの時（fullwidth）はDockviewが余白を0にするので、複数の時と同じ値で上書きする。
  * タブの構造は変えない（#628）。
  */
 .workspace-dock-area .dockview-theme-light-spaced .dv-tabs-and-actions-container .dv-tabs-container .dv-tab {
-  padding-inline: calc(var(--workspace-pane-inline) - var(--workspace-tab-offset))
-    calc(var(--workspace-pane-inline) - var(--workspace-tab-offset) - var(--workspace-tab-action-inset));
+  --workspace-tab-end-gap: calc(var(--workspace-pane-inline) - var(--workspace-tab-offset) - var(--workspace-tab-action-inset));
+  padding-inline: calc(var(--workspace-pane-inline) - var(--workspace-tab-offset)) max(0px, var(--workspace-tab-end-gap));
 }
 
 @media (pointer: coarse) {
@@ -159,6 +160,8 @@
 
 .workspace-dock-area .dv-tab .dv-default-tab .dv-default-tab-action {
   margin-left: auto;
+  /* タブの右の余白が負になる分（上の--workspace-tab-end-gap）。負でなければ0 */
+  margin-right: min(0px, var(--workspace-tab-end-gap, 0px));
 }
 
 .workspace-dock-area .dv-tab .dv-default-tab .info {

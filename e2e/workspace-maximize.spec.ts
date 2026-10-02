@@ -287,7 +287,13 @@ test('解析設定の小窓を開いたまま拡大中のペインの中を操�
   const frame = page.locator('.dv-groupview').filter({ has: page.locator('.pane-frame') }).first();
   await frame.getByRole('button', { name: '解析設定' }).click();
   await expect(page.locator('.settings-window')).toBeVisible();
-  // 小窓を開いたまま、ペインの中の別のボタンを押す（フォーカスは小窓の外へ移る）
+  // 小窓を開いたまま、ペインの中の別のボタンを押す（フォーカスは小窓の外へ移る）。
+  // 小窓は「解析設定」の真下に右端を揃えて出てペイン右上のボタンを覆うので、取っ手を引いて下へ外す
+  const handle = await page.locator('.settings-window-handle').boundingBox();
+  await page.mouse.move(handle!.x + 40, handle!.y + handle!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle!.x + 40, handle!.y + 400, { steps: 5 });
+  await page.mouse.up();
   const toggle = frame.getByRole('button', { name: 'Keyboard Flowの表示' });
   await toggle.click();
   await expect(toggle).toBeFocused();
