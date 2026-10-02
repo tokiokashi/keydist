@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
@@ -7,8 +7,7 @@ import {
   closeWorkspacePaneCommand,
   duplicateWorkspacePaneCommand,
   renameWorkspaceCommand,
-  setWorkspaceBoardHeightCommand,
-  setWorkspaceLayoutCommand,
+  setWorkspaceGridCommand,
   linkWorkspacePaneToNewGroupCommand,
   setWorkspacePaneBindingCommand,
   setWorkspaceTargetCommand,
@@ -40,10 +39,10 @@ import { AddPaneMenu } from './AddPaneMenu.tsx';
 import { findWorkspaceAnalyzer, findWorkspacePaneMeta, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
 import type { PaneBindingChoice, WorkspacePaneRuntime } from './pane-runtime.ts';
 import { summarizeLinkGroups } from './group-summary.ts';
-import { minBoardHeightRem as minBoardHeightRemOf } from '#engine/workspace-board.ts';
-import { workspaceBoardPolicy } from './board-policy.ts';
+import { gridPaneIds } from '#engine/workspace-grid.ts';
+import { defaultGridSize } from './grid-metrics.ts';
 import { useFocusAfterClose } from './use-focus-after-close.ts';
-import { WorkspaceDock } from './WorkspaceDock.tsx';
+import { WorkspaceGrid, type WorkspaceHeadingMode } from './WorkspaceGrid.tsx';
 import { WorkspaceName } from './WorkspaceName.tsx';
 import { WorkspaceStack } from './WorkspaceStack.tsx';
 import { useStacked } from './use-stacked.ts';
@@ -56,12 +55,6 @@ export type PaneOptionsCommit = ((paneId: string, options: unknown) => void) & {
   /** 待っている書き込みを今すぐ行う（ペインの複製・Undoの前に呼ぶ）。 */
   readonly flush: () => void;
 };
-
-/**
- * タブの出し方（#628で決めるまでの、見比べるための切り替え）。`show`はペインごとにタブの帯を出し、
- * `hide`はタブの帯を出さずペインの見出しだけにする。
- */
-export type WorkspaceTabsMode = 'show' | 'hide';
 
 export interface WorkspacePageProps {
   readonly workspaceId: string;
@@ -80,7 +73,8 @@ export interface WorkspacePageProps {
   readonly history: ContextBarHistory;
   readonly onTextContentCommit: TextContentCommit;
   readonly onPaneOptionsCommit: PaneOptionsCommit;
-  readonly tabs?: WorkspaceTabsMode;
+  /** ペインの見出しの出し方（試作で見比べるための切り替え）。 */
+  readonly heading?: WorkspaceHeadingMode;
   /**
    * このWorkspaceを複製する・削除する。書き込みと、その後どの画面へ移るかは組み立て側（`app`）が決める
    * （削除すると画面ごとの履歴が使えなくなるため。移り先と元に戻す手段もそちらが持つ）。
@@ -110,50 +104,30 @@ export function WorkspacePage({
   history,
   onTextContentCommit,
   onPaneOptionsCommit,
-  tabs = 'show',
+  heading = 'bar',
   onDuplicate,
   onDelete,
 }: WorkspacePageProps) {
   const workspace = findWorkspace(assets.workspaces, workspaceId);
-  // スマホ幅ではDockviewを外し、ペインを縦に積む。資産の配置は読むだけなので、戻ると元の並びで描き直される
+  // スマホ幅では格子を外し、ペインを縦に積む。資産の格子は読むだけなので、戻ると元の並びで描き直される
   const stacked = useStacked();
-  // 拡大表示しているペイン。保存しない見た目だけの状態で、リロードで元に戻る。
-  // 拡大できるのはDockviewの面だけなので、縦積みへ変わったら解く（戻した時に勝手に拡大し直さない）
-  const [maximizedId, setMaximizedId] = useState<string | undefined>(undefined);
-  if (stacked && maximizedId !== undefined) setMaximizedId(undefined);
-  // 板の高さの計算に渡す、ペインの下限と余白（ペインを足す・複製する・並びを変える時に板を伸ばす）
-  const boardPolicy = useMemo(() => workspaceBoardPolicy(tabs === 'hide'), [tabs]);
-  // 板の下端のつまみで縮められる下限（各ペインの下限の和 + 余白）
-  const workspaceLayout = workspace?.layout;
-  const workspacePanes = workspace?.panes;
-  const minBoardHeightRem = useMemo(() => {
-    const analyzerOf = new Map((workspacePanes ?? []).map((pane) => [pane.id, pane.analyzerId]));
-    return minBoardHeightRemOf(workspaceLayout, (paneId) => boardPolicy.floorRemOfAnalyzer(analyzerOf.get(paneId) ?? ''), boardPolicy);
-  }, [workspaceLayout, workspacePanes, boardPolicy]);
-  const flushLayoutRef = useRef<(() => void) | undefined>(undefined);
-  const registerFlush = useCallback((flush: (() => void) | undefined) => {
-    flushLayoutRef.current = flush;
-  }, []);
 
-  // 待っている変更（並び・解析設定）を先に資産へ書いてから、ペインを増減する・戻す。待ち中の値を
+  // 待っている変更（解析設定）を先に資産へ書いてから、ペインを増減する・戻す。待ち中の値を
   // 残したまま操作すると、操作の後にその値が書かれて、操作の結果を上書きする。
+  // 並びの変更はドラッグ・大きさの変更を離した時に即座に書くので、待ちは無い。
   const flushPending = useCallback(() => {
-    flushLayoutRef.current?.();
     onPaneOptionsCommit.flush();
   }, [onPaneOptionsCommit]);
 
   const pageHistory: ContextBarHistory = useMemo(() => ({
     canUndo: history.canUndo,
     canRedo: history.canRedo,
-    // 戻す・やり直すで並びやペインが変わる。新しく現れるペインが隠れないよう、拡大は解く
     undo: () => {
       flushPending();
-      setMaximizedId(undefined);
       history.undo();
     },
     redo: () => {
       flushPending();
-      setMaximizedId(undefined);
       history.redo();
     },
   }), [history, flushPending]);
@@ -192,7 +166,9 @@ export function WorkspacePage({
 
   const panes = workspace?.panes;
   const panesById = useMemo(() => new Map((panes ?? []).map((pane) => [pane.id, pane] as const)), [panes]);
-  const paneIds = useMemo(() => (panes ?? []).map((pane) => pane.id), [panes]);
+  const workspaceGrid = workspace?.grid;
+  // 画面の読み順（上→下・左→右）のペインのid。縦積みの並び・閉じた後のフォーカスの行き先に使う
+  const paneIds = useMemo(() => (workspaceGrid === undefined ? [] : gridPaneIds(workspaceGrid)), [workspaceGrid]);
   // ペインを閉じた後に、フォーカスをbodyへ落とさない（どの経路で閉じても同じ規則）
   const pageRef = useFocusAfterClose(paneIds);
 
@@ -238,24 +214,24 @@ export function WorkspacePage({
     },
     duplicatePane: (paneId: string) => {
       flushPending();
-      // 写したペインが隣に現れるので、拡大は解いて見えるようにする
-      setMaximizedId(undefined);
-      dispatch(duplicateWorkspacePaneCommand(workspaceId, paneId, generateId(), boardPolicy));
+      dispatch(duplicateWorkspacePaneCommand(workspaceId, paneId, generateId()));
     },
     closePane: (paneId: string) => {
       flushPending();
-      setMaximizedId((current) => (current === paneId ? undefined : current));
       dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
     },
-    // 縦積みはDockviewを使わず拡大できないので、渡さない（⋯に項目を出さない）
-    ...(stacked ? {} : { maximizedPaneId: maximizedId, maximizePane: setMaximizedId }),
-  }), [stacked, maximizedId, env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, groupSummaries, colorSlots]);
+  }), [env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, groupSummaries, colorSlots]);
 
   const titleOf = useCallback(
     (paneId: string) => {
       const pane = panesById.get(paneId);
       return (pane === undefined ? undefined : findWorkspacePaneMeta(pane.analyzerId)?.name) ?? '使えないAnalyzer';
     },
+    [panesById],
+  );
+
+  const analyzerIdOf = useCallback(
+    (paneId: string) => panesById.get(paneId)?.analyzerId ?? '',
     [panesById],
   );
 
@@ -275,8 +251,6 @@ export function WorkspacePage({
 
   const addPane = (entry: WorkspaceAnalyzerEntry) => {
     flushPending();
-    // 足したペインが隠れないよう、拡大は解く
-    setMaximizedId(undefined);
     const pane: WorkspacePane = {
       id: generateId(),
       analyzerId: entry.id,
@@ -284,13 +258,12 @@ export function WorkspacePage({
       // 新しいペインは最初の組に従う（比較中に黙って別の対象を映さない）。
       binding: followBinding(workspace!.groups[0]!.id),
     };
-    dispatch(addWorkspacePaneCommand(workspaceId, pane, boardPolicy));
+    dispatch(addWorkspacePaneCommand(workspaceId, pane, defaultGridSize(entry.id, heading === 'bar')));
   };
 
   const addBlankPane = () => {
     flushPending();
-    setMaximizedId(undefined);
-    dispatch(addWorkspacePaneCommand(workspaceId, { id: generateId(), analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING }, boardPolicy));
+    dispatch(addWorkspacePaneCommand(workspaceId, { id: generateId(), analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING }, defaultGridSize(BLANK_PANE_ID, heading === 'bar')));
   };
 
   if (workspace === undefined) {
@@ -349,7 +322,7 @@ export function WorkspacePage({
         disabled={!assetsReady}
         style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}
       >
-        {workspace.panes.length === 0 || workspace.layout === undefined ? (
+        {workspace.panes.length === 0 ? (
           <div className="workspace-empty" data-workspace-empty="true">
             <p>ペインを追加して、並べて見る。</p>
             <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} variant="empty" />
@@ -360,28 +333,17 @@ export function WorkspacePage({
               <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} />
             </div>
             {stacked ? (
-              <WorkspaceStack layout={workspace.layout} renderPane={renderPane} />
+              <WorkspaceStack paneIds={paneIds} titleOf={titleOf} descriptionOf={descriptionOf} renderPane={renderPane} heading={heading} />
             ) : (
               <div className="workspace-stage">
-                <WorkspaceDock
-                  layout={workspace.layout}
-                  paneIds={paneIds}
+                <WorkspaceGrid
+                  grid={workspace.grid}
+                  analyzerIdOf={analyzerIdOf}
                   titleOf={titleOf}
                   descriptionOf={descriptionOf}
                   renderPane={renderPane}
-                  hideTabs={tabs === 'hide'}
-                  onLayoutChange={(layout) => dispatch(setWorkspaceLayoutCommand(workspaceId, layout, boardPolicy))}
-                  maximizedPaneId={maximizedId !== undefined && panesById.has(maximizedId) ? maximizedId : undefined}
-                  onMaximizedChange={setMaximizedId}
-                  onPaneClosed={(paneId) => {
-                    onPaneOptionsCommit.flush();
-                    setMaximizedId((current) => (current === paneId ? undefined : current));
-                    dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
-                  }}
-                  registerFlush={registerFlush}
-                  boardHeightRem={workspace.boardHeightRem}
-                  minBoardHeightRem={minBoardHeightRem}
-                  onBoardHeightChange={(rem) => dispatch(setWorkspaceBoardHeightCommand(workspaceId, rem))}
+                  heading={heading}
+                  onGridChange={(grid) => dispatch(setWorkspaceGridCommand(workspaceId, grid))}
                 />
               </div>
             )}

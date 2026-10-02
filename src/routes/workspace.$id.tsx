@@ -8,14 +8,14 @@ import { WorkspaceApp } from '#app/workspace/WorkspaceApp.tsx';
  *
  * Workspaceの中身はこのブラウザの保存先にしか無いので、サーバー側では描かず、ブラウザで描く（`ssr: false`）。
  *
- * `tabs`は、タブの表現（Workspaceのペインの見出しとタブの関係）を見比べるための切り替えで、
- * `?tabs=hide`でタブの帯を出さない。省略時はタブを出す。画面には出さない。
+ * `heading`は、ペインの見出しの出し方を見比べるための切り替えで、`?heading=none`で題の行を出さない
+ * （つかみ所は見出しの先頭）。省略時は題の行を出す。画面には出さない。
  */
 export const Route = createFileRoute('/workspace/$id')({
   staticData: { contextBar: true },
   ssr: false,
-  validateSearch: (search: Record<string, unknown>): { readonly tabs?: 'hide' } => (
-    search.tabs === 'hide' ? { tabs: 'hide' } : {}
+  validateSearch: (search: Record<string, unknown>): { readonly heading?: 'none' } => (
+    search.heading === 'none' ? { heading: 'none' } : {}
   ),
   head: () => ({
     meta: [
@@ -31,6 +31,6 @@ export const Route = createFileRoute('/workspace/$id')({
 
 function WorkspaceRoute() {
   const { id } = Route.useParams();
-  const { tabs } = Route.useSearch();
-  return <WorkspaceApp key={id} workspaceId={id} tabs={tabs === 'hide' ? 'hide' : 'show'} />;
+  const { heading } = Route.useSearch();
+  return <WorkspaceApp key={id} workspaceId={id} heading={heading === 'none' ? 'none' : 'bar'} />;
 }

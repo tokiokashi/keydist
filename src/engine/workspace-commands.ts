@@ -10,8 +10,7 @@ import {
   duplicateWorkspacePane,
   restoreWorkspace,
   renameWorkspace,
-  withWorkspaceBoardHeight,
-  withWorkspaceLayout,
+  withWorkspaceGrid,
   followBinding,
   withWorkspacePaneOptions,
   withWorkspacePaneBinding,
@@ -24,8 +23,7 @@ import {
   type WorkspacePane,
   type WorkspacePaneTarget,
 } from './workspace.ts';
-import { fitLibraryBoard, type BoardPolicy } from './workspace-board.ts';
-import type { WorkspaceLayout } from './workspace-layout.ts';
+import type { GridSize, WorkspaceGrid } from './workspace-grid.ts';
 
 /**
  * Workspaceへの書き込み（#544 §8-2「書き込みはすべてコマンドを通す」）。
@@ -100,14 +98,14 @@ function standalonePane(source: PaneFromStandalone, groupId: string): WorkspaceP
 export function addStandalonePaneToWorkspaceCommand(
   workspaceId: string,
   source: PaneFromStandalone,
-  board: BoardPolicy | undefined,
+  size: GridSize,
 ): Command<KeydistAssets> {
   return (current) => {
     const workspace = current.workspaces.find((candidate) => candidate.id === workspaceId);
     const group = workspace?.groups[0];
     if (workspace === undefined || group === undefined) return { kind: 'no-op' };
     const library = current.workspaces;
-    const next = fitLibraryBoard(library, addWorkspacePane(library, workspaceId, standalonePane(source, group.id)), workspaceId, board, true);
+    const next = addWorkspacePane(library, workspaceId, standalonePane(source, group.id), size);
     if (next === library) return { kind: 'no-op' };
     return { kind: 'applied', label: 'Workspaceに追加する', changes: { workspaces: next } };
   };
@@ -120,19 +118,15 @@ export function addStandalonePaneToWorkspaceCommand(
 export function addStandalonePaneToNewWorkspaceCommand(
   workspaceId: string,
   source: PaneFromStandalone,
-  board: BoardPolicy | undefined,
+  size: GridSize,
 ): Command<KeydistAssets> {
   return (current) => {
     const created = createWorkspaceFromAssets(current, workspaceId);
     if (created === undefined) return { kind: 'no-op' };
     const group = created.created.groups[0];
     if (group === undefined) return { kind: 'no-op' };
-    const withPane = addWorkspacePane(created.library, workspaceId, standalonePane(source, group.id));
-    return {
-      kind: 'applied',
-      label: '新しいWorkspaceに追加する',
-      changes: { workspaces: fitLibraryBoard(created.library, withPane, workspaceId, board, true) },
-    };
+    const withPane = addWorkspacePane(created.library, workspaceId, standalonePane(source, group.id), size);
+    return { kind: 'applied', label: '新しいWorkspaceに追加する', changes: { workspaces: withPane } };
   };
 }
 
@@ -161,34 +155,25 @@ export function restoreWorkspaceCommand(workspace: Workspace, index: number): Co
 }
 
 /**
- * ペインを右端に足す。`pane`（idと初期の対象）は呼び出し側が組み立てる。
- * `board`を渡すと、下限を割る時に板の高さを伸ばし、縦の分割の高さを下限の比に配る（#833）。同じ1回のUndoで戻る。
+ * ペインを足す。`pane`（idと初期の対象）と、置く大きさ（`size`。Analyzerごとの既定は呼び出し側が持つ）は
+ * 呼び出し側が渡す。置き場所は格子の空いている最初の場所で、他のペインの大きさ・位置は変わらない。
  */
-export function addWorkspacePaneCommand(workspaceId: string, pane: WorkspacePane, board: BoardPolicy | undefined): Command<KeydistAssets> {
-  return workspacesCommand('ペインを追加する', (library) => (
-    fitLibraryBoard(library, addWorkspacePane(library, workspaceId, pane), workspaceId, board, true)
-  ));
+export function addWorkspacePaneCommand(workspaceId: string, pane: WorkspacePane, size: GridSize): Command<KeydistAssets> {
+  return workspacesCommand('ペインを追加する', (library) => addWorkspacePane(library, workspaceId, pane, size));
 }
 
-/**
- * ペインを閉じる。板の高さには触れない（配り直しも、伸ばす計算もしない）。閉じても、どのペインの縦の割合も減らないので、
- * 伸ばす理由が無い。閉じると残りの横の分割が畳まれ、人が狭めた比の列が親の列に合わさることがあり、その並びを
- * 「形が変わった」と数えると、人の比で下限を割って板が際限なく伸びる。縮めるのは人の操作だけ。
- */
+/** ペインを閉じる。下のペインは上へ詰まるが、他のペインの大きさは変わらない。 */
 export function closeWorkspacePaneCommand(workspaceId: string, paneId: string): Command<KeydistAssets> {
   return workspacesCommand('ペインを閉じる', (library) => closeWorkspacePane(library, workspaceId, paneId));
 }
 
-/** ペインを複製する。解析設定と対象を写し、元のペインの右隣に置く。 */
+/** ペインを複製する。解析設定と対象を写し、元のペインと同じ大きさで隣（右、無ければ真下）に置く。 */
 export function duplicateWorkspacePaneCommand(
   workspaceId: string,
   paneId: string,
   newPaneId: string,
-  board: BoardPolicy | undefined,
 ): Command<KeydistAssets> {
-  return workspacesCommand('ペインを複製する', (library) => (
-    fitLibraryBoard(library, duplicateWorkspacePane(library, workspaceId, paneId, newPaneId), workspaceId, board, true)
-  ));
+  return workspacesCommand('ペインを複製する', (library) => duplicateWorkspacePane(library, workspaceId, paneId, newPaneId));
 }
 
 /** ペインの解析設定を書き換える。`undefined`は一度も変えていない状態（Analyzerの既定値）へ戻す。 */
@@ -234,15 +219,7 @@ export function linkWorkspacePaneToNewGroupCommand(
   ));
 }
 
-/** ペインの並び（ドラッグ・リサイズの結果）を書き換える。 */
-export function setWorkspaceLayoutCommand(workspaceId: string, layout: WorkspaceLayout, board: BoardPolicy | undefined): Command<KeydistAssets> {
-  return workspacesCommand('ペインの並びを変える', (library) => (
-    // サッシのドラッグは形を変えないので、板の高さにも他のペインの比にも触れない。ペインの移動・分割だけが対象
-    fitLibraryBoard(library, withWorkspaceLayout(library, workspaceId, layout), workspaceId, board, true)
-  ));
-}
-
-/** 板の高さを人が変える（板の下端のつまみ）。`undefined`は保存を消して1画面（自動）へ戻す。 */
-export function setWorkspaceBoardHeightCommand(workspaceId: string, boardHeightRem: number | undefined): Command<KeydistAssets> {
-  return workspacesCommand('板の高さを変える', (library) => withWorkspaceBoardHeight(library, workspaceId, boardHeightRem));
+/** ペインの並び（ドラッグ・大きさの変更の結果）を書き換える。 */
+export function setWorkspaceGridCommand(workspaceId: string, grid: WorkspaceGrid): Command<KeydistAssets> {
+  return workspacesCommand('ペインの並びを変える', (library) => withWorkspaceGrid(library, workspaceId, grid));
 }

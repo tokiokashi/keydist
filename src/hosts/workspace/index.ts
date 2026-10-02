@@ -2,5 +2,5 @@ export {
   WorkspacePage,
   type PaneOptionsCommit,
   type WorkspacePageProps,
-  type WorkspaceTabsMode,
 } from './WorkspacePage.tsx';
+export type { WorkspaceHeadingMode } from './WorkspaceGrid.tsx';

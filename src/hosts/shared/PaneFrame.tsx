@@ -1,4 +1,5 @@
 import { useContext, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { EngineRequestState } from '#engine/request.ts';
 import type { CodecDiagnostic } from '#input/codec/index.ts';
 import { describeEngineRequestError, engineRequestErrorDetail, paneStatusLabel, TRACE_ERRORS_SENTENCE } from './pane-status.ts';
@@ -7,7 +8,7 @@ import { ConditionSummary } from './ConditionSummary.tsx';
 import type { ConditionEditorContext } from './ConditionEditor.tsx';
 import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneErrorBoundary } from './PaneErrorBoundary.tsx';
-import { PaneNameInTabContext } from './pane-name-in-tab.ts';
+import { PaneHeaderLeadContext, PaneMenuSlotContext, PaneNameInTabContext } from './pane-name-in-tab.ts';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import type { PaneTargetBindingControl } from './panes/pane-environment.ts';
 import { BindingGlyph, PaneMenu, SettingsIcon, type PaneMenuItem } from './PaneHeaderParts.tsx';
@@ -132,6 +133,11 @@ export function PaneFrame({
   const paneName = targetName === undefined ? name : `${name} — ${targetName}`;
   const Heading = headingLevel === 1 ? 'h1' : 'h2';
   const nameInTab = useContext(PaneNameInTabContext);
+  const headerLead = useContext(PaneHeaderLeadContext);
+  const menuSlot = useContext(PaneMenuSlotContext);
+  const menu = menuItems.length === 0 ? null : <PaneMenu paneName={paneName} items={menuItems} />;
+  // ⋯を見出しの外（題の行）へ出す時は、見出しの中に置かない
+  const menuInHeader = menuSlot === null;
 
   const closeSettings = () => {
     setSettingsOpen(false);
@@ -157,8 +163,10 @@ export function PaneFrame({
       data-name-in-tab={nameInTab || undefined}
       style={{ '--pane-recommended-width': `${recommendedWidthRem}rem` } as CSSProperties}
     >
-      <header className="pane-frame-header" data-sticky={stickyHeader || undefined} data-menu={menuItems.length > 0 || undefined}
-        data-action={headerAction !== undefined || undefined}>
+      <header className="pane-frame-header" data-sticky={stickyHeader || undefined} data-menu={(menuItems.length > 0 && menuInHeader) || undefined}
+        data-action={headerAction !== undefined || undefined} data-lead={(nameInTab && headerLead !== null) || undefined}
+        data-menu-detached={!menuInHeader || undefined}>
+        {nameInTab && headerLead !== null ? <div className="pane-frame-lead">{headerLead}</div> : null}
         {nameInTab ? (
           <Heading className="pane-frame-title pane-visually-hidden">{name}</Heading>
         ) : (
@@ -201,12 +209,13 @@ export function PaneFrame({
           <SettingsIcon />
           <span className="pane-settings-button-text">解析設定</span>
         </button>
-        {menuItems.length === 0 && headerAction === undefined ? null : (
+        {(menu === null || !menuInHeader) && headerAction === undefined ? null : (
           <div className="pane-frame-menu">
-            {menuItems.length === 0 ? null : <PaneMenu paneName={paneName} items={menuItems} />}
+            {menuInHeader ? menu : null}
             {headerAction}
           </div>
         )}
+        {menuSlot !== null && menu !== null ? createPortal(menu, menuSlot) : null}
       </header>
 
       <SettingsWindow

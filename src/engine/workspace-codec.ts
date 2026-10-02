@@ -15,7 +15,6 @@ import {
   NO_BINDING,
   initialWorkspaceTarget,
   INITIAL_LINK_GROUP_ID,
-  MAX_BOARD_HEIGHT_REM,
   type LinkGroup,
   type PaneTargetBinding,
   type Workspace,
@@ -26,16 +25,16 @@ import {
 } from './workspace.ts';
 import { SETTINGS_ITEM_SCHEMAS } from './settings-codec.ts';
 import { assignWorkspaceColors } from './workspace-colors.ts';
-import { normalizeLayout, type WorkspaceLayout, type WorkspaceLayoutNode } from './workspace-layout.ts';
+import { normalizeGrid, type GridItem, type WorkspaceGrid } from './workspace-grid.ts';
 
 /**
  * Workspaceの手持ち（`WorkspaceLibrary`）のcodec（#544 §8-3）。payloadは `{ workspaces }`。
  *
- * ペインの並びは、載せるライブラリの保存形式ではなく自前の木（`workspace-layout.ts`）で持つ
+ * ペインの並びは、載せるライブラリの保存形式ではなく自前の格子（`workspace-grid.ts`）で持つ
  * （#544 レビューゲート5）。decodeは壊れた要素だけを診断つきで捨て、残りを読む:
  * - idの無いWorkspace・idが重複したWorkspace・壊れたペイン（対象が読めない等）はその1件だけ捨てる
  * - 名前が壊れていれば既定の名前、テキストの選択が壊れていれば既定の選択へ戻す
- * - 並びが壊れている・ペインと食い違っている時は、ペインを失わないよう`normalizeLayout`で直す
+ * - 並びが壊れている・ペインと食い違っている時は、ペインを失わないよう`normalizeGrid`で直す
  * - 今のアプリが知らないAnalyzerのペインは捨てずに残す（表示側が使えないペインとして出す）
  *
  * 版3は、ペインの対象の持ち方（従う組 / 固定）と、連動の組ごとの対象を持ち、色の番号をWorkspaceが全ペインの和に配って持つ形
@@ -44,47 +43,14 @@ import { normalizeLayout, type WorkspaceLayout, type WorkspaceLayoutNode } from 
  * （互換は守らない。AGENTS.md）。
  */
 
-/** 並びの入れ子の深さの上限。壊れた・悪意のあるデータで再帰を深くしないため。 */
-const MAX_LAYOUT_DEPTH = 16;
-
-function decodeLayoutNode(raw: unknown, path: string, depth: number, diagnostics: CodecDiagnostic[]): WorkspaceLayoutNode | undefined {
-  if (!isRecord(raw)) {
-    diagnostics.push({ path, message: 'object形式でないため配置の要素を捨てた' });
+/** 格子の枠1つを読む。数でない値は`normalizeGrid`が範囲に収めるので、ここでは形だけを見る。 */
+function decodeGridItem(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): GridItem | undefined {
+  if (!isRecord(raw) || typeof raw.id !== 'string' || raw.id === '') {
+    diagnostics.push({ path, message: '配置の枠が読めないため捨てた' });
     return undefined;
   }
-  if (depth > MAX_LAYOUT_DEPTH) {
-    diagnostics.push({ path, message: '入れ子が深すぎるため配置の要素を捨てた' });
-    return undefined;
-  }
-  const weight = typeof raw.weight === 'number' && Number.isFinite(raw.weight) && raw.weight > 0 ? raw.weight : 1;
-  if (raw.kind === 'group') {
-    if (!Array.isArray(raw.paneIds)) {
-      diagnostics.push({ path: `${path}.paneIds`, message: '配列形式でないため配置の要素を捨てた' });
-      return undefined;
-    }
-    const paneIds = raw.paneIds.filter((id): id is string => typeof id === 'string' && id !== '');
-    const active = typeof raw.activePaneId === 'string' ? raw.activePaneId : undefined;
-    return { kind: 'group', paneIds, ...(active === undefined ? {} : { activePaneId: active }), weight };
-  }
-  if (raw.kind === 'split') {
-    if (raw.direction !== 'row' && raw.direction !== 'column') {
-      diagnostics.push({ path: `${path}.direction`, message: '向きが読めないため配置の要素を捨てた' });
-      return undefined;
-    }
-    const rawChildren: readonly unknown[] = Array.isArray(raw.children) ? raw.children : [];
-    if (raw.children !== undefined && !Array.isArray(raw.children)) {
-      // 空のsplitは`normalizeLayout`が捨ててペインを既定の位置へ置き直すので、配置がまるごと変わる
-      diagnostics.push({ path: `${path}.children`, message: '配列形式でないため配置の子要素を捨てた' });
-    }
-    const children: WorkspaceLayoutNode[] = [];
-    rawChildren.forEach((child, index) => {
-      const decoded = decodeLayoutNode(child, `${path}.children[${index}]`, depth + 1, diagnostics);
-      if (decoded !== undefined) children.push(decoded);
-    });
-    return { kind: 'split', direction: raw.direction, children, weight };
-  }
-  diagnostics.push({ path: `${path}.kind`, message: '種類が読めないため配置の要素を捨てた' });
-  return undefined;
+  const num = (value: unknown, fallback: number) => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
+  return { id: raw.id, x: num(raw.x, 0), y: num(raw.y, 0), w: num(raw.w, 0), h: num(raw.h, 0) };
 }
 
 function decodePaneTarget(raw: unknown, path: string, diagnostics: CodecDiagnostic[]): WorkspacePaneTarget | undefined {
@@ -244,16 +210,15 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
     if (pane !== undefined) panes.push(pane);
   });
 
-  const rawLayout = raw.layout === undefined ? undefined : decodeLayoutNode(raw.layout, `${path}.layout`, 0, diagnostics);
-  const layout: WorkspaceLayout = normalizeLayout(rawLayout, panes.map((pane) => pane.id));
-  let boardHeightRem: number | undefined;
-  if (raw.boardHeightRem !== undefined) {
-    if (typeof raw.boardHeightRem === 'number' && Number.isFinite(raw.boardHeightRem) && raw.boardHeightRem > 0) {
-      boardHeightRem = Math.min(raw.boardHeightRem, MAX_BOARD_HEIGHT_REM);
-    } else {
-      diagnostics.push({ path: `${path}.boardHeightRem`, message: '板の高さが読めないため1画面へ戻した' });
-    }
+  const rawGrid: GridItem[] = [];
+  if (raw.grid !== undefined && !Array.isArray(raw.grid)) {
+    diagnostics.push({ path: `${path}.grid`, message: '配列形式でないため配置を捨てた' });
   }
+  (Array.isArray(raw.grid) ? raw.grid : []).forEach((item: unknown, index: number) => {
+    const decoded = decodeGridItem(item, `${path}.grid[${index}]`, diagnostics);
+    if (decoded !== undefined) rawGrid.push(decoded);
+  });
+  const grid: WorkspaceGrid = normalizeGrid(rawGrid, panes.map((pane) => pane.id));
   // 色の番号は、読めた分を持ち越し、無い・壊れた・和に無い対象は配り直す（診断は出さない。色は表示だけの値）
   const known = new Map<string, number>();
   if (isRecord(raw.colorSlots)) {
@@ -266,8 +231,7 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
     ? undefined
     : decodeLevelOverrides(SETTINGS_ITEM_SCHEMAS, raw.conditions, `${path}.conditions`, diagnostics);
   return {
-    id: raw.id, name, text, groups, panes, layout, colorSlots,
-    ...(boardHeightRem === undefined ? {} : { boardHeightRem }),
+    id: raw.id, name, text, groups, panes, grid, colorSlots,
     ...(conditions === undefined ? {} : { conditions }),
   };
 }
@@ -293,18 +257,6 @@ function encodePane(pane: WorkspacePane): Record<string, unknown> {
     ...(pane.options === undefined ? {} : { options: pane.options }),
     binding: encodeBinding(pane.binding),
   };
-}
-
-function encodeLayoutNode(node: WorkspaceLayoutNode): Record<string, unknown> {
-  if (node.kind === 'group') {
-    return {
-      kind: 'group',
-      paneIds: [...node.paneIds],
-      ...(node.activePaneId === undefined ? {} : { activePaneId: node.activePaneId }),
-      weight: node.weight,
-    };
-  }
-  return { kind: 'split', direction: node.direction, children: node.children.map(encodeLayoutNode), weight: node.weight };
 }
 
 export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAssetCodec({
@@ -337,8 +289,7 @@ export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAsset
       })),
       panes: workspace.panes.map(encodePane),
       colorSlots: { ...workspace.colorSlots },
-      ...(workspace.layout === undefined ? {} : { layout: encodeLayoutNode(workspace.layout) }),
-      ...(workspace.boardHeightRem === undefined ? {} : { boardHeightRem: workspace.boardHeightRem }),
+      grid: workspace.grid.map((item) => ({ id: item.id, x: item.x, y: item.y, w: item.w, h: item.h })),
       ...(workspace.conditions === undefined ? {} : { conditions: { ...workspace.conditions } }),
     })),
   }),

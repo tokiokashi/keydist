@@ -27,14 +27,16 @@ import {
   restoreWorkspaceCommand,
   duplicateWorkspacePaneCommand,
   renameWorkspaceCommand,
-  setWorkspaceLayoutCommand,
+  setWorkspaceGridCommand,
   setWorkspacePaneOptionsCommand,
   setWorkspacePaneBindingCommand,
   linkWorkspacePaneToNewGroupCommand,
   setWorkspaceTargetCommand,
 } from './workspace-commands.ts';
 import { findWorkspace, followBinding, INITIAL_LINK_GROUP_ID as G, type WorkspacePane } from './workspace.ts';
-import { layoutPaneIds } from './workspace-layout.ts';
+import { gridPaneIds, type GridSize } from './workspace-grid.ts';
+
+const SIZE: GridSize = { w: 6, h: 10 };
 
 function emptyAssets(): KeydistAssets {
   return {
@@ -78,8 +80,8 @@ function withWorkspace(): State {
   return run(
     { assets: emptyAssets(), history: emptyCommandHistory() },
     createWorkspaceCommand('w1'),
-    addWorkspacePaneCommand('w1', pane('a'), undefined),
-    addWorkspacePaneCommand('w1', pane('b'), undefined),
+    addWorkspacePaneCommand('w1', pane('a'), SIZE),
+    addWorkspacePaneCommand('w1', pane('b'), SIZE),
   );
 }
 
@@ -88,11 +90,11 @@ test('作成・ペインの追加/複製/閉じる・名前の変更がUndo / Re
   const created = run(start, createWorkspaceCommand('w1'));
   assert.equal(created.assets.workspaces.length, 1);
 
-  const added = run(created, addWorkspacePaneCommand('w1', pane('a'), undefined));
+  const added = run(created, addWorkspacePaneCommand('w1', pane('a'), SIZE));
   assert.equal(findWorkspace(added.assets.workspaces, 'w1')!.panes.length, 1);
 
-  const duplicated = run(added, duplicateWorkspacePaneCommand('w1', 'a', 'a2', undefined));
-  assert.deepEqual(layoutPaneIds(findWorkspace(duplicated.assets.workspaces, 'w1')!.layout), ['a', 'a2']);
+  const duplicated = run(added, duplicateWorkspacePaneCommand('w1', 'a', 'a2'));
+  assert.deepEqual(gridPaneIds(findWorkspace(duplicated.assets.workspaces, 'w1')!.grid), ['a', 'a2']);
 
   const renamed = run(duplicated, renameWorkspaceCommand('w1', '比較'));
   assert.equal(findWorkspace(renamed.assets.workspaces, 'w1')!.name, '比較');
@@ -149,7 +151,7 @@ test('解析設定・対象・並びの書き込みは、同じ中身なら履�
     setWorkspacePaneOptionsCommand('w1', 'a', { x: 1 }),
     setWorkspacePaneBindingCommand('w1', 'a', followBinding(G)),
     setWorkspaceTargetCommand('w1', G, { kind: 'set', selection: initialTargetSet() }),
-    setWorkspaceLayoutCommand('w1', findWorkspace(once.assets.workspaces, 'w1')!.layout, undefined),
+    setWorkspaceGridCommand('w1', findWorkspace(once.assets.workspaces, 'w1')!.grid),
   );
   assert.equal(again.history.undoStack.length, depth);
   const changed = run(again, setWorkspacePaneBindingCommand('w1', 'a', { mode: 'fixed', target: { kind: 'single', target: { kind: 'layout', layoutId: 'colemak-dh' } } }));
@@ -332,7 +334,7 @@ test('削除したWorkspaceは元の位置へ復元でき、同じidがあれば
 test('個別画面から既存のWorkspaceへ追加: 解析設定を写し、最初の組に従い、対象は書き換えない。Undoで戻る', () => {
   const before = withWorkspace();
   const options = { columns: ['a'] };
-  const added = run(before, addStandalonePaneToWorkspaceCommand('w1', { paneId: 'c', analyzerId: 'comparison', options }, undefined));
+  const added = run(before, addStandalonePaneToWorkspaceCommand('w1', { paneId: 'c', analyzerId: 'comparison', options }, SIZE));
   const workspace = findWorkspace(added.assets.workspaces, 'w1')!;
   assert.deepEqual(workspace.panes.map((p) => p.id), ['a', 'b', 'c']);
   const created = workspace.panes[2]!;
@@ -340,7 +342,7 @@ test('個別画面から既存のWorkspaceへ追加: 解析設定を写し、最
   assert.deepEqual(created.options, options);
   assert.deepEqual(created.binding, followBinding(G));
   assert.deepEqual(workspace.groups, findWorkspace(before.assets.workspaces, 'w1')!.groups);
-  assert.deepEqual(layoutPaneIds(workspace.layout), ['a', 'b', 'c']);
+  assert.deepEqual(gridPaneIds(workspace.grid), ['a', 'b', 'c']);
 
   const undone = undo(added.assets, added.history);
   assert.deepEqual(findWorkspace(undone.assets.workspaces, 'w1')!.panes.map((p) => p.id), ['a', 'b']);
@@ -349,23 +351,23 @@ test('個別画面から既存のWorkspaceへ追加: 解析設定を写し、最
 test('個別画面から既存のWorkspaceへ追加: 無いWorkspace・使われているペインidは履歴に積まない', () => {
   const before = withWorkspace();
   const source = { paneId: 'c', analyzerId: 'bigram-flow', options: undefined };
-  assert.equal(run(before, addStandalonePaneToWorkspaceCommand('missing', source, undefined)).history, before.history);
-  assert.equal(run(before, addStandalonePaneToWorkspaceCommand('w1', { ...source, paneId: 'a' }, undefined)).history, before.history);
+  assert.equal(run(before, addStandalonePaneToWorkspaceCommand('missing', source, SIZE)).history, before.history);
+  assert.equal(run(before, addStandalonePaneToWorkspaceCommand('w1', { ...source, paneId: 'a' }, SIZE)).history, before.history);
 });
 
 test('個別画面から新しいWorkspaceへ追加: 対象を写して作り、ペインを足すまでが1回のUndoで戻る', () => {
   const start = { assets: emptyAssets(), history: emptyCommandHistory<KeydistAssets>() };
-  const added = run(start, addStandalonePaneToNewWorkspaceCommand('w9', { paneId: 'p', analyzerId: 'bigram-flow', options: undefined }, undefined));
+  const added = run(start, addStandalonePaneToNewWorkspaceCommand('w9', { paneId: 'p', analyzerId: 'bigram-flow', options: undefined }, SIZE));
   const workspace = findWorkspace(added.assets.workspaces, 'w9')!;
   assert.deepEqual(workspace.panes.map((p) => p.id), ['p']);
   assert.deepEqual(workspace.panes[0]!.binding, followBinding(workspace.groups[0]!.id));
   assert.deepEqual(workspace.groups[0]!.target, { single: start.assets.singleTargetSelection, set: { targets: start.assets.multiTargetSelection.targets, baseline: start.assets.multiTargetSelection.baseline } });
-  assert.deepEqual(layoutPaneIds(workspace.layout), ['p']);
+  assert.deepEqual(gridPaneIds(workspace.grid), ['p']);
 
   const undone = undo(added.assets, added.history);
   assert.deepEqual(undone.assets.workspaces, []);
   // 同じidのWorkspaceが既にあれば何もしない
-  assert.equal(run(added, addStandalonePaneToNewWorkspaceCommand('w9', { paneId: 'q', analyzerId: 'bigram-flow', options: undefined }, undefined)).history, added.history);
+  assert.equal(run(added, addStandalonePaneToNewWorkspaceCommand('w9', { paneId: 'q', analyzerId: 'bigram-flow', options: undefined }, SIZE)).history, added.history);
 });
 
 test('新しいWorkspaceへの追加は、createWorkspaceCommandと同じ作り方（対象・名前）で作る', () => {
@@ -385,7 +387,7 @@ test('新しいWorkspaceへの追加は、createWorkspaceCommandと同じ作り�
   };
   const plain = findWorkspace(run(start, createWorkspaceCommand('a')).assets.workspaces, 'a')!;
   const viaAdd = findWorkspace(
-    run(start, addStandalonePaneToNewWorkspaceCommand('a', { paneId: 'p', analyzerId: 'bigram-flow', options: undefined }, undefined)).assets.workspaces,
+    run(start, addStandalonePaneToNewWorkspaceCommand('a', { paneId: 'p', analyzerId: 'bigram-flow', options: undefined }, SIZE)).assets.workspaces,
     'a',
   )!;
   assert.deepEqual(viaAdd.groups, plain.groups);

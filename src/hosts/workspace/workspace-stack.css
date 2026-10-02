@@ -1,7 +1,7 @@
 /*
  * スマホ幅でペインを縦に積む面（`WorkspaceStack.tsx`）。積むかどうかは `use-stacked.ts` が決め、
  * 積む時だけページに `data-stacked` が付く。ページ全体を縦にスクロールして見る。
- * ペインの枠は、Dockviewの面（`workspace-dock.css`）に揃える。
+ * ペインの枠は、並べる面（`workspace-grid.css`）に揃える。
  */
 .workspace-stack {
   display: flex;
@@ -12,10 +12,16 @@
 
 .workspace-stack-pane {
   min-width: 0;
-  padding: 0.75rem var(--workspace-pane-inline) 1rem;
-  border: 1px solid var(--border);
-  border-radius: var(--workspace-pane-radius);
-  background: var(--surface);
+}
+
+/* ペインの枠は並べる面と同じ部品（PaneShell）。高さは中身で決まる */
+.workspace-stack .workspace-pane {
+  height: auto;
+}
+
+.workspace-stack .workspace-pane-scroll {
+  flex: 0 0 auto;
+  overflow: visible;
 }
 
 /*

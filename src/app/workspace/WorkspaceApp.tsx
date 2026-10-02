@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { deleteWorkspaceCommand, duplicateWorkspaceCommand } from '#engine/workspace-commands.ts';
 import { findWorkspace } from '#engine/workspace.ts';
 import type { ContextBarHistory } from '#hosts/shared/ContextBar.tsx';
-import { WorkspacePage, type WorkspaceTabsMode } from '#hosts/workspace/index.ts';
+import { WorkspacePage, type WorkspaceHeadingMode } from '#hosts/workspace/index.ts';
 import { builtinPaneCatalog } from '../standalone/catalog.ts';
 import { sharedEngineComputer } from '../standalone/engine-computer.ts';
 import { generatePresetId, generateTextId } from '../standalone/id-generator.ts';
@@ -23,7 +23,7 @@ import { usePaneOptionsCommit } from './use-pane-options-commit.ts';
  * 呼び出し側（route）は`workspaceId`をkeyにする。Workspaceを切り替えた時に、待っている間引き書き込みが
  * 元のWorkspaceへ書かれて確定するようにするため（切り替えでこのcomponentが作り直される）。
  */
-export function WorkspaceApp({ workspaceId, tabs }: { readonly workspaceId: string; readonly tabs: WorkspaceTabsMode }) {
+export function WorkspaceApp({ workspaceId, heading }: { readonly workspaceId: string; readonly heading: WorkspaceHeadingMode }) {
   const { assets, ready, dispatch, getAssets, canUndo, canRedo, undo, redo } = useKeydistAssets();
   const catalog = useMemo(() => builtinPaneCatalog(), []);
   const holder = useMemo(() => ({ workspaceId }), [workspaceId]);
@@ -88,7 +88,7 @@ export function WorkspaceApp({ workspaceId, tabs }: { readonly workspaceId: stri
       history={history}
       onTextContentCommit={commitTextContent}
       onPaneOptionsCommit={commitPaneOptions}
-      tabs={tabs}
+      heading={heading}
       onDuplicate={duplicate}
       onDelete={remove}
     />

@@ -1,0 +1,193 @@
+/*
+ * ペインを並べる面（react-grid-layout）の見た目。ペインは枠線で縁取った面で、ページの背景の上に載る。
+ * ペインの間の余白・外周の余白は`grid-metrics.ts`（ライブラリへ渡す値）。ここは枠の中の見た目だけ。
+ *
+ * 角丸・ペインの内側の余白は縦積みの面（workspace-stack.css）も読むので、:rootに置く。
+ */
+:root {
+  --workspace-board-padding: 0.5rem;
+  --workspace-pane-radius: 8px;
+  --workspace-pane-inline: 0.75rem;
+}
+
+.workspace-grid-area {
+  flex: 1 0 auto;
+  min-width: 0;
+  width: 100%;
+}
+
+/* ライブラリの既定の見た目を、アプリのtoken（明・暗の両方）へ寄せる */
+.workspace-grid-area .react-grid-item.react-grid-placeholder {
+  background: var(--accent);
+  border-radius: var(--workspace-pane-radius);
+  opacity: 0.18;
+}
+
+.workspace-grid-area .react-grid-item > .react-resizable-handle::after {
+  border-right-color: var(--text-muted);
+  border-bottom-color: var(--text-muted);
+}
+
+/* 開いたメニュー・ⓘがある間は、そのペインを他のペインより手前に出す（ペインごとに重なりの文脈ができるため） */
+.workspace-grid-area .react-grid-item:focus-within,
+.workspace-grid-area .react-grid-item:has([aria-expanded="true"]) {
+  z-index: 6;
+}
+
+/* ドラッグ・大きさの変更の間は、動かしているペインが一番手前 */
+.workspace-grid-area .react-grid-item.react-draggable-dragging,
+.workspace-grid-area .react-grid-item.resizing {
+  z-index: 8;
+}
+
+.workspace-grid-item {
+  min-width: 0;
+}
+
+/* ---- ペインの枠 ---- */
+.workspace-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: var(--workspace-pane-radius);
+  background: var(--surface);
+}
+
+/* 本体の領域。ペインの枠（PaneFrame）が高さいっぱいに広がり、はみ出す分はここの中でスクロールする。 */
+.workspace-pane-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.5rem var(--workspace-pane-inline) 1rem;
+  border-radius: inherit;
+}
+
+.workspace-pane[data-heading="bar"] .workspace-pane-scroll {
+  padding-top: 0.5rem;
+}
+
+/*
+ * 本体の領域に「ペインの残りの高さ」を持たせる。見出しなどを引いた残りを本体の領域へ渡し、
+ * 領域の幅と高さの両方をcontainerにするので、Analyzerは置かれた領域の高さ・縦横比でも描き分けられる
+ * （個別画面の本体は幅だけのcontainerで、高さは中身で決まる。ここは個別画面には効かせない）。
+ * 領域より中身が大きい時は、本体の領域の中でスクロールする。
+ */
+.workspace-grid-area .workspace-pane .pane-frame {
+  height: 100%;
+  gap: 0.5rem;
+}
+
+.workspace-grid-area .workspace-pane .pane-body {
+  flex: 1 1 0;
+  /* 見出しなどで残りが削られても、読める大きさの窓は残す。これより低いペインは、ペイン全体がスクロールする */
+  min-height: 12rem;
+  container: pane-body / size;
+  overflow: auto;
+}
+
+/* ---- つかみ所 ---- */
+.workspace-drag-handle {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.workspace-drag-handle:active {
+  cursor: grabbing;
+}
+
+.workspace-grip-icon {
+  flex: none;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.workspace-drag-handle:hover .workspace-grip-icon {
+  color: var(--accent);
+  opacity: 1;
+}
+
+/* 縦積み（動かせない面）では、つかみ所の絵と手の形を出さない */
+.workspace-drag-static {
+  cursor: default;
+}
+
+/* ---- 見出しの方式 bar: ペインの一番上の1行の題 ---- */
+.workspace-pane-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: none;
+  min-height: 2rem;
+  padding: 0 0.35rem 0 var(--workspace-pane-inline);
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--workspace-pane-radius) var(--workspace-pane-radius) 0 0;
+  background: var(--surface-muted);
+}
+
+.workspace-pane-bar-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.workspace-pane-bar-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.workspace-pane-bar-menu {
+  display: flex;
+  flex: none;
+}
+
+.workspace-pane-bar .pane-icon-button {
+  width: 1.7rem;
+  height: 1.7rem;
+}
+
+/* ---- 見出しの方式 none: 見出しの先頭の小さなつかみ（絵と名前） ---- */
+.workspace-pane-lead {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  min-height: 2rem;
+  padding-right: 0.25rem;
+}
+
+.workspace-pane-lead-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.workspace-pane-lead:hover .workspace-pane-lead-name {
+  color: var(--text);
+}
+
+/*
+ * 余白のペイン。本体は何も出さず、見出しの行だけを持つ（名前とつかみ所は器が出す。⋯は右端）。
+ */
+.pane-blank-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2rem;
+}
+
+.pane-blank-header .pane-menu {
+  margin-left: auto;
+}
