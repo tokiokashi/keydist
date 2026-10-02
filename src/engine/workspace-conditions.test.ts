@@ -173,13 +173,46 @@ test('プリセット: Workspaceのレベルへ保存・流し込みでき、全
     assets = step.assets;
     history = step.history;
   }
-  assert.deepEqual(assets.presetLibrary.presets[0]?.values, { windowSize: 5 });
+  // 保存するのは画面で見ている値（全体にWorkspaceを重ねた値）
+  assert.deepEqual(assets.presetLibrary.presets[0]?.values, { sfbHomeCost: false, windowSize: 5 });
   // 別のWorkspaceへ流し込むと、そのWorkspaceにだけ入る
   const withSecond = { ...assets, workspaces: createWorkspace(assets.workspaces, () => 'w2', 'w2').library };
   const applied = applyCommand(withSecond, history, applyPresetCommand('p1', WORKSPACE, 'w2'));
   assert.deepEqual(findWorkspace(applied.assets.workspaces, 'w2')?.conditions, { windowSize: 5 });
   assert.equal(applied.assets.setupLibrary.overrides.global?.windowSize, undefined);
   assert.equal(applied.assets.setupLibrary.overrides.global?.sfbHomeCost, false);
+});
+
+test('プリセット: 全体N=7でWorkspaceに値が無い画面の保存は、全体の値を保存する', () => {
+  let assets = assetsWithWorkspaces('w1');
+  const history = emptyCommandHistory<KeydistAssets>();
+  const withGlobal = applyCommand(assets, history, setCascadeOverrideCommand(GLOBAL, 'windowSize', 7));
+  assets = withGlobal.assets;
+  const saved = applyCommand(assets, withGlobal.history, savePresetCommand('全体7', WORKSPACE, () => 'p1', 'w1'));
+  assert.deepEqual(saved.assets.presetLibrary.presets[0]?.values, { windowSize: 7 });
+});
+
+test('プリセット: 全体の既定で保存した値を、全体N=7のWorkspaceへ流し込むと、既定値をWorkspaceへ明示的に書く', () => {
+  let assets = assetsWithWorkspaces('w1');
+  const history = emptyCommandHistory<KeydistAssets>();
+  const withGlobal = applyCommand(assets, history, setCascadeOverrideCommand(GLOBAL, 'windowSize', 7));
+  assets = {
+    ...withGlobal.assets,
+    presetLibrary: { presets: [
+      { id: 'def', name: '既定', values: {} },
+      { id: 'n3', name: 'N=3', values: { windowSize: 3 } },
+      { id: 'n7', name: 'N=7', values: { windowSize: 7 } },
+    ] },
+  };
+  for (const id of ['def', 'n3']) {
+    const applied = applyCommand(assets, withGlobal.history, applyPresetCommand(id, WORKSPACE, 'w1'));
+    assert.equal(applied.outcome.kind, 'applied', id);
+    assert.deepEqual(findWorkspace(applied.assets.workspaces, 'w1')?.conditions, { windowSize: 3 }, id);
+    assert.equal(applied.assets.setupLibrary.overrides.global?.windowSize, 7, id);
+  }
+  // 全体と同じ値は上書きを残さない
+  const same = applyCommand(assets, withGlobal.history, applyPresetCommand('n7', WORKSPACE, 'w1'));
+  assert.equal(same.outcome.kind, 'no-op');
 });
 
 test('Workspaceの資産: 条件は複製で写り、空は消え、codecで往復する。壊れた項目は捨てて全体のままにする', () => {

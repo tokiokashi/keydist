@@ -133,7 +133,8 @@ test('romajiRuleId: 推奨を持つ配列（大西配列・TK音直入力法）�
     assert.equal(resolved.romajiRuleId.value, expected, layout.id);
     // 推奨は利用者が変えた値ではないので、出どころは既定値のまま
     assert.deepEqual(resolved.romajiRuleId.origin, { kind: 'default' }, layout.id);
-    assert.deepEqual(resolved.romajiRuleId.recommendationWins, { shadowed: ['global'] }, layout.id);
+    // Workspaceに値が無くても、継承した値が推奨と違えばWorkspaceも負けた側に入る（単体ページでは読まれない）
+    assert.deepEqual(resolved.romajiRuleId.recommendationWins, { shadowed: ['global', 'workspace'] }, layout.id);
   }
 });
 

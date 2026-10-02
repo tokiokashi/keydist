@@ -138,8 +138,10 @@ function ConditionModal({ rows, header, targetDiffs, editor, onClose }: Conditio
   const inWorkspace = editor.workspace !== undefined;
   const resettable = inWorkspace ? [] : resettableGlobalIds(editor.overrides, editor.hiddenIds);
   const workspaceResettable = inWorkspace ? resettableWorkspaceIds(editor.overrides, editor.hiddenIds) : [];
-  // 配列を対象にしている時は、その配列の上書きも一緒に消す（元に戻すの1回で全部戻る）。
-  const layoutResettable = editor.layout === undefined ? [] : resettableLayoutIds(editor.overrides, editor.layout.id, editor.hiddenIds);
+  // 単体ページは、配列を対象にしている時にその配列の上書きも一緒に消す（元に戻すの1回で全部戻る）。
+  // Workspaceのペインは消さない。配列のレベルの値は単体ページや他のWorkspaceにも入るため、
+  // 「Workspaceの変更」には数えない。
+  const layoutResettable = editor.layout === undefined || inWorkspace ? [] : resettableLayoutIds(editor.overrides, editor.layout.id, editor.hiddenIds);
 
   useEffect(() => {
     const dialog = dialogRef.current;

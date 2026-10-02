@@ -21,9 +21,25 @@ export interface PresetRowView {
 }
 
 /**
- * 一覧の行。「今の値と同じ」は、流し込みが変化を起こさないかで決める（`applyPresetValues`は
- * 変化が無ければ同じ参照を返す。判定は流し込みの`sameLevel`と同じ規則）。値の一致を別に
- * 比べ直すと、既定と同じ値を含むプリセットで「同じ」と「流し込むと変わる」が食い違うため。
+ * 項目の、そのレベルで解決した値（Workspaceは全体を継承する。上書きが無ければ既定値）。
+ * 既定値が文脈で決まる項目（指の割当）は既定値を知れないので、上書きが無い時は`undefined`にする。
+ */
+function resolvedLevelValue(overrides: SettingsCascadeOverrides, level: CascadeLevel, itemId: string): unknown {
+  const own = levelOverrides(overrides, level) as Record<string, unknown> | undefined;
+  if (own !== undefined && Object.hasOwn(own, itemId)) return own[itemId];
+  if (level.kind === 'workspace') {
+    const global = levelOverrides(overrides, GLOBAL_LEVEL) as Record<string, unknown> | undefined;
+    if (global !== undefined && Object.hasOwn(global, itemId)) return global[itemId];
+  }
+  const item = (SETTINGS_ITEMS as Record<string, { readonly defaultValue: unknown }>)[itemId];
+  return typeof item?.defaultValue === 'function' ? undefined : item?.defaultValue;
+}
+
+/**
+ * 一覧の行。「今の値と同じ」は、流し込んだ後に解決した値が変わらないかで決める。
+ * 上書きの有無で比べると、Workspaceでは全体の値と同じ値を上書きとして持つ・持たないの違いで
+ * 「同じ」と「流し込むと変わる」が食い違うため。流し込みの計算（`applyPresetValues`）と同じ規則で
+ * 流し込んだ後の上書きを作り、`changedGlobalItemCount`で比べる。
  *
  * 指の割当は既定と同じ値でも上書きとして残る（既定が物理配列で決まるため）。そのため
  * 「今の値と同じ」の行でも、指の割当の行には「全体で変更」の札が出ることがある。
@@ -36,11 +52,15 @@ export function presetRows(
   return library.presets.map((preset) => ({
     id: preset.id,
     name: preset.name,
-    sameAsCurrent: applyPresetValues(SETTINGS_ITEMS, overrides, level, preset.values).overrides === overrides,
+    sameAsCurrent:
+      changedGlobalItemCount(overrides, applyPresetValues(SETTINGS_ITEMS, overrides, level, preset.values).overrides, level) === 0,
   }));
 }
 
-/** 流し込み先のレベル（既定は全体）の上書きのうち、値が変わった（増えた・消えた・違う値になった）項目の数。 */
+/**
+ * 流し込み先のレベル（既定は全体）で、解決した値が変わった（増えた・消えた・違う値になった）項目の数。
+ * Workspaceのレベルは全体の値を継承した値で比べる。
+ */
 export function changedGlobalItemCount(
   before: SettingsCascadeOverrides,
   after: SettingsCascadeOverrides,
@@ -51,7 +71,7 @@ export function changedGlobalItemCount(
   const ids = new Set([...Object.keys(left), ...Object.keys(right)]);
   let count = 0;
   for (const id of ids) {
-    if (JSON.stringify(left[id]) !== JSON.stringify(right[id])) count += 1;
+    if (JSON.stringify(resolvedLevelValue(before, level, id)) !== JSON.stringify(resolvedLevelValue(after, level, id))) count += 1;
   }
   return count;
 }

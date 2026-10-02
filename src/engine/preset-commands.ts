@@ -10,7 +10,7 @@ import {
 } from '#input/presets/index.ts';
 import { levelOverrides, type CascadeLevel, type LevelOverrides } from '#input/settings/index.ts';
 import { cascadeCommand, cascadeOverridesView, type KeydistAssets } from './commands.ts';
-import { SETTINGS_ITEMS, type SettingsValueMap } from './settings-items.ts';
+import { SETTINGS_ITEMS, type SettingsCascadeOverrides, type SettingsValueMap } from './settings-items.ts';
 
 /**
  * プリセットのコマンド。書き込みはすべてコマンドを通す（Undoが効く）。
@@ -44,6 +44,27 @@ function presetLibraryCommand(
 
 const INVALID_NAME: InvalidPresetNameError = { kind: 'invalid-preset-name' };
 
+/**
+ * 保存する値。Workspaceのレベルは全体の上に重なる差分なので、差分だけだと全体の値が抜ける
+ * （全体がN=7の画面の保存が空になる）。画面で見ている値を保存するため、全体にWorkspaceを重ねた値を使う。
+ * Workspaceに置けない項目（再生の速度の平均）は、流し込みで入れられないので含めない。
+ */
+export function presetValuesAt(
+  view: SettingsCascadeOverrides,
+  level: CascadeLevel,
+): LevelOverrides<SettingsValueMap> | undefined {
+  if (level.kind !== 'workspace') return levelOverrides(view, level);
+  const merged: Record<string, unknown> = {};
+  const globalValues = (levelOverrides(view, { kind: 'global' }) ?? {}) as Record<string, unknown>;
+  for (const [itemId, value] of Object.entries(globalValues)) {
+    if (Object.hasOwn(SETTINGS_ITEMS, itemId) && SETTINGS_ITEMS[itemId as keyof typeof SETTINGS_ITEMS].allowedLevels.has('workspace')) {
+      merged[itemId] = value;
+    }
+  }
+  Object.assign(merged, levelOverrides(view, level) ?? {});
+  return Object.keys(merged).length === 0 ? undefined : (merged as LevelOverrides<SettingsValueMap>);
+}
+
 /** 指定レベルの今の上書きを、名前を付けてプリセットに保存する（末尾に追加）。 */
 export function savePresetCommand(
   name: string,
@@ -54,7 +75,7 @@ export function savePresetCommand(
   return (current) => {
     const view = cascadeOverridesView(current, workspaceId);
     if (view === undefined) return { kind: 'rejected', reason: { kind: 'workspace-level-unavailable', workspaceId } };
-    const values = levelOverrides(view, level);
+    const values = presetValuesAt(view, level);
     const next = addPreset(current.presetLibrary, name, values, generateId);
     if (next === undefined) return { kind: 'rejected', reason: INVALID_NAME };
     return { kind: 'applied', label: 'プリセットを保存する', changes: { presetLibrary: next } };

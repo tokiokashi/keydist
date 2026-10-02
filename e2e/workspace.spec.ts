@@ -1019,6 +1019,50 @@ test('Workspaceのペインの条件のモーダルでもプリセットを保�
   expect(await storedGlobalOverrides(page)).toEqual({});
 });
 
+test('Workspaceのペインでも、推奨を持つ配列（大西配列）のローマ字規則の行に、Workspaceを変えても変わらない理由が出る', async ({ page }) => {
+  const panes = await createWithBigramPanes(page, 1);
+  await chooseLayout(page, targetButton(panes.first()), 'oonishi');
+  await expect(targetButton(panes.first())).toHaveAttribute('aria-label', '対象: 大西配列');
+  const modal = await openPaneConditionModal(page, panes.first());
+  const row = modal.locator('[data-item="romajiRuleId"]');
+  await expect(row.getByRole('button', { name: /の編集先: / })).toHaveText('Workspace');
+  await expect(row.locator('[data-condition-notice]')).toContainText('この配列の推奨（大西式');
+  await expect(row.locator('[data-condition-notice]')).toContainText('Workspaceを変えてもこの画面は変わらない');
+});
+
+test('Workspaceのレベルのプリセット: 全体の値を重ねた値を保存し、全体の既定で保存した値を全体N=7のWorkspaceへ流し込める', async ({ page }) => {
+  const panes = await createWithBigramPanes(page, 1);
+  const modal = await openPaneConditionModal(page, panes.first());
+  const section = modal.locator('[data-condition-presets]');
+  await section.locator('summary').click();
+  // 全体が既定の画面で、既定のプリセットを保存する
+  await section.getByLabel('プリセットの名前').fill('既定');
+  await section.getByRole('button', { name: '今のWorkspaceの値を保存' }).click();
+
+  // 全体をN=7にする（メニューの「全体を編集」で全体のレベルへ書く）
+  const row = modal.locator('[data-item="windowSize"]');
+  await pickScope(row, '全体を編集');
+  for (let n = 0; n < 4; n += 1) await row.getByRole('button', { name: '先読みNを1増やす' }).click();
+  await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBe(7);
+
+  // 全体N=7の画面で保存すると、全体の値（N=7）を保存する
+  await section.getByLabel('プリセットの名前').fill('七');
+  await section.getByRole('button', { name: '今のWorkspaceの値を保存' }).click();
+  await expect(section.locator('[data-preset-id]').nth(1).locator('.condition-preset-same')).toHaveText('今の値と同じ');
+  // 既定のプリセットは、今の値（N=7）と同じではない
+  await expect(section.locator('[data-preset-id]').nth(0).locator('.condition-preset-same')).toHaveCount(0);
+
+  // 既定のプリセットの流し込みで、Workspaceが全体と違うN=3になる（「今の値と同じ」とは出ない）
+  await section.getByRole('button', { name: '「既定」の値を流し込む' }).click();
+  await expect.poll(async () => (await storedWorkspaceConditions(page)).windowSize).toBe(3);
+  expect((await storedGlobalOverrides(page)).windowSize).toBe(7);
+  await expect(section.locator('[data-preset-id]').nth(0).locator('.condition-preset-same')).toHaveText('今の値と同じ');
+
+  // 「七」を流し込むと、全体と同じ値なのでWorkspaceの上書きは残らない
+  await section.getByRole('button', { name: '「七」の値を流し込む' }).click();
+  await expect.poll(async () => (await storedWorkspaceConditions(page)).windowSize).toBeUndefined();
+});
+
 test('Workspaceで変えた条件はWorkspaceの元に戻すで戻り、個別画面には元から入っていない。元に戻すの履歴は画面ごと', async ({ page, context }) => {
   const panes = await createWithBigramPanes(page, 1);
   const trigger = panes.first().locator('.pane-condition-trigger');

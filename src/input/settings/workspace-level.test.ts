@@ -107,6 +107,28 @@ test('配列の推奨はWorkspaceの値にも勝ち、勝った相手に記録�
   assert.equal(plain.rule.layoutBase, 'w');
 });
 
+test('Workspaceに値が無くても、継承値が推奨と違えば推奨が勝った相手にWorkspaceを記録する', () => {
+  // 全体にも保存値が無い（既定のbase）。大西配列のように推奨が既定と違う配列をWorkspaceで開いた時の理由に使う
+  const bare = resolveCascade(ITEMS, emptyCascadeOverrides(), contextFor(asuka));
+  assert.deepEqual(bare.rule.recommendationWins, { shadowed: ['global', 'workspace'] });
+  // 全体に保存した値があっても同じ
+  const withGlobal = resolveCascade(ITEMS, { global: { rule: 'g' } }, contextFor(asuka));
+  assert.deepEqual(withGlobal.rule.recommendationWins, { shadowed: ['global', 'workspace'] });
+  // 継承値が推奨と同じなら負けた相手は無い
+  const same = resolveCascade(ITEMS, { global: { rule: 'recommended' } }, contextFor(asuka));
+  assert.equal(same.rule.recommendationWins, undefined);
+  // Workspaceに置けない項目は記録しない
+  const noWorkspace = resolveCascade({
+    rule: defineItem<string>({
+      id: 'rule',
+      allowedLevels: new Set(['global', 'layout']),
+      defaultValue: 'base',
+      layoutRecommendation: () => 'recommended',
+    }),
+  }, emptyCascadeOverrides(), contextFor(asuka));
+  assert.deepEqual(noWorkspace.rule.recommendationWins, { shadowed: ['global'] });
+});
+
 test('配列の上書きを全体へ移した後の継承値は、Workspaceの値が勝つ（移すと画面の値が変わる）', () => {
   const overrides: Overrides = { workspace: { rule: 'w' }, layout: { [naginata.id]: { rule: 'mine' } } };
   const resolved = resolveCascade(ITEMS, overrides, contextFor(naginata));

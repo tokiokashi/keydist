@@ -78,7 +78,7 @@ export const SETTINGS_ITEMS = {
     allowedLevels: GLOBAL_WORKSPACE_LAYOUT_SETUP,
     defaultValue: 3,
   }),
-  /** 同指連続でホームキーへ戻る距離を計上するか。windowSizeと同じ理由でglobal/layout/setupのみ。 */
+  /** 同指連続でホームキーへ戻る距離を計上するか。windowSizeと同じ理由でglobal/workspace/layout/setupに置ける。 */
   sfbHomeCost: defineItem<boolean>({
     id: 'sfbHomeCost',
     allowedLevels: GLOBAL_WORKSPACE_LAYOUT_SETUP,

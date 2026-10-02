@@ -89,3 +89,25 @@ test('isSavableName: 空白だけの名前は保存できない', () => {
   assert.equal(isSavableName('  　 '), false);
   assert.equal(isSavableName(' 厳しめ '), true);
 });
+
+const WORKSPACE = { kind: 'workspace' } as const;
+
+test('presetRows: Workspaceは解決した値で比べる。全体N=7の画面で、全体の既定のプリセットは「同じ」ではない', () => {
+  const view: SettingsCascadeOverrides = { global: { windowSize: 7 } };
+  const rows = presetRows(LIBRARY, view, WORKSPACE);
+  // 厳しめ(N=5・sfbHomeCost=false)・全部既定・N=3のどれも、今の値（N=7）とは違う
+  assert.deepEqual(rows.map((row) => row.sameAsCurrent), [false, false, false]);
+  // 全体がN=7、WorkspaceがN=3の時は、N=3の既定と同じ値のプリセットが同じ
+  const withWorkspace: SettingsCascadeOverrides = { global: { windowSize: 7 }, workspace: { windowSize: 3 } };
+  assert.deepEqual(presetRows(LIBRARY, withWorkspace, WORKSPACE).map((row) => row.sameAsCurrent), [false, true, true]);
+  // Workspaceに値が無く全体が既定なら、既定のプリセットは同じ
+  assert.deepEqual(presetRows(LIBRARY, {}, WORKSPACE).map((row) => row.sameAsCurrent), [false, true, true]);
+});
+
+test('changedGlobalItemCount: Workspaceは継承した値で比べ、全体と同じ値の上書きの有無は数えない', () => {
+  const before: SettingsCascadeOverrides = { global: { windowSize: 7 } };
+  const after: SettingsCascadeOverrides = { global: { windowSize: 7 }, workspace: { windowSize: 7 } };
+  assert.equal(changedGlobalItemCount(before, after, WORKSPACE), 0);
+  const changed: SettingsCascadeOverrides = { global: { windowSize: 7 }, workspace: { windowSize: 3 } };
+  assert.equal(changedGlobalItemCount(before, changed, WORKSPACE), 1);
+});

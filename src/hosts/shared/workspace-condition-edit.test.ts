@@ -87,7 +87,7 @@ test('setWorkspaceCommand: 全体の値と同じ値を書く時は、Workspace�
   assert.equal(step.assets.setupLibrary.overrides.global?.windowSize, 7);
 });
 
-test('「すべて既定値に戻す」: Workspaceの上書きと今の配列の上書きだけを1コマンドで消し、全体は残す', () => {
+test('「すべて戻す」（Workspace）: Workspaceの上書きだけを消し、今の配列の上書きと全体は残す', () => {
   let state = assets();
   let history = emptyCommandHistory<KeydistAssets>();
   for (const command of [
@@ -105,14 +105,15 @@ test('「すべて既定値に戻す」: Workspaceの上書きと今の配列の
   // Workspaceのペインは全体の上書きを消す対象にしない（resettableGlobalIdsは単体ページが使う）
   assert.deepEqual(resettableGlobalIds(view), ['windowSize']);
 
+  // 配列のレベルの値は単体ページや他のWorkspaceにも入るので、Workspaceのペインは消す対象に渡さない
   const reset = applyCommand(state, history, resetAllCommand(
     [],
-    { layoutId: 'qwerty', ids: ['windowSize'] },
+    undefined,
     { workspaceId: 'w1', ids: resettableWorkspaceIds(view) },
   ));
   assert.equal(reset.outcome.kind, 'applied');
   assert.equal(findWorkspace(reset.assets.workspaces, 'w1')?.conditions, undefined);
-  assert.equal(reset.assets.setupLibrary.overrides.layout, undefined);
+  assert.equal(reset.assets.setupLibrary.overrides.layout?.qwerty?.windowSize, 2);
   assert.equal(reset.assets.setupLibrary.overrides.global?.windowSize, 7);
   const undone = undo(reset.assets, reset.history);
   assert.deepEqual(findWorkspace(undone.assets.workspaces, 'w1')?.conditions, { windowSize: 5, sfbHomeCost: false });

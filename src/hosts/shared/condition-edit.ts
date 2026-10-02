@@ -93,8 +93,9 @@ export function resettableWorkspaceIds(
 
 /**
  * 「すべて既定値に戻す」。この画面で編集の既定になっているレベルの上書きと、今の配列（配列を対象にしている時）の
- * 上書きを、1コマンドで消す（元に戻すの1回で全部戻る）。単体ページの既定のレベルは全体（`globalIds`）、
- * Workspaceのペインはそのレベル（`workspace`。このWorkspaceの中の操作は、他の画面の全体の値を消さない）。
+ * 上書きを、1コマンドで消す（元に戻すの1回で全部戻る）。単体ページの既定のレベルは全体（`globalIds`）で、
+ * 今の配列（`layout`）も消す。Workspaceのペインはそのレベル（`workspace`）だけを消し、`layout`は渡さない
+ * （このWorkspaceの中の操作で、単体ページや他のWorkspaceにも入る全体・配列の値を消さない）。
  * 行の無い項目と、他の配列・Setupの上書きは消さない。
  */
 export function resetAllCommand(
