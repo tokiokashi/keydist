@@ -24,6 +24,7 @@ import {
   type WorkspacePane,
   type WorkspacePaneTarget,
 } from '#engine/workspace.ts';
+import { withWorkspaceConditions } from '#engine/settings-items.ts';
 import type { PresetIdGenerator } from '#input/presets/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
@@ -167,9 +168,18 @@ export function WorkspacePage({
   // 条件のモーダルの元に戻すも、文脈バーと同じく待っている書き込みを先に反映してから戻す
   const undo = useLatestCallback(pageHistory.undo);
 
+  // このWorkspaceの条件（Workspaceのレベル）を、全体・配列・Setupの上書きに差し込む。ペインの解決・条件のモーダルは
+  // この値だけを見る。Workspaceの保存は`workspace`を作り直すので、中身（`conditions`）の参照で組み直す。
+  const workspaceConditions = workspace?.conditions;
+  const overrides = useMemo(
+    () => withWorkspaceConditions(assets.setupLibrary.overrides, workspaceConditions),
+    [assets.setupLibrary.overrides, workspaceConditions],
+  );
+
   const env: PaneEnvironment | undefined = useMemo(() => (resolvedText === undefined ? undefined : {
     setups: assets.setupLibrary.setups,
-    overrides: assets.setupLibrary.overrides,
+    overrides,
+    workspaceId,
     catalog,
     resolvedText,
     cache,
@@ -178,7 +188,7 @@ export function WorkspacePage({
     generatePresetId,
     undo,
     assetsReady,
-  }), [assets.setupLibrary, assets.presetLibrary, catalog, resolvedText, cache, dispatch, generatePresetId, undo, assetsReady]);
+  }), [assets.setupLibrary.setups, overrides, workspaceId, assets.presetLibrary, catalog, resolvedText, cache, dispatch, generatePresetId, undo, assetsReady]);
 
   const panes = workspace?.panes;
   const panesById = useMemo(() => new Map((panes ?? []).map((pane) => [pane.id, pane] as const)), [panes]);
@@ -326,7 +336,8 @@ export function WorkspacePage({
           onTextContentCommit={onTextContentCommit}
         />
         <DefaultShapeChip
-          overrides={assets.setupLibrary.overrides}
+          overrides={overrides}
+          workspaceId={workspaceId}
           dispatch={dispatch}
           shapes={catalog.setupCatalog.shapes}
           layoutIds={workspaceLayoutIds(workspace)}

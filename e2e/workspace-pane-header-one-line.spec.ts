@@ -126,6 +126,8 @@ test('条件: 広い時は文字のchip、狭い時は絵と変更の点。ど�
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.evaluate((value) => localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] })), {
     id: 'h', name: '見出し', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: THREE.slice(0, 2), layout: row(group('f'), group('c')),
+    // 条件のモーダルで変えた値はWorkspaceの条件に入る。保存先を書き直すので、同じ値を持たせる
+    conditions: { windowSize: 4 },
   });
   await page.reload();
   await waitForHydration(page);

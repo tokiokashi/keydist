@@ -33,7 +33,7 @@ export interface ResolvedInput {
   readonly layout: Layout;
   readonly geometry: Geometry;
   readonly tracePolicy: TracePolicy;
-  /** 解釈（Traceの読み方）。当面グローバルのみ（#544 §2）。 */
+  /** 解釈（Traceの読み方）。全体からWorkspaceまで置ける（配列・Setupのレベルには置かない。#544 §2・#655）。 */
   readonly chainInterpretation: ChainInterpretation;
   readonly arpeggioInterpretation: ArpeggioInterpretation;
   /** ローマ字入力でなければnull（かな直接・英字直接）。 */

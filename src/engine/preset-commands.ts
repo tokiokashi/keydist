@@ -9,13 +9,13 @@ import {
   type PresetLibrary,
 } from '#input/presets/index.ts';
 import { levelOverrides, type CascadeLevel, type LevelOverrides } from '#input/settings/index.ts';
-import type { KeydistAssets } from './commands.ts';
-import { SETTINGS_ITEMS, type SettingsValueMap } from './settings-items.ts';
+import { cascadeCommand, cascadeOverridesView, type KeydistAssets } from './commands.ts';
+import { SETTINGS_ITEMS, type SettingsCascadeOverrides, type SettingsValueMap } from './settings-items.ts';
 
 /**
  * プリセットのコマンド。書き込みはすべてコマンドを通す（Undoが効く）。
- * `level`は今は全体だけを渡す想定だが、引数に取る形にしてある（Workspaceのレベルを足す時に
- * コマンドの形を変えずに済む）。プリセット自体はレベルを持たない。
+ * `level`は流し込み・保存の対象のレベル（単体ページは全体、Workspaceのペインはそのレベル）。Workspaceのレベルは
+ * 書き先の`workspaceId`も渡す。プリセット自体はレベルを持たない。
  *
  * 保存・名前の変更・削除・読み込みは`presetLibrary`だけに触れ、流し込みだけが`setupLibrary`
  * （カスケードの上書き）に触れる。
@@ -44,14 +44,38 @@ function presetLibraryCommand(
 
 const INVALID_NAME: InvalidPresetNameError = { kind: 'invalid-preset-name' };
 
+/**
+ * 保存する値。Workspaceのレベルは全体の上に重なる差分なので、差分だけだと全体の値が抜ける
+ * （全体がN=7の画面の保存が空になる）。画面で見ている値を保存するため、全体にWorkspaceを重ねた値を使う。
+ * Workspaceに置けない項目（再生の速度の平均）は、流し込みで入れられないので含めない。
+ */
+export function presetValuesAt(
+  view: SettingsCascadeOverrides,
+  level: CascadeLevel,
+): LevelOverrides<SettingsValueMap> | undefined {
+  if (level.kind !== 'workspace') return levelOverrides(view, level);
+  const merged: Record<string, unknown> = {};
+  const globalValues = (levelOverrides(view, { kind: 'global' }) ?? {}) as Record<string, unknown>;
+  for (const [itemId, value] of Object.entries(globalValues)) {
+    if (Object.hasOwn(SETTINGS_ITEMS, itemId) && SETTINGS_ITEMS[itemId as keyof typeof SETTINGS_ITEMS].allowedLevels.has('workspace')) {
+      merged[itemId] = value;
+    }
+  }
+  Object.assign(merged, levelOverrides(view, level) ?? {});
+  return Object.keys(merged).length === 0 ? undefined : (merged as LevelOverrides<SettingsValueMap>);
+}
+
 /** 指定レベルの今の上書きを、名前を付けてプリセットに保存する（末尾に追加）。 */
 export function savePresetCommand(
   name: string,
   level: CascadeLevel,
   generateId: PresetIdGenerator,
+  workspaceId?: string,
 ): Command<KeydistAssets> {
   return (current) => {
-    const values = levelOverrides(current.setupLibrary.overrides, level);
+    const view = cascadeOverridesView(current, workspaceId);
+    if (view === undefined) return { kind: 'rejected', reason: { kind: 'workspace-level-unavailable', workspaceId } };
+    const values = presetValuesAt(view, level);
     const next = addPreset(current.presetLibrary, name, values, generateId);
     if (next === undefined) return { kind: 'rejected', reason: INVALID_NAME };
     return { kind: 'applied', label: 'プリセットを保存する', changes: { presetLibrary: next } };
@@ -109,11 +133,11 @@ export function planPresetApplication(
  * 既定と同じ値は上書きとして残らない。レベルが許さない項目は入れない（入れなかった項目は
  * `planPresetApplication`で読む）。1コマンドなのでUndoの1回で流し込む前へ戻る。
  */
-export function applyPresetCommand(id: string, level: CascadeLevel): Command<KeydistAssets> {
-  return (current) => {
-    const plan = planPresetApplication(current, id, level);
-    if (plan.kind === 'not-found') return { kind: 'no-op' };
-    if (plan.library === current.setupLibrary) return { kind: 'no-op' };
-    return { kind: 'applied', label: 'プリセットを流し込む', changes: { setupLibrary: plan.library } };
-  };
+export function applyPresetCommand(id: string, level: CascadeLevel, workspaceId?: string): Command<KeydistAssets> {
+  return cascadeCommand('プリセットを流し込む', workspaceId, (overrides, assets) => {
+    const preset = assets.presetLibrary.presets.find((entry) => entry.id === id);
+    // 見つからなければ何もしない（渡された参照のまま返すと`no-op`になる）
+    if (preset === undefined) return { ok: true, overrides };
+    return { ok: true, overrides: applyPresetValues(SETTINGS_ITEMS, overrides, level, preset.values).overrides };
+  });
 }

@@ -4,6 +4,7 @@ import {
   type AssetCodec,
   type CodecDiagnostic,
 } from '#input/codec/index.ts';
+import { decodeLevelOverrides } from '#input/settings/index.ts';
 import { decodeAnalysisTarget, encodeAnalysisTarget } from '#input/setup/index.ts';
 import { initialTextSelection } from '#input/text/selection.ts';
 import { decodeTextSelectionState, encodeTextSelectionState } from '#input/text/selection-codec.ts';
@@ -23,6 +24,7 @@ import {
   type WorkspacePane,
   type WorkspacePaneTarget,
 } from './workspace.ts';
+import { SETTINGS_ITEM_SCHEMAS } from './settings-codec.ts';
 import { assignWorkspaceColors } from './workspace-colors.ts';
 import { normalizeLayout, type WorkspaceLayout, type WorkspaceLayoutNode } from './workspace-layout.ts';
 
@@ -258,7 +260,16 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
     for (const [key, slot] of Object.entries(raw.colorSlots)) if (typeof slot === 'number') known.set(key, slot);
   }
   const colorSlots = assignWorkspaceColors({ groups, panes, colorSlots: {} }, known);
-  return { id: raw.id, name, text, groups, panes, layout, colorSlots, ...(boardHeightRem === undefined ? {} : { boardHeightRem }) };
+  // 条件は値の型だけを検査して読む（置けるレベルかどうかは解決が決める。`input/settings/codec.ts`の方針と同じ）。
+  // 読めない項目は捨てて「無い」ことにし、全体の条件のまま解決する。
+  const conditions = raw.conditions === undefined
+    ? undefined
+    : decodeLevelOverrides(SETTINGS_ITEM_SCHEMAS, raw.conditions, `${path}.conditions`, diagnostics);
+  return {
+    id: raw.id, name, text, groups, panes, layout, colorSlots,
+    ...(boardHeightRem === undefined ? {} : { boardHeightRem }),
+    ...(conditions === undefined ? {} : { conditions }),
+  };
 }
 
 function encodePaneTarget(target: WorkspacePaneTarget): Record<string, unknown> {
@@ -328,6 +339,7 @@ export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAsset
       colorSlots: { ...workspace.colorSlots },
       ...(workspace.layout === undefined ? {} : { layout: encodeLayoutNode(workspace.layout) }),
       ...(workspace.boardHeightRem === undefined ? {} : { boardHeightRem: workspace.boardHeightRem }),
+      ...(workspace.conditions === undefined ? {} : { conditions: { ...workspace.conditions } }),
     })),
   }),
 });

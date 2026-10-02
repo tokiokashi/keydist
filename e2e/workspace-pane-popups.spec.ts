@@ -46,7 +46,7 @@ test('条件のモーダルのプリセットの⋯は、左端の列でも右�
     if ((await section.getAttribute('open')) === null) await section.locator('summary').click();
     if (column === 0) {
       await section.getByLabel('プリセットの名前').fill('試し');
-      await section.getByRole('button', { name: '今の全体の値を保存' }).click();
+      await section.getByRole('button', { name: '今のWorkspaceの値を保存' }).click();
     }
     const row = section.locator('.condition-preset-row').filter({ hasText: '試し' });
     await expect(row).toBeVisible();

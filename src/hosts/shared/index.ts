@@ -4,6 +4,7 @@ export {
   conditionHeaderInfoFromResolvedInput,
   conditionSummaryLine,
   isChangedConditionRow,
+  globalConditionLevels,
   globalConditionValues,
   multiTargetConditionSummary,
   formatOrigin,

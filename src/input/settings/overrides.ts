@@ -11,6 +11,12 @@ export type LevelOverrides<V> = { readonly [K in keyof V]?: V[K] };
  */
 export interface CascadeOverrides<V> {
   readonly global?: LevelOverrides<V>;
+  /**
+   * 今開いているWorkspaceの条件。保存するのはWorkspaceの資産（`Workspace.conditions`）で、`setupLibrary`の
+   * 上書きには入れない。Workspaceの画面だけが、解決の前にここへ差し込む（`withWorkspaceConditions`）。
+   * 差し込まない（単体ページ）解決はこのレベルを持たない。
+   */
+  readonly workspace?: LevelOverrides<V>;
   readonly shape?: Readonly<Record<string, LevelOverrides<V>>>;
   readonly inputMethod?: Readonly<Partial<Record<InputMethod, LevelOverrides<V>>>>;
   readonly layout?: Readonly<Record<string, LevelOverrides<V>>>;
@@ -67,6 +73,7 @@ export function levelOverrides<V>(
 ): LevelOverrides<V> | undefined {
   switch (level.kind) {
     case 'global': return overrides.global;
+    case 'workspace': return overrides.workspace;
     case 'shape': return readBucketEntry(overrides.shape, level.shapeId);
     case 'inputMethod': return readBucketEntry(overrides.inputMethod, level.inputMethod);
     case 'layout': return readBucketEntry(overrides.layout, level.layoutId);
@@ -106,6 +113,15 @@ export function withLevelOverrides<V>(
       return rest;
     }
     return { ...overrides, global: next };
+  }
+  if (level.kind === 'workspace') {
+    if (next === undefined) {
+      // 差し込む条件が無いのが普通（Workspaceのレベルに値が無い）。その時は参照を変えない。
+      if (overrides.workspace === undefined) return overrides;
+      const { workspace: _drop, ...rest } = overrides;
+      return rest;
+    }
+    return { ...overrides, workspace: next };
   }
 
   const bucketKey = level.kind;

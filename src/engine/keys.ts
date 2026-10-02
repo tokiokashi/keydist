@@ -49,7 +49,7 @@ const traceKeyByInput = new WeakMap<object, string>();
 
 /**
  * 解釈のキー = Traceのキー + 解釈の値（#544 §7）。
- * chain/arpeggio解釈は当面グローバルのみ（#544 §2）だが、将来レベルが広がっても
+ * chain/arpeggio解釈は全体とWorkspaceのレベルに置ける（#544 §2・#655）が、さらにレベルが広がっても
  * このキーの形は変わらない。
  *
  * 個人速度（`playbackRate*`）はまだこのキーに含めない。時間モデルをengineへ繋ぐのは

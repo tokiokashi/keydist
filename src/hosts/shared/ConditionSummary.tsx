@@ -5,7 +5,7 @@ import {
   type ConditionSummaryRow,
   type ConditionTargetDiff,
 } from './condition-summary.ts';
-import { resetAllCommand, resettableGlobalIds, resettableLayoutIds } from './condition-edit.ts';
+import { resetAllPlan } from './condition-edit.ts';
 import { ConditionEditor, type ConditionEditorContext } from './ConditionEditor.tsx';
 import { PresetSection } from './PresetSection.tsx';
 
@@ -133,9 +133,9 @@ interface ConditionModalProps extends ConditionSummaryProps {
 function ConditionModal({ rows, header, targetDiffs, editor, onClose }: ConditionModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
-  const resettable = resettableGlobalIds(editor.overrides, editor.hiddenIds);
-  // 配列を対象にしている時は、その配列の上書きも一緒に消す（元に戻すの1回で全部戻る）。
-  const layoutResettable = editor.layout === undefined ? [] : resettableLayoutIds(editor.overrides, editor.layout.id, editor.hiddenIds);
+  // 消すレベルの組み立て（単体ページは全体と今の配列、Workspaceのペインはそのレベルだけ）は`resetAllPlan`
+  const inWorkspace = editor.workspace !== undefined;
+  const resetPlan = resetAllPlan(editor.overrides, editor.hiddenIds ?? [], editor.layout?.id, editor.workspace?.id);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -161,20 +161,21 @@ function ConditionModal({ rows, header, targetDiffs, editor, onClose }: Conditio
         <header className="condition-modal-head">
           <h2 id={titleId}>条件</h2>
           <span className="condition-modal-scope">
-            {editor.layout === undefined
-              ? '全体の値を変える。すべての画面に反映される'
-              : `全体の値を変える。行ごとに「${editor.layout.name}」だけの値にもできる`}
+            {inWorkspace
+              ? (editor.layout === undefined
+                ? 'このWorkspaceの値を変える。他の画面には反映されない'
+                : `このWorkspaceの値を変える。行ごとに全体や「${editor.layout.name}」だけの値にもできる`)
+              : (editor.layout === undefined
+                ? '全体の値を変える。すべての画面に反映される'
+                : `全体の値を変える。行ごとに「${editor.layout.name}」だけの値にもできる`)}
           </span>
           <button
             type="button"
             className="condition-modal-reset-all"
-            disabled={resettable.length === 0 && layoutResettable.length === 0}
-            onClick={() => editor.dispatch(resetAllCommand(
-              resettable,
-              editor.layout === undefined ? undefined : { layoutId: editor.layout.id, ids: layoutResettable },
-            ))}
+            disabled={resetPlan.disabled}
+            onClick={() => editor.dispatch(resetPlan.command)}
           >
-            すべて既定値に戻す
+            {inWorkspace ? 'Workspaceの変更をすべて戻す' : 'すべて既定値に戻す'}
           </button>
           <button type="button" className="condition-modal-close" aria-label="閉じる" onClick={() => dialogRef.current?.close()}>
             <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">

@@ -27,7 +27,7 @@ export interface ResolvedItem<T> {
   readonly diagnostics: readonly Diagnostic[];
   /**
    * 配列の推奨が実効値になっている時、それより下のレベル（全体など）に別の値があって負けたもの
-   * （全体は保存された値が無くても、既定値が推奨と違えば含む）。
+   * （全体・Workspaceは保存された値が無くても、継承する値が推奨と違えば含む）。
    * 「全体を変えても変わらない」理由を出すのに使う。推奨が無い・負けた値が無い時は`undefined`。
    * 出どころ（`origin`）は上書きが無いので`default`のまま（推奨は利用者が変えた値ではない）。
    */
@@ -63,6 +63,7 @@ function levelsForContext(context: CascadeContext): readonly CascadeLevel[] {
 function levelFor(kind: CascadeLevelKind, context: CascadeContext): CascadeLevel | undefined {
   switch (kind) {
     case 'global': return { kind: 'global' };
+    case 'workspace': return { kind: 'workspace' };
     case 'shape': return { kind: 'shape', shapeId: context.shapeId };
     case 'inputMethod': return { kind: 'inputMethod', inputMethod: context.inputMethod };
     case 'layout': return { kind: 'layout', layoutId: context.layoutId };
@@ -90,7 +91,10 @@ function resolveItem(
   const lowerApplied: { readonly kind: CascadeLevelKind; readonly value: unknown }[] = [];
   let shadowed: readonly CascadeLevelKind[] = [];
   let layoutBase = value;
+  // Workspaceのレベルを重ねる直前の値（全体の値か既定値）。Workspaceに値が無い時の「継承値」。
+  let workspaceInherited: unknown;
   for (const level of levels) {
+    if (level.kind === 'workspace') workspaceInherited = value;
     // 配列の推奨は、配列のレベルの手前で下のレベルの値を置き換える。配列・Setupの上書きは
     // この後で重なるので、利用者の上書き＞推奨＞全体、の順になる。
     if (level.kind === 'layout' && recommended !== undefined) {
@@ -104,6 +108,17 @@ function resolveItem(
         && resolveDefaultValue(item, context) !== recommended
       ) {
         shadowed = ['global', ...shadowed];
+      }
+      // Workspaceも同じ。Workspaceに値が無くても、継承した値が推奨と違えば負けている
+      // （Workspaceで大西配列を開いた時に、Workspaceを変えても変わらない理由を出すため）。
+      // 単体ページはWorkspaceのレベルを編集しないので、この記録は読まれない。
+      if (
+        !lowerApplied.some((applied) => applied.kind === 'workspace')
+        && item.allowedLevels.has('workspace')
+        && workspaceInherited !== undefined
+        && workspaceInherited !== recommended
+      ) {
+        shadowed = [...shadowed.filter((kind) => kind !== 'workspace'), 'workspace'];
       }
       value = recommended;
       origin = { kind: 'default' };

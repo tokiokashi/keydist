@@ -10,7 +10,7 @@ import {
   renamePresetCommand,
   savePresetCommand,
 } from '#engine/preset-commands.ts';
-import { GLOBAL_LEVEL } from './condition-edit.ts';
+import { GLOBAL_LEVEL, WORKSPACE_LEVEL } from './condition-edit.ts';
 import type { ConditionEditorContext } from './ConditionEditor.tsx';
 import { ErrorDetails } from './ErrorDetails.tsx';
 import { PaneMenu } from './PaneHeaderParts.tsx';
@@ -71,7 +71,11 @@ type FocusTarget =
 
 export function PresetSection({ editor }: { readonly editor: ConditionEditorContext }) {
   const { overrides, presetLibrary, dispatch } = editor;
-  const rows = useMemo(() => presetRows(presetLibrary, overrides), [presetLibrary, overrides]);
+  // 保存・流し込みの先は、モーダルが開いた時の編集先と同じレベル（Workspaceのペインは Workspace、単体ページは全体）。
+  // Workspaceの中の操作が、他の画面の全体の値を書き換えないようにする。
+  const level = editor.workspace === undefined ? GLOBAL_LEVEL : WORKSPACE_LEVEL;
+  const scopeLabel = editor.workspace === undefined ? '全体' : 'Workspace';
+  const rows = useMemo(() => presetRows(presetLibrary, overrides, level), [presetLibrary, overrides, level]);
   const [name, setName] = useState('');
   const [renaming, setRenaming] = useState<{ readonly id: string; readonly draft: string } | undefined>();
   const [notice, setNotice] = useState<Notice | undefined>();
@@ -157,17 +161,17 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
     event.preventDefault();
     const normalized = normalizePresetName(name);
     if (normalized === undefined) return;
-    dispatch(savePresetCommand(normalized, GLOBAL_LEVEL, editor.generatePresetId));
+    dispatch(savePresetCommand(normalized, level, editor.generatePresetId, editor.workspace?.id));
     setName('');
-    show(savedResultText(normalized), true);
+    show(savedResultText(normalized, scopeLabel), true);
   };
 
   const apply = (id: string) => {
     const preset = presetLibrary.presets.find((entry) => entry.id === id);
     if (preset === undefined) return;
-    const applied = applyPresetValues(SETTINGS_ITEMS, overrides, GLOBAL_LEVEL, preset.values);
-    const result = applyResultText(preset.name, changedGlobalItemCount(overrides, applied.overrides), applied.skipped);
-    if (result.undoable) dispatch(applyPresetCommand(id, GLOBAL_LEVEL));
+    const applied = applyPresetValues(SETTINGS_ITEMS, overrides, level, preset.values);
+    const result = applyResultText(preset.name, changedGlobalItemCount(overrides, applied.overrides, level), applied.skipped);
+    if (result.undoable) dispatch(applyPresetCommand(id, level, editor.workspace?.id));
     show(result.text, result.undoable);
   };
 
@@ -263,7 +267,7 @@ export function PresetSection({ editor }: { readonly editor: ConditionEditorCont
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
-          <button type="submit" disabled={!isSavableName(name)}>今の全体の値を保存</button>
+          <button type="submit" disabled={!isSavableName(name)}>今の{scopeLabel}の値を保存</button>
         </form>
         {fileIo === undefined ? null : (
           <div className="condition-preset-files">

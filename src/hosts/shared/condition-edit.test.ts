@@ -115,6 +115,7 @@ function row(id: ConditionSummaryRow['id'], origin: ConditionSummaryRow['origin'
     sameAsDefault: false,
     diagnostics: [],
     recommendationWinsOverGlobal: false,
+    recommendationWinsOverWorkspace: false,
   };
 }
 

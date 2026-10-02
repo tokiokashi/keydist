@@ -82,6 +82,8 @@ export interface ConditionSummaryRow {
    * 出どころは「既定値」のまま（推奨は利用者が変えた値ではないので、変えた項目には数えない）。
    */
   readonly recommendationWinsOverGlobal: boolean;
+  /** 同じく、Workspaceに置いた別の値が負けている（Workspaceの値を変えても画面が変わらない）。 */
+  readonly recommendationWinsOverWorkspace: boolean;
 }
 
 /** 効く値が既定と同じか。効かない部分（数えない時の例外）の違いは見ない。 */
@@ -107,6 +109,7 @@ const INPUT_METHOD_LABELS: Readonly<Record<InputMethod, string>> = {
 function cascadeLevelLabel(level: CascadeLevel, names: ConditionValueNames | undefined): string {
   switch (level.kind) {
     case 'global': return '全体';
+    case 'workspace': return 'Workspace';
     case 'shape': {
       const name = names?.shapes.get(level.shapeId)?.name;
       return name === undefined ? 'この物理配列' : `物理配列「${name}」`;
@@ -216,6 +219,7 @@ export function traceConditionSummary(
       sameAsDefault: effectivelySameAsDefault(id, resolved.value),
       diagnostics: resolved.diagnostics,
       recommendationWinsOverGlobal: resolved.recommendationWins?.shadowed.includes('global') ?? false,
+      recommendationWinsOverWorkspace: resolved.recommendationWins?.shadowed.includes('workspace') ?? false,
     };
   });
 }
@@ -371,8 +375,10 @@ export function multiTargetConditionSummary(
   targets: readonly TargetConditionInput[],
   options: {
     readonly excludeIds?: readonly SettingsItemId[];
-    /** 全体のレベルの値（`globalConditionValues`）。共通の行はここから作る。 */
+    /** 全体（Workspaceでは、それに重ねたWorkspace）のレベルの値（`globalConditionValues`）。共通の行はここから作る。 */
     readonly globalValues: GlobalConditionValues;
+    /** `globalValues`の出どころ（`globalConditionLevels`）。省略時はすべて全体。 */
+    readonly globalLevels?: GlobalConditionLevels;
     readonly names?: ConditionValueNames;
   },
 ): MultiTargetConditionSummary {
@@ -393,7 +399,7 @@ export function multiTargetConditionSummary(
       rows.push(templateRow);
       continue;
     }
-    const screen = screenRow(templateRow, options.globalValues, options.names);
+    const screen = screenRow(templateRow, options.globalValues, options.names, options.globalLevels);
     rows.push(screen);
     for (const { target, row } of applicable) {
       if (row.valueKey === screen.valueKey) continue;
@@ -409,25 +415,51 @@ export function multiTargetConditionSummary(
   return { rows, diffs };
 }
 
-/** 全体のレベルに書かれた値（許可されている項目だけ）。対象の解決結果とは独立に読む。 */
+/**
+ * 対象に依らずこの画面に入るレベルの値（許可されている項目だけ）。全体のレベルの値に、Workspaceのレベルの値を重ねたもの
+ * （単体ページはWorkspaceのレベルを持たないので、全体の値だけ）。対象の解決結果とは独立に読む。
+ */
 export type GlobalConditionValues = Readonly<Partial<Record<SettingsItemId, unknown>>>;
 
+/** `globalConditionValues`の各値の出どころ（Workspaceのレベルが全体の値を上書きしていれば`workspace`）。 */
+export type GlobalConditionLevels = Readonly<Partial<Record<SettingsItemId, 'global' | 'workspace'>>>;
+
 /**
- * 上書きの全体のレベルから値を読む。共通の行を対象の行の出どころから拾うと、全対象が下位
+ * 上書きの全体・Workspaceのレベルから値を読む。共通の行を対象の行の出どころから拾うと、全対象が下位
  * （Setup・配列）で上書きしている時に全体の値が見つからず、画面で効く値でない既定値を出すため。
  */
 export function globalConditionValues(overrides: SettingsCascadeOverrides): GlobalConditionValues {
   const values: Partial<Record<SettingsItemId, unknown>> = {};
   for (const id of Object.keys(SETTINGS_ITEMS) as SettingsItemId[]) {
-    if (!SETTINGS_ITEMS[id].allowedLevels.has('global')) continue;
-    const value: unknown = readOverride(overrides, { kind: 'global' }, id);
+    const value = screenLevelValue(overrides, id)?.value;
     if (value !== undefined) values[id] = value;
   }
   return values;
 }
 
+/** 共通の行の値の出どころ。`globalConditionValues`と同じ項目・同じ値を指す。 */
+export function globalConditionLevels(overrides: SettingsCascadeOverrides): GlobalConditionLevels {
+  const levels: Partial<Record<SettingsItemId, 'global' | 'workspace'>> = {};
+  for (const id of Object.keys(SETTINGS_ITEMS) as SettingsItemId[]) {
+    const level = screenLevelValue(overrides, id)?.level;
+    if (level !== undefined) levels[id] = level;
+  }
+  return levels;
+}
+
+function screenLevelValue(
+  overrides: SettingsCascadeOverrides,
+  id: SettingsItemId,
+): { readonly value: unknown; readonly level: 'global' | 'workspace' } | undefined {
+  const allowed = SETTINGS_ITEMS[id].allowedLevels;
+  const workspace: unknown = allowed.has('workspace') ? readOverride(overrides, { kind: 'workspace' }, id) : undefined;
+  if (workspace !== undefined) return { value: workspace, level: 'workspace' };
+  const global: unknown = allowed.has('global') ? readOverride(overrides, { kind: 'global' }, id) : undefined;
+  return global === undefined ? undefined : { value: global, level: 'global' };
+}
+
 /**
- * 1項目の、この画面で効く値の行。全体のレベルの値があればそれ（出どころは全体）、無ければ項目の既定値。
+ * 1項目の、この画面で効く値の行。全体・Workspaceのレベルの値があればそれ（出どころはそのレベル）、無ければ項目の既定値。
  * 既定値が物理配列ごとに変わる項目は、物理配列を持たない時の値（指の割当は列固定）を画面の値とする。
  * ローマ字規則の配列ごとの推奨は画面の値に入れない（推奨を持つ配列は「対象ごとの差」に出る）。
  */
@@ -435,9 +467,12 @@ function screenRow(
   template: ConditionSummaryRow,
   globalValues: GlobalConditionValues,
   names: ConditionValueNames | undefined,
+  levels?: GlobalConditionLevels,
 ): ConditionSummaryRow {
   const globalValue = globalValues[template.id];
-  const origin: ResolvedOrigin = globalValue === undefined ? { kind: 'default' } : { kind: 'global' };
+  const origin: ResolvedOrigin = globalValue === undefined
+    ? { kind: 'default' }
+    : { kind: levels?.[template.id] ?? 'global' };
   const rawDefault: unknown = SETTINGS_ITEMS[template.id].defaultValue;
   const value = globalValue !== undefined
     ? globalValue
@@ -459,5 +494,6 @@ function screenRow(
     sameAsDefault: globalValue !== undefined && effectivelySameAsDefault(template.id, value),
     diagnostics: [],
     recommendationWinsOverGlobal: false,
+    recommendationWinsOverWorkspace: false,
   };
 }

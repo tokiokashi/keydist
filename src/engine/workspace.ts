@@ -1,6 +1,8 @@
+import type { LevelOverrides } from '#input/settings/index.ts';
 import { layoutIdsOfTargets, type AnalysisTarget } from '#input/setup/index.ts';
 import { initialTextSelection, type TextSelectionState } from '#input/text/selection.ts';
 import { stableStringify } from './cache-key.ts';
+import type { SettingsValueMap } from './settings-items.ts';
 import { initialTargetSet, type TargetSet } from './multi-target-selection.ts';
 import {
   effectiveSingleTarget,
@@ -167,6 +169,13 @@ export interface Workspace {
    * 画素でなくremなのは、ペインの下限をremで持つので、文字の大きさを変えても下限との関係が崩れないため。
    */
   readonly boardHeightRem?: number;
+  /**
+   * このWorkspaceの条件（カスケードのWorkspaceのレベル。docs/architecture.md「カスケード」）。既定から変えた項目だけを持つ
+   * （疎）。このWorkspaceのペインの解決にだけ入り、単体ページ・他のWorkspaceには入らない。
+   * 無ければ（何も変えていなければ）全体の条件のまま。書き込みはコマンドを通す
+   * （`engine/commands.ts`の条件のコマンド。全体・配列のレベルと同じ書き込み口を使う）。
+   */
+  readonly conditions?: LevelOverrides<SettingsValueMap>;
 }
 
 /** 板の高さの上限 [rem]。壊れた保存データで板が際限なく伸びないための安全弁（ペインを数十個積んでも届かない）。 */
@@ -450,6 +459,23 @@ export function withPaneInNewLinkGroup(
         candidate.id === paneId ? { ...candidate, binding: followBinding(newGroupId) } : candidate
       )),
     });
+  });
+}
+
+/**
+ * このWorkspaceの条件を丸ごと置き換える。`undefined`・空は「何も変えていない状態」（キーごと消す）。
+ * 同じ参照なら何もしない。
+ */
+export function withWorkspaceConditionOverrides(
+  library: WorkspaceLibrary,
+  workspaceId: string,
+  conditions: LevelOverrides<SettingsValueMap> | undefined,
+): WorkspaceLibrary {
+  return updateWorkspace(library, workspaceId, (workspace) => {
+    const next = conditions === undefined || Object.keys(conditions).length === 0 ? undefined : conditions;
+    if (workspace.conditions === next) return workspace;
+    const { conditions: _removed, ...rest } = workspace;
+    return next === undefined ? rest : { ...rest, conditions: next };
   });
 }
 

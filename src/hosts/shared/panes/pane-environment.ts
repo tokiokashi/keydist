@@ -18,8 +18,16 @@ import type { PaneCatalog } from '../resolve-pane-input.ts';
  */
 export interface PaneEnvironment {
   readonly setups: readonly Setup[];
-  /** カスケードの上書き（グローバル・物理配列・配列・Setupの各レベル）。 */
+  /**
+   * カスケードの上書き（グローバル・Workspace・物理配列・配列・Setupの各レベル）。Workspaceのレベルは
+   * Workspaceの画面だけが差し込む（`withWorkspaceConditions`）。個別画面は持たない。
+   */
   readonly overrides: SettingsCascadeOverrides;
+  /**
+   * Workspaceの画面なら、そのWorkspaceのid。条件のモーダルがWorkspaceのレベルを編集の先にし、その書き込みの
+   * 書き先を指すのに使う。個別画面は持たない（条件のモーダルは全体のレベルで開く）。
+   */
+  readonly workspaceId?: string;
   readonly catalog: PaneCatalog;
   readonly resolvedText: ResolvedText;
   /** 抽出・Traceのキャッシュ。器の中のペイン全部で同じものを渡し、計算を共有する。 */

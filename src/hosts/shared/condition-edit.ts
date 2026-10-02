@@ -30,6 +30,12 @@ import { conditionLevelLabel, type ConditionSummaryRow, type ConditionValueNames
 
 export const GLOBAL_LEVEL: CascadeLevel = { kind: 'global' };
 
+/**
+ * Workspaceのレベル。Workspaceのペインの条件のモーダルは、このレベルで開く（#655）。値は書き込みコマンドの
+ * `workspaceId`で指す、そのWorkspaceの資産に入る。
+ */
+export const WORKSPACE_LEVEL: CascadeLevel = { kind: 'workspace' };
+
 /** 全体のレベルから編集できる項目（モーダルの行）。配列・打ち方のレベルだけに置ける項目は含まない。 */
 export type GlobalEditableId = Extract<
   SettingsItemId,
@@ -77,18 +83,107 @@ export function resettableLayoutIds(
     !hiddenIds.includes(id) && canEditAtLayout(id) && layoutOverrideOf(overrides, layoutId, id) !== undefined);
 }
 
+/** 行を出している項目のうち、Workspaceのレベルに上書きがあるもの。 */
+export function resettableWorkspaceIds(
+  overrides: SettingsCascadeOverrides,
+  hiddenIds: readonly SettingsItemId[] = [],
+): readonly GlobalEditableId[] {
+  return GLOBAL_EDITABLE_IDS.filter((id) => !hiddenIds.includes(id) && workspaceOverrideOf(overrides, id) !== undefined);
+}
+
 /**
- * 「すべて既定値に戻す」。全体の上書きと、今の配列の上書き（配列を対象にしている時）を、1コマンドで消す
- * （元に戻すの1回で全部戻る）。行の無い項目と、他の配列・Setupの上書きは消さない。
+ * 「すべて既定値に戻す」。この画面で編集の既定になっているレベルの上書きと、今の配列（配列を対象にしている時）の
+ * 上書きを、1コマンドで消す（元に戻すの1回で全部戻る）。単体ページの既定のレベルは全体（`globalIds`）で、
+ * 今の配列（`layout`）も消す。Workspaceのペインはそのレベル（`workspace`）だけを消し、`layout`は渡さない
+ * （このWorkspaceの中の操作で、単体ページや他のWorkspaceにも入る全体・配列の値を消さない）。
+ * 行の無い項目と、他の配列・Setupの上書きは消さない。
  */
 export function resetAllCommand(
   globalIds: readonly GlobalEditableId[],
   layout?: { readonly layoutId: string; readonly ids: readonly GlobalEditableId[] },
+  workspace?: { readonly workspaceId: string; readonly ids: readonly GlobalEditableId[] },
 ): Command<KeydistAssets> {
   return resetCascadeItemsAtLevelsCommand([
     { level: GLOBAL_LEVEL, itemIds: globalIds },
+    ...(workspace === undefined ? [] : [{ level: WORKSPACE_LEVEL, itemIds: workspace.ids }]),
     ...(layout === undefined ? [] : [{ level: layoutLevel(layout.layoutId), itemIds: layout.ids }]),
-  ]);
+  ], workspace?.workspaceId);
+}
+
+/**
+ * モーダルの見出しの「すべて戻す」ボタンの状態。消す対象のリストと、押せるか、押した時のコマンドを返す。
+ * 単体ページは全体と今の配列の上書きを消す。Workspaceのペインはそのレベルだけを消し、配列の上書きは
+ * 渡さない（配列のレベルの値は単体ページや他のWorkspaceにも入るので、Workspaceの変更に数えない）。
+ * そのため配列の上書きだけがある時、Workspaceのペインでは押せない。
+ */
+export function resetAllPlan(
+  overrides: SettingsCascadeOverrides,
+  hiddenIds: readonly SettingsItemId[],
+  layoutId: string | undefined,
+  workspaceId: string | undefined,
+): {
+  readonly globalIds: readonly GlobalEditableId[];
+  readonly workspaceIds: readonly GlobalEditableId[];
+  readonly layoutIds: readonly GlobalEditableId[];
+  readonly disabled: boolean;
+  readonly command: Command<KeydistAssets>;
+} {
+  const inWorkspace = workspaceId !== undefined;
+  const globalIds = inWorkspace ? [] : resettableGlobalIds(overrides, hiddenIds);
+  const workspaceIds = inWorkspace ? resettableWorkspaceIds(overrides, hiddenIds) : [];
+  const layoutIds = layoutId === undefined || inWorkspace ? [] : resettableLayoutIds(overrides, layoutId, hiddenIds);
+  return {
+    globalIds,
+    workspaceIds,
+    layoutIds,
+    disabled: globalIds.length === 0 && workspaceIds.length === 0 && layoutIds.length === 0,
+    command: resetAllCommand(
+      globalIds,
+      layoutId === undefined || inWorkspace ? undefined : { layoutId, ids: layoutIds },
+      workspaceId === undefined ? undefined : { workspaceId, ids: workspaceIds },
+    ),
+  };
+}
+
+/** Workspaceのレベルの上書き。無ければ`undefined`（全体の値を継承している）。 */
+export function workspaceOverrideOf<K extends SettingsItemId>(
+  overrides: SettingsCascadeOverrides,
+  id: K,
+): SettingsValueMap[K] | undefined {
+  return readOverride(overrides, WORKSPACE_LEVEL, id);
+}
+
+/** Workspaceのレベルに置ける項目。`allowedLevels`から引くので、項目の定義を変えれば行の導線も追従する。 */
+export function canEditAtWorkspace(id: SettingsItemId): boolean {
+  return SETTINGS_ITEMS[id].allowedLevels.has('workspace');
+}
+
+/**
+ * Workspaceのレベルに書く。Workspaceのレベルの手前までの値（`inherited`。全体の値、無ければ既定値）と同じ値を書く時は
+ * 上書きを消す。同じ値を残すと、継承しているだけなのに「Workspaceで変更」と出てしまうため。
+ */
+export function setWorkspaceCommand<K extends SettingsItemId>(
+  workspaceId: string,
+  id: K,
+  next: SettingsValueMap[K],
+  inherited: SettingsValueMap[K],
+): Command<KeydistAssets> {
+  return JSON.stringify(next) === JSON.stringify(inherited)
+    ? resetCascadeItemCommand(WORKSPACE_LEVEL, id, workspaceId)
+    : setCascadeOverrideCommand(WORKSPACE_LEVEL, id, next, workspaceId);
+}
+
+/**
+ * Workspaceのレベルの値を全体へ移す（昇格）。全体へ書き、Workspaceの上書きは消す。1コマンドなので元に戻すの1回で戻る。
+ * このWorkspaceの画面の値は変わらない（Workspaceのレベルは全体のすぐ上で、間に別のレベルを挟まない）。
+ * 全体へ書く値が既定値と同じなら、全体の上書きは消す（`setGlobalCommand`と同じ理由）。
+ */
+export function promoteWorkspaceToGlobalCommand<K extends GlobalEditableId>(
+  workspaceId: string,
+  id: K,
+  defaultValue: SettingsValueMap[K],
+): Command<KeydistAssets> {
+  return promoteCascadeOverrideCommand(WORKSPACE_LEVEL, GLOBAL_LEVEL, id, defaultValue, workspaceId);
 }
 
 /** 全体のレベルの上書き。無ければ`undefined`（既定値のまま）。 */
@@ -169,8 +264,17 @@ export function defaultShapeCommand(next: string): Command<KeydistAssets> {
 }
 
 /**
- * 文脈バーのチップを操作する時に出す理由。チップは全体のレベルへ書く近道なので、この画面に出ている配列に
- * 配列のレベルの上書きがあれば、その配列は全体を変えても変わらない。該当する配列が無ければ`undefined`。
+ * Workspaceの文脈バーの既定の物理配列のチップが書く命令。Workspaceのペインの条件のモーダルはWorkspaceのレベルで
+ * 開くので、チップも同じ値（Workspaceのレベル）を書く近道にする（`setWorkspaceCommand`。全体の値と同じ物理配列を
+ * 選び直した時はWorkspaceの上書きを消す）。`inherited`は全体の値（`resolveGlobalDefaultShapeId`）。
+ */
+export function defaultShapeWorkspaceCommand(workspaceId: string, next: string, inherited: string): Command<KeydistAssets> {
+  return setWorkspaceCommand(workspaceId, 'defaultShapeId', next, inherited);
+}
+
+/**
+ * 文脈バーのチップを操作する時に出す理由。チップは全体（Workspaceの文脈バーではWorkspace）のレベルへ書く近道なので、
+ * この画面に出ている配列に配列のレベルの上書きがあれば、その配列はここで変えても変わらない。該当する配列が無ければ`undefined`。
  */
 export function defaultShapeChipNotice(
   overrides: SettingsCascadeOverrides,
@@ -229,26 +333,30 @@ export function withClassGrouping(
 }
 
 /**
- * 全体を変えても下のレベルの値・配列の推奨が勝って画面が変わらない行の理由。モーダルの行は編集できるまま、
- * 行の下に文を添える。配列を問わず出す（オーナー決定 #655）。
- * 勝つものが無い行（効いている値が全体か既定値）は理由が要らない。
+ * 編集しているレベル（全体・Workspace）を変えても、より強いレベルの値・配列の推奨が勝って画面が変わらない行の理由。
+ * モーダルの行は編集できるまま、行の下に文を添える。配列を問わず出す（オーナー決定 #655）。
+ * 勝つものが無い行（解決された値が、編集しているレベルか、それより弱いレベル・既定値のもの）は理由が要らない。
+ * `edited`が`'Workspace'`の時は、Workspaceのレベルより強いレベルだけが勝つ（Workspaceの値は勝たない）。
  */
 export function overrideWinsNotices(
   rows: readonly ConditionSummaryRow[],
   names?: ConditionValueNames,
+  edited: '全体' | 'Workspace' = '全体',
 ): ReadonlyMap<SettingsItemId, string> {
   const notices = new Map<SettingsItemId, string>();
   for (const row of rows) {
     // 配列の推奨が勝つ行は、推奨が実効値なので「変えた行」ではない（出どころは既定値のまま）。
-    if (row.recommendationWinsOverGlobal) {
-      notices.set(row.id, `この配列の推奨（${row.displayValue}）が優先されるため、全体を変えてもこの画面は変わらない`);
+    const recommendationWins = edited === '全体' ? row.recommendationWinsOverGlobal : row.recommendationWinsOverWorkspace;
+    if (recommendationWins) {
+      notices.set(row.id, `この配列の推奨（${row.displayValue}）が優先されるため、${edited}を変えてもこの画面は変わらない`);
       continue;
     }
-    // 効かない行は理由が要らない。出どころが下のレベルなら、値が既定と同じ（「動作数の扱い」の1動作など）でも
-    // 全体の値には勝つので、変えた行かどうかでは絞らない。
+    // 効かない行は理由が要らない。出どころが強いレベルなら、値が既定と同じ（「動作数の扱い」の1動作など）でも
+    // 編集しているレベルの値には勝つので、変えた行かどうかでは絞らない。
     if (!row.applicable) continue;
     if (row.origin.kind === 'default' || row.origin.kind === 'global') continue;
-    notices.set(row.id, `${conditionLevelLabel(row.origin, names)}の値が優先されるため、全体を変えてもこの画面は変わらない`);
+    if (edited === 'Workspace' && row.origin.kind === 'workspace') continue;
+    notices.set(row.id, `${conditionLevelLabel(row.origin, names)}の値が優先されるため、${edited}を変えてもこの画面は変わらない`);
   }
   return notices;
 }
