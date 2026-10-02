@@ -12,7 +12,7 @@ import './context-bar.css';
  * 条件のモーダルの全体の行と同じ値を書く、文脈バーの恒久の近道（docs/architecture.md「文脈バー」）。
  * 物理配列は図を見比べる時に一番よく切り替える条件なので、モーダルを開く1手を省くために置く。
  * 書き込みは `defaultShapeCommand`（モーダルと同じ `setGlobalCommand`）で、いつも全体のレベルへ書く。
- * 配列のレベルの値（上書き・組み込みの推奨）は読まず、書かない。配列だけ変えたい時はモーダルの
+ * 配列のレベルの値（上書き）は読まず、書かない。配列だけ変えたい時はモーダルの
  * 「この配列だけ別に」。そのため、この画面に出ている配列（`layoutIds`）に配列のレベルの値があれば、
  * 全体を変えてもその配列は変わらない。その理由をチップを操作している間（フォーカス中）だけ添える。
  *
@@ -32,7 +32,7 @@ export interface DefaultShapeChipProps {
 export function DefaultShapeChip({ overrides, dispatch, shapes, layoutIds = [], layouts }: DefaultShapeChipProps) {
   const current = resolveGlobalDefaultShapeId(overrides);
   const currentIsKnown = shapes.has(current);
-  const notice = defaultShapeChipNotice(overrides, layoutIds, { shapes, ...(layouts === undefined ? {} : { layouts }) });
+  const notice = defaultShapeChipNotice(overrides, layoutIds, layouts);
   const noticeId = useId();
   return (
     <div className="context-chip-group">

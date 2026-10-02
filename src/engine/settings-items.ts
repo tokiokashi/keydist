@@ -21,7 +21,6 @@ import {
   type TriggerRealizationPolicy,
 } from '#input/semantics/index.ts';
 import { DEFAULT_ROMAJI_RULE_ID, recommendedRomajiRuleId } from '#input/romaji/rules.ts';
-import { recommendedShapeId } from '#input/shapes/recommended.ts';
 import { defaultFingerAssignmentId } from './finger-assignment.ts';
 import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from '#interpretation/structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION, type ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
@@ -208,8 +207,8 @@ export const SETTINGS_ITEMS = {
    *
    * `allowedLevels`はglobalとlayout。物理配列はカスケードの順で配列より前に決まる（物理配列のレベルは
    * 物理配列そのものを決める項目には置けず、打ち方も物理配列とは独立なので、どちらも許さない）。
-   * 配列は組み込みの推奨（`layoutRecommendation`。`input/shapes/recommended.ts`）を持てて、
-   * 優先は 配列の上書き ＞ 配列の推奨 ＞ 全体の値 ＞ 既定（ローマ字規則と同じ。オーナー決定 #655）。
+   * 優先は 配列の上書き ＞ 全体の値 ＞ 既定。配列が組み込みの推奨の物理配列を持つことはなく、
+   * 配列ごとに変えたい人が、条件のモーダルの「この配列だけ別に」で自分で指定する（オーナー決定 #655）。
    * Setupのレベルは、Setupが自分の物理配列を持つので許さない。
    *
    * `isApplicable`: Setup対象はSetup自身の`shapeId`で物理配列が決まるので、この項目は
@@ -229,7 +228,6 @@ export const SETTINGS_ITEMS = {
     id: 'defaultShapeId',
     allowedLevels: GLOBAL_LAYOUT,
     defaultValue: DEFAULT_SHAPE_ID,
-    layoutRecommendation: (context) => recommendedShapeId(context.layoutId),
     isApplicable: (context) => context.targetKind === 'layout',
     validate: (value, context) => {
       // Setup対象ではこの項目自体が無関係（isApplicable=false）なので、Setup自身の
@@ -284,20 +282,14 @@ export function resetSettingsItem(
  * 経由しない理由は`SETTINGS_ITEMS.defaultShapeId`のコメント参照: 配列を対象にした時の物理配列そのものを
  * 決める値なので、`CascadeContext`（物理配列が既に決まっている前提）を組み立てる前に必要になる。
  * 許可レベルはglobalとlayoutだけで、`defaultValue`もcontext非依存の固定値なので、
- * `resolveCascade`と同じ「配列の上書き ＞ 配列の推奨 ＞ 全体の値 ＞ 既定」をここで直接重ねれば結果は一致する。
- * `recommend`は推奨の引き方。既定は組み込みの表で、表が空の間も推奨の経路を検査できるように差し替えられる。
+ * `resolveCascade`と同じ「配列の上書き ＞ 全体の値 ＞ 既定」をここで直接重ねれば結果は一致する。
  */
-export function resolveDefaultShapeId(
-  overrides: SettingsCascadeOverrides,
-  layoutId: string,
-  recommend: (layoutId: string) => string | undefined = recommendedShapeId,
-): string {
+export function resolveDefaultShapeId(overrides: SettingsCascadeOverrides, layoutId: string): string {
   return readOverride(overrides, { kind: 'layout', layoutId }, 'defaultShapeId')
-    ?? recommend(layoutId)
     ?? resolveGlobalDefaultShapeId(overrides);
 }
 
-/** 全体のレベルの「既定の物理配列」（配列のレベルの値・推奨は見ない）。文脈バーのチップが読み書きする値。 */
+/** 全体のレベルの「既定の物理配列」（配列のレベルの値は見ない）。文脈バーのチップが読み書きする値。 */
 export function resolveGlobalDefaultShapeId(overrides: SettingsCascadeOverrides): string {
   return readOverride(overrides, { kind: 'global' }, 'defaultShapeId') ?? DEFAULT_SHAPE_ID;
 }

@@ -1,6 +1,5 @@
 import type { Command } from '#input/commands/index.ts';
 import { readOverride, type CascadeLevel } from '#input/settings/index.ts';
-import { recommendedShapeId } from '#input/shapes/recommended.ts';
 import {
   DEFAULT_ACTION_REALIZATION_POLICY,
   DEFAULT_TRIGGER_ACTIVATION_GROUPINGS,
@@ -171,35 +170,18 @@ export function defaultShapeCommand(next: string): Command<KeydistAssets> {
 
 /**
  * 文脈バーのチップを操作する時に出す理由。チップは全体のレベルへ書く近道なので、この画面に出ている配列に
- * 配列のレベルの値（上書き・組み込みの推奨）があれば、そこは全体を変えても変わらない。
- * 配列の上書きは推奨に勝つので、上書きがある配列は上書きの文だけを出す。該当する配列が無ければ`undefined`。
- * `recommend`は推奨の引き方（既定は組み込みの表。表が空の間も推奨の文を検査できるように差し替えられる）。
+ * 配列のレベルの上書きがあれば、その配列は全体を変えても変わらない。該当する配列が無ければ`undefined`。
  */
 export function defaultShapeChipNotice(
   overrides: SettingsCascadeOverrides,
   layoutIds: readonly string[],
-  names: ConditionValueNames,
-  recommend: (layoutId: string) => string | undefined = recommendedShapeId,
+  layoutNames?: ReadonlyMap<string, { readonly name: string }>,
 ): string | undefined {
-  const own: string[] = [];
-  const recommended: { readonly layout: string; readonly shape: string }[] = [];
-  for (const layoutId of new Set(layoutIds)) {
-    const layoutName = names.layouts?.get(layoutId)?.name ?? 'この配列';
-    if (layoutOverrideOf(overrides, layoutId, 'defaultShapeId') !== undefined) {
-      own.push(layoutName);
-      continue;
-    }
-    const shapeId = recommend(layoutId);
-    if (shapeId !== undefined) recommended.push({ layout: layoutName, shape: names.shapes.get(shapeId)?.name ?? '見つからない物理配列' });
-  }
-  const sentences: string[] = [];
-  if (own.length > 0) {
-    sentences.push(`配列${own.map((name) => `「${name}」`).join('')}は物理配列を別に決めているため、ここで変えても変わらない`);
-  }
-  for (const { layout, shape } of recommended) {
-    sentences.push(`配列「${layout}」は推奨の物理配列（${shape}）を使うため、ここで変えても変わらない`);
-  }
-  return sentences.length === 0 ? undefined : sentences.join('。');
+  const own = [...new Set(layoutIds)]
+    .filter((layoutId) => layoutOverrideOf(overrides, layoutId, 'defaultShapeId') !== undefined)
+    .map((layoutId) => layoutNames?.get(layoutId)?.name ?? 'この配列');
+  if (own.length === 0) return undefined;
+  return `配列${own.map((name) => `「${name}」`).join('')}は物理配列を別に決めているため、ここで変えても変わらない`;
 }
 
 /** 既定値が文脈に依らない項目の既定値。 */

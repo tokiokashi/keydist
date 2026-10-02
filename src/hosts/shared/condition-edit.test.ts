@@ -380,32 +380,14 @@ test('defaultShapeChipNotice: 配列の上書きがある配列を、全体を�
   );
   const overrides = own.assets.setupLibrary.overrides;
   assert.equal(
-    defaultShapeChipNotice(overrides, ['naginata-v18'], SHAPE_NAMES),
+    defaultShapeChipNotice(overrides, ['naginata-v18'], SHAPE_NAMES.layouts),
     '配列「薙刀式」は物理配列を別に決めているため、ここで変えても変わらない',
   );
-  assert.equal(defaultShapeChipNotice(overrides, ['oonishi'], SHAPE_NAMES), undefined, '別の配列だけを出している画面では出さない');
-  assert.equal(defaultShapeChipNotice(overrides, [], SHAPE_NAMES), undefined);
+  assert.equal(defaultShapeChipNotice(overrides, ['oonishi'], SHAPE_NAMES.layouts), undefined, '別の配列だけを出している画面では出さない');
+  assert.equal(defaultShapeChipNotice(overrides, [], SHAPE_NAMES.layouts), undefined);
   assert.equal(
-    defaultShapeChipNotice(overrides, ['naginata-v18', 'oonishi', 'naginata-v18'], SHAPE_NAMES),
+    defaultShapeChipNotice(overrides, ['naginata-v18', 'oonishi', 'naginata-v18'], SHAPE_NAMES.layouts),
     '配列「薙刀式」は物理配列を別に決めているため、ここで変えても変わらない',
     '同じ配列は1度だけ',
-  );
-});
-
-test('defaultShapeChipNotice: 配列の推奨があれば推奨の物理配列を伝える。配列の上書きは推奨に勝つので上書きの文だけを出す', () => {
-  const recommend = (layoutId: string) => (layoutId === 'naginata-v18' || layoutId === 'oonishi' ? 'ortholinear' : undefined);
-  const empty = emptyAssets().setupLibrary.overrides;
-  assert.equal(
-    defaultShapeChipNotice(empty, ['naginata-v18'], SHAPE_NAMES, recommend),
-    '配列「薙刀式」は推奨の物理配列（オーソリニア）を使うため、ここで変えても変わらない',
-  );
-  const own = applyCommand(
-    emptyAssets(),
-    emptyCommandHistory<KeydistAssets>(),
-    setLayoutCommand('naginata-v18', 'defaultShapeId', 'row-staggered', 'ortholinear'),
-  );
-  assert.equal(
-    defaultShapeChipNotice(own.assets.setupLibrary.overrides, ['naginata-v18', 'oonishi'], SHAPE_NAMES, recommend),
-    '配列「薙刀式」は物理配列を別に決めているため、ここで変えても変わらない。配列「大西配列」は推奨の物理配列（オーソリニア）を使うため、ここで変えても変わらない',
   );
 });
