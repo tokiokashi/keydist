@@ -2,7 +2,9 @@ import { initialWorkspaceLibrary } from '#engine/workspace.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { applyCommand, emptyCommandHistory, undo } from '#input/commands/index.ts';
-import { emptyCascadeOverrides } from '#input/settings/index.ts';
+import { emptyCascadeOverrides, type CascadeContext } from '#input/settings/index.ts';
+import { LAYOUTS_JA } from '#input/layouts/index.ts';
+import { PHYSICAL_SHAPES } from '#input/shapes/geometry.ts';
 import type { SetupLibrary } from '#input/setup/index.ts';
 import { DEFAULT_ACTION_REALIZATION_POLICY } from '#input/semantics/index.ts';
 import { emptyTextLibrary } from '#input/text/library.ts';
@@ -10,9 +12,11 @@ import { initialTextSelection } from '#input/text/selection.ts';
 import { setCascadeOverrideCommand, type KeydistAssets } from '#engine/commands.ts';
 import { initialMultiTargetSelection } from '#engine/multi-target-selection.ts';
 import { initialSingleTargetSelection } from '#engine/single-target-selection.ts';
-import type { SettingsValueMap } from '#engine/settings-items.ts';
+import { EMPTY_SETTINGS_OVERRIDES, resolveSettings, setSettingsOverride, type SettingsValueMap } from '#engine/settings-items.ts';
 import {
   actionCountModeOf,
+  canEditAtLayout,
+  defaultShapeChipNotice,
   classGroupingOf,
   defaultShapeCommand,
   globalOverrideOf,
@@ -28,7 +32,7 @@ import {
   withActionCountMode,
   withClassGrouping,
 } from './condition-edit.ts';
-import type { ConditionSummaryRow } from './condition-summary.ts';
+import { traceConditionSummary, type ConditionSummaryRow } from './condition-summary.ts';
 
 function emptyAssets(): KeydistAssets {
   const setupLibrary: SetupLibrary<SettingsValueMap> = { setups: [], overrides: emptyCascadeOverrides() };
@@ -291,4 +295,117 @@ test('resettableLayoutIds: 配列の上書きだけがある時も戻せる項�
   assert.deepEqual(resettableLayoutIds(step.assets.setupLibrary.overrides, 'qwerty'), ['windowSize']);
   assert.deepEqual(resettableLayoutIds(step.assets.setupLibrary.overrides, 'qwerty', ['windowSize']), []);
   assert.deepEqual(resettableLayoutIds(step.assets.setupLibrary.overrides, 'dvorak'), []);
+});
+
+// ---------------------------------------------------------------------------
+// 既定の物理配列を配列のレベルで上書きする（#655 Phase 2b）
+// ---------------------------------------------------------------------------
+
+const SHAPE_NAMES = {
+  shapes: new Map([
+    ['row-staggered', { name: 'ロウスタッガード' }],
+    ['ortholinear', { name: 'オーソリニア' }],
+  ]),
+  layouts: new Map([
+    ['naginata-v18', { name: '薙刀式' }],
+    ['oonishi', { name: '大西配列' }],
+  ]),
+};
+
+test('既定の物理配列: 配列のレベルへ書け、全体と同じ値へ戻すと上書きを消す。undoで戻る', () => {
+  assert.equal(canEditAtLayout('defaultShapeId'), true);
+  const step = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    setLayoutCommand('naginata-v18', 'defaultShapeId', 'ortholinear', 'row-staggered'),
+  );
+  assert.equal(layoutOverrideOf(step.assets.setupLibrary.overrides, 'naginata-v18', 'defaultShapeId'), 'ortholinear');
+  assert.equal(globalOverrideOf(step.assets.setupLibrary.overrides, 'defaultShapeId'), undefined, '全体へは書かない');
+  const back = applyCommand(
+    step.assets,
+    step.history,
+    setLayoutCommand('naginata-v18', 'defaultShapeId', 'row-staggered', 'row-staggered'),
+  );
+  assert.equal(layoutOverrideOf(back.assets.setupLibrary.overrides, 'naginata-v18', 'defaultShapeId'), undefined);
+  const undone = undo(step.assets, step.history);
+  assert.equal(layoutOverrideOf(undone.assets.setupLibrary.overrides, 'naginata-v18', 'defaultShapeId'), undefined);
+});
+
+test('文脈バーのチップの命令: 配列のレベルの値があっても、全体のレベルへ書く（配列の値は変えない）', () => {
+  const own = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    setLayoutCommand('naginata-v18', 'defaultShapeId', 'ortholinear', 'row-staggered'),
+  );
+  const chip = applyCommand(own.assets, own.history, defaultShapeCommand('column-staggered'));
+  assert.equal(globalOverrideOf(chip.assets.setupLibrary.overrides, 'defaultShapeId'), 'column-staggered');
+  assert.equal(layoutOverrideOf(chip.assets.setupLibrary.overrides, 'naginata-v18', 'defaultShapeId'), 'ortholinear');
+});
+
+test('すべて既定値に戻す: 今の配列の既定の物理配列の上書きも消す', () => {
+  const own = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    setLayoutCommand('naginata-v18', 'defaultShapeId', 'ortholinear', 'row-staggered'),
+  );
+  const overrides = own.assets.setupLibrary.overrides;
+  assert.deepEqual(resettableLayoutIds(overrides, 'naginata-v18'), ['defaultShapeId']);
+  const reset = applyCommand(own.assets, own.history, resetAllCommand([], { layoutId: 'naginata-v18', ids: ['defaultShapeId'] }));
+  assert.equal(layoutOverrideOf(reset.assets.setupLibrary.overrides, 'naginata-v18', 'defaultShapeId'), undefined);
+});
+
+test('既定の物理配列: 配列の上書きがある行は、全体を変えても変わらない理由をモーダルの行に出す', () => {
+  const written = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'layout', layoutId: 'naginata-v18' }, 'defaultShapeId', 'ortholinear');
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const layout = LAYOUTS_JA.find((candidate) => candidate.id === 'naginata-v18')!;
+  const context: CascadeContext = {
+    targetKind: 'layout',
+    shapeId: 'ortholinear',
+    shape: PHYSICAL_SHAPES.ortholinear,
+    inputMethod: 'kana-direct',
+    layoutId: layout.id,
+    layout,
+  };
+  const rows = traceConditionSummary(resolveSettings(written.overrides, context), SHAPE_NAMES);
+  const notices = overrideWinsNotices(rows, SHAPE_NAMES);
+  assert.match(notices.get('defaultShapeId')!, /^配列「薙刀式」の値が優先されるため/);
+});
+
+test('defaultShapeChipNotice: 配列の上書きがある配列を、全体を変えても変わらないと伝える', () => {
+  const own = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    setLayoutCommand('naginata-v18', 'defaultShapeId', 'ortholinear', 'row-staggered'),
+  );
+  const overrides = own.assets.setupLibrary.overrides;
+  assert.equal(
+    defaultShapeChipNotice(overrides, ['naginata-v18'], SHAPE_NAMES),
+    '配列「薙刀式」は物理配列を別に決めているため、ここで変えても変わらない',
+  );
+  assert.equal(defaultShapeChipNotice(overrides, ['oonishi'], SHAPE_NAMES), undefined, '別の配列だけを出している画面では出さない');
+  assert.equal(defaultShapeChipNotice(overrides, [], SHAPE_NAMES), undefined);
+  assert.equal(
+    defaultShapeChipNotice(overrides, ['naginata-v18', 'oonishi', 'naginata-v18'], SHAPE_NAMES),
+    '配列「薙刀式」は物理配列を別に決めているため、ここで変えても変わらない',
+    '同じ配列は1度だけ',
+  );
+});
+
+test('defaultShapeChipNotice: 配列の推奨があれば推奨の物理配列を伝える。配列の上書きは推奨に勝つので上書きの文だけを出す', () => {
+  const recommend = (layoutId: string) => (layoutId === 'naginata-v18' || layoutId === 'oonishi' ? 'ortholinear' : undefined);
+  const empty = emptyAssets().setupLibrary.overrides;
+  assert.equal(
+    defaultShapeChipNotice(empty, ['naginata-v18'], SHAPE_NAMES, recommend),
+    '配列「薙刀式」は推奨の物理配列（オーソリニア）を使うため、ここで変えても変わらない',
+  );
+  const own = applyCommand(
+    emptyAssets(),
+    emptyCommandHistory<KeydistAssets>(),
+    setLayoutCommand('naginata-v18', 'defaultShapeId', 'row-staggered', 'ortholinear'),
+  );
+  assert.equal(
+    defaultShapeChipNotice(own.assets.setupLibrary.overrides, ['naginata-v18', 'oonishi'], SHAPE_NAMES, recommend),
+    '配列「薙刀式」は物理配列を別に決めているため、ここで変えても変わらない。配列「大西配列」は推奨の物理配列（オーソリニア）を使うため、ここで変えても変わらない',
+  );
 });

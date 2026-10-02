@@ -12,6 +12,7 @@ import {
   INITIAL_LINK_GROUP_ID,
   initialWorkspaceLibrary,
   resolveWorkspacePaneTarget,
+  workspaceLayoutIds,
   renameWorkspace,
   uniqueWorkspaceName,
   withWorkspaceLayout,
@@ -238,4 +239,17 @@ test('withWorkspaceText: 選択を書き換える。同じ参照なら何もし�
   const next = withWorkspaceText(library, 'w1', { ref: { kind: 'user', id: 't1' } });
   assert.deepEqual(findWorkspace(next, 'w1')!.text, { ref: { kind: 'user', id: 't1' } });
   assert.equal(withWorkspaceText(library, 'none', { ref: { kind: 'user', id: 't1' } }), library);
+});
+
+test('workspaceLayoutIds: 従う組の対象（単体・集合）と固定のペインの対象に含まれる配列を重複なく返す。Setupは含めない', () => {
+  const OONISHI: AnalysisTarget = { kind: 'layout', layoutId: 'oonishi' };
+  const SETUP: AnalysisTarget = { kind: 'setup', setupId: 's1' };
+  let library = libraryWith('a', 'b');
+  library = withWorkspaceTarget(library, 'w1', G, { kind: 'single', target: COLEMAK });
+  library = withWorkspaceTarget(library, 'w1', G, { kind: 'set', selection: { targets: [QWERTY, COLEMAK, SETUP], baseline: undefined } });
+  assert.deepEqual(workspaceLayoutIds(findWorkspace(library, 'w1')!), ['colemak-dh', 'qwerty']);
+  // 固定のペインは自分の対象を足す。従うペインが無くなった組の対象は含めない。
+  library = withWorkspacePaneBinding(library, 'w1', 'a', { mode: 'fixed', target: { kind: 'single', target: OONISHI } });
+  library = withWorkspacePaneBinding(library, 'w1', 'b', { mode: 'fixed', target: { kind: 'set', selection: { targets: [QWERTY], baseline: undefined } } });
+  assert.deepEqual(workspaceLayoutIds(findWorkspace(library, 'w1')!), ['oonishi', 'qwerty']);
 });

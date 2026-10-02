@@ -21,6 +21,7 @@ import {
   type TriggerRealizationPolicy,
 } from '#input/semantics/index.ts';
 import { DEFAULT_ROMAJI_RULE_ID, recommendedRomajiRuleId } from '#input/romaji/rules.ts';
+import { recommendedShapeId } from '#input/shapes/recommended.ts';
 import { defaultFingerAssignmentId } from './finger-assignment.ts';
 import { DEFAULT_CHAIN_INTERPRETATION, type ChainInterpretation } from '#interpretation/structure/chain.ts';
 import { DEFAULT_ARPEGGIO_INTERPRETATION, type ArpeggioInterpretation } from '#interpretation/structure/arpeggio.ts';
@@ -49,6 +50,7 @@ export const DEFAULT_SHAPE_ID = 'row-staggered';
 
 const ANY_LEVEL = new Set<CascadeLevel['kind']>(['global', 'shape', 'inputMethod', 'layout', 'setup']);
 const GLOBAL_ONLY = new Set<CascadeLevel['kind']>(['global']);
+const GLOBAL_LAYOUT = new Set<CascadeLevel['kind']>(['global', 'layout']);
 const GLOBAL_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'layout', 'setup']);
 const GLOBAL_INPUT_METHOD_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'inputMethod', 'layout', 'setup']);
 const GLOBAL_SHAPE_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'shape', 'layout', 'setup']);
@@ -196,15 +198,19 @@ export const SETTINGS_ITEMS = {
   }),
   /**
    * 既定の物理配列（#578指摘1の決定「対象を配列かSetupにする」）。**配列を対象にした時の
-   * 物理配列**を決めるグローバル専用の項目。カスケードの他の項目と違い、この値自体は
+   * 物理配列**を決める、全体と配列のレベルの項目。カスケードの他の項目と違い、この値自体は
    * `CascadeContext`（既に物理配列が決まっている前提の型）を組み立てる**前**に読む必要がある
-   * （`target-resolution.ts`参照）ため、`resolveCascade`は経由しない。項目としては
+   * （`target-resolution.ts`参照）ため、対象の解決は`resolveCascade`を経由しない（画面の行・出どころは
+   * 組み立てた後の`resolveCascade`で同じ順に解決する）。項目としては
    * `resolveCascade`の他の項目と同じ形（`SettingItem`）で持ち、書き込みは既存の
    * `setSettingsOverride`をそのまま使えるようにする（読み出しだけ専用の
    * `resolveDefaultShapeId`を使う）。
    *
-   * `allowedLevels`はglobalのみ（#578決定「scope: global only — 他のレベルは今は許可しない」。
-   * 「先回りして足さない」の判断と同じ）。
+   * `allowedLevels`はglobalとlayout。物理配列はカスケードの順で配列より前に決まる（物理配列のレベルは
+   * 物理配列そのものを決める項目には置けず、打ち方も物理配列とは独立なので、どちらも許さない）。
+   * 配列は組み込みの推奨（`layoutRecommendation`。`input/shapes/recommended.ts`）を持てて、
+   * 優先は 配列の上書き ＞ 配列の推奨 ＞ 全体の値 ＞ 既定（ローマ字規則と同じ。オーナー決定 #655）。
+   * Setupのレベルは、Setupが自分の物理配列を持つので許さない。
    *
    * `isApplicable`: Setup対象はSetup自身の`shapeId`で物理配列が決まるので、この項目は
    * 効かない（レビュー指摘6）。判定は`context.targetKind`で行い、`setupId`の有無は見ない
@@ -221,8 +227,9 @@ export const SETTINGS_ITEMS = {
    */
   defaultShapeId: defineItem<string>({
     id: 'defaultShapeId',
-    allowedLevels: GLOBAL_ONLY,
+    allowedLevels: GLOBAL_LAYOUT,
     defaultValue: DEFAULT_SHAPE_ID,
+    layoutRecommendation: (context) => recommendedShapeId(context.layoutId),
     isApplicable: (context) => context.targetKind === 'layout',
     validate: (value, context) => {
       // Setup対象ではこの項目自体が無関係（isApplicable=false）なので、Setup自身の
@@ -273,14 +280,25 @@ export function resetSettingsItem(
 }
 
 /**
- * 「既定の物理配列」を単独で読む。`resolveSettings`（`resolveCascade`）を経由しない理由は
- * `SETTINGS_ITEMS.defaultShapeId`のコメント参照: 配列を対象にした時の物理配列そのものを
+ * 配列を対象にした時の「既定の物理配列」を単独で読む。`resolveSettings`（`resolveCascade`）を
+ * 経由しない理由は`SETTINGS_ITEMS.defaultShapeId`のコメント参照: 配列を対象にした時の物理配列そのものを
  * 決める値なので、`CascadeContext`（物理配列が既に決まっている前提）を組み立てる前に必要になる。
- * globalのみが許可レベルで`defaultValue`もcontext非依存の固定値なので、
- * `overrides.global`を直接読むだけで解決できる（`resolveCascade`と同じ「弱い順に重ねる」を
- * 省略しても結果は一致する）。
+ * 許可レベルはglobalとlayoutだけで、`defaultValue`もcontext非依存の固定値なので、
+ * `resolveCascade`と同じ「配列の上書き ＞ 配列の推奨 ＞ 全体の値 ＞ 既定」をここで直接重ねれば結果は一致する。
+ * `recommend`は推奨の引き方。既定は組み込みの表で、表が空の間も推奨の経路を検査できるように差し替えられる。
  */
-export function resolveDefaultShapeId(overrides: SettingsCascadeOverrides): string {
+export function resolveDefaultShapeId(
+  overrides: SettingsCascadeOverrides,
+  layoutId: string,
+  recommend: (layoutId: string) => string | undefined = recommendedShapeId,
+): string {
+  return readOverride(overrides, { kind: 'layout', layoutId }, 'defaultShapeId')
+    ?? recommend(layoutId)
+    ?? resolveGlobalDefaultShapeId(overrides);
+}
+
+/** 全体のレベルの「既定の物理配列」（配列のレベルの値・推奨は見ない）。文脈バーのチップが読み書きする値。 */
+export function resolveGlobalDefaultShapeId(overrides: SettingsCascadeOverrides): string {
   return readOverride(overrides, { kind: 'global' }, 'defaultShapeId') ?? DEFAULT_SHAPE_ID;
 }
 

@@ -5,15 +5,19 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LAYOUTS, LAYOUTS_JA, type Layout } from '#input/layouts/index.ts';
 import { PHYSICAL_SHAPES, type PresetGeometryKind } from '#input/shapes/geometry.ts';
+import { recommendedShapeId } from '#input/shapes/recommended.ts';
 import type { CascadeContext, InputMethod } from '#input/settings/index.ts';
 import {
   EMPTY_SETTINGS_OVERRIDES,
+  resolveDefaultShapeId,
+  resolveGlobalDefaultShapeId,
   resolveSettings,
   resetSettingsItem,
   resetSettingsLevel,
   setSettingsOverride,
   type SettingsCascadeOverrides,
 } from './settings-items.ts';
+import { resolveTargetForText } from './target-resolution.ts';
 
 // カスケードの仕組み自体のテストは src/input/settings/resolve.test.ts にある。
 // ここでは #544 Phase 2 の具体的な項目（TracePolicy・ChainInterpretation・ローマ字規則id等）
@@ -357,14 +361,72 @@ test('defaultShapeId: shapeレベルへの書き込みは拒否される（GLOBA
   assert.equal(written.ok, false);
 });
 
-test('defaultShapeId: layoutレベルへの書き込みは拒否される（GLOBAL_ONLY）', () => {
+test('defaultShapeId: layoutレベルへの書き込みは許可され、その配列だけ全体の値に勝つ', () => {
   const written = setSettingsOverride(
     EMPTY_SETTINGS_OVERRIDES,
     { kind: 'layout', layoutId: colemakEn.id },
     'defaultShapeId',
     'ortholinear',
   );
-  assert.equal(written.ok, false);
+  assert.equal(written.ok, true);
+  if (!written.ok) return;
+  const withGlobal = setSettingsOverride(written.overrides, { kind: 'global' }, 'defaultShapeId', 'column-staggered');
+  assert.ok(withGlobal.ok);
+  if (!withGlobal.ok) return;
+  const resolved = resolveSettings(withGlobal.overrides, contextFor(colemakEn, { shapeId: 'ortholinear' }));
+  assert.equal(resolved.defaultShapeId.value, 'ortholinear');
+  assert.deepEqual(resolved.defaultShapeId.origin, { kind: 'layout', layoutId: colemakEn.id });
+  assert.equal(resolved.defaultShapeId.layoutBase, 'column-staggered', '配列の上書きを除いた継承値は全体の値');
+  // 別の配列は全体の値に従う（配列のレベルの値は他の配列へ及ばない）。
+  assert.equal(resolveDefaultShapeId(withGlobal.overrides, qwertyJa.id), 'column-staggered');
+});
+
+test('defaultShapeId: 配列対象の解決は、配列の上書きが決めた物理配列を使う（全体の値は別の配列にだけ効く）', () => {
+  const written = setSettingsOverride(
+    EMPTY_SETTINGS_OVERRIDES,
+    { kind: 'layout', layoutId: 'qwerty' },
+    'defaultShapeId',
+    'ortholinear',
+  );
+  assert.ok(written.ok);
+  if (!written.ok) return;
+  const withGlobal = setSettingsOverride(written.overrides, { kind: 'global' }, 'defaultShapeId', 'column-staggered');
+  assert.ok(withGlobal.ok);
+  if (!withGlobal.ok) return;
+  const catalog = {
+    layouts: new Map([[qwertyJa.id, qwertyJa], [colemakEn.id, colemakEn]]),
+    shapes: new Map(Object.entries(PHYSICAL_SHAPES)),
+  };
+  const shapeOf = (layoutId: string) => {
+    const resolution = resolveTargetForText({ kind: 'layout', layoutId }, new Map(), catalog, new Map(), withGlobal.overrides, 'en');
+    assert.ok(resolution.ok, layoutId);
+    return resolution.ok ? resolution.shape.id : undefined;
+  };
+  assert.equal(shapeOf('qwerty'), 'ortholinear');
+  assert.equal(shapeOf('colemak'), 'column-staggered');
+});
+
+test('resolveDefaultShapeId: 優先は 配列の上書き ＞ 配列の推奨 ＞ 全体の値 ＞ 既定', () => {
+  const recommend = (layoutId: string) => (layoutId === 'rec' ? 'ortholinear' : undefined);
+  const globalOnly = setSettingsOverride(EMPTY_SETTINGS_OVERRIDES, { kind: 'global' }, 'defaultShapeId', 'column-staggered');
+  assert.ok(globalOnly.ok);
+  if (!globalOnly.ok) return;
+  assert.equal(resolveDefaultShapeId(EMPTY_SETTINGS_OVERRIDES, 'rec', recommend), 'ortholinear', '推奨は既定に勝つ');
+  assert.equal(resolveDefaultShapeId(EMPTY_SETTINGS_OVERRIDES, 'plain', recommend), 'row-staggered', '推奨が無ければ既定');
+  assert.equal(resolveDefaultShapeId(globalOnly.overrides, 'rec', recommend), 'ortholinear', '推奨は全体に勝つ');
+  assert.equal(resolveDefaultShapeId(globalOnly.overrides, 'plain', recommend), 'column-staggered', '推奨が無い配列は全体に従う');
+  const own = setSettingsOverride(globalOnly.overrides, { kind: 'layout', layoutId: 'rec' }, 'defaultShapeId', 'jis-row-staggered');
+  assert.ok(own.ok);
+  if (!own.ok) return;
+  assert.equal(resolveDefaultShapeId(own.overrides, 'rec', recommend), 'jis-row-staggered', '配列の上書きは推奨に勝つ');
+  assert.equal(resolveGlobalDefaultShapeId(own.overrides), 'column-staggered', '全体の値は配列の値を見ない');
+});
+
+test('recommendedShapeId: 推奨は組み込みの物理配列だけを指す', () => {
+  for (const layout of [...LAYOUTS, ...LAYOUTS_JA]) {
+    const shapeId = recommendedShapeId(layout.id);
+    if (shapeId !== undefined) assert.ok(shapeId in PHYSICAL_SHAPES, `${layout.id}: ${shapeId}`);
+  }
 });
 
 test('defaultShapeId: setupレベルへの書き込みは拒否される（GLOBAL_ONLY）', () => {

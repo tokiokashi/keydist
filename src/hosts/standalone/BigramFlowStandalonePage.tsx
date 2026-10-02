@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import { setSingleTargetCommand, type KeydistAssets } from '#engine/commands.ts';
 import { effectiveSingleTarget } from '#engine/single-target-selection.ts';
+import { layoutIdsOfTargets } from '#input/setup/index.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
 import type { PresetIdGenerator } from '#input/presets/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
@@ -172,6 +173,8 @@ export function BigramFlowStandalonePage({
           overrides={assets.setupLibrary.overrides}
           dispatch={dispatch}
           shapes={catalog.setupCatalog.shapes}
+          layoutIds={layoutIdsOfTargets([target])}
+          layouts={catalog.setupCatalog.layouts}
         />
       </ContextBar>
       {/*

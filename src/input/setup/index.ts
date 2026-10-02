@@ -3,6 +3,7 @@ export {
   analysisTargetKey,
   sameAnalysisTarget,
   DEFAULT_ANALYSIS_TARGET,
+  layoutIdsOfTargets,
   type AnalysisTarget,
 } from './target.ts';
 export {
