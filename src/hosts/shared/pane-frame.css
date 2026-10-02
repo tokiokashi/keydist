@@ -213,22 +213,13 @@ h2.pane-frame-title {
 }
 
 /*
- * ホストが見出しの先頭に置くもの（Workspaceの「見出し無し」の方式。つかみ所と小さな名前）と、
- * ⋯を見出しの外へ出した時（Workspaceの「題の行」の方式）の列。
+ * ホストが見出しの先頭に置くもの（Workspaceのペインのつかみ所・名前・ⓘ）の列。
+ * 狭いペイン（30rem以下。スマホ幅の縦積みを含む）では、先頭のものを1段目に置き、操作を2段目へ送る。
+ * 対象の選択を名前に食わせず、狭い幅でも対象を選べるようにする。
  */
 .pane-frame[data-name-in-tab] .pane-frame-header[data-lead] {
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   grid-template-areas: "lead target settings menu";
-}
-
-.pane-frame[data-name-in-tab] .pane-frame-header[data-menu-detached] {
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "target settings";
-}
-
-.pane-frame[data-name-in-tab] .pane-frame-header[data-menu-detached][data-lead] {
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "lead target settings";
 }
 
 .pane-frame-lead {
@@ -236,6 +227,15 @@ h2.pane-frame-title {
   display: flex;
   align-items: center;
   min-width: 0;
+}
+
+@container pane (max-width: 30rem) {
+  .pane-frame[data-name-in-tab] .pane-frame-header[data-lead] {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "lead lead lead"
+      "target settings menu";
+  }
 }
 
 /* 視覚的には隠し、読み上げには残す（見出しの階層・ペインの名前を保つ） */

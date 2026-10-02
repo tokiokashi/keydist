@@ -42,7 +42,7 @@ import { summarizeLinkGroups } from './group-summary.ts';
 import { gridPaneIds } from '#engine/workspace-grid.ts';
 import { defaultGridSize } from './grid-metrics.ts';
 import { useFocusAfterClose } from './use-focus-after-close.ts';
-import { WorkspaceGrid, type WorkspaceHeadingMode } from './WorkspaceGrid.tsx';
+import { WorkspaceGrid } from './WorkspaceGrid.tsx';
 import { WorkspaceName } from './WorkspaceName.tsx';
 import { WorkspaceStack } from './WorkspaceStack.tsx';
 import { useStacked } from './use-stacked.ts';
@@ -73,8 +73,6 @@ export interface WorkspacePageProps {
   readonly history: ContextBarHistory;
   readonly onTextContentCommit: TextContentCommit;
   readonly onPaneOptionsCommit: PaneOptionsCommit;
-  /** ペインの見出しの出し方（試作で見比べるための切り替え）。 */
-  readonly heading?: WorkspaceHeadingMode;
   /**
    * このWorkspaceを複製する・削除する。書き込みと、その後どの画面へ移るかは組み立て側（`app`）が決める
    * （削除すると画面ごとの履歴が使えなくなるため。移り先と元に戻す手段もそちらが持つ）。
@@ -104,7 +102,6 @@ export function WorkspacePage({
   history,
   onTextContentCommit,
   onPaneOptionsCommit,
-  heading = 'bar',
   onDuplicate,
   onDelete,
 }: WorkspacePageProps) {
@@ -258,12 +255,12 @@ export function WorkspacePage({
       // 新しいペインは最初の組に従う（比較中に黙って別の対象を映さない）。
       binding: followBinding(workspace!.groups[0]!.id),
     };
-    dispatch(addWorkspacePaneCommand(workspaceId, pane, defaultGridSize(entry.id, heading === 'bar')));
+    dispatch(addWorkspacePaneCommand(workspaceId, pane, defaultGridSize(entry.id)));
   };
 
   const addBlankPane = () => {
     flushPending();
-    dispatch(addWorkspacePaneCommand(workspaceId, { id: generateId(), analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING }, defaultGridSize(BLANK_PANE_ID, heading === 'bar')));
+    dispatch(addWorkspacePaneCommand(workspaceId, { id: generateId(), analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING }, defaultGridSize(BLANK_PANE_ID)));
   };
 
   if (workspace === undefined) {
@@ -333,7 +330,7 @@ export function WorkspacePage({
               <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} />
             </div>
             {stacked ? (
-              <WorkspaceStack paneIds={paneIds} titleOf={titleOf} descriptionOf={descriptionOf} renderPane={renderPane} heading={heading} />
+              <WorkspaceStack paneIds={paneIds} titleOf={titleOf} descriptionOf={descriptionOf} renderPane={renderPane} />
             ) : (
               <div className="workspace-stage">
                 <WorkspaceGrid
@@ -342,7 +339,6 @@ export function WorkspacePage({
                   titleOf={titleOf}
                   descriptionOf={descriptionOf}
                   renderPane={renderPane}
-                  heading={heading}
                   onGridChange={(grid) => dispatch(setWorkspaceGridCommand(workspaceId, grid))}
                 />
               </div>

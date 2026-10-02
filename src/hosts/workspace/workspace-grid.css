@@ -64,10 +64,6 @@
   border-radius: inherit;
 }
 
-.workspace-pane[data-heading="bar"] .workspace-pane-scroll {
-  padding-top: 0.5rem;
-}
-
 /*
  * 本体の領域に「ペインの残りの高さ」を持たせる。見出しなどを引いた残りを本体の領域へ渡し、
  * 領域の幅と高さの両方をcontainerにするので、Analyzerは置かれた領域の高さ・縦横比でも描き分けられる
@@ -87,7 +83,23 @@
   overflow: auto;
 }
 
-/* ---- つかみ所 ---- */
+/* ---- つかみ所（見出しの先頭の、絵・名前・ⓘ） ---- */
+.workspace-pane-lead {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.workspace-pane-grab {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  min-height: 2rem;
+  padding-right: 0.25rem;
+}
+
 .workspace-drag-handle {
   cursor: grab;
   touch-action: none;
@@ -109,61 +121,6 @@
   opacity: 1;
 }
 
-/* 縦積み（動かせない面）では、つかみ所の絵と手の形を出さない */
-.workspace-drag-static {
-  cursor: default;
-}
-
-/* ---- 見出しの方式 bar: ペインの一番上の1行の題 ---- */
-.workspace-pane-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  flex: none;
-  min-height: 2rem;
-  padding: 0 0.35rem 0 var(--workspace-pane-inline);
-  border-bottom: 1px solid var(--border);
-  border-radius: var(--workspace-pane-radius) var(--workspace-pane-radius) 0 0;
-  background: var(--surface-muted);
-}
-
-.workspace-pane-bar-title {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  flex: 1 1 auto;
-  min-width: 0;
-  align-self: stretch;
-}
-
-.workspace-pane-bar-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.workspace-pane-bar-menu {
-  display: flex;
-  flex: none;
-}
-
-.workspace-pane-bar .pane-icon-button {
-  width: 1.7rem;
-  height: 1.7rem;
-}
-
-/* ---- 見出しの方式 none: 見出しの先頭の小さなつかみ（絵と名前） ---- */
-.workspace-pane-lead {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-width: 0;
-  min-height: 2rem;
-  padding-right: 0.25rem;
-}
-
 .workspace-pane-lead-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -173,8 +130,80 @@
   font-weight: 600;
 }
 
-.workspace-pane-lead:hover .workspace-pane-lead-name {
+.workspace-pane-grab:hover .workspace-pane-lead-name {
   color: var(--text);
+}
+
+/*
+ * 大きさを変えるつかみは、下の辺・右の辺・左の辺・右下の角の4つだけ（上の辺と他の角には付けない）。
+ * 下の辺は高さだけ、右・左の辺は幅だけ（左の辺は左端が動く）、右下の角は幅と高さを別々に変える。
+ * ライブラリの既定は辺の中央の20pxだけなので、辺の全体に広げる。見た目は、通った時にだけ薄く出す。
+ */
+.workspace-grid-area .react-grid-item > .react-resizable-handle {
+  opacity: 1;
+  margin: 0;
+  background: transparent;
+  z-index: 4;
+}
+
+.workspace-grid-area .react-grid-item > .react-resizable-handle-s {
+  left: 0;
+  right: 14px;
+  bottom: 0;
+  width: auto;
+  height: 6px;
+  transform: none;
+}
+
+.workspace-grid-area .react-grid-item > .react-resizable-handle-w {
+  top: 0;
+  bottom: 14px;
+  left: 0;
+  width: 6px;
+  height: auto;
+  transform: none;
+}
+
+.workspace-grid-area .react-grid-item > .react-resizable-handle-e {
+  top: 0;
+  bottom: 14px;
+  right: 0;
+  width: 6px;
+  height: auto;
+  transform: none;
+}
+
+.workspace-grid-area .react-grid-item > .react-resizable-handle-s::after,
+.workspace-grid-area .react-grid-item > .react-resizable-handle-e::after,
+.workspace-grid-area .react-grid-item > .react-resizable-handle-w::after {
+  display: none;
+}
+
+.workspace-grid-area .react-grid-item > .react-resizable-handle-s:hover,
+.workspace-grid-area .react-grid-item > .react-resizable-handle-e:hover,
+.workspace-grid-area .react-grid-item > .react-resizable-handle-w:hover {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.workspace-grid-area .react-grid-item > .react-resizable-handle-se {
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  cursor: se-resize;
+}
+
+.workspace-grid-area .react-grid-item > .react-resizable-handle-se::after {
+  opacity: 0;
+}
+
+.workspace-grid-area .react-grid-item:hover > .react-resizable-handle-se::after {
+  opacity: 1;
+}
+
+/* 縦積み（動かせない面）では、つかみ所の絵と手の形を出さない */
+.workspace-drag-static {
+  cursor: default;
 }
 
 /*

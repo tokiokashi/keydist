@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { PaneShell, type WorkspaceHeadingMode } from './WorkspaceGrid.tsx';
+import { PaneShell } from './WorkspaceGrid.tsx';
 import './workspace-stack.css';
 
 /**
@@ -13,19 +13,17 @@ export function WorkspaceStack({
   titleOf,
   descriptionOf,
   renderPane,
-  heading,
 }: {
   readonly paneIds: readonly string[];
   readonly titleOf: (paneId: string) => string;
   readonly descriptionOf: (paneId: string) => string;
   readonly renderPane: (paneId: string) => ReactNode;
-  readonly heading: WorkspaceHeadingMode;
 }) {
   return (
     <div className="workspace-stack" data-workspace-stack="true">
       {paneIds.map((paneId) => (
         <section key={paneId} className="workspace-stack-pane" data-pane-id={paneId}>
-          <PaneShell paneId={paneId} title={titleOf(paneId)} description={descriptionOf(paneId)} heading={heading} draggable={false}>
+          <PaneShell paneId={paneId} title={titleOf(paneId)} description={descriptionOf(paneId)} draggable={false}>
             {renderPane(paneId)}
           </PaneShell>
         </section>

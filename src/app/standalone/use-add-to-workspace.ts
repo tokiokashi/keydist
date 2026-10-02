@@ -31,7 +31,7 @@ export function useAddToWorkspace(
   return useCallback((destination: AddToWorkspaceDestination, options: unknown) => {
     flushPending();
     const source = { paneId: generatePaneId(), analyzerId, options };
-    const size = defaultGridSize(analyzerId, true);
+    const size = defaultGridSize(analyzerId);
     if (destination.kind === 'existing') {
       dispatch(addStandalonePaneToWorkspaceCommand(destination.workspaceId, source, size));
     } else {

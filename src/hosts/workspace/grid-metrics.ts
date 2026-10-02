@@ -13,8 +13,6 @@ export const GRID_PADDING_PX = 8;
 
 /** 見出し1行と上下の余白を合わせた、ペインの本体以外の高さ [rem]。 */
 const PANE_CHROME_REM = 4.2;
-/** 題の行（見出しの方式が「題の行」の時）が足す高さ [rem]。 */
-const TITLE_BAR_REM = 2;
 
 function rowsFor(rem: number): number {
   const px = rem * 16;
@@ -25,17 +23,17 @@ function rowsFor(rem: number): number {
  * ペインを足した時の既定の大きさ。幅は列の半分（2つ並べて使うのが基本）、高さは本体が宣言する下限が収まる高さ。
  * 余白のペインは空きを埋める小さな枠。
  */
-export function defaultGridSize(analyzerId: string, titleBar: boolean): GridSize {
+export function defaultGridSize(analyzerId: string): GridSize {
   if (isBlankPane(analyzerId)) return { w: 3, h: 4 };
   const body = minBodyHeightRemOf(findWorkspaceAnalyzer(analyzerId) ?? {});
-  return { w: GRID_COLS / 2, h: rowsFor(PANE_CHROME_REM + (titleBar ? TITLE_BAR_REM : 0) + body) };
+  return { w: GRID_COLS / 2, h: rowsFor(PANE_CHROME_REM + body) };
 }
 
 /**
  * 利用者が縮められる下限。本体の窓（`pane-frame`の最小12rem）が残る大きさで、Analyzerが宣言する下限より低い
  * （縮められないという報告があったため、宣言の下限を縮める限界にしない）。
  */
-export function minGridSize(analyzerId: string, titleBar: boolean): GridSize {
+export function minGridSize(analyzerId: string): GridSize {
   if (isBlankPane(analyzerId)) return { w: 1, h: 2 };
-  return { w: 4, h: rowsFor(PANE_CHROME_REM + (titleBar ? TITLE_BAR_REM : 0) + DEFAULT_MIN_BODY_HEIGHT_REM) };
+  return { w: 4, h: rowsFor(PANE_CHROME_REM + DEFAULT_MIN_BODY_HEIGHT_REM) };
 }

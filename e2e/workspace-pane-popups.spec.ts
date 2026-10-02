@@ -2,26 +2,24 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
- * Workspaceで、ペインの外へ出るポップアップ（条件のモーダル内のプリセットの⋯メニュー、タブのⓘの説明）が
+ * Workspaceで、ペインの外へ出るポップアップ（条件のモーダル内のプリセットの⋯メニュー、見出しの先頭のⓘの説明）が
  * 開いた場所の近くに出て、画面の中に収まること。
  */
 
 const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
 const fixedSingle = { mode: 'fixed', target: { kind: 'single', target: QWERTY } };
 const flow = (id: string) => ({ id, analyzerId: 'bigram-flow', binding: fixedSingle });
-const group = (id: string, weight = 1) => ({ kind: 'group', paneIds: [id], weight });
-const split = (direction: 'row' | 'column', ...children: unknown[]) => ({ kind: 'split', direction, weight: 1, children });
 
-async function openWorkspace(page: Page, panes: readonly unknown[], layout: unknown, size: { width: number; height: number }, extra: Record<string, unknown> = {}): Promise<void> {
+async function openWorkspace(page: Page, panes: readonly unknown[], layout: unknown, size: { width: number; height: number }): Promise<void> {
   await page.setViewportSize(size);
   await page.addInitScript((value) => {
     if (localStorage.getItem('keydist:workspaces') === null) {
       localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
     }
-  }, { id: 'p', name: 'ポップアップ', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, layout, ...extra });
+  }, { id: 'p', name: 'ポップアップ', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid: layout });
   await page.goto('/workspace/p');
   await waitForHydration(page);
-  await expect(page.locator('.dv-groupview').first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.workspace-grid-item').first()).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('.pane-frame').first()).toHaveAttribute('data-pane-status', 'ready', { timeout: 15_000 });
 }
 
@@ -33,8 +31,8 @@ async function box(locator: Locator) {
 
 test('条件のモーダルのプリセットの⋯は、左端の列でも右端の列でもボタンの下に開き、ダイアログに収まる', async ({ page }) => {
   const ids = ['a', 'b', 'c', 'd'];
-  await openWorkspace(page, ids.map(flow), split('row', ...ids.map((id) => group(id))), { width: 1440, height: 900 });
-  await expect(page.locator('.dv-groupview')).toHaveCount(4);
+  await openWorkspace(page, ids.map(flow), ids.map((id, i) => ({ id, x: i * 3, y: 0, w: 3, h: 16 })), { width: 1440, height: 900 });
+  await expect(page.locator('.workspace-grid-item')).toHaveCount(4);
   await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(4, { timeout: 15_000 });
 
   for (const column of [0, 3]) {
@@ -70,18 +68,18 @@ test('条件のモーダルのプリセットの⋯は、左端の列でも右�
   }
 });
 
-/** 板を伸ばして、ペインを縦に3つ並べる（ページがスクロールする）。 */
+/** ペインを縦に3つ並べる（ページがスクロールする）。 */
 async function openTall(page: Page): Promise<void> {
-  await openWorkspace(page, ['a', 'b', 'c'].map(flow), split('column', group('a'), group('b'), group('c')), { width: 1440, height: 600 }, { boardHeightRem: 90 });
-  await expect(page.locator('.dv-groupview')).toHaveCount(3);
+  await openWorkspace(page, ['a', 'b', 'c'].map(flow), ['a', 'b', 'c'].map((id, i) => ({ id, x: 0, y: i * 30, w: 12, h: 30 })), { width: 1440, height: 600 });
+  await expect(page.locator('.workspace-grid-item')).toHaveCount(3);
 }
 
 const popover = (page: Page) => page.getByRole('tooltip');
 
-test('タブのⓘで出した説明は、スクロールしてもⓘに付いてくる。説明を押しても閉じない', async ({ page }) => {
+test('見出しの先頭のⓘで出した説明は、スクロールしてもⓘに付いてくる。説明を押しても閉じない', async ({ page }) => {
   await openTall(page);
   // 一番上のペインのⓘは窓の上寄りにあるので、説明は下に出る
-  const info = page.locator('.dv-groupview').first().locator('.dv-tab').getByRole('button', { name: /の説明$/ });
+  const info = page.locator('.workspace-grid-item').first().locator('.pane-frame-lead').getByRole('button', { name: /の説明$/ });
   await info.click();
   await expect(popover(page)).toBeVisible();
   const gap = async () => (await box(popover(page))).y - (await box(info)).y - (await box(info)).height;
@@ -99,7 +97,7 @@ test('タブのⓘで出した説明は、スクロールしてもⓘに付い�
 
 test('窓の下端に近いⓘの説明は、ⓘの上に出て窓に収まる', async ({ page }) => {
   await openTall(page);
-  const info = page.locator('.dv-groupview').nth(1).locator('.dv-tab').getByRole('button', { name: /の説明$/ });
+  const info = page.locator('.workspace-grid-item').nth(1).locator('.pane-frame-lead').getByRole('button', { name: /の説明$/ });
   await info.scrollIntoViewIfNeeded();
   // ⓘが窓の下端から30pxの所に来るまでスクロールする
   const target = await info.evaluate((el) => el.getBoundingClientRect().bottom - (window.innerHeight - 30));

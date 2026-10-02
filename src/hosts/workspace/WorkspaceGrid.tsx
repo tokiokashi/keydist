@@ -1,19 +1,12 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import ReactGridLayout, { useContainerWidth, verticalCompactor, type Layout, type LayoutItem } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { GRID_COLS, type GridItem, type WorkspaceGrid } from '#engine/workspace-grid.ts';
-import { PaneHeaderLeadContext, PaneMenuSlotContext, PaneNameInTabContext } from '#hosts/shared/pane-name-in-tab.ts';
+import { GRID_COLS, gridPaneIds, type GridItem, type WorkspaceGrid } from '#engine/workspace-grid.ts';
+import { PaneHeaderLeadContext, PaneNameInTabContext } from '#hosts/shared/pane-name-in-tab.ts';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { GRID_MARGIN_PX, GRID_PADDING_PX, GRID_ROW_HEIGHT_PX, minGridSize } from './grid-metrics.ts';
 import './workspace-grid.css';
-
-/**
- * ペインの見出しの出し方（試作で見比べるための切り替え。`?heading=`）。
- * - `bar`: ペインの一番上に1行の題（名前・ⓘ・⋯）を置き、そこをつかんで動かす
- * - `none`: 題の行を持たず、見出しの先頭の小さなつかみ（絵と名前）で動かす
- */
-export type WorkspaceHeadingMode = 'bar' | 'none';
 
 export interface WorkspaceGridProps {
   readonly grid: WorkspaceGrid;
@@ -23,13 +16,12 @@ export interface WorkspaceGridProps {
   /** ⓘに出す短い説明。空ならⓘを出さない。 */
   readonly descriptionOf: (paneId: string) => string;
   readonly renderPane: (paneId: string) => ReactNode;
-  readonly heading: WorkspaceHeadingMode;
   /** 人がドラッグ・大きさの変更を終えた。 */
   readonly onGridChange: (grid: WorkspaceGrid) => void;
 }
 
-function toLayoutItem(item: GridItem, analyzerId: string, titleBar: boolean): LayoutItem {
-  const min = minGridSize(analyzerId, titleBar);
+function toLayoutItem(item: GridItem, analyzerId: string): LayoutItem {
+  const min = minGridSize(analyzerId);
   return { i: item.id, x: item.x, y: item.y, w: item.w, h: item.h, minW: min.w, minH: min.h };
 }
 
@@ -44,15 +36,14 @@ function fromLayout(layout: Layout): WorkspaceGrid {
  * 正は資産の格子（`grid`）で、ライブラリには毎回その値を渡す。人の操作は、離した時（ドラッグ・大きさの変更の終わり）に
  * 1回だけ資産へ書く。途中の位置は書かないので、Undoは1操作につき1回で戻る。
  */
-export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, renderPane, heading, onGridChange }: WorkspaceGridProps) {
+export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, renderPane, onGridChange }: WorkspaceGridProps) {
   const { width, containerRef, mounted } = useContainerWidth();
-  const titleBar = heading === 'bar';
   const layout = useMemo(
-    () => grid.map((item) => toLayoutItem(item, analyzerIdOf(item.id), titleBar)),
-    [grid, analyzerIdOf, titleBar],
+    () => grid.map((item) => toLayoutItem(item, analyzerIdOf(item.id))),
+    [grid, analyzerIdOf],
   );
   return (
-    <div ref={containerRef} className="workspace-grid-area" data-heading={heading}>
+    <div ref={containerRef} className="workspace-grid-area">
       {mounted ? (
         <ReactGridLayout
           width={width}
@@ -64,22 +55,17 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, rend
             containerPadding: [GRID_PADDING_PX, GRID_PADDING_PX],
           }}
           dragConfig={{ enabled: true, handle: '.workspace-drag-handle', cancel: 'button, a, input, select, textarea' }}
-          // 角と、下・左右の辺で大きさを変える（上の辺は見出しの操作と重なるので使わない）
-          resizeConfig={{ enabled: true, handles: ['se', 'sw', 's', 'e', 'w'] }}
+          // 大きさを変えるつかみは下の辺（高さだけ）・右の辺と左の辺（幅だけ）・右下の角（幅と高さ）の4つ
+          resizeConfig={{ enabled: true, handles: ['s', 'e', 'w', 'se'] }}
           compactor={verticalCompactor}
           onDragStop={(next) => onGridChange(fromLayout(next))}
           onResizeStop={(next) => onGridChange(fromLayout(next))}
         >
-          {grid.map((item) => (
-            <div key={item.id} className="workspace-grid-item" data-pane-id={item.id}>
-              <PaneShell
-                paneId={item.id}
-                title={titleOf(item.id)}
-                description={descriptionOf(item.id)}
-                heading={heading}
-                draggable
-              >
-                {renderPane(item.id)}
+          {/* DOMの順は画面の読み順（上→下・左→右）。Tabと読み上げの順が見た目と合う */}
+          {gridPaneIds(grid).map((id) => (
+            <div key={id} className="workspace-grid-item" data-pane-id={id}>
+              <PaneShell paneId={id} title={titleOf(id)} description={descriptionOf(id)} draggable>
+                {renderPane(id)}
               </PaneShell>
             </div>
           ))}
@@ -103,52 +89,37 @@ function GripIcon() {
 }
 
 /**
- * ペイン1枚の枠。見出しの方式に応じて、題の行か見出しの先頭のつかみを足す。
+ * ペイン1枚の枠。題の行は持たず、ペインの見出しの先頭に、つかみ所（絵）・Analyzer名・ⓘを置く。
+ * つかんで動かせるのは絵と名前で、ⓘは押せる（つかみ所から除く）。
  * `draggable`でない面（縦積み）では、つかみ所の絵と手の形を出さない。
  */
 export function PaneShell({
   paneId,
   title,
   description,
-  heading,
   draggable,
   children,
 }: {
   readonly paneId: string;
   readonly title: string;
   readonly description: string;
-  readonly heading: WorkspaceHeadingMode;
   readonly draggable: boolean;
   readonly children: ReactNode;
 }) {
-  // 題の行の右端に⋯を出す先。要素が付いてから`PaneFrame`が描く
-  const [menuSlot, setMenuSlot] = useState<HTMLElement | null>(null);
-  const handleClass = draggable ? 'workspace-drag-handle' : 'workspace-drag-static';
-  const lead = heading === 'none' ? (
-    <div className={`workspace-pane-lead ${handleClass}`} title={draggable ? `${title}（つかんで動かす）` : title}>
-      {draggable ? <GripIcon /> : null}
-      <span className="workspace-pane-lead-name">{title}</span>
+  const lead = (
+    <div className="workspace-pane-lead">
+      <div className={`workspace-pane-grab ${draggable ? 'workspace-drag-handle' : 'workspace-drag-static'}`} title={draggable ? `${title}（つかんで動かす）` : title}>
+        {draggable ? <GripIcon /> : null}
+        <span className="workspace-pane-lead-name">{title}</span>
+      </div>
+      {description === '' ? null : <InfoButton name={title} description={description} floating />}
     </div>
-  ) : null;
+  );
   return (
-    <div className="workspace-pane" data-pane-id={paneId} data-heading={heading} data-draggable={draggable || undefined}>
-      {heading === 'bar' ? (
-        <div className="workspace-pane-bar">
-          <div className={`workspace-pane-bar-title ${handleClass}`}>
-            {draggable ? <GripIcon /> : null}
-            <span className="workspace-pane-bar-name">{title}</span>
-          </div>
-          {description === '' ? null : <InfoButton name={title} description={description} floating />}
-          <div ref={setMenuSlot} className="workspace-pane-bar-menu" />
-        </div>
-      ) : null}
+    <div className="workspace-pane" data-pane-id={paneId} data-draggable={draggable || undefined}>
       <div className="workspace-pane-scroll">
         <PaneNameInTabContext.Provider value>
-          <PaneHeaderLeadContext.Provider value={lead}>
-            <PaneMenuSlotContext.Provider value={heading === 'bar' ? menuSlot : null}>
-              {children}
-            </PaneMenuSlotContext.Provider>
-          </PaneHeaderLeadContext.Provider>
+          <PaneHeaderLeadContext.Provider value={lead}>{children}</PaneHeaderLeadContext.Provider>
         </PaneNameInTabContext.Provider>
       </div>
     </div>

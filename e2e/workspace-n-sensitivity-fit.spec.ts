@@ -3,7 +3,7 @@ import { waitForHydration } from './hydration-helper.ts';
 
 /**
  * N感度のグラフがWorkspaceのペインの残りの高さに合わせて伸縮し、実測値の表を、余りが無ければ畳んで始める（#808。余りがある時に開くのは #837、workspace-n-sensitivity-table-fit.spec.ts）。
- * 個別画面（高さが図で決まる）には効かないことも確かめる。
+ * ペインの大きさは格子（1升 = 28px、升の間 8px、列は12）で決まる。個別画面（高さが図で決まる）には効かないことも確かめる。
  */
 
 const REM = 16;
@@ -14,14 +14,13 @@ const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
 const set = { kind: 'set', selection: { targets: [QWERTY, { kind: 'layout', layoutId: 'dvorak' }], colorSlots: [0, 1] } };
 const nsens = { id: 'n', analyzerId: 'n-sensitivity', binding: { mode: 'fixed', target: set } };
 const flow = { id: 'f', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } };
-const group = (id: string) => ({ kind: 'group', paneIds: [id], weight: 1 });
-const split = (direction: string, ...children: unknown[]) => ({ kind: 'split', direction, weight: 1, children });
+const cell = (id: string, x: number, y: number, w: number, h: number) => ({ id, x, y, w, h });
 
-async function openWorkspace(page: Page, panes: readonly unknown[], layout: unknown, size: { width: number; height: number }, seriesCount = 2) {
+async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknown, size: { width: number; height: number }, seriesCount = 2) {
   await page.setViewportSize(size);
   await page.addInitScript((value) => {
     localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
-  }, { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, layout });
+  }, { id: 'fit', name: '収まりの確認', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, grid });
   await page.goto('/workspace/fit');
   await waitForHydration(page);
   await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(seriesCount, { timeout: 15_000 });
@@ -31,6 +30,17 @@ async function openWorkspace(page: Page, panes: readonly unknown[], layout: unkn
     const [, , w, h] = svg.getAttribute('viewBox')!.split(' ').map(Number);
     return Math.abs(box.width - w!) < 1.5 && Math.abs(box.height - h!) < 1.5;
   })).toBe(true);
+}
+
+/** ペインの右下の角をつかんで、`dy`（画素）だけ縦に動かす。 */
+async function dragCornerBy(page: Page, id: string, dy: number): Promise<void> {
+  const corner = (await page.locator(`.workspace-grid-item[data-pane-id="${id}"] .react-resizable-handle-se`).boundingBox())!;
+  const x = corner.x + corner.width / 2;
+  const y = corner.y + corner.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + dy, { steps: 10 });
+  await page.mouse.up();
 }
 
 /** 個別画面を、配列2つの集合で開く。 */
@@ -99,7 +109,7 @@ function measureLegend(page: Page) {
 }
 
 test('Workspaceで余りの無いペインでは実測値の表が畳まれて始まり、キーボードで開ける', async ({ page }) => {
-  await openWorkspace(page, [nsens], group('n'), { width: 1440, height: 900 });
+  await openWorkspace(page, [nsens], [cell('n', 0, 0, 12, 22)], { width: 1440, height: 900 });
   const summary = page.getByText('各Nの実測値 [u]', { exact: true });
   await expect(summary).toBeVisible();
   expect((await measure(page)).detailsOpen).toBe(false);
@@ -124,15 +134,15 @@ test('個別画面では実測値の表が開いている', async ({ page }) => 
 });
 
 test('グラフはペインの残りの高さに合わせ、領域はスクロールせず、ペインの高さに追従する', async ({ page }) => {
-  await openWorkspace(page, [nsens], group('n'), { width: 1440, height: 900 });
+  await openWorkspace(page, [nsens], [cell('n', 0, 0, 12, 22)], { width: 1440, height: 1300 });
   const tall = await measure(page);
   expect(tall.bodyScrollHeight).toBeLessThanOrEqual(tall.bodyClientHeight + 1);
   expect(tall.paneScrollHeight).toBeLessThanOrEqual(tall.paneClientHeight + 1);
   // 個別画面の上限（360px）を超えて、領域の高さを使っている。表の見出し1行ぶんだけを残して下端まで使う
   expect(tall.svgHeight).toBeGreaterThan(450);
   expect(tall.bodyBottom - tall.svgBottom).toBeLessThan(60);
-  // 画面の高さを300px下げると、図の高さも同じだけ縮む
-  await page.setViewportSize({ width: 1440, height: 600 });
+  // ペインの下の辺を8行（288px）縮めると、図の高さも同じだけ縮む
+  await dragCornerBy(page, 'n', -288);
   await expect.poll(async () => (await measure(page)).svgHeight).toBeLessThan(tall.svgHeight - 250);
   const low = await measure(page);
   expect(low.svgHeight).toBeGreaterThanOrEqual(CHART_FLOOR - 1);
@@ -140,13 +150,8 @@ test('グラフはペインの残りの高さに合わせ、領域はスクロ�
 });
 
 test('下限より低いペインでは本体の中でスクロールし、図は下限より小さくならない', async ({ page }) => {
-  // 縦に3段にすると、1段の本体が最低の窓（12rem）まで縮む
-  await openWorkspace(
-    page,
-    [nsens, { ...flow, id: 'f1' }, { ...flow, id: 'f2' }],
-    split('column', group('n'), group('f1'), group('f2')),
-    { width: 1440, height: 700 },
-  );
+  // 7行（244px）にすると、本体が最低の窓（12rem）まで縮む
+  await openWorkspace(page, [nsens], [cell('n', 0, 0, 12, 7)], { width: 1440, height: 900 });
   const m = await measure(page);
   expect(m.bodyHeight).toBeLessThan(CHART_FLOOR + 20);
   expect(m.svgHeight).toBeGreaterThanOrEqual(CHART_FLOOR - 1);
@@ -157,15 +162,16 @@ test('下限より低いペインでは本体の中でスクロールし、図�
 });
 
 test('凡例は、ペインの高さが変わっても線や点に重ならず図の中に収まる', async ({ page }) => {
-  await openWorkspace(page, [nsens], group('n'), { width: 1440, height: 900 });
-  for (const height of [900, 760, 640, 560]) {
-    await page.setViewportSize({ width: 1440, height });
+  await openWorkspace(page, [nsens], [cell('n', 0, 0, 12, 22)], { width: 1440, height: 1300 });
+  // ペインの下の辺を3行（108px）ずつ縮める（22行 → 19 → 16 → 13）
+  for (const rows of [22, 19, 16, 13]) {
+    if (rows !== 22) await dragCornerBy(page, 'n', -108);
     await expect.poll(() => page.locator('.n-sensitivity-svg').first().evaluate((svg) => {
       const [, , , h] = svg.getAttribute('viewBox')!.split(' ').map(Number);
       return Math.abs(svg.getBoundingClientRect().height - h!);
     })).toBeLessThan(1.5);
     const legend = await measureLegend(page);
-    expect(legend, `高さ ${height}`).toEqual({ insideSvg: true, linePointsInside: 0, dotsInside: 0 });
+    expect(legend, `${rows}行`).toEqual({ insideSvg: true, linePointsInside: 0, dotsInside: 0 });
   }
 });
 
@@ -221,12 +227,12 @@ function recordFrames(page: Page, frames = 40) {
 }
 
 test('凡例が図の下に出て下限に当たる低いペインでも、描画の高さは振動しない', async ({ page }) => {
-  // 対象17件の凡例は図の中に収まらず下に出る。縦3段にして図の領域を下限まで縮める。
+  // 対象17件の凡例は図の中に収まらず下に出る。7行にして図の領域を下限まで縮める。
   await openWorkspace(
     page,
-    [nsens17, { ...flow, id: 'f1' }, { ...flow, id: 'f2' }],
-    split('column', group('n'), group('f1'), group('f2')),
-    { width: 1920, height: 700 },
+    [nsens17],
+    [cell('n', 0, 0, 12, 7)],
+    { width: 1920, height: 900 },
     17,
   );
   await expect(page.locator('[data-n-sensitivity-legend]')).toHaveAttribute('data-n-sensitivity-legend', 'below');
@@ -237,7 +243,7 @@ test('凡例が図の下に出て下限に当たる低いペインでも、描�
 });
 
 test('縦に長いペインでも、図の高さは幅を超えず、表の見出しは図のすぐ下に来る', async ({ page }) => {
-  await openWorkspace(page, [nsens], group('n'), { width: 1280, height: 1400 });
+  await openWorkspace(page, [nsens], [cell('n', 0, 0, 12, 36)], { width: 1280, height: 1400 });
   const m = await page.evaluate(() => {
     const feature = document.querySelector('[data-react-feature="n-sensitivity"]')!;
     const svg = feature.querySelector('.n-sensitivity-svg')!.getBoundingClientRect();
@@ -246,27 +252,6 @@ test('縦に長いペインでも、図の高さは幅を超えず、表の見�
   });
   expect(m.h).toBeLessThanOrEqual(m.w + 1);
   expect(m.gap).toBeLessThan(24);
-});
-
-test('裏のタブで開いたN感度も、表示した時に余りが無ければ表が畳まれている', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.addInitScript((value) => {
-    localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
-  }, {
-    id: 'fit',
-    name: '収まりの確認',
-    text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
-    panes: [flow, nsens],
-    layout: { kind: 'group', paneIds: ['f', 'n'], weight: 1, activePaneId: 'f' },
-  });
-  await page.goto('/workspace/fit');
-  await waitForHydration(page);
-  await expect(page.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 15_000 });
-  await page.waitForTimeout(3000);
-  await page.locator('.dv-tab', { hasText: 'N感度' }).click();
-  await expect(page.locator('[data-n-sensitivity-series]')).toHaveCount(2, { timeout: 15_000 });
-  await expect(page.locator('.n-sensitivity-table')).toBeHidden();
-  expect(await page.locator('details.n-sensitivity-table-details').evaluate((el: HTMLDetailsElement) => el.open)).toBe(false);
 });
 
 const svgHeight = (page: Page) => page.locator('.n-sensitivity-svg').first().evaluate((svg) => svg.getBoundingClientRect().height);
@@ -291,7 +276,7 @@ async function waitForRelayout(page: Page, previousViewBox: string | null) {
 }
 
 test('縦積みの幅（760px以下）では表が開いて始まり、広げ直しても図の高さが0にならず振動しない', async ({ page }) => {
-  await openWorkspace(page, [nsens], group('n'), { width: 700, height: 900 });
+  await openWorkspace(page, [nsens], [cell('n', 0, 0, 12, 22)], { width: 700, height: 900 });
   expect(await page.locator('details.n-sensitivity-table-details').evaluate((el: HTMLDetailsElement) => el.open)).toBe(true);
   expect((await svgHeight(page))).toBeGreaterThan(100);
   expect(new Set(await recordFrames(page)).size).toBe(1);

@@ -2,13 +2,12 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
- * スマホ幅（760px以下）のWorkspaceは、Dockviewを使わずペインを縦に積み、ページを縦にスクロールして見る（#763）。
- * 文脈バーは2段になり、テキストのチップが24px以上の幅を保つ。境目をまたいでも、Dockviewの並び・大きさは資産に残る。
+ * スマホ幅（760px以下）のWorkspaceは、格子を使わずペインを縦に積み、ページを縦にスクロールして見る（#763）。
+ * 文脈バーは2段になり、テキストのチップが24px以上の幅を保つ。境目をまたいでも、格子の位置・大きさは資産に残る。
  */
 
 const WORKSPACES_KEY = 'keydist:workspaces';
 const QWERTY = { kind: 'layout', layoutId: 'qwerty' };
-const group = (id: string, weight = 1) => ({ kind: 'group', paneIds: [id], weight });
 const flow = { id: 'f', analyzerId: 'bigram-flow', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } };
 const comparison = {
   id: 'c',
@@ -22,16 +21,12 @@ const sensitivityWithTarget = {
   analyzerId: 'n-sensitivity',
   binding: { mode: 'fixed', target: { kind: 'set', selection: { targets: [QWERTY, { kind: 'layout', layoutId: 'dvorak' }] } } },
 };
-/** 左にBigram Flow、右に上から比較表・N感度。重みは既定の等分から外しておく（戻した時に大きさが残るかを見る）。 */
-const LAYOUT = {
-  kind: 'split',
-  direction: 'row',
-  weight: 1,
-  children: [
-    group('f', 0.35),
-    { kind: 'split', direction: 'column', weight: 0.65, children: [group('c', 0.3), group('n', 0.7)] },
-  ],
-};
+/** 左にBigram Flow、右に上から比較表・N感度。大きさは既定から外しておく（戻した時に大きさが残るかを見る）。 */
+const GRID = [
+  { id: 'f', x: 0, y: 0, w: 4, h: 16 },
+  { id: 'c', x: 4, y: 0, w: 8, h: 9 },
+  { id: 'n', x: 4, y: 9, w: 8, h: 12 },
+];
 
 const DESKTOP = { width: 1280, height: 800 };
 const PHONE = { width: 390, height: 844 };
@@ -42,14 +37,14 @@ async function openWorkspace(page: Page, size: { width: number; height: number }
     if (localStorage.getItem('keydist:workspaces') === null) {
       localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
     }
-  }, { id: 'stack', name, text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: [flow, comparison, withTarget ? sensitivityWithTarget : sensitivity], layout: LAYOUT });
+  }, { id: 'stack', name, text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes: [flow, comparison, withTarget ? sensitivityWithTarget : sensitivity], grid: GRID });
   await page.goto('/workspace/stack');
   await waitForHydration(page);
   await expect(page.locator('.pane-frame')).toHaveCount(3);
 }
 
-const storedLayout = async (page: Page) => page.evaluate(
-  (key) => JSON.stringify(JSON.parse(localStorage.getItem(key) ?? '{}').workspaces?.[0]?.layout),
+const storedGrid = async (page: Page) => page.evaluate(
+  (key) => JSON.stringify(JSON.parse(localStorage.getItem(key) ?? '{}').workspaces?.[0]?.grid),
   WORKSPACES_KEY,
 );
 
@@ -60,11 +55,11 @@ const box = async (locator: Locator) => {
 };
 
 for (const size of [PHONE, { width: 360, height: 780 }]) {
-  test(`${size.width}px: Dockviewを使わずペインを配置の読み順に縦に積み、ページが縦にスクロールする`, async ({ page }) => {
+  test(`${size.width}px: 格子を使わずペインを読み順（上→下・左→右）に縦に積み、ページが縦にスクロールする`, async ({ page }) => {
     await openWorkspace(page, size, '新しいWorkspace', true);
     await expect(page.locator('[data-workspace-stack="true"]')).toBeVisible();
     await expect(page.locator('[data-react-feature="bigram-flow"] [data-flow-edge="true"]').first()).toBeAttached({ timeout: 15_000 });
-    await expect(page.locator('.dv-dockview, .dv-groupview, .dockview-theme-light-spaced')).toHaveCount(0);
+    await expect(page.locator('.workspace-grid-area, .react-grid-layout, .react-grid-item')).toHaveCount(0);
     expect(await page.locator('.workspace-stack-pane').evaluateAll((els) => els.map((el) => el.getAttribute('data-pane-id')))).toEqual(['f', 'c', 'n']);
     await expect(page.locator('.pane-frame h2.pane-frame-title')).toHaveText(['Bigram Flow', '比較表', 'N感度']);
 
@@ -112,7 +107,7 @@ test('積んだペインの本体は高さ0に潰れず、幅だけを測るcont
 
 test('パソコン幅では本体は幅と高さのcontainerで、縦に積まない', async ({ page }) => {
   await openWorkspace(page, DESKTOP, '新しいWorkspace', true);
-  await expect(page.locator('.dv-groupview')).toHaveCount(3);
+  await expect(page.locator('.workspace-grid-item')).toHaveCount(3);
   await expect(page.locator('[data-workspace-stack="true"]')).toHaveCount(0);
   await expect(page.locator('.workspace-pane .pane-body')).toHaveCount(3, { timeout: 15_000 });
   const types = await page.locator('.workspace-pane .pane-body').evaluateAll((els) => els.map((el) => getComputedStyle(el).containerType));
@@ -168,28 +163,28 @@ test('文脈バーのテキストのチップを開ける（スマホ幅）', as
   expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(PHONE.width);
 });
 
-test('境目をまたいで狭めて戻しても、Dockviewの並び・大きさ（資産の配置）は元のまま', async ({ page }) => {
+test('境目をまたいで狭めて戻しても、格子の位置・大きさ（資産の配置）は元のまま', async ({ page }) => {
   await openWorkspace(page, DESKTOP);
-  await expect(page.locator('.dv-groupview')).toHaveCount(3);
-  const rects = () => page.locator('.dv-groupview').evaluateAll((els) => els.map((el) => {
+  await expect(page.locator('.workspace-grid-item')).toHaveCount(3);
+  const rects = () => page.locator('.workspace-grid-item').evaluateAll((els) => els.map((el) => {
     const r = el.getBoundingClientRect();
     return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
   }));
   const before = await rects();
-  const layoutBefore = await storedLayout(page);
+  const gridBefore = await storedGrid(page);
 
   await page.setViewportSize(PHONE);
   await expect(page.locator('[data-workspace-stack="true"]')).toBeVisible();
-  await expect(page.locator('.dv-groupview')).toHaveCount(0);
-  // 狭い間に、待ち時間（Dockviewの並びを書く間引き）を越えても書き換わらない
+  await expect(page.locator('.workspace-grid-item')).toHaveCount(0);
+  // 狭い間に、待ち時間を越えても書き換わらない
   await page.waitForTimeout(600);
-  expect(await storedLayout(page)).toBe(layoutBefore);
+  expect(await storedGrid(page)).toBe(gridBefore);
 
   await page.setViewportSize(DESKTOP);
-  await expect(page.locator('.dv-groupview')).toHaveCount(3);
+  await expect(page.locator('.workspace-grid-item')).toHaveCount(3);
   await expect(page.locator('[data-workspace-stack="true"]')).toHaveCount(0);
   await page.waitForTimeout(600);
-  expect(await storedLayout(page)).toBe(layoutBefore);
+  expect(await storedGrid(page)).toBe(gridBefore);
   const after = await rects();
   for (let n = 0; n < before.length; n += 1) {
     for (let k = 0; k < 4; k += 1) expect(Math.abs(after[n]![k]! - before[n]![k]!)).toBeLessThanOrEqual(3);
@@ -208,14 +203,15 @@ test('スマホ幅でも、ペインの追加・複製・閉じる・連動・�
   await expect(titles).toHaveText(['Bigram Flow', '比較表', 'N感度', 'Bigram Flow']);
   await expect(page.locator('.workspace-stack-pane')).toHaveCount(4);
 
-  // ⋯: 複製（元の隣に入る）
+  // ⋯: 複製（格子では空いている場所に入り、積む順は読み順）
   const comparisonPane = page.locator('.pane-frame').filter({ has: page.getByRole('heading', { level: 2, name: '比較表', exact: true }) });
   await comparisonPane.getByRole('button', { name: /の操作$/ }).click();
   await page.getByRole('menuitem', { name: /複製/ }).click();
-  await expect(titles).toHaveText(['Bigram Flow', '比較表', '比較表', 'N感度', 'Bigram Flow']);
+  await expect(comparisonPane).toHaveCount(2);
+  await expect(titles).toHaveCount(5);
 
-  // ⋯: 閉じる
-  await page.locator('.pane-frame').nth(2).getByRole('button', { name: /の操作$/ }).click();
+  // ⋯: 閉じる（複製した方）
+  await comparisonPane.nth(1).getByRole('button', { name: /の操作$/ }).click();
   await page.getByRole('menuitem', { name: /閉じる/ }).click();
   await expect(titles).toHaveText(['Bigram Flow', '比較表', 'N感度', 'Bigram Flow']);
 
