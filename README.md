@@ -57,6 +57,11 @@ Chain境界を決めません。同指・trigger-only・逆手同時入力は独
 親指だけのlayer/modifier操作を区切るかは未決のため推測していません。
 ChainInterpretationは配列ごとの測定条件として数値のsnapshotにも残します。
 
+条件（先読み `N`・物理配列・指の割当・ローマ字の綴り・Chain / Arpeggioの数え方など）は、
+全体 → Workspace → 物理配列 → 打ち方 → 配列 → Setup の順に重ねて決まります。
+Workspaceで変えた条件はそのWorkspaceに載ったペインの数値にだけ入り、単体ページや他のWorkspaceの数値は動きません。
+Workspaceに値が無ければ、全体の条件だけで決まります。
+
 Analysis Chain内の隣接Strokeからは、手ごとの **Transition fact** を作ります。
 同時押しで1手に複数Pressがある場合もPress×Press候補を全部残し、指の内向き/外向き、
 飛び指、親指、物理的な `dx/dy` を事実として保持します。この段階ではrollやArpeggioの可否を

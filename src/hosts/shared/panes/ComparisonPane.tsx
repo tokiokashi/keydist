@@ -6,6 +6,7 @@ import { analysisTargetKey, nameTargets, type AnalysisTarget, type NamedTarget }
 import { comparisonAnalyzer, type ComparisonRowContext } from '#analyzers/comparison/definition.tsx';
 import type { ComparisonOptions } from '#analyzers/comparison/options.ts';
 import {
+  globalConditionLevels,
   globalConditionValues,
   multiTargetConditionSummary,
   traceConditionSummary,
@@ -119,7 +120,7 @@ export function ComparisonPane({
         rows: traceConditionSummary(member.resolution.input.cascade, conditionNames),
       }];
     }),
-    { globalValues: globalConditionValues(overrides), names: conditionNames },
+    { globalValues: globalConditionValues(overrides), globalLevels: globalConditionLevels(overrides), names: conditionNames },
   ), [members, namedByKey, conditionNames, overrides]);
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
@@ -182,6 +183,7 @@ export function ComparisonPane({
         shapes: catalog.setupCatalog.shapes,
         customFingerAssignments: catalog.customFingerAssignments,
         customRomajiRules: catalog.customRomajiRules,
+        ...(env.workspaceId === undefined ? {} : { workspace: { id: env.workspaceId } }),
       }}
       conditionTargetDiffs={conditionSummary.diffs}
       engineState={extraction}

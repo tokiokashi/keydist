@@ -63,6 +63,7 @@ function levelsForContext(context: CascadeContext): readonly CascadeLevel[] {
 function levelFor(kind: CascadeLevelKind, context: CascadeContext): CascadeLevel | undefined {
   switch (kind) {
     case 'global': return { kind: 'global' };
+    case 'workspace': return { kind: 'workspace' };
     case 'shape': return { kind: 'shape', shapeId: context.shapeId };
     case 'inputMethod': return { kind: 'inputMethod', inputMethod: context.inputMethod };
     case 'layout': return { kind: 'layout', layoutId: context.layoutId };

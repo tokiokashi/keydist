@@ -8,6 +8,7 @@ import { nSensitivityAnalyzer, type NSensitivityRowContext } from '#analyzers/n-
 import type { NSensitivityOptions } from '#analyzers/n-sensitivity/options.ts';
 import {
   conditionHeaderInfoFromResolvedInput,
+  globalConditionLevels,
   globalConditionValues,
   multiTargetConditionSummary,
   traceConditionSummary,
@@ -148,7 +149,7 @@ export function NSensitivityPane({
         rows: traceConditionSummary(member.resolution.input.cascade, conditionNames),
       }];
     }),
-    { excludeIds: N_SENSITIVITY_CONDITION_EXCLUDE_IDS, globalValues: globalConditionValues(overrides), names: conditionNames },
+    { excludeIds: N_SENSITIVITY_CONDITION_EXCLUDE_IDS, globalValues: globalConditionValues(overrides), globalLevels: globalConditionLevels(overrides), names: conditionNames },
   ), [members, namedByKey, conditionNames, overrides]);
 
   const order = useMemo(() => targets.map(analysisTargetKey), [targets]);
@@ -193,6 +194,7 @@ export function NSensitivityPane({
         shapes: catalog.setupCatalog.shapes,
         customFingerAssignments: catalog.customFingerAssignments,
         customRomajiRules: catalog.customRomajiRules,
+        ...(env.workspaceId === undefined ? {} : { workspace: { id: env.workspaceId } }),
         hiddenIds: N_SENSITIVITY_CONDITION_EXCLUDE_IDS,
       }}
       conditionTargetDiffs={conditionSummary.diffs}

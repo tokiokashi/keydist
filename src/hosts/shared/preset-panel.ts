@@ -1,12 +1,12 @@
 import { applyPresetValues, type PresetLibrary } from '#input/presets/index.ts';
-import { levelOverrides } from '#input/settings/index.ts';
+import { levelOverrides, type CascadeLevel } from '#input/settings/index.ts';
 import { SETTINGS_ITEMS, type SettingsCascadeOverrides, type SettingsValueMap } from '#engine/settings-items.ts';
 import { GLOBAL_LEVEL } from './condition-edit.ts';
 import { conditionItemLabel } from './condition-summary.ts';
 
 /**
  * 条件のモーダルのプリセットの節の、表示の計算（描画は`PresetSection.tsx`）。
- * 流し込み先は今は全体のレベルだけ。レベルを増やす時は`GLOBAL_LEVEL`をここで受け取る形に替える。
+ * 流し込み・保存の先のレベルは引数で受ける（既定は全体。Workspaceのペインはそのレベルを渡す）。
  *
  * 流し込みは対象レベルの上書きを丸ごと置き換えるので、モーダルに行の無い項目（再生速度の平均など）の
  * 上書きも消える。今の画面はそれらを書き込まないので害は無いが、行を足す時は
@@ -31,18 +31,23 @@ export interface PresetRowView {
 export function presetRows(
   library: PresetLibrary<SettingsValueMap>,
   overrides: SettingsCascadeOverrides,
+  level: CascadeLevel = GLOBAL_LEVEL,
 ): readonly PresetRowView[] {
   return library.presets.map((preset) => ({
     id: preset.id,
     name: preset.name,
-    sameAsCurrent: applyPresetValues(SETTINGS_ITEMS, overrides, GLOBAL_LEVEL, preset.values).overrides === overrides,
+    sameAsCurrent: applyPresetValues(SETTINGS_ITEMS, overrides, level, preset.values).overrides === overrides,
   }));
 }
 
-/** 全体の上書きのうち、値が変わった（増えた・消えた・違う値になった）項目の数。 */
-export function changedGlobalItemCount(before: SettingsCascadeOverrides, after: SettingsCascadeOverrides): number {
-  const left = (levelOverrides(before, GLOBAL_LEVEL) ?? {}) as Record<string, unknown>;
-  const right = (levelOverrides(after, GLOBAL_LEVEL) ?? {}) as Record<string, unknown>;
+/** 流し込み先のレベル（既定は全体）の上書きのうち、値が変わった（増えた・消えた・違う値になった）項目の数。 */
+export function changedGlobalItemCount(
+  before: SettingsCascadeOverrides,
+  after: SettingsCascadeOverrides,
+  level: CascadeLevel = GLOBAL_LEVEL,
+): number {
+  const left = (levelOverrides(before, level) ?? {}) as Record<string, unknown>;
+  const right = (levelOverrides(after, level) ?? {}) as Record<string, unknown>;
   const ids = new Set([...Object.keys(left), ...Object.keys(right)]);
   let count = 0;
   for (const id of ids) {
@@ -75,8 +80,8 @@ export function applyResultText(
   return { text: `「${name}」の値にした（${changedCount}項目が変わった）${tail}`, undoable: true };
 }
 
-export function savedResultText(name: string): string {
-  return `「${name}」として今の全体の値を保存した`;
+export function savedResultText(name: string, scope: string = '全体'): string {
+  return `「${name}」として今の${scope}の値を保存した`;
 }
 
 export function deletedResultText(name: string): string {

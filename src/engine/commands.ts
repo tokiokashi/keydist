@@ -41,12 +41,14 @@ import {
   type MultiTargetSelection,
 } from './multi-target-selection.ts';
 import { withSingleTarget, type SingleTargetSelection } from './single-target-selection.ts';
-import { findWorkspace, withWorkspaceText, type WorkspaceLibrary } from './workspace.ts';
+import { findWorkspace, withWorkspaceConditionOverrides, withWorkspaceText, type WorkspaceLibrary } from './workspace.ts';
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import {
   resetSettingsItem,
   resetSettingsLevel,
   setSettingsOverride,
+  withWorkspaceConditions,
+  type SettingsCascadeOverrides,
   type SettingsItemId,
   type SettingsValueMap,
 } from './settings-items.ts';
@@ -162,21 +164,94 @@ function setupLibraryCommand(
   };
 }
 
-/** カスケードの上書きを1項目・1レベルへ書き込む（レベル指定は必須。#544 §8-2）。 */
+/** 条件の書き込みの結果。`ok`なら書き換えた後の上書き（Workspaceの条件を差し込んだ形。`workspace`を含みうる）。 */
+type CascadeComputation =
+  | { readonly ok: true; readonly overrides: SettingsCascadeOverrides }
+  | { readonly ok: false; readonly reason: unknown };
+
+/** Workspaceのレベルへ書こうとしたが、書き先のWorkspaceが無い（単体ページ・削除済み）時の`rejected`の理由。 */
+export interface WorkspaceLevelUnavailableError {
+  readonly kind: 'workspace-level-unavailable';
+  readonly workspaceId: string | undefined;
+}
+
+/**
+ * カスケードの上書きを、Workspaceの条件を差し込んだ形で読む（`cascadeCommand`が計算に渡すものと同じ）。
+ * `workspaceId`を渡さなければ`setupLibrary`の上書きそのもの。渡したWorkspaceが無ければ`undefined`。
+ */
+export function cascadeOverridesView(
+  assets: Pick<KeydistAssets, 'setupLibrary' | 'workspaces'>,
+  workspaceId?: string,
+): SettingsCascadeOverrides | undefined {
+  if (workspaceId === undefined) return assets.setupLibrary.overrides;
+  const workspace = findWorkspace(assets.workspaces, workspaceId);
+  return workspace === undefined ? undefined : withWorkspaceConditions(assets.setupLibrary.overrides, workspace.conditions);
+}
+
+const CASCADE_BUCKET_KEYS = ['global', 'shape', 'inputMethod', 'layout', 'setup'] as const;
+
+/** `workspace`以外のレベルが、1つも変わっていないか（参照の一致で見る。`withLevelOverrides`は触っていないレベルを共有する）。 */
+function sameLevelsExceptWorkspace(next: SettingsCascadeOverrides, base: SettingsCascadeOverrides): boolean {
+  return CASCADE_BUCKET_KEYS.every((key) => next[key] === base[key]);
+}
+
+/**
+ * カスケードの条件を書くコマンドの共通の骨組み。全体・物理配列・打ち方・配列・Setupのレベルは`setupLibrary`に、
+ * Workspaceのレベルは書き先のWorkspaceの資産（`Workspace.conditions`）に持つ。書き換えの計算は、Workspaceの
+ * 条件を差し込んだ1つの上書き（`withWorkspaceConditions`）に対して行い、結果を元の置き場へ振り分ける。
+ * 計算の側はレベルの置き場を知らずに済み、1コマンドなので元に戻すの1回で、両方の置き場の変更が一緒に戻る。
+ *
+ * `workspaceId`はWorkspaceのレベルへ書く時だけ渡す。渡さずにWorkspaceのレベルへ書こうとすると
+ * （単体ページは Workspaceのレベルを持たない）、書かずに`rejected`にする。
+ * `compute`が渡された上書きの参照をそのまま返したら何もしなかったことになり、`no-op`にする
+ * （同じ値の書き込みで、履歴に空の1手を積まない）。
+ */
+export function cascadeCommand(
+  label: string,
+  workspaceId: string | undefined,
+  compute: (overrides: SettingsCascadeOverrides, assets: Readonly<KeydistAssets>) => CascadeComputation,
+): Command<KeydistAssets> {
+  return (current) => {
+    const library = current.setupLibrary;
+    const workspace = workspaceId === undefined ? undefined : findWorkspace(current.workspaces, workspaceId);
+    if (workspaceId !== undefined && workspace === undefined) {
+      return { kind: 'rejected', reason: { kind: 'workspace-level-unavailable', workspaceId } satisfies WorkspaceLevelUnavailableError };
+    }
+    const view = workspace === undefined ? library.overrides : withWorkspaceConditions(library.overrides, workspace.conditions);
+    const result = compute(view, current);
+    if (!result.ok) return { kind: 'rejected', reason: result.reason };
+    if (result.overrides === view) return { kind: 'no-op' };
+
+    const { workspace: nextConditions, ...rest } = result.overrides;
+    if (workspace === undefined && nextConditions !== undefined) {
+      return { kind: 'rejected', reason: { kind: 'workspace-level-unavailable', workspaceId } satisfies WorkspaceLevelUnavailableError };
+    }
+    const changes: { setupLibrary?: KeydistAssets['setupLibrary']; workspaces?: WorkspaceLibrary } = {};
+    if (!sameLevelsExceptWorkspace(rest, library.overrides)) changes.setupLibrary = { ...library, overrides: rest };
+    if (workspace !== undefined && nextConditions !== workspace.conditions) {
+      const workspaces = withWorkspaceConditionOverrides(current.workspaces, workspace.id, nextConditions);
+      if (workspaces !== current.workspaces) changes.workspaces = workspaces;
+    }
+    if (changes.setupLibrary === undefined && changes.workspaces === undefined) return { kind: 'no-op' };
+    return { kind: 'applied', label, changes };
+  };
+}
+
+/**
+ * カスケードの上書きを1項目・1レベルへ書き込む（レベル指定は必須。#544 §8-2）。
+ * Workspaceのレベルへ書く時は、書き先の`workspaceId`を渡す。
+ */
 export function setCascadeOverrideCommand<K extends SettingsItemId>(
   level: CascadeLevel,
   itemId: K,
   value: SettingsValueMap[K],
+  workspaceId?: string,
 ): Command<KeydistAssets> {
-  return setupLibraryCommand(`設定を変更する: ${itemId}`, (library) => {
-    const result = setSettingsOverride(library.overrides, level, itemId, value);
-    if (!result.ok) return { ok: false, reason: result.error };
+  return cascadeCommand(`設定を変更する: ${itemId}`, workspaceId, (overrides) => {
+    const result = setSettingsOverride(overrides, level, itemId, value);
     // `setSettingsOverride`は既に同じ値が入っていれば同じ`overrides`参照を返す
-    // （`input/settings/write.ts`の規約）。ここでも`resetCascadeItemCommand`と同じ理由で、
-    // 変化が無い時は`library`自体を据え置く（毎回新しいオブジェクトを作ると、
-    // 中身が同じでも「変わった」と誤判定されてしまう）。
-    if (result.overrides === library.overrides) return { ok: true, library };
-    return { ok: true, library: { ...library, overrides: result.overrides } };
+    // （`input/settings/write.ts`の規約）。変化が無い時は`cascadeCommand`が`no-op`にする。
+    return result.ok ? { ok: true, overrides: result.overrides } : { ok: false, reason: result.error };
   });
 }
 
@@ -191,70 +266,68 @@ export function promoteCascadeOverrideCommand<K extends SettingsItemId>(
   to: CascadeLevel,
   itemId: K,
   targetDefault: SettingsValueMap[K],
+  workspaceId?: string,
 ): Command<KeydistAssets> {
-  return setupLibraryCommand(`設定を上のレベルへ移す: ${itemId}`, (library) => {
-    const value = readOverride(library.overrides, from, itemId);
-    if (value === undefined) return { ok: true, library };
+  return cascadeCommand(`設定を上のレベルへ移す: ${itemId}`, workspaceId, (overrides) => {
+    const value = readOverride(overrides, from, itemId);
+    if (value === undefined) return { ok: true, overrides };
     const written = JSON.stringify(value) === JSON.stringify(targetDefault)
-      ? { ok: true as const, overrides: resetSettingsItem(library.overrides, to, itemId) }
-      : setSettingsOverride(library.overrides, to, itemId, value);
+      ? { ok: true as const, overrides: resetSettingsItem(overrides, to, itemId) }
+      : setSettingsOverride(overrides, to, itemId, value);
     if (!written.ok) return { ok: false, reason: written.error };
-    const overrides = resetSettingsItem(written.overrides, from, itemId);
-    if (overrides === library.overrides) return { ok: true, library };
-    return { ok: true, library: { ...library, overrides } };
+    return { ok: true, overrides: resetSettingsItem(written.overrides, from, itemId) };
   });
 }
 
 /**
  * 1項目・1レベルの上書きだけを消す。`resetItem`は消すものが無ければ同じ`overrides`参照を
- * 返す（`input/settings/reset.ts`）ので、それをそのまま`setupLibrary`のno-op判定に伝える
- * ため、変化が無い時は`library`自体も同じ参照を返す（`{...library, overrides}`で毎回
- * 新しいオブジェクトを作ると、中身が同じでも「変わった」と誤判定されてしまうため）。
+ * 返す（`input/settings/reset.ts`）ので、変化が無い時は`cascadeCommand`が`no-op`にする。
  */
-export function resetCascadeItemCommand(level: CascadeLevel, itemId: SettingsItemId): Command<KeydistAssets> {
-  return setupLibraryCommand(`設定をリセットする: ${itemId}`, (library) => {
-    const overrides = resetSettingsItem(library.overrides, level, itemId);
-    if (overrides === library.overrides) return { ok: true, library };
-    return { ok: true, library: { ...library, overrides } };
-  });
+export function resetCascadeItemCommand(level: CascadeLevel, itemId: SettingsItemId, workspaceId?: string): Command<KeydistAssets> {
+  return cascadeCommand(`設定をリセットする: ${itemId}`, workspaceId, (overrides) => ({
+    ok: true,
+    overrides: resetSettingsItem(overrides, level, itemId),
+  }));
 }
 
 /**
  * 1レベルの、指定した項目の上書きだけをまとめて消す（1コマンド＝元に戻すの1回で全部戻る）。
  * 指定に無い項目の上書きは残す。
  */
-export function resetCascadeItemsCommand(level: CascadeLevel, itemIds: readonly SettingsItemId[]): Command<KeydistAssets> {
-  return setupLibraryCommand('指定した項目の設定をまとめてリセットする', (library) => {
-    const overrides = itemIds.reduce((current, id) => resetSettingsItem(current, level, id), library.overrides);
-    if (overrides === library.overrides) return { ok: true, library };
-    return { ok: true, library: { ...library, overrides } };
-  });
+export function resetCascadeItemsCommand(
+  level: CascadeLevel,
+  itemIds: readonly SettingsItemId[],
+  workspaceId?: string,
+): Command<KeydistAssets> {
+  return cascadeCommand('指定した項目の設定をまとめてリセットする', workspaceId, (overrides) => ({
+    ok: true,
+    overrides: itemIds.reduce((current, id) => resetSettingsItem(current, level, id), overrides),
+  }));
 }
 
 /**
  * 複数のレベルから、指定した項目の上書きをまとめて消す（1コマンド＝元に戻すの1回で全部戻る）。
- * 条件のモーダルの「すべて既定値に戻す」が、全体と今の配列の上書きを一度に消すために使う。
+ * 条件のモーダルの「すべて既定値に戻す」が、全体・Workspace・今の配列の上書きを一度に消すために使う。
  */
 export function resetCascadeItemsAtLevelsCommand(
   targets: readonly { readonly level: CascadeLevel; readonly itemIds: readonly SettingsItemId[] }[],
+  workspaceId?: string,
 ): Command<KeydistAssets> {
-  return setupLibraryCommand('複数のレベルの設定をまとめてリセットする', (library) => {
-    const overrides = targets.reduce(
+  return cascadeCommand('複数のレベルの設定をまとめてリセットする', workspaceId, (overrides) => ({
+    ok: true,
+    overrides: targets.reduce(
       (current, { level, itemIds }) => itemIds.reduce((inner, id) => resetSettingsItem(inner, level, id), current),
-      library.overrides,
-    );
-    if (overrides === library.overrides) return { ok: true, library };
-    return { ok: true, library: { ...library, overrides } };
-  });
+      overrides,
+    ),
+  }));
 }
 
 /** 1レベルの上書きを全項目まとめて消す。no-op判定の理由は`resetCascadeItemCommand`と同じ。 */
-export function resetCascadeLevelCommand(level: CascadeLevel): Command<KeydistAssets> {
-  return setupLibraryCommand('レベルの設定をまとめてリセットする', (library) => {
-    const overrides = resetSettingsLevel(library.overrides, level);
-    if (overrides === library.overrides) return { ok: true, library };
-    return { ok: true, library: { ...library, overrides } };
-  });
+export function resetCascadeLevelCommand(level: CascadeLevel, workspaceId?: string): Command<KeydistAssets> {
+  return cascadeCommand('レベルの設定をまとめてリセットする', workspaceId, (overrides) => ({
+    ok: true,
+    overrides: resetSettingsLevel(overrides, level),
+  }));
 }
 
 /** Setupを新規作成する。 */

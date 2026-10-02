@@ -885,71 +885,160 @@ async function openPaneConditionModal(page: Page, paneLocator: Locator): Promise
   return modal;
 }
 
-test('Workspaceのペインの条件のモーダルで全体の条件を変えると、全体の保存先に書かれ、個別画面にも反映される', async ({ page }) => {
+/** Workspaceの条件（`workspaces[i].conditions`。decodeせず生のJSON）。無ければ空。 */
+async function storedWorkspaceConditions(page: Page, index = 0): Promise<Record<string, unknown>> {
+  const stored = await storedWorkspaces(page) as unknown as { workspaces: { conditions?: Record<string, unknown> }[] };
+  return stored.workspaces[index]?.conditions ?? {};
+}
+
+/** 行の編集先のメニューを開いて項目を選ぶ。 */
+async function pickScope(row: Locator, item: string): Promise<void> {
+  await row.getByRole('button', { name: /の編集先: / }).click();
+  await row.getByRole('menuitem', { name: item }).click();
+}
+
+test('Workspaceのペインの条件のモーダルはWorkspaceのレベルで開き、変えた値はそのWorkspaceにだけ入る（全体・個別画面・他のWorkspaceには入らない）', async ({ page }) => {
   const panes = await createWithBigramPanes(page, 1);
   // 見出しの1行には chip で出す（変えた項目の中身はhoverの説明とモーダルが出す）
   await expect(panes.first().locator('.pane-condition-trigger')).toHaveText('条件: 既定値');
 
   const modal = await openPaneConditionModal(page, panes.first());
-  await modal.getByRole('button', { name: '先読みNを1増やす' }).click();
-  await expect(modal.locator('[data-item="windowSize"]')).toContainText('全体で変更');
+  await expect(modal.getByText(/このWorkspaceの値を変える。/)).toBeVisible();
+  const row = modal.locator('[data-item="windowSize"]');
+  // 開いた時の編集先はWorkspace
+  await expect(row.getByRole('button', { name: /の編集先: / })).toHaveText('Workspace');
+  await row.getByRole('button', { name: '先読みNを1増やす' }).click();
+  await expect(row).toContainText('Workspaceで変更');
   await page.keyboard.press('Escape');
   await expect(panes.first().locator('.pane-condition-trigger')).toHaveText('条件: 1件変更');
   await expect(panes.first().locator('.pane-condition-trigger')).toHaveAttribute('title', /先読みN: 4/);
 
-  // 書き込み先は全体の値。Workspaceは条件を別に持たない
-  await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBe(4);
-  expect(JSON.stringify(await storedWorkspaces(page))).not.toContain('windowSize');
+  // 書き込み先はそのWorkspaceの条件。全体の保存先には書かない
+  await expect.poll(async () => (await storedWorkspaceConditions(page)).windowSize).toBe(4);
+  expect(await storedGlobalOverrides(page)).toEqual({});
 
-  // 個別画面を開き直すと、同じ全体の値が反映されている
+  // 個別画面には入らない
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
-  await expect(page.locator('.pane-condition-trigger')).toContainText('先読みN: 4');
+  await expect(page.locator('.pane-condition-trigger')).toContainText('すべて既定値');
   const standaloneModal = await openPaneConditionModal(page, page.locator('.pane-frame'));
-  await expect(standaloneModal.locator('[data-item="windowSize"]').locator('output[aria-label="先読みN"]')).toHaveText('4');
+  await expect(standaloneModal.locator('[data-item="windowSize"]').locator('output[aria-label="先読みN"]')).toHaveText('3');
+  await page.keyboard.press('Escape');
+
+  // 他のWorkspaceにも入らない
+  await createWorkspace(page);
+  await addAnalyzer(page, 'Bigram Flow');
+  const other = page.locator('.pane-frame').first();
+  await expect(other.locator('[data-react-feature="bigram-flow"]')).toBeVisible({ timeout: 10_000 });
+  await expect(other.locator('.pane-condition-trigger')).toHaveText('条件: 既定値');
+  expect(await storedWorkspaceConditions(page, 1)).toEqual({});
+
+  // 保存して再読み込みしても、最初のWorkspaceに残っている
+  await page.goto('/');
+  await waitForHydration(page);
+  await page.locator('#app-sidebar').getByRole('link', { name: '新しいWorkspace', exact: true }).click();
+  await expect(page.locator('.pane-frame').first().locator('.pane-condition-trigger')).toHaveText('条件: 1件変更', { timeout: 10_000 });
+  await page.reload();
+  await waitForHydration(page);
+  const reopened = await openPaneConditionModal(page, page.locator('.pane-frame').first());
+  await expect(reopened.locator('[data-item="windowSize"]').locator('output[aria-label="先読みN"]')).toHaveText('4');
 });
 
-test('Workspaceのペインの条件のモーダルでもプリセットを保存・流し込みでき、元に戻すで戻る', async ({ page }) => {
+test('Workspaceのペインの条件のモーダル: 行のメニューで全体を編集でき、Workspaceの値を全体へ移すこともできる', async ({ page }) => {
+  const panes = await createWithBigramPanes(page, 1);
+  const modal = await openPaneConditionModal(page, panes.first());
+  const row = modal.locator('[data-item="windowSize"]');
+
+  // 全体を編集すると、全体の保存先に書かれる（個別画面にも反映される）
+  await pickScope(row, '全体を編集');
+  await expect(row.getByRole('button', { name: /の編集先: / })).toHaveText('全体');
+  await row.getByRole('button', { name: '先読みNを1増やす' }).click();
+  await expect(row).toContainText('全体で変更');
+  await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBe(4);
+  expect(await storedWorkspaceConditions(page)).toEqual({});
+
+  // Workspaceで別の値にすると、Workspaceの値が勝つ。全体を編集する行にはその理由が出る
+  await pickScope(row, 'Workspaceを編集');
+  await row.getByRole('button', { name: '先読みNを1増やす' }).click();
+  await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('5');
+  await expect(row).toContainText('Workspaceで変更');
+  await expect.poll(async () => (await storedWorkspaceConditions(page)).windowSize).toBe(5);
+  await pickScope(row, '全体を編集');
+  await expect(row.locator('[data-condition-notice]')).toContainText('Workspaceの値が優先されるため、全体を変えてもこの画面は変わらない');
+
+  // Workspaceの値を全体へ移す。このWorkspaceの値は変わらず、全体の値になる
+  await pickScope(row, 'Workspaceを編集');
+  await pickScope(row, '全体へ移す');
+  await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('5');
+  await expect(row).toContainText('全体で変更');
+  await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBe(5);
+  await expect.poll(async () => (await storedWorkspaceConditions(page)).windowSize).toBeUndefined();
+  // 元に戻す1回で、移す前（全体は4・Workspaceは5）へ戻る
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBe(4);
+  await expect.poll(async () => (await storedWorkspaceConditions(page)).windowSize).toBe(5);
+});
+
+test('Workspaceの文脈バーの既定の物理配列は、Workspaceのレベルへ書く（モーダルの行と同じ値）。個別画面は変わらない', async ({ page }) => {
+  const panes = await createWithBigramPanes(page, 1);
+  const chip = page.locator('.context-bar').getByLabel('既定の物理配列');
+  await expect(chip).toHaveValue('row-staggered');
+  await chip.selectOption('ortholinear');
+  await expect.poll(async () => (await storedWorkspaceConditions(page)).defaultShapeId).toBe('ortholinear');
+  expect(await storedGlobalOverrides(page)).toEqual({});
+
+  const modal = await openPaneConditionModal(page, panes.first());
+  const row = modal.locator('[data-item="defaultShapeId"]');
+  await expect(row.getByLabel('既定の物理配列', { exact: true })).toHaveValue('ortholinear');
+  await expect(row).toContainText('Workspaceで変更');
+  await page.keyboard.press('Escape');
+
+  // 個別画面のチップは全体の値のまま
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+  await expect(page.locator('.context-bar').getByLabel('既定の物理配列')).toHaveValue('row-staggered');
+});
+
+test('Workspaceのペインの条件のモーダルでもプリセットを保存・流し込みでき（Workspaceのレベルへ）、元に戻すで戻る', async ({ page }) => {
   const panes = await createWithBigramPanes(page, 1);
   const modal = await openPaneConditionModal(page, panes.first());
   await modal.getByRole('button', { name: '先読みNを1増やす' }).click();
   const section = modal.locator('[data-condition-presets]');
   await section.locator('summary').click();
   await section.getByLabel('プリセットの名前').fill('厳しめ');
-  await section.getByRole('button', { name: '今の全体の値を保存' }).click();
-  await modal.getByRole('button', { name: 'すべて既定値に戻す' }).click();
+  await section.getByRole('button', { name: '今のWorkspaceの値を保存' }).click();
+  await modal.getByRole('button', { name: 'Workspaceの変更をすべて戻す' }).click();
+  await expect(modal.locator('[data-item="windowSize"] output')).toHaveText('3');
   await section.getByRole('button', { name: '「厳しめ」の値を流し込む' }).click();
   await expect(modal.locator('[data-item="windowSize"] output')).toHaveText('4');
+  await expect.poll(async () => (await storedWorkspaceConditions(page)).windowSize).toBe(4);
   await section.getByRole('button', { name: '元に戻す' }).click();
   await expect(modal.locator('[data-item="windowSize"] output')).toHaveText('3');
-  await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBeUndefined();
+  await expect.poll(async () => (await storedWorkspaceConditions(page)).windowSize).toBeUndefined();
+  expect(await storedGlobalOverrides(page)).toEqual({});
 });
 
-test('Workspaceで変えた全体の条件はWorkspaceの元に戻すで戻り、その結果が個別画面にも効く。元に戻すの履歴は画面ごと', async ({ page, context }) => {
+test('Workspaceで変えた条件はWorkspaceの元に戻すで戻り、個別画面には元から入っていない。元に戻すの履歴は画面ごと', async ({ page, context }) => {
   const panes = await createWithBigramPanes(page, 1);
   const trigger = panes.first().locator('.pane-condition-trigger');
   const modal = await openPaneConditionModal(page, panes.first());
   await modal.getByRole('button', { name: '先読みNを1増やす' }).click();
   await page.keyboard.press('Escape');
   await expect(trigger).toHaveText('条件: 1件変更');
-  await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBe(4);
+  await expect.poll(async () => (await storedWorkspaceConditions(page)).windowSize).toBe(4);
 
-  // 別のタブで開いた個別画面は変更を反映していて、その画面の履歴は空（Workspaceの操作は戻せない）
+  // 別のタブで開いた個別画面は、Workspaceの値を持たない。その画面の履歴は空（Workspaceの操作は戻せない）
   const other = await context.newPage();
   await other.goto('/standalone/bigram-flow');
   await expect(other.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
-  await expect(other.locator('.pane-condition-trigger')).toContainText('先読みN: 4');
+  await expect(other.locator('.pane-condition-trigger')).toContainText('すべて既定値');
   await expect(other.getByRole('button', { name: '元に戻す' })).toBeDisabled();
 
-  // Workspaceの元に戻すで、全体の条件が既定へ戻る
+  // Workspaceの元に戻すで、Workspaceの条件が既定へ戻る
   await page.getByRole('button', { name: '元に戻す' }).click();
   await expect(trigger).toHaveText('条件: 既定値');
-  await expect.poll(async () => (await storedGlobalOverrides(page)).windowSize).toBeUndefined();
-
-  // 個別画面を開き直すと、戻った結果が効いている
-  await other.reload();
-  await expect(other.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
-  await expect(other.locator('.pane-condition-trigger')).toHaveText('条件すべて既定値');
+  await expect.poll(async () => (await storedWorkspaceConditions(page)).windowSize).toBeUndefined();
   await other.close();
 });
 

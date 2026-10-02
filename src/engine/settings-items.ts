@@ -2,6 +2,7 @@ import {
   defineItem,
   emptyCascadeOverrides,
   readOverride,
+  withLevelOverrides,
   resetItem as resetItemGeneric,
   resetLevel as resetLevelGeneric,
   resolveCascade,
@@ -10,6 +11,7 @@ import {
   type CascadeLevel,
   type CascadeOverrides,
   type ItemRegistry,
+  type LevelOverrides,
   type RegistryValueMap,
   type ResolvedCascade,
   type WriteResult,
@@ -47,12 +49,18 @@ import {
  */
 export const DEFAULT_SHAPE_ID = 'row-staggered';
 
-const ANY_LEVEL = new Set<CascadeLevel['kind']>(['global', 'shape', 'inputMethod', 'layout', 'setup']);
+/**
+ * 各項目が置けるレベル。全体に置ける項目は、基本的にWorkspaceにも置ける（#655。Workspaceは「この画面の並びだけ
+ * 条件を変えたい」ための1レベルで、全体と同じ項目を持つ）。例外は`playbackRate*`（Traceの数値に入らない
+ * 再生の表示条件で、モーダルの行も無い）で、全体だけのまま。
+ */
+const ANY_LEVEL = new Set<CascadeLevel['kind']>(['global', 'workspace', 'shape', 'inputMethod', 'layout', 'setup']);
 const GLOBAL_ONLY = new Set<CascadeLevel['kind']>(['global']);
-const GLOBAL_LAYOUT = new Set<CascadeLevel['kind']>(['global', 'layout']);
-const GLOBAL_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'layout', 'setup']);
-const GLOBAL_INPUT_METHOD_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'inputMethod', 'layout', 'setup']);
-const GLOBAL_SHAPE_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'shape', 'layout', 'setup']);
+const GLOBAL_WORKSPACE = new Set<CascadeLevel['kind']>(['global', 'workspace']);
+const GLOBAL_WORKSPACE_LAYOUT = new Set<CascadeLevel['kind']>(['global', 'workspace', 'layout']);
+const GLOBAL_WORKSPACE_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'workspace', 'layout', 'setup']);
+const GLOBAL_WORKSPACE_INPUT_METHOD_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'workspace', 'inputMethod', 'layout', 'setup']);
+const GLOBAL_WORKSPACE_SHAPE_LAYOUT_SETUP = new Set<CascadeLevel['kind']>(['global', 'workspace', 'shape', 'layout', 'setup']);
 
 /** 物理配列のthumbsに指定の手の親指キーがあるか。`preferOppositeThumb`の実現可能性判定に使う。 */
 function shapeHasThumb(context: CascadeContext, finger: 'LT' | 'RT'): boolean {
@@ -67,13 +75,13 @@ export const SETTINGS_ITEMS = {
    */
   windowSize: defineItem<number>({
     id: 'windowSize',
-    allowedLevels: GLOBAL_LAYOUT_SETUP,
+    allowedLevels: GLOBAL_WORKSPACE_LAYOUT_SETUP,
     defaultValue: 3,
   }),
   /** 同指連続でホームキーへ戻る距離を計上するか。windowSizeと同じ理由でglobal/layout/setupのみ。 */
   sfbHomeCost: defineItem<boolean>({
     id: 'sfbHomeCost',
-    allowedLevels: GLOBAL_LAYOUT_SETUP,
+    allowedLevels: GLOBAL_WORKSPACE_LAYOUT_SETUP,
     defaultValue: true,
   }),
   /**
@@ -102,7 +110,7 @@ export const SETTINGS_ITEMS = {
    */
   triggerRealizationPolicy: defineItem<TriggerRealizationPolicy>({
     id: 'triggerRealizationPolicy',
-    allowedLevels: GLOBAL_LAYOUT_SETUP,
+    allowedLevels: GLOBAL_WORKSPACE_LAYOUT_SETUP,
     defaultValue: { ...DEFAULT_TRIGGER_REALIZATION_POLICY },
   }),
   /**
@@ -118,21 +126,22 @@ export const SETTINGS_ITEMS = {
    */
   actionRealizationPolicy: defineItem<ActionRealizationPolicy>({
     id: 'actionRealizationPolicy',
-    allowedLevels: GLOBAL_LAYOUT_SETUP,
+    allowedLevels: GLOBAL_WORKSPACE_LAYOUT_SETUP,
     defaultValue: { ...DEFAULT_ACTION_REALIZATION_POLICY },
   }),
   /**
-   * 解釈（Traceの読み方）。#544 §2の判断どおり当面グローバルのみ:
+   * 解釈（Traceの読み方）。#544 §2の判断で当面グローバルのみとしていたが、Workspaceのレベルまで広げた
+   * （#655の決定。Workspaceの中のペインは同じ解釈で並ぶ）。配列・Setupごとには置かない:
    * 比較で並ぶSetup間でchainの数え方が違うと比較の意味が無くなるため。
    */
   chainInterpretation: defineItem<ChainInterpretation>({
     id: 'chainInterpretation',
-    allowedLevels: GLOBAL_ONLY,
+    allowedLevels: GLOBAL_WORKSPACE,
     defaultValue: { ...DEFAULT_CHAIN_INTERPRETATION },
   }),
   arpeggioInterpretation: defineItem<ArpeggioInterpretation>({
     id: 'arpeggioInterpretation',
-    allowedLevels: GLOBAL_ONLY,
+    allowedLevels: GLOBAL_WORKSPACE,
     defaultValue: { ...DEFAULT_ARPEGGIO_INTERPRETATION },
   }),
   /** 速度平均の方式。#544 §3の例示どおりグローバルのみ。 */
@@ -177,7 +186,7 @@ export const SETTINGS_ITEMS = {
    */
   romajiRuleId: defineItem<string>({
     id: 'romajiRuleId',
-    allowedLevels: GLOBAL_INPUT_METHOD_LAYOUT_SETUP,
+    allowedLevels: GLOBAL_WORKSPACE_INPUT_METHOD_LAYOUT_SETUP,
     defaultValue: DEFAULT_ROMAJI_RULE_ID,
     layoutRecommendation: (context) => recommendedRomajiRuleId(context.layoutId),
     isApplicable: (context) => context.inputMethod === 'romaji',
@@ -192,7 +201,7 @@ export const SETTINGS_ITEMS = {
    */
   fingerAssignmentId: defineItem<string>({
     id: 'fingerAssignmentId',
-    allowedLevels: GLOBAL_SHAPE_LAYOUT_SETUP,
+    allowedLevels: GLOBAL_WORKSPACE_SHAPE_LAYOUT_SETUP,
     defaultValue: (context) => defaultFingerAssignmentId(context.shape),
   }),
   /**
@@ -205,9 +214,9 @@ export const SETTINGS_ITEMS = {
    * `setSettingsOverride`をそのまま使えるようにする（読み出しだけ専用の
    * `resolveDefaultShapeId`を使う）。
    *
-   * `allowedLevels`はglobalとlayout。物理配列はカスケードの順で配列より前に決まる（物理配列のレベルは
+   * `allowedLevels`はglobal・workspace・layout。物理配列はカスケードの順で配列より前に決まる（物理配列のレベルは
    * 物理配列そのものを決める項目には置けず、打ち方も物理配列とは独立なので、どちらも許さない）。
-   * 優先は 配列の上書き ＞ 全体の値 ＞ 既定。配列が組み込みの推奨の物理配列を持つことはなく、
+   * 優先は 配列の上書き ＞ Workspaceの値 ＞ 全体の値 ＞ 既定。配列が組み込みの推奨の物理配列を持つことはなく、
    * 配列ごとに変えたい人が、条件のモーダルの「この配列だけ別に」で自分で指定する（オーナー決定 #655）。
    * Setupのレベルは、Setupが自分の物理配列を持つので許さない。
    *
@@ -226,7 +235,7 @@ export const SETTINGS_ITEMS = {
    */
   defaultShapeId: defineItem<string>({
     id: 'defaultShapeId',
-    allowedLevels: GLOBAL_LAYOUT,
+    allowedLevels: GLOBAL_WORKSPACE_LAYOUT,
     defaultValue: DEFAULT_SHAPE_ID,
     isApplicable: (context) => context.targetKind === 'layout',
     validate: (value, context) => {
@@ -281,17 +290,39 @@ export function resetSettingsItem(
  * 配列を対象にした時の「既定の物理配列」を単独で読む。`resolveSettings`（`resolveCascade`）を
  * 経由しない理由は`SETTINGS_ITEMS.defaultShapeId`のコメント参照: 配列を対象にした時の物理配列そのものを
  * 決める値なので、`CascadeContext`（物理配列が既に決まっている前提）を組み立てる前に必要になる。
- * 許可レベルはglobalとlayoutだけで、`defaultValue`もcontext非依存の固定値なので、
- * `resolveCascade`と同じ「配列の上書き ＞ 全体の値 ＞ 既定」をここで直接重ねれば結果は一致する。
+ * 許可レベルはglobal・workspace・layoutだけで、`defaultValue`もcontext非依存の固定値なので、
+ * `resolveCascade`と同じ「配列の上書き ＞ Workspaceの値 ＞ 全体の値 ＞ 既定」をここで直接重ねれば結果は一致する。
+ * Workspaceの値は`overrides.workspace`（`withWorkspaceConditions`で差し込んだ時だけ）から読むので、
+ * 単体ページ（差し込まない）は全体の値だけを見る。
  */
 export function resolveDefaultShapeId(overrides: SettingsCascadeOverrides, layoutId: string): string {
   return readOverride(overrides, { kind: 'layout', layoutId }, 'defaultShapeId')
-    ?? resolveGlobalDefaultShapeId(overrides);
+    ?? resolveWorkspaceDefaultShapeId(overrides);
 }
 
-/** 全体のレベルの「既定の物理配列」（配列のレベルの値は見ない）。文脈バーのチップが読み書きする値。 */
+/** 全体のレベルの「既定の物理配列」（Workspace・配列のレベルの値は見ない）。単体ページの文脈バーのチップが読み書きする値。 */
 export function resolveGlobalDefaultShapeId(overrides: SettingsCascadeOverrides): string {
   return readOverride(overrides, { kind: 'global' }, 'defaultShapeId') ?? DEFAULT_SHAPE_ID;
+}
+
+/**
+ * Workspaceのレベルまでを見た「既定の物理配列」（配列のレベルの値は見ない）。Workspaceの文脈バーのチップが
+ * 読む値。Workspaceの値が無ければ全体の値と同じ。
+ */
+export function resolveWorkspaceDefaultShapeId(overrides: SettingsCascadeOverrides): string {
+  return readOverride(overrides, { kind: 'workspace' }, 'defaultShapeId') ?? resolveGlobalDefaultShapeId(overrides);
+}
+
+/**
+ * Workspaceの条件（`Workspace.conditions`）を、全体・配列・Setupの上書きに差し込む。Workspaceの画面だけが、
+ * 解決・書き込みの前にこれを通す。単体ページは通さないので、Workspaceのレベルを持たない。
+ * 条件が無ければ同じ参照を返す（Workspaceのレベルに値が無い時は解決が全体だけの時と同じで、参照も変えない）。
+ */
+export function withWorkspaceConditions(
+  overrides: SettingsCascadeOverrides,
+  conditions: LevelOverrides<SettingsValueMap> | undefined,
+): SettingsCascadeOverrides {
+  return withLevelOverrides(overrides, { kind: 'workspace' }, conditions);
 }
 
 export function resetSettingsLevel(
