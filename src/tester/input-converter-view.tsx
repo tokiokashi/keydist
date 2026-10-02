@@ -17,7 +17,7 @@ import {
   type PhysicalKeyboardStandard,
   type PhysicalShape,
 } from '#input/shapes/geometry.ts';
-import { SHAPE_GROUP_LABEL } from '#input/shapes/shape-groups.ts';
+import { groupShapes } from '#input/shapes/shape-groups.ts';
 import {
   sanitizeGeometrySettings,
 } from '#input/shapes/settings.ts';
@@ -105,22 +105,9 @@ const INPUT_LAYOUTS = [
   JIS_KANA,
 ];
 
-const ANSI_GEOMETRY_SHAPES = [
-  PHYSICAL_SHAPES['row-staggered'],
-  PHYSICAL_SHAPES['column-staggered'],
-  PHYSICAL_SHAPES.ortholinear,
-  PHYSICAL_SHAPES['split-ortholinear'],
-] as const;
-const JIS_GEOMETRY_SHAPES = [
-  PHYSICAL_SHAPES['jis-row-staggered'],
-  PHYSICAL_SHAPES['jis-column-staggered'],
-  PHYSICAL_SHAPES['jis-ortholinear'],
-  PHYSICAL_SHAPES['jis-split-ortholinear'],
-] as const;
-const PRESET_GEOMETRY_SHAPES = [
-  ...ANSI_GEOMETRY_SHAPES,
-  ...JIS_GEOMETRY_SHAPES,
-];
+// 組み込みの物理配列は定義の登録順（グループ内はロウ → オーソ → オーソ分割 → カラム）のまま全部使う。
+// ANSI・JISの振り分けは選択欄の側で groupShapes が行うので、ここに id を手で並べない。
+const PRESET_GEOMETRY_SHAPES = Object.values(PHYSICAL_SHAPES);
 const JIS_BROWSER_BINDINGS: BrowserKeyBindingOverrides = {
   Backslash: 'r2c11',
   IntlYen: 'r0c12',
@@ -1019,23 +1006,13 @@ export function InputConverterView() {
                   value={geometryId}
                   onChange={(event) => setGeometryId(event.target.value)}
                 >
-                  <optgroup label={SHAPE_GROUP_LABEL.ansi}>
-                    {ANSI_GEOMETRY_SHAPES.map((shape) => (
-                      <option key={shape.id} value={shape.id}>{shape.name}</option>
-                    ))}
-                  </optgroup>
-                  <optgroup label={SHAPE_GROUP_LABEL.jis}>
-                    {JIS_GEOMETRY_SHAPES.map((shape) => (
-                      <option key={shape.id} value={shape.id}>{shape.name}</option>
-                    ))}
-                  </optgroup>
-                  {userGeometryShapes.length > 0 ? (
-                    <optgroup label={SHAPE_GROUP_LABEL.user}>
-                      {userGeometryShapes.map((shape) => (
+                  {groupShapes(geometryShapes).map((group) => (
+                    <optgroup key={group.key} label={group.label}>
+                      {group.shapes.map((shape) => (
                         <option key={shape.id} value={shape.id}>{shape.name}</option>
                       ))}
                     </optgroup>
-                  ) : null}
+                  ))}
                 </select>
               </label>
             </div>

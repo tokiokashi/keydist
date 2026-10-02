@@ -20,6 +20,20 @@ test('グループは名前の文字列に依らず、定義の規格で決ま�
   assert.deepEqual(groupShapes([renamed]).map((g) => g.key), ['jis']);
 });
 
+test('組み込みの物理配列のグループ内の並びは、ロウ → オーソ → オーソ分割 → カラム', () => {
+  for (const g of groupShapes(Object.values(PHYSICAL_SHAPES))) {
+    assert.deepEqual(
+      g.shapes.map((s) => s.name.split('（')[0]),
+      ['ロウスタッガード', 'オーソリニア', 'オーソリニア', 'カラムスタッガード'],
+    );
+  }
+});
+
+test('カラムスタッガードの名前はオーソリニアの分割と同じ「分割」で揃う', () => {
+  assert.equal(PHYSICAL_SHAPES['column-staggered'].name, 'カラムスタッガード（ANSI・分割）');
+  assert.equal(PHYSICAL_SHAPES['jis-column-staggered'].name, 'カラムスタッガード（JIS・分割）');
+});
+
 test('組み込みでない物理配列は自作のグループに入り、空のグループは返さない', () => {
   const user = { id: 'user-1', name: 'JIS風の自作' };
   const groups = groupShapes([user, PHYSICAL_SHAPES['row-staggered']]);
