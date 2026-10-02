@@ -14,8 +14,16 @@ import type { WorkspaceLayout, WorkspaceLayoutNode } from './workspace-layout.ts
  * この層はそれらの値を持たない。単位はすべてrem。
  */
 export interface BoardPolicy {
-  /** ペイン1つの高さの下限 [rem]（見出し・余白を含む）。 */
+  /**
+   * ペイン1つの高さの下限 [rem]（見出し・余白を含む）。ペインを足す時に板を伸ばす目安と、高さの配分の比に使う。
+   * 人が板の下端のつまみで縮める下限には使わない（`minPaneRem`）。
+   */
   readonly floorRemOfAnalyzer: (analyzerId: string) => number;
+  /**
+   * 人が縮められるペイン1つの高さ [rem]。これを割ると、並べる面（Dockview）がペインを縮められない。
+   * 下限（`floorRemOfAnalyzer`）を割ったペインは、ペインの中でスクロールして受ける。
+   */
+  readonly minPaneRem: number;
   /** 板の外周の余白（上下の合計）[rem]。 */
   readonly paddingRem: number;
   /** 縦に並ぶペインの間の余白 [rem]。 */
@@ -188,7 +196,10 @@ export function fitLibraryBoard(
 /** つまみで伸ばせる上限を、1画面の何倍にするか。 */
 const BOARD_MAX_SCREENS = 4;
 
-/** どのペインも下限を満たす最小の板の高さ [rem]（各ペインの下限の和 + 間の余白 + 外周の余白）。比は見ない。ペインが無ければ0。 */
+/**
+ * 各ペインを`floorRemOf`まで縮めた時の板の高さ [rem]（その和 + 間の余白 + 外周の余白）。比は見ない。ペインが無ければ0。
+ * 人がつまみで縮める下限には、ペインを足す目安の下限ではなく、縮められる限界（`BoardPolicy.minPaneRem`）を渡す（#896）。
+ */
 export function minBoardHeightRem(
   layout: WorkspaceLayout,
   floorRemOf: (paneId: string) => number,
@@ -209,9 +220,10 @@ export interface BoardResizeBounds {
 }
 
 /**
- * 板の高さの範囲。縮める下限は「ペインの下限の和」と「1画面」の大きい方で、1画面より小さくはならない（板は画面の高さを下回らない）。
- * ただし今の高さ（`currentRem`）が下限の和を割っている時（自動で伸ばす時は変わった列だけを数えるので起きる）は、
- * その今の高さまで。操作しただけで板が跳ね上がらないようにする。
+ * 板の高さの範囲。縮める下限は「ペインを縮められる限界の和」（`minRem`）と「1画面」の大きい方で、1画面より小さくはならない
+ * （板は画面の高さを下回らない）。ペインを足す目安の下限（Analyzerごと）は縮める下限に使わない。目安を割ったペインは
+ * ペインの中でスクロールするので、人が縮めてよい（#896）。
+ * 今の高さ（`currentRem`）が`minRem`を割っている時は、その今の高さまで。操作しただけで板が跳ね上がらないようにする。
  */
 export function boardResizeBounds(minRem: number, oneScreenRem: number, currentRem: number): BoardResizeBounds {
   const floor = Math.max(minRem, oneScreenRem);

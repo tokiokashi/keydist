@@ -29,3 +29,13 @@ test('どのペインの下限もDockviewの最小の高さ（6.25rem）以上�
     }
   }
 });
+
+test('縮められるペインの高さはDockviewの最小の高さ（6.25rem）。ペインの下限より低く、タブの有無によらない（#896）', () => {
+  for (const hideTabs of [false, true]) {
+    const policy = workspaceBoardPolicy(hideTabs);
+    assert.equal(policy.minPaneRem, 6.25);
+    for (const id of ['blank', 'bigram-flow', 'comparison', 'n-sensitivity']) {
+      assert.ok(policy.minPaneRem <= policy.floorRemOfAnalyzer(id), `${id} (hideTabs=${hideTabs})`);
+    }
+  }
+});

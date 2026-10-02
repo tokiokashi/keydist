@@ -4,7 +4,7 @@ import { BOARD_PADDING_REM, PANE_GAP_REM } from '../src/hosts/workspace/board-sp
 
 /**
  * 板の下端のつまみ（#833）。ドラッグ・キーボードで板の高さを変え、中のペインは比を保って伸び縮みする。
- * 下限（ペインの下限の和・1画面）で止まり、保存され、ダブルクリックで1画面（自動）へ戻る。縦積み（スマホ幅）には出ない。
+ * 下限（1画面。ペインの下限の和は割ってよい）で止まり、保存され、ダブルクリックで1画面（自動）へ戻る。縦積み（スマホ幅）には出ない。
  */
 
 const REM = 16;
@@ -140,18 +140,79 @@ test('下端のつまみをドラッグすると板が伸び、ペインは比�
   expect(Math.abs((await areaHeight(page)) / REM - stored)).toBeLessThan(0.1);
 });
 
-test('縮める時は、ペインの下限の和で止まる。1画面より小さくはならない', async ({ page }) => {
-  // 下限の和 + 余白（縦3段）。1440×900の1画面より高い
-  const minRem = floorOf('bigram-flow') + floorOf('n-sensitivity') + floorOf('comparison') + PANE_GAP_REM * 2 + BOARD_PADDING_REM;
+test('縮める時は、ペインの下限の和を割ってもよい。止まるのは1画面で、Dockviewの最小の高さを割らない（#896）', async ({ page }) => {
+  // 縦3段の下限の和 + 余白は1440×900の1画面より高い。以前はここで止まり、1画面にも縮められなかった
+  const floorSumRem = floorOf('bigram-flow') + floorOf('n-sensitivity') + floorOf('comparison') + PANE_GAP_REM * 2 + BOARD_PADDING_REM;
   await openWorkspace(page, [flow('f'), nSens('n'), comparison('c')], column(group('f', 2.6), group('n', 1.7), group('c', 1.5)), WIDE, { boardHeightRem: 110 });
   await waitForDock(page, 3);
   expect(Math.abs((await areaHeight(page)) / REM - 110)).toBeLessThan(0.1);
+  expect(floorSumRem).toBeGreaterThan(900 / REM);
 
   await dragHandle(page, -3000);
-  await expect.poll(async () => (await areaHeight(page)) / REM).toBeLessThan(minRem + 0.2);
-  expect(await storedBoardHeight(page)).toBeGreaterThanOrEqual(minRem - 0.05);
-  expect((await areaHeight(page)) / REM).toBeGreaterThanOrEqual(minRem - 0.05);
-  await expect(handle(page)).toHaveAttribute('aria-valuemin', String(Math.round(minRem * 100) / 100));
+  // 1画面まで縮み、保存が消える（自動に戻る）
+  await expect.poll(() => storedBoardHeight(page)).toBeUndefined();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
+  await waitForSettledLayout(page);
+  expect((await areaHeight(page)) / REM).toBeLessThan(floorSumRem - 1);
+  // どのペインもDockviewの最小の高さ（100px）は割らない。下限を割った分は、ペインの中でスクロールする
+  for (const height of await groupHeights(page)) expect(height).toBeGreaterThanOrEqual(90);
+  const scrolls = await page.evaluate(() => [...document.querySelectorAll('.workspace-pane')].map((el) => el.scrollHeight > el.clientHeight));
+  expect(scrolls.some(Boolean)).toBe(true);
+  const oneScreenRem = Number(await handle(page).getAttribute('aria-valuenow'));
+  await expect(handle(page)).toHaveAttribute('aria-valuemin', String(oneScreenRem));
+});
+
+test('縦に並べたペインの境目をドラッグで動かせる。板が1画面まで縮んでいても動き、再読み込みでも残る（#896）', async ({ page }) => {
+  test.setTimeout(60_000);
+  // 右の列にBigram Flowを縦に2つ。下限の和（約1070px）が1画面（900px）を超える構成
+  const panes = [nSens('n'), flow('a'), flow('b')];
+  const layout = { kind: 'split', direction: 'row', weight: 1, children: [group('n'), column(group('a'), group('b'))] };
+  await openWorkspace(page, panes, layout, { width: 1600, height: 900 }, { boardHeightRem: 66.96 });
+  await waitForDock(page, 3);
+  await dragHandle(page, -3000);
+  await expect.poll(() => storedBoardHeight(page)).toBeUndefined();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
+  await waitForSettledLayout(page);
+
+  const rightHeights = () => page.evaluate(() => (
+    [...document.querySelectorAll('.dv-groupview')]
+      .map((el) => ({ left: el.getBoundingClientRect().left, top: el.getBoundingClientRect().top, height: el.getBoundingClientRect().height }))
+      .filter((g) => g.left > 900)
+      .sort((a, b) => a.top - b.top)
+      .map((g) => g.height)
+  ));
+  const before = await rightHeights();
+  expect(before).toHaveLength(2);
+  // 板を縮めた直後の最初のドラッグが保存されること（以前は、板の高さが変わった後の最初の操作を窓の大きさの変化と取り違えて捨てていた）
+  for (const dy of [-150]) {
+    const sash = await page.evaluate(() => {
+      const el = [...document.querySelectorAll('.dv-sash')].find((s) => s.closest('.dv-split-view-container')?.classList.contains('dv-vertical'))!;
+      const r = el.getBoundingClientRect();
+      return { x: r.left + 200, y: r.top + r.height / 2 };
+    });
+    const heightsBefore = await rightHeights();
+    await page.mouse.move(sash.x, sash.y);
+    await page.mouse.down();
+    await page.mouse.move(sash.x, sash.y + dy, { steps: 12 });
+    await page.mouse.up();
+    await waitForSettledLayout(page);
+    const heightsAfter = await rightHeights();
+    expect(Math.abs(heightsAfter[0]! - heightsBefore[0]! - dy)).toBeLessThan(6);
+    // 境目を動かしても、板（と合計の高さ）は変わらない
+    expect(Math.abs(heightsAfter[0]! + heightsAfter[1]! - heightsBefore[0]! - heightsBefore[1]!)).toBeLessThan(3);
+  }
+  // 保存され、再読み込みで残る
+  const moved = await rightHeights();
+  await expect.poll(() => page.evaluate(() => {
+    const stored = JSON.parse(localStorage.getItem('keydist:workspaces') ?? '{}') as { workspaces?: { layout?: { children?: { children?: { weight: number }[] }[] } }[] };
+    const weights = stored.workspaces?.[0]?.layout?.children?.[1]?.children?.map((c) => c.weight) ?? [];
+    return weights.length === 2 && Math.abs(weights[0]! - weights[1]!) > 0.2;
+  })).toBe(true);
+  await page.reload();
+  await waitForHydration(page);
+  await waitForDock(page, 3);
+  const reloaded = await rightHeights();
+  expect(Math.abs(reloaded[0]! - moved[0]!)).toBeLessThan(6);
 });
 
 test('ペインが少なく下限の和が1画面より小さい時は、縮めると1画面に戻り、保存が消える', async ({ page }) => {

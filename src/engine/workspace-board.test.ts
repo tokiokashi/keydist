@@ -31,7 +31,7 @@ import type { WorkspaceLayoutNode } from './workspace-layout.ts';
 
 /** a=20rem・b=10rem・c=30rem（それ以外は10rem）。余白は外周2rem・段の間1rem。 */
 const FLOORS: Readonly<Record<string, number>> = { tall: 30, mid: 20, short: 10 };
-const policy: BoardPolicy = { floorRemOfAnalyzer: (id) => FLOORS[id] ?? 10, paddingRem: 2, gapRem: 1 };
+const policy: BoardPolicy = { floorRemOfAnalyzer: (id) => FLOORS[id] ?? 10, minPaneRem: 6, paddingRem: 2, gapRem: 1 };
 const geometry = { paddingRem: 2, gapRem: 1 };
 
 const group = (id: string, weight = 1): WorkspaceLayoutNode => ({ kind: 'group', paneIds: [id], weight });
@@ -367,6 +367,20 @@ test('つまみの下限: 各ペインの下限の和 + 間の余白 + 外周。
   // 重みが偏っていても和は同じ（30 + 20 + 10 + 間1×2 + 外周2）
   assert.equal(minBoardHeightRem(column(group('a', 9), group('b', 1), group('c', 1)), floors, geometry), 64);
   assert.equal(minBoardHeightRem(row(group('a'), column(group('b'), group('c'))), floors, geometry), 33);
+});
+
+test('つまみの下限は、ペインを足す目安の下限ではなく縮められる限界で数える。縦に並べると1画面を超える構成も1画面まで縮められる（#896）', () => {
+  // 30remのペインを縦に2つ。目安の下限で数えると 30 + 30 + 間1 + 外周2 = 63rem で、1画面（50rem）を縮められない
+  const stacked = column(group('a'), group('b'));
+  const byFloor = minBoardHeightRem(stacked, floorByPane({ a: 30, b: 30 }), geometry);
+  assert.equal(byFloor, 63);
+  assert.equal(boardResizeBounds(byFloor, 50, 63).minRem, 63);
+  // 縮められる限界（ここでは6rem）で数えれば 6 + 6 + 1 + 2 = 15rem で、下限は1画面になる
+  const byMinPane = minBoardHeightRem(stacked, () => policy.minPaneRem, policy);
+  assert.equal(byMinPane, 15);
+  assert.equal(boardResizeBounds(byMinPane, 50, 63).minRem, 50);
+  // 1画面まで縮めたら保存を消す（自動に戻る）
+  assert.equal(resolveBoardHeightRem(10, boardResizeBounds(byMinPane, 50, 63)), undefined);
 });
 
 test('つまみの範囲: 下限は1画面とペインの下限の和の大きい方。今の高さが下限を割っていれば今の高さまで', () => {

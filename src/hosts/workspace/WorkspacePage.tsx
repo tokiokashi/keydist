@@ -123,13 +123,12 @@ export function WorkspacePage({
   if (stacked && maximizedId !== undefined) setMaximizedId(undefined);
   // 板の高さの計算に渡す、ペインの下限と余白（ペインを足す・複製する・並びを変える時に板を伸ばす）
   const boardPolicy = useMemo(() => workspaceBoardPolicy(tabs === 'hide'), [tabs]);
-  // 板の下端のつまみで縮められる下限（各ペインの下限の和 + 余白）
+  // 板の下端のつまみで縮められる下限（各ペインを縮められる限界の和 + 余白）。ペインの下限（Analyzerごと）は使わない。
+  // 下限を割ったペインは、ペインの中でスクロールする
   const workspaceLayout = workspace?.layout;
-  const workspacePanes = workspace?.panes;
   const minBoardHeightRem = useMemo(() => {
-    const analyzerOf = new Map((workspacePanes ?? []).map((pane) => [pane.id, pane.analyzerId]));
-    return minBoardHeightRemOf(workspaceLayout, (paneId) => boardPolicy.floorRemOfAnalyzer(analyzerOf.get(paneId) ?? ''), boardPolicy);
-  }, [workspaceLayout, workspacePanes, boardPolicy]);
+    return minBoardHeightRemOf(workspaceLayout, () => boardPolicy.minPaneRem, boardPolicy);
+  }, [workspaceLayout, boardPolicy]);
   const flushLayoutRef = useRef<(() => void) | undefined>(undefined);
   const registerFlush = useCallback((flush: (() => void) | undefined) => {
     flushLayoutRef.current = flush;

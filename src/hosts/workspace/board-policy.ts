@@ -27,6 +27,8 @@ const TAB_BAR_REM = 2.6;
  * これより低い下限を板に渡しても、ペインはここまでしか縮まず、足りない分が隣のペインを押し出して下限を割らせる。
  */
 const DOCKVIEW_MIN_GROUP_HEIGHT_REM = 100 / 16;
+// 板の下端のつまみで縮める下限（`minPaneRem`）もこの値を使う。ペインの下限（`floorRemOfAnalyzer`）まで縮めさせると、
+// 縦に並べたペインの下限の和が1画面を超える構成（Bigram Flowを2つ縦に並べる等）で、板を1画面にも縮められない（#896）。
 
 /**
  * 余白のペインの下限。本体を持たないので、見出し（⋯の1行）とその周りの隙間だけ。2段になる見出しも持たないので、
@@ -42,6 +44,7 @@ export function workspaceBoardPolicy(hideTabs: boolean): BoardPolicy {
     floorRemOfAnalyzer: (analyzerId) => isBlankPane(analyzerId) ? blankFloorRem(hideTabs) : (
       (hideTabs ? PANE_CHROME_REM_TABS_HIDDEN : PANE_CHROME_REM + TAB_BAR_REM) + minBodyHeightRemOf(findWorkspaceAnalyzer(analyzerId) ?? {})
     ),
+    minPaneRem: DOCKVIEW_MIN_GROUP_HEIGHT_REM,
     paddingRem: BOARD_PADDING_REM,
     gapRem: PANE_GAP_REM,
   };

@@ -354,14 +354,14 @@ const BLANK_FLOOR_HIDDEN_REM = 100 / REM;
 const COMPARISON_FLOOR_HIDDEN_REM = 9.9 + 12;
 const blank = (id: string) => ({ id, analyzerId: 'blank', binding: { mode: 'none' } });
 
-test('タブを隠す表示で余白のペインを縦に重ねて板を下限まで縮めても、比較表の枠は下限を割らない', async ({ page }) => {
-  // 板の下限はアプリ自身に計算させる（保存値を書き込まない）。比は下限の比。
-  // 余白のペインの下限がDockviewの最小の高さより低いと、余白がそこまでしか縮まず、足りない分が比較表の枠を押し縮める。
-  // 下限の和は1画面（450px）より大きいので、つまみのHomeで下限まで縮めた時に効く
+test('タブを隠す表示で縦に重ねたペインを、つまみのHomeで縮められる限界まで縮めても、どのペインも板からはみ出さない', async ({ page }) => {
+  // 縮められる限界は、各ペインのDockviewの最小の高さ（100px）の和（#896。以前はAnalyzerごとの下限の和）。
+  // 余白のペイン5つと比較表の和は1画面（450px）より大きいので、Homeで1画面ではなくその限界まで縮む。
+  // その高さがDockviewの最小の高さより低いと、足りない分がはみ出して下のペインが板の外へ押し出される
   await openWorkspace(
     page,
-    [blank('b1'), blank('b2'), comparison('c')],
-    column(group('b1', BLANK_FLOOR_HIDDEN_REM), group('b2', BLANK_FLOOR_HIDDEN_REM), group('c', COMPARISON_FLOOR_HIDDEN_REM)),
+    [blank('b1'), blank('b2'), blank('b3'), blank('b4'), blank('b5'), comparison('c')],
+    column(group('b1', BLANK_FLOOR_HIDDEN_REM), group('b2', BLANK_FLOOR_HIDDEN_REM), group('b3', BLANK_FLOOR_HIDDEN_REM), group('b4', BLANK_FLOOR_HIDDEN_REM), group('b5', BLANK_FLOOR_HIDDEN_REM), group('c', COMPARISON_FLOOR_HIDDEN_REM)),
     { width: 1440, height: 450 },
     {},
     true,
@@ -379,7 +379,11 @@ test('タブを隠す表示で余白のペインを縦に重ねて板を下限�
   await expect(handle).toHaveAttribute('aria-valuenow', (await handle.getAttribute('aria-valuemin')) ?? '');
   await page.waitForTimeout(600);
   const m = await measure(page);
-  const cmp = m.groups.find((g) => g.analyzer === 'comparison')!;
-  // 枠の高さ（本体の高さは枠が下限を割っても変わらないので使えない）。枠線の分の2pxは許す
-  expect(cmp.height).toBeGreaterThanOrEqual(COMPARISON_FLOOR_HIDDEN_REM * REM - 2);
+  // どの枠もDockviewの最小の高さ（100px）から、ペインの間の余白に食われる分（数px）を引いた高さを割らず、
+  // 板の中に収まる（最後の枠の下端が板の下端を超えない）
+  for (const g of m.groups) expect(g.height).toBeGreaterThanOrEqual(90);
+  const last = m.groups[m.groups.length - 1]!;
+  expect(last.top + last.height).toBeLessThanOrEqual(m.docHeight + 1);
+  // 限界は1画面（450px）より高い
+  expect(m.area).toBeGreaterThan(450 + 100);
 });

@@ -348,7 +348,14 @@ export function WorkspaceDock(props: WorkspaceDockProps) {
   }, [applyLayout, commitLayout]);
 
   useEffect(() => {
-    const onDown = () => { pointerDownRef.current = true; };
+    const onDown = (event: Event) => {
+      pointerDownRef.current = true;
+      const onHandle = event.target instanceof Element && event.target.closest('.workspace-board-handle') !== null;
+      // 人が並びを変え始めた時の面の大きさを基準にする。板の高さがつまみで変わった後は、基準が古いまま残り、最初のドラッグが
+      // 「窓の大きさの変化に伴う並びの変化」として捨てられていた（#896。見た目は動くが保存されず、再読み込みで戻る）。
+      // 板のつまみを押している間は、板の大きさが変わって並びが比例して動くだけなので、基準を取り直さない
+      if (!onHandle) syncedSizeRef.current = areaSize();
+    };
     const onUp = () => { pointerDownRef.current = false; };
     const container = containerRef.current;
     container?.addEventListener('pointerdown', onDown, true);
