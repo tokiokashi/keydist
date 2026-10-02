@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { BLANK_PANE_META, WORKSPACE_ANALYZERS, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
 
 /**
- * ペインの追加。押すとAnalyzerと余白の一覧が開き、選んだペインを足す。
+ * ペインの追加。押すとAnalyzerと余白のペインの一覧が開き、選んだペインを足す。
  * 見た目はペインの⋯のメニューと同じ部品のCSS（`pane-frame.css`）を使う。
  */
 export function AddPaneMenu({

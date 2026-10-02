@@ -21,7 +21,7 @@ export function BlankWorkspacePane({
   return (
     <section className="pane-blank" aria-label={BLANK_PANE_META.name} data-blank-pane="true">
       <header className="pane-blank-header">
-        <h2 className={nameInTab ? 'pane-visually-hidden' : 'pane-blank-title'}>{BLANK_PANE_META.name}</h2>
+        <h2 className={nameInTab ? 'pane-frame-title pane-visually-hidden' : 'pane-frame-title'}>{BLANK_PANE_META.name}</h2>
         <PaneMenu paneName={BLANK_PANE_META.name} items={blankPaneMenuItems(runtime, pane.id)} />
       </header>
     </section>

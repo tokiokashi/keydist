@@ -26,7 +26,7 @@ export function WorkspacePaneView({
   readonly runtime: WorkspacePaneRuntime;
 }) {
   if (isBlankPane(pane.analyzerId)) {
-    // 余白は対象も解析設定も持たず、描画で失敗する要素も無いので、境界を挟まない
+    // 余白のペインは対象も解析設定も持たず、描画で失敗する要素も無いので、境界を挟まない
     return <BlankWorkspacePane pane={pane} runtime={runtime} />;
   }
   const entry = findWorkspaceAnalyzer(pane.analyzerId);

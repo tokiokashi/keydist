@@ -25,8 +25,8 @@ const BOARD_PADDING_REM = 1.5;
 const PANE_GAP_REM = 0.5;
 
 /**
- * 余白のペインの下限。本体を持たないので、見出し（⋯の1行）と余白だけ。2段になる見出しも持たないので、
- * タブを隠した表示でも1段分で足りる。余白は空きを埋めるものなので、Analyzerの本体の窓（12rem）は取らない。
+ * 余白のペインの下限。本体を持たないので、見出し（⋯の1行）とその周りの隙間だけ。2段になる見出しも持たないので、
+ * タブを隠した表示でも1段分で足りる。余白のペインは空きを埋めるものなので、Analyzerの本体の窓（12rem）は取らない。
  */
 function blankFloorRem(hideTabs: boolean): number {
   return PANE_CHROME_REM + (hideTabs ? 0 : TAB_BAR_REM);

@@ -337,7 +337,7 @@ export function WorkspacePage({
       >
         {workspace.panes.length === 0 || workspace.layout === undefined ? (
           <div className="workspace-empty" data-workspace-empty="true">
-            <p>Analyzerを追加して、並べて見る。</p>
+            <p>ペインを追加して、並べて見る。</p>
             <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} variant="empty" />
           </div>
         ) : (

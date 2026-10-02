@@ -15,7 +15,7 @@ test('ペインの下限は、見出し・余白とAnalyzerが宣言した本体
   assert.ok(Math.abs(hidden.floorRemOfAnalyzer('comparison') - (9.9 + 12)) < 1e-9);
 });
 
-test('余白のペインの下限は、見出しと余白だけ（Analyzerの本体の窓を取らない）。タブを隠しても2段にならない', () => {
+test('余白のペインの下限は、見出しとその周りの隙間だけ（Analyzerの本体の窓を取らない）。タブを隠しても2段にならない', () => {
   assert.ok(Math.abs(workspaceBoardPolicy(false).floorRemOfAnalyzer('blank') - (4.2 + 2.6)) < 1e-9);
   assert.ok(Math.abs(workspaceBoardPolicy(true).floorRemOfAnalyzer('blank') - 4.2) < 1e-9);
 });
