@@ -8,8 +8,9 @@ import {
   type TriggerActivationGrouping,
 } from '#input/semantics/index.ts';
 import {
+  promoteCascadeOverrideCommand,
   resetCascadeItemCommand,
-  resetCascadeItemsCommand,
+  resetCascadeItemsAtLevelsCommand,
   setCascadeOverrideCommand,
   type KeydistAssets,
 } from '#engine/commands.ts';
@@ -19,7 +20,7 @@ import {
   type SettingsItemId,
   type SettingsValueMap,
 } from '#engine/settings-items.ts';
-import { conditionLevelLabel, isChangedConditionRow, type ConditionSummaryRow, type ConditionValueNames } from './condition-summary.ts';
+import { conditionLevelLabel, type ConditionSummaryRow, type ConditionValueNames } from './condition-summary.ts';
 
 /**
  * 条件のモーダルが全体のレベルへ書き込む時の、純粋な部分（読み出し・書き込みコマンドの選び方・
@@ -66,9 +67,28 @@ export function resettableGlobalIds(
   return GLOBAL_EDITABLE_IDS.filter((id) => !hiddenIds.includes(id) && globalOverrideOf(overrides, id) !== undefined);
 }
 
-/** 全体のレベルの上書きを、モーダルに行がある項目だけまとめて消す（行の無い項目は消さない）。 */
-export function resetAllGlobalCommand(ids: readonly GlobalEditableId[]): Command<KeydistAssets> {
-  return resetCascadeItemsCommand(GLOBAL_LEVEL, ids);
+/** 行を出している項目のうち、今の配列のレベルに上書きがあるもの。 */
+export function resettableLayoutIds(
+  overrides: SettingsCascadeOverrides,
+  layoutId: string,
+  hiddenIds: readonly SettingsItemId[] = [],
+): readonly GlobalEditableId[] {
+  return GLOBAL_EDITABLE_IDS.filter((id) =>
+    !hiddenIds.includes(id) && canEditAtLayout(id) && layoutOverrideOf(overrides, layoutId, id) !== undefined);
+}
+
+/**
+ * 「すべて既定値に戻す」。全体の上書きと、今の配列の上書き（配列を対象にしている時）を、1コマンドで消す
+ * （元に戻すの1回で全部戻る）。行の無い項目と、他の配列・Setupの上書きは消さない。
+ */
+export function resetAllCommand(
+  globalIds: readonly GlobalEditableId[],
+  layout?: { readonly layoutId: string; readonly ids: readonly GlobalEditableId[] },
+): Command<KeydistAssets> {
+  return resetCascadeItemsAtLevelsCommand([
+    { level: GLOBAL_LEVEL, itemIds: globalIds },
+    ...(layout === undefined ? [] : [{ level: layoutLevel(layout.layoutId), itemIds: layout.ids }]),
+  ]);
 }
 
 /** 全体のレベルの上書き。無ければ`undefined`（既定値のまま）。 */
@@ -91,6 +111,53 @@ export function setGlobalCommand<K extends GlobalEditableId>(
   return JSON.stringify(next) === JSON.stringify(defaultValue)
     ? resetCascadeItemCommand(GLOBAL_LEVEL, id)
     : setCascadeOverrideCommand(GLOBAL_LEVEL, id, next);
+}
+
+/** 配列のレベルを指す。「この配列だけ別に」の書き込み先。 */
+export function layoutLevel(layoutId: string): CascadeLevel {
+  return { kind: 'layout', layoutId };
+}
+
+/** 配列のレベルへ書ける項目。`allowedLevels`から引くので、項目の定義を変えれば行の導線も追従する。 */
+export function canEditAtLayout(id: SettingsItemId): boolean {
+  return SETTINGS_ITEMS[id].allowedLevels.has('layout');
+}
+
+/** 配列のレベルの上書き。無ければ`undefined`（全体などの値を継承している）。 */
+export function layoutOverrideOf<K extends SettingsItemId>(
+  overrides: SettingsCascadeOverrides,
+  layoutId: string,
+  id: K,
+): SettingsValueMap[K] | undefined {
+  return readOverride(overrides, layoutLevel(layoutId), id);
+}
+
+/**
+ * 配列のレベルに書く。配列のレベルの手前までの値（`inherited`。全体・配列の推奨など）と同じ値を書く時は
+ * 上書きを消す。同じ値を残すと、継承しているだけなのに「配列で変更」と出てしまうため。
+ * 推奨を持つ配列は、推奨と違う値を選べば書き、推奨と同じ値へ戻せば消える（どちらも継承と一致する）。
+ */
+export function setLayoutCommand<K extends SettingsItemId>(
+  layoutId: string,
+  id: K,
+  next: SettingsValueMap[K],
+  inherited: SettingsValueMap[K],
+): Command<KeydistAssets> {
+  return JSON.stringify(next) === JSON.stringify(inherited)
+    ? resetCascadeItemCommand(layoutLevel(layoutId), id)
+    : setCascadeOverrideCommand(layoutLevel(layoutId), id, next);
+}
+
+/**
+ * 配列のレベルの値を全体へ移す（昇格）。全体へ書き、配列の上書きは消す。1コマンドなので元に戻すの1回で戻る。
+ * 全体へ書く値が既定値と同じなら、全体の上書きは消す（`setGlobalCommand`と同じ理由）。
+ */
+export function promoteToGlobalCommand<K extends GlobalEditableId>(
+  layoutId: string,
+  id: K,
+  defaultValue: SettingsValueMap[K],
+): Command<KeydistAssets> {
+  return promoteCascadeOverrideCommand(layoutLevel(layoutId), GLOBAL_LEVEL, id, defaultValue);
 }
 
 /**
@@ -161,7 +228,9 @@ export function overrideWinsNotices(
       notices.set(row.id, `この配列の推奨（${row.displayValue}）が優先されるため、全体を変えてもこの画面は変わらない`);
       continue;
     }
-    if (!isChangedConditionRow(row)) continue;
+    // 効かない行は理由が要らない。出どころが下のレベルなら、値が既定と同じ（「動作数の扱い」の1動作など）でも
+    // 全体の値には勝つので、変えた行かどうかでは絞らない。
+    if (!row.applicable) continue;
     if (row.origin.kind === 'default' || row.origin.kind === 'global') continue;
     notices.set(row.id, `${conditionLevelLabel(row.origin, names)}の値が優先されるため、全体を変えてもこの画面は変わらない`);
   }

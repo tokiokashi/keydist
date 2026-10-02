@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import type { FingerAssignment, PhysicalShape } from '#input/shapes/geometry.ts';
 import type { ChainInterpretation } from '#interpretation/structure/chain.ts';
@@ -24,9 +24,13 @@ import {
 import {
   ACTION_EXCEPTION_CLASSES,
   actionCountModeOf,
+  canEditAtLayout,
   classGroupingOf,
   globalOverrideOf,
+  layoutOverrideOf,
+  promoteToGlobalCommand,
   setGlobalCommand,
+  setLayoutCommand,
   staticDefaultOf,
   withActionCountMode,
   withClassGrouping,
@@ -34,13 +38,16 @@ import {
   type GlobalEditableId,
 } from './condition-edit.ts';
 import { ACTION_COUNT_TEXT, conditionDiagnosticText, type ConditionSummaryRow } from './condition-summary.ts';
+import { PaneMenu, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import './condition-editor.css';
 
 /**
- * 条件のモーダルの中身。全体（グローバル）のレベルの条件を、項目ごとの行で編集する
+ * 条件のモーダルの中身。全体（グローバル）のレベルの条件を、項目ごとの行で編集する。
+ * 対象が配列（Setupなら、その配列）の時は、行ごとに「この配列だけ別に」で配列のレベルの値も編集できる
  * （docs/architecture.md「条件の編集とURL」）。
  *
- * 行に出す値は**全体のレベルの値**（上書きが無ければ既定値）で、この画面で効いている値ではない。
+ * 行に出す値は、編集しているレベルの値（全体なら上書きが無ければ既定値、配列なら配列の上書きが無ければ
+ * 継承する値）で、この画面で効いている値とは限らない。
  * 下のレベル（配列・Setup）の上書きが勝っている時は、行の札（出どころ）と理由で分かるようにする。
  * 書き込みは`dispatch`のコマンドだけ（`condition-edit.ts`）。
  */
@@ -53,6 +60,11 @@ export interface ConditionEditorContext {
   readonly customFingerAssignments?: ReadonlyMap<string, FingerAssignment>;
   /** 自作のローマ字規則（組み込みに足して選べる）。 */
   readonly customRomajiRules?: readonly UserRomajiRule[];
+  /**
+   * 配列のレベルへ書く先。対象が配列、またはSetupの時に渡す（Setupなら、その配列）。
+   * 複数の対象を持つペインは渡さない（行が全体のレベルだけになる）。
+   */
+  readonly layout?: { readonly id: string; readonly name: string };
   /** 全体で変えても画面が変わらない行の理由（`overrideWinsNotices`）。 */
   readonly notices?: ReadonlyMap<SettingsItemId, string>;
   /** このペインが自分で動かす項目（N感度の先読みN）。全体の値として編集させない。 */
@@ -80,19 +92,49 @@ const ON_OFF = [
 ] as const;
 
 export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
-  const { overrides, dispatch } = editor;
+  const { overrides, dispatch, layout } = editor;
   const rowOf = (id: SettingsItemId) => rows.find((row) => row.id === id);
 
-  /** 既定と違う値を全体で持っているか。行の左線と札に使う。 */
-  const changed = (id: GlobalEditableId) => globalOverrideOf(overrides, id) !== undefined;
+  // 行ごとに、いま編集しているレベル。選ばなければ全体（配列の値が全体に勝っている行も、開いた時は
+  // 全体の値と、勝つ理由を見せる）。
+  const [chosenScope, setChosenScope] = useState<ReadonlyMap<SettingsItemId, 'global' | 'layout'>>(new Map());
+  const scopeOf = (id: SettingsItemId): 'global' | 'layout' => {
+    if (layout === undefined || !canEditAtLayout(id) || editor.hiddenIds?.includes(id)) return 'global';
+    return chosenScope.get(id) ?? 'global';
+  };
+  const chooseScope = (id: SettingsItemId, scope: 'global' | 'layout') => setChosenScope((current) => new Map(current).set(id, scope));
+
+  /** 既定と違う値を、いま編集しているレベルで持っているか。行の左線に使う。 */
+  const changed = (id: GlobalEditableId) => {
+    if (layout !== undefined && scopeOf(id) === 'layout') return layoutOverrideOf(overrides, layout.id, id) !== undefined;
+    return globalOverrideOf(overrides, id) !== undefined;
+  };
+
+  /**
+   * 行の入力と結ぶ。編集しているレベルが配列なら、値は配列の上書き（無ければ継承する値）で、
+   * 継承する値と同じ値へ戻せば配列の上書きが消える。全体なら全体の上書き（無ければ既定値）。
+   */
+  function scoped<K extends GlobalEditableId>(id: K, globalValue: SettingsValueMap[K], globalDefault: SettingsValueMap[K]): OptionBinding<SettingsValueMap[K]> {
+    if (layout !== undefined && scopeOf(id) === 'layout') {
+      const row = rowOf(id);
+      const inherited = (row === undefined ? globalValue : row.layoutBase) as SettingsValueMap[K];
+      return {
+        value: layoutOverrideOf(overrides, layout.id, id) ?? inherited,
+        defaultValue: inherited,
+        resetTarget: row?.hasLayoutRecommendation === true ? '推奨' : '全体の値',
+        onChange: (next) => dispatch(setLayoutCommand(layout.id, id, next, inherited)),
+      };
+    }
+    return {
+      value: globalValue,
+      defaultValue: globalDefault,
+      onChange: (next) => dispatch(setGlobalCommand(id, next, globalDefault)),
+    };
+  }
 
   function bind<K extends Exclude<GlobalEditableId, 'fingerAssignmentId'>>(id: K): OptionBinding<SettingsValueMap[K]> {
     const defaultValue = staticDefaultOf(id);
-    return {
-      value: globalOverrideOf(overrides, id) ?? defaultValue,
-      defaultValue,
-      onChange: (next) => dispatch(setGlobalCommand(id, next, defaultValue)),
-    };
+    return scoped(id, globalOverrideOf(overrides, id) ?? defaultValue, defaultValue);
   }
 
   const boolBinding = (id: 'sfbHomeCost' | 'preferOppositeThumb'): OptionBinding<'on' | 'off'> => {
@@ -100,8 +142,54 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     return {
       value: inner.value ? 'on' : 'off',
       defaultValue: inner.defaultValue ? 'on' : 'off',
+      ...(inner.resetTarget === undefined ? {} : { resetTarget: inner.resetTarget }),
       onChange: (next) => inner.onChange(next === 'on'),
     };
+  };
+
+  /**
+   * 行の編集先（全体か配列か）の切り替え。札の横に置く1つのメニューにまとめ、ボタンの文字で
+   * いま編集しているレベルを示す（行の高さを増やさない）。
+   */
+  const scopeMenu = (id: GlobalEditableId, label: string, target: { readonly id: string; readonly name: string }) => {
+    const hasOverride = layoutOverrideOf(overrides, target.id, id) !== undefined;
+    const atLayout = scopeOf(id) === 'layout';
+    // 移した後の継承値が今の値と一致しない行（推奨や、全体より上のレベルの値が勝つ行）は、移すと画面の値が
+    // 変わって移した値が消えるので出さない。
+    const stored = layoutOverrideOf(overrides, target.id, id);
+    const promotedBase = rowOf(id)?.promotedBase;
+    const promotable = stored !== undefined && promotedBase !== undefined && JSON.stringify(promotedBase) === JSON.stringify(stored);
+    const items: PaneMenuItem[] = atLayout
+      ? [
+        ...(promotable
+          ? [{
+            id: 'promote',
+            label: '全体へ移す',
+            description: `「${target.name}」の値を全体の値にして、この配列だけの値は消す`,
+            onSelect: () => {
+              dispatch(promoteToGlobalCommand(target.id, id, globalDefaultOf(id) as never));
+              chooseScope(id, 'global');
+            },
+          }]
+          : []),
+        { id: 'global', label: '全体を編集', onSelect: () => chooseScope(id, 'global') },
+      ]
+      : [{
+        id: 'layout',
+        label: hasOverride ? 'この配列の値を編集' : 'この配列だけ別に',
+        onSelect: () => chooseScope(id, 'layout'),
+      }];
+    return (
+      <PaneMenu
+        paneName={label}
+        label={`${label}の編集先: ${atLayout ? 'この配列' : '全体'}`}
+        title={atLayout ? `「${target.name}」の値を編集している` : '全体の値を編集している'}
+        text={atLayout ? 'この配列' : '全体'}
+        className="condition-scope-menu"
+        data={{ 'data-condition-scope': atLayout ? 'layout' : 'global' }}
+        items={items}
+      />
+    );
   };
 
   /** 行の外枠。左線（全体で変えた行）・効かない行・下のレベルが勝つ理由をここで共通に持つ。 */
@@ -112,7 +200,8 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     const diagnostics = (summary?.diagnostics ?? [])
       .map((diagnostic) => (summary === undefined ? undefined : conditionDiagnosticText(summary, diagnostic)))
       .filter((text): text is string => text !== undefined);
-    const notice = editor.notices?.get(id);
+    // 配列の値を編集している行では、配列の値が全体に勝つ理由は要らない（いま見ているのがその値）。
+    const notice = scopeOf(id) === 'layout' ? undefined : editor.notices?.get(id);
     return (
       <div
         key={id}
@@ -121,7 +210,12 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
         data-changed={changed(id) || undefined}
         data-not-applicable={notApplicable || undefined}
       >
-        {content(<OriginBadge id={id} row={summary} changedHere={changed(id)} />)}
+        {content(
+          <>
+            <OriginBadge id={id} row={summary} changedHere={changed(id) || summary?.origin.kind === 'global'} />
+            {layout !== undefined && canEditAtLayout(id) && !notApplicable ? scopeMenu(id, summary?.label ?? id, layout) : null}
+          </>,
+        )}
         {notApplicable ? <p className="condition-row-flag">この配列・Setupでは効かない</p> : null}
         {notice === undefined ? null : <p className="condition-row-notice" data-condition-notice="true">{notice}</p>}
         {diagnostics.map((text, index) => <p key={index} className="condition-row-diagnostic">{text}</p>)}
@@ -143,16 +237,13 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
   // 指の割当の既定は物理配列で決まる。ここで見せる既定は、全体の既定の物理配列で決まる値。
   const shapeForDefault = editor.shapes.get(shapeBinding.value) ?? editor.shapes.get(DEFAULT_SHAPE_ID);
   const derivedFingerId = shapeForDefault === undefined ? fingerChoices[0]?.value ?? '' : defaultFingerAssignmentId(shapeForDefault);
-  const fingerOverride = globalOverrideOf(overrides, 'fingerAssignmentId');
-  const fingerValue = fingerOverride ?? derivedFingerId;
-  if (!fingerChoices.some((choice) => choice.value === fingerValue)) {
-    fingerChoices.unshift({ value: fingerValue, label: '（見つからない指の割当）' });
+  const fingerBinding = scoped('fingerAssignmentId', globalOverrideOf(overrides, 'fingerAssignmentId') ?? derivedFingerId, derivedFingerId);
+  if (!fingerChoices.some((choice) => choice.value === fingerBinding.value)) {
+    fingerChoices.unshift({ value: fingerBinding.value, label: '（見つからない指の割当）' });
   }
-  const fingerBinding: OptionBinding<string> = {
-    value: fingerValue,
-    defaultValue: derivedFingerId,
-    onChange: (next) => dispatch(setGlobalCommand('fingerAssignmentId', next, derivedFingerId)),
-  };
+  /** 全体のレベルでの既定値。配列の値を全体へ移す時、これと同じなら全体の上書きは持たない。 */
+  const globalDefaultOf = (id: GlobalEditableId): unknown =>
+    id === 'fingerAssignmentId' ? derivedFingerId : staticDefaultOf(id);
 
   const windowBinding = bind('windowSize');
   const holdBinding = bind('triggerRealizationPolicy');
@@ -233,6 +324,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
               binding={{
                 value: holdBinding.value.useHold ? 'on' : 'off',
                 defaultValue: holdBinding.defaultValue.useHold ? 'on' : 'off',
+                ...(holdBinding.resetTarget === undefined ? {} : { resetTarget: holdBinding.resetTarget }),
                 onChange: (next) => holdBinding.onChange({ useHold: next === 'on' }),
               }}
               choices={[{ value: 'on', label: 'する' }, { value: 'off', label: 'しない' }]}
@@ -246,9 +338,12 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
                 label="動作数の扱い"
                 binding={{
                   value: actionMode,
-                  defaultValue: 'combined',
-                  // 既定へ戻す操作（value === default）は例外ごと消えるよう、写像側で正規化する。
-                  onChange: (next) => actionBinding.onChange(withActionCountMode(actionBinding.value, next)),
+                  defaultValue: actionCountModeOf(actionBinding.defaultValue),
+                  ...(actionBinding.resetTarget === undefined ? {} : { resetTarget: actionBinding.resetTarget }),
+                  // 既定（配列の値の編集中は継承する値）へ戻す操作は、例外ごと戻るよう、戻す先の値から組み直す。
+                  onChange: (next) => actionBinding.onChange(
+                    withActionCountMode(next === actionCountModeOf(actionBinding.defaultValue) ? actionBinding.defaultValue : actionBinding.value, next),
+                  ),
                 }}
                 choices={[
                   { value: 'combined', label: ACTION_COUNT_TEXT.combined },

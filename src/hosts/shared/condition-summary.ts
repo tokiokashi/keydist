@@ -59,6 +59,14 @@ export interface ConditionSummaryRow {
    * 別々の自作どうしを区別できない。対象どうしの差（`multiTargetConditionSummary`）はこちらで比べる。
    */
   readonly valueKey: string;
+  /** この画面で効く値そのもの。配列のレベルの編集が、書く前の値を出すのに使う。 */
+  readonly value: unknown;
+  /** 配列のレベルの上書きを除いた時の値（`ResolvedItem.layoutBase`）。配列のレベルの編集の「継承する値」。 */
+  readonly layoutBase: unknown;
+  /** 配列が推奨を持つか（`layoutBase`が推奨か）。配列の値を戻す先の呼び名に使う。 */
+  readonly hasLayoutRecommendation: boolean;
+  /** 配列の上書きを全体へ移した後の継承値（`ResolvedItem.promotedBase`）。 */
+  readonly promotedBase?: unknown;
   readonly origin: ResolvedOrigin;
   /** `origin`を画面に出す文言（「既定値」「上書き: 配列「QWERTY」」等）。idは名前へ引いてある。 */
   readonly originLabel: string;
@@ -198,6 +206,10 @@ export function traceConditionSummary(
       format,
       displayValue,
       valueKey: valueKeyOf(id, resolved.value, displayValue),
+      value: resolved.value,
+      layoutBase: resolved.layoutBase,
+      hasLayoutRecommendation: resolved.hasLayoutRecommendation,
+      ...(resolved.promotedBase === undefined ? {} : { promotedBase: resolved.promotedBase }),
       origin: resolved.origin,
       originLabel: formatOrigin(resolved.origin, names),
       applicable: resolved.applicable,
@@ -438,6 +450,9 @@ function screenRow(
     format,
     displayValue,
     valueKey: valueKeyOf(template.id, value, displayValue),
+    value,
+    layoutBase: value,
+    hasLayoutRecommendation: false,
     origin,
     originLabel: formatOrigin(origin, names),
     applicable: true,

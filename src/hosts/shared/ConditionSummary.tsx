@@ -5,7 +5,7 @@ import {
   type ConditionSummaryRow,
   type ConditionTargetDiff,
 } from './condition-summary.ts';
-import { resetAllGlobalCommand, resettableGlobalIds } from './condition-edit.ts';
+import { resetAllCommand, resettableGlobalIds, resettableLayoutIds } from './condition-edit.ts';
 import { ConditionEditor, type ConditionEditorContext } from './ConditionEditor.tsx';
 import { PresetSection } from './PresetSection.tsx';
 
@@ -134,6 +134,8 @@ function ConditionModal({ rows, header, targetDiffs, editor, onClose }: Conditio
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const resettable = resettableGlobalIds(editor.overrides, editor.hiddenIds);
+  // 配列を対象にしている時は、その配列の上書きも一緒に消す（元に戻すの1回で全部戻る）。
+  const layoutResettable = editor.layout === undefined ? [] : resettableLayoutIds(editor.overrides, editor.layout.id, editor.hiddenIds);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -158,12 +160,19 @@ function ConditionModal({ rows, header, targetDiffs, editor, onClose }: Conditio
       <div className="condition-modal-inner">
         <header className="condition-modal-head">
           <h2 id={titleId}>条件</h2>
-          <span className="condition-modal-scope">全体の値を変える。すべての画面に効く</span>
+          <span className="condition-modal-scope">
+            {editor.layout === undefined
+              ? '全体の値を変える。すべての画面に反映される'
+              : `全体の値を変える。行ごとに「${editor.layout.name}」だけの値にもできる`}
+          </span>
           <button
             type="button"
             className="condition-modal-reset-all"
-            disabled={resettable.length === 0}
-            onClick={() => editor.dispatch(resetAllGlobalCommand(resettable))}
+            disabled={resettable.length === 0 && layoutResettable.length === 0}
+            onClick={() => editor.dispatch(resetAllCommand(
+              resettable,
+              editor.layout === undefined ? undefined : { layoutId: editor.layout.id, ids: layoutResettable },
+            ))}
           >
             すべて既定値に戻す
           </button>
