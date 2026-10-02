@@ -129,9 +129,9 @@ test('省いた後も、別の対象が同じ名前にならない（区別の�
 
 test('全対象が共有する部分を先に省き、区別の部分（ANSI・JISなど）を残す', () => {
   const labels = [
-    'カラムスタッガード（ANSI・分割想定）',
-    'カラムスタッガード（JIS・分割想定）',
-    'カラムスタッガード（ISO・分割想定）',
+    'カラムスタッガード（ANSI・分割）',
+    'カラムスタッガード（JIS・分割）',
+    'カラムスタッガード（ISO・分割）',
   ];
   const fitted = fitLabels(labels, measure, LEGEND_MAX_LABEL_WIDTH, 300);
   assert.ok(fitted[0]!.includes('ANSI'));
@@ -144,8 +144,8 @@ test('NICOLAのSetup 4件: 物理配列を区別する語（ロウ/カラム・A
   const labels = [
     'ロウスタッガード（ANSI）',
     'ロウスタッガード（JIS）',
-    'カラムスタッガード（ANSI・分割想定）',
-    'カラムスタッガード（JIS・分割想定）',
+    'カラムスタッガード（ANSI・分割）',
+    'カラムスタッガード（JIS・分割）',
   ];
   for (const hardMax of [270, 400]) {
     const fitted = fitLabels(labels, measure, LEGEND_MAX_LABEL_WIDTH, hardMax);

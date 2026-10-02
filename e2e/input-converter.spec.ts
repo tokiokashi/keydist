@@ -1246,6 +1246,13 @@ test('Tester selects preset and saved custom physical geometry', async ({ page }
 
   await expect(geometry.locator('optgroup[label="US配列（ANSI）"] option')).toHaveCount(4);
   await expect(geometry.locator('optgroup[label="JIS配列"] option')).toHaveCount(4);
+  // グループ内の並びはチップ・モーダルと同じ（ロウ → オーソ → オーソ分割 → カラム）
+  await expect(geometry.locator('optgroup[label="US配列（ANSI）"] option')).toHaveText([
+    'ロウスタッガード（ANSI）',
+    'オーソリニア（ANSI）',
+    'オーソリニア（ANSI・分割）',
+    'カラムスタッガード（ANSI・分割）',
+  ]);
   await expect(geometry.locator('option[value="shape-e2e-grid"]')).toHaveText('E2E Grid');
   await geometry.selectOption('shape-e2e-grid');
   await expect(keyboard).toHaveAttribute('data-geometry-id', 'shape-e2e-grid');
