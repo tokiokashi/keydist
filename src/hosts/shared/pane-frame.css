@@ -197,18 +197,19 @@ h2.pane-frame-title {
 }
 
 /*
- * 名前とⓘをWorkspaceのタブが持つペイン（data-name-in-tab）は、見出しを幅によらず1行にする
- * （対象・連動・条件・状態・解析設定・⋯）。上の2段は、タブの無い面（縦積み・タブを隠した表示）のためのもの。
+ * 名前とⓘを見出しの先頭に出すペイン（data-name-in-lead。Workspaceのペイン）は、名前の行を持たないので、
+ * 見出しを対象・連動・条件・状態・解析設定・⋯の1行にする（先頭を置く時の列と狭い時の2段は、この下）。
+ * 上の2段（名前・⋯ / 対象・解析設定）は、名前の行を持つ面のためのもの。
  * 特異度で上の規則（.pane-frame-headerの@container）に勝たせる。
  * 解析設定を絵だけにする規則は上の@containerの規則が、そのまま適用される（文字が入る幅は40rem超）。
  */
-.pane-frame[data-name-in-tab] .pane-frame-header {
+.pane-frame[data-name-in-lead] .pane-frame-header {
   grid-template-columns: minmax(0, 1fr) auto auto;
   grid-template-areas: "target settings menu";
   gap: 0.5rem;
 }
 
-.pane-frame[data-name-in-tab] .pane-frame-target {
+.pane-frame[data-name-in-lead] .pane-frame-target {
   flex-wrap: nowrap;
 }
 
@@ -217,7 +218,7 @@ h2.pane-frame-title {
  * 狭いペイン（30rem以下。スマホ幅の縦積みを含む）では、先頭のものを1段目に置き、操作を2段目へ送る。
  * 対象の選択を名前に食わせず、狭い幅でも対象を選べるようにする。
  */
-.pane-frame[data-name-in-tab] .pane-frame-header[data-lead] {
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] {
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   grid-template-areas: "lead target settings menu";
 }
@@ -230,7 +231,7 @@ h2.pane-frame-title {
 }
 
 @container pane (max-width: 30rem) {
-  .pane-frame[data-name-in-tab] .pane-frame-header[data-lead] {
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] {
     grid-template-columns: minmax(0, 1fr) auto auto;
     grid-template-areas:
       "lead lead lead"

@@ -48,7 +48,7 @@ export function isBlankPane(analyzerId: string): boolean {
   return analyzerId === BLANK_PANE_ID;
 }
 
-/** タブの名前とⓘの説明。Analyzerでも余白のペインでもない（今のアプリが知らない）idは`undefined`。 */
+/** 見出しの先頭の名前とⓘの説明。Analyzerでも余白のペインでもない（今のアプリが知らない）idは`undefined`。 */
 export function findWorkspacePaneMeta(analyzerId: string): { readonly name: string; readonly description: string } | undefined {
   return isBlankPane(analyzerId) ? BLANK_PANE_META : findWorkspaceAnalyzer(analyzerId);
 }

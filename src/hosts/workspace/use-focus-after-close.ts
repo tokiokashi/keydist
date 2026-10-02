@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type RefCallback } from 'react';
+import { pickAfterClose } from './focus-after-close.ts';
 
 /**
  * ペインを閉じた後に、フォーカスが`body`へ落ちないようにする（⋯の「閉じる」・Undoのどれで閉じても同じ規則）。
@@ -15,14 +16,6 @@ import { useEffect, useRef, useState, type RefCallback } from 'react';
 /** ペインに属する要素から、そのペインのid。 */
 function paneIdOf(element: Element): string | undefined {
   return element.closest('[data-pane-id]')?.getAttribute('data-pane-id') ?? undefined;
-}
-
-/** 閉じたペインの次（無ければ前）の、残っているペイン。 */
-function pickAfterClose(order: readonly string[], closed: string, remaining: readonly string[]): string | undefined {
-  const index = order.indexOf(closed);
-  if (index < 0) return undefined;
-  const alive = (id: string) => id !== closed && remaining.includes(id);
-  return order.slice(index + 1).find(alive) ?? order.slice(0, index).reverse().find(alive);
 }
 
 /**
@@ -57,7 +50,10 @@ export function useFocusAfterClose(paneIds: readonly string[]): RefCallback<HTML
       const next = pickAfterClose(last.order, last.paneId, paneIds);
       const target = next === undefined
         ? undefined
-        : root.querySelector<HTMLElement>(`.workspace-grid-item[data-pane-id="${CSS.escape(next)}"] .pane-menu-button, .workspace-stack-pane[data-pane-id="${CSS.escape(next)}"] .pane-menu-button`);
+        : root.querySelector<HTMLElement>(
+          // ペインの操作の⋯（連動の切り替えのボタンも同じ部品なので、見出しの右端の⋯に絞る）
+          `[data-pane-id="${CSS.escape(next)}"] .pane-frame-menu .pane-menu-button, [data-pane-id="${CSS.escape(next)}"] .pane-blank-header .pane-menu-button`,
+        );
       (target ?? root.querySelector<HTMLElement>('.workspace-add-pane-button'))?.focus({ preventScroll: true });
     };
     // ペインの部品・メニューの片付けが終わってから落ちるフォーカスもあるので、1フレーム後にもう一度見る

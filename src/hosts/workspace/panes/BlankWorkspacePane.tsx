@@ -1,7 +1,7 @@
 import { useContext } from 'react';
 import type { WorkspacePane } from '#engine/workspace.ts';
 import { PaneMenu } from '#hosts/shared/PaneHeaderParts.tsx';
-import { PaneHeaderLeadContext } from '#hosts/shared/pane-name-in-tab.ts';
+import { PaneHeaderLeadContext } from '#hosts/shared/pane-name-in-lead.ts';
 import { BLANK_PANE_META } from '../analyzer-registry.ts';
 import { blankPaneMenuItems, type WorkspacePaneRuntime } from '../pane-runtime.ts';
 

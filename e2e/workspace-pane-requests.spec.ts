@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openTextChip } from './context-bar-helper.ts';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
@@ -158,6 +159,8 @@ test('ペインを動かす・大きさを変えても、依頼は出ず、計�
   const changed = await readLog(page);
   // aとbは同じ組に連動しているので、bのぶんも依頼が出る（2ペイン × Traceと抽出）
   expect(changed.requests).toBe(4);
+  // 変わったのはaの組（aとb）。cは固定なので計算中にならない。数える位置は画面の読み順
+  expect(changed.stale).toEqual([0, 1]);
 });
 
 /** 保存した格子のうち、指定のペインの枠。 */
@@ -165,3 +168,47 @@ async function storedGridItem(page: Page, id: string): Promise<{ x: number; y: n
   const raw = await page.evaluate((key) => localStorage.getItem(key), WORKSPACES_KEY);
   return (JSON.parse(raw!).workspaces[0].grid as { id: string; x: number; y: number; w: number; h: number }[]).find((item) => item.id === id)!;
 }
+
+const SENTENCE = 'The quick brown fox jumps over the lazy dog while the five boxing wizards jump quickly. ';
+
+test('計算中に別のペインの大きさを変える（資産の保存）と、計算中だったペインの依頼は打ち切られず出し直されない', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  // 長いテキスト（英文1万字）で、計算が数秒かかるようにする。計算中の依頼が、並びの保存に
+  // 伴って打ち切られて出し直されると、依頼の数が倍になる
+  await openSeeded(page, {
+    ...WORKSPACE_BASE,
+    groups: [groupOf('g1', 'qwerty')],
+    panes: [follow('a', 'g1'), fixed('b', 'dvorak')],
+    grid: [{ id: 'a', x: 0, y: 0, w: 6, h: 16 }, { id: 'b', x: 6, y: 0, w: 6, h: 16 }],
+  });
+  await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(2, { timeout: 15_000 });
+
+  const body = (await openTextChip(page)).getByLabel('テキスト', { exact: true });
+  await body.fill(SENTENCE.repeat(120));
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.pane-frame').first()).toHaveAttribute('data-pane-status', 'stale', { timeout: 10_000 });
+  await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(2, { timeout: 30_000 });
+  await waitForInitialCompute(page);
+
+  // aを、まだ計算していない配列に選び直す。計算中（stale）のうちに、bの下の辺で大きさを変える
+  await resetLog(page);
+  const pane = page.locator('.pane-frame').first();
+  await pane.getByRole('button', { name: /^対象: / }).click();
+  await page.getByRole('dialog', { name: '対象の選択' }).locator('input[value="layout:workman"]').click();
+  await page.keyboard.press('Escape');
+  await expect(pane).toHaveAttribute('data-pane-status', 'stale');
+  const before = await storedGridItem(page, 'b');
+  const edge = (await page.locator('.workspace-grid-item[data-pane-id="b"] .react-resizable-handle-s').boundingBox())!;
+  await page.mouse.move(edge.x + edge.width / 2, edge.y + edge.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(edge.x + edge.width / 2, edge.y + edge.height / 2 + 100, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(async () => (await storedGridItem(page, 'b')).h).toBeGreaterThan(before.h);
+  // 保存が起きた時点でaは計算中のまま（保存が計算の終わりの後ろに回っていない）
+  await expect(pane).toHaveAttribute('data-pane-status', 'stale');
+  await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 30_000 });
+
+  const log = await readLog(page);
+  // workmanのTraceと抽出の2件だけ
+  expect(log.requests).toBe(2);
+});

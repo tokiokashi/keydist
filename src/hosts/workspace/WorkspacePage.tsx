@@ -130,7 +130,7 @@ export function WorkspacePage({
   }), [history, flushPending]);
 
   // Workspaceの保存はどれも`workspace`を作り直す。中身が同じテキストは同じ参照のまま渡して、
-  // テキストと関係の無い保存（アクティブなタブ・連動の組の対象）で全ペインが依頼を出し直さないようにする。
+  // テキストと関係の無い保存（並び・連動の組の対象）で全ペインが依頼を出し直さないようにする。
   const resolvedText = useStableResolvedText(useMemo(
     () => (workspace === undefined ? undefined : resolveTextSelection(workspace.text, assets.textLibrary)),
     [workspace, assets.textLibrary],

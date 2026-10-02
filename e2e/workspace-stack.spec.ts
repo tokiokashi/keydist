@@ -170,6 +170,17 @@ test('境目をまたいで狭めて戻しても、格子の位置・大きさ�
     const r = el.getBoundingClientRect();
     return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
   }));
+  // ライブラリの配置の動き（200ms）が済んでから測る（動いている最中の寸法を基準にしない）
+  const settled = async () => {
+    let last = JSON.stringify(await rects());
+    for (let stable = 0; stable < 4;) {
+      await page.waitForTimeout(100);
+      const now = JSON.stringify(await rects());
+      stable = now === last ? stable + 1 : 0;
+      last = now;
+    }
+  };
+  await settled();
   const before = await rects();
   const gridBefore = await storedGrid(page);
 
@@ -185,6 +196,7 @@ test('境目をまたいで狭めて戻しても、格子の位置・大きさ�
   await expect(page.locator('[data-workspace-stack="true"]')).toHaveCount(0);
   await page.waitForTimeout(600);
   expect(await storedGrid(page)).toBe(gridBefore);
+  await settled();
   const after = await rects();
   for (let n = 0; n < before.length; n += 1) {
     for (let k = 0; k < 4; k += 1) expect(Math.abs(after[n]![k]! - before[n]![k]!)).toBeLessThanOrEqual(3);
@@ -207,8 +219,8 @@ test('スマホ幅でも、ペインの追加・複製・閉じる・連動・�
   const comparisonPane = page.locator('.pane-frame').filter({ has: page.getByRole('heading', { level: 2, name: '比較表', exact: true }) });
   await comparisonPane.getByRole('button', { name: /の操作$/ }).click();
   await page.getByRole('menuitem', { name: /複製/ }).click();
-  await expect(comparisonPane).toHaveCount(2);
-  await expect(titles).toHaveCount(5);
+  // 右隣（x 12〜）は列に収まらず、真下（N感度）も塞がっているので、追加した Bigram Flow の下に入る
+  await expect(titles).toHaveText(['Bigram Flow', '比較表', 'N感度', 'Bigram Flow', '比較表']);
 
   // ⋯: 閉じる（複製した方）
   await comparisonPane.nth(1).getByRole('button', { name: /の操作$/ }).click();

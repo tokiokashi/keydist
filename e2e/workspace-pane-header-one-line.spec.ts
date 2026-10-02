@@ -219,7 +219,7 @@ test('個別画面の見出しは今のまま（名前の行・条件の行が�
     await waitForHydration(page);
     const pane = page.locator('.pane-frame');
     await expect(pane).toHaveAttribute('data-pane-status', 'ready', { timeout: 15_000 });
-    await expect(pane).not.toHaveAttribute('data-name-in-tab', /.*/);
+    await expect(pane).not.toHaveAttribute('data-name-in-lead', /.*/);
     await expect(pane.locator('.pane-condition-summary:not([data-compact])')).toContainText('すべて既定値');
     if (width === 1440) await expect(pane.locator('.pane-frame-name')).toBeVisible();
   }

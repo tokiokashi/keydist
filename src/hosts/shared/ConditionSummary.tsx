@@ -36,7 +36,7 @@ export interface ConditionSummaryProps {
   /** 全体のレベルの条件を書き換えるための手持ち。 */
   readonly editor: ConditionEditorContext;
   /**
-   * 見出しの1行に置く小さい形（Workspaceの、名前をタブに出すペイン）。広い時は「条件: 既定値」「条件: 3件変更」の
+   * 見出しの1行に置く小さい形（Workspaceの、名前を見出しの先頭に出すペイン）。広い時は「条件: 既定値」「条件: 3件変更」の
    * chip、狭い時（ペインの幅34rem以下）は絵と、既定と違う時の点だけ。文字は狭い時も読み上げ用に残す。
    * 変えた項目の中身はchipに出さず、押して開くモーダルと、hoverの説明が出す。
    */

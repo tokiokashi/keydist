@@ -6,7 +6,7 @@ import { createContext, type ReactNode } from 'react';
  * 見出しを「対象・連動・条件・解析設定・⋯」の1行にする。この面（個別画面・縦積みでない面）は
  * falseのままで、名前を枠の中に出す。
  */
-export const PaneNameInTabContext = createContext(false);
+export const PaneNameInLeadContext = createContext(false);
 
 /** 見出しの先頭にホストが置くもの（Workspaceのペインのつかみ所・名前・ⓘ）。 */
 export const PaneHeaderLeadContext = createContext<ReactNode>(null);

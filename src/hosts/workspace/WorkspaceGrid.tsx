@@ -3,7 +3,7 @@ import ReactGridLayout, { useContainerWidth, verticalCompactor, type Layout, typ
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { GRID_COLS, gridPaneIds, type GridItem, type WorkspaceGrid } from '#engine/workspace-grid.ts';
-import { PaneHeaderLeadContext, PaneNameInTabContext } from '#hosts/shared/pane-name-in-tab.ts';
+import { PaneHeaderLeadContext, PaneNameInLeadContext } from '#hosts/shared/pane-name-in-lead.ts';
 import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { GRID_MARGIN_PX, GRID_PADDING_PX, GRID_ROW_HEIGHT_PX, minGridSize } from './grid-metrics.ts';
 import './workspace-grid.css';
@@ -118,9 +118,9 @@ export function PaneShell({
   return (
     <div className="workspace-pane" data-pane-id={paneId} data-draggable={draggable || undefined}>
       <div className="workspace-pane-scroll">
-        <PaneNameInTabContext.Provider value>
+        <PaneNameInLeadContext.Provider value>
           <PaneHeaderLeadContext.Provider value={lead}>{children}</PaneHeaderLeadContext.Provider>
-        </PaneNameInTabContext.Provider>
+        </PaneNameInLeadContext.Provider>
       </div>
     </div>
   );

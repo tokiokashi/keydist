@@ -5,7 +5,7 @@ import { findWorkspaceAnalyzer, isBlankPane } from './analyzer-registry.ts';
 /**
  * 格子の升目の大きさ（画素）。ペインの高さは升目の整数倍になるので、升目を細かくして（28px）
  * 大きさを滑らかに選べるようにし、間（8px）で枠を分ける。
- * 値は実物を見て決める（試作）。変えると、保存した升目の数と実際の高さの対応が変わる。
+ * 値は実物を見て決めた。変えると、保存した升目の数と実際の高さの対応が変わる。
  */
 export const GRID_ROW_HEIGHT_PX = 28;
 export const GRID_MARGIN_PX = 8;
