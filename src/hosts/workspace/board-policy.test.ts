@@ -15,7 +15,17 @@ test('ペインの下限は、見出し・余白とAnalyzerが宣言した本体
   assert.ok(Math.abs(hidden.floorRemOfAnalyzer('comparison') - (9.9 + 12)) < 1e-9);
 });
 
-test('余白のペインの下限は、見出しとその周りの隙間だけ（Analyzerの本体の窓を取らない）。タブを隠しても2段にならない', () => {
+test('余白のペインの下限は、見出しとその周りの隙間だけ（Analyzerの本体の窓を取らない）。タブを隠しても2段にならず、Dockviewの最小の高さで頭打ち', () => {
   assert.ok(Math.abs(workspaceBoardPolicy(false).floorRemOfAnalyzer('blank') - (4.2 + 2.6)) < 1e-9);
-  assert.ok(Math.abs(workspaceBoardPolicy(true).floorRemOfAnalyzer('blank') - 4.2) < 1e-9);
+  // タブを隠すと見出しだけの4.2remはDockviewの最小の高さ（100px = 6.25rem）を下回るので、6.25remまで引き上げる
+  assert.ok(Math.abs(workspaceBoardPolicy(true).floorRemOfAnalyzer('blank') - 6.25) < 1e-9);
+});
+
+test('どのペインの下限もDockviewの最小の高さ（6.25rem）以上。タブの有無によらない', () => {
+  for (const hideTabs of [false, true]) {
+    const policy = workspaceBoardPolicy(hideTabs);
+    for (const id of ['blank', 'bigram-flow', 'comparison', 'n-sensitivity', 'unknown']) {
+      assert.ok(policy.floorRemOfAnalyzer(id) >= 6.25, `${id} (hideTabs=${hideTabs})`);
+    }
+  }
 });

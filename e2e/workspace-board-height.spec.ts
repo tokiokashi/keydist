@@ -30,6 +30,7 @@ async function openWorkspace(
   size: { width: number; height: number },
   extra: Record<string, unknown> = {},
   waitForDock = true,
+  query = '',
 ) {
   await page.setViewportSize(size);
   await page.addInitScript((value) => {
@@ -37,7 +38,7 @@ async function openWorkspace(
       localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
     }
   }, { id: 'board', name: '板の高さ', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, layout, ...extra });
-  await page.goto('/workspace/board');
+  await page.goto(`/workspace/board${query}`);
   await waitForHydration(page);
   if (!waitForDock) return;
   await expect(page.locator('.dv-groupview').first()).toBeVisible({ timeout: 15_000 });
@@ -346,4 +347,37 @@ test('縦積みの幅（760px以下）では板の高さを使わない', async 
   await expect(page.locator('.workspace-dock-area')).toHaveCount(0);
   const docHeight = await page.evaluate(() => document.documentElement.scrollHeight);
   expect(docHeight).toBeLessThan(300 * REM);
+});
+
+/** タブを隠す表示の余白のペインの下限。Dockviewのグループの最小の高さ（100px）に合わせてある（`board-policy.ts`）。 */
+const BLANK_FLOOR_HIDDEN_REM = 100 / REM;
+const COMPARISON_FLOOR_HIDDEN_REM = 9.9 + 12;
+/** 縮め切った時にDockviewが残すペインの高さ。最小の高さ100pxから、ペインの間の余白の分だけ引いた値になる（旧下限4.2rem=67pxなら割る）。 */
+const DOCKVIEW_MIN_PX = 94;
+const blank = (id: string) => ({ id, analyzerId: 'blank', binding: { mode: 'none' } });
+
+test('タブを隠す表示で余白のペインを縦に重ねて下限まで縮めても、余白のペインはDockviewの最小の高さを割らず、他のペインは下限を割らない', async ({ page }) => {
+  const floors = [BLANK_FLOOR_HIDDEN_REM, BLANK_FLOOR_HIDDEN_REM, COMPARISON_FLOOR_HIDDEN_REM];
+  // 各段を下限の比で並べ、板を「どの段も下限を割らない最小」にする（全段が下限ちょうど）
+  const weights = floors.map((f) => f);
+  await openWorkspace(
+    page,
+    [blank('b1'), blank('b2'), comparison('c')],
+    column(group('b1', weights[0]), group('b2', weights[1]), group('c', weights[2])),
+    { width: 1440, height: 900 },
+    { boardHeightRem: requiredRem(floors, weights) },
+    true,
+    '?tabs=hide',
+  );
+  const m = await measure(page);
+  expect(m.groups).toHaveLength(3);
+  for (const g of m.groups.filter((g) => g.analyzer === '')) expect(g.height).toBeGreaterThanOrEqual(DOCKVIEW_MIN_PX);
+  const cmp = m.groups.find((g) => g.analyzer === 'comparison')!;
+  expect(cmp.body, '比較表の本体').toBeGreaterThanOrEqual(12 * REM - 2);
+  // 余白のペインを下限まで縮めても、比較表は下限を割らない
+  await dragSash(page, 0, -2000);
+  await page.waitForTimeout(600);
+  const after = await measure(page);
+  for (const g of after.groups.filter((g) => g.analyzer === '')) expect(g.height).toBeGreaterThanOrEqual(DOCKVIEW_MIN_PX);
+  expect(after.groups.find((g) => g.analyzer === 'comparison')!.body).toBeGreaterThanOrEqual(12 * REM - 2);
 });
