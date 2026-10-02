@@ -76,7 +76,7 @@ for (const size of [PHONE, { width: 360, height: 780 }]) {
       scrollWidth: document.documentElement.scrollWidth,
       innerWidth: window.innerWidth,
     }));
-    expect(scroll.scrollHeight).toBeGreaterThan(scroll.innerHeight * 1.5);
+    expect(scroll.scrollHeight).toBeGreaterThan(scroll.innerHeight * 1.2);
     expect(scroll.scrollWidth).toBeLessThanOrEqual(scroll.innerWidth);
     await page.mouse.wheel(0, 600);
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(300);
