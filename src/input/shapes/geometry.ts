@@ -167,6 +167,7 @@ export type PhysicalKeyboardStandard = 'ansi' | 'jis';
 export type PhysicalTopology =
   | 'row-staggered'
   | 'ortholinear'
+  | 'split-ortholinear'
   | 'column-staggered';
 
 export type PresetGeometryKind =
@@ -174,6 +175,8 @@ export type PresetGeometryKind =
   | 'jis-row-staggered'
   | 'ortholinear'
   | 'jis-ortholinear'
+  | 'split-ortholinear'
+  | 'jis-split-ortholinear'
   | 'column-staggered'
   | 'jis-column-staggered';
 export type CustomGeometryKind = `custom:${string}`;
@@ -253,10 +256,10 @@ const ROW_STAGGER = [0, 0.5, 0.75, 1.25];
 /** column-staggeredの列ごとのyオフセット */
 const COLUMN_STAGGER = [0.34, 0.12, 0, 0.1, 0.3, 0.3, 0.1, 0, 0.12, 0.34];
 
-/** column-staggeredで左右の手の間に空ける量 */
+/** 分割する物理配列（column-staggered・split-ortholinear）で左右の手の間に空ける量 */
 const SPLIT_GAP = 2;
 
-/** column-staggeredが分割を始める列 */
+/** 分割する物理配列が分割を始める列 */
 const SPLIT_AT = 5;
 
 const DEFAULT_THUMBS: ThumbKeySpec[] = [
@@ -299,6 +302,27 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
     rowWidths: [...JIS_ROW_WIDTH],
     thumbs: DEFAULT_THUMBS,
   },
+  // ortholinearに分割（列5以降へ間隔を足す）だけを足した形。ピッチ・段ずれ・列オフセットは
+  // ortholinearと同じなので、同じ手の中の距離は変わらない。親指のyはortholinearと同じ。
+  // xは分割に従って動く（buildGeometryがxOfで求める）。
+  'split-ortholinear': {
+    id: 'split-ortholinear',
+    name: 'オーソリニア（ANSI・分割）',
+    pitchMm: 19.05,
+    rowWidths: ROW_WIDTH,
+    splitAt: SPLIT_AT,
+    splitGap: SPLIT_GAP,
+    thumbs: DEFAULT_THUMBS,
+  },
+  'jis-split-ortholinear': {
+    id: 'jis-split-ortholinear',
+    name: 'オーソリニア（JIS・分割）',
+    pitchMm: 19.05,
+    rowWidths: [...JIS_ROW_WIDTH],
+    splitAt: SPLIT_AT,
+    splitGap: SPLIT_GAP,
+    thumbs: DEFAULT_THUMBS,
+  },
   'column-staggered': {
     id: 'column-staggered',
     name: 'カラムスタッガード（ANSI・分割想定）',
@@ -332,6 +356,8 @@ export const isPresetGeometryKind = (value: unknown): value is PresetGeometryKin
   || value === 'jis-row-staggered'
   || value === 'ortholinear'
   || value === 'jis-ortholinear'
+  || value === 'split-ortholinear'
+  || value === 'jis-split-ortholinear'
   || value === 'column-staggered'
   || value === 'jis-column-staggered';
 
@@ -343,6 +369,7 @@ export const presetGeometryTopology = (
   kind: PresetGeometryKind,
 ): PhysicalTopology => {
   if (kind.endsWith('column-staggered')) return 'column-staggered';
+  if (kind.endsWith('split-ortholinear')) return 'split-ortholinear';
   if (kind.endsWith('ortholinear')) return 'ortholinear';
   return 'row-staggered';
 };

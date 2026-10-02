@@ -151,11 +151,12 @@ test('GeometryKind文字列はPHYSICAL_SHAPESから解決される。直接渡�
   near(byKind.homes.RT.x, byShape.homes.RT.x);
 });
 
-test('US/JIS × row/column/orthoの6 presetを相互変換できる', () => {
+test('US/JIS × row/column/ortho/split-orthoの8 presetを相互変換できる', () => {
   const topologies = [
     'row-staggered',
     'column-staggered',
     'ortholinear',
+    'split-ortholinear',
   ] as const;
 
   for (const topology of topologies) {
@@ -282,4 +283,51 @@ test('複数ある親指キーの間の移動は他の指と同じ規則で距�
   const t = generateTrace('x', l, geometry, opts);
   // ホーム（space）からthumb-r2（1u右）までの初回移動
   near(t.strokes[0].distance, 1, 'thumb-r2まで1u');
+});
+
+test('split-ortholinearはortholinearに分割だけを足した座標になり、同じ手の中の距離は変わらない', () => {
+  for (const [plain, split, assignment] of [
+    ['ortholinear', 'split-ortholinear', DEFAULT_FINGER_ASSIGNMENT],
+    ['jis-ortholinear', 'jis-split-ortholinear', JIS_FINGER_ASSIGNMENT],
+  ] as const) {
+    const a = buildGeometry(plain, assignment);
+    const b = buildGeometry(split, assignment);
+    assert.equal(b.pitchMm, a.pitchMm);
+    for (const [id, key] of a.keys) {
+      const moved = b.keys.get(id)!;
+      near(moved.y, key.y, `${id}.y`);
+      assert.equal(moved.finger, key.finger);
+      // 列5以降（右手側）だけが分割の間隔2uの分だけ右へ動く
+      const isRight = key.finger.startsWith('R');
+      near(moved.x, key.x + (isRight ? 2 : 0), `${id}.x`);
+    }
+    // 左手どうし・右手どうしのキー間隔は変わらない
+    const dist = (g: typeof a, p: string, q: string) =>
+      Math.hypot(g.keys.get(p)!.x - g.keys.get(q)!.x, g.keys.get(p)!.y - g.keys.get(q)!.y);
+    near(dist(b, 'f', 'g'), dist(a, 'f', 'g'));
+    near(dist(b, 'j', 'k'), dist(a, 'j', 'k'));
+    // 左右の境目（列4と列5）だけが2u開く
+    near(b.keys.get('h')!.x - b.keys.get('g')!.x, 3);
+  }
+});
+
+test('split-ortholinearの既定の指割り当て（列固定）は分割の位置で左右に分かれ、親指は分割に従って動く', () => {
+  for (const [kind, assignment] of [
+    ['split-ortholinear', DEFAULT_FINGER_ASSIGNMENT],
+    ['jis-split-ortholinear', JIS_FINGER_ASSIGNMENT],
+  ] as const) {
+    const g = buildGeometry(kind, assignment);
+    const split = PHYSICAL_SHAPES[kind].splitAt!;
+    for (const row of g.grid) {
+      for (const key of row) {
+        assert.equal(key.finger.startsWith('L'), key.col < split, `${key.id}`);
+      }
+    }
+    near(g.thumbs.LT.x, 3.5);
+    near(g.thumbs.RT.x, 5.5 + 2);
+    near(g.thumbs.LT.y, g.thumbs.RT.y);
+    // 左右のホームの間隔は、分割しない場合より分割の間隔の分だけ広い
+    const plain = buildGeometry(kind.replace('split-', '') as 'ortholinear', assignment);
+    near(g.homes.RI.x - g.homes.LI.x, plain.homes.RI.x - plain.homes.LI.x + 2);
+  }
 });

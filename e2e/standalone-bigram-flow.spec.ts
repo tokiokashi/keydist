@@ -110,6 +110,23 @@ test('条件のモーダル: すべて既定値に戻すで、行のある項目
   await expect(trigger).toContainText('同指連続のホーム復帰距離: OFF');
 });
 
+test('既定の物理配列にオーソリニア（分割）を選べて、図の物理配列と再読み込み後の選択に反映される', async ({ page }) => {
+  await page.goto('/standalone/bigram-flow');
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+  const chip = page.locator('.context-bar').getByLabel('既定の物理配列');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(chip.locator('option', { hasText: 'オーソリニア（ANSI・分割）' })).toHaveCount(1);
+  await expect(chip.locator('option', { hasText: 'オーソリニア（JIS・分割）' })).toHaveCount(1);
+
+  for (const id of ['split-ortholinear', 'jis-split-ortholinear']) {
+    await chip.selectOption(id);
+    await expect(flow).toHaveAttribute('data-geometry-id', id, { timeout: 10_000 });
+  }
+  await page.reload();
+  await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });
+  await expect(chip).toHaveValue('jis-split-ortholinear');
+});
+
 test('条件のモーダル: 既定の物理配列は文脈バーのチップと同じ値を書く', async ({ page }) => {
   await page.goto('/standalone/bigram-flow');
   await expect(page.locator('.pane-frame')).toHaveAttribute('data-pane-status', 'ready', { timeout: 10_000 });

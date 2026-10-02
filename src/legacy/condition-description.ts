@@ -27,6 +27,8 @@ const GEOMETRY_LABEL: Record<PresetGeometryKind | 'custom', string> = {
   'jis-row-staggered': 'ロウスタッガード（JIS 109）',
   ortholinear: 'オーソリニア（ANSI）',
   'jis-ortholinear': 'オーソリニア（JIS 109）',
+  'split-ortholinear': 'オーソリニア（ANSI・分割）',
+  'jis-split-ortholinear': 'オーソリニア（JIS・分割）',
   'column-staggered': 'カラムスタッガード（ANSI）',
   'jis-column-staggered': 'カラムスタッガード（JIS 109）',
   custom: 'カスタム物理配列',
