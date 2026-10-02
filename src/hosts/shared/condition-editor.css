@@ -162,6 +162,33 @@
   color: var(--text);
 }
 
+/* 行の編集先（全体か配列か）を切り替える小さい操作。値の入力より目立たせない。 */
+.condition-row-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+}
+
+.condition-row-scope button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  cursor: pointer;
+}
+
+.condition-row-scope button:hover,
+.condition-row-scope button:focus-visible {
+  text-decoration: underline;
+}
+
+.condition-row-scope-label {
+  color: var(--text-muted);
+}
+
 .condition-row-flag,
 .condition-row-notice,
 .condition-row-diagnostic {

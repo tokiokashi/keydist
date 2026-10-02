@@ -32,6 +32,12 @@ export interface ResolvedItem<T> {
    * 出どころ（`origin`）は上書きが無いので`default`のまま（推奨は利用者が変えた値ではない）。
    */
   readonly recommendationWins?: { readonly shadowed: readonly CascadeLevelKind[] };
+  /**
+   * 配列のレベルの上書きを除いた時の値（全体・物理配列・打ち方の値、配列の推奨、既定値のうち勝つもの）。
+   * 配列のレベルへ書く操作が「何を継承しているか」を示し、書いた値が継承と同じなら上書きを消せるようにする。
+   * 検証（`validate`）と適用可否の前の値で、配列・Setupの上書きは含まない。
+   */
+  readonly layoutBase: T;
 }
 
 export type ResolvedCascade<V> = { readonly [K in keyof V]: ResolvedItem<V[K]> };
@@ -75,6 +81,7 @@ function resolveItem(
   const recommended = item.layoutRecommendation?.(context);
   const lowerApplied: { readonly kind: CascadeLevelKind; readonly value: unknown }[] = [];
   let shadowed: readonly CascadeLevelKind[] = [];
+  let layoutBase = value;
   for (const level of levels) {
     // 配列の推奨は、配列のレベルの手前で下のレベルの値を置き換える。配列・Setupの上書きは
     // この後で重なるので、利用者の上書き＞推奨＞全体、の順になる。
@@ -93,6 +100,7 @@ function resolveItem(
       value = recommended;
       origin = { kind: 'default' };
     }
+    if (level.kind === 'layout') layoutBase = value;
     const stored = levelOverrides(overrides, level) as Record<string, unknown> | undefined;
     if (stored === undefined || !(itemId in stored)) continue;
     if (!item.allowedLevels.has(level.kind)) {
@@ -130,6 +138,7 @@ function resolveItem(
     origin,
     applicable,
     diagnostics,
+    layoutBase,
     ...(shadowed.length > 0 && origin.kind === 'default' ? { recommendationWins: { shadowed } } : {}),
   };
 }

@@ -59,6 +59,10 @@ export interface ConditionSummaryRow {
    * 別々の自作どうしを区別できない。対象どうしの差（`multiTargetConditionSummary`）はこちらで比べる。
    */
   readonly valueKey: string;
+  /** この画面で効く値そのもの。配列のレベルの編集が、書く前の値を出すのに使う。 */
+  readonly value: unknown;
+  /** 配列のレベルの上書きを除いた時の値（`ResolvedItem.layoutBase`）。配列のレベルの編集の「継承する値」。 */
+  readonly layoutBase: unknown;
   readonly origin: ResolvedOrigin;
   /** `origin`を画面に出す文言（「既定値」「上書き: 配列「QWERTY」」等）。idは名前へ引いてある。 */
   readonly originLabel: string;
@@ -198,6 +202,8 @@ export function traceConditionSummary(
       format,
       displayValue,
       valueKey: valueKeyOf(id, resolved.value, displayValue),
+      value: resolved.value,
+      layoutBase: resolved.layoutBase,
       origin: resolved.origin,
       originLabel: formatOrigin(resolved.origin, names),
       applicable: resolved.applicable,
@@ -438,6 +444,8 @@ function screenRow(
     format,
     displayValue,
     valueKey: valueKeyOf(template.id, value, displayValue),
+    value,
+    layoutBase: value,
     origin,
     originLabel: formatOrigin(origin, names),
     applicable: true,

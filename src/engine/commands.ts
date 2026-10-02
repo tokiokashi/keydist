@@ -1,5 +1,5 @@
 import type { Command } from '#input/commands/index.ts';
-import type { CascadeLevel } from '#input/settings/index.ts';
+import { readOverride, type CascadeLevel } from '#input/settings/index.ts';
 import { DEFAULT_FINGER_ASSIGNMENT, type FingerAssignment } from '#input/shapes/geometry.ts';
 import {
   createUserFingerAssignment,
@@ -177,6 +177,31 @@ export function setCascadeOverrideCommand<K extends SettingsItemId>(
     // 中身が同じでも「変わった」と誤判定されてしまう）。
     if (result.overrides === library.overrides) return { ok: true, library };
     return { ok: true, library: { ...library, overrides: result.overrides } };
+  });
+}
+
+/**
+ * 1項目の上書きを、あるレベルから別のレベルへ移す（昇格）。移し先へ書き、元の上書きは消す。
+ * 1つのコマンドなので、元に戻すの1回で両方戻る。元に上書きが無ければ何もしない。
+ * 移し先の既定値（`targetDefault`）と同じ値になる時は、移し先には書かず上書きを消す
+ * （同じ値を残すと、既定のままなのに「変更」と出てしまうため）。
+ */
+export function promoteCascadeOverrideCommand<K extends SettingsItemId>(
+  from: CascadeLevel,
+  to: CascadeLevel,
+  itemId: K,
+  targetDefault: SettingsValueMap[K],
+): Command<KeydistAssets> {
+  return setupLibraryCommand(`設定を上のレベルへ移す: ${itemId}`, (library) => {
+    const value = readOverride(library.overrides, from, itemId);
+    if (value === undefined) return { ok: true, library };
+    const written = JSON.stringify(value) === JSON.stringify(targetDefault)
+      ? { ok: true as const, overrides: resetSettingsItem(library.overrides, to, itemId) }
+      : setSettingsOverride(library.overrides, to, itemId, value);
+    if (!written.ok) return { ok: false, reason: written.error };
+    const overrides = resetSettingsItem(written.overrides, from, itemId);
+    if (overrides === library.overrides) return { ok: true, library };
+    return { ok: true, library: { ...library, overrides } };
   });
 }
 

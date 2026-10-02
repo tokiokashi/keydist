@@ -285,3 +285,18 @@ test('配列の推奨: 配列・Setupの上書きは推奨に勝つ', () => {
   const bySetup = writeRule(base, { kind: 'setup', setupId: 's' }, 'setup-mine');
   assert.equal(resolveCascade(RECOMMENDING_ITEMS, bySetup, contextFor(asuka, { setupId: 's' })).rule.value, 'setup-mine');
 });
+
+test('layoutBase: 配列・Setupの上書きを除いた値（全体＞既定値、推奨のある配列は推奨）を返す', () => {
+  const global = writeRule(emptyCascadeOverrides(), { kind: 'global' }, 'g');
+  const withLayout = writeRule(writeRule(global, { kind: 'layout', layoutId: naginata.id }, 'mine'), { kind: 'setup', setupId: 's' }, 'setup-mine');
+  const plain = resolveCascade(RECOMMENDING_ITEMS, withLayout, contextFor(naginata, { setupId: 's' }));
+  assert.equal(plain.rule.value, 'setup-mine');
+  assert.equal(plain.rule.layoutBase, 'g');
+  // 全体の値が無ければ既定値
+  assert.equal(resolveCascade(RECOMMENDING_ITEMS, emptyCascadeOverrides(), contextFor(naginata)).rule.layoutBase, 'base');
+  // 推奨を持つ配列は、全体の値より推奨。配列の上書きがあっても推奨のまま
+  const recommended = writeRule(global, { kind: 'layout', layoutId: asuka.id }, 'mine');
+  const resolved = resolveCascade(RECOMMENDING_ITEMS, recommended, contextFor(asuka));
+  assert.equal(resolved.rule.value, 'mine');
+  assert.equal(resolved.rule.layoutBase, 'recommended');
+});

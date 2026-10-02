@@ -232,6 +232,47 @@ test('条件のモーダル: QWERTYの配列の上書きでも、下のレベル
   await expect(row.locator('[data-condition-notice]')).toContainText('の値が優先されるため、全体を変えてもこの画面は変わらない');
 });
 
+test('条件のモーダル: この配列だけ別にすると配列のレベルへ書き、全体へ移すと全体の値になる', async ({ page }) => {
+  const modal = await openWithLayout(page, 'qwerty');
+  const row = modal.locator('[data-item="windowSize"]');
+  await row.locator('[data-condition-scope-start]').click();
+  await row.getByRole('button', { name: '先読みNを1増やす' }).click();
+  await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('4');
+  await expect(row).toContainText('配列「QWERTY」で変更');
+  // 配列のレベルだけに書く。全体の値は既定のまま
+  await row.locator('[data-condition-scope-global]').click();
+  await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('3');
+  await expect(row.locator('[data-condition-notice]')).toContainText('配列「QWERTY」の値が優先されるため');
+  await row.locator('[data-condition-scope-start]').click();
+  // 全体へ移す: 全体の値が4になり、配列の上書きは消える
+  await row.locator('[data-condition-promote]').click();
+  await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('4');
+  await expect(row).toContainText('全体で変更');
+  await expect(row.locator('[data-condition-scope-start]')).toHaveText('この配列だけ別に');
+  await expect(row.locator('[data-condition-notice]')).toHaveCount(0);
+  // 配列の値を消すと、継承する値へ戻る
+  await row.locator('[data-condition-scope-start]').click();
+  await row.getByRole('button', { name: '先読みNを1増やす' }).click();
+  await expect(row).toContainText('配列「QWERTY」で変更');
+  await row.getByRole('button', { name: '先読みNを既定値へ戻す' }).click();
+  await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('4');
+  await expect(row).not.toContainText('配列「QWERTY」で変更');
+});
+
+test('条件のモーダル: 配列の推奨を持つ配列でも、ローマ字規則を配列だけ別にでき、推奨へ戻せる', async ({ page }) => {
+  const modal = await openWithLayout(page, 'oonishi');
+  const row = modal.locator('[data-item="romajiRuleId"]');
+  await row.locator('[data-condition-scope-start]').click();
+  await row.getByLabel('ローマ字規則', { exact: true }).selectOption('azik');
+  await expect(row).toContainText('配列「大西配列」で変更');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.pane-condition-trigger')).toContainText('ローマ字規則: AZIK');
+  await page.locator('.pane-condition-trigger').click();
+  await row.locator('[data-condition-scope-start]').click();
+  await row.getByRole('button', { name: 'ローマ字規則を既定値へ戻す' }).click();
+  await expect(row).not.toContainText('で変更');
+});
+
 test('操作系はハイドレーション+資産読み込み完了（assetsReady）まで無効化され、直後に選んでも取りこぼさない（レビュー指摘1）', async ({ page }) => {
   // プリレンダーされたページは、Reactがハイドレーションを終える前から見た目上は
   // 操作できてしまう。旧実装はここに約750〜850msの「クリック・選択しても静かに

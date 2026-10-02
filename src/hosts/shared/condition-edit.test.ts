@@ -15,10 +15,13 @@ import {
   actionCountModeOf,
   classGroupingOf,
   globalOverrideOf,
+  layoutOverrideOf,
   overrideWinsNotices,
+  promoteToGlobalCommand,
   resetAllGlobalCommand,
   resettableGlobalIds,
   setGlobalCommand,
+  setLayoutCommand,
   staticDefaultOf,
   withActionCountMode,
   withClassGrouping,
@@ -97,6 +100,8 @@ function row(id: ConditionSummaryRow['id'], origin: ConditionSummaryRow['origin'
     format: 'primitive',
     displayValue: '3',
     valueKey: '3',
+    value: 3,
+    layoutBase: 3,
     origin,
     originLabel,
     applicable: true,
@@ -162,4 +167,59 @@ test('すべて既定値に戻す: 行のある項目の全体の上書きだけ
 test('resettableGlobalIds: このペインが行を出さない項目は数えない', () => {
   const step = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), setGlobalCommand('windowSize', 5, staticDefaultOf('windowSize')));
   assert.deepEqual(resettableGlobalIds(step.assets.setupLibrary.overrides, ['windowSize']), []);
+});
+
+test('overrideWinsNotices: 下のレベルの値が既定と同じ効き方（動作数の扱いの1動作）でも、全体に勝つ理由を出す', () => {
+  const rows = [
+    { ...row('actionRealizationPolicy', { kind: 'setup', setupId: 's' }, '上書き: このSetup'), sameAsDefault: true },
+    // 効かない行は、下のレベルの値があっても出さない
+    { ...row('windowSize', { kind: 'layout', layoutId: 'qwerty' }, '上書き: 配列'), applicable: false },
+  ];
+  const notices = overrideWinsNotices(rows);
+  assert.deepEqual([...notices.keys()], ['actionRealizationPolicy']);
+  assert.match(notices.get('actionRealizationPolicy')!, /^このSetupの値が優先されるため/);
+});
+
+test('setLayoutCommand: 配列のレベルへ書き、継承する値と同じ値へ戻すと上書きを消す。undoで戻る', () => {
+  const written = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), setLayoutCommand('qwerty', 'windowSize', 5, 3));
+  assert.equal(layoutOverrideOf(written.assets.setupLibrary.overrides, 'qwerty', 'windowSize'), 5);
+  assert.equal(globalOverrideOf(written.assets.setupLibrary.overrides, 'windowSize'), undefined);
+  assert.equal(layoutOverrideOf(written.assets.setupLibrary.overrides, 'dvorak', 'windowSize'), undefined);
+  const back = applyCommand(written.assets, written.history, setLayoutCommand('qwerty', 'windowSize', 3, 3));
+  assert.equal(layoutOverrideOf(back.assets.setupLibrary.overrides, 'qwerty', 'windowSize'), undefined);
+  const undone = undo(written.assets, written.history);
+  assert.equal(layoutOverrideOf(undone.assets.setupLibrary.overrides, 'qwerty', 'windowSize'), undefined);
+});
+
+test('setLayoutCommand: 継承する値が推奨の時は、推奨と違う値を書き、推奨と同じ値へ戻すと消す', () => {
+  const written = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), setLayoutCommand('oonishi', 'romajiRuleId', 'kunrei', 'oonishi'));
+  assert.equal(layoutOverrideOf(written.assets.setupLibrary.overrides, 'oonishi', 'romajiRuleId'), 'kunrei');
+  const back = applyCommand(written.assets, written.history, setLayoutCommand('oonishi', 'romajiRuleId', 'oonishi', 'oonishi'));
+  assert.equal(layoutOverrideOf(back.assets.setupLibrary.overrides, 'oonishi', 'romajiRuleId'), undefined);
+});
+
+test('promoteToGlobalCommand: 配列の値を全体へ移し、配列の上書きは消す。元に戻す1回で両方戻る', () => {
+  const written = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), setLayoutCommand('qwerty', 'windowSize', 5, 3));
+  const promoted = applyCommand(written.assets, written.history, promoteToGlobalCommand('qwerty', 'windowSize', 3));
+  assert.equal(promoted.outcome.kind, 'applied');
+  assert.equal(globalOverrideOf(promoted.assets.setupLibrary.overrides, 'windowSize'), 5);
+  assert.equal(layoutOverrideOf(promoted.assets.setupLibrary.overrides, 'qwerty', 'windowSize'), undefined);
+  const undone = undo(promoted.assets, promoted.history);
+  assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'windowSize'), undefined);
+  assert.equal(layoutOverrideOf(undone.assets.setupLibrary.overrides, 'qwerty', 'windowSize'), 5);
+});
+
+test('promoteToGlobalCommand: 全体の既定と同じ値なら全体の上書きは持たない。配列の上書きが無ければ何もしない', () => {
+  let assets = emptyAssets();
+  let history = emptyCommandHistory<KeydistAssets>();
+  for (const command of [setGlobalCommand('windowSize', 5, 3), setLayoutCommand('qwerty', 'windowSize', 3, 5)]) {
+    const step = applyCommand(assets, history, command);
+    assets = step.assets;
+    history = step.history;
+  }
+  const promoted = applyCommand(assets, history, promoteToGlobalCommand('qwerty', 'windowSize', 3));
+  assert.equal(globalOverrideOf(promoted.assets.setupLibrary.overrides, 'windowSize'), undefined);
+  assert.equal(layoutOverrideOf(promoted.assets.setupLibrary.overrides, 'qwerty', 'windowSize'), undefined);
+  const nothing = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), promoteToGlobalCommand('qwerty', 'windowSize', 3));
+  assert.equal(nothing.outcome.kind, 'no-op');
 });
