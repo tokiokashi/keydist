@@ -32,6 +32,20 @@ export interface ResolvedItem<T> {
    * 出どころ（`origin`）は上書きが無いので`default`のまま（推奨は利用者が変えた値ではない）。
    */
   readonly recommendationWins?: { readonly shadowed: readonly CascadeLevelKind[] };
+  /**
+   * 配列のレベルの上書きを除いた時の値（全体・物理配列・打ち方の値、配列の推奨、既定値のうち勝つもの）。
+   * 配列のレベルへ書く操作が「何を継承しているか」を示し、書いた値が継承と同じなら上書きを消せるようにする。
+   * 検証（`validate`）と適用可否の前の値で、配列・Setupの上書きは含まない。
+   */
+  readonly layoutBase: T;
+  /** 配列がこの項目の推奨を持つか（`layoutBase`が推奨になっているか）。 */
+  readonly hasLayoutRecommendation: boolean;
+  /**
+   * 配列のレベルの上書きを全体へ移した（昇格した）後の、配列のレベルの手前までの値。
+   * 配列に上書きが無い・全体に置けない項目は`undefined`。昇格後の値が今の上書きと一致しなければ、
+   * 移しても画面の値が保たれない（推奨や、全体より上の物理配列・打ち方の値が勝つ）。
+   */
+  readonly promotedBase?: T;
 }
 
 export type ResolvedCascade<V> = { readonly [K in keyof V]: ResolvedItem<V[K]> };
@@ -75,6 +89,7 @@ function resolveItem(
   const recommended = item.layoutRecommendation?.(context);
   const lowerApplied: { readonly kind: CascadeLevelKind; readonly value: unknown }[] = [];
   let shadowed: readonly CascadeLevelKind[] = [];
+  let layoutBase = value;
   for (const level of levels) {
     // 配列の推奨は、配列のレベルの手前で下のレベルの値を置き換える。配列・Setupの上書きは
     // この後で重なるので、利用者の上書き＞推奨＞全体、の順になる。
@@ -93,6 +108,7 @@ function resolveItem(
       value = recommended;
       origin = { kind: 'default' };
     }
+    if (level.kind === 'layout') layoutBase = value;
     const stored = levelOverrides(overrides, level) as Record<string, unknown> | undefined;
     if (stored === undefined || !(itemId in stored)) continue;
     if (!item.allowedLevels.has(level.kind)) {
@@ -105,6 +121,26 @@ function resolveItem(
     value = stored[itemId];
     origin = level;
     lowerApplied.push({ kind: level.kind, value });
+  }
+
+  // 配列の上書きを全体へ移した時の継承値。全体の位置にその値を置いて、配列の手前まで重ね直す。
+  const layoutLevel = levels.find((level) => level.kind === 'layout');
+  const layoutStored = layoutLevel === undefined ? undefined : levelOverrides(overrides, layoutLevel) as Record<string, unknown> | undefined;
+  let promotedBase: unknown;
+  if (layoutStored !== undefined && itemId in layoutStored && item.allowedLevels.has('global')) {
+    promotedBase = resolveDefaultValue(item, context);
+    for (const level of levels) {
+      if (level.kind === 'layout') {
+        if (recommended !== undefined) promotedBase = recommended;
+        break;
+      }
+      if (level.kind === 'global') {
+        promotedBase = layoutStored[itemId];
+        continue;
+      }
+      const lower = levelOverrides(overrides, level) as Record<string, unknown> | undefined;
+      if (lower !== undefined && itemId in lower && item.allowedLevels.has(level.kind)) promotedBase = lower[itemId];
+    }
   }
 
   // 妥当性: 物理配列等で実現できない値は順序で解決せず、実現できる値へ戻す。
@@ -130,6 +166,9 @@ function resolveItem(
     origin,
     applicable,
     diagnostics,
+    layoutBase,
+    hasLayoutRecommendation: recommended !== undefined,
+    ...(promotedBase === undefined ? {} : { promotedBase }),
     ...(shadowed.length > 0 && origin.kind === 'default' ? { recommendationWins: { shadowed } } : {}),
   };
 }

@@ -12,6 +12,8 @@ import './option-fields.css';
 export interface OptionBinding<T> {
   readonly value: T;
   readonly defaultValue: T;
+  /** 「戻す」先の呼び名。省略時は「既定値」（条件の配列のレベルの編集は「全体の値」「推奨」）。 */
+  readonly resetTarget?: string;
   readonly onChange: (next: T) => void;
 }
 
@@ -44,8 +46,8 @@ function ResetButton<T>({ label, binding }: { label: string; binding: OptionBind
     <button
       type="button"
       className="option-field-reset"
-      aria-label={`${label}を既定値へ戻す`}
-      title="既定値へ戻す"
+      aria-label={`${label}を${binding.resetTarget ?? '既定値'}へ戻す`}
+      title={`${binding.resetTarget ?? '既定値'}へ戻す`}
       data-option-reset="true"
       onClick={() => binding.onChange(binding.defaultValue)}
     >

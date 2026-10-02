@@ -1,5 +1,5 @@
 import type { Command } from '#input/commands/index.ts';
-import type { CascadeLevel } from '#input/settings/index.ts';
+import { readOverride, type CascadeLevel } from '#input/settings/index.ts';
 import { DEFAULT_FINGER_ASSIGNMENT, type FingerAssignment } from '#input/shapes/geometry.ts';
 import {
   createUserFingerAssignment,
@@ -181,6 +181,31 @@ export function setCascadeOverrideCommand<K extends SettingsItemId>(
 }
 
 /**
+ * 1項目の上書きを、あるレベルから別のレベルへ移す（昇格）。移し先へ書き、元の上書きは消す。
+ * 1つのコマンドなので、元に戻すの1回で両方戻る。元に上書きが無ければ何もしない。
+ * 移し先の既定値（`targetDefault`）と同じ値になる時は、移し先には書かず上書きを消す
+ * （同じ値を残すと、既定のままなのに「変更」と出てしまうため）。
+ */
+export function promoteCascadeOverrideCommand<K extends SettingsItemId>(
+  from: CascadeLevel,
+  to: CascadeLevel,
+  itemId: K,
+  targetDefault: SettingsValueMap[K],
+): Command<KeydistAssets> {
+  return setupLibraryCommand(`設定を上のレベルへ移す: ${itemId}`, (library) => {
+    const value = readOverride(library.overrides, from, itemId);
+    if (value === undefined) return { ok: true, library };
+    const written = JSON.stringify(value) === JSON.stringify(targetDefault)
+      ? { ok: true as const, overrides: resetSettingsItem(library.overrides, to, itemId) }
+      : setSettingsOverride(library.overrides, to, itemId, value);
+    if (!written.ok) return { ok: false, reason: written.error };
+    const overrides = resetSettingsItem(written.overrides, from, itemId);
+    if (overrides === library.overrides) return { ok: true, library };
+    return { ok: true, library: { ...library, overrides } };
+  });
+}
+
+/**
  * 1項目・1レベルの上書きだけを消す。`resetItem`は消すものが無ければ同じ`overrides`参照を
  * 返す（`input/settings/reset.ts`）ので、それをそのまま`setupLibrary`のno-op判定に伝える
  * ため、変化が無い時は`library`自体も同じ参照を返す（`{...library, overrides}`で毎回
@@ -201,6 +226,23 @@ export function resetCascadeItemCommand(level: CascadeLevel, itemId: SettingsIte
 export function resetCascadeItemsCommand(level: CascadeLevel, itemIds: readonly SettingsItemId[]): Command<KeydistAssets> {
   return setupLibraryCommand('指定した項目の設定をまとめてリセットする', (library) => {
     const overrides = itemIds.reduce((current, id) => resetSettingsItem(current, level, id), library.overrides);
+    if (overrides === library.overrides) return { ok: true, library };
+    return { ok: true, library: { ...library, overrides } };
+  });
+}
+
+/**
+ * 複数のレベルから、指定した項目の上書きをまとめて消す（1コマンド＝元に戻すの1回で全部戻る）。
+ * 条件のモーダルの「すべて既定値に戻す」が、全体と今の配列の上書きを一度に消すために使う。
+ */
+export function resetCascadeItemsAtLevelsCommand(
+  targets: readonly { readonly level: CascadeLevel; readonly itemIds: readonly SettingsItemId[] }[],
+): Command<KeydistAssets> {
+  return setupLibraryCommand('複数のレベルの設定をまとめてリセットする', (library) => {
+    const overrides = targets.reduce(
+      (current, { level, itemIds }) => itemIds.reduce((inner, id) => resetSettingsItem(inner, level, id), current),
+      library.overrides,
+    );
     if (overrides === library.overrides) return { ok: true, library };
     return { ok: true, library: { ...library, overrides } };
   });

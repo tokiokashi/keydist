@@ -285,3 +285,34 @@ test('配列の推奨: 配列・Setupの上書きは推奨に勝つ', () => {
   const bySetup = writeRule(base, { kind: 'setup', setupId: 's' }, 'setup-mine');
   assert.equal(resolveCascade(RECOMMENDING_ITEMS, bySetup, contextFor(asuka, { setupId: 's' })).rule.value, 'setup-mine');
 });
+
+test('layoutBase: 配列・Setupの上書きを除いた値（全体＞既定値、推奨のある配列は推奨）を返す', () => {
+  const global = writeRule(emptyCascadeOverrides(), { kind: 'global' }, 'g');
+  const withLayout = writeRule(writeRule(global, { kind: 'layout', layoutId: naginata.id }, 'mine'), { kind: 'setup', setupId: 's' }, 'setup-mine');
+  const plain = resolveCascade(RECOMMENDING_ITEMS, withLayout, contextFor(naginata, { setupId: 's' }));
+  assert.equal(plain.rule.value, 'setup-mine');
+  assert.equal(plain.rule.layoutBase, 'g');
+  // 全体の値が無ければ既定値
+  assert.equal(resolveCascade(RECOMMENDING_ITEMS, emptyCascadeOverrides(), contextFor(naginata)).rule.layoutBase, 'base');
+  // 推奨を持つ配列は、全体の値より推奨。配列の上書きがあっても推奨のまま
+  const recommended = writeRule(global, { kind: 'layout', layoutId: asuka.id }, 'mine');
+  const resolved = resolveCascade(RECOMMENDING_ITEMS, recommended, contextFor(asuka));
+  assert.equal(resolved.rule.value, 'mine');
+  assert.equal(resolved.rule.layoutBase, 'recommended');
+  assert.equal(resolved.rule.hasLayoutRecommendation, true);
+  assert.equal(plain.rule.hasLayoutRecommendation, false);
+});
+
+test('promotedBase: 配列の上書きを全体へ移した後の継承値。推奨や全体より上のレベルの値が勝つなら、今の上書きと一致しない', () => {
+  // 推奨の無い配列: 移した値がそのまま継承される
+  const mine = writeRule(emptyCascadeOverrides(), { kind: 'layout', layoutId: naginata.id }, 'mine');
+  assert.equal(resolveCascade(RECOMMENDING_ITEMS, mine, contextFor(naginata)).rule.promotedBase, 'mine');
+  // 推奨のある配列: 推奨が全体に勝つので、移しても推奨のまま
+  const withRecommendation = writeRule(emptyCascadeOverrides(), { kind: 'layout', layoutId: asuka.id }, 'mine');
+  assert.equal(resolveCascade(RECOMMENDING_ITEMS, withRecommendation, contextFor(asuka)).rule.promotedBase, 'recommended');
+  // 全体より上（打ち方）の値がある時は、そちらが勝つ
+  const withInputMethod = writeRule(mine, { kind: 'inputMethod', inputMethod: 'romaji' }, 'm');
+  assert.equal(resolveCascade(RECOMMENDING_ITEMS, withInputMethod, contextFor(naginata, { inputMethod: 'romaji' })).rule.promotedBase, 'm');
+  // 配列の上書きが無ければ持たない
+  assert.equal(resolveCascade(RECOMMENDING_ITEMS, emptyCascadeOverrides(), contextFor(naginata)).rule.promotedBase, undefined);
+});

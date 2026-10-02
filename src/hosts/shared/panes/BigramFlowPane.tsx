@@ -122,6 +122,8 @@ export function BigramFlowPane({
         customFingerAssignments: catalog.customFingerAssignments,
         customRomajiRules: catalog.customRomajiRules,
         notices: overrideWinsNotices(conditionRows, catalog.setupCatalog),
+        // 対象が配列でも、Setupでも、書き込む先は配列のレベル（Setupのレベルへ書く導線は別）。
+        ...(resolution.ok ? { layout: { id: resolution.input.layout.id, name: resolution.input.layout.name } } : {}),
       }}
       engineState={combinePaneStates(extraction, pane.trace)}
       traceErrors={traceErrors}
