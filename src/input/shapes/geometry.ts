@@ -326,7 +326,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
   },
   'column-staggered': {
     id: 'column-staggered',
-    name: 'カラムスタッガード（ANSI・分割想定）',
+    name: 'カラムスタッガード（ANSI・分割）',
     pitchMm: 18,
     rowWidths: ROW_WIDTH,
     columnStagger: COLUMN_STAGGER,
@@ -339,7 +339,7 @@ export const PHYSICAL_SHAPES: Record<PresetGeometryKind, PhysicalShape> = {
   },
   'jis-column-staggered': {
     id: 'jis-column-staggered',
-    name: 'カラムスタッガード（JIS・分割想定）',
+    name: 'カラムスタッガード（JIS・分割）',
     pitchMm: 18,
     rowWidths: [...JIS_ROW_WIDTH],
     columnStagger: COLUMN_STAGGER,
