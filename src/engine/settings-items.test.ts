@@ -380,7 +380,7 @@ test('defaultShapeId: layoutレベルへの書き込みは許可され、その�
   assert.equal(resolveDefaultShapeId(withGlobal.overrides, qwertyJa.id), 'column-staggered');
 });
 
-test('defaultShapeId: 配列対象の解決は、配列の上書きが決めた物理配列を使う（全体の値は別の配列にだけ効く）', () => {
+test('defaultShapeId: 配列対象の解決は、配列の上書きが決めた物理配列を使う（別の配列だけが全体の値に従う）', () => {
   const written = setSettingsOverride(
     EMPTY_SETTINGS_OVERRIDES,
     { kind: 'layout', layoutId: 'qwerty' },

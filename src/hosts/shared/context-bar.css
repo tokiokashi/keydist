@@ -486,7 +486,8 @@ button.context-chip:hover:not(:disabled),
 .context-chip-note {
   position: absolute;
   top: calc(100% + 0.4rem);
-  left: 0;
+  /* チップの右端に揃える。チップはバーの右寄りに並ぶので、左端に揃えると画面の右へはみ出す。 */
+  right: 0;
   z-index: 30;
   display: none;
   width: max-content;
@@ -504,4 +505,19 @@ button.context-chip:hover:not(:disabled),
 
 .context-chip-group:focus-within .context-chip-note {
   display: block;
+}
+
+/* 狭いバーはチップがアイコンだけで右寄りに並ぶので、理由の箱はチップでなくバーを基準に、バーの全幅へ収める。 */
+@container context-bar (max-width: 53.5rem) {
+  .context-chip-group {
+    position: static;
+  }
+
+  .context-chip-note {
+    top: 100%;
+    right: 0.5rem;
+    left: 0.5rem;
+    width: auto;
+    max-width: none;
+  }
 }

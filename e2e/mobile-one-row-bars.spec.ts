@@ -138,3 +138,24 @@ test.describe('パソコン幅', () => {
     expect((await page.getByRole('heading', { name: 'Bigram Flow', level: 1 }).boundingBox())?.width ?? 0).toBeGreaterThan(40);
   });
 });
+
+for (const path of PAGES) {
+  test(`スマホ幅の${path}: 配列の上書きがある時、チップの理由の箱が画面に収まり、横スクロールを増やさない`, async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        'keydist:setup-library',
+        JSON.stringify({ version: 1, setups: [], overrides: { layout: { qwerty: { defaultShapeId: 'ortholinear' } } } }),
+      );
+      localStorage.setItem('keydist:single-target-selection', JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: 'qwerty' } }));
+      localStorage.setItem('keydist:multi-target-selection', JSON.stringify({ version: 1, targets: [{ kind: 'layout', layoutId: 'qwerty' }] }));
+    });
+    await openReady(page, path);
+    await page.getByLabel('既定の物理配列').focus();
+    const note = page.locator('[data-default-shape-notice]');
+    await expect(note).toBeVisible();
+    const box = await note.boundingBox();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+  });
+}
