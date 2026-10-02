@@ -1,15 +1,17 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { WORKSPACE_ANALYZERS, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
+import { BLANK_PANE_META, WORKSPACE_ANALYZERS, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
 
 /**
- * ペインの追加。押すとAnalyzerの一覧が開き、選んだAnalyzerのペインを足す。
+ * ペインの追加。押すとAnalyzerと余白のペインの一覧が開き、選んだペインを足す。
  * 見た目はペインの⋯のメニューと同じ部品のCSS（`pane-frame.css`）を使う。
  */
 export function AddPaneMenu({
   onAdd,
+  onAddBlank,
   variant = 'toolbar',
 }: {
   readonly onAdd: (entry: WorkspaceAnalyzerEntry) => void;
+  readonly onAddBlank: () => void;
   /** `empty`は、ペインが1つも無い時に中央へ大きく出す。 */
   readonly variant?: 'toolbar' | 'empty';
 }) {
@@ -55,10 +57,10 @@ export function AddPaneMenu({
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((current) => !current)}
       >
-        <span aria-hidden="true">＋</span> Analyzerを追加
+        <span aria-hidden="true">＋</span> ペインを追加
       </button>
       {open ? (
-        <div className="pane-menu-list" role="menu" id={menuId} aria-label="追加するAnalyzer">
+        <div className="pane-menu-list" role="menu" id={menuId} aria-label="追加するペイン">
           {WORKSPACE_ANALYZERS.map((entry) => (
             <button
               type="button"
@@ -74,6 +76,18 @@ export function AddPaneMenu({
               <span className="pane-menu-item-description">{entry.description}</span>
             </button>
           ))}
+          <button
+            type="button"
+            role="menuitem"
+            className="pane-menu-item"
+            onClick={() => {
+              onAddBlank();
+              close();
+            }}
+          >
+            <span className="pane-menu-item-label">{BLANK_PANE_META.name}</span>
+            <span className="pane-menu-item-description">{BLANK_PANE_META.description}</span>
+          </button>
         </div>
       ) : null}
     </div>

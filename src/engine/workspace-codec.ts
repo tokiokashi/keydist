@@ -11,6 +11,7 @@ import { decodeTargetSet, encodeTargetSet } from './multi-target-selection-codec
 import {
   DEFAULT_WORKSPACE_NAME,
   followBinding,
+  NO_BINDING,
   initialWorkspaceTarget,
   INITIAL_LINK_GROUP_ID,
   MAX_BOARD_HEIGHT_REM,
@@ -125,6 +126,7 @@ function decodeBinding(
     diagnostics.push({ path: `${path}.group`, message: '従う組が見つからないため先頭の組へ従わせた' });
     return followBinding(fallbackGroup);
   }
+  if (raw.mode === 'none') return NO_BINDING;
   if (raw.mode === 'fixed') {
     const target = decodePaneTarget(raw.target, `${path}.target`, diagnostics);
     return target === undefined ? undefined : { mode: 'fixed', target };
@@ -265,14 +267,20 @@ function encodePaneTarget(target: WorkspacePaneTarget): Record<string, unknown> 
     : { kind: 'set', selection: encodeTargetSet(target.selection) };
 }
 
+function encodeBinding(binding: PaneTargetBinding): Record<string, unknown> {
+  switch (binding.mode) {
+    case 'follow': return { mode: 'follow', group: binding.group };
+    case 'fixed': return { mode: 'fixed', target: encodePaneTarget(binding.target) };
+    case 'none': return { mode: 'none' };
+  }
+}
+
 function encodePane(pane: WorkspacePane): Record<string, unknown> {
   return {
     id: pane.id,
     analyzerId: pane.analyzerId,
     ...(pane.options === undefined ? {} : { options: pane.options }),
-    binding: pane.binding.mode === 'follow'
-      ? { mode: 'follow', group: pane.binding.group }
-      : { mode: 'fixed', target: encodePaneTarget(pane.binding.target) },
+    binding: encodeBinding(pane.binding),
   };
 }
 

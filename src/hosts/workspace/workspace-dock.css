@@ -228,3 +228,20 @@
   container: pane-body / size;
   overflow: auto;
 }
+
+/*
+ * 余白のペイン。本体は何も出さず、見出しの行（名前はタブが持つ時は出さない。⋯は右端）だけを持つ。
+ * 名前の書体はAnalyzerの見出しと同じ`pane-frame-title`（`pane-frame.css`）。
+ * 高さの下限は`board-policy.ts`の`blankFloorRem`。
+ */
+.pane-blank-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2rem;
+}
+
+.pane-blank-header .pane-menu {
+  margin-left: auto;
+}

@@ -20,9 +20,9 @@ async function createWorkspace(page: Page): Promise<string> {
   return new URL(page.url()).pathname.split('/').pop()!;
 }
 
-/** Analyzerを追加（見出しの「Analyzerを追加」から選ぶ）。 */
+/** Analyzerを追加（見出しの「ペインを追加」から選ぶ）。 */
 async function addAnalyzer(page: Page, name: string): Promise<void> {
-  await page.getByRole('button', { name: /Analyzerを追加/ }).click();
+  await page.getByRole('button', { name: /ペインを追加/ }).click();
   await page.getByRole('menuitem', { name: new RegExp(name) }).click();
 }
 
@@ -120,10 +120,10 @@ test('名前はh1を押してその場で変えられ、Undoで戻る。Escape�
   await expect(sidebar.getByRole('link', { name: '比べる', exact: true })).toBeVisible();
 });
 
-test('Analyzerを追加して並べる。個別画面と同じcomponentが載り、再読み込みしても並びが戻る', async ({ page }) => {
+test('ペインを追加して並べる。個別画面と同じcomponentが載り、再読み込みしても並びが戻る', async ({ page }) => {
   const id = await createWorkspace(page);
-  await expect(page.locator('[data-workspace-empty]')).toContainText('Analyzerを追加');
-  await page.locator('[data-workspace-empty]').getByRole('button', { name: /Analyzerを追加/ }).click();
+  await expect(page.locator('[data-workspace-empty]')).toContainText('ペインを追加');
+  await page.locator('[data-workspace-empty]').getByRole('button', { name: /ペインを追加/ }).click();
   await page.getByRole('menuitem', { name: /Bigram Flow/ }).click();
   await addAnalyzer(page, '比較表');
   await addAnalyzer(page, 'N感度');
