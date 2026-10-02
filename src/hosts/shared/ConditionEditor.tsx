@@ -182,7 +182,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     return (
       <PaneMenu
         paneName={label}
-        label={`${label}の編集先`}
+        label={`${label}の編集先: ${atLayout ? 'この配列' : '全体'}`}
         title={atLayout ? `「${target.name}」の値を編集している` : '全体の値を編集している'}
         text={atLayout ? 'この配列' : '全体'}
         className="condition-scope-menu"
