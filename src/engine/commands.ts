@@ -231,6 +231,23 @@ export function resetCascadeItemsCommand(level: CascadeLevel, itemIds: readonly 
   });
 }
 
+/**
+ * 複数のレベルから、指定した項目の上書きをまとめて消す（1コマンド＝元に戻すの1回で全部戻る）。
+ * 条件のモーダルの「すべて既定値に戻す」が、全体と今の配列の上書きを一度に消すために使う。
+ */
+export function resetCascadeItemsAtLevelsCommand(
+  targets: readonly { readonly level: CascadeLevel; readonly itemIds: readonly SettingsItemId[] }[],
+): Command<KeydistAssets> {
+  return setupLibraryCommand('複数のレベルの設定をまとめてリセットする', (library) => {
+    const overrides = targets.reduce(
+      (current, { level, itemIds }) => itemIds.reduce((inner, id) => resetSettingsItem(inner, level, id), current),
+      library.overrides,
+    );
+    if (overrides === library.overrides) return { ok: true, library };
+    return { ok: true, library: { ...library, overrides } };
+  });
+}
+
 /** 1レベルの上書きを全項目まとめて消す。no-op判定の理由は`resetCascadeItemCommand`と同じ。 */
 export function resetCascadeLevelCommand(level: CascadeLevel): Command<KeydistAssets> {
   return setupLibraryCommand('レベルの設定をまとめてリセットする', (library) => {

@@ -121,6 +121,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
       return {
         value: layoutOverrideOf(overrides, layout.id, id) ?? inherited,
         defaultValue: inherited,
+        resetTarget: row?.hasLayoutRecommendation === true ? '推奨' : '全体の値',
         onChange: (next) => dispatch(setLayoutCommand(layout.id, id, next, inherited)),
       };
     }
@@ -141,6 +142,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     return {
       value: inner.value ? 'on' : 'off',
       defaultValue: inner.defaultValue ? 'on' : 'off',
+      ...(inner.resetTarget === undefined ? {} : { resetTarget: inner.resetTarget }),
       onChange: (next) => inner.onChange(next === 'on'),
     };
   };
@@ -152,9 +154,14 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
   const scopeMenu = (id: GlobalEditableId, label: string, target: { readonly id: string; readonly name: string }) => {
     const hasOverride = layoutOverrideOf(overrides, target.id, id) !== undefined;
     const atLayout = scopeOf(id) === 'layout';
+    // 移した後の継承値が今の値と一致しない行（推奨や、全体より上のレベルの値が勝つ行）は、移すと画面の値が
+    // 変わって移した値が消えるので出さない。
+    const stored = layoutOverrideOf(overrides, target.id, id);
+    const promotedBase = rowOf(id)?.promotedBase;
+    const promotable = stored !== undefined && promotedBase !== undefined && JSON.stringify(promotedBase) === JSON.stringify(stored);
     const items: PaneMenuItem[] = atLayout
       ? [
-        ...(hasOverride
+        ...(promotable
           ? [{
             id: 'promote',
             label: '全体へ移す',
@@ -317,6 +324,7 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
               binding={{
                 value: holdBinding.value.useHold ? 'on' : 'off',
                 defaultValue: holdBinding.defaultValue.useHold ? 'on' : 'off',
+                ...(holdBinding.resetTarget === undefined ? {} : { resetTarget: holdBinding.resetTarget }),
                 onChange: (next) => holdBinding.onChange({ useHold: next === 'on' }),
               }}
               choices={[{ value: 'on', label: 'する' }, { value: 'off', label: 'しない' }]}
@@ -330,9 +338,12 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
                 label="動作数の扱い"
                 binding={{
                   value: actionMode,
-                  defaultValue: 'combined',
-                  // 既定へ戻す操作（value === default）は例外ごと消えるよう、写像側で正規化する。
-                  onChange: (next) => actionBinding.onChange(withActionCountMode(actionBinding.value, next)),
+                  defaultValue: actionCountModeOf(actionBinding.defaultValue),
+                  ...(actionBinding.resetTarget === undefined ? {} : { resetTarget: actionBinding.resetTarget }),
+                  // 既定（配列の値の編集中は継承する値）へ戻す操作は、例外ごと戻るよう、戻す先の値から組み直す。
+                  onChange: (next) => actionBinding.onChange(
+                    withActionCountMode(next === actionCountModeOf(actionBinding.defaultValue) ? actionBinding.defaultValue : actionBinding.value, next),
+                  ),
                 }}
                 choices={[
                   { value: 'combined', label: ACTION_COUNT_TEXT.combined },

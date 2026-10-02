@@ -299,4 +299,20 @@ test('layoutBase: 配列・Setupの上書きを除いた値（全体＞既定値
   const resolved = resolveCascade(RECOMMENDING_ITEMS, recommended, contextFor(asuka));
   assert.equal(resolved.rule.value, 'mine');
   assert.equal(resolved.rule.layoutBase, 'recommended');
+  assert.equal(resolved.rule.hasLayoutRecommendation, true);
+  assert.equal(plain.rule.hasLayoutRecommendation, false);
+});
+
+test('promotedBase: 配列の上書きを全体へ移した後の継承値。推奨や全体より上のレベルの値が勝つなら、今の上書きと一致しない', () => {
+  // 推奨の無い配列: 移した値がそのまま継承される
+  const mine = writeRule(emptyCascadeOverrides(), { kind: 'layout', layoutId: naginata.id }, 'mine');
+  assert.equal(resolveCascade(RECOMMENDING_ITEMS, mine, contextFor(naginata)).rule.promotedBase, 'mine');
+  // 推奨のある配列: 推奨が全体に勝つので、移しても推奨のまま
+  const withRecommendation = writeRule(emptyCascadeOverrides(), { kind: 'layout', layoutId: asuka.id }, 'mine');
+  assert.equal(resolveCascade(RECOMMENDING_ITEMS, withRecommendation, contextFor(asuka)).rule.promotedBase, 'recommended');
+  // 全体より上（打ち方）の値がある時は、そちらが勝つ
+  const withInputMethod = writeRule(mine, { kind: 'inputMethod', inputMethod: 'romaji' }, 'm');
+  assert.equal(resolveCascade(RECOMMENDING_ITEMS, withInputMethod, contextFor(naginata, { inputMethod: 'romaji' })).rule.promotedBase, 'm');
+  // 配列の上書きが無ければ持たない
+  assert.equal(resolveCascade(RECOMMENDING_ITEMS, emptyCascadeOverrides(), contextFor(naginata)).rule.promotedBase, undefined);
 });

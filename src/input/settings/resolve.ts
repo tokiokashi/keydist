@@ -38,6 +38,14 @@ export interface ResolvedItem<T> {
    * 検証（`validate`）と適用可否の前の値で、配列・Setupの上書きは含まない。
    */
   readonly layoutBase: T;
+  /** 配列がこの項目の推奨を持つか（`layoutBase`が推奨になっているか）。 */
+  readonly hasLayoutRecommendation: boolean;
+  /**
+   * 配列のレベルの上書きを全体へ移した（昇格した）後の、配列のレベルの手前までの値。
+   * 配列に上書きが無い・全体に置けない項目は`undefined`。昇格後の値が今の上書きと一致しなければ、
+   * 移しても画面の値が保たれない（推奨や、全体より上の物理配列・打ち方の値が勝つ）。
+   */
+  readonly promotedBase?: T;
 }
 
 export type ResolvedCascade<V> = { readonly [K in keyof V]: ResolvedItem<V[K]> };
@@ -115,6 +123,26 @@ function resolveItem(
     lowerApplied.push({ kind: level.kind, value });
   }
 
+  // 配列の上書きを全体へ移した時の継承値。全体の位置にその値を置いて、配列の手前まで重ね直す。
+  const layoutLevel = levels.find((level) => level.kind === 'layout');
+  const layoutStored = layoutLevel === undefined ? undefined : levelOverrides(overrides, layoutLevel) as Record<string, unknown> | undefined;
+  let promotedBase: unknown;
+  if (layoutStored !== undefined && itemId in layoutStored && item.allowedLevels.has('global')) {
+    promotedBase = resolveDefaultValue(item, context);
+    for (const level of levels) {
+      if (level.kind === 'layout') {
+        if (recommended !== undefined) promotedBase = recommended;
+        break;
+      }
+      if (level.kind === 'global') {
+        promotedBase = layoutStored[itemId];
+        continue;
+      }
+      const lower = levelOverrides(overrides, level) as Record<string, unknown> | undefined;
+      if (lower !== undefined && itemId in lower && item.allowedLevels.has(level.kind)) promotedBase = lower[itemId];
+    }
+  }
+
   // 妥当性: 物理配列等で実現できない値は順序で解決せず、実現できる値へ戻す。
   if (item.validate) {
     const result = item.validate(value, context);
@@ -139,6 +167,8 @@ function resolveItem(
     applicable,
     diagnostics,
     layoutBase,
+    hasLayoutRecommendation: recommended !== undefined,
+    ...(promotedBase === undefined ? {} : { promotedBase }),
     ...(shadowed.length > 0 && origin.kind === 'default' ? { recommendationWins: { shadowed } } : {}),
   };
 }

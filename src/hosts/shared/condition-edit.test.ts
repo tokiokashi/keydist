@@ -18,7 +18,8 @@ import {
   layoutOverrideOf,
   overrideWinsNotices,
   promoteToGlobalCommand,
-  resetAllGlobalCommand,
+  resetAllCommand,
+  resettableLayoutIds,
   resettableGlobalIds,
   setGlobalCommand,
   setLayoutCommand,
@@ -102,6 +103,7 @@ function row(id: ConditionSummaryRow['id'], origin: ConditionSummaryRow['origin'
     valueKey: '3',
     value: 3,
     layoutBase: 3,
+    hasLayoutRecommendation: false,
     origin,
     originLabel,
     applicable: true,
@@ -154,7 +156,7 @@ test('すべて既定値に戻す: 行のある項目の全体の上書きだけ
   const ids = resettableGlobalIds(assets.setupLibrary.overrides);
   assert.deepEqual(ids, ['windowSize', 'sfbHomeCost']);
   const before = history.undoStack.length;
-  const reset = applyCommand(assets, history, resetAllGlobalCommand(ids));
+  const reset = applyCommand(assets, history, resetAllCommand(ids));
   assert.equal(reset.history.undoStack.length, before + 1);
   assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'windowSize'), undefined);
   assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'sfbHomeCost'), undefined);
@@ -222,4 +224,39 @@ test('promoteToGlobalCommand: 全体の既定と同じ値なら全体の上書�
   assert.equal(layoutOverrideOf(promoted.assets.setupLibrary.overrides, 'qwerty', 'windowSize'), undefined);
   const nothing = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), promoteToGlobalCommand('qwerty', 'windowSize', 3));
   assert.equal(nothing.outcome.kind, 'no-op');
+});
+
+test('すべて既定値に戻す: 全体と今の配列の上書きを1コマンドで消し、他の配列の上書きは残す。元に戻す1回で全部戻る', () => {
+  let assets = emptyAssets();
+  let history = emptyCommandHistory<KeydistAssets>();
+  for (const command of [
+    setGlobalCommand('windowSize', 5, 3),
+    setLayoutCommand('qwerty', 'sfbHomeCost', false, true),
+    setLayoutCommand('dvorak', 'sfbHomeCost', false, true),
+  ]) {
+    const step = applyCommand(assets, history, command);
+    assets = step.assets;
+    history = step.history;
+  }
+  const overrides = assets.setupLibrary.overrides;
+  const globalIds = resettableGlobalIds(overrides);
+  const layoutIds = resettableLayoutIds(overrides, 'qwerty');
+  assert.deepEqual(globalIds, ['windowSize']);
+  assert.deepEqual(layoutIds, ['sfbHomeCost']);
+  const before = history.undoStack.length;
+  const reset = applyCommand(assets, history, resetAllCommand(globalIds, { layoutId: 'qwerty', ids: layoutIds }));
+  assert.equal(reset.history.undoStack.length, before + 1);
+  assert.equal(globalOverrideOf(reset.assets.setupLibrary.overrides, 'windowSize'), undefined);
+  assert.equal(layoutOverrideOf(reset.assets.setupLibrary.overrides, 'qwerty', 'sfbHomeCost'), undefined);
+  assert.equal(layoutOverrideOf(reset.assets.setupLibrary.overrides, 'dvorak', 'sfbHomeCost'), false);
+  const undone = undo(reset.assets, reset.history);
+  assert.equal(globalOverrideOf(undone.assets.setupLibrary.overrides, 'windowSize'), 5);
+  assert.equal(layoutOverrideOf(undone.assets.setupLibrary.overrides, 'qwerty', 'sfbHomeCost'), false);
+});
+
+test('resettableLayoutIds: 配列の上書きだけがある時も戻せる項目に数える。行を出さない項目は数えない', () => {
+  const step = applyCommand(emptyAssets(), emptyCommandHistory<KeydistAssets>(), setLayoutCommand('qwerty', 'windowSize', 5, 3));
+  assert.deepEqual(resettableLayoutIds(step.assets.setupLibrary.overrides, 'qwerty'), ['windowSize']);
+  assert.deepEqual(resettableLayoutIds(step.assets.setupLibrary.overrides, 'qwerty', ['windowSize']), []);
+  assert.deepEqual(resettableLayoutIds(step.assets.setupLibrary.overrides, 'dvorak'), []);
 });

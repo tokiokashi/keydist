@@ -10,7 +10,7 @@ import {
 import {
   promoteCascadeOverrideCommand,
   resetCascadeItemCommand,
-  resetCascadeItemsCommand,
+  resetCascadeItemsAtLevelsCommand,
   setCascadeOverrideCommand,
   type KeydistAssets,
 } from '#engine/commands.ts';
@@ -67,9 +67,28 @@ export function resettableGlobalIds(
   return GLOBAL_EDITABLE_IDS.filter((id) => !hiddenIds.includes(id) && globalOverrideOf(overrides, id) !== undefined);
 }
 
-/** 全体のレベルの上書きを、モーダルに行がある項目だけまとめて消す（行の無い項目は消さない）。 */
-export function resetAllGlobalCommand(ids: readonly GlobalEditableId[]): Command<KeydistAssets> {
-  return resetCascadeItemsCommand(GLOBAL_LEVEL, ids);
+/** 行を出している項目のうち、今の配列のレベルに上書きがあるもの。 */
+export function resettableLayoutIds(
+  overrides: SettingsCascadeOverrides,
+  layoutId: string,
+  hiddenIds: readonly SettingsItemId[] = [],
+): readonly GlobalEditableId[] {
+  return GLOBAL_EDITABLE_IDS.filter((id) =>
+    !hiddenIds.includes(id) && canEditAtLayout(id) && layoutOverrideOf(overrides, layoutId, id) !== undefined);
+}
+
+/**
+ * 「すべて既定値に戻す」。全体の上書きと、今の配列の上書き（配列を対象にしている時）を、1コマンドで消す
+ * （元に戻すの1回で全部戻る）。行の無い項目と、他の配列・Setupの上書きは消さない。
+ */
+export function resetAllCommand(
+  globalIds: readonly GlobalEditableId[],
+  layout?: { readonly layoutId: string; readonly ids: readonly GlobalEditableId[] },
+): Command<KeydistAssets> {
+  return resetCascadeItemsAtLevelsCommand([
+    { level: GLOBAL_LEVEL, itemIds: globalIds },
+    ...(layout === undefined ? [] : [{ level: layoutLevel(layout.layoutId), itemIds: layout.ids }]),
+  ]);
 }
 
 /** 全体のレベルの上書き。無ければ`undefined`（既定値のまま）。 */

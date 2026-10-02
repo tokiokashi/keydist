@@ -261,9 +261,28 @@ test('条件のモーダル: この配列だけ別にすると配列のレベル
   await pickScope(row, 'この配列だけ別に');
   await row.getByRole('button', { name: '先読みNを1増やす' }).click();
   await expect(row).toContainText('配列「QWERTY」で変更');
-  await row.getByRole('button', { name: '先読みNを既定値へ戻す' }).click();
+  await row.getByRole('button', { name: '先読みNを全体の値へ戻す' }).click();
   await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('4');
   await expect(row).not.toContainText('配列「QWERTY」で変更');
+});
+
+test('条件のモーダル: すべて既定値に戻すは、全体と今の配列の上書きをまとめて消し、元に戻す1回で戻る', async ({ page }) => {
+  const modal = await openWithLayout(page, 'qwerty');
+  const reset = modal.getByRole('button', { name: 'すべて既定値に戻す' });
+  await expect(reset).toBeDisabled();
+  // 配列の上書きだけがある時も押せる
+  const row = modal.locator('[data-item="windowSize"]');
+  await pickScope(row, 'この配列だけ別に');
+  await row.getByRole('button', { name: '先読みNを1増やす' }).click();
+  await expect(reset).toBeEnabled();
+  await reset.click();
+  await expect(reset).toBeDisabled();
+  await expect(row).not.toContainText('で変更');
+  await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('3');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.pane-condition-trigger')).toHaveText('条件すべて既定値');
+  await page.getByRole('button', { name: '元に戻す' }).click();
+  await expect(page.locator('.pane-condition-trigger')).toContainText('先読みN: 4');
 });
 
 test('条件のモーダル: 配列の推奨を持つ配列でも、ローマ字規則を配列だけ別にでき、推奨へ戻せる', async ({ page }) => {
@@ -272,11 +291,17 @@ test('条件のモーダル: 配列の推奨を持つ配列でも、ローマ字
   await pickScope(row, 'この配列だけ別に');
   await row.getByLabel('ローマ字規則', { exact: true }).selectOption('azik');
   await expect(row).toContainText('配列「大西配列」で変更');
+  // 推奨が全体に勝つ配列では、移すと推奨へ戻って値が消えるので「全体へ移す」を出さない
+  await row.getByRole('button', { name: /の編集先$/ }).click();
+  await expect(row.getByRole('menuitem', { name: '全体を編集' })).toBeVisible();
+  await expect(row.getByRole('menuitem', { name: '全体へ移す' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(modal).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('.pane-condition-trigger')).toContainText('ローマ字規則: AZIK');
   await page.locator('.pane-condition-trigger').click();
   await pickScope(row, 'この配列の値を編集');
-  await row.getByRole('button', { name: 'ローマ字規則を既定値へ戻す' }).click();
+  await row.getByRole('button', { name: 'ローマ字規則を推奨へ戻す' }).click();
   await expect(row).not.toContainText('で変更');
 });
 
