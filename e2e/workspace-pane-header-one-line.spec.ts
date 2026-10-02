@@ -159,7 +159,7 @@ test('ⓘの説明はタブの帯に隠れず、キーボードで届き、Escap
   // キーボードだけで届く（ⓘに順にフォーカスが移る）
   await page.mouse.move(0, 0);
   await expect(tip).toBeHidden();
-  await page.getByRole('button', { name: 'Analyzerを追加' }).focus();
+  await page.getByRole('button', { name: 'ペインを追加' }).focus();
   for (let i = 0; i < 6; i += 1) {
     await page.keyboard.press('Tab');
     if (await info.evaluate((el) => el === document.activeElement)) break;

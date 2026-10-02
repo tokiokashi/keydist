@@ -16,7 +16,7 @@ import { generatePaneId, generateWorkspaceId } from '../workspace/id-generator.t
  *
  * 書き込みはコマンド1回（新しいWorkspaceは作成と追加が1回）で、個別画面のUndoで戻る。追加先へは移らず、
  * 追加した事実と追加先へのリンクを知らせる（個別画面で見ていたものを手放さないため）。
- * 板の高さは、Workspaceの「Analyzerを追加」と同じ方針（タブを出す表示）で合わせる。
+ * 板の高さは、Workspaceの「ペインを追加」と同じ方針（タブを出す表示）で合わせる。
  */
 export function useAddToWorkspace(
   analyzerId: string,

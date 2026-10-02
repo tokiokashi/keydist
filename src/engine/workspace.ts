@@ -38,10 +38,22 @@ export type WorkspacePaneTarget =
 /**
  * ペインの対象の持ち方。`follow`は連動の組（`LinkGroup`）の対象を読み、`fixed`はこのペインだけの対象を持つ。
  * 固定の対象は、従っている間は持たない（従うへ戻す時に捨てる。戻したい時はUndo）。
+ * `none`は対象を持たないペイン（余白のペイン。`BLANK_PANE_ID`）。どの組にも従わないので、組を残す理由にならず、
+ * 集合の色の配り先にもならない。
  */
 export type PaneTargetBinding =
   | { readonly mode: 'follow'; readonly group: string }
-  | { readonly mode: 'fixed'; readonly target: WorkspacePaneTarget };
+  | { readonly mode: 'fixed'; readonly target: WorkspacePaneTarget }
+  | { readonly mode: 'none' };
+
+/**
+ * 余白のペイン（何も表示せず、並びの空きを埋めるだけのペイン）の`analyzerId`。
+ * Analyzerではないが、保存の形・配置・色の配り・閉じる操作を他のペインと同じ経路に乗せるため、
+ * 同じ`WorkspacePane`で持つ。対象を持たないので`binding`は`none`、解析設定も持たない。
+ */
+export const BLANK_PANE_ID = 'blank';
+
+export const NO_BINDING: PaneTargetBinding = { mode: 'none' };
 
 /**
  * 組の対象。Setup1つを見るAnalyzer用の1つと、集合を見るAnalyzer用の集合を別々に持つ
@@ -82,6 +94,7 @@ export function resolveWorkspacePaneTarget(
   groups: readonly LinkGroup[],
   kind: WorkspacePaneTarget['kind'],
 ): WorkspacePaneTarget | undefined {
+  if (binding.mode === 'none') return undefined;
   if (binding.mode === 'fixed') return binding.target.kind === kind ? binding.target : undefined;
   const group = groups.find((candidate) => candidate.id === binding.group);
   if (group === undefined) return undefined;

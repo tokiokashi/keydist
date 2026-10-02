@@ -57,7 +57,7 @@ test('タブの帯は tablist / tab / tabpanel で、選択中のタブだけが
 
 test('Tabでタブへ入り、矢印・Home/Endで動き、Enter・Spaceで選ぶ（自動では選ばない）', async ({ page }) => {
   await openWorkspace(page);
-  await page.getByRole('button', { name: 'Analyzerを追加' }).focus();
+  await page.getByRole('button', { name: 'ペインを追加' }).focus();
   await page.keyboard.press('Tab');
   expect(await focusedLabel(page)).toBe('tab:Bigram Flow');
 
@@ -137,7 +137,7 @@ test('Deleteでタブを閉じ、組が空になったら次の組のタブ、�
   // 最後の1枚を閉じると、ペインが無い状態の「Analyzerを追加」へ
   await page.keyboard.press('Delete');
   await expect(page.getByRole('tab')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Analyzerを追加' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'ペインを追加' })).toBeFocused();
 });
 
 test('組をまたぐ閉じ方: 右の組のタブを閉じると、前の組の選択中のタブへ', async ({ page }) => {
@@ -173,7 +173,7 @@ test('⋯の「閉じる」で最後のペインを閉じると、「Analyzerを
   await page.getByRole('menuitem', { name: /閉じる/ }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('tab')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Analyzerを追加' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'ペインを追加' })).toBeFocused();
 });
 
 /** 保存した並びで、左の組の前面にあるペインのid。 */
@@ -235,7 +235,7 @@ test('描き直し（ペインの追加・Undo）の後も、ⓘと×のtabindex
   await openWorkspace(page);
   await expectRovingInvariants(page);
 
-  await page.getByRole('button', { name: 'Analyzerを追加' }).click();
+  await page.getByRole('button', { name: 'ペインを追加' }).click();
   await page.getByRole('menuitem', { name: /N感度/ }).click();
   await expect(page.getByRole('tab')).toHaveCount(4);
   await expectRovingInvariants(page);

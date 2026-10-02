@@ -94,7 +94,7 @@ function standalonePane(source: PaneFromStandalone, groupId: string): WorkspaceP
 
 /**
  * 個別画面で見ていたAnalyzerを、既存のWorkspaceへペインとして足す（「Workspaceに追加」）。
- * 解析設定は個別画面のものを写す。対象は写さず、Workspaceの「Analyzerを追加」と同じく最初の連動の組に従わせる
+ * 解析設定は個別画面のものを写す。対象は写さず、Workspaceの「ペインを追加」と同じく最初の連動の組に従わせる
  * （そのWorkspaceで比べている対象を、追加で黙って書き換えないため）。Workspaceが無ければ何もしない。
  */
 export function addStandalonePaneToWorkspaceCommand(

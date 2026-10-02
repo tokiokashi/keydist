@@ -1,3 +1,4 @@
+import { BLANK_PANE_ID } from '#engine/workspace.ts';
 import { bigramFlowDefinition } from '#analyzers/bigram-flow/extract.ts';
 import { BIGRAM_FLOW_PANE_META } from '#analyzers/bigram-flow/pane-meta.ts';
 import { comparisonDefinition } from '#analyzers/comparison/extract.ts';
@@ -31,4 +32,23 @@ export const WORKSPACE_ANALYZERS: readonly WorkspaceAnalyzerEntry[] = [
 
 export function findWorkspaceAnalyzer(analyzerId: string): WorkspaceAnalyzerEntry | undefined {
   return WORKSPACE_ANALYZERS.find((entry) => entry.id === analyzerId);
+}
+
+/**
+ * Analyzerではないペイン「余白」。何も表示せず、並びの空きを埋めるだけ（対象も解析設定も持たない）。
+ * 追加のメニューには、Analyzerの後ろに並べる。
+ */
+export const BLANK_PANE_META = {
+  id: BLANK_PANE_ID,
+  name: '余白',
+  description: '何も表示しない。ペインの間の空きを埋める',
+} as const;
+
+export function isBlankPane(analyzerId: string): boolean {
+  return analyzerId === BLANK_PANE_ID;
+}
+
+/** タブの名前とⓘの説明。Analyzerと余白のどちらでもない（今のアプリが知らない）idは`undefined`。 */
+export function findWorkspacePaneMeta(analyzerId: string): { readonly name: string; readonly description: string } | undefined {
+  return isBlankPane(analyzerId) ? BLANK_PANE_META : findWorkspaceAnalyzer(analyzerId);
 }

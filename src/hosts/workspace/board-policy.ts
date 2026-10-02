@@ -1,6 +1,6 @@
 import { minBodyHeightRemOf } from '#analyzers/min-body-height.ts';
 import type { BoardPolicy } from '#engine/workspace-board.ts';
-import { findWorkspaceAnalyzer } from './analyzer-registry.ts';
+import { findWorkspaceAnalyzer, isBlankPane } from './analyzer-registry.ts';
 
 /**
  * 板の高さの計算（`engine/workspace-board.ts`）に渡す、ペインを描く側の値。単位はrem。
@@ -24,9 +24,17 @@ const TAB_BAR_REM = 2.6;
 const BOARD_PADDING_REM = 1.5;
 const PANE_GAP_REM = 0.5;
 
+/**
+ * 余白のペインの下限。本体を持たないので、見出し（⋯の1行）と余白だけ。2段になる見出しも持たないので、
+ * タブを隠した表示でも1段分で足りる。余白は空きを埋めるものなので、Analyzerの本体の窓（12rem）は取らない。
+ */
+function blankFloorRem(hideTabs: boolean): number {
+  return PANE_CHROME_REM + (hideTabs ? 0 : TAB_BAR_REM);
+}
+
 export function workspaceBoardPolicy(hideTabs: boolean): BoardPolicy {
   return {
-    floorRemOfAnalyzer: (analyzerId) => (
+    floorRemOfAnalyzer: (analyzerId) => isBlankPane(analyzerId) ? blankFloorRem(hideTabs) : (
       (hideTabs ? PANE_CHROME_REM_TABS_HIDDEN : PANE_CHROME_REM + TAB_BAR_REM) + minBodyHeightRemOf(findWorkspaceAnalyzer(analyzerId) ?? {})
     ),
     paddingRem: BOARD_PADDING_REM,

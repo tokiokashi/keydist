@@ -5,8 +5,9 @@ import { comparisonDefinition } from '#analyzers/comparison/extract.ts';
 import { nSensitivityDefinition } from '#analyzers/n-sensitivity/extract.ts';
 import { ErrorDetails } from '#hosts/shared/ErrorDetails.tsx';
 import { describeErrorDetail } from '#hosts/shared/pane-status.ts';
-import { findWorkspaceAnalyzer } from './analyzer-registry.ts';
+import { findWorkspaceAnalyzer, isBlankPane } from './analyzer-registry.ts';
 import { BigramFlowWorkspacePane } from './panes/BigramFlowWorkspacePane.tsx';
+import { BlankWorkspacePane } from './panes/BlankWorkspacePane.tsx';
 import { ComparisonWorkspacePane } from './panes/ComparisonWorkspacePane.tsx';
 import { NSensitivityWorkspacePane } from './panes/NSensitivityWorkspacePane.tsx';
 import type { WorkspacePaneRuntime } from './pane-runtime.ts';
@@ -24,9 +25,13 @@ export function WorkspacePaneView({
   readonly pane: WorkspacePane;
   readonly runtime: WorkspacePaneRuntime;
 }) {
+  if (isBlankPane(pane.analyzerId)) {
+    // 余白は対象も解析設定も持たず、描画で失敗する要素も無いので、境界を挟まない
+    return <BlankWorkspacePane pane={pane} runtime={runtime} />;
+  }
   const entry = findWorkspaceAnalyzer(pane.analyzerId);
   // 固定の対象がAnalyzerの形と合わない時だけ使えない（従うペインは、Workspaceの対象から形に合う方を読む）。
-  const usable = entry !== undefined && (pane.binding.mode === 'follow' || pane.binding.target.kind === entry.cardinality);
+  const usable = entry !== undefined && (pane.binding.mode === 'follow' || (pane.binding.mode === 'fixed' && pane.binding.target.kind === entry.cardinality));
   return (
     <WorkspacePaneBoundary onClose={() => runtime.closePane(pane.id)}>
       {usable ? <AnalyzerPane pane={pane} runtime={runtime} /> : (

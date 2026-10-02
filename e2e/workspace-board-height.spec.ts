@@ -228,7 +228,7 @@ test('サッシで狭めた後にAnalyzerを足しても、狭めたペインは
   // N感度を最小近くまで狭める
   await dragSash(page, 1, -2000);
   await waitForStoredFractions(page, (f) => f[1]! < seeded[1]! / 2);
-  await page.getByRole('button', { name: /Analyzerを追加/ }).click();
+  await page.getByRole('button', { name: /ペインを追加/ }).click();
   await page.getByRole('menuitem', { name: /比較表/ }).click();
   await expect(page.locator('.dv-groupview')).toHaveCount(4);
   await page.waitForTimeout(800);
@@ -255,7 +255,7 @@ test('サッシで狭めた後に別のペインを閉じても、板は伸び�
 
 test('Analyzerを追加しても、下限を割らなければ板は動かない', async ({ page }) => {
   await openWorkspace(page, [flow('f')], group('f'), { width: 1440, height: 900 });
-  await page.getByRole('button', { name: /Analyzerを追加/ }).click();
+  await page.getByRole('button', { name: /ペインを追加/ }).click();
   await page.getByRole('menuitem', { name: /比較表/ }).click();
   await expect(page.locator('.dv-groupview')).toHaveCount(2);
   const m = await measure(page);
@@ -266,7 +266,7 @@ test('Analyzerを追加すると、足したペインの下限まで保存され
   // 縦に3段（等分、保存なし）の右に1つ足す。数えるのは足したペインだけで、3段の下限は数えない（人が決めた比として扱う）
   await openWorkspace(page, STACK_PANES, column(group('f'), group('n'), group('c')), { width: 1440, height: 900 });
   expect(await storedBoardHeight(page)).toBeUndefined();
-  await page.getByRole('button', { name: /Analyzerを追加/ }).click();
+  await page.getByRole('button', { name: /ペインを追加/ }).click();
   await page.getByRole('menuitem', { name: /比較表/ }).click();
   await expect(page.locator('.dv-groupview')).toHaveCount(4);
   await expect.poll(async () => (await storedBoardHeight(page)) ?? 0).toBeGreaterThan(0);

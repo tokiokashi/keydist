@@ -3,6 +3,8 @@ import test from 'node:test';
 import { WORKSPACE_LIBRARY_CODEC } from './workspace-codec.ts';
 import {
   addWorkspacePane,
+  BLANK_PANE_ID,
+  NO_BINDING,
   createWorkspace,
   findWorkspace,
   followBinding,
@@ -53,6 +55,7 @@ function sample(): WorkspaceLibrary {
     selection: { targets: [{ kind: 'layout', layoutId: 'qwerty' }], baseline: undefined },
   });
   library = withPaneInNewLinkGroup(library, 'w1', 'p1', 'link-2', { kind: 'single', target: { kind: 'layout', layoutId: 'qwerty' } });
+  library = addWorkspacePane(library, 'w1', { id: 'p4', analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING });
   library = createWorkspace(library, () => 'w2').library;
   return library;
 }
@@ -114,7 +117,7 @@ test('従う組 / 固定と、組ごとの対象は往復で保たれる', () =>
   const decoded = WORKSPACE_LIBRARY_CODEC.decode(JSON.parse(JSON.stringify(WORKSPACE_LIBRARY_CODEC.encode(sample()))));
   assert.ok(decoded.ok);
   const workspace = findWorkspace(decoded.value, 'w1')!;
-  assert.deepEqual(workspace.panes.map((p) => p.binding.mode), ['follow', 'fixed', 'follow']);
+  assert.deepEqual(workspace.panes.map((p) => p.binding.mode), ['follow', 'fixed', 'follow', 'none']);
   assert.deepEqual(workspace.groups.map((g) => g.id), [G, 'link-2']);
   assert.deepEqual(workspace.groups[0]!.target.single.target, { kind: 'layout', layoutId: 'colemak-dh' });
   assert.equal(workspace.groups[0]!.target.set.targets.length, 1);

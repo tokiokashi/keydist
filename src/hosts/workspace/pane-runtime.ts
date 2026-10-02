@@ -47,6 +47,32 @@ export type PaneBindingChoice =
   | { readonly kind: 'group'; readonly id: string }
   | { readonly kind: 'new-group' };
 
+/** 「拡大表示」の項目。拡大できる面（Dockview）でだけ出す。 */
+function maximizeMenuItems(
+  runtime: Pick<WorkspacePaneRuntime, 'maximizePane' | 'maximizedPaneId'>,
+  paneId: string,
+): readonly PaneMenuItem[] {
+  const maximized = runtime.maximizedPaneId === paneId;
+  return runtime.maximizePane === undefined ? [] : [{
+    id: 'maximize',
+    label: maximized ? '元の大きさに戻す' : '拡大表示',
+    description: maximized ? '元の並びに戻る' : 'Workspaceの中でこのペインを大きく見せる',
+    onSelect: () => runtime.maximizePane?.(maximized ? undefined : paneId),
+  }];
+}
+
+/** 余白のペインの⋯。解析設定も対象も持たないので、拡大表示・複製・閉じるだけ。 */
+export function blankPaneMenuItems(
+  runtime: Pick<WorkspacePaneRuntime, 'duplicatePane' | 'closePane' | 'maximizePane' | 'maximizedPaneId'>,
+  paneId: string,
+): readonly PaneMenuItem[] {
+  return [
+    ...maximizeMenuItems(runtime, paneId),
+    { id: 'duplicate', label: '複製', description: '右隣に並べる', onSelect: () => runtime.duplicatePane(paneId) },
+    { id: 'close', label: '閉じる', onSelect: () => runtime.closePane(paneId) },
+  ];
+}
+
 /**
  * ペインの⋯の中身（docs/architecture.md「ペイン」）。「拡大表示」は、拡大できる面（Dockview）でだけ出す。
  */
@@ -55,14 +81,8 @@ export function paneMenuItems(
   paneId: string,
   resetOptions: () => void,
 ): readonly PaneMenuItem[] {
-  const maximized = runtime.maximizedPaneId === paneId;
   return [
-    ...(runtime.maximizePane === undefined ? [] : [{
-      id: 'maximize',
-      label: maximized ? '元の大きさに戻す' : '拡大表示',
-      description: maximized ? '元の並びに戻る' : 'Workspaceの中でこのペインを大きく見せる',
-      onSelect: () => runtime.maximizePane?.(maximized ? undefined : paneId),
-    }]),
+    ...maximizeMenuItems(runtime, paneId),
     { id: 'duplicate', label: '複製', description: '解析設定と対象を写して、右隣に並べる', onSelect: () => runtime.duplicatePane(paneId) },
     { id: 'reset-options', label: '解析設定を初期値に戻す', description: '対象と条件は変わらない', onSelect: resetOptions },
     { id: 'close', label: '閉じる', onSelect: () => runtime.closePane(paneId) },

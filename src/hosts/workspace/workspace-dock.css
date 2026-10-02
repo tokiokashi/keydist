@@ -214,3 +214,26 @@
   container: pane-body / size;
   overflow: auto;
 }
+
+/*
+ * 余白のペイン。本体は何も出さず、見出しの行（名前はタブが持つ時は出さない。⋯は右端）だけを持つ。
+ * 高さの下限は`board-policy.ts`の`blankFloorRem`。
+ */
+.pane-blank-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2rem;
+}
+
+.pane-blank-title {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.pane-blank-header .pane-menu {
+  margin-left: auto;
+}

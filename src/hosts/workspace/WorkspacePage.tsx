@@ -14,8 +14,10 @@ import {
   setWorkspaceTargetCommand,
 } from '#engine/workspace-commands.ts';
 import {
+  BLANK_PANE_ID,
   followBinding,
   findWorkspace,
+  NO_BINDING,
   resolveWorkspacePaneTarget,
   type WorkspaceIdGenerator,
   type WorkspacePane,
@@ -33,7 +35,7 @@ import type { PaneCatalog } from '#hosts/shared/resolve-pane-input.ts';
 import { TextChip, type TextContentCommit } from '#hosts/shared/TextChip.tsx';
 import { PaneMenu } from '#hosts/shared/PaneHeaderParts.tsx';
 import { AddPaneMenu } from './AddPaneMenu.tsx';
-import { findWorkspaceAnalyzer, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
+import { findWorkspaceAnalyzer, findWorkspacePaneMeta, type WorkspaceAnalyzerEntry } from './analyzer-registry.ts';
 import type { PaneBindingChoice, WorkspacePaneRuntime } from './pane-runtime.ts';
 import { summarizeLinkGroups } from './group-summary.ts';
 import { minBoardHeightRem as minBoardHeightRemOf } from '#engine/workspace-board.ts';
@@ -241,7 +243,7 @@ export function WorkspacePage({
   const titleOf = useCallback(
     (paneId: string) => {
       const pane = panesById.get(paneId);
-      return (pane === undefined ? undefined : findWorkspaceAnalyzer(pane.analyzerId)?.name) ?? '使えないAnalyzer';
+      return (pane === undefined ? undefined : findWorkspacePaneMeta(pane.analyzerId)?.name) ?? '使えないAnalyzer';
     },
     [panesById],
   );
@@ -249,7 +251,7 @@ export function WorkspacePage({
   const descriptionOf = useCallback(
     (paneId: string) => {
       const pane = panesById.get(paneId);
-      return (pane === undefined ? undefined : findWorkspaceAnalyzer(pane.analyzerId)?.description) ?? '';
+      return (pane === undefined ? undefined : findWorkspacePaneMeta(pane.analyzerId)?.description) ?? '';
     },
     [panesById],
   );
@@ -272,6 +274,12 @@ export function WorkspacePage({
       binding: followBinding(workspace!.groups[0]!.id),
     };
     dispatch(addWorkspacePaneCommand(workspaceId, pane, boardPolicy));
+  };
+
+  const addBlankPane = () => {
+    flushPending();
+    setMaximizedId(undefined);
+    dispatch(addWorkspacePaneCommand(workspaceId, { id: generateId(), analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING }, boardPolicy));
   };
 
   if (workspace === undefined) {
@@ -330,12 +338,12 @@ export function WorkspacePage({
         {workspace.panes.length === 0 || workspace.layout === undefined ? (
           <div className="workspace-empty" data-workspace-empty="true">
             <p>Analyzerを追加して、並べて見る。</p>
-            <AddPaneMenu onAdd={addPane} variant="empty" />
+            <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} variant="empty" />
           </div>
         ) : (
           <>
             <div className="workspace-toolbar">
-              <AddPaneMenu onAdd={addPane} />
+              <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} />
             </div>
             {stacked ? (
               <WorkspaceStack layout={workspace.layout} renderPane={renderPane} />
