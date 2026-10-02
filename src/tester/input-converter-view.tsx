@@ -108,11 +108,13 @@ const ANSI_GEOMETRY_SHAPES = [
   PHYSICAL_SHAPES['row-staggered'],
   PHYSICAL_SHAPES['column-staggered'],
   PHYSICAL_SHAPES.ortholinear,
+  PHYSICAL_SHAPES['split-ortholinear'],
 ] as const;
 const JIS_GEOMETRY_SHAPES = [
   PHYSICAL_SHAPES['jis-row-staggered'],
   PHYSICAL_SHAPES['jis-column-staggered'],
   PHYSICAL_SHAPES['jis-ortholinear'],
+  PHYSICAL_SHAPES['jis-split-ortholinear'],
 ] as const;
 const PRESET_GEOMETRY_SHAPES = [
   ...ANSI_GEOMETRY_SHAPES,
