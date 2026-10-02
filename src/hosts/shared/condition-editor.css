@@ -162,31 +162,51 @@
   color: var(--text);
 }
 
-/* 行の編集先（全体か配列か）を切り替える小さい操作。値の入力より目立たせない。 */
-.condition-row-scope {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.2rem 0.6rem;
+/*
+ * 行の編集先（全体か配列か）のメニュー。札の横に置く小さいボタンで、文字がいま編集しているレベル。
+ * ペイン見出しの文字つきメニューのボタンより小さくし、狭い幅でも文字を残す。
+ */
+.condition-scope-menu .pane-menu-button[data-with-text] {
+  gap: 0.15rem;
+  width: auto;
+  height: auto;
+  min-height: 1.2rem;
+  padding: 0 0.3rem;
+  border-color: transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
   font-size: 0.72rem;
 }
 
-.condition-row-scope button {
-  padding: 0;
-  border: 0;
-  background: transparent;
+.condition-scope-menu .pane-menu-button[data-with-text]:hover,
+.condition-scope-menu .pane-menu-button[data-with-text]:focus-visible,
+.condition-scope-menu .pane-menu-button[data-with-text][aria-expanded="true"] {
+  border-color: var(--border-strong);
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+/* 配列の値を編集している行は、ボタンの文字を札と同じ色にして、どちらのレベルかを読めるようにする。 */
+.condition-scope-menu[data-condition-scope="layout"] .pane-menu-button[data-with-text] {
   color: var(--accent-strong);
-  font: inherit;
-  cursor: pointer;
+  font-weight: 600;
 }
 
-.condition-row-scope button:hover,
-.condition-row-scope button:focus-visible {
-  text-decoration: underline;
+.condition-scope-menu .pane-menu-button[data-with-text] .pane-menu-button-text {
+  display: inline;
 }
 
-.condition-row-scope-label {
-  color: var(--text-muted);
+.condition-scope-menu .pane-menu-button svg {
+  width: 12px;
+  height: 12px;
+}
+
+.condition-scope-menu .pane-menu-list {
+  right: auto;
+  left: 0;
+  min-width: 13rem;
+  z-index: 40;
 }
 
 .condition-row-flag,

@@ -38,6 +38,7 @@ import {
   type GlobalEditableId,
 } from './condition-edit.ts';
 import { ACTION_COUNT_TEXT, conditionDiagnosticText, type ConditionSummaryRow } from './condition-summary.ts';
+import { PaneMenu, type PaneMenuItem } from './PaneHeaderParts.tsx';
 import './condition-editor.css';
 
 /**
@@ -144,6 +145,46 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     };
   };
 
+  /**
+   * 行の編集先（全体か配列か）の切り替え。札の横に置く1つのメニューにまとめ、ボタンの文字で
+   * いま編集しているレベルを示す（行の高さを増やさない）。
+   */
+  const scopeMenu = (id: GlobalEditableId, label: string, target: { readonly id: string; readonly name: string }) => {
+    const hasOverride = layoutOverrideOf(overrides, target.id, id) !== undefined;
+    const atLayout = scopeOf(id) === 'layout';
+    const items: PaneMenuItem[] = atLayout
+      ? [
+        ...(hasOverride
+          ? [{
+            id: 'promote',
+            label: '全体へ移す',
+            description: `「${target.name}」の値を全体の値にして、この配列だけの値は消す`,
+            onSelect: () => {
+              dispatch(promoteToGlobalCommand(target.id, id, globalDefaultOf(id) as never));
+              chooseScope(id, 'global');
+            },
+          }]
+          : []),
+        { id: 'global', label: '全体を編集', onSelect: () => chooseScope(id, 'global') },
+      ]
+      : [{
+        id: 'layout',
+        label: hasOverride ? 'この配列の値を編集' : 'この配列だけ別に',
+        onSelect: () => chooseScope(id, 'layout'),
+      }];
+    return (
+      <PaneMenu
+        paneName={label}
+        label={`${label}の編集先`}
+        title={atLayout ? `「${target.name}」の値を編集している` : '全体の値を編集している'}
+        text={atLayout ? 'この配列' : '全体'}
+        className="condition-scope-menu"
+        data={{ 'data-condition-scope': atLayout ? 'layout' : 'global' }}
+        items={items}
+      />
+    );
+  };
+
   /** 行の外枠。左線（全体で変えた行）・効かない行・下のレベルが勝つ理由をここで共通に持つ。 */
   const row = (id: GlobalEditableId, content: (badge: ReactNode) => ReactNode) => {
     if (editor.hiddenIds?.includes(id)) return null;
@@ -162,35 +203,12 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
         data-changed={changed(id) || undefined}
         data-not-applicable={notApplicable || undefined}
       >
-        {content(<OriginBadge id={id} row={summary} changedHere={changed(id) || summary?.origin.kind === 'global'} />)}
-        {layout !== undefined && canEditAtLayout(id) && !notApplicable ? (
-          <div className="condition-row-scope" data-condition-scope={scopeOf(id)}>
-            {scopeOf(id) === 'global' ? (
-              <button type="button" data-condition-scope-start="true" onClick={() => chooseScope(id, 'layout')}>
-                {layoutOverrideOf(overrides, layout.id, id) === undefined ? 'この配列だけ別に' : 'この配列の値を編集'}
-              </button>
-            ) : (
-              <>
-                <span className="condition-row-scope-label">「{layout.name}」の値を編集中</span>
-                {layoutOverrideOf(overrides, layout.id, id) === undefined ? null : (
-                  <button
-                    type="button"
-                    data-condition-promote="true"
-                    onClick={() => {
-                      dispatch(promoteToGlobalCommand(layout.id, id, globalDefaultOf(id) as never));
-                      chooseScope(id, 'global');
-                    }}
-                  >
-                    全体へ移す
-                  </button>
-                )}
-                <button type="button" data-condition-scope-global="true" onClick={() => chooseScope(id, 'global')}>
-                  全体を編集
-                </button>
-              </>
-            )}
-          </div>
-        ) : null}
+        {content(
+          <>
+            <OriginBadge id={id} row={summary} changedHere={changed(id) || summary?.origin.kind === 'global'} />
+            {layout !== undefined && canEditAtLayout(id) && !notApplicable ? scopeMenu(id, summary?.label ?? id, layout) : null}
+          </>,
+        )}
         {notApplicable ? <p className="condition-row-flag">この配列・Setupでは効かない</p> : null}
         {notice === undefined ? null : <p className="condition-row-notice" data-condition-notice="true">{notice}</p>}
         {diagnostics.map((text, index) => <p key={index} className="condition-row-diagnostic">{text}</p>)}

@@ -161,7 +161,7 @@ function ConditionModal({ rows, header, targetDiffs, editor, onClose }: Conditio
           <span className="condition-modal-scope">
             {editor.layout === undefined
               ? '全体の値を変える。すべての画面に反映される'
-              : `全体の値を変える。「この配列だけ別に」で「${editor.layout.name}」だけの値にできる`}
+              : `全体の値を変える。行ごとに「${editor.layout.name}」だけの値にもできる`}
           </span>
           <button
             type="button"

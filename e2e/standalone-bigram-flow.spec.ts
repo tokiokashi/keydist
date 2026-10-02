@@ -232,26 +232,33 @@ test('条件のモーダル: QWERTYの配列の上書きでも、下のレベル
   await expect(row.locator('[data-condition-notice]')).toContainText('の値が優先されるため、全体を変えてもこの画面は変わらない');
 });
 
+/** 行の編集先のメニューを開いて、項目を選ぶ。 */
+async function pickScope(row: Locator, item: string) {
+  await row.getByRole('button', { name: /の編集先$/ }).click();
+  await row.getByRole('menuitem', { name: item }).click();
+}
+
 test('条件のモーダル: この配列だけ別にすると配列のレベルへ書き、全体へ移すと全体の値になる', async ({ page }) => {
   const modal = await openWithLayout(page, 'qwerty');
   const row = modal.locator('[data-item="windowSize"]');
-  await row.locator('[data-condition-scope-start]').click();
+  await pickScope(row, 'この配列だけ別に');
   await row.getByRole('button', { name: '先読みNを1増やす' }).click();
+  await expect(row.getByRole('button', { name: /の編集先$/ })).toHaveText('この配列');
   await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('4');
   await expect(row).toContainText('配列「QWERTY」で変更');
   // 配列のレベルだけに書く。全体の値は既定のまま
-  await row.locator('[data-condition-scope-global]').click();
+  await pickScope(row, '全体を編集');
   await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('3');
   await expect(row.locator('[data-condition-notice]')).toContainText('配列「QWERTY」の値が優先されるため');
-  await row.locator('[data-condition-scope-start]').click();
+  await pickScope(row, 'この配列の値を編集');
   // 全体へ移す: 全体の値が4になり、配列の上書きは消える
-  await row.locator('[data-condition-promote]').click();
+  await pickScope(row, '全体へ移す');
   await expect(row.locator('output[aria-label="先読みN"]')).toHaveText('4');
   await expect(row).toContainText('全体で変更');
-  await expect(row.locator('[data-condition-scope-start]')).toHaveText('この配列だけ別に');
+  await expect(row.getByRole('button', { name: /の編集先$/ })).toHaveText('全体');
   await expect(row.locator('[data-condition-notice]')).toHaveCount(0);
   // 配列の値を消すと、継承する値へ戻る
-  await row.locator('[data-condition-scope-start]').click();
+  await pickScope(row, 'この配列だけ別に');
   await row.getByRole('button', { name: '先読みNを1増やす' }).click();
   await expect(row).toContainText('配列「QWERTY」で変更');
   await row.getByRole('button', { name: '先読みNを既定値へ戻す' }).click();
@@ -262,13 +269,13 @@ test('条件のモーダル: この配列だけ別にすると配列のレベル
 test('条件のモーダル: 配列の推奨を持つ配列でも、ローマ字規則を配列だけ別にでき、推奨へ戻せる', async ({ page }) => {
   const modal = await openWithLayout(page, 'oonishi');
   const row = modal.locator('[data-item="romajiRuleId"]');
-  await row.locator('[data-condition-scope-start]').click();
+  await pickScope(row, 'この配列だけ別に');
   await row.getByLabel('ローマ字規則', { exact: true }).selectOption('azik');
   await expect(row).toContainText('配列「大西配列」で変更');
   await page.keyboard.press('Escape');
   await expect(page.locator('.pane-condition-trigger')).toContainText('ローマ字規則: AZIK');
   await page.locator('.pane-condition-trigger').click();
-  await row.locator('[data-condition-scope-start]').click();
+  await pickScope(row, 'この配列の値を編集');
   await row.getByRole('button', { name: 'ローマ字規則を既定値へ戻す' }).click();
   await expect(row).not.toContainText('で変更');
 });
