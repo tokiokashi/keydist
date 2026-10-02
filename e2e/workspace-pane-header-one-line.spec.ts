@@ -184,6 +184,7 @@ test('ⓘの説明は見出しの先頭から出て、キーボードで届き�
 test('見出しの先頭のつかみ所は、ⓘと操作のボタンを含まない（押してもペインが動かない）', async ({ page }) => {
   await openWorkspace(page, THREE, THREE_GRID, { width: 1440, height: 900 });
   const first = page.locator('.workspace-grid-item').first();
+  await page.waitForTimeout(400);
   const before = await first.boundingBox();
   const info = first.locator('.pane-frame-lead').getByRole('button', { name: 'Bigram Flowの説明' });
   expect(await info.evaluate((el) => el.closest('.workspace-drag-handle') === null)).toBe(true);

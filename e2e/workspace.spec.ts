@@ -704,6 +704,8 @@ async function storedGridOf(page: Page, analyzerId: string, nth = 0): Promise<{ 
 
 /** ペインの見出しの先頭のつかみ所（絵と名前）の中央。 */
 async function grabPoint(page: Page, name: string): Promise<{ x: number; y: number }> {
+  // ライブラリの配置の動き（200ms）が済んでから、つかみを探す
+  await page.waitForTimeout(400);
   const box = (await pane(page, name).locator('.workspace-drag-handle').boundingBox())!;
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }

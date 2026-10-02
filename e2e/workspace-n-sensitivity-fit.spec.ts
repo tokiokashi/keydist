@@ -34,6 +34,8 @@ async function openWorkspace(page: Page, panes: readonly unknown[], grid: unknow
 
 /** ペインの右下の角をつかんで、`dy`（画素）だけ縦に動かす。 */
 async function dragCornerBy(page: Page, id: string, dy: number): Promise<void> {
+  // ライブラリの配置の動き（200ms）が済んでから、つかみを探す
+  await page.waitForTimeout(400);
   const corner = (await page.locator(`.workspace-grid-item[data-pane-id="${id}"] .react-resizable-handle-se`).boundingBox())!;
   const x = corner.x + corner.width / 2;
   const y = corner.y + corner.height / 2;

@@ -130,6 +130,7 @@ test('ペインを動かす・大きさを変えても、依頼は出ず、計�
 
   // 移動: cのつかみ所を右の列の下へ運ぶ
   await resetLog(page);
+  await page.waitForTimeout(400);
   const grab = (await page.locator('.workspace-grid-item[data-pane-id="c"] .workspace-drag-handle').boundingBox())!;
   await page.mouse.move(grab.x + grab.width / 2, grab.y + grab.height / 2);
   await page.mouse.down();
@@ -138,6 +139,7 @@ test('ペインを動かす・大きさを変えても、依頼は出ず、計�
   await expect.poll(async () => (await storedGridItem(page, 'c')).x).toBeGreaterThan(0);
 
   // 大きさの変更: aの右下の角をつかんで縮める
+  await page.waitForTimeout(600);
   const corner = (await page.locator('.workspace-grid-item[data-pane-id="a"] .react-resizable-handle-se').boundingBox())!;
   await page.mouse.move(corner.x + corner.width / 2, corner.y + corner.height / 2);
   await page.mouse.down();

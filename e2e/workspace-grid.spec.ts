@@ -25,6 +25,26 @@ async function open(page: Page, ids: readonly string[], grid: readonly Cell[], s
   await page.goto('/workspace/g');
   await waitForHydration(page);
   await expect(page.locator('.workspace-grid-item')).toHaveCount(ids.length);
+  await settle(page);
+}
+
+/**
+ * ペインの位置・大きさが落ち着くまで待つ。ライブラリは配置が変わると短い動き（200ms）を付けるので、
+ * 動いている最中の位置でつかみを探すと外れる（読み込み直後と、離した直後）。
+ */
+async function settle(page: Page): Promise<void> {
+  const signature = () => page.locator('.workspace-grid-item').evaluateAll((els) => els.map((el) => {
+    const r = el.getBoundingClientRect();
+    return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
+  }).join('|'));
+  let last = await signature();
+  let stable = 0;
+  while (stable < 4) {
+    await page.waitForTimeout(100);
+    const now = await signature();
+    stable = now === last ? stable + 1 : 0;
+    last = now;
+  }
 }
 
 async function stored(page: Page): Promise<Cell[]> {
@@ -48,6 +68,7 @@ async function dragHandle(page: Page, id: string, axis: 's' | 'e' | 'w' | 'se', 
   await page.mouse.down();
   await page.mouse.move(x + dx, y + dy, { steps: 10 });
   await page.mouse.up();
+  await settle(page);
 }
 
 test('つかみは下の辺・右の辺・左の辺・右下の角の4つだけで、上の辺と他の角には無い', async ({ page }) => {

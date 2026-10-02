@@ -74,6 +74,8 @@ test('2ペイン横並び（Bigram Flow＋比較表、各6列 x 21行）で、Bi
 
 /** ペインの右下の角をつかんで、`dx`・`dy`（画素）だけ動かす。 */
 async function dragCorner(page: Page, id: string, dx: number, dy: number): Promise<void> {
+  // ライブラリの配置の動き（200ms）が済んでから、つかみを探す
+  await page.waitForTimeout(400);
   const corner = (await page.locator(`.workspace-grid-item[data-pane-id="${id}"] .react-resizable-handle-se`).boundingBox())!;
   const x = corner.x + corner.width / 2;
   const y = corner.y + corner.height / 2;
