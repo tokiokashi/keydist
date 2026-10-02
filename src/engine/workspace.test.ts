@@ -3,6 +3,8 @@ import test from 'node:test';
 import type { AnalysisTarget } from '#input/setup/index.ts';
 import {
   addWorkspacePane,
+  BLANK_PANE_ID,
+  NO_BINDING,
   closeWorkspacePane,
   createWorkspace,
   deleteWorkspace,
@@ -252,4 +254,16 @@ test('workspaceLayoutIds: 従う組の対象（単体・集合）と固定のペ
   library = withWorkspacePaneBinding(library, 'w1', 'a', { mode: 'fixed', target: { kind: 'single', target: OONISHI } });
   library = withWorkspacePaneBinding(library, 'w1', 'b', { mode: 'fixed', target: { kind: 'set', selection: { targets: [QWERTY], baseline: undefined } } });
   assert.deepEqual(workspaceLayoutIds(findWorkspace(library, 'w1')!), ['oonishi', 'qwerty']);
+});
+
+test('余白のペイン: 対象を持たず、組を残す理由にならない。閉じても組と他のペインに影響しない', () => {
+  const blank: WorkspacePane = { id: 'b', analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING };
+  assert.equal(resolveWorkspacePaneTarget(NO_BINDING, [], 'single'), undefined);
+  let library = addWorkspacePane(libraryWith('a'), 'w1', blank);
+  assert.deepEqual([...layoutPaneIds(findWorkspace(library, 'w1')!.layout!)].sort(), ['a', 'b']);
+  // 従うペインが固定になると組は先頭の1つへ畳まれるが、余白が組を保つことはない
+  library = withWorkspacePaneBinding(library, 'w1', 'a', { mode: 'fixed', target: { kind: 'single', target: QWERTY } });
+  assert.deepEqual(findWorkspace(library, 'w1')!.groups.map((g) => g.id), [G]);
+  library = closeWorkspacePane(library, 'w1', 'b');
+  assert.deepEqual(findWorkspace(library, 'w1')!.panes.map((p) => p.id), ['a']);
 });

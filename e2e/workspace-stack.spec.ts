@@ -203,7 +203,7 @@ test('スマホ幅でも、ペインの追加・複製・閉じる・連動・�
   const titles = page.locator('.pane-frame h2.pane-frame-title');
 
   // 追加（積んだ末尾に入る）
-  await page.getByRole('button', { name: /Analyzerを追加/ }).click();
+  await page.getByRole('button', { name: /ペインを追加/ }).click();
   await page.getByRole('menuitem', { name: /Bigram Flow/ }).click();
   await expect(titles).toHaveText(['Bigram Flow', '比較表', 'N感度', 'Bigram Flow']);
   await expect(page.locator('.workspace-stack-pane')).toHaveCount(4);

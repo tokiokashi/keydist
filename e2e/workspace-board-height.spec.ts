@@ -30,6 +30,7 @@ async function openWorkspace(
   size: { width: number; height: number },
   extra: Record<string, unknown> = {},
   waitForDock = true,
+  query = '',
 ) {
   await page.setViewportSize(size);
   await page.addInitScript((value) => {
@@ -37,7 +38,7 @@ async function openWorkspace(
       localStorage.setItem('keydist:workspaces', JSON.stringify({ version: 3, workspaces: [value] }));
     }
   }, { id: 'board', name: '板の高さ', text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } }, panes, layout, ...extra });
-  await page.goto('/workspace/board');
+  await page.goto(`/workspace/board${query}`);
   await waitForHydration(page);
   if (!waitForDock) return;
   await expect(page.locator('.dv-groupview').first()).toBeVisible({ timeout: 15_000 });
@@ -229,7 +230,7 @@ test('サッシで狭めた後にAnalyzerを足しても、狭めたペインは
   // N感度を最小近くまで狭める
   await dragSash(page, 1, -2000);
   await waitForStoredFractions(page, (f) => f[1]! < seeded[1]! / 2);
-  await page.getByRole('button', { name: /Analyzerを追加/ }).click();
+  await page.getByRole('button', { name: /ペインを追加/ }).click();
   await page.getByRole('menuitem', { name: /比較表/ }).click();
   await expect(page.locator('.dv-groupview')).toHaveCount(4);
   await page.waitForTimeout(800);
@@ -256,7 +257,7 @@ test('サッシで狭めた後に別のペインを閉じても、板は伸び�
 
 test('Analyzerを追加しても、下限を割らなければ板は動かない', async ({ page }) => {
   await openWorkspace(page, [flow('f')], group('f'), { width: 1440, height: 900 });
-  await page.getByRole('button', { name: /Analyzerを追加/ }).click();
+  await page.getByRole('button', { name: /ペインを追加/ }).click();
   await page.getByRole('menuitem', { name: /比較表/ }).click();
   await expect(page.locator('.dv-groupview')).toHaveCount(2);
   const m = await measure(page);
@@ -267,7 +268,7 @@ test('Analyzerを追加すると、足したペインの下限まで保存され
   // 縦に3段（等分、保存なし）の右に1つ足す。数えるのは足したペインだけで、3段の下限は数えない（人が決めた比として扱う）
   await openWorkspace(page, STACK_PANES, column(group('f'), group('n'), group('c')), { width: 1440, height: 900 });
   expect(await storedBoardHeight(page)).toBeUndefined();
-  await page.getByRole('button', { name: /Analyzerを追加/ }).click();
+  await page.getByRole('button', { name: /ペインを追加/ }).click();
   await page.getByRole('menuitem', { name: /比較表/ }).click();
   await expect(page.locator('.dv-groupview')).toHaveCount(4);
   await expect.poll(async () => (await storedBoardHeight(page)) ?? 0).toBeGreaterThan(0);
@@ -346,4 +347,39 @@ test('縦積みの幅（760px以下）では板の高さを使わない', async 
   await expect(page.locator('.workspace-dock-area')).toHaveCount(0);
   const docHeight = await page.evaluate(() => document.documentElement.scrollHeight);
   expect(docHeight).toBeLessThan(300 * REM);
+});
+
+/** タブを隠す表示の余白のペインの下限。Dockviewのグループの最小の高さ（100px）に合わせてある（`board-policy.ts`）。 */
+const BLANK_FLOOR_HIDDEN_REM = 100 / REM;
+const COMPARISON_FLOOR_HIDDEN_REM = 9.9 + 12;
+const blank = (id: string) => ({ id, analyzerId: 'blank', binding: { mode: 'none' } });
+
+test('タブを隠す表示で余白のペインを縦に重ねて板を下限まで縮めても、比較表の枠は下限を割らない', async ({ page }) => {
+  // 板の下限はアプリ自身に計算させる（保存値を書き込まない）。比は下限の比。
+  // 余白のペインの下限がDockviewの最小の高さより低いと、余白がそこまでしか縮まず、足りない分が比較表の枠を押し縮める。
+  // 下限の和は1画面（450px）より大きいので、つまみのHomeで下限まで縮めた時に効く
+  await openWorkspace(
+    page,
+    [blank('b1'), blank('b2'), comparison('c')],
+    column(group('b1', BLANK_FLOOR_HIDDEN_REM), group('b2', BLANK_FLOOR_HIDDEN_REM), group('c', COMPARISON_FLOOR_HIDDEN_REM)),
+    { width: 1440, height: 450 },
+    {},
+    true,
+    '?tabs=hide',
+  );
+  // 比較表は描画が遅れて入るので、出てから測る（出る前は枠だけで、Analyzerの印が付かない）
+  await expect(page.locator('[data-react-feature="comparison"]')).toBeVisible({ timeout: 15_000 });
+  const handle = page.getByRole('separator', { name: 'ペインを並べる領域の高さ' });
+  await handle.scrollIntoViewIfNeeded();
+  await handle.focus();
+  // 一度伸ばしてから下限へ戻す。Homeの行き先（下限）はアプリが計算した値
+  await page.keyboard.press('End');
+  await page.waitForTimeout(400);
+  await page.keyboard.press('Home');
+  await expect(handle).toHaveAttribute('aria-valuenow', (await handle.getAttribute('aria-valuemin')) ?? '');
+  await page.waitForTimeout(600);
+  const m = await measure(page);
+  const cmp = m.groups.find((g) => g.analyzer === 'comparison')!;
+  // 枠の高さ（本体の高さは枠が下限を割っても変わらないので使えない）。枠線の分の2pxは許す
+  expect(cmp.height).toBeGreaterThanOrEqual(COMPARISON_FLOOR_HIDDEN_REM * REM - 2);
 });
