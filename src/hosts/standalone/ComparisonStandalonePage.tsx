@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import { setMultiBaselineCommand, setMultiTargetsCommand, type KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
+import { layoutIdsOfTargets } from '#input/setup/index.ts';
 import type { PresetIdGenerator } from '#input/presets/index.ts';
 import type { TextIdGenerator } from '#input/text/library.ts';
 import { resolveTextSelection } from '#input/text/resolve.ts';
@@ -172,6 +173,8 @@ export function ComparisonStandalonePage({
           overrides={assets.setupLibrary.overrides}
           dispatch={dispatch}
           shapes={catalog.setupCatalog.shapes}
+          layoutIds={layoutIdsOfTargets(assets.multiTargetSelection.targets)}
+          layouts={catalog.setupCatalog.layouts}
         />
       </ContextBar>
       {/* プリレンダーされたページはハイドレーション完了まで操作を効かせない（レビュー指摘1）。 */}

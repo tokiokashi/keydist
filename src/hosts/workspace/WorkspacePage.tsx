@@ -19,6 +19,7 @@ import {
   findWorkspace,
   NO_BINDING,
   resolveWorkspacePaneTarget,
+  workspaceLayoutIds,
   type WorkspaceIdGenerator,
   type WorkspacePane,
   type WorkspacePaneTarget,
@@ -328,6 +329,8 @@ export function WorkspacePage({
           overrides={assets.setupLibrary.overrides}
           dispatch={dispatch}
           shapes={catalog.setupCatalog.shapes}
+          layoutIds={workspaceLayoutIds(workspace)}
+          layouts={catalog.setupCatalog.layouts}
         />
       </ContextBar>
       {/* プリレンダーやハイドレーション前は操作を効かせない（個別画面と同じ扱い）。 */}

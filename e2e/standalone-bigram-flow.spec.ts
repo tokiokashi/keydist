@@ -305,6 +305,57 @@ test('条件のモーダル: 配列の推奨を持つ配列でも、ローマ字
   await expect(row).not.toContainText('で変更');
 });
 
+test('条件のモーダル: 既定の物理配列を配列だけ別にすると、その配列だけ物理配列が変わり、全体のチップは全体へ書く', async ({ page }) => {
+  const modal = await openWithLayout(page, 'qwerty');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  await expect(flow).toHaveAttribute('data-geometry-id', 'row-staggered');
+  const row = modal.locator('[data-item="defaultShapeId"]');
+  await pickScope(row, 'この配列だけ別に');
+  await row.getByLabel('既定の物理配列', { exact: true }).selectOption('ortholinear');
+  await expect(row).toContainText('配列「QWERTY」で変更');
+  await expect(flow).toHaveAttribute('data-geometry-id', 'ortholinear');
+  // 全体の値は既定のまま。全体を編集すると、配列の値が優先される理由が出る。
+  await pickScope(row, '全体を編集');
+  await expect(row.getByLabel('既定の物理配列', { exact: true })).toHaveValue('row-staggered');
+  await expect(row.locator('[data-condition-notice]')).toContainText('配列「QWERTY」の値が優先されるため');
+  await page.keyboard.press('Escape');
+
+  // 文脈バーのチップは全体の値（既定のまま）を出し、操作している間だけ、配列の値が勝つ理由を添える。
+  const chip = page.locator('.context-bar').getByLabel('既定の物理配列');
+  await expect(chip).toHaveValue('row-staggered');
+  const note = page.locator('[data-default-shape-notice]');
+  await expect(note).toBeHidden();
+  await chip.focus();
+  await expect(note).toBeVisible();
+  await expect(note).toHaveText('配列「QWERTY」は物理配列を別に決めているため、ここで変えても変わらない');
+  // チップで全体を変えても、配列の値が勝つので図の物理配列は変わらない。
+  await chip.selectOption('column-staggered');
+  await expect(chip).toHaveValue('column-staggered');
+  await expect(flow).toHaveAttribute('data-geometry-id', 'ortholinear');
+  await chip.blur();
+  await expect(note).toBeHidden();
+});
+
+test('条件のモーダル: 配列の既定の物理配列を全体へ移すと全体の値になり、配列の値を消すと全体の値へ戻る', async ({ page }) => {
+  const modal = await openWithLayout(page, 'qwerty');
+  const flow = page.locator('[data-react-feature="bigram-flow"]');
+  const row = modal.locator('[data-item="defaultShapeId"]');
+  await pickScope(row, 'この配列だけ別に');
+  await row.getByLabel('既定の物理配列', { exact: true }).selectOption('ortholinear');
+  await pickScope(row, '全体へ移す');
+  await expect(row).toContainText('全体で変更');
+  await expect(row.getByLabel('既定の物理配列', { exact: true })).toHaveValue('ortholinear');
+  await expect(page.locator('.context-bar').getByLabel('既定の物理配列')).toHaveValue('ortholinear');
+  await expect(page.locator('[data-default-shape-notice]')).toHaveCount(0);
+  // 配列だけ別にしてから、全体の値へ戻す
+  await pickScope(row, 'この配列だけ別に');
+  await row.getByLabel('既定の物理配列', { exact: true }).selectOption('column-staggered');
+  await expect(flow).toHaveAttribute('data-geometry-id', 'column-staggered');
+  await row.getByRole('button', { name: '既定の物理配列を全体の値へ戻す' }).click();
+  await expect(flow).toHaveAttribute('data-geometry-id', 'ortholinear');
+  await expect(row).not.toContainText('配列「QWERTY」で変更');
+});
+
 test('操作系はハイドレーション+資産読み込み完了（assetsReady）まで無効化され、直後に選んでも取りこぼさない（レビュー指摘1）', async ({ page }) => {
   // プリレンダーされたページは、Reactがハイドレーションを終える前から見た目上は
   // 操作できてしまう。旧実装はここに約750〜850msの「クリック・選択しても静かに

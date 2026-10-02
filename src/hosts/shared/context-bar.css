@@ -472,3 +472,52 @@ button.context-chip:hover:not(:disabled),
     align-self: flex-start;
   }
 }
+
+/* ---- チップの理由（既定の物理配列） ----
+   配列のレベルの値が勝つ配列がある時、チップを操作している間だけ、チップの下に重ねて出す。
+   バーの高さを変えない（狭い時の1行も保つ）ために、流れに入れず重ねる。 */
+.context-chip-group {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.context-chip-note {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  /* チップの右端に揃える。チップはバーの右寄りに並ぶので、左端に揃えると画面の右へはみ出す。 */
+  right: 0;
+  z-index: 30;
+  display: none;
+  width: max-content;
+  max-width: min(22rem, calc(100cqw - 2.5rem));
+  margin: 0;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  box-shadow: 0 6px 18px light-dark(rgb(26 25 23 / 14%), rgb(0 0 0 / 40%));
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.context-chip-group:focus-within .context-chip-note {
+  display: block;
+}
+
+/* 狭いバーはチップがアイコンだけで右寄りに並ぶので、理由の箱はチップでなくバーを基準に、バーの全幅へ収める。 */
+@container context-bar (max-width: 53.5rem) {
+  .context-chip-group {
+    position: static;
+  }
+
+  .context-chip-note {
+    top: 100%;
+    right: 0.5rem;
+    left: 0.5rem;
+    width: auto;
+    max-width: none;
+  }
+}

@@ -168,6 +168,22 @@ export function defaultShapeCommand(next: string): Command<KeydistAssets> {
   return setGlobalCommand('defaultShapeId', next, staticDefaultOf('defaultShapeId'));
 }
 
+/**
+ * 文脈バーのチップを操作する時に出す理由。チップは全体のレベルへ書く近道なので、この画面に出ている配列に
+ * 配列のレベルの上書きがあれば、その配列は全体を変えても変わらない。該当する配列が無ければ`undefined`。
+ */
+export function defaultShapeChipNotice(
+  overrides: SettingsCascadeOverrides,
+  layoutIds: readonly string[],
+  layoutNames?: ReadonlyMap<string, { readonly name: string }>,
+): string | undefined {
+  const own = [...new Set(layoutIds)]
+    .filter((layoutId) => layoutOverrideOf(overrides, layoutId, 'defaultShapeId') !== undefined)
+    .map((layoutId) => layoutNames?.get(layoutId)?.name ?? 'この配列');
+  if (own.length === 0) return undefined;
+  return `配列${own.map((name) => `「${name}」`).join('')}は物理配列を別に決めているため、ここで変えても変わらない`;
+}
+
 /** 既定値が文脈に依らない項目の既定値。 */
 export function staticDefaultOf<K extends Exclude<GlobalEditableId, 'fingerAssignmentId'>>(id: K): SettingsValueMap[K] {
   return SETTINGS_ITEMS[id].defaultValue as SettingsValueMap[K];

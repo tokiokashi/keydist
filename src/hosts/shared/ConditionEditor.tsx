@@ -235,7 +235,9 @@ export function ConditionEditor({ editor, rows }: ConditionEditorProps) {
     ...(editor.customFingerAssignments?.values() ?? []),
   ].map((assignment) => ({ value: assignment.id, label: assignment.name }));
   // 指の割当の既定は物理配列で決まる。ここで見せる既定は、全体の既定の物理配列で決まる値。
-  const shapeForDefault = editor.shapes.get(shapeBinding.value) ?? editor.shapes.get(DEFAULT_SHAPE_ID);
+  // 行の編集先が配列でも、全体の既定は全体の物理配列で決まる（配列の値で決めない）。
+  const globalShapeId = globalOverrideOf(overrides, 'defaultShapeId') ?? DEFAULT_SHAPE_ID;
+  const shapeForDefault = editor.shapes.get(globalShapeId) ?? editor.shapes.get(DEFAULT_SHAPE_ID);
   const derivedFingerId = shapeForDefault === undefined ? fingerChoices[0]?.value ?? '' : defaultFingerAssignmentId(shapeForDefault);
   const fingerBinding = scoped('fingerAssignmentId', globalOverrideOf(overrides, 'fingerAssignmentId') ?? derivedFingerId, derivedFingerId);
   if (!fingerChoices.some((choice) => choice.value === fingerBinding.value)) {

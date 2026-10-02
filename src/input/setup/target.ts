@@ -23,5 +23,14 @@ export function sameAnalysisTarget(a: AnalysisTarget, b: AnalysisTarget): boolea
   return analysisTargetKey(a) === analysisTargetKey(b);
 }
 
+/** 対象の列に含まれる配列のid（重複なし）。Setupの対象は物理配列を自分で持つので含めない。 */
+export function layoutIdsOfTargets(targets: readonly AnalysisTarget[]): readonly string[] {
+  const ids = new Set<string>();
+  for (const target of targets) {
+    if (target.kind === 'layout') ids.add(target.layoutId);
+  }
+  return [...ids];
+}
+
 /** 対象の既定値。手持ちが空でも必ず選べる（QWERTYは英語直接入力・ローマ字入力のどちらでも使える）。 */
 export const DEFAULT_ANALYSIS_TARGET: AnalysisTarget = { kind: 'layout', layoutId: 'qwerty' };

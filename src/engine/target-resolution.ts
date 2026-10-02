@@ -22,7 +22,7 @@ import { DEFAULT_SHAPE_ID, resolveDefaultShapeId, type SettingsCascadeOverrides 
  *   （既存のSetup解決。`input/setup/input-method.ts`）へそのまま委ねる。今までと
  *   ビット単位で同じ結果になる（決定「Setup対象は今までどおり解決する」）
  * - **配列対象**: `Setup`という器を経由せず、配列idと「既定の物理配列」（カスケードの
- *   グローバル専用項目`defaultShapeId`。`settings-items.ts`）から`CascadeContext`を
+ *   全体・配列のレベルの項目`defaultShapeId`。`settings-items.ts`）から`CascadeContext`を
  *   直接組み立てる。`targetKind: 'layout'`のcontextは型の上で`setupId`を持てないため、
  *   `resolveCascade`はSetupレベルの上書きを一切見ない（「配列を対象にした時はSetupレベルを
  *   持たない」が`CascadeContext`の型契約そのもので保証される。`input/settings/context.ts`の
@@ -63,7 +63,7 @@ export function resolveTargetForText(
   // だけの軽い検査。settings-items.tsのコメント参照）ので、ここでは値の選定だけを行う。
   // `DEFAULT_SHAPE_ID`自体もcatalogに無い場合（自作カタログが極端に小さい等）だけ、
   // 本当に解決できないので`reference`エラーにする。
-  const requestedShapeId = resolveDefaultShapeId(overrides);
+  const requestedShapeId = resolveDefaultShapeId(overrides, target.layoutId);
   const shape: PhysicalShape | undefined = catalog.shapes.get(requestedShapeId) ?? catalog.shapes.get(DEFAULT_SHAPE_ID);
   if (shape === undefined) {
     const errors: SetupReferenceError[] = [{ kind: 'shape-missing', shapeId: requestedShapeId }];
