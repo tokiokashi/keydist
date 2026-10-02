@@ -82,7 +82,7 @@ const romajiRuleIdSchema = v.pipe(v.string(), v.minLength(1));
 const fingerAssignmentIdSchema = v.pipe(v.string(), v.minLength(1));
 
 /**
- * 既定の物理配列id（`defaultShapeId`。#578指摘1）。物理配列idは組み込み3種類のみだが、
+ * 既定の物理配列id（`defaultShapeId`。#578指摘1）。物理配列idは組み込みの8種類のみだが、
  * fingerAssignmentIdと同じ理由（将来の自作分の余地）で値そのものは緩く、空文字だけ弾く。
  * 未登録のidを指した場合は`target-resolution.ts`側が`reference`（shape-missing）として
  * 値のまま扱う（例外にしない。#544 §8-5）。
