@@ -202,6 +202,8 @@ test('列名は短くそろい、表の下の「列の説明」に全列の説�
   await expect(toggle).toHaveCount(1);
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   await expect(page.locator('.comparison-column-descriptions')).toHaveCount(0);
+  // 閉じている間は、aria-controls が DOM に無い id を指さない。
+  await expect(toggle).not.toHaveAttribute('aria-controls', /.+/);
 
   // キーボードだけで開いて閉じられる。
   await toggle.focus();
@@ -212,6 +214,20 @@ test('列名は短くそろい、表の下の「列の説明」に全列の説�
   await expect(panel).toContainText('距離の単位 u は、キーの幅を1とした距離');
   await expect(panel).toContainText('ホームに置いた時の間隔');
   await expect(panel.locator('.comparison-column-description')).toHaveCount(13);
+  // 開いている間は、aria-controls が指す id がブロックとして DOM にある。
+  const controls = await toggle.getAttribute('aria-controls');
+  expect(controls).toBeTruthy();
+  await expect(page.locator(`[id="${controls}"]`)).toHaveCount(1);
+  await expect(page.locator(`[id="${controls}"]`)).toHaveClass(/comparison-column-descriptions/);
+  // dl の直下は dt / dd か、それを包む div だけ。単位の文などの p は置かない。
+  const badChildren = await panel.locator('dl').evaluateAll((lists) =>
+    lists.flatMap((dl) => [...dl.children].filter((child) => {
+      const tag = child.tagName;
+      if (tag === 'DT' || tag === 'DD') return false;
+      return !(tag === 'DIV' && [...child.children].every((c) => c.tagName === 'DT' || c.tagName === 'DD'));
+    }).map((child) => child.tagName)));
+  expect(badChildren).toEqual([]);
+  await expect(panel.locator('dl')).toHaveCount(1);
   for (const label of headers.slice(1)) {
     await expect(panel.locator('dt', { hasText: new RegExp(`^${label.replace(/[/.]/g, '\\$&')}$`) })).toHaveCount(1);
   }
