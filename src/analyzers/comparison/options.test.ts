@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { COMPARISON_COLUMNS, comparisonOptions } from './options.ts';
+import { COMPARISON_COLUMNS, COMPARISON_UNIT_NOTE, comparisonOptions } from './options.ts';
 
 /**
  * 列ごとの表示形式（コーディネーターレビュー対応: 一律ルールではなく列の宣言に持たせる）。
@@ -14,7 +14,7 @@ test('COMPARISON_COLUMNS: 個数の列は整数のまま（桁を丸めない）
   assert.equal(COMPARISON_COLUMNS.sameFinger.format(7), '7');
 });
 
-test('COMPARISON_COLUMNS: 距離[u]は整数（小数第0位）', () => {
+test('COMPARISON_COLUMNS: 距離は整数（小数第0位）', () => {
   assert.equal(COMPARISON_COLUMNS.totalUnits.format(1234.567), '1235');
 });
 
@@ -46,11 +46,11 @@ test('COMPARISON_COLUMNS: 全13列に表示形式が定義されている', () =
 
 test('URL: 既定値なら何も書かず、変えた項目だけが往復する', () => {
   assert.equal(comparisonOptions.encodeOptionsToUrl(comparisonOptions.defaultOptions).toString(), '');
-  const options = { visibleColumns: ['totalUnits', 'actions'], showBaselineRatio: false } as const;
+  const options = { visibleColumns: ['totalUnits', 'actions'], showBaselineRatio: false, sort: null } as const;
   const params = comparisonOptions.encodeOptionsToUrl(options);
   const diagnostics: { path: string; message: string }[] = [];
   const decoded = comparisonOptions.decodeOptionsFromUrl(new URLSearchParams(params.toString()), diagnostics);
-  assert.deepEqual(decoded.values, options);
+  assert.deepEqual(decoded.values, { visibleColumns: options.visibleColumns, showBaselineRatio: false });
   assert.deepEqual(diagnostics, []);
 });
 
@@ -65,4 +65,55 @@ test('URL: 未知の列や真偽値は診断を積んで捨てる', () => {
   const decoded = comparisonOptions.decodeOptionsFromUrl(new URLSearchParams('columns=actions,nope&baselineRatio=maybe'), diagnostics);
   assert.deepEqual(decoded.values, { visibleColumns: ['actions'] });
   assert.equal(diagnostics.length, 2);
+});
+
+test('見出し: 単位は付けず、距離の列の説明に単位 u を書く', () => {
+  for (const def of Object.values(COMPARISON_COLUMNS)) assert.ok(!def.label.includes('['), def.label);
+  assert.equal(COMPARISON_COLUMNS.totalUnits.label, '距離');
+  assert.equal(COMPARISON_COLUMNS.adjacentMean.label, '指間平均');
+  assert.equal(COMPARISON_COLUMNS.adjacentStdDev.label, '指間σ');
+  for (const id of ['totalUnits', 'meanPerStroke', 'perCharUnits', 'adjacentMean', 'adjacentStdDev'] as const) {
+    assert.match(COMPARISON_COLUMNS[id].description, /（u(\/打鍵|\/文字)?）/, id);
+  }
+  assert.match(COMPARISON_UNIT_NOTE, /キーの幅を1とした距離/);
+});
+
+test('見出し: 全列に説明があり、内部の語や英語のmeanを使わない', () => {
+  for (const [id, def] of Object.entries(COMPARISON_COLUMNS)) {
+    assert.ok(def.description.length > 0, id);
+    for (const word of ['Policy', 'fresh', 'Stroke', 'physical', 'mean']) {
+      assert.ok(!def.description.includes(word) && !def.label.includes(word), `${id}: ${word}`);
+    }
+  }
+});
+
+test('並び替え: 既定はなし。URLは 列:向き で往復し、解除はURLに出ない', () => {
+  assert.equal(comparisonOptions.defaultOptions.sort, null);
+  const sort = { column: 'sameFingerRate', direction: 'desc' } as const;
+  const params = comparisonOptions.encodeOptionsToUrl({ ...comparisonOptions.defaultOptions, sort });
+  assert.equal(params.get('sort'), 'sameFingerRate:desc');
+  const decoded = comparisonOptions.decodeOptionsFromUrl(new URLSearchParams(params.toString()), []);
+  assert.deepEqual(decoded.values, { sort });
+});
+
+test('並び替え: URLの壊れた値は診断を積んで捨てる', () => {
+  for (const raw of ['nope:asc', 'totalUnits:up', 'totalUnits', 'totalUnits:asc:x']) {
+    const diagnostics: { path: string; message: string }[] = [];
+    const decoded = comparisonOptions.decodeOptionsFromUrl(new URLSearchParams({ sort: raw }), diagnostics);
+    assert.deepEqual(decoded.values, {}, raw);
+    assert.equal(diagnostics.length, 1, raw);
+  }
+});
+
+test('並び替え: 保存値は往復し、壊れた値は既定（なし）へ戻る', () => {
+  const stored = { sort: { column: 'totalUnits', direction: 'asc' } };
+  assert.deepEqual(comparisonOptions.decodeOptions(stored, []).sort, stored.sort);
+  const diagnostics: { path: string; message: string }[] = [];
+  assert.equal(comparisonOptions.decodeOptions({ sort: { column: 'x', direction: 'asc' } }, diagnostics).sort, null);
+  assert.equal(diagnostics.length, 1);
+});
+
+test('並び替えは抽出の値に効かない（affects: view）', () => {
+  const key = (sort: unknown) => JSON.stringify(comparisonOptions.extractKeyOf({ ...comparisonOptions.defaultOptions, sort } as never));
+  assert.equal(key(null), key({ column: 'totalUnits', direction: 'asc' }));
 });

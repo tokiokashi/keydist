@@ -209,6 +209,7 @@ export function ComparisonPane({
           rowContext={rowContext}
           baselineTargetKey={baselineTargetKey}
           options={options}
+          onOptionsChange={onOptionsChange}
         />
       )}
     </PaneFrame>
