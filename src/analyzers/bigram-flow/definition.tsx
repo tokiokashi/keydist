@@ -758,15 +758,22 @@ export function BigramFlowBody({
       data-polar-bandwidth={polarBandwidth}
       data-polar-gain={polarGain}
     >
-      {/* 表示中のデータに付く数（何組を描いたか・何を飛ばしたか）だけを置く。配列名などの条件は見出しと条件の要約が出す。 */}
-      <p className="flow-status">
-        <span>2打鍵 {extracted.rawCount.toLocaleString()}組</span>
-        {trace.skipped > 0 ? <span>打てずに飛ばした文字 {trace.skipped}</span> : null}
-      </p>
+      {/*
+        飛ばした文字は出る時だけ1行を使う（普段は行を使わない）。何組を描いたかは、行を増やさずに済む
+        Keyboard Flowの見出しの行に置く。
+      */}
+      {trace.skipped > 0 ? (
+        <p className="flow-status">
+          <span>打てずに飛ばした文字 {trace.skipped}</span>
+        </p>
+      ) : null}
 
       <section className="flow-block flow-keyboard-block" aria-label="Keyboard Flow">
         <div className="flow-block-heading">
-          <h3 className="flow-block-title">Keyboard Flow</h3>
+          {/* 組の数は見出しの一部として読み上げる（Relative vectorsの指の表示と同じ形）。 */}
+          <h3 className="flow-block-title">
+            Keyboard Flow <span className="flow-block-subject flow-block-count">2打鍵 {extracted.rawCount.toLocaleString()}組</span>
+          </h3>
           <InfoButton name="Keyboard Flow" description={KEYBOARD_FLOW_READING} />
           {onOptionsChange !== undefined ? (
             <FigureSettingsToggle
