@@ -79,7 +79,8 @@ for (const size of [PHONE, { width: 360, height: 780 }]) {
     expect(scroll.scrollHeight).toBeGreaterThan(scroll.innerHeight * 1.2);
     expect(scroll.scrollWidth).toBeLessThanOrEqual(scroll.innerWidth);
     await page.mouse.wheel(0, 600);
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(300);
+    // 見出しが1行に収まる（名前を省略する）幅では積んだ全体が低く、動ける量は約270px。大きく動けば足りる
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200);
     // 文脈バーは上に貼り付いたまま残る
     expect((await box(page.locator('.context-bar'))).y).toBeLessThanOrEqual(1);
   });
