@@ -131,11 +131,11 @@ test('同じ値を書いた場合（保存先が動かない）の記録が残�
   assert.deepEqual(h.draft(), A);
 });
 
-test('書いた直後の元に戻す: 書いた値は反響として扱われ、1つ前の値へ揃う', () => {
+test('反響の描画を挟んだ後の元に戻す: 書いた値は反響として扱われ、1つ前の値へ揃う', () => {
   const h = harness(X);
   h.input(A);
-  h.write(A); // 元に戻す前のflush
-  h.stored(A); // 反響
+  h.write(A);
+  h.stored(A); // 反響の描画
   h.stored(X); // 元に戻す
   assert.deepEqual(h.draft(), X);
 });
