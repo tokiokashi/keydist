@@ -4,6 +4,11 @@ import {
   elideMiddle,
   estimateTextWidth,
   fitLabels,
+  fitLegendLabels,
+  LEGEND_MEASURE_SLACK,
+  LEGEND_PADDING,
+  LEGEND_SWATCH_GAP,
+  LEGEND_SWATCH_WIDTH,
   LEGEND_MAX_LABEL_WIDTH,
   placeLegend,
   segmentIntersectsRect,
@@ -170,4 +175,50 @@ test('名前が収まる幅の上限内なら、省くのは上限までで、�
   const fitted = fitLabels(labels, measure, LEGEND_MAX_LABEL_WIDTH, 400);
   assert.ok(fitted.every((label) => estimateTextWidth(label) <= 400));
   assert.equal(new Set(fitted).size, 2);
+});
+
+const SETUP_NAMES = [
+  'シン・JIS 逐次/通常 × ロウスタッガード（ANSI）',
+  'シン・JIS 逐次/通常 × ロウスタッガード（JIS）',
+  'シン・JIS 逐次/通常 × カラムスタッガード（ANSI・分割）',
+  'シン・JIS 逐次/通常 × カラムスタッガード（JIS・分割）',
+  '薙刀式 v18 × カラムスタッガード（ANSI・分割）',
+  '薙刀式 v18 × カラムスタッガード（JIS・分割）',
+];
+
+test('名前に使える幅が広ければ、長いSetup名も見分けられる形で省ける（distinct）', () => {
+  const result = fitLegendLabels(SETUP_NAMES, measure, LEGEND_MAX_LABEL_WIDTH, 700);
+  assert.equal(result.distinct, true);
+  assert.equal(new Set(result.labels).size, SETUP_NAMES.length);
+  assert.ok(result.labels.every((label) => measure(label) <= 700));
+});
+
+test('名前に使える幅が狭く、違いの区間が入らない時は distinct: false（図の中の枠に名前を並べない）', () => {
+  for (const hardMax of [40, 55, 80, 110]) {
+    const result = fitLegendLabels(SETUP_NAMES, measure, LEGEND_MAX_LABEL_WIDTH, hardMax);
+    assert.equal(result.distinct, false, `hardMax ${hardMax}`);
+  }
+});
+
+test('distinct: true の時は、どの名前も名前に使える幅を超えない（狭い図でも既定の上限で省かない）', () => {
+  const labels = ['QWERTY', 'Dvorak', 'Colemak-DH', 'Workman'];
+  for (const hardMax of [40, 60, 90, 130, 400]) {
+    const result = fitLegendLabels(labels, measure, LEGEND_MAX_LABEL_WIDTH, hardMax);
+    if (result.distinct) assert.ok(result.labels.every((label) => measure(label) <= hardMax), `hardMax ${hardMax}`);
+  }
+  // 1つしか無ければ、区別の必要が無いので幅に収まる限り distinct
+  assert.equal(fitLegendLabels(['QWERTY'], measure, LEGEND_MAX_LABEL_WIDTH, 60).distinct, true);
+});
+
+test('図の幅の下限付近でも、distinct な名前で組んだ「下」の枠は図の幅を超えない', () => {
+  for (const figureWidth of [74, 90, 105, 131, 180, 320]) {
+    const below: BelowArea = { x: 8, y: 200, width: figureWidth - 16 };
+    const room = figureWidth - 16 - LEGEND_PADDING * 2 - LEGEND_SWATCH_WIDTH - LEGEND_SWATCH_GAP - LEGEND_MEASURE_SLACK;
+    for (const labels of [['QWERTY', 'Dvorak', 'Colemak-DH'], SETUP_NAMES]) {
+      const { labels: fitted, distinct } = fitLegendLabels(labels, measure, undefined, room);
+      if (!distinct) continue;
+      const placement = placeLegend({ x: 48, y: 16, width: 20, height: 20 }, [], fitted, measure, below);
+      assert.ok(placement.rect.width <= figureWidth - 16 + 1e-9, `${figureWidth}px: ${placement.rect.width}`);
+    }
+  }
 });

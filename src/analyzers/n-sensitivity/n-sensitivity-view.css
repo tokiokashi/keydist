@@ -174,3 +174,41 @@
     margin-top: 0.35rem;
   }
 }
+
+/*
+ * 図の幅に収めると名前を見分けられない時（狭い図に長い名前を多く並べた時）の凡例。
+ * 図の中の枠では名前を省くしかないので、図の下に名前を省かず折り返して並べる。
+ */
+.n-sensitivity-legend-list {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.75rem;
+}
+
+.n-sensitivity-legend-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.n-sensitivity-legend-swatch {
+  flex: none;
+  margin-top: 0.2rem;
+}
+
+.n-sensitivity-legend-name {
+  min-width: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+@container pane-body (min-height: 1px) {
+  .n-sensitivity-legend-list {
+    flex: none;
+  }
+}
