@@ -203,8 +203,11 @@ async function drawnRects(page: Page): Promise<Rect[]> {
 function overlapping(rects: readonly Rect[]): string[] {
   const found: string[] = [];
   rects.forEach((a, i) => rects.slice(i + 1).forEach((b) => {
-    // 1pxの丸めは重なりとみなさない
-    if (a.x + 1 < b.x + b.w && b.x + 1 < a.x + a.w && a.y + 1 < b.y + b.h && b.y + 1 < a.y + a.h) found.push(`${a.id}/${b.id}`);
+    // つかんで動かしている・大きさを変えているペインは、ライブラリが指の位置の画素で描き、他のペインは升目で動く。
+    // その差（1升未満）は重なりとみなさず、1升以上の重なりを見つける
+    const width = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+    const height = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+    if (width >= ROW_STEP && height >= ROW_STEP) found.push(`${a.id}/${b.id}`);
   }));
   return found;
 }
