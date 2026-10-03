@@ -246,6 +246,7 @@ export const ANALYSIS_VIEW_DEFINITIONS = new Map<
             ['key', 'global'],
             BIGRAM_DEFAULTS.hoverScale,
           ),
+          repeatBadge: BIGRAM_DEFAULTS.repeatBadge,
           polarBandwidth: integer(
             source.polarBandwidth,
             BIGRAM_DEFAULTS.polarBandwidth,
