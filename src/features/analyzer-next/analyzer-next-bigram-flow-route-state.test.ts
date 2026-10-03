@@ -46,6 +46,7 @@ test('Bigram Flow route config uses current defaults for absent or invalid param
     source: 'actual',
     selectedFingers: [],
     lineScale: 'linear',
+    repeatBadge: true,
     layerOrder: 'weight',
     hoverScale: 'key',
     polarBandwidth: 5,
@@ -77,6 +78,7 @@ test('Bigram Flow route omits default ViewConfig from the URL patch', () => {
     lineScale: 'linear',
     layerOrder: 'weight',
     hoverScale: 'key',
+    repeatBadge: true,
     polarBandwidth: 5,
     polarGain: 1,
   }), {
@@ -97,6 +99,7 @@ test('Bigram Flow route serializes non-default ViewConfig without Session state'
     lineScale: 'sqrt',
     layerOrder: 'same-hand-top',
     hoverScale: 'global',
+    repeatBadge: true,
     polarBandwidth: 15,
     polarGain: 1.4,
   }), {

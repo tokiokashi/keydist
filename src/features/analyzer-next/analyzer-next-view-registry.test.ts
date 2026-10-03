@@ -34,6 +34,7 @@ test('Bigram Flow codec sanitizes config without changing Session state', () => 
     layerOrder: 'cross-hand-top',
     hoverScale: 'global',
     polarBandwidth: 12,
+    repeatBadge: true,
     polarGain: 2.5,
   });
   assert.deepEqual(definition.configCodec.decode({ source: 'bad' }, 1), {
@@ -41,6 +42,7 @@ test('Bigram Flow codec sanitizes config without changing Session state', () => 
     selectedFingers: [],
     lineScale: 'linear',
     layerOrder: 'weight',
+    repeatBadge: true,
     hoverScale: 'key',
     polarBandwidth: 5,
     polarGain: 1,

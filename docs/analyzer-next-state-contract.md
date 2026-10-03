@@ -81,7 +81,7 @@ The three playback-rate averaging fields are intentionally absent from the per-l
 
 | View | Fields |
 | --- | --- |
-| Bigram Flow | `source`, `selectedFingers`, `lineScale`, `layerOrder`, `hoverScale`, `polarBandwidth`, `polarGain` |
+| Bigram Flow | `source`, `selectedFingers`, `lineScale`, `layerOrder`, `hoverScale`, `repeatBadge`, `polarBandwidth`, `polarGain` |
 | Heatmap | `view`, `colorScale`, `showLayerDetails`, `keyPatternGuide`, `activeLayerId`, `panels.layerStats`, `panels.modifierList`, `panels.comboTable` |
 | Comparison | `baselineLayoutId`, `chartColumn`, `sort` |
 | Matrices | per-matrix sorts |
