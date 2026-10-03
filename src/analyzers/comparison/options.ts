@@ -47,7 +47,7 @@ export interface ComparisonColumnDef {
    * 率の列は値の側に `%` が付き、`u/打鍵`・`u/文字` は名前が単位を含む。
    */
   readonly label: string;
-  /** 見出しのⓘに出す説明。指標の定義は spec §11 と README「出力」の言い方に合わせる。 */
+  /** 表の下の「列の説明」に出す、この列の説明。指標の定義は spec §11 と README「出力」の言い方に合わせる。 */
   readonly description: string;
   /** 値をそのまま渡すと表示用の文字列を返す。丸め・%表記はここに閉じる。 */
   readonly format: (value: number) => string;

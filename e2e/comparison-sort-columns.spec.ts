@@ -198,30 +198,58 @@ test('列名は短くそろい、表の下の「列の説明」に全列の説�
 
   // 見出しにⓘは置かず、表の下の「列の説明」に全列を列名と組でまとめて出す。
   await expect(table.locator('thead .info-button')).toHaveCount(0);
-  const info = page.getByRole('button', { name: '列の説明' });
-  await expect(info).toHaveCount(1);
-  await expect(info).toBeVisible();
-  await info.focus();
-  const tip = page.getByRole('tooltip');
-  await expect(tip).toBeVisible();
-  await expect(tip).toContainText('距離の単位 u は、キーの幅を1とした距離');
-  await expect(tip).toContainText('ホームに置いた時の間隔');
-  await expect(tip.locator('.comparison-column-description')).toHaveCount(13);
+  const toggle = page.getByRole('button', { name: '列の説明' });
+  await expect(toggle).toHaveCount(1);
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('.comparison-column-descriptions')).toHaveCount(0);
+
+  // キーボードだけで開いて閉じられる。
+  await toggle.focus();
+  await page.keyboard.press('Enter');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  const panel = page.locator('.comparison-column-descriptions');
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText('距離の単位 u は、キーの幅を1とした距離');
+  await expect(panel).toContainText('ホームに置いた時の間隔');
+  await expect(panel.locator('.comparison-column-description')).toHaveCount(13);
   for (const label of headers.slice(1)) {
-    await expect(tip.locator('.comparison-column-description strong', { hasText: new RegExp(`^${label.replace(/[/.]/g, '\\$&')}$`) })).toHaveCount(1);
+    await expect(panel.locator('dt', { hasText: new RegExp(`^${label.replace(/[/.]/g, '\\$&')}$`) })).toHaveCount(1);
   }
   for (const word of ['Policy', 'fresh', 'Stroke', 'physical', 'mean']) {
-    await expect(tip).not.toContainText(word);
+    await expect(panel).not.toContainText(word);
   }
-  await page.keyboard.press('Escape');
-  await expect(tip).toHaveCount(0);
+  await page.keyboard.press('Space');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(panel).toHaveCount(0);
 
   // 表示していない列の説明は出さない（今の表と対応させる）。
   const settings = await openSettings(page);
   await settings.getByRole('checkbox', { name: '指間σ', exact: true }).uncheck();
   await settings.getByRole('button', { name: '解析設定を閉じる' }).click();
-  await info.focus();
-  await expect(tip.locator('.comparison-column-description')).toHaveCount(12);
+  await toggle.click();
+  await expect(panel.locator('.comparison-column-description')).toHaveCount(12);
+});
+
+test('列の説明は入れ物の幅に収まり、表とページの横幅を広げず、全文をページのスクロールで読める（390px）', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 500 });
+  const table = await openComparison(page);
+  const scrollWidthBefore = await page.evaluate(() => document.documentElement.scrollWidth);
+  const tableWidthBefore = await table.evaluate((t) => t.getBoundingClientRect().width);
+  await page.getByRole('button', { name: '列の説明' }).click();
+  const panel = page.locator('.comparison-feature .comparison-column-descriptions');
+  await expect(panel).toBeVisible();
+  // 浮かせず、表の下に流れの中のブロックとして出る。
+  expect(await panel.evaluate((el) => getComputedStyle(el).position)).toBe('static');
+  const box = await panel.boundingBox();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(scrollWidthBefore);
+  expect(await table.evaluate((t) => t.getBoundingClientRect().width)).toBeCloseTo(tableWidthBefore, 0);
+  // 説明の中でスクロールさせず、ページのスクロールで最後の項目まで届く。
+  expect(await panel.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
+  const last = panel.locator('.comparison-column-description').last();
+  await last.scrollIntoViewIfNeeded();
+  await expect(last).toBeInViewport();
 });
 
 /** 見出しのセルの幅（左から順）。 */
@@ -257,7 +285,8 @@ for (const width of [1500, 390]) {
   });
 }
 
-test('Workspace: 並び替えはペインごとに持ち、片方を並べても他方の行の順は変わらない', async ({ page }) => {
+test('Workspace: 並び替えはペインごとに持ち、片方を並べても他方の行の順は変わらない。列の説明は狭いペインに収まる', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 900 });
   await page.goto('/');
   await waitForHydration(page);
   await page.locator('#app-sidebar').getByRole('button', { name: '＋ 新しいWorkspace' }).click();
@@ -278,6 +307,21 @@ test('Workspace: 並び替えはペインごとに持ち、片方を並べても
     await expect(tables.nth(n).locator('tbody tr[data-comparison-row="ok"]')).toHaveCount(3, { timeout: 15_000 });
   }
   const original = await rowNames(tables.nth(1));
+
+  // 狭いペインでも、列の説明は開いた時にペインの幅に収まり、表の横幅を広げない。
+  const narrow = panes.nth(0);
+  const scroller = narrow.locator('.comparison-table-scroll');
+  const scrollWidthBefore = await scroller.evaluate((el) => el.scrollWidth);
+  await narrow.getByRole('button', { name: '列の説明' }).click();
+  const panel = narrow.locator('.comparison-column-descriptions');
+  await expect(panel).toBeVisible();
+  const paneBox = (await narrow.boundingBox())!;
+  const panelBox = (await panel.boundingBox())!;
+  expect(panelBox.x).toBeGreaterThanOrEqual(paneBox.x);
+  expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(paneBox.x + paneBox.width + 1);
+  expect(await scroller.evaluate((el) => el.scrollWidth)).toBe(scrollWidthBefore);
+  await narrow.getByRole('button', { name: '列の説明' }).click();
+  await expect(panel).toHaveCount(0);
 
   const first = tables.nth(0);
   await sortButton(first, '距離').click();

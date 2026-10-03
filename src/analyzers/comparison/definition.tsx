@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { comparisonDefinition, type ComparisonExtracted, type ComparisonFailedRow, type ComparisonRow } from './extract.ts';
 import {
   COMPARISON_COLUMN_IDS,
@@ -10,7 +10,6 @@ import {
   type ComparisonSort,
 } from './options.ts';
 import { bindOption, CheckboxGroupOptionField, CheckboxOptionField, OptionField } from '#ui/primitives/option-fields.tsx';
-import { InfoButton } from '#ui/primitives/info-button.tsx';
 import { nextComparisonSort, sortComparisonOrder } from './sort.ts';
 import { COMPARISON_PANE_META } from './pane-meta.ts';
 import type { AnalyzerPaneParts, AnalyzerSettingsProps, AnalyzerTargetItemProps } from '../pane-parts.tsx';
@@ -90,7 +89,7 @@ const SORT_ARIA: Readonly<Record<'asc' | 'desc', 'ascending' | 'descending'>> = 
 /**
  * 列の見出し。名前のボタンを押す（Enter・Spaceも同じ）たびに 昇順 → 降順 → 解除 と切り替わり、
  * 並べている列には向きの印と`aria-sort`が付く。見出しは名前と印だけにする（列の説明は表の下の
- * ⓘにまとめる。見出しごとに置くと、ペインを狭めた時に見出しの並びの幅を食うため）。
+ * 「列の説明」の開閉ブロックにまとめる。見出しごとに置くと、ペインを狭めた時に見出しの並びの幅を食うため）。
  * 印は列の幅に入れず、セルの右の余白へ絶対配置する。印の出し入れで列の幅が動かず、
  * 幅を確保するための余分な幅も要らない。
  */
@@ -117,25 +116,44 @@ function ColumnHeader({ column, sort, onSortChange }: {
   );
 }
 
-/** 表示している列の説明を、列名と組にしてまとめて出す。距離の単位もここに書く。 */
+/**
+ * 表示している列の説明を、列名と組にしてまとめて出す。距離の単位もここに書く。
+ * 浮かせる説明にはしない。長い説明が画面の外へ出たり、キーボードだけでは後半を読めなかったりするため、
+ * 表の下に開閉するブロックとして置く（入れ物の幅に収まり、読むのはページのスクロール）。
+ * 開閉は表示の一時的な状態で、保存しない。
+ */
 function ColumnDescriptions({ columns }: { readonly columns: readonly ComparisonColumnId[] }) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
   if (columns.length === 0) return null;
-  const description = (
-    <span className="comparison-column-descriptions">
-      <span className="comparison-column-unit">{COMPARISON_UNIT_NOTE}</span>
-      {columns.map((column) => (
-        <span key={column} className="comparison-column-description">
-          <strong>{COMPARISON_COLUMNS[column].label}</strong>
-          {COMPARISON_COLUMNS[column].description}
-        </span>
-      ))}
-    </span>
-  );
   return (
-    <p className="comparison-column-help">
-      <span>列の説明</span>
-      <InfoButton name="列" description={description} floating />
-    </p>
+    <div className="comparison-column-help">
+      <button
+        type="button"
+        className="comparison-column-help-button"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+          <circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M8 7.2v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          <circle cx="8" cy="4.9" r="0.95" fill="currentColor" />
+        </svg>
+        列の説明
+      </button>
+      {open ? (
+        <dl id={panelId} className="comparison-column-descriptions">
+          <p className="comparison-column-unit">{COMPARISON_UNIT_NOTE}</p>
+          {columns.map((column) => (
+            <div key={column} className="comparison-column-description">
+              <dt>{COMPARISON_COLUMNS[column].label}</dt>
+              <dd>{COMPARISON_COLUMNS[column].description}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+    </div>
   );
 }
 

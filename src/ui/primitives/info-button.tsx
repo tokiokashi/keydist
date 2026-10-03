@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './info-button.css';
 
@@ -17,14 +17,14 @@ export function InfoButton({
   tabIndex,
 }: {
   readonly name: string;
-  readonly description: ReactNode;
+  readonly description: string;
   readonly floating?: boolean;
   /** 親が移動の規則（ロービング）を持つ時だけ渡す。省略はブラウザの既定（Tabで届く）。 */
   readonly tabIndex?: number;
 }) {
   const [hovered, setHovered] = useState(false);
   const [pinned, setPinned] = useState(false);
-  const [anchor, setAnchor] = useState<{ readonly top: number; readonly left: number; readonly maxHeight: number } | undefined>(undefined);
+  const [anchor, setAnchor] = useState<{ readonly top: number; readonly left: number } | undefined>(undefined);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const tooltipId = useId();
   const rootRef = useRef<HTMLSpanElement>(null);
@@ -45,13 +45,7 @@ export function InfoButton({
       const above = rect.top - 6 - height;
       const top = below + height > window.innerHeight - 8 && above >= 8 ? above : below;
       const left = Math.max(8, Math.min(rect.left, window.innerWidth - maxWidth - 8));
-      // 説明が画面に収まらない時は、置いた位置から画面の端までを上限にして、説明の中でスクロールさせる
-      const maxHeight = Math.max(80, top === below ? window.innerHeight - below - 8 : rect.top - 6 - 8);
-      setAnchor((current) => (
-        current !== undefined && current.top === top && current.left === left && current.maxHeight === maxHeight
-          ? current
-          : { top, left, maxHeight }
-      ));
+      setAnchor((current) => (current !== undefined && current.top === top && current.left === left ? current : { top, left }));
     };
     place();
     // position: fixedなので、スクロールや窓の大きさの変化でⓘが動いても、説明は画面の同じ位置に残る。
