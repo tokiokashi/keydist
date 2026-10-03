@@ -132,7 +132,8 @@ function ColumnDescriptions({ columns }: { readonly columns: readonly Comparison
         type="button"
         className="comparison-column-help-button"
         aria-expanded={open}
-        aria-controls={panelId}
+        // 閉じている間はブロックが DOM に無いので、存在しない id を指さないよう外す
+        aria-controls={open ? panelId : undefined}
         onClick={() => setOpen((current) => !current)}
       >
         <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
@@ -143,15 +144,18 @@ function ColumnDescriptions({ columns }: { readonly columns: readonly Comparison
         列の説明
       </button>
       {open ? (
-        <dl id={panelId} className="comparison-column-descriptions">
+        <div id={panelId} className="comparison-column-descriptions">
           <p className="comparison-column-unit">{COMPARISON_UNIT_NOTE}</p>
-          {columns.map((column) => (
-            <div key={column} className="comparison-column-description">
-              <dt>{COMPARISON_COLUMNS[column].label}</dt>
-              <dd>{COMPARISON_COLUMNS[column].description}</dd>
-            </div>
-          ))}
-        </dl>
+          {/* dl の子は dt / dd を包む div だけにする。単位の文は dl の外に置く */}
+          <dl className="comparison-column-list">
+            {columns.map((column) => (
+              <div key={column} className="comparison-column-description">
+                <dt>{COMPARISON_COLUMNS[column].label}</dt>
+                <dd>{COMPARISON_COLUMNS[column].description}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       ) : null}
     </div>
   );
