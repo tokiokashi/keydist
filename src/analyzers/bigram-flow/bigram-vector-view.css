@@ -86,6 +86,8 @@
 }
 
 .flow-block-subject {
+  /* 指の表示（全指・人 + 中など）が単位の途中で折り返さないようにする。 */
+  white-space: nowrap;
   margin-left: 0.4rem;
   color: var(--text-muted);
   font-weight: 600;
@@ -683,6 +685,14 @@
   .flow-status {
     grid-column: 1 / -1;
     margin-bottom: 0.6rem;
+  }
+
+  /*
+   * 図のそばの設定を開いている間は、図の行を縮めない（本体の領域の中でスクロールする）。
+   * 縮めると設定の行が先に高さを取り、共有している図の行が0まで縮んで、反対側の図まで消える。
+   */
+  .flow-feature:has(.flow-figure-settings) {
+    grid-template-rows: auto auto auto max-content auto;
   }
 
   .flow-block {

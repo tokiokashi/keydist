@@ -150,6 +150,37 @@ for (const c of sideBySide) {
   });
 }
 
+// 低いペインで片方の図のそばの設定を開いても、反対側の図は縮まず、開いた側の図も消えない。
+const lowPanes: readonly SideCase[] = [
+  { name: '12列 x 12行', w: 12, h: 12, fingers: ['ring', 'pinky'] },
+  { name: '12列 x 10行（本体520〜560px）', w: 12, h: 10, viewport: 840, bodyWidth: [520, 560], fingers: ['ring', 'pinky'] },
+  { name: '6列 x 10行', w: 6, h: 10, fingers: ['ring', 'pinky'] },
+  { name: '8列 x 14行・文字サイズ24px', w: 8, h: 14, rootFontSize: '24px', fingers: ['ring', 'pinky'] },
+];
+
+for (const c of lowPanes) {
+  for (const figure of ['Keyboard Flow', 'Relative vectors'] as const) {
+    test(`低いペイン（${c.name}）で${figure}の設定を開いても、反対側の図は縮まず、上端・下端が揃う`, async ({ page }) => {
+      await openWorkspace(page, c);
+      const closed = await measure(page);
+      await page.getByRole('button', { name: `${figure}の表示`, exact: true }).click();
+      await expect(page.getByRole('group', { name: `${figure}の表示` })).toBeVisible();
+      await settle(page);
+      const open = await measure(page);
+      // 横に並んだまま
+      expect(open.vectorsFigure.left).toBeGreaterThan(open.keyboardFigure.right - 1);
+      const height = (m: typeof closed, side: 'keyboardFigure' | 'vectorsFigure') => m[side].bottom - m[side].top;
+      const opposite = figure === 'Keyboard Flow' ? 'vectorsFigure' : 'keyboardFigure';
+      // 反対側の図は縮まない。閉じていた時に高さへ収めるために縮んでいた分は、開くと本体の中のスクロールへ回って元の大きさに戻るので、増える分は許す。
+      expect(height(open, opposite)).toBeGreaterThanOrEqual(height(closed, opposite) - 1);
+      expect(height(open, 'keyboardFigure')).toBeGreaterThan(50);
+      expect(height(open, 'vectorsFigure')).toBeGreaterThan(50);
+      expect(Math.abs(open.vectorsFigure.top - open.keyboardFigure.top)).toBeLessThanOrEqual(1);
+      expect(Math.abs(open.vectorsFigure.bottom - open.keyboardFigure.bottom)).toBeLessThanOrEqual(1);
+    });
+  }
+}
+
 for (const width of [1200, 390]) {
   test(`個別画面（幅${width}px）で縦に積んでも、凡例は左右の図の下に出て枠からはみ出さない`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
