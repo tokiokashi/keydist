@@ -42,7 +42,13 @@ export type ComparisonColumnId = (typeof COMPARISON_COLUMN_IDS)[number];
  * （値そのものを変えない）。
  */
 export interface ComparisonColumnDef {
+  /**
+   * 見出しの短い名前。単位の付け方は全列で同じ規則: 値が距離そのもの（u）で、名前に単位が入っていない列にだけ
+   * 末尾へ ` [u]` を付ける（`u/打鍵`・`u/文字` は名前が単位を含む）。率の列は値の側に `%` が付き、回数の列は単位が無い。
+   */
   readonly label: string;
+  /** 見出しのⓘに出す説明。指標の定義は spec §11 と README「出力」の言い方に合わせる。 */
+  readonly description: string;
   /** 値をそのまま渡すと表示用の文字列を返す。丸め・%表記はここに閉じる。 */
   readonly format: (value: number) => string;
 }
@@ -52,19 +58,71 @@ const percent = (value: number): string => `${value.toFixed(1)}%`;
 const count = (value: number): string => `${value}`;
 
 export const COMPARISON_COLUMNS: Readonly<Record<ComparisonColumnId, ComparisonColumnDef>> = {
-  actions: { label: '動作数', format: count },
-  totalUnits: { label: '距離 [u]', format: fixed(0) },
-  meanPerStroke: { label: 'u/打鍵', format: fixed(3) },
-  perCharUnits: { label: 'u/文字', format: fixed(3) },
-  perCharSteps: { label: '動作数/文字', format: fixed(3) },
-  perCharPresses: { label: '押下/文字', format: fixed(3) },
-  singleTapLayerRate: { label: '単打面率', format: percent },
-  singleTapRate: { label: '単打率', format: percent },
-  singleKeyRate: { label: '1キー率', format: percent },
-  sameFinger: { label: '同指', format: count },
-  sameFingerRate: { label: '同指率', format: percent },
-  adjacentMean: { label: '指間の平均 [u]', format: fixed(3) },
-  adjacentStdDev: { label: '指間のばらつき σ [u]', format: fixed(3) },
+  actions: {
+    label: '動作数',
+    description: 'テキストを打つのに要したアクション（打鍵のまとまり）の総数。同時押しは1アクションと数える。',
+    format: count,
+  },
+  totalUnits: {
+    label: '距離 [u]',
+    description: '全指の総移動距離。',
+    format: fixed(0),
+  },
+  meanPerStroke: {
+    label: 'u/打鍵',
+    description: '1打鍵あたりの平均移動距離。',
+    format: fixed(3),
+  },
+  perCharUnits: {
+    label: 'u/文字',
+    description: '入力1文字あたりの総移動距離。文字数はローマ字展開やコンボ結合の前の原文で数えるので、打鍵数を減らした効果がこの値に残る。',
+    format: fixed(3),
+  },
+  perCharSteps: {
+    label: '動作数/文字',
+    description: '入力1文字あたりのアクション数。コンボなどでまとめて打つほど小さくなる。',
+    format: fixed(3),
+  },
+  perCharPresses: {
+    label: '押下/文字',
+    description: '入力1文字あたりのキーを押す回数。コンボでまとめても減らない。',
+    format: fixed(3),
+  },
+  singleTapLayerRate: {
+    label: '単打面率',
+    description: '出力する全文字のうち、単打面に配置された文字の割合（%）。',
+    format: percent,
+  },
+  singleTapRate: {
+    label: '単打率',
+    description: '全アクションのうち、単打面の文字を出すアクションの割合（%）。',
+    format: percent,
+  },
+  singleKeyRate: {
+    label: '1キー率',
+    description: '全アクションのうち、新たに押すキーが1つだけのアクションの割合（%）。',
+    format: percent,
+  },
+  sameFinger: {
+    label: '同指',
+    description: '同じ指で違うキーを続けて打った回数。',
+    format: count,
+  },
+  sameFingerRate: {
+    label: '同指率',
+    description: '同指連続回数を打鍵数で割った割合（%）。',
+    format: percent,
+  },
+  adjacentMean: {
+    label: '指間平均 [u]',
+    description: '同じ手で隣り合う2本の指の距離が、ホームに置いた時の間隔よりどれだけ開いたかの平均。6組の平均で、ホームより近いと負になる。',
+    format: fixed(3),
+  },
+  adjacentStdDev: {
+    label: '指間σ [u]',
+    description: '隣り合う2本の指の距離のばらつき（標準偏差）。6組の平均。',
+    format: fixed(3),
+  },
 } as const;
 
 function isComparisonColumnId(value: string): value is ComparisonColumnId {
@@ -99,6 +157,37 @@ const visibleColumnsUrl: OptionUrlCodec<readonly ComparisonColumnId[]> = (() => 
   const set = stringSetUrlCodec('columns', COMPARISON_COLUMN_IDS, COMPARISON_COLUMN_IDS.length);
   return { ...set, encode: (value) => value.join(',') };
 })();
+
+/** 並び替えの向き。 */
+export type ComparisonSortDirection = 'asc' | 'desc';
+
+/** 並び替えの状態。`null`は並び替えなし（対象の一覧の順のまま）。 */
+export type ComparisonSort = { readonly column: ComparisonColumnId; readonly direction: ComparisonSortDirection } | null;
+
+const COMPARISON_SORT_DIRECTIONS = ['asc', 'desc'] as const;
+
+const comparisonSortSchema = v.nullable(v.object({
+  column: v.picklist(COMPARISON_COLUMN_IDS),
+  direction: v.picklist(COMPARISON_SORT_DIRECTIONS),
+}));
+
+/** `列id:向き`（例 `totalUnits:asc`）で読み書きする。 */
+const sortUrl: OptionUrlCodec<ComparisonSort> = {
+  name: 'sort',
+  encode: (value) => (value === null ? undefined : `${value.column}:${value.direction}`),
+  decode: (raw, path, diagnostics) => {
+    const [column, direction, ...rest] = raw.split(':');
+    if (
+      rest.length === 0
+      && column !== undefined && isComparisonColumnId(column)
+      && direction !== undefined && (COMPARISON_SORT_DIRECTIONS as readonly string[]).includes(direction)
+    ) {
+      return { column, direction: direction as ComparisonSortDirection };
+    }
+    diagnostics.push({ path, message: `URLパラメータの値「${raw}」は未知のため捨てた` });
+    return undefined;
+  },
+};
 
 export const comparisonOptions = defineOptions({
   /** 表示する列。空集合は「全列表示」という意味にはしない（要求どおり0列を描く）。 */
@@ -136,6 +225,17 @@ export const comparisonOptions = defineOptions({
     affects: 'view',
     url: booleanUrlCodec('baselineRatio'),
   }),
+  /**
+   * 並び替え（列の見出しを押して切り替える。昇順 → 降順 → 解除）。表の行の表示順だけを変え、
+   * 対象の集合の順（N感度と共有している値）は変えない。値は表に出ている数値（基準比ではなく値）で並べる。
+   * 表示する列とは独立に効く（列を隠しても並びは保たれ、解析設定の並び替えの欄に今の状態が出る）。
+   */
+  sort: defineOption<ComparisonSort>({
+    schema: comparisonSortSchema,
+    default: null,
+    affects: 'view',
+    url: sortUrl,
+  }),
 });
 
 export type ComparisonOptions = typeof comparisonOptions.defaultOptions;
@@ -146,4 +246,5 @@ export const DEFAULT_COMPARISON_OPTIONS: ComparisonOptions = comparisonOptions.d
 export const ALTERNATE_COMPARISON_OPTIONS: ComparisonOptions = {
   visibleColumns: ['actions', 'totalUnits'],
   showBaselineRatio: false,
+  sort: { column: 'totalUnits', direction: 'desc' },
 };

@@ -89,3 +89,38 @@
 .comparison-baseline-item select {
   max-width: 100%;
 }
+
+/* 列の見出し: 並び替えのボタンと、列の説明のⓘを横に並べる。 */
+.comparison-column-head {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.15rem;
+}
+
+.comparison-sort-button {
+  all: unset;
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0 0.1rem;
+}
+
+.comparison-sort-button:hover {
+  color: var(--text);
+}
+
+.comparison-sort-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* 向きの印の幅を常に確保し、並び替えの切り替えで列の幅が揺れないようにする。 */
+.comparison-sort-mark {
+  display: inline-block;
+  min-width: 0.9em;
+  text-align: center;
+}
+
+.comparison-table th[aria-sort] {
+  color: var(--text);
+}

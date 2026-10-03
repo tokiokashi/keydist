@@ -46,11 +46,11 @@ test('COMPARISON_COLUMNS: 全13列に表示形式が定義されている', () =
 
 test('URL: 既定値なら何も書かず、変えた項目だけが往復する', () => {
   assert.equal(comparisonOptions.encodeOptionsToUrl(comparisonOptions.defaultOptions).toString(), '');
-  const options = { visibleColumns: ['totalUnits', 'actions'], showBaselineRatio: false } as const;
+  const options = { visibleColumns: ['totalUnits', 'actions'], showBaselineRatio: false, sort: null } as const;
   const params = comparisonOptions.encodeOptionsToUrl(options);
   const diagnostics: { path: string; message: string }[] = [];
   const decoded = comparisonOptions.decodeOptionsFromUrl(new URLSearchParams(params.toString()), diagnostics);
-  assert.deepEqual(decoded.values, options);
+  assert.deepEqual(decoded.values, { visibleColumns: options.visibleColumns, showBaselineRatio: false });
   assert.deepEqual(diagnostics, []);
 });
 
@@ -65,4 +65,54 @@ test('URL: 未知の列や真偽値は診断を積んで捨てる', () => {
   const decoded = comparisonOptions.decodeOptionsFromUrl(new URLSearchParams('columns=actions,nope&baselineRatio=maybe'), diagnostics);
   assert.deepEqual(decoded.values, { visibleColumns: ['actions'] });
   assert.equal(diagnostics.length, 2);
+});
+
+test('見出し: 単位 [u] は、値が距離そのもので名前に単位が入っていない列にだけ付く', () => {
+  const withUnit = Object.entries(COMPARISON_COLUMNS).filter(([, def]) => def.label.endsWith(' [u]')).map(([id]) => id);
+  assert.deepEqual(withUnit, ['totalUnits', 'adjacentMean', 'adjacentStdDev']);
+  // 名前に単位を含む列（u/打鍵・u/文字）には重ねて付けない。
+  assert.equal(COMPARISON_COLUMNS.meanPerStroke.label, 'u/打鍵');
+  assert.equal(COMPARISON_COLUMNS.perCharUnits.label, 'u/文字');
+  assert.equal(COMPARISON_COLUMNS.adjacentMean.label, '指間平均 [u]');
+  assert.equal(COMPARISON_COLUMNS.adjacentStdDev.label, '指間σ [u]');
+});
+
+test('見出し: 全列に説明があり、内部の語や英語のmeanを使わない', () => {
+  for (const [id, def] of Object.entries(COMPARISON_COLUMNS)) {
+    assert.ok(def.description.length > 0, id);
+    for (const word of ['Policy', 'fresh', 'Stroke', 'physical', 'mean']) {
+      assert.ok(!def.description.includes(word) && !def.label.includes(word), `${id}: ${word}`);
+    }
+  }
+});
+
+test('並び替え: 既定はなし。URLは 列:向き で往復し、解除はURLに出ない', () => {
+  assert.equal(comparisonOptions.defaultOptions.sort, null);
+  const sort = { column: 'sameFingerRate', direction: 'desc' } as const;
+  const params = comparisonOptions.encodeOptionsToUrl({ ...comparisonOptions.defaultOptions, sort });
+  assert.equal(params.get('sort'), 'sameFingerRate:desc');
+  const decoded = comparisonOptions.decodeOptionsFromUrl(new URLSearchParams(params.toString()), []);
+  assert.deepEqual(decoded.values, { sort });
+});
+
+test('並び替え: URLの壊れた値は診断を積んで捨てる', () => {
+  for (const raw of ['nope:asc', 'totalUnits:up', 'totalUnits', 'totalUnits:asc:x']) {
+    const diagnostics: { path: string; message: string }[] = [];
+    const decoded = comparisonOptions.decodeOptionsFromUrl(new URLSearchParams({ sort: raw }), diagnostics);
+    assert.deepEqual(decoded.values, {}, raw);
+    assert.equal(diagnostics.length, 1, raw);
+  }
+});
+
+test('並び替え: 保存値は往復し、壊れた値は既定（なし）へ戻る', () => {
+  const stored = { sort: { column: 'totalUnits', direction: 'asc' } };
+  assert.deepEqual(comparisonOptions.decodeOptions(stored, []).sort, stored.sort);
+  const diagnostics: { path: string; message: string }[] = [];
+  assert.equal(comparisonOptions.decodeOptions({ sort: { column: 'x', direction: 'asc' } }, diagnostics).sort, null);
+  assert.equal(diagnostics.length, 1);
+});
+
+test('並び替えは抽出の値に効かない（affects: view）', () => {
+  const key = (sort: unknown) => JSON.stringify(comparisonOptions.extractKeyOf({ ...comparisonOptions.defaultOptions, sort } as never));
+  assert.equal(key(null), key({ column: 'totalUnits', direction: 'asc' }));
 });
