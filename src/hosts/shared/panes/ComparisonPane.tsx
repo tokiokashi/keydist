@@ -140,6 +140,7 @@ export function ComparisonPane({
 
   return (
     <PaneFrame
+      assetsReady={assetsReady}
       name={comparisonAnalyzer.name}
       description={comparisonAnalyzer.description}
       recommendedWidthRem={recommendedWidthRemOf(comparisonAnalyzer)}

@@ -161,6 +161,7 @@ export function NSensitivityPane({
 
   return (
     <PaneFrame
+      assetsReady={assetsReady}
       name={nSensitivityAnalyzer.name}
       description={nSensitivityAnalyzer.description}
       recommendedWidthRem={recommendedWidthRemOf(nSensitivityAnalyzer)}
