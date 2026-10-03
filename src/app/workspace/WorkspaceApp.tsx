@@ -11,7 +11,7 @@ import { useKeydistAssets } from '../standalone/use-keydist-assets.ts';
 import { useTextContentCommit } from '../standalone/use-text-content-commit.ts';
 import { setDeletedWorkspace } from './deleted-workspace-notice.ts';
 import { generatePaneId, generateWorkspaceId } from './id-generator.ts';
-import { OptionsWriteLogsProvider } from '#hosts/shared/OptionsWriteLogsContext.tsx';
+import { OptionsWriteLogsProvider } from '#hosts/shared/OptionsWriteLogsContext.ts';
 import { createOptionsWriteLogs } from '#hosts/shared/options-write-log.ts';
 import { usePaneOptionsCommit } from './use-pane-options-commit.ts';
 

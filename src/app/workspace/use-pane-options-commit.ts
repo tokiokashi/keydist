@@ -41,6 +41,8 @@ export function usePaneOptionsCommit(
           // 重複排除はしない。同じ値かどうかは、適用時点の資産と比べるコマンド側のno-op判定に任せる
           write: (options) => {
             // 書いた値を記録し、ペインの下書きが自分の保存の反響を見分けるのに使う
+            // 記録は、この直後の資産の更新（dispatch）と同じ同期の処理で続ける。間に非同期を挟むと、
+            // 下書きが資産の更新より先に古い保存先で描画され、入力が巻き戻る。
             writeLogs.forKey(paneId).record(options);
             dispatchRef.current(setWorkspacePaneOptionsCommand(workspaceIdRef.current, paneId, options));
           },

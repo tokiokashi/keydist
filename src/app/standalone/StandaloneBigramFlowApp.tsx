@@ -9,7 +9,7 @@ import { sharedEngineComputer } from './engine-computer.ts';
 import { generatePresetId, generateTextId } from './id-generator.ts';
 import { useKeydistAssets } from './use-keydist-assets.ts';
 import { useAddToWorkspace } from './use-add-to-workspace.ts';
-import { OptionsWriteLogsProvider } from '#hosts/shared/OptionsWriteLogsContext.tsx';
+import { OptionsWriteLogsProvider } from '#hosts/shared/OptionsWriteLogsContext.ts';
 import { createOptionsWriteLogs, STANDALONE_WRITE_LOG_KEY } from '#hosts/shared/options-write-log.ts';
 import { useDebouncedCommit } from './use-debounced-commit.ts';
 import { useTextContentCommit } from './use-text-content-commit.ts';
