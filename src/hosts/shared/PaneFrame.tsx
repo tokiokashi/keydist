@@ -22,7 +22,7 @@ import './pane-frame.css';
  * （`PaneNameInLeadContext`がtrue）。この時は枠の中の名前の行を出さず、読み上げ用の見出し（h2）は視覚的に隠して残す。
  * 見出しは先頭・対象・連動・条件・解析設定・⋯の1行で、状態バッジも入る。条件は1行に畳んだ形
  * （`ConditionSummary`の`compact`）で見出しに入れ、別の行にしない。
- * 狭いペインは、まず先頭の名前を省略記号で縮めて1段のまま保ち、名前を最小幅まで縮めても入らない幅（19rem以下。
+ * 狭いペインは、まず先頭の名前、次に対象の選択を縮めて1段のまま保ち、どちらも最小幅まで縮めても入らない幅（19.4rem以下。
  * スマホ幅の縦積みを含む）で、先頭を1段目、対象・条件・解析設定・⋯を2段目に置く（`pane-frame.css`）。
  * ⋯の無い個別画面は、固定する見出しを薄く保つため狭くても1行のまま。
  *
@@ -105,6 +105,18 @@ export interface PaneFrameProps {
   readonly children?: ReactNode;
 }
 
+/**
+ * 状態のバッジ。Workspaceのペインの狭い見出しでは、文字が入らないので点で出す（`pane-frame.css`）。
+ * 状態の文は文字の要素とtitleに残すので、点でも読み上げとホバーで分かる。
+ */
+function StatusBadge({ status, label }: { readonly status: EngineRequestState<unknown>['status']; readonly label: string }) {
+  return (
+    <span className="pane-status-badge" data-status={status} title={label}>
+      <span className="pane-status-badge-text">{label}</span>
+    </span>
+  );
+}
+
 export function PaneFrame({
   name,
   description,
@@ -179,7 +191,7 @@ export function PaneFrame({
             <Heading className="pane-frame-title">{name}</Heading>
             <InfoButton name={name} description={description} />
             {statusLabel ? (
-              <span className="pane-status-badge" data-status={engineState.status}>{statusLabel}</span>
+              <StatusBadge status={engineState.status} label={statusLabel} />
             ) : null}
           </div>
         )}
@@ -200,7 +212,7 @@ export function PaneFrame({
           )}
           {nameInLead ? conditionSummary : null}
           {nameInLead && statusLabel ? (
-            <span className="pane-status-badge" data-status={engineState.status}>{statusLabel}</span>
+            <StatusBadge status={engineState.status} label={statusLabel} />
           ) : null}
         </div>
         <button

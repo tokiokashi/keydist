@@ -407,3 +407,102 @@ for (const analyzerId of ANALYZERS) {
     await expectNoSpillOutsidePane(page, 'a');
   });
 }
+
+const BADGES = {
+  failed: '失敗',
+  computing: '計算中…',
+  stale: '計算中…（直前の結果を表示）',
+} as const;
+
+/**
+ * 状態のバッジを見出しの対象の欄の末尾に差し込む（アプリが出すのと同じ構造・属性）。
+ * 計算を遅らせたり失敗させたりする経路は、結果が出るまで本体の幅の検査ができないので、構造を直接置く。
+ */
+async function insertBadge(item: Locator, status: keyof typeof BADGES): Promise<void> {
+  await item.evaluate((root, args) => {
+    const target = root.querySelector('.pane-frame-target')!;
+    target.insertAdjacentHTML('beforeend', `<span class="pane-status-badge" data-status="${args.status}" title="${args.label}"><span class="pane-status-badge-text">${args.label}</span></span>`);
+  }, { status, label: BADGES[status] });
+}
+
+// 状態のバッジは、全文が入る幅では文字で、入らない幅では文字の無い点で出す。どちらでも、見えて、ボタンの下に隠れず、
+// 字の途中で切れない。状態の文は読み上げ用の文字とtitleに残る
+for (const analyzerId of ['bigram-flow', 'comparison'] as const) {
+  for (const status of Object.keys(BADGES) as (keyof typeof BADGES)[]) {
+    for (const cols of [5, 6, 8]) {
+      test(`${analyzerId}: ${cols}列で状態「${BADGES[status]}」のバッジが見え、ボタンと重ならず、字の途中で切れない`, async ({ page }) => {
+        await open(page, analyzerId, FHD, { cols });
+        const item = itemOf(page, 'a');
+        await insertBadge(item, status);
+        const badge = item.locator('.pane-status-badge');
+        await expect(badge).toBeVisible();
+        const report = await item.evaluate((root) => {
+          const frame = root.querySelector('.pane-frame')!.getBoundingClientRect();
+          const b = root.querySelector('.pane-status-badge')!;
+          const text = b.querySelector('.pane-status-badge-text')!;
+          const br = b.getBoundingClientRect();
+          const tr = text.getBoundingClientRect();
+          const others = [...root.querySelectorAll('.pane-frame-header button, .pane-frame-header .workspace-drag-handle')]
+            .filter((el) => el.getBoundingClientRect().width > 0)
+            .map((el) => el.getBoundingClientRect());
+          const overlaps = others.filter((r) => Math.min(r.right, br.right) - Math.max(r.left, br.left) > 1 && Math.min(r.bottom, br.bottom) - Math.max(r.top, br.top) > 1).length;
+          return {
+            badgeWidth: br.width,
+            badgeInsideFrame: br.left >= frame.left - 0.5 && br.right <= frame.right + 0.5,
+            overlaps,
+            textWidth: tr.width,
+            textInsideBadge: tr.left >= br.left - 0.5 && tr.right <= br.right + 0.5,
+            textClipped: text.scrollWidth > text.clientWidth + 1 || b.scrollWidth > b.clientWidth + 1,
+            title: b.getAttribute('title'),
+            textContent: text.textContent,
+          };
+        });
+        expect(report.badgeInsideFrame, 'バッジが枠の中にある').toBe(true);
+        expect(report.overlaps, 'バッジがボタンの下に隠れない').toBe(0);
+        expect(report.title, '状態の文がtitleに残る').toBe(BADGES[status]);
+        expect(report.textContent, '状態の文が読み上げ用の文字に残る').toBe(BADGES[status]);
+        // 文字で出すなら全文が収まる。入らないなら点（文字は隠れて、幅は小さい）
+        const asText = report.textWidth > 4;
+        if (asText) {
+          expect(report.textInsideBadge, '文字がバッジの中に収まる').toBe(true);
+          expect(report.textClipped, '字の途中で切れない').toBe(false);
+        } else {
+          expect(report.badgeWidth, '点の幅').toBeLessThanOrEqual(12);
+        }
+        // 5列・6列では文字が入らない状態もあるが、8列は全部の状態の全文が入る
+        if (cols === 8) expect(asText, '8列では文字で出す').toBe(true);
+        await expectHeaderUsable(page, 'a', 44);
+      });
+    }
+  }
+}
+
+// 縮める順は、先に名前を最小幅まで、その後で対象の選択。名前が縮んでいる間、対象の選択の幅は変わらない
+test('Bigram Flow: 見出しが狭まると、先に名前が最小幅まで縮み、その間は対象の選択の幅が変わらない。その後で対象の選択が縮む', async ({ page }) => {
+  await open(page, 'bigram-flow', FHD, { cols: 8 });
+  const item = itemOf(page, 'a');
+  const measure = async (width: number) => item.evaluate((root, w) => {
+    const frame = root.querySelector<HTMLElement>('.pane-frame')!;
+    frame.style.width = `${w}px`;
+    frame.style.maxWidth = `${w}px`;
+    return {
+      name: root.querySelector('.workspace-pane-lead-name')!.getBoundingClientRect().width,
+      target: root.querySelector('.target-selection-button')!.getBoundingClientRect().width,
+    };
+  }, width);
+  const full = await measure(480);
+  expect(full.name, '広い時は名前の全文').toBeGreaterThan(80);
+  const shrinkingName = [];
+  for (const width of [380, 360]) shrinkingName.push(await measure(width));
+  for (const m of shrinkingName) {
+    expect(m.name, '名前が縮んでいる').toBeLessThan(full.name - 2);
+    expect(m.name, 'まだ最小幅には着いていない').toBeGreaterThan(48);
+    expect(Math.abs(m.target - full.target), `名前が縮んでいる間、対象の選択は変わらない（${m.target} / ${full.target}）`).toBeLessThanOrEqual(2);
+  }
+  const atMin = await measure(340);
+  expect(atMin.name, '名前は最小幅（2.4rem = 約38px）まで').toBeLessThanOrEqual(42);
+  const narrower = await measure(314);
+  expect(narrower.name, '最小幅の名前はそれ以上縮まない').toBeGreaterThanOrEqual(atMin.name - 1);
+  expect(narrower.target, '名前が最小幅になった後で、対象の選択が縮む').toBeLessThan(full.target - 10);
+  expect(narrower.target, '5列（枠 314px）の対象の選択は押せる幅').toBeGreaterThanOrEqual(60);
+});

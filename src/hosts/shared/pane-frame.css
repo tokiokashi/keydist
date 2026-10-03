@@ -215,37 +215,26 @@ h2.pane-frame-title {
 
 /*
  * ホストが見出しの先頭に置くもの（Workspaceのペインのつかみ所・名前・ⓘ）の列。
- * 狭くなった時は、まず名前を省略記号で縮め（つかみ所とⓘは残す。何のAnalyzerかは図で分かり、
- * 全文はⓘ・読み上げ・title・見出し（h2）に残る）、見出しは1段のままボタンを動かさない。
- * 名前が最小幅まで縮んでも入らない幅になって初めて、先頭を1段目、操作を2段目へ送る（次の@container）。
+ * 狭くなった時は、先に名前を省略記号で縮め（つかみ所とⓘは残す。何のAnalyzerかは図で分かり、
+ * 全文はⓘ・読み上げ・title・見出し（h2）に残る）、名前が最小幅になってから対象の選択を縮める。
+ * 見出しは1段のままで、ボタンの位置は動かさない。どちらも最小幅まで縮めても入らない幅になって初めて、
+ * 先頭を1段目、操作を2段目へ送る。
  * 名前の最小幅は、全部を消さずに「Big…」ほどを残す（何の見出しか分かる手がかり）。
- * 縮める順は、名前 → 対象の選択（最小幅まで）。連動・条件・解析設定・⋯の絵のボタンは縮めない。
+ * 連動・条件・解析設定・⋯の絵のボタンは縮めない。
  */
 .pane-frame[data-name-in-lead] {
-  /* つかみ所の絵(10px)・ⓘ(1.6rem)・間隔・右の余白。名前以外で先頭の列が取る幅 */
+  /* つかみ所の絵(10px)・ⓘ(1.6rem)・間隔・右の余白。名前以外で先頭が取る幅 */
   --pane-lead-chrome: 3.1rem;
   --pane-lead-name-min: 2.4rem;
   --pane-target-select-min: 3.2rem;
 }
 
+/* 1段に入らない幅（既定）。先頭を1段目、対象・連動・条件・解析設定・⋯を2段目に置く */
 .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] {
-  /* 対象の欄の下限は、対象の選択の最小幅 + 連動・条件の絵のボタン（各2rem）+ 間隔 */
-  grid-template-columns:
-    minmax(calc(var(--pane-lead-chrome) + var(--pane-lead-name-min)), auto)
-    minmax(calc(var(--pane-target-select-min) + 5rem), 1fr) auto auto;
-  grid-template-areas: "lead target settings menu";
-  gap: 0.35rem;
-}
-
-.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .target-selection {
-  min-width: var(--pane-target-select-min);
-}
-
-/* 状態のバッジは、入らない時に対象の欄からはみ出してボタンに重ならないよう、先に縮む（切れる） */
-.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "lead lead lead"
+    "target settings menu";
 }
 
 .pane-frame-lead {
@@ -256,18 +245,115 @@ h2.pane-frame-title {
 }
 
 /*
- * 見出しが1段に入らない幅。先頭を1段目、対象・連動・条件・解析設定・⋯を2段目に送る。
- * 対象の選択を名前に食わせず、狭い幅でも対象を選べるようにする。
- * 幅は1段の下限の合計: 先頭の列（3.1rem + 2.4rem）+ 対象の欄（3.2rem + 5rem）+ 解析設定・⋯の絵（各2rem）
- * + 間隔3つ（各0.35rem）= 18.75remに、ペインの枠の余白を足して19rem。
+ * 1段に入る幅。名前・対象の欄を同じ行に置き、縮める順を決める。
+ * flexの縮みは「縮み率 x 基準の幅」の比で配るので、名前の縮み率を対象の1000倍にして、名前が最小幅になるまで
+ * 対象の幅をほぼ変えない（最小幅に着いた名前は縮まず、残りを対象が受ける）。
+ * 対象の縮み率を1より小さくしないのは、縮みの合計が1未満だと配る量が縮み率の合計の分だけに減り、縮まなくなるため。
+ * 下限の合計は、先頭 3.1rem + 2.4rem、対象の欄 3.2rem + 連動・条件（各2rem）+ 状態の点 0.5rem + 間隔3つ（各0.35rem）、
+ * 解析設定・⋯（各2rem）、見出しの間隔3つ（各0.35rem）= 19.3rem。ペインの枠の余白を足して19.4rem超を1段にする。
  */
-@container pane (max-width: 19rem) {
+@container pane (width > 19.4rem) {
   .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    grid-template-areas:
-      "lead lead lead"
-      "target settings menu";
-    gap: 0.5rem;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .pane-frame[data-name-in-lead] .pane-frame-lead {
+    flex: 0 1000 auto;
+    min-width: calc(var(--pane-lead-chrome) + var(--pane-lead-name-min));
+  }
+
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-frame-target {
+    flex: 1 1 auto;
+    gap: 0.35rem;
+    min-width: calc(var(--pane-target-select-min) + 5.55rem);
+  }
+
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .target-selection {
+    min-width: var(--pane-target-select-min);
+  }
+
+  .pane-frame[data-name-in-lead] .pane-settings-button,
+  .pane-frame[data-name-in-lead] .pane-frame-menu {
+    flex: none;
+  }
+}
+
+/*
+ * 状態のバッジ（Workspaceのペイン）。既定は文字の無い点で、状態の文は読み上げ（隠した文字）とtitleに残す。
+ * 全文が入る幅（状態ごとの文字数に合わせた下の@container）では、今までどおり文字で出す。
+ * 点は、対象の欄の下限に0.5remの場所を確保してある。入らない文字でボタンの下に隠れたり、
+ * 字の途中で切れたりしないようにするため。
+ */
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge {
+  position: relative;
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  padding: 0;
+  background: var(--text-muted);
+}
+
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="failed"] {
+  background: #d6333f;
+}
+
+.pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* 文字で出す幅。名前・対象の選択が最小幅の時に、文字が入る分を足した幅に余裕を見た値 */
+@container pane (width >= 23rem) {
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="failed"] {
+    width: auto;
+    height: auto;
+    padding: 0.15rem 0.55rem;
+    background: color-mix(in srgb, #d6333f 15%, transparent);
+  }
+
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="failed"] .pane-status-badge-text {
+    position: static;
+    width: auto;
+    height: auto;
+    clip-path: none;
+  }
+}
+
+@container pane (width >= 25rem) {
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="computing"] {
+    width: auto;
+    height: auto;
+    padding: 0.15rem 0.55rem;
+    background: color-mix(in srgb, currentColor 15%, transparent);
+  }
+
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="computing"] .pane-status-badge-text {
+    position: static;
+    width: auto;
+    height: auto;
+    clip-path: none;
+  }
+}
+
+@container pane (width >= 32.5rem) {
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="stale"] {
+    width: auto;
+    height: auto;
+    padding: 0.15rem 0.55rem;
+    background: color-mix(in srgb, currentColor 15%, transparent);
+  }
+
+  .pane-frame[data-name-in-lead] .pane-frame-header[data-lead] .pane-status-badge[data-status="stale"] .pane-status-badge-text {
+    position: static;
+    width: auto;
+    height: auto;
+    clip-path: none;
   }
 }
 
