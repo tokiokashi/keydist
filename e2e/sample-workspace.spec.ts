@@ -2,8 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 import { waitForHydration } from './hydration-helper.ts';
 
 /**
- * 中身入りのサンプルのWorkspace。トップと空のWorkspaceの中の「サンプルのWorkspaceを作る」を押すと、
- * 比較表・N感度・Bigram Flowを並べたWorkspaceを新しく作って開く。
+ * 中身入りのサンプルのWorkspace。トップの「サンプルのWorkspaceを作る」は、比較表・N感度・Bigram Flowを並べた
+ * Workspaceを新しく作って開く。空のWorkspaceの中の「サンプルの並びで始める」は、新しく作らず今のWorkspaceに同じ並びを入れる。
  */
 
 const WORKSPACES_KEY = 'keydist:workspaces';
@@ -38,7 +38,7 @@ async function expectSampleWorkspace(page: Page, name: string): Promise<void> {
 async function expectSampleLayout(page: Page, id: string): Promise<void> {
   const workspace = (await storedWorkspaces(page)).find((candidate) => candidate.id === id)!;
 
-  // 並び: 上に比較表、上の段は比較表とN感度、下の段はBigram Flow 4つ
+  // 並び: 上の段は比較表とN感度、下の段はBigram Flow 4つ
   expect(workspace.panes.map((pane) => pane.analyzerId)).toEqual([
     'comparison', 'n-sensitivity', 'bigram-flow', 'bigram-flow', 'bigram-flow', 'bigram-flow',
   ]);
@@ -62,7 +62,7 @@ async function expectSampleLayout(page: Page, id: string): Promise<void> {
   }
   // Workspaceの条件
   expect(workspace.conditions).toEqual({ defaultShapeId: 'split-ortholinear' });
-  // 格子: 上の段は幅いっぱい、下の段は同じ幅の4つが横に並ぶ
+  // 格子: 上の段は比較表とN感度が横に並んで24列を使い切り、下の段は同じ幅の4つが横に並ぶ
   const [comparison, nSensitivity, ...lower] = workspace.grid;
   expect([comparison!.x, comparison!.y]).toEqual([0, 0]);
   expect([nSensitivity!.x, nSensitivity!.y]).toEqual([comparison!.w, 0]);

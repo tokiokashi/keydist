@@ -39,7 +39,7 @@ export function restoreWorkspaceInStorage(workspace: Workspace, index: number): 
 }
 
 /**
- * 中身入りのサンプルのWorkspaceを作って保存する（トップと空のWorkspaceの「サンプルのWorkspaceを作る」）。
+ * 中身入りのサンプルのWorkspaceを作って保存する（トップの「サンプルのWorkspaceを作る」。空のWorkspaceの「サンプルの並びで始める」は新しく作らず、画面の履歴に乗る別のコマンドで今のWorkspaceへ入れる）。
  * 書き込みの入口は`createWorkspaceInStorage`と同じ理由で、手持ちをこの場でstorageから読んで組み立てる。
  * 全体の条件は書かない（サンプルの条件はWorkspaceのレベルに入る）。作ったら`true`。
  */

@@ -13,7 +13,8 @@ import type { GridSize } from './workspace-grid.ts';
 
 /**
  * 中身入りのサンプルのWorkspace。空のWorkspaceでは何ができる画面か伝わりにくいので、
- * 比較表・N感度・Bigram Flowを並べた状態を、押した時に新しく作る。作った後は普通のWorkspaceと同じ。
+ * 比較表・N感度・Bigram Flowを並べた状態を用意する。トップからは新しいWorkspaceとして作り（`createSampleWorkspaceCommand`）、
+ * 空のWorkspaceの中からは今のWorkspaceに入れる（`startWorkspaceFromSampleCommand`）。入れた後は普通のWorkspaceと同じ。
  *
  * 中身の定義はこのファイルの1か所に置く。作成は`createSampleWorkspaceCommand`（`workspace-commands.ts`）が
  * 既存のコマンドの経路に乗せる。Analyzerのidはこの層から`analyzers/<name>/`を読めないので文字列で持ち、
@@ -107,7 +108,7 @@ export function applySampleLayout(
       size: SAMPLE_LOWER_SIZE,
     })),
   ];
-  // 既存のペイン追加と同じ経路で置く。空いている最初の場所に入るので、上の段が1つ、下の段が4つ左から並ぶ
+  // 既存のペイン追加と同じ経路で置く。空いている最初の場所に入るので、上の段は比較表とN感度の2つ、下の段はBigram Flowの4つが左から並ぶ
   for (const { pane, size } of panes) next = addWorkspacePane(next, workspaceId, pane, size);
   return next;
 }

@@ -74,7 +74,7 @@
   font-size: 1rem;
 }
 
-/* 空のWorkspaceの「サンプルのWorkspaceを作る」。主の操作（ペインを追加）より控えめな文字のボタン。 */
+/* 空のWorkspaceの「サンプルの並びで始める」。主の操作（ペインを追加）より控えめな文字のボタン。 */
 .workspace-sample-button {
   padding: 0.25rem 0.5rem;
   border: 0;

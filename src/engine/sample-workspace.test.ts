@@ -46,7 +46,7 @@ test('サンプルの対象と物理配列は、すべて組み込みに存在�
   assert.ok(Object.values(PHYSICAL_SHAPES).some((shape) => shape.id === SAMPLE_DEFAULT_SHAPE_ID));
 });
 
-test('サンプルの並び: 上に比較表（幅いっぱい）、下に同じ幅の4つ。連動・対象・解析設定・Workspaceの条件', () => {
+test('サンプルの並び: 上に比較表とN感度の横並び（18 + 6列）、下に同じ幅のBigram Flow 4つ。連動・対象・解析設定・Workspaceの条件', () => {
   const { created } = createSampleWorkspace(initialWorkspaceLibrary(), () => 'w', sequence('p'));
   assert.equal(created.name, SAMPLE_WORKSPACE_NAME);
   assert.deepEqual(created.panes.map((pane) => pane.analyzerId), [
