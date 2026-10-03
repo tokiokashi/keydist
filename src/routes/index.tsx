@@ -4,6 +4,7 @@ import { COMPARISON_PANE_META } from '#analyzers/comparison/pane-meta.ts';
 import { N_SENSITIVITY_PANE_META } from '#analyzers/n-sensitivity/pane-meta.ts';
 import { LEGACY_ANALYZER_LABEL, WORKSPACE_EMPTY_TEXT } from '../app/shell/Sidebar.tsx';
 import { TopTargetPick } from '../app/top/TopTargetPick.tsx';
+import { useCreateSampleWorkspace } from '../app/workspace/use-create-sample-workspace.ts';
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -33,6 +34,7 @@ function SidebarSample() {
 }
 
 function Home() {
+  const createSample = useCreateSampleWorkspace();
   return (
     <section className="hero">
       <p className="eyebrow">keyboard layout laboratory</p>
@@ -64,7 +66,8 @@ function Home() {
           </li>
           <li>
             <h2>Workspace</h2>
-            <p>複数の Analyzer を並べて見る画面です。サイドバーの「＋ 新しいWorkspace」から作ります。</p>
+            <p>複数の Analyzer を並べて見る画面です。サイドバーの「＋ 新しいWorkspace」から作ります。中身の入ったサンプルから始めることもできます。</p>
+            <button type="button" className="top-sample-workspace" onClick={createSample}>サンプルのWorkspaceを作る</button>
           </li>
         </ol>
       </div>
