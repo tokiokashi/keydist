@@ -1593,3 +1593,42 @@ test('Keyboard Flow: 個別画面の連打ラベルは、縮んだ図でも読�
   expect(info.scale).toBeCloseTo(8 / (6.2 * info.zoom), 1);
   expect(info.scale).toBeGreaterThan(2.5);
 });
+
+test('読み込みが済むまで、保存済みと違う既定の対象名（QWERTY）を出さない（#709）', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'keydist:single-target-selection',
+      JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: 'dvorak' } }),
+    );
+    // ハイドレーション・読み込みの途中の描画も含め、対象ボタンと見出し（pane-frame の aria-label）に出た名前を全部覚えておく
+    const seen: string[] = [];
+    (window as unknown as { __seenTargetNames: string[] }).__seenTargetNames = seen;
+    const record = () => {
+      for (const button of document.querySelectorAll('.target-selection-button')) seen.push(button.getAttribute('aria-label') ?? '');
+      for (const frame of document.querySelectorAll('section.pane-frame')) seen.push(frame.getAttribute('aria-label') ?? '');
+    };
+    new MutationObserver(record).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
+  });
+
+  // スクリプトを止めて、プリレンダーされたHTMLのままの画面を見る
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/assets/*.js', async (route) => {
+    await gate;
+    await route.continue();
+  });
+  await page.goto('/standalone/bigram-flow', { waitUntil: 'commit' });
+  await expect(targetButton(page)).toBeVisible();
+  expect(await targetButton(page).getAttribute('aria-label')).not.toContain('QWERTY');
+  // 見出しの「Bigram Flow — 対象名」は section.pane-frame の aria-label にある（.pane-frame-title は Analyzer 名だけ）
+  expect(await page.locator('section.pane-frame').getAttribute('aria-label')).not.toContain('QWERTY');
+
+  // 読み込みが済んだら保存済みの対象になり、その間にQWERTYは一度も出ていない
+  release();
+  await expect(targetButton(page)).toHaveAttribute('aria-label', '対象: Dvorak', { timeout: 15_000 });
+  const seen = await page.evaluate(() => (window as unknown as { __seenTargetNames: string[] }).__seenTargetNames);
+  expect(seen.filter((text) => text.includes('QWERTY'))).toEqual([]);
+  expect(seen.some((text) => text.includes('Dvorak'))).toBe(true);
+});
