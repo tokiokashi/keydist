@@ -24,6 +24,7 @@ import {
   createWorkspaceCommand,
   deleteWorkspaceCommand,
   duplicateWorkspaceCommand,
+  setWorkspaceCompactPanesCommand,
   restoreWorkspaceCommand,
   duplicateWorkspacePaneCommand,
   renameWorkspaceCommand,
@@ -396,4 +397,20 @@ test('新しいWorkspaceへの追加は、createWorkspaceCommandと同じ作り�
   // 個別画面で配っていた色の番号も引き継ぐ（作成と同じ）
   assert.deepEqual(viaAdd.colorSlots, { 'layout:qwerty': 2, 'layout:dvorak': 5 });
   assert.deepEqual(viaAdd.colorSlots, plain.colorSlots);
+});
+
+test('詰める設定の切り替え: 並びを書き換えず、元に戻す・やり直すで1回ずつ往復し、複製にも写る', () => {
+  const start = withWorkspace();
+  const grid = findWorkspace(start.assets.workspaces, 'w1')!.grid;
+  const on = run(start, setWorkspaceCompactPanesCommand('w1', true));
+  assert.equal(findWorkspace(on.assets.workspaces, 'w1')!.compactPanes, true);
+  assert.equal(findWorkspace(on.assets.workspaces, 'w1')!.grid, grid);
+  // 同じ値は履歴に積まない
+  assert.equal(run(on, setWorkspaceCompactPanesCommand('w1', true)).history, on.history);
+  const copied = run(on, duplicateWorkspaceCommand('w1', 'w2'));
+  assert.equal(findWorkspace(copied.assets.workspaces, 'w2')!.compactPanes, true);
+  const undone = undo(on.assets, on.history);
+  assert.equal(findWorkspace(undone.assets.workspaces, 'w1')!.compactPanes, undefined);
+  const redone = redo(undone.assets, undone.history);
+  assert.equal(findWorkspace(redone.assets.workspaces, 'w1')!.compactPanes, true);
 });

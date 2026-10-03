@@ -11,6 +11,7 @@ import {
   restoreWorkspace,
   renameWorkspace,
   withWorkspaceGrid,
+  withWorkspaceCompactPanes,
   followBinding,
   withWorkspacePaneOptions,
   withWorkspacePaneBinding,
@@ -183,7 +184,7 @@ export function addWorkspacePaneCommand(workspaceId: string, pane: WorkspacePane
   return workspacesCommand('ペインを追加する', (library) => addWorkspacePane(library, workspaceId, pane, size));
 }
 
-/** ペインを閉じる。下のペインは上へ詰まるが、他のペインの大きさは変わらない。 */
+/** ペインを閉じる。他のペインの大きさは変わらない。下のペインが上へ詰まるのは、Workspaceが詰める設定の時だけ。 */
 export function closeWorkspacePaneCommand(workspaceId: string, paneId: string): Command<KeydistAssets> {
   return workspacesCommand('ペインを閉じる', (library) => closeWorkspacePane(library, workspaceId, paneId));
 }
@@ -243,4 +244,12 @@ export function linkWorkspacePaneToNewGroupCommand(
 /** ペインの並び（ドラッグ・大きさの変更の結果）を書き換える。 */
 export function setWorkspaceGridCommand(workspaceId: string, grid: WorkspaceGrid): Command<KeydistAssets> {
   return workspacesCommand('ペインの並びを変える', (library) => withWorkspaceGrid(library, workspaceId, grid));
+}
+
+/** 「空いた所に詰める」を切り替える。並びは書き換えない（`withWorkspaceCompactPanes`）。元に戻すも1回で戻る。 */
+export function setWorkspaceCompactPanesCommand(workspaceId: string, compact: boolean): Command<KeydistAssets> {
+  return workspacesCommand(
+    compact ? '空いた所に詰める' : '空いた所を詰めない',
+    (library) => withWorkspaceCompactPanes(library, workspaceId, compact),
+  );
 }

@@ -218,7 +218,9 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
     const decoded = decodeGridItem(item, `${path}.grid[${index}]`, diagnostics);
     if (decoded !== undefined) rawGrid.push(decoded);
   });
-  const grid: WorkspaceGrid = normalizeGrid(rawGrid, panes.map((pane) => pane.id));
+  // 詰める設定は真だけを読む（それ以外は既定の「詰めない」）。並びを直す時の詰め方がこれで決まる
+  const compactPanes = raw.compactPanes === true;
+  const grid: WorkspaceGrid = normalizeGrid(rawGrid, panes.map((pane) => pane.id), compactPanes);
   // 色の番号は、読めた分を持ち越し、無い・壊れた・和に無い対象は配り直す（診断は出さない。色は表示だけの値）
   const known = new Map<string, number>();
   if (isRecord(raw.colorSlots)) {
@@ -232,6 +234,7 @@ function decodeWorkspace(raw: unknown, path: string, seenIds: Set<string>, diagn
     : decodeLevelOverrides(SETTINGS_ITEM_SCHEMAS, raw.conditions, `${path}.conditions`, diagnostics);
   return {
     id: raw.id, name, text, groups, panes, grid, colorSlots,
+    ...(compactPanes ? { compactPanes: true as const } : {}),
     ...(conditions === undefined ? {} : { conditions }),
   };
 }
@@ -290,6 +293,7 @@ export const WORKSPACE_LIBRARY_CODEC: AssetCodec<WorkspaceLibrary> = defineAsset
       panes: workspace.panes.map(encodePane),
       colorSlots: { ...workspace.colorSlots },
       grid: workspace.grid.map((item) => ({ id: item.id, x: item.x, y: item.y, w: item.w, h: item.h })),
+      ...(workspace.compactPanes === true ? { compactPanes: true } : {}),
       ...(workspace.conditions === undefined ? {} : { conditions: { ...workspace.conditions } }),
     })),
   }),
