@@ -48,7 +48,7 @@ export function BigramFlowPane({
   settingsDiagnostics = [],
   linkNotices,
 }: BigramFlowPaneProps) {
-  const { setups, overrides, catalog, resolvedText, cache, dispatch } = env;
+  const { setups, overrides, catalog, resolvedText, cache, dispatch, assetsReady } = env;
   const setupsById = useMemo(() => new Map(setups.map((setup) => [setup.id, setup] as const)), [setups]);
 
   const resolution = useMemo(
@@ -96,13 +96,15 @@ export function BigramFlowPane({
       headerAction={chrome.headerAction}
       targetBinding={chrome.targetBinding}
       showPaneNameInSettings={chrome.showPaneNameInSettings}
-      {...(named === undefined ? {} : { targetName: named.displayName })}
+      {...(named === undefined || !assetsReady ? {} : { targetName: named.displayName })}
       target={(
         <TargetSelection
           mode="single"
           groups={choiceGroups}
           selected={[target]}
-          summary={named === undefined ? [] : [{ key: named.key, label: named.displayName, fullName: named.fullName }]}
+          // 資産の読み込み前の対象は、保存済みの対象が未反映なだけの既定値（QWERTY）。比較表・N感度が
+          // 空の対象を出さないのと同じく、読み込みが済むまで名前を出さず、保存済みの名前へ置き換わる所を見せない
+          summary={named === undefined || !assetsReady ? [] : [{ key: named.key, label: named.displayName, fullName: named.fullName }]}
           onChange={(next) => {
             if (next[0] !== undefined) onTargetChange(next[0]);
           }}
