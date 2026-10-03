@@ -50,8 +50,8 @@ test('サイドバーを固定しない広い幅を動かしても、バーは1�
   await open(page, { width: 1440, height: 900 });
   await page.locator('#app-sidebar').getByRole('button', { name: 'サイドバーを固定' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-sidebar', 'unpinned');
-  // バー自身の内幅が53.5rem（856px）以上の範囲（画面幅は余白と☰の分だけ上乗せ）。64remを境に文字が出る
-  for (const width of [1440, 1280, 1160, 1100, 1000, 936, 912, 900, 897]) {
+  // バー自身の内幅が53.5rem（856px）以上の範囲（画面幅は余白と☰の分だけ上乗せ）
+  for (const width of [1440, 1280, 1160, 1100, 1000, 936, 912, 908, 904, 900, 899, 898, 897]) {
     await page.setViewportSize({ width, height: 900 });
     const layout = await page.evaluate(() => {
       const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
@@ -60,9 +60,11 @@ test('サイドバーを固定しない広い幅を動かしても、バーは1�
       const add = rect('.workspace-add-pane-button');
       const hit = (a: DOMRect, b: DOMRect) => a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
       const bar = document.querySelector('.context-bar')!;
+      const root = document.querySelector('.text-chip-root')!.getBoundingClientRect();
       return {
         barHeight: rect('.context-bar').height,
         textWidth: text.width,
+        textOverflow: text.right - root.right,
         addWidth: add.width,
         overlap: hit(text, shape) || hit(text, add) || hit(add, shape),
         // 格子の幅の追従は別の話なので、バー自身が横にあふれないことを見る
@@ -71,6 +73,8 @@ test('サイドバーを固定しない広い幅を動かしても、バーは1�
     });
     expect(layout.barHeight, `幅${width}`).toBeLessThan(60);
     expect(layout.overlap, `幅${width}`).toBe(false);
+    // チップの中のボタンが枠からはみ出さない
+    expect(layout.textOverflow, `幅${width}`).toBeLessThanOrEqual(0.5);
     expect(layout.overflow, `幅${width}`).toBeLessThanOrEqual(0);
     expect(layout.textWidth, `幅${width}`).toBeGreaterThanOrEqual(150);
     // どの幅でも＋だけ（文字が出入りすると名前の幅が増減する）
