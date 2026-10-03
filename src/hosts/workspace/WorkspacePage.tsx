@@ -343,7 +343,8 @@ export function WorkspacePage({
           </div>
         ) : (
           <>
-            <div className="workspace-toolbar">
+            {/* 拡大中は、隠れた「ペインを追加」へフォーカスも操作も届かせない */}
+            <div className="workspace-toolbar" inert={maximizedId !== undefined}>
               <AddPaneMenu onAdd={addPane} onAddBlank={addBlankPane} />
             </div>
             {stacked ? (

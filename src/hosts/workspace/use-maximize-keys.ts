@@ -6,10 +6,18 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 /**
- * Escapeで先に閉じるべきものが開いているか。開閉の状態は各部品が持つので、画面に出ているものをDOMで見る。
- * `aria-expanded="true"`は、メニュー・解析設定・対象の選択・条件・ⓘなど、開いている間だけ付くボタンの印。
+ * Escapeで先に閉じるべき浮いた部品が開いているか。開閉の状態は各部品が持つので、画面に出ているものをDOMで見る。
+ * 開閉ボタンの`aria-expanded="true"`を全部数えると、Escapeで閉じない開閉（Bigram Flowの図の表示など、
+ * ペインの中に開く部品）まで数えてしまい、Escapeで拡大が解けなくなる。数えるのはEscapeで閉じるものだけ:
+ * モーダル・解析設定の小窓・ⓘの説明・メニューや選択（`aria-haspopup`）・テキストの選択（`aria-controls`）。
  */
-const OVERLAY_SELECTOR = 'dialog[open], [aria-expanded="true"]';
+const OVERLAY_SELECTOR = [
+  'dialog[open]',
+  '.settings-window',
+  '.info-popover',
+  '[aria-haspopup][aria-expanded="true"]',
+  '[aria-controls][aria-expanded="true"]',
+].join(', ');
 
 /**
  * 拡大表示のキー操作とフォーカス。

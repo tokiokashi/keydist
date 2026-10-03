@@ -273,6 +273,80 @@ test('拡大中にそのペインを複製すると拡大が解け、閉じて�
   expect(await page.locator('.workspace-grid-item[data-maximized]').count()).toBe(0);
 });
 
+test('背面のペインで開いていた解析設定の小窓は、拡大すると閉じ、拡大したペインの上に残らない', async ({ page }) => {
+  await openReady(page);
+  await page.locator('.workspace-grid-item[data-pane-id="b"]').getByRole('button', { name: '解析設定', exact: true }).click();
+  await expect(page.locator('.settings-window')).toBeVisible();
+  await maximize(page, 'a');
+  await expect(page.locator('.settings-window')).toHaveCount(0);
+  // 小窓が残らないので、Escapeで拡大が解ける
+  await page.keyboard.press('Escape');
+  await expect.poll(() => isMaximized(page, 'a')).toBe(false);
+});
+
+test('図の表示（Escapeで閉じない開閉）を開いていても、Escapeで拡大が解ける（拡大したペインで開いた場合・背面で開いてから拡大した場合）', async ({ page }) => {
+  await openReady(page);
+  const toggle = (id: string) => page.locator(`.workspace-grid-item[data-pane-id="${id}"] button[aria-label$="の表示"]`).first();
+  // 背面（b）で開いてから拡大する
+  await toggle('b').click();
+  await expect(toggle('b')).toHaveAttribute('aria-expanded', 'true');
+  await maximize(page, 'a');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => isMaximized(page, 'a')).toBe(false);
+
+  // 拡大したペイン（a）で開く
+  await maximize(page, 'a');
+  await toggle('a').click();
+  await expect(toggle('a')).toHaveAttribute('aria-expanded', 'true');
+  await toggle('a').blur();
+  await page.keyboard.press('Escape');
+  await expect.poll(() => isMaximized(page, 'a')).toBe(false);
+});
+
+test('拡大中にTabを回しても、フォーカスは拡大したペイン・上の帯・左のメニューの外へ行かず、「ペインを追加」には入らない', async ({ page }) => {
+  await openReady(page);
+  await maximize(page, 'a');
+  await expect(page.locator('.workspace-toolbar')).toHaveAttribute('inert', '');
+  await menuButton(page, 'a').focus();
+  for (let i = 0; i < 60; i += 1) {
+    await page.keyboard.press('Tab');
+    const where = await page.evaluate(() => {
+      const el = document.activeElement;
+      if (el === null || el === document.body) return 'body';
+      if (el.closest('.workspace-toolbar') !== null) return 'toolbar';
+      const item = el.closest('.workspace-grid-item');
+      if (item !== null) return item.hasAttribute('data-maximized') ? 'maximized' : 'other-pane';
+      if (el.closest('.context-bar') !== null) return 'bar';
+      if (el.closest('.app-sidebar') !== null) return 'sidebar';
+      return 'other';
+    });
+    expect(['maximized', 'bar', 'sidebar', 'body', 'other'], `Tab ${i + 1}回目: ${where}`).toContain(where);
+    expect(where).not.toBe('other');
+  }
+});
+
+test('拡大中に元に戻す・やり直すを押すと、拡大が解ける', async ({ page }) => {
+  await openReady(page);
+  const undo = page.locator('.context-bar').getByRole('button', { name: '元に戻す' });
+  const redo = page.locator('.context-bar').getByRole('button', { name: 'やり直す' });
+  // 履歴を作る（cを閉じる）
+  await menuButton(page, 'c').click();
+  await page.getByRole('menuitem', { name: '閉じる' }).click();
+  await expect(page.locator('.workspace-grid-item')).toHaveCount(2);
+  await settle(page);
+
+  await maximize(page, 'a');
+  await undo.click();
+  await expect(page.locator('.workspace-grid-item')).toHaveCount(3);
+  await expect.poll(() => page.locator('.workspace-grid-item[data-maximized]').count()).toBe(0);
+  await settle(page);
+
+  await maximize(page, 'a');
+  await redo.click();
+  await expect(page.locator('.workspace-grid-item')).toHaveCount(2);
+  await expect.poll(() => page.locator('.workspace-grid-item[data-maximized]').count()).toBe(0);
+});
+
 test('縦積み（スマホ幅）の⋯には「拡大表示」が出ない', async ({ page }) => {
   await open(page, { width: 700, height: 900 });
   await expect(page.locator('.workspace-stack-pane').first()).toBeVisible({ timeout: 15_000 });

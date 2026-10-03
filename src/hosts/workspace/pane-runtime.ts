@@ -71,7 +71,7 @@ export function paneMenuItems(
     ...(runtime.maximizePane === undefined ? [] : [{
       id: 'maximize',
       label: maximized ? '元の大きさに戻す' : '拡大表示',
-      description: maximized ? '並びは変えずに、元の大きさへ戻る' : 'Workspaceの面いっぱいにこのペインを広げる',
+      description: maximized ? '並びは変えずに、元の大きさへ戻る' : 'このペインをWorkspaceいっぱいに広げる',
       onSelect: () => runtime.maximizePane?.(maximized ? undefined : paneId),
     }]),
     { id: 'duplicate', label: '複製', description: '解析設定と対象を写して、同じ大きさで隣に並べる', onSelect: () => runtime.duplicatePane(paneId) },
