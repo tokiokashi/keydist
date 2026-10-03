@@ -1600,12 +1600,12 @@ test('読み込みが済むまで、保存済みと違う既定の対象名（QW
       'keydist:single-target-selection',
       JSON.stringify({ version: 1, target: { kind: 'layout', layoutId: 'dvorak' } }),
     );
-    // ハイドレーション・読み込みの途中の描画も含め、対象ボタンと見出しに出た名前を全部覚えておく
+    // ハイドレーション・読み込みの途中の描画も含め、対象ボタンと見出し（pane-frame の aria-label）に出た名前を全部覚えておく
     const seen: string[] = [];
     (window as unknown as { __seenTargetNames: string[] }).__seenTargetNames = seen;
     const record = () => {
       for (const button of document.querySelectorAll('.target-selection-button')) seen.push(button.getAttribute('aria-label') ?? '');
-      for (const heading of document.querySelectorAll('.pane-frame-title')) seen.push(heading.textContent ?? '');
+      for (const frame of document.querySelectorAll('section.pane-frame')) seen.push(frame.getAttribute('aria-label') ?? '');
     };
     new MutationObserver(record).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
   });
@@ -1622,7 +1622,8 @@ test('読み込みが済むまで、保存済みと違う既定の対象名（QW
   await page.goto('/standalone/bigram-flow', { waitUntil: 'commit' });
   await expect(targetButton(page)).toBeVisible();
   expect(await targetButton(page).getAttribute('aria-label')).not.toContain('QWERTY');
-  await expect(page.locator('.pane-frame-title')).not.toContainText('QWERTY');
+  // 見出しの「Bigram Flow — 対象名」は section.pane-frame の aria-label にある（.pane-frame-title は Analyzer 名だけ）
+  expect(await page.locator('section.pane-frame').getAttribute('aria-label')).not.toContain('QWERTY');
 
   // 読み込みが済んだら保存済みの対象になり、その間にQWERTYは一度も出ていない
   release();
