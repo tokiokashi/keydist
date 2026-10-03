@@ -81,6 +81,41 @@ test('サイドバーを固定しない広い幅を動かしても、バーは1�
   expect(withLabel[897]).toBe(false);
 });
 
+const LONG_NAME = 'とても長いWorkspaceの名前をつけてバーの幅を使い切る場合の確認用';
+
+test('1行の幅で足りない時は、長い名前が先に最小幅まで縮み、その間は物理配列とテキストのチップの幅が変わらない', async ({ page }) => {
+  await open(page, { width: 1600, height: 900 }, [flow], LONG_NAME);
+  await page.locator('#app-sidebar').getByRole('button', { name: 'サイドバーを固定' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-sidebar', 'unpinned');
+  const measure = () => page.evaluate(() => {
+    const width = (selector: string) => document.querySelector(selector)!.getBoundingClientRect().width;
+    return { name: width('.workspace-name'), shape: width('.context-select-chip'), text: width('.context-bar button.text-chip') };
+  });
+  const reference = await measure();
+  let shrunk = 0;
+  for (const width of [1500, 1400, 1300, 1200, 1100, 1060, 1030, 1000, 960, 930, 900]) {
+    await page.setViewportSize({ width, height: 900 });
+    const now = await measure();
+    if (now.name > 56 + 1) {
+      expect(Math.abs(now.shape - reference.shape), `幅${width}の物理配列のチップ`).toBeLessThanOrEqual(1);
+      expect(Math.abs(now.text - reference.text), `幅${width}のテキストのチップ`).toBeLessThanOrEqual(1);
+    }
+    if (now.name < reference.name - 1) shrunk += 1;
+  }
+  // 掃引の途中で、名前が実際に縮んでいる（検査が素通りしていない）
+  expect(shrunk).toBeGreaterThan(3);
+});
+
+test('1〜2文字の短い名前では、名前と⋯の間が空かない', async ({ page }) => {
+  await open(page, { width: 1440, height: 900 }, [flow], 'A');
+  const gap = await page.evaluate(() => {
+    const name = document.querySelector('.workspace-name')!.getBoundingClientRect();
+    const menu = document.querySelector('.workspace-menu')!.getBoundingClientRect();
+    return menu.left - name.right;
+  });
+  expect(gap).toBeLessThan(12);
+});
+
 test('サイドバーを固定した画面幅1100でバーが2段になっても、＋は名前と同じ1段目に残る', async ({ page }) => {
   await open(page, { width: 1100, height: 900 });
   const layout = await page.evaluate(() => {

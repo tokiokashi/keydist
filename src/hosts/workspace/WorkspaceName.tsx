@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 
 /**
  * 文脈バーの左端に置くWorkspace名（ページのh1。docs/architecture.md「文脈バー」）。
@@ -37,7 +37,7 @@ export function WorkspaceName({
   };
 
   return (
-    <h1 className="workspace-name">
+    <h1 className="workspace-name" style={{ '--name-length': Math.min(name.length, 4) } as CSSProperties}>
       {editing ? (
         <input
           ref={inputRef}
