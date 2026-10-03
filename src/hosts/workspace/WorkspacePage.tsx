@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { Command } from '#input/commands/index.ts';
 import type { KeydistAssets } from '#engine/commands.ts';
 import type { EngineComputer } from '#engine/computer.ts';
@@ -41,6 +41,7 @@ import type { PaneBindingChoice, WorkspacePaneRuntime } from './pane-runtime.ts'
 import { summarizeLinkGroups } from './group-summary.ts';
 import { gridPaneIds } from '#engine/workspace-grid.ts';
 import { defaultGridSize } from './grid-metrics.ts';
+import { useMaximizeKeys } from './use-maximize-keys.ts';
 import { useFocusAfterClose } from './use-focus-after-close.ts';
 import { WorkspaceGrid } from './WorkspaceGrid.tsx';
 import { WorkspaceName } from './WorkspaceName.tsx';
@@ -108,6 +109,10 @@ export function WorkspacePage({
   const workspace = findWorkspace(assets.workspaces, workspaceId);
   // スマホ幅では格子を外し、ペインを縦に積む。資産の格子は読むだけなので、戻ると元の並びで描き直される
   const stacked = useStacked();
+  // 拡大表示しているペイン。保存しない見た目だけの状態で、リロードで解ける（資産・Undoの履歴には入れない）。
+  // 拡大できるのは格子の面だけなので、縦積みへ変わったら解く（戻した時に勝手に拡大し直さない）
+  const [maximizedId, setMaximizedId] = useState<string | undefined>(undefined);
+  if (stacked && maximizedId !== undefined) setMaximizedId(undefined);
 
   // 待っている変更（解析設定）を先に資産へ書いてから、ペインを増減する・戻す。待ち中の値を
   // 残したまま操作すると、操作の後にその値が書かれて、操作の結果を上書きする。
@@ -119,12 +124,15 @@ export function WorkspacePage({
   const pageHistory: ContextBarHistory = useMemo(() => ({
     canUndo: history.canUndo,
     canRedo: history.canRedo,
+    // 戻す・やり直すでペインが増減する。新しく現れるペインが隠れないよう、拡大は解く
     undo: () => {
       flushPending();
+      setMaximizedId(undefined);
       history.undo();
     },
     redo: () => {
       flushPending();
+      setMaximizedId(undefined);
       history.redo();
     },
   }), [history, flushPending]);
@@ -168,6 +176,7 @@ export function WorkspacePage({
   const paneIds = useMemo(() => (workspaceGrid === undefined ? [] : gridPaneIds(workspaceGrid)), [workspaceGrid]);
   // ペインを閉じた後に、フォーカスをbodyへ落とさない（どの経路で閉じても同じ規則）
   const pageRef = useFocusAfterClose(paneIds);
+  useMaximizeKeys(maximizedId, () => setMaximizedId(undefined));
 
   const groups = workspace?.groups;
   const colorSlots = workspace?.colorSlots ?? initialWorkspaceColorSlots();
@@ -211,13 +220,18 @@ export function WorkspacePage({
     },
     duplicatePane: (paneId: string) => {
       flushPending();
+      // 写したペインが隣に現れるので、拡大は解いて見えるようにする
+      setMaximizedId(undefined);
       dispatch(duplicateWorkspacePaneCommand(workspaceId, paneId, generateId()));
     },
     closePane: (paneId: string) => {
       flushPending();
+      setMaximizedId((current) => (current === paneId ? undefined : current));
       dispatch(closeWorkspacePaneCommand(workspaceId, paneId));
     },
-  }), [env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, groupSummaries, colorSlots]);
+    // 縦積みは格子を使わず拡大できないので、渡さない（⋯に項目を出さない）
+    ...(stacked ? {} : { maximizedPaneId: maximizedId, maximizePane: setMaximizedId }),
+  }), [stacked, maximizedId, env, onPaneOptionsCommit, dispatch, workspaceId, generateId, flushPending, panesById, groups, groupSummaries, colorSlots]);
 
   const titleOf = useCallback(
     (paneId: string) => {
@@ -248,6 +262,8 @@ export function WorkspacePage({
 
   const addPane = (entry: WorkspaceAnalyzerEntry) => {
     flushPending();
+    // 足したペインが隠れないよう、拡大は解く
+    setMaximizedId(undefined);
     const pane: WorkspacePane = {
       id: generateId(),
       analyzerId: entry.id,
@@ -260,6 +276,7 @@ export function WorkspacePage({
 
   const addBlankPane = () => {
     flushPending();
+    setMaximizedId(undefined);
     dispatch(addWorkspacePaneCommand(workspaceId, { id: generateId(), analyzerId: BLANK_PANE_ID, options: undefined, binding: NO_BINDING }, defaultGridSize(BLANK_PANE_ID)));
   };
 
@@ -339,6 +356,7 @@ export function WorkspacePage({
                   titleOf={titleOf}
                   descriptionOf={descriptionOf}
                   renderPane={renderPane}
+                  maximizedId={maximizedId !== undefined && panesById.has(maximizedId) ? maximizedId : undefined}
                   onGridChange={(grid) => dispatch(setWorkspaceGridCommand(workspaceId, grid))}
                 />
               </div>

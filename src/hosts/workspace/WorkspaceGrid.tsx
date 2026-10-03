@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useLayoutEffect, useMemo, type ReactNode } from 'react';
 import ReactGridLayout, { useContainerWidth, verticalCompactor, type Layout, type LayoutItem } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -16,6 +16,11 @@ export interface WorkspaceGridProps {
   /** ⓘに出す短い説明。空ならⓘを出さない。 */
   readonly descriptionOf: (paneId: string) => string;
   readonly renderPane: (paneId: string) => ReactNode;
+  /**
+   * 拡大表示しているペイン。保存しない見た目だけの状態で、格子の並び（x・y・w・h）は書き換えない。
+   * 拡大している間は、そのペインを面いっぱいに見せ、ドラッグ・大きさの変更を止め、他のペインを操作できなくする。
+   */
+  readonly maximizedId?: string | undefined;
   /** 人がドラッグ・大きさの変更を終えた。 */
   readonly onGridChange: (grid: WorkspaceGrid) => void;
 }
@@ -36,14 +41,22 @@ function fromLayout(layout: Layout): WorkspaceGrid {
  * 正は資産の格子（`grid`）で、ライブラリには毎回その値を渡す。人の操作は、離した時（ドラッグ・大きさの変更の終わり）に
  * 1回だけ資産へ書く。途中の位置は書かないので、Undoは1操作につき1回で戻る。
  */
-export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, renderPane, onGridChange }: WorkspaceGridProps) {
+export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, renderPane, maximizedId, onGridChange }: WorkspaceGridProps) {
   const { width, containerRef, mounted } = useContainerWidth();
+  const maximized = maximizedId !== undefined;
+  useMaximizedBounds(containerRef, maximized);
   const layout = useMemo(
     () => grid.map((item) => toLayoutItem(item, analyzerIdOf(item.id))),
     [grid, analyzerIdOf],
   );
+  // 拡大中は、有効・無効だけを切り替える（部品の木が変わらず、ペインが作り直されない）
+  const dragConfig = useMemo(
+    () => ({ enabled: !maximized, handle: '.workspace-drag-handle', cancel: 'button, a, input, select, textarea' }),
+    [maximized],
+  );
+  const resizeConfig = useMemo(() => ({ enabled: !maximized, handles: ['s', 'e', 'w', 'se'] as const }), [maximized]);
   return (
-    <div ref={containerRef} className="workspace-grid-area">
+    <div ref={containerRef} className="workspace-grid-area" data-maximized={maximized || undefined}>
       {mounted ? (
         <ReactGridLayout
           width={width}
@@ -54,16 +67,23 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, rend
             margin: [GRID_MARGIN_PX, GRID_MARGIN_PX],
             containerPadding: [GRID_PADDING_PX, GRID_PADDING_PX],
           }}
-          dragConfig={{ enabled: true, handle: '.workspace-drag-handle', cancel: 'button, a, input, select, textarea' }}
+          dragConfig={dragConfig}
           // 大きさを変えるつかみは下の辺（高さだけ）・右の辺と左の辺（幅だけ）・右下の角（幅と高さ）の4つ
-          resizeConfig={{ enabled: true, handles: ['s', 'e', 'w', 'se'] }}
+          resizeConfig={resizeConfig}
           compactor={verticalCompactor}
           onDragStop={(next) => onGridChange(fromLayout(next))}
           onResizeStop={(next) => onGridChange(fromLayout(next))}
         >
           {/* DOMの順は画面の読み順（上→下・左→右）。Tabと読み上げの順が見た目と合う */}
           {gridPaneIds(grid).map((id) => (
-            <div key={id} className="workspace-grid-item" data-pane-id={id}>
+            // 拡大中の他のペインは、背面に残したまま操作できなくする（フォーカスも入らない）
+            <div
+              key={id}
+              className="workspace-grid-item"
+              data-pane-id={id}
+              data-maximized={id === maximizedId || undefined}
+              inert={maximized && id !== maximizedId}
+            >
               <PaneShell paneId={id} title={titleOf(id)} description={descriptionOf(id)} draggable>
                 {renderPane(id)}
               </PaneShell>
@@ -73,6 +93,32 @@ export function WorkspaceGrid({ grid, analyzerIdOf, titleOf, descriptionOf, rend
       ) : null}
     </div>
   );
+}
+
+/**
+ * 拡大中のペインを置く範囲（文脈バーの下から、面の左端・画面の右下まで）を、面の要素のCSS変数へ書く。
+ * ライブラリはペインをtransformで配置するので、拡大したペインは`position: fixed`で面の上に重ね、
+ * 範囲だけここで測る。文脈バーの高さ（狭いと2段になる）と、サイドバーを固定しているかによる左端が、画面の幅で変わるため。
+ */
+function useMaximizedBounds(areaRef: { readonly current: HTMLElement | null }, maximized: boolean): void {
+  useLayoutEffect(() => {
+    const area = areaRef.current;
+    if (!maximized || area === null) return undefined;
+    const bar = document.querySelector('.context-bar');
+    const measure = () => {
+      area.style.setProperty('--maximize-top', `${bar === null ? 0 : bar.getBoundingClientRect().bottom}px`);
+      area.style.setProperty('--maximize-left', `${area.getBoundingClientRect().left}px`);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(area);
+    if (bar !== null) observer.observe(bar);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [areaRef, maximized]);
 }
 
 /** つかみ所の絵（6つの点）。 */
