@@ -35,7 +35,8 @@ export function combinePaneStates<T>(
 /** ペインの見出し脇に出す、状態そのものの短い文言。値（`ready`/`stale`）は別途描く。 */
 export function paneStatusLabel(status: PaneEngineState<unknown>['status']): string {
   switch (status) {
-    case 'idle': return '未計算';
+    // 依頼を出す前の一瞬（読み込み直後の最初の描画）にしかならない。出すと、すぐ消えて見出しの並びが動く（#915）
+    case 'idle': return '';
     case 'computing': return '計算中…';
     case 'stale': return '計算中…（直前の結果を表示）';
     case 'ready': return '';

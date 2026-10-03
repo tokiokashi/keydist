@@ -36,6 +36,8 @@ for (const width of [390, 1440]) {
       await waitForHydration(page);
       // 資産の読み込みが済むと、画面の囲い（fieldset disabled）が外れる
       await expect(page.locator('fieldset:disabled')).toHaveCount(0, { timeout: 20_000 });
+      // 計算が済んでから測る（計算中のバッジは今までどおり出るので、その間は並びが動く）
+      await expect(page.locator('[data-pane-status="ready"]')).toBeVisible({ timeout: 20_000 });
       const after = await targetButton(page).boundingBox();
       expect(after).not.toBeNull();
       expect(Math.abs(after!.x - before!.x)).toBeLessThanOrEqual(1);

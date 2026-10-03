@@ -5,7 +5,7 @@ import type { ResolvedInputError } from '#engine/resolved-input.ts';
 import { combinePaneStates, describeEngineRequestError, describeResolvedInputError, engineRequestErrorDetail, paneStatusLabel } from './pane-status.ts';
 
 test('paneStatusLabel: 各状態に短い文言を返す', () => {
-  assert.equal(paneStatusLabel('idle'), '未計算');
+  assert.equal(paneStatusLabel('idle'), '');
   assert.equal(paneStatusLabel('computing'), '計算中…');
   assert.equal(paneStatusLabel('stale'), '計算中…（直前の結果を表示）');
   assert.equal(paneStatusLabel('ready'), '');
