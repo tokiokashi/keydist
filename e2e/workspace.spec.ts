@@ -654,9 +654,9 @@ test('使えないAnalyzerのペインは使えないと出て、閉じられる
       { id: 'p-mismatch', analyzerId: 'comparison', binding: { mode: 'fixed', target: { kind: 'single', target: QWERTY } } },
     ],
     grid: [
-      { id: 'p-good', x: 0, y: 0, w: 4, h: 14 },
-      { id: 'p-unknown', x: 4, y: 0, w: 4, h: 14 },
-      { id: 'p-mismatch', x: 8, y: 0, w: 4, h: 14 },
+      { id: 'p-good', x: 0, y: 0, w: 8, h: 14 },
+      { id: 'p-unknown', x: 8, y: 0, w: 8, h: 14 },
+      { id: 'p-mismatch', x: 16, y: 0, w: 8, h: 14 },
     ],
   });
   await page.goto('/workspace/seeded');
@@ -790,9 +790,9 @@ test('窓の大きさを変えても、並びは書き換わらない（格子�
     name: '大きさの確認',
     panes: [set('a'), set('b'), set('c')],
     grid: [
-      { id: 'a', x: 0, y: 0, w: 3, h: 12 },
-      { id: 'b', x: 3, y: 0, w: 6, h: 12 },
-      { id: 'c', x: 9, y: 0, w: 3, h: 12 },
+      { id: 'a', x: 0, y: 0, w: 6, h: 12 },
+      { id: 'b', x: 6, y: 0, w: 12, h: 12 },
+      { id: 'c', x: 18, y: 0, w: 6, h: 12 },
     ],
   });
   await page.setViewportSize({ width: 1500, height: 900 });

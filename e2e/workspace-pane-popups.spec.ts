@@ -31,7 +31,7 @@ async function box(locator: Locator) {
 
 test('条件のモーダルのプリセットの⋯は、左端の列でも右端の列でもボタンの下に開き、ダイアログに収まる', async ({ page }) => {
   const ids = ['a', 'b', 'c', 'd'];
-  await openWorkspace(page, ids.map(flow), ids.map((id, i) => ({ id, x: i * 3, y: 0, w: 3, h: 16 })), { width: 1440, height: 900 });
+  await openWorkspace(page, ids.map(flow), ids.map((id, i) => ({ id, x: i * 6, y: 0, w: 6, h: 16 })), { width: 1440, height: 900 });
   await expect(page.locator('.workspace-grid-item')).toHaveCount(4);
   await expect(page.locator('.pane-frame[data-pane-status="ready"]')).toHaveCount(4, { timeout: 15_000 });
 
@@ -70,7 +70,7 @@ test('条件のモーダルのプリセットの⋯は、左端の列でも右�
 
 /** ペインを縦に3つ並べる（ページがスクロールする）。 */
 async function openTall(page: Page): Promise<void> {
-  await openWorkspace(page, ['a', 'b', 'c'].map(flow), ['a', 'b', 'c'].map((id, i) => ({ id, x: 0, y: i * 30, w: 12, h: 30 })), { width: 1440, height: 600 });
+  await openWorkspace(page, ['a', 'b', 'c'].map(flow), ['a', 'b', 'c'].map((id, i) => ({ id, x: 0, y: i * 30, w: 24, h: 30 })), { width: 1440, height: 600 });
   await expect(page.locator('.workspace-grid-item')).toHaveCount(3);
 }
 

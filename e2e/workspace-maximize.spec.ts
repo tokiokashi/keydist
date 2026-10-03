@@ -17,9 +17,9 @@ const fixed = (id: string, layoutId = 'qwerty') => ({
 });
 const PANES = [fixed('a'), fixed('b', 'dvorak'), fixed('c', 'colemak')];
 const GRID = [
-  { id: 'a', x: 0, y: 0, w: 6, h: 16 },
-  { id: 'b', x: 6, y: 0, w: 6, h: 16 },
-  { id: 'c', x: 0, y: 16, w: 12, h: 16 },
+  { id: 'a', x: 0, y: 0, w: 12, h: 16 },
+  { id: 'b', x: 12, y: 0, w: 12, h: 16 },
+  { id: 'c', x: 0, y: 16, w: 24, h: 16 },
 ];
 
 /** 保存先へWorkspaceを直接書き、Workerへの依頼と各ペインの「計算中」の回数を数える仕掛けを入れる。 */
@@ -111,7 +111,7 @@ test('拡大するとWorkspaceいっぱいになり、上の帯と左のメニ�
   expect(box.x + box.width).toBeGreaterThanOrEqual(view.width - 8 - 20);
   expect(box.x + box.width).toBeLessThanOrEqual(view.width - 8 + 1);
   expect(Math.abs(box.y + box.height - (view.height - 8))).toBeLessThanOrEqual(1);
-  // 元の6列より広く、元の高さより高い
+  // 元の12列より広く、元の高さより高い
   expect(box.width).toBeGreaterThan(area.width * 0.9);
   expect(box.height).toBeGreaterThan(500);
 

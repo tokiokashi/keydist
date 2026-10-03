@@ -21,56 +21,56 @@ function noOverlap(grid: WorkspaceGrid): boolean {
 
 test('gridWithPane: 空いている最初の場所へ、指定の大きさで置く。他の枠は動かさない', () => {
   let grid: WorkspaceGrid = [];
-  grid = gridWithPane(grid, 'a', { w: 6, h: 10 });
-  grid = gridWithPane(grid, 'b', { w: 6, h: 14 });
-  grid = gridWithPane(grid, 'c', { w: 6, h: 8 });
-  assert.deepEqual(grid, [item('a', 0, 0, 6, 10), item('b', 6, 0, 6, 14), item('c', 0, 10, 6, 8)]);
-  assert.equal(gridWithPane(grid, 'a', { w: 3, h: 3 }), grid);
+  grid = gridWithPane(grid, 'a', { w: 12, h: 10 });
+  grid = gridWithPane(grid, 'b', { w: 12, h: 14 });
+  grid = gridWithPane(grid, 'c', { w: 12, h: 8 });
+  assert.deepEqual(grid, [item('a', 0, 0, 12, 10), item('b', 12, 0, 12, 14), item('c', 0, 10, 12, 8)]);
+  assert.equal(gridWithPane(grid, 'a', { w: 6, h: 3 }), grid);
 });
 
 test('gridWithPaneNextTo: 元と同じ大きさで右隣に置く。右が塞がっていれば真下', () => {
-  const grid = gridWithPane(gridWithPane([], 'a', { w: 6, h: 10 }), 'b', { w: 4, h: 6 });
+  const grid = gridWithPane(gridWithPane([], 'a', { w: 12, h: 10 }), 'b', { w: 8, h: 6 });
   // aの右隣はbで塞がっている。真下に同じ大きさで置く
   const below = gridWithPaneNextTo(grid, 'a', 'a2');
-  assert.deepEqual(below.find((i) => i.id === 'a2'), item('a2', 0, 10, 6, 10));
-  // bの右隣は列に収まらない（6 + 4 + 4 > 12）ので、bの真下
+  assert.deepEqual(below.find((i) => i.id === 'a2'), item('a2', 0, 10, 12, 10));
+  // bの右隣は列に収まらない（12 + 8 + 8 > 24）ので、bの真下
   const bBelow = gridWithPaneNextTo(grid, 'b', 'b2');
-  assert.deepEqual(bBelow.find((i) => i.id === 'b2'), item('b2', 6, 6, 4, 6));
+  assert.deepEqual(bBelow.find((i) => i.id === 'b2'), item('b2', 12, 6, 8, 6));
   // 空いている右隣があれば右隣
-  const narrow = gridWithPane([], 'n', { w: 4, h: 6 });
-  assert.deepEqual(gridWithPaneNextTo(narrow, 'n', 'n2').find((i) => i.id === 'n2'), item('n2', 4, 0, 4, 6));
+  const narrow = gridWithPane([], 'n', { w: 8, h: 6 });
+  assert.deepEqual(gridWithPaneNextTo(narrow, 'n', 'n2').find((i) => i.id === 'n2'), item('n2', 8, 0, 8, 6));
 });
 
 test('gridWithPaneNextTo: 右隣が列に収まらなければ、列の外へは置かない', () => {
-  const grid = gridWithPane([], 'a', { w: 8, h: 6 });
+  const grid = gridWithPane([], 'a', { w: 16, h: 6 });
   const next = gridWithPaneNextTo(grid, 'a', 'a2');
   const copy = next.find((i) => i.id === 'a2')!;
-  assert.equal(copy.w, 8);
+  assert.equal(copy.w, 16);
   assert.equal(copy.h, 6);
   assert.ok(copy.x + copy.w <= GRID_COLS);
   assert.ok(noOverlap(next));
 });
 
 test('gridWithoutPane: 下のペインは上へ詰まる。他のペインの大きさは変わらない', () => {
-  const grid: WorkspaceGrid = [item('a', 0, 0, 12, 6), item('b', 0, 6, 6, 9), item('c', 6, 6, 6, 5)];
+  const grid: WorkspaceGrid = [item('a', 0, 0, 24, 6), item('b', 0, 6, 12, 9), item('c', 12, 6, 12, 5)];
   const next = gridWithoutPane(grid, 'a');
-  assert.deepEqual(next, [item('b', 0, 0, 6, 9), item('c', 6, 0, 6, 5)]);
+  assert.deepEqual(next, [item('b', 0, 0, 12, 9), item('c', 12, 0, 12, 5)]);
   assert.equal(gridWithoutPane(grid, 'none'), grid);
 });
 
 test('compactGrid: 上に空きがあれば詰め、詰まっていれば内容を変えない', () => {
-  const sparse: WorkspaceGrid = [item('a', 0, 3, 6, 4), item('b', 0, 20, 6, 4)];
-  assert.deepEqual(compactGrid(sparse), [item('a', 0, 0, 6, 4), item('b', 0, 4, 6, 4)]);
-  const tight: WorkspaceGrid = [item('a', 0, 0, 6, 4), item('b', 6, 0, 6, 4)];
+  const sparse: WorkspaceGrid = [item('a', 0, 3, 12, 4), item('b', 0, 20, 12, 4)];
+  assert.deepEqual(compactGrid(sparse), [item('a', 0, 0, 12, 4), item('b', 0, 4, 12, 4)]);
+  const tight: WorkspaceGrid = [item('a', 0, 0, 12, 4), item('b', 12, 0, 12, 4)];
   assert.ok(sameGrid(compactGrid(tight), tight));
 });
 
 test('normalizeGrid: 範囲外・重なり・知らないペイン・重複を直し、枠の無いペインは足す', () => {
   const dirty: WorkspaceGrid = [
-    item('a', 9, 0, 6, 5),
+    item('a', 18, 0, 12, 5),
     item('a', 0, 0, 2, 2),
     item('ghost', 0, 0, 1, 1),
-    item('b', 0, 0, 6, 5),
+    item('b', 0, 0, 12, 5),
     item('c', 0, 0, 0, 0),
   ];
   const fixed = normalizeGrid(dirty, ['a', 'b', 'c', 'd']);
@@ -81,8 +81,8 @@ test('normalizeGrid: 範囲外・重なり・知らないペイン・重複を�
 });
 
 test('sameGrid: 配列の順は見ず、位置と大きさだけを比べる', () => {
-  const a: WorkspaceGrid = [item('a', 0, 0, 6, 4), item('b', 6, 0, 6, 4)];
+  const a: WorkspaceGrid = [item('a', 0, 0, 12, 4), item('b', 12, 0, 12, 4)];
   assert.ok(sameGrid(a, [a[1]!, a[0]!]));
-  assert.equal(sameGrid(a, [a[0]!, item('b', 6, 0, 6, 5)]), false);
+  assert.equal(sameGrid(a, [a[0]!, item('b', 12, 0, 12, 5)]), false);
   assert.equal(sameGrid(a, [a[0]!]), false);
 });

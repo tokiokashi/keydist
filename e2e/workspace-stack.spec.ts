@@ -23,9 +23,9 @@ const sensitivityWithTarget = {
 };
 /** 左にBigram Flow、右に上から比較表・N感度。大きさは既定から外しておく（戻した時に大きさが残るかを見る）。 */
 const GRID = [
-  { id: 'f', x: 0, y: 0, w: 4, h: 16 },
-  { id: 'c', x: 4, y: 0, w: 8, h: 9 },
-  { id: 'n', x: 4, y: 9, w: 8, h: 12 },
+  { id: 'f', x: 0, y: 0, w: 8, h: 16 },
+  { id: 'c', x: 8, y: 0, w: 16, h: 9 },
+  { id: 'n', x: 8, y: 9, w: 16, h: 12 },
 ];
 
 const DESKTOP = { width: 1280, height: 800 };
@@ -219,7 +219,7 @@ test('スマホ幅でも、ペインの追加・複製・閉じる・連動・�
   const comparisonPane = page.locator('.pane-frame').filter({ has: page.getByRole('heading', { level: 2, name: '比較表', exact: true }) });
   await comparisonPane.getByRole('button', { name: /の操作$/ }).click();
   await page.getByRole('menuitem', { name: /複製/ }).click();
-  // 右隣（x 12〜）は列に収まらず、真下（N感度）も塞がっているので、追加した Bigram Flow の下に入る
+  // 右隣（x 24〜）は列に収まらず、真下（N感度）も塞がっているので、追加した Bigram Flow の下に入る
   await expect(titles).toHaveText(['Bigram Flow', '比較表', 'N感度', 'Bigram Flow', '比較表']);
 
   // ⋯: 閉じる（複製した方）

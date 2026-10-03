@@ -70,7 +70,7 @@ test('Workspaceのペイン: 広いペインでも中身は推奨幅で止まり
         name: '幅の確認',
         text: { ref: { kind: 'builtin', id: 'builtin:ja.legacy' } },
         panes: [{ id: 'p1', analyzerId: 'n-sensitivity', binding: { mode: 'fixed', target: { kind: 'set', selection: { targets } } } }],
-        grid: [{ id: 'p1', x: 0, y: 0, w: 12, h: 20 }],
+        grid: [{ id: 'p1', x: 0, y: 0, w: 24, h: 20 }],
       }],
     }));
   }, LAYOUTS);
